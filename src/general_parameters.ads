@@ -62,6 +62,11 @@ package General_Parameters is
    
    -- DMI 8.2.1.1.3
    type Speed_Dial_Range_T is (Range_140, Range_180, Range_250, Range_400);
+   Max_Speed_Map : array (Speed_Dial_Range_T) of Natural := (Range_140 => 140,
+                                                             Range_180 => 180,
+                                                             Range_250 => 250,
+                                                             Range_400 => 400);
+   -- user defined
    Speed_Dial_Range : constant Speed_Dial_Range_T := Range_180;
    
 end General_Parameters;

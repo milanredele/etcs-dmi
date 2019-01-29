@@ -1,5 +1,5 @@
 pragma Ada_2012;
-package body Display.Area is
+package body Display is
 
    Relative_Layout : constant Layout_T (Sub_ID_T)
      := (A1 => ((0,0), 54, 54),
@@ -75,19 +75,19 @@ package body Display.Area is
    -- Get_Area --
    --------------
 
-   function Get_Area (ID: ID_T) return Area is
+   function Get_Area (ID: ID_T) return Area_T is
 
-      function Get_Sub_Area (Sub_ID  : Sub_ID_T) return Area is
-         function Area_With_Absolute_Position (Main, Sub : Area) return Area is
+      function Get_Sub_Area (Sub_ID  : Sub_ID_T) return Area_T is
+         function Area_With_Absolute_Position (Main, Sub : Area_T) return Area_T is
            (Main.Position + Sub.Position, Sub.Width, Sub.Height);
 
-         Main : constant Area := Main_Layout (Sub_To_Main_Map (ID));
+         Main : constant Area_T := Main_Layout (Sub_To_Main_Map (ID));
 
       begin
          return Area_With_Absolute_Position (Main, Relative_Layout (Sub_ID));
       end;
 
-      Result : Area;
+      Result : Area_T;
    begin
       case ID is
       when Main_ID_T =>
@@ -98,4 +98,17 @@ package body Display.Area is
       return Result;
    end Get_Area;
 
-end Display.Area;
+   package body Frame_Buffer is
+      function Get_Pixel (X : Area_Width_T;
+                          Y : Area_Height_T) return General_Parameters.Color is
+        (Buffer (X + Y * Area.Width));
+
+      procedure Set_Pixel (X : Area_Width_T;
+                           Y : Area_Height_T;
+                           The_Color : General_Parameters.Color) is
+      begin
+         Buffer (X + Y * Area.Width) := The_Color;
+      end Set_Pixel;
+   end Frame_Buffer;
+
+end Display;

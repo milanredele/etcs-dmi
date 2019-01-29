@@ -8,5 +8,7 @@ project Dmi is
       for Vcs_Kind use "git";
    end Ide;
 
+   for Source_Files use ("display-b_area-speed_dial.adb", "display-b_area-speed_dial.ads", "display-b_area.adb", "display-b_area.ads", "display.adb", "display.ads", "dmi.adb", "general_parameters.adb", "general_parameters.ads");
+
 end Dmi;
 
