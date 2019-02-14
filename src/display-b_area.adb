@@ -1,5 +1,11 @@
 pragma Ada_2012;
+with Display.B_Area.Speed_Dial;
 package body Display.B_Area is
+
+   procedure Fill_Background is
+   begin
+      B_Buffer.Fill (General_Parameters.Background_Color);
+   end Fill_Background;
 
    ----------
    -- Draw --
@@ -7,17 +13,9 @@ package body Display.B_Area is
 
    procedure Draw is
    begin
-
-      raise Program_Error with "Unimplemented procedure Draw";
+      Fill_Background;
+      Speed_Dial.Draw;
    end Draw;
 
-   ---------------
-   -- Set_Speed --
-   ---------------
-
-   procedure Set_Speed (Speed : Speed_Params) is
-   begin
-      The_Speed := Speed;
-   end Set_Speed;
 
 end Display.B_Area;

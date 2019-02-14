@@ -1,11 +1,9 @@
-with Ada.Streams;
 with Ada.Numerics; use Ada.Numerics;
+with Speed_And_Distance; use Speed_And_Distance;
 
 package Display.B_Area.Speed_Dial is
    
-   procedure Draw (Stream : not null access Ada.Streams.Root_Stream_Type'Class);
-   
-
+   procedure Draw;
    
 private
 
@@ -24,6 +22,8 @@ private
    
    procedure Draw_Speed_Indicator_Lines;
    
-   procedure Draw_Speed_Indicator_Numbers;
+   -- procedure Draw_Speed_Indicator_Numbers;
+   
+   procedure Draw_Speed_Pointer;
    
 end Display.B_Area.Speed_Dial;

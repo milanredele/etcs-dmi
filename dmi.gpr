@@ -8,7 +8,17 @@ project Dmi is
       for Vcs_Kind use "git";
    end Ide;
 
-   for Source_Files use ("display-b_area-speed_dial.adb", "display-b_area-speed_dial.ads", "display-b_area.adb", "display-b_area.ads", "display.adb", "display.ads", "dmi.adb", "general_parameters.adb", "general_parameters.ads");
+   package Builder is
+      for Switches ("ada") use ("-g", "-s");
+   end Builder;
+
+   package Compiler is
+      for Switches ("ada") use ("-gnatVa", "-gnatwa", "-g");
+   end Compiler;
+
+   package Linker is
+      for Switches ("ada") use ("-g");
+   end Linker;
 
 end Dmi;
 

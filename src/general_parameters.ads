@@ -16,6 +16,12 @@ package General_Parameters is
    type Color is (WHITE, BLACK, GREY, MEDIUM_GREY, DARK_GREY, DARK_BLUE,
                   SHADOW, YELLOW, ORANGE, RED, PASP_DARK, PASP_LIGHT);
    
+   procedure Write_Color
+     (Stream : not null access Ada.Streams.Root_Stream_Type'Class;
+      Item   : in  Color);
+   
+   for Color'Write use Write_Color;
+   
    type Pixel_T is mod 2**8;
    
    type RGB is
@@ -48,7 +54,7 @@ package General_Parameters is
    
   
    -- DMI 5.2.1.3.3
-   Background_Color : constant RGB := RGB_Colors (DARK_BLUE);
+   Background_Color : constant Color := DARK_BLUE;
    
    -- DMI 5.2.2
    type Display_Luminance_T is range 0 .. 10;
@@ -60,13 +66,7 @@ package General_Parameters is
    -- DMI 5.2.3.2
    Loudspeaker_Volume : constant Loudspeaker_Volume_T := 5;
    
-   -- DMI 8.2.1.1.3
-   type Speed_Dial_Range_T is (Range_140, Range_180, Range_250, Range_400);
-   Max_Speed_Map : array (Speed_Dial_Range_T) of Natural := (Range_140 => 140,
-                                                             Range_180 => 180,
-                                                             Range_250 => 250,
-                                                             Range_400 => 400);
-   -- user defined
-   Speed_Dial_Range : constant Speed_Dial_Range_T := Range_180;
    
+   
+
 end General_Parameters;

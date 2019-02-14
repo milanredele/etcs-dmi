@@ -42,8 +42,11 @@ package Display is
       procedure Set_Pixel (X : Area_Width_T; 
                            Y : Area_Height_T;
                            The_Color : General_Parameters.Color);
+      procedure Fill (The_Color : General_Parameters.Color);
+      procedure Dump (File_Name : String);
    private
-      Buffer : array (Positive range 0 .. Area.Width * Area.Height) of General_Parameters.Color;
+      type Buffer_T is array (Natural range 0 .. Area.Width * Area.Height) of General_Parameters.Color;
+      Buffer : Buffer_T;
    end Frame_Buffer;
 
 private
