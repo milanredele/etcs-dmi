@@ -409,38 +409,38 @@ package body Display.B_Area.Speed_Dial is
                   end if;
                when PIM =>
                   if Get_Speed_Params.Vrelease_Exists then
-                     Draw_Thin_CSG (0, Get_Speed_Params.Vrelease, General_Parameters.MEDIUM_GREY);
                      Release_Or_Target_Speed := Get_Speed_Params.Vrelease;
+                     Draw_Thin_CSG (0, Release_Or_Target_Speed, General_Parameters.MEDIUM_GREY);
                   else
                      Release_Or_Target_Speed := Get_Speed_Params.Vtarget;
                      Draw_Thin_CSG (0, Release_Or_Target_Speed, General_Parameters.DARK_GREY);
-                     Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.WHITE);
-                     Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
-                     if Get_Supervision_Status in OvS | WaS then
-                        Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.ORANGE);
-                     elsif Get_Supervision_Status = IntS then
-                        Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.RED);
-                     end if;
+                  end if;
+                  Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.WHITE);
+                  Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
+                  if Get_Supervision_Status in OvS | WaS then
+                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.ORANGE);
+                  elsif Get_Supervision_Status = IntS then
+                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.RED);
                   end if;
                when TSM =>
                   if Get_Speed_Params.Vrelease_Exists then
-                     Draw_Thin_CSG (0, Get_Speed_Params.Vrelease, General_Parameters.MEDIUM_GREY);
                      Release_Or_Target_Speed := Get_Speed_Params.Vrelease;
+                     Draw_Thin_CSG (0, Release_Or_Target_Speed, General_Parameters.MEDIUM_GREY);
                   else
                      Release_Or_Target_Speed := Get_Speed_Params.Vtarget;
-                     Draw_Thin_CSG (0, Get_Speed_Params.Vtarget, General_Parameters.DARK_GREY);
-                     if Get_Supervision_Status = NoS then
-                        Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.WHITE);
-                        Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
-                     else
-                        Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.YELLOW);
-                        Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.YELLOW);
-                     end if;
-                     if Get_Supervision_Status in OvS | WaS then
-                        Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.ORANGE);
-                     elsif Get_Supervision_Status = IntS then
-                        Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.RED);
-                     end if;
+                     Draw_Thin_CSG (0, Release_Or_Target_Speed, General_Parameters.DARK_GREY);
+                  end if;
+                  if Get_Supervision_Status = NoS then
+                     Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.WHITE);
+                     Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
+                  else
+                     Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.YELLOW);
+                     Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.YELLOW);
+                  end if;
+                  if Get_Supervision_Status in OvS | WaS then
+                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.ORANGE);
+                  elsif Get_Supervision_Status = IntS then
+                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.RED);
                   end if;
                when RSM =>
                   if Get_Speed_Params.Vrelease_Exists then
