@@ -74,4 +74,15 @@ package body Speed_And_Distance is
    function Get_Speed_Dial_Range return Speed_Dial_Range_T is
      (Speed_Dial_Range);
 
+   procedure Set_Monitoring_Mode (The_Mode : Monitoring_T) is
+   begin
+      Monitoring_Mode := The_Mode;
+   end Set_Monitoring_Mode;
+
+   function Get_Monitoring_Mode return Monitoring_T is
+     (Monitoring_Mode);
+
+   function Get_Supervision_Status return Supervision_Status_T is
+      (Supervision_Status);
+
 end Speed_And_Distance;

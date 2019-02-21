@@ -2,9 +2,9 @@ package Speed_And_Distance is
 
    -- DMI 7.1.1.3
    type Monitoring_T is (CSM, -- Ceiling Speed Monitoring
-                       PIM, -- Pre-Indication Monitoring
-                       TSM, -- Target Speed Monitoring
-                       RSM); -- Release Speed Monitoring
+                         PIM, -- Pre-Indication Monitoring
+                         TSM, -- Target Speed Monitoring
+                         RSM); -- Release Speed Monitoring
    
    type Supervision_Status_T is (NoS, -- Normal Status
                                  IndS, -- Indication
@@ -23,6 +23,7 @@ package Speed_And_Distance is
    type Speed_Params is
       record
          Vperm, Vtarget, Vwsl, Visl, Vsbi, Vrelease : Speed_T;
+         Vrelease_Exists : Boolean := False;
       end record;
 
    -- Set the current speed
@@ -37,6 +38,12 @@ package Speed_And_Distance is
    procedure Set_Seed_Dial_Range (The_Range : Speed_Dial_Range_T);
    
    function Get_Speed_Dial_Range return Speed_Dial_Range_T;
+   
+   procedure Set_Monitoring_Mode (The_Mode : Monitoring_T);
+   
+   function Get_Monitoring_Mode return Monitoring_T;
+   
+   function Get_Supervision_Status return Supervision_Status_T;
    
 private
    Monitoring_Mode    : Monitoring_T;

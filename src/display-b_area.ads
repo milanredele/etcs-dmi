@@ -1,6 +1,8 @@
+with Display.Frame_Buffer;
+
 package Display.B_Area is
    
-   package B_Buffer is new Frame_Buffer (B);
+   package B_Buffer is new Display.Frame_Buffer (B);
    
    -- Draw the current state
    procedure Draw;
