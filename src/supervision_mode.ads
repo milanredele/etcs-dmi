@@ -3,6 +3,7 @@ package Supervision_Mode is
    type Mode_T is (M_NP, --No Power
                    M_SB, --Stand by
                    M_FS, --Full supervision
+                   M_LS, --Limited supervision
                    M_OS, --On sight
                    M_SR, --Staff responsible
                    M_SH, --Shunting

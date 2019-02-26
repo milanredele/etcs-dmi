@@ -1,3 +1,4 @@
+with Font;
 
 generic Area_ID : in ID_T;
 package Display.Frame_Buffer is
@@ -15,6 +16,12 @@ package Display.Frame_Buffer is
                         The_Color : General_Parameters.Color);
    
    procedure Fill (The_Color : General_Parameters.Color);
+   
+   procedure Draw_Glyph (Pen_X : Area_Width_T; 
+                         Pen_Y : Area_Height_T; 
+                         The_Glyph  : Font.Glyph; 
+                         The_Bitmap : Font.Bitmap_T;
+                         The_Color  : General_Parameters.Color);
    
    procedure Dump (File_Name : String);
 

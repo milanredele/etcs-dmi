@@ -98,4 +98,7 @@ package body Display is
       return Result;
    end Get_Area;
 
+   function Get_Sub_Area_With_Relative_Position (ID: Sub_ID_T) return Area_T is
+      (Relative_Layout (ID));
+
 end Display;
