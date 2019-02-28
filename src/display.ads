@@ -29,7 +29,15 @@ package Display is
       G1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13);
       
    subtype Main_ID_T is ID_T range A .. Z;
+   subtype Main_ID_With_Sub_T is Main_ID_T range A .. G;
    subtype Sub_ID_T is ID_T range A1 .. G13;
+   subtype Sub_ID_A_T is Sub_ID_T range A1 .. A4;
+   subtype Sub_ID_B_T is Sub_ID_T range B3 .. B7; -- B0, B1, B2 intentionally left out (don't have border)
+   subtype Sub_ID_C_T is Sub_ID_T range C1 .. C9;
+   subtype Sub_ID_D_T is Sub_ID_T range D1 .. D14;
+   subtype Sub_ID_E_T is Sub_ID_T range E1 .. E11;
+   subtype Sub_ID_F_T is Sub_ID_T range F1 .. F9;
+   subtype Sub_ID_G_T is Sub_ID_T range G1 .. G13;
    subtype Width_T is Integer range 0 .. General_Parameters.Display_Resolution.Width;
    subtype Height_T is Integer range 0 .. General_Parameters.Display_Resolution.Height;
    
@@ -45,13 +53,17 @@ package Display is
          Width : Width_T;
          Height : Height_T;
       end record;
-
+   
+   type Layout_T is array (ID_T range <>) of Area_T;
+   
    function Get_Area (ID: ID_T) return Area_T;
    
    function Get_Sub_Area_With_Relative_Position (ID: Sub_ID_T) return Area_T;
    
+   function Get_Sub_Layout (ID: Main_ID_With_Sub_T) return Layout_T;
+   
 private
-   type Layout_T is array (ID_T range <>) of Area_T;
+   
    
    Main_Layout : constant Layout_T (Main_ID_T)
      := (A => ((  0,  15),  54, 300),

@@ -115,6 +115,24 @@ package body Display is
    end Get_Area;
 
    function Get_Sub_Area_With_Relative_Position (ID: Sub_ID_T) return Area_T is
-      (Relative_Layout (ID));
+     (Relative_Layout (ID));
+
+   function Get_Sub_Layout (ID: Main_ID_With_Sub_T) return Layout_T is
+      First_Array : constant array (Main_ID_With_Sub_T) of Sub_ID_T
+        := (A => A1, B => B3, C => C1, D => D1, E => E1, F => F1, G => G1);
+      Last_Array  : constant array (Main_ID_With_Sub_T) of Sub_ID_T := (A => Sub_ID_A_T'Last,
+                                                                        B => Sub_ID_B_T'Last,
+                                                                        C => Sub_ID_C_T'Last,
+                                                                        D => Sub_ID_D_T'Last,
+                                                                        E => Sub_ID_E_T'Last,
+                                                                        F => Sub_ID_F_T'Last,
+                                                                        G => Sub_ID_G_T'Last);
+      Result : Layout_T (First_Array (ID) .. Last_Array (ID));
+   begin
+      for I in Result'Range loop
+         Result (I) := Relative_Layout (I);
+      end loop;
+      return Result;
+   end Get_Sub_Layout;
 
 end Display;

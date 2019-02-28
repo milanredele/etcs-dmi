@@ -35,6 +35,24 @@ package body Display.Frame_Buffer is
       for I in Buffer'Range loop
          Buffer (I) := The_Color;
       end loop;
+      if Area_ID in Main_ID_With_Sub_T then
+         declare
+            Subs : constant Layout_T := Get_Sub_Layout (Area_ID);
+         begin
+            for Sub of Subs loop
+               -- draw top and bottom border
+               for X in Sub.Position.X .. Sub.Position.X + Sub.Width - 1 loop
+                  Set_Pixel (X, Sub.Position.Y, General_Parameters.BLACK);
+                  Set_Pixel (X, Sub.Position.Y + Sub.Height - 1, General_Parameters.SHADOW);
+               end loop;
+               -- draw left and right border
+               for Y in Sub.Position.Y .. Sub.Position.Y + Sub.Height - 1 loop
+                  Set_Pixel (Sub.Position.X, Y, General_Parameters.BLACK);
+                  Set_Pixel (Sub.Position.X + Sub.Width - 1, Y, General_Parameters.SHADOW);
+               end loop;
+            end loop;
+         end;
+      end if;
    end Fill;
 
    procedure Draw_Glyph (Pen_X : Area_Width_T;
