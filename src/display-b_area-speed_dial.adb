@@ -18,6 +18,7 @@ pragma Ada_2012;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Display;
 with Font;
+with Font.FreeSans_16;
 with Font.FreeSans_18;
 with Supervision_Mode;
 
@@ -88,6 +89,76 @@ package body Display.B_Area.Speed_Dial is
       end loop;
    end Draw_Speed_Indicator_Lines;
 
+   procedure Draw_Speed_Indicator_Numbers is
+      -- DMI 8.2.1.1.5
+      procedure Draw_Number (X      : B_Buffer.Area_Width_T;
+                             Y      : B_Buffer.Area_Height_T;
+                             Number : Wide_String) is
+         Glyphs : Font.Glyph_String (1 .. Number'Length);
+         Idx : Positive := 1;
+      begin
+         for I in Number'Range loop
+            Glyphs (Idx) := Font.FreeSans_16.Glyphs (Number (I));
+            Idx := Idx + 1;
+         end loop;
+         B_Buffer.Draw_String (Pen_X      => X,
+                               Pen_Y      => Y,
+                               The_String => Glyphs,
+                               The_Bitmap => Font.FreeSans_16.Bitmap,
+                               The_Color  => General_Parameters.WHITE);
+      end Draw_Number;
+   begin
+      case Get_Speed_Dial_Range is
+         when Range_140 =>
+            -- DMI 8.2.1.1.14.3
+            Draw_Number (85, 228, "0");
+            Draw_Number (48, 177, "20");
+            Draw_Number (55, 117, "40");
+            Draw_Number (100, 79, "60");
+            Draw_Number (158, 79, "80");
+            Draw_Number (193, 121, "100");
+            Draw_Number (200, 177, "120");
+            Draw_Number (177, 227, "140");
+         when Range_180 =>
+            -- DMI 8.2.1.1.13.3
+            Draw_Number (85, 228, "0");
+            Draw_Number (51, 195, "20");
+            Draw_Number (46, 142, "40");
+            Draw_Number (71,  98, "60");
+            Draw_Number (107, 79, "80");
+            Draw_Number (150, 79, "100");
+            Draw_Number (191, 103, "120");
+            Draw_Number (200, 143, "140");
+            Draw_Number (194, 190, "160");
+            Draw_Number (177, 227, "180");
+         when Range_250 =>
+            -- DMI 8.2.1.1.12.3
+            Draw_Number (85, 228, "0");
+            Draw_Number (58, 206, "20");
+            Draw_Number (46, 170, "40");
+            Draw_Number (48, 135, "60");
+            Draw_Number (65, 105, "80");
+            Draw_Number (78,  82, "100");
+            Draw_Number (113,  73, "120");
+            Draw_Number (151,  77, "140");
+            Draw_Number (180,  97, "160");
+            Draw_Number (192, 124, "180");
+            Draw_Number (200, 152, "200");
+            Draw_Number (195, 185, "220");
+            Draw_Number (189, 216, "240");
+         when Range_400 =>
+            -- DMI 8.2.1.1.11.3
+            Draw_Number (85, 228, "0");
+            Draw_Number (46, 167, "50");
+            Draw_Number (58, 105, "100");
+            Draw_Number (123, 73, "150");
+            Draw_Number (185, 105, "200");
+            Draw_Number (199, 167, "300");
+            Draw_Number (177, 227, "400");
+      end case;
+
+   end Draw_Speed_Indicator_Numbers;
+
    procedure Draw_Speed_Pointer  is separate;
 
    ----------
@@ -97,6 +168,7 @@ package body Display.B_Area.Speed_Dial is
    procedure Draw is
    begin
       Draw_Speed_Indicator_Lines;
+      Draw_Speed_Indicator_Numbers;
       Draw_Speed_Pointer;
       Circular_Speed_Gauge.Draw;
    end Draw;

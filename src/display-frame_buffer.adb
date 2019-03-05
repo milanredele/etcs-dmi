@@ -76,6 +76,23 @@ package body Display.Frame_Buffer is
       end loop;
    end Draw_Glyph;
 
+   procedure Draw_String (Pen_X : Area_Width_T;
+                          Pen_Y : Area_Height_T;
+                          The_String : Font.Glyph_String;
+                          The_Bitmap : Font.Bitmap_T;
+                          The_Color  : General_Parameters.Color) is
+      Cur_X : Area_Width_T  := Pen_X;
+   begin
+      for I in The_String'Range loop
+         Draw_Glyph (Pen_X      => Cur_X,
+                     Pen_Y      => Pen_Y,
+                     The_Glyph  => The_String (I),
+                     The_Bitmap => The_Bitmap,
+                     The_Color  => The_Color);
+         Cur_X := Cur_X + The_String (I).Advance_X;
+      end loop;
+   end Draw_String;
+
    procedure Dump (File_Name : String) is
       Output_File : Ada.Streams.Stream_IO.File_Type;
       Output_Stream : Ada.Streams.Stream_IO.Stream_Access;

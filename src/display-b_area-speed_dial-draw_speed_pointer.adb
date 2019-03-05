@@ -393,7 +393,7 @@ procedure Draw_Speed_Pointer is
       begin
          B_Buffer.Draw_Glyph (Pen_X      => Pen_X,
                               Pen_Y      => Pen_Y,
-                              The_Glyph  => Font.FreeSans_18.Glyphs (Font.FreeSans_18.Chars'Val (The_Digit)),
+                              The_Glyph  => Font.FreeSans_18.Glyphs (Integer'Wide_Image (The_Digit) (2)),
                               The_Bitmap => Font.FreeSans_18.Bitmap,
                               The_Color  => Digit_Color);
       end Draw_Glyph;

@@ -39,6 +39,12 @@ package Display.Frame_Buffer is
                          The_Bitmap : Font.Bitmap_T;
                          The_Color  : General_Parameters.Color);
    
+   procedure Draw_String (Pen_X : Area_Width_T; 
+                          Pen_Y : Area_Height_T; 
+                          The_String : Font.Glyph_String; 
+                          The_Bitmap : Font.Bitmap_T;
+                          The_Color  : General_Parameters.Color);
+   
    procedure Dump (File_Name : String);
 
 private

@@ -31,7 +31,7 @@ begin
                                          Vsbi => 150,
                                          Vrelease => 40,
                                          Vrelease_Exists => True));
-   Speed_And_Distance.Set_Speed (119);
+   Speed_And_Distance.Set_Speed (249);
    Display.B_Area.Draw;
    Display.B_Area.B_Buffer.Dump ("b_frame.dmp");
 end Dmi;

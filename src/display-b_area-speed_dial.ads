@@ -38,7 +38,7 @@ private
    
    procedure Draw_Speed_Indicator_Lines;
    
-   -- procedure Draw_Speed_Indicator_Numbers;
+   procedure Draw_Speed_Indicator_Numbers;
    
    procedure Draw_Speed_Pointer;
    
