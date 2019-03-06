@@ -21,6 +21,7 @@ with Font;
 with Font.FreeSans_16;
 with Font.FreeSans_18;
 with Supervision_Mode;
+with User_Settings;
 
 package body Display.B_Area.Speed_Dial is
 
@@ -347,16 +348,29 @@ package body Display.B_Area.Speed_Dial is
                                 The_Color   => The_Color);
          end Draw_Hook;
 
+         procedure Draw_Basic_Speed_Hook (At_Speed  : Speed_T;
+                                          The_Color : General_Parameters.Color) is
+            Speed_Angle : constant Angle := Speed_To_Angle (At_Speed);
+         begin
+            -- DMI 8.2.1.5.4
+            Draw_Circle_Sector (From_Angle  => Speed_Angle - Basic_Speed_Hook_Width,
+                                To_Angle    => Speed_Angle,
+                                From_Radius => Hook_Inner_Radius,
+                                To_Radius   => B2_Radius_Outer,
+                                The_Color   => The_Color);
+         end Draw_Basic_Speed_Hook;
+
          Release_Or_Target_Speed : Speed_T;
 
          Vrelease_Missing_Error : exception;
 
          use type Supervision_Mode.Mode_T;
       begin
-         Draw_Lowermost_Part;
-         -- DMI 8.2.1.4.9
-         if Supervision_Mode.Mode = Supervision_Mode.M_FS then
-            case Get_Monitoring_Mode is
+         case Supervision_Mode.Mode is
+            when Supervision_Mode.M_FS =>
+               -- DMI 8.2.1.4.9
+               Draw_Lowermost_Part;
+               case Get_Monitoring_Mode is
                when CSM =>
                   Draw_Thin_CSG (0, Get_Speed_Params.Vperm, General_Parameters.DARK_GREY);
                   Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.DARK_GREY);
@@ -409,8 +423,26 @@ package body Display.B_Area.Speed_Dial is
                   else
                      raise Vrelease_Missing_Error;
                   end if;
-            end case;
-         end if;
+               end case;
+            when Supervision_Mode.M_OS | Supervision_Mode.M_SR =>
+               -- DMI 8.2.1.5.7
+               -- Basic Speed Hook
+               if User_Settings.Toggle (User_Settings.Basic_Speed_Hook) then
+                  if Get_Monitoring_Mode /= CSM then
+                     Draw_Basic_Speed_Hook (Get_Speed_Params.Vtarget, General_Parameters.MEDIUM_GREY);
+                  end if;
+                  -- DMI 8.2.1.5.6
+                  Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
+               end if;
+            when Supervision_Mode.M_SH =>
+               if User_Settings.Toggle (User_Settings.Basic_Speed_Hook) then
+                  Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
+               end if;
+            when Supervision_Mode.M_RV =>
+               Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
+            when others =>
+               null;
+         end case;
 
       end Draw;
    end Circular_Speed_Gauge;

@@ -17,12 +17,14 @@
 with Display.B_Area;
 with Speed_And_Distance;
 with Supervision_Mode;
+with User_Settings;
 
 procedure Dmi is
 
 begin
-   Supervision_Mode.Mode := Supervision_Mode.M_FS;
-   Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.CSM);
+   Supervision_Mode.Mode := Supervision_Mode.M_OS;
+   User_Settings.Toggle (User_Settings.Basic_Speed_Hook) := True;
+   Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.TSM);
    Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_400);
    Speed_And_Distance.Set_Speed_Params ((Vperm => 120,
                                          Vtarget => 80,

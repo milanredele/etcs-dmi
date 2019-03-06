@@ -44,12 +44,15 @@ private
    
    package Circular_Speed_Gauge is
       -- DMI 8.2.1.4.4
-      Lowermost_Limit      : constant Angle := Pi * (-149.0) / 180.0;
+      Lowermost_Limit        : constant Angle := Pi * (-149.0) / 180.0;
       -- DMI 8.2.1.4.5
-      Lowermost_Part_Color : constant General_Parameters.Color := General_Parameters.DARK_GREY;
+      Lowermost_Part_Color   : constant General_Parameters.Color := General_Parameters.DARK_GREY;
       -- DMI 8.2.1.4.7
-      Hook_Width           : constant Angle := Pi * 2.8 / 180.0; -- 6 pixels are 2.8 degrees
-      Hook_Inner_Radius    : constant Radius_T := B2_Radius_Outer - 20;
+      Hook_Width             : constant Angle := Pi * 2.8 / 180.0; -- 6 pixels are 2.8 degrees
+      -- DMI 8.2.1.5.4 
+      Basic_Speed_Hook_Width : constant Angle := Hook_Width * 1.7; -- 10 pixels
+
+      Hook_Inner_Radius      : constant Radius_T := B2_Radius_Outer - 20;
       
       procedure Draw;
    end Circular_Speed_Gauge;
