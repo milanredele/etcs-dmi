@@ -18,7 +18,6 @@ pragma Ada_2012;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Display;
 with Font;
-with Font.FreeSans_16;
 with Font.FreeSans_18;
 with Supervision_Mode;
 with User_Settings;
@@ -95,17 +94,11 @@ package body Display.B_Area.Speed_Dial is
       procedure Draw_Number (X      : B_Buffer.Area_Width_T;
                              Y      : B_Buffer.Area_Height_T;
                              Number : Wide_String) is
-         Glyphs : Font.Glyph_String (1 .. Number'Length);
-         Idx : Positive := 1;
       begin
-         for I in Number'Range loop
-            Glyphs (Idx) := Font.FreeSans_16.Glyphs (Number (I));
-            Idx := Idx + 1;
-         end loop;
          B_Buffer.Draw_String (Pen_X      => X,
                                Pen_Y      => Y,
-                               The_String => Glyphs,
-                               The_Bitmap => Font.FreeSans_16.Bitmap,
+                               The_String => Number,
+                               The_Size   => 16,
                                The_Color  => General_Parameters.WHITE);
       end Draw_Number;
    begin
@@ -162,6 +155,38 @@ package body Display.B_Area.Speed_Dial is
 
    procedure Draw_Speed_Pointer  is separate;
 
+   procedure Draw_Release_Speed_Digital is
+      procedure Draw_Number is
+         B6_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (B6);
+         The_Number : constant Wide_String := Speed_T'Wide_Image (Get_Speed_Params.Vrelease);
+      begin
+         B_Buffer.Draw_String (Pen_X      => B6_Area.Position.X + 2,
+                               Pen_Y      => B6_Area.Position.Y + B6_Area.Height - 10,
+                               The_String => The_Number (2 .. The_Number'Last),
+                               The_Size   => 17,
+                               The_Color  => General_Parameters.MEDIUM_GREY);
+      end Draw_Number;
+   begin
+      -- DMI 8.2.1.6.5
+      if not Get_Speed_Params.Vrelease_Exists then
+         return;
+      end if;
+      case Supervision_Mode.Mode is
+         when Supervision_Mode.M_FS | Supervision_Mode.M_LS =>
+            if Get_Monitoring_Mode /= CSM then
+                  Draw_Number;
+            end if;
+         when Supervision_Mode.M_OS =>
+            if User_Settings.Toggle (User_Settings.Release_Speed_Digital)
+              and Get_Monitoring_Mode /= CSM
+            then
+               Draw_Number;
+            end if;
+         when others =>
+            null;
+      end case;
+   end Draw_Release_Speed_Digital;
+
    ----------
    -- Draw --
    ----------
@@ -172,6 +197,7 @@ package body Display.B_Area.Speed_Dial is
       Draw_Speed_Indicator_Numbers;
       Draw_Speed_Pointer;
       Circular_Speed_Gauge.Draw;
+      Draw_Release_Speed_Digital;
    end Draw;
 
    package body Circular_Speed_Gauge is

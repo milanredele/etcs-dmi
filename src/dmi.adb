@@ -22,8 +22,9 @@ with User_Settings;
 procedure Dmi is
 
 begin
-   Supervision_Mode.Mode := Supervision_Mode.M_OS;
+   Supervision_Mode.Mode := Supervision_Mode.M_FS;
    User_Settings.Toggle (User_Settings.Basic_Speed_Hook) := True;
+   User_Settings.Toggle (User_Settings.Release_Speed_Digital) := True;
    Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.TSM);
    Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_400);
    Speed_And_Distance.Set_Speed_Params ((Vperm => 120,
@@ -33,7 +34,7 @@ begin
                                          Vsbi => 150,
                                          Vrelease => 40,
                                          Vrelease_Exists => True));
-   Speed_And_Distance.Set_Speed (249);
+   Speed_And_Distance.Set_Speed (156);
    Display.B_Area.Draw;
    Display.B_Area.B_Buffer.Dump ("b_frame.dmp");
 end Dmi;

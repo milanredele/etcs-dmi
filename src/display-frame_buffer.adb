@@ -16,6 +16,8 @@
 
 pragma Ada_2012;
 with Ada.Streams.Stream_IO;
+with Font.FreeSans_16;
+with Font.FreeSans_17;
 
 package body Display.Frame_Buffer is
 
@@ -91,6 +93,52 @@ package body Display.Frame_Buffer is
                      The_Color  => The_Color);
          Cur_X := Cur_X + The_String (I).Advance_X;
       end loop;
+   end Draw_String;
+
+   procedure Draw_String (Pen_X : Area_Width_T;
+                          Pen_Y : Area_Height_T;
+                          The_String : Wide_String;
+                          The_Size   : Font.Size_T;
+                          The_Color  : General_Parameters.Color) is
+      function Get_Glyph_Map return Font.Glyph_Map is
+      begin
+         case The_Size is
+         when 16 =>
+            return Font.FreeSans_16.Glyphs;
+         when 17 =>
+            return Font.FreeSans_17.Glyphs;
+         when others =>
+            raise Program_Error with "Character size not available";
+      end case;
+      end Get_Glyph_Map;
+
+      function Get_Bitmap return Font.Bitmap_T is
+      begin
+         case The_Size is
+         when 16 =>
+            return Font.FreeSans_16.Bitmap;
+         when 17 =>
+            return Font.FreeSans_17.Bitmap;
+         when others =>
+            raise Program_Error with "Character size not available";
+         end case;
+      end Get_Bitmap;
+
+      Glyphs  : Font.Glyph_String (1 .. The_String'Length);
+      Idx     : Positive := 1;
+      Glyph_M : constant Font.Glyph_Map := Get_Glyph_Map;
+      Bitmap  : constant Font.Bitmap_T  := Get_Bitmap;
+   begin
+
+      for I in The_String'Range loop
+            Glyphs (Idx) := Glyph_M (The_String (I));
+            Idx := Idx + 1;
+         end loop;
+         Draw_String (Pen_X      => Pen_X,
+                      Pen_Y      => Pen_Y,
+                      The_String => Glyphs,
+                      The_Bitmap => Bitmap,
+                      The_Color  => The_Color);
    end Draw_String;
 
    procedure Dump (File_Name : String) is

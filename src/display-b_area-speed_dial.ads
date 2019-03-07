@@ -42,6 +42,8 @@ private
    
    procedure Draw_Speed_Pointer;
    
+   procedure Draw_Release_Speed_Digital;
+   
    package Circular_Speed_Gauge is
       -- DMI 8.2.1.4.4
       Lowermost_Limit        : constant Angle := Pi * (-149.0) / 180.0;
