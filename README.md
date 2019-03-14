@@ -17,10 +17,10 @@ A Freetype based C-program was used to generate Ada code from the TrueType font.
 
 ### Testing
 To be able to see the output the following setup is used:
-- the content of the framebuffer of each display area is sent through a TCP socket to a server implemented in node.js (test/tools/server.js)
+- the content of the framebuffer of each display area is sent through a TCP socket to a [server implemented in node.js](test/tools/server.js)
 - the node.js server also functions as a WebSocket server
-- a web browser based client is provided (test/tools/client.html)
+- a web browser based [client is provided](test/tools/client.html)
 
 the above tries to mimic the embedded setup when framebuffer content is sent to the display driver.
 
-![Image of B Area] (doc/images/b_area.png)
+![Image of B Area](doc/images/b_area.png)
