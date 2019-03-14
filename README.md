@@ -23,4 +23,4 @@ To be able to see the output the following setup is used:
 
 the above tries to mimic the embedded setup when framebuffer content is sent to the display driver.
 
-![Image of B Area] (https://github.com/milanredele/etcs-dmi/tree/master/doc/images/b_area.png)
+![Image of B Area] (doc/images/b_area.png)
