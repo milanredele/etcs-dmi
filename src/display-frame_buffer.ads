@@ -14,6 +14,7 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+with Ada.Streams.Stream_IO;
 with Font;
 
 generic Area_ID : in ID_T;
@@ -52,6 +53,10 @@ package Display.Frame_Buffer is
                           The_Color  : General_Parameters.Color);
    
    procedure Dump (File_Name : String);
+   
+   procedure Write_Buffer (Stream : not null access Ada.Streams.Root_Stream_Type'Class);
+   
+   procedure Write (Output_Stream : Ada.Streams.Stream_IO.Stream_Access);
 
 private
    type Buffer_T is array (Natural range 0 .. Area.Width * Area.Height) of General_Parameters.Color;

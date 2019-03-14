@@ -19,7 +19,13 @@ with Speed_And_Distance;
 with Supervision_Mode;
 with User_Settings;
 
+with GNAT.Sockets;            use GNAT.Sockets;
+with Ada.Streams.Stream_IO;
+
 procedure Dmi is
+   Client  : Socket_Type;
+   Address : Sock_Addr_Type;
+   Channel : Stream_Access;
 
 begin
    Supervision_Mode.Mode := Supervision_Mode.M_FS;
@@ -34,7 +40,17 @@ begin
                                          Vsbi => 150,
                                          Vrelease => 40,
                                          Vrelease_Exists => True));
-   Speed_And_Distance.Set_Speed (156);
+   Speed_And_Distance.Set_Speed (248);
    Display.B_Area.Draw;
    Display.B_Area.B_Buffer.Dump ("b_frame.dmp");
+
+   Create_Socket (Client);
+   Address.Addr := Inet_Addr("127.0.0.1");
+   Address.Port := 1337;
+
+   Connect_Socket (Client, Address);
+   Channel := Stream (Client);
+
+   Display.B_Area.B_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
+   Close_Socket (Client);
 end Dmi;

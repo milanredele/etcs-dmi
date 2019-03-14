@@ -21,8 +21,8 @@ package General_Parameters is
    -- DMI 5.2.1.2
    type Display_Resolution_T is 
       record
-         Width : Positive range 640 .. Positive'Last;
-         Height : Positive range 480 .. Positive'Last;
+         Width : Integer range 640 .. 4096;
+         Height : Integer range 480 .. 4096;
       end record;
    
    Display_Resolution : constant Display_Resolution_T := (Width => 640,
@@ -31,6 +31,7 @@ package General_Parameters is
    -- DMI 5.2.1.3
    type Color is (WHITE, BLACK, GREY, MEDIUM_GREY, DARK_GREY, DARK_BLUE,
                   SHADOW, YELLOW, ORANGE, RED, PASP_DARK, PASP_LIGHT);
+   for Color'Size use 8;
    
    procedure Write_Color
      (Stream : not null access Ada.Streams.Root_Stream_Type'Class;

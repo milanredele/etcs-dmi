@@ -15,9 +15,10 @@
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pragma Ada_2012;
-with Ada.Streams.Stream_IO;
+with Ada.Unchecked_Conversion;
 with Font.FreeSans_16;
 with Font.FreeSans_17;
+with System;
 
 package body Display.Frame_Buffer is
 
@@ -154,5 +155,29 @@ package body Display.Frame_Buffer is
 
       Ada.Streams.Stream_IO.Close (Output_File);
    end Dump;
+
+   procedure Write_Buffer (Stream : not null access Ada.Streams.Root_Stream_Type'Class) is
+      use type Ada.Streams.Stream_Element_Offset;
+
+      Item_Size : constant Ada.Streams.Stream_Element_Offset :=
+        Buffer_T'Object_Size / Ada.Streams.Stream_Element'Size;
+
+      type SEA_Pointer is
+        access all Ada.Streams.Stream_Element_Array (1 .. Item_Size);
+
+      function As_SEA_Pointer is
+        new Ada.Unchecked_Conversion (System.Address, SEA_Pointer);
+   begin
+      Ada.Streams.Write (Stream.all, As_SEA_Pointer (Buffer'Address).all);
+   end Write_Buffer;
+
+   procedure Write (Output_Stream : Ada.Streams.Stream_IO.Stream_Access) is
+   begin
+      Short_Integer'Write (Output_Stream, Short_Integer (Area.Position.X));
+      Short_Integer'Write (Output_Stream, Short_Integer (Area.Position.Y));
+      Short_Integer'Write (Output_Stream, Short_Integer (Area.Width));
+      Short_Integer'Write (Output_Stream, Short_Integer (Area.Height));
+      Write_Buffer (Output_Stream);
+   end Write;
 
 end Display.Frame_Buffer;

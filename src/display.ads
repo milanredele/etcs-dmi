@@ -38,8 +38,8 @@ package Display is
    subtype Sub_ID_E_T is Sub_ID_T range E1 .. E11;
    subtype Sub_ID_F_T is Sub_ID_T range F1 .. F9;
    subtype Sub_ID_G_T is Sub_ID_T range G1 .. G13;
-   subtype Width_T is Integer range 0 .. General_Parameters.Display_Resolution.Width;
-   subtype Height_T is Integer range 0 .. General_Parameters.Display_Resolution.Height;
+   subtype Width_T is Natural range 0 .. General_Parameters.Display_Resolution.Width;
+   subtype Height_T is Natural range 0 .. General_Parameters.Display_Resolution.Height;
    
    type Position_T is
       record

@@ -1,0 +1,94 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <style>
+      body {
+        margin: 0px;
+        padding: 0px;
+      }
+    </style>
+  </head>
+   <body>
+    <canvas id="myCanvas" width="640" height="480"></canvas>
+	<script>
+		var canvas = document.getElementById('myCanvas');
+		var context = canvas.getContext('2d');
+		const canWidth = canvas.width;
+		const canHeight = canvas.height;
+		var img = context.createImageData(canWidth, canHeight);
+		
+		var socket = new WebSocket('ws://127.0.0.1:8080');
+		socket.binaryType = 'arraybuffer';
+		
+		var colorMap = 
+		[
+			[255, 255, 255], //WHITE
+			[0  , 0  , 0  ], //BLACK
+			[195, 195, 195], //GREY
+			[150, 150, 150], //MEDIUM_GREY
+			[85 , 85 , 85 ], //DARK_GREY
+			[3  , 17 , 34 ], //DARK_BLUE
+			[8  , 24 , 57 ], //SHADOW
+			[223, 223, 0  ], //YELLOW
+			[234, 145, 0  ], //ORANGE
+			[191, 0  , 2  ], //RED
+			[33 , 49 , 74 ], //PASP_DARK
+			[41 , 74 , 107], //PASP_LIGHT
+		];
+		
+		// image area is coming in chunks so need to do some hekk
+		var pos_x = 0;
+		var pos_y = 0;
+		var width = 0;
+		var height = 0;		
+		var areaBuf;
+		var offset;
+		var firstChunk = true;
+		
+		socket.onmessage = function (e) {
+			var data = e.data;
+			var dv = new DataView(data);
+			var buf;
+			
+			if (firstChunk) {
+				pos_x = dv.getInt16(0, true);
+				pos_y = dv.getInt16(2, true);
+				width = dv.getInt16(4, true);
+				height = dv.getInt16(6, true);
+				firstChunk = false;
+				buf = new Uint8Array(data, 8);
+				console.log('We have width: ' + width + 'px, height: ' + height + 'px, pos_x: ' + pos_x + ' pos_y: ' + pos_y);
+				areaBuf = new Uint8Array(width * height);
+				offset = 0;
+			} else {
+				buf = new Uint8Array(data);
+			}
+			
+			for (let i=0; i<buf.length; i++){
+				areaBuf[offset + i] = buf[i];
+			}
+			
+			offset += buf.length;
+			
+			if (areaBuf.length <= offset){
+				// we have it all
+				for (let j=0; j<height; j++){
+					for (let i=0; i<width; i++){
+						let imgIdx = 4 * (pos_x + i + (pos_y + j) * canWidth);
+						let bufIdx = i + j * width;
+						let color = colorMap[areaBuf[bufIdx]];
+						img.data[imgIdx] = color[0];
+						img.data[imgIdx+1] = color[1];
+						img.data[imgIdx+2] = color[2];
+						img.data[imgIdx+3] = 255;
+					}
+				}
+				context.putImageData(img, 0, 0);
+				console.log ('Image put');
+				firstChunk = true;
+			}
+		};
+		
+		
+	</script>
+</body>

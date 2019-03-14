@@ -15,6 +15,7 @@
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pragma Ada_2012;
+
 package body Display is
 
    Relative_Layout : constant Layout_T (Sub_ID_T)
