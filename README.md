@@ -23,4 +23,5 @@ To be able to see the output the following setup is used:
 
 the above tries to mimic the embedded setup when framebuffer content is sent to the display driver.
 
+![Sample image](doc/images/sample.png)
 ![Image of B Area](doc/images/b_area.png)
