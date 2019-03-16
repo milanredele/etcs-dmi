@@ -59,7 +59,7 @@ package Display.Frame_Buffer is
    procedure Write (Output_Stream : Ada.Streams.Stream_IO.Stream_Access);
 
 private
-   type Buffer_T is array (Natural range 0 .. Area.Width * Area.Height) of General_Parameters.Color;
+   type Buffer_T is array (Natural range 0 .. Area.Width * Area.Height - 1) of General_Parameters.Color;
    Buffer : Buffer_T;
 
 end Display.Frame_Buffer;

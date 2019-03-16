@@ -61,10 +61,17 @@ package Speed_And_Distance is
    
    function Get_Supervision_Status return Supervision_Status_T;
    
+   type Distance_T is new Natural range 0 .. 10000;
+   
+   function Get_Distance_To_Target return Distance_T;
+   
+   procedure Set_Distance_To_Target (The_Distance : Distance_T);
+   
 private
    Monitoring_Mode    : Monitoring_T;
    Supervision_Status : Supervision_Status_T;
    Speed              : Speed_Params;
    Vcurrent           : Speed_T := 0;
    Speed_Dial_Range   : Speed_Dial_Range_T := Range_180;
+   Distance_To_Target : Distance_T := 0;
 end Speed_And_Distance;

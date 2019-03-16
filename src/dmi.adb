@@ -14,6 +14,7 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+with Display.A_Area;
 with Display.B_Area;
 with Speed_And_Distance;
 with Supervision_Mode;
@@ -33,6 +34,7 @@ begin
    User_Settings.Toggle (User_Settings.Release_Speed_Digital) := True;
    Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.TSM);
    Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_400);
+   Speed_And_Distance.Set_Distance_To_Target (250);
    Speed_And_Distance.Set_Speed_Params ((Vperm => 120,
                                          Vtarget => 80,
                                          Vwsl => 130,
@@ -40,9 +42,12 @@ begin
                                          Vsbi => 150,
                                          Vrelease => 40,
                                          Vrelease_Exists => True));
-   Speed_And_Distance.Set_Speed (248);
+   Speed_And_Distance.Set_Speed (148);
+
    Display.B_Area.Draw;
    Display.B_Area.B_Buffer.Dump ("b_frame.dmp");
+
+   Display.A_Area.Draw;
 
    Create_Socket (Client);
    Address.Addr := Inet_Addr("127.0.0.1");
@@ -51,6 +56,9 @@ begin
    Connect_Socket (Client, Address);
    Channel := Stream (Client);
 
+   Display.A_Area.A_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
    Display.B_Area.B_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
+
+   Shutdown_Socket (Client);
    Close_Socket (Client);
 end Dmi;

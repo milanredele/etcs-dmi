@@ -99,6 +99,15 @@ package body Speed_And_Distance is
      (Monitoring_Mode);
 
    function Get_Supervision_Status return Supervision_Status_T is
-      (Supervision_Status);
+     (Supervision_Status);
+
+   function Get_Distance_To_Target return Distance_T is
+     (Distance_To_Target);
+
+   procedure Set_Distance_To_Target (The_Distance : Distance_T) is
+   begin
+      Distance_To_Target := The_Distance;
+   end Set_Distance_To_Target;
+
 
 end Speed_And_Distance;
