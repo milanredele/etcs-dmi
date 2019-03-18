@@ -61,7 +61,7 @@ package Speed_And_Distance is
    
    function Get_Supervision_Status return Supervision_Status_T;
    
-   type Distance_T is new Natural range 0 .. 10000;
+   type Distance_T is new Natural range 0 .. 90000;
    
    function Get_Distance_To_Target return Distance_T;
    

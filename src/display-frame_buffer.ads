@@ -25,6 +25,8 @@ package Display.Frame_Buffer is
    subtype Area_Width_T is Width_T range 0 .. Area.Width;
    subtype Area_Height_T is Height_T range 0 .. Area.Height;
    
+   type Text_Alignment is (Left, Right);
+   
    function Get_Pixel (X : Area_Width_T;
                        Y : Area_Height_T) return General_Parameters.Color;
    
@@ -44,13 +46,18 @@ package Display.Frame_Buffer is
                           Pen_Y : Area_Height_T; 
                           The_String : Font.Glyph_String; 
                           The_Bitmap : Font.Bitmap_T;
-                          The_Color  : General_Parameters.Color);
-   
+                          The_Color  : General_Parameters.Color;
+                          The_Alignment : Text_Alignment := Left);
+    
+   -- Draw a string on the buffer with given size and color
+   -- Pen_X, Pen_Y: in case of left alignment the pen position of the first character (see FreeType docs)
+   --               in case of right alignment the pen position after the last character
    procedure Draw_String (Pen_X : Area_Width_T; 
                           Pen_Y : Area_Height_T; 
                           The_String : Wide_String; 
                           The_Size   : Font.Size_T;
-                          The_Color  : General_Parameters.Color);
+                          The_Color  : General_Parameters.Color;
+                          The_Alignment : Text_Alignment := Left);
    
    procedure Dump (File_Name : String);
    

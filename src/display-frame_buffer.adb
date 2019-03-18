@@ -16,6 +16,7 @@
 
 pragma Ada_2012;
 with Ada.Unchecked_Conversion;
+with Font.FreeSans_10;
 with Font.FreeSans_16;
 with Font.FreeSans_17;
 with System;
@@ -83,45 +84,62 @@ package body Display.Frame_Buffer is
                           Pen_Y : Area_Height_T;
                           The_String : Font.Glyph_String;
                           The_Bitmap : Font.Bitmap_T;
-                          The_Color  : General_Parameters.Color) is
+                          The_Color  : General_Parameters.Color;
+                          The_Alignment : Text_Alignment := Left) is
       Cur_X : Area_Width_T  := Pen_X;
    begin
-      for I in The_String'Range loop
-         Draw_Glyph (Pen_X      => Cur_X,
-                     Pen_Y      => Pen_Y,
-                     The_Glyph  => The_String (I),
-                     The_Bitmap => The_Bitmap,
-                     The_Color  => The_Color);
-         Cur_X := Cur_X + The_String (I).Advance_X;
-      end loop;
+      if The_Alignment = Left then
+         for I in The_String'Range loop
+            Draw_Glyph (Pen_X      => Cur_X,
+                        Pen_Y      => Pen_Y,
+                        The_Glyph  => The_String (I),
+                        The_Bitmap => The_Bitmap,
+                        The_Color  => The_Color);
+            Cur_X := Cur_X + The_String (I).Advance_X;
+         end loop;
+      else
+         for I in reverse The_String'Range loop
+            Cur_X := Cur_X - The_String (I).Advance_X;
+            Draw_Glyph (Pen_X      => Cur_X,
+                        Pen_Y      => Pen_Y,
+                        The_Glyph  => The_String (I),
+                        The_Bitmap => The_Bitmap,
+                        The_Color  => The_Color);
+         end loop;
+      end if;
    end Draw_String;
 
    procedure Draw_String (Pen_X : Area_Width_T;
                           Pen_Y : Area_Height_T;
                           The_String : Wide_String;
                           The_Size   : Font.Size_T;
-                          The_Color  : General_Parameters.Color) is
+                          The_Color  : General_Parameters.Color;
+                          The_Alignment : Text_Alignment := Left) is
       function Get_Glyph_Map return Font.Glyph_Map is
       begin
          case The_Size is
-         when 16 =>
-            return Font.FreeSans_16.Glyphs;
-         when 17 =>
-            return Font.FreeSans_17.Glyphs;
-         when others =>
-            raise Program_Error with "Character size not available";
-      end case;
+            when 10 =>
+               return Font.FreeSans_10.Glyphs;
+            when 16 =>
+               return Font.FreeSans_16.Glyphs;
+            when 17 =>
+               return Font.FreeSans_17.Glyphs;
+            when others =>
+               raise Program_Error with "Character size not available";
+         end case;
       end Get_Glyph_Map;
 
       function Get_Bitmap return Font.Bitmap_T is
       begin
          case The_Size is
-         when 16 =>
-            return Font.FreeSans_16.Bitmap;
-         when 17 =>
-            return Font.FreeSans_17.Bitmap;
-         when others =>
-            raise Program_Error with "Character size not available";
+            when 10 =>
+               return Font.FreeSans_10.Bitmap;
+            when 16 =>
+               return Font.FreeSans_16.Bitmap;
+            when 17 =>
+               return Font.FreeSans_17.Bitmap;
+            when others =>
+               raise Program_Error with "Character size not available";
          end case;
       end Get_Bitmap;
 
@@ -139,7 +157,8 @@ package body Display.Frame_Buffer is
                       Pen_Y      => Pen_Y,
                       The_String => Glyphs,
                       The_Bitmap => Bitmap,
-                      The_Color  => The_Color);
+                      The_Color  => The_Color,
+                      The_Alignment => The_Alignment);
    end Draw_String;
 
    procedure Dump (File_Name : String) is
