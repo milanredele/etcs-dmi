@@ -42,8 +42,7 @@
 		var width = 0;
 		var height = 0;		
 		var areaBuf;
-		var offset;
-		var firstChunk = true;
+		var offset = -8; // 0 at the beginning of image data, so starts at -8 at the beginning of message header
 		
 		socket.onmessage = function (e) {
 			var data = e.data;
@@ -53,21 +52,29 @@
 			
 			while (dataOffset < buf.length){
 			
-				if (firstChunk) {
+				if (offset === -8) {
 					pos_x = dv.getInt16(dataOffset, true);
+					offset += 2;
 					dataOffset += 2;
+				}
+				if (offset === -6 && dataOffset < buf.length) {
 					pos_y = dv.getInt16(dataOffset, true);
+					offset += 2;
 					dataOffset += 2;
+				}
+				if (offset === -4 && dataOffset < buf.length) {
 					width = dv.getInt16(dataOffset, true);
+					offset += 2;
 					dataOffset += 2;
+				}
+				if (offset === -2 && dataOffset < buf.length) {
 					height = dv.getInt16(dataOffset, true);
+					offset += 2;
 					dataOffset += 2;
-					firstChunk = false;
 					console.log('We have width: ' + width + 'px, height: ' + height + 'px, pos_x: ' + pos_x + ' pos_y: ' + pos_y);
+				}
+				if (offset === 0 && dataOffset < buf.length) {
 					areaBuf = new Uint8Array(width * height);
-					offset = 0;
-				} else {
-					
 				}
 				
 				for (var i=0; (i+offset)<areaBuf.length && (i+dataOffset)<buf.length; i++){
@@ -91,11 +98,9 @@
 					}
 					context.putImageData(img, 0, 0);
 					console.log ('Image put');
-					firstChunk = true;
+					offset = -8;
 				}
 			}
 		};
-		
-		
 	</script>
 </body>
