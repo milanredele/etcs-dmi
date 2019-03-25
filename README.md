@@ -11,9 +11,11 @@ primary performance goal is to run on 32bit 200MHz ARM/POWER MCU with 128kB RAM 
 ### Zero dependency
 No library is used other than provided by GNAT. 
 
-### Fonts
+### Fonts & Symbols
 Fonts are embedded as bitmaps in source code. FreeSans font is used due to licensing issues and due to similarity to Helvetica (which is recommended by the ERA).
 A Freetype based C-program was used to generate Ada code from the TrueType font. It is easily replacable with other font if needed.
+
+Symbols are also embedded as source code. Note: the official bmp files attached to the ERA are 24 bit RGB and some contain other colors than those specified in the ERA - I consider these as errors, they typically look like jpeg or scaling artifacts. These were replaced with the proper color.
 
 ### Testing
 To be able to see the output the following setup is used:
