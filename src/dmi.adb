@@ -29,23 +29,25 @@ procedure Dmi is
    Channel : Stream_Access;
 
 begin
-   Supervision_Mode.Mode := Supervision_Mode.M_FS;
+   Supervision_Mode.Mode := Supervision_Mode.M_LS;
    User_Settings.Toggle (User_Settings.Basic_Speed_Hook) := True;
    User_Settings.Toggle (User_Settings.Release_Speed_Digital) := True;
+   User_Settings.Toggle (User_Settings.LSSMA) := True;
    Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.TSM);
-   Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_180);
+   Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_400);
    Speed_And_Distance.Set_Distance_To_Target (684);
+   Speed_And_Distance.Set_LSSMA (120);
    Speed_And_Distance.Set_Speed_Params ((Vperm => 120,
                                          Vtarget => 80,
                                          Vwsl => 130,
                                          Visl => 140,
                                          Vsbi => 150,
                                          Vrelease => 35,
-                                         Vrelease_Exists => True));
-   Speed_And_Distance.Set_Speed (136);
+                                         Vrelease_Exists => False));
+   Speed_And_Distance.Set_Speed (88);
 
    Display.B_Area.Draw;
-   Display.B_Area.B_Buffer.Dump ("b_frame.dmp");
+   --Display.B_Area.B_Buffer.Dump ("b_frame.dmp");
 
    Display.A_Area.Draw;
 

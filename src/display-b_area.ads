@@ -36,4 +36,6 @@ private
    B2_Radius_Inner : constant Radius_T := 128;
    B2_Radius_Outer : constant Radius_T := 137;
    
+   procedure Draw_B7;
+   
 end Display.B_Area;

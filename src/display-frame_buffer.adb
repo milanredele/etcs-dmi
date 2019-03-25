@@ -88,7 +88,18 @@ package body Display.Frame_Buffer is
                           The_Alignment : Text_Alignment := Left) is
       Cur_X : Area_Width_T  := Pen_X;
    begin
-      if The_Alignment = Left then
+      if The_Alignment = Center then
+         declare
+            Length : Width_T := 0;
+         begin
+            for I in The_String'Range loop
+               Length := Length + The_String (I).Advance_X;
+            end loop;
+            Cur_X := Cur_X - Length / 2;
+         end;
+      end if;
+
+      if The_Alignment in Left | Center then
          for I in The_String'Range loop
             Draw_Glyph (Pen_X      => Cur_X,
                         Pen_Y      => Pen_Y,
@@ -144,7 +155,7 @@ package body Display.Frame_Buffer is
       end Get_Bitmap;
 
       Glyphs  : Font.Glyph_String (1 .. The_String'Length);
-      Idx     : Positive := 1;
+      Idx     : Positive := Glyphs'First;
       Glyph_M : constant Font.Glyph_Map := Get_Glyph_Map;
       Bitmap  : constant Font.Bitmap_T  := Get_Bitmap;
    begin
@@ -160,6 +171,18 @@ package body Display.Frame_Buffer is
                       The_Color  => The_Color,
                       The_Alignment => The_Alignment);
    end Draw_String;
+
+   procedure Draw_Symbol (The_Symbol   : Symbol.T;
+                          The_Position : Position_T) is
+      Pos : Positive range The_Symbol.Bitmap'First .. The_Symbol.Bitmap'Last + 1 := The_Symbol.Bitmap'First;
+   begin
+      for J in reverse 0 .. The_Symbol.Height - 1 loop
+         for I in 0 .. The_Symbol.Width - 1 loop
+            Set_Pixel (The_Position.X + I, The_Position.Y + J, The_Symbol.Bitmap (Pos));
+            Pos := Pos + 1;
+         end loop;
+      end loop;
+   end Draw_Symbol;
 
    procedure Dump (File_Name : String) is
       Output_File : Ada.Streams.Stream_IO.File_Type;

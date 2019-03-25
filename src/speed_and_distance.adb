@@ -109,5 +109,12 @@ package body Speed_And_Distance is
       Distance_To_Target := The_Distance;
    end Set_Distance_To_Target;
 
+   function Get_LSSMA return Speed_T is
+     (LSSMA);
+
+   procedure Set_LSSMA (The_LSSMA : Speed_T) is
+   begin
+      LSSMA := The_LSSMA;
+   end Set_LSSMA;
 
 end Speed_And_Distance;

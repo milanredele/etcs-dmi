@@ -24,6 +24,9 @@ package Display.A_Area is
    
 private
    
-   The_Area   : constant Area_T := Get_Area (A);
+   The_Area    : constant Area_T := Get_Area (A);
+   The_A1_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (A1);
+   
+   procedure Draw_A1;
 
 end Display.A_Area;

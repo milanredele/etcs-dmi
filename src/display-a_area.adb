@@ -18,6 +18,7 @@ with Display.A_Area.A_2;
 with Display.A_Area.A_3;
 with Speed_And_Distance;
 with Supervision_Mode;
+with Symbol;
 with User_Settings;
 
 package body Display.A_Area is
@@ -41,9 +42,26 @@ package body Display.A_Area is
             if User_Settings.Toggle (User_Settings.Distance_To_Target_Digital) then
                Display.A_Area.A_2.Draw;
             end if;
+         when Supervision_Mode.M_LS =>
+            -- DMI 8.2.1.7.3
+            if User_Settings.Toggle (User_Settings.LSSMA) then
+               Draw_A1;
+            end if;
          when others =>
             null;
       end case;
    end Draw;
+   
+   procedure Draw_A1 is
+      LSSMA_String : constant Wide_String := Speed_And_Distance.Speed_T'Wide_Image (Speed_And_Distance.Get_LSSMA);
+   begin
+      A_Buffer.Draw_Symbol (Symbol.LS_01, The_A1_Area.Position + (2, 2));
+      A_Buffer.Draw_String (Pen_X         => The_A1_Area.Position.X + The_A1_Area.Width / 2,
+                            Pen_Y         => The_A1_Area.Position.Y + 32,
+                            The_String    => LSSMA_String (2 .. LSSMA_String'Last),
+                            The_Size      => 10,
+                            The_Color     => General_Parameters.GREY,
+                            The_Alignment => A_Buffer.Center);
+   end Draw_A1;
 
 end Display.A_Area;

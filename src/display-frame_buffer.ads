@@ -16,6 +16,7 @@
 
 with Ada.Streams.Stream_IO;
 with Font;
+with Symbol;
 
 generic Area_ID : in ID_T;
 package Display.Frame_Buffer is
@@ -25,7 +26,7 @@ package Display.Frame_Buffer is
    subtype Area_Width_T is Width_T range 0 .. Area.Width;
    subtype Area_Height_T is Height_T range 0 .. Area.Height;
    
-   type Text_Alignment is (Left, Right);
+   type Text_Alignment is (Left, Right, Center);
    
    function Get_Pixel (X : Area_Width_T;
                        Y : Area_Height_T) return General_Parameters.Color;
@@ -52,12 +53,16 @@ package Display.Frame_Buffer is
    -- Draw a string on the buffer with given size and color
    -- Pen_X, Pen_Y: in case of left alignment the pen position of the first character (see FreeType docs)
    --               in case of right alignment the pen position after the last character
+   --               in case of center alignment the pen position in the middle of the string
    procedure Draw_String (Pen_X : Area_Width_T; 
                           Pen_Y : Area_Height_T; 
                           The_String : Wide_String; 
                           The_Size   : Font.Size_T;
                           The_Color  : General_Parameters.Color;
                           The_Alignment : Text_Alignment := Left);
+   
+   procedure Draw_Symbol (The_Symbol   : Symbol.T;
+                          The_Position : Position_T);
    
    procedure Dump (File_Name : String);
    
