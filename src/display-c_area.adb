@@ -16,7 +16,7 @@ package body Display.C_Area is
    procedure Draw_C1 is
       Position       : constant Position_T := The_C1_Area.Position + (13, 9);
       Position_MO_10 : constant Position_T := The_C1_Area.Position + (6, 2);
-      Position_Level : constant Position_T := The_C1_Area.Position + (3, 14);
+      Position_Level : constant Position_T := The_C1_Area.Position + (2, 14);
       
       procedure DS (The_Symbol : Symbol.T; The_Position : Position_T := Position) renames C_Buffer.Draw_Symbol;
       use Supplementary_Driving_Info;
@@ -37,24 +37,25 @@ package body Display.C_Area is
          when M_RV => DS (Symbol.MO_15);
          when M_SN => DS (Symbol.MO_20);
          end case;
-      else
-         C_Buffer.Draw_Frame (The_C1_Area);
+      elsif Level_Announcement.Valid then
          -- DMI 8.2.3.2.6
-         if Level_Announcement.Valid then
-            if Level_Announcement.Ack_Required then
-               -- DMI 8.2.3.2.8
-               case Level_Announcement.Level is
-                  when L0 =>  DS (Symbol.LE_07, Position_Level);
-                  when NTC => DS (Symbol.LE_09, Position_Level);
-                  when L1 =>  DS (Symbol.LE_11, Position_Level);
-                  when L2 =>  DS (Symbol.LE_13, Position_Level);
-                  when L3 =>  DS (Symbol.LE_15, Position_Level);
-                  when others => 
-                     null;
-               end case;
-            else
-               -- DMI 8.2.3.2.7
-               case Level_Announcement.Level is
+         if Level_Announcement.Ack_Required then
+            Flashing_Frame_Displayed  := not Flashing_Frame_Displayed;
+            C_Buffer.Draw_Yellow_Frame (The_C1_Area, Flashing_Frame_Displayed);
+            -- DMI 8.2.3.2.8
+            case Level_Announcement.Level is
+               when L0 =>  DS (Symbol.LE_07, Position_Level);
+               when NTC => DS (Symbol.LE_09, Position_Level);
+               when L1 =>  DS (Symbol.LE_11, Position_Level);
+               when L2 =>  DS (Symbol.LE_13, Position_Level);
+               when L3 =>  DS (Symbol.LE_15, Position_Level);
+               when others => 
+                  null;
+            end case;
+         else
+            C_Buffer.Draw_Frame (The_C1_Area);
+            -- DMI 8.2.3.2.7
+            case Level_Announcement.Level is
                when L0 =>  DS (Symbol.LE_06, Position_Level);
                when NTC => DS (Symbol.LE_08, Position_Level);
                when L1 =>  DS (Symbol.LE_10, Position_Level);
@@ -62,11 +63,11 @@ package body Display.C_Area is
                when L3 =>  DS (Symbol.LE_14, Position_Level);
                when others => 
                   null;
-               end case;
-            end if;
+            end case;
          end if;
-      end if;
-      
+      else
+         C_Buffer.Draw_Frame (The_C1_Area);
+      end if;     
    end Draw_C1;
    
    procedure Draw_C7 is
