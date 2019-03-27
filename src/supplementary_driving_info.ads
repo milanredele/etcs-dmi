@@ -50,5 +50,27 @@ package Supplementary_Driving_Info is
    Mode                : Mode_T := M_SB;
    Acknowledgment_Mode : Optional_Acknowledgement_Mode_T;
    Override            : Boolean := False;
+   
+   type Level_T is (Unknown,
+                    Invalid,
+                    L0,
+                    NTC,
+                    L1,
+                    L2,
+                    L3);
+   
+   type Level_Announcement_T (Valid : Boolean := False) is
+      record
+         case Valid is
+            when True =>
+               Level        : Level_T;
+               Ack_Required : Boolean;
+            when False =>
+               null;
+         end case;
+      end record;
+   
+   Level : Level_T := Unknown;
+   Level_Announcement : Level_Announcement_T;
 
 end Supplementary_Driving_Info;

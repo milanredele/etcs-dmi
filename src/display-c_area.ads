@@ -27,10 +27,12 @@ private
    The_Area    : constant Area_T := Get_Area (C);
    The_C1_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (C1);
    The_C7_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (C7);
+   The_C8_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (C8);
    
    Flashing_Frame_Displayed : Boolean := False;
    
    procedure Draw_C1;
    procedure Draw_C7;
+   procedure Draw_C8;
 
 end Display.C_Area;

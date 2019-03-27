@@ -30,14 +30,16 @@ procedure Dmi is
    Channel : Stream_Access;
 
 begin
-   Supplementary_Driving_Info.Mode := Supplementary_Driving_Info.M_LS;
-   Supplementary_Driving_Info.Acknowledgment_Mode := (True, Supplementary_Driving_Info.M_SH);
+   Supplementary_Driving_Info.Mode := Supplementary_Driving_Info.M_FS;
+   Supplementary_Driving_Info.Acknowledgment_Mode := (Valid => False);
    Supplementary_Driving_Info.Override := False;
+   Supplementary_Driving_Info.Level := Supplementary_Driving_Info.L1;
+   Supplementary_Driving_Info.Level_Announcement := (True, Supplementary_Driving_Info.L2, True);
    User_Settings.Toggle (User_Settings.Basic_Speed_Hook) := True;
    User_Settings.Toggle (User_Settings.Release_Speed_Digital) := True;
    User_Settings.Toggle (User_Settings.LSSMA) := True;
    Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.TSM);
-   Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_400);
+   Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_180);
    Speed_And_Distance.Set_Distance_To_Target (684);
    Speed_And_Distance.Set_LSSMA (120);
    Speed_And_Distance.Set_Speed_Params ((Vperm => 120,
@@ -46,8 +48,8 @@ begin
                                          Visl => 140,
                                          Vsbi => 150,
                                          Vrelease => 35,
-                                         Vrelease_Exists => False));
-   Speed_And_Distance.Set_Speed (88);
+                                         Vrelease_Exists => True));
+   Speed_And_Distance.Set_Speed (136);
 
    Display.B_Area.Draw;
    --Display.B_Area.B_Buffer.Dump ("b_frame.dmp");
