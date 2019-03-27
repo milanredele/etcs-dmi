@@ -16,8 +16,9 @@
 
 with Display.A_Area;
 with Display.B_Area;
+with Display.C_Area;
 with Speed_And_Distance;
-with Supervision_Mode;
+with Supplementary_Driving_Info;
 with User_Settings;
 
 with GNAT.Sockets;            use GNAT.Sockets;
@@ -29,7 +30,9 @@ procedure Dmi is
    Channel : Stream_Access;
 
 begin
-   Supervision_Mode.Mode := Supervision_Mode.M_LS;
+   Supplementary_Driving_Info.Mode := Supplementary_Driving_Info.M_LS;
+   Supplementary_Driving_Info.Acknowledgment_Mode := (True, Supplementary_Driving_Info.M_SH);
+   Supplementary_Driving_Info.Override := False;
    User_Settings.Toggle (User_Settings.Basic_Speed_Hook) := True;
    User_Settings.Toggle (User_Settings.Release_Speed_Digital) := True;
    User_Settings.Toggle (User_Settings.LSSMA) := True;
@@ -51,6 +54,8 @@ begin
 
    Display.A_Area.Draw;
 
+   Display.C_Area.Draw;
+
    Create_Socket (Client);
    Address.Addr := Inet_Addr("127.0.0.1");
    Address.Port := 1337;
@@ -60,6 +65,7 @@ begin
 
    Display.A_Area.A_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
    Display.B_Area.B_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
+   Display.C_Area.C_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
 
    Shutdown_Socket (Client);
    Close_Socket (Client);

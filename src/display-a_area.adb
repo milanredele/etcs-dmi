@@ -17,7 +17,7 @@
 with Display.A_Area.A_2;
 with Display.A_Area.A_3;
 with Speed_And_Distance;
-with Supervision_Mode;
+with Supplementary_Driving_Info;
 with Symbol;
 with User_Settings;
 
@@ -27,22 +27,22 @@ package body Display.A_Area is
       use type Speed_And_Distance.Monitoring_T;
    begin
       A_Buffer.Fill (General_Parameters.Background_Color);
-      case Supervision_Mode.Mode is
+      case Supplementary_Driving_Info.Mode is
          -- DMI 8.2.2.1.8
-         when Supervision_Mode.M_FS =>
+         when Supplementary_Driving_Info.M_FS =>
             if Speed_And_Distance.Get_Monitoring_Mode /= Speed_And_Distance.CSM then
                Display.A_Area.A_2.Draw;
                Display.A_Area.A_3.Draw;
             end if;
-         when Supervision_Mode.M_RV =>
+         when Supplementary_Driving_Info.M_RV =>
             Display.A_Area.A_2.Draw;
             Display.A_Area.A_3.Draw;
-         when Supervision_Mode.M_OS | Supervision_Mode.M_SR =>
+         when Supplementary_Driving_Info.M_OS | Supplementary_Driving_Info.M_SR =>
             -- DMI 8.2.2.2.7
             if User_Settings.Toggle (User_Settings.Distance_To_Target_Digital) then
                Display.A_Area.A_2.Draw;
             end if;
-         when Supervision_Mode.M_LS =>
+         when Supplementary_Driving_Info.M_LS =>
             -- DMI 8.2.1.7.3
             if User_Settings.Toggle (User_Settings.LSSMA) then
                Draw_A1;

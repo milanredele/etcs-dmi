@@ -44,16 +44,7 @@ package body Display.Frame_Buffer is
             Subs : constant Layout_T := Get_Sub_Layout (Area_ID);
          begin
             for Sub of Subs loop
-               -- draw top and bottom border
-               for X in Sub.Position.X .. Sub.Position.X + Sub.Width - 1 loop
-                  Set_Pixel (X, Sub.Position.Y, General_Parameters.BLACK);
-                  Set_Pixel (X, Sub.Position.Y + Sub.Height - 1, General_Parameters.SHADOW);
-               end loop;
-               -- draw left and right border
-               for Y in Sub.Position.Y .. Sub.Position.Y + Sub.Height - 1 loop
-                  Set_Pixel (Sub.Position.X, Y, General_Parameters.BLACK);
-                  Set_Pixel (Sub.Position.X + Sub.Width - 1, Y, General_Parameters.SHADOW);
-               end loop;
+               Draw_Frame (Sub);
             end loop;
          end;
       end if;
@@ -183,6 +174,44 @@ package body Display.Frame_Buffer is
          end loop;
       end loop;
    end Draw_Symbol;
+
+   procedure Draw_Frame (The_Area : Area_T) is
+   begin
+      -- draw top and bottom border
+      for X in The_Area.Position.X .. The_Area.Position.X + The_Area.Width - 1 loop
+         Set_Pixel (X, The_Area.Position.Y, General_Parameters.BLACK);
+         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 1, General_Parameters.SHADOW);
+      end loop;
+      -- draw left and right border
+      for Y in The_Area.Position.Y .. The_Area.Position.Y + The_Area.Height - 1 loop
+         Set_Pixel (The_Area.Position.X, Y, General_Parameters.BLACK);
+         Set_Pixel (The_Area.Position.X + The_Area.Width - 1, Y, General_Parameters.SHADOW);
+      end loop;
+   end Draw_Frame;
+
+   procedure Draw_Yellow_Frame (The_Area : Area_T; Show : Boolean := True) is
+      Color : General_Parameters.Color;
+   begin
+      if Show then
+         Color := General_Parameters.YELLOW;
+      else
+         Color := General_Parameters.DARK_BLUE;
+      end if;
+      for X in The_Area.Position.X .. The_Area.Position.X + The_Area.Width - 1 loop
+         -- horizontal frame
+         Set_Pixel (X, The_Area.Position.Y, Color);
+         Set_Pixel (X, The_Area.Position.Y + 1, Color);
+         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 2, Color);
+         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 1, Color);
+      end loop;
+      for Y in The_Area.Position.Y .. The_Area.Position.Y + The_Area.Height - 1 loop
+         -- vertical frame
+         Set_Pixel (The_Area.Position.X, Y, Color);
+         Set_Pixel (The_Area.Position.X + 1, Y, Color);
+         Set_Pixel (The_Area.Position.X + The_Area.Width - 2, Y, Color);
+         Set_Pixel (The_Area.Position.X + The_Area.Width - 1, Y, Color);
+      end loop;
+   end Draw_Yellow_Frame;
 
    procedure Dump (File_Name : String) is
       Output_File : Ada.Streams.Stream_IO.File_Type;

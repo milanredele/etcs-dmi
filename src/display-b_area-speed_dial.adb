@@ -19,7 +19,7 @@ with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Display;
 with Font;
 with Font.FreeSans_18;
-with Supervision_Mode;
+with Supplementary_Driving_Info;
 with User_Settings;
 
 package body Display.B_Area.Speed_Dial is
@@ -171,12 +171,12 @@ package body Display.B_Area.Speed_Dial is
       if not Get_Speed_Params.Vrelease_Exists then
          return;
       end if;
-      case Supervision_Mode.Mode is
-         when Supervision_Mode.M_FS | Supervision_Mode.M_LS =>
+      case Supplementary_Driving_Info.Mode is
+         when Supplementary_Driving_Info.M_FS | Supplementary_Driving_Info.M_LS =>
             if Get_Monitoring_Mode /= CSM then
                   Draw_Number;
             end if;
-         when Supervision_Mode.M_OS =>
+         when Supplementary_Driving_Info.M_OS =>
             if User_Settings.Toggle (User_Settings.Release_Speed_Digital)
               and Get_Monitoring_Mode /= CSM
             then
@@ -390,10 +390,10 @@ package body Display.B_Area.Speed_Dial is
 
          Vrelease_Missing_Error : exception;
 
-         use type Supervision_Mode.Mode_T;
+         use type Supplementary_Driving_Info.Mode_T;
       begin
-         case Supervision_Mode.Mode is
-            when Supervision_Mode.M_FS =>
+         case Supplementary_Driving_Info.Mode is
+            when Supplementary_Driving_Info.M_FS =>
                -- DMI 8.2.1.4.9
                Draw_Lowermost_Part;
                case Get_Monitoring_Mode is
@@ -450,7 +450,7 @@ package body Display.B_Area.Speed_Dial is
                      raise Vrelease_Missing_Error;
                   end if;
                end case;
-            when Supervision_Mode.M_OS | Supervision_Mode.M_SR =>
+            when Supplementary_Driving_Info.M_OS | Supplementary_Driving_Info.M_SR =>
                -- DMI 8.2.1.5.7
                -- Basic Speed Hook
                if User_Settings.Toggle (User_Settings.Basic_Speed_Hook) then
@@ -460,11 +460,11 @@ package body Display.B_Area.Speed_Dial is
                   -- DMI 8.2.1.5.6
                   Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
                end if;
-            when Supervision_Mode.M_SH =>
+            when Supplementary_Driving_Info.M_SH =>
                if User_Settings.Toggle (User_Settings.Basic_Speed_Hook) then
                   Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
                end if;
-            when Supervision_Mode.M_RV =>
+            when Supplementary_Driving_Info.M_RV =>
                Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
             when others =>
                null;

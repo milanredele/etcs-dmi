@@ -64,6 +64,15 @@ package Display.Frame_Buffer is
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
                           The_Position : Position_T);
    
+   
+   procedure Draw_Frame (The_Area : Area_T);
+   
+   -- DMI 5.1.1.3
+   -- Needed for flashing frame
+   -- The_Area : the area to draw the frame
+   -- Show     : if true draw the yellow frame else draw background
+   procedure Draw_Yellow_Frame (The_Area : Area_T; Show : Boolean := True);
+   
    procedure Dump (File_Name : String);
    
    procedure Write_Buffer (Stream : not null access Ada.Streams.Root_Stream_Type'Class);

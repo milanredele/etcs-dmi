@@ -14,7 +14,7 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package Supervision_Mode is
+package Supplementary_Driving_Info is
 
    type Mode_T is (M_NP, --No Power
                    M_SB, --Stand by
@@ -24,16 +24,31 @@ package Supervision_Mode is
                    M_SR, --Staff responsible
                    M_SH, --Shunting
                    M_UN, --Unfitted
-                   M_TR, --Trip
-                   M_PT, --Post trip
-                   M_SL, --Sleep
-                   M_NL, --Non leading
                    M_RV, --Reversing
-                   M_SF, --System failure
-                   M_IS, --Isolated
+                   M_TR, --Trip
                    M_SN, --STM National
-                   M_SE); --STM European
+                   M_SE, --STM European
+                   M_PT, --Post trip
+                   M_NL, --Non leading
+                   M_SF, --System failure
+                   M_SL, --Sleep
+                   M_IS);--Isolated
+                   
    
-   Mode : Mode_T := M_SB;
+   subtype Acknowledgment_Mode_T is Mode_T range M_LS .. M_SN; 
+   
+   type Optional_Acknowledgement_Mode_T (Valid : Boolean := False) is
+      record
+         case Valid is
+            when True =>
+               Mode : Acknowledgment_Mode_T;
+            when False =>
+               null;
+         end case;
+      end record;
+   
+   Mode                : Mode_T := M_SB;
+   Acknowledgment_Mode : Optional_Acknowledgement_Mode_T;
+   Override            : Boolean := False;
 
-end Supervision_Mode;
+end Supplementary_Driving_Info;

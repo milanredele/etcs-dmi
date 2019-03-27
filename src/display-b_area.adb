@@ -16,7 +16,7 @@
 
 pragma Ada_2012;
 with Display.B_Area.Speed_Dial;
-with Supervision_Mode;
+with Supplementary_Driving_Info;
 with Symbol;
 
 package body Display.B_Area is
@@ -41,7 +41,7 @@ package body Display.B_Area is
    procedure Draw_B7 is
       Position : constant Position_T := Get_Sub_Area_With_Relative_Position (B7).Position + (1, 2);
       procedure DS (The_Symbol : Symbol.T; The_Position : Position_T := Position) renames B_Buffer.Draw_Symbol;
-      use Supervision_Mode;
+      use Supplementary_Driving_Info;
    begin
       case Mode is
          when M_SB => DS (Symbol.MO_13);

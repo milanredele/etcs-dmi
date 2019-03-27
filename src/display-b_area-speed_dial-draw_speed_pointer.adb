@@ -21,8 +21,8 @@ procedure Draw_Speed_Pointer is
       Params    : constant Speed_Params := Get_Speed_Params;
       The_Speed : constant Speed_T := Get_Speed;
    begin
-      case Supervision_Mode.Mode is
-         when Supervision_Mode.M_FS | Supervision_Mode.M_OS =>
+      case Supplementary_Driving_Info.Mode is
+         when Supplementary_Driving_Info.M_FS | Supplementary_Driving_Info.M_OS =>
             case Get_Monitoring_Mode is
                when CSM =>
                   case Get_Supervision_Status is
@@ -95,7 +95,7 @@ procedure Draw_Speed_Pointer is
                         raise Program_Error;
                   end case;
             end case;
-         when Supervision_Mode.M_LS =>
+         when Supplementary_Driving_Info.M_LS =>
             case Get_Monitoring_Mode is
                when CSM =>
                   case Get_Supervision_Status is
@@ -154,7 +154,7 @@ procedure Draw_Speed_Pointer is
                         raise Program_Error;
                   end case;
             end case;
-         when Supervision_Mode.M_SR | Supervision_Mode.M_UN =>
+         when Supplementary_Driving_Info.M_SR | Supplementary_Driving_Info.M_UN =>
             case Get_Monitoring_Mode is
                when CSM =>
                   case Get_Supervision_Status is
@@ -216,7 +216,7 @@ procedure Draw_Speed_Pointer is
                when RSM =>
                   raise Program_Error;
             end case;
-         when Supervision_Mode.M_SH | Supervision_Mode.M_RV =>
+         when Supplementary_Driving_Info.M_SH | Supplementary_Driving_Info.M_RV =>
             case Get_Monitoring_Mode is
                when CSM =>
                   case Get_Supervision_Status is
@@ -236,9 +236,9 @@ procedure Draw_Speed_Pointer is
                when others =>
                   raise Program_Error;
             end case;
-         when Supervision_Mode.M_NL | Supervision_Mode.M_SB | Supervision_Mode.M_PT =>
+         when Supplementary_Driving_Info.M_NL | Supplementary_Driving_Info.M_SB | Supplementary_Driving_Info.M_PT =>
             return General_Parameters.GREY;
-         when Supervision_Mode.M_TR =>
+         when Supplementary_Driving_Info.M_TR =>
             return General_Parameters.RED;
          when others =>
             raise Program_Error;
