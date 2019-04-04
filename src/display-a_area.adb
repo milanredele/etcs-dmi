@@ -59,7 +59,7 @@ package body Display.A_Area is
       A_Buffer.Draw_String (Pen_X         => The_A1_Area.Position.X + The_A1_Area.Width / 2,
                             Pen_Y         => The_A1_Area.Position.Y + 32,
                             The_String    => LSSMA_String (2 .. LSSMA_String'Last),
-                            The_Size      => 10,
+                            The_Size      => 12,
                             The_Color     => General_Parameters.GREY,
                             The_Alignment => A_Buffer.Center);
    end Draw_A1;

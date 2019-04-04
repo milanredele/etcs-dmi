@@ -29,13 +29,17 @@ package Display.Frame_Buffer is
    type Text_Alignment is (Left, Right, Center);
    
    function Get_Pixel (X : Area_Width_T;
-                       Y : Area_Height_T) return General_Parameters.Color;
+                       Y : Area_Height_T) return General_Parameters.Color
+   with Inline;
    
    procedure Set_Pixel (X : Area_Width_T; 
                         Y : Area_Height_T;
-                        The_Color : General_Parameters.Color);
+                        The_Color : General_Parameters.Color)
+   with Inline;
    
    procedure Fill (The_Color : General_Parameters.Color);
+   
+   procedure Fill_Area (The_Area : Area_T; The_Color : General_Parameters.Color);
    
    procedure Draw_Glyph (Pen_X : Area_Width_T; 
                          Pen_Y : Area_Height_T; 
@@ -72,6 +76,10 @@ package Display.Frame_Buffer is
    -- The_Area : the area to draw the frame
    -- Show     : if true draw the yellow frame else draw background
    procedure Draw_Yellow_Frame (The_Area : Area_T; Show : Boolean := True);
+   
+   procedure Draw_Button_Frame (The_Area : Area_T);
+     
+   procedure Draw_Input_Field_Frame (The_Area : Area_T);
    
    procedure Dump (File_Name : String);
    

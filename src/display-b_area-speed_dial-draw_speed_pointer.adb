@@ -253,7 +253,7 @@ procedure Draw_Speed_Pointer is
 
 
    type Point is record
-      X, Y : Integer;
+      X, Y : Integer range -500 .. 500;
    end record;
    type Poly_Index_T is range 1 .. 9;
    type Pointer_Poly_T is array (Poly_Index_T) of Point;
@@ -278,7 +278,7 @@ procedure Draw_Speed_Pointer is
             end if;
          end loop;
       end loop;
-   end;
+   end Fill_Center_Circle;
 
    function Rotate_And_Translate_Poly return Pointer_Poly_T is
       function Rotate_Point (P : Point) return Point is

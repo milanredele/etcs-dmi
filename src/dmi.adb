@@ -17,8 +17,10 @@
 with Display.A_Area;
 with Display.B_Area;
 with Display.C_Area;
+with Display.D_Area;
 with Speed_And_Distance;
 with Supplementary_Driving_Info;
+with Track_Ahead_Free;
 with User_Settings;
 
 with GNAT.Sockets;            use GNAT.Sockets;
@@ -51,12 +53,12 @@ begin
                                          Vrelease_Exists => True));
    Speed_And_Distance.Set_Speed (136);
 
+   Track_Ahead_Free.Show := True;
+
    Display.B_Area.Draw;
-   --Display.B_Area.B_Buffer.Dump ("b_frame.dmp");
-
    Display.A_Area.Draw;
-
    Display.C_Area.Draw;
+   Display.D_Area.Draw;
 
    Create_Socket (Client);
    Address.Addr := Inet_Addr("127.0.0.1");
@@ -68,6 +70,7 @@ begin
    Display.A_Area.A_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
    Display.B_Area.B_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
    Display.C_Area.C_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
+   Display.D_Area.D_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
 
    Shutdown_Socket (Client);
    Close_Socket (Client);

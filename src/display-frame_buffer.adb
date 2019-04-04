@@ -17,6 +17,7 @@
 pragma Ada_2012;
 with Ada.Unchecked_Conversion;
 with Font.FreeSans_10;
+with Font.FreeSans_12;
 with Font.FreeSans_16;
 with Font.FreeSans_17;
 with System;
@@ -49,6 +50,15 @@ package body Display.Frame_Buffer is
          end;
       end if;
    end Fill;
+
+   procedure Fill_Area (The_Area : Area_T; The_Color : General_Parameters.Color) is
+   begin
+      for Y in The_Area.Position.Y .. The_Area.Position.Y + The_Area.Height - 1 loop
+         for X in The_Area.Position.X .. The_Area.Position.X + The_Area.Width - 1 loop
+            Set_Pixel (X, Y, The_Color);
+         end loop;
+      end loop;
+   end Fill_Area;
 
    procedure Draw_Glyph (Pen_X : Area_Width_T;
                          Pen_Y : Area_Height_T;
@@ -122,6 +132,8 @@ package body Display.Frame_Buffer is
          case The_Size is
             when 10 =>
                return Font.FreeSans_10.Glyphs;
+            when 12 =>
+               return Font.FreeSans_12.Glyphs;
             when 16 =>
                return Font.FreeSans_16.Glyphs;
             when 17 =>
@@ -136,6 +148,8 @@ package body Display.Frame_Buffer is
          case The_Size is
             when 10 =>
                return Font.FreeSans_10.Bitmap;
+            when 12 =>
+               return Font.FreeSans_12.Bitmap;
             when 16 =>
                return Font.FreeSans_16.Bitmap;
             when 17 =>
@@ -152,15 +166,24 @@ package body Display.Frame_Buffer is
    begin
 
       for I in The_String'Range loop
-            Glyphs (Idx) := Glyph_M (The_String (I));
+         declare
+            Invalid_Character_Error : exception;
+            C : constant Wide_Character := The_String (I);
+         begin
+            Glyphs (Idx) := Glyph_M (C);
             Idx := Idx + 1;
-         end loop;
-         Draw_String (Pen_X      => Pen_X,
-                      Pen_Y      => Pen_Y,
-                      The_String => Glyphs,
-                      The_Bitmap => Bitmap,
-                      The_Color  => The_Color,
-                      The_Alignment => The_Alignment);
+         exception
+            when Constraint_Error =>
+               raise Invalid_Character_Error;
+         end;
+      end loop;
+      Draw_String (Pen_X      => Pen_X,
+                   Pen_Y      => Pen_Y,
+                   The_String => Glyphs,
+                   The_Bitmap => Bitmap,
+                   The_Color  => The_Color,
+                   The_Alignment => The_Alignment);
+
    end Draw_String;
 
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
@@ -212,6 +235,41 @@ package body Display.Frame_Buffer is
          Set_Pixel (The_Area.Position.X + The_Area.Width - 1, Y, Color);
       end loop;
    end Draw_Yellow_Frame;
+
+   procedure Draw_Button_Frame (The_Area : Area_T) is
+      Black  : constant General_Parameters.Color := General_Parameters.BLACK;
+      Shadow : constant General_Parameters.Color := General_Parameters.SHADOW;
+   begin
+      for X in The_Area.Position.X .. The_Area.Position.X + The_Area.Width - 1 loop
+         -- horizontal frame
+         Set_Pixel (X, The_Area.Position.Y, Black);
+         Set_Pixel (X, The_Area.Position.Y + 1, Shadow);
+         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 2, Black);
+         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 1, Shadow);
+      end loop;
+      for Y in The_Area.Position.Y .. The_Area.Position.Y + The_Area.Height - 1 loop
+         -- vertical frame
+         Set_Pixel (The_Area.Position.X, Y, Black);
+         Set_Pixel (The_Area.Position.X + 1, Y, Shadow);
+         Set_Pixel (The_Area.Position.X + The_Area.Width - 2, Y, Black);
+         Set_Pixel (The_Area.Position.X + The_Area.Width - 1, Y, Shadow);
+      end loop;
+   end Draw_Button_Frame;
+
+   procedure Draw_Input_Field_Frame (The_Area : Area_T) is
+      Color : constant General_Parameters.Color := General_Parameters.MEDIUM_GREY;
+   begin
+      for X in The_Area.Position.X .. The_Area.Position.X + The_Area.Width - 1 loop
+         -- horizontal frame
+         Set_Pixel (X, The_Area.Position.Y, Color);
+         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 1, Color);
+      end loop;
+      for Y in The_Area.Position.Y .. The_Area.Position.Y + The_Area.Height - 1 loop
+         -- vertical frame
+         Set_Pixel (The_Area.Position.X, Y, Color);
+         Set_Pixel (The_Area.Position.X + The_Area.Width - 1, Y, Color);
+      end loop;
+   end Draw_Input_Field_Frame;
 
    procedure Dump (File_Name : String) is
       Output_File : Ada.Streams.Stream_IO.File_Type;

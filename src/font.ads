@@ -5,10 +5,10 @@ package Font is
    -- Following FreeType notation
    type Glyph is 
       record 
-         Left : Natural;
-         Top  : Natural;
-         Advance_X : Natural;
-         Height, Width : Natural;
+         Left : Natural range 0 .. 20;
+         Top  : Integer range -5 .. 20;
+         Advance_X : Natural range 0 .. 20;
+         Height, Width : Natural range 0 .. 20;
          Bitmap_Pos : Positive;
       end record;
    
