@@ -40,15 +40,13 @@ package body Display.Frame_Buffer is
       for I in Buffer'Range loop
          Buffer (I) := The_Color;
       end loop;
-      if Area_ID in Main_ID_With_Sub_T then
-         declare
-            Subs : constant Layout_T := Get_Sub_Layout (Area_ID);
-         begin
-            for Sub of Subs loop
-               Draw_Frame (Sub);
-            end loop;
-         end;
-      end if;
+      declare
+         Subs_With_Frame : constant Area_Array := Get_Sub_Requiring_Border (Area_ID);
+      begin
+         for Sub of Subs_With_Frame loop
+            Draw_Frame (Sub);
+         end loop;
+      end;
    end Fill;
 
    procedure Fill_Area (The_Area : Area_T; The_Color : General_Parameters.Color) is

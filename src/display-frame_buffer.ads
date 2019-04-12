@@ -18,7 +18,7 @@ with Ada.Streams.Stream_IO;
 with Font;
 with Symbol;
 
-generic Area_ID : in ID_T;
+generic Area_ID : in Main_ID_T;
 package Display.Frame_Buffer is
 
    Area : constant Area_T := Get_Area (Area_ID);

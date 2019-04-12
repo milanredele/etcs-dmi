@@ -136,4 +136,37 @@ package body Display is
       return Result;
    end Get_Sub_Layout;
 
+   function Get_Sub_Requiring_Border (ID: Main_ID_T) return Area_Array is
+      -- DMI 8.1.1.4
+      A2_A3    : constant Area_T := (Relative_Layout (A2).Position,
+                                     Relative_Layout (A2).Width,
+                                     Relative_Layout (A2).Height + Relative_Layout (A3).Height);
+      C2_C3_C4 : constant Area_T := (Relative_Layout (C2).Position,
+                                     Relative_Layout (C2).Width + Relative_Layout (C3).Width + Relative_Layout (C4).Width,
+                                     Relative_Layout (C2).Height);
+      E5_E9    : constant Area_T := (Relative_Layout (E5).Position,
+                                     Relative_Layout (E5).Width,
+                                     100);
+      Empty_Result : constant Area_Array (1 .. 0) := (others => Main_Layout (A)); -- will not be evaluated
+   begin
+      case ID is
+         when A =>
+            return (Relative_Layout (A1), A2_A3, Relative_Layout (A4));
+         when B =>
+            return (((0,0), Main_Layout (B).Width, Main_Layout (B).Height), Relative_Layout (B3), Relative_Layout (B4),
+                    Relative_Layout (B5), Relative_Layout (B6), Relative_Layout (B7));
+         when C =>
+            return (Relative_Layout (C1), C2_C3_C4, Relative_Layout (C5), Relative_Layout (C6), Relative_Layout (C7),
+                    Relative_Layout (C8), Relative_Layout (C9));
+         when D =>
+            return (1 => ((0,0), Main_Layout (D).Width, Main_Layout (D).Height));
+         when E =>
+            return (Relative_Layout (E1), Relative_Layout (E2), Relative_Layout (E3), Relative_Layout (E4), E5_E9);
+         when G =>
+            return (Relative_Layout (G11), Relative_Layout (G12), Relative_Layout (G13));
+         when others =>
+            return Empty_Result;
+      end case;
+   end Get_Sub_Requiring_Border;
+
 end Display;

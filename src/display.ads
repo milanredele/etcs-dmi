@@ -56,11 +56,15 @@ package Display is
    
    type Layout_T is array (ID_T range <>) of Area_T;
    
+   type Area_Array is array (Integer range <>) of Area_T;
+   
    function Get_Area (ID: ID_T) return Area_T;
    
    function Get_Sub_Area_With_Relative_Position (ID: Sub_ID_T) return Area_T;
    
    function Get_Sub_Layout (ID: Main_ID_With_Sub_T) return Layout_T;
+   
+   function Get_Sub_Requiring_Border (ID: Main_ID_T) return Area_Array;
    
 private
    
