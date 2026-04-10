@@ -8,9 +8,39 @@
       }
     </style>
   </head>
-   <body>
+	<div id="controls" style="padding: 10px; font-family: sans-serif;">
+		<h3>DMI Parameters</h3>
+		<div>
+			<label>Speed (0..400): <input type="number" id="speed" value="136" min="0" max="400" oninput="sendParams()"></label>
+			<label>Vperm: <input type="number" id="vperm" value="120" min="0" max="400" oninput="sendParams()"></label>
+			<label>Vtarget: <input type="number" id="vtarget" value="80" min="0" max="400" oninput="sendParams()"></label>
+			<label>Vrelease: <input type="number" id="vrelease" value="35" min="0" max="400" oninput="sendParams()"></label>
+			<label>Dist (0..90000): <input type="number" id="dist" value="684" min="0" max="90000" oninput="sendParams()"></label>
+			<label>Range: 
+				<select id="range" onchange="sendParams()">
+					<option value="0">140</option>
+					<option value="1" selected>180</option>
+					<option value="2">250</option>
+					<option value="3">400</option>
+				</select>
+			</label>
+		</div>
+	</div>
     <canvas id="myCanvas" width="640" height="480"></canvas>
 	<script>
+		function sendParams() {
+			const params = {
+				speed: parseInt(document.getElementById('speed').value),
+				vperm: parseInt(document.getElementById('vperm').value),
+				vtarget: parseInt(document.getElementById('vtarget').value),
+				vrelease: parseInt(document.getElementById('vrelease').value),
+				dist: parseInt(document.getElementById('dist').value),
+				range: parseInt(document.getElementById('range').value)
+			};
+			socket.send(JSON.stringify(params));
+			console.log('Sent params:', params);
+		}
+
 		var canvas = document.getElementById('myCanvas');
 		var context = canvas.getContext('2d');
 		const canWidth = canvas.width;

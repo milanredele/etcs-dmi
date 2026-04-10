@@ -33,9 +33,9 @@ package body Display.B_Area.Speed_Dial is
    begin
       case Get_Speed_Dial_Range is
          when Range_140 | Range_180 | Range_250 =>
-            -- DMI 8.2.1.1.14.2
-            -- DMI 8.2.1.1.13.2
-            -- DMI 8.2.1.1.12.2
+            -- DMI 8.2.1.1.14.2 (Range 140)
+            -- DMI 8.2.1.1.13.2 (Range 180)
+            -- DMI 8.2.1.1.12.2 (Range 250)
             return Linear_Scale (Lower_Limit, Upper_Limit, Max_Speed_Map (Get_Speed_Dial_Range));
          when Range_400 =>
             -- DMI 8.2.1.1.11.2

@@ -73,6 +73,9 @@ package General_Parameters is
    -- DMI 5.2.1.3.3
    Background_Color : constant Color := DARK_BLUE;
    
+   -- Global flashing state
+   Flash_On : Boolean := True;
+   
    -- DMI 5.2.2
    type Display_Luminance_T is range 0 .. 10;
    -- DMI 5.2.2.2

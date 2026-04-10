@@ -39,9 +39,7 @@ package body Display.C_Area is
    begin
       if Acknowledgment_Mode.Valid then
          -- DMI 5.1.1.3.2
-         -- this should be called every 250ms
-         Flashing_Frame_Displayed  := not Flashing_Frame_Displayed;
-         C_Buffer.Draw_Yellow_Frame (The_C1_Area, Flashing_Frame_Displayed);
+         C_Buffer.Draw_Yellow_Frame (The_C1_Area, General_Parameters.Flash_On);
          
          case Acknowledgment_Mode.Mode is
          when M_LS => DS (Symbol.MO_22);
@@ -56,8 +54,7 @@ package body Display.C_Area is
       elsif Level_Announcement.Valid then
          -- DMI 8.2.3.2.6
          if Level_Announcement.Ack_Required then
-            Flashing_Frame_Displayed  := not Flashing_Frame_Displayed;
-            C_Buffer.Draw_Yellow_Frame (The_C1_Area, Flashing_Frame_Displayed);
+            C_Buffer.Draw_Yellow_Frame (The_C1_Area, General_Parameters.Flash_On);
             -- DMI 8.2.3.2.8
             case Level_Announcement.Level is
                when L0 =>  DS (Symbol.LE_07, Position_Level);
