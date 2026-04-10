@@ -329,30 +329,44 @@ procedure Draw_Speed_Pointer is
          Nodes := Node_X'First;
          J := Poly'Last - 1;
          for I in Poly'Range loop
-            if (Poly (I).Y < Pixel_Y and Poly (J).Y >= Pixel_Y)
-              or (Poly (J).Y < Pixel_Y and Poly (I).Y >= Pixel_Y)
+            if (Poly (I).Y <= Pixel_Y and Poly (J).Y > Pixel_Y)
+              or (Poly (J).Y <= Pixel_Y and Poly (I).Y > Pixel_Y)
             then
-               Node_X (Nodes) := Poly (I).X + Integer
-                 (Float(Pixel_Y - Poly (I).Y) / Float(Poly (J).Y - Poly (I).Y) * Float(Poly (J).X - Poly (I).X));
-               Nodes := Nodes + 1;
+               declare
+                  Y1 : constant Float := Float (Poly (I).Y);
+                  Y2 : constant Float := Float (Poly (J).Y);
+                  X1 : constant Float := Float (Poly (I).X);
+                  X2 : constant Float := Float (Poly (J).X);
+               begin
+                  Node_X (Nodes) := Integer (X1 + (Float (Pixel_Y) - Y1) * (X2 - X1) / (Y2 - Y1));
+                  Nodes := Nodes + 1;
+               end;
             end if;
             J := I;
          end loop;
 
          J := Node_X'First;
-         while J < Nodes -1 loop
-            if Node_X (J) > Node_X (J+1) then
+         while J < Nodes - 1 loop
+            if Node_X (J) > Node_X (J + 1) then
                Swap := Node_X (J);
-               Node_X (J) := Node_X (J+1);
-               Node_X (J+1) := Swap;
-               if J > Node_X'First then J := J + 1; end if;
+               Node_X (J) := Node_X (J + 1);
+               Node_X (J + 1) := Swap;
+               if J > Node_X'First then
+                  J := J - 1;
+               else
+                  J := J + 1;
+               end if;
             else
                J := J + 1;
             end if;
          end loop;
 
          J := Node_X'First;
-         while J < Nodes loop
+         while J < Nodes - 1 loop
+            if (Nodes - Node_X'First) mod 2 /= 0 then
+               -- parity error! skip this scanline to avoid horizontal artifacts
+               exit;
+            end if;
             if Node_X (J) < B_Buffer.Area_Width_T'Last then
                if Node_X (J+1) > B_Buffer.Area_Width_T'First then
                   if Node_X (J) < B_Buffer.Area_Width_T'First then
