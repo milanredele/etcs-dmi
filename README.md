@@ -9,7 +9,13 @@ Written in Ada2012 with a strong focus on applicability in resource-limited embe
 primary performance goal is to run on 32bit 200MHz ARM/POWER MCU with 128kB RAM and 1MB ROM, without OS.
 
 ### Zero dependency
-No library is used other than provided by GNAT. 
+No library is used other than provided by GNAT.
+
+### Building
+The project uses the [Alire](https://alire.ada.dev/) package manager. To build the project, run:
+```bash
+alr build
+```
 
 ### Fonts & Symbols
 Fonts are embedded as bitmaps in source code. FreeSans font is used due to licensing issues and due to similarity to Helvetica (which is recommended by the ERA).

@@ -32,7 +32,7 @@ This document provides context and guidelines for AI agents (GitHub Copilot and 
 - Framebuffer interaction should only happen through `Display.Frame_Buffer`.
 
 ### 3. Workflow and Building
-- **Build**: Use `gprbuild -P dmi.gpr` to compile (GPR project file).
+- **Build**: Use `alr build` to compile the project (Alire package manager). Alternatively, `gprbuild -P dmi.gpr` can be used.
 - **Visual Testing**:
     1. Start the server: `node test/tools/server.js`
     2. Open `test/tools/client.html` in a browser.
