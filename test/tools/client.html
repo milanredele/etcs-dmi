@@ -35,7 +35,11 @@
 				vtarget: parseInt(document.getElementById('vtarget').value),
 				vrelease: parseInt(document.getElementById('vrelease').value),
 				dist: parseInt(document.getElementById('dist').value),
-				range: parseInt(document.getElementById('range').value)
+				range: parseInt(document.getElementById('range').value),
+				mode: 2, // Default to M_FS (index 2 in Mode_T)
+				flash_enable: true,
+				vrelease_exists: true,
+				show_taf: true
 			};
 			socket.send(JSON.stringify(params));
 			console.log('Sent params:', params);

@@ -29,6 +29,10 @@ with Ada.Streams.Stream_IO;
 with Ada.Text_IO;
 with Ada.Real_Time;           use Ada.Real_Time;
 
+with DMI_Protocol; use DMI_Protocol;
+with Ada.Unchecked_Conversion;
+with Interfaces; use Interfaces;
+
 procedure Dmi is
    Client  : Socket_Type;
    Address : Sock_Addr_Type;
@@ -43,6 +47,30 @@ procedure Dmi is
 
    Last_Flash : Time := Clock;
    Flash_Interval : constant Time_Span := Milliseconds (250);
+
+   Flash_Enabled_State : Boolean := False;
+
+   -- Helper to convert steam to record
+   function To_Telegram is new Ada.Unchecked_Conversion 
+     (Source => Ada.Streams.Stream_Element_Array,
+      Target => DMI_Telegram_T);
+
+   -- Basic CRC-16 CCITT
+   function Get_CRC (Data : Ada.Streams.Stream_Element_Array) return Unsigned_16 is
+      CRC : Unsigned_16 := 16#FFFF#;
+   begin
+      for I in Data'Range loop
+         CRC := CRC xor Shift_Left (Unsigned_16 (Data (I)), 8);
+         for J in 1 .. 8 loop
+            if (CRC and 16#8000#) /= 0 then
+               CRC := Shift_Left (CRC, 1) xor 16#1021#;
+            else
+               CRC := Shift_Left (CRC, 1);
+            end if;
+         end loop;
+      end loop;
+      return CRC;
+   end Get_CRC;
 
 begin
    General_Parameters.Flash_On := True;
@@ -85,68 +113,87 @@ begin
       declare
          use Ada.Streams;
          use Ada.Text_IO;
-         -- Wait for 14 bytes: Speed (2), Vperm (2), Vtarget (2), Vrelease (2), Range (2), Distance (4)
-         Buffer  : Stream_Element_Array (1 .. 14);
+         -- Telegram is now 16 bytes
+         Buffer  : Stream_Element_Array (1 .. 16);
          Last    : Stream_Element_Offset;
          Request : Request_Type (N_Bytes_To_Read);
       begin
          -- 1. Respond quickly to input by polling for many updates if they are queued
          loop
             Control_Socket (Client, Request);
-            exit when Request.Size < 14;
+            exit when Request.Size < 16;
 
             Receive_Socket (Client, Buffer, Last);
-            if Last = 14 then
+            if Last = 16 then
                declare
-                  function To_U16 (Low, High : Stream_Element) return Natural is
-                  begin
-                     return Natural (Low) + Natural (High) * 256;
-                  end To_U16;
-
-                  function To_U32 (B0, B1, B2, B3 : Stream_Element) return Natural is
-                  begin
-                     return Natural (B0) + Natural (B1) * 256 + Natural (B2) * 65536 + Natural (B3) * 16777216;
-                  end To_U32;
-
-                  V_Cur   : constant Speed_And_Distance.Speed_T := Speed_And_Distance.Speed_T (To_U16 (Buffer (1), Buffer (2)));
-                  V_Perm  : constant Speed_And_Distance.Speed_T := Speed_And_Distance.Speed_T (To_U16 (Buffer (3), Buffer (4)));
-                  V_Targ  : constant Speed_And_Distance.Speed_T := Speed_And_Distance.Speed_T (To_U16 (Buffer (5), Buffer (6)));
-                  V_Rel   : constant Speed_And_Distance.Speed_T := Speed_And_Distance.Speed_T (To_U16 (Buffer (7), Buffer (8)));
-                  R_Enum  : constant Natural := To_U16 (Buffer (9), Buffer (10));
-                  D_Targ  : constant Natural := To_U32 (Buffer (11), Buffer (12), Buffer (13), Buffer (14));
-                  
-                  V_Wsl   : constant Speed_And_Distance.Speed_T := Speed_And_Distance.Speed_T (Natural (V_Perm) + 5);
-                  V_Isl   : constant Speed_And_Distance.Speed_T := Speed_And_Distance.Speed_T (Natural (V_Perm) + 10);
-                  V_Sbi   : constant Speed_And_Distance.Speed_T := Speed_And_Distance.Speed_T (Natural (V_Perm) + 15);
+                  Tel : constant DMI_Telegram_T := To_Telegram (Buffer);
                begin
-                  Speed_And_Distance.Set_Speed (V_Cur);
-                  Speed_And_Distance.Set_Speed_Params ((Vperm   => V_Perm,
-                                                        Vtarget => V_Targ,
-                                                        Vwsl    => V_Wsl,
-                                                        Visl    => V_Isl,
-                                                        Vsbi    => V_Sbi,
-                                                        Vrelease => V_Rel,
-                                                        Vrelease_Exists => True));
-                  
-                  -- Distance range check 0..90000
-                  Speed_And_Distance.Set_Distance_To_Target (Speed_And_Distance.Distance_T (D_Targ));
+                  -- Checksum validation
+                  if Tel.Checksum = Get_CRC (Buffer (1 .. 14)) then
+                     Speed_And_Distance.Set_Speed (Speed_And_Distance.Speed_T (Tel.V_Cur));
+                     Speed_And_Distance.Set_Speed_Params 
+                        ((Vperm    => Speed_And_Distance.Speed_T (Tel.V_Perm),
+                          Vtarget  => Speed_And_Distance.Speed_T (Tel.V_Targ),
+                          Vwsl     => Speed_And_Distance.Speed_T (Natural (Tel.V_Perm) + 5),
+                          Visl     => Speed_And_Distance.Speed_T (Natural (Tel.V_Perm) + 10),
+                          Vsbi     => Speed_And_Distance.Speed_T (Natural (Tel.V_Perm) + 15),
+                          Vrelease => Speed_And_Distance.Speed_T (Tel.V_Rel),
+                          Vrelease_Exists => (Tel.Status.Vrelease_Exists = 1)));
+                     
+                     Speed_And_Distance.Set_Distance_To_Target (Speed_And_Distance.Distance_T (if Tel.D_Targ > 90000 then 90000 else Tel.D_Targ));
 
-                  case R_Enum is
-                     when 0 => Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_140);
-                     when 1 => Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_180);
-                     when 2 => Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_250);
-                     when 3 => Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_400);
-                     when others => null;
-                  end case;
+                     case Tel.Status.Speed_Range is
+                        when 0 => Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_140);
+                        when 1 => Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_180);
+                        when 2 => Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_250);
+                        when 3 => Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_400);
+                     end case;
 
+                     -- Apply Other Statuses
+                     Track_Ahead_Free.Show := (Tel.Status.Show_TAF = 1);
+                     Flash_Enabled_State := (Tel.Status.Flash_Enable = 1);
+                     
+                     -- Mode mapping (0..F index to SDI.Mode_T)
+                     declare
+                         Modes : constant array (Four_Bits_T) of Supplementary_Driving_Info.Mode_T 
+                           := (0 => Supplementary_Driving_Info.M_NP,
+                               1 => Supplementary_Driving_Info.M_SB,
+                               2 => Supplementary_Driving_Info.M_FS,
+                               3 => Supplementary_Driving_Info.M_LS,
+                               4 => Supplementary_Driving_Info.M_OS,
+                               5 => Supplementary_Driving_Info.M_SR,
+                               6 => Supplementary_Driving_Info.M_SH,
+                               7 => Supplementary_Driving_Info.M_UN,
+                               8 => Supplementary_Driving_Info.M_RV,
+                               9 => Supplementary_Driving_Info.M_TR,
+                               10 => Supplementary_Driving_Info.M_SN,
+                               11 => Supplementary_Driving_Info.M_SE,
+                               12 => Supplementary_Driving_Info.M_PT,
+                               13 => Supplementary_Driving_Info.M_NL,
+                               14 => Supplementary_Driving_Info.M_SF,
+                               15 => Supplementary_Driving_Info.M_SL);
+                     begin
+                         Supplementary_Driving_Info.Mode := Modes (Tel.Status.Mode);
+                     end;
+
+                  else
+                     Ada.Text_IO.Put_Line ("CRC Error!");
+                  end if;
                end;
             end if;
          end loop;
-         -- Update flashing state every 250ms
-         if Clock - Last_Flash >= Flash_Interval then
-            General_Parameters.Flash_On := not General_Parameters.Flash_On;
+
+         -- Update flashing state independently of network input
+         if Flash_Enabled_State then
+            if Clock - Last_Flash >= Flash_Interval then
+               General_Parameters.Flash_On := not General_Parameters.Flash_On;
+               Last_Flash := Clock;
+            end if;
+         else
+            General_Parameters.Flash_On := True;
             Last_Flash := Clock;
          end if;
+
          -- 2. Draw only once per loop iteration
          Display.B_Area.Draw;
          Display.A_Area.Draw;
