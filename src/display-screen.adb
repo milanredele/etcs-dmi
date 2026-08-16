@@ -5,6 +5,7 @@ pragma Ada_2012;
 with Ada.Streams.Stream_IO;
 with Ada.Unchecked_Conversion;
 with DMI_Protocol; use DMI_Protocol;
+with GNAT.SHA256;
 with Interfaces;   use Interfaces;
 with System;
 
@@ -86,6 +87,24 @@ package body Display.Screen is
       Write_Raw (Ada.Streams.Root_Stream_Type'Class (Output_Stream.all)'Access);
       Ada.Streams.Stream_IO.Close (Output_File);
    end Dump;
+
+   function Digest return String is
+      use type Ada.Streams.Stream_Element_Offset;
+
+      Item_Size : constant Ada.Streams.Stream_Element_Offset :=
+        Buffer_T'Object_Size / Ada.Streams.Stream_Element'Size;
+
+      type SEA_Pointer is
+        access all Ada.Streams.Stream_Element_Array (1 .. Item_Size);
+
+      function As_SEA_Pointer is
+        new Ada.Unchecked_Conversion (System.Address, SEA_Pointer);
+
+      Context : GNAT.SHA256.Context := GNAT.SHA256.Initial_Context;
+   begin
+      GNAT.SHA256.Update (Context, As_SEA_Pointer (Buffer'Address).all);
+      return GNAT.SHA256.Digest (Context);
+   end Digest;
 
    function Matches_Dump (File_Name : String) return Boolean is
       use Ada.Streams;

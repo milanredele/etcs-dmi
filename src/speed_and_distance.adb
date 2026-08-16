@@ -33,8 +33,11 @@ package body Speed_And_Distance is
    begin
       case Monitoring_Mode is
          when CSM =>
-            if New_Speed > Speed.Vsbi or Supervision_Status = IntS then
-               -- DMI 7.2.4.1 (deactivation 7.2.4.2 only on brake release, see EVC)
+            if New_Speed > Speed.Vsbi
+              or (Supervision_Status = IntS and Brake_Commanded)
+            then
+               -- DMI 7.2.4.1 / 7.2.4.2: deactivated only once the brake
+               -- command is gone
                Supervision_Status := IntS;
             elsif New_Speed > Speed.Vwsl
               or (Supervision_Status = WaS and New_Speed > Speed.Vperm) then
@@ -53,9 +56,9 @@ package body Speed_And_Distance is
             -- DMI 7.4.5.1.1: in AD mode IntS is not activated on SBI
             -- exceedance
             if (New_Speed > Speed.Vsbi and not In_AD)
-              or Supervision_Status = IntS
+              or (Supervision_Status = IntS and Brake_Commanded)
             then
-               -- DMI 7.4.5.1
+               -- DMI 7.4.5.1 / 7.4.5.2
                Supervision_Status := IntS;
             elsif New_Speed > Speed.Vwsl
               or (Supervision_Status = WaS and New_Speed > Speed.Vperm) then
@@ -69,7 +72,9 @@ package body Speed_And_Distance is
                Supervision_Status := IndS;
             end if;
          when RSM =>
-            if New_Speed > Speed.Vrelease or Supervision_Status = IntS then
+            if New_Speed > Speed.Vrelease
+              or (Supervision_Status = IntS and Brake_Commanded)
+            then
                -- DMI 7.5.3.1
                Supervision_Status := IntS;
             else
@@ -155,6 +160,11 @@ package body Speed_And_Distance is
    begin
       CSM_Target_Info := Enabled;
    end Set_CSM_Target_Info;
+
+   procedure Set_Brake_Commanded (Commanded : Boolean) is
+   begin
+      Brake_Commanded := Commanded;
+   end Set_Brake_Commanded;
 
    function Get_CSM_Target_Info return Boolean is
      (CSM_Target_Info);

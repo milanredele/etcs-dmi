@@ -26,11 +26,15 @@ package Display.Screen is
    -- Send the whole screen as one MSG_FRAME to the stream
    procedure Write (Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
-   -- Raw dump of the colour index buffer, row major; used for golden
-   -- frame regression tests
+   -- Raw dump of the colour index buffer, row major; used to inspect
+   -- failing regression frames
    procedure Dump (File_Name : String);
 
    -- Compare the screen against a previously dumped file; True on match
    function Matches_Dump (File_Name : String) return Boolean;
+
+   -- SHA-256 of the colour index buffer as a lower case hex string;
+   -- golden frames are stored as digests
+   function Digest return String;
 
 end Display.Screen;

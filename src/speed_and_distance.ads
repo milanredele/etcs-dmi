@@ -65,6 +65,10 @@ package Speed_And_Distance is
 
    function Get_CSM_Target_Info return Boolean;
 
+   -- DMI 7.2.4.2: the Intervention Status stays active while the EVC
+   -- commands the service/emergency brake
+   procedure Set_Brake_Commanded (Commanded : Boolean);
+
    type Distance_T is new Natural range 0 .. 90000;
    
    function Get_Distance_To_Target return Distance_T;
@@ -81,6 +85,7 @@ private
    Monitoring_Mode    : Monitoring_T;
    Supervision_Status : Supervision_Status_T;
    CSM_Target_Info    : Boolean := False;
+   Brake_Commanded    : Boolean := False;
    Speed              : Speed_Params;
    Vcurrent           : Speed_T := 0;
    Speed_Dial_Range   : Speed_Dial_Range_T := Range_180;

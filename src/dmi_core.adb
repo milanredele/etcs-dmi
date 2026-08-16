@@ -180,6 +180,7 @@ package body DMI_Core is
          when others => Set_Monitoring_Mode (RSM);
       end case;
       Set_CSM_Target_Info ((Flags and 2) /= 0);
+      Set_Brake_Commanded ((Flags and 4) /= 0);
 
       Set_Speed_Params ((Vperm    => V_Perm,
                          Vtarget  => V_Target,

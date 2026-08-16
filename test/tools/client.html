@@ -53,6 +53,7 @@
           </select>
         </label>
         <label>CSM target info <input type="checkbox" id="csm_ti"></label>
+        <label>Brake commanded <input type="checkbox" id="brake"></label>
       </div>
       <div class="row">
         <label>Level:
@@ -207,7 +208,8 @@
         dv.setUint32(o, val('dist'), true); o += 4;
         dv.setUint8(o, val('monitoring')); o += 1;
         dv.setUint8(o, val('range')); o += 1;
-        dv.setUint8(o, (checked('vrelease_exists') ? 1 : 0) | (checked('csm_ti') ? 2 : 0));
+        dv.setUint8(o, (checked('vrelease_exists') ? 1 : 0) | (checked('csm_ti') ? 2 : 0)
+          | (checked('brake') ? 4 : 0));
         socket.send(buf);
       }
 

@@ -27,7 +27,8 @@ package DMI_Protocol is
    --  v_cur u16, v_perm u16, v_target u16, v_release u16, v_sbi u16,
    --  v_wsl u16, d_target u32, monitoring u8 (0 CSM / 1 TSM / 2 RSM),
    --  dial_range u8 (0..3 -> 140/180/250/400),
-   --  flags u8 (bit0 vrelease_exists, bit1 csm_target_info)
+   --  flags u8 (bit0 vrelease_exists, bit1 csm_target_info,
+   --            bit2 brake_commanded)
    Speed_State_Length : constant := 19;
 
    MSG_MODE_LEVEL : constant Msg_Type_T := 16#02#;
