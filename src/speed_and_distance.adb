@@ -15,10 +15,21 @@
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pragma Ada_2012;
+with DMI_Sounds;
+with Supplementary_Driving_Info;
+
 package body Speed_And_Distance is
 
+   use type Supplementary_Driving_Info.Mode_T;
+
+   function In_AD return Boolean is
+     (Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_AD);
+
+   function In_LS return Boolean is
+     (Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_LS);
 
    procedure Set_Speed (New_Speed : Speed_T) is
+      Old_Status : constant Supervision_Status_T := Supervision_Status;
    begin
       case Monitoring_Mode is
          when CSM =>
@@ -39,7 +50,11 @@ package body Speed_And_Distance is
          when TSM =>
             -- v4.0.0: the base status in TSM is IndS (DMI 7.4.2.1);
             -- NoS does not exist under TSM.
-            if New_Speed > Speed.Vsbi or Supervision_Status = IntS then
+            -- DMI 7.4.5.1.1: in AD mode IntS is not activated on SBI
+            -- exceedance
+            if (New_Speed > Speed.Vsbi and not In_AD)
+              or Supervision_Status = IntS
+            then
                -- DMI 7.4.5.1
                Supervision_Status := IntS;
             elsif New_Speed > Speed.Vwsl
@@ -65,6 +80,28 @@ package body Speed_And_Distance is
 
       Vcurrent := New_Speed;
 
+      -- Audible information on status transitions (chapter 7)
+      if Supervision_Status /= Old_Status then
+         if Old_Status = WaS then
+            DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+         end if;
+         if not In_AD then
+            case Supervision_Status is
+               when WaS =>
+                  -- DMI 7.2.3.3 / 7.4.4.3: S2 while the Warning Status
+                  -- information is active
+                  DMI_Sounds.Play (DMI_Sounds.S2_Warning_Start);
+               when OvS =>
+                  -- DMI 7.4.3.3: S1 as soon as the Over-speed Status is
+                  -- activated, TSM only
+                  if Monitoring_Mode = TSM then
+                     DMI_Sounds.Play (DMI_Sounds.S1_Overspeed);
+                  end if;
+               when others =>
+                  null;
+            end case;
+         end if;
+      end if;
    end Set_Speed;
 
    function Get_Speed return Speed_T is
@@ -88,8 +125,24 @@ package body Speed_And_Distance is
      (Speed_Dial_Range);
 
    procedure Set_Monitoring_Mode (The_Mode : Monitoring_T) is
+      Old_Mode : constant Monitoring_T := Monitoring_Mode;
    begin
       Monitoring_Mode := The_Mode;
+      if The_Mode /= Old_Mode then
+         -- DMI 7.4.1.1 / 7.5.1.1: Sinfo when entering TSM or RSM from
+         -- CSM, unless in Limited Supervision or Automatic Driving mode
+         if Old_Mode = CSM
+           and then The_Mode in TSM | RSM
+           and then not In_LS
+           and then not In_AD
+         then
+            DMI_Sounds.Play (DMI_Sounds.Sinfo);
+         end if;
+         -- leaving the old monitoring invalidates a WaS-bound S2
+         if Supervision_Status = WaS then
+            DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+         end if;
+      end if;
    end Set_Monitoring_Mode;
 
    function Get_Monitoring_Mode return Monitoring_T is

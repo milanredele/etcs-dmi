@@ -50,7 +50,7 @@ package body Display.A_Area is
          when Supplementary_Driving_Info.M_OS | Supplementary_Driving_Info.M_SR =>
             -- DMI 8.2.2.2.7 Table 14: digital only, and only when toggled on;
             -- RSM does not apply for SR
-            if User_Settings.Toggle (User_Settings.Distance_To_Target_Digital)
+            if User_Settings.Speed_Info_Visible
               and then Target_Monitoring
               and then not (Get_Monitoring_Mode = RSM
                             and Supplementary_Driving_Info.Mode =
@@ -59,10 +59,8 @@ package body Display.A_Area is
                Display.A_Area.A_2.Draw;
             end if;
          when Supplementary_Driving_Info.M_LS =>
-            -- DMI 8.2.1.7.3
-            if User_Settings.Toggle (User_Settings.LSSMA)
-              and then Get_LSSMA_Valid
-            then
+            -- DMI 8.2.1.7.3: display conditions are decided by the EVC
+            if Get_LSSMA_Valid then
                Draw_A1;
             end if;
          when others =>

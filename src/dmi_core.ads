@@ -15,6 +15,10 @@ package DMI_Core is
    procedure Handle_Message (The_Type : Msg_Type_T;
                              Payload  : Stream_Element_Array);
 
+   -- Advance time dependent behaviour (buttons, acknowledgements) by
+   -- Dt_Ms milliseconds and process pending button activations
+   procedure Tick (Dt_Ms : Natural);
+
    -- Draw the complete screen for the current state
    procedure Render;
 

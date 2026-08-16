@@ -180,7 +180,7 @@ package body Display.B_Area.Speed_Dial is
             Draw_Number (General_Parameters.YELLOW);
          when Supplementary_Driving_Info.M_OS =>
             -- shown only if the driver has toggled it on (Table 11 note)
-            if User_Settings.Toggle (User_Settings.Release_Speed_Digital) then
+            if User_Settings.Speed_Info_Visible then
                Draw_Number (General_Parameters.YELLOW);
             end if;
          when Supplementary_Driving_Info.M_AD =>
@@ -524,7 +524,7 @@ package body Display.B_Area.Speed_Dial is
                | Supplementary_Driving_Info.M_SR =>
                -- OS and SR only when the driver has toggled the display on
                if Supplementary_Driving_Info.Mode /= Supplementary_Driving_Info.M_SM
-                 and then not User_Settings.Toggle (User_Settings.Basic_Speed_Hook)
+                 and then not User_Settings.Speed_Info_Visible
                then
                   return;
                end if;
@@ -542,7 +542,7 @@ package body Display.B_Area.Speed_Dial is
                Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
 
             when Supplementary_Driving_Info.M_SH =>
-               if User_Settings.Toggle (User_Settings.Basic_Speed_Hook) then
+               if User_Settings.Speed_Info_Visible then
                   Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
                end if;
 

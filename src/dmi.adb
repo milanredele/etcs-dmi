@@ -99,11 +99,12 @@ begin
       Receive_Available;
       Process_Frames;
 
-      -- 2. Advance time dependent state (flashing)
+      -- 2. Advance time dependent state (flashing, buttons)
       if Clock - Last_Flash >= Flash_Interval then
          General_Parameters.Flash_On := not General_Parameters.Flash_On;
          Last_Flash := Clock;
       end if;
+      DMI_Core.Tick (50);
 
       -- 3. Render and transmit one full screen
       DMI_Core.Render;

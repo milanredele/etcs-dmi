@@ -19,14 +19,18 @@ with Display.Frame_Buffer;
 package Display.D_Area is
 
    package D_Buffer is new Display.Frame_Buffer (D);
-   
+
    procedure Draw;
-   
+
+   -- Absolute touch sensitive area of the TAF "Yes" answer (8.2.3.3)
+   function TAF_Answer_Area return Area_T;
+
 private
-   
+
    The_Area    : constant Area_T := Get_Area (D);
    Track_Ahead_Free_Area : constant Area_T := ((0, 50), 244, 50);
-   
+   TAF_Question_Width : constant Width_T := 162;
+
    procedure Draw_Track_Ahead_Free;
 
 end Display.D_Area;

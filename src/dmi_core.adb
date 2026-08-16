@@ -7,6 +7,8 @@ with Display.A_Area;
 with Display.B_Area;
 with Display.C_Area;
 with Display.D_Area;
+with DMI_Buttons;
+with DMI_Sounds;
 with Speed_And_Distance;
 with Supplementary_Driving_Info;
 with Track_Ahead_Free;
@@ -16,6 +18,51 @@ with Interfaces; use Interfaces;
 package body DMI_Core is
 
    package SDI renames Supplementary_Driving_Info;
+
+   -- Combined area A + B: the touch sensitive surface of the speed
+   -- information toggling function (8.2.2.4.2)
+   function A_B_Area return Display.Area_T is
+      A : constant Display.Area_T := Display.Get_Area (Display.A);
+      B : constant Display.Area_T := Display.Get_Area (Display.B);
+   begin
+      return (A.Position, A.Width + B.Width, A.Height);
+   end A_B_Area;
+
+   -- Driver action identifiers (MSG_DRIVER_ACTION)
+   ACTION_TAF_YES      : constant Unsigned_8 := 0;
+   ACTION_SPEED_TOGGLE : constant Unsigned_8 := 1;
+
+   procedure Queue_Driver_Action (Action : Unsigned_8;
+                                  Arg    : Unsigned_16 := 0) is
+      Payload : Stream_Element_Array (1 .. Driver_Action_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Action);
+      Put_U16 (Payload, Offset, Arg);
+      Queue_Message (MSG_DRIVER_ACTION, Payload);
+   end Queue_Driver_Action;
+
+   -- Keep the button registry in sync with the displayed state
+   procedure Update_Buttons is
+      use type SDI.Mode_T;
+   begin
+      if Track_Ahead_Free.Show then
+         DMI_Buttons.Set_Active (DMI_Buttons.BTN_TAF_Yes,
+                                 Display.D_Area.TAF_Answer_Area,
+                                 DMI_Buttons.Up_Type);
+      else
+         DMI_Buttons.Set_Inactive (DMI_Buttons.BTN_TAF_Yes);
+      end if;
+
+      -- DMI 8.2.2.4.2/.4: A/B sensitive only in the Table 15 modes
+      if SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH then
+         DMI_Buttons.Set_Active (DMI_Buttons.BTN_Speed_Toggle,
+                                 A_B_Area,
+                                 DMI_Buttons.Up_Type);
+      else
+         DMI_Buttons.Set_Inactive (DMI_Buttons.BTN_Speed_Toggle);
+      end if;
+   end Update_Buttons;
 
    Outbox        : Stream_Element_Array (1 .. 1024);
    Outbox_Filled : Stream_Element_Offset := 0;
@@ -31,7 +78,7 @@ package body DMI_Core is
       SDI.Override := False;
       SDI.Level := SDI.Unknown;
       SDI.Level_Announcement := (Valid => False);
-      User_Settings.Toggle := (others => False);
+      User_Settings.Speed_Info_Visible := False;
       Track_Ahead_Free.Show := False;
       Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.CSM);
       Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_180);
@@ -115,9 +162,23 @@ package body DMI_Core is
 
       function Valid_Level (Raw : Unsigned_8) return Boolean is
         (Natural (Raw) <= SDI.Level_T'Pos (SDI.Level_T'Last));
+
+      Old_Mode : constant SDI.Mode_T := SDI.Mode;
+      use type SDI.Mode_T;
    begin
       if Valid_Mode (Mode_Raw) then
          SDI.Mode := SDI.Mode_T'Val (Mode_Raw);
+      end if;
+
+      if SDI.Mode /= Old_Mode then
+         -- DMI 8.2.2.4.5: entering a Table 15 mode toggles the objects off
+         if SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH then
+            User_Settings.Speed_Info_Visible := False;
+         end if;
+         -- a continuous warning sound cannot outlive entering AD
+         if SDI.Mode = SDI.M_AD then
+            DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+         end if;
       end if;
 
       if Valid_Level (Level_Raw) then
@@ -159,6 +220,21 @@ package body DMI_Core is
    -- Handle_Message --
    --------------------
 
+   procedure Apply_Pointer (Payload : Stream_Element_Array) is
+      Offset : Stream_Element_Offset := Payload'First;
+      Event  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      X      : constant Unsigned_16 := Get_U16 (Payload, Offset);
+      Y      : constant Unsigned_16 := Get_U16 (Payload, Offset);
+      Kind   : DMI_Buttons.Pointer_Event_T;
+   begin
+      case Event is
+         when 0      => Kind := DMI_Buttons.Down;
+         when 1      => Kind := DMI_Buttons.Up;
+         when others => Kind := DMI_Buttons.Move;
+      end case;
+      DMI_Buttons.Pointer_Event (Kind, Natural (X), Natural (Y));
+   end Apply_Pointer;
+
    procedure Handle_Message (The_Type : Msg_Type_T;
                              Payload  : Stream_Element_Array) is
    begin
@@ -171,10 +247,42 @@ package body DMI_Core is
             if Payload'Length = Mode_Level_Length then
                Apply_Mode_Level (Payload);
             end if;
+         when MSG_POINTER =>
+            if Payload'Length = Pointer_Length then
+               Update_Buttons; -- make sure hit testing sees current state
+               Apply_Pointer (Payload);
+            end if;
          when others =>
             null; -- unknown or not for us; ignore
       end case;
    end Handle_Message;
+
+   ----------
+   -- Tick --
+   ----------
+
+   procedure Tick (Dt_Ms : Natural) is
+      ID : DMI_Buttons.Button_ID_T;
+      use all type DMI_Buttons.Button_ID_T;
+   begin
+      Update_Buttons;
+      DMI_Buttons.Tick (Dt_Ms);
+      while DMI_Buttons.Pop_Activation (ID) loop
+         case ID is
+            when BTN_TAF_Yes =>
+               -- 8.2.3.3: the driver confirms the track ahead is free;
+               -- the EVC decides when the question disappears
+               Queue_Driver_Action (ACTION_TAF_YES);
+            when BTN_Speed_Toggle =>
+               -- 8.2.2.4: toggle all concerned objects for this mode
+               User_Settings.Speed_Info_Visible :=
+                 not User_Settings.Speed_Info_Visible;
+               Queue_Driver_Action
+                 (ACTION_SPEED_TOGGLE,
+                  (if User_Settings.Speed_Info_Visible then 1 else 0));
+         end case;
+      end loop;
+   end Tick;
 
    ------------
    -- Render --
@@ -212,7 +320,18 @@ package body DMI_Core is
 
    procedure Flush_Outbox
      (Stream : not null access Ada.Streams.Root_Stream_Type'Class) is
+      The_Sound : DMI_Sounds.Sound_T;
    begin
+      while DMI_Sounds.Pop (The_Sound) loop
+         declare
+            Payload : Stream_Element_Array (1 .. Sound_Length);
+            Offset  : Stream_Element_Offset := Payload'First;
+         begin
+            Put_U8 (Payload, Offset,
+                    Unsigned_8 (DMI_Sounds.Sound_T'Pos (The_Sound)));
+            Queue_Message (MSG_SOUND, Payload);
+         end;
+      end loop;
       if Outbox_Filled > 0 then
          Ada.Streams.Write (Stream.all, Outbox (1 .. Outbox_Filled));
          Outbox_Filled := 0;
