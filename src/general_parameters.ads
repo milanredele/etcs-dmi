@@ -76,15 +76,13 @@ package General_Parameters is
    -- Global flashing state
    Flash_On : Boolean := True;
    
-   -- DMI 5.2.2
+   -- DMI 5.2.2: driver adjustable, median as default
    type Display_Luminance_T is range 0 .. 10;
-   -- DMI 5.2.2.2
-   Display_Luminance : constant Display_Luminance_T := 5;
-   
-   -- DMI 5.2.3
+   Display_Luminance : Display_Luminance_T := 5;
+
+   -- DMI 5.2.3: driver adjustable, median as default
    type Loudspeaker_Volume_T is range 0 .. 10;
-   -- DMI 5.2.3.2
-   Loudspeaker_Volume : constant Loudspeaker_Volume_T := 5;
+   Loudspeaker_Volume : Loudspeaker_Volume_T := 5;
    
    
    

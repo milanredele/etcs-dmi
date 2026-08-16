@@ -9,6 +9,7 @@
 pragma Ada_2012;
 with Ada.Command_Line;
 with DMI_Core;
+with DMI_Driver_Data;
 with DMI_Sounds;
 with General_Parameters;
 with Test_Support; use Test_Support;
@@ -440,6 +441,129 @@ procedure DMI_Test is
       Check_Frame ("planning_os_on");
    end Scenario_Planning;
 
+   ---------------------------------------------------------------------
+   -- Windows and the start-up dialogue sequence (10, 11.7.2)
+   ---------------------------------------------------------------------
+
+   procedure Press (X, Y : Natural) is
+   begin
+      Pointer_Down (X, Y);
+      Pointer_Up (X, Y);
+      -- process the activation so consecutive presses see the updated
+      -- window state
+      Step;
+      Drain_Sounds;
+   end Press;
+
+   procedure Scenario_Startup_Sequence is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 1, Level => 0); -- SB, level unknown
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+
+      Press (610, 40);        -- F1: Main window
+      Step;
+      Check_Frame ("main_window");
+
+      Press (410, 90);        -- Start: no data yet -> sequence begins
+      Step;
+      Check_Frame ("startup_driver_id");
+
+      Press (385, 240);       -- 1
+      Press (487, 240);       -- 2
+      Press (589, 240);       -- 3
+      Step;
+      Check_Frame ("startup_driver_id_123");
+      Press (589, 390);       -- Enter -> Level window
+      Step;
+      Check_Frame ("startup_level");
+
+      Press (410, 90);        -- Level 1 -> Train data window
+      Step;
+      Check_Frame ("startup_train_data");
+
+      -- length 400
+      Press (385, 290); Press (487, 390); Press (487, 390);
+      Press (589, 390);       -- Enter -> next field
+      -- brake percentage 135
+      Press (385, 240); Press (589, 240); Press (487, 290);
+      Press (589, 390);
+      -- max speed 140
+      Press (385, 240); Press (385, 290); Press (487, 390);
+      Step;
+      Check_Frame ("startup_train_data_filled");
+      Press (589, 390);       -- Enter -> validation window
+      Step;
+      Check_Frame ("startup_validation");
+
+      Press (410, 390);       -- Yes -> TRN window
+      Step;
+      Check_Frame ("startup_trn");
+
+      -- TRN 4711
+      Press (385, 290); Press (385, 340); Press (385, 240); Press (385, 240);
+      Press (589, 390);       -- Enter -> sequence completes
+      Step;
+      Check_Frame ("startup_done");
+
+      Check (DMI_Driver_Data.Driver_ID_Entered, "driver id entered");
+      Check (DMI_Driver_Data.Level_Entered, "level entered");
+      Check (DMI_Driver_Data.Train_Data_Entered, "train data validated");
+      Check (DMI_Driver_Data.TRN_Entered, "TRN entered");
+      Check (DMI_Driver_Data.Train_Length = 400, "train length 400");
+      Check (DMI_Driver_Data.Brake_Pct = 135, "brake percentage 135");
+      Check (DMI_Driver_Data.Max_Speed = 140, "max speed 140");
+   end Scenario_Startup_Sequence;
+
+   procedure Scenario_Other_Windows is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+
+      Press (610, 90);        -- F2: Override window
+      Step;
+      Check_Frame ("override_window");
+      Press (410, 90);        -- EOA -> closes
+      Step;
+      Check_Frame ("default_after_override");
+
+      Press (610, 190);       -- F4: Special window
+      Step;
+      Check_Frame ("special_window");
+      Press (410, 90);        -- Adhesion
+      Step;
+      Check_Frame ("adhesion_window");
+      Press (563, 90);        -- Slippery rail -> closes to Special
+      Step;
+      Check_Frame ("special_window");
+
+      Press (370, 440);       -- close Special
+      Press (610, 240);       -- F5: Settings
+      Step;
+      Check_Frame ("settings_window");
+      Press (563, 90);        -- Volume
+      Step;
+      Check_Frame ("volume_window");
+      Press (563, 90);        -- '+' -> volume 6
+      Step;
+      Check_Frame ("volume_plus");
+      Press (370, 440);       -- close Volume
+      Press (370, 440);       -- close Settings
+
+      Press (610, 140);       -- F3: Data view
+      Step;
+      Check_Frame ("data_view_window");
+   end Scenario_Other_Windows;
+
    Status : Natural;
 begin
    Scenario_FS_CSM;
@@ -455,6 +579,8 @@ begin
    Scenario_SM_Direction;
    Scenario_Text_Messages;
    Scenario_Planning;
+   Scenario_Startup_Sequence;
+   Scenario_Other_Windows;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

@@ -26,7 +26,7 @@ package body DMI_Buttons is
    Delay_Type_Hold           : constant := 2000; -- DMI 5.3.2.6.6
    Delay_Type_Toggle         : constant := 250;
 
-   Activations : array (1 .. 8) of Button_ID_T;
+   Activations : array (1 .. 16) of Button_ID_T;
    Activation_Count : Natural := 0;
 
    procedure Queue_Activation (ID : Button_ID_T) is

@@ -13,6 +13,7 @@ with Display.G_Area;
 with Display.Screen;
 with DMI_Ack;
 with DMI_Buttons;
+with DMI_Driver_Data;
 with DMI_Planning;
 with DMI_Sounds;
 with DMI_Status;
@@ -191,6 +192,9 @@ package body DMI_Core is
                DMI_Buttons.Up_Type);
          end loop;
          DMI_Buttons.Set_Inactive (BTN_Window_Close);
+         for B in DMI_Buttons.Menu_Button_T loop
+            DMI_Buttons.Set_Inactive (B);
+         end loop;
       else
          for B in DMI_Buttons.F_Button_T loop
             DMI_Buttons.Set_Inactive (B);
@@ -198,8 +202,105 @@ package body DMI_Core is
          DMI_Buttons.Set_Active (BTN_Window_Close,
                                  DMI_Windows.Close_Button_Area,
                                  DMI_Buttons.Up_Type);
+         -- window-internal buttons (menu grid / keyboard / validation)
+         declare
+            Count : constant Natural := DMI_Windows.Button_Count;
+            Index : Natural := 1;
+         begin
+            for B in DMI_Buttons.Menu_Button_T loop
+               if Index <= Count
+                 and then DMI_Windows.Button_Enabled (Index)
+               then
+                  DMI_Buttons.Set_Active
+                    (B, DMI_Windows.Button_Area (Index),
+                     DMI_Windows.Button_Kind (Index));
+               else
+                  DMI_Buttons.Set_Inactive (B);
+               end if;
+               Index := Index + 1;
+            end loop;
+         end;
       end if;
    end Update_Buttons;
+
+   -- Translate queued window actions into protocol messages
+   procedure Drain_Window_Actions is
+      use all type DMI_Windows.Action_T;
+      use DMI_Driver_Data;
+
+      Action : DMI_Windows.Action_T;
+      Arg    : Natural;
+
+      procedure Send_Text_Data (Kind : Unsigned_8;
+                                Value : Text_Value_T) is
+         Payload : Stream_Element_Array
+           (1 .. 2 + Stream_Element_Offset (Value.Length));
+         Offset : Stream_Element_Offset := Payload'First;
+      begin
+         Put_U8 (Payload, Offset, Kind);
+         Put_U8 (Payload, Offset, Unsigned_8 (Value.Length));
+         for I in 1 .. Value.Length loop
+            Put_U8 (Payload, Offset,
+                    Unsigned_8 (Wide_Character'Pos (Value.Text (I)) mod 256));
+         end loop;
+         Queue_Message (MSG_DRIVER_DATA, Payload);
+      end Send_Text_Data;
+
+      procedure Send_Numeric_Data (Kind : Unsigned_8; A, B, C : Natural;
+                                   Count : Positive) is
+         Payload : Stream_Element_Array
+           (1 .. 1 + Stream_Element_Offset (Count) * 2);
+         Offset : Stream_Element_Offset := Payload'First;
+      begin
+         Put_U8 (Payload, Offset, Kind);
+         Put_U16 (Payload, Offset, Unsigned_16 (Natural'Min (A, 65535)));
+         if Count >= 2 then
+            Put_U16 (Payload, Offset, Unsigned_16 (Natural'Min (B, 65535)));
+         end if;
+         if Count >= 3 then
+            Put_U16 (Payload, Offset, Unsigned_16 (Natural'Min (C, 65535)));
+         end if;
+         Queue_Message (MSG_DRIVER_DATA, Payload);
+      end Send_Numeric_Data;
+
+      ACTION_START           : constant Unsigned_8 := 5;
+      ACTION_OVERRIDE        : constant Unsigned_8 := 6;
+      ACTION_SH_REQUEST      : constant Unsigned_8 := 7;
+      ACTION_EXIT_SH         : constant Unsigned_8 := 8;
+      ACTION_ADHESION        : constant Unsigned_8 := 9;
+      ACTION_TRAIN_INTEGRITY : constant Unsigned_8 := 10;
+      ACTION_LEVEL_SELECTED  : constant Unsigned_8 := 11;
+      ACTION_NON_LEADING     : constant Unsigned_8 := 12;
+   begin
+      while DMI_Windows.Pop_Action (Action, Arg) loop
+         case Action is
+            when Start_Mission =>
+               Queue_Driver_Action (ACTION_START);
+            when Override_EOA =>
+               Queue_Driver_Action (ACTION_OVERRIDE);
+            when SH_Request =>
+               Queue_Driver_Action (ACTION_SH_REQUEST);
+            when Exit_SH =>
+               Queue_Driver_Action (ACTION_EXIT_SH);
+            when Non_Leading =>
+               Queue_Driver_Action (ACTION_NON_LEADING);
+            when Train_Integrity =>
+               Queue_Driver_Action (ACTION_TRAIN_INTEGRITY);
+            when Adhesion_Set =>
+               Queue_Driver_Action (ACTION_ADHESION, Unsigned_16 (Arg));
+            when Level_Selected =>
+               Queue_Driver_Action (ACTION_LEVEL_SELECTED, Unsigned_16 (Arg));
+            when Send_Driver_ID =>
+               Send_Text_Data (0, Driver_ID);
+            when Send_TRN =>
+               Send_Text_Data (1, TRN);
+            when Send_Train_Data =>
+               Send_Numeric_Data (2, Train_Length, Brake_Pct, Max_Speed, 3);
+            when Send_SR_Data =>
+               Send_Numeric_Data (3, SR_Speed, SR_Dist, 0, 2);
+         end case;
+      end loop;
+   end Drain_Window_Actions;
 
    Outbox        : Stream_Element_Array (1 .. 1024);
    Outbox_Filled : Stream_Element_Offset := 0;
@@ -211,6 +312,7 @@ package body DMI_Core is
    procedure Initialise is
    begin
       DMI_Ack.Reset;
+      DMI_Driver_Data.Reset;
       DMI_Planning.Reset;
       DMI_Status.Reset;
       DMI_Text_Messages.Reset;
@@ -791,9 +893,14 @@ package body DMI_Core is
                DMI_Windows.Close_Top;
 
             when DMI_Buttons.Menu_Button_T =>
-               null; -- menu window content follows in a later phase
+               DMI_Windows.Button_Pressed
+                 (DMI_Buttons.Button_ID_T'Pos (ID)
+                  - DMI_Buttons.Button_ID_T'Pos (DMI_Buttons.BTN_Menu_1) + 1);
+               -- the window content changed; re-register its buttons
+               Update_Buttons;
          end case;
       end loop;
+      Drain_Window_Actions;
    end Tick;
 
    ------------

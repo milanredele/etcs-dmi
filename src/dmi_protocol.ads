@@ -82,7 +82,19 @@ package DMI_Protocol is
    -- DMI -> EVC
    MSG_DRIVER_ACTION : constant Msg_Type_T := 16#40#;
    --  action u8, arg u16
+   --  actions: 0 TAF yes, 1 speed toggle, 2 ack (arg Ack_Kind'Pos),
+   --  3 tunnel toggle, 4 geo toggle, 5 start mission, 6 override EOA,
+   --  7 shunting request, 8 exit shunting, 9 adhesion (arg 0/1),
+   --  10 train integrity confirmed, 11 level selected (arg Level_T'Pos),
+   --  12 non-leading
    Driver_Action_Length : constant := 3;
+
+   MSG_DRIVER_DATA : constant Msg_Type_T := 16#41#;
+   --  kind u8, then:
+   --   0 driver id  : len u8, Latin-1 bytes
+   --   1 TRN        : len u8, Latin-1 bytes
+   --   2 train data : length u16, brake percentage u16, max speed u16
+   --   3 SR data    : speed u16, distance u16
 
    -- DMI -> UI
    MSG_FRAME : constant Msg_Type_T := 16#60#;
