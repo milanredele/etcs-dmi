@@ -31,9 +31,16 @@ let dmiSocket = null;
 let evcSocket = null;
 let webSocket = null;
 
+const MSG_FRAME = 0x60;
+const MSG_SOUND = 0x61;
+
 function forward(from, frame) {
-	if (from !== 'dmi' && dmiSocket) dmiSocket.write(frame);
-	if (from !== 'evc' && evcSocket) evcSocket.write(frame);
+	const type = frame.readUInt8(0);
+	// screen frames and sounds are for the UI only; flooding the EVC
+	// with 300 kB frames would stall its receive path
+	const uiOnly = type === MSG_FRAME || type === MSG_SOUND;
+	if (from !== 'dmi' && !uiOnly && dmiSocket) dmiSocket.write(frame);
+	if (from !== 'evc' && !uiOnly && evcSocket) evcSocket.write(frame);
 	if (from !== 'web' && webSocket && webSocket.readyState === WebSocket.OPEN) {
 		webSocket.send(frame);
 	}

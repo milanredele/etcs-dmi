@@ -85,10 +85,29 @@ procedure EVC_Sim is
       end loop;
    end Receive_Available;
 
+   -- bytes of an oversized message still to be discarded
+   Skip_Remaining : Stream_Element_Offset := 0;
+
    procedure Process_Frames is
       Offset : Stream_Element_Offset;
    begin
       loop
+         -- discard the tail of a message that exceeded the buffer
+         if Skip_Remaining > 0 then
+            declare
+               Chunk : constant Stream_Element_Offset :=
+                 Stream_Element_Offset'Min (Skip_Remaining, Rx_Filled);
+            begin
+               if Rx_Filled > Chunk then
+                  Rx (Rx'First .. Rx_Filled - Chunk) :=
+                    Rx (Chunk + 1 .. Rx_Filled);
+               end if;
+               Rx_Filled := Rx_Filled - Chunk;
+               Skip_Remaining := Skip_Remaining - Chunk;
+            end;
+            exit when Skip_Remaining > 0; -- need more data to finish
+         end if;
+
          exit when Rx_Filled < Header_Length;
          Offset := Rx'First;
          declare
@@ -98,12 +117,20 @@ procedure EVC_Sim is
               Stream_Element_Offset (Get_U32 (Rx, Offset));
             Total    : constant Stream_Element_Offset := Header_Length + Length;
          begin
-            exit when Rx_Filled < Total;
-            Handle (The_Type, Rx (Rx'First + Header_Length .. Total));
-            if Rx_Filled > Total then
-               Rx (Rx'First .. Rx_Filled - Total) := Rx (Total + 1 .. Rx_Filled);
+            if Total > Rx'Length then
+               -- larger than the buffer can ever hold (e.g. a screen
+               -- frame): skip the whole message
+               Skip_Remaining := Total - Rx_Filled;
+               Rx_Filled := 0;
+            else
+               exit when Rx_Filled < Total;
+               Handle (The_Type, Rx (Rx'First + Header_Length .. Total));
+               if Rx_Filled > Total then
+                  Rx (Rx'First .. Rx_Filled - Total) :=
+                    Rx (Total + 1 .. Rx_Filled);
+               end if;
+               Rx_Filled := Rx_Filled - Total;
             end if;
-            Rx_Filled := Rx_Filled - Total;
          end;
       end loop;
    end Process_Frames;
