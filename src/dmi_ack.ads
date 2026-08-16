@@ -23,6 +23,9 @@ package DMI_Ack is
    procedure Request_Level_Ack
      (Level : Supplementary_Driving_Info.Level_T);
 
+   -- For kinds without payload (text messages, brake release)
+   procedure Request (Kind : Ack_Kind_T);
+
    -- Withdraw a pending or displayed request (the triggering condition
    -- disappeared on the EVC side)
    procedure Cancel (Kind : Ack_Kind_T);

@@ -9,6 +9,12 @@ package DMI_Buttons is
    type Button_ID_T is (BTN_TAF_Yes,       -- 8.2.3.3 "Yes" answer
                         BTN_Speed_Toggle,  -- 8.2.2.4 sensitive area A/B
                         BTN_Ack,           -- 5.4.1.4 acknowledgement area
+                        BTN_Msg_Up,        -- 8.2.3.4.7 f scroll up (E10)
+                        BTN_Msg_Down,      -- 8.2.3.4.7 f scroll down (E11)
+                        BTN_Tunnel_Toggle, -- 8.2.3.6.4 sensitive C2/C3/C4
+                        BTN_Geo_Toggle,    -- 8.4.4.4 sensitive G12
+                        BTN_Zoom_In,       -- 8.3.10.2 [Scale Up] (D9)
+                        BTN_Zoom_Out,      -- 8.3.10.3 [Scale Down] (D12)
                         BTN_F1,            -- 8.6.1 window selection
                         BTN_F2,
                         BTN_F3,

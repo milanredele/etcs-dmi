@@ -93,6 +93,96 @@ package body Test_Support is
       DMI_Core.Handle_Message (MSG_MODE_LEVEL, Payload);
    end Send_Mode_Level;
 
+   procedure Send_Status
+     (Brake        : Natural := 0;
+      Radio        : Natural := 0;
+      Adhesion     : Boolean := False;
+      BMM          : Boolean := False;
+      Reversing    : Boolean := False;
+      SM_Direction : Natural := 0;
+      Set_Speed    : Natural := 16#FFFF#;
+      TTI          : Natural := 16#FF#;
+      T_Disp_TTI   : Natural := 14;
+      Tunnel       : Natural := 0;
+      Tunnel_Dist  : Natural := 0;
+      Geo_Pos      : Natural := 16#7FFF_FFFF#;
+      Geo_Valid    : Boolean := False;
+      HH, MM, SS   : Natural := 0)
+   is
+      Payload : Stream_Element_Array (1 .. Status_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (Brake));
+      Put_U8 (Payload, Offset, Unsigned_8 (Radio));
+      Put_U8 (Payload, Offset, (if Adhesion then 1 else 0));
+      Put_U8 (Payload, Offset, (if BMM then 1 else 0));
+      Put_U8 (Payload, Offset, (if Reversing then 1 else 0));
+      Put_U8 (Payload, Offset, Unsigned_8 (SM_Direction));
+      Put_U16 (Payload, Offset, Unsigned_16 (Set_Speed));
+      Put_U8 (Payload, Offset, Unsigned_8 (TTI));
+      Put_U8 (Payload, Offset, Unsigned_8 (T_Disp_TTI));
+      Put_U8 (Payload, Offset, Unsigned_8 (Tunnel));
+      Put_U32 (Payload, Offset, Unsigned_32 (Tunnel_Dist));
+      Put_U32 (Payload, Offset,
+               (if Geo_Valid then Unsigned_32 (Geo_Pos)
+                else 16#FFFF_FFFF#));
+      Put_U8 (Payload, Offset, Unsigned_8 (HH));
+      Put_U8 (Payload, Offset, Unsigned_8 (MM));
+      Put_U8 (Payload, Offset, Unsigned_8 (SS));
+      DMI_Core.Handle_Message (MSG_STATUS, Payload);
+   end Send_Status;
+
+   procedure Send_Text (ID           : Natural;
+                        Text         : Wide_String;
+                        First_Group  : Boolean := False;
+                        Ack_Required : Boolean := False;
+                        Class        : Natural := 1;
+                        HH, MM       : Natural := 0)
+   is
+      Payload : Stream_Element_Array
+        (1 .. Text_Header_Length + Text'Length);
+      Offset : Stream_Element_Offset := Payload'First;
+      Flags  : Unsigned_8 := Unsigned_8 (Class) * 4;
+   begin
+      if Ack_Required then
+         Flags := Flags or 1;
+      end if;
+      if First_Group then
+         Flags := Flags or 2;
+      end if;
+      Put_U16 (Payload, Offset, Unsigned_16 (ID));
+      Put_U8 (Payload, Offset, Flags);
+      Put_U8 (Payload, Offset, Unsigned_8 (HH));
+      Put_U8 (Payload, Offset, Unsigned_8 (MM));
+      Put_U8 (Payload, Offset, Unsigned_8 (Text'Length));
+      for C of Text loop
+         Put_U8 (Payload, Offset,
+                 Unsigned_8 (Wide_Character'Pos (C) mod 256));
+      end loop;
+      DMI_Core.Handle_Message (MSG_TEXT, Payload);
+   end Send_Text;
+
+   procedure Send_Text_Remove (ID : Natural) is
+      Payload : Stream_Element_Array (1 .. Text_Remove_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U16 (Payload, Offset, Unsigned_16 (ID));
+      DMI_Core.Handle_Message (MSG_TEXT_REMOVE, Payload);
+   end Send_Text_Remove;
+
+   procedure Send_Track_Cond (Kinds : TC_Array) is
+      Payload : Stream_Element_Array
+        (1 .. 1 + Stream_Element_Offset (Kinds'Length) * 2);
+      Offset : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (Kinds'Length));
+      for I in Kinds'Range loop
+         Put_U8 (Payload, Offset, Unsigned_8 (I)); -- id
+         Put_U8 (Payload, Offset, Unsigned_8 (Kinds (I)));
+      end loop;
+      DMI_Core.Handle_Message (MSG_TRACK_COND, Payload);
+   end Send_Track_Cond;
+
    procedure Send_Pointer (Event : Natural; X, Y : Natural) is
       Payload : Stream_Element_Array (1 .. Pointer_Length);
       Offset  : Stream_Element_Offset := Payload'First;

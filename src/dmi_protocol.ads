@@ -38,6 +38,42 @@ package DMI_Protocol is
    --  override u8 (bool), taf u8 (bool), lssma u16 (16#FFFF# not shown)
    Mode_Level_Length : constant := 9;
 
+   MSG_TEXT : constant Msg_Type_T := 16#03#;
+   --  id u16, flags u8 (bit0 ack_required, bit1 first_group/bold,
+   --  bits2-3 class: 0 fixed text, 1 plain text, 2 system status, 3 NTC),
+   --  hour u8, minute u8, length u8, text bytes (Latin-1)
+   Text_Header_Length : constant := 6;
+
+   MSG_TEXT_REMOVE : constant Msg_Type_T := 16#04#;
+   --  id u16
+   Text_Remove_Length : constant := 2;
+
+   MSG_TRACK_COND : constant Msg_Type_T := 16#05#;
+   --  count u8, then per entry: id u8, kind u8
+   --  kind: 1..37 = TC symbol number, 38 = LX01 level crossing
+   Track_Cond_Entry_Length : constant := 2;
+
+   MSG_PLANNING : constant Msg_Type_T := 16#06#;
+   --  ma_dist u16 (m; end of MA / first zero-speed target),
+   --  indication_dist u16 (16#FFFF# none),
+   --  next_advice_dist u16 (16#FFFF# none),
+   --  ceiling_speed u16 (km/h at current front),
+   --  gradient count u8, per entry: start u16, value i8 (permille)
+   --  speed profile count u8, per entry: dist u16, speed u16
+   --  order count u8, per entry: symbol u8 (PL number), dist u16
+
+   MSG_STATUS : constant Msg_Type_T := 16#07#;
+   --  brake u8 (0 none, 1 shown, 2 shown + ack required),
+   --  radio u8 (0 no connection, 1 up, 2 lost/failed),
+   --  adhesion u8 (bool slippery), bmm u8 (bool), reversing u8 (bool),
+   --  sm_direction u8 (0 none, 1 forward, 2 backward),
+   --  set_speed u16 (16#FFFF# none),
+   --  tti u8 (seconds, 16#FF# none), t_disp_tti u8 (seconds),
+   --  tunnel u8 (0 unknown, 1 active, 2 announced), tunnel_dist u32,
+   --  geo_pos u32 (m, 16#FFFF_FFFF# unknown),
+   --  hour u8, minute u8, second u8
+   Status_Length : constant := 22;
+
    -- UI -> DMI
    MSG_POINTER : constant Msg_Type_T := 16#50#;
    --  event u8 (0 down, 1 up, 2 move), x u16, y u16

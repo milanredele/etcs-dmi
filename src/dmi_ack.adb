@@ -57,6 +57,12 @@ package body DMI_Ack is
       Select_Next;
    end Request_Level_Ack;
 
+   procedure Request (Kind : Ack_Kind_T) is
+   begin
+      Slots (Kind).Pending := True;
+      Select_Next;
+   end Request;
+
    procedure Cancel (Kind : Ack_Kind_T) is
    begin
       Slots (Kind).Pending := False;

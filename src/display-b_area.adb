@@ -16,6 +16,7 @@
 
 pragma Ada_2012;
 with Display.B_Area.Speed_Dial;
+with DMI_Status;
 with Supplementary_Driving_Info;
 with Symbol;
 
@@ -25,6 +26,71 @@ package body Display.B_Area is
    begin
       B_Buffer.Fill (General_Parameters.Background_Color);
    end Fill_Background;
+
+   procedure Draw_B345 is
+      -- DMI 8.2.3.5 / 8.2.3.8: track conditions and level crossing fill
+      -- B3/B4/B5 left to right; further objects wait for a free slot
+      use DMI_Status;
+
+      function Kind_Symbol (Kind : Natural) return Symbol.T is
+        (case Kind is
+            when 1  => Symbol.TC_01, when 2  => Symbol.TC_02,
+            when 3  => Symbol.TC_03, when 4  => Symbol.TC_04,
+            when 5  => Symbol.TC_05, when 6  => Symbol.TC_06,
+            when 7  => Symbol.TC_07, when 8  => Symbol.TC_08,
+            when 9  => Symbol.TC_09, when 10 => Symbol.TC_10,
+            when 11 => Symbol.TC_11, when 12 => Symbol.TC_12,
+            when 13 => Symbol.TC_13, when 14 => Symbol.TC_14,
+            when 15 => Symbol.TC_15, when 16 => Symbol.TC_16,
+            when 17 => Symbol.TC_17, when 18 => Symbol.TC_18,
+            when 19 => Symbol.TC_19, when 20 => Symbol.TC_20,
+            when 21 => Symbol.TC_21, when 22 => Symbol.TC_22,
+            when 23 => Symbol.TC_23, when 24 => Symbol.TC_24,
+            when 25 => Symbol.TC_25, when 26 => Symbol.TC_26,
+            when 27 => Symbol.TC_27, when 28 => Symbol.TC_28,
+            when 29 => Symbol.TC_29, when 30 => Symbol.TC_30,
+            when 31 => Symbol.TC_31, when 32 => Symbol.TC_32,
+            when 33 => Symbol.TC_33, when 34 => Symbol.TC_34,
+            when 35 => Symbol.TC_35, when 36 => Symbol.TC_36,
+            when 37 => Symbol.TC_37, when others => Symbol.LX_01);
+
+      Slots : constant array (1 .. 3) of Sub_ID_T := (B3, B4, B5);
+   begin
+      for I in 1 .. Natural'Min (TC_Count, 3) loop
+         declare
+            Slot : constant Area_T :=
+              Get_Sub_Area_With_Relative_Position (Slots (I));
+            Sym  : constant Symbol.T := Kind_Symbol (TC_List (I).Kind);
+         begin
+            B_Buffer.Draw_Symbol
+              (Sym,
+               Slot.Position + ((Slot.Width - Sym.Width) / 2,
+                                (Slot.Height - Sym.Height) / 2));
+         end;
+      end loop;
+   end Draw_B345;
+
+   procedure Draw_B8 is
+      -- DMI 8.2.3.10: Supervised Manoeuvre authorised direction
+      use all type DMI_Status.SM_Direction_T;
+      use type Supplementary_Driving_Info.Mode_T;
+      B8_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (B8);
+
+      procedure DS (Sym : Symbol.T) is
+      begin
+         B_Buffer.Draw_Symbol
+           (Sym, B8_Area.Position + ((B8_Area.Width - Sym.Width) / 2,
+                                     (B8_Area.Height - Sym.Height) / 2));
+      end DS;
+   begin
+      if Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_SM then
+         case DMI_Status.SM_Direction is
+            when Forward  => DS (Symbol.SM_01);
+            when Backward => DS (Symbol.SM_02);
+            when None     => null;
+         end case;
+      end if;
+   end Draw_B8;
 
    ----------
    -- Draw --
@@ -36,6 +102,8 @@ package body Display.B_Area is
 
       Draw_B7;
       Speed_Dial.Draw;
+      Draw_B345;
+      Draw_B8;
    end Draw;
 
    procedure Draw_B7 is

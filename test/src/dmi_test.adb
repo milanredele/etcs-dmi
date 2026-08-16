@@ -241,6 +241,152 @@ procedure DMI_Test is
       Check_Frame ("os_toggled_on");
    end Scenario_Speed_Toggle;
 
+   ---------------------------------------------------------------------
+   -- Status objects and text messages (8.2.2.3/.5, 8.2.3.5-.11, 8.4)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Status_Objects is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 80, V_Perm => 120, V_Target => 0,
+                        V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+
+      -- radio up, slippery rail, reversing, set speed, clock, track
+      -- conditions in B3/B4/B5 (pantograph announcement + neutral
+      -- section + LX), announced tunnel with distance
+      Send_Track_Cond ((2, 6, 38));
+      Send_Status (Radio => 1, Adhesion => True, Reversing => True,
+                   Set_Speed => 100,
+                   Tunnel => 2, Tunnel_Dist => 1234,
+                   Geo_Pos => 123456, Geo_Valid => True,
+                   HH => 17, MM => 33, SS => 25);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("status_base");
+
+      -- tunnel toggle on via C2-C4 press, geo toggle on via G12 press
+      Pointer_Down (100, 340); Pointer_Up (100, 340);
+      Pointer_Down (450, 440); Pointer_Up (450, 440);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("status_toggled");
+
+      -- brake intervention without ack, then release: Sinfo
+      Send_Status (Brake => 1, Radio => 1,
+                   HH => 17, MM => 33, SS => 25);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("brake_shown");
+      Send_Status (Brake => 0, Radio => 1,
+                   HH => 17, MM => 33, SS => 25);
+      Expect_Sound (DMI_Sounds.Sinfo, "brake release without ack plays Sinfo");
+
+      -- brake with ack: flashing frame + Sinfo, ack via extended area
+      Send_Status (Brake => 2, Radio => 1,
+                   HH => 17, MM => 33, SS => 25);
+      Step;
+      Expect_Sound (DMI_Sounds.Sinfo, "brake ack offer plays Sinfo");
+      Check_Frame ("brake_ack");
+      Pointer_Down (25, 330); -- C8, part of the extended sensitive area
+      Expect_Sound (DMI_Sounds.Click, "brake ack press clicks");
+      Pointer_Up (25, 330);
+      Step;
+      Check_Frame ("brake_acked");
+   end Scenario_Status_Objects;
+
+   procedure Scenario_TTI is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 100, V_Perm => 120, V_Target => 0,
+                        V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+      -- TTI appears (National Value requested): Sinfo, growing square
+      Send_Status (TTI => 10, T_Disp_TTI => 14);
+      Expect_Sound (DMI_Sounds.Sinfo, "TTI display plays Sinfo");
+      Step;
+      Check_Frame ("tti_10s");
+      Send_Status (TTI => 2, T_Disp_TTI => 14);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("tti_2s");
+   end Scenario_TTI;
+
+   procedure Scenario_SM_Direction is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 4, Level => 5); -- SM, L2
+      Send_Speed_State (V_Cur => 10, V_Perm => 30, V_Target => 0,
+                        V_Release => 0, V_Sbi => 40, V_Wsl => 35,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Send_Status (SM_Direction => 1);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("sm_forward");
+   end Scenario_SM_Direction;
+
+   procedure Scenario_Text_Messages is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+
+      -- second group message: silent
+      Send_Text (1, "Entering FS", HH => 10, MM => 5);
+      Expect_No_Sound ("second group message is silent");
+      -- first group message: Sinfo, displayed above the older one
+      Send_Text (2, "Balise read error", First_Group => True,
+                 Class => 2, HH => 10, MM => 6);
+      Expect_Sound (DMI_Sounds.Sinfo, "first group message plays Sinfo");
+      Step;
+      Check_Frame ("messages_two");
+
+      -- fill beyond five lines and scroll
+      Send_Text (3, "Communication error", First_Group => True,
+                 Class => 2, HH => 10, MM => 7);
+      Send_Text (4, "Trackside malfunction", First_Group => True,
+                 Class => 2, HH => 10, MM => 8);
+      Send_Text (5, "Runaway movement", First_Group => True,
+                 Class => 2, HH => 10, MM => 9);
+      Send_Text (6, "No track description", First_Group => True,
+                 Class => 2, HH => 10, MM => 10);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("messages_full");
+      Pointer_Down (610, 380); Pointer_Up (610, 380); -- E11 scroll down
+      Drain_Sounds;
+      Step;
+      Check_Frame ("messages_scrolled");
+
+      -- acknowledgeable trackside message: presented alone with frame
+      Send_Text (7, "Level crossing not protected", Ack_Required => True,
+                 Class => 0, HH => 10, MM => 11);
+      Step;
+      Expect_Sound (DMI_Sounds.Sinfo, "text ack offer plays Sinfo");
+      Check_Frame ("message_ack");
+      Pointer_Down (150, 400); -- inside E5-E9
+      Expect_Sound (DMI_Sounds.Click, "text ack press clicks");
+      Pointer_Up (150, 400);
+      Step;
+      Check_Frame ("message_acked");
+      Send_Text_Remove (7);
+      Send_Text_Remove (1);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("messages_removed");
+   end Scenario_Text_Messages;
+
    Status : Natural;
 begin
    Scenario_FS_CSM;
@@ -251,6 +397,10 @@ begin
    Scenario_Level_Announcement;
    Scenario_Windows;
    Scenario_Speed_Toggle;
+   Scenario_Status_Objects;
+   Scenario_TTI;
+   Scenario_SM_Direction;
+   Scenario_Text_Messages;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

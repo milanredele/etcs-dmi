@@ -14,6 +14,8 @@ with Display.Screen;
 with DMI_Ack;
 with DMI_Buttons;
 with DMI_Sounds;
+with DMI_Status;
+with DMI_Text_Messages;
 with DMI_Windows;
 with General_Parameters;
 with Speed_And_Distance;
@@ -26,6 +28,8 @@ package body DMI_Core is
 
    package SDI renames Supplementary_Driving_Info;
 
+   use type Display.Position_T;
+
    -- Combined area A + B: the touch sensitive surface of the speed
    -- information toggling function (8.2.2.4.2)
    function A_B_Area return Display.Area_T is
@@ -36,9 +40,14 @@ package body DMI_Core is
    end A_B_Area;
 
    -- Driver action identifiers (MSG_DRIVER_ACTION)
-   ACTION_TAF_YES      : constant Unsigned_8 := 0;
-   ACTION_SPEED_TOGGLE : constant Unsigned_8 := 1;
-   ACTION_ACK          : constant Unsigned_8 := 2; -- arg: Ack_Kind_T'Pos
+   ACTION_TAF_YES       : constant Unsigned_8 := 0;
+   ACTION_SPEED_TOGGLE  : constant Unsigned_8 := 1;
+   ACTION_ACK           : constant Unsigned_8 := 2; -- arg: Ack_Kind_T'Pos
+   ACTION_TUNNEL_TOGGLE : constant Unsigned_8 := 3;
+   ACTION_GEO_TOGGLE    : constant Unsigned_8 := 4;
+
+   -- Transition tracking for Sinfo rules
+   TTI_Was_Displayed : Boolean := False;
 
    procedure Queue_Driver_Action (Action : Unsigned_8;
                                   Arg    : Unsigned_16 := 0) is
@@ -81,14 +90,65 @@ package body DMI_Core is
       -- (they are offered on the default window; a pending ack while a
       -- window is open closes it per Table 48 -- simplified here by
       -- keeping the ack button active).
-      if DMI_Ack.Current_Valid
-        and then DMI_Ack.Current_Kind in Level_Transition | Mode_Change
-      then
-         DMI_Buttons.Set_Active (BTN_Ack,
-                                 Display.C_Area.C1_Absolute_Area,
-                                 DMI_Buttons.Up_Type);
+      if DMI_Ack.Current_Valid then
+         DMI_Buttons.Set_Active
+           (BTN_Ack,
+            (case DMI_Ack.Current_Kind is
+                when Level_Transition | Mode_Change =>
+                   Display.C_Area.C1_Absolute_Area,
+                when Brake_Release =>
+                   -- 8.2.2.3.5: extended over C8, C9 and E1
+                   Display.C_Area.Brake_Ack_Area,
+                when Fixed_Text | Plain_Text | System_Status | NTC_Text =>
+                   -- 8.2.3.4.8 b: the full E5-E9 block
+                   (Display.Get_Area (Display.E).Position + (54, 0), 234, 100)),
+            DMI_Buttons.Up_Type);
       else
          DMI_Buttons.Set_Inactive (BTN_Ack);
+      end if;
+
+      -- Text message scrolling (8.2.3.4.7 e/f); disabled buttons do not
+      -- react (5.3.2.7.5); scroll buttons are down-type with repeat
+      -- (5.3.2.7.2)
+      if not Window_Open
+        and then not DMI_Text_Messages.Ack_Pending
+        and then DMI_Text_Messages.Can_Scroll_Up
+      then
+         DMI_Buttons.Set_Active (BTN_Msg_Up,
+                                 Display.Get_Area (Display.E10),
+                                 DMI_Buttons.Down_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_Msg_Up);
+      end if;
+      if not Window_Open
+        and then not DMI_Text_Messages.Ack_Pending
+        and then DMI_Text_Messages.Can_Scroll_Down
+      then
+         DMI_Buttons.Set_Active (BTN_Msg_Down,
+                                 Display.Get_Area (Display.E11),
+                                 DMI_Buttons.Down_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_Msg_Down);
+      end if;
+
+      -- Tunnel stopping area toggle (8.2.3.6.4/.10)
+      if not Window_Open
+        and then DMI_Status."/=" (DMI_Status.Tunnel, DMI_Status.Unknown)
+      then
+         DMI_Buttons.Set_Active (BTN_Tunnel_Toggle,
+                                 Display.C_Area.Tunnel_Toggle_Area,
+                                 DMI_Buttons.Up_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_Tunnel_Toggle);
+      end if;
+
+      -- Geographical position toggle (8.4.4.4/.10)
+      if not Window_Open and then DMI_Status.Geo_Valid then
+         DMI_Buttons.Set_Active (BTN_Geo_Toggle,
+                                 Display.Get_Area (Display.G12),
+                                 DMI_Buttons.Up_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_Geo_Toggle);
       end if;
 
       -- DMI 8.6.1: window selection buttons, always enabled on the
@@ -127,7 +187,10 @@ package body DMI_Core is
    procedure Initialise is
    begin
       DMI_Ack.Reset;
+      DMI_Status.Reset;
+      DMI_Text_Messages.Reset;
       DMI_Windows.Close_All;
+      TTI_Was_Displayed := False;
       SDI.Mode := SDI.M_SB;
       SDI.Acknowledgment_Mode := (Valid => False);
       SDI.Override := False;
@@ -311,6 +374,168 @@ package body DMI_Core is
    -- Handle_Message --
    --------------------
 
+   procedure Apply_Text (Payload : Stream_Element_Array) is
+      Offset : Stream_Element_Offset := Payload'First;
+      ID     : constant Unsigned_16 := Get_U16 (Payload, Offset);
+      Flags  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Hour   : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Minute : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Length : constant Unsigned_8 := Get_U8 (Payload, Offset);
+
+      Class : constant DMI_Text_Messages.Class_T :=
+        (case Shift_Right (Flags, 2) and 3 is
+            when 0      => DMI_Text_Messages.Fixed_Text,
+            when 1      => DMI_Text_Messages.Plain_Text,
+            when 2      => DMI_Text_Messages.System_Status,
+            when others => DMI_Text_Messages.NTC_Text);
+
+      Text : Wide_String (1 .. Natural (Length));
+   begin
+      if Payload'Length /= Text_Header_Length + Natural (Length) then
+         return;
+      end if;
+      for I in Text'Range loop
+         Text (I) := Wide_Character'Val (Natural (Get_U8 (Payload, Offset)));
+      end loop;
+      DMI_Text_Messages.Put
+        (ID           => Natural (ID),
+         First_Group  => (Flags and 2) /= 0,
+         Ack_Required => (Flags and 1) /= 0,
+         Class        => Class,
+         Hour         => Natural (Hour),
+         Minute       => Natural (Minute),
+         Text         => Text);
+   end Apply_Text;
+
+   procedure Apply_Track_Cond (Payload : Stream_Element_Array) is
+      Offset : Stream_Element_Offset := Payload'First;
+      Count  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      List   : DMI_Status.TC_List_T;
+      Used   : Natural := 0;
+   begin
+      if Payload'Length /= 1 + Natural (Count) * Track_Cond_Entry_Length then
+         return;
+      end if;
+      for I in 1 .. Natural (Count) loop
+         declare
+            ID   : constant Unsigned_8 := Get_U8 (Payload, Offset);
+            Kind : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         begin
+            if Kind in 1 .. DMI_Status.LX_Kind
+              and then Used < List'Last
+            then
+               Used := Used + 1;
+               List (Used) := (ID => Natural (ID), Kind => Natural (Kind));
+            end if;
+         end;
+      end loop;
+      DMI_Status.Reconcile_Track_Conditions (List, Used);
+   end Apply_Track_Cond;
+
+   procedure Apply_Status (Payload : Stream_Element_Array) is
+      use DMI_Status;
+      Offset : Stream_Element_Offset := Payload'First;
+
+      Brake_Raw  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Radio_Raw  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Adhesion   : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      BMM        : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Reversing  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      SM_Dir     : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Set_Spd    : constant Unsigned_16 := Get_U16 (Payload, Offset);
+      TTI        : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      T_Disp     : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Tunnel_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Tun_Dist   : constant Unsigned_32 := Get_U32 (Payload, Offset);
+      Geo_Pos    : constant Unsigned_32 := Get_U32 (Payload, Offset);
+      Hour       : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Minute     : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Second     : constant Unsigned_8 := Get_U8 (Payload, Offset);
+
+      Old_Brake : constant Brake_T := Brake;
+      New_Brake : constant Brake_T :=
+        (case Brake_Raw is
+            when 0      => None,
+            when 1      => Shown,
+            when others => Shown_Ack_Required);
+      use type SDI.Mode_T;
+   begin
+      Brake := New_Brake;
+      if New_Brake /= Old_Brake then
+         case New_Brake is
+            when Shown_Ack_Required =>
+               -- 8.2.2.3.4 / 5.4: brake release acknowledgement
+               DMI_Ack.Request (DMI_Ack.Brake_Release);
+            when None =>
+               if Old_Brake = Shown_Ack_Required then
+                  DMI_Ack.Cancel (DMI_Ack.Brake_Release);
+               elsif Old_Brake = Shown then
+                  -- 8.2.2.3.6: released without driver acknowledgement
+                  DMI_Sounds.Play (DMI_Sounds.Sinfo);
+               end if;
+            when Shown =>
+               if Old_Brake = Shown_Ack_Required then
+                  DMI_Ack.Cancel (DMI_Ack.Brake_Release);
+               end if;
+         end case;
+      end if;
+
+      Radio :=
+        (case Radio_Raw is
+            when 1      => Connection_Up,
+            when 2      => Connection_Lost,
+            when others => No_Connection);
+      Slippery_Rail := Adhesion /= 0;
+      BMM_Inhibited := BMM /= 0;
+      Reversing_Permitted := Reversing /= 0;
+      SM_Direction :=
+        (case SM_Dir is
+            when 1      => Forward,
+            when 2      => Backward,
+            when others => None);
+
+      Set_Speed_Valid := Set_Spd /= 16#FFFF#;
+      Set_Speed := Natural (Unsigned_16'Min (Set_Spd, 400));
+
+      TTI_Valid := TTI /= 16#FF#;
+      TTI_Seconds := Natural (TTI);
+      if T_Disp > 0 then
+         T_Disp_TTI := Natural (T_Disp);
+      end if;
+
+      declare
+         Old_Tunnel : constant Tunnel_T := Tunnel;
+      begin
+         Tunnel :=
+           (case Tunnel_Raw is
+               when 1      => Active,
+               when 2      => Announced,
+               when others => Unknown);
+         -- 8.2.3.6.3: state is only meaningful while known
+         if Tunnel = Unknown and Old_Tunnel /= Unknown then
+            Tunnel_Toggled_On := False;
+         end if;
+      end;
+      Tunnel_Distance := Natural (Unsigned_32'Min (Tun_Dist, 99999));
+
+      Geo_Valid := Geo_Pos /= 16#FFFF_FFFF#;
+      if Geo_Valid then
+         Geo_Position_M := Natural (Unsigned_32'Min (Geo_Pos, 999_999_999));
+      end if;
+
+      Time_H := Natural (Hour) mod 24;
+      Time_M := Natural (Minute) mod 60;
+      Time_S := Natural (Second) mod 60;
+
+      -- 8.2.2.5.7: Sinfo when the TTI appears, unless in AD
+      if DMI_Status.TTI_Displayed and not TTI_Was_Displayed then
+         if SDI.Mode /= SDI.M_AD then
+            DMI_Sounds.Play (DMI_Sounds.Sinfo);
+         end if;
+      end if;
+      TTI_Was_Displayed := DMI_Status.TTI_Displayed;
+   end Apply_Status;
+
    procedure Apply_Pointer (Payload : Stream_Element_Array) is
       Offset : Stream_Element_Offset := Payload'First;
       Event  : constant Unsigned_8 := Get_U8 (Payload, Offset);
@@ -337,6 +562,26 @@ package body DMI_Core is
          when MSG_MODE_LEVEL =>
             if Payload'Length = Mode_Level_Length then
                Apply_Mode_Level (Payload);
+            end if;
+         when MSG_TEXT =>
+            if Payload'Length >= Text_Header_Length then
+               Apply_Text (Payload);
+            end if;
+         when MSG_TEXT_REMOVE =>
+            if Payload'Length = Text_Remove_Length then
+               declare
+                  Offset : Stream_Element_Offset := Payload'First;
+               begin
+                  DMI_Text_Messages.Remove (Natural (Get_U16 (Payload, Offset)));
+               end;
+            end if;
+         when MSG_TRACK_COND =>
+            if Payload'Length >= 1 then
+               Apply_Track_Cond (Payload);
+            end if;
+         when MSG_STATUS =>
+            if Payload'Length = Status_Length then
+               Apply_Status (Payload);
             end if;
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
@@ -380,8 +625,36 @@ package body DMI_Core is
                     (ACTION_ACK,
                      Unsigned_16
                        (DMI_Ack.Ack_Kind_T'Pos (DMI_Ack.Current_Kind)));
+                  if DMI_Ack.Current_Kind in
+                    DMI_Ack.Fixed_Text | DMI_Ack.Plain_Text
+                    | DMI_Ack.System_Status | DMI_Ack.NTC_Text
+                  then
+                     DMI_Text_Messages.Acknowledge;
+                  end if;
                   DMI_Ack.Acknowledge_Current;
                end if;
+
+            when BTN_Msg_Up =>
+               DMI_Text_Messages.Scroll_Up;
+
+            when BTN_Msg_Down =>
+               DMI_Text_Messages.Scroll_Down;
+
+            when BTN_Tunnel_Toggle =>
+               DMI_Status.Tunnel_Toggled_On :=
+                 not DMI_Status.Tunnel_Toggled_On;
+               Queue_Driver_Action
+                 (ACTION_TUNNEL_TOGGLE,
+                  (if DMI_Status.Tunnel_Toggled_On then 1 else 0));
+
+            when BTN_Geo_Toggle =>
+               DMI_Status.Geo_Toggled_On := not DMI_Status.Geo_Toggled_On;
+               Queue_Driver_Action
+                 (ACTION_GEO_TOGGLE,
+                  (if DMI_Status.Geo_Toggled_On then 1 else 0));
+
+            when BTN_Zoom_In | BTN_Zoom_Out =>
+               null; -- planning area zoom follows with the planning area
 
             when BTN_F1 => DMI_Windows.Open (DMI_Windows.W_Main);
             when BTN_F2 => DMI_Windows.Open (DMI_Windows.W_Override);

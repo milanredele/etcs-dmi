@@ -15,6 +15,7 @@
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 with DMI_Ack;
+with DMI_Status;
 with General_Parameters;
 with Supplementary_Driving_Info;
 with Symbol;
@@ -25,14 +26,112 @@ package body Display.C_Area is
      ((The_Area.Position + The_C1_Area.Position,
        The_C1_Area.Width, The_C1_Area.Height));
 
+   function Tunnel_Toggle_Area return Area_T is
+     ((The_Area.Position + The_C2_C4_Area.Position,
+       The_C2_C4_Area.Width, The_C2_C4_Area.Height));
+
+   function Brake_Ack_Area return Area_T is
+     -- C8 (top), C9 and E1 (below C9, in area E) form one 54 wide column
+     ((The_Area.Position + The_C8_Area.Position,
+       The_C8_Area.Width,
+       The_C8_Area.Height + The_C9_Area.Height + 25));
+
    procedure Draw is
    begin
       C_Buffer.Fill (General_Parameters.Background_Color);
 
       Draw_C1;
+      Draw_C2_C4;
+      Draw_C6;
       Draw_C7;
       Draw_C8;
+      Draw_C9;
    end Draw;
+
+   procedure Draw_C2_C4 is
+      use DMI_Status;
+      Symbol_Position : constant Position_T := The_C2_Area.Position + (2, 9);
+   begin
+      -- DMI 8.2.3.6: tunnel stopping area
+      if Tunnel = Unknown then
+         return;
+      end if;
+      if not Tunnel_Toggled_On then
+         -- 8.2.3.6.5: DR05 when toggled off
+         C_Buffer.Draw_Symbol
+           (Symbol.DR_05,
+            The_C2_C4_Area.Position
+              + ((The_C2_C4_Area.Width - Symbol.DR_05.Width) / 2,
+                 (The_C2_C4_Area.Height - Symbol.DR_05.Height) / 2));
+      else
+         -- 8.2.3.6.7: TC36 active / TC37 announced, in C2
+         case Tunnel is
+            when Active =>
+               C_Buffer.Draw_Symbol (Symbol.TC_36, Symbol_Position);
+            when Announced =>
+               C_Buffer.Draw_Symbol (Symbol.TC_37, Symbol_Position);
+               -- 8.2.3.6.8/.9: remaining distance in C3/C4, grey, right
+               -- aligned with a 10 cell indent, vertically centred
+               declare
+                  Image : constant Wide_String :=
+                    Natural'Wide_Image (Natural'Min (Tunnel_Distance, 99999));
+               begin
+                  C_Buffer.Draw_String
+                    (Pen_X => The_C2_C4_Area.Position.X
+                              + The_C2_C4_Area.Width - 10,
+                     Pen_Y => The_C2_C4_Area.Position.Y + 31,
+                     The_String => Image (2 .. Image'Last),
+                     The_Size => 12,
+                     The_Color => General_Parameters.GREY,
+                     The_Alignment => C_Buffer.Right);
+               end;
+            when Unknown =>
+               null;
+         end case;
+      end if;
+   end Draw_C2_C4;
+
+   procedure Draw_C6 is
+      Position : constant Position_T := The_C6_Area.Position + (2, 9);
+   begin
+      -- DMI 8.4.2 reversing permitted (ST06) and 8.2.3.11 BMM reaction
+      -- inhibition (ST07) share C6; reversing takes precedence
+      if DMI_Status.Reversing_Permitted then
+         C_Buffer.Draw_Symbol (Symbol.ST_06, Position);
+      elsif DMI_Status.BMM_Inhibited then
+         -- ST07 has no bitmap in the SRS symbol package: draw a stand-in
+         -- 32x32 framed "BMM" glyph in grey
+         declare
+            Box : constant Area_T := (Position, 32, 32);
+         begin
+            C_Buffer.Draw_Input_Field_Frame (Box);
+            C_Buffer.Draw_String
+              (Pen_X => Position.X + 16,
+               Pen_Y => Position.Y + 21,
+               The_String => "BMM",
+               The_Size => 10,
+               The_Color => General_Parameters.GREY,
+               The_Alignment => C_Buffer.Center);
+         end;
+      end if;
+   end Draw_C6;
+
+   procedure Draw_C9 is
+      use type DMI_Status.Brake_T;
+      use all type DMI_Ack.Ack_Kind_T;
+   begin
+      -- DMI 8.2.2.3: ST01 while ETCS commands the brakes
+      if DMI_Status.Brake /= DMI_Status.None then
+         C_Buffer.Draw_Symbol (Symbol.ST_01, The_C9_Area.Position + (1, 2));
+         -- 5.4.1.5: flashing frame on C9 only (8.2.2.3.5) while the
+         -- brake release acknowledgement is offered
+         if DMI_Ack.Current_Valid
+           and then DMI_Ack.Current_Kind = Brake_Release
+         then
+            C_Buffer.Draw_Yellow_Frame (The_C9_Area, General_Parameters.Flash_On);
+         end if;
+      end if;
+   end Draw_C9;
 
    procedure Draw_C1 is
       Position       : constant Position_T := The_C1_Area.Position + (13, 9);

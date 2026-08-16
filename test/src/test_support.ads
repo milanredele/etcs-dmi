@@ -30,6 +30,35 @@ package Test_Support is
       TAF           : Boolean := False;
       LSSMA         : Natural := 16#FFFF#);
 
+   procedure Send_Status
+     (Brake        : Natural := 0;   -- 0 none / 1 shown / 2 ack required
+      Radio        : Natural := 0;   -- 0 none / 1 up / 2 lost
+      Adhesion     : Boolean := False;
+      BMM          : Boolean := False;
+      Reversing    : Boolean := False;
+      SM_Direction : Natural := 0;   -- 0 none / 1 fwd / 2 bwd
+      Set_Speed    : Natural := 16#FFFF#;
+      TTI          : Natural := 16#FF#;
+      T_Disp_TTI   : Natural := 14;
+      Tunnel       : Natural := 0;   -- 0 unknown / 1 active / 2 announced
+      Tunnel_Dist  : Natural := 0;
+      Geo_Pos      : Natural := 16#7FFF_FFFF#; -- metres; huge = unknown
+      Geo_Valid    : Boolean := False;
+      HH, MM, SS   : Natural := 0);
+
+   procedure Send_Text (ID           : Natural;
+                        Text         : Wide_String;
+                        First_Group  : Boolean := False;
+                        Ack_Required : Boolean := False;
+                        Class        : Natural := 1; -- 0 fixed/1 plain/2 sys/3 NTC
+                        HH, MM       : Natural := 0);
+
+   procedure Send_Text_Remove (ID : Natural);
+
+   -- Kinds: 1..37 TC symbol number, 38 LX
+   type TC_Array is array (Positive range <>) of Natural;
+   procedure Send_Track_Cond (Kinds : TC_Array);
+
    procedure Pointer_Down (X, Y : Natural);
    procedure Pointer_Up (X, Y : Natural);
 

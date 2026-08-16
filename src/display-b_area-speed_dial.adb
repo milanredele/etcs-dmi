@@ -17,6 +17,7 @@
 pragma Ada_2012;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Display;
+with DMI_Status;
 with Font;
 with Font.FreeSans_18;
 with Supplementary_Driving_Info;
@@ -194,6 +195,27 @@ package body Display.B_Area.Speed_Dial is
    -- Draw --
    ----------
 
+   procedure Draw_Set_Speed is
+      -- DMI 8.2.3.9: white circle, 10 cell diameter, centre on the
+      -- radius 111 circle at the Set Speed value, covering the dial
+      Value  : constant Speed_T :=
+        Speed_T (Natural'Min (DMI_Status.Set_Speed, 400));
+      A      : constant Angle := Speed_To_Angle (Value);
+      Center : constant Position_T :=
+        (The_Center.X + Integer (Float'Rounding (111.0 * Sin (Float (A)))),
+         The_Center.Y - Integer (Float'Rounding (111.0 * Cos (Float (A)))));
+      Radius : constant := 5;
+   begin
+      for Y in -Radius .. Radius loop
+         for X in -Radius .. Radius loop
+            if X * X + Y * Y <= Radius * Radius then
+               B_Buffer.Set_Pixel (Center.X + X, Center.Y + Y,
+                                   General_Parameters.WHITE);
+            end if;
+         end loop;
+      end loop;
+   end Draw_Set_Speed;
+
    procedure Draw is
    begin
       Draw_Speed_Indicator_Lines;
@@ -202,6 +224,9 @@ package body Display.B_Area.Speed_Dial is
       Circular_Speed_Gauge.Draw;
       Circular_Speed_Gauge.Draw_Hooks;
       Draw_Release_Speed_Digital;
+      if DMI_Status.Set_Speed_Valid then
+         Draw_Set_Speed;
+      end if;
    end Draw;
 
    package body Circular_Speed_Gauge is
