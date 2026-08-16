@@ -46,6 +46,9 @@ package Display is
          X : Width_T;
          Y : Height_T;
       end record;
+
+   function "+" (Left, Right : Position_T) return Position_T is
+     (Left.X + Right.X, Left.Y + Right.Y);
    
    type Area_T is
       record
@@ -90,9 +93,5 @@ private
          E1 .. E11 => E,
          F1 .. F9  => F,
          G1 .. G13 => G);
-   
-   function "+" (Left, Right : Position_T) return Position_T is
-     (Left.X + Right.X, Left.Y + Right.Y);
-   
-   
+
 end Display;

@@ -7,7 +7,27 @@ with Display;
 package DMI_Buttons is
 
    type Button_ID_T is (BTN_TAF_Yes,       -- 8.2.3.3 "Yes" answer
-                        BTN_Speed_Toggle); -- 8.2.2.4 sensitive area A/B
+                        BTN_Speed_Toggle,  -- 8.2.2.4 sensitive area A/B
+                        BTN_Ack,           -- 5.4.1.4 acknowledgement area
+                        BTN_F1,            -- 8.6.1 window selection
+                        BTN_F2,
+                        BTN_F3,
+                        BTN_F4,
+                        BTN_F5,
+                        BTN_Window_Close,  -- 5.3.2.7 [Close]
+                        BTN_Menu_1,        -- 10.2.1 menu window buttons
+                        BTN_Menu_2,
+                        BTN_Menu_3,
+                        BTN_Menu_4,
+                        BTN_Menu_5,
+                        BTN_Menu_6,
+                        BTN_Menu_7,
+                        BTN_Menu_8,
+                        BTN_Menu_9,
+                        BTN_Menu_10);
+
+   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_10;
+   subtype F_Button_T is Button_ID_T range BTN_F1 .. BTN_F5;
 
    type Kind_T is (Up_Type, Down_Type, Delay_Type); -- DMI 5.3.2.6
 

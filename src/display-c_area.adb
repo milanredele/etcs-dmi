@@ -14,71 +14,82 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+with DMI_Ack;
 with General_Parameters;
 with Supplementary_Driving_Info;
 with Symbol;
 
 package body Display.C_Area is
 
+   function C1_Absolute_Area return Area_T is
+     ((The_Area.Position + The_C1_Area.Position,
+       The_C1_Area.Width, The_C1_Area.Height));
+
    procedure Draw is
    begin
       C_Buffer.Fill (General_Parameters.Background_Color);
-      
+
       Draw_C1;
       Draw_C7;
       Draw_C8;
    end Draw;
-   
+
    procedure Draw_C1 is
       Position       : constant Position_T := The_C1_Area.Position + (13, 9);
       Position_MO_10 : constant Position_T := The_C1_Area.Position + (6, 2);
       Position_Level : constant Position_T := The_C1_Area.Position + (2, 14);
-      
+
       procedure DS (The_Symbol : Symbol.T; The_Position : Position_T := Position) renames C_Buffer.Draw_Symbol;
       use Supplementary_Driving_Info;
+      use all type DMI_Ack.Ack_Kind_T;
+
+      Ack_In_C1 : constant Boolean :=
+        DMI_Ack.Current_Valid
+        and then DMI_Ack.Current_Kind in Level_Transition | Mode_Change;
    begin
-      if Acknowledgment_Mode.Valid then
-         -- DMI 5.1.1.3.2
+      if Ack_In_C1 then
+         -- DMI 5.4.1.5 / 5.1.1.3.2: flashing yellow frame with the object
          C_Buffer.Draw_Yellow_Frame (The_C1_Area, General_Parameters.Flash_On);
-         
-         case Acknowledgment_Mode.Mode is
-         when M_LS => DS (Symbol.MO_22);
-         when M_OS => DS (Symbol.MO_08);
-         when M_SR => DS (Symbol.MO_10, Position_MO_10);
-         when M_SH => DS (Symbol.MO_02);
-         when M_UN => DS (Symbol.MO_17);
-         when M_TR => DS (Symbol.MO_05);
-         when M_RV => DS (Symbol.MO_15);
-         when M_SN => DS (Symbol.MO_20);
+
+         case DMI_Ack.Current_Kind is
+            when Mode_Change =>
+               case DMI_Ack.Current_Mode is
+                  when M_LS => DS (Symbol.MO_22);
+                  when M_OS => DS (Symbol.MO_08);
+                  when M_SR => DS (Symbol.MO_10, Position_MO_10);
+                  when M_SH => DS (Symbol.MO_02);
+                  when M_UN => DS (Symbol.MO_17);
+                  when M_TR => DS (Symbol.MO_05);
+                  when M_RV => DS (Symbol.MO_15);
+                  when M_SN => DS (Symbol.MO_20);
+               end case;
+            when Level_Transition =>
+               -- DMI 8.2.3.2.8 (v4.0.0: ack symbols only for L0 and NTC)
+               case DMI_Ack.Current_Level is
+                  when L0 =>  DS (Symbol.LE_07, Position_Level);
+                  when NTC => DS (Symbol.LE_09, Position_Level);
+                  when others =>
+                     null;
+               end case;
+            when others =>
+               null;
          end case;
-      elsif Level_Announcement.Valid then
-         -- DMI 8.2.3.2.6
-         if Level_Announcement.Ack_Required
-           and then Level_Announcement.Level in L0 | NTC
-         then
-            C_Buffer.Draw_Yellow_Frame (The_C1_Area, General_Parameters.Flash_On);
-            -- DMI 8.2.3.2.8 (v4.0.0: ack symbols exist only for L0 and NTC)
-            case Level_Announcement.Level is
-               when L0 =>  DS (Symbol.LE_07, Position_Level);
-               when NTC => DS (Symbol.LE_09, Position_Level);
-               when others =>
-                  null;
-            end case;
-         else
-            C_Buffer.Draw_Frame (The_C1_Area);
-            -- DMI 8.2.3.2.7
-            case Level_Announcement.Level is
-               when L0 =>  DS (Symbol.LE_06, Position_Level);
-               when NTC => DS (Symbol.LE_08, Position_Level);
-               when L1 =>  DS (Symbol.LE_10, Position_Level);
-               when L2 =>  DS (Symbol.LE_12, Position_Level);
-               when others =>
-                  null;
-            end case;
-         end if;
+      elsif Level_Announcement.Valid
+        and then not Level_Announcement.Ack_Required
+      then
+         -- DMI 8.2.3.2.6/.7: plain announcement, no acknowledgement
+         C_Buffer.Draw_Frame (The_C1_Area);
+         case Level_Announcement.Level is
+            when L0 =>  DS (Symbol.LE_06, Position_Level);
+            when NTC => DS (Symbol.LE_08, Position_Level);
+            when L1 =>  DS (Symbol.LE_10, Position_Level);
+            when L2 =>  DS (Symbol.LE_12, Position_Level);
+            when others =>
+               null;
+         end case;
       else
          C_Buffer.Draw_Frame (The_C1_Area);
-      end if;     
+      end if;
    end Draw_C1;
    
    procedure Draw_C7 is

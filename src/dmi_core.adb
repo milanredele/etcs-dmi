@@ -7,8 +7,15 @@ with Display.A_Area;
 with Display.B_Area;
 with Display.C_Area;
 with Display.D_Area;
+with Display.E_Area;
+with Display.F_Area;
+with Display.G_Area;
+with Display.Screen;
+with DMI_Ack;
 with DMI_Buttons;
 with DMI_Sounds;
+with DMI_Windows;
+with General_Parameters;
 with Speed_And_Distance;
 with Supplementary_Driving_Info;
 with Track_Ahead_Free;
@@ -31,6 +38,7 @@ package body DMI_Core is
    -- Driver action identifiers (MSG_DRIVER_ACTION)
    ACTION_TAF_YES      : constant Unsigned_8 := 0;
    ACTION_SPEED_TOGGLE : constant Unsigned_8 := 1;
+   ACTION_ACK          : constant Unsigned_8 := 2; -- arg: Ack_Kind_T'Pos
 
    procedure Queue_Driver_Action (Action : Unsigned_8;
                                   Arg    : Unsigned_16 := 0) is
@@ -42,25 +50,70 @@ package body DMI_Core is
       Queue_Message (MSG_DRIVER_ACTION, Payload);
    end Queue_Driver_Action;
 
-   -- Keep the button registry in sync with the displayed state
+   -- Keep the button registry in sync with the displayed state.
+   -- DMI 5.3.1.1.5: while a sub-level window is open, only that window
+   -- responds to driver input.
    procedure Update_Buttons is
       use type SDI.Mode_T;
+      use all type DMI_Buttons.Button_ID_T;
+      use all type DMI_Ack.Ack_Kind_T;
+
+      Window_Open : constant Boolean := DMI_Windows.Is_Open;
    begin
-      if Track_Ahead_Free.Show then
-         DMI_Buttons.Set_Active (DMI_Buttons.BTN_TAF_Yes,
+      if not Window_Open and then Track_Ahead_Free.Show then
+         DMI_Buttons.Set_Active (BTN_TAF_Yes,
                                  Display.D_Area.TAF_Answer_Area,
                                  DMI_Buttons.Up_Type);
       else
-         DMI_Buttons.Set_Inactive (DMI_Buttons.BTN_TAF_Yes);
+         DMI_Buttons.Set_Inactive (BTN_TAF_Yes);
       end if;
 
       -- DMI 8.2.2.4.2/.4: A/B sensitive only in the Table 15 modes
-      if SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH then
-         DMI_Buttons.Set_Active (DMI_Buttons.BTN_Speed_Toggle,
-                                 A_B_Area,
+      if not Window_Open and then SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH then
+         DMI_Buttons.Set_Active (BTN_Speed_Toggle, A_B_Area,
                                  DMI_Buttons.Up_Type);
       else
-         DMI_Buttons.Set_Inactive (DMI_Buttons.BTN_Speed_Toggle);
+         DMI_Buttons.Set_Inactive (BTN_Speed_Toggle);
+      end if;
+
+      -- DMI 5.4.1.4: the area displaying the acknowledgement becomes the
+      -- ack button. Acknowledgements stay available with a window open
+      -- (they are offered on the default window; a pending ack while a
+      -- window is open closes it per Table 48 -- simplified here by
+      -- keeping the ack button active).
+      if DMI_Ack.Current_Valid
+        and then DMI_Ack.Current_Kind in Level_Transition | Mode_Change
+      then
+         DMI_Buttons.Set_Active (BTN_Ack,
+                                 Display.C_Area.C1_Absolute_Area,
+                                 DMI_Buttons.Up_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_Ack);
+      end if;
+
+      -- DMI 8.6.1: window selection buttons, always enabled on the
+      -- default window
+      if not Window_Open then
+         for B in DMI_Buttons.F_Button_T loop
+            DMI_Buttons.Set_Active
+              (B,
+               Display.Get_Area
+                 (case B is
+                     when BTN_F1 => Display.F1,
+                     when BTN_F2 => Display.F2,
+                     when BTN_F3 => Display.F3,
+                     when BTN_F4 => Display.F4,
+                     when others => Display.F5),
+               DMI_Buttons.Up_Type);
+         end loop;
+         DMI_Buttons.Set_Inactive (BTN_Window_Close);
+      else
+         for B in DMI_Buttons.F_Button_T loop
+            DMI_Buttons.Set_Inactive (B);
+         end loop;
+         DMI_Buttons.Set_Active (BTN_Window_Close,
+                                 DMI_Windows.Close_Button_Area,
+                                 DMI_Buttons.Up_Type);
       end if;
    end Update_Buttons;
 
@@ -73,6 +126,8 @@ package body DMI_Core is
 
    procedure Initialise is
    begin
+      DMI_Ack.Reset;
+      DMI_Windows.Close_All;
       SDI.Mode := SDI.M_SB;
       SDI.Acknowledgment_Mode := (Valid => False);
       SDI.Override := False;
@@ -185,22 +240,57 @@ package body DMI_Core is
          SDI.Level := SDI.Level_T'Val (Level_Raw);
       end if;
 
+      -- Mode acknowledgement request (edge into the ack service)
       if Mode_Ack /= 16#FF#
         and then Valid_Mode (Mode_Ack)
         and then SDI.Mode_T'Val (Mode_Ack) in SDI.Acknowledgment_Mode_T
       then
+         if not SDI.Acknowledgment_Mode.Valid
+           or else SDI.Acknowledgment_Mode.Mode /= SDI.Mode_T'Val (Mode_Ack)
+         then
+            DMI_Ack.Request_Mode_Ack (SDI.Mode_T'Val (Mode_Ack));
+         end if;
          SDI.Acknowledgment_Mode :=
            (Valid => True, Mode => SDI.Mode_T'Val (Mode_Ack));
       else
+         if SDI.Acknowledgment_Mode.Valid then
+            DMI_Ack.Cancel (DMI_Ack.Mode_Change);
+         end if;
          SDI.Acknowledgment_Mode := (Valid => False);
       end if;
 
+      -- Level announcement; with acknowledgement it goes through the ack
+      -- service (only L0 and NTC have ack symbols in v4.0.0)
       if Level_Ann /= 16#FF# and then Valid_Level (Level_Ann) then
-         SDI.Level_Announcement :=
-           (Valid        => True,
-            Level        => SDI.Level_T'Val (Level_Ann),
-            Ack_Required => Level_Ann_Ack /= 0);
+         declare
+            New_Level : constant SDI.Level_T := SDI.Level_T'Val (Level_Ann);
+            With_Ack  : constant Boolean :=
+              Level_Ann_Ack /= 0 and then New_Level in SDI.L0 | SDI.NTC;
+            use type SDI.Level_T;
+         begin
+            if With_Ack
+              and then not (SDI.Level_Announcement.Valid
+                            and then SDI.Level_Announcement.Ack_Required
+                            and then SDI.Level_Announcement.Level = New_Level)
+            then
+               DMI_Ack.Request_Level_Ack (New_Level);
+            elsif not With_Ack
+              and then SDI.Level_Announcement.Valid
+              and then SDI.Level_Announcement.Ack_Required
+            then
+               DMI_Ack.Cancel (DMI_Ack.Level_Transition);
+            end if;
+            SDI.Level_Announcement :=
+              (Valid        => True,
+               Level        => New_Level,
+               Ack_Required => With_Ack);
+         end;
       else
+         if SDI.Level_Announcement.Valid
+           and then SDI.Level_Announcement.Ack_Required
+         then
+            DMI_Ack.Cancel (DMI_Ack.Level_Transition);
+         end if;
          SDI.Level_Announcement := (Valid => False);
       end if;
 
@@ -265,6 +355,7 @@ package body DMI_Core is
       ID : DMI_Buttons.Button_ID_T;
       use all type DMI_Buttons.Button_ID_T;
    begin
+      DMI_Ack.Tick (Dt_Ms);
       Update_Buttons;
       DMI_Buttons.Tick (Dt_Ms);
       while DMI_Buttons.Pop_Activation (ID) loop
@@ -273,6 +364,7 @@ package body DMI_Core is
                -- 8.2.3.3: the driver confirms the track ahead is free;
                -- the EVC decides when the question disappears
                Queue_Driver_Action (ACTION_TAF_YES);
+
             when BTN_Speed_Toggle =>
                -- 8.2.2.4: toggle all concerned objects for this mode
                User_Settings.Speed_Info_Visible :=
@@ -280,6 +372,27 @@ package body DMI_Core is
                Queue_Driver_Action
                  (ACTION_SPEED_TOGGLE,
                   (if User_Settings.Speed_Info_Visible then 1 else 0));
+
+            when BTN_Ack =>
+               if DMI_Ack.Current_Valid then
+                  Queue_Driver_Action
+                    (ACTION_ACK,
+                     Unsigned_16
+                       (DMI_Ack.Ack_Kind_T'Pos (DMI_Ack.Current_Kind)));
+                  DMI_Ack.Acknowledge_Current;
+               end if;
+
+            when BTN_F1 => DMI_Windows.Open (DMI_Windows.W_Main);
+            when BTN_F2 => DMI_Windows.Open (DMI_Windows.W_Override);
+            when BTN_F3 => DMI_Windows.Open (DMI_Windows.W_Data_View);
+            when BTN_F4 => DMI_Windows.Open (DMI_Windows.W_Special);
+            when BTN_F5 => DMI_Windows.Open (DMI_Windows.W_Settings);
+
+            when BTN_Window_Close =>
+               DMI_Windows.Close_Top;
+
+            when DMI_Buttons.Menu_Button_T =>
+               null; -- menu window content follows in a later phase
          end case;
       end loop;
    end Tick;
@@ -290,10 +403,22 @@ package body DMI_Core is
 
    procedure Render is
    begin
+      -- planning area Y/Z strips stay background (touch screen layout)
+      Display.Screen.Fill_Area (Display.Get_Area (Display.Y),
+                                General_Parameters.Background_Color);
+      Display.Screen.Fill_Area (Display.Get_Area (Display.Z),
+                                General_Parameters.Background_Color);
+
       Display.B_Area.Draw;
       Display.A_Area.Draw;
       Display.C_Area.Draw;
       Display.D_Area.Draw;
+      Display.E_Area.Draw;
+      Display.F_Area.Draw;
+      Display.G_Area.Draw;
+
+      -- sub-level windows draw over the D/F/G area (5.3.1.1.5)
+      DMI_Windows.Render;
    end Render;
 
    -------------------

@@ -19,9 +19,13 @@ with Display.Frame_Buffer;
 package Display.C_Area is
 
    package C_Buffer is new Display.Frame_Buffer (C);
-   
+
    procedure Draw;
-   
+
+   -- Absolute area of C1; per 5.4.1.4 it is the acknowledgement button
+   -- while a mode/level acknowledgement is displayed there
+   function C1_Absolute_Area return Area_T;
+
 private
    
    The_Area    : constant Area_T := Get_Area (C);
