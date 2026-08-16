@@ -13,6 +13,7 @@ with Display.G_Area;
 with Display.Screen;
 with DMI_Ack;
 with DMI_Buttons;
+with DMI_Planning;
 with DMI_Sounds;
 with DMI_Status;
 with DMI_Text_Messages;
@@ -142,6 +143,29 @@ package body DMI_Core is
          DMI_Buttons.Set_Inactive (BTN_Tunnel_Toggle);
       end if;
 
+      -- Planning area zoom (8.3.10): sensitive areas 40x30, D9 extended
+      -- upwards and D12 downwards; disabled at the range ends (5.3.2.7.5)
+      if not Window_Open and then DMI_Planning.Displayed
+        and then DMI_Planning.Can_Zoom_In
+      then
+         DMI_Buttons.Set_Active
+           (BTN_Zoom_In,
+            (Display.Get_Area (Display.D9).Position + (0, 0), 40, 30),
+            DMI_Buttons.Up_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_Zoom_In);
+      end if;
+      if not Window_Open and then DMI_Planning.Displayed
+        and then DMI_Planning.Can_Zoom_Out
+      then
+         DMI_Buttons.Set_Active
+           (BTN_Zoom_Out,
+            (Display.Get_Area (Display.D12).Position, 40, 30),
+            DMI_Buttons.Up_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_Zoom_Out);
+      end if;
+
       -- Geographical position toggle (8.4.4.4/.10)
       if not Window_Open and then DMI_Status.Geo_Valid then
          DMI_Buttons.Set_Active (BTN_Geo_Toggle,
@@ -187,6 +211,7 @@ package body DMI_Core is
    procedure Initialise is
    begin
       DMI_Ack.Reset;
+      DMI_Planning.Reset;
       DMI_Status.Reset;
       DMI_Text_Messages.Reset;
       DMI_Windows.Close_All;
@@ -536,6 +561,101 @@ package body DMI_Core is
       TTI_Was_Displayed := DMI_Status.TTI_Displayed;
    end Apply_Status;
 
+   procedure Apply_Planning (Payload : Stream_Element_Array) is
+      use DMI_Planning;
+      Offset : Stream_Element_Offset := Payload'First;
+
+      MA     : Unsigned_16;
+      Ind    : Unsigned_16;
+      Advice : Unsigned_16;
+      Ceil   : Unsigned_16;
+      Count  : Unsigned_8;
+
+      Remaining : Stream_Element_Offset;
+   begin
+      if Payload'Length < 9 then
+         return;
+      end if;
+      MA := Get_U16 (Payload, Offset);
+      Ind := Get_U16 (Payload, Offset);
+      Advice := Get_U16 (Payload, Offset);
+      Ceil := Get_U16 (Payload, Offset);
+
+      -- gradients
+      Count := Get_U8 (Payload, Offset);
+      Remaining := Payload'Last - Offset + 1;
+      if Remaining < Stream_Element_Offset (Count) * 3 then
+         return;
+      end if;
+      Gradient_Count := Natural'Min (Natural (Count), Max_Gradients);
+      for I in 1 .. Natural (Count) loop
+         declare
+            Start : constant Unsigned_16 := Get_U16 (Payload, Offset);
+            Raw   : constant Unsigned_8 := Get_U8 (Payload, Offset);
+            Value : constant Integer :=
+              (if Raw >= 128 then Integer (Raw) - 256 else Integer (Raw));
+         begin
+            if I <= Max_Gradients then
+               Gradients (I) := (Start_M => Natural (Start), Value => Value);
+            end if;
+         end;
+      end loop;
+
+      -- speed profile discontinuities
+      if Offset > Payload'Last then
+         return;
+      end if;
+      Count := Get_U8 (Payload, Offset);
+      Remaining := Payload'Last - Offset + 1;
+      if Remaining < Stream_Element_Offset (Count) * 4 then
+         return;
+      end if;
+      Speed_Count := Natural'Min (Natural (Count), Max_Speeds);
+      for I in 1 .. Natural (Count) loop
+         declare
+            Dist : constant Unsigned_16 := Get_U16 (Payload, Offset);
+            Spd  : constant Unsigned_16 := Get_U16 (Payload, Offset);
+         begin
+            if I <= Max_Speeds then
+               Speeds (I) :=
+                 (Dist_M        => Natural (Dist),
+                  Speed         => Natural (Spd and 16#7FFF#),
+                  Is_Ind_Target => (Spd and 16#8000#) /= 0);
+            end if;
+         end;
+      end loop;
+
+      -- orders and announcements
+      if Offset > Payload'Last then
+         return;
+      end if;
+      Count := Get_U8 (Payload, Offset);
+      Remaining := Payload'Last - Offset + 1;
+      if Remaining < Stream_Element_Offset (Count) * 3 then
+         return;
+      end if;
+      Order_Count := Natural'Min (Natural (Count), Max_Orders);
+      for I in 1 .. Natural (Count) loop
+         declare
+            Sym  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+            Dist : constant Unsigned_16 := Get_U16 (Payload, Offset);
+         begin
+            if I <= Max_Orders and then Sym in 1 .. 37 then
+               Orders (I) := (Symbol_Kind => Natural (Sym),
+                              Dist_M      => Natural (Dist));
+            end if;
+         end;
+      end loop;
+
+      MA_Dist_M := Natural (MA);
+      Indication_Valid := Ind /= 16#FFFF#;
+      Indication_Dist_M := Natural (Ind and 16#7FFF#);
+      Advice_Valid := Advice /= 16#FFFF#;
+      Advice_Dist_M := Natural (Advice and 16#7FFF#);
+      Ceiling_Speed := Natural (Ceil);
+      Valid := True;
+   end Apply_Planning;
+
    procedure Apply_Pointer (Payload : Stream_Element_Array) is
       Offset : Stream_Element_Offset := Payload'First;
       Event  : constant Unsigned_8 := Get_U8 (Payload, Offset);
@@ -583,6 +703,8 @@ package body DMI_Core is
             if Payload'Length = Status_Length then
                Apply_Status (Payload);
             end if;
+         when MSG_PLANNING =>
+            Apply_Planning (Payload);
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
                Update_Buttons; -- make sure hit testing sees current state
@@ -653,8 +775,11 @@ package body DMI_Core is
                  (ACTION_GEO_TOGGLE,
                   (if DMI_Status.Geo_Toggled_On then 1 else 0));
 
-            when BTN_Zoom_In | BTN_Zoom_Out =>
-               null; -- planning area zoom follows with the planning area
+            when BTN_Zoom_In =>
+               DMI_Planning.Zoom_In;
+
+            when BTN_Zoom_Out =>
+               DMI_Planning.Zoom_Out;
 
             when BTN_F1 => DMI_Windows.Open (DMI_Windows.W_Main);
             when BTN_F2 => DMI_Windows.Open (DMI_Windows.W_Override);

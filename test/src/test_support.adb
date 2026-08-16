@@ -183,6 +183,56 @@ package body Test_Support is
       DMI_Core.Handle_Message (MSG_TRACK_COND, Payload);
    end Send_Track_Cond;
 
+   procedure Send_Planning
+     (MA_Dist    : Natural;
+      Ceiling    : Natural;
+      Indication : Natural := 16#FFFF#;
+      Advice     : Natural := 16#FFFF#;
+      Gradients  : Gradient_Array := (1 .. 0 => 0);
+      Speeds     : Gradient_Array := (1 .. 0 => 0);
+      Orders     : Gradient_Array := (1 .. 0 => 0))
+   is
+      G_Count : constant Natural := Gradients'Length / 2;
+      S_Count : constant Natural := Speeds'Length / 3;
+      O_Count : constant Natural := Orders'Length / 2;
+      Payload : Stream_Element_Array
+        (1 .. Stream_Element_Offset (11 + G_Count * 3 + S_Count * 4 + O_Count * 3));
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U16 (Payload, Offset, Unsigned_16 (MA_Dist));
+      Put_U16 (Payload, Offset, Unsigned_16 (Indication));
+      Put_U16 (Payload, Offset, Unsigned_16 (Advice));
+      Put_U16 (Payload, Offset, Unsigned_16 (Ceiling));
+      Put_U8 (Payload, Offset, Unsigned_8 (G_Count));
+      for I in 0 .. G_Count - 1 loop
+         Put_U16 (Payload, Offset,
+                  Unsigned_16 (Gradients (Gradients'First + I * 2)));
+         declare
+            V : constant Integer := Gradients (Gradients'First + I * 2 + 1);
+         begin
+            Put_U8 (Payload, Offset,
+                    (if V < 0 then Unsigned_8 (256 + V) else Unsigned_8 (V)));
+         end;
+      end loop;
+      Put_U8 (Payload, Offset, Unsigned_8 (S_Count));
+      for I in 0 .. S_Count - 1 loop
+         Put_U16 (Payload, Offset,
+                  Unsigned_16 (Speeds (Speeds'First + I * 3)));
+         Put_U16 (Payload, Offset,
+                  Unsigned_16 (Speeds (Speeds'First + I * 3 + 1))
+                  or (if Speeds (Speeds'First + I * 3 + 2) /= 0
+                      then 16#8000# else 0));
+      end loop;
+      Put_U8 (Payload, Offset, Unsigned_8 (O_Count));
+      for I in 0 .. O_Count - 1 loop
+         Put_U8 (Payload, Offset,
+                 Unsigned_8 (Orders (Orders'First + I * 2)));
+         Put_U16 (Payload, Offset,
+                  Unsigned_16 (Orders (Orders'First + I * 2 + 1)));
+      end loop;
+      DMI_Core.Handle_Message (MSG_PLANNING, Payload);
+   end Send_Planning;
+
    procedure Send_Pointer (Event : Natural; X, Y : Natural) is
       Payload : Stream_Element_Array (1 .. Pointer_Length);
       Offset  : Stream_Element_Offset := Payload'First;

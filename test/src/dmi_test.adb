@@ -387,6 +387,59 @@ procedure DMI_Test is
       Check_Frame ("messages_removed");
    end Scenario_Text_Messages;
 
+   ---------------------------------------------------------------------
+   -- Planning area (8.3)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Planning is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 100, V_Perm => 140, V_Target => 0,
+                        V_Release => 0, V_Sbi => 155, V_Wsl => 145,
+                        D_Target => 2500, Monitoring => 0, Dial_Range => 2,
+                        Vrelease_Exists => False);
+      -- MA 2.5 km, indication at 1.2 km, gradients, two speed drops and
+      -- a zero speed target, pantograph + neutral section announcements
+      Send_Planning
+        (MA_Dist    => 2500,
+         Ceiling    => 140,
+         Indication => 1200,
+         Gradients  => (0, 12, 800, -5, 1800, 0),
+         Speeds     => (1000, 70, 0,  1700, 40, 0,  2500, 0, 1),
+         Orders     => (2, 600,  5, 1500));
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_fs");
+
+      -- zoom out to 0-8000 and back in twice to 0-2000
+      Pointer_Down (350, 20); Pointer_Up (350, 20);   -- D12 scale down
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_8000");
+      Pointer_Down (350, 300); Pointer_Up (350, 300); -- D9 scale up
+      Pointer_Down (350, 300); Pointer_Up (350, 300);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_2000");
+
+      -- AD mode: indication marker and PL37 in white
+      Send_Mode_Level (Mode => 3, Level => 4);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_ad");
+
+      -- OS mode: hidden until toggled on (8.3.1.1 c)
+      Send_Mode_Level (Mode => 6, Level => 4);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_os_off");
+      Pointer_Down (150, 150); Pointer_Up (150, 150); -- A/B toggle
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_os_on");
+   end Scenario_Planning;
+
    Status : Natural;
 begin
    Scenario_FS_CSM;
@@ -401,6 +454,7 @@ begin
    Scenario_TTI;
    Scenario_SM_Direction;
    Scenario_Text_Messages;
+   Scenario_Planning;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

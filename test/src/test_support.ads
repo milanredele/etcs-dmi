@@ -59,6 +59,18 @@ package Test_Support is
    type TC_Array is array (Positive range <>) of Natural;
    procedure Send_Track_Cond (Kinds : TC_Array);
 
+   type Gradient_Array is array (Positive range <>) of Integer;
+   -- Gradients: pairs (start_m, permille); Speeds: triples
+   -- (dist_m, km/h, ind_target 0/1); Orders: pairs (PL number, dist_m)
+   procedure Send_Planning
+     (MA_Dist    : Natural;
+      Ceiling    : Natural;
+      Indication : Natural := 16#FFFF#;
+      Advice     : Natural := 16#FFFF#;
+      Gradients  : Gradient_Array := (1 .. 0 => 0);
+      Speeds     : Gradient_Array := (1 .. 0 => 0);
+      Orders     : Gradient_Array := (1 .. 0 => 0));
+
    procedure Pointer_Down (X, Y : Natural);
    procedure Pointer_Up (X, Y : Natural);
 

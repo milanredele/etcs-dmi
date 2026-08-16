@@ -15,6 +15,7 @@
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 with DMI_Buttons;
+with DMI_Planning;
 with Symbol;
 with Track_Ahead_Free;
 
@@ -56,6 +57,10 @@ package body Display.D_Area is
    procedure Draw is
    begin
       D_Buffer.Fill (General_Parameters.Background_Color);
+      if DMI_Planning.Displayed then
+         DMI_Planning.Render;
+      end if;
+      -- the TAF question box overlays the planning information
       if Track_Ahead_Free.Show then
          Draw_Track_Ahead_Free;
       end if;
