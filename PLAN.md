@@ -1,5 +1,14 @@
 # ETCS DMI v4.0.0 — Verified Gap Analysis and Implementation Plan
 
+> **Status (2026-08-16):** Phases 0–3 and the simulator/regression
+> infrastructure are implemented (see git history from `e0c7394`).
+> Remaining scope: Phase 4 (ATO displays 8.5, chapter 15 message
+> catalogue wiring), Phase 5 (NTC chapters 9/12, soft-key layout,
+> embedded optimisation), and the simplifications noted below:
+> alphanumeric keyboards / multi-tap, full data checks (10.3.4),
+> VBC/radio/language windows, LSSMA toggling details, ST07 bitmap,
+> fonts regenerated with full ASCII at sizes 10/16/17/18.
+
 This document supersedes [ANALYSIS.md](ANALYSIS.md). Every claim in that document was
 checked against the actual SRS text in
 [doc/SRS/ERA_ERTMS_015560_v400/sections/](doc/SRS/ERA_ERTMS_015560_v400/sections/) and
