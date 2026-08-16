@@ -74,6 +74,25 @@ package DMI_Protocol is
    --  hour u8, minute u8, second u8
    Status_Length : constant := 22;
 
+   -- EVC simulator -> UI (visualization; the DMI ignores these)
+   MSG_TRACK_LAYOUT : constant Msg_Type_T := 16#08#;
+   --  eoa u32, release_speed u8,
+   --  mrsp count u8, per entry: start u32, speed u16
+   --  gradient count u8, per entry: start u32, value i8 (permille)
+   --  condition count u8, per entry: symbol u8 (TC number),
+   --    announce u32, start u32, end u32
+   --  lx_from u32, lx_at u32,
+   --  tunnel_announce u32, tunnel_start u32, tunnel_end u32,
+   --  level_ann u32, level_transition u32, taf u32
+   --  (all distances in metres from the mission start)
+
+   MSG_SIM_STATE : constant Msg_Type_T := 16#09#;
+   --  position u32 (m), speed u16 (km/h),
+   --  mode u8 (0 SB / 1 SR / 2 FS / 3 TR),
+   --  monitoring u8 (0 CSM / 1 TSM / 2 RSM),
+   --  demand i8 (-100..100), brake_commanded u8
+   Sim_State_Length : constant := 10;
+
    -- UI -> DMI
    MSG_POINTER : constant Msg_Type_T := 16#50#;
    --  event u8 (0 down, 1 up, 2 move), x u16, y u16

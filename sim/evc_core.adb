@@ -292,6 +292,71 @@ package body EVC_Core is
    end Send_Text;
 
    ---------------------------------------------------------------------
+   -- Visualization messages for the browser (MSG_TRACK_LAYOUT is
+   -- resent every couple of seconds so late joining browsers catch up)
+   ---------------------------------------------------------------------
+
+   procedure Send_Sim_State (Emit : Sink_T) is
+      Payload : Stream_Element_Array (1 .. Sim_State_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+      Demand  : constant Integer := EVC_Train.Demand;
+   begin
+      Put_U32 (Payload, Offset, Unsigned_32 (Natural (EVC_Train.Position_M)));
+      Put_U16 (Payload, Offset, Unsigned_16 (EVC_Train.Speed_KMH));
+      Put_U8 (Payload, Offset, Unsigned_8 (Mode_T'Pos (Mode)));
+      Put_U8 (Payload, Offset, Unsigned_8 (The_Monitoring));
+      Put_U8 (Payload, Offset,
+              (if Demand < 0 then Unsigned_8 (256 + Demand)
+               else Unsigned_8 (Demand)));
+      Put_U8 (Payload, Offset,
+              (if EVC_Train.Brake_Commanded then 1 else 0));
+      Emit (MSG_SIM_STATE, Payload);
+   end Send_Sim_State;
+
+   procedure Send_Track_Layout (Emit : Sink_T) is
+      Payload : Stream_Element_Array (1 .. 256);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U32 (Payload, Offset, Unsigned_32 (EOA_M));
+      Put_U8 (Payload, Offset, Unsigned_8 (Release_Speed));
+
+      Put_U8 (Payload, Offset, MRSP'Length);
+      for Seg of MRSP loop
+         Put_U32 (Payload, Offset, Unsigned_32 (Seg.Start_M));
+         Put_U16 (Payload, Offset, Unsigned_16 (Seg.Speed));
+      end loop;
+
+      Put_U8 (Payload, Offset, Gradients'Length);
+      for Seg of Gradients loop
+         Put_U32 (Payload, Offset, Unsigned_32 (Seg.Start_M));
+         Put_U8 (Payload, Offset,
+                 (if Seg.Value < 0 then Unsigned_8 (256 + Seg.Value)
+                  else Unsigned_8 (Seg.Value)));
+      end loop;
+
+      Put_U8 (Payload, Offset, Conditions'Length);
+      for C of Conditions loop
+         Put_U8 (Payload, Offset, Unsigned_8 (C.Announce_Symbol));
+         Put_U32 (Payload, Offset, Unsigned_32 (C.Announce_M));
+         Put_U32 (Payload, Offset, Unsigned_32 (C.Start_M));
+         Put_U32 (Payload, Offset, Unsigned_32 (C.End_M));
+      end loop;
+
+      Put_U32 (Payload, Offset, Unsigned_32 (LX_From_M));
+      Put_U32 (Payload, Offset, Unsigned_32 (LX_At_M));
+      Put_U32 (Payload, Offset, Unsigned_32 (Tunnel_Announce_M));
+      Put_U32 (Payload, Offset, Unsigned_32 (Tunnel_Start_M));
+      Put_U32 (Payload, Offset, Unsigned_32 (Tunnel_End_M));
+      Put_U32 (Payload, Offset, Unsigned_32 (Level_Ann_M));
+      Put_U32 (Payload, Offset, Unsigned_32 (Level_Transition_M));
+      Put_U32 (Payload, Offset, Unsigned_32 (TAF_M));
+
+      Emit (MSG_TRACK_LAYOUT, Payload (Payload'First .. Offset - 1));
+   end Send_Track_Layout;
+
+   Layout_Countdown : Natural := 0;
+
+   ---------------------------------------------------------------------
    -- Supervision update
    ---------------------------------------------------------------------
 
@@ -400,6 +465,14 @@ package body EVC_Core is
       Send_Track_Cond (Emit);
       if Mode = FS then
          Send_Planning (Emit);
+      end if;
+
+      Send_Sim_State (Emit);
+      if Layout_Countdown = 0 then
+         Send_Track_Layout (Emit);
+         Layout_Countdown := 20; -- roughly every 2 s at 10 Hz
+      else
+         Layout_Countdown := Layout_Countdown - 1;
       end if;
    end Step;
 

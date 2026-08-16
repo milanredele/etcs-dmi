@@ -98,6 +98,8 @@
         <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
       </div>
     </div>
+    <canvas id="trackCanvas" width="640" height="150"
+            style="display:block; margin:6px auto; background:#101820;"></canvas>
     <canvas id="myCanvas" width="640" height="480"></canvas>
     <script>
       // Protocol v2 (see src/dmi_protocol.ads)
@@ -189,10 +191,218 @@
       function handleMessage(type, payload) {
         if (type === MSG_FRAME) drawFrame(payload);
         else if (type === MSG_SOUND) playSound(payload[0]);
+        else if (type === 0x08) parseLayout(payload);
+        else if (type === 0x09) parseSimState(payload);
         // driver actions are shown for debugging
         else if (type === MSG_DRIVER_ACTION) {
           console.log('driver action', payload[0], payload[1] | (payload[2] << 8));
         }
+      }
+
+      // ------------------------------------------------------------------
+      // Track visualization: a 1D strip rolling by with the train fixed
+      // near the left edge (MSG_TRACK_LAYOUT / MSG_SIM_STATE)
+      // ------------------------------------------------------------------
+      const track = document.getElementById('trackCanvas');
+      const tctx = track.getContext('2d');
+      let layout = null;
+      let sim = { pos: 0, speed: 0, mode: 0, monitoring: 0, demand: 0, brake: 0 };
+
+      function parseLayout(p) {
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        let o = 0;
+        const l = {};
+        l.eoa = dv.getUint32(o, true); o += 4;
+        l.release = dv.getUint8(o); o += 1;
+        l.mrsp = [];
+        let n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.mrsp.push({ start: dv.getUint32(o, true), speed: dv.getUint16(o + 4, true) });
+          o += 6;
+        }
+        l.gradients = [];
+        n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.gradients.push({ start: dv.getUint32(o, true), value: dv.getInt8(o + 4) });
+          o += 5;
+        }
+        l.conditions = [];
+        n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.conditions.push({
+            symbol: dv.getUint8(o),
+            announce: dv.getUint32(o + 1, true),
+            start: dv.getUint32(o + 5, true),
+            end: dv.getUint32(o + 9, true),
+          });
+          o += 13;
+        }
+        l.lxFrom = dv.getUint32(o, true); o += 4;
+        l.lxAt = dv.getUint32(o, true); o += 4;
+        l.tunnelAnn = dv.getUint32(o, true); o += 4;
+        l.tunnelStart = dv.getUint32(o, true); o += 4;
+        l.tunnelEnd = dv.getUint32(o, true); o += 4;
+        l.levelAnn = dv.getUint32(o, true); o += 4;
+        l.levelAt = dv.getUint32(o, true); o += 4;
+        l.taf = dv.getUint32(o, true); o += 4;
+        layout = l;
+      }
+
+      function parseSimState(p) {
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        sim.pos = dv.getUint32(0, true);
+        sim.speed = dv.getUint16(4, true);
+        sim.mode = dv.getUint8(6);
+        sim.monitoring = dv.getUint8(7);
+        sim.demand = dv.getInt8(8);
+        sim.brake = dv.getUint8(9);
+        drawTrack();
+      }
+
+      const MODES = ['SB', 'SR', 'FS', 'TR'];
+      const MONITORINGS = ['CSM', 'TSM', 'RSM'];
+
+      function conditionLabel(symbol) {
+        // TC symbol numbers used by the demo track
+        if (symbol === 7) return 'NS';    // neutral section announcement
+        if (symbol === 3) return 'PAN';   // lower pantograph
+        return 'TC' + symbol;
+      }
+
+      function drawTrack() {
+        const W = track.width, H = track.height;
+        const behind = 400, ahead = 2600;          // visible window in m
+        const x = (m) => (m - (sim.pos - behind)) * W / (behind + ahead);
+        const trackY = 88;
+
+        tctx.clearRect(0, 0, W, H);
+        tctx.font = '10px sans-serif';
+        tctx.textAlign = 'center';
+
+        if (layout) {
+          // gradient band under the track
+          for (let i = 0; i < layout.gradients.length; i++) {
+            const g = layout.gradients[i];
+            const gEnd = i + 1 < layout.gradients.length
+              ? layout.gradients[i + 1].start : layout.eoa;
+            tctx.fillStyle = g.value < 0 ? '#4a3828' : (g.value > 0 ? '#2e4a2e' : '#333');
+            tctx.fillRect(x(g.start), trackY + 6, x(gEnd) - x(g.start), 8);
+            tctx.fillStyle = '#aaa';
+            tctx.fillText((g.value >= 0 ? '+' : '') + g.value + '‰',
+                          x(g.start) + 24, trackY + 26);
+          }
+
+          // tunnel zone
+          tctx.fillStyle = 'rgba(120,120,140,0.35)';
+          tctx.fillRect(x(layout.tunnelStart), trackY - 30,
+                        x(layout.tunnelEnd) - x(layout.tunnelStart), 30);
+          tctx.fillStyle = '#9aa';
+          tctx.fillText('TUNNEL', (x(layout.tunnelStart) + x(layout.tunnelEnd)) / 2,
+                        trackY - 34);
+
+          // track condition zones + announce markers
+          for (const c of layout.conditions) {
+            tctx.fillStyle = 'rgba(223,223,0,0.25)';
+            tctx.fillRect(x(c.start), trackY - 14, x(c.end) - x(c.start), 14);
+            tctx.fillStyle = '#dd0';
+            tctx.fillText(conditionLabel(c.symbol),
+                          (x(c.start) + x(c.end)) / 2, trackY - 18);
+            tctx.beginPath(); // announce triangle
+            tctx.moveTo(x(c.announce), trackY - 8);
+            tctx.lineTo(x(c.announce) - 4, trackY);
+            tctx.lineTo(x(c.announce) + 4, trackY);
+            tctx.fill();
+          }
+
+          // MRSP speed signs
+          for (const s of layout.mrsp) {
+            tctx.strokeStyle = '#ccc';
+            tctx.fillStyle = '#222';
+            tctx.beginPath();
+            tctx.arc(x(s.start), trackY - 40, 10, 0, 2 * Math.PI);
+            tctx.fill(); tctx.stroke();
+            tctx.fillStyle = '#fff';
+            tctx.fillText(s.speed, x(s.start), trackY - 37);
+            tctx.strokeStyle = '#666';
+            tctx.beginPath();
+            tctx.moveTo(x(s.start), trackY - 30);
+            tctx.lineTo(x(s.start), trackY);
+            tctx.stroke();
+          }
+
+          // level crossing
+          tctx.strokeStyle = '#f66';
+          tctx.lineWidth = 2;
+          const lxX = x(layout.lxAt);
+          tctx.beginPath();
+          tctx.moveTo(lxX - 5, trackY - 12); tctx.lineTo(lxX + 5, trackY - 2);
+          tctx.moveTo(lxX + 5, trackY - 12); tctx.lineTo(lxX - 5, trackY - 2);
+          tctx.stroke();
+          tctx.lineWidth = 1;
+          tctx.fillStyle = '#f66';
+          tctx.fillText('LX', lxX, trackY - 16);
+
+          // level transition
+          tctx.strokeStyle = '#8cf';
+          tctx.setLineDash([3, 3]);
+          tctx.beginPath();
+          tctx.moveTo(x(layout.levelAt), trackY - 45);
+          tctx.lineTo(x(layout.levelAt), trackY + 14);
+          tctx.stroke();
+          tctx.setLineDash([]);
+          tctx.fillStyle = '#8cf';
+          tctx.fillText('L2', x(layout.levelAt), trackY - 48);
+
+          // TAF marker
+          tctx.fillStyle = '#fa0';
+          tctx.fillText('TAF', x(layout.taf), trackY - 20);
+          tctx.fillRect(x(layout.taf) - 1, trackY - 16, 2, 16);
+
+          // EOA: red/white buffer bar
+          const eoaX = x(layout.eoa);
+          tctx.fillStyle = '#c00';
+          tctx.fillRect(eoaX - 2, trackY - 24, 5, 24);
+          tctx.fillStyle = '#fff';
+          tctx.fillRect(eoaX - 2, trackY - 18, 5, 6);
+          tctx.fillRect(eoaX - 2, trackY - 6, 5, 6);
+          tctx.fillStyle = '#f88';
+          tctx.fillText('EOA', eoaX, trackY - 28);
+        }
+
+        // the track itself
+        tctx.strokeStyle = '#889';
+        tctx.lineWidth = 3;
+        tctx.beginPath();
+        tctx.moveTo(0, trackY); tctx.lineTo(W, trackY);
+        tctx.stroke();
+        tctx.lineWidth = 1;
+        // sleepers every 100 m
+        tctx.strokeStyle = '#556';
+        const first = Math.floor((sim.pos - behind) / 100) * 100;
+        for (let m = first; m < sim.pos + ahead; m += 100) {
+          tctx.beginPath();
+          tctx.moveTo(x(m), trackY - 3); tctx.lineTo(x(m), trackY + 3);
+          tctx.stroke();
+        }
+
+        // the train, fixed near the left
+        const tx = x(sim.pos);
+        tctx.fillStyle = sim.brake ? '#f44' : '#4d4';
+        tctx.fillRect(tx - 22, trackY - 10, 22, 8);
+        tctx.beginPath(); // nose
+        tctx.moveTo(tx, trackY - 10); tctx.lineTo(tx + 6, trackY - 6);
+        tctx.lineTo(tx, trackY - 2); tctx.fill();
+
+        // HUD
+        tctx.textAlign = 'left';
+        tctx.fillStyle = '#dde';
+        tctx.font = '12px monospace';
+        tctx.fillText(
+          `km ${(sim.pos / 1000).toFixed(2)}  ${sim.speed} km/h  ` +
+          `${MODES[sim.mode] || '?'}/${MONITORINGS[sim.monitoring] || '?'}  ` +
+          `demand ${sim.demand}%${sim.brake ? '  EVC BRAKE' : ''}`,
+          8, 16);
+        tctx.font = '10px sans-serif';
       }
 
       // --- message building ---
