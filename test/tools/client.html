@@ -1,173 +1,268 @@
 <!DOCTYPE HTML>
 <html>
   <head>
+    <title>ETCS DMI test client</title>
     <style>
-      body {
-        margin: 0px;
-        padding: 0px;
-      }
+      body { margin: 0; padding: 0; font-family: sans-serif; background: #222; color: #ddd; }
+      #controls { padding: 10px; font-size: 13px; }
+      #controls label { margin-right: 10px; white-space: nowrap; }
+      #controls input[type=number] { width: 5em; }
+      #controls .row { margin-bottom: 6px; }
+      canvas { display: block; margin: 0 auto; background: #031122; }
+      h3 { margin: 4px 0; }
     </style>
   </head>
-	<div id="controls" style="padding: 10px; font-family: sans-serif;">
-		<h3>DMI Parameters</h3>
-		<div>
-			<label>Speed (0..400): <input type="number" id="speed" value="136" min="0" max="400" oninput="sendParams()"></label>
-			<label>Vperm: <input type="number" id="vperm" value="120" min="0" max="400" oninput="sendParams()"></label>
-			<label>Vtarget: <input type="number" id="vtarget" value="80" min="0" max="400" oninput="sendParams()"></label>
-			<label>Vrelease: <input type="number" id="vrelease" value="35" min="0" max="400" oninput="sendParams()"></label>
-			<label>Dist (0..90000): <input type="number" id="dist" value="684" min="0" max="90000" oninput="sendParams()"></label>
-			<label>Range:
-				<select id="range" onchange="sendParams()">
-					<option value="0">140</option>
-					<option value="1" selected>180</option>
-					<option value="2">250</option>
-					<option value="3">400</option>
-				</select>
-			</label>
-			<label>Mode:
-				<select id="mode" onchange="sendParams()">
-					<option value="0">NP</option>
-					<option value="1">SB</option>
-					<option value="2" selected>FS</option>
-					<option value="3">AD</option>
-					<option value="4">SM</option>
-					<option value="5">LS</option>
-					<option value="6">OS</option>
-					<option value="7">SR</option>
-					<option value="8">SH</option>
-					<option value="9">UN</option>
-					<option value="10">RV</option>
-					<option value="11">TR</option>
-					<option value="12">SN</option>
-					<option value="13">PT</option>
-					<option value="14">NL</option>
-					<option value="15">SF</option>
-					<option value="16">SL</option>
-					<option value="17">IS</option>
-				</select>
-			</label>
-			<label>Monitoring:
-				<select id="monitoring" onchange="sendParams()">
-					<option value="0">CSM</option>
-					<option value="1" selected>TSM</option>
-					<option value="2">RSM</option>
-				</select>
-			</label>
-			<label>CSM target info: <input type="checkbox" id="csm_ti" onchange="sendParams()"></label>
-			<label>Vrelease exists: <input type="checkbox" id="vrelease_exists" checked onchange="sendParams()"></label>
-		</div>
-	</div>
+  <body>
+    <div id="controls">
+      <h3>Manual EVC panel</h3>
+      <div class="row">
+        <label>Speed <input type="number" id="speed" value="136" min="0" max="400"></label>
+        <label>Vperm <input type="number" id="vperm" value="120" min="0" max="400"></label>
+        <label>Vtarget <input type="number" id="vtarget" value="80" min="0" max="400"></label>
+        <label>Vrelease <input type="number" id="vrelease" value="35" min="0" max="400"></label>
+        <label>Vrelease exists <input type="checkbox" id="vrelease_exists" checked></label>
+        <label>Dist <input type="number" id="dist" value="684" min="0" max="90000"></label>
+      </div>
+      <div class="row">
+        <label>Range:
+          <select id="range">
+            <option value="0">140</option>
+            <option value="1" selected>180</option>
+            <option value="2">250</option>
+            <option value="3">400</option>
+          </select>
+        </label>
+        <label>Mode:
+          <select id="mode">
+            <option value="0">NP</option><option value="1">SB</option>
+            <option value="2" selected>FS</option><option value="3">AD</option>
+            <option value="4">SM</option><option value="5">LS</option>
+            <option value="6">OS</option><option value="7">SR</option>
+            <option value="8">SH</option><option value="9">UN</option>
+            <option value="10">RV</option><option value="11">TR</option>
+            <option value="12">SN</option><option value="13">PT</option>
+            <option value="14">NL</option><option value="15">SF</option>
+            <option value="16">SL</option><option value="17">IS</option>
+          </select>
+        </label>
+        <label>Monitoring:
+          <select id="monitoring">
+            <option value="0">CSM</option>
+            <option value="1" selected>TSM</option>
+            <option value="2">RSM</option>
+          </select>
+        </label>
+        <label>CSM target info <input type="checkbox" id="csm_ti"></label>
+      </div>
+      <div class="row">
+        <label>Level:
+          <select id="level">
+            <option value="0">Unknown</option><option value="1">Invalid</option>
+            <option value="2">L0</option><option value="3">NTC</option>
+            <option value="4" selected>L1</option><option value="5">L2</option>
+          </select>
+        </label>
+        <label>Mode ack:
+          <select id="mode_ack">
+            <option value="255" selected>none</option>
+            <option value="5">LS</option><option value="6">OS</option>
+            <option value="7">SR</option><option value="8">SH</option>
+            <option value="9">UN</option><option value="10">RV</option>
+            <option value="11">TR</option><option value="12">SN</option>
+          </select>
+        </label>
+        <label>Level ann:
+          <select id="level_ann">
+            <option value="255" selected>none</option>
+            <option value="2">L0</option><option value="3">NTC</option>
+            <option value="4">L1</option><option value="5">L2</option>
+          </select>
+        </label>
+        <label>ann ack <input type="checkbox" id="level_ann_ack"></label>
+        <label>Override <input type="checkbox" id="override"></label>
+        <label>TAF <input type="checkbox" id="taf"></label>
+        <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
+        <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
+      </div>
+    </div>
     <canvas id="myCanvas" width="640" height="480"></canvas>
-	<script>
-		function sendParams() {
-			const params = {
-				speed: parseInt(document.getElementById('speed').value),
-				vperm: parseInt(document.getElementById('vperm').value),
-				vtarget: parseInt(document.getElementById('vtarget').value),
-				vrelease: parseInt(document.getElementById('vrelease').value),
-				dist: parseInt(document.getElementById('dist').value),
-				range: parseInt(document.getElementById('range').value),
-				mode: parseInt(document.getElementById('mode').value),
-				monitoring: parseInt(document.getElementById('monitoring').value),
-				csm_ti: document.getElementById('csm_ti').checked ? 1 : 0,
-				flash_enable: true,
-				vrelease_exists: document.getElementById('vrelease_exists').checked ? 1 : 0,
-				show_taf: true
-			};
-			socket.send(JSON.stringify(params));
-			console.log('Sent params:', params);
-		}
+    <script>
+      // Protocol v2 (see src/dmi_protocol.ads)
+      const MSG_SPEED_STATE = 0x01;
+      const MSG_MODE_LEVEL = 0x02;
+      const MSG_DRIVER_ACTION = 0x40;
+      const MSG_POINTER = 0x50;
+      const MSG_FRAME = 0x60;
+      const MSG_SOUND = 0x61;
+      const HEADER_LENGTH = 5;
 
-		var canvas = document.getElementById('myCanvas');
-		var context = canvas.getContext('2d');
-		const canWidth = canvas.width;
-		const canHeight = canvas.height;
-		var img = context.createImageData(canWidth, canHeight);
-		
-		var socket = new WebSocket('ws://127.0.0.1:8080');
-		socket.binaryType = 'arraybuffer';
-		
-		var colorMap = 
-		[
-			[255, 255, 255], //WHITE
-			[0  , 0  , 0  ], //BLACK
-			[195, 195, 195], //GREY
-			[150, 150, 150], //MEDIUM_GREY
-			[85 , 85 , 85 ], //DARK_GREY
-			[3  , 17 , 34 ], //DARK_BLUE
-			[8  , 24 , 57 ], //SHADOW
-			[223, 223, 0  ], //YELLOW
-			[234, 145, 0  ], //ORANGE
-			[191, 0  , 2  ], //RED
-			[33 , 49 , 74 ], //PASP_DARK
-			[41 , 74 , 107], //PASP_LIGHT
-		];
-		
-		// image area is coming in chunks so need to do some hekk
-		var pos_x = 0;
-		var pos_y = 0;
-		var width = 0;
-		var height = 0;		
-		var areaBuf;
-		var offset = -8; // 0 at the beginning of image data, so starts at -8 at the beginning of message header
-		
-		socket.onmessage = function (e) {
-			var data = e.data;
-			var dv = new DataView(data);
-			var buf = new Uint8Array(data);
-			var dataOffset = 0;
-			
-			while (dataOffset < buf.length){
-			
-				if (offset === -8) {
-					pos_x = dv.getInt16(dataOffset, true);
-					offset += 2;
-					dataOffset += 2;
-				}
-				if (offset === -6 && dataOffset < buf.length) {
-					pos_y = dv.getInt16(dataOffset, true);
-					offset += 2;
-					dataOffset += 2;
-				}
-				if (offset === -4 && dataOffset < buf.length) {
-					width = dv.getInt16(dataOffset, true);
-					offset += 2;
-					dataOffset += 2;
-				}
-				if (offset === -2 && dataOffset < buf.length) {
-					height = dv.getInt16(dataOffset, true);
-					offset += 2;
-					dataOffset += 2;
-					console.log('We have width: ' + width + 'px, height: ' + height + 'px, pos_x: ' + pos_x + ' pos_y: ' + pos_y);
-				}
-				if (offset === 0 && dataOffset < buf.length) {
-					areaBuf = new Uint8Array(width * height);
-				}
-				
-				for (var i=0; (i+offset)<areaBuf.length && (i+dataOffset)<buf.length; i++){
-					areaBuf[i + offset] = buf[i + dataOffset];
-				}
-				offset += i;
-				dataOffset += i; 
-				
-				if (areaBuf.length <= offset){
-					// we have it all
-					for (let j=0; j<height; j++){
-						for (let i=0; i<width; i++){
-							let imgIdx = 4 * (pos_x + i + (pos_y + j) * canWidth);
-							let bufIdx = i + j * width;
-							let color = colorMap[areaBuf[bufIdx]];
-							img.data[imgIdx] = color[0];
-							img.data[imgIdx+1] = color[1];
-							img.data[imgIdx+2] = color[2];
-							img.data[imgIdx+3] = 255;
-						}
-					}
-					context.putImageData(img, 0, 0);
-					console.log ('Image put');
-					offset = -8;
-				}
-			}
-		};
-	</script>
-</body>
+      const canvas = document.getElementById('myCanvas');
+      const context = canvas.getContext('2d');
+      const img = context.createImageData(canvas.width, canvas.height);
+
+      const colorMap = [
+        [255, 255, 255], // WHITE
+        [0, 0, 0],       // BLACK
+        [195, 195, 195], // GREY
+        [150, 150, 150], // MEDIUM_GREY
+        [85, 85, 85],    // DARK_GREY
+        [3, 17, 34],     // DARK_BLUE
+        [8, 24, 57],     // SHADOW
+        [223, 223, 0],   // YELLOW
+        [234, 145, 0],   // ORANGE
+        [191, 0, 2],     // RED
+        [33, 49, 74],    // PASP_DARK
+        [41, 74, 107],   // PASP_LIGHT
+      ];
+
+      const soundFiles = {
+        0: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/click.wav',
+        1: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S_info.wav',
+        2: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S1_toofast.wav',
+        3: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S2_warning.wav',
+      };
+      let s2Audio = null;
+
+      function playSound(id) {
+        if (id === 3) { // S2 start: continuous while active
+          if (!s2Audio) {
+            s2Audio = new Audio(soundFiles[3]);
+            s2Audio.loop = true;
+            s2Audio.play();
+          }
+        } else if (id === 4) { // S2 stop
+          if (s2Audio) { s2Audio.pause(); s2Audio = null; }
+        } else if (soundFiles[id]) {
+          new Audio(soundFiles[id]).play();
+        }
+      }
+
+      function drawFrame(payload) {
+        const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+        const x = dv.getUint16(0, true);
+        const y = dv.getUint16(2, true);
+        const w = dv.getUint16(4, true);
+        const h = dv.getUint16(6, true);
+        for (let j = 0; j < h; j++) {
+          for (let i = 0; i < w; i++) {
+            const imgIdx = 4 * (x + i + (y + j) * canvas.width);
+            const color = colorMap[payload[8 + i + j * w]] || [255, 0, 255];
+            img.data[imgIdx] = color[0];
+            img.data[imgIdx + 1] = color[1];
+            img.data[imgIdx + 2] = color[2];
+            img.data[imgIdx + 3] = 255;
+          }
+        }
+        context.putImageData(img, 0, 0);
+      }
+
+      // --- frame splitting ---
+      let pending = new Uint8Array(0);
+      function onData(bytes) {
+        const merged = new Uint8Array(pending.length + bytes.length);
+        merged.set(pending); merged.set(bytes, pending.length);
+        pending = merged;
+        while (pending.length >= HEADER_LENGTH) {
+          const dv = new DataView(pending.buffer, pending.byteOffset);
+          const type = dv.getUint8(0);
+          const length = dv.getUint32(1, true);
+          const total = HEADER_LENGTH + length;
+          if (pending.length < total) break;
+          handleMessage(type, pending.subarray(HEADER_LENGTH, total));
+          pending = pending.subarray(total);
+        }
+      }
+
+      function handleMessage(type, payload) {
+        if (type === MSG_FRAME) drawFrame(payload);
+        else if (type === MSG_SOUND) playSound(payload[0]);
+        // driver actions are shown for debugging
+        else if (type === MSG_DRIVER_ACTION) {
+          console.log('driver action', payload[0], payload[1] | (payload[2] << 8));
+        }
+      }
+
+      // --- message building ---
+      function makeMessage(type, payloadLength) {
+        const buf = new Uint8Array(HEADER_LENGTH + payloadLength);
+        const dv = new DataView(buf.buffer);
+        dv.setUint8(0, type);
+        dv.setUint32(1, payloadLength, true);
+        return { buf, dv };
+      }
+
+      function val(id) { return parseInt(document.getElementById(id).value); }
+      function checked(id) { return document.getElementById(id).checked; }
+
+      function sendSpeedState() {
+        const { buf, dv } = makeMessage(MSG_SPEED_STATE, 19);
+        const vperm = val('vperm');
+        let o = HEADER_LENGTH;
+        dv.setUint16(o, val('speed'), true); o += 2;
+        dv.setUint16(o, vperm, true); o += 2;
+        dv.setUint16(o, val('vtarget'), true); o += 2;
+        dv.setUint16(o, val('vrelease'), true); o += 2;
+        dv.setUint16(o, Math.min(vperm + 15, 400), true); o += 2; // Vsbi
+        dv.setUint16(o, Math.min(vperm + 5, 400), true); o += 2;  // Vwsl
+        dv.setUint32(o, val('dist'), true); o += 4;
+        dv.setUint8(o, val('monitoring')); o += 1;
+        dv.setUint8(o, val('range')); o += 1;
+        dv.setUint8(o, (checked('vrelease_exists') ? 1 : 0) | (checked('csm_ti') ? 2 : 0));
+        socket.send(buf);
+      }
+
+      function sendModeLevel() {
+        const { buf, dv } = makeMessage(MSG_MODE_LEVEL, 9);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, val('mode')); o += 1;
+        dv.setUint8(o, val('level')); o += 1;
+        dv.setUint8(o, val('mode_ack')); o += 1;
+        dv.setUint8(o, val('level_ann')); o += 1;
+        dv.setUint8(o, checked('level_ann_ack') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('override') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('taf') ? 1 : 0); o += 1;
+        dv.setUint16(o, checked('lssma_valid') ? val('lssma') : 0xFFFF, true);
+        socket.send(buf);
+      }
+
+      function sendAll() {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        sendSpeedState();
+        sendModeLevel();
+      }
+
+      // pointer events on the DMI screen
+      function sendPointer(event, x, y) {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        const { buf, dv } = makeMessage(MSG_POINTER, 5);
+        dv.setUint8(HEADER_LENGTH, event);
+        dv.setUint16(HEADER_LENGTH + 1, x, true);
+        dv.setUint16(HEADER_LENGTH + 3, y, true);
+        socket.send(buf);
+      }
+
+      canvas.addEventListener('pointerdown', (e) => {
+        const r = canvas.getBoundingClientRect();
+        sendPointer(0, Math.round(e.clientX - r.left), Math.round(e.clientY - r.top));
+      });
+      canvas.addEventListener('pointerup', (e) => {
+        const r = canvas.getBoundingClientRect();
+        sendPointer(1, Math.round(e.clientX - r.left), Math.round(e.clientY - r.top));
+      });
+      canvas.addEventListener('pointermove', (e) => {
+        if (e.buttons === 0) return;
+        const r = canvas.getBoundingClientRect();
+        sendPointer(2, Math.round(e.clientX - r.left), Math.round(e.clientY - r.top));
+      });
+
+      for (const el of document.querySelectorAll('#controls input, #controls select')) {
+        el.addEventListener('input', sendAll);
+      }
+
+      const socket = new WebSocket('ws://127.0.0.1:8080');
+      socket.binaryType = 'arraybuffer';
+      socket.onmessage = (e) => onData(new Uint8Array(e.data));
+      socket.onopen = sendAll;
+    </script>
+  </body>
+</html>

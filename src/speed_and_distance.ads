@@ -72,9 +72,11 @@ package Speed_And_Distance is
    procedure Set_Distance_To_Target (The_Distance : Distance_T);
    
    function Get_LSSMA return Speed_T;
-   
-   procedure Set_LSSMA (The_LSSMA : Speed_T);
-   
+
+   function Get_LSSMA_Valid return Boolean;
+
+   procedure Set_LSSMA (The_LSSMA : Speed_T; Valid : Boolean := True);
+
 private
    Monitoring_Mode    : Monitoring_T;
    Supervision_Status : Supervision_Status_T;
@@ -83,5 +85,6 @@ private
    Vcurrent           : Speed_T := 0;
    Speed_Dial_Range   : Speed_Dial_Range_T := Range_180;
    Distance_To_Target : Distance_T := 0;
-   LSSMA              : Speed_T;
+   LSSMA              : Speed_T := 0;
+   LSSMA_Valid        : Boolean := False;
 end Speed_And_Distance;

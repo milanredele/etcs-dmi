@@ -15,31 +15,28 @@
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 pragma Ada_2012;
-with Ada.Unchecked_Conversion;
+with Display.Screen;
 with Font.FreeSans_10;
 with Font.FreeSans_12;
 with Font.FreeSans_16;
 with Font.FreeSans_17;
-with System;
 
 package body Display.Frame_Buffer is
 
    function Get_Pixel (X : Area_Width_T;
                        Y : Area_Height_T) return General_Parameters.Color is
-     (Buffer (X + Y * Area.Width));
+     (Screen.Get_Pixel (Area.Position.X + X, Area.Position.Y + Y));
 
    procedure Set_Pixel (X : Area_Width_T;
                         Y : Area_Height_T;
                         The_Color : General_Parameters.Color) is
    begin
-      Buffer (X + Y * Area.Width) := The_Color;
+      Screen.Set_Pixel (Area.Position.X + X, Area.Position.Y + Y, The_Color);
    end Set_Pixel;
 
    procedure Fill (The_Color : General_Parameters.Color) is
    begin
-      for I in Buffer'Range loop
-         Buffer (I) := The_Color;
-      end loop;
+      Screen.Fill_Area (Area, The_Color);
       declare
          Subs_With_Frame : constant Area_Array := Get_Sub_Requiring_Border (Area_ID);
       begin
@@ -268,43 +265,5 @@ package body Display.Frame_Buffer is
          Set_Pixel (The_Area.Position.X + The_Area.Width - 1, Y, Color);
       end loop;
    end Draw_Input_Field_Frame;
-
-   procedure Dump (File_Name : String) is
-      Output_File : Ada.Streams.Stream_IO.File_Type;
-      Output_Stream : Ada.Streams.Stream_IO.Stream_Access;
-   begin
-      Ada.Streams.Stream_IO.Create (File => Output_File,
-                                    Mode => Ada.Streams.Stream_IO.Out_File,
-                                    Name => File_Name);
-      Output_Stream := Ada.Streams.Stream_IO.Stream (Output_File);
-
-      Buffer_T'Write (Output_Stream, Buffer);
-
-      Ada.Streams.Stream_IO.Close (Output_File);
-   end Dump;
-
-   procedure Write_Buffer (Stream : not null access Ada.Streams.Root_Stream_Type'Class) is
-      use type Ada.Streams.Stream_Element_Offset;
-
-      Item_Size : constant Ada.Streams.Stream_Element_Offset :=
-        Buffer_T'Object_Size / Ada.Streams.Stream_Element'Size;
-
-      type SEA_Pointer is
-        access all Ada.Streams.Stream_Element_Array (1 .. Item_Size);
-
-      function As_SEA_Pointer is
-        new Ada.Unchecked_Conversion (System.Address, SEA_Pointer);
-   begin
-      Ada.Streams.Write (Stream.all, As_SEA_Pointer (Buffer'Address).all);
-   end Write_Buffer;
-
-   procedure Write (Output_Stream : Ada.Streams.Stream_IO.Stream_Access) is
-   begin
-      Short_Integer'Write (Output_Stream, Short_Integer (Area.Position.X));
-      Short_Integer'Write (Output_Stream, Short_Integer (Area.Position.Y));
-      Short_Integer'Write (Output_Stream, Short_Integer (Area.Width));
-      Short_Integer'Write (Output_Stream, Short_Integer (Area.Height));
-      Write_Buffer (Output_Stream);
-   end Write;
 
 end Display.Frame_Buffer;

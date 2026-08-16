@@ -60,7 +60,9 @@ package body Display.A_Area is
             end if;
          when Supplementary_Driving_Info.M_LS =>
             -- DMI 8.2.1.7.3
-            if User_Settings.Toggle (User_Settings.LSSMA) then
+            if User_Settings.Toggle (User_Settings.LSSMA)
+              and then Get_LSSMA_Valid
+            then
                Draw_A1;
             end if;
          when others =>

@@ -117,9 +117,13 @@ package body Speed_And_Distance is
    function Get_LSSMA return Speed_T is
      (LSSMA);
 
-   procedure Set_LSSMA (The_LSSMA : Speed_T) is
+   function Get_LSSMA_Valid return Boolean is
+     (LSSMA_Valid);
+
+   procedure Set_LSSMA (The_LSSMA : Speed_T; Valid : Boolean := True) is
    begin
       LSSMA := The_LSSMA;
+      LSSMA_Valid := Valid;
    end Set_LSSMA;
 
 end Speed_And_Distance;

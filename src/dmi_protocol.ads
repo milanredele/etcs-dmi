@@ -1,51 +1,89 @@
 --  ETCS DMI
---  Protocol definition for EVC-DMI communication
---  This file provides a structured, bit-packed representation
---  of the DMI state as received from the EVC.
+--  Protocol v2 for EVC <-> DMI <-> test UI communication.
+--
+--  Every message is framed as:
+--     type    : 1 byte
+--     length  : 4 bytes, little endian (payload length in bytes)
+--     payload : <length> bytes
+--  Transport integrity is provided by TCP; there is no per-frame CRC.
+--
+--  Message directions:
+--     EVC -> DMI : SPEED_STATE, MODE_LEVEL
+--     UI  -> DMI : POINTER
+--     DMI -> EVC : DRIVER_ACTION
+--     DMI -> UI  : FRAME, SOUND
+--
+--  All multi-byte fields are little endian.
 
-with Interfaces; use Interfaces;
+with Ada.Streams; use Ada.Streams;
+with Interfaces;  use Interfaces;
 
 package DMI_Protocol is
 
-   -- For stateless communication, EVC sends whole state to DMI
-   
-   type Bit_T is mod 2 ** 1 with Size => 1;
-   type Two_Bits_T is mod 2 ** 2 with Size => 2;
-   type Three_Bits_T is mod 2 ** 3 with Size => 3;
-   type Five_Bits_T is mod 2 ** 5 with Size => 5;
+   type Msg_Type_T is new Unsigned_8;
 
-   -- Bit-packed fields representing various DMI status bits
-   type DMI_Status_T is record
-      Flash_Enable    : Bit_T; -- EVC commands DMI to flash elements
-      Vrelease_Exists : Bit_T;
-      Show_TAF        : Bit_T;
-      Mode            : Five_Bits_T; -- SDI.Mode_T mapping ('Pos order)
-      Speed_Range     : Two_Bits_T; -- Speed_And_Distance.Speed_Dial_Range_T
-      Monitoring      : Two_Bits_T; -- 0 CSM, 1 TSM, 2 RSM
-      CSM_TI          : Bit_T; -- CSM "with target information" (National Value)
-      Spare           : Three_Bits_T;
-   end record with Pack, Size => 16;
-   
-   type DMI_Telegram_T is record
-      V_Cur    : Unsigned_16; -- current speed (km/h) (2)
-      V_Perm   : Unsigned_16; -- permitted speed (km/h) (2)
-      V_Targ   : Unsigned_16; -- target speed (km/h) (2)
-      V_Rel    : Unsigned_16; -- release speed (km/h) (2)
-      D_Targ   : Unsigned_32; -- distance to target (m) (4)
-      Status   : DMI_Status_T; -- Bitfield for enums and flags (2)
-      Checksum : Unsigned_16; -- CRC-16 (XMODEM/CCITT) (2)
-   end record;
+   -- EVC -> DMI
+   MSG_SPEED_STATE : constant Msg_Type_T := 16#01#;
+   --  v_cur u16, v_perm u16, v_target u16, v_release u16, v_sbi u16,
+   --  v_wsl u16, d_target u32, monitoring u8 (0 CSM / 1 TSM / 2 RSM),
+   --  dial_range u8 (0..3 -> 140/180/250/400),
+   --  flags u8 (bit0 vrelease_exists, bit1 csm_target_info)
+   Speed_State_Length : constant := 19;
 
-   for DMI_Telegram_T use record
-      V_Cur    at 0 range 0 .. 15;
-      V_Perm   at 2 range 0 .. 15;
-      V_Targ   at 4 range 0 .. 15;
-      V_Rel    at 6 range 0 .. 15;
-      D_Targ   at 8 range 0 .. 31;
-      Status   at 12 range 0 .. 15;
-      Checksum at 14 range 0 .. 15;
-   end record;
+   MSG_MODE_LEVEL : constant Msg_Type_T := 16#02#;
+   --  mode u8 (Mode_T'Pos), level u8 (Level_T'Pos),
+   --  mode_ack u8 (16#FF# none, else Mode_T'Pos),
+   --  level_ann u8 (16#FF# none, else Level_T'Pos), level_ann_ack u8 (bool),
+   --  override u8 (bool), taf u8 (bool), lssma u16 (16#FFFF# not shown)
+   Mode_Level_Length : constant := 9;
 
-   pragma Pack (DMI_Telegram_T);
+   -- UI -> DMI
+   MSG_POINTER : constant Msg_Type_T := 16#50#;
+   --  event u8 (0 down, 1 up, 2 move), x u16, y u16
+   Pointer_Length : constant := 5;
+
+   -- DMI -> EVC
+   MSG_DRIVER_ACTION : constant Msg_Type_T := 16#40#;
+   --  action u8, arg u16
+   Driver_Action_Length : constant := 3;
+
+   -- DMI -> UI
+   MSG_FRAME : constant Msg_Type_T := 16#60#;
+   --  x u16, y u16, w u16, h u16, pixels w*h bytes (colour indices)
+
+   MSG_SOUND : constant Msg_Type_T := 16#61#;
+   --  sound u8 (0 click, 1 sinfo, 2 s1, 3 s2 start, 4 s2 stop)
+   Sound_Length : constant := 1;
+
+   Header_Length : constant := 5;
+
+   -- Little endian primitives over Stream_Element_Array; Offset always
+   -- points at the next element to read or write and is advanced.
+
+   procedure Put_U8 (Buffer : in out Stream_Element_Array;
+                     Offset : in out Stream_Element_Offset;
+                     Value  : Unsigned_8);
+
+   procedure Put_U16 (Buffer : in out Stream_Element_Array;
+                      Offset : in out Stream_Element_Offset;
+                      Value  : Unsigned_16);
+
+   procedure Put_U32 (Buffer : in out Stream_Element_Array;
+                      Offset : in out Stream_Element_Offset;
+                      Value  : Unsigned_32);
+
+   function Get_U8 (Buffer : Stream_Element_Array;
+                    Offset : in out Stream_Element_Offset) return Unsigned_8;
+
+   function Get_U16 (Buffer : Stream_Element_Array;
+                     Offset : in out Stream_Element_Offset) return Unsigned_16;
+
+   function Get_U32 (Buffer : Stream_Element_Array;
+                     Offset : in out Stream_Element_Offset) return Unsigned_32;
+
+   procedure Put_Header (Buffer   : in out Stream_Element_Array;
+                         Offset   : in out Stream_Element_Offset;
+                         The_Type : Msg_Type_T;
+                         Length   : Natural);
 
 end DMI_Protocol;
