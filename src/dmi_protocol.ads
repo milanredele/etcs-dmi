@@ -79,6 +79,11 @@ package DMI_Protocol is
    --  event u8 (0 down, 1 up, 2 move), x u16, y u16
    Pointer_Length : constant := 5;
 
+   -- UI -> EVC simulator
+   MSG_DESK : constant Msg_Type_T := 16#51#;
+   --  demand i8 (-100 full brake .. 100 full traction), auto_drive u8
+   Desk_Length : constant := 2;
+
    -- DMI -> EVC
    MSG_DRIVER_ACTION : constant Msg_Type_T := 16#40#;
    --  action u8, arg u16

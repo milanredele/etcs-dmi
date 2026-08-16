@@ -8,10 +8,16 @@
 
 pragma Ada_2012;
 with Ada.Command_Line;
+with Ada.Streams;
 with DMI_Core;
 with DMI_Driver_Data;
+with DMI_Protocol;
 with DMI_Sounds;
+with EVC_Core;
+with EVC_Track;
+with EVC_Train;
 with General_Parameters;
+with Supplementary_Driving_Info;
 with Test_Support; use Test_Support;
 
 procedure DMI_Test is
@@ -564,6 +570,111 @@ procedure DMI_Test is
       Check_Frame ("data_view_window");
    end Scenario_Other_Windows;
 
+   ---------------------------------------------------------------------
+   -- Full mission with the in-process EVC simulator: SB start -> FS
+   -- cruise -> TSM braking curve -> level transition ack -> track
+   -- conditions -> RSM -> stop at the EOA
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Mission is
+      use type EVC_Core.Mode_T;
+      use type Supplementary_Driving_Info.Level_T;
+
+      procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
+                      Payload  : Ada.Streams.Stream_Element_Array) is
+      begin
+         DMI_Core.Handle_Message (The_Type, Payload);
+      end Emit;
+
+      procedure Sim_Step is
+      begin
+         -- the auto driver of evc_sim, inlined for the test
+         if EVC_Core.Mode = EVC_Core.FS then
+            if EVC_Core.Monitoring = 2 then
+               EVC_Train.Demand := -100; -- brake to a stand in RSM
+            elsif EVC_Train.Speed_KMH + 3 < EVC_Core.Permitted_Speed then
+               EVC_Train.Demand := 60;
+            elsif EVC_Train.Speed_KMH + 1 >= EVC_Core.Permitted_Speed then
+               EVC_Train.Demand := -80;
+            else
+               EVC_Train.Demand := 0;
+            end if;
+         end if;
+         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         DMI_Core.Tick (100);
+      end Sim_Step;
+
+      -- run until Condition or the step budget runs out
+      generic
+         with function Done return Boolean;
+      procedure Run_Until (What : String; Max_Steps : Natural);
+
+      procedure Run_Until (What : String; Max_Steps : Natural) is
+      begin
+         for I in 1 .. Max_Steps loop
+            Sim_Step;
+            if Done then
+               return;
+            end if;
+         end loop;
+         Check (False, "timeout waiting for " & What);
+      end Run_Until;
+
+      function In_TSM return Boolean is (EVC_Core.Monitoring = 1);
+      function In_RSM return Boolean is (EVC_Core.Monitoring = 2);
+      function Stopped return Boolean is
+        (EVC_Train.Speed_KMH = 0 and then EVC_Train.Position_M > 9_000.0);
+      function Past_LX return Boolean is
+        (EVC_Train.Position_M > 5_600.0);
+
+      procedure Wait_TSM is new Run_Until (In_TSM);
+      procedure Wait_RSM is new Run_Until (In_RSM);
+      procedure Wait_Stop is new Run_Until (Stopped);
+      procedure Wait_LX is new Run_Until (Past_LX);
+   begin
+      Reset;
+      EVC_Core.Reset;
+
+      -- a few idle steps in SB
+      for I in 1 .. 5 loop
+         Sim_Step;
+      end loop;
+      DMI_Core.Render;
+      Check_Frame ("mission_sb");
+
+      -- mission start (the EVC grants FS with a full MA)
+      EVC_Core.Handle_Driver_Action (5, 0);
+      Sim_Step;
+      Expect_Sound (DMI_Sounds.Sinfo, "mission start text plays Sinfo");
+      Drain_Sounds;
+
+      Wait_TSM ("TSM entry", 2_000);
+      Expect_Sound (DMI_Sounds.Sinfo, "TSM entry plays Sinfo");
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("mission_tsm");
+
+      Wait_LX ("passing the level crossing", 3_000);
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("mission_after_lx");
+      Check (Supplementary_Driving_Info.Level =
+               Supplementary_Driving_Info.L2,
+             "level transition to L2 executed");
+
+      Wait_RSM ("RSM entry", 8_000);
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("mission_rsm");
+
+      Wait_Stop ("standstill at the EOA", 4_000);
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("mission_stopped");
+      Check (EVC_Train.Position_M < Float (EVC_Track.EOA_M),
+             "train stopped before the EOA");
+   end Scenario_Mission;
+
    Status : Natural;
 begin
    Scenario_FS_CSM;
@@ -581,6 +692,7 @@ begin
    Scenario_Planning;
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;
+   Scenario_Mission;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

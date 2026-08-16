@@ -13,6 +13,18 @@
     </style>
   </head>
   <body>
+    <div id="desk" style="padding: 10px; font-size: 13px;">
+      <h3>Driver desk (EVC simulator)</h3>
+      <label>Source:
+        <select id="source">
+          <option value="sim" selected>simulator (run obj/evc_sim)</option>
+          <option value="manual">manual panel</option>
+        </select>
+      </label>
+      <label>Auto drive <input type="checkbox" id="auto_drive" checked></label>
+      <label>Throttle/Brake <input type="range" id="demand" min="-100" max="100" value="0"></label>
+      <span id="demand_value">0</span>
+    </div>
     <div id="controls">
       <h3>Manual EVC panel</h3>
       <div class="row">
@@ -227,11 +239,31 @@
         socket.send(buf);
       }
 
+      function manualMode() {
+        return document.getElementById('source').value === 'manual';
+      }
+
       function sendAll() {
         if (socket.readyState !== WebSocket.OPEN) return;
+        // in simulator mode the EVC owns the state messages
+        if (!manualMode()) return;
         sendSpeedState();
         sendModeLevel();
       }
+
+      function sendDesk() {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        const { buf, dv } = makeMessage(0x51, 2); // MSG_DESK
+        const demand = parseInt(document.getElementById('demand').value);
+        document.getElementById('demand_value').textContent = demand;
+        dv.setUint8(HEADER_LENGTH, demand < 0 ? 256 + demand : demand);
+        dv.setUint8(HEADER_LENGTH + 1,
+          document.getElementById('auto_drive').checked ? 1 : 0);
+        socket.send(buf);
+      }
+      document.getElementById('demand').addEventListener('input', sendDesk);
+      document.getElementById('auto_drive').addEventListener('input', sendDesk);
+      document.getElementById('source').addEventListener('input', sendAll);
 
       // pointer events on the DMI screen
       function sendPointer(event, x, y) {
