@@ -17,6 +17,7 @@ char* rgb_to_string (int rgb) {
 		case 0xC4C3C3:
 		case 0xC5C5C5:
 		case 0xC6C6C6:
+		case 0xC2C2C2:
 		case 0xCFCDCE:
 		case 0xCBCACA:
 		case 0xCBCBC9:
@@ -134,6 +135,9 @@ char* rgb_to_string (int rgb) {
 		case 0x1B211F:
 		case 0x1B241F:
 		case 0x17211F: //specifically for PL_26, it is really brownish
+		case 0x1F2B1E: //ATO symbols, anti-aliased edge on background
+		case 0xA1721:
+		case 0x111E20:
 			return "DARK_BLUE";
 		case 0x81839:
 			return "SHADOW";
@@ -145,6 +149,10 @@ char* rgb_to_string (int rgb) {
 		case 0xDADB00:
 		case 0xC6C600:
 		case 0xe2e200:
+		case 0xDCDE05:
+		case 0xEBEC02:
+		case 0xD9DB05:
+		case 0xD2D406:
 			return "YELLOW";
 		case 0xEA9100:
 			return "ORANGE";
