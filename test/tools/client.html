@@ -16,7 +16,7 @@
 			<label>Vtarget: <input type="number" id="vtarget" value="80" min="0" max="400" oninput="sendParams()"></label>
 			<label>Vrelease: <input type="number" id="vrelease" value="35" min="0" max="400" oninput="sendParams()"></label>
 			<label>Dist (0..90000): <input type="number" id="dist" value="684" min="0" max="90000" oninput="sendParams()"></label>
-			<label>Range: 
+			<label>Range:
 				<select id="range" onchange="sendParams()">
 					<option value="0">140</option>
 					<option value="1" selected>180</option>
@@ -24,6 +24,37 @@
 					<option value="3">400</option>
 				</select>
 			</label>
+			<label>Mode:
+				<select id="mode" onchange="sendParams()">
+					<option value="0">NP</option>
+					<option value="1">SB</option>
+					<option value="2" selected>FS</option>
+					<option value="3">AD</option>
+					<option value="4">SM</option>
+					<option value="5">LS</option>
+					<option value="6">OS</option>
+					<option value="7">SR</option>
+					<option value="8">SH</option>
+					<option value="9">UN</option>
+					<option value="10">RV</option>
+					<option value="11">TR</option>
+					<option value="12">SN</option>
+					<option value="13">PT</option>
+					<option value="14">NL</option>
+					<option value="15">SF</option>
+					<option value="16">SL</option>
+					<option value="17">IS</option>
+				</select>
+			</label>
+			<label>Monitoring:
+				<select id="monitoring" onchange="sendParams()">
+					<option value="0">CSM</option>
+					<option value="1" selected>TSM</option>
+					<option value="2">RSM</option>
+				</select>
+			</label>
+			<label>CSM target info: <input type="checkbox" id="csm_ti" onchange="sendParams()"></label>
+			<label>Vrelease exists: <input type="checkbox" id="vrelease_exists" checked onchange="sendParams()"></label>
 		</div>
 	</div>
     <canvas id="myCanvas" width="640" height="480"></canvas>
@@ -36,9 +67,11 @@
 				vrelease: parseInt(document.getElementById('vrelease').value),
 				dist: parseInt(document.getElementById('dist').value),
 				range: parseInt(document.getElementById('range').value),
-				mode: 2, // Default to M_FS (index 2 in Mode_T)
+				mode: parseInt(document.getElementById('mode').value),
+				monitoring: parseInt(document.getElementById('monitoring').value),
+				csm_ti: document.getElementById('csm_ti').checked ? 1 : 0,
 				flash_enable: true,
-				vrelease_exists: true,
+				vrelease_exists: document.getElementById('vrelease_exists').checked ? 1 : 0,
 				show_taf: true
 			};
 			socket.send(JSON.stringify(params));

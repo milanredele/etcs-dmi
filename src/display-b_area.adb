@@ -46,6 +46,8 @@ package body Display.B_Area is
       case Mode is
          when M_SB => DS (Symbol.MO_13);
          when M_FS => DS (Symbol.MO_11);
+         when M_AD => DS (Symbol.MO_23);
+         when M_SM => DS (Symbol.MO_24);
          when M_LS => DS (Symbol.MO_21);
          when M_OS => DS (Symbol.MO_07);
          when M_SR => DS (Symbol.MO_09);

@@ -21,14 +21,13 @@ package body Speed_And_Distance is
    procedure Set_Speed (New_Speed : Speed_T) is
    begin
       case Monitoring_Mode is
-         when CSM | PIM =>
-            -- DMI 7.3.2.1
+         when CSM =>
             if New_Speed > Speed.Vsbi or Supervision_Status = IntS then
-               -- DMI 7.2.4.1
+               -- DMI 7.2.4.1 (deactivation 7.2.4.2 only on brake release, see EVC)
                Supervision_Status := IntS;
             elsif New_Speed > Speed.Vwsl
               or (Supervision_Status = WaS and New_Speed > Speed.Vperm) then
-               -- DMI 7.2.3.1
+               -- DMI 7.2.3.1 / 7.2.3.2 (hysteresis: deactivated at <= Vperm)
                Supervision_Status := WaS;
             elsif New_Speed > Speed.Vperm then
                -- DMI 7.2.2.1
@@ -38,30 +37,28 @@ package body Speed_And_Distance is
                Supervision_Status := NoS;
             end if;
          when TSM =>
+            -- v4.0.0: the base status in TSM is IndS (DMI 7.4.2.1);
+            -- NoS does not exist under TSM.
             if New_Speed > Speed.Vsbi or Supervision_Status = IntS then
                -- DMI 7.4.5.1
                Supervision_Status := IntS;
             elsif New_Speed > Speed.Vwsl
               or (Supervision_Status = WaS and New_Speed > Speed.Vperm) then
-               -- DMI 7.4.4.1
+               -- DMI 7.4.4.1 / 7.4.4.2
                Supervision_Status := WaS;
             elsif New_Speed > Speed.Vperm then
                -- DMI 7.4.3.1
                Supervision_Status := OvS;
-            elsif New_Speed > Speed.Visl
-              or (Supervision_Status = IndS and New_Speed >= Speed.Vtarget) then
+            else
                -- DMI 7.4.2.1
                Supervision_Status := IndS;
-            else
-               -- DMI 7.4.1.1
-               Supervision_Status := NoS;
             end if;
          when RSM =>
             if New_Speed > Speed.Vrelease or Supervision_Status = IntS then
-               -- DMI 7.5.2.1
+               -- DMI 7.5.3.1
                Supervision_Status := IntS;
             else
-               -- DMI 7.5.1.1
+               -- DMI 7.5.2.1
                Supervision_Status := IndS;
             end if;
       end case;
@@ -100,6 +97,14 @@ package body Speed_And_Distance is
 
    function Get_Supervision_Status return Supervision_Status_T is
      (Supervision_Status);
+
+   procedure Set_CSM_Target_Info (Enabled : Boolean) is
+   begin
+      CSM_Target_Info := Enabled;
+   end Set_CSM_Target_Info;
+
+   function Get_CSM_Target_Info return Boolean is
+     (CSM_Target_Info);
 
    function Get_Distance_To_Target return Distance_T is
      (Distance_To_Target);

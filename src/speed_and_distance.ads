@@ -16,12 +16,11 @@
 
 package Speed_And_Distance is
 
-   -- DMI 7.1.1.3
+   -- DMI 7.2 / 7.4 / 7.5 (v4.0.0: PIM deleted, SRS 7.3 "intentionally deleted")
    type Monitoring_T is (CSM, -- Ceiling Speed Monitoring
-                         PIM, -- Pre-Indication Monitoring
                          TSM, -- Target Speed Monitoring
                          RSM); -- Release Speed Monitoring
-   
+
    type Supervision_Status_T is (NoS, -- Normal Status
                                  IndS, -- Indication
                                  OvS, -- Over-speed
@@ -38,7 +37,7 @@ package Speed_And_Distance is
       
    type Speed_Params is
       record
-         Vperm, Vtarget, Vwsl, Visl, Vsbi, Vrelease : Speed_T;
+         Vperm, Vtarget, Vwsl, Vsbi, Vrelease : Speed_T;
          Vrelease_Exists : Boolean := False;
       end record;
 
@@ -60,7 +59,12 @@ package Speed_And_Distance is
    function Get_Monitoring_Mode return Monitoring_T;
    
    function Get_Supervision_Status return Supervision_Status_T;
-   
+
+   -- Table 8/9 "CSM (with target information)": requested by National Value
+   procedure Set_CSM_Target_Info (Enabled : Boolean);
+
+   function Get_CSM_Target_Info return Boolean;
+
    type Distance_T is new Natural range 0 .. 90000;
    
    function Get_Distance_To_Target return Distance_T;
@@ -74,6 +78,7 @@ package Speed_And_Distance is
 private
    Monitoring_Mode    : Monitoring_T;
    Supervision_Status : Supervision_Status_T;
+   CSM_Target_Info    : Boolean := False;
    Speed              : Speed_Params;
    Vcurrent           : Speed_T := 0;
    Speed_Dial_Range   : Speed_Dial_Range_T := Range_180;

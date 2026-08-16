@@ -41,7 +41,9 @@ function getStatusBits() {
         const type = match[2];
         let size = 1;
         if (type.includes('Two_Bits')) size = 2;
+        if (type.includes('Three_Bits')) size = 3;
         if (type.includes('Four_Bits')) size = 4;
+        if (type.includes('Five_Bits')) size = 5;
         if (type.includes('Unsigned_8')) size = 8;
         
         bits.push({ name: name.toLowerCase(), bit: currentBit, size: size });

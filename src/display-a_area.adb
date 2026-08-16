@@ -24,13 +24,23 @@ with User_Settings;
 package body Display.A_Area is
 
    procedure Draw is
-      use type Speed_And_Distance.Monitoring_T;
+      use Speed_And_Distance;
+      use type Supplementary_Driving_Info.Mode_T;
+
+      -- "yes" rows shared by Tables 13 and 14: CSM only counts when target
+      -- information is requested by National Value
+      Target_Monitoring : constant Boolean :=
+        (case Get_Monitoring_Mode is
+            when CSM       => Get_CSM_Target_Info,
+            when TSM | RSM => True);
    begin
       A_Buffer.Fill (General_Parameters.Background_Color);
       case Supplementary_Driving_Info.Mode is
-         -- DMI 8.2.2.1.8
-         when Supplementary_Driving_Info.M_FS =>
-            if Speed_And_Distance.Get_Monitoring_Mode /= Speed_And_Distance.CSM then
+         when Supplementary_Driving_Info.M_FS
+            | Supplementary_Driving_Info.M_AD
+            | Supplementary_Driving_Info.M_SM =>
+            -- DMI 8.2.2.1.8 Table 13 / 8.2.2.2.7 Table 14
+            if Target_Monitoring then
                Display.A_Area.A_2.Draw;
                Display.A_Area.A_3.Draw;
             end if;
@@ -38,8 +48,14 @@ package body Display.A_Area is
             Display.A_Area.A_2.Draw;
             Display.A_Area.A_3.Draw;
          when Supplementary_Driving_Info.M_OS | Supplementary_Driving_Info.M_SR =>
-            -- DMI 8.2.2.2.7
-            if User_Settings.Toggle (User_Settings.Distance_To_Target_Digital) then
+            -- DMI 8.2.2.2.7 Table 14: digital only, and only when toggled on;
+            -- RSM does not apply for SR
+            if User_Settings.Toggle (User_Settings.Distance_To_Target_Digital)
+              and then Target_Monitoring
+              and then not (Get_Monitoring_Mode = RSM
+                            and Supplementary_Driving_Info.Mode =
+                                  Supplementary_Driving_Info.M_SR)
+            then
                Display.A_Area.A_2.Draw;
             end if;
          when Supplementary_Driving_Info.M_LS =>

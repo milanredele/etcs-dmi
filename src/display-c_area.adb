@@ -53,16 +53,15 @@ package body Display.C_Area is
          end case;
       elsif Level_Announcement.Valid then
          -- DMI 8.2.3.2.6
-         if Level_Announcement.Ack_Required then
+         if Level_Announcement.Ack_Required
+           and then Level_Announcement.Level in L0 | NTC
+         then
             C_Buffer.Draw_Yellow_Frame (The_C1_Area, General_Parameters.Flash_On);
-            -- DMI 8.2.3.2.8
+            -- DMI 8.2.3.2.8 (v4.0.0: ack symbols exist only for L0 and NTC)
             case Level_Announcement.Level is
                when L0 =>  DS (Symbol.LE_07, Position_Level);
                when NTC => DS (Symbol.LE_09, Position_Level);
-               when L1 =>  DS (Symbol.LE_11, Position_Level);
-               when L2 =>  DS (Symbol.LE_13, Position_Level);
-               when L3 =>  DS (Symbol.LE_15, Position_Level);
-               when others => 
+               when others =>
                   null;
             end case;
          else
@@ -73,8 +72,7 @@ package body Display.C_Area is
                when NTC => DS (Symbol.LE_08, Position_Level);
                when L1 =>  DS (Symbol.LE_10, Position_Level);
                when L2 =>  DS (Symbol.LE_12, Position_Level);
-               when L3 =>  DS (Symbol.LE_14, Position_Level);
-               when others => 
+               when others =>
                   null;
             end case;
          end if;
@@ -103,8 +101,7 @@ package body Display.C_Area is
          when NTC => DS (Symbol.LE_02);
          when L1 =>  DS (Symbol.LE_03);
          when L2 =>  DS (Symbol.LE_04);
-         when L3 =>  DS (Symbol.LE_05);
-         when others => 
+         when others =>
             -- DMI 8.2.3.2.3
             null;
       end case;

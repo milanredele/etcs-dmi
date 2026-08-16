@@ -89,7 +89,6 @@ begin
    Speed_And_Distance.Set_Speed_Params ((Vperm => 120,
                                          Vtarget => 80,
                                          Vwsl => 130,
-                                         Visl => 140,
                                          Vsbi => 150,
                                          Vrelease => 35,
                                          Vrelease_Exists => True));
@@ -130,16 +129,22 @@ begin
                begin
                   -- Checksum validation
                   if Tel.Checksum = Get_CRC (Buffer (1 .. 14)) then
-                     Speed_And_Distance.Set_Speed (Speed_And_Distance.Speed_T (Tel.V_Cur));
-                     Speed_And_Distance.Set_Speed_Params 
+                     case Tel.Status.Monitoring is
+                        when 0 => Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.CSM);
+                        when 1 => Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.TSM);
+                        when others => Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.RSM);
+                     end case;
+                     Speed_And_Distance.Set_CSM_Target_Info (Tel.Status.CSM_TI = 1);
+
+                     Speed_And_Distance.Set_Speed_Params
                         ((Vperm    => Speed_And_Distance.Speed_T (Tel.V_Perm),
                           Vtarget  => Speed_And_Distance.Speed_T (Tel.V_Targ),
                           Vwsl     => Speed_And_Distance.Speed_T (Natural (Tel.V_Perm) + 5),
-                          Visl     => Speed_And_Distance.Speed_T (Natural (Tel.V_Perm) + 10),
                           Vsbi     => Speed_And_Distance.Speed_T (Natural (Tel.V_Perm) + 15),
                           Vrelease => Speed_And_Distance.Speed_T (Tel.V_Rel),
                           Vrelease_Exists => (Tel.Status.Vrelease_Exists = 1)));
-                     
+                     Speed_And_Distance.Set_Speed (Speed_And_Distance.Speed_T (Tel.V_Cur));
+
                      Speed_And_Distance.Set_Distance_To_Target (Speed_And_Distance.Distance_T (if Tel.D_Targ > 90000 then 90000 else Tel.D_Targ));
 
                      case Tel.Status.Speed_Range is
@@ -152,29 +157,14 @@ begin
                      -- Apply Other Statuses
                      Track_Ahead_Free.Show := (Tel.Status.Show_TAF = 1);
                      Flash_Enabled_State := (Tel.Status.Flash_Enable = 1);
-                     
-                     -- Mode mapping (0..F index to SDI.Mode_T)
-                     declare
-                         Modes : constant array (Four_Bits_T) of Supplementary_Driving_Info.Mode_T 
-                           := (0 => Supplementary_Driving_Info.M_NP,
-                               1 => Supplementary_Driving_Info.M_SB,
-                               2 => Supplementary_Driving_Info.M_FS,
-                               3 => Supplementary_Driving_Info.M_LS,
-                               4 => Supplementary_Driving_Info.M_OS,
-                               5 => Supplementary_Driving_Info.M_SR,
-                               6 => Supplementary_Driving_Info.M_SH,
-                               7 => Supplementary_Driving_Info.M_UN,
-                               8 => Supplementary_Driving_Info.M_RV,
-                               9 => Supplementary_Driving_Info.M_TR,
-                               10 => Supplementary_Driving_Info.M_SN,
-                               11 => Supplementary_Driving_Info.M_SE,
-                               12 => Supplementary_Driving_Info.M_PT,
-                               13 => Supplementary_Driving_Info.M_NL,
-                               14 => Supplementary_Driving_Info.M_SF,
-                               15 => Supplementary_Driving_Info.M_SL);
-                     begin
-                         Supplementary_Driving_Info.Mode := Modes (Tel.Status.Mode);
-                     end;
+
+                     -- Mode index follows Mode_T declaration order
+                     if Natural (Tel.Status.Mode) <=
+                        Supplementary_Driving_Info.Mode_T'Pos (Supplementary_Driving_Info.Mode_T'Last)
+                     then
+                        Supplementary_Driving_Info.Mode :=
+                          Supplementary_Driving_Info.Mode_T'Val (Tel.Status.Mode);
+                     end if;
 
                   else
                      Ada.Text_IO.Put_Line ("CRC Error!");

@@ -21,7 +21,7 @@ package Display is
    type ID_T is 
      (A, B, C, D, E, F, G, Y, Z,
       A1, A2, A3, A4,
-      B0, B1, B2, B3, B4, B5, B6, B7,
+      B0, B1, B2, B3, B4, B5, B6, B7, B8,
       C1, C2, C3, C4, C5, C6, C7, C8, C9,
       D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D11, D12, D13, D14,
       E1, E2, E3, E4, E5, E6, E7, E8, E9, E10, E11,
@@ -32,7 +32,7 @@ package Display is
    subtype Main_ID_With_Sub_T is Main_ID_T range A .. G;
    subtype Sub_ID_T is ID_T range A1 .. G13;
    subtype Sub_ID_A_T is Sub_ID_T range A1 .. A4;
-   subtype Sub_ID_B_T is Sub_ID_T range B3 .. B7; -- B0, B1, B2 intentionally left out (don't have border)
+   subtype Sub_ID_B_T is Sub_ID_T range B3 .. B8; -- B0, B1, B2 intentionally left out (don't have border)
    subtype Sub_ID_C_T is Sub_ID_T range C1 .. C9;
    subtype Sub_ID_D_T is Sub_ID_T range D1 .. D14;
    subtype Sub_ID_E_T is Sub_ID_T range E1 .. E11;
@@ -84,7 +84,7 @@ private
    
    Sub_To_Main_Map : constant Sub_To_Main_Map_T
      := (A1 .. A4  => A,
-         B0 .. B7  => B,
+         B0 .. B8  => B,
          C1 .. C9  => C,
          D1 .. D14 => D,
          E1 .. E11 => E,

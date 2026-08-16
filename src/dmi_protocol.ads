@@ -11,16 +11,19 @@ package DMI_Protocol is
    
    type Bit_T is mod 2 ** 1 with Size => 1;
    type Two_Bits_T is mod 2 ** 2 with Size => 2;
-   type Four_Bits_T is mod 2 ** 4 with Size => 4;
+   type Three_Bits_T is mod 2 ** 3 with Size => 3;
+   type Five_Bits_T is mod 2 ** 5 with Size => 5;
 
    -- Bit-packed fields representing various DMI status bits
    type DMI_Status_T is record
       Flash_Enable    : Bit_T; -- EVC commands DMI to flash elements
       Vrelease_Exists : Bit_T;
       Show_TAF        : Bit_T;
-      Mode            : Four_Bits_T; -- SDI.Mode_T mapping
+      Mode            : Five_Bits_T; -- SDI.Mode_T mapping ('Pos order)
       Speed_Range     : Two_Bits_T; -- Speed_And_Distance.Speed_Dial_Range_T
-      Spare           : Bit_T; -- Just a bit for now
+      Monitoring      : Two_Bits_T; -- 0 CSM, 1 TSM, 2 RSM
+      CSM_TI          : Bit_T; -- CSM "with target information" (National Value)
+      Spare           : Three_Bits_T;
    end record with Pack, Size => 16;
    
    type DMI_Telegram_T is record

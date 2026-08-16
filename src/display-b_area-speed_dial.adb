@@ -38,7 +38,7 @@ package body Display.B_Area.Speed_Dial is
             -- DMI 8.2.1.1.12.2 (Range 250)
             return Linear_Scale (Lower_Limit, Upper_Limit, Max_Speed_Map (Get_Speed_Dial_Range));
          when Range_400 =>
-            -- DMI 8.2.1.1.11.2
+            -- DMI 8.2.1.1.11.2: two linear segments with the break at 200 km/h
             if Speed < 200 then
                return Linear_Scale (Lower_Limit, Threshold_200, 200, 0);
             else
@@ -156,7 +156,7 @@ package body Display.B_Area.Speed_Dial is
    procedure Draw_Speed_Pointer  is separate;
 
    procedure Draw_Release_Speed_Digital is
-      procedure Draw_Number is
+      procedure Draw_Number (The_Color : General_Parameters.Color) is
          B6_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (B6);
          The_Number : constant Wide_String := Speed_T'Wide_Image (Get_Speed_Params.Vrelease);
       begin
@@ -164,24 +164,27 @@ package body Display.B_Area.Speed_Dial is
                                Pen_Y      => B6_Area.Position.Y + B6_Area.Height - 10,
                                The_String => The_Number (2 .. The_Number'Last),
                                The_Size   => 17,
-                               The_Color  => General_Parameters.MEDIUM_GREY);
+                               The_Color  => The_Color);
       end Draw_Number;
+
+      In_TSM_Or_RSM : constant Boolean := Get_Monitoring_Mode in TSM | RSM;
    begin
-      -- DMI 8.2.1.6.5
-      if not Get_Speed_Params.Vrelease_Exists then
+      -- DMI 8.2.1.6.5, Table 11
+      if not Get_Speed_Params.Vrelease_Exists or not In_TSM_Or_RSM then
          return;
       end if;
       case Supplementary_Driving_Info.Mode is
-         when Supplementary_Driving_Info.M_FS | Supplementary_Driving_Info.M_LS =>
-            if Get_Monitoring_Mode /= CSM then
-                  Draw_Number;
-            end if;
+         when Supplementary_Driving_Info.M_FS
+            | Supplementary_Driving_Info.M_SM
+            | Supplementary_Driving_Info.M_LS =>
+            Draw_Number (General_Parameters.YELLOW);
          when Supplementary_Driving_Info.M_OS =>
-            if User_Settings.Toggle (User_Settings.Release_Speed_Digital)
-              and Get_Monitoring_Mode /= CSM
-            then
-               Draw_Number;
+            -- shown only if the driver has toggled it on (Table 11 note)
+            if User_Settings.Toggle (User_Settings.Release_Speed_Digital) then
+               Draw_Number (General_Parameters.YELLOW);
             end if;
+         when Supplementary_Driving_Info.M_AD =>
+            Draw_Number (General_Parameters.MEDIUM_GREY);
          when others =>
             null;
       end case;
@@ -197,188 +200,314 @@ package body Display.B_Area.Speed_Dial is
       Draw_Speed_Indicator_Numbers;
       Draw_Speed_Pointer;
       Circular_Speed_Gauge.Draw;
+      Circular_Speed_Gauge.Draw_Hooks;
       Draw_Release_Speed_Digital;
    end Draw;
 
    package body Circular_Speed_Gauge is
-      procedure Draw is
-         type Quadrant is (SW, NW, NE, SE);
-         -- only correct in a quadrant (due to periodicity)
-         procedure Draw_Circle_Sector_Quadrant (From_Angle,  To_Angle  : Angle;
-                                                From_Radius, To_Radius : Radius_T;
-                                                The_Color              : General_Parameters.Color;
-                                                The_Quadrant           : Quadrant) is
-            From_R_R : constant Natural := From_Radius**2;
-            To_R_R   : constant Natural := To_Radius**2;
-            Eps      : constant Angle := 0.001; -- needed for stability
-            Tan_From : constant Float := Tan (Float (From_Angle + Eps));
-            Tan_To   : constant Float := Tan (Float (To_Angle - Eps));
-            -- Computation done in standard Cartesian coordinates
-            subtype X_SW is Integer range -To_Radius .. 0;
-            subtype Y_SW is Integer range -To_Radius .. 0;
-            subtype X_NW is Integer range 0 .. To_Radius;
-            subtype Y_NW is Integer range -To_Radius .. 0;
-            subtype X_NE is Integer range 0 .. To_Radius;
-            subtype Y_NE is Integer range 0 .. To_Radius;
-            subtype X_SE is Integer range -To_Radius .. 0;
-            subtype Y_SE is Integer range 0 .. To_Radius;
+      type Quadrant is (SW, NW, NE, SE);
+      -- only correct in a quadrant (due to periodicity)
+      procedure Draw_Circle_Sector_Quadrant (From_Angle,  To_Angle  : Angle;
+                                             From_Radius, To_Radius : Radius_T;
+                                             The_Color              : General_Parameters.Color;
+                                             The_Quadrant           : Quadrant) is
+         From_R_R : constant Natural := From_Radius**2;
+         To_R_R   : constant Natural := To_Radius**2;
+         Eps      : constant Angle := 0.001; -- needed for stability
+         Tan_From : constant Float := Tan (Float (From_Angle + Eps));
+         Tan_To   : constant Float := Tan (Float (To_Angle - Eps));
+         -- Computation done in standard Cartesian coordinates
+         subtype X_SW is Integer range -To_Radius .. 0;
+         subtype Y_SW is Integer range -To_Radius .. 0;
+         subtype X_NW is Integer range 0 .. To_Radius;
+         subtype Y_NW is Integer range -To_Radius .. 0;
+         subtype X_NE is Integer range 0 .. To_Radius;
+         subtype Y_NE is Integer range 0 .. To_Radius;
+         subtype X_SE is Integer range -To_Radius .. 0;
+         subtype Y_SE is Integer range 0 .. To_Radius;
 
-            procedure Fill_If_Needed (X, Y : Integer) is
-               Dist_2 : constant Natural := X*X + Y*Y;
-            begin
-               if Dist_2 <= To_R_R and Dist_2 >= From_R_R then
-                  declare
-                     The_Tan : constant Float := (Float (Y) + 0.5) / (Float (X) + 0.5);
-                  begin
-                     if The_Tan <= Tan_To and The_Tan >= Tan_From then
-                        -- Axes flipped as needed
-                        B_Buffer.Set_Pixel (X         => The_Center.X + Y,
-                                            Y         => The_Center.Y - X,
-                                            The_Color => The_Color);
-                     end if;
-                  end;
-               end if;
-            end;
+         procedure Fill_If_Needed (X, Y : Integer) is
+            Dist_2 : constant Natural := X*X + Y*Y;
          begin
-            case The_Quadrant is
-               when SW =>
-                  for Y in Y_SW loop
-                     for X in X_SW loop
-                        Fill_If_Needed (X, Y);
-                     end loop;
-                  end loop;
-               when NW =>
-                  for Y in Y_NW loop
-                     for X in X_NW loop
-                        Fill_If_Needed (X, Y);
-                     end loop;
-                  end loop;
-               when NE =>
-                  for Y in Y_NE loop
-                     for X in X_NE loop
-                        Fill_If_Needed (X, Y);
-                     end loop;
-                  end loop;
-               when SE =>
-                  for Y in Y_SE loop
-                     for X in X_SE loop
-                        Fill_If_Needed (X, Y);
-                     end loop;
-                  end loop;
-            end case;
-         end Draw_Circle_Sector_Quadrant;
-
-         procedure Draw_Circle_Sector (From_Angle,  To_Angle  : Angle;
-                                       From_Radius, To_Radius : Radius_T;
-                                       The_Color              : General_Parameters.Color) is
-            subtype Q_SW is Angle range -Pi .. -Pi/2.0;
-            subtype Q_NW is Angle range -Pi/2.0 .. 0.0;
-            subtype Q_NE is Angle range 0.0 .. Pi/2.0;
-            subtype Q_SE is Angle range Pi/2.0 .. Pi;
-            procedure DCSQ (From_Angle, To_Angle : Angle;
-                            F_Rad        : Radius_T := From_Radius;
-                            To_Rad       : Radius_T := To_Radius;
-                            The_Col      : General_Parameters.Color := The_Color;
-                            The_Quadrant : Quadrant) renames Draw_Circle_Sector_Quadrant;
-         begin
-
-            if From_Angle in Q_SW then
-               if To_Angle in Q_SW then
-                 DCSQ (From_Angle, To_Angle, The_Quadrant => SW);
-               elsif To_Angle in Q_NW then
-                  DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
-                  DCSQ (-Pi/2.0, To_Angle, The_Quadrant => NW);
-               elsif To_Angle in Q_NE then
-                  DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
-                  DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
-                  DCSQ (0.0, To_Angle, The_Quadrant => NE);
-               elsif To_Angle in Q_SE then
-                  DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
-                  DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
-                  DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
-                  DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-               else
-                 raise Program_Error with "Cannot get here";
-               end if;
-            elsif From_Angle in Q_NW then
-               if To_Angle in Q_NW then
-                  DCSQ (From_Angle, To_Angle, The_Quadrant => NW);
-               elsif To_Angle in Q_NE then
-                  DCSQ (From_Angle, 0.0, The_Quadrant => NW);
-                  DCSQ (0.0, To_Angle, The_Quadrant => NE);
-               elsif To_Angle in Q_SE then
-                  DCSQ (From_Angle, 0.0, The_Quadrant => NW);
-                  DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
-                  DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-               else
-                 raise Program_Error with "Cannot get here";
-               end if;
-            elsif From_Angle in Q_NE then
-               if To_Angle in Q_NE then
-                  DCSQ (From_Angle, To_Angle, The_Quadrant => NE);
-               elsif To_Angle in Q_SE then
-                  DCSQ (From_Angle, Pi/2.0, The_Quadrant => NE);
-                  DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-               else
-                 raise Program_Error with "Cannot get here";
-               end if;
-            elsif From_Angle in Q_SE then
-               if To_Angle in Q_SE then
-                  DCSQ (From_Angle, To_Angle, The_Quadrant => SE);
-               else
-                 raise Program_Error with "Cannot get here";
-               end if;
-            else
-               raise Program_Error with "Invalid From_Angle";
+            if Dist_2 <= To_R_R and Dist_2 >= From_R_R then
+               declare
+                  The_Tan : constant Float := (Float (Y) + 0.5) / (Float (X) + 0.5);
+               begin
+                  if The_Tan <= Tan_To and The_Tan >= Tan_From then
+                     -- Axes flipped as needed
+                     B_Buffer.Set_Pixel (X         => The_Center.X + Y,
+                                         Y         => The_Center.Y - X,
+                                         The_Color => The_Color);
+                  end if;
+               end;
             end if;
+         end;
+      begin
+         case The_Quadrant is
+            when SW =>
+               for Y in Y_SW loop
+                  for X in X_SW loop
+                     Fill_If_Needed (X, Y);
+                  end loop;
+               end loop;
+            when NW =>
+               for Y in Y_NW loop
+                  for X in X_NW loop
+                     Fill_If_Needed (X, Y);
+                  end loop;
+               end loop;
+            when NE =>
+               for Y in Y_NE loop
+                  for X in X_NE loop
+                     Fill_If_Needed (X, Y);
+                  end loop;
+               end loop;
+            when SE =>
+               for Y in Y_SE loop
+                  for X in X_SE loop
+                     Fill_If_Needed (X, Y);
+                  end loop;
+               end loop;
+         end case;
+      end Draw_Circle_Sector_Quadrant;
 
-         end Draw_Circle_Sector;
+      procedure Draw_Circle_Sector (From_Angle,  To_Angle  : Angle;
+                                    From_Radius, To_Radius : Radius_T;
+                                    The_Color              : General_Parameters.Color) is
+         subtype Q_SW is Angle range -Pi .. -Pi/2.0;
+         subtype Q_NW is Angle range -Pi/2.0 .. 0.0;
+         subtype Q_NE is Angle range 0.0 .. Pi/2.0;
+         subtype Q_SE is Angle range Pi/2.0 .. Pi;
+         procedure DCSQ (From_Angle, To_Angle : Angle;
+                         F_Rad        : Radius_T := From_Radius;
+                         To_Rad       : Radius_T := To_Radius;
+                         The_Col      : General_Parameters.Color := The_Color;
+                         The_Quadrant : Quadrant) renames Draw_Circle_Sector_Quadrant;
+      begin
 
-         procedure Draw_Lowermost_Part is
-         begin
-            Draw_Circle_Sector (From_Angle  => Lowermost_Limit,
-                                To_Angle    => Lower_Limit,
+         if From_Angle in Q_SW then
+            if To_Angle in Q_SW then
+              DCSQ (From_Angle, To_Angle, The_Quadrant => SW);
+            elsif To_Angle in Q_NW then
+               DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
+               DCSQ (-Pi/2.0, To_Angle, The_Quadrant => NW);
+            elsif To_Angle in Q_NE then
+               DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
+               DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
+               DCSQ (0.0, To_Angle, The_Quadrant => NE);
+            elsif To_Angle in Q_SE then
+               DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
+               DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
+               DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
+               DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
+            else
+              raise Program_Error with "Cannot get here";
+            end if;
+         elsif From_Angle in Q_NW then
+            if To_Angle in Q_NW then
+               DCSQ (From_Angle, To_Angle, The_Quadrant => NW);
+            elsif To_Angle in Q_NE then
+               DCSQ (From_Angle, 0.0, The_Quadrant => NW);
+               DCSQ (0.0, To_Angle, The_Quadrant => NE);
+            elsif To_Angle in Q_SE then
+               DCSQ (From_Angle, 0.0, The_Quadrant => NW);
+               DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
+               DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
+            else
+              raise Program_Error with "Cannot get here";
+            end if;
+         elsif From_Angle in Q_NE then
+            if To_Angle in Q_NE then
+               DCSQ (From_Angle, To_Angle, The_Quadrant => NE);
+            elsif To_Angle in Q_SE then
+               DCSQ (From_Angle, Pi/2.0, The_Quadrant => NE);
+               DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
+            else
+              raise Program_Error with "Cannot get here";
+            end if;
+         elsif From_Angle in Q_SE then
+            if To_Angle in Q_SE then
+               DCSQ (From_Angle, To_Angle, The_Quadrant => SE);
+            else
+              raise Program_Error with "Cannot get here";
+            end if;
+         else
+            raise Program_Error with "Invalid From_Angle";
+         end if;
+
+      end Draw_Circle_Sector;
+
+      procedure Draw_Lowermost_Part is
+      begin
+         -- DMI 8.2.1.4.5
+         Draw_Circle_Sector (From_Angle  => Lowermost_Limit,
+                             To_Angle    => Lower_Limit,
+                             From_Radius => B2_Radius_Inner,
+                             To_Radius   => B2_Radius_Outer,
+                             The_Color   => Lowermost_Part_Color);
+      end Draw_Lowermost_Part;
+
+      procedure Draw_Thin_CSG (From_Speed, To_Speed : Speed_T;
+                               The_Color            : General_Parameters.Color) is
+      begin
+         if From_Speed >= To_Speed then
+            return;
+         end if;
+         Draw_Circle_Sector (From_Angle  => Speed_To_Angle (From_Speed),
+                             To_Angle    => Speed_To_Angle (To_Speed),
+                             From_Radius => B2_Radius_Inner,
+                             To_Radius   => B2_Radius_Outer,
+                             The_Color   => The_Color);
+      end Draw_Thin_CSG;
+
+      procedure Draw_Wide_CSG (From_Speed, To_Speed : Speed_T;
+                               The_Color            : General_Parameters.Color) is
+      begin
+         if From_Speed >= To_Speed then
+            return;
+         end if;
+         -- DMI 8.2.1.4.8
+         Draw_Circle_Sector (From_Angle  => Speed_To_Angle (From_Speed),
+                             To_Angle    => Speed_To_Angle (To_Speed),
+                             From_Radius => Hook_Inner_Radius,
+                             To_Radius   => B2_Radius_Outer,
+                             The_Color   => The_Color);
+      end Draw_Wide_CSG;
+
+      procedure Draw_Hook (At_Speed  : Speed_T;
+                           The_Color : General_Parameters.Color) is
+         -- DMI 8.2.1.4.7
+         Speed_Angle : constant Angle := Speed_To_Angle (At_Speed);
+      begin
+         Draw_Circle_Sector (From_Angle  => Speed_Angle - Hook_Width,
+                             To_Angle    => Speed_Angle,
+                             From_Radius => Hook_Inner_Radius,
+                             To_Radius   => B2_Radius_Outer,
+                             The_Color   => The_Color);
+      end Draw_Hook;
+
+      -- DMI 8.2.1.6.3/.4: graphical release speed on the CSG. In the region
+      -- below Vrelease the ring splits into an outer release band, a 1 cell
+      -- background separator and a 3 cell wide permitted speed band.
+      procedure Draw_Release_Graphical (Perm_Color : General_Parameters.Color) is
+         Params : constant Speed_Params := Get_Speed_Params;
+         Below  : constant Speed_T :=
+           Speed_T'Min (Params.Vrelease, Params.Vperm);
+      begin
+         -- outer release band, 0 .. Vrelease
+         Draw_Circle_Sector (From_Angle  => Speed_To_Angle (0),
+                             To_Angle    => Speed_To_Angle (Params.Vrelease),
+                             From_Radius => B2_Radius_Inner + 4,
+                             To_Radius   => B2_Radius_Outer,
+                             The_Color   => General_Parameters.MEDIUM_GREY);
+         -- inner permitted speed band, 3 cells, 0 .. min (Vrelease, Vperm);
+         -- the 1 cell ring in between stays background (the separator)
+         if Below > 0 then
+            Draw_Circle_Sector (From_Angle  => Speed_To_Angle (0),
+                                To_Angle    => Speed_To_Angle (Below),
                                 From_Radius => B2_Radius_Inner,
-                                To_Radius   => B2_Radius_Outer,
-                                The_Color   => Lowermost_Part_Color);
-         end Draw_Lowermost_Part;
+                                To_Radius   => B2_Radius_Inner + 2,
+                                The_Color   => Perm_Color);
+         end if;
+         -- full width permitted speed band above the release speed
+         Draw_Thin_CSG (Params.Vrelease, Params.Vperm, Perm_Color);
+      end Draw_Release_Graphical;
 
-         procedure Draw_Thin_CSG (From_Speed, To_Speed : Speed_T;
-                                  The_Color            : General_Parameters.Color) is
-         begin
-            Draw_Circle_Sector (From_Angle  => Speed_To_Angle (From_Speed),
-                                To_Angle    => Speed_To_Angle (To_Speed),
-                                From_Radius => B2_Radius_Inner,
-                                To_Radius   => B2_Radius_Outer,
-                                The_Color   => The_Color);
-         end Draw_Thin_CSG;
+      ----------
+      -- Draw --
+      ----------
 
-         procedure Draw_Wide_CSG (From_Speed, To_Speed : Speed_T;
-                                  The_Color            : General_Parameters.Color) is
-         begin
-            Draw_Circle_Sector (From_Angle  => Speed_To_Angle (From_Speed),
-                                To_Angle    => Speed_To_Angle (To_Speed),
-                                From_Radius => Hook_Inner_Radius,
-                                To_Radius   => B2_Radius_Outer,
-                                The_Color   => The_Color);
-         end Draw_Wide_CSG;
+      procedure Draw is
+         Params : constant Speed_Params := Get_Speed_Params;
+         In_AD  : Boolean;
+         Mid    : General_Parameters.Color;
+         Over   : General_Parameters.Color;
 
-         procedure Draw_Hook (At_Speed  : Speed_T;
-                              The_Color : General_Parameters.Color) is
-            Speed_Angle : constant Angle := Speed_To_Angle (At_Speed);
-         begin
-            Draw_Circle_Sector (From_Angle  => Speed_Angle - Hook_Width,
-                                To_Angle    => Speed_Angle,
-                                From_Radius => Hook_Inner_Radius,
-                                To_Radius   => B2_Radius_Outer,
-                                The_Color   => The_Color);
-         end Draw_Hook;
+         use type Supplementary_Driving_Info.Mode_T;
+      begin
+         -- Table 9: the CSG exists only in FS and AD modes
+         if Supplementary_Driving_Info.Mode not in
+           Supplementary_Driving_Info.M_FS | Supplementary_Driving_Info.M_AD
+         then
+            return;
+         end if;
+         In_AD := Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_AD;
+
+         -- Table 9 AD rows with IntS are fully "not applicable": no CSG at all
+         if In_AD and then Get_Supervision_Status = IntS then
+            return;
+         end if;
+
+         Draw_Lowermost_Part;
+
+         case Get_Monitoring_Mode is
+            when CSM =>
+               if Get_CSM_Target_Info then
+                  Mid := General_Parameters.WHITE;
+                  Draw_Thin_CSG (0, Params.Vtarget, General_Parameters.DARK_GREY);
+                  Draw_Thin_CSG (Params.Vtarget, Params.Vperm, Mid);
+                  Draw_Hook (Params.Vperm, Mid);
+                  Over := (if In_AD then General_Parameters.WHITE
+                           else General_Parameters.ORANGE);
+               else
+                  Mid := General_Parameters.DARK_GREY;
+                  Draw_Thin_CSG (0, Params.Vperm, Mid);
+                  Draw_Hook (Params.Vperm, Mid);
+                  Over := (if In_AD then General_Parameters.DARK_GREY
+                           else General_Parameters.ORANGE);
+               end if;
+               if Get_Supervision_Status in OvS | WaS then
+                  Draw_Wide_CSG (Params.Vperm, Params.Vsbi, Over);
+               elsif Get_Supervision_Status = IntS then
+                  Draw_Wide_CSG (Params.Vperm, Params.Vsbi, General_Parameters.RED);
+               end if;
+
+            when TSM =>
+               Mid := (if In_AD then General_Parameters.WHITE
+                       else General_Parameters.YELLOW);
+               if Params.Vrelease_Exists then
+                  -- target is an EOA, Vtarget = 0 (Table 9 footnote)
+                  Draw_Release_Graphical (Mid);
+               else
+                  Draw_Thin_CSG (0, Params.Vtarget, General_Parameters.DARK_GREY);
+                  Draw_Thin_CSG (Params.Vtarget, Params.Vperm, Mid);
+               end if;
+               Draw_Hook (Params.Vperm, Mid);
+               if Get_Supervision_Status in OvS | WaS then
+                  Over := (if In_AD then General_Parameters.WHITE
+                           else General_Parameters.ORANGE);
+                  Draw_Wide_CSG (Params.Vperm, Params.Vsbi, Over);
+               elsif Get_Supervision_Status = IntS then
+                  Draw_Wide_CSG (Params.Vperm, Params.Vsbi, General_Parameters.RED);
+               end if;
+
+            when RSM =>
+               -- Table 9 RSM rows: no over-speed band
+               Mid := (if In_AD then General_Parameters.WHITE
+                       else General_Parameters.YELLOW);
+               if Params.Vrelease_Exists then
+                  Draw_Release_Graphical (Mid);
+               else
+                  Draw_Thin_CSG (0, Params.Vperm, Mid);
+               end if;
+               Draw_Hook (Params.Vperm, Mid);
+         end case;
+      end Draw;
+
+      ----------------
+      -- Draw_Hooks --
+      ----------------
+
+      procedure Draw_Hooks is
+         Params : constant Speed_Params := Get_Speed_Params;
+
+         use type Supplementary_Driving_Info.Mode_T;
 
          procedure Draw_Basic_Speed_Hook (At_Speed  : Speed_T;
                                           The_Color : General_Parameters.Color) is
+            -- DMI 8.2.1.5.4 / 8.2.1.5.5
             Speed_Angle : constant Angle := Speed_To_Angle (At_Speed);
          begin
-            -- DMI 8.2.1.5.4
             Draw_Circle_Sector (From_Angle  => Speed_Angle - Basic_Speed_Hook_Width,
                                 To_Angle    => Speed_Angle,
                                 From_Radius => Hook_Inner_Radius,
@@ -386,91 +515,44 @@ package body Display.B_Area.Speed_Dial is
                                 The_Color   => The_Color);
          end Draw_Basic_Speed_Hook;
 
-         Release_Or_Target_Speed : Speed_T;
-
-         Vrelease_Missing_Error : exception;
-
-         use type Supplementary_Driving_Info.Mode_T;
+         Show_Target : Boolean;
       begin
+         -- DMI 8.2.1.5.7, Table 10
          case Supplementary_Driving_Info.Mode is
-            when Supplementary_Driving_Info.M_FS =>
-               -- DMI 8.2.1.4.9
-               Draw_Lowermost_Part;
-               case Get_Monitoring_Mode is
-               when CSM =>
-                  Draw_Thin_CSG (0, Get_Speed_Params.Vperm, General_Parameters.DARK_GREY);
-                  Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.DARK_GREY);
-                  if Get_Supervision_Status in OvS | WaS then
-                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.ORANGE);
-                  elsif Get_Supervision_Status = IntS then
-                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.RED);
-                  end if;
-               when PIM =>
-                  if Get_Speed_Params.Vrelease_Exists then
-                     Release_Or_Target_Speed := Get_Speed_Params.Vrelease;
-                     Draw_Thin_CSG (0, Release_Or_Target_Speed, General_Parameters.MEDIUM_GREY);
-                  else
-                     Release_Or_Target_Speed := Get_Speed_Params.Vtarget;
-                     Draw_Thin_CSG (0, Release_Or_Target_Speed, General_Parameters.DARK_GREY);
-                  end if;
-                  Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.WHITE);
-                  Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
-                  if Get_Supervision_Status in OvS | WaS then
-                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.ORANGE);
-                  elsif Get_Supervision_Status = IntS then
-                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.RED);
-                  end if;
-               when TSM =>
-                  if Get_Speed_Params.Vrelease_Exists then
-                     Release_Or_Target_Speed := Get_Speed_Params.Vrelease;
-                     Draw_Thin_CSG (0, Release_Or_Target_Speed, General_Parameters.MEDIUM_GREY);
-                  else
-                     Release_Or_Target_Speed := Get_Speed_Params.Vtarget;
-                     Draw_Thin_CSG (0, Release_Or_Target_Speed, General_Parameters.DARK_GREY);
-                  end if;
-                  if Get_Supervision_Status = NoS then
-                     Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.WHITE);
-                     Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
-                  else
-                     Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.YELLOW);
-                     Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.YELLOW);
-                  end if;
-                  if Get_Supervision_Status in OvS | WaS then
-                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.ORANGE);
-                  elsif Get_Supervision_Status = IntS then
-                     Draw_Wide_CSG (Get_Speed_Params.Vperm, Get_Speed_Params.Vsbi, General_Parameters.RED);
-                  end if;
-               when RSM =>
-                  if Get_Speed_Params.Vrelease_Exists then
-                     Draw_Thin_CSG (0, Get_Speed_Params.Vrelease, General_Parameters.MEDIUM_GREY);
-                     Release_Or_Target_Speed := Get_Speed_Params.Vrelease;
-                     Draw_Thin_CSG (Release_Or_Target_Speed, Get_Speed_Params.Vperm, General_Parameters.YELLOW);
-                     Draw_Hook (Get_Speed_Params.Vperm, General_Parameters.YELLOW);
-                  else
-                     raise Vrelease_Missing_Error;
-                  end if;
-               end case;
-            when Supplementary_Driving_Info.M_OS | Supplementary_Driving_Info.M_SR =>
-               -- DMI 8.2.1.5.7
-               -- Basic Speed Hook
-               if User_Settings.Toggle (User_Settings.Basic_Speed_Hook) then
-                  if Get_Monitoring_Mode /= CSM then
-                     Draw_Basic_Speed_Hook (Get_Speed_Params.Vtarget, General_Parameters.MEDIUM_GREY);
-                  end if;
-                  -- DMI 8.2.1.5.6
-                  Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
+            when Supplementary_Driving_Info.M_SM
+               | Supplementary_Driving_Info.M_OS
+               | Supplementary_Driving_Info.M_SR =>
+               -- OS and SR only when the driver has toggled the display on
+               if Supplementary_Driving_Info.Mode /= Supplementary_Driving_Info.M_SM
+                 and then not User_Settings.Toggle (User_Settings.Basic_Speed_Hook)
+               then
+                  return;
                end if;
+               Show_Target :=
+                 (case Get_Monitoring_Mode is
+                     when CSM => Get_CSM_Target_Info,
+                     when TSM => True,
+                     -- RSM not applicable for SR
+                     when RSM => Supplementary_Driving_Info.Mode /=
+                                   Supplementary_Driving_Info.M_SR);
+               if Show_Target then
+                  Draw_Basic_Speed_Hook (Params.Vtarget, General_Parameters.MEDIUM_GREY);
+               end if;
+               -- DMI 8.2.1.5.6: the Vperm hook overlays the Vtarget hook
+               Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
+
             when Supplementary_Driving_Info.M_SH =>
                if User_Settings.Toggle (User_Settings.Basic_Speed_Hook) then
-                  Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
+                  Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
                end if;
+
             when Supplementary_Driving_Info.M_RV =>
-               Draw_Basic_Speed_Hook (Get_Speed_Params.Vperm, General_Parameters.WHITE);
+               Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
+
             when others =>
                null;
          end case;
-
-      end Draw;
+      end Draw_Hooks;
    end Circular_Speed_Gauge;
 
 end Display.B_Area.Speed_Dial;

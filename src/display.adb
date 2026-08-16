@@ -31,6 +31,8 @@ package body Display is
          B5 => ((122+36, 256), 36, 36),
          B6 => ((8, 256), 36, 36),
          B7 => ((236, 256), 36, 36),
+         -- DMI 6.3.1.2 g: centre of B8 at (140, 216)
+         B8 => ((122, 198), 36, 36),
          C1 => ((54+3*37, 0), 58, 50),
          C2 => ((54, 0), 37, 50),
          C3 => ((54+37, 0), 37, 50),
@@ -154,7 +156,7 @@ package body Display is
             return (Relative_Layout (A1), A2_A3, Relative_Layout (A4));
          when B =>
             return (((0,0), Main_Layout (B).Width, Main_Layout (B).Height), Relative_Layout (B3), Relative_Layout (B4),
-                    Relative_Layout (B5), Relative_Layout (B6), Relative_Layout (B7));
+                    Relative_Layout (B5), Relative_Layout (B6), Relative_Layout (B7), Relative_Layout (B8));
          when C =>
             return (Relative_Layout (C1), C2_C3_C4, Relative_Layout (C5), Relative_Layout (C6), Relative_Layout (C7),
                     Relative_Layout (C8), Relative_Layout (C9));
