@@ -18,14 +18,13 @@
 --  consumes protocol v2 messages and streams the rendered screen back.
 
 with DMI_Core;
+with DMI_Link;
 with Display.Screen;
 with General_Parameters;
 
 with GNAT.Sockets;  use GNAT.Sockets;
 with Ada.Streams;   use Ada.Streams;
 with Ada.Real_Time; use Ada.Real_Time;
-
-with DMI_Protocol; use DMI_Protocol;
 
 procedure Dmi is
    Client  : Socket_Type;
@@ -40,8 +39,8 @@ procedure Dmi is
    Flash_Interval : constant Time_Span := Milliseconds (250);
 
    -- Incoming frame reassembly
-   Rx        : Stream_Element_Array (1 .. 65536);
-   Rx_Filled : Stream_Element_Offset := 0;
+   package Link is new DMI_Link (DMI_Core.Handle_Message);
+   Chunk : Stream_Element_Array (1 .. 4096);
 
    procedure Receive_Available is
       Request : Request_Type (N_Bytes_To_Read);
@@ -49,40 +48,12 @@ procedure Dmi is
    begin
       loop
          Control_Socket (Client, Request);
-         exit when Request.Size = 0 or Rx_Filled >= Rx'Last;
-         Receive_Socket (Client,
-                         Rx (Rx_Filled + 1 .. Rx'Last),
-                         Last);
-         exit when Last <= Rx_Filled; -- connection closed
-         Rx_Filled := Last;
+         exit when Request.Size = 0;
+         Receive_Socket (Client, Chunk, Last);
+         exit when Last < Chunk'First; -- connection closed
+         Link.Feed (Chunk (Chunk'First .. Last));
       end loop;
    end Receive_Available;
-
-   procedure Process_Frames is
-      Offset : Stream_Element_Offset;
-   begin
-      loop
-         exit when Rx_Filled < Header_Length;
-         Offset := Rx'First;
-         declare
-            The_Type : constant Msg_Type_T :=
-              Msg_Type_T (Get_U8 (Rx, Offset));
-            Length   : constant Stream_Element_Offset :=
-              Stream_Element_Offset (Get_U32 (Rx, Offset));
-            Total    : constant Stream_Element_Offset := Header_Length + Length;
-         begin
-            exit when Rx_Filled < Total;
-            DMI_Core.Handle_Message
-              (The_Type, Rx (Rx'First + Header_Length .. Total));
-            -- shift the remaining bytes to the front
-            if Rx_Filled > Total then
-               Rx (Rx'First .. Rx_Filled - Total) :=
-                 Rx (Total + 1 .. Rx_Filled);
-            end if;
-            Rx_Filled := Rx_Filled - Total;
-         end;
-      end loop;
-   end Process_Frames;
 
 begin
    DMI_Core.Initialise;
@@ -97,7 +68,6 @@ begin
    loop
       -- 1. Consume everything the EVC / UI sent us
       Receive_Available;
-      Process_Frames;
 
       -- 2. Advance time dependent state (flashing, buttons)
       if Clock - Last_Flash >= Flash_Interval then

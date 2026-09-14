@@ -27,6 +27,17 @@ package DMI_Core is
    procedure Flush_Outbox
      (Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
+   -- Copy the queued outbound messages to Buffer and clear the queue;
+   -- Last is Buffer'First - 1 when nothing is pending. Buffer should
+   -- hold at least Outbox_Size bytes, the rest is dropped.
+   Outbox_Size : constant := 1024;
+   procedure Take_Outbox (Buffer : out Stream_Element_Array;
+                          Last   : out Stream_Element_Offset);
+
+   -- True while the EVC is considered failed because it has been silent
+   -- for General_Parameters.EVC_Link_Timeout_Ms (mode SF is shown)
+   function EVC_Link_Lost return Boolean;
+
    -- Queue an outbound message; used by input handling and sound logic
    procedure Queue_Message (The_Type : Msg_Type_T;
                             Payload  : Stream_Element_Array);

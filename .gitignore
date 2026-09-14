@@ -1,4 +1,7 @@
 obj/*
 test/tools/node_modules/*
 *.dmp
-.DS_Storetest/golden/*.actual
+.DS_Store
+test/golden/*.actual
+test/wasm/obj/*
+test/wasm/*.wasm

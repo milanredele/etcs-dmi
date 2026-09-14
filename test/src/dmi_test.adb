@@ -5,15 +5,20 @@
 --  Usage:  obj/dmi_test            compare against goldens
 --          UPDATE=1 obj/dmi_test   (re)record goldens
 --          VERBOSE=1 obj/dmi_test  list passing checks too
+--          DUMP=1 obj/dmi_test     write every checked frame as
+--                                  test/golden/<name>.actual (raw colour
+--                                  indices; test/tools/frame2png.py)
 
 pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Streams;
 with DMI_Core;
+with Display.Screen.Files;
 with DMI_Driver_Data;
 with DMI_Protocol;
 with DMI_Sounds;
 with EVC_Core;
+with EVC_Driver;
 with EVC_Track;
 with EVC_Train;
 with General_Parameters;
@@ -27,6 +32,8 @@ procedure DMI_Test is
    begin
       DMI_Core.Initialise;
       General_Parameters.Flash_On := True;
+      -- scenarios send EVC messages only when the picture changes
+      General_Parameters.EVC_Link_Timeout_Ms := 0;
       Drain_Sounds;
    end Reset;
 
@@ -571,13 +578,66 @@ procedure DMI_Test is
    end Scenario_Other_Windows;
 
    ---------------------------------------------------------------------
+   -- EVC link supervision: silence of the EVC beyond the timeout shows
+   -- mode SF with the EVC provided picture discarded; the next message
+   -- restores normal operation (General_Parameters.EVC_Link_Timeout_Ms)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_EVC_Link_Lost is
+      Timeout_Ms       : constant Positive := 1000;
+      Steps_To_Timeout : constant Positive := Timeout_Ms / 50;
+
+      procedure Send_FS_Picture is
+      begin
+         Send_Mode_Level (Mode => 2, Level => 4); -- FS, L1
+         Send_Speed_State (V_Cur => 100, V_Perm => 120, V_Target => 0,
+                           V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                           D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                           Vrelease_Exists => False);
+         Drain_Sounds;
+         Step;
+      end Send_FS_Picture;
+   begin
+      Reset;
+      General_Parameters.EVC_Link_Timeout_Ms := Timeout_Ms;
+      -- before the EVC has ever spoken nothing is supervised
+      for I in 1 .. Steps_To_Timeout + 1 loop
+         Step;
+      end loop;
+      Check (not DMI_Core.EVC_Link_Lost, "no supervision before the EVC talks");
+
+      Send_FS_Picture;
+      Check (not DMI_Core.EVC_Link_Lost, "link up while the EVC talks");
+      declare
+         Picture : constant String := Display.Screen.Files.Digest;
+      begin
+         -- silence just short of the timeout keeps the picture
+         for I in 1 .. Steps_To_Timeout - 2 loop
+            Step;
+         end loop;
+         Check (not DMI_Core.EVC_Link_Lost, "link up before the timeout");
+         Check (Display.Screen.Files.Digest = Picture,
+                "picture kept before the timeout");
+
+         Step; -- crosses the timeout
+         Check (DMI_Core.EVC_Link_Lost, "link lost after the timeout");
+         Check_Frame ("evc_link_lost");
+
+         -- the EVC comes back: normal presentation resumes
+         Send_FS_Picture;
+         Check (not DMI_Core.EVC_Link_Lost, "link recovered");
+         Check (Display.Screen.Files.Digest = Picture,
+                "picture restored after recovery");
+      end;
+   end Scenario_EVC_Link_Lost;
+
+   ---------------------------------------------------------------------
    -- Full mission with the in-process EVC simulator: SB start -> FS
    -- cruise -> TSM braking curve -> level transition ack -> track
    -- conditions -> RSM -> stop at the EOA
    ---------------------------------------------------------------------
 
    procedure Scenario_Mission is
-      use type EVC_Core.Mode_T;
       use type Supplementary_Driving_Info.Level_T;
 
       procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
@@ -588,18 +648,7 @@ procedure DMI_Test is
 
       procedure Sim_Step is
       begin
-         -- the auto driver of evc_sim, inlined for the test
-         if EVC_Core.Mode = EVC_Core.FS then
-            if EVC_Core.Monitoring = 2 then
-               EVC_Train.Demand := -100; -- brake to a stand in RSM
-            elsif EVC_Train.Speed_KMH + 3 < EVC_Core.Permitted_Speed then
-               EVC_Train.Demand := 60;
-            elsif EVC_Train.Speed_KMH + 1 >= EVC_Core.Permitted_Speed then
-               EVC_Train.Demand := -80;
-            else
-               EVC_Train.Demand := 0;
-            end if;
-         end if;
+         EVC_Driver.Auto_Drive;
          EVC_Core.Step (0.1, Emit'Unrestricted_Access);
          DMI_Core.Tick (100);
       end Sim_Step;
@@ -692,6 +741,7 @@ begin
    Scenario_Planning;
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;
+   Scenario_EVC_Link_Lost;
    Scenario_Mission;
 
    Status := Summary;

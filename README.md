@@ -18,6 +18,11 @@ The project uses the [Alire](https://alire.ada.dev/) package manager. To build t
 ```bash
 alr build
 ```
+On macOS, if the link step fails with `library not found for -lSystem`,
+point the Alire GNAT at the current SDK first:
+```bash
+export SDKROOT=$(xcrun --show-sdk-path) LIBRARY_PATH=$(xcrun --show-sdk-path)/usr/lib
+```
 
 ### Fonts & Symbols
 Fonts are embedded as bitmaps in source code. FreeSans font is used due to licensing issues and due to similarity to Helvetica (which is recommended by the ERA).
@@ -34,8 +39,29 @@ Three programs are built (`alr build`):
   level transition, track conditions, TAF, stop at the EOA)
 - `obj/dmi_test` — the headless golden-frame regression runner
 
-**Interactive session** (mimics the embedded setup where framebuffer
-content is sent to the display driver):
+**Browser test bench** (everything in one page, no hub, no sockets):
+the DMI and the EVC simulator are compiled to WebAssembly and run as
+two separate modules with their own memories;
+[test/wasm/index.html](test/wasm/index.html) is the clock, the display
+unit, the touch screen, the driver desk and the wire between them. The
+wire is a configurable Ethernet stand-in: latency, jitter, loss,
+duplication, reordering, fragmentation (MTU) and a "cut the link"
+switch, with live statistics.
+1. `test/wasm/build.sh` — builds `test/wasm/dmi.wasm` and `evc.wasm` in
+   a Docker container with GNAT-LLVM and the AdaWebPack wasm32 runtime
+   (the image is built on first use, see
+   [test/wasm/Dockerfile](test/wasm/Dockerfile))
+2. serve the repository over HTTP, e.g. `python3 -m http.server 8000`,
+   and open <http://localhost:8000/test/wasm/>
+
+`node test/wasm/smoke.js` replays regression scenarios through the
+wasm modules and checks the rendered screens against the same golden
+digests as the native runner: the two builds render pixel for pixel
+the same.
+
+**Interactive session over TCP** (mimics the embedded setup where
+framebuffer content is sent to the display driver; also the way to
+attach a DMI running on real hardware):
 1. `node test/tools/server.js` — the message hub (DMI tcp 1337, EVC tcp
    1338, browser ws 8080)
 2. open [test/tools/client.html](test/tools/client.html) in a browser —
@@ -51,7 +77,21 @@ the mission.
 simulator in process (no sockets) and compares SHA-256 digests of the
 rendered screens against [test/golden](test/golden). `UPDATE=1
 obj/dmi_test` re-records the goldens after an intended rendering change;
-failing checks dump the frame as `*.actual` for inspection.
+failing checks dump the frame as `*.actual` for inspection, `DUMP=1`
+dumps every checked frame, and
+[test/tools/frame2png.py](test/tools/frame2png.py) turns a dump into a
+PNG.
+
+**EVC link supervision**: the DMI specification does not cover the
+DMI–EVC interface, it only defines how a system failure is presented
+(8.2.3.1.2, symbol MO18) and that any other means is acceptable when
+MO18 cannot be shown (8.2.3.1.2.1). The DMI therefore treats an EVC
+that falls silent for longer than
+`General_Parameters.EVC_Link_Timeout_Ms` (1 s) as failed: the picture
+the EVC provided is discarded and mode SF is shown until the EVC talks
+again. Frame reassembly from any byte transport lives in
+[src/dmi_link.ads](src/dmi_link.ads), shared by the TCP mains, the wasm
+modules and, later, the target's Ethernet driver.
 
 ![Sample image](doc/images/sample.png)
 ![Image of B Area](doc/images/b_area.png)

@@ -6,7 +6,7 @@ with Ada.Directories;
 with Ada.Environment_Variables;
 with Ada.Streams; use Ada.Streams;
 with Ada.Text_IO; use Ada.Text_IO;
-with Display.Screen;
+with Display.Screen.Files;
 with DMI_Core;
 with DMI_Protocol; use DMI_Protocol;
 with Interfaces; use Interfaces;
@@ -261,7 +261,7 @@ package body Test_Support is
 
    procedure Check_Frame (Name : String) is
       Path   : constant String := Golden_Dir & Name & ".sha256";
-      Actual : constant String := Display.Screen.Digest;
+      Actual : constant String := Display.Screen.Files.Digest;
 
       function Stored return String is
          F : File_Type;
@@ -292,7 +292,10 @@ package body Test_Support is
          Pass ("frame " & Name);
       else
          Fail ("frame differs: " & Name);
-         Display.Screen.Dump (Golden_Dir & Name & ".actual");
+         Display.Screen.Files.Dump (Golden_Dir & Name & ".actual");
+      end if;
+      if Ada.Environment_Variables.Exists ("DUMP") then
+         Display.Screen.Files.Dump (Golden_Dir & Name & ".actual");
       end if;
    end Check_Frame;
 

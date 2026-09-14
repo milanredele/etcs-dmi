@@ -2,12 +2,9 @@
 --  Single full-screen frame buffer implementation.
 
 pragma Ada_2012;
-with Ada.Streams.Stream_IO;
 with Ada.Unchecked_Conversion;
 with DMI_Protocol; use DMI_Protocol;
-with GNAT.SHA256;
 with Interfaces;   use Interfaces;
-with System;
 
 package body Display.Screen is
 
@@ -76,69 +73,6 @@ package body Display.Screen is
       Write_Raw (Stream);
    end Write;
 
-   procedure Dump (File_Name : String) is
-      Output_File   : Ada.Streams.Stream_IO.File_Type;
-      Output_Stream : Ada.Streams.Stream_IO.Stream_Access;
-   begin
-      Ada.Streams.Stream_IO.Create (File => Output_File,
-                                    Mode => Ada.Streams.Stream_IO.Out_File,
-                                    Name => File_Name);
-      Output_Stream := Ada.Streams.Stream_IO.Stream (Output_File);
-      Write_Raw (Ada.Streams.Root_Stream_Type'Class (Output_Stream.all)'Access);
-      Ada.Streams.Stream_IO.Close (Output_File);
-   end Dump;
-
-   function Digest return String is
-      use type Ada.Streams.Stream_Element_Offset;
-
-      Item_Size : constant Ada.Streams.Stream_Element_Offset :=
-        Buffer_T'Object_Size / Ada.Streams.Stream_Element'Size;
-
-      type SEA_Pointer is
-        access all Ada.Streams.Stream_Element_Array (1 .. Item_Size);
-
-      function As_SEA_Pointer is
-        new Ada.Unchecked_Conversion (System.Address, SEA_Pointer);
-
-      Context : GNAT.SHA256.Context := GNAT.SHA256.Initial_Context;
-   begin
-      GNAT.SHA256.Update (Context, As_SEA_Pointer (Buffer'Address).all);
-      return GNAT.SHA256.Digest (Context);
-   end Digest;
-
-   function Matches_Dump (File_Name : String) return Boolean is
-      use Ada.Streams;
-      use type Ada.Streams.Stream_Element_Offset;
-      Input_File : Stream_IO.File_Type;
-      Chunk      : Stream_Element_Array (1 .. 4096);
-      Last       : Stream_Element_Offset;
-      Index      : Natural := Buffer'First;
-      Matches    : Boolean := True;
-   begin
-      Stream_IO.Open (File => Input_File,
-                      Mode => Stream_IO.In_File,
-                      Name => File_Name);
-      while Matches and then not Stream_IO.End_Of_File (Input_File) loop
-         Stream_IO.Read (Input_File, Chunk, Last);
-         for I in Chunk'First .. Last loop
-            if Index > Buffer'Last
-              or else General_Parameters.Color'Pos (Buffer (Index)) /=
-                      Natural (Chunk (I))
-            then
-               Matches := False;
-               exit;
-            end if;
-            Index := Index + 1;
-         end loop;
-      end loop;
-      Stream_IO.Close (Input_File);
-      return Matches and then Index = Buffer'Last + 1;
-   exception
-      when others =>
-         if Stream_IO.Is_Open (Input_File) then
-            Stream_IO.Close (Input_File);
-         end if;
-         return False;
-   end Matches_Dump;
+   function Frame_Address return System.Address is (Buffer'Address);
 
 end Display.Screen;

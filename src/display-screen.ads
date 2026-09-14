@@ -6,6 +6,7 @@
 --  on top of it. One byte per cell holding the Color index.
 
 with Ada.Streams;
+with System;
 
 package Display.Screen is
 
@@ -26,15 +27,18 @@ package Display.Screen is
    -- Send the whole screen as one MSG_FRAME to the stream
    procedure Write (Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
-   -- Raw dump of the colour index buffer, row major; used to inspect
-   -- failing regression frames
-   procedure Dump (File_Name : String);
+   -- Raw copy of the colour index buffer to the stream, row major, one
+   -- byte per pixel
+   procedure Write_Raw (Stream : not null access Ada.Streams.Root_Stream_Type'Class);
 
-   -- Compare the screen against a previously dumped file; True on match
-   function Matches_Dump (File_Name : String) return Boolean;
+   -- The colour index buffer itself: Frame_Size bytes at Frame_Address.
+   -- Hosts that map the display directly (WebAssembly page, memory
+   -- mapped display driver) read it in place; the regression tools hash
+   -- and dump it (Display.Screen.Files).
+   Frame_Size : constant Natural :=
+     General_Parameters.Display_Resolution.Width *
+     General_Parameters.Display_Resolution.Height;
 
-   -- SHA-256 of the colour index buffer as a lower case hex string;
-   -- golden frames are stored as digests
-   function Digest return String;
+   function Frame_Address return System.Address;
 
 end Display.Screen;

@@ -75,6 +75,17 @@ package General_Parameters is
    
    -- Global flashing state
    Flash_On : Boolean := True;
+
+   -- EVC link supervision. The DMI specification does not cover the
+   -- DMI-EVC interface itself; it only says how a system failure is
+   -- shown (8.2.3.1.2, MO18) and that any other means is acceptable when
+   -- MO18 cannot be displayed (8.2.3.1.2.1). Implementation choice: once
+   -- the EVC has been heard, silence longer than this is treated as a
+   -- failure of the on-board equipment; the EVC provided picture is
+   -- discarded and mode SF is shown until the EVC talks again. A
+   -- configuration value; 0 disables the supervision (regression
+   -- scenarios drive the DMI without a cyclic EVC).
+   EVC_Link_Timeout_Ms : Natural := 1000;
    
    -- DMI 5.2.2: driver adjustable, median as default
    type Display_Luminance_T is range 0 .. 10;

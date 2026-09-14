@@ -302,14 +302,20 @@ package body DMI_Core is
       end loop;
    end Drain_Window_Actions;
 
-   Outbox        : Stream_Element_Array (1 .. 1024);
+   Outbox        : Stream_Element_Array (1 .. Outbox_Size);
    Outbox_Filled : Stream_Element_Offset := 0;
 
-   ----------------
-   -- Initialise --
-   ----------------
+   -- EVC link supervision (General_Parameters.EVC_Link_Timeout_Ms)
+   EVC_Heard    : Boolean := False; -- supervision arms with the first message
+   Link_Lost    : Boolean := False;
+   Since_EVC_Ms : Natural := 0;
 
-   procedure Initialise is
+   -----------------
+   -- Reset_State --
+   -----------------
+
+   -- Forget everything the EVC and the driver provided
+   procedure Reset_State is
    begin
       DMI_Ack.Reset;
       DMI_Driver_Data.Reset;
@@ -336,7 +342,39 @@ package body DMI_Core is
       Speed_And_Distance.Set_Speed (0);
       Speed_And_Distance.Set_Distance_To_Target (0);
       Speed_And_Distance.Set_LSSMA (0, Valid => False);
+   end Reset_State;
+
+   ----------------
+   -- Initialise --
+   ----------------
+
+   procedure Initialise is
+   begin
+      Reset_State;
+      EVC_Heard := False;
+      Link_Lost := False;
+      Since_EVC_Ms := 0;
    end Initialise;
+
+   ---------------------
+   -- Link supervision --
+   ---------------------
+
+   procedure Enter_Link_Lost is
+   begin
+      Reset_State;
+      SDI.Mode := SDI.M_SF; -- 8.2.3.1.2: MO18 in B7
+      Link_Lost := True;
+   end Enter_Link_Lost;
+
+   procedure Note_EVC_Message is
+   begin
+      EVC_Heard := True;
+      Since_EVC_Ms := 0;
+      Link_Lost := False; -- the messages rebuild the picture
+   end Note_EVC_Message;
+
+   function EVC_Link_Lost return Boolean is (Link_Lost);
 
    -----------------------
    -- Message appliers  --
@@ -776,6 +814,13 @@ package body DMI_Core is
    procedure Handle_Message (The_Type : Msg_Type_T;
                              Payload  : Stream_Element_Array) is
    begin
+      if The_Type in MSG_SPEED_STATE | MSG_MODE_LEVEL | MSG_TEXT
+                   | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
+                   | MSG_PLANNING
+      then
+         Note_EVC_Message;
+      end if;
+
       case The_Type is
          when MSG_SPEED_STATE =>
             if Payload'Length = Speed_State_Length then
@@ -825,6 +870,15 @@ package body DMI_Core is
       ID : DMI_Buttons.Button_ID_T;
       use all type DMI_Buttons.Button_ID_T;
    begin
+      if EVC_Heard and then not Link_Lost
+        and then General_Parameters.EVC_Link_Timeout_Ms > 0
+      then
+         Since_EVC_Ms := Since_EVC_Ms + Dt_Ms;
+         if Since_EVC_Ms >= General_Parameters.EVC_Link_Timeout_Ms then
+            Enter_Link_Lost;
+         end if;
+      end if;
+
       DMI_Ack.Tick (Dt_Ms);
       Update_Buttons;
       DMI_Buttons.Tick (Dt_Ms);
@@ -949,8 +1003,8 @@ package body DMI_Core is
    -- Flush_Outbox --
    ------------------
 
-   procedure Flush_Outbox
-     (Stream : not null access Ada.Streams.Root_Stream_Type'Class) is
+   -- Move the pending sounds into the outbox
+   procedure Collect_Sounds is
       The_Sound : DMI_Sounds.Sound_T;
    begin
       while DMI_Sounds.Pop (The_Sound) loop
@@ -963,10 +1017,31 @@ package body DMI_Core is
             Queue_Message (MSG_SOUND, Payload);
          end;
       end loop;
+   end Collect_Sounds;
+
+   procedure Flush_Outbox
+     (Stream : not null access Ada.Streams.Root_Stream_Type'Class) is
+   begin
+      Collect_Sounds;
       if Outbox_Filled > 0 then
          Ada.Streams.Write (Stream.all, Outbox (1 .. Outbox_Filled));
          Outbox_Filled := 0;
       end if;
    end Flush_Outbox;
+
+   -----------------
+   -- Take_Outbox --
+   -----------------
+
+   procedure Take_Outbox (Buffer : out Stream_Element_Array;
+                          Last   : out Stream_Element_Offset) is
+      Count : Stream_Element_Offset;
+   begin
+      Collect_Sounds;
+      Count := Stream_Element_Offset'Min (Outbox_Filled, Buffer'Length);
+      Buffer (Buffer'First .. Buffer'First + Count - 1) := Outbox (1 .. Count);
+      Last := Buffer'First + Count - 1;
+      Outbox_Filled := 0;
+   end Take_Outbox;
 
 end DMI_Core;

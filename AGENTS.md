@@ -15,8 +15,12 @@ This document provides context and guidelines for AI agents (GitHub Copilot and 
     - `Display-X_Area`: Sub-packages for specific screen areas (A, B, C, D, etc.), following ETCS naming.
     - `Display-Frame_Buffer`: Low-level pixel drawing logic ([src/display-frame_buffer.ads](src/display-frame_buffer.ads)).
     - `DMI`: Main entry point and initialization loop ([src/dmi.adb](src/dmi.adb)).
-- **Testing & Tooling (`test/tools/`)**:
-    - A Node.js server ([test/tools/server.js](test/tools/server.js)) and HTML client ([test/tools/client.html](test/tools/client.html)) visualize framebuffer data sent over TCP.
+- **Transport (`src/dmi_link.ads`, `src/dmi.adb`)**:
+    - `DMI_Link`: generic reassembly of protocol frames from any byte stream; `dmi.adb` is the TCP main. `DMI_Core` is transport independent and supervises the EVC link (silence → mode SF).
+- **Testing & Tooling**:
+    - `test/wasm/`: browser test bench. The DMI and the EVC simulator are built to WebAssembly (`build.sh`, Docker + GNAT-LLVM/AdaWebPack) and run as two modules; `index.html` is the display, touch screen, desk and a fault-injecting wire; `smoke.js` cross-checks the wasm rendering against the native goldens.
+    - `test/tools/`: a Node.js hub ([server.js](test/tools/server.js)) and HTML client ([client.html](test/tools/client.html)) for the TCP setup; `frame2png.py` renders frame dumps.
+    - `test/src/`: the golden-frame regression runner (`dmi_test`) and host-only helpers (`Display.Screen.Files`) — keep file I/O and GNAT-only packages out of `src/` and `sim/`, which must build for the wasm32 light runtime (no tasking, no exception propagation, no `Interfaces.C`).
 - **Utilities (`utils/`)**:
     - C programs for converting `.ttf` and `.bmp` files into Ada source constants.
 
@@ -32,11 +36,13 @@ This document provides context and guidelines for AI agents (GitHub Copilot and 
 - Framebuffer interaction should only happen through `Display.Frame_Buffer`.
 
 ### 3. Workflow and Building
-- **Build**: Use `alr build` to compile the project (Alire package manager). Alternatively, `gprbuild -P dmi.gpr` can be used.
-- **Visual Testing**:
-    1. Start the server: `node test/tools/server.js`
+- **Build**: Use `alr build` to compile the project (Alire package manager). Alternatively, `gprbuild -P etcsdmi.gpr` can be used.
+- **Regression**: `obj/dmi_test` must stay at zero failures; `UPDATE=1` re-records goldens only after an intended rendering change.
+- **Visual Testing** (browser bench): `test/wasm/build.sh`, then serve the repository over HTTP and open `test/wasm/`; `node test/wasm/smoke.js` verifies the wasm build.
+- **Visual Testing** (TCP setup):
+    1. Start the hub: `node test/tools/server.js`
     2. Open `test/tools/client.html` in a browser.
-    3. Run the compiled `dmi` binary.
+    3. Run the compiled `dmi` and `evc_sim` binaries.
 
 ### 4. Safety Considerations
 - This project implements a safety-critical interface. When suggesting logic, prioritize clarity, predictability, and conformance to ETCS specifications over "clever" solutions.

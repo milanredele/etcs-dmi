@@ -220,7 +220,14 @@ package body Display.B_Area.Speed_Dial is
    begin
       Draw_Speed_Indicator_Lines;
       Draw_Speed_Indicator_Numbers;
-      Draw_Speed_Pointer;
+      -- Table 8 lists no row for NP, SN, SF, SL and IS: no pointer
+      if Supplementary_Driving_Info.Mode not in
+        Supplementary_Driving_Info.M_NP | Supplementary_Driving_Info.M_SN
+        | Supplementary_Driving_Info.M_SF | Supplementary_Driving_Info.M_SL
+        | Supplementary_Driving_Info.M_IS
+      then
+         Draw_Speed_Pointer;
+      end if;
       Circular_Speed_Gauge.Draw;
       Circular_Speed_Gauge.Draw_Hooks;
       Draw_Release_Speed_Digital;

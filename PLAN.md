@@ -229,6 +229,15 @@ WS↔TCP bridge):
 - **DMI view**: the existing canvas, now also forwarding pointer events and playing
   sound events.
 
+**Status (2026-09)**: the DMI and the EVC simulator also build to WebAssembly
+(`test/wasm/`, GNAT-LLVM + AdaWebPack in Docker) and run in the browser as two
+separate modules joined by a fault-injecting wire (latency, jitter, loss, duplication,
+reordering, MTU, link cut); `smoke.js` proves the wasm rendering identical to the
+native goldens. The DMI supervises the EVC link (silence beyond
+`EVC_Link_Timeout_Ms` → mode SF, `evc_link_lost` golden). Still open for a real
+Ethernet link: per-message integrity (CRC/sequence numbers) — not needed while the
+transport is TCP or the in-page wire.
+
 **Regression testing**: a headless Node runner (no browser) executes scenario scripts
 against the compiled `dmi` binary, captures framebuffer output at named checkpoints
 (the `Dump` procedure in
