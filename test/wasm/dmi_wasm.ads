@@ -48,6 +48,14 @@ package DMI_Wasm is
    function Transmit return Unsigned_32
      with Export, Convention => C, Link_Name => "dmi_transmit";
 
+   -- Containment: the wasm runtime cannot propagate exceptions, a raise
+   -- inside the DMI traps. The host catches the trap, calls Enter_Failure
+   -- and renders once more to get the failure picture (8.2.3.1.2.1).
+   procedure Enter_Failure
+     with Export, Convention => C, Link_Name => "dmi_enter_failure";
+   function Failed return Integer_32
+     with Export, Convention => C, Link_Name => "dmi_failed";
+
    -- 1 while the EVC is considered failed (silent beyond the timeout)
    function Link_Lost return Integer_32
      with Export, Convention => C, Link_Name => "dmi_link_lost";

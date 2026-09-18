@@ -250,6 +250,7 @@
       // Module loading: each module gets its own memory and its own copy
       // of the two runtime imports
       // ------------------------------------------------------------------
+      const lastException = {}; // per module, set just before it traps
       async function load(url) {
         const mod = {};
         const env = {
@@ -257,7 +258,8 @@
           __gnat_put_exception: (addr, size, line) => {
             const msg = new TextDecoder('latin1')
               .decode(new Uint8Array(mod.exports.memory.buffer, addr, size));
-            console.error(`${url}: exception ${msg}${line ? ':' + line : ''}`);
+            lastException[url] = `${msg}${line ? ':' + line : ''}`;
+            console.error(`${url}: exception ${lastException[url]}`);
           },
         };
         const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { env });
@@ -648,8 +650,23 @@
         const evc = await load('evc.wasm');
         $('status').textContent = '';
 
+        // Containment: the wasm runtime cannot propagate exceptions, so a
+        // raise inside the DMI arrives here as a trap. Like the host on the
+        // target, the page then puts the DMI into its failure presentation
+        // (DMI_Core.Enter_Failure: system failure symbol on a blank screen)
+        // and leaves it there until the DMI is restarted.
+        let dmiFailed = null;
+        function dmiFailure(e) {
+          dmiFailed = lastException['dmi.wasm'] || e.message;
+          try { dmi.dmi_enter_failure(); } catch (_) { /* render blanks the screen */ }
+        }
+        function guarded(fn) {
+          if (dmiFailed) return;
+          try { fn(); } catch (e) { dmiFailure(e); }
+        }
+
         // the two directions of the wire
-        const toDmi = new Wire((bytes) => receive(dmi, 'dmi', bytes));
+        const toDmi = new Wire((bytes) => guarded(() => receive(dmi, 'dmi', bytes)));
         const toEvc = new Wire((bytes) => receive(evc, 'evc', bytes));
 
         let running = true;
@@ -658,6 +675,7 @@
         let last = performance.now();
 
         function reset() {
+          dmiFailed = null;
           dmi.dmi_initialise();
           evc.evc_reset();
           toDmi.clear(); toEvc.clear();
@@ -723,8 +741,11 @@
           $('stats').innerHTML =
             `EVC→DMI sent ${s.sent} delivered ${s.delivered} dropped ${s.dropped} dup ${s.dup} | ` +
             `DMI→EVC sent ${r.sent} delivered ${r.delivered} dropped ${r.dropped} | ` +
-            `t=${(now / 1000).toFixed(1)} s | DMI sees the EVC link as ` +
-            (lost ? '<span class="lost">LOST (mode SF)</span>' : '<span class="ok">up</span>');
+            `t=${(now / 1000).toFixed(1)} s | ` +
+            (dmiFailed
+              ? `<span class="lost">DMI FAILED at ${dmiFailed}; "Reset mission" restarts it</span>`
+              : 'DMI sees the EVC link as ' +
+                (lost ? '<span class="lost">LOST (mode SF)</span>' : '<span class="ok">up</span>'));
         }
 
         function loop() {
@@ -744,11 +765,15 @@
           toEvc.pump(now);
           while (dmiAcc >= DMI_TICK_MS) {
             dmiAcc -= DMI_TICK_MS;
-            dmi.dmi_tick(DMI_TICK_MS);
-            routeFromDmi();
+            guarded(() => { dmi.dmi_tick(DMI_TICK_MS); routeFromDmi(); });
           }
-          dmi.dmi_render();
-          blit(dmi);
+          try {
+            dmi.dmi_render();
+            blit(dmi);
+          } catch (e) {
+            if (!dmiFailed) dmiFailure(e);
+            try { dmi.dmi_render(); blit(dmi); } catch (_) { pix32.fill(lut[5]); context.putImageData(img, 0, 0); }
+          }
           showStats();
           requestAnimationFrame(loop);
         }
@@ -759,7 +784,7 @@
           dv.setUint8(HEADER_LENGTH, event);
           dv.setUint16(HEADER_LENGTH + 1, x, true);
           dv.setUint16(HEADER_LENGTH + 3, y, true);
-          receive(dmi, 'dmi', buf);
+          guarded(() => receive(dmi, 'dmi', buf));
         }
         const at = (e) => {
           const r = canvas.getBoundingClientRect();

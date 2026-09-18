@@ -106,6 +106,14 @@ package body Display.B_Area is
       Draw_B8;
    end Draw;
 
+   procedure Draw_Failure is
+   begin
+      Fill_Background;
+      B_Buffer.Draw_Symbol
+        (Symbol.MO_18,
+         Get_Sub_Area_With_Relative_Position (B7).Position + (1, 2));
+   end Draw_Failure;
+
    procedure Draw_B7 is
       Position : constant Position_T := Get_Sub_Area_With_Relative_Position (B7).Position + (1, 2);
       procedure DS (The_Symbol : Symbol.T; The_Position : Position_T := Position) renames B_Buffer.Draw_Symbol;

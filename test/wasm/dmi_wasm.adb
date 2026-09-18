@@ -67,6 +67,14 @@ package body DMI_Wasm is
       return Unsigned_32 (Last - Tx'First + 1);
    end Transmit;
 
+   procedure Enter_Failure is
+   begin
+      DMI_Core.Enter_Failure;
+   end Enter_Failure;
+
+   function Failed return Integer_32 is
+     (if DMI_Core.Failed then 1 else 0);
+
    function Link_Lost return Integer_32 is
      (if DMI_Core.EVC_Link_Lost then 1 else 0);
 

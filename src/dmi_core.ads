@@ -34,6 +34,16 @@ package DMI_Core is
    procedure Take_Outbox (Buffer : out Stream_Element_Array;
                           Last   : out Stream_Element_Offset);
 
+   -- Containment of DMI internal failures. The host calls Enter_Failure
+   -- when any of the operations above failed (exception handler in a
+   -- full runtime, last chance handler or trap handler otherwise). From
+   -- then on and until Initialise, messages and time are ignored and
+   -- Render shows nothing but the system failure symbol on a blank screen
+   -- (8.2.3.1.2, 8.2.3.1.2.1): a picture that may be wrong is worse than
+   -- none. The failure picture uses no state and no text.
+   procedure Enter_Failure;
+   function Failed return Boolean;
+
    -- True while the EVC is considered failed because it has been silent
    -- for General_Parameters.EVC_Link_Timeout_Ms (mode SF is shown)
    function EVC_Link_Lost return Boolean;

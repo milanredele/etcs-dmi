@@ -583,6 +583,44 @@ procedure DMI_Test is
    -- restores normal operation (General_Parameters.EVC_Link_Timeout_Ms)
    ---------------------------------------------------------------------
 
+   ---------------------------------------------------------------------
+   -- Containment of internal failures (DMI_Core.Enter_Failure): nothing
+   -- but the system failure symbol on a blank screen (8.2.3.1.2.1), deaf
+   -- to messages and time until the DMI is restarted
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Failure_Presentation is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS, L1
+      Send_Speed_State (V_Cur => 100, V_Perm => 120, V_Target => 0,
+                        V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Check (not DMI_Core.Failed, "not failed in normal operation");
+
+      DMI_Core.Enter_Failure;
+      Step;
+      Check (DMI_Core.Failed, "failure latched");
+      Check_Frame ("dmi_failure");
+
+      -- messages, touches and time change nothing
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Speed_State (V_Cur => 60, V_Perm => 120, V_Target => 0,
+                        V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Press (610, 40); -- F1: Main window
+      Drain_Sounds;
+      Step;
+      Check_Frame ("dmi_failure");
+
+      -- a restart ends it
+      Reset;
+      Check (not DMI_Core.Failed, "restart clears the failure");
+   end Scenario_Failure_Presentation;
+
    procedure Scenario_EVC_Link_Lost is
       Timeout_Ms       : constant Positive := 1000;
       Steps_To_Timeout : constant Positive := Timeout_Ms / 50;
@@ -742,6 +780,7 @@ begin
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;
    Scenario_EVC_Link_Lost;
+   Scenario_Failure_Presentation;
    Scenario_Mission;
 
    Status := Summary;

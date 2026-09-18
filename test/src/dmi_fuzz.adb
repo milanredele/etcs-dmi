@@ -258,6 +258,19 @@ procedure DMI_Fuzz is
 
    ---------------------------------------------------------------------
 
+   -- After a raise the host puts the DMI into its failure presentation;
+   -- that path must never raise itself. Then start over.
+   procedure Contain_And_Restart (Step : Natural) is
+   begin
+      DMI_Core.Enter_Failure;
+      DMI_Core.Render;
+      DMI_Core.Initialise;
+   exception
+      when E : others =>
+         Report ("failure presentation", E, 0, False, Step);
+         DMI_Core.Initialise;
+   end Contain_And_Restart;
+
    Steps    : Natural := 60_000;
    The_Type : Msg_Type_T := 0;
    Outbox   : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
@@ -312,7 +325,7 @@ begin
          exception
             when E : others =>
                Report ("Handle_Message", E, The_Type, True, Step);
-               DMI_Core.Initialise;
+               Contain_And_Restart (Step);
          end;
       end;
 
@@ -325,7 +338,7 @@ begin
       exception
          when E : others =>
             Report ("Tick", E, The_Type, True, Step);
-            DMI_Core.Initialise;
+            Contain_And_Restart (Step);
       end;
 
       -- 3. the picture
@@ -334,7 +347,7 @@ begin
       exception
          when E : others =>
             Report ("Render", E, The_Type, True, Step);
-            DMI_Core.Initialise;
+            Contain_And_Restart (Step);
       end;
 
       -- 4. what the DMI wants to send
@@ -343,7 +356,7 @@ begin
       exception
          when E : others =>
             Report ("Take_Outbox", E, The_Type, False, Step);
-            DMI_Core.Initialise;
+            Contain_And_Restart (Step);
       end;
    end loop;
 

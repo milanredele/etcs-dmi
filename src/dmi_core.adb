@@ -305,6 +305,9 @@ package body DMI_Core is
    Outbox        : Stream_Element_Array (1 .. Outbox_Size);
    Outbox_Filled : Stream_Element_Offset := 0;
 
+   -- Internal failure containment, see Enter_Failure
+   Has_Failed : Boolean := False;
+
    -- EVC link supervision (General_Parameters.EVC_Link_Timeout_Ms)
    EVC_Heard    : Boolean := False; -- supervision arms with the first message
    Link_Lost    : Boolean := False;
@@ -350,6 +353,7 @@ package body DMI_Core is
 
    procedure Initialise is
    begin
+      Has_Failed := False;
       Reset_State;
       EVC_Heard := False;
       Link_Lost := False;
@@ -375,6 +379,20 @@ package body DMI_Core is
    end Note_EVC_Message;
 
    function EVC_Link_Lost return Boolean is (Link_Lost);
+
+   -------------------
+   -- Enter_Failure --
+   -------------------
+
+   procedure Enter_Failure is
+   begin
+      -- only plain assignments: the state may be inconsistent and must
+      -- not be walked
+      Has_Failed := True;
+      Outbox_Filled := 0;
+   end Enter_Failure;
+
+   function Failed return Boolean is (Has_Failed);
 
    -----------------------
    -- Message appliers  --
@@ -814,6 +832,10 @@ package body DMI_Core is
    procedure Handle_Message (The_Type : Msg_Type_T;
                              Payload  : Stream_Element_Array) is
    begin
+      if Has_Failed then
+         return;
+      end if;
+
       if The_Type in MSG_SPEED_STATE | MSG_MODE_LEVEL | MSG_TEXT
                    | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
                    | MSG_PLANNING
@@ -870,6 +892,10 @@ package body DMI_Core is
       ID : DMI_Buttons.Button_ID_T;
       use all type DMI_Buttons.Button_ID_T;
    begin
+      if Has_Failed then
+         return;
+      end if;
+
       if EVC_Heard and then not Link_Lost
         and then General_Parameters.EVC_Link_Timeout_Ms > 0
       then
@@ -963,6 +989,12 @@ package body DMI_Core is
 
    procedure Render is
    begin
+      if Has_Failed then
+         Display.Screen.Fill (General_Parameters.Background_Color);
+         Display.B_Area.Draw_Failure;
+         return;
+      end if;
+
       -- planning area Y/Z strips stay background (touch screen layout)
       Display.Screen.Fill_Area (Display.Get_Area (Display.Y),
                                 General_Parameters.Background_Color);

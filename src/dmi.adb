@@ -66,18 +66,30 @@ begin
    Channel := Stream (Client);
 
    loop
-      -- 1. Consume everything the EVC / UI sent us
-      Receive_Available;
+      begin
+         -- 1. Consume everything the EVC / UI sent us
+         Receive_Available;
 
-      -- 2. Advance time dependent state (flashing, buttons)
-      if Clock - Last_Flash >= Flash_Interval then
-         General_Parameters.Flash_On := not General_Parameters.Flash_On;
-         Last_Flash := Clock;
-      end if;
-      DMI_Core.Tick (50);
+         -- 2. Advance time dependent state (flashing, buttons)
+         if Clock - Last_Flash >= Flash_Interval then
+            General_Parameters.Flash_On := not General_Parameters.Flash_On;
+            Last_Flash := Clock;
+         end if;
+         DMI_Core.Tick (50);
 
-      -- 3. Render and transmit one full screen
-      DMI_Core.Render;
+         -- 3. Render one full screen
+         DMI_Core.Render;
+      exception
+         when Socket_Error =>
+            raise; -- the hub is gone: end the program as before
+         when others =>
+            -- a defect inside the DMI: show the failure picture instead
+            -- of a frozen or half drawn screen (DMI_Core.Enter_Failure)
+            DMI_Core.Enter_Failure;
+            DMI_Core.Render;
+      end;
+
+      -- transmit the screen
       Display.Screen.Write (Ada.Streams.Root_Stream_Type'Class (Channel.all)'Access);
 
       -- 4. Send pending outbound messages (driver actions, sounds)
