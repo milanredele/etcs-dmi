@@ -720,6 +720,68 @@ procedure DMI_Test is
       Check_Frame ("planning_cut");
    end Scenario_Planning_Overflow;
 
+   -- ROB-7: a full sound queue must not lose the start or the stop of
+   -- the continuous S2 warning (14.3.3.2)
+   procedure Scenario_Sound_Overflow is
+      use type DMI_Sounds.Sound_T;
+
+      S2_Playing : Boolean := False; -- what the display unit would play
+      S1_Heard   : Boolean := False;
+
+      procedure Listen is
+         Got : DMI_Sounds.Sound_T;
+      begin
+         S1_Heard := False;
+         while DMI_Sounds.Pop (Got) loop
+            if Got = DMI_Sounds.S2_Warning_Start then
+               S2_Playing := True;
+            elsif Got = DMI_Sounds.S2_Warning_Stop then
+               S2_Playing := False;
+            elsif Got = DMI_Sounds.S1_Overspeed then
+               S1_Heard := True;
+            end if;
+         end loop;
+      end Listen;
+   begin
+      Reset;
+      -- the stop arrives when the queue is full
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Start);
+      for I in 1 .. 20 loop
+         DMI_Sounds.Play (DMI_Sounds.Click);
+      end loop;
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+      Listen;
+      Check (not S2_Playing, "S2 stop is not lost when the queue is full");
+
+      -- the start arrives when the queue is full
+      for I in 1 .. 20 loop
+         DMI_Sounds.Play (DMI_Sounds.Sinfo);
+      end loop;
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Start);
+      Listen;
+      Check (S2_Playing, "S2 start is not lost when the queue is full");
+
+      -- stop, start and stop again behind a full queue
+      for I in 1 .. 20 loop
+         DMI_Sounds.Play (DMI_Sounds.Click);
+      end loop;
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Start);
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+      Listen;
+      Check (not S2_Playing, "S2 ends up stopped after stop, start, stop");
+
+      -- S1 takes the place of a click or a Sinfo
+      for I in 1 .. 4 loop
+         DMI_Sounds.Play (DMI_Sounds.Click);
+         DMI_Sounds.Play (DMI_Sounds.Sinfo);
+      end loop;
+      DMI_Sounds.Play (DMI_Sounds.S1_Overspeed);
+      Listen;
+      Check (S1_Heard, "S1 is not lost when the queue is full");
+      Expect_No_Sound ("sound queue drained");
+   end Scenario_Sound_Overflow;
+
    procedure Scenario_Startup_Sequence is
    begin
       Reset;
@@ -993,6 +1055,7 @@ begin
    Scenario_Planning;
    Scenario_Planning_Malformed;
    Scenario_Planning_Overflow;
+   Scenario_Sound_Overflow;
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;
    Scenario_EVC_Link_Lost;

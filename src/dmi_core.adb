@@ -1025,7 +1025,12 @@ package body DMI_Core is
    procedure Collect_Sounds is
       The_Sound : DMI_Sounds.Sound_T;
    begin
-      while DMI_Sounds.Pop (The_Sound) loop
+      -- a sound is only taken when the outbox has room for it, so that
+      -- it waits in DMI_Sounds instead of being dropped by
+      -- Queue_Message; this matters for the S2 stop (14.3.3.2)
+      while Outbox_Filled + Header_Length + Sound_Length <= Outbox'Last
+        and then DMI_Sounds.Pop (The_Sound)
+      loop
          declare
             Payload : Stream_Element_Array (1 .. Sound_Length);
             Offset  : Stream_Element_Offset := Payload'First;
