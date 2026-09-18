@@ -94,25 +94,18 @@ package body Display.C_Area is
    procedure Draw_C6 is
       Position : constant Position_T := The_C6_Area.Position + (2, 9);
    begin
-      -- DMI 8.4.2 reversing permitted (ST06) and 8.2.3.11 BMM reaction
-      -- inhibition (ST07) share C6; reversing takes precedence
+      -- DMI 8.4.2.2 (reversing permitted, ST06) and 8.2.3.11.1/.2 (Big
+      -- Metal Mass reaction inhibition, ST07) both name area C6. Both
+      -- symbols are 32 x 32 cells (chapter 13, Table 61) and C6 is
+      -- 37 x 50, so only one fits. The SRS gives no precedence rule; by
+      -- choice ST06 is shown while both apply: it exists only at
+      -- standstill inside a reversing area, whereas the inhibition was
+      -- selected by the driver (Special window, 11.2.3.4 and 11.7.6) and
+      -- its symbol returns as soon as ST06 is removed.
       if DMI_Status.Reversing_Permitted then
          C_Buffer.Draw_Symbol (Symbol.ST_06, Position);
       elsif DMI_Status.BMM_Inhibited then
-         -- ST07 has no bitmap in the SRS symbol package: draw a stand-in
-         -- 32x32 framed "BMM" glyph in grey
-         declare
-            Box : constant Area_T := (Position, 32, 32);
-         begin
-            C_Buffer.Draw_Input_Field_Frame (Box);
-            C_Buffer.Draw_String
-              (Pen_X => Position.X + 16,
-               Pen_Y => Position.Y + 21,
-               The_String => "BMM",
-               The_Size => 10,
-               The_Color => General_Parameters.GREY,
-               The_Alignment => C_Buffer.Center);
-         end;
+         C_Buffer.Draw_Symbol (Symbol.ST_07, Position);
       end if;
    end Draw_C6;
 

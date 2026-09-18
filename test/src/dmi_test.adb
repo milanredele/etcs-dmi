@@ -334,6 +334,74 @@ procedure DMI_Test is
       Check_Frame ("tti_2s");
    end Scenario_TTI;
 
+   -- 8.2.3.11 / chapter 13 Table 61: ST07 in C6. Regression for the
+   -- audit finding ROB-1 (the former text stand-in stopped the DMI).
+   procedure Scenario_BMM_Inhibition is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 7, Level => 4); -- SR, L1
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Send_Status (BMM => True);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("bmm_shown");
+      -- C6 holds one 32 x 32 symbol: ST06 (8.4.2.2) while both apply
+      Send_Status (BMM => True, Reversing => True);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("bmm_with_reversing");
+      -- ST07 returns when ST06 is removed
+      Send_Status (BMM => True);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("bmm_shown");
+      -- revoked (11.7.6 S1): the symbol is removed
+      Send_Status;
+      Drain_Sounds;
+      Step;
+      Check_Frame ("bmm_removed");
+   end Scenario_BMM_Inhibition;
+
+   -- 8.2.3.4.1: text comes from the EVC and must never stop the DMI
+   -- (audit finding ROB-2). Characters without a glyph are drawn as the
+   -- replacement box of Display.Draw.
+   procedure Scenario_Text_Unknown_Glyphs is
+      function W (Code : Natural) return Wide_Character is
+        (Wide_Character'Val (Code));
+      Wide_Line : constant Wide_String (1 .. 36) := (others => '@');
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+      -- Latin-1 accented letters, the characters after 'z'
+      Send_Text (1, "Arr" & W (16#EA#) & "t T" & W (16#FC#) & "r Stra"
+                    & W (16#DF#) & "e {|}~", HH => 10, MM => 5);
+      -- control characters, DEL, NBSP and 16#FF#
+      Send_Text (2, "c" & W (16#00#) & W (16#01#) & W (16#0A#) & W (16#1F#)
+                    & "d" & W (16#7F#) & W (16#80#) & W (16#A0#)
+                    & W (16#FF#) & "e",
+                 First_Group => True, Class => 2, HH => 10, MM => 6);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("text_unknown_glyphs");
+      -- a line of the widest glyph runs past the right screen edge:
+      -- drawing is clipped instead of raising (no golden: the wrapping
+      -- by columns is a separate finding)
+      Send_Text_Remove (1);
+      Send_Text_Remove (2);
+      Send_Text (3, Wide_Line, HH => 10, MM => 7);
+      Drain_Sounds;
+      Step;
+      Check (True, "over-wide text line is clipped at the screen edge");
+   end Scenario_Text_Unknown_Glyphs;
+
    procedure Scenario_SM_Direction is
    begin
       Reset;
@@ -1004,6 +1072,8 @@ begin
    Scenario_Speed_Toggle;
    Scenario_Status_Objects;
    Scenario_TTI;
+   Scenario_BMM_Inhibition;
+   Scenario_Text_Unknown_Glyphs;
    Scenario_SM_Direction;
    Scenario_Text_Messages;
    Scenario_Ack_Same_Class;

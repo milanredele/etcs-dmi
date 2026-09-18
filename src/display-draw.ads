@@ -26,12 +26,22 @@ package Display.Draw is
    -- Pen_X, Pen_Y: for left alignment the pen position of the first
    -- character; for right alignment the pen position after the last
    -- character; for center alignment the middle of the string
+   -- Total: never raises, whatever The_String holds. A character the
+   -- font of The_Size has no glyph for (FreeSans_12 covers ' ' .. 'z',
+   -- the other sizes the digits only) is drawn as a box outline of the
+   -- cap height; cells outside the screen are not drawn; a size without
+   -- a font (11, 13 .. 15) uses the next smaller font.
    procedure Draw_String (Pen_X : Width_T;
                           Pen_Y : Height_T;
                           The_String : Wide_String;
                           The_Size   : Font.Size_T;
                           The_Color  : General_Parameters.Color;
                           The_Alignment : Text_Alignment := Left);
+
+   -- Width in cells of The_String as Draw_String draws it, the
+   -- replacement boxes included
+   function String_Width (The_String : Wide_String;
+                          The_Size   : Font.Size_T) return Natural;
 
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
                           The_Position : Position_T);

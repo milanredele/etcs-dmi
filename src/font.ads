@@ -1,5 +1,8 @@
 package Font is
    
+   -- Cap height in cells. Fonts exist for 10, 12, 16, 17 and 18 only
+   -- (Font.FreeSans_nn); Display.Draw uses the next smaller font for the
+   -- sizes in between instead of raising.
    type Size_T is range 10 .. 18;
    
    -- Following FreeType notation
