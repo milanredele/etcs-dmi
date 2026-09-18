@@ -122,5 +122,13 @@ check('mission_sb', dmi);
   else { failures++; console.log('FAIL: link not lost after silence'); }
 }
 
+// --- Containment: the failure presentation (DMI_Core.Enter_Failure) ------
+dmi.dmi_enter_failure();
+dmi.dmi_render();
+check('dmi_failure', dmi);
+if (dmi.dmi_failed() !== 1) { failures++; console.log('FAIL: failure not latched'); }
+dmi.dmi_initialise();
+if (dmi.dmi_failed() !== 0) { failures++; console.log('FAIL: restart does not clear the failure'); }
+
 console.log(`failures: ${failures}`);
 process.exit(failures ? 1 : 0);
