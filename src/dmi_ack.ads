@@ -82,9 +82,6 @@ package DMI_Ack is
    -- Meaningful while a text message request is offered
    function Current_Text_ID return Natural;
 
-   -- A request of this text message is waiting or displayed
-   function Text_Queued (ID : Natural) return Boolean;
-
    -- Number of requests held (waiting + displayed)
    function Pending_Count return Natural;
 

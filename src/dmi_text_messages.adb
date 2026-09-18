@@ -33,7 +33,7 @@ package body DMI_Text_Messages is
 
    Scroll_Offset : Natural := 0;
 
-   function To_Ack_Kind (Class : Class_T) return DMI_Ack.Ack_Kind_T is
+   function To_Ack_Kind (Class : Class_T) return DMI_Ack.Text_Kind_T is
      (case Class is
          when Fixed_Text    => DMI_Ack.Fixed_Text,
          when Plain_Text    => DMI_Ack.Plain_Text,

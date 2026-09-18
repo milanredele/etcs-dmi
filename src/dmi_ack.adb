@@ -92,8 +92,8 @@ package body DMI_Ack is
    procedure Insert (Request : Request_T) is
       Position : Positive := Count + 1;
    begin
-      if Count >= Capacity then
-         return;
+      if Count = Capacity then
+         return; -- cannot happen, see Object_Slots and Request_Text_Ack
       end if;
       for I in 1 .. Count loop
          if Queue (I).Fresh and then Queue (I).Kind > Request.Kind then
@@ -216,9 +216,6 @@ package body DMI_Ack is
      (Queue (1).Level);
 
    function Current_Text_ID return Natural is (Queue (1).Text_ID);
-
-   function Text_Queued (ID : Natural) return Boolean is
-     (Find_Text (ID) /= 0);
 
    function Pending_Count return Natural is (Count);
 
