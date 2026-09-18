@@ -37,7 +37,7 @@ package Speed_And_Distance is
       
    type Speed_Params is
       record
-         Vperm, Vtarget, Vwsl, Vsbi, Vrelease : Speed_T;
+         Vperm, Vtarget, Vwsl, Vsbi, Vrelease : Speed_T := 0;
          Vrelease_Exists : Boolean := False;
       end record;
 
@@ -69,7 +69,8 @@ package Speed_And_Distance is
    -- commands the service/emergency brake
    procedure Set_Brake_Commanded (Commanded : Boolean);
 
-   type Distance_T is new Natural range 0 .. 90000;
+   -- DMI 8.2.2.2.4 / 8.2.2.2.6: up to 5 digits, to the nearest 10 m
+   type Distance_T is new Natural range 0 .. 99_990;
    
    function Get_Distance_To_Target return Distance_T;
    
@@ -82,8 +83,9 @@ package Speed_And_Distance is
    procedure Set_LSSMA (The_LSSMA : Speed_T; Valid : Boolean := True);
 
 private
-   Monitoring_Mode    : Monitoring_T;
-   Supervision_Status : Supervision_Status_T;
+   -- a defined, consistent pair even before DMI_Core.Initialise
+   Monitoring_Mode    : Monitoring_T := CSM;
+   Supervision_Status : Supervision_Status_T := NoS;
    CSM_Target_Info    : Boolean := False;
    Brake_Commanded    : Boolean := False;
    Speed              : Speed_Params;

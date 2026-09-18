@@ -32,6 +32,20 @@ package body Display.B_Area.Speed_Dial is
       function Linear_Scale (From, To : Angle; Max : Max_Speed_T; Min : Speed_T := 0) return Angle is
         (Angle (Float (To - From) * Float (Speed - Min) / Float (Max - Min) + Float (From)));
    begin
+      -- DMI 8.2.1.1.4: the dial indicates speeds from 0 km/h to the maximum
+      -- of the pre-configured range, and 8.2.1.1.10 defines the mapping used
+      -- by B1 and B2 for that range only; 8.2.1.4.4 ends the CSG at +144
+      -- degrees. No clause extends the scale, so everything positioned by
+      -- this mapping (pointer, CSG, hooks, set speed) rests at the end of
+      -- the scale for a speed above the dial maximum. The speed itself is
+      -- not altered: colours and the digital values use the real value.
+      -- Without this a speed of 158 km/h on the 140 km/h dial already
+      -- leaves the range of Angle. Below the guard Speed <= Max holds, so
+      -- Linear_Scale yields From .. To, inside Lower_Limit .. Upper_Limit.
+      if Speed > Max_Speed_Map (Get_Speed_Dial_Range) then
+         return Upper_Limit;
+      end if;
+
       case Get_Speed_Dial_Range is
          when Range_140 | Range_180 | Range_250 =>
             -- DMI 8.2.1.1.14.2 (Range 140)
@@ -220,14 +234,8 @@ package body Display.B_Area.Speed_Dial is
    begin
       Draw_Speed_Indicator_Lines;
       Draw_Speed_Indicator_Numbers;
-      -- Table 8 lists no row for NP, SN, SF, SL and IS: no pointer
-      if Supplementary_Driving_Info.Mode not in
-        Supplementary_Driving_Info.M_NP | Supplementary_Driving_Info.M_SN
-        | Supplementary_Driving_Info.M_SF | Supplementary_Driving_Info.M_SL
-        | Supplementary_Driving_Info.M_IS
-      then
-         Draw_Speed_Pointer;
-      end if;
+      -- draws nothing where Table 8 gives no colour (8.2.1.2.5)
+      Draw_Speed_Pointer;
       Circular_Speed_Gauge.Draw;
       Circular_Speed_Gauge.Draw_Hooks;
       Draw_Release_Speed_Digital;
@@ -309,7 +317,7 @@ package body Display.B_Area.Speed_Dial is
          subtype Q_SW is Angle range -Pi .. -Pi/2.0;
          subtype Q_NW is Angle range -Pi/2.0 .. 0.0;
          subtype Q_NE is Angle range 0.0 .. Pi/2.0;
-         subtype Q_SE is Angle range Pi/2.0 .. Pi;
+         -- the rest of Angle, Pi/2.0 .. Pi, is the quadrant SE
          procedure DCSQ (From_Angle, To_Angle : Angle;
                          F_Rad        : Radius_T := From_Radius;
                          To_Rad       : Radius_T := To_Radius;
@@ -317,6 +325,17 @@ package body Display.B_Area.Speed_Dial is
                          The_Quadrant : Quadrant) renames Draw_Circle_Sector_Quadrant;
       begin
 
+         -- A sector runs clockwise from From_Angle to To_Angle; an empty or
+         -- reversed one has nothing to draw. (Within one quadrant this is
+         -- what the tangent test below did already.)
+         if To_Angle < From_Angle then
+            return;
+         end if;
+
+         -- The three quadrant subtypes and SE cover the range of Angle without
+         -- a gap, and To_Angle >= From_Angle here, so To_Angle lies in the
+         -- quadrant of From_Angle or in a later one: the last alternative
+         -- of every chain below needs no test, and no case is left over.
          if From_Angle in Q_SW then
             if To_Angle in Q_SW then
               DCSQ (From_Angle, To_Angle, The_Quadrant => SW);
@@ -327,13 +346,11 @@ package body Display.B_Area.Speed_Dial is
                DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
                DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
                DCSQ (0.0, To_Angle, The_Quadrant => NE);
-            elsif To_Angle in Q_SE then
+            else
                DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
                DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
                DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
                DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            else
-              raise Program_Error with "Cannot get here";
             end if;
          elsif From_Angle in Q_NW then
             if To_Angle in Q_NW then
@@ -341,30 +358,20 @@ package body Display.B_Area.Speed_Dial is
             elsif To_Angle in Q_NE then
                DCSQ (From_Angle, 0.0, The_Quadrant => NW);
                DCSQ (0.0, To_Angle, The_Quadrant => NE);
-            elsif To_Angle in Q_SE then
+            else
                DCSQ (From_Angle, 0.0, The_Quadrant => NW);
                DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
                DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            else
-              raise Program_Error with "Cannot get here";
             end if;
          elsif From_Angle in Q_NE then
             if To_Angle in Q_NE then
                DCSQ (From_Angle, To_Angle, The_Quadrant => NE);
-            elsif To_Angle in Q_SE then
+            else
                DCSQ (From_Angle, Pi/2.0, The_Quadrant => NE);
                DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            else
-              raise Program_Error with "Cannot get here";
-            end if;
-         elsif From_Angle in Q_SE then
-            if To_Angle in Q_SE then
-               DCSQ (From_Angle, To_Angle, The_Quadrant => SE);
-            else
-              raise Program_Error with "Cannot get here";
             end if;
          else
-            raise Program_Error with "Invalid From_Angle";
+            DCSQ (From_Angle, To_Angle, The_Quadrant => SE);
          end if;
 
       end Draw_Circle_Sector;
@@ -549,7 +556,9 @@ package body Display.B_Area.Speed_Dial is
 
          Show_Target : Boolean;
       begin
-         -- DMI 8.2.1.5.7, Table 10
+         -- DMI 8.2.1.5.7, Table 10. The mode and the monitoring arrive in
+         -- separate messages, so the combinations without a row occur as
+         -- well; for them the hooks are not applicable and are not drawn.
          case Supplementary_Driving_Info.Mode is
             when Supplementary_Driving_Info.M_SM
                | Supplementary_Driving_Info.M_OS
@@ -560,13 +569,16 @@ package body Display.B_Area.Speed_Dial is
                then
                   return;
                end if;
+               -- "RSM (not applicable for SR)"
+               if Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_SR
+                 and then Get_Monitoring_Mode = RSM
+               then
+                  return;
+               end if;
                Show_Target :=
                  (case Get_Monitoring_Mode is
-                     when CSM => Get_CSM_Target_Info,
-                     when TSM => True,
-                     -- RSM not applicable for SR
-                     when RSM => Supplementary_Driving_Info.Mode /=
-                                   Supplementary_Driving_Info.M_SR);
+                     when CSM       => Get_CSM_Target_Info,
+                     when TSM | RSM => True);
                if Show_Target then
                   Draw_Basic_Speed_Hook (Params.Vtarget, General_Parameters.MEDIUM_GREY);
                end if;
@@ -574,12 +586,18 @@ package body Display.B_Area.Speed_Dial is
                Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
 
             when Supplementary_Driving_Info.M_SH =>
-               if User_Settings.Speed_Info_Visible then
+               -- Table 10 has a CSM row only
+               if User_Settings.Speed_Info_Visible
+                 and then Get_Monitoring_Mode = CSM
+               then
                   Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
                end if;
 
             when Supplementary_Driving_Info.M_RV =>
-               Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
+               -- Table 10 has a CSM row only
+               if Get_Monitoring_Mode = CSM then
+                  Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
+               end if;
 
             when others =>
                null;

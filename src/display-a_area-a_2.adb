@@ -27,6 +27,9 @@ package body Display.A_Area.A_2 is
       Y : constant A_Buffer.Area_Height_T := 74;
    begin
       -- DMI 8.2.2.2.6
+      -- (Distance_T'Last is a multiple of 10 and the sum is computed in the
+      -- base type, so the rounded value stays in range and has 5 digits
+      -- at most, DMI 8.2.2.2.4)
       Distance := (Distance + 5) / 10 * 10; -- rounding to nearest 10
       
       declare
