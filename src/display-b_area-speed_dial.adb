@@ -32,6 +32,20 @@ package body Display.B_Area.Speed_Dial is
       function Linear_Scale (From, To : Angle; Max : Max_Speed_T; Min : Speed_T := 0) return Angle is
         (Angle (Float (To - From) * Float (Speed - Min) / Float (Max - Min) + Float (From)));
    begin
+      -- DMI 8.2.1.1.4: the dial indicates speeds from 0 km/h to the maximum
+      -- of the pre-configured range, and 8.2.1.1.10 defines the mapping used
+      -- by B1 and B2 for that range only; 8.2.1.4.4 ends the CSG at +144
+      -- degrees. No clause extends the scale, so everything positioned by
+      -- this mapping (pointer, CSG, hooks, set speed) rests at the end of
+      -- the scale for a speed above the dial maximum. The speed itself is
+      -- not altered: colours and the digital values use the real value.
+      -- Without this a speed of 158 km/h on the 140 km/h dial already
+      -- leaves the range of Angle. Below the guard Speed <= Max holds, so
+      -- Linear_Scale yields From .. To, inside Lower_Limit .. Upper_Limit.
+      if Speed > Max_Speed_Map (Get_Speed_Dial_Range) then
+         return Upper_Limit;
+      end if;
+
       case Get_Speed_Dial_Range is
          when Range_140 | Range_180 | Range_250 =>
             -- DMI 8.2.1.1.14.2 (Range 140)
@@ -309,7 +323,7 @@ package body Display.B_Area.Speed_Dial is
          subtype Q_SW is Angle range -Pi .. -Pi/2.0;
          subtype Q_NW is Angle range -Pi/2.0 .. 0.0;
          subtype Q_NE is Angle range 0.0 .. Pi/2.0;
-         subtype Q_SE is Angle range Pi/2.0 .. Pi;
+         -- the rest of Angle, Pi/2.0 .. Pi, is the quadrant SE
          procedure DCSQ (From_Angle, To_Angle : Angle;
                          F_Rad        : Radius_T := From_Radius;
                          To_Rad       : Radius_T := To_Radius;
@@ -317,6 +331,17 @@ package body Display.B_Area.Speed_Dial is
                          The_Quadrant : Quadrant) renames Draw_Circle_Sector_Quadrant;
       begin
 
+         -- A sector runs clockwise from From_Angle to To_Angle; an empty or
+         -- reversed one has nothing to draw. (Within one quadrant this is
+         -- what the tangent test below did already.)
+         if To_Angle < From_Angle then
+            return;
+         end if;
+
+         -- The three quadrant subtypes and SE cover the range of Angle without
+         -- a gap, and To_Angle >= From_Angle here, so To_Angle lies in the
+         -- quadrant of From_Angle or in a later one: the last alternative
+         -- of every chain below needs no test, and no case is left over.
          if From_Angle in Q_SW then
             if To_Angle in Q_SW then
               DCSQ (From_Angle, To_Angle, The_Quadrant => SW);
@@ -327,13 +352,11 @@ package body Display.B_Area.Speed_Dial is
                DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
                DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
                DCSQ (0.0, To_Angle, The_Quadrant => NE);
-            elsif To_Angle in Q_SE then
+            else
                DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
                DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
                DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
                DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            else
-              raise Program_Error with "Cannot get here";
             end if;
          elsif From_Angle in Q_NW then
             if To_Angle in Q_NW then
@@ -341,30 +364,20 @@ package body Display.B_Area.Speed_Dial is
             elsif To_Angle in Q_NE then
                DCSQ (From_Angle, 0.0, The_Quadrant => NW);
                DCSQ (0.0, To_Angle, The_Quadrant => NE);
-            elsif To_Angle in Q_SE then
+            else
                DCSQ (From_Angle, 0.0, The_Quadrant => NW);
                DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
                DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            else
-              raise Program_Error with "Cannot get here";
             end if;
          elsif From_Angle in Q_NE then
             if To_Angle in Q_NE then
                DCSQ (From_Angle, To_Angle, The_Quadrant => NE);
-            elsif To_Angle in Q_SE then
+            else
                DCSQ (From_Angle, Pi/2.0, The_Quadrant => NE);
                DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            else
-              raise Program_Error with "Cannot get here";
-            end if;
-         elsif From_Angle in Q_SE then
-            if To_Angle in Q_SE then
-               DCSQ (From_Angle, To_Angle, The_Quadrant => SE);
-            else
-              raise Program_Error with "Cannot get here";
             end if;
          else
-            raise Program_Error with "Invalid From_Angle";
+            DCSQ (From_Angle, To_Angle, The_Quadrant => SE);
          end if;
 
       end Draw_Circle_Sector;
