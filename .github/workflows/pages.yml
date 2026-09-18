@@ -44,6 +44,9 @@ jobs:
       - name: Cross-check the wasm rendering against the golden frames
         run: node test/wasm/smoke.js
 
+      - name: Fuzz the wasm DMI (no message, touch or tick may trap it)
+        run: node test/wasm/fuzz.js 60000 1
+
       - name: Assemble the site
         run: test/wasm/site.sh _site
 

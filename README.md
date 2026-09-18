@@ -104,12 +104,13 @@ Symbols are also embedded as source code. Note: the official bmp files attached 
 
 ### Testing
 
-Three programs are built (`alr build`):
+Four programs are built (`alr build`):
 - `obj/dmi` — the DMI itself
 - `obj/evc_sim` — an EVC/track/train simulator that drives the DMI
   through a complete mission (braking curves, monitoring transitions,
   level transition, track conditions, TAF, stop at the EOA)
 - `obj/dmi_test` — the headless golden-frame regression runner
+- `obj/dmi_fuzz` — the robustness fuzzer
 
 **Browser test bench** (everything in one page, no hub, no sockets):
 the DMI and the EVC simulator are compiled to WebAssembly and run as
@@ -152,6 +153,16 @@ attach a DMI running on real hardware):
 
 Press F1 → Start on the DMI to run the start-up data entry and begin
 the mission.
+
+**Robustness**: nothing the EVC or the touch screen sends may stop the
+DMI, because the embedded and the wasm runtime cannot propagate
+exceptions. `obj/dmi_fuzz [steps [seed]]` feeds the DMI core with random
+messages, touches and ticks, renders after every step and reports every
+raise site with the message that caused it;
+`node test/wasm/fuzz.js [steps [seed]]` does the same against the wasm
+module. A defect that still slips through ends in the failure picture of
+`DMI_Core.Enter_Failure` (system failure symbol on a blank screen), not
+in a frozen display.
 
 **Regression tests**: `obj/dmi_test` drives the DMI core and the EVC
 simulator in process (no sockets) and compares SHA-256 digests of the

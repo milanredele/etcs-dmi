@@ -39,6 +39,7 @@ This document provides context and guidelines for AI agents (GitHub Copilot and 
 
 ### 3. Workflow and Building
 - **Build**: Use `alr build` to compile the project (Alire package manager). Alternatively, `gprbuild -P etcsdmi.gpr` can be used.
+- **Robustness**: `obj/dmi_fuzz` must report `raised: 0`. Code under `src/` must never raise on any message, touch or tick: validate and ignore, clamp, or draw nothing.
 - **Regression**: `obj/dmi_test` must stay at zero failures; `UPDATE=1` re-records goldens only after an intended rendering change.
 - **Visual Testing** (browser bench): `test/wasm/build.sh`, then serve the repository over HTTP and open `test/wasm/`; `node test/wasm/smoke.js` verifies the wasm build.
 - **Visual Testing** (TCP setup):

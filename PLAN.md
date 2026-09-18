@@ -301,7 +301,12 @@ The order is by consequence for the driver, not by size: first nothing may stop 
 DMI, then what it shows must be right, then the dialogue has to follow the rules, then
 the missing functions, then the pixels.
 
-### P0 — Nothing the EVC sends may stop or wedge the DMI
+### P0 — Nothing the EVC sends may stop or wedge the DMI — DONE 2026-09-18
+All six items are merged and the exit criterion is met; outcomes, choices made and
+the new open points are in the follow-up section of
+[doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). Keep `obj/dmi_fuzz` and
+`node test/wasm/fuzz.js` green from here on.
+
 The draw path has no exception handler and the wasm runtime cannot propagate
 exceptions, so each of these ends the DMI with one valid message.
 
@@ -324,13 +329,16 @@ exceptions, so each of these ends the DMI with one valid message.
    `Render`, so that a defect that slips through shows the system failure indication
    (8.2.3.1.2.1) instead of a frozen or dead display.
 
-*Exit:* a fuzz scenario in `dmi_test` and in `test/wasm/smoke.js` feeds random
-well-formed messages (every type, random field values, random order) for several
-simulated minutes without a trap, and the scenarios for ROB-1, ROB-2 and ROB-5 pass.
+*Exit:* the fuzzers `obj/dmi_fuzz` (native, reports every raise site) and
+`test/wasm/fuzz.js` (fails on the first trap) feed random messages (in-domain fields,
+random bytes of the documented length, random type and length), touches and ticks and
+render after every step, without a raise or trap; the scenarios for ROB-1, ROB-2 and
+ROB-5 pass.
 
 ### P1 — What is shown and sounded must be right
 7. **SDI-1** Text wrapping by pixel width at word boundaries; clip to area E5–E9.
-8. **SUP-1** Let the EVC send the supervision status (protocol change) instead of
+8. **SUP-1** (decide first: it also settles the AD/IntS choice made under ROB-3) Let
+   the EVC send the supervision status (protocol change) instead of
    deriving it from integer speeds; this also settles **SUP-3** and **SUP-4** (S1/S2
    edge cases). **SUP-2**, **SDI-4**, **SUP-5**: the missing and the superfluous Sinfo.
 9. **WIN-3** Acknowledgements against open data entry and validation windows
