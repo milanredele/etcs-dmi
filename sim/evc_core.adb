@@ -480,15 +480,20 @@ package body EVC_Core is
    -- Handle_Driver_Action  --
    ---------------------------
 
-   procedure Handle_Driver_Action (Action : Natural; Arg : Natural) is
-      pragma Unreferenced (Arg);
+   procedure Handle_Driver_Action (Action : Natural;
+                                   Arg    : Natural;
+                                   ID     : Natural := 0) is
+      -- this scenario sends no text message to be acknowledged
+      pragma Unreferenced (ID);
    begin
       case Action is
          when 0 =>      -- TAF answered yes
             TAF_Answered := True;
             TAF_Requested := False;
-         when 2 =>      -- acknowledgement
-            Level_Ack_Wait := False;
+         when 2 =>      -- acknowledgement; Arg names what was acknowledged
+            if Arg = 0 then -- level transition
+               Level_Ack_Wait := False;
+            end if;
          when 5 =>      -- start mission
             if Mode = SB then
                Mode := FS; -- simplified: full MA immediately

@@ -90,6 +90,19 @@ package Test_Support is
 
    procedure Drain_Sounds;
 
+   -- Forget the messages queued for the EVC so far. Like the two checks
+   -- below this empties the DMI outbox, which also takes the pending
+   -- sounds with it: check the sounds first.
+   procedure Drain_Outbox;
+
+   -- The messages queued for the EVC since the last call must hold
+   -- exactly one acknowledgement (MSG_DRIVER_ACTION, action 2, long
+   -- form) naming this kind (DMI_Ack.Ack_Kind_T'Pos) and text message id
+   procedure Expect_Ack (Kind : Natural; ID : Natural; What : String);
+
+   -- ... must hold no acknowledgement
+   procedure Expect_No_Ack (What : String);
+
    -- Simple boolean check
    procedure Check (Condition : Boolean; What : String);
 

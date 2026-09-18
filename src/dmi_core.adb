@@ -44,7 +44,7 @@ package body DMI_Core is
    -- Driver action identifiers (MSG_DRIVER_ACTION)
    ACTION_TAF_YES       : constant Unsigned_8 := 0;
    ACTION_SPEED_TOGGLE  : constant Unsigned_8 := 1;
-   ACTION_ACK           : constant Unsigned_8 := 2; -- arg: Ack_Kind_T'Pos
+   ACTION_ACK           : constant Unsigned_8 := 2; -- see Queue_Driver_Ack
    ACTION_TUNNEL_TOGGLE : constant Unsigned_8 := 3;
    ACTION_GEO_TOGGLE    : constant Unsigned_8 := 4;
 
@@ -60,6 +60,19 @@ package body DMI_Core is
       Put_U16 (Payload, Offset, Arg);
       Queue_Message (MSG_DRIVER_ACTION, Payload);
    end Queue_Driver_Action;
+
+   -- The acknowledgement names the request it answers: the kind and,
+   -- for a text message, the message id (0 otherwise)
+   procedure Queue_Driver_Ack (Kind    : DMI_Ack.Ack_Kind_T;
+                               Text_ID : Natural) is
+      Payload : Stream_Element_Array (1 .. Driver_Ack_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, ACTION_ACK);
+      Put_U16 (Payload, Offset, Unsigned_16 (DMI_Ack.Ack_Kind_T'Pos (Kind)));
+      Put_U16 (Payload, Offset, Unsigned_16 (Text_ID mod 2 ** 16));
+      Queue_Message (MSG_DRIVER_ACTION, Payload);
+   end Queue_Driver_Ack;
 
    -- Keep the button registry in sync with the displayed state.
    -- DMI 5.3.1.1.5: while a sub-level window is open, only that window
@@ -909,9 +922,8 @@ package body DMI_Core is
                      Text_ID : constant Natural :=
                        (if Is_Text then DMI_Ack.Current_Text_ID else 0);
                   begin
-                     Queue_Driver_Action
-                       (ACTION_ACK,
-                        Unsigned_16 (DMI_Ack.Ack_Kind_T'Pos (Kind)));
+                     -- the EVC learns exactly what was acknowledged
+                     Queue_Driver_Ack (Kind, Text_ID);
                      if Is_Text then
                         -- 8.2.3.4.8 c: this message, not another one
                         DMI_Text_Messages.Acknowledge (Text_ID);

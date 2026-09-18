@@ -336,6 +336,90 @@ package body Test_Support is
       end loop;
    end Drain_Sounds;
 
+   -- Scan the outbox for acknowledgements (DMI_Protocol: action u8 = 2,
+   -- kind u16, id u16)
+   procedure Take_Acks (Count : out Natural;
+                        Kind  : out Natural;
+                        ID    : out Natural;
+                        Short : out Boolean)
+   is
+      Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+      Last   : Stream_Element_Offset;
+      Offset : Stream_Element_Offset := Buffer'First;
+   begin
+      Count := 0;
+      Kind := 0;
+      ID := 0;
+      Short := False;
+      DMI_Core.Take_Outbox (Buffer, Last);
+      while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+         declare
+            The_Type : constant Msg_Type_T :=
+              Msg_Type_T (Get_U8 (Buffer, Offset));
+            Length   : constant Stream_Element_Offset :=
+              Stream_Element_Offset (Get_U32 (Buffer, Offset));
+            Next     : constant Stream_Element_Offset := Offset + Length;
+         begin
+            exit when Next - 1 > Last;
+            if The_Type = MSG_DRIVER_ACTION
+              and then Length >= 1
+              and then Buffer (Offset) = 2
+            then
+               Count := Count + 1;
+               if Length = Driver_Ack_Length then
+                  Offset := Offset + 1;
+                  Kind := Natural (Get_U16 (Buffer, Offset));
+                  ID := Natural (Get_U16 (Buffer, Offset));
+               else
+                  Short := True;
+               end if;
+            end if;
+            Offset := Next;
+         end;
+      end loop;
+   end Take_Acks;
+
+   procedure Drain_Outbox is
+      Count, Kind, ID : Natural;
+      Short : Boolean;
+   begin
+      Take_Acks (Count, Kind, ID, Short);
+   end Drain_Outbox;
+
+   procedure Expect_Ack (Kind : Natural; ID : Natural; What : String) is
+      Count, Got_Kind, Got_ID : Natural;
+      Short : Boolean;
+   begin
+      Checks := Checks + 1;
+      Take_Acks (Count, Got_Kind, Got_ID, Short);
+      if Count /= 1 then
+         Fail (What & ": expected one acknowledgement, got"
+               & Natural'Image (Count));
+      elsif Short then
+         Fail (What & ": acknowledgement without text message id");
+      elsif Got_Kind /= Kind or else Got_ID /= ID then
+         Fail (What & ": expected ack kind" & Natural'Image (Kind)
+               & " id" & Natural'Image (ID) & ", got kind"
+               & Natural'Image (Got_Kind) & " id" & Natural'Image (Got_ID));
+      else
+         Pass (What);
+      end if;
+   end Expect_Ack;
+
+   procedure Expect_No_Ack (What : String) is
+      Count, Got_Kind, Got_ID : Natural;
+      Short : Boolean;
+   begin
+      Checks := Checks + 1;
+      Take_Acks (Count, Got_Kind, Got_ID, Short);
+      if Count /= 0 then
+         Fail (What & ": unexpected acknowledgement, kind"
+               & Natural'Image (Got_Kind) & " id" & Natural'Image (Got_ID));
+      else
+         Pass (What);
+      end if;
+   end Expect_No_Ack;
+
    procedure Check (Condition : Boolean; What : String) is
    begin
       Checks := Checks + 1;

@@ -195,7 +195,9 @@
         else if (type === 0x09) parseSimState(payload);
         // driver actions are shown for debugging
         else if (type === MSG_DRIVER_ACTION) {
-          console.log('driver action', payload[0], payload[1] | (payload[2] << 8));
+          // an acknowledgement (action 2) also carries the text message id
+          console.log('driver action', payload[0], payload[1] | (payload[2] << 8),
+                      payload.length >= 5 ? payload[3] | (payload[4] << 8) : '');
         }
       }
 
