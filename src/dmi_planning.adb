@@ -493,6 +493,46 @@ package body DMI_Planning is
       Draw_Zoom_Buttons;
    end Render;
 
+   ---------------------------------------------------------------------
+   -- Update interface
+   ---------------------------------------------------------------------
+
+   procedure Begin_Update is
+   begin
+      Gradient_Count := 0;
+      Speed_Count := 0;
+      Order_Count := 0;
+   end Begin_Update;
+
+   procedure Add_Gradient (Start_M : Natural; Value : Integer) is
+   begin
+      if Gradient_Count < Max_Gradients then
+         Gradient_Count := Gradient_Count + 1;
+         Gradients (Gradient_Count) := (Start_M => Start_M, Value => Value);
+      end if;
+   end Add_Gradient;
+
+   procedure Add_Speed (Dist_M, Speed : Natural; Is_Ind_Target : Boolean) is
+   begin
+      if Speed_Count < Max_Speeds then
+         Speed_Count := Speed_Count + 1;
+         Speeds (Speed_Count) := (Dist_M        => Dist_M,
+                                  Speed         => Speed,
+                                  Is_Ind_Target => Is_Ind_Target);
+      end if;
+   end Add_Speed;
+
+   procedure Add_Order (Symbol_Kind, Dist_M : Natural) is
+   begin
+      -- the count only moves together with a filled slot, so a left out
+      -- element can never show the stale content of its slot
+      if Is_Order_Symbol (Symbol_Kind) and then Order_Count < Max_Orders then
+         Order_Count := Order_Count + 1;
+         Orders (Order_Count) := (Symbol_Kind => Symbol_Kind,
+                                  Dist_M      => Dist_M);
+      end if;
+   end Add_Order;
+
    procedure Reset is
    begin
       Valid := False;

@@ -71,6 +71,11 @@ package Test_Support is
       Speeds     : Gradient_Array := (1 .. 0 => 0);
       Orders     : Gradient_Array := (1 .. 0 => 0));
 
+   -- Any message type with any payload, byte by byte (each 0 .. 255),
+   -- for malformed and hostile input
+   type Byte_Array is array (Positive range <>) of Natural;
+   procedure Send_Raw (The_Type : Natural; Bytes : Byte_Array);
+
    procedure Pointer_Down (X, Y : Natural);
    procedure Pointer_Up (X, Y : Natural);
 

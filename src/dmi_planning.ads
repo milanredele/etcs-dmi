@@ -8,6 +8,10 @@ package DMI_Planning is
    Max_Speeds    : constant := 10;
    Max_Orders    : constant := 12;
 
+   -- 8.2.1.1.3: the largest speed dial ends at 400 km/h; a higher speed
+   -- in the planning information is not valid
+   Max_Speed_Kmh : constant := 400;
+
    type Gradient_T is record
       Start_M : Natural := 0;
       Value   : Integer := 0; -- permille, negative downhill
@@ -42,6 +46,23 @@ package DMI_Planning is
    Speed_Count    : Natural := 0;
    Orders         : Order_List_T;
    Order_Count    : Natural := 0;
+
+   -- Update interface for the message decoder. Every value is checked
+   -- here, so any content coming from the EVC can be passed in; what is
+   -- not valid is left out, never stored as something else.
+   --
+   -- Begin_Update empties the three lists; the Add procedures append
+   -- one element each.
+   procedure Begin_Update;
+   procedure Add_Gradient (Start_M : Natural; Value : Integer);
+   procedure Add_Speed (Dist_M, Speed : Natural; Is_Ind_Target : Boolean);
+   -- 8.3.4.3 to 8.3.4.20: the orders and announcements are PL01-PL20 and
+   -- PL24-PL36. PL21-PL23 and PL37 belong to the speed profile
+   -- discontinuities (8.3.6.4, 8.3.6.4.2) and are no orders. An element
+   -- with any other symbol number is left out.
+   function Is_Order_Symbol (Symbol_Kind : Natural) return Boolean is
+     (Symbol_Kind in 1 .. 20 | 24 .. 36);
+   procedure Add_Order (Symbol_Kind, Dist_M : Natural);
 
    -- DMI 8.3.3.4: six ranges; the SRS defines no default, 0-4000 is used
    type Range_Index_T is range 1 .. 6;

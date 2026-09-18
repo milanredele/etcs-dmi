@@ -15,6 +15,7 @@ with Ada.Streams;
 with DMI_Core;
 with Display.Screen.Files;
 with DMI_Driver_Data;
+with DMI_Planning;
 with DMI_Protocol;
 with DMI_Sounds;
 with EVC_Core;
@@ -468,6 +469,153 @@ procedure DMI_Test is
       Drain_Sounds;
    end Press;
 
+   ---------------------------------------------------------------------
+   -- Input hardening (audit ROB-6 .. ROB-9)
+   ---------------------------------------------------------------------
+
+   MSG_PLANNING_Raw : constant := 16#06#;
+
+   -- ROB-6: planning messages with any content. Malformed ones are
+   -- ignored as a whole, not valid elements are left out, nothing raises.
+   procedure Scenario_Planning_Malformed is
+
+      procedure Send_Reference (Orders : Gradient_Array) is
+      begin
+         Send_Planning
+           (MA_Dist    => 2500,
+            Ceiling    => 140,
+            Indication => 1200,
+            Gradients  => (0, 12, 800, -5, 1800, 0),
+            Speeds     => (1000, 70, 0,  1700, 40, 0,  2500, 0, 1),
+            Orders     => Orders);
+      end Send_Reference;
+
+      procedure Check_Unchanged (What : String) is
+      begin
+         Check (DMI_Planning.Valid
+                and then DMI_Planning.MA_Dist_M = 2500
+                and then DMI_Planning.Ceiling_Speed = 140
+                and then DMI_Planning.Gradient_Count = 3
+                and then DMI_Planning.Speed_Count = 3
+                and then DMI_Planning.Order_Count = 2,
+                What & " is ignored as a whole");
+      end Check_Unchanged;
+
+      -- deterministic pseudo random bytes
+      Seed : Natural := 12345;
+      function Next_Byte return Natural is
+      begin
+         Seed := (Seed * 1_103 + 12_345) mod 65_536;
+         return (Seed / 7) mod 256;
+      end Next_Byte;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 100, V_Perm => 140, V_Target => 0,
+                        V_Release => 0, V_Sbi => 155, V_Wsl => 145,
+                        D_Target => 2500, Monitoring => 0, Dial_Range => 2,
+                        Vrelease_Exists => False);
+      Send_Reference (Orders => (2, 600,  5, 1500));
+
+      Send_Raw (MSG_PLANNING_Raw, (1 .. 0 => 0));
+      Check_Unchanged ("empty planning payload");
+      Send_Raw (MSG_PLANNING_Raw, (16#E8#, 3, 255, 255, 255, 255, 100, 0));
+      Check_Unchanged ("planning header without the lists");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,  255));
+      Check_Unchanged ("gradient count beyond the payload");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,
+                 1,  0, 0, 5,
+                 2,  100, 0, 80, 0,  200, 0, 60));
+      Check_Unchanged ("payload cut inside a speed element");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,
+                 1,  0, 0, 5,
+                 1,  100, 0, 80, 0));
+      Check_Unchanged ("payload without the order count");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,
+                 0,  0,  200,  1, 100));
+      Check_Unchanged ("order count beyond the payload");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,  0, 0, 0,  9, 9));
+      Check_Unchanged ("bytes after the last list");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 16#91#, 1,  0, 0, 0));
+      Check_Unchanged ("ceiling speed of 401 km/h");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_fs");
+
+      -- order symbols that do not exist (0, 38, 255) or that are no
+      -- orders (PL21-PL23, PL37) between the two valid ones: the picture
+      -- is the one with the two valid orders alone
+      Send_Reference (Orders => (0, 600,  2, 600,  38, 900,  21, 700,
+                                 255, 1000,  5, 1500,  22, 1100,
+                                 23, 1200,  37, 800));
+      Check (DMI_Planning.Order_Count = 2,
+             "orders with an unknown symbol are left out");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_fs");
+
+      -- the extremes of every field: distances 0 and 65535, gradients
+      -- -128 and 127, 400 km/h, first and last order symbol
+      Send_Raw (MSG_PLANNING_Raw,
+                (255, 255,  254, 255,  254, 255,  16#90#, 1,
+                 3,  0, 0, 128,  16#D0#, 7, 127,  255, 255, 0,
+                 3,  0, 0, 16#90#, 1,  16#DC#, 5, 0, 0,
+                     255, 255, 0, 16#80#,
+                 3,  1, 0, 0,  36, 255, 255,  20, 16#DC#, 5));
+      Check (DMI_Planning.MA_Dist_M = 65_535
+             and then DMI_Planning.Gradient_Count = 3
+             and then DMI_Planning.Gradients (1).Value = -128
+             and then DMI_Planning.Gradients (2).Value = 127,
+             "field extremes are decoded");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_extremes");
+      for I in 1 .. 5 loop -- every range, 0-4000 up to 0-32000 and back
+         Pointer_Down (350, 20); Pointer_Up (350, 20);
+         Step;
+      end loop;
+      for I in 1 .. 5 loop
+         Pointer_Down (350, 300); Pointer_Up (350, 300);
+         Step;
+      end loop;
+
+      -- well formed lists of any length filled with any bytes, and
+      -- plain noise, rendered in the longest range
+      for Round in 1 .. 300 loop
+         declare
+            G : constant Natural := Next_Byte mod 80;
+            S : constant Natural := Next_Byte mod 80;
+            O : constant Natural := Next_Byte mod 80;
+            Bytes : Byte_Array (1 .. 11 + G * 3 + S * 4 + O * 3);
+         begin
+            for B of Bytes loop
+               B := Next_Byte;
+            end loop;
+            Bytes (8) := Bytes (8) mod 2; -- a ceiling speed that may pass
+            Bytes (9) := G;
+            Bytes (10 + G * 3) := S;
+            Bytes (11 + G * 3 + S * 4) := O;
+            Send_Raw (MSG_PLANNING_Raw, Bytes);
+            Send_Raw (MSG_PLANNING_Raw,
+                      Bytes (1 .. Natural'Min (Bytes'Last, Round)));
+            if Round = 1 then
+               for I in 1 .. 3 loop
+                  Pointer_Down (350, 20); Pointer_Up (350, 20);
+               end loop;
+            end if;
+            Step;
+         end;
+      end loop;
+      Drain_Sounds;
+      Check (True, "planning survives any byte content");
+   end Scenario_Planning_Malformed;
+
    procedure Scenario_Startup_Sequence is
    begin
       Reset;
@@ -739,6 +887,7 @@ begin
    Scenario_SM_Direction;
    Scenario_Text_Messages;
    Scenario_Planning;
+   Scenario_Planning_Malformed;
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;
    Scenario_EVC_Link_Lost;

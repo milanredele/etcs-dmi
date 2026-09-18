@@ -701,8 +701,49 @@ package body DMI_Core is
       TTI_Was_Displayed := DMI_Status.TTI_Displayed;
    end Apply_Status;
 
+   -- The planning message has a variable length and its content is
+   -- under the control of the sender. It is decoded in two passes: the
+   -- first one only walks the three counted lists and proves that the
+   -- counts describe the payload exactly, the second one reads the
+   -- values. A message that fails the first pass, or whose header is not
+   -- valid, is ignored as a whole and the planning information stays as
+   -- it was; nothing is read beyond the payload and nothing is half
+   -- updated. The elements are checked one by one in DMI_Planning.
    procedure Apply_Planning (Payload : Stream_Element_Array) is
       use DMI_Planning;
+
+      Header_Size : constant := 8; -- four u16
+      Entry_Size  : constant array (1 .. 3) of Stream_Element_Offset :=
+        (Planning_Gradient_Entry_Length,
+         Planning_Speed_Entry_Length,
+         Planning_Order_Entry_Length);
+
+      function Well_Formed return Boolean is
+         Left : Stream_Element_Offset := Payload'Length;
+      begin
+         if Left < Header_Size then
+            return False;
+         end if;
+         Left := Left - Header_Size;
+         for List in Entry_Size'Range loop
+            if Left < 1 then
+               return False; -- the count itself is missing
+            end if;
+            declare
+               Count : constant Stream_Element_Offset :=
+                 Stream_Element_Offset
+                   (Payload (Payload'Last - Left + 1));
+            begin
+               Left := Left - 1;
+               if Left < Count * Entry_Size (List) then
+                  return False; -- count larger than the payload
+               end if;
+               Left := Left - Count * Entry_Size (List);
+            end;
+         end loop;
+         return Left = 0; -- no unexplained bytes after the last list
+      end Well_Formed;
+
       Offset : Stream_Element_Offset := Payload'First;
 
       MA     : Unsigned_16;
@@ -710,24 +751,22 @@ package body DMI_Core is
       Advice : Unsigned_16;
       Ceil   : Unsigned_16;
       Count  : Unsigned_8;
-
-      Remaining : Stream_Element_Offset;
    begin
-      if Payload'Length < 9 then
+      if not Well_Formed then
          return;
       end if;
       MA := Get_U16 (Payload, Offset);
       Ind := Get_U16 (Payload, Offset);
       Advice := Get_U16 (Payload, Offset);
       Ceil := Get_U16 (Payload, Offset);
+      if Natural (Ceil) > Max_Speed_Kmh then
+         return; -- no such ceiling speed (8.2.1.1.3); 8.3.7.7 needs it
+      end if;
+
+      Begin_Update;
 
       -- gradients
       Count := Get_U8 (Payload, Offset);
-      Remaining := Payload'Last - Offset + 1;
-      if Remaining < Stream_Element_Offset (Count) * 3 then
-         return;
-      end if;
-      Gradient_Count := Natural'Min (Natural (Count), Max_Gradients);
       for I in 1 .. Natural (Count) loop
          declare
             Start : constant Unsigned_16 := Get_U16 (Payload, Offset);
@@ -735,63 +774,42 @@ package body DMI_Core is
             Value : constant Integer :=
               (if Raw >= 128 then Integer (Raw) - 256 else Integer (Raw));
          begin
-            if I <= Max_Gradients then
-               Gradients (I) := (Start_M => Natural (Start), Value => Value);
-            end if;
+            Add_Gradient (Natural (Start), Value);
          end;
       end loop;
 
       -- speed profile discontinuities
-      if Offset > Payload'Last then
-         return;
-      end if;
       Count := Get_U8 (Payload, Offset);
-      Remaining := Payload'Last - Offset + 1;
-      if Remaining < Stream_Element_Offset (Count) * 4 then
-         return;
-      end if;
-      Speed_Count := Natural'Min (Natural (Count), Max_Speeds);
       for I in 1 .. Natural (Count) loop
          declare
             Dist : constant Unsigned_16 := Get_U16 (Payload, Offset);
             Spd  : constant Unsigned_16 := Get_U16 (Payload, Offset);
          begin
-            if I <= Max_Speeds then
-               Speeds (I) :=
-                 (Dist_M        => Natural (Dist),
-                  Speed         => Natural (Spd and 16#7FFF#),
-                  Is_Ind_Target => (Spd and 16#8000#) /= 0);
-            end if;
+            Add_Speed (Dist_M        => Natural (Dist),
+                       Speed         => Natural (Spd and 16#7FFF#),
+                       Is_Ind_Target => (Spd and 16#8000#) /= 0);
          end;
       end loop;
 
       -- orders and announcements
-      if Offset > Payload'Last then
-         return;
-      end if;
       Count := Get_U8 (Payload, Offset);
-      Remaining := Payload'Last - Offset + 1;
-      if Remaining < Stream_Element_Offset (Count) * 3 then
-         return;
-      end if;
-      Order_Count := Natural'Min (Natural (Count), Max_Orders);
       for I in 1 .. Natural (Count) loop
          declare
             Sym  : constant Unsigned_8 := Get_U8 (Payload, Offset);
             Dist : constant Unsigned_16 := Get_U16 (Payload, Offset);
          begin
-            if I <= Max_Orders and then Sym in 1 .. 37 then
-               Orders (I) := (Symbol_Kind => Natural (Sym),
-                              Dist_M      => Natural (Dist));
-            end if;
+            Add_Order (Natural (Sym), Natural (Dist));
          end;
       end loop;
 
+      -- 16#FFFF# means none; every other value is a distance and is not
+      -- folded into a shorter one: beyond the range it is simply not
+      -- on the scale
       MA_Dist_M := Natural (MA);
       Indication_Valid := Ind /= 16#FFFF#;
-      Indication_Dist_M := Natural (Ind and 16#7FFF#);
+      Indication_Dist_M := Natural (Ind);
       Advice_Valid := Advice /= 16#FFFF#;
-      Advice_Dist_M := Natural (Advice and 16#7FFF#);
+      Advice_Dist_M := Natural (Advice);
       Ceiling_Speed := Natural (Ceil);
       Valid := True;
    end Apply_Planning;
