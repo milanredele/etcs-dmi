@@ -63,7 +63,17 @@ package DMI_Protocol is
    --    speed u16 (bits 0-14 km/h, bit 15 target of the indication marker)
    --  order count u8, per entry: symbol u8 (PL number), dist u16
    --  The length must be exactly what the three counts describe; any
-   --  other message is ignored as a whole.
+   --  other message is ignored as a whole, as is one with a ceiling
+   --  speed above 400 km/h.
+   --  Limits of the DMI (DMI_Planning): 64 gradients, 32 speed profile
+   --  entries, 32 orders, distances up to 32000 m (the longest range, DMI
+   --  8.3.3.4), speeds up to 400 km/h. Gradients and speed profile
+   --  entries must come by ascending distance. A profile is cut at the
+   --  first entry that breaks these rules or finds no room: the DMI
+   --  draws it up to there and nothing beyond, so send the nearest
+   --  entries first and no more than the limits. Orders may come in any
+   --  order; unknown symbols are left out, and of more than 32 orders
+   --  the nearest 32 are kept.
    Planning_Gradient_Entry_Length : constant := 3;
    Planning_Speed_Entry_Length    : constant := 4;
    Planning_Order_Entry_Length    : constant := 3;

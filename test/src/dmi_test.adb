@@ -569,7 +569,7 @@ procedure DMI_Test is
                      255, 255, 0, 16#80#,
                  3,  1, 0, 0,  36, 255, 255,  20, 16#DC#, 5));
       Check (DMI_Planning.MA_Dist_M = 65_535
-             and then DMI_Planning.Gradient_Count = 3
+             and then DMI_Planning.Gradient_Count = 2
              and then DMI_Planning.Gradients (1).Value = -128
              and then DMI_Planning.Gradients (2).Value = 127,
              "field extremes are decoded");
@@ -615,6 +615,110 @@ procedure DMI_Test is
       Drain_Sounds;
       Check (True, "planning survives any byte content");
    end Scenario_Planning_Malformed;
+
+   -- ROB-9: more elements than the lists hold, and profiles that break
+   -- the rules. What is left out is not drawn as if it were known.
+   procedure Scenario_Planning_Overflow is
+      procedure Zoom_Out (Times : Natural) is
+      begin
+         for I in 1 .. Times loop
+            Pointer_Down (350, 20); Pointer_Up (350, 20);
+         end loop;
+      end Zoom_Out;
+
+      -- N gradients Step_M apart from 0, N speed discontinuities and N
+      -- orders; the orders are sent farthest first
+      procedure Send_Profile (G_N, S_N, O_N : Natural;
+                              G_Step, S_Step, O_Step : Natural) is
+         G : Gradient_Array (1 .. G_N * 2);
+         S : Gradient_Array (1 .. S_N * 3);
+         O : Gradient_Array (1 .. O_N * 2);
+      begin
+         for I in 1 .. G_N loop
+            G (I * 2 - 1) := (I - 1) * G_Step;
+            G (I * 2) := (if I mod 2 = 0 then -(I mod 30) else I mod 30);
+         end loop;
+         for I in 1 .. S_N loop
+            S (I * 3 - 2) := I * S_Step;
+            S (I * 3 - 1) := (if I mod 2 = 0 then 160 else 120);
+            S (I * 3) := 0;
+         end loop;
+         for I in 1 .. O_N loop
+            O (I * 2 - 1) := 1 + (I mod 20);
+            O (I * 2) := (O_N - I + 1) * O_Step;
+         end loop;
+         Send_Planning (MA_Dist => 32_000, Ceiling => 160,
+                        Gradients => G, Speeds => S, Orders => O);
+      end Send_Profile;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 100, V_Perm => 160, V_Target => 0,
+                        V_Release => 0, V_Sbi => 175, V_Wsl => 165,
+                        D_Target => 32_000, Monitoring => 0, Dial_Range => 2,
+                        Vrelease_Exists => False);
+
+      -- a dense but realistic profile over the longest range fits
+      Send_Profile (G_N => 60, S_N => 30, O_N => 30,
+                    G_Step => 500, S_Step => 1000, O_Step => 1000);
+      Step;
+      Zoom_Out (3); -- 0-32000 (8.3.3.4)
+      Check (DMI_Planning.Gradient_Count = 60
+             and then DMI_Planning.Speed_Count = 30
+             and then DMI_Planning.Order_Count = 30
+             and then DMI_Planning.Orders_Left_Out = 0
+             and then DMI_Planning.Gradient_End_M >= 32_000
+             and then DMI_Planning.Speed_End_M >= 32_000,
+             "a profile of 60 gradients, 30 speeds, 30 orders is complete");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_full_32000");
+
+      -- too many: the profiles end where the first left out element
+      -- starts, the nearest orders are kept
+      Send_Profile (G_N => 70, S_N => 35, O_N => 40,
+                    G_Step => 400, S_Step => 800, O_Step => 700);
+      Check (DMI_Planning.Gradient_Count = DMI_Planning.Max_Gradients
+             and then DMI_Planning.Gradient_End_M = 64 * 400,
+             "the gradient profile ends at the first gradient left out");
+      Check (DMI_Planning.Speed_Count = DMI_Planning.Max_Speeds
+             and then DMI_Planning.Speed_End_M = 33 * 800,
+             "the speed profile ends at the first discontinuity left out");
+      Check (DMI_Planning.Order_Count = DMI_Planning.Max_Orders
+             and then DMI_Planning.Orders_Left_Out = 8,
+             "orders beyond the capacity are counted");
+      declare
+         Farthest : Natural := 0;
+      begin
+         for I in 1 .. DMI_Planning.Order_Count loop
+            Farthest := Natural'Max (Farthest, DMI_Planning.Orders (I).Dist_M);
+         end loop;
+         Check (Farthest = 32 * 700, "the nearest orders are the ones kept");
+      end;
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_overflow_32000");
+
+      -- a gradient nearer than the one before it, a speed above 400 km/h
+      Pointer_Down (350, 300); Pointer_Up (350, 300);
+      Pointer_Down (350, 300); Pointer_Up (350, 300);
+      Pointer_Down (350, 300); Pointer_Up (350, 300); -- back to 0-4000
+      Send_Planning
+        (MA_Dist    => 2500,
+         Ceiling    => 140,
+         Gradients  => (0, 12,  1000, -5,  500, 8,  2000, 3),
+         Speeds     => (1000, 70, 0,  1700, 401, 0,  2500, 0, 1),
+         Orders     => (2, 600,  5, 1500));
+      Check (DMI_Planning.Gradient_Count = 2
+             and then DMI_Planning.Gradient_End_M = 1000,
+             "a gradient out of order cuts the profile before it");
+      Check (DMI_Planning.Speed_Count = 1
+             and then DMI_Planning.Speed_End_M = 1700,
+             "a speed above 400 km/h cuts the speed profile");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_cut");
+   end Scenario_Planning_Overflow;
 
    procedure Scenario_Startup_Sequence is
    begin
@@ -888,6 +992,7 @@ begin
    Scenario_Text_Messages;
    Scenario_Planning;
    Scenario_Planning_Malformed;
+   Scenario_Planning_Overflow;
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;
    Scenario_EVC_Link_Lost;
