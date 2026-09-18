@@ -6,6 +6,7 @@
 --  environment to (re)record them instead of comparing.
 
 with DMI_Sounds;
+with Interfaces;
 
 package Test_Support is
 
@@ -19,6 +20,16 @@ package Test_Support is
       Vrelease_Exists : Boolean;
       CSM_Target_Info : Boolean := False;
       Brake_Commanded : Boolean := False);
+
+   -- The same message with the fields exactly as they travel on the wire,
+   -- for values the EVC can send but the wrapper above cannot express
+   -- (u16 speeds, u32 distance, undefined monitoring/dial codes, all flags)
+   procedure Send_Speed_State_Raw
+     (V_Cur, V_Perm, V_Target, V_Release, V_Sbi, V_Wsl : Interfaces.Unsigned_16;
+      D_Target   : Interfaces.Unsigned_32;
+      Monitoring : Interfaces.Unsigned_8;
+      Dial_Range : Interfaces.Unsigned_8;
+      Flags      : Interfaces.Unsigned_8);
 
    procedure Send_Mode_Level
      (Mode          : Natural;           -- Mode_T'Pos

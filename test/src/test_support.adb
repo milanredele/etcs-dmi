@@ -69,6 +69,29 @@ package body Test_Support is
       DMI_Core.Handle_Message (MSG_SPEED_STATE, Payload);
    end Send_Speed_State;
 
+   procedure Send_Speed_State_Raw
+     (V_Cur, V_Perm, V_Target, V_Release, V_Sbi, V_Wsl : Interfaces.Unsigned_16;
+      D_Target   : Interfaces.Unsigned_32;
+      Monitoring : Interfaces.Unsigned_8;
+      Dial_Range : Interfaces.Unsigned_8;
+      Flags      : Interfaces.Unsigned_8)
+   is
+      Payload : Stream_Element_Array (1 .. Speed_State_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U16 (Payload, Offset, V_Cur);
+      Put_U16 (Payload, Offset, V_Perm);
+      Put_U16 (Payload, Offset, V_Target);
+      Put_U16 (Payload, Offset, V_Release);
+      Put_U16 (Payload, Offset, V_Sbi);
+      Put_U16 (Payload, Offset, V_Wsl);
+      Put_U32 (Payload, Offset, D_Target);
+      Put_U8 (Payload, Offset, Monitoring);
+      Put_U8 (Payload, Offset, Dial_Range);
+      Put_U8 (Payload, Offset, Flags);
+      DMI_Core.Handle_Message (MSG_SPEED_STATE, Payload);
+   end Send_Speed_State_Raw;
+
    procedure Send_Mode_Level
      (Mode          : Natural;
       Level         : Natural;

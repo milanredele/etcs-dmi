@@ -13,6 +13,8 @@ pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Streams;
 with DMI_Core;
+with Display.A_Area;
+with Display.B_Area;
 with Display.Screen.Files;
 with DMI_Driver_Data;
 with DMI_Protocol;
@@ -22,8 +24,10 @@ with EVC_Driver;
 with EVC_Track;
 with EVC_Train;
 with General_Parameters;
+with Interfaces;
 with Supplementary_Driving_Info;
 with Test_Support; use Test_Support;
+with User_Settings;
 
 procedure DMI_Test is
 
@@ -116,6 +120,246 @@ procedure DMI_Test is
       Step;
       Check_Frame ("fs_rsm_inds");
    end Scenario_FS_TSM;
+
+   -- ROB-3 / ROB-4: mode (MSG_MODE_LEVEL), monitoring and speeds
+   -- (MSG_SPEED_STATE) and the set speed / TTI (MSG_STATUS) arrive in
+   -- separate messages and every field is EVC controlled, so every
+   -- combination, in any order, has to render without raising; this
+   -- includes the ones Tables 8 to 11, 13 and 14 mark "not applicable"
+   -- (8.2.1.2.5, 8.2.1.4.9, 8.2.1.5.7, 8.2.1.6.5, 8.2.2.1.8, 8.2.2.2.7)
+   -- and values beyond the dial (8.2.1.1.3) and the bar (8.2.2.1.6).
+   -- An exception ends the run: there is no handler, as on the target.
+   procedure Scenario_Speed_Robustness is
+      use Interfaces;
+
+      Dial_Max : constant array (Unsigned_8 range 0 .. 3) of Unsigned_16 :=
+        (140, 180, 250, 400);
+
+      Distances : constant array (0 .. 5) of Unsigned_32 :=
+        (0, 1, 1000, 90000, 90001, 16#FFFF_FFFF#);
+
+      type Speed_Set is array (1 .. 8) of Unsigned_16;
+
+      function Boundary_Speeds (Max : Unsigned_16) return Speed_Set is
+        (0, 1, Max - 1, Max, Max + 1, 400, 401, 65535);
+
+      -- Limit patterns 1 .. 8 put every limit at the same boundary speed,
+      -- 9 .. 11 mix them so that every supervision status occurs
+      Patterns : constant := 11;
+
+      -- The current speed and the limits meet only in the supervision
+      -- status, so the uniform patterns run with the current speed at the
+      -- limit (normal or indication) and at the next boundary speed
+      -- (intervention, or far below for the last), the mixed ones with all
+      function Paired (V_Index, Pattern : Positive) return Boolean is
+        (Pattern > 8
+         or else V_Index = Pattern
+         or else V_Index = Pattern mod 8 + 1);
+
+      Renders : Natural := 0;
+      Cycle   : Natural := 0;
+
+      -- Areas A and B hold everything drawn from these fields; the other
+      -- areas cost more than half of a full render, so they are rendered
+      -- once per outer combination only (Full)
+      procedure Render (Full : Boolean := False) is
+      begin
+         if Full then
+            Step;
+         else
+            DMI_Core.Tick (50);
+            Display.B_Area.Draw;
+            Display.A_Area.Draw;
+         end if;
+         Renders := Renders + 1;
+      end Render;
+
+      procedure Send_Speeds (V_Cur      : Unsigned_16;
+                             Pattern    : Positive;
+                             Max        : Unsigned_16;
+                             Monitoring : Unsigned_8;
+                             Dial       : Unsigned_8;
+                             Flags      : Unsigned_8)
+      is
+         S : constant Speed_Set := Boundary_Speeds (Max);
+         -- the distance is independent of the speeds: cycle through it
+         D : constant Unsigned_32 := Distances (Cycle mod Distances'Length);
+      begin
+         Cycle := Cycle + 1;
+         case Pattern is
+            when 1 .. 8 =>
+               Send_Speed_State_Raw
+                 (V_Cur => V_Cur, V_Perm => S (Pattern),
+                  V_Target => S (Pattern), V_Release => S (Pattern),
+                  V_Sbi => S (Pattern), V_Wsl => S (Pattern),
+                  D_Target => D, Monitoring => Monitoring,
+                  Dial_Range => Dial, Flags => Flags);
+            when 9 =>
+               -- ordered limits straddling the end of the dial
+               Send_Speed_State_Raw
+                 (V_Cur => V_Cur, V_Perm => Max - 1, V_Target => Max / 2,
+                  V_Release => Max / 4, V_Sbi => 401, V_Wsl => Max + 1,
+                  D_Target => D, Monitoring => Monitoring,
+                  Dial_Range => Dial, Flags => Flags);
+            when 10 =>
+               -- limits in reverse order
+               Send_Speed_State_Raw
+                 (V_Cur => V_Cur, V_Perm => Max + 1, V_Target => 65535,
+                  V_Release => 65535, V_Sbi => 1, V_Wsl => Max,
+                  D_Target => D, Monitoring => Monitoring,
+                  Dial_Range => Dial, Flags => Flags);
+            when others =>
+               Send_Speed_State_Raw
+                 (V_Cur => V_Cur, V_Perm => 0, V_Target => 0,
+                  V_Release => 1, V_Sbi => 65535, V_Wsl => 400,
+                  D_Target => D, Monitoring => Monitoring,
+                  Dial_Range => Dial, Flags => Flags);
+         end case;
+      end Send_Speeds;
+
+      procedure Send_Mode (Mode : Natural; LSSMA : Natural; Toggle : Boolean) is
+      begin
+         -- 18 stands for an undefined mode code
+         Send_Mode_Level (Mode  => (if Mode = 18 then 255 else Mode),
+                          Level => 4, LSSMA => LSSMA);
+         -- OS/SR/SH draw their objects only when toggled on (8.2.2.4.5
+         -- toggles them off on entry)
+         User_Settings.Speed_Info_Visible := Toggle;
+      end Send_Mode;
+
+      LSSMAs : constant array (0 .. 4) of Natural := (0, 1, 400, 401, 65534);
+
+      -- The modes that draw from the speed data: FS and AD the CSG
+      -- (Table 9), SM/OS/SR/SH/RV the hooks (Table 10), LS the LSSMA.
+      -- The other modes get a rotating selection of the limit patterns.
+      function Draws_Limits (Mode : Natural) return Boolean is
+        (Mode in 2 .. 8 | 10);
+   begin
+      Reset;
+
+      -- Order 1: the mode is known, the speed states arrive under it.
+      -- mode x monitoring x dial x flag extremes x current speed x limits
+      for Mode in 0 .. 17 loop
+         for Flags in Unsigned_8 range 0 .. 1 loop
+            Send_Mode (Mode, LSSMAs ((Mode + Natural (Flags)) mod 5),
+                       Toggle => Flags /= 0);
+            Render (Full => True);
+            for Monitoring in Unsigned_8 range 0 .. 2 loop
+               for Dial in Dial_Max'Range loop
+                  for V in Speed_Set'Range loop
+                     for Pattern in 1 .. Patterns loop
+                        if (if Draws_Limits (Mode) then Paired (V, Pattern)
+                            else Pattern = 1 + Cycle mod Patterns)
+                        then
+                           Send_Speeds
+                             (Boundary_Speeds (Dial_Max (Dial)) (V), Pattern,
+                              Dial_Max (Dial), Monitoring, Dial,
+                              Flags * 16#FF#);
+                           Render;
+                        end if;
+                     end loop;
+                  end loop;
+                  Render (Full => True);
+               end loop;
+            end loop;
+         end loop;
+      end loop;
+
+      -- Order 2: speed states and modes alternate, a render after each
+      -- message, so every mode also arrives under a speed state that was
+      -- sent for another mode. 19 mode codes against 40 speed states keep the
+      -- pairs rotating. Monitoring 255 and dial 252 are undefined codes.
+      Cycle := 0;
+      for Flags in Unsigned_8 range 0 .. 1 loop
+         for Monitoring in Unsigned_8 range 0 .. 3 loop
+            for Dial in Unsigned_8 range 0 .. 4 loop
+               for V in Speed_Set'Range loop
+                  for Pattern in 1 .. Patterns loop
+                     if Paired (V, Pattern) then
+                        Send_Speeds
+                          (Boundary_Speeds (Dial_Max (Dial mod 4)) (V),
+                           Pattern, Dial_Max (Dial mod 4),
+                           Monitoring * 85, Dial * 63, Flags * 16#FF#);
+                        Render;
+                        Send_Mode (Cycle mod 19, 65535, Toggle => Flags /= 0);
+                        Render;
+                     end if;
+                  end loop;
+               end loop;
+               Render (Full => True);
+            end loop;
+         end loop;
+      end loop;
+
+      -- MSG_STATUS: a set speed (8.2.3.9) beyond every dial, and the TTI
+      -- (8.2.2.5) in every relation to TdispTTI, in the modes of Table 15a
+      -- and one without, before and after the speed state
+      for Dial in Dial_Max'Range loop
+         for Set_Speed of Boundary_Speeds (Dial_Max (Dial)) loop
+            for TTI in 0 .. 5 loop
+               Send_Status
+                 (Set_Speed  => Natural (Set_Speed),
+                  TTI        => (case TTI is
+                                    when 0 => 0, when 1 => 1, when 2 => 13,
+                                    when 3 => 14, when 4 => 254,
+                                    when others => 255),
+                  T_Disp_TTI => (case TTI mod 3 is
+                                    when 0 => 0, when 1 => 14,
+                                    when others => 255));
+               Render;
+               for Mode in 1 .. 7 loop
+                  Send_Mode (Mode, 65535, Toggle => True);
+                  Send_Speeds (400, 9, Dial_Max (Dial), 0, Dial, 2);
+                  Render (Full => Mode = 2);
+               end loop;
+            end loop;
+         end loop;
+      end loop;
+
+      Check (Renders > 0, "speed robustness sweep completed");
+
+      -- Representative pictures of the decisions above
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS, L1
+      -- 140 km/h dial, 150 km/h under a permitted speed of 160 km/h:
+      -- pointer, CSG and hook rest at the end of the scale (8.2.1.1.4),
+      -- the digital speed shows 150
+      Send_Speed_State_Raw
+        (V_Cur => 150, V_Perm => 160, V_Target => 0, V_Release => 0,
+         V_Sbi => 175, V_Wsl => 165, D_Target => 0, Monitoring => 0,
+         Dial_Range => 0, Flags => 0);
+      Step;
+      Check_Frame ("rob_fs_above_dial_140");
+
+      -- distance beyond the 5 digits of 8.2.2.2.4: 99990, bar at 1000 m
+      -- (8.2.2.1.6); the speeds beyond every dial are clamped to 400
+      Send_Speed_State_Raw
+        (V_Cur => 65535, V_Perm => 65535, V_Target => 300, V_Release => 0,
+         V_Sbi => 65535, V_Wsl => 65535, D_Target => 16#FFFF_FFFF#,
+         Monitoring => 1, Dial_Range => 3, Flags => 0);
+      Step;
+      Check_Frame ("rob_fs_tsm_wire_maximum");
+
+      -- SR in RSM: no row in Tables 8, 10 and 14, so no pointer, no hooks
+      -- and no distance, although everything is toggled on
+      Send_Mode_Level (Mode => 7, Level => 4); -- SR
+      User_Settings.Speed_Info_Visible := True;
+      Send_Speed_State_Raw
+        (V_Cur => 30, V_Perm => 40, V_Target => 0, V_Release => 35,
+         V_Sbi => 55, V_Wsl => 45, D_Target => 150, Monitoring => 2,
+         Dial_Range => 1, Flags => 1);
+      Step;
+      Check_Frame ("rob_sr_rsm_not_applicable");
+
+      -- AD with IntS: hyphens only in Tables 8 and 9, no pointer, no CSG
+      Send_Mode_Level (Mode => 3, Level => 5); -- AD, L2
+      Send_Speed_State_Raw
+        (V_Cur => 140, V_Perm => 120, V_Target => 0, V_Release => 0,
+         V_Sbi => 135, V_Wsl => 125, D_Target => 0, Monitoring => 0,
+         Dial_Range => 1, Flags => 0);
+      Step;
+      Check_Frame ("rob_ad_csm_ints_not_applicable");
+   end Scenario_Speed_Robustness;
 
    procedure Scenario_AD_White is
    begin
@@ -728,6 +972,7 @@ procedure DMI_Test is
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
+   Scenario_Speed_Robustness;
    Scenario_AD_White;
    Scenario_CSM_Target_Info;
    Scenario_Mode_Ack;
