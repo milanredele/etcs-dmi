@@ -385,10 +385,19 @@ package body DMI_Core is
 
       Offset : Stream_Element_Offset := Payload'First;
 
+      -- The wire carries u16 speeds and a u32 distance, the model types
+      -- are narrower, and a failed range check cannot be handled here
+      -- (no exception propagation on the target): every field is clamped
+      -- before it is converted. The speeds stop at Speed_T'Last, the
+      -- maximum of the largest dial (DMI 8.2.1.1.3 a); the specification
+      -- defines no presentation for a speed beyond every dial. Speeds
+      -- above the configured dial are kept: the dial mapping rests them at
+      -- the end of the scale (Speed_Dial.Speed_To_Angle) while the digital
+      -- values show them.
       function Next_Speed return Speed_T is
          Raw : constant Unsigned_16 := Get_U16 (Payload, Offset);
       begin
-         return Speed_T (Unsigned_16'Min (Raw, 400));
+         return Speed_T (Unsigned_16'Min (Raw, Unsigned_16 (Speed_T'Last)));
       end Next_Speed;
 
       V_Cur      : constant Speed_T := Next_Speed;
@@ -402,6 +411,10 @@ package body DMI_Core is
       Dial_Range : constant Unsigned_8 := Get_U8 (Payload, Offset);
       Flags      : constant Unsigned_8 := Get_U8 (Payload, Offset);
    begin
+      -- The supervision status is derived in Set_Speed, which runs (through
+      -- Set_Speed_Params) after every Set_Monitoring_Mode below and in
+      -- Reset_State, before anything is drawn: the status is always one
+      -- that exists under the monitoring (chapter 7), whatever is sent.
       case Monitoring is
          when 0      => Set_Monitoring_Mode (CSM);
          when 1      => Set_Monitoring_Mode (TSM);
@@ -418,8 +431,12 @@ package body DMI_Core is
                          Vrelease_Exists => (Flags and 1) /= 0));
       Set_Speed (V_Cur);
 
+      -- DMI 8.2.2.2.4 / 8.2.2.2.6: the distance to target digital shows up
+      -- to 5 digits, rounded to 10 m, so Distance_T'Last (99990 m) is the
+      -- largest value that can be presented; longer distances show it.
+      -- The bar has its own limit of 1000 m (8.2.2.1.6).
       Set_Distance_To_Target
-        (Distance_T (Unsigned_32'Min (D_Target, 90000)));
+        (Distance_T (Unsigned_32'Min (D_Target, Unsigned_32 (Distance_T'Last))));
 
       case Dial_Range is
          when 0      => Set_Seed_Dial_Range (Range_140);
