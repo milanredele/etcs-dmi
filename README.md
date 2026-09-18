@@ -1,14 +1,80 @@
 # etcs-dmi
 
 ## European Train Control System - Driver Machine Interface (ETCS DMI)
-### Goal
-My personal goal is to better learn Ada through implementing a well-specified and potentially useful application.
 
-The general goal is to implement Version 4.0.0 of the [ETCS DMI](https://en.wikipedia.org/wiki/European_Train_Control_System#Man_Machine_Interface) according to [specifications published by the European Railway Agency](https://www.era.europa.eu/activities/technical-specifications-interoperability_en#meeting7) (ERA_ERTMS_015560 v4.0.0, included under [doc/SRS](doc/SRS)).
-Written in Ada2012 with a strong focus on applicability in resource-limited embedded devices:
-primary performance goal is to run on 32bit 200MHz ARM/POWER MCU with 128kB RAM and 1MB ROM, without OS.
+The DMI is the cab display that tells a train driver how fast the train
+may go, where it has to brake, which mode and level the on-board system
+is in, and what lies ahead on the track. This is an implementation of it
+in Ada 2012 for small embedded hardware.
+
+**Live demo**: <https://milanredele.github.io/etcs-dmi/> runs the DMI
+and a simulated on-board computer in the browser, compiled from the same
+Ada sources to WebAssembly.
+
+[![The browser test bench during a simulated mission](doc/images/bench.png)](https://milanredele.github.io/etcs-dmi/)
+
+### Goals
+1. **Implement Version 4.0.0 of the
+   [ETCS DMI](https://en.wikipedia.org/wiki/European_Train_Control_System#Man_Machine_Interface)**
+   according to the
+   [specifications published by the European Union Agency for Railways](https://www.era.europa.eu/activities/technical-specifications-interoperability_en#meeting7)
+   (ERA_ERTMS_015560 v4.0.0, included under [doc/SRS](doc/SRS)).
+   Written in Ada 2012 with a strong focus on applicability in
+   resource-limited embedded devices: the primary performance goal is to
+   run on a 32-bit 200 MHz ARM/POWER MCU with 128 kB RAM and 1 MB ROM,
+   without an OS.
+2. **Learn Ada.** My personal goal is to get better at Ada by
+   implementing a well-specified and potentially useful application.
+3. **Test the use of agentic AI in reliable software development.** Since
+   the v4.0.0 update (commit `e0c7394`, August 2026) the code has been
+   written with an AI coding agent
+   ([Claude Code](https://claude.com/claude-code)) that plans, writes,
+   builds and tests on its own over many steps, under my direction and
+   review; those commits carry a `Co-Authored-By` trailer. A DMI is a
+   good test case: the specification is long, precise and public, the
+   language is made for safety, and mistakes show up on the screen.
 
 See [PLAN.md](PLAN.md) for the implementation status and roadmap.
+
+### Working with an AI agent
+The question behind the third goal is what it takes to trust the result.
+The rules that have proven necessary so far:
+
+- **The specification is the only authority.** It is in the repository
+  as searchable text
+  ([doc/SRS/…/sections](doc/SRS/ERA_ERTMS_015560_v400/sections)), and the
+  code cites the clause it implements. An early gap analysis that was
+  not checked against the text turned out to be wrong in most of its
+  claims, including requirements that do not exist; [PLAN.md](PLAN.md)
+  §1 records the check claim by claim, and a verified plan replaced it.
+- **Behaviour is pinned by executable checks.** The regression
+  runner makes 100 checks: 61 rendered screens compared with golden
+  frames, sound events, and a complete simulated mission. The
+  WebAssembly build has to render the same pixels as the native one. A
+  change that alters a screen fails a check, and a person has to look at
+  the new frame before it becomes the golden one.
+- **Where the specification is silent, the choice is written down as a
+  choice**, not dressed up as a requirement (see *EVC link supervision*
+  below).
+- **Small steps.** One phase per commit, the plan kept up to date, and
+  the standing rules for agents in [AGENTS.md](AGENTS.md).
+
+This is an experiment, not a certified development process; nothing here
+claims conformance with EN 50128 / EN 50716.
+
+### Status
+The default window (speed dial, supervision colours, planning area,
+track conditions, text messages, acknowledgements, sounds), the sub-level
+windows with the start-up data entry, touch input, and the EVC/track/
+train simulator are implemented. Still open: the ATO displays, the
+chapter 15 message catalogue, the NTC chapters, the soft-key layout and
+the optimisation for the embedded memory budget. Details in
+[PLAN.md](PLAN.md).
+
+| | |
+|---|---|
+| ![Target speed monitoring with the planning area](doc/images/dmi_tsm.png) | ![Train data entry during start-up](doc/images/dmi_data_entry.png) |
+| Target speed monitoring: braking towards a 100 km/h restriction, planning area on the right | Train data entry in the start-up dialogue |
 
 ### Zero dependency
 No library is used other than provided by GNAT.
@@ -59,6 +125,9 @@ the modules, runs the cross-check below and publishes the page on GitHub
 Pages: <https://milanredele.github.io/etcs-dmi/>
 (`test/wasm/site.sh <dir>` assembles the same site locally).
 
+`node test/wasm/screenshots.js` regenerates the bench screenshot above by
+driving the page in headless Chrome.
+
 `node test/wasm/smoke.js` replays regression scenarios through the
 wasm modules and checks the rendered screens against the same golden
 digests as the native runner: the two builds render pixel for pixel
@@ -97,6 +166,3 @@ the EVC provided is discarded and mode SF is shown until the EVC talks
 again. Frame reassembly from any byte transport lives in
 [src/dmi_link.ads](src/dmi_link.ads), shared by the TCP mains, the wasm
 modules and, later, the target's Ethernet driver.
-
-![Sample image](doc/images/sample.png)
-![Image of B Area](doc/images/b_area.png)
