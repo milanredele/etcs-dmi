@@ -27,12 +27,23 @@ package DMI_Text_Messages is
    procedure Scroll_Up;
    procedure Scroll_Down;
 
-   -- Acknowledgement handling (8.2.3.4.8): while a message requires an
-   -- acknowledgement it is presented alone
+   -- Acknowledgement handling (8.2.3.4.8, 5.4.1). Every message to be
+   -- acknowledged has its own request in the FIFO of DMI_Ack, identified
+   -- by the message id. The message presented (alone, 8.2.3.4.8 a) is the
+   -- one DMI_Ack currently offers. While any message still has to be
+   -- acknowledged the other messages are not shown (5.4.1.10), also when
+   -- none is on offer yet (5.4.1.9: earlier requests, the 1 s delay).
+
+   -- A stored message still has to be acknowledged
    function Ack_Pending return Boolean;
-   function Ack_Class return Class_T;
-   function Ack_ID return Natural;
-   procedure Acknowledge;
+
+   -- The driver acknowledged message ID: it becomes a message that does
+   -- not have to be acknowledged (8.2.3.4.8 c)
+   procedure Acknowledge (ID : Natural);
+
+   -- Once per DMI cycle, before DMI_Ack.Tick: enters the requests that
+   -- DMI_Ack could not take earlier (queue full), oldest message first
+   procedure Tick;
 
    -- Rendering interface: the visible lines after wrapping + scrolling.
    -- Line_Count is the total wrapped line count of the current content.

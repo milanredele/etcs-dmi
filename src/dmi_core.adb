@@ -630,7 +630,7 @@ package body DMI_Core is
          case New_Brake is
             when Shown_Ack_Required =>
                -- 8.2.2.3.4 / 5.4: brake release acknowledgement
-               DMI_Ack.Request (DMI_Ack.Brake_Release);
+               DMI_Ack.Request_Brake_Release_Ack;
             when None =>
                if Old_Brake = Shown_Ack_Required then
                   DMI_Ack.Cancel (DMI_Ack.Brake_Release);
@@ -879,6 +879,7 @@ package body DMI_Core is
          end if;
       end if;
 
+      DMI_Text_Messages.Tick;
       DMI_Ack.Tick (Dt_Ms);
       Update_Buttons;
       DMI_Buttons.Tick (Dt_Ms);
@@ -899,17 +900,24 @@ package body DMI_Core is
 
             when BTN_Ack =>
                if DMI_Ack.Current_Valid then
-                  Queue_Driver_Action
-                    (ACTION_ACK,
-                     Unsigned_16
-                       (DMI_Ack.Ack_Kind_T'Pos (DMI_Ack.Current_Kind)));
-                  if DMI_Ack.Current_Kind in
-                    DMI_Ack.Fixed_Text | DMI_Ack.Plain_Text
-                    | DMI_Ack.System_Status | DMI_Ack.NTC_Text
-                  then
-                     DMI_Text_Messages.Acknowledge;
-                  end if;
-                  DMI_Ack.Acknowledge_Current;
+                  declare
+                     Kind    : constant DMI_Ack.Ack_Kind_T :=
+                       DMI_Ack.Current_Kind;
+                     Is_Text : constant Boolean :=
+                       Kind in DMI_Ack.Text_Kind_T;
+                     -- message ids are u16 on the wire (MSG_TEXT)
+                     Text_ID : constant Natural :=
+                       (if Is_Text then DMI_Ack.Current_Text_ID else 0);
+                  begin
+                     Queue_Driver_Action
+                       (ACTION_ACK,
+                        Unsigned_16 (DMI_Ack.Ack_Kind_T'Pos (Kind)));
+                     if Is_Text then
+                        -- 8.2.3.4.8 c: this message, not another one
+                        DMI_Text_Messages.Acknowledge (Text_ID);
+                     end if;
+                     DMI_Ack.Acknowledge_Current;
+                  end;
                end if;
 
             when BTN_Msg_Up =>
