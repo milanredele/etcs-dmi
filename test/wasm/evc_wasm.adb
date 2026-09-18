@@ -36,13 +36,22 @@ package body EVC_Wasm is
       Offset : Stream_Element_Offset := Payload'First;
    begin
       if The_Type = MSG_DRIVER_ACTION
-        and then Payload'Length = Driver_Action_Length
+        and then (Payload'Length = Driver_Action_Length
+                  or else Payload'Length = Driver_Ack_Length)
       then
          declare
             Action : constant Unsigned_8 := Get_U8 (Payload, Offset);
             Arg    : constant Unsigned_16 := Get_U16 (Payload, Offset);
+            -- an acknowledgement also names the text message
+            ID     : constant Unsigned_16 :=
+              (if Payload'Length = Driver_Ack_Length
+               then Get_U16 (Payload, Offset) else 0);
          begin
-            EVC_Core.Handle_Driver_Action (Natural (Action), Natural (Arg));
+            -- an acknowledgement always comes in the long form
+            if (Action = 2) = (Payload'Length = Driver_Ack_Length) then
+               EVC_Core.Handle_Driver_Action
+                 (Natural (Action), Natural (Arg), Natural (ID));
+            end if;
          end;
       end if;
    end Handle;

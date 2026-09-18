@@ -21,7 +21,11 @@ package EVC_Core is
    procedure Step (Dt_S : Float; Emit : Sink_T);
 
    -- Driver actions coming back from the DMI
-   procedure Handle_Driver_Action (Action : Natural; Arg : Natural);
+   -- ID: only with action 2 (acknowledgement), the id of the acknowledged
+   -- text message (DMI_Protocol.MSG_DRIVER_ACTION)
+   procedure Handle_Driver_Action (Action : Natural;
+                                   Arg    : Natural;
+                                   ID     : Natural := 0);
 
    procedure Reset;
 

@@ -12,11 +12,13 @@
 pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Streams;
+with DMI_Ack;
 with DMI_Core;
 with Display.Screen.Files;
 with DMI_Driver_Data;
 with DMI_Protocol;
 with DMI_Sounds;
+with DMI_Text_Messages;
 with EVC_Core;
 with EVC_Driver;
 with EVC_Track;
@@ -405,6 +407,234 @@ procedure DMI_Test is
    -- Planning area (8.3)
    ---------------------------------------------------------------------
 
+   -- Acknowledgement FIFO (5.4.1.7, 5.4.1.9, 5.4.1.9.1, 8.2.3.4.8)
+
+   -- Ack_Kind_T'Pos as sent with the acknowledgement (DMI_Protocol)
+   ACK_LEVEL : constant := 0;
+   ACK_MODE  : constant := 1;
+   ACK_FIXED : constant := 2;
+   ACK_PLAIN : constant := 3;
+   ACK_BRAKE : constant := 5;
+
+   procedure Ack_Reset is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Outbox;
+   end Ack_Reset;
+
+   -- Press the acknowledgement area of this kind of request and let the
+   -- DMI handle it
+   procedure Ack_Tap (Kind : Natural) is
+      X : constant Natural :=
+        (case Kind is
+            when ACK_LEVEL | ACK_MODE => 190,  -- C1
+            when ACK_BRAKE            => 25,   -- C8, extended brake area
+            when others               => 150); -- E5-E9
+      Y : constant Natural :=
+        (case Kind is
+            when ACK_LEVEL | ACK_MODE => 340,
+            when ACK_BRAKE            => 330,
+            when others               => 400);
+   begin
+      Pointer_Down (X, Y);
+      Pointer_Up (X, Y);
+      Step;
+      Drain_Sounds;
+   end Ack_Tap;
+
+   -- 5.4.1.9: nothing is offered for 1 s (20 cycles of 50 ms) after the
+   -- last request went; Ack_Tap has used one cycle more
+   procedure Ack_Expect_Gap (What : String) is
+   begin
+      for I in 1 .. 19 loop
+         Step;
+      end loop;
+      Check (not DMI_Ack.Current_Valid, What & ": nothing offered for 1 s");
+      Expect_No_Sound (What & ": silent for 1 s");
+      Step;
+      Expect_Sound (DMI_Sounds.Sinfo, What & ": next offer after 1 s");
+   end Ack_Expect_Gap;
+
+   -- ROB-5: two texts of the same class are offered one after the other
+   procedure Scenario_Ack_Same_Class is
+   begin
+      Ack_Reset;
+      Send_Text (9, "Entering FS", HH => 11, MM => 0);
+      Send_Text (10, "Level crossing not protected", Ack_Required => True,
+                 HH => 11, MM => 1);
+      Send_Text (11, "Route unsuitable - axle load category",
+                 Ack_Required => True, HH => 11, MM => 2);
+      Step;
+      Expect_Sound (DMI_Sounds.Sinfo, "first text ack offer plays Sinfo");
+      Check (DMI_Ack.Pending_Count = 2, "one request per text message");
+      Check_Frame ("ack_fifo_text_first");
+
+      Ack_Tap (ACK_PLAIN);
+      Expect_Ack (ACK_PLAIN, 10, "first text acknowledged with its id");
+      -- 5.4.1.10: the list stays hidden, the second text is not due yet
+      Check_Frame ("ack_fifo_text_gap");
+      Ack_Expect_Gap ("second text of the same class");
+      Check_Frame ("ack_fifo_text_second");
+
+      Ack_Tap (ACK_PLAIN);
+      Expect_Ack (ACK_PLAIN, 11, "second text acknowledged with its id");
+      -- 8.2.3.4.8 c: both are ordinary messages now
+      Check (not DMI_Text_Messages.Ack_Pending, "no text left to acknowledge");
+      Check_Frame ("ack_fifo_text_done");
+   end Scenario_Ack_Same_Class;
+
+   -- GEN-1: order of arrival; 5.4.1.9.1 only for simultaneous requests
+   procedure Scenario_Ack_Arrival_Order is
+   begin
+      Ack_Reset;
+      -- three cycles: plain text, brake release, mode change
+      Send_Text (20, "Level crossing not protected", Ack_Required => True);
+      Step;
+      Send_Status (Brake => 2, Radio => 1);
+      Step;
+      Send_Mode_Level (Mode => 2, Level => 4, Mode_Ack => 6);
+      Step;
+      Expect_Sound (DMI_Sounds.Sinfo, "only the first request is offered");
+      Expect_No_Sound ("the later requests wait");
+
+      Ack_Tap (ACK_PLAIN);
+      Expect_Ack (ACK_PLAIN, 20, "text arrived first");
+      Ack_Expect_Gap ("brake release after the text");
+      Ack_Tap (ACK_BRAKE);
+      Expect_Ack (ACK_BRAKE, 0, "brake release arrived second");
+      Ack_Expect_Gap ("mode change after the brake release");
+      Ack_Tap (ACK_MODE);
+      Expect_Ack (ACK_MODE, 0, "mode change arrived last");
+
+      -- one cycle: brake release, fixed text, mode change and level
+      -- transition are queued in the sequence of 5.4.1.9.1
+      Ack_Reset;
+      Send_Status (Brake => 2, Radio => 1);
+      Send_Text (21, "Level crossing not protected", Ack_Required => True,
+                 Class => 0);
+      Send_Mode_Level (Mode => 2, Level => 4, Mode_Ack => 6,
+                       Level_Ann => 2, Level_Ann_Ack => True);
+      Step;
+      Expect_Sound (DMI_Sounds.Sinfo, "simultaneous: one offer");
+      Ack_Tap (ACK_LEVEL);
+      Expect_Ack (ACK_LEVEL, 0, "simultaneous: level transition first");
+      Ack_Expect_Gap ("simultaneous: mode change");
+      Ack_Tap (ACK_MODE);
+      Expect_Ack (ACK_MODE, 0, "simultaneous: mode change second");
+      Ack_Expect_Gap ("simultaneous: fixed text");
+      Ack_Tap (ACK_FIXED);
+      Expect_Ack (ACK_FIXED, 21, "simultaneous: fixed text third");
+      Ack_Expect_Gap ("simultaneous: brake release");
+      Ack_Tap (ACK_BRAKE);
+      Expect_Ack (ACK_BRAKE, 0, "simultaneous: brake release last");
+   end Scenario_Ack_Arrival_Order;
+
+   -- 5.4.1.9: the 1 s also runs after a revoked request
+   procedure Scenario_Ack_Revoked is
+   begin
+      Ack_Reset;
+      Send_Mode_Level (Mode => 2, Level => 4, Mode_Ack => 6);
+      Step;
+      Expect_Sound (DMI_Sounds.Sinfo, "mode ack offered");
+      Send_Text (30, "Level crossing not protected", Ack_Required => True);
+      Step;
+      Expect_No_Sound ("text waits behind the mode ack");
+      -- the EVC withdraws the mode acknowledgement
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Ack_Expect_Gap ("text after the revoked mode ack");
+      Ack_Tap (ACK_PLAIN);
+      Expect_Ack (ACK_PLAIN, 30, "text acknowledged after the revocation");
+   end Scenario_Ack_Revoked;
+
+   -- Removing one message revokes its own request only
+   procedure Scenario_Ack_Remove_One is
+   begin
+      Ack_Reset;
+      Send_Text (40, "Level crossing not protected", Ack_Required => True);
+      Step;
+      Send_Text (41, "Route unsuitable - axle load category",
+                 Ack_Required => True);
+      Step;
+      Drain_Sounds;
+      -- the waiting one goes: the offered one stays offered
+      Send_Text_Remove (41);
+      Step;
+      Check (DMI_Ack.Current_Valid and then DMI_Ack.Current_Text_ID = 40,
+             "removing the waiting text keeps the offered one");
+      Expect_No_Sound ("no new offer after removing the waiting text");
+      Ack_Tap (ACK_PLAIN);
+      Expect_Ack (ACK_PLAIN, 40, "offered text still acknowledgeable");
+
+      Ack_Reset;
+      Send_Text (42, "Level crossing not protected", Ack_Required => True);
+      Step;
+      Send_Text (43, "Route unsuitable - axle load category",
+                 Ack_Required => True);
+      Step;
+      Drain_Sounds;
+      -- the offered one goes: the other one follows after 1 s
+      Send_Text_Remove (42);
+      Ack_Expect_Gap ("text after the removed text");
+      Check (DMI_Ack.Current_Valid and then DMI_Ack.Current_Text_ID = 43,
+             "the remaining text is offered");
+      Check_Frame ("ack_fifo_text_after_removal");
+      Ack_Tap (ACK_PLAIN);
+      Expect_Ack (ACK_PLAIN, 43, "remaining text acknowledged");
+   end Scenario_Ack_Remove_One;
+
+   -- More requests than the queue holds: nothing raises, everything can
+   -- still be acknowledged
+   procedure Scenario_Ack_Queue_Full is
+      type Expected_T is record
+         Kind, ID : Natural;
+      end record;
+      -- 8 texts fill the text slots, the objects use their reserved
+      -- slots, the 4 texts that did not fit follow as slots come free
+      Expected : constant array (1 .. 15) of Expected_T :=
+        ((ACK_PLAIN, 101), (ACK_PLAIN, 102), (ACK_PLAIN, 103),
+         (ACK_PLAIN, 104), (ACK_PLAIN, 105), (ACK_PLAIN, 106),
+         (ACK_PLAIN, 107), (ACK_PLAIN, 108),
+         (ACK_LEVEL, 0), (ACK_MODE, 0), (ACK_BRAKE, 0),
+         (ACK_PLAIN, 109), (ACK_PLAIN, 110), (ACK_PLAIN, 111),
+         (ACK_PLAIN, 112));
+   begin
+      Ack_Reset;
+      for ID in 101 .. 112 loop
+         Send_Text (ID, "Level crossing not protected", Ack_Required => True);
+      end loop;
+      Step;
+      Check (DMI_Ack.Pending_Count = DMI_Ack.Text_Capacity,
+             "queue full: text requests limited to the capacity");
+      Send_Status (Brake => 2, Radio => 1);
+      Send_Mode_Level (Mode => 2, Level => 4, Mode_Ack => 6,
+                       Level_Ann => 2, Level_Ann_Ack => True);
+      Step;
+      Check (DMI_Ack.Pending_Count = DMI_Ack.Text_Capacity + 3,
+             "queue full: object requests are never refused");
+      Drain_Sounds;
+
+      for I in Expected'Range loop
+         if I > Expected'First then
+            for J in 1 .. 20 loop
+               Step;
+            end loop;
+            Drain_Sounds;
+         end if;
+         Ack_Tap (Expected (I).Kind);
+         Expect_Ack (Expected (I).Kind, Expected (I).ID,
+                     "queue full: acknowledgement" & Natural'Image (I));
+      end loop;
+      Check (DMI_Ack.Pending_Count = 0
+             and then not DMI_Text_Messages.Ack_Pending,
+             "queue full: everything was acknowledged");
+   end Scenario_Ack_Queue_Full;
+
    procedure Scenario_Planning is
    begin
       Reset;
@@ -776,6 +1006,11 @@ begin
    Scenario_TTI;
    Scenario_SM_Direction;
    Scenario_Text_Messages;
+   Scenario_Ack_Same_Class;
+   Scenario_Ack_Arrival_Order;
+   Scenario_Ack_Revoked;
+   Scenario_Ack_Remove_One;
+   Scenario_Ack_Queue_Full;
    Scenario_Planning;
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;

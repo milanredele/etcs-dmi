@@ -706,8 +706,13 @@
             if (type === MSG_SOUND) playSound(f[HEADER_LENGTH]);
             else if (type === MSG_DRIVER_ACTION || type === MSG_DRIVER_DATA) {
               if (type === MSG_DRIVER_ACTION) {
+                // an acknowledgement (action 2) also carries the text
+                // message id
                 console.log('driver action', f[HEADER_LENGTH],
-                            f[HEADER_LENGTH + 1] | (f[HEADER_LENGTH + 2] << 8));
+                            f[HEADER_LENGTH + 1] | (f[HEADER_LENGTH + 2] << 8),
+                            f.length >= HEADER_LENGTH + 5
+                              ? f[HEADER_LENGTH + 3] | (f[HEADER_LENGTH + 4] << 8)
+                              : '');
               }
               toEvc.send(f, now);
             }

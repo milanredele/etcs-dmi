@@ -23,6 +23,9 @@ package body DMI_Text_Messages is
       Length       : Natural := 0;
       Text         : Wide_String (1 .. Max_Text);
       Sequence     : Natural := 0; -- arrival order
+      -- Ack_Required only: DMI_Ack was full and has not taken the
+      -- request of this message yet (see Tick)
+      Ack_Waiting  : Boolean := False;
    end record;
 
    Messages : array (1 .. Max_Messages) of Message_T;
@@ -30,7 +33,7 @@ package body DMI_Text_Messages is
 
    Scroll_Offset : Natural := 0;
 
-   function To_Ack_Kind (Class : Class_T) return DMI_Ack.Ack_Kind_T is
+   function To_Ack_Kind (Class : Class_T) return DMI_Ack.Text_Kind_T is
      (case Class is
          when Fixed_Text    => DMI_Ack.Fixed_Text,
          when Plain_Text    => DMI_Ack.Plain_Text,
@@ -47,15 +50,30 @@ package body DMI_Text_Messages is
       return 0;
    end Find;
 
+   -- The message presented for acknowledgement: the one the
+   -- acknowledgement service is offering (5.4.1.7), 0 if none
    function Ack_Index return Natural is
+      Slot : Natural;
    begin
-      for I in Messages'Range loop
-         if Messages (I).Used and then Messages (I).Ack_Required then
-            return I;
+      if DMI_Ack.Current_Valid
+        and then DMI_Ack.Current_Kind in DMI_Ack.Text_Kind_T
+      then
+         Slot := Find (DMI_Ack.Current_Text_ID);
+         if Slot /= 0 and then Messages (Slot).Ack_Required then
+            return Slot;
          end if;
-      end loop;
+      end if;
       return 0;
    end Ack_Index;
+
+   -- 8.2.3.4.8 / 5.4.1.9: every message has its own request
+   procedure Request_Ack (Slot : Positive) is
+      Accepted : Boolean;
+   begin
+      DMI_Ack.Request_Text_Ack
+        (To_Ack_Kind (Messages (Slot).Class), Messages (Slot).ID, Accepted);
+      Messages (Slot).Ack_Waiting := not Accepted;
+   end Request_Ack;
 
    ---------------------------------------------------------------------
    -- Wrapped line model of the non-ack list (or the single ack message)
@@ -144,6 +162,15 @@ package body DMI_Text_Messages is
          return; -- store full
       end if;
 
+      if Messages (Slot).Used
+        and then Messages (Slot).Ack_Required
+        and then not (Ack_Required and then Messages (Slot).Class = Class)
+      then
+         -- the message is replaced by one that needs no acknowledgement
+         -- or another kind of it: the old request is revoked
+         DMI_Ack.Cancel_Text (ID);
+      end if;
+
       Sequence := Sequence + 1;
       Messages (Slot) :=
         (Used         => True,
@@ -155,13 +182,14 @@ package body DMI_Text_Messages is
          Minute       => Minute,
          Length       => Len,
          Text         => (others => ' '),
-         Sequence     => Sequence);
+         Sequence     => Sequence,
+         Ack_Waiting  => False);
       Messages (Slot).Text (1 .. Len) :=
         Text (Text'First .. Text'First + Len - 1);
 
       if Ack_Required then
          -- 8.2.3.4.8 / 5.4: offered through the acknowledgement service
-         DMI_Ack.Request (To_Ack_Kind (Class));
+         Request_Ack (Slot);
       elsif First_Group then
          -- 8.2.3.4.7 h: Sinfo for a new first group message
          DMI_Sounds.Play (DMI_Sounds.Sinfo);
@@ -173,7 +201,8 @@ package body DMI_Text_Messages is
    begin
       if Slot /= 0 then
          if Messages (Slot).Ack_Required then
-            DMI_Ack.Cancel (To_Ack_Kind (Messages (Slot).Class));
+            -- only the request of this message is revoked
+            DMI_Ack.Cancel_Text (ID);
          end if;
          Messages (Slot).Used := False;
       end if;
@@ -199,22 +228,47 @@ package body DMI_Text_Messages is
       end if;
    end Scroll_Down;
 
-   function Ack_Pending return Boolean is (Ack_Index /= 0);
+   function Ack_Pending return Boolean is
+   begin
+      for M of Messages loop
+         if M.Used and then M.Ack_Required then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Ack_Pending;
 
-   function Ack_Class return Class_T is
-     (Messages (Ack_Index).Class);
-
-   function Ack_ID return Natural is
-     (Messages (Ack_Index).ID);
-
-   procedure Acknowledge is
-      Slot : constant Natural := Ack_Index;
+   procedure Acknowledge (ID : Natural) is
+      Slot : constant Natural := Find (ID);
    begin
       if Slot /= 0 then
          -- 8.2.3.4.8 c: becomes a normal message, no Sinfo replay
          Messages (Slot).Ack_Required := False;
+         Messages (Slot).Ack_Waiting := False;
       end if;
    end Acknowledge;
+
+   procedure Tick is
+      Best : Natural;
+   begin
+      loop
+         Best := 0;
+         for I in Messages'Range loop
+            if Messages (I).Used
+              and then Messages (I).Ack_Required
+              and then Messages (I).Ack_Waiting
+              and then (Best = 0
+                        or else Messages (I).Sequence <
+                                Messages (Best).Sequence)
+            then
+               Best := I;
+            end if;
+         end loop;
+         exit when Best = 0;
+         Request_Ack (Best);
+         exit when Messages (Best).Ack_Waiting; -- still no room
+      end loop;
+   end Tick;
 
    procedure Get_Visible_Line (Index : Positive;
                                Line  : out Line_T;
@@ -229,7 +283,12 @@ package body DMI_Text_Messages is
       Valid := False;
 
       if Ack_Pending then
-         -- the acknowledgeable message is presented alone, unscrolled
+         -- 8.2.3.4.8 a: the message on offer is presented alone,
+         -- unscrolled. 5.4.1.10: nothing else is shown while a message
+         -- to be acknowledged waits for its turn (5.4.1.9).
+         if Ack_Index = 0 then
+            return;
+         end if;
          declare
             M : Message_T renames Messages (Ack_Index);
             L : constant Natural := Index;

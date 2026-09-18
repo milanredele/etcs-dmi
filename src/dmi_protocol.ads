@@ -105,13 +105,26 @@ package DMI_Protocol is
 
    -- DMI -> EVC
    MSG_DRIVER_ACTION : constant Msg_Type_T := 16#40#;
-   --  action u8, arg u16
-   --  actions: 0 TAF yes, 1 speed toggle, 2 ack (arg Ack_Kind'Pos),
+   --  action u8, arg u16; action 2 (ack) only: followed by id u16
+   --  actions: 0 TAF yes, 1 speed toggle, 2 ack (see below),
    --  3 tunnel toggle, 4 geo toggle, 5 start mission, 6 override EOA,
    --  7 shunting request, 8 exit shunting, 9 adhesion (arg 0/1),
    --  10 train integrity confirmed, 11 level selected (arg Level_T'Pos),
    --  12 non-leading
    Driver_Action_Length : constant := 3;
+   --  Action 2, the driver's acknowledgement (DMI 5.4.1), names the one
+   --  request it answers. Its payload is Driver_Ack_Length bytes:
+   --    action u8 = 2,
+   --    arg u16   = kind (DMI_Ack.Ack_Kind_T'Pos): 0 level transition,
+   --                1 mode change, 2 fixed text message, 3 plain text
+   --                message, 4 system status message, 5 brake release,
+   --                6 NTC text message,
+   --    id u16    = for kinds 2, 3, 4 and 6 the id of the acknowledged
+   --                text message as given in MSG_TEXT; 0 otherwise.
+   --  All other actions keep the Driver_Action_Length payload. A receiver
+   --  accepts both lengths and ignores an action 2 of the short form
+   --  (it does not say what was acknowledged).
+   Driver_Ack_Length : constant := 5;
 
    MSG_DRIVER_DATA : constant Msg_Type_T := 16#41#;
    --  kind u8, then:
