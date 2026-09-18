@@ -332,6 +332,37 @@ procedure DMI_Test is
       Check_Frame ("tti_2s");
    end Scenario_TTI;
 
+   -- 8.2.3.11 / chapter 13 Table 61: ST07 in C6. Regression for the
+   -- audit finding ROB-1 (the former text stand-in stopped the DMI).
+   procedure Scenario_BMM_Inhibition is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 7, Level => 4); -- SR, L1
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Send_Status (BMM => True);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("bmm_shown");
+      -- C6 holds one 32 x 32 symbol: ST06 (8.4.2.2) while both apply
+      Send_Status (BMM => True, Reversing => True);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("bmm_with_reversing");
+      -- ST07 returns when ST06 is removed
+      Send_Status (BMM => True);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("bmm_shown");
+      -- revoked (11.7.6 S1): the symbol is removed
+      Send_Status;
+      Drain_Sounds;
+      Step;
+      Check_Frame ("bmm_removed");
+   end Scenario_BMM_Inhibition;
+
    procedure Scenario_SM_Direction is
    begin
       Reset;
@@ -736,6 +767,7 @@ begin
    Scenario_Speed_Toggle;
    Scenario_Status_Objects;
    Scenario_TTI;
+   Scenario_BMM_Inhibition;
    Scenario_SM_Direction;
    Scenario_Text_Messages;
    Scenario_Planning;
