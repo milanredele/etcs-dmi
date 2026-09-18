@@ -1,13 +1,26 @@
 # ETCS DMI v4.0.0 — Verified Gap Analysis and Implementation Plan
 
-> **Status (2026-08-16):** Phases 0–3 and the simulator/regression
-> infrastructure are implemented (see git history from `e0c7394`).
-> Remaining scope: Phase 4 (ATO displays 8.5, chapter 15 message
-> catalogue wiring), Phase 5 (NTC chapters 9/12, soft-key layout,
-> embedded optimisation), and the simplifications noted below:
-> alphanumeric keyboards / multi-tap, full data checks (10.3.4),
-> VBC/radio/language windows, LSSMA toggling details, ST07 bitmap,
-> fonts regenerated with full ASCII at sizes 10/16/17/18.
+> **Status (2026-09-18):** Phases 0–3, the simulator/regression
+> infrastructure and the browser test bench are implemented (see git
+> history from `e0c7394`). The code was audited against the SRS chapter
+> by chapter on 2026-09-18: the findings are recorded in
+> [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md) and **§7 is the
+> prioritized backlog** that replaces the older "remaining scope" notes.
+> Sections 2–4 describe the state *before* Phases 0–3 and are kept as
+> history.
+>
+> **Scope decision (2026-09-18, project owner): NTC is out of scope.**
+> Chapter 9 (NTC default window, STM services) and chapter 12 (NTC
+> sub-level windows) will not be implemented. What the ETCS chapters say
+> about national systems stays in scope at display level: the level NTC
+> symbols and announcement (8.2.3.2), mode SN in B7, the NTC text message
+> class, and the chapter 15 messages that name an NTC.
+>
+> **Scope decision (2026-09-18, project owner): the soft-key technology
+> is out of scope.** Only the touch screen layout is implemented; area H,
+> the F1–F10 soft keys and every "when using soft key technology" clause
+> (6.3.1.6–6.3.1.9, 5.4.1.2, 5.4.1.6, 8.2.2.4.3, 8.3.10.6/.7, 8.5.2.7/.8)
+> will not be implemented.
 
 This document supersedes [ANALYSIS.md](ANALYSIS.md). Every claim in that document was
 checked against the actual SRS text in
@@ -115,8 +128,8 @@ added, and more impactful than the trig→LUT idea.
 | 11 | All ETCS sub-level windows: Main/Override/Special/Settings/Radio data menus, ~16 data entry windows (Driver ID, Level, Train data incl. flexible/switchable, TRN, SR data, VBC, ATO selector, radio…), validation + data view windows, **start-up dialogue sequence** (11.7.2), parent/child navigation (11.6, Table 48) | XL |
 | 13 | Symbols: add MO23, MO24, ST07, ATO01–21, SM01/02, PL37 (BMPs for most are in [doc/.../symbols/](doc/SRS/ERA_ERTMS_015560_v400/symbols/); ST07 bitmap is absent and needs authoring); regenerate via [utils/bmp2ada.c](utils/bmp2ada.c) | S |
 | 15 | ~32 system status messages with start/end conditions, routed through the text-message machinery | M |
-| 9, 12 | NTC default window, STM services, NTC/ATO data windows | XL — propose **out of scope** until the ETCS side is complete |
-| 6.3.1.6 | Soft-key technology layout (H/I areas, F1–F10) | Propose out of scope; target touch-screen layout (already the basis of `display.ads`) |
+| 9, 12 | NTC default window, STM services, NTC/ATO data windows | **Out of scope** (decided 2026-09-18, see the status note) |
+| 6.3.1.6 | Soft-key technology layout (H/I areas, F1–F10) | **Out of scope** (decided 2026-09-18); the touch-screen layout is the basis of `display.ads` |
 | — | **Driver input path**: nothing exists — no touch handling, no DMI→EVC channel | prerequisite for most of the above |
 
 ---
@@ -192,10 +205,12 @@ through the Phase 2 text-message machinery, symbol regeneration per §4 row 13.
 countdown, door states, skip-stop, coasting advice.
 
 ### Phase 5 — Deferred / optional
-NTC default window + STM services (ch. 9), NTC/ATO sub-level windows (ch. 12),
-soft-key layout, trig→LUT and further embedded optimisation, real target bring-up
-(framebuffer + touch + audio drivers behind the existing `Display.Frame_Buffer`
-interface).
+Trig→LUT and further embedded optimisation, real target bring-up (framebuffer + touch + audio drivers behind
+the existing `Display.Frame_Buffer` interface).
+
+NTC default window + STM services (ch. 9), the NTC sub-level windows (ch. 12) and the
+soft-key layout were listed here; they are **out of scope** since 2026-09-18 (see the
+status note).
 
 ---
 
@@ -271,3 +286,98 @@ features" is checkable. Seed scenario families:
 it is the tool that makes Phase 2 testable) → sound playback + pointer forwarding
 (Phase 1) → golden-frame CI (during Phase 2) → ATO/track-condition scripting
 (Phase 4).
+
+---
+
+## 7. Prioritized backlog after the September 2026 audit
+
+Source: [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md); the IDs (ROB-1, SDI-1, …) refer
+to its findings, which give the clause numbers and code locations. Most findings are
+audit-only: re-read the clause and the code before acting on one. Every fix comes with
+a regression scenario; a changed golden frame has to be looked at before it is
+re-recorded.
+
+The order is by consequence for the driver, not by size: first nothing may stop the
+DMI, then what it shows must be right, then the dialogue has to follow the rules, then
+the missing functions, then the pixels.
+
+### P0 — Nothing the EVC sends may stop or wedge the DMI
+The draw path has no exception handler and the wasm runtime cannot propagate
+exceptions, so each of these ends the DMI with one valid message.
+
+1. **ROB-1** ST07: author the bitmap, add the constant, remove the "BMM" text stand-in
+   (also closes SDI-12). Reproduced crash.
+2. **ROB-2** Characters outside ' '..'z': substitute a replacement glyph instead of
+   raising; regenerate the fonts with the full character set the languages need
+   (ties in with GEN-7 and the old "fonts at sizes 10/16/17/18" note).
+3. **ROB-3, ROB-4** Table 8 "not applicable" combinations and out-of-range speeds:
+   draw nothing (or clamp) instead of raising; keep `Program_Error` only for states
+   that cannot be reached by any message sequence.
+4. **ROB-5** (with **GEN-1**) Acknowledgement service: a real FIFO per 5.4.1.9 that
+   holds individual requests with their message id, priority order only for
+   simultaneous requests, `ACTION_ACK` carrying the id, the 1 s gap also after a
+   revoked request.
+5. **ROB-6 … ROB-9** Input hardening: reject orders with an unknown symbol, never drop
+   `S2_Warning_Stop`, clamp the scroll offset, make the message store and the planning
+   list limits explicit and safe (no stretched gradient).
+6. **Containment**: a last line of defence around `Handle_Message`, `Tick` and
+   `Render`, so that a defect that slips through shows the system failure indication
+   (8.2.3.1.2.1) instead of a frozen or dead display.
+
+*Exit:* a fuzz scenario in `dmi_test` and in `test/wasm/smoke.js` feeds random
+well-formed messages (every type, random field values, random order) for several
+simulated minutes without a trap, and the scenarios for ROB-1, ROB-2 and ROB-5 pass.
+
+### P1 — What is shown and sounded must be right
+7. **SDI-1** Text wrapping by pixel width at word boundaries; clip to area E5–E9.
+8. **SUP-1** Let the EVC send the supervision status (protocol change) instead of
+   deriving it from integer speeds; this also settles **SUP-3** and **SUP-4** (S1/S2
+   edge cases). **SUP-2**, **SDI-4**, **SUP-5**: the missing and the superfluous Sinfo.
+9. **WIN-3** Acknowledgements against open data entry and validation windows
+   (5.4.1.11, 11.7.1.8/.9). **SDI-3** delay-type mode acknowledgement.
+10. **WIN-1** Start-up per Tables 49/50: no self-sent mission start, no second Start,
+    [close] disabled where required, no stale `Sequence_Active`.
+11. **PLN-1 … PLN-4** Planning area: zoom-in touch area, gradient sign, three PASP
+    steps, orders limited to the MA.
+12. **SDI-5, SDI-6, SDI-7** Track condition symbols keep their area; LE02 not in SN/NL;
+    level announcement replacement not dependent on the EVC.
+13. **GEN-8** Flashing starts in the visible state.
+14. Simulator: stop sending the invented level crossing text, send `MSG_TEXT_REMOVE`.
+
+### P2 — The data entry dialogue follows chapter 10
+15. **WIN-4** Input field mechanics (Enter in the data field, touch selection,
+    circular list, replace on first key, down-type keys, cursor) and **GEN-4**,
+    **GEN-5** button behaviour.
+16. **WIN-6, WIN-7, WIN-15** Total grid for multi-field windows, echo texts, "entry
+    complete?", validation window per Table 29, field rendering per Table 21.
+17. **WIN-5** Data checks 10.3.4 with the overrule button.
+18. **WIN-9** Alphanumeric keyboard with multi-tap (needs the fonts of item 2);
+    **WIN-10** dedicated keyboards as real data entry windows; **GEN-6** grouping.
+19. **WIN-2** Button enabling conditions of Tables 33–36 and Table 48: needs data
+    status and session information in the protocol. **WIN-11** hourglass ST05.
+20. **WIN-8** Train data variants and the Table 40 items; **WIN-14** data view paging.
+
+### P3 — Missing functions
+21. **ATO-1** Section 8.5 in full, with **PLN-5** (the former Phase 4): protocol
+    messages and driver actions first, then G1–G5, B0/B8, D2–D4.
+22. **SDI-2** Chapter 15 catalogue: decide whether the DMI or the EVC owns the start
+    and end conditions, then implement; report "button in the main window selected".
+    **SDI-9** the message group follows from the class, not from a flag.
+23. **WIN-12, WIN-13** Missing windows and menu entries: Radio data and its children,
+    Language with **GEN-2**, Set/Remove VBC, ATO selector, System version, the SM and
+    shunting entries, BMM reaction inhibition, dialogue sequences 11.7.4–11.7.8.
+24. **GEN-3** Brightness and volume actually applied and stored; **GEN-10** isolation;
+    **GEN-11** desk input for Settings; **SDI-8** national system name in the level
+    symbols (display level only, see the scope decision).
+
+### P4 — Pixel conformance
+25. **SUP-6, SUP-7, SUP-9, SUP-10** gauge band widths, digital speed alignment,
+    distance bar lines, hooks as rectangles. **SUP-8** TTI in tenths of a second.
+26. **GEN-7, GEN-9, SDI-10, SDI-11** font heights and keyboard digit size, disabled
+    scroll button border, TAF frames, a real bold font.
+
+### Not planned
+- **NTC, chapters 9 and 12** — out of scope (decision above).
+- **Soft-key technology** — out of scope (decision above).
+- Embedded optimisation and target bring-up stay in Phase 5.
+

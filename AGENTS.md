@@ -3,7 +3,9 @@
 This document provides context and guidelines for AI agents (GitHub Copilot and others) working on the **European Train Control System (ETCS) Driver Machine Interface (DMI)** implementation.
 
 ## Project Context
-- **Domain**: ETCS DMI version 3.4.0 (Subset-026, Chapter 7).
+- **Domain**: ETCS DMI, ERA_ERTMS_015560 version 4.0.0 (text under `doc/SRS/ERA_ERTMS_015560_v400/sections/`).
+- **Scope**: the ETCS DMI with the touch screen layout. NTC (chapters 9 and 12) and the soft-key technology are out of scope by decision (PLAN.md status note); do not implement them.
+- **Backlog**: PLAN.md §7, from the audit in `doc/AUDIT-2026-09.md`. Cite real clause numbers only; re-read the clause before relying on a finding.
 - **Core Technology**: **Ada 2012** (GNAT compiler).
 - **Embedded Constraints**: Targeting resource-constrained systems (32-bit ARM/POWER MCUs, ~128kB RAM, ~1MB Flash).
 - **No dependencies**: The application uses only standard GNAT libraries; no external graphics or OS libraries are allowed.

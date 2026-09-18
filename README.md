@@ -68,8 +68,14 @@ track conditions, text messages, acknowledgements, sounds), the sub-level
 windows with the start-up data entry, touch input, and the EVC/track/
 train simulator are implemented. Still open: the ATO displays, the
 chapter 15 message catalogue, the NTC chapters, the soft-key layout and
-the optimisation for the embedded memory budget. Details in
-[PLAN.md](PLAN.md).
+the optimisation for the embedded memory budget. The national systems
+part of the specification (NTC, chapters 9 and 12) and the soft-key
+variant of the layout are out of scope.
+
+The code was audited against the specification clause by clause in
+September 2026: [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md) records
+every gap found, and [PLAN.md](PLAN.md) §7 is the prioritized backlog.
+It starts with a handful of inputs that can still stop the DMI.
 
 | | |
 |---|---|
