@@ -16,6 +16,7 @@ with DMI_Ack;
 with DMI_Core;
 with Display.Screen.Files;
 with DMI_Driver_Data;
+with DMI_Planning;
 with DMI_Protocol;
 with DMI_Sounds;
 with DMI_Text_Messages;
@@ -766,6 +767,450 @@ procedure DMI_Test is
       Drain_Sounds;
    end Press;
 
+   ---------------------------------------------------------------------
+   -- Input hardening (audit ROB-6 .. ROB-9)
+   ---------------------------------------------------------------------
+
+   MSG_PLANNING_Raw : constant := 16#06#;
+
+   -- ROB-6: planning messages with any content. Malformed ones are
+   -- ignored as a whole, not valid elements are left out, nothing raises.
+   procedure Scenario_Planning_Malformed is
+
+      procedure Send_Reference (Orders : Gradient_Array) is
+      begin
+         Send_Planning
+           (MA_Dist    => 2500,
+            Ceiling    => 140,
+            Indication => 1200,
+            Gradients  => (0, 12, 800, -5, 1800, 0),
+            Speeds     => (1000, 70, 0,  1700, 40, 0,  2500, 0, 1),
+            Orders     => Orders);
+      end Send_Reference;
+
+      procedure Check_Unchanged (What : String) is
+      begin
+         Check (DMI_Planning.Valid
+                and then DMI_Planning.MA_Dist_M = 2500
+                and then DMI_Planning.Ceiling_Speed = 140
+                and then DMI_Planning.Gradient_Count = 3
+                and then DMI_Planning.Speed_Count = 3
+                and then DMI_Planning.Order_Count = 2,
+                What & " is ignored as a whole");
+      end Check_Unchanged;
+
+      -- deterministic pseudo random bytes
+      Seed : Natural := 12345;
+      function Next_Byte return Natural is
+      begin
+         Seed := (Seed * 1_103 + 12_345) mod 65_536;
+         return (Seed / 7) mod 256;
+      end Next_Byte;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 100, V_Perm => 140, V_Target => 0,
+                        V_Release => 0, V_Sbi => 155, V_Wsl => 145,
+                        D_Target => 2500, Monitoring => 0, Dial_Range => 2,
+                        Vrelease_Exists => False);
+      Send_Reference (Orders => (2, 600,  5, 1500));
+
+      Send_Raw (MSG_PLANNING_Raw, (1 .. 0 => 0));
+      Check_Unchanged ("empty planning payload");
+      Send_Raw (MSG_PLANNING_Raw, (16#E8#, 3, 255, 255, 255, 255, 100, 0));
+      Check_Unchanged ("planning header without the lists");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,  255));
+      Check_Unchanged ("gradient count beyond the payload");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,
+                 1,  0, 0, 5,
+                 2,  100, 0, 80, 0,  200, 0, 60));
+      Check_Unchanged ("payload cut inside a speed element");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,
+                 1,  0, 0, 5,
+                 1,  100, 0, 80, 0));
+      Check_Unchanged ("payload without the order count");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,
+                 0,  0,  200,  1, 100));
+      Check_Unchanged ("order count beyond the payload");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 100, 0,  0, 0, 0,  9, 9));
+      Check_Unchanged ("bytes after the last list");
+      Send_Raw (MSG_PLANNING_Raw,
+                (16#E8#, 3, 255, 255, 255, 255, 16#91#, 1,  0, 0, 0));
+      Check_Unchanged ("ceiling speed of 401 km/h");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_fs");
+
+      -- order symbols that do not exist (0, 38, 255) or that are no
+      -- orders (PL21-PL23, PL37) between the two valid ones: the picture
+      -- is the one with the two valid orders alone
+      Send_Reference (Orders => (0, 600,  2, 600,  38, 900,  21, 700,
+                                 255, 1000,  5, 1500,  22, 1100,
+                                 23, 1200,  37, 800));
+      Check (DMI_Planning.Order_Count = 2,
+             "orders with an unknown symbol are left out");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_fs");
+
+      -- the extremes of every field: distances 0 and 65535, gradients
+      -- -128 and 127, 400 km/h, first and last order symbol
+      Send_Raw (MSG_PLANNING_Raw,
+                (255, 255,  254, 255,  254, 255,  16#90#, 1,
+                 3,  0, 0, 128,  16#D0#, 7, 127,  255, 255, 0,
+                 3,  0, 0, 16#90#, 1,  16#DC#, 5, 0, 0,
+                     255, 255, 0, 16#80#,
+                 3,  1, 0, 0,  36, 255, 255,  20, 16#DC#, 5));
+      Check (DMI_Planning.MA_Dist_M = 65_535
+             and then DMI_Planning.Gradient_Count = 2
+             and then DMI_Planning.Gradients (1).Value = -128
+             and then DMI_Planning.Gradients (2).Value = 127,
+             "field extremes are decoded");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_extremes");
+      for I in 1 .. 5 loop -- every range, 0-4000 up to 0-32000 and back
+         Pointer_Down (350, 20); Pointer_Up (350, 20);
+         Step;
+      end loop;
+      for I in 1 .. 5 loop
+         Pointer_Down (350, 300); Pointer_Up (350, 300);
+         Step;
+      end loop;
+
+      -- well formed lists of any length filled with any bytes, and
+      -- plain noise, rendered in the longest range
+      for Round in 1 .. 300 loop
+         declare
+            G : constant Natural := Next_Byte mod 80;
+            S : constant Natural := Next_Byte mod 80;
+            O : constant Natural := Next_Byte mod 80;
+            Bytes : Byte_Array (1 .. 11 + G * 3 + S * 4 + O * 3);
+         begin
+            for B of Bytes loop
+               B := Next_Byte;
+            end loop;
+            Bytes (8) := Bytes (8) mod 2; -- a ceiling speed that may pass
+            Bytes (9) := G;
+            Bytes (10 + G * 3) := S;
+            Bytes (11 + G * 3 + S * 4) := O;
+            Send_Raw (MSG_PLANNING_Raw, Bytes);
+            Send_Raw (MSG_PLANNING_Raw,
+                      Bytes (1 .. Natural'Min (Bytes'Last, Round)));
+            if Round = 1 then
+               for I in 1 .. 3 loop
+                  Pointer_Down (350, 20); Pointer_Up (350, 20);
+               end loop;
+            end if;
+            Step;
+         end;
+      end loop;
+      Drain_Sounds;
+      Check (True, "planning survives any byte content");
+   end Scenario_Planning_Malformed;
+
+   -- ROB-9: more elements than the lists hold, and profiles that break
+   -- the rules. What is left out is not drawn as if it were known.
+   procedure Scenario_Planning_Overflow is
+      procedure Zoom_Out (Times : Natural) is
+      begin
+         for I in 1 .. Times loop
+            Pointer_Down (350, 20); Pointer_Up (350, 20);
+         end loop;
+      end Zoom_Out;
+
+      -- N gradients Step_M apart from 0, N speed discontinuities and N
+      -- orders; the orders are sent farthest first
+      procedure Send_Profile (G_N, S_N, O_N : Natural;
+                              G_Step, S_Step, O_Step : Natural) is
+         G : Gradient_Array (1 .. G_N * 2);
+         S : Gradient_Array (1 .. S_N * 3);
+         O : Gradient_Array (1 .. O_N * 2);
+      begin
+         for I in 1 .. G_N loop
+            G (I * 2 - 1) := (I - 1) * G_Step;
+            G (I * 2) := (if I mod 2 = 0 then -(I mod 30) else I mod 30);
+         end loop;
+         for I in 1 .. S_N loop
+            S (I * 3 - 2) := I * S_Step;
+            S (I * 3 - 1) := (if I mod 2 = 0 then 160 else 120);
+            S (I * 3) := 0;
+         end loop;
+         for I in 1 .. O_N loop
+            O (I * 2 - 1) := 1 + (I mod 20);
+            O (I * 2) := (O_N - I + 1) * O_Step;
+         end loop;
+         Send_Planning (MA_Dist => 32_000, Ceiling => 160,
+                        Gradients => G, Speeds => S, Orders => O);
+      end Send_Profile;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 100, V_Perm => 160, V_Target => 0,
+                        V_Release => 0, V_Sbi => 175, V_Wsl => 165,
+                        D_Target => 32_000, Monitoring => 0, Dial_Range => 2,
+                        Vrelease_Exists => False);
+
+      -- a dense but realistic profile over the longest range fits
+      Send_Profile (G_N => 60, S_N => 30, O_N => 30,
+                    G_Step => 500, S_Step => 1000, O_Step => 1000);
+      Step;
+      Zoom_Out (3); -- 0-32000 (8.3.3.4)
+      Check (DMI_Planning.Gradient_Count = 60
+             and then DMI_Planning.Speed_Count = 30
+             and then DMI_Planning.Order_Count = 30
+             and then DMI_Planning.Orders_Left_Out = 0
+             and then DMI_Planning.Gradient_End_M >= 32_000
+             and then DMI_Planning.Speed_End_M >= 32_000,
+             "a profile of 60 gradients, 30 speeds, 30 orders is complete");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_full_32000");
+
+      -- too many: the profiles end where the first left out element
+      -- starts, the nearest orders are kept
+      Send_Profile (G_N => 70, S_N => 35, O_N => 40,
+                    G_Step => 400, S_Step => 800, O_Step => 700);
+      Check (DMI_Planning.Gradient_Count = DMI_Planning.Max_Gradients
+             and then DMI_Planning.Gradient_End_M = 64 * 400,
+             "the gradient profile ends at the first gradient left out");
+      Check (DMI_Planning.Speed_Count = DMI_Planning.Max_Speeds
+             and then DMI_Planning.Speed_End_M = 33 * 800,
+             "the speed profile ends at the first discontinuity left out");
+      Check (DMI_Planning.Order_Count = DMI_Planning.Max_Orders
+             and then DMI_Planning.Orders_Left_Out = 8,
+             "orders beyond the capacity are counted");
+      declare
+         Farthest : Natural := 0;
+      begin
+         for I in 1 .. DMI_Planning.Order_Count loop
+            Farthest := Natural'Max (Farthest, DMI_Planning.Orders (I).Dist_M);
+         end loop;
+         Check (Farthest = 32 * 700, "the nearest orders are the ones kept");
+      end;
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_overflow_32000");
+
+      -- a gradient nearer than the one before it, a speed above 400 km/h
+      Pointer_Down (350, 300); Pointer_Up (350, 300);
+      Pointer_Down (350, 300); Pointer_Up (350, 300);
+      Pointer_Down (350, 300); Pointer_Up (350, 300); -- back to 0-4000
+      Send_Planning
+        (MA_Dist    => 2500,
+         Ceiling    => 140,
+         Gradients  => (0, 12,  1000, -5,  500, 8,  2000, 3),
+         Speeds     => (1000, 70, 0,  1700, 401, 0,  2500, 0, 1),
+         Orders     => (2, 600,  5, 1500));
+      Check (DMI_Planning.Gradient_Count = 2
+             and then DMI_Planning.Gradient_End_M = 1000,
+             "a gradient out of order cuts the profile before it");
+      Check (DMI_Planning.Speed_Count = 1
+             and then DMI_Planning.Speed_End_M = 1700,
+             "a speed above 400 km/h cuts the speed profile");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_cut");
+   end Scenario_Planning_Overflow;
+
+   -- ROB-7: a full sound queue must not lose the start or the stop of
+   -- the continuous S2 warning (14.3.3.2)
+   procedure Scenario_Sound_Overflow is
+      use type DMI_Sounds.Sound_T;
+
+      S2_Playing : Boolean := False; -- what the display unit would play
+      S1_Heard   : Boolean := False;
+
+      procedure Listen is
+         Got : DMI_Sounds.Sound_T;
+      begin
+         S1_Heard := False;
+         while DMI_Sounds.Pop (Got) loop
+            if Got = DMI_Sounds.S2_Warning_Start then
+               S2_Playing := True;
+            elsif Got = DMI_Sounds.S2_Warning_Stop then
+               S2_Playing := False;
+            elsif Got = DMI_Sounds.S1_Overspeed then
+               S1_Heard := True;
+            end if;
+         end loop;
+      end Listen;
+   begin
+      Reset;
+      -- the stop arrives when the queue is full
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Start);
+      for I in 1 .. 20 loop
+         DMI_Sounds.Play (DMI_Sounds.Click);
+      end loop;
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+      Listen;
+      Check (not S2_Playing, "S2 stop is not lost when the queue is full");
+
+      -- the start arrives when the queue is full
+      for I in 1 .. 20 loop
+         DMI_Sounds.Play (DMI_Sounds.Sinfo);
+      end loop;
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Start);
+      Listen;
+      Check (S2_Playing, "S2 start is not lost when the queue is full");
+
+      -- stop, start and stop again behind a full queue
+      for I in 1 .. 20 loop
+         DMI_Sounds.Play (DMI_Sounds.Click);
+      end loop;
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Start);
+      DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
+      Listen;
+      Check (not S2_Playing, "S2 ends up stopped after stop, start, stop");
+
+      -- S1 takes the place of a click or a Sinfo
+      for I in 1 .. 4 loop
+         DMI_Sounds.Play (DMI_Sounds.Click);
+         DMI_Sounds.Play (DMI_Sounds.Sinfo);
+      end loop;
+      DMI_Sounds.Play (DMI_Sounds.S1_Overspeed);
+      Listen;
+      Check (S1_Heard, "S1 is not lost when the queue is full");
+      Expect_No_Sound ("sound queue drained");
+   end Scenario_Sound_Overflow;
+
+   -- ROB-8: the scroll offset after removals (8.2.3.4.7 e), the full
+   -- message store and the cut of a long text
+   procedure Scenario_Text_Store is
+      package TM renames DMI_Text_Messages;
+
+      function Line_Text (Index : Positive) return Wide_String is
+         Line  : TM.Line_T;
+         Valid : Boolean;
+      begin
+         TM.Get_Visible_Line (Index, Line, Valid);
+         return (if Valid then Line.Text (1 .. Line.Length) else "<none>");
+      end Line_Text;
+
+      function Number (N : Natural) return Wide_String is
+         Img : constant Wide_String := Natural'Wide_Image (N);
+      begin
+         return Img (2 .. Img'Last);
+      end Number;
+
+      Steps : Natural := 0;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+
+      -- eight lines, scrolled to the end, then five messages go
+      for I in 1 .. 8 loop
+         Send_Text (ID => I, Text => "Auxiliary " & Number (I));
+      end loop;
+      for I in 1 .. 3 loop
+         TM.Scroll_Down;
+      end loop;
+      Check (Line_Text (5) = "Auxiliary 1" and then not TM.Can_Scroll_Down,
+             "list scrolled to its end");
+      for I in 1 .. 5 loop
+         Send_Text_Remove (I);
+      end loop;
+      Check (Line_Text (1) = "Auxiliary 8"
+             and then Line_Text (3) = "Auxiliary 6"
+             and then not TM.Can_Scroll_Up
+             and then not TM.Can_Scroll_Down,
+             "scroll offset follows the removals");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("messages_scroll_clamped");
+
+      -- a first group message, one to be acknowledged and ten auxiliary
+      -- ones fill the store of 12; five more auxiliary ones and a first
+      -- group one arrive
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Text (ID => 100, Text => "Balise read error", First_Group => True,
+                 Class => 2);
+      Send_Text (ID => 101, Text => "Acknowledge me", Ack_Required => True);
+      for I in 1 .. 10 loop
+         Send_Text (ID => I, Text => "Auxiliary " & Number (I));
+      end loop;
+      for I in 11 .. 15 loop
+         Send_Text (ID => I, Text => "Auxiliary " & Number (I));
+      end loop;
+      Send_Text (ID => 300, Text => "Runaway movement", First_Group => True,
+                 Class => 2);
+      Step; -- the acknowledgement request is offered on the next cycle
+      Check (TM.Ack_Pending and then DMI_Ack.Current_Valid
+             and then DMI_Ack.Current_Text_ID = 101,
+             "the message to be acknowledged survives a full store");
+      Send_Text_Remove (101);
+      Check (Line_Text (1) = "Runaway movement"
+             and then Line_Text (2) = "Balise read error",
+             "first group messages survive and enter a full store");
+      Check (Line_Text (3) = "Auxiliary 15"
+             and then Line_Text (5) = "Auxiliary 13",
+             "new auxiliary messages take the place of the oldest ones");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("messages_store_full");
+      while TM.Can_Scroll_Down and then Steps < 100 loop
+         TM.Scroll_Down;
+         Steps := Steps + 1;
+      end loop;
+      -- 12 slots, one freed by the removal: 11 lines, the oldest kept
+      -- auxiliary message is number 7
+      Check (Steps = 6 and then Line_Text (5) = "Auxiliary 7",
+             "the oldest auxiliary messages are the ones given up");
+
+      -- nothing but first group messages: an auxiliary one is dropped,
+      -- a first group one takes the place of the oldest
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      for I in 1 .. 12 loop
+         Send_Text (ID => I, Text => "Important " & Number (I),
+                    First_Group => True);
+      end loop;
+      Send_Text (ID => 400, Text => "Auxiliary late");
+      Send_Text (ID => 401, Text => "Important late", First_Group => True);
+      Steps := 0;
+      while TM.Can_Scroll_Down and then Steps < 100 loop
+         TM.Scroll_Down;
+         Steps := Steps + 1;
+      end loop;
+      Check (Steps = 7 and then Line_Text (5) = "Important 2",
+             "an auxiliary message never displaces a first group one");
+      while TM.Can_Scroll_Up loop
+         TM.Scroll_Up;
+      end loop;
+      Check (Line_Text (1) = "Important late",
+             "a first group message displaces the oldest first group one");
+
+      -- a text of 100 characters is cut after 80 and says so
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Text (ID => 1,
+                 Text => "0123456789 0123456789 0123456789 0123456789 "
+                       & "0123456789 0123456789 0123456789 0123456789 "
+                       & "0123456789 x");
+      for I in reverse 1 .. TM.Visible_Lines loop
+         declare
+            Last : constant Wide_String := Line_Text (I);
+         begin
+            if Last /= "<none>" then
+               Check (Last'Length >= 3
+                      and then Last (Last'Last - 2 .. Last'Last) = "...",
+                      "a cut text ends in an ellipsis");
+               exit;
+            end if;
+         end;
+      end loop;
+      -- no golden frame: the picture depends on the line wrapping
+      Drain_Sounds;
+      Step;
+   end Scenario_Text_Store;
+
    procedure Scenario_Startup_Sequence is
    begin
       Reset;
@@ -1082,6 +1527,10 @@ begin
    Scenario_Ack_Remove_One;
    Scenario_Ack_Queue_Full;
    Scenario_Planning;
+   Scenario_Planning_Malformed;
+   Scenario_Planning_Overflow;
+   Scenario_Sound_Overflow;
+   Scenario_Text_Store;
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;
    Scenario_EVC_Link_Lost;

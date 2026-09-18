@@ -142,10 +142,12 @@ package body DMI_Planning is
 
       for I in 1 .. Speed_Count + 1 loop
          declare
+            -- the last segment ends with the movement authority, or
+            -- where a cut speed profile stops being known (Speed_End_M)
             Seg_End : constant Natural :=
               (if I <= Speed_Count
                then Natural'Min (Speeds (I).Dist_M, MA_Dist_M)
-               else MA_Dist_M);
+               else Natural'Min (Speed_End_M, MA_Dist_M));
             W : constant Natural := Width_Of (Seg_Speed);
          begin
             if Seg_End > Seg_Start and then W > 0 then
@@ -326,10 +328,15 @@ package body DMI_Planning is
    begin
       for I in 1 .. Gradient_Count loop
          declare
+            -- 8.3.5.5: the length of the rectangle is the length of
+            -- the element. The last one ends with the movement authority
+            -- (8.3.5.2), or where a cut profile stops being known
+            -- (Gradient_End_M): it is not stretched over elements that
+            -- were left out.
             Seg_End : constant Natural :=
               (if I < Gradient_Count
                then Natural'Min (Gradients (I + 1).Start_M, MA_Dist_M)
-               else MA_Dist_M);
+               else Natural'Min (Gradient_End_M, MA_Dist_M));
             Value    : constant Integer := Gradients (I).Value;
             Downhill : constant Boolean := Value < 0;
             Y_High   : constant Integer :=
@@ -493,6 +500,99 @@ package body DMI_Planning is
       Draw_Zoom_Buttons;
    end Render;
 
+   ---------------------------------------------------------------------
+   -- Update interface
+   ---------------------------------------------------------------------
+
+   -- a cut profile takes no further elements
+   Gradients_Cut : Boolean := False;
+   Speeds_Cut    : Boolean := False;
+
+   procedure Begin_Update is
+   begin
+      Gradient_Count := 0;
+      Speed_Count := 0;
+      Order_Count := 0;
+      Gradient_End_M := Distance_T'Last;
+      Speed_End_M := Distance_T'Last;
+      Orders_Left_Out := 0;
+      Gradients_Cut := False;
+      Speeds_Cut := False;
+   end Begin_Update;
+
+   procedure Add_Gradient (Start_M : Natural; Value : Integer) is
+      Previous : constant Distance_T :=
+        (if Gradient_Count = 0 then 0
+         else Gradients (Gradient_Count).Start_M);
+   begin
+      if Gradients_Cut then
+         return;
+      end if;
+      if Start_M < Previous then
+         Gradients_Cut := True;
+         Gradient_End_M := Previous;
+      elsif Gradient_Count = Max_Gradients
+        or else Start_M > Max_Range_M
+        or else Value not in Gradient_Value_T
+      then
+         Gradients_Cut := True;
+         Gradient_End_M := Natural'Min (Start_M, Distance_T'Last);
+      else
+         Gradient_Count := Gradient_Count + 1;
+         Gradients (Gradient_Count) := (Start_M => Start_M, Value => Value);
+      end if;
+   end Add_Gradient;
+
+   procedure Add_Speed (Dist_M, Speed : Natural; Is_Ind_Target : Boolean) is
+      Previous : constant Distance_T :=
+        (if Speed_Count = 0 then 0 else Speeds (Speed_Count).Dist_M);
+   begin
+      if Speeds_Cut then
+         return;
+      end if;
+      if Dist_M < Previous then
+         Speeds_Cut := True;
+         Speed_End_M := Previous;
+      elsif Speed_Count = Max_Speeds
+        or else Dist_M > Max_Range_M
+        or else Speed > Max_Speed_Kmh
+      then
+         Speeds_Cut := True;
+         Speed_End_M := Natural'Min (Dist_M, Distance_T'Last);
+      else
+         Speed_Count := Speed_Count + 1;
+         Speeds (Speed_Count) := (Dist_M        => Dist_M,
+                                  Speed         => Speed,
+                                  Is_Ind_Target => Is_Ind_Target);
+      end if;
+   end Add_Speed;
+
+   procedure Add_Order (Symbol_Kind, Dist_M : Natural) is
+      Farthest : Positive := 1;
+   begin
+      -- the count only moves together with a filled slot, so a left out
+      -- element can never show the stale content of its slot
+      if not Is_Order_Symbol (Symbol_Kind) or else Dist_M > Max_Range_M then
+         return;
+      end if;
+      if Order_Count < Max_Orders then
+         Order_Count := Order_Count + 1;
+         Orders (Order_Count) := (Symbol_Kind => Symbol_Kind,
+                                  Dist_M      => Dist_M);
+         return;
+      end if;
+      Orders_Left_Out := Orders_Left_Out + 1;
+      for I in 2 .. Max_Orders loop
+         if Orders (I).Dist_M > Orders (Farthest).Dist_M then
+            Farthest := I;
+         end if;
+      end loop;
+      if Dist_M < Orders (Farthest).Dist_M then
+         Orders (Farthest) := (Symbol_Kind => Symbol_Kind,
+                               Dist_M      => Dist_M);
+      end if;
+   end Add_Order;
+
    procedure Reset is
    begin
       Valid := False;
@@ -503,6 +603,11 @@ package body DMI_Planning is
       Gradient_Count := 0;
       Speed_Count := 0;
       Order_Count := 0;
+      Gradient_End_M := Distance_T'Last;
+      Speed_End_M := Distance_T'Last;
+      Orders_Left_Out := 0;
+      Gradients_Cut := False;
+      Speeds_Cut := False;
       Current_Range := 3;
    end Reset;
 

@@ -233,6 +233,16 @@ package body Test_Support is
       DMI_Core.Handle_Message (MSG_PLANNING, Payload);
    end Send_Planning;
 
+   procedure Send_Raw (The_Type : Natural; Bytes : Byte_Array) is
+      Payload : Stream_Element_Array (1 .. Bytes'Length);
+   begin
+      for I in Bytes'Range loop
+         Payload (Stream_Element_Offset (I - Bytes'First + 1)) :=
+           Stream_Element (Bytes (I) mod 256);
+      end loop;
+      DMI_Core.Handle_Message (Msg_Type_T (The_Type mod 256), Payload);
+   end Send_Raw;
+
    procedure Send_Pointer (Event : Natural; X, Y : Natural) is
       Payload : Stream_Element_Array (1 .. Pointer_Length);
       Offset  : Stream_Element_Offset := Payload'First;

@@ -42,6 +42,9 @@ package DMI_Protocol is
    --  id u16, flags u8 (bit0 ack_required, bit1 first_group/bold,
    --  bits2-3 class: 0 fixed text, 1 plain text, 2 system status, 3 NTC),
    --  hour u8, minute u8, length u8, text bytes (Latin-1)
+   --  Limits of the DMI (DMI_Text_Messages): the text is cut after 80
+   --  characters and then ends in "..."; 12 messages are stored, see
+   --  there for what gives way when the store is full.
    Text_Header_Length : constant := 6;
 
    MSG_TEXT_REMOVE : constant Msg_Type_T := 16#04#;
@@ -59,8 +62,24 @@ package DMI_Protocol is
    --  next_advice_dist u16 (16#FFFF# none),
    --  ceiling_speed u16 (km/h at current front),
    --  gradient count u8, per entry: start u16, value i8 (permille)
-   --  speed profile count u8, per entry: dist u16, speed u16
+   --  speed profile count u8, per entry: dist u16,
+   --    speed u16 (bits 0-14 km/h, bit 15 target of the indication marker)
    --  order count u8, per entry: symbol u8 (PL number), dist u16
+   --  The length must be exactly what the three counts describe; any
+   --  other message is ignored as a whole, as is one with a ceiling
+   --  speed above 400 km/h.
+   --  Limits of the DMI (DMI_Planning): 64 gradients, 32 speed profile
+   --  entries, 32 orders, distances up to 32000 m (the longest range, DMI
+   --  8.3.3.4), speeds up to 400 km/h. Gradients and speed profile
+   --  entries must come by ascending distance. A profile is cut at the
+   --  first entry that breaks these rules or finds no room: the DMI
+   --  draws it up to there and nothing beyond, so send the nearest
+   --  entries first and no more than the limits. Orders may come in any
+   --  order; unknown symbols are left out, and of more than 32 orders
+   --  the nearest 32 are kept.
+   Planning_Gradient_Entry_Length : constant := 3;
+   Planning_Speed_Entry_Length    : constant := 4;
+   Planning_Order_Entry_Length    : constant := 3;
 
    MSG_STATUS : constant Msg_Type_T := 16#07#;
    --  brake u8 (0 none, 1 shown, 2 shown + ack required),

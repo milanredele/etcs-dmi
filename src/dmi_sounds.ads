@@ -10,6 +10,16 @@ package DMI_Sounds is
                     S2_Warning_Start, -- 14.3.3, continuous while WaS
                     S2_Warning_Stop);
 
+   -- Click, Sinfo and S1 are played once (14.2.1.2, 14.3.1.2, 14.3.2.2)
+   -- and wait in a queue of 8. S2 is played as long as the Warning
+   -- status is active (14.3.3.2): it is kept as a state beside the
+   -- queue, so neither a start nor a stop can be lost, however full the
+   -- queue is. Pop reports a change of that state before the queued
+   -- sounds; a start and a stop between two calls of Pop cancel out, and
+   -- repeated starts or stops are reported once.
+   --
+   -- Queue full: a click or a Sinfo is dropped. S1 takes the place of
+   -- the oldest queued click, else of the oldest Sinfo.
    procedure Play (The_Sound : Sound_T);
 
    -- Take the next queued sound; False when the queue is empty
