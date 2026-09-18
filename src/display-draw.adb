@@ -16,25 +16,131 @@ package body Display.Draw is
                         Y : Height_T;
                         The_Color : General_Parameters.Color) renames Screen.Set_Pixel;
 
+   -- Text is partly EVC controlled (text messages, DMI 8.2.3.4.1) and
+   -- must never stop the DMI: everything below is total. Pen positions
+   -- are computed as Integer and every cell is clipped to the screen, so
+   -- a string that is wider than the space left of or right of the pen
+   -- loses cells instead of raising Constraint_Error.
+   procedure Put_Pixel (X, Y : Integer;
+                        The_Color : General_Parameters.Color) is
+   begin
+      if X in 0 .. General_Parameters.Display_Resolution.Width - 1
+        and then Y in 0 .. General_Parameters.Display_Resolution.Height - 1
+      then
+         Set_Pixel (X, Y, The_Color);
+      end if;
+   end Put_Pixel;
+
+   procedure Put_Glyph (Pen_X, Pen_Y : Integer;
+                        The_Glyph  : Font.Glyph;
+                        The_Bitmap : Font.Bitmap_T;
+                        The_Color  : General_Parameters.Color) is
+      Top  : constant Integer := Pen_Y - The_Glyph.Top;
+      Left : constant Integer := Pen_X + The_Glyph.Left;
+      Pos  : Positive := The_Glyph.Bitmap_Pos;
+   begin
+      for J in Top .. Top + The_Glyph.Height - 1 loop
+         for I in Left .. Left + The_Glyph.Width - 1 loop
+            if Pos in The_Bitmap'Range and then The_Bitmap (Pos) then
+               Put_Pixel (I, J, The_Color);
+            end if;
+            Pos := Pos + 1;
+         end loop;
+      end loop;
+   end Put_Glyph;
+
+   -- Replacement for a character the font has no glyph for: the outline
+   -- of a box standing on the base line, as high as the capitals (the
+   -- font size is the cap height in cells) and about as wide as a digit.
+   function Replacement_Width (The_Size : Font.Size_T) return Positive is
+     (Positive (The_Size) / 2 + 1);
+
+   -- One empty cell column on each side of the box
+   function Replacement_Advance (The_Size : Font.Size_T) return Positive is
+     (Replacement_Width (The_Size) + 2);
+
+   procedure Put_Replacement (Pen_X, Pen_Y : Integer;
+                              The_Size  : Font.Size_T;
+                              The_Color : General_Parameters.Color) is
+      Left   : constant Integer := Pen_X + 1;
+      Right  : constant Integer := Left + Replacement_Width (The_Size) - 1;
+      Top    : constant Integer := Pen_Y - Positive (The_Size);
+      Bottom : constant Integer := Pen_Y - 1;
+   begin
+      for X in Left .. Right loop
+         Put_Pixel (X, Top, The_Color);
+         Put_Pixel (X, Bottom, The_Color);
+      end loop;
+      for Y in Top .. Bottom loop
+         Put_Pixel (Left, Y, The_Color);
+         Put_Pixel (Right, Y, The_Color);
+      end loop;
+   end Put_Replacement;
+
+   -- Fonts exist for these sizes only. All callers pass one of them as
+   -- a literal (no size comes from the EVC); any other size is drawn
+   -- with the next smaller font rather than raising.
+   subtype Available_Size_T is Font.Size_T
+     with Static_Predicate => Available_Size_T in 10 | 12 | 16 | 17 | 18;
+
+   function Available (The_Size : Font.Size_T) return Available_Size_T is
+     (case The_Size is
+         when 10 | 11       => 10,
+         when 12 .. 15      => 12,
+         when 16            => 16,
+         when 17            => 17,
+         when 18            => 18);
+
+   function Has_Glyph (The_Map : Font.Glyph_Map;
+                       C       : Wide_Character) return Boolean is
+     (C in The_Map'Range);
+
+   function Width_In (The_Map    : Font.Glyph_Map;
+                      The_Size   : Font.Size_T;
+                      The_String : Wide_String) return Natural is
+      Total : Natural := 0;
+   begin
+      for C of The_String loop
+         Total := Total + (if Has_Glyph (The_Map, C)
+                           then The_Map (C).Advance_X
+                           else Replacement_Advance (The_Size));
+      end loop;
+      return Total;
+   end Width_In;
+
+   function String_Width (The_String : Wide_String;
+                          The_Size   : Font.Size_T) return Natural is
+   begin
+      case Available (The_Size) is
+         when 10 =>
+            return Width_In (Font.FreeSans_10.Glyphs, 10, The_String);
+         when 12 =>
+            return Width_In (Font.FreeSans_12.Glyphs, 12, The_String);
+         when 16 =>
+            return Width_In (Font.FreeSans_16.Glyphs, 16, The_String);
+         when 17 =>
+            return Width_In (Font.FreeSans_17.Glyphs, 17, The_String);
+         when 18 =>
+            return Width_In (Font.FreeSans_18.Glyphs, 18, The_String);
+      end case;
+   end String_Width;
+
+   -- Pen position of the first character for the given alignment
+   function Start_X (Pen_X         : Width_T;
+                     Length        : Natural;
+                     The_Alignment : Text_Alignment) return Integer is
+     (case The_Alignment is
+         when Left   => Pen_X,
+         when Center => Pen_X - Length / 2,
+         when Right  => Pen_X - Length);
+
    procedure Draw_Glyph (Pen_X : Width_T;
                          Pen_Y : Height_T;
                          The_Glyph  : Font.Glyph;
                          The_Bitmap : Font.Bitmap_T;
                          The_Color  : General_Parameters.Color) is
-      Top    : constant Height_T := Pen_Y - The_Glyph.Top;
-      Bottom : constant Height_T := Top + The_Glyph.Height;
-      Left   : constant Width_T  := Pen_X + The_Glyph.Left;
-      Right  : constant Width_T  := Left + The_Glyph.Width;
-      Pos    :          Positive      := The_Glyph.Bitmap_Pos;
    begin
-      for J in Top .. Bottom - 1 loop
-         for I in Left .. Right - 1 loop
-            if The_Bitmap (Pos) then
-               Set_Pixel (I, J, The_Color);
-            end if;
-            Pos := Pos + 1;
-         end loop;
-      end loop;
+      Put_Glyph (Pen_X, Pen_Y, The_Glyph, The_Bitmap, The_Color);
    end Draw_Glyph;
 
    procedure Draw_String (Pen_X : Width_T;
@@ -43,38 +149,17 @@ package body Display.Draw is
                           The_Bitmap : Font.Bitmap_T;
                           The_Color  : General_Parameters.Color;
                           The_Alignment : Text_Alignment := Left) is
-      Cur_X : Width_T  := Pen_X;
+      Length : Natural := 0;
+      Cur_X  : Integer;
    begin
-      if The_Alignment = Center then
-         declare
-            Length : Width_T := 0;
-         begin
-            for I in The_String'Range loop
-               Length := Length + The_String (I).Advance_X;
-            end loop;
-            Cur_X := Cur_X - Length / 2;
-         end;
-      end if;
-
-      if The_Alignment in Left | Center then
-         for I in The_String'Range loop
-            Draw_Glyph (Pen_X      => Cur_X,
-                        Pen_Y      => Pen_Y,
-                        The_Glyph  => The_String (I),
-                        The_Bitmap => The_Bitmap,
-                        The_Color  => The_Color);
-            Cur_X := Cur_X + The_String (I).Advance_X;
-         end loop;
-      else
-         for I in reverse The_String'Range loop
-            Cur_X := Cur_X - The_String (I).Advance_X;
-            Draw_Glyph (Pen_X      => Cur_X,
-                        Pen_Y      => Pen_Y,
-                        The_Glyph  => The_String (I),
-                        The_Bitmap => The_Bitmap,
-                        The_Color  => The_Color);
-         end loop;
-      end if;
+      for G of The_String loop
+         Length := Length + G.Advance_X;
+      end loop;
+      Cur_X := Start_X (Pen_X, Length, The_Alignment);
+      for G of The_String loop
+         Put_Glyph (Cur_X, Pen_Y, G, The_Bitmap, The_Color);
+         Cur_X := Cur_X + G.Advance_X;
+      end loop;
    end Draw_String;
 
    procedure Draw_String (Pen_X : Width_T;
@@ -83,67 +168,39 @@ package body Display.Draw is
                           The_Size   : Font.Size_T;
                           The_Color  : General_Parameters.Color;
                           The_Alignment : Text_Alignment := Left) is
-      function Get_Glyph_Map return Font.Glyph_Map is
-      begin
-         case The_Size is
-            when 10 =>
-               return Font.FreeSans_10.Glyphs;
-            when 12 =>
-               return Font.FreeSans_12.Glyphs;
-            when 16 =>
-               return Font.FreeSans_16.Glyphs;
-            when 17 =>
-               return Font.FreeSans_17.Glyphs;
-            when 18 =>
-               return Font.FreeSans_18.Glyphs;
-            when others =>
-               raise Program_Error with "Character size not available";
-         end case;
-      end Get_Glyph_Map;
+      Size : constant Available_Size_T := Available (The_Size);
 
-      function Get_Bitmap return Font.Bitmap_T is
+      -- The font tables are passed by reference, never copied
+      procedure Render (The_Map    : Font.Glyph_Map;
+                        The_Bitmap : Font.Bitmap_T) is
+         Cur_X : Integer :=
+           Start_X (Pen_X, Width_In (The_Map, Size, The_String),
+                    The_Alignment);
       begin
-         case The_Size is
-            when 10 =>
-               return Font.FreeSans_10.Bitmap;
-            when 12 =>
-               return Font.FreeSans_12.Bitmap;
-            when 16 =>
-               return Font.FreeSans_16.Bitmap;
-            when 17 =>
-               return Font.FreeSans_17.Bitmap;
-            when 18 =>
-               return Font.FreeSans_18.Bitmap;
-            when others =>
-               raise Program_Error with "Character size not available";
-         end case;
-      end Get_Bitmap;
+         for C of The_String loop
+            if Has_Glyph (The_Map, C) then
+               Put_Glyph (Cur_X, Pen_Y, The_Map (C), The_Bitmap, The_Color);
+               Cur_X := Cur_X + The_Map (C).Advance_X;
+            else
+               Put_Replacement (Cur_X, Pen_Y, Size, The_Color);
+               Cur_X := Cur_X + Replacement_Advance (Size);
+            end if;
+         end loop;
+      end Render;
 
-      Glyphs  : Font.Glyph_String (1 .. The_String'Length);
-      Idx     : Positive := Glyphs'First;
-      Glyph_M : constant Font.Glyph_Map := Get_Glyph_Map;
-      Bitmap  : constant Font.Bitmap_T  := Get_Bitmap;
    begin
-
-      for I in The_String'Range loop
-         declare
-            Invalid_Character_Error : exception;
-            C : constant Wide_Character := The_String (I);
-         begin
-            Glyphs (Idx) := Glyph_M (C);
-            Idx := Idx + 1;
-         exception
-            when Constraint_Error =>
-               raise Invalid_Character_Error;
-         end;
-      end loop;
-      Draw_String (Pen_X      => Pen_X,
-                   Pen_Y      => Pen_Y,
-                   The_String => Glyphs,
-                   The_Bitmap => Bitmap,
-                   The_Color  => The_Color,
-                   The_Alignment => The_Alignment);
-
+      case Size is
+         when 10 =>
+            Render (Font.FreeSans_10.Glyphs, Font.FreeSans_10.Bitmap);
+         when 12 =>
+            Render (Font.FreeSans_12.Glyphs, Font.FreeSans_12.Bitmap);
+         when 16 =>
+            Render (Font.FreeSans_16.Glyphs, Font.FreeSans_16.Bitmap);
+         when 17 =>
+            Render (Font.FreeSans_17.Glyphs, Font.FreeSans_17.Bitmap);
+         when 18 =>
+            Render (Font.FreeSans_18.Glyphs, Font.FreeSans_18.Bitmap);
+      end case;
    end Draw_String;
 
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
