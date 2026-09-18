@@ -5,3 +5,4 @@ test/tools/node_modules/*
 test/golden/*.actual
 test/wasm/obj/*
 test/wasm/*.wasm
+_site/

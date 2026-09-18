@@ -54,6 +54,11 @@ switch, with live statistics.
 2. serve the repository over HTTP, e.g. `python3 -m http.server 8000`,
    and open <http://localhost:8000/test/wasm/>
 
+The [Browser test bench](.github/workflows/pages.yml) workflow builds
+the modules, runs the cross-check below and publishes the page on GitHub
+Pages: <https://milanredele.github.io/etcs-dmi/>
+(`test/wasm/site.sh <dir>` assembles the same site locally).
+
 `node test/wasm/smoke.js` replays regression scenarios through the
 wasm modules and checks the rendered screens against the same golden
 digests as the native runner: the two builds render pixel for pixel

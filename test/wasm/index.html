@@ -27,13 +27,94 @@
       button { background: #444; color: #ddd; border: 1px solid #666; padding: 2px 10px; }
       canvas { display: block; margin: 6px auto; background: #031122; }
       #stats { font-family: monospace; }
+      /* the display unit: the frame sits on a wrapper so that the
+         canvas box, and with it the touch coordinates, stay untouched */
+      .bezel { width: fit-content; margin: 14px auto 28px; padding: 20px 20px 14px;
+               background: linear-gradient(160deg, #4a4e55, #26282c 45%, #1a1b1e);
+               border: 1px solid #63676e; border-radius: 16px;
+               box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+      .bezel canvas { margin: 0; outline: 3px solid #000; box-shadow: 0 0 0 4px #111; }
+      .bezel .plate { margin-top: 10px; text-align: center; font-size: 10px;
+                      letter-spacing: 0.3em; color: #8a8e96; }
       .lost { color: #f66; font-weight: bold; }
       .ok { color: #6d6; }
+      .about { max-width: 60em; padding: 12px 0 10px; border-bottom: 1px solid #333; line-height: 1.45; }
+      .about h2 { margin: 0 0 6px; font-size: 20px; }
+      .about p { margin: 0 0 8px; }
+      .about a { color: #8cf; }
+      .about summary { cursor: pointer; color: #8cf; margin-bottom: 6px; }
+      #controls summary { cursor: pointer; margin-bottom: 6px; }
+      .about ol { margin: 4px 0 8px; padding-left: 1.6em; }
+      .about li { margin-bottom: 4px; }
+      .about .note { color: #999; font-size: 12px; margin: 0; }
     </style>
   </head>
   <body>
+    <header class="about">
+      <h2>ETCS DMI — the driver's display of the European Train Control System</h2>
+      <p>
+        The Driver Machine Interface (DMI) is the cab display that tells a
+        train driver how fast the train may go, where and how hard it has
+        to brake, which mode and level the on-board system is in, and what
+        lies ahead on the track. This project implements it after the
+        European Union Agency for Railways specification
+        ERA_ERTMS_015560 v4.0.0, in Ada 2012, aimed at small embedded
+        hardware: a 32-bit microcontroller around 200 MHz with 128 kB RAM
+        and 1 MB ROM, no operating system and no libraries beyond the
+        compiler's runtime. Every pixel is drawn by the Ada code into a
+        frame buffer; fonts and symbols are bitmaps compiled into the
+        program.
+      </p>
+      <p>
+        What runs below is that same Ada code compiled to WebAssembly;
+        nothing is reimplemented in JavaScript. The DMI and a simplified
+        on-board computer (EVC) with a track and train model run as two
+        separate modules that share no memory and exchange the binary
+        messages they would exchange over Ethernet on a train. This page
+        plays everything around them: the display, the touch screen, the
+        loudspeaker, the driver's desk and the cable in between, which
+        you can degrade or cut to see how the DMI copes.
+      </p>
+      <details>
+        <summary>How to try it</summary>
+        <ol>
+          <li><b>Start a mission.</b> On the DMI screen press <i>Main</i>,
+            then <i>Start</i>, and follow the dialogue: a driver ID,
+            <i>Level 1</i>, the train data (length, brake percentage,
+            maximum speed), <i>Yes</i> to validate, and a train running
+            number. Every field takes any number followed by the enter
+            key at the bottom right of the keypad.</li>
+          <li><b>Watch the run.</b> The EVC grants a movement authority
+            over a 10 km demo track and the automatic driver sets off:
+            speed restrictions, a neutral section, a level transition you
+            have to acknowledge on the DMI, an unprotected level
+            crossing, a tunnel, and the braking curve down to the end of
+            authority. The strip above the DMI shows where the train
+            is.</li>
+          <li><b>Drive yourself.</b> Untick <i>Auto drive</i> and use the
+            throttle/brake slider. Go over the permitted speed to get the
+            warning colours and sounds, further and the EVC brakes for
+            you.</li>
+          <li><b>Break the cable.</b> Add latency, jitter, loss or
+            fragmentation under <i>EVC ↔ DMI wire</i>. Tick <i>Cut the
+            link</i>: after one second of silence the DMI discards the
+            picture and shows the system failure symbol; untick and it
+            recovers. Reordering shows what the protocol does not yet
+            survive.</li>
+          <li><b>Feed it by hand.</b> Switch the source to the manual EVC
+            panel to put any speed, target, mode or level on the
+            display.</li>
+        </ol>
+      </details>
+      <p class="note">
+        A personal project for learning Ada; not certified and not for
+        operational use. Source, specification and tests (GPL-3.0):
+        <a href="https://github.com/milanredele/etcs-dmi">github.com/milanredele/etcs-dmi</a>.
+      </p>
+    </header>
+
     <div class="panel">
-      <h3>ETCS DMI test bench <span id="status">(loading modules…)</span></h3>
+      <h3>Test bench <span id="status">(loading modules…)</span></h3>
       <div class="row">
         <button id="run">Pause</button>
         <button id="reset">Reset mission</button>
@@ -63,8 +144,8 @@
       <div class="row" id="stats"></div>
     </div>
 
-    <div class="panel" id="controls">
-      <h3>Manual EVC panel (sent cyclically while the source is the manual panel)</h3>
+    <details class="panel" id="controls">
+      <summary><b>Manual EVC panel</b> (sent cyclically while the source is the manual panel)</summary>
       <div class="row">
         <label>Speed <input type="number" id="speed" value="136" min="0" max="400"></label>
         <label>Vperm <input type="number" id="vperm" value="120" min="0" max="400"></label>
@@ -135,10 +216,13 @@
         <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
         <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
       </div>
-    </div>
+    </details>
 
     <canvas id="trackCanvas" width="640" height="150" style="background:#101820;"></canvas>
-    <canvas id="myCanvas" width="640" height="480"></canvas>
+    <div class="bezel">
+      <canvas id="myCanvas" width="640" height="480"></canvas>
+      <div class="plate">ETCS DMI</div>
+    </div>
 
     <script>
       'use strict';
@@ -586,6 +670,7 @@
           $('demand_value').textContent = demand;
           evc.evc_set_desk(demand, checked('auto_drive') ? 1 : 0);
         }
+        $('source').addEventListener('input', () => { if (manualMode()) $('controls').open = true; });
         $('demand').addEventListener('input', sendDesk);
         $('auto_drive').addEventListener('input', sendDesk);
         $('reset').addEventListener('click', reset);
