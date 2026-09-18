@@ -18,6 +18,7 @@ with DMI_Driver_Data;
 with DMI_Planning;
 with DMI_Protocol;
 with DMI_Sounds;
+with DMI_Text_Messages;
 with EVC_Core;
 with EVC_Driver;
 with EVC_Track;
@@ -782,6 +783,135 @@ procedure DMI_Test is
       Expect_No_Sound ("sound queue drained");
    end Scenario_Sound_Overflow;
 
+   -- ROB-8: the scroll offset after removals (8.2.3.4.7 e), the full
+   -- message store and the cut of a long text
+   procedure Scenario_Text_Store is
+      package TM renames DMI_Text_Messages;
+
+      function Line_Text (Index : Positive) return Wide_String is
+         Line  : TM.Line_T;
+         Valid : Boolean;
+      begin
+         TM.Get_Visible_Line (Index, Line, Valid);
+         return (if Valid then Line.Text (1 .. Line.Length) else "<none>");
+      end Line_Text;
+
+      function Number (N : Natural) return Wide_String is
+         Img : constant Wide_String := Natural'Wide_Image (N);
+      begin
+         return Img (2 .. Img'Last);
+      end Number;
+
+      Steps : Natural := 0;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+
+      -- eight lines, scrolled to the end, then five messages go
+      for I in 1 .. 8 loop
+         Send_Text (ID => I, Text => "Auxiliary " & Number (I));
+      end loop;
+      for I in 1 .. 3 loop
+         TM.Scroll_Down;
+      end loop;
+      Check (Line_Text (5) = "Auxiliary 1" and then not TM.Can_Scroll_Down,
+             "list scrolled to its end");
+      for I in 1 .. 5 loop
+         Send_Text_Remove (I);
+      end loop;
+      Check (Line_Text (1) = "Auxiliary 8"
+             and then Line_Text (3) = "Auxiliary 6"
+             and then not TM.Can_Scroll_Up
+             and then not TM.Can_Scroll_Down,
+             "scroll offset follows the removals");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("messages_scroll_clamped");
+
+      -- a first group message, one to be acknowledged and ten auxiliary
+      -- ones fill the store of 12; five more auxiliary ones and a first
+      -- group one arrive
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Text (ID => 100, Text => "Balise read error", First_Group => True,
+                 Class => 2);
+      Send_Text (ID => 101, Text => "Acknowledge me", Ack_Required => True);
+      for I in 1 .. 10 loop
+         Send_Text (ID => I, Text => "Auxiliary " & Number (I));
+      end loop;
+      for I in 11 .. 15 loop
+         Send_Text (ID => I, Text => "Auxiliary " & Number (I));
+      end loop;
+      Send_Text (ID => 300, Text => "Runaway movement", First_Group => True,
+                 Class => 2);
+      Check (TM.Ack_Pending and then TM.Ack_ID = 101,
+             "the message to be acknowledged survives a full store");
+      Send_Text_Remove (101);
+      Check (Line_Text (1) = "Runaway movement"
+             and then Line_Text (2) = "Balise read error",
+             "first group messages survive and enter a full store");
+      Check (Line_Text (3) = "Auxiliary 15"
+             and then Line_Text (5) = "Auxiliary 13",
+             "new auxiliary messages take the place of the oldest ones");
+      Drain_Sounds;
+      Step;
+      Check_Frame ("messages_store_full");
+      while TM.Can_Scroll_Down and then Steps < 100 loop
+         TM.Scroll_Down;
+         Steps := Steps + 1;
+      end loop;
+      -- 12 slots, one freed by the removal: 11 lines, the oldest kept
+      -- auxiliary message is number 7
+      Check (Steps = 6 and then Line_Text (5) = "Auxiliary 7",
+             "the oldest auxiliary messages are the ones given up");
+
+      -- nothing but first group messages: an auxiliary one is dropped,
+      -- a first group one takes the place of the oldest
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      for I in 1 .. 12 loop
+         Send_Text (ID => I, Text => "Important " & Number (I),
+                    First_Group => True);
+      end loop;
+      Send_Text (ID => 400, Text => "Auxiliary late");
+      Send_Text (ID => 401, Text => "Important late", First_Group => True);
+      Steps := 0;
+      while TM.Can_Scroll_Down and then Steps < 100 loop
+         TM.Scroll_Down;
+         Steps := Steps + 1;
+      end loop;
+      Check (Steps = 7 and then Line_Text (5) = "Important 2",
+             "an auxiliary message never displaces a first group one");
+      while TM.Can_Scroll_Up loop
+         TM.Scroll_Up;
+      end loop;
+      Check (Line_Text (1) = "Important late",
+             "a first group message displaces the oldest first group one");
+
+      -- a text of 100 characters is cut after 80 and says so
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Text (ID => 1,
+                 Text => "0123456789 0123456789 0123456789 0123456789 "
+                       & "0123456789 0123456789 0123456789 0123456789 "
+                       & "0123456789 x");
+      for I in reverse 1 .. TM.Visible_Lines loop
+         declare
+            Last : constant Wide_String := Line_Text (I);
+         begin
+            if Last /= "<none>" then
+               Check (Last'Length >= 3
+                      and then Last (Last'Last - 2 .. Last'Last) = "...",
+                      "a cut text ends in an ellipsis");
+               exit;
+            end if;
+         end;
+      end loop;
+      -- no golden frame: the picture depends on the line wrapping
+      Drain_Sounds;
+      Step;
+   end Scenario_Text_Store;
+
    procedure Scenario_Startup_Sequence is
    begin
       Reset;
@@ -1056,6 +1186,7 @@ begin
    Scenario_Planning_Malformed;
    Scenario_Planning_Overflow;
    Scenario_Sound_Overflow;
+   Scenario_Text_Store;
    Scenario_Startup_Sequence;
    Scenario_Other_Windows;
    Scenario_EVC_Link_Lost;

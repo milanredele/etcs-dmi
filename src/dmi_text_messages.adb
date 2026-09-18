@@ -122,6 +122,50 @@ package body DMI_Text_Messages is
 
    ---------------------------------------------------------------------
 
+   -- 8.2.3.4.7 e: the list scrolls line by line and not around, so the
+   -- offset must stay within the list. It is checked again whenever the
+   -- list may have become shorter; otherwise a removal while scrolled
+   -- down leaves lines, or the whole area, blank although there are
+   -- messages to show.
+   procedure Clamp_Scroll is
+      Total : constant Natural := Total_Lines;
+      Max_Offset : constant Natural :=
+        (if Total > Visible_Lines then Total - Visible_Lines else 0);
+   begin
+      if Scroll_Offset > Max_Offset then
+         Scroll_Offset := Max_Offset;
+      end if;
+   end Clamp_Scroll;
+
+   -- Store full (the policy is described in the specification): the
+   -- slot of the oldest message that may be given up for a new one of
+   -- this kind, or 0
+   function Victim (First_Group, Ack_Required : Boolean) return Natural is
+      function Oldest (In_First_Group : Boolean) return Natural is
+         Best : Natural := 0;
+      begin
+         for I in Messages'Range loop
+            if Messages (I).Used
+              and then not Messages (I).Ack_Required
+              and then Messages (I).First_Group = In_First_Group
+              and then (Best = 0
+                        or else Messages (I).Sequence <
+                                Messages (Best).Sequence)
+            then
+               Best := I;
+            end if;
+         end loop;
+         return Best;
+      end Oldest;
+
+      Slot : Natural := Oldest (In_First_Group => False);
+   begin
+      if Slot = 0 and then (First_Group or else Ack_Required) then
+         Slot := Oldest (In_First_Group => True);
+      end if;
+      return Slot;
+   end Victim;
+
    procedure Put (ID           : Natural;
                   First_Group  : Boolean;
                   Ack_Required : Boolean;
@@ -141,7 +185,10 @@ package body DMI_Text_Messages is
          end loop;
       end if;
       if Slot = 0 then
-         return; -- store full
+         Slot := Victim (First_Group, Ack_Required);
+      end if;
+      if Slot = 0 then
+         return; -- nothing in the store may be given up for this one
       end if;
 
       Sequence := Sequence + 1;
@@ -158,6 +205,11 @@ package body DMI_Text_Messages is
          Sequence     => Sequence);
       Messages (Slot).Text (1 .. Len) :=
         Text (Text'First .. Text'First + Len - 1);
+      if Text'Length > Max_Text then
+         -- a cut text must not read as a complete one
+         Messages (Slot).Text (Max_Text - 2 .. Max_Text) := "...";
+      end if;
+      Clamp_Scroll;
 
       if Ack_Required then
          -- 8.2.3.4.8 / 5.4: offered through the acknowledgement service
@@ -176,6 +228,7 @@ package body DMI_Text_Messages is
             DMI_Ack.Cancel (To_Ack_Kind (Messages (Slot).Class));
          end if;
          Messages (Slot).Used := False;
+         Clamp_Scroll;
       end if;
    end Remove;
 
@@ -187,6 +240,7 @@ package body DMI_Text_Messages is
 
    procedure Scroll_Up is
    begin
+      Clamp_Scroll;
       if Can_Scroll_Up then
          Scroll_Offset := Scroll_Offset - 1;
       end if;
@@ -194,6 +248,7 @@ package body DMI_Text_Messages is
 
    procedure Scroll_Down is
    begin
+      Clamp_Scroll;
       if Can_Scroll_Down then
          Scroll_Offset := Scroll_Offset + 1;
       end if;
