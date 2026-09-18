@@ -234,14 +234,8 @@ package body Display.B_Area.Speed_Dial is
    begin
       Draw_Speed_Indicator_Lines;
       Draw_Speed_Indicator_Numbers;
-      -- Table 8 lists no row for NP, SN, SF, SL and IS: no pointer
-      if Supplementary_Driving_Info.Mode not in
-        Supplementary_Driving_Info.M_NP | Supplementary_Driving_Info.M_SN
-        | Supplementary_Driving_Info.M_SF | Supplementary_Driving_Info.M_SL
-        | Supplementary_Driving_Info.M_IS
-      then
-         Draw_Speed_Pointer;
-      end if;
+      -- draws nothing where Table 8 gives no colour (8.2.1.2.5)
+      Draw_Speed_Pointer;
       Circular_Speed_Gauge.Draw;
       Circular_Speed_Gauge.Draw_Hooks;
       Draw_Release_Speed_Digital;
@@ -562,7 +556,9 @@ package body Display.B_Area.Speed_Dial is
 
          Show_Target : Boolean;
       begin
-         -- DMI 8.2.1.5.7, Table 10
+         -- DMI 8.2.1.5.7, Table 10. The mode and the monitoring arrive in
+         -- separate messages, so the combinations without a row occur as
+         -- well; for them the hooks are not applicable and are not drawn.
          case Supplementary_Driving_Info.Mode is
             when Supplementary_Driving_Info.M_SM
                | Supplementary_Driving_Info.M_OS
@@ -573,13 +569,16 @@ package body Display.B_Area.Speed_Dial is
                then
                   return;
                end if;
+               -- "RSM (not applicable for SR)"
+               if Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_SR
+                 and then Get_Monitoring_Mode = RSM
+               then
+                  return;
+               end if;
                Show_Target :=
                  (case Get_Monitoring_Mode is
-                     when CSM => Get_CSM_Target_Info,
-                     when TSM => True,
-                     -- RSM not applicable for SR
-                     when RSM => Supplementary_Driving_Info.Mode /=
-                                   Supplementary_Driving_Info.M_SR);
+                     when CSM       => Get_CSM_Target_Info,
+                     when TSM | RSM => True);
                if Show_Target then
                   Draw_Basic_Speed_Hook (Params.Vtarget, General_Parameters.MEDIUM_GREY);
                end if;
@@ -587,12 +586,18 @@ package body Display.B_Area.Speed_Dial is
                Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
 
             when Supplementary_Driving_Info.M_SH =>
-               if User_Settings.Speed_Info_Visible then
+               -- Table 10 has a CSM row only
+               if User_Settings.Speed_Info_Visible
+                 and then Get_Monitoring_Mode = CSM
+               then
                   Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
                end if;
 
             when Supplementary_Driving_Info.M_RV =>
-               Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
+               -- Table 10 has a CSM row only
+               if Get_Monitoring_Mode = CSM then
+                  Draw_Basic_Speed_Hook (Params.Vperm, General_Parameters.WHITE);
+               end if;
 
             when others =>
                null;

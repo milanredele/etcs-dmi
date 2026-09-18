@@ -16,10 +16,29 @@
 
 separate (Display.B_Area.Speed_Dial)
 procedure Draw_Speed_Pointer is
-   function Pointer_Color return General_Parameters.Color is
-      -- DMI 8.2.1.2.5, Table 8 (v4.0.0)
+   -- DMI 8.2.1.2.5, Table 8 (v4.0.0) gives the conditions for display and
+   -- the colour of the pointer. A combination of mode, monitoring and
+   -- supervision status for which the table has no row, or a row of hyphens
+   -- only ("not applicable"), has no colour: the pointer is not displayed,
+   -- and with it the digital speed, which lives inside the pointer
+   -- (8.2.1.3.2). Such combinations do occur: the mode arrives in
+   -- MSG_MODE_LEVEL and the monitoring in MSG_SPEED_STATE, so one of them
+   -- is always ahead of the other during a transition, and nothing stops
+   -- the EVC from sending them. They must never raise.
+   type Pointer_Look is record
+      Shown : Boolean;
+      Color : General_Parameters.Color;
+   end record;
+
+   Not_Applicable : constant Pointer_Look :=
+     (Shown => False, Color => General_Parameters.GREY);
+
+   function Look_Of_Pointer return Pointer_Look is
       Params    : constant Speed_Params := Get_Speed_Params;
       The_Speed : constant Speed_T := Get_Speed;
+
+      function Show (The_Color : General_Parameters.Color) return Pointer_Look is
+        ((Shown => True, Color => The_Color));
 
       -- Shared row patterns of Table 8. Band columns:
       --   below:  0 <= pointer < Vtarget          (grey in all rows)
@@ -28,65 +47,67 @@ procedure Draw_Speed_Pointer is
 
       -- "CSM" plain rows (FS/SM/OS, LS, SR/UN, SH/RV all share them)
       function CSM_Plain (Over : General_Parameters.Color)
-                          return General_Parameters.Color is
+                          return Pointer_Look is
       begin
          case Get_Supervision_Status is
             when NoS =>
-               return General_Parameters.GREY;
+               return Show (General_Parameters.GREY);
             when OvS | WaS =>
-               return Over;
+               return Show (Over);
             when IntS =>
                if The_Speed <= Params.Vperm then
-                  return General_Parameters.GREY;
+                  return Show (General_Parameters.GREY);
                else
-                  return General_Parameters.RED;
+                  return Show (General_Parameters.RED);
                end if;
             when IndS =>
-               -- IndS does not exist under CSM (SRS 7.2)
-               raise Program_Error;
+               -- No IndS row under CSM (IndS does not exist there, 7.2).
+               -- Speed_And_Distance.Set_Speed never yields it in CSM.
+               return Not_Applicable;
          end case;
       end CSM_Plain;
 
       -- "CSM (with target information)" and "TSM" rows share their shape;
       -- only the colour of the Vtarget..Vperm band differs.
       function With_Target (Mid, Over, Int_Over : General_Parameters.Color)
-                            return General_Parameters.Color is
+                            return Pointer_Look is
       begin
          case Get_Supervision_Status is
             when NoS | IndS =>
                if The_Speed < Params.Vtarget then
-                  return General_Parameters.GREY;
+                  return Show (General_Parameters.GREY);
                else
-                  return Mid;
+                  return Show (Mid);
                end if;
             when OvS | WaS =>
-               return Over;
+               return Show (Over);
             when IntS =>
                if The_Speed < Params.Vtarget then
-                  return General_Parameters.GREY;
+                  return Show (General_Parameters.GREY);
                elsif The_Speed <= Params.Vperm then
-                  return Mid;
+                  return Show (Mid);
                else
-                  return Int_Over;
+                  return Show (Int_Over);
                end if;
          end case;
       end With_Target;
 
       function RSM_Row (Base, Int_Over : General_Parameters.Color)
-                        return General_Parameters.Color is
+                        return Pointer_Look is
       begin
          case Get_Supervision_Status is
             when IndS =>
-               return Base;
+               return Show (Base);
             when IntS =>
                if Params.Vrelease_Exists and then The_Speed <= Params.Vrelease then
-                  return Base;
+                  return Show (Base);
                else
-                  return Int_Over;
+                  return Show (Int_Over);
                end if;
-            when others =>
-               -- Only IndS and IntS exist under RSM (SRS 7.5)
-               raise Program_Error;
+            when NoS | OvS | WaS =>
+               -- Only IndS and IntS rows under RSM (7.5).
+               -- Speed_And_Distance.Set_Speed yields no other status in RSM.
+               return Not_Applicable;
          end case;
       end RSM_Row;
 
@@ -111,33 +132,34 @@ procedure Draw_Speed_Pointer is
 
          when Supplementary_Driving_Info.M_AD =>
             -- Table 8 AD rows: yellow/orange replaced by white; over-speed in
-            -- plain CSM shown grey; IntS marked not applicable (grey fallback).
+            -- plain CSM shown grey. The four AD rows with IntS hold hyphens
+            -- only: not applicable, as for the CSG (Table 9).
             case Get_Monitoring_Mode is
                when CSM =>
                   if Get_CSM_Target_Info then
                      case Get_Supervision_Status is
                         when NoS | IndS =>
-                           return (if The_Speed < Params.Vtarget then GREY else WHITE);
-                        when OvS | WaS => return WHITE;
-                        when IntS      => return GREY;
+                           return Show (if The_Speed < Params.Vtarget then GREY else WHITE);
+                        when OvS | WaS => return Show (WHITE);
+                        when IntS      => return Not_Applicable;
                      end case;
                   else
                      case Get_Supervision_Status is
-                        when NoS | IndS | IntS => return GREY;
-                        when OvS | WaS         => return GREY;
+                        when NoS | IndS | OvS | WaS => return Show (GREY);
+                        when IntS                   => return Not_Applicable;
                      end case;
                   end if;
                when TSM =>
                   case Get_Supervision_Status is
                      when NoS | IndS =>
-                        return (if The_Speed < Params.Vtarget then GREY else WHITE);
-                     when OvS | WaS => return WHITE;
-                     when IntS      => return GREY;
+                        return Show (if The_Speed < Params.Vtarget then GREY else WHITE);
+                     when OvS | WaS => return Show (WHITE);
+                     when IntS      => return Not_Applicable;
                   end case;
                when RSM =>
                   case Get_Supervision_Status is
-                     when IndS   => return WHITE;
-                     when others => return GREY;
+                     when IndS   => return Show (WHITE);
+                     when others => return Not_Applicable;
                   end case;
             end case;
 
@@ -164,36 +186,43 @@ procedure Draw_Speed_Pointer is
                   return With_Target (Mid => YELLOW, Over => ORANGE, Int_Over => RED);
                when RSM =>
                   -- No RSM rows for SR/UN in Table 8
-                  raise Program_Error;
+                  return Not_Applicable;
             end case;
 
          when Supplementary_Driving_Info.M_SH | Supplementary_Driving_Info.M_RV =>
             case Get_Monitoring_Mode is
                when CSM =>
                   return CSM_Plain (Over => ORANGE);
-               when others =>
-                  raise Program_Error;
+               when TSM | RSM =>
+                  -- Only CSM rows for SH/RV in Table 8
+                  return Not_Applicable;
             end case;
 
          when Supplementary_Driving_Info.M_NL
             | Supplementary_Driving_Info.M_SB
             | Supplementary_Driving_Info.M_PT =>
             -- No speed monitoring: pointer considered always below Vperm
-            return General_Parameters.GREY;
+            return Show (GREY);
 
          when Supplementary_Driving_Info.M_TR =>
             -- Emergency brake applied: pointer considered always above Vperm
-            return General_Parameters.RED;
+            return Show (RED);
 
-         when others =>
-            raise Program_Error;
+         when Supplementary_Driving_Info.M_NP
+            | Supplementary_Driving_Info.M_SN
+            | Supplementary_Driving_Info.M_SF
+            | Supplementary_Driving_Info.M_SL
+            | Supplementary_Driving_Info.M_IS =>
+            -- Table 8 lists no row for NP, SN, SF, SL and IS: no pointer
+            return Not_Applicable;
       end case;
-   end Pointer_Color;
+   end Look_Of_Pointer;
 
    -- DMI 8.2.1.2.3
    -- DMI 8.2.1.2.4
    Radius : constant Radius_T := 25;
-   Color  : constant General_Parameters.Color := Pointer_Color;
+   Look   : constant Pointer_Look := Look_Of_Pointer;
+   Color  : constant General_Parameters.Color := Look.Color;
    A      : constant Angle := Speed_To_Angle (Get_Speed);
 
 
@@ -373,6 +402,9 @@ procedure Draw_Speed_Pointer is
    end Draw_Current_Train_Speed_Digital;
 
 begin
+   if not Look.Shown then
+      return;
+   end if;
    Fill_Center_Circle;
    Fill_Polygon (Rotate_And_Translate_Poly);
    Draw_Current_Train_Speed_Digital;
