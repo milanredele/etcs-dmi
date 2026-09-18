@@ -14,64 +14,77 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-with Display.A_Area;
-with Display.B_Area;
-with Display.C_Area;
-with Display.D_Area;
-with Speed_And_Distance;
-with Supplementary_Driving_Info;
-with Track_Ahead_Free;
-with User_Settings;
+--  Main entry point for the live DMI: connects to the test hub over TCP,
+--  consumes protocol v2 messages and streams the rendered screen back.
 
-with GNAT.Sockets;            use GNAT.Sockets;
-with Ada.Streams.Stream_IO;
+with DMI_Core;
+with DMI_Link;
+with Display.Screen;
+with General_Parameters;
+
+with GNAT.Sockets;  use GNAT.Sockets;
+with Ada.Streams;   use Ada.Streams;
+with Ada.Real_Time; use Ada.Real_Time;
 
 procedure Dmi is
    Client  : Socket_Type;
    Address : Sock_Addr_Type;
    Channel : Stream_Access;
 
+   Next_Frame     : Time := Clock;
+   Frame_Interval : constant Time_Span := Milliseconds (50);
+
+   Last_Flash     : Time := Clock;
+   -- DMI 5.1.1.3.2: flashing frames toggle every 0.25 seconds
+   Flash_Interval : constant Time_Span := Milliseconds (250);
+
+   -- Incoming frame reassembly
+   package Link is new DMI_Link (DMI_Core.Handle_Message);
+   Chunk : Stream_Element_Array (1 .. 4096);
+
+   procedure Receive_Available is
+      Request : Request_Type (N_Bytes_To_Read);
+      Last    : Stream_Element_Offset;
+   begin
+      loop
+         Control_Socket (Client, Request);
+         exit when Request.Size = 0;
+         Receive_Socket (Client, Chunk, Last);
+         exit when Last < Chunk'First; -- connection closed
+         Link.Feed (Chunk (Chunk'First .. Last));
+      end loop;
+   end Receive_Available;
+
 begin
-   Supplementary_Driving_Info.Mode := Supplementary_Driving_Info.M_FS;
-   Supplementary_Driving_Info.Acknowledgment_Mode := (Valid => False);
-   Supplementary_Driving_Info.Override := False;
-   Supplementary_Driving_Info.Level := Supplementary_Driving_Info.L1;
-   Supplementary_Driving_Info.Level_Announcement := (True, Supplementary_Driving_Info.L2, True);
-   User_Settings.Toggle (User_Settings.Basic_Speed_Hook) := True;
-   User_Settings.Toggle (User_Settings.Release_Speed_Digital) := True;
-   User_Settings.Toggle (User_Settings.LSSMA) := True;
-   Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.TSM);
-   Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_180);
-   Speed_And_Distance.Set_Distance_To_Target (684);
-   Speed_And_Distance.Set_LSSMA (120);
-   Speed_And_Distance.Set_Speed_Params ((Vperm => 120,
-                                         Vtarget => 80,
-                                         Vwsl => 130,
-                                         Visl => 140,
-                                         Vsbi => 150,
-                                         Vrelease => 35,
-                                         Vrelease_Exists => True));
-   Speed_And_Distance.Set_Speed (136);
-
-   Track_Ahead_Free.Show := True;
-
-   Display.B_Area.Draw;
-   Display.A_Area.Draw;
-   Display.C_Area.Draw;
-   Display.D_Area.Draw;
+   DMI_Core.Initialise;
 
    Create_Socket (Client);
-   Address.Addr := Inet_Addr("127.0.0.1");
+   Address.Addr := Inet_Addr ("127.0.0.1");
    Address.Port := 1337;
 
    Connect_Socket (Client, Address);
    Channel := Stream (Client);
 
-   Display.A_Area.A_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
-   Display.B_Area.B_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
-   Display.C_Area.C_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
-   Display.D_Area.D_Buffer.Write (Ada.Streams.Stream_IO.Stream_Access (Channel));
+   loop
+      -- 1. Consume everything the EVC / UI sent us
+      Receive_Available;
 
-   Shutdown_Socket (Client);
-   Close_Socket (Client);
+      -- 2. Advance time dependent state (flashing, buttons)
+      if Clock - Last_Flash >= Flash_Interval then
+         General_Parameters.Flash_On := not General_Parameters.Flash_On;
+         Last_Flash := Clock;
+      end if;
+      DMI_Core.Tick (50);
+
+      -- 3. Render and transmit one full screen
+      DMI_Core.Render;
+      Display.Screen.Write (Ada.Streams.Root_Stream_Type'Class (Channel.all)'Access);
+
+      -- 4. Send pending outbound messages (driver actions, sounds)
+      DMI_Core.Flush_Outbox (Ada.Streams.Root_Stream_Type'Class (Channel.all)'Access);
+
+      -- 5. Precise frame timing
+      Next_Frame := Next_Frame + Frame_Interval;
+      delay until Next_Frame;
+   end loop;
 end Dmi;

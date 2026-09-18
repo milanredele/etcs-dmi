@@ -17,6 +17,7 @@ char* rgb_to_string (int rgb) {
 		case 0xC4C3C3:
 		case 0xC5C5C5:
 		case 0xC6C6C6:
+		case 0xC2C2C2:
 		case 0xCFCDCE:
 		case 0xCBCACA:
 		case 0xCBCBC9:
@@ -134,6 +135,9 @@ char* rgb_to_string (int rgb) {
 		case 0x1B211F:
 		case 0x1B241F:
 		case 0x17211F: //specifically for PL_26, it is really brownish
+		case 0x1F2B1E: //ATO symbols, anti-aliased edge on background
+		case 0xA1721:
+		case 0x111E20:
 			return "DARK_BLUE";
 		case 0x81839:
 			return "SHADOW";
@@ -145,6 +149,10 @@ char* rgb_to_string (int rgb) {
 		case 0xDADB00:
 		case 0xC6C600:
 		case 0xe2e200:
+		case 0xDCDE05:
+		case 0xEBEC02:
+		case 0xD9DB05:
+		case 0xD2D406:
 			return "YELLOW";
 		case 0xEA9100:
 			return "ORANGE";
@@ -177,33 +185,55 @@ void processBMP(char* filename)
     unsigned char info[54];
     fread(info, sizeof(unsigned char), 54, f); // read the 54-byte header
 
-    // extract image height and width from header
+    // extract image geometry and format from header
+    int data_offset = *(int*)&info[10];
     int width = *(int*)&info[18];
     int height = *(int*)&info[22];
+    int bpp = *(short*)&info[28];
+    int colors_used = *(int*)&info[46];
+
+    if (bpp != 24 && bpp != 8) {
+        fprintf (stderr, "Error: unsupported bit depth %d in %s\n", bpp, filename);
+        fclose(f);
+        return;
+    }
+
+    // 8-bit BMPs carry a BGRA palette right after the header
+    unsigned int palette[256] = {0};
+    if (bpp == 8) {
+        if (colors_used == 0 || colors_used > 256) colors_used = 256;
+        for (i = 0; i < colors_used; i++) {
+            unsigned char entry[4];
+            fread(entry, 1, 4, f);
+            palette[i] = entry[0] | (entry[1] << 8) | (entry[2] << 16);
+        }
+    }
 
 		printf ("%s : constant T\n:= (Length => %d,\nWidth => %d,\nHeight => %d,\nBitmap => (\n", bname, width*height, width, height);
 
-    int row_padded = (width*3 + 3) & (~3);
+    int bytes_per_px = (bpp == 24) ? 3 : 1;
+    int row_padded = (width*bytes_per_px + 3) & (~3);
     if (row_padded > MAX_ROW_SIZE) {
     	fprintf (stderr, "Error: max supported width: %d\nInput width: %d\n", MAX_ROW_SIZE, row_padded);
     	return;
     }
-    
-    unsigned char data[MAX_ROW_SIZE];
-    unsigned char tmp;
 
+    unsigned char data[MAX_ROW_SIZE];
+
+    fseek(f, data_offset, SEEK_SET);
     for(int i = 0; i < height; i++)
     {
         fread(data, sizeof(unsigned char), row_padded, f);
-        for(int j = 0; j < width*3; j += 3)
+        for(int j = 0; j < width; j += 1)
         {
-            unsigned int rgb = 0;
-            unsigned char *rgb_bytes = (char*)&rgb;
-            rgb_bytes[0] = data[j];
-            rgb_bytes[1] = data[j+1];
-            rgb_bytes[2] = data[j+2];
+            unsigned int rgb;
+            if (bpp == 24) {
+                rgb = data[j*3] | (data[j*3+1] << 8) | (data[j*3+2] << 16);
+            } else {
+                rgb = palette[data[j]];
+            }
 
-						if ((i == height-1) && (j == width*3-3)){
+						if ((i == height-1) && (j == width-1)){
 	            printf ("%s", rgb_to_string(rgb));
 	          } else {
 	          	printf ("%s,", rgb_to_string(rgb));
@@ -211,7 +241,7 @@ void processBMP(char* filename)
          }
         printf ("\n");
     }
-    
+
     printf ("));\n\n");
 
     fclose(f);

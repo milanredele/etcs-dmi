@@ -16,9 +16,12 @@
 
 package Supplementary_Driving_Info is
 
+   -- DMI 13.3 Table 60 (v4.0.0: AD and SM added, SE removed)
    type Mode_T is (M_NP, --No Power
                    M_SB, --Stand by
                    M_FS, --Full supervision
+                   M_AD, --Automatic driving
+                   M_SM, --Supervised manoeuvre
                    M_LS, --Limited supervision
                    M_OS, --On sight
                    M_SR, --Staff responsible
@@ -26,16 +29,15 @@ package Supplementary_Driving_Info is
                    M_UN, --Unfitted
                    M_RV, --Reversing
                    M_TR, --Trip
-                   M_SN, --STM National
-                   M_SE, --STM European
+                   M_SN, --National system
                    M_PT, --Post trip
                    M_NL, --Non leading
                    M_SF, --System failure
                    M_SL, --Sleep
                    M_IS);--Isolated
-                   
-   
-   subtype Acknowledgment_Mode_T is Mode_T range M_LS .. M_SN; 
+
+
+   subtype Acknowledgment_Mode_T is Mode_T range M_LS .. M_SN;
    
    type Optional_Acknowledgement_Mode_T (Valid : Boolean := False) is
       record
@@ -51,13 +53,13 @@ package Supplementary_Driving_Info is
    Acknowledgment_Mode : Optional_Acknowledgement_Mode_T;
    Override            : Boolean := False;
    
+   -- DMI 8.2.3.2 (v4.0.0: Level 3 no longer exists)
    type Level_T is (Unknown,
                     Invalid,
                     L0,
                     NTC,
                     L1,
-                    L2,
-                    L3);
+                    L2);
    
    type Level_Announcement_T (Valid : Boolean := False) is
       record

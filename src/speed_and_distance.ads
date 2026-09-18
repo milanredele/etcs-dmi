@@ -16,12 +16,11 @@
 
 package Speed_And_Distance is
 
-   -- DMI 7.1.1.3
+   -- DMI 7.2 / 7.4 / 7.5 (v4.0.0: PIM deleted, SRS 7.3 "intentionally deleted")
    type Monitoring_T is (CSM, -- Ceiling Speed Monitoring
-                         PIM, -- Pre-Indication Monitoring
                          TSM, -- Target Speed Monitoring
                          RSM); -- Release Speed Monitoring
-   
+
    type Supervision_Status_T is (NoS, -- Normal Status
                                  IndS, -- Indication
                                  OvS, -- Over-speed
@@ -38,7 +37,7 @@ package Speed_And_Distance is
       
    type Speed_Params is
       record
-         Vperm, Vtarget, Vwsl, Visl, Vsbi, Vrelease : Speed_T;
+         Vperm, Vtarget, Vwsl, Vsbi, Vrelease : Speed_T;
          Vrelease_Exists : Boolean := False;
       end record;
 
@@ -60,7 +59,16 @@ package Speed_And_Distance is
    function Get_Monitoring_Mode return Monitoring_T;
    
    function Get_Supervision_Status return Supervision_Status_T;
-   
+
+   -- Table 8/9 "CSM (with target information)": requested by National Value
+   procedure Set_CSM_Target_Info (Enabled : Boolean);
+
+   function Get_CSM_Target_Info return Boolean;
+
+   -- DMI 7.2.4.2: the Intervention Status stays active while the EVC
+   -- commands the service/emergency brake
+   procedure Set_Brake_Commanded (Commanded : Boolean);
+
    type Distance_T is new Natural range 0 .. 90000;
    
    function Get_Distance_To_Target return Distance_T;
@@ -68,15 +76,20 @@ package Speed_And_Distance is
    procedure Set_Distance_To_Target (The_Distance : Distance_T);
    
    function Get_LSSMA return Speed_T;
-   
-   procedure Set_LSSMA (The_LSSMA : Speed_T);
-   
+
+   function Get_LSSMA_Valid return Boolean;
+
+   procedure Set_LSSMA (The_LSSMA : Speed_T; Valid : Boolean := True);
+
 private
    Monitoring_Mode    : Monitoring_T;
    Supervision_Status : Supervision_Status_T;
+   CSM_Target_Info    : Boolean := False;
+   Brake_Commanded    : Boolean := False;
    Speed              : Speed_Params;
    Vcurrent           : Speed_T := 0;
    Speed_Dial_Range   : Speed_Dial_Range_T := Range_180;
    Distance_To_Target : Distance_T := 0;
-   LSSMA              : Speed_T;
+   LSSMA              : Speed_T := 0;
+   LSSMA_Valid        : Boolean := False;
 end Speed_And_Distance;

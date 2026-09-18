@@ -1,0 +1,5 @@
+name = "etcsdmi"
+description = "An implementation of the ETCS DMI"
+version = "0.1.0"
+
+authors = ["Pepita Poni"]

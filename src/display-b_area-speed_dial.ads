@@ -51,12 +51,16 @@ private
       Lowermost_Part_Color   : constant General_Parameters.Color := General_Parameters.DARK_GREY;
       -- DMI 8.2.1.4.7
       Hook_Width             : constant Angle := Pi * 2.8 / 180.0; -- 6 pixels are 2.8 degrees
-      -- DMI 8.2.1.5.4 
+      -- DMI 8.2.1.5.4
       Basic_Speed_Hook_Width : constant Angle := Hook_Width * 1.7; -- 10 pixels
 
       Hook_Inner_Radius      : constant Radius_T := B2_Radius_Outer - 20;
-      
+
+      -- CSG per Table 9 (FS and AD modes only)
       procedure Draw;
+
+      -- Basic Speed Hook(s) per Table 10 (SM/OS/SR/SH/RV)
+      procedure Draw_Hooks;
    end Circular_Speed_Gauge;
    
 end Display.B_Area.Speed_Dial;

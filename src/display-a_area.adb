@@ -16,6 +16,7 @@
 
 with Display.A_Area.A_2;
 with Display.A_Area.A_3;
+with DMI_Status;
 with Speed_And_Distance;
 with Supplementary_Driving_Info;
 with Symbol;
@@ -23,14 +24,50 @@ with User_Settings;
 
 package body Display.A_Area is
 
+   procedure Draw_TTI is
+      -- DMI 8.2.2.5.3/.4: dark grey 50x50 square with a growing white
+      -- square, both centred in A1
+      A1 : constant Area_T := Get_Sub_Area_With_Relative_Position (Display.A1);
+      T  : constant Natural := Natural'Max (1, DMI_Status.T_Disp_TTI);
+      N  : constant Natural :=
+        Natural'Min (10, Natural'Max (1, 10 - (DMI_Status.TTI_Seconds * 10) / T));
+      White_Size : constant Natural := N * 5;
+   begin
+      A_Buffer.Fill_Area ((A1.Position + (2, 2), 50, 50),
+                          General_Parameters.DARK_GREY);
+      A_Buffer.Fill_Area ((A1.Position + (2 + (50 - White_Size) / 2,
+                                          2 + (50 - White_Size) / 2),
+                           White_Size, White_Size),
+                          General_Parameters.WHITE);
+   end Draw_TTI;
+
+   procedure Draw_A4 is
+      A4 : constant Area_T := Get_Sub_Area_With_Relative_Position (Display.A4);
+   begin
+      -- DMI 8.2.3.7: adhesion factor 'slippery rail'
+      if DMI_Status.Slippery_Rail then
+         A_Buffer.Draw_Symbol (Symbol.ST_02, A4.Position + (1, 2));
+      end if;
+   end Draw_A4;
+
    procedure Draw is
-      use type Speed_And_Distance.Monitoring_T;
+      use Speed_And_Distance;
+      use type Supplementary_Driving_Info.Mode_T;
+
+      -- "yes" rows shared by Tables 13 and 14: CSM only counts when target
+      -- information is requested by National Value
+      Target_Monitoring : constant Boolean :=
+        (case Get_Monitoring_Mode is
+            when CSM       => Get_CSM_Target_Info,
+            when TSM | RSM => True);
    begin
       A_Buffer.Fill (General_Parameters.Background_Color);
       case Supplementary_Driving_Info.Mode is
-         -- DMI 8.2.2.1.8
-         when Supplementary_Driving_Info.M_FS =>
-            if Speed_And_Distance.Get_Monitoring_Mode /= Speed_And_Distance.CSM then
+         when Supplementary_Driving_Info.M_FS
+            | Supplementary_Driving_Info.M_AD
+            | Supplementary_Driving_Info.M_SM =>
+            -- DMI 8.2.2.1.8 Table 13 / 8.2.2.2.7 Table 14
+            if Target_Monitoring then
                Display.A_Area.A_2.Draw;
                Display.A_Area.A_3.Draw;
             end if;
@@ -38,18 +75,31 @@ package body Display.A_Area is
             Display.A_Area.A_2.Draw;
             Display.A_Area.A_3.Draw;
          when Supplementary_Driving_Info.M_OS | Supplementary_Driving_Info.M_SR =>
-            -- DMI 8.2.2.2.7
-            if User_Settings.Toggle (User_Settings.Distance_To_Target_Digital) then
+            -- DMI 8.2.2.2.7 Table 14: digital only, and only when toggled on;
+            -- RSM does not apply for SR
+            if User_Settings.Speed_Info_Visible
+              and then Target_Monitoring
+              and then not (Get_Monitoring_Mode = RSM
+                            and Supplementary_Driving_Info.Mode =
+                                  Supplementary_Driving_Info.M_SR)
+            then
                Display.A_Area.A_2.Draw;
             end if;
          when Supplementary_Driving_Info.M_LS =>
-            -- DMI 8.2.1.7.3
-            if User_Settings.Toggle (User_Settings.LSSMA) then
+            -- DMI 8.2.1.7.3: display conditions are decided by the EVC
+            if Get_LSSMA_Valid then
                Draw_A1;
             end if;
          when others =>
             null;
       end case;
+
+      -- DMI 8.2.2.5, Table 15a (mode/monitoring/toggle checked inside)
+      if DMI_Status.TTI_Displayed then
+         Draw_TTI;
+      end if;
+
+      Draw_A4;
    end Draw;
    
    procedure Draw_A1 is

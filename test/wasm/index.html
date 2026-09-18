@@ -1,0 +1,781 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>ETCS DMI test bench (WebAssembly)</title>
+    <!--
+      Browser test bench: the DMI (dmi.wasm) and the EVC simulator
+      (evc.wasm) run as two separate WebAssembly modules with their own
+      memories; this page is the clock, the display unit, the touch
+      screen, the driver desk and the wire between the two. The wire is
+      a configurable, slightly hostile Ethernet: latency, jitter, loss,
+      duplication, reordering and fragmentation are all adjustable.
+
+      Serve the repository over HTTP (wasm cannot be fetched from
+      file://), e.g. from the repository root:
+         python3 -m http.server 8000
+      then open http://localhost:8000/test/wasm/
+      Build the modules with test/wasm/build.sh.
+    -->
+    <style>
+      body { margin: 0; padding: 0 16px; font-family: sans-serif; background: #222; color: #ddd; font-size: 13px; }
+      h3 { margin: 4px 0; }
+      .panel { padding: 8px 0; border-bottom: 1px solid #333; }
+      .row { margin-bottom: 6px; }
+      label { margin-right: 10px; white-space: nowrap; }
+      input[type=number] { width: 5em; }
+      button { background: #444; color: #ddd; border: 1px solid #666; padding: 2px 10px; }
+      canvas { display: block; margin: 6px auto; background: #031122; }
+      #stats { font-family: monospace; }
+      /* the display unit: the frame sits on a wrapper so that the
+         canvas box, and with it the touch coordinates, stay untouched */
+      .bezel { width: fit-content; margin: 14px auto 28px; padding: 20px 20px 14px;
+               background: linear-gradient(160deg, #4a4e55, #26282c 45%, #1a1b1e);
+               border: 1px solid #63676e; border-radius: 16px;
+               box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+      .bezel canvas { margin: 0; outline: 3px solid #000; box-shadow: 0 0 0 4px #111; }
+      .bezel .plate { margin-top: 10px; text-align: center; font-size: 10px;
+                      letter-spacing: 0.3em; color: #8a8e96; }
+      .lost { color: #f66; font-weight: bold; }
+      .ok { color: #6d6; }
+      .about { max-width: 60em; padding: 12px 0 10px; border-bottom: 1px solid #333; line-height: 1.45; }
+      .about h2 { margin: 0 0 6px; font-size: 20px; }
+      .about p { margin: 0 0 8px; }
+      .about a { color: #8cf; }
+      .about summary { cursor: pointer; color: #8cf; margin-bottom: 6px; }
+      #controls summary { cursor: pointer; margin-bottom: 6px; }
+      .about ol { margin: 4px 0 8px; padding-left: 1.6em; }
+      .about li { margin-bottom: 4px; }
+      .about .note { color: #999; font-size: 12px; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <header class="about">
+      <h2>ETCS DMI — the driver's display of the European Train Control System</h2>
+      <p>
+        The Driver Machine Interface (DMI) is the cab display that tells a
+        train driver how fast the train may go, where and how hard it has
+        to brake, which mode and level the on-board system is in, and what
+        lies ahead on the track. This project implements it after the
+        European Union Agency for Railways specification
+        ERA_ERTMS_015560 v4.0.0, in Ada 2012, aimed at small embedded
+        hardware: a 32-bit microcontroller around 200 MHz with 128 kB RAM
+        and 1 MB ROM, no operating system and no libraries beyond the
+        compiler's runtime. Every pixel is drawn by the Ada code into a
+        frame buffer; fonts and symbols are bitmaps compiled into the
+        program.
+      </p>
+      <p>
+        What runs below is that same Ada code compiled to WebAssembly;
+        nothing is reimplemented in JavaScript. The DMI and a simplified
+        on-board computer (EVC) with a track and train model run as two
+        separate modules that share no memory and exchange the binary
+        messages they would exchange over Ethernet on a train. This page
+        plays everything around them: the display, the touch screen, the
+        loudspeaker, the driver's desk and the cable in between, which
+        you can degrade or cut to see how the DMI copes.
+      </p>
+      <details>
+        <summary>How to try it</summary>
+        <ol>
+          <li><b>Start a mission.</b> On the DMI screen press <i>Main</i>,
+            then <i>Start</i>, and follow the dialogue: a driver ID,
+            <i>Level 1</i>, the train data (length, brake percentage,
+            maximum speed), <i>Yes</i> to validate, and a train running
+            number. Every field takes any number followed by the enter
+            key at the bottom right of the keypad.</li>
+          <li><b>Watch the run.</b> The EVC grants a movement authority
+            over a 10 km demo track and the automatic driver sets off:
+            speed restrictions, a neutral section, a level transition you
+            have to acknowledge on the DMI, an unprotected level
+            crossing, a tunnel, and the braking curve down to the end of
+            authority. The strip above the DMI shows where the train
+            is.</li>
+          <li><b>Drive yourself.</b> Untick <i>Auto drive</i> and use the
+            throttle/brake slider. Go over the permitted speed to get the
+            warning colours and sounds, further and the EVC brakes for
+            you.</li>
+          <li><b>Break the cable.</b> Add latency, jitter, loss or
+            fragmentation under <i>EVC ↔ DMI wire</i>. Tick <i>Cut the
+            link</i>: after one second of silence the DMI discards the
+            picture and shows the system failure symbol; untick and it
+            recovers. Reordering shows what the protocol does not yet
+            survive.</li>
+          <li><b>Feed it by hand.</b> Switch the source to the manual EVC
+            panel to put any speed, target, mode or level on the
+            display.</li>
+        </ol>
+      </details>
+      <p class="note">
+        A personal project for learning Ada and for testing how far an
+        AI coding agent can be used in developing reliable software; not
+        certified and not for operational use. Source, specification and tests (GPL-3.0):
+        <a href="https://github.com/milanredele/etcs-dmi">github.com/milanredele/etcs-dmi</a>.
+      </p>
+    </header>
+
+    <div class="panel">
+      <h3>Test bench <span id="status">(loading modules…)</span></h3>
+      <div class="row">
+        <button id="run">Pause</button>
+        <button id="reset">Reset mission</button>
+        <label>Source:
+          <select id="source">
+            <option value="sim" selected>EVC simulator</option>
+            <option value="manual">manual EVC panel</option>
+          </select>
+        </label>
+        <label>Auto drive <input type="checkbox" id="auto_drive" checked></label>
+        <label>Throttle/Brake <input type="range" id="demand" min="-100" max="100" value="0"></label>
+        <span id="demand_value">0</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>EVC ↔ DMI wire</h3>
+      <div class="row">
+        <label title="one way delay added to every unit on the wire">Latency ms <input type="number" id="latency" value="0" min="0" max="5000"></label>
+        <label title="random extra delay, uniformly 0..jitter">Jitter ms <input type="number" id="jitter" value="0" min="0" max="5000"></label>
+        <label title="probability that a frame is lost entirely">Loss % <input type="number" id="loss" value="0" min="0" max="100"></label>
+        <label title="probability that a frame is delivered twice">Duplicate % <input type="number" id="dup" value="0" min="0" max="100"></label>
+        <label title="probability that a unit is held back behind later ones">Reorder % <input type="number" id="reorder" value="0" min="0" max="100"></label>
+        <label title="0: whole frames travel as one unit; otherwise frames are split into units of this many bytes (fragmentation)">MTU bytes <input type="number" id="mtu" value="0" min="0" max="65536"></label>
+        <label title="drop everything: the DMI must notice the silence (EVC link supervision)"><input type="checkbox" id="cut"> Cut the link</label>
+      </div>
+      <div class="row" id="stats"></div>
+    </div>
+
+    <details class="panel" id="controls">
+      <summary><b>Manual EVC panel</b> (sent cyclically while the source is the manual panel)</summary>
+      <div class="row">
+        <label>Speed <input type="number" id="speed" value="136" min="0" max="400"></label>
+        <label>Vperm <input type="number" id="vperm" value="120" min="0" max="400"></label>
+        <label>Vtarget <input type="number" id="vtarget" value="80" min="0" max="400"></label>
+        <label>Vrelease <input type="number" id="vrelease" value="35" min="0" max="400"></label>
+        <label>Vrelease exists <input type="checkbox" id="vrelease_exists" checked></label>
+        <label>Dist <input type="number" id="dist" value="684" min="0" max="90000"></label>
+      </div>
+      <div class="row">
+        <label>Range:
+          <select id="range">
+            <option value="0">140</option>
+            <option value="1" selected>180</option>
+            <option value="2">250</option>
+            <option value="3">400</option>
+          </select>
+        </label>
+        <label>Mode:
+          <select id="mode">
+            <option value="0">NP</option><option value="1">SB</option>
+            <option value="2" selected>FS</option><option value="3">AD</option>
+            <option value="4">SM</option><option value="5">LS</option>
+            <option value="6">OS</option><option value="7">SR</option>
+            <option value="8">SH</option><option value="9">UN</option>
+            <option value="10">RV</option><option value="11">TR</option>
+            <option value="12">SN</option><option value="13">PT</option>
+            <option value="14">NL</option><option value="15">SF</option>
+            <option value="16">SL</option><option value="17">IS</option>
+          </select>
+        </label>
+        <label>Monitoring:
+          <select id="monitoring">
+            <option value="0">CSM</option>
+            <option value="1" selected>TSM</option>
+            <option value="2">RSM</option>
+          </select>
+        </label>
+        <label>CSM target info <input type="checkbox" id="csm_ti"></label>
+        <label>Brake commanded <input type="checkbox" id="brake"></label>
+      </div>
+      <div class="row">
+        <label>Level:
+          <select id="level">
+            <option value="0">Unknown</option><option value="1">Invalid</option>
+            <option value="2">L0</option><option value="3">NTC</option>
+            <option value="4" selected>L1</option><option value="5">L2</option>
+          </select>
+        </label>
+        <label>Mode ack:
+          <select id="mode_ack">
+            <option value="255" selected>none</option>
+            <option value="5">LS</option><option value="6">OS</option>
+            <option value="7">SR</option><option value="8">SH</option>
+            <option value="9">UN</option><option value="10">RV</option>
+            <option value="11">TR</option><option value="12">SN</option>
+          </select>
+        </label>
+        <label>Level ann:
+          <select id="level_ann">
+            <option value="255" selected>none</option>
+            <option value="2">L0</option><option value="3">NTC</option>
+            <option value="4">L1</option><option value="5">L2</option>
+          </select>
+        </label>
+        <label>ann ack <input type="checkbox" id="level_ann_ack"></label>
+        <label>Override <input type="checkbox" id="override"></label>
+        <label>TAF <input type="checkbox" id="taf"></label>
+        <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
+        <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
+      </div>
+    </details>
+
+    <canvas id="trackCanvas" width="640" height="150" style="background:#101820;"></canvas>
+    <div class="bezel">
+      <canvas id="myCanvas" width="640" height="480"></canvas>
+      <div class="plate">ETCS DMI</div>
+    </div>
+
+    <script>
+      'use strict';
+      // Protocol v2 (see src/dmi_protocol.ads)
+      const MSG_SPEED_STATE = 0x01;
+      const MSG_MODE_LEVEL = 0x02;
+      const MSG_TRACK_LAYOUT = 0x08;
+      const MSG_SIM_STATE = 0x09;
+      const MSG_DRIVER_ACTION = 0x40;
+      const MSG_DRIVER_DATA = 0x41;
+      const MSG_POINTER = 0x50;
+      const MSG_SOUND = 0x61;
+      const HEADER_LENGTH = 5;
+
+      const DMI_TICK_MS = 50;   // frame period of the DMI
+      const EVC_STEP_MS = 100;  // cycle of the EVC simulator
+      const MAX_DT_MS = 200;    // catch-up limit after a background tab
+
+      const $ = (id) => document.getElementById(id);
+      const val = (id) => parseInt($(id).value);
+      const checked = (id) => $(id).checked;
+
+      // ------------------------------------------------------------------
+      // Module loading: each module gets its own memory and its own copy
+      // of the two runtime imports
+      // ------------------------------------------------------------------
+      async function load(url) {
+        const mod = {};
+        const env = {
+          __gnat_grow: (pages) => mod.exports.memory.grow(pages),
+          __gnat_put_exception: (addr, size, line) => {
+            const msg = new TextDecoder('latin1')
+              .decode(new Uint8Array(mod.exports.memory.buffer, addr, size));
+            console.error(`${url}: exception ${msg}${line ? ':' + line : ''}`);
+          },
+        };
+        const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { env });
+        mod.exports = instance.exports;
+        instance.exports.__gnat_initialize(0);
+        instance.exports.adainit();
+        return instance.exports;
+      }
+
+      // copy bytes into the module's receive buffer and let it consume them
+      function receive(ex, prefix, bytes) {
+        const cap = ex[prefix + '_rx_capacity']();
+        const base = ex[prefix + '_rx_buffer']();
+        for (let off = 0; off < bytes.length; off += cap) {
+          const n = Math.min(cap, bytes.length - off);
+          new Uint8Array(ex.memory.buffer, base, n).set(bytes.subarray(off, off + n));
+          ex[prefix + '_receive'](n);
+        }
+      }
+
+      // collect the module's pending outbound bytes
+      function transmit(ex, prefix) {
+        const n = ex[prefix + '_transmit']();
+        return new Uint8Array(ex.memory.buffer, ex[prefix + '_tx_buffer'](), n).slice();
+      }
+
+      // split a byte run of whole frames into individual frames
+      function splitFrames(bytes) {
+        const frames = [];
+        let off = 0;
+        while (bytes.length - off >= HEADER_LENGTH) {
+          const dv = new DataView(bytes.buffer, bytes.byteOffset + off);
+          const total = HEADER_LENGTH + dv.getUint32(1, true);
+          if (bytes.length - off < total) break;
+          frames.push(bytes.subarray(off, off + total));
+          off += total;
+        }
+        return frames;
+      }
+
+      function makeMessage(type, payloadLength) {
+        const buf = new Uint8Array(HEADER_LENGTH + payloadLength);
+        const dv = new DataView(buf.buffer);
+        dv.setUint8(0, type);
+        dv.setUint32(1, payloadLength, true);
+        return { buf, dv };
+      }
+
+      // ------------------------------------------------------------------
+      // The wire: a queue of units (frames or fragments) with delivery
+      // times. Loss and duplication act on frames; latency, jitter and
+      // reordering on the units actually travelling.
+      // ------------------------------------------------------------------
+      class Wire {
+        constructor(deliver) {
+          this.deliver = deliver;
+          this.queue = [];
+          this.stats = { sent: 0, delivered: 0, dropped: 0, dup: 0 };
+        }
+        send(frame, now) {
+          const p = wireParams;
+          this.stats.sent++;
+          if (p.cut || Math.random() * 100 < p.loss) { this.stats.dropped++; return; }
+          const copies = Math.random() * 100 < p.dup ? 2 : 1;
+          if (copies === 2) this.stats.dup++;
+          for (let c = 0; c < copies; c++) {
+            const units = [];
+            if (p.mtu > 0) {
+              for (let off = 0; off < frame.length; off += p.mtu) {
+                units.push(frame.slice(off, Math.min(off + p.mtu, frame.length)));
+              }
+            } else {
+              units.push(frame.slice());
+            }
+            let t = now + p.latency + Math.random() * p.jitter;
+            for (const u of units) {
+              let at = t;
+              if (Math.random() * 100 < p.reorder) at += p.latency + p.jitter + EVC_STEP_MS;
+              this.queue.push({ at, seq: this.stats.sent, bytes: u });
+              t += 0.001; // fragments keep their order unless reordered
+            }
+          }
+        }
+        pump(now) {
+          if (this.queue.length === 0) return;
+          this.queue.sort((a, b) => a.at - b.at || a.seq - b.seq);
+          while (this.queue.length && this.queue[0].at <= now) {
+            this.deliver(this.queue.shift().bytes);
+            this.stats.delivered++;
+          }
+        }
+        clear() { this.queue.length = 0; }
+      }
+
+      const wireParams = { latency: 0, jitter: 0, loss: 0, dup: 0, reorder: 0, mtu: 0, cut: false };
+      function readWireParams() {
+        wireParams.latency = val('latency') || 0;
+        wireParams.jitter = val('jitter') || 0;
+        wireParams.loss = val('loss') || 0;
+        wireParams.dup = val('dup') || 0;
+        wireParams.reorder = val('reorder') || 0;
+        wireParams.mtu = val('mtu') || 0;
+        wireParams.cut = checked('cut');
+      }
+      for (const id of ['latency', 'jitter', 'loss', 'dup', 'reorder', 'mtu', 'cut']) {
+        $(id).addEventListener('input', readWireParams);
+      }
+
+      // ------------------------------------------------------------------
+      // Display unit: the frame buffer is read straight out of the DMI
+      // module's memory (the display controller sits on the DMI board)
+      // ------------------------------------------------------------------
+      const canvas = $('myCanvas');
+      const context = canvas.getContext('2d');
+      const img = context.createImageData(canvas.width, canvas.height);
+      const pix32 = new Uint32Array(img.data.buffer);
+      const colorMap = [ // General_Parameters.RGB_Colors
+        [255, 255, 255], [0, 0, 0], [195, 195, 195], [150, 150, 150],
+        [85, 85, 85], [3, 17, 34], [8, 24, 57], [223, 223, 0],
+        [234, 145, 0], [191, 0, 2], [33, 49, 74], [41, 74, 107],
+      ];
+      const lut = new Uint32Array(256).fill(0xFFFF00FF); // magenta: unknown index
+      colorMap.forEach(([r, g, b], i) => { lut[i] = (255 << 24) | (b << 16) | (g << 8) | r; });
+
+      function blit(dmi) {
+        const w = dmi.dmi_frame_width(), h = dmi.dmi_frame_height();
+        const frame = new Uint8Array(dmi.memory.buffer, dmi.dmi_frame(), w * h);
+        for (let i = 0; i < w * h; i++) pix32[i] = lut[frame[i]];
+        context.putImageData(img, 0, 0);
+      }
+
+      const soundFiles = {
+        0: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/click.wav',
+        1: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S_info.wav',
+        2: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S1_toofast.wav',
+        3: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S2_warning.wav',
+      };
+      let s2Audio = null;
+      function playSound(id) {
+        if (id === 3) { // S2 start: continuous while active
+          if (!s2Audio) {
+            s2Audio = new Audio(soundFiles[3]);
+            s2Audio.loop = true;
+            s2Audio.play().catch(() => {});
+          }
+        } else if (id === 4) { // S2 stop
+          if (s2Audio) { s2Audio.pause(); s2Audio = null; }
+        } else if (soundFiles[id]) {
+          new Audio(soundFiles[id]).play().catch(() => {});
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Track visualization: a 1D strip rolling by with the train fixed
+      // near the left edge (MSG_TRACK_LAYOUT / MSG_SIM_STATE)
+      // ------------------------------------------------------------------
+      const track = $('trackCanvas');
+      const tctx = track.getContext('2d');
+      let layout = null;
+      let sim = { pos: 0, speed: 0, mode: 0, monitoring: 0, demand: 0, brake: 0 };
+
+      function parseLayout(p) {
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        let o = 0;
+        const l = {};
+        l.eoa = dv.getUint32(o, true); o += 4;
+        l.release = dv.getUint8(o); o += 1;
+        l.mrsp = [];
+        let n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.mrsp.push({ start: dv.getUint32(o, true), speed: dv.getUint16(o + 4, true) });
+          o += 6;
+        }
+        l.gradients = [];
+        n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.gradients.push({ start: dv.getUint32(o, true), value: dv.getInt8(o + 4) });
+          o += 5;
+        }
+        l.conditions = [];
+        n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.conditions.push({
+            symbol: dv.getUint8(o),
+            announce: dv.getUint32(o + 1, true),
+            start: dv.getUint32(o + 5, true),
+            end: dv.getUint32(o + 9, true),
+          });
+          o += 13;
+        }
+        l.lxFrom = dv.getUint32(o, true); o += 4;
+        l.lxAt = dv.getUint32(o, true); o += 4;
+        l.tunnelAnn = dv.getUint32(o, true); o += 4;
+        l.tunnelStart = dv.getUint32(o, true); o += 4;
+        l.tunnelEnd = dv.getUint32(o, true); o += 4;
+        l.levelAnn = dv.getUint32(o, true); o += 4;
+        l.levelAt = dv.getUint32(o, true); o += 4;
+        l.taf = dv.getUint32(o, true); o += 4;
+        layout = l;
+      }
+
+      function parseSimState(p) {
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        sim.pos = dv.getUint32(0, true);
+        sim.speed = dv.getUint16(4, true);
+        sim.mode = dv.getUint8(6);
+        sim.monitoring = dv.getUint8(7);
+        sim.demand = dv.getInt8(8);
+        sim.brake = dv.getUint8(9);
+        drawTrack();
+      }
+
+      const MODES = ['SB', 'SR', 'FS', 'TR'];
+      const MONITORINGS = ['CSM', 'TSM', 'RSM'];
+
+      function conditionLabel(symbol) {
+        if (symbol === 7) return 'NS';    // neutral section announcement
+        if (symbol === 3) return 'PAN';   // lower pantograph
+        return 'TC' + symbol;
+      }
+
+      function drawTrack() {
+        const W = track.width, H = track.height;
+        const behind = 400, ahead = 2600;          // visible window in m
+        const x = (m) => (m - (sim.pos - behind)) * W / (behind + ahead);
+        const trackY = 88;
+
+        tctx.clearRect(0, 0, W, H);
+        tctx.font = '10px sans-serif';
+        tctx.textAlign = 'center';
+
+        if (layout) {
+          for (let i = 0; i < layout.gradients.length; i++) {
+            const g = layout.gradients[i];
+            const gEnd = i + 1 < layout.gradients.length
+              ? layout.gradients[i + 1].start : layout.eoa;
+            tctx.fillStyle = g.value < 0 ? '#4a3828' : (g.value > 0 ? '#2e4a2e' : '#333');
+            tctx.fillRect(x(g.start), trackY + 6, x(gEnd) - x(g.start), 8);
+            tctx.fillStyle = '#aaa';
+            tctx.fillText((g.value >= 0 ? '+' : '') + g.value + '‰',
+                          x(g.start) + 24, trackY + 26);
+          }
+
+          tctx.fillStyle = 'rgba(120,120,140,0.35)';
+          tctx.fillRect(x(layout.tunnelStart), trackY - 30,
+                        x(layout.tunnelEnd) - x(layout.tunnelStart), 30);
+          tctx.fillStyle = '#9aa';
+          tctx.fillText('TUNNEL', (x(layout.tunnelStart) + x(layout.tunnelEnd)) / 2,
+                        trackY - 34);
+
+          for (const c of layout.conditions) {
+            tctx.fillStyle = 'rgba(223,223,0,0.25)';
+            tctx.fillRect(x(c.start), trackY - 14, x(c.end) - x(c.start), 14);
+            tctx.fillStyle = '#dd0';
+            tctx.fillText(conditionLabel(c.symbol),
+                          (x(c.start) + x(c.end)) / 2, trackY - 18);
+            tctx.beginPath();
+            tctx.moveTo(x(c.announce), trackY - 8);
+            tctx.lineTo(x(c.announce) - 4, trackY);
+            tctx.lineTo(x(c.announce) + 4, trackY);
+            tctx.fill();
+          }
+
+          for (const s of layout.mrsp) {
+            tctx.strokeStyle = '#ccc';
+            tctx.fillStyle = '#222';
+            tctx.beginPath();
+            tctx.arc(x(s.start), trackY - 40, 10, 0, 2 * Math.PI);
+            tctx.fill(); tctx.stroke();
+            tctx.fillStyle = '#fff';
+            tctx.fillText(s.speed, x(s.start), trackY - 37);
+            tctx.strokeStyle = '#666';
+            tctx.beginPath();
+            tctx.moveTo(x(s.start), trackY - 30);
+            tctx.lineTo(x(s.start), trackY);
+            tctx.stroke();
+          }
+
+          tctx.strokeStyle = '#f66';
+          tctx.lineWidth = 2;
+          const lxX = x(layout.lxAt);
+          tctx.beginPath();
+          tctx.moveTo(lxX - 5, trackY - 12); tctx.lineTo(lxX + 5, trackY - 2);
+          tctx.moveTo(lxX + 5, trackY - 12); tctx.lineTo(lxX - 5, trackY - 2);
+          tctx.stroke();
+          tctx.lineWidth = 1;
+          tctx.fillStyle = '#f66';
+          tctx.fillText('LX', lxX, trackY - 16);
+
+          tctx.strokeStyle = '#8cf';
+          tctx.setLineDash([3, 3]);
+          tctx.beginPath();
+          tctx.moveTo(x(layout.levelAt), trackY - 45);
+          tctx.lineTo(x(layout.levelAt), trackY + 14);
+          tctx.stroke();
+          tctx.setLineDash([]);
+          tctx.fillStyle = '#8cf';
+          tctx.fillText('L2', x(layout.levelAt), trackY - 48);
+
+          tctx.fillStyle = '#fa0';
+          tctx.fillText('TAF', x(layout.taf), trackY - 20);
+          tctx.fillRect(x(layout.taf) - 1, trackY - 16, 2, 16);
+
+          const eoaX = x(layout.eoa);
+          tctx.fillStyle = '#c00';
+          tctx.fillRect(eoaX - 2, trackY - 24, 5, 24);
+          tctx.fillStyle = '#fff';
+          tctx.fillRect(eoaX - 2, trackY - 18, 5, 6);
+          tctx.fillRect(eoaX - 2, trackY - 6, 5, 6);
+          tctx.fillStyle = '#f88';
+          tctx.fillText('EOA', eoaX, trackY - 28);
+        }
+
+        tctx.strokeStyle = '#889';
+        tctx.lineWidth = 3;
+        tctx.beginPath();
+        tctx.moveTo(0, trackY); tctx.lineTo(W, trackY);
+        tctx.stroke();
+        tctx.lineWidth = 1;
+        tctx.strokeStyle = '#556';
+        const first = Math.floor((sim.pos - behind) / 100) * 100;
+        for (let m = first; m < sim.pos + ahead; m += 100) {
+          tctx.beginPath();
+          tctx.moveTo(x(m), trackY - 3); tctx.lineTo(x(m), trackY + 3);
+          tctx.stroke();
+        }
+
+        const tx = x(sim.pos);
+        tctx.fillStyle = sim.brake ? '#f44' : '#4d4';
+        tctx.fillRect(tx - 22, trackY - 10, 22, 8);
+        tctx.beginPath();
+        tctx.moveTo(tx, trackY - 10); tctx.lineTo(tx + 6, trackY - 6);
+        tctx.lineTo(tx, trackY - 2); tctx.fill();
+
+        tctx.textAlign = 'left';
+        tctx.fillStyle = '#dde';
+        tctx.font = '12px monospace';
+        tctx.fillText(
+          `km ${(sim.pos / 1000).toFixed(2)}  ${sim.speed} km/h  ` +
+          `${MODES[sim.mode] || '?'}/${MONITORINGS[sim.monitoring] || '?'}  ` +
+          `demand ${sim.demand}%${sim.brake ? '  EVC BRAKE' : ''}`,
+          8, 16);
+        tctx.font = '10px sans-serif';
+      }
+
+      // ------------------------------------------------------------------
+      // Manual EVC panel: builds the two state messages from the form
+      // ------------------------------------------------------------------
+      function manualSpeedState() {
+        const { buf, dv } = makeMessage(MSG_SPEED_STATE, 19);
+        const vperm = val('vperm');
+        let o = HEADER_LENGTH;
+        dv.setUint16(o, val('speed'), true); o += 2;
+        dv.setUint16(o, vperm, true); o += 2;
+        dv.setUint16(o, val('vtarget'), true); o += 2;
+        dv.setUint16(o, val('vrelease'), true); o += 2;
+        dv.setUint16(o, Math.min(vperm + 15, 400), true); o += 2; // Vsbi
+        dv.setUint16(o, Math.min(vperm + 5, 400), true); o += 2;  // Vwsl
+        dv.setUint32(o, val('dist'), true); o += 4;
+        dv.setUint8(o, val('monitoring')); o += 1;
+        dv.setUint8(o, val('range')); o += 1;
+        dv.setUint8(o, (checked('vrelease_exists') ? 1 : 0) | (checked('csm_ti') ? 2 : 0)
+          | (checked('brake') ? 4 : 0));
+        return buf;
+      }
+
+      function manualModeLevel() {
+        const { buf, dv } = makeMessage(MSG_MODE_LEVEL, 9);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, val('mode')); o += 1;
+        dv.setUint8(o, val('level')); o += 1;
+        dv.setUint8(o, val('mode_ack')); o += 1;
+        dv.setUint8(o, val('level_ann')); o += 1;
+        dv.setUint8(o, checked('level_ann_ack') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('override') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('taf') ? 1 : 0); o += 1;
+        dv.setUint16(o, checked('lssma_valid') ? val('lssma') : 0xFFFF, true);
+        return buf;
+      }
+
+      const manualMode = () => $('source').value === 'manual';
+
+      // ------------------------------------------------------------------
+      // Main loop
+      // ------------------------------------------------------------------
+      (async () => {
+        const dmi = await load('dmi.wasm');
+        const evc = await load('evc.wasm');
+        $('status').textContent = '';
+
+        // the two directions of the wire
+        const toDmi = new Wire((bytes) => receive(dmi, 'dmi', bytes));
+        const toEvc = new Wire((bytes) => receive(evc, 'evc', bytes));
+
+        let running = true;
+        let now = 0;           // simulated time in ms
+        let dmiAcc = 0, evcAcc = 0;
+        let last = performance.now();
+
+        function reset() {
+          dmi.dmi_initialise();
+          evc.evc_reset();
+          toDmi.clear(); toEvc.clear();
+          for (const w of [toDmi, toEvc]) Object.keys(w.stats).forEach((k) => { w.stats[k] = 0; });
+          layout = null;
+          sendDesk();
+        }
+
+        function sendDesk() {
+          const demand = val('demand');
+          $('demand_value').textContent = demand;
+          evc.evc_set_desk(demand, checked('auto_drive') ? 1 : 0);
+        }
+        $('source').addEventListener('input', () => { if (manualMode()) $('controls').open = true; });
+        $('demand').addEventListener('input', sendDesk);
+        $('auto_drive').addEventListener('input', sendDesk);
+        $('reset').addEventListener('click', reset);
+        $('run').addEventListener('click', () => {
+          running = !running;
+          $('run').textContent = running ? 'Pause' : 'Run';
+        });
+
+        // driver actions and data go to the EVC over the wire, sounds
+        // are played here (the loudspeaker is part of the DMI unit)
+        function routeFromDmi() {
+          for (const f of splitFrames(transmit(dmi, 'dmi'))) {
+            const type = f[0];
+            if (type === MSG_SOUND) playSound(f[HEADER_LENGTH]);
+            else if (type === MSG_DRIVER_ACTION || type === MSG_DRIVER_DATA) {
+              if (type === MSG_DRIVER_ACTION) {
+                console.log('driver action', f[HEADER_LENGTH],
+                            f[HEADER_LENGTH + 1] | (f[HEADER_LENGTH + 2] << 8));
+              }
+              toEvc.send(f, now);
+            }
+          }
+        }
+
+        // the simulator's state messages travel over the wire, the
+        // visualisation messages are for this page only
+        function routeFromEvc() {
+          for (const f of splitFrames(transmit(evc, 'evc'))) {
+            const type = f[0];
+            if (type === MSG_TRACK_LAYOUT) parseLayout(f.subarray(HEADER_LENGTH));
+            else if (type === MSG_SIM_STATE) parseSimState(f.subarray(HEADER_LENGTH));
+            else toDmi.send(f, now);
+          }
+        }
+
+        function evcCycle() {
+          if (manualMode()) {
+            toDmi.send(manualSpeedState(), now);
+            toDmi.send(manualModeLevel(), now);
+          } else {
+            evc.evc_step(EVC_STEP_MS);
+            routeFromEvc();
+          }
+        }
+
+        function showStats() {
+          const s = toDmi.stats, r = toEvc.stats;
+          const lost = dmi.dmi_link_lost() === 1;
+          $('stats').innerHTML =
+            `EVC→DMI sent ${s.sent} delivered ${s.delivered} dropped ${s.dropped} dup ${s.dup} | ` +
+            `DMI→EVC sent ${r.sent} delivered ${r.delivered} dropped ${r.dropped} | ` +
+            `t=${(now / 1000).toFixed(1)} s | DMI sees the EVC link as ` +
+            (lost ? '<span class="lost">LOST (mode SF)</span>' : '<span class="ok">up</span>');
+        }
+
+        function loop() {
+          const real = performance.now();
+          let dt = Math.min(real - last, MAX_DT_MS);
+          last = real;
+          if (!running) dt = 0;
+          now += dt;
+          dmiAcc += dt;
+          evcAcc += dt;
+
+          while (evcAcc >= EVC_STEP_MS) {
+            evcAcc -= EVC_STEP_MS;
+            evcCycle();
+          }
+          toDmi.pump(now);
+          toEvc.pump(now);
+          while (dmiAcc >= DMI_TICK_MS) {
+            dmiAcc -= DMI_TICK_MS;
+            dmi.dmi_tick(DMI_TICK_MS);
+            routeFromDmi();
+          }
+          dmi.dmi_render();
+          blit(dmi);
+          showStats();
+          requestAnimationFrame(loop);
+        }
+
+        // touch screen: local to the DMI unit, no wire in between
+        function pointer(event, x, y) {
+          const { buf, dv } = makeMessage(MSG_POINTER, 5);
+          dv.setUint8(HEADER_LENGTH, event);
+          dv.setUint16(HEADER_LENGTH + 1, x, true);
+          dv.setUint16(HEADER_LENGTH + 3, y, true);
+          receive(dmi, 'dmi', buf);
+        }
+        const at = (e) => {
+          const r = canvas.getBoundingClientRect();
+          return [Math.round(e.clientX - r.left), Math.round(e.clientY - r.top)];
+        };
+        canvas.addEventListener('pointerdown', (e) => pointer(0, ...at(e)));
+        canvas.addEventListener('pointerup', (e) => pointer(1, ...at(e)));
+        canvas.addEventListener('pointermove', (e) => { if (e.buttons) pointer(2, ...at(e)); });
+
+        readWireParams();
+        reset();
+        requestAnimationFrame(loop);
+      })().catch((e) => {
+        $('status').textContent = `failed: ${e.message} (serve over HTTP, build with build.sh)`;
+        console.error(e);
+      });
+    </script>
+  </body>
+</html>
