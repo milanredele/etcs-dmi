@@ -6,3 +6,4 @@ test/golden/*.actual
 test/wasm/obj/*
 test/wasm/*.wasm
 _site/
+.claude/worktrees/
