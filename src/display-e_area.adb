@@ -64,12 +64,12 @@ package body Display.E_Area is
                E_Buffer.Draw_String
                  (Time_X, Base_Y, Two (Line.Hour),
                   10, General_Parameters.WHITE);
-               E_Buffer.Set_Pixel (Time_X + 13, Base_Y - 6,
+               E_Buffer.Set_Pixel (Time_X + 17, Base_Y - 6,
                                    General_Parameters.WHITE);
-               E_Buffer.Set_Pixel (Time_X + 13, Base_Y - 2,
+               E_Buffer.Set_Pixel (Time_X + 17, Base_Y - 1,
                                    General_Parameters.WHITE);
                E_Buffer.Draw_String
-                 (Time_X + 16, Base_Y, Two (Line.Minute),
+                 (Time_X + 20, Base_Y, Two (Line.Minute),
                   10, General_Parameters.WHITE);
             end if;
             if Line.Length > 0 then
