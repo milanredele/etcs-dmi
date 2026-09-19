@@ -5,7 +5,9 @@ pragma Ada_2012;
 with Display.Draw;
 with Display.Screen;
 with DMI_Flash;
+with Font;
 with General_Parameters;
+with Symbol;
 
 package body DMI_Data_Entry is
 
@@ -604,7 +606,8 @@ package body DMI_Data_Entry is
    procedure Draw_Labelled_Button (The_Area : Area_T;
                                    Label    : Wide_String;
                                    Enabled  : Boolean;
-                                   Is_Down  : Boolean) is
+                                   Is_Down  : Boolean;
+                                   The_Size : Font.Size_T := 12) is
    begin
       if not Is_Down then
          Draw.Draw_Button_Frame (The_Area);
@@ -612,13 +615,29 @@ package body DMI_Data_Entry is
       --  5.3.2.5.5 / 10.2.1.4: disabled labels in dark grey
       Draw.Draw_String
         (Pen_X => The_Area.Position.X + The_Area.Width / 2,
-         Pen_Y => The_Area.Position.Y + The_Area.Height / 2 + 6,
+         Pen_Y => The_Area.Position.Y + The_Area.Height / 2
+                    + Natural (The_Size) / 2,
          The_String => Label,
-         The_Size => 12,
+         The_Size => The_Size,
          The_Color => (if Enabled then General_Parameters.GREY
                        else General_Parameters.DARK_GREY),
          The_Alignment => Draw.Center);
    end Draw_Labelled_Button;
+
+   --  5.3.2.7.1 e: the [Delete] button uses the symbol NA21
+   procedure Draw_Delete_Key (The_Area : Area_T; Is_Down : Boolean) is
+      W : constant Natural := Symbol.NA_21.Width;
+      H : constant Natural := Symbol.NA_21.Height;
+   begin
+      if not Is_Down then
+         Draw.Draw_Button_Frame (The_Area);
+      end if;
+      --  5.1.6.3: a symbol is centred in its area
+      Draw.Draw_Symbol
+        (Symbol.NA_21,
+         The_Area.Position + ((The_Area.Width - W) / 2,
+                              (The_Area.Height - H) / 2));
+   end Draw_Delete_Key;
 
    --  5.1.3.3: a text is vertically centred in its area; the pen is on
    --  the base line of the 12 cell characters
@@ -794,8 +813,10 @@ package body DMI_Data_Entry is
             --  10.3.5.15: '1' to '9', the [delete], '0' and the disabled
             --  '.'; 10.3.5.18: the 'No' and 'Yes' keys of a dedicated
             --  keyboard limited to that choice
+            Numeric_Keys : constant Boolean :=
+              Def.Fields (Current).Keyboard /= Yes_No;
             Label : constant Wide_String :=
-              (if Def.Fields (Current).Keyboard = Yes_No then
+              (if not Numeric_Keys then
                  (case Key is
                      when Key_No  => "No",
                      when Key_Yes => "Yes",
@@ -804,14 +825,21 @@ package body DMI_Data_Entry is
                  (case Key is
                      when 1 .. 9     => Natural'Wide_Image (Key) (2 .. 2) & "",
                      when Key_Zero   => "0",
-                     when Key_Delete => "Del",
                      when Key_Dot    => ".",
                      when others     => ""));
+            --  5.1.2.2.3 a: the numbers of a numeric keyboard are 16
+            --  cells high; everything else is 12 (5.1.2.2.3 h)
+            Size : constant Font.Size_T :=
+              (if Numeric_Keys and then Key in 1 .. 9 | Key_Zero then 16
+               else 12);
          begin
-            if Label /= "" then
+            if Numeric_Keys and then Key = Key_Delete then
+               Draw_Delete_Key (Key_Area (Key), Pressed (Key));
+            elsif Label /= "" then
                Draw_Labelled_Button (Key_Area (Key), Label,
                                      Enabled => Key_Enabled (Key),
-                                     Is_Down => Pressed (Key));
+                                     Is_Down => Pressed (Key),
+                                     The_Size => Size);
             end if;
          end;
       end loop;
