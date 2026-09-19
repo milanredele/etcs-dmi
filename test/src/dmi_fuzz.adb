@@ -21,7 +21,6 @@ with Ada.Streams;  use Ada.Streams;
 with Ada.Text_IO;  use Ada.Text_IO;
 with DMI_Core;
 with DMI_Protocol; use DMI_Protocol;
-with General_Parameters;
 with Interfaces;   use Interfaces;
 
 procedure DMI_Fuzz is
@@ -334,9 +333,6 @@ begin
       -- 2. time passes; now and then long enough for the link supervision
       begin
          DMI_Core.Tick (if Chance (2) then 1_000 else Pick (0, 200));
-         if Chance (20) then
-            General_Parameters.Flash_On := not General_Parameters.Flash_On;
-         end if;
       exception
          when E : others =>
             Report ("Tick", E, The_Type, True, Step);

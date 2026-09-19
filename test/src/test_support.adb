@@ -237,6 +237,19 @@ package body Test_Support is
       DMI_Core.Handle_Message (MSG_TRACK_COND, Payload);
    end Send_Track_Cond;
 
+   procedure Send_Track_Cond_IDs (Items : TC_Item_Array) is
+      Payload : Stream_Element_Array
+        (1 .. 1 + Stream_Element_Offset (Items'Length) * 2);
+      Offset : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (Items'Length));
+      for I in Items'Range loop
+         Put_U8 (Payload, Offset, Unsigned_8 (Items (I).ID));
+         Put_U8 (Payload, Offset, Unsigned_8 (Items (I).Kind));
+      end loop;
+      DMI_Core.Handle_Message (MSG_TRACK_COND, Payload);
+   end Send_Track_Cond_IDs;
+
    procedure Send_Planning
      (MA_Dist    : Natural;
       Ceiling    : Natural;

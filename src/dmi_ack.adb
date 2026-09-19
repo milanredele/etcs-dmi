@@ -2,6 +2,7 @@
 --  Acknowledgement service implementation.
 
 pragma Ada_2012;
+with DMI_Flash;
 with DMI_Sounds;
 
 package body DMI_Ack is
@@ -115,6 +116,8 @@ package body DMI_Ack is
          return;
       end if;
       Displayed := True;
+      -- DMI 5.1.1.3.2: the flashing frame starts with the visible state
+      DMI_Flash.Restart;
       -- DMI 5.4.1.5: flashing frame comes with Sinfo
       DMI_Sounds.Play (DMI_Sounds.Sinfo);
    end Select_Next;

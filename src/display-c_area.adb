@@ -15,6 +15,7 @@
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 with DMI_Ack;
+with DMI_Flash;
 with DMI_Status;
 with General_Parameters;
 with Supplementary_Driving_Info;
@@ -121,7 +122,7 @@ package body Display.C_Area is
          if DMI_Ack.Current_Valid
            and then DMI_Ack.Current_Kind = Brake_Release
          then
-            C_Buffer.Draw_Yellow_Frame (The_C9_Area, General_Parameters.Flash_On);
+            C_Buffer.Draw_Yellow_Frame (The_C9_Area, DMI_Flash.Frame_Visible);
          end if;
       end if;
    end Draw_C9;
@@ -141,7 +142,7 @@ package body Display.C_Area is
    begin
       if Ack_In_C1 then
          -- DMI 5.4.1.5 / 5.1.1.3.2: flashing yellow frame with the object
-         C_Buffer.Draw_Yellow_Frame (The_C1_Area, General_Parameters.Flash_On);
+         C_Buffer.Draw_Yellow_Frame (The_C1_Area, DMI_Flash.Frame_Visible);
 
          case DMI_Ack.Current_Kind is
             when Mode_Change =>
@@ -166,10 +167,20 @@ package body Display.C_Area is
             when others =>
                null;
          end case;
-      elsif Level_Announcement.Valid
-        and then not Level_Announcement.Ack_Required
-      then
-         -- DMI 8.2.3.2.6/.7: plain announcement, no acknowledgement
+      elsif Level_Announcement.Valid then
+         -- DMI 8.2.3.2.7: announcement without acknowledgement.
+         -- DMI 8.2.3.2.8: LE06, LE08 also replace LE07, LE09 as soon as
+         -- the driver has acknowledged. The DMI does this itself: the
+         -- request has left the acknowledgement service (DMI_Core,
+         -- BTN_Ack) while the EVC still announces the level "with
+         -- acknowledgement", which does not enter a second request.
+         -- By choice the same holds while the request of the level
+         -- announcement waits behind another acknowledgement or for the
+         -- 1 s of 5.4.1.9 (5.4.1.7: one request at a time; the SRS does
+         -- not say what C1 shows meanwhile): the announcement itself is
+         -- valid, only its flashing frame and LE07, LE09 have to wait.
+         -- 8.2.3.2.6 is met by the branch above: a mode acknowledgement
+         -- displayed in C1 hides the level announcement.
          C_Buffer.Draw_Frame (The_C1_Area);
          case Level_Announcement.Level is
             when L0 =>  DS (Symbol.LE_06, Position_Level);
@@ -201,7 +212,12 @@ package body Display.C_Area is
       case Level is
          -- DMI 8.2.3.2.2
          when L0 =>  DS (Symbol.LE_01);
-         when NTC => DS (Symbol.LE_02);
+         when NTC =>
+            -- "NTC (except in the modes SN and NL)": in these modes C8
+            -- stays empty in level NTC
+            if Mode not in M_SN | M_NL then
+               DS (Symbol.LE_02);
+            end if;
          when L1 =>  DS (Symbol.LE_03);
          when L2 =>  DS (Symbol.LE_04);
          when others =>

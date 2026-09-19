@@ -14,16 +14,10 @@ package body DMI_Wasm is
    Rx : Stream_Element_Array (1 .. 16384);
    Tx : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
 
-   -- DMI 5.1.1.3.2: flashing frames toggle every 0.25 seconds
-   Flash_Interval_Ms : constant := 250;
-   Flash_Elapsed_Ms  : Natural := 0;
-
    procedure Initialise is
    begin
       DMI_Core.Initialise;
       Link.Reset;
-      General_Parameters.Flash_On := True;
-      Flash_Elapsed_Ms := 0;
    end Initialise;
 
    function Rx_Buffer return System.Address is (Rx'Address);
@@ -38,11 +32,6 @@ package body DMI_Wasm is
 
    procedure Tick (Dt_Ms : Unsigned_32) is
    begin
-      Flash_Elapsed_Ms := Flash_Elapsed_Ms + Natural (Dt_Ms);
-      while Flash_Elapsed_Ms >= Flash_Interval_Ms loop
-         General_Parameters.Flash_On := not General_Parameters.Flash_On;
-         Flash_Elapsed_Ms := Flash_Elapsed_Ms - Flash_Interval_Ms;
-      end loop;
       DMI_Core.Tick (Natural (Dt_Ms));
    end Tick;
 

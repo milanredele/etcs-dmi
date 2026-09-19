@@ -35,19 +35,30 @@ package DMI_Status is
 
    Time_H, Time_M, Time_S : Natural := 0;               -- 8.4.3
 
-   -- Track conditions / level crossing for B3/4/5 (8.2.3.5 / 8.2.3.8):
-   -- kept in arrival order; the first three occupy the areas, the rest
-   -- wait for a free slot (8.2.3.5.3)
+   -- Track conditions / level crossing for B3/4/5 (8.2.3.5 / 8.2.3.8),
+   -- kept in arrival order. 8.2.3.5.3 / 8.2.3.8.3: an object takes the
+   -- first free area from the left and keeps it until it ends; when all
+   -- areas display a symbol, further objects wait until B3, B4 or B5 is
+   -- free. Displayed objects never move to another area.
    LX_Kind : constant := 38; -- kinds 1..37 are TC symbols
+   -- 1 .. 3 = B3 .. B5; 0 = waiting for a free area
+   subtype TC_Slot_T is Natural range 0 .. 3;
    type TC_Entry_T is record
       ID   : Natural := 0;
       Kind : Natural range 1 .. 38 := 1;
+      Slot : TC_Slot_T := 0;
    end record;
    type TC_List_T is array (1 .. 8) of TC_Entry_T;
    TC_List  : TC_List_T;
    TC_Count : Natural := 0;
 
-   -- Replace the active set, preserving arrival order of known ids
+   -- Replace the active set by what the EVC lists now (the Slot of the
+   -- new entries is ignored). A known id keeps its place in the arrival
+   -- order and its area, and takes the kind now given; ids no longer
+   -- listed end and free their area; new ids join the end of the arrival
+   -- order; then each free area goes to the longest waiting object.
+   -- Total: a New_Count beyond the list, repeated ids and more objects
+   -- than the list holds are cut down, never an error.
    procedure Reconcile_Track_Conditions (New_List  : TC_List_T;
                                          New_Count : Natural);
 

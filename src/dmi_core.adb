@@ -14,6 +14,7 @@ with Display.Screen;
 with DMI_Ack;
 with DMI_Buttons;
 with DMI_Driver_Data;
+with DMI_Flash;
 with DMI_Planning;
 with DMI_Sounds;
 with DMI_Status;
@@ -652,7 +653,10 @@ package body DMI_Core is
               and then Used < List'Last
             then
                Used := Used + 1;
-               List (Used) := (ID => Natural (ID), Kind => Natural (Kind));
+               -- the area is decided by DMI_Status (8.2.3.5.3)
+               List (Used) := (ID   => Natural (ID),
+                               Kind => Natural (Kind),
+                               Slot => 0);
             end if;
          end;
       end loop;
@@ -985,6 +989,9 @@ package body DMI_Core is
       end if;
 
       DMI_Text_Messages.Tick;
+      -- DMI 5.1.1.3.2: before DMI_Ack.Tick, which restarts the phase for
+      -- a request it displays now
+      DMI_Flash.Tick (Dt_Ms);
       DMI_Ack.Tick (Dt_Ms);
       Update_Buttons;
       DMI_Buttons.Tick (Dt_Ms);

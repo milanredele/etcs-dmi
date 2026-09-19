@@ -29,7 +29,9 @@ package body Display.B_Area is
 
    procedure Draw_B345 is
       -- DMI 8.2.3.5 / 8.2.3.8: track conditions and level crossing fill
-      -- B3/B4/B5 left to right; further objects wait for a free slot
+      -- B3/B4/B5 left to right; further objects wait for a free area.
+      -- The area of each object is decided once, when it is first
+      -- displayed (DMI_Status.Reconcile_Track_Conditions)
       use DMI_Status;
 
       function Kind_Symbol (Kind : Natural) return Symbol.T is
@@ -56,17 +58,20 @@ package body Display.B_Area is
 
       Slots : constant array (1 .. 3) of Sub_ID_T := (B3, B4, B5);
    begin
-      for I in 1 .. Natural'Min (TC_Count, 3) loop
-         declare
-            Slot : constant Area_T :=
-              Get_Sub_Area_With_Relative_Position (Slots (I));
-            Sym  : constant Symbol.T := Kind_Symbol (TC_List (I).Kind);
-         begin
-            B_Buffer.Draw_Symbol
-              (Sym,
-               Slot.Position + ((Slot.Width - Sym.Width) / 2,
-                                (Slot.Height - Sym.Height) / 2));
-         end;
+      for I in 1 .. Natural'Min (TC_Count, TC_List'Last) loop
+         if TC_List (I).Slot in Slots'Range then
+            declare
+               Slot : constant Area_T :=
+                 Get_Sub_Area_With_Relative_Position
+                   (Slots (TC_List (I).Slot));
+               Sym  : constant Symbol.T := Kind_Symbol (TC_List (I).Kind);
+            begin
+               B_Buffer.Draw_Symbol
+                 (Sym,
+                  Slot.Position + ((Slot.Width - Sym.Width) / 2,
+                                   (Slot.Height - Sym.Height) / 2));
+            end;
+         end if;
       end loop;
    end Draw_B345;
 

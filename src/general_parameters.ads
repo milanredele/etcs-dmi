@@ -73,9 +73,6 @@ package General_Parameters is
    -- DMI 5.2.1.3.3
    Background_Color : constant Color := DARK_BLUE;
    
-   -- Global flashing state
-   Flash_On : Boolean := True;
-
    -- EVC link supervision. The DMI specification does not cover the
    -- DMI-EVC interface itself; it only says how a system failure is
    -- shown (8.2.3.1.2, MO18) and that any other means is acceptable when
