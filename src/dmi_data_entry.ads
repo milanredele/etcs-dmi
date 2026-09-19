@@ -48,11 +48,24 @@ package DMI_Data_Entry is
       Total_Grid,   -- Tables 23, 24, 25: A/B/C/D/E/F/G, echo texts
       Validation);  -- Table 29: A/B/C/D/E/F/G, 'No'/'Yes' choice
 
+   --  10.4.1.5: the validation window echoes the input fields of the
+   --  topic it validates, which are not its own input field
+   type Echo_Item_T is record
+      Label    : Label_T := (others => ' ');
+      Value    : DMI_Driver_Data.Text_Value_T;
+      Accepted : Boolean := False;  -- 10.3.3.5: white when accepted
+   end record;
+
+   type Echo_List_T is array (Field_Index_T) of Echo_Item_T;
+
    type Window_Def_T is record
       Layout      : Layout_T := Half_Grid;
       Title       : Label_T := (others => ' ');
       Field_Count : Field_Count_T := 0;
       Fields      : Field_Def_List_T;
+      --  0: the echo texts are those of the window's own input fields
+      Echo_Count  : Field_Count_T := 0;
+      Echo        : Echo_List_T;
    end record;
 
    --  Build a window title / one field definition; the text is padded,
@@ -65,6 +78,11 @@ package DMI_Data_Entry is
       Keyboard : Keyboard_T := Numeric;
       Proposed : DMI_Driver_Data.Text_Value_T := (0, (others => ' ')))
       return Field_Def_T;
+
+   function Echo
+     (Label    : Wide_String;
+      Value    : DMI_Driver_Data.Text_Value_T;
+      Accepted : Boolean := True) return Echo_Item_T;
 
    --  10.6.1.1: a data entry / validation process starts with the first
    --  window of the topic

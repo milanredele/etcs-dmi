@@ -146,7 +146,7 @@ function press(x, y) {
                    [385, 240], [385, 290], [487, 390], FIELD(3)])  // 140 km/h
     press(...k);
   press(167, 440);                             // Train data entry complete?
-  press(410, 390);                             // Yes -> train running number
+  press(487, 40);                              // validation: accept 'Yes'
   press(385, 240); press(...ENTER);            // TRN 1 -> Main window
   // one more cycle (a touch outside every button) to see the EVC's mode
   if (press(620, 470) === 0) console.log('pass: the DMI does not start the mission by itself');

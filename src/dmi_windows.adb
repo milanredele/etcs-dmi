@@ -366,10 +366,22 @@ package body DMI_Windows is
             Result.Fields (2) :=
               Field ("SR distance", 5, Proposed => Image_Value (SR_Dist));
          when W_Train_Data_Validation =>
-            -- 11.4.1
+            -- 11.4.1: a single input field with only a data part and a
+            -- dedicated 'No'/'Yes' keyboard (10.4.1.2), the value 'Yes'
+            -- proposed (Figure 105), and the echo texts of the train
+            -- data window (11.4.1.3)
             Result.Layout := DMI_Data_Entry.Validation;
             Result.Field_Count := 1;
-            Result.Fields (1) := Field ("Validate", 3, Keyboard => Yes_No);
+            Result.Fields (1) :=
+              Field ("Validate", 3, Keyboard => Yes_No,
+                     Proposed => (3, "Yes" & (4 .. Max_Field_Len => ' ')));
+            Result.Echo_Count := 3;
+            Result.Echo (1) :=
+              Echo ("Length (m)", Image_Value (Train_Length));
+            Result.Echo (2) :=
+              Echo ("Brake perc (%)", Image_Value (Brake_Pct));
+            Result.Echo (3) :=
+              Echo ("Max speed", Image_Value (Max_Speed));
          when others =>
             null;
       end case;
@@ -392,6 +404,17 @@ package body DMI_Windows is
    begin
       if Depth > 0 then
          Depth := Depth - 1;
+         -- 10.6.1.1 / 10.6.1.3 e: leaving the validation window for a
+         -- reason other than accepting 'Yes' stops the data entry /
+         -- validation process of the topic; the data entry window that
+         -- becomes displayed again starts a new one, with the stored
+         -- values proposed (11.7.1.4). The engine holds one process at
+         -- a time, which is what the window stack needs here.
+         if Depth > 0
+           and then Kind_Of (Stack (Depth)) in Data_Entry | Validation
+         then
+            DMI_Data_Entry.Open (Entry_Def (Stack (Depth)));
+         end if;
       end if;
    end Pop;
 

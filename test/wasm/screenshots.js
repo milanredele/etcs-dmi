@@ -74,7 +74,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     for (const k of [[385, 240], [385, 290], [487, 390]]) await press(...k); // 140
     await press(...FIELD(3));
     await press(167, 440);                      // entry complete? -> validation
-    await press(410, 390);                      // Yes -> TRN
+    await press(487, 40);                       // validation: accept 'Yes'
     for (const k of [[385, 290], [385, 340], [385, 240], [385, 240]]) await press(...k); // 4711
     await press(...ENTER);                      // -> Main window
     await press(410, 90);                       // Start -> default window, mission starts

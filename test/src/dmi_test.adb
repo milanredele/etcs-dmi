@@ -1703,7 +1703,8 @@ procedure DMI_Test is
       Step;
       Check_Frame ("startup_validation");
 
-      Press (410, 390);       -- Yes -> D6: TRN not valid -> S3-3
+      Press (487, 40);        -- accept the proposed 'Yes' (Table 29)
+                              -- -> D6: TRN not valid -> S3-3
       Step;
       Check_Frame ("startup_trn");
 
@@ -2019,7 +2020,7 @@ procedure DMI_Test is
       Press (385, 240); Press (385, 290); Press (487, 390);
       Press (589, 140);                     -- maximum speed 140
       Press (167, 440);                     -- entry complete? Yes
-      Press (410, 390);                     -- Yes -> TRN window
+      Press (487, 40);                      -- validation 'Yes' -> TRN
       Press (385, 240); Press (487, 90);   -- TRN 1, Enter -> Main window
       Pump_To_EVC;
       Check (EVC_Core.Mode = EVC_Core.SB, "no mission start without Start");
@@ -3016,6 +3017,68 @@ procedure DMI_Test is
       Drain_Outbox;
    end Scenario_Entry_Mechanics;
 
+   ---------------------------------------------------------------------
+   -- Data validation window (audit WIN-7: 10.4.1.1 to 10.4.1.5, Table
+   -- 29, 10.3.5.18, 11.4.1)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Validation_Window is
+      use type DMI_Windows.Window_ID_T;
+      Key_No  : constant := 385;   -- Table 29 / Table 25 key 7, y 300
+      Key_Yes : constant := 487;   -- key 8
+      Field_Y : constant := 40;    -- Table 29: the input field at y 0
+
+      function Value_Of return Wide_String is
+         V : constant DMI_Driver_Data.Text_Value_T := DMI_Data_Entry.Value (1);
+      begin
+         return V.Text (1 .. V.Length);
+      end Value_Of;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+
+      Press (385, 240); Press (487, 90);      -- Driver ID 1
+      Press (410, 90);                        -- Level 1 -> Main window
+      Press (410, 140);                       -- Train data
+      Press (385, 240); Press (589, 40);      -- length 1
+      Press (385, 240); Press (589, 90);      -- brake percentage 1
+      Press (385, 240); Press (589, 140);     -- maximum speed 1
+      Press (167, 440);                       -- entry complete? -> validation
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data_Validation,
+             "the validation window is open");
+
+      -- Figure 105: the input field proposes 'Yes'
+      Check (Value_Of = "Yes", "the input field proposes 'Yes'");
+      Step;
+      Check_Frame ("validation_window");
+
+      -- 10.3.5.18: key 7 is 'No', key 8 is 'Yes'; 10.4.1.2 / 10.3.1.22:
+      -- the choice has to be accepted on the data field
+      Press (Key_No, 340);
+      Check (Value_Of = "No", "the 'No' key writes the choice in the field");
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data_Validation,
+             "a key press alone does not leave the validation window");
+      Press (Key_Yes, Field_Y);               -- the data field is [Enter]
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "'No' accepted returns to the train data window (Table 50 S3-2)");
+      Check (not DMI_Driver_Data.Train_Data_Entered,
+             "'No' validates nothing");
+
+      -- and once more with the proposed 'Yes'
+      Press (167, 440);                       -- entry complete? -> validation
+      Press (Key_Yes, Field_Y);
+      Check (DMI_Driver_Data.Train_Data_Entered, "'Yes' validates the data");
+      Drain_Sounds;
+      Drain_Outbox;
+   end Scenario_Validation_Window;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -3059,6 +3122,7 @@ begin
    Scenario_Text_Wrap;
    Scenario_Ack_And_Windows;
    Scenario_Entry_Mechanics;
+   Scenario_Validation_Window;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

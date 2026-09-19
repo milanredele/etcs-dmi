@@ -106,6 +106,12 @@ package body DMI_Data_Entry is
 
    function Window_Title (Text : Wide_String) return Label_T is (Pad (Text));
 
+   function Echo
+     (Label    : Wide_String;
+      Value    : DMI_Driver_Data.Text_Value_T;
+      Accepted : Boolean := True) return Echo_Item_T is
+     ((Label => Pad (Label), Value => Value, Accepted => Accepted));
+
    function Field
      (Label    : Wide_String;
       Max_Len  : Natural;
@@ -175,9 +181,7 @@ package body DMI_Data_Entry is
    ---------------------------------------------------------------------
 
    --  10.3.5.3 / 10.4.1.1: the window covers the A/B/C/D/E/F/G area
-   --  (the validation window still uses the half grid array; it moves to
-   --  the total grid array of Table 29 with audit WIN-7)
-   function On_Total_Grid return Boolean is (Def.Layout = Total_Grid);
+   function On_Total_Grid return Boolean is (Def.Layout /= Half_Grid);
 
    function Covered_Area return Display.Area_T is
      (if On_Total_Grid then (Grid_Origin, Grid_Width, Grid_Height)
@@ -219,11 +223,6 @@ package body DMI_Data_Entry is
       then (Column_Origin + (0, Field_Top (Index)), Column_Width, 50)
       else Data_Area (Index));
 
-   --  Validation window: [Yes] and [No] side by side above the close row
-   --  (the layout of Table 29 arrives with audit WIN-7)
-   function Validation_Button_Area (Index : Positive) return Area_T is
-     ((Column_Origin + ((Index - 1) * 153, 350), 153, 50));
-
    --  Table 24: the question and the 'Yes' button in the A/B/C/E column
    Question_Area : constant Area_T := (Grid_Origin + (0, 350), 334, 50);
    Yes_Area      : constant Area_T := (Grid_Origin + (0, 400), 334, 50);
@@ -240,31 +239,22 @@ package body DMI_Data_Entry is
       return Def.Field_Count > 0;
    end All_Fields_Have_Values;
 
-   function Button_Count return Natural is
-     (case Def.Layout is
-         when Half_Grid | Total_Grid => Button_Total,
-         when Validation             => 2);
+   function Button_Count return Natural is (Button_Total);
 
    function Button_Area (Index : Positive) return Display.Area_T is
    begin
-      case Def.Layout is
-         when Half_Grid | Total_Grid =>
-            if Index in Key_First .. Key_Last then
-               return Key_Area (Index);
-            elsif Index in Label_First .. Label_First + Max_Fields - 1 then
-               return Label_Area (Index - Label_First + 1);
-            elsif Index in Data_First .. Data_First + Max_Fields - 1 then
-               return Data_Area (Index - Data_First + 1);
-            elsif Index = Yes_Button then
-               --  10.3.5.8: the sensitive area of 'Yes' covers the
-               --  question as well
-               return (Question_Area.Position, 334, 100);
-            end if;
-         when Validation =>
-            if Index in 1 .. 2 then
-               return ((Column_Origin + ((Index - 1) * 153, 350), 153, 50));
-            end if;
-      end case;
+      if Index in Key_First .. Key_Last then
+         --  Table 29 places the 'No' and 'Yes' keys of the validation
+         --  window where Table 25 places the keys 7 and 8 (10.3.5.18)
+         return Key_Area (Index);
+      elsif Index in Label_First .. Label_First + Max_Fields - 1 then
+         return Label_Area (Index - Label_First + 1);
+      elsif Index in Data_First .. Data_First + Max_Fields - 1 then
+         return Data_Area (Index - Data_First + 1);
+      elsif Index = Yes_Button then
+         --  10.3.5.8: the sensitive area of 'Yes' covers the question
+         return (Question_Area.Position, 334, 100);
+      end if;
       return ((0, 0), 0, 0);
    end Button_Area;
 
@@ -279,42 +269,30 @@ package body DMI_Data_Entry is
 
    function Button_Enabled (Index : Positive) return Boolean is
    begin
-      case Def.Layout is
-         when Half_Grid | Total_Grid =>
-            if Index in Key_First .. Key_Last then
-               return Key_Enabled (Index);
-            elsif Index in Label_First .. Label_First + Max_Fields - 1 then
-               --  10.3.1.26: the label part selects the input field;
-               --  a single input field has no label part (10.3.1.7)
-               return Has_Label_Area
-                 and then Index - Label_First + 1 <= Def.Field_Count;
-            elsif Index in Data_First .. Data_First + Max_Fields - 1 then
-               return Index - Data_First + 1 <= Def.Field_Count;
-            elsif Index = Yes_Button then
-               --  Table 24 objects exist on the total grid array only
-               return Def.Layout = Total_Grid
-                 and then All_Fields_Have_Values;
-            else
-               return False;
-            end if;
-         when Validation =>
-            return Index in 1 .. 2;
-      end case;
+      if Index in Key_First .. Key_Last then
+         return Key_Enabled (Index);
+      elsif Index in Label_First .. Label_First + Max_Fields - 1 then
+         --  10.3.1.26: the label part selects the input field; a single
+         --  input field has no label part (10.3.1.7)
+         return Has_Label_Area
+           and then Index - Label_First + 1 <= Def.Field_Count;
+      elsif Index in Data_First .. Data_First + Max_Fields - 1 then
+         return Index - Data_First + 1 <= Def.Field_Count;
+      elsif Index = Yes_Button then
+         --  Table 24 objects exist on the total grid array only
+         return Def.Layout = Total_Grid and then All_Fields_Have_Values;
+      end if;
+      return False;
    end Button_Enabled;
 
    function Button_Kind (Index : Positive) return DMI_Buttons.Kind_T is
    begin
-      case Def.Layout is
-         when Half_Grid | Total_Grid =>
-            --  10.3.5.13: the buttons of the keyboard are down-type
-            --  buttons; 5.3.2.7.2 gives [Delete] the repeat function,
-            --  which 5.3.2.6.5 leaves optional for the other keys
-            if Index in Key_First .. Key_Last then
-               return DMI_Buttons.Down_Type;
-            end if;
-         when Validation =>
-            null;
-      end case;
+      --  10.3.5.13: the buttons of the keyboard are down-type buttons;
+      --  5.3.2.7.2 gives [Delete] the repeat function, which 5.3.2.6.5
+      --  leaves optional for the other keys
+      if Index in Key_First .. Key_Last then
+         return DMI_Buttons.Down_Type;
+      end if;
       --  10.3.5.11: the 'Yes' button is an up-type button; 10.3.1.26:
       --  an input field behaves like an up-type button; 5.3.2.7.3: the
       --  [Enter] button is up-type (the delay-type of an operational
@@ -342,7 +320,9 @@ package body DMI_Data_Entry is
       Fields (Current).Has_Value := True;
       Fields (Current).Editing := False;
       Fields (Current).Accepted := True;
-      if Def.Layout = Half_Grid then
+      if Def.Layout /= Total_Grid then
+         --  10.6.1.3 a for the validation window; a half grid array
+         --  window has no 'Yes' button either
          Completed := True;
       elsif Def.Field_Count > 0 then
          --  10.3.1.25: the list of input fields is circular
@@ -396,17 +376,29 @@ package body DMI_Data_Entry is
          S.Editing := True;
          S.Has_Value := False;
       end if;
-      case Index is
-         when 1 .. 9 =>
-            Append (Wide_Character'Val (Wide_Character'Pos ('0') + Index));
-         when Key_Zero =>
-            Append ('0');
-         when Key_Delete =>
-            if S.Value.Length > 0 then
-               S.Value.Length := S.Value.Length - 1;
+      case F.Keyboard is
+         when Numeric =>
+            case Index is
+               when 1 .. 9 =>
+                  Append
+                    (Wide_Character'Val (Wide_Character'Pos ('0') + Index));
+               when Key_Zero =>
+                  Append ('0');
+               when Key_Delete =>
+                  if S.Value.Length > 0 then
+                     S.Value.Length := S.Value.Length - 1;
+                  end if;
+               when others =>
+                  null;
+            end case;
+         when Yes_No =>
+            --  10.3.5.18: a key of a dedicated keyboard carries the
+            --  whole predefined choice, not one character
+            if Index = Key_No then
+               Set_Text (S.Value, "No");
+            elsif Index = Key_Yes then
+               Set_Text (S.Value, "Yes");
             end if;
-         when others =>
-            null;
       end case;
       --  10.3.2.4: the cursor jumps to the next position as soon as the
       --  entry is echoed
@@ -418,35 +410,23 @@ package body DMI_Data_Entry is
       if not Open_Flag or else not Button_Enabled (Index) then
          return;
       end if;
-      case Def.Layout is
-         when Half_Grid | Total_Grid =>
-            if Index in Key_First .. Key_Last then
-               Key_Pressed (Index);
-            elsif Index in Label_First .. Label_First + Max_Fields - 1 then
-               Select_Field (Index - Label_First + 1);
-            elsif Index in Data_First .. Data_First + Max_Fields - 1 then
-               --  10.3.1.22: the [Enter] button of the selected input
-               --  field is its data field; the data part of another
-               --  input field selects it (10.3.1.26)
-               if Index - Data_First + 1 = Current then
-                  Accept_Value;
-               else
-                  Select_Field (Index - Data_First + 1);
-               end if;
-            elsif Index = Yes_Button then
-               --  10.3.5.7: the driver confirms the data entry complete
-               Completed := True;
-            end if;
-         when Validation =>
-            --  10.4.1.2: the 'No'/'Yes' choice of the single input field
-            if Index = 1 then
-               Set_Text (Fields (1).Value, "Yes");
-               Completed := True;
-            elsif Index = 2 then
-               Set_Text (Fields (1).Value, "No");
-               Completed := True;
-            end if;
-      end case;
+      if Index in Key_First .. Key_Last then
+         Key_Pressed (Index);
+      elsif Index in Label_First .. Label_First + Max_Fields - 1 then
+         Select_Field (Index - Label_First + 1);
+      elsif Index in Data_First .. Data_First + Max_Fields - 1 then
+         --  10.3.1.22: the [Enter] button of the selected input field is
+         --  its data field; the data part of another input field selects
+         --  it (10.3.1.26)
+         if Index - Data_First + 1 = Current then
+            Accept_Value;
+         else
+            Select_Field (Index - Data_First + 1);
+         end if;
+      elsif Index = Yes_Button then
+         --  10.3.5.7: the driver confirms the data entry complete
+         Completed := True;
+      end if;
    end Press;
 
    ---------------------------------------------------------------------
@@ -597,35 +577,46 @@ package body DMI_Data_Entry is
          The_Alignment => Draw.Center);
    end Draw_Entry_Complete;
 
-   --  10.3.3: the echo texts of the input fields, in the A/B/C/E area
-   procedure Draw_Echo_Texts is
+   --  10.3.3: the echo texts of the input fields, in the A/B/C/E area.
+   --  10.3.3.7 / 10.3.3.9: right and left of the X position 204 with an
+   --  indent of 5; 10.3.3.8 / 10.3.3.10: the first one 112 cells below
+   --  the top of the area; 5.1.3.5: line spacing 2 x 12 cells.
+   procedure Draw_Echo_Line (Line     : Positive;
+                             Label    : Wide_String;
+                             Val      : Wide_String;
+                             Accepted : Boolean) is
       use General_Parameters;
-      --  10.3.3.7 / 10.3.3.9: right and left of the X position 204 with
-      --  an indent of 5; 10.3.3.8 / 10.3.3.10: the first one 112 cells
-      --  below the top of the area; 5.1.3.5: line spacing 2 x 12 cells
-      First_Y : constant := 112;
-      Step_Y  : constant := 24;
+      Y : constant Natural := Grid_Origin.Y + 112 + (Line - 1) * 24;
+      --  10.3.3.5: white once the driver accepted the value
+      Ink : constant Color := (if Accepted then WHITE else GREY);
    begin
-      for I in 1 .. Def.Field_Count loop
-         declare
-            Y : constant Natural :=
-              Grid_Origin.Y + First_Y + (I - 1) * Step_Y;
-            --  10.3.3.5: white once the driver accepted the value
-            Ink : constant Color :=
-              (if Fields (I).Accepted then WHITE else GREY);
-         begin
-            Draw.Draw_String
-              (Pen_X => 204 - 5, Pen_Y => Y,
-               The_String => Trim (Def.Fields (I).Label),
-               The_Size => 12, The_Color => Ink,
-               The_Alignment => Draw.Right);
-            Draw.Draw_String
-              (Pen_X => 204 + 5, Pen_Y => Y,
-               The_String =>
-                 Fields (I).Value.Text (1 .. Fields (I).Value.Length),
-               The_Size => 12, The_Color => Ink);
-         end;
-      end loop;
+      Draw.Draw_String
+        (Pen_X => 204 - 5, Pen_Y => Y,
+         The_String => Label, The_Size => 12, The_Color => Ink,
+         The_Alignment => Draw.Right);
+      Draw.Draw_String
+        (Pen_X => 204 + 5, Pen_Y => Y,
+         The_String => Val, The_Size => 12, The_Color => Ink);
+   end Draw_Echo_Line;
+
+   procedure Draw_Echo_Texts is
+   begin
+      if Def.Echo_Count > 0 then
+         --  10.4.1.5: the echo texts of the topic being validated
+         for I in 1 .. Def.Echo_Count loop
+            Draw_Echo_Line
+              (I, Trim (Def.Echo (I).Label),
+               Def.Echo (I).Value.Text (1 .. Def.Echo (I).Value.Length),
+               Def.Echo (I).Accepted);
+         end loop;
+      else
+         for I in 1 .. Def.Field_Count loop
+            Draw_Echo_Line
+              (I, Trim (Def.Fields (I).Label),
+               Fields (I).Value.Text (1 .. Fields (I).Value.Length),
+               Fields (I).Accepted);
+         end loop;
+      end if;
    end Draw_Echo_Texts;
 
    procedure Draw_Data_Entry is
@@ -636,55 +627,39 @@ package body DMI_Data_Entry is
 
       for Key in Key_First .. Key_Last loop
          declare
+            --  10.3.5.15: '1' to '9', the [delete], '0' and the disabled
+            --  '.'; 10.3.5.18: the 'No' and 'Yes' keys of a dedicated
+            --  keyboard limited to that choice
             Label : constant Wide_String :=
-              (case Key is
-                  when 1 .. 9     => Natural'Wide_Image (Key) (2 .. 2) & "",
-                  when Key_Zero   => "0",
-                  when Key_Delete => "Del",
-                  when Key_Dot    => ".",
-                  when others     => "");
+              (if Def.Fields (Current).Keyboard = Yes_No then
+                 (case Key is
+                     when Key_No  => "No",
+                     when Key_Yes => "Yes",
+                     when others  => "")
+               else
+                 (case Key is
+                     when 1 .. 9     => Natural'Wide_Image (Key) (2 .. 2) & "",
+                     when Key_Zero   => "0",
+                     when Key_Delete => "Del",
+                     when Key_Dot    => ".",
+                     when others     => ""));
          begin
-            Draw_Labelled_Button (Key_Area (Key), Label,
-                                  Enabled => Key_Enabled (Key),
-                                  Is_Down => Pressed (Key));
+            if Label /= "" then
+               Draw_Labelled_Button (Key_Area (Key), Label,
+                                     Enabled => Key_Enabled (Key),
+                                     Is_Down => Pressed (Key));
+            end if;
          end;
       end loop;
 
-      if Def.Layout = Total_Grid then
-         --  10.3.5.6: the values are echoed on the A/B/C/E area
+      --  10.3.5.6 / 10.4.1.5: the values are echoed on the A/B/C/E area
+      if On_Total_Grid then
          Draw_Echo_Texts;
+      end if;
+      if Def.Layout = Total_Grid then
          Draw_Entry_Complete;
       end if;
    end Draw_Data_Entry;
-
-   procedure Draw_Text_Line (Line : Natural; Text : Wide_String) is
-   begin
-      Draw.Draw_String
-        (Pen_X => Column_Origin.X + 6,
-         Pen_Y => Column_Origin.Y + 50 + Line * 24,
-         The_String => Text,
-         The_Size => 12,
-         The_Color => General_Parameters.GREY);
-   end Draw_Text_Line;
-
-   function Num_Image (N : Natural) return Wide_String is
-      Img : constant Wide_String := Natural'Wide_Image (N);
-   begin
-      return Img (2 .. Img'Last);
-   end Num_Image;
-
-   procedure Draw_Validation is
-      use DMI_Driver_Data;
-   begin
-      --  11.4.1: echo of the entered values with [Yes] / [No]
-      Draw_Text_Line (1, "Length: " & Num_Image (Train_Length) & " m");
-      Draw_Text_Line (2, "Brake percentage: " & Num_Image (Brake_Pct) & " %");
-      Draw_Text_Line (3, "Max speed: " & Num_Image (Max_Speed) & " km/h");
-      Draw_Labelled_Button (Validation_Button_Area (1), "Yes",
-                            True, Pressed (1));
-      Draw_Labelled_Button (Validation_Button_Area (2), "No",
-                            True, Pressed (2));
-   end Draw_Validation;
 
    procedure Render is
    begin
@@ -692,10 +667,7 @@ package body DMI_Data_Entry is
          return;
       end if;
       Draw_Title;
-      case Def.Layout is
-         when Half_Grid | Total_Grid => Draw_Data_Entry;
-         when Validation             => Draw_Validation;
-      end case;
+      Draw_Data_Entry;
    end Render;
 
 end DMI_Data_Entry;
