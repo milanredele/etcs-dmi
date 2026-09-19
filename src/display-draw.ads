@@ -26,11 +26,12 @@ package Display.Draw is
    -- Pen_X, Pen_Y: for left alignment the pen position of the first
    -- character; for right alignment the pen position after the last
    -- character; for center alignment the middle of the string
-   -- Total: never raises, whatever The_String holds. A character the
-   -- font of The_Size has no glyph for (FreeSans_12 covers ' ' .. 'z',
-   -- the other sizes the digits only) is drawn as a box outline of the
-   -- cap height; cells outside the screen are not drawn; a size without
-   -- a font (11, 13 .. 15) uses the next smaller font.
+   -- Total: never raises, whatever The_String holds. Every font covers
+   -- the printable part of ISO 8859-1 (16#20# .. 16#7E# and
+   -- 16#A0# .. 16#FF#, the characters a text message can hold, X_TEXT);
+   -- a character outside it, the C1 controls included, is drawn as a box
+   -- outline of the cap height; cells outside the screen are not drawn;
+   -- a size without a font (11, 13 .. 15) uses the next smaller font.
    procedure Draw_String (Pen_X : Width_T;
                           Pen_Y : Height_T;
                           The_String : Wide_String;
