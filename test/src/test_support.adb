@@ -9,11 +9,16 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Display.Screen.Files;
 with DMI_Core;
 with DMI_Protocol; use DMI_Protocol;
+with EVC_Supervision;
 with Interfaces; use Interfaces;
+with Supplementary_Driving_Info;
 
 package body Test_Support is
 
    Failures : Natural := 0;
+
+   -- the wrapper's EVC: supervision status it last sent
+   EVC_Status : EVC_Supervision.Status_T := EVC_Supervision.NoS;
    Checks   : Natural := 0;
 
    Golden_Dir : constant String := "test/golden/";
@@ -41,8 +46,11 @@ package body Test_Support is
       Dial_Range      : Natural;
       Vrelease_Exists : Boolean;
       CSM_Target_Info : Boolean := False;
-      Brake_Commanded : Boolean := False)
+      Brake_Commanded : Boolean := False;
+      Status          : Integer := -1;
+      MRDT            : Natural := 0)
    is
+      use type Supplementary_Driving_Info.Mode_T;
       Payload : Stream_Element_Array (1 .. Speed_State_Length);
       Offset  : Stream_Element_Offset := Payload'First;
       Flags   : Unsigned_8 := 0;
@@ -53,8 +61,20 @@ package body Test_Support is
       if CSM_Target_Info then
          Flags := Flags or 2;
       end if;
-      if Brake_Commanded then
-         Flags := Flags or 4;
+      if Status in EVC_Supervision.Status_T then
+         EVC_Status := Status;
+      else
+         EVC_Status := EVC_Supervision.Status
+           (Monitoring      => Natural'Min (Monitoring, 2),
+            Speed           => V_Cur,
+            V_Perm          => V_Perm,
+            V_Warning       => V_Wsl,
+            V_SBI           => V_Sbi,
+            V_Release       => V_Release,
+            Brake_Commanded => Brake_Commanded,
+            In_AD           => Supplementary_Driving_Info.Mode
+                                 = Supplementary_Driving_Info.M_AD,
+            Previous        => EVC_Status);
       end if;
       Put_U16 (Payload, Offset, Unsigned_16 (V_Cur));
       Put_U16 (Payload, Offset, Unsigned_16 (V_Perm));
@@ -66,15 +86,24 @@ package body Test_Support is
       Put_U8 (Payload, Offset, Unsigned_8 (Monitoring));
       Put_U8 (Payload, Offset, Unsigned_8 (Dial_Range));
       Put_U8 (Payload, Offset, Flags);
+      Put_U8 (Payload, Offset, Unsigned_8 (EVC_Status));
+      Put_U8 (Payload, Offset, Unsigned_8 (MRDT mod 256));
       DMI_Core.Handle_Message (MSG_SPEED_STATE, Payload);
    end Send_Speed_State;
+
+   procedure Reset_EVC_Model is
+   begin
+      EVC_Status := EVC_Supervision.NoS;
+   end Reset_EVC_Model;
 
    procedure Send_Speed_State_Raw
      (V_Cur, V_Perm, V_Target, V_Release, V_Sbi, V_Wsl : Interfaces.Unsigned_16;
       D_Target   : Interfaces.Unsigned_32;
       Monitoring : Interfaces.Unsigned_8;
       Dial_Range : Interfaces.Unsigned_8;
-      Flags      : Interfaces.Unsigned_8)
+      Flags      : Interfaces.Unsigned_8;
+      Status     : Interfaces.Unsigned_8 := 0;
+      MRDT       : Interfaces.Unsigned_8 := 0)
    is
       Payload : Stream_Element_Array (1 .. Speed_State_Length);
       Offset  : Stream_Element_Offset := Payload'First;
@@ -89,6 +118,8 @@ package body Test_Support is
       Put_U8 (Payload, Offset, Monitoring);
       Put_U8 (Payload, Offset, Dial_Range);
       Put_U8 (Payload, Offset, Flags);
+      Put_U8 (Payload, Offset, Status);
+      Put_U8 (Payload, Offset, MRDT);
       DMI_Core.Handle_Message (MSG_SPEED_STATE, Payload);
    end Send_Speed_State_Raw;
 

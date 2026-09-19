@@ -19,7 +19,14 @@ package Test_Support is
       Dial_Range      : Natural;  -- 0..3
       Vrelease_Exists : Boolean;
       CSM_Target_Info : Boolean := False;
-      Brake_Commanded : Boolean := False);
+      Brake_Commanded : Boolean := False;
+      Status          : Integer := -1;  -- 0 NoS .. 4 IntS; -1: see below
+      MRDT            : Natural := 0);
+   -- With Status = -1 the wrapper acts as the EVC: it determines the status
+   -- from the speeds, the brake command and its previous result
+   -- (EVC_Supervision). Reset_EVC_Model forgets the previous result.
+
+   procedure Reset_EVC_Model;
 
    -- The same message with the fields exactly as they travel on the wire,
    -- for values the EVC can send but the wrapper above cannot express
@@ -29,7 +36,9 @@ package Test_Support is
       D_Target   : Interfaces.Unsigned_32;
       Monitoring : Interfaces.Unsigned_8;
       Dial_Range : Interfaces.Unsigned_8;
-      Flags      : Interfaces.Unsigned_8);
+      Flags      : Interfaces.Unsigned_8;
+      Status     : Interfaces.Unsigned_8 := 0;
+      MRDT       : Interfaces.Unsigned_8 := 0);
 
    procedure Send_Mode_Level
      (Mode          : Natural;           -- Mode_T'Pos

@@ -111,6 +111,8 @@ procedure DMI_Fuzz is
          U8 (Pick (0, 2));
          U8 (Pick (0, 3));
          U8 (Pick (0, 7));
+         U8 (Pick (0, 4));   -- status
+         U8 (Pick (0, 255)); -- mrdt
       elsif The_Type = MSG_MODE_LEVEL then
          U8 (Pick (0, 17));
          U8 (Pick (0, 5));

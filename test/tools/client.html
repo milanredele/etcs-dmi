@@ -65,7 +65,16 @@
           </select>
         </label>
         <label>CSM target info <input type="checkbox" id="csm_ti"></label>
+        <label>Status:
+          <select id="status">
+            <option value="-1" selected>auto (from the speeds)</option>
+            <option value="0">NoS</option><option value="1">IndS</option>
+            <option value="2">OvS</option><option value="3">WaS</option>
+            <option value="4">IntS</option>
+          </select>
+        </label>
         <label>Brake commanded <input type="checkbox" id="brake"></label>
+        <label>MRDT: <input type="number" id="mrdt" min="0" max="255" value="1"></label>
       </div>
       <div class="row">
         <label>Level:
@@ -419,8 +428,32 @@
       function val(id) { return parseInt(document.getElementById(id).value); }
       function checked(id) { return document.getElementById(id).checked; }
 
+      // The supervision status is the EVC's (the DMI does not derive it):
+      // "auto" does what sim/evc_supervision.adb does with the panel's limits
+      let lastManualStatus = 0;
+      function manualStatus(vperm) {
+        const chosen = val('status');
+        if (chosen >= 0) { lastManualStatus = chosen; return chosen; }
+        const v = val('speed'), mon = val('monitoring'), brake = checked('brake');
+        const held = lastManualStatus === 4 && brake;
+        let st;
+        if (mon === 2) {
+          st = (v > val('vrelease') || held) ? 4 : 1;
+        } else if (v > Math.min(vperm + 15, 400) || held) {
+          st = 4;
+        } else if (v > Math.min(vperm + 5, 400) || (lastManualStatus === 3 && v > vperm)) {
+          st = 3;
+        } else if (v > vperm) {
+          st = 2;
+        } else {
+          st = mon === 0 ? 0 : 1;
+        }
+        lastManualStatus = st;
+        return st;
+      }
+
       function sendSpeedState() {
-        const { buf, dv } = makeMessage(MSG_SPEED_STATE, 19);
+        const { buf, dv } = makeMessage(MSG_SPEED_STATE, 21);
         const vperm = val('vperm');
         let o = HEADER_LENGTH;
         dv.setUint16(o, val('speed'), true); o += 2;
@@ -432,8 +465,9 @@
         dv.setUint32(o, val('dist'), true); o += 4;
         dv.setUint8(o, val('monitoring')); o += 1;
         dv.setUint8(o, val('range')); o += 1;
-        dv.setUint8(o, (checked('vrelease_exists') ? 1 : 0) | (checked('csm_ti') ? 2 : 0)
-          | (checked('brake') ? 4 : 0));
+        dv.setUint8(o, (checked('vrelease_exists') ? 1 : 0) | (checked('csm_ti') ? 2 : 0)); o += 1;
+        dv.setUint8(o, manualStatus(vperm)); o += 1;
+        dv.setUint8(o, val('mrdt') & 0xFF);
         socket.send(buf);
       }
 

@@ -3,6 +3,7 @@
 
 pragma Ada_2012;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
+with EVC_Supervision;
 with EVC_Track; use EVC_Track;
 with EVC_Train;
 with Interfaces; use Interfaces;
@@ -17,6 +18,13 @@ package body EVC_Core is
    V_Target_KMH   : Natural := 0;
    D_Target_M     : Natural := 0;
 
+   -- Supervision status sent to the DMI, and the identity of the most
+   -- relevant displayed target (a counter: a new target location is a
+   -- new MRDT, DMI 7.4.1.1)
+   The_Status     : EVC_Supervision.Status_T := EVC_Supervision.NoS;
+   MRDT_At_M      : Natural := 0;
+   MRDT_ID        : Unsigned_8 := 0;
+
    Level_Pos      : Natural := 4; -- Level_T'Pos: L1
    Level_Ack_Sent : Boolean := False;
    Level_Ack_Wait : Boolean := False;
@@ -26,8 +34,11 @@ package body EVC_Core is
    TAF_Requested  : Boolean := False;
    TAF_Answered   : Boolean := False;
 
-   Text_FS_Sent   : Boolean := False;
-   Text_LX_Sent   : Boolean := False;
+   Text_FS_ID      : constant := 1;
+   Train_Length_M  : constant := 200;
+   Text_FS_Sent    : Boolean := False;
+   Text_FS_Removed : Boolean := False;
+   Text_FS_From_M  : Natural := 0;
 
    Clock_S        : Float := 8.0 * 3600.0; -- 08:00:00 local time
 
@@ -61,23 +72,34 @@ package body EVC_Core is
       Flags   : Unsigned_8 := 0;
       V_Rel   : constant Natural :=
         (if The_Monitoring = 2 then Release_Speed else 0);
+      V_SBI_KMH     : constant Natural := Natural'Min (V_Perm_KMH + 10, 400);
+      V_Warning_KMH : constant Natural := Natural'Min (V_Perm_KMH + 5, 400);
    begin
       if The_Monitoring = 2 then
          Flags := Flags or 1; -- vrelease exists
       end if;
-      if EVC_Train.Brake_Commanded then
-         Flags := Flags or 4;
-      end if;
+      The_Status := EVC_Supervision.Status
+        (Monitoring      => The_Monitoring,
+         Speed           => EVC_Train.Speed_KMH,
+         V_Perm          => V_Perm_KMH,
+         V_Warning       => V_Warning_KMH,
+         V_SBI           => V_SBI_KMH,
+         V_Release       => V_Rel,
+         Brake_Commanded => EVC_Train.Brake_Commanded,
+         In_AD           => False, -- the simulator has no ATO
+         Previous        => The_Status);
       Put_U16 (Payload, Offset, Unsigned_16 (EVC_Train.Speed_KMH));
       Put_U16 (Payload, Offset, Unsigned_16 (V_Perm_KMH));
       Put_U16 (Payload, Offset, Unsigned_16 (V_Target_KMH));
       Put_U16 (Payload, Offset, Unsigned_16 (V_Rel));
-      Put_U16 (Payload, Offset, Unsigned_16 (Natural'Min (V_Perm_KMH + 10, 400)));
-      Put_U16 (Payload, Offset, Unsigned_16 (Natural'Min (V_Perm_KMH + 5, 400)));
+      Put_U16 (Payload, Offset, Unsigned_16 (V_SBI_KMH));
+      Put_U16 (Payload, Offset, Unsigned_16 (V_Warning_KMH));
       Put_U32 (Payload, Offset, Unsigned_32 (D_Target_M));
       Put_U8 (Payload, Offset, Unsigned_8 (The_Monitoring));
       Put_U8 (Payload, Offset, 1); -- 180 km/h dial
       Put_U8 (Payload, Offset, Flags);
+      Put_U8 (Payload, Offset, Unsigned_8 (The_Status));
+      Put_U8 (Payload, Offset, MRDT_ID);
       Emit (MSG_SPEED_STATE, Payload);
    end Send_Speed_State;
 
@@ -291,6 +313,14 @@ package body EVC_Core is
       Emit (MSG_TEXT, Payload);
    end Send_Text;
 
+   procedure Send_Text_Remove (Emit : Sink_T; ID : Natural) is
+      Payload : Stream_Element_Array (1 .. Text_Remove_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U16 (Payload, Offset, Unsigned_16 (ID));
+      Emit (MSG_TEXT_REMOVE, Payload);
+   end Send_Text_Remove;
+
    ---------------------------------------------------------------------
    -- Visualization messages for the browser (MSG_TRACK_LAYOUT is
    -- resent every couple of seconds so late joining browsers catch up)
@@ -391,6 +421,10 @@ package body EVC_Core is
 
       V_Perm_KMH := Natural'Min (MS_To_KMH (Best_V), MRSP_Here);
       V_Target_KMH := Best_TV;
+      if Best_TD /= MRDT_At_M then
+         MRDT_At_M := Best_TD;
+         MRDT_ID := MRDT_ID + 1;
+      end if;
       D_Target_M := (if Best_TD > Pos_N then Best_TD - Pos_N else 0);
 
       -- monitoring type; RSM once the braking curve to the EOA is at or
@@ -449,13 +483,20 @@ package body EVC_Core is
          if Position >= TAF_M and then not TAF_Answered then
             TAF_Requested := True;
          end if;
+         -- SUBSET-026 4.4.9.1.4 / DMI Table 69: "Entering FS" is shown
+         -- until SSP and gradient are known for the whole length of the
+         -- train, here: until the train has run its own length in FS.
+         -- (The level crossing needs no text: DMI 8.2.3.8.4 asks for the
+         -- symbol LX01 only.)
          if not Text_FS_Sent then
-            Send_Text (Emit, 1, "Entering FS", True, False);
+            Send_Text (Emit, Text_FS_ID, "Entering FS", True, False);
             Text_FS_Sent := True;
-         end if;
-         if Position >= LX_From_M and then not Text_LX_Sent then
-            Send_Text (Emit, 2, "Level crossing not protected", True, False);
-            Text_LX_Sent := True;
+            Text_FS_From_M := Position;
+         elsif not Text_FS_Removed
+           and then Position >= Text_FS_From_M + Train_Length_M
+         then
+            Send_Text_Remove (Emit, Text_FS_ID);
+            Text_FS_Removed := True;
          end if;
       end if;
 
@@ -510,6 +551,9 @@ package body EVC_Core is
       V_Perm_KMH := 0;
       V_Target_KMH := 0;
       D_Target_M := 0;
+      The_Status := EVC_Supervision.NoS;
+      MRDT_At_M := 0;
+      MRDT_ID := 0;
       Level_Pos := 4;
       Level_Ack_Sent := False;
       Level_Ack_Wait := False;
@@ -517,7 +561,8 @@ package body EVC_Core is
       TAF_Requested := False;
       TAF_Answered := False;
       Text_FS_Sent := False;
-      Text_LX_Sent := False;
+      Text_FS_Removed := False;
+      Text_FS_From_M := 0;
       Clock_S := 8.0 * 3600.0;
       EVC_Train.Reset;
    end Reset;

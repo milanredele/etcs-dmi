@@ -27,9 +27,13 @@ package DMI_Protocol is
    --  v_cur u16, v_perm u16, v_target u16, v_release u16, v_sbi u16,
    --  v_wsl u16, d_target u32, monitoring u8 (0 CSM / 1 TSM / 2 RSM),
    --  dial_range u8 (0..3 -> 140/180/250/400),
-   --  flags u8 (bit0 vrelease_exists, bit1 csm_target_info,
-   --            bit2 brake_commanded)
-   Speed_State_Length : constant := 19;
+   --  flags u8 (bit0 vrelease_exists, bit1 csm_target_info),
+   --  status u8 (0 NoS / 1 IndS / 2 OvS / 3 WaS / 4 IntS): the supervision
+   --  status is a result of the on-board speed and distance monitoring
+   --  (DMI 7.1.1.1), the DMI does not derive it,
+   --  mrdt u8: identity of the most relevant displayed target, any value;
+   --  a change while in TSM is a change of MRDT (DMI 7.4.1.1)
+   Speed_State_Length : constant := 21;
 
    MSG_MODE_LEVEL : constant Msg_Type_T := 16#02#;
    --  mode u8 (Mode_T'Pos), level u8 (Level_T'Pos),
