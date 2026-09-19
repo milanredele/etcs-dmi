@@ -4,6 +4,7 @@
 pragma Ada_2012;
 with Display.Draw;
 with Display.Screen;
+with DMI_Flash;
 with General_Parameters;
 
 package body DMI_Data_Entry is
@@ -27,7 +28,7 @@ package body DMI_Data_Entry is
    Key_Last   : constant := 12;
    Key_Delete : constant := 10;  -- 10.3.5.15
    Key_Zero   : constant := 11;
-   Key_Enter  : constant := 12;
+   Key_Dot    : constant := 12;
    --  the label and the data part of input field I (10.3.1.26, 10.3.1.22)
    Label_First : constant := 13;
    Data_First  : constant := Label_First + Max_Fields;
@@ -129,6 +130,7 @@ package body DMI_Data_Entry is
       Completed := False;
       --  10.3.1.23: the first input field is selected, the others are not
       Current := 1;
+      DMI_Flash.Restart_Cursor;
       for I in Field_Index_T loop
          Fields (I) := (Value     => Def.Fields (I).Proposed,
                         --  a proposed value is a data value that the
@@ -266,18 +268,33 @@ package body DMI_Data_Entry is
       return ((0, 0), 0, 0);
    end Button_Area;
 
+   --  10.3.5.15: the keys 1 to 11 hold '1' to '9', the [delete] and the
+   --  number '0'; the key 12 shows the '.' button as disabled
+   function Key_Enabled (Index : Positive) return Boolean is
+     (case Def.Fields (Current).Keyboard is
+         when Numeric => Index /= Key_Dot,
+         --  10.3.5.18: a dedicated keyboard limited to a 'No'/'Yes'
+         --  choice has the key 7 as 'No' and the key 8 as 'Yes'
+         when Yes_No  => Index in Key_No | Key_Yes);
+
    function Button_Enabled (Index : Positive) return Boolean is
    begin
       case Def.Layout is
          when Half_Grid | Total_Grid =>
             if Index in Key_First .. Key_Last then
-               return True;
+               return Key_Enabled (Index);
+            elsif Index in Label_First .. Label_First + Max_Fields - 1 then
+               --  10.3.1.26: the label part selects the input field;
+               --  a single input field has no label part (10.3.1.7)
+               return Has_Label_Area
+                 and then Index - Label_First + 1 <= Def.Field_Count;
+            elsif Index in Data_First .. Data_First + Max_Fields - 1 then
+               return Index - Data_First + 1 <= Def.Field_Count;
             elsif Index = Yes_Button then
                --  Table 24 objects exist on the total grid array only
                return Def.Layout = Total_Grid
                  and then All_Fields_Have_Values;
             else
-               --  the input fields become buttons with audit WIN-4
                return False;
             end if;
          when Validation =>
@@ -289,14 +306,19 @@ package body DMI_Data_Entry is
    begin
       case Def.Layout is
          when Half_Grid | Total_Grid =>
-            --  5.3.2.7.2: [Delete] is a down-type button with repeat
-            if Index = Key_Delete then
+            --  10.3.5.13: the buttons of the keyboard are down-type
+            --  buttons; 5.3.2.7.2 gives [Delete] the repeat function,
+            --  which 5.3.2.6.5 leaves optional for the other keys
+            if Index in Key_First .. Key_Last then
                return DMI_Buttons.Down_Type;
             end if;
          when Validation =>
             null;
       end case;
-      --  10.3.5.11: the 'Yes' button is an up-type button
+      --  10.3.5.11: the 'Yes' button is an up-type button; 10.3.1.26:
+      --  an input field behaves like an up-type button; 5.3.2.7.3: the
+      --  [Enter] button is up-type (the delay-type of an operational
+      --  data check rule arrives with audit WIN-5)
       return DMI_Buttons.Up_Type;
    end Button_Kind;
 
@@ -322,37 +344,73 @@ package body DMI_Data_Entry is
       Fields (Current).Accepted := True;
       if Def.Layout = Half_Grid then
          Completed := True;
-      elsif Current < Def.Field_Count then
-         Current := Current + 1;
+      elsif Def.Field_Count > 0 then
+         --  10.3.1.25: the list of input fields is circular
+         Current := (if Current < Def.Field_Count then Current + 1 else 1);
+         DMI_Flash.Restart_Cursor;
       end if;
    end Accept_Value;
 
+   --  10.3.1.26: the driver selects a specific input field by activating
+   --  its label or data part
+   procedure Select_Field (Index : Field_Index_T) is
+   begin
+      if Index = Current or else Index > Def.Field_Count then
+         return;
+      end if;
+      --  10.3.1.20: an input field left while a value was entered or
+      --  modified without accepting it loses the entered value and its
+      --  current data value (Figure 97: 'Not Selected IF / No data
+      --  value')
+      if Fields (Current).Editing then
+         Fields (Current) := (Value     => (0, (others => ' ')),
+                              Has_Value => False,
+                              Editing   => False,
+                              Accepted  => False);
+      end if;
+      Current := Index;
+      DMI_Flash.Restart_Cursor;
+   end Select_Field;
+
    procedure Key_Pressed (Index : Positive) is
-      V : DMI_Driver_Data.Text_Value_T renames Fields (Current).Value;
+      S : Field_State_T renames Fields (Current);
       F : Field_Def_T renames Def.Fields (Current);
 
       procedure Append (C : Wide_Character) is
       begin
-         if V.Length < F.Max_Len then
-            V.Length := V.Length + 1;
-            V.Text (V.Length) := C;
+         if S.Value.Length < F.Max_Len then
+            S.Value.Length := S.Value.Length + 1;
+            S.Value.Text (S.Value.Length) := C;
          end if;
       end Append;
    begin
+      --  10.3.1.19: after the first press on a data key the value
+      --  corresponding to the pressed key is displayed instead of the
+      --  data value. [Delete] deletes "the just entered character"
+      --  (5.3.2.7.1 e), so with no entry of its own it has nothing to
+      --  delete; Figure 97 has it leave the data value all the same
+      --  ("one key of the keyboard pressed"), and the field then shows
+      --  an empty entry (implementation choice).
+      if not S.Editing then
+         S.Value.Length := 0;
+         S.Editing := True;
+         S.Has_Value := False;
+      end if;
       case Index is
          when 1 .. 9 =>
             Append (Wide_Character'Val (Wide_Character'Pos ('0') + Index));
          when Key_Zero =>
             Append ('0');
          when Key_Delete =>
-            if V.Length > 0 then
-               V.Length := V.Length - 1;
+            if S.Value.Length > 0 then
+               S.Value.Length := S.Value.Length - 1;
             end if;
-         when Key_Enter =>
-            Accept_Value;
          when others =>
             null;
       end case;
+      --  10.3.2.4: the cursor jumps to the next position as soon as the
+      --  entry is echoed
+      DMI_Flash.Restart_Cursor;
    end Key_Pressed;
 
    procedure Press (Index : Positive) is
@@ -364,6 +422,17 @@ package body DMI_Data_Entry is
          when Half_Grid | Total_Grid =>
             if Index in Key_First .. Key_Last then
                Key_Pressed (Index);
+            elsif Index in Label_First .. Label_First + Max_Fields - 1 then
+               Select_Field (Index - Label_First + 1);
+            elsif Index in Data_First .. Data_First + Max_Fields - 1 then
+               --  10.3.1.22: the [Enter] button of the selected input
+               --  field is its data field; the data part of another
+               --  input field selects it (10.3.1.26)
+               if Index - Data_First + 1 = Current then
+                  Accept_Value;
+               else
+                  Select_Field (Index - Data_First + 1);
+               end if;
             elsif Index = Yes_Button then
                --  10.3.5.7: the driver confirms the data entry complete
                Completed := True;
@@ -424,6 +493,37 @@ package body DMI_Data_Entry is
          The_Alignment => Draw.Center);
    end Draw_Labelled_Button;
 
+   --  5.1.3.3: a text is vertically centred in its area; the pen is on
+   --  the base line of the 12 cell characters
+   function Base_Y (The_Area : Area_T) return Natural is
+     (The_Area.Position.Y + The_Area.Height / 2 + 6);
+
+   --  10.3.2.1 to 10.3.2.3: an underscore below the position of the next
+   --  character, flashing at 2 Hz. The next character goes after what
+   --  the driver entered; when the input field still shows a data value
+   --  the next key replaces it (10.3.1.19), so the cursor stands at the
+   --  first position (implementation choice, the clause is silent).
+   procedure Draw_Cursor (Index : Field_Index_T) is
+      The_Data : constant Area_T := Data_Area (Index);
+      State    : Field_State_T renames Fields (Index);
+      Shown    : constant Natural :=
+        (if State.Editing then State.Value.Length else 0);
+      Cell     : constant Natural := Draw.String_Width ("0", 12);
+      X        : constant Natural :=
+        The_Data.Position.X + 10
+          + Draw.String_Width (State.Value.Text (1 .. Shown), 12);
+      Y        : constant Natural := Base_Y (The_Data) + 2;
+   begin
+      if not DMI_Flash.Cursor_Visible
+        or else X + Cell > The_Data.Position.X + The_Data.Width
+      then
+         return;
+      end if;
+      Screen.Fill_Area (((X, Y), Cell, 1),
+                        (if Index = Current then General_Parameters.BLACK
+                         else General_Parameters.GREY));
+   end Draw_Cursor;
+
    procedure Draw_Entry_Field (Index : Field_Index_T) is
       use General_Parameters;
       The_Data  : constant Area_T := Data_Area (Index);
@@ -457,10 +557,13 @@ package body DMI_Data_Entry is
       --  10.3.1.11: the data value is left aligned with an indent of 10
       Draw.Draw_String
         (Pen_X => The_Data.Position.X + 10,
-         Pen_Y => The_Data.Position.Y + The_Data.Height / 2 + 6,
+         Pen_Y => Base_Y (The_Data),
          The_String => State.Value.Text (1 .. State.Value.Length),
          The_Size => 12,
          The_Color => Ink);
+      if Selected and then Def.Fields (Index).Keyboard /= Yes_No then
+         Draw_Cursor (Index);
+      end if;
    end Draw_Entry_Field;
 
    --  10.3.5.7, Table 24: the question and the 'Yes' button, only on the
@@ -538,11 +641,11 @@ package body DMI_Data_Entry is
                   when 1 .. 9     => Natural'Wide_Image (Key) (2 .. 2) & "",
                   when Key_Zero   => "0",
                   when Key_Delete => "Del",
-                  when Key_Enter  => "Enter",
+                  when Key_Dot    => ".",
                   when others     => "");
          begin
             Draw_Labelled_Button (Key_Area (Key), Label,
-                                  Enabled => True,
+                                  Enabled => Key_Enabled (Key),
                                   Is_Down => Pressed (Key));
          end;
       end loop;
