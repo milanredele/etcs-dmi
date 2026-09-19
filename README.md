@@ -153,8 +153,9 @@ attach a DMI running on real hardware):
    panel
 3. `obj/dmi` and (for the simulator source) `obj/evc_sim`
 
-Press F1 → Start on the DMI to run the start-up data entry and begin
-the mission.
+The DMI opens with the start-up dialogue (driver ID, level); then enter
+the train data and the train running number from the Main window and
+press Start to begin the mission.
 
 **Robustness**: nothing the EVC or the touch screen sends may stop the
 DMI, because the embedded and the wasm runtime cannot propagate
