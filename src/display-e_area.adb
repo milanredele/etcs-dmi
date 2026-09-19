@@ -5,6 +5,7 @@
 pragma Ada_2012;
 with DMI_Ack;
 with DMI_Buttons;
+with DMI_Flash;
 with DMI_Status;
 with DMI_Text_Messages;
 with Symbol;
@@ -88,7 +89,7 @@ package body Display.E_Area is
           DMI_Ack.Fixed_Text | DMI_Ack.Plain_Text
           | DMI_Ack.System_Status | DMI_Ack.NTC_Text
       then
-         E_Buffer.Draw_Yellow_Frame (E5_E9, General_Parameters.Flash_On);
+         E_Buffer.Draw_Yellow_Frame (E5_E9, DMI_Flash.Frame_Visible);
       end if;
    end Draw_Messages;
 

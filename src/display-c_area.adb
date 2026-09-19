@@ -15,6 +15,7 @@
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 with DMI_Ack;
+with DMI_Flash;
 with DMI_Status;
 with General_Parameters;
 with Supplementary_Driving_Info;
@@ -121,7 +122,7 @@ package body Display.C_Area is
          if DMI_Ack.Current_Valid
            and then DMI_Ack.Current_Kind = Brake_Release
          then
-            C_Buffer.Draw_Yellow_Frame (The_C9_Area, General_Parameters.Flash_On);
+            C_Buffer.Draw_Yellow_Frame (The_C9_Area, DMI_Flash.Frame_Visible);
          end if;
       end if;
    end Draw_C9;
@@ -141,7 +142,7 @@ package body Display.C_Area is
    begin
       if Ack_In_C1 then
          -- DMI 5.4.1.5 / 5.1.1.3.2: flashing yellow frame with the object
-         C_Buffer.Draw_Yellow_Frame (The_C1_Area, General_Parameters.Flash_On);
+         C_Buffer.Draw_Yellow_Frame (The_C1_Area, DMI_Flash.Frame_Visible);
 
          case DMI_Ack.Current_Kind is
             when Mode_Change =>

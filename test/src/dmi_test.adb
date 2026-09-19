@@ -34,11 +34,9 @@ with User_Settings;
 
 procedure DMI_Test is
 
-   -- Fixed flash phase for deterministic frames
    procedure Reset is
    begin
       DMI_Core.Initialise;
-      General_Parameters.Flash_On := True;
       -- scenarios send EVC messages only when the picture changes
       General_Parameters.EVC_Link_Timeout_Ms := 0;
       Drain_Sounds;
