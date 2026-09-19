@@ -30,9 +30,13 @@ package DMI_Core is
    -- Copy the queued outbound messages to Buffer and clear the queue;
    -- Last is Buffer'First - 1 when nothing is pending. Buffer should
    -- hold at least Outbox_Size bytes, the rest is dropped.
+   -- With_Sounds = False leaves the pending sounds in DMI_Sounds
+   -- instead of turning them into MSG_SOUND: for a caller that only
+   -- wants to look at the driver's actions.
    Outbox_Size : constant := 1024;
-   procedure Take_Outbox (Buffer : out Stream_Element_Array;
-                          Last   : out Stream_Element_Offset);
+   procedure Take_Outbox (Buffer      : out Stream_Element_Array;
+                          Last        : out Stream_Element_Offset;
+                          With_Sounds : Boolean := True);
 
    -- Containment of DMI internal failures. The host calls Enter_Failure
    -- when any of the operations above failed (exception handler in a

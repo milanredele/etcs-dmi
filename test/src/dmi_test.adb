@@ -1925,36 +1925,6 @@ procedure DMI_Test is
          DMI_Core.Handle_Message (The_Type, Payload);
       end Emit;
 
-      procedure Sim_Step is
-      begin
-         EVC_Driver.Auto_Drive;
-         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
-         DMI_Core.Tick (100);
-      end Sim_Step;
-
-      -- run until Condition or the step budget runs out
-      generic
-         with function Done return Boolean;
-      procedure Run_Until (What : String; Max_Steps : Natural);
-
-      procedure Run_Until (What : String; Max_Steps : Natural) is
-      begin
-         for I in 1 .. Max_Steps loop
-            Sim_Step;
-            if Done then
-               return;
-            end if;
-         end loop;
-         Check (False, "timeout waiting for " & What);
-      end Run_Until;
-
-      function In_TSM return Boolean is (EVC_Core.Monitoring = 1);
-      function In_RSM return Boolean is (EVC_Core.Monitoring = 2);
-      function Stopped return Boolean is
-        (EVC_Train.Speed_KMH = 0 and then EVC_Train.Position_M > 9_000.0);
-      function Past_LX return Boolean is
-        (EVC_Train.Position_M > 5_600.0);
-
       -- The driver's actions travel back to the EVC like on the wire
       procedure Pump_To_EVC is
          use Ada.Streams;
@@ -1985,11 +1955,64 @@ procedure DMI_Test is
                      EVC_Core.Handle_Driver_Action
                        (Natural (Action), Natural (Arg));
                   end;
+               elsif The_Type = MSG_DRIVER_DATA then
+                  -- the driver's data reach the EVC, which stores them
+                  -- and reports their status back (MSG_ONBOARD)
+                  EVC_Core.Handle_Driver_Data
+                    (Buffer (Offset .. Next - 1));
                end if;
                Offset := Next;
             end;
          end loop;
       end Pump_To_EVC;
+
+      procedure Sim_Step is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         DMI_Core.Tick (100);
+      end Sim_Step;
+
+      -- One cycle of the wire in both directions, as test/wasm/smoke.js
+      -- replays it: the EVC talks first (the DMI decides the enabling
+      -- conditions of Tables 33 to 36 on what it just heard), then the
+      -- driver touches the screen, then the DMI's actions and data go
+      -- back to the EVC
+      procedure Touch (X, Y : Natural) is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Core.Step (0.05, Emit'Unrestricted_Access);
+         Pointer_Down (X, Y);
+         Pointer_Up (X, Y);
+         DMI_Core.Tick (50);
+         Pump_To_EVC;
+         Drain_Sounds;
+      end Touch;
+
+
+      -- run until Condition or the step budget runs out
+      generic
+         with function Done return Boolean;
+      procedure Run_Until (What : String; Max_Steps : Natural);
+
+      procedure Run_Until (What : String; Max_Steps : Natural) is
+      begin
+         for I in 1 .. Max_Steps loop
+            Sim_Step;
+            if Done then
+               return;
+            end if;
+         end loop;
+         Check (False, "timeout waiting for " & What);
+      end Run_Until;
+
+      function In_TSM return Boolean is (EVC_Core.Monitoring = 1);
+      function In_RSM return Boolean is (EVC_Core.Monitoring = 2);
+      function Stopped return Boolean is
+        (EVC_Train.Speed_KMH = 0 and then EVC_Train.Position_M > 9_000.0);
+      function Past_LX return Boolean is
+        (EVC_Train.Position_M > 5_600.0);
+
 
       procedure Wait_TSM is new Run_Until (In_TSM);
       procedure Wait_RSM is new Run_Until (In_RSM);
@@ -1998,6 +2021,8 @@ procedure DMI_Test is
    begin
       Reset;
       EVC_Core.Reset;
+      -- this scenario has its own EVC: it sends MSG_ONBOARD itself
+      External_EVC;
 
       -- a few idle steps in SB
       for I in 1 .. 5 loop
@@ -2007,20 +2032,19 @@ procedure DMI_Test is
       Check_Frame ("mission_sb"); -- Table 49 S1: the Driver ID window
 
       -- the driver's start of mission by touch (Tables 49 and 50)
-      Press (385, 240); Press (589, 390);   -- Driver ID 1, Enter
-      Press (410, 90);                      -- Level 1 -> Main window
-      Press (410, 140);                     -- Train data
-      Press (385, 290); Press (487, 390); Press (487, 390);
-      Press (589, 390);                     -- length 400
-      Press (385, 240); Press (589, 240); Press (487, 290);
-      Press (589, 390);                     -- brake percentage 135
-      Press (385, 240); Press (385, 290); Press (487, 390);
-      Press (589, 390);                     -- maximum speed 140
-      Press (410, 390);                     -- Yes -> TRN window
-      Press (385, 240); Press (589, 390);   -- TRN 1, Enter -> Main window
-      Pump_To_EVC;
+      Touch (385, 240); Touch (589, 390);   -- Driver ID 1, Enter
+      Touch (410, 90);                      -- Level 1 -> Main window
+      Touch (410, 140);                     -- Train data
+      Touch (385, 290); Touch (487, 390); Touch (487, 390);
+      Touch (589, 390);                     -- length 400
+      Touch (385, 240); Touch (589, 240); Touch (487, 290);
+      Touch (589, 390);                     -- brake percentage 135
+      Touch (385, 240); Touch (385, 290); Touch (487, 390);
+      Touch (589, 390);                     -- maximum speed 140
+      Touch (410, 390);                     -- Yes -> TRN window
+      Touch (385, 240); Touch (589, 390);   -- TRN 1, Enter -> Main window
       Check (EVC_Core.Mode = EVC_Core.SB, "no mission start without Start");
-      Press (410, 90);                      -- Start -> default window
+      Touch (410, 90);                      -- Start -> default window
 
       -- mission start (the EVC grants FS with a full MA)
       Pump_To_EVC;
@@ -2901,6 +2925,298 @@ procedure DMI_Test is
       Drain_Sounds;
    end Scenario_Text_Wrap;
 
+
+   ---------------------------------------------------------------------
+   -- WIN-2: the enabling conditions of Tables 33 to 36 (11.2.1.4,
+   -- 11.2.2.4, 11.2.3.4, 11.2.4.4) and Table 48 (11.7.1.7). The on-board
+   -- state comes on the wire (MSG_ONBOARD); the DMI evaluates the rows.
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Enabling_Conditions is
+      use type Interfaces.Unsigned_8;
+      subtype U8 is Interfaces.Unsigned_8;
+
+      --  MSG_ONBOARD bytes, see dmi_protocol.ads
+      Data_All    : constant U8 := 16#0F#; -- id, train data, level, TRN valid
+      Data_No_TRN : constant U8 := 16#07#;
+      Standing    : constant U8 := 16#03#; -- standstill, override speed ok
+      Running     : constant U8 := 16#02#; -- moving, still below the limit
+      NV_Adh      : constant U8 := 16#02#; -- adhesion may be modified
+
+      procedure Onboard (Data     : U8 := Data_All;
+                         Session  : U8 := 0;
+                         RBC      : U8 := 0;
+                         Train    : U8 := Standing;
+                         National : U8 := NV_Adh;
+                         Pending  : U8 := 0) is
+      begin
+         Send_Onboard_Raw (Data, Session, RBC, Train, National, 0, 0, Pending);
+         Step;
+      end Onboard;
+
+      function Enabled (Index : Positive) return Boolean is
+        (DMI_Windows.Button_Enabled (Index));
+
+      function Top_Is (ID : DMI_Windows.Window_ID_T) return Boolean is
+        (DMI_Windows.Is_Open
+         and then DMI_Windows."=" (DMI_Windows.Top, ID));
+
+      procedure Open_Window (X, Y : Natural) is
+      begin
+         while DMI_Windows.Is_Open loop
+            Press (370, 440);
+         end loop;
+         Press (X, Y);
+      end Open_Window;
+
+      F1_Main     : constant := 40;
+      F2_Override : constant := 90;
+      F4_Special  : constant := 190;
+      F5_Settings : constant := 240;
+   begin
+      Reset;
+      --  the scenario owns MSG_ONBOARD from here on; no start of mission
+      Onboard;
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB, level 1
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+      Open_Window (610, F1_Main);
+      Check (Top_Is (DMI_Windows.W_Main), "the Main window is on display");
+
+      -- Table 33 #1 Start, first row: SB, all data valid, level 1
+      Check (Enabled (1), "Table 33 #1: Start in SB with valid data, level 1");
+      Onboard (Pending => 1);
+      Check (not Enabled (1), "Table 33 #1: no Start while one is pending");
+      Onboard (Train => Running);
+      Check (not Enabled (1), "Table 33 #1: no Start while the train runs");
+      Onboard (Data => Data_No_TRN);
+      Check (not Enabled (1),
+             "Table 33 #1: no Start without a valid running number");
+
+      -- Table 33 #1 with level 2: with a session the train data have to
+      -- be acknowledged by the RBC, without one they do not
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
+      Onboard (Session => 2);
+      Check (not Enabled (1),
+             "Table 33 #1: level 2 with a session needs the RBC's ack");
+      Onboard (Session => 2, RBC => 1);
+      Check (Enabled (1), "Table 33 #1: level 2, session, train data acked");
+      Onboard (Session => 0);
+      Check (Enabled (1), "Table 33 #1: level 2 without a session");
+      Onboard (Session => 1);
+      Check (not Enabled (1),
+             "Table 33 #1: a session being established is neither");
+      Send_Mode_Level (Mode => 1, Level => 4); -- back to level 1
+      Onboard;
+
+      -- Table 33 #2 Driver ID, #3 Train data, #5 Level, #6 TRN in SB
+      Check (Enabled (2) and then Enabled (3) and then Enabled (5)
+             and then Enabled (6),
+             "Table 33 #2, #3, #5, #6: enabled in SB at standstill");
+      Onboard (Data => 0);
+      Check (not Enabled (2) and then not Enabled (3) and then not Enabled (5)
+             and then not Enabled (6),
+             "Table 33 #2, #3, #5, #6: nothing without a valid Driver ID");
+
+      -- Table 33 #3: a safe consist length that is not zero in front of
+      -- the engine takes the Train data button away
+      Onboard (Data => Data_All or 16#40#);
+      Check (not Enabled (3),
+             "Table 33 #3: no Train data with a safe consist length ahead");
+      Onboard (Data => Data_All or 16#C0#);
+      Check (Enabled (3),
+             "Table 33 #3: Train data when that length is zero");
+
+      -- Table 33 #7 Shunting: level 1 at standstill; #8 Non-Leading
+      -- needs the "non leading" input signal
+      Onboard;
+      Check (Enabled (7), "Table 33 #7: Shunting in SB with level 1");
+      Check (not Enabled (8),
+             "Table 33 #8: no Non-Leading without the input signal");
+      Onboard (Train => Standing or 16#04#);
+      Check (Enabled (8), "Table 33 #8: Non-Leading with the input signal");
+
+      -- Table 33 #2 while running: only with the national value
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Onboard (Train => Running);
+      Check (not Enabled (2),
+             "Table 33 #2: no Driver ID while running by default");
+      Onboard (Train => Running, National => NV_Adh or 1);
+      Check (Enabled (2),
+             "Table 33 #2: Driver ID while running when the NV allows it");
+      Check (not Enabled (1), "Table 33 #1: no Start in FS");
+
+      -- Table 34 #1 EOA (Override window)
+      Onboard;
+      Open_Window (610, F2_Override);
+      Check (Top_Is (DMI_Windows.W_Override), "the Override window is open");
+      Check (Enabled (1), "Table 34 #1: EOA in FS below the override limit");
+      Onboard (Train => 0);
+      Check (not Enabled (1), "Table 34 #1: no EOA above the override limit");
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB, level 1
+      Onboard;
+      Check (not Enabled (1), "Table 34 #1: no EOA in SB below level 2");
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
+      Onboard;
+      Check (Enabled (1), "Table 34 #1: EOA in SB with level 2 and the data");
+
+      -- Table 35 (Special window)
+      Send_Mode_Level (Mode => 7, Level => 4); -- SR, level 1
+      Onboard;
+      Open_Window (610, F4_Special);
+      Check (Top_Is (DMI_Windows.W_Special), "the Special window is open");
+      Check (Enabled (2), "Table 35 #2: SR speed / distance in SR");
+      Check (not Enabled (3),
+             "Table 35 #3: no Train integrity without an RBC session");
+      Onboard (Session => 2, RBC => 16#09#, Data => Data_All or 16#20#);
+      Check (Enabled (3),
+             "Table 35 #3: Train integrity with the RBC's ack and the length");
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Onboard;
+      Check (not Enabled (2), "Table 35 #2: no SR speed / distance outside SR");
+      Check (Enabled (1), "Table 35 #1: Adhesion in FS when the NV allows it");
+      Onboard (National => 0);
+      Check (not Enabled (1),
+             "Table 35 #1: no Adhesion when the NV forbids it");
+
+      -- Table 36 (Settings window)
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB
+      Onboard;
+      Open_Window (610, F5_Settings);
+      Check (Top_Is (DMI_Windows.W_Settings), "the Settings window is open");
+      Check (Enabled (2) and then Enabled (3),
+             "Table 36 #2, #3: Volume and Brightness in SB at standstill");
+      Onboard (Train => Running);
+      Check (not Enabled (2) and then not Enabled (3),
+             "Table 36 #2, #3: nothing in SB while the train runs");
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Onboard (Train => Running);
+      Check (Enabled (2) and then Enabled (3),
+             "Table 36 #2, #3: enabled in FS whatever the speed");
+
+      -- 11.7.1.7 and Table 48: an open data entry window whose button
+      -- loses its enabling conditions gives way to the parent window
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB
+      Onboard;
+      Open_Window (610, F1_Main);
+      Press (563, 190);                        -- Train run. nr
+      Check (Top_Is (DMI_Windows.W_TRN), "the Train running number window");
+      Onboard (Data => 0);                     -- the Driver ID is invalid now
+      Check (Top_Is (DMI_Windows.W_Main),
+             "Table 48: the TRN window gives way to the Main window");
+
+      Onboard;
+      Press (410, 140);                        -- Train data
+      Check (Top_Is (DMI_Windows.W_Train_Data), "the Train data window");
+      Press (385, 290); Press (487, 390); Press (487, 390);
+      Press (589, 390);
+      Press (385, 240); Press (589, 240); Press (487, 290);
+      Press (589, 390);
+      Press (385, 240); Press (385, 290); Press (487, 390);
+      Press (589, 390);                        -- -> the validation window
+      Check (Top_Is (DMI_Windows.W_Train_Data_Validation),
+             "the train data validation window");
+      Onboard (Train => Running);              -- the train starts moving
+      Check (Top_Is (DMI_Windows.W_Main),
+             "Table 48: the validation gives way to the Main window");
+      Drain_Outbox;
+   end Scenario_Enabling_Conditions;
+
+   ---------------------------------------------------------------------
+   -- WIN-11: the hour glass ST05 and the Main window with all buttons
+   -- disabled while the on-board awaits an answer (11.2.1.6, Table 49
+   -- S0/S4/A31, Table 50 S7/S8/S9)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Waiting_Window is
+      subtype U8 is Interfaces.Unsigned_8;
+      Data_All : constant U8 := 16#0F#;
+      Standing : constant U8 := 16#03#;
+
+      procedure Onboard (SOM, Waiting : U8) is
+      begin
+         Send_Onboard_Raw (Data_All, 0, 0, Standing, 0, SOM, Waiting, 0);
+         Step;
+      end Onboard;
+
+      function Top_Is (ID : DMI_Windows.Window_ID_T) return Boolean is
+        (DMI_Windows.Is_Open
+         and then DMI_Windows."=" (DMI_Windows.Top, ID));
+   begin
+      Reset;
+      Onboard (SOM => 0, Waiting => 0);
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB, level 1
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+
+      -- Table 49 S0: the mode is SB but a communication session is still
+      -- up; the Main window comes with all buttons disabled and ST05
+      Onboard (SOM => 1, Waiting => 0);
+      Check (Top_Is (DMI_Windows.W_Main)
+             and then DMI_Windows.Waiting_Displayed,
+             "S0: the Main window is presented while the session ends");
+      for I in 1 .. DMI_Windows.Button_Count loop
+         Check (not DMI_Windows.Button_Enabled (I),
+                "S0: Main window button" & Natural'Image (I) & " disabled");
+      end loop;
+      Check (not DMI_Windows.Close_Enabled, "S0: [Close] is disabled");
+      Press (370, 440);
+      Check (Top_Is (DMI_Windows.W_Main), "S0: [Close] does not close");
+      Step;
+      Check_Frame ("waiting_main_st05");
+
+      -- 11.2.1.6: 26 cells to the right every second
+      for I in 1 .. 20 loop      -- 1 s of 50 ms ticks
+         Step;
+      end loop;
+      Check_Frame ("waiting_main_st05_moved");
+
+      -- S0 -> S1: the conditions are fulfilled, Start Up is engaged
+      Onboard (SOM => 2, Waiting => 0);
+      Check (DMI_Windows.In_Start_Up
+             and then Top_Is (DMI_Windows.W_Driver_ID),
+             "S0 -> S1: Start Up engages with the Driver ID window");
+      Check (not DMI_Windows.Waiting_Displayed, "S1: no hour glass");
+
+      -- Table 50 S9: the on-board awaits an answer from the RBC; when it
+      -- comes the Main window stays (S1)
+      Onboard (SOM => 2, Waiting => 2);
+      Check (Top_Is (DMI_Windows.W_Main)
+             and then DMI_Windows.Waiting_Displayed,
+             "S9: the Main window with all buttons disabled");
+      Check (not DMI_Windows.Button_Enabled (1), "S9: Start is disabled too");
+      Onboard (SOM => 2, Waiting => 0);
+      Check (Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.Waiting_Displayed,
+             "S9 -> S1: the Main window stays, without the hour glass");
+      Check (DMI_Windows.Close_Enabled, "S1: [Close] is enabled again");
+
+      -- Table 50 S7: after 'Start' with level 2 the MA is awaited; when
+      -- it arrives the default window is shown
+      Onboard (SOM => 0, Waiting => 3);
+      Check (Top_Is (DMI_Windows.W_Main)
+             and then DMI_Windows.Waiting_Displayed,
+             "S7: the Main window with all buttons disabled");
+      Onboard (SOM => 0, Waiting => 0);
+      Check (not DMI_Windows.Is_Open,
+             "S7: the MA leads back to the default window");
+
+      -- an undocumented waiting code still means "an answer is awaited"
+      Onboard (SOM => 0, Waiting => 200);
+      Check (Top_Is (DMI_Windows.W_Main)
+             and then DMI_Windows.Waiting_Displayed,
+             "an unknown waiting code is read as an awaited RBC answer");
+      Onboard (SOM => 0, Waiting => 0);
+      Drain_Outbox;
+      Drain_Sounds;
+   end Scenario_Waiting_Window;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -2943,6 +3259,8 @@ begin
    Scenario_Planning_Order_Limit;
    Scenario_Text_Wrap;
    Scenario_Ack_And_Windows;
+   Scenario_Enabling_Conditions;
+   Scenario_Waiting_Window;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

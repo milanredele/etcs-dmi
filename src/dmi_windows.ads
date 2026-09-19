@@ -53,27 +53,41 @@ package DMI_Windows is
      with Pre => Is_Open;
 
    -- Start Up dialogue sequence (11.7.2, Table 49). It is engaged by the
-   -- on-board conditions of S0, not by a button: DMI_Core calls
-   -- Engage_Start_Up when the EVC reports the entry into mode SB and
-   -- Abort_Start_Up when SB is left before the sequence reached S10.
-   -- The sequence is S1 Driver ID, S2 Level (when the level is not
-   -- valid), S10 = S1 of the Main window dialogue sequence (11.7.3).
+   -- on-board conditions of S0, not by a button, and only the on-board
+   -- knows them (SUBSET-026 5.4.1): the EVC reports them (MSG_ONBOARD,
+   -- start of mission) and DMI_Core calls Onboard_State_Changed after
+   -- every such message. The sequence is S1 Driver ID, S2 Level (when
+   -- the level is not valid), S10 = S1 of the Main window dialogue
+   -- sequence (11.7.3).
    procedure Engage_Start_Up;
    procedure Abort_Start_Up;
    function In_Start_Up return Boolean;
 
+   -- The EVC reported a new on-board state (DMI_Conditions): engage or
+   -- abort Start Up, present or leave the Main window with all buttons
+   -- disabled and the hour glass ST05 (Table 49 S0/S4/A31, Table 50
+   -- S7/S8/S9, 11.2.1.6)
+   procedure Onboard_State_Changed;
+
+   -- True while the DMI shows the Main window because the on-board
+   -- awaits an answer
+   function Waiting_Displayed return Boolean;
+
    -- 11.7.2.2 / 11.7.3.2: [Close] is disabled before S10 of Start Up
+   -- and in the steps that wait for the radio network or the RBC
    function Close_Enabled return Boolean;
+
+   -- 11.7.1.7 and Table 48: after the Start Up dialogue sequence, when
+   -- an enabling condition of the button that leads to the displayed
+   -- data entry / validation window is not fulfilled anymore, the
+   -- process is stopped and the parent window is displayed. Called by
+   -- DMI_Core on every tick.
+   procedure Check_Enabling_Conditions;
 
    -- 11.7.1.9: a data entry or validation window is displayed / stop
    -- the process and present the parent window instead
    function Entry_Open return Boolean;
    procedure Stop_Entry;
-
-   -- The 'Start' request is no longer pending on the EVC side (the mode
-   -- changed or the proposed mode was withdrawn): 'Start' can be enabled
-   -- again when Table 33 allows it
-   procedure Start_Request_Closed;
 
    function Window_Area return Display.Area_T;
    function Close_Button_Area return Display.Area_T;

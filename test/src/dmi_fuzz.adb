@@ -95,9 +95,9 @@ procedure DMI_Fuzz is
    -- In-domain generators, one per message (see dmi_protocol.ads)
    ---------------------------------------------------------------------
 
-   EVC_Types : constant array (1 .. 7) of Msg_Type_T :=
+   EVC_Types : constant array (1 .. 8) of Msg_Type_T :=
      (MSG_SPEED_STATE, MSG_MODE_LEVEL, MSG_TEXT, MSG_TEXT_REMOVE,
-      MSG_TRACK_COND, MSG_PLANNING, MSG_STATUS);
+      MSG_TRACK_COND, MSG_PLANNING, MSG_STATUS, MSG_ONBOARD);
 
    procedure Build_In_Domain (The_Type : Msg_Type_T) is
    begin
@@ -197,6 +197,15 @@ procedure DMI_Fuzz is
          U8 (Pick (0, 23));
          U8 (Pick (0, 59));
          U8 (Pick (0, 59));
+      elsif The_Type = MSG_ONBOARD then
+         U8 (Pick (0, 255));   -- data status bits
+         U8 (Pick (0, 4));     -- session, one code beyond the documented
+         U8 (Pick (0, 255));   -- what the RBC answered
+         U8 (Pick (0, 255));   -- the vehicle
+         U8 (Pick (0, 255));   -- national values
+         U8 (Pick (0, 3));     -- start of mission, one code beyond
+         U8 (Pick (0, 4));     -- waiting, one code beyond
+         U8 (Pick (0, 1));     -- start pending
       end if;
    end Build_In_Domain;
 
@@ -205,6 +214,7 @@ procedure DMI_Fuzz is
       elsif The_Type = MSG_MODE_LEVEL  then Mode_Level_Length
       elsif The_Type = MSG_TEXT_REMOVE then Text_Remove_Length
       elsif The_Type = MSG_STATUS      then Status_Length
+      elsif The_Type = MSG_ONBOARD     then Onboard_Length
       elsif The_Type = MSG_POINTER     then Pointer_Length
       else  Pick (0, 120)); -- variable length messages
 

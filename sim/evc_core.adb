@@ -35,6 +35,19 @@ package body EVC_Core is
 
    Mode_Ack_Wait  : Boolean := False; -- unused placeholder for OS etc.
 
+   -- Status of the driver's data stored on-board (SUBSET-026 3.18): the
+   -- simulator sets it from MSG_DRIVER_DATA and reports it in
+   -- MSG_ONBOARD, which is where the DMI takes the enabling conditions
+   -- of Tables 33 to 36 from. Entering SB invalidates them again
+   -- (4.10.1.3), here: at Reset, the only way into SB.
+   Driver_ID_Valid  : Boolean := False;
+   Train_Data_Valid : Boolean := False;
+   TRN_Valid        : Boolean := False;
+
+   -- A 'Start' request that has not been answered yet. This simulator
+   -- answers within the same call, so it is never reported as pending.
+   Start_Pending    : Boolean := False;
+
    TAF_Requested  : Boolean := False;
    TAF_Answered   : Boolean := False;
 
@@ -164,6 +177,56 @@ package body EVC_Core is
       Put_U8 (Payload, Offset, Unsigned_8 (Seconds mod 60));
       Emit (MSG_STATUS, Payload);
    end Send_Status;
+
+   --  The on-board state behind the enabling conditions of Tables 33 to
+   --  36 and behind the Start Up dialogue sequence (see dmi_protocol.ads
+   --  and DMI_Conditions). What this simulator does not model is
+   --  reported as "not there": it has no RBC (no communication session,
+   --  no train data acknowledgement, no position referred to an LRBG),
+   --  no safe consist length, no VBC store and no "non leading" or
+   --  "passive shunting" desk inputs. It never waits for a network or an
+   --  answer, so the hour glass ST05 does not come up in the bench.
+   procedure Send_Onboard (Emit : Sink_T) is
+      Payload : Stream_Element_Array (1 .. Onboard_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+      Data    : Unsigned_8 := 0;
+      Train   : Unsigned_8 := 0;
+   begin
+      if Driver_ID_Valid then
+         Data := Data or 1;
+      end if;
+      if Train_Data_Valid then
+         Data := Data or 2;
+      end if;
+      if Level_Pos /= Level_Unknown then
+         Data := Data or 4;  -- the level is the driver's (5.4.3.2 S2)
+      end if;
+      if TRN_Valid then
+         Data := Data or 8;
+      end if;
+
+      if EVC_Train.Speed_KMH = 0 then
+         Train := Train or 1;  -- standstill
+      end if;
+      --  the simulator has no national value V_NVALLOWOVTRP: 30 km/h
+      --  stands in for the speed limit that triggers the "override"
+      if EVC_Train.Speed_KMH <= 30 then
+         Train := Train or 2;
+      end if;
+
+      Put_U8 (Payload, Offset, Data);
+      Put_U8 (Payload, Offset, 0);      -- no communication session
+      Put_U8 (Payload, Offset, 0);      -- nothing from an RBC
+      Put_U8 (Payload, Offset, Train);
+      Put_U8 (Payload, Offset, 2);      -- adhesion may be modified (NV)
+      --  Table 49 S0: the cab is active and the mode is SB, and no
+      --  session has to end first, so the conditions to initiate a start
+      --  of mission are fulfilled as long as the mode is SB
+      Put_U8 (Payload, Offset, (if Mode = SB then 2 else 0));
+      Put_U8 (Payload, Offset, 0);      -- nothing is awaited
+      Put_U8 (Payload, Offset, (if Start_Pending then 1 else 0));
+      Emit (MSG_ONBOARD, Payload);
+   end Send_Onboard;
 
    procedure Send_Track_Cond (Emit : Sink_T) is
       Position : constant Natural := Natural (EVC_Train.Position_M);
@@ -506,6 +569,7 @@ package body EVC_Core is
 
       Send_Speed_State (Emit);
       Send_Mode_Level (Emit);
+      Send_Onboard (Emit);
       Send_Status (Emit);
       Send_Track_Cond (Emit);
       if Mode = FS then
@@ -542,9 +606,13 @@ package body EVC_Core is
          when 5 =>      -- start mission (SUBSET-026 5.4.3.2 S20)
             -- the DMI offers 'Start' once the driver's data are valid
             -- (DMI Table 33); the level is what this EVC checks itself
+            Start_Pending := True;
             if Mode = SB and then Level_Pos /= Level_Unknown then
                Mode := FS; -- simplified: full MA immediately
             end if;
+            -- answered within the call, so nothing stays pending: the
+            -- mode is the answer, or the request is refused outright
+            Start_Pending := False;
          when 11 =>     -- level selected; Arg is Level_T'Pos (L0 .. L2)
             if Mode = SB and then Arg in 2 .. 5 then
                Level_Pos := Arg;
@@ -554,9 +622,51 @@ package body EVC_Core is
       end case;
    end Handle_Driver_Action;
 
+   procedure Handle_Driver_Data (Payload : Stream_Element_Array) is
+      Offset : Stream_Element_Offset := Payload'First;
+      Kind   : Unsigned_8;
+   begin
+      if Payload'Length < 1 then
+         return;
+      end if;
+      Kind := Get_U8 (Payload, Offset);
+      --  The values themselves are not used by this simulator; what
+      --  matters is that the on-board now holds them and their status
+      --  becomes "valid". The length of each kind is checked so that a
+      --  truncated message changes nothing.
+      case Kind is
+         when 0 =>      -- driver id: len u8, bytes
+            if Payload'Length >= 2
+              and then Natural (Payload'Length) =
+                         2 + Natural (Payload (Payload'First + 1))
+            then
+               Driver_ID_Valid := True;
+            end if;
+         when 1 =>      -- train running number: len u8, bytes
+            if Payload'Length >= 2
+              and then Natural (Payload'Length) =
+                         2 + Natural (Payload (Payload'First + 1))
+            then
+               TRN_Valid := True;
+            end if;
+         when 2 =>      -- train data: length, brake percentage, max speed
+            if Payload'Length = 7 then
+               Train_Data_Valid := True;
+            end if;
+         when others => -- 3 SR data and anything else: no data status
+            null;
+      end case;
+   end Handle_Driver_Data;
+
    procedure Reset is
    begin
       Mode := SB;
+      --  SUBSET-026 4.10.1.3: in SB the driver's data are to be
+      --  revalidated; the level keeps its status, which is unknown here
+      Driver_ID_Valid := False;
+      Train_Data_Valid := False;
+      TRN_Valid := False;
+      Start_Pending := False;
       The_Monitoring := 0;
       V_Perm_KMH := 0;
       V_Target_KMH := 0;

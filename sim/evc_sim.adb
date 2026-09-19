@@ -60,6 +60,8 @@ procedure EVC_Sim is
                   end if;
                end;
             end if;
+         when MSG_DRIVER_DATA =>
+            EVC_Core.Handle_Driver_Data (Payload);
          when MSG_DESK =>
             if Payload'Length = Desk_Length then
                declare
