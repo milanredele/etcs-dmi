@@ -19,7 +19,20 @@ package body DMI_Buttons is
    Tracked      : Button_ID_T := Button_ID_T'First;
    Inside       : Boolean := False;
    Held_Ms      : Natural := 0;
-   Repeat_Ms    : Natural := 0;
+   Repeats_Done : Natural := 0;
+
+   -- DMI 5.3.2.6.4: a down-type button goes to "pressed" and
+   -- immediately back to "enabled", so its pressed state is not the
+   -- state of the finger. It is shown for the one screen that follows
+   -- the activation: Pulse is what Is_Pressed answers until the next
+   -- Tick, Pulse_Due what an activation between two ticks has asked for
+   -- (DMI_Core renders after calling Tick, so a press that arrives
+   -- between two ticks is still seen once). The repeat activations of
+   -- 5.3.2.6.5 raise the same pulse and play the same 'click', "as if
+   -- the driver was pressing on the button every 0.3 sec".
+   Pulse     : Boolean := False;
+   Pulse_Due : Boolean := False;
+   Pulse_ID  : Button_ID_T := Button_ID_T'First;
 
    Down_Type_Repeat_Delay    : constant := 1500; -- DMI 5.3.2.6.5
    Down_Type_Repeat_Interval : constant := 300;
@@ -56,6 +69,11 @@ package body DMI_Buttons is
       if Tracking and then Tracked = ID then
          Tracking := False;
       end if;
+      -- a button that is gone shows nothing (5.3.2.5.5)
+      if Pulse_ID = ID then
+         Pulse := False;
+         Pulse_Due := False;
+      end if;
    end Set_Inactive;
 
    procedure Pointer_Event (Event : Pointer_Event_T;
@@ -74,12 +92,15 @@ package body DMI_Buttons is
                   Tracked := ID;
                   Inside := True;
                   Held_Ms := 0;
-                  Repeat_Ms := 0;
+                  Repeats_Done := 0;
                   -- DMI 5.3.2.6.2/.4/.6: 'click' on the initial press
                   DMI_Sounds.Play (DMI_Sounds.Click);
                   if Buttons (ID).Kind = Down_Type then
-                     -- activation together with the press
+                     -- DMI 5.3.2.6.4: activation together with the
+                     -- press, "pressed" for one screen only
                      Queue_Activation (ID);
+                     Pulse_Due := True;
+                     Pulse_ID := ID;
                   end if;
                   exit;
                end if;
@@ -124,26 +145,48 @@ package body DMI_Buttons is
 
    procedure Tick (Dt_Ms : Natural) is
    begin
+      -- the pressed state of the previous activation has been shown
+      Pulse := Pulse_Due;
+      Pulse_Due := False;
+
       if not Tracking then
          return;
       end if;
       if Inside then
          Held_Ms := Held_Ms + Dt_Ms;
       end if;
-      -- DMI 5.3.2.6.5: optional repeat function of down-type buttons
-      if Buttons (Tracked).Kind = Down_Type and then Inside then
-         if Held_Ms >= Down_Type_Repeat_Delay then
-            Repeat_Ms := Repeat_Ms + Dt_Ms;
-            if Repeat_Ms >= Down_Type_Repeat_Interval then
-               Repeat_Ms := Repeat_Ms - Down_Type_Repeat_Interval;
+      -- DMI 5.3.2.6.5: optional repeat function of down-type buttons.
+      -- After 1.5 s of pressing, an activation every 0.3 s with the
+      -- visual and audible indications of a press: the first one at
+      -- 1.8 s. The count is derived from the time held, so it does not
+      -- drift with the length of a tick; a tick longer than the interval
+      -- gives one activation, not a burst.
+      if Buttons (Tracked).Kind = Down_Type and then Inside
+        and then Held_Ms >= Down_Type_Repeat_Delay
+      then
+         declare
+            Due : constant Natural :=
+              (Held_Ms - Down_Type_Repeat_Delay) / Down_Type_Repeat_Interval;
+         begin
+            if Due > Repeats_Done then
+               Repeats_Done := Due;
                Queue_Activation (Tracked);
+               DMI_Sounds.Play (DMI_Sounds.Click);
+               Pulse := True;
+               Pulse_ID := Tracked;
             end if;
-         end if;
+         end;
       end if;
    end Tick;
 
    function Is_Pressed (ID : Button_ID_T) return Boolean is
    begin
+      -- DMI 5.3.2.6.4/.5: a down-type button is "pressed" for the one
+      -- screen that follows an activation, whether the finger is still
+      -- on it or not
+      if Buttons (ID).Kind = Down_Type then
+         return Pulse and then Pulse_ID = ID;
+      end if;
       if not Tracking or else Tracked /= ID or else not Inside then
          return False;
       end if;
@@ -151,7 +194,7 @@ package body DMI_Buttons is
          when Up_Type =>
             return True;
          when Down_Type =>
-            return True;
+            return False; -- answered above
          when Delay_Type =>
             -- toggle the pressed rendering every 0.25 s; after 2 s the
             -- button behaves as up-type (steady pressed)
