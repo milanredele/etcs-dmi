@@ -335,7 +335,11 @@ random bytes of the documented length, random type and length), touches and tick
 render after every step, without a raise or trap; the scenarios for ROB-1, ROB-2 and
 ROB-5 pass.
 
-### P1 — What is shown and sounded must be right
+### P1 — What is shown and sounded must be right — DONE 2026-09-19
+All items are merged; outcomes, choices and new open points are in the P1 follow-up
+section of [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). One choice is open for the
+project owner: the reading of 8.3.7.5 (PLN-3).
+
 7. **SDI-1** Text wrapping by pixel width at word boundaries; clip to area E5–E9.
 8. **SUP-1** (do first; the simulator then has to leave AD on a brake command, SUBSET-026 4.6.3 [24], see known issue KI-1) Let
    the EVC send the supervision status (protocol change) instead of

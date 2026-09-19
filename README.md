@@ -50,7 +50,7 @@ The rules that have proven necessary so far:
   claims, including requirements that do not exist; [PLAN.md](PLAN.md)
   §1 records the check claim by claim, and a verified plan replaced it.
 - **Behaviour is pinned by executable checks.** The regression
-  runner makes 100 checks: 61 rendered screens compared with golden
+  runner makes 451 checks: 119 rendered screens compared with golden
   frames, sound events, and a complete simulated mission. The
   WebAssembly build has to render the same pixels as the native one. A
   change that alters a screen fails a check, and a person has to look at
@@ -77,7 +77,9 @@ variant of the layout are out of scope.
 The code was audited against the specification clause by clause in
 September 2026: [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md) records
 every gap found, and [PLAN.md](PLAN.md) §7 is the prioritized backlog.
-It starts with a handful of inputs that can still stop the DMI.
+Its first two blocks are closed: nothing the EVC sends can stop the DMI
+any more (P0), and what is shown and sounded follows the clauses (P1).
+Next is the data entry dialogue of chapter 10 (P2).
 
 | | |
 |---|---|
