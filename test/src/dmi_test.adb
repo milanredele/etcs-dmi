@@ -2385,9 +2385,10 @@ procedure DMI_Test is
    -- PLN-3: 8.3.7.5 to 8.3.7.9 with both examples of Figure 80.
    procedure Scenario_Planning_PASP is
    begin
-      -- 140/130/120/110/60 and the zero speed target: three restrictive
-      -- discontinuities (3/4 of the width each), the fourth one (60) is
-      -- left out of the PASP, the zero speed target ends it (8.3.7.6)
+      -- 140/130/120/110/60 and the zero speed target: 130, 120 and 110 share
+      -- the 3/4 quarter, 60 (42 %) takes the 1/4 one, the zero speed target
+      -- ends the PASP. 8.3.7.5 and 8.3.7.6 follow from the quarters of
+      -- 8.3.7.7, nothing is counted.
       Planning_Reset (V_Perm => 140);
       Send_Planning (MA_Dist => 3000, Ceiling => 140,
                      Speeds => (500, 130, 0,  1000, 120, 0,  1500, 110, 0,

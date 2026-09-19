@@ -337,8 +337,8 @@ ROB-5 pass.
 
 ### P1 — What is shown and sounded must be right — DONE 2026-09-19
 All items are merged; outcomes, choices and new open points are in the P1 follow-up
-section of [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). One choice is open for the
-project owner: the reading of 8.3.7.5 (PLN-3).
+section of [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). Open for the project
+owner: the rule for Sinfo at a brake release (SUP-5).
 
 7. **SDI-1** Text wrapping by pixel width at word boundaries; clip to area E5–E9.
 8. **SUP-1** (do first; the simulator then has to leave AD on a brake command, SUBSET-026 4.6.3 [24], see known issue KI-1) Let
@@ -367,6 +367,9 @@ project owner: the reading of 8.3.7.5 (PLN-3).
     **WIN-10** dedicated keyboards as real data entry windows; **GEN-6** grouping.
 19. **WIN-2** Button enabling conditions of Tables 33–36 and Table 48: needs data
     status and session information in the protocol. **WIN-11** hourglass ST05.
+    With it (decided 2026-09-19): the EVC tells the DMI when Start Up begins and
+    whether a Start request is pending, replacing the DMI's own trigger (entry into
+    SB) and its pending latch from WIN-1.
 20. **WIN-8** Train data variants and the Table 40 items; **WIN-14** data view paging.
 
 ### P3 — Missing functions

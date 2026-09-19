@@ -147,14 +147,14 @@ package body DMI_Planning is
          end if;
       end Width_Of;
 
-      -- 8.3.7.5: a discontinuity counts when it is a decrease to a speed
-      -- above zero and below the ceiling speed at the train front
-      Max_Restrictions : constant := 3;
+      -- 8.3.7.5 / 8.3.7.6 need no counter: they follow from 8.3.7.7. The
+      -- diagram has the widths 3/4, 1/2 and 1/4 below the full one and
+      -- never gets wider again, so it can show at most three restrictions
+      -- above zero, and the step to zero is the fourth.
 
       Seg_Start    : Natural := 0;
       Seg_Speed    : Natural := Ceiling_Speed; -- what the diagram shows
       Prev_Speed   : Natural := Ceiling_Speed; -- what the profile says
-      Restrictions : Natural := 0;
       Increased    : Boolean := False;
    begin
       -- 8.3.7.10: PASP background over D7-D8
@@ -195,20 +195,16 @@ package body DMI_Planning is
             elsif Speeds (I).Speed < Prev_Speed
               and then Speeds (I).Speed < Ceiling_Speed
               and then not Increased
-              and then Restrictions < Max_Restrictions
             then
-               -- 8.3.7.5: up to 3 restrictive discontinuities, 8.3.7.7
-               Restrictions := Restrictions + 1;
+               -- 8.3.7.7: every effective decrease takes the width of its
+               -- quarter; one within the quarter already shown changes
+               -- nothing visible
                Seg_Speed := Speeds (I).Speed;
             end if;
-            -- Implementation choice: a decrease that 8.3.7.5 or 8.3.7.9
-            -- leaves out changes nothing, the diagram keeps its width up
-            -- to the zero speed target or the end of the movement
-            -- authority (8.3.7.2). Every discontinuity counts towards
-            -- the three of 8.3.7.5, also one that stays in the same
-            -- quarter as the one before it (the clause counts
-            -- discontinuities, not widths). 8.3.6 still shows every
-            -- discontinuity with its symbol and speed.
+            -- A decrease that 8.3.7.9 leaves out changes nothing: the
+            -- diagram keeps its width up to the zero speed target or the
+            -- end of the movement authority (8.3.7.2). 8.3.6 still shows
+            -- every discontinuity with its symbol and speed.
             Prev_Speed := Speeds (I).Speed;
             Seg_Start := Seg_End;
             exit when Seg_Speed = 0;
