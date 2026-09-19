@@ -16,6 +16,7 @@ with DMI_Ack;
 with DMI_Core;
 with Display.A_Area;
 with Display.B_Area;
+with Display.Draw;
 with Display.Screen.Files;
 with DMI_Driver_Data;
 with DMI_Planning;
@@ -638,15 +639,14 @@ procedure DMI_Test is
       Drain_Sounds;
       Step;
       Check_Frame ("text_unknown_glyphs");
-      -- a line of the widest glyph runs past the right screen edge:
-      -- drawing is clipped instead of raising (no golden: the wrapping
-      -- by columns is a separate finding)
+      -- 36 of the widest glyph are far wider than a line: no raise (the
+      -- lines themselves are checked in Scenario_Text_Wrap)
       Send_Text_Remove (1);
       Send_Text_Remove (2);
       Send_Text (3, Wide_Line, HH => 10, MM => 7);
       Drain_Sounds;
       Step;
-      Check (True, "over-wide text line is clipped at the screen edge");
+      Check (True, "over-wide text is drawn without raising");
    end Scenario_Text_Unknown_Glyphs;
 
    procedure Scenario_SM_Direction is
@@ -695,7 +695,7 @@ procedure DMI_Test is
       Drain_Sounds;
       Step;
       Check_Frame ("messages_full");
-      Pointer_Down (610, 380); Pointer_Up (610, 380); -- E11 scroll down
+      Pointer_Down (310, 440); Pointer_Up (310, 440); -- E11 scroll down
       Drain_Sounds;
       Step;
       Check_Frame ("messages_scrolled");
@@ -1433,13 +1433,27 @@ procedure DMI_Test is
       Check (Line_Text (1) = "Important late",
              "a first group message displaces the oldest first group one");
 
-      -- a text of 100 characters is cut after 80 and says so
+      -- the protocol carries 255 characters and all are kept; a longer
+      -- text (only a caller inside the DMI can pass one) is cut and
+      -- says so
       Reset;
       Send_Mode_Level (Mode => 2, Level => 4);
-      Send_Text (ID => 1,
-                 Text => "0123456789 0123456789 0123456789 0123456789 "
-                       & "0123456789 0123456789 0123456789 0123456789 "
-                       & "0123456789 x");
+      declare
+         Too_Long : Wide_String (1 .. TM.Max_Text + 45);
+      begin
+         for I in Too_Long'Range loop
+            Too_Long (I) := (if I mod 11 = 0 then ' '
+                             else Wide_Character'Val (48 + I mod 10));
+         end loop;
+         TM.Put (ID => 1, First_Group => False, Ack_Required => False,
+                 Class => TM.Plain_Text, Hour => 0, Minute => 0,
+                 Text => Too_Long);
+      end;
+      Steps := 0;
+      while TM.Can_Scroll_Down and then Steps < 1000 loop
+         TM.Scroll_Down;
+         Steps := Steps + 1;
+      end loop;
       for I in reverse 1 .. TM.Visible_Lines loop
          declare
             Last : constant Wide_String := Line_Text (I);
@@ -1452,7 +1466,6 @@ procedure DMI_Test is
             end if;
          end;
       end loop;
-      -- no golden frame: the picture depends on the line wrapping
       Drain_Sounds;
       Step;
    end Scenario_Text_Store;
@@ -1752,6 +1765,300 @@ procedure DMI_Test is
    end Scenario_Mission;
 
    Status : Natural;
+   -- SDI-1: lines of the text messages (8.2.3.4.6 c) by cell width and
+   -- at word boundaries, the same lines for drawing and for scrolling
+   -- (8.2.3.4.7 e), a message to be acknowledged of the greatest length
+   -- (8.2.3.4.8 a, b) and texts that must not stop the DMI
+   procedure Scenario_Text_Wrap is
+      package TM renames DMI_Text_Messages;
+      use type General_Parameters.Color;
+
+      function W (Code : Natural) return Wide_Character is
+        (Wide_Character'Val (Code));
+
+      function Line_Text (Index : Positive) return Wide_String is
+         Line  : TM.Line_T;
+         Valid : Boolean;
+      begin
+         TM.Get_Visible_Line (Index, Line, Valid);
+         return (if Valid then Line.Text (1 .. Line.Length) else "<none>");
+      end Line_Text;
+
+      function Lines_Shown return Natural is
+         Line   : TM.Line_T;
+         Valid  : Boolean;
+         Result : Natural := 0;
+      begin
+         for I in 1 .. TM.Visible_Lines loop
+            TM.Get_Visible_Line (I, Line, Valid);
+            exit when not Valid;
+            Result := Result + 1;
+         end loop;
+         return Result;
+      end Lines_Shown;
+
+      -- Every visible line fits the width the text has (the double
+      -- strike of the bold style included)
+      function Lines_Fit return Boolean is
+         Line  : TM.Line_T;
+         Valid : Boolean;
+      begin
+         for I in 1 .. TM.Visible_Lines loop
+            TM.Get_Visible_Line (I, Line, Valid);
+            exit when not Valid;
+            if Display.Draw.String_Width
+                 (Line.Text (1 .. Line.Length), TM.Text_Size)
+               + (if Line.Bold then TM.Bold_Extra else 0) > TM.Line_Width
+            then
+               return False;
+            end if;
+         end loop;
+         return True;
+      end Lines_Fit;
+
+      -- The list from its first to its last line, read by scrolling
+      -- line by line: the lines joined by Joint, and their number.
+      -- Fits is False if any line seen on the way was too wide.
+      Buffer : Wide_String (1 .. 4000);
+      Last   : Natural;
+      Count  : Natural;
+      Fits   : Boolean;
+
+      procedure Read_List (Joint : Wide_String) is
+         procedure Add (Text : Wide_String) is
+         begin
+            if Count > 0 then
+               Buffer (Last + 1 .. Last + Joint'Length) := Joint;
+               Last := Last + Joint'Length;
+            end if;
+            Buffer (Last + 1 .. Last + Text'Length) := Text;
+            Last := Last + Text'Length;
+            Count := Count + 1;
+         end Add;
+      begin
+         Last := 0;
+         Count := 0;
+         while TM.Can_Scroll_Up loop
+            TM.Scroll_Up;
+         end loop;
+         Fits := Lines_Fit;
+         for I in 1 .. Lines_Shown loop
+            Add (Line_Text (I));
+         end loop;
+         while TM.Can_Scroll_Down and then Count < 300 loop
+            TM.Scroll_Down;
+            Fits := Fits and then Lines_Fit;
+            Add (Line_Text (TM.Visible_Lines));
+         end loop;
+      end Read_List;
+
+      -- No text cell in the margin at the right edge of E5-E9 (absolute
+      -- 285 .. 287), which is where an over-wide line would show first
+      function Margin_Clear return Boolean is
+      begin
+         for Y in 365 .. 464 loop
+            for X in 54 + TM.Area_Width - TM.Right_Margin
+                  .. 54 + TM.Area_Width - 1
+            loop
+               if Display.Screen.Get_Pixel (X, Y) = General_Parameters.WHITE
+               then
+                  return False;
+               end if;
+            end loop;
+         end loop;
+         return True;
+      end Margin_Clear;
+
+      Long_Text : constant Wide_String :=
+        "Stop at the next station and wait for the written order of the "
+        & "signaller before you proceed towards the junction and report "
+        & "your position";
+
+      Long_Word : constant Wide_String :=
+        "Donaudampfschifffahrtsgesellschaftskapitaenswitwe";
+
+      -- the greatest length of the protocol and of SUBSET-026 7.5.1.53
+      Max_Message : Wide_String (1 .. 255);
+      Phrase : constant Wide_String :=
+        "Proceed on sight to the next main signal. ";
+
+      Scrolls : Natural := 0;
+   begin
+      for I in Max_Message'Range loop
+         Max_Message (I) := Phrase (Phrase'First + (I - 1) mod Phrase'Length);
+      end loop;
+      if Max_Message (Max_Message'Last) = ' ' then
+         Max_Message (Max_Message'Last) := '.';
+      end if;
+
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+
+      -- the case of the audit: 28 characters that are wider than the
+      -- area; regular and bold
+      Send_Text (1, "Level crossing not protected", HH => 9, MM => 30);
+      Check (Line_Text (1) = "Level crossing not"
+             and then Line_Text (2) = "protected"
+             and then Line_Text (3) = "<none>",
+             "a message wider than the area continues on the next line");
+      Send_Text (2, "Level crossing not protected", First_Group => True,
+                 HH => 9, MM => 31);
+      Check (Line_Text (1) = "Level crossing not"
+             and then Line_Text (2) = "protected"
+             and then Line_Text (3) = "Level crossing not",
+             "the same in bold style");
+      Drain_Sounds;
+      Step;
+      Check (Lines_Fit and then Margin_Clear,
+             "the lines stay inside E5-E9");
+      Check_Frame ("wrap_level_crossing");
+
+      -- a long message of several words: more lines than the area has,
+      -- the list scrolls through the very lines that are drawn
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Text (1, "Entering FS", HH => 9, MM => 32);
+      Send_Text (2, Long_Text, HH => 9, MM => 33);
+      Check (not TM.Can_Scroll_Up and then TM.Can_Scroll_Down,
+             "a message of more than five lines can be scrolled");
+      Drain_Sounds;
+      Step;
+      Check (Margin_Clear, "long message: nothing in the right margin");
+      Check_Frame ("wrap_long_top");
+      Read_List (Joint => " ");
+      Check (Buffer (1 .. Last) = Long_Text & " Entering FS",
+             "scrolling line by line shows the whole text, word by word");
+      Check (Fits and then Count > TM.Visible_Lines + 1,
+             "every line of the long message fits the area");
+      Check (not TM.Can_Scroll_Down and then TM.Can_Scroll_Up
+             and then Line_Text (TM.Visible_Lines) = "Entering FS",
+             "the list ends with the last line of the last message");
+      Drain_Sounds;
+      Step;
+      Check (Margin_Clear, "scrolled: nothing in the right margin");
+      Check_Frame ("wrap_long_scrolled");
+      -- ROB-8: the long message goes while the list is scrolled to its
+      -- end, the offset follows the lines that are left
+      Send_Text_Remove (2);
+      Check (Line_Text (1) = "Entering FS"
+             and then not TM.Can_Scroll_Up
+             and then not TM.Can_Scroll_Down,
+             "the scroll offset follows the removal of a wrapped message");
+      -- the scroll buttons work on the same lines
+      Send_Text (3, Long_Text, First_Group => True, HH => 9, MM => 34);
+      Drain_Sounds;
+      Step; -- the buttons follow the list once per cycle
+      while TM.Can_Scroll_Down and then Scrolls < 300 loop
+         Pointer_Down (310, 440); Pointer_Up (310, 440); -- E11
+         Step;
+         Scrolls := Scrolls + 1;
+      end loop;
+      Read_List (Joint => " ");
+      Check (Scrolls = Count - TM.Visible_Lines,
+             "the [Down] button scrolls one wrapped line at a time");
+      Check (Fits and then Buffer (1 .. Last) = Long_Text & " Entering FS",
+             "bold: the whole text, every line inside the area");
+
+      -- a word that is wider than a line is broken, after the words
+      -- that fit; nothing is lost
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Text (1, "Halt " & Long_Word, HH => 9, MM => 35);
+      Check (Line_Text (1) = "Halt", "the over-long word begins a line");
+      Read_List (Joint => "");
+      Check (Buffer (1 .. Last) = "Halt" & Long_Word and then Fits
+             and then Count >= 3,
+             "an over-long word is broken into lines that fit");
+      Drain_Sounds;
+      Step;
+      Check (Margin_Clear, "long word: nothing in the right margin");
+      Check_Frame ("wrap_long_word");
+
+      -- a message to be acknowledged of the greatest length: alone, not
+      -- scrollable (8.2.3.4.8 a, b), so the fifth line says that the
+      -- text goes on
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Text (1, "Entering FS", HH => 9, MM => 36);
+      Send_Text (2, Max_Message, Ack_Required => True, Class => 1,
+                 HH => 9, MM => 37);
+      Drain_Sounds;
+      Step;
+      declare
+         Fifth : constant Wide_String := Line_Text (TM.Visible_Lines);
+      begin
+         Check (Lines_Shown = TM.Visible_Lines
+                and then Fifth'Length > 3
+                and then Fifth (Fifth'Last - 2 .. Fifth'Last) = "...",
+                "a message to be acknowledged that does not fit ends in an "
+                & "ellipsis");
+      end;
+      Check (Line_Text (1) = "Proceed on sight to the" and then Lines_Fit,
+             "its lines are wrapped like any other");
+      Check (Margin_Clear, "ack message: nothing in the right margin");
+      Check_Frame ("wrap_ack_max");
+      Pointer_Down (310, 440); Pointer_Up (310, 440); -- E11 is disabled
+      Step;
+      Check (Line_Text (1) = "Proceed on sight to the",
+             "a message to be acknowledged cannot be scrolled");
+      Pointer_Down (150, 400); Pointer_Up (150, 400); -- acknowledge
+      Drain_Sounds;
+      Step;
+      Check (not TM.Ack_Pending and then TM.Can_Scroll_Down,
+             "once acknowledged the message can be scrolled");
+      Read_List (Joint => " ");
+      Check (Buffer (1 .. Last) = Max_Message & " Entering FS" and then Fits,
+             "all 255 characters are kept and can be read");
+      while TM.Can_Scroll_Up loop
+         TM.Scroll_Up;
+      end loop;
+      Drain_Sounds;
+      Step;
+      Check_Frame ("wrap_ack_max_acked");
+
+      -- texts that must not stop the DMI, as messages and as messages
+      -- to be acknowledged: empty, spaces only, one word of the widest
+      -- glyph, one of characters without a glyph, spaces around a word
+      for Ack in Boolean loop
+         Reset;
+         Send_Mode_Level (Mode => 2, Level => 4);
+         Send_Text (1, "", Ack_Required => Ack);
+         Step;
+         Check (Lines_Shown = 1 and then Line_Text (1) = "",
+                "an empty text is one empty line");
+         Send_Text (1, (1 .. 255 => ' '), Ack_Required => Ack);
+         Step;
+         Check (Lines_Shown = 1 and then Line_Text (1) = "",
+                "a text of spaces is one empty line");
+         Send_Text (1, (1 .. 255 => '@'), Ack_Required => Ack);
+         Step;
+         Check (Lines_Shown = TM.Visible_Lines and then Lines_Fit
+                and then Margin_Clear,
+                "255 of the widest glyph are broken into lines that fit");
+         Send_Text (1, (1 .. 255 => W (16#FF#)), Ack_Required => Ack);
+         Step;
+         Check (Lines_Shown = TM.Visible_Lines and then Lines_Fit
+                and then Margin_Clear,
+                "255 characters without a glyph are broken the same way");
+         Send_Text (1, (1 .. 120 => ' ') & "word" & (1 .. 120 => ' '),
+                    Ack_Required => Ack);
+         Step;
+         Check (Lines_Shown = 1 and then Line_Text (1) = "word",
+                "spaces around a word make no lines");
+         Send_Text (1, "a  b" & (1 .. 60 => ' ') & "c", Ack_Required => Ack);
+         Step;
+         Check (Line_Text (1) = "a  b" and then Line_Text (2) = "c"
+                and then Lines_Shown = 2,
+                "the spaces at a line break are not shown");
+      end loop;
+      Drain_Sounds;
+   end Scenario_Text_Wrap;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -1783,6 +2090,7 @@ begin
    Scenario_EVC_Link_Lost;
    Scenario_Failure_Presentation;
    Scenario_Mission;
+   Scenario_Text_Wrap;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

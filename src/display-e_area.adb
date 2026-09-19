@@ -12,7 +12,8 @@ with Symbol;
 package body Display.E_Area is
 
    E5_E9 : constant Area_T :=
-     (Get_Sub_Area_With_Relative_Position (E5).Position, 234, 100);
+     (Get_Sub_Area_With_Relative_Position (E5).Position,
+      DMI_Text_Messages.Area_Width, 100);
 
    procedure Draw_Radio is
       -- DMI 8.4.1: E1 shows ST03 / ST04 / nothing
@@ -32,10 +33,13 @@ package body Display.E_Area is
    procedure Draw_Messages is
       use DMI_Text_Messages;
 
-      Time_X   : constant Width_T := E5_E9.Position.X + 3; -- 5.1.3.2
+      Time_X   : constant Width_T := E5_E9.Position.X + Time_Indent; -- 5.1.3.2
       -- text begins after the hh:mm stamp plus a 10 cell separation
       -- (8.2.3.4.6 b); continuation lines align with the text
-      Text_X   : constant Width_T := Time_X + 40;
+      -- (8.2.3.4.6 c). DMI_Text_Messages wraps the lines to the width
+      -- that is left; should a line be wider all the same, it is
+      -- clipped to E5-E9 (8.2.3.4.2) and never reaches E10/E11.
+      Text_X   : constant Width_T := E5_E9.Position.X + Text_Indent;
 
       Line  : Line_T;
       Valid : Boolean;
@@ -68,14 +72,15 @@ package body Display.E_Area is
                   10, General_Parameters.WHITE);
             end if;
             if Line.Length > 0 then
-               E_Buffer.Draw_String
+               E_Buffer.Draw_String_Clipped
                  (Text_X, Base_Y, Line.Text (1 .. Line.Length),
-                  12, General_Parameters.WHITE);
+                  Text_Size, General_Parameters.WHITE, E5_E9);
                if Line.Bold then
                   -- bold style approximated by a 1 cell double strike
-                  E_Buffer.Draw_String
-                    (Text_X + 1, Base_Y, Line.Text (1 .. Line.Length),
-                     12, General_Parameters.WHITE);
+                  E_Buffer.Draw_String_Clipped
+                    (Text_X + Bold_Extra, Base_Y,
+                     Line.Text (1 .. Line.Length),
+                     Text_Size, General_Parameters.WHITE, E5_E9);
                end if;
             end if;
          end;
