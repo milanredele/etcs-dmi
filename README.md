@@ -18,7 +18,9 @@ Ada sources to WebAssembly.
    [ETCS DMI](https://en.wikipedia.org/wiki/European_Train_Control_System#Man_Machine_Interface)**
    according to the
    [specifications published by the European Union Agency for Railways](https://www.era.europa.eu/activities/technical-specifications-interoperability_en#meeting7)
-   (ERA_ERTMS_015560 v4.0.0, included under [doc/SRS](doc/SRS)).
+   (ERA_ERTMS_015560 v4.0.0, included under [doc/SRS](doc/SRS) together
+   with the system specification it refers to,
+   [SUBSET-026 v4.0.0](doc/SRS/SUBSET-026_v400/README.md)).
    Written in Ada 2012 with a strong focus on applicability in
    resource-limited embedded devices: the primary performance goal is to
    run on a 32-bit 200 MHz ARM/POWER MCU with 128 kB RAM and 1 MB ROM,

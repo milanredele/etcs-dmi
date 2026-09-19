@@ -4,6 +4,7 @@ This document provides context and guidelines for AI agents (GitHub Copilot and 
 
 ## Project Context
 - **Domain**: ETCS DMI, ERA_ERTMS_015560 version 4.0.0 (text under `doc/SRS/ERA_ERTMS_015560_v400/sections/`).
+- **System specification**: SUBSET-026 v4.0.0, reference [2] of the DMI specification, is under `doc/SRS/SUBSET-026_v400/` (index with DMI entry points in its `README.md`). Use it for what the on-board does (supervision statuses, modes and transitions, procedures). The markdown of both documents is a search aid: when a table, figure or legend matters, check the PDF page.
 - **Scope**: the ETCS DMI with the touch screen layout. NTC (chapters 9 and 12) and the soft-key technology are out of scope by decision (PLAN.md status note); do not implement them.
 - **Backlog**: PLAN.md §7, from the audit in `doc/AUDIT-2026-09.md`. Cite real clause numbers only; re-read the clause before relying on a finding.
 - **Core Technology**: **Ada 2012** (GNAT compiler).
