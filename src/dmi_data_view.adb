@@ -131,6 +131,9 @@ package body DMI_Data_View is
    --  airtight, loading gauge, radio network type, GSM-R network ID and
    --  RBC ID are not entered on this DMI and are not carried by the
    --  protocol either: they are unknown and stay without a value.
+   --  Index is the position in Items above, not the item number of
+   --  Table 45: 4, 5 and 6 are the length, the brake percentage and the
+   --  maximum speed (items 5, 6 and 7 of the table).
    function Value_Of (Index : Positive) return Value_T is
       use DMI_Driver_Data;
       None : constant Value_T := (others => <>);
