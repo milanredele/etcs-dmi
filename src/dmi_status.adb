@@ -14,15 +14,18 @@ package body DMI_Status is
                                          New_Count : Natural) is
       Result : TC_List_T;
       Count  : Natural := 0;
+      Given  : constant Natural := Natural'Min (New_Count, New_List'Last);
+      Old    : constant Natural := Natural'Min (TC_Count, TC_List'Last);
 
-      function In_New (ID : Natural) return Boolean is
+      -- Index of the first entry with this id in the new set, 0 if none
+      function In_New (ID : Natural) return Natural is
       begin
-         for I in 1 .. New_Count loop
+         for I in 1 .. Given loop
             if New_List (I).ID = ID then
-               return True;
+               return I;
             end if;
          end loop;
-         return False;
+         return 0;
       end In_New;
 
       function Known (ID : Natural) return Boolean is
@@ -35,19 +38,62 @@ package body DMI_Status is
          return False;
       end Known;
    begin
-      -- keep surviving entries in their existing (arrival) order
-      for I in 1 .. TC_Count loop
-         if In_New (TC_List (I).ID) and then Count < Result'Last then
-            Count := Count + 1;
-            Result (Count) := TC_List (I);
-         end if;
+      -- keep surviving entries in their existing (arrival) order and in
+      -- their area. The id names the object: by choice (the SRS knows no
+      -- ids) a kind that changes under one id, e.g. the announcement
+      -- TC03 becoming the indication TC01, is the same object and stays
+      -- where it is; another id is another object and queues up.
+      for I in 1 .. Old loop
+         declare
+            Index : constant Natural := In_New (TC_List (I).ID);
+         begin
+            if Index /= 0
+              and then not Known (TC_List (I).ID)
+              and then Count < Result'Last
+            then
+               Count := Count + 1;
+               Result (Count) := (ID   => TC_List (I).ID,
+                                  Kind => New_List (Index).Kind,
+                                  Slot => TC_List (I).Slot);
+            end if;
+         end;
       end loop;
-      -- append newcomers in the order the EVC lists them
-      for I in 1 .. New_Count loop
+      -- append newcomers in the order the EVC lists them, still waiting
+      for I in 1 .. Given loop
          if not Known (New_List (I).ID) and then Count < Result'Last then
             Count := Count + 1;
-            Result (Count) := New_List (I);
+            Result (Count) := (ID   => New_List (I).ID,
+                               Kind => New_List (I).Kind,
+                               Slot => 0);
          end if;
+      end loop;
+      -- 8.2.3.5.3 / 8.2.3.8.3: from left to right, an area that is free
+      -- is used by the next object to be displayed, which is by choice
+      -- the one that arrived first (the clauses give the waiting objects
+      -- no order)
+      for Slot in 1 .. TC_Slot_T'Last loop
+         declare
+            Free : Boolean := True;
+         begin
+            for I in 1 .. Count loop
+               if Result (I).Slot = Slot then
+                  if Free then
+                     Free := False;
+                  else
+                     -- cannot happen: never two objects in one area
+                     Result (I).Slot := 0;
+                  end if;
+               end if;
+            end loop;
+            if Free then
+               for I in 1 .. Count loop
+                  if Result (I).Slot = 0 then
+                     Result (I).Slot := Slot;
+                     exit;
+                  end if;
+               end loop;
+            end if;
+         end;
       end loop;
       TC_List := Result;
       TC_Count := Count;

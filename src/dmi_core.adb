@@ -639,7 +639,10 @@ package body DMI_Core is
               and then Used < List'Last
             then
                Used := Used + 1;
-               List (Used) := (ID => Natural (ID), Kind => Natural (Kind));
+               -- the area is decided by DMI_Status (8.2.3.5.3)
+               List (Used) := (ID   => Natural (ID),
+                               Kind => Natural (Kind),
+                               Slot => 0);
             end if;
          end;
       end loop;
