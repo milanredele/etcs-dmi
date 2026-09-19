@@ -170,8 +170,6 @@ package body DMI_Data_Entry is
       end loop;
    end Open;
 
-   function Is_Open return Boolean is (Open_Flag);
-
    function Take_Completion return Boolean is
       Result : constant Boolean := Completed;
    begin

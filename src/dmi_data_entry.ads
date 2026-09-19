@@ -128,8 +128,6 @@ package DMI_Data_Entry is
    --  window of the topic
    procedure Open (Definition : Window_Def_T);
 
-   function Is_Open return Boolean;
-
    --  The area the window covers (the background to fill): D/F/G for the
    --  half grid array, the whole grid for the total grid array
    function Covered_Area return Display.Area_T;
