@@ -4,7 +4,10 @@
 
 package DMI_Driver_Data is
 
-   Max_Field_Len : constant := 12;
+   --  The longest text data the DMI holds: SUBSET-026 A.3.11 gives the
+   --  Driver ID 1 to 16 alphanumeric characters (3.18.4.1.4); the train
+   --  running number is 8 digits (NID_OPERATIONAL, 7.5.1.92).
+   Max_Field_Len : constant := 16;
 
    type Text_Value_T is record
       Length : Natural := 0;

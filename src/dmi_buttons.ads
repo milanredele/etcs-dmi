@@ -45,12 +45,26 @@ package DMI_Buttons is
                         BTN_Menu_18,
                         BTN_Menu_19,
                         BTN_Menu_20,
-                        BTN_Menu_21);
+                        BTN_Menu_21,
+                        --  11.3.3.5: the Driver ID window of the Start
+                        --  Up step S1 adds the 'settings' and 'train
+                        --  running number' buttons to those
+                        BTN_Menu_22,
+                        BTN_Menu_23);
 
-   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_21;
+   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_23;
    subtype F_Button_T is Button_ID_T range BTN_F1 .. BTN_F5;
 
-   type Kind_T is (Up_Type, Down_Type, Delay_Type); -- DMI 5.3.2.6
+   --  DMI 5.3.2.6. The repeat function of 5.3.2.6.5 is a property of the
+   --  button, not of the down type: "a down-type button CAN have a
+   --  repeat function". 5.3.2.7.2 requires it for [Delete], [Up] and
+   --  [Down]; every other owner chooses, and a plain Down_Type does not
+   --  repeat. DMI 10.3.2.5 b is the other place that asks for it: an
+   --  alphanumeric data key selects another character under the same key
+   --  when it is held.
+   type Kind_T is (Up_Type, Down_Type, Down_Repeat_Type, Delay_Type);
+
+   subtype Down_Kind_T is Kind_T range Down_Type .. Down_Repeat_Type;
 
    type Pointer_Event_T is (Down, Up, Move);
 

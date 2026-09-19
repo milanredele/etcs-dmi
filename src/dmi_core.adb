@@ -14,6 +14,7 @@ with Display.Screen;
 with DMI_Ack;
 with DMI_Buttons;
 with DMI_Conditions;
+with DMI_Data_Entry;
 with DMI_Driver_Data;
 with DMI_Flash;
 with DMI_Planning;
@@ -139,7 +140,7 @@ package body DMI_Core is
       then
          DMI_Buttons.Set_Active (BTN_Msg_Up,
                                  Display.Get_Area (Display.E10),
-                                 DMI_Buttons.Down_Type);
+                                 DMI_Buttons.Down_Repeat_Type);
       else
          DMI_Buttons.Set_Inactive (BTN_Msg_Up);
       end if;
@@ -149,7 +150,7 @@ package body DMI_Core is
       then
          DMI_Buttons.Set_Active (BTN_Msg_Down,
                                  Display.Get_Area (Display.E11),
-                                 DMI_Buttons.Down_Type);
+                                 DMI_Buttons.Down_Repeat_Type);
       else
          DMI_Buttons.Set_Inactive (BTN_Msg_Down);
       end if;
@@ -1100,6 +1101,9 @@ package body DMI_Core is
       -- DMI 5.1.1.3.2: before DMI_Ack.Tick, which restarts the phase for
       -- a request it displays now
       DMI_Flash.Tick (Dt_Ms);
+      -- DMI 10.3.2.5 a: the 2 s delay of the multi-tap keyboards, before
+      -- the button activations of this tick are processed
+      DMI_Data_Entry.Tick (Dt_Ms);
       declare
          -- DMI 11.7.1.8: an acknowledgement required during the Start Up
          -- dialogue sequence is displayed 1 s after its end

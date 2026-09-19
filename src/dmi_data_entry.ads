@@ -24,13 +24,13 @@ package DMI_Data_Entry is
    subtype Label_T is Wide_String (1 .. Max_Label);
 
    --  10.3.5.12: the keyboard presented for the selected input field.
-   --  The enhanced numeric keyboard (10.3.5.16), the alphanumeric one
-   --  (10.3.5.17) and a dedicated keyboard with predefined choices
-   --  (10.3.5.19) are further values of this type; each only adds its
-   --  key labels and what a key press appends.
+   --  The enhanced numeric keyboard (10.3.5.16) and a dedicated keyboard
+   --  with predefined choices (10.3.5.19) are further values of this
+   --  type; each only adds its key labels and what a key press appends.
    type Keyboard_T is
-     (Numeric,   -- 10.3.5.15
-      Yes_No);   -- 10.3.5.18, dedicated keyboard limited to 'No'/'Yes'
+     (Numeric,        -- 10.3.5.15
+      Yes_No,         -- 10.3.5.18, dedicated keyboard 'No'/'Yes'
+      Alphanumeric);  -- 10.3.5.17, multi-tap keys (10.3.2.5)
 
    --  10.3.4.1.2: the permitted range and the resolution of an input
    --  field are configured in the on-board and their definition is
@@ -140,6 +140,11 @@ package DMI_Data_Entry is
    function Button_Kind (Index : Positive) return DMI_Buttons.Kind_T;
 
    procedure Press (Index : Positive);
+
+   --  10.3.2.5 a: the multi-tap keyboards need time. Dt_Ms is the
+   --  elapsed time since the last call; any value is accepted. Called by
+   --  DMI_Core.Tick, like every other timed part of the DMI.
+   procedure Tick (Dt_Ms : Natural);
 
    --  True once, when the driver completed the entry (the values are
    --  then read with Value / Number)
