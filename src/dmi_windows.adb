@@ -472,7 +472,7 @@ package body DMI_Windows is
          when W_Level | W_Adhesion | W_Volume | W_Brightness =>
             -- 11.3.2, 11.3.7, 11.3.8, 11.3.11: half grid array, a single
             -- input field with only the data part and a dedicated
-            -- keyboard (own helper below)
+            -- keyboard (Dedicated_Def above)
             return Dedicated_Def (ID);
          when W_SR_Data =>
             -- 11.3.10.1: likewise on the total grid array
@@ -739,15 +739,25 @@ package body DMI_Windows is
             Queue (Adhesion_Set, (if Chosen = 2 then 1 else 0));
             Pop;
          when W_Volume =>
-            -- the choices are the levels 0 .. 10 in order. GEN-3: the
-            -- value is not applied to the sound output yet (P4).
-            General_Parameters.Loudspeaker_Volume :=
-              General_Parameters.Loudspeaker_Volume_T (Chosen - 1);
-            Pop;
+            -- the choices are the levels 0 .. 10 in order (the range
+            -- check is defensive: the engine never reports a choice the
+            -- list does not hold). GEN-3: the value is not applied to
+            -- the sound output yet (P4).
+            if Chosen - 1 in Natural (General_Parameters.Loudspeaker_Volume_T'First)
+                          .. Natural (General_Parameters.Loudspeaker_Volume_T'Last)
+            then
+               General_Parameters.Loudspeaker_Volume :=
+                 General_Parameters.Loudspeaker_Volume_T (Chosen - 1);
+               Pop;
+            end if;
          when W_Brightness =>
-            General_Parameters.Display_Luminance :=
-              General_Parameters.Display_Luminance_T (Chosen - 1);
-            Pop;
+            if Chosen - 1 in Natural (General_Parameters.Display_Luminance_T'First)
+                          .. Natural (General_Parameters.Display_Luminance_T'Last)
+            then
+               General_Parameters.Display_Luminance :=
+                 General_Parameters.Display_Luminance_T (Chosen - 1);
+               Pop;
+            end if;
          when others =>
             null;
       end case;
