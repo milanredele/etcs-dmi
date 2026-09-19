@@ -18,9 +18,11 @@ with Display.A_Area;
 with Display.B_Area;
 with Display.Screen.Files;
 with DMI_Driver_Data;
+with DMI_Flash;
 with DMI_Planning;
 with DMI_Protocol;
 with DMI_Sounds;
+with DMI_Status;
 with DMI_Text_Messages;
 with EVC_Core;
 with EVC_Driver;
@@ -1749,6 +1751,279 @@ procedure DMI_Test is
              "train stopped before the EOA");
    end Scenario_Mission;
 
+   ---------------------------------------------------------------------
+   -- SDI-5, SDI-6, SDI-7, GEN-8
+   ---------------------------------------------------------------------
+
+   -- Area (1 .. 3 = B3 .. B5, 0 = waiting) and kind of a track condition
+   -- object; 99 when the DMI does not hold this id
+   function TC_Slot_Of (ID : Natural) return Natural is
+   begin
+      for I in 1 .. DMI_Status.TC_Count loop
+         if DMI_Status.TC_List (I).ID = ID then
+            return DMI_Status.TC_List (I).Slot;
+         end if;
+      end loop;
+      return 99;
+   end TC_Slot_Of;
+
+   function TC_Kind_Of (ID : Natural) return Natural is
+   begin
+      for I in 1 .. DMI_Status.TC_Count loop
+         if DMI_Status.TC_List (I).ID = ID then
+            return DMI_Status.TC_List (I).Kind;
+         end if;
+      end loop;
+      return 99;
+   end TC_Kind_Of;
+
+   -- SDI-5 (8.2.3.5.3, 8.2.3.8.3): a displayed object keeps its area, a
+   -- freed area goes to a waiting object
+   procedure Scenario_TC_Areas_Kept is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS, L1
+      Send_Speed_State (V_Cur => 80, V_Perm => 120, V_Target => 0,
+                        V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+
+      -- four objects for three areas: lower pantograph (TC03), neutral
+      -- section (TC07), level crossing; the radio hole (TC12) waits
+      Send_Track_Cond_IDs (((10, 3), (20, 7), (30, 38), (40, 12)));
+      Step;
+      Check (TC_Slot_Of (10) = 1 and then TC_Slot_Of (20) = 2
+             and then TC_Slot_Of (30) = 3,
+             "track conditions fill B3, B4, B5 from the left");
+      Check (TC_Slot_Of (40) = 0, "the fourth object waits");
+      Check_Frame ("tc_fourth_waits");
+
+      -- the neutral section ends: B4 is free and goes to the radio
+      -- hole; the level crossing stays in B5
+      Send_Track_Cond_IDs (((10, 3), (30, 38), (40, 12)));
+      Step;
+      Check (TC_Slot_Of (10) = 1 and then TC_Slot_Of (30) = 3,
+             "displayed objects keep their area");
+      Check (TC_Slot_Of (40) = 2, "the waiting object takes the freed B4");
+      Check_Frame ("tc_freed_b4_taken");
+
+      -- the pantograph object ends and nothing waits: B3 stays empty,
+      -- B4 and B5 do not shift to the left
+      Send_Track_Cond_IDs (((30, 38), (40, 12)));
+      Step;
+      Check (TC_Slot_Of (40) = 2 and then TC_Slot_Of (30) = 3,
+             "no shift into the free B3");
+      Check_Frame ("tc_b3_free_no_shift");
+
+      -- the next object takes the first free area from the left
+      Send_Track_Cond_IDs (((30, 38), (40, 12), (50, 35)));
+      Step;
+      Check (TC_Slot_Of (50) = 1, "a new object takes the free B3");
+      Check (TC_Slot_Of (40) = 2 and then TC_Slot_Of (30) = 3,
+             "the others still keep their area");
+
+      -- non stopping area announced (TC11) becoming the area itself
+      -- (TC10) under one id: same object, same area, new symbol; the
+      -- order in which the EVC lists the objects moves nothing
+      Send_Track_Cond_IDs (((40, 10), (50, 35), (30, 38)));
+      Step;
+      Check (TC_Slot_Of (40) = 2 and then TC_Kind_Of (40) = 10,
+             "a known id takes the new kind in its area");
+      Check (TC_Slot_Of (50) = 1 and then TC_Slot_Of (30) = 3,
+             "the order of the EVC list does not move objects");
+      Check_Frame ("tc_kind_changed_in_place");
+
+      -- two waiting objects are served in their order of arrival
+      Send_Track_Cond_IDs
+        (((40, 10), (50, 35), (30, 38), (60, 1), (70, 6)));
+      Send_Track_Cond_IDs (((50, 35), (70, 6), (60, 1)));
+      Step;
+      Check (TC_Slot_Of (60) = 2 and then TC_Slot_Of (70) = 3
+             and then TC_Slot_Of (50) = 1,
+             "freed areas go to the waiting objects, oldest first");
+
+      -- totality: repeated ids, unknown kinds and more objects than the
+      -- store holds
+      Send_Track_Cond_IDs
+        (((1, 1), (1, 2), (2, 0), (3, 39), (4, 4), (5, 5), (6, 6), (7, 7),
+          (8, 8), (9, 9), (10, 10), (11, 11), (12, 12)));
+      Step;
+      Check (DMI_Status.TC_Count in 3 .. DMI_Status.TC_List'Length,
+             "track condition store is cut at its capacity");
+      Check (TC_Slot_Of (1) = 1 and then TC_Slot_Of (4) = 2
+             and then TC_Slot_Of (5) = 3,
+             "the first three valid objects are displayed");
+      Check (TC_Kind_Of (1) = 1, "a repeated id counts once");
+      Check (TC_Slot_Of (2) = 99 and then TC_Slot_Of (3) = 99,
+             "unknown kinds are ignored");
+      Send_Raw (16#05#, (1 => 0));
+      Step;
+      Check (DMI_Status.TC_Count = 0, "an empty list ends all objects");
+   end Scenario_TC_Areas_Kept;
+
+   -- SDI-6 (8.2.3.2.2): no LE02 in C8 in the modes SN and NL
+   procedure Scenario_Level_NTC_In_C8 is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 8, Level => 3); -- SH, level NTC
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+      Step;
+      Check_Frame ("level_ntc_sh_le02");
+
+      Send_Mode_Level (Mode => 12, Level => 3); -- SN
+      Step;
+      Check_Frame ("level_ntc_sn_c8_empty");
+
+      Send_Mode_Level (Mode => 14, Level => 3); -- NL
+      Step;
+      Check_Frame ("level_ntc_nl_c8_empty");
+
+      -- the exception is for level NTC only
+      Send_Mode_Level (Mode => 14, Level => 4); -- NL, L1
+      Step;
+      Check_Frame ("level_1_nl_le03");
+   end Scenario_Level_NTC_In_C8;
+
+   -- SDI-7 (8.2.3.2.8): once acknowledged, LE07 / LE09 give way to
+   -- LE06 / LE08 although the EVC still announces "with acknowledgement"
+   procedure Scenario_Level_Ann_Acknowledged is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+      Drain_Outbox;
+
+      -- level NTC announced with acknowledgement: LE09, flashing frame
+      Send_Mode_Level (Mode => 2, Level => 4, Level_Ann => 3,
+                       Level_Ann_Ack => True);
+      Step;
+      Expect_Sound (DMI_Sounds.Sinfo, "NTC announcement ack plays Sinfo");
+      Check_Frame ("level_ann_ntc_ack");
+
+      -- the driver acknowledges in C1: LE08 at once
+      Pointer_Down (190, 340);
+      Pointer_Up (190, 340);
+      Step;
+      Expect_Ack (0, 0, "level announcement acknowledged");
+      Check (not DMI_Ack.Current_Valid, "acknowledged: nothing offered");
+      Check_Frame ("level_ann_ntc_acked");
+
+      -- the EVC repeats the announcement with the flag still set: no
+      -- second request, LE08 stays (longer than the 1 s of 5.4.1.9)
+      for I in 1 .. 30 loop
+         Send_Mode_Level (Mode => 2, Level => 4, Level_Ann => 3,
+                          Level_Ann_Ack => True);
+         Step;
+      end loop;
+      Check (not DMI_Ack.Current_Valid,
+             "repeated announcement is not offered again");
+      Expect_No_Sound ("repeated announcement is silent");
+      Check_Frame ("level_ann_ntc_acked");
+
+      -- the same for level 0: LE07, then LE06
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Step;
+      Send_Mode_Level (Mode => 2, Level => 4, Level_Ann => 2,
+                       Level_Ann_Ack => True);
+      Step;
+      Drain_Sounds;
+      Check_Frame ("level_ann_l0_ack");
+      Pointer_Down (190, 340);
+      Pointer_Up (190, 340);
+      Step;
+      Check_Frame ("level_ann_l0_acked");
+
+      -- 8.2.3.2.6: a mode acknowledgement in C1 hides the announcement
+      for I in 1 .. 20 loop
+         Step;
+      end loop;
+      Send_Mode_Level (Mode => 2, Level => 4, Mode_Ack => 6,
+                       Level_Ann => 2, Level_Ann_Ack => True);
+      Step;
+      Drain_Sounds;
+      Check_Frame ("level_ann_hidden_by_mode_ack");
+   end Scenario_Level_Ann_Acknowledged;
+
+   -- GEN-8 (5.1.1.3.2): a flashing frame starts visible, whenever it
+   -- appears, and toggles every 0.25 s from then on
+   procedure Scenario_Flash_Starts_Visible is
+      procedure Offer_And_Check (Delay_Steps : Natural; What : String) is
+      begin
+         Reset;
+         Send_Mode_Level (Mode => 2, Level => 4);
+         Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                           V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                           D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                           Vrelease_Exists => False);
+         -- the request arrives at any moment of the DMI's life
+         for I in 1 .. Delay_Steps loop
+            Step;
+         end loop;
+         Send_Mode_Level (Mode => 2, Level => 4, Mode_Ack => 6); -- OS
+         Step;
+         Drain_Sounds;
+         Check (DMI_Flash.Frame_Visible, What & ": starts visible");
+         Check_Frame ("flash_mode_ack_visible");
+         for I in 1 .. 4 loop -- 50 .. 200 ms after the first picture
+            Step;
+            Check (DMI_Flash.Frame_Visible, What & ": visible for 0.25 s");
+         end loop;
+         Step; -- 250 ms
+         Check (not DMI_Flash.Frame_Visible, What & ": then not visible");
+         Check_Frame ("flash_mode_ack_hidden");
+         for I in 1 .. 4 loop
+            Step;
+            Check (not DMI_Flash.Frame_Visible,
+                   What & ": not visible for 0.25 s");
+         end loop;
+         Step; -- 500 ms
+         Check (DMI_Flash.Frame_Visible, What & ": visible again");
+         Check_Frame ("flash_mode_ack_visible");
+      end Offer_And_Check;
+   begin
+      Offer_And_Check (0, "frame at start-up");
+      Offer_And_Check (3, "frame after 150 ms");
+      Offer_And_Check (7, "frame after 350 ms");
+
+      -- the next request starts visible as well, whatever the phase of
+      -- the one before was: text message after the mode acknowledgement
+      Send_Text (31, "Level crossing not protected", Ack_Required => True,
+                 Class => 0);
+      for I in 1 .. 3 loop
+         Step; -- the mode ack frame is 150 ms into its period
+      end loop;
+      Pointer_Down (190, 340);
+      Pointer_Up (190, 340);
+      Step;
+      Check (not DMI_Ack.Current_Valid, "mode acknowledged");
+      for I in 1 .. 20 loop
+         Step; -- 5.4.1.9: 1 s
+      end loop;
+      Drain_Sounds;
+      Check (DMI_Ack.Current_Valid, "text acknowledgement offered");
+      Check (DMI_Flash.Frame_Visible, "text ack frame: starts visible");
+      Check_Frame ("flash_text_ack_visible");
+      for I in 1 .. 5 loop
+         Step;
+      end loop;
+      Check (not DMI_Flash.Frame_Visible,
+             "text ack frame: not visible after 0.25 s");
+      Check_Frame ("flash_text_ack_hidden");
+
+      -- any tick length is accepted; whole periods do not move the phase
+      DMI_Core.Tick (Natural'Last - Natural'Last mod 500);
+      Check (not DMI_Flash.Frame_Visible, "huge tick: phase kept");
+   end Scenario_Flash_Starts_Visible;
+
    Status : Natural;
 begin
    Scenario_FS_CSM;
@@ -1781,6 +2056,10 @@ begin
    Scenario_EVC_Link_Lost;
    Scenario_Failure_Presentation;
    Scenario_Mission;
+   Scenario_TC_Areas_Kept;
+   Scenario_Level_NTC_In_C8;
+   Scenario_Level_Ann_Acknowledged;
+   Scenario_Flash_Starts_Visible;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

@@ -70,6 +70,14 @@ package Test_Support is
    type TC_Array is array (Positive range <>) of Natural;
    procedure Send_Track_Cond (Kinds : TC_Array);
 
+   -- The same with the object ids chosen by the caller
+   type TC_Item is record
+      ID   : Natural; -- 0 .. 255
+      Kind : Natural; -- 0 .. 255
+   end record;
+   type TC_Item_Array is array (Positive range <>) of TC_Item;
+   procedure Send_Track_Cond_IDs (Items : TC_Item_Array);
+
    type Gradient_Array is array (Positive range <>) of Integer;
    -- Gradients: pairs (start_m, permille); Speeds: triples
    -- (dist_m, km/h, ind_target 0/1); Orders: pairs (PL number, dist_m)
