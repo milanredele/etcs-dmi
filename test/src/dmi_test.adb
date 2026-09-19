@@ -13,6 +13,7 @@ pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Streams;
 with DMI_Ack;
+with DMI_Buttons;
 with DMI_Core;
 with DMI_Data_Format;
 with Display.A_Area;
@@ -2841,13 +2842,13 @@ procedure DMI_Test is
                 "a message to be acknowledged that does not fit ends in an "
                 & "ellipsis");
       end;
-      Check (Line_Text (1) = "Proceed on sight to the" and then Lines_Fit,
+      Check (Line_Text (1) = "Proceed on sight to the next" and then Lines_Fit,
              "its lines are wrapped like any other");
       Check (Margin_Clear, "ack message: nothing in the right margin");
       Check_Frame ("wrap_ack_max");
       Pointer_Down (310, 440); Pointer_Up (310, 440); -- E11 is disabled
       Step;
-      Check (Line_Text (1) = "Proceed on sight to the",
+      Check (Line_Text (1) = "Proceed on sight to the next",
              "a message to be acknowledged cannot be scrolled");
       Pointer_Down (150, 400); Pointer_Up (150, 400); -- acknowledge
       Drain_Sounds;
@@ -2884,6 +2885,13 @@ procedure DMI_Test is
                 and then Margin_Clear,
                 "255 of the widest glyph are broken into lines that fit");
          Send_Text (1, (1 .. 255 => W (16#FF#)), Ack_Required => Ack);
+         Step;
+         Check (Lines_Shown = TM.Visible_Lines and then Lines_Fit
+                and then Margin_Clear,
+                "255 accented letters are broken the same way");
+         -- 16#7F# is a C1 control: no font has a glyph for it, so every
+         -- one of them is a replacement box (ROB-2)
+         Send_Text (1, (1 .. 255 => W (16#7F#)), Ack_Required => Ack);
          Step;
          Check (Lines_Shown = TM.Visible_Lines and then Lines_Fit
                 and then Margin_Clear,
@@ -2990,6 +2998,147 @@ procedure DMI_Test is
       Check_Frame ("data_view_p1");
    end Scenario_Data_View;
 
+   ---------------------------------------------------------------------
+   -- DMI 5.3.2.6.4 and 5.3.2.6.5 (audit finding GEN-4). E11, the [Down]
+   -- button of the text message list, is a down-type button with a
+   -- repeat function (5.3.2.7.2): it goes to "pressed" and immediately
+   -- back to "enabled", and after 1.5 s of holding it activates every
+   -- 0.3 s "as if the driver was pressing on the button", click and
+   -- press included. A Step is one 50 ms tick followed by one screen.
+   procedure Scenario_Button_Down_Type is
+      package TM renames DMI_Text_Messages;
+      use type DMI_Buttons.Button_ID_T;
+
+      E11_X : constant := 310; -- inside E11, as Scenario_Text_Wrap taps it
+      E11_Y : constant := 440;
+
+      function Number (N : Natural) return Wide_String is
+         Img : constant Wide_String := Natural'Wide_Image (N);
+      begin
+         return Img (2 .. Img'Last);
+      end Number;
+
+      function Top return Wide_String is
+         Line  : TM.Line_T;
+         Valid : Boolean;
+      begin
+         TM.Get_Visible_Line (1, Line, Valid);
+         return (if Valid then Line.Text (1 .. Line.Length) else "<none>");
+      end Top;
+
+      function Down_Pressed return Boolean is
+        (DMI_Buttons.Is_Pressed (DMI_Buttons.BTN_Msg_Down));
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      -- twelve one-line messages: seven scroll positions, enough for the
+      -- press and several repeats
+      for I in 1 .. 12 loop
+         Send_Text (ID => I, Text => "Msg " & Number (I));
+      end loop;
+      Drain_Sounds;
+      Step;
+      Check (Top = "Msg 12" and then TM.Can_Scroll_Down,
+             "the message list starts at its newest line");
+
+      -- 5.3.2.6.4: click and activation on the press
+      Pointer_Down (E11_X, E11_Y);
+      Expect_Sound (DMI_Sounds.Click,
+                    "a down-type button plays the click on the press");
+      Step;
+      Check (Top = "Msg 11",
+             "a down-type button activates with the press (5.3.2.6.4)");
+      Check (Down_Pressed,
+             "and is shown pressed on the screen that follows it");
+      Step;
+      Check (not Down_Pressed,
+             "and back in the enabled state although the finger stays on "
+             & "it (5.3.2.6.4)");
+      Check (Top = "Msg 11", "holding it does not activate it again");
+
+      -- 5.3.2.6.5: the first repeat 0.3 s after the 1.5 s delay
+      Drain_Sounds;
+      for I in 3 .. 35 loop -- up to 1.75 s of holding
+         Step;
+      end loop;
+      Check (Top = "Msg 11",
+             "nothing repeats within the first 1.5 s + 0.3 s (5.3.2.6.5)");
+      Expect_No_Sound ("and no click is played before the first repeat");
+      Step; -- 1.80 s
+      Check (Top = "Msg 10",
+             "the repeat activates 0.3 s after the 1.5 s delay (5.3.2.6.5)");
+      Check (Down_Pressed, "a repeat shows the press (5.3.2.6.5)");
+      Expect_Sound (DMI_Sounds.Click,
+                    "a repeat plays the click like a press (5.3.2.6.5)");
+      Step;
+      Check (not Down_Pressed, "and lets the button go again");
+      Expect_No_Sound ("no click between two repeats");
+
+      -- and every 0.3 s from there
+      for I in 2 .. 5 loop
+         Step;
+      end loop;
+      Check (Top = "Msg 10", "the repeats are 0.3 s apart");
+      Step; -- 2.10 s
+      Check (Top = "Msg 9" and then Down_Pressed,
+             "the next repeat follows 0.3 s later (5.3.2.6.5)");
+      Expect_Sound (DMI_Sounds.Click, "with its own click");
+
+      -- the release ends the repeat and counts no further activation
+      Pointer_Up (E11_X, E11_Y);
+      Drain_Sounds;
+      for I in 1 .. 20 loop
+         Step;
+      end loop;
+      Check (Top = "Msg 9", "the release ends the repeat (5.3.2.6.4)");
+      Check (not Down_Pressed, "and leaves the button enabled");
+      Expect_No_Sound ("no click after the release");
+      Drain_Sounds;
+   end Scenario_Button_Down_Type;
+
+   -- DMI 5.3.2.6.2: the contrast to the above. An up-type button stays
+   -- in the pressed state as long as the driver keeps it pressed and is
+   -- activated on the release. F1 of the default window is one (8.6.1).
+   procedure Scenario_Button_Up_Type is
+      use type DMI_Windows.Window_ID_T;
+      F1_X : constant := 610;
+      F1_Y : constant := 40;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS, no Start Up sequence
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+      Step;
+
+      Pointer_Down (F1_X, F1_Y);
+      Expect_Sound (DMI_Sounds.Click,
+                    "an up-type button plays the click on the press");
+      Step;
+      Check (DMI_Buttons.Is_Pressed (DMI_Buttons.BTN_F1),
+             "an up-type button is pressed while the driver holds it "
+             & "(5.3.2.6.2)");
+      for I in 1 .. 40 loop -- 2 s, past every down-type timer
+         Step;
+      end loop;
+      Check (DMI_Buttons.Is_Pressed (DMI_Buttons.BTN_F1),
+             "and stays pressed however long it is held");
+      Check (not DMI_Windows.Is_Open,
+             "it is not activated before the release (5.3.2.6.2)");
+      Expect_No_Sound ("an up-type button does not repeat");
+
+      Pointer_Up (F1_X, F1_Y);
+      Step;
+      Check (not DMI_Buttons.Is_Pressed (DMI_Buttons.BTN_F1),
+             "the release exits the pressed state (5.3.2.6.2)");
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows.Top = DMI_Windows.W_Main,
+             "and counts the activation");
+      Drain_Sounds;
+   end Scenario_Button_Up_Type;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -3033,6 +3182,8 @@ begin
    Scenario_Text_Wrap;
    Scenario_Ack_And_Windows;
    Scenario_Data_View;
+   Scenario_Button_Down_Type;
+   Scenario_Button_Up_Type;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

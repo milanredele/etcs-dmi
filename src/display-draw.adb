@@ -60,14 +60,12 @@ package body Display.Draw is
                         The_Clip   : Clip_T := Whole_Screen) is
       Top  : constant Integer := Pen_Y - The_Glyph.Top;
       Left : constant Integer := Pen_X + The_Glyph.Left;
-      Pos  : Positive := The_Glyph.Bitmap_Pos;
    begin
-      for J in Top .. Top + The_Glyph.Height - 1 loop
-         for I in Left .. Left + The_Glyph.Width - 1 loop
-            if Pos in The_Bitmap'Range and then The_Bitmap (Pos) then
-               Put_Pixel (I, J, The_Color, The_Clip);
+      for J in 0 .. The_Glyph.Height - 1 loop
+         for I in 0 .. The_Glyph.Width - 1 loop
+            if Font.Cell (The_Glyph, The_Bitmap, I, J) then
+               Put_Pixel (Left + I, Top + J, The_Color, The_Clip);
             end if;
-            Pos := Pos + 1;
          end loop;
       end loop;
    end Put_Glyph;
@@ -115,9 +113,13 @@ package body Display.Draw is
          when 17            => 17,
          when 18            => 18);
 
+   -- The maps run over a contiguous range of code points; the ones the
+   -- font has no glyph for carry Font.No_Glyph (the C1 controls of
+   -- ISO 8859-1, 16#7F# .. 16#9F#, have no printable form) and get the
+   -- replacement box like any code outside the range.
    function Has_Glyph (The_Map : Font.Glyph_Map;
                        C       : Wide_Character) return Boolean is
-     (C in The_Map'Range);
+     (C in The_Map'Range and then Font.Defined (The_Map (C)));
 
    function Width_In (The_Map    : Font.Glyph_Map;
                       The_Size   : Font.Size_T;
