@@ -135,14 +135,21 @@ function press(x, y) {
   return simMode(fromEvc);
 }
 {
-  const ENTER = [589, 390];
+  // DMI 10.3.1.22: [Enter] is the data part of the input field itself;
+  // the single field of a half grid array window covers the width of the
+  // window (Table 22), the fields of the train data window are at the
+  // Y locations of Table 23
+  const ENTER = [487, 90];
+  const FIELD = i => [589, 40 + (i - 1) * 50];
   press(385, 240); press(...ENTER);            // Driver ID 1
   press(410, 90);                              // Level 1 -> Main window
   press(410, 140);                             // Train data
-  for (const k of [[385, 290], [487, 390], [487, 390], ENTER,      // 400 m
-                   [385, 240], [589, 240], [487, 290], ENTER,      // 135 %
-                   [385, 240], [385, 290], [487, 390], ENTER]) press(...k); // 140 km/h
-  press(410, 390);                             // Yes -> train running number
+  for (const k of [[385, 290], [487, 390], [487, 390], FIELD(1),   // 400 m
+                   [385, 240], [589, 240], [487, 290], FIELD(2),   // 135 %
+                   [385, 240], [385, 290], [487, 390], FIELD(3)])  // 140 km/h
+    press(...k);
+  press(167, 440);                             // Train data entry complete?
+  press(487, 40);                              // validation: accept 'Yes'
   press(385, 240); press(...ENTER);            // TRN 1 -> Main window
   // one more cycle (a touch outside every button) to see the EVC's mode
   if (press(620, 470) === 0) console.log('pass: the DMI does not start the mission by itself');

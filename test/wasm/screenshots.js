@@ -60,18 +60,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     };
 
     // DMI Tables 49 and 50: the Driver ID window is already there (SB)
-    const ENTER = [589, 390];
+    // DMI 10.3.1.22: [Enter] is the data part of the input field itself
+    const ENTER = [487, 90];                    // Table 22, merged data part
+    const FIELD = i => [589, 40 + (i - 1) * 50]; // Table 23, data parts
     for (const k of [[385, 240], [487, 240], [589, 240]]) await press(...k); // 123
     await press(...ENTER);                      // -> level
     await press(410, 90);                       // Level 1 -> Main window
     await press(410, 140);                      // Train data
     for (const k of [[385, 290], [487, 390], [487, 390]]) await press(...k); // 400
-    await press(...ENTER);
+    await press(...FIELD(1));
     for (const k of [[385, 240], [589, 240], [487, 290]]) await press(...k); // 135
-    await press(...ENTER);
+    await press(...FIELD(2));
     for (const k of [[385, 240], [385, 290], [487, 390]]) await press(...k); // 140
-    await press(...ENTER);                      // -> validation
-    await press(410, 390);                      // Yes -> TRN
+    await press(...FIELD(3));
+    await press(167, 440);                      // entry complete? -> validation
+    await press(487, 40);                       // validation: accept 'Yes'
     for (const k of [[385, 290], [385, 340], [385, 240], [385, 240]]) await press(...k); // 4711
     await press(...ENTER);                      // -> Main window
     await press(410, 90);                       // Start -> default window, mission starts

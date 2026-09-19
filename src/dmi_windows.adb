@@ -6,6 +6,7 @@ with Display.Draw;
 with Display.Screen;
 with DMI_Ack;
 with DMI_Conditions;
+with DMI_Data_Entry;
 with DMI_Data_View;
 with DMI_Driver_Data;
 with General_Parameters;
@@ -82,98 +83,6 @@ package body DMI_Windows is
    end Pop_Action;
 
    ---------------------------------------------------------------------
-   -- Data entry state
-   ---------------------------------------------------------------------
-
-   Max_Fields : constant := 3;
-
-   type Field_T is record
-      Label   : Wide_String (1 .. 16) := (others => ' ');
-      Numeric : Boolean := True;
-      Max_Len : Natural := 5;
-   end record;
-   type Field_List_T is array (1 .. Max_Fields) of Field_T;
-
-   type Value_List_T is
-     array (1 .. Max_Fields) of DMI_Driver_Data.Text_Value_T;
-
-   type Entry_State_T is record
-      Field_Count : Natural := 0;
-      Fields      : Field_List_T;
-      Current     : Natural := 1;
-      Values      : Value_List_T;
-   end record;
-
-   Entry_State : Entry_State_T;
-
-   function Pad (S : Wide_String) return Wide_String is
-      Result : Wide_String (1 .. 16) := (others => ' ');
-   begin
-      Result (1 .. S'Length) := S;
-      return Result;
-   end Pad;
-
-   procedure Setup_Entry (ID : Window_ID_T) is
-      use DMI_Driver_Data;
-
-      function Image_Value (N : Natural) return Text_Value_T is
-         Img : constant Wide_String := Natural'Wide_Image (N);
-         R   : Text_Value_T;
-      begin
-         if N > 0 then
-            R.Length := Img'Length - 1;
-            R.Text (1 .. R.Length) := Img (2 .. Img'Last);
-         end if;
-         return R;
-      end Image_Value;
-   begin
-      Entry_State := (others => <>);
-      Entry_State.Current := 1;
-      case ID is
-         when W_Driver_ID =>
-            Entry_State.Field_Count := 1;
-            Entry_State.Fields (1) := (Pad ("Driver ID"), True, 8);
-            Entry_State.Values (1) := Driver_ID;
-         when W_TRN =>
-            Entry_State.Field_Count := 1;
-            Entry_State.Fields (1) := (Pad ("Train running nr"), True, 8);
-            Entry_State.Values (1) := TRN;
-         when W_Train_Data =>
-            Entry_State.Field_Count := 3;
-            Entry_State.Fields (1) := (Pad ("Length (m)"), True, 4);
-            Entry_State.Fields (2) := (Pad ("Brake perc (%)"), True, 3);
-            Entry_State.Fields (3) := (Pad ("Max speed"), True, 3);
-            Entry_State.Values (1) := Image_Value (Train_Length);
-            Entry_State.Values (2) := Image_Value (Brake_Pct);
-            Entry_State.Values (3) := Image_Value (Max_Speed);
-         when W_SR_Data =>
-            Entry_State.Field_Count := 2;
-            Entry_State.Fields (1) := (Pad ("SR speed"), True, 3);
-            Entry_State.Fields (2) := (Pad ("SR distance"), True, 5);
-            Entry_State.Values (1) := Image_Value (SR_Speed);
-            Entry_State.Values (2) := Image_Value (SR_Dist);
-         when others =>
-            null;
-      end case;
-   end Setup_Entry;
-
-   function Value_Of (Index : Positive) return Natural is
-      V : DMI_Driver_Data.Text_Value_T renames Entry_State.Values (Index);
-      Result : Natural := 0;
-   begin
-      for I in 1 .. V.Length loop
-         if V.Text (I) in '0' .. '9' then
-            Result := Result * 10
-              + (Wide_Character'Pos (V.Text (I)) - Wide_Character'Pos ('0'));
-            if Result > 99999 then
-               return 99999;
-            end if;
-         end if;
-      end loop;
-      return Result;
-   end Value_Of;
-
-   ---------------------------------------------------------------------
    -- Window definitions
    ---------------------------------------------------------------------
 
@@ -201,6 +110,13 @@ package body DMI_Windows is
          when W_Adhesion   => "Adhesion",
          when W_Volume     => "Volume",
          when W_Brightness => "Brightness");
+
+   function Pad (S : Wide_String) return Wide_String is
+      Result : Wide_String (1 .. 16) := (others => ' ');
+   begin
+      Result (1 .. S'Length) := S;
+      return Result;
+   end Pad;
 
    -- Menu window buttons; empty label = slot not present
    Max_Menu : constant := 10;
@@ -347,43 +263,25 @@ package body DMI_Windows is
      ((Origin + (((Index - 1) mod 2) * 153, 50 + ((Index - 1) / 2) * 50),
        153, 50));
 
-   -- Numeric keyboard (10.3.5, simplified layout): 12 keys of 102x50,
-   -- three columns, below the field block (up to 3 fields end at y 200)
-   function Key_Area (Index : Positive) return Area_T is
-     ((Origin + (((Index - 1) mod 3) * 102, 200 + ((Index - 1) / 3) * 50),
-       102, 50));
-
-   Key_Delete : constant := 10;
-   Key_Zero   : constant := 11;
-   Key_Enter  : constant := 12;
-
-   Validation_Yes : constant := 1;
-   Validation_No  : constant := 2;
-
-   -- Validation window: [Yes] and [No] side by side above the close row
-   function Validation_Button_Area (Index : Positive) return Area_T is
-     ((Origin + ((Index - 1) * 153, 350), 153, 50));
-
    function Button_Count return Natural is
    begin
       if Depth = 0 then
          return 0;
       end if;
       case Kind_Of (Stack (Depth)) is
-         when Menu       => return Max_Menu;
-         when Data_Entry => return 12;
-         when Validation => return 2;
-         when View       => return DMI_Data_View.Button_Count;
+         when Menu                    => return Max_Menu;
+         when Data_Entry | Validation => return DMI_Data_Entry.Button_Count;
+         when View                    => return DMI_Data_View.Button_Count;
       end case;
    end Button_Count;
 
    function Button_Area (Index : Positive) return Display.Area_T is
    begin
       case Kind_Of (Stack (Depth)) is
-         when Menu       => return Menu_Button_Area (Index);
-         when Data_Entry => return Key_Area (Index);
-         when Validation => return Validation_Button_Area (Index);
-         when View       => return DMI_Data_View.Button_Area (Index);
+         when Menu => return Menu_Button_Area (Index);
+         when Data_Entry | Validation =>
+            return DMI_Data_Entry.Button_Area (Index);
+         when View => return DMI_Data_View.Button_Area (Index);
       end case;
    end Button_Area;
 
@@ -397,7 +295,7 @@ package body DMI_Windows is
                return Def (Index).Used and then Def (Index).Enabled;
             end;
          when Data_Entry | Validation =>
-            return True;
+            return DMI_Data_Entry.Button_Enabled (Index);
          when View =>
             return DMI_Data_View.Button_Enabled (Index);
       end case;
@@ -413,11 +311,9 @@ package body DMI_Windows is
                return (if Def (Index).Delayed then DMI_Buttons.Delay_Type
                        else DMI_Buttons.Up_Type);
             end;
-         when Data_Entry =>
-            -- 5.3.2.7.2: [Delete] is a down-type button with repeat
-            return (if Index = Key_Delete then DMI_Buttons.Down_Type
-                    else DMI_Buttons.Up_Type);
-         when others =>
+         when Data_Entry | Validation =>
+            return DMI_Data_Entry.Button_Kind (Index);
+         when View =>
             return DMI_Buttons.Up_Type;
       end case;
    end Button_Kind;
@@ -426,13 +322,118 @@ package body DMI_Windows is
    -- Stack handling
    ---------------------------------------------------------------------
 
+   -- The definition the data entry engine works on (10.3, 10.4); the
+   -- proposed values are the stored ones (11.7.1.4)
+   function Entry_Def (ID : Window_ID_T) return DMI_Data_Entry.Window_Def_T is
+      use DMI_Driver_Data;
+      use DMI_Data_Entry;
+
+      function Image_Value (N : Natural) return Text_Value_T is
+         Img : constant Wide_String := Natural'Wide_Image (N);
+         R   : Text_Value_T;
+      begin
+         if N > 0 then
+            R.Length := Img'Length - 1;
+            R.Text (1 .. R.Length) := Img (2 .. Img'Last);
+         end if;
+         return R;
+      end Image_Value;
+
+      -- 10.3.4.1.2: the permitted ranges and resolutions are configured
+      -- in the on-board and the protocol does not carry them, so the DMI
+      -- holds what the specifications state for the data themselves:
+      -- the technical rules are the ranges and resolutions of the
+      -- ERTMS/ETCS variables of SUBSET-026 chapter 7. An operational
+      -- range is an operating rule and belongs to the on-board too; the
+      -- only one the DMI can state by itself is that zero is not a
+      -- nominal value for a train length, a brake percentage or a
+      -- maximum speed (implementation choice, see the report).
+      Train_Length_Rule : constant Check_Rule_T :=  -- L_TRAIN, 7.5.1.56
+        (Defined => True, Min => 0, Max => 4095, Resolution => 1);
+      Max_Speed_Rule : constant Check_Rule_T :=     -- V_MAXTRAIN, 7.5.1.160
+        (Defined => True, Min => 0, Max => 600, Resolution => 5);
+      TRN_Rule : constant Check_Rule_T :=       -- NID_OPERATIONAL, 7.5.1.92
+        (Defined => True, Min => 0, Max => 99_999_999, Resolution => 1);
+
+      function Not_Zero (Rule : Check_Rule_T; Top : Natural)
+                         return Check_Rule_T is
+        ((Defined    => True,
+          Min        => Natural'Max (Rule.Resolution, 1),
+          Max        => (if Rule.Defined then Rule.Max else Top),
+          Resolution => 1));
+
+      Result : Window_Def_T;
+   begin
+      Result.Title := Window_Title (Title (ID));
+      case ID is
+         when W_Driver_ID =>
+            -- 11.3.3; the Driver ID is alphanumeric (11.3.3.4) and no
+            -- range or resolution is specified for it
+            Result.Field_Count := 1;
+            Result.Fields (1) := Field ("Driver ID", 8, Proposed => Driver_ID);
+         when W_TRN =>
+            -- 11.3.1
+            Result.Field_Count := 1;
+            Result.Fields (1) := Field ("Train running nr", 8,
+                                        Proposed => TRN,
+                                        Technical => TRN_Rule);
+         when W_Train_Data =>
+            -- 11.3.9.1: a window on the total grid array with echo texts
+            -- and the question 'Train data entry complete?'
+            Result.Layout := Total_Grid;
+            Result.Field_Count := 3;
+            Result.Fields (1) :=
+              Field ("Length (m)", 4, Proposed => Image_Value (Train_Length),
+                     Technical => Train_Length_Rule,
+                     Operational => Not_Zero (Train_Length_Rule, 9999));
+            Result.Fields (2) :=
+              -- the brake percentage is not an ERTMS/ETCS variable of
+              -- SUBSET-026 chapter 7; its range would come from section
+              -- A.3.11 or from the on-board configuration
+              Field ("Brake perc (%)", 3, Proposed => Image_Value (Brake_Pct),
+                     Operational => Not_Zero (No_Rule, 999));
+            Result.Fields (3) :=
+              Field ("Max speed", 3, Proposed => Image_Value (Max_Speed),
+                     Technical => Max_Speed_Rule,
+                     Operational => Not_Zero (Max_Speed_Rule, 999));
+         when W_SR_Data =>
+            -- 11.3.10.1: likewise on the total grid array
+            Result.Layout := Total_Grid;
+            Result.Field_Count := 2;
+            Result.Fields (1) :=
+              Field ("SR speed", 3, Proposed => Image_Value (SR_Speed));
+            Result.Fields (2) :=
+              Field ("SR distance", 5, Proposed => Image_Value (SR_Dist));
+         when W_Train_Data_Validation =>
+            -- 11.4.1: a single input field with only a data part and a
+            -- dedicated 'No'/'Yes' keyboard (10.4.1.2), the value 'Yes'
+            -- proposed (Figure 105), and the echo texts of the train
+            -- data window (11.4.1.3)
+            Result.Layout := DMI_Data_Entry.Validation;
+            Result.Field_Count := 1;
+            Result.Fields (1) :=
+              Field ("Validate", 3, Keyboard => Yes_No,
+                     Proposed => (3, "Yes" & (4 .. Max_Field_Len => ' ')));
+            Result.Echo_Count := 3;
+            Result.Echo (1) :=
+              Echo ("Length (m)", Image_Value (Train_Length));
+            Result.Echo (2) :=
+              Echo ("Brake perc (%)", Image_Value (Brake_Pct));
+            Result.Echo (3) :=
+              Echo ("Max speed", Image_Value (Max_Speed));
+         when others =>
+            null;
+      end case;
+      return Result;
+   end Entry_Def;
+
    procedure Open (ID : Window_ID_T) is
    begin
       if Depth < Stack'Last then
          Depth := Depth + 1;
          Stack (Depth) := ID;
-         if Kind_Of (ID) = Data_Entry then
-            Setup_Entry (ID);
+         if Kind_Of (ID) in Data_Entry | Validation then
+            DMI_Data_Entry.Open (Entry_Def (ID));
          elsif Kind_Of (ID) = View then
             --  The window opens on its first window (5.3.1.1.9)
             DMI_Data_View.Reset;
@@ -445,6 +446,17 @@ package body DMI_Windows is
    begin
       if Depth > 0 then
          Depth := Depth - 1;
+         -- 10.6.1.1 / 10.6.1.3 e: leaving the validation window for a
+         -- reason other than accepting 'Yes' stops the data entry /
+         -- validation process of the topic; the data entry window that
+         -- becomes displayed again starts a new one, with the stored
+         -- values proposed (11.7.1.4). The engine holds one process at
+         -- a time, which is what the window stack needs here.
+         if Depth > 0
+           and then Kind_Of (Stack (Depth)) in Data_Entry | Validation
+         then
+            DMI_Data_Entry.Open (Entry_Def (Stack (Depth)));
+         end if;
       end if;
    end Pop;
 
@@ -618,7 +630,7 @@ package body DMI_Windows is
    begin
       case ID is
          when W_Driver_ID =>
-            Driver_ID := Entry_State.Values (1);
+            Driver_ID := DMI_Data_Entry.Value (1);
             Driver_ID_Entered := True;
             Queue (Send_Driver_ID);
             Pop;
@@ -639,7 +651,7 @@ package body DMI_Windows is
             end if;
             -- Table 50 S2: back to S1, the Main window below
          when W_TRN =>
-            TRN := Entry_State.Values (1);
+            TRN := DMI_Data_Entry.Value (1);
             TRN_Entered := True;
             Queue (Send_TRN);
             -- Table 50 S6 and S3-3 -> D1: back to S1, the Main window
@@ -647,57 +659,20 @@ package body DMI_Windows is
             -- mission start is the driver's: 'Start' in the Main window.
             Pop;
          when W_Train_Data =>
-            Train_Length := Value_Of (1);
-            Brake_Pct := Value_Of (2);
-            Max_Speed := Value_Of (3);
+            Train_Length := DMI_Data_Entry.Number (1);
+            Brake_Pct := DMI_Data_Entry.Number (2);
+            Max_Speed := DMI_Data_Entry.Number (3);
             -- 10.6 / 11.4.1: entered data must be validated
             Open (W_Train_Data_Validation);
          when W_SR_Data =>
-            SR_Speed := Value_Of (1);
-            SR_Dist := Value_Of (2);
+            SR_Speed := DMI_Data_Entry.Number (1);
+            SR_Dist := DMI_Data_Entry.Number (2);
             Queue (Send_SR_Data);
             Pop;
          when others =>
             null;
       end case;
    end Entry_Completed;
-
-   procedure Key_Pressed (Index : Positive) is
-      V : DMI_Driver_Data.Text_Value_T
-        renames Entry_State.Values (Entry_State.Current);
-      F : Field_T renames Entry_State.Fields (Entry_State.Current);
-
-      procedure Append (C : Wide_Character) is
-      begin
-         if V.Length < F.Max_Len then
-            V.Length := V.Length + 1;
-            V.Text (V.Length) := C;
-         end if;
-      end Append;
-   begin
-      case Index is
-         when 1 .. 9 =>
-            Append (Wide_Character'Val (Wide_Character'Pos ('0') + Index));
-         when Key_Zero =>
-            Append ('0');
-         when Key_Delete =>
-            if V.Length > 0 then
-               V.Length := V.Length - 1;
-            end if;
-         when Key_Enter =>
-            -- 10.3.4 (simplified technical check): a value is required
-            if V.Length > 0 then
-               if Entry_State.Current < Entry_State.Field_Count then
-                  -- 10.3.1: [Enter] moves to the next field
-                  Entry_State.Current := Entry_State.Current + 1;
-               else
-                  Entry_Completed;
-               end if;
-            end if;
-         when others =>
-            null;
-      end case;
-   end Key_Pressed;
 
    procedure Menu_Pressed (Index : Positive) is
       use DMI_Driver_Data;
@@ -787,31 +762,45 @@ package body DMI_Windows is
       end case;
    end Menu_Pressed;
 
-   procedure Button_Pressed (Index : Positive) is
+   -- 11.4.1, 10.6.1.3 a: the process ends when the driver accepts the
+   -- value 'Yes' in the input field of the validation window
+   procedure Validation_Completed is
       use DMI_Driver_Data;
+      V : constant Text_Value_T := DMI_Data_Entry.Value (1);
+   begin
+      if V.Length = 3 and then V.Text (1 .. 3) = "Yes" then
+         Train_Data_Entered := True;
+         Queue (Send_Train_Data);
+         Pop; -- validation
+         Pop; -- train data entry
+         -- Table 50 D6: a train running number that is not valid is
+         -- requested next (S3-3), otherwise D1 -> S1 Main window
+         if not TRN_Entered then
+            Open (W_TRN);
+         end if;
+      else
+         Pop; -- Table 50 S3-2: back to S3-1, the train data window
+      end if;
+   end Validation_Completed;
+
+   procedure Button_Pressed (Index : Positive) is
+      Kind : Window_Kind_T;
    begin
       if Depth = 0 then
          return;
       end if;
-      case Kind_Of (Stack (Depth)) is
+      Kind := Kind_Of (Stack (Depth));
+      case Kind is
          when Menu =>
             Menu_Pressed (Index);
-         when Data_Entry =>
-            Key_Pressed (Index);
-         when Validation =>
-            -- 11.4.1: Yes confirms, No returns to the entry window
-            if Index = Validation_Yes then
-               Train_Data_Entered := True;
-               Queue (Send_Train_Data);
-               Pop; -- validation
-               Pop; -- train data entry
-               -- Table 50 D6: a train running number that is not valid is
-               -- requested next (S3-3), otherwise D1 -> S1 Main window
-               if not TRN_Entered then
-                  Open (W_TRN);
+         when Data_Entry | Validation =>
+            DMI_Data_Entry.Press (Index);
+            if DMI_Data_Entry.Take_Completion then
+               if Kind = Validation then
+                  Validation_Completed;
+               else
+                  Entry_Completed;
                end if;
-            elsif Index = Validation_No then
-               Pop; -- Table 50 S3-2: back to S3-1, the train data window
             end if;
          when View =>
             DMI_Data_View.Button_Pressed (Index);
@@ -912,64 +901,6 @@ package body DMI_Windows is
       end loop;
    end Draw_Menu;
 
-   procedure Draw_Entry_Field (Field_Area : Area_T;
-                               Label      : Wide_String;
-                               Value      : Wide_String;
-                               Selected   : Boolean) is
-      Data_Area : constant Area_T :=
-        (Field_Area.Position + (Field_Area.Width / 2, 0),
-         Field_Area.Width / 2, Field_Area.Height);
-   begin
-      -- 10.3.1 / Table 21: label part; data part grey with black text
-      -- while selected, dark grey with white text once accepted
-      Draw.Draw_Input_Field_Frame (Field_Area);
-      Draw.Draw_String
-        (Pen_X => Field_Area.Position.X + 3,
-         Pen_Y => Field_Area.Position.Y + Field_Area.Height / 2 + 6,
-         The_String => Label,
-         The_Size => 12,
-         The_Color => General_Parameters.GREY);
-      Screen.Fill_Area (Data_Area,
-                        (if Selected then General_Parameters.GREY
-                         else General_Parameters.DARK_GREY));
-      Draw.Draw_String
-        (Pen_X => Data_Area.Position.X + 3,
-         Pen_Y => Data_Area.Position.Y + Data_Area.Height / 2 + 6,
-         The_String => Value,
-         The_Size => 12,
-         The_Color => (if Selected then General_Parameters.BLACK
-                       else General_Parameters.WHITE));
-   end Draw_Entry_Field;
-
-   procedure Draw_Data_Entry is
-   begin
-      for I in 1 .. Entry_State.Field_Count loop
-         Draw_Entry_Field
-           ((Origin + (0, 50 + (I - 1) * 50), 306, 50),
-            Trim (Entry_State.Fields (I).Label),
-            Entry_State.Values (I).Text (1 .. Entry_State.Values (I).Length),
-            Selected => I = Entry_State.Current);
-      end loop;
-
-      -- keyboard: rows below y 150 would collide with three fields, so
-      -- the keyboard starts after the field block
-      for Key in 1 .. 12 loop
-         declare
-            Label : constant Wide_String :=
-              (case Key is
-                  when 1 .. 9  => Natural'Wide_Image (Key) (2 .. 2) & "",
-                  when Key_Zero => "0",
-                  when Key_Delete => "Del",
-                  when Key_Enter => "Enter",
-                  when others => "");
-         begin
-            Draw_Labelled_Button (Key_Area (Key), Label,
-                                  Enabled => True,
-                                  Pressed => Pressed (Key));
-         end;
-      end loop;
-   end Draw_Data_Entry;
-
    procedure Draw_Text_Line (Line : Natural; Text : Wide_String) is
    begin
       Draw.Draw_String
@@ -986,18 +917,6 @@ package body DMI_Windows is
       return Img (2 .. Img'Last);
    end Num_Image;
 
-   procedure Draw_Validation is
-      use DMI_Driver_Data;
-   begin
-      -- 11.4.1: echo of the entered values with [Yes] / [No]
-      Draw_Text_Line (1, "Length: " & Num_Image (Train_Length) & " m");
-      Draw_Text_Line (2, "Brake percentage: " & Num_Image (Brake_Pct) & " %");
-      Draw_Text_Line (3, "Max speed: " & Num_Image (Max_Speed) & " km/h");
-      Draw_Labelled_Button (Validation_Button_Area (Validation_Yes), "Yes",
-                            True, Pressed (Validation_Yes));
-      Draw_Labelled_Button (Validation_Button_Area (Validation_No), "No",
-                            True, Pressed (Validation_No));
-   end Draw_Validation;
 
    procedure Render is
       ID : Window_ID_T;
@@ -1007,20 +926,29 @@ package body DMI_Windows is
       end if;
       ID := Stack (Depth);
 
-      Screen.Fill_Area (The_Window_Area, General_Parameters.Background_Color);
-      Draw_Title (ID);
+      case Kind_Of (ID) is
+         when Menu | View =>
+            Screen.Fill_Area (The_Window_Area,
+                              General_Parameters.Background_Color);
+            Draw_Title (ID);
+         when Data_Entry | Validation =>
+            -- 10.3.7 / 10.4.3: the layers of the entry windows; the
+            -- engine covers its own area and draws its own title
+            Screen.Fill_Area (DMI_Data_Entry.Covered_Area,
+                              General_Parameters.Background_Color);
+            DMI_Data_Entry.Render;
+      end case;
       Draw_Close (DMI_Buttons.Is_Pressed (DMI_Buttons.BTN_Window_Close));
 
       case Kind_Of (ID) is
-         when Menu       => Draw_Menu (ID);
-         when Data_Entry => Draw_Data_Entry;
-         when Validation => Draw_Validation;
-         when View       =>
+         when Menu => Draw_Menu (ID);
+         when View =>
             --  11.5.1: the items, the paging and the [Previous] /
             --  [Next] buttons are in DMI_Data_View
             DMI_Data_View.Render
               (Previous_Pressed => Pressed (DMI_Data_View.Previous_Button),
                Next_Pressed     => Pressed (DMI_Data_View.Next_Button));
+         when Data_Entry | Validation => null;
       end case;
    end Render;
 

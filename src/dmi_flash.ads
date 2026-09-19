@@ -23,9 +23,20 @@ package DMI_Flash is
    -- A flashing frame appears now: it starts in the visible state
    procedure Restart;
 
-   -- Any Dt_Ms is accepted
+   -- Any Dt_Ms is accepted; advances both phases below
    procedure Tick (Dt_Ms : Natural);
 
    function Frame_Visible return Boolean;
+
+   -- DMI 10.3.2.3: the cursor of an input field flashes with a nominal
+   -- frequency of 2 Hz and a symmetrical mark space ratio, which is the
+   -- period of a flashing frame. It needs its own origin all the same:
+   -- the origin of the frames is the moment a request is displayed,
+   -- which has nothing to do with the data entry the driver is in.
+   -- Restarted when the cursor moves (a key press or another input
+   -- field selected), so that it is visible where the driver looks.
+   procedure Restart_Cursor;
+
+   function Cursor_Visible return Boolean;
 
 end DMI_Flash;

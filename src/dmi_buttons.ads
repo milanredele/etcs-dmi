@@ -32,9 +32,22 @@ package DMI_Buttons is
                         BTN_Menu_9,
                         BTN_Menu_10,
                         BTN_Menu_11,
-                        BTN_Menu_12);
+                        BTN_Menu_12,
+                        --  10.3.5: a data entry window has more objects
+                        --  than a menu window: 12 keyboard keys, the
+                        --  label and the data part of up to 4 input
+                        --  fields and the 'Yes' button of Table 24
+                        BTN_Menu_13,
+                        BTN_Menu_14,
+                        BTN_Menu_15,
+                        BTN_Menu_16,
+                        BTN_Menu_17,
+                        BTN_Menu_18,
+                        BTN_Menu_19,
+                        BTN_Menu_20,
+                        BTN_Menu_21);
 
-   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_12;
+   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_21;
    subtype F_Button_T is Button_ID_T range BTN_F1 .. BTN_F5;
 
    type Kind_T is (Up_Type, Down_Type, Delay_Type); -- DMI 5.3.2.6
