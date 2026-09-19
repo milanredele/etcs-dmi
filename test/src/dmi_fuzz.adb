@@ -181,7 +181,7 @@ procedure DMI_Fuzz is
             end loop;
          end;
       elsif The_Type = MSG_STATUS then
-         U8 (Pick (0, 2));
+         U8 (Pick (0, 3));
          U8 (Pick (0, 2));
          U8 (Pick (0, 1));
          U8 (Pick (0, 1));

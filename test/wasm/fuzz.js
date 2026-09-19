@@ -79,7 +79,7 @@ function inDomain(type) {
     m.u8(n);
     for (let i = 0; i < n; i++) m.u8(pick(1, 37)).u16(pick(0, 40000));
   } else if (type === 0x07) {
-    m.u8(pick(0, 2)).u8(pick(0, 2)).u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 2))
+    m.u8(pick(0, 3)).u8(pick(0, 2)).u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 2))
       .u16(optional(0, 400, 0xFFFF)).u8(optional(0, 30, 0xFF)).u8(pick(1, 30)).u8(pick(0, 2))
       .u32(pick(0, 90000)).u32(chance(30) ? 0xFFFFFFFF : pick(0, 9999999))
       .u8(pick(0, 23)).u8(pick(0, 59)).u8(pick(0, 59));

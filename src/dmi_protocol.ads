@@ -87,7 +87,10 @@ package DMI_Protocol is
    Planning_Order_Entry_Length    : constant := 3;
 
    MSG_STATUS : constant Msg_Type_T := 16#07#;
-   --  brake u8 (0 none, 1 shown, 2 shown + ack required),
+   --  brake u8 (0 none, 1 shown, 2 shown + ack required, 3 shown, applied
+   --  because a requested acknowledgement of a level, a mode or a text
+   --  message is pending: its release comes with that acknowledgement and
+   --  plays no Sinfo, DMI 8.2.2.3.4.1 / 8.2.2.3.6),
    --  radio u8 (0 no connection, 1 up, 2 lost/failed),
    --  adhesion u8 (bool slippery), bmm u8 (bool), reversing u8 (bool),
    --  sm_direction u8 (0 none, 1 forward, 2 backward),

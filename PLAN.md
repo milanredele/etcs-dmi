@@ -337,8 +337,8 @@ ROB-5 pass.
 
 ### P1 — What is shown and sounded must be right — DONE 2026-09-19
 All items are merged; outcomes, choices and new open points are in the P1 follow-up
-section of [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). Open for the project
-owner: the rule for Sinfo at a brake release (SUP-5).
+section of [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). No choice is left
+open for the project owner.
 
 7. **SDI-1** Text wrapping by pixel width at word boundaries; clip to area E5–E9.
 8. **SUP-1** (do first; the simulator then has to leave AD on a brake command, SUBSET-026 4.6.3 [24], see known issue KI-1) Let

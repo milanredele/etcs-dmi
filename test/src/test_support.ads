@@ -51,7 +51,8 @@ package Test_Support is
       LSSMA         : Natural := 16#FFFF#);
 
    procedure Send_Status
-     (Brake        : Natural := 0;   -- 0 none / 1 shown / 2 ack required
+     (Brake        : Natural := 0;   -- 0 none / 1 shown / 2 ack required /
+                                     -- 3 shown, for a pending acknowledgement
       Radio        : Natural := 0;   -- 0 none / 1 up / 2 lost
       Adhesion     : Boolean := False;
       BMM          : Boolean := False;

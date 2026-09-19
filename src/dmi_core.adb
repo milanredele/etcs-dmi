@@ -341,11 +341,10 @@ package body DMI_Core is
 
    -- DMI 8.2.2.3.4.1 / 8.2.2.3.6: a brake intervention caused by a pending
    -- acknowledgement of a level, a mode or a text message is released by
-   -- that acknowledgement, and then no Sinfo is played. The DMI does not
-   -- know the cause of an intervention (implementation choice): a release
-   -- counts as one "with driver's acknowledgement" when the driver has
-   -- acknowledged anything while the brake symbol was displayed.
-   Ack_During_Brake : Boolean := False;
+   -- that acknowledgement, and then no Sinfo is played. Only the EVC knows
+   -- why it brakes, so it says so (MSG_STATUS, brake = 3); the last cause
+   -- reported before the release counts.
+   Brake_For_Pending_Ack : Boolean := False;
 
    -- Internal failure containment, see Enter_Failure
    Has_Failed : Boolean := False;
@@ -366,7 +365,7 @@ package body DMI_Core is
    -- Forget everything the EVC and the driver provided
    procedure Reset_State is
    begin
-      Ack_During_Brake := False;
+      Brake_For_Pending_Ack := False;
       DMI_Ack.Reset;
       DMI_Driver_Data.Reset;
       DMI_Planning.Reset;
@@ -735,8 +734,9 @@ package body DMI_Core is
       New_Brake : constant Brake_T :=
         (case Brake_Raw is
             when 0      => None,
-            when 1      => Shown,
+            when 1 | 3  => Shown,
             when others => Shown_Ack_Required);
+      Old_For_Pending_Ack : constant Boolean := Brake_For_Pending_Ack;
       use type SDI.Mode_T;
    begin
       Brake := New_Brake;
@@ -748,7 +748,7 @@ package body DMI_Core is
             when None =>
                if Old_Brake = Shown_Ack_Required then
                   DMI_Ack.Cancel (DMI_Ack.Brake_Release);
-               elsif Old_Brake = Shown and then not Ack_During_Brake then
+               elsif Old_Brake = Shown and then not Old_For_Pending_Ack then
                   -- 8.2.2.3.6: released without any driver's
                   -- acknowledgement, "on ST01 or on any other DMI object"
                   DMI_Sounds.Play (DMI_Sounds.Sinfo);
@@ -758,10 +758,8 @@ package body DMI_Core is
                   DMI_Ack.Cancel (DMI_Ack.Brake_Release);
                end if;
          end case;
-         if Old_Brake = None or else New_Brake = None then
-            Ack_During_Brake := False; -- a new intervention, or it is over
-         end if;
       end if;
+      Brake_For_Pending_Ack := Brake_Raw = 3;
 
       Radio :=
         (case Radio_Raw is
@@ -1089,9 +1087,6 @@ package body DMI_Core is
                   begin
                      -- the EVC learns exactly what was acknowledged
                      Queue_Driver_Ack (Kind, Text_ID);
-                     if DMI_Status."/=" (DMI_Status.Brake, DMI_Status.None) then
-                        Ack_During_Brake := True;
-                     end if;
                      if Is_Text then
                         -- 8.2.3.4.8 c: this message, not another one
                         DMI_Text_Messages.Acknowledge (Text_ID);

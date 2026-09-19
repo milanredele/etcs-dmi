@@ -499,12 +499,15 @@ procedure DMI_Test is
       TSM (Status => 1, MRDT => 4);
       Expect_No_Sound ("change of MRDT in AD is silent");
 
-      -- SUP-5: brake released by an acknowledgement on another object
+      -- SUP-5: the EVC brakes because the mode acknowledgement is not
+      -- given (brake = 3); the acknowledgement releases it: no Sinfo
       Reset;
       Send_Mode_Level (Mode => 2, Level => 4);
-      Send_Status (Brake => 1, Radio => 1, HH => 9, MM => 0, SS => 0);
       Send_Mode_Level (Mode => 2, Level => 4, Mode_Ack => 6); -- OS ack
       Step;
+      Send_Status (Brake => 3, Radio => 1, HH => 9, MM => 0, SS => 0);
+      Step;
+      Check_Frame ("sup_brake_for_pending_ack");
       Drain_Sounds;
       Drain_Outbox;
       Pointer_Down (190, 340);
@@ -517,10 +520,29 @@ procedure DMI_Test is
       Expect_No_Sound ("entering OS after the acknowledgement is silent");
       Send_Status (Brake => 0, Radio => 1, HH => 9, MM => 0, SS => 1);
       Expect_No_Sound ("brake released by the mode acknowledgement: no Sinfo");
-      -- the next intervention, released without any acknowledgement
+      -- an ordinary intervention during which the driver acknowledges an
+      -- unrelated text: the release still plays Sinfo
       Send_Status (Brake => 1, Radio => 1, HH => 9, MM => 0, SS => 2);
+      Send_Text (20, "Balise read error", Ack_Required => True,
+                 HH => 9, MM => 0);
+      for I in 1 .. 25 loop -- past the 1 s between two requests (5.4.1.9)
+         Step;
+      end loop;
+      Drain_Sounds;
+      Drain_Outbox;
+      Pointer_Down (150, 400);
+      Pointer_Up (150, 400);
+      Step;
+      Drain_Sounds;
+      Expect_Ack (3, 20, "unrelated text acknowledged during the intervention");
       Send_Status (Brake => 0, Radio => 1, HH => 9, MM => 0, SS => 3);
-      Expect_Sound (DMI_Sounds.Sinfo, "later release without ack plays Sinfo");
+      Expect_Sound (DMI_Sounds.Sinfo,
+                    "release after an unrelated acknowledgement plays Sinfo");
+      -- the last cause counts: pending acknowledgement, then overspeed
+      Send_Status (Brake => 3, Radio => 1, HH => 9, MM => 0, SS => 4);
+      Send_Status (Brake => 1, Radio => 1, HH => 9, MM => 0, SS => 5);
+      Send_Status (Brake => 0, Radio => 1, HH => 9, MM => 0, SS => 6);
+      Expect_Sound (DMI_Sounds.Sinfo, "cause changed to an ordinary one: Sinfo");
 
       -- SDI-4: the supervised manoeuvre direction changes
       Reset;
