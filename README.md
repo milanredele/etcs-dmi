@@ -50,7 +50,7 @@ The rules that have proven necessary so far:
   claims, including requirements that do not exist; [PLAN.md](PLAN.md)
   §1 records the check claim by claim, and a verified plan replaced it.
 - **Behaviour is pinned by executable checks.** The regression
-  runner makes 599 checks: 131 rendered screens compared with golden
+  runner makes 686 checks: 138 rendered screens compared with golden
   frames, sound events, and a complete simulated mission. The
   WebAssembly build has to render the same pixels as the native one. A
   change that alters a screen fails a check, and a person has to look at
@@ -67,10 +67,11 @@ claims conformance with EN 50128 / EN 50716.
 ### Status
 The default window (speed dial, supervision colours, planning area,
 track conditions, text messages, acknowledgements, sounds), the sub-level
-windows with the start-up data entry, touch input, and the EVC/track/
-train simulator are implemented. Still open: the ATO displays, the
-chapter 15 message catalogue, the NTC chapters, the soft-key layout and
-the optimisation for the embedded memory budget. The national systems
+windows with the chapter 10 data entry (numeric, alphanumeric and
+dedicated keyboards, data checks, validation, data view), touch input,
+and the EVC/track/train simulator are implemented. Still open: the ATO
+displays, the chapter 15 message catalogue, the radio and language
+windows and the optimisation for the embedded memory budget. The national systems
 part of the specification (NTC, chapters 9 and 12) and the soft-key
 variant of the layout are out of scope.
 
@@ -79,7 +80,8 @@ September 2026: [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md) records
 every gap found, and [PLAN.md](PLAN.md) §7 is the prioritized backlog.
 Its first two blocks are closed: nothing the EVC sends can stop the DMI
 any more (P0), and what is shown and sounded follows the clauses (P1).
-Next is the data entry dialogue of chapter 10 (P2).
+The data entry dialogue follows chapter 10 (P2). Next are the missing
+functions (P3): ATO displays, the message catalogue, the remaining windows.
 
 | | |
 |---|---|

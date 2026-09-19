@@ -356,7 +356,12 @@ open for the project owner.
 13. **GEN-8** Flashing starts in the visible state.
 14. Simulator: stop sending the invented level crossing text, send `MSG_TEXT_REMOVE`.
 
-### P2 — The data entry dialogue follows chapter 10
+### P2 — The data entry dialogue follows chapter 10 — DONE 2026-09-19
+All items are merged (two rounds of parallel branches); outcomes, choices and new
+open points are in the P2 follow-up section of
+[doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). Left out with reasons: fixed and
+switchable train data entry (WIN-8), which need rolling stock configuration.
+
 15. **WIN-4** Input field mechanics (Enter in the data field, touch selection,
     circular list, replace on first key, down-type keys, cursor) and **GEN-4**,
     **GEN-5** button behaviour.
