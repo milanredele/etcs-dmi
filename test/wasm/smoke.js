@@ -101,11 +101,50 @@ for (let i = 0; i < 5; i++) {
   dmi.dmi_tick(100);
 }
 dmi.dmi_render();
-check('mission_sb', dmi);
+check('mission_sb', dmi); // Start Up, S1: the Driver ID window (DMI Table 49)
 
-// --- Mission start: driver action travels back to the EVC ---------------
+// --- Mission start: the driver's start-up by touch, as in Scenario_Mission;
+// --- the driver actions travel back to the EVC ---------------------------
+// mode of the simulator from MSG_SIM_STATE (0 SB / 1 SR / 2 FS / 3 TR)
+function simMode(bytes) {
+  let mode = -1;
+  for (let o = 0; o + HEADER_LENGTH <= bytes.length;) {
+    const len = new DataView(bytes.buffer, bytes.byteOffset + o + 1, 4).getUint32(0, true);
+    if (bytes[o] === 0x09 && len === 10) mode = bytes[o + HEADER_LENGTH + 6];
+    o += HEADER_LENGTH + len;
+  }
+  return mode;
+}
+function press(x, y) {
+  for (const event of [0, 1]) { // down, up
+    const p = new Uint8Array(5);
+    const dv = new DataView(p.buffer);
+    dv.setUint8(0, event); dv.setUint16(1, x, true); dv.setUint16(3, y, true);
+    receive(dmi, 'dmi', frame(0x50, p));
+  }
+  // one cycle of the wire in both directions: the EVC keeps talking (the
+  // DMI supervises the link) and hears the driver's actions
+  evc.evc_step(50);
+  const fromEvc = transmit(evc, 'evc');
+  receive(dmi, 'dmi', fromEvc);
+  dmi.dmi_tick(50);
+  receive(evc, 'evc', transmit(dmi, 'dmi'));
+  return simMode(fromEvc);
+}
 {
-  receive(evc, 'evc', frame(0x40, new Uint8Array([5, 0, 0]))); // start mission
+  const ENTER = [589, 390];
+  press(385, 240); press(...ENTER);            // Driver ID 1
+  press(410, 90);                              // Level 1 -> Main window
+  press(410, 140);                             // Train data
+  for (const k of [[385, 290], [487, 390], [487, 390], ENTER,      // 400 m
+                   [385, 240], [589, 240], [487, 290], ENTER,      // 135 %
+                   [385, 240], [385, 290], [487, 390], ENTER]) press(...k); // 140 km/h
+  press(410, 390);                             // Yes -> train running number
+  press(385, 240); press(...ENTER);            // TRN 1 -> Main window
+  // one more cycle (a touch outside every button) to see the EVC's mode
+  if (press(620, 470) === 0) console.log('pass: the DMI does not start the mission by itself');
+  else { failures++; console.log('FAIL: mission started without Start'); }
+  press(410, 90);                              // Start -> default window
   let tsm = false;
   for (let i = 0; i < 2000 && !tsm; i++) {
     evc.evc_step(100);

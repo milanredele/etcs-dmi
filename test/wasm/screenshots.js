@@ -59,12 +59,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       console.log('shot', name, await evalJSON(`document.getElementById('stats').textContent`));
     };
 
+    // DMI Tables 49 and 50: the Driver ID window is already there (SB)
     const ENTER = [589, 390];
-    await press(610, 40);                       // Main
-    await press(410, 90);                       // Start -> driver ID
     for (const k of [[385, 240], [487, 240], [589, 240]]) await press(...k); // 123
     await press(...ENTER);                      // -> level
-    await press(410, 90);                       // Level 1 -> train data
+    await press(410, 90);                       // Level 1 -> Main window
+    await press(410, 140);                      // Train data
     for (const k of [[385, 290], [487, 390], [487, 390]]) await press(...k); // 400
     await press(...ENTER);
     for (const k of [[385, 240], [589, 240], [487, 290]]) await press(...k); // 135
@@ -73,9 +73,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await press(...ENTER);                      // -> validation
     await press(410, 390);                      // Yes -> TRN
     for (const k of [[385, 290], [385, 340], [385, 240], [385, 240]]) await press(...k); // 4711
-    await press(...ENTER);                      // sequence ends, mission starts
+    await press(...ENTER);                      // -> Main window
+    await press(410, 90);                       // Start -> default window, mission starts
     await sleep(1500);
-    await press(375, 440);                      // close the Main window
     const simTime = async () => parseFloat((await evalJSON(`document.getElementById('stats').textContent`)).match(/t=([0-9.]+)/)[1]);
     while (await simTime() < 172) await sleep(500); // braking towards the 100 km/h restriction
     await shot('bench');

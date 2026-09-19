@@ -25,6 +25,7 @@ with DMI_Protocol;
 with DMI_Sounds;
 with DMI_Status;
 with DMI_Text_Messages;
+with DMI_Windows;
 with EVC_Core;
 with EVC_Driver;
 with EVC_Track;
@@ -583,6 +584,12 @@ procedure DMI_Test is
    ---------------------------------------------------------------------
 
    procedure Scenario_Windows is
+      procedure Tap (X, Y : Natural) is
+      begin
+         Pointer_Down (X, Y);
+         Pointer_Up (X, Y);
+         Step;
+      end Tap;
    begin
       Reset;
       Send_Mode_Level (Mode => 1, Level => 4); -- SB
@@ -590,6 +597,13 @@ procedure DMI_Test is
                         V_Release => 0, V_Sbi => 0, V_Wsl => 0,
                         D_Target => 0, Monitoring => 0, Dial_Range => 1,
                         Vrelease_Exists => False);
+      -- the entry into SB engages the Start Up dialogue sequence (Table
+      -- 49, see Scenario_Startup_Sequence): Driver ID 1, Level 1, and
+      -- the Main window of S10 is closed
+      Tap (385, 240);
+      Tap (589, 390);
+      Tap (410, 90);
+      Tap (370, 440);
       Drain_Sounds;
       Step;
       Check_Frame ("default_sb");
@@ -1596,6 +1610,7 @@ procedure DMI_Test is
    end Scenario_Text_Store;
 
    procedure Scenario_Startup_Sequence is
+      use type DMI_Windows.Window_ID_T;
    begin
       Reset;
       Send_Mode_Level (Mode => 1, Level => 0); -- SB, level unknown
@@ -1604,25 +1619,49 @@ procedure DMI_Test is
                         D_Target => 0, Monitoring => 0, Dial_Range => 1,
                         Vrelease_Exists => False);
       Drain_Sounds;
+      Drain_Outbox;
 
-      Press (610, 40);        -- F1: Main window
-      Step;
-      Check_Frame ("main_window");
-
-      Press (410, 90);        -- Start: no data yet -> sequence begins
+      -- Table 49 S0 -> S1: the sequence is engaged with the entry into
+      -- SB, not by a button; 11.7.2.2: [Close] is disabled (NA12)
       Step;
       Check_Frame ("startup_driver_id");
+      Press (370, 440);       -- [Close]: disabled
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows.Top = DMI_Windows.W_Driver_ID,
+             "S1: the disabled [Close] does not close the Driver ID window");
+      Press (610, 40);        -- F1 is under the window's rule (5.3.1.1.5)
+      Check (DMI_Windows.Top = DMI_Windows.W_Driver_ID,
+             "S1: only the Driver ID window responds");
 
       Press (385, 240);       -- 1
       Press (487, 240);       -- 2
       Press (589, 240);       -- 3
       Step;
       Check_Frame ("startup_driver_id_123");
-      Press (589, 390);       -- Enter -> Level window
+      Press (589, 390);       -- Enter -> D2 -> S2 Level window
       Step;
       Check_Frame ("startup_level");
+      Press (370, 440);       -- [Close]: disabled
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows.Top = DMI_Windows.W_Level,
+             "S2: the disabled [Close] does not close the Level window");
 
-      Press (410, 90);        -- Level 1 -> Train data window
+      Press (410, 90);        -- Level 1 -> S10 = S1 of the Main window
+      Step;
+      Check (not DMI_Windows.In_Start_Up, "S10: the Start Up sequence ended");
+      Check_Frame ("main_window"); -- 'Start' disabled: data not valid
+      Press (410, 90);        -- Start: disabled (Table 33)
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows.Top = DMI_Windows.W_Main,
+             "disabled Start does not react");
+      Expect_Actions (5, 0, "no mission start while Start is disabled");
+
+      -- 11.7.3.2: [Close] is enabled in the Main window sequence
+      Press (370, 440);
+      Check (not DMI_Windows.Is_Open, "S10: [Close] leads to the default window");
+      Press (610, 40);        -- F1: Main window
+
+      Press (410, 140);       -- Train data -> Table 50 S3-1
       Step;
       Check_Frame ("startup_train_data");
 
@@ -1640,15 +1679,16 @@ procedure DMI_Test is
       Step;
       Check_Frame ("startup_validation");
 
-      Press (410, 390);       -- Yes -> TRN window
+      Press (410, 390);       -- Yes -> D6: TRN not valid -> S3-3
       Step;
       Check_Frame ("startup_trn");
 
       -- TRN 4711
       Press (385, 290); Press (385, 340); Press (385, 240); Press (385, 240);
-      Press (589, 390);       -- Enter -> sequence completes
+      Press (589, 390);       -- Enter -> D1 -> S1, the Main window
       Step;
-      Check_Frame ("startup_done");
+      Check_Frame ("startup_done"); -- 'Start' enabled
+      Expect_Actions (5, 0, "the DMI does not start the mission by itself");
 
       Check (DMI_Driver_Data.Driver_ID_Entered, "driver id entered");
       Check (DMI_Driver_Data.Level_Entered, "level entered");
@@ -1657,6 +1697,57 @@ procedure DMI_Test is
       Check (DMI_Driver_Data.Train_Length = 400, "train length 400");
       Check (DMI_Driver_Data.Brake_Pct = 135, "brake percentage 135");
       Check (DMI_Driver_Data.Max_Speed = 140, "max speed 140");
+
+      -- Table 50 S1: 'Start' with level 1 leads to the default window and
+      -- is the driver's single request
+      Press (410, 90);
+      Check (not DMI_Windows.Is_Open, "Start leads to the default window");
+      Expect_Actions (5, 1, "Start sends one mission start request");
+      Press (610, 40);        -- F1: Main window again
+      Step;
+      Check_Frame ("startup_start_pending"); -- 'Start' disabled
+      Press (410, 90);
+      Expect_Actions (5, 0, "no second request while the first is pending");
+
+      -- the mission runs: Table 33 does not enable 'Start' in FS
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Press (410, 90);
+      Expect_Actions (5, 0, "no mission start request while the mission runs");
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows.Top = DMI_Windows.W_Main,
+             "a mode change outside SB leaves the Main window alone");
+
+      -- end of mission: SB again. S1 proposes the stored Driver ID for
+      -- revalidation (SUBSET-026 4.10.1.3), the level is still valid (D2
+      -- -> D3 -> S10), train data and TRN have to be revalidated
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Step;
+      Check (DMI_Windows.In_Start_Up
+             and then DMI_Windows.Top = DMI_Windows.W_Driver_ID,
+             "SB again: Start Up engaged with the Driver ID window");
+      Check_Frame ("startup_again_driver_id");
+      Press (589, 390);       -- Enter: revalidated -> D2 -> D3 -> S10
+      Check (not DMI_Windows.In_Start_Up
+             and then DMI_Windows.Top = DMI_Windows.W_Main,
+             "valid level: Driver ID leads to the Main window");
+      Check (not DMI_Driver_Data.Train_Data_Entered
+             and then not DMI_Driver_Data.TRN_Entered,
+             "train data and TRN are to be revalidated");
+      Press (410, 90);
+      Expect_Actions (5, 0, "Start stays disabled until the data are valid");
+
+      -- SB is left during Start Up (e.g. SL): nothing stale stays behind
+      Send_Mode_Level (Mode => 3, Level => 4);
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Step;
+      Check (DMI_Windows.In_Start_Up, "Start Up engaged once more");
+      Send_Mode_Level (Mode => 16, Level => 4); -- SL
+      Step;
+      Check (not DMI_Windows.In_Start_Up and then not DMI_Windows.Is_Open,
+             "leaving SB ends the Start Up sequence and its windows");
+      Press (610, 40);        -- F1
+      Press (370, 440);       -- [Close]
+      Check (not DMI_Windows.Is_Open, "[Close] is enabled again");
    end Scenario_Startup_Sequence;
 
    procedure Scenario_Other_Windows is
@@ -1804,6 +1895,7 @@ procedure DMI_Test is
 
    procedure Scenario_Mission is
       use type Supplementary_Driving_Info.Level_T;
+      use type EVC_Core.Mode_T;
 
       procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
                       Payload  : Ada.Streams.Stream_Element_Array) is
@@ -1841,6 +1933,42 @@ procedure DMI_Test is
       function Past_LX return Boolean is
         (EVC_Train.Position_M > 5_600.0);
 
+      -- The driver's actions travel back to the EVC like on the wire
+      procedure Pump_To_EVC is
+         use Ada.Streams;
+         use DMI_Protocol;
+         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+         Last   : Stream_Element_Offset;
+         Offset : Stream_Element_Offset := Buffer'First;
+      begin
+         DMI_Core.Take_Outbox (Buffer, Last);
+         while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+            declare
+               The_Type : constant Msg_Type_T :=
+                 Msg_Type_T (Get_U8 (Buffer, Offset));
+               Length   : constant Stream_Element_Offset :=
+                 Stream_Element_Offset (Get_U32 (Buffer, Offset));
+               Next     : constant Stream_Element_Offset := Offset + Length;
+            begin
+               exit when Next - 1 > Last;
+               if The_Type = MSG_DRIVER_ACTION
+                 and then Length = Driver_Action_Length
+               then
+                  declare
+                     Action : constant Interfaces.Unsigned_8 :=
+                       Get_U8 (Buffer, Offset);
+                     Arg    : constant Interfaces.Unsigned_16 :=
+                       Get_U16 (Buffer, Offset);
+                  begin
+                     EVC_Core.Handle_Driver_Action
+                       (Natural (Action), Natural (Arg));
+                  end;
+               end if;
+               Offset := Next;
+            end;
+         end loop;
+      end Pump_To_EVC;
+
       procedure Wait_TSM is new Run_Until (In_TSM);
       procedure Wait_RSM is new Run_Until (In_RSM);
       procedure Wait_Stop is new Run_Until (Stopped);
@@ -1854,10 +1982,27 @@ procedure DMI_Test is
          Sim_Step;
       end loop;
       DMI_Core.Render;
-      Check_Frame ("mission_sb");
+      Check_Frame ("mission_sb"); -- Table 49 S1: the Driver ID window
+
+      -- the driver's start of mission by touch (Tables 49 and 50)
+      Press (385, 240); Press (589, 390);   -- Driver ID 1, Enter
+      Press (410, 90);                      -- Level 1 -> Main window
+      Press (410, 140);                     -- Train data
+      Press (385, 290); Press (487, 390); Press (487, 390);
+      Press (589, 390);                     -- length 400
+      Press (385, 240); Press (589, 240); Press (487, 290);
+      Press (589, 390);                     -- brake percentage 135
+      Press (385, 240); Press (385, 290); Press (487, 390);
+      Press (589, 390);                     -- maximum speed 140
+      Press (410, 390);                     -- Yes -> TRN window
+      Press (385, 240); Press (589, 390);   -- TRN 1, Enter -> Main window
+      Pump_To_EVC;
+      Check (EVC_Core.Mode = EVC_Core.SB, "no mission start without Start");
+      Press (410, 90);                      -- Start -> default window
 
       -- mission start (the EVC grants FS with a full MA)
-      EVC_Core.Handle_Driver_Action (5, 0);
+      Pump_To_EVC;
+      Check (EVC_Core.Mode = EVC_Core.FS, "Start reaches the EVC");
       Sim_Step;
       Expect_Sound (DMI_Sounds.Sinfo, "mission start text plays Sinfo");
       Drain_Sounds;
@@ -2312,6 +2457,131 @@ procedure DMI_Test is
       Step;
       Check_Frame ("planning_zero_target_limit");
    end Scenario_Planning_Order_Limit;
+   ---------------------------------------------------------------------
+   -- Acknowledgements against the Start Up sequence and open data entry
+   -- / validation windows (audit WIN-3: 5.4.1.11, 11.7.1.8, 11.7.1.9,
+   -- 11.2.1.4) and the delay-type acknowledgement of MO10 (audit SDI-3:
+   -- 8.2.3.1.4)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Ack_And_Windows is
+      ACK_MODE_KIND  : constant := 1;
+      ACK_PLAIN_KIND : constant := 3;
+
+      function Top_Is (ID : DMI_Windows.Window_ID_T) return Boolean is
+        (DMI_Windows.Is_Open
+         and then DMI_Windows."=" (DMI_Windows.Top, ID));
+
+      -- 1 s = 20 cycles of 50 ms; the cycle that set the hold was the
+      -- first one
+      procedure Expect_Shown_After_1_S (What : String) is
+      begin
+         for I in 1 .. 19 loop
+            Step;
+         end loop;
+         Check (not DMI_Ack.Current_Valid, What & ": nothing offered for 1 s");
+         Expect_No_Sound (What & ": silent for 1 s");
+         Step;
+         Check (DMI_Ack.Current_Valid, What & ": offered after 1 s");
+         Expect_Sound (DMI_Sounds.Sinfo, What & ": the offer plays Sinfo");
+      end Expect_Shown_After_1_S;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 1, Level => 0); -- SB: Start Up, S1
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+
+      -- 11.7.1.8: required during Start Up, displayed 1 s after its end
+      Send_Mode_Level (Mode => 1, Level => 0, Mode_Ack => 7); -- SR
+      for I in 1 .. 30 loop
+         Step;
+      end loop;
+      Check (DMI_Ack.Pending_Count = 1 and then not DMI_Ack.Current_Valid,
+             "Start Up: the acknowledgement is required but not displayed");
+      Expect_No_Sound ("Start Up: no Sinfo for the held acknowledgement");
+      Check_Frame ("ack_held_in_startup");
+      Pointer_Down (190, 340);   -- C1 is no button now
+      Pointer_Up (190, 340);
+      Step;
+      Expect_No_Ack ("Start Up: nothing to acknowledge in C1");
+
+      Press (385, 240);          -- Driver ID 1
+      Press (589, 390);          -- Enter -> Level window
+      Check (not DMI_Ack.Current_Valid, "S2: still held");
+      Press (410, 90);           -- Level 1 -> S10, the Main window
+      Check (Top_Is (DMI_Windows.W_Main), "S10 reached");
+      Drain_Outbox;
+      Expect_Shown_After_1_S ("after Start Up");
+      -- 11.2.1.4: no Main window button is enabled under the request
+      Check_Frame ("ack_after_startup");
+      Press (563, 190);          -- Train running number: disabled
+      Check (Top_Is (DMI_Windows.W_Main),
+             "no data entry starts while an acknowledgement is required");
+
+      -- 8.2.3.1.4: the Ack-button of MO10 is a delay-type button
+      Pointer_Down (190, 340);
+      Expect_Sound (DMI_Sounds.Click, "MO10: the press clicks");
+      for I in 1 .. 10 loop
+         Step;
+      end loop;
+      Pointer_Up (190, 340);     -- released after 0.5 s
+      Step;
+      Expect_No_Ack ("MO10: a press shorter than 2 s is no acknowledgement");
+      Check (DMI_Ack.Current_Valid, "MO10: still offered");
+      Pointer_Down (190, 340);
+      for I in 1 .. 40 loop
+         Step;
+      end loop;
+      Pointer_Up (190, 340);     -- released after 2 s
+      Step;
+      Drain_Sounds;
+      Expect_Ack (ACK_MODE_KIND, 0, "MO10: acknowledged by a 2 s press");
+      Send_Mode_Level (Mode => 7, Level => 4); -- the EVC switches to SR
+
+      -- 11.7.1.9: a request stops the data entry, the parent window is
+      -- displayed and the request appears 1 s afterwards
+      Check (Top_Is (DMI_Windows.W_Main), "Main window still open in SR");
+      Press (563, 190);          -- Train running number (enabled again)
+      Check (Top_Is (DMI_Windows.W_TRN), "TRN window open");
+      Press (385, 240);          -- 1
+      -- a short text: the picture does not depend on the line wrapping
+      Send_Text (20, "SH refused", Ack_Required => True,
+                 HH => 11, MM => 1);
+      Step;
+      Check (Top_Is (DMI_Windows.W_Main),
+             "data entry stopped, parent window displayed");
+      Check (not DMI_Driver_Data.TRN_Entered, "the stopped entry stores nothing");
+      Check_Frame ("ack_stops_entry");
+      Expect_Shown_After_1_S ("after the stopped data entry");
+      Check_Frame ("ack_after_stopped_entry");
+      Pointer_Down (150, 400);   -- E5-E9
+      Pointer_Up (150, 400);
+      Step;
+      Drain_Sounds;
+      Expect_Ack (ACK_PLAIN_KIND, 20, "text acknowledged under the Main window");
+
+      -- ... and the validation process, together with its train data
+      -- window (SR: the Train data button needs standstill only)
+      Press (410, 140);          -- Train data
+      Press (385, 240); Press (589, 390);   -- length 1
+      Press (385, 240); Press (589, 390);   -- brake percentage 1
+      Press (385, 240); Press (589, 390);   -- maximum speed 1 -> validation
+      Check (Top_Is (DMI_Windows.W_Train_Data_Validation),
+             "validation window open");
+      Send_Status (Brake => 2);  -- brake release acknowledgement
+      Step;
+      Check (Top_Is (DMI_Windows.W_Main),
+             "validation stopped, Main window displayed");
+      Check (not DMI_Driver_Data.Train_Data_Entered,
+             "the stopped validation validates nothing");
+      Expect_Shown_After_1_S ("after the stopped validation");
+      Drain_Outbox;
+   end Scenario_Ack_And_Windows;
 
    Status : Natural;
    -- SDI-1: lines of the text messages (8.2.3.4.6 c) by cell width and
@@ -2649,6 +2919,7 @@ begin
    Scenario_Planning_PASP;
    Scenario_Planning_Order_Limit;
    Scenario_Text_Wrap;
+   Scenario_Ack_And_Windows;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

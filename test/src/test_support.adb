@@ -497,6 +497,44 @@ package body Test_Support is
       end if;
    end Expect_No_Ack;
 
+   procedure Expect_Actions (Action : Natural;
+                             Count  : Natural;
+                             What   : String)
+   is
+      Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+      Last   : Stream_Element_Offset;
+      Offset : Stream_Element_Offset := Buffer'First;
+      Found  : Natural := 0;
+   begin
+      Checks := Checks + 1;
+      DMI_Core.Take_Outbox (Buffer, Last);
+      while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+         declare
+            The_Type : constant Msg_Type_T :=
+              Msg_Type_T (Get_U8 (Buffer, Offset));
+            Length   : constant Stream_Element_Offset :=
+              Stream_Element_Offset (Get_U32 (Buffer, Offset));
+            Next     : constant Stream_Element_Offset := Offset + Length;
+         begin
+            exit when Next - 1 > Last;
+            if The_Type = MSG_DRIVER_ACTION
+              and then Length >= 1
+              and then Natural (Buffer (Offset)) = Action
+            then
+               Found := Found + 1;
+            end if;
+            Offset := Next;
+         end;
+      end loop;
+      if Found = Count then
+         Pass (What);
+      else
+         Fail (What & ": expected" & Natural'Image (Count)
+               & " driver action(s)" & Natural'Image (Action)
+               & ", got" & Natural'Image (Found));
+      end if;
+   end Expect_Actions;
+
    procedure Check (Condition : Boolean; What : String) is
    begin
       Checks := Checks + 1;

@@ -102,10 +102,10 @@ package body DMI_Core is
       end if;
 
       -- DMI 5.4.1.4: the area displaying the acknowledgement becomes the
-      -- ack button. Acknowledgements stay available with a window open
-      -- (they are offered on the default window; a pending ack while a
-      -- window is open closes it per Table 48 -- simplified here by
-      -- keeping the ack button active).
+      -- ack button. The acknowledgement areas are outside the window
+      -- column D/F/G, so the button stays available under a menu window.
+      -- No request is displayed during the Start Up sequence or over a
+      -- data entry / validation window (11.7.1.8, 11.7.1.9, see Tick).
       if DMI_Ack.Current_Valid then
          DMI_Buttons.Set_Active
            (BTN_Ack,
@@ -118,7 +118,13 @@ package body DMI_Core is
                 when Fixed_Text | Plain_Text | System_Status | NTC_Text =>
                    -- 8.2.3.4.8 b: the full E5-E9 block
                    (Display.Get_Area (Display.E).Position + (54, 0), 234, 100)),
-            DMI_Buttons.Up_Type);
+            -- 5.4.1.3: up-type unless stated otherwise; 8.2.3.1.4: with
+            -- MO10 (acknowledgement for SR) a delay-type button
+            -- (5.3.2.6.6, DMI_Buttons)
+            (if DMI_Ack.Current_Kind = Mode_Change
+               and then DMI_Ack.Current_Mode = SDI.M_SR
+             then DMI_Buttons.Delay_Type
+             else DMI_Buttons.Up_Type));
       else
          DMI_Buttons.Set_Inactive (BTN_Ack);
       end if;
@@ -222,9 +228,14 @@ package body DMI_Core is
          for B in DMI_Buttons.F_Button_T loop
             DMI_Buttons.Set_Inactive (B);
          end loop;
-         DMI_Buttons.Set_Active (BTN_Window_Close,
-                                 DMI_Windows.Close_Button_Area,
-                                 DMI_Buttons.Up_Type);
+         -- 11.7.2.2: [Close] is disabled during the Start Up sequence
+         if DMI_Windows.Close_Enabled then
+            DMI_Buttons.Set_Active (BTN_Window_Close,
+                                    DMI_Windows.Close_Button_Area,
+                                    DMI_Buttons.Up_Type);
+         else
+            DMI_Buttons.Set_Inactive (BTN_Window_Close);
+         end if;
          -- window-internal buttons (menu grid / keyboard / validation)
          declare
             Count : constant Natural := DMI_Windows.Button_Count;
@@ -339,6 +350,10 @@ package body DMI_Core is
    -- Internal failure containment, see Enter_Failure
    Has_Failed : Boolean := False;
 
+   -- A mode was received since the last reset: SDI.Mode is the mode of
+   -- the EVC and not the initial value
+   Mode_Received : Boolean := False;
+
    -- EVC link supervision (General_Parameters.EVC_Link_Timeout_Ms)
    EVC_Heard    : Boolean := False; -- supervision arms with the first message
    Link_Lost    : Boolean := False;
@@ -358,6 +373,7 @@ package body DMI_Core is
       DMI_Status.Reset;
       DMI_Text_Messages.Reset;
       DMI_Windows.Close_All;
+      Mode_Received := False;
       TTI_Was_Displayed := False;
       SDI.Mode := SDI.M_SB;
       SDI.Acknowledgment_Mode := (Valid => False);
@@ -522,13 +538,33 @@ package body DMI_Core is
         (Natural (Raw) <= SDI.Level_T'Pos (SDI.Level_T'Last));
 
       Old_Mode : constant SDI.Mode_T := SDI.Mode;
+      Had_Mode : constant Boolean := Mode_Received;
       use type SDI.Mode_T;
    begin
       if Valid_Mode (Mode_Raw) then
          SDI.Mode := SDI.Mode_T'Val (Mode_Raw);
+         Mode_Received := True;
+      end if;
+
+      -- DMI 11.7.2.4 Table 49 S0 -> S1: the Start Up dialogue sequence is
+      -- engaged when the conditions to initiate a start of mission are
+      -- fulfilled. They are the on-board's (SUBSET-026 5.4.1.2: the
+      -- on-board is in SB with an open desk) and the protocol has no
+      -- message for them. Implementation choice: the entry into SB, as
+      -- reported by the EVC, engages the sequence; the DMI is taken to be
+      -- in the active cab. Waiting in S0 for a communication session to
+      -- end needs the hour glass (P3, audit WIN-11) and is skipped.
+      if Mode_Received and then SDI.Mode = SDI.M_SB
+        and then (not Had_Mode or else Old_Mode /= SDI.M_SB)
+      then
+         DMI_Windows.Engage_Start_Up;
+      elsif SDI.Mode /= SDI.M_SB then
+         DMI_Windows.Abort_Start_Up;
       end if;
 
       if SDI.Mode /= Old_Mode then
+         -- the EVC answered a 'Start' request with the new mode
+         DMI_Windows.Start_Request_Closed;
          -- DMI 8.2.2.4.5: entering a Table 15 mode toggles the objects off
          if SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH then
             User_Settings.Speed_Info_Visible := False;
@@ -556,6 +592,9 @@ package body DMI_Core is
       else
          if SDI.Acknowledgment_Mode.Valid then
             DMI_Ack.Cancel (DMI_Ack.Mode_Change);
+            -- a mode proposed after 'Start' (SUBSET-026 5.4.3.2 S22 to
+            -- S25) is gone: the request is not pending any more
+            DMI_Windows.Start_Request_Closed;
          end if;
          SDI.Acknowledgment_Mode := (Valid => False);
       end if;
@@ -1001,7 +1040,25 @@ package body DMI_Core is
       -- DMI 5.1.1.3.2: before DMI_Ack.Tick, which restarts the phase for
       -- a request it displays now
       DMI_Flash.Tick (Dt_Ms);
-      DMI_Ack.Tick (Dt_Ms);
+      declare
+         -- DMI 11.7.1.8: an acknowledgement required during the Start Up
+         -- dialogue sequence is displayed 1 s after its end
+         Hold : Boolean := DMI_Windows.In_Start_Up;
+      begin
+         -- DMI 11.7.1.9 (5.4.1.11): after Start Up a required
+         -- acknowledgement stops the data entry / validation process, the
+         -- parent window is displayed and the acknowledgement appears 1 s
+         -- afterwards. The reverse case cannot arise: the buttons leading
+         -- to a data entry window are disabled while an acknowledgement
+         -- is required (11.2.1.4 and following, DMI_Windows.Menu_Def).
+         if not Hold and then DMI_Ack.Pending_Count > 0
+           and then DMI_Windows.Entry_Open
+         then
+            DMI_Windows.Stop_Entry;
+            Hold := True;
+         end if;
+         DMI_Ack.Tick (Dt_Ms, Hold);
+      end;
       Update_Buttons;
       DMI_Buttons.Tick (Dt_Ms);
       while DMI_Buttons.Pop_Activation (ID) loop

@@ -136,6 +136,13 @@ package Test_Support is
    -- ... must hold no acknowledgement
    procedure Expect_No_Ack (What : String);
 
+   -- The messages queued for the EVC since the last call must hold
+   -- exactly Count driver actions (MSG_DRIVER_ACTION) with this action
+   -- code; empties the outbox like the checks above
+   procedure Expect_Actions (Action : Natural;
+                             Count  : Natural;
+                             What   : String);
+
    -- Simple boolean check
    procedure Check (Condition : Boolean; What : String);
 
