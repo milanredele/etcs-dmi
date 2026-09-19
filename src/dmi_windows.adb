@@ -548,11 +548,14 @@ package body DMI_Windows is
             Pop;
             if Sequence_Active then
                -- Table 49 E1 -> D2: the DMI does not know the status of
-               -- the position; a valid level leads to D3 (implementation
+               -- the position; a valid level (selected by the driver and
+               -- reported by the EVC) leads to D3 (implementation
                -- choice), any other to S2. D3 with level 2 -> D7 -> A31 /
                -- S4: the radio network and RBC steps do not exist yet
                -- (P3, audit WIN-11 / WIN-12) and are skipped to S10.
-               if Level_Entered then
+               if Level_Entered
+                 and then SDI.Level in SDI.L0 | SDI.NTC | SDI.L1 | SDI.L2
+               then
                   Reach_S10;
                else
                   Open (W_Level);
