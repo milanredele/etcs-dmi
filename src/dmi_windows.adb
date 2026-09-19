@@ -9,6 +9,7 @@ with DMI_Conditions;
 with DMI_Data_Entry;
 with DMI_Data_View;
 with DMI_Driver_Data;
+with DMI_Status;
 with DMI_Train_Data;
 with General_Parameters;
 with Supplementary_Driving_Info;
@@ -382,11 +383,12 @@ package body DMI_Windows is
                end loop;
             end if;
          when W_Adhesion =>
-            -- Table 43. The adhesion is not stored on the DMI and the
-            -- EVC does not report which value the driver last sent, so
-            -- nothing is proposed.
+            -- Table 43
             Add_Choice (Choices, "Non slippery rail");
             Add_Choice (Choices, "Slippery rail");
+            -- 11.7.1.4: the adhesion the on-board holds is what
+            -- MSG_STATUS reports as the slippery rail state (8.2.3.7)
+            Propose (if DMI_Status.Slippery_Rail then 2 else 1);
          when W_Volume | W_Brightness =>
             -- 11.3.7.4.1 / 11.3.8.4.1: the definition of the keyboard is
             -- an implementation issue and the note offers "several
