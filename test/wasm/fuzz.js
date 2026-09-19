@@ -57,9 +57,9 @@ function inDomain(type) {
     m.u8(pick(0, 17)).u8(pick(0, 5)).u8(optional(5, 12, 0xFF)).u8(optional(2, 5, 0xFF))
       .u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 1)).u16(optional(0, 400, 0xFFFF));
   } else if (type === 0x03) {
-    const n = pick(0, 80);
+    const n = pick(0, 255); // up to the greatest length, any byte, words of any width
     m.u16(pick(0, 20)).u8(pick(0, 15)).u8(pick(0, 23)).u8(pick(0, 59)).u8(n);
-    for (let i = 0; i < n; i++) m.u8(pick(0x20, 0x7A));
+    for (let i = 0; i < n; i++) m.u8(pick(0, 5) === 0 ? 0x20 : pick(0, 255));
   } else if (type === 0x04) {
     m.u16(pick(0, 20));
   } else if (type === 0x05) {
