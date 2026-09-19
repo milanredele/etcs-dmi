@@ -14,6 +14,7 @@ with Ada.Command_Line;
 with Ada.Streams;
 with DMI_Ack;
 with DMI_Core;
+with DMI_Data_Format;
 with Display.A_Area;
 with Display.B_Area;
 with Display.Draw;
@@ -2901,6 +2902,94 @@ procedure DMI_Test is
       Drain_Sounds;
    end Scenario_Text_Wrap;
 
+   ---------------------------------------------------------------------
+   -- Data view window (11.5.1 with Table 45, laid out per 10.5.1): the
+   -- items and their order, the two windows with [Previous] / [Next]
+   -- (5.3.1.1.6 d/e, 5.3.1.2.1 g), a data part only for a valid value
+   -- (10.5.1.4) and the grouping of long data (5.1.5)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Data_View is
+      use DMI_Data_Format;
+      use type DMI_Windows.Window_ID_T;
+
+      procedure Set (Value : out DMI_Driver_Data.Text_Value_T;
+                     Text  : Wide_String) is
+      begin
+         Value.Length := Text'Length;
+         Value.Text (1 .. Text'Length) := Text;
+      end Set;
+
+      procedure Check_Grouped (Data : Wide_String;
+                               Line : Positive;
+                               Text : Wide_String;
+                               What : String) is
+         Blocks : constant Grouped_T := Grouped (Data);
+      begin
+         Check (Blocks.Count >= Line
+                and then Blocks.Lines (Line).Text
+                           (1 .. Blocks.Lines (Line).Length) = Text,
+                What);
+      end Check_Grouped;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS, L1
+      Send_Speed_State (V_Cur => 0, V_Perm => 40, V_Target => 0,
+                        V_Release => 0, V_Sbi => 55, V_Wsl => 45,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+
+      -- 10.5.1.4: nothing is valid yet, every label stands without data
+      Press (610, 140);       -- F3: Data view
+      Check_Frame ("data_view_p1_no_data");
+
+      -- 5.3.2.7.5: [Previous] is disabled on the first window and does
+      -- not react to the driver
+      Press (457, 440);
+      Check (DMI_Windows.Is_Open
+             and then DMI_Windows.Top = DMI_Windows.W_Data_View,
+             "[Previous] on the first data view window does nothing");
+      Check_Frame ("data_view_p1_no_data");
+
+      Set (DMI_Driver_Data.Driver_ID, "12345678");
+      DMI_Driver_Data.Driver_ID_Entered := True;
+      Set (DMI_Driver_Data.TRN, "5678");
+      DMI_Driver_Data.TRN_Entered := True;
+      DMI_Driver_Data.Train_Length := 200;
+      DMI_Driver_Data.Brake_Pct := 135;
+      DMI_Driver_Data.Max_Speed := 160;
+      DMI_Driver_Data.Train_Data_Entered := True;
+      Step;
+      Check_Frame ("data_view_p1");
+
+      Check_Grouped ("12345678", 1, "1234 5678",
+                     "5.1.5.1: 8 characters are shown as two groups");
+      Check_Grouped ("123456", 1, "123 456",
+                     "5.1.5.1: 6 characters are split as well");
+      Check_Grouped ("12345", 1, "12345",
+                     "5.1.5.1: 5 characters stay in one group");
+      Check_Grouped ("123456789012", 1, "1234 5678",
+                     "5.1.5.2: the first line holds 8 characters");
+      Check_Grouped ("123456789012", 2, "9012",
+                     "5.1.5.2: the rest follows on the next line");
+      Check (Grouped ("").Count = 0, "an empty value has no text line");
+
+      -- Table 45: the second window carries the topic "Radio data info"
+      Press (539, 440);       -- [Next]
+      Check_Frame ("data_view_p2");
+      Press (539, 440);       -- 5.3.2.7.5: [Next] is disabled at the end
+      Check_Frame ("data_view_p2");
+      Press (457, 440);       -- [Previous]
+      Check_Frame ("data_view_p1");
+
+      -- reopening the window starts at its first window again
+      Press (539, 440);       -- [Next]
+      Press (370, 440);       -- [Close]
+      Press (610, 140);       -- F3
+      Check_Frame ("data_view_p1");
+   end Scenario_Data_View;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -2943,6 +3032,7 @@ begin
    Scenario_Planning_Order_Limit;
    Scenario_Text_Wrap;
    Scenario_Ack_And_Windows;
+   Scenario_Data_View;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));
