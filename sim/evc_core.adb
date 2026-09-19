@@ -17,7 +17,11 @@ package body EVC_Core is
    V_Target_KMH   : Natural := 0;
    D_Target_M     : Natural := 0;
 
-   Level_Pos      : Natural := 4; -- Level_T'Pos: L1
+   -- Level_T'Pos. Unknown (0) until the driver selects the level in the
+   -- start-up dialogue (SUBSET-026 5.4.3.2 S2); the demo track is a level
+   -- 1 line with a transition to level 2
+   Level_Unknown  : constant := 0;
+   Level_Pos      : Natural := Level_Unknown;
    Level_Ack_Sent : Boolean := False;
    Level_Ack_Wait : Boolean := False;
 
@@ -494,9 +498,15 @@ package body EVC_Core is
             if Arg = 0 then -- level transition
                Level_Ack_Wait := False;
             end if;
-         when 5 =>      -- start mission
-            if Mode = SB then
+         when 5 =>      -- start mission (SUBSET-026 5.4.3.2 S20)
+            -- the DMI offers 'Start' once the driver's data are valid
+            -- (DMI Table 33); the level is what this EVC checks itself
+            if Mode = SB and then Level_Pos /= Level_Unknown then
                Mode := FS; -- simplified: full MA immediately
+            end if;
+         when 11 =>     -- level selected; Arg is Level_T'Pos (L0 .. L2)
+            if Mode = SB and then Arg in 2 .. 5 then
+               Level_Pos := Arg;
             end if;
          when others =>
             null;
@@ -510,7 +520,7 @@ package body EVC_Core is
       V_Perm_KMH := 0;
       V_Target_KMH := 0;
       D_Target_M := 0;
-      Level_Pos := 4;
+      Level_Pos := Level_Unknown;
       Level_Ack_Sent := False;
       Level_Ack_Wait := False;
       Mode_Ack_Wait := False;
