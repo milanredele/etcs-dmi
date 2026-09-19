@@ -714,6 +714,7 @@ package body DMI_Windows is
    -- volume or the luminance; 10.6.1.2 a: accepting the value leaves the
    -- window, which ends the data entry process of the topic.
    procedure Dedicated_Completed (ID : Window_ID_T) is
+      use General_Parameters;
       Chosen : constant Natural := DMI_Data_Entry.Choice_Number (1);
    begin
       if Chosen = 0 then
@@ -745,19 +746,19 @@ package body DMI_Windows is
             -- check is defensive: the engine never reports a choice the
             -- list does not hold). GEN-3: the value is not applied to
             -- the sound output yet (P4).
-            if Chosen - 1 in Natural (General_Parameters.Loudspeaker_Volume_T'First)
-                          .. Natural (General_Parameters.Loudspeaker_Volume_T'Last)
+            if Chosen - 1
+                 in Natural (Loudspeaker_Volume_T'First)
+                 .. Natural (Loudspeaker_Volume_T'Last)
             then
-               General_Parameters.Loudspeaker_Volume :=
-                 General_Parameters.Loudspeaker_Volume_T (Chosen - 1);
+               Loudspeaker_Volume := Loudspeaker_Volume_T (Chosen - 1);
                Pop;
             end if;
          when W_Brightness =>
-            if Chosen - 1 in Natural (General_Parameters.Display_Luminance_T'First)
-                          .. Natural (General_Parameters.Display_Luminance_T'Last)
+            if Chosen - 1
+                 in Natural (Display_Luminance_T'First)
+                 .. Natural (Display_Luminance_T'Last)
             then
-               General_Parameters.Display_Luminance :=
-                 General_Parameters.Display_Luminance_T (Chosen - 1);
+               Display_Luminance := Display_Luminance_T (Chosen - 1);
                Pop;
             end if;
          when others =>
