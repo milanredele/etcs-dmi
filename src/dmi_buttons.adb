@@ -39,6 +39,10 @@ package body DMI_Buttons is
    Delay_Type_Hold           : constant := 2000; -- DMI 5.3.2.6.6
    Delay_Type_Toggle         : constant := 250;
 
+   -- Held_Ms stops here (a day). Nothing in the specification runs that
+   -- long; the cap is what keeps the sum total for any tick length.
+   Max_Held_Ms : constant := 24 * 60 * 60 * 1000;
+
    Activations : array (1 .. 16) of Button_ID_T;
    Activation_Count : Natural := 0;
 
@@ -153,7 +157,8 @@ package body DMI_Buttons is
          return;
       end if;
       if Inside then
-         Held_Ms := Held_Ms + Dt_Ms;
+         Held_Ms := (if Dt_Ms > Max_Held_Ms - Held_Ms
+                     then Max_Held_Ms else Held_Ms + Dt_Ms);
       end if;
       -- DMI 5.3.2.6.5: optional repeat function of down-type buttons.
       -- After 1.5 s of pressing, an activation every 0.3 s with the
