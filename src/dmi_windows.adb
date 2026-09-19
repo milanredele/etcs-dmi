@@ -258,6 +258,30 @@ package body DMI_Windows is
    function Close_Button_Area return Display.Area_T is
      ((Origin + (0, 400), 82, 50));
 
+   ---------------------------------------------------------------------
+   -- Driver ID window in the step S1 (11.3.3.5 to 11.3.3.7)
+   ---------------------------------------------------------------------
+
+   -- In the step S1 of the Start Up dialogue sequence the Driver ID
+   -- window also presents a 'settings' button with the symbol SE04 and a
+   -- 'train running number' button with the label 'TRN'. These are
+   -- objects of the Driver ID window of chapter 11, not of the generic
+   -- data entry engine of chapter 10, so they live here and take the
+   -- button indices that follow the engine's.
+   TRN_Extra      : constant := 1;
+   Settings_Extra : constant := 2;
+   Extra_Count    : constant := 2;
+
+   function In_Step_S1 return Boolean is
+     (Sequence_Active and then Depth > 0
+      and then Stack (Depth) = W_Driver_ID);
+
+   -- 11.3.3.7 a: 'TRN' at (142,400), 11.3.3.6 a: 'settings' at (224,400),
+   -- both 82 x 50 cells inside the D/F/G area
+   function Extra_Area (Which : Positive) return Area_T is
+     (if Which = TRN_Extra then (Origin + (142, 400), 82, 50)
+      else (Origin + (224, 400), 82, 50));
+
    -- Table 20: menu buttons 153x50 in two columns from y 50
    function Menu_Button_Area (Index : Positive) return Area_T is
      ((Origin + (((Index - 1) mod 2) * 153, 50 + ((Index - 1) / 2) * 50),
@@ -270,16 +294,27 @@ package body DMI_Windows is
       end if;
       case Kind_Of (Stack (Depth)) is
          when Menu                    => return Max_Menu;
-         when Data_Entry | Validation => return DMI_Data_Entry.Button_Count;
+         when Data_Entry | Validation =>
+            return DMI_Data_Entry.Button_Count
+              + (if In_Step_S1 then Extra_Count else 0);
          when View                    => return DMI_Data_View.Button_Count;
       end case;
    end Button_Count;
+
+   -- The index of the extra Driver ID button, 0 when Index is one of the
+   -- data entry engine's own
+   function Extra_Index (Index : Positive) return Natural is
+     (if In_Step_S1 and then Index > DMI_Data_Entry.Button_Count
+      then Index - DMI_Data_Entry.Button_Count else 0);
 
    function Button_Area (Index : Positive) return Display.Area_T is
    begin
       case Kind_Of (Stack (Depth)) is
          when Menu => return Menu_Button_Area (Index);
          when Data_Entry | Validation =>
+            if Extra_Index (Index) > 0 then
+               return Extra_Area (Extra_Index (Index));
+            end if;
             return DMI_Data_Entry.Button_Area (Index);
          when View => return DMI_Data_View.Button_Area (Index);
       end case;
@@ -295,6 +330,10 @@ package body DMI_Windows is
                return Def (Index).Used and then Def (Index).Enabled;
             end;
          when Data_Entry | Validation =>
+            -- 11.3.3.5 names no condition for the two buttons of S1
+            if Extra_Index (Index) > 0 then
+               return True;
+            end if;
             return DMI_Data_Entry.Button_Enabled (Index);
          when View =>
             return DMI_Data_View.Button_Enabled (Index);
@@ -312,6 +351,12 @@ package body DMI_Windows is
                        else DMI_Buttons.Up_Type);
             end;
          when Data_Entry | Validation =>
+            -- 11.3.3.5 does not give a button type; both open a window,
+            -- as the up-type buttons of a menu window do (implementation
+            -- choice)
+            if Extra_Index (Index) > 0 then
+               return DMI_Buttons.Up_Type;
+            end if;
             return DMI_Data_Entry.Button_Kind (Index);
          when View =>
             return DMI_Buttons.Up_Type;
@@ -367,10 +412,15 @@ package body DMI_Windows is
       Result.Title := Window_Title (Title (ID));
       case ID is
          when W_Driver_ID =>
-            -- 11.3.3; the Driver ID is alphanumeric (11.3.3.4) and no
-            -- range or resolution is specified for it
+            -- 11.3.3.4: the keyboard associated to the Driver ID is an
+            -- alphanumeric keyboard (10.3.5.17, multi-tap per 10.3.2.5).
+            -- No range or resolution is specified for it; SUBSET-026
+            -- A.3.11 (via 3.18.4.1.4) limits it to 1 to 16 alphanumeric
+            -- characters, which is the length of the input field.
             Result.Field_Count := 1;
-            Result.Fields (1) := Field ("Driver ID", 8, Proposed => Driver_ID);
+            Result.Fields (1) := Field ("Driver ID", Max_Field_Len,
+                                        Keyboard => Alphanumeric,
+                                        Proposed => Driver_ID);
          when W_TRN =>
             -- 11.3.1
             Result.Field_Count := 1;
@@ -468,14 +518,18 @@ package body DMI_Windows is
    end To_Default_Window;
 
    -- 11.7.2.2: [Close] is disabled in the windows presented before S10
-   -- (S1 Driver ID and S2 Level; the excepted steps S1-1, S1-2, S3-2-2,
-   -- S3-3 and S3-4 are windows that do not exist here). 11.7.3.2: enabled
-   -- in the Main window sequence except S5-2-1, S5-2-3, S7, S8 and S9,
-   -- the steps waiting for the radio network or the RBC: of those S7, S8
-   -- and S9 exist, as the Main window the EVC asks for while it awaits
-   -- an answer.
+   -- (S1 Driver ID and S2 Level), except in the steps S1-1, S1-2,
+   -- S3-2-2, S3-3 and S3-4. Of those S1-1 (Settings) and S1-2 (Train
+   -- running number) exist: they are the windows the Driver ID window is
+   -- the parent of (11.6.1.2), i.e. everything the driver opens above
+   -- it, S1 being the only Start Up step with a window below another.
+   -- 11.7.3.2: [Close] is enabled in the Main window sequence except
+   -- S5-2-1, S5-2-3, S7, S8 and S9, the steps waiting for the radio
+   -- network or the RBC: of those S7, S8 and S9 exist, as the Main
+   -- window the EVC asks for while it awaits an answer.
    function Close_Enabled return Boolean is
-     (not Sequence_Active and then not Waiting_Window);
+     (not Waiting_Window
+      and then (not Sequence_Active or else Depth > 1));
 
    procedure Close_Top is
    begin
@@ -504,11 +558,11 @@ package body DMI_Windows is
    begin
       -- SUBSET-026 4.10.1.3: entering SB the Driver ID, the train data
       -- and the train running number are to be revalidated (status
-      -- "invalid"), the level keeps its status. The stored values stay
-      -- and are proposed in the windows (11.7.1.4).
-      DMI_Driver_Data.Driver_ID_Entered := False;
-      DMI_Driver_Data.Train_Data_Entered := False;
-      DMI_Driver_Data.TRN_Entered := False;
+      -- "invalid"), the level keeps its status. The status of the data
+      -- stored on-board belongs to the on-board (11.7.1.3) and the EVC
+      -- reports it (MSG_ONBOARD, DMI_Conditions); the DMI does not set
+      -- it here any more. The stored values stay and are proposed in the
+      -- windows (11.7.1.4).
       To_Default_Window;
       -- Table 49 S1
       Sequence_Active := True;
@@ -635,13 +689,16 @@ package body DMI_Windows is
             Queue (Send_Driver_ID);
             Pop;
             if Sequence_Active then
-               -- Table 49 E1 -> D2: the DMI does not know the status of
-               -- the position; a valid level (selected by the driver and
-               -- reported by the EVC) leads to D3 (implementation
-               -- choice), any other to S2. D3 with level 2 -> D7 -> A31 /
-               -- S4: the radio network and RBC steps do not exist yet
-               -- (P3, audit WIN-11 / WIN-12) and are skipped to S10.
-               if Level_Entered
+               -- Table 49 E1 -> D2: "if both the stored position and the
+               -- stored level are valid". The status of the data stored
+               -- on-board is the on-board's (11.7.1.3) and the EVC
+               -- reports it (MSG_ONBOARD, DMI_Conditions). The DMI is
+               -- not told the status of the position, so D2 is decided
+               -- on the level alone (implementation choice). D3 with
+               -- level 2 -> D7 -> A31 / S4: the radio network and RBC
+               -- steps do not exist yet (P3, audit WIN-11 / WIN-12) and
+               -- are skipped to S10.
+               if DMI_Conditions.Level_Valid
                  and then SDI.Level in SDI.L0 | SDI.NTC | SDI.L1 | SDI.L2
                then
                   Reach_S10;
@@ -773,9 +830,11 @@ package body DMI_Windows is
          Queue (Send_Train_Data);
          Pop; -- validation
          Pop; -- train data entry
-         -- Table 50 D6: a train running number that is not valid is
-         -- requested next (S3-3), otherwise D1 -> S1 Main window
-         if not TRN_Entered then
+         -- Table 50 D6: "if Train running number is valid" the procedure
+         -- goes to D1 -> S1 Main window, otherwise the train running
+         -- number is requested next (S3-3). The status is the on-board's
+         -- (11.7.1.3), reported by the EVC (MSG_ONBOARD).
+         if not DMI_Conditions.TRN_Valid then
             Open (W_TRN);
          end if;
       else
@@ -794,6 +853,18 @@ package body DMI_Windows is
          when Menu =>
             Menu_Pressed (Index);
          when Data_Entry | Validation =>
+            if Extra_Index (Index) > 0 then
+               -- Table 49 S1: the settings button leads to S1-1, the
+               -- train running number button to S1-2; the Driver ID
+               -- window is the parent of both (11.6.1.2), so they stack
+               -- over it and their [Close] comes back to S1
+               if Extra_Index (Index) = TRN_Extra then
+                  Open (W_TRN);
+               else
+                  Open (W_Settings);
+               end if;
+               return;
+            end if;
             DMI_Data_Entry.Press (Index);
             if DMI_Data_Entry.Take_Completion then
                if Kind = Validation then
@@ -901,6 +972,38 @@ package body DMI_Windows is
       end loop;
    end Draw_Menu;
 
+   -- 11.3.3.5: the 'settings' button with the symbol SE04 and the 'train
+   -- running number' button with the label 'TRN' of the step S1
+   procedure Draw_Driver_ID_Extras is
+      First : constant Positive := DMI_Data_Entry.Button_Count + 1;
+
+      procedure Frame (The_Area : Area_T; Index : Positive) is
+      begin
+         if not Pressed (Index) then
+            Draw.Draw_Button_Frame (The_Area);
+         end if;
+      end Frame;
+
+      TRN_Area  : constant Area_T := Extra_Area (TRN_Extra);
+      Set_Area  : constant Area_T := Extra_Area (Settings_Extra);
+   begin
+      Frame (TRN_Area, First + TRN_Extra - 1);
+      -- 5.1.2.2.3 g: the label of the Train running number is 10 cells
+      Draw.Draw_String
+        (Pen_X => TRN_Area.Position.X + TRN_Area.Width / 2,
+         Pen_Y => TRN_Area.Position.Y + TRN_Area.Height / 2 + 5,
+         The_String => "TRN",
+         The_Size => 10,
+         The_Color => General_Parameters.GREY,
+         The_Alignment => Draw.Center);
+      Frame (Set_Area, First + Settings_Extra - 1);
+      -- 5.1.6.3: a symbol is centred in its area
+      Draw.Draw_Symbol
+        (Symbol.SE_04,
+         Set_Area.Position + ((Set_Area.Width - Symbol.SE_04.Width) / 2,
+                              (Set_Area.Height - Symbol.SE_04.Height) / 2));
+   end Draw_Driver_ID_Extras;
+
    procedure Draw_Text_Line (Line : Natural; Text : Wide_String) is
    begin
       Draw.Draw_String
@@ -948,7 +1051,10 @@ package body DMI_Windows is
             DMI_Data_View.Render
               (Previous_Pressed => Pressed (DMI_Data_View.Previous_Button),
                Next_Pressed     => Pressed (DMI_Data_View.Next_Button));
-         when Data_Entry | Validation => null;
+         when Data_Entry | Validation =>
+            if In_Step_S1 then
+               Draw_Driver_ID_Extras;
+            end if;
       end case;
    end Render;
 
