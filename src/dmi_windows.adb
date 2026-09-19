@@ -9,6 +9,7 @@ with DMI_Conditions;
 with DMI_Data_Entry;
 with DMI_Data_View;
 with DMI_Driver_Data;
+with DMI_Train_Data;
 with General_Parameters;
 with Supplementary_Driving_Info;
 with Symbol;
@@ -86,11 +87,14 @@ package body DMI_Windows is
    -- Window definitions
    ---------------------------------------------------------------------
 
+   -- 11.3.2.1, 11.3.7.1, 11.3.8.1, 11.3.11.1: Level, Volume, Brightness
+   -- and Adhesion are data entry windows on the half grid array with a
+   -- single input field and a dedicated keyboard, not menu windows
    function Kind_Of (ID : Window_ID_T) return Window_Kind_T is
      (case ID is
-         when W_Main | W_Override | W_Special | W_Settings | W_Level
-            | W_Adhesion | W_Volume | W_Brightness => Menu,
-         when W_Driver_ID | W_TRN | W_Train_Data | W_SR_Data => Data_Entry,
+         when W_Main | W_Override | W_Special | W_Settings => Menu,
+         when W_Driver_ID | W_TRN | W_Train_Data | W_SR_Data
+            | W_Level | W_Adhesion | W_Volume | W_Brightness => Data_Entry,
          when W_Train_Data_Validation => Validation,
          when W_Data_View => View);
 
@@ -136,12 +140,6 @@ package body DMI_Windows is
    No_Button : constant Label_T := (others => <>);
 
    function Static_Menu_Def (ID : Window_ID_T) return Menu_Def_T is
-      Volume_Img : constant Wide_String :=
-        General_Parameters.Loudspeaker_Volume_T'Wide_Image
-          (General_Parameters.Loudspeaker_Volume);
-      Lum_Img : constant Wide_String :=
-        General_Parameters.Display_Luminance_T'Wide_Image
-          (General_Parameters.Display_Luminance);
    begin
       case ID is
          when W_Main =>
@@ -199,29 +197,6 @@ package body DMI_Windows is
                     3 => B ("Brightness",
                             Enabled => DMI_Conditions.Settings_Brightness),
                     4 => B ("System version", Enabled => False),
-                    others => No_Button);
-         when W_Level =>
-            -- 11.3.2
-            return (1 => B ("Level 1"),
-                    2 => B ("Level 2"),
-                    3 => No_Button,
-                    4 => B ("Level 0"),
-                    5 => B ("Level NTC"),
-                    others => No_Button);
-         when W_Adhesion =>
-            -- 11.3.11
-            return (1 => B ("Non slippery"),
-                    2 => B ("Slippery rail"),
-                    others => No_Button);
-         when W_Volume =>
-            return (1 => B ("-"),
-                    2 => B ("+"),
-                    3 => B (Volume_Img, Enabled => False),
-                    others => No_Button);
-         when W_Brightness =>
-            return (1 => B ("-"),
-                    2 => B ("+"),
-                    3 => B (Lum_Img, Enabled => False),
                     others => No_Button);
          when others =>
             return (others => No_Button);
@@ -322,6 +297,128 @@ package body DMI_Windows is
    -- Stack handling
    ---------------------------------------------------------------------
 
+   ---------------------------------------------------------------------
+   -- Windows with a dedicated keyboard on the half grid array (audit
+   -- WIN-10): Level (11.3.2), Adhesion (11.3.11), Volume (11.3.7) and
+   -- Brightness (11.3.8). Each has a single input field with only the
+   -- data part (10.3.1.7) and a list of predefined choices; the driver
+   -- accepts the choice on the input field, which completes the entry
+   -- (10.3.1.22, 10.6.1.2 a).
+   ---------------------------------------------------------------------
+
+   -- Table 38: the buttons 1, 2 and 4 are reserved for the ERTMS/ETCS
+   -- levels 1, 2 and 0; the button 3 is empty; the NTC levels follow
+   -- from the button 5. 11.3.2.6: the labels of the NTC levels are the
+   -- abbreviations of the National Systems, whose definition is outside
+   -- the scope of the specification; this DMI knows one NTC level
+   -- (Supplementary_Driving_Info.Level_T) and labels it 'NTC'.
+   Level_Choice_Count : constant := 5;
+   Level_Of_Choice : constant array (1 .. Level_Choice_Count) of Natural :=
+     (1 => SDI.Level_T'Pos (SDI.L1),
+      2 => SDI.Level_T'Pos (SDI.L2),
+      3 => 0,                          -- Table 38: no button
+      4 => SDI.Level_T'Pos (SDI.L0),
+      5 => SDI.Level_T'Pos (SDI.NTC));
+
+   -- 11.3.2.7 / 11.3.2.8: only the buttons of the levels contained in
+   -- the table of priority of trackside supported levels, or, when that
+   -- table is not available on board, of the levels of the default list
+   -- of levels configured on-board, are enabled. Neither list is carried
+   -- by MSG_ONBOARD (see the report), so the DMI holds the default list
+   -- of 11.3.2.8 as its own configuration: every level it can name.
+   Default_Level_List : constant array (1 .. Level_Choice_Count) of Boolean :=
+     (1 => True, 2 => True, 3 => False, 4 => True, 5 => True);
+
+   function Level_Label (Pos : Natural) return Wide_String is
+     (if Pos = SDI.Level_T'Pos (SDI.L0) then "Level 0"
+      elsif Pos = SDI.Level_T'Pos (SDI.NTC) then "NTC"
+      elsif Pos = SDI.Level_T'Pos (SDI.L1) then "Level 1"
+      elsif Pos = SDI.Level_T'Pos (SDI.L2) then "Level 2"
+      else "");
+
+   -- 5.1.4.1: the level of the volume and of the luminance as a number
+   function Level_Number (N : Natural) return Wide_String is
+      Img : constant Wide_String := Natural'Wide_Image (N);
+   begin
+      return Img (2 .. Img'Last);
+   end Level_Number;
+
+   function Dedicated_Def (ID : Window_ID_T)
+                           return DMI_Data_Entry.Window_Def_T is
+      use DMI_Data_Entry;
+      Result  : Window_Def_T;
+      Choices : Choice_Set_T := No_Choices;
+      Value   : DMI_Driver_Data.Text_Value_T;
+      Chosen  : Natural := 0;
+
+      -- 11.7.1.4: entering the window the value stored on board is
+      -- presented to the driver
+      procedure Propose (Index : Natural) is
+      begin
+         if Index not in 1 .. Choices.Count then
+            return;
+         end if;
+         Chosen := Index;
+         Value.Length := DMI_Data_Entry.Max_Choice_Label;
+         Value.Text (1 .. Value.Length) := Choices.List (Index).Label;
+         while Value.Length > 0 and then Value.Text (Value.Length) = ' ' loop
+            Value.Length := Value.Length - 1;
+         end loop;
+      end Propose;
+   begin
+      case ID is
+         when W_Level =>
+            -- Table 38, with 11.3.2.7 / 11.3.2.8 for the enabling
+            for I in 1 .. Level_Choice_Count loop
+               Add_Choice (Choices, Level_Label (Level_Of_Choice (I)),
+                           Enabled => Default_Level_List (I));
+            end loop;
+            -- the level the on-board reports is the level stored there
+            if SDI.Level in SDI.L0 | SDI.NTC | SDI.L1 | SDI.L2 then
+               for I in 1 .. Level_Choice_Count loop
+                  if Level_Of_Choice (I) = SDI.Level_T'Pos (SDI.Level) then
+                     Propose (I);
+                  end if;
+               end loop;
+            end if;
+         when W_Adhesion =>
+            -- Table 43. The adhesion is not stored on the DMI and the
+            -- EVC does not report which value the driver last sent, so
+            -- nothing is proposed.
+            Add_Choice (Choices, "Non slippery rail");
+            Add_Choice (Choices, "Slippery rail");
+         when W_Volume | W_Brightness =>
+            -- 11.3.7.4.1 / 11.3.8.4.1: the definition of the keyboard is
+            -- an implementation issue and the note offers "several
+            -- buttons for different levels" as one example; the eleven
+            -- levels of General_Parameters take the keys 1 to 11
+            -- (implementation choice: one key per level leaves a data
+            -- value in the input field, which a pair of '-' / '+'
+            -- buttons would not)
+            for I in 0 .. 10 loop
+               Add_Choice (Choices, Level_Number (I));
+            end loop;
+            if ID = W_Volume then
+               Propose
+                 (Natural (General_Parameters.Loudspeaker_Volume) + 1);
+            else
+               Propose
+                 (Natural (General_Parameters.Display_Luminance) + 1);
+            end if;
+         when others =>
+            null;
+      end case;
+      Result.Title := Window_Title (Title (ID));
+      Result.Field_Count := 1;
+      Result.Fields (1) :=
+        Field (Title (ID), DMI_Data_Entry.Max_Choice_Label,
+               Keyboard => Dedicated,
+               Proposed => Value,
+               Choices  => Choices,
+               Proposed_Choice => Chosen);
+      return Result;
+   end Dedicated_Def;
+
    -- The definition the data entry engine works on (10.3, 10.4); the
    -- proposed values are the stored ones (11.7.1.4)
    function Entry_Def (ID : Window_ID_T) return DMI_Data_Entry.Window_Def_T is
@@ -348,19 +445,8 @@ package body DMI_Windows is
       -- only one the DMI can state by itself is that zero is not a
       -- nominal value for a train length, a brake percentage or a
       -- maximum speed (implementation choice, see the report).
-      Train_Length_Rule : constant Check_Rule_T :=  -- L_TRAIN, 7.5.1.56
-        (Defined => True, Min => 0, Max => 4095, Resolution => 1);
-      Max_Speed_Rule : constant Check_Rule_T :=     -- V_MAXTRAIN, 7.5.1.160
-        (Defined => True, Min => 0, Max => 600, Resolution => 5);
       TRN_Rule : constant Check_Rule_T :=       -- NID_OPERATIONAL, 7.5.1.92
         (Defined => True, Min => 0, Max => 99_999_999, Resolution => 1);
-
-      function Not_Zero (Rule : Check_Rule_T; Top : Natural)
-                         return Check_Rule_T is
-        ((Defined    => True,
-          Min        => Natural'Max (Rule.Resolution, 1),
-          Max        => (if Rule.Defined then Rule.Max else Top),
-          Resolution => 1));
 
       Result : Window_Def_T;
    begin
@@ -378,24 +464,16 @@ package body DMI_Windows is
                                         Proposed => TRN,
                                         Technical => TRN_Rule);
          when W_Train_Data =>
-            -- 11.3.9.1: a window on the total grid array with echo texts
-            -- and the question 'Train data entry complete?'
-            Result.Layout := Total_Grid;
-            Result.Field_Count := 3;
-            Result.Fields (1) :=
-              Field ("Length (m)", 4, Proposed => Image_Value (Train_Length),
-                     Technical => Train_Length_Rule,
-                     Operational => Not_Zero (Train_Length_Rule, 9999));
-            Result.Fields (2) :=
-              -- the brake percentage is not an ERTMS/ETCS variable of
-              -- SUBSET-026 chapter 7; its range would come from section
-              -- A.3.11 or from the on-board configuration
-              Field ("Brake perc (%)", 3, Proposed => Image_Value (Brake_Pct),
-                     Operational => Not_Zero (No_Rule, 999));
-            Result.Fields (3) :=
-              Field ("Max speed", 3, Proposed => Image_Value (Max_Speed),
-                     Technical => Max_Speed_Rule,
-                     Operational => Not_Zero (Max_Speed_Rule, 999));
+            -- 11.3.9: the topic spans the windows its items need and
+            -- lives in DMI_Train_Data (11.7.1.6.1: the values are stored
+            -- only when the validation window is left with 'Yes')
+            return DMI_Train_Data.Window_Def
+              (DMI_Train_Data.Current_Window);
+         when W_Level | W_Adhesion | W_Volume | W_Brightness =>
+            -- 11.3.2, 11.3.7, 11.3.8, 11.3.11: half grid array, a single
+            -- input field with only the data part and a dedicated
+            -- keyboard (own helper below)
+            return Dedicated_Def (ID);
          when W_SR_Data =>
             -- 11.3.10.1: likewise on the total grid array
             Result.Layout := Total_Grid;
@@ -405,31 +483,33 @@ package body DMI_Windows is
             Result.Fields (2) :=
               Field ("SR distance", 5, Proposed => Image_Value (SR_Dist));
          when W_Train_Data_Validation =>
-            -- 11.4.1: a single input field with only a data part and a
-            -- dedicated 'No'/'Yes' keyboard (10.4.1.2), the value 'Yes'
-            -- proposed (Figure 105), and the echo texts of the train
-            -- data window (11.4.1.3)
-            Result.Layout := DMI_Data_Entry.Validation;
-            Result.Field_Count := 1;
-            Result.Fields (1) :=
-              Field ("Validate", 3, Keyboard => Yes_No,
-                     Proposed => (3, "Yes" & (4 .. Max_Field_Len => ' ')));
-            Result.Echo_Count := 3;
-            Result.Echo (1) :=
-              Echo ("Length (m)", Image_Value (Train_Length));
-            Result.Echo (2) :=
-              Echo ("Brake perc (%)", Image_Value (Brake_Pct));
-            Result.Echo (3) :=
-              Echo ("Max speed", Image_Value (Max_Speed));
+            -- 11.4.1 with 11.4.1.3: the echo texts of the train data
+            -- window(s), built by DMI_Train_Data
+            return DMI_Train_Data.Validation_Def;
          when others =>
             null;
       end case;
       return Result;
    end Entry_Def;
 
+   -- 10.6.1.1 with 10.6.1.3: the train data entry / validation process
+   -- starts with the first train data window and runs while one of the
+   -- two window kinds of the topic is displayed
+   procedure Sync_Train_Data_Process is
+   begin
+      if Depth = 0
+        or else Stack (Depth) not in W_Train_Data | W_Train_Data_Validation
+      then
+         DMI_Train_Data.End_Process;
+      end if;
+   end Sync_Train_Data_Process;
+
    procedure Open (ID : Window_ID_T) is
    begin
       if Depth < Stack'Last then
+         if ID = W_Train_Data and then not DMI_Train_Data.In_Progress then
+            DMI_Train_Data.Start_Process;
+         end if;
          Depth := Depth + 1;
          Stack (Depth) := ID;
          if Kind_Of (ID) in Data_Entry | Validation then
@@ -451,7 +531,10 @@ package body DMI_Windows is
          -- validation process of the topic; the data entry window that
          -- becomes displayed again starts a new one, with the stored
          -- values proposed (11.7.1.4). The engine holds one process at
-         -- a time, which is what the window stack needs here.
+         -- a time, which is what the window stack needs here. The train
+         -- data topic keeps its own values while its process runs
+         -- (Table 50 S3-1 entered from S3-2).
+         Sync_Train_Data_Process;
          if Depth > 0
            and then Kind_Of (Stack (Depth)) in Data_Entry | Validation
          then
@@ -465,6 +548,7 @@ package body DMI_Windows is
       Depth := 0;
       Sequence_Active := False;
       Waiting_Window := False;
+      DMI_Train_Data.End_Process;
    end To_Default_Window;
 
    -- 11.7.2.2: [Close] is disabled in the windows presented before S10
@@ -531,11 +615,9 @@ package body DMI_Windows is
    function Waiting_Displayed return Boolean is (Waiting_Window);
 
    -- The windows of Table 48 that take data: the data entry windows of
-   -- 11.3 (Level, Adhesion, Volume and Brightness are modelled as menus
-   -- here, audit WIN-10) and the validation window
+   -- 11.3 and the validation window of 11.4
    function Is_Entry_Window (ID : Window_ID_T) return Boolean is
-     (Kind_Of (ID) in Data_Entry | Validation
-      or else ID in W_Level | W_Adhesion | W_Volume | W_Brightness);
+     (Kind_Of (ID) in Data_Entry | Validation);
 
    function Entry_Open return Boolean is
      (Depth > 0 and then Is_Entry_Window (Stack (Depth)));
@@ -624,6 +706,53 @@ package body DMI_Windows is
    -- Behaviour
    ---------------------------------------------------------------------
 
+   -- The driver accepted the predefined choice of one of the four half
+   -- grid array windows with a dedicated keyboard (audit WIN-10). The
+   -- choice number is the row of Table 38 / Table 43 / the level of the
+   -- volume or the luminance; 10.6.1.2 a: accepting the value leaves the
+   -- window, which ends the data entry process of the topic.
+   procedure Dedicated_Completed (ID : Window_ID_T) is
+      Chosen : constant Natural := DMI_Data_Entry.Choice_Number (1);
+   begin
+      if Chosen = 0 then
+         return;
+      end if;
+      case ID is
+         when W_Level =>
+            if Chosen <= Level_Choice_Count
+              and then Level_Of_Choice (Chosen) > 0
+            then
+               DMI_Driver_Data.Level_Entered := True;
+               Queue (Level_Selected, Level_Of_Choice (Chosen));
+               Pop;
+               if Sequence_Active then
+                  -- Table 49 S2: level 0, 1 or NTC -> S10; level 2 ->
+                  -- S3-1 Radio data window, which does not exist yet
+                  -- (P3, audit WIN-12): skipped to S10
+                  Reach_S10;
+               end if;
+               -- Table 50 S4: back to S1, the Main window (level 2:
+               -- D5 -> S8 / S5-1 skipped likewise)
+            end if;
+         when W_Adhesion =>
+            -- Table 43: 1 non slippery rail, 2 slippery rail
+            Queue (Adhesion_Set, (if Chosen = 2 then 1 else 0));
+            Pop;
+         when W_Volume =>
+            -- the choices are the levels 0 .. 10 in order. GEN-3: the
+            -- value is not applied to the sound output yet (P4).
+            General_Parameters.Loudspeaker_Volume :=
+              General_Parameters.Loudspeaker_Volume_T (Chosen - 1);
+            Pop;
+         when W_Brightness =>
+            General_Parameters.Display_Luminance :=
+              General_Parameters.Display_Luminance_T (Chosen - 1);
+            Pop;
+         when others =>
+            null;
+      end case;
+   end Dedicated_Completed;
+
    procedure Entry_Completed is
       use DMI_Driver_Data;
       ID : constant Window_ID_T := Stack (Depth);
@@ -659,24 +788,25 @@ package body DMI_Windows is
             -- mission start is the driver's: 'Start' in the Main window.
             Pop;
          when W_Train_Data =>
-            Train_Length := DMI_Data_Entry.Number (1);
-            Brake_Pct := DMI_Data_Entry.Number (2);
-            Max_Speed := DMI_Data_Entry.Number (3);
-            -- 10.6 / 11.4.1: entered data must be validated
+            -- Table 50 S3-1 with 11.7.1.6.1: pressing the 'Yes' button
+            -- of the question does not touch the train data stored on
+            -- board; the entered values stay with the running process
+            DMI_Train_Data.Capture (DMI_Train_Data.Current_Window);
+            -- 10.6 / 11.4.1: entered data must be validated (-> S3-2)
             Open (W_Train_Data_Validation);
          when W_SR_Data =>
             SR_Speed := DMI_Data_Entry.Number (1);
             SR_Dist := DMI_Data_Entry.Number (2);
             Queue (Send_SR_Data);
             Pop;
+         when W_Level | W_Adhesion | W_Volume | W_Brightness =>
+            Dedicated_Completed (ID);
          when others =>
             null;
       end case;
    end Entry_Completed;
 
    procedure Menu_Pressed (Index : Positive) is
-      use DMI_Driver_Data;
-      use General_Parameters;
       ID : constant Window_ID_T := Stack (Depth);
    begin
       case ID is
@@ -718,45 +848,6 @@ package body DMI_Windows is
                when 3 => Open (W_Brightness);
                when others => null;
             end case;
-         when W_Level =>
-            declare
-               -- Level_T'Pos values: L0 = 2, NTC = 3, L1 = 4, L2 = 5
-               Level : constant Natural :=
-                 (case Index is
-                     when 1 => 4, when 2 => 5, when 4 => 2, when 5 => 3,
-                     when others => 0);
-            begin
-               if Level > 0 then
-                  Level_Entered := True;
-                  Queue (Level_Selected, Level);
-                  Pop;
-                  if Sequence_Active then
-                     -- Table 49 S2: level 0, 1 or NTC -> S10; level 2 ->
-                     -- S3-1 Radio data window, which does not exist yet
-                     -- (P3, audit WIN-12): skipped to S10
-                     Reach_S10;
-                  end if;
-                  -- Table 50 S4: back to S1, the Main window (level 2:
-                  -- D5 -> S8 / S5-1 skipped likewise)
-               end if;
-            end;
-         when W_Adhesion =>
-            if Index in 1 .. 2 then
-               Queue (Adhesion_Set, (if Index = 2 then 1 else 0));
-               Pop;
-            end if;
-         when W_Volume =>
-            if Index = 1 and then Loudspeaker_Volume > 0 then
-               Loudspeaker_Volume := Loudspeaker_Volume - 1;
-            elsif Index = 2 and then Loudspeaker_Volume < 10 then
-               Loudspeaker_Volume := Loudspeaker_Volume + 1;
-            end if;
-         when W_Brightness =>
-            if Index = 1 and then Display_Luminance > 0 then
-               Display_Luminance := Display_Luminance - 1;
-            elsif Index = 2 and then Display_Luminance < 10 then
-               Display_Luminance := Display_Luminance + 1;
-            end if;
          when others =>
             null;
       end case;
@@ -769,7 +860,9 @@ package body DMI_Windows is
       V : constant Text_Value_T := DMI_Data_Entry.Value (1);
    begin
       if V.Length = 3 and then V.Text (1 .. 3) = "Yes" then
-         Train_Data_Entered := True;
+         -- 11.7.1.6.1: only now do the entered values replace the train
+         -- data stored on board
+         DMI_Train_Data.Store;
          Queue (Send_Train_Data);
          Pop; -- validation
          Pop; -- train data entry
@@ -779,9 +872,29 @@ package body DMI_Windows is
             Open (W_TRN);
          end if;
       else
-         Pop; -- Table 50 S3-2: back to S3-1, the train data window
+         -- Table 50 S3-2: back to S3-1, the first train data window,
+         -- with the data values of the previous S3-1 proposed
+         DMI_Train_Data.Restart_At_First;
+         Pop;
       end if;
    end Validation_Completed;
+
+   -- Tables 22 and 23: the driver pressed [Previous] or [Next] of a
+   -- topic that spans several windows. The train data is the only such
+   -- topic here; its values are read back before the window changes, so
+   -- that the running process keeps them (Table 50 S3-1).
+   procedure Page_Requested is
+      Wanted : constant Natural := DMI_Data_Entry.Take_Page_Request;
+   begin
+      if Wanted = 0 or else Depth = 0
+        or else Stack (Depth) /= W_Train_Data
+      then
+         return;
+      end if;
+      DMI_Train_Data.Capture (DMI_Train_Data.Current_Window);
+      DMI_Train_Data.Go_To (Wanted);
+      DMI_Data_Entry.Open (Entry_Def (W_Train_Data));
+   end Page_Requested;
 
    procedure Button_Pressed (Index : Positive) is
       Kind : Window_Kind_T;
@@ -801,6 +914,10 @@ package body DMI_Windows is
                else
                   Entry_Completed;
                end if;
+            else
+               --  Tables 22 and 23: [Previous] / [Next] open another
+               --  window of the same topic (own helper)
+               Page_Requested;
             end if;
          when View =>
             DMI_Data_View.Button_Pressed (Index);

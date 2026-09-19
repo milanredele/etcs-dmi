@@ -649,8 +649,8 @@ package body EVC_Core is
             then
                TRN_Valid := True;
             end if;
-         when 2 =>      -- train data: length, brake percentage, max speed
-            if Payload'Length = 7 then
+         when 2 =>      -- train data: the seven items of DMI Table 40
+            if Payload'Length = Driver_Data_Train_Length then
                Train_Data_Valid := True;
             end if;
          when others => -- 3 SR data and anything else: no data status

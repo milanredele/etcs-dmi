@@ -5,6 +5,7 @@ pragma Ada_2012;
 with Display.Draw;
 with DMI_Data_Format;
 with DMI_Driver_Data;
+with DMI_Train_Data;
 with General_Parameters;
 with Symbol;
 
@@ -127,15 +128,27 @@ package body DMI_Data_View is
       return Result;
    end Text_Value;
 
-   -- The data the DMI holds. Train category, axle load category,
-   -- airtight, loading gauge, radio network type, GSM-R network ID and
-   -- RBC ID are not entered on this DMI and are not carried by the
-   -- protocol either: they are unknown and stay without a value.
+   -- 5.1.5.2.2: grouping does not apply to data limited to dedicated
+   -- values, which the train category, the axle load category, the
+   -- airtight and the loading gauge are (Tables 40 to 42)
+   function Choice_Value (V : DMI_Driver_Data.Text_Value_T) return Value_T is
+      Result : Value_T := Text_Value (V);
+   begin
+      Result.Valid := V.Length > 0;
+      Result.Group := False;
+      return Result;
+   end Choice_Value;
+
+   -- The data the DMI holds. The radio network type, the GSM-R network
+   -- ID and the RBC ID are not entered on this DMI and are not carried
+   -- by the protocol either: they are unknown and stay without a value.
    -- Index is the position in Items above, not the item number of
-   -- Table 45: 4, 5 and 6 are the length, the brake percentage and the
-   -- maximum speed (items 5, 6 and 7 of the table).
+   -- Table 45: 3 is the train category, 4, 5 and 6 are the length, the
+   -- brake percentage and the maximum speed, 7, 8 and 9 the axle load
+   -- category, the airtight and the loading gauge.
    function Value_Of (Index : Positive) return Value_T is
       use DMI_Driver_Data;
+      use DMI_Train_Data;
       None : constant Value_T := (others => <>);
    begin
       case Index is
@@ -144,6 +157,8 @@ package body DMI_Data_View is
                     else None);
          when 2 =>
             return (if TRN_Entered then Text_Value (TRN) else None);
+         when 3 =>
+            return Choice_Value (Stored_Text (I_Category));
          when 4 =>
             return (if Train_Data_Entered then Num_Value (Train_Length)
                     else None);
@@ -153,6 +168,12 @@ package body DMI_Data_View is
          when 6 =>
             return (if Train_Data_Entered then Num_Value (Max_Speed)
                     else None);
+         when 7 =>
+            return Choice_Value (Stored_Text (I_Axle_Load));
+         when 8 =>
+            return Choice_Value (Stored_Text (I_Airtight));
+         when 9 =>
+            return Choice_Value (Stored_Text (I_Gauge));
          when others =>
             return None;
       end case;

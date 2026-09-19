@@ -20,6 +20,7 @@ with DMI_Planning;
 with DMI_Sounds;
 with DMI_Status;
 with DMI_Text_Messages;
+with DMI_Train_Data;
 with DMI_Windows;
 with General_Parameters;
 with Speed_And_Distance;
@@ -298,6 +299,34 @@ package body DMI_Core is
          Queue_Message (MSG_DRIVER_DATA, Payload);
       end Send_Numeric_Data;
 
+      --  The train data of the flexible train data entry (DMI 11.3.9,
+      --  Table 40); the four items of a dedicated keyboard go as the
+      --  ERTMS/ETCS variables of SUBSET-026 chapter 7
+      procedure Send_Train_Data_Msg is
+         Payload : Stream_Element_Array
+           (1 .. Stream_Element_Offset (Driver_Data_Train_Length));
+         Offset  : Stream_Element_Offset := Payload'First;
+
+         function Byte (Value : Natural) return Unsigned_8 is
+           (Unsigned_8 (Natural'Min (Value, 255)));
+      begin
+         Put_U8 (Payload, Offset, 2);
+         Put_U16 (Payload, Offset,
+                  Unsigned_16 (Natural'Min (Train_Length, 65535)));
+         Put_U16 (Payload, Offset,
+                  Unsigned_16 (Natural'Min (Brake_Pct, 65535)));
+         Put_U16 (Payload, Offset,
+                  Unsigned_16 (Natural'Min (Max_Speed, 65535)));
+         Put_U8 (Payload, Offset, Byte (DMI_Train_Data.Category_CD));
+         Put_U16 (Payload, Offset,
+                  Unsigned_16 (Natural'Min (DMI_Train_Data.Category_Other,
+                                            65535)));
+         Put_U8 (Payload, Offset, Byte (DMI_Train_Data.Axle_Load_Value));
+         Put_U8 (Payload, Offset, Byte (DMI_Train_Data.Airtight_Value));
+         Put_U8 (Payload, Offset, Byte (DMI_Train_Data.Gauge_Value));
+         Queue_Message (MSG_DRIVER_DATA, Payload);
+      end Send_Train_Data_Msg;
+
       ACTION_START           : constant Unsigned_8 := 5;
       ACTION_OVERRIDE        : constant Unsigned_8 := 6;
       ACTION_SH_REQUEST      : constant Unsigned_8 := 7;
@@ -330,7 +359,7 @@ package body DMI_Core is
             when Send_TRN =>
                Send_Text_Data (1, TRN);
             when Send_Train_Data =>
-               Send_Numeric_Data (2, Train_Length, Brake_Pct, Max_Speed, 3);
+               Send_Train_Data_Msg;
             when Send_SR_Data =>
                Send_Numeric_Data (3, SR_Speed, SR_Dist, 0, 2);
          end case;

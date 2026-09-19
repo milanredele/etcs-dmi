@@ -36,7 +36,11 @@ package body DMI_Data_Entry is
    Data_First  : constant := Label_First + Max_Fields;
    --  'Yes' of the '[Window Title] entry complete?' question (Table 24)
    Yes_Button   : constant := Data_First + Max_Fields;
-   Button_Total : constant := Yes_Button;
+   --  Tables 22 and 23: [Previous] and [Next] when several windows hold
+   --  the input fields of the same topic
+   Prev_Button  : constant := Yes_Button + 1;
+   Next_Button  : constant := Yes_Button + 2;
+   Button_Total : constant := Next_Button;
 
    --  Validation window (10.3.5.18): key 7 is 'No', key 8 is 'Yes'
    Key_No  : constant := 7;
@@ -67,6 +71,8 @@ package body DMI_Data_Entry is
       Editing   : Boolean := False;
       Accepted  : Boolean := False;
       Check     : Check_State_T := No_Check;
+      --  10.3.5.19: which predefined choice the value stands for
+      Choice    : Natural := 0;
    end record;
 
    type Field_State_List_T is array (Field_Index_T) of Field_State_T;
@@ -80,6 +86,14 @@ package body DMI_Data_Entry is
    --  10.3.4.4.4 / 10.3.4.6.4: the cross-check rule the 'Yes' button of
    --  the '[Window Title] entry complete?' question last failed
    Cross_Failed : Cross_Kind_T := No_Cross;
+
+   --  10.3.5.19: the group of predefined choices the dedicated keyboard
+   --  of the selected input field currently shows, 1 .. Key_Pages
+   Key_Page : Positive := 1;
+
+   --  Tables 22 and 23: the window of the topic [Previous] / [Next] last
+   --  asked for, 0 when nothing is pending (Take_Page_Request)
+   Page_Request : Natural := 0;
 
    ---------------------------------------------------------------------
    --  Helpers
@@ -135,7 +149,10 @@ package body DMI_Data_Entry is
       Keyboard : Keyboard_T := Numeric;
       Proposed : DMI_Driver_Data.Text_Value_T := (0, (others => ' '));
       Technical   : Check_Rule_T := No_Rule;
-      Operational : Check_Rule_T := No_Rule)
+      Operational : Check_Rule_T := No_Rule;
+      Choices     : Choice_Set_T := No_Choices;
+      Proposed_Choice : Natural := 0;
+      Echo_Line   : Natural := 0)
       return Field_Def_T is
    begin
       return (Label    => Pad (Label),
@@ -143,8 +160,27 @@ package body DMI_Data_Entry is
               Max_Len  => Natural'Min (Max_Len, DMI_Driver_Data.Max_Field_Len),
               Proposed => Proposed,
               Technical => Technical,
-              Operational => Operational);
+              Operational => Operational,
+              Choices     => Choices,
+              Proposed_Choice => Proposed_Choice,
+              Echo_Line   => Echo_Line);
    end Field;
+
+   procedure Add_Choice (Set     : in out Choice_Set_T;
+                         Label   : Wide_String;
+                         Enabled : Boolean := True) is
+      Last : constant Natural :=
+        Natural'Min (Label'Length, Max_Choice_Label);
+   begin
+      if Set.Count = Max_Choices then
+         return;  -- total: a full set takes no further choice
+      end if;
+      Set.Count := Set.Count + 1;
+      Set.List (Set.Count).Label := (others => ' ');
+      Set.List (Set.Count).Label (1 .. Last) :=
+        Label (Label'First .. Label'First + Last - 1);
+      Set.List (Set.Count).Enabled := Enabled;
+   end Add_Choice;
 
    ---------------------------------------------------------------------
    --  Opening and result
@@ -156,6 +192,10 @@ package body DMI_Data_Entry is
       Open_Flag := True;
       Completed := False;
       Cross_Failed := No_Cross;
+      Page_Request := 0;
+      --  10.3.5.19: the dedicated keyboard starts on its first group of
+      --  predefined choices
+      Key_Page := 1;
       --  10.3.1.23: the first input field is selected, the others are not
       Current := 1;
       DMI_Flash.Restart_Cursor;
@@ -166,7 +206,8 @@ package body DMI_Data_Entry is
                         Has_Value => Def.Fields (I).Proposed.Length > 0,
                         Editing   => False,
                         Accepted  => False,
-                        Check     => No_Check);
+                        Check     => No_Check,
+                        Choice    => Def.Fields (I).Proposed_Choice);
       end loop;
    end Open;
 
@@ -177,9 +218,25 @@ package body DMI_Data_Entry is
       return Result;
    end Take_Completion;
 
+   function Take_Page_Request return Natural is
+      Result : constant Natural := Page_Request;
+   begin
+      Page_Request := 0;
+      return Result;
+   end Take_Page_Request;
+
    function Value (Index : Field_Index_T)
                    return DMI_Driver_Data.Text_Value_T is
      (Fields (Index).Value);
+
+   function Choice_Number (Index : Field_Index_T) return Natural is
+     (Fields (Index).Choice);
+
+   function Accepted (Index : Field_Index_T) return Boolean is
+     (Fields (Index).Accepted);
+
+   function Has_Value (Index : Field_Index_T) return Boolean is
+     (Fields (Index).Has_Value);
 
    function Number (Index : Field_Index_T) return Natural is
       V      : DMI_Driver_Data.Text_Value_T renames Fields (Index).Value;
@@ -262,7 +319,67 @@ package body DMI_Data_Entry is
       return Def.Field_Count > 0;
    end All_Fields_Have_Values;
 
+   ---------------------------------------------------------------------
+   --  Dedicated keyboard with predefined choices (10.3.5.19)
+   ---------------------------------------------------------------------
+
+   --  The [More] button of the key 12, present only when more than 12
+   --  predefined choices exist
+   Key_More : constant := 12;
+
+   function Choice_Count return Choice_Count_T is
+     (Def.Fields (Current).Choices.Count);
+
+   --  With at most 12 choices the keys carry them one by one (Table 38
+   --  reserves the keys 1, 2 and 4 for the levels 1, 2 and 0, so a gap
+   --  in the list is a key that is not there). Beyond that the key 12 is
+   --  the [More] button and the keys 1 to 11 carry a group of 11.
+   function Key_Pages return Positive is
+     (if Choice_Count <= Key_Last then 1
+      else (Choice_Count + Key_Last - 2) / (Key_Last - 1));
+
+   --  The predefined choice the key Index currently carries, 0 for none
+   function Choice_Of_Key (Index : Positive) return Natural is
+   begin
+      if Choice_Count = 0 or else Index not in Key_First .. Key_Last then
+         return 0;
+      elsif Choice_Count <= Key_Last then
+         return (if Index <= Choice_Count then Index else 0);
+      elsif Index = Key_More then
+         return 0;  -- the [More] button carries no choice
+      end if;
+      declare
+         Number : constant Natural :=
+           (Key_Page - 1) * (Key_Last - 1) + Index;
+      begin
+         return (if Number <= Choice_Count then Number else 0);
+      end;
+   end Choice_Of_Key;
+
+   function Choice_Key_Enabled (Index : Positive) return Boolean is
+      Number : constant Natural := Choice_Of_Key (Index);
+   begin
+      --  10.3.5.19: the key 12 is the [More] button when the list needs
+      --  more than one group
+      if Index = Key_More and then Key_Pages > 1 then
+         return True;
+      end if;
+      --  An empty label is a key that is not there (Table 38); a choice
+      --  the on-board does not offer is disabled (11.3.2.7, 11.3.2.8)
+      return Number > 0
+        and then Trim (Def.Fields (Current).Choices.List (Number).Label) /= ""
+        and then Def.Fields (Current).Choices.List (Number).Enabled;
+   end Choice_Key_Enabled;
+
+   ---------------------------------------------------------------------
+
    function Button_Count return Natural is (Button_Total);
+
+   --  Tables 22 and 23 put [Previous] and [Next] right of [Close], at
+   --  the same place on the half and on the total grid array
+   function Nav_Area (Index : Positive) return Area_T is
+     ((Column_Origin + ((if Index = Prev_Button then 82 else 164), 400),
+       82, 50));
 
    function Button_Area (Index : Positive) return Display.Area_T is
    begin
@@ -277,6 +394,8 @@ package body DMI_Data_Entry is
       elsif Index = Yes_Button then
          --  10.3.5.8: the sensitive area of 'Yes' covers the question
          return (Question_Area.Position, 334, 100);
+      elsif Index in Prev_Button | Next_Button then
+         return Nav_Area (Index);
       end if;
       return ((0, 0), 0, 0);
    end Button_Area;
@@ -288,7 +407,9 @@ package body DMI_Data_Entry is
          when Numeric => Index /= Key_Dot,
          --  10.3.5.18: a dedicated keyboard limited to a 'No'/'Yes'
          --  choice has the key 7 as 'No' and the key 8 as 'Yes'
-         when Yes_No  => Index in Key_No | Key_Yes);
+         when Yes_No  => Index in Key_No | Key_Yes,
+         --  10.3.5.19: predefined choices and the [More] button
+         when Dedicated => Choice_Key_Enabled (Index));
 
    function Button_Enabled (Index : Positive) return Boolean is
    begin
@@ -313,10 +434,20 @@ package body DMI_Data_Entry is
                                                | Technical_Resolution;
       elsif Index = Yes_Button then
          --  Table 24 objects exist on the total grid array only;
+         --  10.3.5.9 / Table 50 S3-1: every input field of the topic, on
+         --  this window and on the others, displays a data value;
          --  10.3.4.4.4: disabled while a technical cross-check fails
          return Def.Layout = Total_Grid
            and then All_Fields_Have_Values
+           and then Def.Topic_Complete
            and then Cross_Failed /= Technical_Cross;
+      elsif Index in Prev_Button | Next_Button then
+         --  Tables 22 and 23: the buttons exist only when several
+         --  windows hold the input fields of the topic; 5.3.1.1.9: the
+         --  scrolling between them is not circular
+         return Def.Page_Count > 1
+           and then (if Index = Prev_Button then Def.Page > 1
+                     else Def.Page < Def.Page_Count);
       end if;
       return False;
    end Button_Enabled;
@@ -473,9 +604,13 @@ package body DMI_Data_Entry is
                               Has_Value => False,
                               Editing   => False,
                               Accepted  => False,
-                              Check     => No_Check);
+                              Check     => No_Check,
+                              Choice    => 0);
       end if;
       Current := Index;
+      --  10.3.5.12: the window presents the keyboard of the selected
+      --  input field, a dedicated one on its first group of choices
+      Key_Page := 1;
       DMI_Flash.Restart_Cursor;
    end Select_Field;
 
@@ -491,6 +626,14 @@ package body DMI_Data_Entry is
          end if;
       end Append;
    begin
+      --  10.3.5.19: the [More] button is no data key, it only shows the
+      --  next group of predefined choices; the list is circular
+      if F.Keyboard = Dedicated and then Index = Key_More
+        and then Key_Pages > 1
+      then
+         Key_Page := (if Key_Page < Key_Pages then Key_Page + 1 else 1);
+         return;
+      end if;
       --  10.3.1.19: after the first press on a data key the value
       --  corresponding to the pressed key is displayed instead of the
       --  data value. [Delete] deletes "the just entered character"
@@ -502,6 +645,7 @@ package body DMI_Data_Entry is
          S.Value.Length := 0;
          S.Editing := True;
          S.Has_Value := False;
+         S.Choice := 0;
       end if;
       --  Figure 98: a key press takes the input field back to 'Selected
       --  IF / value of pressed key(s)', where [Enter] is enabled and
@@ -527,9 +671,22 @@ package body DMI_Data_Entry is
             --  whole predefined choice, not one character
             if Index = Key_No then
                Set_Text (S.Value, "No");
+               S.Choice := 1;
             elsif Index = Key_Yes then
                Set_Text (S.Value, "Yes");
+               S.Choice := 2;
             end if;
+         when Dedicated =>
+            --  10.3.5.19: the key carries one predefined choice, which
+            --  becomes the whole value of the input field
+            declare
+               Number : constant Natural := Choice_Of_Key (Index);
+            begin
+               if Number > 0 then
+                  Set_Text (S.Value, Trim (F.Choices.List (Number).Label));
+                  S.Choice := Number;
+               end if;
+            end;
       end case;
       --  10.3.2.4: the cursor jumps to the next position as soon as the
       --  entry is echoed
@@ -573,12 +730,31 @@ package body DMI_Data_Entry is
          else
             Completed := True;
          end if;
+      elsif Index in Prev_Button | Next_Button then
+         --  Tables 22 and 23: the driver scrolls between the windows
+         --  holding the input fields of the same topic; the caller opens
+         --  the window asked for (Take_Page_Request)
+         Page_Request :=
+           (if Index = Prev_Button then Def.Page - 1 else Def.Page + 1);
       end if;
    end Press;
 
    ---------------------------------------------------------------------
    --  Rendering
    ---------------------------------------------------------------------
+
+   --  5.3.1.2.1 g / 11.3.9.3: the sequence number of the current window
+   --  and the total number of windows of the topic, between brackets
+   function Title_Text return Wide_String is
+      Page_Img  : constant Wide_String := Positive'Wide_Image (Def.Page);
+      Total_Img : constant Wide_String := Positive'Wide_Image (Def.Page_Count);
+   begin
+      if Def.Page_Count = 1 then
+         return Trim (Def.Title);
+      end if;
+      return Trim (Def.Title) & " (" & Page_Img (2 .. Page_Img'Last)
+        & "/" & Total_Img (2 .. Total_Img'Last) & ")";
+   end Title_Text;
 
    procedure Draw_Title is
       --  Table 22: 306 cells over the D/F/G column; Tables 23 and 29:
@@ -595,7 +771,7 @@ package body DMI_Data_Entry is
         (Pen_X      => (if Total then The_Area.Position.X + The_Area.Width - 3
                         else The_Area.Position.X + 3),
          Pen_Y      => The_Area.Position.Y + Title_Height - 6,
-         The_String => Trim (Def.Title),
+         The_String => Title_Text,
          The_Size   => 12,
          The_Color  => General_Parameters.GREY,
          The_Alignment => (if Total then Draw.Right else Draw.Left));
@@ -636,6 +812,104 @@ package body DMI_Data_Entry is
          The_Area.Position + ((The_Area.Width - W) / 2,
                               (The_Area.Height - H) / 2));
    end Draw_Delete_Key;
+
+   --  10.3.5.19: one key of a dedicated keyboard. A predefined choice
+   --  can be longer than the 102 cells of the key ('Non slippery rail',
+   --  Table 43), and Figure 127 shows it on two lines; the label is
+   --  broken at the last space that still fits (implementation choice,
+   --  the specification only shows the result). An empty label is a key
+   --  that is not there at all (Table 38 key 3, Figure 115).
+   procedure Draw_Choice_Key (Key : Positive) is
+      The_Area : constant Area_T := Key_Area (Key);
+      Enabled  : constant Boolean := Choice_Key_Enabled (Key);
+      Is_Down  : constant Boolean := Pressed (Key);
+      Number   : constant Natural := Choice_Of_Key (Key);
+      Room     : constant Natural := The_Area.Width - 6;
+
+      procedure Line (Text : Wide_String; Offset : Integer) is
+      begin
+         Draw.Draw_String
+           (Pen_X => The_Area.Position.X + The_Area.Width / 2,
+            Pen_Y => The_Area.Position.Y + The_Area.Height / 2 + Offset,
+            The_String => Text,
+            The_Size => 12,
+            --  5.3.2.5.5 / 10.2.1.4: a disabled label is dark grey
+            The_Color => (if Enabled then General_Parameters.GREY
+                          else General_Parameters.DARK_GREY),
+            The_Alignment => Draw.Center);
+      end Line;
+   begin
+      --  10.3.5.19: the key 12 is the [More] button beyond 12 choices
+      if Key = Key_More and then Key_Pages > 1 then
+         if not Is_Down then
+            Draw.Draw_Button_Frame (The_Area);
+         end if;
+         Line ("More", 6);
+         return;
+      end if;
+      if Number = 0
+        or else Trim (Def.Fields (Current).Choices.List (Number).Label) = ""
+      then
+         return;  -- no button on this key
+      end if;
+      if not Is_Down then
+         Draw.Draw_Button_Frame (The_Area);
+      end if;
+      declare
+         Label : constant Wide_String :=
+           Trim (Def.Fields (Current).Choices.List (Number).Label);
+         Cut   : Natural := 0;
+      begin
+         if Draw.String_Width (Label, 12) <= Room then
+            Line (Label, 6);
+            return;
+         end if;
+         for I in Label'Range loop
+            if Label (I) = ' '
+              and then Draw.String_Width (Label (Label'First .. I - 1), 12)
+                         <= Room
+            then
+               Cut := I;
+            end if;
+         end loop;
+         if Cut = 0 then
+            Line (Label, 6);  -- no break point: one line, clipped
+         else
+            --  5.1.3.3: the two lines stay centred in the 50 cell key
+            Line (Label (Label'First .. Cut - 1), -3);
+            Line (Label (Cut + 1 .. Label'Last), 15);
+         end if;
+      end;
+   end Draw_Choice_Key;
+
+   --  Tables 22 and 23 with 5.3.2.7.7: [Previous] (NA18, NA19 when
+   --  disabled) and [Next] (NA17, NA18.2 when disabled)
+   procedure Draw_Nav_Buttons is
+   begin
+      if Def.Page_Count = 1 then
+         return;
+      end if;
+      for Index in Prev_Button .. Next_Button loop
+         declare
+            The_Area : constant Area_T := Nav_Area (Index);
+            Enabled  : constant Boolean := Button_Enabled (Index);
+            The_Symbol : constant Symbol.T :=
+              (if Index = Prev_Button then
+                 (if Enabled then Symbol.NA_18 else Symbol.NA_19)
+               else (if Enabled then Symbol.NA_17 else Symbol.NA_18_2));
+         begin
+            --  5.3.2.5.5 a: the disabled button keeps its border
+            if not (Enabled and then Pressed (Index)) then
+               Draw.Draw_Button_Frame (The_Area);
+            end if;
+            Draw.Draw_Symbol
+              (The_Symbol,
+               The_Area.Position
+                 + ((The_Area.Width - The_Symbol.Width) / 2,
+                    (The_Area.Height - The_Symbol.Height) / 2));
+         end;
+      end loop;
+   end Draw_Nav_Buttons;
 
    --  5.1.3.3: a text is vertically centred in its area; the pen is on
    --  the base line of the 12 cell characters
@@ -705,7 +979,11 @@ package body DMI_Data_Entry is
          The_String => State.Value.Text (1 .. State.Value.Length),
          The_Size => 12,
          The_Color => Ink);
-      if Selected and then Def.Fields (Index).Keyboard /= Yes_No then
+      --  10.3.2.1: the cursor marks the position of the next character;
+      --  a dedicated keyboard enters whole choices, not characters
+      if Selected and then Def.Fields (Index).Keyboard not in Yes_No
+                                                            | Dedicated
+      then
          Draw_Cursor (Index);
       end if;
    end Draw_Entry_Field;
@@ -783,12 +1061,31 @@ package body DMI_Data_Entry is
    procedure Draw_Echo_Texts is
    begin
       if Def.Echo_Count > 0 then
-         --  10.4.1.5: the echo texts of the topic being validated
+         --  10.4.1.5: the echo texts of the topic being validated;
+         --  10.3.3.1 with 11.3.9.3: a topic spread over several windows
+         --  echoes all of its input fields on each of them, and the
+         --  lines fed by an input field of this window follow it live
          for I in 1 .. Def.Echo_Count loop
-            Draw_Echo_Line
-              (I, Trim (Def.Echo (I).Label),
-               Def.Echo (I).Value.Text (1 .. Def.Echo (I).Value.Length),
-               Def.Echo (I).Accepted);
+            declare
+               Live : Field_Count_T := 0;
+            begin
+               for F in 1 .. Def.Field_Count loop
+                  if Def.Fields (F).Echo_Line = I then
+                     Live := F;
+                  end if;
+               end loop;
+               if Live > 0 then
+                  Draw_Echo_Line
+                    (I, Trim (Def.Echo (I).Label),
+                     Fields (Live).Value.Text (1 .. Fields (Live).Value.Length),
+                     Fields (Live).Accepted, Fields (Live).Check);
+               else
+                  Draw_Echo_Line
+                    (I, Trim (Def.Echo (I).Label),
+                     Def.Echo (I).Value.Text (1 .. Def.Echo (I).Value.Length),
+                     Def.Echo (I).Accepted);
+               end if;
+            end;
          end loop;
       else
          for I in 1 .. Def.Field_Count loop
@@ -811,8 +1108,12 @@ package body DMI_Data_Entry is
             --  10.3.5.15: '1' to '9', the [delete], '0' and the disabled
             --  '.'; 10.3.5.18: the 'No' and 'Yes' keys of a dedicated
             --  keyboard limited to that choice
+            --  10.3.5.19: a dedicated keyboard with predefined choices
+            --  draws its own keys (Draw_Choice_Key)
+            Dedicated_Keys : constant Boolean :=
+              Def.Fields (Current).Keyboard = Dedicated;
             Numeric_Keys : constant Boolean :=
-              Def.Fields (Current).Keyboard /= Yes_No;
+              Def.Fields (Current).Keyboard not in Yes_No | Dedicated;
             Label : constant Wide_String :=
               (if not Numeric_Keys then
                  (case Key is
@@ -831,7 +1132,9 @@ package body DMI_Data_Entry is
               (if Numeric_Keys and then Key in 1 .. 9 | Key_Zero then 16
                else 12);
          begin
-            if Numeric_Keys and then Key = Key_Delete then
+            if Dedicated_Keys then
+               Draw_Choice_Key (Key);
+            elsif Numeric_Keys and then Key = Key_Delete then
                Draw_Delete_Key (Key_Area (Key), Pressed (Key));
             elsif Label /= "" then
                Draw_Labelled_Button (Key_Area (Key), Label,
@@ -849,6 +1152,8 @@ package body DMI_Data_Entry is
       if Def.Layout = Total_Grid then
          Draw_Entry_Complete;
       end if;
+      --  Tables 22 and 23: [Previous] and [Next] right of [Close]
+      Draw_Nav_Buttons;
    end Draw_Data_Entry;
 
    procedure Render is

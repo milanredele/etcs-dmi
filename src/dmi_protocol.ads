@@ -224,8 +224,24 @@ package DMI_Protocol is
    --  kind u8, then:
    --   0 driver id  : len u8, Latin-1 bytes
    --   1 TRN        : len u8, Latin-1 bytes
-   --   2 train data : length u16, brake percentage u16, max speed u16
+   --   2 train data : the seven items of the flexible train data entry
+   --                  (DMI 11.3.9.6 b, Table 40), sent once the driver
+   --                  validated them (DMI 11.7.1.6.1):
+   --                    length u16 (m, L_TRAIN),
+   --                    brake percentage u16 (%),
+   --                    max speed u16 (km/h, V_MAXTRAIN),
+   --                    train category cd u8 (NC_CDTRAIN, SUBSET-026
+   --                      7.5.1.82.2), 16#FF# no value,
+   --                    train category other u16 (NC_TRAIN, 7.5.1.84,
+   --                      a bit set; 0 no value),
+   --                    axle load category u8 (M_AXLELOADCAT, 7.5.1.62),
+   --                      16#FF# no value,
+   --                    airtight u8 (M_AIRTIGHT, 7.5.1.61), 16#FF# no
+   --                      value,
+   --                    loading gauge u8 (M_LOADINGGAUGE, 7.5.1.68),
+   --                      16#FF# no value
    --   3 SR data    : speed u16, distance u16
+   Driver_Data_Train_Length : constant := 13;
 
    -- DMI -> UI
    MSG_FRAME : constant Msg_Type_T := 16#60#;

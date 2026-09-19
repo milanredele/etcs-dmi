@@ -45,9 +45,13 @@ package DMI_Buttons is
                         BTN_Menu_18,
                         BTN_Menu_19,
                         BTN_Menu_20,
-                        BTN_Menu_21);
+                        BTN_Menu_21,
+                        --  Tables 22 and 23: [Previous] and [Next] of a
+                        --  topic spread over several windows
+                        BTN_Menu_22,
+                        BTN_Menu_23);
 
-   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_21;
+   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_23;
    subtype F_Button_T is Button_ID_T range BTN_F1 .. BTN_F5;
 
    type Kind_T is (Up_Type, Down_Type, Delay_Type); -- DMI 5.3.2.6
