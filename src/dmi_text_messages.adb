@@ -486,7 +486,8 @@ package body DMI_Text_Messages is
       Skip  : Natural;
       Wanted : Natural;
    begin
-      Line := (others => <>);
+      Line := (Length => 0, Text => (others => ' '), Bold => False,
+               First_Line => False, Hour => 0, Minute => 0);
       Valid := False;
 
       if Ack_Pending then
