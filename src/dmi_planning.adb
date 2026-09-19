@@ -458,8 +458,12 @@ package body DMI_Planning is
               (if In_AD then Symbol.PL_37 else Symbol.PL_23)
             else Symbol.PL_22);
          Y : constant Integer := Y_Of (Disc.Dist_M);
-         -- 8.3.6.5: symbol centred on the D6/D7 boundary, bottom of its
-         -- horizontal line at the discontinuity location
+         -- 8.3.6.5: symbol centred on the D6/D7 boundary, the bottom of its
+         -- horizontal line at the discontinuity location. The line is at
+         -- the bottom of PL21 (rows 16 and 17 of 20) and at the top of
+         -- PL22, PL23 and PL37 (rows 2 and 3).
+         Line_Row : constant Integer := (if Increase then 17 else 3);
+         Sym_Y    : constant Integer := Y - Line_Row;
          X : constant Integer := D7_X - Sym.Width / 2;
          Number_Color : constant General_Parameters.Color :=
            (if Disc.Is_Ind_Target and then Indication_Valid then
@@ -468,10 +472,10 @@ package body DMI_Planning is
             else General_Parameters.GREY);
          Img : constant Wide_String := Natural'Wide_Image (Disc.Speed);
       begin
-         if Y - Sym.Height + 1 < Top_Y or else Y > Bottom_Y then
+         if Sym_Y < Top_Y or else Y > Bottom_Y then
             return;
          end if;
-         D_Buffer.Draw_Symbol (Sym, (X, Y - Sym.Height + 1));
+         D_Buffer.Draw_Symbol (Sym, (X, Sym_Y));
          -- 8.3.6.7/.8: numbers left aligned in D7, 11 cell indent
          D_Buffer.Draw_String
            (Pen_X => D7_X + 11,
