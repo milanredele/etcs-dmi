@@ -350,10 +350,6 @@ package body DMI_Core is
    -- Internal failure containment, see Enter_Failure
    Has_Failed : Boolean := False;
 
-   -- A mode was received since the last reset: SDI.Mode is the mode of
-   -- the EVC and not the initial value
-   Mode_Received : Boolean := False;
-
    -- EVC link supervision (General_Parameters.EVC_Link_Timeout_Ms)
    EVC_Heard    : Boolean := False; -- supervision arms with the first message
    Link_Lost    : Boolean := False;
@@ -374,7 +370,6 @@ package body DMI_Core is
       DMI_Status.Reset;
       DMI_Text_Messages.Reset;
       DMI_Windows.Close_All;
-      Mode_Received := False;
       TTI_Was_Displayed := False;
       SDI.Mode := SDI.M_SB;
       SDI.Acknowledgment_Mode := (Valid => False);
@@ -543,7 +538,6 @@ package body DMI_Core is
    begin
       if Valid_Mode (Mode_Raw) then
          SDI.Mode := SDI.Mode_T'Val (Mode_Raw);
-         Mode_Received := True;
       end if;
 
       -- DMI 11.7.2.4 Table 49 S0 -> S1: the Start Up dialogue sequence is
