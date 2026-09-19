@@ -104,9 +104,9 @@ package DMI_Text_Messages is
 
    Area_Width   : constant := 234;
    Time_Indent  : constant := 3;
-   -- "hh:mm" in size 10: two digits of 8 cells, 4 cells for the colon,
-   -- two digits
-   Stamp_Width  : constant := 8 + 8 + 4 + 8 + 8;
+   -- "hh:mm" in size 10 (5.1.2.2.3 f): four digits of 7 cells and the
+   -- ':' of 3, as Font.FreeSans_10 advances them
+   Stamp_Width  : constant := 7 + 7 + 3 + 7 + 7;
    Text_Indent  : constant := Time_Indent + Stamp_Width + 10;
    Right_Margin : constant := 3;
    Line_Width   : constant := Area_Width - Text_Indent - Right_Margin;

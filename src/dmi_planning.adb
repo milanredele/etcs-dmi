@@ -359,7 +359,10 @@ package body DMI_Planning is
    procedure Draw_Sign (X, Y : Natural; Positive_Sign : Boolean;
                         Color : General_Parameters.Color) is
    begin
-      -- 5x5 cell +/- drawn directly (FreeSans_10 has digits only)
+      -- 8.3.5.6, 8.3.5.8: the sign of the gradient, drawn as a 5x5 cell
+      -- cross rather than with the '+' and '-' of FreeSans_10, which sit
+      -- at the middle of the lower case and are a single cell thick
+      -- (implementation choice; the specification only asks for a sign)
       Fill_Rect (X - 2, Y, 5, 1, Color);
       if Positive_Sign then
          Fill_Rect (X, Y - 2, 1, 5, Color);

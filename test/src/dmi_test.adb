@@ -2840,13 +2840,13 @@ procedure DMI_Test is
                 "a message to be acknowledged that does not fit ends in an "
                 & "ellipsis");
       end;
-      Check (Line_Text (1) = "Proceed on sight to the" and then Lines_Fit,
+      Check (Line_Text (1) = "Proceed on sight to the next" and then Lines_Fit,
              "its lines are wrapped like any other");
       Check (Margin_Clear, "ack message: nothing in the right margin");
       Check_Frame ("wrap_ack_max");
       Pointer_Down (310, 440); Pointer_Up (310, 440); -- E11 is disabled
       Step;
-      Check (Line_Text (1) = "Proceed on sight to the",
+      Check (Line_Text (1) = "Proceed on sight to the next",
              "a message to be acknowledged cannot be scrolled");
       Pointer_Down (150, 400); Pointer_Up (150, 400); -- acknowledge
       Drain_Sounds;

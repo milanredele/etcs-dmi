@@ -59,17 +59,13 @@ package body Display.E_Area is
             Base_Y : constant Height_T := E5_E9.Position.Y + (I - 1) * 20 + 16;
          begin
             if Line.First_Line then
-               -- FreeSans_10 carries digits only: the ':' is drawn as
-               -- two cells (font regeneration with ttf2ada pending)
+               -- 8.2.3.4.6 b, 5.1.2.2.3 f: the local time in 10 cells.
+               -- The ':' is a glyph of FreeSans_10 since the fonts carry
+               -- the whole printable ISO 8859-1 (GEN-7); it used to be
+               -- drawn as two cells by hand.
                E_Buffer.Draw_String
-                 (Time_X, Base_Y, Two (Line.Hour),
-                  10, General_Parameters.WHITE);
-               E_Buffer.Set_Pixel (Time_X + 17, Base_Y - 6,
-                                   General_Parameters.WHITE);
-               E_Buffer.Set_Pixel (Time_X + 17, Base_Y - 1,
-                                   General_Parameters.WHITE);
-               E_Buffer.Draw_String
-                 (Time_X + 20, Base_Y, Two (Line.Minute),
+                 (Time_X, Base_Y,
+                  Two (Line.Hour) & ":" & Two (Line.Minute),
                   10, General_Parameters.WHITE);
             end if;
             if Line.Length > 0 then
