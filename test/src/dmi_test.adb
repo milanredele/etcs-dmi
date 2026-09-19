@@ -1697,7 +1697,8 @@ procedure DMI_Test is
       Press (385, 240); Press (385, 290); Press (487, 390);
       Step;
       Check_Frame ("startup_train_data_filled");
-      Press (589, 390);       -- Enter -> validation window
+      Press (589, 390);       -- Enter: the last value is accepted
+      Press (167, 440);       -- 'Train data entry complete?' Yes (Table 24)
       Step;
       Check_Frame ("startup_validation");
 
@@ -2016,6 +2017,7 @@ procedure DMI_Test is
       Press (589, 390);                     -- brake percentage 135
       Press (385, 240); Press (385, 290); Press (487, 390);
       Press (589, 390);                     -- maximum speed 140
+      Press (167, 440);                     -- entry complete? Yes
       Press (410, 390);                     -- Yes -> TRN window
       Press (385, 240); Press (589, 390);   -- TRN 1, Enter -> Main window
       Pump_To_EVC;
@@ -2593,7 +2595,8 @@ procedure DMI_Test is
       Press (410, 140);          -- Train data
       Press (385, 240); Press (589, 390);   -- length 1
       Press (385, 240); Press (589, 390);   -- brake percentage 1
-      Press (385, 240); Press (589, 390);   -- maximum speed 1 -> validation
+      Press (385, 240); Press (589, 390);   -- maximum speed 1
+      Press (167, 440);                     -- entry complete? -> validation
       Check (Top_Is (DMI_Windows.W_Train_Data_Validation),
              "validation window open");
       Send_Status (Brake => 2);  -- brake release acknowledgement

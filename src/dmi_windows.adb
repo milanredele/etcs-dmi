@@ -347,7 +347,9 @@ package body DMI_Windows is
             Result.Fields (1) := Field ("Train running nr", 8,
                                         Proposed => TRN);
          when W_Train_Data =>
-            -- 11.3.9
+            -- 11.3.9.1: a window on the total grid array with echo texts
+            -- and the question 'Train data entry complete?'
+            Result.Layout := Total_Grid;
             Result.Field_Count := 3;
             Result.Fields (1) :=
               Field ("Length (m)", 4, Proposed => Image_Value (Train_Length));
@@ -356,7 +358,8 @@ package body DMI_Windows is
             Result.Fields (3) :=
               Field ("Max speed", 3, Proposed => Image_Value (Max_Speed));
          when W_SR_Data =>
-            -- 11.3.10
+            -- 11.3.10.1: likewise on the total grid array
+            Result.Layout := Total_Grid;
             Result.Field_Count := 2;
             Result.Fields (1) :=
               Field ("SR speed", 3, Proposed => Image_Value (SR_Speed));
