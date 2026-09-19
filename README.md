@@ -50,7 +50,7 @@ The rules that have proven necessary so far:
   claims, including requirements that do not exist; [PLAN.md](PLAN.md)
   §1 records the check claim by claim, and a verified plan replaced it.
 - **Behaviour is pinned by executable checks.** The regression
-  runner makes 454 checks: 120 rendered screens compared with golden
+  runner makes 599 checks: 131 rendered screens compared with golden
   frames, sound events, and a complete simulated mission. The
   WebAssembly build has to render the same pixels as the native one. A
   change that alters a screen fails a check, and a person has to look at
