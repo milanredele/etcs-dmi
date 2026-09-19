@@ -38,6 +38,16 @@ package Display.Draw is
                           The_Color  : General_Parameters.Color;
                           The_Alignment : Text_Alignment := Left);
 
+   -- The same, left aligned, for text that must stay inside an area
+   -- whatever it holds (text messages, DMI 8.2.3.4.2): no cell outside
+   -- The_Clip (absolute coordinates) is drawn.
+   procedure Draw_String_Clipped (Pen_X : Width_T;
+                                  Pen_Y : Height_T;
+                                  The_String : Wide_String;
+                                  The_Size   : Font.Size_T;
+                                  The_Color  : General_Parameters.Color;
+                                  The_Clip   : Area_T);
+
    -- Width in cells of The_String as Draw_String draws it, the
    -- replacement boxes included
    function String_Width (The_String : Wide_String;
