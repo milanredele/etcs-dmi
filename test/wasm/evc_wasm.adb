@@ -35,7 +35,9 @@ package body EVC_Wasm is
                      Payload  : Stream_Element_Array) is
       Offset : Stream_Element_Offset := Payload'First;
    begin
-      if The_Type = MSG_DRIVER_ACTION
+      if The_Type = MSG_DRIVER_DATA then
+         EVC_Core.Handle_Driver_Data (Payload);
+      elsif The_Type = MSG_DRIVER_ACTION
         and then (Payload'Length = Driver_Action_Length
                   or else Payload'Length = Driver_Ack_Length)
       then

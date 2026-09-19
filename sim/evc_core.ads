@@ -27,6 +27,13 @@ package EVC_Core is
                                    Arg    : Natural;
                                    ID     : Natural := 0);
 
+   -- The driver's data as the DMI reports them (MSG_DRIVER_DATA). The
+   -- on-board stores them and their status becomes "valid"
+   -- (SUBSET-026 3.18.3, 3.18.4); the DMI is told so in MSG_ONBOARD and
+   -- evaluates Tables 33 to 36 with it. Any payload is accepted; one
+   -- that does not match the documented shape is ignored.
+   procedure Handle_Driver_Data (Payload : Stream_Element_Array);
+
    procedure Reset;
 
    -- Introspection for scenario assertions

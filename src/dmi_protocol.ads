@@ -8,7 +8,7 @@
 --  Transport integrity is provided by TCP; there is no per-frame CRC.
 --
 --  Message directions:
---     EVC -> DMI : SPEED_STATE, MODE_LEVEL
+--     EVC -> DMI : SPEED_STATE, MODE_LEVEL, ONBOARD
 --     UI  -> DMI : POINTER
 --     DMI -> EVC : DRIVER_ACTION
 --     DMI -> UI  : FRAME, SOUND
@@ -100,6 +100,73 @@ package DMI_Protocol is
    --  geo_pos u32 (m, 16#FFFF_FFFF# unknown),
    --  hour u8, minute u8, second u8
    Status_Length : constant := 22;
+
+   MSG_ONBOARD : constant Msg_Type_T := 16#0A#;
+   --  On-board state the DMI cannot know but needs for the enabling
+   --  conditions of the sub-level window buttons (DMI 11.2.1.4 Table 33,
+   --  11.2.2.4 Table 34, 11.2.3.4 Table 35, 11.2.4.4 Table 36) and for
+   --  the dialogue sequences of 11.7. It is the on-board's own data
+   --  status (SUBSET-026 3.18, 4.10), its session with the RBC and the
+   --  inputs of the vehicle; the DMI evaluates the tables, it does not
+   --  guess the values. Every byte value is defined here; a value not
+   --  listed takes the "nothing known" reading of its field.
+   --
+   --  data u8: validity of the stored data as the EVC sees it
+   --    bit0 Driver ID is valid, bit1 Train data are valid,
+   --    bit2 ERTMS/ETCS level is valid, bit3 Train running number is
+   --    valid, bit4 RBC contact information is valid,
+   --    bit5 the train position is valid and is referred to an LRBG,
+   --    bit6 safe consist length information is available,
+   --    bit7 the safe consist length values in front of the engine are
+   --         equal to zero
+   --  session u8: the communication session with the RBC
+   --    0 no communication session exists, 1 a session is being
+   --    established, 2 a communication session exists, 3 a session
+   --    exists and it is the only one with a supervising RBC certified
+   --    with a system version X.Y > 2.2 (Table 33 #11); any other value
+   --    is read as 0
+   --  rbc u8: what the RBC has answered / what is stored on-board
+   --    bit0 Train data acknowledged by the RBC, bit1 a pending
+   --    emergency stop is stored on-board, bit2 an RBC transition order
+   --    is stored on-board, bit3 the distance between the current min
+   --    safe rear end and the current estimated front end does not
+   --    exceed the range of the confirmed train length information,
+   --    bit4 safe consist length information has been sent to the RBC
+   --    and has been acknowledged by it
+   --  train u8: the state of the vehicle
+   --    bit0 the train is at standstill, bit1 the train speed is under
+   --    or equal to the speed limit for triggering the "override"
+   --    function, bit2 the "non leading" input signal is received,
+   --    bit3 the "passive shunting" input signal is received,
+   --    bit4 the "BTM alarm reaction inhibition" function is active
+   --  national u8: national values and on-board storage
+   --    bit0 modification of Driver ID while running is allowed,
+   --    bit1 modification of adhesion factor by driver is allowed,
+   --    bit2 the maximum on-board storage capacity of VBC set by the
+   --    driver is not reached, bit3 at least one VBC is stored on-board
+   --  som u8: start of mission (SUBSET-026 5.4, DMI Table 49)
+   --    0 no start of mission is going on,
+   --    1 the cab is active and the mode is SB but a communication
+   --      session is still established or is being established (S0),
+   --    2 all conditions to initiate a start of mission are fulfilled:
+   --      the Start Up dialogue sequence is engaged (S0 -> S1). The DMI
+   --      engages it on the change to 2, not on every message.
+   --    any other value is read as 0
+   --  waiting u8: the on-board awaits an answer and the DMI shows the
+   --    Main window with all buttons disabled and the hour glass ST05
+   --    (11.2.1.6)
+   --    0 nothing is awaited,
+   --    1 the registration to the radio network(s) (Table 49 S4),
+   --    2 an answer from the RBC (Table 49 A31, Table 50 S8 and S9):
+   --      the Main window stays when it ends (S10 / S1),
+   --    3 the MA or the SR authorisation after 'Start' (Table 50 S7):
+   --      the default window is shown when it ends,
+   --    any other non-zero value is read as 2
+   --  start_pending u8: non-zero while a 'Start' request of the driver
+   --    is pending on the EVC. Only the EVC knows when its answer (a new
+   --    mode, or a mode proposed for acknowledgement) is out; 'Start' is
+   --    dead meanwhile so that one press is one request (Table 33 #1).
+   Onboard_Length : constant := 8;
 
    -- EVC simulator -> UI (visualization; the DMI ignores these)
    MSG_TRACK_LAYOUT : constant Msg_Type_T := 16#08#;

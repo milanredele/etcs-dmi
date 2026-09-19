@@ -45,8 +45,8 @@ class Msg {
   random(n) { for (let i = 0; i < n; i++) this.u8(pick(0, 255)); return this; }
 }
 
-const EVC_TYPES = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
-const FIXED = { 0x01: 21, 0x02: 9, 0x04: 2, 0x07: 22 };
+const EVC_TYPES = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A];
+const FIXED = { 0x01: 21, 0x02: 9, 0x04: 2, 0x07: 22, 0x0A: 8 };
 
 function inDomain(type) {
   const m = new Msg();
@@ -83,14 +83,19 @@ function inDomain(type) {
       .u16(optional(0, 400, 0xFFFF)).u8(optional(0, 30, 0xFF)).u8(pick(1, 30)).u8(pick(0, 2))
       .u32(pick(0, 90000)).u32(chance(30) ? 0xFFFFFFFF : pick(0, 9999999))
       .u8(pick(0, 23)).u8(pick(0, 59)).u8(pick(0, 59));
+  } else if (type === 0x0A) {
+    // on-board state: data, session, rbc, train, national, som, waiting,
+    // start pending; the coded fields go one value beyond the documented
+    m.u8(pick(0, 255)).u8(pick(0, 4)).u8(pick(0, 255)).u8(pick(0, 255))
+      .u8(pick(0, 255)).u8(pick(0, 3)).u8(pick(0, 4)).u8(pick(0, 1));
   }
   return m.b;
 }
 
 function stimulus() {
   const kind = pick(1, 100);
-  if (kind <= 45) { const t = EVC_TYPES[pick(0, 6)]; return [t, inDomain(t)]; }
-  if (kind <= 60) { const t = EVC_TYPES[pick(0, 6)]; return [t, new Msg().random(FIXED[t] ?? pick(0, 120)).b]; }
+  if (kind <= 45) { const t = EVC_TYPES[pick(0, 7)]; return [t, inDomain(t)]; }
+  if (kind <= 60) { const t = EVC_TYPES[pick(0, 7)]; return [t, new Msg().random(FIXED[t] ?? pick(0, 120)).b]; }
   if (kind <= 70) return [pick(0, 255), new Msg().random(pick(0, 300)).b];
   const m = new Msg().u8(chance(95) ? pick(0, 2) : pick(0, 255));
   if (chance(95)) m.u16(pick(0, 639)).u16(pick(0, 479)); else m.u16(pick(0, 65535)).u16(pick(0, 65535));

@@ -8,6 +8,7 @@ with Ada.Streams; use Ada.Streams;
 with Ada.Text_IO; use Ada.Text_IO;
 with Display.Screen.Files;
 with DMI_Core;
+with DMI_Driver_Data;
 with DMI_Protocol; use DMI_Protocol;
 with EVC_Supervision;
 with Interfaces; use Interfaces;
@@ -20,6 +21,294 @@ package body Test_Support is
    -- the wrapper's EVC: supervision status it last sent
    EVC_Status : EVC_Supervision.Status_T := EVC_Supervision.NoS;
    Checks   : Natural := 0;
+
+   ---------------------------------------------------------------------
+   -- The wrapper's EVC: on-board state of MSG_ONBOARD
+   ---------------------------------------------------------------------
+
+   type Onboard_Model_T is record
+      Standstill         : Boolean := True;
+      Session            : Natural := 0;
+      Train_Data_Acked   : Boolean := False;
+      Pending_Stop       : Boolean := False;
+      RBC_Transition     : Boolean := False;
+      Length_Confirmed   : Boolean := False;
+      Consist_Acked      : Boolean := False;
+      Position_LRBG      : Boolean := False;
+      RBC_Contact        : Boolean := False;
+      Consist_Length     : Boolean := False;
+      Consist_Front_Zero : Boolean := False;
+      Override_Speed     : Boolean := True;
+      Non_Leading        : Boolean := False;
+      Passive_Shunting   : Boolean := False;
+      BMM_Active         : Boolean := False;
+      NV_Driver_ID_Running : Boolean := False;
+      NV_Adhesion        : Boolean := True;
+      VBC_Room           : Boolean := False;
+      VBC_Stored         : Boolean := False;
+      In_S0              : Boolean := False;
+      Waiting            : Natural := 0;
+      Start_Pending      : Boolean := False;
+   end record;
+
+   Onboard : Onboard_Model_T;
+
+   -- The last MSG_MODE_LEVEL the wrapper's EVC sent. It is kept because
+   -- the EVC resends it when the driver selects a level: the level of
+   -- the on-board is the driver's (SUBSET-026 5.4.3.2 S2) and Table 33
+   -- asks for its value, so it has to come back from the EVC.
+   type Mode_Level_T is record
+      Mode          : Natural := 0;
+      Level         : Natural := 0;
+      Mode_Ack      : Natural := 16#FF#;
+      Level_Ann     : Natural := 16#FF#;
+      Level_Ann_Ack : Boolean := False;
+      Override      : Boolean := False;
+      TAF           : Boolean := False;
+      LSSMA         : Natural := 16#FFFF#;
+   end record;
+   Last_ML   : Mode_Level_T;
+   -- A mode has been sent since the last Reset: before that the EVC has
+   -- said nothing, so there is no start of mission either
+   Mode_Sent : Boolean := False;
+
+   ---------------------------------------------------------------------
+   -- Outbox of the DMI, accumulated here
+   ---------------------------------------------------------------------
+   --  The wrapper's EVC has to see the driver's actions (a 'Start'
+   --  request stays pending until it answers, Table 33 #1) and the
+   --  checks below have to see them too, so the outbox is drained into
+   --  this buffer and read from here.
+
+   Outbox      : Stream_Element_Array (1 .. 8 * DMI_Core.Outbox_Size);
+   Outbox_Last : Stream_Element_Offset := 0;
+
+   --  Set while a level selection of this pump still has to be reported
+   Level_Changed : Boolean := False;
+
+   procedure Scan_Actions (Buffer : Stream_Element_Array;
+                           Last   : Stream_Element_Offset) is
+      Offset : Stream_Element_Offset := Buffer'First;
+   begin
+      while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+         declare
+            The_Type : constant Msg_Type_T :=
+              Msg_Type_T (Get_U8 (Buffer, Offset));
+            Length   : constant Stream_Element_Offset :=
+              Stream_Element_Offset (Get_U32 (Buffer, Offset));
+            Next     : constant Stream_Element_Offset := Offset + Length;
+         begin
+            exit when Next - 1 > Last;
+            if The_Type = MSG_DRIVER_ACTION
+              and then Length >= Stream_Element_Offset (Driver_Action_Length)
+            then
+               declare
+                  Action : constant Unsigned_8 := Get_U8 (Buffer, Offset);
+                  Arg    : constant Unsigned_16 := Get_U16 (Buffer, Offset);
+               begin
+                  if Action = 5 then
+                     --  start of mission: pending until the EVC answers
+                     --  with a mode (Table 33 #1)
+                     Onboard.Start_Pending := True;
+                  elsif Action = 11 and then Arg in 2 .. 5 then
+                     --  the driver selected a level: the on-board stores
+                     --  it and reports it back (SUBSET-026 5.4.3.2 S2)
+                     Last_ML.Level := Natural (Arg);
+                     Level_Changed := True;
+                  end if;
+               end;
+            end if;
+            Offset := Next;
+         end;
+      end loop;
+   end Scan_Actions;
+
+   procedure Pump (With_Sounds : Boolean := True) is
+      Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+      Last   : Stream_Element_Offset;
+      Room   : Stream_Element_Offset;
+   begin
+      DMI_Core.Take_Outbox (Buffer, Last, With_Sounds);
+      if Last < Buffer'First then
+         return;
+      end if;
+      Scan_Actions (Buffer, Last);
+      Room := Stream_Element_Offset'Min (Last, Outbox'Last - Outbox_Last);
+      if Room > 0 then
+         Outbox (Outbox_Last + 1 .. Outbox_Last + Room) :=
+           Buffer (Buffer'First .. Buffer'First + Room - 1);
+         Outbox_Last := Outbox_Last + Room;
+      end if;
+   end Pump;
+
+   --  The scenario runs its own EVC: the wrapper keeps quiet
+   External_EVC_Used : Boolean := False;
+
+   --  What was sent last, so that the wrapper only talks when the
+   --  picture changes (the scenarios rely on silence to let the link
+   --  supervision time out)
+   Last_Onboard      : Stream_Element_Array (1 .. Onboard_Length) :=
+     (others => 0);
+   Last_Onboard_Sent : Boolean := False;
+
+   procedure External_EVC (On : Boolean := True) is
+   begin
+      External_EVC_Used := On;
+   end External_EVC;
+
+   procedure Send_Onboard_Raw
+     (Data, Session, RBC, Train, National, SOM, Waiting, Start_Pending
+        : Interfaces.Unsigned_8)
+   is
+      Payload : Stream_Element_Array (1 .. Onboard_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Data);
+      Put_U8 (Payload, Offset, Session);
+      Put_U8 (Payload, Offset, RBC);
+      Put_U8 (Payload, Offset, Train);
+      Put_U8 (Payload, Offset, National);
+      Put_U8 (Payload, Offset, SOM);
+      Put_U8 (Payload, Offset, Waiting);
+      Put_U8 (Payload, Offset, Start_Pending);
+      Last_Onboard := Payload;
+      Last_Onboard_Sent := True;
+      --  the scenario drives MSG_ONBOARD itself from here on
+      External_EVC_Used := True;
+      DMI_Core.Handle_Message (MSG_ONBOARD, Payload);
+   end Send_Onboard_Raw;
+
+   --  Build the message from the model and from what the DMI has sent
+   --  this EVC, and hand it to the DMI. Force = False sends it only when
+   --  something changed.
+   procedure Emit_Onboard (Force : Boolean := True) is
+      use type Supplementary_Driving_Info.Mode_T;
+      function Flag (Condition : Boolean; Mask : Unsigned_8)
+                     return Unsigned_8 is
+        (if Condition then Mask else 0);
+      In_SB : constant Boolean :=
+        Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_SB;
+
+      Built  : Stream_Element_Array (1 .. Onboard_Length);
+      Offset : Stream_Element_Offset := Built'First;
+
+      procedure Build_Onboard
+        (Data, Session, RBC, Train, National, SOM, Waiting, Start_Pending
+           : Unsigned_8) is
+      begin
+         Put_U8 (Built, Offset, Data);
+         Put_U8 (Built, Offset, Session);
+         Put_U8 (Built, Offset, RBC);
+         Put_U8 (Built, Offset, Train);
+         Put_U8 (Built, Offset, National);
+         Put_U8 (Built, Offset, SOM);
+         Put_U8 (Built, Offset, Waiting);
+         Put_U8 (Built, Offset, Start_Pending);
+      end Build_Onboard;
+   begin
+      if External_EVC_Used
+        or else (not Force and then not Last_Onboard_Sent)
+      then
+         --  the wrapper's EVC does not start talking by itself: before
+         --  its first message the link has never been up
+         return;
+      end if;
+      Build_Onboard
+        (Data =>
+           --  the driver's data the DMI has sent this EVC; the level is
+           --  the one the driver selected
+           Flag (DMI_Driver_Data.Driver_ID_Entered, 1)
+           or Flag (DMI_Driver_Data.Train_Data_Entered, 2)
+           or Flag (Last_ML.Level in 2 .. 5, 4)   -- L0, NTC, L1, L2
+           or Flag (DMI_Driver_Data.TRN_Entered, 8)
+           or Flag (Onboard.RBC_Contact, 16)
+           or Flag (Onboard.Position_LRBG, 32)
+           or Flag (Onboard.Consist_Length, 64)
+           or Flag (Onboard.Consist_Front_Zero, 128),
+         Session => Unsigned_8 (Onboard.Session mod 256),
+         RBC =>
+           Flag (Onboard.Train_Data_Acked, 1)
+           or Flag (Onboard.Pending_Stop, 2)
+           or Flag (Onboard.RBC_Transition, 4)
+           or Flag (Onboard.Length_Confirmed, 8)
+           or Flag (Onboard.Consist_Acked, 16),
+         Train =>
+           Flag (Onboard.Standstill, 1)
+           or Flag (Onboard.Override_Speed, 2)
+           or Flag (Onboard.Non_Leading, 4)
+           or Flag (Onboard.Passive_Shunting, 8)
+           or Flag (Onboard.BMM_Active, 16),
+         National =>
+           Flag (Onboard.NV_Driver_ID_Running, 1)
+           or Flag (Onboard.NV_Adhesion, 2)
+           or Flag (Onboard.VBC_Room, 4)
+           or Flag (Onboard.VBC_Stored, 8),
+         --  Table 49 S0: this EVC has no session to wait for unless the
+         --  scenario asks for one; the conditions to initiate a start of
+         --  mission are fulfilled while the mode it sent is SB
+         SOM => (if not Mode_Sent then 0
+                 elsif Onboard.In_S0 then 1
+                 elsif In_SB then 2 else 0),
+         Waiting => Unsigned_8 (Onboard.Waiting mod 256),
+         Start_Pending => (if Onboard.Start_Pending then 1 else 0));
+      if Force or else not Last_Onboard_Sent
+        or else Built /= Last_Onboard
+      then
+         Last_Onboard := Built;
+         Last_Onboard_Sent := True;
+         DMI_Core.Handle_Message (MSG_ONBOARD, Built);
+      end if;
+   end Emit_Onboard;
+
+   procedure Send_Onboard
+     (Standstill       : Boolean := True;
+      Session          : Natural := 0;
+      Train_Data_Acked : Boolean := False;
+      Pending_Stop     : Boolean := False;
+      RBC_Transition   : Boolean := False;
+      Length_Confirmed : Boolean := False;
+      Consist_Acked    : Boolean := False;
+      Position_LRBG    : Boolean := False;
+      RBC_Contact      : Boolean := False;
+      Consist_Length   : Boolean := False;
+      Consist_Front_Zero : Boolean := False;
+      Override_Speed   : Boolean := True;
+      Non_Leading      : Boolean := False;
+      Passive_Shunting : Boolean := False;
+      BMM_Active       : Boolean := False;
+      NV_Driver_ID_Running : Boolean := False;
+      NV_Adhesion      : Boolean := True;
+      VBC_Room         : Boolean := False;
+      VBC_Stored       : Boolean := False;
+      In_S0            : Boolean := False;
+      Waiting          : Natural := 0;
+      Start_Pending    : Boolean := False) is
+   begin
+      Onboard := (Standstill         => Standstill,
+                  Session            => Session,
+                  Train_Data_Acked   => Train_Data_Acked,
+                  Pending_Stop       => Pending_Stop,
+                  RBC_Transition     => RBC_Transition,
+                  Length_Confirmed   => Length_Confirmed,
+                  Consist_Acked      => Consist_Acked,
+                  Position_LRBG      => Position_LRBG,
+                  RBC_Contact        => RBC_Contact,
+                  Consist_Length     => Consist_Length,
+                  Consist_Front_Zero => Consist_Front_Zero,
+                  Override_Speed     => Override_Speed,
+                  Non_Leading        => Non_Leading,
+                  Passive_Shunting   => Passive_Shunting,
+                  BMM_Active         => BMM_Active,
+                  NV_Driver_ID_Running => NV_Driver_ID_Running,
+                  NV_Adhesion        => NV_Adhesion,
+                  VBC_Room           => VBC_Room,
+                  VBC_Stored         => VBC_Stored,
+                  In_S0              => In_S0,
+                  Waiting            => Waiting,
+                  Start_Pending      => Start_Pending);
+      External_EVC_Used := False;
+      Emit_Onboard;
+   end Send_Onboard;
 
    Golden_Dir : constant String := "test/golden/";
 
@@ -94,6 +383,13 @@ package body Test_Support is
    procedure Reset_EVC_Model is
    begin
       EVC_Status := EVC_Supervision.NoS;
+      Onboard := (others => <>);
+      Mode_Sent := False;
+      Last_ML := (others => <>);
+      Level_Changed := False;
+      Outbox_Last := 0;
+      External_EVC_Used := False;
+      Last_Onboard_Sent := False;
    end Reset_EVC_Model;
 
    procedure Send_Speed_State_Raw
@@ -123,6 +419,22 @@ package body Test_Support is
       DMI_Core.Handle_Message (MSG_SPEED_STATE, Payload);
    end Send_Speed_State_Raw;
 
+   --  Put Last_ML on the wire as it stands
+   procedure Emit_Mode_Level is
+      Payload : Stream_Element_Array (1 .. Mode_Level_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (Last_ML.Mode));
+      Put_U8 (Payload, Offset, Unsigned_8 (Last_ML.Level));
+      Put_U8 (Payload, Offset, Unsigned_8 (Last_ML.Mode_Ack));
+      Put_U8 (Payload, Offset, Unsigned_8 (Last_ML.Level_Ann));
+      Put_U8 (Payload, Offset, (if Last_ML.Level_Ann_Ack then 1 else 0));
+      Put_U8 (Payload, Offset, (if Last_ML.Override then 1 else 0));
+      Put_U8 (Payload, Offset, (if Last_ML.TAF then 1 else 0));
+      Put_U16 (Payload, Offset, Unsigned_16 (Last_ML.LSSMA));
+      DMI_Core.Handle_Message (MSG_MODE_LEVEL, Payload);
+   end Emit_Mode_Level;
+
    procedure Send_Mode_Level
      (Mode          : Natural;
       Level         : Natural;
@@ -131,20 +443,18 @@ package body Test_Support is
       Level_Ann_Ack : Boolean := False;
       Override      : Boolean := False;
       TAF           : Boolean := False;
-      LSSMA         : Natural := 16#FFFF#)
-   is
-      Payload : Stream_Element_Array (1 .. Mode_Level_Length);
-      Offset  : Stream_Element_Offset := Payload'First;
+      LSSMA         : Natural := 16#FFFF#) is
    begin
-      Put_U8 (Payload, Offset, Unsigned_8 (Mode));
-      Put_U8 (Payload, Offset, Unsigned_8 (Level));
-      Put_U8 (Payload, Offset, Unsigned_8 (Mode_Ack));
-      Put_U8 (Payload, Offset, Unsigned_8 (Level_Ann));
-      Put_U8 (Payload, Offset, (if Level_Ann_Ack then 1 else 0));
-      Put_U8 (Payload, Offset, (if Override then 1 else 0));
-      Put_U8 (Payload, Offset, (if TAF then 1 else 0));
-      Put_U16 (Payload, Offset, Unsigned_16 (LSSMA));
-      DMI_Core.Handle_Message (MSG_MODE_LEVEL, Payload);
+      --  the EVC answers a 'Start' request with a new mode
+      if Mode_Sent and then Mode /= Last_ML.Mode then
+         Onboard.Start_Pending := False;
+      end if;
+      Last_ML := (Mode, Level, Mode_Ack, Level_Ann, Level_Ann_Ack,
+                  Override, TAF, LSSMA);
+      Mode_Sent := True;
+      Emit_Mode_Level;
+      --  an EVC sends its on-board state in the same cycle as the mode
+      Emit_Onboard;
    end Send_Mode_Level;
 
    procedure Send_Status
@@ -333,6 +643,18 @@ package body Test_Support is
    procedure Step is
    begin
       DMI_Core.Tick (50);
+      --  the EVC hears the driver's actions of this cycle and answers
+      --  with its on-board state, as evc_core does. The sounds stay
+      --  where they are: the scenarios check them. A scenario with its
+      --  own EVC drains the outbox itself.
+      if not External_EVC_Used then
+         Pump (With_Sounds => False);
+         if Level_Changed then
+            Level_Changed := False;
+            Emit_Mode_Level;
+         end if;
+         Emit_Onboard (Force => False);
+      end if;
       DMI_Core.Render;
    end Step;
 
@@ -420,7 +742,7 @@ package body Test_Support is
                         ID    : out Natural;
                         Short : out Boolean)
    is
-      Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+      Buffer : Stream_Element_Array renames Outbox;
       Last   : Stream_Element_Offset;
       Offset : Stream_Element_Offset := Buffer'First;
    begin
@@ -428,7 +750,9 @@ package body Test_Support is
       Kind := 0;
       ID := 0;
       Short := False;
-      DMI_Core.Take_Outbox (Buffer, Last);
+      Pump;
+      Last := Outbox_Last;
+      Outbox_Last := 0;
       while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
          declare
             The_Type : constant Msg_Type_T :=
@@ -501,13 +825,15 @@ package body Test_Support is
                              Count  : Natural;
                              What   : String)
    is
-      Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+      Buffer : Stream_Element_Array renames Outbox;
       Last   : Stream_Element_Offset;
       Offset : Stream_Element_Offset := Buffer'First;
       Found  : Natural := 0;
    begin
       Checks := Checks + 1;
-      DMI_Core.Take_Outbox (Buffer, Last);
+      Pump;
+      Last := Outbox_Last;
+      Outbox_Last := 0;
       while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
          declare
             The_Type : constant Msg_Type_T :=

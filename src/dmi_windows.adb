@@ -5,10 +5,10 @@ pragma Ada_2012;
 with Display.Draw;
 with Display.Screen;
 with DMI_Ack;
+with DMI_Conditions;
 with DMI_Data_View;
 with DMI_Driver_Data;
 with General_Parameters;
-with Speed_And_Distance;
 with Supplementary_Driving_Info;
 with Symbol;
 
@@ -34,9 +34,18 @@ package body DMI_Windows is
    -- (11.7.3.3, Table 50). True from S1 until S10 is reached.
    Sequence_Active : Boolean := False;
 
-   -- 'Start' was pressed and the EVC has not answered the request yet
-   -- (see Start_Enabled)
-   Start_Pending : Boolean := False;
+   -- Start of mission state of the last MSG_ONBOARD (Onboard_State_Changed)
+   Last_SOM : DMI_Conditions.Start_Of_Mission_T :=
+     DMI_Conditions.No_Mission_Start;
+
+   -- The Main window is on display because the on-board awaits an
+   -- answer (Table 49 S0, S4, A31; Table 50 S7, S8, S9): all its buttons
+   -- are disabled and the hour glass ST05 runs in the title area
+   Waiting_Window : Boolean := False;
+
+   -- What was awaited when the waiting window went up; Table 50 S7 ends
+   -- in the default window, the other steps in the Main window
+   Waiting_Kind : DMI_Conditions.Waiting_T := DMI_Conditions.Nothing;
 
    ---------------------------------------------------------------------
    -- Outbound action queue
@@ -210,41 +219,6 @@ package body DMI_Windows is
 
    No_Button : constant Label_T := (others => <>);
 
-   -- 11.2.1.4, Table 33, button 1. The DMI evaluates what it knows:
-   -- standstill, the mode, the level and the status of the driver's data.
-   -- The conditions about the communication session, the train data
-   -- acknowledgement of the RBC and a pending emergency stop belong to
-   -- the EVC and the protocol does not carry them: they are taken as
-   -- fulfilled here and the EVC arbitrates the request (implementation
-   -- choice). 'Start' is pressed once: it stays disabled while the
-   -- request is pending, until DMI_Core reports the answer of the EVC
-   -- (Start_Request_Closed); once the mission runs the mode condition
-   -- keeps it disabled.
-   function Start_Enabled return Boolean is
-      use DMI_Driver_Data;
-      use type SDI.Mode_T;
-      use type SDI.Level_T;
-      use type Speed_And_Distance.Speed_T;
-      Standstill : constant Boolean := Speed_And_Distance.Get_Speed = 0;
-   begin
-      if Start_Pending then
-         return False;
-      end if;
-      case SDI.Mode is
-         when SDI.M_SB =>
-            return Standstill and then Driver_ID_Entered
-              and then Train_Data_Entered and then Level_Entered
-              and then TRN_Entered;
-         when SDI.M_PT =>
-            return Standstill and then Train_Data_Entered
-              and then SDI.Level in SDI.L1 | SDI.L2;
-         when SDI.M_SR =>
-            return SDI.Level = SDI.L2;
-         when others =>
-            return False;
-      end case;
-   end Start_Enabled;
-
    function Static_Menu_Def (ID : Window_ID_T) return Menu_Def_T is
       Volume_Img : constant Wide_String :=
         General_Parameters.Loudspeaker_Volume_T'Wide_Image
@@ -255,32 +229,59 @@ package body DMI_Windows is
    begin
       case ID is
          when W_Main =>
-            -- 11.2.1, Table 33 (enabling of the buttons other than
-            -- 'Start' simplified: EVC arbitrates)
-            return (1 => B ("Start", Enabled => Start_Enabled),
-                    2 => B ("Driver ID"),
-                    3 => B ("Train data"),
+            -- 11.2.1.4, Table 33; 11.2.1.5 names the delay type buttons.
+            -- Rows #9 and #10 have no window or driver action behind
+            -- them yet (P3, audit WIN-12 / WIN-13): their condition is
+            -- in DMI_Conditions but the button stays disabled, a dead
+            -- button being worse than a missing one (implementation
+            -- choice). The same for rows #11 and #12, which have no
+            -- button at all yet.
+            return (1 => B ("Start",
+                            Enabled => DMI_Conditions.Main_Start),
+                    2 => B ("Driver ID",
+                            Enabled => DMI_Conditions.Main_Driver_ID),
+                    3 => B ("Train data",
+                            Enabled => DMI_Conditions.Main_Train_Data),
                     4 => No_Button,
-                    5 => B ("Level"),
-                    6 => B ("Train run. nr"),
-                    7 => B ("Shunting", Delayed => True),
-                    8 => B ("Non-Leading", Delayed => True),
-                    9 => B ("Maint. Shunt.", Enabled => False),
+                    5 => B ("Level",
+                            Enabled => DMI_Conditions.Main_Level),
+                    6 => B ("Train run. nr",
+                            Enabled => DMI_Conditions.Main_TRN),
+                    7 => B ("Shunting",
+                            Enabled => DMI_Conditions.Main_Shunting,
+                            Delayed => True),
+                    8 => B ("Non-Leading",
+                            Enabled => DMI_Conditions.Main_Non_Leading,
+                            Delayed => True),
+                    9 => B ("Maint. Shunt.",
+                            Enabled => False, Delayed => True),
                     10 => B ("Radio data", Enabled => False));
          when W_Override =>
-            -- 11.2.2
-            return (1 => B ("EOA"), others => No_Button);
+            -- 11.2.2.4, Table 34
+            return (1 => B ("EOA", Enabled => DMI_Conditions.Override_EOA),
+                    others => No_Button);
          when W_Special =>
-            -- 11.2.3
-            return (1 => B ("Adhesion"),
-                    2 => B ("SR speed/dist."),
-                    3 => B ("Train integrity", Delayed => True),
+            -- 11.2.3.4, Table 35; 11.2.3.5: 'Train integrity' is a delay
+            -- type button. Row #4 (BMM reaction inhibition) has no
+            -- button yet (P3, audit WIN-13).
+            return (1 => B ("Adhesion",
+                            Enabled => DMI_Conditions.Special_Adhesion),
+                    2 => B ("SR speed/dist.",
+                            Enabled => DMI_Conditions.Special_SR_Data),
+                    3 => B ("Train integrity",
+                            Enabled =>
+                              DMI_Conditions.Special_Train_Integrity,
+                            Delayed => True),
                     others => No_Button);
          when W_Settings =>
-            -- 11.2.4 (language / system version / VBC not implemented)
+            -- 11.2.4.4, Table 36. Language, System version and the two
+            -- VBC rows have no window yet (P3, audit WIN-12): disabled,
+            -- as for the Main window above.
             return (1 => B ("Language", Enabled => False),
-                    2 => B ("Volume"),
-                    3 => B ("Brightness"),
+                    2 => B ("Volume",
+                            Enabled => DMI_Conditions.Settings_Volume),
+                    3 => B ("Brightness",
+                            Enabled => DMI_Conditions.Settings_Brightness),
                     4 => B ("System version", Enabled => False),
                     others => No_Button);
          when W_Level =>
@@ -317,9 +318,13 @@ package body DMI_Windows is
       -- 11.2.1.4, 11.2.2.4, 11.2.3.4, 11.2.4.4: the buttons of these
       -- windows are enabled only while no driver's acknowledgement is
       -- required (displayed or waiting, 5.4.1.9); so no data entry can be
-      -- started under a pending acknowledgement (5.4.1.11)
+      -- started under a pending acknowledgement (5.4.1.11).
+      -- Table 49 S0, S4 and A31 and Table 50 S7, S8 and S9 ask for the
+      -- Main window "with all buttons disabled" while the on-board
+      -- awaits an answer.
       if ID in W_Main | W_Override | W_Special | W_Settings
-        and then DMI_Ack.Pending_Count > 0
+        and then (DMI_Ack.Pending_Count > 0
+                  or else (ID = W_Main and then Waiting_Window))
       then
          for I in Result'Range loop
             Result (I).Enabled := False;
@@ -447,15 +452,18 @@ package body DMI_Windows is
    begin
       Depth := 0;
       Sequence_Active := False;
+      Waiting_Window := False;
    end To_Default_Window;
 
    -- 11.7.2.2: [Close] is disabled in the windows presented before S10
    -- (S1 Driver ID and S2 Level; the excepted steps S1-1, S1-2, S3-2-2,
    -- S3-3 and S3-4 are windows that do not exist here). 11.7.3.2: enabled
    -- in the Main window sequence except S5-2-1, S5-2-3, S7, S8 and S9,
-   -- the steps waiting for the radio network or the RBC, which do not
-   -- exist here either.
-   function Close_Enabled return Boolean is (not Sequence_Active);
+   -- the steps waiting for the radio network or the RBC: of those S7, S8
+   -- and S9 exist, as the Main window the EVC asks for while it awaits
+   -- an answer.
+   function Close_Enabled return Boolean is
+     (not Sequence_Active and then not Waiting_Window);
 
    procedure Close_Top is
    begin
@@ -467,8 +475,9 @@ package body DMI_Windows is
    procedure Close_All is
    begin
       To_Default_Window;
-      Start_Pending := False;
       Action_Count := 0;
+      Waiting_Kind := DMI_Conditions.Nothing;
+      Last_SOM := DMI_Conditions.No_Mission_Start;
    end Close_All;
 
    -- Table 49 S10: the Start Up sequence ends in S1 of the Main window
@@ -489,7 +498,6 @@ package body DMI_Windows is
       DMI_Driver_Data.Train_Data_Entered := False;
       DMI_Driver_Data.TRN_Entered := False;
       To_Default_Window;
-      Start_Pending := False;
       -- Table 49 S1
       Sequence_Active := True;
       Open (W_Driver_ID);
@@ -498,15 +506,17 @@ package body DMI_Windows is
    procedure Abort_Start_Up is
    begin
       -- The specification does not say what happens to the sequence when
-      -- SB is left before S10 (e.g. to SL or SF). Implementation choice:
-      -- the sequence ends with the default window, so that its windows
-      -- with the disabled [Close] cannot stay.
+      -- the start of mission ends before S10 (SB is left, e.g. to SL or
+      -- SF). Implementation choice: the sequence ends with the default
+      -- window, so that its windows with the disabled [Close] cannot stay.
       if Sequence_Active then
          To_Default_Window;
       end if;
    end Abort_Start_Up;
 
    function In_Start_Up return Boolean is (Sequence_Active);
+
+   function Waiting_Displayed return Boolean is (Waiting_Window);
 
    -- The windows of Table 48 that take data: the data entry windows of
    -- 11.3 (Level, Adhesion, Volume and Brightness are modelled as menus
@@ -527,10 +537,72 @@ package body DMI_Windows is
       end loop;
    end Stop_Entry;
 
-   procedure Start_Request_Closed is
+   -- Only the on-board knows the conditions of Table 49 S0 and the steps
+   -- in which it awaits an answer; the EVC reports them (MSG_ONBOARD)
+   -- and this is where they take effect. The start of mission engages
+   -- the sequence on the change to "initiated", not on every message.
+   procedure Onboard_State_Changed is
+      use DMI_Conditions;
    begin
-      Start_Pending := False;
-   end Start_Request_Closed;
+      -- Table 49 S0 / S4 / A31 and Table 50 S7 / S8 / S9: the Main
+      -- window with all buttons disabled and the hour glass ST05
+      if Awaiting_Answer then
+         if not Waiting_Window then
+            To_Default_Window;
+            Open (W_Main);
+            Waiting_Window := True;
+         end if;
+         Waiting_Kind := Waiting;
+      elsif Waiting_Window then
+         Waiting_Window := False;
+         -- Table 50 S7 ends in the default window when the MA or the SR
+         -- authorisation arrives; Table 49 S4 / A31 and Table 50 S8 / S9
+         -- end in the Main window (S10 / S1), which stays open
+         if Waiting_Kind = Authorisation then
+            To_Default_Window;
+         end if;
+         Waiting_Kind := Nothing;
+      end if;
+
+      if Start_Of_Mission = Initiated and then Last_SOM /= Initiated then
+         Engage_Start_Up;                                  -- S0 -> S1
+      elsif Start_Of_Mission = No_Mission_Start
+        and then Last_SOM /= No_Mission_Start
+      then
+         Abort_Start_Up;
+      end if;
+      Last_SOM := Start_Of_Mission;
+   end Onboard_State_Changed;
+
+   -- 11.7.1.7, Table 48: the button whose enabling conditions decide
+   -- whether the displayed data entry / validation window may stay. The
+   -- windows of Table 48 that do not exist yet (Radio network type,
+   -- GSM-R network ID, Mission with one radio system, RBC data,
+   -- Language, ATO selector) are P3 (audit WIN-12).
+   function Window_Condition (ID : Window_ID_T) return Boolean is
+     (case ID is
+         when W_TRN        => DMI_Conditions.Main_TRN,
+         when W_Driver_ID  => DMI_Conditions.Main_Driver_ID,
+         when W_Level      => DMI_Conditions.Main_Level,
+         when W_Train_Data | W_Train_Data_Validation =>
+           DMI_Conditions.Main_Train_Data,
+         when W_SR_Data    => DMI_Conditions.Special_SR_Data,
+         when W_Adhesion   => DMI_Conditions.Special_Adhesion,
+         when W_Volume     => DMI_Conditions.Settings_Volume,
+         when W_Brightness => DMI_Conditions.Settings_Brightness,
+         when others       => True);  -- not a window of Table 48
+
+   procedure Check_Enabling_Conditions is
+   begin
+      -- "After the Start Up dialogue sequence": during it the steps of
+      -- Table 49 decide which window is shown
+      if Sequence_Active or else Depth = 0 then
+         return;
+      end if;
+      if not Window_Condition (Stack (Depth)) then
+         Stop_Entry;
+      end if;
+   end Check_Enabling_Conditions;
 
    function Is_Open return Boolean is (Depth > 0);
 
@@ -638,11 +710,11 @@ package body DMI_Windows is
                when 1 => -- Start
                   -- Table 50 S1: with level 0, 1 or NTC back to the
                   -- default window; with level 2 D7 -> S7 waits for the
-                  -- RBC with the hour glass (P3, audit WIN-11): skipped,
-                  -- the default window as well
-                  if Start_Enabled then
+                  -- RBC with the hour glass, which the EVC asks for
+                  -- (MSG_ONBOARD, waiting = 3). 'Start' stays dead until
+                  -- the EVC says the request is answered.
+                  if DMI_Conditions.Main_Start then
                      Queue (Start_Mission);
-                     Start_Pending := True;
                      To_Default_Window;
                   end if;
                when 2 => Open (W_Driver_ID);
@@ -759,6 +831,17 @@ package body DMI_Windows is
                         The_String => Title (ID),
                         The_Size   => 12,
                         The_Color  => General_Parameters.GREY);
+      -- 11.2.1.6: while the on-board exchanges messages with the RBC
+      -- (see 11.7) the hour glass ST05 is shown vertically centered in
+      -- the 'Main' window title area, from X 42, moving 26 cells to the
+      -- right every second and starting over when it no longer fits
+      if Waiting_Window and then ID = W_Main then
+         Draw.Draw_Symbol
+           (Symbol.ST_05,
+            Origin + (DMI_Conditions.ST05_X (The_Window_Area.Width,
+                                             Symbol.ST_05.Width),
+                      (Title_Height - Symbol.ST_05.Height) / 2));
+      end if;
    end Draw_Title;
 
    procedure Draw_Close (Pressed : Boolean) is

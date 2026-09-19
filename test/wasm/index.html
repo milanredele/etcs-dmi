@@ -243,6 +243,7 @@
       const MSG_MODE_LEVEL = 0x02;
       const MSG_TRACK_LAYOUT = 0x08;
       const MSG_SIM_STATE = 0x09;
+      const MSG_ONBOARD = 0x0A;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_DRIVER_DATA = 0x41;
       const MSG_POINTER = 0x50;
@@ -676,6 +677,26 @@
         return buf;
       }
 
+      // MSG_ONBOARD (dmi_protocol.ads): the on-board state behind the
+      // enabling conditions of Tables 33 to 36. The manual panel has no
+      // fields for it: it reports a standing train with valid driver's
+      // data and no RBC, and a start of mission while the mode is SB, so
+      // that the Start Up dialogue sequence can be driven by hand.
+      function manualOnboard() {
+        const { buf, dv } = makeMessage(MSG_ONBOARD, 8);
+        const standing = val('speed') === 0;
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, 0x0F); o += 1;             // id/train data/level/TRN valid
+        dv.setUint8(o, 0); o += 1;                // no communication session
+        dv.setUint8(o, 0); o += 1;                // nothing from an RBC
+        dv.setUint8(o, (standing ? 1 : 0) | 2); o += 1; // standstill, override ok
+        dv.setUint8(o, 2); o += 1;                // adhesion may be modified
+        dv.setUint8(o, val('mode') === 1 ? 2 : 0); o += 1; // start of mission
+        dv.setUint8(o, 0); o += 1;                // nothing is awaited
+        dv.setUint8(o, 0);                        // no 'Start' pending
+        return buf;
+      }
+
       const manualMode = () => $('source').value === 'manual';
 
       // ------------------------------------------------------------------
@@ -770,6 +791,7 @@
           if (manualMode()) {
             toDmi.send(manualSpeedState(), now);
             toDmi.send(manualModeLevel(), now);
+            toDmi.send(manualOnboard(), now);
           } else {
             evc.evc_step(EVC_STEP_MS);
             routeFromEvc();

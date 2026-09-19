@@ -116,17 +116,20 @@ function simMode(bytes) {
   return mode;
 }
 function press(x, y) {
+  // One cycle of the wire in both directions, as Scenario_Mission's Touch
+  // in test/src/dmi_test.adb: the EVC talks first (the DMI decides the
+  // enabling conditions of Tables 33 to 36 on what it just heard), then
+  // the driver touches the screen, then the DMI's actions and data go
+  // back to the EVC
+  evc.evc_step(50);
+  const fromEvc = transmit(evc, 'evc');
+  receive(dmi, 'dmi', fromEvc);
   for (const event of [0, 1]) { // down, up
     const p = new Uint8Array(5);
     const dv = new DataView(p.buffer);
     dv.setUint8(0, event); dv.setUint16(1, x, true); dv.setUint16(3, y, true);
     receive(dmi, 'dmi', frame(0x50, p));
   }
-  // one cycle of the wire in both directions: the EVC keeps talking (the
-  // DMI supervises the link) and hears the driver's actions
-  evc.evc_step(50);
-  const fromEvc = transmit(evc, 'evc');
-  receive(dmi, 'dmi', fromEvc);
   dmi.dmi_tick(50);
   receive(evc, 'evc', transmit(dmi, 'dmi'));
   return simMode(fromEvc);

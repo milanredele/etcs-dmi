@@ -67,6 +67,56 @@ package Test_Support is
       Geo_Valid    : Boolean := False;
       HH, MM, SS   : Natural := 0);
 
+   -- MSG_ONBOARD, the on-board state behind the enabling conditions of
+   -- Tables 33 to 36 (DMI_Conditions). The wrapper acts as the EVC and
+   -- holds this state: Send_Onboard changes it and sends it, and every
+   -- Step and Send_Mode_Level send it again, the way an EVC repeats it
+   -- every cycle. The validity of the driver's data is not a parameter:
+   -- the wrapper's EVC has exactly what the DMI sent it
+   -- (MSG_DRIVER_DATA, mirrored by DMI_Driver_Data), and entering SB
+   -- invalidates it (SUBSET-026 4.10.1.3). The defaults are a standing
+   -- train whose on-board knows nothing of an RBC, which is what the
+   -- older scenarios assume.
+   procedure Send_Onboard
+     (Standstill       : Boolean := True;
+      Session          : Natural := 0;   -- 0 none / 1 establishing /
+                                         -- 2 exists / 3 exists, RBC > 2.2
+      Train_Data_Acked : Boolean := False;
+      Pending_Stop     : Boolean := False;
+      RBC_Transition   : Boolean := False;
+      Length_Confirmed : Boolean := False;
+      Consist_Acked    : Boolean := False;
+      Position_LRBG    : Boolean := False;
+      RBC_Contact      : Boolean := False;
+      Consist_Length   : Boolean := False;
+      Consist_Front_Zero : Boolean := False;
+      Override_Speed   : Boolean := True;
+      Non_Leading      : Boolean := False;
+      Passive_Shunting : Boolean := False;
+      BMM_Active       : Boolean := False;
+      NV_Driver_ID_Running : Boolean := False;
+      NV_Adhesion      : Boolean := True;
+      VBC_Room         : Boolean := False;
+      VBC_Stored       : Boolean := False;
+      In_S0            : Boolean := False; -- Table 49 S0: a session is
+                                           -- still up, Start Up waits
+      Waiting          : Natural := 0;   -- 0 none / 1 radio network /
+                                         -- 2 an RBC answer / 3 the MA
+      Start_Pending    : Boolean := False);
+
+   -- The scenario brings its own EVC (EVC_Core) and sends MSG_ONBOARD
+   -- itself: the wrapper stops sending its model. Reset_EVC_Model turns
+   -- it off again.
+   procedure External_EVC (On : Boolean := True);
+
+   -- The same message with the eight bytes exactly as they travel on the
+   -- wire, for values the wrapper above cannot express. It takes the
+   -- on-board state over: the wrapper stops sending its own model until
+   -- the next Send_Onboard (or Reset_EVC_Model).
+   procedure Send_Onboard_Raw
+     (Data, Session, RBC, Train, National, SOM, Waiting, Start_Pending
+        : Interfaces.Unsigned_8);
+
    procedure Send_Text (ID           : Natural;
                         Text         : Wide_String;
                         First_Group  : Boolean := False;

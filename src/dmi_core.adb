@@ -13,6 +13,7 @@ with Display.G_Area;
 with Display.Screen;
 with DMI_Ack;
 with DMI_Buttons;
+with DMI_Conditions;
 with DMI_Driver_Data;
 with DMI_Flash;
 with DMI_Planning;
@@ -349,10 +350,6 @@ package body DMI_Core is
    -- Internal failure containment, see Enter_Failure
    Has_Failed : Boolean := False;
 
-   -- A mode was received since the last reset: SDI.Mode is the mode of
-   -- the EVC and not the initial value
-   Mode_Received : Boolean := False;
-
    -- EVC link supervision (General_Parameters.EVC_Link_Timeout_Ms)
    EVC_Heard    : Boolean := False; -- supervision arms with the first message
    Link_Lost    : Boolean := False;
@@ -367,12 +364,12 @@ package body DMI_Core is
    begin
       Brake_For_Pending_Ack := False;
       DMI_Ack.Reset;
+      DMI_Conditions.Reset;
       DMI_Driver_Data.Reset;
       DMI_Planning.Reset;
       DMI_Status.Reset;
       DMI_Text_Messages.Reset;
       DMI_Windows.Close_All;
-      Mode_Received := False;
       TTI_Was_Displayed := False;
       SDI.Mode := SDI.M_SB;
       SDI.Acknowledgment_Mode := (Valid => False);
@@ -537,33 +534,20 @@ package body DMI_Core is
         (Natural (Raw) <= SDI.Level_T'Pos (SDI.Level_T'Last));
 
       Old_Mode : constant SDI.Mode_T := SDI.Mode;
-      Had_Mode : constant Boolean := Mode_Received;
       use type SDI.Mode_T;
    begin
       if Valid_Mode (Mode_Raw) then
          SDI.Mode := SDI.Mode_T'Val (Mode_Raw);
-         Mode_Received := True;
       end if;
 
       -- DMI 11.7.2.4 Table 49 S0 -> S1: the Start Up dialogue sequence is
       -- engaged when the conditions to initiate a start of mission are
-      -- fulfilled. They are the on-board's (SUBSET-026 5.4.1.2: the
-      -- on-board is in SB with an open desk) and the protocol has no
-      -- message for them. Implementation choice: the entry into SB, as
-      -- reported by the EVC, engages the sequence; the DMI is taken to be
-      -- in the active cab. Waiting in S0 for a communication session to
-      -- end needs the hour glass (P3, audit WIN-11) and is skipped.
-      if Mode_Received and then SDI.Mode = SDI.M_SB
-        and then (not Had_Mode or else Old_Mode /= SDI.M_SB)
-      then
-         DMI_Windows.Engage_Start_Up;
-      elsif SDI.Mode /= SDI.M_SB then
-         DMI_Windows.Abort_Start_Up;
-      end if;
+      -- fulfilled. They are the on-board's (SUBSET-026 5.4.1.2) and the
+      -- EVC reports them in MSG_ONBOARD; the mode alone does not engage
+      -- the sequence (it cannot: S0 waits in SB for a communication
+      -- session to end).
 
       if SDI.Mode /= Old_Mode then
-         -- the EVC answered a 'Start' request with the new mode
-         DMI_Windows.Start_Request_Closed;
          -- DMI 8.2.2.4.5: entering a Table 15 mode toggles the objects off
          if SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH then
             User_Settings.Speed_Info_Visible := False;
@@ -591,9 +575,6 @@ package body DMI_Core is
       else
          if SDI.Acknowledgment_Mode.Valid then
             DMI_Ack.Cancel (DMI_Ack.Mode_Change);
-            -- a mode proposed after 'Start' (SUBSET-026 5.4.3.2 S22 to
-            -- S25) is gone: the request is not pending any more
-            DMI_Windows.Start_Request_Closed;
          end if;
          SDI.Acknowledgment_Mode := (Valid => False);
       end if;
@@ -644,6 +625,77 @@ package body DMI_Core is
             Valid => True);
       end if;
    end Apply_Mode_Level;
+
+   --  MSG_ONBOARD: the on-board state behind the enabling conditions of
+   --  Tables 33 to 36 and behind the dialogue sequences of 11.7. Every
+   --  byte value is accepted; a code outside the documented ones takes
+   --  the reading given in dmi_protocol.ads.
+   procedure Apply_Onboard (Payload : Stream_Element_Array) is
+      use DMI_Conditions;
+      Offset : Stream_Element_Offset := Payload'First;
+
+      Data     : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Session_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      RBC      : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Train    : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      National : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      SOM      : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Wait_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Start    : constant Unsigned_8 := Get_U8 (Payload, Offset);
+
+      function Bit (Byte : Unsigned_8; Index : Natural) return Boolean is
+        ((Byte and Shift_Left (Unsigned_8'(1), Index)) /= 0);
+   begin
+      DMI_Conditions.Driver_ID_Valid    := Bit (Data, 0);
+      DMI_Conditions.Train_Data_Valid   := Bit (Data, 1);
+      DMI_Conditions.Level_Valid        := Bit (Data, 2);
+      DMI_Conditions.TRN_Valid          := Bit (Data, 3);
+      DMI_Conditions.RBC_Contact_Valid  := Bit (Data, 4);
+      DMI_Conditions.Position_Valid     := Bit (Data, 5);
+      DMI_Conditions.Consist_Length     := Bit (Data, 6);
+      DMI_Conditions.Consist_Front_Zero := Bit (Data, 7);
+
+      DMI_Conditions.Session :=
+        (case Session_Raw is
+            when 1      => Establishing,
+            when 2      => Exists,
+            when 3      => Exists_Above_2_2,
+            when others => No_Session);
+
+      DMI_Conditions.Train_Data_Acked     := Bit (RBC, 0);
+      DMI_Conditions.Pending_Stop         := Bit (RBC, 1);
+      DMI_Conditions.RBC_Transition       := Bit (RBC, 2);
+      DMI_Conditions.Length_Confirmed     := Bit (RBC, 3);
+      DMI_Conditions.Consist_Length_Acked := Bit (RBC, 4);
+
+      DMI_Conditions.Standstill         := Bit (Train, 0);
+      DMI_Conditions.Override_Speed_OK  := Bit (Train, 1);
+      DMI_Conditions.Non_Leading_Signal := Bit (Train, 2);
+      DMI_Conditions.Passive_Shunting   := Bit (Train, 3);
+      DMI_Conditions.BMM_Inhibit_Active := Bit (Train, 4);
+
+      DMI_Conditions.NV_Driver_ID_Running := Bit (National, 0);
+      DMI_Conditions.NV_Adhesion          := Bit (National, 1);
+      DMI_Conditions.VBC_Room             := Bit (National, 2);
+      DMI_Conditions.VBC_Stored           := Bit (National, 3);
+
+      DMI_Conditions.Start_Of_Mission :=
+        (case SOM is
+            when 1      => Awaiting_Session_End,
+            when 2      => Initiated,
+            when others => No_Mission_Start);
+
+      DMI_Conditions.Waiting :=
+        (case Wait_Raw is
+            when 0      => Nothing,
+            when 1      => Radio_Network,
+            when 3      => Authorisation,
+            when others => RBC_Answer);
+
+      DMI_Conditions.Start_Pending := Start /= 0;
+
+      DMI_Windows.Onboard_State_Changed;
+   end Apply_Onboard;
 
    --------------------
    -- Handle_Message --
@@ -967,7 +1019,7 @@ package body DMI_Core is
 
       if The_Type in MSG_SPEED_STATE | MSG_MODE_LEVEL | MSG_TEXT
                    | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
-                   | MSG_PLANNING
+                   | MSG_PLANNING | MSG_ONBOARD
       then
          Note_EVC_Message;
       end if;
@@ -1000,6 +1052,10 @@ package body DMI_Core is
          when MSG_STATUS =>
             if Payload'Length = Status_Length then
                Apply_Status (Payload);
+            end if;
+         when MSG_ONBOARD =>
+            if Payload'Length = Onboard_Length then
+               Apply_Onboard (Payload);
             end if;
          when MSG_PLANNING =>
             Apply_Planning (Payload);
@@ -1035,6 +1091,12 @@ package body DMI_Core is
       end if;
 
       DMI_Text_Messages.Tick;
+      -- DMI 11.2.1.6: movement of the hour glass ST05
+      DMI_Conditions.Tick (Dt_Ms);
+      -- DMI 11.7.1.7 and Table 48: an enabling condition of an open data
+      -- entry / validation window that is not fulfilled anymore stops
+      -- the process and shows the parent window
+      DMI_Windows.Check_Enabling_Conditions;
       -- DMI 5.1.1.3.2: before DMI_Ack.Tick, which restarts the phase for
       -- a request it displays now
       DMI_Flash.Tick (Dt_Ms);
@@ -1227,11 +1289,14 @@ package body DMI_Core is
    -- Take_Outbox --
    -----------------
 
-   procedure Take_Outbox (Buffer : out Stream_Element_Array;
-                          Last   : out Stream_Element_Offset) is
+   procedure Take_Outbox (Buffer      : out Stream_Element_Array;
+                          Last        : out Stream_Element_Offset;
+                          With_Sounds : Boolean := True) is
       Count : Stream_Element_Offset;
    begin
-      Collect_Sounds;
+      if With_Sounds then
+         Collect_Sounds;
+      end if;
       Count := Stream_Element_Offset'Min (Outbox_Filled, Buffer'Length);
       Buffer (Buffer'First .. Buffer'First + Count - 1) := Outbox (1 .. Count);
       Last := Buffer'First + Count - 1;

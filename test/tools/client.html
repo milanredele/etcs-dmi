@@ -114,6 +114,7 @@
       // Protocol v2 (see src/dmi_protocol.ads)
       const MSG_SPEED_STATE = 0x01;
       const MSG_MODE_LEVEL = 0x02;
+      const MSG_ONBOARD = 0x0A;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_POINTER = 0x50;
       const MSG_FRAME = 0x60;
@@ -485,6 +486,26 @@
         socket.send(buf);
       }
 
+      // MSG_ONBOARD (dmi_protocol.ads): the on-board state behind the
+      // enabling conditions of Tables 33 to 36. The panel has no fields
+      // for it: it reports a standing train with valid driver's data and
+      // no RBC, and a start of mission while the mode is SB, so that the
+      // Start Up dialogue sequence can be driven by hand.
+      function sendOnboard() {
+        const { buf, dv } = makeMessage(MSG_ONBOARD, 8);
+        const standing = val('speed') === 0;
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, 0x0F); o += 1;
+        dv.setUint8(o, 0); o += 1;
+        dv.setUint8(o, 0); o += 1;
+        dv.setUint8(o, (standing ? 1 : 0) | 2); o += 1;
+        dv.setUint8(o, 2); o += 1;
+        dv.setUint8(o, val('mode') === 1 ? 2 : 0); o += 1;
+        dv.setUint8(o, 0); o += 1;
+        dv.setUint8(o, 0);
+        socket.send(buf);
+      }
+
       function manualMode() {
         return document.getElementById('source').value === 'manual';
       }
@@ -495,6 +516,7 @@
         if (!manualMode()) return;
         sendSpeedState();
         sendModeLevel();
+        sendOnboard();
       }
 
       function sendDesk() {
