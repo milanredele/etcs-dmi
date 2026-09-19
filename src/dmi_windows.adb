@@ -4,8 +4,10 @@
 pragma Ada_2012;
 with Display.Draw;
 with Display.Screen;
+with DMI_Ack;
 with DMI_Driver_Data;
 with General_Parameters;
+with Speed_And_Distance;
 with Supplementary_Driving_Info;
 with Symbol;
 
@@ -24,9 +26,16 @@ package body DMI_Windows is
    Stack : array (1 .. 8) of Window_ID_T;
    Depth : Natural := 0;
 
-   -- Start-up dialogue sequence (11.7.2, simplified): Driver ID ->
-   -- Level -> Train data (+ validation) -> TRN -> mission start
+   package SDI renames Supplementary_Driving_Info;
+
+   -- Start Up dialogue sequence (11.7.2.4, Table 49): S1 Driver ID -> D2
+   -- -> S2 Level -> S10, which is S1 of the Main window dialogue sequence
+   -- (11.7.3.3, Table 50). True from S1 until S10 is reached.
    Sequence_Active : Boolean := False;
+
+   -- 'Start' was pressed and the EVC has not answered the request yet
+   -- (see Start_Enabled)
+   Start_Pending : Boolean := False;
 
    ---------------------------------------------------------------------
    -- Outbound action queue
@@ -200,7 +209,42 @@ package body DMI_Windows is
 
    No_Button : constant Label_T := (others => <>);
 
-   function Menu_Def (ID : Window_ID_T) return Menu_Def_T is
+   -- 11.2.1.4, Table 33, button 1. The DMI evaluates what it knows:
+   -- standstill, the mode, the level and the status of the driver's data.
+   -- The conditions about the communication session, the train data
+   -- acknowledgement of the RBC and a pending emergency stop belong to
+   -- the EVC and the protocol does not carry them: they are taken as
+   -- fulfilled here and the EVC arbitrates the request (implementation
+   -- choice). 'Start' is pressed once: it stays disabled while the
+   -- request is pending, until DMI_Core reports the answer of the EVC
+   -- (Start_Request_Closed); once the mission runs the mode condition
+   -- keeps it disabled.
+   function Start_Enabled return Boolean is
+      use DMI_Driver_Data;
+      use type SDI.Mode_T;
+      use type SDI.Level_T;
+      use type Speed_And_Distance.Speed_T;
+      Standstill : constant Boolean := Speed_And_Distance.Get_Speed = 0;
+   begin
+      if Start_Pending then
+         return False;
+      end if;
+      case SDI.Mode is
+         when SDI.M_SB =>
+            return Standstill and then Driver_ID_Entered
+              and then Train_Data_Entered and then Level_Entered
+              and then TRN_Entered;
+         when SDI.M_PT =>
+            return Standstill and then Train_Data_Entered
+              and then SDI.Level in SDI.L1 | SDI.L2;
+         when SDI.M_SR =>
+            return SDI.Level = SDI.L2;
+         when others =>
+            return False;
+      end case;
+   end Start_Enabled;
+
+   function Static_Menu_Def (ID : Window_ID_T) return Menu_Def_T is
       Volume_Img : constant Wide_String :=
         General_Parameters.Loudspeaker_Volume_T'Wide_Image
           (General_Parameters.Loudspeaker_Volume);
@@ -210,8 +254,9 @@ package body DMI_Windows is
    begin
       case ID is
          when W_Main =>
-            -- 11.2.1, Table 33 (enabling simplified: EVC arbitrates)
-            return (1 => B ("Start"),
+            -- 11.2.1, Table 33 (enabling of the buttons other than
+            -- 'Start' simplified: EVC arbitrates)
+            return (1 => B ("Start", Enabled => Start_Enabled),
                     2 => B ("Driver ID"),
                     3 => B ("Train data"),
                     4 => No_Button,
@@ -263,6 +308,23 @@ package body DMI_Windows is
          when others =>
             return (others => No_Button);
       end case;
+   end Static_Menu_Def;
+
+   function Menu_Def (ID : Window_ID_T) return Menu_Def_T is
+      Result : Menu_Def_T := Static_Menu_Def (ID);
+   begin
+      -- 11.2.1.4, 11.2.2.4, 11.2.3.4, 11.2.4.4: the buttons of these
+      -- windows are enabled only while no driver's acknowledgement is
+      -- required (displayed or waiting, 5.4.1.9); so no data entry can be
+      -- started under a pending acknowledgement (5.4.1.11)
+      if ID in W_Main | W_Override | W_Special | W_Settings
+        and then DMI_Ack.Pending_Count > 0
+      then
+         for I in Result'Range loop
+            Result (I).Enabled := False;
+         end loop;
+      end if;
+      return Result;
    end Menu_Def;
 
    ---------------------------------------------------------------------
@@ -369,22 +431,102 @@ package body DMI_Windows is
       end if;
    end Open;
 
-   procedure Close_Top is
+   -- Back to the parent window
+   procedure Pop is
    begin
       if Depth > 0 then
          Depth := Depth - 1;
       end if;
-      if Depth = 0 then
-         Sequence_Active := False;
+   end Pop;
+
+   procedure To_Default_Window is
+   begin
+      Depth := 0;
+      Sequence_Active := False;
+   end To_Default_Window;
+
+   -- 11.7.2.2: [Close] is disabled in the windows presented before S10
+   -- (S1 Driver ID and S2 Level; the excepted steps S1-1, S1-2, S3-2-2,
+   -- S3-3 and S3-4 are windows that do not exist here). 11.7.3.2: enabled
+   -- in the Main window sequence except S5-2-1, S5-2-3, S7, S8 and S9,
+   -- the steps waiting for the radio network or the RBC, which do not
+   -- exist here either.
+   function Close_Enabled return Boolean is (not Sequence_Active);
+
+   procedure Close_Top is
+   begin
+      if Close_Enabled then
+         Pop;
       end if;
    end Close_Top;
 
    procedure Close_All is
    begin
-      Depth := 0;
-      Sequence_Active := False;
+      To_Default_Window;
+      Start_Pending := False;
       Action_Count := 0;
    end Close_All;
+
+   -- Table 49 S10: the Start Up sequence ends in S1 of the Main window
+   -- dialogue sequence
+   procedure Reach_S10 is
+   begin
+      To_Default_Window;
+      Open (W_Main);
+   end Reach_S10;
+
+   procedure Engage_Start_Up is
+   begin
+      -- SUBSET-026 4.10.1.3: entering SB the Driver ID, the train data
+      -- and the train running number are to be revalidated (status
+      -- "invalid"), the level keeps its status. The stored values stay
+      -- and are proposed in the windows (11.7.1.4).
+      DMI_Driver_Data.Driver_ID_Entered := False;
+      DMI_Driver_Data.Train_Data_Entered := False;
+      DMI_Driver_Data.TRN_Entered := False;
+      To_Default_Window;
+      Start_Pending := False;
+      -- Table 49 S1
+      Sequence_Active := True;
+      Open (W_Driver_ID);
+   end Engage_Start_Up;
+
+   procedure Abort_Start_Up is
+   begin
+      -- The specification does not say what happens to the sequence when
+      -- SB is left before S10 (e.g. to SL or SF). Implementation choice:
+      -- the sequence ends with the default window, so that its windows
+      -- with the disabled [Close] cannot stay.
+      if Sequence_Active then
+         To_Default_Window;
+      end if;
+   end Abort_Start_Up;
+
+   function In_Start_Up return Boolean is (Sequence_Active);
+
+   -- The windows of Table 48 that take data: the data entry windows of
+   -- 11.3 (Level, Adhesion, Volume and Brightness are modelled as menus
+   -- here, audit WIN-10) and the validation window
+   function Is_Entry_Window (ID : Window_ID_T) return Boolean is
+     (Kind_Of (ID) in Data_Entry | Validation
+      or else ID in W_Level | W_Adhesion | W_Volume | W_Brightness);
+
+   function Entry_Open return Boolean is
+     (Depth > 0 and then Is_Entry_Window (Stack (Depth)));
+
+   procedure Stop_Entry is
+   begin
+      -- 11.7.1.9: the values of the input fields are dropped with the
+      -- window; the validation window goes with its train data window
+      while Depth > 0 and then Is_Entry_Window (Stack (Depth)) loop
+         Pop;
+      end loop;
+   end Stop_Entry;
+
+   procedure Start_Request_Closed is
+   begin
+      Start_Pending := False;
+   end Start_Request_Closed;
 
    function Is_Open return Boolean is (Depth > 0);
 
@@ -403,21 +545,28 @@ package body DMI_Windows is
             Driver_ID := Entry_State.Values (1);
             Driver_ID_Entered := True;
             Queue (Send_Driver_ID);
-            Close_Top;
+            Pop;
             if Sequence_Active then
-               Open (W_Level);
+               -- Table 49 E1 -> D2: the DMI does not know the status of
+               -- the position; a valid level leads to D3 (implementation
+               -- choice), any other to S2. D3 with level 2 -> D7 -> A31 /
+               -- S4: the radio network and RBC steps do not exist yet
+               -- (P3, audit WIN-11 / WIN-12) and are skipped to S10.
+               if Level_Entered then
+                  Reach_S10;
+               else
+                  Open (W_Level);
+               end if;
             end if;
+            -- Table 50 S2: back to S1, the Main window below
          when W_TRN =>
             TRN := Entry_State.Values (1);
             TRN_Entered := True;
             Queue (Send_TRN);
-            Close_Top;
-            if Sequence_Active then
-               -- 11.7.2 (simplified): the sequence ends with the mission
-               -- start request
-               Sequence_Active := False;
-               Queue (Start_Mission);
-            end if;
+            -- Table 50 S6 and S3-3 -> D1: back to S1, the Main window
+            -- (D2, D8 and S9, waiting for the RBC, are skipped: P3). The
+            -- mission start is the driver's: 'Start' in the Main window.
+            Pop;
          when W_Train_Data =>
             Train_Length := Value_Of (1);
             Brake_Pct := Value_Of (2);
@@ -428,7 +577,7 @@ package body DMI_Windows is
             SR_Speed := Value_Of (1);
             SR_Dist := Value_Of (2);
             Queue (Send_SR_Data);
-            Close_Top;
+            Pop;
          when others =>
             null;
       end case;
@@ -480,34 +629,33 @@ package body DMI_Windows is
          when W_Main =>
             case Index is
                when 1 => -- Start
-                  if Driver_ID_Entered and Level_Entered
-                    and Train_Data_Entered and TRN_Entered
-                  then
+                  -- Table 50 S1: with level 0, 1 or NTC back to the
+                  -- default window; with level 2 D7 -> S7 waits for the
+                  -- RBC with the hour glass (P3, audit WIN-11): skipped,
+                  -- the default window as well
+                  if Start_Enabled then
                      Queue (Start_Mission);
-                     Close_Top;
-                  else
-                     -- 11.7.2: run the start up dialogue sequence
-                     Sequence_Active := True;
-                     Open (W_Driver_ID);
+                     Start_Pending := True;
+                     To_Default_Window;
                   end if;
                when 2 => Open (W_Driver_ID);
                when 3 => Open (W_Train_Data);
                when 5 => Open (W_Level);
                when 6 => Open (W_TRN);
-               when 7 => Queue (SH_Request); Close_Top;
-               when 8 => Queue (Non_Leading); Close_Top;
+               when 7 => Queue (SH_Request); Pop;
+               when 8 => Queue (Non_Leading); Pop;
                when others => null;
             end case;
          when W_Override =>
             if Index = 1 then
                Queue (Override_EOA);
-               Close_Top;
+               Pop;
             end if;
          when W_Special =>
             case Index is
                when 1 => Open (W_Adhesion);
                when 2 => Open (W_SR_Data);
-               when 3 => Queue (Train_Integrity); Close_Top;
+               when 3 => Queue (Train_Integrity); Pop;
                when others => null;
             end case;
          when W_Settings =>
@@ -527,16 +675,21 @@ package body DMI_Windows is
                if Level > 0 then
                   Level_Entered := True;
                   Queue (Level_Selected, Level);
-                  Close_Top;
+                  Pop;
                   if Sequence_Active then
-                     Open (W_Train_Data);
+                     -- Table 49 S2: level 0, 1 or NTC -> S10; level 2 ->
+                     -- S3-1 Radio data window, which does not exist yet
+                     -- (P3, audit WIN-12): skipped to S10
+                     Reach_S10;
                   end if;
+                  -- Table 50 S4: back to S1, the Main window (level 2:
+                  -- D5 -> S8 / S5-1 skipped likewise)
                end if;
             end;
          when W_Adhesion =>
             if Index in 1 .. 2 then
                Queue (Adhesion_Set, (if Index = 2 then 1 else 0));
-               Close_Top;
+               Pop;
             end if;
          when W_Volume =>
             if Index = 1 and then Loudspeaker_Volume > 0 then
@@ -571,13 +724,15 @@ package body DMI_Windows is
             if Index = Validation_Yes then
                Train_Data_Entered := True;
                Queue (Send_Train_Data);
-               Close_Top; -- validation
-               Close_Top; -- train data entry
-               if Sequence_Active then
+               Pop; -- validation
+               Pop; -- train data entry
+               -- Table 50 D6: a train running number that is not valid is
+               -- requested next (S3-3), otherwise D1 -> S1 Main window
+               if not TRN_Entered then
                   Open (W_TRN);
                end if;
             elsif Index = Validation_No then
-               Close_Top; -- back to the train data entry window
+               Pop; -- Table 50 S3-2: back to S3-1, the train data window
             end if;
          when View =>
             null;
@@ -601,15 +756,24 @@ package body DMI_Windows is
 
    procedure Draw_Close (Pressed : Boolean) is
       Close_Area : constant Area_T := Close_Button_Area;
+      -- 5.3.2.5.5 a: the disabled [Close] shows NA12 (chapter 13)
+      Enabled    : constant Boolean := Close_Enabled;
+      Width      : constant Natural :=
+        (if Enabled then Symbol.NA_11.Width else Symbol.NA_12.Width);
+      Height     : constant Natural :=
+        (if Enabled then Symbol.NA_11.Height else Symbol.NA_12.Height);
+      Position   : constant Position_T :=
+        Close_Area.Position
+          + ((Close_Area.Width - Width) / 2, (Close_Area.Height - Height) / 2);
    begin
       if not Pressed then
          Draw.Draw_Button_Frame (Close_Area);
       end if;
-      Draw.Draw_Symbol
-        (Symbol.NA_11,
-         Close_Area.Position
-           + ((Close_Area.Width - Symbol.NA_11.Width) / 2,
-              (Close_Area.Height - Symbol.NA_11.Height) / 2));
+      if Enabled then
+         Draw.Draw_Symbol (Symbol.NA_11, Position);
+      else
+         Draw.Draw_Symbol (Symbol.NA_12, Position);
+      end if;
    end Draw_Close;
 
    procedure Draw_Labelled_Button (The_Area : Area_T;

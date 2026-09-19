@@ -71,7 +71,13 @@ package DMI_Ack is
    -- The driver acknowledged the currently displayed request
    procedure Acknowledge_Current;
 
-   procedure Tick (Dt_Ms : Natural);
+   -- Hold: no request can be displayed now (5.4.1.1.2 with 5.4.1.11):
+   -- the Start Up dialogue sequence is running (11.7.1.8) or a data entry
+   -- / validation process has just been stopped for a request (11.7.1.9).
+   -- A displayed request is withdrawn and stays the head of the queue;
+   -- the head is displayed 1 second after the last Tick with Hold. The
+   -- queue and its order are not touched.
+   procedure Tick (Dt_Ms : Natural; Hold : Boolean := False);
 
    -- What is currently offered for acknowledgement
    function Current_Valid return Boolean;

@@ -45,11 +45,35 @@ package DMI_Windows is
       Send_SR_Data);
 
    procedure Open (ID : Window_ID_T);
+   -- The driver pressed [Close]; ignored where [Close] is disabled
    procedure Close_Top;
    procedure Close_All;
    function Is_Open return Boolean;
    function Top return Window_ID_T
      with Pre => Is_Open;
+
+   -- Start Up dialogue sequence (11.7.2, Table 49). It is engaged by the
+   -- on-board conditions of S0, not by a button: DMI_Core calls
+   -- Engage_Start_Up when the EVC reports the entry into mode SB and
+   -- Abort_Start_Up when SB is left before the sequence reached S10.
+   -- The sequence is S1 Driver ID, S2 Level (when the level is not
+   -- valid), S10 = S1 of the Main window dialogue sequence (11.7.3).
+   procedure Engage_Start_Up;
+   procedure Abort_Start_Up;
+   function In_Start_Up return Boolean;
+
+   -- 11.7.2.2 / 11.7.3.2: [Close] is disabled before S10 of Start Up
+   function Close_Enabled return Boolean;
+
+   -- 11.7.1.9: a data entry or validation window is displayed / stop
+   -- the process and present the parent window instead
+   function Entry_Open return Boolean;
+   procedure Stop_Entry;
+
+   -- The 'Start' request is no longer pending on the EVC side (the mode
+   -- changed or the proposed mode was withdrawn): 'Start' can be enabled
+   -- again when Table 33 allows it
+   procedure Start_Request_Closed;
 
    function Window_Area return Display.Area_T;
    function Close_Button_Area return Display.Area_T;

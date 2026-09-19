@@ -193,12 +193,22 @@ package body DMI_Ack is
       end if;
    end Acknowledge_Current;
 
-   procedure Tick (Dt_Ms : Natural) is
+   procedure Tick (Dt_Ms : Natural; Hold : Boolean := False) is
    begin
       -- what arrived during the last cycle is now in FIFO order
       for I in 1 .. Count loop
          Queue (I).Fresh := False;
       end loop;
+      if Hold then
+         -- DMI 11.7.1.8 / 11.7.1.9: the acknowledgement appears 1 s after
+         -- the end of the Start Up sequence / after the parent window
+         -- replaced the stopped data entry
+         Displayed := False;
+         if Count > 0 then
+            Gap_Left_Ms := Gap_Ms;
+         end if;
+         return;
+      end if;
       if Gap_Left_Ms > 0 then
          Gap_Left_Ms := (if Dt_Ms >= Gap_Left_Ms then 0 else Gap_Left_Ms - Dt_Ms);
       end if;
