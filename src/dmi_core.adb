@@ -117,7 +117,13 @@ package body DMI_Core is
                 when Fixed_Text | Plain_Text | System_Status | NTC_Text =>
                    -- 8.2.3.4.8 b: the full E5-E9 block
                    (Display.Get_Area (Display.E).Position + (54, 0), 234, 100)),
-            DMI_Buttons.Up_Type);
+            -- 5.4.1.3: up-type unless stated otherwise; 8.2.3.1.4: with
+            -- MO10 (acknowledgement for SR) a delay-type button
+            -- (5.3.2.6.6, DMI_Buttons)
+            (if DMI_Ack.Current_Kind = Mode_Change
+               and then DMI_Ack.Current_Mode = SDI.M_SR
+             then DMI_Buttons.Delay_Type
+             else DMI_Buttons.Up_Type));
       else
          DMI_Buttons.Set_Inactive (BTN_Ack);
       end if;
