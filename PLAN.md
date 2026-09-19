@@ -337,7 +337,7 @@ ROB-5 pass.
 
 ### P1 — What is shown and sounded must be right
 7. **SDI-1** Text wrapping by pixel width at word boundaries; clip to area E5–E9.
-8. **SUP-1** (do first: it also reduces known issue KI-1, AD with IntS, to a guard against an inconsistent EVC) Let
+8. **SUP-1** (do first; the simulator then has to leave AD on a brake command, SUBSET-026 4.6.3 [24], see known issue KI-1) Let
    the EVC send the supervision status (protocol change) instead of
    deriving it from integer speeds; this also settles **SUP-3** and **SUP-4** (S1/S2
    edge cases). **SUP-2**, **SDI-4**, **SUP-5**: the missing and the superfluous Sinfo.

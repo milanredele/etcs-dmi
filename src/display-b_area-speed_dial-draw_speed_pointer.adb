@@ -135,12 +135,13 @@ procedure Draw_Speed_Pointer is
             -- plain CSM shown grey.
             --
             -- Known issue KI-1 (doc/AUDIT-2026-09.md): the four AD rows with
-            -- IntS hold hyphens only. IntS is presumed not applicable in AD
-            -- (a brake command ends automatic driving), but this text exempts
-            -- AD in TSM alone (7.4.5.1.1), and SUBSET-026 is not checked yet.
-            -- Defensive fallback for the presumably unreachable state: the
-            -- pointer stays, in the AD base colour grey, so the driver never
-            -- loses the current speed. (The CSG is not drawn, Table 9.)
+            -- IntS hold hyphens only, because the state cannot occur: IntS
+            -- always comes with a brake command, and a brake command takes
+            -- the on-board from AD to FS (SUBSET-026 4.6.3 condition [24];
+            -- 4.4.16.1.4 for the SBI limit in TSM). Defensive fallback for an
+            -- inconsistent input: the pointer stays, in the AD base colour
+            -- grey, so the driver never loses the current speed. (The CSG is
+            -- not drawn, Table 9.)
             case Get_Monitoring_Mode is
                when CSM =>
                   if Get_CSM_Target_Info then
