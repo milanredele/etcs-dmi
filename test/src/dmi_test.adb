@@ -2597,7 +2597,7 @@ procedure DMI_Test is
       Press (410, 140);          -- Train data
       Press (385, 240); Press (589, 40);   -- length 1
       Press (385, 240); Press (589, 90);   -- brake percentage 1
-      Press (385, 240); Press (589, 140);   -- maximum speed 1
+      Press (487, 290); Press (589, 140);   -- maximum speed 5 (10.3.4.3)
       Press (167, 440);                     -- entry complete? -> validation
       Check (Top_Is (DMI_Windows.W_Train_Data_Validation),
              "validation window open");
@@ -2985,15 +2985,17 @@ procedure DMI_Test is
       -- 10.3.1.26: the data part of an input field that is not selected
       -- selects it as well
       Press (Data_X, Field_Y (3));
-      Press (487, 240);                       -- 2 into field 3
-      Check (Value_Of (3) = "2" and then Value_Of (2) = "",
+      -- the maximum speed has a resolution of 5 km/h (10.3.4.3,
+      -- SUBSET-026 7.5.1.160 V_MAXTRAIN)
+      Press (487, 290);                       -- 5 into field 3
+      Check (Value_Of (3) = "5" and then Value_Of (2) = "",
              "the data part of another field selects it");
 
       -- 10.3.1.24 / 10.3.1.25: accepting the last input field selects
       -- the first one again, the list is circular
       Press (Data_X, Field_Y (3));
       Press (589, 240);                       -- 3 into the selected field
-      Check (Value_Of (1) = "3" and then Value_Of (3) = "2",
+      Check (Value_Of (1) = "3" and then Value_Of (3) = "5",
              "the field after the last one is the first one");
 
       -- 10.3.1.19: the first key press replaces the data value
@@ -3049,7 +3051,7 @@ procedure DMI_Test is
       Press (410, 140);                       -- Train data
       Press (385, 240); Press (589, 40);      -- length 1
       Press (385, 240); Press (589, 90);      -- brake percentage 1
-      Press (385, 240); Press (589, 140);     -- maximum speed 1
+      Press (487, 290); Press (589, 140);     -- maximum speed 5 (10.3.4.3)
       Press (167, 440);                       -- entry complete? -> validation
       Check (DMI_Windows.Top = DMI_Windows.W_Train_Data_Validation,
              "the validation window is open");
@@ -3078,6 +3080,148 @@ procedure DMI_Test is
       Drain_Sounds;
       Drain_Outbox;
    end Scenario_Validation_Window;
+
+   ---------------------------------------------------------------------
+   -- Data checks of a data entry window (audit WIN-5: 10.3.4.2 to
+   -- 10.3.4.7, Figure 98, 5.3.2.7.3)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Data_Checks is
+      use type DMI_Windows.Window_ID_T;
+      use type DMI_Data_Entry.Cross_Kind_T;
+
+      Data_X : constant := 589;   -- the data parts of Table 23
+      function Field_Y (I : Positive) return Natural is (15 + (I - 1) * 50 + 25);
+
+      function Value_Of (I : Positive) return Wide_String is
+         V : constant DMI_Driver_Data.Text_Value_T := DMI_Data_Entry.Value (I);
+      begin
+         return V.Text (1 .. V.Length);
+      end Value_Of;
+
+      -- a delay-type activation: 2 s of pressing (5.3.2.6.6)
+      procedure Long_Press (X, Y : Natural) is
+      begin
+         Pointer_Down (X, Y);
+         for I in 1 .. 41 loop
+            Step;
+         end loop;
+         Pointer_Up (X, Y);
+         Step;
+         Drain_Sounds;
+      end Long_Press;
+
+      procedure Short_Press (X, Y : Natural) is
+      begin
+         Pointer_Down (X, Y);
+         for I in 1 .. 10 loop
+            Step;
+         end loop;
+         Pointer_Up (X, Y);
+         Step;
+         Drain_Sounds;
+      end Short_Press;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+      Press (385, 240); Press (487, 90);      -- Driver ID 1
+      Press (410, 90);                        -- Level 1 -> Main window
+      Press (410, 140);                       -- Train data
+
+      -- 10.3.4.2: 5000 m is outside the range of L_TRAIN (0 .. 4095 m,
+      -- SUBSET-026 7.5.1.56)
+      Press (487, 290); Press (487, 390);     -- 5, 0
+      Press (487, 390); Press (487, 390);     -- 0, 0
+      Press (Data_X, Field_Y (1));            -- [Enter]
+      Check (Value_Of (1) = "5000",
+             "the input field out of range still shows the entered value");
+      Step;
+      Check_Frame ("entry_check_technical");
+
+      -- 10.3.4.2.4: [Enter] is disabled until a key is pressed; the
+      -- input field stays selected, so [Delete] works on its entry
+      Press (Data_X, Field_Y (1));
+      Press (385, 390);                       -- [Delete]
+      Check (Value_Of (1) = "500" and then Value_Of (2) = "",
+             "the disabled [Enter] accepted nothing");
+      Press (Data_X, Field_Y (1));            -- 500 m is in range
+
+      -- 10.3.4.3: 141 km/h does not match the 5 km/h resolution of
+      -- V_MAXTRAIN (SUBSET-026 7.5.1.160)
+      Press (Data_X, Field_Y (3));            -- select the third field
+      Press (385, 240); Press (385, 290); Press (385, 240);  -- 141
+      Press (Data_X, Field_Y (3));            -- [Enter]
+      Check (Value_Of (3) = "141", "the wrong resolution is not accepted");
+      Press (385, 390);                       -- a key re-enables [Enter]
+      Press (487, 390);                       -- 140
+      Press (Data_X, Field_Y (3));
+      Check (Value_Of (3) = "140", "140 km/h matches the resolution");
+
+      -- 10.3.4.5: the operational range check; zero is not a nominal
+      -- value for a train length (configuration of the DMI)
+      Press (487, 390);                       -- 0 into the first field
+      Press (Data_X, Field_Y (1));            -- [Enter]
+      Step;
+      Check_Frame ("entry_check_operational");
+      -- 10.3.4.5.5: [Enter] became a delay-type button
+      Short_Press (Data_X, Field_Y (1));
+      Press (385, 290);                       -- 4 is appended to the entry
+      Check (Value_Of (1) = "04" and then Value_Of (2) = "",
+             "a press shorter than 2 s does not overrule the check");
+      -- 10.3.1.20: leaving the field without accepting erases the entry
+      Press (Data_X, Field_Y (2));
+      Press (Data_X, Field_Y (1));
+      Press (385, 290); Press (487, 390); Press (487, 390);  -- 400
+      Press (Data_X, Field_Y (1));            -- accepted -> field 2
+      Press (385, 240); Press (487, 390); Press (487, 390);  -- 100
+      Press (Data_X, Field_Y (2));
+      Check (Value_Of (1) = "400" and then Value_Of (2) = "100"
+             and then Value_Of (3) = "140",
+             "every input field displays a data value");
+
+      -- 10.3.4.4: a technical cross-check rule that is not satisfied
+      -- ('length not greater than maximum speed' is nonsense as a rule,
+      -- it only has to fail: no cross-check rule is configured)
+      DMI_Data_Entry.Cross_Rules (1) :=
+        (Kind => DMI_Data_Entry.Technical_Cross, A => 1, B => 3,
+         Relation => DMI_Data_Entry.Not_Greater);
+      Press (167, 440);                       -- 'Yes' of the question
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "the failed technical cross-check does not complete the entry");
+      Step;
+      Check_Frame ("entry_check_cross");
+      -- 10.3.4.4.4: 'Yes' stays disabled until a value is modified
+      Press (167, 440);
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "the disabled 'Yes' does not react");
+
+      -- 10.3.4.6: the same rule as an operational one is overruled by a
+      -- valid activation of the delay-type 'Yes'
+      DMI_Data_Entry.Cross_Rules (1).Kind := DMI_Data_Entry.Operational_Cross;
+      Press (Data_X, Field_Y (1));            -- select the first field
+      Press (487, 290); Press (487, 390); Press (487, 390);  -- 500
+      Press (Data_X, Field_Y (1));            -- accepted: 'Yes' enabled
+      Press (167, 440);
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "the failed operational cross-check does not complete either");
+      Short_Press (167, 440);
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "a press shorter than 2 s does not overrule the cross-check");
+      Long_Press (167, 440);
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data_Validation,
+             "the delay-type 'Yes' overrules the operational cross-check");
+
+      DMI_Data_Entry.Cross_Rules := (others => (others => <>));
+      Drain_Sounds;
+      Drain_Outbox;
+   end Scenario_Data_Checks;
 
 begin
    Scenario_FS_CSM;
@@ -3123,6 +3267,7 @@ begin
    Scenario_Ack_And_Windows;
    Scenario_Entry_Mechanics;
    Scenario_Validation_Window;
+   Scenario_Data_Checks;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

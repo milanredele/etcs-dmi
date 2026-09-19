@@ -49,11 +49,22 @@ package body DMI_Data_Entry is
    --  (10.3.5.9), Editing whether what is displayed is the value of the
    --  pressed key(s), and Accepted whether the driver accepted the value
    --  during this data entry / validation process (10.3.1.15, 10.3.3.5)
+   --  10.3.4: the outcome of the last data check of this input field,
+   --  which is what its echo text shows instead of the data value
+   type Check_State_T is
+     (No_Check,
+      Technical_Range,       -- 10.3.4.2.2: '++++' in red
+      Technical_Resolution,  -- 10.3.4.3.2: '++++' in red
+      Operational_Range,     -- 10.3.4.5.2: '++++' in yellow
+      Failed_Technical_Cross,    -- 10.3.4.4.2: '????' in red
+      Failed_Operational_Cross); -- 10.3.4.6.2: '????' in yellow
+
    type Field_State_T is record
       Value     : DMI_Driver_Data.Text_Value_T;
       Has_Value : Boolean := False;
       Editing   : Boolean := False;
       Accepted  : Boolean := False;
+      Check     : Check_State_T := No_Check;
    end record;
 
    type Field_State_List_T is array (Field_Index_T) of Field_State_T;
@@ -63,6 +74,10 @@ package body DMI_Data_Entry is
    Current   : Field_Index_T := 1;
    Fields    : Field_State_List_T;
    Completed : Boolean := False;
+
+   --  10.3.4.4.4 / 10.3.4.6.4: the cross-check rule the 'Yes' button of
+   --  the '[Window Title] entry complete?' question last failed
+   Cross_Failed : Cross_Kind_T := No_Cross;
 
    ---------------------------------------------------------------------
    --  Helpers
@@ -116,13 +131,17 @@ package body DMI_Data_Entry is
      (Label    : Wide_String;
       Max_Len  : Natural;
       Keyboard : Keyboard_T := Numeric;
-      Proposed : DMI_Driver_Data.Text_Value_T := (0, (others => ' ')))
+      Proposed : DMI_Driver_Data.Text_Value_T := (0, (others => ' '));
+      Technical   : Check_Rule_T := No_Rule;
+      Operational : Check_Rule_T := No_Rule)
       return Field_Def_T is
    begin
       return (Label    => Pad (Label),
               Keyboard => Keyboard,
               Max_Len  => Natural'Min (Max_Len, DMI_Driver_Data.Max_Field_Len),
-              Proposed => Proposed);
+              Proposed => Proposed,
+              Technical => Technical,
+              Operational => Operational);
    end Field;
 
    ---------------------------------------------------------------------
@@ -134,6 +153,7 @@ package body DMI_Data_Entry is
       Def := Definition;
       Open_Flag := True;
       Completed := False;
+      Cross_Failed := No_Cross;
       --  10.3.1.23: the first input field is selected, the others are not
       Current := 1;
       DMI_Flash.Restart_Cursor;
@@ -143,7 +163,8 @@ package body DMI_Data_Entry is
                         --  driver has not accepted yet (Figure 97)
                         Has_Value => Def.Fields (I).Proposed.Length > 0,
                         Editing   => False,
-                        Accepted  => False);
+                        Accepted  => False,
+                        Check     => No_Check);
       end loop;
    end Open;
 
@@ -168,8 +189,10 @@ package body DMI_Data_Entry is
          if V.Text (I) in '0' .. '9' then
             Result := Result * 10
               + (Wide_Character'Pos (V.Text (I)) - Wide_Character'Pos ('0'));
-            if Result > 99999 then
-               return 99999;
+            --  8 digits is the longest numeric data of chapter 11 (the
+            --  train running number, SUBSET-026 7.5.1.92)
+            if Result > 99_999_999 then
+               return 99_999_999;
             end if;
          end if;
       end loop;
@@ -277,10 +300,23 @@ package body DMI_Data_Entry is
          return Has_Label_Area
            and then Index - Label_First + 1 <= Def.Field_Count;
       elsif Index in Data_First .. Data_First + Max_Fields - 1 then
-         return Index - Data_First + 1 <= Def.Field_Count;
+         if Index - Data_First + 1 > Def.Field_Count then
+            return False;
+         end if;
+         --  10.3.4.2.4, 10.3.4.3.4: the [Enter] button, which is the
+         --  data field of the selected input field, is disabled until
+         --  the state of the input field switches to 'value of pressed
+         --  key(s)'. The data part of another input field still selects
+         --  it, which is no navigation button.
+         return Index - Data_First + 1 /= Current
+           or else Fields (Current).Check not in Technical_Range
+                                               | Technical_Resolution;
       elsif Index = Yes_Button then
-         --  Table 24 objects exist on the total grid array only
-         return Def.Layout = Total_Grid and then All_Fields_Have_Values;
+         --  Table 24 objects exist on the total grid array only;
+         --  10.3.4.4.4: disabled while a technical cross-check fails
+         return Def.Layout = Total_Grid
+           and then All_Fields_Have_Values
+           and then Cross_Failed /= Technical_Cross;
       end if;
       return False;
    end Button_Enabled;
@@ -293,16 +329,84 @@ package body DMI_Data_Entry is
       if Index in Key_First .. Key_Last then
          return DMI_Buttons.Down_Type;
       end if;
-      --  10.3.5.11: the 'Yes' button is an up-type button; 10.3.1.26:
-      --  an input field behaves like an up-type button; 5.3.2.7.3: the
-      --  [Enter] button is up-type (the delay-type of an operational
-      --  data check rule arrives with audit WIN-5)
+      --  5.3.2.7.3, 10.3.4.5.5: the [Enter] button is up-type unless an
+      --  operational data check rule is not satisfied, where it becomes
+      --  a delay-type button so that the driver can overrule it
+      if Index = Data_First + Current - 1
+        and then Fields (Current).Check = Operational_Range
+      then
+         return DMI_Buttons.Delay_Type;
+      end if;
+      --  10.3.4.6.4: likewise the 'Yes' button of the question
+      if Index = Yes_Button and then Cross_Failed = Operational_Cross then
+         return DMI_Buttons.Delay_Type;
+      end if;
+      --  10.3.5.11 / 10.3.1.26: up-type otherwise
       return DMI_Buttons.Up_Type;
    end Button_Kind;
 
    ---------------------------------------------------------------------
    --  Behaviour
    ---------------------------------------------------------------------
+
+   ---------------------------------------------------------------------
+   --  Data checks (10.3.4)
+   ---------------------------------------------------------------------
+
+   --  10.3.4.2: the value of an input field is out of its technical
+   --  permitted range
+   function In_Range (Rule : Check_Rule_T; Val : Natural) return Boolean is
+     (not Rule.Defined or else (Val >= Rule.Min and then Val <= Rule.Max));
+
+   --  10.3.4.3: the value does not match its technical resolution
+   function Matches_Resolution (Rule : Check_Rule_T;
+                                Val  : Natural) return Boolean is
+     (not Rule.Defined or else Rule.Resolution <= 1
+      or else Val mod Rule.Resolution = 0);
+
+   --  Figure 98: the checks of one input field, in sequence, when the
+   --  driver accepts its value. No_Check means every rule is satisfied.
+   function Check_Field (Index : Field_Index_T) return Check_State_T is
+      F   : Field_Def_T renames Def.Fields (Index);
+      Val : constant Natural := Number (Index);
+   begin
+      if not In_Range (F.Technical, Val) then
+         return Technical_Range;
+      elsif not Matches_Resolution (F.Technical, Val) then
+         return Technical_Resolution;
+      --  10.3.4.5.1: the operational check runs only when the technical
+      --  one, if any, is satisfied
+      elsif not In_Range (F.Operational, Val) then
+         return Operational_Range;
+      end if;
+      return No_Check;
+   end Check_Field;
+
+   function Rule_Holds (Rule : Cross_Rule_T) return Boolean is
+     (Rule.A > Def.Field_Count or else Rule.B > Def.Field_Count
+      or else (case Rule.Relation is
+                  when Not_Greater => Number (Rule.A) <= Number (Rule.B),
+                  when Not_Less    => Number (Rule.A) >= Number (Rule.B)));
+
+   --  10.3.4.4.1 / 10.3.4.6.1: on a valid activation of the 'Yes'
+   --  button the cross-check rules are executed in sequence, the
+   --  technical ones first and the operational ones only if every
+   --  technical one is satisfied. The first failing rule marks the input
+   --  fields it concerns; No_Cross means all rules are satisfied.
+   function Run_Cross_Checks (Kind : Cross_Kind_T) return Boolean is
+      Mark : constant Check_State_T :=
+        (if Kind = Technical_Cross then Failed_Technical_Cross
+         else Failed_Operational_Cross);
+   begin
+      for R of Cross_Rules loop
+         if R.Kind = Kind and then not Rule_Holds (R) then
+            Fields (R.A).Check := Mark;
+            Fields (R.B).Check := Mark;
+            return False;
+         end if;
+      end loop;
+      return True;
+   end Run_Cross_Checks;
 
    --  10.3.1.21, 10.3.1.24: the entered value replaces the current data
    --  value, the input field goes to the 'accepted' state and the next
@@ -313,13 +417,35 @@ package body DMI_Data_Entry is
    --  Tables 49 and 50 expect of the Driver ID and train running number
    --  windows).
    procedure Accept_Value is
+      S : Field_State_T renames Fields (Current);
    begin
-      if Fields (Current).Value.Length = 0 then
+      if S.Value.Length = 0 then
          return; -- nothing to accept
       end if;
-      Fields (Current).Has_Value := True;
-      Fields (Current).Editing := False;
-      Fields (Current).Accepted := True;
+      if S.Check = Operational_Range then
+         --  10.3.4.5.6: a valid activation of the delay-type [Enter]
+         --  makes the entered value permitted
+         S.Check := No_Check;
+      else
+         S.Check := Check_Field (Current);
+         if S.Check /= No_Check then
+            --  10.3.4.2.3, 10.3.4.3.3, 10.3.4.5.3: the input field stays
+            --  selected and still shows the entered data value
+            return;
+         end if;
+      end if;
+      S.Has_Value := True;
+      S.Editing := False;
+      S.Accepted := True;
+      --  10.3.4.4.4: a modified data value re-enables the 'Yes' button
+      Cross_Failed := No_Cross;
+      for I in Field_Index_T loop
+         if Fields (I).Check in Failed_Technical_Cross
+                              | Failed_Operational_Cross
+         then
+            Fields (I).Check := No_Check;
+         end if;
+      end loop;
       if Def.Layout /= Total_Grid then
          --  10.6.1.3 a for the validation window; a half grid array
          --  window has no 'Yes' button either
@@ -346,7 +472,8 @@ package body DMI_Data_Entry is
          Fields (Current) := (Value     => (0, (others => ' ')),
                               Has_Value => False,
                               Editing   => False,
-                              Accepted  => False);
+                              Accepted  => False,
+                              Check     => No_Check);
       end if;
       Current := Index;
       DMI_Flash.Restart_Cursor;
@@ -376,6 +503,10 @@ package body DMI_Data_Entry is
          S.Editing := True;
          S.Has_Value := False;
       end if;
+      --  Figure 98: a key press takes the input field back to 'Selected
+      --  IF / value of pressed key(s)', where [Enter] is enabled and
+      --  up-type again (10.3.4.2.4, 10.3.4.3.4, 10.3.4.5.4)
+      S.Check := No_Check;
       case F.Keyboard is
          when Numeric =>
             case Index is
@@ -425,7 +556,23 @@ package body DMI_Data_Entry is
          end if;
       elsif Index = Yes_Button then
          --  10.3.5.7: the driver confirms the data entry complete
-         Completed := True;
+         if Cross_Failed = Operational_Cross then
+            --  10.3.4.6.5: a valid activation of the delay-type 'Yes'
+            --  makes the values concerned permitted
+            Cross_Failed := No_Cross;
+            for I in Field_Index_T loop
+               if Fields (I).Check = Failed_Operational_Cross then
+                  Fields (I).Check := No_Check;
+               end if;
+            end loop;
+            Completed := True;
+         elsif not Run_Cross_Checks (Technical_Cross) then
+            Cross_Failed := Technical_Cross;
+         elsif not Run_Cross_Checks (Operational_Cross) then
+            Cross_Failed := Operational_Cross;
+         else
+            Completed := True;
+         end if;
       end if;
    end Press;
 
@@ -550,7 +697,7 @@ package body DMI_Data_Entry is
    --  total grid array
    procedure Draw_Entry_Complete is
       use General_Parameters;
-      Enabled : constant Boolean := All_Fields_Have_Values;
+      Enabled : constant Boolean := Button_Enabled (Yes_Button);
    begin
       --  The text and the label are centred in their 334 cell area as
       --  Figure 100 shows them (implementation choice: 5.1.3.1 would
@@ -584,11 +731,28 @@ package body DMI_Data_Entry is
    procedure Draw_Echo_Line (Line     : Positive;
                              Label    : Wide_String;
                              Val      : Wide_String;
-                             Accepted : Boolean) is
+                             Accepted : Boolean;
+                             Check    : Check_State_T := No_Check) is
       use General_Parameters;
       Y : constant Natural := Grid_Origin.Y + 112 + (Line - 1) * 24;
       --  10.3.3.5: white once the driver accepted the value
       Ink : constant Color := (if Accepted then WHITE else GREY);
+      --  10.3.3.4: an inconsistent data value gives way to the type of
+      --  the inconsistency (10.3.4.2.2, 10.3.4.3.2, 10.3.4.5.2 in red or
+      --  yellow '++++'; 10.3.4.4.2, 10.3.4.6.2 '????')
+      Data_Ink : constant Color :=
+        (case Check is
+            when No_Check => Ink,
+            when Technical_Range | Technical_Resolution
+               | Failed_Technical_Cross => RED,
+            when Operational_Range | Failed_Operational_Cross => YELLOW);
+      Data_Text : constant Wide_String :=
+        (case Check is
+            when No_Check => Val,
+            when Technical_Range | Technical_Resolution
+               | Operational_Range => "++++",
+            when Failed_Technical_Cross
+               | Failed_Operational_Cross => "????");
    begin
       Draw.Draw_String
         (Pen_X => 204 - 5, Pen_Y => Y,
@@ -596,7 +760,7 @@ package body DMI_Data_Entry is
          The_Alignment => Draw.Right);
       Draw.Draw_String
         (Pen_X => 204 + 5, Pen_Y => Y,
-         The_String => Val, The_Size => 12, The_Color => Ink);
+         The_String => Data_Text, The_Size => 12, The_Color => Data_Ink);
    end Draw_Echo_Line;
 
    procedure Draw_Echo_Texts is
@@ -614,7 +778,7 @@ package body DMI_Data_Entry is
             Draw_Echo_Line
               (I, Trim (Def.Fields (I).Label),
                Fields (I).Value.Text (1 .. Fields (I).Value.Length),
-               Fields (I).Accepted);
+               Fields (I).Accepted, Fields (I).Check);
          end loop;
       end if;
    end Draw_Echo_Texts;

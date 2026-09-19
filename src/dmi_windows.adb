@@ -333,30 +333,63 @@ package body DMI_Windows is
          return R;
       end Image_Value;
 
+      -- 10.3.4.1.2: the permitted ranges and resolutions are configured
+      -- in the on-board and the protocol does not carry them, so the DMI
+      -- holds what the specifications state for the data themselves:
+      -- the technical rules are the ranges and resolutions of the
+      -- ERTMS/ETCS variables of SUBSET-026 chapter 7. An operational
+      -- range is an operating rule and belongs to the on-board too; the
+      -- only one the DMI can state by itself is that zero is not a
+      -- nominal value for a train length, a brake percentage or a
+      -- maximum speed (implementation choice, see the report).
+      Train_Length_Rule : constant Check_Rule_T :=  -- L_TRAIN, 7.5.1.56
+        (Defined => True, Min => 0, Max => 4095, Resolution => 1);
+      Max_Speed_Rule : constant Check_Rule_T :=     -- V_MAXTRAIN, 7.5.1.160
+        (Defined => True, Min => 0, Max => 600, Resolution => 5);
+      TRN_Rule : constant Check_Rule_T :=       -- NID_OPERATIONAL, 7.5.1.92
+        (Defined => True, Min => 0, Max => 99_999_999, Resolution => 1);
+
+      function Not_Zero (Rule : Check_Rule_T; Top : Natural)
+                         return Check_Rule_T is
+        ((Defined    => True,
+          Min        => Natural'Max (Rule.Resolution, 1),
+          Max        => (if Rule.Defined then Rule.Max else Top),
+          Resolution => 1));
+
       Result : Window_Def_T;
    begin
       Result.Title := Window_Title (Title (ID));
       case ID is
          when W_Driver_ID =>
-            -- 11.3.3
+            -- 11.3.3; the Driver ID is alphanumeric (11.3.3.4) and no
+            -- range or resolution is specified for it
             Result.Field_Count := 1;
             Result.Fields (1) := Field ("Driver ID", 8, Proposed => Driver_ID);
          when W_TRN =>
             -- 11.3.1
             Result.Field_Count := 1;
             Result.Fields (1) := Field ("Train running nr", 8,
-                                        Proposed => TRN);
+                                        Proposed => TRN,
+                                        Technical => TRN_Rule);
          when W_Train_Data =>
             -- 11.3.9.1: a window on the total grid array with echo texts
             -- and the question 'Train data entry complete?'
             Result.Layout := Total_Grid;
             Result.Field_Count := 3;
             Result.Fields (1) :=
-              Field ("Length (m)", 4, Proposed => Image_Value (Train_Length));
+              Field ("Length (m)", 4, Proposed => Image_Value (Train_Length),
+                     Technical => Train_Length_Rule,
+                     Operational => Not_Zero (Train_Length_Rule, 9999));
             Result.Fields (2) :=
-              Field ("Brake perc (%)", 3, Proposed => Image_Value (Brake_Pct));
+              -- the brake percentage is not an ERTMS/ETCS variable of
+              -- SUBSET-026 chapter 7; its range would come from section
+              -- A.3.11 or from the on-board configuration
+              Field ("Brake perc (%)", 3, Proposed => Image_Value (Brake_Pct),
+                     Operational => Not_Zero (No_Rule, 999));
             Result.Fields (3) :=
-              Field ("Max speed", 3, Proposed => Image_Value (Max_Speed));
+              Field ("Max speed", 3, Proposed => Image_Value (Max_Speed),
+                     Technical => Max_Speed_Rule,
+                     Operational => Not_Zero (Max_Speed_Rule, 999));
          when W_SR_Data =>
             -- 11.3.10.1: likewise on the total grid array
             Result.Layout := Total_Grid;

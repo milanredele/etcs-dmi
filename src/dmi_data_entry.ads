@@ -32,12 +32,29 @@ package DMI_Data_Entry is
      (Numeric,   -- 10.3.5.15
       Yes_No);   -- 10.3.5.18, dedicated keyboard limited to 'No'/'Yes'
 
+   --  10.3.4.1.2: the permitted range and the resolution of an input
+   --  field are configured in the on-board and their definition is
+   --  outside the scope of the specification. Defined = False: no rule,
+   --  the check is satisfied. A resolution of 0 or 1 accepts any value.
+   type Check_Rule_T is record
+      Defined    : Boolean := False;
+      Min        : Natural := 0;
+      Max        : Natural := 0;
+      Resolution : Natural := 1;
+   end record;
+
+   No_Rule : constant Check_Rule_T := (others => <>);
+
    type Field_Def_T is record
       Label    : Label_T := (others => ' ');
       Keyboard : Keyboard_T := Numeric;
       Max_Len  : Natural := 5;
       --  11.7.1.4: the stored value is proposed in the input field
       Proposed : DMI_Driver_Data.Text_Value_T;
+      --  10.3.4.2, 10.3.4.3: technical range and resolution check
+      Technical : Check_Rule_T := No_Rule;
+      --  10.3.4.5: operational range check
+      Operational : Check_Rule_T := No_Rule;
    end record;
 
    type Field_Def_List_T is array (Field_Index_T) of Field_Def_T;
@@ -76,13 +93,36 @@ package DMI_Data_Entry is
      (Label    : Wide_String;
       Max_Len  : Natural;
       Keyboard : Keyboard_T := Numeric;
-      Proposed : DMI_Driver_Data.Text_Value_T := (0, (others => ' ')))
+      Proposed : DMI_Driver_Data.Text_Value_T := (0, (others => ' '));
+      Technical   : Check_Rule_T := No_Rule;
+      Operational : Check_Rule_T := No_Rule)
       return Field_Def_T;
 
    function Echo
      (Label    : Wide_String;
       Value    : DMI_Driver_Data.Text_Value_T;
       Accepted : Boolean := True) return Echo_Item_T;
+
+   --  10.3.4.4 / 10.3.4.6: cross-check rules between input fields. They
+   --  are a configuration of the on-board too (10.3.4.1.2) and neither
+   --  the DMI specification nor the protocol carries one, so no rule is
+   --  configured here; the mechanism and the '????' presentation exist
+   --  and an integration fills this list. Rules are executed in the
+   --  order of the list, technical ones first (Figure 98).
+   type Cross_Kind_T is (No_Cross, Technical_Cross, Operational_Cross);
+   type Cross_Relation_T is (Not_Greater, Not_Less);
+
+   type Cross_Rule_T is record
+      Kind     : Cross_Kind_T := No_Cross;
+      A        : Field_Index_T := 1;
+      B        : Field_Index_T := 1;
+      Relation : Cross_Relation_T := Not_Greater; -- value (A) rel value (B)
+   end record;
+
+   Max_Cross_Rules : constant := 4;
+   type Cross_Rule_List_T is array (1 .. Max_Cross_Rules) of Cross_Rule_T;
+
+   Cross_Rules : Cross_Rule_List_T := (others => (others => <>));
 
    --  10.6.1.1: a data entry / validation process starts with the first
    --  window of the topic
