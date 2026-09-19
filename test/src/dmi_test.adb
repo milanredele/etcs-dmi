@@ -2887,6 +2887,13 @@ procedure DMI_Test is
          Step;
          Check (Lines_Shown = TM.Visible_Lines and then Lines_Fit
                 and then Margin_Clear,
+                "255 accented letters are broken the same way");
+         -- 16#7F# is a C1 control: no font has a glyph for it, so every
+         -- one of them is a replacement box (ROB-2)
+         Send_Text (1, (1 .. 255 => W (16#7F#)), Ack_Required => Ack);
+         Step;
+         Check (Lines_Shown = TM.Visible_Lines and then Lines_Fit
+                and then Margin_Clear,
                 "255 characters without a glyph are broken the same way");
          Send_Text (1, (1 .. 120 => ' ') & "word" & (1 .. 120 => ' '),
                     Ack_Required => Ack);
