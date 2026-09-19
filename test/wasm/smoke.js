@@ -141,6 +141,8 @@ function press(x, y) {
   // Y locations of Table 23
   const ENTER = [487, 90];
   const FIELD = i => [589, 40 + (i - 1) * 50];
+  // 10.3.5.17: the Driver ID keyboard is alphanumeric; the key 1 carries
+  // the number alone, so one press on it still enters '1'
   press(385, 240); press(...ENTER);            // Driver ID 1
   press(410, 90);                              // Level 1 -> Main window
   press(410, 140);                             // Train data

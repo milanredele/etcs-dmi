@@ -4,9 +4,9 @@
 --  Windows stack over the default window in the D/F column (Table 20:
 --  306x450, title 24 cells, [Close] at y 400). Only the top window
 --  responds to driver input (5.3.1.1.5). Three window kinds are
---  implemented: menu windows (10.2.1), data entry windows with a numeric
---  keyboard (10.3, simplified: no alphanumeric multi-tap, technical
---  range checks only) and the train data validation window (10.4).
+--  implemented: menu windows (10.2.1), data entry windows with a
+--  numeric or an alphanumeric keyboard (10.3) and the train data
+--  validation window (10.4).
 
 with Display;
 with DMI_Buttons;
@@ -73,7 +73,8 @@ package DMI_Windows is
    -- awaits an answer
    function Waiting_Displayed return Boolean;
 
-   -- 11.7.2.2 / 11.7.3.2: [Close] is disabled before S10 of Start Up
+   -- 11.7.2.2 / 11.7.3.2: [Close] is disabled before S10 of Start Up,
+   -- except in the steps S1-1 and S1-2 opened from the Driver ID window,
    -- and in the steps that wait for the radio network or the RBC
    function Close_Enabled return Boolean;
 

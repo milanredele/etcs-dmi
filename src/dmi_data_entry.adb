@@ -4,6 +4,7 @@
 pragma Ada_2012;
 with Display.Draw;
 with Display.Screen;
+with DMI_Data_Format;
 with DMI_Flash;
 with Font;
 with General_Parameters;
@@ -67,7 +68,21 @@ package body DMI_Data_Entry is
       Editing   : Boolean := False;
       Accepted  : Boolean := False;
       Check     : Check_State_T := No_Check;
+      --  10.3.2.5: multi-tap. Tap_Key is the keyboard key whose
+      --  characters the last position of the value is cycling through
+      --  (0: none, the cursor stands on the next position), Tap_Char the
+      --  character of that key currently displayed and Tap_Ms the time
+      --  since the last press on it.
+      Tap_Key   : Natural := 0;
+      Tap_Char  : Positive := 1;
+      Tap_Ms    : Natural := 0;
    end record;
+
+   --  10.3.2.5 a: the cursor jumps to the next position 2 s after the
+   --  entry was displayed
+   Tap_Timeout_Ms : constant := 2000;
+
+   No_Field : constant Field_State_T := (others => <>);
 
    type Field_State_List_T is array (Field_Index_T) of Field_State_T;
 
@@ -160,13 +175,11 @@ package body DMI_Data_Entry is
       Current := 1;
       DMI_Flash.Restart_Cursor;
       for I in Field_Index_T loop
-         Fields (I) := (Value     => Def.Fields (I).Proposed,
-                        --  a proposed value is a data value that the
-                        --  driver has not accepted yet (Figure 97)
-                        Has_Value => Def.Fields (I).Proposed.Length > 0,
-                        Editing   => False,
-                        Accepted  => False,
-                        Check     => No_Check);
+         Fields (I) := No_Field;
+         Fields (I).Value := Def.Fields (I).Proposed;
+         --  a proposed value is a data value that the driver has not
+         --  accepted yet (Figure 97)
+         Fields (I).Has_Value := Def.Fields (I).Proposed.Length > 0;
       end loop;
    end Open;
 
@@ -281,11 +294,44 @@ package body DMI_Data_Entry is
       return ((0, 0), 0, 0);
    end Button_Area;
 
-   --  10.3.5.15: the keys 1 to 11 hold '1' to '9', the [delete] and the
+   ---------------------------------------------------------------------
+   --  Alphanumeric keyboard (10.3.5.17)
+   ---------------------------------------------------------------------
+
+   --  10.3.5.17: the keys 1 to 11 hold the alphanumeric characters
+   --  '1', '2/a/b/c', ..., '9/w/x/y/z', the [delete] and the number '0'.
+   --  The characters of one key in the order the clause lists them: the
+   --  number first, then its letters (implementation choice, the clause
+   --  gives no other order). SUBSET-026 A.3.11 limits a Driver ID to the
+   --  characters '0' to '9' and 'a' to 'z', which is exactly this set.
+   Max_Key_Chars : constant := 5;
+   subtype Key_Chars_T is Wide_String (1 .. Max_Key_Chars);
+
+   Alnum_Keys : constant array (1 .. 11) of Key_Chars_T :=
+     ("1    ", "2abc ", "3def ", "4ghi ", "5jkl ", "6mno ",
+      "7pqrs", "8tuv ", "9wxyz", "     ",        -- key 10 is [delete]
+      "0    ");
+
+   --  How many characters the key carries
+   function Alnum_Count (Index : Positive) return Natural is
+      Result : Natural := 0;
+   begin
+      if Index not in Alnum_Keys'Range then
+         return 0;
+      end if;
+      for C of Alnum_Keys (Index) loop
+         exit when C = ' ';
+         Result := Result + 1;
+      end loop;
+      return Result;
+   end Alnum_Count;
+
+   --  10.3.5.15 / 10.3.5.17: the keys 1 to 11 hold '1' to '9' (with
+   --  their letters on an alphanumeric keyboard), the [delete] and the
    --  number '0'; the key 12 shows the '.' button as disabled
    function Key_Enabled (Index : Positive) return Boolean is
      (case Def.Fields (Current).Keyboard is
-         when Numeric => Index /= Key_Dot,
+         when Numeric | Alphanumeric => Index /= Key_Dot,
          --  10.3.5.18: a dedicated keyboard limited to a 'No'/'Yes'
          --  choice has the key 7 as 'No' and the key 8 as 'Yes'
          when Yes_No  => Index in Key_No | Key_Yes);
@@ -323,10 +369,24 @@ package body DMI_Data_Entry is
 
    function Button_Kind (Index : Positive) return DMI_Buttons.Kind_T is
    begin
-      --  10.3.5.13: the buttons of the keyboard are down-type buttons;
-      --  5.3.2.7.2 gives [Delete] the repeat function, which 5.3.2.6.5
-      --  leaves optional for the other keys
+      --  10.3.5.13: the buttons of the keyboard are down-type buttons.
+      --  5.3.2.7.2 gives [Delete] the repeat function; 5.3.2.6.5 leaves
+      --  it optional for the other keys, and a key that enters one
+      --  single character does not repeat here: holding it would fill
+      --  the input field with that character (implementation choice).
+      --  A data key of the alphanumeric keyboard that carries several
+      --  characters does repeat: 10.3.2.5 b asks for another character
+      --  of the same key when the key is held.
       if Index in Key_First .. Key_Last then
+         if Index = Key_Delete
+           and then Def.Fields (Current).Keyboard /= Yes_No
+         then
+            return DMI_Buttons.Down_Repeat_Type;
+         elsif Def.Fields (Current).Keyboard = Alphanumeric
+           and then Alnum_Count (Index) > 1
+         then
+            return DMI_Buttons.Down_Repeat_Type;
+         end if;
          return DMI_Buttons.Down_Type;
       end if;
       --  5.3.2.7.3, 10.3.4.5.5: the [Enter] button is up-type unless an
@@ -437,6 +497,7 @@ package body DMI_Data_Entry is
       S.Has_Value := True;
       S.Editing := False;
       S.Accepted := True;
+      S.Tap_Key := 0;  -- 10.3.2.5: the value is accepted, nothing cycles
       --  10.3.4.4.4: a modified data value re-enables the 'Yes' button
       Cross_Failed := No_Cross;
       for I in Field_Index_T loop
@@ -469,12 +530,11 @@ package body DMI_Data_Entry is
       --  current data value (Figure 97: 'Not Selected IF / No data
       --  value')
       if Fields (Current).Editing then
-         Fields (Current) := (Value     => (0, (others => ' ')),
-                              Has_Value => False,
-                              Editing   => False,
-                              Accepted  => False,
-                              Check     => No_Check);
+         Fields (Current) := No_Field;
       end if;
+      --  10.3.2.5: the cursor leaves the input field, so the character
+      --  under the last data key is no longer being selected there
+      Fields (Current).Tap_Key := 0;
       Current := Index;
       DMI_Flash.Restart_Cursor;
    end Select_Field;
@@ -490,6 +550,50 @@ package body DMI_Data_Entry is
             S.Value.Text (S.Value.Length) := C;
          end if;
       end Append;
+
+      --  10.3.2.5 with 10.3.5.17: a data key of the alphanumeric
+      --  keyboard allows entering various characters.
+      --  b) the same data key again within the 2 s delay-time, or the
+      --     key held (which is its repeat function, see Button_Kind),
+      --     selects another character under that key; the list is
+      --     circular (implementation choice, the clause is silent about
+      --     what follows the last character).
+      --  c) another data key within the 2 s makes the cursor jump to the
+      --     next position directly, which is what appending does.
+      procedure Alnum_Key_Pressed (Key : Positive) is
+         Count : constant Natural := Alnum_Count (Key);
+      begin
+         if Key = Key_Delete then
+            if S.Value.Length > 0 then
+               S.Value.Length := S.Value.Length - 1;
+            end if;
+            S.Tap_Key := 0;
+            return;
+         end if;
+         if Count = 0 then
+            return;  -- no character under this key
+         end if;
+         if S.Tap_Key = Key and then S.Value.Length > 0 then
+            S.Tap_Char := (if S.Tap_Char < Count then S.Tap_Char + 1 else 1);
+            S.Value.Text (S.Value.Length) := Alnum_Keys (Key) (S.Tap_Char);
+         else
+            declare
+               Before : constant Natural := S.Value.Length;
+            begin
+               Append (Alnum_Keys (Key) (1));
+               if S.Value.Length = Before then
+                  --  the input field is full: nothing was displayed, so
+                  --  there is no character to cycle through either
+                  S.Tap_Key := 0;
+                  return;
+               end if;
+            end;
+            S.Tap_Char := 1;
+         end if;
+         --  a key with one single character has nothing to select next
+         S.Tap_Key := (if Count > 1 then Key else 0);
+         S.Tap_Ms := 0;
+      end Alnum_Key_Pressed;
    begin
       --  10.3.1.19: after the first press on a data key the value
       --  corresponding to the pressed key is displayed instead of the
@@ -502,6 +606,7 @@ package body DMI_Data_Entry is
          S.Value.Length := 0;
          S.Editing := True;
          S.Has_Value := False;
+         S.Tap_Key := 0;
       end if;
       --  Figure 98: a key press takes the input field back to 'Selected
       --  IF / value of pressed key(s)', where [Enter] is enabled and
@@ -522,6 +627,8 @@ package body DMI_Data_Entry is
                when others =>
                   null;
             end case;
+         when Alphanumeric =>
+            Alnum_Key_Pressed (Index);
          when Yes_No =>
             --  10.3.5.18: a key of a dedicated keyboard carries the
             --  whole predefined choice, not one character
@@ -575,6 +682,26 @@ package body DMI_Data_Entry is
          end if;
       end if;
    end Press;
+
+   --  10.3.2.5 a: 2 s after the entry of a character of a multi-tap key
+   --  was displayed, the cursor jumps to the next position of the input
+   --  field, which ends the selection under that key. Only the selected
+   --  input field can have one pending: the cursor is in it.
+   procedure Tick (Dt_Ms : Natural) is
+      S : Field_State_T renames Fields (Current);
+   begin
+      if not Open_Flag or else S.Tap_Key = 0 then
+         return;
+      end if;
+      --  clamped, so that any tick length is total
+      S.Tap_Ms := (if Dt_Ms > Tap_Timeout_Ms - S.Tap_Ms then Tap_Timeout_Ms
+                   else S.Tap_Ms + Dt_Ms);
+      if S.Tap_Ms >= Tap_Timeout_Ms then
+         S.Tap_Key := 0;
+         --  the cursor moved: it is visible where the driver looks
+         DMI_Flash.Restart_Cursor;
+      end if;
+   end Tick;
 
    ---------------------------------------------------------------------
    --  Rendering
@@ -637,27 +764,195 @@ package body DMI_Data_Entry is
                               (The_Area.Height - H) / 2));
    end Draw_Delete_Key;
 
+   --  5.1.2.1.5: the dot character of a keyboard is presented in bold
+   --  style. Bold is drawn as a 1 cell double strike, as the bold first
+   --  group text messages are (8.2.3.4.7 c, Display.E_Area).
+   Bold_Extra : constant := 1;
+
+   procedure Draw_Dot_Key (The_Area : Area_T;
+                           Enabled  : Boolean;
+                           Is_Down  : Boolean) is
+      Ink : constant General_Parameters.Color :=
+        (if Enabled then General_Parameters.GREY
+         else General_Parameters.DARK_GREY);
+      --  5.1.2.2.3 h: the '.' is not a keyboard number, so 12 cells
+      Pen_Y : constant Natural :=
+        The_Area.Position.Y + The_Area.Height / 2 + 6;
+      Pen_X : constant Natural := The_Area.Position.X + The_Area.Width / 2;
+   begin
+      if not Is_Down then
+         Draw.Draw_Button_Frame (The_Area);
+      end if;
+      Draw.Draw_String (Pen_X, Pen_Y, ".", 12, Ink, Draw.Center);
+      Draw.Draw_String (Pen_X + Bold_Extra, Pen_Y, ".", 12, Ink, Draw.Center);
+   end Draw_Dot_Key;
+
+   --  10.3.5.17: the label of an alphanumeric data key separates the
+   --  number from the letters with a space character, e.g. '2 abc'.
+   --  5.1.2.2.3 a gives the number 16 cells and g the letters 10; both
+   --  sit on the same base line, as Figure 116 shows them.
+   procedure Draw_Alnum_Key (The_Area : Area_T;
+                             Key      : Positive;
+                             Is_Down  : Boolean) is
+      Chars   : constant Key_Chars_T := Alnum_Keys (Key);
+      Count   : constant Natural := Alnum_Count (Key);
+      Number  : constant Wide_String := Chars (1 .. 1);
+      Letters : constant Wide_String := " " & Chars (2 .. Count);
+      Ink     : constant General_Parameters.Color :=
+        (if Key_Enabled (Key) then General_Parameters.GREY
+         else General_Parameters.DARK_GREY);
+      Width   : constant Natural :=
+        Draw.String_Width (Number, 16) + Draw.String_Width (Letters, 10);
+      Pen_X   : constant Natural :=
+        The_Area.Position.X + (The_Area.Width - Width) / 2;
+      Pen_Y   : constant Natural :=
+        The_Area.Position.Y + The_Area.Height / 2 + 8;
+   begin
+      if not Is_Down then
+         Draw.Draw_Button_Frame (The_Area);
+      end if;
+      Draw.Draw_String (Pen_X, Pen_Y, Number, 16, Ink);
+      Draw.Draw_String
+        (Pen_X + Draw.String_Width (Number, 16), Pen_Y, Letters, 10, Ink);
+   end Draw_Alnum_Key;
+
    --  5.1.3.3: a text is vertically centred in its area; the pen is on
    --  the base line of the 12 cell characters
    function Base_Y (The_Area : Area_T) return Natural is
      (The_Area.Position.Y + The_Area.Height / 2 + 6);
+
+   --  5.1.3.5: the line spacing of 12 cell characters
+   Line_Spacing : constant := 24;
+
+   --  The base line of line number Line of Count lines, the block of
+   --  lines centred in the data area as a single line is (5.1.3.3)
+   function Base_Y (The_Area : Area_T;
+                    Line     : Positive;
+                    Count    : Positive) return Natural is
+     (Base_Y (The_Area) - (Count - 1) * Line_Spacing / 2
+      + (Line - 1) * Line_Spacing);
+
+   ---------------------------------------------------------------------
+   --  Grouping of the displayed value (10.3.2.6 with 5.1.5, GEN-6)
+   ---------------------------------------------------------------------
+
+   --  10.3.2.6: the rules of 5.1.5 apply as soon as the 6th character of
+   --  an alphanumeric or numeric data is entered, i.e. a single space
+   --  splits the data into two groups of at most 5 characters and a line
+   --  break follows every 8 characters. 5.1.5.2.2: a data limited to
+   --  dedicated values is not such a data, so the choice of a dedicated
+   --  keyboard is displayed as it is.
+   function Grouping_Applies (Index : Field_Index_T) return Boolean is
+     (Def.Fields (Index).Keyboard /= Yes_No);
+
+   function Display_Lines (Index : Field_Index_T)
+                           return DMI_Data_Format.Grouped_T is
+      State  : Field_State_T renames Fields (Index);
+      Result : DMI_Data_Format.Grouped_T;
+   begin
+      if Grouping_Applies (Index) then
+         return DMI_Data_Format.Grouped
+           (State.Value.Text (1 .. State.Value.Length));
+      end if;
+      Result.Count := 1;
+      Result.Lines (1).Length :=
+        Natural'Min (State.Value.Length, DMI_Data_Format.Max_Line_Len);
+      Result.Lines (1).Text (1 .. Result.Lines (1).Length) :=
+        State.Value.Text (1 .. Result.Lines (1).Length);
+      return Result;
+   end Display_Lines;
+
+   --  Where the data character number Position (1 based) of a value of
+   --  Len characters is displayed: the text line it is on and how many
+   --  characters of that line come before it, the group space of 5.1.5.1
+   --  included. Total for any Position, also one past the value.
+   procedure Char_Place (Len      : Natural;
+                         Position : Positive;
+                         Line     : out Positive;
+                         Before   : out Natural) is
+      Per_Line : constant := DMI_Data_Format.Max_Chars_Per_Line;
+      In_Line  : constant Positive := (Position - 1) mod Per_Line + 1;
+      Rest     : Integer;
+      Taken    : Natural;
+   begin
+      Line := (Position - 1) / Per_Line + 1;
+      --  the characters of the value that are displayed on that line;
+      --  a line past the value holds none (total, never negative)
+      Rest := Integer (Len) - (Line - 1) * Per_Line;
+      Taken := (if Rest <= 0 then 0
+                else Natural'Min (Per_Line, Natural (Rest)));
+      Before := In_Line - 1;
+      --  5.1.5.1: the space sits after the first group
+      if Taken > 5 and then In_Line > (Taken + 1) / 2 then
+         Before := Before + 1;
+      end if;
+   end Char_Place;
+
+   --  The text lines the data area of an input field needs: the lines of
+   --  the grouped value, and one more when the cursor already stands at
+   --  the start of the next one (a value of exactly 8, 16, ...
+   --  characters that may still grow).
+   function Field_Line_Count (Index : Field_Index_T) return Positive is
+      State  : Field_State_T renames Fields (Index);
+      Blocks : constant DMI_Data_Format.Grouped_T := Display_Lines (Index);
+      Count  : Positive := Positive'Max (1, Blocks.Count);
+      Line   : Positive;
+      Before : Natural;
+   begin
+      if Index = Current and then State.Editing and then State.Tap_Key = 0
+        and then State.Value.Length < Def.Fields (Index).Max_Len
+      then
+         Char_Place (State.Value.Length, State.Value.Length + 1,
+                     Line, Before);
+         Count := Positive'Max (Count, Line);
+      end if;
+      return Count;
+   end Field_Line_Count;
 
    --  10.3.2.1 to 10.3.2.3: an underscore below the position of the next
    --  character, flashing at 2 Hz. The next character goes after what
    --  the driver entered; when the input field still shows a data value
    --  the next key replaces it (10.3.1.19), so the cursor stands at the
    --  first position (implementation choice, the clause is silent).
-   procedure Draw_Cursor (Index : Field_Index_T) is
+   --  10.3.2.5 a: while a character under a multi-tap key is still being
+   --  selected, the cursor has not jumped yet and stands below that
+   --  character. A full input field keeps the cursor after its last
+   --  character: there is no next position (implementation choice).
+   procedure Draw_Cursor (Index : Field_Index_T; Count : Positive) is
       The_Data : constant Area_T := Data_Area (Index);
       State    : Field_State_T renames Fields (Index);
+      Blocks   : constant DMI_Data_Format.Grouped_T := Display_Lines (Index);
       Shown    : constant Natural :=
         (if State.Editing then State.Value.Length else 0);
-      Cell     : constant Natural := Draw.String_Width ("0", 12);
-      X        : constant Natural :=
-        The_Data.Position.X + 10
-          + Draw.String_Width (State.Value.Text (1 .. Shown), 12);
-      Y        : constant Natural := Base_Y (The_Data) + 2;
+      Tapping  : constant Boolean := State.Tap_Key /= 0 and then Shown > 0;
+      Full     : constant Boolean :=
+        not Tapping and then Shown >= Def.Fields (Index).Max_Len
+        and then Shown > 0;
+      Place    : constant Positive :=
+        (if Tapping then Shown elsif Full then Shown else Shown + 1);
+      Line     : Positive;
+      Before   : Natural;
+      Cell     : Natural := Draw.String_Width ("0", 12);
+      X, Y     : Natural;
    begin
+      Char_Place (Shown, Place, Line, Before);
+      if Tapping or else Full then
+         --  below the character itself, which is one display character
+         --  wide, or after it when the field is full
+         if Line <= Blocks.Count then
+            Cell := Draw.String_Width
+              (Blocks.Lines (Line).Text (Before + 1 .. Before + 1), 12);
+         end if;
+         if Full then
+            Before := Before + 1;
+            Cell := Draw.String_Width ("0", 12);
+         end if;
+      end if;
+      X := The_Data.Position.X + 10;
+      if Line <= Blocks.Count then
+         X := X + Draw.String_Width (Blocks.Lines (Line).Text (1 .. Before), 12);
+      end if;
+      Y := Base_Y (The_Data, Natural'Min (Line, Count), Count) + 2;
       if not DMI_Flash.Cursor_Visible
         or else X + Cell > The_Data.Position.X + The_Data.Width
       then
@@ -698,16 +993,27 @@ package body DMI_Data_Entry is
       Screen.Fill_Area (The_Data, Back);
       --  5.1.1.1.4: the input field has a medium grey border
       Draw.Draw_Input_Field_Frame (Field_Area (Index));
-      --  10.3.1.11: the data value is left aligned with an indent of 10
-      Draw.Draw_String
-        (Pen_X => The_Data.Position.X + 10,
-         Pen_Y => Base_Y (The_Data),
-         The_String => State.Value.Text (1 .. State.Value.Length),
-         The_Size => 12,
-         The_Color => Ink);
-      if Selected and then Def.Fields (Index).Keyboard /= Yes_No then
-         Draw_Cursor (Index);
-      end if;
+      --  10.3.1.11: the data value is left aligned with an indent of 10;
+      --  10.3.2.6 with 5.1.5: in groups of at most 5 characters, a line
+      --  break every 8 (GEN-6)
+      declare
+         Blocks : constant DMI_Data_Format.Grouped_T := Display_Lines (Index);
+         Count  : constant Positive := Field_Line_Count (Index);
+      begin
+         for Line in 1 .. Blocks.Count loop
+            exit when Line > Count;
+            Draw.Draw_String
+              (Pen_X => The_Data.Position.X + 10,
+               Pen_Y => Base_Y (The_Data, Line, Count),
+               The_String =>
+                 Blocks.Lines (Line).Text (1 .. Blocks.Lines (Line).Length),
+               The_Size => 12,
+               The_Color => Ink);
+         end loop;
+         if Selected and then Def.Fields (Index).Keyboard /= Yes_No then
+            Draw_Cursor (Index, Count);
+         end if;
+      end;
    end Draw_Entry_Field;
 
    --  10.3.5.7, Table 24: the question and the 'Yes' button, only on the
@@ -745,7 +1051,12 @@ package body DMI_Data_Entry is
    --  10.3.3.7 / 10.3.3.9: right and left of the X position 204 with an
    --  indent of 5; 10.3.3.8 / 10.3.3.10: the first one 112 cells below
    --  the top of the area; 5.1.3.5: line spacing 2 x 12 cells.
-   procedure Draw_Echo_Line (Line     : Positive;
+   --  10.3.3.3 with 5.1.5: the data part of an echo text displays the
+   --  data value, so it is grouped like the input field it echoes
+   --  (GEN-6). Line is the first text line the echo uses and is advanced
+   --  by the lines it took: 10.3.3.8 fixes the position of the first
+   --  echo text, 10.3.3.6 the order of the following ones.
+   procedure Draw_Echo_Line (Line     : in out Positive;
                              Label    : Wide_String;
                              Val      : Wide_String;
                              Accepted : Boolean;
@@ -770,30 +1081,47 @@ package body DMI_Data_Entry is
                | Operational_Range => "++++",
             when Failed_Technical_Cross
                | Failed_Operational_Cross => "????");
+      --  a check outcome is not a data value and is not grouped
+      Blocks : constant DMI_Data_Format.Grouped_T :=
+        (if Check = No_Check then DMI_Data_Format.Grouped (Val)
+         else (Count => 0, Lines => (others => <>)));
    begin
       Draw.Draw_String
         (Pen_X => 204 - 5, Pen_Y => Y,
          The_String => Label, The_Size => 12, The_Color => Ink,
          The_Alignment => Draw.Right);
-      Draw.Draw_String
-        (Pen_X => 204 + 5, Pen_Y => Y,
-         The_String => Data_Text, The_Size => 12, The_Color => Data_Ink);
+      if Blocks.Count = 0 then
+         Draw.Draw_String
+           (Pen_X => 204 + 5, Pen_Y => Y,
+            The_String => Data_Text, The_Size => 12, The_Color => Data_Ink);
+         Line := Line + 1;
+      else
+         for Row in 1 .. Blocks.Count loop
+            Draw.Draw_String
+              (Pen_X => 204 + 5, Pen_Y => Y + (Row - 1) * 24,
+               The_String =>
+                 Blocks.Lines (Row).Text (1 .. Blocks.Lines (Row).Length),
+               The_Size => 12, The_Color => Data_Ink);
+         end loop;
+         Line := Line + Blocks.Count;
+      end if;
    end Draw_Echo_Line;
 
    procedure Draw_Echo_Texts is
+      Line : Positive := 1;
    begin
       if Def.Echo_Count > 0 then
          --  10.4.1.5: the echo texts of the topic being validated
          for I in 1 .. Def.Echo_Count loop
             Draw_Echo_Line
-              (I, Trim (Def.Echo (I).Label),
+              (Line, Trim (Def.Echo (I).Label),
                Def.Echo (I).Value.Text (1 .. Def.Echo (I).Value.Length),
                Def.Echo (I).Accepted);
          end loop;
       else
          for I in 1 .. Def.Field_Count loop
             Draw_Echo_Line
-              (I, Trim (Def.Fields (I).Label),
+              (Line, Trim (Def.Fields (I).Label),
                Fields (I).Value.Text (1 .. Fields (I).Value.Length),
                Fields (I).Accepted, Fields (I).Check);
          end loop;
@@ -833,6 +1161,15 @@ package body DMI_Data_Entry is
          begin
             if Numeric_Keys and then Key = Key_Delete then
                Draw_Delete_Key (Key_Area (Key), Pressed (Key));
+            elsif Numeric_Keys and then Key = Key_Dot then
+               --  5.1.2.1.5: the '.' of a keyboard is in bold style
+               Draw_Dot_Key (Key_Area (Key), Key_Enabled (Key),
+                             Pressed (Key));
+            elsif Def.Fields (Current).Keyboard = Alphanumeric
+              and then Alnum_Count (Key) > 1
+            then
+               --  10.3.5.17 with 5.1.2.2.3 a and g
+               Draw_Alnum_Key (Key_Area (Key), Key, Pressed (Key));
             elsif Label /= "" then
                Draw_Labelled_Button (Key_Area (Key), Label,
                                      Enabled => Key_Enabled (Key),

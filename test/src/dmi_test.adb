@@ -3482,7 +3482,8 @@ procedure DMI_Test is
       end Value_Of;
    begin
       Reset;
-      Send_Mode_Level (Mode => 1, Level => 4); -- SB, valid level
+      -- SB with the level unknown, so that Table 49 D2 leads to S2
+      Send_Mode_Level (Mode => 1, Level => 0);
       Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
                         V_Release => 0, V_Sbi => 0, V_Wsl => 0,
                         D_Target => 0, Monitoring => 0, Dial_Range => 1,
@@ -3777,6 +3778,192 @@ procedure DMI_Test is
       Drain_Outbox;
    end Scenario_Data_Checks;
 
+   ---------------------------------------------------------------------
+   -- The alphanumeric keyboard of the Driver ID window (audit WIN-9:
+   -- 11.3.3.4 to 11.3.3.7, 10.3.5.17, 10.3.2.5, 11.6.1.2, 11.7.2.2),
+   -- the 5 character grouping of the entered data (audit GEN-6,
+   -- 10.3.2.6 with 5.1.5) and the repeat function of the keys
+   -- (5.3.2.6.5, 5.3.2.7.2)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Alphanumeric_Entry is
+      use type DMI_Windows.Window_ID_T;
+
+      Enter_Y : constant := 90;    -- Table 22: the merged data part
+      Col_1   : constant := 385;   -- Table 25: the three key columns
+      Col_2   : constant := 487;
+      Col_3   : constant := 589;
+      Row_1   : constant := 240;   -- Table 25: the four key rows
+      Row_2   : constant := 290;
+      Row_4   : constant := 390;
+      Close_X : constant := 370;
+      TRN_X   : constant := 517;   -- 11.3.3.7 a: (142,400), 82 x 50
+      Set_X   : constant := 599;   -- 11.3.3.6 a: (224,400), 82 x 50
+      Btn_Y   : constant := 440;
+
+      function Value_Of return Wide_String is
+         V : constant DMI_Driver_Data.Text_Value_T := DMI_Data_Entry.Value (1);
+      begin
+         return V.Text (1 .. V.Length);
+      end Value_Of;
+
+      -- 10.3.2.5 a: let the 2 s delay-time run out
+      procedure Wait_Tap is
+      begin
+         for I in 1 .. 41 loop
+            Step;
+         end loop;
+      end Wait_Tap;
+   begin
+      Reset;
+      -- SB with the level unknown, so that the sequence stays in S1
+      Send_Mode_Level (Mode => 1, Level => 0);
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+      Check (DMI_Windows.Top = DMI_Windows.W_Driver_ID,
+             "Table 49 S1: the Driver ID window");
+
+      -- 10.3.5.17 / 11.3.3.4: the key 2 of the alphanumeric keyboard
+      -- carries '2', 'a', 'b' and 'c'; 10.3.2.5 b: the same key again
+      -- within the 2 s delay-time selects the next one
+      Press (Col_2, Row_1);
+      Check (Value_Of = "2", "the first press enters the number of the key");
+      Press (Col_2, Row_1);
+      Check (Value_Of = "a", "the same key again selects the next character");
+      Press (Col_2, Row_1);
+      Press (Col_2, Row_1);
+      Check (Value_Of = "c", "and so on through the letters of the key");
+      Press (Col_2, Row_1);
+      Check (Value_Of = "2", "the characters of one key are circular");
+
+      -- 10.3.2.5 a: after the 2 s the cursor has jumped by itself
+      Wait_Tap;
+      Press (Col_2, Row_1);
+      Check (Value_Of = "22",
+             "after the 2 s delay-time the same key enters a new character");
+
+      -- 10.3.2.5 c: another data key makes the cursor jump directly
+      Press (Col_3, Row_1);
+      Check (Value_Of = "223", "another data key jumps to the next position");
+      Press (Col_3, Row_1);
+      Check (Value_Of = "22d", "and starts its own selection there");
+
+      -- 5.3.2.7.1 e: [Delete] removes the just entered character
+      Press (Col_1, Row_4);
+      Check (Value_Of = "22", "[Delete] removes the entered character");
+      Press (Col_1, Row_4);
+      Press (Col_1, Row_4);
+      Check (Value_Of = "", "and the input field is empty again");
+
+      -- 10.3.5.17: the key 12 shows the '.' as disabled, the key 11 is
+      -- the number '0' and the key 1 the number '1' alone
+      Press (Col_3, Row_4);
+      Check (Value_Of = "", "the disabled '.' key does nothing");
+      Press (Col_1, Row_1);
+      Press (Col_1, Row_1);
+      Check (Value_Of = "11", "a key with one character enters it twice");
+      Press (Col_2, Row_4);
+      Check (Value_Of = "110", "the key 11 is the number '0'");
+      Press (Col_1, Row_4);
+      Press (Col_1, Row_4);
+      Press (Col_1, Row_4);
+
+      -- 10.3.2.6 with 5.1.5.1: from the 6th character on, a single space
+      -- splits the data into two groups of at most 5 characters
+      Press (Col_1, Row_1); Press (Col_2, Row_1); Press (Col_3, Row_1);
+      Press (Col_1, Row_2); Press (Col_2, Row_2); Press (Col_3, Row_2);
+      Check (Value_Of = "123456", "six characters are entered");
+      Step;
+      Check_Frame ("driver_id_grouped");     -- '123 456'
+
+      -- 5.1.5.2: a line break every 8 characters
+      Press (Col_1, Row_1); Press (Col_2, Row_1); Press (Col_3, Row_1);
+      Check (Value_Of = "123456123",
+             "SUBSET-026 A.3.11: the Driver ID takes up to 16 characters");
+      Step;
+      Check_Frame ("driver_id_two_lines"); -- '1234 5612' / '3'
+
+      -- 5.3.2.6.5 / 5.3.2.7.2: the repeat function is a property of the
+      -- button. A key that enters one single character does not repeat.
+      Press (Col_1, Row_4); Press (Col_1, Row_4); Press (Col_1, Row_4);
+      Press (Col_1, Row_4); Press (Col_1, Row_4); Press (Col_1, Row_4);
+      Press (Col_1, Row_4); Press (Col_1, Row_4); Press (Col_1, Row_4);
+      Check (Value_Of = "", "the input field is empty again");
+      Pointer_Down (Col_1, Row_1);
+      for I in 1 .. 60 loop                 -- 3 s, past every repeat
+         Step;
+      end loop;
+      Pointer_Up (Col_1, Row_1);
+      Step;
+      Drain_Sounds;
+      Check (Value_Of = "1",
+             "a data key with one character does not repeat (5.3.2.6.5)");
+
+      -- 10.3.2.5 b: holding a data key selects another character under it
+      Press (Col_1, Row_4);
+      Pointer_Down (Col_2, Row_1);
+      Step;
+      Check (Value_Of = "2", "the press enters the number of the key");
+      for I in 1 .. 39 loop                 -- 1.5 s + one 0.3 s repeat
+         Step;
+      end loop;
+      Pointer_Up (Col_2, Row_1);
+      Step;
+      Drain_Sounds;
+      Check (Value_Of = "a",
+             "holding a data key selects another character (10.3.2.5 b)");
+      Press (Col_1, Row_4);
+
+      -- 11.3.3.7 / Table 49 S1-2: the 'TRN' button leads to the Train
+      -- running number window, whose parent is the Driver ID window
+      -- (11.6.1.2); 11.7.2.2: [Close] is enabled in S1-2
+      Press (TRN_X, Btn_Y);
+      Check (DMI_Windows.Top = DMI_Windows.W_TRN,
+             "S1: the 'TRN' button leads to S1-2");
+      Check (DMI_Windows.Close_Enabled, "S1-2: [Close] is enabled");
+      Press (Close_X, Btn_Y);
+      Check (DMI_Windows.Top = DMI_Windows.W_Driver_ID,
+             "S1-2: [Close] comes back to S1");
+      Press (TRN_X, Btn_Y);
+      Press (Col_1, Row_1);                 -- 1
+      Press (Col_2, Enter_Y);               -- [Enter]: E1-2 -> S1
+      Check (DMI_Windows.Top = DMI_Windows.W_Driver_ID,
+             "E1-2: the entered train running number comes back to S1");
+      Check (DMI_Driver_Data.TRN.Length = 1
+             and then DMI_Driver_Data.TRN.Text (1 .. 1) = "1",
+             "and is stored");
+
+      -- 11.3.3.6 / Table 49 S1-1: the 'settings' button leads to the
+      -- Settings window, [Close] enabled there too
+      Press (Set_X, Btn_Y);
+      Check (DMI_Windows.Top = DMI_Windows.W_Settings,
+             "S1: the 'settings' button leads to S1-1");
+      Check (DMI_Windows.Close_Enabled, "S1-1: [Close] is enabled");
+      Press (Close_X, Btn_Y);
+      Check (DMI_Windows.Top = DMI_Windows.W_Driver_ID,
+             "E1-1: [Close] comes back to S1");
+
+      -- 11.7.2.2: in S1 itself [Close] stays disabled
+      Check (not DMI_Windows.Close_Enabled, "S1: [Close] is disabled");
+      Press (Close_X, Btn_Y);
+      Check (DMI_Windows.Top = DMI_Windows.W_Driver_ID,
+             "S1: the disabled [Close] does not close the window");
+
+      -- Table 49 E1 -> D2: the level is not valid, so the procedure goes
+      -- to S2 whatever the DMI's own record of the entry says
+      Press (Col_1, Row_1);
+      Press (Col_2, Enter_Y);
+      Check (DMI_Windows.Top = DMI_Windows.W_Level,
+             "D2: an invalid level leads to S2");
+      Drain_Sounds;
+      Drain_Outbox;
+   end Scenario_Alphanumeric_Entry;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -3827,6 +4014,7 @@ begin
    Scenario_Entry_Mechanics;
    Scenario_Validation_Window;
    Scenario_Data_Checks;
+   Scenario_Alphanumeric_Entry;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

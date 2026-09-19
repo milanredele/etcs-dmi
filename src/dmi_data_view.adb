@@ -3,6 +3,7 @@
 
 pragma Ada_2012;
 with Display.Draw;
+with DMI_Conditions;
 with DMI_Data_Format;
 with DMI_Driver_Data;
 with General_Parameters;
@@ -134,25 +135,38 @@ package body DMI_Data_View is
    -- Index is the position in Items above, not the item number of
    -- Table 45: 4, 5 and 6 are the length, the brake percentage and the
    -- maximum speed (items 5, 6 and 7 of the table).
+   --
+   -- 10.5.1.4: the data part displays the value only when its status is
+   -- valid. The status of the data stored on-board is the on-board's
+   -- (SUBSET-026 3.18, DMI 11.7.1.3) and the EVC reports it
+   -- (DMI_Conditions). The value itself is what the driver entered on
+   -- this DMI, so both are needed: the EVC's "valid" and a value the DMI
+   -- has (*_Entered). After a restart the DMI knows no value and shows
+   -- none, whatever the on-board says.
    function Value_Of (Index : Positive) return Value_T is
       use DMI_Driver_Data;
       None : constant Value_T := (others => <>);
    begin
       case Index is
          when 1 =>
-            return (if Driver_ID_Entered then Text_Value (Driver_ID)
-                    else None);
+            return (if DMI_Conditions.Driver_ID_Valid
+                      and then Driver_ID_Entered
+                    then Text_Value (Driver_ID) else None);
          when 2 =>
-            return (if TRN_Entered then Text_Value (TRN) else None);
+            return (if DMI_Conditions.TRN_Valid and then TRN_Entered
+                    then Text_Value (TRN) else None);
          when 4 =>
-            return (if Train_Data_Entered then Num_Value (Train_Length)
-                    else None);
+            return (if DMI_Conditions.Train_Data_Valid
+                      and then Train_Data_Entered
+                    then Num_Value (Train_Length) else None);
          when 5 =>
-            return (if Train_Data_Entered then Num_Value (Brake_Pct)
-                    else None);
+            return (if DMI_Conditions.Train_Data_Valid
+                      and then Train_Data_Entered
+                    then Num_Value (Brake_Pct) else None);
          when 6 =>
-            return (if Train_Data_Entered then Num_Value (Max_Speed)
-                    else None);
+            return (if DMI_Conditions.Train_Data_Valid
+                      and then Train_Data_Entered
+                    then Num_Value (Max_Speed) else None);
          when others =>
             return None;
       end case;
