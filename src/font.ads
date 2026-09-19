@@ -27,7 +27,7 @@ package Font is
          -- bitmap is the 18 cell one with 6.2 kB.
          Bitmap_Pos : Positive range 1 .. 2 ** 16;
       end record
-     -- 6 bytes instead of 24: the five fonts hold 1120 glyphs together
+     -- 7 bytes instead of 24: the five fonts hold 1120 entries together
      with Pack;
 
    -- A code point the font has no glyph for. Display.Draw shows the
