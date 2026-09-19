@@ -148,7 +148,8 @@ package DMI_Data_Entry is
    function Value (Index : Field_Index_T) return DMI_Driver_Data.Text_Value_T;
 
    --  The value as a number; a value that is not a number gives 0, a
-   --  value above 99999 is clamped (total, never raises)
+   --  value above 99 999 999 (8 digits, the longest numeric data of
+   --  chapter 11) is clamped (total, never raises)
    function Number (Index : Field_Index_T) return Natural;
 
    procedure Render;
