@@ -157,21 +157,30 @@ package body DMI_Core is
          DMI_Buttons.Set_Inactive (BTN_Tunnel_Toggle);
       end if;
 
-      -- Planning area zoom (8.3.10): sensitive areas 40x30, D9 extended
-      -- upwards and D12 downwards; disabled at the range ends (5.3.2.7.5)
+      -- Planning area zoom (8.3.10): sensitive areas 40x30; disabled at
+      -- the range ends (5.3.2.7.5). D9 is the bottom left corner of area
+      -- D and D12 the top left one (Figure 85), so both enlargements
+      -- reach into D1 and stay inside area D.
       if not Window_Open and then DMI_Planning.Displayed
         and then DMI_Planning.Can_Zoom_In
       then
-         DMI_Buttons.Set_Active
-           (BTN_Zoom_In,
-            (Display.Get_Area (Display.D9).Position + (0, 0), 40, 30),
-            DMI_Buttons.Up_Type);
+         -- 8.3.10.4: enlarged by 15 cells above D9
+         declare
+            D9_Pos : constant Display.Position_T :=
+              Display.Get_Area (Display.D9).Position;
+         begin
+            DMI_Buttons.Set_Active
+              (BTN_Zoom_In,
+               ((D9_Pos.X, D9_Pos.Y - 15), 40, 30),
+               DMI_Buttons.Up_Type);
+         end;
       else
          DMI_Buttons.Set_Inactive (BTN_Zoom_In);
       end if;
       if not Window_Open and then DMI_Planning.Displayed
         and then DMI_Planning.Can_Zoom_Out
       then
+         -- 8.3.10.5: enlarged by 15 cells below D12
          DMI_Buttons.Set_Active
            (BTN_Zoom_Out,
             (Display.Get_Area (Display.D12).Position, 40, 30),
