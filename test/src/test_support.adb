@@ -449,6 +449,16 @@ package body Test_Support is
       if Mode_Sent and then Mode /= Last_ML.Mode then
          Onboard.Start_Pending := False;
       end if;
+      --  SUBSET-026 4.10.1.3: entering SB the on-board sets the status
+      --  of the Driver ID, the train data and the train running number
+      --  to "invalid"; the level keeps its status. The wrapper's EVC
+      --  owns that status and mirrors it in these flags (see
+      --  Emit_Onboard); the DMI does not set it itself.
+      if Mode = 1 and then (not Mode_Sent or else Last_ML.Mode /= 1) then
+         DMI_Driver_Data.Driver_ID_Entered := False;
+         DMI_Driver_Data.Train_Data_Entered := False;
+         DMI_Driver_Data.TRN_Entered := False;
+      end if;
       Last_ML := (Mode, Level, Mode_Ack, Level_Ann, Level_Ann_Ack,
                   Override, TAF, LSSMA);
       Mode_Sent := True;
