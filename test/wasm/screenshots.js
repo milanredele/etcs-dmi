@@ -63,6 +63,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // DMI 10.3.1.22: [Enter] is the data part of the input field itself
     const ENTER = [487, 90];                    // Table 22, merged data part
     const FIELD = i => [589, 40 + (i - 1) * 50]; // Table 23, data parts
+    // DMI 10.3.5.17: the Driver ID keyboard is alphanumeric. Three
+    // different keys in a row enter their numbers; the same key again
+    // within 2 s would walk through its letters instead (10.3.2.5)
     for (const k of [[385, 240], [487, 240], [589, 240]]) await press(...k); // 123
     await press(...ENTER);                      // -> level
     await press(410, 90);                       // Level 1 -> Main window

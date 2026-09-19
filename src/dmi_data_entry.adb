@@ -872,11 +872,15 @@ package body DMI_Data_Entry is
                          Before   : out Natural) is
       Per_Line : constant := DMI_Data_Format.Max_Chars_Per_Line;
       In_Line  : constant Positive := (Position - 1) mod Per_Line + 1;
+      Rest     : Integer;
       Taken    : Natural;
    begin
       Line := (Position - 1) / Per_Line + 1;
-      Taken := Natural'Max (0, Natural'Min (Per_Line,
-                                            Len - (Line - 1) * Per_Line));
+      --  the characters of the value that are displayed on that line;
+      --  a line past the value holds none (total, never negative)
+      Rest := Integer (Len) - (Line - 1) * Per_Line;
+      Taken := (if Rest <= 0 then 0
+                else Natural'Min (Per_Line, Natural (Rest)));
       Before := In_Line - 1;
       --  5.1.5.1: the space sits after the first group
       if Taken > 5 and then In_Line > (Taken + 1) / 2 then
