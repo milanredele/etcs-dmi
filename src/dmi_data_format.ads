@@ -7,14 +7,14 @@
 
 package DMI_Data_Format is
 
-   --  5.1.5.2: not more than 8 characters on the same text line
+   -- 5.1.5.2: not more than 8 characters on the same text line
    Max_Chars_Per_Line : constant := 8;
 
-   --  5.1.5.1: one 'space' character is inserted in a line of more than
-   --  5 characters
+   -- 5.1.5.1: one 'space' character is inserted in a line of more than
+   -- 5 characters
    Max_Line_Len : constant := Max_Chars_Per_Line + 1;
 
-   --  Enough for the longest data the DMI holds (12 characters)
+   -- Enough for the longest data the DMI holds (12 characters)
    Max_Lines : constant := 4;
 
    type Line_T is record
@@ -29,9 +29,9 @@ package DMI_Data_Format is
       Lines : Line_List_T;
    end record;
 
-   --  The text lines Data is displayed in. Total: any string is
-   --  accepted, characters beyond Max_Lines * Max_Chars_Per_Line are
-   --  dropped rather than drawn outside the window.
+   -- The text lines Data is displayed in. Total: any string is
+   -- accepted, characters beyond Max_Lines * Max_Chars_Per_Line are
+   -- dropped rather than drawn outside the window.
    function Grouped (Data : Wide_String) return Grouped_T;
 
 end DMI_Data_Format;

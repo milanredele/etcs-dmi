@@ -19,23 +19,23 @@ with Display;
 
 package DMI_Data_View is
 
-   --  Window-internal button indices, as DMI_Windows numbers them
+   -- Window-internal button indices, as DMI_Windows numbers them
    Previous_Button : constant := 1; -- 5.3.2.7.1 d, symbol NA18
    Next_Button     : constant := 2; -- 5.3.2.7.1 c, symbol NA17
 
    function Button_Count return Natural;
    function Button_Area (Index : Positive) return Display.Area_T;
 
-   --  5.3.2.7.5: disabled when the function would not change anything,
-   --  i.e. at the first and at the last window (5.3.1.1.9)
+   -- 5.3.2.7.5: disabled when the function would not change anything,
+   -- i.e. at the first and at the last window (5.3.1.1.9)
    function Button_Enabled (Index : Positive) return Boolean;
 
    procedure Button_Pressed (Index : Positive);
 
-   --  The window is (re)opened: back to its first window
+   -- The window is (re)opened: back to its first window
    procedure Reset;
 
-   --  Window title with the sequence number, 11.5.1.2 and 11.5.1.3
+   -- Window title with the sequence number, 11.5.1.2 and 11.5.1.3
    function Title return Wide_String;
 
    procedure Render (Previous_Pressed : Boolean;

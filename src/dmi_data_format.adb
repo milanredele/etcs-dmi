@@ -13,18 +13,18 @@ package body DMI_Data_Format is
    begin
       while Index <= Data'Last and then Result.Count < Max_Lines loop
          declare
-            --  5.1.5.2: a 'line break' every 8 characters
+            -- 5.1.5.2: a 'line break' every 8 characters
             Last  : constant Natural :=
               Natural'Min (Index + Max_Chars_Per_Line - 1, Data'Last);
             Taken : constant Natural := Last - Index + 1;
             Line  : Line_T;
          begin
             if Taken > Max_Group_Len then
-               --  5.1.5.1: a single 'space' creates 2 groups, neither
-               --  longer than 5 characters. The specification fixes only
-               --  that maximum, so the split is as even as possible
-               --  (implementation choice); 8 characters become "1234
-               --  5678" as Figure 134 shows them.
+               -- 5.1.5.1: a single 'space' creates 2 groups, neither
+               -- longer than 5 characters. The specification fixes only
+               -- that maximum, so the split is as even as possible
+               -- (implementation choice); 8 characters become "1234
+               -- 5678" as Figure 134 shows them.
                declare
                   First_Len : constant Natural := (Taken + 1) / 2;
                begin
