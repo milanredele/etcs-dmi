@@ -46,9 +46,10 @@ package DMI_Protocol is
    --  id u16, flags u8 (bit0 ack_required, bit1 first_group/bold,
    --  bits2-3 class: 0 fixed text, 1 plain text, 2 system status, 3 NTC),
    --  hour u8, minute u8, length u8, text bytes (Latin-1)
-   --  Limits of the DMI (DMI_Text_Messages): the text is cut after 80
-   --  characters and then ends in "..."; 12 messages are stored, see
-   --  there for what gives way when the store is full.
+   --  The length covers L_TEXT of SUBSET-026 7.5.1.53 (0 .. 255) and the
+   --  DMI keeps all of it. Limit of the DMI (DMI_Text_Messages): 12
+   --  messages are stored, see there for what gives way when the store
+   --  is full.
    Text_Header_Length : constant := 6;
 
    MSG_TEXT_REMOVE : constant Msg_Type_T := 16#04#;

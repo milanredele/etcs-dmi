@@ -88,6 +88,18 @@ package body Display.Frame_Buffer is
                         Draw.Text_Alignment'Val (Text_Alignment'Pos (The_Alignment)));
    end Draw_String;
 
+   procedure Draw_String_Clipped (Pen_X : Area_Width_T;
+                                  Pen_Y : Area_Height_T;
+                                  The_String : Wide_String;
+                                  The_Size   : Font.Size_T;
+                                  The_Color  : General_Parameters.Color;
+                                  The_Clip   : Area_T) is
+   begin
+      Draw.Draw_String_Clipped
+        (Area.Position.X + Pen_X, Area.Position.Y + Pen_Y,
+         The_String, The_Size, The_Color, Absolute (The_Clip));
+   end Draw_String_Clipped;
+
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
                           The_Position : Position_T) is
    begin

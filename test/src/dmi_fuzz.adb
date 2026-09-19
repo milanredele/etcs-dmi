@@ -123,7 +123,8 @@ procedure DMI_Fuzz is
          U16 (Optional (0, 400, 16#FFFF#));
       elsif The_Type = MSG_TEXT then
          declare
-            Length : constant Natural := Pick (0, 80);
+            -- up to the greatest length, any byte, words of any width
+            Length : constant Natural := Pick (0, 255);
          begin
             U16 (Pick (0, 20));
             U8 (Pick (0, 15));
@@ -131,7 +132,8 @@ procedure DMI_Fuzz is
             U8 (Pick (0, 59));
             U8 (Length);
             for I in 1 .. Length loop
-               U8 (Pick (Character'Pos (' '), Character'Pos ('z')));
+               U8 (if Pick (0, 5) = 0 then Character'Pos (' ')
+                   else Pick (0, 255));
             end loop;
          end;
       elsif The_Type = MSG_TEXT_REMOVE then

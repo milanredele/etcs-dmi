@@ -5,18 +5,24 @@
 --  second group: auxiliary messages), each in reverse chronological
 --  order, and rendered as a scrollable list of 5 lines.
 
+with Font;
+
 package DMI_Text_Messages is
 
    ---------------------------------------------------------------------
-   -- Limits. 8.2.3.4 sets none, the storage is static, so there are
-   -- two, and both are made visible instead of failing silently.
+   -- Limits. 8.2.3.4 sets none for the store and the storage is static,
+   -- so the limit is made visible instead of failing silently.
    --
-   -- Text: Max_Text characters. A longer text is cut and its last three
+   -- Text: Max_Text characters, the longest text the trackside can send
+   -- (SUBSET-026 7.5.1.53, L_TEXT = 0 .. 255) and the longest the
+   -- protocol carries (length u8), so no text of the EVC is ever cut.
+   -- The characters are ISO 8859-1 (SUBSET-026 7.5.1.174, X_TEXT) and are
+   -- stored as such, one byte each: 12 x 255 = 3060 bytes of text. A
+   -- character above 16#FF# cannot come from the EVC; Put stores it as
+   -- one the fonts have no glyph for (drawn as a box). A longer text, as
+   -- only a caller inside the DMI can pass, is cut and its last three
    -- kept characters become "...", so that it does not read as a
-   -- complete message. 80 characters are at most 3 of the 5 lines of
-   -- E5-E9; this matters for a message to be acknowledged, which is
-   -- presented alone with the scroll buttons disabled (8.2.3.4.8 a, b)
-   -- and therefore has to fit the area as a whole.
+   -- complete message.
    --
    -- Store: 12 messages. When it is full a new message takes the place
    -- of the oldest message that weighs less or the same, in this order:
@@ -31,7 +37,7 @@ package DMI_Text_Messages is
    -- older auxiliary one.
    ---------------------------------------------------------------------
 
-   Max_Text : constant := 80;
+   Max_Text : constant := 255;
 
    -- Determines the acknowledgement priority class (5.4.1.9.1)
    type Class_T is (Fixed_Text, Plain_Text, System_Status, NTC_Text);
@@ -72,13 +78,58 @@ package DMI_Text_Messages is
    -- DMI_Ack could not take earlier (queue full), oldest message first
    procedure Tick;
 
+   ---------------------------------------------------------------------
+   -- Lines (8.2.3.4.6 c). A message that does not fit one of the areas
+   -- E5 .. E9 continues in the next one. Figure 62 breaks between words
+   -- ("Unauthorised passing of" / "EOA / LOA"), so:
+   --   * a line takes as many whole words as fit Line_Width cells,
+   --     measured with the glyphs that are drawn (a character without a
+   --     glyph counts as its replacement box);
+   --   * the spaces at a break are not shown: no line begins or ends
+   --     with a space (also the first one);
+   --   * a word wider than a whole line is broken where the line is full
+   --     (spec silent, choice); only spaces separate words;
+   --   * a line never takes more than Max_Line characters, whatever the
+   --     font says, so that a line always fits Line_T;
+   --   * a text that is empty or holds spaces only is one empty line
+   --     (the time stamp is still shown).
+   -- Scrolling (8.2.3.4.7 e) and the visible lines count the same lines.
+   --
+   -- Layout of a line, in cells from the left edge of E5 .. E9 (234
+   -- wide): the time stamp after the indent of 5.1.3.2, the text 10 cells
+   -- behind the stamp (8.2.3.4.6 b) and, a choice the specification does
+   -- not make, the same indent of 3 cells kept free at the right edge.
+   -- That keeps the text clear of the 2 cell yellow frame of 5.4.1.5.
+   ---------------------------------------------------------------------
+
+   Area_Width   : constant := 234;
+   Time_Indent  : constant := 3;
+   Text_Indent  : constant := Time_Indent + 40;
+   Right_Margin : constant := 3;
+   Line_Width   : constant := Area_Width - Text_Indent - Right_Margin;
+
+   -- 5.1.2.2.3: character height of the text messages
+   Text_Size : constant Font.Size_T := 12;
+
+   -- The bold style of the first group (8.2.3.4.7 c) is drawn as a
+   -- double strike, one cell wider than the regular text
+   Bold_Extra : constant := 1;
+
+   Max_Line : constant := 64;
+
    -- Rendering interface: the visible lines after wrapping + scrolling.
-   -- Line_Count is the total wrapped line count of the current content.
    Visible_Lines : constant := 5;
 
+   -- A message to be acknowledged is presented alone and cannot be
+   -- scrolled (8.2.3.4.8 a, b: E10 and E11 show NA15 and NA16), and the
+   -- specification does not say what happens to one of more than
+   -- Visible_Lines lines. Choice: its first lines are shown and the last
+   -- visible one ends in "..." (hence the 3 extra characters of a line);
+   -- once acknowledged it is an ordinary message (8.2.3.4.8 c) and can
+   -- be read as a whole by scrolling.
    type Line_T is record
       Length      : Natural := 0;
-      Text        : Wide_String (1 .. Max_Text);
+      Text        : Wide_String (1 .. Max_Line + 3);
       Bold        : Boolean := False;
       First_Line  : Boolean := False; -- carries the hh:mm time stamp
       Hour        : Natural := 0;

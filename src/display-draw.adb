@@ -21,11 +21,33 @@ package body Display.Draw is
    -- are computed as Integer and every cell is clipped to the screen, so
    -- a string that is wider than the space left of or right of the pen
    -- loses cells instead of raising Constraint_Error.
+   --
+   -- A clip is the rectangle text may be drawn in: the whole screen, or
+   -- the part of an area that is on the screen (Draw_String_Clipped).
+   type Clip_T is record
+      Left, Right, Top, Bottom : Integer; -- inclusive; empty if reversed
+   end record;
+
+   Whole_Screen : constant Clip_T :=
+     (Left   => 0,
+      Right  => General_Parameters.Display_Resolution.Width - 1,
+      Top    => 0,
+      Bottom => General_Parameters.Display_Resolution.Height - 1);
+
+   function To_Clip (The_Area : Area_T) return Clip_T is
+     (Left   => The_Area.Position.X,
+      Right  => Integer'Min (The_Area.Position.X + The_Area.Width - 1,
+                             Whole_Screen.Right),
+      Top    => The_Area.Position.Y,
+      Bottom => Integer'Min (The_Area.Position.Y + The_Area.Height - 1,
+                             Whole_Screen.Bottom));
+
    procedure Put_Pixel (X, Y : Integer;
-                        The_Color : General_Parameters.Color) is
+                        The_Color : General_Parameters.Color;
+                        The_Clip  : Clip_T := Whole_Screen) is
    begin
-      if X in 0 .. General_Parameters.Display_Resolution.Width - 1
-        and then Y in 0 .. General_Parameters.Display_Resolution.Height - 1
+      if X in The_Clip.Left .. The_Clip.Right
+        and then Y in The_Clip.Top .. The_Clip.Bottom
       then
          Set_Pixel (X, Y, The_Color);
       end if;
@@ -34,7 +56,8 @@ package body Display.Draw is
    procedure Put_Glyph (Pen_X, Pen_Y : Integer;
                         The_Glyph  : Font.Glyph;
                         The_Bitmap : Font.Bitmap_T;
-                        The_Color  : General_Parameters.Color) is
+                        The_Color  : General_Parameters.Color;
+                        The_Clip   : Clip_T := Whole_Screen) is
       Top  : constant Integer := Pen_Y - The_Glyph.Top;
       Left : constant Integer := Pen_X + The_Glyph.Left;
       Pos  : Positive := The_Glyph.Bitmap_Pos;
@@ -42,7 +65,7 @@ package body Display.Draw is
       for J in Top .. Top + The_Glyph.Height - 1 loop
          for I in Left .. Left + The_Glyph.Width - 1 loop
             if Pos in The_Bitmap'Range and then The_Bitmap (Pos) then
-               Put_Pixel (I, J, The_Color);
+               Put_Pixel (I, J, The_Color, The_Clip);
             end if;
             Pos := Pos + 1;
          end loop;
@@ -61,19 +84,20 @@ package body Display.Draw is
 
    procedure Put_Replacement (Pen_X, Pen_Y : Integer;
                               The_Size  : Font.Size_T;
-                              The_Color : General_Parameters.Color) is
+                              The_Color : General_Parameters.Color;
+                              The_Clip  : Clip_T := Whole_Screen) is
       Left   : constant Integer := Pen_X + 1;
       Right  : constant Integer := Left + Replacement_Width (The_Size) - 1;
       Top    : constant Integer := Pen_Y - Positive (The_Size);
       Bottom : constant Integer := Pen_Y - 1;
    begin
       for X in Left .. Right loop
-         Put_Pixel (X, Top, The_Color);
-         Put_Pixel (X, Bottom, The_Color);
+         Put_Pixel (X, Top, The_Color, The_Clip);
+         Put_Pixel (X, Bottom, The_Color, The_Clip);
       end loop;
       for Y in Top .. Bottom loop
-         Put_Pixel (Left, Y, The_Color);
-         Put_Pixel (Right, Y, The_Color);
+         Put_Pixel (Left, Y, The_Color, The_Clip);
+         Put_Pixel (Right, Y, The_Color, The_Clip);
       end loop;
    end Put_Replacement;
 
@@ -162,12 +186,14 @@ package body Display.Draw is
       end loop;
    end Draw_String;
 
-   procedure Draw_String (Pen_X : Width_T;
-                          Pen_Y : Height_T;
-                          The_String : Wide_String;
-                          The_Size   : Font.Size_T;
-                          The_Color  : General_Parameters.Color;
-                          The_Alignment : Text_Alignment := Left) is
+   -- Common part of the Wide_String drawing procedures
+   procedure Put_String (Pen_X : Width_T;
+                         Pen_Y : Height_T;
+                         The_String : Wide_String;
+                         The_Size   : Font.Size_T;
+                         The_Color  : General_Parameters.Color;
+                         The_Alignment : Text_Alignment;
+                         The_Clip   : Clip_T) is
       Size : constant Available_Size_T := Available (The_Size);
 
       -- The font tables are passed by reference, never copied
@@ -179,10 +205,11 @@ package body Display.Draw is
       begin
          for C of The_String loop
             if Has_Glyph (The_Map, C) then
-               Put_Glyph (Cur_X, Pen_Y, The_Map (C), The_Bitmap, The_Color);
+               Put_Glyph (Cur_X, Pen_Y, The_Map (C), The_Bitmap, The_Color,
+                          The_Clip);
                Cur_X := Cur_X + The_Map (C).Advance_X;
             else
-               Put_Replacement (Cur_X, Pen_Y, Size, The_Color);
+               Put_Replacement (Cur_X, Pen_Y, Size, The_Color, The_Clip);
                Cur_X := Cur_X + Replacement_Advance (Size);
             end if;
          end loop;
@@ -201,7 +228,29 @@ package body Display.Draw is
          when 18 =>
             Render (Font.FreeSans_18.Glyphs, Font.FreeSans_18.Bitmap);
       end case;
+   end Put_String;
+
+   procedure Draw_String (Pen_X : Width_T;
+                          Pen_Y : Height_T;
+                          The_String : Wide_String;
+                          The_Size   : Font.Size_T;
+                          The_Color  : General_Parameters.Color;
+                          The_Alignment : Text_Alignment := Left) is
+   begin
+      Put_String (Pen_X, Pen_Y, The_String, The_Size, The_Color,
+                  The_Alignment, Whole_Screen);
    end Draw_String;
+
+   procedure Draw_String_Clipped (Pen_X : Width_T;
+                                  Pen_Y : Height_T;
+                                  The_String : Wide_String;
+                                  The_Size   : Font.Size_T;
+                                  The_Color  : General_Parameters.Color;
+                                  The_Clip   : Area_T) is
+   begin
+      Put_String (Pen_X, Pen_Y, The_String, The_Size, The_Color,
+                  Left, To_Clip (The_Clip));
+   end Draw_String_Clipped;
 
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
                           The_Position : Position_T) is
