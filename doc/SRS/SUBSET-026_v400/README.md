@@ -19,7 +19,7 @@ A clause starts its own line: `grep -rn '^3.13.10.4.2 ' sections/`.
 | Geographical position, tolerance of Big Metal Mass, track ahead free, ATO selector | 3.6.6, 3.15.5, 3.15.7, 3.15.11 | [03_06](sections/03_06_location_principles_train_position_and_train_ori.md), [03_15](sections/03_15_special_functions.md) |
 | Train data, additional data, national values, data view | 3.18 | [03_18](sections/03_18_system_data.md) |
 | Modes: description and responsibilities, among them Automatic Driving | 4.4 (AD: 4.4.16) | [04](sections/04_modes_and_transitions.md) |
-| Mode transitions and their conditions. The matrix of 4.6.2 is garbled in the markdown: read page 48 of the chapter 4 PDF; the conditions table 4.6.3 is fine | 4.6.2, 4.6.3 | [04](sections/04_modes_and_transitions.md) |
+| Mode transitions and their conditions. The matrix of 4.6.2 is rebuilt from the PDF page and followed by the same transitions as a list (the rows with AD in the first column are every exit from AD) | 4.6.2, 4.6.3 | [04](sections/04_modes_and_transitions.md) |
 | What the DMI shows and accepts in each mode | 4.7.2 | [04](sections/04_modes_and_transitions.md) |
 | Start of Mission, the dialogue behind the DMI start-up windows | 5.4 | [05](sections/05_procedures.md) |
 | Shunting, override, on-sight, level transitions, train trip, reversing, limited supervision, supervised manoeuvre: the acknowledgements and driver requests | 5.6 to 5.13, 5.19, 5.21 | [05](sections/05_procedures.md) |
@@ -220,22 +220,23 @@ in the repository.
   - 4.5.2 [Active Functions Table](sections/04_modes_and_transitions.md#L1081)
 - 4.6 [Transitions between modes](sections/04_modes_and_transitions.md#L1175)
   - 4.6.1 [Symbols](sections/04_modes_and_transitions.md#L1177)
-  - 4.6.3 [Transitions Conditions Table](sections/04_modes_and_transitions.md#L1228)
-- 4.7 [DMI depending on modes](sections/04_modes_and_transitions.md#L1355)
-  - 4.7.1 [Introduction](sections/04_modes_and_transitions.md#L1357)
-  - 4.7.2 [DMI versus Mode Table](sections/04_modes_and_transitions.md#L1369)
-- 4.8 [Acceptance of received information](sections/04_modes_and_transitions.md#L1521)
-  - 4.8.1 [Introduction](sections/04_modes_and_transitions.md#L1523)
-  - 4.8.2 [Assumptions](sections/04_modes_and_transitions.md#L1550)
-  - 4.8.3 [Accepted information depending on the level, the origin and the type of information](sections/04_modes_and_transitions.md#L1580)
-  - 4.8.4 [Accepted Information depending on the mode and the type of information](sections/04_modes_and_transitions.md#L1888)
-  - 4.8.5 [Handling of transition buffer in case of level transition announcement or RBC/RBC handover](sections/04_modes_and_transitions.md#L2032)
-- 4.9 [What happens to accepted and stored information when entering a given level](sections/04_modes_and_transitions.md#L2070)
-  - 4.9.1 [Introduction](sections/04_modes_and_transitions.md#L2072)
-- 4.10 [What happens to accepted and stored information when entering a given mode](sections/04_modes_and_transitions.md#L2086)
-  - 4.10.1 [Introduction](sections/04_modes_and_transitions.md#L2088)
-- 4.11 [What happens to stored information when exiting NP mode](sections/04_modes_and_transitions.md#L2276)
-- 4.12 [What happens to an ongoing brake command when entering a given mode](sections/04_modes_and_transitions.md#L2305)
+  - 4.6.2 [Transitions Table](sections/04_modes_and_transitions.md#L1193)
+  - 4.6.3 [Transitions Conditions Table](sections/04_modes_and_transitions.md#L1387)
+- 4.7 [DMI depending on modes](sections/04_modes_and_transitions.md#L1514)
+  - 4.7.1 [Introduction](sections/04_modes_and_transitions.md#L1516)
+  - 4.7.2 [DMI versus Mode Table](sections/04_modes_and_transitions.md#L1528)
+- 4.8 [Acceptance of received information](sections/04_modes_and_transitions.md#L1680)
+  - 4.8.1 [Introduction](sections/04_modes_and_transitions.md#L1682)
+  - 4.8.2 [Assumptions](sections/04_modes_and_transitions.md#L1709)
+  - 4.8.3 [Accepted information depending on the level, the origin and the type of information](sections/04_modes_and_transitions.md#L1739)
+  - 4.8.4 [Accepted Information depending on the mode and the type of information](sections/04_modes_and_transitions.md#L2047)
+  - 4.8.5 [Handling of transition buffer in case of level transition announcement or RBC/RBC handover](sections/04_modes_and_transitions.md#L2191)
+- 4.9 [What happens to accepted and stored information when entering a given level](sections/04_modes_and_transitions.md#L2229)
+  - 4.9.1 [Introduction](sections/04_modes_and_transitions.md#L2231)
+- 4.10 [What happens to accepted and stored information when entering a given mode](sections/04_modes_and_transitions.md#L2245)
+  - 4.10.1 [Introduction](sections/04_modes_and_transitions.md#L2247)
+- 4.11 [What happens to stored information when exiting NP mode](sections/04_modes_and_transitions.md#L2435)
+- 4.12 [What happens to an ongoing brake command when entering a given mode](sections/04_modes_and_transitions.md#L2464)
 
 ### Chapter 5: Procedures
 

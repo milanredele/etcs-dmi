@@ -13,12 +13,16 @@ headers and footers dropped); this script only
   - removes the list dash in front of clause numbers and separates headings
     and clauses that were glued to the previous clause, so that
     grep '^3.13.10.4.2 ' finds a clause,
+  - rebuilds the mode transition matrix of 4.6.2 from the word positions on
+    the PDF page (the converter garbles it) and adds a flat list of the
+    transitions derived from it,
   - splits chapter 3 (252 pages) into one file per section 3.x,
   - builds the index from the numbered headings.
 The markdown is a reading and search aid. Tables that span pages are split,
 formulas and figures are lost or garbled: the PDF is the reference.
 Converted with pymupdf4llm 1.28.2.
 """
+import bisect
 import re
 import shutil
 import sys
@@ -46,7 +50,7 @@ DMI_ENTRY_POINTS = """## Where the DMI specification leans on this document
 | Geographical position, tolerance of Big Metal Mass, track ahead free, ATO selector | 3.6.6, 3.15.5, 3.15.7, 3.15.11 | [03_06](sections/03_06_location_principles_train_position_and_train_ori.md), [03_15](sections/03_15_special_functions.md) |
 | Train data, additional data, national values, data view | 3.18 | [03_18](sections/03_18_system_data.md) |
 | Modes: description and responsibilities, among them Automatic Driving | 4.4 (AD: 4.4.16) | [04](sections/04_modes_and_transitions.md) |
-| Mode transitions and their conditions. The matrix of 4.6.2 is garbled in the markdown: read page 48 of the chapter 4 PDF; the conditions table 4.6.3 is fine | 4.6.2, 4.6.3 | [04](sections/04_modes_and_transitions.md) |
+| Mode transitions and their conditions. The matrix of 4.6.2 is rebuilt from the PDF page and followed by the same transitions as a list (the rows with AD in the first column are every exit from AD) | 4.6.2, 4.6.3 | [04](sections/04_modes_and_transitions.md) |
 | What the DMI shows and accepts in each mode | 4.7.2 | [04](sections/04_modes_and_transitions.md) |
 | Start of Mission, the dialogue behind the DMI start-up windows | 5.4 | [05](sections/05_procedures.md) |
 | Shunting, override, on-sight, level transitions, train trip, reversing, limited supervision, supervised manoeuvre: the acknowledgements and driver requests | 5.6 to 5.13, 5.19, 5.21 | [05](sections/05_procedures.md) |
@@ -108,6 +112,83 @@ def headings(md):
     return found
 
 
+MODES = "NP SB PS SH SM FS AD LS SR OS SL NL UN TR PT SF IS SN RV".split()
+MATRIX_PAGE = 48  # chapter 4
+
+
+def transition_matrix(doc):
+    """The 19 x 19 matrix of 4.6.2 as markdown, cell texts by word position."""
+    page = doc[MATRIX_PAGE - 1]
+    table = page.find_tables().tables[0]
+    assert (table.row_count, table.col_count) == (len(MODES), len(MODES))
+    ys = [r.bbox[1] for r in table.rows] + [table.rows[-1].bbox[3]]
+    xs = sorted({round(c[0], 1) for r in table.rows for c in r.cells if c}
+                | {round(table.bbox[2], 1)})
+    assert len(xs) == len(MODES) + 1
+    grid = [[[] for _ in MODES] for _ in MODES]
+    for x0, y0, x1, y1, word, *_ in page.get_text("words"):
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        if xs[0] < cx < xs[-1] and ys[0] < cy < ys[-1]:
+            row, col = bisect.bisect(ys, cy) - 1, bisect.bisect(xs, cx) - 1
+            grid[row][col].append((round(cy), cx, word))
+
+    def text_of(words):
+        # a line break inside a condition list separates two numbers, also
+        # where the PDF has no comma there ("<5,6" / "50,51")
+        text = ""
+        for _, _, word in sorted(words):
+            if text and text[-1].isdigit() and word[0].isdigit():
+                text += ","
+            text += word
+        return text
+
+    cells = [[text_of(c) for c in row] for row in grid]
+    for i, mode in enumerate(MODES):
+        assert cells[i][i] == mode, (mode, cells[i][i])
+
+    out = ["## **4.6.2 Transitions Table**", "",
+           f"<!-- rebuilt from the word positions on page {MATRIX_PAGE} of the PDF;"
+           " a transition goes from the mode of the column to the mode of the"
+           " row, empty cells are the shaded ones -->", "",
+           "| |" + "|".join(f"from {m}" for m in MODES) + "|",
+           "|---|" + "---|" * len(MODES)]
+    flat = []
+    cell = re.compile(r"^<?([\d,]+)>?-p(\d?)-?$")
+    for i, to in enumerate(MODES):
+        shown = []
+        for j, origin in enumerate(MODES):
+            text = cells[i][j]
+            if i == j:
+                shown.append(f"**{to}**")
+                continue
+            if text:
+                m = cell.match(text)
+                assert m, (origin, to, text)
+                # the arrow points at the diagonal, i.e. at the mode of the row
+                assert ("<" in text) == (j > i) and (">" in text) == (j < i), text
+                conds = m.group(1).strip(",").replace(",", ", ")
+                flat.append((j, i, origin, to, conds, m.group(2)))
+                text = re.sub(r"(-p\d?-?)$", r"<br>\1", text).replace(",", ", ")
+            shown.append(text)
+        out.append(f"|**to {to}**|" + "|".join(shown) + "|")
+    out += ["", "**Figure 2: Transition table.**", "",
+            "<!-- derived from the matrix above, not part of SUBSET-026:"
+            " the same transitions as a list -->", "",
+            "|From|To|Conditions (any of)|Priority|", "|---|---|---|---|"]
+    for _, _, origin, to, conds, prio in sorted(flat):
+        out.append(f"|{origin}|{to}|{conds}|p{prio}|")
+    return "\n".join(out)
+
+
+def fix_matrix(md, doc):
+    """Replace the garbled 4.6.2 block (page 48) with the rebuilt matrix."""
+    start = md.index(f"<!-- end of page {MATRIX_PAGE - 1} -->")
+    start = md.index("\n", start) + 1
+    caption = "**Figure 2: Transition table.**"
+    end = md.index(caption, start) + len(caption)
+    return md[:start] + "\n" + transition_matrix(doc) + md[end:]
+
+
 def split_sections(chapter, md):
     """Cut a chapter in front of every heading 'chapter.N'."""
     top = re.compile(rf"^#+ \*\*({chapter}\.\d+|APPENDIX TO CHAPTER {chapter})(?: +(.*?))?\*\* *$")
@@ -155,6 +236,8 @@ def main(src):
         md = clean(pymupdf4llm.to_markdown(
             doc, header=False, footer=False, page_separators=True,
             write_images=False, show_progress=False))
+        if chapter == 4:
+            md = fix_matrix(md, doc)
         if chapter in SPLIT:
             files = split_sections(chapter, md)
         else:
