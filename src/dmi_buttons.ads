@@ -46,13 +46,18 @@ package DMI_Buttons is
                         BTN_Menu_19,
                         BTN_Menu_20,
                         BTN_Menu_21,
+                        --  Tables 22 and 23: [Previous] and [Next] of a
+                        --  topic spread over several windows
+                        BTN_Menu_22,
+                        BTN_Menu_23,
                         --  11.3.3.5: the Driver ID window of the Start
                         --  Up step S1 adds the 'settings' and 'train
-                        --  running number' buttons to those
-                        BTN_Menu_22,
-                        BTN_Menu_23);
+                        --  running number' buttons to those of the data
+                        --  entry window
+                        BTN_Menu_24,
+                        BTN_Menu_25);
 
-   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_23;
+   subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_25;
    subtype F_Button_T is Button_ID_T range BTN_F1 .. BTN_F5;
 
    --  DMI 5.3.2.6. The repeat function of 5.3.2.6.5 is a property of the

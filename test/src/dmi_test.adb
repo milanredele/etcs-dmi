@@ -28,6 +28,7 @@ with DMI_Protocol;
 with DMI_Sounds;
 with DMI_Status;
 with DMI_Text_Messages;
+with DMI_Train_Data;
 with DMI_Windows;
 with EVC_Core;
 with EVC_Driver;
@@ -1178,6 +1179,85 @@ procedure DMI_Test is
    end Press;
 
    ---------------------------------------------------------------------
+   -- Coordinates of the data entry windows (Tables 22, 23, 25) and the
+   -- two sequences the scenarios repeat: the Level window of Table 38
+   -- and the train data of Table 40 over two windows (audit WIN-8,
+   -- WIN-10)
+   ---------------------------------------------------------------------
+
+   -- Table 25: key K of the keyboard, three per row from y 200
+   function Key_X (K : Positive) return Natural is
+     (334 + ((K - 1) mod 3) * 102 + 51);
+   function Key_Y (K : Positive) return Natural is
+     (15 + 200 + ((K - 1) / 3) * 50 + 25);
+
+   procedure Key (K : Positive) is
+   begin
+      Press (Key_X (K), Key_Y (K));
+   end Key;
+
+   -- Table 23: the data part of the input field I, which is its [Enter]
+   -- button (10.3.1.22)
+   procedure Enter_Field (I : Positive) is
+   begin
+      Press (589, 15 + (I - 1) * 50 + 25);
+   end Enter_Field;
+
+   -- Table 22: the merged data part of a window with a single input
+   -- field (10.3.5.5)
+   procedure Enter_Single is
+   begin
+      Press (487, 90);
+   end Enter_Single;
+
+   -- Tables 22 and 23: [Previous] and [Next] right of [Close]
+   procedure Press_Previous is
+   begin
+      Press (457, 440);
+   end Press_Previous;
+
+   procedure Press_Next is
+   begin
+      Press (539, 440);
+   end Press_Next;
+
+   -- 11.3.2: choose a level on the dedicated keyboard of Table 38 and
+   -- accept it (K is the button number of the table)
+   procedure Choose_Level (K : Positive := 1) is
+   begin
+      Key (K);
+      Enter_Single;
+   end Choose_Level;
+
+   -- 11.3.9: the seven items of Table 40 over the two windows of
+   -- Figures 120 and 121, ending on the first window again
+   procedure Enter_Train_Data (Length, Brake, Speed : Positive) is
+      procedure Type_Number (N : Natural) is
+         Img : constant Wide_String := Natural'Wide_Image (N);
+      begin
+         for I in 2 .. Img'Last loop
+            -- Table 25: '1' .. '9' on the keys 1 .. 9, '0' on the key 11
+            if Img (I) = '0' then
+               Key (11);
+            else
+               Key (Wide_Character'Pos (Img (I))
+                    - Wide_Character'Pos ('0'));
+            end if;
+         end loop;
+      end Type_Number;
+   begin
+      Key (1); Enter_Field (1);           -- train category PASS 1
+      Type_Number (Length); Enter_Field (2);
+      Type_Number (Brake); Enter_Field (3);
+      Type_Number (Speed); Enter_Field (4);
+      Press_Next;
+      Key (1); Enter_Field (1);           -- axle load category A
+      Key (7); Enter_Field (2);           -- airtight: No (Table 40)
+      Key (5); Enter_Field (3);           -- loading gauge Out of GC
+      Press_Previous;
+   end Enter_Train_Data;
+
+   ---------------------------------------------------------------------
    -- Input hardening (audit ROB-6 .. ROB-9)
    ---------------------------------------------------------------------
 
@@ -1671,7 +1751,14 @@ procedure DMI_Test is
              and then DMI_Windows.Top = DMI_Windows.W_Level,
              "S2: the disabled [Close] does not close the Level window");
 
-      Press (410, 90);        -- Level 1 -> S10 = S1 of the Main window
+      -- 11.3.2.4, Table 38: the button 1 is 'Level 1'; the choice has to
+      -- be accepted on the input field -> S10 = S1 of the Main window
+      Key (1);
+      Check (DMI_Windows.Top = DMI_Windows.W_Level,
+             "S2: a key of the dedicated keyboard does not leave the window");
+      Step;
+      Check_Frame ("startup_level_1");
+      Enter_Single;
       Step;
       Check (not DMI_Windows.In_Start_Up, "S10: the Start Up sequence ended");
       Check_Frame ("main_window"); -- 'Start' disabled: data not valid
@@ -1690,20 +1777,37 @@ procedure DMI_Test is
       Step;
       Check_Frame ("startup_train_data");
 
-      -- length 400
+      -- Figure 120: train category, length, brake percentage and
+      -- maximum speed on the first window, the rest on the second
+      Key (1); Enter_Field (1);           -- train category PASS 1
       Press (385, 290); Press (487, 390); Press (487, 390);
-      Press (589, 40);        -- the data field is [Enter] (10.3.1.22)
-      -- brake percentage 135
+      Enter_Field (2);        -- length 400, the data field is [Enter]
       Press (385, 240); Press (589, 240); Press (487, 290);
-      Press (589, 90);
-      -- max speed 140
+      Enter_Field (3);        -- brake percentage 135
       Press (385, 240); Press (385, 290); Press (487, 390);
       Step;
       Check_Frame ("startup_train_data_filled");
-      Press (589, 140);       -- the last value is accepted
+      Enter_Field (4);        -- maximum speed 140
+      -- 10.3.5.9: 'Yes' stays disabled while the second window still
+      -- has input fields without a data value (Table 50 S3-1)
+      Press (167, 440);
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "the 'Yes' button waits for the items of the other window");
+      Press_Next;             -- Table 23: [Next] -> Figure 121
+      Step;
+      Check_Frame ("startup_train_data_2");
+      Key (1); Enter_Field (1);           -- axle load category A
+      Key (7); Enter_Field (2);           -- airtight: No (Table 40)
+      Key (5); Enter_Field (3);           -- loading gauge Out of GC
+      Step;
+      Check_Frame ("startup_train_data_2_filled");
       Press (167, 440);       -- 'Train data entry complete?' Yes (Table 24)
       Step;
       Check_Frame ("startup_validation");
+      -- 11.7.1.6.1: nothing is stored on board before the validation
+      Check (not DMI_Driver_Data.Train_Data_Entered
+             and then DMI_Driver_Data.Train_Length = 0,
+             "the 'Yes' of the question stores no train data");
 
       Press (487, 40);        -- accept the proposed 'Yes' (Table 29)
                               -- -> D6: TRN not valid -> S3-3
@@ -1724,6 +1828,13 @@ procedure DMI_Test is
       Check (DMI_Driver_Data.Train_Length = 400, "train length 400");
       Check (DMI_Driver_Data.Brake_Pct = 135, "brake percentage 135");
       Check (DMI_Driver_Data.Max_Speed = 140, "max speed 140");
+      -- Table 40, Table 41, Table 42 and SUBSET-026 7.5.1.61 / 7.5.1.62
+      Check (DMI_Train_Data.Category_CD = 0
+             and then DMI_Train_Data.Category_Other = 4,
+             "PASS 1 is cant deficiency 80 mm, passenger train");
+      Check (DMI_Train_Data.Axle_Load_Value = 0, "axle load category A");
+      Check (DMI_Train_Data.Airtight_Value = 0, "airtight: not fitted");
+      Check (DMI_Train_Data.Gauge_Value = 0, "loading gauge: out of GC");
 
       -- Table 50 S1: 'Start' with level 1 leads to the default window and
       -- is the driver's single request
@@ -1800,7 +1911,12 @@ procedure DMI_Test is
       Press (410, 90);        -- Adhesion
       Step;
       Check_Frame ("adhesion_window");
-      Press (563, 90);        -- Slippery rail -> closes to Special
+      -- 11.3.11.4, Table 43: the button 2 is 'Slippery rail'; accepting
+      -- it on the input field leaves the window (10.6.1.2 a)
+      Key (2);
+      Step;
+      Check_Frame ("adhesion_slippery");
+      Enter_Single;
       Step;
       Check_Frame ("special_window");
 
@@ -1811,10 +1927,14 @@ procedure DMI_Test is
       Press (563, 90);        -- Volume
       Step;
       Check_Frame ("volume_window");
-      Press (563, 90);        -- '+' -> volume 6
+      -- 11.3.7.4: a dedicated keyboard; here one key per level, so the
+      -- key 7 is the volume 6
+      Key (7);
       Step;
-      Check_Frame ("volume_plus");
-      Press (370, 440);       -- close Volume
+      Check_Frame ("volume_six");
+      Enter_Single;           -- accepted -> back to the Settings window
+      Check (General_Parameters."=" (General_Parameters.Loudspeaker_Volume, 6),
+             "the accepted choice sets the volume");
       Press (370, 440);       -- close Settings
 
       Press (610, 140);       -- F3: Data view
@@ -2038,14 +2158,19 @@ procedure DMI_Test is
 
       -- the driver's start of mission by touch (Tables 49 and 50)
       Touch (385, 240); Touch (487, 90);   -- Driver ID 1, Enter
-      Touch (410, 90);                      -- Level 1 -> Main window
-      Touch (410, 140);                     -- Train data
+      Touch (385, 240); Touch (487, 90);   -- Level 1 accepted -> Main
+      Touch (410, 140);                     -- Train data (1/2)
+      Touch (385, 240); Touch (589, 40);   -- train category PASS 1
       Touch (385, 290); Touch (487, 390); Touch (487, 390);
-      Touch (589, 40);                     -- length 400
+      Touch (589, 90);                     -- length 400
       Touch (385, 240); Touch (589, 240); Touch (487, 290);
-      Touch (589, 90);                     -- brake percentage 135
+      Touch (589, 140);                     -- brake percentage 135
       Touch (385, 240); Touch (385, 290); Touch (487, 390);
-      Touch (589, 140);                     -- maximum speed 140
+      Touch (589, 190);                     -- maximum speed 140
+      Touch (539, 440);                     -- [Next] -> Train data (2/2)
+      Touch (385, 240); Touch (589, 40);   -- axle load category A
+      Touch (385, 340); Touch (589, 90);   -- airtight: No
+      Touch (487, 290); Touch (589, 140);  -- loading gauge Out of GC
       Touch (167, 440);                     -- entry complete? Yes
       Touch (487, 40);                      -- validation 'Yes' -> TRN
       Touch (385, 240); Touch (487, 90);   -- TRN 1, Enter -> Main window
@@ -2566,7 +2691,7 @@ procedure DMI_Test is
       Press (385, 240);          -- Driver ID 1
       Press (487, 90);          -- Enter -> Level window
       Check (not DMI_Ack.Current_Valid, "S2: still held");
-      Press (410, 90);           -- Level 1 -> S10, the Main window
+      Choose_Level;              -- Level 1 -> S10, the Main window
       Check (Top_Is (DMI_Windows.W_Main), "S10 reached");
       Drain_Outbox;
       Expect_Shown_After_1_S ("after Start Up");
@@ -2621,9 +2746,7 @@ procedure DMI_Test is
       -- ... and the validation process, together with its train data
       -- window (SR: the Train data button needs standstill only)
       Press (410, 140);          -- Train data
-      Press (385, 240); Press (589, 40);   -- length 1
-      Press (385, 240); Press (589, 90);   -- brake percentage 1
-      Press (487, 290); Press (589, 140);   -- maximum speed 5 (10.3.4.3)
+      Enter_Train_Data (Length => 1, Brake => 1, Speed => 5);
       Press (167, 440);                     -- entry complete? -> validation
       Check (Top_Is (DMI_Windows.W_Train_Data_Validation),
              "validation window open");
@@ -2996,6 +3119,12 @@ procedure DMI_Test is
       DMI_Driver_Data.Train_Length := 200;
       DMI_Driver_Data.Brake_Pct := 135;
       DMI_Driver_Data.Max_Speed := 160;
+      -- Table 45 items 4, 8, 9 and 10: the choices of Tables 41, 42 and
+      -- of SUBSET-026 7.5.1.61 / 7.5.1.62 (audit WIN-8)
+      DMI_Driver_Data.Train_Category := 1;    -- Table 41: PASS 1
+      DMI_Driver_Data.Axle_Load := 1;         -- 7.5.1.62: A
+      DMI_Driver_Data.Airtight := 2;          -- Table 40: Yes
+      DMI_Driver_Data.Loading_Gauge := 4;     -- Table 42: GC
       DMI_Driver_Data.Train_Data_Entered := True;
       Step;
       Check_Frame ("data_view_p1");
@@ -3353,12 +3482,7 @@ procedure DMI_Test is
       Onboard;
       Press (410, 140);                        -- Train data
       Check (Top_Is (DMI_Windows.W_Train_Data), "the Train data window");
-      Press (385, 290); Press (487, 390); Press (487, 390);
-      Press (589, 40);                         -- length 400, its data field
-      Press (385, 240); Press (589, 240); Press (487, 290);
-      Press (589, 90);                         -- brake percentage 135
-      Press (385, 240); Press (385, 290); Press (487, 390);
-      Press (589, 140);                        -- maximum speed 140
+      Enter_Train_Data (Length => 400, Brake => 135, Speed => 140);
       Press (167, 440);                        -- entry complete? Yes
       Check (Top_Is (DMI_Windows.W_Train_Data_Validation),
              "the train data validation window");
@@ -3522,42 +3646,59 @@ procedure DMI_Test is
       Drain_Outbox;
 
       -- a window with several input fields: the train data window
-      Press (410, 90);                        -- Level 1 -> S10, Main window
+      Choose_Level;                           -- Level 1 -> S10, Main window
       Press (410, 140);                       -- Train data
       Check (DMI_Windows.Top = DMI_Windows.W_Train_Data, "train data open");
 
-      -- 10.3.1.23: the first input field is selected
-      Press (385, 240); Press (487, 240);     -- 12 into field 1
-      Check (Value_Of (1) = "12", "field 1 takes the keys");
+      -- 10.3.1.23: the first input field is selected; Figure 120 puts
+      -- the train category there, with the dedicated keyboard of Table 41
+      Key (1);
+      Check (Value_Of (1) = "PASS 1",
+             "one key of a dedicated keyboard carries the whole choice");
+      -- 10.3.5.19: with more than 12 predefined choices the key 12 is
+      -- the [More] button and the keys 1 to 11 take the next group
+      Key (12);
+      Key (1);
+      Check (Value_Of (1) = "FP 2",
+             "[More] shows the next group of predefined choices");
+      Key (12);
+      Key (1);
+      Check (Value_Of (1) = "PASS 1",
+             "the list of predefined choices is circular");
+      Enter_Field (1);                        -- accepted -> field 2
 
       -- 10.3.1.26: another input field is selected by its label part;
       -- 10.3.1.20: the value entered without accepting it is erased
-      Press (Label_X, Field_Y (2));
-      Check (Value_Of (1) = "", "an entry left without accepting is erased");
-      Press (385, 240);                       -- 1 into field 2
-      Check (Value_Of (2) = "1", "field 2 is the selected one now");
+      Press (385, 240); Press (487, 240);     -- 12 into field 2
+      Check (Value_Of (2) = "12", "field 2 takes the keys");
+      Press (Label_X, Field_Y (3));
+      Check (Value_Of (2) = "", "an entry left without accepting is erased");
+      Press (385, 240);                       -- 1 into field 3
+      Check (Value_Of (3) = "1", "field 3 is the selected one now");
 
       -- 10.3.1.26: the data part of an input field that is not selected
       -- selects it as well
-      Press (Data_X, Field_Y (3));
+      Press (Data_X, Field_Y (4));
       -- the maximum speed has a resolution of 5 km/h (10.3.4.3,
       -- SUBSET-026 7.5.1.160 V_MAXTRAIN)
-      Press (487, 290);                       -- 5 into field 3
-      Check (Value_Of (3) = "5" and then Value_Of (2) = "",
+      Press (487, 290);                       -- 5 into field 4
+      Check (Value_Of (4) = "5" and then Value_Of (3) = "",
              "the data part of another field selects it");
 
       -- 10.3.1.24 / 10.3.1.25: accepting the last input field selects
       -- the first one again, the list is circular
-      Press (Data_X, Field_Y (3));
-      Press (589, 240);                       -- 3 into the selected field
-      Check (Value_Of (1) = "3" and then Value_Of (3) = "5",
+      Press (Data_X, Field_Y (4));
+      Key (2);                                -- 'PASS 2' into field 1
+      Check (Value_Of (1) = "PASS 2" and then Value_Of (4) = "5",
              "the field after the last one is the first one");
 
       -- 10.3.1.19: the first key press replaces the data value
-      Press (Data_X, Field_Y (1));            -- accept "3"
-      Press (Data_X, Field_Y (1));            -- select field 1 again
-      Press (385, 240);
-      Check (Value_Of (1) = "1", "the first key replaces the data value");
+      Enter_Field (1);                        -- accepted -> field 2
+      Press (385, 240); Press (487, 240);     -- 12 into the length
+      Enter_Field (2);                        -- accepted -> field 3
+      Press (Data_X, Field_Y (2));            -- the length again
+      Press (589, 240);                       -- 3
+      Check (Value_Of (2) = "3", "the first key replaces the data value");
 
       -- 10.3.2.3: the cursor flashes at 2 Hz (5 cycles of 50 ms)
       Step;
@@ -3592,7 +3733,8 @@ procedure DMI_Test is
       end Value_Of;
    begin
       Reset;
-      Send_Mode_Level (Mode => 1, Level => 4); -- SB
+      -- the level is unknown, so that Table 49 D2 leads to the Level window
+      Send_Mode_Level (Mode => 1, Level => 0); -- SB
       Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
                         V_Release => 0, V_Sbi => 0, V_Wsl => 0,
                         D_Target => 0, Monitoring => 0, Dial_Range => 1,
@@ -3602,11 +3744,9 @@ procedure DMI_Test is
       Drain_Outbox;
 
       Press (385, 240); Press (487, 90);      -- Driver ID 1
-      Press (410, 90);                        -- Level 1 -> Main window
+      Choose_Level;                           -- Level 1 -> Main window
       Press (410, 140);                       -- Train data
-      Press (385, 240); Press (589, 40);      -- length 1
-      Press (385, 240); Press (589, 90);      -- brake percentage 1
-      Press (487, 290); Press (589, 140);     -- maximum speed 5 (10.3.4.3)
+      Enter_Train_Data (Length => 1, Brake => 1, Speed => 5);
       Press (167, 440);                       -- entry complete? -> validation
       Check (DMI_Windows.Top = DMI_Windows.W_Train_Data_Validation,
              "the validation window is open");
@@ -3628,10 +3768,19 @@ procedure DMI_Test is
       Check (not DMI_Driver_Data.Train_Data_Entered,
              "'No' validates nothing");
 
+      -- Table 50 S3-1 entered from S3-2: the first window of the topic
+      -- with the data values of the previous S3-1 proposed
+      Check (DMI_Data_Entry.Value (2).Length = 1
+             and then DMI_Data_Entry.Value (2).Text (1) = '1',
+             "the values of the previous S3-1 are proposed again");
+
       -- and once more with the proposed 'Yes'
       Press (167, 440);                       -- entry complete? -> validation
       Press (Key_Yes, Field_Y);
       Check (DMI_Driver_Data.Train_Data_Entered, "'Yes' validates the data");
+      Check (DMI_Driver_Data.Train_Length = 1
+             and then DMI_Driver_Data.Max_Speed = 5,
+             "the validated values are the ones stored on board");
       Drain_Sounds;
       Drain_Outbox;
    end Scenario_Validation_Window;
@@ -3678,7 +3827,8 @@ procedure DMI_Test is
       end Short_Press;
    begin
       Reset;
-      Send_Mode_Level (Mode => 1, Level => 4); -- SB
+      -- the level is unknown, so that Table 49 D2 leads to the Level window
+      Send_Mode_Level (Mode => 1, Level => 0); -- SB
       Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
                         V_Release => 0, V_Sbi => 0, V_Wsl => 0,
                         D_Target => 0, Monitoring => 0, Dial_Range => 1,
@@ -3687,65 +3837,77 @@ procedure DMI_Test is
       Drain_Sounds;
       Drain_Outbox;
       Press (385, 240); Press (487, 90);      -- Driver ID 1
-      Press (410, 90);                        -- Level 1 -> Main window
-      Press (410, 140);                       -- Train data
+      Choose_Level;                           -- Level 1 -> Main window
+      Press (410, 140);                       -- Train data (1/2)
+      Key (1); Enter_Field (1);               -- train category PASS 1
 
       -- 10.3.4.2: 5000 m is outside the range of L_TRAIN (0 .. 4095 m,
       -- SUBSET-026 7.5.1.56)
       Press (487, 290); Press (487, 390);     -- 5, 0
       Press (487, 390); Press (487, 390);     -- 0, 0
-      Press (Data_X, Field_Y (1));            -- [Enter]
-      Check (Value_Of (1) = "5000",
+      Press (Data_X, Field_Y (2));            -- [Enter]
+      Check (Value_Of (2) = "5000",
              "the input field out of range still shows the entered value");
       Step;
       Check_Frame ("entry_check_technical");
 
       -- 10.3.4.2.4: [Enter] is disabled until a key is pressed; the
       -- input field stays selected, so [Delete] works on its entry
-      Press (Data_X, Field_Y (1));
+      Press (Data_X, Field_Y (2));
       Press (385, 390);                       -- [Delete]
-      Check (Value_Of (1) = "500" and then Value_Of (2) = "",
+      Check (Value_Of (2) = "500" and then Value_Of (3) = "",
              "the disabled [Enter] accepted nothing");
-      Press (Data_X, Field_Y (1));            -- 500 m is in range
+      Press (Data_X, Field_Y (2));            -- 500 m is in range
 
       -- 10.3.4.3: 141 km/h does not match the 5 km/h resolution of
       -- V_MAXTRAIN (SUBSET-026 7.5.1.160)
-      Press (Data_X, Field_Y (3));            -- select the third field
+      Press (Data_X, Field_Y (4));            -- select the maximum speed
       Press (385, 240); Press (385, 290); Press (385, 240);  -- 141
-      Press (Data_X, Field_Y (3));            -- [Enter]
-      Check (Value_Of (3) = "141", "the wrong resolution is not accepted");
+      Press (Data_X, Field_Y (4));            -- [Enter]
+      Check (Value_Of (4) = "141", "the wrong resolution is not accepted");
       Press (385, 390);                       -- a key re-enables [Enter]
       Press (487, 390);                       -- 140
-      Press (Data_X, Field_Y (3));
-      Check (Value_Of (3) = "140", "140 km/h matches the resolution");
+      Press (Data_X, Field_Y (4));
+      Check (Value_Of (4) = "140", "140 km/h matches the resolution");
 
       -- 10.3.4.5: the operational range check; zero is not a nominal
       -- value for a train length (configuration of the DMI)
-      Press (487, 390);                       -- 0 into the first field
-      Press (Data_X, Field_Y (1));            -- [Enter]
+      Press (Data_X, Field_Y (2));            -- select the length
+      Press (487, 390);                       -- 0
+      Press (Data_X, Field_Y (2));            -- [Enter]
       Step;
       Check_Frame ("entry_check_operational");
       -- 10.3.4.5.5: [Enter] became a delay-type button
-      Short_Press (Data_X, Field_Y (1));
+      Short_Press (Data_X, Field_Y (2));
       Press (385, 290);                       -- 4 is appended to the entry
-      Check (Value_Of (1) = "04" and then Value_Of (2) = "",
+      Check (Value_Of (2) = "04" and then Value_Of (3) = "",
              "a press shorter than 2 s does not overrule the check");
       -- 10.3.1.20: leaving the field without accepting erases the entry
+      Press (Data_X, Field_Y (3));
       Press (Data_X, Field_Y (2));
-      Press (Data_X, Field_Y (1));
       Press (385, 290); Press (487, 390); Press (487, 390);  -- 400
-      Press (Data_X, Field_Y (1));            -- accepted -> field 2
+      Press (Data_X, Field_Y (2));            -- accepted -> field 3
       Press (385, 240); Press (487, 390); Press (487, 390);  -- 100
-      Press (Data_X, Field_Y (2));
-      Check (Value_Of (1) = "400" and then Value_Of (2) = "100"
-             and then Value_Of (3) = "140",
+      Press (Data_X, Field_Y (3));
+      Check (Value_Of (2) = "400" and then Value_Of (3) = "100"
+             and then Value_Of (4) = "140",
              "every input field displays a data value");
+
+      -- 10.3.5.9: the items of the second window as well, otherwise the
+      -- 'Yes' button of the question stays disabled (Table 50 S3-1)
+      Press_Next;
+      Key (1); Enter_Field (1);               -- axle load category A
+      Key (7); Enter_Field (2);               -- airtight: No
+      Key (5); Enter_Field (3);               -- loading gauge Out of GC
+      Press_Previous;
+      Check (Value_Of (2) = "400" and then Value_Of (4) = "140",
+             "the process keeps the values over [Next] and [Previous]");
 
       -- 10.3.4.4: a technical cross-check rule that is not satisfied
       -- ('length not greater than maximum speed' is nonsense as a rule,
       -- it only has to fail: no cross-check rule is configured)
       DMI_Data_Entry.Cross_Rules (1) :=
-        (Kind => DMI_Data_Entry.Technical_Cross, A => 1, B => 3,
+        (Kind => DMI_Data_Entry.Technical_Cross, A => 2, B => 4,
          Relation => DMI_Data_Entry.Not_Greater);
       Press (167, 440);                       -- 'Yes' of the question
       Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
@@ -3760,9 +3922,9 @@ procedure DMI_Test is
       -- 10.3.4.6: the same rule as an operational one is overruled by a
       -- valid activation of the delay-type 'Yes'
       DMI_Data_Entry.Cross_Rules (1).Kind := DMI_Data_Entry.Operational_Cross;
-      Press (Data_X, Field_Y (1));            -- select the first field
+      Press (Data_X, Field_Y (2));            -- select the length
       Press (487, 290); Press (487, 390); Press (487, 390);  -- 500
-      Press (Data_X, Field_Y (1));            -- accepted: 'Yes' enabled
+      Press (Data_X, Field_Y (2));            -- accepted: 'Yes' enabled
       Press (167, 440);
       Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
              "the failed operational cross-check does not complete either");
@@ -3964,6 +4126,252 @@ procedure DMI_Test is
       Drain_Outbox;
    end Scenario_Alphanumeric_Entry;
 
+   ---------------------------------------------------------------------
+   -- Dedicated keyboards on the half grid array (audit WIN-10): Level
+   -- (11.3.2), Adhesion (11.3.11), Volume (11.3.7) and Brightness
+   -- (11.3.8) are data entry windows with one input field, a list of
+   -- predefined choices (10.3.5.19) and an acceptance step
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Dedicated_Keyboards is
+      use type DMI_Windows.Window_ID_T;
+
+      function Value_Of return Wide_String is
+         V : constant DMI_Driver_Data.Text_Value_T := DMI_Data_Entry.Value (1);
+      begin
+         return V.Text (1 .. V.Length);
+      end Value_Of;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 1, Level => 0); -- SB, level unknown
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+
+      -- Table 49 S1 -> S2: the Level window of 11.3.2
+      Press (385, 240); Press (487, 90);      -- Driver ID 1
+      Check (DMI_Windows.Top = DMI_Windows.W_Level, "the Level window");
+      -- 11.7.1.4: with an unknown level nothing is proposed
+      Check (Value_Of = "", "an unknown level proposes no value");
+
+      -- Table 38: the buttons 1, 2 and 4 are reserved for the levels 1,
+      -- 2 and 0, the button 3 carries no choice at all
+      Check (DMI_Windows.Button_Enabled (1)
+             and then DMI_Windows.Button_Enabled (2)
+             and then DMI_Windows.Button_Enabled (4)
+             and then DMI_Windows.Button_Enabled (5),
+             "Table 38: the levels 1, 2, 0 and NTC are on offer");
+      Check (not DMI_Windows.Button_Enabled (3),
+             "Table 38: the button 3 carries no choice");
+      Check (not DMI_Windows.Button_Enabled (6),
+             "11.3.2.8: no button beyond the configured list of levels");
+
+      -- 10.3.1.19: the choice is displayed instead of the data value;
+      -- 10.3.1.22: it becomes the data value on the input field
+      Key (4);
+      Check (Value_Of = "Level 0", "the button 4 writes 'Level 0'");
+      Check (DMI_Windows.Top = DMI_Windows.W_Level,
+             "a key press alone does not leave the window");
+      Key (3);
+      Check (Value_Of = "Level 0", "the button without a choice does nothing");
+      Key (2);
+      Check (Value_Of = "Level 2", "another choice replaces the value");
+      Enter_Single;
+      Check (not DMI_Windows.In_Start_Up,
+             "the accepted level ends the Start Up sequence (Table 49 S2)");
+      Expect_Actions (11, 1, "the accepted level is sent to the EVC");
+
+      -- 11.7.1.4: reopened, the window proposes the level stored on board
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
+      Press (410, 190);                        -- Main window: Level
+      Check (DMI_Windows.Top = DMI_Windows.W_Level, "the Level window again");
+      Check (Value_Of = "Level 2",
+             "11.7.1.4: the level stored on board is proposed");
+      Press (370, 440);                        -- [Close]
+
+      -- 11.3.11.4, Table 43: the Adhesion window. Table 35 #1 offers it
+      -- in FS without further conditions.
+      Press (370, 440);                        -- close the Main window
+      Send_Mode_Level (Mode => 2, Level => 5); -- FS
+      Press (610, 190);                        -- F4: Special window
+      Press (410, 90);                         -- Adhesion
+      Check (DMI_Windows.Top = DMI_Windows.W_Adhesion, "the Adhesion window");
+      Key (1);
+      Check (Value_Of = "Non slippery rail", "Table 43: the button 1");
+      Enter_Single;
+      Check (DMI_Windows.Top = DMI_Windows.W_Special,
+             "10.6.1.2 a: the accepted value leaves the window");
+      Expect_Actions (9, 1, "the accepted adhesion is sent to the EVC");
+
+      -- 11.3.8: the Brightness window, one key per level of luminance
+      Press (370, 440);                        -- close Special
+      Press (610, 240);                        -- F5: Settings
+      Press (410, 140);                        -- Brightness
+      Check (DMI_Windows.Top = DMI_Windows.W_Brightness,
+             "the Brightness window");
+      Check (Value_Of = "5", "11.7.1.4: the stored luminance is proposed");
+      Key (9);                                 -- the level 8
+      Enter_Single;
+      Check (General_Parameters."="
+               (General_Parameters.Display_Luminance, 8),
+             "the accepted choice sets the luminance");
+      Check (DMI_Windows.Top = DMI_Windows.W_Settings,
+             "accepting the luminance leaves the window");
+
+      -- 11.7.1.9 and Table 48: the four windows are data entry windows,
+      -- so a required acknowledgement stops their process (audit WIN-3)
+      Press (410, 140);                        -- Brightness again
+      Check (DMI_Windows.Entry_Open,
+             "Table 48: Brightness is a data entry window");
+      DMI_Windows.Stop_Entry;
+      Check (DMI_Windows.Top = DMI_Windows.W_Settings,
+             "11.7.1.9: the stopped entry shows the parent window");
+      Drain_Sounds;
+      Drain_Outbox;
+   end Scenario_Dedicated_Keyboards;
+
+   ---------------------------------------------------------------------
+   -- Train data window(s) of the flexible train data entry (audit
+   -- WIN-8: 11.3.9.6 b, Table 40, Figures 120 and 121, 11.7.1.6.1) and
+   -- what MSG_DRIVER_DATA carries to the EVC
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Train_Data_Windows is
+      use type DMI_Windows.Window_ID_T;
+      use Ada.Streams;
+      use DMI_Protocol;
+
+      -- the last MSG_DRIVER_DATA of kind 2 (the train data of Table 40)
+      Train_Msg : Stream_Element_Array
+        (1 .. Stream_Element_Offset (Driver_Data_Train_Length)) :=
+          (others => 0);
+      Train_Msg_Len : Natural := 0;
+
+      procedure Collect_Train_Data is
+         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+         Last   : Stream_Element_Offset;
+         Offset : Stream_Element_Offset := Buffer'First;
+      begin
+         Train_Msg_Len := 0;
+         DMI_Core.Take_Outbox (Buffer, Last);
+         while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+            declare
+               The_Type : constant Msg_Type_T :=
+                 Msg_Type_T (Get_U8 (Buffer, Offset));
+               Length   : constant Stream_Element_Offset :=
+                 Stream_Element_Offset (Get_U32 (Buffer, Offset));
+               Next     : constant Stream_Element_Offset := Offset + Length;
+            begin
+               exit when Next - 1 > Last;
+               if The_Type = MSG_DRIVER_DATA
+                 and then Length = Stream_Element_Offset
+                                     (Driver_Data_Train_Length)
+                 and then Natural (Buffer (Offset)) = 2
+               then
+                  Train_Msg_Len := Natural (Length);
+                  Train_Msg := Buffer (Offset .. Next - 1);
+               end if;
+               Offset := Next;
+            end;
+         end loop;
+      end Collect_Train_Data;
+
+      function Byte (I : Positive) return Natural is
+        (Natural (Train_Msg (Stream_Element_Offset (I))));
+
+      function Word (I : Positive) return Natural is
+        (Byte (I) + Byte (I + 1) * 256);
+
+      function Value_Of (I : Positive) return Wide_String is
+         V : constant DMI_Driver_Data.Text_Value_T := DMI_Data_Entry.Value (I);
+      begin
+         return V.Text (1 .. V.Length);
+      end Value_Of;
+   begin
+      Reset;
+      -- the level is unknown, so that Table 49 D2 leads to the Level window
+      Send_Mode_Level (Mode => 1, Level => 0); -- SB
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+
+      Press (385, 240); Press (487, 90);      -- Driver ID 1
+      Choose_Level;                           -- Level 1 -> Main window
+      Press (410, 140);                       -- Train data (1/2)
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data,
+             "the first train data window");
+
+      -- 10.3.1.20 read for a window change: an entry that was not
+      -- accepted is lost with the window
+      Key (2);                                -- 'PASS 2'
+      Press_Next;
+      Press_Previous;
+      Check (Value_Of (1) = "",
+             "a window change drops the entry that was not accepted");
+
+      Enter_Train_Data (Length => 250, Brake => 96, Speed => 120);
+      -- 10.3.5.19 on the second window: 13 axle load categories
+      -- (SUBSET-026 7.5.1.62) need the [More] button of the key 12
+      Press_Next;
+      Key (12);
+      Key (2);
+      Check (Value_Of (1) = "E5",
+             "[More] reaches the 13th axle load category");
+      Enter_Field (1);
+      Press_Previous;
+      -- Table 50 S3-1: the values survive [Previous] and [Next]
+      Check (Value_Of (2) = "250" and then Value_Of (4) = "120",
+             "the process keeps the values of the first window");
+
+      -- 11.7.1.6.1: pressing 'Yes' stores nothing on board
+      Press (167, 440);                       -- entry complete? Yes
+      Check (DMI_Windows.Top = DMI_Windows.W_Train_Data_Validation,
+             "the validation window follows (Table 50 S3-2)");
+      Check (not DMI_Driver_Data.Train_Data_Entered
+             and then DMI_Driver_Data.Train_Length = 0,
+             "11.7.1.6.1: nothing is stored before the validation");
+      -- the outbox is read here, before the test wrapper drains it with
+      -- the sounds, so that MSG_DRIVER_DATA can be inspected
+      Pointer_Down (487, 40); Pointer_Up (487, 40);
+      DMI_Core.Tick (50);
+      Collect_Train_Data;
+      DMI_Core.Render;
+      Check (DMI_Driver_Data.Train_Data_Entered
+             and then DMI_Driver_Data.Train_Length = 250
+             and then DMI_Driver_Data.Brake_Pct = 96
+             and then DMI_Driver_Data.Max_Speed = 120,
+             "the validated values are stored on board");
+
+      -- MSG_DRIVER_DATA kind 2: the seven items of Table 40 as the
+      -- ERTMS/ETCS variables of SUBSET-026 chapter 7
+      Check (Train_Msg_Len = Driver_Data_Train_Length,
+             "the train data message carries the seven items");
+      Check (Word (2) = 250 and then Word (4) = 96 and then Word (6) = 120,
+             "length, brake percentage and maximum speed on the wire");
+      Check (Byte (8) = 0 and then Word (9) = 4,
+             "Table 41 PASS 1: NC_CDTRAIN 0, NC_TRAIN passenger train");
+      Check (Byte (11) = 12, "M_AXLELOADCAT 12 is E5");
+      Check (Byte (12) = 0, "M_AIRTIGHT 0: no airtight system fitted");
+      Check (Byte (13) = 0, "M_LOADINGGAUGE 0: out of the profiles");
+
+      -- Table 45: the data view window shows what was stored
+      Press (370, 440);                       -- close the TRN window
+      Press (370, 440);                       -- close the Main window
+      Press (610, 140);                       -- F3: Data view
+      Step;
+      Check_Frame ("data_view_train_data");
+      Drain_Sounds;
+      Drain_Outbox;
+   end Scenario_Train_Data_Windows;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -4015,6 +4423,8 @@ begin
    Scenario_Validation_Window;
    Scenario_Data_Checks;
    Scenario_Alphanumeric_Entry;
+   Scenario_Dedicated_Keyboards;
+   Scenario_Train_Data_Windows;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

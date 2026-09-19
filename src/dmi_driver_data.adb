@@ -10,6 +10,10 @@ package body DMI_Driver_Data is
       Train_Length := 0;
       Brake_Pct := 0;
       Max_Speed := 0;
+      Train_Category := 0;
+      Axle_Load := 0;
+      Airtight := 0;
+      Loading_Gauge := 0;
       SR_Speed := 0;
       SR_Dist := 0;
       Driver_ID_Entered := False;
