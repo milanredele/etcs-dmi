@@ -106,6 +106,21 @@ package body DMI_Planning is
       end loop;
    end Fill_Rect;
 
+   -- 8.3.4.2, 8.3.5.2, 8.3.6.2, 8.3.7.2: every object is displayed
+   -- "within the movement authority and up to the first target at zero
+   -- speed, if any". The first target at zero speed is the first speed
+   -- discontinuity to 0 km/h; it normally is the end of the movement
+   -- authority, the nearer of the two is the limit.
+   function Display_Limit_M return Natural is
+   begin
+      for I in 1 .. Speed_Count loop
+         if Speeds (I).Speed = 0 then
+            return Natural'Min (Speeds (I).Dist_M, MA_Dist_M);
+         end if;
+      end loop;
+      return MA_Dist_M;
+   end Display_Limit_M;
+
    ---------------------------------------------------------------------
    -- PASP (8.3.7)
    ---------------------------------------------------------------------
@@ -132,9 +147,15 @@ package body DMI_Planning is
          end if;
       end Width_Of;
 
-      Seg_Start  : Natural := 0;
-      Seg_Speed  : Natural := Ceiling_Speed;
-      Increased  : Boolean := False;
+      -- 8.3.7.5: a discontinuity counts when it is a decrease to a speed
+      -- above zero and below the ceiling speed at the train front
+      Max_Restrictions : constant := 3;
+
+      Seg_Start    : Natural := 0;
+      Seg_Speed    : Natural := Ceiling_Speed; -- what the diagram shows
+      Prev_Speed   : Natural := Ceiling_Speed; -- what the profile says
+      Restrictions : Natural := 0;
+      Increased    : Boolean := False;
    begin
       -- 8.3.7.10: PASP background over D7-D8
       Fill_Rect (D7_X, Top_Y, D7_W + 6, Bottom_Y - Top_Y + 1,
@@ -160,16 +181,35 @@ package body DMI_Planning is
                end;
             end if;
             exit when I > Speed_Count or else Seg_End >= MA_Dist_M;
-            -- 8.3.7.9: after an increase only the zero speed target may
-            -- still shorten the diagram
-            if Speeds (I).Speed > Seg_Speed then
+            if Speeds (I).Speed = 0 then
+               -- 8.3.7.6, 8.3.7.9: the first target at zero speed is
+               -- always shown; the PASP ends there (8.3.7.2)
+               Seg_Speed := 0;
+            elsif Speeds (I).Speed > Prev_Speed then
+               -- 8.3.7.9: after an increase (PL21, 8.3.6.4) only the zero
+               -- speed target may still shorten the diagram. The increase
+               -- itself does not widen it: 8.3.7.7 changes the width for
+               -- decreases only, and both examples of Figure 80 keep the
+               -- width through the increases.
                Increased := True;
-            end if;
-            if not Increased or else Speeds (I).Speed = 0 then
+            elsif Speeds (I).Speed < Prev_Speed
+              and then Speeds (I).Speed < Ceiling_Speed
+              and then not Increased
+              and then Restrictions < Max_Restrictions
+            then
+               -- 8.3.7.5: up to 3 restrictive discontinuities, 8.3.7.7
+               Restrictions := Restrictions + 1;
                Seg_Speed := Speeds (I).Speed;
-            elsif Speeds (I).Speed > Seg_Speed then
-               Seg_Speed := Speeds (I).Speed;
             end if;
+            -- Implementation choice: a decrease that 8.3.7.5 or 8.3.7.9
+            -- leaves out changes nothing, the diagram keeps its width up
+            -- to the zero speed target or the end of the movement
+            -- authority (8.3.7.2). Every discontinuity counts towards
+            -- the three of 8.3.7.5, also one that stays in the same
+            -- quarter as the one before it (the clause counts
+            -- discontinuities, not widths). 8.3.6 still shows every
+            -- discontinuity with its symbol and speed.
+            Prev_Speed := Speeds (I).Speed;
             Seg_Start := Seg_End;
             exit when Seg_Speed = 0;
          end;
@@ -279,6 +319,7 @@ package body DMI_Planning is
       -- assigned round robin in distance order.
       Sorted : Order_List_T := Orders;
       Count  : constant Natural := Order_Count;
+      Limit  : constant Natural := Display_Limit_M;
    begin
       -- insertion sort by ascending distance
       for I in 2 .. Count loop
@@ -302,8 +343,13 @@ package body DMI_Planning is
             X      : constant Natural :=
               D2_X + Column * 25 + (25 - Sym.Width) / 2;
          begin
+            -- 8.3.4.2: only within the movement authority and up to the
+            -- first target at zero speed. The orders left out are the
+            -- farthest ones, so the columns of the others do not move.
             -- 8.3.4.22: bottom of the symbol at the announcement distance
-            if Y - Sym.Height + 1 >= Top_Y and then Y <= Bottom_Y then
+            if Sorted (I).Dist_M <= Limit
+              and then Y - Sym.Height + 1 >= Top_Y and then Y <= Bottom_Y
+            then
                D_Buffer.Draw_Symbol (Sym, (X, Y - Sym.Height + 1));
             end if;
          end;
@@ -325,18 +371,19 @@ package body DMI_Planning is
    end Draw_Sign;
 
    procedure Draw_Gradient is
+      Limit : constant Natural := Display_Limit_M; -- 8.3.5.2
    begin
       for I in 1 .. Gradient_Count loop
          declare
             -- 8.3.5.5: the length of the rectangle is the length of
             -- the element. The last one ends with the movement authority
-            -- (8.3.5.2), or where a cut profile stops being known
-            -- (Gradient_End_M): it is not stretched over elements that
-            -- were left out.
+            -- or the first target at zero speed (8.3.5.2), or where a cut
+            -- profile stops being known (Gradient_End_M): it is not
+            -- stretched over elements that were left out.
             Seg_End : constant Natural :=
               (if I < Gradient_Count
-               then Natural'Min (Gradients (I + 1).Start_M, MA_Dist_M)
-               else Natural'Min (Gradient_End_M, MA_Dist_M));
+               then Natural'Min (Gradients (I + 1).Start_M, Limit)
+               else Natural'Min (Gradient_End_M, Limit));
             Value    : constant Integer := Gradients (I).Value;
             Downhill : constant Boolean := Value < 0;
             Y_High   : constant Integer :=
@@ -354,7 +401,7 @@ package body DMI_Planning is
                else General_Parameters.WHITE);
             Center_X : constant Natural := D5_X + 9;
          begin
-            exit when Gradients (I).Start_M >= MA_Dist_M;
+            exit when Gradients (I).Start_M >= Limit;
             if Height > 2 then
                -- 8.3.5.8: body
                Fill_Rect (D5_X, Y_High, 18, Height, Body_Col);
@@ -364,12 +411,18 @@ package body DMI_Planning is
                -- 8.3.5.11: 1 cell black bottom line
                Fill_Rect (D5_X, Y_Low, 18, 1, General_Parameters.BLACK);
 
-               -- 8.3.5.6: signs top and bottom when tall enough
-               if Height >= 16 then
-                  Draw_Sign (Center_X, Y_High + 4, Value >= 0, Char_Col);
-                  Draw_Sign (Center_X, Y_Low - 4, Value >= 0, Char_Col);
+               -- 8.3.5.6: signs top and bottom when tall enough: '+' for
+               -- an uphill and '-' for a downhill gradient. The clause
+               -- gives a zero gradient no sign, so it gets none.
+               if Height >= 16 and then Value /= 0 then
+                  Draw_Sign (Center_X, Y_High + 4, Value > 0, Char_Col);
+                  Draw_Sign (Center_X, Y_Low - 4, Value > 0, Char_Col);
                end if;
-               -- 8.3.5.7: value in the middle when tall enough
+               -- 8.3.5.7: value in the middle when tall enough.
+               -- Implementation choice: a zero gradient shows its "0"
+               -- under the same condition (8.3.5.8 speaks of "sign and/or
+               -- number" in black for uphill and zero gradients; 8.3.5.7
+               -- itself only covers a number next to a sign).
                if Height >= 30 then
                   declare
                      Img : constant Wide_String :=
@@ -428,6 +481,8 @@ package body DMI_Planning is
             The_Color => Number_Color);
       end Draw_One;
 
+      Limit : constant Natural := Display_Limit_M; -- 8.3.6.2
+
    begin
       -- 8.3.6.9: PL21 under PL22 under PL23: draw increases first, then
       -- plain decreases, then the indication target
@@ -442,7 +497,7 @@ package body DMI_Planning is
                   Is_Ind   : constant Boolean :=
                     Disc.Is_Ind_Target and then Indication_Valid;
                begin
-                  exit when Disc.Dist_M > MA_Dist_M;
+                  exit when Disc.Dist_M > Limit;
                   if (Pass = 1 and then Increase)
                     or else (Pass = 2 and then not Increase and then not Is_Ind)
                     or else (Pass = 3 and then not Increase and then Is_Ind)

@@ -2148,6 +2148,157 @@ procedure DMI_Test is
       DMI_Core.Tick (Natural'Last - Natural'Last mod 500);
       Check (not DMI_Flash.Frame_Visible, "huge tick: phase kept");
    end Scenario_Flash_Starts_Visible;
+   -- Planning area conformance (audit PLN-1 .. PLN-4)
+   ---------------------------------------------------------------------
+
+   procedure Planning_Reset (V_Perm : Natural) is
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 100, V_Perm => V_Perm, V_Target => 0,
+                        V_Release => 0, V_Sbi => V_Perm + 15,
+                        V_Wsl => V_Perm + 5,
+                        D_Target => 2500, Monitoring => 0, Dial_Range => 2,
+                        Vrelease_Exists => False);
+   end Planning_Reset;
+
+   -- PLN-1: 8.3.10.4 enlarges the sensitive area of D9 by 15 cells above
+   -- D9, 8.3.10.5 the one of D12 by 15 cells below D12, 40x30 each. Area
+   -- D starts at (334, 15): D9 is y 300 .. 314, D12 is y 15 .. 29.
+   procedure Scenario_Planning_Zoom_Areas is
+      use type DMI_Planning.Range_Index_T;
+
+      procedure Tap (X, Y : Natural) is
+      begin
+         Pointer_Down (X, Y); Pointer_Up (X, Y);
+         Step;
+         Drain_Sounds;
+      end Tap;
+   begin
+      Planning_Reset (V_Perm => 140);
+      Send_Planning (MA_Dist => 2500, Ceiling => 140,
+                     Gradients => (0, 12),
+                     Speeds => (1 => 2500, 2 => 0, 3 => 0));
+      Drain_Sounds;
+      Step;
+      Check (DMI_Planning.Current_Range = 3, "zoom areas: starts at 0-4000");
+
+      Tap (350, 320); -- 5 cells below area D: was sensitive before PLN-1
+      Tap (350, 315);
+      Check (DMI_Planning.Current_Range = 3,
+             "8.3.10.4: nothing below D9 is sensitive");
+      Tap (350, 284); -- 16 cells above D9
+      Tap (374, 290); -- right of the 40 cell width
+      Check (DMI_Planning.Current_Range = 3,
+             "8.3.10.4: the sensitive area of D9 is 40x30");
+      Tap (350, 285); -- 15 cells above D9: the first sensitive row
+      Check (DMI_Planning.Current_Range = 2,
+             "8.3.10.4: 15 cells above D9 are sensitive");
+      Tap (373, 314); -- last cell of D9 itself
+      Check (DMI_Planning.Current_Range = 1, "8.3.10.4: D9 is sensitive");
+      Step;
+      Check_Frame ("planning_zoom_1000");
+
+      Tap (350, 45);  -- 16 cells below D12
+      Tap (374, 40);
+      Check (DMI_Planning.Current_Range = 1,
+             "8.3.10.5: the sensitive area of D12 is 40x30");
+      Tap (373, 44);  -- 15 cells below D12: the last sensitive row
+      Check (DMI_Planning.Current_Range = 2,
+             "8.3.10.5: 15 cells below D12 are sensitive");
+      Tap (334, 15);  -- first cell of D12 itself
+      Check (DMI_Planning.Current_Range = 3, "8.3.10.5: D12 is sensitive");
+   end Scenario_Planning_Zoom_Areas;
+
+   -- PLN-2: 8.3.5.6 gives '+' to an uphill and '-' to a downhill
+   -- gradient; a zero gradient has no sign, only its number.
+   procedure Scenario_Planning_Zero_Gradient is
+   begin
+      Planning_Reset (V_Perm => 140);
+      Send_Planning (MA_Dist => 4000, Ceiling => 140,
+                     Gradients => (0, 0,  500, 5,  1000, 0,  1200, -5,
+                                   2000, 0),
+                     Speeds => (1 => 4000, 2 => 0, 3 => 0));
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_zero_gradient");
+   end Scenario_Planning_Zero_Gradient;
+
+   -- PLN-3: 8.3.7.5 to 8.3.7.9 with both examples of Figure 80.
+   procedure Scenario_Planning_PASP is
+   begin
+      -- 140/130/120/110/60 and the zero speed target: three restrictive
+      -- discontinuities (3/4 of the width each), the fourth one (60) is
+      -- left out of the PASP, the zero speed target ends it (8.3.7.6)
+      Planning_Reset (V_Perm => 140);
+      Send_Planning (MA_Dist => 3000, Ceiling => 140,
+                     Speeds => (500, 130, 0,  1000, 120, 0,  1500, 110, 0,
+                                2000, 60, 0,  3000, 0, 0));
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_pasp_three");
+
+      -- the three widths of 8.3.7.7/.8, and a PASP that ends with a
+      -- movement authority which has no zero speed target
+      Send_Planning (MA_Dist => 3000, Ceiling => 140,
+                     Speeds => (500, 105, 0,  1000, 70, 0,  1500, 40, 0,
+                                2000, 20, 0));
+      Step;
+      Check_Frame ("planning_pasp_quarters");
+
+      -- Figure 80 left: 160, then 120, 80, 60, 40 and an increase to 140
+      -- which does not widen the diagram
+      Planning_Reset (V_Perm => 160);
+      Send_Planning (MA_Dist => 4000, Ceiling => 160,
+                     Speeds => (300, 120, 0,  800, 80, 0,  1400, 60, 0,
+                                1900, 40, 0,  2600, 140, 0));
+      Drain_Sounds;
+      Step;
+      Check_Frame ("planning_pasp_fig80_left");
+
+      -- Figure 80 right: 160, the indication target 80, increases to 120
+      -- and 140, then the zero speed target
+      Send_Planning (MA_Dist => 3200, Ceiling => 160, Indication => 400,
+                     Speeds => (900, 80, 1,  1800, 120, 0,  2400, 140, 0,
+                                3200, 0, 0));
+      Step;
+      Check_Frame ("planning_pasp_fig80_right");
+
+      -- 8.3.7.9: after an increase a further decrease is not shown, the
+      -- zero speed target is
+      Send_Planning (MA_Dist => 3200, Ceiling => 160,
+                     Speeds => (500, 100, 0,  1000, 140, 0,  1600, 30, 0,
+                                2400, 0, 0));
+      Step;
+      Check_Frame ("planning_pasp_after_increase");
+   end Scenario_Planning_PASP;
+
+   -- PLN-4: 8.3.4.2 (and 8.3.5.2, 8.3.6.2, 8.3.7.2): within the movement
+   -- authority and up to the first target at zero speed.
+   procedure Scenario_Planning_Order_Limit is
+   begin
+      -- no zero speed target (LOA): the end of the movement authority
+      -- limits; the order at 2000 m is shown, the one at 2600 m is not
+      Planning_Reset (V_Perm => 140);
+      Send_Planning (MA_Dist => 2000, Ceiling => 140,
+                     Gradients => (0, 3),
+                     Speeds => (1 => 2000, 2 => 80, 3 => 0),
+                     Orders => (2, 600,  5, 2000,  9, 2600,  7, 3500));
+      Drain_Sounds;
+      Step;
+      Check (DMI_Planning.Order_Count = 4,
+             "order limit: the orders beyond the MA are valid and stored");
+      Check_Frame ("planning_orders_ma_limit");
+
+      -- a zero speed target before the end of the movement authority
+      -- limits orders, gradient profile and discontinuities alike
+      Send_Planning (MA_Dist => 3000, Ceiling => 140,
+                     Gradients => (0, 3,  1000, -4,  2000, 6),
+                     Speeds => (800, 70, 0,  1500, 0, 0,  2200, 100, 0),
+                     Orders => (2, 600,  5, 1500,  9, 1800,  7, 2600));
+      Step;
+      Check_Frame ("planning_zero_target_limit");
+   end Scenario_Planning_Order_Limit;
 
    Status : Natural;
 begin
@@ -2186,6 +2337,10 @@ begin
    Scenario_Level_NTC_In_C8;
    Scenario_Level_Ann_Acknowledged;
    Scenario_Flash_Starts_Visible;
+   Scenario_Planning_Zoom_Areas;
+   Scenario_Planning_Zero_Gradient;
+   Scenario_Planning_PASP;
+   Scenario_Planning_Order_Limit;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));
