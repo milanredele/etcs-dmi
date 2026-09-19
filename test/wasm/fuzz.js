@@ -46,13 +46,14 @@ class Msg {
 }
 
 const EVC_TYPES = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07];
-const FIXED = { 0x01: 19, 0x02: 9, 0x04: 2, 0x07: 22 };
+const FIXED = { 0x01: 21, 0x02: 9, 0x04: 2, 0x07: 22 };
 
 function inDomain(type) {
   const m = new Msg();
   if (type === 0x01) {
     for (let i = 0; i < 6; i++) m.u16(speed());
-    m.u32(pick(0, 90000)).u8(pick(0, 2)).u8(pick(0, 3)).u8(pick(0, 7));
+    m.u32(pick(0, 90000)).u8(pick(0, 2)).u8(pick(0, 3)).u8(pick(0, 7))
+      .u8(pick(0, 4)).u8(pick(0, 255)); // status, mrdt
   } else if (type === 0x02) {
     m.u8(pick(0, 17)).u8(pick(0, 5)).u8(optional(5, 12, 0xFF)).u8(optional(2, 5, 0xFF))
       .u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 1)).u16(optional(0, 400, 0xFFFF));

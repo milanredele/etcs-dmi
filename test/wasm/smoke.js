@@ -78,7 +78,7 @@ const evc = load('evc.wasm');
 dmi.dmi_initialise();
 {
   const ml = new Uint8Array([2, 4, 0xFF, 0xFF, 0, 0, 0, 0xFF, 0xFF]); // FS, L1
-  const ss = new Uint8Array(19);
+  const ss = new Uint8Array(21); // ... flags, status NoS, mrdt 0
   const dv = new DataView(ss.buffer);
   let o = 0;
   for (const v of [100, 120, 0, 0, 135, 125]) { dv.setUint16(o, v, true); o += 2; }

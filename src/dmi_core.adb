@@ -318,6 +318,14 @@ package body DMI_Core is
    Outbox        : Stream_Element_Array (1 .. Outbox_Size);
    Outbox_Filled : Stream_Element_Offset := 0;
 
+   -- DMI 8.2.2.3.4.1 / 8.2.2.3.6: a brake intervention caused by a pending
+   -- acknowledgement of a level, a mode or a text message is released by
+   -- that acknowledgement, and then no Sinfo is played. The DMI does not
+   -- know the cause of an intervention (implementation choice): a release
+   -- counts as one "with driver's acknowledgement" when the driver has
+   -- acknowledged anything while the brake symbol was displayed.
+   Ack_During_Brake : Boolean := False;
+
    -- Internal failure containment, see Enter_Failure
    Has_Failed : Boolean := False;
 
@@ -333,6 +341,7 @@ package body DMI_Core is
    -- Forget everything the EVC and the driver provided
    procedure Reset_State is
    begin
+      Ack_During_Brake := False;
       DMI_Ack.Reset;
       DMI_Driver_Data.Reset;
       DMI_Planning.Reset;
@@ -347,7 +356,7 @@ package body DMI_Core is
       SDI.Level_Announcement := (Valid => False);
       User_Settings.Speed_Info_Visible := False;
       Track_Ahead_Free.Show := False;
-      Speed_And_Distance.Set_Monitoring_Mode (Speed_And_Distance.CSM);
+      Speed_And_Distance.Reset;
       Speed_And_Distance.Set_Seed_Dial_Range (Speed_And_Distance.Range_180);
       Speed_And_Distance.Set_Speed_Params ((Vperm => 0,
                                             Vtarget => 0,
@@ -441,19 +450,10 @@ package body DMI_Core is
       Monitoring : constant Unsigned_8 := Get_U8 (Payload, Offset);
       Dial_Range : constant Unsigned_8 := Get_U8 (Payload, Offset);
       Flags      : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Status     : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      MRDT       : constant Unsigned_8 := Get_U8 (Payload, Offset);
    begin
-      -- The supervision status is derived in Set_Speed, which runs (through
-      -- Set_Speed_Params) after every Set_Monitoring_Mode below and in
-      -- Reset_State, before anything is drawn: the status is always one
-      -- that exists under the monitoring (chapter 7), whatever is sent.
-      case Monitoring is
-         when 0      => Set_Monitoring_Mode (CSM);
-         when 1      => Set_Monitoring_Mode (TSM);
-         when others => Set_Monitoring_Mode (RSM);
-      end case;
       Set_CSM_Target_Info ((Flags and 2) /= 0);
-      Set_Brake_Commanded ((Flags and 4) /= 0);
-
       Set_Speed_Params ((Vperm    => V_Perm,
                          Vtarget  => V_Target,
                          Vwsl     => V_Wsl,
@@ -461,6 +461,22 @@ package body DMI_Core is
                          Vrelease => V_Release,
                          Vrelease_Exists => (Flags and 1) /= 0));
       Set_Speed (V_Cur);
+
+      -- Monitoring and status are taken as a pair; Set_Supervision makes
+      -- it one that exists (chapter 7), whatever is sent. Undefined codes
+      -- fall to the most restrictive presentation.
+      Set_Supervision
+        ((case Monitoring is
+             when 0      => CSM,
+             when 1      => TSM,
+             when others => RSM),
+         (case Status is
+             when 0      => NoS,
+             when 1      => IndS,
+             when 2      => OvS,
+             when 3      => WaS,
+             when others => IntS),
+         MRDT_T (MRDT));
 
       -- DMI 8.2.2.2.4 / 8.2.2.2.6: the distance to target digital shows up
       -- to 5 digits, rounded to 10 m, so Distance_T'Last (99990 m) is the
@@ -507,10 +523,8 @@ package body DMI_Core is
          if SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH then
             User_Settings.Speed_Info_Visible := False;
          end if;
-         -- a continuous warning sound cannot outlive entering AD
-         if SDI.Mode = SDI.M_AD then
-            DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
-         end if;
+         -- S2 depends on the mode (unless in AD, DMI 7.2.3.3 / 7.4.4.3)
+         Speed_And_Distance.Mode_Changed;
       end if;
 
       if Valid_Level (Level_Raw) then
@@ -682,8 +696,9 @@ package body DMI_Core is
             when None =>
                if Old_Brake = Shown_Ack_Required then
                   DMI_Ack.Cancel (DMI_Ack.Brake_Release);
-               elsif Old_Brake = Shown then
-                  -- 8.2.2.3.6: released without driver acknowledgement
+               elsif Old_Brake = Shown and then not Ack_During_Brake then
+                  -- 8.2.2.3.6: released without any driver's
+                  -- acknowledgement, "on ST01 or on any other DMI object"
                   DMI_Sounds.Play (DMI_Sounds.Sinfo);
                end if;
             when Shown =>
@@ -691,6 +706,9 @@ package body DMI_Core is
                   DMI_Ack.Cancel (DMI_Ack.Brake_Release);
                end if;
          end case;
+         if Old_Brake = None or else New_Brake = None then
+            Ack_During_Brake := False; -- a new intervention, or it is over
+         end if;
       end if;
 
       Radio :=
@@ -701,11 +719,24 @@ package body DMI_Core is
       Slippery_Rail := Adhesion /= 0;
       BMM_Inhibited := BMM /= 0;
       Reversing_Permitted := Reversing /= 0;
-      SM_Direction :=
-        (case SM_Dir is
-            when 1      => Forward,
-            when 2      => Backward,
-            when others => None);
+      declare
+         Old_Direction : constant SM_Direction_T := SM_Direction;
+      begin
+         SM_Direction :=
+           (case SM_Dir is
+               when 1      => Forward,
+               when 2      => Backward,
+               when others => None);
+         -- 8.2.3.10.4: Sinfo when the authorised direction changes (from
+         -- one direction to the other; its appearing and its removal are
+         -- not a change of direction)
+         if SM_Direction /= Old_Direction
+           and then SM_Direction /= None
+           and then Old_Direction /= None
+         then
+            DMI_Sounds.Play (DMI_Sounds.Sinfo);
+         end if;
+      end;
 
       Set_Speed_Valid := Set_Spd /= 16#FFFF#;
       Set_Speed := Natural (Unsigned_16'Min (Set_Spd, 400));
@@ -985,6 +1016,9 @@ package body DMI_Core is
                   begin
                      -- the EVC learns exactly what was acknowledged
                      Queue_Driver_Ack (Kind, Text_ID);
+                     if DMI_Status."/=" (DMI_Status.Brake, DMI_Status.None) then
+                        Ack_During_Brake := True;
+                     end if;
                      if Is_Text then
                         -- 8.2.3.4.8 c: this message, not another one
                         DMI_Text_Messages.Acknowledge (Text_ID);

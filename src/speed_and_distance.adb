@@ -29,84 +29,8 @@ package body Speed_And_Distance is
      (Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_LS);
 
    procedure Set_Speed (New_Speed : Speed_T) is
-      Old_Status : constant Supervision_Status_T := Supervision_Status;
    begin
-      case Monitoring_Mode is
-         when CSM =>
-            if New_Speed > Speed.Vsbi
-              or (Supervision_Status = IntS and Brake_Commanded)
-            then
-               -- DMI 7.2.4.1 / 7.2.4.2: deactivated only once the brake
-               -- command is gone
-               Supervision_Status := IntS;
-            elsif New_Speed > Speed.Vwsl
-              or (Supervision_Status = WaS and New_Speed > Speed.Vperm) then
-               -- DMI 7.2.3.1 / 7.2.3.2 (hysteresis: deactivated at <= Vperm)
-               Supervision_Status := WaS;
-            elsif New_Speed > Speed.Vperm then
-               -- DMI 7.2.2.1
-               Supervision_Status := OvS;
-            else
-               -- DMI 7.2.1.1
-               Supervision_Status := NoS;
-            end if;
-         when TSM =>
-            -- v4.0.0: the base status in TSM is IndS (DMI 7.4.2.1);
-            -- NoS does not exist under TSM.
-            -- DMI 7.4.5.1.1: in AD mode IntS is not activated on SBI
-            -- exceedance
-            if (New_Speed > Speed.Vsbi and not In_AD)
-              or (Supervision_Status = IntS and Brake_Commanded)
-            then
-               -- DMI 7.4.5.1 / 7.4.5.2
-               Supervision_Status := IntS;
-            elsif New_Speed > Speed.Vwsl
-              or (Supervision_Status = WaS and New_Speed > Speed.Vperm) then
-               -- DMI 7.4.4.1 / 7.4.4.2
-               Supervision_Status := WaS;
-            elsif New_Speed > Speed.Vperm then
-               -- DMI 7.4.3.1
-               Supervision_Status := OvS;
-            else
-               -- DMI 7.4.2.1
-               Supervision_Status := IndS;
-            end if;
-         when RSM =>
-            if New_Speed > Speed.Vrelease
-              or (Supervision_Status = IntS and Brake_Commanded)
-            then
-               -- DMI 7.5.3.1
-               Supervision_Status := IntS;
-            else
-               -- DMI 7.5.2.1
-               Supervision_Status := IndS;
-            end if;
-      end case;
-
       Vcurrent := New_Speed;
-
-      -- Audible information on status transitions (chapter 7)
-      if Supervision_Status /= Old_Status then
-         if Old_Status = WaS then
-            DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
-         end if;
-         if not In_AD then
-            case Supervision_Status is
-               when WaS =>
-                  -- DMI 7.2.3.3 / 7.4.4.3: S2 while the Warning Status
-                  -- information is active
-                  DMI_Sounds.Play (DMI_Sounds.S2_Warning_Start);
-               when OvS =>
-                  -- DMI 7.4.3.3: S1 as soon as the Over-speed Status is
-                  -- activated, TSM only
-                  if Monitoring_Mode = TSM then
-                     DMI_Sounds.Play (DMI_Sounds.S1_Overspeed);
-                  end if;
-               when others =>
-                  null;
-            end case;
-         end if;
-      end if;
    end Set_Speed;
 
    function Get_Speed return Speed_T is
@@ -115,7 +39,6 @@ package body Speed_And_Distance is
    procedure Set_Speed_Params (New_Speed_Params : Speed_Params) is
    begin
       Speed := New_Speed_Params;
-      Set_Speed (Vcurrent); -- To make sure model is consistent
    end Set_Speed_Params;
 
    function Get_Speed_Params return Speed_Params is
@@ -129,26 +52,86 @@ package body Speed_And_Distance is
    function Get_Speed_Dial_Range return Speed_Dial_Range_T is
      (Speed_Dial_Range);
 
-   procedure Set_Monitoring_Mode (The_Mode : Monitoring_T) is
-      Old_Mode : constant Monitoring_T := Monitoring_Mode;
+   -- DMI 7.2.3.3 / 7.4.4.3 / 14.3.3.2: S2 sounds while the Warning
+   -- Status is active, unless in Automatic Driving mode. Evaluated as a
+   -- state, so that it also follows a mode change under an unchanged
+   -- status (leaving AD in WaS starts it, entering AD stops it).
+   procedure Update_S2 is
+      Wanted : constant Boolean := Supervision_Status = WaS and not In_AD;
    begin
-      Monitoring_Mode := The_Mode;
-      if The_Mode /= Old_Mode then
-         -- DMI 7.4.1.1 / 7.5.1.1: Sinfo when entering TSM or RSM from
-         -- CSM, unless in Limited Supervision or Automatic Driving mode
-         if Old_Mode = CSM
-           and then The_Mode in TSM | RSM
-           and then not In_LS
-           and then not In_AD
+      if Wanted /= S2_Sounding then
+         S2_Sounding := Wanted;
+         DMI_Sounds.Play (if Wanted then DMI_Sounds.S2_Warning_Start
+                          else DMI_Sounds.S2_Warning_Stop);
+      end if;
+   end Update_S2;
+
+   function Normalised (The_Monitoring : Monitoring_T;
+                        The_Status     : Supervision_Status_T)
+                        return Supervision_Status_T is
+     (case The_Monitoring is
+         when CSM => (if The_Status = IndS then NoS else The_Status),
+         when TSM => (if The_Status = NoS then IndS else The_Status),
+         when RSM => (if The_Status = IntS then IntS else IndS));
+
+   -- The train is above the Permitted supervision limit in these
+   -- statuses (DMI 7.4.3.1, 7.4.4.1, 7.4.5.1)
+   function Over_Permitted (The_Status : Supervision_Status_T) return Boolean is
+     (The_Status in OvS | WaS | IntS);
+
+   procedure Set_Supervision (The_Monitoring : Monitoring_T;
+                              The_Status     : Supervision_Status_T;
+                              The_MRDT       : MRDT_T)
+   is
+      Old_Monitoring : constant Monitoring_T := Monitoring_Mode;
+      Old_Status     : constant Supervision_Status_T := Supervision_Status;
+      Old_MRDT       : constant MRDT_T := MRDT;
+   begin
+      Monitoring_Mode := The_Monitoring;
+      Supervision_Status := Normalised (The_Monitoring, The_Status);
+      MRDT := The_MRDT;
+
+      -- DMI 7.4.1.1 / 7.5.1.1: Sinfo when entering TSM or RSM from CSM,
+      -- and on a change of MRDT (within TSM: entering TSM has its Sinfo
+      -- already), unless in Limited Supervision or Automatic Driving mode
+      if not In_LS and then not In_AD then
+         if (Old_Monitoring = CSM and then The_Monitoring in TSM | RSM)
+           or else (Old_Monitoring = TSM and then The_Monitoring = TSM
+                    and then The_MRDT /= Old_MRDT)
          then
             DMI_Sounds.Play (DMI_Sounds.Sinfo);
          end if;
-         -- leaving the old monitoring invalidates a WaS-bound S2
-         if Supervision_Status = WaS then
-            DMI_Sounds.Play (DMI_Sounds.S2_Warning_Stop);
-         end if;
       end if;
-   end Set_Monitoring_Mode;
+
+      -- DMI 7.4.3.3 / 14.3.2.2: S1 once, as soon as the Over-speed Status
+      -- is activated in TSM, unless in AD. "Activated" is read as: the
+      -- train gets above the Permitted limit, whichever status reports it
+      -- first (a jump from IndS straight to WaS or IntS has passed P as
+      -- well); falling back from WaS or IntS to OvS activates nothing, and
+      -- neither does entering TSM from CSM while already over speed.
+      if The_Monitoring = TSM
+        and then Over_Permitted (Supervision_Status)
+        and then not Over_Permitted (Old_Status)
+        and then not In_AD
+      then
+         DMI_Sounds.Play (DMI_Sounds.S1_Overspeed);
+      end if;
+
+      Update_S2;
+   end Set_Supervision;
+
+   procedure Mode_Changed is
+   begin
+      Update_S2;
+   end Mode_Changed;
+
+   procedure Reset is
+   begin
+      Monitoring_Mode := CSM;
+      Supervision_Status := NoS;
+      MRDT := 0;
+      Update_S2; -- a sounding S2 stops
+   end Reset;
 
    function Get_Monitoring_Mode return Monitoring_T is
      (Monitoring_Mode);
@@ -160,11 +143,6 @@ package body Speed_And_Distance is
    begin
       CSM_Target_Info := Enabled;
    end Set_CSM_Target_Info;
-
-   procedure Set_Brake_Commanded (Commanded : Boolean) is
-   begin
-      Brake_Commanded := Commanded;
-   end Set_Brake_Commanded;
 
    function Get_CSM_Target_Info return Boolean is
      (CSM_Target_Info);

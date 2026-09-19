@@ -54,20 +54,43 @@ package Speed_And_Distance is
    
    function Get_Speed_Dial_Range return Speed_Dial_Range_T;
    
-   procedure Set_Monitoring_Mode (The_Mode : Monitoring_T);
-   
+   -- The monitoring and the supervision status come from the EVC
+   -- (MSG_SPEED_STATE): they are results of the speed and distance
+   -- monitoring function of the on-board (DMI 7.1.1.1, SUBSET-026
+   -- 3.13.10), which knows positions, brake commands and their revocation;
+   -- the DMI only presents them and plays the sounds of chapter 7.
+   --
+   -- A status that does not exist under the monitoring is replaced by the
+   -- nearest one that does (implementation choice, the pair comes from
+   -- the wire): CSM has no IndS (-> NoS), TSM has no NoS (-> IndS), RSM
+   -- has IndS and IntS only (NoS, OvS, WaS -> IndS). SUBSET-026
+   -- 3.13.10.3.6, 3.13.10.4.17 and 3.13.10.5.7 demand the same of the
+   -- on-board when the monitoring changes.
+   --
+   -- MRDT identifies the most relevant displayed target; the value has no
+   -- meaning to the DMI, a change of it within TSM is "a change of MRDT"
+   -- (DMI 7.4.1.1).
+   type MRDT_T is mod 256;
+
+   procedure Set_Supervision (The_Monitoring : Monitoring_T;
+                              The_Status     : Supervision_Status_T;
+                              The_MRDT       : MRDT_T);
+
+   -- To be called when the ETCS mode has changed: whether S2 sounds
+   -- depends on the mode (DMI 7.2.3.3, 7.4.4.3)
+   procedure Mode_Changed;
+
+   -- Back to CSM / NoS; a sounding S2 stops
+   procedure Reset;
+
    function Get_Monitoring_Mode return Monitoring_T;
-   
+
    function Get_Supervision_Status return Supervision_Status_T;
 
    -- Table 8/9 "CSM (with target information)": requested by National Value
    procedure Set_CSM_Target_Info (Enabled : Boolean);
 
    function Get_CSM_Target_Info return Boolean;
-
-   -- DMI 7.2.4.2: the Intervention Status stays active while the EVC
-   -- commands the service/emergency brake
-   procedure Set_Brake_Commanded (Commanded : Boolean);
 
    -- DMI 8.2.2.2.4 / 8.2.2.2.6: up to 5 digits, to the nearest 10 m
    type Distance_T is new Natural range 0 .. 99_990;
@@ -87,7 +110,8 @@ private
    Monitoring_Mode    : Monitoring_T := CSM;
    Supervision_Status : Supervision_Status_T := NoS;
    CSM_Target_Info    : Boolean := False;
-   Brake_Commanded    : Boolean := False;
+   MRDT               : MRDT_T := 0;
+   S2_Sounding        : Boolean := False;
    Speed              : Speed_Params;
    Vcurrent           : Speed_T := 0;
    Speed_Dial_Range   : Speed_Dial_Range_T := Range_180;

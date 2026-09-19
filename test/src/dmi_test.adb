@@ -28,6 +28,7 @@ with EVC_Track;
 with EVC_Train;
 with General_Parameters;
 with Interfaces;
+with Speed_And_Distance;
 with Supplementary_Driving_Info;
 with Test_Support; use Test_Support;
 with User_Settings;
@@ -38,6 +39,7 @@ procedure DMI_Test is
    procedure Reset is
    begin
       DMI_Core.Initialise;
+      Test_Support.Reset_EVC_Model;
       General_Parameters.Flash_On := True;
       -- scenarios send EVC messages only when the picture changes
       General_Parameters.EVC_Link_Timeout_Ms := 0;
@@ -361,7 +363,7 @@ procedure DMI_Test is
       Send_Speed_State_Raw
         (V_Cur => 140, V_Perm => 120, V_Target => 0, V_Release => 0,
          V_Sbi => 135, V_Wsl => 125, D_Target => 0, Monitoring => 0,
-         Dial_Range => 1, Flags => 0);
+         Dial_Range => 1, Flags => 0, Status => 4);
       Step;
       Check_Frame ("rob_ad_csm_ints_grey_pointer");
    end Scenario_Speed_Robustness;
@@ -405,6 +407,129 @@ procedure DMI_Test is
    ---------------------------------------------------------------------
    -- Mode and level acknowledgements (5.4, 8.2.3.1, 8.2.3.2)
    ---------------------------------------------------------------------
+
+   ---------------------------------------------------------------------
+   -- Supervision status from the EVC and the sounds of chapter 7
+   -- (SUP-1 .. SUP-5, SDI-4)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Supervision_Sounds is
+      procedure TSM (Status : Natural; MRDT : Natural := 1; V_Cur : Natural := 100) is
+      begin
+         Send_Speed_State (V_Cur => V_Cur, V_Perm => 120, V_Target => 60,
+                           V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                           D_Target => 800, Monitoring => 1, Dial_Range => 1,
+                           Vrelease_Exists => False, Status => Status,
+                           MRDT => MRDT);
+      end TSM;
+
+      procedure CSM (Status : Natural; V_Cur : Natural := 100) is
+      begin
+         Send_Speed_State (V_Cur => V_Cur, V_Perm => 120, V_Target => 0,
+                           V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                           D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                           Vrelease_Exists => False, Status => Status);
+      end CSM;
+
+      use type Speed_And_Distance.Supervision_Status_T;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+
+      -- SUP-1: the status is the EVC's, not a comparison of speeds. A
+      -- brake commanded below the DMI's view of the SBI speed shows IntS.
+      CSM (Status => 4, V_Cur => 100);
+      Check (Speed_And_Distance.Get_Supervision_Status = Speed_And_Distance.IntS,
+             "IntS from the EVC below Vsbi");
+      Step;
+      Check_Frame ("sup_csm_ints_below_vsbi");
+      -- and a speed above Vsbi with status NoS stays NoS
+      CSM (Status => 0, V_Cur => 140);
+      Check (Speed_And_Distance.Get_Supervision_Status = Speed_And_Distance.NoS,
+             "NoS from the EVC above Vsbi");
+
+      -- a status that does not exist under the monitoring is replaced
+      CSM (Status => 1);
+      Check (Speed_And_Distance.Get_Supervision_Status = Speed_And_Distance.NoS,
+             "IndS in CSM is NoS");
+      Drain_Sounds;
+      TSM (Status => 0);
+      Check (Speed_And_Distance.Get_Supervision_Status = Speed_And_Distance.IndS,
+             "NoS in TSM is IndS");
+      Expect_Sound (DMI_Sounds.Sinfo, "entering TSM plays Sinfo");
+      Expect_No_Sound ("nothing else on entering TSM");
+
+      -- SUP-2: change of MRDT within TSM
+      TSM (Status => 1, MRDT => 1);
+      Expect_No_Sound ("same MRDT is silent");
+      TSM (Status => 1, MRDT => 2);
+      Expect_Sound (DMI_Sounds.Sinfo, "change of MRDT plays Sinfo");
+      Expect_No_Sound ("one Sinfo per change of MRDT");
+
+      -- SUP-3: S1 when the train gets above P, whichever status says so
+      TSM (Status => 3, MRDT => 2); -- IndS straight to WaS
+      Expect_Sound (DMI_Sounds.S2_Warning_Start, "WaS starts S2");
+      Expect_Sound (DMI_Sounds.S1_Overspeed, "IndS to WaS plays S1");
+      TSM (Status => 4, MRDT => 2);
+      Expect_Sound (DMI_Sounds.S2_Warning_Stop, "IntS stops S2");
+      TSM (Status => 2, MRDT => 2); -- IntS back to OvS
+      Expect_No_Sound ("IntS to OvS does not replay S1");
+      TSM (Status => 1, MRDT => 2);
+      TSM (Status => 2, MRDT => 2);
+      Expect_Sound (DMI_Sounds.S1_Overspeed, "IndS to OvS plays S1");
+      -- entering TSM while already over speed activates nothing
+      CSM (Status => 2);
+      Drain_Sounds;
+      TSM (Status => 2, MRDT => 3);
+      Expect_Sound (DMI_Sounds.Sinfo, "entering TSM over speed: Sinfo");
+      Expect_No_Sound ("entering TSM over speed: no S1");
+
+      -- SUP-4: S2 follows the mode under an unchanged WaS
+      Send_Mode_Level (Mode => 3, Level => 5); -- AD
+      Drain_Sounds;
+      TSM (Status => 3, MRDT => 3);
+      Expect_No_Sound ("WaS in AD is silent");
+      Send_Mode_Level (Mode => 2, Level => 5); -- the driver takes over: FS
+      Expect_Sound (DMI_Sounds.S2_Warning_Start, "leaving AD in WaS starts S2");
+      Send_Mode_Level (Mode => 3, Level => 5);
+      Expect_Sound (DMI_Sounds.S2_Warning_Stop, "entering AD stops S2");
+      -- AD: no Sinfo on a change of MRDT either
+      TSM (Status => 1, MRDT => 4);
+      Expect_No_Sound ("change of MRDT in AD is silent");
+
+      -- SUP-5: brake released by an acknowledgement on another object
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Status (Brake => 1, Radio => 1, HH => 9, MM => 0, SS => 0);
+      Send_Mode_Level (Mode => 2, Level => 4, Mode_Ack => 6); -- OS ack
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+      Pointer_Down (190, 340);
+      Pointer_Up (190, 340);
+      Step;
+      Drain_Sounds; -- click
+      Expect_Ack (DMI_Ack.Ack_Kind_T'Pos (DMI_Ack.Mode_Change), 0,
+                  "mode acknowledged while the brake symbol is shown");
+      Send_Mode_Level (Mode => 6, Level => 4);
+      Expect_No_Sound ("entering OS after the acknowledgement is silent");
+      Send_Status (Brake => 0, Radio => 1, HH => 9, MM => 0, SS => 1);
+      Expect_No_Sound ("brake released by the mode acknowledgement: no Sinfo");
+      -- the next intervention, released without any acknowledgement
+      Send_Status (Brake => 1, Radio => 1, HH => 9, MM => 0, SS => 2);
+      Send_Status (Brake => 0, Radio => 1, HH => 9, MM => 0, SS => 3);
+      Expect_Sound (DMI_Sounds.Sinfo, "later release without ack plays Sinfo");
+
+      -- SDI-4: the supervised manoeuvre direction changes
+      Reset;
+      Send_Mode_Level (Mode => 4, Level => 5); -- SM
+      Send_Status (SM_Direction => 1, Radio => 1, HH => 9, MM => 0, SS => 0);
+      Drain_Sounds;
+      Send_Status (SM_Direction => 1, Radio => 1, HH => 9, MM => 0, SS => 1);
+      Expect_No_Sound ("same SM direction is silent");
+      Send_Status (SM_Direction => 2, Radio => 1, HH => 9, MM => 0, SS => 2);
+      Expect_Sound (DMI_Sounds.Sinfo, "SM direction change plays Sinfo");
+   end Scenario_Supervision_Sounds;
 
    procedure Scenario_Mode_Ack is
    begin
@@ -1783,6 +1908,7 @@ begin
    Scenario_EVC_Link_Lost;
    Scenario_Failure_Presentation;
    Scenario_Mission;
+   Scenario_Supervision_Sounds;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));
