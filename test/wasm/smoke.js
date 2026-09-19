@@ -141,12 +141,18 @@ function press(x, y) {
   // Y locations of Table 23
   const ENTER = [487, 90];
   const FIELD = i => [589, 40 + (i - 1) * 50];
+  const NEXT = [539, 440];                     // Table 23, right of [Close]
   press(385, 240); press(...ENTER);            // Driver ID 1
-  press(410, 90);                              // Level 1 -> Main window
-  press(410, 140);                             // Train data
-  for (const k of [[385, 290], [487, 390], [487, 390], FIELD(1),   // 400 m
-                   [385, 240], [589, 240], [487, 290], FIELD(2),   // 135 %
-                   [385, 240], [385, 290], [487, 390], FIELD(3)])  // 140 km/h
+  press(385, 240); press(...ENTER);            // Level 1, accepted
+  press(410, 140);                             // Train data (1/2)
+  for (const k of [[385, 240], FIELD(1),                           // PASS 1
+                   [385, 290], [487, 390], [487, 390], FIELD(2),   // 400 m
+                   [385, 240], [589, 240], [487, 290], FIELD(3),   // 135 %
+                   [385, 240], [385, 290], [487, 390], FIELD(4),   // 140 km/h
+                   NEXT,                                 // Train data (2/2)
+                   [385, 240], FIELD(1),                 // axle load A
+                   [385, 340], FIELD(2),                 // airtight: No
+                   [487, 290], FIELD(3)])                // gauge Out of GC
     press(...k);
   press(167, 440);                             // Train data entry complete?
   press(487, 40);                              // validation: accept 'Yes'

@@ -63,16 +63,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // DMI 10.3.1.22: [Enter] is the data part of the input field itself
     const ENTER = [487, 90];                    // Table 22, merged data part
     const FIELD = i => [589, 40 + (i - 1) * 50]; // Table 23, data parts
+    const NEXT = [539, 440];                    // Table 23, right of [Close]
     for (const k of [[385, 240], [487, 240], [589, 240]]) await press(...k); // 123
     await press(...ENTER);                      // -> level
-    await press(410, 90);                       // Level 1 -> Main window
-    await press(410, 140);                      // Train data
+    await press(385, 240); await press(...ENTER); // Level 1, accepted
+    await press(410, 140);                      // Train data (1/2)
+    await press(385, 240); await press(...FIELD(1)); // train category PASS 1
     for (const k of [[385, 290], [487, 390], [487, 390]]) await press(...k); // 400
-    await press(...FIELD(1));
-    for (const k of [[385, 240], [589, 240], [487, 290]]) await press(...k); // 135
     await press(...FIELD(2));
-    for (const k of [[385, 240], [385, 290], [487, 390]]) await press(...k); // 140
+    for (const k of [[385, 240], [589, 240], [487, 290]]) await press(...k); // 135
     await press(...FIELD(3));
+    for (const k of [[385, 240], [385, 290], [487, 390]]) await press(...k); // 140
+    await press(...FIELD(4));
+    await press(...NEXT);                       // Train data (2/2)
+    await press(385, 240); await press(...FIELD(1)); // axle load category A
+    await press(385, 340); await press(...FIELD(2)); // airtight: No
+    await press(487, 290); await press(...FIELD(3)); // loading gauge Out of GC
     await press(167, 440);                      // entry complete? -> validation
     await press(487, 40);                       // validation: accept 'Yes'
     for (const k of [[385, 290], [385, 340], [385, 240], [385, 240]]) await press(...k); // 4711
