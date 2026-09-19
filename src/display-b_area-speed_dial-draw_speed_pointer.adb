@@ -134,13 +134,13 @@ procedure Draw_Speed_Pointer is
             -- Table 8 AD rows: yellow/orange replaced by white; over-speed in
             -- plain CSM shown grey.
             --
-            -- Implementation choice for IntS: the four AD rows with IntS
-            -- hold hyphens only, but chapter 7 exempts AD from IntS in TSM
-            -- alone (7.4.5.1.1); 7.2.4.1 and 7.5.3.1 can still activate it
-            -- in CSM and RSM. Taking the current speed away from the driver
-            -- during a brake intervention is the most dangerous reading of
-            -- that inconsistency, so the pointer stays, in the AD base
-            -- colour grey. (The CSG is not drawn in this case, Table 9.)
+            -- Known issue KI-1 (doc/AUDIT-2026-09.md): the four AD rows with
+            -- IntS hold hyphens only. IntS is presumed not applicable in AD
+            -- (a brake command ends automatic driving), but this text exempts
+            -- AD in TSM alone (7.4.5.1.1), and SUBSET-026 is not checked yet.
+            -- Defensive fallback for the presumably unreachable state: the
+            -- pointer stays, in the AD base colour grey, so the driver never
+            -- loses the current speed. (The CSG is not drawn, Table 9.)
             case Get_Monitoring_Mode is
                when CSM =>
                   if Get_CSM_Target_Info then
