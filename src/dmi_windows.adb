@@ -5,6 +5,7 @@ pragma Ada_2012;
 with Display.Draw;
 with Display.Screen;
 with DMI_Ack;
+with DMI_Data_View;
 with DMI_Driver_Data;
 with General_Parameters;
 with Speed_And_Distance;
@@ -179,7 +180,7 @@ package body DMI_Windows is
      (case ID is
          when W_Main       => "Main",
          when W_Override   => "Override",
-         when W_Data_View  => "Data view",
+         when W_Data_View  => DMI_Data_View.Title,
          when W_Special    => "Special",
          when W_Settings   => "Settings",
          when W_Driver_ID  => "Driver ID",
@@ -367,7 +368,7 @@ package body DMI_Windows is
          when Menu       => return Max_Menu;
          when Data_Entry => return 12;
          when Validation => return 2;
-         when View       => return 0;
+         when View       => return DMI_Data_View.Button_Count;
       end case;
    end Button_Count;
 
@@ -377,7 +378,7 @@ package body DMI_Windows is
          when Menu       => return Menu_Button_Area (Index);
          when Data_Entry => return Key_Area (Index);
          when Validation => return Validation_Button_Area (Index);
-         when View       => return ((0, 0), 0, 0);
+         when View       => return DMI_Data_View.Button_Area (Index);
       end case;
    end Button_Area;
 
@@ -393,7 +394,7 @@ package body DMI_Windows is
          when Data_Entry | Validation =>
             return True;
          when View =>
-            return False;
+            return DMI_Data_View.Button_Enabled (Index);
       end case;
    end Button_Enabled;
 
@@ -427,6 +428,9 @@ package body DMI_Windows is
          Stack (Depth) := ID;
          if Kind_Of (ID) = Data_Entry then
             Setup_Entry (ID);
+         elsif Kind_Of (ID) = View then
+            --  The window opens on its first window (5.3.1.1.9)
+            DMI_Data_View.Reset;
          end if;
       end if;
    end Open;
@@ -738,7 +742,7 @@ package body DMI_Windows is
                Pop; -- Table 50 S3-2: back to S3-1, the train data window
             end if;
          when View =>
-            null;
+            DMI_Data_View.Button_Pressed (Index);
       end case;
    end Button_Pressed;
 
@@ -912,22 +916,6 @@ package body DMI_Windows is
                             True, Pressed (Validation_No));
    end Draw_Validation;
 
-   procedure Draw_Data_View is
-      use DMI_Driver_Data;
-      package SDI renames Supplementary_Driving_Info;
-   begin
-      -- 11.5.1 (simplified single page)
-      Draw_Text_Line (1, "Driver ID: "
-                      & Driver_ID.Text (1 .. Driver_ID.Length));
-      Draw_Text_Line (2, "Level: "
-                      & SDI.Level_T'Wide_Image (SDI.Level));
-      Draw_Text_Line (3, "Train length: " & Num_Image (Train_Length) & " m");
-      Draw_Text_Line (4, "Brake percentage: " & Num_Image (Brake_Pct));
-      Draw_Text_Line (5, "Max speed: " & Num_Image (Max_Speed) & " km/h");
-      Draw_Text_Line (6, "Train running nr: "
-                      & TRN.Text (1 .. TRN.Length));
-   end Draw_Data_View;
-
    procedure Render is
       ID : Window_ID_T;
    begin
@@ -944,7 +932,12 @@ package body DMI_Windows is
          when Menu       => Draw_Menu (ID);
          when Data_Entry => Draw_Data_Entry;
          when Validation => Draw_Validation;
-         when View       => Draw_Data_View;
+         when View       =>
+            --  11.5.1: the items, the paging and the [Previous] /
+            --  [Next] buttons are in DMI_Data_View
+            DMI_Data_View.Render
+              (Previous_Pressed => Pressed (DMI_Data_View.Previous_Button),
+               Next_Pressed     => Pressed (DMI_Data_View.Next_Button));
       end case;
    end Render;
 
