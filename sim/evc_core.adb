@@ -88,6 +88,39 @@ package body EVC_Core is
    TAF_Requested  : Boolean := False;
    TAF_Answered   : Boolean := False;
 
+   ---------------------------------------------------------------------
+   -- Virtual Balise Covers (SUBSET-026 3.15.9; DMI 11.3.12, 11.3.13).
+   -- The on-board keeps them by their set code (DMI 11.3.12.5: NID_VBCMK
+   -- in bits 0-5, NID_C in bits 6-15, T_VBC above); the VBC identity is
+   -- NID_VBCMK and NID_C (3.15.9.1 a), the low 16 bits. The simulator
+   -- stores at most VBC_Capacity of them (its "maximum on-board storage
+   -- capacity of VBC set by driver", DMI Table 36 #5), retains them over
+   -- a Reset as over No Power (3.15.9.5) and starts with the VBC of DMI
+   -- Figure 134, so that 'Remove VBC' is on offer at once. Validity
+   -- periods do not elapse here.
+   ---------------------------------------------------------------------
+
+   VBC_Capacity : constant := 4;
+   VBC_Count    : Natural range 0 .. VBC_Capacity := 1;
+   VBC_Codes    : array (1 .. VBC_Capacity) of Natural :=
+     (1 => 71_951, others => 0);
+
+   function VBC_Identity (Set_Code : Natural) return Natural is
+     (Set_Code mod 65_536);
+
+   --  The operated system version (SUBSET-026 3.17.2), which this
+   --  simulator does not negotiate: its line and its RBC are version 3.0
+   --  (DMI Figure 135)
+   System_Version_X : constant := 3;
+   System_Version_Y : constant := 0;
+
+   --  The abbreviation of the National System of level NTC (DMI
+   --  8.2.3.2.9), reported with the level when the driver selected NTC
+   --  (the demo line itself has no NTC area); PZB, one of the two systems
+   --  of the example of LE02a
+   National_Name : constant String := "PZB";
+   Level_NTC     : constant := 3;  -- Level_T'Pos (NTC)
+
    -- "Entering FS" (DMI Table 68): the DMI owns the system status
    -- message, this EVC reports the condition of SUBSET-026 4.4.9.1.4 (in
    -- FS, SSP and gradient not known for the whole length of the train)
@@ -161,7 +194,14 @@ package body EVC_Core is
    end Send_Speed_State;
 
    procedure Send_Mode_Level (Emit : Sink_T) is
-      Payload : Stream_Element_Array (1 .. Mode_Level_Length);
+      --  in level NTC the name of the National System follows the fixed
+      --  part (dmi_protocol.ads); otherwise the 9 byte form
+      Name_Len : constant Natural :=
+        (if Level_Pos = Level_NTC then National_Name'Length else 0);
+      Payload : Stream_Element_Array
+        (1 .. Mode_Level_Length
+                + (if Name_Len > 0
+                   then 1 + Stream_Element_Offset (Name_Len) else 0));
       Offset  : Stream_Element_Offset := Payload'First;
       DMI_Mode : constant Unsigned_8 :=
         (case Mode is
@@ -184,6 +224,12 @@ package body EVC_Core is
       Put_U8 (Payload, Offset,
               (if TAF_Requested and not TAF_Answered then 1 else 0));
       Put_U16 (Payload, Offset, 16#FFFF#); -- no LSSMA
+      if Name_Len > 0 then
+         Put_U8 (Payload, Offset, Unsigned_8 (Name_Len));
+         for C of National_Name loop
+            Put_U8 (Payload, Offset, Character'Pos (C));
+         end loop;
+      end if;
       Emit (MSG_MODE_LEVEL, Payload);
    end Send_Mode_Level;
 
@@ -224,7 +270,7 @@ package body EVC_Core is
    --  37 and behind the dialogue sequences (see dmi_protocol.ads and
    --  DMI_Conditions). What this simulator does not model is reported
    --  as "not there": no pending emergency stop, no RBC transition
-   --  order, no VBC store, no "non leading" or "passive shunting" desk
+   --  order, no "non leading" or "passive shunting" desk
    --  inputs. Its RBC is a timer (Busy above): a session opens after
    --  Busy_Time once the driver gave the RBC contact information in
    --  level 2, and it answers a request for shunting or for Supervised
@@ -292,7 +338,11 @@ package body EVC_Core is
       Put_U8 (Payload, Offset, (if Session_Open then 3 else 0));
       Put_U8 (Payload, Offset, RBC);
       Put_U8 (Payload, Offset, Train);
-      Put_U8 (Payload, Offset, 2);      -- adhesion may be modified (NV)
+      --  national: adhesion may be modified (NV, bit 1), the VBC store
+      --  has room (bit 2), at least one VBC is stored (bit 3)
+      Put_U8 (Payload, Offset,
+              2 or (if VBC_Count < VBC_Capacity then 4 else 0)
+                or (if VBC_Count > 0 then 8 else 0));
       --  Table 49 S0: the cab is active and the mode is SB, and no
       --  session has to end first, so the conditions to initiate a start
       --  of mission are fulfilled as long as the mode is SB
@@ -313,6 +363,62 @@ package body EVC_Core is
       Put_U8 (Payload, Offset, (if Authorised then 1 else 0));
       Emit (MSG_ONBOARD, Payload);
    end Send_Onboard;
+
+   --  MSG_VBC_LIST: the VBCs stored on-board, by their set code
+   procedure Send_VBC_List (Emit : Sink_T) is
+      Payload : Stream_Element_Array
+        (1 .. 1 + Stream_Element_Offset (VBC_Count * VBC_Code_Length));
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (VBC_Count));
+      for I in 1 .. VBC_Count loop
+         Put_U32 (Payload, Offset, Unsigned_32 (VBC_Codes (I)));
+      end loop;
+      Emit (MSG_VBC_LIST, Payload);
+   end Send_VBC_List;
+
+   --  MSG_SYSTEM_VERSION: the operated system version
+   procedure Send_System_Version (Emit : Sink_T) is
+      Payload : Stream_Element_Array (1 .. System_Version_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, System_Version_X);
+      Put_U8 (Payload, Offset, System_Version_Y);
+      Emit (MSG_SYSTEM_VERSION, Payload);
+   end Send_System_Version;
+
+   --  A VBC entered by the driver (MSG_DRIVER_DATA kind 8): 3.15.9.4, one
+   --  with the identity of a stored VBC replaces it; otherwise it is
+   --  added while there is room (the DMI offers 'Set VBC' only then)
+   procedure Set_VBC (Code : Natural) is
+   begin
+      for I in 1 .. VBC_Count loop
+         if VBC_Identity (VBC_Codes (I)) = VBC_Identity (Code) then
+            VBC_Codes (I) := Code;
+            return;
+         end if;
+      end loop;
+      if VBC_Count < VBC_Capacity then
+         VBC_Count := VBC_Count + 1;
+         VBC_Codes (VBC_Count) := Code;
+      end if;
+   end Set_VBC;
+
+   --  A VBC removed by the driver (kind 9, 3.15.9.5 c): the remove code
+   --  has NID_C in bits 0-9 and NID_VBCMK in bits 10-15 (DMI 11.3.13.5);
+   --  a code that names no stored VBC changes nothing
+   procedure Remove_VBC (Code : Natural) is
+      Identity : constant Natural :=
+        (Code / 1024) mod 64 + (Code mod 1024) * 64;
+   begin
+      for I in 1 .. VBC_Count loop
+         if VBC_Identity (VBC_Codes (I)) = Identity then
+            VBC_Codes (I .. VBC_Count - 1) := VBC_Codes (I + 1 .. VBC_Count);
+            VBC_Count := VBC_Count - 1;
+            return;
+         end if;
+      end loop;
+   end Remove_VBC;
 
    --  MSG_RADIO_NETWORKS: the GSM-R networks of Figure 117
    procedure Send_Radio_Networks (Emit : Sink_T) is
@@ -728,6 +834,8 @@ package body EVC_Core is
          Send_System_Status (Emit, SS_Entering_FS, 1);
       end if;
       Send_Onboard (Emit);
+      Send_VBC_List (Emit);
+      Send_System_Version (Emit);
       Send_Status (Emit);
       Send_Track_Cond (Emit);
       if Mode in FS | AD then
@@ -915,6 +1023,20 @@ package body EVC_Core is
          when 7 =>      -- Mission with one radio system u8
             if Payload'Length = Driver_Data_Byte_Length then
                One_Radio_Yes := Payload (Payload'First + 1) = 1;
+            end if;
+         when 8 | 9 =>  -- Set VBC / Remove VBC: code u32
+            if Payload'Length = Driver_Data_VBC_Length then
+               declare
+                  Code : constant Unsigned_32 := Get_U32 (Payload, Offset);
+               begin
+                  if Code <= VBC_Code_Max and then Mode = SB then
+                     if Kind = 8 then
+                        Set_VBC (Natural (Code));
+                     else
+                        Remove_VBC (Natural (Code));
+                     end if;
+                  end if;
+               end;
             end if;
          when others => -- 3 SR data and anything else: no data status
             null;

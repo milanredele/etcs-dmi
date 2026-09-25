@@ -154,13 +154,29 @@
             network) and puts <i>Mission with one radio system</i> on
             offer. In level 1 <i>Shunting</i> switches to SH at once;
             <i>Special</i> offers the BMM reaction inhibition.</li>
+          <li><b>Settings, VBCs and the data view.</b> Before
+            <i>Start</i> (standstill, mode SB) the wrench opens
+            <i>Settings</i>: <i>System version</i> shows the operated
+            system version the EVC reports (3.0). <i>Set VBC</i> takes a
+            Virtual Balise Cover code on the keypad (NID_VBCMK, NID_C and
+            the validity in 24 bits, e.g. 321456), <i>Yes</i> leads to the
+            validation window and only its <i>Yes</i> sends it to the
+            EVC, which stores it; <i>Remove VBC</i> takes the remove code
+            (NID_C first: 50078 removes 321456, 15460 removes 71951,
+            which is stored from the start). The <i>Data view</i> (default
+            window, right column) lists them on its second window with
+            the radio data. Choosing level <i>NTC</i> puts the name of
+            the simulated National System, PZB, in the level
+            symbol.</li>
           <li><b>Feed it by hand.</b> Switch the source to the manual EVC
             panel to put any speed, target, mode or level on the
             display. Its last rows raise any system status message of
             chapter 15 and send the events the EVC reports (see which
             ones end after 30 s, on a button of the <i>Main</i> window
             or when the mode changes), and set the on-board's radio
-            data, waiting states and list of GSM-R networks.</li>
+            data, waiting states and list of GSM-R networks, the name of
+            the National System of level NTC, the system version and
+            the VBCs stored on-board.</li>
           <li><b>The keys under the display.</b> <i>Settings</i> is the
             desk button for the <i>Settings</i> window (DMI 8.6.1.6): it
             works where the wrench does, on the default window. There
@@ -293,6 +309,16 @@
         <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
         <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
       </div>
+      <div class="row" title="MSG_MODE_LEVEL name (8.2.3.2.9), MSG_SYSTEM_VERSION and MSG_VBC_LIST (dmi_protocol.ads)">
+        <label>NTC name <input type="text" id="ntc_name" value="PZB" maxlength="10" size="10"
+          title="the National System's abbreviation shown for level NTC; empty: 'NTC'"></label>
+        <label>System version <input type="text" id="sys_version" value="3.0" size="4"
+          title="X.Y, X 0..7, Y 0..15; anything else: not known"></label>
+        <label>VBC set codes <input type="text" id="vbcs" value="71951" size="22"
+          title="the VBCs stored on-board, up to 16 codes of 0..16777215; Set / Remove VBC change them"></label>
+        <label>VBC room <input type="checkbox" id="vbc_room" checked
+          title="the on-board storage capacity of VBC set by the driver is not reached"></label>
+      </div>
       <div class="row" title="MSG_SYSTEM_STATUS: one event of a catalogue entry (dmi_protocol.ads), sent once over the wire, also while the simulator is the source">
         <label>System status: <select id="ss_entry"></select></label>
         <button id="ss_start">Start</button>
@@ -409,6 +435,8 @@
       const MSG_ATO = 0x0B;
       const MSG_SYSTEM_STATUS = 0x0C;
       const MSG_RADIO_NETWORKS = 0x0D;
+      const MSG_SYSTEM_VERSION = 0x0E;
+      const MSG_VBC_LIST = 0x0F;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_DRIVER_DATA = 0x41;
       const MSG_POINTER = 0x50;
@@ -907,8 +935,13 @@
         return buf;
       }
 
+      // MSG_MODE_LEVEL; a National System name makes it the long form
+      // (name_len u8 and Latin-1 bytes after the 9 fixed bytes)
       function manualModeLevel() {
-        const { buf, dv } = makeMessage(MSG_MODE_LEVEL, 9);
+        const name = [...$('ntc_name').value].map((c) => c.charCodeAt(0))
+          .filter((b) => b < 256).slice(0, 10);
+        const { buf, dv } = makeMessage(MSG_MODE_LEVEL,
+                                        name.length ? 10 + name.length : 9);
         let o = HEADER_LENGTH;
         dv.setUint8(o, val('mode')); o += 1;
         dv.setUint8(o, val('level')); o += 1;
@@ -917,8 +950,53 @@
         dv.setUint8(o, checked('level_ann_ack') ? 1 : 0); o += 1;
         dv.setUint8(o, checked('override') ? 1 : 0); o += 1;
         dv.setUint8(o, checked('taf') ? 1 : 0); o += 1;
-        dv.setUint16(o, checked('lssma_valid') ? val('lssma') : 0xFFFF, true);
+        dv.setUint16(o, checked('lssma_valid') ? val('lssma') : 0xFFFF, true); o += 2;
+        if (name.length) {
+          dv.setUint8(o, name.length); o += 1;
+          for (const b of name) { dv.setUint8(o, b); o += 1; }
+        }
         return buf;
+      }
+
+      // MSG_SYSTEM_VERSION: X and Y of 'X.Y'; 255 (not known) otherwise
+      function manualSystemVersion() {
+        const m = /^(\d+)\.(\d+)$/.exec($('sys_version').value.trim());
+        const { buf, dv } = makeMessage(MSG_SYSTEM_VERSION, 2);
+        dv.setUint8(HEADER_LENGTH, m ? Math.min(parseInt(m[1]), 255) : 255);
+        dv.setUint8(HEADER_LENGTH + 1, m ? Math.min(parseInt(m[2]), 255) : 255);
+        return buf;
+      }
+
+      // MSG_VBC_LIST: count, then the set codes as u32
+      const vbcCodes = () => $('vbcs').value.split(',').map((t) => parseInt(t))
+        .filter((c) => c >= 0 && c <= 0xFFFFFF).slice(0, 16);
+      function manualVBCList() {
+        const codes = vbcCodes();
+        const { buf, dv } = makeMessage(MSG_VBC_LIST, 1 + 4 * codes.length);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, codes.length); o += 1;
+        for (const c of codes) { dv.setUint32(o, c, true); o += 4; }
+        return buf;
+      }
+
+      // The manual panel is the on-board of the VBCs: Set VBC (kind 8)
+      // replaces the VBC of the same identity (NID_VBCMK, NID_C: the low
+      // 16 bits of the set code) or adds it, Remove VBC (kind 9) removes
+      // the one its remove code names (NID_C in bits 0-9, NID_VBCMK in
+      // bits 10-15, DMI 11.3.13.5)
+      function manualVBCData(p) {
+        if (p.length !== 5 || (p[0] !== 8 && p[0] !== 9)) return;
+        const code = (p[1] | (p[2] << 8) | (p[3] << 16) | (p[4] << 24)) >>> 0;
+        let codes = vbcCodes();
+        if (p[0] === 8) {
+          const same = codes.findIndex((c) => (c & 0xFFFF) === (code & 0xFFFF));
+          if (same >= 0) codes[same] = code;
+          else if (codes.length < 16) codes.push(code);
+        } else {
+          const identity = ((code >> 10) & 63) | ((code & 1023) << 6);
+          codes = codes.filter((c) => (c & 0xFFFF) !== identity);
+        }
+        $('vbcs').value = codes.join(', ');
       }
 
       // MSG_ONBOARD (dmi_protocol.ads): the on-board state behind the
@@ -937,7 +1015,9 @@
         dv.setUint8(o, val('session')); o += 1;
         dv.setUint8(o, 1); o += 1;                // train data acknowledged
         dv.setUint8(o, (standing ? 1 : 0) | 2); o += 1; // standstill, override ok
-        dv.setUint8(o, 2); o += 1;                // adhesion may be modified
+        // adhesion may be modified; the VBC storage (Table 36 #5, #6)
+        dv.setUint8(o, 2 | (checked('vbc_room') ? 4 : 0)
+                       | (vbcCodes().length > 0 ? 8 : 0)); o += 1;
         dv.setUint8(o, val('mode') === 1 ? 2 : 0); o += 1; // start of mission
         dv.setUint8(o, val('waiting')); o += 1;
         dv.setUint8(o, 0); o += 1;                // no 'Start' pending
@@ -1062,6 +1142,10 @@
           }
           case 6: return `radio network type ${RADIO_TYPES[p[1]] || p[1]}`;
           case 7: return `mission with one radio system: ${p[1] ? 'Yes' : 'No'}`;
+          case 8: case 9: {
+            const code = (p[1] | (p[2] << 8) | (p[3] << 16) | (p[4] << 24)) >>> 0;
+            return `${p[0] === 8 ? 'set' : 'remove'} VBC ${code}`;
+          }
           default: return `kind ${p[0]}`;
         }
       }
@@ -1159,6 +1243,7 @@
                 if (manualMode()) manualATOAction(action, arg);
               } else {
                 console.log('driver data', describeDriverData(f.subarray(HEADER_LENGTH)));
+                if (manualMode()) manualVBCData(f.subarray(HEADER_LENGTH));
               }
               toEvc.send(f, now);
             }
@@ -1190,6 +1275,8 @@
             toDmi.send(manualModeLevel(), now);
             toDmi.send(manualOnboard(), now);
             toDmi.send(manualATO(), now);
+            toDmi.send(manualSystemVersion(), now);
+            toDmi.send(manualVBCList(), now);
           } else {
             evc.evc_step(EVC_STEP_MS);
             routeFromEvc();

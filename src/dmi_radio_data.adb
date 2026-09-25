@@ -26,6 +26,7 @@ package body DMI_Radio_Data is
       RBC_ID := (others => <>);
       RBC_Phone := (others => <>);
       RBC_Entered := False;
+      Last_Choice := Entered;
    end Reset;
 
 end DMI_Radio_Data;

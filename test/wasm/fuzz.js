@@ -45,8 +45,9 @@ class Msg {
   random(n) { for (let i = 0; i < n; i++) this.u8(pick(0, 255)); return this; }
 }
 
-const EVC_TYPES = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A, 0x0B, 0x0C];
-const FIXED = { 0x01: 21, 0x02: 9, 0x04: 2, 0x07: 22, 0x0A: 8, 0x0C: 2 };
+const EVC_TYPES = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A, 0x0B, 0x0C,
+                   0x0E, 0x0F];
+const FIXED = { 0x01: 21, 0x02: 9, 0x04: 2, 0x07: 22, 0x0A: 8, 0x0C: 2, 0x0E: 2 };
 
 function inDomain(type) {
   const m = new Msg();
@@ -57,6 +58,13 @@ function inDomain(type) {
   } else if (type === 0x02) {
     m.u8(pick(0, 17)).u8(pick(0, 5)).u8(optional(5, 12, 0xFF)).u8(optional(2, 5, 0xFF))
       .u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 1)).u16(optional(0, 400, 0xFFFF));
+    // the National System's name: mostly none (9 bytes), else any bytes
+    // up to two beyond the maximum of 10, now and then a wrong length
+    if (chance(50)) {
+      const n = pick(0, 12);
+      m.u8(n).random(n);
+      if (chance(5)) m.b.pop(); else if (chance(5)) m.u8(pick(0, 255));
+    }
   } else if (type === 0x03) {
     const n = pick(0, 255); // up to the greatest length, any byte, words of any width
     m.u16(pick(0, 20)).u8(pick(0, 15)).u8(pick(0, 23)).u8(pick(0, 59)).u8(n);
@@ -104,6 +112,16 @@ function inDomain(type) {
     // system status: the catalogue and one number on each side, the
     // three events and one beyond, now and then any byte
     m.u8(chance(90) ? pick(0, 39) : pick(0, 255)).u8(chance(90) ? pick(0, 3) : pick(0, 255));
+  } else if (type === 0x0E) {
+    // system version: X and Y and one beyond each, now and then any byte
+    m.u8(chance(90) ? pick(0, 8) : pick(0, 255)).u8(chance(90) ? pick(0, 16) : pick(0, 255));
+  } else if (type === 0x0F) {
+    // VBC list: up to two beyond the 16, codes up to 2**24 and now and
+    // then any u32, now and then a wrong length
+    const n = pick(0, 18);
+    m.u8(n);
+    for (let i = 0; i < n; i++) m.u32(chance(5) ? next() : pick(0, 0x1000000));
+    if (chance(5)) m.b.pop(); else if (chance(5)) m.u8(pick(0, 255));
   }
   return m.b;
 }

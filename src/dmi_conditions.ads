@@ -17,10 +17,9 @@
 --  level from the same message; both are the on-board's.
 --
 --  One function per row of the tables, named after its window and label.
---  Rows whose button does not exist in DMI_Windows yet (Language, System
---  version, Set / Remove VBC, ATO: other work items of WIN-12) are
---  implemented all the same, so that the table is complete and the
---  button only has to be added.
+--  The row whose button does not exist in DMI_Windows yet (Language,
+--  another work item of WIN-12) is implemented all the same, so that the
+--  table is complete and the button only has to be added.
 
 with Supplementary_Driving_Info;
 
