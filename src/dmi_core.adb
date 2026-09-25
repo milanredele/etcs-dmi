@@ -20,6 +20,7 @@ with DMI_Flash;
 with DMI_Planning;
 with DMI_Sounds;
 with DMI_Status;
+with DMI_System_Status;
 with DMI_Text_Messages;
 with DMI_Train_Data;
 with DMI_Windows;
@@ -51,6 +52,8 @@ package body DMI_Core is
    ACTION_ACK           : constant Unsigned_8 := 2; -- see Queue_Driver_Ack
    ACTION_TUNNEL_TOGGLE : constant Unsigned_8 := 3;
    ACTION_GEO_TOGGLE    : constant Unsigned_8 := 4;
+   -- a button of the Main window ended a system status message
+   ACTION_MAIN_WINDOW_BUTTON : constant Unsigned_8 := 16;
 
    -- Transition tracking for Sinfo rules
    TTI_Was_Displayed : Boolean := False;
@@ -398,6 +401,7 @@ package body DMI_Core is
       DMI_Driver_Data.Reset;
       DMI_Planning.Reset;
       DMI_Status.Reset;
+      DMI_System_Status.Reset;
       DMI_Text_Messages.Reset;
       DMI_Windows.Close_All;
       TTI_Was_Displayed := False;
@@ -584,6 +588,9 @@ package body DMI_Core is
          end if;
          -- S2 depends on the mode (unless in AD, DMI 7.2.3.3 / 7.4.4.3)
          Speed_And_Distance.Mode_Changed;
+         -- 15.1.1.2: the system status messages that the new mode does
+         -- not display end
+         DMI_System_Status.Mode_Changed (SDI.Mode);
       end if;
 
       if Valid_Level (Level_Raw) then
@@ -747,6 +754,7 @@ package body DMI_Core is
             when others => DMI_Text_Messages.NTC_Text);
 
       Text : Wide_String (1 .. Natural (Length));
+      use type DMI_Text_Messages.Class_T;
    begin
       if Payload'Length /= Text_Header_Length + Natural (Length) then
          return;
@@ -756,7 +764,10 @@ package body DMI_Core is
       end loop;
       DMI_Text_Messages.Put
         (ID           => Natural (ID),
-         First_Group  => (Flags and 2) /= 0,
+         -- 8.2.3.4.7 a: the first group contains the system status
+         -- messages, so the flag is not asked for them (SDI-9)
+         First_Group  => (Flags and 2) /= 0
+                         or else Class = DMI_Text_Messages.System_Status,
          Ack_Required => (Flags and 1) /= 0,
          Class        => Class,
          Hour         => Natural (Hour),
@@ -1049,7 +1060,7 @@ package body DMI_Core is
 
       if The_Type in MSG_SPEED_STATE | MSG_MODE_LEVEL | MSG_TEXT
                    | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
-                   | MSG_PLANNING | MSG_ONBOARD
+                   | MSG_PLANNING | MSG_ONBOARD | MSG_SYSTEM_STATUS
       then
          Note_EVC_Message;
       end if;
@@ -1089,6 +1100,16 @@ package body DMI_Core is
             end if;
          when MSG_PLANNING =>
             Apply_Planning (Payload);
+         when MSG_SYSTEM_STATUS =>
+            if Payload'Length = System_Status_Length then
+               declare
+                  Offset : Stream_Element_Offset := Payload'First;
+                  Number : constant Unsigned_8 := Get_U8 (Payload, Offset);
+                  Event  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+               begin
+                  DMI_System_Status.Event (Natural (Number), Natural (Event));
+               end;
+            end if;
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
                Update_Buttons; -- make sure hit testing sees current state
@@ -1120,6 +1141,9 @@ package body DMI_Core is
          end if;
       end if;
 
+      -- chapter 15: the 30 s of the system status messages, before the
+      -- text message store enters its waiting requests
+      DMI_System_Status.Tick (Dt_Ms);
       DMI_Text_Messages.Tick;
       -- DMI 11.2.1.6: movement of the hour glass ST05
       DMI_Conditions.Tick (Dt_Ms);
@@ -1155,6 +1179,23 @@ package body DMI_Core is
       Update_Buttons;
       DMI_Buttons.Tick (Dt_Ms);
       while DMI_Buttons.Pop_Activation (ID) loop
+         -- Table 68: "as soon as any button in the main window is
+         -- selected" ends a system status message; [Close] is a button of
+         -- the window too. The on-board learns it (action 16) before the
+         -- request of the button itself.
+         if ID in BTN_Window_Close | DMI_Buttons.Menu_Button_T
+           and then DMI_Windows.Is_Open
+           and then DMI_Windows."=" (DMI_Windows.Top, DMI_Windows.W_Main)
+         then
+            declare
+               Ended : Boolean;
+            begin
+               DMI_System_Status.Main_Window_Button (Ended);
+               if Ended then
+                  Queue_Driver_Action (ACTION_MAIN_WINDOW_BUTTON);
+               end if;
+            end;
+         end if;
          case ID is
             when BTN_TAF_Yes =>
                -- 8.2.3.3: the driver confirms the track ahead is free;
@@ -1179,13 +1220,25 @@ package body DMI_Core is
                      -- message ids are u16 on the wire (MSG_TEXT)
                      Text_ID : constant Natural :=
                        (if Is_Text then DMI_Ack.Current_Text_ID else 0);
+                     Catalogue : constant Boolean :=
+                       Is_Text and then DMI_System_Status.Owns (Text_ID);
+                     Number : Natural := 0;
                   begin
-                     -- the EVC learns exactly what was acknowledged
-                     Queue_Driver_Ack (Kind, Text_ID);
                      if Is_Text then
                         -- 8.2.3.4.8 c: this message, not another one
                         DMI_Text_Messages.Acknowledge (Text_ID);
                      end if;
+                     if Catalogue then
+                        -- "Text acknowledged" ends it (Table 68)
+                        DMI_System_Status.Acknowledged (Text_ID, Number);
+                     end if;
+                     -- the EVC learns exactly what was acknowledged: a
+                     -- catalogue message by its entry number
+                     -- (dmi_protocol.ads, MSG_DRIVER_ACTION)
+                     Queue_Driver_Ack
+                       (Kind,
+                        (if Catalogue then 16#8000# + Number mod 16#8000#
+                         else Text_ID));
                      DMI_Ack.Acknowledge_Current;
                   end;
                end if;
