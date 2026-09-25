@@ -67,6 +67,12 @@ package body EVC_Core is
    Session_Open     : Boolean := False;  -- a session with a 2.2+ RBC
    Train_Data_Acked : Boolean := False;
    BMM_Inhibited    : Boolean := False;  -- SUBSET-026 5.22
+   --  The language used to display information to the driver, stored
+   --  on-board (SUBSET-026 A.3.4, unchanged in every situation, so Reset
+   --  keeps it), as the DMI reports it (MSG_DRIVER_DATA kind 10). This
+   --  simulator sends no fixed text message (3.12.3.3.1) to choose with
+   --  it; it only holds it.
+   Language         : String (1 .. 2) := "en";
 
    --  What the on-board is busy with, reported in MSG_ONBOARD (waiting
    --  and radio_wait) until the timer runs out, then answered
@@ -134,6 +140,8 @@ package body EVC_Core is
 
    function Monitoring return Natural is (The_Monitoring);
    function Permitted_Speed return Natural is (V_Perm_KMH);
+   function Language_Code return String is (Language);
+
    function Mode_Ack_Pending return Boolean is (Mode_Ack_Wait);
 
    function KMH_To_MS (V : Natural) return Float is (Float (V) / 3.6);
@@ -1037,6 +1045,17 @@ package body EVC_Core is
                      end if;
                   end if;
                end;
+            end if;
+         when 10 =>     -- Language: the ISO 639-1 code, two letters
+            if Payload'Length = Driver_Data_Language_Length
+              and then (for all I in 1 .. 2 =>
+                          Payload (Payload'First + Stream_Element_Offset (I))
+                            in Character'Pos ('a') .. Character'Pos ('z'))
+            then
+               for I in Language'Range loop
+                  Language (I) := Character'Val
+                    (Payload (Payload'First + Stream_Element_Offset (I)));
+               end loop;
             end if;
          when others => -- 3 SR data and anything else: no data status
             null;
