@@ -402,8 +402,13 @@
           }
         }
         else if (type === MSG_DRIVER_DATA) {
-          // kinds 0 .. 9, see src/dmi_protocol.ads
-          console.log('driver data kind', payload[0], Array.from(payload.subarray(1)));
+          // kinds 0 .. 10, see src/dmi_protocol.ads; kind 10 is the
+          // language the driver selected (ISO 639-1 code)
+          if (payload[0] === 10 && payload.length === 3) {
+            console.log('driver data: language', String.fromCharCode(payload[1], payload[2]));
+          } else {
+            console.log('driver data kind', payload[0], Array.from(payload.subarray(1)));
+          }
           // the manual panel is the on-board of the VBCs (kinds 8, 9)
           if (manualMode()) { manualVBCData(payload); sendAll(); }
         }
