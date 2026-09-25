@@ -10,6 +10,8 @@ with DMI_Conditions;
 with DMI_Data_Entry;
 with DMI_Data_View;
 with DMI_Driver_Data;
+with DMI_Protocol;
+with DMI_Radio_Data;
 with DMI_Status;
 with DMI_Train_Data;
 with General_Parameters;
@@ -32,6 +34,10 @@ package body DMI_Windows is
    Depth : Natural := 0;
 
    package SDI renames Supplementary_Driving_Info;
+   use type SDI.Mode_T;
+   use type SDI.Level_T;
+   use type DMI_Conditions.Radio_Wait_T;
+   use type DMI_Radio_Data.Name_T;
 
    -- Start Up dialogue sequence (11.7.2.4, Table 49): S1 Driver ID -> D2
    -- -> S2 Level -> S10, which is S1 of the Main window dialogue sequence
@@ -50,6 +56,29 @@ package body DMI_Windows is
    -- What was awaited when the waiting window went up; Table 50 S7 ends
    -- in the default window, the other steps in the Main window
    Waiting_Kind : DMI_Conditions.Waiting_T := DMI_Conditions.Nothing;
+
+   -- Table 49 S3-2-1 / Table 50 S5-2-1: the driver pressed 'GSM-R
+   -- network ID' and the DMI asked the on-board for the list of GSM-R
+   -- networks (MSG_DRIVER_DATA kind 4, no name). The DMI presents the
+   -- step itself from its request on, so that the Radio data window is
+   -- not offered again before the EVC has spoken; the step ends with
+   -- the list (Check_List_Step).
+   List_Requested : Boolean := False;
+
+   -- Table 49 S3-2-3 / Table 50 S5-2-3: the driver selected a network;
+   -- the DMI presents the step until the EVC reports it (radio_wait 2),
+   -- from then on as long as the EVC does
+   Registration_Requested : Boolean := False;
+
+   -- Table 49 D7 -> S4: the Start Up went on to the Main window awaiting
+   -- the registration to the radio network(s); when that wait ends
+   -- without the registration, A42 -> D9 may still lead to S5, the
+   -- Mission with one radio system window
+   D9_Pending : Boolean := False;
+
+   -- 11.3.5.4: the RBC data window on display has the 'RBC phone
+   -- number' input field (decided when the window opens)
+   RBC_Phone_Shown : Boolean := False;
 
    ---------------------------------------------------------------------
    -- Outbound action queue
@@ -95,10 +124,12 @@ package body DMI_Windows is
    -- keyboard, not menu windows
    function Kind_Of (ID : Window_ID_T) return Window_Kind_T is
      (case ID is
-         when W_Main | W_Override | W_Special | W_Settings => Menu,
+         when W_Main | W_Override | W_Special | W_Settings
+            | W_Radio_Data => Menu,
          when W_Driver_ID | W_TRN | W_Train_Data | W_SR_Data
             | W_Level | W_Adhesion | W_Volume | W_Brightness
-            | W_ATO_Selector => Data_Entry,
+            | W_ATO_Selector | W_GSMR_Network | W_RBC_Data
+            | W_Radio_Network_Type | W_One_Radio => Data_Entry,
          when W_Train_Data_Validation => Validation,
          when W_Data_View => View);
 
@@ -119,43 +150,75 @@ package body DMI_Windows is
          when W_Volume     => "Volume",
          when W_Brightness => "Brightness",
          -- 11.3.14.2
-         when W_ATO_Selector => "ATO selector");
+         when W_ATO_Selector => "ATO selector",
+         when W_Radio_Data => "Radio data",                        -- 11.2.5.2
+         when W_GSMR_Network => "GSM-R network ID",                -- 11.3.4.2
+         when W_RBC_Data   => "RBC data",                          -- 11.3.5.2
+         when W_Radio_Network_Type => "Radio network type",        -- 11.3.15.2
+         when W_One_Radio  => "Mission with one radio system");    -- 11.3.16.2
+
+   -- Menu window buttons; empty label = slot not present. 32 characters
+   -- take the longest label, 'Revoke BMM reaction inhibition' (Table
+   -- 35 #4).
+   Max_Menu : constant := 12;   -- Table 33 #12 'Exit SM'
+   Max_Text : constant := 32;
 
    function Pad (S : Wide_String) return Wide_String is
-      Result : Wide_String (1 .. 16) := (others => ' ');
+      Result : Wide_String (1 .. Max_Text) := (others => ' ');
+      Last   : constant Natural := Natural'Min (S'Length, Max_Text);
    begin
-      Result (1 .. S'Length) := S;
+      Result (1 .. Last) := S (S'First .. S'First + Last - 1);
       return Result;
    end Pad;
 
-   -- Menu window buttons; empty label = slot not present
-   Max_Menu : constant := 10;
+   -- Table 36: the buttons 1 to 3 of the Settings window show a symbol
+   -- instead of a text label on the touch screen
+   type Icon_T is (No_Icon, Icon_SE01, Icon_SE02, Icon_SE03);
+
    type Label_T is record
-      Text    : Wide_String (1 .. 16) := (others => ' ');
+      Text    : Wide_String (1 .. Max_Text) := (others => ' ');
       Used    : Boolean := False;
       Enabled : Boolean := True;
       Delayed : Boolean := False; -- delay-type button (11.2.1.4)
+      Icon    : Icon_T := No_Icon;
    end record;
    type Menu_Def_T is array (1 .. Max_Menu) of Label_T;
 
    function B (S : Wide_String;
                Enabled : Boolean := True;
                Delayed : Boolean := False) return Label_T is
-     ((Text => Pad (S), Used => True, Enabled => Enabled, Delayed => Delayed));
+     ((Text => Pad (S), Used => True, Enabled => Enabled, Delayed => Delayed,
+       Icon => No_Icon));
+
+   function Symbol_Button (Icon : Icon_T; Enabled : Boolean) return Label_T is
+     ((Text => (others => ' '), Used => True, Enabled => Enabled,
+       Delayed => False, Icon => Icon));
 
    No_Button : constant Label_T := (others => <>);
+
+   -- Table 33 #7: 'Exit Shunting' takes the place of 'Shunting' in mode
+   -- SH, the only mode its condition names (implementation choice: the
+   -- table gives both labels to one button and does not say when which
+   -- one is shown)
+   function Exit_Shunting_Label return Boolean is
+     (SDI.Mode = SDI.M_SH);
+
+   -- Table 33 #11: 'Continue in SM' in the modes of its rows (SM, and PT
+   -- with no valid train data), 'Initiate SM' otherwise. The mode parts
+   -- of the two rows exclude each other, so the label says which of the
+   -- two requests the button sends (implementation choice as above).
+   function Continue_SM_Label return Boolean is
+     (SDI.Mode = SDI.M_SM
+      or else (SDI.Mode = SDI.M_PT
+               and then not DMI_Conditions.Train_Data_Valid));
 
    function Static_Menu_Def (ID : Window_ID_T) return Menu_Def_T is
    begin
       case ID is
          when W_Main =>
-            -- 11.2.1.4, Table 33; 11.2.1.5 names the delay type buttons.
-            -- Rows #9 and #10 have no window or driver action behind
-            -- them yet (P3, audit WIN-12 / WIN-13): their condition is
-            -- in DMI_Conditions but the button stays disabled, a dead
-            -- button being worse than a missing one (implementation
-            -- choice). The same for rows #11 and #12, which have no
-            -- button at all yet.
+            -- 11.2.1.4, Table 33, Figure 109; 11.2.1.5 names the delay
+            -- type buttons. Button #4 is intentionally not used
+            -- (11.2.1.4.1).
             return (1 => B ("Start",
                             Enabled => DMI_Conditions.Main_Start),
                     2 => B ("Driver ID",
@@ -165,51 +228,112 @@ package body DMI_Windows is
                     4 => No_Button,
                     5 => B ("Level",
                             Enabled => DMI_Conditions.Main_Level),
-                    6 => B ("Train run. nr",
+                    6 => B ("Train running number",
                             Enabled => DMI_Conditions.Main_TRN),
-                    7 => B ("Shunting",
-                            Enabled => DMI_Conditions.Main_Shunting,
-                            Delayed => True),
+                    7 => (if Exit_Shunting_Label
+                          then B ("Exit Shunting",
+                                  Enabled =>
+                                    DMI_Conditions.Main_Exit_Shunting,
+                                  Delayed => True)
+                          else B ("Shunting",
+                                  Enabled => DMI_Conditions.Main_Shunting,
+                                  Delayed => True)),
                     8 => B ("Non-Leading",
                             Enabled => DMI_Conditions.Main_Non_Leading,
                             Delayed => True),
-                    9 => B ("Maint. Shunt.",
-                            Enabled => False, Delayed => True),
-                    10 => B ("Radio data", Enabled => False));
+                    9 => B ("Maintain Shunting",
+                            Enabled =>
+                              DMI_Conditions.Main_Maintain_Shunting,
+                            Delayed => True),
+                    10 => B ("Radio data",
+                             Enabled => DMI_Conditions.Main_Radio_Data),
+                    11 => (if Continue_SM_Label
+                           then B ("Continue in SM",
+                                   Enabled =>
+                                     DMI_Conditions.Main_Continue_SM,
+                                   Delayed => True)
+                           else B ("Initiate SM",
+                                   Enabled =>
+                                     DMI_Conditions.Main_Initiate_SM,
+                                   Delayed => True)),
+                    12 => B ("Exit SM",
+                             Enabled => DMI_Conditions.Main_Exit_SM,
+                             Delayed => True));
          when W_Override =>
             -- 11.2.2.4, Table 34
             return (1 => B ("EOA", Enabled => DMI_Conditions.Override_EOA),
                     others => No_Button);
          when W_Special =>
-            -- 11.2.3.4, Table 35; 11.2.3.5: 'Train integrity' is a delay
-            -- type button. Row #4 (BMM reaction inhibition) has no
-            -- button yet (P3, audit WIN-13).
+            -- 11.2.3.4, Table 35, Figure 111; 11.2.3.5: 'Train
+            -- integrity' is a delay type button. #4 is 'Revoke BMM
+            -- reaction inhibition' while the "BTM alarm reaction
+            -- inhibition" function is active, the only difference of
+            -- its two rows (Table 53 S1: the one removes what the other
+            -- presents).
             return (1 => B ("Adhesion",
                             Enabled => DMI_Conditions.Special_Adhesion),
-                    2 => B ("SR speed/dist.",
+                    2 => B ("SR speed / distance",
                             Enabled => DMI_Conditions.Special_SR_Data),
                     3 => B ("Train integrity",
                             Enabled =>
                               DMI_Conditions.Special_Train_Integrity,
                             Delayed => True),
+                    4 => (if DMI_Conditions.BMM_Inhibit_Active
+                          then B ("Revoke BMM reaction inhibition",
+                                  Enabled =>
+                                    DMI_Conditions.Special_BMM_Revoke)
+                          else B ("BMM reaction inhibition",
+                                  Enabled =>
+                                    DMI_Conditions.Special_BMM_Inhibit)),
                     others => No_Button);
          when W_Settings =>
-            -- 11.2.4.4, Table 36. Language, System version and the two
-            -- VBC rows have no window yet (P3, audit WIN-12): disabled,
-            -- as for the Main window above.
-            return (1 => B ("Language", Enabled => False),
-                    2 => B ("Volume",
+            -- 11.2.4.4, Table 36, Figure 112: the symbols SE03, SE02 and
+            -- SE01 for touch. Language and System version have no window
+            -- here (other work items, audit WIN-12): their buttons stay
+            -- disabled, a dead button being worse than a disabled one
+            -- (implementation choice).
+            return (1 => Symbol_Button (Icon_SE03, Enabled => False),
+                    2 => Symbol_Button
+                           (Icon_SE02,
                             Enabled => DMI_Conditions.Settings_Volume),
-                    3 => B ("Brightness",
+                    3 => Symbol_Button
+                           (Icon_SE01,
                             Enabled => DMI_Conditions.Settings_Brightness),
                     4 => B ("System version", Enabled => False),
                     -- Table 36 #7: the ATO selector window (11.3.14)
                     7 => B ("ATO", Enabled => DMI_Conditions.Settings_ATO),
                     others => No_Button);
+         when W_Radio_Data =>
+            -- 11.2.5.4, Table 37, Figure 113; 11.2.5.5: 'GSM-R network
+            -- ID' is a delay type button. #4 is not used (Figure 113).
+            return (1 => B ("Contact last RBC",
+                            Enabled =>
+                              DMI_Conditions.Radio_Contact_Last_RBC),
+                    2 => B ("Use short number",
+                            Enabled =>
+                              DMI_Conditions.Radio_Use_Short_Number),
+                    3 => B ("Enter RBC data",
+                            Enabled => DMI_Conditions.Radio_Enter_RBC_Data),
+                    4 => No_Button,
+                    5 => B ("Radio network type",
+                            Enabled => DMI_Conditions.Radio_Network_Type),
+                    6 => B ("GSM-R network ID",
+                            Enabled => DMI_Conditions.Radio_GSMR_Network_ID,
+                            Delayed => True),
+                    7 => B ("Mission with one radio system",
+                            Enabled =>
+                              DMI_Conditions.Radio_Mission_One_Radio),
+                    others => No_Button);
          when others =>
             return (others => No_Button);
       end case;
    end Static_Menu_Def;
+
+   function Radio_Step_Displayed return Boolean is
+     (Depth > 0 and then Stack (Depth) = W_Radio_Data
+      and then (List_Requested or else Registration_Requested
+                or else DMI_Conditions.Radio_Wait
+                          /= DMI_Conditions.No_Radio_Wait));
 
    function Menu_Def (ID : Window_ID_T) return Menu_Def_T is
       Result : Menu_Def_T := Static_Menu_Def (ID);
@@ -220,10 +344,13 @@ package body DMI_Windows is
       -- started under a pending acknowledgement (5.4.1.11).
       -- Table 49 S0, S4 and A31 and Table 50 S7, S8 and S9 ask for the
       -- Main window "with all buttons disabled" while the on-board
-      -- awaits an answer.
-      if ID in W_Main | W_Override | W_Special | W_Settings
+      -- awaits an answer; 11.2.5.4 and Table 49 S3-2-1 / S3-2-3, Table
+      -- 50 S5-2-1 / S5-2-3 the same for the Radio data window.
+      if ID in W_Main | W_Override | W_Special | W_Settings | W_Radio_Data
         and then (DMI_Ack.Pending_Count > 0
-                  or else (ID = W_Main and then Waiting_Window))
+                  or else (ID = W_Main and then Waiting_Window)
+                  or else (ID = W_Radio_Data
+                           and then Radio_Step_Displayed))
       then
          for I in Result'Range loop
             Result (I).Enabled := False;
@@ -470,6 +597,36 @@ package body DMI_Windows is
                Propose
                  (Natural (General_Parameters.Display_Luminance) + 1);
             end if;
+         when W_GSMR_Network =>
+            -- 11.3.4.4: the alphanumeric list of available and allowed
+            -- GSM-R Radio Networks the on-board acquired, one key per
+            -- network in the order of the list
+            for I in 1 .. DMI_Radio_Data.Network_Count loop
+               declare
+                  N : constant DMI_Radio_Data.Name_T :=
+                    DMI_Radio_Data.Networks (I);
+               begin
+                  Add_Choice (Choices, N.Text (1 .. N.Length));
+               end;
+            end loop;
+            -- 11.7.1.4: the network selected last on this DMI, when the
+            -- list offers it again
+            for I in 1 .. Choices.Count loop
+               if DMI_Radio_Data.GSMR_Network.Length > 0
+                 and then DMI_Radio_Data.Networks (I)
+                            = DMI_Radio_Data.GSMR_Network
+               then
+                  Propose (I);
+               end if;
+            end loop;
+         when W_Radio_Network_Type =>
+            -- Table 43b; 11.7.1.4: the type stored on-board, which
+            -- MSG_ONBOARD reports
+            Add_Choice (Choices, "FRMCS");
+            Add_Choice (Choices, "FRMCS+GSM-R");
+            Add_Choice (Choices, "GSM-R");
+            Propose (DMI_Conditions.Radio_Type_T'Pos
+                       (DMI_Conditions.Radio_Type));
          when others =>
             null;
       end case;
@@ -512,6 +669,8 @@ package body DMI_Windows is
       -- maximum speed (implementation choice, see the report).
       TRN_Rule : constant Check_Rule_T :=       -- NID_OPERATIONAL, 7.5.1.92
         (Defined => True, Min => 0, Max => 99_999_999, Resolution => 1);
+      RBC_ID_Rule : constant Check_Rule_T :=    -- A.3.11, 11.3.5.3.1
+        (Defined => True, Min => 0, Max => 16_777_214, Resolution => 1);
 
       Result : Window_Def_T;
    begin
@@ -540,11 +699,49 @@ package body DMI_Windows is
             return DMI_Train_Data.Window_Def
               (DMI_Train_Data.Current_Window);
          when W_Level | W_Adhesion | W_Volume | W_Brightness
-            | W_ATO_Selector =>
-            -- 11.3.2, 11.3.7, 11.3.8, 11.3.11, 11.3.14: half grid array,
-            -- a single input field with only the data part and a
-            -- dedicated keyboard (Dedicated_Def above)
+            | W_ATO_Selector | W_GSMR_Network | W_Radio_Network_Type =>
+            -- 11.3.2, 11.3.7, 11.3.8, 11.3.11, 11.3.14, 11.3.4, 11.3.15:
+            -- half grid array, a single input field with only the data
+            -- part and a dedicated keyboard (Dedicated_Def above)
             return Dedicated_Def (ID);
+         when W_One_Radio =>
+            -- 11.3.16.1 / 11.3.16.4: half grid array, a single input
+            -- field with a 'No'/'Yes' dedicated keyboard. Table 49 S5 and
+            -- Table 50 S10: no value is proposed.
+            Result.Field_Count := 1;
+            Result.Fields (1) := Field (Title (ID), 3, Keyboard => Yes_No);
+         when W_RBC_Data =>
+            -- 11.3.5.1: total grid array with the question 'RBC data
+            -- entry complete?' but no echo texts; 11.3.5.5: numeric
+            -- keyboards. 11.3.5.3.1 / SUBSET-026 A.3.11: the RBC ID is
+            -- 0 to 16 777 214 (NID_C and NID_RBC, 10 + 14 bits); the
+            -- telephone number has no restriction but its 16 digits
+            -- (NID_RADIO, 7.5.1.95). 11.7.1.4: the values entered last
+            -- on this DMI are proposed while the on-board holds RBC
+            -- contact information ("valid" or "invalid").
+            Result.Layout := Total_Grid;
+            Result.Echo_Texts := False;
+            -- 11.3.5.3: the input field is labelled 'RBC ID' also when
+            -- it is the only one (implementation choice: 10.3.1.7 allows
+            -- the data area alone, but the title 'RBC data' does not say
+            -- which of the RBC data it is)
+            Result.Labelled := True;
+            Result.Field_Count := (if RBC_Phone_Shown then 2 else 1);
+            Result.Fields (1) :=
+              Field ("RBC ID", 8,
+                     Proposed =>
+                       (if DMI_Radio_Data.RBC_Entered
+                          and then DMI_Conditions.RBC_Contact_Known
+                        then DMI_Radio_Data.RBC_ID
+                        else (0, (others => ' '))),
+                     Technical => RBC_ID_Rule);
+            Result.Fields (2) :=
+              Field ("RBC phone number", DMI_Protocol.RBC_Phone_Max,
+                     Proposed =>
+                       (if DMI_Radio_Data.RBC_Entered
+                          and then DMI_Conditions.RBC_Contact_Known
+                        then DMI_Radio_Data.RBC_Phone
+                        else (0, (others => ' '))));
          when W_SR_Data =>
             -- 11.3.10.1: likewise on the total grid array
             Result.Layout := Total_Grid;
@@ -583,6 +780,9 @@ package body DMI_Windows is
          end if;
          Depth := Depth + 1;
          Stack (Depth) := ID;
+         if ID = W_RBC_Data then
+            RBC_Phone_Shown := DMI_Conditions.RBC_Phone_Field;
+         end if;
          if Kind_Of (ID) in Data_Entry | Validation then
             DMI_Data_Entry.Open (Entry_Def (ID));
          elsif Kind_Of (ID) = View then
@@ -619,8 +819,19 @@ package body DMI_Windows is
       Depth := 0;
       Sequence_Active := False;
       Waiting_Window := False;
+      List_Requested := False;
+      Registration_Requested := False;
       DMI_Train_Data.End_Process;
    end To_Default_Window;
+
+   -- Back to the window ID below the displayed one(s), when it is in the
+   -- stack
+   procedure Pop_To (ID : Window_ID_T) is
+   begin
+      while Depth > 0 and then Stack (Depth) /= ID loop
+         Pop;
+      end loop;
+   end Pop_To;
 
    -- 11.7.2.2: [Close] is disabled in the windows presented before S10
    -- (S1 Driver ID and S2 Level), except in the steps S1-1, S1-2,
@@ -628,13 +839,22 @@ package body DMI_Windows is
    -- running number) exist: they are the windows the Driver ID window is
    -- the parent of (11.6.1.2), i.e. everything the driver opens above
    -- it, S1 being the only Start Up step with a window below another.
+   -- The steps S3-2-2, S3-3 and S3-4 are the windows the Radio data
+   -- window of S3-1 opens; S5, the Mission with one radio system window,
+   -- is not an exception, whether it is opened from S3-1 (A43) or
+   -- reached by D9.
    -- 11.7.3.2: [Close] is enabled in the Main window sequence except
    -- S5-2-1, S5-2-3, S7, S8 and S9, the steps waiting for the radio
-   -- network or the RBC: of those S7, S8 and S9 exist, as the Main
-   -- window the EVC asks for while it awaits an answer.
+   -- network or the RBC: S7, S8 and S9 are the Main window the EVC asks
+   -- for while it awaits an answer, S5-2-1 and S5-2-3 the waiting Radio
+   -- data window (Table 49 S3-2-1 and S3-2-3 likewise). 11.7.4.2 and
+   -- 11.7.8.2: the same for S1 of the Shunting and the Supervised
+   -- Manoeuvre dialogue sequences, the Main window awaiting the RBC.
    function Close_Enabled return Boolean is
      (not Waiting_Window
-      and then (not Sequence_Active or else Depth > 1));
+      and then not Radio_Step_Displayed
+      and then (not Sequence_Active
+                or else (Depth > 1 and then Stack (Depth) /= W_One_Radio)));
 
    procedure Close_Top is
    begin
@@ -646,6 +866,7 @@ package body DMI_Windows is
    procedure Close_All is
    begin
       To_Default_Window;
+      D9_Pending := False;
       Action_Count := 0;
       Waiting_Kind := DMI_Conditions.Nothing;
       Last_SOM := DMI_Conditions.No_Mission_Start;
@@ -659,6 +880,52 @@ package body DMI_Windows is
       Open (W_Main);
    end Reach_S10;
 
+   -- A window of the Start Up dialogue sequence that is not stacked on
+   -- another one (S3-1 after S2, S5 after D9)
+   procedure Start_Up_Window (ID : Window_ID_T) is
+   begin
+      To_Default_Window;
+      Sequence_Active := True;
+      Open (ID);
+   end Start_Up_Window;
+
+   -- Table 50 S1: the Main window, below the window(s) on display
+   procedure Back_To_Main is
+   begin
+      Pop_To (W_Main);
+      if Depth = 0 then
+         Open (W_Main);
+      end if;
+   end Back_To_Main;
+
+   -- The radio data are done with: Table 49 S3-1 / S3-3 / S5 -> A31, or
+   -- D10 -> S10, reach S10 (the Main window, where the EVC presents A31
+   -- itself: MSG_ONBOARD waiting); Table 50 S5-1 / S5-3 -> S8, or D9 ->
+   -- S1, back to the Main window likewise
+   procedure Leave_Radio_Data is
+   begin
+      if Sequence_Active then
+         Reach_S10;
+      else
+         Back_To_Main;
+      end if;
+   end Leave_Radio_Data;
+
+   -- Table 49 S3-1 / Table 50 S5-1: the Radio data window again
+   procedure Back_To_Radio_Data is
+   begin
+      Pop_To (W_Radio_Data);
+      if Depth = 0 then
+         if Sequence_Active then
+            -- Table 49 E3 from S5 reached by D9: nothing below
+            Start_Up_Window (W_Radio_Data);
+         else
+            Open (W_Main);
+            Open (W_Radio_Data);
+         end if;
+      end if;
+   end Back_To_Radio_Data;
+
    procedure Engage_Start_Up is
    begin
       -- SUBSET-026 4.10.1.3: entering SB the Driver ID, the train data
@@ -669,6 +936,7 @@ package body DMI_Windows is
       -- it here any more. The stored values stay and are proposed in the
       -- windows (11.7.1.4).
       To_Default_Window;
+      D9_Pending := False;
       -- Table 49 S1
       Sequence_Active := True;
       Open (W_Driver_ID);
@@ -706,6 +974,36 @@ package body DMI_Windows is
       end loop;
    end Stop_Entry;
 
+   -- Table 49 S3-2-1 / Table 50 S5-2-1 end when the list the DMI asked
+   -- for is there and the EVC no longer reports it is acquiring one
+   procedure Check_List_Step is
+      use DMI_Conditions;
+   begin
+      if not (List_Requested and then DMI_Radio_Data.List_Received
+              and then Radio_Wait /= Network_List)
+      then
+         return;
+      end if;
+      List_Requested := False;
+      DMI_Radio_Data.Clear_List_Received;
+      if Depth = 0 or else Stack (Depth) /= W_Radio_Data then
+         return;
+      end if;
+      if DMI_Radio_Data.Network_Count > 0 then
+         Open (W_GSMR_Network);                   -- S3-2-2 / S5-2-2
+      elsif not Both_Radio_Systems then
+         -- A29 -> D10 / A5 -> D9 (the text message is the EVC's): S10 /
+         -- S1 unless both radio systems are there
+         Leave_Radio_Data;
+      end if;
+      -- otherwise back to S3-1 / S5-1: the Radio data window stays
+   end Check_List_Step;
+
+   procedure Radio_Networks_Received is
+   begin
+      Check_List_Step;
+   end Radio_Networks_Received;
+
    -- Only the on-board knows the conditions of Table 49 S0 and the steps
    -- in which it awaits an answer; the EVC reports them (MSG_ONBOARD)
    -- and this is where they take effect. The start of mission engages
@@ -721,17 +1019,55 @@ package body DMI_Windows is
             Open (W_Main);
             Waiting_Window := True;
          end if;
+         -- Table 49 S4 -> A31: the registration to the radio network(s)
+         -- completed and the on-board contacts the RBC
+         if Waiting_Kind = Radio_Network and then Waiting /= Radio_Network
+         then
+            D9_Pending := False;
+         end if;
          Waiting_Kind := Waiting;
       elsif Waiting_Window then
          Waiting_Window := False;
-         -- Table 50 S7 ends in the default window when the MA or the SR
-         -- authorisation arrives; Table 49 S4 / A31 and Table 50 S8 / S9
-         -- end in the Main window (S10 / S1), which stays open
-         if Waiting_Kind = Authorisation then
-            To_Default_Window;
-         end if;
+         case Waiting_Kind is
+            when Authorisation =>
+               -- Table 50 S7 ends in the default window when the MA or
+               -- the SR authorisation arrives
+               To_Default_Window;
+            when Shunting_Answer | SM_Answer =>
+               -- Table 51 S1: 'Shunting Authorised' -> MO01 and the
+               -- default window; Table 54a S1: 'Supervised Manoeuvre
+               -- Authorisation' -> MO24, SM01 / SM02 and the default
+               -- window (the symbols are the EVC's). Refused or no reply
+               -- -> S0, which is S1 of the Main window dialogue sequence.
+               if Request_Authorised then
+                  To_Default_Window;
+               end if;
+            when Radio_Network =>
+               -- Table 49 S4 ends in A31 when the radio network(s) are
+               -- registered, otherwise in A42 (the text messages are the
+               -- EVC's) and D9: S5 when a mission with one radio system
+               -- is possible, S10 otherwise
+               if D9_Pending and then not Radio_Registered
+                 and then Mission_With_One_Radio_Possible
+               then
+                  Start_Up_Window (W_One_Radio);
+               end if;
+            when others =>
+               -- Table 49 A31 and Table 50 S8 / S9 end in the Main window
+               -- (S10 / S1), which stays open
+               null;
+         end case;
+         D9_Pending := False;
          Waiting_Kind := Nothing;
       end if;
+
+      -- Table 49 S3-2-3 / Table 50 S5-2-3: the EVC has taken the step
+      -- over and presents it as long as it reports it
+      if Registration_Requested and then Radio_Wait = Network_Registration
+      then
+         Registration_Requested := False;
+      end if;
+      Check_List_Step;
 
       if Start_Of_Mission = Initiated and then Last_SOM /= Initiated then
          Engage_Start_Up;                                  -- S0 -> S1
@@ -744,10 +1080,8 @@ package body DMI_Windows is
    end Onboard_State_Changed;
 
    -- 11.7.1.7, Table 48: the button whose enabling conditions decide
-   -- whether the displayed data entry / validation window may stay. The
-   -- windows of Table 48 that do not exist yet (Radio network type,
-   -- GSM-R network ID, Mission with one radio system, RBC data,
-   -- Language) are P3 (audit WIN-12).
+   -- whether the displayed data entry / validation window may stay.
+   -- Language is another work item (audit WIN-12).
    function Window_Condition (ID : Window_ID_T) return Boolean is
      (case ID is
          when W_TRN        => DMI_Conditions.Main_TRN,
@@ -761,6 +1095,10 @@ package body DMI_Windows is
          when W_Brightness => DMI_Conditions.Settings_Brightness,
          -- Table 48: ATO selector / ATO
          when W_ATO_Selector => DMI_Conditions.Settings_ATO,
+         when W_Radio_Network_Type => DMI_Conditions.Radio_Network_Type,
+         when W_GSMR_Network => DMI_Conditions.Radio_GSMR_Network_ID,
+         when W_One_Radio  => DMI_Conditions.Radio_Mission_One_Radio,
+         when W_RBC_Data   => DMI_Conditions.Radio_Enter_RBC_Data,
          when others       => True);  -- not a window of Table 48
 
    procedure Check_Enabling_Conditions is
@@ -804,13 +1142,27 @@ package body DMI_Windows is
                Queue (Level_Selected, Level_Of_Choice (Chosen));
                Pop;
                if Sequence_Active then
-                  -- Table 49 S2: level 0, 1 or NTC -> S10; level 2 ->
-                  -- S3-1 Radio data window, which does not exist yet
-                  -- (P3, audit WIN-12): skipped to S10
-                  Reach_S10;
+                  -- Table 49 S2: level 2 -> S3-1, the Radio data
+                  -- window; level 0, 1 or NTC -> S10
+                  if Level_Of_Choice (Chosen) = SDI.Level_T'Pos (SDI.L2)
+                  then
+                     Start_Up_Window (W_Radio_Data);
+                  else
+                     Reach_S10;
+                  end if;
+               elsif Level_Of_Choice (Chosen) = SDI.Level_T'Pos (SDI.L2)
+                 and then not (DMI_Conditions.RBC_Contact_Valid
+                               and then DMI_Conditions.Radio_Registered)
+               then
+                  -- Table 50 S4 -> D5: level 2 without valid RBC contact
+                  -- information or without the registration -> S5-1.
+                  -- Not modelled: the exception of D5 for a switch to
+                  -- TR (MO05 first), which the DMI cannot foresee.
+                  Open (W_Radio_Data);
                end if;
-               -- Table 50 S4: back to S1, the Main window (level 2:
-               -- D5 -> S8 / S5-1 skipped likewise)
+               -- Table 50 S4 otherwise: back to S1, the Main window;
+               -- with level 2 D5 -> S8, the Main window the EVC shows
+               -- awaiting the RBC (MSG_ONBOARD waiting)
             end if;
          when W_Adhesion =>
             -- Table 43: 1 non slippery rail, 2 slippery rail
@@ -845,6 +1197,47 @@ package body DMI_Windows is
                Queue (ATO_Selector_Set, Chosen);
                Pop;
             end if;
+         when W_GSMR_Network =>
+            -- Table 49 S3-2-2 / Table 50 S5-2-2: once the GSM-R network
+            -- ID is entered -> S3-2-3 / S5-2-3, the Radio data window
+            -- awaiting the registration. The name is the one of the key
+            -- (the list may have changed since the window opened).
+            declare
+               V : constant DMI_Driver_Data.Text_Value_T :=
+                 DMI_Data_Entry.Value (1);
+               Last : constant Natural :=
+                 Natural'Min (V.Length, DMI_Radio_Data.Max_Name);
+            begin
+               DMI_Radio_Data.GSMR_Network :=
+                 (Length => Last,
+                  Text   => (others => ' '));
+               DMI_Radio_Data.GSMR_Network.Text (1 .. Last) :=
+                 V.Text (1 .. Last);
+            end;
+            Queue (Send_GSMR_Network, 1);
+            Pop_To (W_Radio_Data);
+            Registration_Requested := True;
+         when W_Radio_Network_Type =>
+            -- Table 43b: 1 FRMCS, 2 FRMCS+GSM-R, 3 GSM-R
+            if Chosen <= 3 then
+               declare
+                  use DMI_Conditions;
+                  Entered : constant Radio_Type_T :=
+                    Radio_Type_T'Val (Chosen);
+               begin
+                  Queue (Send_Radio_Network_Type, Chosen);
+                  Pop_To (W_Radio_Data);
+                  -- Table 49 S3-4 / Table 50 S5-4: E5 / E1 -> A41 / A6
+                  -- (the text message is the EVC's) -> D10 / D9: S10 /
+                  -- S1 unless both radio systems are there; otherwise
+                  -- (E6 / E2) back to S3-1 / S5-1
+                  if FRMCS_Registration_Missing (Entered)
+                    and then not Both_Radio_Systems (Entered)
+                  then
+                     Leave_Radio_Data;
+                  end if;
+               end;
+            end if;
          when others =>
             null;
       end case;
@@ -866,14 +1259,17 @@ package body DMI_Windows is
                -- on-board is the on-board's (11.7.1.3) and the EVC
                -- reports it (MSG_ONBOARD, DMI_Conditions). The DMI is
                -- not told the status of the position, so D2 is decided
-               -- on the level alone (implementation choice). D3 with
-               -- level 2 -> D7 -> A31 / S4: the radio network and RBC
-               -- steps do not exist yet (P3, audit WIN-11 / WIN-12) and
-               -- are skipped to S10.
+               -- on the level alone (implementation choice).
                if DMI_Conditions.Level_Valid
                  and then SDI.Level in SDI.L0 | SDI.NTC | SDI.L1 | SDI.L2
                then
+                  -- D3: level 0, 1 or NTC -> S10. Level 2 -> D7: A31
+                  -- or S4, both the Main window with all buttons
+                  -- disabled that the EVC presents (MSG_ONBOARD
+                  -- waiting); S4 can still end in A42 -> D9 -> S5
                   Reach_S10;
+                  D9_Pending := SDI.Level = SDI.L2
+                    and then not DMI_Conditions.Radio_Registered;
                else
                   Open (W_Level);
                end if;
@@ -900,8 +1296,41 @@ package body DMI_Windows is
             Queue (Send_SR_Data);
             Pop;
          when W_Level | W_Adhesion | W_Volume | W_Brightness
-            | W_ATO_Selector =>
+            | W_ATO_Selector | W_GSMR_Network | W_Radio_Network_Type =>
             Dedicated_Completed (ID);
+         when W_RBC_Data =>
+            -- 11.7.1.6: stored when the driver presses 'Yes'
+            DMI_Radio_Data.RBC_ID := DMI_Data_Entry.Value (1);
+            DMI_Radio_Data.RBC_Phone :=
+              (if RBC_Phone_Shown then DMI_Data_Entry.Value (2)
+               else (0, (others => ' ')));
+            DMI_Radio_Data.RBC_Entered := True;
+            Queue (Send_RBC_Data,
+                   DMI_Radio_Data.RBC_Choice_T'Pos (DMI_Radio_Data.Entered));
+            -- Table 49 S3-3 -> A31, Table 50 S5-3 -> S8
+            Leave_Radio_Data;
+         when W_One_Radio =>
+            declare
+               V   : constant Text_Value_T := DMI_Data_Entry.Value (1);
+               Yes : constant Boolean :=
+                 V.Length = 3 and then V.Text (1 .. 3) = "Yes";
+            begin
+               Queue (Send_Mission_One_Radio, (if Yes then 1 else 0));
+               if Sequence_Active then
+                  -- Table 49 S5: 'Yes' with valid RBC contact
+                  -- information (E2) -> A31, 'Yes' without (E3) -> S3-1,
+                  -- 'No' (E4) -> S10
+                  if Yes and then not DMI_Conditions.RBC_Contact_Valid then
+                     Back_To_Radio_Data;
+                  else
+                     Reach_S10;
+                  end if;
+               elsif Yes then
+                  Back_To_Radio_Data;              -- Table 50 S10 -> S5-1
+               else
+                  Back_To_Main;                    -- Table 50 S10 -> S1
+               end if;
+            end;
          when others =>
             null;
       end case;
@@ -927,8 +1356,43 @@ package body DMI_Windows is
                when 3 => Open (W_Train_Data);
                when 5 => Open (W_Level);
                when 6 => Open (W_TRN);
-               when 7 => Queue (SH_Request); Pop;
+               when 7 =>
+                  if Exit_Shunting_Label then
+                     -- Table 50 S1: 'Exit Shunting' -> S0 of the Start
+                     -- Up dialogue sequence, which the EVC engages
+                     -- (MSG_ONBOARD start of mission)
+                     Queue (Exit_SH);
+                     To_Default_Window;
+                  else
+                     -- Table 51 D1: level 0 / 1 -> MO01 and the default
+                     -- window, NTC -> D2 -> the default window (the
+                     -- symbols are the EVC's); level 2 -> S1: the Main
+                     -- window stays, with all buttons disabled while the
+                     -- EVC reports it awaits the RBC (waiting = 4)
+                     Queue (SH_Request);
+                     if SDI.Level /= SDI.L2 then
+                        To_Default_Window;
+                     end if;
+                  end if;
                when 8 => Queue (Non_Leading); Pop;
+               when 9 =>
+                  -- Table 50 S1: 'Maintain Shunting' -> the default
+                  -- window
+                  Queue (Maintain_SH);
+                  To_Default_Window;
+               when 10 =>
+                  -- Table 50 S1 -> S5-1
+                  Open (W_Radio_Data);
+               when 11 =>
+                  -- Table 54a S0 -> S1: the Main window stays, with all
+                  -- buttons disabled while the EVC reports it awaits the
+                  -- RBC (waiting = 5)
+                  Queue (SM_Request, (if Continue_SM_Label then 1 else 0));
+               when 12 =>
+                  -- Table 50 S1: 'Exit SM' -> S0 of the Start Up
+                  -- dialogue sequence (as 'Exit Shunting')
+                  Queue (SM_Request, 2);
+                  To_Default_Window;
                when others => null;
             end case;
          when W_Override =>
@@ -941,6 +1405,14 @@ package body DMI_Windows is
                when 1 => Open (W_Adhesion);
                when 2 => Open (W_SR_Data);
                when 3 => Queue (Train_Integrity); Pop;
+               when 4 =>
+                  -- Table 53 S1: ST07 is presented / removed (the EVC
+                  -- reports it, MSG_STATUS) and the procedure goes back
+                  -- to the default window
+                  Queue (BMM_Inhibition,
+                         (if DMI_Conditions.BMM_Inhibit_Active then 1
+                          else 0));
+                  To_Default_Window;
                when others => null;
             end case;
          when W_Settings =>
@@ -948,6 +1420,31 @@ package body DMI_Windows is
                when 2 => Open (W_Volume);
                when 3 => Open (W_Brightness);
                when 7 => Open (W_ATO_Selector);
+               when others => null;
+            end case;
+         when W_Radio_Data =>
+            -- Table 49 S3-1, Table 50 S5-1
+            case Index is
+               when 1 | 2 =>
+                  -- 'Contact last RBC' / 'Use short number' -> A31 / S8
+                  Queue (Send_RBC_Data,
+                         DMI_Radio_Data.RBC_Choice_T'Pos
+                           (if Index = 1
+                            then DMI_Radio_Data.Contact_Last_RBC
+                            else DMI_Radio_Data.Use_Short_Number));
+                  Leave_Radio_Data;
+               when 3 => Open (W_RBC_Data);            -- S3-3 / S5-3
+               when 5 => Open (W_Radio_Network_Type);  -- S3-4 / S5-4
+               when 6 =>
+                  -- S3-2-1 / S5-2-1: SUBSET-026 3.18.4.3.6.2, the
+                  -- on-board acquires the list of GSM-R networks
+                  DMI_Radio_Data.Clear_List_Received;
+                  List_Requested := True;
+                  Queue (Send_GSMR_Network, 0);
+               when 7 =>
+                  -- A43 -> S5 / A7 -> S10 (the text messages are the
+                  -- EVC's)
+                  Open (W_One_Radio);
                when others => null;
             end case;
          when others =>
@@ -1057,7 +1554,10 @@ package body DMI_Windows is
       -- (see 11.7) the hour glass ST05 is shown vertically centered in
       -- the 'Main' window title area, from X 42, moving 26 cells to the
       -- right every second and starting over when it no longer fits
-      if Waiting_Window and then ID = W_Main then
+      -- 11.2.5.6: likewise in the 'Radio data' window title area
+      if (Waiting_Window and then ID = W_Main)
+        or else (ID = W_Radio_Data and then Radio_Step_Displayed)
+      then
          Draw.Draw_Symbol
            (Symbol.ST_05,
             Origin + (DMI_Conditions.ST05_X (The_Window_Area.Width,
@@ -1092,20 +1592,82 @@ package body DMI_Windows is
                                    Label    : Wide_String;
                                    Enabled  : Boolean;
                                    Pressed  : Boolean) is
+      Room : constant Natural := The_Area.Width - 6;
+      Cut  : Natural := 0;
+
+      procedure Line (Text : Wide_String; Offset : Integer) is
+      begin
+         -- 5.3.2.5.5 / 10.2.1.4: disabled labels in dark grey
+         Draw.Draw_String
+           (Pen_X => The_Area.Position.X + The_Area.Width / 2,
+            Pen_Y => The_Area.Position.Y + The_Area.Height / 2 + Offset,
+            The_String => Text,
+            The_Size => 12,
+            The_Color => (if Enabled then General_Parameters.GREY
+                          else General_Parameters.DARK_GREY),
+            The_Alignment => Draw.Center);
+      end Line;
    begin
       if not Pressed then
          Draw.Draw_Button_Frame (The_Area);
       end if;
-      -- 5.3.2.5.5 / 10.2.1.4: disabled labels in dark grey
-      Draw.Draw_String
-        (Pen_X => The_Area.Position.X + The_Area.Width / 2,
-         Pen_Y => The_Area.Position.Y + The_Area.Height / 2 + 6,
-         The_String => Label,
-         The_Size => 12,
-         The_Color => (if Enabled then General_Parameters.GREY
-                       else General_Parameters.DARK_GREY),
-         The_Alignment => Draw.Center);
+      if Draw.String_Width (Label, 12) <= Room then
+         Line (Label, 6);
+         return;
+      end if;
+      -- Figures 109, 111 and 113 break a label that is wider than its
+      -- button over two lines, at a space; the break is the last space
+      -- that leaves the first line inside the button (implementation
+      -- choice, as for the keys of a dedicated keyboard)
+      for I in Label'Range loop
+         if Label (I) = ' '
+           and then Draw.String_Width (Label (Label'First .. I - 1), 12)
+                      <= Room
+         then
+            Cut := I;
+         end if;
+      end loop;
+      if Cut = 0 then
+         Line (Label, 6);
+      else
+         -- 5.1.3.3: the two lines stay centred in the 50 cell button
+         Line (Label (Label'First .. Cut - 1), -3);
+         Line (Label (Cut + 1 .. Label'Last), 15);
+      end if;
    end Draw_Labelled_Button;
+
+   -- Table 36: a Settings button that shows a symbol. 5.3.2.5.5 a: a
+   -- disabled button shows its label in dark grey; for a symbol that has
+   -- no disabled variant in chapter 13 its grey is drawn dark grey
+   -- (implementation choice).
+   procedure Draw_Symbol_Button (The_Area : Area_T;
+                                 Icon     : Icon_T;
+                                 Enabled  : Boolean;
+                                 Pressed  : Boolean) is
+      procedure Put (The_Symbol : Symbol.T) is
+         Position : constant Position_T :=
+           The_Area.Position
+             + ((The_Area.Width - The_Symbol.Width) / 2,
+                (The_Area.Height - The_Symbol.Height) / 2);
+      begin
+         -- 5.1.6.3: a symbol is centred in its area
+         if Enabled then
+            Draw.Draw_Symbol (The_Symbol, Position);
+         else
+            Draw.Draw_Symbol_Dimmed (The_Symbol, Position);
+         end if;
+      end Put;
+   begin
+      if not Pressed then
+         Draw.Draw_Button_Frame (The_Area);
+      end if;
+      case Icon is
+         when Icon_SE01 => Put (Symbol.SE_01);
+         when Icon_SE02 => Put (Symbol.SE_02);
+         when Icon_SE03 => Put (Symbol.SE_03);
+         when No_Icon   => null;
+      end case;
+   end Draw_Symbol_Button;
 
    function Trim (S : Wide_String) return Wide_String is
       Last : Natural := S'Last;
@@ -1125,7 +1687,12 @@ package body DMI_Windows is
       Def : constant Menu_Def_T := Menu_Def (ID);
    begin
       for I in Def'Range loop
-         if Def (I).Used then
+         if Def (I).Used and then Def (I).Icon /= No_Icon then
+            Draw_Symbol_Button (Menu_Button_Area (I),
+                                Def (I).Icon,
+                                Def (I).Enabled,
+                                Def (I).Enabled and then Pressed (I));
+         elsif Def (I).Used then
             Draw_Labelled_Button (Menu_Button_Area (I),
                                   Trim (Def (I).Text),
                                   Def (I).Enabled,

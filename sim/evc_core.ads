@@ -15,7 +15,8 @@ package EVC_Core is
 
    -- AD: Automatic Driving, entered and left by the ERTMS/ATO on-board
    -- of EVC_ATO (SUBSET-026 4.4.16)
-   type Mode_T is (SB, SR, FS, TR, AD);
+   --  SH and SM: DMI 11.7.4 and 11.7.8 (SUBSET-026 5.6, 5.21)
+   type Mode_T is (SB, SR, FS, TR, AD, SH, SM);
 
    Mode : Mode_T := SB;
 

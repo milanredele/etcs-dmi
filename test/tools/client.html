@@ -158,6 +158,46 @@
         <label>ETA <input type="text" id="ato_eta" value="17:36:48" size="8"></label>
         <label>stopping points m <input type="text" id="ato_stops" value="0, 1800" size="12"></label>
       </div>
+      <div class="row" title="MSG_ONBOARD: radio data, session and the waiting states (dmi_protocol.ads)">
+        <label>Session:
+          <select id="session">
+            <option value="0" selected>none</option><option value="1">establishing</option>
+            <option value="2">exists</option><option value="3">exists, RBC &gt; 2.2</option>
+          </select>
+        </label>
+        <label>Waiting:
+          <select id="waiting">
+            <option value="0" selected>nothing</option><option value="1">radio network</option>
+            <option value="2">RBC answer</option><option value="3">MA</option>
+            <option value="4">shunting answer</option><option value="5">SM answer</option>
+          </select>
+        </label>
+        <label>authorised <input type="checkbox" id="answer"></label>
+        <label>Radio type:
+          <select id="radio_type">
+            <option value="0">unknown</option><option value="1">FRMCS</option>
+            <option value="2">FRMCS+GSM-R</option><option value="3" selected>GSM-R</option>
+          </select>
+        </label>
+        <label>Installed:
+          <select id="radio_installed">
+            <option value="0">none</option><option value="1">FRMCS</option>
+            <option value="2">GSM-R</option><option value="3" selected>both</option>
+          </select>
+        </label>
+        <label>FRMCS reg <input type="checkbox" id="frmcs_reg"></label>
+        <label>GSM-R reg <input type="checkbox" id="gsmr_reg" checked></label>
+        <label>one radio <input type="checkbox" id="one_radio"></label>
+        <label>RBC info known <input type="checkbox" id="rbc_known" checked></label>
+        <label>Radio wait:
+          <select id="radio_wait">
+            <option value="0" selected>nothing</option><option value="1">network list</option>
+            <option value="2">registration</option>
+          </select>
+        </label>
+        <label>Networks <input type="text" id="networks" value="GSMR-A,GSMR-B,Telecom X" size="22"></label>
+        <button id="send_networks" title="MSG_RADIO_NETWORKS, once">Send list</button>
+      </div>
     </div>
     <canvas id="trackCanvas" width="640" height="150"
             style="display:block; margin:6px auto; background:#101820;"></canvas>
@@ -169,7 +209,9 @@
       const MSG_ONBOARD = 0x0A;
       const MSG_ATO = 0x0B;
       const MSG_SYSTEM_STATUS = 0x0C;
+      const MSG_RADIO_NETWORKS = 0x0D;
       const MSG_DRIVER_ACTION = 0x40;
+      const MSG_DRIVER_DATA = 0x41;
       const MSG_POINTER = 0x50;
       const MSG_FRAME = 0x60;
       const MSG_SOUND = 0x61;
@@ -283,6 +325,10 @@
             sendAll();
           }
         }
+        else if (type === MSG_DRIVER_DATA) {
+          // kinds 0 .. 7, see src/dmi_protocol.ads
+          console.log('driver data kind', payload[0], Array.from(payload.subarray(1)));
+        }
       }
 
       // ------------------------------------------------------------------
@@ -362,7 +408,7 @@
         drawTrack();
       }
 
-      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD'];
+      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD', 'SH', 'SM'];
       const MONITORINGS = ['CSM', 'TSM', 'RSM'];
 
       function conditionLabel(symbol) {
@@ -589,22 +635,30 @@
       }
 
       // MSG_ONBOARD (dmi_protocol.ads): the on-board state behind the
-      // enabling conditions of Tables 33 to 36. The panel has no fields
-      // for it: it reports a standing train with valid driver's data and
-      // no RBC, and a start of mission while the mode is SB, so that the
-      // Start Up dialogue sequence can be driven by hand.
+      // enabling conditions of Tables 33 to 37. The panel reports a
+      // standing train with valid driver's data, the RBC contact
+      // information valid, the safe consist length and the position
+      // referred to an LRBG, and a start of mission while the mode is SB;
+      // the session, the waiting states and the radio data come from the
+      // form (as in test/wasm/index.html).
       function sendOnboard() {
-        const { buf, dv } = makeMessage(MSG_ONBOARD, 8);
+        const { buf, dv } = makeMessage(MSG_ONBOARD, 11);
         const standing = val('speed') === 0;
         let o = HEADER_LENGTH;
-        dv.setUint8(o, 0x0F); o += 1;
-        dv.setUint8(o, 0); o += 1;
-        dv.setUint8(o, 0); o += 1;
+        dv.setUint8(o, 0xFF); o += 1;
+        dv.setUint8(o, val('session')); o += 1;
+        dv.setUint8(o, 1); o += 1;
         dv.setUint8(o, (standing ? 1 : 0) | 2); o += 1;
         dv.setUint8(o, 2); o += 1;
         dv.setUint8(o, val('mode') === 1 ? 2 : 0); o += 1;
+        dv.setUint8(o, val('waiting')); o += 1;
         dv.setUint8(o, 0); o += 1;
-        dv.setUint8(o, 0);
+        dv.setUint8(o, val('radio_type') | (val('radio_installed') << 2)
+                       | (checked('frmcs_reg') ? 16 : 0) | (checked('gsmr_reg') ? 32 : 0)
+                       | (checked('one_radio') ? 64 : 0) | (checked('rbc_known') ? 128 : 0));
+        o += 1;
+        dv.setUint8(o, val('radio_wait')); o += 1;
+        dv.setUint8(o, checked('answer') ? 1 : 0);
         socket.send(buf);
       }
 
@@ -638,6 +692,23 @@
         for (const d of stops) { dv.setUint16(o, d, true); o += 2; }
         socket.send(buf);
       }
+      // MSG_RADIO_NETWORKS: count, then length-prefixed Latin-1 names
+      function sendNetworks() {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        const names = document.getElementById('networks').value.split(',')
+          .map((n) => n.trim()).filter((n) => n.length > 0)
+          .slice(0, 20).map((n) => n.slice(0, 18));
+        const length = 1 + names.reduce((a, n) => a + 1 + n.length, 0);
+        const { buf, dv } = makeMessage(MSG_RADIO_NETWORKS, length);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, names.length); o += 1;
+        for (const n of names) {
+          dv.setUint8(o, n.length); o += 1;
+          for (let i = 0; i < n.length; i++) { dv.setUint8(o, n.charCodeAt(i) & 0xFF); o += 1; }
+        }
+        socket.send(buf);
+      }
+      document.getElementById('send_networks').addEventListener('click', sendNetworks);
 
       function manualMode() {
         return document.getElementById('source').value === 'manual';

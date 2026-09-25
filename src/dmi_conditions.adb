@@ -161,6 +161,132 @@ package body DMI_Conditions is
      (Standstill and then SDI.Mode = SDI.M_SM);
 
    ---------------------------------------------------------------------
+   -- Table 37 - Radio data window (11.2.5.4)
+   ---------------------------------------------------------------------
+
+   --  "(Radio Network type is FRMCS) OR ((Radio Network type is
+   --  FRMCS+GSM-R) AND (FRMCS is the only radio system installed
+   --  on-board))"
+   function FRMCS_Alone return Boolean is
+     (Radio_Type = FRMCS
+      or else (Radio_Type = FRMCS_GSMR
+               and then Radio_Installed = FRMCS_Only));
+
+   --  "(Radio Network type is GSM-R) OR ((Radio Network type is
+   --  FRMCS+GSM-R) AND (GSM-R is the only radio system installed
+   --  on-board))"
+   function GSMR_Alone return Boolean is
+     (Radio_Type = GSMR
+      or else (Radio_Type = FRMCS_GSMR
+               and then Radio_Installed = GSMR_Only));
+
+   --  "(Radio Network type is FRMCS+GSM-R) AND (both radio systems are
+   --  installed on-board)"
+   function Both_Radio_Systems (Entered : Radio_Type_T) return Boolean is
+     (Entered = FRMCS_GSMR and then Radio_Installed = Both_Installed);
+
+   function Both_Radio_Systems return Boolean is
+     (Both_Radio_Systems (Radio_Type));
+
+   --  The first line of rows #1 to #3: "(train is at standstill) AND
+   --  (Driver ID is valid) AND (mode is SB/FS/AD/SM/LS/SR/OS/NL/PT) AND
+   --  (ERTMS/ETCS level is valid) AND (ERTMS/ETCS level is 2)"
+   function Contact_Rows return Boolean is
+     (Standstill and then Driver_ID_Valid
+      and then SDI.Mode in SDI.M_SB | SDI.M_FS | SDI.M_AD | SDI.M_SM
+                         | SDI.M_LS | SDI.M_SR | SDI.M_OS | SDI.M_NL
+                         | SDI.M_PT
+      and then Level_Valid and then Level_Is_2);
+
+   --  The four alternatives of rows #1 and #3
+   function Contact_Radio return Boolean is
+     ((FRMCS_Alone and then FRMCS_Registered)
+      or else
+      (Both_Radio_Systems and then FRMCS_Registered
+       and then GSMR_Registered)
+      or else
+      (Both_Radio_Systems and then One_Radio_Yes
+       and then (FRMCS_Registered or else GSMR_Registered))
+      or else
+      (GSMR_Alone and then GSMR_Registered));
+
+   --  #1 Contact last RBC
+   function Radio_Contact_Last_RBC return Boolean is
+     (Contact_Rows and then RBC_Contact_Known and then Contact_Radio);
+
+   --  #2 Use short number
+   function Radio_Use_Short_Number return Boolean is
+     (Contact_Rows
+      and then
+        ((Both_Radio_Systems and then FRMCS_Registered
+          and then GSMR_Registered)
+         or else
+         (Both_Radio_Systems and then One_Radio_Yes
+          and then GSMR_Registered)
+         or else
+         (GSMR_Alone and then GSMR_Registered)));
+
+   --  #3 Enter RBC data
+   function Radio_Enter_RBC_Data return Boolean is
+     (Contact_Rows and then Contact_Radio);
+
+   --  #5 Radio network type
+   function Radio_Network_Type return Boolean is
+     (Standstill and then Driver_ID_Valid
+      and then SDI.Mode in SDI.M_SB | SDI.M_FS | SDI.M_LS | SDI.M_SR
+                         | SDI.M_OS | SDI.M_NL | SDI.M_PT | SDI.M_UN
+                         | SDI.M_SN
+      and then Level_Valid);
+
+   --  #6 GSM-R network ID
+   function Radio_GSMR_Network_ID return Boolean is
+     (Standstill and then Driver_ID_Valid
+      and then SDI.Mode in SDI.M_SB | SDI.M_FS | SDI.M_AD | SDI.M_SM
+                         | SDI.M_LS | SDI.M_SR | SDI.M_OS | SDI.M_NL
+                         | SDI.M_PT | SDI.M_UN | SDI.M_SN
+      and then Level_Valid
+      and then Radio_Type in GSMR | FRMCS_GSMR);
+
+   --  #7 Mission with one radio system. "(ERTMS/ETCS level is 2/3)":
+   --  this DMI knows no level 3 (Supplementary_Driving_Info.Level_T).
+   function Radio_Mission_One_Radio return Boolean is
+     (Standstill and then Driver_ID_Valid
+      and then SDI.Mode in SDI.M_SB | SDI.M_FS | SDI.M_LS | SDI.M_SR
+                         | SDI.M_OS | SDI.M_NL | SDI.M_PT | SDI.M_UN
+                         | SDI.M_SN
+      and then Level_Valid and then Level_Is_2
+      and then Both_Radio_Systems
+      and then ((FRMCS_Registered and then not GSMR_Registered)
+                or else (not FRMCS_Registered and then GSMR_Registered)));
+
+   ---------------------------------------------------------------------
+   -- Decisions of the dialogue sequences on the radio data
+   ---------------------------------------------------------------------
+
+   --  Table 49 D7, S4 a to c, Table 50 D5 a to c
+   function Radio_Registered return Boolean is
+     ((FRMCS_Alone and then FRMCS_Registered)
+      or else
+      (Both_Radio_Systems and then FRMCS_Registered
+       and then GSMR_Registered)
+      or else
+      (GSMR_Alone and then GSMR_Registered));
+
+   function Mission_With_One_Radio_Possible return Boolean is
+     (Both_Radio_Systems
+      and then (FRMCS_Registered or else GSMR_Registered));
+
+   function FRMCS_Registration_Missing (Entered : Radio_Type_T)
+                                        return Boolean is
+     (Entered in FRMCS | FRMCS_GSMR
+      and then Radio_Installed in FRMCS_Only | Both_Installed
+      and then not FRMCS_Registered);
+
+   function RBC_Phone_Field return Boolean is
+     (Radio_Type in GSMR | FRMCS_GSMR
+      and then Radio_Installed in GSMR_Only | Both_Installed);
+
+   ---------------------------------------------------------------------
    -- Table 34 - Override window (11.2.2.4)
    ---------------------------------------------------------------------
 
@@ -272,9 +398,11 @@ package body DMI_Conditions is
      (Waiting /= Nothing
       or else Start_Of_Mission = Awaiting_Session_End);
 
-   procedure Tick (Dt_Ms : Natural) is
+   procedure Tick (Dt_Ms : Natural; Radio_Step : Boolean := False) is
    begin
-      if not Awaiting_Answer then
+      if not Awaiting_Answer and then Radio_Wait = No_Radio_Wait
+        and then not Radio_Step
+      then
          Elapsed_Ms := 0;
       else
          --  both terms are below Wrap_Ms: no overflow for any Dt_Ms
@@ -325,6 +453,14 @@ package body DMI_Conditions is
       Start_Of_Mission     := No_Mission_Start;
       Waiting              := Nothing;
       Start_Pending        := False;
+      Radio_Type           := Type_Unknown;
+      Radio_Installed      := None_Installed;
+      FRMCS_Registered     := False;
+      GSMR_Registered      := False;
+      One_Radio_Yes        := False;
+      RBC_Contact_Known    := False;
+      Radio_Wait           := No_Radio_Wait;
+      Request_Authorised   := False;
       Elapsed_Ms           := 0;
    end Reset;
 

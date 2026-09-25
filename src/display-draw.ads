@@ -57,6 +57,11 @@ package Display.Draw is
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
                           The_Position : Position_T);
 
+   -- The same with the grey cells drawn dark grey: the symbol of a
+   -- disabled button that has no disabled variant (DMI 5.3.2.5.5 a)
+   procedure Draw_Symbol_Dimmed (The_Symbol   : Symbol.T;
+                                 The_Position : Position_T);
+
    -- DMI 5.1.1.1.2: border, black left/top and shadow right/bottom
    procedure Draw_Frame (The_Area : Area_T);
 

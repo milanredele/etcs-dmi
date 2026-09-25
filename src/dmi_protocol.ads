@@ -8,7 +8,8 @@
 --  Transport integrity is provided by TCP; there is no per-frame CRC.
 --
 --  Message directions:
---     EVC -> DMI : SPEED_STATE, MODE_LEVEL, ONBOARD, ATO
+--     EVC -> DMI : SPEED_STATE, MODE_LEVEL, ONBOARD, ATO, SYSTEM_STATUS,
+--                  RADIO_NETWORKS
 --     UI  -> DMI : POINTER
 --     DMI -> EVC : DRIVER_ACTION
 --     DMI -> UI  : FRAME, SOUND
@@ -166,12 +167,74 @@ package DMI_Protocol is
    --      the Main window stays when it ends (S10 / S1),
    --    3 the MA or the SR authorisation after 'Start' (Table 50 S7):
    --      the default window is shown when it ends,
+   --    4 the answer of the RBC to a "Request for Shunting" (Table 51
+   --      S1): when it ends the default window is shown if the answer
+   --      byte says 'Shunting Authorised', the Main window stays
+   --      otherwise ('Shunting Refused', no reply: S0 = S1 of Table
+   --      50),
+   --    5 the answer of the RBC to a "Request for Supervised Manoeuvre"
+   --      (Table 54a S1): likewise with 'Supervised Manoeuvre
+   --      Authorisation',
    --    any other non-zero value is read as 2
    --  start_pending u8: non-zero while a 'Start' request of the driver
    --    is pending on the EVC. Only the EVC knows when its answer (a new
    --    mode, or a mode proposed for acknowledgement) is out; 'Start' is
    --    dead meanwhile so that one press is one request (Table 33 #1).
-   Onboard_Length : constant := 8;
+   --  radio u8: the radio data of the on-board (SUBSET-026 3.18.4.3,
+   --    5.4.3.2 S3/S4; DMI Table 37, Table 49 D7/S4/D9/D10, Table 50
+   --    D5/D9), appended in P3 (audit WIN-12)
+   --    bits0-1 the Radio Network type stored on-board: 0 unknown,
+   --      1 FRMCS, 2 FRMCS+GSM-R, 3 GSM-R (the keys of Table 43b),
+   --    bits2-3 the radio systems installed on-board: 0 none known,
+   --      1 FRMCS only, 2 GSM-R only, 3 both,
+   --    bit4 the FRMCS on-board is registered to the FRMCS Radio
+   --      Network,
+   --    bit5 at least one GSM-R Mobile Terminal is registered to a GSM-R
+   --      Radio Network,
+   --    bit6 "Perform mission with only one radio system" is Yes,
+   --    bit7 the status of the RBC contact information is "valid" or
+   --      "invalid", i.e. not "unknown" (Table 37 #1; data bit4 says
+   --      whether it is "valid")
+   --  radio_wait u8: the on-board awaits a step of the GSM-R network
+   --    selection and the DMI shows the Radio data window with all
+   --    buttons disabled and the hour glass ST05 (11.2.5.6)
+   --    0 nothing is awaited,
+   --    1 the alphanumeric list of available and allowed GSM-R networks
+   --      (Table 49 S3-2-1, Table 50 S5-2-1),
+   --    2 the registration to the GSM-R network the driver selected
+   --      (Table 49 S3-2-3, Table 50 S5-2-3),
+   --    any other non-zero value is read as 2.
+   --    The DMI enters these steps itself when it sends the request
+   --    (MSG_DRIVER_DATA kind 4), so that the Radio data window is not
+   --    offered again before the EVC has spoken. S3-2-1 ends with the
+   --    list (MSG_RADIO_NETWORKS) once radio_wait is not 1; S3-2-3 ends
+   --    once the EVC has reported 2 for the selection and reports 0
+   --    again: the EVC reports 2 in at least one MSG_ONBOARD after it
+   --    received a selection, even when the registration is immediate.
+   --  answer u8: the outcome of the request that waiting 4 or 5 awaited,
+   --    reported in the MSG_ONBOARD that ends the wait and kept until the
+   --    next request: 1 the RBC authorised it, 0 (and any other value)
+   --    it did not (refused, or no reply within the fixed waiting time;
+   --    the text messages "SH refused", "SM refused", ... are the EVC's).
+   --    The mode cannot tell: 'Continue in SM' is authorised in SM.
+   Onboard_Length : constant := 11;
+
+   MSG_RADIO_NETWORKS : constant Msg_Type_T := 16#0D#;
+   --  The alphanumeric list of available and allowed GSM-R Radio
+   --  Networks the on-board acquired (SUBSET-026 3.18.4.3.6.2), offered
+   --  to the driver by the dedicated keyboard of the GSM-R network ID
+   --  window (DMI 11.3.4.4):
+   --    count u8 (0 .. Radio_Networks_Max), then per network:
+   --    length u8 (1 .. Radio_Network_Name_Max), Latin-1 bytes.
+   --  The length of the message must be exactly what the count and the
+   --  name lengths describe, and at most Radio_Networks_Max_Length; any
+   --  other message is ignored as a whole. An empty list (count 0) is
+   --  the answer "no allowed GSM-R network available" (Table 49 A29,
+   --  Table 50 A5).
+   Radio_Networks_Max      : constant := 20;
+   Radio_Network_Name_Max  : constant := 18;
+   Radio_Networks_Max_Length : constant :=
+     1 + Radio_Networks_Max * (1 + Radio_Network_Name_Max);
 
    MSG_ATO : constant Msg_Type_T := 16#0B#;
    --  The information of the ERTMS/ATO on-board (DMI 8.5) as the EVC
@@ -395,6 +458,12 @@ package DMI_Protocol is
    --     selected" (Table 68, MSG_SYSTEM_STATUS), before the action of
    --     the button itself, so that the on-board applies that end too;
    --     not sent when no such message is displayed
+   --  17 Supervised Manoeuvre (DMI Table 33 #11 / #12, 11.7.8): arg 0
+   --     'Initiate SM', 1 'Continue in SM', 2 'Exit SM',
+   --  18 BMM reaction inhibition (DMI Table 35 #4, SUBSET-026 5.22):
+   --     arg 0 'BMM reaction inhibition', 1 'Revoke BMM reaction
+   --     inhibition',
+   --  19 Maintain Shunting (DMI Table 33 #9, SUBSET-026 4.4.20.1.5)
    Driver_Action_Length : constant := 3;
    --  Action 2, the driver's acknowledgement (DMI 5.4.1), names the one
    --  request it answers. Its payload is Driver_Ack_Length bytes:
@@ -436,7 +505,41 @@ package DMI_Protocol is
    --                    loading gauge u8 (M_LOADINGGAUGE, 7.5.1.68),
    --                      16#FF# no value
    --   3 SR data    : speed u16, distance u16
+   --   4 GSM-R network ID (DMI 11.3.4, SUBSET-026 3.18.4.3.6): len u8,
+   --                  Latin-1 bytes.
+   --                  len 0: the driver elects to modify the GSM-R
+   --                    network ID ('GSM-R network ID' pressed, Table 49
+   --                    S3-1 / Table 50 S5-1): the on-board acquires the
+   --                    list of networks (MSG_RADIO_NETWORKS),
+   --                  len 1 .. Radio_Network_Name_Max: the network the
+   --                    driver selected from that list (S3-2-2 / S5-2-2),
+   --                    its name as the list gave it
+   --   5 RBC data   : the RBC contact information (DMI 11.3.5, SUBSET-026
+   --                  5.4.3.2 S3), Driver_Data_RBC_Length bytes:
+   --                    choice u8: 0 entered in the RBC data window,
+   --                      1 'Contact last RBC' (NID_RBC 16383 "Contact
+   --                      last known RBC", 7.5.1.96), 2 'Use short
+   --                      number' (NID_RADIO all F, "use the short
+   --                      number stored onboard", 7.5.1.95),
+   --                    rbc_id u32: choice 0 only (else 0), the RBC ID
+   --                      as entered, 0 .. 16 777 214 (A.3.11); its 14
+   --                      least significant bits are NID_RBC, the rest
+   --                      NID_C (DMI 11.3.5.3.1),
+   --                    phone_len u8: choice 0 only (else 0), 0 .. 16;
+   --                      0 when the window had no 'RBC phone number'
+   --                      field (11.3.5.4),
+   --                    phone 16 bytes: the digits '0' .. '9' of the RBC
+   --                      phone number (NID_RADIO, 16 digits, 7.5.1.95)
+   --                      left adjusted, padded with 0 bytes
+   --   6 Radio network type (DMI 11.3.15): type u8, 1 FRMCS,
+   --                  2 FRMCS+GSM-R, 3 GSM-R (Table 43b);
+   --                  Driver_Data_Byte_Length bytes
+   --   7 Mission with one radio system (DMI 11.3.16): choice u8, 0 'No',
+   --                  1 'Yes'; Driver_Data_Byte_Length bytes
    Driver_Data_Train_Length : constant := 13;
+   Driver_Data_RBC_Length   : constant := 23;
+   Driver_Data_Byte_Length  : constant := 2;
+   RBC_Phone_Max            : constant := 16;
 
    -- DMI -> UI
    MSG_FRAME : constant Msg_Type_T := 16#60#;
