@@ -348,22 +348,24 @@ package body DMI_Data_View is
       Line : Natural := 0;
    end record;
 
+   Max_Rows : constant := Items'Length + DMI_VBC.Max_Stored;
+   type Place_List_T is array (1 .. Max_Rows) of Place_T;
+
    -- The window and the first text line of every present row, in the
    -- order of Table 45: a row starts on the window Table 45 gives it
    -- or, when the previous row is on a later window, there; 10.5.1.6
    -- puts an empty line between two topics; a row that does not fit
    -- below the last one goes to the next window (the VBC rows of
-   -- "2..n"). Place_Of walks the rows up to the one asked for.
-   procedure Walk (Upto : Natural; Place : out Place_T;
-                   Last_Page : out Positive) is
+   -- "2..n")
+   procedure Walk (Places : out Place_List_T; Last_Page : out Positive) is
       Page      : Positive := 1;
       Line      : Natural := 0;
       Prev      : Topic_T := Topic_T'First;
       First     : Boolean := True;
    begin
-      Place := (1, 0);
+      Places := (others => (1, 0));
       Last_Page := 1;
-      for Row in 1 .. Row_Count loop
+      for Row in 1 .. Natural'Min (Row_Count, Max_Rows) loop
          if Row_Present (Row) then
             declare
                It   : constant Item_T := Row_Item (Row);
@@ -382,9 +384,7 @@ package body DMI_Data_View is
                end if;
                First := False;
                Prev := It.Topic;
-               if Row = Upto then
-                  Place := (Page, Line);
-               end if;
+               Places (Row) := (Page, Line);
                Last_Page := Page;
                Line := Line + Need;
             end;
@@ -393,10 +393,10 @@ package body DMI_Data_View is
    end Walk;
 
    function Page_Count return Positive is
-      Place : Place_T;
-      Last  : Positive;
+      Places : Place_List_T;
+      Last   : Positive;
    begin
-      Walk (0, Place, Last);
+      Walk (Places, Last);
       -- Table 45: window 2 carries the radio data info in any case
       return Positive'Max (2, Last);
    end Page_Count;
@@ -526,20 +526,21 @@ package body DMI_Data_View is
 
    procedure Render (Previous_Pressed : Boolean;
                      Next_Pressed     : Boolean) is
+      Places : Place_List_T;
+      Last   : Positive;
    begin
-      Current_Page := Positive'Min (Current_Page, Page_Count);
-      for Index in 1 .. Row_Count loop
+      Walk (Places, Last);
+      Current_Page := Positive'Min (Current_Page, Positive'Max (2, Last));
+      for Index in 1 .. Natural'Min (Row_Count, Max_Rows) loop
          if Row_Present (Index) then
             declare
-               Place   : Place_T;
-               Last    : Positive;
+               Place   : constant Place_T := Places (Index);
                It      : constant Item_T := Row_Item (Index);
                Trimmed : Natural := Max_Label_Len;
                Value   : constant Value_T := Value_Of (Index);
                Line    : Natural;
                Cut     : Natural;
             begin
-               Walk (Index, Place, Last);
                Line := Place.Line;
                if Place.Page = Current_Page and then Line <= Last_Line then
                   while Trimmed > 0 and then It.Label (Trimmed) = ' ' loop
