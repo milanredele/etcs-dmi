@@ -10,6 +10,14 @@
       #controls .row { margin-bottom: 6px; }
       canvas { display: block; margin: 0 auto; background: #031122; }
       h3 { margin: 4px 0; }
+      /* the keys of the DMI unit on the driver's desk (MSG_DESK_INPUT) */
+      .desk { margin-top: 10px; display: flex; gap: 10px; align-items: center;
+              justify-content: center; font-size: 12px; color: #aab; }
+      .desk button { touch-action: none; user-select: none; }
+      .desk button.held { background: #666; }
+      .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+              background: #411; margin-right: 4px; vertical-align: -1px; }
+      .lamp.on { background: #f33; box-shadow: 0 0 6px #f33; }
     </style>
   </head>
   <body>
@@ -202,6 +210,11 @@
     <canvas id="trackCanvas" width="640" height="150"
             style="display:block; margin:6px auto; background:#101820;"></canvas>
     <canvas id="myCanvas" width="640" height="480"></canvas>
+    <div class="desk">
+        <button id="desk_settings" title="MSG_DESK_INPUT input 1: the desk button for the Settings window (DMI 8.6.1.6); it acts when released, and only on the default window">Settings</button>
+        <button id="desk_isolation" title="MSG_DESK_INPUT input 2: isolate the ERTMS/ETCS on-board (DMI 5.6.1.1); hold it 2 s, then release. The lamp is the indication of the mode IS (DMI 8.2.3.1.2.2)"><span id="iso_lamp" class="lamp"></span>Isolation</button>
+        <span id="dmi_settings" title="MSG_SETTINGS: the luminance and the volume the driver chose in the Settings window, applied by the display and the loudspeaker">brightness – · volume –</span>
+    </div>
     <script>
       // Protocol v2 (see src/dmi_protocol.ads)
       const MSG_SPEED_STATE = 0x01;
@@ -213,8 +226,10 @@
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_DRIVER_DATA = 0x41;
       const MSG_POINTER = 0x50;
+      const MSG_DESK_INPUT = 0x52;
       const MSG_FRAME = 0x60;
       const MSG_SOUND = 0x61;
+      const MSG_SETTINGS = 0x62;
       const HEADER_LENGTH = 5;
 
       const canvas = document.getElementById('myCanvas');
@@ -249,12 +264,60 @@
           if (!s2Audio) {
             s2Audio = new Audio(soundFiles[3]);
             s2Audio.loop = true;
+            s2Audio.volume = soundGain;
             s2Audio.play();
           }
         } else if (id === 4) { // S2 stop
           if (s2Audio) { s2Audio.pause(); s2Audio = null; }
         } else if (soundFiles[id]) {
-          new Audio(soundFiles[id]).play();
+          const a = new Audio(soundFiles[id]);
+          a.volume = soundGain;
+          a.play();
+        }
+      }
+
+      // MSG_SETTINGS (dmi_protocol.ads): the display unit and the
+      // loudspeaker apply the levels 0 .. 10 the driver chose (DMI 5.2.2,
+      // 5.2.3); the frame itself carries colour indices only. The ranges
+      // are the device's (5.2.2.3, 5.2.3.3). Choice: 40 % to 100 % of the
+      // luminance and 25 % to 100 % of the volume, so that the lowest
+      // level keeps the display readable and the sounds audible. The
+      // third byte lights the lamp of the isolation key (mode IS,
+      // DMI 8.2.3.1.2.2).
+      let soundGain = 0.625;
+      function applySettings(p) {
+        if (p.length !== 3) return;
+        const b = Math.min(p[0], 10), v = Math.min(p[1], 10);
+        document.getElementById('myCanvas').style.filter =
+          `brightness(${(0.4 + 0.06 * b).toFixed(2)})`;
+        soundGain = 0.25 + 0.075 * v;
+        if (s2Audio) s2Audio.volume = soundGain;
+        document.getElementById('iso_lamp').classList.toggle('on', p[2] === 1);
+        document.getElementById('dmi_settings').textContent =
+          `brightness ${b}/10 · volume ${v}/10` + (p[2] === 1 ? ' · isolated (IS)' : '');
+      }
+
+      // the desk keys: pressed (1) and released (0) as they happen; the
+      // DMI decides what a key does (dmi_protocol.ads, MSG_DESK_INPUT)
+      function wireDeskKeys(send) {
+        for (const [id, input] of [['desk_settings', 1], ['desk_isolation', 2]]) {
+          const el = document.getElementById(id);
+          let down = false;
+          el.addEventListener('pointerdown', (e) => {
+            if (down) return;
+            down = true;
+            el.setPointerCapture(e.pointerId);
+            el.classList.add('held');
+            send(input, 1);
+          });
+          const up = () => {
+            if (!down) return;
+            down = false;
+            el.classList.remove('held');
+            send(input, 0);
+          };
+          el.addEventListener('pointerup', up);
+          el.addEventListener('pointercancel', up);
         }
       }
 
@@ -297,6 +360,7 @@
       function handleMessage(type, payload) {
         if (type === MSG_FRAME) drawFrame(payload);
         else if (type === MSG_SOUND) playSound(payload[0]);
+        else if (type === MSG_SETTINGS) applySettings(payload);
         else if (type === 0x08) parseLayout(payload);
         else if (type === 0x09) parseSimState(payload);
         else if (type === MSG_ATO) parseATO(payload);
@@ -408,7 +472,7 @@
         drawTrack();
       }
 
-      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD', 'SH', 'SM'];
+      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD', 'SH', 'SM', 'IS'];
       const MONITORINGS = ['CSM', 'TSM', 'RSM'];
 
       function conditionLabel(symbol) {
@@ -802,6 +866,16 @@
         if (e.buttons === 0) return;
         const r = canvas.getBoundingClientRect();
         sendPointer(2, Math.round(e.clientX - r.left), Math.round(e.clientY - r.top));
+      });
+
+      // the desk keys of the DMI unit (the hub also hands them to the
+      // simulator, which ignores them)
+      wireDeskKeys((input, pressed) => {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        const { buf, dv } = makeMessage(MSG_DESK_INPUT, 2);
+        dv.setUint8(HEADER_LENGTH, input);
+        dv.setUint8(HEADER_LENGTH + 1, pressed);
+        socket.send(buf);
       });
 
       for (const el of document.querySelectorAll('#controls input, #controls select')) {
