@@ -27,7 +27,8 @@ package DMI_Windows is
       W_SR_Data,     -- 11.3.10
       W_Adhesion,    -- 11.3.11
       W_Volume,      -- 11.3.7
-      W_Brightness); -- 11.3.8
+      W_Brightness,  -- 11.3.8
+      W_ATO_Selector); -- 11.3.14
 
    -- Requests towards the EVC, drained by DMI_Core
    type Action_T is
@@ -42,7 +43,8 @@ package DMI_Windows is
       Send_Driver_ID,
       Send_TRN,
       Send_Train_Data,
-      Send_SR_Data);
+      Send_SR_Data,
+      ATO_Selector_Set); -- Arg: 1 Stand-by, 2 On (Table 43a)
 
    procedure Open (ID : Window_ID_T);
    -- The driver pressed [Close]; ignored where [Close] is disabled

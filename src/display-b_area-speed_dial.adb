@@ -17,6 +17,7 @@
 pragma Ada_2012;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
 with Display;
+with DMI_ATO;
 with DMI_Status;
 with Font;
 with Font.FreeSans_18;
@@ -209,11 +210,11 @@ package body Display.B_Area.Speed_Dial is
    -- Draw --
    ----------
 
-   procedure Draw_Set_Speed is
-      -- DMI 8.2.3.9: white circle, 10 cell diameter, centre on the
-      -- radius 111 circle at the Set Speed value, covering the dial
-      Value  : constant Speed_T :=
-        Speed_T (Natural'Min (DMI_Status.Set_Speed, 400));
+   -- A circle of 10 cell diameter whose centre is on the circle of
+   -- radius 111 around the centre of B0, at the given speed
+   procedure Draw_Speed_Dot (Speed     : Natural;
+                             The_Color : General_Parameters.Color) is
+      Value  : constant Speed_T := Speed_T (Natural'Min (Speed, 400));
       A      : constant Angle := Speed_To_Angle (Value);
       Center : constant Position_T :=
         (The_Center.X + Integer (Float'Rounding (111.0 * Sin (Float (A)))),
@@ -223,12 +224,25 @@ package body Display.B_Area.Speed_Dial is
       for Y in -Radius .. Radius loop
          for X in -Radius .. Radius loop
             if X * X + Y * Y <= Radius * Radius then
-               B_Buffer.Set_Pixel (Center.X + X, Center.Y + Y,
-                                   General_Parameters.WHITE);
+               B_Buffer.Set_Pixel (Center.X + X, Center.Y + Y, The_Color);
             end if;
          end loop;
       end loop;
+   end Draw_Speed_Dot;
+
+   procedure Draw_Set_Speed is
+   begin
+      -- DMI 8.2.3.9: white circle, 10 cell diameter, centre on the
+      -- radius 111 circle at the Set Speed value, covering the dial
+      Draw_Speed_Dot (DMI_Status.Set_Speed, General_Parameters.WHITE);
    end Draw_Set_Speed;
+
+   procedure Draw_Target_Advice_Speed is
+   begin
+      -- DMI 8.5.9.3 / 8.5.9.4: a medium grey circle, 10 cell diameter,
+      -- centre on the radius 111 circle at the target advice speed
+      Draw_Speed_Dot (DMI_ATO.Advice_Speed, General_Parameters.MEDIUM_GREY);
+   end Draw_Target_Advice_Speed;
 
    procedure Draw is
    begin
@@ -239,6 +253,13 @@ package body Display.B_Area.Speed_Dial is
       Circular_Speed_Gauge.Draw;
       Circular_Speed_Gauge.Draw_Hooks;
       Draw_Release_Speed_Digital;
+      -- DMI 8.5.9.5: the target advice speed covers the speed dial and
+      -- is covered by the set speed; it is ATO information shown outside
+      -- stopping points while the ATO selector is "On" (8.5.1.1,
+      -- 8.5.1.2 d)
+      if DMI_ATO.Outside_Shown and then DMI_ATO.Advice_Valid then
+         Draw_Target_Advice_Speed;
+      end if;
       if DMI_Status.Set_Speed_Valid then
          Draw_Set_Speed;
       end if;

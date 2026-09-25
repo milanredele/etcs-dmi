@@ -13,7 +13,9 @@ package EVC_Core is
    type Sink_T is access procedure (The_Type : Msg_Type_T;
                                     Payload  : Stream_Element_Array);
 
-   type Mode_T is (SB, SR, FS, TR);
+   -- AD: Automatic Driving, entered and left by the ERTMS/ATO on-board
+   -- of EVC_ATO (SUBSET-026 4.4.16)
+   type Mode_T is (SB, SR, FS, TR, AD);
 
    Mode : Mode_T := SB;
 

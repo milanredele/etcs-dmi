@@ -154,6 +154,28 @@ package Test_Support is
       Speeds     : Gradient_Array := (1 .. 0 => 0);
       Orders     : Gradient_Array := (1 .. 0 => 0));
 
+   -- MSG_ATO (dmi_protocol.ads), the information of the ERTMS/ATO
+   -- on-board of DMI 8.5 and the ATO selector position. The defaults
+   -- are the selector "On" with nothing else known; Stops are the
+   -- distances of the stopping points in metres.
+   type Stop_Array is array (Positive range <>) of Natural;
+   procedure Send_ATO
+     (Selector     : Natural := 2;        -- 1 Stand-by / 2 On
+      Status       : Natural := 0;        -- 0 none / 1 .. 5 ATO01 .. 05
+      Warning      : Boolean := False;
+      At_Stop      : Boolean := False;    -- location: at a stopping point
+      Accuracy     : Natural := 0;        -- 0 none / 1 .. 3 ATO06 .. 08
+      Dwell        : Natural := 16#FFFF#; -- seconds
+      Train_Hold   : Boolean := False;
+      Doors        : Natural := 0;        -- 0 none / 1 .. 7 ATO10 .. 16
+      Skip         : Natural := 0;        -- 0 none / 1 .. 3 ATO17 .. 19
+      Advice_Speed : Natural := 16#FFFF#; -- km/h
+      Coasting     : Boolean := False;
+      ETA_H        : Natural := 16#FF#;   -- 16#FF#: no arrival time
+      ETA_M, ETA_S : Natural := 0;
+      Name         : String := "";
+      Stops        : Stop_Array := (1 .. 0 => 0));
+
    -- Any message type with any payload, byte by byte (each 0 .. 255),
    -- for malformed and hostile input
    type Byte_Array is array (Positive range <>) of Natural;
@@ -197,6 +219,12 @@ package Test_Support is
    procedure Expect_Actions (Action : Natural;
                              Count  : Natural;
                              What   : String);
+
+   -- ... must hold exactly one driver action with this action code, and
+   -- its argument must be Arg; empties the outbox like the checks above
+   procedure Expect_Action (Action : Natural;
+                            Arg    : Natural;
+                            What   : String);
 
    -- Simple boolean check
    procedure Check (Condition : Boolean; What : String);

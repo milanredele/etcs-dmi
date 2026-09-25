@@ -3,6 +3,7 @@
 
 pragma Ada_2012;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
+with EVC_ATO;
 with EVC_Supervision;
 with EVC_Track; use EVC_Track;
 with EVC_Train;
@@ -106,7 +107,7 @@ package body EVC_Core is
          V_SBI           => V_SBI_KMH,
          V_Release       => V_Rel,
          Brake_Commanded => EVC_Train.Brake_Commanded,
-         In_AD           => False, -- the simulator has no ATO
+         In_AD           => Mode = AD,
          Previous        => The_Status);
       Put_U16 (Payload, Offset, Unsigned_16 (EVC_Train.Speed_KMH));
       Put_U16 (Payload, Offset, Unsigned_16 (V_Perm_KMH));
@@ -128,7 +129,8 @@ package body EVC_Core is
       Offset  : Stream_Element_Offset := Payload'First;
       DMI_Mode : constant Unsigned_8 :=
         (case Mode is
-            when SB => 1, when SR => 7, when FS => 2, when TR => 11);
+            when SB => 1, when SR => 7, when FS => 2, when TR => 11,
+            when AD => 3);
       Ann     : Unsigned_8 := 16#FF#;
       Ann_Ack : Unsigned_8 := 0;
    begin
@@ -297,7 +299,9 @@ package body EVC_Core is
 
       Put_U16 (Payload, Offset, Unsigned_16 (Natural'Min (MA_Left, 65534)));
       Put_U16 (Payload, Offset, Ind_Dist);
-      Put_U16 (Payload, Offset, 16#FFFF#); -- no ATO advice
+      -- DMI 8.5.11: the next advice change of the ATO (FS only)
+      Put_U16 (Payload, Offset,
+               Unsigned_16 (Natural'Min (EVC_ATO.Advice_Change_M, 65535)));
       Put_U16 (Payload, Offset, Unsigned_16 (MRSP_At (Position)));
 
       -- gradients ahead
@@ -506,10 +510,16 @@ package body EVC_Core is
       FS_Entry_End   : Boolean := False;
    begin
       Clock_S := Clock_S + Dt_S;
+      -- SUBSET-026 4.4.16.3.2: in AD the ERTMS/ATO on-board acts on the
+      -- traction and the brakes instead of the driver
+      if Mode = AD then
+         EVC_Train.Demand := EVC_ATO.Demand;
+      end if;
       EVC_Train.Step (Dt_S);
       Position := Natural (EVC_Train.Position_M);
+      EVC_ATO.Update (Dt_S);
 
-      if Mode = FS then
+      if Mode in FS | AD then
          Update_Supervision;
       else
          V_Perm_KMH := (if Mode = SR then 40 else 0);
@@ -519,7 +529,7 @@ package body EVC_Core is
       end if;
 
       -- level transition announcement and execution
-      if Mode = FS then
+      if Mode in FS | AD then
          if Position >= Level_Ann_M and then Position < Level_Transition_M
            and then not Level_Ack_Sent
          then
@@ -560,9 +570,10 @@ package body EVC_Core is
       Send_Onboard (Emit);
       Send_Status (Emit);
       Send_Track_Cond (Emit);
-      if Mode = FS then
+      if Mode in FS | AD then
          Send_Planning (Emit);
       end if;
+      EVC_ATO.Send (Emit, Clock_S);
 
       Send_Sim_State (Emit);
       if Layout_Countdown = 0 then
@@ -605,6 +616,12 @@ package body EVC_Core is
             if Mode = SB and then Arg in 2 .. 5 then
                Level_Pos := Arg;
             end if;
+         when 13 =>     -- ATO engage (1) / disengage (0), DMI 8.5.2
+            EVC_ATO.Engage_Request (Arg);
+         when 14 =>     -- skip stopping point request / revoke, 8.5.8
+            EVC_ATO.Skip_Request (Arg);
+         when 15 =>     -- ATO selector position, DMI 11.3.14
+            EVC_ATO.Set_Selector (Arg);
          when 16 =>     -- a Main window button ended a system status
             null;       -- message; this simulator starts none of those
          when others =>
@@ -675,6 +692,7 @@ package body EVC_Core is
       FS_Entry_From_M := 0;
       Clock_S := 8.0 * 3600.0;
       EVC_Train.Reset;
+      EVC_ATO.Reset;
    end Reset;
 
 end EVC_Core;

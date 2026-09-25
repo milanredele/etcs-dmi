@@ -5,6 +5,7 @@ pragma Ada_2012;
 with Display.Draw;
 with Display.Screen;
 with DMI_Ack;
+with DMI_ATO;
 with DMI_Conditions;
 with DMI_Data_Entry;
 with DMI_Data_View;
@@ -88,14 +89,16 @@ package body DMI_Windows is
    -- Window definitions
    ---------------------------------------------------------------------
 
-   -- 11.3.2.1, 11.3.7.1, 11.3.8.1, 11.3.11.1: Level, Volume, Brightness
-   -- and Adhesion are data entry windows on the half grid array with a
-   -- single input field and a dedicated keyboard, not menu windows
+   -- 11.3.2.1, 11.3.7.1, 11.3.8.1, 11.3.11.1, 11.3.14.1: Level, Volume,
+   -- Brightness, Adhesion and ATO selector are data entry windows on the
+   -- half grid array with a single input field and a dedicated
+   -- keyboard, not menu windows
    function Kind_Of (ID : Window_ID_T) return Window_Kind_T is
      (case ID is
          when W_Main | W_Override | W_Special | W_Settings => Menu,
          when W_Driver_ID | W_TRN | W_Train_Data | W_SR_Data
-            | W_Level | W_Adhesion | W_Volume | W_Brightness => Data_Entry,
+            | W_Level | W_Adhesion | W_Volume | W_Brightness
+            | W_ATO_Selector => Data_Entry,
          when W_Train_Data_Validation => Validation,
          when W_Data_View => View);
 
@@ -114,7 +117,9 @@ package body DMI_Windows is
          when W_SR_Data    => "SR speed / distance",
          when W_Adhesion   => "Adhesion",
          when W_Volume     => "Volume",
-         when W_Brightness => "Brightness");
+         when W_Brightness => "Brightness",
+         -- 11.3.14.2
+         when W_ATO_Selector => "ATO selector");
 
    function Pad (S : Wide_String) return Wide_String is
       Result : Wide_String (1 .. 16) := (others => ' ');
@@ -198,6 +203,8 @@ package body DMI_Windows is
                     3 => B ("Brightness",
                             Enabled => DMI_Conditions.Settings_Brightness),
                     4 => B ("System version", Enabled => False),
+                    -- Table 36 #7: the ATO selector window (11.3.14)
+                    7 => B ("ATO", Enabled => DMI_Conditions.Settings_ATO),
                     others => No_Button);
          when others =>
             return (others => No_Button);
@@ -434,6 +441,17 @@ package body DMI_Windows is
             -- 11.7.1.4: the adhesion the on-board holds is what
             -- MSG_STATUS reports as the slippery rail state (8.2.3.7)
             Propose (if DMI_Status.Slippery_Rail then 2 else 1);
+         when W_ATO_Selector =>
+            -- 11.3.14.4, Table 43a: 1 Stand-by, 2 On
+            Add_Choice (Choices, "Stand-by");
+            Add_Choice (Choices, "On");
+            -- 11.7.1.4: the position the on-board holds (SUBSET-026
+            -- 3.15.11.2) as the EVC reports it; not known: none
+            case DMI_ATO.Selector is
+               when DMI_ATO.Stand_By => Propose (1);
+               when DMI_ATO.On       => Propose (2);
+               when DMI_ATO.Unknown  => null;
+            end case;
          when W_Volume | W_Brightness =>
             -- 11.3.7.4.1 / 11.3.8.4.1: the definition of the keyboard is
             -- an implementation issue and the note offers "several
@@ -521,10 +539,11 @@ package body DMI_Windows is
             -- only when the validation window is left with 'Yes')
             return DMI_Train_Data.Window_Def
               (DMI_Train_Data.Current_Window);
-         when W_Level | W_Adhesion | W_Volume | W_Brightness =>
-            -- 11.3.2, 11.3.7, 11.3.8, 11.3.11: half grid array, a single
-            -- input field with only the data part and a dedicated
-            -- keyboard (Dedicated_Def above)
+         when W_Level | W_Adhesion | W_Volume | W_Brightness
+            | W_ATO_Selector =>
+            -- 11.3.2, 11.3.7, 11.3.8, 11.3.11, 11.3.14: half grid array,
+            -- a single input field with only the data part and a
+            -- dedicated keyboard (Dedicated_Def above)
             return Dedicated_Def (ID);
          when W_SR_Data =>
             -- 11.3.10.1: likewise on the total grid array
@@ -728,7 +747,7 @@ package body DMI_Windows is
    -- whether the displayed data entry / validation window may stay. The
    -- windows of Table 48 that do not exist yet (Radio network type,
    -- GSM-R network ID, Mission with one radio system, RBC data,
-   -- Language, ATO selector) are P3 (audit WIN-12).
+   -- Language) are P3 (audit WIN-12).
    function Window_Condition (ID : Window_ID_T) return Boolean is
      (case ID is
          when W_TRN        => DMI_Conditions.Main_TRN,
@@ -740,6 +759,8 @@ package body DMI_Windows is
          when W_Adhesion   => DMI_Conditions.Special_Adhesion,
          when W_Volume     => DMI_Conditions.Settings_Volume,
          when W_Brightness => DMI_Conditions.Settings_Brightness,
+         -- Table 48: ATO selector / ATO
+         when W_ATO_Selector => DMI_Conditions.Settings_ATO,
          when others       => True);  -- not a window of Table 48
 
    procedure Check_Enabling_Conditions is
@@ -815,6 +836,15 @@ package body DMI_Windows is
                Display_Luminance := Display_Luminance_T (Chosen - 1);
                Pop;
             end if;
+         when W_ATO_Selector =>
+            -- Table 43a: 1 Stand-by, 2 On. The position is the
+            -- on-board's (SUBSET-026 3.15.11.2): it is sent to the EVC,
+            -- which reports it back in MSG_ATO; the DMI does not set it
+            -- itself. Table 54 S8: back to S1, the Settings window.
+            if Chosen in 1 .. 2 then
+               Queue (ATO_Selector_Set, Chosen);
+               Pop;
+            end if;
          when others =>
             null;
       end case;
@@ -869,7 +899,8 @@ package body DMI_Windows is
             SR_Dist := DMI_Data_Entry.Number (2);
             Queue (Send_SR_Data);
             Pop;
-         when W_Level | W_Adhesion | W_Volume | W_Brightness =>
+         when W_Level | W_Adhesion | W_Volume | W_Brightness
+            | W_ATO_Selector =>
             Dedicated_Completed (ID);
          when others =>
             null;
@@ -916,6 +947,7 @@ package body DMI_Windows is
             case Index is
                when 2 => Open (W_Volume);
                when 3 => Open (W_Brightness);
+               when 7 => Open (W_ATO_Selector);
                when others => null;
             end case;
          when others =>

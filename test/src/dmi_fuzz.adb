@@ -95,9 +95,9 @@ procedure DMI_Fuzz is
    -- In-domain generators, one per message (see dmi_protocol.ads)
    ---------------------------------------------------------------------
 
-   EVC_Types : constant array (1 .. 9) of Msg_Type_T :=
+   EVC_Types : constant array (1 .. 10) of Msg_Type_T :=
      (MSG_SPEED_STATE, MSG_MODE_LEVEL, MSG_TEXT, MSG_TEXT_REMOVE,
-      MSG_TRACK_COND, MSG_PLANNING, MSG_STATUS, MSG_ONBOARD,
+      MSG_TRACK_COND, MSG_PLANNING, MSG_STATUS, MSG_ONBOARD, MSG_ATO,
       MSG_SYSTEM_STATUS);
 
    procedure Build_In_Domain (The_Type : Msg_Type_T) is
@@ -207,6 +207,39 @@ procedure DMI_Fuzz is
          U8 (Pick (0, 3));     -- start of mission, one code beyond
          U8 (Pick (0, 4));     -- waiting, one code beyond
          U8 (Pick (0, 1));     -- start pending
+      elsif The_Type = MSG_ATO then
+         declare
+            -- mostly a name that fits, sometimes one byte too long
+            Length : constant Natural :=
+              (if Chance (5) then ATO_Max_Name + 1
+               else Pick (0, ATO_Max_Name));
+            Count  : constant Natural := Pick (0, 12);
+         begin
+            U8 (Pick (0, 3));     -- selector, one code beyond
+            U8 (Pick (0, 6));     -- status, one code beyond
+            U8 (Pick (0, 1));     -- warning
+            U8 (Pick (0, 2));     -- location, one code beyond
+            U8 (Pick (0, 4));     -- accuracy, one code beyond
+            U16 (if Chance (10) then Pick (5_999, 6_001)
+                 else Optional (0, 5_999, 16#FFFF#));
+            U8 (Pick (0, 1));     -- train hold
+            U8 (Pick (0, 8));     -- doors, one code beyond
+            U8 (Pick (0, 4));     -- skip, one code beyond
+            U16 (if Chance (10) then Pick (399, 401)
+                 else Optional (0, 400, 16#FFFF#));
+            U8 (Pick (0, 1));     -- coasting
+            U8 (Optional (0, 24, 16#FF#));
+            U8 (Pick (0, 60));
+            U8 (Pick (0, 60));
+            U8 (Length);
+            for I in 1 .. Length loop
+               U8 (Pick (0, 255));
+            end loop;
+            U8 (Count);
+            for I in 1 .. Count loop
+               U16 (Pick (0, 40_000));
+            end loop;
+         end;
       elsif The_Type = MSG_SYSTEM_STATUS then
          -- the catalogue, one number on each side of it, and now and
          -- then any byte; the three events and one beyond

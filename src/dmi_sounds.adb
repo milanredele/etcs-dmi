@@ -13,9 +13,11 @@ package body DMI_Sounds is
    Count : Natural := 0;
 
    -- S2 is a state, not an event (14.3.3.2), and is kept out of the
-   -- queue: S2_Wanted follows the Warning status, S2_Reported is what
-   -- the display unit was told last. Pop reports the difference.
+   -- queue: S2_Wanted follows the Warning status, S2_ATO the warning of
+   -- the ERTMS/ATO on-board (8.5.1.7), S2_Reported is what the display
+   -- unit was told last. Pop reports the difference.
    S2_Wanted   : Boolean := False;
+   S2_ATO      : Boolean := False;
    S2_Reported : Boolean := False;
 
    -- Put The_Sound in the place of the oldest queued Victim, if any
@@ -63,11 +65,17 @@ package body DMI_Sounds is
       end case;
    end Play;
 
-   function Pop (The_Sound : out Sound_T) return Boolean is
+   procedure Set_ATO_Warning (On : Boolean) is
    begin
-      if S2_Wanted /= S2_Reported then
-         S2_Reported := S2_Wanted;
-         The_Sound := (if S2_Wanted then S2_Warning_Start
+      S2_ATO := On;
+   end Set_ATO_Warning;
+
+   function Pop (The_Sound : out Sound_T) return Boolean is
+      Sounding : constant Boolean := S2_Wanted or S2_ATO;
+   begin
+      if Sounding /= S2_Reported then
+         S2_Reported := Sounding;
+         The_Sound := (if Sounding then S2_Warning_Start
                        else S2_Warning_Stop);
          return True;
       end if;

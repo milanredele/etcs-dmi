@@ -45,7 +45,7 @@ class Msg {
   random(n) { for (let i = 0; i < n; i++) this.u8(pick(0, 255)); return this; }
 }
 
-const EVC_TYPES = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A, 0x0C];
+const EVC_TYPES = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A, 0x0B, 0x0C];
 const FIXED = { 0x01: 21, 0x02: 9, 0x04: 2, 0x07: 22, 0x0A: 8, 0x0C: 2 };
 
 function inDomain(type) {
@@ -88,6 +88,18 @@ function inDomain(type) {
     // start pending; the coded fields go one value beyond the documented
     m.u8(pick(0, 255)).u8(pick(0, 4)).u8(pick(0, 255)).u8(pick(0, 255))
       .u8(pick(0, 255)).u8(pick(0, 3)).u8(pick(0, 4)).u8(pick(0, 1));
+  } else if (type === 0x0B) {
+    // MSG_ATO: the coded fields go one value beyond the documented, the
+    // name sometimes one byte beyond its maximum of 32
+    const n = chance(5) ? 33 : pick(0, 32), count = pick(0, 12);
+    m.u8(pick(0, 3)).u8(pick(0, 6)).u8(pick(0, 1)).u8(pick(0, 2)).u8(pick(0, 4))
+      .u16(chance(10) ? pick(5999, 6001) : optional(0, 5999, 0xFFFF))
+      .u8(pick(0, 1)).u8(pick(0, 8)).u8(pick(0, 4))
+      .u16(chance(10) ? pick(399, 401) : optional(0, 400, 0xFFFF))
+      .u8(pick(0, 1)).u8(optional(0, 24, 0xFF)).u8(pick(0, 60)).u8(pick(0, 60)).u8(n);
+    for (let i = 0; i < n; i++) m.u8(pick(0, 255));
+    m.u8(count);
+    for (let i = 0; i < count; i++) m.u16(pick(0, 40000));
   } else if (type === 0x0C) {
     // system status: the catalogue and one number on each side, the
     // three events and one beyond, now and then any byte

@@ -8,6 +8,7 @@ pragma Ada_2012;
 with Ada.Numerics.Elementary_Functions;
 with Display.D_Area; use Display.D_Area;
 with Display; use Display;
+with DMI_ATO;
 with General_Parameters;
 with Supplementary_Driving_Info;
 with Symbol;
@@ -311,39 +312,72 @@ package body DMI_Planning is
 
    procedure Draw_Orders is
       -- 8.3.4.23: adjacent symbols in different columns; 8.3.4.24: the
-      -- closest symbol on top. Orders are drawn farthest first, columns
-      -- assigned round robin in distance order.
-      Sorted : Order_List_T := Orders;
-      Count  : constant Natural := Order_Count;
-      Limit  : constant Natural := Display_Limit_M;
+      -- closest symbol on top. 8.3.4.25 / 8.5.3.6 to 8.5.3.8: the same
+      -- rules apply to the orders and the ATO stopping points together,
+      -- so both go into one list. Symbols are drawn farthest first,
+      -- columns assigned round robin in distance order.
+      type Item_T is record
+         Symbol_Kind : Natural range 0 .. 37 := 0; -- PL number; 0: ATO21
+         Dist_M      : Distance_T := 0;
+      end record;
+      for Item_T use record
+         Dist_M      at 0 range 0 .. 15;
+         Symbol_Kind at 2 range 0 .. 7;
+      end record;
+      for Item_T'Size use 32;
+      Stopping_Point : constant := 0;
+
+      Items : array (1 .. Max_Orders + Max_Stopping_Points) of Item_T;
+      Count : Natural := 0;
+      Limit : constant Natural := Display_Limit_M;
    begin
-      -- insertion sort by ascending distance
+      for I in 1 .. Order_Count loop
+         Count := Count + 1;
+         Items (Count) := (Symbol_Kind => Orders (I).Symbol_Kind,
+                           Dist_M      => Orders (I).Dist_M);
+      end loop;
+      -- 8.5.1.1: the stopping points exist only while the ATO selector
+      -- is "On"
+      if DMI_ATO.Displayed then
+         for I in 1 .. Stop_Count loop
+            Count := Count + 1;
+            Items (Count) := (Symbol_Kind => Stopping_Point,
+                              Dist_M      => Stops (I));
+         end loop;
+      end if;
+
+      -- insertion sort by ascending distance; at equal distances the
+      -- orders come before the stopping points (stable)
       for I in 2 .. Count loop
          declare
-            Tmp : constant Order_T := Sorted (I);
+            Tmp : constant Item_T := Items (I);
             J   : Natural := I;
          begin
-            while J > 1 and then Sorted (J - 1).Dist_M > Tmp.Dist_M loop
-               Sorted (J) := Sorted (J - 1);
+            while J > 1 and then Items (J - 1).Dist_M > Tmp.Dist_M loop
+               Items (J) := Items (J - 1);
                J := J - 1;
             end loop;
-            Sorted (J) := Tmp;
+            Items (J) := Tmp;
          end;
       end loop;
 
       for I in reverse 1 .. Count loop
          declare
             Column : constant Natural := (I - 1) mod 3; -- D2/D3/D4
-            Sym    : constant Symbol.T := PL_Symbol (Sorted (I).Symbol_Kind);
-            Y      : constant Integer := Y_Of (Sorted (I).Dist_M);
+            Sym    : constant Symbol.T :=
+              (if Items (I).Symbol_Kind = Stopping_Point
+               then Symbol.ATO_21 -- 8.5.3.3
+               else PL_Symbol (Items (I).Symbol_Kind));
+            Y      : constant Integer := Y_Of (Items (I).Dist_M);
             X      : constant Natural :=
               D2_X + Column * 25 + (25 - Sym.Width) / 2;
          begin
-            -- 8.3.4.2: only within the movement authority and up to the
-            -- first target at zero speed. The orders left out are the
-            -- farthest ones, so the columns of the others do not move.
-            -- 8.3.4.22: bottom of the symbol at the announcement distance
-            if Sorted (I).Dist_M <= Limit
+            -- 8.3.4.2, 8.5.3.2: only within the movement authority and
+            -- up to the first target at zero speed. The symbols left out
+            -- are the farthest ones, so the columns of the others do not
+            -- move. 8.3.4.22 / 8.5.3.5: bottom of the symbol at the
+            -- distance
+            if Items (I).Dist_M <= Limit
               and then Y - Sym.Height + 1 >= Top_Y and then Y <= Bottom_Y
             then
                D_Buffer.Draw_Symbol (Sym, (X, Y - Sym.Height + 1));
@@ -546,7 +580,10 @@ package body DMI_Planning is
       -- 8.3.2.1 / 8.5.11.5 layering, back to front
       Draw_PASP;
       Draw_Scale;
-      if Advice_Valid then
+      -- 8.5.1.1 / 8.5.1.2 d: the next advice change marker is ATO
+      -- information, shown outside stopping points while the ATO
+      -- selector is "On"
+      if Advice_Valid and then DMI_ATO.Outside_Shown then
          Draw_Advice_Marker;
       end if;
       if Indication_Valid then
@@ -651,9 +688,36 @@ package body DMI_Planning is
       end if;
    end Add_Order;
 
+   procedure Clear_Stopping_Points is
+   begin
+      Stop_Count := 0;
+   end Clear_Stopping_Points;
+
+   procedure Add_Stopping_Point (Dist_M : Natural) is
+      Farthest : Positive := 1;
+   begin
+      if Dist_M > Max_Range_M then
+         return;
+      end if;
+      if Stop_Count < Max_Stopping_Points then
+         Stop_Count := Stop_Count + 1;
+         Stops (Stop_Count) := Dist_M;
+         return;
+      end if;
+      for I in 2 .. Max_Stopping_Points loop
+         if Stops (I) > Stops (Farthest) then
+            Farthest := I;
+         end if;
+      end loop;
+      if Dist_M < Stops (Farthest) then
+         Stops (Farthest) := Dist_M;
+      end if;
+   end Add_Stopping_Point;
+
    procedure Reset is
    begin
       Valid := False;
+      Stop_Count := 0;
       MA_Dist_M := 0;
       Indication_Valid := False;
       Advice_Valid := False;
