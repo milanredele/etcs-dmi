@@ -544,6 +544,15 @@ package body Test_Support is
       DMI_Core.Handle_Message (MSG_TEXT_REMOVE, Payload);
    end Send_Text_Remove;
 
+   procedure Send_System_Status (Number : Natural; Event : Natural := 0) is
+      Payload : Stream_Element_Array (1 .. System_Status_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (Number mod 256));
+      Put_U8 (Payload, Offset, Unsigned_8 (Event mod 256));
+      DMI_Core.Handle_Message (MSG_SYSTEM_STATUS, Payload);
+   end Send_System_Status;
+
    procedure Send_Track_Cond (Kinds : TC_Array) is
       Payload : Stream_Element_Array
         (1 .. 1 + Stream_Element_Offset (Kinds'Length) * 2);

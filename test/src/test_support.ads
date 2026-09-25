@@ -126,6 +126,10 @@ package Test_Support is
 
    procedure Send_Text_Remove (ID : Natural);
 
+   -- MSG_SYSTEM_STATUS: an event of a catalogue entry (DMI_Protocol.SS_*;
+   -- Event 0 start, 1 end, 2 the event that starts the 30 s)
+   procedure Send_System_Status (Number : Natural; Event : Natural := 0);
+
    -- Kinds: 1..37 TC symbol number, 38 LX
    type TC_Array is array (Positive range <>) of Natural;
    procedure Send_Track_Cond (Kinds : TC_Array);
