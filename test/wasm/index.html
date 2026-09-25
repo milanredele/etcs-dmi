@@ -116,9 +116,25 @@
             picture and shows the system failure symbol; untick and it
             recovers. Reordering shows what the protocol does not yet
             survive.</li>
+          <li><b>Radio, shunting and Supervised Manoeuvre.</b> Pick
+            <i>Level 2</i> in the start-up dialogue instead: the
+            <i>Radio data</i> window follows. <i>GSM-R network ID</i>
+            (hold it two seconds) makes the EVC look for networks while
+            the hour glass runs in the title, then offers three; pick one
+            and watch the registration. <i>Use short number</i> or
+            <i>Enter RBC data</i> open a session with the simulated RBC,
+            after which the <i>Main</i> window offers <i>Initiate SM</i>
+            (hold it): the RBC authorises it after two seconds and the
+            DMI shows the SM symbols; <i>Exit SM</i> leads back to the
+            start-up dialogue. <i>Radio network type</i> FRMCS+GSM-R
+            leaves the FRMCS unregistered (the demo line has no FRMCS
+            network) and puts <i>Mission with one radio system</i> on
+            offer. In level 1 <i>Shunting</i> switches to SH at once;
+            <i>Special</i> offers the BMM reaction inhibition.</li>
           <li><b>Feed it by hand.</b> Switch the source to the manual EVC
             panel to put any speed, target, mode or level on the
-            display.</li>
+            display, and the on-board's radio data, waiting states and
+            list of GSM-R networks.</li>
         </ol>
       </details>
       <p class="note">
@@ -241,6 +257,46 @@
         <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
         <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
       </div>
+      <div class="row" title="MSG_ONBOARD: radio data, session and the waiting states (dmi_protocol.ads)">
+        <label>Session:
+          <select id="session">
+            <option value="0" selected>none</option><option value="1">establishing</option>
+            <option value="2">exists</option><option value="3">exists, RBC &gt; 2.2</option>
+          </select>
+        </label>
+        <label>Waiting:
+          <select id="waiting">
+            <option value="0" selected>nothing</option><option value="1">radio network</option>
+            <option value="2">RBC answer</option><option value="3">MA</option>
+            <option value="4">shunting answer</option><option value="5">SM answer</option>
+          </select>
+        </label>
+        <label>authorised <input type="checkbox" id="answer"></label>
+        <label>Radio type:
+          <select id="radio_type">
+            <option value="0">unknown</option><option value="1">FRMCS</option>
+            <option value="2">FRMCS+GSM-R</option><option value="3" selected>GSM-R</option>
+          </select>
+        </label>
+        <label>Installed:
+          <select id="radio_installed">
+            <option value="0">none</option><option value="1">FRMCS</option>
+            <option value="2">GSM-R</option><option value="3" selected>both</option>
+          </select>
+        </label>
+        <label>FRMCS reg <input type="checkbox" id="frmcs_reg"></label>
+        <label>GSM-R reg <input type="checkbox" id="gsmr_reg" checked></label>
+        <label>one radio <input type="checkbox" id="one_radio"></label>
+        <label>RBC info known <input type="checkbox" id="rbc_known" checked></label>
+        <label>Radio wait:
+          <select id="radio_wait">
+            <option value="0" selected>nothing</option><option value="1">network list</option>
+            <option value="2">registration</option>
+          </select>
+        </label>
+        <label>Networks <input type="text" id="networks" value="GSMR-A,GSMR-B,Telecom X" size="22"></label>
+        <button id="send_networks" title="MSG_RADIO_NETWORKS, once">Send list</button>
+      </div>
     </details>
 
     <canvas id="trackCanvas" width="640" height="150" style="background:#101820;"></canvas>
@@ -257,6 +313,7 @@
       const MSG_TRACK_LAYOUT = 0x08;
       const MSG_SIM_STATE = 0x09;
       const MSG_ONBOARD = 0x0A;
+      const MSG_RADIO_NETWORKS = 0x0D;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_DRIVER_DATA = 0x41;
       const MSG_POINTER = 0x50;
@@ -497,7 +554,7 @@
         drawTrack();
       }
 
-      const MODES = ['SB', 'SR', 'FS', 'TR'];
+      const MODES = ['SB', 'SR', 'FS', 'TR', 'SH', 'SM'];
       const MONITORINGS = ['CSM', 'TSM', 'RSM'];
 
       function conditionLabel(symbol) {
@@ -691,26 +748,74 @@
       }
 
       // MSG_ONBOARD (dmi_protocol.ads): the on-board state behind the
-      // enabling conditions of Tables 33 to 36. The manual panel has no
-      // fields for it: it reports a standing train with valid driver's
-      // data and no RBC, and a start of mission while the mode is SB, so
-      // that the Start Up dialogue sequence can be driven by hand.
+      // enabling conditions of Tables 33 to 37. The manual panel reports
+      // a standing train with valid driver's data, the RBC contact
+      // information valid, the safe consist length (zero in front) and
+      // the position referred to an LRBG, and a start of mission while
+      // the mode is SB, so that the Start Up dialogue sequence can be
+      // driven by hand; the session, the waiting states and the radio
+      // data come from the form.
       function manualOnboard() {
-        const { buf, dv } = makeMessage(MSG_ONBOARD, 8);
+        const { buf, dv } = makeMessage(MSG_ONBOARD, 11);
         const standing = val('speed') === 0;
         let o = HEADER_LENGTH;
-        dv.setUint8(o, 0x0F); o += 1;             // id/train data/level/TRN valid
-        dv.setUint8(o, 0); o += 1;                // no communication session
-        dv.setUint8(o, 0); o += 1;                // nothing from an RBC
+        dv.setUint8(o, 0xFF); o += 1;             // all data valid (bits 0-7)
+        dv.setUint8(o, val('session')); o += 1;
+        dv.setUint8(o, 1); o += 1;                // train data acknowledged
         dv.setUint8(o, (standing ? 1 : 0) | 2); o += 1; // standstill, override ok
         dv.setUint8(o, 2); o += 1;                // adhesion may be modified
         dv.setUint8(o, val('mode') === 1 ? 2 : 0); o += 1; // start of mission
-        dv.setUint8(o, 0); o += 1;                // nothing is awaited
-        dv.setUint8(o, 0);                        // no 'Start' pending
+        dv.setUint8(o, val('waiting')); o += 1;
+        dv.setUint8(o, 0); o += 1;                // no 'Start' pending
+        dv.setUint8(o, val('radio_type') | (val('radio_installed') << 2)
+                       | (checked('frmcs_reg') ? 16 : 0) | (checked('gsmr_reg') ? 32 : 0)
+                       | (checked('one_radio') ? 64 : 0) | (checked('rbc_known') ? 128 : 0));
+        o += 1;
+        dv.setUint8(o, val('radio_wait')); o += 1;
+        dv.setUint8(o, checked('answer') ? 1 : 0);
+        return buf;
+      }
+
+      // MSG_RADIO_NETWORKS: count, then length-prefixed Latin-1 names
+      // (at most 20 names of 1 to 18 characters, dmi_protocol.ads)
+      function manualNetworks() {
+        const names = $('networks').value.split(',').map((n) => n.trim())
+          .filter((n) => n.length > 0).slice(0, 20).map((n) => n.slice(0, 18));
+        const length = 1 + names.reduce((a, n) => a + 1 + n.length, 0);
+        const { buf, dv } = makeMessage(MSG_RADIO_NETWORKS, length);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, names.length); o += 1;
+        for (const n of names) {
+          dv.setUint8(o, n.length); o += 1;
+          for (let i = 0; i < n.length; i++) { dv.setUint8(o, n.charCodeAt(i) & 0xFF); o += 1; }
+        }
         return buf;
       }
 
       const manualMode = () => $('source').value === 'manual';
+
+      // MSG_DRIVER_DATA in words, for the console (dmi_protocol.ads)
+      const RADIO_TYPES = ['?', 'FRMCS', 'FRMCS+GSM-R', 'GSM-R'];
+      const RBC_CHOICES = ['entered', 'contact last RBC', 'use short number'];
+      function describeDriverData(p) {
+        const text = (from, n) => String.fromCharCode(...p.subarray(from, from + n));
+        switch (p[0]) {
+          case 0: return `driver id "${text(2, p[1])}"`;
+          case 1: return `train running number "${text(2, p[1])}"`;
+          case 2: return `train data (${p.length - 1} bytes)`;
+          case 3: return `SR speed ${p[1] | (p[2] << 8)} distance ${p[3] | (p[4] << 8)}`;
+          case 4: return p[1] === 0 ? 'GSM-R network ID: list requested'
+                                    : `GSM-R network ID "${text(2, p[1])}"`;
+          case 5: {
+            const id = (p[2] | (p[3] << 8) | (p[4] << 16) | (p[5] << 24)) >>> 0;
+            return `RBC data: ${RBC_CHOICES[p[1]] || p[1]}` +
+              (p[1] === 0 ? ` id ${id} phone "${text(7, p[6])}"` : '');
+          }
+          case 6: return `radio network type ${RADIO_TYPES[p[1]] || p[1]}`;
+          case 7: return `mission with one radio system: ${p[1] ? 'Yes' : 'No'}`;
+          default: return `kind ${p[0]}`;
+        }
+      }
 
       // ------------------------------------------------------------------
       // Main loop
@@ -763,6 +868,7 @@
         $('demand').addEventListener('input', sendDesk);
         $('auto_drive').addEventListener('input', sendDesk);
         $('reset').addEventListener('click', reset);
+        $('send_networks').addEventListener('click', () => toDmi.send(manualNetworks(), now));
         $('run').addEventListener('click', () => {
           running = !running;
           $('run').textContent = running ? 'Pause' : 'Run';
@@ -783,6 +889,8 @@
                             f.length >= HEADER_LENGTH + 5
                               ? f[HEADER_LENGTH + 3] | (f[HEADER_LENGTH + 4] << 8)
                               : '');
+              } else {
+                console.log('driver data', describeDriverData(f.subarray(HEADER_LENGTH)));
               }
               toEvc.send(f, now);
             }
