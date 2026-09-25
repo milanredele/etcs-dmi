@@ -51,6 +51,9 @@ package DMI_Text_Messages is
 
    procedure Remove (ID : Natural);
 
+   -- The store holds message ID
+   function Holds (ID : Natural) return Boolean;
+
    -- Scrolling of the non-acknowledgeable list (8.2.3.4.7 e). The
    -- offset is brought back into the list whenever Put or Remove make
    -- the list shorter, so the area never goes blank while there are

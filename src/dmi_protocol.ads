@@ -46,6 +46,11 @@ package DMI_Protocol is
    --  id u16, flags u8 (bit0 ack_required, bit1 first_group/bold,
    --  bits2-3 class: 0 fixed text, 1 plain text, 2 system status, 3 NTC),
    --  hour u8, minute u8, length u8, text bytes (Latin-1)
+   --  MSG_TEXT carries the free texts: the fixed and plain text messages
+   --  of the trackside. The system status messages of chapter 15 come as
+   --  MSG_SYSTEM_STATUS. Class 2 is still accepted, and such a message is
+   --  a first group message whatever bit1 says (8.2.3.4.7 a: the first
+   --  group contains the system status messages).
    --  The length covers L_TEXT of SUBSET-026 7.5.1.53 (0 .. 255) and the
    --  DMI keeps all of it. Limit of the DMI (DMI_Text_Messages): 12
    --  messages are stored, see there for what gives way when the store
@@ -168,6 +173,110 @@ package DMI_Protocol is
    --    dead meanwhile so that one press is one request (Table 33 #1).
    Onboard_Length : constant := 8;
 
+   MSG_SYSTEM_STATUS : constant Msg_Type_T := 16#0C#;
+   --  An event of a system status message of the catalogue of chapter 15
+   --  (Tables 68 and 70). The EVC detects the SUBSET-026 conditions and
+   --  reports them; the DMI owns the rest (DMI_System_Status): the text
+   --  and its case (15.1.1.3), the first group / bold (8.2.3.4.7 a), the
+   --  acknowledgement (15.1.1.4), the time stamp (its clock, MSG_STATUS),
+   --  the 30 s timers, the end by a button of the Main window, the end by
+   --  a mode change (15.1.1.2) and the single instance (15.1.1.7).
+   --    entry u8: catalogue entry number, one of the SS_* below; any
+   --      other value: the message is ignored
+   --    event u8: 0 start: the start condition of a row of the entry is
+   --                fulfilled (a start while the entry is displayed is a
+   --                second instance, 15.1.1.7);
+   --              1 end: the end condition of SUBSET-026 that the entry
+   --                names is fulfilled, and, for the entries of a brake
+   --                command reason, that reason is revoked by a mode
+   --                change as per 4.12.1.2 (15.1.1.6). Ignored by the
+   --                entries whose end the DMI owns alone (Trackside
+   --                malfunction, Train is rejected, ...).
+   --              2 the event that starts the 30 s of an entry "displayed
+   --                for 30 s once / from ...": 3.14.1.6 fulfilled (SS 1),
+   --                a train movement is detected (SS 17). Ignored by the
+   --                other entries.
+   --              any other value: the message is ignored
+   --  An end or an intermediate event for an entry that is not displayed
+   --  is ignored. The catalogue entries: a row group of Table 68 / 70
+   --  with the same text, end condition and Table 4.7.2 row of
+   --  SUBSET-026 (start conditions in brackets):
+   SS_Balise_Read_Error_Brake : constant := 1;
+   --  "Balise read error" (3.16.2.4.4.3, 3.16.2.5.3, 3.16.2.6.1,
+   --  3.16.2.7.1.1, 3.16.2.7.2.2): 30 s from event 2 (3.14.1.6)
+   SS_Balise_Read_Error_Trip : constant := 2;
+   --  "Balise read error" (4.6.3 [17], [66]): end = PT mode left,
+   --  4.6.3 [62], [63], [68]
+   SS_Trackside_Malfunction : constant := 3;
+   --  (3.16.2.4.9): 30 s from the start
+   SS_Communication_Error_Brake : constant := 4;
+   --  "Communication error" (3.16.3.4.1): end = 3.14.1.7 or the brake
+   --  command reason revoked (4.12.1.2), not before 30 s displayed
+   SS_Communication_Error_Trip : constant := 5; -- (4.6.3 [41])
+   SS_Entering_FS : constant := 6; -- (4.4.9.1.4): end = 4.4.9.1.4
+   SS_Entering_OS : constant := 7; -- (4.4.12.1.7): end = 4.4.12.1.7
+   SS_Entering_SM : constant := 8; -- (4.4.21.1.6): end = 4.4.21.1.6
+   SS_Runaway_Movement : constant := 9;
+   --  (3.14.2.4, 3.14.3.2, 3.14.4.2 and 3.14.4.5, 3.18.3.3.1,
+   --  4.4.11.1.5.1): end = 3.14.1.5
+   SS_SM_Refused : constant := 10;        -- (5.21.2 A220): Main window
+   SS_SM_Request_Failed : constant := 11; -- (5.21.4.1): Main window
+   SS_SH_Refused : constant := 12;        -- (5.6.2 A220): Main window
+   SS_SH_Refused_Trip : constant := 13;   -- (4.6.3 [35]): end = [63]
+   SS_SH_Request_Failed : constant := 14; -- (5.6.4.1.2): Main window
+   SS_Trackside_Not_Compatible : constant := 15;
+   --  (3.5.3.7 d) 2nd bullet): 30 s from the start
+   SS_Trackside_Not_Compatible_Trip : constant := 16; -- (4.6.3 [65])
+   SS_Train_Data_Changed : constant := 17;
+   --  (5.17.2.2 A1): 30 s from event 2 (a train movement is detected)
+   SS_Train_Data_Changed_Brake : constant := 18;
+   --  (5.17.2.2 S2, S4): end = 5.17.2.2 S3 (E3), S5 (E5)
+   SS_Safe_Consist_Length : constant := 19;
+   --  "Safe consist length no longer available" (4.4.21.1.12): end =
+   --  3.14.1.7.6 or the brake command reason revoked (4.12.1.2), not
+   --  before 30 s displayed
+   SS_Train_Rejected : constant := 20;    -- (5.4.3.2 A40): Main window
+   SS_Unauthorized_Passing : constant := 21;
+   --  "Unauthorized passing of EOA / LOA" (4.6.3 [11], [12], [16], [18],
+   --  [43])
+   SS_No_MA_Level_Transition : constant := 22; -- (4.6.3 [39], [67])
+   SS_SR_Distance_Exceeded : constant := 23;   -- (4.6.3 [42])
+   SS_SH_Stop_Order : constant := 24;          -- (4.6.3 [49], [52])
+   SS_SR_Stop_Order : constant := 25;
+   --  (4.6.3 [36], 4.6.3 [54] (X >= 2), 6.6.2.2.2 (X = 1))
+   SS_Emergency_Stop : constant := 26;         -- (4.6.3 [20])
+   SS_RV_Distance_Exceeded : constant := 27;
+   --  (3.15.4.8, 4.4.18.1.4): end = 3.14.1.7.1
+   SS_PT_Distance_Exceeded : constant := 28;
+   --  (4.4.14.1.3, 4.4.14.1.3.2): end = 3.14.1.7.4
+   SS_No_Track_Description : constant := 29;   -- (4.6.3 [69])
+   SS_Route_Unsuitable_Gauge : constant := 30;
+   --  (3.12.2.3 a)): end = route suitability data deleted (A.3.4,
+   --  3.7.3.2 d), 3.7.3.1 h) with 3.12.2.3 a) not fulfilled)
+   SS_Route_Unsuitable_Traction : constant := 31; -- (3.12.2.3 b)), idem
+   SS_Route_Unsuitable_Axle_Load : constant := 32; -- (3.12.2.3 c)), idem
+   SS_FRMCS_Registration_Failed : constant := 33;
+   --  (5.4.3.2 A41, A42, A43): end = the driver elects to perform the
+   --  mission with only one radio system, or Main window
+   SS_GSMR_Registration_Failed : constant := 34;
+   --  (5.4.3.2 A29, A42, A43): idem
+   SS_NL_No_Longer_Permitted : constant := 35;
+   --  (4.4.15.1.1.3): to be acknowledged (15.1.1.4.1), ends when
+   --  acknowledged
+   SS_Odometer_Impaired : constant := 36;      -- (3.6.8.5): end = 3.6.8.6
+   SS_ATO_Needs_Data : constant := 37;
+   --  Table 70 (SUBSET-125 7.14.2.13): end = 7.14.2.14
+   SS_ATO_Runaway_Movement : constant := 38;
+   --  "Runaway movement", Table 70 (SUBSET-125 7.14.2.18): end = 7.14.2.18
+   --  The trip reason entries (2, 5, 13, 16, 21 .. 26, 29) end with
+   --  "PT mode left, 4.6.3 [62], [63]" and [68] where the row says so.
+   --  "Main window": ends as soon as any button of the Main window is
+   --  selected, which the DMI detects and reports (driver action 16).
+   --  Not in the catalogue: "[name of NTC] brake demand" (Table 68) and
+   --  Table 69, which need the name of a National System (15.1.1.5): NTC
+   --  is out of scope.
+   System_Status_Length : constant := 2;
+
    -- EVC simulator -> UI (visualization; the DMI ignores these)
    MSG_TRACK_LAYOUT : constant Msg_Type_T := 16#08#;
    --  eoa u32, release_speed u8,
@@ -204,7 +313,13 @@ package DMI_Protocol is
    --  3 tunnel toggle, 4 geo toggle, 5 start mission, 6 override EOA,
    --  7 shunting request, 8 exit shunting, 9 adhesion (arg 0/1),
    --  10 train integrity confirmed, 11 level selected (arg Level_T'Pos),
-   --  12 non-leading
+   --  12 non-leading,
+   --  16 a button of the Main window was selected (arg 0): sent when the
+   --     selection ends a displayed system status message whose end
+   --     condition is "as soon as any button in the main window is
+   --     selected" (Table 68, MSG_SYSTEM_STATUS), before the action of
+   --     the button itself, so that the on-board applies that end too;
+   --     not sent when no such message is displayed
    Driver_Action_Length : constant := 3;
    --  Action 2, the driver's acknowledgement (DMI 5.4.1), names the one
    --  request it answers. Its payload is Driver_Ack_Length bytes:
@@ -215,6 +330,11 @@ package DMI_Protocol is
    --                6 NTC text message,
    --    id u16    = for kinds 2, 3, 4 and 6 the id of the acknowledged
    --                text message as given in MSG_TEXT; 0 otherwise.
+   --                A system status message of MSG_SYSTEM_STATUS (kind 4)
+   --                is named by 16#8000# + its catalogue entry number
+   --                (SS_*), so an EVC that still sends MSG_TEXT class 2
+   --                messages to be acknowledged keeps their ids below
+   --                16#8000# to tell the two apart.
    --  All other actions keep the Driver_Action_Length payload. A receiver
    --  accepts both lengths and ignores an action 2 of the short form
    --  (it does not say what was acknowledged).

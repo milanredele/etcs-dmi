@@ -413,6 +413,8 @@ package body DMI_Text_Messages is
       end if;
    end Remove;
 
+   function Holds (ID : Natural) return Boolean is (Find (ID) /= 0);
+
    function Can_Scroll_Up return Boolean is
      (Scroll_Offset > 0);
 
