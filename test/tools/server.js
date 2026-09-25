@@ -33,12 +33,19 @@ let webSocket = null;
 
 const MSG_FRAME = 0x60;
 const MSG_SOUND = 0x61;
+const MSG_SETTINGS = 0x62;
+
+// the last MSG_SETTINGS of the DMI, for a browser that connects later:
+// the DMI tells its settings when they change and when it (re)starts
+let lastSettings = null;
 
 function forward(from, frame) {
 	const type = frame.readUInt8(0);
-	// screen frames and sounds are for the UI only; flooding the EVC
-	// with 300 kB frames would stall its receive path
-	const uiOnly = type === MSG_FRAME || type === MSG_SOUND;
+	// screen frames, sounds and the settings of the display and the
+	// loudspeaker are for the UI only; flooding the EVC with 300 kB
+	// frames would stall its receive path
+	const uiOnly = type === MSG_FRAME || type === MSG_SOUND || type === MSG_SETTINGS;
+	if (from === 'dmi' && type === MSG_SETTINGS) lastSettings = Buffer.from(frame);
 	if (from !== 'dmi' && !uiOnly && dmiSocket) dmiSocket.write(frame);
 	if (from !== 'evc' && !uiOnly && evcSocket) evcSocket.write(frame);
 	if (from !== 'web' && webSocket && webSocket.readyState === WebSocket.OPEN) {
@@ -68,6 +75,7 @@ const wss = new WebSocket.Server({ port: 8080 });
 wss.on('connection', function (ws) {
 	console.log('browser connected');
 	webSocket = ws;
+	if (lastSettings) ws.send(lastSettings);
 	const split = makeSplitter((frame) => forward('web', frame));
 	ws.on('message', (message) => split(Buffer.from(message)));
 	ws.on('close', () => { console.log('browser disconnected'); webSocket = null; });

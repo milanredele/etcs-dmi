@@ -47,6 +47,14 @@
       .about ol { margin: 4px 0 8px; padding-left: 1.6em; }
       .about li { margin-bottom: 4px; }
       .about .note { color: #999; font-size: 12px; margin: 0; }
+      /* the keys of the DMI unit on the driver's desk (MSG_DESK_INPUT) */
+      .desk { margin-top: 10px; display: flex; gap: 10px; align-items: center;
+              justify-content: center; font-size: 12px; color: #aab; }
+      .desk button { touch-action: none; user-select: none; }
+      .desk button.held { background: #666; }
+      .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+              background: #411; margin-right: 4px; vertical-align: -1px; }
+      .lamp.on { background: #f33; box-shadow: 0 0 6px #f33; }
     </style>
   </head>
   <body>
@@ -153,6 +161,16 @@
             ones end after 30 s, on a button of the <i>Main</i> window
             or when the mode changes), and set the on-board's radio
             data, waiting states and list of GSM-R networks.</li>
+          <li><b>The keys under the display.</b> <i>Settings</i> is the
+            desk button for the <i>Settings</i> window (DMI 8.6.1.6): it
+            works where the wrench does, on the default window. There
+            <i>Volume</i> and <i>Brightness</i> take a level from 0 to
+            10; the display dims and the sounds get softer, never dark
+            or silent, and the DMI keeps the values when the mission is
+            reset. <i>Isolation</i> isolates the on-board (DMI 5.6.1.1):
+            hold it for two seconds and release it. The simulator enters
+            the mode IS, which has no symbol on the screen: the lamp of
+            the key shows it. Only <i>Reset mission</i> leaves IS.</li>
         </ol>
       </details>
       <p class="note">
@@ -373,6 +391,11 @@
     <div class="bezel">
       <canvas id="myCanvas" width="640" height="480"></canvas>
       <div class="plate">ETCS DMI</div>
+      <div class="desk">
+        <button id="desk_settings" title="MSG_DESK_INPUT input 1: the desk button for the Settings window (DMI 8.6.1.6); it acts when released, and only on the default window">Settings</button>
+        <button id="desk_isolation" title="MSG_DESK_INPUT input 2: isolate the ERTMS/ETCS on-board (DMI 5.6.1.1); hold it 2 s, then release. The lamp is the indication of the mode IS (DMI 8.2.3.1.2.2)"><span id="iso_lamp" class="lamp"></span>Isolation</button>
+        <span id="dmi_settings" title="MSG_SETTINGS: the luminance and the volume the driver chose in the Settings window, applied by the display and the loudspeaker">brightness – · volume –</span>
+      </div>
     </div>
 
     <script>
@@ -389,7 +412,9 @@
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_DRIVER_DATA = 0x41;
       const MSG_POINTER = 0x50;
+      const MSG_DESK_INPUT = 0x52;
       const MSG_SOUND = 0x61;
+      const MSG_SETTINGS = 0x62;
       const HEADER_LENGTH = 5;
 
       const DMI_TICK_MS = 50;   // frame period of the DMI
@@ -557,12 +582,60 @@
           if (!s2Audio) {
             s2Audio = new Audio(soundFiles[3]);
             s2Audio.loop = true;
+            s2Audio.volume = soundGain;
             s2Audio.play().catch(() => {});
           }
         } else if (id === 4) { // S2 stop
           if (s2Audio) { s2Audio.pause(); s2Audio = null; }
         } else if (soundFiles[id]) {
-          new Audio(soundFiles[id]).play().catch(() => {});
+          const a = new Audio(soundFiles[id]);
+          a.volume = soundGain;
+          a.play().catch(() => {});
+        }
+      }
+
+      // MSG_SETTINGS (dmi_protocol.ads): the display unit and the
+      // loudspeaker apply the levels 0 .. 10 the driver chose (DMI 5.2.2,
+      // 5.2.3); the frame itself carries colour indices only. The ranges
+      // are the device's (5.2.2.3, 5.2.3.3). Choice: 40 % to 100 % of the
+      // luminance and 25 % to 100 % of the volume, so that the lowest
+      // level keeps the display readable and the sounds audible. The
+      // third byte lights the lamp of the isolation key (mode IS,
+      // DMI 8.2.3.1.2.2).
+      let soundGain = 0.625;
+      function applySettings(p) {
+        if (p.length !== 3) return;
+        const b = Math.min(p[0], 10), v = Math.min(p[1], 10);
+        document.getElementById('myCanvas').style.filter =
+          `brightness(${(0.4 + 0.06 * b).toFixed(2)})`;
+        soundGain = 0.25 + 0.075 * v;
+        if (s2Audio) s2Audio.volume = soundGain;
+        document.getElementById('iso_lamp').classList.toggle('on', p[2] === 1);
+        document.getElementById('dmi_settings').textContent =
+          `brightness ${b}/10 · volume ${v}/10` + (p[2] === 1 ? ' · isolated (IS)' : '');
+      }
+
+      // the desk keys: pressed (1) and released (0) as they happen; the
+      // DMI decides what a key does (dmi_protocol.ads, MSG_DESK_INPUT)
+      function wireDeskKeys(send) {
+        for (const [id, input] of [['desk_settings', 1], ['desk_isolation', 2]]) {
+          const el = document.getElementById(id);
+          let down = false;
+          el.addEventListener('pointerdown', (e) => {
+            if (down) return;
+            down = true;
+            el.setPointerCapture(e.pointerId);
+            el.classList.add('held');
+            send(input, 1);
+          });
+          const up = () => {
+            if (!down) return;
+            down = false;
+            el.classList.remove('held');
+            send(input, 0);
+          };
+          el.addEventListener('pointerup', up);
+          el.addEventListener('pointercancel', up);
         }
       }
 
@@ -644,7 +717,7 @@
         drawTrack();
       }
 
-      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD', 'SH', 'SM'];
+      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD', 'SH', 'SM', 'IS'];
       const MONITORINGS = ['CSM', 'TSM', 'RSM'];
 
       function conditionLabel(symbol) {
@@ -1059,14 +1132,18 @@
           'geo toggle', 'start', 'override EOA', 'shunting', 'exit shunting',
           'adhesion', 'train integrity', 'level', 'non-leading',
           'ATO engage(1)/disengage(0)', 'skip stopping point(1)/revoke(0)',
-          'ATO selector (1 Stand-by, 2 On)'];
+          'ATO selector (1 Stand-by, 2 On)', 'main window button',
+          'SM (0 initiate, 1 continue, 2 exit)', 'BMM inhibition (0) / revoke (1)',
+          'maintain shunting', 'isolate'];
 
         // driver actions and data go to the EVC over the wire, sounds
-        // are played here (the loudspeaker is part of the DMI unit)
+        // and settings are played here (the loudspeaker and the display
+        // are part of the DMI unit)
         function routeFromDmi() {
           for (const f of splitFrames(transmit(dmi, 'dmi'))) {
             const type = f[0];
             if (type === MSG_SOUND) playSound(f[HEADER_LENGTH]);
+            else if (type === MSG_SETTINGS) applySettings(f.subarray(HEADER_LENGTH));
             else if (type === MSG_DRIVER_ACTION || type === MSG_DRIVER_DATA) {
               if (type === MSG_DRIVER_ACTION) {
                 // an acknowledgement (action 2) also carries the text
@@ -1177,6 +1254,14 @@
         canvas.addEventListener('pointerdown', (e) => pointer(0, ...at(e)));
         canvas.addEventListener('pointerup', (e) => pointer(1, ...at(e)));
         canvas.addEventListener('pointermove', (e) => { if (e.buttons) pointer(2, ...at(e)); });
+
+        // the desk keys of the DMI unit: local too
+        wireDeskKeys((input, pressed) => {
+          const { buf, dv } = makeMessage(MSG_DESK_INPUT, 2);
+          dv.setUint8(HEADER_LENGTH, input);
+          dv.setUint8(HEADER_LENGTH + 1, pressed);
+          guarded(() => receive(dmi, 'dmi', buf));
+        });
 
         readWireParams();
         reset();

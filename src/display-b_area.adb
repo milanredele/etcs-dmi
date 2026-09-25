@@ -147,7 +147,16 @@ package body Display.B_Area is
          when M_RV => DS (Symbol.MO_14);
          when M_SF => DS (Symbol.MO_18);
          when M_SN => DS (Symbol.MO_19);
-         when others =>
+         when M_IS =>
+            -- 8.2.3.1.2 has no symbol for IS; 8.2.3.1.2.2: the mode IS
+            -- is indicated by any means, e.g. by the isolation device.
+            -- The means to isolate is the desk isolation key of the DMI
+            -- unit (5.6.1.1, MSG_DESK_INPUT input 2) and its indication
+            -- is the 'isolated' flag of MSG_SETTINGS (DMI_Core); B7
+            -- stays empty.
+            null;
+         when M_NP | M_SL =>
+            -- no symbol in 8.2.3.1.2 either
             null;
       end case;
    end Draw_B7;

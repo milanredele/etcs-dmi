@@ -1155,6 +1155,58 @@ package body Test_Support is
       end if;
    end Expect_Driver_Data;
 
+   procedure Send_Desk_Input (Input : Natural; Pressed : Natural) is
+      Payload : Stream_Element_Array (1 .. Desk_Input_Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (Input mod 256));
+      Put_U8 (Payload, Offset, Unsigned_8 (Pressed mod 256));
+      DMI_Core.Handle_Message (MSG_DESK_INPUT, Payload);
+   end Send_Desk_Input;
+
+   procedure Expect_Settings (Count      : Natural;
+                              Brightness : Natural;
+                              Volume     : Natural;
+                              Isolated   : Natural;
+                              What       : String) is
+      Found : Natural := 0;
+      Bad   : Natural := 0;
+      Got   : Natural := 0;
+
+      procedure Visit (The_Type : Msg_Type_T;
+                       Payload  : Stream_Element_Array) is
+      begin
+         if The_Type = MSG_SETTINGS then
+            Found := Found + 1;
+            if Payload'Length = Settings_Length then
+               Got := 65536 * Natural (Payload (Payload'First))
+                 + 256 * Natural (Payload (Payload'First + 1))
+                 + Natural (Payload (Payload'First + 2));
+            else
+               Bad := Bad + 1;
+            end if;
+         end if;
+      end Visit;
+
+      procedure Walk is new Walk_Outbox (Visit);
+      Wanted : constant Natural :=
+        65536 * Brightness + 256 * Volume + Isolated;
+   begin
+      Checks := Checks + 1;
+      Walk;
+      if Found = Count and then Bad = 0
+        and then (Count = 0 or else Got = Wanted)
+      then
+         Pass (What);
+      else
+         Fail (What & ": expected" & Natural'Image (Count)
+               & " MSG_SETTINGS, got" & Natural'Image (Found)
+               & " (last" & Natural'Image (Got / 65536)
+               & Natural'Image (Got / 256 mod 256)
+               & Natural'Image (Got mod 256) & ")");
+      end if;
+   end Expect_Settings;
+
    procedure Check (Condition : Boolean; What : String) is
    begin
       Checks := Checks + 1;

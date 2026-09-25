@@ -84,11 +84,20 @@ package General_Parameters is
    -- scenarios drive the DMI without a cyclic EVC).
    EVC_Link_Timeout_Ms : Natural := 1000;
    
-   -- DMI 5.2.2: driver adjustable, median as default
+   -- DMI 5.2.2: driver adjustable (Brightness window, 11.3.8), median
+   -- as default (5.2.2.2). The range is outside the scope of the DMI
+   -- specification (5.2.2.3): eleven levels of the display unit, 0 its
+   -- lowest luminance that is still readable, never dark. The display
+   -- unit applies it (DMI_Protocol.MSG_SETTINGS); the frame carries
+   -- colour indices only.
+   -- Stored on board: DMI_Core.Initialise and a loss of the EVC link
+   -- keep the value (5.2.2.2 "the last stored luminance").
    type Display_Luminance_T is range 0 .. 10;
    Display_Luminance : Display_Luminance_T := 5;
 
-   -- DMI 5.2.3: driver adjustable, median as default
+   -- DMI 5.2.3: the same for the volume of the loudspeaker (Volume
+   -- window, 11.3.7); 0 is the lowest volume that still draws the
+   -- driver's attention (14.1.1.1), never mute.
    type Loudspeaker_Volume_T is range 0 .. 10;
    Loudspeaker_Volume : Loudspeaker_Volume_T := 5;
    

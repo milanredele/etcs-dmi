@@ -6324,6 +6324,415 @@ procedure DMI_Test is
       External_EVC (False);
    end Scenario_Win_Simulator;
 
+   ---------------------------------------------------------------------
+   -- GEN-3, GEN-10, GEN-11: the devices of the DMI unit. The luminance
+   -- and the volume take effect in the UI (MSG_SETTINGS) and are kept
+   -- over a reset (5.2.2, 5.2.3); the desk keys for the Settings window
+   -- (8.6.1.6) and the isolation (5.6.1.1, MSG_DESK_INPUT); the mode IS
+   -- (8.2.3.1.2.2)
+   ---------------------------------------------------------------------
+
+   -- The scenarios below change the stored luminance and volume; they
+   -- leave them as they found them
+   HW_Saved_Luminance : General_Parameters.Display_Luminance_T;
+   HW_Saved_Volume    : General_Parameters.Loudspeaker_Volume_T;
+
+   procedure HW_Save is
+   begin
+      HW_Saved_Luminance := General_Parameters.Display_Luminance;
+      HW_Saved_Volume := General_Parameters.Loudspeaker_Volume;
+   end HW_Save;
+
+   procedure HW_Restore is
+   begin
+      General_Parameters.Display_Luminance := HW_Saved_Luminance;
+      General_Parameters.Loudspeaker_Volume := HW_Saved_Volume;
+      General_Parameters.EVC_Link_Timeout_Ms := 0;
+   end HW_Restore;
+
+   -- 5.2.2 / 5.2.3: the values the windows propose after a change and
+   -- after a reset, and what the UI is told
+   procedure Scenario_HW_Settings_Stored is
+      use type General_Parameters.Display_Luminance_T;
+      use type General_Parameters.Loudspeaker_Volume_T;
+   begin
+      HW_Save;
+      -- 5.2.2.2 / 5.2.3.2: nothing stored yet, the median of the range
+      General_Parameters.Display_Luminance := 5;
+      General_Parameters.Loudspeaker_Volume := 5;
+      Reset;
+      -- FS at standstill: Volume and Brightness enabled (Table 36)
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Win_At_Standstill;
+      Step;
+      Expect_Settings (1, 5, 5, 0,
+                       "MSG_SETTINGS once after Initialise and the start "
+                       & "of the EVC link");
+      Step;
+      Expect_Settings (0, 0, 0, 0, "nothing changed: nothing sent");
+
+      -- the Volume window proposes the stored value; the driver chooses
+      -- the lowest level
+      Press (610, 240);                        -- F5: Settings
+      Win_Menu (2);                            -- Volume
+      Check (Win_Top_Is (DMI_Windows.W_Volume), "hw: the Volume window");
+      Check (Win_Value = "5", "11.7.1.4: the median volume is proposed");
+      Key (1);                                 -- level 0
+      Enter_Single;
+      Check (General_Parameters.Loudspeaker_Volume = 0,
+             "11.7.1.5: the accepted volume is stored");
+      Expect_Settings (1, 5, 0, 0, "5.2.3.1: the UI learns the new volume");
+
+      Win_Menu (3);                            -- Brightness
+      Check (Win_Top_Is (DMI_Windows.W_Brightness),
+             "hw: the Brightness window");
+      Check (Win_Value = "5", "11.7.1.4: the median luminance is proposed");
+      Key (3);                                 -- level 2
+      Enter_Single;
+      Check (General_Parameters.Display_Luminance = 2,
+             "11.7.1.5: the accepted luminance is stored");
+      Expect_Settings (1, 2, 0, 0,
+                       "5.2.2.1: the UI learns the new luminance");
+
+      -- revalidation of the same value: nothing new for the UI
+      Win_Menu (3);
+      Enter_Single;
+      Expect_Settings (0, 0, 0, 0, "the same luminance again: not sent");
+      Win_Default;
+
+      -- the reset of the DMI (a new mission, a restart of its software):
+      -- the values are the DMI unit's and stay (5.2.2.2, 5.2.3.2)
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Win_At_Standstill;
+      Step;
+      Check (General_Parameters.Display_Luminance = 2
+             and then General_Parameters.Loudspeaker_Volume = 0,
+             "5.2.2.2 / 5.2.3.2: the stored values survive a reset");
+      Expect_Settings (1, 2, 0, 0,
+                       "after a restart the UI is told the stored values");
+      Press (610, 240);                        -- F5: Settings
+      Win_Menu (2);
+      Check (Win_Value = "0",
+             "11.7.1.4: after the reset the stored volume is proposed");
+      Step;
+      Check_Frame ("hw_volume_after_reset");
+      Win_Close;
+      Win_Menu (3);
+      Check (Win_Value = "2",
+             "11.7.1.4: after the reset the stored luminance is proposed");
+      Step;
+      Check_Frame ("hw_brightness_after_reset");
+      Win_Default;
+
+      -- the EVC link: its return after a loss tells the UI again (a UI
+      -- may have (re)connected with it); the loss keeps the values
+      -- (the wrapper's EVC keeps quiet, so that the link times out)
+      External_EVC;
+      General_Parameters.EVC_Link_Timeout_Ms := 1000;
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Expect_Settings (0, 0, 0, 0, "hw: the link is up, nothing new");
+      for I in 1 .. 21 loop
+         Step;
+      end loop;
+      Check (DMI_Core.EVC_Link_Lost, "hw: the EVC link is lost");
+      Check (General_Parameters.Display_Luminance = 2
+             and then General_Parameters.Loudspeaker_Volume = 0,
+             "the link loss keeps the stored values");
+      Expect_Settings (0, 0, 0, 0, "the loss itself sends nothing");
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Check (not DMI_Core.EVC_Link_Lost, "hw: the EVC is back");
+      Expect_Settings (1, 2, 0, 0, "the EVC link restarts: told again");
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Expect_Settings (0, 0, 0, 0, "and not on every EVC message");
+
+      -- the UI message waits in DMI_Core rather than being dropped when
+      -- the caller only takes the driver's actions
+      General_Parameters.Loudspeaker_Volume := 7;
+      Step;                                    -- takes actions only
+      Expect_Settings (1, 2, 7, 0, "the change waits for the UI");
+      HW_Restore;
+      Reset;
+      Drain_Outbox;
+   end Scenario_HW_Settings_Stored;
+
+   -- 8.6.1.6: the desk key for the Settings window
+   procedure Scenario_HW_Desk_Settings is
+      use DMI_Protocol;
+   begin
+      Reset;
+      Step;
+      -- 8.6.1.7: an up-type button: nothing on the way down
+      Send_Desk_Input (DESK_SETTINGS, 1);
+      Step;
+      Check (not DMI_Windows.Is_Open, "8.6.1.7: nothing while held down");
+      Send_Desk_Input (DESK_SETTINGS, 0);
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Settings),
+             "8.6.1.6: the desk key opens the Settings window");
+      Check_Frame ("hw_desk_settings");
+      Expect_No_Sound ("the desk key plays no click (5.3.2.2.1 b)");
+
+      -- a window is displayed: only it responds (5.3.1.1.5)
+      Send_Desk_Input (DESK_SETTINGS, 1);
+      Send_Desk_Input (DESK_SETTINGS, 0);
+      Step;
+      Win_Close;
+      Check (not DMI_Windows.Is_Open,
+             "the key over the Settings window stacks nothing");
+      Press (610, 40);                         -- F1: Main
+      Send_Desk_Input (DESK_SETTINGS, 1);
+      Send_Desk_Input (DESK_SETTINGS, 0);
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "5.3.1.1.5: over the Main window the key is ignored");
+      Win_Default;
+
+      -- pressed on the default window, released over another window
+      Send_Desk_Input (DESK_SETTINGS, 1);
+      Press (610, 140);                        -- F3: Data view
+      Send_Desk_Input (DESK_SETTINGS, 0);
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Data_View),
+             "released over the Data view: ignored");
+      Win_Default;
+      -- pressed over a window, released on the default window
+      Press (610, 40);                         -- F1: Main
+      Send_Desk_Input (DESK_SETTINGS, 1);
+      Win_Default;
+      Send_Desk_Input (DESK_SETTINGS, 0);
+      Step;
+      Check (not DMI_Windows.Is_Open,
+             "pressed over the Main window: ignored when released");
+      -- up without down
+      Send_Desk_Input (DESK_SETTINGS, 0);
+      Step;
+      Check (not DMI_Windows.Is_Open, "a key up alone does nothing");
+
+      -- a window that cannot be left: Start Up before S10 (11.7.2.2)
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Step;
+      Check (DMI_Windows.In_Start_Up
+             and then Win_Top_Is (DMI_Windows.W_Driver_ID),
+             "hw: Start Up with the Driver ID window");
+      Send_Desk_Input (DESK_SETTINGS, 1);
+      Send_Desk_Input (DESK_SETTINGS, 0);
+      Step;
+      Check (DMI_Windows.In_Start_Up
+             and then Win_Top_Is (DMI_Windows.W_Driver_ID),
+             "11.7.2 / 5.3.1.1.5: Start Up is not left for Settings");
+      Send_Mode_Level (Mode => 16, Level => 4); -- SL ends Start Up
+      Step;
+      Check (not DMI_Windows.Is_Open, "hw: the default window again");
+
+      -- the key works in any mode on the default window (8.6.1.4),
+      -- also while the EVC link is lost (SF)
+      General_Parameters.EVC_Link_Timeout_Ms := 1000;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      for I in 1 .. 21 loop
+         Step;
+      end loop;
+      Check (DMI_Core.EVC_Link_Lost, "hw: SF, the link is lost");
+      Send_Desk_Input (DESK_SETTINGS, 1);
+      Send_Desk_Input (DESK_SETTINGS, 0);
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Settings),
+             "8.6.1.4: the Settings window in SF too");
+      General_Parameters.EVC_Link_Timeout_Ms := 0;
+      Reset;
+
+      -- malformed input: the whole message is ignored
+      Send_Raw (16#52#, (1 => 1));
+      Send_Raw (16#52#, (1 => 1, 2 => 0, 3 => 0));
+      Send_Raw (16#52#, (1 .. 0 => 0));
+      Step;
+      Check (not DMI_Windows.Is_Open, "wrong lengths are ignored");
+      Send_Desk_Input (DESK_SETTINGS, 1);
+      Send_Raw (16#52#, (1 => 1, 2 => 1, 3 => 7));
+      Send_Desk_Input (DESK_SETTINGS, 2);      -- neither down nor up
+      Send_Desk_Input (DESK_SETTINGS, 255);
+      Step;
+      Check (not DMI_Windows.Is_Open,
+             "a pressed byte other than 0 / 1 is ignored");
+      Send_Desk_Input (DESK_SETTINGS, 0);      -- the real release
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Settings),
+             "the key stays pressed through ignored messages");
+      Win_Default;
+      for Input of Byte_Array'(0, 3, 4, 127, 255) loop
+         Send_Desk_Input (Input, 1);
+         Send_Desk_Input (Input, 0);
+      end loop;
+      Step;
+      Check (not DMI_Windows.Is_Open, "unknown desk inputs are ignored");
+      Expect_Actions (20, 0, "and send nothing to the EVC");
+      Drain_Sounds;
+   end Scenario_HW_Desk_Settings;
+
+   -- 5.6.1.1: the means to isolate the on-board, a delay-type desk key;
+   -- 8.2.3.1.2.2: the mode IS is indicated by the isolation device
+   procedure Scenario_HW_Isolation is
+      use DMI_Protocol;
+      use type Supplementary_Driving_Info.Mode_T;
+
+      procedure Hold (Steps : Natural) is
+      begin
+         Send_Desk_Input (DESK_ISOLATION, 1);
+         for I in 1 .. Steps loop
+            Step;
+         end loop;
+         Send_Desk_Input (DESK_ISOLATION, 0);
+         Step;
+      end Hold;
+   begin
+      HW_Save;
+      General_Parameters.Display_Luminance := 5;
+      General_Parameters.Loudspeaker_Volume := 5;
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);  -- FS, L1
+      Send_Speed_State (V_Cur => 80, V_Perm => 120, V_Target => 0,
+                        V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Sounds;
+      Expect_Settings (1, 5, 5, 0, "hw: not isolated");
+
+      -- 5.3.2.6.6: released before 2 s, no activation
+      Hold (39);                               -- 1.95 s
+      Expect_Actions (20, 0, "5.3.2.6.6: less than 2 s: no isolation");
+      -- held for 2 s: the activation when the key comes up
+      Send_Desk_Input (DESK_ISOLATION, 1);
+      for I in 1 .. 45 loop
+         Step;
+      end loop;
+      Expect_Actions (20, 0, "5.3.2.6.6: nothing while still held");
+      Send_Desk_Input (DESK_ISOLATION, 0);
+      Step;
+      Expect_Action (20, 0, "5.6.1.1: the isolation request to the EVC");
+      Expect_No_Sound ("the desk key plays no click (5.3.2.2.1 b)");
+
+      -- SUBSET-026 4.7.2: in every mode and whatever window is shown
+      Press (610, 240);                        -- F5: Settings
+      Hold (40);
+      Expect_Action (20, 0, "isolation over the Settings window");
+      Check (Win_Top_Is (DMI_Windows.W_Settings),
+             "the window is not affected");
+      Win_Default;
+      -- a key down repeated keeps the timer running
+      Send_Desk_Input (DESK_ISOLATION, 1);
+      for I in 1 .. 20 loop
+         Step;
+      end loop;
+      Send_Desk_Input (DESK_ISOLATION, 1);
+      for I in 1 .. 20 loop
+         Step;
+      end loop;
+      Send_Desk_Input (DESK_ISOLATION, 0);
+      Step;
+      Expect_Action (20, 0, "a repeated key down does not restart it");
+      Send_Mode_Level (Mode => 1, Level => 4);  -- SB: Start Up
+      Step;
+      Check (DMI_Windows.In_Start_Up, "hw: Start Up");
+      Hold (40);
+      Expect_Action (20, 0, "isolation during Start Up");
+      Send_Mode_Level (Mode => 16, Level => 4); -- SL
+      Hold (40);
+      Expect_Action (20, 0, "isolation in SL");
+
+      -- the EVC reports IS: B7 shows no symbol (8.2.3.1.2 has none),
+      -- the isolation device indicates it (8.2.3.1.2.2)
+      Send_Mode_Level (Mode => 17, Level => 4); -- IS
+      Step;
+      Check (Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_IS,
+             "hw: the mode IS is taken over");
+      Check_Frame ("hw_mode_is");
+      Expect_Settings (1, 5, 5, 1,
+                       "8.2.3.1.2.2: the isolation device lights up");
+      Step;
+      Expect_Settings (0, 0, 0, 0, "and stays lit, nothing new");
+      -- the isolation key stays available in IS (4.7.2: X in IS)
+      Hold (40);
+      Expect_Action (20, 0, "the key in IS too");
+      -- leaving IS (the special procedure of SUBSET-026 4.4.3.1.3 is
+      -- outside the DMI; the EVC reports another mode)
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Step;
+      Expect_Settings (1, 5, 5, 0, "the indication goes out");
+      -- the link loss shows SF: no longer IS
+      Send_Mode_Level (Mode => 17, Level => 4);
+      Step;
+      Expect_Settings (1, 5, 5, 1, "hw: IS again");
+      General_Parameters.EVC_Link_Timeout_Ms := 1000;
+      for I in 1 .. 21 loop
+         Step;
+      end loop;
+      Check (DMI_Core.EVC_Link_Lost, "hw: the link is lost");
+      Expect_Settings (1, 5, 5, 0, "SF is shown instead of IS");
+      General_Parameters.EVC_Link_Timeout_Ms := 0;
+
+      -- a DMI reset forgets a key held down
+      Reset;
+      Send_Desk_Input (DESK_ISOLATION, 1);
+      for I in 1 .. 41 loop
+         Step;
+      end loop;
+      DMI_Core.Initialise;
+      Send_Desk_Input (DESK_ISOLATION, 0);
+      Step;
+      Expect_Actions (20, 0, "Initialise releases the desk keys");
+      -- malformed: the key down of a wrong length is not a key down
+      Send_Raw (16#52#, (1 => 2, 2 => 1, 3 => 0));
+      for I in 1 .. 41 loop
+         Step;
+      end loop;
+      Send_Desk_Input (DESK_ISOLATION, 0);
+      Step;
+      Expect_Actions (20, 0, "a key down of a wrong length is ignored");
+      Drain_Sounds;
+      HW_Restore;
+      Reset;
+      Drain_Outbox;
+   end Scenario_HW_Isolation;
+
+   -- The simulator's on-board takes the isolation request (action 20)
+   -- and reports IS; no other request leaves it (SUBSET-026 4.4.3.1.3)
+   procedure Scenario_HW_Simulator_Isolation is
+      use type EVC_Core.Mode_T;
+      use type Supplementary_Driving_Info.Mode_T;
+
+      procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
+                      Payload  : Ada.Streams.Stream_Element_Array) is
+      begin
+         DMI_Core.Handle_Message (The_Type, Payload);
+      end Emit;
+   begin
+      Reset;
+      EVC_Core.Reset;
+      External_EVC;
+      EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+      Check (Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_SB,
+             "sim: SB");
+      EVC_Core.Handle_Driver_Action (20, 0);
+      EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+      Check (EVC_Core.Mode = EVC_Core.Isolation
+             and then Supplementary_Driving_Info.Mode
+                        = Supplementary_Driving_Info.M_IS,
+             "sim: action 20 -> IS, reported to the DMI");
+      EVC_Core.Handle_Driver_Action (7, 0);      -- shunting
+      EVC_Core.Handle_Driver_Action (5, 0);      -- start of mission
+      EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+      Check (EVC_Core.Mode = EVC_Core.Isolation,
+             "sim: no transition from IS");
+      EVC_Core.Reset;
+      Check (EVC_Core.Mode = EVC_Core.SB, "sim: the reset leaves IS");
+      External_EVC (False);
+      Reset;
+      Drain_Outbox;
+   end Scenario_HW_Simulator_Isolation;
+
+
 
 begin
    Scenario_FS_CSM;
@@ -6395,6 +6804,10 @@ begin
    Scenario_Win_Radio_Data;
    Scenario_Win_Start_Up_Radio;
    Scenario_Win_Simulator;
+   Scenario_HW_Settings_Stored;
+   Scenario_HW_Desk_Settings;
+   Scenario_HW_Isolation;
+   Scenario_HW_Simulator_Isolation;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

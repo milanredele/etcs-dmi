@@ -34,7 +34,9 @@ package Supplementary_Driving_Info is
                    M_NL, --Non leading
                    M_SF, --System failure
                    M_SL, --Sleep
-                   M_IS);--Isolated
+                   M_IS);--Isolated: no symbol in B7, the isolation
+                         --device indicates it (DMI 8.2.3.1.2.2,
+                         --Display.B_Area.Draw_B7, DMI_Core)
 
 
    subtype Acknowledgment_Mode_T is Mode_T range M_LS .. M_SN;
