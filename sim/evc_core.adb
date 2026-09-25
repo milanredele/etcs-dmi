@@ -51,11 +51,14 @@ package body EVC_Core is
    TAF_Requested  : Boolean := False;
    TAF_Answered   : Boolean := False;
 
-   Text_FS_ID      : constant := 1;
+   -- "Entering FS" (DMI Table 68): the DMI owns the system status
+   -- message, this EVC reports the condition of SUBSET-026 4.4.9.1.4 (in
+   -- FS, SSP and gradient not known for the whole length of the train)
+   -- as its start and its end (MSG_SYSTEM_STATUS)
    Train_Length_M  : constant := 200;
-   Text_FS_Sent    : Boolean := False;
-   Text_FS_Removed : Boolean := False;
-   Text_FS_From_M  : Natural := 0;
+   FS_Entry_Started : Boolean := False;
+   FS_Entry_Ended   : Boolean := False;
+   FS_Entry_From_M  : Natural := 0;
 
    Clock_S        : Float := 8.0 * 3600.0; -- 08:00:00 local time
 
@@ -352,41 +355,18 @@ package body EVC_Core is
       Emit (MSG_PLANNING, Payload (Payload'First .. Offset - 1));
    end Send_Planning;
 
-   procedure Send_Text (Emit : Sink_T;
-                        ID   : Natural;
-                        Text : String;
-                        First_Group : Boolean;
-                        Ack : Boolean) is
-      Payload : Stream_Element_Array
-        (1 .. Text_Header_Length + Text'Length);
-      Offset : Stream_Element_Offset := Payload'First;
-      Flags  : Unsigned_8 := 8; -- class: system status
-      Seconds : constant Natural := Natural (Clock_S);
-   begin
-      if Ack then
-         Flags := Flags or 1;
-      end if;
-      if First_Group then
-         Flags := Flags or 2;
-      end if;
-      Put_U16 (Payload, Offset, Unsigned_16 (ID));
-      Put_U8 (Payload, Offset, Flags);
-      Put_U8 (Payload, Offset, Unsigned_8 ((Seconds / 3600) mod 24));
-      Put_U8 (Payload, Offset, Unsigned_8 ((Seconds / 60) mod 60));
-      Put_U8 (Payload, Offset, Unsigned_8 (Text'Length));
-      for C of Text loop
-         Put_U8 (Payload, Offset, Character'Pos (C));
-      end loop;
-      Emit (MSG_TEXT, Payload);
-   end Send_Text;
-
-   procedure Send_Text_Remove (Emit : Sink_T; ID : Natural) is
-      Payload : Stream_Element_Array (1 .. Text_Remove_Length);
+   -- MSG_SYSTEM_STATUS: Number is a catalogue entry (DMI_Protocol.SS_*),
+   -- Event 0 start, 1 end, 2 the event that starts the 30 s
+   procedure Send_System_Status (Emit   : Sink_T;
+                                 Number : Natural;
+                                 Event  : Natural) is
+      Payload : Stream_Element_Array (1 .. System_Status_Length);
       Offset  : Stream_Element_Offset := Payload'First;
    begin
-      Put_U16 (Payload, Offset, Unsigned_16 (ID));
-      Emit (MSG_TEXT_REMOVE, Payload);
-   end Send_Text_Remove;
+      Put_U8 (Payload, Offset, Unsigned_8 (Number));
+      Put_U8 (Payload, Offset, Unsigned_8 (Event));
+      Emit (MSG_SYSTEM_STATUS, Payload);
+   end Send_System_Status;
 
    ---------------------------------------------------------------------
    -- Visualization messages for the browser (MSG_TRACK_LAYOUT is
@@ -521,6 +501,9 @@ package body EVC_Core is
 
    procedure Step (Dt_S : Float; Emit : Sink_T) is
       Position : Natural;
+      -- the events of this cycle, sent after the mode
+      FS_Entry_Start : Boolean := False;
+      FS_Entry_End   : Boolean := False;
    begin
       Clock_S := Clock_S + Dt_S;
       EVC_Train.Step (Dt_S);
@@ -550,25 +533,30 @@ package body EVC_Core is
          if Position >= TAF_M and then not TAF_Answered then
             TAF_Requested := True;
          end if;
-         -- SUBSET-026 4.4.9.1.4 / DMI Table 69: "Entering FS" is shown
-         -- until SSP and gradient are known for the whole length of the
-         -- train, here: until the train has run its own length in FS.
-         -- (The level crossing needs no text: DMI 8.2.3.8.4 asks for the
-         -- symbol LX01 only.)
-         if not Text_FS_Sent then
-            Send_Text (Emit, Text_FS_ID, "Entering FS", True, False);
-            Text_FS_Sent := True;
-            Text_FS_From_M := Position;
-         elsif not Text_FS_Removed
-           and then Position >= Text_FS_From_M + Train_Length_M
+         -- SUBSET-026 4.4.9.1.4 / DMI Table 68: "Entering FS" from the
+         -- entry in FS until SSP and gradient are known for the whole
+         -- length of the train, here: until the train has run its own
+         -- length in FS. (The level crossing needs no text: DMI
+         -- 8.2.3.8.4 asks for the symbol LX01 only.)
+         if not FS_Entry_Started then
+            FS_Entry_Started := True;
+            FS_Entry_Start := True;
+            FS_Entry_From_M := Position;
+         elsif not FS_Entry_Ended
+           and then Position >= FS_Entry_From_M + Train_Length_M
          then
-            Send_Text_Remove (Emit, Text_FS_ID);
-            Text_FS_Removed := True;
+            FS_Entry_Ended := True;
+            FS_Entry_End := True;
          end if;
       end if;
 
       Send_Speed_State (Emit);
       Send_Mode_Level (Emit);
+      if FS_Entry_Start then
+         Send_System_Status (Emit, SS_Entering_FS, 0);
+      elsif FS_Entry_End then
+         Send_System_Status (Emit, SS_Entering_FS, 1);
+      end if;
       Send_Onboard (Emit);
       Send_Status (Emit);
       Send_Track_Cond (Emit);
@@ -617,6 +605,8 @@ package body EVC_Core is
             if Mode = SB and then Arg in 2 .. 5 then
                Level_Pos := Arg;
             end if;
+         when 16 =>     -- a Main window button ended a system status
+            null;       -- message; this simulator starts none of those
          when others =>
             null;
       end case;
@@ -680,9 +670,9 @@ package body EVC_Core is
       Mode_Ack_Wait := False;
       TAF_Requested := False;
       TAF_Answered := False;
-      Text_FS_Sent := False;
-      Text_FS_Removed := False;
-      Text_FS_From_M := 0;
+      FS_Entry_Started := False;
+      FS_Entry_Ended := False;
+      FS_Entry_From_M := 0;
       Clock_S := 8.0 * 3600.0;
       EVC_Train.Reset;
    end Reset;
