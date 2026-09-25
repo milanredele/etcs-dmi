@@ -106,6 +106,20 @@
             crossing, a tunnel, and the braking curve down to the end of
             authority. The strip above the DMI shows where the train
             is.</li>
+          <li><b>Let the ATO drive.</b> Press the wrench (<i>Settings</i>),
+            then <i>ATO</i>, choose <i>On</i> and accept it on the field:
+            the ATO information appears (DMI 8.5). The yellow <i>ATO</i>
+            symbol under the planning area means the ATO is ready: touch
+            it to engage and the mode becomes Automatic Driving. The ATO
+            drives to the stopping points of the journey (Welwyn North,
+            Knebworth, Stevenage), stops, shows the stopping accuracy,
+            the dwell time or train hold and the doors, and disengages
+            itself; touch <i>ATO</i> again to go on. Touching the engaged
+            symbol disengages (with the warning sound); holding the
+            skip symbol on the right for two seconds skips the next
+            stop. With the ATO on but not engaged, the automatic driver
+            follows the ATO's advice: target speed on the dial, coasting
+            below it and the advice change in the planning area.</li>
           <li><b>Drive yourself.</b> Untick <i>Auto drive</i> and use the
             throttle/brake slider. Go over the permitted speed to get the
             warning colours and sounds, further and the EVC brakes for
@@ -241,6 +255,52 @@
         <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
         <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
       </div>
+      <div class="row" title="MSG_ATO (dmi_protocol.ads): the ATO selector and what the ERTMS/ATO on-board tells, DMI 8.5">
+        <label>ATO selector:
+          <select id="ato_selector">
+            <option value="1" selected>Stand-by</option><option value="2">On</option>
+          </select>
+        </label>
+        <label>ATO status:
+          <select id="ato_status">
+            <option value="0">none</option><option value="1">ATO01 selected</option>
+            <option value="2" selected>ATO02 ready</option><option value="3">ATO03 engaged</option>
+            <option value="4">ATO04 disengaging</option><option value="5">ATO05 failure</option>
+          </select>
+        </label>
+        <label>warning <input type="checkbox" id="ato_warning"></label>
+        <label>at stopping point <input type="checkbox" id="ato_at_stop"></label>
+        <label>accuracy:
+          <select id="ato_accuracy">
+            <option value="0">none</option><option value="1">ATO06 overshoot</option>
+            <option value="2">ATO07 undershoot</option><option value="3" selected>ATO08 accurate</option>
+          </select>
+        </label>
+        <label>dwell s <input type="number" id="ato_dwell" value="69" min="0" max="5999"></label>
+        <label>train hold <input type="checkbox" id="ato_hold"></label>
+        <label>doors:
+          <select id="ato_doors">
+            <option value="0">none</option><option value="1">ATO10 open both</option>
+            <option value="2">ATO11 open left</option><option value="3">ATO12 open right</option>
+            <option value="4" selected>ATO13 open</option><option value="5">ATO14 close</option>
+            <option value="6">ATO15 closing</option><option value="7">ATO16 closed</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>skip:
+          <select id="ato_skip">
+            <option value="0">none</option><option value="1" selected>ATO17 inactive</option>
+            <option value="2">ATO18 by ATO-TS</option><option value="3">ATO19 by driver</option>
+          </select>
+        </label>
+        <label>advice km/h <input type="number" id="ato_advice" value="125" min="0" max="400"></label>
+        <label>advice valid <input type="checkbox" id="ato_advice_valid" checked></label>
+        <label>coasting <input type="checkbox" id="ato_coasting" checked></label>
+        <label>next stop <input type="text" id="ato_name" value="Welwyn North" maxlength="32" size="14"></label>
+        <label>ETA <input type="text" id="ato_eta" value="17:36:48" size="8"></label>
+        <label>stopping points m <input type="text" id="ato_stops" value="0, 1800" size="12"></label>
+      </div>
     </details>
 
     <canvas id="trackCanvas" width="640" height="150" style="background:#101820;"></canvas>
@@ -257,6 +317,7 @@
       const MSG_TRACK_LAYOUT = 0x08;
       const MSG_SIM_STATE = 0x09;
       const MSG_ONBOARD = 0x0A;
+      const MSG_ATO = 0x0B;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_DRIVER_DATA = 0x41;
       const MSG_POINTER = 0x50;
@@ -445,6 +506,24 @@
       const tctx = track.getContext('2d');
       let layout = null;
       let sim = { pos: 0, speed: 0, mode: 0, monitoring: 0, demand: 0, brake: 0 };
+      // what the simulator's ERTMS/ATO on-board tells the DMI (MSG_ATO)
+      let ato = null;
+      const ATO_STATUS = ['', 'ATO selected', 'ATO ready', 'ATO engaged',
+                          'ATO disengaging', 'ATO failure'];
+
+      // MSG_ATO (dmi_protocol.ads): read by the page for the track strip
+      function parseATO(p) {
+        if (p.length < 18) return;
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        const nameLength = p[16];
+        if (nameLength > 32 || p.length < 18 + nameLength) return;
+        const count = p[17 + nameLength];
+        if (p.length !== 18 + nameLength + 2 * count) return;
+        const a = { selector: p[0], status: p[1], atStop: p[3] === 1, stops: [] };
+        a.name = new TextDecoder('latin1').decode(p.subarray(17, 17 + nameLength));
+        for (let i = 0; i < count; i++) a.stops.push(sim.pos + dv.getUint16(18 + nameLength + 2 * i, true));
+        ato = a;
+      }
 
       function parseLayout(p) {
         const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
@@ -497,7 +576,7 @@
         drawTrack();
       }
 
-      const MODES = ['SB', 'SR', 'FS', 'TR'];
+      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD'];
       const MONITORINGS = ['CSM', 'TSM', 'RSM'];
 
       function conditionLabel(symbol) {
@@ -588,6 +667,14 @@
           tctx.fillText('TAF', x(layout.taf), trackY - 20);
           tctx.fillRect(x(layout.taf) - 1, trackY - 16, 2, 16);
 
+          if (ato && ato.selector === 2) {
+            tctx.fillStyle = '#8cf';
+            for (const at of ato.stops) {
+              tctx.fillRect(x(at) - 1, trackY - 26, 3, 26);
+              tctx.fillText('STOP', x(at), trackY - 30);
+            }
+          }
+
           const eoaX = x(layout.eoa);
           tctx.fillStyle = '#c00';
           tctx.fillRect(eoaX - 2, trackY - 24, 5, 24);
@@ -625,7 +712,10 @@
         tctx.fillText(
           `km ${(sim.pos / 1000).toFixed(2)}  ${sim.speed} km/h  ` +
           `${MODES[sim.mode] || '?'}/${MONITORINGS[sim.monitoring] || '?'}  ` +
-          `demand ${sim.demand}%${sim.brake ? '  EVC BRAKE' : ''}`,
+          `demand ${sim.demand}%${sim.brake ? '  EVC BRAKE' : ''}` +
+          (ato && ato.selector === 2
+            ? `  ${ATO_STATUS[ato.status] || ''}${ato.atStop ? ' at stop' : ato.name ? ' next ' + ato.name : ''}`
+            : ''),
           8, 16);
         tctx.font = '10px sans-serif';
       }
@@ -710,6 +800,44 @@
         return buf;
       }
 
+      // MSG_ATO (dmi_protocol.ads) from the ATO row of the panel
+      function manualATO() {
+        const name = new TextEncoder().encode($('ato_name').value)
+          .filter((b) => b < 128).slice(0, 32);
+        const stops = $('ato_stops').value.split(',').map((t) => parseInt(t))
+          .filter((d) => d >= 0 && d <= 65535).slice(0, 255);
+        const eta = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec($('ato_eta').value.trim());
+        const { buf, dv } = makeMessage(MSG_ATO, 18 + name.length + 2 * stops.length);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, val('ato_selector')); o += 1;
+        dv.setUint8(o, val('ato_status')); o += 1;
+        dv.setUint8(o, checked('ato_warning') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('ato_at_stop') ? 1 : 0); o += 1;
+        dv.setUint8(o, val('ato_accuracy')); o += 1;
+        dv.setUint16(o, val('ato_dwell'), true); o += 2;
+        dv.setUint8(o, checked('ato_hold') ? 1 : 0); o += 1;
+        dv.setUint8(o, val('ato_doors')); o += 1;
+        dv.setUint8(o, val('ato_skip')); o += 1;
+        dv.setUint16(o, checked('ato_advice_valid') ? val('ato_advice') : 0xFFFF, true); o += 2;
+        dv.setUint8(o, checked('ato_coasting') ? 1 : 0); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[1]) : 0xFF); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[2]) : 0); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[3]) : 0); o += 1;
+        dv.setUint8(o, name.length); o += 1;
+        buf.set(name, o); o += name.length;
+        dv.setUint8(o, stops.length); o += 1;
+        for (const d of stops) { dv.setUint16(o, d, true); o += 2; }
+        return buf;
+      }
+
+      // The manual panel is the on-board: the driver's ATO requests
+      // (actions 13, 14, 15) change its fields as an EVC would
+      function manualATOAction(action, arg) {
+        if (action === 15 && (arg === 1 || arg === 2)) $('ato_selector').value = String(arg);
+        else if (action === 13) $('ato_status').value = arg === 1 ? '3' : '2';
+        else if (action === 14) $('ato_skip').value = arg === 1 ? '3' : '1';
+      }
+
       const manualMode = () => $('source').value === 'manual';
 
       // ------------------------------------------------------------------
@@ -751,6 +879,7 @@
           toDmi.clear(); toEvc.clear();
           for (const w of [toDmi, toEvc]) Object.keys(w.stats).forEach((k) => { w.stats[k] = 0; });
           layout = null;
+          ato = null;
           sendDesk();
         }
 
@@ -768,6 +897,13 @@
           $('run').textContent = running ? 'Pause' : 'Run';
         });
 
+        // MSG_DRIVER_ACTION codes (dmi_protocol.ads), for the console
+        const ACTIONS = ['TAF yes', 'speed toggle', 'ack', 'tunnel toggle',
+          'geo toggle', 'start', 'override EOA', 'shunting', 'exit shunting',
+          'adhesion', 'train integrity', 'level', 'non-leading',
+          'ATO engage(1)/disengage(0)', 'skip stopping point(1)/revoke(0)',
+          'ATO selector (1 Stand-by, 2 On)'];
+
         // driver actions and data go to the EVC over the wire, sounds
         // are played here (the loudspeaker is part of the DMI unit)
         function routeFromDmi() {
@@ -778,11 +914,13 @@
               if (type === MSG_DRIVER_ACTION) {
                 // an acknowledgement (action 2) also carries the text
                 // message id
-                console.log('driver action', f[HEADER_LENGTH],
-                            f[HEADER_LENGTH + 1] | (f[HEADER_LENGTH + 2] << 8),
+                const action = f[HEADER_LENGTH];
+                const arg = f[HEADER_LENGTH + 1] | (f[HEADER_LENGTH + 2] << 8);
+                console.log('driver action', ACTIONS[action] || action, arg,
                             f.length >= HEADER_LENGTH + 5
                               ? f[HEADER_LENGTH + 3] | (f[HEADER_LENGTH + 4] << 8)
                               : '');
+                if (manualMode()) manualATOAction(action, arg);
               }
               toEvc.send(f, now);
             }
@@ -796,7 +934,10 @@
             const type = f[0];
             if (type === MSG_TRACK_LAYOUT) parseLayout(f.subarray(HEADER_LENGTH));
             else if (type === MSG_SIM_STATE) parseSimState(f.subarray(HEADER_LENGTH));
-            else toDmi.send(f, now);
+            else {
+              if (type === MSG_ATO) parseATO(f.subarray(HEADER_LENGTH));
+              toDmi.send(f, now);
+            }
           }
         }
 
@@ -805,6 +946,7 @@
             toDmi.send(manualSpeedState(), now);
             toDmi.send(manualModeLevel(), now);
             toDmi.send(manualOnboard(), now);
+            toDmi.send(manualATO(), now);
           } else {
             evc.evc_step(EVC_STEP_MS);
             routeFromEvc();

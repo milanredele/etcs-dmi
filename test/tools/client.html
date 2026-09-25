@@ -106,6 +106,52 @@
         <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
         <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
       </div>
+      <div class="row" title="MSG_ATO (dmi_protocol.ads): the ATO selector and what the ERTMS/ATO on-board tells, DMI 8.5">
+        <label>ATO selector:
+          <select id="ato_selector">
+            <option value="1" selected>Stand-by</option><option value="2">On</option>
+          </select>
+        </label>
+        <label>ATO status:
+          <select id="ato_status">
+            <option value="0">none</option><option value="1">ATO01 selected</option>
+            <option value="2" selected>ATO02 ready</option><option value="3">ATO03 engaged</option>
+            <option value="4">ATO04 disengaging</option><option value="5">ATO05 failure</option>
+          </select>
+        </label>
+        <label>warning <input type="checkbox" id="ato_warning"></label>
+        <label>at stopping point <input type="checkbox" id="ato_at_stop"></label>
+        <label>accuracy:
+          <select id="ato_accuracy">
+            <option value="0">none</option><option value="1">ATO06 overshoot</option>
+            <option value="2">ATO07 undershoot</option><option value="3" selected>ATO08 accurate</option>
+          </select>
+        </label>
+        <label>dwell s <input type="number" id="ato_dwell" value="69" min="0" max="5999"></label>
+        <label>train hold <input type="checkbox" id="ato_hold"></label>
+        <label>doors:
+          <select id="ato_doors">
+            <option value="0">none</option><option value="1">ATO10 open both</option>
+            <option value="2">ATO11 open left</option><option value="3">ATO12 open right</option>
+            <option value="4" selected>ATO13 open</option><option value="5">ATO14 close</option>
+            <option value="6">ATO15 closing</option><option value="7">ATO16 closed</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>skip:
+          <select id="ato_skip">
+            <option value="0">none</option><option value="1" selected>ATO17 inactive</option>
+            <option value="2">ATO18 by ATO-TS</option><option value="3">ATO19 by driver</option>
+          </select>
+        </label>
+        <label>advice km/h <input type="number" id="ato_advice" value="125" min="0" max="400"></label>
+        <label>advice valid <input type="checkbox" id="ato_advice_valid" checked></label>
+        <label>coasting <input type="checkbox" id="ato_coasting" checked></label>
+        <label>next stop <input type="text" id="ato_name" value="Welwyn North" maxlength="32" size="14"></label>
+        <label>ETA <input type="text" id="ato_eta" value="17:36:48" size="8"></label>
+        <label>stopping points m <input type="text" id="ato_stops" value="0, 1800" size="12"></label>
+      </div>
     </div>
     <canvas id="trackCanvas" width="640" height="150"
             style="display:block; margin:6px auto; background:#101820;"></canvas>
@@ -115,6 +161,7 @@
       const MSG_SPEED_STATE = 0x01;
       const MSG_MODE_LEVEL = 0x02;
       const MSG_ONBOARD = 0x0A;
+      const MSG_ATO = 0x0B;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_POINTER = 0x50;
       const MSG_FRAME = 0x60;
@@ -203,11 +250,25 @@
         else if (type === MSG_SOUND) playSound(payload[0]);
         else if (type === 0x08) parseLayout(payload);
         else if (type === 0x09) parseSimState(payload);
+        else if (type === MSG_ATO) parseATO(payload);
         // driver actions are shown for debugging
         else if (type === MSG_DRIVER_ACTION) {
           // an acknowledgement (action 2) also carries the text message id
-          console.log('driver action', payload[0], payload[1] | (payload[2] << 8),
+          const arg = payload[1] | (payload[2] << 8);
+          console.log('driver action', payload[0], arg,
                       payload.length >= 5 ? payload[3] | (payload[4] << 8) : '');
+          // the manual panel is the on-board: the ATO requests (actions
+          // 13, 14, 15) change its fields as an EVC would
+          if (manualMode()) {
+            if (payload[0] === 15 && (arg === 1 || arg === 2)) {
+              document.getElementById('ato_selector').value = String(arg);
+            } else if (payload[0] === 13) {
+              document.getElementById('ato_status').value = arg === 1 ? '3' : '2';
+            } else if (payload[0] === 14) {
+              document.getElementById('ato_skip').value = arg === 1 ? '3' : '1';
+            }
+            sendAll();
+          }
         }
       }
 
@@ -219,6 +280,23 @@
       const tctx = track.getContext('2d');
       let layout = null;
       let sim = { pos: 0, speed: 0, mode: 0, monitoring: 0, demand: 0, brake: 0 };
+      // what the ERTMS/ATO on-board tells the DMI (MSG_ATO)
+      let ato = null;
+      const ATO_STATUS = ['', 'ATO selected', 'ATO ready', 'ATO engaged',
+                          'ATO disengaging', 'ATO failure'];
+
+      function parseATO(p) {
+        if (p.length < 18) return;
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        const nameLength = p[16];
+        if (nameLength > 32 || p.length < 18 + nameLength) return;
+        const count = p[17 + nameLength];
+        if (p.length !== 18 + nameLength + 2 * count) return;
+        const a = { selector: p[0], status: p[1], atStop: p[3] === 1, stops: [] };
+        a.name = new TextDecoder('latin1').decode(p.subarray(17, 17 + nameLength));
+        for (let i = 0; i < count; i++) a.stops.push(sim.pos + dv.getUint16(18 + nameLength + 2 * i, true));
+        ato = a;
+      }
 
       function parseLayout(p) {
         const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
@@ -271,7 +349,7 @@
         drawTrack();
       }
 
-      const MODES = ['SB', 'SR', 'FS', 'TR'];
+      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD'];
       const MONITORINGS = ['CSM', 'TSM', 'RSM'];
 
       function conditionLabel(symbol) {
@@ -371,6 +449,14 @@
           tctx.fillRect(x(layout.taf) - 1, trackY - 16, 2, 16);
 
           // EOA: red/white buffer bar
+          if (ato && ato.selector === 2) {
+            tctx.fillStyle = '#8cf';
+            for (const at of ato.stops) {
+              tctx.fillRect(x(at) - 1, trackY - 26, 3, 26);
+              tctx.fillText('STOP', x(at), trackY - 30);
+            }
+          }
+
           const eoaX = x(layout.eoa);
           tctx.fillStyle = '#c00';
           tctx.fillRect(eoaX - 2, trackY - 24, 5, 24);
@@ -412,7 +498,10 @@
         tctx.fillText(
           `km ${(sim.pos / 1000).toFixed(2)}  ${sim.speed} km/h  ` +
           `${MODES[sim.mode] || '?'}/${MONITORINGS[sim.monitoring] || '?'}  ` +
-          `demand ${sim.demand}%${sim.brake ? '  EVC BRAKE' : ''}`,
+          `demand ${sim.demand}%${sim.brake ? '  EVC BRAKE' : ''}` +
+          (ato && ato.selector === 2
+            ? `  ${ATO_STATUS[ato.status] || ''}${ato.atStop ? ' at stop' : ato.name ? ' next ' + ato.name : ''}`
+            : ''),
           8, 16);
         tctx.font = '10px sans-serif';
       }
@@ -506,6 +595,37 @@
         socket.send(buf);
       }
 
+      // MSG_ATO (dmi_protocol.ads) from the ATO rows of the panel
+      function sendATO() {
+        const name = new TextEncoder().encode(document.getElementById('ato_name').value)
+          .filter((b) => b < 128).slice(0, 32);
+        const stops = document.getElementById('ato_stops').value.split(',')
+          .map((t) => parseInt(t)).filter((d) => d >= 0 && d <= 65535).slice(0, 255);
+        const eta = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec(
+          document.getElementById('ato_eta').value.trim());
+        const { buf, dv } = makeMessage(MSG_ATO, 18 + name.length + 2 * stops.length);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, val('ato_selector')); o += 1;
+        dv.setUint8(o, val('ato_status')); o += 1;
+        dv.setUint8(o, checked('ato_warning') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('ato_at_stop') ? 1 : 0); o += 1;
+        dv.setUint8(o, val('ato_accuracy')); o += 1;
+        dv.setUint16(o, val('ato_dwell'), true); o += 2;
+        dv.setUint8(o, checked('ato_hold') ? 1 : 0); o += 1;
+        dv.setUint8(o, val('ato_doors')); o += 1;
+        dv.setUint8(o, val('ato_skip')); o += 1;
+        dv.setUint16(o, checked('ato_advice_valid') ? val('ato_advice') : 0xFFFF, true); o += 2;
+        dv.setUint8(o, checked('ato_coasting') ? 1 : 0); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[1]) : 0xFF); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[2]) : 0); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[3]) : 0); o += 1;
+        dv.setUint8(o, name.length); o += 1;
+        buf.set(name, o); o += name.length;
+        dv.setUint8(o, stops.length); o += 1;
+        for (const d of stops) { dv.setUint16(o, d, true); o += 2; }
+        socket.send(buf);
+      }
+
       function manualMode() {
         return document.getElementById('source').value === 'manual';
       }
@@ -517,6 +637,7 @@
         sendSpeedState();
         sendModeLevel();
         sendOnboard();
+        sendATO();
       }
 
       function sendDesk() {
