@@ -55,7 +55,9 @@ package DMI_Buttons is
                         --  running number' buttons to those of the data
                         --  entry window
                         BTN_Menu_24,
-                        BTN_Menu_25);
+                        BTN_Menu_25,
+                        BTN_ATO_Engage,    -- 8.5.2.5/.6 G1 engage/disengage
+                        BTN_ATO_Skip);     -- 8.5.8.5 G5 skip stopping point
 
    subtype Menu_Button_T is Button_ID_T range BTN_Menu_1 .. BTN_Menu_25;
    subtype F_Button_T is Button_ID_T range BTN_F1 .. BTN_F5;

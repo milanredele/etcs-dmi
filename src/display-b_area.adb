@@ -16,6 +16,7 @@
 
 pragma Ada_2012;
 with Display.B_Area.Speed_Dial;
+with DMI_ATO;
 with DMI_Status;
 with Supplementary_Driving_Info;
 with Symbol;
@@ -94,6 +95,12 @@ package body Display.B_Area is
             when Backward => DS (Symbol.SM_02);
             when None     => null;
          end case;
+      end if;
+      -- DMI 8.5.10: the coasting advice ATO20, ATO information shown
+      -- outside stopping points while the ATO selector is "On" (8.5.1.1,
+      -- 8.5.1.2 d)
+      if DMI_ATO.Outside_Shown and then DMI_ATO.Coasting then
+         DS (Symbol.ATO_20);
       end if;
    end Draw_B8;
 

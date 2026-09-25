@@ -12,6 +12,7 @@ with Display.F_Area;
 with Display.G_Area;
 with Display.Screen;
 with DMI_Ack;
+with DMI_ATO;
 with DMI_Buttons;
 with DMI_Conditions;
 with DMI_Data_Entry;
@@ -51,6 +52,8 @@ package body DMI_Core is
    ACTION_ACK           : constant Unsigned_8 := 2; -- see Queue_Driver_Ack
    ACTION_TUNNEL_TOGGLE : constant Unsigned_8 := 3;
    ACTION_GEO_TOGGLE    : constant Unsigned_8 := 4;
+   ACTION_ATO_ENGAGE    : constant Unsigned_8 := 13;
+   ACTION_ATO_SKIP      : constant Unsigned_8 := 14;
 
    -- Transition tracking for Sinfo rules
    TTI_Was_Displayed : Boolean := False;
@@ -208,6 +211,27 @@ package body DMI_Core is
          DMI_Buttons.Set_Inactive (BTN_Geo_Toggle);
       end if;
 
+      -- DMI 8.5.2.5 / 8.5.2.6: G1 is the ATO engage button while ATO02
+      -- is displayed and the ATO disengage button while ATO03 or ATO04
+      -- is displayed, an enabled up-type button
+      if not Window_Open and then DMI_ATO.Engage_Button then
+         DMI_Buttons.Set_Active (BTN_ATO_Engage,
+                                 Display.Get_Area (Display.G1),
+                                 DMI_Buttons.Up_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_ATO_Engage);
+      end if;
+
+      -- DMI 8.5.8.5: G5 is an enabled delay-type button to request or
+      -- revoke the skip stopping point while ATO17 or ATO19 is displayed
+      if not Window_Open and then DMI_ATO.Skip_Button then
+         DMI_Buttons.Set_Active (BTN_ATO_Skip,
+                                 Display.Get_Area (Display.G5),
+                                 DMI_Buttons.Delay_Type);
+      else
+         DMI_Buttons.Set_Inactive (BTN_ATO_Skip);
+      end if;
+
       -- DMI 8.6.1: window selection buttons, always enabled on the
       -- default window
       if not Window_Open then
@@ -336,6 +360,7 @@ package body DMI_Core is
       ACTION_TRAIN_INTEGRITY : constant Unsigned_8 := 10;
       ACTION_LEVEL_SELECTED  : constant Unsigned_8 := 11;
       ACTION_NON_LEADING     : constant Unsigned_8 := 12;
+      ACTION_ATO_SELECTOR    : constant Unsigned_8 := 15;
    begin
       while DMI_Windows.Pop_Action (Action, Arg) loop
          case Action is
@@ -363,6 +388,8 @@ package body DMI_Core is
                Send_Train_Data_Msg;
             when Send_SR_Data =>
                Send_Numeric_Data (3, SR_Speed, SR_Dist, 0, 2);
+            when ATO_Selector_Set =>
+               Queue_Driver_Action (ACTION_ATO_SELECTOR, Unsigned_16 (Arg));
          end case;
       end loop;
    end Drain_Window_Actions;
@@ -394,6 +421,8 @@ package body DMI_Core is
    begin
       Brake_For_Pending_Ack := False;
       DMI_Ack.Reset;
+      DMI_ATO.Reset;
+      DMI_Sounds.Set_ATO_Warning (False);
       DMI_Conditions.Reset;
       DMI_Driver_Data.Reset;
       DMI_Planning.Reset;
@@ -1025,6 +1054,128 @@ package body DMI_Core is
       Valid := True;
    end Apply_Planning;
 
+   --  MSG_ATO: the information of the ERTMS/ATO on-board (DMI 8.5) and
+   --  the ATO selector position. The length is checked against the two
+   --  counts (name, stopping points) before anything is read; a message
+   --  that does not match is ignored as a whole and the information
+   --  stays as it was. Every byte value is accepted; a code outside the
+   --  documented ones takes the reading given in dmi_protocol.ads.
+   procedure Apply_ATO (Payload : Stream_Element_Array) is
+      use DMI_ATO;
+
+      function Well_Formed return Boolean is
+         Name_Length : Stream_Element_Offset;
+         Count       : Stream_Element_Offset;
+      begin
+         if Payload'Length < ATO_Fixed_Length then
+            return False;
+         end if;
+         Name_Length := Stream_Element_Offset
+           (Payload (Payload'First + ATO_Header_Length - 1));
+         if Name_Length > ATO_Max_Name
+           or else Payload'Length < ATO_Fixed_Length + Name_Length
+         then
+            return False;
+         end if;
+         Count := Stream_Element_Offset
+           (Payload (Payload'First + ATO_Header_Length + Name_Length));
+         return Payload'Length
+           = ATO_Fixed_Length + Name_Length + Count * ATO_Stop_Entry_Length;
+      end Well_Formed;
+
+      Offset : Stream_Element_Offset := Payload'First;
+
+      function Flag return Boolean is (Get_U8 (Payload, Offset) /= 0);
+   begin
+      if not Well_Formed then
+         return;
+      end if;
+      declare
+         Selector_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Status_Raw   : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Warning_Now  : constant Boolean := Flag;
+         Location_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Accuracy_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Dwell_Raw    : constant Unsigned_16 := Get_U16 (Payload, Offset);
+         Hold_Now     : constant Boolean := Flag;
+         Doors_Raw    : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Skip_Raw     : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Advice_Raw   : constant Unsigned_16 := Get_U16 (Payload, Offset);
+         Coasting_Now : constant Boolean := Flag;
+         Hour         : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Minute       : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Second       : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Length       : constant Unsigned_8 := Get_U8 (Payload, Offset);
+         Count        : Unsigned_8;
+      begin
+         Selector :=
+           (case Selector_Raw is
+               when 1      => Stand_By,
+               when 2      => On,
+               when others => Unknown);
+         Status :=
+           (case Status_Raw is
+               when 1      => Selected,
+               when 2      => Ready,
+               when 3      => Engaged,
+               when 4      => Disengaging,
+               when 5      => Failure,
+               when others => No_Status);
+         Warning := Warning_Now;
+         At_Stopping_Point := Location_Raw = 1;
+         Accuracy :=
+           (case Accuracy_Raw is
+               when 1      => Overshoot,
+               when 2      => Undershoot,
+               when 3      => Accurate,
+               when others => No_Accuracy);
+         Dwell_Valid := Natural (Dwell_Raw) <= Max_Dwell_S;
+         Dwell_S := (if Dwell_Valid then Natural (Dwell_Raw) else 0);
+         Train_Hold := Hold_Now;
+         Doors :=
+           (case Doors_Raw is
+               when 1      => Open_Both,
+               when 2      => Open_Left,
+               when 3      => Open_Right,
+               when 4      => Doors_Open,
+               when 5      => Close_Request,
+               when 6      => Closing,
+               when 7      => Doors_Closed,
+               when others => No_Doors);
+         Skip :=
+           (case Skip_Raw is
+               when 1      => Inactive,
+               when 2      => By_Trackside,
+               when 3      => By_Driver,
+               when others => No_Skip);
+         Advice_Valid := Advice_Raw <= 400;
+         Advice_Speed := (if Advice_Valid then Natural (Advice_Raw) else 0);
+         Coasting := Coasting_Now;
+         ETA_Valid := Hour <= 23 and then Minute <= 59 and then Second <= 59;
+         ETA_H := (if ETA_Valid then Natural (Hour) else 0);
+         ETA_M := (if ETA_Valid then Natural (Minute) else 0);
+         ETA_S := (if ETA_Valid then Natural (Second) else 0);
+         -- Well_Formed: Length <= ATO_Max_Name = Max_Name
+         Name_Length := Natural'Min (Natural (Length), Max_Name);
+         Name := (others => ' ');
+         for I in 1 .. Name_Length loop
+            Name (I) := Wide_Character'Val (Natural (Get_U8 (Payload, Offset)));
+         end loop;
+
+         -- 8.5.3: the stopping points replace the previous ones
+         Count := Get_U8 (Payload, Offset);
+         DMI_Planning.Clear_Stopping_Points;
+         for I in 1 .. Natural (Count) loop
+            DMI_Planning.Add_Stopping_Point
+              (Natural (Get_U16 (Payload, Offset)));
+         end loop;
+      end;
+      -- 8.5.1.7: S2 while the ERTMS/ATO on-board requests the warning
+      -- sound. Choice: it is not gated on the ATO selector; a warning
+      -- the on-board requests is never suppressed by the DMI.
+      DMI_Sounds.Set_ATO_Warning (DMI_ATO.Warning);
+   end Apply_ATO;
+
    procedure Apply_Pointer (Payload : Stream_Element_Array) is
       Offset : Stream_Element_Offset := Payload'First;
       Event  : constant Unsigned_8 := Get_U8 (Payload, Offset);
@@ -1049,7 +1200,7 @@ package body DMI_Core is
 
       if The_Type in MSG_SPEED_STATE | MSG_MODE_LEVEL | MSG_TEXT
                    | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
-                   | MSG_PLANNING | MSG_ONBOARD
+                   | MSG_PLANNING | MSG_ONBOARD | MSG_ATO
       then
          Note_EVC_Message;
       end if;
@@ -1089,6 +1240,8 @@ package body DMI_Core is
             end if;
          when MSG_PLANNING =>
             Apply_Planning (Payload);
+         when MSG_ATO =>
+            Apply_ATO (Payload);
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
                Update_Buttons; -- make sure hit testing sees current state
@@ -1214,6 +1367,23 @@ package body DMI_Core is
 
             when BTN_Zoom_Out =>
                DMI_Planning.Zoom_Out;
+
+            when BTN_ATO_Engage =>
+               -- 8.5.2.5 / 8.5.2.6: the request the displayed status
+               -- stands for; nothing when the button is gone meanwhile
+               if DMI_ATO.Engage_Button then
+                  Queue_Driver_Action
+                    (ACTION_ATO_ENGAGE,
+                     (if DMI_ATO.Engage_Requested then 1 else 0));
+               end if;
+
+            when BTN_ATO_Skip =>
+               -- 8.5.8.5: request (ATO17) or revoke (ATO19) the skip
+               if DMI_ATO.Skip_Button then
+                  Queue_Driver_Action
+                    (ACTION_ATO_SKIP,
+                     (if DMI_ATO.Skip_Requested then 1 else 0));
+               end if;
 
             when BTN_F1 => DMI_Windows.Open (DMI_Windows.W_Main);
             when BTN_F2 => DMI_Windows.Open (DMI_Windows.W_Override);

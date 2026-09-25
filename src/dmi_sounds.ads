@@ -22,6 +22,13 @@ package DMI_Sounds is
    -- the oldest queued click, else of the oldest Sinfo.
    procedure Play (The_Sound : Sound_T);
 
+   -- DMI 8.5.1.7: S2 is also played while the ERTMS/ATO on-board
+   -- requests a warning sound. It is a second reason for the same S2
+   -- state, kept apart from the Warning status of the supervision
+   -- (S2_Warning_Start / S2_Warning_Stop above): S2 sounds while either
+   -- reason holds, and neither can stop the other one's S2.
+   procedure Set_ATO_Warning (On : Boolean);
+
    -- Take the next queued sound; False when the queue is empty
    function Pop (The_Sound : out Sound_T) return Boolean;
 

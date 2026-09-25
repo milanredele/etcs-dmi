@@ -16,11 +16,17 @@ package DMI_Planning is
    -- also about what three columns of 20 cell symbols can show without
    -- overlap (8.3.4.23).
    --
+   -- The ATO stopping points (8.5.3) share the columns D2/D3/D4 with the
+   -- orders (8.3.4.25, 8.5.3.8); 8 of them are kept, the nearest ones,
+   -- which is more than a journey has between two stops within the
+   -- longest range.
+   --
    -- Memory: an element is packed into 4 bytes (gradient, order) or
    -- 6 bytes (speed), so the lists take 64 * 4 + 32 * 6 + 32 * 4 = 576
-   -- bytes of static data, plus 128 bytes of stack while the orders are
-   -- sorted for drawing. (The former 8/10/12 elements with 32 bit
-   -- fields took 280 bytes.)
+   -- bytes of static data, plus 16 bytes for the stopping points and
+   -- 160 bytes of stack while the orders and stopping points are sorted
+   -- for drawing. (The former 8/10/12 elements with 32 bit fields took
+   -- 280 bytes.)
    --
    -- Overflow: see Add_Gradient, Add_Speed and Add_Order. The rule is
    -- that what is not known is not drawn as if it were known.
@@ -29,6 +35,7 @@ package DMI_Planning is
    Max_Gradients : constant := 64;
    Max_Speeds    : constant := 32;
    Max_Orders    : constant := 32;
+   Max_Stopping_Points : constant := 8;
 
    -- 8.2.1.1.3: the largest speed dial ends at 400 km/h; a higher speed
    -- in the planning information is not valid
@@ -99,6 +106,11 @@ package DMI_Planning is
    Orders         : Order_List_T;
    Order_Count    : Natural := 0;
 
+   -- 8.5.3: distances of the ATO stopping points (MSG_ATO), in any order
+   type Stop_List_T is array (1 .. Max_Stopping_Points) of Distance_T;
+   Stops      : Stop_List_T := (others => 0);
+   Stop_Count : Natural := 0;
+
    -- The distance up to which each profile is known. It is the end of
    -- the scale while the profile is complete, and the place where the
    -- profile was cut otherwise (see Add_Gradient and Add_Speed). The
@@ -146,6 +158,15 @@ package DMI_Planning is
    -- replaces the farthest one, a farther one is left out. Both are
    -- counted in Orders_Left_Out.
    procedure Add_Order (Symbol_Kind, Dist_M : Natural);
+
+   -- 8.5.3: the stopping points of the ERTMS/ATO on-board, replaced as
+   -- a whole by every MSG_ATO. Clear_Stopping_Points empties the list;
+   -- Add_Stopping_Point appends one. As for the orders: one beyond
+   -- Max_Range_M is left out and when Max_Stopping_Points are stored a
+   -- nearer one replaces the farthest one. They are drawn only while the
+   -- ATO selector is "On" (8.5.1.1).
+   procedure Clear_Stopping_Points;
+   procedure Add_Stopping_Point (Dist_M : Natural);
 
    -- DMI 8.3.3.4: six ranges; the SRS defines no default, 0-4000 is used
    type Range_Index_T is range 1 .. 6;

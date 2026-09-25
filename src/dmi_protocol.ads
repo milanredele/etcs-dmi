@@ -8,7 +8,7 @@
 --  Transport integrity is provided by TCP; there is no per-frame CRC.
 --
 --  Message directions:
---     EVC -> DMI : SPEED_STATE, MODE_LEVEL, ONBOARD
+--     EVC -> DMI : SPEED_STATE, MODE_LEVEL, ONBOARD, ATO
 --     UI  -> DMI : POINTER
 --     DMI -> EVC : DRIVER_ACTION
 --     DMI -> UI  : FRAME, SOUND
@@ -168,6 +168,74 @@ package DMI_Protocol is
    --    dead meanwhile so that one press is one request (Table 33 #1).
    Onboard_Length : constant := 8;
 
+   MSG_ATO : constant Msg_Type_T := 16#0B#;
+   --  The information of the ERTMS/ATO on-board (DMI 8.5) as the EVC
+   --  relays it, and the position of the ATO selector (SUBSET-026
+   --  3.15.11.2), which the on-board holds and retains. The DMI shows the
+   --  ATO objects only while the selector is "On" (8.5.1.1) and only
+   --  those the on-board reports; it derives nothing. Every byte value is
+   --  defined here; a value not listed takes the "nothing known" reading
+   --  of its field, which shows nothing.
+   --
+   --  selector u8: the ATO selector position (11.3.14, Table 43a)
+   --    1 Stand-by, 2 On; any other value: not known, read as Stand-by
+   --    (nothing of 8.5 is shown, the ATO selector window proposes no
+   --    position)
+   --  status u8: the ATO status in G1 (8.5.2.4)
+   --    0 none, 1 ATO01 "ATO selected", 2 ATO02 "ATO ready for
+   --    engagement", 3 ATO03 "ATO engaged", 4 ATO04 "ATO disengaging",
+   --    5 ATO05 "ATO failure"; any other value: none
+   --  warning u8: non-zero while the ERTMS/ATO on-board requests the
+   --    warning sound (8.5.1.7: S2 is played as long as it is set)
+   --  location u8: 1 the train is at a stopping point, the ATO
+   --    information is composed as in 8.5.1.2 c (stopping accuracy,
+   --    dwell time, door information); any other value: outside
+   --    stopping points, 8.5.1.2 d (next stopping point name and
+   --    estimated arrival time, skip stopping point status, target
+   --    advice speed, coasting advice, next advice change marker)
+   --  accuracy u8: stopping accuracy in G2 (8.5.4)
+   --    0 none, 1 ATO06 overshoot, 2 ATO07 undershoot, 3 ATO08 accurate
+   --    stop; any other value: none
+   --  dwell u16: remaining dwell time in G3 (8.5.5), seconds; the format
+   --    '[m]m:ss' ends at 99:59, so 0 .. 5999 are shown and any other
+   --    value (16#FFFF# by convention) is none
+   --  train_hold u8: non-zero: "Train hold", ATO09 in G3 in place of the
+   --    dwell time (8.5.5.7)
+   --  doors u8: door information in G4 (8.5.6.3)
+   --    0 none, 1 ATO10 request to open both sides doors, 2 ATO11
+   --    request to open left doors, 3 ATO12 request to open right doors,
+   --    4 ATO13 doors are open, 5 ATO14 request to close doors, 6 ATO15
+   --    doors are being closed by ATO, 7 ATO16 doors are closed; any
+   --    other value: none
+   --  skip u8: skip stopping point status in G5 (8.5.8.4)
+   --    0 none, 1 ATO17 inactive, 2 ATO18 requested by ATO-TS, 3 ATO19
+   --    requested by driver; any other value: none
+   --  advice_speed u16: target advice speed in B0 (8.5.9), km/h;
+   --    0 .. 400 are shown, any other value (16#FFFF# by convention) is
+   --    none
+   --  coasting u8: non-zero: coasting advice, ATO20 in B8 (8.5.10)
+   --  eta_hour u8, eta_minute u8, eta_second u8: estimated arrival time
+   --    at the next stopping point, 24 hour local time (8.5.7.4); an
+   --    hour above 23, a minute or a second above 59 is none
+   --  name_length u8, then name_length bytes: the name of the next
+   --    stopping point (8.5.7.3), Latin-1, at most ATO_Max_Name bytes;
+   --    0: no name
+   --  count u8, then per stopping point: distance u16, metres from the
+   --    train front to the stopping point (8.5.3.5). Stopping points
+   --    beyond the longest planning range (32000 m, 8.3.3.4) are left
+   --    out; of more than DMI_Planning.Max_Stopping_Points the nearest
+   --    ones are kept. They are displayed within the movement authority
+   --    and up to the first target at zero speed (8.5.3.2).
+   --  The length must be exactly ATO_Fixed_Length + name_length + 2 *
+   --  count; any other message, and one with a name_length above
+   --  ATO_Max_Name, is ignored as a whole.
+   --  The next advice change marker of 8.5.11 travels in MSG_PLANNING
+   --  (next_advice_dist) with the other planning distances.
+   ATO_Header_Length : constant := 17; -- selector .. name_length
+   ATO_Fixed_Length  : constant := 18; -- ... plus the count
+   ATO_Max_Name      : constant := 32;
+   ATO_Stop_Entry_Length : constant := 2;
+
    -- EVC simulator -> UI (visualization; the DMI ignores these)
    MSG_TRACK_LAYOUT : constant Msg_Type_T := 16#08#;
    --  eoa u32, release_speed u8,
@@ -204,7 +272,15 @@ package DMI_Protocol is
    --  3 tunnel toggle, 4 geo toggle, 5 start mission, 6 override EOA,
    --  7 shunting request, 8 exit shunting, 9 adhesion (arg 0/1),
    --  10 train integrity confirmed, 11 level selected (arg Level_T'Pos),
-   --  12 non-leading
+   --  12 non-leading,
+   --  13 ATO engage / disengage, the G1 button (DMI 8.5.2.5 / 8.5.2.6):
+   --     arg 1 request the start of automatic driving (pressed while
+   --     ATO02 was displayed), arg 0 request its stop (ATO03 or ATO04),
+   --  14 skip stopping point, the G5 delay-type button (DMI 8.5.8.5):
+   --     arg 1 request the skip (pressed while ATO17 was displayed),
+   --     arg 0 revoke it (ATO19),
+   --  15 ATO selector position entered or revalidated in the ATO
+   --     selector window (DMI 11.3.14, Table 43a): arg 1 Stand-by, 2 On
    Driver_Action_Length : constant := 3;
    --  Action 2, the driver's acknowledgement (DMI 5.4.1), names the one
    --  request it answers. Its payload is Driver_Ack_Length bytes:
