@@ -168,6 +168,15 @@
             the radio data. Choosing level <i>NTC</i> puts the name of
             the simulated National System, PZB, in the level
             symbol.</li>
+          <li><b>Language.</b> The flag in <i>Settings</i> opens the
+            <i>Language</i> window: <i>Deutsch</i> and accepting it on the
+            input field turns every window, button, key, data view item
+            and system status message of the DMI into German at once,
+            the ones already displayed included (the texts the EVC sends
+            stay as they are). The DMI keeps the choice over a restart,
+            like the brightness and the volume, and tells the EVC (the
+            console shows <i>language "de"</i>); <i>English</i> brings it
+            back.</li>
           <li><b>Feed it by hand.</b> Switch the source to the manual EVC
             panel to put any speed, target, mode or level on the
             display. Its last rows raise any system status message of
@@ -1146,6 +1155,7 @@
             const code = (p[1] | (p[2] << 8) | (p[3] << 16) | (p[4] << 24)) >>> 0;
             return `${p[0] === 8 ? 'set' : 'remove'} VBC ${code}`;
           }
+          case 10: return `language "${text(1, 2)}"`;
           default: return `kind ${p[0]}`;
         }
       }

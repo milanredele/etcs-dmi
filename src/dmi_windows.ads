@@ -8,7 +8,8 @@
 --  windows (10.4, 11.4) and the data views (10.5, 11.5). The dialogue
 --  sequences of 11.7 that are modelled: Start Up (11.7.2), Main window
 --  (11.7.3), Shunting (11.7.4), Override (11.7.5), Special (11.7.6),
---  Settings (11.7.7, without Language) and Supervised Manoeuvre (11.7.8).
+--  Settings (11.7.7) and Supervised Manoeuvre (11.7.8). Every text they
+--  display is a text of DMI_Texts, in the selected language (5.5.1.3).
 
 with Display;
 with DMI_Buttons;
@@ -40,7 +41,8 @@ package DMI_Windows is
       W_Set_VBC_Validation,  -- 11.4.2
       W_Remove_VBC,          -- 11.3.13
       W_Remove_VBC_Validation,  -- 11.4.3
-      W_System_Version);     -- 11.5.2
+      W_System_Version,      -- 11.5.2
+      W_Language);           -- 11.3.6
 
    -- Requests towards the EVC, drained by DMI_Core
    type Action_T is
@@ -68,7 +70,9 @@ package DMI_Windows is
       BMM_Inhibition,           -- Arg: 0 inhibit, 1 revoke
       Maintain_SH,
       Send_Set_VBC,             -- Arg: the validated VBC set code
-      Send_Remove_VBC);         -- Arg: the validated VBC remove code
+      Send_Remove_VBC,          -- Arg: the validated VBC remove code
+      Send_Language);           -- Arg: DMI_Texts.Language_T'Pos of the
+                                -- language the driver selected
 
    procedure Open (ID : Window_ID_T);
    -- The driver pressed [Close]; ignored where [Close] is disabled

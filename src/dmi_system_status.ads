@@ -7,7 +7,8 @@
 --  brake command reason) and reports them as events (MSG_SYSTEM_STATUS,
 --  see dmi_protocol.ads). The DMI owns everything else and holds it
 --  here, per catalogue entry:
---    * the text and its case (15.1.1.3);
+--    * the text and its case (15.1.1.3), in the selected language
+--      (15.1.1.4.2, DMI_Texts);
 --    * first group, bold (8.2.3.4.7 a), class system status (5.4.1.9.1);
 --    * not to be acknowledged, except "NL no longer permitted"
 --      (15.1.1.4, 15.1.1.4.1), which ends when acknowledged;
@@ -58,6 +59,10 @@ package DMI_System_Status is
    -- Number is the entry it answers (for the EVC, 0 if none), and the
    -- message ends ("Text acknowledged", Table 68)
    procedure Acknowledged (ID : Natural; Number : out Natural);
+
+   -- The driver selected another language (DMI_Texts): the messages of
+   -- this catalogue that are displayed take its texts (15.1.1.4.2)
+   procedure Language_Changed;
 
    -- Test and diagnosis: the entry is displayed (started, not ended)
    function Active (Number : Entry_T) return Boolean;

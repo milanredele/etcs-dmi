@@ -2,10 +2,12 @@
 --  Train data window(s) implementation (DMI 11.3.9, 11.4.1).
 
 pragma Ada_2012;
+with DMI_Texts;
 
 package body DMI_Train_Data is
 
    use DMI_Data_Entry;
+   package TX renames DMI_Texts;
 
    ---------------------------------------------------------------------
    --  Keyboards (Tables 40, 41, 42)
@@ -49,15 +51,18 @@ package body DMI_Train_Data is
       ("D2  ", 7), ("D3  ", 8), ("D4  ", 9), ("D4XL", 10),
       ("E4  ", 11), ("E5  ", 12));
 
-   --  Table 42 with SUBSET-026 7.5.1.68
+   --  Table 42 with SUBSET-026 7.5.1.68. G1 .. GC are the names of the
+   --  profiles, values; 'Out of GC' is a text (5.5.1.3), the one row
+   --  with an empty label here (Gauge_Label).
    type Gauge_Row_T is record
-      Label : Wide_String (1 .. 9);
+      Label : Wide_String (1 .. 2);
       Value : Natural;
    end record;
 
    Gauges : constant array (1 .. Max_Gauge) of Gauge_Row_T :=
-     (("G1       ", 1), ("GA       ", 2), ("GB       ", 3),
-      ("GC       ", 4), ("Out of GC", 0));
+     (("G1", 1), ("GA", 2), ("GB", 3), ("GC", 4), ("  ", 0));
+
+   Out_Of_GC_Row : constant := 5;
 
    --  Trailing blanks pad the constant labels above
    function Trim (S : Wide_String) return Wide_String is
@@ -95,11 +100,16 @@ package body DMI_Train_Data is
       return Result;
    end Axle_Choices;
 
+   function Gauge_Label (Index : Positive) return Wide_String is
+     (if Index = Out_Of_GC_Row then TX.Text (TX.Out_Of_GC)
+      elsif Index <= Max_Gauge then Trim (Gauges (Index).Label)
+      else "");
+
    function Gauge_Choices return Choice_Set_T is
       Result : Choice_Set_T := No_Choices;
    begin
-      for Row of Gauges loop
-         Add_Choice (Result, Trim (Row.Label));
+      for I in Gauges'Range loop
+         Add_Choice (Result, Gauge_Label (I));
       end loop;
       return Result;
    end Gauge_Choices;
@@ -140,15 +150,16 @@ package body DMI_Train_Data is
    function Echo_Line_Of (Item : Item_T) return Natural is
      (Item_T'Pos (Item) + 1);
 
+   --  Table 40; 5.5.1.3: in the selected language
    function Label_Of (Item : Item_T) return Wide_String is
-     (case Item is
-         when I_Category  => "Train category",
-         when I_Length    => "Length (m)",
-         when I_Brake     => "Brake percentage",
-         when I_Max_Speed => "Max speed (km/h)",
-         when I_Axle_Load => "Axle load category",
-         when I_Airtight  => "Airtight",
-         when I_Gauge     => "Loading gauge");
+     (TX.Text (case Item is
+                  when I_Category  => TX.Train_Category,
+                  when I_Length    => TX.Train_Length,
+                  when I_Brake     => TX.Brake_Percentage,
+                  when I_Max_Speed => TX.Max_Speed,
+                  when I_Axle_Load => TX.Axle_Load_Category,
+                  when I_Airtight  => TX.Airtight,
+                  when I_Gauge     => TX.Loading_Gauge));
 
    function In_Progress return Boolean is (Running);
    function Current_Window return Window_Index_T is (Window);
@@ -209,17 +220,15 @@ package body DMI_Train_Data is
 
    function Gauge_Text (Index : Natural)
                         return DMI_Driver_Data.Text_Value_T is
-     (if Index in 1 .. Max_Gauge then Text_Of (Trim (Gauges (Index).Label))
+     (if Index in 1 .. Max_Gauge then Text_Of (Gauge_Label (Index))
       else (others => <>));
 
    --  Table 40 with 10.3.5.18: the airtight keyboard is the 'No' / 'Yes'
-   --  choice on the keys 7 and 8; choice 1 is 'No', choice 2 is 'Yes'
+   --  choice on the keys 7 and 8; an index that is neither gives an
+   --  empty value
    function Airtight_Text (Index : Natural)
                            return DMI_Driver_Data.Text_Value_T is
-     (case Index is
-         when 1      => Text_Of ("No"),
-         when 2      => Text_Of ("Yes"),
-         when others => (others => <>));
+     (DMI_Data_Entry.Yes_No_Value (Index));
 
    function Stored_Text (Item : Item_T) return DMI_Driver_Data.Text_Value_T is
    begin
@@ -262,9 +271,9 @@ package body DMI_Train_Data is
    --  M_AIRTIGHT: 0 not fitted, 1 fitted (SUBSET-026 7.5.1.61)
    function Airtight_Value return Natural is
      (case DMI_Driver_Data.Airtight is
-         when 1      => 0,
-         when 2      => 1,
-         when others => Unknown_Value);
+         when No_Choice  => 0,
+         when Yes_Choice => 1,
+         when others     => Unknown_Value);
 
    function Gauge_Value return Natural is
      (if DMI_Driver_Data.Loading_Gauge in 1 .. Max_Gauge
@@ -448,7 +457,7 @@ package body DMI_Train_Data is
                           Echo_Line => Echo_Line_Of (Item));
          when I_Airtight =>
             --  Table 40: key 7 is 'No' and key 8 is 'Yes' (10.3.5.18)
-            return Field (Label_Of (Item), 3,
+            return Field (Label_Of (Item), Max_Choice_Label,
                           Keyboard => Yes_No,
                           Proposed => Work (Item).Value,
                           Proposed_Choice => Work (Item).Choice,
@@ -471,7 +480,7 @@ package body DMI_Train_Data is
       --  the question 'Train data entry complete?'; 11.3.9.2 / 11.3.9.3:
       --  the title with the sequence number of the window
       Result.Layout := Total_Grid;
-      Result.Title := Window_Title ("Train data");
+      Result.Title := Window_Title (TX.Text (TX.Train_Data));
       Result.Page := Index;
       Result.Page_Count := Window_Count;
       Result.Field_Count := 0;
@@ -495,11 +504,12 @@ package body DMI_Train_Data is
       --  dedicated 'No'/'Yes' keyboard (10.4.1.2), the value 'Yes'
       --  proposed (Table 50 S3-2, Figure 130)
       Result.Layout := DMI_Data_Entry.Validation;
-      Result.Title := Window_Title ("Validate train data");
+      Result.Title := Window_Title (TX.Text (TX.Validate_Train_Data));
       Result.Field_Count := 1;
       Result.Fields (1) :=
-        Field ("Validate", 3, Keyboard => Yes_No,
-               Proposed => Text_Of ("Yes"), Proposed_Choice => 2);
+        Field (TX.Text (TX.Validate), Max_Choice_Label, Keyboard => Yes_No,
+               Proposed => Yes_No_Value (Yes_Choice),
+               Proposed_Choice => Yes_Choice);
       Fill_Echo (Result);
       return Result;
    end Validation_Def;

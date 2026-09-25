@@ -5,6 +5,7 @@ pragma Ada_2012;
 with DMI_Protocol; use DMI_Protocol;
 with DMI_Status;
 with DMI_Text_Messages;
+with DMI_Texts;
 
 package body DMI_System_Status is
 
@@ -31,48 +32,44 @@ package body DMI_System_Status is
    -- 8859-1, the character set of the text messages and of the fonts: it
    -- is written as "-". The missing space of "Route unsuitable –axle
    -- load category" (Table 68, page 315) is taken as a typo.
+   -- 15.1.1.4.2: the texts are the ones of the selected language
+   -- (DMI_Texts), the English ones in the case of the tables.
+   Text_IDs : constant array (Text_T) of DMI_Texts.Text_ID :=
+     (T_Balise_Read_Error        => DMI_Texts.Balise_Read_Error,
+      T_Trackside_Malfunction    => DMI_Texts.Trackside_Malfunction,
+      T_Communication_Error      => DMI_Texts.Communication_Error,
+      T_Entering_FS              => DMI_Texts.Entering_FS,
+      T_Entering_OS              => DMI_Texts.Entering_OS,
+      T_Entering_SM              => DMI_Texts.Entering_SM,
+      T_Runaway_Movement         => DMI_Texts.Runaway_Movement,
+      T_SM_Refused               => DMI_Texts.SM_Refused,
+      T_SM_Request_Failed        => DMI_Texts.SM_Request_Failed,
+      T_SH_Refused               => DMI_Texts.SH_Refused,
+      T_SH_Request_Failed        => DMI_Texts.SH_Request_Failed,
+      T_Trackside_Not_Compatible => DMI_Texts.Trackside_Not_Compatible,
+      T_Train_Data_Changed       => DMI_Texts.Train_Data_Changed,
+      T_Safe_Consist             => DMI_Texts.Safe_Consist_Length,
+      T_Train_Rejected           => DMI_Texts.Train_Rejected,
+      T_Unauthorized_Passing     => DMI_Texts.Unauthorized_Passing,
+      T_No_MA_Level_Transition   => DMI_Texts.No_MA_Level_Transition,
+      T_SR_Distance              => DMI_Texts.SR_Distance_Exceeded,
+      T_SH_Stop_Order            => DMI_Texts.SH_Stop_Order,
+      T_SR_Stop_Order            => DMI_Texts.SR_Stop_Order,
+      T_Emergency_Stop           => DMI_Texts.Emergency_Stop,
+      T_RV_Distance              => DMI_Texts.RV_Distance_Exceeded,
+      T_PT_Distance              => DMI_Texts.PT_Distance_Exceeded,
+      T_No_Track_Description     => DMI_Texts.No_Track_Description,
+      T_Route_Loading_Gauge      => DMI_Texts.Route_Loading_Gauge,
+      T_Route_Traction           => DMI_Texts.Route_Traction_System,
+      T_Route_Axle_Load          => DMI_Texts.Route_Axle_Load,
+      T_FRMCS_Registration       => DMI_Texts.FRMCS_Registration_Failed,
+      T_GSMR_Registration        => DMI_Texts.GSMR_Registration_Failed,
+      T_NL_No_Longer             => DMI_Texts.NL_No_Longer_Permitted,
+      T_Odometer_Impaired        => DMI_Texts.Odometer_Impaired,
+      T_ATO_Needs_Data           => DMI_Texts.ATO_Needs_Data);
+
    function Text_Of (T : Text_T) return Wide_String is
-     (case T is
-         when T_Balise_Read_Error        => "Balise read error",
-         when T_Trackside_Malfunction    => "Trackside malfunction",
-         when T_Communication_Error      => "Communication error",
-         when T_Entering_FS              => "Entering FS",
-         when T_Entering_OS              => "Entering OS",
-         when T_Entering_SM              => "Entering SM",
-         when T_Runaway_Movement         => "Runaway movement",
-         when T_SM_Refused               => "SM refused",
-         when T_SM_Request_Failed        => "SM request failed",
-         when T_SH_Refused               => "SH refused",
-         when T_SH_Request_Failed        => "SH request failed",
-         when T_Trackside_Not_Compatible => "Trackside not compatible",
-         when T_Train_Data_Changed       => "Train data changed",
-         when T_Safe_Consist             =>
-            "Safe consist length no longer available",
-         when T_Train_Rejected           => "Train is rejected",
-         when T_Unauthorized_Passing     =>
-            "Unauthorized passing of EOA / LOA",
-         when T_No_MA_Level_Transition   =>
-            "No MA received at level transition",
-         when T_SR_Distance              => "SR distance exceeded",
-         when T_SH_Stop_Order            => "SH stop order",
-         when T_SR_Stop_Order            => "SR stop order",
-         when T_Emergency_Stop           => "Emergency stop",
-         when T_RV_Distance              => "RV distance exceeded",
-         when T_PT_Distance              => "PT distance exceeded",
-         when T_No_Track_Description     => "No track description",
-         when T_Route_Loading_Gauge      =>
-            "Route unsuitable - loading gauge",
-         when T_Route_Traction           =>
-            "Route unsuitable - traction system",
-         when T_Route_Axle_Load          =>
-            "Route unsuitable - axle load category",
-         when T_FRMCS_Registration       =>
-            "FRMCS network registration failed",
-         when T_GSMR_Registration        =>
-            "GSM-R network registration failed",
-         when T_NL_No_Longer             => "NL no longer permitted",
-         when T_Odometer_Impaired        => "Odometer impaired",
-         when T_ATO_Needs_Data           => "ATO needs data");
+     (DMI_Texts.Text (Text_IDs (T)));
 
    function ID_Of (T : Text_T) return Natural is
      (System_ID_Base + Text_T'Pos (T));
@@ -454,6 +451,18 @@ package body DMI_System_Status is
 
    function Active (Number : Entry_T) return Boolean is
      (State (Number).Active);
+
+   procedure Language_Changed is
+   begin
+      -- 15.1.1.4.2 with 5.5.1.3: a displayed message takes the text of
+      -- the selected language at once; its place, time stamp and state
+      -- of acknowledgement stay (one message per text, 15.1.1.7)
+      for T in Text_T loop
+         if DMI_Text_Messages.Holds (ID_Of (T)) then
+            DMI_Text_Messages.Replace_Text (ID_Of (T), Text_Of (T));
+         end if;
+      end loop;
+   end Language_Changed;
 
    procedure Reset is
    begin

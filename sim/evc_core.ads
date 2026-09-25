@@ -45,5 +45,8 @@ package EVC_Core is
    function Monitoring return Natural;       -- 0 CSM / 1 TSM / 2 RSM
    function Permitted_Speed return Natural;  -- km/h at the current position
    function Mode_Ack_Pending return Boolean;
+   -- The language the DMI reported (MSG_DRIVER_DATA kind 10), "en" until
+   -- it reports one
+   function Language_Code return String;
 
 end EVC_Core;

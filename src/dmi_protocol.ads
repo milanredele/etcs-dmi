@@ -620,10 +620,19 @@ package DMI_Protocol is
    --                  (11.3.13.5). Sent once the Remove VBC validation
    --                  window is left with 'Yes' (Table 54 S7-2);
    --                  Driver_Data_VBC_Length bytes
+   --  10 Language   : code 2 bytes, the ISO 639-1 code of the language
+   --                  the driver selected in the Language window (DMI
+   --                  11.3.6, Table 54 S2) in lower case Latin-1 letters
+   --                  ("en" English, "de" German); sent on every entry
+   --                  or revalidation. The on-board stores the language
+   --                  (SUBSET-026 A.3.4) and chooses the fixed text
+   --                  messages with it (3.12.3.3.1, Q_TEXT 7.5.1.136).
+   --                  Driver_Data_Language_Length bytes
    Driver_Data_Train_Length : constant := 13;
    Driver_Data_RBC_Length   : constant := 23;
    Driver_Data_Byte_Length  : constant := 2;
    Driver_Data_VBC_Length   : constant := 5;
+   Driver_Data_Language_Length : constant := 3;
    RBC_Phone_Max            : constant := 16;
 
    -- DMI -> UI

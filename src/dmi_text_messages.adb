@@ -325,6 +325,31 @@ package body DMI_Text_Messages is
       return Slot;
    end Victim;
 
+   -- The text of M, stored as ISO 8859-1 and cut to Max_Text, and the
+   -- line count that goes with it
+   procedure Store_Text (M : in out Message_T; Text : Wide_String) is
+      Len : constant Natural := Natural'Min (Text'Length, Max_Text);
+   begin
+      M.Length := Len;
+      M.Text := (others => ' ');
+      for I in 1 .. Len loop
+         declare
+            C : constant Wide_Character := Text (Text'First + (I - 1));
+         begin
+            M.Text (I) :=
+              (if Wide_Character'Pos (C) <= 16#FF#
+               then Character'Val (Wide_Character'Pos (C))
+               else No_Glyph);
+         end;
+      end loop;
+      if Text'Length > Max_Text then
+         -- a cut text must not read as a complete one
+         M.Text (Max_Text - 2 .. Max_Text) := "...";
+      end if;
+      -- 8.2.3.4.6 c: the one line count behind scrolling and drawing
+      M.Lines := Count_Lines (M);
+   end Store_Text;
+
    procedure Put (ID           : Natural;
                   First_Group  : Boolean;
                   Ack_Required : Boolean;
@@ -373,22 +398,7 @@ package body DMI_Text_Messages is
          Lines        => 1,
          Sequence     => Sequence,
          Ack_Waiting  => False);
-      for I in 1 .. Len loop
-         declare
-            C : constant Wide_Character := Text (Text'First + (I - 1));
-         begin
-            Messages (Slot).Text (I) :=
-              (if Wide_Character'Pos (C) <= 16#FF#
-               then Character'Val (Wide_Character'Pos (C))
-               else No_Glyph);
-         end;
-      end loop;
-      if Text'Length > Max_Text then
-         -- a cut text must not read as a complete one
-         Messages (Slot).Text (Max_Text - 2 .. Max_Text) := "...";
-      end if;
-      -- 8.2.3.4.6 c: the one line count behind scrolling and drawing
-      Messages (Slot).Lines := Count_Lines (Messages (Slot));
+      Store_Text (Messages (Slot), Text);
       Clamp_Scroll;
 
       if Ack_Required then
@@ -399,6 +409,15 @@ package body DMI_Text_Messages is
          DMI_Sounds.Play (DMI_Sounds.Sinfo);
       end if;
    end Put;
+
+   procedure Replace_Text (ID : Natural; Text : Wide_String) is
+      Slot : constant Natural := Find (ID);
+   begin
+      if Slot /= 0 then
+         Store_Text (Messages (Slot), Text);
+         Clamp_Scroll;
+      end if;
+   end Replace_Text;
 
    procedure Remove (ID : Natural) is
       Slot : constant Natural := Find (ID);

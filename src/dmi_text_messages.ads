@@ -51,6 +51,12 @@ package DMI_Text_Messages is
 
    procedure Remove (ID : Natural);
 
+   -- The stored message ID takes Text (cut as by Put); its place, time
+   -- stamp, group and acknowledgement stay, and no sound is played. For
+   -- a message of the DMI whose text follows the selected language
+   -- (DMI_System_Status, 5.5.1.3). Nothing when ID is not stored.
+   procedure Replace_Text (ID : Natural; Text : Wide_String);
+
    -- The store holds message ID
    function Holds (ID : Natural) return Boolean;
 

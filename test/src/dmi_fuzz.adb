@@ -21,6 +21,7 @@ with Ada.Streams;  use Ada.Streams;
 with Ada.Text_IO;  use Ada.Text_IO;
 with DMI_Core;
 with DMI_Protocol; use DMI_Protocol;
+with DMI_Texts;
 with Interfaces;   use Interfaces;
 
 procedure DMI_Fuzz is
@@ -414,6 +415,15 @@ begin
    DMI_Core.Initialise;
 
    for Step in 1 .. Steps loop
+      -- 0. every 5000 steps the other language (DMI 5.5), so that every
+      --    text of both tables is drawn; the Language window reached by
+      --    the random touches changes it as well
+      if Step mod 5000 = 0 then
+         DMI_Texts.Select_Language
+           (if DMI_Texts."=" (DMI_Texts.Selected, DMI_Texts.English)
+            then DMI_Texts.German else DMI_Texts.English);
+      end if;
+
       -- 1. one stimulus
       declare
          Kind : constant Natural := Pick (1, 100);

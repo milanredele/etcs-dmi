@@ -377,7 +377,12 @@ switchable train data entry (WIN-8), which need rolling stock configuration.
     SB) and its pending latch from WIN-1.
 20. **WIN-8** Train data variants and the Table 40 items; **WIN-14** data view paging.
 
-### P3 — Missing functions
+### P3 — Missing functions — DONE 2026-09-25
+All items are merged (three parallel branches, then two, then one); outcomes, choices
+and new open points are in the P3 follow-up section of
+[doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). Decisions taken: the EVC reports the
+SUBSET-026 events of the chapter 15 messages and the DMI owns the catalogue; the DMI
+offers the isolation means as a desk key (5.6.1.1); languages are English and German.
 21. **ATO-1** Section 8.5 in full, with **PLN-5** (the former Phase 4): protocol
     messages and driver actions first, then G1–G5, B0/B8, D2–D4.
 22. **SDI-2** Chapter 15 catalogue: decide whether the DMI or the EVC owns the start

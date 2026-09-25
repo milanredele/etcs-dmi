@@ -4,6 +4,7 @@
 
 pragma Ada_2012;
 with DMI_Buttons;
+with DMI_Texts;
 with Symbol;
 
 package body Display.F_Area is
@@ -32,16 +33,20 @@ package body Display.F_Area is
       end Label;
 
       use all type DMI_Buttons.Button_ID_T;
+      package TX renames DMI_Texts;
    begin
       -- DMI 5.3.2.5: the border disappears while the button is pressed
       if not Pressed then
          F_Buffer.Draw_Button_Frame (The_Area);
       end if;
       case Button is
-         when BTN_F1 => Label ("Main");
-         when BTN_F2 => Label ("Over-", "ride");
-         when BTN_F3 => Label ("Data", "view");
-         when BTN_F4 => Label ("Spec");
+         -- 5.5.1.3: the labels in the selected language
+         when BTN_F1 => Label (TX.Text (TX.F_Main));
+         when BTN_F2 => Label (TX.Text (TX.F_Override_1),
+                               TX.Text (TX.F_Override_2));
+         when BTN_F3 => Label (TX.Text (TX.F_Data_View_1),
+                               TX.Text (TX.F_Data_View_2));
+         when BTN_F4 => Label (TX.Text (TX.F_Special));
          when BTN_F5 =>
             F_Buffer.Draw_Symbol
               (Symbol.SE_04,

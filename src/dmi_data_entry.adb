@@ -6,6 +6,7 @@ with Display.Draw;
 with Display.Screen;
 with DMI_Data_Format;
 with DMI_Flash;
+with DMI_Texts;
 with Font;
 with General_Parameters;
 with Symbol;
@@ -182,6 +183,18 @@ package body DMI_Data_Entry is
               Proposed_Choice => Proposed_Choice,
               Echo_Line   => Echo_Line);
    end Field;
+
+   function Yes_No_Value (Choice : Natural)
+                          return DMI_Driver_Data.Text_Value_T is
+      Result : DMI_Driver_Data.Text_Value_T;
+   begin
+      case Choice is
+         when No_Choice  => Set_Text (Result, DMI_Texts.Text (DMI_Texts.No));
+         when Yes_Choice => Set_Text (Result, DMI_Texts.Text (DMI_Texts.Yes));
+         when others     => null;
+      end case;
+      return Result;
+   end Yes_No_Value;
 
    procedure Add_Choice (Set     : in out Choice_Set_T;
                          Label   : Wide_String;
@@ -779,11 +792,11 @@ package body DMI_Data_Entry is
             --  10.3.5.18: a key of a dedicated keyboard carries the
             --  whole predefined choice, not one character
             if Index = Key_No then
-               Set_Text (S.Value, "No");
-               S.Choice := 1;
+               S.Value := Yes_No_Value (No_Choice);
+               S.Choice := No_Choice;
             elsif Index = Key_Yes then
-               Set_Text (S.Value, "Yes");
-               S.Choice := 2;
+               S.Value := Yes_No_Value (Yes_Choice);
+               S.Choice := Yes_Choice;
             end if;
          when Dedicated =>
             --  10.3.5.19: the key carries one predefined choice, which
@@ -1025,7 +1038,7 @@ package body DMI_Data_Entry is
          if not Is_Down then
             Draw.Draw_Button_Frame (The_Area);
          end if;
-         Line ("More", 6);
+         Line (DMI_Texts.Text (DMI_Texts.More), 6);
          return;
       end if;
       if Number = 0
@@ -1320,7 +1333,9 @@ package body DMI_Data_Entry is
       Draw.Draw_String
         (Pen_X => Question_Area.Position.X + Question_Area.Width / 2,
          Pen_Y => Question_Area.Position.Y + Question_Area.Height / 2 + 6,
-         The_String => Trim (Def.Title) & " entry complete?",
+         The_String => DMI_Texts.Text (DMI_Texts.Entry_Complete_Before)
+                         & Trim (Def.Title)
+                         & DMI_Texts.Text (DMI_Texts.Entry_Complete_After),
          The_Size => 12,
          The_Color => GREY,
          The_Alignment => Draw.Center);
@@ -1332,7 +1347,7 @@ package body DMI_Data_Entry is
       Draw.Draw_String
         (Pen_X => Yes_Area.Position.X + Yes_Area.Width / 2,
          Pen_Y => Yes_Area.Position.Y + Yes_Area.Height / 2 + 6,
-         The_String => "Yes",
+         The_String => DMI_Texts.Text (DMI_Texts.Yes),
          The_Size => 12,
          The_Color => BLACK,
          The_Alignment => Draw.Center);
@@ -1463,8 +1478,8 @@ package body DMI_Data_Entry is
             Label : constant Wide_String :=
               (if not Numeric_Keys then
                  (case Key is
-                     when Key_No  => "No",
-                     when Key_Yes => "Yes",
+                     when Key_No  => DMI_Texts.Text (DMI_Texts.No),
+                     when Key_Yes => DMI_Texts.Text (DMI_Texts.Yes),
                      when others  => "")
                else
                  (case Key is

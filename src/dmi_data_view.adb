@@ -8,6 +8,7 @@ with DMI_Data_Format;
 with DMI_Driver_Data;
 with DMI_Radio_Data;
 with DMI_System_Version;
+with DMI_Texts;
 with DMI_Train_Data;
 with DMI_VBC;
 with General_Parameters;
@@ -16,6 +17,7 @@ with Symbol;
 package body DMI_Data_View is
 
    use Display;
+   package TX renames DMI_Texts;
 
    -- Same window area as DMI_Windows (Table 20): the D/F/G column,
    -- 306 x 450 from the top left corner of area D (10.5.1.1)
@@ -47,25 +49,18 @@ package body DMI_Data_View is
    -- text line
    type Topic_T is (T_Driver_ID, T_TRN, T_Train_Data, T_Radio_Data, T_VBC);
 
-   Max_Label_Len : constant := 20;
-
+   -- 5.5.1.3: the label is a text of DMI_Texts, drawn in the selected
+   -- language; the VBC rows build theirs around the number (Row_Label)
    type Item_T is record
       Page  : Positive := 1;
       Topic : Topic_T := T_Driver_ID;
-      Label : Wide_String (1 .. Max_Label_Len) := (others => ' ');
+      Label : TX.Text_ID := TX.Driver_ID;
    end record;
-
-   function Label_Of (S : Wide_String) return Wide_String is
-      Result : Wide_String (1 .. Max_Label_Len) := (others => ' ');
-   begin
-      Result (1 .. S'Length) := S;
-      return Result;
-   end Label_Of;
 
    function Item (Page  : Positive;
                   Topic : Topic_T;
-                  Label : Wide_String) return Item_T is
-     ((Page, Topic, Label_Of (Label)));
+                  Label : TX.Text_ID) return Item_T is
+     ((Page, Topic, Label));
 
    -- Table 45. Item 3 "Train type" belongs to the fixed train data
    -- entry of Table 44 only. Item 14 "RBC phone number" is displayed
@@ -77,19 +72,19 @@ package body DMI_Data_View is
    -- is the window Table 45 gives it; the VBC items start on window 2
    -- and continue on the windows 3 .. n when window 2 is full ("2..n").
    Items : constant array (1 .. 13) of Item_T :=
-     (Item (1, T_Driver_ID,  "Driver ID"),            -- 1
-      Item (1, T_TRN,        "Train running number"), -- 2
-      Item (1, T_Train_Data, "Train category"),       -- 4
-      Item (1, T_Train_Data, "Length (m)"),           -- 5
-      Item (1, T_Train_Data, "Brake percentage"),     -- 6
-      Item (1, T_Train_Data, "Maximum speed (km/h)"), -- 7
-      Item (1, T_Train_Data, "Axle load category"),   -- 8
-      Item (1, T_Train_Data, "Airtight"),             -- 9
-      Item (1, T_Train_Data, "Loading gauge"),        -- 10
-      Item (2, T_Radio_Data, "Radio network type"),   -- 11
-      Item (2, T_Radio_Data, "GSM-R network ID"),     -- 12
-      Item (2, T_Radio_Data, "RBC ID"),               -- 13
-      Item (2, T_Radio_Data, "RBC phone number"));    -- 14
+     (Item (1, T_Driver_ID,  TX.Driver_ID),            -- 1
+      Item (1, T_TRN,        TX.Train_Running_Number), -- 2
+      Item (1, T_Train_Data, TX.Train_Category),       -- 4
+      Item (1, T_Train_Data, TX.Train_Length),         -- 5
+      Item (1, T_Train_Data, TX.Brake_Percentage),     -- 6
+      Item (1, T_Train_Data, TX.Maximum_Speed),        -- 7
+      Item (1, T_Train_Data, TX.Axle_Load_Category),   -- 8
+      Item (1, T_Train_Data, TX.Airtight),             -- 9
+      Item (1, T_Train_Data, TX.Loading_Gauge),        -- 10
+      Item (2, T_Radio_Data, TX.Radio_Network_Type),   -- 11
+      Item (2, T_Radio_Data, TX.GSMR_Network_ID),      -- 12
+      Item (2, T_Radio_Data, TX.RBC_ID),               -- 13
+      Item (2, T_Radio_Data, TX.RBC_Phone_Number));    -- 14
 
    Phone_Item : constant := 13;  -- the index of item 14 above
 
@@ -104,15 +99,20 @@ package body DMI_Data_View is
    function Row_Count return Natural is (Items'Length + VBC_Count);
 
    function Row_Item (Row : Positive) return Item_T is
+     (if Row <= Items'Length then Items (Row)
+      else Item (2, T_VBC, TX.VBC_Code_Before));
+
+   -- The label of a row; Table 45 items 15, 16, ...: 'VBC #n set code'
+   function Row_Label (Row : Positive) return Wide_String is
       Img : constant Wide_String :=
-        Natural'Wide_Image (Row - Items'Length);
+        Natural'Wide_Image (Row - Natural'Min (Row, Items'Length));
    begin
       if Row <= Items'Length then
-         return Items (Row);
+         return TX.Text (Items (Row).Label);
       end if;
-      -- Table 45 items 15, 16, ...: 'VBC #n set code'
-      return Item (2, T_VBC, "VBC #" & Img (2 .. Img'Last) & " set code");
-   end Row_Item;
+      return TX.Text (TX.VBC_Code_Before) & Img (2 .. Img'Last)
+        & TX.Text (TX.VBC_Code_After);
+   end Row_Label;
 
    Current_Page : Positive := 1;
 
@@ -187,7 +187,8 @@ package body DMI_Data_View is
    -- data info (items 11 to 14 of Table 45):
    -- - 10 the Radio Network type stored on-board, which MSG_ONBOARD
    --   reports with its value (bits 0-1 of the radio byte); not known:
-   --   no value. A dedicated value (Table 43b), not grouped (5.1.5.2.2).
+   --   no value. A dedicated value (Table 43b), not grouped (5.1.5.2.2);
+   --   the names of the radio systems, the same in every language.
    -- - 11 the GSM-R network ID: the network the driver selected on this
    --   DMI from the list of the on-board (11.3.4), while the EVC reports
    --   a GSM-R Mobile Terminal registered to a network (implementation
@@ -458,7 +459,7 @@ package body DMI_Data_View is
         Positive'Wide_Image (Positive'Min (Current_Page, Page_Count));
       Total_Img : constant Wide_String := Positive'Wide_Image (Page_Count);
    begin
-      return "Data view (" & Page_Img (2 .. Page_Img'Last)
+      return TX.Text (TX.Data_View) & " (" & Page_Img (2 .. Page_Img'Last)
         & "/" & Total_Img (2 .. Total_Img'Last) & ")";
    end Title;
 
@@ -535,18 +536,13 @@ package body DMI_Data_View is
          if Row_Present (Index) then
             declare
                Place   : constant Place_T := Places (Index);
-               It      : constant Item_T := Row_Item (Index);
-               Trimmed : Natural := Max_Label_Len;
                Value   : constant Value_T := Value_Of (Index);
                Line    : Natural;
                Cut     : Natural;
             begin
                Line := Place.Line;
                if Place.Page = Current_Page and then Line <= Last_Line then
-                  while Trimmed > 0 and then It.Label (Trimmed) = ' ' loop
-                     Trimmed := Trimmed - 1;
-                  end loop;
-                  Draw_Label (Line, It.Label (1 .. Trimmed));
+                  Draw_Label (Line, Row_Label (Index));
 
                   Cut := Split_At (Value);
                   if Value.Valid and then Value.Group then
@@ -595,7 +591,7 @@ package body DMI_Data_View is
    -- while the EVC has not reported one
    procedure Render_System_Version is
    begin
-      Draw_Label (0, "Operated system version");
+      Draw_Label (0, TX.Text (TX.Operated_System_Version));
       if DMI_System_Version.Known then
          Draw_Data (0, DMI_System_Version.Image);
       end if;
