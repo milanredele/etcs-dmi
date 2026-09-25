@@ -50,7 +50,7 @@ The rules that have proven necessary so far:
   claims, including requirements that do not exist; [PLAN.md](PLAN.md)
   §1 records the check claim by claim, and a verified plan replaced it.
 - **Behaviour is pinned by executable checks.** The regression
-  runner makes 686 checks: 138 rendered screens compared with golden
+  runner makes 1433 checks: 243 rendered screens compared with golden
   frames, sound events, and a complete simulated mission. The
   WebAssembly build has to render the same pixels as the native one. A
   change that alters a screen fails a check, and a person has to look at
@@ -68,12 +68,16 @@ claims conformance with EN 50128 / EN 50716.
 The default window (speed dial, supervision colours, planning area,
 track conditions, text messages, acknowledgements, sounds), the sub-level
 windows with the chapter 10 data entry (numeric, alphanumeric and
-dedicated keyboards, data checks, validation, data view), touch input,
-and the EVC/track/train simulator are implemented. Still open: the ATO
-displays, the chapter 15 message catalogue, the radio and language
-windows and the optimisation for the embedded memory budget. The national systems
-part of the specification (NTC, chapters 9 and 12) and the soft-key
-variant of the layout are out of scope.
+dedicated keyboards, data checks, validation, data view), the radio,
+VBC, ATO selector, System version and Language windows (English and
+German), the ATO displays of chapter 8.5, the chapter 15 message
+catalogue, the desk inputs for Settings and isolation, touch input, and
+the EVC/track/train simulator (with an ATO on-board, shunting,
+Supervised Manoeuvre and a stand-in RBC) are implemented. Still open:
+the pixel conformance pass (P4 of the plan) and the optimisation for the
+embedded memory budget. The national systems part of the specification
+(NTC, chapters 9 and 12) and the soft-key variant of the layout are out
+of scope.
 
 The code was audited against the specification clause by clause in
 September 2026: [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md) records
