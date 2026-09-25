@@ -55,6 +55,24 @@ package EVC_Track is
    -- Track ahead free request location
    TAF_M : constant Natural := 9_400;
 
+   -- Operational stopping points of the ATO journey profile (DMI 8.5.3,
+   -- 8.5.7): name, location, train hold at the start of the stop and
+   -- dwell time after it, and the side of the doors. Knebworth holds
+   -- the train and has a dwell time above a minute, so that the bench
+   -- shows ATO09 and the '[m]m:ss' format of 8.5.5.5.
+   type Door_Side_T is (Left, Right, Both);
+   type Stopping_Point_T is record
+      Name    : String (1 .. 12); -- padded with spaces
+      At_M    : Natural;
+      Hold_S  : Natural;
+      Dwell_S : Natural;
+      Doors   : Door_Side_T;
+   end record;
+   Stopping_Points : constant array (1 .. 3) of Stopping_Point_T :=
+     (("Welwyn North", 2_500, 0, 25, Left),
+      ("Knebworth   ", 6_300, 10, 65, Right),
+      ("Stevenage   ", 9_900, 0, 30, Both));
+
    function MRSP_At (Position_M : Natural) return Natural;
    function Gradient_At (Position_M : Natural) return Integer;
 

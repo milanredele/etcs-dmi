@@ -250,7 +250,7 @@ package DMI_Protocol is
 
    MSG_SIM_STATE : constant Msg_Type_T := 16#09#;
    --  position u32 (m), speed u16 (km/h),
-   --  mode u8 (0 SB / 1 SR / 2 FS / 3 TR),
+   --  mode u8 (0 SB / 1 SR / 2 FS / 3 TR / 4 AD),
    --  monitoring u8 (0 CSM / 1 TSM / 2 RSM),
    --  demand i8 (-100..100), brake_commanded u8
    Sim_State_Length : constant := 10;

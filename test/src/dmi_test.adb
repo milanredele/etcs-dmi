@@ -31,6 +31,7 @@ with DMI_Status;
 with DMI_Text_Messages;
 with DMI_Train_Data;
 with DMI_Windows;
+with EVC_ATO;
 with EVC_Core;
 with EVC_Driver;
 with EVC_Track;
@@ -4775,6 +4776,201 @@ procedure DMI_Test is
       Drain_Outbox;
    end Scenario_ATO_Selector_Window;
 
+   -- The simulator's ERTMS/ATO on-board (sim/evc_ato) through the DMI,
+   -- the way the browser bench runs it: the driver switches the ATO
+   -- selector on, engages, the ATO stops the train at Welwyn North,
+   -- disengages itself, the driver engages again, disengages and
+   -- engages once more, and the ATO holds the train at Knebworth
+   procedure Scenario_ATO_Mission is
+      use type EVC_Core.Mode_T;
+
+      procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
+                      Payload  : Ada.Streams.Stream_Element_Array) is
+      begin
+         DMI_Core.Handle_Message (The_Type, Payload);
+      end Emit;
+
+      procedure Pump_To_EVC is
+         use Ada.Streams;
+         use DMI_Protocol;
+         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+         Last   : Stream_Element_Offset;
+         Offset : Stream_Element_Offset := Buffer'First;
+      begin
+         DMI_Core.Take_Outbox (Buffer, Last, With_Sounds => False);
+         while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+            declare
+               The_Type : constant Msg_Type_T :=
+                 Msg_Type_T (Get_U8 (Buffer, Offset));
+               Length   : constant Stream_Element_Offset :=
+                 Stream_Element_Offset (Get_U32 (Buffer, Offset));
+               Next     : constant Stream_Element_Offset := Offset + Length;
+            begin
+               exit when Next - 1 > Last;
+               if The_Type = MSG_DRIVER_ACTION
+                 and then Length = Driver_Action_Length
+               then
+                  declare
+                     Action : constant Interfaces.Unsigned_8 :=
+                       Get_U8 (Buffer, Offset);
+                     Arg    : constant Interfaces.Unsigned_16 :=
+                       Get_U16 (Buffer, Offset);
+                  begin
+                     EVC_Core.Handle_Driver_Action
+                       (Natural (Action), Natural (Arg));
+                  end;
+               elsif The_Type = MSG_DRIVER_DATA then
+                  EVC_Core.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+               end if;
+               Offset := Next;
+            end;
+         end loop;
+      end Pump_To_EVC;
+
+      procedure Sim_Step is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         DMI_Core.Tick (100);
+         Pump_To_EVC;
+      end Sim_Step;
+
+      procedure Touch (X, Y : Natural) is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Core.Step (0.05, Emit'Unrestricted_Access);
+         Pointer_Down (X, Y);
+         Pointer_Up (X, Y);
+         DMI_Core.Tick (50);
+         Pump_To_EVC;
+         Drain_Sounds;
+      end Touch;
+
+      generic
+         with function Done return Boolean;
+      procedure Run_Until (What : String; Max_Steps : Natural);
+
+      procedure Run_Until (What : String; Max_Steps : Natural) is
+      begin
+         for I in 1 .. Max_Steps loop
+            Sim_Step;
+            if Done then
+               return;
+            end if;
+         end loop;
+         Check (False, "timeout waiting for " & What);
+      end Run_Until;
+
+      function At_Stop return Boolean is (EVC_ATO.At_Stopping_Point);
+      function Ready return Boolean is
+        (DMI_ATO."=" (DMI_ATO.Status, DMI_ATO.Ready));
+      function Beyond_3000 return Boolean is
+        (EVC_Train.Position_M > 3_000.0);
+      function In_FS return Boolean is (EVC_Core.Mode = EVC_Core.FS);
+
+      procedure Wait_Stop is new Run_Until (At_Stop);
+      procedure Wait_Ready is new Run_Until (Ready);
+      procedure Wait_3000 is new Run_Until (Beyond_3000);
+      procedure Wait_FS is new Run_Until (In_FS);
+
+      function Error_At (M : Natural) return Float is
+        (abs (EVC_Train.Position_M - Float (M)));
+   begin
+      Reset;
+      EVC_Core.Reset;
+      External_EVC;
+      for I in 1 .. 5 loop
+         Sim_Step;
+      end loop;
+
+      -- start of mission (as Scenario_Mission)
+      Touch (385, 240); Touch (487, 90);   -- Driver ID 1, Enter
+      Touch (385, 240); Touch (487, 90);   -- Level 1 accepted -> Main
+      Touch (410, 140);                     -- Train data (1/2)
+      Touch (385, 240); Touch (589, 40);   -- train category PASS 1
+      Touch (385, 290); Touch (487, 390); Touch (487, 390);
+      Touch (589, 90);                     -- length 400
+      Touch (385, 240); Touch (589, 240); Touch (487, 290);
+      Touch (589, 140);                     -- brake percentage 135
+      Touch (385, 240); Touch (385, 290); Touch (487, 390);
+      Touch (589, 190);                     -- maximum speed 140
+      Touch (539, 440);                     -- [Next] -> Train data (2/2)
+      Touch (385, 240); Touch (589, 40);   -- axle load category A
+      Touch (385, 340); Touch (589, 90);   -- airtight: No
+      Touch (487, 290); Touch (589, 140);  -- loading gauge Out of GC
+      Touch (167, 440);                     -- entry complete? Yes
+      Touch (487, 40);                      -- validation 'Yes' -> TRN
+      Touch (385, 240); Touch (487, 90);   -- TRN 1, Enter -> Main window
+      Touch (410, 90);                      -- Start -> default window
+      Check (EVC_Core.Mode = EVC_Core.FS, "the mission starts in FS");
+
+      -- 11.3.14: the driver sets the ATO selector to "On"
+      Touch (610, 240);                     -- F5: Settings
+      Touch (410, 240);                     -- ATO
+      Touch (Key_X (2), Key_Y (2));         -- On
+      Touch (487, 90);                      -- accept
+      Touch (370, 440);                     -- [Close]
+      Check (EVC_ATO.Selector_On, "the EVC holds the selector 'On'");
+      Wait_Ready ("ATO02", 50);
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("ato_mission_ready");
+
+      -- 8.5.2.5: engage; SUBSET-026 [80]: AD
+      Touch (G1_X, G_Y);
+      Check (EVC_Core.Mode = EVC_Core.AD, "ATO engage: the mode is AD");
+      Wait_Stop ("the stop at Welwyn North", 6_000);
+      Check (Error_At (EVC_Track.Stopping_Points (1).At_M) <= 2.0,
+             "the ATO stops within 2 m of Welwyn North");
+      Check (EVC_Core.Mode = EVC_Core.FS,
+             "4.4.16.3.2.1: the ATO disengages itself at the stop");
+      for I in 1 .. 10 loop
+         Sim_Step;                          -- the doors are open
+      end loop;
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("ato_mission_at_welwyn");
+
+      -- after the dwell time the ATO is ready again
+      Wait_Ready ("ATO02 after the dwell time", 400);
+      Touch (G1_X, G_Y);
+      Check (EVC_Core.Mode = EVC_Core.AD, "engaged again");
+      Wait_3000 ("leaving Welwyn North", 3_000);
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("ato_mission_engaged");
+
+      -- 8.5.2.6: disengage; ATO04 with the ATO warning (8.5.1.7)
+      Touch (G1_X, G_Y);
+      Sim_Step;
+      Check (DMI_ATO."=" (DMI_ATO.Status, DMI_ATO.Disengaging),
+             "ATO disengage: ATO04");
+      Expect_Sound (DMI_Sounds.S2_Warning_Start, "the ATO warning: S2");
+      Wait_FS ("the end of the disengagement", 50);
+      Sim_Step;
+      Expect_Sound (DMI_Sounds.S2_Warning_Stop, "the warning ends");
+      Drain_Sounds;
+
+      -- the automatic driver follows the advice in FS; engage again
+      Wait_Ready ("ATO02 in FS", 50);
+      Touch (G1_X, G_Y);
+      Wait_Stop ("the stop at Knebworth", 8_000);
+      Check (Error_At (EVC_Track.Stopping_Points (2).At_M) <= 2.0,
+             "the ATO stops within 2 m of Knebworth");
+      for I in 1 .. 40 loop
+         Sim_Step;                          -- 4 s of train hold
+      end loop;
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("ato_mission_train_hold");
+      for I in 1 .. 100 loop
+         Sim_Step;                          -- the hold is over
+      end loop;
+      Drain_Sounds;
+      DMI_Core.Render;
+      Check_Frame ("ato_mission_dwell");
+   end Scenario_ATO_Mission;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -4834,6 +5030,7 @@ begin
    Scenario_ATO_Warning_Sound;
    Scenario_ATO_Stopping_Points;
    Scenario_ATO_Selector_Window;
+   Scenario_ATO_Mission;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));
