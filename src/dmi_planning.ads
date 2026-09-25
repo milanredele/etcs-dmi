@@ -23,7 +23,7 @@ package DMI_Planning is
    --
    -- Memory: an element is packed into 4 bytes (gradient, order) or
    -- 6 bytes (speed), so the lists take 64 * 4 + 32 * 6 + 32 * 4 = 576
-   -- bytes of static data, plus 16 bytes for the stopping points and
+   -- bytes of static data, plus 32 bytes for the stopping points and
    -- 160 bytes of stack while the orders and stopping points are sorted
    -- for drawing. (The former 8/10/12 elements with 32 bit fields took
    -- 280 bytes.)
