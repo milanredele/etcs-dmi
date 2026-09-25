@@ -95,10 +95,11 @@ procedure DMI_Fuzz is
    -- In-domain generators, one per message (see dmi_protocol.ads)
    ---------------------------------------------------------------------
 
-   EVC_Types : constant array (1 .. 11) of Msg_Type_T :=
+   EVC_Types : constant array (1 .. 13) of Msg_Type_T :=
      (MSG_SPEED_STATE, MSG_MODE_LEVEL, MSG_TEXT, MSG_TEXT_REMOVE,
       MSG_TRACK_COND, MSG_PLANNING, MSG_STATUS, MSG_ONBOARD, MSG_ATO,
-      MSG_SYSTEM_STATUS, MSG_RADIO_NETWORKS);
+      MSG_SYSTEM_STATUS, MSG_RADIO_NETWORKS, MSG_SYSTEM_VERSION,
+      MSG_VBC_LIST);
 
    procedure Build_In_Domain (The_Type : Msg_Type_T) is
    begin
@@ -122,6 +123,24 @@ procedure DMI_Fuzz is
          U8 (Pick (0, 1));
          U8 (Pick (0, 1));
          U16 (Optional (0, 400, 16#FFFF#));
+         --  the National System's name (8.2.3.2.9): mostly none (the 9
+         --  byte form), else a name of any byte up to two beyond the
+         --  limit, now and then a length that does not match
+         if Chance (50) then
+            declare
+               Length : constant Natural := Pick (0, Mode_Level_Name_Max + 2);
+            begin
+               U8 (Length);
+               for I in 1 .. Length loop
+                  U8 (Pick (0, 255));
+               end loop;
+               if Chance (5) and then Last > 0 then
+                  Last := Last - 1;
+               elsif Chance (5) then
+                  U8 (Pick (0, 255));
+               end if;
+            end;
+         end if;
       elsif The_Type = MSG_TEXT then
          declare
             -- up to the greatest length, any byte, words of any width
@@ -274,6 +293,27 @@ procedure DMI_Fuzz is
                U8 (Pick (0, 255));
             end if;
          end;
+      elsif The_Type = MSG_SYSTEM_VERSION then
+         --  M_VERSION's X and Y and one beyond each, now and then any byte
+         U8 (if Chance (90) then Pick (0, 8) else Pick (0, 255));
+         U8 (if Chance (90) then Pick (0, 16) else Pick (0, 255));
+      elsif The_Type = MSG_VBC_LIST then
+         declare
+            --  up to two VBCs beyond the limit, codes up to 2**24 and
+            --  now and then any u32
+            Count : constant Natural := Pick (0, VBC_List_Max + 2);
+         begin
+            U8 (Count);
+            for I in 1 .. Count loop
+               U32 (if Chance (5) then Next
+                    else Unsigned_32 (Pick (0, VBC_Code_Max + 1)));
+            end loop;
+            if Chance (5) and then Last > 0 then
+               Last := Last - 1;
+            elsif Chance (5) then
+               U8 (Pick (0, 255));
+            end if;
+         end;
       end if;
    end Build_In_Domain;
 
@@ -284,6 +324,7 @@ procedure DMI_Fuzz is
       elsif The_Type = MSG_STATUS      then Status_Length
       elsif The_Type = MSG_ONBOARD     then Onboard_Length
       elsif The_Type = MSG_SYSTEM_STATUS then System_Status_Length
+      elsif The_Type = MSG_SYSTEM_VERSION then System_Version_Length
       elsif The_Type = MSG_POINTER     then Pointer_Length
       else  Pick (0, 120)); -- variable length messages
 
