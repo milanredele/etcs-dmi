@@ -10,9 +10,9 @@
 --  Message directions:
 --     EVC -> DMI : SPEED_STATE, MODE_LEVEL, ONBOARD, ATO, SYSTEM_STATUS,
 --                  RADIO_NETWORKS
---     UI  -> DMI : POINTER
+--     UI  -> DMI : POINTER, DESK_INPUT
 --     DMI -> EVC : DRIVER_ACTION
---     DMI -> UI  : FRAME, SOUND
+--     DMI -> UI  : FRAME, SOUND, SETTINGS
 --
 --  All multi-byte fields are little endian.
 
@@ -431,6 +431,27 @@ package DMI_Protocol is
    --  event u8 (0 down, 1 up, 2 move), x u16, y u16
    Pointer_Length : constant := 5;
 
+   -- UI -> DMI: the keys of the DMI unit on the driver's desk (not the
+   -- touch screen)
+   MSG_DESK_INPUT : constant Msg_Type_T := 16#52#;
+   --  input u8, pressed u8 (1 the key goes down, 0 it comes up; any
+   --  other value: the message is ignored). Inputs:
+   --   1 Settings (DMI 8.6.1.6): the desk button that opens the
+   --     Settings window, an up-type button (8.6.1.7): the window opens
+   --     when the key comes up after it went down while the default
+   --     window was displayed, and only if it still is (5.3.1.1.5),
+   --   2 Isolation (DMI 5.6.1.1, SUBSET-026 4.7.1.3): the means to
+   --     isolate the ERTMS/ETCS on-board equipment, a delay-type key
+   --     (5.3.2.6.6): held down for at least 2 s and then released it
+   --     sends MSG_DRIVER_ACTION 20; available in every mode and window
+   --     (SUBSET-026 4.7.2, 'Isolation' input in all modes).
+   --  Other input numbers are reserved (DMI 5.2.2.4 / 5.2.3.4 allow
+   --  desk means for the luminance and the volume) and ignored, as is
+   --  a message of another length.
+   Desk_Input_Length : constant := 2;
+   DESK_SETTINGS  : constant := 1;
+   DESK_ISOLATION : constant := 2;
+
    -- UI -> EVC simulator
    MSG_DESK : constant Msg_Type_T := 16#51#;
    --  demand i8 (-100 full brake .. 100 full traction), auto_drive u8
@@ -464,6 +485,12 @@ package DMI_Protocol is
    --     arg 0 'BMM reaction inhibition', 1 'Revoke BMM reaction
    --     inhibition',
    --  19 Maintain Shunting (DMI Table 33 #9, SUBSET-026 4.4.20.1.5)
+   --  20 isolate the ERTMS/ETCS on-board equipment (DMI 5.6.1.1,
+   --     SUBSET-026 4.6.3 condition [1]), arg 0: the desk isolation key
+   --     (MSG_DESK_INPUT input 2) was held for 2 s and released. The
+   --     DMI sends it in every mode; leaving IS is a special operating
+   --     procedure outside the DMI (SUBSET-026 4.4.3.1.3).
+   --  21, 22 reserved
    Driver_Action_Length : constant := 3;
    --  Action 2, the driver's acknowledgement (DMI 5.4.1), names the one
    --  request it answers. Its payload is Driver_Ack_Length bytes:
@@ -548,6 +575,24 @@ package DMI_Protocol is
    MSG_SOUND : constant Msg_Type_T := 16#61#;
    --  sound u8 (0 click, 1 sinfo, 2 s1, 3 s2 start, 4 s2 stop)
    Sound_Length : constant := 1;
+
+   MSG_SETTINGS : constant Msg_Type_T := 16#62#;
+   --  The state of the devices of the DMI unit that the UI plays: the
+   --  display unit shows MSG_FRAME, which carries colour indices, and
+   --  the loudspeaker plays MSG_SOUND, so the luminance and the volume
+   --  the driver chose are applied by the UI (DMI 5.2.2.1, 5.2.3.1):
+   --   brightness u8 0 .. 10 (General_Parameters.Display_Luminance),
+   --   volume u8 0 .. 10 (General_Parameters.Loudspeaker_Volume),
+   --   isolated u8 1 while the mode is IS, else 0: the indication of the
+   --     isolation device (DMI 8.2.3.1.2.2, SUBSET-026 4.7.1.3), a lamp
+   --     of the desk isolation key.
+   --  0 is the lowest level of the device and 10 its highest. The range
+   --  is the device's (5.2.2.3, 5.2.3.3), but level 0 is never dark or
+   --  mute: the display must stay readable and the sounds must still
+   --  draw the driver's attention (14.1.1.1). Sent once after
+   --  DMI_Core.Initialise, once after the EVC link (re)starts, and
+   --  whenever a value changes; a receiver keeps the last one.
+   Settings_Length : constant := 3;
 
    Header_Length : constant := 5;
 

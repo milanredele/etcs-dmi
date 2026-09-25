@@ -58,6 +58,8 @@ package body DMI_Core is
    ACTION_ATO_SKIP      : constant Unsigned_8 := 14;
    -- a button of the Main window ended a system status message
    ACTION_MAIN_WINDOW_BUTTON : constant Unsigned_8 := 16;
+   -- DMI 5.6.1.1: the desk isolation key (MSG_DESK_INPUT input 2)
+   ACTION_ISOLATE : constant Unsigned_8 := 20;
 
    -- Transition tracking for Sinfo rules
    TTI_Was_Displayed : Boolean := False;
@@ -510,6 +512,28 @@ package body DMI_Core is
    Link_Lost    : Boolean := False;
    Since_EVC_Ms : Natural := 0;
 
+   -- The keys of the DMI unit on the driver's desk (MSG_DESK_INPUT).
+   -- They belong to the DMI unit, not to the EVC's picture: a link loss
+   -- does not release them, DMI_Core.Initialise does.
+   --  8.6.1.6 / 8.6.1.7: the Settings key is an up-type button; it went
+   --  down while the default window was displayed
+   Desk_Settings_Down : Boolean := False;
+   --  5.6.1.1 / 5.3.2.6.6: the isolation key is a delay-type button;
+   --  it has been held for Desk_Isolation_Ms (saturating)
+   Desk_Isolation_Down : Boolean := False;
+   Desk_Isolation_Ms   : Natural := 0;
+   Delay_Type_Ms       : constant := 2_000; -- 5.3.2.6.6: 2 seconds
+
+   -- MSG_SETTINGS: the values the UI was told last, and whether it must
+   -- be told again although nothing changed (DMI_Core.Initialise, the
+   -- EVC link (re)starts: a UI may have (re)connected with it)
+   Settings_Due   : Boolean := True;
+   Sent_Luminance : General_Parameters.Display_Luminance_T :=
+     General_Parameters.Display_Luminance_T'First;
+   Sent_Volume    : General_Parameters.Loudspeaker_Volume_T :=
+     General_Parameters.Loudspeaker_Volume_T'First;
+   Sent_Isolated  : Boolean := False;
+
    -----------------
    -- Reset_State --
    -----------------
@@ -561,6 +585,16 @@ package body DMI_Core is
       EVC_Heard := False;
       Link_Lost := False;
       Since_EVC_Ms := 0;
+      Desk_Settings_Down := False;
+      Desk_Isolation_Down := False;
+      Desk_Isolation_Ms := 0;
+      -- DMI 5.2.2.2 / 5.2.3.2: the luminance and the volume are not reset
+      -- here. They are settings of the DMI unit stored on board
+      -- (General_Parameters), not data of the mission: the last stored
+      -- values are used again, and the Volume and Brightness windows
+      -- propose them (11.7.1.4). Before the driver stored any, they are
+      -- the median of the range. The UI is told them once more.
+      Settings_Due := True;
    end Initialise;
 
    ---------------------
@@ -576,6 +610,10 @@ package body DMI_Core is
 
    procedure Note_EVC_Message is
    begin
+      -- the link (re)starts: tell the UI the settings again (MSG_SETTINGS)
+      if not EVC_Heard or else Link_Lost then
+         Settings_Due := True;
+      end if;
       EVC_Heard := True;
       Since_EVC_Ms := 0;
       Link_Lost := False; -- the messages rebuild the picture
@@ -1368,6 +1406,69 @@ package body DMI_Core is
       DMI_Buttons.Pointer_Event (Kind, Natural (X), Natural (Y));
    end Apply_Pointer;
 
+   -- MSG_DESK_INPUT: the keys of the DMI unit on the driver's desk
+   procedure Apply_Desk_Input (Payload : Stream_Element_Array) is
+      Offset  : Stream_Element_Offset := Payload'First;
+      Input   : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Pressed : constant Unsigned_8 := Get_U8 (Payload, Offset);
+   begin
+      if Pressed > 1 then
+         return; -- neither down nor up: nothing known, ignored
+      end if;
+      case Input is
+         when DESK_SETTINGS =>
+            -- 8.6.1.6: the desk button for the Settings window, with the
+            -- rules of the F5 button (8.6.1.4, 8.6.1.7): it is a button
+            -- of the default window, an up-type button. While a
+            -- sub-level window is displayed only that window responds to
+            -- the driver (5.3.1.1.5), so the key does nothing then; this
+            -- covers the windows that cannot be left (Start Up before
+            -- S10, 11.7.2.2; the waiting steps, 11.7.3.2) and the data
+            -- entry processes (11.7.1), which the key never interrupts.
+            -- Choice: the key opens the window when it comes up, like
+            -- the up-type F5 (5.3.2.6.2), and only when the default
+            -- window was displayed both when it went down and when it
+            -- came up. No 'click' sound: the key itself gives the
+            -- tactile feedback (5.3.2.2.1 b).
+            if Pressed = 1 then
+               Desk_Settings_Down := not DMI_Windows.Is_Open;
+            else
+               if Desk_Settings_Down and then not DMI_Windows.Is_Open then
+                  DMI_Windows.Open (DMI_Windows.W_Settings);
+               end if;
+               Desk_Settings_Down := False;
+            end if;
+         when DESK_ISOLATION =>
+            -- 5.6.1.1: the means to isolate the on-board equipment. Its
+            -- location and form are implementation dependent
+            -- (5.6.1.1.1); SUBSET-026 4.7.1.3 makes the device part of
+            -- the DMI and 4.7.2 offers the input in every mode, also
+            -- while the desk is closed (4.4.7.1.4). Choice: a key on the
+            -- desk rather than a button on the screen, so that it does
+            -- not depend on the window displayed, and a delay-type key
+            -- (5.3.2.6.6: released after at least 2 s) because the
+            -- isolation cannot be undone from the DMI (SUBSET-026
+            -- 4.4.3.1.3). The EVC decides; the DMI shows the mode it
+            -- reports.
+            if Pressed = 1 then
+               if not Desk_Isolation_Down then
+                  Desk_Isolation_Down := True;
+                  Desk_Isolation_Ms := 0;
+               end if;
+            else
+               if Desk_Isolation_Down
+                 and then Desk_Isolation_Ms >= Delay_Type_Ms
+               then
+                  Queue_Driver_Action (ACTION_ISOLATE);
+               end if;
+               Desk_Isolation_Down := False;
+               Desk_Isolation_Ms := 0;
+            end if;
+         when others =>
+            null; -- reserved inputs: ignored
+      end case;
+   end Apply_Desk_Input;
+
    procedure Handle_Message (The_Type : Msg_Type_T;
                              Payload  : Stream_Element_Array) is
    begin
@@ -1437,6 +1538,10 @@ package body DMI_Core is
                Update_Buttons; -- make sure hit testing sees current state
                Apply_Pointer (Payload);
             end if;
+         when MSG_DESK_INPUT =>
+            if Payload'Length = Desk_Input_Length then
+               Apply_Desk_Input (Payload);
+            end if;
          when others =>
             null; -- unknown or not for us; ignore
       end case;
@@ -1452,6 +1557,14 @@ package body DMI_Core is
    begin
       if Has_Failed then
          return;
+      end if;
+
+      -- 5.3.2.6.6: the time the desk isolation key is held
+      if Desk_Isolation_Down then
+         Desk_Isolation_Ms :=
+           Natural'Min (Delay_Type_Ms,
+                        Desk_Isolation_Ms
+                        + Natural'Min (Delay_Type_Ms, Dt_Ms));
       end if;
 
       if EVC_Heard and then not Link_Lost
@@ -1680,6 +1793,43 @@ package body DMI_Core is
    -- Flush_Outbox --
    ------------------
 
+   -- Queue MSG_SETTINGS when the UI must learn the settings: they
+   -- changed since it was told, or it must be told again. It waits for
+   -- room in the outbox rather than being dropped.
+   procedure Collect_Settings is
+      use type General_Parameters.Display_Luminance_T;
+      use type General_Parameters.Loudspeaker_Volume_T;
+      use type SDI.Mode_T;
+      Luminance : constant General_Parameters.Display_Luminance_T :=
+        General_Parameters.Display_Luminance;
+      Volume    : constant General_Parameters.Loudspeaker_Volume_T :=
+        General_Parameters.Loudspeaker_Volume;
+      -- 8.2.3.1.2.2: the mode IS is indicated by the isolation device
+      Isolated  : constant Boolean := SDI.Mode = SDI.M_IS;
+   begin
+      if (Settings_Due
+          or else Luminance /= Sent_Luminance
+          or else Volume /= Sent_Volume
+          or else Isolated /= Sent_Isolated)
+        and then Outbox_Filled + Header_Length + Settings_Length
+                   <= Outbox'Last
+      then
+         declare
+            Payload : Stream_Element_Array (1 .. Settings_Length);
+            Offset  : Stream_Element_Offset := Payload'First;
+         begin
+            Put_U8 (Payload, Offset, Unsigned_8 (Luminance));
+            Put_U8 (Payload, Offset, Unsigned_8 (Volume));
+            Put_U8 (Payload, Offset, (if Isolated then 1 else 0));
+            Queue_Message (MSG_SETTINGS, Payload);
+         end;
+         Sent_Luminance := Luminance;
+         Sent_Volume := Volume;
+         Sent_Isolated := Isolated;
+         Settings_Due := False;
+      end if;
+   end Collect_Settings;
+
    -- Move the pending sounds into the outbox
    procedure Collect_Sounds is
       The_Sound : DMI_Sounds.Sound_T;
@@ -1704,6 +1854,8 @@ package body DMI_Core is
    procedure Flush_Outbox
      (Stream : not null access Ada.Streams.Root_Stream_Type'Class) is
    begin
+      -- the settings first: a new volume applies to the sounds after it
+      Collect_Settings;
       Collect_Sounds;
       if Outbox_Filled > 0 then
          Ada.Streams.Write (Stream.all, Outbox (1 .. Outbox_Filled));
@@ -1721,6 +1873,7 @@ package body DMI_Core is
       Count : Stream_Element_Offset;
    begin
       if With_Sounds then
+         Collect_Settings;
          Collect_Sounds;
       end if;
       Count := Stream_Element_Offset'Min (Outbox_Filled, Buffer'Length);

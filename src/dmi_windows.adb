@@ -1171,8 +1171,10 @@ package body DMI_Windows is
          when W_Volume =>
             -- the choices are the levels 0 .. 10 in order (the range
             -- check is defensive: the engine never reports a choice the
-            -- list does not hold). GEN-3: the value is not applied to
-            -- the sound output yet (P4).
+            -- list does not hold). 11.7.1.5: the accepted value replaces
+            -- the stored one; 5.2.3.1: DMI_Core tells the loudspeaker
+            -- (MSG_SETTINGS), and the value outlives the mission
+            -- (5.2.3.2, DMI_Core.Initialise).
             if Chosen - 1
                  in Natural (Loudspeaker_Volume_T'First)
                  .. Natural (Loudspeaker_Volume_T'Last)
@@ -1181,6 +1183,8 @@ package body DMI_Windows is
                Pop;
             end if;
          when W_Brightness =>
+            -- the same for the luminance of the display unit (5.2.2.1,
+            -- 5.2.2.2)
             if Chosen - 1
                  in Natural (Display_Luminance_T'First)
                  .. Natural (Display_Luminance_T'Last)
