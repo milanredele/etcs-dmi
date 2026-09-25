@@ -254,6 +254,20 @@ package Test_Support is
                                  Bytes : Byte_Array;
                                  What  : String);
 
+   -- MSG_DESK_INPUT: a key of the DMI unit on the desk goes down
+   -- (Pressed = 1) or comes up (0); DMI_Protocol.DESK_*
+   procedure Send_Desk_Input (Input : Natural; Pressed : Natural);
+
+   -- The messages queued since the last call (sounds included) must
+   -- hold exactly Count MSG_SETTINGS, the last one with these values
+   -- (not checked when Count is 0); empties the outbox like the checks
+   -- above
+   procedure Expect_Settings (Count      : Natural;
+                              Brightness : Natural;
+                              Volume     : Natural;
+                              Isolated   : Natural;
+                              What       : String);
+
    -- Simple boolean check
    procedure Check (Condition : Boolean; What : String);
 

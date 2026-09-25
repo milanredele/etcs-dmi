@@ -285,6 +285,7 @@ procedure DMI_Fuzz is
       elsif The_Type = MSG_ONBOARD     then Onboard_Length
       elsif The_Type = MSG_SYSTEM_STATUS then System_Status_Length
       elsif The_Type = MSG_POINTER     then Pointer_Length
+      elsif The_Type = MSG_DESK_INPUT  then Desk_Input_Length
       else  Pick (0, 120)); -- variable length messages
 
    ---------------------------------------------------------------------
@@ -389,6 +390,20 @@ begin
             The_Type := Msg_Type_T (Pick (0, 255));
             Last := 0;
             Random_Bytes (Pick (0, 300));
+         elsif Kind > 94 then
+            -- the desk keys of the DMI unit: mostly the defined inputs
+            -- going down and up, sometimes any byte or a wrong length.
+            -- Held down, the isolation key needs 2 s of ticks before an
+            -- up activates it, which the random ticks provide.
+            The_Type := MSG_DESK_INPUT;
+            Last := 0;
+            U8 (if Chance (90) then Pick (0, 3) else Pick (0, 255));
+            U8 (if Chance (90) then Pick (0, 1) else Pick (0, 255));
+            if Chance (5) then
+               Last := Last - 1;
+            elsif Chance (5) then
+               U8 (Pick (0, 255));
+            end if;
          else
             -- touch screen: mostly on the screen, sometimes anywhere
             The_Type := MSG_POINTER;

@@ -113,6 +113,13 @@ function stimulus() {
   if (kind <= 45) { const t = EVC_TYPES[pick(0, EVC_TYPES.length - 1)]; return [t, inDomain(t)]; }
   if (kind <= 60) { const t = EVC_TYPES[pick(0, EVC_TYPES.length - 1)]; return [t, new Msg().random(FIXED[t] ?? pick(0, 120)).b]; }
   if (kind <= 70) return [pick(0, 255), new Msg().random(pick(0, 300)).b];
+  if (kind > 94) {
+    // MSG_DESK_INPUT: the desk keys, mostly defined inputs going down
+    // and up, sometimes any byte or a wrong length
+    const m = new Msg().u8(chance(90) ? pick(0, 3) : pick(0, 255)).u8(chance(90) ? pick(0, 1) : pick(0, 255));
+    if (chance(5)) m.b = m.b.slice(0, 1); else if (chance(5)) m.u8(pick(0, 255));
+    return [0x52, m.b];
+  }
   const m = new Msg().u8(chance(95) ? pick(0, 2) : pick(0, 255));
   if (chance(95)) m.u16(pick(0, 639)).u16(pick(0, 479)); else m.u16(pick(0, 65535)).u16(pick(0, 65535));
   return [0x50, m.b];
