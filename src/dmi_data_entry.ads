@@ -20,7 +20,9 @@ package DMI_Data_Entry is
    subtype Field_Count_T is Natural range 0 .. Max_Fields;
    subtype Field_Index_T is Positive range 1 .. Max_Fields;
 
-   Max_Label : constant := 24;
+   --  30 characters take the longest title of chapter 11, 'Mission
+   --  with one radio system' (11.3.16.2)
+   Max_Label : constant := 30;
    subtype Label_T is Wide_String (1 .. Max_Label);
 
    --  10.3.5.12: the keyboard presented for the selected input field.
@@ -144,6 +146,14 @@ package DMI_Data_Entry is
       --  10.3.5.9: every input field of the topic that is not on this
       --  window already displays a data value (Table 50 S3-1)
       Topic_Complete : Boolean := True;
+      --  10.3.5.6: a window on the total grid array echoes its input
+      --  fields; 11.3.5.1: the RBC data window has "no echo texts"
+      Echo_Texts : Boolean := True;
+      --  10.3.1.7 lets a single input field consist of its data area
+      --  only; True keeps the label area all the same (11.3.5.3: the
+      --  input field 'RBC ID' of an RBC data window without the phone
+      --  number field)
+      Labelled : Boolean := False;
    end record;
 
    --  Build a window title / one field definition; the text is padded,

@@ -266,6 +266,24 @@ package body Display.Draw is
       end loop;
    end Draw_Symbol;
 
+   procedure Draw_Symbol_Dimmed (The_Symbol   : Symbol.T;
+                                 The_Position : Position_T) is
+      use type General_Parameters.Color;
+      Pos : Positive range
+        The_Symbol.Bitmap'First .. The_Symbol.Bitmap'Last + 1 :=
+          The_Symbol.Bitmap'First;
+   begin
+      for J in reverse 0 .. The_Symbol.Height - 1 loop
+         for I in 0 .. The_Symbol.Width - 1 loop
+            Set_Pixel (The_Position.X + I, The_Position.Y + J,
+                       (if The_Symbol.Bitmap (Pos) = General_Parameters.GREY
+                        then General_Parameters.DARK_GREY
+                        else The_Symbol.Bitmap (Pos)));
+            Pos := Pos + 1;
+         end loop;
+      end loop;
+   end Draw_Symbol_Dimmed;
+
    procedure Draw_Frame (The_Area : Area_T) is
    begin
       -- draw top and bottom border

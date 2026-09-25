@@ -48,6 +48,42 @@ package body EVC_Core is
    -- answers within the same call, so it is never reported as pending.
    Start_Pending    : Boolean := False;
 
+   ---------------------------------------------------------------------
+   -- Radio data and RBC (SUBSET-026 3.18.4.3, 5.4.3.2 S3/S4; DMI 11.2.5,
+   -- Tables 37, 49 and 50). The demo line has a GSM-R network and no
+   -- FRMCS network: the on-board has both radio systems installed, its
+   -- GSM-R Mobile Terminal registers, its FRMCS never does. So the
+   -- Radio Network type FRMCS+GSM-R leads the DMI through A41 back to
+   -- the Radio data window with 'Mission with one radio system' on
+   -- offer, and GSM-R (the stored type at start) works directly.
+   ---------------------------------------------------------------------
+
+   Radio_Type       : Natural := 3;      -- 1 FRMCS, 2 FRMCS+GSM-R, 3 GSM-R
+   GSMR_Registered  : Boolean := True;
+   One_Radio_Yes    : Boolean := False;
+   RBC_Contact_Known : Boolean := False; -- status "valid" or "invalid"
+   RBC_Contact_Valid : Boolean := False;
+   Session_Open     : Boolean := False;  -- a session with a 2.2+ RBC
+   Train_Data_Acked : Boolean := False;
+   BMM_Inhibited    : Boolean := False;  -- SUBSET-026 5.22
+
+   --  What the on-board is busy with, reported in MSG_ONBOARD (waiting
+   --  and radio_wait) until the timer runs out, then answered
+   type Busy_T is (Idle,
+                   Opening_Session,     -- waiting 2 (Table 49 A31, 50 S8)
+                   Acquiring_Networks,  -- radio_wait 1 (S3-2-1 / S5-2-1)
+                   Registering_GSMR,    -- radio_wait 2 (S3-2-3 / S5-2-3)
+                   Shunting_Request,    -- waiting 4 (Table 51 S1)
+                   SM_Request);         -- waiting 5 (Table 54a S1)
+   Busy       : Busy_T := Idle;
+   Authorised : Boolean := False;  -- the RBC's answer (MSG_ONBOARD)
+   Busy_Timer : Float := 0.0;
+   Busy_Time  : constant Float := 2.0;  -- seconds, for the bench to show
+
+   --  The list of GSM-R networks is sent once, when Acquiring_Networks
+   --  ends (before radio_wait goes back to 0, dmi_protocol.ads)
+   Networks_Due : Boolean := False;
+
    TAF_Requested  : Boolean := False;
    TAF_Answered   : Boolean := False;
 
@@ -125,7 +161,8 @@ package body EVC_Core is
       Offset  : Stream_Element_Offset := Payload'First;
       DMI_Mode : constant Unsigned_8 :=
         (case Mode is
-            when SB => 1, when SR => 7, when FS => 2, when TR => 11);
+            when SB => 1, when SR => 7, when FS => 2, when TR => 11,
+            when SH => 8, when SM => 4);
       Ann     : Unsigned_8 := 16#FF#;
       Ann_Ack : Unsigned_8 := 0;
    begin
@@ -163,7 +200,7 @@ package body EVC_Core is
               (if EVC_Train.Brake_Commanded then 1 else 0));
       Put_U8 (Payload, Offset, 1); -- radio up
       Put_U8 (Payload, Offset, 0); -- adhesion
-      Put_U8 (Payload, Offset, 0); -- bmm
+      Put_U8 (Payload, Offset, (if BMM_Inhibited then 1 else 0)); -- ST07
       Put_U8 (Payload, Offset, 0); -- reversing
       Put_U8 (Payload, Offset, 0); -- sm direction
       Put_U16 (Payload, Offset, 16#FFFF#); -- no set speed
@@ -179,18 +216,21 @@ package body EVC_Core is
    end Send_Status;
 
    --  The on-board state behind the enabling conditions of Tables 33 to
-   --  36 and behind the Start Up dialogue sequence (see dmi_protocol.ads
-   --  and DMI_Conditions). What this simulator does not model is
-   --  reported as "not there": it has no RBC (no communication session,
-   --  no train data acknowledgement, no position referred to an LRBG),
-   --  no safe consist length, no VBC store and no "non leading" or
-   --  "passive shunting" desk inputs. It never waits for a network or an
-   --  answer, so the hour glass ST05 does not come up in the bench.
+   --  37 and behind the dialogue sequences (see dmi_protocol.ads and
+   --  DMI_Conditions). What this simulator does not model is reported
+   --  as "not there": no pending emergency stop, no RBC transition
+   --  order, no VBC store, no "non leading" or "passive shunting" desk
+   --  inputs. Its RBC is a timer (Busy above): a session opens after
+   --  Busy_Time once the driver gave the RBC contact information in
+   --  level 2, and it answers a request for shunting or for Supervised
+   --  Manoeuvre likewise.
    procedure Send_Onboard (Emit : Sink_T) is
       Payload : Stream_Element_Array (1 .. Onboard_Length);
       Offset  : Stream_Element_Offset := Payload'First;
       Data    : Unsigned_8 := 0;
+      RBC     : Unsigned_8 := 0;
       Train   : Unsigned_8 := 0;
+      Radio   : Unsigned_8;
    begin
       if Driver_ID_Valid then
          Data := Data or 1;
@@ -204,6 +244,19 @@ package body EVC_Core is
       if TRN_Valid then
          Data := Data or 8;
       end if;
+      if RBC_Contact_Valid then
+         Data := Data or 16;
+      end if;
+      if Session_Open then
+         Data := Data or 32;  -- the RBC confirmed the position (A35)
+      end if;
+      --  safe consist length information from the train interface, the
+      --  engine in front (so 'Train data' stays on offer, Table 33 #3)
+      Data := Data or 64 or 128;
+
+      if Train_Data_Acked then
+         RBC := RBC or 1;
+      end if;
 
       if EVC_Train.Speed_KMH = 0 then
          Train := Train or 1;  -- standstill
@@ -213,20 +266,111 @@ package body EVC_Core is
       if EVC_Train.Speed_KMH <= 30 then
          Train := Train or 2;
       end if;
+      if BMM_Inhibited then
+         Train := Train or 16;
+      end if;
+
+      --  radio: the stored type, both systems installed (3), the GSM-R
+      --  Mobile Terminal's registration, never FRMCS
+      Radio := Unsigned_8 (Radio_Type mod 4) or (3 * 4);
+      if GSMR_Registered then
+         Radio := Radio or 32;
+      end if;
+      if One_Radio_Yes then
+         Radio := Radio or 64;
+      end if;
+      if RBC_Contact_Known then
+         Radio := Radio or 128;
+      end if;
 
       Put_U8 (Payload, Offset, Data);
-      Put_U8 (Payload, Offset, 0);      -- no communication session
-      Put_U8 (Payload, Offset, 0);      -- nothing from an RBC
+      Put_U8 (Payload, Offset, (if Session_Open then 3 else 0));
+      Put_U8 (Payload, Offset, RBC);
       Put_U8 (Payload, Offset, Train);
       Put_U8 (Payload, Offset, 2);      -- adhesion may be modified (NV)
       --  Table 49 S0: the cab is active and the mode is SB, and no
       --  session has to end first, so the conditions to initiate a start
       --  of mission are fulfilled as long as the mode is SB
       Put_U8 (Payload, Offset, (if Mode = SB then 2 else 0));
-      Put_U8 (Payload, Offset, 0);      -- nothing is awaited
+      Put_U8 (Payload, Offset,
+              (case Busy is
+                  when Opening_Session  => 2,
+                  when Shunting_Request => 4,
+                  when SM_Request       => 5,
+                  when others           => 0));
       Put_U8 (Payload, Offset, (if Start_Pending then 1 else 0));
+      Put_U8 (Payload, Offset, Radio);
+      Put_U8 (Payload, Offset,
+              (case Busy is
+                  when Acquiring_Networks => 1,
+                  when Registering_GSMR   => 2,
+                  when others             => 0));
+      Put_U8 (Payload, Offset, (if Authorised then 1 else 0));
       Emit (MSG_ONBOARD, Payload);
    end Send_Onboard;
+
+   --  MSG_RADIO_NETWORKS: the GSM-R networks of Figure 117
+   procedure Send_Radio_Networks (Emit : Sink_T) is
+      Names   : constant String := "GSMR-AGSMR-BTelecom X";
+      Lengths : constant array (1 .. 3) of Natural := (6, 6, 9);
+      Payload : Stream_Element_Array (1 .. 1 + 3 + Names'Length);
+      Offset  : Stream_Element_Offset := Payload'First;
+      From    : Positive := Names'First;
+   begin
+      Put_U8 (Payload, Offset, Lengths'Length);
+      for L of Lengths loop
+         Put_U8 (Payload, Offset, Unsigned_8 (L));
+         for C of Names (From .. From + L - 1) loop
+            Put_U8 (Payload, Offset, Character'Pos (C));
+         end loop;
+         From := From + L;
+      end loop;
+      Emit (MSG_RADIO_NETWORKS, Payload);
+   end Send_Radio_Networks;
+
+   --  SUBSET-026 4.10.1.3: entering SB the driver's data are to be
+   --  revalidated, the level keeps its status
+   procedure Enter_SB is
+   begin
+      Mode := SB;
+      Driver_ID_Valid := False;
+      Train_Data_Valid := False;
+      TRN_Valid := False;
+   end Enter_SB;
+
+   --  The answer to what the on-board was busy with
+   procedure Busy_Done is
+   begin
+      case Busy is
+         when Opening_Session =>
+            Session_Open := True;
+            --  3.18.4.3.4: a session opened with the short number or the
+            --  last RBC stores the RBC contact information as valid
+            RBC_Contact_Valid := True;
+            RBC_Contact_Known := True;
+            Train_Data_Acked := Train_Data_Valid;
+         when Acquiring_Networks =>
+            Networks_Due := True;
+         when Registering_GSMR =>
+            GSMR_Registered := True;
+         when Shunting_Request =>
+            Mode := SH;  -- 'Shunting Authorised'
+            Authorised := True;
+         when SM_Request =>
+            Mode := SM;  -- 'Supervised Manoeuvre Authorisation'
+            Authorised := True;
+         when Idle =>
+            null;
+      end case;
+      Busy := Idle;
+   end Busy_Done;
+
+   procedure Start_Busy (What : Busy_T) is
+   begin
+      Busy := What;
+      Authorised := False;
+      Busy_Timer := Busy_Time;
+   end Start_Busy;
 
    procedure Send_Track_Cond (Emit : Sink_T) is
       Position : constant Natural := Natural (EVC_Train.Position_M);
@@ -526,10 +670,26 @@ package body EVC_Core is
       EVC_Train.Step (Dt_S);
       Position := Natural (EVC_Train.Position_M);
 
+      if Busy /= Idle then
+         Busy_Timer := Busy_Timer - Dt_S;
+         if Busy_Timer <= 0.0 then
+            Busy_Done;
+         end if;
+      end if;
+      if Networks_Due then
+         Send_Radio_Networks (Emit);
+         Networks_Due := False;
+      end if;
+
       if Mode = FS then
          Update_Supervision;
       else
-         V_Perm_KMH := (if Mode = SR then 40 else 0);
+         --  SR: 40 km/h; SH and SM: 30 km/h, standing in for the
+         --  national values V_NVSHUNT and the SM ceiling speed
+         V_Perm_KMH := (case Mode is
+                           when SR      => 40,
+                           when SH | SM => 30,
+                           when others  => 0);
          V_Target_KMH := 0;
          D_Target_M := 0;
          The_Monitoring := 0;
@@ -617,6 +777,36 @@ package body EVC_Core is
             if Mode = SB and then Arg in 2 .. 5 then
                Level_Pos := Arg;
             end if;
+         when 7 =>      -- request for shunting (SUBSET-026 5.6)
+            if EVC_Train.Speed_KMH = 0 and then Mode /= SH then
+               if Level_Pos = 5 then
+                  if Session_Open then
+                     Start_Busy (Shunting_Request);  -- asks the RBC
+                  end if;
+               else
+                  Mode := SH;  -- level 0 / 1: at once (DMI Table 51 D1)
+               end if;
+            end if;
+         when 8 =>      -- exit shunting: SB (4.6.3 [19])
+            if Mode = SH and then EVC_Train.Speed_KMH = 0 then
+               Enter_SB;
+            end if;
+         when 17 =>     -- Supervised Manoeuvre (SUBSET-026 5.21)
+            if EVC_Train.Speed_KMH = 0 then
+               if Arg = 2 then
+                  if Mode = SM then
+                     Enter_SB;  -- 'Exit SM'
+                  end if;
+               elsif Arg <= 1 and then Level_Pos = 5 and then Session_Open
+                 and then Mode /= SM
+               then
+                  Start_Busy (SM_Request);
+               end if;
+            end if;
+         when 18 =>     -- BMM reaction inhibition (SUBSET-026 5.22)
+            BMM_Inhibited := Arg = 0;
+         when 19 =>     -- maintain shunting: no passive shunting input
+            null;
          when others =>
             null;
       end case;
@@ -652,6 +842,57 @@ package body EVC_Core is
          when 2 =>      -- train data: the seven items of DMI Table 40
             if Payload'Length = Driver_Data_Train_Length then
                Train_Data_Valid := True;
+               Train_Data_Acked := Session_Open;
+            end if;
+         when 4 =>      -- GSM-R network ID: len u8, bytes
+            if Payload'Length >= 2
+              and then Natural (Payload'Length) =
+                         2 + Natural (Payload (Payload'First + 1))
+            then
+               --  3.18.4.3.6.1 b: the session ends in both cases
+               Session_Open := False;
+               Train_Data_Acked := False;
+               if Payload'Length = 2 then
+                  --  3.18.4.3.6.2: acquire the list of networks
+                  Start_Busy (Acquiring_Networks);
+               else
+                  --  3.18.4.3.6.3 b: the RBC contact information becomes
+                  --  invalid; the Mobile Terminal registers anew
+                  RBC_Contact_Valid := False;
+                  GSMR_Registered := False;
+                  Start_Busy (Registering_GSMR);
+               end if;
+            end if;
+         when 5 =>      -- RBC data (DMI_Protocol.Driver_Data_RBC_Length)
+            if Payload'Length = Driver_Data_RBC_Length then
+               declare
+                  Choice : constant Unsigned_8 :=
+                    Unsigned_8 (Payload (Payload'First + 1));
+               begin
+                  if Choice = 0 then
+                     RBC_Contact_Valid := True;
+                     RBC_Contact_Known := True;
+                  end if;
+                  if Choice <= 2 and then Level_Pos = 5 then
+                     --  A31 / S8: the on-board contacts the RBC
+                     Start_Busy (Opening_Session);
+                  end if;
+               end;
+            end if;
+         when 6 =>      -- Radio network type u8
+            if Payload'Length = Driver_Data_Byte_Length
+              and then Payload (Payload'First + 1) in 1 .. 3
+              and then Natural (Payload (Payload'First + 1)) /= Radio_Type
+            then
+               --  3.18.4.3.6.1 a / 3.18.4.3.6.3 a
+               Radio_Type := Natural (Payload (Payload'First + 1));
+               Session_Open := False;
+               Train_Data_Acked := False;
+               RBC_Contact_Valid := False;
+            end if;
+         when 7 =>      -- Mission with one radio system u8
+            if Payload'Length = Driver_Data_Byte_Length then
+               One_Radio_Yes := Payload (Payload'First + 1) = 1;
             end if;
          when others => -- 3 SR data and anything else: no data status
             null;
@@ -667,6 +908,18 @@ package body EVC_Core is
       Train_Data_Valid := False;
       TRN_Valid := False;
       Start_Pending := False;
+      Radio_Type := 3;
+      GSMR_Registered := True;
+      One_Radio_Yes := False;
+      RBC_Contact_Known := False;
+      RBC_Contact_Valid := False;
+      Session_Open := False;
+      Train_Data_Acked := False;
+      BMM_Inhibited := False;
+      Busy := Idle;
+      Authorised := False;
+      Busy_Timer := 0.0;
+      Networks_Due := False;
       The_Monitoring := 0;
       V_Perm_KMH := 0;
       V_Target_KMH := 0;

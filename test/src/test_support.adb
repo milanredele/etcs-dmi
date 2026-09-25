@@ -49,6 +49,14 @@ package body Test_Support is
       In_S0              : Boolean := False;
       Waiting            : Natural := 0;
       Start_Pending      : Boolean := False;
+      Radio_Type         : Natural := 0;
+      Radio_Installed    : Natural := 0;
+      FRMCS_Registered   : Boolean := False;
+      GSMR_Registered    : Boolean := False;
+      One_Radio_Yes      : Boolean := False;
+      RBC_Contact_Known  : Boolean := False;
+      Radio_Wait         : Natural := 0;
+      Authorised         : Boolean := False;
    end record;
 
    Onboard : Onboard_Model_T;
@@ -158,7 +166,8 @@ package body Test_Support is
 
    procedure Send_Onboard_Raw
      (Data, Session, RBC, Train, National, SOM, Waiting, Start_Pending
-        : Interfaces.Unsigned_8)
+        : Interfaces.Unsigned_8;
+      Radio, Radio_Wait, Answer : Interfaces.Unsigned_8 := 0)
    is
       Payload : Stream_Element_Array (1 .. Onboard_Length);
       Offset  : Stream_Element_Offset := Payload'First;
@@ -171,6 +180,9 @@ package body Test_Support is
       Put_U8 (Payload, Offset, SOM);
       Put_U8 (Payload, Offset, Waiting);
       Put_U8 (Payload, Offset, Start_Pending);
+      Put_U8 (Payload, Offset, Radio);
+      Put_U8 (Payload, Offset, Radio_Wait);
+      Put_U8 (Payload, Offset, Answer);
       Last_Onboard := Payload;
       Last_Onboard_Sent := True;
       --  the scenario drives MSG_ONBOARD itself from here on
@@ -193,8 +205,8 @@ package body Test_Support is
       Offset : Stream_Element_Offset := Built'First;
 
       procedure Build_Onboard
-        (Data, Session, RBC, Train, National, SOM, Waiting, Start_Pending
-           : Unsigned_8) is
+        (Data, Session, RBC, Train, National, SOM, Waiting, Start_Pending,
+         Radio, Radio_Wait, Answer : Unsigned_8) is
       begin
          Put_U8 (Built, Offset, Data);
          Put_U8 (Built, Offset, Session);
@@ -204,6 +216,9 @@ package body Test_Support is
          Put_U8 (Built, Offset, SOM);
          Put_U8 (Built, Offset, Waiting);
          Put_U8 (Built, Offset, Start_Pending);
+         Put_U8 (Built, Offset, Radio);
+         Put_U8 (Built, Offset, Radio_Wait);
+         Put_U8 (Built, Offset, Answer);
       end Build_Onboard;
    begin
       if External_EVC_Used
@@ -250,7 +265,16 @@ package body Test_Support is
                  elsif Onboard.In_S0 then 1
                  elsif In_SB then 2 else 0),
          Waiting => Unsigned_8 (Onboard.Waiting mod 256),
-         Start_Pending => (if Onboard.Start_Pending then 1 else 0));
+         Start_Pending => (if Onboard.Start_Pending then 1 else 0),
+         Radio =>
+           Unsigned_8 (Onboard.Radio_Type mod 4)
+           or Unsigned_8 ((Onboard.Radio_Installed mod 4) * 4)
+           or Flag (Onboard.FRMCS_Registered, 16)
+           or Flag (Onboard.GSMR_Registered, 32)
+           or Flag (Onboard.One_Radio_Yes, 64)
+           or Flag (Onboard.RBC_Contact_Known, 128),
+         Radio_Wait => Unsigned_8 (Onboard.Radio_Wait mod 256),
+         Answer => (if Onboard.Authorised then 1 else 0));
       if Force or else not Last_Onboard_Sent
         or else Built /= Last_Onboard
       then
@@ -282,7 +306,15 @@ package body Test_Support is
       VBC_Stored       : Boolean := False;
       In_S0            : Boolean := False;
       Waiting          : Natural := 0;
-      Start_Pending    : Boolean := False) is
+      Start_Pending    : Boolean := False;
+      Radio_Type       : Natural := 0;
+      Radio_Installed  : Natural := 0;
+      FRMCS_Registered : Boolean := False;
+      GSMR_Registered  : Boolean := False;
+      One_Radio_Yes    : Boolean := False;
+      RBC_Contact_Known : Boolean := False;
+      Radio_Wait       : Natural := 0;
+      Authorised       : Boolean := False) is
    begin
       Onboard := (Standstill         => Standstill,
                   Session            => Session,
@@ -305,7 +337,15 @@ package body Test_Support is
                   VBC_Stored         => VBC_Stored,
                   In_S0              => In_S0,
                   Waiting            => Waiting,
-                  Start_Pending      => Start_Pending);
+                  Start_Pending      => Start_Pending,
+                  Radio_Type         => Radio_Type,
+                  Radio_Installed    => Radio_Installed,
+                  FRMCS_Registered   => FRMCS_Registered,
+                  GSMR_Registered    => GSMR_Registered,
+                  One_Radio_Yes      => One_Radio_Yes,
+                  RBC_Contact_Known  => RBC_Contact_Known,
+                  Radio_Wait         => Radio_Wait,
+                  Authorised         => Authorised);
       External_EVC_Used := False;
       Emit_Onboard;
    end Send_Onboard;
@@ -870,6 +910,146 @@ package body Test_Support is
                & ", got" & Natural'Image (Found));
       end if;
    end Expect_Actions;
+
+   procedure Send_Radio_Networks (Names : String) is
+      Payload : Stream_Element_Array (1 .. 2 + 2 * Names'Length);
+      Last    : Stream_Element_Offset := 1;  -- the count comes first
+      Count   : Natural := 0;
+      Start   : Positive := Names'First;
+   begin
+      if Names'Length > 0 then
+         for I in Names'First .. Names'Last + 1 loop
+            if I > Names'Last or else Names (I) = ',' then
+               Count := Count + 1;
+               Last := Last + 1;
+               Payload (Last) := Stream_Element (I - Start);
+               for C in Start .. I - 1 loop
+                  Last := Last + 1;
+                  Payload (Last) := Character'Pos (Names (C));
+               end loop;
+               Start := I + 1;
+            end if;
+         end loop;
+      end if;
+      Payload (1) := Stream_Element (Count mod 256);
+      DMI_Core.Handle_Message (MSG_RADIO_NETWORKS, Payload (1 .. Last));
+   end Send_Radio_Networks;
+
+   --  Walk the messages queued for the EVC since the last check; the
+   --  outbox is emptied like by the checks above
+   generic
+      with procedure Visit (The_Type : Msg_Type_T;
+                            Payload  : Stream_Element_Array);
+   procedure Walk_Outbox;
+
+   procedure Walk_Outbox is
+      Buffer : Stream_Element_Array renames Outbox;
+      Last   : Stream_Element_Offset;
+      Offset : Stream_Element_Offset := Buffer'First;
+   begin
+      Pump;
+      Last := Outbox_Last;
+      Outbox_Last := 0;
+      while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+         declare
+            The_Type : constant Msg_Type_T :=
+              Msg_Type_T (Get_U8 (Buffer, Offset));
+            Length   : constant Stream_Element_Offset :=
+              Stream_Element_Offset (Get_U32 (Buffer, Offset));
+            Next     : constant Stream_Element_Offset := Offset + Length;
+         begin
+            exit when Next - 1 > Last;
+            Visit (The_Type, Buffer (Offset .. Next - 1));
+            Offset := Next;
+         end;
+      end loop;
+   end Walk_Outbox;
+
+   procedure Expect_Action_Arg (Action : Natural;
+                                Arg    : Natural;
+                                What   : String) is
+      Found : Natural := 0;
+      Args  : Natural := 0;
+      Got   : Natural := 0;
+
+      procedure Visit (The_Type : Msg_Type_T;
+                       Payload  : Stream_Element_Array) is
+         Offset : Stream_Element_Offset := Payload'First;
+      begin
+         if The_Type = MSG_DRIVER_ACTION
+           and then Payload'Length >= Driver_Action_Length
+           and then Natural (Payload (Payload'First)) = Action
+         then
+            Found := Found + 1;
+            Offset := Offset + 1;
+            Got := Natural (Get_U16 (Payload, Offset));
+            if Got = Arg then
+               Args := Args + 1;
+            end if;
+         end if;
+      end Visit;
+
+      procedure Walk is new Walk_Outbox (Visit);
+   begin
+      Checks := Checks + 1;
+      Walk;
+      if Found = 1 and then Args = 1 then
+         Pass (What);
+      else
+         Fail (What & ": expected one driver action" & Natural'Image (Action)
+               & " with arg" & Natural'Image (Arg) & ", got"
+               & Natural'Image (Found) & " (last arg" & Natural'Image (Got)
+               & ")");
+      end if;
+   end Expect_Action_Arg;
+
+   procedure Expect_Driver_Data (Kind  : Natural;
+                                 Bytes : Byte_Array;
+                                 What  : String) is
+      Found : Natural := 0;
+      Same  : Natural := 0;
+
+      procedure Visit (The_Type : Msg_Type_T;
+                       Payload  : Stream_Element_Array) is
+      begin
+         if The_Type = MSG_DRIVER_DATA
+           and then Payload'Length >= 1
+           and then Natural (Payload (Payload'First)) = Kind
+         then
+            Found := Found + 1;
+            if Payload'Length = Bytes'Length + 1 then
+               declare
+                  Equal : Boolean := True;
+               begin
+                  for I in Bytes'Range loop
+                     if Natural (Payload (Payload'First + 1
+                                   + Stream_Element_Offset (I - Bytes'First)))
+                        /= Bytes (I)
+                     then
+                        Equal := False;
+                     end if;
+                  end loop;
+                  if Equal then
+                     Same := Same + 1;
+                  end if;
+               end;
+            end if;
+         end if;
+      end Visit;
+
+      procedure Walk is new Walk_Outbox (Visit);
+   begin
+      Checks := Checks + 1;
+      Walk;
+      if Found = 1 and then Same = 1 then
+         Pass (What);
+      else
+         Fail (What & ": expected one driver data message of kind"
+               & Natural'Image (Kind) & " with the given payload, got"
+               & Natural'Image (Found) & " of the kind,"
+               & Natural'Image (Same) & " matching");
+      end if;
+   end Expect_Driver_Data;
 
    procedure Check (Condition : Boolean; What : String) is
    begin

@@ -18,6 +18,7 @@ with DMI_Data_Entry;
 with DMI_Driver_Data;
 with DMI_Flash;
 with DMI_Planning;
+with DMI_Radio_Data;
 with DMI_Sounds;
 with DMI_Status;
 with DMI_Text_Messages;
@@ -336,6 +337,85 @@ package body DMI_Core is
       ACTION_TRAIN_INTEGRITY : constant Unsigned_8 := 10;
       ACTION_LEVEL_SELECTED  : constant Unsigned_8 := 11;
       ACTION_NON_LEADING     : constant Unsigned_8 := 12;
+      ACTION_SM              : constant Unsigned_8 := 17;
+      ACTION_BMM_INHIBITION  : constant Unsigned_8 := 18;
+      ACTION_MAINTAIN_SH     : constant Unsigned_8 := 19;
+
+      --  MSG_DRIVER_DATA kind 4: the GSM-R network ID, or no name when
+      --  the driver elects to modify it (dmi_protocol.ads)
+      procedure Send_GSMR_Network_Msg (Selected : Boolean) is
+         Name : constant DMI_Radio_Data.Name_T :=
+           (if Selected then DMI_Radio_Data.GSMR_Network
+            else (Length => 0, Text => (others => ' ')));
+         Payload : Stream_Element_Array
+           (1 .. 2 + Stream_Element_Offset (Name.Length));
+         Offset : Stream_Element_Offset := Payload'First;
+      begin
+         Put_U8 (Payload, Offset, 4);
+         Put_U8 (Payload, Offset, Unsigned_8 (Name.Length));
+         for I in 1 .. Name.Length loop
+            Put_U8 (Payload, Offset,
+                    Unsigned_8 (Wide_Character'Pos (Name.Text (I)) mod 256));
+         end loop;
+         Queue_Message (MSG_DRIVER_DATA, Payload);
+      end Send_GSMR_Network_Msg;
+
+      --  MSG_DRIVER_DATA kind 5: the RBC contact information
+      procedure Send_RBC_Data_Msg (Choice : Natural) is
+         use DMI_Radio_Data;
+         Payload : Stream_Element_Array
+           (1 .. Stream_Element_Offset (Driver_Data_RBC_Length));
+         Offset  : Stream_Element_Offset := Payload'First;
+         Entered_Data : constant Boolean :=
+           Choice = RBC_Choice_T'Pos (DMI_Radio_Data.Entered);
+         --  the phone number: its digits only, at most 16
+         Phone  : Stream_Element_Array (1 .. RBC_Phone_Max) :=
+           (others => 0);
+         Count  : Natural := 0;
+         ID     : Natural := 0;
+      begin
+         if Entered_Data then
+            for I in 1 .. RBC_Phone.Length loop
+               if RBC_Phone.Text (I) in '0' .. '9'
+                 and then Count < RBC_Phone_Max
+               then
+                  Count := Count + 1;
+                  Phone (Stream_Element_Offset (Count)) :=
+                    Stream_Element (Wide_Character'Pos (RBC_Phone.Text (I)));
+               end if;
+            end loop;
+            --  the value as entered, with the range of the input field
+            --  (0 .. 16 777 214, digits only; anything else counts 0)
+            for I in 1 .. RBC_ID.Length loop
+               if RBC_ID.Text (I) in '0' .. '9' and then ID <= 16_777_214
+               then
+                  ID := ID * 10
+                    + (Wide_Character'Pos (RBC_ID.Text (I))
+                       - Wide_Character'Pos ('0'));
+               end if;
+            end loop;
+            ID := Natural'Min (ID, 16_777_214);
+         end if;
+         Put_U8 (Payload, Offset, 5);
+         Put_U8 (Payload, Offset, Unsigned_8 (Choice mod 256));
+         Put_U32 (Payload, Offset, Unsigned_32 (ID));
+         Put_U8 (Payload, Offset, Unsigned_8 (Count));
+         for B of Phone loop
+            Put_U8 (Payload, Offset, Unsigned_8 (B));
+         end loop;
+         Queue_Message (MSG_DRIVER_DATA, Payload);
+      end Send_RBC_Data_Msg;
+
+      --  MSG_DRIVER_DATA kinds 6 and 7: one byte
+      procedure Send_Byte_Data (Kind : Unsigned_8; Value : Natural) is
+         Payload : Stream_Element_Array
+           (1 .. Stream_Element_Offset (Driver_Data_Byte_Length));
+         Offset  : Stream_Element_Offset := Payload'First;
+      begin
+         Put_U8 (Payload, Offset, Kind);
+         Put_U8 (Payload, Offset, Unsigned_8 (Value mod 256));
+         Queue_Message (MSG_DRIVER_DATA, Payload);
+      end Send_Byte_Data;
    begin
       while DMI_Windows.Pop_Action (Action, Arg) loop
          case Action is
@@ -363,6 +443,21 @@ package body DMI_Core is
                Send_Train_Data_Msg;
             when Send_SR_Data =>
                Send_Numeric_Data (3, SR_Speed, SR_Dist, 0, 2);
+            when Send_GSMR_Network =>
+               Send_GSMR_Network_Msg (Selected => Arg /= 0);
+            when Send_RBC_Data =>
+               Send_RBC_Data_Msg (Arg);
+            when Send_Radio_Network_Type =>
+               Send_Byte_Data (6, Arg);
+            when Send_Mission_One_Radio =>
+               Send_Byte_Data (7, Arg);
+            when SM_Request =>
+               Queue_Driver_Action (ACTION_SM, Unsigned_16 (Arg mod 3));
+            when BMM_Inhibition =>
+               Queue_Driver_Action (ACTION_BMM_INHIBITION,
+                                    Unsigned_16 (Arg mod 2));
+            when Maintain_SH =>
+               Queue_Driver_Action (ACTION_MAINTAIN_SH);
          end case;
       end loop;
    end Drain_Window_Actions;
@@ -396,6 +491,7 @@ package body DMI_Core is
       DMI_Ack.Reset;
       DMI_Conditions.Reset;
       DMI_Driver_Data.Reset;
+      DMI_Radio_Data.Reset;
       DMI_Planning.Reset;
       DMI_Status.Reset;
       DMI_Text_Messages.Reset;
@@ -672,6 +768,9 @@ package body DMI_Core is
       SOM      : constant Unsigned_8 := Get_U8 (Payload, Offset);
       Wait_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
       Start    : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Radio    : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Radio_Wait_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Answer   : constant Unsigned_8 := Get_U8 (Payload, Offset);
 
       function Bit (Byte : Unsigned_8; Index : Natural) return Boolean is
         ((Byte and Shift_Left (Unsigned_8'(1), Index)) /= 0);
@@ -720,12 +819,79 @@ package body DMI_Core is
             when 0      => Nothing,
             when 1      => Radio_Network,
             when 3      => Authorisation,
+            when 4      => Shunting_Answer,
+            when 5      => SM_Answer,
             when others => RBC_Answer);
 
       DMI_Conditions.Start_Pending := Start /= 0;
 
+      --  every value of the two bit fields is defined
+      DMI_Conditions.Radio_Type :=
+        Radio_Type_T'Val (Natural (Radio and 3));
+      DMI_Conditions.Radio_Installed :=
+        Radio_Installed_T'Val (Natural (Shift_Right (Radio, 2) and 3));
+      DMI_Conditions.FRMCS_Registered  := Bit (Radio, 4);
+      DMI_Conditions.GSMR_Registered   := Bit (Radio, 5);
+      DMI_Conditions.One_Radio_Yes     := Bit (Radio, 6);
+      DMI_Conditions.RBC_Contact_Known := Bit (Radio, 7);
+
+      DMI_Conditions.Radio_Wait :=
+        (case Radio_Wait_Raw is
+            when 0      => No_Radio_Wait,
+            when 1      => Network_List,
+            when others => Network_Registration);
+
+      DMI_Conditions.Request_Authorised := Answer = 1;
+
       DMI_Windows.Onboard_State_Changed;
    end Apply_Onboard;
+
+   --  MSG_RADIO_NETWORKS: the list of GSM-R networks for the GSM-R
+   --  network ID window. The whole message is checked before anything
+   --  is taken (dmi_protocol.ads): a count above the limit, a name
+   --  length of 0 or above the limit, or a length that is not exactly
+   --  what the count and the names describe drop the message.
+   procedure Apply_Radio_Networks (Payload : Stream_Element_Array) is
+      use DMI_Radio_Data;
+      Offset : Stream_Element_Offset := Payload'First;
+      Count  : Natural;
+      List   : Name_List_T;
+   begin
+      if Payload'Length < 1
+        or else Payload'Length > Radio_Networks_Max_Length
+      then
+         return;
+      end if;
+      Count := Natural (Get_U8 (Payload, Offset));
+      if Count > Max_Networks then
+         return;
+      end if;
+      for I in 1 .. Count loop
+         if Offset > Payload'Last then
+            return;
+         end if;
+         declare
+            Len : constant Natural := Natural (Get_U8 (Payload, Offset));
+         begin
+            if Len = 0 or else Len > Max_Name
+              or else Payload'Last - Offset + 1
+                        < Stream_Element_Offset (Len)
+            then
+               return;
+            end if;
+            List (I).Length := Len;
+            for C in 1 .. Len loop
+               List (I).Text (C) :=
+                 Wide_Character'Val (Natural (Get_U8 (Payload, Offset)));
+            end loop;
+         end;
+      end loop;
+      if Offset /= Payload'Last + 1 then
+         return;  -- bytes beyond the described list
+      end if;
+      Set_List (Count, List);
+      DMI_Windows.Radio_Networks_Received;
+   end Apply_Radio_Networks;
 
    --------------------
    -- Handle_Message --
@@ -1049,7 +1215,7 @@ package body DMI_Core is
 
       if The_Type in MSG_SPEED_STATE | MSG_MODE_LEVEL | MSG_TEXT
                    | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
-                   | MSG_PLANNING | MSG_ONBOARD
+                   | MSG_PLANNING | MSG_ONBOARD | MSG_RADIO_NETWORKS
       then
          Note_EVC_Message;
       end if;
@@ -1089,6 +1255,8 @@ package body DMI_Core is
             end if;
          when MSG_PLANNING =>
             Apply_Planning (Payload);
+         when MSG_RADIO_NETWORKS =>
+            Apply_Radio_Networks (Payload);
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
                Update_Buttons; -- make sure hit testing sees current state
@@ -1122,7 +1290,8 @@ package body DMI_Core is
 
       DMI_Text_Messages.Tick;
       -- DMI 11.2.1.6: movement of the hour glass ST05
-      DMI_Conditions.Tick (Dt_Ms);
+      DMI_Conditions.Tick
+        (Dt_Ms, Radio_Step => DMI_Windows.Radio_Step_Displayed);
       -- DMI 11.7.1.7 and Table 48: an enabling condition of an open data
       -- entry / validation window that is not fulfilled anymore stops
       -- the process and shows the parent window

@@ -101,8 +101,21 @@ package Test_Support is
       In_S0            : Boolean := False; -- Table 49 S0: a session is
                                            -- still up, Start Up waits
       Waiting          : Natural := 0;   -- 0 none / 1 radio network /
-                                         -- 2 an RBC answer / 3 the MA
-      Start_Pending    : Boolean := False);
+                                         -- 2 an RBC answer / 3 the MA /
+                                         -- 4 shunting / 5 SM answer
+      Start_Pending    : Boolean := False;
+      --  the radio data (byte 9) and radio_wait (byte 10); the default
+      --  is an on-board that reports no radio data at all
+      Radio_Type       : Natural := 0;   -- 0 unknown / 1 FRMCS /
+                                         -- 2 FRMCS+GSM-R / 3 GSM-R
+      Radio_Installed  : Natural := 0;   -- 0 none / 1 FRMCS / 2 GSM-R /
+                                         -- 3 both
+      FRMCS_Registered : Boolean := False;
+      GSMR_Registered  : Boolean := False;
+      One_Radio_Yes    : Boolean := False;
+      RBC_Contact_Known : Boolean := False;
+      Radio_Wait       : Natural := 0;   -- 0 none / 1 list / 2 registration
+      Authorised       : Boolean := False); -- answer (byte 11)
 
    -- The scenario brings its own EVC (EVC_Core) and sends MSG_ONBOARD
    -- itself: the wrapper stops sending its model. Reset_EVC_Model turns
@@ -115,7 +128,12 @@ package Test_Support is
    -- the next Send_Onboard (or Reset_EVC_Model).
    procedure Send_Onboard_Raw
      (Data, Session, RBC, Train, National, SOM, Waiting, Start_Pending
-        : Interfaces.Unsigned_8);
+        : Interfaces.Unsigned_8;
+      Radio, Radio_Wait, Answer : Interfaces.Unsigned_8 := 0);
+
+   -- MSG_RADIO_NETWORKS with the names separated by ',' ("" is the empty
+   -- list)
+   procedure Send_Radio_Networks (Names : String);
 
    procedure Send_Text (ID           : Natural;
                         Text         : Wide_String;
@@ -193,6 +211,18 @@ package Test_Support is
    procedure Expect_Actions (Action : Natural;
                              Count  : Natural;
                              What   : String);
+
+   -- ... must hold exactly one driver action with this action code, and
+   -- its argument must be Arg
+   procedure Expect_Action_Arg (Action : Natural;
+                                Arg    : Natural;
+                                What   : String);
+
+   -- ... must hold exactly one MSG_DRIVER_DATA of this kind, and its
+   -- payload after the kind byte must be Bytes
+   procedure Expect_Driver_Data (Kind  : Natural;
+                                 Bytes : Byte_Array;
+                                 What  : String);
 
    -- Simple boolean check
    procedure Check (Condition : Boolean; What : String);

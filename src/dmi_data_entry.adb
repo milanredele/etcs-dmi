@@ -290,7 +290,8 @@ package body DMI_Data_Entry is
 
    --  10.3.1.7 / 10.3.5.5: a window with a single input field has no
    --  label area, the data part covers the width of the whole field
-   function Has_Label_Area return Boolean is (Def.Field_Count > 1);
+   function Has_Label_Area return Boolean is
+     (Def.Field_Count > 1 or else (Def.Labelled and then Def.Field_Count = 1));
 
    --  Table 22 (half grid array) / Table 23 (total grid array). The Y
    --  locations of Table 23 are read from Figure 100: the first input
@@ -1500,7 +1501,7 @@ package body DMI_Data_Entry is
       end loop;
 
       --  10.3.5.6 / 10.4.1.5: the values are echoed on the A/B/C/E area
-      if On_Total_Grid then
+      if On_Total_Grid and then Def.Echo_Texts then
          Draw_Echo_Texts;
       end if;
       if Def.Layout = Total_Grid then

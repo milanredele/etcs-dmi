@@ -4180,6 +4180,10 @@ procedure DMI_Test is
       Check (Value_Of = "Level 0", "the button without a choice does nothing");
       Key (2);
       Check (Value_Of = "Level 2", "another choice replaces the value");
+      -- Table 49 S2: level 1 goes to S10 (level 2 goes to S3-1, the
+      -- Radio data window: scenario Win_Start_Up_Radio)
+      Key (1);
+      Check (Value_Of = "Level 1", "and another one");
       Enter_Single;
       Check (not DMI_Windows.In_Start_Up,
              "the accepted level ends the Start Up sequence (Table 49 S2)");

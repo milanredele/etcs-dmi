@@ -3,10 +3,12 @@
 --
 --  Windows stack over the default window in the D/F column (Table 20:
 --  306x450, title 24 cells, [Close] at y 400). Only the top window
---  responds to driver input (5.3.1.1.5). Three window kinds are
---  implemented: menu windows (10.2.1), data entry windows with a
---  numeric or an alphanumeric keyboard (10.3) and the train data
---  validation window (10.4).
+--  responds to driver input (5.3.1.1.5). The window kinds are menu
+--  windows (10.2.1), data entry windows (10.3), the train data
+--  validation window (10.4) and the data view (10.5). The dialogue
+--  sequences of 11.7 that are modelled: Start Up (11.7.2), Main window
+--  (11.7.3), Shunting (11.7.4), Override (11.7.5), Special (11.7.6) and
+--  Supervised Manoeuvre (11.7.8).
 
 with Display;
 with DMI_Buttons;
@@ -27,7 +29,12 @@ package DMI_Windows is
       W_SR_Data,     -- 11.3.10
       W_Adhesion,    -- 11.3.11
       W_Volume,      -- 11.3.7
-      W_Brightness); -- 11.3.8
+      W_Brightness,  -- 11.3.8
+      W_Radio_Data,          -- 11.2.5
+      W_GSMR_Network,        -- 11.3.4
+      W_RBC_Data,            -- 11.3.5
+      W_Radio_Network_Type,  -- 11.3.15
+      W_One_Radio);          -- 11.3.16 (Mission with one radio system)
 
    -- Requests towards the EVC, drained by DMI_Core
    type Action_T is
@@ -42,7 +49,17 @@ package DMI_Windows is
       Send_Driver_ID,
       Send_TRN,
       Send_Train_Data,
-      Send_SR_Data);
+      Send_SR_Data,
+      Send_GSMR_Network,        -- Arg: 0 the driver elects to modify the
+                                -- GSM-R network ID (list requested),
+                                -- 1 the network selected
+                                -- (DMI_Radio_Data.GSMR_Network)
+      Send_RBC_Data,            -- Arg: DMI_Radio_Data.RBC_Choice_T'Pos
+      Send_Radio_Network_Type,  -- Arg: 1 FRMCS, 2 FRMCS+GSM-R, 3 GSM-R
+      Send_Mission_One_Radio,   -- Arg: 0 'No', 1 'Yes'
+      SM_Request,               -- Arg: 0 initiate, 1 continue, 2 exit
+      BMM_Inhibition,           -- Arg: 0 inhibit, 1 revoke
+      Maintain_SH);
 
    procedure Open (ID : Window_ID_T);
    -- The driver pressed [Close]; ignored where [Close] is disabled
@@ -73,9 +90,19 @@ package DMI_Windows is
    -- awaits an answer
    function Waiting_Displayed return Boolean;
 
-   -- 11.7.2.2 / 11.7.3.2: [Close] is disabled before S10 of Start Up,
-   -- except in the steps S1-1 and S1-2 opened from the Driver ID window,
-   -- and in the steps that wait for the radio network or the RBC
+   -- True while the Radio data window is presented with all buttons
+   -- disabled and the hour glass ST05 (Table 49 S3-2-1 / S3-2-3, Table
+   -- 50 S5-2-1 / S5-2-3, 11.2.5.6)
+   function Radio_Step_Displayed return Boolean;
+
+   -- A list of GSM-R networks arrived (MSG_RADIO_NETWORKS, stored in
+   -- DMI_Radio_Data): Table 49 S3-2-1 / Table 50 S5-2-1 may end
+   procedure Radio_Networks_Received;
+
+   -- 11.7.2.2: [Close] is disabled before S10 of Start Up, except in
+   -- the steps S1-1, S1-2, S3-2-2, S3-3 and S3-4; 11.7.3.2, 11.7.4.2,
+   -- 11.7.8.2: it is disabled in the steps that wait for the radio
+   -- network or the RBC
    function Close_Enabled return Boolean;
 
    -- 11.7.1.7 and Table 48: after the Start Up dialogue sequence, when
