@@ -16,7 +16,9 @@ package EVC_Core is
    -- AD: Automatic Driving, entered and left by the ERTMS/ATO on-board
    -- of EVC_ATO (SUBSET-026 4.4.16)
    --  SH and SM: DMI 11.7.4 and 11.7.8 (SUBSET-026 5.6, 5.21)
-   type Mode_T is (SB, SR, FS, TR, AD, SH, SM);
+   --  Isolation (IS): the driver isolated the on-board (DMI 5.6.1.1,
+   --  driver action 20; SUBSET-026 4.4.3); only a reset leaves it
+   type Mode_T is (SB, SR, FS, TR, AD, SH, SM, Isolation);
 
    Mode : Mode_T := SB;
 

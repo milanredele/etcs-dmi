@@ -166,7 +166,8 @@ package body EVC_Core is
       DMI_Mode : constant Unsigned_8 :=
         (case Mode is
             when SB => 1, when SR => 7, when FS => 2, when TR => 11,
-            when AD => 3, when SH => 8, when SM => 4);
+            when AD => 3, when SH => 8, when SM => 4,
+            when Isolation => 17);
       Ann     : Unsigned_8 := 16#FF#;
       Ann_Ack : Unsigned_8 := 0;
    begin
@@ -753,6 +754,11 @@ package body EVC_Core is
       -- this scenario sends no text message to be acknowledged
       pragma Unreferenced (ID);
    begin
+      --  SUBSET-026 4.4.3.1.3: no transition from IS is specified; the
+      --  special operating procedure that leaves it is the reset
+      if Mode = Isolation then
+         return;
+      end if;
       case Action is
          when 0 =>      -- TAF answered yes
             TAF_Answered := True;
@@ -813,6 +819,16 @@ package body EVC_Core is
             BMM_Inhibited := Arg = 0;
          when 19 =>     -- maintain shunting: no passive shunting input
             null;
+         when 20 =>     -- isolation (SUBSET-026 4.6.3 condition [1]),
+                        -- from every mode (4.6.2): the on-board is
+                        -- physically isolated from the brakes (4.4.3.1.1)
+                        -- and has no more responsibility (4.4.3.3.2)
+            Mode := Isolation;
+            Busy := Idle;
+            Authorised := False;
+            Start_Pending := False;
+            EVC_Train.Brake_Commanded := False;
+            EVC_Train.Demand := 0;
          when others =>
             null;
       end case;
