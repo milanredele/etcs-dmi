@@ -14,8 +14,10 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+with Display.Draw;
 with DMI_Ack;
 with DMI_Flash;
+with Font;
 with DMI_Status;
 with General_Parameters;
 with Supplementary_Driving_Info;
@@ -36,6 +38,142 @@ package body Display.C_Area is
      ((The_Area.Position + The_C8_Area.Position,
        The_C8_Area.Width,
        The_C8_Area.Height + The_C9_Area.Height + 25));
+
+   ---------------------------------------------------------------------
+   -- DMI 8.2.3.2.9 / 8.2.3.2.10: the abbreviation of the National System
+   -- instead of the text "NTC" of LE02, LE08 and LE09 (audit SDI-8)
+   ---------------------------------------------------------------------
+
+   function National_Name return Wide_String is
+     (Supplementary_Driving_Info.National_Name.Text
+        (1 .. Supplementary_Driving_Info.National_Name.Length));
+
+   function Has_National_Name return Boolean is
+     (Supplementary_Driving_Info.National_Name.Length > 0);
+
+   -- 8.2.3.2.10: the characters comply with the minimum size of 5.1.2,
+   -- whose smallest character height is 10 cells (5.1.2.2.3 e, f, g);
+   -- 12 cells, the size of "other characters" (h), is used when the
+   -- name fits with it (implementation choice)
+   function Name_Size (Text : Wide_String; Width : Natural) return Font.Size_T
+   is (if Display.Draw.String_Width (Text, 12) <= Width then 12 else 10);
+
+   -- One line of the name, centred in Box on the baseline Pen_Y; a name
+   -- too wide even at 10 cells is cut at the edges of Box (left aligned)
+   procedure Name_Line (Text  : Wide_String;
+                        Box   : Area_T;
+                        Pen_Y : Natural;
+                        Size  : Font.Size_T;
+                        Color : General_Parameters.Color) is
+   begin
+      if Display.Draw.String_Width (Text, Size) <= Box.Width then
+         C_Buffer.Draw_String
+           (Pen_X => Box.Position.X + Box.Width / 2,
+            Pen_Y => Pen_Y,
+            The_String => Text,
+            The_Size => Size,
+            The_Color => Color,
+            The_Alignment => C_Buffer.Center);
+      else
+         C_Buffer.Draw_String_Clipped
+           (Pen_X => Box.Position.X,
+            Pen_Y => Pen_Y,
+            The_String => Text,
+            The_Size => Size,
+            The_Color => Color,
+            The_Clip => Box);
+      end if;
+   end Name_Line;
+
+   -- LE02 with the name: 8.2.3.2.10, the name stays within 48 x 19
+   -- cells, centred in C8 like the symbol; one line (two lines of 10
+   -- cells do not fit in 19)
+   procedure Draw_Level_Name is
+      Box : constant Area_T :=
+        (The_C8_Area.Position
+           + ((The_C8_Area.Width - 48) / 2, (The_C8_Area.Height - 19) / 2),
+         48, 19);
+      Size : constant Font.Size_T := Name_Size (National_Name, Box.Width);
+   begin
+      Name_Line (National_Name, Box,
+                 Box.Position.Y + (Box.Height + Natural (Size)) / 2,
+                 Size, General_Parameters.GREY);
+   end Draw_Level_Name;
+
+   -- LE08 / LE09 with the name: the arrow of the symbol (its columns
+   -- left of the text "NTC", 0 .. Arrow_Width - 1) and the name to its
+   -- right, grey (LE08) or yellow (LE09) as the symbol's text. A name
+   -- that does not fit on one line is broken after its last '/', '-' or
+   -- '+' (or at its last space) that leaves both lines inside, as LE08a
+   -- / LE09a show "PZB/" over "LZB"; implementation choice for what the
+   -- symbol does not fix.
+   Arrow_Width : constant := 21;
+
+   procedure Draw_Announced_Name (The_Symbol : Symbol.T;
+                                  Position   : Position_T;
+                                  Color      : General_Parameters.Color) is
+      -- right of the arrow, 2 cells from it and 4 from the border of C1
+      -- (its flashing frame is 2 cells wide, 5.1.1.3)
+      Box : constant Area_T :=
+        ((Position.X + Arrow_Width + 2, The_C1_Area.Position.Y + 4),
+         The_C1_Area.Position.X + The_C1_Area.Width - 4
+           - (Position.X + Arrow_Width + 2),
+         The_C1_Area.Height - 8);
+      -- the centre line of the arrow
+      Middle : constant Natural := Position.Y + The_Symbol.Height / 2;
+      Name   : constant Wide_String := National_Name;
+      Cut    : Natural := 0;
+      Size   : Font.Size_T := 12;
+
+      function Fits (S : Font.Size_T; From, To : Natural) return Boolean is
+        (Display.Draw.String_Width (Name (From .. To), S) <= Box.Width);
+   begin
+      C_Buffer.Draw_Symbol (The_Symbol, Position);
+      C_Buffer.Fill_Area
+        ((Position + (Arrow_Width, 0), The_Symbol.Width - Arrow_Width,
+          The_Symbol.Height),
+         General_Parameters.Background_Color);
+
+      if Fits (12, Name'First, Name'Last)
+        or else Fits (10, Name'First, Name'Last)
+      then
+         Size := Name_Size (Name, Box.Width);
+         Name_Line (Name, Box, Middle + Natural (Size) / 2, Size, Color);
+         return;
+      end if;
+
+      for S in reverse Font.Size_T range 10 .. 12 loop
+         if S in 10 | 12 and then Cut = 0 then
+            for I in reverse Name'First .. Name'Last - 1 loop
+               if Name (I) in '/' | '-' | '+' | ' '
+                 and then Fits (S, Name'First,
+                                (if Name (I) = ' ' then I - 1 else I))
+                 and then Fits (S, I + 1, Name'Last)
+               then
+                  Cut := I;
+                  Size := S;
+                  exit;
+               end if;
+            end loop;
+         end if;
+      end loop;
+
+      if Cut = 0 then
+         Name_Line (Name, Box, Middle + 5, 10, Color);
+         return;
+      end if;
+      declare
+         Total : constant Natural := 2 * Natural (Size) + 4;
+         First_Baseline : constant Natural :=
+           Middle - Total / 2 + Natural (Size);
+      begin
+         Name_Line (Name (Name'First
+                            .. (if Name (Cut) = ' ' then Cut - 1 else Cut)),
+                    Box, First_Baseline, Size, Color);
+         Name_Line (Name (Cut + 1 .. Name'Last), Box,
+                    First_Baseline + Natural (Size) + 4, Size, Color);
+      end;
+   end Draw_Announced_Name;
 
    procedure Draw is
    begin
@@ -160,7 +298,14 @@ package body Display.C_Area is
                -- DMI 8.2.3.2.8 (v4.0.0: ack symbols only for L0 and NTC)
                case DMI_Ack.Current_Level is
                   when L0 =>  DS (Symbol.LE_07, Position_Level);
-                  when NTC => DS (Symbol.LE_09, Position_Level);
+                  when NTC =>
+                     -- 8.2.3.2.9: the National System's abbreviation
+                     if Has_National_Name then
+                        Draw_Announced_Name (Symbol.LE_09, Position_Level,
+                                             General_Parameters.YELLOW);
+                     else
+                        DS (Symbol.LE_09, Position_Level);
+                     end if;
                   when others =>
                      null;
                end case;
@@ -184,7 +329,14 @@ package body Display.C_Area is
          C_Buffer.Draw_Frame (The_C1_Area);
          case Level_Announcement.Level is
             when L0 =>  DS (Symbol.LE_06, Position_Level);
-            when NTC => DS (Symbol.LE_08, Position_Level);
+            when NTC =>
+               -- 8.2.3.2.9: the National System's abbreviation
+               if Has_National_Name then
+                  Draw_Announced_Name (Symbol.LE_08, Position_Level,
+                                       General_Parameters.GREY);
+               else
+                  DS (Symbol.LE_08, Position_Level);
+               end if;
             when L1 =>  DS (Symbol.LE_10, Position_Level);
             when L2 =>  DS (Symbol.LE_12, Position_Level);
             when others =>
@@ -216,7 +368,13 @@ package body Display.C_Area is
             -- "NTC (except in the modes SN and NL)": in these modes C8
             -- stays empty in level NTC
             if Mode not in M_SN | M_NL then
-               DS (Symbol.LE_02);
+               -- 8.2.3.2.9: the National System's abbreviation instead
+               -- of the text "NTC", when the EVC names it
+               if Has_National_Name then
+                  Draw_Level_Name;
+               else
+                  DS (Symbol.LE_02);
+               end if;
             end if;
          when L1 =>  DS (Symbol.LE_03);
          when L2 =>  DS (Symbol.LE_04);

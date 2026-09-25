@@ -4,11 +4,11 @@
 --  Windows stack over the default window in the D/F column (Table 20:
 --  306x450, title 24 cells, [Close] at y 400). Only the top window
 --  responds to driver input (5.3.1.1.5). The window kinds are menu
---  windows (10.2.1), data entry windows (10.3), the train data
---  validation window (10.4) and the data view (10.5). The dialogue
+--  windows (10.2.1), data entry windows (10.3), the data validation
+--  windows (10.4, 11.4) and the data views (10.5, 11.5). The dialogue
 --  sequences of 11.7 that are modelled: Start Up (11.7.2), Main window
---  (11.7.3), Shunting (11.7.4), Override (11.7.5), Special (11.7.6) and
---  Supervised Manoeuvre (11.7.8).
+--  (11.7.3), Shunting (11.7.4), Override (11.7.5), Special (11.7.6),
+--  Settings (11.7.7, without Language) and Supervised Manoeuvre (11.7.8).
 
 with Display;
 with DMI_Buttons;
@@ -35,7 +35,12 @@ package DMI_Windows is
       W_GSMR_Network,        -- 11.3.4
       W_RBC_Data,            -- 11.3.5
       W_Radio_Network_Type,  -- 11.3.15
-      W_One_Radio);          -- 11.3.16 (Mission with one radio system)
+      W_One_Radio,           -- 11.3.16 (Mission with one radio system)
+      W_Set_VBC,             -- 11.3.12
+      W_Set_VBC_Validation,  -- 11.4.2
+      W_Remove_VBC,          -- 11.3.13
+      W_Remove_VBC_Validation,  -- 11.4.3
+      W_System_Version);     -- 11.5.2
 
    -- Requests towards the EVC, drained by DMI_Core
    type Action_T is
@@ -61,7 +66,9 @@ package DMI_Windows is
       Send_Mission_One_Radio,   -- Arg: 0 'No', 1 'Yes'
       SM_Request,               -- Arg: 0 initiate, 1 continue, 2 exit
       BMM_Inhibition,           -- Arg: 0 inhibit, 1 revoke
-      Maintain_SH);
+      Maintain_SH,
+      Send_Set_VBC,             -- Arg: the validated VBC set code
+      Send_Remove_VBC);         -- Arg: the validated VBC remove code
 
    procedure Open (ID : Window_ID_T);
    -- The driver pressed [Close]; ignored where [Close] is disabled

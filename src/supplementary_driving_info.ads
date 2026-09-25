@@ -75,4 +75,19 @@ package Supplementary_Driving_Info is
    Level : Level_T := Unknown;
    Level_Announcement : Level_Announcement_T;
 
+   -- DMI 8.2.3.2.9: the distinct abbreviation of the National System of
+   -- level NTC, shown instead of the text "NTC" of LE02, LE08 and LE09.
+   -- Its definition belongs to the National System; the EVC names it
+   -- (MSG_MODE_LEVEL, at most DMI_Protocol.Mode_Level_Name_Max
+   -- characters). Length 0: no name known, the symbols show "NTC".
+   National_Name_Max : constant := 10;
+
+   type National_Name_T is
+      record
+         Length : Natural range 0 .. National_Name_Max := 0;
+         Text   : Wide_String (1 .. National_Name_Max) := (others => ' ');
+      end record;
+
+   National_Name : National_Name_T;
+
 end Supplementary_Driving_Info;

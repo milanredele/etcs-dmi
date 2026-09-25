@@ -9,7 +9,7 @@
 --
 --  Message directions:
 --     EVC -> DMI : SPEED_STATE, MODE_LEVEL, ONBOARD, ATO, SYSTEM_STATUS,
---                  RADIO_NETWORKS
+--                  RADIO_NETWORKS, SYSTEM_VERSION, VBC_LIST
 --     UI  -> DMI : POINTER
 --     DMI -> EVC : DRIVER_ACTION
 --     DMI -> UI  : FRAME, SOUND
@@ -41,7 +41,21 @@ package DMI_Protocol is
    --  mode_ack u8 (16#FF# none, else Mode_T'Pos),
    --  level_ann u8 (16#FF# none, else Level_T'Pos), level_ann_ack u8 (bool),
    --  override u8 (bool), taf u8 (bool), lssma u16 (16#FFFF# not shown)
-   Mode_Level_Length : constant := 9;
+   --  Optionally followed by the abbreviation of the National System of
+   --  level NTC (DMI 8.2.3.2.9, audit SDI-8), appended in P3:
+   --    name_len u8 (0 .. Mode_Level_Name_Max), then name_len Latin-1
+   --    bytes.
+   --  It is shown instead of the text "NTC" of LE02 in C8 when the
+   --  current level is NTC, and of LE08 / LE09 in C1 when the announced
+   --  level is NTC; this protocol has one NTC level, so one name serves
+   --  both. A message of Mode_Level_Length bytes, or name_len 0, means
+   --  "no name": the symbols show "NTC". Any length other than
+   --  Mode_Level_Length or Mode_Level_Length + 1 + name_len, and a
+   --  name_len above Mode_Level_Name_Max, ignore the message as a whole.
+   --  The definition of the abbreviation belongs to the National System
+   --  (8.2.3.2.9); NTC itself is out of scope, so the DMI only shows it.
+   Mode_Level_Length   : constant := 9;
+   Mode_Level_Name_Max : constant := 10;
 
    MSG_TEXT : constant Msg_Type_T := 16#03#;
    --  id u16, flags u8 (bit0 ack_required, bit1 first_group/bold,
@@ -407,6 +421,36 @@ package DMI_Protocol is
    --  is out of scope.
    System_Status_Length : constant := 2;
 
+   MSG_SYSTEM_VERSION : constant Msg_Type_T := 16#0E#;
+   --  The operated system version (SUBSET-026 3.17.2), which the System
+   --  version window shows (DMI 11.5.2, Table 46, Figure 135: "3.0"):
+   --    x u8: the first number X, the three MSBs of M_VERSION (7.5.1.79),
+   --      0 .. 7,
+   --    y u8: the second number Y, the four LSBs, 0 .. 15.
+   --  Fixed length System_Version_Length; a message of any other length
+   --  is ignored as a whole. An X above 7 or a Y above 15 (16#FF# by
+   --  convention) is "not known": the window shows the label and no
+   --  value, as it does before the first message.
+   System_Version_Length : constant := 2;
+
+   MSG_VBC_LIST : constant Msg_Type_T := 16#0F#;
+   --  The Virtual Balise Covers stored on-board (SUBSET-026 3.15.9), for
+   --  the topic "VBCs stored on-board" of the Data view window (DMI
+   --  Table 45, 11.5.1.6: "VBC #n set code"):
+   --    count u8 (0 .. VBC_List_Max), then per VBC:
+   --    code u32: its VBC set code as DMI 11.3.12.5 composes it, NID_VBCMK
+   --      in the 6 least significant bits, NID_C in the next 10 and
+   --      T_VBC (7.5.1.154.1, 8 bits) above them: 0 .. VBC_Code_Max.
+   --  The length must be exactly 1 + 4 * count; any other message, a
+   --  count above VBC_List_Max or a code above VBC_Code_Max is ignored as
+   --  a whole. The list replaces the previous one; count 0 is "no VBC
+   --  stored". The enabling conditions of Table 36 #5 / #6 still come
+   --  from MSG_ONBOARD (national bits 2 and 3), which is where the
+   --  on-board states its storage capacity.
+   VBC_List_Max    : constant := 16;
+   VBC_Code_Max    : constant := 16#FF_FFFF#;  -- 24 bits: 6 + 10 + 8
+   VBC_Code_Length : constant := 4;
+
    -- EVC simulator -> UI (visualization; the DMI ignores these)
    MSG_TRACK_LAYOUT : constant Msg_Type_T := 16#08#;
    --  eoa u32, release_speed u8,
@@ -536,9 +580,23 @@ package DMI_Protocol is
    --                  Driver_Data_Byte_Length bytes
    --   7 Mission with one radio system (DMI 11.3.16): choice u8, 0 'No',
    --                  1 'Yes'; Driver_Data_Byte_Length bytes
+   --   8 Set VBC    : code u32, the 'VBC set code' (DMI 11.3.12) as the
+   --                  driver entered it, 0 .. VBC_Code_Max: NID_VBCMK in
+   --                  the 6 least significant bits, NID_C in the next 10,
+   --                  T_VBC in the rest (11.3.12.5). Sent once the Set
+   --                  VBC validation window is left with 'Yes' (11.7.1.6.2,
+   --                  Table 54 S6-2); Driver_Data_VBC_Length bytes
+   --   9 Remove VBC : code u32, the 'VBC remove code' (DMI 11.3.13),
+   --                  0 .. VBC_Code_Max: NID_C in the 10 least
+   --                  significant bits, NID_VBCMK in the next 6, the rest
+   --                  (at most 8 bits) not used by the on-board
+   --                  (11.3.13.5). Sent once the Remove VBC validation
+   --                  window is left with 'Yes' (Table 54 S7-2);
+   --                  Driver_Data_VBC_Length bytes
    Driver_Data_Train_Length : constant := 13;
    Driver_Data_RBC_Length   : constant := 23;
    Driver_Data_Byte_Length  : constant := 2;
+   Driver_Data_VBC_Length   : constant := 5;
    RBC_Phone_Max            : constant := 16;
 
    -- DMI -> UI

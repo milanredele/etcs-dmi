@@ -6,7 +6,10 @@ with Display.Draw;
 with DMI_Conditions;
 with DMI_Data_Format;
 with DMI_Driver_Data;
+with DMI_Radio_Data;
+with DMI_System_Version;
 with DMI_Train_Data;
+with DMI_VBC;
 with General_Parameters;
 with Symbol;
 
@@ -42,7 +45,7 @@ package body DMI_Data_View is
 
    -- 10.5.1.6: items of different topics are separated by an empty
    -- text line
-   type Topic_T is (T_Driver_ID, T_TRN, T_Train_Data, T_Radio_Data);
+   type Topic_T is (T_Driver_ID, T_TRN, T_Train_Data, T_Radio_Data, T_VBC);
 
    Max_Label_Len : constant := 20;
 
@@ -66,11 +69,14 @@ package body DMI_Data_View is
 
    -- Table 45. Item 3 "Train type" belongs to the fixed train data
    -- entry of Table 44 only. Item 14 "RBC phone number" is displayed
-   -- only when the radio network type stored on-board is GSM-R or
-   -- FRMCS+GSM-R (11.5.1.6.1); this DMI stores no radio network type,
-   -- so the item cannot be on offer. Items 15.. are one per VBC stored
-   -- on-board (11.5.1.6) and this DMI stores none.
-   Items : constant array (1 .. 12) of Item_T :=
+   -- only when the Radio Network type stored on-board is GSM-R or
+   -- FRMCS+GSM-R while GSM-R is installed on-board (11.5.1.6.1, the
+   -- condition of DMI_Conditions.RBC_Phone_Field). Items 15.. are one
+   -- per VBC stored on-board (11.5.1.6), from MSG_VBC_LIST; they follow
+   -- in the rows after the fixed items (Row_Count). The Page of an item
+   -- is the window Table 45 gives it; the VBC items start on window 2
+   -- and continue on the windows 3 .. n when window 2 is full ("2..n").
+   Items : constant array (1 .. 13) of Item_T :=
      (Item (1, T_Driver_ID,  "Driver ID"),            -- 1
       Item (1, T_TRN,        "Train running number"), -- 2
       Item (1, T_Train_Data, "Train category"),       -- 4
@@ -82,9 +88,31 @@ package body DMI_Data_View is
       Item (1, T_Train_Data, "Loading gauge"),        -- 10
       Item (2, T_Radio_Data, "Radio network type"),   -- 11
       Item (2, T_Radio_Data, "GSM-R network ID"),     -- 12
-      Item (2, T_Radio_Data, "RBC ID"));              -- 13
+      Item (2, T_Radio_Data, "RBC ID"),               -- 13
+      Item (2, T_Radio_Data, "RBC phone number"));    -- 14
 
-   Page_Count : constant := 2;
+   Phone_Item : constant := 13;  -- the index of item 14 above
+
+   -- The rows on offer: the fixed items (item 14 only under its
+   -- condition), then one per VBC of the last MSG_VBC_LIST
+   function Row_Present (Row : Positive) return Boolean is
+     (Row /= Phone_Item or else DMI_Conditions.RBC_Phone_Field);
+
+   function VBC_Count return Natural is
+     (if DMI_VBC.Known then DMI_VBC.Count else 0);
+
+   function Row_Count return Natural is (Items'Length + VBC_Count);
+
+   function Row_Item (Row : Positive) return Item_T is
+      Img : constant Wide_String :=
+        Natural'Wide_Image (Row - Items'Length);
+   begin
+      if Row <= Items'Length then
+         return Items (Row);
+      end if;
+      -- Table 45 items 15, 16, ...: 'VBC #n set code'
+      return Item (2, T_VBC, "VBC #" & Img (2 .. Img'Last) & " set code");
+   end Row_Item;
 
    Current_Page : Positive := 1;
 
@@ -140,10 +168,8 @@ package body DMI_Data_View is
       return Result;
    end Choice_Value;
 
-   -- The data the DMI holds. The radio network type, the GSM-R network
-   -- ID and the RBC ID are not entered on this DMI and are not carried
-   -- by the protocol either: they are unknown and stay without a value.
-   -- Index is the position in Items above, not the item number of
+   -- The data the DMI holds. Index is the position in Items above (or
+   -- a VBC row after them), not the item number of
    -- Table 45: 4, 5 and 6 are the length, the brake percentage and the
    -- maximum speed (items 5, 6 and 7 of the table).
    --
@@ -157,12 +183,50 @@ package body DMI_Data_View is
    --
    -- Items: 3 is the train category, 4, 5 and 6 are the length, the
    -- brake percentage and the maximum speed, 7, 8 and 9 the axle load
-   -- category, the airtight and the loading gauge.
+   -- category, the airtight and the loading gauge; 10 to 13 the radio
+   -- data info (items 11 to 14 of Table 45):
+   -- - 10 the Radio Network type stored on-board, which MSG_ONBOARD
+   --   reports with its value (bits 0-1 of the radio byte); not known:
+   --   no value. A dedicated value (Table 43b), not grouped (5.1.5.2.2).
+   -- - 11 the GSM-R network ID: the network the driver selected on this
+   --   DMI from the list of the on-board (11.3.4), while the EVC reports
+   --   a GSM-R Mobile Terminal registered to a network (implementation
+   --   choice: the registration is the only status of the network ID
+   --   the protocol carries, SUBSET-026 3.18.4.3). Chosen from a list
+   --   (a dedicated keyboard), so not grouped (5.1.5.2.2).
+   -- - 12, 13 the RBC ID and phone number the driver entered on this DMI
+   --   (11.3.5), while the RBC contact information is valid (MSG_ONBOARD
+   --   data bit 4) and the driver's last choice was to enter them: after
+   --   'Contact last RBC' or 'Use short number' the on-board uses
+   --   contact information the DMI does not know.
+   -- VBC rows: the set code the EVC reported (MSG_VBC_LIST), a number
+   -- grouped per 5.1.5.
    function Value_Of (Index : Positive) return Value_T is
       use DMI_Driver_Data;
       use DMI_Train_Data;
       None : constant Value_T := (others => <>);
+
+      function Radio_Type_Value (Text : Wide_String) return Value_T is
+         Result : Value_T;
+      begin
+         Result.Valid := True;
+         Result.Group := False;
+         Result.Length := Text'Length;
+         Result.Text (1 .. Text'Length) := Text;
+         return Result;
+      end Radio_Type_Value;
+
+      function RBC_Entered return Boolean is
+        (DMI_Conditions.RBC_Contact_Valid
+         and then DMI_Radio_Data.RBC_Entered
+         and then DMI_Radio_Data."=" (DMI_Radio_Data.Last_Choice,
+                                      DMI_Radio_Data.Entered));
    begin
+      if Index > Items'Length then
+         return (if Index - Items'Length <= VBC_Count
+                 then Num_Value (DMI_VBC.Codes (Index - Items'Length))
+                 else None);
+      end if;
       case Index is
          when 1 =>
             return (if DMI_Conditions.Driver_ID_Valid
@@ -199,10 +263,143 @@ package body DMI_Data_View is
             return (if DMI_Conditions.Train_Data_Valid
                       and then Train_Data_Entered
                     then Choice_Value (Stored_Text (I_Gauge)) else None);
+         when 10 =>
+            case DMI_Conditions.Radio_Type is
+               when DMI_Conditions.FRMCS =>
+                  return Radio_Type_Value ("FRMCS");
+               when DMI_Conditions.FRMCS_GSMR =>
+                  return Radio_Type_Value ("FRMCS+GSM-R");
+               when DMI_Conditions.GSMR =>
+                  return Radio_Type_Value ("GSM-R");
+               when DMI_Conditions.Type_Unknown =>
+                  return None;
+            end case;
+         when 11 =>
+            if DMI_Conditions.GSMR_Registered
+              and then DMI_Radio_Data.GSMR_Network.Length > 0
+            then
+               declare
+                  N : constant DMI_Radio_Data.Name_T :=
+                    DMI_Radio_Data.GSMR_Network;
+                  Result : Value_T;
+                  Last : constant Natural :=
+                    Natural'Min (N.Length, Max_Value_Len);
+               begin
+                  Result.Valid := True;
+                  Result.Group := False;
+                  Result.Length := Last;
+                  Result.Text (1 .. Last) := N.Text (1 .. Last);
+                  return Result;
+               end;
+            end if;
+            return None;
+         when 12 =>
+            return (if RBC_Entered and then DMI_Radio_Data.RBC_ID.Length > 0
+                    then Text_Value (DMI_Radio_Data.RBC_ID) else None);
+         when 13 =>
+            return (if RBC_Entered
+                      and then DMI_Radio_Data.RBC_Phone.Length > 0
+                    then Text_Value (DMI_Radio_Data.RBC_Phone) else None);
          when others =>
             return None;
       end case;
    end Value_Of;
+
+   ---------------------------------------------------------------------
+   -- Paging: where each row goes
+   ---------------------------------------------------------------------
+
+   -- A dedicated value wider than the data column is broken after its
+   -- last '+' (Figure 134: 'FRMCS+' / 'GSM-R'); the split position, 0
+   -- when the value stays on one line
+   Data_Width : constant := 306 - Split_X - Indent;
+
+   function Split_At (Value : Value_T) return Natural is
+   begin
+      if not Value.Valid or else Value.Group
+        or else Draw.String_Width (Value.Text (1 .. Value.Length), Char_Size)
+                  <= Data_Width
+      then
+         return 0;
+      end if;
+      for I in reverse 1 .. Value.Length - 1 loop
+         if Value.Text (I) = '+' then
+            return I;
+         end if;
+      end loop;
+      return 0;
+   end Split_At;
+
+   -- The text lines a row takes: its grouped blocks (5.1.5.2), or two
+   -- for a split dedicated value, at least one for the label
+   function Rows_Of (Value : Value_T) return Positive is
+   begin
+      if Value.Valid and then Value.Group then
+         return Positive'Max
+           (1, DMI_Data_Format.Grouped (Value.Text (1 .. Value.Length)).Count);
+      elsif Split_At (Value) > 0 then
+         return 2;
+      end if;
+      return 1;
+   end Rows_Of;
+
+   type Place_T is record
+      Page : Positive := 1;
+      Line : Natural := 0;
+   end record;
+
+   -- The window and the first text line of every present row, in the
+   -- order of Table 45: a row starts on the window Table 45 gives it
+   -- or, when the previous row is on a later window, there; 10.5.1.6
+   -- puts an empty line between two topics; a row that does not fit
+   -- below the last one goes to the next window (the VBC rows of
+   -- "2..n"). Place_Of walks the rows up to the one asked for.
+   procedure Walk (Upto : Natural; Place : out Place_T;
+                   Last_Page : out Positive) is
+      Page      : Positive := 1;
+      Line      : Natural := 0;
+      Prev      : Topic_T := Topic_T'First;
+      First     : Boolean := True;
+   begin
+      Place := (1, 0);
+      Last_Page := 1;
+      for Row in 1 .. Row_Count loop
+         if Row_Present (Row) then
+            declare
+               It   : constant Item_T := Row_Item (Row);
+               Need : constant Positive := Rows_Of (Value_Of (Row));
+            begin
+               if It.Page > Page then
+                  Page := It.Page;
+                  Line := 0;
+                  First := True;
+               elsif not First and then It.Topic /= Prev then
+                  Line := Line + 1;               -- 10.5.1.6
+               end if;
+               if not First and then Line + Need - 1 > Last_Line then
+                  Page := Page + 1;
+                  Line := 0;
+               end if;
+               First := False;
+               Prev := It.Topic;
+               if Row = Upto then
+                  Place := (Page, Line);
+               end if;
+               Last_Page := Page;
+               Line := Line + Need;
+            end;
+         end if;
+      end loop;
+   end Walk;
+
+   function Page_Count return Positive is
+      Place : Place_T;
+      Last  : Positive;
+   begin
+      Walk (0, Place, Last);
+      -- Table 45: window 2 carries the radio data info in any case
+      return Positive'Max (2, Last);
+   end Page_Count;
 
    ---------------------------------------------------------------------
    -- Navigation buttons (Table 31, 5.3.1.1.6 d/e)
@@ -232,6 +429,9 @@ package body DMI_Data_View is
 
    procedure Button_Pressed (Index : Positive) is
    begin
+      -- the number of windows follows the VBCs stored on-board: a list
+      -- that shrank while the window was open leaves it on the last one
+      Current_Page := Positive'Min (Current_Page, Page_Count);
       -- 5.3.1.1.9: the scrolling is not circular
       if Index = Previous_Button and then Current_Page > 1 then
          Current_Page := Current_Page - 1;
@@ -254,7 +454,8 @@ package body DMI_Data_View is
    -- sequence number of the current window and the total number of
    -- windows between brackets, e.g. "Data view (1/2)"
    function Title return Wide_String is
-      Page_Img  : constant Wide_String := Positive'Wide_Image (Current_Page);
+      Page_Img  : constant Wide_String :=
+        Positive'Wide_Image (Positive'Min (Current_Page, Page_Count));
       Total_Img : constant Wide_String := Positive'Wide_Image (Page_Count);
    begin
       return "Data view (" & Page_Img (2 .. Page_Img'Last)
@@ -325,54 +526,51 @@ package body DMI_Data_View is
 
    procedure Render (Previous_Pressed : Boolean;
                      Next_Pressed     : Boolean) is
-      Line       : Natural := 0;
-      Prev_Topic : Topic_T := Topic_T'First;
-      First      : Boolean := True;
    begin
-      for Index in Items'Range loop
-         if Items (Index).Page = Current_Page then
-            -- 10.5.1.6: one empty text line between two topics
-            if not First and then Items (Index).Topic /= Prev_Topic then
-               Line := Line + 1;
-            end if;
-            First := False;
-            Prev_Topic := Items (Index).Topic;
-
-            if Line > Last_Line then
-               exit;
-            end if;
-
+      Current_Page := Positive'Min (Current_Page, Page_Count);
+      for Index in 1 .. Row_Count loop
+         if Row_Present (Index) then
             declare
+               Place   : Place_T;
+               Last    : Positive;
+               It      : constant Item_T := Row_Item (Index);
                Trimmed : Natural := Max_Label_Len;
                Value   : constant Value_T := Value_Of (Index);
-               Rows    : Natural := 1;
+               Line    : Natural;
+               Cut     : Natural;
             begin
-               while Trimmed > 0
-                 and then Items (Index).Label (Trimmed) = ' '
-               loop
-                  Trimmed := Trimmed - 1;
-               end loop;
-               Draw_Label (Line, Items (Index).Label (1 .. Trimmed));
+               Walk (Index, Place, Last);
+               Line := Place.Line;
+               if Place.Page = Current_Page and then Line <= Last_Line then
+                  while Trimmed > 0 and then It.Label (Trimmed) = ' ' loop
+                     Trimmed := Trimmed - 1;
+                  end loop;
+                  Draw_Label (Line, It.Label (1 .. Trimmed));
 
-               if Value.Valid and then Value.Group then
-                  declare
-                     Blocks : constant DMI_Data_Format.Grouped_T :=
-                       DMI_Data_Format.Grouped (Value.Text (1 .. Value.Length));
-                  begin
-                     for Row in 1 .. Blocks.Count loop
-                        exit when Line + Row - 1 > Last_Line;
-                        Draw_Data
-                          (Line + Row - 1,
-                           Blocks.Lines (Row).Text
-                             (1 .. Blocks.Lines (Row).Length));
-                     end loop;
-                     Rows := Natural'Max (1, Blocks.Count);
-                  end;
-               elsif Value.Valid then
-                  Draw_Data (Line, Value.Text (1 .. Value.Length));
+                  Cut := Split_At (Value);
+                  if Value.Valid and then Value.Group then
+                     declare
+                        Blocks : constant DMI_Data_Format.Grouped_T :=
+                          DMI_Data_Format.Grouped
+                            (Value.Text (1 .. Value.Length));
+                     begin
+                        for Row in 1 .. Blocks.Count loop
+                           exit when Line + Row - 1 > Last_Line;
+                           Draw_Data
+                             (Line + Row - 1,
+                              Blocks.Lines (Row).Text
+                                (1 .. Blocks.Lines (Row).Length));
+                        end loop;
+                     end;
+                  elsif Value.Valid and then Cut > 0 then
+                     Draw_Data (Line, Value.Text (1 .. Cut));
+                     if Line + 1 <= Last_Line then
+                        Draw_Data (Line + 1, Value.Text (Cut + 1 .. Value.Length));
+                     end if;
+                  elsif Value.Valid then
+                     Draw_Data (Line, Value.Text (1 .. Value.Length));
+                  end if;
                end if;
-
-               Line := Line + Rows;
             end;
          end if;
       end loop;
@@ -386,5 +584,20 @@ package body DMI_Data_View is
                        Pressed => Next_Pressed,
                        Forward => True);
    end Render;
+
+   ---------------------------------------------------------------------
+   -- System version window (11.5.2)
+   ---------------------------------------------------------------------
+
+   -- Table 46: the one data view item 'Operated system version', laid
+   -- out as the items of the Data view (10.5.1, Figure 135); no value
+   -- while the EVC has not reported one
+   procedure Render_System_Version is
+   begin
+      Draw_Label (0, "Operated system version");
+      if DMI_System_Version.Known then
+         Draw_Data (0, DMI_System_Version.Image);
+      end if;
+   end Render_System_Version;
 
 end DMI_Data_View;

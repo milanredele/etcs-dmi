@@ -6,7 +6,8 @@
 --  every train data item has its own input field, 11.5.1.5.1). Table 45
 --  also fixes how they are spread over the windows: window 1 carries the
 --  topics "Driver ID", "Train running number" and "Train data", window 2
---  the topic "Radio data info" and the VBCs stored on-board. The window
+--  the topic "Radio data info" and the VBCs stored on-board, which go on
+--  to the windows 3 .. n when there are more than window 2 holds. The window
 --  title therefore carries the sequence number and the total number of
 --  windows per 5.3.1.2.1 g, and [Previous] / [Next] (5.3.1.1.6 d/e)
 --  navigate between them without wrapping (5.3.1.1.9).
@@ -40,5 +41,9 @@ package DMI_Data_View is
 
    procedure Render (Previous_Pressed : Boolean;
                      Next_Pressed     : Boolean);
+
+   -- The content of the System version window (11.5.2, Table 46), a
+   -- data view window of its own with the layout of 10.5.1
+   procedure Render_System_Version;
 
 end DMI_Data_View;

@@ -48,7 +48,10 @@ package Test_Support is
       Level_Ann_Ack : Boolean := False;
       Override      : Boolean := False;
       TAF           : Boolean := False;
-      LSSMA         : Natural := 16#FFFF#);
+      LSSMA         : Natural := 16#FFFF#;
+      --  8.2.3.2.9: the abbreviation of the National System; "" sends
+      --  the 9 byte form ("no name"), a longer one is cut to the maximum
+      National_Name : String := "");
 
    procedure Send_Status
      (Brake        : Natural := 0;   -- 0 none / 1 shown / 2 ack required /
@@ -130,6 +133,14 @@ package Test_Support is
      (Data, Session, RBC, Train, National, SOM, Waiting, Start_Pending
         : Interfaces.Unsigned_8;
       Radio, Radio_Wait, Answer : Interfaces.Unsigned_8 := 0);
+
+   -- MSG_SYSTEM_VERSION: the operated system version X.Y (any byte
+   -- values, for the "not known" ones too)
+   procedure Send_System_Version (X, Y : Natural);
+
+   -- MSG_VBC_LIST: the set codes of the VBCs stored on-board
+   type Code_Array is array (Positive range <>) of Natural;
+   procedure Send_VBC_List (Codes : Code_Array);
 
    -- MSG_RADIO_NETWORKS with the names separated by ',' ("" is the empty
    -- list)
@@ -253,6 +264,9 @@ package Test_Support is
    procedure Expect_Driver_Data (Kind  : Natural;
                                  Bytes : Byte_Array;
                                  What  : String);
+
+   -- ... must hold no MSG_DRIVER_DATA of this kind
+   procedure Expect_No_Driver_Data (Kind : Natural; What : String);
 
    -- Simple boolean check
    procedure Check (Condition : Boolean; What : String);

@@ -14,6 +14,7 @@ with DMI_Protocol;
 with DMI_Radio_Data;
 with DMI_Status;
 with DMI_Train_Data;
+with DMI_VBC;
 with General_Parameters;
 with Supplementary_Driving_Info;
 with Symbol;
@@ -28,7 +29,9 @@ package body DMI_Windows is
 
    Title_Height : constant := 24; -- DMI 5.3.1.2.2
 
-   type Window_Kind_T is (Menu, Data_Entry, Validation, View);
+   -- View: the Data view (11.5.1) with its paging; Info: a data view
+   -- window of a single window, the System version window (11.5.2)
+   type Window_Kind_T is (Menu, Data_Entry, Validation, View, Info);
 
    Stack : array (1 .. 8) of Window_ID_T;
    Depth : Natural := 0;
@@ -129,9 +132,12 @@ package body DMI_Windows is
          when W_Driver_ID | W_TRN | W_Train_Data | W_SR_Data
             | W_Level | W_Adhesion | W_Volume | W_Brightness
             | W_ATO_Selector | W_GSMR_Network | W_RBC_Data
-            | W_Radio_Network_Type | W_One_Radio => Data_Entry,
-         when W_Train_Data_Validation => Validation,
-         when W_Data_View => View);
+            | W_Radio_Network_Type | W_One_Radio
+            | W_Set_VBC | W_Remove_VBC => Data_Entry,
+         when W_Train_Data_Validation | W_Set_VBC_Validation
+            | W_Remove_VBC_Validation => Validation,
+         when W_Data_View => View,
+         when W_System_Version => Info);
 
    function Title (ID : Window_ID_T) return Wide_String is
      (case ID is
@@ -155,7 +161,12 @@ package body DMI_Windows is
          when W_GSMR_Network => "GSM-R network ID",                -- 11.3.4.2
          when W_RBC_Data   => "RBC data",                          -- 11.3.5.2
          when W_Radio_Network_Type => "Radio network type",        -- 11.3.15.2
-         when W_One_Radio  => "Mission with one radio system");    -- 11.3.16.2
+         when W_One_Radio  => "Mission with one radio system",     -- 11.3.16.2
+         when W_Set_VBC    => "Set VBC",                           -- 11.3.12.2
+         when W_Set_VBC_Validation => "Validate set VBC",          -- 11.4.2.2
+         when W_Remove_VBC => "Remove VBC",                        -- 11.3.13.2
+         when W_Remove_VBC_Validation => "Validate remove VBC",    -- 11.4.3.2
+         when W_System_Version => "System version");               -- 11.5.2.2
 
    -- Menu window buttons; empty label = slot not present. 32 characters
    -- take the longest label, 'Revoke BMM reaction inhibition' (Table
@@ -288,10 +299,10 @@ package body DMI_Windows is
                     others => No_Button);
          when W_Settings =>
             -- 11.2.4.4, Table 36, Figure 112: the symbols SE03, SE02 and
-            -- SE01 for touch. Language and System version have no window
-            -- here (other work items, audit WIN-12): their buttons stay
-            -- disabled, a dead button being worse than a disabled one
-            -- (implementation choice).
+            -- SE01 for touch. Language has no window here (another work
+            -- item, audit WIN-12): its button stays disabled, a dead
+            -- button being worse than a disabled one (implementation
+            -- choice).
             return (1 => Symbol_Button (Icon_SE03, Enabled => False),
                     2 => Symbol_Button
                            (Icon_SE02,
@@ -299,7 +310,16 @@ package body DMI_Windows is
                     3 => Symbol_Button
                            (Icon_SE01,
                             Enabled => DMI_Conditions.Settings_Brightness),
-                    4 => B ("System version", Enabled => False),
+                    -- Table 36 #4 to #6: the System version window
+                    -- (11.5.2), the Set VBC (11.3.12) and Remove VBC
+                    -- (11.3.13) windows
+                    4 => B ("System version",
+                            Enabled =>
+                              DMI_Conditions.Settings_System_Version),
+                    5 => B ("Set VBC",
+                            Enabled => DMI_Conditions.Settings_Set_VBC),
+                    6 => B ("Remove VBC",
+                            Enabled => DMI_Conditions.Settings_Remove_VBC),
                     -- Table 36 #7: the ATO selector window (11.3.14)
                     7 => B ("ATO", Enabled => DMI_Conditions.Settings_ATO),
                     others => No_Button);
@@ -408,6 +428,8 @@ package body DMI_Windows is
             return DMI_Data_Entry.Button_Count
               + (if In_Step_S1 then Extra_Count else 0);
          when View                    => return DMI_Data_View.Button_Count;
+         -- Figure 135: [Close] only
+         when Info                    => return 0;
       end case;
    end Button_Count;
 
@@ -427,6 +449,7 @@ package body DMI_Windows is
             end if;
             return DMI_Data_Entry.Button_Area (Index);
          when View => return DMI_Data_View.Button_Area (Index);
+         when Info => return ((0, 0), 0, 0);
       end case;
    end Button_Area;
 
@@ -447,6 +470,8 @@ package body DMI_Windows is
             return DMI_Data_Entry.Button_Enabled (Index);
          when View =>
             return DMI_Data_View.Button_Enabled (Index);
+         when Info =>
+            return False;
       end case;
    end Button_Enabled;
 
@@ -468,7 +493,7 @@ package body DMI_Windows is
                return DMI_Buttons.Up_Type;
             end if;
             return DMI_Data_Entry.Button_Kind (Index);
-         when View =>
+         when View | Info =>
             return DMI_Buttons.Up_Type;
       end case;
    end Button_Kind;
@@ -671,9 +696,19 @@ package body DMI_Windows is
         (Defined => True, Min => 0, Max => 99_999_999, Resolution => 1);
       RBC_ID_Rule : constant Check_Rule_T :=    -- A.3.11, 11.3.5.3.1
         (Defined => True, Min => 0, Max => 16_777_214, Resolution => 1);
+      -- 11.3.12.5: NID_VBCMK (6 bits), NID_C (10 bits) and T_VBC (8 bits,
+      -- SUBSET-026 7.5.1.154.1) make 24 bits; 11.3.13.5: NID_C,
+      -- NID_VBCMK and at most 8 unused bits, 24 bits as well. Every value
+      -- of the three variables is defined (7.5.1.99.1, 7.5.1.154.1).
+      VBC_Rule : constant Check_Rule_T :=
+        (Defined => True, Min => 0, Max => DMI_VBC.Code_Max,
+         Resolution => 1);
 
+      Yes_Value : Text_Value_T;
       Result : Window_Def_T;
    begin
+      Yes_Value.Length := 3;
+      Yes_Value.Text (1 .. 3) := "Yes";
       Result.Title := Window_Title (Title (ID));
       case ID is
          when W_Driver_ID =>
@@ -754,6 +789,38 @@ package body DMI_Windows is
             -- 11.4.1 with 11.4.1.3: the echo texts of the train data
             -- window(s), built by DMI_Train_Data
             return DMI_Train_Data.Validation_Def;
+         when W_Set_VBC | W_Remove_VBC =>
+            -- 11.3.12.1 / 11.3.13.1: total grid array with echo texts;
+            -- 11.3.12.4 / 11.3.13.4: the single input field 'VBC set
+            -- code' / 'VBC remove code' with the label 'VBC code'
+            -- (Figures 128, 129 show the label area); 11.3.12.6 /
+            -- 11.3.13.6: a numeric keyboard. The code is 24 bits: 8
+            -- digits. Table 54 S6-1 / S7-1: from S1 no value is proposed,
+            -- from S6-2 / S7-2 the value of the previous S6-1 / S7-1.
+            Result.Layout := Total_Grid;
+            Result.Labelled := True;
+            Result.Field_Count := 1;
+            Result.Fields (1) :=
+              Field ("VBC code", 8,
+                     Proposed =>
+                       (if DMI_VBC.Pending_Valid then DMI_VBC.Pending
+                        else (0, (others => ' '))),
+                     Technical => VBC_Rule);
+         when W_Set_VBC_Validation | W_Remove_VBC_Validation =>
+            -- 11.4.2 / 11.4.3 (10.4): a single input field with only a
+            -- data part and the 'No'/'Yes' dedicated keyboard; Table 54
+            -- S6-2 / S7-2 always propose 'Yes'. 11.4.2.3 / 11.4.3.3: the
+            -- echo text is the one of the Set VBC / Remove VBC window,
+            -- always white (11.4.2.4.1, 11.4.3.4.1).
+            Result.Layout := Validation;
+            Result.Field_Count := 1;
+            Result.Fields (1) :=
+              Field ("Validate", 3, Keyboard => Yes_No,
+                     Proposed => Yes_Value,
+                     Proposed_Choice => 2);
+            Result.Echo_Count := 1;
+            Result.Echo (1) :=
+              Echo ("VBC code", DMI_VBC.Pending, Accepted => True);
          when others =>
             null;
       end case;
@@ -859,6 +926,16 @@ package body DMI_Windows is
    procedure Close_Top is
    begin
       if Close_Enabled then
+         -- 10.6.1.3 e: [Close] of a VBC validation window stops the Set /
+         -- Remove VBC entry / validation process; Table 54 proposes the
+         -- previous value only while the process goes on (S6-1 / S7-1
+         -- entered from S6-2 / S7-2 after 'No'), so the window below
+         -- starts a new one with no value proposed (implementation
+         -- choice: Table 54 has no step for this [Close])
+         if Stack (Depth) in W_Set_VBC_Validation | W_Remove_VBC_Validation
+         then
+            DMI_VBC.Clear;
+         end if;
          Pop;
       end if;
    end Close_Top;
@@ -1081,7 +1158,10 @@ package body DMI_Windows is
 
    -- 11.7.1.7, Table 48: the button whose enabling conditions decide
    -- whether the displayed data entry / validation window may stay.
-   -- Language is another work item (audit WIN-12).
+   -- Language is another work item (audit WIN-12). Table 48 has no row
+   -- for the Set VBC and Remove VBC windows, their validation windows
+   -- or the System version window, so 11.7.1.7 does not stop them
+   -- (11.7.1.9 still does, Stop_Entry).
    function Window_Condition (ID : Window_ID_T) return Boolean is
      (case ID is
          when W_TRN        => DMI_Conditions.Main_TRN,
@@ -1305,10 +1385,17 @@ package body DMI_Windows is
               (if RBC_Phone_Shown then DMI_Data_Entry.Value (2)
                else (0, (others => ' ')));
             DMI_Radio_Data.RBC_Entered := True;
+            DMI_Radio_Data.Last_Choice := DMI_Radio_Data.Entered;
             Queue (Send_RBC_Data,
                    DMI_Radio_Data.RBC_Choice_T'Pos (DMI_Radio_Data.Entered));
             -- Table 49 S3-3 -> A31, Table 50 S5-3 -> S8
             Leave_Radio_Data;
+         when W_Set_VBC | W_Remove_VBC =>
+            -- 11.7.1.6.2: no action on the VBCs stored on-board yet;
+            -- Table 54 S6-1 -> S6-2, S7-1 -> S7-2
+            DMI_VBC.Hold (DMI_Data_Entry.Value (1));
+            Open (if ID = W_Set_VBC then W_Set_VBC_Validation
+                  else W_Remove_VBC_Validation);
          when W_One_Radio =>
             declare
                V   : constant Text_Value_T := DMI_Data_Entry.Value (1);
@@ -1419,6 +1506,12 @@ package body DMI_Windows is
             case Index is
                when 2 => Open (W_Volume);
                when 3 => Open (W_Brightness);
+               when 4 => Open (W_System_Version);        -- Table 54 S5
+               when 5 | 6 =>
+                  -- Table 54 S6-1 / S7-1 entered from S1: the process
+                  -- starts, no value is proposed
+                  DMI_VBC.Clear;
+                  Open (if Index = 5 then W_Set_VBC else W_Remove_VBC);
                when 7 => Open (W_ATO_Selector);
                when others => null;
             end case;
@@ -1427,11 +1520,12 @@ package body DMI_Windows is
             case Index is
                when 1 | 2 =>
                   -- 'Contact last RBC' / 'Use short number' -> A31 / S8
+                  DMI_Radio_Data.Last_Choice :=
+                    (if Index = 1 then DMI_Radio_Data.Contact_Last_RBC
+                     else DMI_Radio_Data.Use_Short_Number);
                   Queue (Send_RBC_Data,
                          DMI_Radio_Data.RBC_Choice_T'Pos
-                           (if Index = 1
-                            then DMI_Radio_Data.Contact_Last_RBC
-                            else DMI_Radio_Data.Use_Short_Number));
+                           (DMI_Radio_Data.Last_Choice));
                   Leave_Radio_Data;
                when 3 => Open (W_RBC_Data);            -- S3-3 / S5-3
                when 5 => Open (W_Radio_Network_Type);  -- S3-4 / S5-4
@@ -1457,8 +1551,27 @@ package body DMI_Windows is
    procedure Validation_Completed is
       use DMI_Driver_Data;
       V : constant Text_Value_T := DMI_Data_Entry.Value (1);
+      Yes : constant Boolean := V.Length = 3 and then V.Text (1 .. 3) = "Yes";
    begin
-      if V.Length = 3 and then V.Text (1 .. 3) = "Yes" then
+      if Stack (Depth) in W_Set_VBC_Validation | W_Remove_VBC_Validation then
+         if Yes then
+            -- 11.7.1.6.2: only now is the action on the VBCs stored
+            -- on-board performed, by the on-board (MSG_DRIVER_DATA kind 8
+            -- / 9); Table 54 S6-2 / S7-2 'Yes' -> S1, the Settings window
+            Queue ((if Stack (Depth) = W_Set_VBC_Validation
+                    then Send_Set_VBC else Send_Remove_VBC),
+                   DMI_VBC.Pending_Code);
+            DMI_VBC.Clear;
+            Pop; -- validation
+            Pop; -- Set VBC / Remove VBC
+         else
+            -- 'No' -> S6-1 / S7-1 with the value of the previous S6-1 /
+            -- S7-1 proposed (Entry_Def)
+            Pop;
+         end if;
+         return;
+      end if;
+      if Yes then
          -- 11.7.1.6.1: only now do the entered values replace the train
          -- data stored on board
          DMI_Train_Data.Store;
@@ -1534,6 +1647,8 @@ package body DMI_Windows is
             end if;
          when View =>
             DMI_Data_View.Button_Pressed (Index);
+         when Info =>
+            null;
       end case;
    end Button_Pressed;
 
@@ -1759,7 +1874,7 @@ package body DMI_Windows is
       ID := Stack (Depth);
 
       case Kind_Of (ID) is
-         when Menu | View =>
+         when Menu | View | Info =>
             Screen.Fill_Area (The_Window_Area,
                               General_Parameters.Background_Color);
             Draw_Title (ID);
@@ -1780,6 +1895,10 @@ package body DMI_Windows is
             DMI_Data_View.Render
               (Previous_Pressed => Pressed (DMI_Data_View.Previous_Button),
                Next_Pressed     => Pressed (DMI_Data_View.Next_Button));
+         when Info =>
+            -- 11.5.2: the operated system version, laid out as a data
+            -- view item (10.5.1)
+            DMI_Data_View.Render_System_Version;
          when Data_Entry | Validation =>
             if In_Step_S1 then
                Draw_Driver_ID_Extras;

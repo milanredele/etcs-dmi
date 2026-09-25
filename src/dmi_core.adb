@@ -23,8 +23,10 @@ with DMI_Radio_Data;
 with DMI_Sounds;
 with DMI_Status;
 with DMI_System_Status;
+with DMI_System_Version;
 with DMI_Text_Messages;
 with DMI_Train_Data;
+with DMI_VBC;
 with DMI_Windows;
 with General_Parameters;
 with Speed_And_Distance;
@@ -434,6 +436,18 @@ package body DMI_Core is
          Queue_Message (MSG_DRIVER_DATA, Payload);
       end Send_RBC_Data_Msg;
 
+      --  MSG_DRIVER_DATA kinds 8 and 9: the validated VBC code
+      procedure Send_VBC_Msg (Kind : Unsigned_8; Code : Natural) is
+         Payload : Stream_Element_Array
+           (1 .. Stream_Element_Offset (Driver_Data_VBC_Length));
+         Offset  : Stream_Element_Offset := Payload'First;
+      begin
+         Put_U8 (Payload, Offset, Kind);
+         Put_U32 (Payload, Offset,
+                  Unsigned_32 (Natural'Min (Code, VBC_Code_Max)));
+         Queue_Message (MSG_DRIVER_DATA, Payload);
+      end Send_VBC_Msg;
+
       --  MSG_DRIVER_DATA kinds 6 and 7: one byte
       procedure Send_Byte_Data (Kind : Unsigned_8; Value : Natural) is
          Payload : Stream_Element_Array
@@ -488,6 +502,10 @@ package body DMI_Core is
                                     Unsigned_16 (Arg mod 2));
             when Maintain_SH =>
                Queue_Driver_Action (ACTION_MAINTAIN_SH);
+            when Send_Set_VBC =>
+               Send_VBC_Msg (8, Arg);
+            when Send_Remove_VBC =>
+               Send_VBC_Msg (9, Arg);
          end case;
       end loop;
    end Drain_Window_Actions;
@@ -527,7 +545,9 @@ package body DMI_Core is
       DMI_Planning.Reset;
       DMI_Status.Reset;
       DMI_System_Status.Reset;
+      DMI_System_Version.Reset;
       DMI_Text_Messages.Reset;
+      DMI_VBC.Reset;
       DMI_Windows.Close_All;
       TTI_Was_Displayed := False;
       SDI.Mode := SDI.M_SB;
@@ -535,6 +555,7 @@ package body DMI_Core is
       SDI.Override := False;
       SDI.Level := SDI.Unknown;
       SDI.Level_Announcement := (Valid => False);
+      SDI.National_Name := (others => <>);
       User_Settings.Speed_Info_Visible := False;
       Track_Ahead_Free.Show := False;
       Speed_And_Distance.Reset;
@@ -786,7 +807,78 @@ package body DMI_Core is
            (Speed_And_Distance.Speed_T (Unsigned_16'Min (LSSMA, 400)),
             Valid => True);
       end if;
+
+      -- DMI 8.2.3.2.9: the abbreviation of the National System, when the
+      -- message carries one (Handle_Message checked its length); the
+      -- short form means "no name"
+      SDI.National_Name := (others => <>);
+      if Offset <= Payload'Last then
+         declare
+            Len : constant Natural :=
+              Natural'Min (Natural (Get_U8 (Payload, Offset)),
+                           SDI.National_Name_Max);
+         begin
+            for I in 1 .. Len loop
+               exit when Offset > Payload'Last;
+               SDI.National_Name.Text (I) :=
+                 Wide_Character'Val (Natural (Get_U8 (Payload, Offset)));
+               SDI.National_Name.Length := I;
+            end loop;
+         end;
+      end if;
    end Apply_Mode_Level;
+
+   -- MSG_MODE_LEVEL is the fixed part alone, or the fixed part, name_len
+   -- and exactly name_len bytes of a name that is not too long
+   -- (dmi_protocol.ads)
+   function Mode_Level_Length_OK (Payload : Stream_Element_Array)
+                                  return Boolean is
+      Name_Len : Natural;
+   begin
+      if Payload'Length = Mode_Level_Length then
+         return True;
+      elsif Payload'Length < Mode_Level_Length + 1 then
+         return False;
+      end if;
+      Name_Len :=
+        Natural (Payload (Payload'First + Mode_Level_Length));
+      return Name_Len <= Mode_Level_Name_Max
+        and then Payload'Length
+                   = Stream_Element_Offset (Mode_Level_Length + 1 + Name_Len);
+   end Mode_Level_Length_OK;
+
+   --  MSG_VBC_LIST: the VBCs stored on-board, by their set code. The
+   --  whole message is checked before anything is taken
+   --  (dmi_protocol.ads).
+   procedure Apply_VBC_List (Payload : Stream_Element_Array) is
+      Offset : Stream_Element_Offset := Payload'First;
+      Count  : Natural;
+      Codes  : DMI_VBC.Code_List_T := (others => 0);
+   begin
+      if Payload'Length < 1
+        or else Payload'Length > 1 + VBC_List_Max * VBC_Code_Length
+      then
+         return;
+      end if;
+      Count := Natural (Get_U8 (Payload, Offset));
+      if Count > VBC_List_Max
+        or else Payload'Length
+                  /= Stream_Element_Offset (1 + Count * VBC_Code_Length)
+      then
+         return;
+      end if;
+      for I in 1 .. Count loop
+         declare
+            Code : constant Unsigned_32 := Get_U32 (Payload, Offset);
+         begin
+            if Code > VBC_Code_Max then
+               return;
+            end if;
+            Codes (I) := Natural (Code);
+         end;
+      end loop;
+      DMI_VBC.Set_List (Count, Codes);
+   end Apply_VBC_List;
 
    --  MSG_ONBOARD: the on-board state behind the enabling conditions of
    --  Tables 33 to 36 and behind the dialogue sequences of 11.7. Every
@@ -1379,6 +1471,7 @@ package body DMI_Core is
                    | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
                    | MSG_PLANNING | MSG_ONBOARD | MSG_ATO
                    | MSG_SYSTEM_STATUS | MSG_RADIO_NETWORKS
+                   | MSG_SYSTEM_VERSION | MSG_VBC_LIST
       then
          Note_EVC_Message;
       end if;
@@ -1389,7 +1482,7 @@ package body DMI_Core is
                Apply_Speed_State (Payload);
             end if;
          when MSG_MODE_LEVEL =>
-            if Payload'Length = Mode_Level_Length then
+            if Mode_Level_Length_OK (Payload) then
                Apply_Mode_Level (Payload);
             end if;
          when MSG_TEXT =>
@@ -1432,6 +1525,14 @@ package body DMI_Core is
             end if;
          when MSG_RADIO_NETWORKS =>
             Apply_Radio_Networks (Payload);
+         when MSG_SYSTEM_VERSION =>
+            if Payload'Length = System_Version_Length then
+               DMI_System_Version.Set
+                 (Natural (Payload (Payload'First)),
+                  Natural (Payload (Payload'First + 1)));
+            end if;
+         when MSG_VBC_LIST =>
+            Apply_VBC_List (Payload);
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
                Update_Buttons; -- make sure hit testing sees current state

@@ -74,6 +74,10 @@ package body Test_Support is
       Override      : Boolean := False;
       TAF           : Boolean := False;
       LSSMA         : Natural := 16#FFFF#;
+      --  the National System's abbreviation (8.2.3.2.9); 0: the 9 byte
+      --  form of the message
+      Name_Len      : Natural := 0;
+      Name          : String (1 .. Mode_Level_Name_Max) := (others => ' ');
    end record;
    Last_ML   : Mode_Level_T;
    -- A mode has been sent since the last Reset: before that the EVC has
@@ -461,7 +465,11 @@ package body Test_Support is
 
    --  Put Last_ML on the wire as it stands
    procedure Emit_Mode_Level is
-      Payload : Stream_Element_Array (1 .. Mode_Level_Length);
+      Payload : Stream_Element_Array
+        (1 .. Mode_Level_Length
+                + (if Last_ML.Name_Len > 0
+                   then 1 + Stream_Element_Offset (Last_ML.Name_Len)
+                   else 0));
       Offset  : Stream_Element_Offset := Payload'First;
    begin
       Put_U8 (Payload, Offset, Unsigned_8 (Last_ML.Mode));
@@ -472,6 +480,12 @@ package body Test_Support is
       Put_U8 (Payload, Offset, (if Last_ML.Override then 1 else 0));
       Put_U8 (Payload, Offset, (if Last_ML.TAF then 1 else 0));
       Put_U16 (Payload, Offset, Unsigned_16 (Last_ML.LSSMA));
+      if Last_ML.Name_Len > 0 then
+         Put_U8 (Payload, Offset, Unsigned_8 (Last_ML.Name_Len));
+         for C of Last_ML.Name (1 .. Last_ML.Name_Len) loop
+            Put_U8 (Payload, Offset, Character'Pos (C));
+         end loop;
+      end if;
       DMI_Core.Handle_Message (MSG_MODE_LEVEL, Payload);
    end Emit_Mode_Level;
 
@@ -483,7 +497,10 @@ package body Test_Support is
       Level_Ann_Ack : Boolean := False;
       Override      : Boolean := False;
       TAF           : Boolean := False;
-      LSSMA         : Natural := 16#FFFF#) is
+      LSSMA         : Natural := 16#FFFF#;
+      National_Name : String := "") is
+      Name_Len : constant Natural :=
+        Natural'Min (National_Name'Length, Mode_Level_Name_Max);
    begin
       --  the EVC answers a 'Start' request with a new mode
       if Mode_Sent and then Mode /= Last_ML.Mode then
@@ -500,7 +517,10 @@ package body Test_Support is
          DMI_Driver_Data.TRN_Entered := False;
       end if;
       Last_ML := (Mode, Level, Mode_Ack, Level_Ann, Level_Ann_Ack,
-                  Override, TAF, LSSMA);
+                  Override, TAF, LSSMA, Name_Len, (others => ' '));
+      Last_ML.Name (1 .. Name_Len) :=
+        National_Name (National_Name'First
+                         .. National_Name'First + Name_Len - 1);
       Mode_Sent := True;
       Emit_Mode_Level;
       --  an EVC sends its on-board state in the same cycle as the mode
@@ -1015,6 +1035,25 @@ package body Test_Support is
       end if;
    end Expect_Action;
 
+   procedure Send_System_Version (X, Y : Natural) is
+      Payload : constant Stream_Element_Array :=
+        (Stream_Element (X mod 256), Stream_Element (Y mod 256));
+   begin
+      DMI_Core.Handle_Message (MSG_SYSTEM_VERSION, Payload);
+   end Send_System_Version;
+
+   procedure Send_VBC_List (Codes : Code_Array) is
+      Payload : Stream_Element_Array
+        (1 .. 1 + VBC_Code_Length * Stream_Element_Offset (Codes'Length));
+      Offset  : Stream_Element_Offset := Payload'First;
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (Codes'Length mod 256));
+      for C of Codes loop
+         Put_U32 (Payload, Offset, Unsigned_32 (C));
+      end loop;
+      DMI_Core.Handle_Message (MSG_VBC_LIST, Payload);
+   end Send_VBC_List;
+
    procedure Send_Radio_Networks (Names : String) is
       Payload : Stream_Element_Array (1 .. 2 + 2 * Names'Length);
       Last    : Stream_Element_Offset := 1;  -- the count comes first
@@ -1106,6 +1145,32 @@ package body Test_Support is
                & ")");
       end if;
    end Expect_Action_Arg;
+
+   procedure Expect_No_Driver_Data (Kind : Natural; What : String) is
+      Found : Natural := 0;
+
+      procedure Visit (The_Type : Msg_Type_T;
+                       Payload  : Stream_Element_Array) is
+      begin
+         if The_Type = MSG_DRIVER_DATA
+           and then Payload'Length >= 1
+           and then Natural (Payload (Payload'First)) = Kind
+         then
+            Found := Found + 1;
+         end if;
+      end Visit;
+
+      procedure Walk is new Walk_Outbox (Visit);
+   begin
+      Checks := Checks + 1;
+      Walk;
+      if Found = 0 then
+         Pass (What);
+      else
+         Fail (What & ": expected no driver data message of kind"
+               & Natural'Image (Kind) & ", got" & Natural'Image (Found));
+      end if;
+   end Expect_No_Driver_Data;
 
    procedure Expect_Driver_Data (Kind  : Natural;
                                  Bytes : Byte_Array;
