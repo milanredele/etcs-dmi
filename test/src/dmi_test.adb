@@ -4376,6 +4376,993 @@ procedure DMI_Test is
       Drain_Outbox;
    end Scenario_Train_Data_Windows;
 
+   ---------------------------------------------------------------------
+   -- P3, audit WIN-12 / WIN-13: the Radio data window and its children
+   -- (11.2.5, 11.3.4, 11.3.5, 11.3.15, 11.3.16), the Main and Special
+   -- window entries of Tables 33 and 35 that were missing, the symbols
+   -- of Table 36, and the dialogue sequences that use them (Tables 49,
+   -- 50, 51, 54a)
+   ---------------------------------------------------------------------
+
+   subtype Win_U8 is Interfaces.Unsigned_8;
+   use type Win_U8;
+
+   --  MSG_ONBOARD bytes (dmi_protocol.ads)
+   Win_Data_All : constant Win_U8 := 16#0F#; -- id, train data, level, TRN
+   Win_Standing : constant Win_U8 := 16#03#; -- standstill, override ok
+   Win_Running  : constant Win_U8 := 16#02#;
+   Win_NV       : constant Win_U8 := 16#02#; -- adhesion may be modified
+
+   --  radio byte: the type in bits 0-1, the installed systems in bits
+   --  2-3, the registrations, 'one radio system' and the RBC contact
+   --  information known
+   Win_FRMCS      : constant Win_U8 := 1;
+   Win_FRMCS_GSMR : constant Win_U8 := 2;
+   Win_GSMR       : constant Win_U8 := 3;
+   Win_Only_FRMCS : constant Win_U8 := 4;
+   Win_Only_GSMR  : constant Win_U8 := 8;
+   Win_Both       : constant Win_U8 := 12;
+   Win_FRMCS_Reg  : constant Win_U8 := 16;
+   Win_GSMR_Reg   : constant Win_U8 := 32;
+   Win_One_Yes    : constant Win_U8 := 64;
+   Win_Known      : constant Win_U8 := 128;
+
+   --  the on-board of most steps below: GSM-R, one Mobile Terminal
+   --  registered, RBC contact information known
+   Win_Radio_GSMR : constant Win_U8 :=
+     Win_GSMR or Win_Only_GSMR or Win_GSMR_Reg or Win_Known;
+
+   procedure Win_Onboard (Data       : Win_U8 := Win_Data_All;
+                          Session    : Win_U8 := 0;
+                          RBC        : Win_U8 := 0;
+                          Train      : Win_U8 := Win_Standing;
+                          SOM        : Win_U8 := 0;
+                          Waiting    : Win_U8 := 0;
+                          Radio      : Win_U8 := 0;
+                          Radio_Wait : Win_U8 := 0;
+                          Answer     : Win_U8 := 0) is
+   begin
+      Send_Onboard_Raw (Data, Session, RBC, Train, Win_NV, SOM, Waiting, 0,
+                        Radio, Radio_Wait, Answer);
+      Step;
+   end Win_Onboard;
+
+   procedure Win_At_Standstill is
+   begin
+      Send_Speed_State (V_Cur => 0, V_Perm => 0, V_Target => 0,
+                        V_Release => 0, V_Sbi => 0, V_Wsl => 0,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+   end Win_At_Standstill;
+
+   --  Table 20: the menu button Slot, two columns of 153 x 50 from y 50
+   function Win_Slot_X (Slot : Positive) return Natural is
+     (334 + ((Slot - 1) mod 2) * 153 + 76);
+   function Win_Slot_Y (Slot : Positive) return Natural is
+     (15 + 50 + ((Slot - 1) / 2) * 50 + 25);
+
+   procedure Win_Menu (Slot : Positive) is
+   begin
+      Press (Win_Slot_X (Slot), Win_Slot_Y (Slot));
+   end Win_Menu;
+
+   --  a delay-type button: 2 s of pressing (5.3.2.6.6)
+   procedure Win_Menu_Long (Slot : Positive) is
+   begin
+      Pointer_Down (Win_Slot_X (Slot), Win_Slot_Y (Slot));
+      for I in 1 .. 41 loop
+         Step;
+      end loop;
+      Pointer_Up (Win_Slot_X (Slot), Win_Slot_Y (Slot));
+      Step;
+      Drain_Sounds;
+   end Win_Menu_Long;
+
+   function Win_Top_Is (ID : DMI_Windows.Window_ID_T) return Boolean is
+     (DMI_Windows.Is_Open and then DMI_Windows."=" (DMI_Windows.Top, ID));
+
+   function Win_Enabled (Index : Positive) return Boolean is
+     (DMI_Windows.Button_Enabled (Index));
+
+   function Win_Value (I : Positive := 1) return Wide_String is
+      V : constant DMI_Driver_Data.Text_Value_T := DMI_Data_Entry.Value (I);
+   begin
+      return V.Text (1 .. V.Length);
+   end Win_Value;
+
+   procedure Win_Close is
+   begin
+      Press (370, 440);
+   end Win_Close;
+
+   --  Close every window that can be closed
+   procedure Win_Default is
+   begin
+      while DMI_Windows.Is_Open and then DMI_Windows.Close_Enabled loop
+         Win_Close;
+      end loop;
+   end Win_Default;
+
+   procedure Win_Open_Main is
+   begin
+      Win_Default;
+      Press (610, 40);                          -- F1
+   end Win_Open_Main;
+
+   --  Table 25: '1' .. '9' on the keys 1 .. 9, '0' on the key 11
+   procedure Win_Type (Digits_Text : String) is
+   begin
+      for C of Digits_Text loop
+         if C = '0' then
+            Key (11);
+         else
+            Key (Character'Pos (C) - Character'Pos ('0'));
+         end if;
+      end loop;
+   end Win_Type;
+
+   --  The wire bytes of an RBC data message after the kind (kind 5)
+   function Win_RBC_Bytes (Choice : Natural;
+                           ID     : Natural;
+                           Phone  : String) return Byte_Array is
+      Result : Byte_Array (1 .. 22) := (others => 0);
+   begin
+      Result (1) := Choice;
+      Result (2) := ID mod 256;
+      Result (3) := (ID / 256) mod 256;
+      Result (4) := (ID / 65536) mod 256;
+      Result (5) := ID / 16777216;
+      Result (6) := Phone'Length;
+      for I in Phone'Range loop
+         Result (7 + I - Phone'First) := Character'Pos (Phone (I));
+      end loop;
+      return Result;
+   end Win_RBC_Bytes;
+
+   function Win_Name_Bytes (Name : String) return Byte_Array is
+      Result : Byte_Array (1 .. Name'Length + 1);
+   begin
+      Result (1) := Name'Length;
+      for I in Name'Range loop
+         Result (2 + I - Name'First) := Character'Pos (Name (I));
+      end loop;
+      return Result;
+   end Win_Name_Bytes;
+
+   ---------------------------------------------------------------------
+   -- Table 33 #7, #9, #10, #11, #12 and the Shunting (11.7.4, Table 51)
+   -- and Supervised Manoeuvre (11.7.8, Table 54a) dialogue sequences
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Win_Main_Menu is
+      --  level 2 with what Table 33 #11 asks for: the position referred
+      --  to an LRBG (bit 5) and the safe consist length information, zero
+      --  in front of the engine (bits 6, 7)
+      Data_SM : constant Win_U8 := Win_Data_All or 16#E0#;
+   begin
+      Reset;
+      Win_Onboard;
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB, level 1
+      Win_At_Standstill;
+      Win_Open_Main;
+      Check (Win_Top_Is (DMI_Windows.W_Main), "win: the Main window");
+
+      -- #10 Radio data
+      Check (Win_Enabled (10),
+             "Table 33 #10: Radio data in SB at standstill with valid data");
+      Win_Onboard (Data => 16#0B#);             -- level not valid
+      Check (not Win_Enabled (10), "Table 33 #10: not without a valid level");
+      Win_Onboard (Train => Win_Running);
+      Check (not Win_Enabled (10), "Table 33 #10: not while running");
+      Win_Onboard;
+
+      -- #9 Maintain Shunting, #7 Exit Shunting in SH
+      Check (not Win_Enabled (9), "Table 33 #9: no Maintain Shunting in SB");
+      Check (not Win_Enabled (12), "Table 33 #12: no Exit SM outside SM");
+      Send_Mode_Level (Mode => 8, Level => 4); -- SH
+      Win_Onboard;
+      Check (not Win_Enabled (9),
+             "Table 33 #9: SH without the passive shunting signal");
+      Check (Win_Enabled (7), "Table 33 #7: 'Exit Shunting' in SH");
+      Win_Onboard (Train => Win_Standing or 16#08#);
+      Check (Win_Enabled (9),
+             "Table 33 #9: Maintain Shunting with the passive shunting"
+             & " signal");
+      Step;
+      Check_Frame ("win_main_sh");
+      Win_Onboard (Train => Win_Running or 16#08#);
+      Check (not Win_Enabled (7),
+             "Table 33 #7: no Exit Shunting while running");
+      Check (Win_Enabled (9), "Table 33 #9: Maintain Shunting while running");
+      Drain_Outbox;
+      Win_Menu_Long (9);
+      Expect_Actions (19, 1, "Maintain Shunting is sent (action 19)");
+      Check (not DMI_Windows.Is_Open,
+             "Table 50 S1: Maintain Shunting -> the default window");
+
+      Win_Onboard (Train => Win_Standing);
+      Win_Open_Main;
+      Drain_Outbox;
+      Win_Menu_Long (7);
+      Expect_Actions (8, 1, "'Exit Shunting' is sent (action 8)");
+      Check (not DMI_Windows.Is_Open,
+             "Table 50 S1: Exit Shunting -> S0 of Start Up (default window)");
+      Send_Mode_Level (Mode => 1, Level => 4); -- the EVC: SB
+      Win_Onboard (Data => 16#04#, SOM => 2);  -- start of mission
+      Check (DMI_Windows.In_Start_Up
+             and then Win_Top_Is (DMI_Windows.W_Driver_ID),
+             "after Exit Shunting the EVC engages Start Up (S0 -> S1)");
+      Win_Onboard (SOM => 0);                   -- ends it again
+      Check (not DMI_Windows.Is_Open, "the Start Up sequence is aborted");
+
+      -- #11 Initiate SM: level 2, a session with an RBC above 2.2
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
+      Win_Onboard (Data => Data_SM, Session => 3);
+      Win_Open_Main;
+      Check (Win_Enabled (11), "Table 33 #11: Initiate SM in SB, level 2");
+      Win_Onboard (Data => Data_SM, Session => 2);
+      Check (not Win_Enabled (11),
+             "Table 33 #11: not without an RBC above system version 2.2");
+      Win_Onboard (Data => Data_SM, Session => 3, RBC => 16#04#);
+      Check (not Win_Enabled (11),
+             "Table 33 #11: not with an RBC transition order stored");
+      Win_Onboard (Data => Win_Data_All or 16#20#, Session => 3);
+      Check (not Win_Enabled (11),
+             "Table 33 #11: not without safe consist length information");
+      Win_Onboard (Data => Win_Data_All or 16#C0#, Session => 3);
+      Check (not Win_Enabled (11),
+             "Table 33 #11: not without a position referred to an LRBG");
+      Win_Onboard (Data => Data_SM, Session => 3);
+      Step;
+      Check_Frame ("win_main_initiate_sm");
+
+      Drain_Outbox;
+      Win_Menu_Long (11);
+      Expect_Action_Arg (17, 0, "'Initiate SM' is sent (action 17, arg 0)");
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "Table 54a S1: the Main window stays");
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 5);
+      Check (DMI_Windows.Waiting_Displayed
+             and then not Win_Enabled (11) and then not Win_Enabled (2),
+             "Table 54a S1: all buttons disabled while the RBC is asked");
+      Check (not DMI_Windows.Close_Enabled,
+             "11.7.8.2: [Close] is disabled in S1");
+      Step;
+      Check_Frame ("win_sm_waiting");
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 0, Answer => 0);
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.Waiting_Displayed,
+             "Table 54a S1: 'SM refused' -> S0, the Main window");
+
+      Drain_Outbox;
+      Win_Menu_Long (11);
+      Expect_Action_Arg (17, 0, "'Initiate SM' again");
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 5);
+      Send_Mode_Level (Mode => 4, Level => 5); -- SM
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 0, Answer => 1);
+      Check (not DMI_Windows.Is_Open,
+             "Table 54a S1: the SM authorisation -> the default window");
+
+      -- #11 Continue in SM and #12 Exit SM in SM
+      Win_Open_Main;
+      Check (Win_Enabled (11), "Table 33 #11: 'Continue in SM' in SM");
+      Check (Win_Enabled (12), "Table 33 #12: Exit SM in SM at standstill");
+      Step;
+      Check_Frame ("win_main_sm");
+      Drain_Outbox;
+      Win_Menu_Long (11);
+      Expect_Action_Arg (17, 1, "'Continue in SM' is sent (action 17, arg 1)");
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 5);
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 0, Answer => 1);
+      Check (not DMI_Windows.Is_Open,
+             "Table 54a S1: authorised in SM, the answer and not the mode"
+             & " leads to the default window");
+      Win_Open_Main;
+      Win_Onboard (Data => Data_SM, Session => 3, Train => Win_Running);
+      Check (not Win_Enabled (12), "Table 33 #12: no Exit SM while running");
+      Win_Onboard (Data => Data_SM, Session => 3);
+      Drain_Outbox;
+      Win_Menu_Long (12);
+      Expect_Action_Arg (17, 2, "'Exit SM' is sent (action 17, arg 2)");
+      Check (not DMI_Windows.Is_Open,
+             "Table 50 S1: Exit SM -> S0 of Start Up (default window)");
+
+      -- Shunting in level 2 asks the RBC (Table 51 D1 -> S1)
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
+      Win_Onboard (Data => Data_SM, Session => 3);
+      Win_Open_Main;
+      Drain_Outbox;
+      Win_Menu_Long (7);
+      Expect_Actions (7, 1, "the request for shunting is sent");
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "Table 51 D1: level 2 -> S1, the Main window stays");
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 4);
+      Check (DMI_Windows.Waiting_Displayed
+             and then not DMI_Windows.Close_Enabled,
+             "Table 51 S1 / 11.7.4.2: all buttons and [Close] disabled");
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 0);
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.Waiting_Displayed,
+             "Table 51 S1: 'Shunting Refused' -> S0, the Main window");
+      Win_Menu_Long (7);
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 4);
+      Send_Mode_Level (Mode => 8, Level => 5); -- SH
+      Win_Onboard (Data => Data_SM, Session => 3, Waiting => 0, Answer => 1);
+      Check (not DMI_Windows.Is_Open,
+             "Table 51 S1: 'Shunting Authorised' -> the default window");
+
+      -- Shunting in level 1 goes at once (Table 51 D1)
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB, level 1
+      Win_Onboard;
+      Win_Open_Main;
+      Drain_Outbox;
+      Win_Menu_Long (7);
+      Expect_Actions (7, 1, "the request for shunting in level 1");
+      Check (not DMI_Windows.Is_Open,
+             "Table 51 D1: level 1 -> the default window");
+      Drain_Outbox;
+   end Scenario_Win_Main_Menu;
+
+   ---------------------------------------------------------------------
+   -- Table 35 #4 (BMM reaction inhibition) and Table 36 (symbols)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Win_Special_Settings is
+   begin
+      Reset;
+      Win_Onboard;
+      Send_Mode_Level (Mode => 1, Level => 4); -- SB, level 1
+      Win_At_Standstill;
+      Win_Default;
+      Press (610, 190);                         -- F4: Special
+      Check (Win_Top_Is (DMI_Windows.W_Special), "win: the Special window");
+      Check (Win_Enabled (4),
+             "Table 35 #4: BMM reaction inhibition in SB, level 1");
+      Drain_Outbox;
+      Win_Menu (4);
+      Expect_Action_Arg (18, 0,
+                         "'BMM reaction inhibition' is sent (action 18, 0)");
+      Check (not DMI_Windows.Is_Open,
+             "Table 53 S1: -> the default window (ST07 is the EVC's)");
+
+      Win_Onboard (Train => Win_Standing or 16#10#); -- inhibition active
+      Press (610, 190);
+      Check (Win_Enabled (4),
+             "Table 35 #4: 'Revoke BMM reaction inhibition' when active");
+      Step;
+      Check_Frame ("win_special_bmm_revoke");
+      Drain_Outbox;
+      Win_Menu (4);
+      Expect_Action_Arg (18, 1, "'Revoke ...' is sent (action 18, arg 1)");
+      Check (not DMI_Windows.Is_Open, "Table 53 S1: -> the default window");
+
+      Press (610, 190);
+      Send_Mode_Level (Mode => 1, Level => 2); -- level 0
+      Win_Onboard;
+      Check (not Win_Enabled (4), "Table 35 #4: not in level 0");
+      Send_Mode_Level (Mode => 7, Level => 5); -- SR, level 2
+      Win_Onboard (Data => 0);
+      Check (Win_Enabled (4),
+             "Table 35 #4: in SR without the SB conditions on the data");
+      Win_Onboard (Data => 0, Train => Win_Running);
+      Check (not Win_Enabled (4), "Table 35 #4: not while running");
+
+      -- Table 36: the symbols SE03, SE02, SE01; disabled in SB while
+      -- running, drawn dark grey
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Win_Onboard (Train => Win_Running);
+      Win_Default;
+      Press (610, 240);                         -- F5: Settings
+      Check (Win_Top_Is (DMI_Windows.W_Settings), "win: the Settings window");
+      Check (not Win_Enabled (2) and then not Win_Enabled (3),
+             "Table 36 #2, #3: disabled in SB while running");
+      Step;
+      Check_Frame ("win_settings_disabled");
+      Win_Onboard;
+      Win_Menu (2);
+      Check (Win_Top_Is (DMI_Windows.W_Volume), "Table 36 #2: SE02 -> Volume");
+      Win_Close;
+      Win_Menu (3);
+      Check (Win_Top_Is (DMI_Windows.W_Brightness),
+             "Table 36 #3: SE01 -> Brightness");
+      Win_Default;
+      Drain_Outbox;
+   end Scenario_Win_Special_Settings;
+
+   ---------------------------------------------------------------------
+   -- Table 37 and the Radio data part of the Main window dialogue
+   -- sequence (Table 50 S1 -> S5-1 .. S5-4, S5-2-x, A5 / A6 / A7, D9,
+   -- S10, S4 -> D5) and Table 48
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Win_Radio_Data is
+      Data_Valid : constant Win_U8 := Win_Data_All or 16#10#; -- + RBC info
+
+      procedure Radio (R : Win_U8; Data : Win_U8 := Data_Valid;
+                       Radio_Wait : Win_U8 := 0) is
+      begin
+         Win_Onboard (Data => Data, Radio => R, Radio_Wait => Radio_Wait);
+      end Radio;
+
+      procedure Open_Radio_Data is
+      begin
+         Win_Open_Main;
+         Win_Menu (10);
+      end Open_Radio_Data;
+   begin
+      Reset;
+      Radio (Win_Radio_GSMR);
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2
+      Win_At_Standstill;
+      Open_Radio_Data;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 S1 -> S5-1: the Radio data window");
+      Check (Win_Enabled (1) and then Win_Enabled (2) and then Win_Enabled (3)
+             and then Win_Enabled (5) and then Win_Enabled (6),
+             "Table 37 #1, #2, #3, #5, #6: GSM-R registered, level 2");
+      Check (not Win_Enabled (7),
+             "Table 37 #7: no mission with one radio system with GSM-R only");
+      Check (DMI_Windows.Close_Enabled, "11.7.3.2: [Close] in S5-1");
+      Step;
+      Check_Frame ("win_radio_data");
+
+      -- Table 37, row by row
+      Radio (Win_GSMR or Win_Only_GSMR or Win_Known);
+      Check (not Win_Enabled (1) and then not Win_Enabled (2)
+             and then not Win_Enabled (3),
+             "Table 37 #1 .. #3: nothing without a registered GSM-R MT");
+      Check (Win_Enabled (5) and then Win_Enabled (6),
+             "Table 37 #5, #6: no registration needed");
+      Radio (Win_GSMR or Win_Only_GSMR or Win_GSMR_Reg);
+      Check (not Win_Enabled (1) and then Win_Enabled (3),
+             "Table 37 #1: 'Contact last RBC' needs RBC contact information");
+      Radio (Win_FRMCS or Win_Only_FRMCS or Win_FRMCS_Reg or Win_Known);
+      Check (Win_Enabled (1) and then Win_Enabled (3)
+             and then not Win_Enabled (2) and then not Win_Enabled (6),
+             "Table 37: FRMCS registered: #1, #3, no short number, no GSM-R");
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_FRMCS_Reg or Win_Known);
+      Check (not Win_Enabled (1) and then not Win_Enabled (3),
+             "Table 37 #1, #3: both systems need both registrations");
+      Check (Win_Enabled (7),
+             "Table 37 #7: one registration of two -> one radio system");
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_FRMCS_Reg or Win_Known
+             or Win_One_Yes);
+      Check (Win_Enabled (1) and then Win_Enabled (3)
+             and then not Win_Enabled (2),
+             "Table 37 #1, #3: ... or one of them with 'one radio system'");
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg or Win_One_Yes);
+      Check (Win_Enabled (2),
+             "Table 37 #2: short number with GSM-R and 'one radio system'");
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg or Win_FRMCS_Reg);
+      Check (not Win_Enabled (7),
+             "Table 37 #7: not with both registrations");
+      Send_Mode_Level (Mode => 1, Level => 4); -- level 1
+      Radio (Win_Radio_GSMR);
+      Check (not Win_Enabled (1) and then not Win_Enabled (2)
+             and then not Win_Enabled (3) and then Win_Enabled (5)
+             and then Win_Enabled (6),
+             "Table 37: in level 1 only the radio network type and ID");
+      Send_Mode_Level (Mode => 4, Level => 5); -- SM
+      Radio (Win_Radio_GSMR);
+      Check (not Win_Enabled (5) and then Win_Enabled (6),
+             "Table 37 #5 not in SM, #6 in SM");
+      Send_Mode_Level (Mode => 1, Level => 5);
+      Radio (Win_Radio_GSMR, Data => Win_Data_All and 16#0E#);
+      Check (not Win_Enabled (5) and then not Win_Enabled (6),
+             "Table 37 #5, #6: not without a valid Driver ID");
+      Radio (Win_Radio_GSMR);
+
+      -- S5-1: 'Contact last RBC' and 'Use short number' -> S8
+      Drain_Outbox;
+      Win_Menu (1);
+      Expect_Driver_Data (5, Win_RBC_Bytes (1, 0, ""),
+                          "'Contact last RBC': kind 5, choice 1");
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "Table 50 S5-1 -> S8: the Main window");
+      Win_Onboard (Data => Data_Valid, Radio => Win_Radio_GSMR, Waiting => 2);
+      Check (DMI_Windows.Waiting_Displayed,
+             "Table 50 S8: the EVC awaits the RBC");
+      Radio (Win_Radio_GSMR);
+      Check (Win_Top_Is (DMI_Windows.W_Main), "Table 50 D3 / D4 -> S1");
+      Win_Menu (10);
+      Drain_Outbox;
+      Win_Menu (2);
+      Expect_Driver_Data (5, Win_RBC_Bytes (2, 0, ""),
+                          "'Use short number': kind 5, choice 2");
+
+      -- S5-3: the RBC data window
+      Win_Menu (10);
+      Win_Menu (3);
+      Check (Win_Top_Is (DMI_Windows.W_RBC_Data),
+             "Table 50 S5-1 -> S5-3: the RBC data window");
+      Check (Win_Value (1) = "" and then Win_Value (2) = "",
+             "11.7.1.4: nothing entered on this DMI, nothing proposed");
+      Win_Type ("16777215");
+      Enter_Field (1);
+      Check (not Win_Enabled (17),
+             "RBC ID above 16 777 214 fails the technical range (A.3.11)");
+      for I in 1 .. 8 loop
+         Key (10);                              -- [Delete]
+      end loop;
+      Win_Type ("1234567");
+      Enter_Field (1);
+      Win_Type ("0123456789012345");
+      Enter_Field (2);
+      Step;
+      Check_Frame ("win_rbc_data");
+      Drain_Outbox;
+      Press (167, 440);                         -- RBC data entry complete? Yes
+      Expect_Driver_Data (5, Win_RBC_Bytes (0, 1234567, "0123456789012345"),
+                          "the RBC data: kind 5, choice 0, id, phone");
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "Table 50 S5-3 'Yes' -> S8: the Main window");
+      Win_Menu (10);
+      Win_Menu (3);
+      Check (Win_Value (1) = "1234567"
+             and then Win_Value (2) = "0123456789012345",
+             "11.7.1.4: the RBC data held are proposed");
+      -- Table 48: the RBC data window gives way to its parent
+      Radio (Win_Radio_GSMR, Data => Win_Data_All and 16#0E#);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 48: RBC data -> the Radio data window when 'Enter RBC"
+             & " data' loses its conditions");
+      Radio (Win_Radio_GSMR);
+
+      -- 11.3.5.4: no phone number field with FRMCS alone
+      Radio (Win_FRMCS or Win_Only_FRMCS or Win_FRMCS_Reg or Win_Known);
+      Win_Menu (3);
+      Step;
+      Check_Frame ("win_rbc_data_frmcs");
+      Win_Close;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "11.7.3.2: [Close] of S5-3 goes back to S5-1");
+
+      -- S5-4: the Radio network type window
+      Radio (Win_Radio_GSMR);
+      Win_Menu (5);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Network_Type)
+             and then Win_Value = "GSM-R",
+             "Table 50 S5-4: the stored type GSM-R is proposed");
+      Step;
+      Check_Frame ("win_radio_network_type");
+      Drain_Outbox;
+      Key (2);
+      Enter_Single;
+      Expect_Driver_Data (6, (1 => 2), "FRMCS+GSM-R: kind 6, value 2");
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 S5-4 E2 (FRMCS not installed) -> S5-1");
+      -- E1 -> A6 -> D9: FRMCS installed, not registered
+      Radio (Win_GSMR or Win_Both or Win_GSMR_Reg or Win_Known);
+      Win_Menu (5);
+      Key (2);
+      Enter_Single;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 S5-4 E1 -> A6 -> D9 (both systems) -> S5-1");
+      Win_Menu (5);
+      Drain_Outbox;
+      Key (1);
+      Enter_Single;
+      Expect_Driver_Data (6, (1 => 1), "FRMCS: kind 6, value 1");
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "Table 50 S5-4 E1 -> A6 -> D9 (FRMCS alone) -> S1");
+
+      -- S5-2-1 .. S5-2-3: the GSM-R network ID
+      Radio (Win_Radio_GSMR);
+      Win_Menu (10);
+      Drain_Outbox;
+      Win_Menu_Long (6);
+      Expect_Driver_Data (4, (1 => 0),
+                          "'GSM-R network ID': kind 4 without a name");
+      Check (DMI_Windows.Radio_Step_Displayed
+             and then not Win_Enabled (1) and then not Win_Enabled (5),
+             "Table 50 S5-2-1: all buttons disabled at once");
+      Check (not DMI_Windows.Close_Enabled,
+             "11.7.3.2: [Close] is disabled in S5-2-1");
+      Step;
+      Check_Frame ("win_radio_data_st05");
+      Radio (Win_Radio_GSMR, Radio_Wait => 1);
+      Send_Radio_Networks ("GSMR-A,GSMR-B,Telecom X");
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "S5-2-1: the list waits for the EVC to end the step");
+      Send_Raw (16#0D#, (2, 3, 65, 66, 67));   -- truncated: ignored
+      Radio (Win_Radio_GSMR, Radio_Wait => 0);
+      Check (Win_Top_Is (DMI_Windows.W_GSMR_Network),
+             "Table 50 S5-2-1 -> S5-2-2: the GSM-R network ID window");
+      Check (DMI_Windows.Close_Enabled, "11.7.3.2: [Close] in S5-2-2");
+      Check (Win_Value = "", "no network selected on this DMI yet");
+      Step;
+      Check_Frame ("win_gsmr_network");
+      Drain_Outbox;
+      Key (2);
+      Enter_Single;
+      Expect_Driver_Data (4, Win_Name_Bytes ("GSMR-B"),
+                          "the selected network: kind 4 with its name");
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.Radio_Step_Displayed,
+             "Table 50 S5-2-2 -> S5-2-3: the Radio data window waits");
+      Radio (Win_Radio_GSMR);
+      Check (DMI_Windows.Radio_Step_Displayed,
+             "S5-2-3 lasts until the EVC reported the registration");
+      Radio (Win_Radio_GSMR, Radio_Wait => 2);
+      Check (DMI_Windows.Radio_Step_Displayed, "S5-2-3 while the EVC waits");
+      Radio (Win_Radio_GSMR);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then not DMI_Windows.Radio_Step_Displayed
+             and then Win_Enabled (1),
+             "Table 50 S5-2-3 -> S5-1 once registered");
+      Win_Menu_Long (6);
+      Send_Radio_Networks ("GSMR-A,GSMR-B,Telecom X");
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_GSMR_Network)
+             and then Win_Value = "GSMR-B",
+             "11.7.1.4: the network selected before is proposed");
+      Win_Close;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then not DMI_Windows.Radio_Step_Displayed,
+             "[Close] of S5-2-2 goes back to S5-1");
+      -- A5 -> D9: an empty list
+      Win_Menu_Long (6);
+      Send_Radio_Networks ("");
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "Table 50 A5 -> D9 (GSM-R alone) -> S1");
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg or Win_Known);
+      Win_Menu (10);
+      Win_Menu_Long (6);
+      Send_Radio_Networks ("");
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then not DMI_Windows.Radio_Step_Displayed,
+             "Table 50 A5 -> D9 (both systems) -> S5-1");
+
+      -- A7 -> S10: the Mission with one radio system window
+      Win_Menu (7);
+      Check (Win_Top_Is (DMI_Windows.W_One_Radio) and then Win_Value = "",
+             "Table 50 S10: no value proposed");
+      Step;
+      Check_Frame ("win_one_radio");
+      Drain_Outbox;
+      Key (8);                                  -- 'Yes'
+      Enter_Single;
+      Expect_Driver_Data (7, (1 => 1), "'Yes': kind 7, value 1");
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 S10 'Yes' -> S5-1");
+      Win_Menu (7);
+      Drain_Outbox;
+      Key (7);                                  -- 'No'
+      Enter_Single;
+      Expect_Driver_Data (7, (1 => 0), "'No': kind 7, value 0");
+      Check (Win_Top_Is (DMI_Windows.W_Main), "Table 50 S10 'No' -> S1");
+
+      -- Table 50 S4 -> D5: level 2 entered from the Main window
+      Radio (Win_Radio_GSMR);
+      Win_Menu (5);
+      Choose_Level (2);
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "Table 50 D5: valid RBC contact information, registered -> S8");
+      Radio (Win_Radio_GSMR, Data => Win_Data_All);
+      Win_Menu (5);
+      Choose_Level (2);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 D5: without valid RBC contact information -> S5-1");
+      Win_Default;
+      Drain_Outbox;
+   end Scenario_Win_Radio_Data;
+
+   ---------------------------------------------------------------------
+   -- The radio steps of the Start Up dialogue sequence (Table 49 S2 ->
+   -- S3-1 .. S3-4, S3-2-x, A29 / A41 / A43 -> D10, S5, D7 -> S4 -> D9)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Win_Start_Up_Radio is
+      --  the Driver ID is valid once entered, the level is not
+      Data_ID : constant Win_U8 := 16#01#;
+
+      procedure Radio (R : Win_U8; Data : Win_U8 := Data_ID or 16#04#;
+                       SOM : Win_U8 := 2; Radio_Wait : Win_U8 := 0;
+                       Waiting : Win_U8 := 0) is
+      begin
+         Win_Onboard (Data => Data, SOM => SOM, Radio => R,
+                      Radio_Wait => Radio_Wait, Waiting => Waiting);
+      end Radio;
+
+      --  S0 -> S1 -> S2 -> S3-1 with the radio byte R
+      procedure To_S3_1 (R : Win_U8) is
+      begin
+         Win_Onboard (Data => 0, SOM => 0, Radio => R);
+         Send_Mode_Level (Mode => 1, Level => 0); -- SB, level unknown
+         Win_Onboard (Data => 0, SOM => 2, Radio => R);
+         Press (385, 240); Press (487, 90);    -- Driver ID 1
+         Radio (R, Data => Data_ID);
+         Choose_Level (2);
+         Send_Mode_Level (Mode => 1, Level => 5);
+         Radio (R);
+      end To_S3_1;
+   begin
+      Reset;
+      Win_At_Standstill;
+      To_S3_1 (Win_Radio_GSMR);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.In_Start_Up,
+             "Table 49 S2 level 2 -> S3-1: the Radio data window");
+      Check (not DMI_Windows.Close_Enabled,
+             "11.7.2.2: [Close] is disabled in S3-1");
+      Step;
+      Check_Frame ("win_startup_radio_data");
+
+      -- S3-3 and S3-4 can be closed (11.7.2.2)
+      Win_Menu (3);
+      Check (Win_Top_Is (DMI_Windows.W_RBC_Data)
+             and then DMI_Windows.Close_Enabled,
+             "Table 49 S3-3: the RBC data window, [Close] enabled");
+      Win_Close;
+      Win_Menu (5);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Network_Type)
+             and then DMI_Windows.Close_Enabled,
+             "Table 49 S3-4: the Radio network type window, [Close] enabled");
+      Key (3);
+      Enter_Single;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.In_Start_Up,
+             "Table 49 S3-4 E6 -> S3-1");
+
+      -- S3-2-1 .. S3-2-3
+      Win_Menu_Long (6);
+      Check (DMI_Windows.Radio_Step_Displayed
+             and then not DMI_Windows.Close_Enabled,
+             "Table 49 S3-2-1: hour glass, [Close] disabled");
+      Send_Radio_Networks ("GSMR-A,GSMR-B,Telecom X");
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_GSMR_Network)
+             and then DMI_Windows.Close_Enabled,
+             "Table 49 S3-2-2, [Close] enabled (11.7.2.2)");
+      Key (1);
+      Enter_Single;
+      Radio (Win_Radio_GSMR, Radio_Wait => 2);
+      Check (DMI_Windows.Radio_Step_Displayed
+             and then not DMI_Windows.Close_Enabled,
+             "Table 49 S3-2-3: hour glass, [Close] disabled");
+      Radio (Win_Radio_GSMR);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then not DMI_Windows.Radio_Step_Displayed
+             and then DMI_Windows.In_Start_Up,
+             "Table 49 S3-2-3 -> S3-1");
+
+      -- A29 -> D10 -> S10
+      Win_Menu_Long (6);
+      Send_Radio_Networks ("");
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.In_Start_Up,
+             "Table 49 A29 -> D10 (GSM-R alone) -> S10");
+
+      -- S3-1 'Contact last RBC' -> A31
+      To_S3_1 (Win_Radio_GSMR);
+      Drain_Outbox;
+      Win_Menu (1);
+      Expect_Driver_Data (5, Win_RBC_Bytes (1, 0, ""),
+                          "S3-1 'Contact last RBC': kind 5, choice 1");
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.In_Start_Up,
+             "Table 49 S3-1 -> A31: the Main window");
+      Radio (Win_Radio_GSMR, Waiting => 2);
+      Check (DMI_Windows.Waiting_Displayed, "Table 49 A31: hour glass");
+      Radio (Win_Radio_GSMR);
+      Check (Win_Top_Is (DMI_Windows.W_Main), "Table 49 D31 .. -> S10");
+
+      -- S3-4 E5 -> A41 -> D10
+      To_S3_1 (Win_GSMR or Win_Both or Win_GSMR_Reg);
+      Win_Menu (5);
+      Key (1);                                  -- FRMCS, not registered
+      Enter_Single;
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.In_Start_Up,
+             "Table 49 S3-4 E5 -> A41 -> D10 (FRMCS alone) -> S10");
+      To_S3_1 (Win_GSMR or Win_Both or Win_GSMR_Reg);
+      Win_Menu (5);
+      Key (2);                                  -- FRMCS+GSM-R
+      Enter_Single;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.In_Start_Up,
+             "Table 49 S3-4 E5 -> A41 -> D10 (both systems) -> S3-1");
+
+      -- A43 -> S5: E3, E2
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg);
+      Win_Menu (7);
+      Check (Win_Top_Is (DMI_Windows.W_One_Radio)
+             and then DMI_Windows.In_Start_Up
+             and then not DMI_Windows.Close_Enabled,
+             "Table 49 A43 -> S5, [Close] disabled (11.7.2.2)");
+      Key (8);
+      Enter_Single;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.In_Start_Up,
+             "Table 49 S5 E3 ('Yes', RBC contact not valid) -> S3-1");
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg or Win_One_Yes,
+             Data => Data_ID or 16#14#);
+      Win_Menu (7);
+      Key (8);
+      Enter_Single;
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.In_Start_Up,
+             "Table 49 S5 E2 ('Yes', RBC contact valid) -> A31");
+
+      -- D7 -> S4 -> A42 -> D9 -> S5 -> E4
+      Win_Onboard (Data => 0, SOM => 0);
+      Send_Mode_Level (Mode => 1, Level => 5); -- SB, level 2 stored
+      Radio (Win_FRMCS_GSMR or Win_Both, Data => 16#04#, SOM => 2);
+      Press (385, 240); Press (487, 90);    -- Driver ID 1
+      Check (Win_Top_Is (DMI_Windows.W_Main),
+             "Table 49 D2 / D3 level 2 -> D7 -> S4: the Main window");
+      Radio (Win_FRMCS_GSMR or Win_Both, Waiting => 1);
+      Check (DMI_Windows.Waiting_Displayed, "Table 49 S4: hour glass");
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg);
+      Check (Win_Top_Is (DMI_Windows.W_One_Radio)
+             and then DMI_Windows.In_Start_Up
+             and then not DMI_Windows.Close_Enabled,
+             "Table 49 S4 -> A42 -> D9 -> S5");
+      Step;
+      Check_Frame ("win_startup_s5");
+      Key (7);
+      Enter_Single;
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.In_Start_Up,
+             "Table 49 S5 E4 ('No') -> S10");
+
+      -- D7 -> S4 -> A31: the registration completes, no S5
+      Win_Onboard (Data => 0, SOM => 0);
+      Radio (Win_FRMCS_GSMR or Win_Both, Data => 16#04#, SOM => 2);
+      Press (385, 240); Press (487, 90);
+      Radio (Win_FRMCS_GSMR or Win_Both, Waiting => 1);
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg or Win_FRMCS_Reg,
+             Waiting => 2);
+      Radio (Win_FRMCS_GSMR or Win_Both or Win_GSMR_Reg or Win_FRMCS_Reg);
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.In_Start_Up,
+             "Table 49 S4 -> A31 -> S10: no S5 once registered");
+      Drain_Outbox;
+   end Scenario_Win_Start_Up_Radio;
+
+   ---------------------------------------------------------------------
+   -- The simulator answers the radio data (sim/evc_core.adb): the list
+   -- of GSM-R networks, the registration and a session with its RBC
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Win_Simulator is
+      use type EVC_Core.Mode_T;
+
+      procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
+                      Payload  : Ada.Streams.Stream_Element_Array) is
+      begin
+         DMI_Core.Handle_Message (The_Type, Payload);
+      end Emit;
+
+      procedure Pump_To_EVC is
+         use Ada.Streams;
+         use DMI_Protocol;
+         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+         Last   : Stream_Element_Offset;
+         Offset : Stream_Element_Offset := Buffer'First;
+      begin
+         DMI_Core.Take_Outbox (Buffer, Last);
+         while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+            declare
+               The_Type : constant Msg_Type_T :=
+                 Msg_Type_T (Get_U8 (Buffer, Offset));
+               Length   : constant Stream_Element_Offset :=
+                 Stream_Element_Offset (Get_U32 (Buffer, Offset));
+               Next     : constant Stream_Element_Offset := Offset + Length;
+            begin
+               exit when Next - 1 > Last;
+               if The_Type = MSG_DRIVER_ACTION
+                 and then Length = Driver_Action_Length
+               then
+                  declare
+                     Action : constant Interfaces.Unsigned_8 :=
+                       Get_U8 (Buffer, Offset);
+                     Arg    : constant Interfaces.Unsigned_16 :=
+                       Get_U16 (Buffer, Offset);
+                  begin
+                     EVC_Core.Handle_Driver_Action
+                       (Natural (Action), Natural (Arg));
+                  end;
+               elsif The_Type = MSG_DRIVER_DATA then
+                  EVC_Core.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+               end if;
+               Offset := Next;
+            end;
+         end loop;
+      end Pump_To_EVC;
+
+      procedure Sim_Step is
+      begin
+         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         DMI_Core.Tick (100);
+         Pump_To_EVC;
+         Drain_Sounds;
+      end Sim_Step;
+
+      procedure Touch (X, Y : Natural; Hold : Natural := 0) is
+      begin
+         EVC_Core.Step (0.05, Emit'Unrestricted_Access);
+         Pointer_Down (X, Y);
+         for I in 1 .. Hold loop
+            DMI_Core.Tick (50);
+         end loop;
+         Pointer_Up (X, Y);
+         DMI_Core.Tick (50);
+         Pump_To_EVC;
+         Drain_Sounds;
+      end Touch;
+
+      procedure Run (Steps : Natural) is
+      begin
+         for I in 1 .. Steps loop
+            Sim_Step;
+         end loop;
+      end Run;
+   begin
+      Reset;
+      EVC_Core.Reset;
+      External_EVC;
+      Run (3);
+      Touch (385, 240); Touch (487, 90);       -- Driver ID 1
+      Run (2);
+      Touch (Key_X (2), Key_Y (2)); Touch (487, 90);  -- level 2
+      Run (2);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then DMI_Windows.In_Start_Up,
+             "sim: level 2 in Start Up -> S3-1");
+
+      -- the GSM-R network ID: list, selection, registration
+      Touch (Win_Slot_X (6), Win_Slot_Y (6), Hold => 41);
+      Run (5);
+      Check (DMI_Windows.Radio_Step_Displayed,
+             "sim: the on-board acquires the list (S3-2-1)");
+      Run (20);
+      Check (Win_Top_Is (DMI_Windows.W_GSMR_Network),
+             "sim: the list arrives (S3-2-2)");
+      Touch (Key_X (1), Key_Y (1)); Touch (487, 90);
+      Run (5);
+      Check (DMI_Windows.Radio_Step_Displayed,
+             "sim: the Mobile Terminal registers (S3-2-3)");
+      Run (20);
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data)
+             and then not DMI_Windows.Radio_Step_Displayed,
+             "sim: registered, back to S3-1");
+
+      -- 'Use short number' -> A31, the session opens
+      Touch (Win_Slot_X (2), Win_Slot_Y (2));
+      Run (5);
+      Check (DMI_Windows.Waiting_Displayed,
+             "sim: the on-board contacts the RBC (A31)");
+      Run (20);
+      Check (Win_Top_Is (DMI_Windows.W_Main)
+             and then not DMI_Windows.Waiting_Displayed,
+             "sim: the session is open (S10)");
+
+      -- Initiate SM: the RBC authorises it
+      Touch (Win_Slot_X (11), Win_Slot_Y (11), Hold => 41);
+      Run (5);
+      Check (DMI_Windows.Waiting_Displayed, "sim: the RBC is asked for SM");
+      Run (20);
+      Check (EVC_Core.Mode = EVC_Core.SM and then not DMI_Windows.Is_Open,
+             "sim: SM authorised -> the default window");
+      DMI_Core.Render;
+      Check_Frame ("win_sim_sm");
+
+      -- Exit SM -> SB -> Start Up
+      Touch (610, 40);
+      Touch (Win_Slot_X (12), Win_Slot_Y (12), Hold => 41);
+      Run (3);
+      Check (EVC_Core.Mode = EVC_Core.SB and then DMI_Windows.In_Start_Up,
+             "sim: Exit SM -> SB, Start Up engaged");
+      External_EVC (False);
+   end Scenario_Win_Simulator;
+
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -4429,6 +5416,11 @@ begin
    Scenario_Alphanumeric_Entry;
    Scenario_Dedicated_Keyboards;
    Scenario_Train_Data_Windows;
+   Scenario_Win_Main_Menu;
+   Scenario_Win_Special_Settings;
+   Scenario_Win_Radio_Data;
+   Scenario_Win_Start_Up_Radio;
+   Scenario_Win_Simulator;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));
