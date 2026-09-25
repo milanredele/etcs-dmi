@@ -106,6 +106,12 @@
         <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
         <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
       </div>
+      <div class="row" title="MSG_SYSTEM_STATUS: one event of a catalogue entry (dmi_protocol.ads), sent once">
+        <label>System status: <select id="ss_entry"></select></label>
+        <button id="ss_start">Start</button>
+        <button id="ss_end">End event</button>
+        <button id="ss_event">30 s event</button>
+      </div>
     </div>
     <canvas id="trackCanvas" width="640" height="150"
             style="display:block; margin:6px auto; background:#101820;"></canvas>
@@ -115,6 +121,7 @@
       const MSG_SPEED_STATE = 0x01;
       const MSG_MODE_LEVEL = 0x02;
       const MSG_ONBOARD = 0x0A;
+      const MSG_SYSTEM_STATUS = 0x0C;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_POINTER = 0x50;
       const MSG_FRAME = 0x60;
@@ -203,9 +210,15 @@
         else if (type === MSG_SOUND) playSound(payload[0]);
         else if (type === 0x08) parseLayout(payload);
         else if (type === 0x09) parseSimState(payload);
+        else if (type === MSG_SYSTEM_STATUS && payload.length === 2) {
+          console.log('system status', payload[0], SS_NAMES[payload[0] - 1] ?? '?',
+                      ['start', 'end', '30 s event'][payload[1]] ?? payload[1]);
+        }
         // driver actions are shown for debugging
         else if (type === MSG_DRIVER_ACTION) {
           // an acknowledgement (action 2) also carries the text message id
+          // (16#8000# + entry for a catalogue message); action 16: a Main
+          // window button ended a system status message
           console.log('driver action', payload[0], payload[1] | (payload[2] << 8),
                       payload.length >= 5 ? payload[3] | (payload[4] << 8) : '');
         }
@@ -518,6 +531,48 @@
         sendModeLevel();
         sendOnboard();
       }
+
+      // The catalogue of the system status messages, by entry number
+      // (DMI_Protocol.SS_*); the DMI holds the texts, these names only
+      // label the choices
+      const SS_NAMES = [
+        'Balise read error (brake)', 'Balise read error (trip)',
+        'Trackside malfunction', 'Communication error (brake)',
+        'Communication error (trip)', 'Entering FS', 'Entering OS',
+        'Entering SM', 'Runaway movement', 'SM refused', 'SM request failed',
+        'SH refused', 'SH refused (trip)', 'SH request failed',
+        'Trackside not compatible', 'Trackside not compatible (trip)',
+        'Train data changed', 'Train data changed (brake)',
+        'Safe consist length no longer available', 'Train is rejected',
+        'Unauthorized passing of EOA / LOA',
+        'No MA received at level transition', 'SR distance exceeded',
+        'SH stop order', 'SR stop order', 'Emergency stop',
+        'RV distance exceeded', 'PT distance exceeded',
+        'No track description', 'Route unsuitable - loading gauge',
+        'Route unsuitable - traction system',
+        'Route unsuitable - axle load category',
+        'FRMCS network registration failed',
+        'GSM-R network registration failed', 'NL no longer permitted',
+        'Odometer impaired', 'ATO needs data', 'Runaway movement (ATO)'];
+      SS_NAMES.forEach((name, i) => {
+        const option = document.createElement('option');
+        option.value = i + 1;
+        option.textContent = `${i + 1} ${name}`;
+        document.getElementById('ss_entry').appendChild(option);
+      });
+
+      // MSG_SYSTEM_STATUS: event 0 start, 1 end, 2 the event that starts
+      // the 30 s of the entry
+      function sendSystemStatus(event) {
+        if (socket.readyState !== WebSocket.OPEN) return;
+        const { buf, dv } = makeMessage(MSG_SYSTEM_STATUS, 2);
+        dv.setUint8(HEADER_LENGTH, val('ss_entry'));
+        dv.setUint8(HEADER_LENGTH + 1, event);
+        socket.send(buf);
+      }
+      document.getElementById('ss_start').addEventListener('click', () => sendSystemStatus(0));
+      document.getElementById('ss_end').addEventListener('click', () => sendSystemStatus(1));
+      document.getElementById('ss_event').addEventListener('click', () => sendSystemStatus(2));
 
       function sendDesk() {
         if (socket.readyState !== WebSocket.OPEN) return;

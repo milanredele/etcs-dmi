@@ -104,8 +104,9 @@
             speed restrictions, a neutral section, a level transition you
             have to acknowledge on the DMI, an unprotected level
             crossing, a tunnel, and the braking curve down to the end of
-            authority. The strip above the DMI shows where the train
-            is.</li>
+            authority. The system status message <i>Entering FS</i>
+            stays until the train has run its own length. The strip
+            above the DMI shows where the train is.</li>
           <li><b>Drive yourself.</b> Untick <i>Auto drive</i> and use the
             throttle/brake slider. Go over the permitted speed to get the
             warning colours and sounds, further and the EVC brakes for
@@ -118,7 +119,10 @@
             survive.</li>
           <li><b>Feed it by hand.</b> Switch the source to the manual EVC
             panel to put any speed, target, mode or level on the
-            display.</li>
+            display. Its last row raises any system status message of
+            chapter 15 and sends the events the EVC reports: see which
+            ones end after 30 s, on a button of the <i>Main</i> window
+            or when the mode changes.</li>
         </ol>
       </details>
       <p class="note">
@@ -241,6 +245,12 @@
         <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
         <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
       </div>
+      <div class="row" title="MSG_SYSTEM_STATUS: one event of a catalogue entry (dmi_protocol.ads), sent once over the wire, also while the simulator is the source">
+        <label>System status: <select id="ss_entry"></select></label>
+        <button id="ss_start">Start</button>
+        <button id="ss_end">End event</button>
+        <button id="ss_event">30 s event</button>
+      </div>
     </details>
 
     <canvas id="trackCanvas" width="640" height="150" style="background:#101820;"></canvas>
@@ -257,6 +267,7 @@
       const MSG_TRACK_LAYOUT = 0x08;
       const MSG_SIM_STATE = 0x09;
       const MSG_ONBOARD = 0x0A;
+      const MSG_SYSTEM_STATUS = 0x0C;
       const MSG_DRIVER_ACTION = 0x40;
       const MSG_DRIVER_DATA = 0x41;
       const MSG_POINTER = 0x50;
@@ -712,6 +723,44 @@
 
       const manualMode = () => $('source').value === 'manual';
 
+      // The catalogue of the system status messages, by entry number
+      // (DMI_Protocol.SS_*); the DMI holds the texts, these names only
+      // label the choices
+      const SS_NAMES = [
+        'Balise read error (brake)', 'Balise read error (trip)',
+        'Trackside malfunction', 'Communication error (brake)',
+        'Communication error (trip)', 'Entering FS', 'Entering OS',
+        'Entering SM', 'Runaway movement', 'SM refused', 'SM request failed',
+        'SH refused', 'SH refused (trip)', 'SH request failed',
+        'Trackside not compatible', 'Trackside not compatible (trip)',
+        'Train data changed', 'Train data changed (brake)',
+        'Safe consist length no longer available', 'Train is rejected',
+        'Unauthorized passing of EOA / LOA',
+        'No MA received at level transition', 'SR distance exceeded',
+        'SH stop order', 'SR stop order', 'Emergency stop',
+        'RV distance exceeded', 'PT distance exceeded',
+        'No track description', 'Route unsuitable - loading gauge',
+        'Route unsuitable - traction system',
+        'Route unsuitable - axle load category',
+        'FRMCS network registration failed',
+        'GSM-R network registration failed', 'NL no longer permitted',
+        'Odometer impaired', 'ATO needs data', 'Runaway movement (ATO)'];
+      SS_NAMES.forEach((name, i) => {
+        const option = document.createElement('option');
+        option.value = i + 1;
+        option.textContent = `${i + 1} ${name}`;
+        $('ss_entry').appendChild(option);
+      });
+
+      // MSG_SYSTEM_STATUS: event 0 start, 1 end, 2 the event that starts
+      // the 30 s of the entry
+      function systemStatus(event) {
+        const { buf, dv } = makeMessage(MSG_SYSTEM_STATUS, 2);
+        dv.setUint8(HEADER_LENGTH, val('ss_entry'));
+        dv.setUint8(HEADER_LENGTH + 1, event);
+        return buf;
+      }
+
       // ------------------------------------------------------------------
       // Main loop
       // ------------------------------------------------------------------
@@ -763,6 +812,9 @@
         $('demand').addEventListener('input', sendDesk);
         $('auto_drive').addEventListener('input', sendDesk);
         $('reset').addEventListener('click', reset);
+        $('ss_start').addEventListener('click', () => toDmi.send(systemStatus(0), now));
+        $('ss_end').addEventListener('click', () => toDmi.send(systemStatus(1), now));
+        $('ss_event').addEventListener('click', () => toDmi.send(systemStatus(2), now));
         $('run').addEventListener('click', () => {
           running = !running;
           $('run').textContent = running ? 'Pause' : 'Run';
@@ -777,7 +829,9 @@
             else if (type === MSG_DRIVER_ACTION || type === MSG_DRIVER_DATA) {
               if (type === MSG_DRIVER_ACTION) {
                 // an acknowledgement (action 2) also carries the text
-                // message id
+                // message id (16#8000# + entry for a catalogue message);
+                // action 16: a Main window button ended a system status
+                // message
                 console.log('driver action', f[HEADER_LENGTH],
                             f[HEADER_LENGTH + 1] | (f[HEADER_LENGTH + 2] << 8),
                             f.length >= HEADER_LENGTH + 5
@@ -796,7 +850,14 @@
             const type = f[0];
             if (type === MSG_TRACK_LAYOUT) parseLayout(f.subarray(HEADER_LENGTH));
             else if (type === MSG_SIM_STATE) parseSimState(f.subarray(HEADER_LENGTH));
-            else toDmi.send(f, now);
+            else {
+              if (type === MSG_SYSTEM_STATUS && f.length === HEADER_LENGTH + 2) {
+                const entry = f[HEADER_LENGTH], event = f[HEADER_LENGTH + 1];
+                console.log('system status', entry, SS_NAMES[entry - 1] ?? '?',
+                            ['start', 'end', '30 s event'][event] ?? event);
+              }
+              toDmi.send(f, now);
+            }
           }
         }
 
