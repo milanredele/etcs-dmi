@@ -21,7 +21,8 @@ package DMI_Data_Entry is
    subtype Field_Index_T is Positive range 1 .. Max_Fields;
 
    --  30 characters take the longest title of chapter 11, 'Mission
-   --  with one radio system' (11.3.16.2)
+   --  with one radio system' (11.3.16.2), in every language of
+   --  DMI_Texts (a longer text is cut, see Field)
    Max_Label : constant := 30;
    subtype Label_T is Wide_String (1 .. Max_Label);
 
@@ -38,8 +39,8 @@ package DMI_Data_Entry is
    --  10.3.5.19: the predefined choices of a dedicated keyboard. One
    --  choice is one key label and, once chosen, the whole data value of
    --  the input field. 18 characters take the longest label of chapter
-   --  11 ('Non slippery rail', Table 43); 20 choices take the longest
-   --  list (Table 41, 18 train categories).
+   --  11 ('Non slippery rail', Table 43) in every language of DMI_Texts;
+   --  20 choices take the longest list (Table 41, 18 train categories).
    Max_Choice_Label : constant := 18;
    subtype Choice_Label_T is Wide_String (1 .. Max_Choice_Label);
 
@@ -56,6 +57,16 @@ package DMI_Data_Entry is
    end record;
 
    type Choice_Array_T is array (Choice_Index_T) of Choice_T;
+
+   --  10.3.5.18: the choices of a dedicated keyboard limited to 'No' /
+   --  'Yes', as Choice_Number reports them, and the value each one
+   --  enters in the input field, in the selected language (5.5.1.3).
+   --  The callers decide on the choice, never on the text.
+   No_Choice  : constant := 1;
+   Yes_Choice : constant := 2;
+
+   function Yes_No_Value (Choice : Natural)
+                          return DMI_Driver_Data.Text_Value_T;
 
    type Choice_Set_T is record
       Count : Choice_Count_T := 0;

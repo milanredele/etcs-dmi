@@ -13,6 +13,8 @@ with DMI_Driver_Data;
 with DMI_Protocol;
 with DMI_Radio_Data;
 with DMI_Status;
+with DMI_System_Status;
+with DMI_Texts;
 with DMI_Train_Data;
 with DMI_VBC;
 with General_Parameters;
@@ -37,6 +39,7 @@ package body DMI_Windows is
    Depth : Natural := 0;
 
    package SDI renames Supplementary_Driving_Info;
+   package TX renames DMI_Texts;
    use type SDI.Mode_T;
    use type SDI.Level_T;
    use type DMI_Conditions.Radio_Wait_T;
@@ -121,10 +124,10 @@ package body DMI_Windows is
    -- Window definitions
    ---------------------------------------------------------------------
 
-   -- 11.3.2.1, 11.3.7.1, 11.3.8.1, 11.3.11.1, 11.3.14.1: Level, Volume,
-   -- Brightness, Adhesion and ATO selector are data entry windows on the
-   -- half grid array with a single input field and a dedicated
-   -- keyboard, not menu windows
+   -- 11.3.2.1, 11.3.6.1, 11.3.7.1, 11.3.8.1, 11.3.11.1, 11.3.14.1:
+   -- Level, Language, Volume, Brightness, Adhesion and ATO selector are
+   -- data entry windows on the half grid array with a single input field
+   -- and a dedicated keyboard, not menu windows
    function Kind_Of (ID : Window_ID_T) return Window_Kind_T is
      (case ID is
          when W_Main | W_Override | W_Special | W_Settings
@@ -133,61 +136,59 @@ package body DMI_Windows is
             | W_Level | W_Adhesion | W_Volume | W_Brightness
             | W_ATO_Selector | W_GSMR_Network | W_RBC_Data
             | W_Radio_Network_Type | W_One_Radio
-            | W_Set_VBC | W_Remove_VBC => Data_Entry,
+            | W_Set_VBC | W_Remove_VBC | W_Language => Data_Entry,
          when W_Train_Data_Validation | W_Set_VBC_Validation
             | W_Remove_VBC_Validation => Validation,
          when W_Data_View => View,
          when W_System_Version => Info);
 
-   function Title (ID : Window_ID_T) return Wide_String is
+   -- The window titles, 11.2.x.2 to 11.5.x.2 (5.5.1.3: in the selected
+   -- language, DMI_Texts)
+   function Title_ID (ID : Window_ID_T) return TX.Text_ID is
      (case ID is
-         when W_Main       => "Main",
-         when W_Override   => "Override",
-         when W_Data_View  => DMI_Data_View.Title,
-         when W_Special    => "Special",
-         when W_Settings   => "Settings",
-         when W_Driver_ID  => "Driver ID",
-         when W_Level      => "Level",
-         when W_TRN        => "Train running number",
-         when W_Train_Data => "Train data",
-         when W_Train_Data_Validation => "Validate train data",
-         when W_SR_Data    => "SR speed / distance",
-         when W_Adhesion   => "Adhesion",
-         when W_Volume     => "Volume",
-         when W_Brightness => "Brightness",
-         -- 11.3.14.2
-         when W_ATO_Selector => "ATO selector",
-         when W_Radio_Data => "Radio data",                        -- 11.2.5.2
-         when W_GSMR_Network => "GSM-R network ID",                -- 11.3.4.2
-         when W_RBC_Data   => "RBC data",                          -- 11.3.5.2
-         when W_Radio_Network_Type => "Radio network type",        -- 11.3.15.2
-         when W_One_Radio  => "Mission with one radio system",     -- 11.3.16.2
-         when W_Set_VBC    => "Set VBC",                           -- 11.3.12.2
-         when W_Set_VBC_Validation => "Validate set VBC",          -- 11.4.2.2
-         when W_Remove_VBC => "Remove VBC",                        -- 11.3.13.2
-         when W_Remove_VBC_Validation => "Validate remove VBC",    -- 11.4.3.2
-         when W_System_Version => "System version");               -- 11.5.2.2
+         when W_Main       => TX.Main_Window,                 -- 11.2.1.2
+         when W_Override   => TX.Override_Window,             -- 11.2.2.2
+         when W_Data_View  => TX.Data_View,                   -- 11.5.1.2
+         when W_Special    => TX.Special_Window,              -- 11.2.3.2
+         when W_Settings   => TX.Settings_Window,             -- 11.2.4.2
+         when W_Driver_ID  => TX.Driver_ID,                   -- 11.3.3.2
+         when W_Level      => TX.Level,                       -- 11.3.2.2
+         when W_TRN        => TX.Train_Running_Number,        -- 11.3.1.2
+         when W_Train_Data => TX.Train_Data,                  -- 11.3.9.2
+         when W_Train_Data_Validation => TX.Validate_Train_Data, -- 11.4.1.2
+         when W_SR_Data    => TX.SR_Speed_Distance,           -- 11.3.10.2
+         when W_Adhesion   => TX.Adhesion,                    -- 11.3.11.2
+         when W_Volume     => TX.Volume,                      -- 11.3.7.2
+         when W_Brightness => TX.Brightness,                  -- 11.3.8.2
+         when W_ATO_Selector => TX.ATO_Selector,              -- 11.3.14.2
+         when W_Radio_Data => TX.Radio_Data,                  -- 11.2.5.2
+         when W_GSMR_Network => TX.GSMR_Network_ID,           -- 11.3.4.2
+         when W_RBC_Data   => TX.RBC_Data,                    -- 11.3.5.2
+         when W_Radio_Network_Type => TX.Radio_Network_Type,  -- 11.3.15.2
+         when W_One_Radio  => TX.Mission_One_Radio,           -- 11.3.16.2
+         when W_Set_VBC    => TX.Set_VBC,                     -- 11.3.12.2
+         when W_Set_VBC_Validation => TX.Validate_Set_VBC,    -- 11.4.2.2
+         when W_Remove_VBC => TX.Remove_VBC,                  -- 11.3.13.2
+         when W_Remove_VBC_Validation => TX.Validate_Remove_VBC, -- 11.4.3.2
+         when W_System_Version => TX.System_Version,          -- 11.5.2.2
+         when W_Language   => TX.Language);                   -- 11.3.6.2
 
-   -- Menu window buttons; empty label = slot not present. 32 characters
-   -- take the longest label, 'Revoke BMM reaction inhibition' (Table
-   -- 35 #4).
+   -- 11.5.1.3: the Data view title carries the window numbers
+   function Title (ID : Window_ID_T) return Wide_String is
+     (if ID = W_Data_View then DMI_Data_View.Title
+      else TX.Text (Title_ID (ID)));
+
+   -- Menu window buttons; an unused slot is not present
    Max_Menu : constant := 12;   -- Table 33 #12 'Exit SM'
-   Max_Text : constant := 32;
-
-   function Pad (S : Wide_String) return Wide_String is
-      Result : Wide_String (1 .. Max_Text) := (others => ' ');
-      Last   : constant Natural := Natural'Min (S'Length, Max_Text);
-   begin
-      Result (1 .. Last) := S (S'First .. S'First + Last - 1);
-      return Result;
-   end Pad;
 
    -- Table 36: the buttons 1 to 3 of the Settings window show a symbol
    -- instead of a text label on the touch screen
    type Icon_T is (No_Icon, Icon_SE01, Icon_SE02, Icon_SE03);
 
+   -- 5.5.1.3: the label is a text of DMI_Texts, drawn in the language
+   -- selected when it is drawn
    type Label_T is record
-      Text    : Wide_String (1 .. Max_Text) := (others => ' ');
+      Text    : TX.Text_ID := TX.Text_ID'First;
       Used    : Boolean := False;
       Enabled : Boolean := True;
       Delayed : Boolean := False; -- delay-type button (11.2.1.4)
@@ -195,14 +196,14 @@ package body DMI_Windows is
    end record;
    type Menu_Def_T is array (1 .. Max_Menu) of Label_T;
 
-   function B (S : Wide_String;
+   function B (Text    : TX.Text_ID;
                Enabled : Boolean := True;
                Delayed : Boolean := False) return Label_T is
-     ((Text => Pad (S), Used => True, Enabled => Enabled, Delayed => Delayed,
+     ((Text => Text, Used => True, Enabled => Enabled, Delayed => Delayed,
        Icon => No_Icon));
 
    function Symbol_Button (Icon : Icon_T; Enabled : Boolean) return Label_T is
-     ((Text => (others => ' '), Used => True, Enabled => Enabled,
+     ((Text => TX.Text_ID'First, Used => True, Enabled => Enabled,
        Delayed => False, Icon => Icon));
 
    No_Button : constant Label_T := (others => <>);
@@ -230,49 +231,49 @@ package body DMI_Windows is
             -- 11.2.1.4, Table 33, Figure 109; 11.2.1.5 names the delay
             -- type buttons. Button #4 is intentionally not used
             -- (11.2.1.4.1).
-            return (1 => B ("Start",
+            return (1 => B (TX.Start,
                             Enabled => DMI_Conditions.Main_Start),
-                    2 => B ("Driver ID",
+                    2 => B (TX.Driver_ID,
                             Enabled => DMI_Conditions.Main_Driver_ID),
-                    3 => B ("Train data",
+                    3 => B (TX.Train_Data,
                             Enabled => DMI_Conditions.Main_Train_Data),
                     4 => No_Button,
-                    5 => B ("Level",
+                    5 => B (TX.Level,
                             Enabled => DMI_Conditions.Main_Level),
-                    6 => B ("Train running number",
+                    6 => B (TX.Train_Running_Number,
                             Enabled => DMI_Conditions.Main_TRN),
                     7 => (if Exit_Shunting_Label
-                          then B ("Exit Shunting",
+                          then B (TX.Exit_Shunting,
                                   Enabled =>
                                     DMI_Conditions.Main_Exit_Shunting,
                                   Delayed => True)
-                          else B ("Shunting",
+                          else B (TX.Shunting,
                                   Enabled => DMI_Conditions.Main_Shunting,
                                   Delayed => True)),
-                    8 => B ("Non-Leading",
+                    8 => B (TX.Non_Leading,
                             Enabled => DMI_Conditions.Main_Non_Leading,
                             Delayed => True),
-                    9 => B ("Maintain Shunting",
+                    9 => B (TX.Maintain_Shunting,
                             Enabled =>
                               DMI_Conditions.Main_Maintain_Shunting,
                             Delayed => True),
-                    10 => B ("Radio data",
+                    10 => B (TX.Radio_Data,
                              Enabled => DMI_Conditions.Main_Radio_Data),
                     11 => (if Continue_SM_Label
-                           then B ("Continue in SM",
+                           then B (TX.Continue_SM,
                                    Enabled =>
                                      DMI_Conditions.Main_Continue_SM,
                                    Delayed => True)
-                           else B ("Initiate SM",
+                           else B (TX.Initiate_SM,
                                    Enabled =>
                                      DMI_Conditions.Main_Initiate_SM,
                                    Delayed => True)),
-                    12 => B ("Exit SM",
+                    12 => B (TX.Exit_SM,
                              Enabled => DMI_Conditions.Main_Exit_SM,
                              Delayed => True));
          when W_Override =>
             -- 11.2.2.4, Table 34
-            return (1 => B ("EOA", Enabled => DMI_Conditions.Override_EOA),
+            return (1 => B (TX.EOA, Enabled => DMI_Conditions.Override_EOA),
                     others => No_Button);
          when W_Special =>
             -- 11.2.3.4, Table 35, Figure 111; 11.2.3.5: 'Train
@@ -281,29 +282,28 @@ package body DMI_Windows is
             -- inhibition" function is active, the only difference of
             -- its two rows (Table 53 S1: the one removes what the other
             -- presents).
-            return (1 => B ("Adhesion",
+            return (1 => B (TX.Adhesion,
                             Enabled => DMI_Conditions.Special_Adhesion),
-                    2 => B ("SR speed / distance",
+                    2 => B (TX.SR_Speed_Distance,
                             Enabled => DMI_Conditions.Special_SR_Data),
-                    3 => B ("Train integrity",
+                    3 => B (TX.Train_Integrity,
                             Enabled =>
                               DMI_Conditions.Special_Train_Integrity,
                             Delayed => True),
                     4 => (if DMI_Conditions.BMM_Inhibit_Active
-                          then B ("Revoke BMM reaction inhibition",
+                          then B (TX.Revoke_BMM_Inhibition,
                                   Enabled =>
                                     DMI_Conditions.Special_BMM_Revoke)
-                          else B ("BMM reaction inhibition",
+                          else B (TX.BMM_Inhibition,
                                   Enabled =>
                                     DMI_Conditions.Special_BMM_Inhibit)),
                     others => No_Button);
          when W_Settings =>
             -- 11.2.4.4, Table 36, Figure 112: the symbols SE03, SE02 and
-            -- SE01 for touch. Language has no window here (another work
-            -- item, audit WIN-12): its button stays disabled, a dead
-            -- button being worse than a disabled one (implementation
-            -- choice).
-            return (1 => Symbol_Button (Icon_SE03, Enabled => False),
+            -- SE01 for touch; #1 opens the Language window (11.3.6)
+            return (1 => Symbol_Button
+                           (Icon_SE03,
+                            Enabled => DMI_Conditions.Settings_Language),
                     2 => Symbol_Button
                            (Icon_SE02,
                             Enabled => DMI_Conditions.Settings_Volume),
@@ -313,34 +313,34 @@ package body DMI_Windows is
                     -- Table 36 #4 to #6: the System version window
                     -- (11.5.2), the Set VBC (11.3.12) and Remove VBC
                     -- (11.3.13) windows
-                    4 => B ("System version",
+                    4 => B (TX.System_Version,
                             Enabled =>
                               DMI_Conditions.Settings_System_Version),
-                    5 => B ("Set VBC",
+                    5 => B (TX.Set_VBC,
                             Enabled => DMI_Conditions.Settings_Set_VBC),
-                    6 => B ("Remove VBC",
+                    6 => B (TX.Remove_VBC,
                             Enabled => DMI_Conditions.Settings_Remove_VBC),
                     -- Table 36 #7: the ATO selector window (11.3.14)
-                    7 => B ("ATO", Enabled => DMI_Conditions.Settings_ATO),
+                    7 => B (TX.ATO, Enabled => DMI_Conditions.Settings_ATO),
                     others => No_Button);
          when W_Radio_Data =>
             -- 11.2.5.4, Table 37, Figure 113; 11.2.5.5: 'GSM-R network
             -- ID' is a delay type button. #4 is not used (Figure 113).
-            return (1 => B ("Contact last RBC",
+            return (1 => B (TX.Contact_Last_RBC,
                             Enabled =>
                               DMI_Conditions.Radio_Contact_Last_RBC),
-                    2 => B ("Use short number",
+                    2 => B (TX.Use_Short_Number,
                             Enabled =>
                               DMI_Conditions.Radio_Use_Short_Number),
-                    3 => B ("Enter RBC data",
+                    3 => B (TX.Enter_RBC_Data,
                             Enabled => DMI_Conditions.Radio_Enter_RBC_Data),
                     4 => No_Button,
-                    5 => B ("Radio network type",
+                    5 => B (TX.Radio_Network_Type,
                             Enabled => DMI_Conditions.Radio_Network_Type),
-                    6 => B ("GSM-R network ID",
+                    6 => B (TX.GSMR_Network_ID,
                             Enabled => DMI_Conditions.Radio_GSMR_Network_ID,
                             Delayed => True),
-                    7 => B ("Mission with one radio system",
+                    7 => B (TX.Mission_One_Radio,
                             Enabled =>
                               DMI_Conditions.Radio_Mission_One_Radio),
                     others => No_Button);
@@ -504,8 +504,10 @@ package body DMI_Windows is
 
    ---------------------------------------------------------------------
    -- Windows with a dedicated keyboard on the half grid array (audit
-   -- WIN-10): Level (11.3.2), Adhesion (11.3.11), Volume (11.3.7) and
-   -- Brightness (11.3.8). Each has a single input field with only the
+   -- WIN-10): Level (11.3.2), Adhesion (11.3.11), Volume (11.3.7),
+   -- Brightness (11.3.8) and Language (11.3.6), then ATO selector
+   -- (11.3.14), GSM-R network ID (11.3.4) and Radio network type
+   -- (11.3.15). Each has a single input field with only the
    -- data part (10.3.1.7) and a list of predefined choices; the driver
    -- accepts the choice on the input field, which completes the entry
    -- (10.3.1.22, 10.6.1.2 a).
@@ -534,11 +536,13 @@ package body DMI_Windows is
    Default_Level_List : constant array (1 .. Level_Choice_Count) of Boolean :=
      (1 => True, 2 => True, 3 => False, 4 => True, 5 => True);
 
+   -- 'NTC' stands for the abbreviation of a National System (11.3.2.6),
+   -- a name, not a text of 5.5.1.3
    function Level_Label (Pos : Natural) return Wide_String is
-     (if Pos = SDI.Level_T'Pos (SDI.L0) then "Level 0"
+     (if Pos = SDI.Level_T'Pos (SDI.L0) then TX.Text (TX.Level_0)
       elsif Pos = SDI.Level_T'Pos (SDI.NTC) then "NTC"
-      elsif Pos = SDI.Level_T'Pos (SDI.L1) then "Level 1"
-      elsif Pos = SDI.Level_T'Pos (SDI.L2) then "Level 2"
+      elsif Pos = SDI.Level_T'Pos (SDI.L1) then TX.Text (TX.Level_1)
+      elsif Pos = SDI.Level_T'Pos (SDI.L2) then TX.Text (TX.Level_2)
       else "");
 
    -- 5.1.4.1: the level of the volume and of the luminance as a number
@@ -588,15 +592,15 @@ package body DMI_Windows is
             end if;
          when W_Adhesion =>
             -- Table 43
-            Add_Choice (Choices, "Non slippery rail");
-            Add_Choice (Choices, "Slippery rail");
+            Add_Choice (Choices, TX.Text (TX.Non_Slippery_Rail));
+            Add_Choice (Choices, TX.Text (TX.Slippery_Rail));
             -- 11.7.1.4: the adhesion the on-board holds is what
             -- MSG_STATUS reports as the slippery rail state (8.2.3.7)
             Propose (if DMI_Status.Slippery_Rail then 2 else 1);
          when W_ATO_Selector =>
             -- 11.3.14.4, Table 43a: 1 Stand-by, 2 On
-            Add_Choice (Choices, "Stand-by");
-            Add_Choice (Choices, "On");
+            Add_Choice (Choices, TX.Text (TX.Stand_By));
+            Add_Choice (Choices, TX.Text (TX.ATO_On));
             -- 11.7.1.4: the position the on-board holds (SUBSET-026
             -- 3.15.11.2) as the EVC reports it; not known: none
             case DMI_ATO.Selector is
@@ -646,12 +650,22 @@ package body DMI_Windows is
             end loop;
          when W_Radio_Network_Type =>
             -- Table 43b; 11.7.1.4: the type stored on-board, which
-            -- MSG_ONBOARD reports
+            -- MSG_ONBOARD reports. The labels are the names of the radio
+            -- systems, the same in every language (not DMI_Texts).
             Add_Choice (Choices, "FRMCS");
             Add_Choice (Choices, "FRMCS+GSM-R");
             Add_Choice (Choices, "GSM-R");
             Propose (DMI_Conditions.Radio_Type_T'Pos
                        (DMI_Conditions.Radio_Type));
+         when W_Language =>
+            -- 11.3.6.4: the languages the DMI holds (5.5.1.1), each in
+            -- its own language; 11.3.6.4.1: the on-board configuration
+            -- decides which, here DMI_Texts. 11.7.1.4 / Table 54 S2: the
+            -- selected language is proposed for revalidation.
+            for L in TX.Language_T loop
+               Add_Choice (Choices, TX.Name (L));
+            end loop;
+            Propose (TX.Language_T'Pos (TX.Selected) + 1);
          when others =>
             null;
       end case;
@@ -704,11 +718,9 @@ package body DMI_Windows is
         (Defined => True, Min => 0, Max => DMI_VBC.Code_Max,
          Resolution => 1);
 
-      Yes_Value : Text_Value_T;
+      Yes_Value : constant Text_Value_T := Yes_No_Value (Yes_Choice);
       Result : Window_Def_T;
    begin
-      Yes_Value.Length := 3;
-      Yes_Value.Text (1 .. 3) := "Yes";
       Result.Title := Window_Title (Title (ID));
       case ID is
          when W_Driver_ID =>
@@ -718,13 +730,13 @@ package body DMI_Windows is
             -- A.3.11 (via 3.18.4.1.4) limits it to 1 to 16 alphanumeric
             -- characters, which is the length of the input field.
             Result.Field_Count := 1;
-            Result.Fields (1) := Field ("Driver ID", Max_Field_Len,
+            Result.Fields (1) := Field (TX.Text (TX.Driver_ID), Max_Field_Len,
                                         Keyboard => Alphanumeric,
                                         Proposed => Driver_ID);
          when W_TRN =>
             -- 11.3.1
             Result.Field_Count := 1;
-            Result.Fields (1) := Field ("Train running nr", 8,
+            Result.Fields (1) := Field (TX.Text (TX.Train_Running_Nr), 8,
                                         Proposed => TRN,
                                         Technical => TRN_Rule);
          when W_Train_Data =>
@@ -734,8 +746,10 @@ package body DMI_Windows is
             return DMI_Train_Data.Window_Def
               (DMI_Train_Data.Current_Window);
          when W_Level | W_Adhesion | W_Volume | W_Brightness
-            | W_ATO_Selector | W_GSMR_Network | W_Radio_Network_Type =>
-            -- 11.3.2, 11.3.7, 11.3.8, 11.3.11, 11.3.14, 11.3.4, 11.3.15:
+            | W_ATO_Selector | W_GSMR_Network | W_Radio_Network_Type
+            | W_Language =>
+            -- 11.3.2, 11.3.7, 11.3.8, 11.3.11, 11.3.14, 11.3.4, 11.3.15,
+            -- 11.3.6:
             -- half grid array, a single input field with only the data
             -- part and a dedicated keyboard (Dedicated_Def above)
             return Dedicated_Def (ID);
@@ -744,7 +758,8 @@ package body DMI_Windows is
             -- field with a 'No'/'Yes' dedicated keyboard. Table 49 S5 and
             -- Table 50 S10: no value is proposed.
             Result.Field_Count := 1;
-            Result.Fields (1) := Field (Title (ID), 3, Keyboard => Yes_No);
+            Result.Fields (1) := Field (Title (ID), Max_Choice_Label,
+                                        Keyboard => Yes_No);
          when W_RBC_Data =>
             -- 11.3.5.1: total grid array with the question 'RBC data
             -- entry complete?' but no echo texts; 11.3.5.5: numeric
@@ -763,7 +778,7 @@ package body DMI_Windows is
             Result.Labelled := True;
             Result.Field_Count := (if RBC_Phone_Shown then 2 else 1);
             Result.Fields (1) :=
-              Field ("RBC ID", 8,
+              Field (TX.Text (TX.RBC_ID), 8,
                      Proposed =>
                        (if DMI_Radio_Data.RBC_Entered
                           and then DMI_Conditions.RBC_Contact_Known
@@ -771,7 +786,8 @@ package body DMI_Windows is
                         else (0, (others => ' '))),
                      Technical => RBC_ID_Rule);
             Result.Fields (2) :=
-              Field ("RBC phone number", DMI_Protocol.RBC_Phone_Max,
+              Field (TX.Text (TX.RBC_Phone_Number),
+                     DMI_Protocol.RBC_Phone_Max,
                      Proposed =>
                        (if DMI_Radio_Data.RBC_Entered
                           and then DMI_Conditions.RBC_Contact_Known
@@ -782,9 +798,11 @@ package body DMI_Windows is
             Result.Layout := Total_Grid;
             Result.Field_Count := 2;
             Result.Fields (1) :=
-              Field ("SR speed", 3, Proposed => Image_Value (SR_Speed));
+              Field (TX.Text (TX.SR_Speed), 3,
+                     Proposed => Image_Value (SR_Speed));
             Result.Fields (2) :=
-              Field ("SR distance", 5, Proposed => Image_Value (SR_Dist));
+              Field (TX.Text (TX.SR_Distance), 5,
+                     Proposed => Image_Value (SR_Dist));
          when W_Train_Data_Validation =>
             -- 11.4.1 with 11.4.1.3: the echo texts of the train data
             -- window(s), built by DMI_Train_Data
@@ -801,7 +819,7 @@ package body DMI_Windows is
             Result.Labelled := True;
             Result.Field_Count := 1;
             Result.Fields (1) :=
-              Field ("VBC code", 8,
+              Field (TX.Text (TX.VBC_Code), 8,
                      Proposed =>
                        (if DMI_VBC.Pending_Valid then DMI_VBC.Pending
                         else (0, (others => ' '))),
@@ -815,12 +833,14 @@ package body DMI_Windows is
             Result.Layout := Validation;
             Result.Field_Count := 1;
             Result.Fields (1) :=
-              Field ("Validate", 3, Keyboard => Yes_No,
+              Field (TX.Text (TX.Validate), Max_Choice_Label,
+                     Keyboard => Yes_No,
                      Proposed => Yes_Value,
-                     Proposed_Choice => 2);
+                     Proposed_Choice => Yes_Choice);
             Result.Echo_Count := 1;
             Result.Echo (1) :=
-              Echo ("VBC code", DMI_VBC.Pending, Accepted => True);
+              Echo (TX.Text (TX.VBC_Code), DMI_VBC.Pending,
+                    Accepted => True);
          when others =>
             null;
       end case;
@@ -1158,7 +1178,7 @@ package body DMI_Windows is
 
    -- 11.7.1.7, Table 48: the button whose enabling conditions decide
    -- whether the displayed data entry / validation window may stay.
-   -- Language is another work item (audit WIN-12). Table 48 has no row
+   -- Table 48 has no row
    -- for the Set VBC and Remove VBC windows, their validation windows
    -- or the System version window, so 11.7.1.7 does not stop them
    -- (11.7.1.9 still does, Stop_Entry).
@@ -1171,6 +1191,7 @@ package body DMI_Windows is
            DMI_Conditions.Main_Train_Data,
          when W_SR_Data    => DMI_Conditions.Special_SR_Data,
          when W_Adhesion   => DMI_Conditions.Special_Adhesion,
+         when W_Language   => DMI_Conditions.Settings_Language,
          when W_Volume     => DMI_Conditions.Settings_Volume,
          when W_Brightness => DMI_Conditions.Settings_Brightness,
          -- Table 48: ATO selector / ATO
@@ -1322,6 +1343,25 @@ package body DMI_Windows is
                   end if;
                end;
             end if;
+         when W_Language =>
+            -- 11.3.6.4: the choices are the languages in the order of
+            -- DMI_Texts.Language_T. 5.5.1.3: from now on every text is
+            -- displayed in the selected language, the windows (they draw
+            -- their texts when drawn, and the data entry windows below
+            -- are built again when they come back on top, Pop) and the
+            -- system status messages displayed (15.1.1.4.2). SUBSET-026
+            -- A.3.4 has the language stored on-board and the fixed text
+            -- messages follow it (3.12.3.3.1, Q_TEXT 7.5.1.136): the EVC
+            -- is told (MSG_DRIVER_DATA kind 10). Table 54 S2: back to
+            -- S1, the Settings window.
+            if Chosen - 1 in TX.Language_T'Pos (TX.Language_T'First)
+                          .. TX.Language_T'Pos (TX.Language_T'Last)
+            then
+               TX.Select_Language (TX.Language_T'Val (Chosen - 1));
+               DMI_System_Status.Language_Changed;
+               Queue (Send_Language, Chosen - 1);
+               Pop;
+            end if;
          when others =>
             null;
       end case;
@@ -1380,7 +1420,8 @@ package body DMI_Windows is
             Queue (Send_SR_Data);
             Pop;
          when W_Level | W_Adhesion | W_Volume | W_Brightness
-            | W_ATO_Selector | W_GSMR_Network | W_Radio_Network_Type =>
+            | W_ATO_Selector | W_GSMR_Network | W_Radio_Network_Type
+            | W_Language =>
             Dedicated_Completed (ID);
          when W_RBC_Data =>
             -- 11.7.1.6: stored when the driver presses 'Yes'
@@ -1402,9 +1443,11 @@ package body DMI_Windows is
                   else W_Remove_VBC_Validation);
          when W_One_Radio =>
             declare
-               V   : constant Text_Value_T := DMI_Data_Entry.Value (1);
+               -- the choice, not the text, which is the selected
+               -- language's (5.5.1.3)
                Yes : constant Boolean :=
-                 V.Length = 3 and then V.Text (1 .. 3) = "Yes";
+                 DMI_Data_Entry.Choice_Number (1)
+                 = DMI_Data_Entry.Yes_Choice;
             begin
                Queue (Send_Mission_One_Radio, (if Yes then 1 else 0));
                if Sequence_Active then
@@ -1508,6 +1551,7 @@ package body DMI_Windows is
             end case;
          when W_Settings =>
             case Index is
+               when 1 => Open (W_Language);             -- Table 54 S2
                when 2 => Open (W_Volume);
                when 3 => Open (W_Brightness);
                when 4 => Open (W_System_Version);        -- Table 54 S5
@@ -1553,9 +1597,8 @@ package body DMI_Windows is
    -- 11.4.1, 10.6.1.3 a: the process ends when the driver accepts the
    -- value 'Yes' in the input field of the validation window
    procedure Validation_Completed is
-      use DMI_Driver_Data;
-      V : constant Text_Value_T := DMI_Data_Entry.Value (1);
-      Yes : constant Boolean := V.Length = 3 and then V.Text (1 .. 3) = "Yes";
+      Yes : constant Boolean :=
+        DMI_Data_Entry.Choice_Number (1) = DMI_Data_Entry.Yes_Choice;
    begin
       if Stack (Depth) in W_Set_VBC_Validation | W_Remove_VBC_Validation then
          if Yes then
@@ -1788,15 +1831,6 @@ package body DMI_Windows is
       end case;
    end Draw_Symbol_Button;
 
-   function Trim (S : Wide_String) return Wide_String is
-      Last : Natural := S'Last;
-   begin
-      while Last >= S'First and then S (Last) = ' ' loop
-         Last := Last - 1;
-      end loop;
-      return S (S'First .. Last);
-   end Trim;
-
    function Pressed (Index : Positive) return Boolean is
      (DMI_Buttons.Is_Pressed
         (DMI_Buttons.Button_ID_T'Val
@@ -1813,7 +1847,7 @@ package body DMI_Windows is
                                 Def (I).Enabled and then Pressed (I));
          elsif Def (I).Used then
             Draw_Labelled_Button (Menu_Button_Area (I),
-                                  Trim (Def (I).Text),
+                                  TX.Text (Def (I).Text),
                                   Def (I).Enabled,
                                   Def (I).Enabled and then Pressed (I));
          end if;
@@ -1840,7 +1874,7 @@ package body DMI_Windows is
       Draw.Draw_String
         (Pen_X => TRN_Area.Position.X + TRN_Area.Width / 2,
          Pen_Y => TRN_Area.Position.Y + TRN_Area.Height / 2 + 5,
-         The_String => "TRN",
+         The_String => TX.Text (TX.TRN_Button),
          The_Size => 10,
          The_Color => General_Parameters.GREY,
          The_Alignment => Draw.Center);

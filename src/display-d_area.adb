@@ -16,6 +16,7 @@
 
 with DMI_Buttons;
 with DMI_Planning;
+with DMI_Texts;
 with Symbol;
 with Track_Ahead_Free;
 
@@ -48,7 +49,8 @@ package body Display.D_Area is
       D_Buffer.Draw_Symbol (Symbol.DR_02, Question_Area.Position + (42, 2));
       D_Buffer.Draw_String (Pen_X         => Answer_Area.Position.X + Answer_Area.Width / 2,
                             Pen_Y         => Answer_Area.Position.Y + 30,
-                            The_String    => "Yes",
+                            The_String    =>
+                              DMI_Texts.Text (DMI_Texts.Yes),
                             The_Size      => 12,
                             The_Color     => General_Parameters.BLACK,
                             The_Alignment => D_Buffer.Center);

@@ -25,6 +25,7 @@ with DMI_Status;
 with DMI_System_Status;
 with DMI_System_Version;
 with DMI_Text_Messages;
+with DMI_Texts;
 with DMI_Train_Data;
 with DMI_VBC;
 with DMI_Windows;
@@ -450,6 +451,24 @@ package body DMI_Core is
          Queue_Message (MSG_DRIVER_DATA, Payload);
       end Send_VBC_Msg;
 
+      --  MSG_DRIVER_DATA kind 10: the language the driver selected, as
+      --  its ISO 639-1 code; a position that is no language sends
+      --  nothing (the windows never queue one)
+      procedure Send_Language_Msg (Pos : Natural) is
+         Payload : Stream_Element_Array
+           (1 .. Stream_Element_Offset (Driver_Data_Language_Length));
+         Offset  : Stream_Element_Offset := Payload'First;
+      begin
+         if Pos > DMI_Texts.Language_T'Pos (DMI_Texts.Language_T'Last) then
+            return;
+         end if;
+         Put_U8 (Payload, Offset, 10);
+         for C of DMI_Texts.Code (DMI_Texts.Language_T'Val (Pos)) loop
+            Put_U8 (Payload, Offset, Unsigned_8 (Character'Pos (C)));
+         end loop;
+         Queue_Message (MSG_DRIVER_DATA, Payload);
+      end Send_Language_Msg;
+
       --  MSG_DRIVER_DATA kinds 6 and 7: one byte
       procedure Send_Byte_Data (Kind : Unsigned_8; Value : Natural) is
          Payload : Stream_Element_Array
@@ -508,6 +527,8 @@ package body DMI_Core is
                Send_VBC_Msg (8, Arg);
             when Send_Remove_VBC =>
                Send_VBC_Msg (9, Arg);
+            when Send_Language =>
+               Send_Language_Msg (Arg);
          end case;
       end loop;
    end Drain_Window_Actions;
