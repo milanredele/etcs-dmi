@@ -620,6 +620,57 @@ package body Test_Support is
       DMI_Core.Handle_Message (MSG_PLANNING, Payload);
    end Send_Planning;
 
+   procedure Send_ATO
+     (Selector     : Natural := 2;
+      Status       : Natural := 0;
+      Warning      : Boolean := False;
+      At_Stop      : Boolean := False;
+      Accuracy     : Natural := 0;
+      Dwell        : Natural := 16#FFFF#;
+      Train_Hold   : Boolean := False;
+      Doors        : Natural := 0;
+      Skip         : Natural := 0;
+      Advice_Speed : Natural := 16#FFFF#;
+      Coasting     : Boolean := False;
+      ETA_H        : Natural := 16#FF#;
+      ETA_M, ETA_S : Natural := 0;
+      Name         : String := "";
+      Stops        : Stop_Array := (1 .. 0 => 0))
+   is
+      Payload : Stream_Element_Array
+        (1 .. Stream_Element_Offset
+                (ATO_Fixed_Length + Name'Length
+                 + Stops'Length * ATO_Stop_Entry_Length));
+      Offset  : Stream_Element_Offset := Payload'First;
+
+      function B (Flag : Boolean) return Unsigned_8 is
+        (if Flag then 1 else 0);
+   begin
+      Put_U8 (Payload, Offset, Unsigned_8 (Selector mod 256));
+      Put_U8 (Payload, Offset, Unsigned_8 (Status mod 256));
+      Put_U8 (Payload, Offset, B (Warning));
+      Put_U8 (Payload, Offset, B (At_Stop));
+      Put_U8 (Payload, Offset, Unsigned_8 (Accuracy mod 256));
+      Put_U16 (Payload, Offset, Unsigned_16 (Dwell mod 65536));
+      Put_U8 (Payload, Offset, B (Train_Hold));
+      Put_U8 (Payload, Offset, Unsigned_8 (Doors mod 256));
+      Put_U8 (Payload, Offset, Unsigned_8 (Skip mod 256));
+      Put_U16 (Payload, Offset, Unsigned_16 (Advice_Speed mod 65536));
+      Put_U8 (Payload, Offset, B (Coasting));
+      Put_U8 (Payload, Offset, Unsigned_8 (ETA_H mod 256));
+      Put_U8 (Payload, Offset, Unsigned_8 (ETA_M mod 256));
+      Put_U8 (Payload, Offset, Unsigned_8 (ETA_S mod 256));
+      Put_U8 (Payload, Offset, Unsigned_8 (Name'Length mod 256));
+      for C of Name loop
+         Put_U8 (Payload, Offset, Character'Pos (C));
+      end loop;
+      Put_U8 (Payload, Offset, Unsigned_8 (Stops'Length mod 256));
+      for D of Stops loop
+         Put_U16 (Payload, Offset, Unsigned_16 (D mod 65536));
+      end loop;
+      DMI_Core.Handle_Message (MSG_ATO, Payload);
+   end Send_ATO;
+
    procedure Send_Raw (The_Type : Natural; Bytes : Byte_Array) is
       Payload : Stream_Element_Array (1 .. Bytes'Length);
    begin
@@ -870,6 +921,50 @@ package body Test_Support is
                & ", got" & Natural'Image (Found));
       end if;
    end Expect_Actions;
+
+   procedure Expect_Action (Action : Natural;
+                            Arg    : Natural;
+                            What   : String)
+   is
+      Buffer : Stream_Element_Array renames Outbox;
+      Last   : Stream_Element_Offset;
+      Offset : Stream_Element_Offset := Buffer'First;
+      Found  : Natural := 0;
+      Got    : Natural := 0;
+   begin
+      Checks := Checks + 1;
+      Pump;
+      Last := Outbox_Last;
+      Outbox_Last := 0;
+      while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+         declare
+            The_Type : constant Msg_Type_T :=
+              Msg_Type_T (Get_U8 (Buffer, Offset));
+            Length   : constant Stream_Element_Offset :=
+              Stream_Element_Offset (Get_U32 (Buffer, Offset));
+            Next     : constant Stream_Element_Offset := Offset + Length;
+         begin
+            exit when Next - 1 > Last;
+            if The_Type = MSG_DRIVER_ACTION
+              and then Length >= Stream_Element_Offset (Driver_Action_Length)
+              and then Natural (Buffer (Offset)) = Action
+            then
+               Found := Found + 1;
+               Got := Natural (Buffer (Offset + 1))
+                 + 256 * Natural (Buffer (Offset + 2));
+            end if;
+            Offset := Next;
+         end;
+      end loop;
+      if Found = 1 and then Got = Arg then
+         Pass (What);
+      else
+         Fail (What & ": expected one driver action" & Natural'Image (Action)
+               & " with arg" & Natural'Image (Arg) & ", got"
+               & Natural'Image (Found) & " (last arg" & Natural'Image (Got)
+               & ")");
+      end if;
+   end Expect_Action;
 
    procedure Check (Condition : Boolean; What : String) is
    begin
