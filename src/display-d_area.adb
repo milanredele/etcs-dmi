@@ -39,14 +39,25 @@ package body Display.D_Area is
       Pressed       : constant Boolean :=
         DMI_Buttons.Is_Pressed (DMI_Buttons.BTN_TAF_Yes);
    begin
+      -- DMI 8.2.3.3.10: dark grey question part
       D_Buffer.Fill_Area (Question_Area, General_Parameters.DARK_GREY);
-      -- DMI 5.3.2.5: pressed buttons lose their lifted appearance
+      -- DMI 8.2.3.3.11: medium grey answer part; 5.3.2.5.3: pressed, the
+      -- button loses its lifted appearance
       D_Buffer.Fill_Area (Answer_Area,
                           (if Pressed then General_Parameters.DARK_GREY
                            else General_Parameters.MEDIUM_GREY));
-      -- DMI 8.2.3.3.14
-      D_Buffer.Draw_Input_Field_Frame (Track_Ahead_Free_Area);
-      D_Buffer.Draw_Symbol (Symbol.DR_02, Question_Area.Position + (42, 2));
+      -- DMI 8.2.3.3.14: the question part and the 'Yes' button each have
+      -- the border of an input field (5.1.1.1.4, 1 cell, medium grey).
+      -- Figure 60 shows no line between the two parts; the text is
+      -- followed, so the question part's right border is visible.
+      D_Buffer.Draw_Input_Field_Frame (Question_Area);
+      D_Buffer.Draw_Input_Field_Frame (Answer_Area);
+      -- DMI 8.2.3.3.10: DR02 centred in the question part
+      D_Buffer.Draw_Symbol
+        (Symbol.DR_02,
+         Question_Area.Position
+           + ((Question_Area.Width - Symbol.DR_02.Width) / 2,
+              (Question_Area.Height - Symbol.DR_02.Height) / 2));
       D_Buffer.Draw_String (Pen_X         => Answer_Area.Position.X + Answer_Area.Width / 2,
                             Pen_Y         => Answer_Area.Position.Y + 30,
                             The_String    =>
