@@ -69,8 +69,8 @@ The default window (speed dial, supervision colours, planning area,
 track conditions, text messages, acknowledgements, sounds), the sub-level
 windows with the chapter 10 data entry (numeric, alphanumeric and
 dedicated keyboards, data checks, validation, data view), the radio,
-VBC, ATO selector, System version and Language windows (English and
-German), the ATO displays of chapter 8.5, the chapter 15 message
+VBC, ATO selector, System version and Language windows (English,
+German and Hungarian), the ATO displays of chapter 8.5, the chapter 15 message
 catalogue, the desk inputs for Settings and isolation, touch input, and
 the EVC/track/train simulator (with an ATO on-board, shunting,
 Supervised Manoeuvre and a stand-in RBC) are implemented. Still open:
