@@ -356,17 +356,30 @@ package body Display.Draw is
       end loop;
    end Draw_Symbol_Dimmed;
 
+   -- 5.1.1.1.2: black left and top lines, shadow right and bottom
+   -- lines, 1 cell each. The corners follow the figures of the spec
+   -- (Figures 50 and 60, cell by cell): the shadow lines run the full
+   -- length and take the bottom left and top right corners.
    procedure Draw_Frame (The_Area : Area_T) is
+      Left   : constant Natural := The_Area.Position.X;
+      Top    : constant Natural := The_Area.Position.Y;
+      Right  : constant Natural := Left + The_Area.Width - 1;
+      Bottom : constant Natural := Top + The_Area.Height - 1;
    begin
-      -- draw top and bottom border
-      for X in The_Area.Position.X .. The_Area.Position.X + The_Area.Width - 1 loop
-         Set_Pixel (X, The_Area.Position.Y, General_Parameters.BLACK);
-         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 1, General_Parameters.SHADOW);
+      if The_Area.Width < 2 or else The_Area.Height < 2 then
+         return;
+      end if;
+      for X in Left .. Right - 1 loop
+         Set_Pixel (X, Top, General_Parameters.BLACK);
       end loop;
-      -- draw left and right border
-      for Y in The_Area.Position.Y .. The_Area.Position.Y + The_Area.Height - 1 loop
-         Set_Pixel (The_Area.Position.X, Y, General_Parameters.BLACK);
-         Set_Pixel (The_Area.Position.X + The_Area.Width - 1, Y, General_Parameters.SHADOW);
+      for Y in Top .. Bottom - 1 loop
+         Set_Pixel (Left, Y, General_Parameters.BLACK);
+      end loop;
+      for X in Left .. Right loop
+         Set_Pixel (X, Bottom, General_Parameters.SHADOW);
+      end loop;
+      for Y in Top .. Bottom loop
+         Set_Pixel (Right, Y, General_Parameters.SHADOW);
       end loop;
    end Draw_Frame;
 
@@ -394,24 +407,43 @@ package body Display.Draw is
       end loop;
    end Draw_Yellow_Frame;
 
+   -- 5.1.1.1.3: the lifted border, two lines of 1 cell: outer black
+   -- left/top and shadow right/bottom, inner shadow left/top and black
+   -- right/bottom. The corners follow the figures of the spec (Figures
+   -- 50 and 60, cell by cell): the right and bottom lines of each ring
+   -- run to its corners, the left and top lines stop before them.
    procedure Draw_Button_Frame (The_Area : Area_T) is
       Black  : constant General_Parameters.Color := General_Parameters.BLACK;
       Shadow : constant General_Parameters.Color := General_Parameters.SHADOW;
+
+      -- one ring of the border, inset by I cells
+      procedure Ring (I : Natural; Light, Dark : General_Parameters.Color) is
+         Left   : constant Natural := The_Area.Position.X + I;
+         Top    : constant Natural := The_Area.Position.Y + I;
+         Right  : constant Natural :=
+           The_Area.Position.X + The_Area.Width - 1 - I;
+         Bottom : constant Natural :=
+           The_Area.Position.Y + The_Area.Height - 1 - I;
+      begin
+         for X in Left .. Right - 1 loop
+            Set_Pixel (X, Top, Light);
+         end loop;
+         for Y in Top .. Bottom - 1 loop
+            Set_Pixel (Left, Y, Light);
+         end loop;
+         for X in Left .. Right loop
+            Set_Pixel (X, Bottom, Dark);
+         end loop;
+         for Y in Top .. Bottom loop
+            Set_Pixel (Right, Y, Dark);
+         end loop;
+      end Ring;
    begin
-      for X in The_Area.Position.X .. The_Area.Position.X + The_Area.Width - 1 loop
-         -- horizontal frame
-         Set_Pixel (X, The_Area.Position.Y, Black);
-         Set_Pixel (X, The_Area.Position.Y + 1, Shadow);
-         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 2, Black);
-         Set_Pixel (X, The_Area.Position.Y + The_Area.Height - 1, Shadow);
-      end loop;
-      for Y in The_Area.Position.Y .. The_Area.Position.Y + The_Area.Height - 1 loop
-         -- vertical frame
-         Set_Pixel (The_Area.Position.X, Y, Black);
-         Set_Pixel (The_Area.Position.X + 1, Y, Shadow);
-         Set_Pixel (The_Area.Position.X + The_Area.Width - 2, Y, Black);
-         Set_Pixel (The_Area.Position.X + The_Area.Width - 1, Y, Shadow);
-      end loop;
+      if The_Area.Width < 4 or else The_Area.Height < 4 then
+         return;
+      end if;
+      Ring (0, Light => Black, Dark => Shadow);
+      Ring (1, Light => Shadow, Dark => Black);
    end Draw_Button_Frame;
 
    procedure Draw_Input_Field_Frame (The_Area : Area_T) is

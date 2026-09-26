@@ -99,24 +99,21 @@ package body Display.E_Area is
                              Pressed  : Boolean;
                              Enabled_Symbol  : Symbol.T;
                              Disabled_Symbol : Symbol.T) is
+         -- 5.3.2.7.7: NA15/NA16 replace NA13/NA14 while disabled
+         Sym : constant Symbol.T :=
+           (if Enabled then Enabled_Symbol else Disabled_Symbol);
       begin
-         if Enabled then
-            if not Pressed then
-               E_Buffer.Draw_Button_Frame (The_Area);
-            end if;
-            E_Buffer.Draw_Symbol
-              (Enabled_Symbol,
-               The_Area.Position
-                 + ((The_Area.Width - Enabled_Symbol.Width) / 2,
-                    (The_Area.Height - Enabled_Symbol.Height) / 2));
-         else
-            -- 5.3.2.7.5/.7: disabled scroll buttons show NA15/NA16
-            E_Buffer.Draw_Symbol
-              (Disabled_Symbol,
-               The_Area.Position
-                 + ((The_Area.Width - Disabled_Symbol.Width) / 2,
-                    (The_Area.Height - Disabled_Symbol.Height) / 2));
+         -- 5.3.2.5.2/.3: an enabled button is lifted unless pressed;
+         -- 5.3.2.5.5 a: a disabled button is shown as an enabled one with
+         -- its specific symbol, so it keeps the border
+         if not (Enabled and then Pressed) then
+            E_Buffer.Draw_Button_Frame (The_Area);
          end if;
+         E_Buffer.Draw_Symbol
+           (Sym,
+            The_Area.Position
+              + ((The_Area.Width - Sym.Width) / 2,
+                 (The_Area.Height - Sym.Height) / 2));
       end Draw_Button;
 
       Ack_Shown : constant Boolean := Ack_Pending;
