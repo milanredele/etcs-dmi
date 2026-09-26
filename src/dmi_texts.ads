@@ -14,10 +14,17 @@
 --  network names, the National System name).
 --
 --  5.5.1.1: the languages pre-configured on-board are English, the
---  default, and German, both complete. The fonts carry ISO 8859-1
---  (Font), which covers them; a language that needs other characters
---  (Hungarian: o and u with double acute, ISO 8859-2) needs fonts with
---  those glyphs first.
+--  default, German and Hungarian, all complete. The fonts carry ISO
+--  8859-1 and Latin Extended-A (Font), which cover them: Hungarian
+--  needs o and u with double acute (16#150#, 16#151#, 16#170#,
+--  16#171#) besides the accented letters of Latin-1.
+--
+--  The Hungarian wording is the one of the MAV ETCS operating
+--  instructions (doc/national-instructions/etcs_uzemeltetesi_utasitas.pdf,
+--  body and appendices 1 and 3) wherever the document names the thing;
+--  the texts it does not name are translated in its register and marked
+--  "Choice:" in the table, the short forms it forces (a button, an F
+--  button) "Short form:" with the full term.
 --
 --  The selection is a setting of the DMI unit, kept like the luminance
 --  and the volume (5.2.2.2, 5.2.3.2): DMI_Core.Initialise and a loss of
@@ -32,8 +39,8 @@ is
 
    -- 11.3.6.4 / Figure 119: the keys of the Language window show the
    -- languages in their own language, in the order of their names
-   -- (Deutsch, English), which is the order of this type
-   type Language_T is (German, English);
+   -- (Deutsch, English, Magyar), which is the order of this type
+   type Language_T is (German, English, Hungarian);
 
    Default_Language : constant Language_T := English;
 

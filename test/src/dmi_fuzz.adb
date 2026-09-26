@@ -415,13 +415,14 @@ begin
    DMI_Core.Initialise;
 
    for Step in 1 .. Steps loop
-      -- 0. every 5000 steps the other language (DMI 5.5), so that every
-      --    text of both tables is drawn; the Language window reached by
+      -- 0. every 5000 steps the next language (DMI 5.5), so that every
+      --    text of every table is drawn; the Language window reached by
       --    the random touches changes it as well
       if Step mod 5000 = 0 then
          DMI_Texts.Select_Language
-           (if DMI_Texts."=" (DMI_Texts.Selected, DMI_Texts.English)
-            then DMI_Texts.German else DMI_Texts.English);
+           (if DMI_Texts."=" (DMI_Texts.Selected, DMI_Texts.Language_T'Last)
+            then DMI_Texts.Language_T'First
+            else DMI_Texts.Language_T'Succ (DMI_Texts.Selected));
       end if;
 
       -- 1. one stimulus

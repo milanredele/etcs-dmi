@@ -2,8 +2,9 @@
 --  Fixed texts, one table per language.
 --
 --  The characters above 16#7F# are written in the brackets notation of
---  GNAT ("["E4"]" is a with diaeresis), so that the sources stay ASCII;
---  all of them are ISO 8859-1, which the fonts carry.
+--  GNAT ("["E4"]" is a with diaeresis, "["0151"]" o with double acute),
+--  so that the sources stay ASCII; all of them are ISO 8859-1 or Latin
+--  Extended-A, which the fonts carry.
 
 pragma Ada_2012;
 
@@ -537,9 +538,419 @@ package body DMI_Texts is
       Odometer_Impaired => De_Odometer_Impaired'Access,
       ATO_Needs_Data => De_ATO_Needs_Data'Access);
 
+   ---------------------------------------------------------------------
+   -- Hungarian
+   ---------------------------------------------------------------------
+
+   -- The wording of the MAV ETCS operating instructions (dmi_texts.ads);
+   -- each text says where the document names it ('MAV: ...', clause or
+   -- appendix), or that it is a choice made in the document's register
+   -- ('Choice') or a short form the object's size forces ('Short form').
+   -- The abbreviations of the ETCS the document keeps are kept (FS, OS,
+   -- SR, SH, NL, SM, RBC, GSM-R, VBC, BMM, ATO, EoA). The comments quote
+   -- the document without its accents, to keep the source ASCII.
+
+   -- Choice
+   Hu_Main_Window : aliased constant Wide_String := "F["0151"]men["FC"]";
+   -- Short form of 'Menetengedely vegenek meghaladasa' (4.1, app. 1); the
+   -- window holds the 'Menetengedely vege' button
+   Hu_Override_Window : aliased constant Wide_String := "Meghalad["E1"]s";
+   -- Choice
+   Hu_Data_View : aliased constant Wide_String := "Adatn["E9"]zet";
+   -- MAV: 'kulonleges' as in chapter 4 'Kulonleges uzemi esetek'
+   Hu_Special_Window : aliased constant Wide_String := "K["FC"]l["F6"]nleges";
+   -- Choice
+   Hu_Settings_Window : aliased constant Wide_String :=
+     "Be["E1"]ll["ED"]t["E1"]sok";
+   -- MAV: 'mozdonyvezeto', 'azonosito' (3.1.1, 5.4)
+   Hu_Driver_ID : aliased constant Wide_String :=
+     "Mozdonyvezet["0151"] azonos["ED"]t["F3"]";
+   -- MAV: 'ETCS szint' (1.2.10, 1.7)
+   Hu_Level : aliased constant Wide_String := "Szint";
+   -- MAV: 'vonatszam' (5.4)
+   Hu_Train_Running_Number : aliased constant Wide_String := "Vonatsz["E1"]m";
+   -- MAV: 'Vonatadatok bevitele' (3.1), 'Vonatadatok' (5.3)
+   Hu_Train_Data : aliased constant Wide_String := "Vonatadatok";
+   -- MAV: the entered data are 'nyugtazni' (1.12, 3.1)
+   Hu_Validate_Train_Data : aliased constant Wide_String :=
+     "Vonatadatok nyugt["E1"]z["E1"]sa";
+   -- MAV: 'sebesseg', 'tavolsag' (app. 2)
+   Hu_SR_Speed_Distance : aliased constant Wide_String :=
+     "SR sebess["E9"]g / t["E1"]vols["E1"]g";
+   -- Choice
+   Hu_Adhesion : aliased constant Wide_String := "Tapad["E1"]s";
+   -- Choice
+   Hu_Volume : aliased constant Wide_String := "Hanger["0151"]";
+   -- Choice
+   Hu_Brightness : aliased constant Wide_String := "F["E9"]nyer["0151"]";
+   -- Choice
+   Hu_ATO_Selector : aliased constant Wide_String := "ATO v["E1"]laszt["F3"]";
+   -- Choice
+   Hu_Radio_Data : aliased constant Wide_String := "R["E1"]di["F3"]adatok";
+   -- Choice: after 'GSM-R HU halozat' (5.2)
+   Hu_GSMR_Network_ID : aliased constant Wide_String :=
+     "GSM-R h["E1"]l["F3"]zat azonos["ED"]t["F3"]";
+   -- Choice
+   Hu_RBC_Data : aliased constant Wide_String := "RBC adatok";
+   -- Choice
+   Hu_Radio_Network_Type : aliased constant Wide_String :=
+     "R["E1"]di["F3"]h["E1"]l["F3"]zat t["ED"]pusa";
+   -- Choice: 'menet' for the mission as in 'Menet kezdete' (3.2)
+   Hu_Mission_One_Radio : aliased constant Wide_String :=
+     "Menet egy r["E1"]di["F3"]rendszerrel";
+   -- Choice
+   Hu_Set_VBC : aliased constant Wide_String :=
+     "VBC be["E1"]ll["ED"]t["E1"]sa";
+   -- Choice: 'nyugtazas' for the validation as in 3.1
+   Hu_Validate_Set_VBC : aliased constant Wide_String :=
+     "VBC be["E1"]ll["ED"]t["E1"]s nyugt["E1"]z["E1"]sa";
+   -- Choice
+   Hu_Remove_VBC : aliased constant Wide_String := "VBC t["F6"]rl["E9"]se";
+   -- Choice: 'nyugtazas' for the validation as in 3.1
+   Hu_Validate_Remove_VBC : aliased constant Wide_String :=
+     "VBC t["F6"]rl["E9"]s nyugt["E1"]z["E1"]sa";
+   -- Choice
+   Hu_System_Version : aliased constant Wide_String := "Rendszerverzi["F3"]";
+   -- Choice
+   Hu_Language : aliased constant Wide_String := "Nyelv";
+   -- MAV: 'Menet kezdete ("Kuldetes kezdete", "Start", SoM)' (3.2)
+   Hu_Start : aliased constant Wide_String := "Start";
+   -- MAV: 'Tolatas (SH)' (1.2.12.10, app. 1)
+   Hu_Shunting : aliased constant Wide_String := "Tolat["E1"]s";
+   -- MAV: 'a Tolatas uzemmodbol ... ki kell lepni' (2.10)
+   Hu_Exit_Shunting : aliased constant Wide_String :=
+     "Kil["E9"]p["E9"]s tolat["E1"]sb["F3"]l";
+   -- MAV: 'Nem vezerelt (NL)' (1.2.12.6, app. 1)
+   Hu_Non_Leading : aliased constant Wide_String := "Nem vez["E9"]relt";
+   -- Choice
+   Hu_Maintain_Shunting : aliased constant Wide_String :=
+     "Tolat["E1"]s fenntart["E1"]sa";
+   -- Choice
+   Hu_Initiate_SM : aliased constant Wide_String := "SM ind["ED"]t["E1"]sa";
+   -- Choice
+   Hu_Continue_SM : aliased constant Wide_String := "Folytat["E1"]s SM-ben";
+   -- Choice: as 'Kilepes tolatasbol'
+   Hu_Exit_SM : aliased constant Wide_String :=
+     "Kil["E9"]p["E9"]s SM-b["0151"]l";
+   -- MAV: 'EoA: a Menetengedely vege' (app. 3), the button of 'Menetengedely
+   -- vegenek meghaladasa' (4.1)
+   Hu_EOA : aliased constant Wide_String := "Menetenged["E9"]ly v["E9"]ge";
+   -- Choice
+   Hu_Train_Integrity : aliased constant Wide_String :=
+     "Vonat ["E9"]ps["E9"]ge";
+   -- Choice
+   Hu_BMM_Inhibition : aliased constant Wide_String :=
+     "BMM reakci["F3"] tilt["E1"]sa";
+   -- Choice: 'visszavonas' as in 4.6
+   Hu_Revoke_BMM_Inhibition : aliased constant Wide_String :=
+     "BMM tilt["E1"]s visszavon["E1"]sa";
+   -- MAV: abbreviation kept
+   Hu_ATO : aliased constant Wide_String := "ATO";
+   -- Choice
+   Hu_Contact_Last_RBC : aliased constant Wide_String :=
+     "Utols["F3"] RBC h["ED"]v["E1"]sa";
+   -- Choice: after 'rovid hivo kod' (5.9), 'hivoszam' (1.2.20)
+   Hu_Use_Short_Number : aliased constant Wide_String :=
+     "R["F6"]vid h["ED"]v["F3"]sz["E1"]m haszn["E1"]lata";
+   -- Choice: 'bevitel' as in 'Vonatadatok bevitele' (3.1)
+   Hu_Enter_RBC_Data : aliased constant Wide_String := "RBC adatok bevitele";
+   -- MAV: 'vonatszam' (5.4)
+   Hu_TRN_Button : aliased constant Wide_String := "Vonatsz["E1"]m";
+   -- Choice
+   Hu_F_Main : aliased constant Wide_String := "F["0151"]men["FC"]";
+   -- Short form of 'Meghaladas', broken at its prefix
+   Hu_F_Override_1 : aliased constant Wide_String := "Meg-";
+   -- Short form
+   Hu_F_Override_2 : aliased constant Wide_String := "halad["E1"]s";
+   -- Choice: 'Adatnezet' broken
+   Hu_F_Data_View_1 : aliased constant Wide_String := "Adat-";
+   -- Choice
+   Hu_F_Data_View_2 : aliased constant Wide_String := "n["E9"]zet";
+   -- Short form of 'Kulonleges'
+   Hu_F_Special : aliased constant Wide_String := "K["FC"]l["F6"]nl.";
+   -- MAV: 'vonatszam' (5.4)
+   Hu_Train_Running_Nr : aliased constant Wide_String := "Vonatsz["E1"]m";
+   -- MAV: 'RBC azonosito' (3.1.1)
+   Hu_RBC_ID : aliased constant Wide_String := "RBC azonos["ED"]t["F3"]";
+   -- MAV: 'az RBC telefonszamat' (6.1)
+   Hu_RBC_Phone_Number : aliased constant Wide_String :=
+     "RBC telefonsz["E1"]m";
+   -- MAV: 'sebesseg' (app. 2)
+   Hu_SR_Speed : aliased constant Wide_String := "SR sebess["E9"]g";
+   -- MAV: 'tavolsag' (app. 2)
+   Hu_SR_Distance : aliased constant Wide_String := "SR t["E1"]vols["E1"]g";
+   -- Choice
+   Hu_VBC_Code : aliased constant Wide_String := "VBC k["F3"]d";
+   -- MAV: 'nyugtazni' the entered data (3.1)
+   Hu_Validate : aliased constant Wide_String := "Nyugt["E1"]z["E1"]s";
+   -- Choice
+   Hu_Train_Category : aliased constant Wide_String := "Vonatkateg["F3"]ria";
+   -- Choice
+   Hu_Train_Length : aliased constant Wide_String := "Hossz (m)";
+   -- Choice
+   Hu_Brake_Percentage : aliased constant Wide_String :=
+     "F["E9"]ksz["E1"]zal["E9"]k";
+   -- MAV: 'a vonatadatkent megadott maximalis sebesseg' (1.2.10.1)
+   Hu_Max_Speed : aliased constant Wide_String :=
+     "Maxim["E1"]lis sebess["E9"]g (km/h)";
+   -- Choice
+   Hu_Axle_Load_Category : aliased constant Wide_String :=
+     "Tengelyterhel["E9"]si kateg["F3"]ria";
+   -- Choice
+   Hu_Airtight : aliased constant Wide_String := "L["E9"]gt["F6"]m["F6"]r";
+   -- Choice
+   Hu_Loading_Gauge : aliased constant Wide_String := "Rakszelv["E9"]ny";
+   -- MAV: as Max_Speed (1.2.10.1)
+   Hu_Maximum_Speed : aliased constant Wide_String :=
+     "Maxim["E1"]lis sebess["E9"]g (km/h)";
+   -- Choice
+   Hu_VBC_Code_Before : aliased constant Wide_String := "VBC #";
+   -- Choice
+   Hu_VBC_Code_After : aliased constant Wide_String :=
+     " be["E1"]ll["ED"]t["E1"]si k["F3"]d";
+   -- Choice
+   Hu_Operated_System_Version : aliased constant Wide_String :=
+     "M["0171"]k["F6"]d["0151"] rendszerverzi["F3"]";
+   -- Choice
+   Hu_Yes : aliased constant Wide_String := "Igen";
+   -- Choice
+   Hu_No : aliased constant Wide_String := "Nem";
+   -- Choice
+   Hu_More : aliased constant Wide_String := "T["F6"]bb";
+   -- MAV: 'ETCS 0 szint / Level 0' (1.9)
+   Hu_Level_0 : aliased constant Wide_String := "ETCS 0 szint";
+   -- MAV: 'ETCS 1 szint /Level 1' (1.10)
+   Hu_Level_1 : aliased constant Wide_String := "ETCS 1 szint";
+   -- MAV: 'ETCS 2 szint /Level 2' (1.11)
+   Hu_Level_2 : aliased constant Wide_String := "ETCS 2 szint";
+   -- Choice
+   Hu_Non_Slippery_Rail : aliased constant Wide_String :=
+     "Nem cs["FA"]sz["F3"]s s["ED"]n";
+   -- Choice
+   Hu_Slippery_Rail : aliased constant Wide_String :=
+     "Cs["FA"]sz["F3"]s s["ED"]n";
+   -- MAV: after 'Keszenleti (SB)' (1.2.12.7)
+   Hu_Stand_By : aliased constant Wide_String := "K["E9"]szenl["E9"]t";
+   -- MAV: 'be' as in 'Fomegszakitot be' (app. 1)
+   Hu_ATO_On : aliased constant Wide_String := "Be";
+   -- Choice
+   Hu_Out_Of_GC : aliased constant Wide_String := "GC-n k["ED"]v["FC"]l";
+   -- Choice: '<title>: bevitel kesz?', the title stays in the nominative
+   Hu_Entry_Complete_Before : aliased constant Wide_String := "";
+   -- Choice: 'bevitel' as in 'Vonatadatok bevitele' (3.1)
+   Hu_Entry_Complete_After : aliased constant Wide_String :=
+     ": bevitel k["E9"]sz?";
+   -- MAV: 'balizolvasasi hiba' (6.4)
+   Hu_Balise_Read_Error : aliased constant Wide_String :=
+     "Bal["ED"]zolvas["E1"]si hiba";
+   -- MAV: 'palyamenti hiba' (6.4)
+   Hu_Trackside_Malfunction : aliased constant Wide_String :=
+     "P["E1"]lyamenti hiba";
+   -- Choice: after 'kommunikacios kapcsolat' (6.1.1)
+   Hu_Communication_Error : aliased constant Wide_String :=
+     "Kommunik["E1"]ci["F3"]s hiba";
+   -- MAV: 'az FS vagy OS modba torteno belepes' (3.2)
+   Hu_Entering_FS : aliased constant Wide_String :=
+     "Bel["E9"]p["E9"]s FS m["F3"]dba";
+   -- MAV: as Entering_FS (3.2)
+   Hu_Entering_OS : aliased constant Wide_String :=
+     "Bel["E9"]p["E9"]s OS m["F3"]dba";
+   -- Choice: as Entering_FS
+   Hu_Entering_SM : aliased constant Wide_String :=
+     "Bel["E9"]p["E9"]s SM m["F3"]dba";
+   -- Choice
+   Hu_Runaway_Movement : aliased constant Wide_String := "Elgurul["E1"]s";
+   -- Choice
+   Hu_SM_Refused : aliased constant Wide_String := "SM elutas["ED"]tva";
+   -- Choice
+   Hu_SM_Request_Failed : aliased constant Wide_String :=
+     "SM k["E9"]r["E9"]s sikertelen";
+   -- Choice
+   Hu_SH_Refused : aliased constant Wide_String := "SH elutas["ED"]tva";
+   -- Choice
+   Hu_SH_Request_Failed : aliased constant Wide_String :=
+     "SH k["E9"]r["E9"]s sikertelen";
+   -- MAV: 'az ETCS palyamenti alrendszer inkompatibilitasa' (6.4)
+   Hu_Trackside_Not_Compatible : aliased constant Wide_String :=
+     "P["E1"]lyamenti alrendszer inkompatibilis";
+   -- Choice: after 1.12 ('valtozas all be', 'modositani')
+   Hu_Train_Data_Changed : aliased constant Wide_String :=
+     "Vonatadatok m["F3"]dosultak";
+   -- Choice
+   Hu_Safe_Consist_Length : aliased constant Wide_String :=
+     "Biztons["E1"]gos vonathossz m["E1"]r nem ["E1"]ll rendelkez["E9"]sre";
+   -- Choice
+   Hu_Train_Rejected : aliased constant Wide_String := "Vonat elutas["ED"]tva";
+   -- Choice: 'EoA' (app. 3) and 'meghaladas' (4.1)
+   Hu_Unauthorized_Passing : aliased constant Wide_String :=
+     "EoA / LOA jogosulatlan meghalad["E1"]sa";
+   -- MAV: 'menetengedely' (MA, app. 3), 'szintvaltas' (1.2.11)
+   Hu_No_MA_Level_Transition : aliased constant Wide_String :=
+     "Nincs menetenged["E9"]ly a szintv["E1"]lt["E1"]skor";
+   -- MAV: 'a ... tavolsag tullepesekor' (2.9)
+   Hu_SR_Distance_Exceeded : aliased constant Wide_String :=
+     "SR t["E1"]vols["E1"]g t["FA"]ll["E9"]pve";
+   -- Choice: after 'veszmegallitas parancsot kap' (1.2.12.8)
+   Hu_SH_Stop_Order : aliased constant Wide_String :=
+     "SH meg["E1"]ll["ED"]t["E1"]si parancs";
+   -- Choice: as SH_Stop_Order
+   Hu_SR_Stop_Order : aliased constant Wide_String :=
+     "SR meg["E1"]ll["ED"]t["E1"]si parancs";
+   -- MAV: 'Veszmegallas' (4.6)
+   Hu_Emergency_Stop : aliased constant Wide_String :=
+     "V["E9"]szmeg["E1"]ll["E1"]s";
+   -- MAV: as SR_Distance_Exceeded (2.9)
+   Hu_RV_Distance_Exceeded : aliased constant Wide_String :=
+     "RV t["E1"]vols["E1"]g t["FA"]ll["E9"]pve";
+   -- MAV: as SR_Distance_Exceeded (2.9)
+   Hu_PT_Distance_Exceeded : aliased constant Wide_String :=
+     "PT t["E1"]vols["E1"]g t["FA"]ll["E9"]pve";
+   -- MAV: 'ETCS palyaadatok' (1.2.13)
+   Hu_No_Track_Description : aliased constant Wide_String :=
+     "Nincsenek p["E1"]lyaadatok";
+   -- Choice
+   Hu_Route_Loading_Gauge : aliased constant Wide_String :=
+     "Alkalmatlan ["FA"]tvonal - rakszelv["E9"]ny";
+   -- Choice
+   Hu_Route_Traction_System : aliased constant Wide_String :=
+     "Alkalmatlan ["FA"]tvonal - vontat["E1"]si rendszer";
+   -- Choice
+   Hu_Route_Axle_Load : aliased constant Wide_String :=
+     "Alkalmatlan ["FA"]tvonal - tengelyterhel["E9"]s";
+   -- Choice: as GSMR_Registration_Failed
+   Hu_FRMCS_Registration_Failed : aliased constant Wide_String :=
+     "FRMCS h["E1"]l["F3"]zati bejelentkez["E9"]si hiba";
+   -- MAV: 'Bejelentkezesi hiba' (5.6), 'GSM-R halozat' (6.6)
+   Hu_GSMR_Registration_Failed : aliased constant Wide_String :=
+     "GSM-R h["E1"]l["F3"]zati bejelentkez["E9"]si hiba";
+   -- Choice
+   Hu_NL_No_Longer_Permitted : aliased constant Wide_String :=
+     "NL m["E1"]r nem megengedett";
+   -- Choice
+   Hu_Odometer_Impaired : aliased constant Wide_String :=
+     "Odometria korl["E1"]tozott";
+   -- Choice: 'igenyelt adatok' (3.1)
+   Hu_ATO_Needs_Data : aliased constant Wide_String :=
+     "ATO adatokat ig["E9"]nyel";
+
+   Hungarian_Texts : aliased constant Table_T :=
+     (Main_Window => Hu_Main_Window'Access,
+      Override_Window => Hu_Override_Window'Access,
+      Data_View => Hu_Data_View'Access,
+      Special_Window => Hu_Special_Window'Access,
+      Settings_Window => Hu_Settings_Window'Access,
+      Driver_ID => Hu_Driver_ID'Access,
+      Level => Hu_Level'Access,
+      Train_Running_Number => Hu_Train_Running_Number'Access,
+      Train_Data => Hu_Train_Data'Access,
+      Validate_Train_Data => Hu_Validate_Train_Data'Access,
+      SR_Speed_Distance => Hu_SR_Speed_Distance'Access,
+      Adhesion => Hu_Adhesion'Access,
+      Volume => Hu_Volume'Access,
+      Brightness => Hu_Brightness'Access,
+      ATO_Selector => Hu_ATO_Selector'Access,
+      Radio_Data => Hu_Radio_Data'Access,
+      GSMR_Network_ID => Hu_GSMR_Network_ID'Access,
+      RBC_Data => Hu_RBC_Data'Access,
+      Radio_Network_Type => Hu_Radio_Network_Type'Access,
+      Mission_One_Radio => Hu_Mission_One_Radio'Access,
+      Set_VBC => Hu_Set_VBC'Access,
+      Validate_Set_VBC => Hu_Validate_Set_VBC'Access,
+      Remove_VBC => Hu_Remove_VBC'Access,
+      Validate_Remove_VBC => Hu_Validate_Remove_VBC'Access,
+      System_Version => Hu_System_Version'Access,
+      Language => Hu_Language'Access,
+      Start => Hu_Start'Access,
+      Shunting => Hu_Shunting'Access,
+      Exit_Shunting => Hu_Exit_Shunting'Access,
+      Non_Leading => Hu_Non_Leading'Access,
+      Maintain_Shunting => Hu_Maintain_Shunting'Access,
+      Initiate_SM => Hu_Initiate_SM'Access,
+      Continue_SM => Hu_Continue_SM'Access,
+      Exit_SM => Hu_Exit_SM'Access,
+      EOA => Hu_EOA'Access,
+      Train_Integrity => Hu_Train_Integrity'Access,
+      BMM_Inhibition => Hu_BMM_Inhibition'Access,
+      Revoke_BMM_Inhibition => Hu_Revoke_BMM_Inhibition'Access,
+      ATO => Hu_ATO'Access,
+      Contact_Last_RBC => Hu_Contact_Last_RBC'Access,
+      Use_Short_Number => Hu_Use_Short_Number'Access,
+      Enter_RBC_Data => Hu_Enter_RBC_Data'Access,
+      TRN_Button => Hu_TRN_Button'Access,
+      F_Main => Hu_F_Main'Access,
+      F_Override_1 => Hu_F_Override_1'Access,
+      F_Override_2 => Hu_F_Override_2'Access,
+      F_Data_View_1 => Hu_F_Data_View_1'Access,
+      F_Data_View_2 => Hu_F_Data_View_2'Access,
+      F_Special => Hu_F_Special'Access,
+      Train_Running_Nr => Hu_Train_Running_Nr'Access,
+      RBC_ID => Hu_RBC_ID'Access,
+      RBC_Phone_Number => Hu_RBC_Phone_Number'Access,
+      SR_Speed => Hu_SR_Speed'Access,
+      SR_Distance => Hu_SR_Distance'Access,
+      VBC_Code => Hu_VBC_Code'Access,
+      Validate => Hu_Validate'Access,
+      Train_Category => Hu_Train_Category'Access,
+      Train_Length => Hu_Train_Length'Access,
+      Brake_Percentage => Hu_Brake_Percentage'Access,
+      Max_Speed => Hu_Max_Speed'Access,
+      Axle_Load_Category => Hu_Axle_Load_Category'Access,
+      Airtight => Hu_Airtight'Access,
+      Loading_Gauge => Hu_Loading_Gauge'Access,
+      Maximum_Speed => Hu_Maximum_Speed'Access,
+      VBC_Code_Before => Hu_VBC_Code_Before'Access,
+      VBC_Code_After => Hu_VBC_Code_After'Access,
+      Operated_System_Version => Hu_Operated_System_Version'Access,
+      Yes => Hu_Yes'Access,
+      No => Hu_No'Access,
+      More => Hu_More'Access,
+      Level_0 => Hu_Level_0'Access,
+      Level_1 => Hu_Level_1'Access,
+      Level_2 => Hu_Level_2'Access,
+      Non_Slippery_Rail => Hu_Non_Slippery_Rail'Access,
+      Slippery_Rail => Hu_Slippery_Rail'Access,
+      Stand_By => Hu_Stand_By'Access,
+      ATO_On => Hu_ATO_On'Access,
+      Out_Of_GC => Hu_Out_Of_GC'Access,
+      Entry_Complete_Before => Hu_Entry_Complete_Before'Access,
+      Entry_Complete_After => Hu_Entry_Complete_After'Access,
+      Balise_Read_Error => Hu_Balise_Read_Error'Access,
+      Trackside_Malfunction => Hu_Trackside_Malfunction'Access,
+      Communication_Error => Hu_Communication_Error'Access,
+      Entering_FS => Hu_Entering_FS'Access,
+      Entering_OS => Hu_Entering_OS'Access,
+      Entering_SM => Hu_Entering_SM'Access,
+      Runaway_Movement => Hu_Runaway_Movement'Access,
+      SM_Refused => Hu_SM_Refused'Access,
+      SM_Request_Failed => Hu_SM_Request_Failed'Access,
+      SH_Refused => Hu_SH_Refused'Access,
+      SH_Request_Failed => Hu_SH_Request_Failed'Access,
+      Trackside_Not_Compatible => Hu_Trackside_Not_Compatible'Access,
+      Train_Data_Changed => Hu_Train_Data_Changed'Access,
+      Safe_Consist_Length => Hu_Safe_Consist_Length'Access,
+      Train_Rejected => Hu_Train_Rejected'Access,
+      Unauthorized_Passing => Hu_Unauthorized_Passing'Access,
+      No_MA_Level_Transition => Hu_No_MA_Level_Transition'Access,
+      SR_Distance_Exceeded => Hu_SR_Distance_Exceeded'Access,
+      SH_Stop_Order => Hu_SH_Stop_Order'Access,
+      SR_Stop_Order => Hu_SR_Stop_Order'Access,
+      Emergency_Stop => Hu_Emergency_Stop'Access,
+      RV_Distance_Exceeded => Hu_RV_Distance_Exceeded'Access,
+      PT_Distance_Exceeded => Hu_PT_Distance_Exceeded'Access,
+      No_Track_Description => Hu_No_Track_Description'Access,
+      Route_Loading_Gauge => Hu_Route_Loading_Gauge'Access,
+      Route_Traction_System => Hu_Route_Traction_System'Access,
+      Route_Axle_Load => Hu_Route_Axle_Load'Access,
+      FRMCS_Registration_Failed => Hu_FRMCS_Registration_Failed'Access,
+      GSMR_Registration_Failed => Hu_GSMR_Registration_Failed'Access,
+      NL_No_Longer_Permitted => Hu_NL_No_Longer_Permitted'Access,
+      Odometer_Impaired => Hu_Odometer_Impaired'Access,
+      ATO_Needs_Data => Hu_ATO_Needs_Data'Access);
+
    Tables : constant array (Language_T) of access constant Table_T :=
-     (English => English_Texts'Access,
-      German  => German_Texts'Access);
+     (English   => English_Texts'Access,
+      German    => German_Texts'Access,
+      Hungarian => Hungarian_Texts'Access);
 
    function Selected return Language_T is (Current);
 
@@ -550,13 +961,15 @@ package body DMI_Texts is
 
    function Name (Language : Language_T) return Wide_String is
      (case Language is
-         when German  => "Deutsch",
-         when English => "English");
+         when German    => "Deutsch",
+         when English   => "English",
+         when Hungarian => "Magyar");
 
    function Code (Language : Language_T) return Code_T is
      (case Language is
-         when German  => "de",
-         when English => "en");
+         when German    => "de",
+         when English   => "en",
+         when Hungarian => "hu");
 
    function Text (ID : Text_ID; Language : Language_T) return Wide_String is
      (Tables (Language) (ID).all);
