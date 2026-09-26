@@ -69,16 +69,11 @@ package body Display.E_Area is
                   10, General_Parameters.WHITE);
             end if;
             if Line.Length > 0 then
+               -- 8.2.3.4.7 c: the first group in bold characters
                E_Buffer.Draw_String_Clipped
                  (Text_X, Base_Y, Line.Text (1 .. Line.Length),
-                  Text_Size, General_Parameters.WHITE, E5_E9);
-               if Line.Bold then
-                  -- bold style approximated by a 1 cell double strike
-                  E_Buffer.Draw_String_Clipped
-                    (Text_X + Bold_Extra, Base_Y,
-                     Line.Text (1 .. Line.Length),
-                     Text_Size, General_Parameters.WHITE, E5_E9);
-               end if;
+                  Text_Size, General_Parameters.WHITE, E5_E9,
+                  Bold => Line.Bold);
             end if;
          end;
       end loop;

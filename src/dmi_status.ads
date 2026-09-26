@@ -20,10 +20,13 @@ package DMI_Status is
    Set_Speed_Valid : Boolean := False;                  -- 8.2.3.9
    Set_Speed       : Natural := 0;
 
-   -- 8.2.2.5: TTI value is only sent when requested by National Value
-   TTI_Valid   : Boolean := False;
-   TTI_Seconds : Natural := 0;
-   T_Disp_TTI  : Natural := 14;
+   -- 8.2.2.5: TTI value is only sent when requested by National Value.
+   -- The TTI in tenths of a second (MSG_STATUS), so that the ten steps
+   -- of TdispTTI / 10 of 8.2.2.5.3 fall where the formula puts them;
+   -- TdispTTI in seconds (a fixed value, 14 s, SUBSET-026 A.3.1).
+   TTI_Valid  : Boolean := False;
+   TTI_Tenths : Natural := 0;
+   T_Disp_TTI : Positive := 14;
 
    Tunnel            : Tunnel_T := Unknown;
    Tunnel_Distance   : Natural := 0;
@@ -65,6 +68,15 @@ package DMI_Status is
    -- Display condition of the TTI per Table 15a (mode, monitoring,
    -- National Value, toggle for OS/SR)
    function TTI_Displayed return Boolean;
+
+   -- 8.2.2.5.3: n of the white square (n x 5 x 5 cells), 1 .. 10:
+   --   TdispTTI * (10 - n) / 10 <= TTI < TdispTTI * (10 - (n - 1)) / 10
+   -- With TTI = TTI_Tenths / 10 s this is
+   --   TdispTTI * (10 - n) <= TTI_Tenths < TdispTTI * (11 - n),
+   -- so 10 - n is TTI_Tenths / TdispTTI in integer division, exactly,
+   -- with no rounding. Clamped to 1 .. 10 (a TTI of TdispTTI or more is
+   -- not displayed, Table 15a).
+   function TTI_Step return Positive;
 
    procedure Reset;
 

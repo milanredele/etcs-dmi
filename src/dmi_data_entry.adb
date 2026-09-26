@@ -956,10 +956,8 @@ package body DMI_Data_Entry is
    end Draw_Delete_Key;
 
    --  5.1.2.1.5: the dot character of a keyboard is presented in bold
-   --  style. Bold is drawn as a 1 cell double strike, as the bold first
-   --  group text messages are (8.2.3.4.7 c, Display.E_Area).
-   Bold_Extra : constant := 1;
-
+   --  style, drawn with the bold font (Font.FreeSansBold_12) like the
+   --  first group text messages (8.2.3.4.7 c).
    procedure Draw_Dot_Key (The_Area : Area_T;
                            Enabled  : Boolean;
                            Is_Down  : Boolean) is
@@ -974,8 +972,8 @@ package body DMI_Data_Entry is
       if not Is_Down then
          Draw.Draw_Button_Frame (The_Area);
       end if;
-      Draw.Draw_String (Pen_X, Pen_Y, ".", 12, Ink, Draw.Center);
-      Draw.Draw_String (Pen_X + Bold_Extra, Pen_Y, ".", 12, Ink, Draw.Center);
+      Draw.Draw_String (Pen_X, Pen_Y, ".", 12, Ink, Draw.Center,
+                        Bold => True);
    end Draw_Dot_Key;
 
    --  10.3.5.17: the label of an alphanumeric data key separates the
@@ -993,7 +991,7 @@ package body DMI_Data_Entry is
         (if Key_Enabled (Key) then General_Parameters.GREY
          else General_Parameters.DARK_GREY);
       Width   : constant Natural :=
-        Draw.String_Width (Number, 16) + Draw.String_Width (Letters, 10);
+        Draw.String_Advance (Number, 16) + Draw.String_Width (Letters, 10);
       Pen_X   : constant Natural :=
         The_Area.Position.X + (The_Area.Width - Width) / 2;
       Pen_Y   : constant Natural :=
@@ -1004,7 +1002,7 @@ package body DMI_Data_Entry is
       end if;
       Draw.Draw_String (Pen_X, Pen_Y, Number, 16, Ink);
       Draw.Draw_String
-        (Pen_X + Draw.String_Width (Number, 16), Pen_Y, Letters, 10, Ink);
+        (Pen_X + Draw.String_Advance (Number, 16), Pen_Y, Letters, 10, Ink);
    end Draw_Alnum_Key;
 
    --  10.3.5.19: one key of a dedicated keyboard. A predefined choice
@@ -1221,7 +1219,7 @@ package body DMI_Data_Entry is
         (if Tapping then Shown elsif Full then Shown else Shown + 1);
       Line     : Positive;
       Before   : Natural;
-      Cell     : Natural := Draw.String_Width ("0", 12);
+      Cell     : Natural := Draw.String_Advance ("0", 12);
       X, Y     : Natural;
    begin
       Char_Place (Shown, Place, Line, Before);
@@ -1229,17 +1227,18 @@ package body DMI_Data_Entry is
          --  below the character itself, which is one display character
          --  wide, or after it when the field is full
          if Line <= Blocks.Count then
-            Cell := Draw.String_Width
+            Cell := Draw.String_Advance
               (Blocks.Lines (Line).Text (Before + 1 .. Before + 1), 12);
          end if;
          if Full then
             Before := Before + 1;
-            Cell := Draw.String_Width ("0", 12);
+            Cell := Draw.String_Advance ("0", 12);
          end if;
       end if;
       X := The_Data.Position.X + 10;
       if Line <= Blocks.Count then
-         X := X + Draw.String_Width (Blocks.Lines (Line).Text (1 .. Before), 12);
+         X := X + Draw.String_Advance
+           (Blocks.Lines (Line).Text (1 .. Before), 12);
       end if;
       Y := Base_Y (The_Data, Natural'Min (Line, Count), Count) + 2;
       if not DMI_Flash.Cursor_Visible

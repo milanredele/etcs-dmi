@@ -64,7 +64,8 @@ package Display.Frame_Buffer is
                           The_String : Wide_String; 
                           The_Size   : Font.Size_T;
                           The_Color  : General_Parameters.Color;
-                          The_Alignment : Text_Alignment := Left);
+                          The_Alignment : Text_Alignment := Left;
+                          Bold       : Boolean := False);
    
    -- Left aligned and clipped: no cell outside The_Clip (relative to the
    -- area, like the pen position) is drawn
@@ -73,7 +74,8 @@ package Display.Frame_Buffer is
                                   The_String : Wide_String;
                                   The_Size   : Font.Size_T;
                                   The_Color  : General_Parameters.Color;
-                                  The_Clip   : Area_T);
+                                  The_Clip   : Area_T;
+                                  Bold       : Boolean := False);
 
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
                           The_Position : Position_T);

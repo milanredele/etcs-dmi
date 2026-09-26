@@ -115,11 +115,17 @@ package DMI_Protocol is
    --  adhesion u8 (bool slippery), bmm u8 (bool), reversing u8 (bool),
    --  sm_direction u8 (0 none, 1 forward, 2 backward),
    --  set_speed u16 (16#FFFF# none),
-   --  tti u8 (seconds, 16#FF# none), t_disp_tti u8 (seconds),
+   --  tti u16 (the Time to Indication in tenths of a second,
+   --  16#FFFF# none: DMI 8.2.2.5.3 steps the white square by TdispTTI / 10,
+   --  which whole seconds cannot follow), t_disp_tti u8 (TdispTTI in
+   --  seconds, SUBSET-026 A.3.1: 14; 0 keeps the value the DMI has),
    --  tunnel u8 (0 unknown, 1 active, 2 announced), tunnel_dist u32,
    --  geo_pos u32 (m, 16#FFFF_FFFF# unknown),
    --  hour u8, minute u8, second u8
-   Status_Length : constant := 22;
+   --  The message has a fixed length; one of any other length, the 22
+   --  bytes of the earlier layout with a u8 tti in seconds included, is
+   --  ignored as a whole.
+   Status_Length : constant := 23;
 
    MSG_ONBOARD : constant Msg_Type_T := 16#0A#;
    --  On-board state the DMI cannot know but needs for the enabling

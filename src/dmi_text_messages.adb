@@ -92,12 +92,21 @@ package body DMI_Text_Messages is
    function To_Wide (C : Character) return Wide_Character is
      (Wide_Character'Val (Character'Pos (C)));
 
-   -- Cells the character takes when drawn, a replacement box included
-   function Cells (C : Character) return Natural is
-     (Display.Draw.String_Width ((1 => To_Wide (C)), Text_Size));
+   -- The lines are measured with the glyphs they are drawn with: the
+   -- bold font for the first group (8.2.3.4.7 c), the regular one
+   -- otherwise. Advance: where the pen stands after the character.
+   -- Extent: the cells the character covers from its pen position when
+   -- it ends the line, which is its advance or, for a glyph whose ink
+   -- reaches beyond it ('y', '/' ...), its ink; a line fits when the
+   -- advances before its last character plus the extent of that one
+   -- stay within Line_Width, so no cell reaches the right margin.
+   function Advance (M : Message_T; C : Character) return Natural is
+     (Display.Draw.String_Advance
+        ((1 => To_Wide (C)), Text_Size, Bold => M.First_Group));
 
-   function Limit (M : Message_T) return Natural is
-     (if M.First_Group then Line_Width - Bold_Extra else Line_Width);
+   function Extent (M : Message_T; C : Character) return Natural is
+     (Display.Draw.String_Width
+        ((1 => To_Wide (C)), Text_Size, Bold => M.First_Group));
 
    -- First character that is not a space from From on, or M.Length + 1
    function Skip_Spaces (M : Message_T; From : Positive) return Positive is
@@ -128,7 +137,7 @@ package body DMI_Text_Messages is
             exit;
          end if;
          if I - From >= Max_Line
-           or else Width + Cells (M.Text (I)) > Limit (M)
+           or else Width + Extent (M, M.Text (I)) > Line_Width
          then
             -- the line is full before character I
             if M.Text (I) = ' ' then
@@ -149,7 +158,7 @@ package body DMI_Text_Messages is
          if M.Text (I) = ' ' then
             Last_Space := I;
          end if;
-         Width := Width + Cells (M.Text (I));
+         Width := Width + Advance (M, M.Text (I));
          I := I + 1;
       end loop;
       -- To >= From here: M.Text (From) is not a space, so Last_Space is
@@ -204,17 +213,19 @@ package body DMI_Text_Messages is
       for I in From .. Natural'Min (To, From + Max_Line - 1) loop
          Line.Length := Line.Length + 1;
          Line.Text (Line.Length) := To_Wide (M.Text (I));
-         Width := Width + Cells (M.Text (I));
+         Width := Width + Advance (M, M.Text (I));
       end loop;
       if Cut and then Next <= M.Length then
          -- room for the ellipsis, which does not follow a space
          while Line.Length > 0
-           and then (Width + Display.Draw.String_Width (Ellipsis, Text_Size)
-                       > Limit (M)
+           and then (Width + Display.Draw.String_Width
+                               (Ellipsis, Text_Size, Bold => M.First_Group)
+                       > Line_Width
                      or else Line.Text (Line.Length) = ' ')
          loop
-            Width := Width - Display.Draw.String_Width
-              (Line.Text (Line.Length .. Line.Length), Text_Size);
+            Width := Width - Display.Draw.String_Advance
+              (Line.Text (Line.Length .. Line.Length), Text_Size,
+               Bold => M.First_Group);
             Line.Length := Line.Length - 1;
          end loop;
          Line.Text (Line.Length + 1 .. Line.Length + Ellipsis'Length) :=

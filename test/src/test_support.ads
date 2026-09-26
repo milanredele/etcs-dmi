@@ -62,8 +62,8 @@ package Test_Support is
       Reversing    : Boolean := False;
       SM_Direction : Natural := 0;   -- 0 none / 1 fwd / 2 bwd
       Set_Speed    : Natural := 16#FFFF#;
-      TTI          : Natural := 16#FF#;
-      T_Disp_TTI   : Natural := 14;
+      TTI          : Natural := 16#FFFF#; -- tenths of a second
+      T_Disp_TTI   : Natural := 14;       -- seconds
       Tunnel       : Natural := 0;   -- 0 unknown / 1 active / 2 announced
       Tunnel_Dist  : Natural := 0;
       Geo_Pos      : Natural := 16#7FFF_FFFF#; -- metres; huge = unknown

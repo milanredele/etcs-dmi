@@ -25,13 +25,11 @@ with User_Settings;
 package body Display.A_Area is
 
    procedure Draw_TTI is
-      -- DMI 8.2.2.5.3/.4: dark grey 50x50 square with a growing white
-      -- square, both centred in A1
+      -- DMI 8.2.2.5.3/.4: dark grey 50x50 square with a white square of
+      -- n x 5 cells a side (DMI_Status.TTI_Step: the formula of
+      -- 8.2.2.5.3 on the TTI in tenths of a second), both centred in A1
       A1 : constant Area_T := Get_Sub_Area_With_Relative_Position (Display.A1);
-      T  : constant Natural := Natural'Max (1, DMI_Status.T_Disp_TTI);
-      N  : constant Natural :=
-        Natural'Min (10, Natural'Max (1, 10 - (DMI_Status.TTI_Seconds * 10) / T));
-      White_Size : constant Natural := N * 5;
+      White_Size : constant Natural := DMI_Status.TTI_Step * 5;
    begin
       A_Buffer.Fill_Area ((A1.Position + (2, 2), 50, 50),
                           General_Parameters.DARK_GREY);

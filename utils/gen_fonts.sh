@@ -1,13 +1,15 @@
 #!/bin/sh
-#  ETCS DMI -- regenerate the bitmap font packages src/font-freesans_*.ads.
+#  ETCS DMI -- regenerate the bitmap font packages src/font-freesans_*.ads
+#  and src/font-freesansbold_*.ads.
 #
-#  Usage:  utils/gen_fonts.sh [path to FreeSans.ttf]
+#  Usage:  utils/gen_fonts.sh [path to FreeSans.ttf [path to FreeSansBold.ttf]]
 #
 #  Without an argument the script downloads the GNU FreeFont release the
 #  fonts in the repository were made from and checks its digest, so the
 #  generation is reproducible on any machine with FreeType and a C
-#  compiler. The .ttf itself is not kept in the repository (1.5 MB, and
-#  its licence text would have to come with it); this script and the
+#  compiler. The .ttf files themselves are not kept in the repository
+#  (1.5 MB and more, and their licence text would have to come with
+#  them); this script and the
 #  header of every generated package name the exact release instead.
 #
 #  FreeType comes from Homebrew (brew install freetype) or MacPorts
@@ -28,18 +30,23 @@ mkdir -p "$work"
 ZIP_URL=https://ftp.gnu.org/gnu/freefont/freefont-ttf-20120503.zip
 ZIP_SHA=7c85baf1bf82a1a1845d1322112bc6ca982221b484e3b3925022e25b5cae89af
 TTF_SHA=c80858440d8fb618e0ac5ff6f16251dbfa6b3316f00f3cdd17d477297dd87b04
+BOLD_SHA=982534a3731416a15e2756601721f26053f68bf4239011550f3dd23ce6308215
 SOURCE="GNU FreeFont FreeSans.ttf, release 20120503, GPL v3 with the font exception"
+BOLD_SOURCE="GNU FreeFont FreeSansBold.ttf, release 20120503, GPL v3 with the font exception"
 
 ttf=$1
-if [ -z "$ttf" ]; then
-  ttf=$work/freefont-20120503/FreeSans.ttf
-  if [ ! -f "$ttf" ]; then
+bold=$2
+if [ -z "$ttf" ] || [ -z "$bold" ]; then
+  if [ ! -f "$work/freefont-20120503/FreeSansBold.ttf" ]; then
     curl -sSL -o "$work/freefont.zip" "$ZIP_URL"
     echo "$ZIP_SHA  $work/freefont.zip" | shasum -a 256 -c -
     unzip -o -q "$work/freefont.zip" -d "$work"
   fi
+  ttf=${ttf:-$work/freefont-20120503/FreeSans.ttf}
+  bold=${bold:-$work/freefont-20120503/FreeSansBold.ttf}
 fi
 echo "$TTF_SHA  $ttf" | shasum -a 256 -c -
+echo "$BOLD_SHA  $bold" | shasum -a 256 -c -
 
 cc -O2 -o "$work/ttf2ada" "$here/ttf2ada.c" \
    $(pkg-config --cflags --libs freetype2)
@@ -62,4 +69,13 @@ for cells in 10 12 16 17 18; do
     > "$root/src/font-freesans_$cells.ads"
 done
 
+#  The bold style is asked for at one height only, 12 cells (5.1.2.2.3 h):
+#  the text messages of the first group (8.2.3.4.7 c) and the '.' of a
+#  keyboard (5.1.2.1.5). Same character set as the regular fonts.
+for cells in 12; do
+  "$work/ttf2ada" "$bold" "$cells" "$SET" "$BOLD_SOURCE" \
+    > "$root/src/font-freesansbold_$cells.ads"
+done
+
 echo "written: $root/src/font-freesans_{10,12,16,17,18}.ads"
+echo "written: $root/src/font-freesansbold_12.ads"

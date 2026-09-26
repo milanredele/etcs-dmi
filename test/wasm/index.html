@@ -187,7 +187,11 @@
             or when the mode changes), and set the on-board's radio
             data, waiting states and list of GSM-R networks, the name of
             the National System of level NTC, the system version and
-            the VBCs stored on-board.</li>
+            the VBCs stored on-board. <i>TTI s</i> puts the Time to
+            Indication in A1 (FS, CSM): below <i>TdispTTI</i> the white
+            square grows one step every tenth of TdispTTI, 1.4 s for
+            the 14 s of the ETCS; step it by 0.1 s to see the bounds of
+            DMI 8.2.2.5.3.</li>
           <li><b>The keys under the display.</b> <i>Settings</i> is the
             desk button for the <i>Settings</i> window (DMI 8.6.1.6): it
             works where the wrench does, on the default window. There
@@ -382,6 +386,12 @@
         <label>ETA <input type="text" id="ato_eta" value="17:36:48" size="8"></label>
         <label>stopping points m <input type="text" id="ato_stops" value="0, 1800" size="12"></label>
       </div>
+      <div class="row" title="MSG_STATUS (dmi_protocol.ads): the Time to Indication of DMI 8.2.2.5 in A1, sent in tenths of a second so that the white square steps every TdispTTI / 10 (8.2.2.5.3); shown in CSM in FS/AD/SM, in OS/SR after the speed toggle (Table 15a). The brake symbol follows 'Brake commanded', the radio symbol the session.">
+        <label>TTI s <input type="number" id="tti" value="" min="0" max="6553.4" step="0.1" size="6"
+          title="empty: no TTI (the National Value does not ask for it); 0 .. 6553.4 s"></label>
+        <label>TdispTTI s <input type="number" id="t_disp_tti" value="14" min="1" max="255"
+          title="SUBSET-026 A.3.1: 14 s"></label>
+      </div>
       <div class="row" title="MSG_ONBOARD: radio data, session and the waiting states (dmi_protocol.ads)">
         <label>Session:
           <select id="session">
@@ -440,6 +450,7 @@
       // Protocol v2 (see src/dmi_protocol.ads)
       const MSG_SPEED_STATE = 0x01;
       const MSG_MODE_LEVEL = 0x02;
+      const MSG_STATUS = 0x07;
       const MSG_TRACK_LAYOUT = 0x08;
       const MSG_SIM_STATE = 0x09;
       const MSG_ONBOARD = 0x0A;
@@ -969,6 +980,32 @@
         return buf;
       }
 
+      // MSG_STATUS (dmi_protocol.ads, 23 bytes): the brake and radio
+      // symbols, the TTI of DMI 8.2.2.5 in tenths of a second (0xFFFF
+      // none) with TdispTTI in seconds, and the local time
+      function manualStatusMessage(seconds) {
+        const { buf, dv } = makeMessage(MSG_STATUS, 23);
+        const text = $('tti').value.trim();
+        const tti = text === '' ? NaN : Math.round(parseFloat(text) * 10);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, checked('brake') ? 1 : 0); o += 1;
+        dv.setUint8(o, val('session') >= 2 ? 1 : 0); o += 1; // radio
+        dv.setUint8(o, 0); o += 1;                   // adhesion
+        dv.setUint8(o, 0); o += 1;                   // BMM
+        dv.setUint8(o, 0); o += 1;                   // reversing
+        dv.setUint8(o, 0); o += 1;                   // SM direction
+        dv.setUint16(o, 0xFFFF, true); o += 2;       // no set speed
+        dv.setUint16(o, tti >= 0 && tti <= 65534 ? tti : 0xFFFF, true); o += 2;
+        dv.setUint8(o, Math.min(Math.max(val('t_disp_tti') || 14, 1), 255)); o += 1;
+        dv.setUint8(o, 0); o += 1;                   // tunnel unknown
+        dv.setUint32(o, 0, true); o += 4;
+        dv.setUint32(o, 0xFFFFFFFF, true); o += 4;   // no geographical position
+        dv.setUint8(o, Math.floor(seconds / 3600) % 24); o += 1;
+        dv.setUint8(o, Math.floor(seconds / 60) % 60); o += 1;
+        dv.setUint8(o, Math.floor(seconds) % 60);
+        return buf;
+      }
+
       // MSG_SYSTEM_VERSION: X and Y of 'X.Y'; 255 (not known) otherwise
       function manualSystemVersion() {
         const m = /^(\d+)\.(\d+)$/.exec($('sys_version').value.trim());
@@ -1285,6 +1322,7 @@
           if (manualMode()) {
             toDmi.send(manualSpeedState(), now);
             toDmi.send(manualModeLevel(), now);
+            toDmi.send(manualStatusMessage(now / 1000), now);
             toDmi.send(manualOnboard(), now);
             toDmi.send(manualATO(), now);
             toDmi.send(manualSystemVersion(), now);

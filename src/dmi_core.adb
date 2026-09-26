@@ -1160,7 +1160,7 @@ package body DMI_Core is
       Reversing  : constant Unsigned_8 := Get_U8 (Payload, Offset);
       SM_Dir     : constant Unsigned_8 := Get_U8 (Payload, Offset);
       Set_Spd    : constant Unsigned_16 := Get_U16 (Payload, Offset);
-      TTI        : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      TTI        : constant Unsigned_16 := Get_U16 (Payload, Offset);
       T_Disp     : constant Unsigned_8 := Get_U8 (Payload, Offset);
       Tunnel_Raw : constant Unsigned_8 := Get_U8 (Payload, Offset);
       Tun_Dist   : constant Unsigned_32 := Get_U32 (Payload, Offset);
@@ -1230,8 +1230,11 @@ package body DMI_Core is
       Set_Speed_Valid := Set_Spd /= 16#FFFF#;
       Set_Speed := Natural (Unsigned_16'Min (Set_Spd, 400));
 
-      TTI_Valid := TTI /= 16#FF#;
-      TTI_Seconds := Natural (TTI);
+      -- 8.2.2.5.3: the TTI in tenths of a second, 16#FFFF# none;
+      -- TdispTTI in seconds, 0 keeps the value known (it is fixed,
+      -- SUBSET-026 A.3.1, and no step can be computed with it)
+      TTI_Valid := TTI /= 16#FFFF#;
+      TTI_Tenths := (if TTI_Valid then Natural (TTI) else 0);
       if T_Disp > 0 then
          T_Disp_TTI := Natural (T_Disp);
       end if;

@@ -209,8 +209,8 @@ procedure DMI_Fuzz is
          U8 (Pick (0, 1));
          U8 (Pick (0, 2));
          U16 (Optional (0, 400, 16#FFFF#));
-         U8 (Optional (0, 30, 16#FF#));
-         U8 (Pick (1, 30));
+         U16 (Optional (0, 400, 16#FFFF#));   -- tti, tenths
+         U8 (Pick (0, 30));                   -- t_disp_tti, 0 keeps
          U8 (Pick (0, 2));
          U32 (Unsigned_32 (Pick (0, 90_000)));
          U32 (if Chance (30) then 16#FFFF_FFFF#

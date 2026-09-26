@@ -47,7 +47,7 @@ class Msg {
 
 const EVC_TYPES = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x0A, 0x0B, 0x0C,
                    0x0E, 0x0F];
-const FIXED = { 0x01: 21, 0x02: 9, 0x04: 2, 0x07: 22, 0x0A: 8, 0x0C: 2, 0x0E: 2 };
+const FIXED = { 0x01: 21, 0x02: 9, 0x04: 2, 0x07: 23, 0x0A: 8, 0x0C: 2, 0x0E: 2 };
 
 function inDomain(type) {
   const m = new Msg();
@@ -88,7 +88,7 @@ function inDomain(type) {
     for (let i = 0; i < n; i++) m.u8(pick(1, 37)).u16(pick(0, 40000));
   } else if (type === 0x07) {
     m.u8(pick(0, 3)).u8(pick(0, 2)).u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 1)).u8(pick(0, 2))
-      .u16(optional(0, 400, 0xFFFF)).u8(optional(0, 30, 0xFF)).u8(pick(1, 30)).u8(pick(0, 2))
+      .u16(optional(0, 400, 0xFFFF)).u16(optional(0, 400, 0xFFFF)).u8(pick(0, 30)).u8(pick(0, 2))
       .u32(pick(0, 90000)).u32(chance(30) ? 0xFFFFFFFF : pick(0, 9999999))
       .u8(pick(0, 23)).u8(pick(0, 59)).u8(pick(0, 59));
   } else if (type === 0x0A) {
