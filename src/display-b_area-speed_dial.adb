@@ -63,23 +63,183 @@ package body Display.B_Area.Speed_Dial is
       end case;
    end Speed_To_Angle;
 
+   ----------------
+   -- Cell model --
+   ----------------
+
+   -- B0 and B2 are centred in B (6.3.1.2 a, c): their centre is the point
+   -- The_Center of area B, the corner that four cells share. Cell (X, Y)
+   -- covers [X, X + 1) x [Y, Y + 1), and a shape takes the cells whose
+   -- centre (X + 0.5, Y + 0.5) lies inside it. No cell is blended: every
+   -- cell gets one colour of Table 4. In this model the ring from radius
+   -- 128 to 137 is 9 cells wide (8.2.1.4.6), a disc of radius 25 is 50
+   -- cells across (Figure 34) and a rectangle of 6 x 20 cells takes 6 x
+   -- 20 cells wherever it lies along a radius at 0, 90 or 180 degrees.
+
+   subtype Column_T is Integer range 0 .. The_Area.Width - 1;
+   subtype Row_T    is Integer range 0 .. The_Area.Height - 1;
+
+   Centre_X : constant Float := Float (The_Center.X);
+   Centre_Y : constant Float := Float (The_Center.Y);
+
+   -- Offset of the centre of column X (row Y) from the centre of the
+   -- dial, East (North) positive
+   function East (X : Integer) return Float is
+     (Float (X) + 0.5 - Centre_X);
+   function North (Y : Integer) return Float is
+     (Centre_Y - (Float (Y) + 0.5));
+
+   -- The column (row) of the cell holding the point East (North) of the
+   -- centre, kept inside area B so that drawing stays total
+   function Column_Of (E : Float) return Column_T is
+     (if E + Centre_X < Float (Column_T'First) then Column_T'First
+      elsif E + Centre_X >= Float (Column_T'Last) then Column_T'Last
+      else Integer (Float'Floor (E + Centre_X)));
+   function Row_Of (N : Float) return Row_T is
+     (if Centre_Y - N < Float (Row_T'First) then Row_T'First
+      elsif Centre_Y - N >= Float (Row_T'Last) then Row_T'Last
+      else Integer (Float'Floor (Centre_Y - N)));
+
+   -- A stand-in for the angle of the direction (E, N), clockwise from
+   -- the top as the dial counts (8.2.1.1.11.1): it grows with the angle
+   -- from -2 (-180 degrees) through 0 (straight up) to 2 (180 degrees),
+   -- so comparing it compares angles, without an arc tangent per cell.
+   function Pseudo_Angle (E, N : Float) return Float is
+      Sum : constant Float := abs E + abs N;
+      T   : Float;
+   begin
+      if Sum = 0.0 then
+         return 0.0;
+      end if;
+      T := E / Sum;
+      if N >= 0.0 then
+         return T;
+      elsif E >= 0.0 then
+         return 2.0 - T;
+      else
+         return -2.0 - T;
+      end if;
+   end Pseudo_Angle;
+
+   function Pseudo_Angle (A : Angle) return Float is
+     (Pseudo_Angle (Sin (Float (A)), Cos (Float (A))));
+
+   -- The cells of the ring Inner <= r < Outer from angle From (included)
+   -- clockwise to angle To (excluded). The dial never crosses the bottom
+   -- (8.2.1.4.4: -149 .. +144 degrees), so an angle range is an interval.
+   procedure Fill_Ring_Sector (From, To     : Angle;
+                               Inner, Outer : Radius_T;
+                               The_Color    : General_Parameters.Color) is
+      Q_From  : constant Float := Pseudo_Angle (From);
+      Q_To    : constant Float := Pseudo_Angle (To);
+      Inner_2 : constant Float := Float (Inner) ** 2;
+      Outer_2 : constant Float := Float (Outer) ** 2;
+      N_2     : Float;
+      -- half the width of the outer and of the inner circle on a row
+      Outer_W, Inner_W : Float;
+
+      procedure Test (X : Column_T; Y : Row_T) is
+         R_2 : constant Float := East (X) ** 2 + North (Y) ** 2;
+         Q   : Float;
+      begin
+         if R_2 >= Inner_2 and R_2 < Outer_2 then
+            Q := Pseudo_Angle (East (X), North (Y));
+            if Q >= Q_From and Q < Q_To then
+               B_Buffer.Set_Pixel (X, Y, The_Color);
+            end if;
+         end if;
+      end Test;
+   begin
+      if To <= From or Outer <= Inner then
+         return;
+      end if;
+      -- Every cell of the ring is tested; the columns looked at on a row
+      -- only leave out cells that are certainly outside it.
+      for Y in Row_Of (Float (Outer)) .. Row_Of (-Float (Outer)) loop
+         N_2 := North (Y) ** 2;
+         if N_2 < Outer_2 then
+            Outer_W := Sqrt (Outer_2 - N_2);
+            Inner_W := (if N_2 < Inner_2 then Sqrt (Inner_2 - N_2) else 0.0);
+            for X in Column_Of (-Outer_W) .. Column_Of (-Inner_W) loop
+               Test (X, Y);
+            end loop;
+            for X in Column_Of (Inner_W) .. Column_Of (Outer_W) loop
+               Test (X, Y);
+            end loop;
+         end if;
+      end loop;
+   end Fill_Ring_Sector;
+
+   -- The cells of the rectangle along the radius at angle At_Angle: from
+   -- radius Inner (included) to Outer (excluded) along the radius, and
+   -- Width cells across it on the side of the smaller angles, so that
+   -- its upper limit is the radius at At_Angle (8.2.1.4.7, 8.2.1.5.4).
+   procedure Fill_Radial_Rectangle (At_Angle     : Angle;
+                                    Inner, Outer : Radius_T;
+                                    Width        : Positive;
+                                    The_Color    : General_Parameters.Color) is
+      -- unit vectors along the radius (U) and along the scale (V)
+      S : constant Float := Sin (Float (At_Angle));
+      C : constant Float := Cos (Float (At_Angle));
+      W : constant Float := Float (Width);
+      -- the corners bound the cells to look at
+      E_1 : constant Float := Float (Inner) * S;
+      E_2 : constant Float := Float (Outer) * S;
+      N_1 : constant Float := Float (Inner) * C;
+      N_2 : constant Float := Float (Outer) * C;
+      E_Min : constant Float := Float'Min (E_1, E_2) - W * abs C - 1.0;
+      E_Max : constant Float := Float'Max (E_1, E_2) + W * abs C + 1.0;
+      N_Min : constant Float := Float'Min (N_1, N_2) - W * abs S - 1.0;
+      N_Max : constant Float := Float'Max (N_1, N_2) + W * abs S + 1.0;
+      U, V  : Float;
+   begin
+      for Y in Row_Of (N_Max) .. Row_Of (N_Min) loop
+         for X in Column_Of (E_Min) .. Column_Of (E_Max) loop
+            U := East (X) * S + North (Y) * C;
+            V := East (X) * C - North (Y) * S;
+            if U >= Float (Inner) and U < Float (Outer)
+              and V >= -W and V < 0.0
+            then
+               B_Buffer.Set_Pixel (X, Y, The_Color);
+            end if;
+         end loop;
+      end loop;
+   end Fill_Radial_Rectangle;
+
+   -- The cells of the disc of the given radius around the point E, N
+   -- (offsets from the centre of the dial)
+   procedure Fill_Disc (E, N      : Float;
+                        Radius    : Float;
+                        The_Color : General_Parameters.Color) is
+   begin
+      for Y in Row_Of (N + Radius) .. Row_Of (N - Radius) loop
+         for X in Column_Of (E - Radius) .. Column_Of (E + Radius) loop
+            if (East (X) - E) ** 2 + (North (Y) - N) ** 2 < Radius ** 2 then
+               B_Buffer.Set_Pixel (X, Y, The_Color);
+            end if;
+         end loop;
+      end loop;
+   end Fill_Disc;
+
    procedure Draw_Speed_Indicator_Lines is
       Max        : constant Speed_T := Max_Speed_Map (Get_Speed_Dial_Range);
       Short_Step : constant Speed_T := 10;
       Long_Step  :          Speed_T;
 
-      procedure Draw_Tick (At_Speed : Speed_T; Inner_Radius : Radius_T) is
-         X :          B_Buffer.Area_Width_T;
-         Y :          B_Buffer.Area_Height_T;
+      -- DMI 8.2.1.1.5 a, 8.2.1.1.8: a line 1 cell wide drawn radially from
+      -- the limit of B0 towards the centre; one cell for every cell of
+      -- its length, taken at the middle of that cell
+      procedure Draw_Tick (At_Speed : Speed_T; Length : Radius_T) is
          A : constant Angle := Speed_To_Angle (At_Speed);
 
          Sin_A : constant Float := Sin (Float (A));
          Cos_A : constant Float := Cos (Float (A));
+         R     : Float;
       begin
-         for R in Inner_Radius .. B0_Radius loop
-            X := The_Center.X + Integer (Float'Rounding ((Float (R) * Sin_A)));
-            Y := The_Center.Y - Integer (Float'Rounding ((Float (R) * Cos_A)));
-            B_Buffer.Set_Pixel (X, Y, General_Parameters.WHITE);
+         for K in 1 .. Length loop
+            R := Float (B0_Radius - K) + 0.5;
+            B_Buffer.Set_Pixel (Column_Of (R * Sin_A), Row_Of (R * Cos_A),
+                                General_Parameters.WHITE);
          end loop;
       end Draw_Tick;
    begin
@@ -96,11 +256,9 @@ package body Display.B_Area.Speed_Dial is
 
       for I in 0 .. Max loop
          if I rem Long_Step = 0 then
-            Draw_Tick (At_Speed     => I,
-                       Inner_Radius => B0_Radius_Inner_Long);
+            Draw_Tick (At_Speed => I, Length => Long_Line_Length);
          elsif I rem Short_Step = 0 then
-            Draw_Tick (At_Speed     => I,
-                       Inner_Radius => B0_Radius_Inner_Short);
+            Draw_Tick (At_Speed => I, Length => Short_Line_Length);
          end if;
       end loop;
    end Draw_Speed_Indicator_Lines;
@@ -210,24 +368,17 @@ package body Display.B_Area.Speed_Dial is
    -- Draw --
    ----------
 
-   -- A circle of 10 cell diameter whose centre is on the circle of
-   -- radius 111 around the centre of B0, at the given speed
+   -- A disc of 10 cells diameter whose centre is on the circle of radius
+   -- 111 around the centre of B0, at the given speed
    procedure Draw_Speed_Dot (Speed     : Natural;
                              The_Color : General_Parameters.Color) is
-      Value  : constant Speed_T := Speed_T (Natural'Min (Speed, 400));
-      A      : constant Angle := Speed_To_Angle (Value);
-      Center : constant Position_T :=
-        (The_Center.X + Integer (Float'Rounding (111.0 * Sin (Float (A)))),
-         The_Center.Y - Integer (Float'Rounding (111.0 * Cos (Float (A)))));
-      Radius : constant := 5;
+      Value : constant Speed_T := Speed_T (Natural'Min (Speed, 400));
+      A     : constant Angle := Speed_To_Angle (Value);
    begin
-      for Y in -Radius .. Radius loop
-         for X in -Radius .. Radius loop
-            if X * X + Y * Y <= Radius * Radius then
-               B_Buffer.Set_Pixel (Center.X + X, Center.Y + Y, The_Color);
-            end if;
-         end loop;
-      end loop;
+      Fill_Disc (E         => 111.0 * Sin (Float (A)),
+                 N         => 111.0 * Cos (Float (A)),
+                 Radius    => 5.0,
+                 The_Color => The_Color);
    end Draw_Speed_Dot;
 
    procedure Draw_Set_Speed is
@@ -266,211 +417,77 @@ package body Display.B_Area.Speed_Dial is
    end Draw;
 
    package body Circular_Speed_Gauge is
-      type Quadrant is (SW, NW, NE, SE);
-      -- only correct in a quadrant (due to periodicity)
-      procedure Draw_Circle_Sector_Quadrant (From_Angle,  To_Angle  : Angle;
-                                             From_Radius, To_Radius : Radius_T;
-                                             The_Color              : General_Parameters.Color;
-                                             The_Quadrant           : Quadrant) is
-         From_R_R : constant Natural := From_Radius**2;
-         To_R_R   : constant Natural := To_Radius**2;
-         Eps      : constant Angle := 0.001; -- needed for stability
-         Tan_From : constant Float := Tan (Float (From_Angle + Eps));
-         Tan_To   : constant Float := Tan (Float (To_Angle - Eps));
-         -- Computation done in standard Cartesian coordinates
-         subtype X_SW is Integer range -To_Radius .. 0;
-         subtype Y_SW is Integer range -To_Radius .. 0;
-         subtype X_NW is Integer range 0 .. To_Radius;
-         subtype Y_NW is Integer range -To_Radius .. 0;
-         subtype X_NE is Integer range 0 .. To_Radius;
-         subtype Y_NE is Integer range 0 .. To_Radius;
-         subtype X_SE is Integer range -To_Radius .. 0;
-         subtype Y_SE is Integer range 0 .. To_Radius;
-
-         procedure Fill_If_Needed (X, Y : Integer) is
-            Dist_2 : constant Natural := X*X + Y*Y;
-         begin
-            if Dist_2 <= To_R_R and Dist_2 >= From_R_R then
-               declare
-                  The_Tan : constant Float := (Float (Y) + 0.5) / (Float (X) + 0.5);
-               begin
-                  if The_Tan <= Tan_To and The_Tan >= Tan_From then
-                     -- Axes flipped as needed
-                     B_Buffer.Set_Pixel (X         => The_Center.X + Y,
-                                         Y         => The_Center.Y - X,
-                                         The_Color => The_Color);
-                  end if;
-               end;
-            end if;
-         end;
-      begin
-         case The_Quadrant is
-            when SW =>
-               for Y in Y_SW loop
-                  for X in X_SW loop
-                     Fill_If_Needed (X, Y);
-                  end loop;
-               end loop;
-            when NW =>
-               for Y in Y_NW loop
-                  for X in X_NW loop
-                     Fill_If_Needed (X, Y);
-                  end loop;
-               end loop;
-            when NE =>
-               for Y in Y_NE loop
-                  for X in X_NE loop
-                     Fill_If_Needed (X, Y);
-                  end loop;
-               end loop;
-            when SE =>
-               for Y in Y_SE loop
-                  for X in X_SE loop
-                     Fill_If_Needed (X, Y);
-                  end loop;
-               end loop;
-         end case;
-      end Draw_Circle_Sector_Quadrant;
-
-      procedure Draw_Circle_Sector (From_Angle,  To_Angle  : Angle;
-                                    From_Radius, To_Radius : Radius_T;
-                                    The_Color              : General_Parameters.Color) is
-         subtype Q_SW is Angle range -Pi .. -Pi/2.0;
-         subtype Q_NW is Angle range -Pi/2.0 .. 0.0;
-         subtype Q_NE is Angle range 0.0 .. Pi/2.0;
-         -- the rest of Angle, Pi/2.0 .. Pi, is the quadrant SE
-         procedure DCSQ (From_Angle, To_Angle : Angle;
-                         F_Rad        : Radius_T := From_Radius;
-                         To_Rad       : Radius_T := To_Radius;
-                         The_Col      : General_Parameters.Color := The_Color;
-                         The_Quadrant : Quadrant) renames Draw_Circle_Sector_Quadrant;
-      begin
-
-         -- A sector runs clockwise from From_Angle to To_Angle; an empty or
-         -- reversed one has nothing to draw. (Within one quadrant this is
-         -- what the tangent test below did already.)
-         if To_Angle < From_Angle then
-            return;
-         end if;
-
-         -- The three quadrant subtypes and SE cover the range of Angle without
-         -- a gap, and To_Angle >= From_Angle here, so To_Angle lies in the
-         -- quadrant of From_Angle or in a later one: the last alternative
-         -- of every chain below needs no test, and no case is left over.
-         if From_Angle in Q_SW then
-            if To_Angle in Q_SW then
-              DCSQ (From_Angle, To_Angle, The_Quadrant => SW);
-            elsif To_Angle in Q_NW then
-               DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
-               DCSQ (-Pi/2.0, To_Angle, The_Quadrant => NW);
-            elsif To_Angle in Q_NE then
-               DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
-               DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
-               DCSQ (0.0, To_Angle, The_Quadrant => NE);
-            else
-               DCSQ (From_Angle, -Pi/2.0, The_Quadrant => SW);
-               DCSQ (-Pi/2.0, 0.0, The_Quadrant => NW);
-               DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
-               DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            end if;
-         elsif From_Angle in Q_NW then
-            if To_Angle in Q_NW then
-               DCSQ (From_Angle, To_Angle, The_Quadrant => NW);
-            elsif To_Angle in Q_NE then
-               DCSQ (From_Angle, 0.0, The_Quadrant => NW);
-               DCSQ (0.0, To_Angle, The_Quadrant => NE);
-            else
-               DCSQ (From_Angle, 0.0, The_Quadrant => NW);
-               DCSQ (0.0, Pi/2.0, The_Quadrant => NE);
-               DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            end if;
-         elsif From_Angle in Q_NE then
-            if To_Angle in Q_NE then
-               DCSQ (From_Angle, To_Angle, The_Quadrant => NE);
-            else
-               DCSQ (From_Angle, Pi/2.0, The_Quadrant => NE);
-               DCSQ (Pi/2.0, To_Angle, The_Quadrant => SE);
-            end if;
-         else
-            DCSQ (From_Angle, To_Angle, The_Quadrant => SE);
-         end if;
-
-      end Draw_Circle_Sector;
 
       procedure Draw_Lowermost_Part is
       begin
          -- DMI 8.2.1.4.5
-         Draw_Circle_Sector (From_Angle  => Lowermost_Limit,
-                             To_Angle    => Lower_Limit,
-                             From_Radius => B2_Radius_Inner,
-                             To_Radius   => B2_Radius_Outer,
-                             The_Color   => Lowermost_Part_Color);
+         Fill_Ring_Sector (From      => Lowermost_Limit,
+                           To        => Lower_Limit,
+                           Inner     => B2_Radius_Inner,
+                           Outer     => B2_Radius_Outer,
+                           The_Color => Lowermost_Part_Color);
       end Draw_Lowermost_Part;
 
+      -- DMI 8.2.1.4.6: 9 cells wide, the ring of B2 (6.3.1.2 c)
       procedure Draw_Thin_CSG (From_Speed, To_Speed : Speed_T;
                                The_Color            : General_Parameters.Color) is
       begin
-         if From_Speed >= To_Speed then
-            return;
-         end if;
-         Draw_Circle_Sector (From_Angle  => Speed_To_Angle (From_Speed),
-                             To_Angle    => Speed_To_Angle (To_Speed),
-                             From_Radius => B2_Radius_Inner,
-                             To_Radius   => B2_Radius_Outer,
-                             The_Color   => The_Color);
+         Fill_Ring_Sector (From      => Speed_To_Angle (From_Speed),
+                           To        => Speed_To_Angle (To_Speed),
+                           Inner     => B2_Radius_Inner,
+                           Outer     => B2_Radius_Outer,
+                           The_Color => The_Color);
       end Draw_Thin_CSG;
 
+      -- DMI 8.2.1.4.8: between the hook and VSBI as wide as the hook, 20
+      -- cells from the outer border of the CSG
       procedure Draw_Wide_CSG (From_Speed, To_Speed : Speed_T;
                                The_Color            : General_Parameters.Color) is
       begin
-         if From_Speed >= To_Speed then
-            return;
-         end if;
-         -- DMI 8.2.1.4.8
-         Draw_Circle_Sector (From_Angle  => Speed_To_Angle (From_Speed),
-                             To_Angle    => Speed_To_Angle (To_Speed),
-                             From_Radius => Hook_Inner_Radius,
-                             To_Radius   => B2_Radius_Outer,
-                             The_Color   => The_Color);
+         Fill_Ring_Sector (From      => Speed_To_Angle (From_Speed),
+                           To        => Speed_To_Angle (To_Speed),
+                           Inner     => Hook_Inner_Radius,
+                           Outer     => B2_Radius_Outer,
+                           The_Color => The_Color);
       end Draw_Wide_CSG;
 
+      -- DMI 8.2.1.4.7: at Vperm a hook of 6 x 20 cells covering the outer
+      -- border of the speed dial, its upper limit at Vperm
       procedure Draw_Hook (At_Speed  : Speed_T;
                            The_Color : General_Parameters.Color) is
-         -- DMI 8.2.1.4.7
-         Speed_Angle : constant Angle := Speed_To_Angle (At_Speed);
       begin
-         Draw_Circle_Sector (From_Angle  => Speed_Angle - Hook_Width,
-                             To_Angle    => Speed_Angle,
-                             From_Radius => Hook_Inner_Radius,
-                             To_Radius   => B2_Radius_Outer,
-                             The_Color   => The_Color);
+         Fill_Radial_Rectangle (At_Angle  => Speed_To_Angle (At_Speed),
+                                Inner     => Hook_Inner_Radius,
+                                Outer     => B2_Radius_Outer,
+                                Width     => CSG_Hook_Width,
+                                The_Color => The_Color);
       end Draw_Hook;
 
-      -- DMI 8.2.1.6.3/.4: graphical release speed on the CSG. In the region
-      -- below Vrelease the ring splits into an outer release band, a 1 cell
-      -- background separator and a 3 cell wide permitted speed band.
+      -- DMI 8.2.1.6.3/.4, Figures 47 and 48: graphical release speed on the
+      -- CSG (target at the EOA, Vtarget = 0: Table 9 footnote). Up to the
+      -- lower of Vperm and Vrelease the CSG is split: the release speed at
+      -- the outer part (5 cells), a 1 cell line in the background colour
+      -- and the permitted speed at the inner part (3 cells). Above it the
+      -- one that goes further takes the whole 9 cells: the permitted speed
+      -- up to Vperm (Figure 47) or the release speed up to Vrelease
+      -- (Figure 48). The hook at Vperm is drawn before: in Figure 48 the
+      -- release speed display and the line cover its outer part.
       procedure Draw_Release_Graphical (Perm_Color : General_Parameters.Color) is
          Params : constant Speed_Params := Get_Speed_Params;
          Below  : constant Speed_T :=
            Speed_T'Min (Params.Vrelease, Params.Vperm);
+         Zero   : constant Angle := Speed_To_Angle (0);
+         Split  : constant Angle := Speed_To_Angle (Below);
       begin
-         -- outer release band, 0 .. Vrelease
-         Draw_Circle_Sector (From_Angle  => Speed_To_Angle (0),
-                             To_Angle    => Speed_To_Angle (Params.Vrelease),
-                             From_Radius => B2_Radius_Inner + 4,
-                             To_Radius   => B2_Radius_Outer,
-                             The_Color   => General_Parameters.MEDIUM_GREY);
-         -- inner permitted speed band, 3 cells, 0 .. min (Vrelease, Vperm);
-         -- the 1 cell ring in between stays background (the separator)
-         if Below > 0 then
-            Draw_Circle_Sector (From_Angle  => Speed_To_Angle (0),
-                                To_Angle    => Speed_To_Angle (Below),
-                                From_Radius => B2_Radius_Inner,
-                                To_Radius   => B2_Radius_Inner + 2,
-                                The_Color   => Perm_Color);
-         end if;
-         -- full width permitted speed band above the release speed
+         Fill_Ring_Sector (Zero, Split, B2_Radius_Inner, Release_Perm_Outer,
+                           Perm_Color);
+         Fill_Ring_Sector (Zero, Split, Release_Perm_Outer, Release_Band_Inner,
+                           General_Parameters.Background_Color);
+         Fill_Ring_Sector (Zero, Split, Release_Band_Inner, B2_Radius_Outer,
+                           General_Parameters.MEDIUM_GREY);
          Draw_Thin_CSG (Params.Vrelease, Params.Vperm, Perm_Color);
+         Draw_Thin_CSG (Params.Vperm, Params.Vrelease,
+                        General_Parameters.MEDIUM_GREY);
       end Draw_Release_Graphical;
 
       ----------
@@ -525,6 +542,8 @@ package body Display.B_Area.Speed_Dial is
             when TSM =>
                Mid := (if In_AD then General_Parameters.WHITE
                        else General_Parameters.YELLOW);
+               -- the hook first: the release speed covers it (Figure 48)
+               Draw_Hook (Params.Vperm, Mid);
                if Params.Vrelease_Exists then
                   -- target is an EOA, Vtarget = 0 (Table 9 footnote)
                   Draw_Release_Graphical (Mid);
@@ -532,7 +551,6 @@ package body Display.B_Area.Speed_Dial is
                   Draw_Thin_CSG (0, Params.Vtarget, General_Parameters.DARK_GREY);
                   Draw_Thin_CSG (Params.Vtarget, Params.Vperm, Mid);
                end if;
-               Draw_Hook (Params.Vperm, Mid);
                if Get_Supervision_Status in OvS | WaS then
                   Over := (if In_AD then General_Parameters.WHITE
                            else General_Parameters.ORANGE);
@@ -545,12 +563,12 @@ package body Display.B_Area.Speed_Dial is
                -- Table 9 RSM rows: no over-speed band
                Mid := (if In_AD then General_Parameters.WHITE
                        else General_Parameters.YELLOW);
+               Draw_Hook (Params.Vperm, Mid);
                if Params.Vrelease_Exists then
                   Draw_Release_Graphical (Mid);
                else
                   Draw_Thin_CSG (0, Params.Vperm, Mid);
                end if;
-               Draw_Hook (Params.Vperm, Mid);
          end case;
       end Draw;
 
@@ -563,16 +581,16 @@ package body Display.B_Area.Speed_Dial is
 
          use type Supplementary_Driving_Info.Mode_T;
 
+         -- DMI 8.2.1.5.4 / 8.2.1.5.5: a hook of 10 x 20 cells overlapping
+         -- the outer border of the speed dial, its upper limit at the speed
          procedure Draw_Basic_Speed_Hook (At_Speed  : Speed_T;
                                           The_Color : General_Parameters.Color) is
-            -- DMI 8.2.1.5.4 / 8.2.1.5.5
-            Speed_Angle : constant Angle := Speed_To_Angle (At_Speed);
          begin
-            Draw_Circle_Sector (From_Angle  => Speed_Angle - Basic_Speed_Hook_Width,
-                                To_Angle    => Speed_Angle,
-                                From_Radius => Hook_Inner_Radius,
-                                To_Radius   => B2_Radius_Outer,
-                                The_Color   => The_Color);
+            Fill_Radial_Rectangle (At_Angle  => Speed_To_Angle (At_Speed),
+                                   Inner     => Hook_Inner_Radius,
+                                   Outer     => B2_Radius_Outer,
+                                   Width     => Basic_Speed_Hook_Width,
+                                   The_Color => The_Color);
          end Draw_Basic_Speed_Hook;
 
          Show_Target : Boolean;

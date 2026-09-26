@@ -229,12 +229,14 @@ procedure Draw_Speed_Pointer is
 
    -- DMI 8.2.1.2.3
    -- DMI 8.2.1.2.4
-   Radius : constant Radius_T := 25;
    Look   : constant Pointer_Look := Look_Of_Pointer;
    Color  : constant General_Parameters.Color := Look.Color;
    A      : constant Angle := Speed_To_Angle (Get_Speed);
 
 
+   -- The needle of Figure 34 is 3 and 9 cells wide: an odd width cannot
+   -- be centred on the corner that is the centre of the dial, so the
+   -- needle is drawn around the cell right of and below that corner.
    type Point is record
       X, Y : Integer range -500 .. 500;
    end record;
@@ -249,18 +251,12 @@ procedure Draw_Speed_Pointer is
                                               (-1, -90),
                                               (-1, -105),
                                               (1, -105));
+
+   -- DMI 8.2.1.2.3, Figure 34: the circular part, 50 cells across,
+   -- centred in B1
    procedure Fill_Center_Circle is
-      R_R  : constant Integer := Radius * Radius;
    begin
-      for Y in -Radius .. Radius loop
-         for X in -Radius .. Radius loop
-            if (X*X + Y*Y) <= R_R then
-               B_Buffer.Set_Pixel (X         => X + The_Center.X,
-                                   Y         => Y + The_Center.Y,
-                                   The_Color => Color);
-            end if;
-         end loop;
-      end loop;
+      Fill_Disc (0.0, 0.0, Float (Pointer_Radius), Color);
    end Fill_Center_Circle;
 
    function Rotate_And_Translate_Poly return Pointer_Poly_T is
