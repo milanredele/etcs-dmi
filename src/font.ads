@@ -13,8 +13,8 @@ package Font is
    type Size_T is range 10 .. 18;
 
    -- Following FreeType notation. The ranges are wide enough for the
-   -- printable part of ISO 8859-1 at every size in use; ttf2ada prints
-   -- the extremes it reached.
+   -- printable part of ISO 8859-1 and Latin Extended-A at every size in
+   -- use; ttf2ada prints the extremes it reached.
    type Glyph is
       record
          -- Left is negative for the few glyphs that reach under the one

@@ -50,8 +50,12 @@ cc -O2 -o "$work/ttf2ada" "$here/ttf2ada.c" \
 #  characters, "each character encoded as ISO 8859-1, also known as
 #  Latin Alphabet #1" (SUBSET-026 7.5.1.174), and 5.5.1.1 asks for the
 #  languages configured on board. The C1 range 16#7F#..16#9F# has no
-#  printable form and is left to the replacement box.
-SET=20-7E,A0-FF
+#  printable form and is left to the replacement box. Latin Extended-A
+#  (16#100#..16#17F#) carries the letters of the ISO 8859-2 languages
+#  (Hungarian o and u with double acute, Czech, Polish, Slovak,
+#  Romanian) for the fixed texts of DMI_Texts; trackside texts stay
+#  ISO 8859-1.
+SET=20-7E,A0-17F
 
 for cells in 10 12 16 17 18; do
   "$work/ttf2ada" "$ttf" "$cells" "$SET" "$SOURCE" \
