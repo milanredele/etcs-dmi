@@ -397,7 +397,11 @@ doc/national-instructions, the fonts extended to Latin Extended-A for it).
     **GEN-11** desk input for Settings; **SDI-8** national system name in the level
     symbols (display level only, see the scope decision).
 
-### P4 — Pixel conformance
+### P4 — Pixel conformance — DONE 2026-09-26
+All items are merged (three parallel branches); outcomes, choices and new open
+points are in the P4 follow-up section of [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md).
+GEN-7 had been closed in P2. With it the September 2026 backlog is closed; what
+remains is in the audit's open points and Phase 5.
 25. **SUP-6, SUP-7, SUP-9, SUP-10** gauge band widths, digital speed alignment,
     distance bar lines, hooks as rectangles. **SUP-8** TTI in tenths of a second.
 26. **GEN-7, GEN-9, SDI-10, SDI-11** font heights and keyboard digit size, disabled

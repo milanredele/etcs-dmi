@@ -50,7 +50,7 @@ The rules that have proven necessary so far:
   claims, including requirements that do not exist; [PLAN.md](PLAN.md)
   §1 records the check claim by claim, and a verified plan replaced it.
 - **Behaviour is pinned by executable checks.** The regression
-  runner makes 2021 checks: 262 rendered screens compared with golden
+  runner makes 2156 checks: 295 rendered screens compared with golden
   frames, sound events, and a complete simulated mission. The
   WebAssembly build has to render the same pixels as the native one. A
   change that alters a screen fails a check, and a person has to look at
@@ -73,9 +73,10 @@ VBC, ATO selector, System version and Language windows (English,
 German and Hungarian), the ATO displays of chapter 8.5, the chapter 15 message
 catalogue, the desk inputs for Settings and isolation, touch input, and
 the EVC/track/train simulator (with an ATO on-board, shunting,
-Supervised Manoeuvre and a stand-in RBC) are implemented. Still open:
-the pixel conformance pass (P4 of the plan) and the optimisation for the
-embedded memory budget. The national systems part of the specification
+Supervised Manoeuvre and a stand-in RBC) are implemented. The pixel
+geometry of the speed dial, the distance bar and the frames follows the
+figures cell by cell. Still open: the optimisation for the embedded
+memory budget and the open points listed in the audit. The national systems part of the specification
 (NTC, chapters 9 and 12) and the soft-key variant of the layout are out
 of scope.
 
