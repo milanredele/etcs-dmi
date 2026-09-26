@@ -276,20 +276,6 @@ package body Display.G_Area is
 
    procedure Draw_ATO is
    begin
-      -- 8.1.1.4 b: G1 .. G5 are areas of layer -1. Choice: their borders
-      -- are drawn while they can show ATO information (8.5.1.1); with
-      -- the selector at Stand-by the area stays as it was before ATO.
-      -- G2/G3/G4 are one area for the next stopping point (Figure 93k).
-      G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G1));
-      if DMI_ATO.At_Stopping_Point then
-         G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G2));
-         G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G3));
-         G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G4));
-      else
-         G_Buffer.Draw_Frame (G2_G4);
-      end if;
-      G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G5));
-
       -- 8.5.1.2 a
       Draw_ATO_Status;
       if DMI_ATO.At_Stopping_Point then
@@ -304,9 +290,31 @@ package body Display.G_Area is
       end if;
    end Draw_ATO;
 
+   -- 8.1.1.4 b: G1 .. G5 are areas of layer -1, so their borders are
+   -- drawn in every default window (5.1.1.2.5), ATO or not, as Figure 50
+   -- draws them; G11 .. G13 are framed by Fill. Without ATO information
+   -- (8.5.1.1) G1 .. G5 show nothing but their borders. Outside stopping
+   -- points G2/G3/G4 are one area for the next stopping point name and
+   -- arrival time (Figure 93k).
+   procedure Draw_Borders is
+      Merged : constant Boolean :=
+        DMI_ATO.Displayed and then not DMI_ATO.At_Stopping_Point;
+   begin
+      G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G1));
+      if Merged then
+         G_Buffer.Draw_Frame (G2_G4);
+      else
+         G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G2));
+         G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G3));
+         G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G4));
+      end if;
+      G_Buffer.Draw_Frame (Get_Sub_Area_With_Relative_Position (G5));
+   end Draw_Borders;
+
    procedure Draw is
    begin
       G_Buffer.Fill (General_Parameters.Background_Color);
+      Draw_Borders;
       Draw_Local_Time;
       Draw_Geo_Position;
       -- 8.5.1.1: only if the ATO selector is set to "On"
