@@ -263,8 +263,13 @@ package body EVC_Core is
       Put_U8 (Payload, Offset, 0); -- reversing
       Put_U8 (Payload, Offset, 0); -- sm direction
       Put_U16 (Payload, Offset, 16#FFFF#); -- no set speed
-      Put_U8 (Payload, Offset, 16#FF#); -- no TTI (CSM pre-indication only)
-      Put_U8 (Payload, Offset, 14);
+      -- no TTI: the on-board computes it only when A_MAXREDADH asks for
+      -- it (SUBSET-026 3.13.10.3.10), a national value of reduced
+      -- adhesion this simulator does not model (its rails are never
+      -- slippery). The TTI goes in tenths of a second (DMI 8.2.2.5.3);
+      -- the manual panel of the test bench sends one.
+      Put_U16 (Payload, Offset, 16#FFFF#);
+      Put_U8 (Payload, Offset, 14); -- TdispTTI, SUBSET-026 A.3.1
       Put_U8 (Payload, Offset, Tunnel_State);
       Put_U32 (Payload, Offset, Tunnel_Dist);
       Put_U32 (Payload, Offset, Unsigned_32 (Position + 42_000));

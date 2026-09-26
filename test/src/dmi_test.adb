@@ -321,9 +321,9 @@ procedure DMI_Test is
                Send_Status
                  (Set_Speed  => Natural (Set_Speed),
                   TTI        => (case TTI is
-                                    when 0 => 0, when 1 => 1, when 2 => 13,
-                                    when 3 => 14, when 4 => 254,
-                                    when others => 255),
+                                    when 0 => 0, when 1 => 1, when 2 => 139,
+                                    when 3 => 140, when 4 => 65534,
+                                    when others => 65535),
                   T_Disp_TTI => (case TTI mod 3 is
                                     when 0 => 0, when 1 => 14,
                                     when others => 255));
@@ -747,11 +747,11 @@ procedure DMI_Test is
                         Vrelease_Exists => False);
       Drain_Sounds;
       -- TTI appears (National Value requested): Sinfo, growing square
-      Send_Status (TTI => 10, T_Disp_TTI => 14);
+      Send_Status (TTI => 100, T_Disp_TTI => 14);
       Expect_Sound (DMI_Sounds.Sinfo, "TTI display plays Sinfo");
       Step;
       Check_Frame ("tti_10s");
-      Send_Status (TTI => 2, T_Disp_TTI => 14);
+      Send_Status (TTI => 20, T_Disp_TTI => 14);
       Drain_Sounds;
       Step;
       Check_Frame ("tti_2s");
@@ -8251,6 +8251,111 @@ procedure DMI_Test is
       Reset;
    end Scenario_Hu_Wasm_Start_Up;
 
+   --  SUP-8, 8.2.2.5.3: the TTI arrives in tenths of a second and the
+   --  white square takes n x 5 cells for
+   --    TdispTTI * (10 - n) / 10 <= TTI < TdispTTI * (10 - (n - 1)) / 10.
+   --  With TdispTTI = 14 s every step is 1.4 s long: its lower bound
+   --  14 * (10 - n) tenths and its upper bound 14 * (11 - n) - 1 tenths
+   --  give the same square, the tenth after it the next one.
+   procedure Scenario_PT_TTI_Steps is
+      use type DMI_Status.Radio_T;
+      function Name (N : Positive) return String is
+         Img : constant String := Positive'Image (N);
+      begin
+         return "pt_tti_step_" & Img (Img'First + 1 .. Img'Last);
+      end Name;
+   begin
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4); -- FS
+      Send_Speed_State (V_Cur => 100, V_Perm => 120, V_Target => 0,
+                        V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                        D_Target => 0, Monitoring => 0, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Drain_Sounds;
+      Send_Status (TTI => 16#FFFF#);
+      Step;
+      Check (not DMI_Status.TTI_Displayed, "no TTI: nothing in A1");
+      Expect_No_Sound ("no TTI, no Sinfo");
+      Check_Frame ("pt_tti_none");
+
+      --  a TTI of TdispTTI or more is not shown (Table 15a)
+      Send_Status (TTI => 140, T_Disp_TTI => 14);
+      Step;
+      Check (not DMI_Status.TTI_Displayed, "TTI 14.0 s = TdispTTI: not shown");
+      Expect_No_Sound ("TTI not shown, no Sinfo");
+      Check_Frame ("pt_tti_none");
+
+      --  the TTI counts down: step 1 first, the square grows
+      for N in 1 .. 10 loop
+         Send_Status (TTI => 14 * (11 - N) - 1, T_Disp_TTI => 14);
+         Step;
+         Check (DMI_Status.TTI_Displayed and then DMI_Status.TTI_Step = N,
+                "TTI" & Natural'Image (14 * (11 - N) - 1)
+                & " tenths: step" & Positive'Image (N));
+         if N = 1 then
+            --  8.2.2.5.7: Sinfo when the TTI appears, once
+            Expect_Sound (DMI_Sounds.Sinfo, "the TTI appears: Sinfo");
+         end if;
+         Expect_No_Sound ("TTI step" & Positive'Image (N) & " plays nothing more");
+         Check_Frame (Name (N));
+         Send_Status (TTI => 14 * (10 - N), T_Disp_TTI => 14);
+         Step;
+         Check (DMI_Status.TTI_Step = N,
+                "TTI" & Natural'Image (14 * (10 - N))
+                & " tenths: step" & Positive'Image (N));
+         Check_Frame (Name (N));
+      end loop;
+
+      --  the square of step n is n x 5 cells: 10 is the whole 50 x 50
+      Check (DMI_Status.TTI_Step = 10, "TTI 0: the full white square");
+
+      --  a MSG_STATUS of the earlier layout (22 bytes, tti u8 in whole
+      --  seconds) is ignored as a whole
+      Send_Status (TTI => 70, T_Disp_TTI => 14); -- step 10 - 5 = 5
+      Step;
+      Check (DMI_Status.TTI_Step = 5, "TTI 7.0 s: step 5");
+      Send_Raw (16#07#, (0, 1, 0, 0, 0, 0, 16#FF#, 16#FF#, 1, 14, 0,
+                         0, 0, 0, 0, 16#FF#, 16#FF#, 16#FF#, 16#FF#,
+                         12, 0, 0));
+      Step;
+      Check (DMI_Status.TTI_Step = 5, "a 22 byte MSG_STATUS is ignored");
+      Check (DMI_Status.Radio = DMI_Status.No_Connection,
+             "... none of its fields is taken");
+      Check_Frame (Name (5));
+
+      --  TdispTTI 10 s: one step a second; 0 keeps the TdispTTI known
+      Send_Status (TTI => 55, T_Disp_TTI => 10);
+      Step;
+      Check (DMI_Status.TTI_Step = 5, "TdispTTI 10 s, TTI 5.5 s: step 5");
+      Send_Status (TTI => 60, T_Disp_TTI => 0);
+      Step;
+      Check (DMI_Status.T_Disp_TTI = 10 and then DMI_Status.TTI_Step = 4,
+             "t_disp_tti 0 keeps TdispTTI 10 s: TTI 6.0 s, step 4");
+      Check_Frame (Name (4));
+      Send_Status (TTI => 99, T_Disp_TTI => 10);
+      Step;
+      Check (DMI_Status.TTI_Step = 1, "TdispTTI 10 s, TTI 9.9 s: step 1");
+      Send_Status (TTI => 100, T_Disp_TTI => 10);
+      Step;
+      Check (not DMI_Status.TTI_Displayed, "TdispTTI 10 s, TTI 10.0 s: gone");
+
+      --  the extremes of the fields
+      Send_Status (TTI => 2549, T_Disp_TTI => 255);
+      Step;
+      Check (DMI_Status.TTI_Displayed and then DMI_Status.TTI_Step = 1,
+             "TdispTTI 255 s, TTI 254.9 s: step 1");
+      Send_Status (TTI => 65534, T_Disp_TTI => 255);
+      Step;
+      Check (not DMI_Status.TTI_Displayed, "TTI 6553.4 s: not shown");
+      Send_Status (TTI => 0, T_Disp_TTI => 1);
+      Step;
+      Check (DMI_Status.TTI_Step = 10, "TdispTTI 1 s, TTI 0: step 10");
+      Send_Status (TTI => 9, T_Disp_TTI => 1);
+      Step;
+      Check (DMI_Status.TTI_Step = 1, "TdispTTI 1 s, TTI 0.9 s: step 1");
+      Check_Frame (Name (1));
+   end Scenario_PT_TTI_Steps;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -8342,6 +8447,7 @@ begin
    Scenario_Hu_Messages;
    Scenario_Hu_Reset;
    Scenario_Hu_Wasm_Start_Up;
+   Scenario_PT_TTI_Steps;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));

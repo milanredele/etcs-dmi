@@ -107,7 +107,7 @@ package body DMI_Status is
       -- on; TTI value present only when requested by National Value and
       -- below TdispTTI (EVC side)
       if not TTI_Valid
-        or else TTI_Seconds >= T_Disp_TTI
+        or else TTI_Tenths >= 10 * T_Disp_TTI
         or else Speed_And_Distance.Get_Monitoring_Mode /= Speed_And_Distance.CSM
       then
          return False;
@@ -122,6 +122,9 @@ package body DMI_Status is
       end case;
    end TTI_Displayed;
 
+   function TTI_Step return Positive is
+     (10 - Natural'Min (9, TTI_Tenths / T_Disp_TTI));
+
    procedure Reset is
    begin
       Brake := None;
@@ -133,7 +136,7 @@ package body DMI_Status is
       Set_Speed_Valid := False;
       Set_Speed := 0;
       TTI_Valid := False;
-      TTI_Seconds := 0;
+      TTI_Tenths := 0;
       T_Disp_TTI := 14;
       Tunnel := Unknown;
       Tunnel_Distance := 0;

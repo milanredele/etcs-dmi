@@ -535,7 +535,7 @@ package body Test_Support is
       Reversing    : Boolean := False;
       SM_Direction : Natural := 0;
       Set_Speed    : Natural := 16#FFFF#;
-      TTI          : Natural := 16#FF#;
+      TTI          : Natural := 16#FFFF#;
       T_Disp_TTI   : Natural := 14;
       Tunnel       : Natural := 0;
       Tunnel_Dist  : Natural := 0;
@@ -553,7 +553,7 @@ package body Test_Support is
       Put_U8 (Payload, Offset, (if Reversing then 1 else 0));
       Put_U8 (Payload, Offset, Unsigned_8 (SM_Direction));
       Put_U16 (Payload, Offset, Unsigned_16 (Set_Speed));
-      Put_U8 (Payload, Offset, Unsigned_8 (TTI));
+      Put_U16 (Payload, Offset, Unsigned_16 (TTI));
       Put_U8 (Payload, Offset, Unsigned_8 (T_Disp_TTI));
       Put_U8 (Payload, Offset, Unsigned_8 (Tunnel));
       Put_U32 (Payload, Offset, Unsigned_32 (Tunnel_Dist));
