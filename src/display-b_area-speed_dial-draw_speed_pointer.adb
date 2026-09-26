@@ -254,6 +254,9 @@ procedure Draw_Speed_Pointer is
 
    -- DMI 8.2.1.2.3, Figure 34: the circular part, 50 cells across,
    -- centred in B1
+   function In_Circular_Part (X, Y : Integer) return Boolean is
+     (East (X) ** 2 + North (Y) ** 2 < Float (Pointer_Radius) ** 2);
+
    procedure Fill_Center_Circle is
    begin
       Fill_Disc (0.0, 0.0, Float (Pointer_Radius), Color);
@@ -368,10 +371,6 @@ procedure Draw_Speed_Pointer is
 
    procedure Draw_Current_Train_Speed_Digital is
       B1_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (B1);
-      -- DMI 8.2.1.3.3
-      First_Digit_X  : constant B_Buffer.Area_Width_T  := B1_Area.Position.X + 2;
-      Second_Digit_X : constant B_Buffer.Area_Width_T  := First_Digit_X  + B1_Area.Width / 3;
-      Third_Digit_X  : constant B_Buffer.Area_Width_T  := Second_Digit_X + B1_Area.Width / 3;
       Pen_Y          : constant B_Buffer.Area_Height_T := B1_Area.Position.Y + B1_Area.Height / 2 + 9;
       Speed          : constant Speed_T       := Get_Speed;
       Digit_Color    :          General_Parameters.Color;
@@ -380,30 +379,53 @@ procedure Draw_Speed_Pointer is
       Second_Digit   : constant Digit := Digit ((Speed rem 100) / 10);
       Third_Digit    : constant Digit := Digit (Speed rem 10);
 
+      -- DMI 8.2.1.3.3: B1 is divided along its width into three equally
+      -- sized sub areas. Choice: the 50 cells of B1 do not divide by three;
+      -- the limits are rounded to the nearest cell, 17 + 16 + 17 cells.
+      subtype Sub_Area is Positive range 1 .. 3;
+      function Right_Limit (The_Sub_Area : Sub_Area) return Integer is
+        (B1_Area.Position.X + (2 * The_Sub_Area * B1_Area.Width + 3) / 6);
+
       use type General_Parameters.Color;
 
-      procedure Draw_Glyph (Pen_X : B_Buffer.Area_Width_T; The_Digit : Digit) is
+      -- DMI 8.2.1.3.3: every digit in its sub area, aligned to the right:
+      -- the last column of the digit is the last column of the sub area,
+      -- whatever the width of the digit. DMI 8.2.1.3.2: the digits are
+      -- inside the circular part of the pointer; the corners of a digit
+      -- in the right sub area would reach past its round border and are
+      -- not drawn there.
+      procedure Draw_Digit (The_Sub_Area : Sub_Area; The_Digit : Digit) is
+         The_Glyph : constant Font.Glyph := Font.FreeSans_18.Glyphs
+           (Wide_Character'Val (Wide_Character'Pos ('0') + The_Digit));
+         Left : constant Integer := Right_Limit (The_Sub_Area) - The_Glyph.Width;
+         Top  : constant Integer := Pen_Y - The_Glyph.Top;
       begin
-         B_Buffer.Draw_Glyph (Pen_X      => Pen_X,
-                              Pen_Y      => Pen_Y,
-                              The_Glyph  => Font.FreeSans_18.Glyphs (Integer'Wide_Image (The_Digit) (2)),
-                              The_Bitmap => Font.FreeSans_18.Bitmap,
-                              The_Color  => Digit_Color);
-      end Draw_Glyph;
+         for J in 0 .. The_Glyph.Height - 1 loop
+            for I in 0 .. The_Glyph.Width - 1 loop
+               if Font.Cell (The_Glyph, Font.FreeSans_18.Bitmap, I, J)
+                 and then In_Circular_Part (Left + I, Top + J)
+               then
+                  B_Buffer.Set_Pixel (Left + I, Top + J, Digit_Color);
+               end if;
+            end loop;
+         end loop;
+      end Draw_Digit;
    begin
+      -- DMI 8.2.1.3.5
       if Color = General_Parameters.RED then
          Digit_Color := General_Parameters.WHITE;
       else
          Digit_Color := General_Parameters.BLACK;
       end if;
 
+      -- DMI 8.2.1.3.4: fewer than 3 digits take the right most sub areas
       if Speed > 99 then
-         Draw_Glyph (First_Digit_X, First_Digit);
+         Draw_Digit (1, First_Digit);
       end if;
       if Speed > 9 then
-         Draw_Glyph (Second_Digit_X, Second_Digit);
+         Draw_Digit (2, Second_Digit);
       end if;
-      Draw_Glyph (Third_Digit_X, Third_Digit);
+      Draw_Digit (3, Third_Digit);
    end Draw_Current_Train_Speed_Digital;
 
 begin
