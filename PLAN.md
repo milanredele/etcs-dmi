@@ -382,7 +382,9 @@ All items are merged (three parallel branches, then two, then one); outcomes, ch
 and new open points are in the P3 follow-up section of
 [doc/AUDIT-2026-09.md](doc/AUDIT-2026-09.md). Decisions taken: the EVC reports the
 SUBSET-026 events of the chapter 15 messages and the DMI owns the catalogue; the DMI
-offers the isolation means as a desk key (5.6.1.1); languages are English and German.
+offers the isolation means as a desk key (5.6.1.1); languages are English, German and
+Hungarian (the Hungarian wording from the MÁV operating instructions under
+doc/national-instructions, the fonts extended to Latin Extended-A for it).
 21. **ATO-1** Section 8.5 in full, with **PLN-5** (the former Phase 4): protocol
     messages and driver actions first, then G1–G5, B0/B8, D2–D4.
 22. **SDI-2** Chapter 15 catalogue: decide whether the DMI or the EVC owns the start
