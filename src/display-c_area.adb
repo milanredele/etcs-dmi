@@ -112,11 +112,14 @@ package body Display.C_Area is
    procedure Draw_Announced_Name (The_Symbol : Symbol.T;
                                   Position   : Position_T;
                                   Color      : General_Parameters.Color) is
-      -- right of the arrow, 2 cells from it and 4 from the border of C1
-      -- (its flashing frame is 2 cells wide, 5.1.1.3)
+      -- right of the arrow, 2 cells from it and 3 from the right border
+      -- of C1 (its flashing frame is 2 cells wide, 5.1.1.3, and one
+      -- cell stays clear of it), 4 from the top and the bottom. The
+      -- width of a text is its ink (Display.Draw.String_Width), so the
+      -- '/' of "PZB/" keeps its last cell inside the box.
       Box : constant Area_T :=
         ((Position.X + Arrow_Width + 2, The_C1_Area.Position.Y + 4),
-         The_C1_Area.Position.X + The_C1_Area.Width - 4
+         The_C1_Area.Position.X + The_C1_Area.Width - 3
            - (Position.X + Arrow_Width + 2),
          The_C1_Area.Height - 8);
       -- the centre line of the arrow

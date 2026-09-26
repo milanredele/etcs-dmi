@@ -2803,8 +2803,8 @@ procedure DMI_Test is
          return Result;
       end Lines_Shown;
 
-      -- Every visible line fits the width the text has (the double
-      -- strike of the bold style included)
+      -- Every visible line fits the width the text has, measured with
+      -- the font it is drawn with (bold for the first group)
       function Lines_Fit return Boolean is
          Line  : TM.Line_T;
          Valid : Boolean;
@@ -2813,8 +2813,8 @@ procedure DMI_Test is
             TM.Get_Visible_Line (I, Line, Valid);
             exit when not Valid;
             if Display.Draw.String_Width
-                 (Line.Text (1 .. Line.Length), TM.Text_Size)
-               + (if Line.Bold then TM.Bold_Extra else 0) > TM.Line_Width
+                 (Line.Text (1 .. Line.Length), TM.Text_Size,
+                  Bold => Line.Bold) > TM.Line_Width
             then
                return False;
             end if;
@@ -7385,15 +7385,17 @@ procedure DMI_Test is
 
       --  15.1.1.3 / 8.2.3.4: a system status message breaks at its
       --  spaces only when every word fits a line of the text message
-      --  area (a bold line is one cell wider)
+      --  area, measured in the bold font they are drawn with (first
+      --  group, 8.2.3.4.7 c)
       function Words_Fit (S : Wide_String) return Boolean is
          First : Positive := S'First;
       begin
          for I in S'Range loop
             if S (I) = ' ' or else I = S'Last then
-               if Width (S (First .. (if S (I) = ' ' then I - 1 else I)))
+               if Display.Draw.String_Width
+                    (S (First .. (if S (I) = ' ' then I - 1 else I)), 12,
+                     Bold => True)
                     > DMI_Text_Messages.Line_Width
-                      - DMI_Text_Messages.Bold_Extra
                then
                   return False;
                end if;

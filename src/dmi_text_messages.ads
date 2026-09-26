@@ -123,9 +123,8 @@ package DMI_Text_Messages is
    -- 5.1.2.2.3: character height of the text messages
    Text_Size : constant Font.Size_T := 12;
 
-   -- The bold style of the first group (8.2.3.4.7 c) is drawn as a
-   -- double strike, one cell wider than the regular text
-   Bold_Extra : constant := 1;
+   -- The first group is drawn in the bold font (8.2.3.4.7 c,
+   -- Font.FreeSansBold_12) and its lines are wrapped with its advances.
 
    Max_Line : constant := 64;
 

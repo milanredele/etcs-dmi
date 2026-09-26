@@ -81,11 +81,13 @@ package body Display.Frame_Buffer is
                           The_String : Wide_String;
                           The_Size   : Font.Size_T;
                           The_Color  : General_Parameters.Color;
-                          The_Alignment : Text_Alignment := Left) is
+                          The_Alignment : Text_Alignment := Left;
+                          Bold       : Boolean := False) is
    begin
       Draw.Draw_String (Area.Position.X + Pen_X, Area.Position.Y + Pen_Y,
                         The_String, The_Size, The_Color,
-                        Draw.Text_Alignment'Val (Text_Alignment'Pos (The_Alignment)));
+                        Draw.Text_Alignment'Val (Text_Alignment'Pos (The_Alignment)),
+                        Bold);
    end Draw_String;
 
    procedure Draw_String_Clipped (Pen_X : Area_Width_T;
@@ -93,11 +95,12 @@ package body Display.Frame_Buffer is
                                   The_String : Wide_String;
                                   The_Size   : Font.Size_T;
                                   The_Color  : General_Parameters.Color;
-                                  The_Clip   : Area_T) is
+                                  The_Clip   : Area_T;
+                                  Bold       : Boolean := False) is
    begin
       Draw.Draw_String_Clipped
         (Area.Position.X + Pen_X, Area.Position.Y + Pen_Y,
-         The_String, The_Size, The_Color, Absolute (The_Clip));
+         The_String, The_Size, The_Color, Absolute (The_Clip), Bold);
    end Draw_String_Clipped;
 
    procedure Draw_Symbol (The_Symbol   : Symbol.T;

@@ -32,12 +32,16 @@ package Display.Draw is
    -- a character outside it, the C1 controls included, is drawn as a box
    -- outline of the cap height; cells outside the screen are not drawn;
    -- a size without a font (11, 13 .. 15) uses the next smaller font.
+   -- Bold: the bold style (8.2.3.4.7 c, 5.1.2.1.5), which exists at
+   -- 12 cells; at any other size the regular font of that size is used.
+   -- The length the alignment works with is String_Width.
    procedure Draw_String (Pen_X : Width_T;
                           Pen_Y : Height_T;
                           The_String : Wide_String;
                           The_Size   : Font.Size_T;
                           The_Color  : General_Parameters.Color;
-                          The_Alignment : Text_Alignment := Left);
+                          The_Alignment : Text_Alignment := Left;
+                          Bold       : Boolean := False);
 
    -- The same, left aligned, for text that must stay inside an area
    -- whatever it holds (text messages, DMI 8.2.3.4.2): no cell outside
@@ -47,12 +51,23 @@ package Display.Draw is
                                   The_String : Wide_String;
                                   The_Size   : Font.Size_T;
                                   The_Color  : General_Parameters.Color;
-                                  The_Clip   : Area_T);
+                                  The_Clip   : Area_T;
+                                  Bold       : Boolean := False);
 
    -- Width in cells of The_String as Draw_String draws it, the
-   -- replacement boxes included
+   -- replacement boxes included: from the pen position to the last cell
+   -- of ink, which is the sum of the advances, or beyond it by the ink
+   -- of a last glyph that reaches past its advance ('y', '/' ...). The
+   -- measure to decide whether a text fits an area.
    function String_Width (The_String : Wide_String;
-                          The_Size   : Font.Size_T) return Natural;
+                          The_Size   : Font.Size_T;
+                          Bold       : Boolean := False) return Natural;
+
+   -- The pen advance over The_String (the sum of the advances): where
+   -- the pen stands after it, the place of the next character
+   function String_Advance (The_String : Wide_String;
+                            The_Size   : Font.Size_T;
+                            Bold       : Boolean := False) return Natural;
 
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
                           The_Position : Position_T);

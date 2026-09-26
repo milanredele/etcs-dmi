@@ -9,6 +9,7 @@ with Font.FreeSans_12;
 with Font.FreeSans_16;
 with Font.FreeSans_17;
 with Font.FreeSans_18;
+with Font.FreeSansBold_12;
 
 package body Display.Draw is
 
@@ -113,6 +114,23 @@ package body Display.Draw is
          when 17            => 17,
          when 18            => 18);
 
+   -- The font packages: the regular style at every available size, the
+   -- bold style at 12 cells, the one height the specification asks it
+   -- at (8.2.3.4.7 c: the text messages of the first group, 5.1.2.1.5:
+   -- the '.' of a keyboard, both 5.1.2.2.3 h). Choice: a bold request at
+   -- another size draws the regular font of that size, so that the
+   -- character height of 5.1.2.2.3 is kept.
+   type Face_T is (Sans_10, Sans_12, Sans_16, Sans_17, Sans_18,
+                   Sans_Bold_12);
+
+   function Face (The_Size : Font.Size_T; Bold : Boolean) return Face_T is
+     (case Available (The_Size) is
+         when 10 => Sans_10,
+         when 12 => (if Bold then Sans_Bold_12 else Sans_12),
+         when 16 => Sans_16,
+         when 17 => Sans_17,
+         when 18 => Sans_18);
+
    -- The maps run over a contiguous range of code points; the ones the
    -- font has no glyph for carry Font.No_Glyph (the C1 controls of
    -- ISO 8859-1, 16#7F# .. 16#9F#, have no printable form) and get the
@@ -121,9 +139,10 @@ package body Display.Draw is
                        C       : Wide_Character) return Boolean is
      (C in The_Map'Range and then Font.Defined (The_Map (C)));
 
-   function Width_In (The_Map    : Font.Glyph_Map;
-                      The_Size   : Font.Size_T;
-                      The_String : Wide_String) return Natural is
+   -- Cells the pen moves over The_String
+   function Advance_In (The_Map    : Font.Glyph_Map;
+                        The_Size   : Font.Size_T;
+                        The_String : Wide_String) return Natural is
       Total : Natural := 0;
    begin
       for C of The_String loop
@@ -132,24 +151,72 @@ package body Display.Draw is
                            else Replacement_Advance (The_Size));
       end loop;
       return Total;
+   end Advance_In;
+
+   -- Cells The_String covers from the pen on: the advances, except that
+   -- the last glyph counts with its ink (Left + Width) where the ink
+   -- reaches beyond its advance ('y', 'V', '/' ... by one cell in
+   -- FreeSans), so that a string measured to fit an area does not put
+   -- a cell into the margin after it (AUDIT-2026-09, P2 open point)
+   function Width_In (The_Map    : Font.Glyph_Map;
+                      The_Size   : Font.Size_T;
+                      The_String : Wide_String) return Natural is
+      Total : constant Natural := Advance_In (The_Map, The_Size, The_String);
+   begin
+      if The_String'Length = 0
+        or else not Has_Glyph (The_Map, The_String (The_String'Last))
+      then
+         return Total; -- a replacement box lies inside its advance
+      end if;
+      declare
+         G   : constant Font.Glyph := The_Map (The_String (The_String'Last));
+         Ink : constant Integer := G.Left + G.Width;
+      begin
+         return (if Ink > G.Advance_X
+                 then Total - G.Advance_X + Ink
+                 else Total);
+      end;
    end Width_In;
 
    function String_Width (The_String : Wide_String;
-                          The_Size   : Font.Size_T) return Natural is
+                          The_Size   : Font.Size_T;
+                          Bold       : Boolean := False) return Natural is
    begin
-      case Available (The_Size) is
-         when 10 =>
+      case Face (The_Size, Bold) is
+         when Sans_10 =>
             return Width_In (Font.FreeSans_10.Glyphs, 10, The_String);
-         when 12 =>
+         when Sans_12 =>
             return Width_In (Font.FreeSans_12.Glyphs, 12, The_String);
-         when 16 =>
+         when Sans_16 =>
             return Width_In (Font.FreeSans_16.Glyphs, 16, The_String);
-         when 17 =>
+         when Sans_17 =>
             return Width_In (Font.FreeSans_17.Glyphs, 17, The_String);
-         when 18 =>
+         when Sans_18 =>
             return Width_In (Font.FreeSans_18.Glyphs, 18, The_String);
+         when Sans_Bold_12 =>
+            return Width_In (Font.FreeSansBold_12.Glyphs, 12, The_String);
       end case;
    end String_Width;
+
+   function String_Advance (The_String : Wide_String;
+                            The_Size   : Font.Size_T;
+                            Bold       : Boolean := False) return Natural is
+   begin
+      case Face (The_Size, Bold) is
+         when Sans_10 =>
+            return Advance_In (Font.FreeSans_10.Glyphs, 10, The_String);
+         when Sans_12 =>
+            return Advance_In (Font.FreeSans_12.Glyphs, 12, The_String);
+         when Sans_16 =>
+            return Advance_In (Font.FreeSans_16.Glyphs, 16, The_String);
+         when Sans_17 =>
+            return Advance_In (Font.FreeSans_17.Glyphs, 17, The_String);
+         when Sans_18 =>
+            return Advance_In (Font.FreeSans_18.Glyphs, 18, The_String);
+         when Sans_Bold_12 =>
+            return Advance_In (Font.FreeSansBold_12.Glyphs, 12, The_String);
+      end case;
+   end String_Advance;
 
    -- Pen position of the first character for the given alignment
    function Start_X (Pen_X         : Width_T;
@@ -195,7 +262,8 @@ package body Display.Draw is
                          The_Size   : Font.Size_T;
                          The_Color  : General_Parameters.Color;
                          The_Alignment : Text_Alignment;
-                         The_Clip   : Clip_T) is
+                         The_Clip   : Clip_T;
+                         Bold       : Boolean) is
       Size : constant Available_Size_T := Available (The_Size);
 
       -- The font tables are passed by reference, never copied
@@ -218,17 +286,19 @@ package body Display.Draw is
       end Render;
 
    begin
-      case Size is
-         when 10 =>
+      case Face (Size, Bold) is
+         when Sans_10 =>
             Render (Font.FreeSans_10.Glyphs, Font.FreeSans_10.Bitmap);
-         when 12 =>
+         when Sans_12 =>
             Render (Font.FreeSans_12.Glyphs, Font.FreeSans_12.Bitmap);
-         when 16 =>
+         when Sans_16 =>
             Render (Font.FreeSans_16.Glyphs, Font.FreeSans_16.Bitmap);
-         when 17 =>
+         when Sans_17 =>
             Render (Font.FreeSans_17.Glyphs, Font.FreeSans_17.Bitmap);
-         when 18 =>
+         when Sans_18 =>
             Render (Font.FreeSans_18.Glyphs, Font.FreeSans_18.Bitmap);
+         when Sans_Bold_12 =>
+            Render (Font.FreeSansBold_12.Glyphs, Font.FreeSansBold_12.Bitmap);
       end case;
    end Put_String;
 
@@ -237,10 +307,11 @@ package body Display.Draw is
                           The_String : Wide_String;
                           The_Size   : Font.Size_T;
                           The_Color  : General_Parameters.Color;
-                          The_Alignment : Text_Alignment := Left) is
+                          The_Alignment : Text_Alignment := Left;
+                          Bold       : Boolean := False) is
    begin
       Put_String (Pen_X, Pen_Y, The_String, The_Size, The_Color,
-                  The_Alignment, Whole_Screen);
+                  The_Alignment, Whole_Screen, Bold);
    end Draw_String;
 
    procedure Draw_String_Clipped (Pen_X : Width_T;
@@ -248,10 +319,11 @@ package body Display.Draw is
                                   The_String : Wide_String;
                                   The_Size   : Font.Size_T;
                                   The_Color  : General_Parameters.Color;
-                                  The_Clip   : Area_T) is
+                                  The_Clip   : Area_T;
+                                  Bold       : Boolean := False) is
    begin
       Put_String (Pen_X, Pen_Y, The_String, The_Size, The_Color,
-                  Left, To_Clip (The_Clip));
+                  Left, To_Clip (The_Clip), Bold);
    end Draw_String_Clipped;
 
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
