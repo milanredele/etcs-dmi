@@ -8249,6 +8249,265 @@ procedure DMI_Test is
       Reset;
    end Scenario_Hu_Wasm_Start_Up;
 
+   ---------------------------------------------------------------------
+   -- P4 pixel work (pf_): the cells of 8.2.2.1 (Table 12), 8.2.3.3.14,
+   -- 5.3.2.5.5 a, 8.1.1.4 b and the border corners of Figures 50 / 60,
+   -- checked cell by cell and pinned by goldens
+   ---------------------------------------------------------------------
+
+   function Pixel_Is (X, Y : Natural; C : General_Parameters.Color)
+                      return Boolean is
+      use type General_Parameters.Color;
+   begin
+      return Display.Screen.Get_Pixel (X, Y) = C;
+   end Pixel_Is;
+
+   PF_Grey   : General_Parameters.Color renames General_Parameters.GREY;
+   PF_Black  : General_Parameters.Color renames General_Parameters.BLACK;
+   PF_Shadow : General_Parameters.Color renames General_Parameters.SHADOW;
+   PF_Medium : General_Parameters.Color renames
+     General_Parameters.MEDIUM_GREY;
+   PF_Dark   : General_Parameters.Color renames General_Parameters.DARK_GREY;
+   PF_Back   : General_Parameters.Color renames
+     General_Parameters.Background_Color;
+
+   --  8.2.2.1: FS, TSM, the distance to target D (Table 13: bar shown)
+   procedure PF_Show_Distance (D : Natural) is
+   begin
+      Send_Speed_State (V_Cur => 60, V_Perm => 120, V_Target => 0,
+                        V_Release => 0, V_Sbi => 135, V_Wsl => 125,
+                        D_Target => D, Monitoring => 1, Dial_Range => 1,
+                        Vrelease_Exists => False);
+      Step;
+      Drain_Sounds;
+   end PF_Show_Distance;
+
+   procedure Scenario_PF_Distance_Bar is
+      --  A3 is at (0, 99) of the screen (A at (0,15), A3 at (0,84) in A)
+      A3_Y  : constant := 99;
+      Bar_X : constant := 33;               -- a column of the bar 29-38
+
+      type Line_T is record
+         Metres : Natural;
+         X      : Natural;
+         Y      : Integer;
+         Long   : Boolean;
+      end record;
+      --  8.2.2.1.4 Table 12
+      Table_12 : constant array (1 .. 11) of Line_T :=
+        ((1000, 12, -1, True), (900, 16, 6, False), (800, 16, 13, False),
+         (700, 16, 22, False), (600, 16, 32, False), (500, 12, 45, True),
+         (400, 16, 59, False), (300, 16, 79, False), (200, 16, 105, False),
+         (100, 16, 152, False), (0, 12, 185, True));
+
+      function Line_OK (L : Line_T) return Boolean is
+         Length : constant Natural := (if L.Long then 13 else 9);
+         Width  : constant Natural := (if L.Long then 2 else 1);
+         Top    : constant Natural := A3_Y + L.Y;
+      begin
+         for Row in Top .. Top + Width - 1 loop
+            for X in L.X .. L.X + Length - 1 loop
+               if not Pixel_Is (X, Row, PF_Grey) then
+                  return False;
+               end if;
+            end loop;
+            if Pixel_Is (L.X - 1, Row, PF_Grey)
+              or else Pixel_Is (L.X + Length, Row, PF_Grey)
+            then
+               return False;
+            end if;
+         end loop;
+         return not Pixel_Is (L.X + 1, Top - 1, PF_Grey)
+           and then not Pixel_Is (L.X + 1, Top + Width, PF_Grey);
+      end Line_OK;
+
+      --  8.2.2.1.6: the bar stands on the bottom edge of row 185 of A3,
+      --  its top row is Top (of A3), columns 29-38
+      function Bar_Top_Is (Top : Natural) return Boolean is
+        (Pixel_Is (Bar_X, A3_Y + Top, PF_Grey)
+         and then not Pixel_Is (Bar_X, A3_Y + Top - 1, PF_Grey)
+         and then Pixel_Is (Bar_X, A3_Y + 185, PF_Grey)
+         and then not Pixel_Is (Bar_X, A3_Y + 186, PF_Grey)
+         and then Pixel_Is (29, A3_Y + 185, PF_Grey)
+         and then Pixel_Is (38, A3_Y + 185, PF_Grey)
+         and then not Pixel_Is (28, A3_Y + 185, PF_Grey)
+         and then not Pixel_Is (39, A3_Y + 185, PF_Grey));
+   begin
+      Lang_English;
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      PF_Show_Distance (0);
+      for L of Table_12 loop
+         Check (Line_OK (L),
+                "pf: Table 12 line of" & Natural'Image (L.Metres)
+                & " m at its cells");
+      end loop;
+      Check (not Pixel_Is (Bar_X, A3_Y + 185, PF_Grey),
+             "pf: 0 m shows no bar");
+      Check_Frame ("pf_a3_0");
+
+      --  at each distance of Table 12 the bar reaches the row below the
+      --  top row of its indicator line
+      for L of Table_12 loop
+         if L.Metres > 0 then
+            PF_Show_Distance (L.Metres);
+            Check (Bar_Top_Is (L.Y + 1),
+                   "pf: the bar for" & Natural'Image (L.Metres)
+                   & " m ends below row" & Integer'Image (L.Y));
+         end if;
+      end loop;
+
+      PF_Show_Distance (10);                 -- linear: 3.3 cells, 4 shown
+      Check (Bar_Top_Is (182), "pf: 10 m is a bar of 4 cells");
+      Check_Frame ("pf_a3_10");
+      PF_Show_Distance (100);
+      Check (Bar_Top_Is (153), "pf: 100 m is a bar of 33 cells");
+      Check_Frame ("pf_a3_100");
+      --  262 m is at 87.9999 on the logarithmic scale: 98 cells
+      PF_Show_Distance (262);
+      Check (Bar_Top_Is (88), "pf: 262 m is a bar of 98 cells");
+      Check_Frame ("pf_a3_262");
+      PF_Show_Distance (1000);
+      Check (Bar_Top_Is (0), "pf: 1000 m is a bar of 186 cells");
+      Check_Frame ("pf_a3_1000");
+      PF_Show_Distance (5000);               -- 8.2.2.1.6: shows 1000 m
+      Check (Bar_Top_Is (0), "pf: 5000 m shows as 1000 m");
+      Check_Frame ("pf_a3_5000");
+      Reset;
+   end Scenario_PF_Distance_Bar;
+
+   --  8.2.3.3: the question box at (335, 65) .. (578, 114), each part
+   --  with its own medium grey input field border (8.2.3.3.14)
+   procedure Scenario_PF_TAF is
+      Row : constant := 90;
+   begin
+      Lang_English;
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 5, TAF => True);
+      Step;
+      Check (Pixel_Is (334, Row, PF_Black)
+             and then Pixel_Is (579, Row, PF_Shadow),
+             "pf: TAF keeps the border of D");
+      Check (Pixel_Is (335, Row, PF_Medium)
+             and then Pixel_Is (336, Row, PF_Dark)
+             and then Pixel_Is (495, Row, PF_Dark)
+             and then Pixel_Is (496, Row, PF_Medium),
+             "pf: the question part 335-496 has its own border");
+      Check (Pixel_Is (497, Row, PF_Medium)
+             and then Pixel_Is (578, Row, PF_Medium)
+             and then Pixel_Is (400, 65, PF_Medium)
+             and then Pixel_Is (400, 114, PF_Medium)
+             and then Pixel_Is (400, 64, PF_Back)
+             and then Pixel_Is (400, 115, PF_Back),
+             "pf: the question box is 244x50 at (335, 65)");
+      Check_Frame ("pf_taf");
+      --  5.3.2.5.3: pressed, 'Yes' is dark grey inside its border
+      Pointer_Down (537, Row);
+      Step;
+      Check (Pixel_Is (497, Row, PF_Medium)
+             and then Pixel_Is (498, Row, PF_Dark)
+             and then Pixel_Is (577, Row, PF_Dark)
+             and then Pixel_Is (578, Row, PF_Medium)
+             and then Pixel_Is (520, 65, PF_Medium)
+             and then Pixel_Is (520, 114, PF_Medium),
+             "pf: the pressed 'Yes' shows its own border");
+      Check_Frame ("pf_taf_pressed");
+      Pointer_Up (537, Row);
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+      Reset;
+   end Scenario_PF_TAF;
+
+   --  5.3.2.5.5 a: a disabled E10/E11 is an enabled button with NA15 /
+   --  NA16, so it keeps the lifted border, touched or not; the corners of
+   --  the border as Figure 60 draws them
+   procedure Scenario_PF_Scroll_Disabled is
+      function Lifted (X0, Y0 : Natural) return Boolean is
+        (Pixel_Is (X0, Y0, PF_Black)
+         and then Pixel_Is (X0 + 1, Y0, PF_Black)
+         and then Pixel_Is (X0 + 44, Y0, PF_Black)
+         and then Pixel_Is (X0 + 45, Y0, PF_Shadow)
+         and then Pixel_Is (X0 + 1, Y0 + 1, PF_Shadow)
+         and then Pixel_Is (X0 + 43, Y0 + 1, PF_Shadow)
+         and then Pixel_Is (X0 + 44, Y0 + 1, PF_Black)
+         and then Pixel_Is (X0 + 1, Y0 + 47, PF_Shadow)
+         and then Pixel_Is (X0, Y0 + 48, PF_Black)
+         and then Pixel_Is (X0 + 1, Y0 + 48, PF_Black)
+         and then Pixel_Is (X0 + 44, Y0 + 48, PF_Black)
+         and then Pixel_Is (X0, Y0 + 49, PF_Shadow)
+         and then Pixel_Is (X0 + 44, Y0 + 49, PF_Shadow)
+         and then Pixel_Is (X0 + 45, Y0 + 49, PF_Shadow));
+   begin
+      Lang_English;
+      Reset;
+      Send_Mode_Level (Mode => 2, Level => 4);
+      Step;
+      Check (Lifted (288, 365) and then Lifted (288, 415),
+             "pf: disabled E10 and E11 keep the lifted border");
+      Check (Pixel_Is (311, 390, PF_Dark)
+             and then Pixel_Is (311, 440, PF_Dark),
+             "pf: E10 / E11 show the dark grey NA15 / NA16");
+      Check_Frame ("pf_e10_e11_disabled");
+      Pointer_Down (311, 390);
+      Step;
+      Check (Lifted (288, 365), "pf: touching a disabled E10 keeps it");
+      Pointer_Up (311, 390);
+      Step;
+      Drain_Sounds;
+      Reset;
+   end Scenario_PF_Scroll_Disabled;
+
+   --  8.1.1.4 b: G1-G5 are areas of layer -1 with their borders in every
+   --  default window; without ATO (8.5.1.1) there is nothing else in them.
+   --  5.1.1.1.2 with Figure 50: the shadow lines take the bottom left and
+   --  top right corners of an area border.
+   procedure Scenario_PF_G_Empty is
+      function Bordered_Empty (X0, W : Natural) return Boolean is
+      begin
+         if not (Pixel_Is (X0, 315, PF_Black)
+                 and then Pixel_Is (X0 + W - 2, 315, PF_Black)
+                 and then Pixel_Is (X0 + W - 1, 315, PF_Shadow)
+                 and then Pixel_Is (X0, 363, PF_Black)
+                 and then Pixel_Is (X0, 364, PF_Shadow)
+                 and then Pixel_Is (X0 + W - 1, 364, PF_Shadow))
+         then
+            return False;
+         end if;
+         for Y in 316 .. 363 loop
+            for X in X0 + 1 .. X0 + W - 2 loop
+               if not Pixel_Is (X, Y, PF_Back) then
+                  return False;
+               end if;
+            end loop;
+         end loop;
+         return True;
+      end Bordered_Empty;
+   begin
+      Lang_English;
+      Reset;
+      --  SR, and the ATO on-board reports with the selector at Stand-by:
+      --  8.5.1.1 shows nothing of it
+      Send_Mode_Level (Mode => 7, Level => 4);
+      Send_ATO (Selector => 1, Status => 2, Skip => 1, Name => "Hbf",
+                ETA_H => 12, ETA_M => 30);
+      Step;
+      Drain_Sounds;
+      Check (not DMI_ATO.Displayed, "pf: no ATO information");
+      for I in 0 .. 3 loop
+         Check (Bordered_Empty (334 + 49 * I, 49),
+                "pf: G" & Integer'Image (I + 1) & " bordered and empty");
+      end loop;
+      Check (Bordered_Empty (530, 50), "pf: G5 bordered and empty");
+      Check (Pixel_Is (0, 15, PF_Black)
+             and then Pixel_Is (53, 15, PF_Shadow)
+             and then Pixel_Is (0, 67, PF_Black)
+             and then Pixel_Is (0, 68, PF_Shadow),
+             "pf: A1 border corners as in Figure 50");
+      Check_Frame ("pf_g_empty");
+      Reset;
+   end Scenario_PF_G_Empty;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -8340,6 +8599,10 @@ begin
    Scenario_Hu_Messages;
    Scenario_Hu_Reset;
    Scenario_Hu_Wasm_Start_Up;
+   Scenario_PF_Distance_Bar;
+   Scenario_PF_TAF;
+   Scenario_PF_Scroll_Disabled;
+   Scenario_PF_G_Empty;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));
