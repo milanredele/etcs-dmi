@@ -187,5 +187,25 @@ if (dmi.dmi_failed() !== 1) { failures++; console.log('FAIL: failure not latched
 dmi.dmi_initialise();
 if (dmi.dmi_failed() !== 0) { failures++; console.log('FAIL: restart does not clear the failure'); }
 
+// --- Hungarian from the Start Up, as Scenario_Hu_Wasm_Start_Up: the
+// --- Latin Extended-A letters of the fixed texts in the wasm fonts -------
+dmi.dmi_initialise();
+evc.evc_reset();
+for (let i = 0; i < 5; i++) {
+  evc.evc_step(100);
+  receive(dmi, 'dmi', transmit(evc, 'evc'));
+  dmi.dmi_tick(100);
+}
+{
+  const LANGUAGE = [410, 90], ENTER = [487, 90], CLOSE = [370, 440];
+  const SETTINGS = [599, 440];                 // Table 49 S1-1
+  for (const k of [SETTINGS, LANGUAGE, [589, 240], ENTER, CLOSE]) // Magyar
+    press(...k);
+  dmi.dmi_render();
+  check('hu_wasm_driver_id', dmi);
+  for (const k of [SETTINGS, LANGUAGE, [487, 240], ENTER, CLOSE]) // English
+    press(...k);
+}
+
 console.log(`failures: ${failures}`);
 process.exit(failures ? 1 : 0);

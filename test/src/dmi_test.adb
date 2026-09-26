@@ -42,6 +42,8 @@ with EVC_Core;
 with EVC_Driver;
 with EVC_Track;
 with EVC_Train;
+with Font.FreeSans_10;
+with Font.FreeSans_12;
 with General_Parameters;
 with Interfaces;
 with Speed_And_Distance;
@@ -7293,8 +7295,8 @@ procedure DMI_Test is
    end Lang_Standstill;
 
    --  Table 54 S1 -> S2: Settings, then the Language window; Key is the
-   --  key of the language (1 Deutsch, 2 English, Figure 119), accepted
-   --  on the input field
+   --  key of the language (1 Deutsch, 2 English, 3 Magyar, Figure 119),
+   --  accepted on the input field
    procedure Lang_Select (Key_Number : Positive) is
    begin
       Win_Default;
@@ -7371,7 +7373,35 @@ procedure DMI_Test is
          TX.Brake_Percentage, TX.Max_Speed, TX.Axle_Load_Category,
          TX.Airtight, TX.Loading_Gauge, TX.Maximum_Speed,
          TX.Radio_Network_Type, TX.GSMR_Network_ID,
-         TX.Operated_System_Version);
+         TX.Operated_System_Version, TX.Validate);
+
+      --  every character has a glyph in the font it is drawn with, so
+      --  that no text shows a replacement box (the Hungarian o and u
+      --  with double acute are Latin Extended-A)
+      function Has_Glyphs (S : Wide_String; Map : Font.Glyph_Map)
+        return Boolean is
+        (for all C of S =>
+           C in Map'Range and then Font.Defined (Map (C)));
+
+      --  15.1.1.3 / 8.2.3.4: a system status message breaks at its
+      --  spaces only when every word fits a line of the text message
+      --  area (a bold line is one cell wider)
+      function Words_Fit (S : Wide_String) return Boolean is
+         First : Positive := S'First;
+      begin
+         for I in S'Range loop
+            if S (I) = ' ' or else I = S'Last then
+               if Width (S (First .. (if S (I) = ' ' then I - 1 else I)))
+                    > DMI_Text_Messages.Line_Width
+                      - DMI_Text_Messages.Bold_Extra
+               then
+                  return False;
+               end if;
+               First := I + 1;
+            end if;
+         end loop;
+         return True;
+      end Words_Fit;
    begin
       for L in TX.Language_T loop
          declare
@@ -7430,6 +7460,32 @@ procedure DMI_Test is
                           & TX.Text (TX.SR_Speed_Distance, L)
                           & TX.Text (TX.Entry_Complete_After, L)) <= 330,
                    "lang: " & Name & " the longest question fits");
+            --  11.3.3.7 a: the 'TRN' button of the Driver ID window,
+            --  82 cells, label size 10 (5.1.2.2.3 g); 'Yes' on the 82
+            --  cells of the TAF answer (8.2.3.3) and of 10.3.5.10
+            Check (Display.Draw.String_Width (TX.Text (TX.TRN_Button, L),
+                                              10) <= 78
+                   and then Width (TX.Text (TX.Yes, L)) <= 78,
+                   "lang: " & Name & " 'TRN' and 'Yes' fit 82 cells");
+            --  Table 45 item 15: 'VBC #n set code' with two digits
+            Check (Width (TX.Text (TX.VBC_Code_Before, L) & "63"
+                          & TX.Text (TX.VBC_Code_After, L)) <= 194,
+                   "lang: " & Name & " 'VBC #63 set code' fits left of X 204");
+            for T in TX.Balise_Read_Error .. TX.Text_ID'Last loop
+               Check (Words_Fit (TX.Text (T, L)),
+                      "lang: " & Name & " message " & TX.Text_ID'Image (T)
+                      & " breaks at its spaces");
+            end loop;
+            for T in TX.Text_ID loop
+               Check (Has_Glyphs (TX.Text (T, L), Font.FreeSans_12.Glyphs)
+                      and then (T /= TX.TRN_Button
+                                or else Has_Glyphs (TX.Text (T, L),
+                                                    Font.FreeSans_10.Glyphs)),
+                      "lang: " & Name & " " & TX.Text_ID'Image (T)
+                      & " has a glyph for every character");
+            end loop;
+            Check (Has_Glyphs (TX.Name (L), Font.FreeSans_12.Glyphs),
+                   "lang: the name of " & Name & " has its glyphs");
          end;
       end loop;
       Check (Lang_Is (TX.English) and then TX."=" (TX.Default_Language,
@@ -7883,6 +7939,316 @@ procedure DMI_Test is
    end Scenario_Lang_Simulator;
 
 
+   ---------------------------------------------------------------------
+   -- Hungarian, the third language (DMI 5.5.1.1, 11.3.6.4): the wording
+   -- of the MAV ETCS operating instructions, Latin Extended-A glyphs
+   ---------------------------------------------------------------------
+
+   -- 11.3.6.4 / Figure 119: three keys, Magyar the third (the order of
+   -- the names); Table 54 S2 with kind 10 "hu"
+   procedure Scenario_Hu_Language_Window is
+   begin
+      Lang_English;
+      Lang_Standstill;
+      Press (610, 240);                          -- F5: Settings
+      Win_Menu (1);                              -- Language
+      Check (Win_Top_Is (DMI_Windows.W_Language)
+             and then Win_Value = "English",
+             "hu: the Language window proposes English");
+      Key (3);
+      Check (Win_Value = "Magyar" and then Lang_Is (TX.English),
+             "hu: the third key enters 'Magyar', nothing selected yet");
+      Step;
+      Check_Frame ("hu_lang_window_magyar");
+      Expect_No_Driver_Data (10, "hu: nothing sent before the entry");
+      Enter_Single;
+      Check (Lang_Is (TX.Hungarian)
+             and then Win_Top_Is (DMI_Windows.W_Settings),
+             "hu: Hungarian selected, back to the Settings window");
+      Check (TX.Code (TX.Hungarian) = "hu"
+             and then TX.Name (TX.Hungarian) = "Magyar",
+             "hu: ISO 639-1 'hu', named 'Magyar'");
+      Expect_Driver_Data (10, Lang_Bytes ("hu"), "hu: kind 10 'hu'");
+      Step;
+      Check_Frame ("hu_settings");               -- Hangero, Fenyero
+      Win_Menu (1);
+      Check (Win_Top_Is (DMI_Windows.W_Language)
+             and then Win_Value = "Magyar",
+             "hu: 11.7.1.4, Magyar proposed");
+      Step;
+      Check_Frame ("hu_lang_window");            -- title 'Nyelv'
+      Win_Close;
+
+      -- the simulator stores the code as it comes
+      EVC_Core.Handle_Driver_Data ((10, Character'Pos ('h'),
+                                    Character'Pos ('u')));
+      Check (EVC_Core.Language_Code = "hu",
+             "hu: sim, the on-board stores 'hu'");
+      EVC_Core.Handle_Driver_Data ((10, Character'Pos ('e'),
+                                    Character'Pos ('n')));
+      Lang_English;
+   end Scenario_Hu_Language_Window;
+
+   -- 5.5.1.3: the default window, the menus, the keyboards, the data
+   -- entry windows with their echo texts, the data view and the System
+   -- version window in Hungarian
+   procedure Scenario_Hu_Windows is
+   begin
+      Lang_English;
+      Lang_Standstill;
+      Lang_Select (3);
+      Check (Lang_Is (TX.Hungarian), "hu: Hungarian selected");
+      Win_Default;
+      Step;
+      Check_Frame ("hu_default");                -- F1 .. F4
+
+      -- the menu windows, Tables 33 to 35
+      Press (610, 40);                           -- F1: Fomenu
+      Step;
+      Check_Frame ("hu_main");
+      Win_Menu (5);                              -- Szint
+      Check (Win_Top_Is (DMI_Windows.W_Level), "hu: the Level window");
+      Step;
+      Check_Frame ("hu_level");                  -- 'ETCS 1 szint'
+      Win_Default;
+      Press (610, 90);                           -- F2: Meghaladas
+      Step;
+      Check_Frame ("hu_override");               -- 'Menetengedely vege'
+      Win_Default;
+      Press (610, 190);                          -- F4: Kulonleges
+      Step;
+      Check_Frame ("hu_special");
+      Win_Menu (1);                              -- Tapadas
+      Check (Win_Top_Is (DMI_Windows.W_Adhesion)
+             and then Win_Value = "Nem cs["FA"]sz["F3"]s s["ED"]n",
+             "hu: the proposed adhesion in Hungarian");
+      Win_Default;
+
+      -- the train data windows: labels, echo texts, the question,
+      -- 'Igen' / 'Nem' and the validation window
+      Press (610, 40);                           -- F1
+      Win_Menu (3);                              -- Vonatadatok
+      Check (Win_Top_Is (DMI_Windows.W_Train_Data),
+             "hu: the train data window");
+      Step;
+      Check_Frame ("hu_train_data_1");
+      Enter_Train_Data (Length => 450, Brake => 120, Speed => 160);
+      Press_Next;
+      Enter_Field (2);                           -- select the airtight
+      Key (8);                                   -- airtight: Igen
+      Step;
+      Check_Frame ("hu_train_data_2");
+      Enter_Field (2);
+      Press (167, 440);                          -- entry complete? Igen
+      Check (Win_Top_Is (DMI_Windows.W_Train_Data_Validation)
+             and then Win_Value = "Igen",
+             "hu: the validation window proposes 'Igen'");
+      Step;
+      Check_Frame ("hu_train_data_validation");
+      Press (487, 40);                           -- accept 'Igen'
+      Check (DMI_Driver_Data.Airtight = DMI_Data_Entry.Yes_Choice,
+             "hu: 'Igen' is the choice 'Yes'");
+      Drain_Outbox;
+      Win_Default;
+
+      -- the data view (Table 45) and the System version window
+      -- (Table 46): 'Mukodo rendszerverzio' holds u and o with
+      -- double acute
+      Send_System_Version (2, 1);
+      Send_VBC_List ((71951, 321456));
+      Press (610, 140);                          -- F3: Adatnezet
+      Check (DMI_Data_View.Title = "Adatn["E9"]zet (1/2)",
+             "hu: the data view title in Hungarian");
+      Step;
+      Check_Frame ("hu_data_view");
+      Press_Next;
+      Check_Frame ("hu_data_view_2");
+      Win_Default;
+      Press (610, 240);                          -- F5: Beallitasok
+      Win_Menu (4);                              -- Rendszerverzio
+      Check (TX.Text (TX.Operated_System_Version)
+               = "M["0171"]k["F6"]d["0151"] rendszerverzi["F3"]",
+             "hu: the text with u and o with double acute");
+      Step;
+      Check_Frame ("hu_system_version");
+      Win_Default;
+
+      -- 8.2.3.3: the Track Ahead Free question, 'Igen'
+      Send_Mode_Level (Mode => 2, Level => 5, TAF => True);
+      Step;
+      Check_Frame ("hu_taf");
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Lang_English;
+      Step;
+      Check_Frame ("lang_default_en_again");     -- English unchanged
+   end Scenario_Hu_Windows;
+
+   -- 15.1.1.4.2: two catalogue messages and the acknowledgeable 'NL no
+   -- longer permitted' in Hungarian, the trackside text as it came
+   procedure Scenario_Hu_Messages is
+   begin
+      Lang_English;
+      SS_Reset (Mode => 2);
+      Lang_Select (3);
+      Win_Default;
+      Send_Text (7, "P["E1"]lyasz["F6"]veg marad", First_Group => False,
+                 HH => 9, MM => 30);
+      Send_System_Status (SS.SS_Trackside_Malfunction, 0);
+      Send_System_Status (SS.SS_Route_Unsuitable_Traction, 0);
+      Step;
+      Drain_Sounds;
+      Check (SS_Active (SS.SS_Trackside_Malfunction)
+             and then SS_Active (SS.SS_Route_Unsuitable_Traction),
+             "hu: the two messages displayed");
+      Check_Frame ("hu_messages");
+      Send_Mode_Level (Mode => 14, Level => 4);  -- NL
+      Send_System_Status (SS.SS_NL_No_Longer_Permitted, 0);
+      Step;
+      Drain_Sounds;
+      Check_Frame ("hu_nl_ack");                 -- 'NL mar nem megengedett'
+      Pointer_Down (150, 400);
+      Pointer_Up (150, 400);
+      Step;
+      Drain_Sounds;
+      Check (not SS_Active (SS.SS_NL_No_Longer_Permitted),
+             "hu: the Hungarian message is acknowledged as before");
+      Lang_English;
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Step;
+      Drain_Sounds;
+      Drain_Outbox;
+   end Scenario_Hu_Messages;
+
+   -- 5.5 with 5.2.2.2: the selection survives a reset; the Start Up
+   -- Driver ID window comes in Hungarian ('Vonatszam' on the TRN button)
+   procedure Scenario_Hu_Reset is
+   begin
+      Lang_English;
+      Lang_Standstill;
+      Lang_Select (3);
+      Win_Default;
+      Reset;
+      Check (Lang_Is (TX.Hungarian), "hu: the selection survives a reset");
+      Send_Mode_Level (Mode => 1, Level => 4);
+      Win_At_Standstill;
+      VBC_Onboard (National => 0);
+      Press (610, 240);
+      Win_Menu (1);
+      Check (Win_Value = "Magyar",
+             "hu: after the reset Magyar is proposed");
+      Win_Default;
+      Reset;
+      Win_At_Standstill;
+      Win_Onboard (Data => 0, SOM => 0);
+      Send_Mode_Level (Mode => 1, Level => 0);
+      Win_Onboard (Data => 0, SOM => 2);
+      Check (Win_Top_Is (DMI_Windows.W_Driver_ID)
+             and then DMI_Windows.In_Start_Up
+             and then Lang_Is (TX.Hungarian),
+             "hu: Table 49 S1, the Driver ID window, still Hungarian");
+      Step;
+      Check_Frame ("hu_start_up_driver_id");
+      Press (599, 440);                          -- settings, S1-1
+      Win_Menu (1);
+      Key (2);                                   -- English
+      Enter_Single;
+      Check (Lang_Is (TX.English), "hu: English again from S1-1");
+      Lang_English;
+      Reset;
+   end Scenario_Hu_Reset;
+
+   -- The same Hungarian texts from the WebAssembly build: the frame
+   -- test/wasm/smoke.js renders after the same touches (the wire cycle
+   -- of Scenario_Mission) must be this golden, so that the brackets
+   -- notation of the Latin Extended-A letters reaches the wasm fonts
+   procedure Scenario_Hu_Wasm_Start_Up is
+      procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
+                      Payload  : Ada.Streams.Stream_Element_Array) is
+      begin
+         DMI_Core.Handle_Message (The_Type, Payload);
+      end Emit;
+
+      procedure Pump_To_EVC is
+         use Ada.Streams;
+         use DMI_Protocol;
+         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+         Last   : Stream_Element_Offset;
+         Offset : Stream_Element_Offset := Buffer'First;
+      begin
+         DMI_Core.Take_Outbox (Buffer, Last);
+         while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last loop
+            declare
+               The_Type : constant Msg_Type_T :=
+                 Msg_Type_T (Get_U8 (Buffer, Offset));
+               Length   : constant Stream_Element_Offset :=
+                 Stream_Element_Offset (Get_U32 (Buffer, Offset));
+               Next     : constant Stream_Element_Offset := Offset + Length;
+            begin
+               exit when Next - 1 > Last;
+               if The_Type = MSG_DRIVER_ACTION
+                 and then Length = Driver_Action_Length
+               then
+                  declare
+                     Action : constant Interfaces.Unsigned_8 :=
+                       Get_U8 (Buffer, Offset);
+                     Arg    : constant Interfaces.Unsigned_16 :=
+                       Get_U16 (Buffer, Offset);
+                  begin
+                     EVC_Core.Handle_Driver_Action
+                       (Natural (Action), Natural (Arg));
+                  end;
+               elsif The_Type = MSG_DRIVER_DATA then
+                  EVC_Core.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+               end if;
+               Offset := Next;
+            end;
+         end loop;
+      end Pump_To_EVC;
+
+      -- test/wasm/smoke.js press()
+      procedure Touch (X, Y : Natural) is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Core.Step (0.05, Emit'Unrestricted_Access);
+         Pointer_Down (X, Y);
+         Pointer_Up (X, Y);
+         DMI_Core.Tick (50);
+         Pump_To_EVC;
+         Drain_Sounds;
+      end Touch;
+   begin
+      Lang_English;
+      Reset;
+      EVC_Core.Reset;
+      External_EVC;
+      for I in 1 .. 5 loop
+         EVC_Driver.Auto_Drive;
+         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         DMI_Core.Tick (100);
+      end loop;
+      Touch (599, 440);                          -- Table 49 S1-1: Settings
+      Touch (Win_Slot_X (1), Win_Slot_Y (1));    -- Language
+      Touch (Key_X (3), Key_Y (3));              -- Magyar
+      Touch (487, 90);                           -- accepted
+      Touch (370, 440);                          -- [Close]: S1
+      Check (Lang_Is (TX.Hungarian)
+             and then Win_Top_Is (DMI_Windows.W_Driver_ID)
+             and then EVC_Core.Language_Code = "hu",
+             "hu: selected from the Start Up, the EVC told 'hu'");
+      DMI_Core.Render;
+      Check_Frame ("hu_wasm_driver_id");
+      Touch (599, 440);
+      Touch (Win_Slot_X (1), Win_Slot_Y (1));
+      Touch (Key_X (2), Key_Y (2));              -- English
+      Touch (487, 90);
+      Touch (370, 440);
+      Check (Lang_Is (TX.English) and then EVC_Core.Language_Code = "en",
+             "hu: English again");
+      External_EVC (False);
+      Lang_English;
+      Reset;
+   end Scenario_Hu_Wasm_Start_Up;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -7969,6 +8335,11 @@ begin
    Scenario_Lang_Reset;
    Scenario_Lang_Settings_Sequence;
    Scenario_Lang_Simulator;
+   Scenario_Hu_Language_Window;
+   Scenario_Hu_Windows;
+   Scenario_Hu_Messages;
+   Scenario_Hu_Reset;
+   Scenario_Hu_Wasm_Start_Up;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));
