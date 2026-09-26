@@ -8249,6 +8249,108 @@ procedure DMI_Test is
       Reset;
    end Scenario_Hu_Wasm_Start_Up;
 
+   ---------------------------------------------------------------------
+   -- P4 item 25: the pixel geometry of the speed dial (8.2.1). Every
+   -- frame puts the pointer, a hook or a band at a chosen speed, most of
+   -- them at 0 degrees (90, 70, 125 and 150 km/h on the four dials) where
+   -- the cells can be counted: the CSG is 9 cells wide (8.2.1.4.6), the
+   -- hook 6 x 20 (8.2.1.4.7) and the Basic Speed Hook 10 x 20 cells
+   -- (8.2.1.5.4), the indicator lines 15 and 25 cells long (8.2.1.1.6,
+   -- 8.2.1.1.7), the release speed 5 + 1 + 3 cells (8.2.1.6.4), the
+   -- circular part of the pointer 50 cells across (Figure 34), the set
+   -- speed 10 cells (8.2.3.9) and the digits of the current speed right
+   -- aligned in three sub areas of B1 (8.2.1.3.3, 8.2.1.3.4) with one,
+   -- two and three digits in every colour of the pointer (8.2.1.3.5).
+   ---------------------------------------------------------------------
+
+   procedure Scenario_Px_Speed_Dial is
+      procedure Frame (Name       : String;
+                       Mode       : Natural;
+                       V_Cur, V_Perm, V_Target, V_Release : Natural;
+                       V_Sbi, V_Wsl : Natural;
+                       Monitoring : Natural;
+                       Dial_Range : Natural;
+                       Release    : Boolean := False;
+                       Target_Info : Boolean := False;
+                       Set_Speed  : Natural := 16#FFFF#) is
+      begin
+         Reset;
+         Send_Mode_Level (Mode => Mode, Level => 4);
+         Send_Status (Set_Speed => Set_Speed);
+         Send_Speed_State (V_Cur => V_Cur, V_Perm => V_Perm,
+                           V_Target => V_Target, V_Release => V_Release,
+                           V_Sbi => V_Sbi, V_Wsl => V_Wsl,
+                           D_Target => (if Monitoring = 0 then 0 else 500),
+                           Monitoring => Monitoring,
+                           Dial_Range => Dial_Range,
+                           Vrelease_Exists => Release,
+                           CSM_Target_Info => Target_Info);
+         Drain_Sounds;
+         Step;
+         Check_Frame (Name);
+      end Frame;
+   begin
+      -- 140 km/h dial, FS CSM NoS: the hook at 70 km/h (0 degrees), one
+      -- grey digit
+      Frame ("px_dial_140_nos", Mode => 2,
+             V_Cur => 7, V_Perm => 70, V_Target => 0, V_Release => 0,
+             V_Sbi => 85, V_Wsl => 75, Monitoring => 0, Dial_Range => 0);
+      -- 180 km/h dial, FS CSM OvS: the hook at 90 km/h (0 degrees), the
+      -- orange band 20 cells wide up to VSBI (8.2.1.4.8), two digits, the
+      -- set speed at 90 km/h
+      Frame ("px_dial_180_ovs", Mode => 2,
+             V_Cur => 95, V_Perm => 90, V_Target => 0, V_Release => 0,
+             V_Sbi => 110, V_Wsl => 100, Monitoring => 0, Dial_Range => 1,
+             Set_Speed => 90);
+      -- 250 km/h dial, FS CSM IntS: the hook at 125 km/h (0 degrees), the
+      -- red band, white digits (8.2.1.3.5), a narrow 1 and two 7s
+      Frame ("px_dial_250_ints", Mode => 2,
+             V_Cur => 177, V_Perm => 125, V_Target => 0, V_Release => 0,
+             V_Sbi => 135, V_Wsl => 130, Monitoring => 0, Dial_Range => 2);
+      -- 400 km/h dial, FS TSM IndS: the hook at 150 km/h (0 degrees),
+      -- dark grey up to Vtarget, three yellow digits
+      Frame ("px_dial_400_tsm", Mode => 2,
+             V_Cur => 120, V_Perm => 150, V_Target => 100, V_Release => 0,
+             V_Sbi => 165, V_Wsl => 160, Monitoring => 1, Dial_Range => 3);
+      -- CSM with target information (Table 9): dark grey to Vtarget, white
+      -- to the hook at 90 km/h, white pointer
+      Frame ("px_csm_target_white", Mode => 2,
+             V_Cur => 77, V_Perm => 90, V_Target => 60, V_Release => 0,
+             V_Sbi => 105, V_Wsl => 95, Monitoring => 0, Dial_Range => 1,
+             Target_Info => True);
+      -- the hook at both ends of the scale: at 0 km/h over the lowermost
+      -- part (8.2.1.4.5), and at the maximum of the dial
+      Frame ("px_csg_hook_zero", Mode => 2,
+             V_Cur => 0, V_Perm => 0, V_Target => 0, V_Release => 0,
+             V_Sbi => 10, V_Wsl => 5, Monitoring => 0, Dial_Range => 0);
+      Frame ("px_csg_hook_max", Mode => 2,
+             V_Cur => 180, V_Perm => 180, V_Target => 0, V_Release => 0,
+             V_Sbi => 190, V_Wsl => 185, Monitoring => 0, Dial_Range => 1);
+      -- the release speed as in Figure 47 (Vperm > Vrelease, TSM) and in
+      -- Figure 48 (Vperm < Vrelease, RSM), on the 400 km/h dial like the
+      -- figures; in CSM Table 9 shows no release speed
+      Frame ("px_release_perm_above", Mode => 2,
+             V_Cur => 28, V_Perm => 48, V_Target => 0, V_Release => 25,
+             V_Sbi => 60, V_Wsl => 55, Monitoring => 1, Dial_Range => 3,
+             Release => True);
+      Frame ("px_release_perm_below", Mode => 2,
+             V_Cur => 19, V_Perm => 12, V_Target => 0, V_Release => 25,
+             V_Sbi => 30, V_Wsl => 28, Monitoring => 2, Dial_Range => 3,
+             Release => True);
+      Frame ("px_release_csm", Mode => 2,
+             V_Cur => 28, V_Perm => 48, V_Target => 0, V_Release => 25,
+             V_Sbi => 60, V_Wsl => 55, Monitoring => 0, Dial_Range => 3,
+             Release => True);
+      -- Basic Speed Hooks in SM (Table 10): at 90 km/h (0 degrees) and at
+      -- 0 km/h, then overlapping (8.2.1.5.6) near the end of the 400 dial
+      Frame ("px_hooks_sm", Mode => 4,
+             V_Cur => 5, V_Perm => 90, V_Target => 0, V_Release => 0,
+             V_Sbi => 105, V_Wsl => 95, Monitoring => 1, Dial_Range => 1);
+      Frame ("px_hooks_sm_overlap", Mode => 4,
+             V_Cur => 300, V_Perm => 392, V_Target => 388, V_Release => 0,
+             V_Sbi => 400, V_Wsl => 396, Monitoring => 1, Dial_Range => 3);
+   end Scenario_Px_Speed_Dial;
+
 begin
    Scenario_FS_CSM;
    Scenario_FS_TSM;
@@ -8340,6 +8442,7 @@ begin
    Scenario_Hu_Messages;
    Scenario_Hu_Reset;
    Scenario_Hu_Wasm_Start_Up;
+   Scenario_Px_Speed_Dial;
 
    Status := Summary;
    Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Exit_Status (Status));
