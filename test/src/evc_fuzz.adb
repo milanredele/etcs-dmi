@@ -1,0 +1,394 @@
+--  ETCS on-board (EVC)
+--  Robustness fuzzer: feeds EVC_Core with pseudo random inputs on every
+--  port, cycles of random length and takes of random buffers. Nothing
+--  may raise: the embedded and WebAssembly runtimes cannot propagate
+--  exceptions (doc/EVC-PLAN.md §2; the proof of evc/prove.sh says the
+--  same, this is the check by execution).
+--
+--  Three kinds of inputs are generated: the documented shape of the port
+--  with random fields, the documented length with random bytes, and a
+--  random length with random bytes; the index of a payload does not
+--  always start at 1. Every exception is caught here (native runtime),
+--  reported once per distinct site, and the on-board is re-initialised.
+--  Besides, after every step the outputs must be whole records and the
+--  mode must follow the contracts of EVC_Core (a violation is counted).
+--
+--  Usage:  obj/evc_fuzz [steps [seed]]      default 1000000 steps, seed 1
+--  Exit status 1 when anything raised or a check was violated.
+
+pragma Ada_2012;
+with Ada.Command_Line;
+with Ada.Exceptions;
+with Ada.Text_IO;  use Ada.Text_IO;
+with EVC_Core;
+with EVC_DMI_Port;
+with EVC_Modes;    use EVC_Modes;
+with EVC_Outbox;
+with EVC_Ports;    use EVC_Ports;
+with Interfaces;   use Interfaces;
+
+procedure EVC_Fuzz is
+
+   ---------------------------------------------------------------------
+   --  Pseudo random numbers (xorshift32): reproducible from the seed
+   ---------------------------------------------------------------------
+
+   State : Unsigned_32 := 1;
+
+   function Next return Unsigned_32 is
+   begin
+      State := State xor Shift_Left (State, 13);
+      State := State xor Shift_Right (State, 17);
+      State := State xor Shift_Left (State, 5);
+      return State;
+   end Next;
+
+   --  uniform in Low .. High
+   function Pick (Low, High : Natural) return Natural is
+     (Low + Natural (Next mod (Unsigned_32 (High - Low) + 1)));
+
+   function Chance (Percent : Natural) return Boolean is
+     (Pick (1, 100) <= Percent);
+
+   function Random_Byte return Byte is (Byte (Next mod 256));
+
+   ---------------------------------------------------------------------
+   --  Input under construction
+   ---------------------------------------------------------------------
+
+   Buffer : Byte_Array (1 .. 1200);
+   Last   : Natural := 0;
+
+   procedure Add (V : Natural) is
+   begin
+      Last := Last + 1;
+      Buffer (Last) := Byte (V mod 256);
+   end Add;
+
+   procedure Add_U16 (V : Natural) is
+   begin
+      Add (V mod 256);
+      Add (V / 256 mod 256);
+   end Add_U16;
+
+   procedure Add_U32 (V : Unsigned_32) is
+   begin
+      Add_U16 (Natural (V and 16#FFFF#));
+      Add_U16 (Natural (Shift_Right (V, 16)));
+   end Add_U32;
+
+   procedure Random_Bytes (Count : Natural) is
+   begin
+      for I in 1 .. Count loop
+         Add (Natural (Random_Byte));
+      end loop;
+   end Random_Bytes;
+
+   --  The documented length of an input on Port (0 where none)
+   function Documented_Length (Port : Port_T) return Natural is
+     (case Port is
+         when BTM      => 2 + (Pick (BTM_Min_Bits, BTM_Max_Bits) + 7) / 8,
+         when RTM      => Pick (RTM_Min_Length, 64),
+         when Odometer => Odometer_Length,
+         when TIU      => TIU_Length,
+         when DMI      => EVC_DMI_Port.Header_Length
+                          + EVC_DMI_Port.Driver_Action_Length,
+         when ATO | JRU => Pick (0, 32));
+
+   --  The documented shape with random fields
+   procedure Shaped (Port : Port_T) is
+   begin
+      case Port is
+         when BTM =>
+            declare
+               Bits : constant Natural :=
+                 (if Chance (90) then Pick (BTM_Min_Bits, BTM_Max_Bits)
+                  else Pick (0, 65_535));
+            begin
+               Add_U16 (Bits);
+               Random_Bytes (Natural'Min ((Bits + 7) / 8, 1000));
+            end;
+         when RTM =>
+            declare
+               Length : constant Natural := Pick (RTM_Min_Length, 1023);
+            begin
+               Add (Pick (0, 255));
+               Add (Length / 4);
+               Add ((Length mod 4) * 64 + Pick (0, 63));
+               Random_Bytes (Length - 3);
+            end;
+         when Odometer =>
+            declare
+               D : constant Unsigned_32 := Next;
+               V : constant Natural := Pick (0, 65_535);
+            begin
+               Add_U32 (D);
+               Add_U32 (if Chance (80) then D - Unsigned_32 (Pick (0, 99))
+                        else Next);
+               Add_U32 (if Chance (80) then D + Unsigned_32 (Pick (0, 99))
+                        else Next);
+               Add_U16 (V);
+               Add_U16 (if Chance (80) then V / 2 else Pick (0, 65_535));
+               Add_U16 (if Chance (80) then V else Pick (0, 65_535));
+               Add (if Chance (90) then Pick (0, 2) else Pick (0, 255));
+            end;
+         when TIU =>
+            Add (if Chance (90) then Pick (1, 5) else Pick (0, 255));
+            Add (if Chance (90) then Pick (0, 1) else Pick (0, 255));
+         when DMI =>
+            declare
+               The_Type : constant Natural :=
+                 (case Pick (1, 10) is
+                     when 1 .. 5 => 16#40#,
+                     when 6 .. 8 => 16#41#,
+                     when others => Pick (0, 255));
+               Length   : constant Natural :=
+                 (if The_Type = 16#40# and then Chance (80)
+                  then (if Chance (80) then 3 else 5)
+                  else Pick (0, 40));
+            begin
+               Add (The_Type);
+               Add_U32 (if Chance (95) then Unsigned_32 (Length)
+                        else Next);
+               if The_Type = 16#40# and then Length >= 1 then
+                  --  isolation now and then, the other actions else
+                  Add (if Chance (2) then 20 else Pick (0, 22));
+                  Random_Bytes (Length - 1);
+               else
+                  Random_Bytes (Length);
+               end if;
+            end;
+         when ATO | JRU =>
+            Random_Bytes (Pick (0, 32));
+      end case;
+   end Shaped;
+
+   ---------------------------------------------------------------------
+   --  Reporting (as dmi_fuzz)
+   ---------------------------------------------------------------------
+
+   Raised     : Natural := 0;
+   Violations : Natural := 0;
+
+   Max_Sites  : constant := 32;
+   subtype Site_Text is String (1 .. 160);
+   type Site is record
+      Text  : Site_Text;
+      Count : Natural;
+   end record;
+   Sites      : array (1 .. Max_Sites) of Site;
+   Site_Count : Natural := 0;
+
+   procedure Report (Where : String;
+                     E     : Ada.Exceptions.Exception_Occurrence;
+                     Step  : Natural) is
+      Info : constant String :=
+        Where & ": " & Ada.Exceptions.Exception_Name (E) & " "
+        & Ada.Exceptions.Exception_Message (E);
+      Key  : Site_Text := (others => ' ');
+      N    : constant Natural := Natural'Min (Info'Length, Key'Length);
+   begin
+      Raised := Raised + 1;
+      Key (1 .. N) := Info (Info'First .. Info'First + N - 1);
+      for I in 1 .. Site_Count loop
+         if Sites (I).Text = Key then
+            Sites (I).Count := Sites (I).Count + 1;
+            return;
+         end if;
+      end loop;
+      if Site_Count < Max_Sites then
+         Site_Count := Site_Count + 1;
+         Sites (Site_Count) := (Text => Key, Count => 1);
+      end if;
+      Put_Line ("RAISED at step" & Natural'Image (Step) & " in " & Info);
+   end Report;
+
+   procedure Violation (What : String; Step : Natural) is
+   begin
+      Violations := Violations + 1;
+      if Violations <= 20 then
+         Put_Line ("VIOLATION at step" & Natural'Image (Step) & ": " & What);
+      end if;
+   end Violation;
+
+   --  After a raise the host contains the failure; that path must never
+   --  raise itself. Then start over.
+   procedure Contain_And_Restart (Step : Natural) is
+   begin
+      EVC_Core.Enter_Failure;
+      EVC_Core.Initialise;
+   exception
+      when E : others =>
+         Report ("failure containment", E, Step);
+         EVC_Core.Initialise;
+   end Contain_And_Restart;
+
+   --  The outputs are whole records of a known port and a length within
+   --  the maximum of that port
+   function Whole_Records (Data : Byte_Array) return Boolean is
+      Pos    : Natural := Data'First;
+      Length : Natural;
+   begin
+      while Pos <= Data'Last loop
+         if Data'Last - Pos + 1 < EVC_Outbox.Record_Header
+           or else Natural (Data (Pos)) > Port_T'Pos (Port_T'Last)
+         then
+            return False;
+         end if;
+         Length := Natural (Data (Pos + 1)) + 256 * Natural (Data (Pos + 2));
+         if Length > Max_Payload (Port_T'Val (Data (Pos)))
+           or else Length > Data'Last - Pos + 1 - EVC_Outbox.Record_Header
+         then
+            return False;
+         end if;
+         Pos := Pos + EVC_Outbox.Record_Header + Length;
+      end loop;
+      return True;
+   end Whole_Records;
+
+   Steps : Natural := 1_000_000;
+   Port  : Port_T := BTM;
+
+begin
+   if Ada.Command_Line.Argument_Count >= 1 then
+      Steps := Natural'Value (Ada.Command_Line.Argument (1));
+   end if;
+   if Ada.Command_Line.Argument_Count >= 2 then
+      State := Unsigned_32'Value (Ada.Command_Line.Argument (2));
+      if State = 0 then
+         State := 1;
+      end if;
+   end if;
+
+   EVC_Core.Initialise;
+
+   for Step in 1 .. Steps loop
+      --  1. a few inputs on random ports
+      for I in 1 .. Pick (0, 4) loop
+         Port := Port_T'Val (Pick (0, Port_T'Pos (Port_T'Last)));
+         Last := 0;
+         case Pick (1, 3) is
+            when 1 => Shaped (Port);
+            when 2 => Random_Bytes (Documented_Length (Port));
+            when others => Random_Bytes (Pick (0, Buffer'Last));
+         end case;
+         declare
+            --  the payload, now and then at another index than 1
+            First   : constant Positive :=
+              (if Chance (90) then 1 else Pick (1, 1_000_000));
+            Payload : constant Byte_Array (First .. First + Last - 1) :=
+              Buffer (1 .. Last);
+            Isolation_Before : constant Boolean :=
+              EVC_Core.Isolation_Requested;
+            Mode_Before : constant Mode_T := EVC_Core.Mode;
+         begin
+            EVC_Core.Handle_Input (Port, Payload);
+            if EVC_Core.Mode /= Mode_Before
+              or else (Isolation_Before
+                       and then not EVC_Core.Isolation_Requested)
+            then
+               Violation ("Handle_Input changed the mode", Step);
+            end if;
+         exception
+            when E : others =>
+               Report ("Handle_Input " & Port_T'Image (Port), E, Step);
+               Contain_And_Restart (Step);
+         end;
+      end loop;
+
+      --  2. one cycle, mostly of 100 ms; sometimes none, sometimes huge
+      declare
+         Mode_Before : constant Mode_T := EVC_Core.Mode;
+         Isolation   : constant Boolean := EVC_Core.Isolation_Requested;
+         Failed      : constant Boolean := EVC_Core.Failed;
+      begin
+         if Chance (97) then
+            EVC_Core.Tick (case Pick (1, 20) is
+                              when 1      => 0,
+                              when 2      => Natural'Last,
+                              when 3      => Pick (0, Natural'Last),
+                              when others => 100);
+            if not Failed then
+               if EVC_Core.Mode = M_NP then
+                  Violation ("NP after a cycle", Step);
+               end if;
+               if EVC_Core.Mode /= Mode_Before
+                 and then not Transition_Exists (Mode_Before, EVC_Core.Mode)
+               then
+                  Violation ("a transition 4.6.2 does not have", Step);
+               end if;
+               if Mode_Before = M_NP
+                 and then EVC_Core.Mode /= (if Isolation then M_IS else M_SB)
+               then
+                  Violation ("the mode after NP", Step);
+               end if;
+            end if;
+         end if;
+      exception
+         when E : others =>
+            Report ("Tick", E, Step);
+            Contain_And_Restart (Step);
+      end;
+
+      --  3. the outputs, into a buffer of random size and index; now
+      --     and then nobody takes them for a while
+      if Chance (80) then
+         declare
+            First  : constant Positive :=
+              (if Chance (80) then 1 else Pick (1, 1_000_000));
+            Size   : constant Natural :=
+              (if Chance (70) then EVC_Outbox.Capacity
+               else Pick (0, 3 * EVC_Outbox.Capacity / 2));
+            Output : Byte_Array (First .. First + Size - 1);
+            O_Last : Natural;
+         begin
+            EVC_Core.Take_Outputs (Output, O_Last);
+            if O_Last < First - 1 or else O_Last > Output'Last then
+               Violation ("Take_Outputs: Last out of the buffer", Step);
+            elsif not Whole_Records (Output (First .. O_Last)) then
+               Violation ("Take_Outputs: not whole records", Step);
+            elsif EVC_Core.Failed and then O_Last /= First - 1 then
+               Violation ("Take_Outputs: output after a failure", Step);
+            end if;
+         exception
+            when E : others =>
+               Report ("Take_Outputs", E, Step);
+               Contain_And_Restart (Step);
+         end;
+      end if;
+
+      --  4. rarely: an internal failure, and later the restart
+      if Chance (1) and then Chance (10) then
+         begin
+            if EVC_Core.Failed then
+               EVC_Core.Initialise;
+            else
+               EVC_Core.Enter_Failure;
+            end if;
+         exception
+            when E : others =>
+               Report ("Enter_Failure / Initialise", E, Step);
+               Contain_And_Restart (Step);
+         end;
+      end if;
+   end loop;
+
+   New_Line;
+   for I in 1 .. Site_Count loop
+      Put_Line (Natural'Image (Sites (I).Count) & " x  " & Sites (I).Text);
+   end loop;
+   Put_Line ("steps:" & Natural'Image (Steps)
+             & "  cycles:" & EVC_Core.Cycle_T'Image (EVC_Core.Cycle)
+             & "  accepted (since the last restart):"
+             & Natural'Image (EVC_Core.Accepted (BTM)
+                              + EVC_Core.Accepted (RTM)
+                              + EVC_Core.Accepted (Odometer)
+                              + EVC_Core.Accepted (TIU)
+                              + EVC_Core.Accepted (DMI))
+             & "  violations:" & Natural'Image (Violations)
+             & "  raised:" & Natural'Image (Raised)
+             & "  distinct sites:" & Natural'Image (Site_Count));
+   Ada.Command_Line.Set_Exit_Status
+     (if Raised = 0 and then Violations = 0 then Ada.Command_Line.Success
+      else Ada.Command_Line.Failure);
+end EVC_Fuzz;
