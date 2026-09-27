@@ -12,6 +12,154 @@ package body ETCS_Track_Packets.P27
   with SPARK_Mode => On
 is
 
+   --  The items with every component at its default
+   Empty_Q_DIFF_Item_2 : constant Q_DIFF_Item_2 := (others => <>);
+   Empty_Q_DIFF_Item : constant Q_DIFF_Item := (others => <>);
+   Empty_D_STATIC_Item : constant D_STATIC_Item := (others => <>);
+
+   --  One item of Q_DIFF_List
+   procedure Decode_Q_DIFF_Item_2
+     (R  : in out Reader;
+      E2 : out Q_DIFF_Item_2)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      E2 := Empty_Q_DIFF_Item_2;
+      Read (R, 2, V);
+      E2.Q_DIFF := To_Q_DIFF (V);
+      E2.Has_NC_CDDIFF := E2.Q_DIFF = 0;
+      if E2.Has_NC_CDDIFF then
+         Read (R, 4, V);
+         E2.NC_CDDIFF := To_NC_CDDIFF (V);
+      end if;
+      E2.Has_NC_DIFF := E2.Q_DIFF in 1 | 2;
+      if E2.Has_NC_DIFF then
+         Read (R, 4, V);
+         E2.NC_DIFF := To_NC_DIFF (V);
+      end if;
+      Read (R, 7, V);
+      E2.V_DIFF := To_V_DIFF (V);
+   end Decode_Q_DIFF_Item_2;
+
+   --  One item of Q_DIFF_List
+   procedure Decode_Q_DIFF_Item
+     (R  : in out Reader;
+      E1 : out Q_DIFF_Item)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      E1 := Empty_Q_DIFF_Item;
+      Read (R, 2, V);
+      E1.Q_DIFF := To_Q_DIFF (V);
+      E1.Has_NC_CDDIFF := E1.Q_DIFF = 0;
+      if E1.Has_NC_CDDIFF then
+         Read (R, 4, V);
+         E1.NC_CDDIFF := To_NC_CDDIFF (V);
+      end if;
+      E1.Has_NC_DIFF := E1.Q_DIFF in 1 | 2;
+      if E1.Has_NC_DIFF then
+         Read (R, 4, V);
+         E1.NC_DIFF := To_NC_DIFF (V);
+      end if;
+      Read (R, 7, V);
+      E1.V_DIFF := To_V_DIFF (V);
+   end Decode_Q_DIFF_Item;
+
+   --  One item of D_STATIC_List
+   procedure Decode_D_STATIC_Item
+     (R  : in out Reader;
+      E1 : out D_STATIC_Item)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      E1 := Empty_D_STATIC_Item;
+      Read (R, 15, V);
+      E1.D_STATIC := To_D_STATIC (V);
+      Read (R, 7, V);
+      E1.V_STATIC := To_V_STATIC (V);
+      Read (R, 1, V);
+      E1.Q_FRONT := To_Q_FRONT (V);
+      Read (R, 5, V);
+      E1.N_ITER := To_N_ITER (V);
+      for I2 in 1 .. Natural (E1.N_ITER) loop
+         Decode_Q_DIFF_Item_2 (R, E1.Q_DIFF_List (I2));
+      end loop;
+   end Decode_D_STATIC_Item;
+
+   --  One item of Q_DIFF_List
+   procedure Encode_Q_DIFF_Item_2
+     (E2   : Q_DIFF_Item_2;
+      W    : in out Writer;
+      Good : in out Boolean)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 2, Code (E2.Q_DIFF));
+      if E2.Has_NC_CDDIFF /= (E2.Q_DIFF = 0) then
+         Good := False;
+      end if;
+      if E2.Q_DIFF = 0 then
+         Write (W, 4, Code (E2.NC_CDDIFF));
+      end if;
+      if E2.Has_NC_DIFF /= (E2.Q_DIFF in 1 | 2) then
+         Good := False;
+      end if;
+      if E2.Q_DIFF in 1 | 2 then
+         Write (W, 4, Code (E2.NC_DIFF));
+      end if;
+      Write (W, 7, Code (E2.V_DIFF));
+   end Encode_Q_DIFF_Item_2;
+
+   --  One item of Q_DIFF_List
+   procedure Encode_Q_DIFF_Item
+     (E1   : Q_DIFF_Item;
+      W    : in out Writer;
+      Good : in out Boolean)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 2, Code (E1.Q_DIFF));
+      if E1.Has_NC_CDDIFF /= (E1.Q_DIFF = 0) then
+         Good := False;
+      end if;
+      if E1.Q_DIFF = 0 then
+         Write (W, 4, Code (E1.NC_CDDIFF));
+      end if;
+      if E1.Has_NC_DIFF /= (E1.Q_DIFF in 1 | 2) then
+         Good := False;
+      end if;
+      if E1.Q_DIFF in 1 | 2 then
+         Write (W, 4, Code (E1.NC_DIFF));
+      end if;
+      Write (W, 7, Code (E1.V_DIFF));
+   end Encode_Q_DIFF_Item;
+
+   --  One item of D_STATIC_List
+   procedure Encode_D_STATIC_Item
+     (E1   : D_STATIC_Item;
+      W    : in out Writer;
+      Good : in out Boolean)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 15, Code (E1.D_STATIC));
+      Write (W, 7, Code (E1.V_STATIC));
+      Write (W, 1, Code (E1.Q_FRONT));
+      Write (W, 5, Code (E1.N_ITER));
+      for I2 in 1 .. Natural (E1.N_ITER) loop
+         Encode_Q_DIFF_Item_2 (E1.Q_DIFF_List (I2), W, Good);
+      end loop;
+   end Encode_D_STATIC_Item;
+
    ------------
    -- Decode --
    ------------
@@ -22,83 +170,57 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET    : NID_PACKET_T;
+      Q_DIR         : Q_DIR_T;
+      L_PACKET      : L_PACKET_T;
+      Q_SCALE       : Q_SCALE_T;
+      D_STATIC      : D_STATIC_T;
+      V_STATIC      : V_STATIC_T;
+      Q_FRONT       : Q_FRONT_T;
+      N_ITER        : N_ITER_T;
+      Q_DIFF_List   : Q_DIFF_Array;
+      N_ITER_K      : N_ITER_T;
+      D_STATIC_List : D_STATIC_Array;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 2, V);
-      P.Q_DIR := To_Q_DIR (V);
+      Q_DIR := To_Q_DIR (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 2, V);
-      P.Q_SCALE := To_Q_SCALE (V);
+      Q_SCALE := To_Q_SCALE (V);
       Read (R, 15, V);
-      P.D_STATIC := To_D_STATIC (V);
+      D_STATIC := To_D_STATIC (V);
       Read (R, 7, V);
-      P.V_STATIC := To_V_STATIC (V);
+      V_STATIC := To_V_STATIC (V);
       Read (R, 1, V);
-      P.Q_FRONT := To_Q_FRONT (V);
+      Q_FRONT := To_Q_FRONT (V);
       Read (R, 5, V);
-      P.N_ITER := To_N_ITER (V);
-      for I1 in 1 .. Natural (P.N_ITER) loop
-         declare
-            E1 : Q_DIFF_Item renames P.Q_DIFF_List (I1);
-         begin
-            Read (R, 2, V);
-            E1.Q_DIFF := To_Q_DIFF (V);
-            E1.Has_NC_CDDIFF := E1.Q_DIFF = 0;
-            if E1.Has_NC_CDDIFF then
-               Read (R, 4, V);
-               E1.NC_CDDIFF := To_NC_CDDIFF (V);
-            end if;
-            E1.Has_NC_DIFF := E1.Q_DIFF in 1 | 2;
-            if E1.Has_NC_DIFF then
-               Read (R, 4, V);
-               E1.NC_DIFF := To_NC_DIFF (V);
-            end if;
-            Read (R, 7, V);
-            E1.V_DIFF := To_V_DIFF (V);
-         end;
+      N_ITER := To_N_ITER (V);
+      for I1 in 1 .. Natural (N_ITER) loop
+         Decode_Q_DIFF_Item (R, Q_DIFF_List (I1));
       end loop;
       Read (R, 5, V);
-      P.N_ITER_K := To_N_ITER (V);
-      for I1 in 1 .. Natural (P.N_ITER_K) loop
-         declare
-            E1 : D_STATIC_Item renames P.D_STATIC_List (I1);
-         begin
-            Read (R, 15, V);
-            E1.D_STATIC := To_D_STATIC (V);
-            Read (R, 7, V);
-            E1.V_STATIC := To_V_STATIC (V);
-            Read (R, 1, V);
-            E1.Q_FRONT := To_Q_FRONT (V);
-            Read (R, 5, V);
-            E1.N_ITER := To_N_ITER (V);
-            for I2 in 1 .. Natural (E1.N_ITER) loop
-               declare
-                  E2 : Q_DIFF_Item_2 renames E1.Q_DIFF_List (I2);
-               begin
-                  Read (R, 2, V);
-                  E2.Q_DIFF := To_Q_DIFF (V);
-                  E2.Has_NC_CDDIFF := E2.Q_DIFF = 0;
-                  if E2.Has_NC_CDDIFF then
-                     Read (R, 4, V);
-                     E2.NC_CDDIFF := To_NC_CDDIFF (V);
-                  end if;
-                  E2.Has_NC_DIFF := E2.Q_DIFF in 1 | 2;
-                  if E2.Has_NC_DIFF then
-                     Read (R, 4, V);
-                     E2.NC_DIFF := To_NC_DIFF (V);
-                  end if;
-                  Read (R, 7, V);
-                  E2.V_DIFF := To_V_DIFF (V);
-               end;
-            end loop;
-         end;
+      N_ITER_K := To_N_ITER (V);
+      for I1 in 1 .. Natural (N_ITER_K) loop
+         Decode_D_STATIC_Item (R, D_STATIC_List (I1));
       end loop;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         Q_DIR => Q_DIR,
+         L_PACKET => L_PACKET,
+         Q_SCALE => Q_SCALE,
+         D_STATIC => D_STATIC,
+         V_STATIC => V_STATIC,
+         Q_FRONT => Q_FRONT,
+         N_ITER => N_ITER,
+         Q_DIFF_List => Q_DIFF_List,
+         N_ITER_K => N_ITER_K,
+         D_STATIC_List => D_STATIC_List);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------
@@ -123,55 +245,11 @@ is
       Write (W, 1, Code (P.Q_FRONT));
       Write (W, 5, Code (P.N_ITER));
       for I1 in 1 .. Natural (P.N_ITER) loop
-         declare
-            E1 : Q_DIFF_Item renames P.Q_DIFF_List (I1);
-         begin
-            Write (W, 2, Code (E1.Q_DIFF));
-            if E1.Has_NC_CDDIFF /= (E1.Q_DIFF = 0) then
-               Good := False;
-            end if;
-            if E1.Q_DIFF = 0 then
-               Write (W, 4, Code (E1.NC_CDDIFF));
-            end if;
-            if E1.Has_NC_DIFF /= (E1.Q_DIFF in 1 | 2) then
-               Good := False;
-            end if;
-            if E1.Q_DIFF in 1 | 2 then
-               Write (W, 4, Code (E1.NC_DIFF));
-            end if;
-            Write (W, 7, Code (E1.V_DIFF));
-         end;
+         Encode_Q_DIFF_Item (P.Q_DIFF_List (I1), W, Good);
       end loop;
       Write (W, 5, Code (P.N_ITER_K));
       for I1 in 1 .. Natural (P.N_ITER_K) loop
-         declare
-            E1 : D_STATIC_Item renames P.D_STATIC_List (I1);
-         begin
-            Write (W, 15, Code (E1.D_STATIC));
-            Write (W, 7, Code (E1.V_STATIC));
-            Write (W, 1, Code (E1.Q_FRONT));
-            Write (W, 5, Code (E1.N_ITER));
-            for I2 in 1 .. Natural (E1.N_ITER) loop
-               declare
-                  E2 : Q_DIFF_Item_2 renames E1.Q_DIFF_List (I2);
-               begin
-                  Write (W, 2, Code (E2.Q_DIFF));
-                  if E2.Has_NC_CDDIFF /= (E2.Q_DIFF = 0) then
-                     Good := False;
-                  end if;
-                  if E2.Q_DIFF = 0 then
-                     Write (W, 4, Code (E2.NC_CDDIFF));
-                  end if;
-                  if E2.Has_NC_DIFF /= (E2.Q_DIFF in 1 | 2) then
-                     Good := False;
-                  end if;
-                  if E2.Q_DIFF in 1 | 2 then
-                     Write (W, 4, Code (E2.NC_DIFF));
-                  end if;
-                  Write (W, 7, Code (E2.V_DIFF));
-               end;
-            end loop;
-         end;
+         Encode_D_STATIC_Item (P.D_STATIC_List (I1), W, Good);
       end loop;
       --  L_PACKET: the bits written
       if Position (W) >= Start

@@ -22,71 +22,125 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET             : NID_PACKET_T;
+      Q_DIR                  : Q_DIR_T;
+      L_PACKET               : L_PACKET_T;
+      Q_SCALE                : Q_SCALE_T;
+      Q_TEXTCLASS            : Q_TEXTCLASS_T;
+      Q_TEXTDISPLAY          : Q_TEXTDISPLAY_T;
+      D_TEXTDISPLAY          : D_TEXTDISPLAY_T;
+      M_MODETEXTDISPLAY      : M_MODETEXTDISPLAY_T;
+      M_LEVELTEXTDISPLAY     : M_LEVELTEXTDISPLAY_T;
+      Has_NID_NTC            : Boolean;
+      NID_NTC                : NID_NTC_T := 0;
+      L_TEXTDISPLAY          : L_TEXTDISPLAY_T;
+      T_TEXTDISPLAY          : T_TEXTDISPLAY_T;
+      M_MODETEXTDISPLAY_END  : M_MODETEXTDISPLAY_T;
+      M_LEVELTEXTDISPLAY_END : M_LEVELTEXTDISPLAY_T;
+      Has_NID_NTC_END        : Boolean;
+      NID_NTC_END            : NID_NTC_T := 0;
+      Q_TEXTCONFIRM          : Q_TEXTCONFIRM_T;
+      Has_Q_CONFTEXTDISPLAY  : Boolean;
+      Q_CONFTEXTDISPLAY      : Q_CONFTEXTDISPLAY_T := 0;
+      Q_TEXTREPORT           : Q_TEXTREPORT_T := 0;
+      Has_NID_TEXTMESSAGE    : Boolean := False;
+      NID_TEXTMESSAGE        : NID_TEXTMESSAGE_T := 0;
+      NID_C                  : NID_C_T := 0;
+      NID_RBC                : NID_RBC_T := 0;
+      L_TEXT                 : L_TEXT_T;
+      X_TEXT_List            : X_TEXT_Array := (others => 0);
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 2, V);
-      P.Q_DIR := To_Q_DIR (V);
+      Q_DIR := To_Q_DIR (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 2, V);
-      P.Q_SCALE := To_Q_SCALE (V);
+      Q_SCALE := To_Q_SCALE (V);
       Read (R, 2, V);
-      P.Q_TEXTCLASS := To_Q_TEXTCLASS (V);
+      Q_TEXTCLASS := To_Q_TEXTCLASS (V);
       Read (R, 1, V);
-      P.Q_TEXTDISPLAY := To_Q_TEXTDISPLAY (V);
+      Q_TEXTDISPLAY := To_Q_TEXTDISPLAY (V);
       Read (R, 15, V);
-      P.D_TEXTDISPLAY := To_D_TEXTDISPLAY (V);
+      D_TEXTDISPLAY := To_D_TEXTDISPLAY (V);
       Read (R, 4, V);
-      P.M_MODETEXTDISPLAY := To_M_MODETEXTDISPLAY (V);
+      M_MODETEXTDISPLAY := To_M_MODETEXTDISPLAY (V);
       Read (R, 3, V);
-      P.M_LEVELTEXTDISPLAY := To_M_LEVELTEXTDISPLAY (V);
-      P.Has_NID_NTC := P.M_LEVELTEXTDISPLAY = 1;
-      if P.Has_NID_NTC then
+      M_LEVELTEXTDISPLAY := To_M_LEVELTEXTDISPLAY (V);
+      Has_NID_NTC := M_LEVELTEXTDISPLAY = 1;
+      if Has_NID_NTC then
          Read (R, 8, V);
-         P.NID_NTC := To_NID_NTC (V);
+         NID_NTC := To_NID_NTC (V);
       end if;
       Read (R, 15, V);
-      P.L_TEXTDISPLAY := To_L_TEXTDISPLAY (V);
+      L_TEXTDISPLAY := To_L_TEXTDISPLAY (V);
       Read (R, 10, V);
-      P.T_TEXTDISPLAY := To_T_TEXTDISPLAY (V);
+      T_TEXTDISPLAY := To_T_TEXTDISPLAY (V);
       Read (R, 4, V);
-      P.M_MODETEXTDISPLAY_END := To_M_MODETEXTDISPLAY (V);
+      M_MODETEXTDISPLAY_END := To_M_MODETEXTDISPLAY (V);
       Read (R, 3, V);
-      P.M_LEVELTEXTDISPLAY_END := To_M_LEVELTEXTDISPLAY (V);
-      P.Has_NID_NTC_END := P.M_LEVELTEXTDISPLAY_END = 1;
-      if P.Has_NID_NTC_END then
+      M_LEVELTEXTDISPLAY_END := To_M_LEVELTEXTDISPLAY (V);
+      Has_NID_NTC_END := M_LEVELTEXTDISPLAY_END = 1;
+      if Has_NID_NTC_END then
          Read (R, 8, V);
-         P.NID_NTC_END := To_NID_NTC (V);
+         NID_NTC_END := To_NID_NTC (V);
       end if;
       Read (R, 2, V);
-      P.Q_TEXTCONFIRM := To_Q_TEXTCONFIRM (V);
-      P.Has_Q_CONFTEXTDISPLAY := P.Q_TEXTCONFIRM /= 0;
-      if P.Has_Q_CONFTEXTDISPLAY then
+      Q_TEXTCONFIRM := To_Q_TEXTCONFIRM (V);
+      Has_Q_CONFTEXTDISPLAY := Q_TEXTCONFIRM /= 0;
+      if Has_Q_CONFTEXTDISPLAY then
          Read (R, 1, V);
-         P.Q_CONFTEXTDISPLAY := To_Q_CONFTEXTDISPLAY (V);
+         Q_CONFTEXTDISPLAY := To_Q_CONFTEXTDISPLAY (V);
          Read (R, 1, V);
-         P.Q_TEXTREPORT := To_Q_TEXTREPORT (V);
-         P.Has_NID_TEXTMESSAGE := P.Q_TEXTREPORT = 1;
-         if P.Has_NID_TEXTMESSAGE then
+         Q_TEXTREPORT := To_Q_TEXTREPORT (V);
+         Has_NID_TEXTMESSAGE := Q_TEXTREPORT = 1;
+         if Has_NID_TEXTMESSAGE then
             Read (R, 8, V);
-            P.NID_TEXTMESSAGE := To_NID_TEXTMESSAGE (V);
+            NID_TEXTMESSAGE := To_NID_TEXTMESSAGE (V);
             Read (R, 10, V);
-            P.NID_C := To_NID_C (V);
+            NID_C := To_NID_C (V);
             Read (R, 14, V);
-            P.NID_RBC := To_NID_RBC (V);
+            NID_RBC := To_NID_RBC (V);
          end if;
       end if;
       Read (R, 8, V);
-      P.L_TEXT := To_L_TEXT (V);
-      for I1 in 1 .. Natural (P.L_TEXT) loop
+      L_TEXT := To_L_TEXT (V);
+      for I1 in 1 .. Natural (L_TEXT) loop
          Read (R, 8, V);
-         P.X_TEXT_List (I1) := To_X_TEXT (V);
+         X_TEXT_List (I1) := To_X_TEXT (V);
       end loop;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         Q_DIR => Q_DIR,
+         L_PACKET => L_PACKET,
+         Q_SCALE => Q_SCALE,
+         Q_TEXTCLASS => Q_TEXTCLASS,
+         Q_TEXTDISPLAY => Q_TEXTDISPLAY,
+         D_TEXTDISPLAY => D_TEXTDISPLAY,
+         M_MODETEXTDISPLAY => M_MODETEXTDISPLAY,
+         M_LEVELTEXTDISPLAY => M_LEVELTEXTDISPLAY,
+         Has_NID_NTC => Has_NID_NTC,
+         NID_NTC => NID_NTC,
+         L_TEXTDISPLAY => L_TEXTDISPLAY,
+         T_TEXTDISPLAY => T_TEXTDISPLAY,
+         M_MODETEXTDISPLAY_END => M_MODETEXTDISPLAY_END,
+         M_LEVELTEXTDISPLAY_END => M_LEVELTEXTDISPLAY_END,
+         Has_NID_NTC_END => Has_NID_NTC_END,
+         NID_NTC_END => NID_NTC_END,
+         Q_TEXTCONFIRM => Q_TEXTCONFIRM,
+         Has_Q_CONFTEXTDISPLAY => Has_Q_CONFTEXTDISPLAY,
+         Q_CONFTEXTDISPLAY => Q_CONFTEXTDISPLAY,
+         Q_TEXTREPORT => Q_TEXTREPORT,
+         Has_NID_TEXTMESSAGE => Has_NID_TEXTMESSAGE,
+         NID_TEXTMESSAGE => NID_TEXTMESSAGE,
+         NID_C => NID_C,
+         NID_RBC => NID_RBC,
+         L_TEXT => L_TEXT,
+         X_TEXT_List => X_TEXT_List);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------

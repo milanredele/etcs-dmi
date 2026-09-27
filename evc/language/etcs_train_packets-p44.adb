@@ -23,26 +23,36 @@ is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
       Bad   : Boolean := False;
+      NID_PACKET : NID_PACKET_T;
+      L_PACKET   : L_PACKET_T;
+      NID_XUSER  : NID_XUSER_T;
+      Raw_Bits   : Raw_Bits_T := 0;
+      Raw        : Raw_Data_T := (others => 0);
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 9, V);
-      P.NID_XUSER := To_NID_XUSER (V);
-      if Position (R) <= Start + Natural (P.L_PACKET)
-        and then Start + Natural (P.L_PACKET) - Position (R) <= 8191
+      NID_XUSER := To_NID_XUSER (V);
+      if Position (R) <= Start + Natural (L_PACKET)
+        and then Start + Natural (L_PACKET) - Position (R) <= 8191
       then
-         P.Raw_Bits := Start + Natural (P.L_PACKET) - Position (R);
-         Read_Bytes (R, P.Raw_Bits, P.Raw);
+         Raw_Bits := Start + Natural (L_PACKET) - Position (R);
+         Read_Bytes (R, Raw_Bits, Raw);
       else
          Bad := True;
       end if;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         L_PACKET => L_PACKET,
+         NID_XUSER => NID_XUSER,
+         Raw_Bits => Raw_Bits,
+         Raw => Raw);
       OK := not Failed (R)
         and then not Bad
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------

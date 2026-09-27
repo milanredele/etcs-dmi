@@ -506,9 +506,9 @@ is
       V      : Interfaces.Unsigned_64;
       Length : Natural;
    begin
-      Read (R, 8, V);                --  NID_PACKET
+      Skip (R, 8);                   --  NID_PACKET
       if Direction = Track_To_Train then
-         Read (R, 2, V);             --  Q_DIR
+         Skip (R, 2);                --  Q_DIR
       end if;
       Read (R, 13, V);               --  L_PACKET
       Length := Natural (V);

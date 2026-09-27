@@ -55,6 +55,8 @@ package ETCS_Language_Random is
    type Items_T is (None, One, Maximum);
    Loop_Count : constant := 15;
    function Loop_Name (L : Positive) return String;
+   --  1 for a loop of the packet, 2 for a loop in a loop, ...
+   function Loop_Depth (L : Positive) return Positive;
    function Loop_Seen (L : Positive; Items : Items_T) return Boolean;
 
    procedure Clear_Coverage;

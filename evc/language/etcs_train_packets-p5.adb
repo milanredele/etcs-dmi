@@ -21,17 +21,23 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET      : NID_PACKET_T;
+      L_PACKET        : L_PACKET_T;
+      NID_OPERATIONAL : NID_OPERATIONAL_T;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 32, V);
-      P.NID_OPERATIONAL := To_NID_OPERATIONAL (V);
+      NID_OPERATIONAL := To_NID_OPERATIONAL (V);
+      P :=
+        (NID_PACKET => NID_PACKET,
+         L_PACKET => L_PACKET,
+         NID_OPERATIONAL => NID_OPERATIONAL);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------

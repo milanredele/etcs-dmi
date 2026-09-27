@@ -11,6 +11,52 @@ package body ETCS_Track_Packets.P12
   with SPARK_Mode => On
 is
 
+   --  The items with every component at its default
+   Empty_L_SECTION_Item : constant L_SECTION_Item := (others => <>);
+
+   --  One item of L_SECTION_List
+   procedure Decode_L_SECTION_Item
+     (R  : in out Reader;
+      E1 : out L_SECTION_Item)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      E1 := Empty_L_SECTION_Item;
+      Read (R, 15, V);
+      E1.L_SECTION := To_L_SECTION (V);
+      Read (R, 1, V);
+      E1.Q_SECTIONTIMER := To_Q_SECTIONTIMER (V);
+      E1.Has_T_SECTIONTIMER := E1.Q_SECTIONTIMER = 1;
+      if E1.Has_T_SECTIONTIMER then
+         Read (R, 10, V);
+         E1.T_SECTIONTIMER := To_T_SECTIONTIMER (V);
+         Read (R, 15, V);
+         E1.D_SECTIONTIMERSTOPLOC := To_D_SECTIONTIMERSTOPLOC (V);
+      end if;
+   end Decode_L_SECTION_Item;
+
+   --  One item of L_SECTION_List
+   procedure Encode_L_SECTION_Item
+     (E1   : L_SECTION_Item;
+      W    : in out Writer;
+      Good : in out Boolean)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 15, Code (E1.L_SECTION));
+      Write (W, 1, Code (E1.Q_SECTIONTIMER));
+      if E1.Has_T_SECTIONTIMER /= (E1.Q_SECTIONTIMER = 1) then
+         Good := False;
+      end if;
+      if E1.Q_SECTIONTIMER = 1 then
+         Write (W, 10, Code (E1.T_SECTIONTIMER));
+         Write (W, 15, Code (E1.D_SECTIONTIMERSTOPLOC));
+      end if;
+   end Encode_L_SECTION_Item;
+
    ------------
    -- Decode --
    ------------
@@ -21,86 +67,128 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET            : NID_PACKET_T;
+      Q_DIR                 : Q_DIR_T;
+      L_PACKET              : L_PACKET_T;
+      Q_SCALE               : Q_SCALE_T;
+      V_MAIN                : V_MAIN_T;
+      V_EMA                 : V_EMA_T;
+      T_EMA                 : T_EMA_T;
+      N_ITER                : N_ITER_T;
+      L_SECTION_List        : L_SECTION_Array;
+      L_ENDSECTION          : L_ENDSECTION_T;
+      Q_SECTIONTIMER        : Q_SECTIONTIMER_T;
+      Has_T_SECTIONTIMER    : Boolean;
+      T_SECTIONTIMER        : T_SECTIONTIMER_T := 0;
+      D_SECTIONTIMERSTOPLOC : D_SECTIONTIMERSTOPLOC_T := 0;
+      Q_ENDTIMER            : Q_ENDTIMER_T;
+      Has_T_ENDTIMER        : Boolean;
+      T_ENDTIMER            : T_ENDTIMER_T := 0;
+      D_ENDTIMERSTARTLOC    : D_ENDTIMERSTARTLOC_T := 0;
+      Q_DANGERPOINT         : Q_DANGERPOINT_T;
+      Has_D_DP              : Boolean;
+      D_DP                  : D_DP_T := 0;
+      V_RELEASEDP           : V_RELEASEDP_T := 0;
+      Q_OVERLAP             : Q_OVERLAP_T;
+      Has_D_STARTOL         : Boolean;
+      D_STARTOL             : D_STARTOL_T := 0;
+      T_OL                  : T_OL_T := 0;
+      D_OL                  : D_OL_T := 0;
+      V_RELEASEOL           : V_RELEASEOL_T := 0;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 2, V);
-      P.Q_DIR := To_Q_DIR (V);
+      Q_DIR := To_Q_DIR (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 2, V);
-      P.Q_SCALE := To_Q_SCALE (V);
+      Q_SCALE := To_Q_SCALE (V);
       Read (R, 7, V);
-      P.V_MAIN := To_V_MAIN (V);
+      V_MAIN := To_V_MAIN (V);
       Read (R, 7, V);
-      P.V_EMA := To_V_EMA (V);
+      V_EMA := To_V_EMA (V);
       Read (R, 10, V);
-      P.T_EMA := To_T_EMA (V);
+      T_EMA := To_T_EMA (V);
       Read (R, 5, V);
-      P.N_ITER := To_N_ITER (V);
-      for I1 in 1 .. Natural (P.N_ITER) loop
-         declare
-            E1 : L_SECTION_Item renames P.L_SECTION_List (I1);
-         begin
-            Read (R, 15, V);
-            E1.L_SECTION := To_L_SECTION (V);
-            Read (R, 1, V);
-            E1.Q_SECTIONTIMER := To_Q_SECTIONTIMER (V);
-            E1.Has_T_SECTIONTIMER := E1.Q_SECTIONTIMER = 1;
-            if E1.Has_T_SECTIONTIMER then
-               Read (R, 10, V);
-               E1.T_SECTIONTIMER := To_T_SECTIONTIMER (V);
-               Read (R, 15, V);
-               E1.D_SECTIONTIMERSTOPLOC := To_D_SECTIONTIMERSTOPLOC (V);
-            end if;
-         end;
+      N_ITER := To_N_ITER (V);
+      for I1 in 1 .. Natural (N_ITER) loop
+         Decode_L_SECTION_Item (R, L_SECTION_List (I1));
       end loop;
       Read (R, 15, V);
-      P.L_ENDSECTION := To_L_ENDSECTION (V);
+      L_ENDSECTION := To_L_ENDSECTION (V);
       Read (R, 1, V);
-      P.Q_SECTIONTIMER := To_Q_SECTIONTIMER (V);
-      P.Has_T_SECTIONTIMER := P.Q_SECTIONTIMER = 1;
-      if P.Has_T_SECTIONTIMER then
+      Q_SECTIONTIMER := To_Q_SECTIONTIMER (V);
+      Has_T_SECTIONTIMER := Q_SECTIONTIMER = 1;
+      if Has_T_SECTIONTIMER then
          Read (R, 10, V);
-         P.T_SECTIONTIMER := To_T_SECTIONTIMER (V);
+         T_SECTIONTIMER := To_T_SECTIONTIMER (V);
          Read (R, 15, V);
-         P.D_SECTIONTIMERSTOPLOC := To_D_SECTIONTIMERSTOPLOC (V);
+         D_SECTIONTIMERSTOPLOC := To_D_SECTIONTIMERSTOPLOC (V);
       end if;
       Read (R, 1, V);
-      P.Q_ENDTIMER := To_Q_ENDTIMER (V);
-      P.Has_T_ENDTIMER := P.Q_ENDTIMER = 1;
-      if P.Has_T_ENDTIMER then
+      Q_ENDTIMER := To_Q_ENDTIMER (V);
+      Has_T_ENDTIMER := Q_ENDTIMER = 1;
+      if Has_T_ENDTIMER then
          Read (R, 10, V);
-         P.T_ENDTIMER := To_T_ENDTIMER (V);
+         T_ENDTIMER := To_T_ENDTIMER (V);
          Read (R, 15, V);
-         P.D_ENDTIMERSTARTLOC := To_D_ENDTIMERSTARTLOC (V);
+         D_ENDTIMERSTARTLOC := To_D_ENDTIMERSTARTLOC (V);
       end if;
       Read (R, 1, V);
-      P.Q_DANGERPOINT := To_Q_DANGERPOINT (V);
-      P.Has_D_DP := P.Q_DANGERPOINT = 1;
-      if P.Has_D_DP then
+      Q_DANGERPOINT := To_Q_DANGERPOINT (V);
+      Has_D_DP := Q_DANGERPOINT = 1;
+      if Has_D_DP then
          Read (R, 15, V);
-         P.D_DP := To_D_DP (V);
+         D_DP := To_D_DP (V);
          Read (R, 7, V);
-         P.V_RELEASEDP := To_V_RELEASEDP (V);
+         V_RELEASEDP := To_V_RELEASEDP (V);
       end if;
       Read (R, 1, V);
-      P.Q_OVERLAP := To_Q_OVERLAP (V);
-      P.Has_D_STARTOL := P.Q_OVERLAP = 1;
-      if P.Has_D_STARTOL then
+      Q_OVERLAP := To_Q_OVERLAP (V);
+      Has_D_STARTOL := Q_OVERLAP = 1;
+      if Has_D_STARTOL then
          Read (R, 15, V);
-         P.D_STARTOL := To_D_STARTOL (V);
+         D_STARTOL := To_D_STARTOL (V);
          Read (R, 10, V);
-         P.T_OL := To_T_OL (V);
+         T_OL := To_T_OL (V);
          Read (R, 15, V);
-         P.D_OL := To_D_OL (V);
+         D_OL := To_D_OL (V);
          Read (R, 7, V);
-         P.V_RELEASEOL := To_V_RELEASEOL (V);
+         V_RELEASEOL := To_V_RELEASEOL (V);
       end if;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         Q_DIR => Q_DIR,
+         L_PACKET => L_PACKET,
+         Q_SCALE => Q_SCALE,
+         V_MAIN => V_MAIN,
+         V_EMA => V_EMA,
+         T_EMA => T_EMA,
+         N_ITER => N_ITER,
+         L_SECTION_List => L_SECTION_List,
+         L_ENDSECTION => L_ENDSECTION,
+         Q_SECTIONTIMER => Q_SECTIONTIMER,
+         Has_T_SECTIONTIMER => Has_T_SECTIONTIMER,
+         T_SECTIONTIMER => T_SECTIONTIMER,
+         D_SECTIONTIMERSTOPLOC => D_SECTIONTIMERSTOPLOC,
+         Q_ENDTIMER => Q_ENDTIMER,
+         Has_T_ENDTIMER => Has_T_ENDTIMER,
+         T_ENDTIMER => T_ENDTIMER,
+         D_ENDTIMERSTARTLOC => D_ENDTIMERSTARTLOC,
+         Q_DANGERPOINT => Q_DANGERPOINT,
+         Has_D_DP => Has_D_DP,
+         D_DP => D_DP,
+         V_RELEASEDP => V_RELEASEDP,
+         Q_OVERLAP => Q_OVERLAP,
+         Has_D_STARTOL => Has_D_STARTOL,
+         D_STARTOL => D_STARTOL,
+         T_OL => T_OL,
+         D_OL => D_OL,
+         V_RELEASEOL => V_RELEASEOL);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------
@@ -125,19 +213,7 @@ is
       Write (W, 10, Code (P.T_EMA));
       Write (W, 5, Code (P.N_ITER));
       for I1 in 1 .. Natural (P.N_ITER) loop
-         declare
-            E1 : L_SECTION_Item renames P.L_SECTION_List (I1);
-         begin
-            Write (W, 15, Code (E1.L_SECTION));
-            Write (W, 1, Code (E1.Q_SECTIONTIMER));
-            if E1.Has_T_SECTIONTIMER /= (E1.Q_SECTIONTIMER = 1) then
-               Good := False;
-            end if;
-            if E1.Q_SECTIONTIMER = 1 then
-               Write (W, 10, Code (E1.T_SECTIONTIMER));
-               Write (W, 15, Code (E1.D_SECTIONTIMERSTOPLOC));
-            end if;
-         end;
+         Encode_L_SECTION_Item (P.L_SECTION_List (I1), W, Good);
       end loop;
       Write (W, 15, Code (P.L_ENDSECTION));
       Write (W, 1, Code (P.Q_SECTIONTIMER));

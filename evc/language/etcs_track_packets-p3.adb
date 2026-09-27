@@ -11,6 +11,192 @@ package body ETCS_Track_Packets.P3
   with SPARK_Mode => On
 is
 
+   --  The items with every component at its default
+   Empty_V_NVKVINT_Item_2 : constant V_NVKVINT_Item_2 := (others => <>);
+   Empty_V_NVKVINT_Item : constant V_NVKVINT_Item := (others => <>);
+   Empty_Q_NVKVINTSET_Item : constant Q_NVKVINTSET_Item := (others => <>);
+
+   --  One item of V_NVKVINT_List
+   procedure Decode_V_NVKVINT_Item_2
+     (R               : in out Reader;
+      E2              : out V_NVKVINT_Item_2;
+      E1_Q_NVKVINTSET : Q_NVKVINTSET_T)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      E2 := Empty_V_NVKVINT_Item_2;
+      Read (R, 7, V);
+      E2.V_NVKVINT := To_V_NVKVINT (V);
+      Read (R, 7, V);
+      E2.M_NVKVINT := To_M_NVKVINT (V);
+      E2.Has_M_NVKVINT_P23 := E1_Q_NVKVINTSET = 1;
+      if E2.Has_M_NVKVINT_P23 then
+         Read (R, 7, V);
+         E2.M_NVKVINT_P23 := To_M_NVKVINT (V);
+      end if;
+   end Decode_V_NVKVINT_Item_2;
+
+   --  One item of V_NVKVINT_List
+   procedure Decode_V_NVKVINT_Item
+     (R              : in out Reader;
+      E1             : out V_NVKVINT_Item;
+      P_Q_NVKVINTSET : Q_NVKVINTSET_T)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      E1 := Empty_V_NVKVINT_Item;
+      Read (R, 7, V);
+      E1.V_NVKVINT := To_V_NVKVINT (V);
+      Read (R, 7, V);
+      E1.M_NVKVINT := To_M_NVKVINT (V);
+      E1.Has_M_NVKVINT_P23 := P_Q_NVKVINTSET = 1;
+      if E1.Has_M_NVKVINT_P23 then
+         Read (R, 7, V);
+         E1.M_NVKVINT_P23 := To_M_NVKVINT (V);
+      end if;
+   end Decode_V_NVKVINT_Item;
+
+   --  One item of Q_NVKVINTSET_List
+   procedure Decode_Q_NVKVINTSET_Item
+     (R  : in out Reader;
+      E1 : out Q_NVKVINTSET_Item)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      E1 := Empty_Q_NVKVINTSET_Item;
+      Read (R, 2, V);
+      E1.Q_NVKVINTSET := To_Q_NVKVINTSET (V);
+      E1.Has_A_NVP12 := E1.Q_NVKVINTSET = 1;
+      if E1.Has_A_NVP12 then
+         Read (R, 6, V);
+         E1.A_NVP12 := To_A_NVP12 (V);
+         Read (R, 6, V);
+         E1.A_NVP23 := To_A_NVP23 (V);
+      end if;
+      Read (R, 7, V);
+      E1.V_NVKVINT := To_V_NVKVINT (V);
+      Read (R, 7, V);
+      E1.M_NVKVINT := To_M_NVKVINT (V);
+      E1.Has_M_NVKVINT_P23 := E1.Q_NVKVINTSET = 1;
+      if E1.Has_M_NVKVINT_P23 then
+         Read (R, 7, V);
+         E1.M_NVKVINT_P23 := To_M_NVKVINT (V);
+      end if;
+      Read (R, 5, V);
+      E1.N_ITER := To_N_ITER (V);
+      for I2 in 1 .. Natural (E1.N_ITER) loop
+         Decode_V_NVKVINT_Item_2 (R, E1.V_NVKVINT_List (I2), E1.Q_NVKVINTSET);
+      end loop;
+   end Decode_Q_NVKVINTSET_Item;
+
+   --  One item of L_NVKRINT_List
+   procedure Decode_L_NVKRINT_Item
+     (R  : in out Reader;
+      E1 : out L_NVKRINT_Item)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      Read (R, 5, V);
+      E1.L_NVKRINT := To_L_NVKRINT (V);
+      Read (R, 5, V);
+      E1.M_NVKRINT := To_M_NVKRINT (V);
+   end Decode_L_NVKRINT_Item;
+
+   --  One item of V_NVKVINT_List
+   procedure Encode_V_NVKVINT_Item_2
+     (E2              : V_NVKVINT_Item_2;
+      W               : in out Writer;
+      Good            : in out Boolean;
+      E1_Q_NVKVINTSET : Q_NVKVINTSET_T)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 7, Code (E2.V_NVKVINT));
+      Write (W, 7, Code (E2.M_NVKVINT));
+      if E2.Has_M_NVKVINT_P23 /= (E1_Q_NVKVINTSET = 1) then
+         Good := False;
+      end if;
+      if E1_Q_NVKVINTSET = 1 then
+         Write (W, 7, Code (E2.M_NVKVINT_P23));
+      end if;
+   end Encode_V_NVKVINT_Item_2;
+
+   --  One item of V_NVKVINT_List
+   procedure Encode_V_NVKVINT_Item
+     (E1             : V_NVKVINT_Item;
+      W              : in out Writer;
+      Good           : in out Boolean;
+      P_Q_NVKVINTSET : Q_NVKVINTSET_T)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 7, Code (E1.V_NVKVINT));
+      Write (W, 7, Code (E1.M_NVKVINT));
+      if E1.Has_M_NVKVINT_P23 /= (P_Q_NVKVINTSET = 1) then
+         Good := False;
+      end if;
+      if P_Q_NVKVINTSET = 1 then
+         Write (W, 7, Code (E1.M_NVKVINT_P23));
+      end if;
+   end Encode_V_NVKVINT_Item;
+
+   --  One item of Q_NVKVINTSET_List
+   procedure Encode_Q_NVKVINTSET_Item
+     (E1   : Q_NVKVINTSET_Item;
+      W    : in out Writer;
+      Good : in out Boolean)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 2, Code (E1.Q_NVKVINTSET));
+      if E1.Has_A_NVP12 /= (E1.Q_NVKVINTSET = 1) then
+         Good := False;
+      end if;
+      if E1.Q_NVKVINTSET = 1 then
+         Write (W, 6, Code (E1.A_NVP12));
+         Write (W, 6, Code (E1.A_NVP23));
+      end if;
+      Write (W, 7, Code (E1.V_NVKVINT));
+      Write (W, 7, Code (E1.M_NVKVINT));
+      if E1.Has_M_NVKVINT_P23 /= (E1.Q_NVKVINTSET = 1) then
+         Good := False;
+      end if;
+      if E1.Q_NVKVINTSET = 1 then
+         Write (W, 7, Code (E1.M_NVKVINT_P23));
+      end if;
+      Write (W, 5, Code (E1.N_ITER));
+      for I2 in 1 .. Natural (E1.N_ITER) loop
+         Encode_V_NVKVINT_Item_2
+           (E1.V_NVKVINT_List (I2),
+            W,
+            Good,
+            E1.Q_NVKVINTSET);
+      end loop;
+   end Encode_Q_NVKVINTSET_Item;
+
+   --  One item of L_NVKRINT_List
+   procedure Encode_L_NVKRINT_Item
+     (E1 : L_NVKRINT_Item;
+      W  : in out Writer)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 5, Code (E1.L_NVKRINT));
+      Write (W, 5, Code (E1.M_NVKRINT));
+   end Encode_L_NVKRINT_Item;
+
    ------------
    -- Decode --
    ------------
@@ -21,186 +207,239 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET        : NID_PACKET_T;
+      Q_DIR             : Q_DIR_T;
+      L_PACKET          : L_PACKET_T;
+      Q_SCALE           : Q_SCALE_T;
+      D_VALIDNV         : D_VALIDNV_T;
+      NID_C             : NID_C_T;
+      N_ITER            : N_ITER_T;
+      NID_C_List        : NID_C_Array := (others => 0);
+      V_NVSHUNT         : V_NVSHUNT_T;
+      V_NVSTFF          : V_NVSTFF_T;
+      V_NVONSIGHT       : V_NVONSIGHT_T;
+      V_NVLIMSUPERV     : V_NVLIMSUPERV_T;
+      V_NVUNFIT         : V_NVUNFIT_T;
+      V_NVREL           : V_NVREL_T;
+      D_NVROLL          : D_NVROLL_T;
+      Q_NVSBTSMPERM     : Q_NVSBTSMPERM_T;
+      Q_NVEMRRLS        : Q_NVEMRRLS_T;
+      Q_NVGUIPERM       : Q_NVGUIPERM_T;
+      Q_NVSBFBPERM      : Q_NVSBFBPERM_T;
+      Q_NVINHSMICPERM   : Q_NVINHSMICPERM_T;
+      V_NVALLOWOVTRP    : V_NVALLOWOVTRP_T;
+      V_NVSUPOVTRP      : V_NVSUPOVTRP_T;
+      D_NVOVTRP         : D_NVOVTRP_T;
+      T_NVOVTRP         : T_NVOVTRP_T;
+      D_NVPOTRP         : D_NVPOTRP_T;
+      M_NVCONTACT       : M_NVCONTACT_T;
+      T_NVCONTACT       : T_NVCONTACT_T;
+      M_NVDERUN         : M_NVDERUN_T;
+      D_NVSTFF          : D_NVSTFF_T;
+      Q_NVDRIVER_ADHES  : Q_NVDRIVER_ADHES_T;
+      A_NVMAXREDADH1    : A_NVMAXREDADH1_T;
+      A_NVMAXREDADH2    : A_NVMAXREDADH2_T;
+      A_NVMAXREDADH3    : A_NVMAXREDADH3_T;
+      Q_NVLOCACC        : Q_NVLOCACC_T;
+      M_NVAVADH         : M_NVAVADH_T;
+      M_NVEBCL          : M_NVEBCL_T;
+      Q_NVKINT          : Q_NVKINT_T;
+      Has_Q_NVKVINTSET  : Boolean;
+      Q_NVKVINTSET      : Q_NVKVINTSET_T := 0;
+      Has_A_NVP12       : Boolean := False;
+      A_NVP12           : A_NVP12_T := 0;
+      A_NVP23           : A_NVP23_T := 0;
+      V_NVKVINT         : V_NVKVINT_T := 0;
+      M_NVKVINT         : M_NVKVINT_T := 0;
+      Has_M_NVKVINT_P23 : Boolean := False;
+      M_NVKVINT_P23     : M_NVKVINT_T := 0;
+      N_ITER_KV         : N_ITER_T := 0;
+      V_NVKVINT_List    : V_NVKVINT_Array;
+      N_ITER_SET        : N_ITER_T := 0;
+      Q_NVKVINTSET_List : Q_NVKVINTSET_Array;
+      L_NVKRINT         : L_NVKRINT_T := 0;
+      M_NVKRINT         : M_NVKRINT_T := 0;
+      N_ITER_KR         : N_ITER_T := 0;
+      L_NVKRINT_List    : L_NVKRINT_Array;
+      M_NVKTINT         : M_NVKTINT_T := 0;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 2, V);
-      P.Q_DIR := To_Q_DIR (V);
+      Q_DIR := To_Q_DIR (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 2, V);
-      P.Q_SCALE := To_Q_SCALE (V);
+      Q_SCALE := To_Q_SCALE (V);
       Read (R, 15, V);
-      P.D_VALIDNV := To_D_VALIDNV (V);
+      D_VALIDNV := To_D_VALIDNV (V);
       Read (R, 10, V);
-      P.NID_C := To_NID_C (V);
+      NID_C := To_NID_C (V);
       Read (R, 5, V);
-      P.N_ITER := To_N_ITER (V);
-      for I1 in 1 .. Natural (P.N_ITER) loop
+      N_ITER := To_N_ITER (V);
+      for I1 in 1 .. Natural (N_ITER) loop
          Read (R, 10, V);
-         P.NID_C_List (I1) := To_NID_C (V);
+         NID_C_List (I1) := To_NID_C (V);
       end loop;
       Read (R, 7, V);
-      P.V_NVSHUNT := To_V_NVSHUNT (V);
+      V_NVSHUNT := To_V_NVSHUNT (V);
       Read (R, 7, V);
-      P.V_NVSTFF := To_V_NVSTFF (V);
+      V_NVSTFF := To_V_NVSTFF (V);
       Read (R, 7, V);
-      P.V_NVONSIGHT := To_V_NVONSIGHT (V);
+      V_NVONSIGHT := To_V_NVONSIGHT (V);
       Read (R, 7, V);
-      P.V_NVLIMSUPERV := To_V_NVLIMSUPERV (V);
+      V_NVLIMSUPERV := To_V_NVLIMSUPERV (V);
       Read (R, 7, V);
-      P.V_NVUNFIT := To_V_NVUNFIT (V);
+      V_NVUNFIT := To_V_NVUNFIT (V);
       Read (R, 7, V);
-      P.V_NVREL := To_V_NVREL (V);
+      V_NVREL := To_V_NVREL (V);
       Read (R, 15, V);
-      P.D_NVROLL := To_D_NVROLL (V);
+      D_NVROLL := To_D_NVROLL (V);
       Read (R, 1, V);
-      P.Q_NVSBTSMPERM := To_Q_NVSBTSMPERM (V);
+      Q_NVSBTSMPERM := To_Q_NVSBTSMPERM (V);
       Read (R, 1, V);
-      P.Q_NVEMRRLS := To_Q_NVEMRRLS (V);
+      Q_NVEMRRLS := To_Q_NVEMRRLS (V);
       Read (R, 1, V);
-      P.Q_NVGUIPERM := To_Q_NVGUIPERM (V);
+      Q_NVGUIPERM := To_Q_NVGUIPERM (V);
       Read (R, 1, V);
-      P.Q_NVSBFBPERM := To_Q_NVSBFBPERM (V);
+      Q_NVSBFBPERM := To_Q_NVSBFBPERM (V);
       Read (R, 1, V);
-      P.Q_NVINHSMICPERM := To_Q_NVINHSMICPERM (V);
+      Q_NVINHSMICPERM := To_Q_NVINHSMICPERM (V);
       Read (R, 7, V);
-      P.V_NVALLOWOVTRP := To_V_NVALLOWOVTRP (V);
+      V_NVALLOWOVTRP := To_V_NVALLOWOVTRP (V);
       Read (R, 7, V);
-      P.V_NVSUPOVTRP := To_V_NVSUPOVTRP (V);
+      V_NVSUPOVTRP := To_V_NVSUPOVTRP (V);
       Read (R, 15, V);
-      P.D_NVOVTRP := To_D_NVOVTRP (V);
+      D_NVOVTRP := To_D_NVOVTRP (V);
       Read (R, 8, V);
-      P.T_NVOVTRP := To_T_NVOVTRP (V);
+      T_NVOVTRP := To_T_NVOVTRP (V);
       Read (R, 15, V);
-      P.D_NVPOTRP := To_D_NVPOTRP (V);
+      D_NVPOTRP := To_D_NVPOTRP (V);
       Read (R, 2, V);
-      P.M_NVCONTACT := To_M_NVCONTACT (V);
+      M_NVCONTACT := To_M_NVCONTACT (V);
       Read (R, 8, V);
-      P.T_NVCONTACT := To_T_NVCONTACT (V);
+      T_NVCONTACT := To_T_NVCONTACT (V);
       Read (R, 1, V);
-      P.M_NVDERUN := To_M_NVDERUN (V);
+      M_NVDERUN := To_M_NVDERUN (V);
       Read (R, 15, V);
-      P.D_NVSTFF := To_D_NVSTFF (V);
+      D_NVSTFF := To_D_NVSTFF (V);
       Read (R, 1, V);
-      P.Q_NVDRIVER_ADHES := To_Q_NVDRIVER_ADHES (V);
+      Q_NVDRIVER_ADHES := To_Q_NVDRIVER_ADHES (V);
       Read (R, 6, V);
-      P.A_NVMAXREDADH1 := To_A_NVMAXREDADH1 (V);
+      A_NVMAXREDADH1 := To_A_NVMAXREDADH1 (V);
       Read (R, 6, V);
-      P.A_NVMAXREDADH2 := To_A_NVMAXREDADH2 (V);
+      A_NVMAXREDADH2 := To_A_NVMAXREDADH2 (V);
       Read (R, 6, V);
-      P.A_NVMAXREDADH3 := To_A_NVMAXREDADH3 (V);
+      A_NVMAXREDADH3 := To_A_NVMAXREDADH3 (V);
       Read (R, 6, V);
-      P.Q_NVLOCACC := To_Q_NVLOCACC (V);
+      Q_NVLOCACC := To_Q_NVLOCACC (V);
       Read (R, 5, V);
-      P.M_NVAVADH := To_M_NVAVADH (V);
+      M_NVAVADH := To_M_NVAVADH (V);
       Read (R, 4, V);
-      P.M_NVEBCL := To_M_NVEBCL (V);
+      M_NVEBCL := To_M_NVEBCL (V);
       Read (R, 1, V);
-      P.Q_NVKINT := To_Q_NVKINT (V);
-      P.Has_Q_NVKVINTSET := P.Q_NVKINT = 1;
-      if P.Has_Q_NVKVINTSET then
+      Q_NVKINT := To_Q_NVKINT (V);
+      Has_Q_NVKVINTSET := Q_NVKINT = 1;
+      if Has_Q_NVKVINTSET then
          Read (R, 2, V);
-         P.Q_NVKVINTSET := To_Q_NVKVINTSET (V);
-         P.Has_A_NVP12 := P.Q_NVKVINTSET = 1;
-         if P.Has_A_NVP12 then
+         Q_NVKVINTSET := To_Q_NVKVINTSET (V);
+         Has_A_NVP12 := Q_NVKVINTSET = 1;
+         if Has_A_NVP12 then
             Read (R, 6, V);
-            P.A_NVP12 := To_A_NVP12 (V);
+            A_NVP12 := To_A_NVP12 (V);
             Read (R, 6, V);
-            P.A_NVP23 := To_A_NVP23 (V);
+            A_NVP23 := To_A_NVP23 (V);
          end if;
          Read (R, 7, V);
-         P.V_NVKVINT := To_V_NVKVINT (V);
+         V_NVKVINT := To_V_NVKVINT (V);
          Read (R, 7, V);
-         P.M_NVKVINT := To_M_NVKVINT (V);
-         P.Has_M_NVKVINT_P23 := P.Q_NVKVINTSET = 1;
-         if P.Has_M_NVKVINT_P23 then
+         M_NVKVINT := To_M_NVKVINT (V);
+         Has_M_NVKVINT_P23 := Q_NVKVINTSET = 1;
+         if Has_M_NVKVINT_P23 then
             Read (R, 7, V);
-            P.M_NVKVINT_P23 := To_M_NVKVINT (V);
+            M_NVKVINT_P23 := To_M_NVKVINT (V);
          end if;
          Read (R, 5, V);
-         P.N_ITER_KV := To_N_ITER (V);
-         for I1 in 1 .. Natural (P.N_ITER_KV) loop
-            declare
-               E1 : V_NVKVINT_Item renames P.V_NVKVINT_List (I1);
-            begin
-               Read (R, 7, V);
-               E1.V_NVKVINT := To_V_NVKVINT (V);
-               Read (R, 7, V);
-               E1.M_NVKVINT := To_M_NVKVINT (V);
-               E1.Has_M_NVKVINT_P23 := P.Q_NVKVINTSET = 1;
-               if E1.Has_M_NVKVINT_P23 then
-                  Read (R, 7, V);
-                  E1.M_NVKVINT_P23 := To_M_NVKVINT (V);
-               end if;
-            end;
+         N_ITER_KV := To_N_ITER (V);
+         for I1 in 1 .. Natural (N_ITER_KV) loop
+            Decode_V_NVKVINT_Item (R, V_NVKVINT_List (I1), Q_NVKVINTSET);
          end loop;
          Read (R, 5, V);
-         P.N_ITER_SET := To_N_ITER (V);
-         for I1 in 1 .. Natural (P.N_ITER_SET) loop
-            declare
-               E1 : Q_NVKVINTSET_Item renames P.Q_NVKVINTSET_List (I1);
-            begin
-               Read (R, 2, V);
-               E1.Q_NVKVINTSET := To_Q_NVKVINTSET (V);
-               E1.Has_A_NVP12 := E1.Q_NVKVINTSET = 1;
-               if E1.Has_A_NVP12 then
-                  Read (R, 6, V);
-                  E1.A_NVP12 := To_A_NVP12 (V);
-                  Read (R, 6, V);
-                  E1.A_NVP23 := To_A_NVP23 (V);
-               end if;
-               Read (R, 7, V);
-               E1.V_NVKVINT := To_V_NVKVINT (V);
-               Read (R, 7, V);
-               E1.M_NVKVINT := To_M_NVKVINT (V);
-               E1.Has_M_NVKVINT_P23 := E1.Q_NVKVINTSET = 1;
-               if E1.Has_M_NVKVINT_P23 then
-                  Read (R, 7, V);
-                  E1.M_NVKVINT_P23 := To_M_NVKVINT (V);
-               end if;
-               Read (R, 5, V);
-               E1.N_ITER := To_N_ITER (V);
-               for I2 in 1 .. Natural (E1.N_ITER) loop
-                  declare
-                     E2 : V_NVKVINT_Item_2 renames E1.V_NVKVINT_List (I2);
-                  begin
-                     Read (R, 7, V);
-                     E2.V_NVKVINT := To_V_NVKVINT (V);
-                     Read (R, 7, V);
-                     E2.M_NVKVINT := To_M_NVKVINT (V);
-                     E2.Has_M_NVKVINT_P23 := E1.Q_NVKVINTSET = 1;
-                     if E2.Has_M_NVKVINT_P23 then
-                        Read (R, 7, V);
-                        E2.M_NVKVINT_P23 := To_M_NVKVINT (V);
-                     end if;
-                  end;
-               end loop;
-            end;
+         N_ITER_SET := To_N_ITER (V);
+         for I1 in 1 .. Natural (N_ITER_SET) loop
+            Decode_Q_NVKVINTSET_Item (R, Q_NVKVINTSET_List (I1));
          end loop;
          Read (R, 5, V);
-         P.L_NVKRINT := To_L_NVKRINT (V);
+         L_NVKRINT := To_L_NVKRINT (V);
          Read (R, 5, V);
-         P.M_NVKRINT := To_M_NVKRINT (V);
+         M_NVKRINT := To_M_NVKRINT (V);
          Read (R, 5, V);
-         P.N_ITER_KR := To_N_ITER (V);
-         for I1 in 1 .. Natural (P.N_ITER_KR) loop
-            declare
-               E1 : L_NVKRINT_Item renames P.L_NVKRINT_List (I1);
-            begin
-               Read (R, 5, V);
-               E1.L_NVKRINT := To_L_NVKRINT (V);
-               Read (R, 5, V);
-               E1.M_NVKRINT := To_M_NVKRINT (V);
-            end;
+         N_ITER_KR := To_N_ITER (V);
+         for I1 in 1 .. Natural (N_ITER_KR) loop
+            Decode_L_NVKRINT_Item (R, L_NVKRINT_List (I1));
          end loop;
          Read (R, 5, V);
-         P.M_NVKTINT := To_M_NVKTINT (V);
+         M_NVKTINT := To_M_NVKTINT (V);
       end if;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         Q_DIR => Q_DIR,
+         L_PACKET => L_PACKET,
+         Q_SCALE => Q_SCALE,
+         D_VALIDNV => D_VALIDNV,
+         NID_C => NID_C,
+         N_ITER => N_ITER,
+         NID_C_List => NID_C_List,
+         V_NVSHUNT => V_NVSHUNT,
+         V_NVSTFF => V_NVSTFF,
+         V_NVONSIGHT => V_NVONSIGHT,
+         V_NVLIMSUPERV => V_NVLIMSUPERV,
+         V_NVUNFIT => V_NVUNFIT,
+         V_NVREL => V_NVREL,
+         D_NVROLL => D_NVROLL,
+         Q_NVSBTSMPERM => Q_NVSBTSMPERM,
+         Q_NVEMRRLS => Q_NVEMRRLS,
+         Q_NVGUIPERM => Q_NVGUIPERM,
+         Q_NVSBFBPERM => Q_NVSBFBPERM,
+         Q_NVINHSMICPERM => Q_NVINHSMICPERM,
+         V_NVALLOWOVTRP => V_NVALLOWOVTRP,
+         V_NVSUPOVTRP => V_NVSUPOVTRP,
+         D_NVOVTRP => D_NVOVTRP,
+         T_NVOVTRP => T_NVOVTRP,
+         D_NVPOTRP => D_NVPOTRP,
+         M_NVCONTACT => M_NVCONTACT,
+         T_NVCONTACT => T_NVCONTACT,
+         M_NVDERUN => M_NVDERUN,
+         D_NVSTFF => D_NVSTFF,
+         Q_NVDRIVER_ADHES => Q_NVDRIVER_ADHES,
+         A_NVMAXREDADH1 => A_NVMAXREDADH1,
+         A_NVMAXREDADH2 => A_NVMAXREDADH2,
+         A_NVMAXREDADH3 => A_NVMAXREDADH3,
+         Q_NVLOCACC => Q_NVLOCACC,
+         M_NVAVADH => M_NVAVADH,
+         M_NVEBCL => M_NVEBCL,
+         Q_NVKINT => Q_NVKINT,
+         Has_Q_NVKVINTSET => Has_Q_NVKVINTSET,
+         Q_NVKVINTSET => Q_NVKVINTSET,
+         Has_A_NVP12 => Has_A_NVP12,
+         A_NVP12 => A_NVP12,
+         A_NVP23 => A_NVP23,
+         V_NVKVINT => V_NVKVINT,
+         M_NVKVINT => M_NVKVINT,
+         Has_M_NVKVINT_P23 => Has_M_NVKVINT_P23,
+         M_NVKVINT_P23 => M_NVKVINT_P23,
+         N_ITER_KV => N_ITER_KV,
+         V_NVKVINT_List => V_NVKVINT_List,
+         N_ITER_SET => N_ITER_SET,
+         Q_NVKVINTSET_List => Q_NVKVINTSET_List,
+         L_NVKRINT => L_NVKRINT,
+         M_NVKRINT => M_NVKRINT,
+         N_ITER_KR => N_ITER_KR,
+         L_NVKRINT_List => L_NVKRINT_List,
+         M_NVKTINT => M_NVKTINT);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------
@@ -277,67 +516,21 @@ is
          end if;
          Write (W, 5, Code (P.N_ITER_KV));
          for I1 in 1 .. Natural (P.N_ITER_KV) loop
-            declare
-               E1 : V_NVKVINT_Item renames P.V_NVKVINT_List (I1);
-            begin
-               Write (W, 7, Code (E1.V_NVKVINT));
-               Write (W, 7, Code (E1.M_NVKVINT));
-               if E1.Has_M_NVKVINT_P23 /= (P.Q_NVKVINTSET = 1) then
-                  Good := False;
-               end if;
-               if P.Q_NVKVINTSET = 1 then
-                  Write (W, 7, Code (E1.M_NVKVINT_P23));
-               end if;
-            end;
+            Encode_V_NVKVINT_Item
+              (P.V_NVKVINT_List (I1),
+               W,
+               Good,
+               P.Q_NVKVINTSET);
          end loop;
          Write (W, 5, Code (P.N_ITER_SET));
          for I1 in 1 .. Natural (P.N_ITER_SET) loop
-            declare
-               E1 : Q_NVKVINTSET_Item renames P.Q_NVKVINTSET_List (I1);
-            begin
-               Write (W, 2, Code (E1.Q_NVKVINTSET));
-               if E1.Has_A_NVP12 /= (E1.Q_NVKVINTSET = 1) then
-                  Good := False;
-               end if;
-               if E1.Q_NVKVINTSET = 1 then
-                  Write (W, 6, Code (E1.A_NVP12));
-                  Write (W, 6, Code (E1.A_NVP23));
-               end if;
-               Write (W, 7, Code (E1.V_NVKVINT));
-               Write (W, 7, Code (E1.M_NVKVINT));
-               if E1.Has_M_NVKVINT_P23 /= (E1.Q_NVKVINTSET = 1) then
-                  Good := False;
-               end if;
-               if E1.Q_NVKVINTSET = 1 then
-                  Write (W, 7, Code (E1.M_NVKVINT_P23));
-               end if;
-               Write (W, 5, Code (E1.N_ITER));
-               for I2 in 1 .. Natural (E1.N_ITER) loop
-                  declare
-                     E2 : V_NVKVINT_Item_2 renames E1.V_NVKVINT_List (I2);
-                  begin
-                     Write (W, 7, Code (E2.V_NVKVINT));
-                     Write (W, 7, Code (E2.M_NVKVINT));
-                     if E2.Has_M_NVKVINT_P23 /= (E1.Q_NVKVINTSET = 1) then
-                        Good := False;
-                     end if;
-                     if E1.Q_NVKVINTSET = 1 then
-                        Write (W, 7, Code (E2.M_NVKVINT_P23));
-                     end if;
-                  end;
-               end loop;
-            end;
+            Encode_Q_NVKVINTSET_Item (P.Q_NVKVINTSET_List (I1), W, Good);
          end loop;
          Write (W, 5, Code (P.L_NVKRINT));
          Write (W, 5, Code (P.M_NVKRINT));
          Write (W, 5, Code (P.N_ITER_KR));
          for I1 in 1 .. Natural (P.N_ITER_KR) loop
-            declare
-               E1 : L_NVKRINT_Item renames P.L_NVKRINT_List (I1);
-            begin
-               Write (W, 5, Code (E1.L_NVKRINT));
-               Write (W, 5, Code (E1.M_NVKRINT));
-            end;
+            Encode_L_NVKRINT_Item (P.L_NVKRINT_List (I1), W);
          end loop;
          Write (W, 5, Code (P.M_NVKTINT));
       end if;

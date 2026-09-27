@@ -21,51 +21,89 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET     : NID_PACKET_T;
+      L_PACKET       : L_PACKET_T;
+      Q_SCALE        : Q_SCALE_T;
+      NID_C          : NID_C_T;
+      NID_BG         : NID_BG_T;
+      D_LRBG         : D_LRBG_T;
+      Q_DIRLRBG      : Q_DIRLRBG_T;
+      Q_DLRBG        : Q_DLRBG_T;
+      L_DOUBTOVER    : L_DOUBTOVER_T;
+      L_DOUBTUNDER   : L_DOUBTUNDER_T;
+      Q_INTEGRITY    : Q_INTEGRITY_T;
+      Has_L_TRAININT : Boolean;
+      L_TRAININT     : L_TRAININT_T := 0;
+      V_TRAIN        : V_TRAIN_T;
+      Q_DIRTRAIN     : Q_DIRTRAIN_T;
+      M_MODE         : M_MODE_T;
+      M_LEVEL        : M_LEVEL_T;
+      Has_NID_NTC    : Boolean;
+      NID_NTC        : NID_NTC_T := 0;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 2, V);
-      P.Q_SCALE := To_Q_SCALE (V);
+      Q_SCALE := To_Q_SCALE (V);
       Read (R, 10, V);
-      P.NID_C := To_NID_C (V);
+      NID_C := To_NID_C (V);
       Read (R, 14, V);
-      P.NID_BG := To_NID_BG (V);
+      NID_BG := To_NID_BG (V);
       Read (R, 15, V);
-      P.D_LRBG := To_D_LRBG (V);
+      D_LRBG := To_D_LRBG (V);
       Read (R, 2, V);
-      P.Q_DIRLRBG := To_Q_DIRLRBG (V);
+      Q_DIRLRBG := To_Q_DIRLRBG (V);
       Read (R, 2, V);
-      P.Q_DLRBG := To_Q_DLRBG (V);
+      Q_DLRBG := To_Q_DLRBG (V);
       Read (R, 15, V);
-      P.L_DOUBTOVER := To_L_DOUBTOVER (V);
+      L_DOUBTOVER := To_L_DOUBTOVER (V);
       Read (R, 15, V);
-      P.L_DOUBTUNDER := To_L_DOUBTUNDER (V);
+      L_DOUBTUNDER := To_L_DOUBTUNDER (V);
       Read (R, 2, V);
-      P.Q_INTEGRITY := To_Q_INTEGRITY (V);
-      P.Has_L_TRAININT := P.Q_INTEGRITY in 1 | 2;
-      if P.Has_L_TRAININT then
+      Q_INTEGRITY := To_Q_INTEGRITY (V);
+      Has_L_TRAININT := Q_INTEGRITY in 1 | 2;
+      if Has_L_TRAININT then
          Read (R, 15, V);
-         P.L_TRAININT := To_L_TRAININT (V);
+         L_TRAININT := To_L_TRAININT (V);
       end if;
       Read (R, 7, V);
-      P.V_TRAIN := To_V_TRAIN (V);
+      V_TRAIN := To_V_TRAIN (V);
       Read (R, 2, V);
-      P.Q_DIRTRAIN := To_Q_DIRTRAIN (V);
+      Q_DIRTRAIN := To_Q_DIRTRAIN (V);
       Read (R, 5, V);
-      P.M_MODE := To_M_MODE (V);
+      M_MODE := To_M_MODE (V);
       Read (R, 3, V);
-      P.M_LEVEL := To_M_LEVEL (V);
-      P.Has_NID_NTC := P.M_LEVEL = 1;
-      if P.Has_NID_NTC then
+      M_LEVEL := To_M_LEVEL (V);
+      Has_NID_NTC := M_LEVEL = 1;
+      if Has_NID_NTC then
          Read (R, 8, V);
-         P.NID_NTC := To_NID_NTC (V);
+         NID_NTC := To_NID_NTC (V);
       end if;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         L_PACKET => L_PACKET,
+         Q_SCALE => Q_SCALE,
+         NID_C => NID_C,
+         NID_BG => NID_BG,
+         D_LRBG => D_LRBG,
+         Q_DIRLRBG => Q_DIRLRBG,
+         Q_DLRBG => Q_DLRBG,
+         L_DOUBTOVER => L_DOUBTOVER,
+         L_DOUBTUNDER => L_DOUBTUNDER,
+         Q_INTEGRITY => Q_INTEGRITY,
+         Has_L_TRAININT => Has_L_TRAININT,
+         L_TRAININT => L_TRAININT,
+         V_TRAIN => V_TRAIN,
+         Q_DIRTRAIN => Q_DIRTRAIN,
+         M_MODE => M_MODE,
+         M_LEVEL => M_LEVEL,
+         Has_NID_NTC => Has_NID_NTC,
+         NID_NTC => NID_NTC);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------

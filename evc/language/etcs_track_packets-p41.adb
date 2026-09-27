@@ -11,6 +11,49 @@ package body ETCS_Track_Packets.P41
   with SPARK_Mode => On
 is
 
+   --  The items with every component at its default
+   Empty_M_LEVELTR_Item : constant M_LEVELTR_Item := (others => <>);
+
+   --  One item of M_LEVELTR_List
+   procedure Decode_M_LEVELTR_Item
+     (R  : in out Reader;
+      E1 : out M_LEVELTR_Item)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      E1 := Empty_M_LEVELTR_Item;
+      Read (R, 3, V);
+      E1.M_LEVELTR := To_M_LEVELTR (V);
+      E1.Has_NID_NTC := E1.M_LEVELTR = 1;
+      if E1.Has_NID_NTC then
+         Read (R, 8, V);
+         E1.NID_NTC := To_NID_NTC (V);
+      end if;
+      Read (R, 15, V);
+      E1.L_ACKLEVELTR := To_L_ACKLEVELTR (V);
+   end Decode_M_LEVELTR_Item;
+
+   --  One item of M_LEVELTR_List
+   procedure Encode_M_LEVELTR_Item
+     (E1   : M_LEVELTR_Item;
+      W    : in out Writer;
+      Good : in out Boolean)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 3, Code (E1.M_LEVELTR));
+      if E1.Has_NID_NTC /= (E1.M_LEVELTR = 1) then
+         Good := False;
+      end if;
+      if E1.M_LEVELTR = 1 then
+         Write (W, 8, Code (E1.NID_NTC));
+      end if;
+      Write (W, 15, Code (E1.L_ACKLEVELTR));
+   end Encode_M_LEVELTR_Item;
+
    ------------
    -- Decode --
    ------------
@@ -21,47 +64,57 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET     : NID_PACKET_T;
+      Q_DIR          : Q_DIR_T;
+      L_PACKET       : L_PACKET_T;
+      Q_SCALE        : Q_SCALE_T;
+      D_LEVELTR      : D_LEVELTR_T;
+      M_LEVELTR      : M_LEVELTR_T;
+      Has_NID_NTC    : Boolean;
+      NID_NTC        : NID_NTC_T := 0;
+      L_ACKLEVELTR   : L_ACKLEVELTR_T;
+      N_ITER         : N_ITER_T;
+      M_LEVELTR_List : M_LEVELTR_Array;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 2, V);
-      P.Q_DIR := To_Q_DIR (V);
+      Q_DIR := To_Q_DIR (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 2, V);
-      P.Q_SCALE := To_Q_SCALE (V);
+      Q_SCALE := To_Q_SCALE (V);
       Read (R, 15, V);
-      P.D_LEVELTR := To_D_LEVELTR (V);
+      D_LEVELTR := To_D_LEVELTR (V);
       Read (R, 3, V);
-      P.M_LEVELTR := To_M_LEVELTR (V);
-      P.Has_NID_NTC := P.M_LEVELTR = 1;
-      if P.Has_NID_NTC then
+      M_LEVELTR := To_M_LEVELTR (V);
+      Has_NID_NTC := M_LEVELTR = 1;
+      if Has_NID_NTC then
          Read (R, 8, V);
-         P.NID_NTC := To_NID_NTC (V);
+         NID_NTC := To_NID_NTC (V);
       end if;
       Read (R, 15, V);
-      P.L_ACKLEVELTR := To_L_ACKLEVELTR (V);
+      L_ACKLEVELTR := To_L_ACKLEVELTR (V);
       Read (R, 5, V);
-      P.N_ITER := To_N_ITER (V);
-      for I1 in 1 .. Natural (P.N_ITER) loop
-         declare
-            E1 : M_LEVELTR_Item renames P.M_LEVELTR_List (I1);
-         begin
-            Read (R, 3, V);
-            E1.M_LEVELTR := To_M_LEVELTR (V);
-            E1.Has_NID_NTC := E1.M_LEVELTR = 1;
-            if E1.Has_NID_NTC then
-               Read (R, 8, V);
-               E1.NID_NTC := To_NID_NTC (V);
-            end if;
-            Read (R, 15, V);
-            E1.L_ACKLEVELTR := To_L_ACKLEVELTR (V);
-         end;
+      N_ITER := To_N_ITER (V);
+      for I1 in 1 .. Natural (N_ITER) loop
+         Decode_M_LEVELTR_Item (R, M_LEVELTR_List (I1));
       end loop;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         Q_DIR => Q_DIR,
+         L_PACKET => L_PACKET,
+         Q_SCALE => Q_SCALE,
+         D_LEVELTR => D_LEVELTR,
+         M_LEVELTR => M_LEVELTR,
+         Has_NID_NTC => Has_NID_NTC,
+         NID_NTC => NID_NTC,
+         L_ACKLEVELTR => L_ACKLEVELTR,
+         N_ITER => N_ITER,
+         M_LEVELTR_List => M_LEVELTR_List);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------
@@ -92,18 +145,7 @@ is
       Write (W, 15, Code (P.L_ACKLEVELTR));
       Write (W, 5, Code (P.N_ITER));
       for I1 in 1 .. Natural (P.N_ITER) loop
-         declare
-            E1 : M_LEVELTR_Item renames P.M_LEVELTR_List (I1);
-         begin
-            Write (W, 3, Code (E1.M_LEVELTR));
-            if E1.Has_NID_NTC /= (E1.M_LEVELTR = 1) then
-               Good := False;
-            end if;
-            if E1.M_LEVELTR = 1 then
-               Write (W, 8, Code (E1.NID_NTC));
-            end if;
-            Write (W, 15, Code (E1.L_ACKLEVELTR));
-         end;
+         Encode_M_LEVELTR_Item (P.M_LEVELTR_List (I1), W, Good);
       end loop;
       --  L_PACKET: the bits written
       if Position (W) >= Start

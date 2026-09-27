@@ -284,11 +284,11 @@ package body ETCS_Language_Random is
          when M_ERROR =>
             return Choose (0, 10, (1 .. 0 => 0));
          when M_LEVEL =>
-            return Choose (0, 3, (1 .. 0 => 0));
+            return Choose (0, 3, (1 => 1));
          when M_LEVELTEXTDISPLAY =>
-            return Choose (0, 4, (1 .. 0 => 0));
+            return Choose (0, 4, (1 => 1));
          when M_LEVELTR =>
-            return Choose (0, 3, (1 .. 0 => 0));
+            return Choose (0, 3, (1 => 1));
          when M_MCOUNT =>
             return Choose (0, 253, (1 => 254, 2 => 255));
          when M_MODE =>
@@ -340,7 +340,7 @@ package body ETCS_Language_Random is
          when NID_VBCMK =>
             return Choose (0, 63, (1 .. 0 => 0));
          when NID_XUSER =>
-            return Choose (0, 511, (1 .. 0 => 0));
+            return Choose (0, 511, (1 => 102));
          when N_ITER =>
             return Choose (0, 31, (1 .. 0 => 0));
          when N_PIG =>
@@ -350,11 +350,11 @@ package body ETCS_Language_Random is
          when Q_CONFTEXTDISPLAY =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_DANGERPOINT =>
-            return Choose (0, 1, (1 .. 0 => 0));
+            return Choose (0, 1, (1 => 1));
          when Q_DESK =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_DIFF =>
-            return Choose (0, 2, (1 .. 0 => 0));
+            return Choose (0, 2, (1 => 0, 2 => 1, 3 => 2));
          when Q_DIR =>
             return Choose (0, 2, (1 .. 0 => 0));
          when Q_DIRLRBG =>
@@ -366,7 +366,7 @@ package body ETCS_Language_Random is
          when Q_EMERGENCYSTOP =>
             return Choose (0, 3, (1 .. 0 => 0));
          when Q_ENDTIMER =>
-            return Choose (0, 1, (1 .. 0 => 0));
+            return Choose (0, 1, (1 => 1));
          when Q_FRONT =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_GDIR =>
@@ -374,7 +374,7 @@ package body ETCS_Language_Random is
          when Q_INFILL =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_INTEGRITY =>
-            return Choose (0, 3, (1 .. 0 => 0));
+            return Choose (0, 3, (1 => 1, 2 => 2));
          when Q_LINK =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_LINKORIENTATION =>
@@ -388,7 +388,7 @@ package body ETCS_Language_Random is
          when Q_MEDIA =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_NEWCOUNTRY =>
-            return Choose (0, 1, (1 .. 0 => 0));
+            return Choose (0, 1, (1 => 1));
          when Q_NVDRIVER_ADHES =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_NVEMRRLS =>
@@ -398,9 +398,9 @@ package body ETCS_Language_Random is
          when Q_NVINHSMICPERM =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_NVKINT =>
-            return Choose (0, 1, (1 .. 0 => 0));
+            return Choose (0, 1, (1 => 1));
          when Q_NVKVINTSET =>
-            return Choose (0, 1, (1 .. 0 => 0));
+            return Choose (0, 1, (1 => 1));
          when Q_NVLOCACC =>
             return Choose (0, 63, (1 .. 0 => 0));
          when Q_NVSBFBPERM =>
@@ -410,21 +410,21 @@ package body ETCS_Language_Random is
          when Q_ORIENTATION =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_OVERLAP =>
-            return Choose (0, 1, (1 .. 0 => 0));
+            return Choose (0, 1, (1 => 1));
          when Q_SCALE =>
             return Choose (0, 2, (1 .. 0 => 0));
          when Q_SECTIONTIMER =>
-            return Choose (0, 1, (1 .. 0 => 0));
+            return Choose (0, 1, (1 => 1));
          when Q_STATUSLRBG =>
             return Choose (0, 2, (1 .. 0 => 0));
          when Q_TEXTCLASS =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_TEXTCONFIRM =>
-            return Choose (0, 3, (1 .. 0 => 0));
+            return Choose (0, 3, (1 => 0, 2 => 1));
          when Q_TEXTDISPLAY =>
             return Choose (0, 1, (1 .. 0 => 0));
          when Q_TEXTREPORT =>
-            return Choose (0, 1, (1 .. 0 => 0));
+            return Choose (0, 1, (1 => 1));
          when Q_UPDOWN =>
             return Choose (0, 1, (1 .. 0 => 0));
          when T_EMA =>
@@ -487,14 +487,14 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P0 (P : out Track_P0_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P0.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P0_Pkg.NID);
       P.NID_VBCMK := To_NID_VBCMK (Pick (NID_VBCMK));
    end Fill_Track_P0;
 
    procedure Fill_Track_P2 (P : out Track_P2_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P2.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P2_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.M_VERSION := To_M_VERSION (Pick (M_VERSION));
    end Fill_Track_P2;
@@ -502,7 +502,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P3 (P : out Track_P3_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P3.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P3_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.D_VALIDNV := To_D_VALIDNV (Pick (D_VALIDNV));
@@ -626,7 +626,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P5 (P : out Track_P5_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P5.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P5_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.D_LINK := To_D_LINK (Pick (D_LINK));
@@ -664,7 +664,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P12 (P : out Track_P12_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P12.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P12_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.V_MAIN := To_V_MAIN (Pick (V_MAIN));
@@ -724,7 +724,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P15 (P : out Track_P15_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P15.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P15_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.V_EMA := To_V_EMA (Pick (V_EMA));
@@ -783,7 +783,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P21 (P : out Track_P21_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P21.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P21_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.D_GRADIENT := To_D_GRADIENT (Pick (D_GRADIENT));
@@ -804,7 +804,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P27 (P : out Track_P27_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P27.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P27_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.D_STATIC := To_D_STATIC (Pick (D_STATIC));
@@ -863,7 +863,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P41 (P : out Track_P41_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P41.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P41_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.D_LEVELTR := To_D_LEVELTR (Pick (D_LEVELTR));
@@ -893,7 +893,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P44 (P : out Track_P44_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P44.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P44_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.NID_XUSER := To_NID_XUSER (Pick (NID_XUSER));
       P.Has_NID_NTC := P.NID_XUSER = 102;
@@ -908,7 +908,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P65 (P : out Track_P65_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P65.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P65_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.NID_TSR := To_NID_TSR (Pick (NID_TSR));
@@ -921,7 +921,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P73 (P : out Track_P73_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P73.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P73_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.Q_TEXTCLASS := To_Q_TEXTCLASS (Pick (Q_TEXTCLASS));
@@ -970,7 +970,7 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P136 (P : out Track_P136_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P136.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P136_Pkg.NID);
       P.Q_DIR := To_Q_DIR (Pick (Q_DIR));
       P.Q_NEWCOUNTRY := To_Q_NEWCOUNTRY (Pick (Q_NEWCOUNTRY));
       P.Has_NID_C := P.Q_NEWCOUNTRY = 1;
@@ -984,13 +984,13 @@ package body ETCS_Language_Random is
    procedure Fill_Track_P255 (P : out Track_P255_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Track_Packets.P255.NID);
+      P.NID_PACKET := To_NID_PACKET (Track_P255_Pkg.NID);
    end Fill_Track_P255;
 
    procedure Fill_Train_P0 (P : out Train_P0_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Train_Packets.P0.NID);
+      P.NID_PACKET := To_NID_PACKET (Train_P0_Pkg.NID);
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.NID_C := To_NID_C (Pick (NID_C));
       P.NID_BG := To_NID_BG (Pick (NID_BG));
@@ -1019,7 +1019,7 @@ package body ETCS_Language_Random is
    procedure Fill_Train_P1 (P : out Train_P1_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Train_Packets.P1.NID);
+      P.NID_PACKET := To_NID_PACKET (Train_P1_Pkg.NID);
       P.Q_SCALE := To_Q_SCALE (Pick (Q_SCALE));
       P.NID_C := To_NID_C (Pick (NID_C));
       P.NID_BG := To_NID_BG (Pick (NID_BG));
@@ -1050,7 +1050,7 @@ package body ETCS_Language_Random is
    procedure Fill_Train_P2 (P : out Train_P2_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Train_Packets.P2.NID);
+      P.NID_PACKET := To_NID_PACKET (Train_P2_Pkg.NID);
       P.M_VERSION := To_M_VERSION (Pick (M_VERSION));
       P.N_ITER := To_N_ITER (Count (31, 1, 14));
       for I1 in 1 .. Natural (P.N_ITER) loop
@@ -1061,21 +1061,21 @@ package body ETCS_Language_Random is
    procedure Fill_Train_P4 (P : out Train_P4_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Train_Packets.P4.NID);
+      P.NID_PACKET := To_NID_PACKET (Train_P4_Pkg.NID);
       P.M_ERROR := To_M_ERROR (Pick (M_ERROR));
    end Fill_Train_P4;
 
    procedure Fill_Train_P5 (P : out Train_P5_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Train_Packets.P5.NID);
+      P.NID_PACKET := To_NID_PACKET (Train_P5_Pkg.NID);
       P.NID_OPERATIONAL := To_NID_OPERATIONAL (Pick (NID_OPERATIONAL));
    end Fill_Train_P5;
 
    procedure Fill_Train_P44 (P : out Train_P44_Pkg.Packet_T) is
    begin
       P := (others => <>);
-      P.NID_PACKET := To_NID_PACKET (ETCS_Train_Packets.P44.NID);
+      P.NID_PACKET := To_NID_PACKET (Train_P44_Pkg.NID);
       P.NID_XUSER := To_NID_XUSER (Pick (NID_XUSER));
       P.Raw_Bits := Natural (Raw_Count (64));
       Random_Bits (P.Raw, P.Raw_Bits);
@@ -1740,5 +1740,27 @@ package body ETCS_Language_Random is
          when others => return "";
       end case;
    end Loop_Name;
+
+   function Loop_Depth (L : Positive) return Positive is
+   begin
+      case L is
+         when 1 => return 1;
+         when 2 => return 1;
+         when 3 => return 2;
+         when 4 => return 1;
+         when 5 => return 1;
+         when 6 => return 1;
+         when 7 => return 1;
+         when 8 => return 1;
+         when 9 => return 1;
+         when 10 => return 1;
+         when 11 => return 2;
+         when 12 => return 1;
+         when 13 => return 1;
+         when 14 => return 1;
+         when 15 => return 1;
+         when others => return 1;
+      end case;
+   end Loop_Depth;
 
 end ETCS_Language_Random;

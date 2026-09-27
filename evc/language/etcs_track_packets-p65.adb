@@ -21,29 +21,47 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET : NID_PACKET_T;
+      Q_DIR      : Q_DIR_T;
+      L_PACKET   : L_PACKET_T;
+      Q_SCALE    : Q_SCALE_T;
+      NID_TSR    : NID_TSR_T;
+      D_TSR      : D_TSR_T;
+      L_TSR      : L_TSR_T;
+      Q_FRONT    : Q_FRONT_T;
+      V_TSR      : V_TSR_T;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 2, V);
-      P.Q_DIR := To_Q_DIR (V);
+      Q_DIR := To_Q_DIR (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 2, V);
-      P.Q_SCALE := To_Q_SCALE (V);
+      Q_SCALE := To_Q_SCALE (V);
       Read (R, 8, V);
-      P.NID_TSR := To_NID_TSR (V);
+      NID_TSR := To_NID_TSR (V);
       Read (R, 15, V);
-      P.D_TSR := To_D_TSR (V);
+      D_TSR := To_D_TSR (V);
       Read (R, 15, V);
-      P.L_TSR := To_L_TSR (V);
+      L_TSR := To_L_TSR (V);
       Read (R, 1, V);
-      P.Q_FRONT := To_Q_FRONT (V);
+      Q_FRONT := To_Q_FRONT (V);
       Read (R, 7, V);
-      P.V_TSR := To_V_TSR (V);
+      V_TSR := To_V_TSR (V);
+      P :=
+        (NID_PACKET => NID_PACKET,
+         Q_DIR => Q_DIR,
+         L_PACKET => L_PACKET,
+         Q_SCALE => Q_SCALE,
+         NID_TSR => NID_TSR,
+         D_TSR => D_TSR,
+         L_TSR => L_TSR,
+         Q_FRONT => Q_FRONT,
+         V_TSR => V_TSR);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------

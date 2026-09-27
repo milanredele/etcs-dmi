@@ -22,23 +22,33 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET     : NID_PACKET_T;
+      L_PACKET       : L_PACKET_T;
+      M_VERSION      : M_VERSION_T;
+      N_ITER         : N_ITER_T;
+      M_VERSION_List : M_VERSION_Array := (others => 0);
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 7, V);
-      P.M_VERSION := To_M_VERSION (V);
+      M_VERSION := To_M_VERSION (V);
       Read (R, 5, V);
-      P.N_ITER := To_N_ITER (V);
-      for I1 in 1 .. Natural (P.N_ITER) loop
+      N_ITER := To_N_ITER (V);
+      for I1 in 1 .. Natural (N_ITER) loop
          Read (R, 7, V);
-         P.M_VERSION_List (I1) := To_M_VERSION (V);
+         M_VERSION_List (I1) := To_M_VERSION (V);
       end loop;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         L_PACKET => L_PACKET,
+         M_VERSION => M_VERSION,
+         N_ITER => N_ITER,
+         M_VERSION_List => M_VERSION_List);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------

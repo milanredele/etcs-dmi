@@ -11,6 +11,36 @@ package body ETCS_Track_Packets.P21
   with SPARK_Mode => On
 is
 
+   --  One item of D_GRADIENT_List
+   procedure Decode_D_GRADIENT_Item
+     (R  : in out Reader;
+      E1 : out D_GRADIENT_Item)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+      V : Unsigned_64;
+   begin
+      Read (R, 15, V);
+      E1.D_GRADIENT := To_D_GRADIENT (V);
+      Read (R, 1, V);
+      E1.Q_GDIR := To_Q_GDIR (V);
+      Read (R, 8, V);
+      E1.G_A := To_G_A (V);
+   end Decode_D_GRADIENT_Item;
+
+   --  One item of D_GRADIENT_List
+   procedure Encode_D_GRADIENT_Item
+     (E1 : D_GRADIENT_Item;
+      W  : in out Writer)
+     --  a contract, so that it is proved once, not inlined
+     with Post => True
+   is
+   begin
+      Write (W, 15, Code (E1.D_GRADIENT));
+      Write (W, 1, Code (E1.Q_GDIR));
+      Write (W, 8, Code (E1.G_A));
+   end Encode_D_GRADIENT_Item;
+
    ------------
    -- Decode --
    ------------
@@ -21,39 +51,48 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET      : NID_PACKET_T;
+      Q_DIR           : Q_DIR_T;
+      L_PACKET        : L_PACKET_T;
+      Q_SCALE         : Q_SCALE_T;
+      D_GRADIENT      : D_GRADIENT_T;
+      Q_GDIR          : Q_GDIR_T;
+      G_A             : G_A_T;
+      N_ITER          : N_ITER_T;
+      D_GRADIENT_List : D_GRADIENT_Array;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 2, V);
-      P.Q_DIR := To_Q_DIR (V);
+      Q_DIR := To_Q_DIR (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 2, V);
-      P.Q_SCALE := To_Q_SCALE (V);
+      Q_SCALE := To_Q_SCALE (V);
       Read (R, 15, V);
-      P.D_GRADIENT := To_D_GRADIENT (V);
+      D_GRADIENT := To_D_GRADIENT (V);
       Read (R, 1, V);
-      P.Q_GDIR := To_Q_GDIR (V);
+      Q_GDIR := To_Q_GDIR (V);
       Read (R, 8, V);
-      P.G_A := To_G_A (V);
+      G_A := To_G_A (V);
       Read (R, 5, V);
-      P.N_ITER := To_N_ITER (V);
-      for I1 in 1 .. Natural (P.N_ITER) loop
-         declare
-            E1 : D_GRADIENT_Item renames P.D_GRADIENT_List (I1);
-         begin
-            Read (R, 15, V);
-            E1.D_GRADIENT := To_D_GRADIENT (V);
-            Read (R, 1, V);
-            E1.Q_GDIR := To_Q_GDIR (V);
-            Read (R, 8, V);
-            E1.G_A := To_G_A (V);
-         end;
+      N_ITER := To_N_ITER (V);
+      for I1 in 1 .. Natural (N_ITER) loop
+         Decode_D_GRADIENT_Item (R, D_GRADIENT_List (I1));
       end loop;
+      P :=
+        (NID_PACKET => NID_PACKET,
+         Q_DIR => Q_DIR,
+         L_PACKET => L_PACKET,
+         Q_SCALE => Q_SCALE,
+         D_GRADIENT => D_GRADIENT,
+         Q_GDIR => Q_GDIR,
+         G_A => G_A,
+         N_ITER => N_ITER,
+         D_GRADIENT_List => D_GRADIENT_List);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------
@@ -78,13 +117,7 @@ is
       Write (W, 8, Code (P.G_A));
       Write (W, 5, Code (P.N_ITER));
       for I1 in 1 .. Natural (P.N_ITER) loop
-         declare
-            E1 : D_GRADIENT_Item renames P.D_GRADIENT_List (I1);
-         begin
-            Write (W, 15, Code (E1.D_GRADIENT));
-            Write (W, 1, Code (E1.Q_GDIR));
-            Write (W, 8, Code (E1.G_A));
-         end;
+         Encode_D_GRADIENT_Item (P.D_GRADIENT_List (I1), W);
       end loop;
       --  L_PACKET: the bits written
       if Position (W) >= Start

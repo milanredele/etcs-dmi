@@ -170,6 +170,7 @@ class Variable:
                      % (name, value, self.bits))
             self.special.append((value, str(text)))
         self.special.sort()
+        self.interesting = set()
         self.scale = spec.get("scale")
         self.resolution = spec.get("resolution")
         known = {"bits", "clause", "min", "max", "special", "scale",
@@ -293,6 +294,26 @@ def access(level, comp):
     return "%s.%s" % (level.access, comp)
 
 
+def render_cond(ast, acc):
+    """The Ada expression of a condition, components through acc."""
+    ors = []
+    for ands in ast:
+        parts = []
+        for lvl, node, op, vals in ands:
+            ref = acc(lvl, node.comp)
+            if op == "in":
+                parts.append("%s in %s" % (ref, " | ".join(vals)))
+            else:
+                parts.append("%s %s %s" % (ref, op, vals[0]))
+        ors.append(parts[0] if len(parts) == 1 else
+                   "(" + " and then ".join(parts) + ")")
+    return ors[0] if len(ors) == 1 else " or else ".join(ors)
+
+
+def cond_refs(ast):
+    return [(lvl, node) for ands in ast for lvl, node, _, _ in ands]
+
+
 class Packet:
     def __init__(self, spec, variables, index):
         self.index = index
@@ -374,16 +395,16 @@ class Packet:
     # -- conditions --------------------------------------------------
 
     def condition(self, text, level):
-        """COND of SCHEMA.md, and/or of them, as an Ada expression and
-        the variables it reads."""
+        """COND of SCHEMA.md, and/or of them: a list (or) of lists (and)
+        of atoms (Level, VarNode, Ada operator or "in", values)."""
         def atom(a):
             a = a.strip()
             m = re.fullmatch(r"([A-Z][A-Z0-9_]*)\s+in\s+\[([^\]]*)\]", a)
             if m:
                 node, lvl = self.lookup(m.group(1), level)
-                vals = [self.value(node, v) for v in m.group(2).split(",")]
-                return "%s in %s" % (access(lvl, node.comp),
-                                     " | ".join(vals))
+                vals = [self.value(node, v, "==")
+                        for v in m.group(2).split(",")]
+                return (lvl, node, "in", vals)
             m = re.fullmatch(r"([A-Z][A-Z0-9_]*)\s*(==|!=|<=|>=|<|>)\s*"
                              r"(-?\d+)", a)
             if not m:
@@ -392,23 +413,22 @@ class Packet:
             node, lvl = self.lookup(m.group(1), level)
             op = {"==": "=", "!=": "/=", "<": "<", "<=": "<=", ">": ">",
                   ">=": ">="}[m.group(2)]
-            return "%s %s %s" % (access(lvl, node.comp), op,
-                                 self.value(node, m.group(3)))
-        ors = []
-        for part in re.split(r"\s+or\s+", text.strip()):
-            ands = [atom(a) for a in re.split(r"\s+and\s+", part)]
-            ors.append(" and then ".join(ands) if len(ands) == 1 else
-                       "(" + " and then ".join(ands) + ")")
-        if len(ors) == 1:
-            return ors[0]
-        return " or else ".join(ors)
+            return (lvl, node, op, [self.value(node, m.group(3),
+                                               m.group(2))])
+        return [[atom(a) for a in re.split(r"\s+and\s+", part)]
+                for part in re.split(r"\s+or\s+", text.strip())]
 
-    def value(self, node, text):
+    def value(self, node, text, op):
         v = int(text.strip())
         var = node.var
         if not var.type_lo <= v <= var.type_hi:
             fail("packet %d: %s compared with %d, outside its %d bits"
                  % (self.nid, var.name, v, var.bits))
+        # values the random test prefers, so that both outcomes occur
+        for x in ((v,) if op == "==" else (v - 1, v, v + 1)):
+            if var.min <= x <= var.max or any(s == x for s, _ in
+                                              var.special):
+                var.interesting.add(x)
         return str(v)
 
     # -- the tree ----------------------------------------------------
@@ -440,7 +460,7 @@ class Packet:
                 nodes.append(node)
             elif k == "if":
                 node = IfNode(f["if"], level)
-                node.cond = self.condition(f["if"], level)
+                node.cond_ast = self.condition(f["if"], level)
                 first = self.first_name(f.get("fields", []))
                 if first is None:
                     fail("packet %d: empty if %s" % (self.nid, f["if"]))
@@ -1059,19 +1079,105 @@ def needs_guard(loop):
     return loop.max < loop.count.var.type_hi
 
 
-class Emitter:
-    """The statements of Decode, Encode or Fill over the field tree."""
+def descends(lvl, top):
+    """lvl is top or a level within it."""
+    while lvl is not None:
+        if lvl is top:
+            return True
+        lvl = lvl.parent
+    return False
 
-    def __init__(self, p, mode):
+
+def subtree(nodes):
+    for n in nodes:
+        yield n
+        if n.kind in ("if", "loop"):
+            yield from subtree(n.children)
+
+
+def outer_refs(loop):
+    """The components of enclosing levels that the item of loop reads
+    (conditions, counts, raw lengths): [(Level, VarNode)], in order."""
+    item = loop.item
+    refs = []
+    for n in subtree(loop.children):
+        cands = []
+        if n.kind == "if":
+            cands = cond_refs(n.cond_ast)
+        elif n.kind == "loop":
+            cands = [(n.count_level, n.count)]
+        elif n.kind == "raw" and not n.rest:
+            cands = [(n.length_level, n.length)]
+        for lvl, node in cands:
+            if not descends(lvl, item) and \
+                    not any(l is lvl and v is node for l, v in refs):
+                refs.append((lvl, node))
+    refs.sort(key=lambda r: (r[0].depth, r[1].comp))
+    return refs
+
+
+def param_name(lvl, node):
+    return "%s_%s" % (lvl.access, node.comp)
+
+
+def needs_flag(nodes, mode):
+    """Decode needs Bad, Encode needs Good, somewhere in nodes."""
+    for n in subtree(nodes):
+        if n.kind == "loop" and needs_guard(n):
+            return True
+        if n.kind == "raw" and (mode == "decode" or not n.rest):
+            return True
+        if n.kind == "if" and mode == "encode":
+            return True
+    return False
+
+
+def reads_directly(nodes):
+    """A variable is read at this level (not in the item of a loop)."""
+    for n in nodes:
+        if n.kind == "var":
+            return True
+        if n.kind == "if" and reads_directly(n.children):
+            return True
+        if n.kind == "loop" and n.single:
+            return True
+    return False
+
+
+def always_assigned(nodes):
+    """Every component of the record is assigned by the statements."""
+    return all(n.kind == "var" for n in nodes)
+
+
+class Emitter:
+    """The statements of Decode, Encode or Fill over the field tree.
+
+    Decode and Encode handle the item of a loop by a subprogram of its
+    own (Decode_<item>, Encode_<item>): one small proof per item instead
+    of one for the whole packet. The components of enclosing levels the
+    item reads are its parameters (params: (Level, VarNode) -> name).
+    Fill (the test helper) stays inline."""
+
+    def __init__(self, p, mode, params=None, locals_=False):
         self.p = p
         self.mode = mode          # "decode", "encode", "fill"
-        self.uses_bad = False
+        self.params = params or {}
+        #  the components of the packet level are local variables
+        self.locals = locals_
 
-    def target(self, node, index=None):
+    def acc(self, lvl, comp):
+        for (l, node), name in self.params.items():
+            if l is lvl and node.comp == comp:
+                return name
+        if self.locals and lvl is self.p.top:
+            return comp
+        return access(lvl, comp)
+
+    def target(self, node):
         if node.level.access is None:           # single loop element
             loop = node.level.single_node
-            return "%s (I%d)" % (access(loop.level, loop.list), loop.depth)
-        return access(node.level, node.comp)
+            return "%s (I%d)" % (self.acc(loop.level, loop.list), loop.depth)
+        return self.acc(node.level, node.comp)
 
     def emit(self, nodes, L, ind):
         for n in nodes:
@@ -1082,23 +1188,23 @@ class Emitter:
     def emit_var(self, n, L, ind):
         v = n.var
         t = self.target(n)
+        top = n.level.parent is None
         if self.mode == "decode":
             stmt(L, ind, "Read (R, %d, V);" % v.bits)
             stmt(L, ind, "%s := To_%s (V);" % (t, v.name))
         elif self.mode == "encode":
-            if v.name == "NID_PACKET" and n.level.parent is None:
+            if v.name == "NID_PACKET" and top:
                 stmt(L, ind, "Write (W, %d, NID);" % v.bits)
-            elif v.name == "L_PACKET" and n.level.parent is None \
-                    and self.p.has_length:
+            elif v.name == "L_PACKET" and top and self.p.has_length:
                 stmt(L, ind, "Length_At := Position (W);")
                 stmt(L, ind, "Write (W, %d, 0);" % v.bits)
             else:
                 stmt(L, ind, "Write (W, %d, Code (%s));" % (v.bits, t))
         else:
-            if v.name == "NID_PACKET" and n.level.parent is None:
-                stmt(L, ind, "%s := To_%s (%s.NID);"
-                     % (t, v.name, self.p.package))
-            elif v.name == "L_PACKET" and n.level.parent is None:
+            if v.name == "NID_PACKET" and top:
+                stmt(L, ind, "%s := To_%s (%s_Pkg.NID);"
+                     % (t, v.name, self.p.kind))
+            elif v.name == "L_PACKET" and top:
                 pass
             elif n.count_of is not None:
                 loop = n.count_of
@@ -1114,21 +1220,22 @@ class Emitter:
 
     def emit_if(self, n, L, ind):
         pad = " " * ind
-        flag = access(n.level, n.flag)
+        flag = self.acc(n.level, n.flag)
+        cond = render_cond(n.cond_ast, self.acc)
         if self.mode == "decode":
-            stmt(L, ind, "%s := %s;" % (flag, n.cond))
+            stmt(L, ind, "%s := %s;" % (flag, cond))
             L.append(pad + "if %s then" % flag)
             self.emit(n.children, L, ind + 3)
             L.append(pad + "end if;")
         elif self.mode == "encode":
-            cond_lines(L, ind, "if", "%s /= (%s)" % (flag, n.cond), "then")
+            cond_lines(L, ind, "if", "%s /= (%s)" % (flag, cond), "then")
             L.append(pad + "   Good := False;")
             L.append(pad + "end if;")
-            cond_lines(L, ind, "if", n.cond, "then")
+            cond_lines(L, ind, "if", cond, "then")
             self.emit(n.children, L, ind + 3)
             L.append(pad + "end if;")
         else:
-            stmt(L, ind, "%s := %s;" % (flag, n.cond))
+            stmt(L, ind, "%s := %s;" % (flag, cond))
             stmt(L, ind, "Cover (%d, %s);" % (n.fill_id, flag))
             L.append(pad + "if %s then" % flag)
             self.emit(n.children, L, ind + 3)
@@ -1138,37 +1245,45 @@ class Emitter:
 
     def emit_loop(self, n, L, ind):
         pad = " " * ind
-        count = access(n.count_level, n.count.comp)
+        count = self.acc(n.count_level, n.count.comp)
         guard = needs_guard(n)
         inner = ind
         if guard and self.mode != "fill":
             cond_lines(L, ind, "if", "Natural (%s) > %d" % (count, n.max),
                        "then")
-            if self.mode == "decode":
-                L.append(pad + "   Bad := True;")
-                self.uses_bad = True
-            else:
-                L.append(pad + "   Good := False;")
+            L.append(pad + ("   Bad := True;" if self.mode == "decode"
+                            else "   Good := False;"))
             L.append(pad + "else")
             inner = ind + 3
         ipad = " " * inner
         idx = "I%d" % n.depth
         L.append(ipad + "for %s in 1 .. Natural (%s) loop" % (idx, count))
-        if self.mode == "fill":
-            pass
+        element = "%s (%s)" % (self.acc(n.level, n.list), idx)
         if n.single:
             self.emit(n.children, L, inner + 3)
-        else:
+        elif self.mode == "fill":
             L.append(ipad + "   declare")
-            item_type = n.item_type
-            if self.mode == "fill":
-                item_type = self.p.kind + "_Pkg." + item_type
-            decl = "%s : %s renames %s (%s);" % (
-                n.item.access, item_type, access(n.level, n.list), idx)
+            decl = "%s : %s_Pkg.%s renames %s;" % (
+                n.item.access, self.p.kind, n.item_type, element)
             stmt(L, inner + 6, decl)
             L.append(ipad + "   begin")
             self.emit(n.children, L, inner + 6)
             L.append(ipad + "   end;")
+        else:
+            args = []
+            if self.mode == "decode":
+                args = ["R", element]
+                if needs_flag(n.children, "decode"):
+                    args.append("Bad")
+                proc = "Decode_" + n.item_type
+            else:
+                args = [element, "W"]
+                if needs_flag(n.children, "encode"):
+                    args.append("Good")
+                proc = "Encode_" + n.item_type
+            for lvl, node in outer_refs(n):
+                args.append(self.acc(lvl, node.comp))
+            stmt(L, inner + 3, "%s (%s);" % (proc, ", ".join(args)))
         L.append(ipad + "end loop;")
         if guard and self.mode != "fill":
             L.append(pad + "end if;")
@@ -1177,18 +1292,18 @@ class Emitter:
 
     def emit_raw(self, n, L, ind):
         pad = " " * ind
-        bits = access(n.level, n.bits_comp)
-        data = access(n.level, n.data_comp)
+        bits = self.acc(n.level, n.bits_comp)
+        data = self.acc(n.level, n.data_comp)
         if self.mode == "decode":
-            self.uses_bad = True
             if n.rest:
-                end = "Start + Natural (P.L_PACKET)"
+                end = "Start + Natural (%s)" % self.acc(self.p.top,
+                                                        "L_PACKET")
                 cond_lines(L, ind, "if",
                            "Position (R) <= %s and then %s - Position (R)"
                            " <= %d" % (end, end, n.max_bits), "then")
                 stmt(L, ind + 3, "%s := %s - Position (R);" % (bits, end))
             else:
-                length = access(n.length_level, n.length.comp)
+                length = self.acc(n.length_level, n.length.comp)
                 cond_lines(L, ind, "if", "Natural (%s) <= %d"
                            % (length, n.max_bits), "then")
                 stmt(L, ind + 3, "%s := Natural (%s);" % (bits, length))
@@ -1198,7 +1313,7 @@ class Emitter:
             L.append(pad + "end if;")
         elif self.mode == "encode":
             if not n.rest:
-                length = access(n.length_level, n.length.comp)
+                length = self.acc(n.length_level, n.length.comp)
                 cond_lines(L, ind, "if", "%s /= Natural (%s)"
                            % (bits, length), "then")
                 L.append(pad + "   Good := False;")
@@ -1209,9 +1324,53 @@ class Emitter:
                 stmt(L, ind, "%s := Natural (Raw_Count (%d));"
                      % (bits, min(n.max_bits, 64)))
             else:
-                length = access(n.length_level, n.length.comp)
+                length = self.acc(n.length_level, n.length.comp)
                 stmt(L, ind, "%s := Natural (%s);" % (bits, length))
             stmt(L, ind, "Random_Bits (%s, %s);" % (data, bits))
+
+
+def gen_item_procedures(p, mode):
+    """Decode_<item> or Encode_<item> for every loop item, innermost
+    first."""
+    L = []
+    for n in sorted(p.item_types, key=lambda n: -n.depth):
+        refs = outer_refs(n)
+        params = {(lvl, node): param_name(lvl, node) for lvl, node in refs}
+        em = Emitter(p, mode, params)
+        body = []
+        em.emit(n.children, body, 6)
+        e = n.item.access
+        name = ("Decode_" if mode == "decode" else "Encode_") + n.item_type
+        if mode == "decode":
+            formals = ["R : in out Reader", "%s : out %s" % (e, n.item_type)]
+            if needs_flag(n.children, "decode"):
+                formals.append("Bad : in out Boolean")
+        else:
+            formals = ["%s : %s" % (e, n.item_type), "W : in out Writer"]
+            if needs_flag(n.children, "encode"):
+                formals.append("Good : in out Boolean")
+        for lvl, node in refs:
+            formals.append("%s : %s" % (param_name(lvl, node),
+                                        node.var.type_name))
+        width = max(len(f.split(" : ")[0]) for f in formals)
+        formals = ["%s : %s" % (f.split(" : ")[0].ljust(width),
+                                f.split(" : ")[1]) for f in formals]
+        L += ["   --  One item of %s" % n.list,
+              "   procedure %s" % name]
+        for i, f in enumerate(formals):
+            L.append("     %s%s%s" % ("(" if i == 0 else " ", f,
+                                      ";" if i < len(formals) - 1 else ")"))
+        L += ["     --  a contract, so that it is proved once, not inlined",
+              "     with Post => True",
+              "   is"]
+        if mode == "decode" and reads_directly(n.children):
+            L.append("      V : Unsigned_64;")
+        L.append("   begin")
+        if mode == "decode" and not always_assigned(n.children):
+            L.append("      %s := Empty_%s;" % (e, n.item_type))
+        L += body
+        L += ["   end %s;" % name, ""]
+    return L
 
 
 def gen_packet_body(p):
@@ -1220,10 +1379,25 @@ def gen_packet_body(p):
     L += ["", "with Interfaces; use Interfaces;", "",
           "package body %s" % p.package, "  with SPARK_Mode => On",
           "is", ""]
-    # Decode
-    dec = Emitter(p, "decode")
+    empties = [n for n in sorted(p.item_types, key=lambda n: -n.depth)
+               if not always_assigned(n.children)]
+    if empties:
+        L.append("   --  The items with every component at its default")
+        for n in empties:
+            stmt(L, 3, "Empty_%s : constant %s := (others => <>);"
+                 % (n.item_type, n.item_type))
+        L.append("")
+    L += gen_item_procedures(p, "decode")
+    L += gen_item_procedures(p, "encode")
+    # Decode: into local variables, the record assigned once at the end
+    # (one aggregate instead of a chain of updates of a large record:
+    # small proof tasks)
+    dec = Emitter(p, "decode", locals_=True)
     body = []
     dec.emit(p.nodes, body, 6)
+    direct = set(n.comp if n.kind == "var" else n.flag
+                 for n in p.nodes if n.kind in ("var", "if"))
+    uses_bad = needs_flag(p.nodes, "decode")
     L += [
         "   ------------",
         "   -- Decode --",
@@ -1237,17 +1411,28 @@ def gen_packet_body(p):
     if p.has_length:
         L.append("      Start : constant Natural := Position (R);")
     L.append("      V     : Unsigned_64;")
-    if dec.uses_bad:
+    if uses_bad:
         L.append("      Bad   : Boolean := False;")
+    comps = p.top.components
+    width = max(len(c[0]) for c in comps)
+    for comp, typ, default, _ in comps:
+        text = "      %s : %s" % (comp.ljust(width), typ)
+        if comp not in direct and default is not None:
+            text += " := %s" % default
+        stmt(L, 0, text + ";")
     L.append("   begin")
-    L.append("      P := (others => <>);")
     L += body
+    L.append("      P :=")
+    for i, (comp, _, _, _) in enumerate(comps):
+        L.append("        %s%s => %s%s" % (
+            "(" if i == 0 else " ", comp, comp,
+            "," if i < len(comps) - 1 else ");"))
     ok = ["not Failed (R)"]
-    if dec.uses_bad:
+    if uses_bad:
         ok.append("not Bad")
-    ok.append("P.NID_PACKET = NID")
+    ok.append("NID_PACKET = NID")
     if p.has_length:
-        ok.append("Position (R) = Start + Natural (P.L_PACKET)")
+        ok.append("Position (R) = Start + Natural (L_PACKET)")
     L.append("      OK := " + ok[0])
     for o in ok[1:]:
         L.append("        and then " + o)
@@ -1257,7 +1442,7 @@ def gen_packet_body(p):
     enc = Emitter(p, "encode")
     body = []
     enc.emit(p.nodes, body, 6)
-    uses_good = any("Good" in b for b in body) or p.has_length
+    uses_good = needs_flag(p.nodes, "encode") or p.has_length
     L += [
         "   ------------",
         "   -- Encode --",
@@ -1496,9 +1681,9 @@ def gen_catalogue_body(variables, packets):
         "      V      : Interfaces.Unsigned_64;",
         "      Length : Natural;",
         "   begin",
-        "      Read (R, 8, V);                --  NID_PACKET",
+        "      Skip (R, 8);                   --  NID_PACKET",
         "      if Direction = Track_To_Train then",
-        "         Read (R, %d, V);             --  Q_DIR" % qb,
+        "         Skip (R, %d);                --  Q_DIR" % qb,
         "      end if;",
         "      Read (R, %d, V);               --  L_PACKET" % lb,
         "      Length := Natural (V);",
@@ -1779,6 +1964,8 @@ def gen_random_spec(packets, conds, loops):
         "   type Items_T is (None, One, Maximum);",
         "   Loop_Count : constant := %d;" % max(len(loops), 1),
         "   function Loop_Name (L : Positive) return String;",
+        "   --  1 for a loop of the packet, 2 for a loop in a loop, ...",
+        "   function Loop_Depth (L : Positive) return Positive;",
         "   function Loop_Seen (L : Positive; Items : Items_T)"
         " return Boolean;",
         "",
@@ -1954,7 +2141,9 @@ def gen_random_body(variables, packets, conds, loops):
         "      case Var is",
     ]
     for n, v in variables.items():
-        specials = [s for s, _ in v.special if not v.min <= s <= v.max]
+        specials = sorted(set(x for x, _ in v.special
+                              if not v.min <= x <= v.max)
+                          | v.interesting)
         L.append("         when %s =>" % n)
         if v.signed:
             stmt(L, 12, "return Choose_Signed (%d, %d, %d);"
@@ -2125,6 +2314,14 @@ def gen_random_body(variables, packets, conds, loops):
     L += ["         when others => return \"\";",
           "      end case;",
           "   end Loop_Name;", ""]
+    L += ["   function Loop_Depth (L : Positive) return Positive is",
+          "   begin",
+          "      case L is"]
+    for i, (p, n) in enumerate(loops):
+        L.append("         when %d => return %d;" % (i + 1, n.depth))
+    L += ["         when others => return 1;",
+          "      end case;",
+          "   end Loop_Depth;", ""]
     L += ["end ETCS_Language_Random;", ""]
     return "\n".join(L)
 

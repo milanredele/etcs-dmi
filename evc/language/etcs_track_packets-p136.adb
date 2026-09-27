@@ -21,26 +21,40 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
+      NID_PACKET   : NID_PACKET_T;
+      Q_DIR        : Q_DIR_T;
+      L_PACKET     : L_PACKET_T;
+      Q_NEWCOUNTRY : Q_NEWCOUNTRY_T;
+      Has_NID_C    : Boolean;
+      NID_C        : NID_C_T := 0;
+      NID_BG       : NID_BG_T;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
       Read (R, 2, V);
-      P.Q_DIR := To_Q_DIR (V);
+      Q_DIR := To_Q_DIR (V);
       Read (R, 13, V);
-      P.L_PACKET := To_L_PACKET (V);
+      L_PACKET := To_L_PACKET (V);
       Read (R, 1, V);
-      P.Q_NEWCOUNTRY := To_Q_NEWCOUNTRY (V);
-      P.Has_NID_C := P.Q_NEWCOUNTRY = 1;
-      if P.Has_NID_C then
+      Q_NEWCOUNTRY := To_Q_NEWCOUNTRY (V);
+      Has_NID_C := Q_NEWCOUNTRY = 1;
+      if Has_NID_C then
          Read (R, 10, V);
-         P.NID_C := To_NID_C (V);
+         NID_C := To_NID_C (V);
       end if;
       Read (R, 14, V);
-      P.NID_BG := To_NID_BG (V);
+      NID_BG := To_NID_BG (V);
+      P :=
+        (NID_PACKET => NID_PACKET,
+         Q_DIR => Q_DIR,
+         L_PACKET => L_PACKET,
+         Q_NEWCOUNTRY => Q_NEWCOUNTRY,
+         Has_NID_C => Has_NID_C,
+         NID_C => NID_C,
+         NID_BG => NID_BG);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID
-        and then Position (R) = Start + Natural (P.L_PACKET);
+        and then NID_PACKET = NID
+        and then Position (R) = Start + Natural (L_PACKET);
    end Decode;
 
    ------------

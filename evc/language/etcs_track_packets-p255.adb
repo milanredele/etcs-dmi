@@ -20,12 +20,14 @@ is
                      OK : out Boolean)
    is
       V     : Unsigned_64;
+      NID_PACKET : NID_PACKET_T;
    begin
-      P := (others => <>);
       Read (R, 8, V);
-      P.NID_PACKET := To_NID_PACKET (V);
+      NID_PACKET := To_NID_PACKET (V);
+      P :=
+        (NID_PACKET => NID_PACKET);
       OK := not Failed (R)
-        and then P.NID_PACKET = NID;
+        and then NID_PACKET = NID;
    end Decode;
 
    ------------
