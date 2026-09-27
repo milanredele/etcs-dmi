@@ -92,12 +92,12 @@ accident.
 | Phase | Content | SRS | Size |
 |---|---|---|---|
 | **E0 Foundation** | Repository split, `EVC_Core` skeleton with ports and scheduler, `evc_test` and `evc_fuzz`, SPARK and gnatprove in the build, chapter 9 matrix, cross build for arm-eabi, this plan | 9 | M |
-| **E1 Language** | Codec generator, all track-to-train and train-to-track packets, radio messages, telegram fixtures, round trips, fuzz | 7, 8 | L |
+| **E1 Language** | Codec generator, all track-to-train and train-to-track packets, radio messages, telegram fixtures, round trips, fuzz | 7, 8, A.3.11 | L |
 | **E2 Position** | Balise groups, linking, train position and confidence interval, relocation, odometer accuracy monitoring, cold movement, train orientation | 3.4, 3.6, 3.15.8, 5.12 | L |
-| **E3 Supervision** | SSP, ASP, TSR, gradients, conversion models, brake build-up, MRSP, EBD/SBD/GUI curves, supervision limits, commands, perturbation location, brake command handling, roll away protection. Replaces the constant-deceleration mock | 3.11, 3.12, 3.13, 3.14 | XL |
-| **E4 Modes and procedures, level 1** | All 17 modes, 4.6 transitions, 4.8 acceptance, 4.10 stored information, 4.12 brakes, SoM and EoM in L0/L1, SH, override, OS, level transitions, trip, reversing, LS, SM, LX, track conditions and 5.20 outputs, train data changes, text messages | 4, 5, 3.12.3 | XL |
+| **E3 Supervision** | SSP, ASP, TSR, gradients, conversion models, brake build-up, MRSP, EBD/SBD/GUI curves, supervision limits, commands, perturbation location, brake command handling, roll away protection. Replaces the constant-deceleration mock | 3.11, 3.12 (except 3.12.3), 3.13, 3.14, A.3.1, A.3.7 to A.3.10, A.3.12, A.3.13 | XL |
+| **E4 Modes and procedures, level 1** | All 17 modes, 4.6 transitions, 4.8 acceptance, 4.10 stored information, 4.12 brakes, SoM and EoM in L0/L1, SH, override, OS, level transitions, trip, reversing, LS, SM, LX, track conditions and 5.20 outputs, train data changes, text messages | 4, 5 (except 5.12, 5.15), 3.12.3, A.3.3 to A.3.6 | XL |
 | **E5 Radio, level 2** | Session management, MA request and update, co-operative shortening, emergency messages, position reports, handover, radio data consistency, SoM in L2, RBC simulator in `sim/` | 3.5, 3.8, 3.10, 3.15.1, 3.16.3, 5.15 | L |
-| **E6 Special functions and data** | Non-leading engines, splitting and joining, TAF, big metal mass, VBC, advance route information, system version, national values, train data and data view, completeness of data, balise consistency, juridical data port | 3.7, 3.15, 3.16.2, 3.17, 3.18, 3.20 | L |
+| **E6 Special functions and data** | Non-leading engines, splitting and joining, TAF, big metal mass, VBC, advance route information, system version, national values, train data and data view, completeness of data, balise consistency, juridical data port | 3.7, 3.15 (rest), 3.16 (except 3.16.3), 3.17, 3.18, 3.20, A.3.2 | L |
 | **E7 Compatibility** | Older system versions X = 1 and X = 2; Euroloop and radio infill if wanted | 6, 3.9 | L, deferrable |
 | **E8 Hercules** | TMS570LC43x LaunchPad, `gnat_arm_elf` with a light runtime for TMS570 (bb-runtimes), RTI timer executive, ESM and lockstep fault reporting, DMI link over Ethernet with CRC and sequence numbers, memory and timing measurements | — | L |
 
@@ -123,11 +123,15 @@ the DMI. E3 is the critical path.
 
 ## 4. Coverage matrix
 
-`doc/TRACE-SUBSET-026.csv` lists every clause chapter 9 classifies as an
-on-board requirement, with the chapter 9 flags, a status and a note. The
-tool that produces it from the chapter 9 markdown is under
-`doc/SRS/tools/`; the statuses are kept by hand and preserved when the
-tool is rerun. Statuses:
+[doc/TRACE-SUBSET-026.csv](TRACE-SUBSET-026.csv) lists every clause
+chapter 9 classifies as an on-board requirement (2398 of the 5466 clauses
+it classifies), with the chapter 9 flags, the phase of §3, a status and a
+note. [doc/SRS/tools/trace_subset026.py](SRS/tools/trace_subset026.py)
+produces it from the chapter 9 markdown; `--compare` re-reads the PDF
+with a second parser and confirms every flag of every clause (0
+differences at import), `--check` validates the file and prints the
+counts per chapter, phase and status. The statuses are kept by hand and
+preserved when the tool is rerun. Statuses:
 
 | Status | Meaning |
 |---|---|

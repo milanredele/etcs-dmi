@@ -114,6 +114,20 @@ PHASES = [
     # E7 Compatibility
     ("6", "E7"),
     ("3.9", "E7"),
+    # Appendix A.3 of chapter 3 (sorted as chapter 3, after 3.20)
+    ("A.3.1", "E3"),   # fixed values
+    ("A.3.2", "E6"),   # national and default values
+    ("A.3.3", "E4"),   # handling of received and stored information
+    ("A.3.4", "E4"),
+    ("A.3.5", "E4"),
+    ("A.3.6", "E4"),
+    ("A.3.7", "E3"),   # brake models, build-up times, speed increase
+    ("A.3.8", "E3"),
+    ("A.3.9", "E3"),
+    ("A.3.10", "E3"),
+    ("A.3.11", "E1"),  # units and resolution
+    ("A.3.12", "E3"),
+    ("A.3.13", "E3"),
 ]
 PHASE_ORDER = ["E1", "E2", "E3", "E4", "E5", "E6", "E7", "-"]
 
@@ -193,12 +207,11 @@ def sort_key(clause):
 
 def phase_of(number):
     _, appendix, parts = number_parts(number)
-    if appendix:
-        return "-"
     best, best_len = "-", 0
     for prefix, phase in PHASES:
-        p = [int(x) for x in prefix.split(".")]
-        if parts[:len(p)] == p and len(p) > best_len:
+        _, p_appendix, p = number_parts(prefix)
+        if p_appendix == appendix and parts[:len(p)] == p \
+           and len(p) > best_len:
             best, best_len = phase, len(p)
     return best
 

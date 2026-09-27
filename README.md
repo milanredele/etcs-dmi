@@ -7,6 +7,12 @@ may go, where it has to brake, which mode and level the on-board system
 is in, and what lies ahead on the track. This is an implementation of it
 in Ada 2012 for small embedded hardware.
 
+Since September 2026 the repository also hosts the second half of the
+on-board system: an **ETCS on-board (EVC)** implementing SUBSET-026
+v4.0.0, written in SPARK/Ada for the TI Hercules TMS570 family, under
+[evc/](evc/). It is being built in phases, see
+[doc/EVC-PLAN.md](doc/EVC-PLAN.md); the DMI is complete for its scope.
+
 **Live demo**: <https://milanredele.github.io/etcs-dmi/> runs the DMI
 and a simulated on-board computer in the browser, compiled from the same
 Ada sources to WebAssembly.
@@ -36,7 +42,13 @@ Ada sources to WebAssembly.
    good test case: the specification is long, precise and public, the
    language is made for safety, and mistakes show up on the screen.
 
-See [PLAN.md](PLAN.md) for the implementation status and roadmap.
+4. **Implement the ETCS on-board itself** (SUBSET-026 v4.0.0) with the
+   same discipline, in SPARK where the code is safety relevant, with a
+   proof of the absence of run-time errors, and runnable on a TI Hercules
+   safety microcontroller (TMS570LC4357).
+
+See [PLAN.md](PLAN.md) for the implementation status and roadmap of the
+DMI and [doc/EVC-PLAN.md](doc/EVC-PLAN.md) for those of the on-board.
 
 ### Working with an AI agent
 The question behind the third goal is what it takes to trust the result.
