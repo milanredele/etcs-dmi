@@ -29,5 +29,7 @@ obj/evc_test           # golden runner (test/golden/evc/), UPDATE=1 records
 obj/evc_fuzz           # random inputs, must end with raised: 0
 ```
 
-The hosted TCP main is `ports/hosted/evc.adb` (hub port 1338, like
-`evc_sim`).
+The hosted TCP main is `ports/hosted/evc.adb`, built as `obj/evc_onboard`
+(`obj/evc` is the object directory of `etcs_evc.gpr`): it takes the hub
+port 1338 of `evc_sim` and moves DMI protocol frames between the socket
+and the DMI port.

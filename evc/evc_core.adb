@@ -355,9 +355,10 @@ is
         (Data     => (if Current_Level_Status = Valid then 4 else 0),
          Train    => Train,
          National => National,
-         --  Table 49 S0 (5.4.3.2): the mode is SB and no session with an
-         --  RBC exists, so the start of mission may begin. E0 has no cab
-         --  signals in its scenarios yet and takes the desk as open.
+         --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
+         --  desk is open and no session with an RBC exists or is being
+         --  established, so the start of mission may begin. E0 has no
+         --  cab signals in its scenarios yet and takes the desk as open.
          SoM      => (if Current_Mode = M_SB then SoM_Possible else 0),
          others   => 0);
       EVC_Outbox.Put (DMI, Onboard_Frame (Onboard));
