@@ -57,7 +57,7 @@ Clarifications (as the catalogue is written):
 [[packets]]
 nid = 5                      # NID_PACKET
 name = "Linking"             # the SRS title without "Packet Number n:"
-clause = "7.4.2.3"
+clause = "7.4.2.2"
 direction = "track_to_train" # track_to_train | train_to_track
 sent_by = ["balise", "rbc", "loop", "riu"]   # from "Transmitted by/to"
 fields = [
@@ -106,6 +106,34 @@ Field kinds:
 
 Every packet starts with `NID_PACKET` and (track to train) `Q_DIR`, then
 `L_PACKET`; the generator checks that. Packet 255 has `NID_PACKET` only.
+Track-to-train packet 0 (Virtual Balise Cover marker) is `NID_PACKET`,
+`NID_VBCMK` only: 7.3.3.5 exempts it from the header.
+
+Clarifications (as the catalogue is written):
+
+- A record level is the packet or a loop body. The fields of an `if` are
+  components of the enclosing record, so the same variable in two `if`
+  blocks of one record level (packet 3: M_NVKVINT, unconditional then
+  "Only if Q_NVKVINTSET = 1") needs `as`. `as` names are the variable name
+  with `_2`, `_3`, ... in reading order; train-to-track packet 1 names its
+  second balise group `NID_C_PRVLRBG`, `NID_BG_PRVLRBG`.
+- COND names the SRS variable, not an `as` name, and means its most recent
+  occurrence read before the condition at this record level or an
+  enclosing one. What an `if` block reads is visible only inside it.
+- Two `if` blocks in a row may test the same variable (packets 51, 52,
+  68, 69, 70: `Q_TRACKINIT == 1` then `Q_TRACKINIT == 0`, the second one
+  holding the rest of the packet, "... and the following variables
+  follow").
+- Where the SRS indents a row without a comment (packets 12 and 15:
+  T_SECTIONTIMER under Q_SECTIONTIMER, ...), the condition is the value
+  of the qualifier that 7.5 defines as "... information to follow".
+- `{ raw = "L_PACKET" }` is the rest of the packet: L_PACKET minus the
+  bits read so far (packet 44 in both directions, "Other data depending
+  on NID_XUSER").
+- `{ loop = "L_TEXT", fields = [ { var = "X_TEXT" } ] }` is the SRS
+  `X_TEXT(L_TEXT)` of packet 73.
+- For train-to-track packets `sent_by` lists the "Transmitted to" row
+  (the receivers, `rbc`, `riu`). "Any" is all four senders.
 
 ## What the generator produces
 

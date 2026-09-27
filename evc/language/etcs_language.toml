@@ -1577,3 +1577,569 @@ resolution = "5 km/h"
 bits = 8
 clause = "7.5.1.174"
 resolution = "one character, ISO 8859-1"
+
+# ---------------------------------------------------------------------
+# Packets, track to train (7.4.2), in the order of the list 7.4.1.1
+# ---------------------------------------------------------------------
+
+[[packets]]                             # p. 12
+# 7.3.3.5: packet 0 does not follow the packet header structure,
+# it has no Q_DIR and no L_PACKET.
+nid = 0
+name = "Virtual Balise Cover marker"
+clause = "7.4.2.0"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "NID_VBCMK" },
+]
+
+[[packets]]                             # p. 12
+nid = 2
+name = "System Version order"
+clause = "7.4.2.1"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "M_VERSION" },
+]
+
+[[packets]]                             # p. 12, 13, 14, 15
+# Structure from the PDF: everything after Q_NVKINT is indented under
+# "Only if Q_NVKINT = 1, Q_NVKVINTSET and the following variables
+# follow"; the second M_NVKVINT of each step is indented again ("Only if
+# Q_NVKVINTSET = 1"). Loops from the (n), (k), (k,m) and (l) suffixes.
+nid = 3
+name = "National Values"
+clause = "7.4.2.1.1"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_VALIDNV" },
+  { var = "NID_C" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "NID_C" },
+  ] },
+  { var = "V_NVSHUNT" },
+  { var = "V_NVSTFF" },
+  { var = "V_NVONSIGHT" },
+  { var = "V_NVLIMSUPERV" },
+  { var = "V_NVUNFIT" },
+  { var = "V_NVREL" },
+  { var = "D_NVROLL" },
+  { var = "Q_NVSBTSMPERM" },
+  { var = "Q_NVEMRRLS" },
+  { var = "Q_NVGUIPERM" },
+  { var = "Q_NVSBFBPERM" },
+  { var = "Q_NVINHSMICPERM" },
+  { var = "V_NVALLOWOVTRP" },
+  { var = "V_NVSUPOVTRP" },
+  { var = "D_NVOVTRP" },
+  { var = "T_NVOVTRP" },
+  { var = "D_NVPOTRP" },
+  { var = "M_NVCONTACT" },
+  { var = "T_NVCONTACT" },
+  { var = "M_NVDERUN" },
+  { var = "D_NVSTFF" },
+  { var = "Q_NVDRIVER_ADHES" },
+  { var = "A_NVMAXREDADH1" },
+  { var = "A_NVMAXREDADH2" },
+  { var = "A_NVMAXREDADH3" },
+  { var = "Q_NVLOCACC" },
+  { var = "M_NVAVADH" },
+  { var = "M_NVEBCL" },
+  { var = "Q_NVKINT" },
+  { if = "Q_NVKINT == 1", fields = [
+    { var = "Q_NVKVINTSET" },
+    { if = "Q_NVKVINTSET == 1", fields = [
+      { var = "A_NVP12" },
+      { var = "A_NVP23" },
+    ] },
+    { var = "V_NVKVINT" },
+    { var = "M_NVKVINT" },
+    { if = "Q_NVKVINTSET == 1", fields = [
+      { var = "M_NVKVINT", as = "M_NVKVINT_2" },
+    ] },
+    { var = "N_ITER", as = "N_ITER_2" },
+    { loop = "N_ITER", fields = [
+      { var = "V_NVKVINT" },
+      { var = "M_NVKVINT" },
+      { if = "Q_NVKVINTSET == 1", fields = [
+        { var = "M_NVKVINT", as = "M_NVKVINT_2" },
+      ] },
+    ] },
+    { var = "N_ITER", as = "N_ITER_3" },
+    { loop = "N_ITER", fields = [
+      { var = "Q_NVKVINTSET" },
+      { if = "Q_NVKVINTSET == 1", fields = [
+        { var = "A_NVP12" },
+        { var = "A_NVP23" },
+      ] },
+      { var = "V_NVKVINT" },
+      { var = "M_NVKVINT" },
+      { if = "Q_NVKVINTSET == 1", fields = [
+        { var = "M_NVKVINT", as = "M_NVKVINT_2" },
+      ] },
+      { var = "N_ITER" },
+      { loop = "N_ITER", fields = [
+        { var = "V_NVKVINT" },
+        { var = "M_NVKVINT" },
+        { if = "Q_NVKVINTSET == 1", fields = [
+          { var = "M_NVKVINT", as = "M_NVKVINT_2" },
+        ] },
+      ] },
+    ] },
+    { var = "L_NVKRINT" },
+    { var = "M_NVKRINT" },
+    { var = "N_ITER", as = "N_ITER_4" },
+    { loop = "N_ITER", fields = [
+      { var = "L_NVKRINT" },
+      { var = "M_NVKRINT" },
+    ] },
+    { var = "M_NVKTINT" },
+  ] },
+]
+
+[[packets]]                             # p. 15, 16
+nid = 5
+name = "Linking"
+clause = "7.4.2.2"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_LINK" },
+  { var = "Q_NEWCOUNTRY" },
+  { if = "Q_NEWCOUNTRY == 1", fields = [
+    { var = "NID_C" },
+  ] },
+  { var = "NID_BG" },
+  { var = "Q_LINKORIENTATION" },
+  { var = "Q_LINKREACTION" },
+  { var = "Q_LOCACC" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "D_LINK" },
+    { var = "Q_NEWCOUNTRY" },
+    { if = "Q_NEWCOUNTRY == 1", fields = [
+      { var = "NID_C" },
+    ] },
+    { var = "NID_BG" },
+    { var = "Q_LINKORIENTATION" },
+    { var = "Q_LINKREACTION" },
+    { var = "Q_LOCACC" },
+  ] },
+]
+
+[[packets]]                             # p. 16
+nid = 6
+name = "Virtual Balise Cover order"
+clause = "7.4.2.2.1"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_VBCO" },
+  { var = "NID_VBCMK" },
+  { var = "NID_C" },
+  { if = "Q_VBCO == 1", fields = [
+    { var = "T_VBC" },
+  ] },
+]
+
+[[packets]]                             # p. 16, 17
+# T_SECTIONTIMER .. V_RELEASEOL are indented without a comment: the
+# condition is the qualifier value "... information to follow" (7.5).
+nid = 12
+name = "Level 1 Movement Authority"
+clause = "7.4.2.3"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "V_MAIN" },
+  { var = "V_EMA" },
+  { var = "T_EMA" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "L_SECTION" },
+    { var = "Q_SECTIONTIMER" },
+    { if = "Q_SECTIONTIMER == 1", fields = [
+      { var = "T_SECTIONTIMER" },
+      { var = "D_SECTIONTIMERSTOPLOC" },
+    ] },
+  ] },
+  { var = "L_ENDSECTION" },
+  { var = "Q_SECTIONTIMER" },
+  { if = "Q_SECTIONTIMER == 1", fields = [
+    { var = "T_SECTIONTIMER" },
+    { var = "D_SECTIONTIMERSTOPLOC" },
+  ] },
+  { var = "Q_ENDTIMER" },
+  { if = "Q_ENDTIMER == 1", fields = [
+    { var = "T_ENDTIMER" },
+    { var = "D_ENDTIMERSTARTLOC" },
+  ] },
+  { var = "Q_DANGERPOINT" },
+  { if = "Q_DANGERPOINT == 1", fields = [
+    { var = "D_DP" },
+    { var = "V_RELEASEDP" },
+  ] },
+  { var = "Q_OVERLAP" },
+  { if = "Q_OVERLAP == 1", fields = [
+    { var = "D_STARTOL" },
+    { var = "T_OL" },
+    { var = "D_OL" },
+    { var = "V_RELEASEOL" },
+  ] },
+]
+
+[[packets]]                             # p. 18
+# First NID_BG: main signal balise group, second: reference balise.
+nid = 13
+name = "Staff Responsible distance Information from loop"
+clause = "7.4.2.3.1"
+direction = "track_to_train"
+sent_by = ["loop"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_NEWCOUNTRY" },
+  { if = "Q_NEWCOUNTRY == 1", fields = [
+    { var = "NID_C" },
+  ] },
+  { var = "NID_BG" },
+  { var = "Q_NEWCOUNTRY", as = "Q_NEWCOUNTRY_2" },
+  { if = "Q_NEWCOUNTRY == 1", fields = [
+    { var = "NID_C", as = "NID_C_2" },
+  ] },
+  { var = "NID_BG", as = "NID_BG_2" },
+  { var = "D_SR" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "Q_NEWCOUNTRY" },
+    { if = "Q_NEWCOUNTRY == 1", fields = [
+      { var = "NID_C" },
+    ] },
+    { var = "NID_BG" },
+    { var = "D_SR" },
+  ] },
+]
+
+[[packets]]                             # p. 18, 19
+# T_SECTIONTIMER .. V_RELEASEOL are indented without a comment: the
+# condition is the qualifier value "... information to follow" (7.5).
+nid = 15
+name = "Level 2 Movement Authority"
+clause = "7.4.2.4"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "V_EMA" },
+  { var = "T_EMA" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "L_SECTION" },
+    { var = "Q_SECTIONTIMER" },
+    { if = "Q_SECTIONTIMER == 1", fields = [
+      { var = "T_SECTIONTIMER" },
+      { var = "D_SECTIONTIMERSTOPLOC" },
+    ] },
+  ] },
+  { var = "L_ENDSECTION" },
+  { var = "Q_SECTIONTIMER" },
+  { if = "Q_SECTIONTIMER == 1", fields = [
+    { var = "T_SECTIONTIMER" },
+    { var = "D_SECTIONTIMERSTOPLOC" },
+  ] },
+  { var = "Q_ENDTIMER" },
+  { if = "Q_ENDTIMER == 1", fields = [
+    { var = "T_ENDTIMER" },
+    { var = "D_ENDTIMERSTARTLOC" },
+  ] },
+  { var = "Q_DANGERPOINT" },
+  { if = "Q_DANGERPOINT == 1", fields = [
+    { var = "D_DP" },
+    { var = "V_RELEASEDP" },
+  ] },
+  { var = "Q_OVERLAP" },
+  { if = "Q_OVERLAP == 1", fields = [
+    { var = "D_STARTOL" },
+    { var = "T_OL" },
+    { var = "D_OL" },
+    { var = "V_RELEASEOL" },
+  ] },
+]
+
+[[packets]]                             # p. 19
+nid = 16
+name = "Repositioning Information"
+clause = "7.4.2.5"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "L_SECTION" },
+]
+
+[[packets]]                             # p. 19, 20
+nid = 21
+name = "Gradient Profile"
+clause = "7.4.2.6"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_GRADIENT" },
+  { var = "Q_GDIR" },
+  { var = "G_A" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "D_GRADIENT" },
+    { var = "Q_GDIR" },
+    { var = "G_A" },
+  ] },
+]
+
+[[packets]]                             # p. 20
+nid = 27
+name = "International Static Speed Profile"
+clause = "7.4.2.7"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_STATIC" },
+  { var = "V_STATIC" },
+  { var = "Q_FRONT" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "Q_DIFF" },
+    { if = "Q_DIFF == 0", fields = [
+      { var = "NC_CDDIFF" },
+    ] },
+    { if = "Q_DIFF in [1, 2]", fields = [
+      { var = "NC_DIFF" },
+    ] },
+    { var = "V_DIFF" },
+  ] },
+  { var = "N_ITER", as = "N_ITER_2" },
+  { loop = "N_ITER", fields = [
+    { var = "D_STATIC" },
+    { var = "V_STATIC" },
+    { var = "Q_FRONT" },
+    { var = "N_ITER" },
+    { loop = "N_ITER", fields = [
+      { var = "Q_DIFF" },
+      { if = "Q_DIFF == 0", fields = [
+        { var = "NC_CDDIFF" },
+      ] },
+      { if = "Q_DIFF in [1, 2]", fields = [
+        { var = "NC_DIFF" },
+      ] },
+      { var = "V_DIFF" },
+    ] },
+  ] },
+]
+
+[[packets]]                             # p. 20, 21
+nid = 31
+name = "RBC transition order for RBC interfaced to FRMCS only"
+clause = "7.4.2.7.1"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_RBCTR" },
+  { var = "NID_C" },
+  { var = "NID_RBC" },
+  { var = "Q_SLEEPSESSION" },
+]
+
+[[packets]]                             # p. 21
+nid = 32
+name = "Session Management for RBC interfaced to FRMCS only"
+clause = "7.4.2.7.2"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_RBC" },
+  { var = "NID_C" },
+  { var = "NID_RBC" },
+  { var = "Q_SLEEPSESSION" },
+]
+
+[[packets]]                             # p. 21
+nid = 39
+name = "Track Condition Change of traction system"
+clause = "7.4.2.8"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_TRACTION" },
+  { var = "M_VOLTAGE" },
+  { if = "M_VOLTAGE != 0", fields = [
+    { var = "NID_CTRACTION" },
+  ] },
+]
+
+[[packets]]                             # p. 21, 22
+nid = 40
+name = "Track Condition Change of allowed current consumption"
+clause = "7.4.2.8.1"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_CURRENT" },
+  { var = "M_CURRENT" },
+]
+
+[[packets]]                             # p. 22
+nid = 41
+name = "Level Transition Order"
+clause = "7.4.2.9"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_LEVELTR" },
+  { var = "M_LEVELTR" },
+  { if = "M_LEVELTR == 1", fields = [
+    { var = "NID_NTC" },
+  ] },
+  { var = "L_ACKLEVELTR" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "M_LEVELTR" },
+    { if = "M_LEVELTR == 1", fields = [
+      { var = "NID_NTC" },
+    ] },
+    { var = "L_ACKLEVELTR" },
+  ] },
+]
+
+[[packets]]                             # p. 22, 23
+nid = 42
+name = "Session Management for RBC interfaced to GSM-R"
+clause = "7.4.2.10"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_RBC" },
+  { var = "NID_C" },
+  { var = "NID_RBC" },
+  { var = "NID_RADIO" },
+  { var = "Q_SLEEPSESSION" },
+]
+
+[[packets]]                             # p. 23
+# "Other data, depending on NID_XUSER and, in case NID_XUSER = 102, also
+# on NID_NTC": the rest of the packet, kept as raw bits.
+nid = 44
+name = "Data used by applications outside the ERTMS/ETCS system"
+clause = "7.4.2.11"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "NID_XUSER" },
+  { if = "NID_XUSER == 102", fields = [
+    { var = "NID_NTC" },
+  ] },
+  { raw = "L_PACKET" },
+]
+
+[[packets]]                             # p. 23
+# The comment of NID_MN writes Q_NETWORTYPE (typo for Q_NETWORKTYPE);
+# 1 = FRMCS+GSM-R, 2 = GSM-R.
+nid = 45
+name = "Radio Network transition order"
+clause = "7.4.2.11.1"
+direction = "track_to_train"
+sent_by = ["balise", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_NETWORKTYPE" },
+  { if = "Q_NETWORKTYPE in [1, 2]", fields = [
+    { var = "NID_MN" },
+  ] },
+]
+
+[[packets]]                             # p. 23, 24
+nid = 46
+name = "Conditional Level Transition Order"
+clause = "7.4.2.11.2"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "M_LEVELTR" },
+  { if = "M_LEVELTR == 1", fields = [
+    { var = "NID_NTC" },
+  ] },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "M_LEVELTR" },
+    { if = "M_LEVELTR == 1", fields = [
+      { var = "NID_NTC" },
+    ] },
+  ] },
+]
