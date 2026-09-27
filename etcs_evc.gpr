@@ -1,0 +1,43 @@
+--  The ETCS on-board (evc/) alone, for the cross build and the proof.
+--  No main: the hosts (ports/hosted/evc.adb, the wasm glue, the target
+--  executive) are built by their own projects. The on-board does not use
+--  common/: it frames the DMI protocol itself (EVC_DMI_Port).
+--
+--  Cross build (the runtime is given on the command line):
+--     gprbuild -P etcs_evc.gpr --target=arm-eabi --RTS=<runtime> \
+--              --subdirs=tms570
+--  Proof: evc/prove.sh
+
+project Etcs_Evc is
+
+   for Source_Dirs use ("evc");
+   for Object_Dir use "obj/evc";
+
+   package Builder is
+      for Switches ("ada") use ("-g", "-s");
+   end Builder;
+
+   package Compiler is
+      for Switches ("ada") use
+        ("-gnatVa", "-gnatwa", "-g",
+         --  no warnings about exceptions that cannot propagate on a
+         --  light runtime (No_Exception_Propagation)
+         "-gnatw.X",
+         --  the style of config/etcsdmi_config.gpr
+         "-gnaty3", "-gnatya", "-gnatyA", "-gnatyB", "-gnatyb",
+         "-gnatyc", "-gnatye", "-gnatyf", "-gnatyh", "-gnatyi",
+         "-gnatyI", "-gnatyk", "-gnatyl", "-gnatym", "-gnatyn",
+         "-gnatyO", "-gnatyp", "-gnatyr", "-gnatyS", "-gnatyt",
+         "-gnatyu", "-gnatyx",
+         "-gnatW8");
+   end Compiler;
+
+   package Prove is
+      --  flow analysis and proof of absence of run-time errors and of
+      --  the contracts; evc/prove.sh adds the reporting switches
+      for Proof_Switches ("Ada") use
+        ("--mode=all", "--level=2", "--checks-as-errors=on",
+         "--warnings=continue");
+   end Prove;
+
+end Etcs_Evc;
