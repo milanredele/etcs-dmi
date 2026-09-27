@@ -2925,3 +2925,220 @@ sent_by = ["balise", "loop"]
 fields = [
   { var = "NID_PACKET" },
 ]
+
+# ---------------------------------------------------------------------
+# Packets, train to track (7.4.3), in the order of the list 7.4.1.2.
+# sent_by lists the "Transmitted to" row: the receivers.
+# ---------------------------------------------------------------------
+
+[[packets]]                             # p. 40
+# NID_LRBG is 10 + 14 bits: NID_C, NID_BG. "If Q_INTEGRITY = 'Train
+# integrity confirmed by external source' or '... by driver'" = 1 or 2;
+# "If M_LEVEL = NTC" = 1.
+nid = 0
+name = "Position Report"
+clause = "7.4.3.1"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "NID_C" },  # NID_LRBG: NID_C + NID_BG
+  { var = "NID_BG" },
+  { var = "D_LRBG" },
+  { var = "Q_DIRLRBG" },
+  { var = "Q_DLRBG" },
+  { var = "L_DOUBTOVER" },
+  { var = "L_DOUBTUNDER" },
+  { var = "Q_INTEGRITY" },
+  { if = "Q_INTEGRITY in [1, 2]", fields = [
+    { var = "L_TRAININT" },
+  ] },
+  { var = "V_TRAIN" },
+  { var = "Q_DIRTRAIN" },
+  { var = "M_MODE" },
+  { var = "M_LEVEL" },
+  { if = "M_LEVEL == 1", fields = [
+    { var = "NID_NTC" },
+  ] },
+]
+
+[[packets]]                             # p. 40, 41
+# NID_LRBG and NID_PRVLRBG are 10 + 14 bits each: NID_C, NID_BG twice.
+# Conditions as in packet 0.
+nid = 1
+name = "Position Report based on two balise groups"
+clause = "7.4.3.2"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "NID_C" },  # NID_LRBG: NID_C + NID_BG
+  { var = "NID_BG" },
+  { var = "NID_C", as = "NID_C_PRVLRBG" },  # NID_PRVLRBG: NID_C + NID_BG
+  { var = "NID_BG", as = "NID_BG_PRVLRBG" },
+  { var = "D_LRBG" },
+  { var = "Q_DIRLRBG" },
+  { var = "Q_DLRBG" },
+  { var = "L_DOUBTOVER" },
+  { var = "L_DOUBTUNDER" },
+  { var = "Q_INTEGRITY" },
+  { if = "Q_INTEGRITY in [1, 2]", fields = [
+    { var = "L_TRAININT" },
+  ] },
+  { var = "V_TRAIN" },
+  { var = "Q_DIRTRAIN" },
+  { var = "M_MODE" },
+  { var = "M_LEVEL" },
+  { if = "M_LEVEL == 1", fields = [
+    { var = "NID_NTC" },
+  ] },
+]
+
+[[packets]]                             # p. 41
+nid = 2
+name = "Onboard supported system versions"
+clause = "7.4.3.3"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "M_VERSION" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "M_VERSION" },
+  ] },
+]
+
+[[packets]]                             # p. 41
+nid = 4
+name = "Error reporting"
+clause = "7.4.3.4"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "M_ERROR" },
+]
+
+[[packets]]                             # p. 42
+nid = 5
+name = "Train running number"
+clause = "7.4.3.4.1"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "NID_OPERATIONAL" },
+]
+
+[[packets]]                             # p. 42
+# NID_LTRBG is 10 + 14 bits: NID_C, NID_BG.
+nid = 9
+name = "Level 2 transition information"
+clause = "7.4.3.4.2"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "NID_C" },  # NID_LTRBG: NID_C + NID_BG
+  { var = "NID_BG" },
+]
+
+[[packets]]                             # p. 42
+# "Only if Q_SAFECONSISTLENGTH = 1, L_CONSISTFRONTENGINENOM and the
+# following variables follow".
+nid = 10
+name = "Safe consist length information for Supervised Manoeuvre"
+clause = "7.4.3.4.3"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "Q_SAFECONSISTLENGTH" },
+  { if = "Q_SAFECONSISTLENGTH == 1", fields = [
+    { var = "L_CONSISTFRONTENGINENOM" },
+    { var = "L_CONSISTFRONTENGINEMIN" },
+    { var = "L_CONSISTFRONTENGINEMAX" },
+    { var = "L_CONSISTREARENGINENOM" },
+    { var = "L_CONSISTREARENGINEMIN" },
+    { var = "L_CONSISTREARENGINEMAX" },
+  ] },
+]
+
+[[packets]]                             # p. 42, 43
+nid = 11
+name = "Validated train data"
+clause = "7.4.3.5"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "NC_CDTRAIN" },
+  { var = "NC_TRAIN" },
+  { var = "L_TRAIN" },
+  { var = "V_MAXTRAIN" },
+  { var = "M_LOADINGGAUGE" },
+  { var = "M_AXLELOADCAT" },
+  { var = "M_AIRTIGHT" },
+  { var = "N_AXLE" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "M_VOLTAGE" },
+    { if = "M_VOLTAGE != 0", fields = [
+      { var = "NID_CTRACTION" },
+    ] },
+  ] },
+  { var = "N_ITER", as = "N_ITER_2" },
+  { loop = "N_ITER", fields = [
+    { var = "NID_NTC" },
+  ] },
+]
+
+[[packets]]                             # p. 43
+nid = 12
+name = "Default train data for Supervised Manoeuvre"
+clause = "7.4.3.5.1"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "NC_CDTRAIN" },
+  { var = "NC_TRAIN" },
+  { var = "V_MAXTRAIN" },
+  { var = "M_LOADINGGAUGE" },
+  { var = "M_AXLELOADCAT" },
+  { var = "M_AIRTIGHT" },
+  { var = "N_AXLE" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "M_VOLTAGE" },
+    { if = "M_VOLTAGE != 0", fields = [
+      { var = "NID_CTRACTION" },
+    ] },
+  ] },
+]
+
+[[packets]]                             # p. 44
+# "Other data, depending on NID_XUSER": the rest of the packet, raw.
+nid = 44
+name = "Data used by applications outside the ERTMS/ETCS system"
+clause = "7.4.3.6"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "NID_XUSER" },
+  { raw = "L_PACKET" },
+]
