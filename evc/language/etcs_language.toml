@@ -1,0 +1,1669 @@
+# The ERTMS/ETCS language of SUBSET-026 4.0.0 (chapter 7), as data.
+# Format: SCHEMA.md. Generated Ada: gen_language.py.
+#
+# SEED: the variables and packets needed to develop and test the
+# generator and the framing (phase E1). The complete catalogue (every
+# variable of 7.5, every packet of 7.4) replaces this file. Every entry
+# was read on the PDF page (SUBSET-026-7_v400.pdf), the packet tables for
+# their loops and conditions.
+
+# ---------------------------------------------------------------------
+# Variables (7.5)
+# ---------------------------------------------------------------------
+
+[variables.A_NVMAXREDADH1]
+bits = 6
+clause = "7.5.0.1"
+max = 60
+special = { 61 = "no maximum, display target", 62 = "no maximum, display time", 63 = "no maximum, no display" }
+resolution = "0.05 m/s2"
+
+[variables.A_NVMAXREDADH2]
+bits = 6
+clause = "7.5.0.2"
+max = 60
+special = { 61 = "no maximum, display target", 62 = "no maximum, display time", 63 = "no maximum, no display" }
+resolution = "0.05 m/s2"
+
+[variables.A_NVMAXREDADH3]
+bits = 6
+clause = "7.5.0.3"
+max = 60
+special = { 61 = "no maximum, display target", 62 = "no maximum, display time", 63 = "no maximum, no display" }
+resolution = "0.05 m/s2"
+
+[variables.A_NVP12]
+bits = 6
+clause = "7.5.0.4"
+max = 63
+resolution = "0.05 m/s2"
+
+[variables.A_NVP23]
+bits = 6
+clause = "7.5.0.5"
+max = 63
+resolution = "0.05 m/s2"
+
+[variables.D_DP]
+bits = 15
+clause = "7.5.1.4"
+scale = "Q_SCALE"
+
+[variables.D_EMERGENCYSTOP]
+bits = 15
+clause = "7.5.1.5"
+scale = "Q_SCALE"
+
+[variables.D_ENDTIMERSTARTLOC]
+bits = 15
+clause = "7.5.1.6"
+scale = "Q_SCALE"
+
+[variables.D_GRADIENT]
+bits = 15
+clause = "7.5.1.7"
+scale = "Q_SCALE"
+
+[variables.D_LEVELTR]
+bits = 15
+clause = "7.5.1.9"
+max = 32766
+special = { 32767 = "now" }
+scale = "Q_SCALE"
+
+[variables.D_LINK]
+bits = 15
+clause = "7.5.1.10"
+scale = "Q_SCALE"
+
+[variables.D_LRBG]
+bits = 15
+clause = "7.5.1.13"
+max = 32766
+special = { 32767 = "unknown" }
+scale = "Q_SCALE"
+
+[variables.D_NVOVTRP]
+bits = 15
+clause = "7.5.1.15"
+scale = "Q_SCALE"
+
+[variables.D_NVPOTRP]
+bits = 15
+clause = "7.5.1.16"
+scale = "Q_SCALE"
+
+[variables.D_NVROLL]
+bits = 15
+clause = "7.5.1.17"
+max = 32766
+special = { 32767 = "infinite" }
+scale = "Q_SCALE"
+
+[variables.D_NVSTFF]
+bits = 15
+clause = "7.5.1.18"
+max = 32766
+special = { 32767 = "infinite" }
+scale = "Q_SCALE"
+
+[variables.D_OL]
+bits = 15
+clause = "7.5.1.19"
+scale = "Q_SCALE"
+
+[variables.D_REF]
+bits = 16
+clause = "7.5.1.22"
+min = -32768
+max = 32767
+scale = "Q_SCALE"
+resolution = "two's complement, positive in the nominal direction of the LRBG"
+
+[variables.D_SECTIONTIMERSTOPLOC]
+bits = 15
+clause = "7.5.1.24"
+scale = "Q_SCALE"
+
+[variables.D_SR]
+bits = 15
+clause = "7.5.1.25"
+max = 32766
+special = { 32767 = "infinite" }
+scale = "Q_SCALE"
+
+[variables.D_STARTOL]
+bits = 15
+clause = "7.5.1.26"
+scale = "Q_SCALE"
+
+[variables.D_STATIC]
+bits = 15
+clause = "7.5.1.28"
+scale = "Q_SCALE"
+
+[variables.D_TAFDISPLAY]
+bits = 15
+clause = "7.5.1.30"
+scale = "Q_SCALE"
+
+[variables.D_TEXTDISPLAY]
+bits = 15
+clause = "7.5.1.31"
+max = 32766
+special = { 32767 = "no location" }
+scale = "Q_SCALE"
+
+[variables.D_TSR]
+bits = 15
+clause = "7.5.1.35"
+scale = "Q_SCALE"
+
+[variables.D_VALIDNV]
+bits = 15
+clause = "7.5.1.36"
+max = 32766
+special = { 32767 = "now" }
+scale = "Q_SCALE"
+
+[variables.G_A]
+bits = 8
+clause = "7.5.1.37"
+max = 254
+special = { 255 = "end of description" }
+resolution = "1 permil"
+
+[variables.L_ACKLEVELTR]
+bits = 15
+clause = "7.5.1.39"
+scale = "Q_SCALE"
+
+[variables.L_DOUBTOVER]
+bits = 15
+clause = "7.5.1.43"
+max = 32766
+special = { 32767 = "unknown" }
+scale = "Q_SCALE"
+
+[variables.L_DOUBTUNDER]
+bits = 15
+clause = "7.5.1.44"
+max = 32766
+special = { 32767 = "unknown" }
+scale = "Q_SCALE"
+
+[variables.L_ENDSECTION]
+bits = 15
+clause = "7.5.1.45"
+scale = "Q_SCALE"
+
+[variables.L_MESSAGE]
+bits = 10
+clause = "7.5.1.48"
+resolution = "1 byte"
+
+[variables.L_NVKRINT]
+bits = 5
+clause = "7.5.1.48.1"
+resolution = "0 m, 25 m, 50 m, ... (table)"
+
+[variables.L_PACKET]
+bits = 13
+clause = "7.5.1.49"
+resolution = "1 bit"
+
+[variables.L_SECTION]
+bits = 15
+clause = "7.5.1.51"
+scale = "Q_SCALE"
+
+[variables.L_TAFDISPLAY]
+bits = 15
+clause = "7.5.1.52"
+scale = "Q_SCALE"
+
+[variables.L_TEXT]
+bits = 8
+clause = "7.5.1.53"
+resolution = "1 text string element"
+
+[variables.L_TEXTDISPLAY]
+bits = 15
+clause = "7.5.1.54"
+max = 32766
+special = { 32767 = "no location" }
+scale = "Q_SCALE"
+
+[variables.L_TRAININT]
+bits = 15
+clause = "7.5.1.57"
+resolution = "1 m"
+
+[variables.L_TSR]
+bits = 15
+clause = "7.5.1.58"
+scale = "Q_SCALE"
+
+[variables.M_ACK]
+bits = 1
+clause = "7.5.1.59"
+special = { 0 = "no acknowledgement", 1 = "acknowledgement required" }
+
+[variables.M_DUP]
+bits = 2
+clause = "7.5.1.63"
+max = 2
+special = { 0 = "no duplicates", 1 = "duplicate of next", 2 = "duplicate of previous" }
+
+[variables.M_ERROR]
+bits = 8
+clause = "7.5.1.64"
+max = 10
+
+[variables.M_LEVEL]
+bits = 3
+clause = "7.5.1.65"
+max = 3
+special = { 0 = "level 0", 1 = "NTC", 2 = "level 1", 3 = "level 2" }
+
+[variables.M_LEVELTEXTDISPLAY]
+bits = 3
+clause = "7.5.1.66"
+max = 4
+special = { 0 = "level 0", 1 = "NTC", 2 = "level 1", 3 = "level 2", 4 = "no level" }
+
+[variables.M_LEVELTR]
+bits = 3
+clause = "7.5.1.67"
+max = 3
+special = { 0 = "level 0", 1 = "NTC", 2 = "level 1", 3 = "level 2" }
+
+[variables.M_MCOUNT]
+bits = 8
+clause = "7.5.1.71"
+max = 253
+special = { 254 = "never fits", 255 = "fits all" }
+
+[variables.M_MODE]
+bits = 5
+clause = "7.5.1.72"
+max = 17
+
+[variables.M_MODETEXTDISPLAY]
+bits = 4
+clause = "7.5.1.73"
+max = 15
+
+[variables.M_NVAVADH]
+bits = 5
+clause = "7.5.1.73.1"
+max = 20
+resolution = "0.05"
+
+[variables.M_NVCONTACT]
+bits = 2
+clause = "7.5.1.74"
+max = 2
+special = { 0 = "train trip", 1 = "service brake", 2 = "no reaction" }
+
+[variables.M_NVDERUN]
+bits = 1
+clause = "7.5.1.75"
+special = { 0 = "no", 1 = "yes" }
+
+[variables.M_NVEBCL]
+bits = 4
+clause = "7.5.1.75.1"
+max = 9
+
+[variables.M_NVKRINT]
+bits = 5
+clause = "7.5.1.75.2"
+resolution = "0.05"
+
+[variables.M_NVKTINT]
+bits = 5
+clause = "7.5.1.75.3"
+resolution = "0.05"
+
+[variables.M_NVKVINT]
+bits = 7
+clause = "7.5.1.75.4"
+resolution = "0.02"
+
+[variables.M_VERSION]
+bits = 7
+clause = "7.5.1.79"
+special = { 16 = "V1.0", 17 = "V1.1", 32 = "V2.0", 33 = "V2.1", 34 = "V2.2", 35 = "V2.3", 48 = "V3.0" }
+
+[variables.N_ITER]
+bits = 5
+clause = "7.5.1.80"
+
+[variables.N_PIG]
+bits = 3
+clause = "7.5.1.81"
+
+[variables.N_TOTAL]
+bits = 3
+clause = "7.5.1.82"
+
+[variables.NC_CDDIFF]
+bits = 4
+clause = "7.5.1.82.1"
+max = 10
+
+[variables.NC_DIFF]
+bits = 4
+clause = "7.5.1.83"
+max = 2
+special = { 0 = "freight P", 1 = "freight G", 2 = "passenger" }
+
+[variables.NID_BG]
+bits = 14
+clause = "7.5.1.85"
+max = 16382
+special = { 16383 = "unknown" }
+
+[variables.NID_C]
+bits = 10
+clause = "7.5.1.86"
+
+[variables.NID_EM]
+bits = 4
+clause = "7.5.1.87"
+
+[variables.NID_ENGINE]
+bits = 24
+clause = "7.5.1.88"
+
+[variables.NID_MESSAGE]
+bits = 8
+clause = "7.5.1.91"
+
+[variables.NID_NTC]
+bits = 8
+clause = "7.5.1.98"
+
+[variables.NID_OPERATIONAL]
+bits = 32
+clause = "7.5.1.92"
+resolution = "8 BCD digits, 15 (F) where no digit"
+
+[variables.NID_PACKET]
+bits = 8
+clause = "7.5.1.93"
+
+[variables.NID_RBC]
+bits = 14
+clause = "7.5.1.96"
+max = 16382
+special = { 16383 = "contact last known RBC" }
+
+[variables.NID_TEXTMESSAGE]
+bits = 8
+clause = "7.5.1.98.1"
+
+[variables.NID_TSR]
+bits = 8
+clause = "7.5.1.99"
+special = { 255 = "non revocable" }
+
+[variables.NID_VBCMK]
+bits = 6
+clause = "7.5.1.99.1"
+
+[variables.NID_XUSER]
+bits = 9
+clause = "7.5.1.100"
+
+[variables.Q_CONFTEXTDISPLAY]
+bits = 1
+clause = "7.5.1.101.1"
+special = { 0 = "acknowledgement ends display", 1 = "acknowledgement additional" }
+
+[variables.Q_DANGERPOINT]
+bits = 1
+clause = "7.5.1.102"
+special = { 0 = "no danger point", 1 = "danger point follows" }
+
+[variables.Q_DESK]
+bits = 1
+clause = "7.5.1.102.2"
+special = { 0 = "desks closed", 1 = "desk open" }
+
+[variables.Q_DIFF]
+bits = 2
+clause = "7.5.1.102.1"
+max = 2
+special = { 0 = "cant deficiency", 1 = "other, replaces", 2 = "other, does not replace" }
+
+[variables.Q_DIR]
+bits = 2
+clause = "7.5.1.103"
+max = 2
+special = { 0 = "reverse", 1 = "nominal", 2 = "both directions" }
+
+[variables.Q_DIRLRBG]
+bits = 2
+clause = "7.5.1.104"
+max = 2
+special = { 0 = "reverse", 1 = "nominal", 2 = "unknown" }
+
+[variables.Q_DIRTRAIN]
+bits = 2
+clause = "7.5.1.105"
+max = 2
+special = { 0 = "reverse", 1 = "nominal", 2 = "unknown" }
+
+[variables.Q_DLRBG]
+bits = 2
+clause = "7.5.1.106"
+max = 2
+special = { 0 = "reverse", 1 = "nominal", 2 = "unknown" }
+
+[variables.Q_EMERGENCYSTOP]
+bits = 2
+clause = "7.5.1.107"
+
+[variables.Q_ENDTIMER]
+bits = 1
+clause = "7.5.1.108"
+special = { 0 = "no end timer", 1 = "end timer follows" }
+
+[variables.Q_FRONT]
+bits = 1
+clause = "7.5.1.109"
+special = { 0 = "train length delay", 1 = "no train length delay" }
+
+[variables.Q_GDIR]
+bits = 1
+clause = "7.5.1.110"
+special = { 0 = "downhill", 1 = "uphill" }
+
+[variables.Q_INFILL]
+bits = 1
+clause = "7.5.1.111"
+special = { 0 = "enter", 1 = "exit" }
+
+[variables.Q_INTEGRITY]
+bits = 2
+clause = "7.5.1.112"
+special = { 0 = "no information", 1 = "confirmed by external source", 2 = "confirmed by driver", 3 = "lost" }
+
+[variables.Q_LINK]
+bits = 1
+clause = "7.5.1.114"
+special = { 0 = "unlinked", 1 = "linked" }
+
+[variables.Q_LINKORIENTATION]
+bits = 1
+clause = "7.5.1.116"
+special = { 0 = "reverse", 1 = "nominal" }
+
+[variables.Q_LINKREACTION]
+bits = 2
+clause = "7.5.1.117"
+max = 2
+special = { 0 = "train trip", 1 = "service brake", 2 = "no reaction" }
+
+[variables.Q_LOCACC]
+bits = 6
+clause = "7.5.1.115"
+resolution = "1 m"
+
+[variables.Q_MARQSTREASON]
+bits = 5
+clause = "7.5.1.118.3"
+resolution = "bit set"
+
+[variables.Q_MEDIA]
+bits = 1
+clause = "7.5.1.119"
+special = { 0 = "balise", 1 = "loop" }
+
+[variables.Q_NEWCOUNTRY]
+bits = 1
+clause = "7.5.1.121"
+special = { 0 = "same country", 1 = "NID_C follows" }
+
+[variables.Q_NVDRIVER_ADHES]
+bits = 1
+clause = "7.5.1.122"
+special = { 0 = "not allowed", 1 = "allowed" }
+
+[variables.Q_NVEMRRLS]
+bits = 1
+clause = "7.5.1.123"
+special = { 0 = "at standstill", 1 = "when not exceeded" }
+
+[variables.Q_NVGUIPERM]
+bits = 1
+clause = "7.5.1.123.1"
+special = { 0 = "no", 1 = "yes" }
+
+[variables.Q_NVINHSMICPERM]
+bits = 1
+clause = "7.5.1.123.2"
+special = { 0 = "no", 1 = "yes" }
+
+[variables.Q_NVKINT]
+bits = 1
+clause = "7.5.1.123.3"
+special = { 0 = "no correction factors", 1 = "correction factors follow" }
+
+[variables.Q_NVKVINTSET]
+bits = 2
+clause = "7.5.1.123.4"
+max = 1
+special = { 0 = "freight trains", 1 = "conventional passenger trains" }
+
+[variables.Q_NVLOCACC]
+bits = 6
+clause = "7.5.1.123.5"
+resolution = "1 m"
+
+[variables.Q_NVSBFBPERM]
+bits = 1
+clause = "7.5.1.123.6"
+special = { 0 = "no", 1 = "yes" }
+
+[variables.Q_NVSBTSMPERM]
+bits = 1
+clause = "7.5.1.124"
+special = { 0 = "no", 1 = "yes" }
+
+[variables.Q_ORIENTATION]
+bits = 1
+clause = "7.5.1.125"
+special = { 0 = "reverse", 1 = "nominal" }
+
+[variables.Q_OVERLAP]
+bits = 1
+clause = "7.5.1.126"
+special = { 0 = "no overlap", 1 = "overlap follows" }
+
+[variables.Q_SCALE]
+bits = 2
+clause = "7.5.1.129"
+max = 2
+special = { 0 = "10 cm", 1 = "1 m", 2 = "10 m" }
+
+[variables.Q_SECTIONTIMER]
+bits = 1
+clause = "7.5.1.130"
+special = { 0 = "no section timer", 1 = "section timer follows" }
+
+[variables.Q_STATUSLRBG]
+bits = 2
+clause = "7.5.1.134"
+max = 2
+special = { 0 = "invalid", 1 = "valid", 2 = "unknown" }
+
+[variables.Q_TEXTCLASS]
+bits = 2
+clause = "7.5.1.137"
+max = 1
+special = { 0 = "auxiliary", 1 = "important" }
+
+[variables.Q_TEXTCONFIRM]
+bits = 2
+clause = "7.5.1.138"
+special = { 0 = "no confirmation", 1 = "confirmation", 2 = "confirmation, service brake", 3 = "confirmation, emergency brake" }
+
+[variables.Q_TEXTDISPLAY]
+bits = 1
+clause = "7.5.1.139"
+special = { 0 = "one sub-condition", 1 = "all sub-conditions" }
+
+[variables.Q_TEXTREPORT]
+bits = 1
+clause = "7.5.1.140"
+special = { 0 = "no report", 1 = "report required" }
+
+[variables.Q_UPDOWN]
+bits = 1
+clause = "7.5.1.142"
+special = { 0 = "down link", 1 = "up link" }
+
+[variables.T_EMA]
+bits = 10
+clause = "7.5.1.146"
+max = 1022
+special = { 1023 = "no time-out" }
+resolution = "1 s"
+
+[variables.T_ENDTIMER]
+bits = 10
+clause = "7.5.1.145"
+max = 1022
+special = { 1023 = "infinite" }
+resolution = "1 s"
+
+[variables.T_NVCONTACT]
+bits = 8
+clause = "7.5.1.148"
+max = 254
+special = { 255 = "infinite" }
+resolution = "1 s"
+
+[variables.T_NVOVTRP]
+bits = 8
+clause = "7.5.1.149"
+resolution = "1 s"
+
+[variables.T_OL]
+bits = 10
+clause = "7.5.1.150"
+max = 1022
+special = { 1023 = "infinite" }
+resolution = "1 s"
+
+[variables.T_SECTIONTIMER]
+bits = 10
+clause = "7.5.1.151"
+max = 1022
+special = { 1023 = "infinite" }
+resolution = "1 s"
+
+[variables.T_TEXTDISPLAY]
+bits = 10
+clause = "7.5.1.152"
+max = 1022
+special = { 1023 = "no time" }
+resolution = "1 s"
+
+[variables.T_TRAIN]
+bits = 32
+clause = "7.5.1.154"
+max = 4294967294
+special = { 4294967295 = "unknown" }
+resolution = "10 ms"
+
+[variables.V_DIFF]
+bits = 7
+clause = "7.5.1.156"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_EMA]
+bits = 7
+clause = "7.5.1.157"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_MAIN]
+bits = 7
+clause = "7.5.1.158"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVALLOWOVTRP]
+bits = 7
+clause = "7.5.1.161"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVKVINT]
+bits = 7
+clause = "7.5.1.161.1"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVLIMSUPERV]
+bits = 7
+clause = "7.5.1.161.2"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVONSIGHT]
+bits = 7
+clause = "7.5.1.162"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVREL]
+bits = 7
+clause = "7.5.1.164"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVSHUNT]
+bits = 7
+clause = "7.5.1.165"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVSTFF]
+bits = 7
+clause = "7.5.1.166"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVSUPOVTRP]
+bits = 7
+clause = "7.5.1.163"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVUNFIT]
+bits = 7
+clause = "7.5.1.167"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_RELEASEDP]
+bits = 7
+clause = "7.5.1.168"
+max = 120
+special = { 126 = "on-board calculated", 127 = "national value" }
+resolution = "5 km/h"
+
+[variables.V_RELEASEOL]
+bits = 7
+clause = "7.5.1.169"
+max = 120
+special = { 126 = "on-board calculated", 127 = "national value" }
+resolution = "5 km/h"
+
+[variables.V_SM]
+bits = 7
+clause = "7.5.1.170.1"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_STATIC]
+bits = 7
+clause = "7.5.1.171"
+max = 120
+special = { 127 = "end of description" }
+resolution = "5 km/h"
+
+[variables.V_TRAIN]
+bits = 7
+clause = "7.5.1.172"
+max = 120
+special = { 127 = "standstill" }
+resolution = "5 km/h"
+
+[variables.V_TSR]
+bits = 7
+clause = "7.5.1.173"
+max = 120
+resolution = "5 km/h"
+
+[variables.X_TEXT]
+bits = 8
+clause = "7.5.1.174"
+resolution = "ISO 8859-1 character"
+
+# ---------------------------------------------------------------------
+# Packets, track to train (7.4.2)
+# ---------------------------------------------------------------------
+
+[[packets]]
+nid = 0
+name = "Virtual Balise Cover marker"
+clause = "7.4.2.0"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "NID_VBCMK" },
+]
+
+[[packets]]
+nid = 2
+name = "System Version order"
+clause = "7.4.2.1"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "M_VERSION" },
+]
+
+[[packets]]
+nid = 3
+name = "National Values"
+clause = "7.4.2.1.1"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_VALIDNV" },
+  { var = "NID_C" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [ { var = "NID_C" } ] },
+  { var = "V_NVSHUNT" },
+  { var = "V_NVSTFF" },
+  { var = "V_NVONSIGHT" },
+  { var = "V_NVLIMSUPERV" },
+  { var = "V_NVUNFIT" },
+  { var = "V_NVREL" },
+  { var = "D_NVROLL" },
+  { var = "Q_NVSBTSMPERM" },
+  { var = "Q_NVEMRRLS" },
+  { var = "Q_NVGUIPERM" },
+  { var = "Q_NVSBFBPERM" },
+  { var = "Q_NVINHSMICPERM" },
+  { var = "V_NVALLOWOVTRP" },
+  { var = "V_NVSUPOVTRP" },
+  { var = "D_NVOVTRP" },
+  { var = "T_NVOVTRP" },
+  { var = "D_NVPOTRP" },
+  { var = "M_NVCONTACT" },
+  { var = "T_NVCONTACT" },
+  { var = "M_NVDERUN" },
+  { var = "D_NVSTFF" },
+  { var = "Q_NVDRIVER_ADHES" },
+  { var = "A_NVMAXREDADH1" },
+  { var = "A_NVMAXREDADH2" },
+  { var = "A_NVMAXREDADH3" },
+  { var = "Q_NVLOCACC" },
+  { var = "M_NVAVADH" },
+  { var = "M_NVEBCL" },
+  { var = "Q_NVKINT" },
+  { if = "Q_NVKINT == 1", fields = [
+      { var = "Q_NVKVINTSET" },
+      { if = "Q_NVKVINTSET == 1", fields = [
+          { var = "A_NVP12" },
+          { var = "A_NVP23" },
+      ] },
+      { var = "V_NVKVINT" },
+      { var = "M_NVKVINT" },
+      { if = "Q_NVKVINTSET == 1", fields = [
+          { var = "M_NVKVINT", as = "M_NVKVINT_P23" },
+      ] },
+      { var = "N_ITER", as = "N_ITER_KV" },
+      { loop = "N_ITER_KV", fields = [
+          { var = "V_NVKVINT" },
+          { var = "M_NVKVINT" },
+          { if = "Q_NVKVINTSET == 1", fields = [
+              { var = "M_NVKVINT", as = "M_NVKVINT_P23" },
+          ] },
+      ] },
+      { var = "N_ITER", as = "N_ITER_SET" },
+      { loop = "N_ITER_SET", fields = [
+          { var = "Q_NVKVINTSET" },
+          { if = "Q_NVKVINTSET == 1", fields = [
+              { var = "A_NVP12" },
+              { var = "A_NVP23" },
+          ] },
+          { var = "V_NVKVINT" },
+          { var = "M_NVKVINT" },
+          { if = "Q_NVKVINTSET == 1", fields = [
+              { var = "M_NVKVINT", as = "M_NVKVINT_P23" },
+          ] },
+          { var = "N_ITER" },
+          { loop = "N_ITER", fields = [
+              { var = "V_NVKVINT" },
+              { var = "M_NVKVINT" },
+              { if = "Q_NVKVINTSET == 1", fields = [
+                  { var = "M_NVKVINT", as = "M_NVKVINT_P23" },
+              ] },
+          ] },
+      ] },
+      { var = "L_NVKRINT" },
+      { var = "M_NVKRINT" },
+      { var = "N_ITER", as = "N_ITER_KR" },
+      { loop = "N_ITER_KR", fields = [
+          { var = "L_NVKRINT" },
+          { var = "M_NVKRINT" },
+      ] },
+      { var = "M_NVKTINT" },
+  ] },
+]
+
+[[packets]]
+nid = 5
+name = "Linking"
+clause = "7.4.2.2"
+direction = "track_to_train"
+sent_by = ["balise", "rbc", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_LINK" },
+  { var = "Q_NEWCOUNTRY" },
+  { if = "Q_NEWCOUNTRY == 1", fields = [ { var = "NID_C" } ] },
+  { var = "NID_BG" },
+  { var = "Q_LINKORIENTATION" },
+  { var = "Q_LINKREACTION" },
+  { var = "Q_LOCACC" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+      { var = "D_LINK" },
+      { var = "Q_NEWCOUNTRY" },
+      { if = "Q_NEWCOUNTRY == 1", fields = [ { var = "NID_C" } ] },
+      { var = "NID_BG" },
+      { var = "Q_LINKORIENTATION" },
+      { var = "Q_LINKREACTION" },
+      { var = "Q_LOCACC" },
+  ] },
+]
+
+[[packets]]
+nid = 12
+name = "Level 1 Movement Authority"
+clause = "7.4.2.3"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "V_MAIN" },
+  { var = "V_EMA" },
+  { var = "T_EMA" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+      { var = "L_SECTION" },
+      { var = "Q_SECTIONTIMER" },
+      { if = "Q_SECTIONTIMER == 1", fields = [
+          { var = "T_SECTIONTIMER" },
+          { var = "D_SECTIONTIMERSTOPLOC" },
+      ] },
+  ] },
+  { var = "L_ENDSECTION" },
+  { var = "Q_SECTIONTIMER" },
+  { if = "Q_SECTIONTIMER == 1", fields = [
+      { var = "T_SECTIONTIMER" },
+      { var = "D_SECTIONTIMERSTOPLOC" },
+  ] },
+  { var = "Q_ENDTIMER" },
+  { if = "Q_ENDTIMER == 1", fields = [
+      { var = "T_ENDTIMER" },
+      { var = "D_ENDTIMERSTARTLOC" },
+  ] },
+  { var = "Q_DANGERPOINT" },
+  { if = "Q_DANGERPOINT == 1", fields = [
+      { var = "D_DP" },
+      { var = "V_RELEASEDP" },
+  ] },
+  { var = "Q_OVERLAP" },
+  { if = "Q_OVERLAP == 1", fields = [
+      { var = "D_STARTOL" },
+      { var = "T_OL" },
+      { var = "D_OL" },
+      { var = "V_RELEASEOL" },
+  ] },
+]
+
+[[packets]]
+nid = 15
+name = "Level 2 Movement Authority"
+clause = "7.4.2.4"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "V_EMA" },
+  { var = "T_EMA" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+      { var = "L_SECTION" },
+      { var = "Q_SECTIONTIMER" },
+      { if = "Q_SECTIONTIMER == 1", fields = [
+          { var = "T_SECTIONTIMER" },
+          { var = "D_SECTIONTIMERSTOPLOC" },
+      ] },
+  ] },
+  { var = "L_ENDSECTION" },
+  { var = "Q_SECTIONTIMER" },
+  { if = "Q_SECTIONTIMER == 1", fields = [
+      { var = "T_SECTIONTIMER" },
+      { var = "D_SECTIONTIMERSTOPLOC" },
+  ] },
+  { var = "Q_ENDTIMER" },
+  { if = "Q_ENDTIMER == 1", fields = [
+      { var = "T_ENDTIMER" },
+      { var = "D_ENDTIMERSTARTLOC" },
+  ] },
+  { var = "Q_DANGERPOINT" },
+  { if = "Q_DANGERPOINT == 1", fields = [
+      { var = "D_DP" },
+      { var = "V_RELEASEDP" },
+  ] },
+  { var = "Q_OVERLAP" },
+  { if = "Q_OVERLAP == 1", fields = [
+      { var = "D_STARTOL" },
+      { var = "T_OL" },
+      { var = "D_OL" },
+      { var = "V_RELEASEOL" },
+  ] },
+]
+
+[[packets]]
+nid = 21
+name = "Gradient Profile"
+clause = "7.4.2.6"
+direction = "track_to_train"
+sent_by = ["balise", "rbc", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_GRADIENT" },
+  { var = "Q_GDIR" },
+  { var = "G_A" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+      { var = "D_GRADIENT" },
+      { var = "Q_GDIR" },
+      { var = "G_A" },
+  ] },
+]
+
+[[packets]]
+nid = 27
+name = "International Static Speed Profile"
+clause = "7.4.2.7"
+direction = "track_to_train"
+sent_by = ["balise", "rbc", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_STATIC" },
+  { var = "V_STATIC" },
+  { var = "Q_FRONT" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+      { var = "Q_DIFF" },
+      { if = "Q_DIFF == 0", fields = [ { var = "NC_CDDIFF" } ] },
+      { if = "Q_DIFF in [1, 2]", fields = [ { var = "NC_DIFF" } ] },
+      { var = "V_DIFF" },
+  ] },
+  { var = "N_ITER", as = "N_ITER_K" },
+  { loop = "N_ITER_K", fields = [
+      { var = "D_STATIC" },
+      { var = "V_STATIC" },
+      { var = "Q_FRONT" },
+      { var = "N_ITER" },
+      { loop = "N_ITER", fields = [
+          { var = "Q_DIFF" },
+          { if = "Q_DIFF == 0", fields = [ { var = "NC_CDDIFF" } ] },
+          { if = "Q_DIFF in [1, 2]", fields = [ { var = "NC_DIFF" } ] },
+          { var = "V_DIFF" },
+      ] },
+  ] },
+]
+
+[[packets]]
+nid = 41
+name = "Level Transition Order"
+clause = "7.4.2.9"
+direction = "track_to_train"
+sent_by = ["balise", "rbc", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_LEVELTR" },
+  { var = "M_LEVELTR" },
+  { if = "M_LEVELTR == 1", fields = [ { var = "NID_NTC" } ] },
+  { var = "L_ACKLEVELTR" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+      { var = "M_LEVELTR" },
+      { if = "M_LEVELTR == 1", fields = [ { var = "NID_NTC" } ] },
+      { var = "L_ACKLEVELTR" },
+  ] },
+]
+
+[[packets]]
+nid = 44
+name = "Data used by applications outside the ERTMS/ETCS system"
+clause = "7.4.2.11"
+direction = "track_to_train"
+sent_by = ["balise", "rbc", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "NID_XUSER" },
+  { if = "NID_XUSER == 102", fields = [ { var = "NID_NTC" } ] },
+  { raw = "L_PACKET" },
+]
+
+[[packets]]
+nid = 65
+name = "Temporary Speed Restriction"
+clause = "7.4.2.17"
+direction = "track_to_train"
+sent_by = ["balise", "rbc", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "NID_TSR" },
+  { var = "D_TSR" },
+  { var = "L_TSR" },
+  { var = "Q_FRONT" },
+  { var = "V_TSR" },
+]
+
+[[packets]]
+nid = 73
+name = "Packet for sending plain text messages"
+clause = "7.4.2.23"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_TEXTCLASS" },
+  { var = "Q_TEXTDISPLAY" },
+  { var = "D_TEXTDISPLAY" },
+  { var = "M_MODETEXTDISPLAY" },
+  { var = "M_LEVELTEXTDISPLAY" },
+  { if = "M_LEVELTEXTDISPLAY == 1", fields = [ { var = "NID_NTC" } ] },
+  { var = "L_TEXTDISPLAY" },
+  { var = "T_TEXTDISPLAY" },
+  { var = "M_MODETEXTDISPLAY", as = "M_MODETEXTDISPLAY_END" },
+  { var = "M_LEVELTEXTDISPLAY", as = "M_LEVELTEXTDISPLAY_END" },
+  { if = "M_LEVELTEXTDISPLAY_END == 1", fields = [
+      { var = "NID_NTC", as = "NID_NTC_END" },
+  ] },
+  { var = "Q_TEXTCONFIRM" },
+  { if = "Q_TEXTCONFIRM != 0", fields = [
+      { var = "Q_CONFTEXTDISPLAY" },
+      { var = "Q_TEXTREPORT" },
+      { if = "Q_TEXTREPORT == 1", fields = [
+          { var = "NID_TEXTMESSAGE" },
+          { var = "NID_C" },
+          { var = "NID_RBC" },
+      ] },
+  ] },
+  { var = "L_TEXT" },
+  { loop = "L_TEXT", fields = [ { var = "X_TEXT" } ] },
+]
+
+[[packets]]
+nid = 136
+name = "Infill location reference"
+clause = "7.4.2.32"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_NEWCOUNTRY" },
+  { if = "Q_NEWCOUNTRY == 1", fields = [ { var = "NID_C" } ] },
+  { var = "NID_BG" },
+]
+
+[[packets]]
+nid = 255
+name = "End of Information"
+clause = "7.4.2.39"
+direction = "track_to_train"
+sent_by = ["balise", "loop"]
+fields = [
+  { var = "NID_PACKET" },
+]
+
+# ---------------------------------------------------------------------
+# Packets, train to track (7.4.3)
+# ---------------------------------------------------------------------
+
+[[packets]]
+nid = 0
+name = "Position Report"
+clause = "7.4.3.1"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "NID_C" },
+  { var = "NID_BG" },
+  { var = "D_LRBG" },
+  { var = "Q_DIRLRBG" },
+  { var = "Q_DLRBG" },
+  { var = "L_DOUBTOVER" },
+  { var = "L_DOUBTUNDER" },
+  { var = "Q_INTEGRITY" },
+  { if = "Q_INTEGRITY in [1, 2]", fields = [ { var = "L_TRAININT" } ] },
+  { var = "V_TRAIN" },
+  { var = "Q_DIRTRAIN" },
+  { var = "M_MODE" },
+  { var = "M_LEVEL" },
+  { if = "M_LEVEL == 1", fields = [ { var = "NID_NTC" } ] },
+]
+
+[[packets]]
+nid = 1
+name = "Position Report based on two balise groups"
+clause = "7.4.3.2"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "NID_C" },
+  { var = "NID_BG" },
+  { var = "NID_C", as = "NID_C_PRVLRBG" },
+  { var = "NID_BG", as = "NID_BG_PRVLRBG" },
+  { var = "D_LRBG" },
+  { var = "Q_DIRLRBG" },
+  { var = "Q_DLRBG" },
+  { var = "L_DOUBTOVER" },
+  { var = "L_DOUBTUNDER" },
+  { var = "Q_INTEGRITY" },
+  { if = "Q_INTEGRITY in [1, 2]", fields = [ { var = "L_TRAININT" } ] },
+  { var = "V_TRAIN" },
+  { var = "Q_DIRTRAIN" },
+  { var = "M_MODE" },
+  { var = "M_LEVEL" },
+  { if = "M_LEVEL == 1", fields = [ { var = "NID_NTC" } ] },
+]
+
+[[packets]]
+nid = 2
+name = "Onboard supported system versions"
+clause = "7.4.3.3"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "M_VERSION" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [ { var = "M_VERSION" } ] },
+]
+
+[[packets]]
+nid = 4
+name = "Error reporting"
+clause = "7.4.3.4"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "M_ERROR" },
+]
+
+[[packets]]
+nid = 5
+name = "Train running number"
+clause = "7.4.3.4.1"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "NID_OPERATIONAL" },
+]
+
+[[packets]]
+nid = 44
+name = "Data used by applications outside the ERTMS/ETCS system"
+clause = "7.4.3.6"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "L_PACKET" },
+  { var = "NID_XUSER" },
+  { raw = "L_PACKET" },
+]
+
+# ---------------------------------------------------------------------
+# Radio messages (8.6, 8.7): those the tests use, as the complete
+# catalogue has them.
+# ---------------------------------------------------------------------
+
+[[messages]]                            # p. 20
+nid = 129
+name = "Validated Train Data"
+clause = "8.6.1"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 11 },                             # Train data
+]
+
+[[messages]]                            # p. 21
+# optional packet 9 from 8.4.4.4.4
+nid = 132
+name = "MA Request"
+clause = "8.6.3"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "Q_MARQSTREASON" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 9, optional = true },
+]
+
+[[messages]]                            # p. 21
+# optional packets from 8.4.4.4.2
+nid = 136
+name = "Train Position Report"
+clause = "8.6.4"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 4, optional = true },
+  { nid = 5, optional = true },
+  { nid = 44, optional = true, repeat = true },
+]
+
+[[messages]]                            # p. 22
+# no position report (8.4.4.7.2)
+nid = 146
+name = "Acknowledgement"
+clause = "8.6.7"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp of the message acknowledged
+]
+packets = []
+
+[[messages]]                            # p. 25
+# optional packets from 8.4.4.4.3
+nid = 157
+name = "SoM Position Report"
+clause = "8.6.15"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "Q_STATUSLRBG" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 4, optional = true },
+  { nid = 5, optional = true },
+  { nid = 10, optional = true },
+  { nid = 11, optional = true },
+  { nid = 44, optional = true, repeat = true },
+]
+
+[[messages]]                            # p. 26
+# no position report (8.4.4.7.2)
+nid = 159
+name = "Session established"
+clause = "8.6.17"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { nid = 2 },
+]
+
+[[messages]]                            # p. 27
+# optional packets from 8.4.4.4.1
+nid = 2
+name = "SR Authorisation"
+clause = "8.7.1"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "Q_SCALE" },
+  { var = "D_SR" },
+]
+packets = [
+  { nid = 63, optional = true },
+]
+
+[[messages]]                            # p. 27
+# optional packets from 8.4.4.4.1: 21, 27, 49, 80 and the common optional packets (8.4.4.4.1.1)
+nid = 3
+name = "Movement Authority"
+clause = "8.7.2"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = [
+  { nid = 15 },                             # Level 2 Movement Authority
+  { nid = 21, optional = true },
+  { nid = 27, optional = true },
+  { nid = 49, optional = true },
+  { nid = 80, optional = true },
+  { nid = 3, optional = true },
+  { nid = 5, optional = true },
+  { nid = 31, optional = true },
+  { nid = 32, optional = true },
+  { nid = 39, optional = true },
+  { nid = 40, optional = true },
+  { nid = 51, optional = true },
+  { nid = 41, optional = true },
+  { nid = 42, optional = true },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 45, optional = true },
+  { nid = 52, optional = true },
+  { nid = 57, optional = true },
+  { nid = 58, optional = true },
+  { nid = 64, optional = true },
+  { nid = 65, optional = true, repeat = true },
+  { nid = 66, optional = true, repeat = true },
+  { nid = 67, optional = true },
+  { nid = 68, optional = true },
+  { nid = 69, optional = true },
+  { nid = 70, optional = true },
+  { nid = 71, optional = true },
+  { nid = 73, optional = true },
+  { nid = 74, optional = true },
+  { nid = 79, optional = true },
+  { nid = 88, optional = true, repeat = true },
+  { nid = 131, optional = true },
+  { nid = 138, optional = true },
+  { nid = 139, optional = true },
+  { nid = 140, optional = true },
+  { nid = 180, optional = true },
+]
+
+[[messages]]                            # p. 30
+nid = 15
+name = "Conditional Emergency Stop"
+clause = "8.7.6"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "NID_EM" },
+  { var = "Q_SCALE" },
+  { var = "D_REF" },
+  { var = "Q_DIR" },
+  { var = "D_EMERGENCYSTOP" },
+]
+packets = []
+
+[[messages]]                            # p. 31
+# optional packets from 8.4.4.4.1: from RBC 21, 27 and the common optional packets, from RIU 44, 45, 143, 180, 254
+nid = 24
+name = "General message"
+clause = "8.7.9"
+direction = "track_to_train"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = [
+  { nid = 21, optional = true, from = ["rbc"] },
+  { nid = 27, optional = true, from = ["rbc"] },
+  { nid = 3, optional = true, from = ["rbc"] },
+  { nid = 5, optional = true, from = ["rbc"] },
+  { nid = 31, optional = true, from = ["rbc"] },
+  { nid = 32, optional = true, from = ["rbc"] },
+  { nid = 39, optional = true, from = ["rbc"] },
+  { nid = 40, optional = true, from = ["rbc"] },
+  { nid = 51, optional = true, from = ["rbc"] },
+  { nid = 41, optional = true, from = ["rbc"] },
+  { nid = 42, optional = true, from = ["rbc"] },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 45, optional = true },
+  { nid = 52, optional = true, from = ["rbc"] },
+  { nid = 57, optional = true, from = ["rbc"] },
+  { nid = 58, optional = true, from = ["rbc"] },
+  { nid = 64, optional = true, from = ["rbc"] },
+  { nid = 65, optional = true, repeat = true, from = ["rbc"] },
+  { nid = 66, optional = true, repeat = true, from = ["rbc"] },
+  { nid = 67, optional = true, from = ["rbc"] },
+  { nid = 68, optional = true, from = ["rbc"] },
+  { nid = 69, optional = true, from = ["rbc"] },
+  { nid = 70, optional = true, from = ["rbc"] },
+  { nid = 71, optional = true, from = ["rbc"] },
+  { nid = 73, optional = true, from = ["rbc"] },
+  { nid = 74, optional = true, from = ["rbc"] },
+  { nid = 79, optional = true, from = ["rbc"] },
+  { nid = 88, optional = true, repeat = true, from = ["rbc"] },
+  { nid = 131, optional = true, from = ["rbc"] },
+  { nid = 138, optional = true, from = ["rbc"] },
+  { nid = 139, optional = true, from = ["rbc"] },
+  { nid = 140, optional = true, from = ["rbc"] },
+  { nid = 180, optional = true },
+  { nid = 143, optional = true, from = ["riu"] },
+  { nid = 254, optional = true, from = ["riu"] },
+]
+
+[[messages]]                            # p. 34
+# optional packets from 8.4.4.4.1
+nid = 37
+name = "Infill MA"
+clause = "8.7.15"
+direction = "track_to_train"
+sent_by = ["riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = [
+  { nid = 136 },                            # Infill Location Reference
+  { nid = 12 },                             # Level 1 Movement Authority
+  { nid = 5, optional = true },
+  { nid = 21, optional = true },
+  { nid = 27, optional = true },
+  { nid = 39, optional = true },
+  { nid = 40, optional = true },
+  { nid = 41, optional = true },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 49, optional = true },
+  { nid = 51, optional = true },
+  { nid = 52, optional = true },
+  { nid = 65, optional = true, repeat = true },
+  { nid = 68, optional = true },
+  { nid = 69, optional = true },
+  { nid = 70, optional = true },
+  { nid = 71, optional = true },
+  { nid = 80, optional = true },
+  { nid = 88, optional = true, repeat = true },
+  { nid = 138, optional = true },
+  { nid = 139, optional = true },
+]
+
+[[messages]]                            # p. 34
+# the table has 4 fields: no NID_LRBG, unlike 8.4.4.6.1
+nid = 38
+name = "Acknowledgement of session establishment"
+clause = "8.7.16"
+direction = "track_to_train"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+]
+packets = []
+
+[[messages]]                            # p. 34
+# M_ACK always set to 0 (8.4.4.6.3)
+nid = 39
+name = "Acknowledgement of termination of a communication session"
+clause = "8.7.17"
+direction = "track_to_train"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = []
