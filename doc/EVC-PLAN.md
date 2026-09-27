@@ -1,7 +1,10 @@
 # ETCS on-board (EVC) — Plan
 
-> **Status (2026-09-27):** phase E0 closed (§5). Next: E1 (language) and
-> E2 (position) in parallel, then E3.
+> **Status (2026-09-27):** phase E0 closed (§5, merged to master at
+> ac07d97). E1 (language) in progress on branches `e1/codec` and
+> `e1/catalogue`: the description format is
+> [evc/language/SCHEMA.md](../evc/language/SCHEMA.md). E2 (position)
+> follows once the codec is merged, then E3.
 > The DMI is complete for its scope (PLAN.md §7 closed 2026-09-26). This
 > document plans the second product of the repository: an ETCS on-board
 > implementing SUBSET-026 v4.0.0, runnable on a microcontroller of the
