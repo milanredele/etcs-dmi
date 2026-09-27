@@ -7,3 +7,7 @@ test/wasm/obj/*
 test/wasm/*.wasm
 _site/
 .claude/worktrees/
+# Cross build for the TMS570 (ports/tms570/build.sh): objects under
+# obj/.../tms570/ (already covered by obj/*, listed for clarity)
+obj/tms570/
+obj/evc/tms570/
