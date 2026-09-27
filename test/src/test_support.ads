@@ -120,7 +120,7 @@ package Test_Support is
       Radio_Wait       : Natural := 0;   -- 0 none / 1 list / 2 registration
       Authorised       : Boolean := False); -- answer (byte 11)
 
-   -- The scenario brings its own EVC (EVC_Core) and sends MSG_ONBOARD
+   -- The scenario brings its own EVC (EVC_Mock) and sends MSG_ONBOARD
    -- itself: the wrapper stops sending its model. Reset_EVC_Model turns
    -- it off again.
    procedure External_EVC (On : Boolean := True);

@@ -193,5 +193,5 @@ that falls silent for longer than
 `General_Parameters.EVC_Link_Timeout_Ms` (1 s) as failed: the picture
 the EVC provided is discarded and mode SF is shown until the EVC talks
 again. Frame reassembly from any byte transport lives in
-[src/dmi_link.ads](src/dmi_link.ads), shared by the TCP mains, the wasm
+[common/dmi_link.ads](common/dmi_link.ads), shared by the TCP mains, the wasm
 modules and, later, the target's Ethernet driver.

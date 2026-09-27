@@ -9,7 +9,7 @@ with EVC_Track; use EVC_Track;
 with EVC_Train;
 with Interfaces; use Interfaces;
 
-package body EVC_Core is
+package body EVC_Mock is
 
    -- Supervision model (constant deceleration braking curves)
    A_Brake : constant Float := 0.8;  -- m/s^2 service braking curve
@@ -1109,4 +1109,4 @@ package body EVC_Core is
       EVC_ATO.Reset;
    end Reset;
 
-end EVC_Core;
+end EVC_Mock;

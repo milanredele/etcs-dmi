@@ -1,14 +1,18 @@
 --  ETCS DMI test simulator
---  Simplified EVC: braking curve supervision (constant deceleration),
---  CSM/TSM/RSM transitions, mode/level state machine, track condition
---  and text message generation. Emits protocol v2 messages through a
---  caller-provided sink so it runs over TCP (evc_sim) or in process
---  (regression runner).
+--  Simplified EVC mock: braking curve supervision (constant
+--  deceleration), CSM/TSM/RSM transitions, mode/level state machine,
+--  track condition and text message generation. Emits protocol v2
+--  messages through a caller-provided sink so it runs over TCP
+--  (evc_sim) or in process (regression runner).
+--
+--  This is not the ETCS on-board: that is EVC_Core under evc/. The mock
+--  stays as the reference the DMI goldens were recorded against until
+--  the on-board covers what it does (doc/EVC-PLAN.md, phase E4).
 
 with Ada.Streams; use Ada.Streams;
 with DMI_Protocol; use DMI_Protocol;
 
-package EVC_Core is
+package EVC_Mock is
 
    type Sink_T is access procedure (The_Type : Msg_Type_T;
                                     Payload  : Stream_Element_Array);
@@ -49,4 +53,4 @@ package EVC_Core is
    -- it reports one
    function Language_Code return String;
 
-end EVC_Core;
+end EVC_Mock;

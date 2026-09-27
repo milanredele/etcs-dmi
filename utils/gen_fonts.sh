@@ -1,6 +1,6 @@
 #!/bin/sh
-#  ETCS DMI -- regenerate the bitmap font packages src/font-freesans_*.ads
-#  and src/font-freesansbold_*.ads.
+#  ETCS DMI -- regenerate the bitmap font packages dmi/font-freesans_*.ads
+#  and dmi/font-freesansbold_*.ads.
 #
 #  Usage:  utils/gen_fonts.sh [path to FreeSans.ttf [path to FreeSansBold.ttf]]
 #
@@ -66,7 +66,7 @@ SET=20-7E,A0-17F
 
 for cells in 10 12 16 17 18; do
   "$work/ttf2ada" "$ttf" "$cells" "$SET" "$SOURCE" \
-    > "$root/src/font-freesans_$cells.ads"
+    > "$root/dmi/font-freesans_$cells.ads"
 done
 
 #  The bold style is asked for at one height only, 12 cells (5.1.2.2.3 h):
@@ -74,8 +74,8 @@ done
 #  keyboard (5.1.2.1.5). Same character set as the regular fonts.
 for cells in 12; do
   "$work/ttf2ada" "$bold" "$cells" "$SET" "$BOLD_SOURCE" \
-    > "$root/src/font-freesansbold_$cells.ads"
+    > "$root/dmi/font-freesansbold_$cells.ads"
 done
 
-echo "written: $root/src/font-freesans_{10,12,16,17,18}.ads"
-echo "written: $root/src/font-freesansbold_12.ads"
+echo "written: $root/dmi/font-freesans_{10,12,16,17,18}.ads"
+echo "written: $root/dmi/font-freesansbold_12.ads"

@@ -168,7 +168,7 @@ function press(x, y) {
     evc.evc_step(100);
     receive(dmi, 'dmi', transmit(evc, 'evc'));
     dmi.dmi_tick(100);
-    tsm = evc.evc_core__monitoring() === 1;
+    tsm = evc.evc_mock__monitoring() === 1;
   }
   if (tsm) console.log('pass: mission reaches TSM through the wasm EVC');
   else { failures++; console.log('FAIL: mission never reaches TSM'); }

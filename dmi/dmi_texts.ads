@@ -5,7 +5,7 @@
 --  the input fields, the echo texts, the data view items and the text
 --  messages (except the plain text messages of the trackside) are
 --  displayed in the selected language. Every such text of the DMI is one
---  Text_ID here, with one table per language; nothing under src/ draws
+--  Text_ID here, with one table per language; nothing under dmi/ draws
 --  a word of its own. What stays out: values (the train categories
 --  'PASS 1' .. of Table 41, the axle load categories, the loading
 --  gauges G1 .. GC, the radio network types, the level 'NTC' that stands

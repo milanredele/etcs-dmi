@@ -38,7 +38,7 @@ with DMI_Train_Data;
 with DMI_VBC;
 with DMI_Windows;
 with EVC_ATO;
-with EVC_Core;
+with EVC_Mock;
 with EVC_Driver;
 with EVC_Track;
 with EVC_Train;
@@ -2052,7 +2052,7 @@ procedure DMI_Test is
 
    procedure Scenario_Mission is
       use type Supplementary_Driving_Info.Level_T;
-      use type EVC_Core.Mode_T;
+      use type EVC_Mock.Mode_T;
 
       procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
                       Payload  : Ada.Streams.Stream_Element_Array) is
@@ -2087,13 +2087,13 @@ procedure DMI_Test is
                      Arg    : constant Interfaces.Unsigned_16 :=
                        Get_U16 (Buffer, Offset);
                   begin
-                     EVC_Core.Handle_Driver_Action
+                     EVC_Mock.Handle_Driver_Action
                        (Natural (Action), Natural (Arg));
                   end;
                elsif The_Type = MSG_DRIVER_DATA then
                   -- the driver's data reach the EVC, which stores them
                   -- and reports their status back (MSG_ONBOARD)
-                  EVC_Core.Handle_Driver_Data
+                  EVC_Mock.Handle_Driver_Data
                     (Buffer (Offset .. Next - 1));
                end if;
                Offset := Next;
@@ -2104,7 +2104,7 @@ procedure DMI_Test is
       procedure Sim_Step is
       begin
          EVC_Driver.Auto_Drive;
-         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
          DMI_Core.Tick (100);
       end Sim_Step;
 
@@ -2116,7 +2116,7 @@ procedure DMI_Test is
       procedure Touch (X, Y : Natural) is
       begin
          EVC_Driver.Auto_Drive;
-         EVC_Core.Step (0.05, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.05, Emit'Unrestricted_Access);
          Pointer_Down (X, Y);
          Pointer_Up (X, Y);
          DMI_Core.Tick (50);
@@ -2141,8 +2141,8 @@ procedure DMI_Test is
          Check (False, "timeout waiting for " & What);
       end Run_Until;
 
-      function In_TSM return Boolean is (EVC_Core.Monitoring = 1);
-      function In_RSM return Boolean is (EVC_Core.Monitoring = 2);
+      function In_TSM return Boolean is (EVC_Mock.Monitoring = 1);
+      function In_RSM return Boolean is (EVC_Mock.Monitoring = 2);
       function Stopped return Boolean is
         (EVC_Train.Speed_KMH = 0 and then EVC_Train.Position_M > 9_000.0);
       function Past_LX return Boolean is
@@ -2155,7 +2155,7 @@ procedure DMI_Test is
       procedure Wait_LX is new Run_Until (Past_LX);
    begin
       Reset;
-      EVC_Core.Reset;
+      EVC_Mock.Reset;
       -- this scenario has its own EVC: it sends MSG_ONBOARD itself
       External_EVC;
 
@@ -2184,12 +2184,12 @@ procedure DMI_Test is
       Touch (167, 440);                     -- entry complete? Yes
       Touch (487, 40);                      -- validation 'Yes' -> TRN
       Touch (385, 240); Touch (487, 90);   -- TRN 1, Enter -> Main window
-      Check (EVC_Core.Mode = EVC_Core.SB, "no mission start without Start");
+      Check (EVC_Mock.Mode = EVC_Mock.SB, "no mission start without Start");
       Touch (410, 90);                      -- Start -> default window
 
       -- mission start (the EVC grants FS with a full MA)
       Pump_To_EVC;
-      Check (EVC_Core.Mode = EVC_Core.FS, "Start reaches the EVC");
+      Check (EVC_Mock.Mode = EVC_Mock.FS, "Start reaches the EVC");
       Sim_Step;
       Expect_Sound (DMI_Sounds.Sinfo, "mission start text plays Sinfo");
       Drain_Sounds;
@@ -5156,7 +5156,7 @@ procedure DMI_Test is
    -- disengages itself, the driver engages again, disengages and
    -- engages once more, and the ATO holds the train at Knebworth
    procedure Scenario_ATO_Mission is
-      use type EVC_Core.Mode_T;
+      use type EVC_Mock.Mode_T;
 
       procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
                       Payload  : Ada.Streams.Stream_Element_Array) is
@@ -5190,11 +5190,11 @@ procedure DMI_Test is
                      Arg    : constant Interfaces.Unsigned_16 :=
                        Get_U16 (Buffer, Offset);
                   begin
-                     EVC_Core.Handle_Driver_Action
+                     EVC_Mock.Handle_Driver_Action
                        (Natural (Action), Natural (Arg));
                   end;
                elsif The_Type = MSG_DRIVER_DATA then
-                  EVC_Core.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+                  EVC_Mock.Handle_Driver_Data (Buffer (Offset .. Next - 1));
                end if;
                Offset := Next;
             end;
@@ -5204,7 +5204,7 @@ procedure DMI_Test is
       procedure Sim_Step is
       begin
          EVC_Driver.Auto_Drive;
-         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
          DMI_Core.Tick (100);
          Pump_To_EVC;
       end Sim_Step;
@@ -5212,7 +5212,7 @@ procedure DMI_Test is
       procedure Touch (X, Y : Natural) is
       begin
          EVC_Driver.Auto_Drive;
-         EVC_Core.Step (0.05, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.05, Emit'Unrestricted_Access);
          Pointer_Down (X, Y);
          Pointer_Up (X, Y);
          DMI_Core.Tick (50);
@@ -5240,7 +5240,7 @@ procedure DMI_Test is
         (DMI_ATO."=" (DMI_ATO.Status, DMI_ATO.Ready));
       function Beyond_3000 return Boolean is
         (EVC_Train.Position_M > 3_000.0);
-      function In_FS return Boolean is (EVC_Core.Mode = EVC_Core.FS);
+      function In_FS return Boolean is (EVC_Mock.Mode = EVC_Mock.FS);
 
       procedure Wait_Stop is new Run_Until (At_Stop);
       procedure Wait_Ready is new Run_Until (Ready);
@@ -5251,7 +5251,7 @@ procedure DMI_Test is
         (abs (EVC_Train.Position_M - Float (M)));
    begin
       Reset;
-      EVC_Core.Reset;
+      EVC_Mock.Reset;
       External_EVC;
       for I in 1 .. 5 loop
          Sim_Step;
@@ -5276,7 +5276,7 @@ procedure DMI_Test is
       Touch (487, 40);                      -- validation 'Yes' -> TRN
       Touch (385, 240); Touch (487, 90);   -- TRN 1, Enter -> Main window
       Touch (410, 90);                      -- Start -> default window
-      Check (EVC_Core.Mode = EVC_Core.FS, "the mission starts in FS");
+      Check (EVC_Mock.Mode = EVC_Mock.FS, "the mission starts in FS");
 
       -- 11.3.14: the driver sets the ATO selector to "On"
       Touch (610, 240);                     -- F5: Settings
@@ -5292,11 +5292,11 @@ procedure DMI_Test is
 
       -- 8.5.2.5: engage; SUBSET-026 [80]: AD
       Touch (G1_X, G_Y);
-      Check (EVC_Core.Mode = EVC_Core.AD, "ATO engage: the mode is AD");
+      Check (EVC_Mock.Mode = EVC_Mock.AD, "ATO engage: the mode is AD");
       Wait_Stop ("the stop at Welwyn North", 6_000);
       Check (Error_At (EVC_Track.Stopping_Points (1).At_M) <= 2.0,
              "the ATO stops within 2 m of Welwyn North");
-      Check (EVC_Core.Mode = EVC_Core.FS,
+      Check (EVC_Mock.Mode = EVC_Mock.FS,
              "4.4.16.3.2.1: the ATO disengages itself at the stop");
       for I in 1 .. 10 loop
          Sim_Step;                          -- the doors are open
@@ -5308,7 +5308,7 @@ procedure DMI_Test is
       -- after the dwell time the ATO is ready again
       Wait_Ready ("ATO02 after the dwell time", 400);
       Touch (G1_X, G_Y);
-      Check (EVC_Core.Mode = EVC_Core.AD, "engaged again");
+      Check (EVC_Mock.Mode = EVC_Mock.AD, "engaged again");
       Wait_3000 ("leaving Welwyn North", 3_000);
       Drain_Sounds;
       DMI_Core.Render;
@@ -6195,12 +6195,12 @@ procedure DMI_Test is
    end Scenario_Win_Start_Up_Radio;
 
    ---------------------------------------------------------------------
-   -- The simulator answers the radio data (sim/evc_core.adb): the list
+   -- The simulator answers the radio data (sim/evc_mock.adb): the list
    -- of GSM-R networks, the registration and a session with its RBC
    ---------------------------------------------------------------------
 
    procedure Scenario_Win_Simulator is
-      use type EVC_Core.Mode_T;
+      use type EVC_Mock.Mode_T;
 
       procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
                       Payload  : Ada.Streams.Stream_Element_Array) is
@@ -6234,11 +6234,11 @@ procedure DMI_Test is
                      Arg    : constant Interfaces.Unsigned_16 :=
                        Get_U16 (Buffer, Offset);
                   begin
-                     EVC_Core.Handle_Driver_Action
+                     EVC_Mock.Handle_Driver_Action
                        (Natural (Action), Natural (Arg));
                   end;
                elsif The_Type = MSG_DRIVER_DATA then
-                  EVC_Core.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+                  EVC_Mock.Handle_Driver_Data (Buffer (Offset .. Next - 1));
                end if;
                Offset := Next;
             end;
@@ -6247,7 +6247,7 @@ procedure DMI_Test is
 
       procedure Sim_Step is
       begin
-         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
          DMI_Core.Tick (100);
          Pump_To_EVC;
          Drain_Sounds;
@@ -6255,7 +6255,7 @@ procedure DMI_Test is
 
       procedure Touch (X, Y : Natural; Hold : Natural := 0) is
       begin
-         EVC_Core.Step (0.05, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.05, Emit'Unrestricted_Access);
          Pointer_Down (X, Y);
          for I in 1 .. Hold loop
             DMI_Core.Tick (50);
@@ -6274,7 +6274,7 @@ procedure DMI_Test is
       end Run;
    begin
       Reset;
-      EVC_Core.Reset;
+      EVC_Mock.Reset;
       External_EVC;
       Run (3);
       Touch (385, 240); Touch (487, 90);       -- Driver ID 1
@@ -6317,7 +6317,7 @@ procedure DMI_Test is
       Run (5);
       Check (DMI_Windows.Waiting_Displayed, "sim: the RBC is asked for SM");
       Run (20);
-      Check (EVC_Core.Mode = EVC_Core.SM and then not DMI_Windows.Is_Open,
+      Check (EVC_Mock.Mode = EVC_Mock.SM and then not DMI_Windows.Is_Open,
              "sim: SM authorised -> the default window");
       DMI_Core.Render;
       Check_Frame ("win_sim_sm");
@@ -6326,7 +6326,7 @@ procedure DMI_Test is
       Touch (610, 40);
       Touch (Win_Slot_X (12), Win_Slot_Y (12), Hold => 41);
       Run (3);
-      Check (EVC_Core.Mode = EVC_Core.SB and then DMI_Windows.In_Start_Up,
+      Check (EVC_Mock.Mode = EVC_Mock.SB and then DMI_Windows.In_Start_Up,
              "sim: Exit SM -> SB, Start Up engaged");
       External_EVC (False);
    end Scenario_Win_Simulator;
@@ -6706,7 +6706,7 @@ procedure DMI_Test is
    -- The simulator's on-board takes the isolation request (action 20)
    -- and reports IS; no other request leaves it (SUBSET-026 4.4.3.1.3)
    procedure Scenario_HW_Simulator_Isolation is
-      use type EVC_Core.Mode_T;
+      use type EVC_Mock.Mode_T;
       use type Supplementary_Driving_Info.Mode_T;
 
       procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
@@ -6716,24 +6716,24 @@ procedure DMI_Test is
       end Emit;
    begin
       Reset;
-      EVC_Core.Reset;
+      EVC_Mock.Reset;
       External_EVC;
-      EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+      EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
       Check (Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_SB,
              "sim: SB");
-      EVC_Core.Handle_Driver_Action (20, 0);
-      EVC_Core.Step (0.1, Emit'Unrestricted_Access);
-      Check (EVC_Core.Mode = EVC_Core.Isolation
+      EVC_Mock.Handle_Driver_Action (20, 0);
+      EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
+      Check (EVC_Mock.Mode = EVC_Mock.Isolation
              and then Supplementary_Driving_Info.Mode
                         = Supplementary_Driving_Info.M_IS,
              "sim: action 20 -> IS, reported to the DMI");
-      EVC_Core.Handle_Driver_Action (7, 0);      -- shunting
-      EVC_Core.Handle_Driver_Action (5, 0);      -- start of mission
-      EVC_Core.Step (0.1, Emit'Unrestricted_Access);
-      Check (EVC_Core.Mode = EVC_Core.Isolation,
+      EVC_Mock.Handle_Driver_Action (7, 0);      -- shunting
+      EVC_Mock.Handle_Driver_Action (5, 0);      -- start of mission
+      EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
+      Check (EVC_Mock.Mode = EVC_Mock.Isolation,
              "sim: no transition from IS");
-      EVC_Core.Reset;
-      Check (EVC_Core.Mode = EVC_Core.SB, "sim: the reset leaves IS");
+      EVC_Mock.Reset;
+      Check (EVC_Mock.Mode = EVC_Mock.SB, "sim: the reset leaves IS");
       External_EVC (False);
       Reset;
       Drain_Outbox;
@@ -7177,11 +7177,11 @@ procedure DMI_Test is
                      Arg    : constant Interfaces.Unsigned_16 :=
                        Get_U16 (Buffer, Offset);
                   begin
-                     EVC_Core.Handle_Driver_Action
+                     EVC_Mock.Handle_Driver_Action
                        (Natural (Action), Natural (Arg));
                   end;
                elsif The_Type = MSG_DRIVER_DATA then
-                  EVC_Core.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+                  EVC_Mock.Handle_Driver_Data (Buffer (Offset .. Next - 1));
                end if;
                Offset := Next;
             end;
@@ -7191,7 +7191,7 @@ procedure DMI_Test is
       procedure Run (Steps : Natural) is
       begin
          for I in 1 .. Steps loop
-            EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+            EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
             DMI_Core.Tick (100);
             Pump_To_EVC;
             Drain_Sounds;
@@ -7210,7 +7210,7 @@ procedure DMI_Test is
       Stored : Natural;
    begin
       Reset;
-      EVC_Core.Reset;
+      EVC_Mock.Reset;
       External_EVC;
       Run (3);
       Stored := DMI_VBC.Count;
@@ -7891,7 +7891,7 @@ procedure DMI_Test is
             begin
                exit when Next - 1 > Last;
                if The_Type = MSG_DRIVER_DATA then
-                  EVC_Core.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+                  EVC_Mock.Handle_Driver_Data (Buffer (Offset .. Next - 1));
                end if;
                Offset := Next;
             end;
@@ -7904,7 +7904,7 @@ procedure DMI_Test is
          Pointer_Up (X, Y);
          DMI_Core.Tick (50);
          Pump_To_EVC;
-         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
          DMI_Core.Tick (100);
          Pump_To_EVC;
          Drain_Sounds;
@@ -7912,29 +7912,29 @@ procedure DMI_Test is
    begin
       Lang_English;
       Reset;
-      EVC_Core.Reset;
+      EVC_Mock.Reset;
       External_EVC;
       for I in 1 .. 3 loop
-         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
          DMI_Core.Tick (100);
          Pump_To_EVC;
       end loop;
-      Check (EVC_Core.Language_Code = "en", "sim: English at the start");
+      Check (EVC_Mock.Language_Code = "en", "sim: English at the start");
       Touch (385, 240); Touch (487, 90);       -- Driver ID 1
       Touch (Key_X (1), Key_Y (1)); Touch (487, 90);  -- level 1
       Touch (370, 440);                        -- [Close] the Main window
       Touch (610, 240);                        -- F5: Settings
       Touch (Win_Slot_X (1), Win_Slot_Y (1));  -- Language
       Touch (Key_X (1), Key_Y (1)); Touch (487, 90);  -- Deutsch
-      Check (EVC_Core.Language_Code = "de",
+      Check (EVC_Mock.Language_Code = "de",
              "sim: the on-board stores the language the driver selected");
       -- malformed kind 10: ignored
-      EVC_Core.Handle_Driver_Data ((10, 16#45#, 16#4E#));
-      EVC_Core.Handle_Driver_Data ((10, 16#65#));
-      Check (EVC_Core.Language_Code = "de", "sim: malformed kind 10 ignored");
+      EVC_Mock.Handle_Driver_Data ((10, 16#45#, 16#4E#));
+      EVC_Mock.Handle_Driver_Data ((10, 16#65#));
+      Check (EVC_Mock.Language_Code = "de", "sim: malformed kind 10 ignored");
       Touch (Win_Slot_X (1), Win_Slot_Y (1));
       Touch (Key_X (2), Key_Y (2)); Touch (487, 90);  -- English
-      Check (EVC_Core.Language_Code = "en", "sim: English again");
+      Check (EVC_Mock.Language_Code = "en", "sim: English again");
       External_EVC (False);
       Lang_English;
       Reset;
@@ -7982,11 +7982,11 @@ procedure DMI_Test is
       Win_Close;
 
       -- the simulator stores the code as it comes
-      EVC_Core.Handle_Driver_Data ((10, Character'Pos ('h'),
+      EVC_Mock.Handle_Driver_Data ((10, Character'Pos ('h'),
                                     Character'Pos ('u')));
-      Check (EVC_Core.Language_Code = "hu",
+      Check (EVC_Mock.Language_Code = "hu",
              "hu: sim, the on-board stores 'hu'");
-      EVC_Core.Handle_Driver_Data ((10, Character'Pos ('e'),
+      EVC_Mock.Handle_Driver_Data ((10, Character'Pos ('e'),
                                     Character'Pos ('n')));
       Lang_English;
    end Scenario_Hu_Language_Window;
@@ -8196,11 +8196,11 @@ procedure DMI_Test is
                      Arg    : constant Interfaces.Unsigned_16 :=
                        Get_U16 (Buffer, Offset);
                   begin
-                     EVC_Core.Handle_Driver_Action
+                     EVC_Mock.Handle_Driver_Action
                        (Natural (Action), Natural (Arg));
                   end;
                elsif The_Type = MSG_DRIVER_DATA then
-                  EVC_Core.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+                  EVC_Mock.Handle_Driver_Data (Buffer (Offset .. Next - 1));
                end if;
                Offset := Next;
             end;
@@ -8211,7 +8211,7 @@ procedure DMI_Test is
       procedure Touch (X, Y : Natural) is
       begin
          EVC_Driver.Auto_Drive;
-         EVC_Core.Step (0.05, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.05, Emit'Unrestricted_Access);
          Pointer_Down (X, Y);
          Pointer_Up (X, Y);
          DMI_Core.Tick (50);
@@ -8221,11 +8221,11 @@ procedure DMI_Test is
    begin
       Lang_English;
       Reset;
-      EVC_Core.Reset;
+      EVC_Mock.Reset;
       External_EVC;
       for I in 1 .. 5 loop
          EVC_Driver.Auto_Drive;
-         EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+         EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
          DMI_Core.Tick (100);
       end loop;
       Touch (599, 440);                          -- Table 49 S1-1: Settings
@@ -8235,7 +8235,7 @@ procedure DMI_Test is
       Touch (370, 440);                          -- [Close]: S1
       Check (Lang_Is (TX.Hungarian)
              and then Win_Top_Is (DMI_Windows.W_Driver_ID)
-             and then EVC_Core.Language_Code = "hu",
+             and then EVC_Mock.Language_Code = "hu",
              "hu: selected from the Start Up, the EVC told 'hu'");
       DMI_Core.Render;
       Check_Frame ("hu_wasm_driver_id");
@@ -8244,7 +8244,7 @@ procedure DMI_Test is
       Touch (Key_X (2), Key_Y (2));              -- English
       Touch (487, 90);
       Touch (370, 440);
-      Check (Lang_Is (TX.English) and then EVC_Core.Language_Code = "en",
+      Check (Lang_Is (TX.English) and then EVC_Mock.Language_Code = "en",
              "hu: English again");
       External_EVC (False);
       Lang_English;

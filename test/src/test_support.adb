@@ -774,7 +774,7 @@ package body Test_Support is
    begin
       DMI_Core.Tick (50);
       --  the EVC hears the driver's actions of this cycle and answers
-      --  with its on-board state, as evc_core does. The sounds stay
+      --  with its on-board state, as EVC_Mock does. The sounds stay
       --  where they are: the scenarios check them. A scenario with its
       --  own EVC drains the outbox itself.
       if not External_EVC_Used then

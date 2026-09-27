@@ -36,12 +36,12 @@ verified re-analysis, §5 is the implementation plan, §6 the test-tool/simulato
 |---|---|---|---|
 | 1 | Missing `NAS` (No Applicable Status), "v4.0.0 Section 7 specifies transitions" | **Fabricated** | No "NAS" / "No Applicable Status" anywhere in the SRS. The five statuses are NoS, OvS, WaS, IntS, IndS (7.2.1–7.5.3). |
 | 2 | Missing `OSM` (On-Sight Monitoring), "updated LS behaviour per 7.1.1.2" | **Fabricated** | No "OSM" anywhere. Monitoring types are CSM, TSM, RSM only. 7.1.1.2 is a two-sentence pointer to Figures 11/12. The *real* change: **PIM was deleted** — section 7.3 is "Intentionally deleted", and the code still implements PIM. |
-| 3 | Speed pointer: "IndS in CSM raises Program_Error, but v4.0.0 describes specific indication transitions" | **False** | Table 8 (8.2.1.2.5) has no IndS row under CSM; IndS exists only in TSM and RSM (7.2 vs 7.4/7.5). The `raise Program_Error` in [draw_speed_pointer.adb:39](src/display-b_area-speed_dial-draw_speed_pointer.adb#L39) marks a genuinely impossible case. |
+| 3 | Speed pointer: "IndS in CSM raises Program_Error, but v4.0.0 describes specific indication transitions" | **False** | Table 8 (8.2.1.2.5) has no IndS row under CSM; IndS exists only in TSM and RSM (7.2 vs 7.4/7.5). The `raise Program_Error` in [draw_speed_pointer.adb:39](dmi/display-b_area-speed_dial-draw_speed_pointer.adb#L39) marks a genuinely impossible case. |
 | 4 | "8.2.1.4 defines Basic Speed Hook and Target Speed Hook" | **False** | 8.2.1.4 is the CSG (its Vperm "hook" is 6×20 cells, 8.2.1.4.7). Basic Speed Hook(s) are 8.2.1.5: two 10×20-cell hooks at Vperm and Vtarget (8.2.1.5.4/.5). "Target speed hook" as a named object exists only in chapter 9 (STM displays). The code already implements this correctly. |
 | 5 | "8.1.1.4 assigns B6 to Layer −2; a layer engine is required" | **Half true** | B6 *is* on Layer −2 (8.1.1.4 c, along with B3–B8). But layers (5.1.1.2) are a *border/depth drawing convention* — bordered areas nested in layer 0 form −1, bordered areas inside −1 form −2 — not a z-order/occlusion engine. The only superimposition-order clause is 8.3.2, and it applies to planning-area objects only. |
 | 6 | "Use LUTs instead of Sin/Cos for embedded targets" | Opinion, not an SRS gap | Legitimate optimisation, optional. See §5, Phase 0 notes — the real embedded-budget problem is framebuffer RAM, not trig. |
-| 7 | "v4.0.0 Section 5 updated RGB constants for GREY / MEDIUM_GREY / DARK_GREY" | **False** | Table 4 (5.2.1.3.1) lists 12 colours whose RGB values are *identical* to [general_parameters.ads](src/general_parameters.ads). The amendment record contains no colour change. No "contrast on newer LCDs" rationale exists in the document. |
-| 8 | "8.2.1.1.13 defines a non-linear 0–400 scale; current code uses simple linear mapping" | **False on both ends** | The 400 km/h dial is 8.2.1.1.11 (8.2.1.1.13 is the 180 dial). It is two *linear* segments breaking at 200 km/h / +48°, and [speed_dial.adb:40-46](src/display-b_area-speed_dial.adb#L40-L46) **already implements exactly this**. |
+| 7 | "v4.0.0 Section 5 updated RGB constants for GREY / MEDIUM_GREY / DARK_GREY" | **False** | Table 4 (5.2.1.3.1) lists 12 colours whose RGB values are *identical* to [general_parameters.ads](dmi/general_parameters.ads). The amendment record contains no colour change. No "contrast on newer LCDs" rationale exists in the document. |
+| 8 | "8.2.1.1.13 defines a non-linear 0–400 scale; current code uses simple linear mapping" | **False on both ends** | The 400 km/h dial is 8.2.1.1.11 (8.2.1.1.13 is the 180 dial). It is two *linear* segments breaking at 200 km/h / +48°, and [speed_dial.adb:40-46](dmi/display-b_area-speed_dial.adb#L40-L46) **already implements exactly this**. |
 | 9 | "Figure 11 provides a rigorous state transition graph" | **False** | Figure 11 is "Colour philosophy and supervision limits", explicitly non-normative (7.1.1.2: "only give a general overview"). Chapter 7 delegates the transition conditions to Subset-026 §3.13 (7.1.1.1). |
 | 10 | "Sound priorities in Section 14 clarified" | Misleading | Chapter 14 defines just 4 sounds. Priority/FIFO rules for acknowledgements live in 5.4.1.9; Sinfo triggers are scattered across chapters 5, 7 and 8 (see §5, Phase 2). |
 
@@ -71,7 +71,7 @@ It should not be used as a basis for work.
   border/frame/button-frame drawing, symbol blitting; near-complete *v3.4.0* symbol set
   (LE01–15, MO01–22, NA01–23, PL01–36, SE, ST01–06, TC01–37, DR, LX, LS01).
 - **Test tool**: Node WS↔TCP bridge + canvas client; one-way 16-byte state telegram with
-  CRC-16 ([dmi_protocol.ads](src/dmi_protocol.ads)), layout auto-extracted from the Ada
+  CRC-16 ([dmi_protocol.ads](common/dmi_protocol.ads)), layout auto-extracted from the Ada
   spec by [protocol.js](test/tools/protocol.js).
 
 ---
@@ -79,14 +79,14 @@ It should not be used as a basis for work.
 ## 3. Real v4.0.0 deltas to the existing code (small, do first)
 
 1. **Remove PIM** — SRS 7.3 is "Intentionally deleted". Touches
-   [speed_and_distance.ads](src/speed_and_distance.ads),
-   [speed_and_distance.adb](src/speed_and_distance.adb),
-   [draw_speed_pointer.adb](src/display-b_area-speed_dial-draw_speed_pointer.adb),
-   [speed_dial.adb](src/display-b_area-speed_dial.adb).
+   [speed_and_distance.ads](dmi/speed_and_distance.ads),
+   [speed_and_distance.adb](dmi/speed_and_distance.adb),
+   [draw_speed_pointer.adb](dmi/display-b_area-speed_dial-draw_speed_pointer.adb),
+   [speed_dial.adb](dmi/display-b_area-speed_dial.adb).
 2. **Remove Level 3** — v4.0.0 level symbols are LE01–LE12 only; there is no L3.
    Drop `L3` from `Level_T`, drop LE_13/14/15 from
-   [symbol.ads](src/symbol.ads) and the C1/C8 mappings in
-   [display-c_area.adb](src/display-c_area.adb).
+   [symbol.ads](dmi/symbol.ads) and the C1/C8 mappings in
+   [display-c_area.adb](dmi/display-c_area.adb).
 3. **Add AD and SM modes** — MO23 (Automatic Driving) and MO24 (Supervised Manoeuvre)
    in Table 60; Tables 8/9/10/11 give AD its own colour rows (white replaces
    yellow/orange) and group SM with FS/OS. Extend `Mode_T`, B7, pointer/CSG/hook logic.
@@ -94,10 +94,10 @@ It should not be used as a basis for work.
 4. **"CSM with target information"** variant of Table 8 (National Value–gated): grey
    below Vtarget / white between Vtarget and Vperm even in CSM.
 5. **Add sub-area B8** (centre (140,216), 36×36, layer −2; 6.3.1.2 g) — missing from
-   `ID_T` in [display.ads](src/display.ads). Hosts SM direction (8.2.3.10), coasting
+   `ID_T` in [display.ads](dmi/display.ads). Hosts SM direction (8.2.3.10), coasting
    advice (8.5.10), ATO info.
 6. **Release speed digital colour** — Table 11: yellow (medium grey in AD);
-   currently hard-coded MEDIUM_GREY in [speed_dial.adb:167](src/display-b_area-speed_dial.adb#L167).
+   currently hard-coded MEDIUM_GREY in [speed_dial.adb:167](dmi/display-b_area-speed_dial.adb#L167).
 7. **Graphical release speed on the CSG** per 8.2.1.6.3/.4 (outer part of the CSG,
    1-cell separator, Vperm part 3 cells) — current rendering approximates this.
 8. **Comment audit** — clause numbers in comments refer to v3.4.0; renumber against
@@ -151,7 +151,7 @@ The enabling layer everything else sits on.
    messages in both directions.
    - EVC→DMI: `SPEED_STATE` (Vcur, Vperm, Vtarget, Vsbi, Vwsl, Visl, Vrelease,
      d_target, monitoring type — stop synthesising Vwsl/Visl/Vsbi in
-     [dmi.adb:137-139](src/dmi.adb#L137-L139) and stop hard-coding TSM), `MODE_LEVEL`
+     [dmi.adb:137-139](ports/hosted/dmi.adb#L137-L139) and stop hard-coding TSM), `MODE_LEVEL`
      (mode, level, acks pending, override), `PLANNING` (gradient/PASP/order lists),
      `TRACK_COND`, `TEXT_MSG`, `ATO_STATE`, `TIME_GEO`.
    - DMI→EVC: `DRIVER_ACTION` (button id / ack id / toggle), `DATA_ENTRY_RESULT`.
@@ -256,7 +256,7 @@ transport is TCP or the in-page wire.
 **Regression testing**: a headless Node runner (no browser) executes scenario scripts
 against the compiled `dmi` binary, captures framebuffer output at named checkpoints
 (the `Dump` procedure in
-[display-frame_buffer.ads](src/display-frame_buffer.ads#L84) already exists), and
+[display-frame_buffer.ads](dmi/display-frame_buffer.ads#L84) already exists), and
 compares against golden frames plus protocol-level expectations (sound events, driver
 prompts). Run it in CI.
 

@@ -30,7 +30,7 @@ with Interfaces; use Interfaces;
 
 package body EVC_ATO is
 
-   use type EVC_Core.Mode_T;
+   use type EVC_Mock.Mode_T;
 
    A_ATO            : constant Float := 0.5;  -- m/s^2, braking curve
    Margin_MS        : constant Float := 1.5;  -- below the permitted speed
@@ -82,12 +82,12 @@ package body EVC_ATO is
       else 0.0);
 
    function In_FS_Or_AD return Boolean is
-     (EVC_Core.Mode in EVC_Core.FS | EVC_Core.AD);
+     (EVC_Mock.Mode in EVC_Mock.FS | EVC_Mock.AD);
 
    -- the speed the ATO drives at, m/s
    function Profile_MS return Float is
       Perm : constant Float :=
-        Float'Max (Float (EVC_Core.Permitted_Speed) / 3.6 - Margin_MS, 0.0);
+        Float'Max (Float (EVC_Mock.Permitted_Speed) / 3.6 - Margin_MS, 0.0);
    begin
       if not May_Depart then
          return 0.0;
@@ -110,8 +110,8 @@ package body EVC_ATO is
             On := False;
             -- SUBSET-026 4.6 [53]: the driver sets the selector to
             -- "Stand-by"
-            if EVC_Core.Mode = EVC_Core.AD then
-               EVC_Core.Mode := EVC_Core.FS;
+            if EVC_Mock.Mode = EVC_Mock.AD then
+               EVC_Mock.Mode := EVC_Mock.FS;
             end if;
             Disengaging_Left := 0.0;
             Skip_Next := False;
@@ -128,9 +128,9 @@ package body EVC_ATO is
          return 0;
       elsif Disengaging_Left > 0.0 then
          return 4;                                  -- ATO04
-      elsif EVC_Core.Mode = EVC_Core.AD then
+      elsif EVC_Mock.Mode = EVC_Mock.AD then
          return 3;                                  -- ATO03
-      elsif EVC_Core.Mode = EVC_Core.FS and then Journey_Ahead
+      elsif EVC_Mock.Mode = EVC_Mock.FS and then Journey_Ahead
         and then May_Depart and then not EVC_Train.Brake_Commanded
       then
          return 2;                                  -- ATO02
@@ -143,8 +143,8 @@ package body EVC_ATO is
    begin
       if Arg = 1 and then Status = 2 then
          -- SUBSET-026 4.6 [80]: the driver selects "ATO engage"
-         EVC_Core.Mode := EVC_Core.AD;
-      elsif Arg = 0 and then EVC_Core.Mode = EVC_Core.AD
+         EVC_Mock.Mode := EVC_Mock.AD;
+      elsif Arg = 0 and then EVC_Mock.Mode = EVC_Mock.AD
         and then Disengaging_Left = 0.0
       then
          -- [53] once the ATO has released the train
@@ -167,8 +167,8 @@ package body EVC_ATO is
    begin
       if Disengaging_Left > 0.0 then
          Disengaging_Left := Float'Max (Disengaging_Left - Dt_S, 0.0);
-         if Disengaging_Left = 0.0 and then EVC_Core.Mode = EVC_Core.AD then
-            EVC_Core.Mode := EVC_Core.FS;
+         if Disengaging_Left = 0.0 and then EVC_Mock.Mode = EVC_Mock.AD then
+            EVC_Mock.Mode := EVC_Mock.FS;
          end if;
       end if;
 
@@ -205,8 +205,8 @@ package body EVC_ATO is
             Stop_Error_M := Error;
             -- SUBSET-026 4.4.16.3.2.1: the ATO disengages itself after
             -- it has stopped the train at an operational stopping point
-            if EVC_Core.Mode = EVC_Core.AD then
-               EVC_Core.Mode := EVC_Core.FS;
+            if EVC_Mock.Mode = EVC_Mock.AD then
+               EVC_Mock.Mode := EVC_Mock.FS;
             end if;
          end if;
       end;
@@ -230,7 +230,7 @@ package body EVC_ATO is
    end Demand;
 
    function Advising return Boolean is
-     (On and then EVC_Core.Mode = EVC_Core.FS);
+     (On and then EVC_Mock.Mode = EVC_Mock.FS);
 
    -- where the train starts braking for the next stopping point, from
    -- the front; the coasting advice covers Coasting_M before it
@@ -269,7 +269,7 @@ package body EVC_ATO is
    -- MSG_ATO
    ---------------------------------------------------------------------
 
-   procedure Send (Emit : EVC_Core.Sink_T; Clock_S : Float) is
+   procedure Send (Emit : EVC_Mock.Sink_T; Clock_S : Float) is
       Shown : constant Boolean := On and then In_FS_Or_AD;
       Name_Of : constant Stop_Index_T := Target;
 
@@ -368,7 +368,7 @@ package body EVC_ATO is
       if The_Name'Length > 0 then
          declare
             V_Ref : constant Float :=
-              Float'Max (Float (EVC_Core.Permitted_Speed) / 3.6 - Margin_MS,
+              Float'Max (Float (EVC_Mock.Permitted_Speed) / 3.6 - Margin_MS,
                          8.0);
             T     : constant Natural := Natural
               (Clock_S + Float'Max (Distance_To (Name_Of), 0.0) / V_Ref

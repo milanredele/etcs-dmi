@@ -4,7 +4,7 @@
 with Ada.Streams;  use Ada.Streams;
 with DMI_Link;
 with DMI_Protocol; use DMI_Protocol;
-with EVC_Core;
+with EVC_Mock;
 with EVC_Driver;
 with EVC_Train;
 
@@ -16,7 +16,7 @@ package body EVC_Wasm is
 
    Auto : Boolean := True;
 
-   -- Sink for EVC_Core: frames accumulate until the host collects them
+   -- Sink for EVC_Mock: frames accumulate until the host collects them
    procedure Emit (The_Type : Msg_Type_T;
                    Payload  : Stream_Element_Array) is
       Needed : constant Stream_Element_Offset :=
@@ -36,7 +36,7 @@ package body EVC_Wasm is
       Offset : Stream_Element_Offset := Payload'First;
    begin
       if The_Type = MSG_DRIVER_DATA then
-         EVC_Core.Handle_Driver_Data (Payload);
+         EVC_Mock.Handle_Driver_Data (Payload);
       elsif The_Type = MSG_DRIVER_ACTION
         and then (Payload'Length = Driver_Action_Length
                   or else Payload'Length = Driver_Ack_Length)
@@ -51,7 +51,7 @@ package body EVC_Wasm is
          begin
             -- an acknowledgement always comes in the long form
             if (Action = 2) = (Payload'Length = Driver_Ack_Length) then
-               EVC_Core.Handle_Driver_Action
+               EVC_Mock.Handle_Driver_Action
                  (Natural (Action), Natural (Arg), Natural (ID));
             end if;
          end;
@@ -62,7 +62,7 @@ package body EVC_Wasm is
 
    procedure Reset is
    begin
-      EVC_Core.Reset;
+      EVC_Mock.Reset;
       Link.Reset;
       Tx_Filled := 0;
       Auto := True;
@@ -91,7 +91,7 @@ package body EVC_Wasm is
       if Auto then
          EVC_Driver.Auto_Drive;
       end if;
-      EVC_Core.Step (Float (Dt_Ms) / 1000.0, Emit'Access);
+      EVC_Mock.Step (Float (Dt_Ms) / 1000.0, Emit'Access);
    end Step;
 
    function Tx_Buffer return System.Address is (Tx'Address);

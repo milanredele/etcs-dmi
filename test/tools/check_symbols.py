@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare every bitmap in src/symbol.ads with the official bmp of the same
+"""Compare every bitmap in dmi/symbol.ads with the official bmp of the same
 name under doc/SRS/ERA_ERTMS_015560_v400/symbols (24 bit RGB). A pixel of the
 bmp is mapped to the nearest colour of General_Parameters; the official
 files carry scaling artefacts, so a few differing pixels are normal and a
@@ -52,7 +52,7 @@ def main():
     limit = float(sys.argv[1]) if len(sys.argv) > 1 else 5.0
     bmps = {key(os.path.splitext(os.path.basename(p))[0]): p
             for p in glob.glob(os.path.join(ROOT, "doc/SRS/ERA_ERTMS_015560_v400/symbols/*/*.bmp"))}
-    src = open(os.path.join(ROOT, "src/symbol.ads")).read()
+    src = open(os.path.join(ROOT, "dmi/symbol.ads")).read()
     bad = 0
     for m in re.finditer(r"^(\w+) : constant T\s*:= \(Length => \d+,\s*Width => (\d+),\s*"
                          r"Height => (\d+),\s*Bitmap => \((.*?)\)\);", src, re.S | re.M):

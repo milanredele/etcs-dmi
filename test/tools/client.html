@@ -232,7 +232,7 @@
         <span id="dmi_settings" title="MSG_SETTINGS: the luminance and the volume the driver chose in the Settings window, applied by the display and the loudspeaker">brightness – · volume –</span>
     </div>
     <script>
-      // Protocol v2 (see src/dmi_protocol.ads)
+      // Protocol v2 (see common/dmi_protocol.ads)
       const MSG_SPEED_STATE = 0x01;
       const MSG_MODE_LEVEL = 0x02;
       const MSG_STATUS = 0x07;
@@ -409,7 +409,7 @@
           }
         }
         else if (type === MSG_DRIVER_DATA) {
-          // kinds 0 .. 10, see src/dmi_protocol.ads; kind 10 is the
+          // kinds 0 .. 10, see common/dmi_protocol.ads; kind 10 is the
           // language the driver selected (ISO 639-1 code)
           if (payload[0] === 10 && payload.length === 3) {
             console.log('driver data: language', String.fromCharCode(payload[1], payload[2]));

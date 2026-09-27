@@ -1,0 +1,1 @@
+--  ETCS on-board (EVC): see doc/EVC-PLAN.md. The core lives here.

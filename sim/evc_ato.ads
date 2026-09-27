@@ -11,7 +11,7 @@
 --  body. The ATO drives the train in AD; in FS the simulator's
 --  automatic driver (EVC_Driver) follows the same advice.
 
-with EVC_Core;
+with EVC_Mock;
 
 package EVC_ATO is
 
@@ -23,9 +23,9 @@ package EVC_ATO is
    -- Arg 1 request the skip of the next stopping point, 0 revoke it
    procedure Skip_Request (Arg : Natural);
 
-   -- Called by EVC_Core.Step after the train moved: arrival, dwell,
+   -- Called by EVC_Mock.Step after the train moved: arrival, dwell,
    -- departure, the passing of stopping points, the end of a
-   -- disengagement. May change EVC_Core.Mode (AD <-> FS).
+   -- disengagement. May change EVC_Mock.Mode (AD <-> FS).
    procedure Update (Dt_S : Float);
 
    -- The traction / brake demand of the ATO (-100 .. 100): what it
@@ -41,7 +41,7 @@ package EVC_ATO is
    function Advice_Change_M return Natural;
 
    -- MSG_ATO; Clock_S is the local time of the day in seconds
-   procedure Send (Emit : EVC_Core.Sink_T; Clock_S : Float);
+   procedure Send (Emit : EVC_Mock.Sink_T; Clock_S : Float);
 
    procedure Reset;
 

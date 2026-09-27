@@ -1,7 +1,7 @@
 // ETCS DMI test hub.
 //
 // Dumb message hub between three endpoints speaking protocol v2
-// (see src/dmi_protocol.ads): every complete frame received from one
+// (see common/dmi_protocol.ads): every complete frame received from one
 // endpoint is forwarded verbatim to the other two.
 //
 //   TCP 1337 : DMI

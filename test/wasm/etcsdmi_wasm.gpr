@@ -2,15 +2,14 @@
 --  (evc.wasm) with GNAT-LLVM and the AdaWebPack wasm32 runtime; built
 --  through build.sh in the container described by the Dockerfile.
 --
---  The transport mains (dmi.adb, evc_sim.adb) and the regression tools
---  (test/src) stay native; everything else is shared with the native
---  build unchanged.
+--  The hosted mains (ports/hosted) and the regression tools (test/src)
+--  stay native; everything else is shared with the native build
+--  unchanged.
 
 project Etcsdmi_Wasm is
 
    for Target use "llvm";
-   for Source_Dirs use ("../../src", "../../sim", ".");
-   for Excluded_Source_Files use ("dmi.adb", "evc_sim.adb");
+   for Source_Dirs use ("../../common", "../../dmi", "../../sim", ".");
    for Object_Dir use "obj";
    for Exec_Dir use ".";
    for Main use ("dmi_main.adb", "evc_main.adb");

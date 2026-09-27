@@ -1,6 +1,11 @@
+--  Host build of everything: the DMI (dmi/), the ETCS on-board (evc/),
+--  what both share (common/), the environment simulator (sim/), the
+--  hosted TCP mains (ports/hosted/) and the regression tools (test/src).
+--  The on-board alone, for the cross and proof builds, is etcs_evc.gpr.
 project Etcsdmi is
 
-   for Source_Dirs use ("src", "sim", "test/src");
+   for Source_Dirs use
+     ("common", "dmi", "evc", "sim", "ports/hosted", "test/src");
    for Object_Dir use "obj";
    for Main use ("dmi.adb", "dmi_test.adb", "dmi_fuzz.adb", "evc_sim.adb");
 

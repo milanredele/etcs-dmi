@@ -4,7 +4,7 @@
 --  with the DMI. Driver desk input arrives as MSG_DESK from the browser
 --  (throttle demand and auto-drive), driver actions from the DMI.
 
-with EVC_Core;
+with EVC_Mock;
 with EVC_Driver;
 with EVC_Train;
 
@@ -55,13 +55,13 @@ procedure EVC_Sim is
                begin
                   -- an acknowledgement always comes in the long form
                   if (Action = 2) = (Payload'Length = Driver_Ack_Length) then
-                     EVC_Core.Handle_Driver_Action
+                     EVC_Mock.Handle_Driver_Action
                        (Natural (Action), Natural (Arg), Natural (ID));
                   end if;
                end;
             end if;
          when MSG_DRIVER_DATA =>
-            EVC_Core.Handle_Driver_Data (Payload);
+            EVC_Mock.Handle_Driver_Data (Payload);
          when MSG_DESK =>
             if Payload'Length = Desk_Length then
                declare
@@ -114,7 +114,7 @@ begin
          EVC_Driver.Auto_Drive;
       end if;
 
-      EVC_Core.Step (0.1, Emit'Unrestricted_Access);
+      EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
 
       Next_Step := Next_Step + Step_Interval;
       delay until Next_Step;
