@@ -2143,3 +2143,785 @@ fields = [
     ] },
   ] },
 ]
+
+[[packets]]                             # p. 24
+nid = 49
+name = "List of Balise Groups for SH Area"
+clause = "7.4.2.12"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "Q_NEWCOUNTRY" },
+    { if = "Q_NEWCOUNTRY == 1", fields = [
+      { var = "NID_C" },
+    ] },
+    { var = "NID_BG" },
+  ] },
+]
+
+[[packets]]                             # p. 24, 25
+# Q_TRACKINIT: two sibling conditions at the same indentation; the = 0
+# branch holds the rest of the packet ("D_AXLELOAD and the following
+# variables follow").
+nid = 51
+name = "Axle Load Speed Profile"
+clause = "7.4.2.13"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_TRACKINIT" },
+  { if = "Q_TRACKINIT == 1", fields = [
+    { var = "D_TRACKINIT" },
+  ] },
+  { if = "Q_TRACKINIT == 0", fields = [
+    { var = "D_AXLELOAD" },
+    { var = "L_AXLELOAD" },
+    { var = "Q_FRONT" },
+    { var = "N_ITER" },
+    { loop = "N_ITER", fields = [
+      { var = "M_AXLELOADCAT" },
+      { var = "V_AXLELOAD" },
+    ] },
+    { var = "N_ITER", as = "N_ITER_2" },
+    { loop = "N_ITER", fields = [
+      { var = "D_AXLELOAD" },
+      { var = "L_AXLELOAD" },
+      { var = "Q_FRONT" },
+      { var = "N_ITER" },
+      { loop = "N_ITER", fields = [
+        { var = "M_AXLELOADCAT" },
+        { var = "V_AXLELOAD" },
+      ] },
+    ] },
+  ] },
+]
+
+[[packets]]                             # p. 25
+# Q_TRACKINIT: the = 0 branch holds the rest of the packet ("D_PBD and
+# the following variables follow").
+nid = 52
+name = "Permitted Braking Distance Information"
+clause = "7.4.2.13.1"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_TRACKINIT" },
+  { if = "Q_TRACKINIT == 1", fields = [
+    { var = "D_TRACKINIT" },
+  ] },
+  { if = "Q_TRACKINIT == 0", fields = [
+    { var = "D_PBD" },
+    { var = "Q_GDIR" },
+    { var = "G_PBDSR" },
+    { var = "Q_PBDSR" },
+    { var = "D_PBDSR" },
+    { var = "L_PBDSR" },
+    { var = "N_ITER" },
+    { loop = "N_ITER", fields = [
+      { var = "D_PBD" },
+      { var = "Q_GDIR" },
+      { var = "G_PBDSR" },
+      { var = "Q_PBDSR" },
+      { var = "D_PBDSR" },
+      { var = "L_PBDSR" },
+    ] },
+  ] },
+]
+
+[[packets]]                             # p. 26
+nid = 57
+name = "Movement Authority Request Parameters"
+clause = "7.4.2.14"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "T_MAR" },
+  { var = "T_TIMEOUTRQST" },
+  { var = "T_CYCRQST" },
+]
+
+[[packets]]                             # p. 26
+nid = 58
+name = "Position Report Parameters"
+clause = "7.4.2.15"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "T_CYCLOC" },
+  { var = "D_CYCLOC" },
+  { var = "M_LOC" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "D_LOC" },
+    { var = "Q_LGTLOC" },
+  ] },
+]
+
+[[packets]]                             # p. 26, 27
+nid = 63
+name = "List of Balise Groups in SR Authority"
+clause = "7.4.2.16"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "Q_NEWCOUNTRY" },
+    { if = "Q_NEWCOUNTRY == 1", fields = [
+      { var = "NID_C" },
+    ] },
+    { var = "NID_BG" },
+  ] },
+]
+
+[[packets]]                             # p. 27
+nid = 64
+name = "Inhibition of revocable TSRs from balises in level 2"
+clause = "7.4.2.16.1"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+]
+
+[[packets]]                             # p. 27
+nid = 65
+name = "Temporary Speed Restriction"
+clause = "7.4.2.17"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "NID_TSR" },
+  { var = "D_TSR" },
+  { var = "L_TSR" },
+  { var = "Q_FRONT" },
+  { var = "V_TSR" },
+]
+
+[[packets]]                             # p. 27
+nid = 66
+name = "Temporary Speed Restriction Revocation"
+clause = "7.4.2.18"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "NID_TSR" },
+]
+
+[[packets]]                             # p. 27, 28
+nid = 67
+name = "Track Condition Big Metal Masses"
+clause = "7.4.2.19"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_TRACKCOND" },
+  { var = "L_TRACKCOND" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "D_TRACKCOND" },
+    { var = "L_TRACKCOND" },
+  ] },
+]
+
+[[packets]]                             # p. 28
+# Q_TRACKINIT: the = 0 branch holds the rest of the packet.
+nid = 68
+name = "Track Condition"
+clause = "7.4.2.20"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_TRACKINIT" },
+  { if = "Q_TRACKINIT == 1", fields = [
+    { var = "D_TRACKINIT" },
+  ] },
+  { if = "Q_TRACKINIT == 0", fields = [
+    { var = "D_TRACKCOND" },
+    { var = "L_TRACKCOND" },
+    { var = "M_TRACKCOND" },
+    { var = "N_ITER" },
+    { loop = "N_ITER", fields = [
+      { var = "D_TRACKCOND" },
+      { var = "L_TRACKCOND" },
+      { var = "M_TRACKCOND" },
+    ] },
+  ] },
+]
+
+[[packets]]                             # p. 28, 29
+# Q_TRACKINIT: the = 0 branch holds the rest of the packet.
+nid = 69
+name = "Track Condition Station Platforms"
+clause = "7.4.2.20.1"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_TRACKINIT" },
+  { if = "Q_TRACKINIT == 1", fields = [
+    { var = "D_TRACKINIT" },
+  ] },
+  { if = "Q_TRACKINIT == 0", fields = [
+    { var = "D_TRACKCOND" },
+    { var = "L_TRACKCOND" },
+    { var = "M_PLATFORM" },
+    { var = "Q_PLATFORM" },
+    { var = "N_ITER" },
+    { loop = "N_ITER", fields = [
+      { var = "D_TRACKCOND" },
+      { var = "L_TRACKCOND" },
+      { var = "M_PLATFORM" },
+      { var = "Q_PLATFORM" },
+    ] },
+  ] },
+]
+
+[[packets]]                             # p. 29, 30
+# Q_TRACKINIT: the = 0 branch holds the rest of the packet. Q_SUITABILITY
+# 0 loading gauge, 1 axle load, 2 traction system; NID_CTRACTION is
+# indented under M_VOLTAGE ("traction system and M_VOLTAGE != 0").
+nid = 70
+name = "Route Suitability Data"
+clause = "7.4.2.21"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_TRACKINIT" },
+  { if = "Q_TRACKINIT == 1", fields = [
+    { var = "D_TRACKINIT" },
+  ] },
+  { if = "Q_TRACKINIT == 0", fields = [
+    { var = "D_SUITABILITY" },
+    { var = "Q_SUITABILITY" },
+    { if = "Q_SUITABILITY == 0", fields = [
+      { var = "M_LINEGAUGE" },
+    ] },
+    { if = "Q_SUITABILITY == 1", fields = [
+      { var = "M_LINEAXLELOADCAT" },
+    ] },
+    { if = "Q_SUITABILITY == 2", fields = [
+      { var = "M_VOLTAGE" },
+      { if = "M_VOLTAGE != 0", fields = [
+        { var = "NID_CTRACTION" },
+      ] },
+    ] },
+    { var = "N_ITER" },
+    { loop = "N_ITER", fields = [
+      { var = "D_SUITABILITY" },
+      { var = "Q_SUITABILITY" },
+      { if = "Q_SUITABILITY == 0", fields = [
+        { var = "M_LINEGAUGE" },
+      ] },
+      { if = "Q_SUITABILITY == 1", fields = [
+        { var = "M_LINEAXLELOADCAT" },
+      ] },
+      { if = "Q_SUITABILITY == 2", fields = [
+        { var = "M_VOLTAGE" },
+        { if = "M_VOLTAGE != 0", fields = [
+          { var = "NID_CTRACTION" },
+        ] },
+      ] },
+    ] },
+  ] },
+]
+
+[[packets]]                             # p. 30
+nid = 71
+name = "Adhesion factor"
+clause = "7.4.2.22"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_ADHESION" },
+  { var = "L_ADHESION" },
+  { var = "M_ADHESION" },
+]
+
+[[packets]]                             # p. 30, 31
+# NID_TEXTMESSAGE, NID_C, NID_RBC are indented twice: under Q_TEXTREPORT
+# which is itself present only if Q_TEXTCONFIRM != 0. X_TEXT(L_TEXT)
+# repeats L_TEXT times.
+nid = 73
+name = "Packet for sending plain text messages"
+clause = "7.4.2.23"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_TEXTCLASS" },
+  { var = "Q_TEXTDISPLAY" },
+  { var = "D_TEXTDISPLAY" },
+  { var = "M_MODETEXTDISPLAY" },
+  { var = "M_LEVELTEXTDISPLAY" },
+  { if = "M_LEVELTEXTDISPLAY == 1", fields = [
+    { var = "NID_NTC" },
+  ] },
+  { var = "L_TEXTDISPLAY" },
+  { var = "T_TEXTDISPLAY" },
+  { var = "M_MODETEXTDISPLAY", as = "M_MODETEXTDISPLAY_2" },
+  { var = "M_LEVELTEXTDISPLAY", as = "M_LEVELTEXTDISPLAY_2" },
+  { if = "M_LEVELTEXTDISPLAY == 1", fields = [
+    { var = "NID_NTC", as = "NID_NTC_2" },
+  ] },
+  { var = "Q_TEXTCONFIRM" },
+  { if = "Q_TEXTCONFIRM != 0", fields = [
+    { var = "Q_CONFTEXTDISPLAY" },
+    { var = "Q_TEXTREPORT" },
+    { if = "Q_TEXTREPORT == 1", fields = [
+      { var = "NID_TEXTMESSAGE" },
+      { var = "NID_C" },
+      { var = "NID_RBC" },
+    ] },
+  ] },
+  { var = "L_TEXT" },
+  { loop = "L_TEXT", fields = [
+    { var = "X_TEXT" },
+  ] },
+]
+
+[[packets]]                             # p. 31, 32
+# NID_TEXTMESSAGE, NID_C, NID_RBC are indented twice: under Q_TEXTREPORT
+# which is itself present only if Q_TEXTCONFIRM != 0.
+nid = 74
+name = "Packet for sending fixed text messages"
+clause = "7.4.2.24"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_TEXTCLASS" },
+  { var = "Q_TEXTDISPLAY" },
+  { var = "D_TEXTDISPLAY" },
+  { var = "M_MODETEXTDISPLAY" },
+  { var = "M_LEVELTEXTDISPLAY" },
+  { if = "M_LEVELTEXTDISPLAY == 1", fields = [
+    { var = "NID_NTC" },
+  ] },
+  { var = "L_TEXTDISPLAY" },
+  { var = "T_TEXTDISPLAY" },
+  { var = "M_MODETEXTDISPLAY", as = "M_MODETEXTDISPLAY_2" },
+  { var = "M_LEVELTEXTDISPLAY", as = "M_LEVELTEXTDISPLAY_2" },
+  { if = "M_LEVELTEXTDISPLAY == 1", fields = [
+    { var = "NID_NTC", as = "NID_NTC_2" },
+  ] },
+  { var = "Q_TEXTCONFIRM" },
+  { if = "Q_TEXTCONFIRM != 0", fields = [
+    { var = "Q_CONFTEXTDISPLAY" },
+    { var = "Q_TEXTREPORT" },
+    { if = "Q_TEXTREPORT == 1", fields = [
+      { var = "NID_TEXTMESSAGE" },
+      { var = "NID_C" },
+      { var = "NID_RBC" },
+    ] },
+  ] },
+  { var = "Q_TEXT" },
+]
+
+[[packets]]                             # p. 32
+nid = 79
+name = "Geographical Position Information"
+clause = "7.4.2.25"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_NEWCOUNTRY" },
+  { if = "Q_NEWCOUNTRY == 1", fields = [
+    { var = "NID_C" },
+  ] },
+  { var = "NID_BG" },
+  { var = "D_POSOFF" },
+  { var = "Q_MPOSITION" },
+  { var = "M_POSITION" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "Q_NEWCOUNTRY" },
+    { if = "Q_NEWCOUNTRY == 1", fields = [
+      { var = "NID_C" },
+    ] },
+    { var = "NID_BG" },
+    { var = "D_POSOFF" },
+    { var = "Q_MPOSITION" },
+    { var = "M_POSITION" },
+  ] },
+]
+
+[[packets]]                             # p. 33
+nid = 80
+name = "Mode profile"
+clause = "7.4.2.26"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_MAMODE" },
+  { var = "M_MAMODE" },
+  { var = "V_MAMODE" },
+  { var = "L_MAMODE" },
+  { var = "L_ACKMAMODE" },
+  { var = "Q_MAMODE" },
+  { var = "N_ITER" },
+  { loop = "N_ITER", fields = [
+    { var = "D_MAMODE" },
+    { var = "M_MAMODE" },
+    { var = "V_MAMODE" },
+    { var = "L_MAMODE" },
+    { var = "L_ACKMAMODE" },
+    { var = "Q_MAMODE" },
+  ] },
+]
+
+[[packets]]                             # p. 33
+# V_LX and Q_STOPLX only if the LX is not protected (Q_LXSTATUS = 1);
+# L_STOPLX indented again under Q_STOPLX.
+nid = 88
+name = "Level Crossing information"
+clause = "7.4.2.26.1"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "NID_LX" },
+  { var = "D_LX" },
+  { var = "L_LX" },
+  { var = "Q_LXSTATUS" },
+  { if = "Q_LXSTATUS == 1", fields = [
+    { var = "V_LX" },
+    { var = "Q_STOPLX" },
+    { if = "Q_STOPLX == 1", fields = [
+      { var = "L_STOPLX" },
+    ] },
+  ] },
+]
+
+[[packets]]                             # p. 34
+nid = 90
+name = "Track Ahead Free up to level 2 transition location"
+clause = "7.4.2.26.2"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_NEWCOUNTRY" },
+  { if = "Q_NEWCOUNTRY == 1", fields = [
+    { var = "NID_C" },
+  ] },
+  { var = "NID_BG" },
+]
+
+[[packets]]                             # p. 34
+nid = 131
+name = "RBC transition order for RBC interfaced to GSM-R"
+clause = "7.4.2.27"
+direction = "track_to_train"
+sent_by = ["balise", "rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_RBCTR" },
+  { var = "NID_C" },
+  { var = "NID_RBC" },
+  { var = "NID_RADIO" },
+  { var = "Q_SLEEPSESSION" },
+]
+
+[[packets]]                             # p. 34
+nid = 132
+name = "Danger for Shunting information"
+clause = "7.4.2.28"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_ASPECT" },
+]
+
+[[packets]]                             # p. 35
+# First NID_C: RIU identity; second NID_C and NID_BG: the next main
+# signal balise group.
+nid = 133
+name = "Radio infill area information"
+clause = "7.4.2.29"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "Q_RIU" },
+  { var = "NID_C" },
+  { var = "NID_RIU" },
+  { var = "NID_RADIO" },
+  { var = "D_INFILL" },
+  { var = "NID_C", as = "NID_C_2" },
+  { var = "NID_BG" },
+]
+
+[[packets]]                             # p. 35
+nid = 134
+name = "EOLM Packet"
+clause = "7.4.2.30"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "NID_LOOP" },
+  { var = "D_LOOP" },
+  { var = "L_LOOP" },
+  { var = "Q_LOOPDIR" },
+  { var = "Q_SSCODE" },
+]
+
+[[packets]]                             # p. 35, 36
+nid = 135
+name = "Stop Shunting on desk opening"
+clause = "7.4.2.31"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+]
+
+[[packets]]                             # p. 36
+nid = 136
+name = "Infill location reference"
+clause = "7.4.2.32"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_NEWCOUNTRY" },
+  { if = "Q_NEWCOUNTRY == 1", fields = [
+    { var = "NID_C" },
+  ] },
+  { var = "NID_BG" },
+]
+
+[[packets]]                             # p. 36
+nid = 137
+name = "Stop if in Staff Responsible"
+clause = "7.4.2.33"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SRSTOP" },
+]
+
+[[packets]]                             # p. 36
+nid = 138
+name = "Reversing area information"
+clause = "7.4.2.34"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_STARTREVERSE" },
+  { var = "L_REVERSEAREA" },
+]
+
+[[packets]]                             # p. 37
+nid = 139
+name = "Reversing supervision information"
+clause = "7.4.2.35"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_SCALE" },
+  { var = "D_REVERSE" },
+  { var = "V_REVERSE" },
+]
+
+[[packets]]                             # p. 37
+nid = 140
+name = "Train running number from RBC"
+clause = "7.4.2.36"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "NID_OPERATIONAL" },
+]
+
+[[packets]]                             # p. 37
+nid = 141
+name = "Default Gradient for Temporary Speed Restriction"
+clause = "7.4.2.37"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_GDIR" },
+  { var = "G_TSR" },
+]
+
+[[packets]]                             # p. 37, 38
+nid = 143
+name = "Session Management with neighbouring Radio Infill Unit"
+clause = "7.4.2.37.1"
+direction = "track_to_train"
+sent_by = ["riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_RIU" },
+  { var = "NID_C" },
+  { var = "NID_RIU" },
+  { var = "NID_RADIO" },
+]
+
+[[packets]]                             # p. 38
+nid = 145
+name = "Inhibition of balise group message consistency reaction"
+clause = "7.4.2.37.2"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+]
+
+[[packets]]                             # p. 38
+nid = 180
+name = "LSSMA display toggle order"
+clause = "7.4.2.37.3"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "rbc", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+  { var = "Q_LSSMA" },
+  { if = "Q_LSSMA == 1", fields = [
+    { var = "T_LSSMA" },
+  ] },
+]
+
+[[packets]]                             # p. 38
+nid = 181
+name = "Generic LS function marker"
+clause = "7.4.2.37.4"
+direction = "track_to_train"
+sent_by = ["balise"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+]
+
+[[packets]]                             # p. 39
+nid = 254
+name = "Default balise, loop or RIU information"
+clause = "7.4.2.38"
+direction = "track_to_train"
+sent_by = ["balise", "loop", "riu"]
+fields = [
+  { var = "NID_PACKET" },
+  { var = "Q_DIR" },
+  { var = "L_PACKET" },
+]
+
+[[packets]]                             # p. 39
+nid = 255
+name = "End of Information"
+clause = "7.4.2.39"
+direction = "track_to_train"
+sent_by = ["balise", "loop"]
+fields = [
+  { var = "NID_PACKET" },
+]
