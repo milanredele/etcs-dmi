@@ -127,13 +127,23 @@ Symbols are also embedded as source code. Note: the official bmp files attached 
 
 ### Testing
 
-Four programs are built (`alr build`):
+Seven programs are built (`alr build`):
 - `obj/dmi` — the DMI itself
 - `obj/evc_sim` — an EVC/track/train simulator that drives the DMI
   through a complete mission (braking curves, monitoring transitions,
   level transition, track conditions, TAF, stop at the EOA)
+- `obj/evc_onboard` — the ETCS on-board of [evc/](evc/) on the same hub
+  port as the simulator (phase E0: powers up into Stand By)
 - `obj/dmi_test` — the headless golden-frame regression runner
 - `obj/dmi_fuzz` — the robustness fuzzer
+- `obj/evc_test`, `obj/evc_fuzz` — the same two for the on-board
+  (goldens under [test/golden/evc](test/golden/evc))
+
+The on-board is also built alone by `etcs_evc.gpr`: `evc/prove.sh` runs
+gnatprove on it (every unit is SPARK, no check may stay unproved) and
+`ports/tms570/build.sh` cross-compiles it for the TI Hercules
+TMS570LC43x with the toolchain that `ports/tms570/setup-toolchain.sh`
+installs.
 
 **Browser test bench** (everything in one page, no hub, no sockets):
 the DMI and the EVC simulator are compiled to WebAssembly and run as

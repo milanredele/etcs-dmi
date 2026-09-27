@@ -59,14 +59,15 @@ ETCS on-board (EVC). The on-board is being built in phases, see
 - Framebuffer interaction should only happen through `Display.Frame_Buffer`.
 
 ### 3. Workflow and Building
-- **Build**: Use `alr build` to compile the project (Alire package manager). Alternatively, `gprbuild -P etcsdmi.gpr` can be used.
+- **Build**: Use `alr build` to compile the project (Alire package manager). Alternatively, `gprbuild -P etcsdmi.gpr` can be used. The on-board alone: `gprbuild -P etcs_evc.gpr`; for the TMS570, `ports/tms570/build.sh` (toolchain via `ports/tms570/setup-toolchain.sh`).
+- **Proof**: `evc/prove.sh` (gnatprove on `etcs_evc.gpr`) must report no unproved check. Every unit under `evc/` is `SPARK_Mode => On`; a unit that cannot be SPARK says why in its header.
 - **Robustness**: `obj/dmi_fuzz` and `obj/evc_fuzz` must report `raised: 0`. Code under `dmi/`, `evc/` and `common/` must never raise on any message, input, touch or tick: validate and ignore, clamp, or draw nothing.
 - **Regression**: `obj/dmi_test` and `obj/evc_test` must stay at zero failures; `UPDATE=1` re-records goldens only after an intended change, and a changed golden is looked at before it is re-recorded.
 - **Visual Testing** (browser bench): `test/wasm/build.sh`, then serve the repository over HTTP and open `test/wasm/`; `node test/wasm/smoke.js` verifies the wasm build.
 - **Visual Testing** (TCP setup):
     1. Start the hub: `node test/tools/server.js`
     2. Open `test/tools/client.html` in a browser.
-    3. Run the compiled `dmi` and `evc_sim` binaries.
+    3. Run the compiled `dmi` and `evc_sim` binaries (or `evc_onboard`, the real on-board, in place of the simulator).
 
 ### 4. Safety Considerations
 - This project implements a safety-critical interface. When suggesting logic, prioritize clarity, predictability, and conformance to ETCS specifications over "clever" solutions.

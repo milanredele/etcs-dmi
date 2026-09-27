@@ -1,6 +1,7 @@
 # ETCS on-board (EVC) — Plan
 
-> **Status (2026-09-27):** phase E0 in progress on branch `e0/foundation`.
+> **Status (2026-09-27):** phase E0 closed (§5). Next: E1 (language) and
+> E2 (position) in parallel, then E3.
 > The DMI is complete for its scope (PLAN.md §7 closed 2026-09-26). This
 > document plans the second product of the repository: an ETCS on-board
 > implementing SUBSET-026 v4.0.0, runnable on a microcontroller of the
@@ -145,6 +146,95 @@ A phase is closed when every clause it lists is `done`, `n/a` or `deferred`
 with a reason, and `evc_test`, `evc_fuzz`, `dmi_test`, `dmi_fuzz`,
 gnatprove and the wasm smoke check are green.
 
-## 5. E0 — Foundation: outcome
+## 5. E0 — Foundation: outcome (2026-09-27)
 
-Filled in when E0 closes.
+Four parallel branches on top of the repository split, merged into
+`e0/foundation`.
+
+**Core** (`evc/`, 1.25 kloc, six units, all `SPARK_Mode => On`, none
+`Off`): `EVC_Core`, `EVC_Modes`, `EVC_Ports`, `EVC_DMI_Port`,
+`EVC_Outbox`, `EVC_Bytes`. `common/` is not used by the on-board: it
+frames the DMI protocol itself, byte by byte, and `evc_test` checks its
+constants against `common/dmi_protocol.ads`. Behaviour: power-up in NP,
+NP → SB (4.6.2 condition [4]), isolation by the driver from any mode
+(condition [1], driver action 20, absorbing per 4.4.3.1.3), every cycle
+MSG_MODE_LEVEL and MSG_ONBOARD on the DMI port, a JRU record per mode
+change, national values at the A.3.2 defaults. The whole 4.6.2 table is
+data in `EVC_Modes.Transitions` with priorities; it was checked against
+the transition list rebuilt from the PDF page (159 transitions, no
+difference). Inputs are latched and read at the start of the next Tick;
+BTM and RTM inputs are checked for shape only (E1 decodes them); the
+odometer and TIU shapes are provisional until E2 and E4.
+
+**Proof**: `evc/prove.sh`, gnatprove 15.1.0 (Alire, installed outside
+the repository), `--mode=all --level=2`: 289 checks, 0 unproved, 0
+justified (129 run-time checks, 54 functional contracts, 12 assertions,
+35 termination, 59 flow). Proven properties include: Tick never leaves
+NP, a mode changes only along a 4.6.2 transition, IS is absorbing, from
+NP the next mode is IS when isolation was requested and SB otherwise,
+Handle_Input never changes the mode, Take_Outputs stays in its buffer
+and outputs nothing once failed.
+
+**Tests**: `evc_test` 132 checks, six goldens under `test/golden/evc/`;
+`evc_fuzz` 10^6 steps, 0 raised, 0 contract violations. End to end: the
+on-board's DMI output fed into `DMI_Core` draws the same start-up frame
+as `EVC_Mock`, pixel for pixel, except area E1: the mock reported its
+radio as connected from the start (ST03), the on-board has no session in
+SB and shows nothing. `dmi_test` 2156 and `dmi_fuzz` unchanged; the wasm
+bench builds and its smoke check is identical (evc/ is not in the wasm
+build yet).
+
+**Hosted main**: `ports/hosted/evc.adb`, built as `obj/evc_onboard`
+(`obj/evc` is the object directory of `etcs_evc.gpr`), takes the hub
+port of `evc_sim`.
+
+**Cross build** (`ports/tms570/`): `gnat_arm_elf` 16.1.0 from Alire
+(`alr get`, under `~/.local/share/etcs-dmi`, alr's defaults untouched)
+with the shipped `light-tms570lc` runtime (Cortex-R5F, `-mbig-endian
+-mbe32`, VFPv3-D16 hard float). Two fixes were needed and are made by
+`setup-toolchain.sh`: the shipped light runtime has no `Ada.Streams`
+(copied from the `embedded-tms570lc` runtime and rebuilt; `common/`
+needs it, `evc/` does not), and the FSF toolchain has no big-endian
+libgcc (built from the GCC 16.1 sources, about four minutes). `build.sh`
+compiles `etcs_evc.gpr` for the target: 12.9 kB code, 2.2 kB data for
+the E0 skeleton. Findings for later: `Stream_Element_Offset` is 64-bit
+and drags in `__aeabi_ldivmod`, so kernel index arithmetic stays in
+32-bit types; there is no exception propagation on the board, a failed
+check halts it, which is why the proof is not optional.
+
+**Coverage matrix**: 2398 on-board clauses (§4), all `todo` except the
+156 of E7 (`deferred`) and the two general rules of chapter 1 (`n/a`).
+Per phase: E1 380, E2 184, E3 426, E4 766, E5 219, E6 265, E7 156.
+
+**Specifications imported** under `doc/SRS/`, all as PDF plus markdown
+with an index, by the general `doc/SRS/tools/import_subset.py`: see
+[doc/SRS/README.md](SRS/README.md). SUBSET-034 (TIU signals), 041
+(performance values) and 130 (ATO packets) carry tables of what the ports
+take from them. SUBSET-125 is at 1.1.0 on the ERA page. In 125 and 130
+the clause numbers are images in the PDF and were read back with OCR,
+checked by sequence and outline.
+
+**SUBSET-076 for validation** (not committed, 2.2 GB of zips): part 5-2
+is 613 test case PDFs per SRS feature and system version envelope (SV21,
+SV22, SV30); part 6-3 is 3191 test sequences, each a PDF with the step
+table (distance, level and mode before and after, event, interface),
+every balise telegram and RBC message variable by variable, every DMI
+event, an SVG of the speed profile, and for 772 of them the ERA braking
+curve workbook. There is no machine-readable format: the telegram and
+message tables can be parsed from the PDF text, the expected reactions
+are sentences to translate into bench checks. Plan for E3: a converter
+from a 6-3 sequence PDF to an `evc_test` scenario, starting with the
+stimuli.
+
+**Open points carried forward**
+- E1: the codec generator; BTM/RTM payload shapes become the decoded
+  telegram and message.
+- E2/E4: the odometer and TIU port shapes (SUBSET-041, SUBSET-034) replace
+  the provisional ones; the desk is taken as open until the cab signals
+  are used.
+- E8 list from the cross build: startup with ECC initialisation and
+  self-tests (MINITGCR/MSINENA, STC, PBIST, flash ECC), own flash linker
+  script with measured stacks, RTI tick, ESM handling, DWD watchdog, the
+  DMI link over EMAC or SCI, flashing via XDS110.
+- The 2.7 GB GCC build tree under `~/.local/share/etcs-dmi/build` can be
+  deleted after the setup.
