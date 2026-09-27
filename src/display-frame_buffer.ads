@@ -14,10 +14,11 @@
 --  You should have received a copy of the GNU General Public License
 --  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-with Ada.Streams.Stream_IO;
 with Font;
 with Symbol;
 
+--  Per-area drawing adapter over the shared Display.Screen buffer.
+--  Coordinates are relative to the area's top left corner.
 generic Area_ID : in Main_ID_T;
 package Display.Frame_Buffer is
 
@@ -63,8 +64,19 @@ package Display.Frame_Buffer is
                           The_String : Wide_String; 
                           The_Size   : Font.Size_T;
                           The_Color  : General_Parameters.Color;
-                          The_Alignment : Text_Alignment := Left);
+                          The_Alignment : Text_Alignment := Left;
+                          Bold       : Boolean := False);
    
+   -- Left aligned and clipped: no cell outside The_Clip (relative to the
+   -- area, like the pen position) is drawn
+   procedure Draw_String_Clipped (Pen_X : Area_Width_T;
+                                  Pen_Y : Area_Height_T;
+                                  The_String : Wide_String;
+                                  The_Size   : Font.Size_T;
+                                  The_Color  : General_Parameters.Color;
+                                  The_Clip   : Area_T;
+                                  Bold       : Boolean := False);
+
    procedure Draw_Symbol (The_Symbol   : Symbol.T;
                           The_Position : Position_T);
    
@@ -80,15 +92,5 @@ package Display.Frame_Buffer is
    procedure Draw_Button_Frame (The_Area : Area_T);
      
    procedure Draw_Input_Field_Frame (The_Area : Area_T);
-   
-   procedure Dump (File_Name : String);
-   
-   procedure Write_Buffer (Stream : not null access Ada.Streams.Root_Stream_Type'Class);
-   
-   procedure Write (Output_Stream : Ada.Streams.Stream_IO.Stream_Access);
-
-private
-   type Buffer_T is array (Natural range 0 .. Area.Width * Area.Height - 1) of General_Parameters.Color;
-   Buffer : Buffer_T;
 
 end Display.Frame_Buffer;

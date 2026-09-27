@@ -1,0 +1,1412 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>ETCS DMI test bench (WebAssembly)</title>
+    <!--
+      Browser test bench: the DMI (dmi.wasm) and the EVC simulator
+      (evc.wasm) run as two separate WebAssembly modules with their own
+      memories; this page is the clock, the display unit, the touch
+      screen, the driver desk and the wire between the two. The wire is
+      a configurable, slightly hostile Ethernet: latency, jitter, loss,
+      duplication, reordering and fragmentation are all adjustable.
+
+      Serve the repository over HTTP (wasm cannot be fetched from
+      file://), e.g. from the repository root:
+         python3 -m http.server 8000
+      then open http://localhost:8000/test/wasm/
+      Build the modules with test/wasm/build.sh.
+    -->
+    <style>
+      body { margin: 0; padding: 0 16px; font-family: sans-serif; background: #222; color: #ddd; font-size: 13px; }
+      h3 { margin: 4px 0; }
+      .panel { padding: 8px 0; border-bottom: 1px solid #333; }
+      .row { margin-bottom: 6px; }
+      label { margin-right: 10px; white-space: nowrap; }
+      input[type=number] { width: 5em; }
+      button { background: #444; color: #ddd; border: 1px solid #666; padding: 2px 10px; }
+      canvas { display: block; margin: 6px auto; background: #031122; }
+      #stats { font-family: monospace; }
+      /* the display unit: the frame sits on a wrapper so that the
+         canvas box, and with it the touch coordinates, stay untouched */
+      .bezel { width: fit-content; margin: 14px auto 28px; padding: 20px 20px 14px;
+               background: linear-gradient(160deg, #4a4e55, #26282c 45%, #1a1b1e);
+               border: 1px solid #63676e; border-radius: 16px;
+               box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+      .bezel canvas { margin: 0; outline: 3px solid #000; box-shadow: 0 0 0 4px #111; }
+      .bezel .plate { margin-top: 10px; text-align: center; font-size: 10px;
+                      letter-spacing: 0.3em; color: #8a8e96; }
+      .lost { color: #f66; font-weight: bold; }
+      .ok { color: #6d6; }
+      .about { max-width: 60em; padding: 12px 0 10px; border-bottom: 1px solid #333; line-height: 1.45; }
+      .about h2 { margin: 0 0 6px; font-size: 20px; }
+      .about p { margin: 0 0 8px; }
+      .about a { color: #8cf; }
+      .about summary { cursor: pointer; color: #8cf; margin-bottom: 6px; }
+      #controls summary { cursor: pointer; margin-bottom: 6px; }
+      .about ol { margin: 4px 0 8px; padding-left: 1.6em; }
+      .about li { margin-bottom: 4px; }
+      .about .note { color: #999; font-size: 12px; margin: 0; }
+      /* the keys of the DMI unit on the driver's desk (MSG_DESK_INPUT) */
+      .desk { margin-top: 10px; display: flex; gap: 10px; align-items: center;
+              justify-content: center; font-size: 12px; color: #aab; }
+      .desk button { touch-action: none; user-select: none; }
+      .desk button.held { background: #666; }
+      .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+              background: #411; margin-right: 4px; vertical-align: -1px; }
+      .lamp.on { background: #f33; box-shadow: 0 0 6px #f33; }
+    </style>
+  </head>
+  <body>
+    <header class="about">
+      <h2>ETCS DMI — the driver's display of the European Train Control System</h2>
+      <p>
+        The Driver Machine Interface (DMI) is the cab display that tells a
+        train driver how fast the train may go, where and how hard it has
+        to brake, which mode and level the on-board system is in, and what
+        lies ahead on the track. This project implements it after the
+        European Union Agency for Railways specification
+        ERA_ERTMS_015560 v4.0.0, in Ada 2012, aimed at small embedded
+        hardware: a 32-bit microcontroller around 200 MHz with 128 kB RAM
+        and 1 MB ROM, no operating system and no libraries beyond the
+        compiler's runtime. Every pixel is drawn by the Ada code into a
+        frame buffer; fonts and symbols are bitmaps compiled into the
+        program.
+      </p>
+      <p>
+        What runs below is that same Ada code compiled to WebAssembly;
+        nothing is reimplemented in JavaScript. The DMI and a simplified
+        on-board computer (EVC) with a track and train model run as two
+        separate modules that share no memory and exchange the binary
+        messages they would exchange over Ethernet on a train. This page
+        plays everything around them: the display, the touch screen, the
+        loudspeaker, the driver's desk and the cable in between, which
+        you can degrade or cut to see how the DMI copes.
+      </p>
+      <details>
+        <summary>How to try it</summary>
+        <ol>
+          <li><b>Start a mission.</b> The DMI opens with the start-up
+            dialogue: enter a driver ID, then pick <i>Level 1</i> from
+            the level keyboard and accept it on the field above it. The
+            driver ID takes letters too: its keys carry a number and
+            three or four letters, and pressing the same key again
+            within two seconds walks through them, as on a telephone
+            keypad. The two buttons in the bottom corners lead to the
+            <i>Settings</i> window and to the train running number. In
+            the <i>Main</i> window that follows press <i>Train data</i>:
+            the seven train data items need two windows, so fill the
+            train category, length, brake percentage and maximum speed,
+            press <i>&#9654;</i> for the second window (axle load
+            category, airtight, loading gauge), then <i>Train data entry
+            complete?</i> and <i>Yes</i>, confirm in the validation
+            window and enter a train running number. Type a value on
+            the keypad, or press one key of a dedicated keyboard
+            (<i>More</i> shows the next group of choices), and touch the
+            grey data field itself to accept it: the field is the enter
+            button. Touching another field selects that one instead.
+            Back in the <i>Main</i> window <i>Start</i> is now enabled:
+            press it.</li>
+          <li><b>Watch the run.</b> The EVC grants a movement authority
+            over a 10 km demo track and the automatic driver sets off:
+            speed restrictions, a neutral section, a level transition you
+            have to acknowledge on the DMI, an unprotected level
+            crossing, a tunnel, and the braking curve down to the end of
+            authority. The system status message <i>Entering FS</i>
+            stays until the train has run its own length. The strip
+            above the DMI shows where the train is.</li>
+          <li><b>Let the ATO drive.</b> Press the wrench (<i>Settings</i>),
+            then <i>ATO</i>, choose <i>On</i> and accept it on the field:
+            the ATO information appears (DMI 8.5). The yellow <i>ATO</i>
+            symbol under the planning area means the ATO is ready: touch
+            it to engage and the mode becomes Automatic Driving. The ATO
+            drives to the stopping points of the journey (Welwyn North,
+            Knebworth, Stevenage), stops, shows the stopping accuracy,
+            the dwell time or train hold and the doors, and disengages
+            itself; touch <i>ATO</i> again to go on. Touching the engaged
+            symbol disengages (with the warning sound); holding the
+            skip symbol on the right for two seconds skips the next
+            stop. With the ATO on but not engaged, the automatic driver
+            follows the ATO's advice: target speed on the dial, coasting
+            below it and the advice change in the planning area.</li>
+          <li><b>Drive yourself.</b> Untick <i>Auto drive</i> and use the
+            throttle/brake slider. Go over the permitted speed to get the
+            warning colours and sounds, further and the EVC brakes for
+            you.</li>
+          <li><b>Break the cable.</b> Add latency, jitter, loss or
+            fragmentation under <i>EVC ↔ DMI wire</i>. Tick <i>Cut the
+            link</i>: after one second of silence the DMI discards the
+            picture and shows the system failure symbol; untick and it
+            recovers. Reordering shows what the protocol does not yet
+            survive.</li>
+          <li><b>Radio, shunting and Supervised Manoeuvre.</b> Pick
+            <i>Level 2</i> in the start-up dialogue instead: the
+            <i>Radio data</i> window follows. <i>GSM-R network ID</i>
+            (hold it two seconds) makes the EVC look for networks while
+            the hour glass runs in the title, then offers three; pick one
+            and watch the registration. <i>Use short number</i> or
+            <i>Enter RBC data</i> open a session with the simulated RBC,
+            after which the <i>Main</i> window offers <i>Initiate SM</i>
+            (hold it): the RBC authorises it after two seconds and the
+            DMI shows the SM symbols; <i>Exit SM</i> leads back to the
+            start-up dialogue. <i>Radio network type</i> FRMCS+GSM-R
+            leaves the FRMCS unregistered (the demo line has no FRMCS
+            network) and puts <i>Mission with one radio system</i> on
+            offer. In level 1 <i>Shunting</i> switches to SH at once;
+            <i>Special</i> offers the BMM reaction inhibition.</li>
+          <li><b>Settings, VBCs and the data view.</b> Before
+            <i>Start</i> (standstill, mode SB) the wrench opens
+            <i>Settings</i>: <i>System version</i> shows the operated
+            system version the EVC reports (3.0). <i>Set VBC</i> takes a
+            Virtual Balise Cover code on the keypad (NID_VBCMK, NID_C and
+            the validity in 24 bits, e.g. 321456), <i>Yes</i> leads to the
+            validation window and only its <i>Yes</i> sends it to the
+            EVC, which stores it; <i>Remove VBC</i> takes the remove code
+            (NID_C first: 50078 removes 321456, 15460 removes 71951,
+            which is stored from the start). The <i>Data view</i> (default
+            window, right column) lists them on its second window with
+            the radio data. Choosing level <i>NTC</i> puts the name of
+            the simulated National System, PZB, in the level
+            symbol.</li>
+          <li><b>Language.</b> The flag in <i>Settings</i> opens the
+            <i>Language</i> window: <i>Deutsch</i> (or <i>Magyar</i>) and
+            accepting it on the input field turns every window, button,
+            key, data view item and system status message of the DMI into
+            German (or Hungarian, in the wording of the M&Aacute;V ETCS
+            operating instructions) at once, the ones already displayed
+            included (the texts the EVC sends stay as they are). The DMI
+            keeps the choice over a restart, like the brightness and the
+            volume, and tells the EVC (the console shows
+            <i>language "de"</i> or <i>"hu"</i>); <i>English</i> brings it
+            back.</li>
+          <li><b>Feed it by hand.</b> Switch the source to the manual EVC
+            panel to put any speed, target, mode or level on the
+            display. Its last rows raise any system status message of
+            chapter 15 and send the events the EVC reports (see which
+            ones end after 30 s, on a button of the <i>Main</i> window
+            or when the mode changes), and set the on-board's radio
+            data, waiting states and list of GSM-R networks, the name of
+            the National System of level NTC, the system version and
+            the VBCs stored on-board. <i>TTI s</i> puts the Time to
+            Indication in A1 (FS, CSM): below <i>TdispTTI</i> the white
+            square grows one step every tenth of TdispTTI, 1.4 s for
+            the 14 s of the ETCS; step it by 0.1 s to see the bounds of
+            DMI 8.2.2.5.3.</li>
+          <li><b>The keys under the display.</b> <i>Settings</i> is the
+            desk button for the <i>Settings</i> window (DMI 8.6.1.6): it
+            works where the wrench does, on the default window. There
+            <i>Volume</i> and <i>Brightness</i> take a level from 0 to
+            10; the display dims and the sounds get softer, never dark
+            or silent, and the DMI keeps the values when the mission is
+            reset. <i>Isolation</i> isolates the on-board (DMI 5.6.1.1):
+            hold it for two seconds and release it. The simulator enters
+            the mode IS, which has no symbol on the screen: the lamp of
+            the key shows it. Only <i>Reset mission</i> leaves IS.</li>
+        </ol>
+      </details>
+      <p class="note">
+        A personal project for learning Ada and for testing how far an
+        AI coding agent can be used in developing reliable software; not
+        certified and not for operational use. Source, specification and tests (GPL-3.0):
+        <a href="https://github.com/milanredele/etcs-dmi">github.com/milanredele/etcs-dmi</a>.
+      </p>
+    </header>
+
+    <div class="panel">
+      <h3>Test bench <span id="status">(loading modules…)</span></h3>
+      <div class="row">
+        <button id="run">Pause</button>
+        <button id="reset">Reset mission</button>
+        <label>Source:
+          <select id="source">
+            <option value="sim" selected>EVC simulator</option>
+            <option value="manual">manual EVC panel</option>
+          </select>
+        </label>
+        <label>Auto drive <input type="checkbox" id="auto_drive" checked></label>
+        <label>Throttle/Brake <input type="range" id="demand" min="-100" max="100" value="0"></label>
+        <span id="demand_value">0</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>EVC ↔ DMI wire</h3>
+      <div class="row">
+        <label title="one way delay added to every unit on the wire">Latency ms <input type="number" id="latency" value="0" min="0" max="5000"></label>
+        <label title="random extra delay, uniformly 0..jitter">Jitter ms <input type="number" id="jitter" value="0" min="0" max="5000"></label>
+        <label title="probability that a frame is lost entirely">Loss % <input type="number" id="loss" value="0" min="0" max="100"></label>
+        <label title="probability that a frame is delivered twice">Duplicate % <input type="number" id="dup" value="0" min="0" max="100"></label>
+        <label title="probability that a unit is held back behind later ones">Reorder % <input type="number" id="reorder" value="0" min="0" max="100"></label>
+        <label title="0: whole frames travel as one unit; otherwise frames are split into units of this many bytes (fragmentation)">MTU bytes <input type="number" id="mtu" value="0" min="0" max="65536"></label>
+        <label title="drop everything: the DMI must notice the silence (EVC link supervision)"><input type="checkbox" id="cut"> Cut the link</label>
+      </div>
+      <div class="row" id="stats"></div>
+    </div>
+
+    <details class="panel" id="controls">
+      <summary><b>Manual EVC panel</b> (sent cyclically while the source is the manual panel)</summary>
+      <div class="row">
+        <label>Speed <input type="number" id="speed" value="136" min="0" max="400"></label>
+        <label>Vperm <input type="number" id="vperm" value="120" min="0" max="400"></label>
+        <label>Vtarget <input type="number" id="vtarget" value="80" min="0" max="400"></label>
+        <label>Vrelease <input type="number" id="vrelease" value="35" min="0" max="400"></label>
+        <label>Vrelease exists <input type="checkbox" id="vrelease_exists" checked></label>
+        <label>Dist <input type="number" id="dist" value="684" min="0" max="99990"></label>
+      </div>
+      <div class="row">
+        <label>Range:
+          <select id="range">
+            <option value="0">140</option>
+            <option value="1" selected>180</option>
+            <option value="2">250</option>
+            <option value="3">400</option>
+          </select>
+        </label>
+        <label>Mode:
+          <select id="mode">
+            <option value="0">NP</option><option value="1">SB</option>
+            <option value="2" selected>FS</option><option value="3">AD</option>
+            <option value="4">SM</option><option value="5">LS</option>
+            <option value="6">OS</option><option value="7">SR</option>
+            <option value="8">SH</option><option value="9">UN</option>
+            <option value="10">RV</option><option value="11">TR</option>
+            <option value="12">SN</option><option value="13">PT</option>
+            <option value="14">NL</option><option value="15">SF</option>
+            <option value="16">SL</option><option value="17">IS</option>
+          </select>
+        </label>
+        <label>Monitoring:
+          <select id="monitoring">
+            <option value="0">CSM</option>
+            <option value="1" selected>TSM</option>
+            <option value="2">RSM</option>
+          </select>
+        </label>
+        <label>CSM target info <input type="checkbox" id="csm_ti"></label>
+        <label>Status:
+          <select id="status">
+            <option value="-1" selected>auto (from the speeds)</option>
+            <option value="0">NoS</option><option value="1">IndS</option>
+            <option value="2">OvS</option><option value="3">WaS</option>
+            <option value="4">IntS</option>
+          </select>
+        </label>
+        <label>Brake commanded <input type="checkbox" id="brake"></label>
+        <label>MRDT: <input type="number" id="mrdt" min="0" max="255" value="1"></label>
+      </div>
+      <div class="row">
+        <label>Level:
+          <select id="level">
+            <option value="0">Unknown</option><option value="1">Invalid</option>
+            <option value="2">L0</option><option value="3">NTC</option>
+            <option value="4" selected>L1</option><option value="5">L2</option>
+          </select>
+        </label>
+        <label>Mode ack:
+          <select id="mode_ack">
+            <option value="255" selected>none</option>
+            <option value="5">LS</option><option value="6">OS</option>
+            <option value="7">SR</option><option value="8">SH</option>
+            <option value="9">UN</option><option value="10">RV</option>
+            <option value="11">TR</option><option value="12">SN</option>
+          </select>
+        </label>
+        <label>Level ann:
+          <select id="level_ann">
+            <option value="255" selected>none</option>
+            <option value="2">L0</option><option value="3">NTC</option>
+            <option value="4">L1</option><option value="5">L2</option>
+          </select>
+        </label>
+        <label>ann ack <input type="checkbox" id="level_ann_ack"></label>
+        <label>Override <input type="checkbox" id="override"></label>
+        <label>TAF <input type="checkbox" id="taf"></label>
+        <label>LSSMA <input type="number" id="lssma" value="120" min="0" max="400"></label>
+        <label>LSSMA valid <input type="checkbox" id="lssma_valid" checked></label>
+      </div>
+      <div class="row" title="MSG_MODE_LEVEL name (8.2.3.2.9), MSG_SYSTEM_VERSION and MSG_VBC_LIST (dmi_protocol.ads)">
+        <label>NTC name <input type="text" id="ntc_name" value="PZB" maxlength="10" size="10"
+          title="the National System's abbreviation shown for level NTC; empty: 'NTC'"></label>
+        <label>System version <input type="text" id="sys_version" value="3.0" size="4"
+          title="X.Y, X 0..7, Y 0..15; anything else: not known"></label>
+        <label>VBC set codes <input type="text" id="vbcs" value="71951" size="22"
+          title="the VBCs stored on-board, up to 16 codes of 0..16777215; Set / Remove VBC change them"></label>
+        <label>VBC room <input type="checkbox" id="vbc_room" checked
+          title="the on-board storage capacity of VBC set by the driver is not reached"></label>
+      </div>
+      <div class="row" title="MSG_SYSTEM_STATUS: one event of a catalogue entry (dmi_protocol.ads), sent once over the wire, also while the simulator is the source">
+        <label>System status: <select id="ss_entry"></select></label>
+        <button id="ss_start">Start</button>
+        <button id="ss_end">End event</button>
+        <button id="ss_event">30 s event</button>
+      </div>
+      <div class="row" title="MSG_ATO (dmi_protocol.ads): the ATO selector and what the ERTMS/ATO on-board tells, DMI 8.5">
+        <label>ATO selector:
+          <select id="ato_selector">
+            <option value="1" selected>Stand-by</option><option value="2">On</option>
+          </select>
+        </label>
+        <label>ATO status:
+          <select id="ato_status">
+            <option value="0">none</option><option value="1">ATO01 selected</option>
+            <option value="2" selected>ATO02 ready</option><option value="3">ATO03 engaged</option>
+            <option value="4">ATO04 disengaging</option><option value="5">ATO05 failure</option>
+          </select>
+        </label>
+        <label>warning <input type="checkbox" id="ato_warning"></label>
+        <label>at stopping point <input type="checkbox" id="ato_at_stop"></label>
+        <label>accuracy:
+          <select id="ato_accuracy">
+            <option value="0">none</option><option value="1">ATO06 overshoot</option>
+            <option value="2">ATO07 undershoot</option><option value="3" selected>ATO08 accurate</option>
+          </select>
+        </label>
+        <label>dwell s <input type="number" id="ato_dwell" value="69" min="0" max="5999"></label>
+        <label>train hold <input type="checkbox" id="ato_hold"></label>
+        <label>doors:
+          <select id="ato_doors">
+            <option value="0">none</option><option value="1">ATO10 open both</option>
+            <option value="2">ATO11 open left</option><option value="3">ATO12 open right</option>
+            <option value="4" selected>ATO13 open</option><option value="5">ATO14 close</option>
+            <option value="6">ATO15 closing</option><option value="7">ATO16 closed</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>skip:
+          <select id="ato_skip">
+            <option value="0">none</option><option value="1" selected>ATO17 inactive</option>
+            <option value="2">ATO18 by ATO-TS</option><option value="3">ATO19 by driver</option>
+          </select>
+        </label>
+        <label>advice km/h <input type="number" id="ato_advice" value="125" min="0" max="400"></label>
+        <label>advice valid <input type="checkbox" id="ato_advice_valid" checked></label>
+        <label>coasting <input type="checkbox" id="ato_coasting" checked></label>
+        <label>next stop <input type="text" id="ato_name" value="Welwyn North" maxlength="32" size="14"></label>
+        <label>ETA <input type="text" id="ato_eta" value="17:36:48" size="8"></label>
+        <label>stopping points m <input type="text" id="ato_stops" value="0, 1800" size="12"></label>
+      </div>
+      <div class="row" title="MSG_STATUS (dmi_protocol.ads): the Time to Indication of DMI 8.2.2.5 in A1, sent in tenths of a second so that the white square steps every TdispTTI / 10 (8.2.2.5.3); shown in CSM in FS/AD/SM, in OS/SR after the speed toggle (Table 15a). The brake symbol follows 'Brake commanded', the radio symbol the session.">
+        <label>TTI s <input type="number" id="tti" value="" min="0" max="6553.4" step="0.1" size="6"
+          title="empty: no TTI (the National Value does not ask for it); 0 .. 6553.4 s"></label>
+        <label>TdispTTI s <input type="number" id="t_disp_tti" value="14" min="1" max="255"
+          title="SUBSET-026 A.3.1: 14 s"></label>
+      </div>
+      <div class="row" title="MSG_ONBOARD: radio data, session and the waiting states (dmi_protocol.ads)">
+        <label>Session:
+          <select id="session">
+            <option value="0" selected>none</option><option value="1">establishing</option>
+            <option value="2">exists</option><option value="3">exists, RBC &gt; 2.2</option>
+          </select>
+        </label>
+        <label>Waiting:
+          <select id="waiting">
+            <option value="0" selected>nothing</option><option value="1">radio network</option>
+            <option value="2">RBC answer</option><option value="3">MA</option>
+            <option value="4">shunting answer</option><option value="5">SM answer</option>
+          </select>
+        </label>
+        <label>authorised <input type="checkbox" id="answer"></label>
+        <label>Radio type:
+          <select id="radio_type">
+            <option value="0">unknown</option><option value="1">FRMCS</option>
+            <option value="2">FRMCS+GSM-R</option><option value="3" selected>GSM-R</option>
+          </select>
+        </label>
+        <label>Installed:
+          <select id="radio_installed">
+            <option value="0">none</option><option value="1">FRMCS</option>
+            <option value="2">GSM-R</option><option value="3" selected>both</option>
+          </select>
+        </label>
+        <label>FRMCS reg <input type="checkbox" id="frmcs_reg"></label>
+        <label>GSM-R reg <input type="checkbox" id="gsmr_reg" checked></label>
+        <label>one radio <input type="checkbox" id="one_radio"></label>
+        <label>RBC info known <input type="checkbox" id="rbc_known" checked></label>
+        <label>Radio wait:
+          <select id="radio_wait">
+            <option value="0" selected>nothing</option><option value="1">network list</option>
+            <option value="2">registration</option>
+          </select>
+        </label>
+        <label>Networks <input type="text" id="networks" value="GSMR-A,GSMR-B,Telecom X" size="22"></label>
+        <button id="send_networks" title="MSG_RADIO_NETWORKS, once">Send list</button>
+      </div>
+    </details>
+
+    <canvas id="trackCanvas" width="640" height="150" style="background:#101820;"></canvas>
+    <div class="bezel">
+      <canvas id="myCanvas" width="640" height="480"></canvas>
+      <div class="plate">ETCS DMI</div>
+      <div class="desk">
+        <button id="desk_settings" title="MSG_DESK_INPUT input 1: the desk button for the Settings window (DMI 8.6.1.6); it acts when released, and only on the default window">Settings</button>
+        <button id="desk_isolation" title="MSG_DESK_INPUT input 2: isolate the ERTMS/ETCS on-board (DMI 5.6.1.1); hold it 2 s, then release. The lamp is the indication of the mode IS (DMI 8.2.3.1.2.2)"><span id="iso_lamp" class="lamp"></span>Isolation</button>
+        <span id="dmi_settings" title="MSG_SETTINGS: the luminance and the volume the driver chose in the Settings window, applied by the display and the loudspeaker">brightness – · volume –</span>
+      </div>
+    </div>
+
+    <script>
+      'use strict';
+      // Protocol v2 (see src/dmi_protocol.ads)
+      const MSG_SPEED_STATE = 0x01;
+      const MSG_MODE_LEVEL = 0x02;
+      const MSG_STATUS = 0x07;
+      const MSG_TRACK_LAYOUT = 0x08;
+      const MSG_SIM_STATE = 0x09;
+      const MSG_ONBOARD = 0x0A;
+      const MSG_ATO = 0x0B;
+      const MSG_SYSTEM_STATUS = 0x0C;
+      const MSG_RADIO_NETWORKS = 0x0D;
+      const MSG_SYSTEM_VERSION = 0x0E;
+      const MSG_VBC_LIST = 0x0F;
+      const MSG_DRIVER_ACTION = 0x40;
+      const MSG_DRIVER_DATA = 0x41;
+      const MSG_POINTER = 0x50;
+      const MSG_DESK_INPUT = 0x52;
+      const MSG_SOUND = 0x61;
+      const MSG_SETTINGS = 0x62;
+      const HEADER_LENGTH = 5;
+
+      const DMI_TICK_MS = 50;   // frame period of the DMI
+      const EVC_STEP_MS = 100;  // cycle of the EVC simulator
+      const MAX_DT_MS = 200;    // catch-up limit after a background tab
+
+      const $ = (id) => document.getElementById(id);
+      const val = (id) => parseInt($(id).value);
+      const checked = (id) => $(id).checked;
+
+      // ------------------------------------------------------------------
+      // Module loading: each module gets its own memory and its own copy
+      // of the two runtime imports
+      // ------------------------------------------------------------------
+      const lastException = {}; // per module, set just before it traps
+      async function load(url) {
+        const mod = {};
+        const env = {
+          __gnat_grow: (pages) => mod.exports.memory.grow(pages),
+          __gnat_put_exception: (addr, size, line) => {
+            const msg = new TextDecoder('latin1')
+              .decode(new Uint8Array(mod.exports.memory.buffer, addr, size));
+            lastException[url] = `${msg}${line ? ':' + line : ''}`;
+            console.error(`${url}: exception ${lastException[url]}`);
+          },
+        };
+        const { instance } = await WebAssembly.instantiateStreaming(fetch(url), { env });
+        mod.exports = instance.exports;
+        instance.exports.__gnat_initialize(0);
+        instance.exports.adainit();
+        return instance.exports;
+      }
+
+      // copy bytes into the module's receive buffer and let it consume them
+      function receive(ex, prefix, bytes) {
+        const cap = ex[prefix + '_rx_capacity']();
+        const base = ex[prefix + '_rx_buffer']();
+        for (let off = 0; off < bytes.length; off += cap) {
+          const n = Math.min(cap, bytes.length - off);
+          new Uint8Array(ex.memory.buffer, base, n).set(bytes.subarray(off, off + n));
+          ex[prefix + '_receive'](n);
+        }
+      }
+
+      // collect the module's pending outbound bytes
+      function transmit(ex, prefix) {
+        const n = ex[prefix + '_transmit']();
+        return new Uint8Array(ex.memory.buffer, ex[prefix + '_tx_buffer'](), n).slice();
+      }
+
+      // split a byte run of whole frames into individual frames
+      function splitFrames(bytes) {
+        const frames = [];
+        let off = 0;
+        while (bytes.length - off >= HEADER_LENGTH) {
+          const dv = new DataView(bytes.buffer, bytes.byteOffset + off);
+          const total = HEADER_LENGTH + dv.getUint32(1, true);
+          if (bytes.length - off < total) break;
+          frames.push(bytes.subarray(off, off + total));
+          off += total;
+        }
+        return frames;
+      }
+
+      function makeMessage(type, payloadLength) {
+        const buf = new Uint8Array(HEADER_LENGTH + payloadLength);
+        const dv = new DataView(buf.buffer);
+        dv.setUint8(0, type);
+        dv.setUint32(1, payloadLength, true);
+        return { buf, dv };
+      }
+
+      // ------------------------------------------------------------------
+      // The wire: a queue of units (frames or fragments) with delivery
+      // times. Loss and duplication act on frames; latency, jitter and
+      // reordering on the units actually travelling.
+      // ------------------------------------------------------------------
+      class Wire {
+        constructor(deliver) {
+          this.deliver = deliver;
+          this.queue = [];
+          this.stats = { sent: 0, delivered: 0, dropped: 0, dup: 0 };
+        }
+        send(frame, now) {
+          const p = wireParams;
+          this.stats.sent++;
+          if (p.cut || Math.random() * 100 < p.loss) { this.stats.dropped++; return; }
+          const copies = Math.random() * 100 < p.dup ? 2 : 1;
+          if (copies === 2) this.stats.dup++;
+          for (let c = 0; c < copies; c++) {
+            const units = [];
+            if (p.mtu > 0) {
+              for (let off = 0; off < frame.length; off += p.mtu) {
+                units.push(frame.slice(off, Math.min(off + p.mtu, frame.length)));
+              }
+            } else {
+              units.push(frame.slice());
+            }
+            let t = now + p.latency + Math.random() * p.jitter;
+            for (const u of units) {
+              let at = t;
+              if (Math.random() * 100 < p.reorder) at += p.latency + p.jitter + EVC_STEP_MS;
+              this.queue.push({ at, seq: this.stats.sent, bytes: u });
+              t += 0.001; // fragments keep their order unless reordered
+            }
+          }
+        }
+        pump(now) {
+          if (this.queue.length === 0) return;
+          this.queue.sort((a, b) => a.at - b.at || a.seq - b.seq);
+          while (this.queue.length && this.queue[0].at <= now) {
+            this.deliver(this.queue.shift().bytes);
+            this.stats.delivered++;
+          }
+        }
+        clear() { this.queue.length = 0; }
+      }
+
+      const wireParams = { latency: 0, jitter: 0, loss: 0, dup: 0, reorder: 0, mtu: 0, cut: false };
+      function readWireParams() {
+        wireParams.latency = val('latency') || 0;
+        wireParams.jitter = val('jitter') || 0;
+        wireParams.loss = val('loss') || 0;
+        wireParams.dup = val('dup') || 0;
+        wireParams.reorder = val('reorder') || 0;
+        wireParams.mtu = val('mtu') || 0;
+        wireParams.cut = checked('cut');
+      }
+      for (const id of ['latency', 'jitter', 'loss', 'dup', 'reorder', 'mtu', 'cut']) {
+        $(id).addEventListener('input', readWireParams);
+      }
+
+      // ------------------------------------------------------------------
+      // Display unit: the frame buffer is read straight out of the DMI
+      // module's memory (the display controller sits on the DMI board)
+      // ------------------------------------------------------------------
+      const canvas = $('myCanvas');
+      const context = canvas.getContext('2d');
+      const img = context.createImageData(canvas.width, canvas.height);
+      const pix32 = new Uint32Array(img.data.buffer);
+      const colorMap = [ // General_Parameters.RGB_Colors
+        [255, 255, 255], [0, 0, 0], [195, 195, 195], [150, 150, 150],
+        [85, 85, 85], [3, 17, 34], [8, 24, 57], [223, 223, 0],
+        [234, 145, 0], [191, 0, 2], [33, 49, 74], [41, 74, 107],
+      ];
+      const lut = new Uint32Array(256).fill(0xFFFF00FF); // magenta: unknown index
+      colorMap.forEach(([r, g, b], i) => { lut[i] = (255 << 24) | (b << 16) | (g << 8) | r; });
+
+      function blit(dmi) {
+        const w = dmi.dmi_frame_width(), h = dmi.dmi_frame_height();
+        const frame = new Uint8Array(dmi.memory.buffer, dmi.dmi_frame(), w * h);
+        for (let i = 0; i < w * h; i++) pix32[i] = lut[frame[i]];
+        context.putImageData(img, 0, 0);
+      }
+
+      const soundFiles = {
+        0: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/click.wav',
+        1: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S_info.wav',
+        2: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S1_toofast.wav',
+        3: '../../doc/SRS/ERA_ERTMS_015560_v400/sounds/S2_warning.wav',
+      };
+      let s2Audio = null;
+      function playSound(id) {
+        if (id === 3) { // S2 start: continuous while active
+          if (!s2Audio) {
+            s2Audio = new Audio(soundFiles[3]);
+            s2Audio.loop = true;
+            s2Audio.volume = soundGain;
+            s2Audio.play().catch(() => {});
+          }
+        } else if (id === 4) { // S2 stop
+          if (s2Audio) { s2Audio.pause(); s2Audio = null; }
+        } else if (soundFiles[id]) {
+          const a = new Audio(soundFiles[id]);
+          a.volume = soundGain;
+          a.play().catch(() => {});
+        }
+      }
+
+      // MSG_SETTINGS (dmi_protocol.ads): the display unit and the
+      // loudspeaker apply the levels 0 .. 10 the driver chose (DMI 5.2.2,
+      // 5.2.3); the frame itself carries colour indices only. The ranges
+      // are the device's (5.2.2.3, 5.2.3.3). Choice: 40 % to 100 % of the
+      // luminance and 25 % to 100 % of the volume, so that the lowest
+      // level keeps the display readable and the sounds audible. The
+      // third byte lights the lamp of the isolation key (mode IS,
+      // DMI 8.2.3.1.2.2).
+      let soundGain = 0.625;
+      function applySettings(p) {
+        if (p.length !== 3) return;
+        const b = Math.min(p[0], 10), v = Math.min(p[1], 10);
+        document.getElementById('myCanvas').style.filter =
+          `brightness(${(0.4 + 0.06 * b).toFixed(2)})`;
+        soundGain = 0.25 + 0.075 * v;
+        if (s2Audio) s2Audio.volume = soundGain;
+        document.getElementById('iso_lamp').classList.toggle('on', p[2] === 1);
+        document.getElementById('dmi_settings').textContent =
+          `brightness ${b}/10 · volume ${v}/10` + (p[2] === 1 ? ' · isolated (IS)' : '');
+      }
+
+      // the desk keys: pressed (1) and released (0) as they happen; the
+      // DMI decides what a key does (dmi_protocol.ads, MSG_DESK_INPUT)
+      function wireDeskKeys(send) {
+        for (const [id, input] of [['desk_settings', 1], ['desk_isolation', 2]]) {
+          const el = document.getElementById(id);
+          let down = false;
+          el.addEventListener('pointerdown', (e) => {
+            if (down) return;
+            down = true;
+            el.setPointerCapture(e.pointerId);
+            el.classList.add('held');
+            send(input, 1);
+          });
+          const up = () => {
+            if (!down) return;
+            down = false;
+            el.classList.remove('held');
+            send(input, 0);
+          };
+          el.addEventListener('pointerup', up);
+          el.addEventListener('pointercancel', up);
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Track visualization: a 1D strip rolling by with the train fixed
+      // near the left edge (MSG_TRACK_LAYOUT / MSG_SIM_STATE)
+      // ------------------------------------------------------------------
+      const track = $('trackCanvas');
+      const tctx = track.getContext('2d');
+      let layout = null;
+      let sim = { pos: 0, speed: 0, mode: 0, monitoring: 0, demand: 0, brake: 0 };
+      // what the simulator's ERTMS/ATO on-board tells the DMI (MSG_ATO)
+      let ato = null;
+      const ATO_STATUS = ['', 'ATO selected', 'ATO ready', 'ATO engaged',
+                          'ATO disengaging', 'ATO failure'];
+
+      // MSG_ATO (dmi_protocol.ads): read by the page for the track strip
+      function parseATO(p) {
+        if (p.length < 18) return;
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        const nameLength = p[16];
+        if (nameLength > 32 || p.length < 18 + nameLength) return;
+        const count = p[17 + nameLength];
+        if (p.length !== 18 + nameLength + 2 * count) return;
+        const a = { selector: p[0], status: p[1], atStop: p[3] === 1, stops: [] };
+        a.name = new TextDecoder('latin1').decode(p.subarray(17, 17 + nameLength));
+        for (let i = 0; i < count; i++) a.stops.push(sim.pos + dv.getUint16(18 + nameLength + 2 * i, true));
+        ato = a;
+      }
+
+      function parseLayout(p) {
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        let o = 0;
+        const l = {};
+        l.eoa = dv.getUint32(o, true); o += 4;
+        l.release = dv.getUint8(o); o += 1;
+        l.mrsp = [];
+        let n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.mrsp.push({ start: dv.getUint32(o, true), speed: dv.getUint16(o + 4, true) });
+          o += 6;
+        }
+        l.gradients = [];
+        n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.gradients.push({ start: dv.getUint32(o, true), value: dv.getInt8(o + 4) });
+          o += 5;
+        }
+        l.conditions = [];
+        n = dv.getUint8(o); o += 1;
+        for (let i = 0; i < n; i++) {
+          l.conditions.push({
+            symbol: dv.getUint8(o),
+            announce: dv.getUint32(o + 1, true),
+            start: dv.getUint32(o + 5, true),
+            end: dv.getUint32(o + 9, true),
+          });
+          o += 13;
+        }
+        l.lxFrom = dv.getUint32(o, true); o += 4;
+        l.lxAt = dv.getUint32(o, true); o += 4;
+        l.tunnelAnn = dv.getUint32(o, true); o += 4;
+        l.tunnelStart = dv.getUint32(o, true); o += 4;
+        l.tunnelEnd = dv.getUint32(o, true); o += 4;
+        l.levelAnn = dv.getUint32(o, true); o += 4;
+        l.levelAt = dv.getUint32(o, true); o += 4;
+        l.taf = dv.getUint32(o, true); o += 4;
+        layout = l;
+      }
+
+      function parseSimState(p) {
+        const dv = new DataView(p.buffer, p.byteOffset, p.byteLength);
+        sim.pos = dv.getUint32(0, true);
+        sim.speed = dv.getUint16(4, true);
+        sim.mode = dv.getUint8(6);
+        sim.monitoring = dv.getUint8(7);
+        sim.demand = dv.getInt8(8);
+        sim.brake = dv.getUint8(9);
+        drawTrack();
+      }
+
+      const MODES = ['SB', 'SR', 'FS', 'TR', 'AD', 'SH', 'SM', 'IS'];
+      const MONITORINGS = ['CSM', 'TSM', 'RSM'];
+
+      function conditionLabel(symbol) {
+        if (symbol === 7) return 'NS';    // neutral section announcement
+        if (symbol === 3) return 'PAN';   // lower pantograph
+        return 'TC' + symbol;
+      }
+
+      function drawTrack() {
+        const W = track.width, H = track.height;
+        const behind = 400, ahead = 2600;          // visible window in m
+        const x = (m) => (m - (sim.pos - behind)) * W / (behind + ahead);
+        const trackY = 88;
+
+        tctx.clearRect(0, 0, W, H);
+        tctx.font = '10px sans-serif';
+        tctx.textAlign = 'center';
+
+        if (layout) {
+          for (let i = 0; i < layout.gradients.length; i++) {
+            const g = layout.gradients[i];
+            const gEnd = i + 1 < layout.gradients.length
+              ? layout.gradients[i + 1].start : layout.eoa;
+            tctx.fillStyle = g.value < 0 ? '#4a3828' : (g.value > 0 ? '#2e4a2e' : '#333');
+            tctx.fillRect(x(g.start), trackY + 6, x(gEnd) - x(g.start), 8);
+            tctx.fillStyle = '#aaa';
+            tctx.fillText((g.value >= 0 ? '+' : '') + g.value + '‰',
+                          x(g.start) + 24, trackY + 26);
+          }
+
+          tctx.fillStyle = 'rgba(120,120,140,0.35)';
+          tctx.fillRect(x(layout.tunnelStart), trackY - 30,
+                        x(layout.tunnelEnd) - x(layout.tunnelStart), 30);
+          tctx.fillStyle = '#9aa';
+          tctx.fillText('TUNNEL', (x(layout.tunnelStart) + x(layout.tunnelEnd)) / 2,
+                        trackY - 34);
+
+          for (const c of layout.conditions) {
+            tctx.fillStyle = 'rgba(223,223,0,0.25)';
+            tctx.fillRect(x(c.start), trackY - 14, x(c.end) - x(c.start), 14);
+            tctx.fillStyle = '#dd0';
+            tctx.fillText(conditionLabel(c.symbol),
+                          (x(c.start) + x(c.end)) / 2, trackY - 18);
+            tctx.beginPath();
+            tctx.moveTo(x(c.announce), trackY - 8);
+            tctx.lineTo(x(c.announce) - 4, trackY);
+            tctx.lineTo(x(c.announce) + 4, trackY);
+            tctx.fill();
+          }
+
+          for (const s of layout.mrsp) {
+            tctx.strokeStyle = '#ccc';
+            tctx.fillStyle = '#222';
+            tctx.beginPath();
+            tctx.arc(x(s.start), trackY - 40, 10, 0, 2 * Math.PI);
+            tctx.fill(); tctx.stroke();
+            tctx.fillStyle = '#fff';
+            tctx.fillText(s.speed, x(s.start), trackY - 37);
+            tctx.strokeStyle = '#666';
+            tctx.beginPath();
+            tctx.moveTo(x(s.start), trackY - 30);
+            tctx.lineTo(x(s.start), trackY);
+            tctx.stroke();
+          }
+
+          tctx.strokeStyle = '#f66';
+          tctx.lineWidth = 2;
+          const lxX = x(layout.lxAt);
+          tctx.beginPath();
+          tctx.moveTo(lxX - 5, trackY - 12); tctx.lineTo(lxX + 5, trackY - 2);
+          tctx.moveTo(lxX + 5, trackY - 12); tctx.lineTo(lxX - 5, trackY - 2);
+          tctx.stroke();
+          tctx.lineWidth = 1;
+          tctx.fillStyle = '#f66';
+          tctx.fillText('LX', lxX, trackY - 16);
+
+          tctx.strokeStyle = '#8cf';
+          tctx.setLineDash([3, 3]);
+          tctx.beginPath();
+          tctx.moveTo(x(layout.levelAt), trackY - 45);
+          tctx.lineTo(x(layout.levelAt), trackY + 14);
+          tctx.stroke();
+          tctx.setLineDash([]);
+          tctx.fillStyle = '#8cf';
+          tctx.fillText('L2', x(layout.levelAt), trackY - 48);
+
+          tctx.fillStyle = '#fa0';
+          tctx.fillText('TAF', x(layout.taf), trackY - 20);
+          tctx.fillRect(x(layout.taf) - 1, trackY - 16, 2, 16);
+
+          if (ato && ato.selector === 2) {
+            tctx.fillStyle = '#8cf';
+            for (const at of ato.stops) {
+              tctx.fillRect(x(at) - 1, trackY - 26, 3, 26);
+              tctx.fillText('STOP', x(at), trackY - 30);
+            }
+          }
+
+          const eoaX = x(layout.eoa);
+          tctx.fillStyle = '#c00';
+          tctx.fillRect(eoaX - 2, trackY - 24, 5, 24);
+          tctx.fillStyle = '#fff';
+          tctx.fillRect(eoaX - 2, trackY - 18, 5, 6);
+          tctx.fillRect(eoaX - 2, trackY - 6, 5, 6);
+          tctx.fillStyle = '#f88';
+          tctx.fillText('EOA', eoaX, trackY - 28);
+        }
+
+        tctx.strokeStyle = '#889';
+        tctx.lineWidth = 3;
+        tctx.beginPath();
+        tctx.moveTo(0, trackY); tctx.lineTo(W, trackY);
+        tctx.stroke();
+        tctx.lineWidth = 1;
+        tctx.strokeStyle = '#556';
+        const first = Math.floor((sim.pos - behind) / 100) * 100;
+        for (let m = first; m < sim.pos + ahead; m += 100) {
+          tctx.beginPath();
+          tctx.moveTo(x(m), trackY - 3); tctx.lineTo(x(m), trackY + 3);
+          tctx.stroke();
+        }
+
+        const tx = x(sim.pos);
+        tctx.fillStyle = sim.brake ? '#f44' : '#4d4';
+        tctx.fillRect(tx - 22, trackY - 10, 22, 8);
+        tctx.beginPath();
+        tctx.moveTo(tx, trackY - 10); tctx.lineTo(tx + 6, trackY - 6);
+        tctx.lineTo(tx, trackY - 2); tctx.fill();
+
+        tctx.textAlign = 'left';
+        tctx.fillStyle = '#dde';
+        tctx.font = '12px monospace';
+        tctx.fillText(
+          `km ${(sim.pos / 1000).toFixed(2)}  ${sim.speed} km/h  ` +
+          `${MODES[sim.mode] || '?'}/${MONITORINGS[sim.monitoring] || '?'}  ` +
+          `demand ${sim.demand}%${sim.brake ? '  EVC BRAKE' : ''}` +
+          (ato && ato.selector === 2
+            ? `  ${ATO_STATUS[ato.status] || ''}${ato.atStop ? ' at stop' : ato.name ? ' next ' + ato.name : ''}`
+            : ''),
+          8, 16);
+        tctx.font = '10px sans-serif';
+      }
+
+      // ------------------------------------------------------------------
+      // Manual EVC panel: builds the two state messages from the form
+      // ------------------------------------------------------------------
+      // The supervision status is the EVC's (the DMI does not derive it):
+      // "auto" does what sim/evc_supervision.adb does with the panel's limits
+      let lastManualStatus = 0;
+      function manualStatus(vperm) {
+        const chosen = val('status');
+        if (chosen >= 0) { lastManualStatus = chosen; return chosen; }
+        const v = val('speed'), mon = val('monitoring'), brake = checked('brake');
+        const held = lastManualStatus === 4 && brake;
+        let st;
+        if (mon === 2) {
+          st = (v > val('vrelease') || held) ? 4 : 1;
+        } else if (v > Math.min(vperm + 15, 400) || held) {
+          st = 4;
+        } else if (v > Math.min(vperm + 5, 400) || (lastManualStatus === 3 && v > vperm)) {
+          st = 3;
+        } else if (v > vperm) {
+          st = 2;
+        } else {
+          st = mon === 0 ? 0 : 1;
+        }
+        lastManualStatus = st;
+        return st;
+      }
+
+      function manualSpeedState() {
+        const { buf, dv } = makeMessage(MSG_SPEED_STATE, 21);
+        const vperm = val('vperm');
+        let o = HEADER_LENGTH;
+        dv.setUint16(o, val('speed'), true); o += 2;
+        dv.setUint16(o, vperm, true); o += 2;
+        dv.setUint16(o, val('vtarget'), true); o += 2;
+        dv.setUint16(o, val('vrelease'), true); o += 2;
+        dv.setUint16(o, Math.min(vperm + 15, 400), true); o += 2; // Vsbi
+        dv.setUint16(o, Math.min(vperm + 5, 400), true); o += 2;  // Vwsl
+        dv.setUint32(o, val('dist'), true); o += 4;
+        dv.setUint8(o, val('monitoring')); o += 1;
+        dv.setUint8(o, val('range')); o += 1;
+        dv.setUint8(o, (checked('vrelease_exists') ? 1 : 0) | (checked('csm_ti') ? 2 : 0)); o += 1;
+        dv.setUint8(o, manualStatus(vperm)); o += 1;
+        dv.setUint8(o, val('mrdt') & 0xFF);
+        return buf;
+      }
+
+      // MSG_MODE_LEVEL; a National System name makes it the long form
+      // (name_len u8 and Latin-1 bytes after the 9 fixed bytes)
+      function manualModeLevel() {
+        const name = [...$('ntc_name').value].map((c) => c.charCodeAt(0))
+          .filter((b) => b < 256).slice(0, 10);
+        const { buf, dv } = makeMessage(MSG_MODE_LEVEL,
+                                        name.length ? 10 + name.length : 9);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, val('mode')); o += 1;
+        dv.setUint8(o, val('level')); o += 1;
+        dv.setUint8(o, val('mode_ack')); o += 1;
+        dv.setUint8(o, val('level_ann')); o += 1;
+        dv.setUint8(o, checked('level_ann_ack') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('override') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('taf') ? 1 : 0); o += 1;
+        dv.setUint16(o, checked('lssma_valid') ? val('lssma') : 0xFFFF, true); o += 2;
+        if (name.length) {
+          dv.setUint8(o, name.length); o += 1;
+          for (const b of name) { dv.setUint8(o, b); o += 1; }
+        }
+        return buf;
+      }
+
+      // MSG_STATUS (dmi_protocol.ads, 23 bytes): the brake and radio
+      // symbols, the TTI of DMI 8.2.2.5 in tenths of a second (0xFFFF
+      // none) with TdispTTI in seconds, and the local time
+      function manualStatusMessage(seconds) {
+        const { buf, dv } = makeMessage(MSG_STATUS, 23);
+        const text = $('tti').value.trim();
+        const tti = text === '' ? NaN : Math.round(parseFloat(text) * 10);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, checked('brake') ? 1 : 0); o += 1;
+        dv.setUint8(o, val('session') >= 2 ? 1 : 0); o += 1; // radio
+        dv.setUint8(o, 0); o += 1;                   // adhesion
+        dv.setUint8(o, 0); o += 1;                   // BMM
+        dv.setUint8(o, 0); o += 1;                   // reversing
+        dv.setUint8(o, 0); o += 1;                   // SM direction
+        dv.setUint16(o, 0xFFFF, true); o += 2;       // no set speed
+        dv.setUint16(o, tti >= 0 && tti <= 65534 ? tti : 0xFFFF, true); o += 2;
+        dv.setUint8(o, Math.min(Math.max(val('t_disp_tti') || 14, 1), 255)); o += 1;
+        dv.setUint8(o, 0); o += 1;                   // tunnel unknown
+        dv.setUint32(o, 0, true); o += 4;
+        dv.setUint32(o, 0xFFFFFFFF, true); o += 4;   // no geographical position
+        dv.setUint8(o, Math.floor(seconds / 3600) % 24); o += 1;
+        dv.setUint8(o, Math.floor(seconds / 60) % 60); o += 1;
+        dv.setUint8(o, Math.floor(seconds) % 60);
+        return buf;
+      }
+
+      // MSG_SYSTEM_VERSION: X and Y of 'X.Y'; 255 (not known) otherwise
+      function manualSystemVersion() {
+        const m = /^(\d+)\.(\d+)$/.exec($('sys_version').value.trim());
+        const { buf, dv } = makeMessage(MSG_SYSTEM_VERSION, 2);
+        dv.setUint8(HEADER_LENGTH, m ? Math.min(parseInt(m[1]), 255) : 255);
+        dv.setUint8(HEADER_LENGTH + 1, m ? Math.min(parseInt(m[2]), 255) : 255);
+        return buf;
+      }
+
+      // MSG_VBC_LIST: count, then the set codes as u32
+      const vbcCodes = () => $('vbcs').value.split(',').map((t) => parseInt(t))
+        .filter((c) => c >= 0 && c <= 0xFFFFFF).slice(0, 16);
+      function manualVBCList() {
+        const codes = vbcCodes();
+        const { buf, dv } = makeMessage(MSG_VBC_LIST, 1 + 4 * codes.length);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, codes.length); o += 1;
+        for (const c of codes) { dv.setUint32(o, c, true); o += 4; }
+        return buf;
+      }
+
+      // The manual panel is the on-board of the VBCs: Set VBC (kind 8)
+      // replaces the VBC of the same identity (NID_VBCMK, NID_C: the low
+      // 16 bits of the set code) or adds it, Remove VBC (kind 9) removes
+      // the one its remove code names (NID_C in bits 0-9, NID_VBCMK in
+      // bits 10-15, DMI 11.3.13.5)
+      function manualVBCData(p) {
+        if (p.length !== 5 || (p[0] !== 8 && p[0] !== 9)) return;
+        const code = (p[1] | (p[2] << 8) | (p[3] << 16) | (p[4] << 24)) >>> 0;
+        let codes = vbcCodes();
+        if (p[0] === 8) {
+          const same = codes.findIndex((c) => (c & 0xFFFF) === (code & 0xFFFF));
+          if (same >= 0) codes[same] = code;
+          else if (codes.length < 16) codes.push(code);
+        } else {
+          const identity = ((code >> 10) & 63) | ((code & 1023) << 6);
+          codes = codes.filter((c) => (c & 0xFFFF) !== identity);
+        }
+        $('vbcs').value = codes.join(', ');
+      }
+
+      // MSG_ONBOARD (dmi_protocol.ads): the on-board state behind the
+      // enabling conditions of Tables 33 to 37. The manual panel reports
+      // a standing train with valid driver's data, the RBC contact
+      // information valid, the safe consist length (zero in front) and
+      // the position referred to an LRBG, and a start of mission while
+      // the mode is SB, so that the Start Up dialogue sequence can be
+      // driven by hand; the session, the waiting states and the radio
+      // data come from the form.
+      function manualOnboard() {
+        const { buf, dv } = makeMessage(MSG_ONBOARD, 11);
+        const standing = val('speed') === 0;
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, 0xFF); o += 1;             // all data valid (bits 0-7)
+        dv.setUint8(o, val('session')); o += 1;
+        dv.setUint8(o, 1); o += 1;                // train data acknowledged
+        dv.setUint8(o, (standing ? 1 : 0) | 2); o += 1; // standstill, override ok
+        // adhesion may be modified; the VBC storage (Table 36 #5, #6)
+        dv.setUint8(o, 2 | (checked('vbc_room') ? 4 : 0)
+                       | (vbcCodes().length > 0 ? 8 : 0)); o += 1;
+        dv.setUint8(o, val('mode') === 1 ? 2 : 0); o += 1; // start of mission
+        dv.setUint8(o, val('waiting')); o += 1;
+        dv.setUint8(o, 0); o += 1;                // no 'Start' pending
+        dv.setUint8(o, val('radio_type') | (val('radio_installed') << 2)
+                       | (checked('frmcs_reg') ? 16 : 0) | (checked('gsmr_reg') ? 32 : 0)
+                       | (checked('one_radio') ? 64 : 0) | (checked('rbc_known') ? 128 : 0));
+        o += 1;
+        dv.setUint8(o, val('radio_wait')); o += 1;
+        dv.setUint8(o, checked('answer') ? 1 : 0);
+        return buf;
+      }
+
+      // MSG_RADIO_NETWORKS: count, then length-prefixed Latin-1 names
+      // (at most 20 names of 1 to 18 characters, dmi_protocol.ads)
+      function manualNetworks() {
+        const names = $('networks').value.split(',').map((n) => n.trim())
+          .filter((n) => n.length > 0).slice(0, 20).map((n) => n.slice(0, 18));
+        const length = 1 + names.reduce((a, n) => a + 1 + n.length, 0);
+        const { buf, dv } = makeMessage(MSG_RADIO_NETWORKS, length);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, names.length); o += 1;
+        for (const n of names) {
+          dv.setUint8(o, n.length); o += 1;
+          for (let i = 0; i < n.length; i++) { dv.setUint8(o, n.charCodeAt(i) & 0xFF); o += 1; }
+        }
+        return buf;
+      }
+
+      // MSG_ATO (dmi_protocol.ads) from the ATO row of the panel
+      function manualATO() {
+        const name = new TextEncoder().encode($('ato_name').value)
+          .filter((b) => b < 128).slice(0, 32);
+        const stops = $('ato_stops').value.split(',').map((t) => parseInt(t))
+          .filter((d) => d >= 0 && d <= 65535).slice(0, 255);
+        const eta = /^(\d{1,2}):(\d{2}):(\d{2})$/.exec($('ato_eta').value.trim());
+        const { buf, dv } = makeMessage(MSG_ATO, 18 + name.length + 2 * stops.length);
+        let o = HEADER_LENGTH;
+        dv.setUint8(o, val('ato_selector')); o += 1;
+        dv.setUint8(o, val('ato_status')); o += 1;
+        dv.setUint8(o, checked('ato_warning') ? 1 : 0); o += 1;
+        dv.setUint8(o, checked('ato_at_stop') ? 1 : 0); o += 1;
+        dv.setUint8(o, val('ato_accuracy')); o += 1;
+        dv.setUint16(o, val('ato_dwell'), true); o += 2;
+        dv.setUint8(o, checked('ato_hold') ? 1 : 0); o += 1;
+        dv.setUint8(o, val('ato_doors')); o += 1;
+        dv.setUint8(o, val('ato_skip')); o += 1;
+        dv.setUint16(o, checked('ato_advice_valid') ? val('ato_advice') : 0xFFFF, true); o += 2;
+        dv.setUint8(o, checked('ato_coasting') ? 1 : 0); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[1]) : 0xFF); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[2]) : 0); o += 1;
+        dv.setUint8(o, eta ? parseInt(eta[3]) : 0); o += 1;
+        dv.setUint8(o, name.length); o += 1;
+        buf.set(name, o); o += name.length;
+        dv.setUint8(o, stops.length); o += 1;
+        for (const d of stops) { dv.setUint16(o, d, true); o += 2; }
+        return buf;
+      }
+
+      // The manual panel is the on-board: the driver's ATO requests
+      // (actions 13, 14, 15) change its fields as an EVC would
+      function manualATOAction(action, arg) {
+        if (action === 15 && (arg === 1 || arg === 2)) $('ato_selector').value = String(arg);
+        else if (action === 13) $('ato_status').value = arg === 1 ? '3' : '2';
+        else if (action === 14) $('ato_skip').value = arg === 1 ? '3' : '1';
+      }
+
+      const manualMode = () => $('source').value === 'manual';
+
+      // The catalogue of the system status messages, by entry number
+      // (DMI_Protocol.SS_*); the DMI holds the texts, these names only
+      // label the choices
+      const SS_NAMES = [
+        'Balise read error (brake)', 'Balise read error (trip)',
+        'Trackside malfunction', 'Communication error (brake)',
+        'Communication error (trip)', 'Entering FS', 'Entering OS',
+        'Entering SM', 'Runaway movement', 'SM refused', 'SM request failed',
+        'SH refused', 'SH refused (trip)', 'SH request failed',
+        'Trackside not compatible', 'Trackside not compatible (trip)',
+        'Train data changed', 'Train data changed (brake)',
+        'Safe consist length no longer available', 'Train is rejected',
+        'Unauthorized passing of EOA / LOA',
+        'No MA received at level transition', 'SR distance exceeded',
+        'SH stop order', 'SR stop order', 'Emergency stop',
+        'RV distance exceeded', 'PT distance exceeded',
+        'No track description', 'Route unsuitable - loading gauge',
+        'Route unsuitable - traction system',
+        'Route unsuitable - axle load category',
+        'FRMCS network registration failed',
+        'GSM-R network registration failed', 'NL no longer permitted',
+        'Odometer impaired', 'ATO needs data', 'Runaway movement (ATO)'];
+      SS_NAMES.forEach((name, i) => {
+        const option = document.createElement('option');
+        option.value = i + 1;
+        option.textContent = `${i + 1} ${name}`;
+        $('ss_entry').appendChild(option);
+      });
+
+      // MSG_SYSTEM_STATUS: event 0 start, 1 end, 2 the event that starts
+      // the 30 s of the entry
+      function systemStatus(event) {
+        const { buf, dv } = makeMessage(MSG_SYSTEM_STATUS, 2);
+        dv.setUint8(HEADER_LENGTH, val('ss_entry'));
+        dv.setUint8(HEADER_LENGTH + 1, event);
+        return buf;
+      }
+      // MSG_DRIVER_DATA in words, for the console (dmi_protocol.ads)
+      const RADIO_TYPES = ['?', 'FRMCS', 'FRMCS+GSM-R', 'GSM-R'];
+      const RBC_CHOICES = ['entered', 'contact last RBC', 'use short number'];
+      function describeDriverData(p) {
+        const text = (from, n) => String.fromCharCode(...p.subarray(from, from + n));
+        switch (p[0]) {
+          case 0: return `driver id "${text(2, p[1])}"`;
+          case 1: return `train running number "${text(2, p[1])}"`;
+          case 2: return `train data (${p.length - 1} bytes)`;
+          case 3: return `SR speed ${p[1] | (p[2] << 8)} distance ${p[3] | (p[4] << 8)}`;
+          case 4: return p[1] === 0 ? 'GSM-R network ID: list requested'
+                                    : `GSM-R network ID "${text(2, p[1])}"`;
+          case 5: {
+            const id = (p[2] | (p[3] << 8) | (p[4] << 16) | (p[5] << 24)) >>> 0;
+            return `RBC data: ${RBC_CHOICES[p[1]] || p[1]}` +
+              (p[1] === 0 ? ` id ${id} phone "${text(7, p[6])}"` : '');
+          }
+          case 6: return `radio network type ${RADIO_TYPES[p[1]] || p[1]}`;
+          case 7: return `mission with one radio system: ${p[1] ? 'Yes' : 'No'}`;
+          case 8: case 9: {
+            const code = (p[1] | (p[2] << 8) | (p[3] << 16) | (p[4] << 24)) >>> 0;
+            return `${p[0] === 8 ? 'set' : 'remove'} VBC ${code}`;
+          }
+          case 10: return `language "${text(1, 2)}"`;
+          default: return `kind ${p[0]}`;
+        }
+      }
+
+      // ------------------------------------------------------------------
+      // Main loop
+      // ------------------------------------------------------------------
+      (async () => {
+        const dmi = await load('dmi.wasm');
+        const evc = await load('evc.wasm');
+        $('status').textContent = '';
+
+        // Containment: the wasm runtime cannot propagate exceptions, so a
+        // raise inside the DMI arrives here as a trap. Like the host on the
+        // target, the page then puts the DMI into its failure presentation
+        // (DMI_Core.Enter_Failure: system failure symbol on a blank screen)
+        // and leaves it there until the DMI is restarted.
+        let dmiFailed = null;
+        function dmiFailure(e) {
+          dmiFailed = lastException['dmi.wasm'] || e.message;
+          try { dmi.dmi_enter_failure(); } catch (_) { /* render blanks the screen */ }
+        }
+        function guarded(fn) {
+          if (dmiFailed) return;
+          try { fn(); } catch (e) { dmiFailure(e); }
+        }
+
+        // the two directions of the wire
+        const toDmi = new Wire((bytes) => guarded(() => receive(dmi, 'dmi', bytes)));
+        const toEvc = new Wire((bytes) => receive(evc, 'evc', bytes));
+
+        let running = true;
+        let now = 0;           // simulated time in ms
+        let dmiAcc = 0, evcAcc = 0;
+        let last = performance.now();
+
+        function reset() {
+          dmiFailed = null;
+          dmi.dmi_initialise();
+          evc.evc_reset();
+          toDmi.clear(); toEvc.clear();
+          for (const w of [toDmi, toEvc]) Object.keys(w.stats).forEach((k) => { w.stats[k] = 0; });
+          layout = null;
+          ato = null;
+          sendDesk();
+        }
+
+        function sendDesk() {
+          const demand = val('demand');
+          $('demand_value').textContent = demand;
+          evc.evc_set_desk(demand, checked('auto_drive') ? 1 : 0);
+        }
+        $('source').addEventListener('input', () => { if (manualMode()) $('controls').open = true; });
+        $('demand').addEventListener('input', sendDesk);
+        $('auto_drive').addEventListener('input', sendDesk);
+        $('reset').addEventListener('click', reset);
+        $('ss_start').addEventListener('click', () => toDmi.send(systemStatus(0), now));
+        $('ss_end').addEventListener('click', () => toDmi.send(systemStatus(1), now));
+        $('ss_event').addEventListener('click', () => toDmi.send(systemStatus(2), now));
+        $('send_networks').addEventListener('click', () => toDmi.send(manualNetworks(), now));
+        $('run').addEventListener('click', () => {
+          running = !running;
+          $('run').textContent = running ? 'Pause' : 'Run';
+        });
+
+        // MSG_DRIVER_ACTION codes (dmi_protocol.ads), for the console
+        const ACTIONS = ['TAF yes', 'speed toggle', 'ack', 'tunnel toggle',
+          'geo toggle', 'start', 'override EOA', 'shunting', 'exit shunting',
+          'adhesion', 'train integrity', 'level', 'non-leading',
+          'ATO engage(1)/disengage(0)', 'skip stopping point(1)/revoke(0)',
+          'ATO selector (1 Stand-by, 2 On)', 'main window button',
+          'SM (0 initiate, 1 continue, 2 exit)', 'BMM inhibition (0) / revoke (1)',
+          'maintain shunting', 'isolate'];
+
+        // driver actions and data go to the EVC over the wire, sounds
+        // and settings are played here (the loudspeaker and the display
+        // are part of the DMI unit)
+        function routeFromDmi() {
+          for (const f of splitFrames(transmit(dmi, 'dmi'))) {
+            const type = f[0];
+            if (type === MSG_SOUND) playSound(f[HEADER_LENGTH]);
+            else if (type === MSG_SETTINGS) applySettings(f.subarray(HEADER_LENGTH));
+            else if (type === MSG_DRIVER_ACTION || type === MSG_DRIVER_DATA) {
+              if (type === MSG_DRIVER_ACTION) {
+                // an acknowledgement (action 2) also carries the text
+                // message id (16#8000# + entry for a catalogue message);
+                // action 16: a Main window button ended a system status
+                // message
+                const action = f[HEADER_LENGTH];
+                const arg = f[HEADER_LENGTH + 1] | (f[HEADER_LENGTH + 2] << 8);
+                console.log('driver action', ACTIONS[action] || action, arg,
+                            f.length >= HEADER_LENGTH + 5
+                              ? f[HEADER_LENGTH + 3] | (f[HEADER_LENGTH + 4] << 8)
+                              : '');
+                if (manualMode()) manualATOAction(action, arg);
+              } else {
+                console.log('driver data', describeDriverData(f.subarray(HEADER_LENGTH)));
+                if (manualMode()) manualVBCData(f.subarray(HEADER_LENGTH));
+              }
+              toEvc.send(f, now);
+            }
+          }
+        }
+
+        // the simulator's state messages travel over the wire, the
+        // visualisation messages are for this page only
+        function routeFromEvc() {
+          for (const f of splitFrames(transmit(evc, 'evc'))) {
+            const type = f[0];
+            if (type === MSG_TRACK_LAYOUT) parseLayout(f.subarray(HEADER_LENGTH));
+            else if (type === MSG_SIM_STATE) parseSimState(f.subarray(HEADER_LENGTH));
+            else {
+              if (type === MSG_SYSTEM_STATUS && f.length === HEADER_LENGTH + 2) {
+                const entry = f[HEADER_LENGTH], event = f[HEADER_LENGTH + 1];
+                console.log('system status', entry, SS_NAMES[entry - 1] ?? '?',
+                            ['start', 'end', '30 s event'][event] ?? event);
+              }
+              if (type === MSG_ATO) parseATO(f.subarray(HEADER_LENGTH));
+              toDmi.send(f, now);
+            }
+          }
+        }
+
+        function evcCycle() {
+          if (manualMode()) {
+            toDmi.send(manualSpeedState(), now);
+            toDmi.send(manualModeLevel(), now);
+            toDmi.send(manualStatusMessage(now / 1000), now);
+            toDmi.send(manualOnboard(), now);
+            toDmi.send(manualATO(), now);
+            toDmi.send(manualSystemVersion(), now);
+            toDmi.send(manualVBCList(), now);
+          } else {
+            evc.evc_step(EVC_STEP_MS);
+            routeFromEvc();
+          }
+        }
+
+        function showStats() {
+          const s = toDmi.stats, r = toEvc.stats;
+          const lost = dmi.dmi_link_lost() === 1;
+          $('stats').innerHTML =
+            `EVC→DMI sent ${s.sent} delivered ${s.delivered} dropped ${s.dropped} dup ${s.dup} | ` +
+            `DMI→EVC sent ${r.sent} delivered ${r.delivered} dropped ${r.dropped} | ` +
+            `t=${(now / 1000).toFixed(1)} s | ` +
+            (dmiFailed
+              ? `<span class="lost">DMI FAILED at ${dmiFailed}; "Reset mission" restarts it</span>`
+              : 'DMI sees the EVC link as ' +
+                (lost ? '<span class="lost">LOST (mode SF)</span>' : '<span class="ok">up</span>'));
+        }
+
+        function loop() {
+          const real = performance.now();
+          let dt = Math.min(real - last, MAX_DT_MS);
+          last = real;
+          if (!running) dt = 0;
+          now += dt;
+          dmiAcc += dt;
+          evcAcc += dt;
+
+          while (evcAcc >= EVC_STEP_MS) {
+            evcAcc -= EVC_STEP_MS;
+            evcCycle();
+          }
+          toDmi.pump(now);
+          toEvc.pump(now);
+          while (dmiAcc >= DMI_TICK_MS) {
+            dmiAcc -= DMI_TICK_MS;
+            guarded(() => { dmi.dmi_tick(DMI_TICK_MS); routeFromDmi(); });
+          }
+          try {
+            dmi.dmi_render();
+            blit(dmi);
+          } catch (e) {
+            if (!dmiFailed) dmiFailure(e);
+            try { dmi.dmi_render(); blit(dmi); } catch (_) { pix32.fill(lut[5]); context.putImageData(img, 0, 0); }
+          }
+          showStats();
+          requestAnimationFrame(loop);
+        }
+
+        // touch screen: local to the DMI unit, no wire in between
+        function pointer(event, x, y) {
+          const { buf, dv } = makeMessage(MSG_POINTER, 5);
+          dv.setUint8(HEADER_LENGTH, event);
+          dv.setUint16(HEADER_LENGTH + 1, x, true);
+          dv.setUint16(HEADER_LENGTH + 3, y, true);
+          guarded(() => receive(dmi, 'dmi', buf));
+        }
+        const at = (e) => {
+          const r = canvas.getBoundingClientRect();
+          return [Math.round(e.clientX - r.left), Math.round(e.clientY - r.top)];
+        };
+        canvas.addEventListener('pointerdown', (e) => pointer(0, ...at(e)));
+        canvas.addEventListener('pointerup', (e) => pointer(1, ...at(e)));
+        canvas.addEventListener('pointermove', (e) => { if (e.buttons) pointer(2, ...at(e)); });
+
+        // the desk keys of the DMI unit: local too
+        wireDeskKeys((input, pressed) => {
+          const { buf, dv } = makeMessage(MSG_DESK_INPUT, 2);
+          dv.setUint8(HEADER_LENGTH, input);
+          dv.setUint8(HEADER_LENGTH + 1, pressed);
+          guarded(() => receive(dmi, 'dmi', buf));
+        });
+
+        readWireParams();
+        reset();
+        requestAnimationFrame(loop);
+      })().catch((e) => {
+        $('status').textContent = `failed: ${e.message} (serve over HTTP, build with build.sh)`;
+        console.error(e);
+      });
+    </script>
+  </body>
+</html>

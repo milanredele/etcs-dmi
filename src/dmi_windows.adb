@@ -1,0 +1,1947 @@
+--  ETCS DMI
+--  Window system implementation.
+
+pragma Ada_2012;
+with Display.Draw;
+with Display.Screen;
+with DMI_Ack;
+with DMI_ATO;
+with DMI_Conditions;
+with DMI_Data_Entry;
+with DMI_Data_View;
+with DMI_Driver_Data;
+with DMI_Protocol;
+with DMI_Radio_Data;
+with DMI_Status;
+with DMI_System_Status;
+with DMI_Texts;
+with DMI_Train_Data;
+with DMI_VBC;
+with General_Parameters;
+with Supplementary_Driving_Info;
+with Symbol;
+
+package body DMI_Windows is
+
+   use Display;
+
+   Origin : constant Position_T := Get_Area (D).Position; -- (334, 15)
+
+   The_Window_Area : constant Area_T := (Origin, 306, 450);
+
+   Title_Height : constant := 24; -- DMI 5.3.1.2.2
+
+   -- View: the Data view (11.5.1) with its paging; Info: a data view
+   -- window of a single window, the System version window (11.5.2)
+   type Window_Kind_T is (Menu, Data_Entry, Validation, View, Info);
+
+   Stack : array (1 .. 8) of Window_ID_T;
+   Depth : Natural := 0;
+
+   package SDI renames Supplementary_Driving_Info;
+   package TX renames DMI_Texts;
+   use type SDI.Mode_T;
+   use type SDI.Level_T;
+   use type DMI_Conditions.Radio_Wait_T;
+   use type DMI_Radio_Data.Name_T;
+
+   -- Start Up dialogue sequence (11.7.2.4, Table 49): S1 Driver ID -> D2
+   -- -> S2 Level -> S10, which is S1 of the Main window dialogue sequence
+   -- (11.7.3.3, Table 50). True from S1 until S10 is reached.
+   Sequence_Active : Boolean := False;
+
+   -- Start of mission state of the last MSG_ONBOARD (Onboard_State_Changed)
+   Last_SOM : DMI_Conditions.Start_Of_Mission_T :=
+     DMI_Conditions.No_Mission_Start;
+
+   -- The Main window is on display because the on-board awaits an
+   -- answer (Table 49 S0, S4, A31; Table 50 S7, S8, S9): all its buttons
+   -- are disabled and the hour glass ST05 runs in the title area
+   Waiting_Window : Boolean := False;
+
+   -- What was awaited when the waiting window went up; Table 50 S7 ends
+   -- in the default window, the other steps in the Main window
+   Waiting_Kind : DMI_Conditions.Waiting_T := DMI_Conditions.Nothing;
+
+   -- Table 49 S3-2-1 / Table 50 S5-2-1: the driver pressed 'GSM-R
+   -- network ID' and the DMI asked the on-board for the list of GSM-R
+   -- networks (MSG_DRIVER_DATA kind 4, no name). The DMI presents the
+   -- step itself from its request on, so that the Radio data window is
+   -- not offered again before the EVC has spoken; the step ends with
+   -- the list (Check_List_Step).
+   List_Requested : Boolean := False;
+
+   -- Table 49 S3-2-3 / Table 50 S5-2-3: the driver selected a network;
+   -- the DMI presents the step until the EVC reports it (radio_wait 2),
+   -- from then on as long as the EVC does
+   Registration_Requested : Boolean := False;
+
+   -- Table 49 D7 -> S4: the Start Up went on to the Main window awaiting
+   -- the registration to the radio network(s); when that wait ends
+   -- without the registration, A42 -> D9 may still lead to S5, the
+   -- Mission with one radio system window
+   D9_Pending : Boolean := False;
+
+   -- 11.3.5.4: the RBC data window on display has the 'RBC phone
+   -- number' input field (decided when the window opens)
+   RBC_Phone_Shown : Boolean := False;
+
+   ---------------------------------------------------------------------
+   -- Outbound action queue
+   ---------------------------------------------------------------------
+
+   type Queued_Action_T is record
+      Action : Action_T := Action_T'First;
+      Arg    : Natural := 0;
+   end record;
+   Actions : array (1 .. 8) of Queued_Action_T;
+   Action_Count : Natural := 0;
+
+   procedure Queue (Action : Action_T; Arg : Natural := 0) is
+   begin
+      if Action_Count < Actions'Last then
+         Action_Count := Action_Count + 1;
+         Actions (Action_Count) := (Action, Arg);
+      end if;
+   end Queue;
+
+   function Pop_Action (Action : out Action_T;
+                        Arg    : out Natural) return Boolean is
+   begin
+      Action := Action_T'First;
+      Arg := 0;
+      if Action_Count = 0 then
+         return False;
+      end if;
+      Action := Actions (1).Action;
+      Arg := Actions (1).Arg;
+      Actions (1 .. Action_Count - 1) := Actions (2 .. Action_Count);
+      Action_Count := Action_Count - 1;
+      return True;
+   end Pop_Action;
+
+   ---------------------------------------------------------------------
+   -- Window definitions
+   ---------------------------------------------------------------------
+
+   -- 11.3.2.1, 11.3.6.1, 11.3.7.1, 11.3.8.1, 11.3.11.1, 11.3.14.1:
+   -- Level, Language, Volume, Brightness, Adhesion and ATO selector are
+   -- data entry windows on the half grid array with a single input field
+   -- and a dedicated keyboard, not menu windows
+   function Kind_Of (ID : Window_ID_T) return Window_Kind_T is
+     (case ID is
+         when W_Main | W_Override | W_Special | W_Settings
+            | W_Radio_Data => Menu,
+         when W_Driver_ID | W_TRN | W_Train_Data | W_SR_Data
+            | W_Level | W_Adhesion | W_Volume | W_Brightness
+            | W_ATO_Selector | W_GSMR_Network | W_RBC_Data
+            | W_Radio_Network_Type | W_One_Radio
+            | W_Set_VBC | W_Remove_VBC | W_Language => Data_Entry,
+         when W_Train_Data_Validation | W_Set_VBC_Validation
+            | W_Remove_VBC_Validation => Validation,
+         when W_Data_View => View,
+         when W_System_Version => Info);
+
+   -- The window titles, 11.2.x.2 to 11.5.x.2 (5.5.1.3: in the selected
+   -- language, DMI_Texts)
+   function Title_ID (ID : Window_ID_T) return TX.Text_ID is
+     (case ID is
+         when W_Main       => TX.Main_Window,                 -- 11.2.1.2
+         when W_Override   => TX.Override_Window,             -- 11.2.2.2
+         when W_Data_View  => TX.Data_View,                   -- 11.5.1.2
+         when W_Special    => TX.Special_Window,              -- 11.2.3.2
+         when W_Settings   => TX.Settings_Window,             -- 11.2.4.2
+         when W_Driver_ID  => TX.Driver_ID,                   -- 11.3.3.2
+         when W_Level      => TX.Level,                       -- 11.3.2.2
+         when W_TRN        => TX.Train_Running_Number,        -- 11.3.1.2
+         when W_Train_Data => TX.Train_Data,                  -- 11.3.9.2
+         when W_Train_Data_Validation => TX.Validate_Train_Data, -- 11.4.1.2
+         when W_SR_Data    => TX.SR_Speed_Distance,           -- 11.3.10.2
+         when W_Adhesion   => TX.Adhesion,                    -- 11.3.11.2
+         when W_Volume     => TX.Volume,                      -- 11.3.7.2
+         when W_Brightness => TX.Brightness,                  -- 11.3.8.2
+         when W_ATO_Selector => TX.ATO_Selector,              -- 11.3.14.2
+         when W_Radio_Data => TX.Radio_Data,                  -- 11.2.5.2
+         when W_GSMR_Network => TX.GSMR_Network_ID,           -- 11.3.4.2
+         when W_RBC_Data   => TX.RBC_Data,                    -- 11.3.5.2
+         when W_Radio_Network_Type => TX.Radio_Network_Type,  -- 11.3.15.2
+         when W_One_Radio  => TX.Mission_One_Radio,           -- 11.3.16.2
+         when W_Set_VBC    => TX.Set_VBC,                     -- 11.3.12.2
+         when W_Set_VBC_Validation => TX.Validate_Set_VBC,    -- 11.4.2.2
+         when W_Remove_VBC => TX.Remove_VBC,                  -- 11.3.13.2
+         when W_Remove_VBC_Validation => TX.Validate_Remove_VBC, -- 11.4.3.2
+         when W_System_Version => TX.System_Version,          -- 11.5.2.2
+         when W_Language   => TX.Language);                   -- 11.3.6.2
+
+   -- 11.5.1.3: the Data view title carries the window numbers
+   function Title (ID : Window_ID_T) return Wide_String is
+     (if ID = W_Data_View then DMI_Data_View.Title
+      else TX.Text (Title_ID (ID)));
+
+   -- Menu window buttons; an unused slot is not present
+   Max_Menu : constant := 12;   -- Table 33 #12 'Exit SM'
+
+   -- Table 36: the buttons 1 to 3 of the Settings window show a symbol
+   -- instead of a text label on the touch screen
+   type Icon_T is (No_Icon, Icon_SE01, Icon_SE02, Icon_SE03);
+
+   -- 5.5.1.3: the label is a text of DMI_Texts, drawn in the language
+   -- selected when it is drawn
+   type Label_T is record
+      Text    : TX.Text_ID := TX.Text_ID'First;
+      Used    : Boolean := False;
+      Enabled : Boolean := True;
+      Delayed : Boolean := False; -- delay-type button (11.2.1.4)
+      Icon    : Icon_T := No_Icon;
+   end record;
+   type Menu_Def_T is array (1 .. Max_Menu) of Label_T;
+
+   function B (Text    : TX.Text_ID;
+               Enabled : Boolean := True;
+               Delayed : Boolean := False) return Label_T is
+     ((Text => Text, Used => True, Enabled => Enabled, Delayed => Delayed,
+       Icon => No_Icon));
+
+   function Symbol_Button (Icon : Icon_T; Enabled : Boolean) return Label_T is
+     ((Text => TX.Text_ID'First, Used => True, Enabled => Enabled,
+       Delayed => False, Icon => Icon));
+
+   No_Button : constant Label_T := (others => <>);
+
+   -- Table 33 #7: 'Exit Shunting' takes the place of 'Shunting' in mode
+   -- SH, the only mode its condition names (implementation choice: the
+   -- table gives both labels to one button and does not say when which
+   -- one is shown)
+   function Exit_Shunting_Label return Boolean is
+     (SDI.Mode = SDI.M_SH);
+
+   -- Table 33 #11: 'Continue in SM' in the modes of its rows (SM, and PT
+   -- with no valid train data), 'Initiate SM' otherwise. The mode parts
+   -- of the two rows exclude each other, so the label says which of the
+   -- two requests the button sends (implementation choice as above).
+   function Continue_SM_Label return Boolean is
+     (SDI.Mode = SDI.M_SM
+      or else (SDI.Mode = SDI.M_PT
+               and then not DMI_Conditions.Train_Data_Valid));
+
+   function Static_Menu_Def (ID : Window_ID_T) return Menu_Def_T is
+   begin
+      case ID is
+         when W_Main =>
+            -- 11.2.1.4, Table 33, Figure 109; 11.2.1.5 names the delay
+            -- type buttons. Button #4 is intentionally not used
+            -- (11.2.1.4.1).
+            return (1 => B (TX.Start,
+                            Enabled => DMI_Conditions.Main_Start),
+                    2 => B (TX.Driver_ID,
+                            Enabled => DMI_Conditions.Main_Driver_ID),
+                    3 => B (TX.Train_Data,
+                            Enabled => DMI_Conditions.Main_Train_Data),
+                    4 => No_Button,
+                    5 => B (TX.Level,
+                            Enabled => DMI_Conditions.Main_Level),
+                    6 => B (TX.Train_Running_Number,
+                            Enabled => DMI_Conditions.Main_TRN),
+                    7 => (if Exit_Shunting_Label
+                          then B (TX.Exit_Shunting,
+                                  Enabled =>
+                                    DMI_Conditions.Main_Exit_Shunting,
+                                  Delayed => True)
+                          else B (TX.Shunting,
+                                  Enabled => DMI_Conditions.Main_Shunting,
+                                  Delayed => True)),
+                    8 => B (TX.Non_Leading,
+                            Enabled => DMI_Conditions.Main_Non_Leading,
+                            Delayed => True),
+                    9 => B (TX.Maintain_Shunting,
+                            Enabled =>
+                              DMI_Conditions.Main_Maintain_Shunting,
+                            Delayed => True),
+                    10 => B (TX.Radio_Data,
+                             Enabled => DMI_Conditions.Main_Radio_Data),
+                    11 => (if Continue_SM_Label
+                           then B (TX.Continue_SM,
+                                   Enabled =>
+                                     DMI_Conditions.Main_Continue_SM,
+                                   Delayed => True)
+                           else B (TX.Initiate_SM,
+                                   Enabled =>
+                                     DMI_Conditions.Main_Initiate_SM,
+                                   Delayed => True)),
+                    12 => B (TX.Exit_SM,
+                             Enabled => DMI_Conditions.Main_Exit_SM,
+                             Delayed => True));
+         when W_Override =>
+            -- 11.2.2.4, Table 34
+            return (1 => B (TX.EOA, Enabled => DMI_Conditions.Override_EOA),
+                    others => No_Button);
+         when W_Special =>
+            -- 11.2.3.4, Table 35, Figure 111; 11.2.3.5: 'Train
+            -- integrity' is a delay type button. #4 is 'Revoke BMM
+            -- reaction inhibition' while the "BTM alarm reaction
+            -- inhibition" function is active, the only difference of
+            -- its two rows (Table 53 S1: the one removes what the other
+            -- presents).
+            return (1 => B (TX.Adhesion,
+                            Enabled => DMI_Conditions.Special_Adhesion),
+                    2 => B (TX.SR_Speed_Distance,
+                            Enabled => DMI_Conditions.Special_SR_Data),
+                    3 => B (TX.Train_Integrity,
+                            Enabled =>
+                              DMI_Conditions.Special_Train_Integrity,
+                            Delayed => True),
+                    4 => (if DMI_Conditions.BMM_Inhibit_Active
+                          then B (TX.Revoke_BMM_Inhibition,
+                                  Enabled =>
+                                    DMI_Conditions.Special_BMM_Revoke)
+                          else B (TX.BMM_Inhibition,
+                                  Enabled =>
+                                    DMI_Conditions.Special_BMM_Inhibit)),
+                    others => No_Button);
+         when W_Settings =>
+            -- 11.2.4.4, Table 36, Figure 112: the symbols SE03, SE02 and
+            -- SE01 for touch; #1 opens the Language window (11.3.6)
+            return (1 => Symbol_Button
+                           (Icon_SE03,
+                            Enabled => DMI_Conditions.Settings_Language),
+                    2 => Symbol_Button
+                           (Icon_SE02,
+                            Enabled => DMI_Conditions.Settings_Volume),
+                    3 => Symbol_Button
+                           (Icon_SE01,
+                            Enabled => DMI_Conditions.Settings_Brightness),
+                    -- Table 36 #4 to #6: the System version window
+                    -- (11.5.2), the Set VBC (11.3.12) and Remove VBC
+                    -- (11.3.13) windows
+                    4 => B (TX.System_Version,
+                            Enabled =>
+                              DMI_Conditions.Settings_System_Version),
+                    5 => B (TX.Set_VBC,
+                            Enabled => DMI_Conditions.Settings_Set_VBC),
+                    6 => B (TX.Remove_VBC,
+                            Enabled => DMI_Conditions.Settings_Remove_VBC),
+                    -- Table 36 #7: the ATO selector window (11.3.14)
+                    7 => B (TX.ATO, Enabled => DMI_Conditions.Settings_ATO),
+                    others => No_Button);
+         when W_Radio_Data =>
+            -- 11.2.5.4, Table 37, Figure 113; 11.2.5.5: 'GSM-R network
+            -- ID' is a delay type button. #4 is not used (Figure 113).
+            return (1 => B (TX.Contact_Last_RBC,
+                            Enabled =>
+                              DMI_Conditions.Radio_Contact_Last_RBC),
+                    2 => B (TX.Use_Short_Number,
+                            Enabled =>
+                              DMI_Conditions.Radio_Use_Short_Number),
+                    3 => B (TX.Enter_RBC_Data,
+                            Enabled => DMI_Conditions.Radio_Enter_RBC_Data),
+                    4 => No_Button,
+                    5 => B (TX.Radio_Network_Type,
+                            Enabled => DMI_Conditions.Radio_Network_Type),
+                    6 => B (TX.GSMR_Network_ID,
+                            Enabled => DMI_Conditions.Radio_GSMR_Network_ID,
+                            Delayed => True),
+                    7 => B (TX.Mission_One_Radio,
+                            Enabled =>
+                              DMI_Conditions.Radio_Mission_One_Radio),
+                    others => No_Button);
+         when others =>
+            return (others => No_Button);
+      end case;
+   end Static_Menu_Def;
+
+   function Radio_Step_Displayed return Boolean is
+     (Depth > 0 and then Stack (Depth) = W_Radio_Data
+      and then (List_Requested or else Registration_Requested
+                or else DMI_Conditions.Radio_Wait
+                          /= DMI_Conditions.No_Radio_Wait));
+
+   function Menu_Def (ID : Window_ID_T) return Menu_Def_T is
+      Result : Menu_Def_T := Static_Menu_Def (ID);
+   begin
+      -- 11.2.1.4, 11.2.2.4, 11.2.3.4, 11.2.4.4: the buttons of these
+      -- windows are enabled only while no driver's acknowledgement is
+      -- required (displayed or waiting, 5.4.1.9); so no data entry can be
+      -- started under a pending acknowledgement (5.4.1.11).
+      -- Table 49 S0, S4 and A31 and Table 50 S7, S8 and S9 ask for the
+      -- Main window "with all buttons disabled" while the on-board
+      -- awaits an answer; 11.2.5.4 and Table 49 S3-2-1 / S3-2-3, Table
+      -- 50 S5-2-1 / S5-2-3 the same for the Radio data window.
+      if ID in W_Main | W_Override | W_Special | W_Settings | W_Radio_Data
+        and then (DMI_Ack.Pending_Count > 0
+                  or else (ID = W_Main and then Waiting_Window)
+                  or else (ID = W_Radio_Data
+                           and then Radio_Step_Displayed))
+      then
+         for I in Result'Range loop
+            Result (I).Enabled := False;
+         end loop;
+      end if;
+      return Result;
+   end Menu_Def;
+
+   ---------------------------------------------------------------------
+   -- Geometry
+   ---------------------------------------------------------------------
+
+   function Window_Area return Display.Area_T is (The_Window_Area);
+
+   function Close_Button_Area return Display.Area_T is
+     ((Origin + (0, 400), 82, 50));
+
+   ---------------------------------------------------------------------
+   -- Driver ID window in the step S1 (11.3.3.5 to 11.3.3.7)
+   ---------------------------------------------------------------------
+
+   -- In the step S1 of the Start Up dialogue sequence the Driver ID
+   -- window also presents a 'settings' button with the symbol SE04 and a
+   -- 'train running number' button with the label 'TRN'. These are
+   -- objects of the Driver ID window of chapter 11, not of the generic
+   -- data entry engine of chapter 10, so they live here and take the
+   -- button indices that follow the engine's.
+   TRN_Extra      : constant := 1;
+   Settings_Extra : constant := 2;
+   Extra_Count    : constant := 2;
+
+   function In_Step_S1 return Boolean is
+     (Sequence_Active and then Depth > 0
+      and then Stack (Depth) = W_Driver_ID);
+
+   -- 11.3.3.7 a: 'TRN' at (142,400), 11.3.3.6 a: 'settings' at (224,400),
+   -- both 82 x 50 cells inside the D/F/G area
+   function Extra_Area (Which : Positive) return Area_T is
+     (if Which = TRN_Extra then (Origin + (142, 400), 82, 50)
+      else (Origin + (224, 400), 82, 50));
+
+   -- Table 20: menu buttons 153x50 in two columns from y 50
+   function Menu_Button_Area (Index : Positive) return Area_T is
+     ((Origin + (((Index - 1) mod 2) * 153, 50 + ((Index - 1) / 2) * 50),
+       153, 50));
+
+   function Button_Count return Natural is
+   begin
+      if Depth = 0 then
+         return 0;
+      end if;
+      case Kind_Of (Stack (Depth)) is
+         when Menu                    => return Max_Menu;
+         when Data_Entry | Validation =>
+            return DMI_Data_Entry.Button_Count
+              + (if In_Step_S1 then Extra_Count else 0);
+         when View                    => return DMI_Data_View.Button_Count;
+         -- Figure 135: [Close] only
+         when Info                    => return 0;
+      end case;
+   end Button_Count;
+
+   -- The index of the extra Driver ID button, 0 when Index is one of the
+   -- data entry engine's own
+   function Extra_Index (Index : Positive) return Natural is
+     (if In_Step_S1 and then Index > DMI_Data_Entry.Button_Count
+      then Index - DMI_Data_Entry.Button_Count else 0);
+
+   function Button_Area (Index : Positive) return Display.Area_T is
+   begin
+      case Kind_Of (Stack (Depth)) is
+         when Menu => return Menu_Button_Area (Index);
+         when Data_Entry | Validation =>
+            if Extra_Index (Index) > 0 then
+               return Extra_Area (Extra_Index (Index));
+            end if;
+            return DMI_Data_Entry.Button_Area (Index);
+         when View => return DMI_Data_View.Button_Area (Index);
+         when Info => return ((0, 0), 0, 0);
+      end case;
+   end Button_Area;
+
+   function Button_Enabled (Index : Positive) return Boolean is
+   begin
+      case Kind_Of (Stack (Depth)) is
+         when Menu =>
+            declare
+               Def : constant Menu_Def_T := Menu_Def (Stack (Depth));
+            begin
+               return Def (Index).Used and then Def (Index).Enabled;
+            end;
+         when Data_Entry | Validation =>
+            -- 11.3.3.5 names no condition for the two buttons of S1
+            if Extra_Index (Index) > 0 then
+               return True;
+            end if;
+            return DMI_Data_Entry.Button_Enabled (Index);
+         when View =>
+            return DMI_Data_View.Button_Enabled (Index);
+         when Info =>
+            return False;
+      end case;
+   end Button_Enabled;
+
+   function Button_Kind (Index : Positive) return DMI_Buttons.Kind_T is
+   begin
+      case Kind_Of (Stack (Depth)) is
+         when Menu =>
+            declare
+               Def : constant Menu_Def_T := Menu_Def (Stack (Depth));
+            begin
+               return (if Def (Index).Delayed then DMI_Buttons.Delay_Type
+                       else DMI_Buttons.Up_Type);
+            end;
+         when Data_Entry | Validation =>
+            -- 11.3.3.5 does not give a button type; both open a window,
+            -- as the up-type buttons of a menu window do (implementation
+            -- choice)
+            if Extra_Index (Index) > 0 then
+               return DMI_Buttons.Up_Type;
+            end if;
+            return DMI_Data_Entry.Button_Kind (Index);
+         when View | Info =>
+            return DMI_Buttons.Up_Type;
+      end case;
+   end Button_Kind;
+
+   ---------------------------------------------------------------------
+   -- Stack handling
+   ---------------------------------------------------------------------
+
+   ---------------------------------------------------------------------
+   -- Windows with a dedicated keyboard on the half grid array (audit
+   -- WIN-10): Level (11.3.2), Adhesion (11.3.11), Volume (11.3.7),
+   -- Brightness (11.3.8) and Language (11.3.6), then ATO selector
+   -- (11.3.14), GSM-R network ID (11.3.4) and Radio network type
+   -- (11.3.15). Each has a single input field with only the
+   -- data part (10.3.1.7) and a list of predefined choices; the driver
+   -- accepts the choice on the input field, which completes the entry
+   -- (10.3.1.22, 10.6.1.2 a).
+   ---------------------------------------------------------------------
+
+   -- Table 38: the buttons 1, 2 and 4 are reserved for the ERTMS/ETCS
+   -- levels 1, 2 and 0; the button 3 is empty; the NTC levels follow
+   -- from the button 5. 11.3.2.6: the labels of the NTC levels are the
+   -- abbreviations of the National Systems, whose definition is outside
+   -- the scope of the specification; this DMI knows one NTC level
+   -- (Supplementary_Driving_Info.Level_T) and labels it 'NTC'.
+   Level_Choice_Count : constant := 5;
+   Level_Of_Choice : constant array (1 .. Level_Choice_Count) of Natural :=
+     (1 => SDI.Level_T'Pos (SDI.L1),
+      2 => SDI.Level_T'Pos (SDI.L2),
+      3 => 0,                          -- Table 38: no button
+      4 => SDI.Level_T'Pos (SDI.L0),
+      5 => SDI.Level_T'Pos (SDI.NTC));
+
+   -- 11.3.2.7 / 11.3.2.8: only the buttons of the levels contained in
+   -- the table of priority of trackside supported levels, or, when that
+   -- table is not available on board, of the levels of the default list
+   -- of levels configured on-board, are enabled. Neither list is carried
+   -- by MSG_ONBOARD (see the report), so the DMI holds the default list
+   -- of 11.3.2.8 as its own configuration: every level it can name.
+   Default_Level_List : constant array (1 .. Level_Choice_Count) of Boolean :=
+     (1 => True, 2 => True, 3 => False, 4 => True, 5 => True);
+
+   -- 'NTC' stands for the abbreviation of a National System (11.3.2.6),
+   -- a name, not a text of 5.5.1.3
+   function Level_Label (Pos : Natural) return Wide_String is
+     (if Pos = SDI.Level_T'Pos (SDI.L0) then TX.Text (TX.Level_0)
+      elsif Pos = SDI.Level_T'Pos (SDI.NTC) then "NTC"
+      elsif Pos = SDI.Level_T'Pos (SDI.L1) then TX.Text (TX.Level_1)
+      elsif Pos = SDI.Level_T'Pos (SDI.L2) then TX.Text (TX.Level_2)
+      else "");
+
+   -- 5.1.4.1: the level of the volume and of the luminance as a number
+   function Level_Number (N : Natural) return Wide_String is
+      Img : constant Wide_String := Natural'Wide_Image (N);
+   begin
+      return Img (2 .. Img'Last);
+   end Level_Number;
+
+   function Dedicated_Def (ID : Window_ID_T)
+                           return DMI_Data_Entry.Window_Def_T is
+      use DMI_Data_Entry;
+      Result  : Window_Def_T;
+      Choices : Choice_Set_T := No_Choices;
+      Value   : DMI_Driver_Data.Text_Value_T;
+      Chosen  : Natural := 0;
+
+      -- 11.7.1.4: entering the window the value stored on board is
+      -- presented to the driver
+      procedure Propose (Index : Natural) is
+      begin
+         if Index not in 1 .. Choices.Count then
+            return;
+         end if;
+         Chosen := Index;
+         Value.Length := DMI_Data_Entry.Max_Choice_Label;
+         Value.Text (1 .. Value.Length) := Choices.List (Index).Label;
+         while Value.Length > 0 and then Value.Text (Value.Length) = ' ' loop
+            Value.Length := Value.Length - 1;
+         end loop;
+      end Propose;
+   begin
+      case ID is
+         when W_Level =>
+            -- Table 38, with 11.3.2.7 / 11.3.2.8 for the enabling
+            for I in 1 .. Level_Choice_Count loop
+               Add_Choice (Choices, Level_Label (Level_Of_Choice (I)),
+                           Enabled => Default_Level_List (I));
+            end loop;
+            -- the level the on-board reports is the level stored there
+            if SDI.Level in SDI.L0 | SDI.NTC | SDI.L1 | SDI.L2 then
+               for I in 1 .. Level_Choice_Count loop
+                  if Level_Of_Choice (I) = SDI.Level_T'Pos (SDI.Level) then
+                     Propose (I);
+                  end if;
+               end loop;
+            end if;
+         when W_Adhesion =>
+            -- Table 43
+            Add_Choice (Choices, TX.Text (TX.Non_Slippery_Rail));
+            Add_Choice (Choices, TX.Text (TX.Slippery_Rail));
+            -- 11.7.1.4: the adhesion the on-board holds is what
+            -- MSG_STATUS reports as the slippery rail state (8.2.3.7)
+            Propose (if DMI_Status.Slippery_Rail then 2 else 1);
+         when W_ATO_Selector =>
+            -- 11.3.14.4, Table 43a: 1 Stand-by, 2 On
+            Add_Choice (Choices, TX.Text (TX.Stand_By));
+            Add_Choice (Choices, TX.Text (TX.ATO_On));
+            -- 11.7.1.4: the position the on-board holds (SUBSET-026
+            -- 3.15.11.2) as the EVC reports it; not known: none
+            case DMI_ATO.Selector is
+               when DMI_ATO.Stand_By => Propose (1);
+               when DMI_ATO.On       => Propose (2);
+               when DMI_ATO.Unknown  => null;
+            end case;
+         when W_Volume | W_Brightness =>
+            -- 11.3.7.4.1 / 11.3.8.4.1: the definition of the keyboard is
+            -- an implementation issue and the note offers "several
+            -- buttons for different levels" as one example; the eleven
+            -- levels of General_Parameters take the keys 1 to 11
+            -- (implementation choice: one key per level leaves a data
+            -- value in the input field, which a pair of '-' / '+'
+            -- buttons would not)
+            for I in 0 .. 10 loop
+               Add_Choice (Choices, Level_Number (I));
+            end loop;
+            if ID = W_Volume then
+               Propose
+                 (Natural (General_Parameters.Loudspeaker_Volume) + 1);
+            else
+               Propose
+                 (Natural (General_Parameters.Display_Luminance) + 1);
+            end if;
+         when W_GSMR_Network =>
+            -- 11.3.4.4: the alphanumeric list of available and allowed
+            -- GSM-R Radio Networks the on-board acquired, one key per
+            -- network in the order of the list
+            for I in 1 .. DMI_Radio_Data.Network_Count loop
+               declare
+                  N : constant DMI_Radio_Data.Name_T :=
+                    DMI_Radio_Data.Networks (I);
+               begin
+                  Add_Choice (Choices, N.Text (1 .. N.Length));
+               end;
+            end loop;
+            -- 11.7.1.4: the network selected last on this DMI, when the
+            -- list offers it again
+            for I in 1 .. Choices.Count loop
+               if DMI_Radio_Data.GSMR_Network.Length > 0
+                 and then DMI_Radio_Data.Networks (I)
+                            = DMI_Radio_Data.GSMR_Network
+               then
+                  Propose (I);
+               end if;
+            end loop;
+         when W_Radio_Network_Type =>
+            -- Table 43b; 11.7.1.4: the type stored on-board, which
+            -- MSG_ONBOARD reports. The labels are the names of the radio
+            -- systems, the same in every language (not DMI_Texts).
+            Add_Choice (Choices, "FRMCS");
+            Add_Choice (Choices, "FRMCS+GSM-R");
+            Add_Choice (Choices, "GSM-R");
+            Propose (DMI_Conditions.Radio_Type_T'Pos
+                       (DMI_Conditions.Radio_Type));
+         when W_Language =>
+            -- 11.3.6.4: the languages the DMI holds (5.5.1.1), each in
+            -- its own language; 11.3.6.4.1: the on-board configuration
+            -- decides which, here DMI_Texts. 11.7.1.4 / Table 54 S2: the
+            -- selected language is proposed for revalidation.
+            for L in TX.Language_T loop
+               Add_Choice (Choices, TX.Name (L));
+            end loop;
+            Propose (TX.Language_T'Pos (TX.Selected) + 1);
+         when others =>
+            null;
+      end case;
+      Result.Title := Window_Title (Title (ID));
+      Result.Field_Count := 1;
+      Result.Fields (1) :=
+        Field (Title (ID), DMI_Data_Entry.Max_Choice_Label,
+               Keyboard => Dedicated,
+               Proposed => Value,
+               Choices  => Choices,
+               Proposed_Choice => Chosen);
+      return Result;
+   end Dedicated_Def;
+
+   -- The definition the data entry engine works on (10.3, 10.4); the
+   -- proposed values are the stored ones (11.7.1.4)
+   function Entry_Def (ID : Window_ID_T) return DMI_Data_Entry.Window_Def_T is
+      use DMI_Driver_Data;
+      use DMI_Data_Entry;
+
+      function Image_Value (N : Natural) return Text_Value_T is
+         Img : constant Wide_String := Natural'Wide_Image (N);
+         R   : Text_Value_T;
+      begin
+         if N > 0 then
+            R.Length := Img'Length - 1;
+            R.Text (1 .. R.Length) := Img (2 .. Img'Last);
+         end if;
+         return R;
+      end Image_Value;
+
+      -- 10.3.4.1.2: the permitted ranges and resolutions are configured
+      -- in the on-board and the protocol does not carry them, so the DMI
+      -- holds what the specifications state for the data themselves:
+      -- the technical rules are the ranges and resolutions of the
+      -- ERTMS/ETCS variables of SUBSET-026 chapter 7. An operational
+      -- range is an operating rule and belongs to the on-board too; the
+      -- only one the DMI can state by itself is that zero is not a
+      -- nominal value for a train length, a brake percentage or a
+      -- maximum speed (implementation choice, see the report).
+      TRN_Rule : constant Check_Rule_T :=       -- NID_OPERATIONAL, 7.5.1.92
+        (Defined => True, Min => 0, Max => 99_999_999, Resolution => 1);
+      RBC_ID_Rule : constant Check_Rule_T :=    -- A.3.11, 11.3.5.3.1
+        (Defined => True, Min => 0, Max => 16_777_214, Resolution => 1);
+      -- 11.3.12.5: NID_VBCMK (6 bits), NID_C (10 bits) and T_VBC (8 bits,
+      -- SUBSET-026 7.5.1.154.1) make 24 bits; 11.3.13.5: NID_C,
+      -- NID_VBCMK and at most 8 unused bits, 24 bits as well. Every value
+      -- of the three variables is defined (7.5.1.99.1, 7.5.1.154.1).
+      VBC_Rule : constant Check_Rule_T :=
+        (Defined => True, Min => 0, Max => DMI_VBC.Code_Max,
+         Resolution => 1);
+
+      Yes_Value : constant Text_Value_T := Yes_No_Value (Yes_Choice);
+      Result : Window_Def_T;
+   begin
+      Result.Title := Window_Title (Title (ID));
+      case ID is
+         when W_Driver_ID =>
+            -- 11.3.3.4: the keyboard associated to the Driver ID is an
+            -- alphanumeric keyboard (10.3.5.17, multi-tap per 10.3.2.5).
+            -- No range or resolution is specified for it; SUBSET-026
+            -- A.3.11 (via 3.18.4.1.4) limits it to 1 to 16 alphanumeric
+            -- characters, which is the length of the input field.
+            Result.Field_Count := 1;
+            Result.Fields (1) := Field (TX.Text (TX.Driver_ID), Max_Field_Len,
+                                        Keyboard => Alphanumeric,
+                                        Proposed => Driver_ID);
+         when W_TRN =>
+            -- 11.3.1
+            Result.Field_Count := 1;
+            Result.Fields (1) := Field (TX.Text (TX.Train_Running_Nr), 8,
+                                        Proposed => TRN,
+                                        Technical => TRN_Rule);
+         when W_Train_Data =>
+            -- 11.3.9: the topic spans the windows its items need and
+            -- lives in DMI_Train_Data (11.7.1.6.1: the values are stored
+            -- only when the validation window is left with 'Yes')
+            return DMI_Train_Data.Window_Def
+              (DMI_Train_Data.Current_Window);
+         when W_Level | W_Adhesion | W_Volume | W_Brightness
+            | W_ATO_Selector | W_GSMR_Network | W_Radio_Network_Type
+            | W_Language =>
+            -- 11.3.2, 11.3.7, 11.3.8, 11.3.11, 11.3.14, 11.3.4, 11.3.15,
+            -- 11.3.6:
+            -- half grid array, a single input field with only the data
+            -- part and a dedicated keyboard (Dedicated_Def above)
+            return Dedicated_Def (ID);
+         when W_One_Radio =>
+            -- 11.3.16.1 / 11.3.16.4: half grid array, a single input
+            -- field with a 'No'/'Yes' dedicated keyboard. Table 49 S5 and
+            -- Table 50 S10: no value is proposed.
+            Result.Field_Count := 1;
+            Result.Fields (1) := Field (Title (ID), Max_Choice_Label,
+                                        Keyboard => Yes_No);
+         when W_RBC_Data =>
+            -- 11.3.5.1: total grid array with the question 'RBC data
+            -- entry complete?' but no echo texts; 11.3.5.5: numeric
+            -- keyboards. 11.3.5.3.1 / SUBSET-026 A.3.11: the RBC ID is
+            -- 0 to 16 777 214 (NID_C and NID_RBC, 10 + 14 bits); the
+            -- telephone number has no restriction but its 16 digits
+            -- (NID_RADIO, 7.5.1.95). 11.7.1.4: the values entered last
+            -- on this DMI are proposed while the on-board holds RBC
+            -- contact information ("valid" or "invalid").
+            Result.Layout := Total_Grid;
+            Result.Echo_Texts := False;
+            -- 11.3.5.3: the input field is labelled 'RBC ID' also when
+            -- it is the only one (implementation choice: 10.3.1.7 allows
+            -- the data area alone, but the title 'RBC data' does not say
+            -- which of the RBC data it is)
+            Result.Labelled := True;
+            Result.Field_Count := (if RBC_Phone_Shown then 2 else 1);
+            Result.Fields (1) :=
+              Field (TX.Text (TX.RBC_ID), 8,
+                     Proposed =>
+                       (if DMI_Radio_Data.RBC_Entered
+                          and then DMI_Conditions.RBC_Contact_Known
+                        then DMI_Radio_Data.RBC_ID
+                        else (0, (others => ' '))),
+                     Technical => RBC_ID_Rule);
+            Result.Fields (2) :=
+              Field (TX.Text (TX.RBC_Phone_Number),
+                     DMI_Protocol.RBC_Phone_Max,
+                     Proposed =>
+                       (if DMI_Radio_Data.RBC_Entered
+                          and then DMI_Conditions.RBC_Contact_Known
+                        then DMI_Radio_Data.RBC_Phone
+                        else (0, (others => ' '))));
+         when W_SR_Data =>
+            -- 11.3.10.1: likewise on the total grid array
+            Result.Layout := Total_Grid;
+            Result.Field_Count := 2;
+            Result.Fields (1) :=
+              Field (TX.Text (TX.SR_Speed), 3,
+                     Proposed => Image_Value (SR_Speed));
+            Result.Fields (2) :=
+              Field (TX.Text (TX.SR_Distance), 5,
+                     Proposed => Image_Value (SR_Dist));
+         when W_Train_Data_Validation =>
+            -- 11.4.1 with 11.4.1.3: the echo texts of the train data
+            -- window(s), built by DMI_Train_Data
+            return DMI_Train_Data.Validation_Def;
+         when W_Set_VBC | W_Remove_VBC =>
+            -- 11.3.12.1 / 11.3.13.1: total grid array with echo texts;
+            -- 11.3.12.4 / 11.3.13.4: the single input field 'VBC set
+            -- code' / 'VBC remove code' with the label 'VBC code'
+            -- (Figures 128, 129 show the label area); 11.3.12.6 /
+            -- 11.3.13.6: a numeric keyboard. The code is 24 bits: 8
+            -- digits. Table 54 S6-1 / S7-1: from S1 no value is proposed,
+            -- from S6-2 / S7-2 the value of the previous S6-1 / S7-1.
+            Result.Layout := Total_Grid;
+            Result.Labelled := True;
+            Result.Field_Count := 1;
+            Result.Fields (1) :=
+              Field (TX.Text (TX.VBC_Code), 8,
+                     Proposed =>
+                       (if DMI_VBC.Pending_Valid then DMI_VBC.Pending
+                        else (0, (others => ' '))),
+                     Technical => VBC_Rule);
+         when W_Set_VBC_Validation | W_Remove_VBC_Validation =>
+            -- 11.4.2 / 11.4.3 (10.4): a single input field with only a
+            -- data part and the 'No'/'Yes' dedicated keyboard; Table 54
+            -- S6-2 / S7-2 always propose 'Yes'. 11.4.2.3 / 11.4.3.3: the
+            -- echo text is the one of the Set VBC / Remove VBC window,
+            -- always white (11.4.2.4.1, 11.4.3.4.1).
+            Result.Layout := Validation;
+            Result.Field_Count := 1;
+            Result.Fields (1) :=
+              Field (TX.Text (TX.Validate), Max_Choice_Label,
+                     Keyboard => Yes_No,
+                     Proposed => Yes_Value,
+                     Proposed_Choice => Yes_Choice);
+            Result.Echo_Count := 1;
+            Result.Echo (1) :=
+              Echo (TX.Text (TX.VBC_Code), DMI_VBC.Pending,
+                    Accepted => True);
+         when others =>
+            null;
+      end case;
+      return Result;
+   end Entry_Def;
+
+   -- 10.6.1.1 with 10.6.1.3: the train data entry / validation process
+   -- starts with the first train data window and runs while one of the
+   -- two window kinds of the topic is displayed
+   procedure Sync_Train_Data_Process is
+   begin
+      if Depth = 0
+        or else Stack (Depth) not in W_Train_Data | W_Train_Data_Validation
+      then
+         DMI_Train_Data.End_Process;
+      end if;
+   end Sync_Train_Data_Process;
+
+   procedure Open (ID : Window_ID_T) is
+   begin
+      if Depth < Stack'Last then
+         if ID = W_Train_Data and then not DMI_Train_Data.In_Progress then
+            DMI_Train_Data.Start_Process;
+         end if;
+         Depth := Depth + 1;
+         Stack (Depth) := ID;
+         if ID = W_RBC_Data then
+            RBC_Phone_Shown := DMI_Conditions.RBC_Phone_Field;
+         end if;
+         if Kind_Of (ID) in Data_Entry | Validation then
+            DMI_Data_Entry.Open (Entry_Def (ID));
+         elsif Kind_Of (ID) = View then
+            --  The window opens on its first window (5.3.1.1.9)
+            DMI_Data_View.Reset;
+         end if;
+      end if;
+   end Open;
+
+   -- Back to the parent window
+   procedure Pop is
+   begin
+      if Depth > 0 then
+         Depth := Depth - 1;
+         -- 10.6.1.1 / 10.6.1.3 e: leaving the validation window for a
+         -- reason other than accepting 'Yes' stops the data entry /
+         -- validation process of the topic; the data entry window that
+         -- becomes displayed again starts a new one, with the stored
+         -- values proposed (11.7.1.4). The engine holds one process at
+         -- a time, which is what the window stack needs here. The train
+         -- data topic keeps its own values while its process runs
+         -- (Table 50 S3-1 entered from S3-2).
+         Sync_Train_Data_Process;
+         if Depth > 0
+           and then Kind_Of (Stack (Depth)) in Data_Entry | Validation
+         then
+            DMI_Data_Entry.Open (Entry_Def (Stack (Depth)));
+         end if;
+      end if;
+   end Pop;
+
+   procedure To_Default_Window is
+   begin
+      Depth := 0;
+      Sequence_Active := False;
+      Waiting_Window := False;
+      List_Requested := False;
+      Registration_Requested := False;
+      DMI_Train_Data.End_Process;
+   end To_Default_Window;
+
+   -- Back to the window ID below the displayed one(s), when it is in the
+   -- stack
+   procedure Pop_To (ID : Window_ID_T) is
+   begin
+      while Depth > 0 and then Stack (Depth) /= ID loop
+         Pop;
+      end loop;
+   end Pop_To;
+
+   -- 11.7.2.2: [Close] is disabled in the windows presented before S10
+   -- (S1 Driver ID and S2 Level), except in the steps S1-1, S1-2,
+   -- S3-2-2, S3-3 and S3-4. Of those S1-1 (Settings) and S1-2 (Train
+   -- running number) exist: they are the windows the Driver ID window is
+   -- the parent of (11.6.1.2), i.e. everything the driver opens above
+   -- it, S1 being the only Start Up step with a window below another.
+   -- The steps S3-2-2, S3-3 and S3-4 are the windows the Radio data
+   -- window of S3-1 opens; S5, the Mission with one radio system window,
+   -- is not an exception, whether it is opened from S3-1 (A43) or
+   -- reached by D9.
+   -- 11.7.3.2: [Close] is enabled in the Main window sequence except
+   -- S5-2-1, S5-2-3, S7, S8 and S9, the steps waiting for the radio
+   -- network or the RBC: S7, S8 and S9 are the Main window the EVC asks
+   -- for while it awaits an answer, S5-2-1 and S5-2-3 the waiting Radio
+   -- data window (Table 49 S3-2-1 and S3-2-3 likewise). 11.7.4.2 and
+   -- 11.7.8.2: the same for S1 of the Shunting and the Supervised
+   -- Manoeuvre dialogue sequences, the Main window awaiting the RBC.
+   function Close_Enabled return Boolean is
+     (not Waiting_Window
+      and then not Radio_Step_Displayed
+      and then (not Sequence_Active
+                or else (Depth > 1 and then Stack (Depth) /= W_One_Radio)));
+
+   procedure Close_Top is
+   begin
+      if Close_Enabled then
+         -- 10.6.1.3 e: [Close] of a VBC validation window stops the Set /
+         -- Remove VBC entry / validation process; Table 54 proposes the
+         -- previous value only while the process goes on (S6-1 / S7-1
+         -- entered from S6-2 / S7-2 after 'No'), so the window below
+         -- starts a new one with no value proposed (implementation
+         -- choice: Table 54 has no step for this [Close])
+         if Stack (Depth) in W_Set_VBC_Validation | W_Remove_VBC_Validation
+         then
+            DMI_VBC.Clear;
+         end if;
+         Pop;
+      end if;
+   end Close_Top;
+
+   procedure Close_All is
+   begin
+      To_Default_Window;
+      D9_Pending := False;
+      Action_Count := 0;
+      Waiting_Kind := DMI_Conditions.Nothing;
+      Last_SOM := DMI_Conditions.No_Mission_Start;
+   end Close_All;
+
+   -- Table 49 S10: the Start Up sequence ends in S1 of the Main window
+   -- dialogue sequence
+   procedure Reach_S10 is
+   begin
+      To_Default_Window;
+      Open (W_Main);
+   end Reach_S10;
+
+   -- A window of the Start Up dialogue sequence that is not stacked on
+   -- another one (S3-1 after S2, S5 after D9)
+   procedure Start_Up_Window (ID : Window_ID_T) is
+   begin
+      To_Default_Window;
+      Sequence_Active := True;
+      Open (ID);
+   end Start_Up_Window;
+
+   -- Table 50 S1: the Main window, below the window(s) on display
+   procedure Back_To_Main is
+   begin
+      Pop_To (W_Main);
+      if Depth = 0 then
+         Open (W_Main);
+      end if;
+   end Back_To_Main;
+
+   -- The radio data are done with: Table 49 S3-1 / S3-3 / S5 -> A31, or
+   -- D10 -> S10, reach S10 (the Main window, where the EVC presents A31
+   -- itself: MSG_ONBOARD waiting); Table 50 S5-1 / S5-3 -> S8, or D9 ->
+   -- S1, back to the Main window likewise
+   procedure Leave_Radio_Data is
+   begin
+      if Sequence_Active then
+         Reach_S10;
+      else
+         Back_To_Main;
+      end if;
+   end Leave_Radio_Data;
+
+   -- Table 49 S3-1 / Table 50 S5-1: the Radio data window again
+   procedure Back_To_Radio_Data is
+   begin
+      Pop_To (W_Radio_Data);
+      if Depth = 0 then
+         if Sequence_Active then
+            -- Table 49 E3 from S5 reached by D9: nothing below
+            Start_Up_Window (W_Radio_Data);
+         else
+            Open (W_Main);
+            Open (W_Radio_Data);
+         end if;
+      end if;
+   end Back_To_Radio_Data;
+
+   procedure Engage_Start_Up is
+   begin
+      -- SUBSET-026 4.10.1.3: entering SB the Driver ID, the train data
+      -- and the train running number are to be revalidated (status
+      -- "invalid"), the level keeps its status. The status of the data
+      -- stored on-board belongs to the on-board (11.7.1.3) and the EVC
+      -- reports it (MSG_ONBOARD, DMI_Conditions); the DMI does not set
+      -- it here any more. The stored values stay and are proposed in the
+      -- windows (11.7.1.4).
+      To_Default_Window;
+      D9_Pending := False;
+      -- Table 49 S1
+      Sequence_Active := True;
+      Open (W_Driver_ID);
+   end Engage_Start_Up;
+
+   procedure Abort_Start_Up is
+   begin
+      -- The specification does not say what happens to the sequence when
+      -- the start of mission ends before S10 (SB is left, e.g. to SL or
+      -- SF). Implementation choice: the sequence ends with the default
+      -- window, so that its windows with the disabled [Close] cannot stay.
+      if Sequence_Active then
+         To_Default_Window;
+      end if;
+   end Abort_Start_Up;
+
+   function In_Start_Up return Boolean is (Sequence_Active);
+
+   function Waiting_Displayed return Boolean is (Waiting_Window);
+
+   -- The windows of Table 48 that take data: the data entry windows of
+   -- 11.3 and the validation window of 11.4
+   function Is_Entry_Window (ID : Window_ID_T) return Boolean is
+     (Kind_Of (ID) in Data_Entry | Validation);
+
+   function Entry_Open return Boolean is
+     (Depth > 0 and then Is_Entry_Window (Stack (Depth)));
+
+   procedure Stop_Entry is
+   begin
+      -- 11.7.1.9: the values of the input fields are dropped with the
+      -- window; the validation window goes with its train data window
+      while Depth > 0 and then Is_Entry_Window (Stack (Depth)) loop
+         Pop;
+      end loop;
+   end Stop_Entry;
+
+   -- Table 49 S3-2-1 / Table 50 S5-2-1 end when the list the DMI asked
+   -- for is there and the EVC no longer reports it is acquiring one
+   procedure Check_List_Step is
+      use DMI_Conditions;
+   begin
+      if not (List_Requested and then DMI_Radio_Data.List_Received
+              and then Radio_Wait /= Network_List)
+      then
+         return;
+      end if;
+      List_Requested := False;
+      DMI_Radio_Data.Clear_List_Received;
+      if Depth = 0 or else Stack (Depth) /= W_Radio_Data then
+         return;
+      end if;
+      if DMI_Radio_Data.Network_Count > 0 then
+         Open (W_GSMR_Network);                   -- S3-2-2 / S5-2-2
+      elsif not Both_Radio_Systems then
+         -- A29 -> D10 / A5 -> D9 (the text message is the EVC's): S10 /
+         -- S1 unless both radio systems are there
+         Leave_Radio_Data;
+      end if;
+      -- otherwise back to S3-1 / S5-1: the Radio data window stays
+   end Check_List_Step;
+
+   procedure Radio_Networks_Received is
+   begin
+      Check_List_Step;
+   end Radio_Networks_Received;
+
+   -- Only the on-board knows the conditions of Table 49 S0 and the steps
+   -- in which it awaits an answer; the EVC reports them (MSG_ONBOARD)
+   -- and this is where they take effect. The start of mission engages
+   -- the sequence on the change to "initiated", not on every message.
+   procedure Onboard_State_Changed is
+      use DMI_Conditions;
+   begin
+      -- Table 49 S0 / S4 / A31 and Table 50 S7 / S8 / S9: the Main
+      -- window with all buttons disabled and the hour glass ST05
+      if Awaiting_Answer then
+         if not Waiting_Window then
+            To_Default_Window;
+            Open (W_Main);
+            Waiting_Window := True;
+         end if;
+         -- Table 49 S4 -> A31: the registration to the radio network(s)
+         -- completed and the on-board contacts the RBC
+         if Waiting_Kind = Radio_Network and then Waiting /= Radio_Network
+         then
+            D9_Pending := False;
+         end if;
+         Waiting_Kind := Waiting;
+      elsif Waiting_Window then
+         Waiting_Window := False;
+         case Waiting_Kind is
+            when Authorisation =>
+               -- Table 50 S7 ends in the default window when the MA or
+               -- the SR authorisation arrives
+               To_Default_Window;
+            when Shunting_Answer | SM_Answer =>
+               -- Table 51 S1: 'Shunting Authorised' -> MO01 and the
+               -- default window; Table 54a S1: 'Supervised Manoeuvre
+               -- Authorisation' -> MO24, SM01 / SM02 and the default
+               -- window (the symbols are the EVC's). Refused or no reply
+               -- -> S0, which is S1 of the Main window dialogue sequence.
+               if Request_Authorised then
+                  To_Default_Window;
+               end if;
+            when Radio_Network =>
+               -- Table 49 S4 ends in A31 when the radio network(s) are
+               -- registered, otherwise in A42 (the text messages are the
+               -- EVC's) and D9: S5 when a mission with one radio system
+               -- is possible, S10 otherwise
+               if D9_Pending and then not Radio_Registered
+                 and then Mission_With_One_Radio_Possible
+               then
+                  Start_Up_Window (W_One_Radio);
+               end if;
+            when others =>
+               -- Table 49 A31 and Table 50 S8 / S9 end in the Main window
+               -- (S10 / S1), which stays open
+               null;
+         end case;
+         D9_Pending := False;
+         Waiting_Kind := Nothing;
+      end if;
+
+      -- Table 49 S3-2-3 / Table 50 S5-2-3: the EVC has taken the step
+      -- over and presents it as long as it reports it
+      if Registration_Requested and then Radio_Wait = Network_Registration
+      then
+         Registration_Requested := False;
+      end if;
+      Check_List_Step;
+
+      if Start_Of_Mission = Initiated and then Last_SOM /= Initiated then
+         Engage_Start_Up;                                  -- S0 -> S1
+      elsif Start_Of_Mission = No_Mission_Start
+        and then Last_SOM /= No_Mission_Start
+      then
+         Abort_Start_Up;
+      end if;
+      Last_SOM := Start_Of_Mission;
+   end Onboard_State_Changed;
+
+   -- 11.7.1.7, Table 48: the button whose enabling conditions decide
+   -- whether the displayed data entry / validation window may stay.
+   -- Table 48 has no row
+   -- for the Set VBC and Remove VBC windows, their validation windows
+   -- or the System version window, so 11.7.1.7 does not stop them
+   -- (11.7.1.9 still does, Stop_Entry).
+   function Window_Condition (ID : Window_ID_T) return Boolean is
+     (case ID is
+         when W_TRN        => DMI_Conditions.Main_TRN,
+         when W_Driver_ID  => DMI_Conditions.Main_Driver_ID,
+         when W_Level      => DMI_Conditions.Main_Level,
+         when W_Train_Data | W_Train_Data_Validation =>
+           DMI_Conditions.Main_Train_Data,
+         when W_SR_Data    => DMI_Conditions.Special_SR_Data,
+         when W_Adhesion   => DMI_Conditions.Special_Adhesion,
+         when W_Language   => DMI_Conditions.Settings_Language,
+         when W_Volume     => DMI_Conditions.Settings_Volume,
+         when W_Brightness => DMI_Conditions.Settings_Brightness,
+         -- Table 48: ATO selector / ATO
+         when W_ATO_Selector => DMI_Conditions.Settings_ATO,
+         when W_Radio_Network_Type => DMI_Conditions.Radio_Network_Type,
+         when W_GSMR_Network => DMI_Conditions.Radio_GSMR_Network_ID,
+         when W_One_Radio  => DMI_Conditions.Radio_Mission_One_Radio,
+         when W_RBC_Data   => DMI_Conditions.Radio_Enter_RBC_Data,
+         when others       => True);  -- not a window of Table 48
+
+   procedure Check_Enabling_Conditions is
+   begin
+      -- "After the Start Up dialogue sequence": during it the steps of
+      -- Table 49 decide which window is shown
+      if Sequence_Active or else Depth = 0 then
+         return;
+      end if;
+      if not Window_Condition (Stack (Depth)) then
+         Stop_Entry;
+      end if;
+   end Check_Enabling_Conditions;
+
+   function Is_Open return Boolean is (Depth > 0);
+
+   function Top return Window_ID_T is (Stack (Depth));
+
+   ---------------------------------------------------------------------
+   -- Behaviour
+   ---------------------------------------------------------------------
+
+   -- The driver accepted the predefined choice of one of the four half
+   -- grid array windows with a dedicated keyboard (audit WIN-10). The
+   -- choice number is the row of Table 38 / Table 43 / the level of the
+   -- volume or the luminance; 10.6.1.2 a: accepting the value leaves the
+   -- window, which ends the data entry process of the topic.
+   procedure Dedicated_Completed (ID : Window_ID_T) is
+      use General_Parameters;
+      Chosen : constant Natural := DMI_Data_Entry.Choice_Number (1);
+   begin
+      if Chosen = 0 then
+         return;
+      end if;
+      case ID is
+         when W_Level =>
+            if Chosen <= Level_Choice_Count
+              and then Level_Of_Choice (Chosen) > 0
+            then
+               DMI_Driver_Data.Level_Entered := True;
+               Queue (Level_Selected, Level_Of_Choice (Chosen));
+               Pop;
+               if Sequence_Active then
+                  -- Table 49 S2: level 2 -> S3-1, the Radio data
+                  -- window; level 0, 1 or NTC -> S10
+                  if Level_Of_Choice (Chosen) = SDI.Level_T'Pos (SDI.L2)
+                  then
+                     Start_Up_Window (W_Radio_Data);
+                  else
+                     Reach_S10;
+                  end if;
+               elsif Level_Of_Choice (Chosen) = SDI.Level_T'Pos (SDI.L2)
+                 and then not (DMI_Conditions.RBC_Contact_Valid
+                               and then DMI_Conditions.Radio_Registered)
+               then
+                  -- Table 50 S4 -> D5: level 2 without valid RBC contact
+                  -- information or without the registration -> S5-1.
+                  -- Not modelled: the exception of D5 for a switch to
+                  -- TR (MO05 first), which the DMI cannot foresee.
+                  Open (W_Radio_Data);
+               end if;
+               -- Table 50 S4 otherwise: back to S1, the Main window;
+               -- with level 2 D5 -> S8, the Main window the EVC shows
+               -- awaiting the RBC (MSG_ONBOARD waiting)
+            end if;
+         when W_Adhesion =>
+            -- Table 43: 1 non slippery rail, 2 slippery rail
+            Queue (Adhesion_Set, (if Chosen = 2 then 1 else 0));
+            Pop;
+         when W_Volume =>
+            -- the choices are the levels 0 .. 10 in order (the range
+            -- check is defensive: the engine never reports a choice the
+            -- list does not hold). 11.7.1.5: the accepted value replaces
+            -- the stored one; 5.2.3.1: DMI_Core tells the loudspeaker
+            -- (MSG_SETTINGS), and the value outlives the mission
+            -- (5.2.3.2, DMI_Core.Initialise).
+            if Chosen - 1
+                 in Natural (Loudspeaker_Volume_T'First)
+                 .. Natural (Loudspeaker_Volume_T'Last)
+            then
+               Loudspeaker_Volume := Loudspeaker_Volume_T (Chosen - 1);
+               Pop;
+            end if;
+         when W_Brightness =>
+            -- the same for the luminance of the display unit (5.2.2.1,
+            -- 5.2.2.2)
+            if Chosen - 1
+                 in Natural (Display_Luminance_T'First)
+                 .. Natural (Display_Luminance_T'Last)
+            then
+               Display_Luminance := Display_Luminance_T (Chosen - 1);
+               Pop;
+            end if;
+         when W_ATO_Selector =>
+            -- Table 43a: 1 Stand-by, 2 On. The position is the
+            -- on-board's (SUBSET-026 3.15.11.2): it is sent to the EVC,
+            -- which reports it back in MSG_ATO; the DMI does not set it
+            -- itself. Table 54 S8: back to S1, the Settings window.
+            if Chosen in 1 .. 2 then
+               Queue (ATO_Selector_Set, Chosen);
+               Pop;
+            end if;
+         when W_GSMR_Network =>
+            -- Table 49 S3-2-2 / Table 50 S5-2-2: once the GSM-R network
+            -- ID is entered -> S3-2-3 / S5-2-3, the Radio data window
+            -- awaiting the registration. The name is the one of the key
+            -- (the list may have changed since the window opened).
+            declare
+               V : constant DMI_Driver_Data.Text_Value_T :=
+                 DMI_Data_Entry.Value (1);
+               Last : constant Natural :=
+                 Natural'Min (V.Length, DMI_Radio_Data.Max_Name);
+            begin
+               DMI_Radio_Data.GSMR_Network :=
+                 (Length => Last,
+                  Text   => (others => ' '));
+               DMI_Radio_Data.GSMR_Network.Text (1 .. Last) :=
+                 V.Text (1 .. Last);
+            end;
+            Queue (Send_GSMR_Network, 1);
+            Pop_To (W_Radio_Data);
+            Registration_Requested := True;
+         when W_Radio_Network_Type =>
+            -- Table 43b: 1 FRMCS, 2 FRMCS+GSM-R, 3 GSM-R
+            if Chosen <= 3 then
+               declare
+                  use DMI_Conditions;
+                  Entered : constant Radio_Type_T :=
+                    Radio_Type_T'Val (Chosen);
+               begin
+                  Queue (Send_Radio_Network_Type, Chosen);
+                  Pop_To (W_Radio_Data);
+                  -- Table 49 S3-4 / Table 50 S5-4: E5 / E1 -> A41 / A6
+                  -- (the text message is the EVC's) -> D10 / D9: S10 /
+                  -- S1 unless both radio systems are there; otherwise
+                  -- (E6 / E2) back to S3-1 / S5-1
+                  if FRMCS_Registration_Missing (Entered)
+                    and then not Both_Radio_Systems (Entered)
+                  then
+                     Leave_Radio_Data;
+                  end if;
+               end;
+            end if;
+         when W_Language =>
+            -- 11.3.6.4: the choices are the languages in the order of
+            -- DMI_Texts.Language_T. 5.5.1.3: from now on every text is
+            -- displayed in the selected language, the windows (they draw
+            -- their texts when drawn, and the data entry windows below
+            -- are built again when they come back on top, Pop) and the
+            -- system status messages displayed (15.1.1.4.2). SUBSET-026
+            -- A.3.4 has the language stored on-board and the fixed text
+            -- messages follow it (3.12.3.3.1, Q_TEXT 7.5.1.136): the EVC
+            -- is told (MSG_DRIVER_DATA kind 10). Table 54 S2: back to
+            -- S1, the Settings window.
+            if Chosen - 1 in TX.Language_T'Pos (TX.Language_T'First)
+                          .. TX.Language_T'Pos (TX.Language_T'Last)
+            then
+               TX.Select_Language (TX.Language_T'Val (Chosen - 1));
+               DMI_System_Status.Language_Changed;
+               Queue (Send_Language, Chosen - 1);
+               Pop;
+            end if;
+         when others =>
+            null;
+      end case;
+   end Dedicated_Completed;
+
+   procedure Entry_Completed is
+      use DMI_Driver_Data;
+      ID : constant Window_ID_T := Stack (Depth);
+   begin
+      case ID is
+         when W_Driver_ID =>
+            Driver_ID := DMI_Data_Entry.Value (1);
+            Driver_ID_Entered := True;
+            Queue (Send_Driver_ID);
+            Pop;
+            if Sequence_Active then
+               -- Table 49 E1 -> D2: "if both the stored position and the
+               -- stored level are valid". The status of the data stored
+               -- on-board is the on-board's (11.7.1.3) and the EVC
+               -- reports it (MSG_ONBOARD, DMI_Conditions). The DMI is
+               -- not told the status of the position, so D2 is decided
+               -- on the level alone (implementation choice).
+               if DMI_Conditions.Level_Valid
+                 and then SDI.Level in SDI.L0 | SDI.NTC | SDI.L1 | SDI.L2
+               then
+                  -- D3: level 0, 1 or NTC -> S10. Level 2 -> D7: A31
+                  -- or S4, both the Main window with all buttons
+                  -- disabled that the EVC presents (MSG_ONBOARD
+                  -- waiting); S4 can still end in A42 -> D9 -> S5
+                  Reach_S10;
+                  D9_Pending := SDI.Level = SDI.L2
+                    and then not DMI_Conditions.Radio_Registered;
+               else
+                  Open (W_Level);
+               end if;
+            end if;
+            -- Table 50 S2: back to S1, the Main window below
+         when W_TRN =>
+            TRN := DMI_Data_Entry.Value (1);
+            TRN_Entered := True;
+            Queue (Send_TRN);
+            -- Table 50 S6 and S3-3 -> D1: back to S1, the Main window
+            -- (D2, D8 and S9, waiting for the RBC, are skipped: P3). The
+            -- mission start is the driver's: 'Start' in the Main window.
+            Pop;
+         when W_Train_Data =>
+            -- Table 50 S3-1 with 11.7.1.6.1: pressing the 'Yes' button
+            -- of the question does not touch the train data stored on
+            -- board; the entered values stay with the running process
+            DMI_Train_Data.Capture (DMI_Train_Data.Current_Window);
+            -- 10.6 / 11.4.1: entered data must be validated (-> S3-2)
+            Open (W_Train_Data_Validation);
+         when W_SR_Data =>
+            SR_Speed := DMI_Data_Entry.Number (1);
+            SR_Dist := DMI_Data_Entry.Number (2);
+            Queue (Send_SR_Data);
+            Pop;
+         when W_Level | W_Adhesion | W_Volume | W_Brightness
+            | W_ATO_Selector | W_GSMR_Network | W_Radio_Network_Type
+            | W_Language =>
+            Dedicated_Completed (ID);
+         when W_RBC_Data =>
+            -- 11.7.1.6: stored when the driver presses 'Yes'
+            DMI_Radio_Data.RBC_ID := DMI_Data_Entry.Value (1);
+            DMI_Radio_Data.RBC_Phone :=
+              (if RBC_Phone_Shown then DMI_Data_Entry.Value (2)
+               else (0, (others => ' ')));
+            DMI_Radio_Data.RBC_Entered := True;
+            DMI_Radio_Data.Last_Choice := DMI_Radio_Data.Entered;
+            Queue (Send_RBC_Data,
+                   DMI_Radio_Data.RBC_Choice_T'Pos (DMI_Radio_Data.Entered));
+            -- Table 49 S3-3 -> A31, Table 50 S5-3 -> S8
+            Leave_Radio_Data;
+         when W_Set_VBC | W_Remove_VBC =>
+            -- 11.7.1.6.2: no action on the VBCs stored on-board yet;
+            -- Table 54 S6-1 -> S6-2, S7-1 -> S7-2
+            DMI_VBC.Hold (DMI_Data_Entry.Value (1));
+            Open (if ID = W_Set_VBC then W_Set_VBC_Validation
+                  else W_Remove_VBC_Validation);
+         when W_One_Radio =>
+            declare
+               -- the choice, not the text, which is the selected
+               -- language's (5.5.1.3)
+               Yes : constant Boolean :=
+                 DMI_Data_Entry.Choice_Number (1)
+                 = DMI_Data_Entry.Yes_Choice;
+            begin
+               Queue (Send_Mission_One_Radio, (if Yes then 1 else 0));
+               if Sequence_Active then
+                  -- Table 49 S5: 'Yes' with valid RBC contact
+                  -- information (E2) -> A31, 'Yes' without (E3) -> S3-1,
+                  -- 'No' (E4) -> S10
+                  if Yes and then not DMI_Conditions.RBC_Contact_Valid then
+                     Back_To_Radio_Data;
+                  else
+                     Reach_S10;
+                  end if;
+               elsif Yes then
+                  Back_To_Radio_Data;              -- Table 50 S10 -> S5-1
+               else
+                  Back_To_Main;                    -- Table 50 S10 -> S1
+               end if;
+            end;
+         when others =>
+            null;
+      end case;
+   end Entry_Completed;
+
+   procedure Menu_Pressed (Index : Positive) is
+      ID : constant Window_ID_T := Stack (Depth);
+   begin
+      case ID is
+         when W_Main =>
+            case Index is
+               when 1 => -- Start
+                  -- Table 50 S1: with level 0, 1 or NTC back to the
+                  -- default window; with level 2 D7 -> S7 waits for the
+                  -- RBC with the hour glass, which the EVC asks for
+                  -- (MSG_ONBOARD, waiting = 3). 'Start' stays dead until
+                  -- the EVC says the request is answered.
+                  if DMI_Conditions.Main_Start then
+                     Queue (Start_Mission);
+                     To_Default_Window;
+                  end if;
+               when 2 => Open (W_Driver_ID);
+               when 3 => Open (W_Train_Data);
+               when 5 => Open (W_Level);
+               when 6 => Open (W_TRN);
+               when 7 =>
+                  if Exit_Shunting_Label then
+                     -- Table 50 S1: 'Exit Shunting' -> S0 of the Start
+                     -- Up dialogue sequence, which the EVC engages
+                     -- (MSG_ONBOARD start of mission)
+                     Queue (Exit_SH);
+                     To_Default_Window;
+                  else
+                     -- Table 51 D1: level 0 / 1 -> MO01 and the default
+                     -- window, NTC -> D2 -> the default window (the
+                     -- symbols are the EVC's); level 2 -> S1: the Main
+                     -- window stays, with all buttons disabled while the
+                     -- EVC reports it awaits the RBC (waiting = 4)
+                     Queue (SH_Request);
+                     if SDI.Level /= SDI.L2 then
+                        To_Default_Window;
+                     end if;
+                  end if;
+               when 8 => Queue (Non_Leading); Pop;
+               when 9 =>
+                  -- Table 50 S1: 'Maintain Shunting' -> the default
+                  -- window
+                  Queue (Maintain_SH);
+                  To_Default_Window;
+               when 10 =>
+                  -- Table 50 S1 -> S5-1
+                  Open (W_Radio_Data);
+               when 11 =>
+                  -- Table 54a S0 -> S1: the Main window stays, with all
+                  -- buttons disabled while the EVC reports it awaits the
+                  -- RBC (waiting = 5)
+                  Queue (SM_Request, (if Continue_SM_Label then 1 else 0));
+               when 12 =>
+                  -- Table 50 S1: 'Exit SM' -> S0 of the Start Up
+                  -- dialogue sequence (as 'Exit Shunting')
+                  Queue (SM_Request, 2);
+                  To_Default_Window;
+               when others => null;
+            end case;
+         when W_Override =>
+            if Index = 1 then
+               Queue (Override_EOA);
+               Pop;
+            end if;
+         when W_Special =>
+            case Index is
+               when 1 => Open (W_Adhesion);
+               when 2 => Open (W_SR_Data);
+               when 3 => Queue (Train_Integrity); Pop;
+               when 4 =>
+                  -- Table 53 S1: ST07 is presented / removed (the EVC
+                  -- reports it, MSG_STATUS) and the procedure goes back
+                  -- to the default window
+                  Queue (BMM_Inhibition,
+                         (if DMI_Conditions.BMM_Inhibit_Active then 1
+                          else 0));
+                  To_Default_Window;
+               when others => null;
+            end case;
+         when W_Settings =>
+            case Index is
+               when 1 => Open (W_Language);             -- Table 54 S2
+               when 2 => Open (W_Volume);
+               when 3 => Open (W_Brightness);
+               when 4 => Open (W_System_Version);        -- Table 54 S5
+               when 5 | 6 =>
+                  -- Table 54 S6-1 / S7-1 entered from S1: the process
+                  -- starts, no value is proposed
+                  DMI_VBC.Clear;
+                  Open (if Index = 5 then W_Set_VBC else W_Remove_VBC);
+               when 7 => Open (W_ATO_Selector);
+               when others => null;
+            end case;
+         when W_Radio_Data =>
+            -- Table 49 S3-1, Table 50 S5-1
+            case Index is
+               when 1 | 2 =>
+                  -- 'Contact last RBC' / 'Use short number' -> A31 / S8
+                  DMI_Radio_Data.Last_Choice :=
+                    (if Index = 1 then DMI_Radio_Data.Contact_Last_RBC
+                     else DMI_Radio_Data.Use_Short_Number);
+                  Queue (Send_RBC_Data,
+                         DMI_Radio_Data.RBC_Choice_T'Pos
+                           (DMI_Radio_Data.Last_Choice));
+                  Leave_Radio_Data;
+               when 3 => Open (W_RBC_Data);            -- S3-3 / S5-3
+               when 5 => Open (W_Radio_Network_Type);  -- S3-4 / S5-4
+               when 6 =>
+                  -- S3-2-1 / S5-2-1: SUBSET-026 3.18.4.3.6.2, the
+                  -- on-board acquires the list of GSM-R networks
+                  DMI_Radio_Data.Clear_List_Received;
+                  List_Requested := True;
+                  Queue (Send_GSMR_Network, 0);
+               when 7 =>
+                  -- A43 -> S5 / A7 -> S10 (the text messages are the
+                  -- EVC's)
+                  Open (W_One_Radio);
+               when others => null;
+            end case;
+         when others =>
+            null;
+      end case;
+   end Menu_Pressed;
+
+   -- 11.4.1, 10.6.1.3 a: the process ends when the driver accepts the
+   -- value 'Yes' in the input field of the validation window
+   procedure Validation_Completed is
+      Yes : constant Boolean :=
+        DMI_Data_Entry.Choice_Number (1) = DMI_Data_Entry.Yes_Choice;
+   begin
+      if Stack (Depth) in W_Set_VBC_Validation | W_Remove_VBC_Validation then
+         if Yes then
+            -- 11.7.1.6.2: only now is the action on the VBCs stored
+            -- on-board performed, by the on-board (MSG_DRIVER_DATA kind 8
+            -- / 9); Table 54 S6-2 / S7-2 'Yes' -> S1, the Settings window
+            Queue ((if Stack (Depth) = W_Set_VBC_Validation
+                    then Send_Set_VBC else Send_Remove_VBC),
+                   DMI_VBC.Pending_Code);
+            DMI_VBC.Clear;
+            Pop; -- validation
+            Pop; -- Set VBC / Remove VBC
+         else
+            -- 'No' -> S6-1 / S7-1 with the value of the previous S6-1 /
+            -- S7-1 proposed (Entry_Def)
+            Pop;
+         end if;
+         return;
+      end if;
+      if Yes then
+         -- 11.7.1.6.1: only now do the entered values replace the train
+         -- data stored on board
+         DMI_Train_Data.Store;
+         Queue (Send_Train_Data);
+         Pop; -- validation
+         Pop; -- train data entry
+         -- Table 50 D6: "if Train running number is valid" the procedure
+         -- goes to D1 -> S1 Main window, otherwise the train running
+         -- number is requested next (S3-3). The status is the on-board's
+         -- (11.7.1.3), reported by the EVC (MSG_ONBOARD).
+         if not DMI_Conditions.TRN_Valid then
+            Open (W_TRN);
+         end if;
+      else
+         -- Table 50 S3-2: back to S3-1, the first train data window,
+         -- with the data values of the previous S3-1 proposed
+         DMI_Train_Data.Restart_At_First;
+         Pop;
+      end if;
+   end Validation_Completed;
+
+   -- Tables 22 and 23: the driver pressed [Previous] or [Next] of a
+   -- topic that spans several windows. The train data is the only such
+   -- topic here; its values are read back before the window changes, so
+   -- that the running process keeps them (Table 50 S3-1).
+   procedure Page_Requested is
+      Wanted : constant Natural := DMI_Data_Entry.Take_Page_Request;
+   begin
+      if Wanted = 0 or else Depth = 0
+        or else Stack (Depth) /= W_Train_Data
+      then
+         return;
+      end if;
+      DMI_Train_Data.Capture (DMI_Train_Data.Current_Window);
+      DMI_Train_Data.Go_To (Wanted);
+      DMI_Data_Entry.Open (Entry_Def (W_Train_Data));
+   end Page_Requested;
+
+   procedure Button_Pressed (Index : Positive) is
+      Kind : Window_Kind_T;
+   begin
+      if Depth = 0 then
+         return;
+      end if;
+      Kind := Kind_Of (Stack (Depth));
+      case Kind is
+         when Menu =>
+            Menu_Pressed (Index);
+         when Data_Entry | Validation =>
+            if Extra_Index (Index) > 0 then
+               -- Table 49 S1: the settings button leads to S1-1, the
+               -- train running number button to S1-2; the Driver ID
+               -- window is the parent of both (11.6.1.2), so they stack
+               -- over it and their [Close] comes back to S1
+               if Extra_Index (Index) = TRN_Extra then
+                  Open (W_TRN);
+               else
+                  Open (W_Settings);
+               end if;
+               return;
+            end if;
+            DMI_Data_Entry.Press (Index);
+            if DMI_Data_Entry.Take_Completion then
+               if Kind = Validation then
+                  Validation_Completed;
+               else
+                  Entry_Completed;
+               end if;
+            else
+               --  Tables 22 and 23: [Previous] / [Next] open another
+               --  window of the same topic (own helper)
+               Page_Requested;
+            end if;
+         when View =>
+            DMI_Data_View.Button_Pressed (Index);
+         when Info =>
+            null;
+      end case;
+   end Button_Pressed;
+
+   ---------------------------------------------------------------------
+   -- Rendering
+   ---------------------------------------------------------------------
+
+   procedure Draw_Title (ID : Window_ID_T) is
+   begin
+      Screen.Fill_Area ((Origin, The_Window_Area.Width, Title_Height),
+                        General_Parameters.BLACK);
+      Draw.Draw_String (Pen_X      => Origin.X + 3,
+                        Pen_Y      => Origin.Y + Title_Height - 6,
+                        The_String => Title (ID),
+                        The_Size   => 12,
+                        The_Color  => General_Parameters.GREY);
+      -- 11.2.1.6: while the on-board exchanges messages with the RBC
+      -- (see 11.7) the hour glass ST05 is shown vertically centered in
+      -- the 'Main' window title area, from X 42, moving 26 cells to the
+      -- right every second and starting over when it no longer fits
+      -- 11.2.5.6: likewise in the 'Radio data' window title area
+      if (Waiting_Window and then ID = W_Main)
+        or else (ID = W_Radio_Data and then Radio_Step_Displayed)
+      then
+         Draw.Draw_Symbol
+           (Symbol.ST_05,
+            Origin + (DMI_Conditions.ST05_X (The_Window_Area.Width,
+                                             Symbol.ST_05.Width),
+                      (Title_Height - Symbol.ST_05.Height) / 2));
+      end if;
+   end Draw_Title;
+
+   procedure Draw_Close (Pressed : Boolean) is
+      Close_Area : constant Area_T := Close_Button_Area;
+      -- 5.3.2.5.5 a: the disabled [Close] shows NA12 (chapter 13)
+      Enabled    : constant Boolean := Close_Enabled;
+      Width      : constant Natural :=
+        (if Enabled then Symbol.NA_11.Width else Symbol.NA_12.Width);
+      Height     : constant Natural :=
+        (if Enabled then Symbol.NA_11.Height else Symbol.NA_12.Height);
+      Position   : constant Position_T :=
+        Close_Area.Position
+          + ((Close_Area.Width - Width) / 2, (Close_Area.Height - Height) / 2);
+   begin
+      if not Pressed then
+         Draw.Draw_Button_Frame (Close_Area);
+      end if;
+      if Enabled then
+         Draw.Draw_Symbol (Symbol.NA_11, Position);
+      else
+         Draw.Draw_Symbol (Symbol.NA_12, Position);
+      end if;
+   end Draw_Close;
+
+   procedure Draw_Labelled_Button (The_Area : Area_T;
+                                   Label    : Wide_String;
+                                   Enabled  : Boolean;
+                                   Pressed  : Boolean) is
+      Room : constant Natural := The_Area.Width - 6;
+      Cut  : Natural := 0;
+
+      procedure Line (Text : Wide_String; Offset : Integer) is
+      begin
+         -- 5.3.2.5.5 / 10.2.1.4: disabled labels in dark grey
+         Draw.Draw_String
+           (Pen_X => The_Area.Position.X + The_Area.Width / 2,
+            Pen_Y => The_Area.Position.Y + The_Area.Height / 2 + Offset,
+            The_String => Text,
+            The_Size => 12,
+            The_Color => (if Enabled then General_Parameters.GREY
+                          else General_Parameters.DARK_GREY),
+            The_Alignment => Draw.Center);
+      end Line;
+   begin
+      if not Pressed then
+         Draw.Draw_Button_Frame (The_Area);
+      end if;
+      if Draw.String_Width (Label, 12) <= Room then
+         Line (Label, 6);
+         return;
+      end if;
+      -- Figures 109, 111 and 113 break a label that is wider than its
+      -- button over two lines, at a space; the break is the last space
+      -- that leaves the first line inside the button (implementation
+      -- choice, as for the keys of a dedicated keyboard)
+      for I in Label'Range loop
+         if Label (I) = ' '
+           and then Draw.String_Width (Label (Label'First .. I - 1), 12)
+                      <= Room
+         then
+            Cut := I;
+         end if;
+      end loop;
+      if Cut = 0 then
+         Line (Label, 6);
+      else
+         -- 5.1.3.3: the two lines stay centred in the 50 cell button
+         Line (Label (Label'First .. Cut - 1), -3);
+         Line (Label (Cut + 1 .. Label'Last), 15);
+      end if;
+   end Draw_Labelled_Button;
+
+   -- Table 36: a Settings button that shows a symbol. 5.3.2.5.5 a: a
+   -- disabled button shows its label in dark grey; for a symbol that has
+   -- no disabled variant in chapter 13 its grey is drawn dark grey
+   -- (implementation choice).
+   procedure Draw_Symbol_Button (The_Area : Area_T;
+                                 Icon     : Icon_T;
+                                 Enabled  : Boolean;
+                                 Pressed  : Boolean) is
+      procedure Put (The_Symbol : Symbol.T) is
+         Position : constant Position_T :=
+           The_Area.Position
+             + ((The_Area.Width - The_Symbol.Width) / 2,
+                (The_Area.Height - The_Symbol.Height) / 2);
+      begin
+         -- 5.1.6.3: a symbol is centred in its area
+         if Enabled then
+            Draw.Draw_Symbol (The_Symbol, Position);
+         else
+            Draw.Draw_Symbol_Dimmed (The_Symbol, Position);
+         end if;
+      end Put;
+   begin
+      if not Pressed then
+         Draw.Draw_Button_Frame (The_Area);
+      end if;
+      case Icon is
+         when Icon_SE01 => Put (Symbol.SE_01);
+         when Icon_SE02 => Put (Symbol.SE_02);
+         when Icon_SE03 => Put (Symbol.SE_03);
+         when No_Icon   => null;
+      end case;
+   end Draw_Symbol_Button;
+
+   function Pressed (Index : Positive) return Boolean is
+     (DMI_Buttons.Is_Pressed
+        (DMI_Buttons.Button_ID_T'Val
+           (DMI_Buttons.Button_ID_T'Pos (DMI_Buttons.BTN_Menu_1) + Index - 1)));
+
+   procedure Draw_Menu (ID : Window_ID_T) is
+      Def : constant Menu_Def_T := Menu_Def (ID);
+   begin
+      for I in Def'Range loop
+         if Def (I).Used and then Def (I).Icon /= No_Icon then
+            Draw_Symbol_Button (Menu_Button_Area (I),
+                                Def (I).Icon,
+                                Def (I).Enabled,
+                                Def (I).Enabled and then Pressed (I));
+         elsif Def (I).Used then
+            Draw_Labelled_Button (Menu_Button_Area (I),
+                                  TX.Text (Def (I).Text),
+                                  Def (I).Enabled,
+                                  Def (I).Enabled and then Pressed (I));
+         end if;
+      end loop;
+   end Draw_Menu;
+
+   -- 11.3.3.5: the 'settings' button with the symbol SE04 and the 'train
+   -- running number' button with the label 'TRN' of the step S1
+   procedure Draw_Driver_ID_Extras is
+      First : constant Positive := DMI_Data_Entry.Button_Count + 1;
+
+      procedure Frame (The_Area : Area_T; Index : Positive) is
+      begin
+         if not Pressed (Index) then
+            Draw.Draw_Button_Frame (The_Area);
+         end if;
+      end Frame;
+
+      TRN_Area  : constant Area_T := Extra_Area (TRN_Extra);
+      Set_Area  : constant Area_T := Extra_Area (Settings_Extra);
+   begin
+      Frame (TRN_Area, First + TRN_Extra - 1);
+      -- 5.1.2.2.3 g: the label of the Train running number is 10 cells
+      Draw.Draw_String
+        (Pen_X => TRN_Area.Position.X + TRN_Area.Width / 2,
+         Pen_Y => TRN_Area.Position.Y + TRN_Area.Height / 2 + 5,
+         The_String => TX.Text (TX.TRN_Button),
+         The_Size => 10,
+         The_Color => General_Parameters.GREY,
+         The_Alignment => Draw.Center);
+      Frame (Set_Area, First + Settings_Extra - 1);
+      -- 5.1.6.3: a symbol is centred in its area
+      Draw.Draw_Symbol
+        (Symbol.SE_04,
+         Set_Area.Position + ((Set_Area.Width - Symbol.SE_04.Width) / 2,
+                              (Set_Area.Height - Symbol.SE_04.Height) / 2));
+   end Draw_Driver_ID_Extras;
+
+   procedure Draw_Text_Line (Line : Natural; Text : Wide_String) is
+   begin
+      Draw.Draw_String
+        (Pen_X => Origin.X + 6,
+         Pen_Y => Origin.Y + 50 + Line * 24,
+         The_String => Text,
+         The_Size => 12,
+         The_Color => General_Parameters.GREY);
+   end Draw_Text_Line;
+
+   function Num_Image (N : Natural) return Wide_String is
+      Img : constant Wide_String := Natural'Wide_Image (N);
+   begin
+      return Img (2 .. Img'Last);
+   end Num_Image;
+
+
+   procedure Render is
+      ID : Window_ID_T;
+   begin
+      if Depth = 0 then
+         return;
+      end if;
+      ID := Stack (Depth);
+
+      case Kind_Of (ID) is
+         when Menu | View | Info =>
+            Screen.Fill_Area (The_Window_Area,
+                              General_Parameters.Background_Color);
+            Draw_Title (ID);
+         when Data_Entry | Validation =>
+            -- 10.3.7 / 10.4.3: the layers of the entry windows; the
+            -- engine covers its own area and draws its own title
+            Screen.Fill_Area (DMI_Data_Entry.Covered_Area,
+                              General_Parameters.Background_Color);
+            DMI_Data_Entry.Render;
+      end case;
+      Draw_Close (DMI_Buttons.Is_Pressed (DMI_Buttons.BTN_Window_Close));
+
+      case Kind_Of (ID) is
+         when Menu => Draw_Menu (ID);
+         when View =>
+            --  11.5.1: the items, the paging and the [Previous] /
+            --  [Next] buttons are in DMI_Data_View
+            DMI_Data_View.Render
+              (Previous_Pressed => Pressed (DMI_Data_View.Previous_Button),
+               Next_Pressed     => Pressed (DMI_Data_View.Next_Button));
+         when Info =>
+            -- 11.5.2: the operated system version, laid out as a data
+            -- view item (10.5.1)
+            DMI_Data_View.Render_System_Version;
+         when Data_Entry | Validation =>
+            if In_Step_S1 then
+               Draw_Driver_ID_Extras;
+            end if;
+      end case;
+   end Render;
+
+end DMI_Windows;

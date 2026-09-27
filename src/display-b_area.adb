@@ -16,6 +16,8 @@
 
 pragma Ada_2012;
 with Display.B_Area.Speed_Dial;
+with DMI_ATO;
+with DMI_Status;
 with Supplementary_Driving_Info;
 with Symbol;
 
@@ -25,6 +27,82 @@ package body Display.B_Area is
    begin
       B_Buffer.Fill (General_Parameters.Background_Color);
    end Fill_Background;
+
+   procedure Draw_B345 is
+      -- DMI 8.2.3.5 / 8.2.3.8: track conditions and level crossing fill
+      -- B3/B4/B5 left to right; further objects wait for a free area.
+      -- The area of each object is decided once, when it is first
+      -- displayed (DMI_Status.Reconcile_Track_Conditions)
+      use DMI_Status;
+
+      function Kind_Symbol (Kind : Natural) return Symbol.T is
+        (case Kind is
+            when 1  => Symbol.TC_01, when 2  => Symbol.TC_02,
+            when 3  => Symbol.TC_03, when 4  => Symbol.TC_04,
+            when 5  => Symbol.TC_05, when 6  => Symbol.TC_06,
+            when 7  => Symbol.TC_07, when 8  => Symbol.TC_08,
+            when 9  => Symbol.TC_09, when 10 => Symbol.TC_10,
+            when 11 => Symbol.TC_11, when 12 => Symbol.TC_12,
+            when 13 => Symbol.TC_13, when 14 => Symbol.TC_14,
+            when 15 => Symbol.TC_15, when 16 => Symbol.TC_16,
+            when 17 => Symbol.TC_17, when 18 => Symbol.TC_18,
+            when 19 => Symbol.TC_19, when 20 => Symbol.TC_20,
+            when 21 => Symbol.TC_21, when 22 => Symbol.TC_22,
+            when 23 => Symbol.TC_23, when 24 => Symbol.TC_24,
+            when 25 => Symbol.TC_25, when 26 => Symbol.TC_26,
+            when 27 => Symbol.TC_27, when 28 => Symbol.TC_28,
+            when 29 => Symbol.TC_29, when 30 => Symbol.TC_30,
+            when 31 => Symbol.TC_31, when 32 => Symbol.TC_32,
+            when 33 => Symbol.TC_33, when 34 => Symbol.TC_34,
+            when 35 => Symbol.TC_35, when 36 => Symbol.TC_36,
+            when 37 => Symbol.TC_37, when others => Symbol.LX_01);
+
+      Slots : constant array (1 .. 3) of Sub_ID_T := (B3, B4, B5);
+   begin
+      for I in 1 .. Natural'Min (TC_Count, TC_List'Last) loop
+         if TC_List (I).Slot in Slots'Range then
+            declare
+               Slot : constant Area_T :=
+                 Get_Sub_Area_With_Relative_Position
+                   (Slots (TC_List (I).Slot));
+               Sym  : constant Symbol.T := Kind_Symbol (TC_List (I).Kind);
+            begin
+               B_Buffer.Draw_Symbol
+                 (Sym,
+                  Slot.Position + ((Slot.Width - Sym.Width) / 2,
+                                   (Slot.Height - Sym.Height) / 2));
+            end;
+         end if;
+      end loop;
+   end Draw_B345;
+
+   procedure Draw_B8 is
+      -- DMI 8.2.3.10: Supervised Manoeuvre authorised direction
+      use all type DMI_Status.SM_Direction_T;
+      use type Supplementary_Driving_Info.Mode_T;
+      B8_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (B8);
+
+      procedure DS (Sym : Symbol.T) is
+      begin
+         B_Buffer.Draw_Symbol
+           (Sym, B8_Area.Position + ((B8_Area.Width - Sym.Width) / 2,
+                                     (B8_Area.Height - Sym.Height) / 2));
+      end DS;
+   begin
+      if Supplementary_Driving_Info.Mode = Supplementary_Driving_Info.M_SM then
+         case DMI_Status.SM_Direction is
+            when Forward  => DS (Symbol.SM_01);
+            when Backward => DS (Symbol.SM_02);
+            when None     => null;
+         end case;
+      end if;
+      -- DMI 8.5.10: the coasting advice ATO20, ATO information shown
+      -- outside stopping points while the ATO selector is "On" (8.5.1.1,
+      -- 8.5.1.2 d)
+      if DMI_ATO.Outside_Shown and then DMI_ATO.Coasting then
+         DS (Symbol.ATO_20);
+      end if;
+   end Draw_B8;
 
    ----------
    -- Draw --
@@ -36,7 +114,17 @@ package body Display.B_Area is
 
       Draw_B7;
       Speed_Dial.Draw;
+      Draw_B345;
+      Draw_B8;
    end Draw;
+
+   procedure Draw_Failure is
+   begin
+      Fill_Background;
+      B_Buffer.Draw_Symbol
+        (Symbol.MO_18,
+         Get_Sub_Area_With_Relative_Position (B7).Position + (1, 2));
+   end Draw_Failure;
 
    procedure Draw_B7 is
       Position : constant Position_T := Get_Sub_Area_With_Relative_Position (B7).Position + (1, 2);
@@ -46,6 +134,8 @@ package body Display.B_Area is
       case Mode is
          when M_SB => DS (Symbol.MO_13);
          when M_FS => DS (Symbol.MO_11);
+         when M_AD => DS (Symbol.MO_23);
+         when M_SM => DS (Symbol.MO_24);
          when M_LS => DS (Symbol.MO_21);
          when M_OS => DS (Symbol.MO_07);
          when M_SR => DS (Symbol.MO_09);
@@ -57,7 +147,16 @@ package body Display.B_Area is
          when M_RV => DS (Symbol.MO_14);
          when M_SF => DS (Symbol.MO_18);
          when M_SN => DS (Symbol.MO_19);
-         when others =>
+         when M_IS =>
+            -- 8.2.3.1.2 has no symbol for IS; 8.2.3.1.2.2: the mode IS
+            -- is indicated by any means, e.g. by the isolation device.
+            -- The means to isolate is the desk isolation key of the DMI
+            -- unit (5.6.1.1, MSG_DESK_INPUT input 2) and its indication
+            -- is the 'isolated' flag of MSG_SETTINGS (DMI_Core); B7
+            -- stays empty.
+            null;
+         when M_NP | M_SL =>
+            -- no symbol in 8.2.3.1.2 either
             null;
       end case;
    end Draw_B7;

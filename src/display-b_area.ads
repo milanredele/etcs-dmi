@@ -22,6 +22,11 @@ package Display.B_Area is
    
    -- Draw the current state
    procedure Draw;
+
+   -- Draw nothing but the system failure symbol MO18 in B7 on an empty
+   -- area B (8.2.3.1.2); used by the DMI's own failure presentation,
+   -- deliberately independent of every other drawing path
+   procedure Draw_Failure;
    
 private
    

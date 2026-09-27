@@ -1,0 +1,40 @@
+--  WebAssembly build of the DMI (dmi.wasm) and of the EVC simulator
+--  (evc.wasm) with GNAT-LLVM and the AdaWebPack wasm32 runtime; built
+--  through build.sh in the container described by the Dockerfile.
+--
+--  The transport mains (dmi.adb, evc_sim.adb) and the regression tools
+--  (test/src) stay native; everything else is shared with the native
+--  build unchanged.
+
+project Etcsdmi_Wasm is
+
+   for Target use "llvm";
+   for Source_Dirs use ("../../src", "../../sim", ".");
+   for Excluded_Source_Files use ("dmi.adb", "evc_sim.adb");
+   for Object_Dir use "obj";
+   for Exec_Dir use ".";
+   for Main use ("dmi_main.adb", "evc_main.adb");
+
+   package Compiler is
+      -- -gnatw.X: the runtime has No_Exception_Propagation, every
+      -- possible Constraint_Error would be reported otherwise
+      for Switches ("Ada") use ("--target=wasm32", "-O1", "-gnatwa", "-gnatw.X");
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-z"); -- elaboration only, no main
+   end Binder;
+
+   package Linker is
+      for Switches ("Ada") use
+        ("--target=wasm32", "-nostdlib",
+         "-Wl,--export-all", "-Wl,--allow-undefined", "-Wl,--no-entry",
+         "-Wl,-z,stack-size=1048576");
+   end Linker;
+
+   package Builder is
+      for Executable ("dmi_main.adb") use "dmi.wasm";
+      for Executable ("evc_main.adb") use "evc.wasm";
+   end Builder;
+
+end Etcsdmi_Wasm;

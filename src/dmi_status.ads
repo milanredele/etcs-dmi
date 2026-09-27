@@ -1,0 +1,83 @@
+--  ETCS DMI
+--  Miscellaneous EVC-driven display state of the default window
+--  (chapter 8.2.2.3, 8.2.3.5 - 8.2.3.11, 8.4) plus the related driver
+--  toggle states.
+
+package DMI_Status is
+
+   type Brake_T is (None, Shown, Shown_Ack_Required);   -- 8.2.2.3
+   type Radio_T is (No_Connection, Connection_Up, Connection_Lost); -- 8.4.1
+   type Tunnel_T is (Unknown, Active, Announced);       -- 8.2.3.6
+   type SM_Direction_T is (None, Forward, Backward);    -- 8.2.3.10
+
+   Brake               : Brake_T := None;
+   Radio               : Radio_T := No_Connection;
+   Slippery_Rail       : Boolean := False;              -- 8.2.3.7
+   BMM_Inhibited       : Boolean := False;              -- 8.2.3.11
+   Reversing_Permitted : Boolean := False;              -- 8.4.2
+   SM_Direction        : SM_Direction_T := None;
+
+   Set_Speed_Valid : Boolean := False;                  -- 8.2.3.9
+   Set_Speed       : Natural := 0;
+
+   -- 8.2.2.5: TTI value is only sent when requested by National Value.
+   -- The TTI in tenths of a second (MSG_STATUS), so that the ten steps
+   -- of TdispTTI / 10 of 8.2.2.5.3 fall where the formula puts them;
+   -- TdispTTI in seconds (a fixed value, 14 s, SUBSET-026 A.3.1).
+   TTI_Valid  : Boolean := False;
+   TTI_Tenths : Natural := 0;
+   T_Disp_TTI : Positive := 14;
+
+   Tunnel            : Tunnel_T := Unknown;
+   Tunnel_Distance   : Natural := 0;
+   Tunnel_Toggled_On : Boolean := False;                -- 8.2.3.6.4
+
+   Geo_Valid      : Boolean := False;                   -- 8.4.4.3
+   Geo_Position_M : Natural := 0;
+   Geo_Toggled_On : Boolean := False;                   -- 8.4.4.5
+
+   Time_H, Time_M, Time_S : Natural := 0;               -- 8.4.3
+
+   -- Track conditions / level crossing for B3/4/5 (8.2.3.5 / 8.2.3.8),
+   -- kept in arrival order. 8.2.3.5.3 / 8.2.3.8.3: an object takes the
+   -- first free area from the left and keeps it until it ends; when all
+   -- areas display a symbol, further objects wait until B3, B4 or B5 is
+   -- free. Displayed objects never move to another area.
+   LX_Kind : constant := 38; -- kinds 1..37 are TC symbols
+   -- 1 .. 3 = B3 .. B5; 0 = waiting for a free area
+   subtype TC_Slot_T is Natural range 0 .. 3;
+   type TC_Entry_T is record
+      ID   : Natural := 0;
+      Kind : Natural range 1 .. 38 := 1;
+      Slot : TC_Slot_T := 0;
+   end record;
+   type TC_List_T is array (1 .. 8) of TC_Entry_T;
+   TC_List  : TC_List_T;
+   TC_Count : Natural := 0;
+
+   -- Replace the active set by what the EVC lists now (the Slot of the
+   -- new entries is ignored). A known id keeps its place in the arrival
+   -- order and its area, and takes the kind now given; ids no longer
+   -- listed end and free their area; new ids join the end of the arrival
+   -- order; then each free area goes to the longest waiting object.
+   -- Total: a New_Count beyond the list, repeated ids and more objects
+   -- than the list holds are cut down, never an error.
+   procedure Reconcile_Track_Conditions (New_List  : TC_List_T;
+                                         New_Count : Natural);
+
+   -- Display condition of the TTI per Table 15a (mode, monitoring,
+   -- National Value, toggle for OS/SR)
+   function TTI_Displayed return Boolean;
+
+   -- 8.2.2.5.3: n of the white square (n x 5 x 5 cells), 1 .. 10:
+   --   TdispTTI * (10 - n) / 10 <= TTI < TdispTTI * (10 - (n - 1)) / 10
+   -- With TTI = TTI_Tenths / 10 s this is
+   --   TdispTTI * (10 - n) <= TTI_Tenths < TdispTTI * (11 - n),
+   -- so 10 - n is TTI_Tenths / TdispTTI in integer division, exactly,
+   -- with no rounding. Clamped to 1 .. 10 (a TTI of TdispTTI or more is
+   -- not displayed, Table 15a).
+   function TTI_Step return Positive;
+
+   procedure Reset;
+
+end DMI_Status;

@@ -16,242 +16,227 @@
 
 separate (Display.B_Area.Speed_Dial)
 procedure Draw_Speed_Pointer is
-   function Pointer_Color return General_Parameters.Color is
-      -- DMI 8.2.1.2.5
+   -- DMI 8.2.1.2.5, Table 8 (v4.0.0) gives the conditions for display and
+   -- the colour of the pointer. A combination of mode, monitoring and
+   -- supervision status for which the table has no row, or a row of hyphens
+   -- only ("not applicable"), has no colour: the pointer is not displayed,
+   -- and with it the digital speed, which lives inside the pointer
+   -- (8.2.1.3.2). Such combinations do occur: the mode arrives in
+   -- MSG_MODE_LEVEL and the monitoring in MSG_SPEED_STATE, so one of them
+   -- is always ahead of the other during a transition, and nothing stops
+   -- the EVC from sending them. They must never raise.
+   type Pointer_Look is record
+      Shown : Boolean;
+      Color : General_Parameters.Color;
+   end record;
+
+   Not_Applicable : constant Pointer_Look :=
+     (Shown => False, Color => General_Parameters.GREY);
+
+   function Look_Of_Pointer return Pointer_Look is
       Params    : constant Speed_Params := Get_Speed_Params;
       The_Speed : constant Speed_T := Get_Speed;
+
+      function Show (The_Color : General_Parameters.Color) return Pointer_Look is
+        ((Shown => True, Color => The_Color));
+
+      -- Shared row patterns of Table 8. Band columns:
+      --   below:  0 <= pointer < Vtarget          (grey in all rows)
+      --   mid:    Vtarget <= pointer <= Vperm
+      --   over:   pointer > Vperm (CSM/TSM) or > Vrelease (RSM)
+
+      -- "CSM" plain rows (FS/SM/OS, LS, SR/UN, SH/RV all share them)
+      function CSM_Plain (Over : General_Parameters.Color)
+                          return Pointer_Look is
+      begin
+         case Get_Supervision_Status is
+            when NoS =>
+               return Show (General_Parameters.GREY);
+            when OvS | WaS =>
+               return Show (Over);
+            when IntS =>
+               if The_Speed <= Params.Vperm then
+                  return Show (General_Parameters.GREY);
+               else
+                  return Show (General_Parameters.RED);
+               end if;
+            when IndS =>
+               -- No IndS row under CSM (IndS does not exist there, 7.2).
+               -- Speed_And_Distance.Set_Speed never yields it in CSM.
+               return Not_Applicable;
+         end case;
+      end CSM_Plain;
+
+      -- "CSM (with target information)" and "TSM" rows share their shape;
+      -- only the colour of the Vtarget..Vperm band differs.
+      function With_Target (Mid, Over, Int_Over : General_Parameters.Color)
+                            return Pointer_Look is
+      begin
+         case Get_Supervision_Status is
+            when NoS | IndS =>
+               if The_Speed < Params.Vtarget then
+                  return Show (General_Parameters.GREY);
+               else
+                  return Show (Mid);
+               end if;
+            when OvS | WaS =>
+               return Show (Over);
+            when IntS =>
+               if The_Speed < Params.Vtarget then
+                  return Show (General_Parameters.GREY);
+               elsif The_Speed <= Params.Vperm then
+                  return Show (Mid);
+               else
+                  return Show (Int_Over);
+               end if;
+         end case;
+      end With_Target;
+
+      function RSM_Row (Base, Int_Over : General_Parameters.Color)
+                        return Pointer_Look is
+      begin
+         case Get_Supervision_Status is
+            when IndS =>
+               return Show (Base);
+            when IntS =>
+               if Params.Vrelease_Exists and then The_Speed <= Params.Vrelease then
+                  return Show (Base);
+               else
+                  return Show (Int_Over);
+               end if;
+            when NoS | OvS | WaS =>
+               -- Only IndS and IntS rows under RSM (7.5).
+               -- Speed_And_Distance.Set_Speed yields no other status in RSM.
+               return Not_Applicable;
+         end case;
+      end RSM_Row;
+
+      use General_Parameters;
    begin
       case Supplementary_Driving_Info.Mode is
-         when Supplementary_Driving_Info.M_FS | Supplementary_Driving_Info.M_OS =>
+         when Supplementary_Driving_Info.M_FS
+            | Supplementary_Driving_Info.M_SM
+            | Supplementary_Driving_Info.M_OS =>
             case Get_Monitoring_Mode is
                when CSM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        return General_Parameters.GREY;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed <= Params.Vperm then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when IndS =>
-                        raise Program_Error;
-                  end case;
-               when PIM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        if The_Speed <= Params.Vtarget then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.WHITE;
-                        end if;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed < Params.Vtarget then
-                           return General_Parameters.GREY;
-                        elsif The_Speed <= Params.Vperm then
-                           return General_Parameters.WHITE;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when IndS =>
-                        raise Program_Error;
-                  end case;
+                  if Get_CSM_Target_Info then
+                     return With_Target (Mid => WHITE, Over => ORANGE, Int_Over => RED);
+                  else
+                     return CSM_Plain (Over => ORANGE);
+                  end if;
                when TSM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        if The_Speed <= Params.Vtarget then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.WHITE;
-                        end if;
-                     when IndS =>
-                        return General_Parameters.YELLOW;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed < Params.Vtarget then
-                           return General_Parameters.GREY;
-                        elsif The_Speed <= Params.Vperm then
-                           return General_Parameters.YELLOW;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                  end case;
+                  return With_Target (Mid => YELLOW, Over => ORANGE, Int_Over => RED);
                when RSM =>
-                  case Get_Supervision_Status is
-                     when IndS =>
-                        return General_Parameters.YELLOW;
-                     when IntS =>
-                        if Params.Vrelease_Exists and The_Speed <= Params.Vrelease then
-                           return General_Parameters.YELLOW;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when others =>
-                        raise Program_Error;
-                  end case;
+                  return RSM_Row (Base => YELLOW, Int_Over => RED);
             end case;
-         when Supplementary_Driving_Info.M_LS =>
+
+         when Supplementary_Driving_Info.M_AD =>
+            -- Table 8 AD rows: yellow/orange replaced by white; over-speed in
+            -- plain CSM shown grey.
+            --
+            -- Known issue KI-1 (doc/AUDIT-2026-09.md): the four AD rows with
+            -- IntS hold hyphens only, because the state cannot occur: IntS
+            -- always comes with a brake command, and a brake command takes
+            -- the on-board from AD to FS (SUBSET-026 4.6.3 condition [24];
+            -- 4.4.16.1.4 for the SBI limit in TSM). Defensive fallback for an
+            -- inconsistent input: the pointer stays, in the AD base colour
+            -- grey, so the driver never loses the current speed. (The CSG is
+            -- not drawn, Table 9.)
             case Get_Monitoring_Mode is
                when CSM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        return General_Parameters.GREY;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed <= Params.Vperm then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when IndS =>
-                        raise Program_Error;
-                  end case;
-               when PIM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        return General_Parameters.GREY;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed <= Params.Vperm then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when IndS =>
-                        raise Program_Error;
-                  end case;
+                  if Get_CSM_Target_Info then
+                     case Get_Supervision_Status is
+                        when NoS | IndS =>
+                           return Show (if The_Speed < Params.Vtarget then GREY else WHITE);
+                        when OvS | WaS => return Show (WHITE);
+                        when IntS      => return Show (GREY);
+                     end case;
+                  else
+                     case Get_Supervision_Status is
+                        when NoS | IndS | OvS | WaS => return Show (GREY);
+                        when IntS                   => return Show (GREY);
+                     end case;
+                  end if;
                when TSM =>
                   case Get_Supervision_Status is
                      when NoS | IndS =>
-                        return General_Parameters.GREY;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed <= Params.Vperm then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.RED;
-                        end if;
+                        return Show (if The_Speed < Params.Vtarget then GREY else WHITE);
+                     when OvS | WaS => return Show (WHITE);
+                     when IntS      => return Show (GREY);
                   end case;
                when RSM =>
                   case Get_Supervision_Status is
-                     when IndS =>
-                        return General_Parameters.YELLOW;
-                     when IntS =>
-                        if Params.Vrelease_Exists and The_Speed <= Params.Vrelease then
-                           return General_Parameters.YELLOW;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when others =>
-                        raise Program_Error;
+                     when IndS   => return Show (WHITE);
+                     when IntS   => return Show (GREY);
+                     when others => return Not_Applicable;
                   end case;
             end case;
+
+         when Supplementary_Driving_Info.M_LS =>
+            case Get_Monitoring_Mode is
+               when CSM =>
+                  return CSM_Plain (Over => ORANGE);
+               when TSM =>
+                  -- LS TSM rows: the Vtarget..Vperm band stays grey
+                  return With_Target (Mid => GREY, Over => ORANGE, Int_Over => RED);
+               when RSM =>
+                  return RSM_Row (Base => YELLOW, Int_Over => RED);
+            end case;
+
          when Supplementary_Driving_Info.M_SR | Supplementary_Driving_Info.M_UN =>
             case Get_Monitoring_Mode is
                when CSM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        return General_Parameters.GREY;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed <= Params.Vperm then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when IndS =>
-                        raise Program_Error;
-                  end case;
-               when PIM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        if The_Speed <= Params.Vtarget then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.WHITE;
-                        end if;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed < Params.Vtarget then
-                           return General_Parameters.GREY;
-                        elsif The_Speed <= Params.Vperm then
-                           return General_Parameters.WHITE;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when IndS =>
-                        raise Program_Error;
-                  end case;
+                  if Get_CSM_Target_Info then
+                     return With_Target (Mid => WHITE, Over => ORANGE, Int_Over => RED);
+                  else
+                     return CSM_Plain (Over => ORANGE);
+                  end if;
                when TSM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        if The_Speed <= Params.Vtarget then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.WHITE;
-                        end if;
-                     when IndS =>
-                        return General_Parameters.YELLOW;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed < Params.Vtarget then
-                           return General_Parameters.GREY;
-                        elsif The_Speed <= Params.Vperm then
-                           return General_Parameters.YELLOW;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                  end case;
+                  return With_Target (Mid => YELLOW, Over => ORANGE, Int_Over => RED);
                when RSM =>
-                  raise Program_Error;
+                  -- No RSM rows for SR/UN in Table 8
+                  return Not_Applicable;
             end case;
+
          when Supplementary_Driving_Info.M_SH | Supplementary_Driving_Info.M_RV =>
             case Get_Monitoring_Mode is
                when CSM =>
-                  case Get_Supervision_Status is
-                     when NoS =>
-                        return General_Parameters.GREY;
-                     when OvS | WaS =>
-                        return General_Parameters.ORANGE;
-                     when IntS =>
-                        if The_Speed <= Params.Vperm then
-                           return General_Parameters.GREY;
-                        else
-                           return General_Parameters.RED;
-                        end if;
-                     when IndS =>
-                        raise Program_Error;
-                  end case;
-               when others =>
-                  raise Program_Error;
+                  return CSM_Plain (Over => ORANGE);
+               when TSM | RSM =>
+                  -- Only CSM rows for SH/RV in Table 8
+                  return Not_Applicable;
             end case;
-         when Supplementary_Driving_Info.M_NL | Supplementary_Driving_Info.M_SB | Supplementary_Driving_Info.M_PT =>
-            return General_Parameters.GREY;
+
+         when Supplementary_Driving_Info.M_NL
+            | Supplementary_Driving_Info.M_SB
+            | Supplementary_Driving_Info.M_PT =>
+            -- No speed monitoring: pointer considered always below Vperm
+            return Show (GREY);
+
          when Supplementary_Driving_Info.M_TR =>
-            return General_Parameters.RED;
-         when others =>
-            raise Program_Error;
+            -- Emergency brake applied: pointer considered always above Vperm
+            return Show (RED);
+
+         when Supplementary_Driving_Info.M_NP
+            | Supplementary_Driving_Info.M_SN
+            | Supplementary_Driving_Info.M_SF
+            | Supplementary_Driving_Info.M_SL
+            | Supplementary_Driving_Info.M_IS =>
+            -- Table 8 lists no row for NP, SN, SF, SL and IS: no pointer
+            return Not_Applicable;
       end case;
-   end Pointer_Color;
+   end Look_Of_Pointer;
 
    -- DMI 8.2.1.2.3
    -- DMI 8.2.1.2.4
-   Radius : constant Radius_T := 25;
-   Color  : constant General_Parameters.Color := Pointer_Color;
+   Look   : constant Pointer_Look := Look_Of_Pointer;
+   Color  : constant General_Parameters.Color := Look.Color;
    A      : constant Angle := Speed_To_Angle (Get_Speed);
 
 
+   -- The needle of Figure 34 is 3 and 9 cells wide: an odd width cannot
+   -- be centred on the corner that is the centre of the dial, so the
+   -- needle is drawn around the cell right of and below that corner.
    type Point is record
       X, Y : Integer range -500 .. 500;
    end record;
@@ -266,18 +251,15 @@ procedure Draw_Speed_Pointer is
                                               (-1, -90),
                                               (-1, -105),
                                               (1, -105));
+
+   -- DMI 8.2.1.2.3, Figure 34: the circular part, 50 cells across,
+   -- centred in B1
+   function In_Circular_Part (X, Y : Integer) return Boolean is
+     (East (X) ** 2 + North (Y) ** 2 < Float (Pointer_Radius) ** 2);
+
    procedure Fill_Center_Circle is
-      R_R  : constant Integer := Radius * Radius;
    begin
-      for Y in -Radius .. Radius loop
-         for X in -Radius .. Radius loop
-            if (X*X + Y*Y) <= R_R then
-               B_Buffer.Set_Pixel (X         => X + The_Center.X,
-                                   Y         => Y + The_Center.Y,
-                                   The_Color => Color);
-            end if;
-         end loop;
-      end loop;
+      Fill_Disc (0.0, 0.0, Float (Pointer_Radius), Color);
    end Fill_Center_Circle;
 
    function Rotate_And_Translate_Poly return Pointer_Poly_T is
@@ -329,30 +311,44 @@ procedure Draw_Speed_Pointer is
          Nodes := Node_X'First;
          J := Poly'Last - 1;
          for I in Poly'Range loop
-            if (Poly (I).Y < Pixel_Y and Poly (J).Y >= Pixel_Y)
-              or (Poly (J).Y < Pixel_Y and Poly (I).Y >= Pixel_Y)
+            if (Poly (I).Y <= Pixel_Y and Poly (J).Y > Pixel_Y)
+              or (Poly (J).Y <= Pixel_Y and Poly (I).Y > Pixel_Y)
             then
-               Node_X (Nodes) := Poly (I).X + Integer
-                 (Float(Pixel_Y - Poly (I).Y) / Float(Poly (J).Y - Poly (I).Y) * Float(Poly (J).X - Poly (I).X));
-               Nodes := Nodes + 1;
+               declare
+                  Y1 : constant Float := Float (Poly (I).Y);
+                  Y2 : constant Float := Float (Poly (J).Y);
+                  X1 : constant Float := Float (Poly (I).X);
+                  X2 : constant Float := Float (Poly (J).X);
+               begin
+                  Node_X (Nodes) := Integer (X1 + (Float (Pixel_Y) - Y1) * (X2 - X1) / (Y2 - Y1));
+                  Nodes := Nodes + 1;
+               end;
             end if;
             J := I;
          end loop;
 
          J := Node_X'First;
-         while J < Nodes -1 loop
-            if Node_X (J) > Node_X (J+1) then
+         while J < Nodes - 1 loop
+            if Node_X (J) > Node_X (J + 1) then
                Swap := Node_X (J);
-               Node_X (J) := Node_X (J+1);
-               Node_X (J+1) := Swap;
-               if J > Node_X'First then J := J + 1; end if;
+               Node_X (J) := Node_X (J + 1);
+               Node_X (J + 1) := Swap;
+               if J > Node_X'First then
+                  J := J - 1;
+               else
+                  J := J + 1;
+               end if;
             else
                J := J + 1;
             end if;
          end loop;
 
          J := Node_X'First;
-         while J < Nodes loop
+         while J < Nodes - 1 loop
+            if (Nodes - Node_X'First) mod 2 /= 0 then
+               -- parity error! skip this scanline to avoid horizontal artifacts
+               exit;
+            end if;
             if Node_X (J) < B_Buffer.Area_Width_T'Last then
                if Node_X (J+1) > B_Buffer.Area_Width_T'First then
                   if Node_X (J) < B_Buffer.Area_Width_T'First then
@@ -375,10 +371,6 @@ procedure Draw_Speed_Pointer is
 
    procedure Draw_Current_Train_Speed_Digital is
       B1_Area : constant Area_T := Get_Sub_Area_With_Relative_Position (B1);
-      -- DMI 8.2.1.3.3
-      First_Digit_X  : constant B_Buffer.Area_Width_T  := B1_Area.Position.X + 2;
-      Second_Digit_X : constant B_Buffer.Area_Width_T  := First_Digit_X  + B1_Area.Width / 3;
-      Third_Digit_X  : constant B_Buffer.Area_Width_T  := Second_Digit_X + B1_Area.Width / 3;
       Pen_Y          : constant B_Buffer.Area_Height_T := B1_Area.Position.Y + B1_Area.Height / 2 + 9;
       Speed          : constant Speed_T       := Get_Speed;
       Digit_Color    :          General_Parameters.Color;
@@ -387,33 +379,68 @@ procedure Draw_Speed_Pointer is
       Second_Digit   : constant Digit := Digit ((Speed rem 100) / 10);
       Third_Digit    : constant Digit := Digit (Speed rem 10);
 
+      -- DMI 8.2.1.3.3: B1 is divided along its width into three equally
+      -- sized sub areas. Choice: B1 is 50 cells wide (chapter 6), as wide
+      -- as the circular part of the pointer, so a digit aligned to the
+      -- right edge of the right sub area would have its corners outside
+      -- the circle and lose them (8.2.1.3.2 wants the digits inside it);
+      -- Figure 38 draws the digits with a margin. The sub areas are laid
+      -- out over the 46 cells that leave Inset cells free on each side:
+      -- an 18 cell digit then stays inside the circle. The 46 cells do
+      -- not divide by three; the limits are rounded to the nearest cell,
+      -- 15 + 16 + 15 cells (right limits at 17, 33 and 48).
+      Inset : constant := 2;
+      subtype Sub_Area is Positive range 1 .. 3;
+      function Right_Limit (The_Sub_Area : Sub_Area) return Integer is
+        (B1_Area.Position.X + Inset
+         + (2 * The_Sub_Area * (B1_Area.Width - 2 * Inset) + 3) / 6);
+
       use type General_Parameters.Color;
 
-      procedure Draw_Glyph (Pen_X : B_Buffer.Area_Width_T; The_Digit : Digit) is
+      -- DMI 8.2.1.3.3: every digit in its sub area, aligned to the right:
+      -- the last column of the digit is the last column of the sub area,
+      -- whatever the width of the digit. DMI 8.2.1.3.2: the digits are
+      -- inside the circular part of the pointer; the corners of a digit
+      -- in the right sub area would reach past its round border and are
+      -- not drawn there.
+      procedure Draw_Digit (The_Sub_Area : Sub_Area; The_Digit : Digit) is
+         The_Glyph : constant Font.Glyph := Font.FreeSans_18.Glyphs
+           (Wide_Character'Val (Wide_Character'Pos ('0') + The_Digit));
+         Left : constant Integer := Right_Limit (The_Sub_Area) - The_Glyph.Width;
+         Top  : constant Integer := Pen_Y - The_Glyph.Top;
       begin
-         B_Buffer.Draw_Glyph (Pen_X      => Pen_X,
-                              Pen_Y      => Pen_Y,
-                              The_Glyph  => Font.FreeSans_18.Glyphs (Integer'Wide_Image (The_Digit) (2)),
-                              The_Bitmap => Font.FreeSans_18.Bitmap,
-                              The_Color  => Digit_Color);
-      end Draw_Glyph;
+         for J in 0 .. The_Glyph.Height - 1 loop
+            for I in 0 .. The_Glyph.Width - 1 loop
+               if Font.Cell (The_Glyph, Font.FreeSans_18.Bitmap, I, J)
+                 and then In_Circular_Part (Left + I, Top + J)
+               then
+                  B_Buffer.Set_Pixel (Left + I, Top + J, Digit_Color);
+               end if;
+            end loop;
+         end loop;
+      end Draw_Digit;
    begin
+      -- DMI 8.2.1.3.5
       if Color = General_Parameters.RED then
          Digit_Color := General_Parameters.WHITE;
       else
          Digit_Color := General_Parameters.BLACK;
       end if;
 
+      -- DMI 8.2.1.3.4: fewer than 3 digits take the right most sub areas
       if Speed > 99 then
-         Draw_Glyph (First_Digit_X, First_Digit);
+         Draw_Digit (1, First_Digit);
       end if;
       if Speed > 9 then
-         Draw_Glyph (Second_Digit_X, Second_Digit);
+         Draw_Digit (2, Second_Digit);
       end if;
-      Draw_Glyph (Third_Digit_X, Third_Digit);
+      Draw_Digit (3, Third_Digit);
    end Draw_Current_Train_Speed_Digital;
 
 begin
+   if not Look.Shown then
+      return;
+   end if;
    Fill_Center_Circle;
    Fill_Polygon (Rotate_And_Translate_Poly);
    Draw_Current_Train_Speed_Digital;
