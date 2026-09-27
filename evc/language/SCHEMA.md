@@ -1,7 +1,8 @@
 # The ERTMS/ETCS language as data
 
-`etcs_language.toml` describes the variables (SUBSET-026 7.5) and the
-packets (7.4) of the ERTMS/ETCS language, version 4.0.0. It is written by
+`etcs_language.toml` describes the variables (SUBSET-026 7.5), the
+packets (7.4) and the radio messages (8.6, 8.7) of the ERTMS/ETCS
+language, version 4.0.0. It is written by
 hand from the PDF (the markdown loses the structure of the packet tables:
 which fields belong to a loop or to a condition) and it is the single
 source of the generated Ada under this directory (`gen_language.py`).
@@ -134,6 +135,66 @@ Clarifications (as the catalogue is written):
   `X_TEXT(L_TEXT)` of packet 73.
 - For train-to-track packets `sent_by` lists the "Transmitted to" row
   (the receivers, `rbc`, `riu`). "Any" is all four senders.
+
+## Messages
+
+The radio messages of 8.6 (train to track) and 8.7 (track to train).
+The codec writes the message list by hand for now (`etcs_messages.ads`);
+the generator reads this section in a later round.
+
+```toml
+[[messages]]
+nid = 4                      # NID_MESSAGE
+name = "SM Authorisation"    # the SRS title without "Message n:"
+clause = "8.7.2.1"
+direction = "track_to_train" # 8.7 track_to_train, 8.6 train_to_track
+sent_by = ["rbc"]            # 8.5.3 "Transmitted by" / 8.5.2 "Transmitted to"
+fields = [                   # header of 8.4.4.6.1 / 8.4.4.7.1, then the
+  { var = "NID_MESSAGE" },   # message variables of the table, in order
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },         # NID_LRBG = NID_C + NID_BG
+  { var = "NID_BG" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },  # time stamp of the SM request
+  { var = "Q_SCALE" },
+  { var = "D_REF" },
+  { var = "V_SM" },
+]
+packets = [
+  { nid = 15 },              # mandatory packets, in the order of the table
+  { nid = 21 },
+  { nid = 27 },
+  { nid = 3, optional = true },
+  { nid = 65, optional = true, repeat = true },
+  # ...
+]
+```
+
+- `fields` uses the field kinds of packets (`var`, `as`, `if`, `loop`);
+  the messages of 4.0.0 need only `var` and `as`. Track to train the
+  header is NID_MESSAGE, L_MESSAGE, T_TRAIN, M_ACK, NID_LRBG (as NID_C,
+  NID_BG); train to track NID_MESSAGE, L_MESSAGE, T_TRAIN, NID_ENGINE.
+  Message 38 has no NID_LRBG: its table in 8.7.16 has four fields.
+  Distances in message variables (D_REF, D_SR, ...) use the message's
+  Q_SCALE.
+- `packets` lists the packets of the message's direction: first the
+  mandatory ones in the order of the message table (8.4.1.2), then the
+  optional ones of 8.4.4.4 (the common optional packets of 8.4.4.4.1.1
+  written out), which may come in any order (8.4.1.3).
+  - `{ nid = N }` — packet N, mandatory.
+  - `{ one_of = [0, 1] }` — exactly one of these packets: the position
+    report of train-to-track messages ("Packet 0 or 1", absent from 146,
+    154, 155, 156 and 159 by 8.4.4.7.2).
+  - `optional = true` — the packet may be absent.
+  - `repeat = true` — several instances allowed (8.4.1.4.1 to 8.4.1.4.5:
+    44, 65, 66, 88 track to train; 8.4.1.5.1: 44 train to track). Without
+    it a track-to-train message has at most one instance per packet and
+    Q_DIR (8.4.1.4), a train-to-track message at most one (8.4.1.5).
+  - `from = ["riu"]` — only when the message comes from that sender
+    (message 24: from RBC 21, 27 and the common optional packets, from
+    RIU 44, 45, 143, 180, 254).
+- Padding to a whole byte (8.4.4.5) is not written.
 
 ## What the generator produces
 

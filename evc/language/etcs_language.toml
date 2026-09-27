@@ -3142,3 +3142,927 @@ fields = [
   { var = "NID_XUSER" },
   { raw = "L_PACKET" },
 ]
+
+# ---------------------------------------------------------------------
+# Radio messages, chapter 8: train to track (8.6), then track to train
+# (8.7). fields = the header of 8.4.4.7.1 / 8.4.4.6.1 and the message
+# variables; packets = the packets of the message table, then the
+# optional packets of 8.4.4.4, in the order of those clauses.
+# ---------------------------------------------------------------------
+
+[[messages]]                            # p. 20
+nid = 129
+name = "Validated Train Data"
+clause = "8.6.1"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 11 },                             # Train data
+]
+
+[[messages]]                            # p. 20
+nid = 130
+name = "Request for Shunting"
+clause = "8.6.2"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+]
+
+[[messages]]                            # p. 20
+# optional packet 12 from 8.4.4.4.5
+nid = 131
+name = "Request for Supervised Manoeuvre"
+clause = "8.6.2.1"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 10 },
+  { nid = 12, optional = true },
+]
+
+[[messages]]                            # p. 21
+# optional packet 9 from 8.4.4.4.4
+nid = 132
+name = "MA Request"
+clause = "8.6.3"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "Q_MARQSTREASON" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 9, optional = true },
+]
+
+[[messages]]                            # p. 21
+nid = 133
+name = "Safe consist length information for SM"
+clause = "8.6.3.1"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 10 },
+]
+
+[[messages]]                            # p. 21
+# optional packets from 8.4.4.4.2
+nid = 136
+name = "Train Position Report"
+clause = "8.6.4"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 4, optional = true },
+  { nid = 5, optional = true },
+  { nid = 44, optional = true, repeat = true },
+]
+
+[[messages]]                            # p. 22
+nid = 137
+name = "Request to Shorten MA is granted"
+clause = "8.6.5"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp contained in the request
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+]
+
+[[messages]]                            # p. 22
+nid = 138
+name = "Request to Shorten MA is rejected"
+clause = "8.6.6"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp contained in the request
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+]
+
+[[messages]]                            # p. 22
+# no position report (8.4.4.7.2)
+nid = 146
+name = "Acknowledgement"
+clause = "8.6.7"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp of the message acknowledged
+]
+packets = []
+
+[[messages]]                            # p. 23
+nid = 147
+name = "Acknowledgement of Emergency Stop"
+clause = "8.6.8"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "NID_EM" },
+  { var = "Q_EMERGENCYSTOP" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+]
+
+[[messages]]                            # p. 23
+nid = 149
+name = "Track Ahead Free Granted"
+clause = "8.6.9"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+]
+
+[[messages]]                            # p. 24
+nid = 150
+name = "End of Mission"
+clause = "8.6.10"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "Q_DESK" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+]
+
+[[messages]]                            # p. 24
+nid = 153
+name = "Radio infill request"
+clause = "8.6.11"
+direction = "train_to_track"
+sent_by = ["riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "NID_C" },                        # country of the target main balise group
+  { var = "NID_BG" },                       # target main balise group
+  { var = "Q_INFILL" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+]
+
+[[messages]]                            # p. 24
+# no position report (8.4.4.7.2)
+nid = 154
+name = "No compatible version supported"
+clause = "8.6.12"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = []
+
+[[messages]]                            # p. 25
+# no position report (8.4.4.7.2)
+nid = 155
+name = "Initiation of a communication session"
+clause = "8.6.13"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = []
+
+[[messages]]                            # p. 25
+# no position report (8.4.4.7.2)
+nid = 156
+name = "Termination of a communication session"
+clause = "8.6.14"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = []
+
+[[messages]]                            # p. 25
+# optional packets from 8.4.4.4.3
+nid = 157
+name = "SoM Position Report"
+clause = "8.6.15"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "Q_STATUSLRBG" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+  { nid = 4, optional = true },
+  { nid = 5, optional = true },
+  { nid = 10, optional = true },
+  { nid = 11, optional = true },
+  { nid = 44, optional = true, repeat = true },
+]
+
+[[messages]]                            # p. 26
+nid = 158
+name = "Text Message Acknowledged by Driver"
+clause = "8.6.16"
+direction = "train_to_track"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+  { var = "NID_TEXTMESSAGE" },
+]
+packets = [
+  { one_of = [0, 1] },                     # position report, packet 0 or 1
+]
+
+[[messages]]                            # p. 26
+# no position report (8.4.4.7.2)
+nid = 159
+name = "Session established"
+clause = "8.6.17"
+direction = "train_to_track"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "NID_ENGINE" },
+]
+packets = [
+  { nid = 2 },
+]
+
+[[messages]]                            # p. 27
+# optional packets from 8.4.4.4.1
+nid = 2
+name = "SR Authorisation"
+clause = "8.7.1"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "Q_SCALE" },
+  { var = "D_SR" },
+]
+packets = [
+  { nid = 63, optional = true },
+]
+
+[[messages]]                            # p. 27
+# optional packets from 8.4.4.4.1: 21, 27, 49, 80 and the common optional packets (8.4.4.4.1.1)
+nid = 3
+name = "Movement Authority"
+clause = "8.7.2"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = [
+  { nid = 15 },                             # Level 2 Movement Authority
+  { nid = 21, optional = true },
+  { nid = 27, optional = true },
+  { nid = 49, optional = true },
+  { nid = 80, optional = true },
+  { nid = 3, optional = true },
+  { nid = 5, optional = true },
+  { nid = 31, optional = true },
+  { nid = 32, optional = true },
+  { nid = 39, optional = true },
+  { nid = 40, optional = true },
+  { nid = 51, optional = true },
+  { nid = 41, optional = true },
+  { nid = 42, optional = true },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 45, optional = true },
+  { nid = 52, optional = true },
+  { nid = 57, optional = true },
+  { nid = 58, optional = true },
+  { nid = 64, optional = true },
+  { nid = 65, optional = true, repeat = true },
+  { nid = 66, optional = true, repeat = true },
+  { nid = 67, optional = true },
+  { nid = 68, optional = true },
+  { nid = 69, optional = true },
+  { nid = 70, optional = true },
+  { nid = 71, optional = true },
+  { nid = 73, optional = true },
+  { nid = 74, optional = true },
+  { nid = 79, optional = true },
+  { nid = 88, optional = true, repeat = true },
+  { nid = 131, optional = true },
+  { nid = 138, optional = true },
+  { nid = 139, optional = true },
+  { nid = 140, optional = true },
+  { nid = 180, optional = true },
+]
+
+[[messages]]                            # p. 28
+# optional packets from 8.4.4.4.1
+nid = 4
+name = "SM Authorisation"
+clause = "8.7.2.1"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp of the Supervised Manoeuvre request
+  { var = "Q_SCALE" },
+  { var = "D_REF" },
+  { var = "V_SM" },
+]
+packets = [
+  { nid = 15 },                             # Level 2 Movement Authority
+  { nid = 21 },                             # Gradient profile
+  { nid = 27 },                             # International Static Speed Profile
+  { nid = 3, optional = true },
+  { nid = 5, optional = true },
+  { nid = 31, optional = true },
+  { nid = 39, optional = true },
+  { nid = 40, optional = true },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 45, optional = true },
+  { nid = 51, optional = true },
+  { nid = 58, optional = true },
+  { nid = 64, optional = true },
+  { nid = 65, optional = true, repeat = true },
+  { nid = 66, optional = true, repeat = true },
+  { nid = 67, optional = true },
+  { nid = 68, optional = true },
+  { nid = 69, optional = true },
+  { nid = 71, optional = true },
+  { nid = 73, optional = true },
+  { nid = 74, optional = true },
+  { nid = 79, optional = true },
+  { nid = 88, optional = true, repeat = true },
+  { nid = 131, optional = true },
+  { nid = 140, optional = true },
+]
+
+[[messages]]                            # p. 28
+nid = 5
+name = "SM Refused"
+clause = "8.7.2.2"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp of the Supervised Manoeuvre request
+]
+packets = []
+
+[[messages]]                            # p. 29
+nid = 6
+name = "Recognition of exit from TRIP mode"
+clause = "8.7.3"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = []
+
+[[messages]]                            # p. 29
+nid = 7
+name = "Acknowledgement of safe consist length info for SM"
+clause = "8.7.3.1"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp of the message Safe consist length info for SM
+]
+packets = []
+
+[[messages]]                            # p. 29
+nid = 8
+name = "Acknowledgement of Train Data"
+clause = "8.7.4"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # reference to the received train data message
+]
+packets = []
+
+[[messages]]                            # p. 30
+# optional packets from 8.4.4.4.1
+nid = 9
+name = "Request to Shorten MA"
+clause = "8.7.5"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = [
+  { nid = 15 },                             # Level 2 Movement Authority
+  { nid = 49, optional = true },
+  { nid = 80, optional = true },
+]
+
+[[messages]]                            # p. 30
+nid = 15
+name = "Conditional Emergency Stop"
+clause = "8.7.6"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "NID_EM" },
+  { var = "Q_SCALE" },
+  { var = "D_REF" },
+  { var = "Q_DIR" },
+  { var = "D_EMERGENCYSTOP" },
+]
+packets = []
+
+[[messages]]                            # p. 31
+nid = 16
+name = "Unconditional Emergency Stop"
+clause = "8.7.7"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "NID_EM" },
+]
+packets = []
+
+[[messages]]                            # p. 31
+nid = 18
+name = "Revocation of Emergency Stop"
+clause = "8.7.8"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "NID_EM" },
+]
+packets = []
+
+[[messages]]                            # p. 31
+# optional packets from 8.4.4.4.1: from RBC 21, 27 and the common optional packets, from RIU 44, 45, 143, 180, 254
+nid = 24
+name = "General message"
+clause = "8.7.9"
+direction = "track_to_train"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = [
+  { nid = 21, optional = true, from = ["rbc"] },
+  { nid = 27, optional = true, from = ["rbc"] },
+  { nid = 3, optional = true, from = ["rbc"] },
+  { nid = 5, optional = true, from = ["rbc"] },
+  { nid = 31, optional = true, from = ["rbc"] },
+  { nid = 32, optional = true, from = ["rbc"] },
+  { nid = 39, optional = true, from = ["rbc"] },
+  { nid = 40, optional = true, from = ["rbc"] },
+  { nid = 51, optional = true, from = ["rbc"] },
+  { nid = 41, optional = true, from = ["rbc"] },
+  { nid = 42, optional = true, from = ["rbc"] },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 45, optional = true },
+  { nid = 52, optional = true, from = ["rbc"] },
+  { nid = 57, optional = true, from = ["rbc"] },
+  { nid = 58, optional = true, from = ["rbc"] },
+  { nid = 64, optional = true, from = ["rbc"] },
+  { nid = 65, optional = true, repeat = true, from = ["rbc"] },
+  { nid = 66, optional = true, repeat = true, from = ["rbc"] },
+  { nid = 67, optional = true, from = ["rbc"] },
+  { nid = 68, optional = true, from = ["rbc"] },
+  { nid = 69, optional = true, from = ["rbc"] },
+  { nid = 70, optional = true, from = ["rbc"] },
+  { nid = 71, optional = true, from = ["rbc"] },
+  { nid = 73, optional = true, from = ["rbc"] },
+  { nid = 74, optional = true, from = ["rbc"] },
+  { nid = 79, optional = true, from = ["rbc"] },
+  { nid = 88, optional = true, repeat = true, from = ["rbc"] },
+  { nid = 131, optional = true, from = ["rbc"] },
+  { nid = 138, optional = true, from = ["rbc"] },
+  { nid = 139, optional = true, from = ["rbc"] },
+  { nid = 140, optional = true, from = ["rbc"] },
+  { nid = 180, optional = true },
+  { nid = 143, optional = true, from = ["riu"] },
+  { nid = 254, optional = true, from = ["riu"] },
+]
+
+[[messages]]                            # p. 32
+nid = 27
+name = "SH Refused"
+clause = "8.7.10"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp of the shunting request
+]
+packets = []
+
+[[messages]]                            # p. 32
+# optional packets from 8.4.4.4.1
+nid = 28
+name = "SH Authorised"
+clause = "8.7.11"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "T_TRAIN", as = "T_TRAIN_2" },    # time stamp of the shunting request
+]
+packets = [
+  { nid = 3, optional = true },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 49, optional = true },
+]
+
+[[messages]]                            # p. 32
+nid = 32
+name = "RBC/RIU System Version"
+clause = "8.7.12"
+direction = "track_to_train"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "M_VERSION" },
+]
+packets = []
+
+[[messages]]                            # p. 33
+# optional packets from 8.4.4.4.1: 21, 27, 49, 80 and the common optional packets (8.4.4.4.1.1)
+nid = 33
+name = "MA with Shifted Location Reference"
+clause = "8.7.13"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "Q_SCALE" },
+  { var = "D_REF" },
+]
+packets = [
+  { nid = 15 },                             # Level 2 Movement Authority
+  { nid = 21, optional = true },
+  { nid = 27, optional = true },
+  { nid = 49, optional = true },
+  { nid = 80, optional = true },
+  { nid = 3, optional = true },
+  { nid = 5, optional = true },
+  { nid = 31, optional = true },
+  { nid = 32, optional = true },
+  { nid = 39, optional = true },
+  { nid = 40, optional = true },
+  { nid = 51, optional = true },
+  { nid = 41, optional = true },
+  { nid = 42, optional = true },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 45, optional = true },
+  { nid = 52, optional = true },
+  { nid = 57, optional = true },
+  { nid = 58, optional = true },
+  { nid = 64, optional = true },
+  { nid = 65, optional = true, repeat = true },
+  { nid = 66, optional = true, repeat = true },
+  { nid = 67, optional = true },
+  { nid = 68, optional = true },
+  { nid = 69, optional = true },
+  { nid = 70, optional = true },
+  { nid = 71, optional = true },
+  { nid = 73, optional = true },
+  { nid = 74, optional = true },
+  { nid = 79, optional = true },
+  { nid = 88, optional = true, repeat = true },
+  { nid = 131, optional = true },
+  { nid = 138, optional = true },
+  { nid = 139, optional = true },
+  { nid = 140, optional = true },
+  { nid = 180, optional = true },
+]
+
+[[messages]]                            # p. 33
+nid = 34
+name = "Track Ahead Free Request"
+clause = "8.7.14"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "Q_SCALE" },
+  { var = "D_REF" },
+  { var = "Q_DIR" },
+  { var = "D_TAFDISPLAY" },
+  { var = "L_TAFDISPLAY" },
+]
+packets = []
+
+[[messages]]                            # p. 34
+# optional packets from 8.4.4.4.1
+nid = 37
+name = "Infill MA"
+clause = "8.7.15"
+direction = "track_to_train"
+sent_by = ["riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = [
+  { nid = 136 },                            # Infill Location Reference
+  { nid = 12 },                             # Level 1 Movement Authority
+  { nid = 5, optional = true },
+  { nid = 21, optional = true },
+  { nid = 27, optional = true },
+  { nid = 39, optional = true },
+  { nid = 40, optional = true },
+  { nid = 41, optional = true },
+  { nid = 44, optional = true, repeat = true },
+  { nid = 49, optional = true },
+  { nid = 51, optional = true },
+  { nid = 52, optional = true },
+  { nid = 65, optional = true, repeat = true },
+  { nid = 68, optional = true },
+  { nid = 69, optional = true },
+  { nid = 70, optional = true },
+  { nid = 71, optional = true },
+  { nid = 80, optional = true },
+  { nid = 88, optional = true, repeat = true },
+  { nid = 138, optional = true },
+  { nid = 139, optional = true },
+]
+
+[[messages]]                            # p. 34
+# the table has 4 fields: no NID_LRBG, unlike 8.4.4.6.1
+nid = 38
+name = "Acknowledgement of session establishment"
+clause = "8.7.16"
+direction = "track_to_train"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+]
+packets = []
+
+[[messages]]                            # p. 34
+# M_ACK always set to 0 (8.4.4.6.3)
+nid = 39
+name = "Acknowledgement of termination of a communication session"
+clause = "8.7.17"
+direction = "track_to_train"
+sent_by = ["rbc", "riu"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = []
+
+[[messages]]                            # p. 35
+nid = 40
+name = "Train Rejected"
+clause = "8.7.18"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = []
+
+[[messages]]                            # p. 35
+nid = 41
+name = "Train Accepted"
+clause = "8.7.19"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = []
+
+[[messages]]                            # p. 35
+nid = 43
+name = "SoM position report confirmed by RBC"
+clause = "8.7.21"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+]
+packets = []
+
+[[messages]]                            # p. 36
+nid = 45
+name = "Assignment of coordinate system"
+clause = "8.7.22"
+direction = "track_to_train"
+sent_by = ["rbc"]
+fields = [
+  { var = "NID_MESSAGE" },
+  { var = "L_MESSAGE" },
+  { var = "T_TRAIN" },
+  { var = "M_ACK" },
+  { var = "NID_C" },                        # NID_LRBG = NID_C + NID_BG (10 + 14)
+  { var = "NID_BG" },
+  { var = "Q_ORIENTATION" },
+]
+packets = []
