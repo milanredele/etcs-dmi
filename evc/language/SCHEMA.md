@@ -135,6 +135,8 @@ Clarifications (as the catalogue is written):
   `X_TEXT(L_TEXT)` of packet 73.
 - For train-to-track packets `sent_by` lists the "Transmitted to" row
   (the receivers, `rbc`, `riu`). "Any" is all four senders.
+- `check_catalogue.py` checks all of the above and compares every packet
+  with the markdown table; run it after every change.
 
 ## Messages
 
