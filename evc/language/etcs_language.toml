@@ -1,0 +1,1579 @@
+# The ERTMS/ETCS language, SUBSET-026 v4.0.0 chapter 7 (variables and
+# packets) and chapter 8 (radio messages), as data. Format: SCHEMA.md.
+#
+# Read from SUBSET-026-7_v400.pdf and SUBSET-026-8_v400.pdf (page numbers
+# in the comments are PDF pages), not from the markdown: the markdown
+# flattens the packet tables (indentation = condition, suffixes (k), (n),
+# (k,m) = loop). check_catalogue.py validates this file against SCHEMA.md
+# and cross-checks every packet against the markdown tables.
+#
+# Values: min, max and special are raw values (what is on the wire), not
+# physical ones; the physical unit is in scale or resolution. For variables
+# whose every value is listed in 7.5 (qualifiers, M_ codes), special lists
+# all defined values and max is the highest one; spare values are
+# omitted. "infinite" stands for the symbol the PDF prints for infinity.
+
+# ---------------------------------------------------------------------
+# Variables, 7.5 (7.5.0.x and 7.5.1.x as numbered in the PDF)
+# ---------------------------------------------------------------------
+
+[variables.A_NVMAXREDADH1]              # p. 46
+bits = 6
+clause = "7.5.0.1"
+max = 60
+resolution = "0.05 m/s2"
+[variables.A_NVMAXREDADH1.special]
+61 = "No maximum deceleration, display target information in CSM"
+62 = "No maximum deceleration, display time to Indication in CSM"
+63 = "No maximum deceleration, no additional display"
+
+[variables.A_NVMAXREDADH2]              # p. 46
+bits = 6
+clause = "7.5.0.2"
+max = 60
+resolution = "0.05 m/s2"
+[variables.A_NVMAXREDADH2.special]
+61 = "No maximum deceleration, display target information in CSM"
+62 = "No maximum deceleration, display time to Indication in CSM"
+63 = "No maximum deceleration, no additional display"
+
+[variables.A_NVMAXREDADH3]              # p. 46
+bits = 6
+clause = "7.5.0.3"
+max = 60
+resolution = "0.05 m/s2"
+[variables.A_NVMAXREDADH3.special]
+61 = "No maximum deceleration, display target information in CSM"
+62 = "No maximum deceleration, display time to Indication in CSM"
+63 = "No maximum deceleration, no additional display"
+
+[variables.A_NVP12]                     # p. 46
+bits = 6
+clause = "7.5.0.4"
+resolution = "0.05 m/s2"
+
+[variables.A_NVP23]                     # p. 47
+bits = 6
+clause = "7.5.0.5"
+resolution = "0.05 m/s2"
+
+[variables.D_ADHESION]                  # p. 47
+bits = 15
+clause = "7.5.1.1"
+scale = "Q_SCALE"
+
+[variables.D_AXLELOAD]                  # p. 47
+bits = 15
+clause = "7.5.1.2"
+scale = "Q_SCALE"
+
+[variables.D_CURRENT]                   # p. 47
+bits = 15
+clause = "7.5.1.2.1"
+scale = "Q_SCALE"
+
+[variables.D_CYCLOC]                    # p. 47
+bits = 15
+clause = "7.5.1.3"
+max = 32766
+scale = "Q_SCALE"
+[variables.D_CYCLOC.special]
+32767 = "The train has not to report cyclically its position."
+
+[variables.D_DP]                        # p. 47
+bits = 15
+clause = "7.5.1.4"
+scale = "Q_SCALE"
+
+[variables.D_EMERGENCYSTOP]             # p. 47
+bits = 15
+clause = "7.5.1.5"
+scale = "Q_SCALE"
+
+[variables.D_ENDTIMERSTARTLOC]          # p. 48
+bits = 15
+clause = "7.5.1.6"
+scale = "Q_SCALE"
+
+[variables.D_GRADIENT]                  # p. 48
+bits = 15
+clause = "7.5.1.7"
+scale = "Q_SCALE"
+
+[variables.D_INFILL]                    # p. 48
+bits = 15
+clause = "7.5.1.8"
+scale = "Q_SCALE"
+
+[variables.D_LEVELTR]                   # p. 48
+bits = 15
+clause = "7.5.1.9"
+max = 32766
+scale = "Q_SCALE"
+[variables.D_LEVELTR.special]
+32767 = "Now (The level transition is performed upon receipt of the order)"
+
+[variables.D_LINK]                      # p. 48
+bits = 15
+clause = "7.5.1.10"
+scale = "Q_SCALE"
+
+[variables.D_LOC]                       # p. 48
+bits = 15
+clause = "7.5.1.11"
+scale = "Q_SCALE"
+
+[variables.D_LOOP]                      # p. 48
+bits = 15
+clause = "7.5.1.12"
+scale = "Q_SCALE"
+
+[variables.D_LRBG]                      # p. 48
+bits = 15
+clause = "7.5.1.13"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "Unknown or greater than 327.660 km" }
+
+[variables.D_LX]                        # p. 49
+bits = 15
+clause = "7.5.1.13.1"
+scale = "Q_SCALE"
+
+[variables.D_MAMODE]                    # p. 49
+bits = 15
+clause = "7.5.1.14"
+scale = "Q_SCALE"
+
+[variables.D_NVOVTRP]                   # p. 49
+bits = 15
+clause = "7.5.1.15"
+scale = "Q_SCALE"
+
+[variables.D_NVPOTRP]                   # p. 49
+bits = 15
+clause = "7.5.1.16"
+scale = "Q_SCALE"
+
+[variables.D_NVROLL]                    # p. 49
+bits = 15
+clause = "7.5.1.17"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "infinite" }
+
+[variables.D_NVSTFF]                    # p. 49
+bits = 15
+clause = "7.5.1.18"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "infinite" }
+
+[variables.D_OL]                        # p. 50
+bits = 15
+clause = "7.5.1.19"
+scale = "Q_SCALE"
+
+[variables.D_PBD]                       # p. 50
+bits = 15
+clause = "7.5.1.19.1"
+scale = "Q_SCALE"
+
+[variables.D_PBDSR]                     # p. 50
+bits = 15
+clause = "7.5.1.19.2"
+scale = "Q_SCALE"
+
+[variables.D_POSOFF]                    # p. 50
+bits = 15
+clause = "7.5.1.20"
+scale = "Q_SCALE"
+
+[variables.D_RBCTR]                     # p. 50
+bits = 15
+clause = "7.5.1.21"
+scale = "Q_SCALE"
+
+[variables.D_REF]                       # p. 50
+# the only signed variable
+bits = 16
+clause = "7.5.1.22"
+min = -32768
+max = 32767
+scale = "Q_SCALE"
+resolution = "signed, two's complement (7.3.2.7); 10 cm, 1 m or 10 m depending on Q_SCALE"
+
+[variables.D_REVERSE]                   # p. 50
+bits = 15
+clause = "7.5.1.23"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "infinite" }
+
+[variables.D_SECTIONTIMERSTOPLOC]       # p. 51
+bits = 15
+clause = "7.5.1.24"
+scale = "Q_SCALE"
+
+[variables.D_SR]                        # p. 51
+bits = 15
+clause = "7.5.1.25"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "infinite" }
+
+[variables.D_STARTOL]                   # p. 51
+bits = 15
+clause = "7.5.1.26"
+scale = "Q_SCALE"
+
+[variables.D_STARTREVERSE]              # p. 51
+bits = 15
+clause = "7.5.1.27"
+scale = "Q_SCALE"
+
+[variables.D_STATIC]                    # p. 51
+bits = 15
+clause = "7.5.1.28"
+scale = "Q_SCALE"
+
+[variables.D_SUITABILITY]               # p. 51
+bits = 15
+clause = "7.5.1.29"
+scale = "Q_SCALE"
+
+[variables.D_TAFDISPLAY]                # p. 51
+bits = 15
+clause = "7.5.1.30"
+scale = "Q_SCALE"
+
+[variables.D_TEXTDISPLAY]               # p. 51
+bits = 15
+clause = "7.5.1.31"
+max = 32766
+scale = "Q_SCALE"
+[variables.D_TEXTDISPLAY.special]
+32767 = "No “location” sub-condition specified for the start condition of the display of the text"
+
+[variables.D_TRACKINIT]                 # p. 52
+bits = 15
+clause = "7.5.1.32"
+scale = "Q_SCALE"
+
+[variables.D_TRACKCOND]                 # p. 52
+bits = 15
+clause = "7.5.1.33"
+scale = "Q_SCALE"
+
+[variables.D_TRACTION]                  # p. 52
+bits = 15
+clause = "7.5.1.34"
+scale = "Q_SCALE"
+
+[variables.D_TSR]                       # p. 52
+bits = 15
+clause = "7.5.1.35"
+scale = "Q_SCALE"
+
+[variables.D_VALIDNV]                   # p. 52
+bits = 15
+clause = "7.5.1.36"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "Now (National Values are immediately applicable)" }
+
+[variables.G_A]                         # p. 52
+bits = 8
+clause = "7.5.1.37"
+max = 254
+resolution = "1 permille (absolute value, slope in Q_GDIR)"
+[variables.G_A.special]
+255 = "Non numerical value telling that the current gradient description ends at D_GRADIENT(n)"
+
+[variables.G_PBDSR]                     # p. 53
+bits = 8
+clause = "7.5.1.37.1"
+resolution = "1 permille (absolute value, slope in Q_GDIR)"
+
+[variables.G_TSR]                       # p. 53
+bits = 8
+clause = "7.5.1.38"
+resolution = "1 permille (absolute value, slope in Q_GDIR)"
+
+[variables.L_ACKLEVELTR]                # p. 53
+bits = 15
+clause = "7.5.1.39"
+scale = "Q_SCALE"
+
+[variables.L_ACKMAMODE]                 # p. 53
+bits = 15
+clause = "7.5.1.40"
+scale = "Q_SCALE"
+
+[variables.L_ADHESION]                  # p. 53
+bits = 15
+clause = "7.5.1.41"
+scale = "Q_SCALE"
+
+[variables.L_AXLELOAD]                  # p. 53
+bits = 15
+clause = "7.5.1.42"
+scale = "Q_SCALE"
+
+[variables.L_CONSISTFRONTENGINEMAX]     # p. 53
+bits = 12
+clause = "7.5.1.42.1"
+resolution = "1 m"
+
+[variables.L_CONSISTFRONTENGINEMIN]     # p. 54
+bits = 12
+clause = "7.5.1.42.2"
+resolution = "1 m"
+
+[variables.L_CONSISTFRONTENGINENOM]     # p. 54
+bits = 12
+clause = "7.5.1.42.3"
+resolution = "1 m"
+
+[variables.L_CONSISTREARENGINEMAX]      # p. 54
+bits = 12
+clause = "7.5.1.42.4"
+resolution = "1 m"
+
+[variables.L_CONSISTREARENGINEMIN]      # p. 54
+bits = 12
+clause = "7.5.1.42.5"
+resolution = "1 m"
+
+[variables.L_CONSISTREARENGINENOM]      # p. 54
+bits = 12
+clause = "7.5.1.42.6"
+resolution = "1 m"
+
+[variables.L_DOUBTOVER]                 # p. 54
+bits = 15
+clause = "7.5.1.43"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "Unknown or greater than 327.660 km" }
+
+[variables.L_DOUBTUNDER]                # p. 54
+bits = 15
+clause = "7.5.1.44"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "Unknown or greater than 327.660 km" }
+
+[variables.L_ENDSECTION]                # p. 55
+bits = 15
+clause = "7.5.1.45"
+scale = "Q_SCALE"
+
+[variables.L_LOOP]                      # p. 55
+bits = 15
+clause = "7.5.1.46"
+scale = "Q_SCALE"
+
+[variables.L_LX]                        # p. 55
+bits = 15
+clause = "7.5.1.46.1"
+scale = "Q_SCALE"
+
+[variables.L_MAMODE]                    # p. 55
+bits = 15
+clause = "7.5.1.47"
+max = 32766
+scale = "Q_SCALE"
+special = { 32767 = "infinite" }
+
+[variables.L_MESSAGE]                   # p. 55
+bits = 10
+clause = "7.5.1.48"
+resolution = "1 byte"
+
+[variables.L_NVKRINT]                   # p. 55
+bits = 5
+clause = "7.5.1.48.1"
+resolution = "table: 0 = 0 m, 1 = 25 m, 2 = 50 m, 3 = 75 m, 4 = 100 m, 5 = 150 m, 6 = 200 m, 7 = 300 m, then steps of 100 m up to 31 = 2700 m"
+
+[variables.L_PACKET]                    # p. 56
+bits = 13
+clause = "7.5.1.49"
+resolution = "1 bit"
+
+[variables.L_PBDSR]                     # p. 56
+bits = 15
+clause = "7.5.1.49.1"
+scale = "Q_SCALE"
+
+[variables.L_REVERSEAREA]               # p. 56
+bits = 15
+clause = "7.5.1.50"
+scale = "Q_SCALE"
+
+[variables.L_SECTION]                   # p. 56
+bits = 15
+clause = "7.5.1.51"
+scale = "Q_SCALE"
+
+[variables.L_STOPLX]                    # p. 56
+bits = 15
+clause = "7.5.1.51.1"
+scale = "Q_SCALE"
+
+[variables.L_TAFDISPLAY]                # p. 56
+bits = 15
+clause = "7.5.1.52"
+scale = "Q_SCALE"
+
+[variables.L_TEXT]                      # p. 57
+bits = 8
+clause = "7.5.1.53"
+resolution = "number of X_TEXT elements"
+
+[variables.L_TEXTDISPLAY]               # p. 57
+bits = 15
+clause = "7.5.1.54"
+max = 32766
+scale = "Q_SCALE"
+[variables.L_TEXTDISPLAY.special]
+32767 = "No “location” sub-condition specified for the end condition of the display of the text"
+
+[variables.L_TRACKCOND]                 # p. 57
+bits = 15
+clause = "7.5.1.55"
+scale = "Q_SCALE"
+
+[variables.L_TRAIN]                     # p. 57
+bits = 12
+clause = "7.5.1.56"
+resolution = "1 m"
+
+[variables.L_TRAININT]                  # p. 57
+# 1 m resolution, not scaled by Q_SCALE although packets 0 and 1 carry Q_SCALE
+bits = 15
+clause = "7.5.1.57"
+resolution = "1 m"
+
+[variables.L_TSR]                       # p. 57
+bits = 15
+clause = "7.5.1.58"
+scale = "Q_SCALE"
+
+[variables.M_ACK]                       # p. 57
+bits = 1
+clause = "7.5.1.59"
+[variables.M_ACK.special]
+0 = "No acknowledgement required"
+1 = "Acknowledgement required"
+
+[variables.M_ADHESION]                  # p. 58
+bits = 1
+clause = "7.5.1.60"
+special = { 0 = "Slippery rail", 1 = "Non slippery rail" }
+
+[variables.M_AIRTIGHT]                  # p. 58
+bits = 2
+clause = "7.5.1.61"
+max = 1
+special = { 0 = "Not fitted", 1 = "Fitted" }
+
+[variables.M_AXLELOADCAT]               # p. 58
+bits = 7
+clause = "7.5.1.62"
+max = 12
+[variables.M_AXLELOADCAT.special]
+0 = "A"
+1 = "HS17"
+2 = "B1"
+3 = "B2"
+4 = "C2"
+5 = "C3"
+6 = "C4"
+7 = "D2"
+8 = "D3"
+9 = "D4"
+10 = "D4XL"
+11 = "E4"
+12 = "E5"
+
+[variables.M_CURRENT]                   # p. 59
+bits = 10
+clause = "7.5.1.62.1"
+max = 1000
+resolution = "10 A"
+special = { 1023 = "No restriction for current consumption" }
+
+[variables.M_DUP]                       # p. 59
+bits = 2
+clause = "7.5.1.63"
+max = 2
+[variables.M_DUP.special]
+0 = "No duplicates"
+1 = "This balise is a duplicate of the next balise (seen in the nominal direction of the balise group)."
+2 = "This balise is a duplicate of the previous balise (seen in the nominal direction of the balise group)."
+
+[variables.M_ERROR]                     # p. 59
+bits = 8
+clause = "7.5.1.64"
+max = 10
+[variables.M_ERROR.special]
+0 = "Balise group: linking consistency error (ref. 3.16.2.3)"
+1 = "Linked balise group: message consistency error(ref. 3.16.2.4.1/4)"
+2 = "Unlinked balise group: message consistency error (ref. 3.16.2.5)"
+3 = "Radio: message consistency error (ref. 3.16.3.1.1 except 3.16.3.1.1b)"
+4 = "Radio: sequence error (ref. 3.16.3.1.1b)"
+5 = "Radio: safe radio connection error (ref. 3.16.3.4, to be sent when communication links re-established)"
+6 = "Safety critical fault (ref 4.4.6.1.6 , 4.4.15.1.5)"
+7 = "Double linking error (3.16.2.7.1)"
+8 = "Double repositioning error (3.16.2.7.2)"
+9 = "Odometer accuracy monitoring: impairment threshold reached (ref. 3.6.8.5)"
+10 = "Odometer accuracy monitoring: safety threshold reached (ref. 3.6.8.7)"
+
+[variables.M_LEVEL]                     # p. 59
+bits = 3
+clause = "7.5.1.65"
+max = 3
+[variables.M_LEVEL.special]
+0 = "Level 0"
+1 = "Level NTC specified by NID_NTC"
+2 = "Level 1"
+3 = "Level 2"
+
+[variables.M_LEVELTEXTDISPLAY]          # p. 60
+bits = 3
+clause = "7.5.1.66"
+max = 4
+[variables.M_LEVELTEXTDISPLAY.special]
+0 = "Level 0"
+1 = "Level NTC specified by NID_NTC"
+2 = "Level 1"
+3 = "Level 2"
+4 = "No “level” sub-condition specified for the start/end condition of the display of the text"
+
+[variables.M_LEVELTR]                   # p. 60
+bits = 3
+clause = "7.5.1.67"
+max = 3
+[variables.M_LEVELTR.special]
+0 = "Level 0"
+1 = "Level NTC specified by NID_NTC"
+2 = "Level 1"
+3 = "Level 2"
+
+[variables.M_LINEGAUGE]                 # p. 60
+bits = 8
+clause = "7.5.1.67.1"
+resolution = "bitset: bit 0 G1, bit 1 GA, bit 2 GB, bit 3 GC; bits 4 .. 7 spare; 0000 0000 spare"
+
+[variables.M_LINEAXLELOADCAT]           # p. 61
+bits = 16
+clause = "7.5.1.67.2"
+resolution = "bitset: bit 0 A, 1 HS17, 2 B1, 3 B2, 4 C2, 5 C3, 6 C4, 7 D2, 8 D3, 9 D4, 10 D4XL, 11 E4, 12 E5; bits 13 .. 15 spare; all zero spare"
+
+[variables.M_LOADINGGAUGE]              # p. 61
+bits = 8
+clause = "7.5.1.68"
+max = 4
+[variables.M_LOADINGGAUGE.special]
+0 = "The train does not fit to any of the interoperable loading gauge profiles"
+1 = "G1"
+2 = "GA"
+3 = "GB"
+4 = "GC"
+
+[variables.M_LOC]                       # p. 61
+bits = 3
+clause = "7.5.1.69"
+max = 2
+[variables.M_LOC.special]
+0 = "Now (The position report is sent upon receipt of the order)"
+1 = "Every LRBG compliant balise group."
+2 = "Do not send position report on passage of LRBG compliant balise group."
+
+[variables.M_MAMODE]                    # p. 62
+bits = 2
+clause = "7.5.1.70"
+max = 2
+special = { 0 = "On Sight", 1 = "Shunting", 2 = "Limited Supervision" }
+
+[variables.M_MCOUNT]                    # p. 62
+bits = 8
+clause = "7.5.1.71"
+max = 253
+[variables.M_MCOUNT.special]
+254 = "The telegram never fits any message of the group"
+255 = "The telegram fits with all telegrams of the same balise group"
+
+[variables.M_MODE]                      # p. 62
+bits = 5
+clause = "7.5.1.72"
+max = 17
+[variables.M_MODE.special]
+0 = "Full Supervision"
+1 = "On Sight"
+2 = "Staff Responsible"
+3 = "Shunting"
+4 = "Unfitted"
+5 = "Sleeping"
+6 = "Stand By"
+7 = "Trip"
+8 = "Post Trip"
+9 = "System Failure"
+10 = "Isolation"
+11 = "Non Leading"
+12 = "Limited Supervision"
+13 = "National System"
+14 = "Reversing"
+15 = "Passive Shunting"
+16 = "Automatic Driving"
+17 = "Supervised Manoeuvre"
+
+[variables.M_MODETEXTDISPLAY]           # p. 63
+bits = 4
+clause = "7.5.1.73"
+resolution = "enumeration; 9, 10, 11 and 13 are spare"
+[variables.M_MODETEXTDISPLAY.special]
+0 = "Full Supervision"
+1 = "On Sight"
+2 = "Staff Responsible"
+3 = "Automatic Driving"
+4 = "Unfitted"
+5 = "Supervised Manoeuvre"
+6 = "Stand By"
+7 = "Trip"
+8 = "Post Trip"
+12 = "Limited Supervision"
+14 = "Reversing"
+15 = "No “mode” sub-condition specified for the start/end condition of the display of the text"
+
+[variables.M_NVAVADH]                   # p. 63
+bits = 5
+clause = "7.5.1.73.1"
+max = 20
+resolution = "0.05 (0 .. 1.00; 1.05 .. 1.55 spare)"
+
+[variables.M_NVCONTACT]                 # p. 63
+bits = 2
+clause = "7.5.1.74"
+max = 2
+[variables.M_NVCONTACT.special]
+0 = "Train trip"
+1 = "Apply service brake"
+2 = "No Reaction"
+
+[variables.M_NVDERUN]                   # p. 64
+bits = 1
+clause = "7.5.1.75"
+special = { 0 = "No", 1 = "Yes" }
+
+[variables.M_NVEBCL]                    # p. 64
+bits = 4
+clause = "7.5.1.75.1"
+max = 9
+[variables.M_NVEBCL.special]
+0 = "Confidence level = 50 %"
+1 = "Confidence level = 90 %"
+2 = "Confidence level = 99 %"
+3 = "Confidence level = 99.9 %"
+4 = "Confidence level = 99.99%"
+5 = "Confidence level = 99.999 %"
+6 = "Confidence level = 99.9999 %"
+7 = "Confidence level = 99.99999 %"
+8 = "Confidence level = 99.999999 %"
+9 = "Confidence level = 99.9999999 %"
+
+[variables.M_NVKRINT]                   # p. 64
+bits = 5
+clause = "7.5.1.75.2"
+resolution = "0.05 (0 .. 1.55)"
+
+[variables.M_NVKTINT]                   # p. 64
+bits = 5
+clause = "7.5.1.75.3"
+resolution = "0.05 (0 .. 1.55)"
+
+[variables.M_NVKVINT]                   # p. 65
+bits = 7
+clause = "7.5.1.75.4"
+resolution = "0.02 (0 .. 2.54)"
+
+[variables.M_PLATFORM]                  # p. 65
+bits = 4
+clause = "7.5.1.75.5"
+max = 13
+[variables.M_PLATFORM.special]
+0 = "200 mm"
+1 = "300-380 mm"
+2 = "550 mm"
+3 = "580 mm"
+4 = "680 mm"
+5 = "685 mm"
+6 = "730 mm"
+7 = "760 mm"
+8 = "840 mm"
+9 = "900 mm"
+10 = "915 mm"
+11 = "920 mm"
+12 = "960 mm"
+13 = "1100 mm"
+
+[variables.M_POSITION]                  # p. 65
+bits = 24
+clause = "7.5.1.76"
+max = 9999999
+resolution = "1 m"
+[variables.M_POSITION.special]
+16777215 = "No more geographical position calculation after this reference location"
+
+[variables.M_TRACKCOND]                 # p. 65
+bits = 4
+clause = "7.5.1.77"
+max = 10
+[variables.M_TRACKCOND.special]
+0 = "Non stopping area. Initial state: stopping permitted"
+1 = "Tunnel stopping area. Initial state: no tunnel stopping area"
+2 = "Sound horn. Initial state: no request for sound horn"
+3 = "Powerless section – lower pantograph. Initial state: not powerless section"
+4 = "Radio hole (stop supervising T_NVCONTACT). Initial state: supervise T_NVCONTACT"
+5 = "Air tightness. Initial state: no request for air tightness"
+6 = "Switch off regenerative brake. Initial state: regenerative brake on"
+7 = "Switch off eddy current brake for service brake. Initial state: eddy current brake for service brake on"
+8 = "Switch off magnetic shoe brake. Initial state: magnetic shoe brake on"
+9 = "Powerless section – switch off the main power switch. Initial state: not powerless section"
+10 = "Switch off eddy current brake for emergency brake. Initial state: eddy current brake for emergency brake on"
+
+[variables.M_VOLTAGE]                   # p. 66
+bits = 4
+clause = "7.5.1.78"
+max = 5
+[variables.M_VOLTAGE.special]
+0 = "Line not fitted with any traction system"
+1 = "AC 25 kV 50 Hz"
+2 = "AC 15 kV 16.7 Hz"
+3 = "DC 3 kV"
+4 = "DC 1.5 kV"
+5 = "DC 600/750 V"
+
+[variables.M_VERSION]                   # p. 66
+bits = 7
+clause = "7.5.1.79"
+resolution = "X in the 3 MSBs, Y in the 4 LSBs; 000 xxxx previous versions (EEIG, UIC A200); 001 0010 .. 001 1111 and 010 0100 .. 010 1111 not valid; 011 0001 .. 111 1111 reserved for future use (valid values)"
+[variables.M_VERSION.special]
+16 = "Version 1.0, introduced in SRS 1.2.0"
+17 = "Version 1.1, introduced in SRS 3.3.0"
+32 = "Version 2.0, introduced in SRS 3.3.0"
+33 = "Version 2.1, introduced in SRS 3.6.0"
+34 = "Version 2.2, introduced in SRS 4.0.0"
+35 = "Version 2.3, introduced in SRS 4.0.0"
+48 = "Version 3.0, introduced in SRS 4.0.0"
+
+[variables.N_AXLE]                      # p. 67
+bits = 10
+clause = "7.5.1.79.1"
+max = 1022
+special = { 1023 = "Unknown" }
+
+[variables.N_ITER]                      # p. 67
+bits = 5
+clause = "7.5.1.80"
+
+[variables.N_PIG]                       # p. 67
+bits = 3
+clause = "7.5.1.81"
+resolution = "position in the balise group minus 1 (0 = 1st .. 7 = 8th)"
+
+[variables.N_TOTAL]                     # p. 67
+bits = 3
+clause = "7.5.1.82"
+resolution = "number of balises in the group minus 1 (0 = 1 balise .. 7 = 8 balises)"
+
+[variables.NC_CDDIFF]                   # p. 68
+# the PDF gives min 0, max 15; 11 .. 15 are spare
+bits = 4
+clause = "7.5.1.82.1"
+max = 10
+[variables.NC_CDDIFF.special]
+0 = "Specific SSP applicable to Cant Deficiency 80 mm"
+1 = "Specific SSP applicable to Cant Deficiency 100 mm"
+2 = "Specific SSP applicable to Cant Deficiency 130 mm"
+3 = "Specific SSP applicable to Cant Deficiency 150 mm"
+4 = "Specific SSP applicable to Cant Deficiency 165 mm"
+5 = "Specific SSP applicable to Cant Deficiency 180 mm"
+6 = "Specific SSP applicable to Cant Deficiency 210 mm"
+7 = "Specific SSP applicable to Cant Deficiency 225 mm"
+8 = "Specific SSP applicable to Cant Deficiency 245 mm"
+9 = "Specific SSP applicable to Cant Deficiency 275 mm"
+10 = "Specific SSP applicable to Cant Deficiency 300 mm"
+
+[variables.NC_CDTRAIN]                  # p. 68
+# the PDF gives min 0, max 15; 11 .. 15 are spare
+bits = 4
+clause = "7.5.1.82.2"
+max = 10
+[variables.NC_CDTRAIN.special]
+0 = "Cant Deficiency 80 mm"
+1 = "Cant Deficiency 100 mm"
+2 = "Cant Deficiency 130 mm"
+3 = "Cant Deficiency 150 mm"
+4 = "Cant Deficiency 165 mm"
+5 = "Cant Deficiency 180 mm"
+6 = "Cant Deficiency 210 mm"
+7 = "Cant Deficiency 225 mm"
+8 = "Cant Deficiency 245 mm"
+9 = "Cant Deficiency 275 mm"
+10 = "Cant Deficiency 300 mm"
+
+[variables.NC_DIFF]                     # p. 69
+bits = 4
+clause = "7.5.1.83"
+max = 2
+[variables.NC_DIFF.special]
+0 = "Specific SSP applicable to Freight train braked in “P” position"
+1 = "Specific SSP applicable to Freight train braked in “G” position"
+2 = "Specific SSP applicable to Passenger train"
+
+[variables.NC_TRAIN]                    # p. 69
+bits = 15
+clause = "7.5.1.84"
+resolution = "bitset: bit 0 freight train braked in P, bit 1 freight train braked in G, bit 2 passenger train; bits 3 .. 14 spare; 0 = train belongs to no other international category"
+
+[variables.NID_BG]                      # p. 69; values assigned per 7.3.1.3
+bits = 14
+clause = "7.5.1.85"
+max = 16382
+[variables.NID_BG.special]
+16383 = "Identity is unknown (only to be used for Linking information)"
+
+[variables.NID_C]                       # p. 70; values assigned per 7.3.1.3
+bits = 10
+clause = "7.5.1.86"
+
+[variables.NID_CTRACTION]               # p. 70; values assigned per 7.3.1.3
+bits = 10
+clause = "7.5.1.86.1"
+
+[variables.NID_EM]                      # p. 70
+bits = 4
+clause = "7.5.1.87"
+
+[variables.NID_ENGINE]                  # p. 70; values assigned per 7.3.1.3
+bits = 24
+clause = "7.5.1.88"
+
+[variables.NID_LOOP]                    # p. 70; values assigned per 7.3.1.3
+bits = 14
+clause = "7.5.1.89"
+
+# NID_LRBG (7.5.1.90, p. 70) is 10 + 14 bits: NID_C then NID_BG, see
+# SCHEMA.md. It has no entry of its own; packets list NID_C and NID_BG.
+
+# NID_LTRBG (7.5.1.90.1, p. 70) is 10 + 14 bits: NID_C then NID_BG, see
+# SCHEMA.md. It has no entry of its own; packets list NID_C and NID_BG.
+
+[variables.NID_LX]                      # p. 71
+bits = 8
+clause = "7.5.1.90.2"
+resolution = "0 .. 126 reserved for non RBC transmission (balise, loop or radio infill), 127 .. 255 reserved for RBC transmission"
+
+[variables.NID_MESSAGE]                 # p. 71
+bits = 8
+clause = "7.5.1.91"
+
+[variables.NID_MN]                      # p. 71; values assigned per 7.3.1.3
+bits = 24
+clause = "7.5.1.91.1"
+resolution = "BCD, 6 digits left adjusted, first digit to dial in the MSBs; digit values A .. E not used, F = no digit"
+
+[variables.NID_OPERATIONAL]             # p. 71
+bits = 32
+clause = "7.5.1.92"
+resolution = "BCD, 8 digits left adjusted; digit values A .. E spare, F = no digit; FFFF FFFF spare"
+
+[variables.NID_PACKET]                  # p. 71
+bits = 8
+clause = "7.5.1.93"
+
+# NID_PRVLRBG (7.5.1.94, p. 72) is 10 + 14 bits: NID_C then NID_BG, see
+# SCHEMA.md. It has no entry of its own; packets list NID_C and NID_BG.
+
+[variables.NID_RADIO]                   # p. 72; values assigned per 7.3.1.3
+# 64 bits: the only variable longer than 32 bits (see SCHEMA.md)
+bits = 64
+clause = "7.5.1.95"
+resolution = "BCD, 16 digits left adjusted, first digit to dial in the MSBs; digit values A .. E not used, F = no digit (padding)"
+[variables.NID_RADIO.special]
+18446744073709551615 = "Use the short number stored onboard"
+
+[variables.NID_RBC]                     # p. 72; values assigned per 7.3.1.3
+bits = 14
+clause = "7.5.1.96"
+max = 16382
+special = { 16383 = "Contact last known RBC" }
+
+[variables.NID_RIU]                     # p. 72; values assigned per 7.3.1.3
+bits = 14
+clause = "7.5.1.97"
+
+[variables.NID_NTC]                     # p. 72; values assigned per 7.3.1.3
+bits = 8
+clause = "7.5.1.98"
+
+[variables.NID_TEXTMESSAGE]             # p. 72
+bits = 8
+clause = "7.5.1.98.1"
+
+[variables.NID_TSR]                     # p. 73
+bits = 8
+clause = "7.5.1.99"
+max = 254
+resolution = "0 .. 126 reserved for non RBC transmission (balise, loop or radio infill), 127 .. 254 reserved for RBC transmission"
+[variables.NID_TSR.special]
+255 = "Non-revocable speed restriction (applicable for all transmission media)"
+
+[variables.NID_VBCMK]                   # p. 73
+bits = 6
+clause = "7.5.1.99.1"
+
+[variables.NID_XUSER]                   # p. 73; values assigned per 7.3.1.3
+bits = 9
+clause = "7.5.1.100"
+
+[variables.Q_ASPECT]                    # p. 73
+bits = 1
+clause = "7.5.1.101"
+special = { 0 = "Stop if in SH mode", 1 = "Go if in SH mode" }
+
+[variables.Q_CONFTEXTDISPLAY]           # p. 73
+bits = 1
+clause = "7.5.1.101.1"
+[variables.Q_CONFTEXTDISPLAY.special]
+0 = "Driver acknowledgement always ends the text display, regardless of the end condition"
+1 = "Driver acknowledgement is an additional condition to end the display"
+
+[variables.Q_DANGERPOINT]               # p. 73
+bits = 1
+clause = "7.5.1.102"
+[variables.Q_DANGERPOINT.special]
+0 = "No danger point information"
+1 = "Danger point information to follow"
+
+[variables.Q_DIFF]                      # p. 74
+bits = 2
+clause = "7.5.1.102.1"
+max = 2
+[variables.Q_DIFF.special]
+0 = "Cant Deficiency specific category"
+1 = "Other specific category, replaces the Cant Deficiency SSP"
+2 = "Other specific category, does not replace the Cant Deficiency SSP"
+
+[variables.Q_DESK]                      # p. 74
+bits = 1
+clause = "7.5.1.102.2"
+special = { 0 = "Desks are closed", 1 = "A desk is open" }
+
+[variables.Q_DIR]                       # p. 74
+bits = 2
+clause = "7.5.1.103"
+max = 2
+special = { 0 = "Reverse", 1 = "Nominal", 2 = "Both directions" }
+
+[variables.Q_DIRLRBG]                   # p. 74
+bits = 2
+clause = "7.5.1.104"
+max = 2
+special = { 0 = "Reverse", 1 = "Nominal", 2 = "Unknown" }
+
+[variables.Q_DIRTRAIN]                  # p. 75
+bits = 2
+clause = "7.5.1.105"
+max = 2
+special = { 0 = "Reverse", 1 = "Nominal", 2 = "Unknown" }
+
+[variables.Q_DLRBG]                     # p. 75
+bits = 2
+clause = "7.5.1.106"
+max = 2
+special = { 0 = "Reverse", 1 = "Nominal", 2 = "Unknown" }
+
+[variables.Q_EMERGENCYSTOP]             # p. 75
+bits = 2
+clause = "7.5.1.107"
+[variables.Q_EMERGENCYSTOP.special]
+0 = "Conditional Emergency Stop accepted, with update of current EOA/LOA (ref 3.10.2.2 b) 1st and 4th bullets)"
+1 = "Conditional Emergency Stop accepted, with no update of current EOA/LOA (ref 3.10.2.2 b) 2nd and 3rd bullets)"
+2 = "Not Relevant (Unconditional Emergency Stop) (ref 3.10.2.3)"
+3 = "Conditional Emergency Stop rejected because train has passed the emergency stop location (ref 3.10.2.2 a))"
+
+[variables.Q_ENDTIMER]                  # p. 75
+bits = 1
+clause = "7.5.1.108"
+[variables.Q_ENDTIMER.special]
+0 = "No End section timer information"
+1 = "End section timer information to follow"
+
+[variables.Q_FRONT]                     # p. 75
+bits = 1
+clause = "7.5.1.109"
+[variables.Q_FRONT.special]
+0 = "Train length delay on validity end point of profile element."
+1 = "No train length delay on validity end point of profile element"
+
+[variables.Q_GDIR]                      # p. 76
+bits = 1
+clause = "7.5.1.110"
+special = { 0 = "downhill", 1 = "uphill" }
+
+[variables.Q_INFILL]                    # p. 76
+bits = 1
+clause = "7.5.1.111"
+special = { 0 = "Enter", 1 = "Exit" }
+
+[variables.Q_INTEGRITY]                 # p. 76
+bits = 2
+clause = "7.5.1.112"
+[variables.Q_INTEGRITY.special]
+0 = "No train integrity information"
+1 = "Train integrity confirmed by external source"
+2 = "Train integrity confirmed by driver"
+3 = "Train integrity lost"
+
+[variables.Q_SAFECONSISTLENGTH]         # p. 76
+bits = 1
+clause = "7.5.1.112.1"
+[variables.Q_SAFECONSISTLENGTH.special]
+0 = "No safe consist length information available"
+1 = "Safe consist length information available"
+
+[variables.Q_LGTLOC]                    # p. 76
+bits = 1
+clause = "7.5.1.113"
+special = { 0 = "Min safe rear end", 1 = "Max safe front end" }
+
+[variables.Q_LINK]                      # p. 77
+bits = 1
+clause = "7.5.1.114"
+special = { 0 = "Unlinked", 1 = "Linked" }
+
+[variables.Q_LOCACC]                    # p. 77
+bits = 6
+clause = "7.5.1.115"
+resolution = "1 m (accuracy +/- value)"
+
+[variables.Q_LINKORIENTATION]           # p. 77
+bits = 1
+clause = "7.5.1.116"
+[variables.Q_LINKORIENTATION.special]
+0 = "The balise group is seen by the train in reverse direction"
+1 = "The balise group is seen by the train in nominal direction"
+
+[variables.Q_LINKREACTION]              # p. 77
+bits = 2
+clause = "7.5.1.117"
+max = 2
+[variables.Q_LINKREACTION.special]
+0 = "Train trip"
+1 = "Apply service brake"
+2 = "No Reaction"
+
+[variables.Q_LOOPDIR]                   # p. 77
+bits = 1
+clause = "7.5.1.118"
+special = { 0 = "Opposite", 1 = "Same" }
+
+[variables.Q_LSSMA]                     # p. 78
+bits = 1
+clause = "7.5.1.118.0"
+special = { 0 = "Toggle off", 1 = "Toggle on" }
+
+[variables.Q_LXSTATUS]                  # p. 78
+bits = 1
+clause = "7.5.1.118.1"
+special = { 0 = "LX is protected", 1 = "LX is not protected" }
+
+[variables.Q_MAMODE]                    # p. 78
+bits = 1
+clause = "7.5.1.118.2"
+[variables.Q_MAMODE.special]
+0 = "No temporary SvL to be considered with respect to the mode profile"
+1 = "Beginning of mode profile to be considered as temporary SvL"
+
+[variables.Q_MARQSTREASON]              # p. 78
+bits = 5
+clause = "7.5.1.118.3"
+resolution = "bitset: bit 0 start selected by driver, bit 1 time before reaching the perturbation location reached, bit 2 time before a section timer/LOA speed timer expires reached, bit 3 track description deleted, bit 4 TAF up to level 2 transition location"
+
+[variables.Q_MEDIA]                     # p. 78
+bits = 1
+clause = "7.5.1.119"
+special = { 0 = "Balise", 1 = "Loop" }
+
+[variables.Q_MPOSITION]                 # p. 79
+bits = 1
+clause = "7.5.1.120"
+[variables.Q_MPOSITION.special]
+0 = "Opposite (counting downwards if passed in nominal direction or counting upwards if passed in reverse direction)"
+1 = "Same (counting upwards if passed in nominal direction or counting downwards if passed in reverse direction)"
+
+[variables.Q_NETWORKTYPE]               # p. 79
+bits = 2
+clause = "7.5.1.120.1"
+max = 2
+special = { 0 = "FRMCS", 1 = "FRMCS+GSM-R", 2 = "GSM-R" }
+
+[variables.Q_NEWCOUNTRY]                # p. 79
+bits = 1
+clause = "7.5.1.121"
+[variables.Q_NEWCOUNTRY.special]
+0 = "Same country / railway administration, no NID_C follows"
+1 = "Not the same country / railway administration, NID_C follows"
+
+[variables.Q_NVDRIVER_ADHES]            # p. 79
+bits = 1
+clause = "7.5.1.122"
+special = { 0 = "Not allowed", 1 = "Allowed" }
+
+[variables.Q_NVEMRRLS]                  # p. 79
+bits = 1
+clause = "7.5.1.123"
+[variables.Q_NVEMRRLS.special]
+0 = "Revoke emergency brake command at standstill"
+1 = "Revoke emergency brake command when permitted speed supervision limit is no longer exceeded"
+
+[variables.Q_NVGUIPERM]                 # p. 80
+bits = 1
+clause = "7.5.1.123.1"
+special = { 0 = "No", 1 = "Yes" }
+
+[variables.Q_NVINHSMICPERM]             # p. 80
+bits = 1
+clause = "7.5.1.123.2"
+special = { 0 = "No", 1 = "Yes" }
+
+[variables.Q_NVKINT]                    # p. 80
+bits = 1
+clause = "7.5.1.123.3"
+[variables.Q_NVKINT.special]
+0 = "No integrated correction factors follow"
+1 = "Integrated correction factors follow"
+
+[variables.Q_NVKVINTSET]                # p. 80
+bits = 2
+clause = "7.5.1.123.4"
+max = 1
+special = { 0 = "Freight trains", 1 = "Conventional passenger trains" }
+
+[variables.Q_NVLOCACC]                  # p. 80
+bits = 6
+clause = "7.5.1.123.5"
+resolution = "1 m (accuracy +/- value)"
+
+[variables.Q_NVSBFBPERM]                # p. 81
+bits = 1
+clause = "7.5.1.123.6"
+special = { 0 = "No", 1 = "Yes" }
+
+[variables.Q_NVSBTSMPERM]               # p. 81
+bits = 1
+clause = "7.5.1.124"
+special = { 0 = "No", 1 = "Yes" }
+
+[variables.Q_ORIENTATION]               # p. 81
+bits = 1
+clause = "7.5.1.125"
+special = { 0 = "Reverse", 1 = "Nominal" }
+
+[variables.Q_OVERLAP]                   # p. 81
+bits = 1
+clause = "7.5.1.126"
+[variables.Q_OVERLAP.special]
+0 = "No overlap information"
+1 = "Overlap information to follow"
+
+[variables.Q_PBDSR]                     # p. 81
+bits = 1
+clause = "7.5.1.126.1"
+[variables.Q_PBDSR.special]
+0 = "EB intervention requested"
+1 = "SB intervention requested"
+
+[variables.Q_PLATFORM]                  # p. 81
+bits = 2
+clause = "7.5.1.126.2"
+max = 2
+[variables.Q_PLATFORM.special]
+0 = "Platform on left side"
+1 = "Platform on right side"
+2 = "Platform on both sides"
+
+[variables.Q_RBC]                       # p. 82
+bits = 1
+clause = "7.5.1.127"
+[variables.Q_RBC.special]
+0 = "Terminate communication session"
+1 = "Establish communication session"
+
+[variables.Q_RIU]                       # p. 82
+bits = 1
+clause = "7.5.1.128"
+[variables.Q_RIU.special]
+0 = "Terminate communication session"
+1 = "Establish communication session"
+
+[variables.Q_SCALE]                     # p. 82
+bits = 2
+clause = "7.5.1.129"
+max = 2
+special = { 0 = "10 cm scale", 1 = "1 m scale", 2 = "10 m scale" }
+
+[variables.Q_SECTIONTIMER]              # p. 82
+bits = 1
+clause = "7.5.1.130"
+[variables.Q_SECTIONTIMER.special]
+0 = "No Section Timer information"
+1 = "Section Timer information to follow"
+
+[variables.Q_SLEEPSESSION]              # p. 82
+bits = 1
+clause = "7.5.1.131"
+[variables.Q_SLEEPSESSION.special]
+0 = "Ignore session establishment/termination order"
+1 = "Execute session establishment/termination order"
+
+[variables.Q_SRSTOP]                    # p. 83
+bits = 1
+clause = "7.5.1.132"
+special = { 0 = "Stop if in SR mode", 1 = "Go if in SR mode" }
+
+[variables.Q_SSCODE]                    # p. 83
+bits = 4
+clause = "7.5.1.133"
+max = 14
+special = { 15 = "Code reserved for test purposes" }
+
+[variables.Q_STATUSLRBG]                # p. 83
+bits = 2
+clause = "7.5.1.134"
+max = 2
+[variables.Q_STATUSLRBG.special]
+0 = "Invalid train position referred to an LRBG"
+1 = "Valid train position referred to an LRBG"
+2 = "No train position referred to an LRBG"
+
+[variables.Q_STOPLX]                    # p. 83
+bits = 1
+clause = "7.5.1.134.1"
+special = { 0 = "No stop required", 1 = "Stop required" }
+
+[variables.Q_SUITABILITY]               # p. 83
+bits = 2
+clause = "7.5.1.135"
+max = 2
+special = { 0 = "Loading gauge", 1 = "Axle load", 2 = "Traction system" }
+
+[variables.Q_TEXT]                      # p. 84
+# the PDF gives min 0, max 255; 2 .. 255 are spare
+bits = 8
+clause = "7.5.1.136"
+max = 1
+[variables.Q_TEXT.special]
+0 = "Level crossing not protected"
+1 = "Acknowledgement"
+
+[variables.Q_TEXTCLASS]                 # p. 84
+bits = 2
+clause = "7.5.1.137"
+max = 1
+special = { 0 = "Auxiliary Information", 1 = "Important Information" }
+
+[variables.Q_TEXTCONFIRM]               # p. 84
+bits = 2
+clause = "7.5.1.138"
+[variables.Q_TEXTCONFIRM.special]
+0 = "No confirmation required"
+1 = "Confirmation required"
+2 = "Confirmation required: command application of the service brake when display end condition is fulfilled, unless the text has already been acknowledged by the driver"
+3 = "Confirmation required: command application of the emergency brake when display end condition is fulfilled, unless the text has already been acknowledged by the driver"
+
+[variables.Q_TEXTDISPLAY]               # p. 84
+bits = 1
+clause = "7.5.1.139"
+[variables.Q_TEXTDISPLAY.special]
+0 = "No, display as soon as / until one of the sub-conditions is fulfilled"
+1 = "Yes, display as soon as / until all sub-conditions are fulfilled"
+
+[variables.Q_TEXTREPORT]                # p. 85
+bits = 1
+clause = "7.5.1.140"
+[variables.Q_TEXTREPORT.special]
+0 = "No driver acknowledgement report required"
+1 = "Driver acknowledgement report required"
+
+[variables.Q_TRACKINIT]                 # p. 85
+bits = 1
+clause = "7.5.1.141"
+[variables.Q_TRACKINIT.special]
+0 = "No initial states to be resumed, profile to follow"
+1 = "Empty profile, initial states to be resumed"
+
+[variables.Q_UPDOWN]                    # p. 85
+bits = 1
+clause = "7.5.1.142"
+special = { 0 = "Down link telegram", 1 = "Up link telegram" }
+
+[variables.Q_VBCO]                      # p. 85
+bits = 1
+clause = "7.5.1.142.1"
+[variables.Q_VBCO.special]
+0 = "Remove the Virtual Balise Cover"
+1 = "Set the Virtual Balise Cover"
+
+[variables.T_CYCLOC]                    # p. 85
+bits = 8
+clause = "7.5.1.143"
+max = 254
+resolution = "1 s"
+special = { 255 = "infinite" }
+
+[variables.T_CYCRQST]                   # p. 85
+bits = 8
+clause = "7.5.1.144"
+max = 254
+resolution = "1 s"
+special = { 255 = "No repetition" }
+
+[variables.T_LSSMA]                     # p. 86
+bits = 8
+clause = "7.5.1.144.1"
+resolution = "1 s"
+
+[variables.T_ENDTIMER]                  # p. 86
+bits = 10
+clause = "7.5.1.145"
+max = 1022
+resolution = "1 s"
+special = { 1023 = "infinite" }
+
+[variables.T_EMA]                       # p. 86
+bits = 10
+clause = "7.5.1.146"
+max = 1022
+resolution = "1 s"
+special = { 1023 = "infinite" }
+
+[variables.T_MAR]                       # p. 86
+bits = 8
+clause = "7.5.1.147"
+max = 254
+resolution = "1 s"
+[variables.T_MAR.special]
+255 = "No MA request triggering with regards to this function"
+
+[variables.T_NVCONTACT]                 # p. 86
+bits = 8
+clause = "7.5.1.148"
+max = 254
+resolution = "1 s"
+special = { 255 = "infinite" }
+
+[variables.T_NVOVTRP]                   # p. 86
+bits = 8
+clause = "7.5.1.149"
+resolution = "1 s"
+
+[variables.T_OL]                        # p. 87
+bits = 10
+clause = "7.5.1.150"
+max = 1022
+resolution = "1 s"
+special = { 1023 = "infinite" }
+
+[variables.T_SECTIONTIMER]              # p. 87
+bits = 10
+clause = "7.5.1.151"
+max = 1022
+resolution = "1 s"
+special = { 1023 = "infinite" }
+
+[variables.T_TEXTDISPLAY]               # p. 87
+bits = 10
+clause = "7.5.1.152"
+max = 1022
+resolution = "1 s"
+[variables.T_TEXTDISPLAY.special]
+1023 = "No “time” sub-condition specified for the end condition of the display of the text"
+
+[variables.T_TIMEOUTRQST]               # p. 87
+bits = 10
+clause = "7.5.1.153"
+max = 1022
+resolution = "1 s"
+[variables.T_TIMEOUTRQST.special]
+1023 = "No MA request triggering with regards to this function"
+
+[variables.T_TRAIN]                     # p. 87
+bits = 32
+clause = "7.5.1.154"
+max = 4294967294
+resolution = "10 ms"
+special = { 4294967295 = "Unknown" }
+
+[variables.T_VBC]                       # p. 87
+bits = 8
+clause = "7.5.1.154.1"
+resolution = "24 hours (0 .. 6120 hours)"
+
+[variables.V_AXLELOAD]                  # p. 87
+bits = 7
+clause = "7.5.1.155"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_DIFF]                      # p. 88
+bits = 7
+clause = "7.5.1.156"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_EMA]                       # p. 88
+bits = 7
+clause = "7.5.1.157"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_LX]                        # p. 88
+bits = 7
+clause = "7.5.1.157.1"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_MAIN]                      # p. 88
+# V_MAIN = 0 means trip order (listed under special values in 7.5.1.158)
+bits = 7
+clause = "7.5.1.158"
+max = 120
+resolution = "5 km/h"
+special = { 0 = "Trip order" }
+
+[variables.V_MAMODE]                    # p. 88
+bits = 7
+clause = "7.5.1.159"
+max = 120
+resolution = "5 km/h"
+special = { 127 = "Use the national speed value of the required mode" }
+
+[variables.V_MAXTRAIN]                  # p. 88
+bits = 7
+clause = "7.5.1.160"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVALLOWOVTRP]              # p. 89
+bits = 7
+clause = "7.5.1.161"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVKVINT]                   # p. 89
+bits = 7
+clause = "7.5.1.161.1"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVLIMSUPERV]               # p. 89
+bits = 7
+clause = "7.5.1.161.2"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVONSIGHT]                 # p. 89
+bits = 7
+clause = "7.5.1.162"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVSUPOVTRP]                # p. 89
+bits = 7
+clause = "7.5.1.163"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVREL]                     # p. 89
+bits = 7
+clause = "7.5.1.164"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVSHUNT]                   # p. 90
+bits = 7
+clause = "7.5.1.165"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVSTFF]                    # p. 90
+bits = 7
+clause = "7.5.1.166"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_NVUNFIT]                   # p. 90
+bits = 7
+clause = "7.5.1.167"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_RELEASEDP]                 # p. 90
+bits = 7
+clause = "7.5.1.168"
+max = 120
+resolution = "5 km/h"
+[variables.V_RELEASEDP.special]
+126 = "Use onboard calculated release speed"
+127 = "Use national value"
+
+[variables.V_RELEASEOL]                 # p. 90
+bits = 7
+clause = "7.5.1.169"
+max = 120
+resolution = "5 km/h"
+[variables.V_RELEASEOL.special]
+126 = "Use onboard calculated release speed"
+127 = "Use national value"
+
+[variables.V_REVERSE]                   # p. 90
+bits = 7
+clause = "7.5.1.170"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_SM]                        # p. 91
+bits = 7
+clause = "7.5.1.170.1"
+max = 120
+resolution = "5 km/h"
+
+[variables.V_STATIC]                    # p. 91
+bits = 7
+clause = "7.5.1.171"
+max = 120
+resolution = "5 km/h"
+[variables.V_STATIC.special]
+127 = "Non numerical value telling that the static speed profile description ends at D_STATIC(n)"
+
+[variables.V_TRAIN]                     # p. 91
+bits = 7
+clause = "7.5.1.172"
+max = 120
+resolution = "5 km/h"
+special = { 127 = "Standstill" }
+
+[variables.V_TSR]                       # p. 91
+bits = 7
+clause = "7.5.1.173"
+max = 120
+resolution = "5 km/h"
+
+[variables.X_TEXT]                      # p. 91
+bits = 8
+clause = "7.5.1.174"
+resolution = "one character, ISO 8859-1"

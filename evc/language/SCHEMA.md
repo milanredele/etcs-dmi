@@ -13,7 +13,7 @@ generator; regenerating must give no diff.
 ```toml
 [variables.NID_PACKET]
 bits = 8                     # length in bits, 1 .. 32
-clause = "7.5.1.94"          # where 7.5 defines it
+clause = "7.5.1.93"          # where 7.5 defines it
 # optional
 min = 0                      # smallest meaningful value, default 0
 max = 255                    # largest, default 2**bits - 1
@@ -25,8 +25,31 @@ resolution = "km/h, 5 km/h steps"   # free text otherwise
 A variable name is exactly the SRS name (upper case, underscores). The
 same variable has one definition; where a packet lists `NID_LRBG` as
 `10 + 14`, the description uses the two variables `NID_C` (10) and
-`NID_BG` (14) in that order, as 7.5.1.98 defines it (the generator emits
+`NID_BG` (14) in that order, as 7.5.1.90 defines it (the generator emits
 the combined field as well, see below).
+
+Clarifications (as the catalogue is written):
+
+- `min`, `max` and the keys of `special` are raw values, what is on the
+  wire; the physical unit is in `scale` or `resolution`. A value above
+  `max` that is not in `special` is spare (7.3.2.4).
+- A negative `min` means the variable is signed, two's complement
+  (7.3.2.7); D_REF is the only one.
+- A variable whose every value is listed in 7.5 (qualifiers, M_ codes)
+  has all its defined values in `special` and `max` = the highest one;
+  spare values are not listed. Where spare values sit between defined
+  ones (M_MODETEXTDISPLAY), `resolution` says so.
+- Bitsets (M_LINEGAUGE, M_LINEAXLELOADCAT, NC_TRAIN, Q_MARQSTREASON) and
+  BCD numbers (NID_MN, NID_OPERATIONAL, NID_RADIO) describe their coding
+  in `resolution`; they have no `special` except NID_RADIO's all-F value.
+- `bits` is 1 .. 32 except NID_RADIO, 64 bits (BCD, 16 digits, 7.5.1.95):
+  the generator has to read it as two 32-bit halves or as a 64-bit
+  modular type. Its special value 2**64 - 1 is a TOML key (a string), so
+  it does not overflow a 64-bit TOML integer.
+- `special` may be written as a sub-table `[variables.NAME.special]`
+  (TOML inline tables cannot span lines).
+- NID_LRBG, NID_PRVLRBG and NID_LTRBG (7.5.1.90, 7.5.1.94, 7.5.1.90.1)
+  have no entry; a comment in the file marks their place.
 
 ## Packets
 
