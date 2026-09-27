@@ -1,6 +1,9 @@
 --  ETCS on-board (EVC)
 --  Core of the ETCS on-board, implementation.
 
+with ETCS_Message;
+with ETCS_Telegram;
+with ETCS_Variables;
 with EVC_DMI_Port; use EVC_DMI_Port;
 with Interfaces;   use Interfaces;
 
@@ -16,6 +19,10 @@ package body EVC_Core
                                    Latched_Odometer,
                                    Latched_TIU,
                                    Latched_Isolation,
+                                   Latched_BTM,
+                                   Latched_BTM_Count,
+                                   Latched_RTM,
+                                   Latched_RTM_Count,
                                    Odometer_Now,
                                    TIU_Now,
                                    Isolation_Now,
@@ -23,10 +30,13 @@ package body EVC_Core
                                    Below_Override,
                                    National_Values,
                                    Accepted_Count,
-                                   Rejected_Count))
+                                   Rejected_Count,
+                                   Overflow_Count))
 is
 
    use type EVC_Bytes.Byte_Array;
+   use type ETCS_Message.Status_T;
+   use type ETCS_Telegram.Status_T;
 
    ---------------------------------------------------------------------
    --  National values: those E0 uses. Until the trackside gives others
@@ -69,6 +79,30 @@ is
    Latched_TIU       : TIU_Signals_T := (others => False);
    Latched_Isolation : Boolean := False;
 
+   --  Telegrams and radio messages latched since the last cycle, as
+   --  they arrived: at most the telegrams of one balise group (8,
+   --  N_TOTAL of 7.5.1.82) and RTM_Latch_Size messages (an engineering
+   --  constant); more are dropped and counted (Overflowed)
+   BTM_Latch_Size : constant := 8;
+   RTM_Latch_Size : constant := 4;
+
+   type BTM_Slot_T is record
+      Length : Natural range 0 .. BTM_Max_Length := 0;
+      Data   : EVC_Bytes.Byte_Array (1 .. BTM_Max_Length) := (others => 0);
+   end record;
+   type BTM_Slots_T is array (1 .. BTM_Latch_Size) of BTM_Slot_T;
+
+   type RTM_Slot_T is record
+      Length : Natural range 0 .. RTM_Max_Length := 0;
+      Data   : EVC_Bytes.Byte_Array (1 .. RTM_Max_Length) := (others => 0);
+   end record;
+   type RTM_Slots_T is array (1 .. RTM_Latch_Size) of RTM_Slot_T;
+
+   Latched_BTM       : BTM_Slots_T;
+   Latched_BTM_Count : Natural range 0 .. BTM_Latch_Size := 0;
+   Latched_RTM       : RTM_Slots_T;
+   Latched_RTM_Count : Natural range 0 .. RTM_Latch_Size := 0;
+
    --  The inputs of the current cycle (Read_Ports)
    Odometer_Now  : Odometer_Sample_T := Standstill_Sample;
    TIU_Now       : TIU_Signals_T := (others => False);
@@ -84,6 +118,7 @@ is
 
    Accepted_Count : Counts_T := (others => 0);
    Rejected_Count : Counts_T := (others => 0);
+   Overflow_Count : Counts_T := (others => 0);
 
    ---------------------------------------------------------------------
    --  Queries
@@ -100,6 +135,8 @@ is
      (Accepted_Count (Port));
    function Rejected (Port : Port_T) return Natural is
      (Rejected_Count (Port));
+   function Overflowed (Port : Port_T) return Natural is
+     (Overflow_Count (Port));
 
    procedure Count (Counter : in out Natural) is
    begin
@@ -128,6 +165,10 @@ is
       Latched_Odometer := Standstill_Sample;
       Latched_TIU := (others => False);
       Latched_Isolation := False;
+      Latched_BTM := (others => (Length => 0, Data => (others => 0)));
+      Latched_BTM_Count := 0;
+      Latched_RTM := (others => (Length => 0, Data => (others => 0)));
+      Latched_RTM_Count := 0;
       Odometer_Now := Standstill_Sample;
       TIU_Now := (others => False);
       Isolation_Now := False;
@@ -136,6 +177,8 @@ is
       National_Values := Default_National_Values;
       Accepted_Count := (others => 0);
       Rejected_Count := (others => 0);
+      Overflow_Count := (others => 0);
+      EVC_Received.Clear;
       EVC_Outbox.Clear;
    end Initialise;
 
@@ -172,9 +215,25 @@ is
             then
                Latched_Isolation := True;
             end if;
-         when BTM | RTM =>
-            --  telegrams and radio messages are decoded from phase E1
-            null;
+         when BTM =>
+            --  parsed when the ports are read, at the next cycle
+            if Latched_BTM_Count < BTM_Latch_Size then
+               Latched_BTM_Count := Latched_BTM_Count + 1;
+               Latched_BTM (Latched_BTM_Count).Length := Payload'Length;
+               Latched_BTM (Latched_BTM_Count).Data (1 .. Payload'Length) :=
+                 Payload;
+            else
+               Count (Overflow_Count (BTM));
+            end if;
+         when RTM =>
+            if Latched_RTM_Count < RTM_Latch_Size then
+               Latched_RTM_Count := Latched_RTM_Count + 1;
+               Latched_RTM (Latched_RTM_Count).Length := Payload'Length;
+               Latched_RTM (Latched_RTM_Count).Data (1 .. Payload'Length) :=
+                 Payload;
+            else
+               Count (Overflow_Count (RTM));
+            end if;
          when ATO | JRU =>
             --  no input is valid on these ports (EVC_Ports.Valid_Input)
             null;
@@ -185,19 +244,100 @@ is
    --  The steps of one cycle (doc/EVC-PLAN.md §2), in their order
    ---------------------------------------------------------------------
 
-   --  1. Read the ports: take the inputs latched since the last cycle
+   --  A record for the juridical recording (EVC_Ports): Event, three
+   --  bytes that depend on it, the cycle and the on-board time
+   function JRU_Record (Event, B2, B3, B4 : EVC_Bytes.Byte)
+     return EVC_Bytes.Byte_Array
+   is (Event, B2, B3, B4,
+       EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 0),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 1),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 2),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 3),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 0),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 1),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 2),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 3),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 4),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 5),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 6),
+       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 7))
+     with Global => (Cycle_Count, Clock_Ms),
+          Post => JRU_Record'Result'Length = JRU_Record_Length;
+
+   JRU_Mode_Change : constant := 1;
+   JRU_Telegram    : constant := 2;
+   JRU_Message     : constant := 3;
+
+   --  1. Read the ports: take the inputs latched since the last cycle,
+   --  parse the telegrams and radio messages (EVC_Received) and record
+   --  those accepted on the JRU port
    procedure Read_Ports
-     with Global => (Input  => (Latched_Odometer, Latched_TIU),
+     with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
+                                Latched_RTM, Cycle_Count, Clock_Ms),
                      Output => (Odometer_Now, TIU_Now, Isolation_Now),
-                     In_Out => Latched_Isolation),
+                     In_Out => (Latched_Isolation, Latched_BTM_Count,
+                                Latched_RTM_Count, EVC_Received.Store,
+                                EVC_Outbox.Queue)),
           Post => Isolation_Now = Latched_Isolation'Old
                   and then not Latched_Isolation
    is
+      T_Status : ETCS_Telegram.Status_T;
+      M_Status : ETCS_Message.Status_T;
    begin
       Odometer_Now := Latched_Odometer;
       TIU_Now := Latched_TIU;
       Isolation_Now := Latched_Isolation;
       Latched_Isolation := False;
+
+      --  the telegrams in the order the BTM delivered them
+      for I in 1 .. Latched_BTM_Count loop
+         declare
+            Slot : BTM_Slot_T renames Latched_BTM (I);
+         begin
+            if Valid_BTM (Slot.Data (1 .. Slot.Length)) then
+               EVC_Received.Receive_Telegram
+                 (Slot.Data (1 .. Slot.Length), T_Status);
+               if T_Status = ETCS_Telegram.Accepted then
+                  --  the balise group, NID_C and NID_BG (24 bits)
+                  declare
+                     H  : constant ETCS_Telegram.Header_T :=
+                       EVC_Received.Last_Telegram.Header;
+                     Id : constant Unsigned_64 :=
+                       ETCS_Variables.Balise_Group_Identity
+                         (H.NID_C, H.NID_BG);
+                  begin
+                     EVC_Outbox.Put
+                       (JRU, JRU_Record (JRU_Telegram,
+                                         EVC_Bytes.Byte_Of (Id, 0),
+                                         EVC_Bytes.Byte_Of (Id, 1),
+                                         EVC_Bytes.Byte_Of (Id, 2)));
+                  end;
+               end if;
+            end if;
+         end;
+      end loop;
+      Latched_BTM_Count := 0;
+
+      --  the radio messages in the order the RTM delivered them
+      for I in 1 .. Latched_RTM_Count loop
+         declare
+            Slot : RTM_Slot_T renames Latched_RTM (I);
+         begin
+            if Valid_RTM (Slot.Data (1 .. Slot.Length)) then
+               EVC_Received.Receive_Message
+                 (Slot.Data (1 .. Slot.Length), M_Status);
+               if M_Status = ETCS_Message.Accepted then
+                  --  NID_MESSAGE, L_MESSAGE (u16)
+                  EVC_Outbox.Put
+                    (JRU, JRU_Record (JRU_Message,
+                                      Slot.Data (1),
+                                      EVC_Bytes.Byte (Slot.Length mod 256),
+                                      EVC_Bytes.Byte (Slot.Length / 256)));
+               end if;
+            end if;
+         end;
+      end loop;
+      Latched_RTM_Count := 0;
    end Read_Ports;
 
    --  2. Update the position. Phase E2 brings the train position, its
@@ -304,23 +444,10 @@ is
       --  JRU: the mode changed since the last report
       if Current_Mode /= Reported_Mode then
          EVC_Outbox.Put
-           (JRU,
-            (1,                                   -- event: mode change
-             Mode_T'Pos (Current_Mode),
-             Level_Status_T'Pos (Current_Level_Status),
-             Level_T'Pos (Current_Level),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 0),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 1),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 2),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 3),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 0),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 1),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 2),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 3),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 4),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 5),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 6),
-             EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 7)));
+           (JRU, JRU_Record (JRU_Mode_Change,
+                             Mode_T'Pos (Current_Mode),
+                             Level_Status_T'Pos (Current_Level_Status),
+                             Level_T'Pos (Current_Level)));
          Reported_Mode := Current_Mode;
       end if;
 

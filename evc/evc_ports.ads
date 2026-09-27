@@ -6,8 +6,8 @@
 --  glue only moves bytes. Multi-byte fields are little endian, read and
 --  written byte by byte (EVC_Bytes).
 --
---  Payload shapes of phase E0. A payload of any other shape is rejected
---  by Valid_Input, and the on-board ignores it.
+--  Payload shapes. A payload of any other shape is rejected by
+--  Valid_Input, and the on-board ignores it.
 --
 --  BTM (in): one Eurobalise telegram after the decoding of SUBSET-036:
 --     n_bits u16 (BTM_Min_Bits .. BTM_Max_Bits), then the n_bits user
@@ -15,11 +15,12 @@
 --     significant bit of the first byte, packed into (n_bits + 7) / 8
 --     bytes. The length must be exactly that. The telegram header of
 --     8.4.2.1 alone has 50 bits; a long telegram carries 830 user bits.
---     E0 checks the shape only; the language comes in phase E1.
+--     The core parses it at the next cycle (ETCS_Telegram, EVC_Received).
 --  RTM (in): one radio message of SUBSET-026 chapter 8 as its bytes,
 --     most significant bit first: NID_MESSAGE (8 bits), L_MESSAGE (10
 --     bits, 7.5.1.48: the length of the message in bytes), ... The
---     payload length must equal L_MESSAGE. E0 checks the shape only.
+--     payload length must equal L_MESSAGE. The core parses it at the next
+--     cycle as a track to train message (ETCS_Message, EVC_Received).
 --  Odometer (in, Odometer_Length bytes): one sample of the odometry
 --     (SUBSET-041 is outside this project, doc/EVC-PLAN.md §1):
 --     d_est i32, d_min i32, d_max i32 (travelled distance and its
@@ -38,10 +39,12 @@
 --  ATO (in and out): no payload is defined in E0; every input is
 --     rejected. The ERTMS/ATO on-board comes to this port later.
 --  JRU (out only, JRU_Record_Length bytes): an event for the juridical
---     recording (SUBSET-027 is outside this project): event u8 (1 mode
---     change), mode u8 (EVC_Modes.Mode_T'Pos), level status u8
---     (Level_Status_T'Pos), level u8 (Level_T'Pos), cycle u32, time u64
---     (on-board time in ms). Every input is rejected.
+--     recording (SUBSET-027 is outside this project): event u8, three
+--     bytes of the event, cycle u32, time u64 (on-board time in ms).
+--     Events: 1 mode change (mode u8 EVC_Modes.Mode_T'Pos, level status
+--     u8 Level_Status_T'Pos, level u8 Level_T'Pos); 2 telegram accepted
+--     (NID_C * 2**14 + NID_BG, u24, the balise group); 3 radio message
+--     accepted (NID_MESSAGE u8, L_MESSAGE u16). Every input is rejected.
 
 with EVC_Bytes;
 with EVC_DMI_Port;
