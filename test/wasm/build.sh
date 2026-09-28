@@ -7,6 +7,7 @@
 # linux/amd64 container of the Dockerfile (the image is built on first use).
 #   WASM_NATIVE=1  the native toolchain, an error if it is not installed
 #   WASM_NATIVE=0  the container even when the native toolchain is there
+#   WASM_JOBS=n    gprbuild -jn in the container (default: see below)
 # Extra arguments go to gprbuild.
 set -e
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -50,10 +51,18 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
    docker build --platform linux/amd64 -t "$IMAGE" "$ROOT/test/wasm"
 fi
 
+# Parallel on an x86_64 host (CI). Under emulation (an Apple Silicon host,
+# Rosetta) a parallel build is about four times slower than a serial one:
+# measured 1 h 53 min with -j0 against 29 min with -j1 for a clean build.
+case "$(uname -m)" in
+   x86_64|amd64) JOBS=${WASM_JOBS:-0} ;;
+   *)            JOBS=${WASM_JOBS:-1} ;;
+esac
+
 docker run --rm --platform linux/amd64 \
    -v "$ROOT":/src -w /src/test/wasm "$IMAGE" sh -ec '
    mkdir -p obj
    gprconfig --batch -o obj/llvm.cgpr \
       --db /opt/adawebpack/share/gprconfig --target=llvm --config=ada,,
-   gprbuild -j0 -p --config=obj/llvm.cgpr -P etcsdmi_wasm.gpr "$@"
+   gprbuild -j'"$JOBS"' -p --config=obj/llvm.cgpr -P etcsdmi_wasm.gpr "$@"
    ls -l dmi.wasm evc.wasm onboard.wasm' -- "$@"
