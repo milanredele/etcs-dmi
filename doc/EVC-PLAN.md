@@ -507,10 +507,35 @@ present, MSG_TRACK_COND on change, MSG_STATUS brake indication and TTI;
 the TIU output (2 bytes: EB, SB, traction cut-off commands and the
 reason) when it changes and every cycle while active; JRU events 20
 (brake commands), 21 (supervision), 22 (EOA/SvL passed), 32 (stored
-information). `Onboard_Config` is this on-board's configuration and is a
-project choice to confirm: service brake feedback on, special brakes
-counting for both brake models, the additional brake not taken as
-adhesion independent, regenerative brake needs the catenary.
+information), 33 (configuration loaded or refused).
+
+**Installation configuration as data** (owner's decision 2026-09-28,
+branch `e3/config`): the on-board configuration of 3.13.2.2.6 to
+3.13.2.2.8, the service brake failure detection of 3.14.1.2 and the
+antenna offsets are installation data, `EVC_Config`: a 36-byte image
+with magic, format version, length and CRC-32, loaded by
+`EVC_Core.Configure` in No Power only, validated against the field
+ranges and Table 3 of 3.13.2.2.6.1 (magnetic shoe brake: no interface or
+emergency brake model only; Ep brake: not emergency only), kept over
+`Initialise`, always `Valid` by a state predicate, every outcome on the
+JRU. Sources: `obj/evc_onboard --config <image>` or `EVC_CONFIG`; the
+page and `onboard_smoke.js` load `test/wasm/onboard.cfg`;
+`test/tools/evc_config.py` converts the readable form
+(`ports/hosted/evc.cfg`, every field with its clause) to the image and
+back and validates like the kernel; on the TMS570 a `.evc_config` flash
+sector written by the flashing tool (E8). The default is the previous
+constant with one correction: the magnetic shoe brake was set to both
+brake models, which Table 3 forbids. Each field has a behavioural
+scenario; all 16 Table 3 combinations are tried (13 legal). What stays
+constant and why is listed in the unit header (store sizes, values the
+SRS or SUBSET-041 fixes, algorithm choices).
+
+**Both values of Q_NVEMRRLS** (owner's decision, branch `e3/emrrls`):
+the kernel follows Tables 6, 10, 11 and 14 and 3.14.1 for 0 (revocation
+at standstill only) and 1 (also when the permitted speed is no longer
+exceeded), in CSM, TSM, RSM and combined with a roll away reason; five
+scenarios run each with both values through a packet 3. The bench keeps
+0 (the A.3.2 default), the `evc_test` mission 1, each saying so.
 
 **Proof**: 7385 checks, 0 unproved (3129 flow, 4256 provers). Contracts
 that state the SRS: intervention implies a brake command; a triggered EB
@@ -567,9 +592,27 @@ lower neighbouring gradient in a gap, never above what any curve of
 Table 2a reads there. Proof 7458 checks, 0 unproved, 17 min; `evc_test`
 10223. Matrix E3: 413 `done`, 28 `partial`, 56 `deferred`.
 
+**Small round after the follow-up** (branches `e3/odo-wrap`,
+`e3/ssp-gap`, `e3/cleanup`): a scenario drives the odometer counters
+across both 32-bit boundaries (position, confidence, LRBG, geographical
+position continuous; backwards counters counted as anomalies); the MRSP
+in a relocation gap between SSP elements takes the lower neighbour (read
+literally, Table 2a would give the higher one there, since the gap puts
+the "max" item ahead of the "min" item; the lower one is the safe side
+and the same argument as for the gradients, one paragraph in
+`EVC_Track_Description` for both); the `evc_test` mission builds its
+telegrams with `Sim_Telegrams`.
+
 **Open points**
-- The same relocation gap exists between SSP elements, where the MRSP
-  falls back to the ceiling: to close in E4 with the same rule.
+- `EVC_Odometry.Anomalies` (a counter stepping backwards) is read by
+  nothing: no JRU record, no reaction. E4 decides what an odometer fault
+  does; a JRU record at least.
+- The fixed train data (braking models, Kdry_rst/Kwet_rst, Kn, rotating
+  mass) are installation data too (3.13.2.2.9.1.1) and still record
+  defaults: same treatment as `EVC_Config` with E4's data entry.
+  `Default_Locacc_Cm` should come from the national values.
+- The page's "Acknowledge brake release" button is a stopgap until E4
+  ends the DMI's start-up dialogue.
 - Conservative choices to review: T_bs1 = T_bs in the PBD computation
   where 3.13.9.3.3.3 names T_bs_reduced; the ±1 km/h tolerance of 3.11.11
   is not used; the driver's slippery rail is kept as an input.
