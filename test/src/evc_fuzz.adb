@@ -17,6 +17,11 @@
 --  Besides, after every step the outputs must be whole records and the
 --  mode must follow the contracts of EVC_Core (a violation is counted).
 --
+--  Then (phase E3) a train runs over balise groups whose telegrams carry
+--  plausible and random packets of the stored information (SSP,
+--  gradients, MA, TSR, track conditions, national values...); every
+--  cycle the snapshot must hold what EVC_Stored_Information proves.
+--
 --  Usage:  obj/evc_fuzz [steps [seed]]      default 1000000 steps, seed 1
 --  Exit status 1 when anything raised or a check was violated.
 
@@ -31,6 +36,9 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Telegram;
 with ETCS_Track_Packets.P5;
+with ETCS_Track_Packets.P12;
+with ETCS_Track_Packets.P21;
+with ETCS_Track_Packets.P27;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_DMI_Port;
@@ -40,6 +48,9 @@ with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
 with EVC_Position;
 with EVC_Received;
+with EVC_Profiles;
+with EVC_Stored_Information;
+with EVC_Supervision_Input;
 with Interfaces;   use Interfaces;
 
 procedure EVC_Fuzz is
@@ -558,6 +569,278 @@ procedure EVC_Fuzz is
    type Kind_Counts is array (EVC_Position.Event_Kind_T) of Natural;
    Position_Events : Kind_Counts := (others => 0);
 
+   ---------------------------------------------------------------------
+   --  E3 (profiles): the stored information under random packets of its
+   --  kinds, on a train running over balise groups. Every cycle the
+   --  MRSP must be sorted and below its sources, the SvL not before the
+   --  EOA, no envelope check may fail (the proof says so; this is the
+   --  check by execution).
+   ---------------------------------------------------------------------
+
+   E3_Kinds : constant array (1 .. 15) of Cat.Known_Kind_T :=
+     (Cat.Track_P3, Cat.Track_P12, Cat.Track_P21, Cat.Track_P27,
+      Cat.Track_P39, Cat.Track_P51, Cat.Track_P65, Cat.Track_P66,
+      Cat.Track_P67, Cat.Track_P68, Cat.Track_P70, Cat.Track_P71,
+      Cat.Track_P80, Cat.Track_P88, Cat.Track_P141);
+
+   E3_Cycles     : Natural := 0;
+   E3_Messages   : Natural := 0;
+   E3_MAs        : Natural := 0;
+   E3_Plannings  : Natural := 0;
+   E3_Conditions : Natural := 0;
+
+   --  A plausible SSP, gradient profile and MA, so that MAs are accepted
+   --  and their timers run
+   procedure Plausible (W : in out ETCS_Bits.Writer) is
+      S  : ETCS_Track_Packets.P27.Packet_T;
+      G  : ETCS_Track_Packets.P21.Packet_T;
+      M  : ETCS_Track_Packets.P12.Packet_T;
+      OK : Boolean;
+   begin
+      S.Q_DIR := ETCS_Variables.Q_DIR_T (Pick (0, 2));
+      S.Q_SCALE := 1;
+      S.D_STATIC := ETCS_Variables.D_STATIC_T (Pick (0, 50));
+      S.V_STATIC := ETCS_Variables.V_STATIC_T (Pick (4, 40));
+      S.Q_FRONT := ETCS_Variables.Q_FRONT_T (Pick (0, 1));
+      S.N_ITER_2 := ETCS_Variables.N_ITER_T (Pick (0, 3));
+      for I in 1 .. Natural (S.N_ITER_2) loop
+         S.D_STATIC_List (I).D_STATIC :=
+           ETCS_Variables.D_STATIC_T (Pick (0, 800));
+         S.D_STATIC_List (I).V_STATIC :=
+           ETCS_Variables.V_STATIC_T (if Chance (10) then 127
+                                      else Pick (4, 40));
+         S.D_STATIC_List (I).Q_FRONT := ETCS_Variables.Q_FRONT_T (Pick (0, 1));
+      end loop;
+      ETCS_Track_Packets.P27.Encode (S, W, OK);
+      G.Q_DIR := S.Q_DIR;
+      G.Q_SCALE := 1;
+      G.D_GRADIENT := ETCS_Variables.D_GRADIENT_T (Pick (0, 50));
+      G.Q_GDIR := ETCS_Variables.Q_GDIR_T (Pick (0, 1));
+      G.G_A := ETCS_Variables.G_A_T (Pick (0, 30));
+      ETCS_Track_Packets.P21.Encode (G, W, OK);
+      M.Q_DIR := S.Q_DIR;
+      M.Q_SCALE := 1;
+      M.V_MAIN := ETCS_Variables.V_MAIN_T (Pick (0, 40));
+      M.V_EMA := ETCS_Variables.V_EMA_T (if Chance (20) then Pick (1, 20)
+                                         else 0);
+      M.T_EMA := ETCS_Variables.T_EMA_T (Pick (0, 1023));
+      M.N_ITER := ETCS_Variables.N_ITER_T (Pick (0, 2));
+      for I in 1 .. Natural (M.N_ITER) loop
+         M.L_SECTION_List (I).L_SECTION :=
+           ETCS_Variables.L_SECTION_T (Pick (1, 800));
+         if Chance (50) then
+            M.L_SECTION_List (I).Q_SECTIONTIMER := 1;
+            M.L_SECTION_List (I).Has_T_SECTIONTIMER := True;
+            M.L_SECTION_List (I).T_SECTIONTIMER :=
+              ETCS_Variables.T_SECTIONTIMER_T (Pick (0, 30));
+            M.L_SECTION_List (I).D_SECTIONTIMERSTOPLOC :=
+              ETCS_Variables.D_SECTIONTIMERSTOPLOC_T (Pick (0, 800));
+         end if;
+      end loop;
+      M.L_ENDSECTION := ETCS_Variables.L_ENDSECTION_T (Pick (1, 800));
+      if Chance (50) then
+         M.Q_ENDTIMER := 1;
+         M.Has_T_ENDTIMER := True;
+         M.T_ENDTIMER := ETCS_Variables.T_ENDTIMER_T (Pick (0, 30));
+         M.D_ENDTIMERSTARTLOC :=
+           ETCS_Variables.D_ENDTIMERSTARTLOC_T (Pick (0, 800));
+      end if;
+      if Chance (50) then
+         M.Q_DANGERPOINT := 1;
+         M.Has_D_DP := True;
+         M.D_DP := ETCS_Variables.D_DP_T (Pick (0, 100));
+         M.V_RELEASEDP := ETCS_Variables.V_RELEASEDP_T
+           (if Chance (50) then Pick (0, 20) else Pick (126, 127));
+      end if;
+      if Chance (50) then
+         M.Q_OVERLAP := 1;
+         M.Has_D_STARTOL := True;
+         M.D_STARTOL := ETCS_Variables.D_STARTOL_T (Pick (0, 800));
+         M.T_OL := ETCS_Variables.T_OL_T (Pick (0, 1023));
+         M.D_OL := ETCS_Variables.D_OL_T (Pick (0, 200));
+         M.V_RELEASEOL := ETCS_Variables.V_RELEASEOL_T
+           (if Chance (50) then Pick (0, 20) else Pick (126, 127));
+      end if;
+      ETCS_Track_Packets.P12.Encode (M, W, OK);
+   end Plausible;
+
+   procedure E3_Phase (Runs : Natural) is
+      use type EVC_Distances.Cm_T;
+      Odo_D   : Unsigned_32 := 0;
+      Over    : Unsigned_32 := 0;
+      Under   : Unsigned_32 := 0;
+      Next_BG : Unsigned_32 := 0;
+      Out_B   : Byte_Array (1 .. EVC_Outbox.Capacity);
+      O_Last  : Natural;
+      Id      : Natural := 0;
+
+      procedure Odometer_Sample (Moving : Boolean) is
+         V : constant Natural := (if Moving then 1_000 else 0);
+      begin
+         Last := 0;
+         Add_U32 (Odo_D);
+         Add_U32 (Over);
+         Add_U32 (Under);
+         Add_U16 (V);
+         Add_U16 (V);
+         Add_U16 (V);
+         Add (if Moving then 1 else 0);
+         Add (0);
+         Add_U16 (0);
+         EVC_Core.Handle_Input (Odometer, Buffer (1 .. Last));
+      end Odometer_Sample;
+
+      --  One balise of a group of Total + 1, detected at Stamp
+      procedure Balise (N_PIG, Total : Natural; Stamp : Unsigned_32) is
+         H : constant ETCS_Telegram.Header_T :=
+           (Q_UPDOWN  => 1,
+            M_VERSION => 48,
+            Q_MEDIA   => 0,
+            N_PIG     => ETCS_Variables.N_PIG_T (N_PIG),
+            N_TOTAL   => ETCS_Variables.N_TOTAL_T (Total),
+            M_DUP     => 0,
+            M_MCOUNT  => 1,
+            NID_C     => ETCS_Variables.NID_C_T (if Chance (95) then 1
+                                                  else Pick (0, 3)),
+            NID_BG    => ETCS_Variables.NID_BG_T (Id),
+            Q_LINK    => 0);
+         OK : Boolean;
+      begin
+         ETCS_Bits.Clear (W);
+         ETCS_Telegram.Write_Header (W, H);
+         if Chance (40) then
+            Plausible (W);
+         end if;
+         for I in 1 .. Pick (0, 3) loop
+            Rnd.Write_Random (E3_Kinds (Pick (1, E3_Kinds'Last)),
+                              (if Chance (50) then Rnd.Random_Values
+                               else Rnd.Min_Values),
+                              (if Chance (50) then Rnd.Random_Items
+                               else Rnd.One_Item),
+                              W, OK);
+            exit when not OK;
+         end loop;
+         ETCS_Telegram.Finish (W, ETCS_Telegram.Long_Bits, OK);
+         if not OK then
+            ETCS_Bits.Clear (W);
+            ETCS_Telegram.Write_Header (W, H);
+            ETCS_Telegram.Finish (W, ETCS_Telegram.Long_Bits, OK);
+         end if;
+         declare
+            Data : constant Byte_Array := ETCS_Bits.Data (W);
+            Bits : constant Natural := ETCS_Bits.Position (W);
+         begin
+            Last := 0;
+            Add_U32 (Stamp);
+            Add_U16 (Bits);
+            for I in 1 .. (Bits + 7) / 8 loop
+               Add (Natural (Data (I)));
+            end loop;
+            EVC_Core.Handle_Input (BTM, Buffer (1 .. Last));
+         end;
+      end Balise;
+
+      procedure Check_Snapshot (Step : Natural) is
+         use EVC_Profiles;
+         S : constant EVC_Supervision_Input.Snapshot_T :=
+           EVC_Stored_Information.Current;
+      begin
+         E3_Cycles := E3_Cycles + 1;
+         if not Sorted (EVC_Stored_Information.MRSP_Steps)
+           or else not Below (EVC_Stored_Information.MRSP_Steps,
+                              EVC_Stored_Information.MRSP_Sources, 0,
+                              EVC_Stored_Information.MRSP_Ceiling)
+         then
+            Violation ("E3: the MRSP not sorted or above a source", Step);
+         end if;
+         if EVC_Stored_Information.Envelope_Failures /= 0 then
+            Violation ("E3: an envelope check failed", Step);
+         end if;
+         if S.MA.Present
+           and then A (S.Train.Ahead, S.MA.SvL) < A (S.Train.Ahead, S.MA.EOA)
+         then
+            Violation ("E3: the SvL before the EOA", Step);
+         end if;
+         for K in 1 .. S.MRSP.Count - 1 loop
+            if A (S.Train.Ahead, S.MRSP.Segments (K).Start)
+               >= A (S.Train.Ahead, S.MRSP.Segments (K + 1).Start)
+            then
+               Violation ("E3: the MRSP not sorted ahead", Step);
+            end if;
+         end loop;
+         if S.MA.Present then
+            E3_MAs := E3_MAs + 1;
+         end if;
+      end Check_Snapshot;
+   begin
+      for Run in 1 .. Runs loop
+         begin
+            EVC_Core.Initialise;
+            EVC_Core.Handle_Input (TIU, (1, 1));
+            Odo_D := Next;
+            Over := 0;
+            Under := 0;
+            Next_BG := Odo_D + Unsigned_32 (Pick (1_000, 30_000));
+            for Step in 1 .. Pick (50, 400) loop
+               declare
+                  Move : constant Unsigned_32 :=
+                    (if Chance (10) then 0
+                     else Unsigned_32 (Pick (100, 3_000)));
+               begin
+                  --  the groups passed in the move
+                  while Move > 0 and then Next_BG - Odo_D <= Move loop
+                     Id := (Id + 1) mod 16_000;
+                     declare
+                        Total : constant Natural := Pick (0, 1);
+                     begin
+                        for B in 0 .. Total loop
+                           Balise (B, Total, Next_BG + Unsigned_32 (B * 300));
+                        end loop;
+                     end;
+                     E3_Messages := E3_Messages + 1;
+                     Next_BG := Next_BG + Unsigned_32 (Pick (5_000, 60_000));
+                  end loop;
+                  Odo_D := Odo_D + Move;
+                  Over := Over + Move / 50;
+                  Under := Under + Move / 50;
+                  Odometer_Sample (Move > 0);
+                  EVC_Core.Tick (100);
+                  EVC_Core.Take_Outputs (Out_B, O_Last);
+                  if not Whole_Records (Out_B (1 .. O_Last)) then
+                     Violation ("E3: not whole records", Step);
+                  end if;
+                  --  MSG_PLANNING and MSG_TRACK_COND seen
+                  declare
+                     Pos : Natural := 1;
+                  begin
+                     while Pos + 3 <= O_Last loop
+                        if Out_B (Pos) = Byte (Port_T'Pos (DMI))
+                          and then Out_B (Pos + 3)
+                                     = EVC_DMI_Port.MSG_PLANNING
+                        then
+                           E3_Plannings := E3_Plannings + 1;
+                        elsif Out_B (Pos) = Byte (Port_T'Pos (DMI))
+                          and then Out_B (Pos + 3)
+                                     = EVC_DMI_Port.MSG_TRACK_COND
+                        then
+                           E3_Conditions := E3_Conditions + 1;
+                        end if;
+                        Pos := Pos + EVC_Outbox.Record_Header
+                               + Natural (Out_B (Pos + 1))
+                               + 256 * Natural (Out_B (Pos + 2));
+                     end loop;
+                  end;
+                  Check_Snapshot (Step);
+               end;
+            end loop;
+         exception
+            when E : others =>
+               Report ("E3 stored information", E, Run);
+               Contain_And_Restart (Run);
+         end;
+      end loop;
+   end E3_Phase;
+
    Steps : Natural := 1_000_000;
    Port  : Port_T := BTM;
 
@@ -738,6 +1021,16 @@ begin
              & "  violations:" & Natural'Image (Violations)
              & "  raised:" & Natural'Image (Raised)
              & "  distinct sites:" & Natural'Image (Site_Count));
+
+   --  E3 (profiles)
+   E3_Phase (Steps / 5_000);
+   Put_Line ("stored information: cycles:" & Natural'Image (E3_Cycles)
+             & "  group messages:" & Natural'Image (E3_Messages)
+             & "  cycles with an MA:" & Natural'Image (E3_MAs)
+             & "  MSG_PLANNING:" & Natural'Image (E3_Plannings)
+             & "  MSG_TRACK_COND:" & Natural'Image (E3_Conditions)
+             & "  violations:" & Natural'Image (Violations)
+             & "  raised:" & Natural'Image (Raised));
    Ada.Command_Line.Set_Exit_Status
      (if Raised = 0 and then Violations = 0 then Ada.Command_Line.Success
       else Ada.Command_Line.Failure);
