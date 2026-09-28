@@ -709,4 +709,12 @@ about 9 s against 28 min in the Docker image under Rosetta, with
 byte-identical modules (Docker stays the fallback and the CI path).
 gnatprove's proof results are shared across worktrees through its file
 cache (`etcs_evc.gpr`, package `Prove`), so an agent's worktree re-proves
-only what it changed.
+only what it changed. The generator now emits the standard packet header
+(7.3.3.2) once per direction, in the parent packages
+`ETCS_Track_Packets` and `ETCS_Train_Packets` (`Decode_Header`,
+`Header_OK`, `Encode_Header`, `Finish_Length`), instead of repeating it
+in the 67 packet bodies: 1.1 kloc less generated Ada, 12.5 kB less wasm,
+the L_PACKET patching in one place. Inheritance was considered and
+rejected: the packets share shape, not behaviour, and class-wide
+dispatching would add verification conditions to a kernel whose
+consumers always know which packet they hold.

@@ -79,7 +79,7 @@ is
                      P  : out Packet_T;
                      OK : out Boolean)
    is
-      Start : constant Natural := Position (R);
+      Start : constant Bit_Count := Position (R);
       V     : Unsigned_64;
       NID_PACKET     : NID_PACKET_T;
       Q_DIR          : Q_DIR_T;
@@ -90,12 +90,7 @@ is
       N_ITER         : N_ITER_T;
       M_LEVELTR_List : M_LEVELTR_Array;
    begin
-      Read (R, 8, V);
-      NID_PACKET := To_NID_PACKET (V);
-      Read (R, 2, V);
-      Q_DIR := To_Q_DIR (V);
-      Read (R, 13, V);
-      L_PACKET := To_L_PACKET (V);
+      Decode_Header (R, NID_PACKET, Q_DIR, L_PACKET);
       Read (R, 3, V);
       M_LEVELTR := To_M_LEVELTR (V);
       Has_NID_NTC := M_LEVELTR = 1;
@@ -117,9 +112,7 @@ is
          NID_NTC => NID_NTC,
          N_ITER => N_ITER,
          M_LEVELTR_List => M_LEVELTR_List);
-      OK := not Failed (R)
-        and then NID_PACKET = NID
-        and then Position (R) = Start + Natural (L_PACKET);
+      OK := Header_OK (R, NID_PACKET, NID, L_PACKET, Start);
    end Decode;
 
    ------------
@@ -130,14 +123,11 @@ is
                      W  : in out Writer;
                      OK : out Boolean)
    is
-      Start     : constant Natural := Position (W);
+      Start     : constant Bit_Count := Position (W);
       Length_At : Natural;
       Good      : Boolean := True;
    begin
-      Write (W, 8, NID);
-      Write (W, 2, Code (P.Q_DIR));
-      Length_At := Position (W);
-      Write (W, 13, 0);
+      Encode_Header (W, NID, Code (P.Q_DIR), Length_At);
       Write (W, 3, Code (P.M_LEVELTR));
       if P.Has_NID_NTC /= (P.M_LEVELTR = 1) then
          Good := False;
@@ -149,14 +139,7 @@ is
       for I1 in 1 .. Natural (P.N_ITER) loop
          Encode_M_LEVELTR_Item (P.M_LEVELTR_List (I1), W, Good);
       end loop;
-      --  L_PACKET: the bits written
-      if Position (W) >= Start
-        and then Position (W) - Start <= 8191
-      then
-         Patch (W, Length_At, 13, Unsigned_64 (Position (W) - Start));
-      else
-         Good := False;
-      end if;
+      Finish_Length (W, Start, Length_At, Good);
       OK := Good and then not Failed (W);
    end Encode;
 

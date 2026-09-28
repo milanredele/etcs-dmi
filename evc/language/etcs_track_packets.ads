@@ -64,8 +64,55 @@
 --     P181 Generic LS function marker (7.4.2.37.4)
 --     P254 Default balise, loop or RIU information (7.4.2.38)
 --     P255 End of Information (7.4.2.39)
+--
+--  The standard header of 7.3.3.2 (NID_PACKET, Q_DIR, L_PACKET) is
+--  read, written and checked here once for every child that has
+--  it; a child keeps the header fields in its own record.
+
+with ETCS_Bits;      use ETCS_Bits;
+with ETCS_Variables; use ETCS_Variables;
+with Interfaces;     use Interfaces;
 
 package ETCS_Track_Packets
   with SPARK_Mode => On, Pure
 is
+
+   --  The header fields at the position of the reader
+   procedure Decode_Header (R          : in out Reader;
+                            NID_PACKET : out NID_PACKET_T;
+                            Q_DIR      : out Q_DIR_T;
+                            L_PACKET   : out L_PACKET_T)
+     with Global => null,
+          Post => Limit (R) = Limit (R)'Old;
+
+   --  What Decode checks after the fields: the reader did not fail,
+   --  the packet is the one expected (NID) and exactly L_PACKET
+   --  bits were read from Start, the position before the header
+   function Header_OK (R          : Reader;
+                       NID_PACKET : NID_PACKET_T;
+                       NID        : Natural;
+                       L_PACKET   : L_PACKET_T;
+                       Start      : Bit_Count) return Boolean is
+     (not Failed (R)
+      and then Natural (NID_PACKET) = NID
+      and then Position (R) = Start + Natural (L_PACKET));
+
+   --  NID_PACKET, Q_DIR and a place holder for L_PACKET, patched by
+   --  Finish_Length once the packet is written; Length_At is the
+   --  bit position of the place holder
+   procedure Encode_Header (W         : in out Writer;
+                            NID       : Unsigned_64;
+                            Q_DIR     : Unsigned_64;
+                            Length_At : out Natural)
+     with Global => null,
+          Pre => Fits (NID, 8) and then Fits (Q_DIR, 2);
+
+   --  L_PACKET := the bits written since Start (the position
+   --  before the header); Good becomes False when they do not fit
+   procedure Finish_Length (W         : in out Writer;
+                            Start     : Bit_Count;
+                            Length_At : Natural;
+                            Good      : in out Boolean)
+     with Global => null;
+
 end ETCS_Track_Packets;

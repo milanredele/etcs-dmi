@@ -32,7 +32,7 @@ is
                      P  : out Packet_T;
                      OK : out Boolean)
    is
-      Start : constant Natural := Position (R);
+      Start : constant Bit_Count := Position (R);
       V     : Unsigned_64;
       NID_PACKET     : NID_PACKET_T;
       L_PACKET       : L_PACKET_T;
@@ -40,10 +40,7 @@ is
       N_ITER         : N_ITER_T;
       M_VERSION_List : M_VERSION_Array := (others => 0);
    begin
-      Read (R, 8, V);
-      NID_PACKET := To_NID_PACKET (V);
-      Read (R, 13, V);
-      L_PACKET := To_L_PACKET (V);
+      Decode_Header (R, NID_PACKET, L_PACKET);
       Read (R, 7, V);
       M_VERSION := To_M_VERSION (V);
       Read (R, 5, V);
@@ -58,9 +55,7 @@ is
          M_VERSION => M_VERSION,
          N_ITER => N_ITER,
          M_VERSION_List => M_VERSION_List);
-      OK := not Failed (R)
-        and then NID_PACKET = NID
-        and then Position (R) = Start + Natural (L_PACKET);
+      OK := Header_OK (R, NID_PACKET, NID, L_PACKET, Start);
    end Decode;
 
    ------------
@@ -71,26 +66,17 @@ is
                      W  : in out Writer;
                      OK : out Boolean)
    is
-      Start     : constant Natural := Position (W);
+      Start     : constant Bit_Count := Position (W);
       Length_At : Natural;
       Good      : Boolean := True;
    begin
-      Write (W, 8, NID);
-      Length_At := Position (W);
-      Write (W, 13, 0);
+      Encode_Header (W, NID, Length_At);
       Write (W, 7, Code (P.M_VERSION));
       Write (W, 5, Code (P.N_ITER));
       for I1 in 1 .. Natural (P.N_ITER) loop
          Write (W, 7, Code (P.M_VERSION_List (I1)));
       end loop;
-      --  L_PACKET: the bits written
-      if Position (W) >= Start
-        and then Position (W) - Start <= 8191
-      then
-         Patch (W, Length_At, 13, Unsigned_64 (Position (W) - Start));
-      else
-         Good := False;
-      end if;
+      Finish_Length (W, Start, Length_At, Good);
       OK := Good and then not Failed (W);
    end Encode;
 

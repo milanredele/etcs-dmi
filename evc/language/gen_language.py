@@ -1365,15 +1365,30 @@ class Emitter:
         v = n.var
         t = self.target(n)
         top = n.level.parent is None
+        # the standard header is read and written by the parent package
+        # (Decode_Header, Encode_Header): one call at NID_PACKET, nothing
+        # at Q_DIR and L_PACKET
+        in_header = (top and self.p.has_length
+                     and v.name in ("NID_PACKET", "Q_DIR", "L_PACKET"))
+        qdir = self.p.direction == "track_to_train"
         if self.mode == "decode":
+            if in_header:
+                if v.name == "NID_PACKET":
+                    stmt(L, ind, "Decode_Header (R, %s, %s%s);" % (
+                        t, (self.acc(self.p.top, "Q_DIR") + ", ") if qdir
+                        else "", self.acc(self.p.top, "L_PACKET")))
+                return
             stmt(L, ind, "Read (R, %d, V);" % v.bits)
             stmt(L, ind, "%s := To_%s (V);" % (t, v.name))
         elif self.mode == "encode":
+            if in_header:
+                if v.name == "NID_PACKET":
+                    stmt(L, ind, "Encode_Header (W, NID, %sLength_At);" % (
+                        ("Code (%s), " % self.acc(self.p.top, "Q_DIR"))
+                        if qdir else ""))
+                return
             if v.name == "NID_PACKET" and top:
                 stmt(L, ind, "Write (W, %d, NID);" % v.bits)
-            elif v.name == "L_PACKET" and top and self.p.has_length:
-                stmt(L, ind, "Length_At := Position (W);")
-                stmt(L, ind, "Write (W, %d, 0);" % v.bits)
             else:
                 stmt(L, ind, "Write (W, %d, Code (%s));" % (v.bits, t))
         else:
@@ -1696,8 +1711,9 @@ def gen_packet_body(p):
         "   is",
     ]
     if p.has_length:
-        L.append("      Start : constant Natural := Position (R);")
-    L.append("      V     : Unsigned_64;")
+        L.append("      Start : constant Bit_Count := Position (R);")
+    if any("(R, " in b and ", V);" in b for b in body):
+        L.append("      V     : Unsigned_64;")
     if uses_bad:
         L.append("      Bad   : Boolean := False;")
     comps = p.top.components
@@ -1714,12 +1730,12 @@ def gen_packet_body(p):
         L.append("        %s%s => %s%s" % (
             "(" if i == 0 else " ", comp, comp,
             "," if i < len(comps) - 1 else ");"))
-    ok = ["not Failed (R)"]
-    if uses_bad:
-        ok.append("not Bad")
-    ok.append("NID_PACKET = NID")
     if p.has_length:
-        ok.append("Position (R) = Start + Natural (L_PACKET)")
+        ok = ["Header_OK (R, NID_PACKET, NID, L_PACKET, Start)"]
+    else:
+        ok = ["not Failed (R)", "NID_PACKET = NID"]
+    if uses_bad:
+        ok.insert(1, "not Bad")
     L.append("      OK := " + ok[0])
     for o in ok[1:]:
         L.append("        and then " + o)
@@ -1741,7 +1757,7 @@ def gen_packet_body(p):
         "   is",
     ]
     if p.has_length:
-        L.append("      Start     : constant Natural := Position (W);")
+        L.append("      Start     : constant Bit_Count := Position (W);")
         L.append("      Length_At : Natural;")
     if uses_good:
         L.append("      Good      : Boolean := True;")
@@ -1750,33 +1766,28 @@ def gen_packet_body(p):
     L.append("   begin")
     L += body
     if p.has_length:
-        lmax = p.variables["L_PACKET"].max
-        lbits = p.variables["L_PACKET"].bits
-        L += [
-            "      --  L_PACKET: the bits written",
-            "      if Position (W) >= Start",
-            "        and then Position (W) - Start <= %d" % lmax,
-            "      then",
-            "         Patch (W, Length_At, %d, Unsigned_64 (Position (W)"
-            " - Start));" % lbits,
-            "      else",
-            "         Good := False;",
-            "      end if;",
-        ]
+        L.append("      Finish_Length (W, Start, Length_At, Good);")
     if uses_good:
         L.append("      OK := Good and then not Failed (W);")
     else:
         L.append("      OK := not Failed (W);")
     L += ["   end Encode;", "", "end %s;" % p.package, ""]
-    return "\n".join(L)
+    text = "\n".join(L)
+    if text.count("Unsigned_64") == 0:
+        # a header-only packet: the parent reads and writes it all
+        text = text.replace("with Interfaces; use Interfaces;\n\n", "")
+    return text
 
 
 # ---------------------------------------------------------------------
 #  Parents and catalogue
 # ---------------------------------------------------------------------
 
-def gen_parent(direction, packets):
+def gen_parent(direction, packets, variables):
     dir_ada, pkg, prefix, text, clause = DIRECTIONS[direction]
+    qdir = direction == "track_to_train"
+    lbits = variables["L_PACKET"].bits
+    lmax = variables["L_PACKET"].max
     L = header("The %s packets of the ERTMS/ETCS language." % text)
     L += ["--",
           "--  SUBSET-026 %s. One child package per packet, P<NID_PACKET>:"
@@ -1784,9 +1795,137 @@ def gen_parent(direction, packets):
     for p in packets:
         L += wrap_comment("P%d %s (%s)" % (p.nid, p.name, p.clause), 0,
                           "--     ")
-    L += ["", "package %s" % pkg, "  with SPARK_Mode => On, Pure", "is",
-          "end %s;" % pkg, ""]
-    return "\n".join(L)
+    L += [
+        "--",
+        "--  The standard header of 7.3.3.2 (NID_PACKET, %sL_PACKET) is"
+        % ("Q_DIR, " if qdir else ""),
+        "--  read, written and checked here once for every child that has",
+        "--  it; a child keeps the header fields in its own record.",
+        "",
+        "with ETCS_Bits;      use ETCS_Bits;",
+        "with ETCS_Variables; use ETCS_Variables;",
+        "with Interfaces;     use Interfaces;",
+        "",
+        "package %s" % pkg,
+        "  with SPARK_Mode => On, Pure",
+        "is",
+        "",
+        "   --  The header fields at the position of the reader",
+        "   procedure Decode_Header (R          : in out Reader;",
+        "                            NID_PACKET : out NID_PACKET_T;",
+    ]
+    if qdir:
+        L.append("                            Q_DIR      : out Q_DIR_T;")
+    L += [
+        "                            L_PACKET   : out L_PACKET_T)",
+        "     with Global => null,",
+        "          Post => Limit (R) = Limit (R)'Old;",
+        "",
+        "   --  What Decode checks after the fields: the reader did not fail,",
+        "   --  the packet is the one expected (NID) and exactly L_PACKET",
+        "   --  bits were read from Start, the position before the header",
+        "   function Header_OK (R          : Reader;",
+        "                       NID_PACKET : NID_PACKET_T;",
+        "                       NID        : Natural;",
+        "                       L_PACKET   : L_PACKET_T;",
+        "                       Start      : Bit_Count) return Boolean is",
+        "     (not Failed (R)",
+        "      and then Natural (NID_PACKET) = NID",
+        "      and then Position (R) = Start + Natural (L_PACKET));",
+        "",
+        "   --  NID_PACKET%s and a place holder for L_PACKET, patched by"
+        % (", Q_DIR" if qdir else ""),
+        "   --  Finish_Length once the packet is written; Length_At is the",
+        "   --  bit position of the place holder",
+        "   procedure Encode_Header (W         : in out Writer;",
+        "                            NID       : Unsigned_64;",
+    ]
+    if qdir:
+        L.append("                            Q_DIR     : Unsigned_64;")
+    L += [
+        "                            Length_At : out Natural)",
+        "     with Global => null,",
+        "          Pre => Fits (NID, 8)%s;" % (" and then Fits (Q_DIR, 2)"
+                                                 if qdir else ""),
+        "",
+        "   --  L_PACKET := the bits written since Start (the position",
+        "   --  before the header); Good becomes False when they do not fit",
+        "   procedure Finish_Length (W         : in out Writer;",
+        "                            Start     : Bit_Count;",
+        "                            Length_At : Natural;",
+        "                            Good      : in out Boolean)",
+        "     with Global => null;",
+        "",
+        "end %s;" % pkg,
+        "",
+    ]
+    spec = "\n".join(L)
+    B = header("The %s packets: the standard header." % text)
+    B += [
+        "",
+        "package body %s" % pkg,
+        "  with SPARK_Mode => On",
+        "is",
+        "",
+        "   procedure Decode_Header (R          : in out Reader;",
+        "                            NID_PACKET : out NID_PACKET_T;",
+    ]
+    if qdir:
+        B.append("                            Q_DIR      : out Q_DIR_T;")
+    B += [
+        "                            L_PACKET   : out L_PACKET_T)",
+        "   is",
+        "      V : Unsigned_64;",
+        "   begin",
+        "      Read (R, 8, V);",
+        "      NID_PACKET := To_NID_PACKET (V);",
+    ]
+    if qdir:
+        B += ["      Read (R, %d, V);" % variables["Q_DIR"].bits,
+              "      Q_DIR := To_Q_DIR (V);"]
+    B += [
+        "      Read (R, %d, V);" % lbits,
+        "      L_PACKET := To_L_PACKET (V);",
+        "   end Decode_Header;",
+        "",
+        "   procedure Encode_Header (W         : in out Writer;",
+        "                            NID       : Unsigned_64;",
+    ]
+    if qdir:
+        B.append("                            Q_DIR     : Unsigned_64;")
+    B += [
+        "                            Length_At : out Natural)",
+        "   is",
+        "   begin",
+        "      Write (W, 8, NID);",
+    ]
+    if qdir:
+        B.append("      Write (W, %d, Q_DIR);" % variables["Q_DIR"].bits)
+    B += [
+        "      Length_At := Position (W);",
+        "      Write (W, %d, 0);" % lbits,
+        "   end Encode_Header;",
+        "",
+        "   procedure Finish_Length (W         : in out Writer;",
+        "                            Start     : Bit_Count;",
+        "                            Length_At : Natural;",
+        "                            Good      : in out Boolean)",
+        "   is",
+        "   begin",
+        "      if Position (W) >= Start",
+        "        and then Position (W) - Start <= %d" % lmax,
+        "      then",
+        "         Patch (W, Length_At, %d, Unsigned_64 (Position (W) - Start));"
+        % lbits,
+        "      else",
+        "         Good := False;",
+        "      end if;",
+        "   end Finish_Length;",
+        "",
+        "end %s;" % pkg,
+        "",
+    ]
+    return spec, "\n".join(B)
 
 
 def gen_catalogue_spec(variables, packets):
@@ -2698,8 +2837,10 @@ def generate(variables, packets, messages):
                                                                 packets)
     for d in DIRECTION_ORDER:
         pkg = DIRECTIONS[d][1]
-        out["evc/language/%s.ads" % pkg.lower()] = gen_parent(
-            d, [p for p in packets if p.direction == d])
+        spec, body = gen_parent(
+            d, [p for p in packets if p.direction == d], variables)
+        out["evc/language/%s.ads" % pkg.lower()] = spec
+        out["evc/language/%s.adb" % pkg.lower()] = body
     for p in packets:
         out["evc/language/%s.ads" % p.file_base] = gen_packet_spec(p)
         out["evc/language/%s.adb" % p.file_base] = gen_packet_body(p)

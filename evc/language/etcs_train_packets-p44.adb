@@ -29,7 +29,7 @@ is
                      P  : out Packet_T;
                      OK : out Boolean)
    is
-      Start : constant Natural := Position (R);
+      Start : constant Bit_Count := Position (R);
       V     : Unsigned_64;
       Bad   : Boolean := False;
       NID_PACKET : NID_PACKET_T;
@@ -38,10 +38,7 @@ is
       Raw_Bits   : Raw_Bits_T := 0;
       Raw        : Raw_Data_T := (others => 0);
    begin
-      Read (R, 8, V);
-      NID_PACKET := To_NID_PACKET (V);
-      Read (R, 13, V);
-      L_PACKET := To_L_PACKET (V);
+      Decode_Header (R, NID_PACKET, L_PACKET);
       Read (R, 9, V);
       NID_XUSER := To_NID_XUSER (V);
       if Position (R) <= Start + Natural (L_PACKET)
@@ -58,10 +55,8 @@ is
          NID_XUSER => NID_XUSER,
          Raw_Bits => Raw_Bits,
          Raw => Raw);
-      OK := not Failed (R)
-        and then not Bad
-        and then NID_PACKET = NID
-        and then Position (R) = Start + Natural (L_PACKET);
+      OK := Header_OK (R, NID_PACKET, NID, L_PACKET, Start)
+        and then not Bad;
    end Decode;
 
    ------------
@@ -72,23 +67,14 @@ is
                      W  : in out Writer;
                      OK : out Boolean)
    is
-      Start     : constant Natural := Position (W);
+      Start     : constant Bit_Count := Position (W);
       Length_At : Natural;
       Good      : Boolean := True;
    begin
-      Write (W, 8, NID);
-      Length_At := Position (W);
-      Write (W, 13, 0);
+      Encode_Header (W, NID, Length_At);
       Write (W, 9, Code (P.NID_XUSER));
       Write_Bytes (W, P.Raw_Bits, P.Raw);
-      --  L_PACKET: the bits written
-      if Position (W) >= Start
-        and then Position (W) - Start <= 8191
-      then
-         Patch (W, Length_At, 13, Unsigned_64 (Position (W) - Start));
-      else
-         Good := False;
-      end if;
+      Finish_Length (W, Start, Length_At, Good);
       OK := Good and then not Failed (W);
    end Encode;
 

@@ -86,7 +86,7 @@ is
                      P  : out Packet_T;
                      OK : out Boolean)
    is
-      Start : constant Natural := Position (R);
+      Start : constant Bit_Count := Position (R);
       V     : Unsigned_64;
       NID_PACKET     : NID_PACKET_T;
       L_PACKET       : L_PACKET_T;
@@ -103,10 +103,7 @@ is
       N_ITER_2       : N_ITER_T;
       NID_NTC_List   : NID_NTC_Array := (others => 0);
    begin
-      Read (R, 8, V);
-      NID_PACKET := To_NID_PACKET (V);
-      Read (R, 13, V);
-      L_PACKET := To_L_PACKET (V);
+      Decode_Header (R, NID_PACKET, L_PACKET);
       Read (R, 4, V);
       NC_CDTRAIN := To_NC_CDTRAIN (V);
       Read (R, 15, V);
@@ -149,9 +146,7 @@ is
          M_VOLTAGE_List => M_VOLTAGE_List,
          N_ITER_2 => N_ITER_2,
          NID_NTC_List => NID_NTC_List);
-      OK := not Failed (R)
-        and then NID_PACKET = NID
-        and then Position (R) = Start + Natural (L_PACKET);
+      OK := Header_OK (R, NID_PACKET, NID, L_PACKET, Start);
    end Decode;
 
    ------------
@@ -162,13 +157,11 @@ is
                      W  : in out Writer;
                      OK : out Boolean)
    is
-      Start     : constant Natural := Position (W);
+      Start     : constant Bit_Count := Position (W);
       Length_At : Natural;
       Good      : Boolean := True;
    begin
-      Write (W, 8, NID);
-      Length_At := Position (W);
-      Write (W, 13, 0);
+      Encode_Header (W, NID, Length_At);
       Write (W, 4, Code (P.NC_CDTRAIN));
       Write (W, 15, Code (P.NC_TRAIN));
       Write (W, 12, Code (P.L_TRAIN));
@@ -185,14 +178,7 @@ is
       for I1 in 1 .. Natural (P.N_ITER_2) loop
          Write (W, 8, Code (P.NID_NTC_List (I1)));
       end loop;
-      --  L_PACKET: the bits written
-      if Position (W) >= Start
-        and then Position (W) - Start <= 8191
-      then
-         Patch (W, Length_At, 13, Unsigned_64 (Position (W) - Start));
-      else
-         Good := False;
-      end if;
+      Finish_Length (W, Start, Length_At, Good);
       OK := Good and then not Failed (W);
    end Encode;
 
