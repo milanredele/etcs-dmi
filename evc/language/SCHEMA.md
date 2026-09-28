@@ -13,7 +13,7 @@ generator; regenerating must give no diff.
 
 ```toml
 [variables.NID_PACKET]
-bits = 8                     # length in bits, 1 .. 32
+bits = 8                     # length in bits, 1 .. 64 (NID_RADIO is 64)
 clause = "7.5.1.93"          # where 7.5 defines it
 # optional
 min = 0                      # smallest meaningful value, default 0
@@ -101,9 +101,9 @@ Field kinds:
 - `{ loop = "VAR", fields = [...] }` — the fields repeat VAR times (VAR is
   `N_ITER`, `L_TEXT`, ... already read). A loop nested in a loop is
   allowed; the generator bounds the arrays with the variable's `max`.
-- `{ raw = "VAR" }` — a bit string whose length in bits is the value of
-  VAR read before (packet 44's application data, packet 8/... where the
-  SRS says "data"); kept as bytes.
+- `{ raw = "VAR" }` — a bit string kept as bytes (`Raw_Bits` and `Raw`
+  in the record): `raw = "L_PACKET"` is the rest of the packet (packet
+  44's application data), any other VAR gives the length in bits.
 
 Every packet starts with `NID_PACKET` and (track to train) `Q_DIR`, then
 `L_PACKET`; the generator checks that. Packet 255 has `NID_PACKET` only.
@@ -202,24 +202,38 @@ packets = [
 
 - `etcs_variables.ads`: enumeration `Variable_T`, `Bits (V)`, `Max (V)`,
   the special values as named constants, all Pure, SPARK.
-- One record type per packet with a component per field (loops as
-  bounded arrays with a count, conditionals as components plus a
-  `Has_X` Boolean), `Decode (Reader, Packet, OK)` and `Encode (Packet,
-  Writer, OK)` in SPARK; `Decode` never raises, fails on a truncated or
-  inconsistent packet (L_PACKET not matching what was read), and
-  consumes exactly L_PACKET bits on success.
-- The catalogue: `NID_PACKET` to `Packet_Kind_T`, direction, the
-  clause; the framing of telegrams (8.4.2) and radio messages (8.4.4) is
-  written by hand in `etcs_telegram.ads` and `etcs_messages.ads` with the
-  message list of 8.5 to 8.7 as data (which packets a message carries,
-  optional or mandatory).
+- One package per packet (`ETCS_Track_Packets.P<n>`,
+  `ETCS_Train_Packets.P<n>`) with a record type `Packet_T`, a component
+  per field (a loop as `<first component>_List`, a bounded array of
+  `<first component>_Item` or of the scalar for a one-variable loop, with
+  a count; an `if` block as components of the enclosing record plus a
+  `Has_<first component>` Boolean), `Decode (Reader, Packet, OK)` and
+  `Encode (Packet, Writer, OK)` in SPARK; `Decode` never raises, fails on
+  a truncated or inconsistent packet (L_PACKET not matching what was
+  read), and consumes exactly L_PACKET bits on success. Each variable is
+  a range type `<V>_T` (two's complement when `min < 0`, `Unsigned_64`
+  for 64 bits) with `To_<V>`, `Code` and `Is_Valid` (min .. max or a
+  special value). The combined NID_LRBG is
+  `ETCS_Variables.Balise_Group_Identity (NID_C, NID_BG)`, not a record
+  component.
+- The catalogues: `ETCS_Catalogue` (`NID_PACKET` to `Packet_Kind_T`,
+  direction, clause, `Check`, `Skip`) and `ETCS_Message_Catalogue` from
+  the `[[messages]]` section (fields with the header, the packet rules).
+  The framing of telegrams (8.4.2) and radio messages (8.4.4) is written
+  by hand in `ETCS_Telegram` and `ETCS_Message` on top of them, and
+  `ETCS_Packet_Index` scans one packet.
+- `test/src/etcs_language_random.ad[sb]` (host only): random valid
+  packets for the round trip tests.
 
 ## Rules
 
 - Every packet and variable cites its clause and was read on the PDF
   page, not only in the markdown.
-- The version is 4.0.0 (M_VERSION 2.x). Chapter 6 differences for older
-  versions are phase E7 and not in this file.
+- The language is the one of SRS 4.0.0, which 7.5.1.79 gives as system
+  versions 2.0 to 2.3 and 3.0 (M_VERSION codes 32 to 35 and 48; 49 to
+  63 are reserved and valid). The codec accepts those and rejects
+  versions 0.x and 1.x, whose differences (chapter 6) are phase E7 and
+  not in this file.
 - Packets of chapter 7 that the plan puts out of scope (NTC: 44 stays in
   as raw data; STM packets of SUBSET-035 are not here) are still
   described when SUBSET-026 defines them, so that a telegram carrying

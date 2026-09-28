@@ -30,47 +30,94 @@ is
       A_NVMAXREDADH3,
       A_NVP12,
       A_NVP23,
+      D_ADHESION,
+      D_AXLELOAD,
+      D_CURRENT,
+      D_CYCLOC,
       D_DP,
       D_EMERGENCYSTOP,
       D_ENDTIMERSTARTLOC,
       D_GRADIENT,
+      D_INFILL,
       D_LEVELTR,
       D_LINK,
+      D_LOC,
+      D_LOOP,
       D_LRBG,
+      D_LX,
+      D_MAMODE,
       D_NVOVTRP,
       D_NVPOTRP,
       D_NVROLL,
       D_NVSTFF,
       D_OL,
+      D_PBD,
+      D_PBDSR,
+      D_POSOFF,
+      D_RBCTR,
       D_REF,
+      D_REVERSE,
       D_SECTIONTIMERSTOPLOC,
       D_SR,
       D_STARTOL,
+      D_STARTREVERSE,
       D_STATIC,
+      D_SUITABILITY,
       D_TAFDISPLAY,
       D_TEXTDISPLAY,
+      D_TRACKCOND,
+      D_TRACKINIT,
+      D_TRACTION,
       D_TSR,
       D_VALIDNV,
       G_A,
+      G_PBDSR,
+      G_TSR,
       L_ACKLEVELTR,
+      L_ACKMAMODE,
+      L_ADHESION,
+      L_AXLELOAD,
+      L_CONSISTFRONTENGINEMAX,
+      L_CONSISTFRONTENGINEMIN,
+      L_CONSISTFRONTENGINENOM,
+      L_CONSISTREARENGINEMAX,
+      L_CONSISTREARENGINEMIN,
+      L_CONSISTREARENGINENOM,
       L_DOUBTOVER,
       L_DOUBTUNDER,
       L_ENDSECTION,
+      L_LOOP,
+      L_LX,
+      L_MAMODE,
       L_MESSAGE,
       L_NVKRINT,
       L_PACKET,
+      L_PBDSR,
+      L_REVERSEAREA,
       L_SECTION,
+      L_STOPLX,
       L_TAFDISPLAY,
       L_TEXT,
       L_TEXTDISPLAY,
+      L_TRACKCOND,
+      L_TRAIN,
       L_TRAININT,
       L_TSR,
       M_ACK,
+      M_ADHESION,
+      M_AIRTIGHT,
+      M_AXLELOADCAT,
+      M_CURRENT,
       M_DUP,
       M_ERROR,
       M_LEVEL,
       M_LEVELTEXTDISPLAY,
       M_LEVELTR,
+      M_LINEAXLELOADCAT,
+      M_LINEGAUGE,
+      M_LOADINGGAUGE,
+      M_LOC,
+      M_MAMODE,
       M_MCOUNT,
       M_MODE,
       M_MODETEXTDISPLAY,
@@ -81,25 +128,39 @@ is
       M_NVKRINT,
       M_NVKTINT,
       M_NVKVINT,
+      M_PLATFORM,
+      M_POSITION,
+      M_TRACKCOND,
       M_VERSION,
+      M_VOLTAGE,
       NC_CDDIFF,
+      NC_CDTRAIN,
       NC_DIFF,
+      NC_TRAIN,
       NID_BG,
       NID_C,
+      NID_CTRACTION,
       NID_EM,
       NID_ENGINE,
+      NID_LOOP,
+      NID_LX,
       NID_MESSAGE,
+      NID_MN,
       NID_NTC,
       NID_OPERATIONAL,
       NID_PACKET,
+      NID_RADIO,
       NID_RBC,
+      NID_RIU,
       NID_TEXTMESSAGE,
       NID_TSR,
       NID_VBCMK,
       NID_XUSER,
+      N_AXLE,
       N_ITER,
       N_PIG,
       N_TOTAL,
+      Q_ASPECT,
       Q_CONFTEXTDISPLAY,
       Q_DANGERPOINT,
       Q_DESK,
@@ -114,12 +175,19 @@ is
       Q_GDIR,
       Q_INFILL,
       Q_INTEGRITY,
+      Q_LGTLOC,
       Q_LINK,
       Q_LINKORIENTATION,
       Q_LINKREACTION,
       Q_LOCACC,
+      Q_LOOPDIR,
+      Q_LSSMA,
+      Q_LXSTATUS,
+      Q_MAMODE,
       Q_MARQSTREASON,
       Q_MEDIA,
+      Q_MPOSITION,
+      Q_NETWORKTYPE,
       Q_NEWCOUNTRY,
       Q_NVDRIVER_ADHES,
       Q_NVEMRRLS,
@@ -132,25 +200,48 @@ is
       Q_NVSBTSMPERM,
       Q_ORIENTATION,
       Q_OVERLAP,
+      Q_PBDSR,
+      Q_PLATFORM,
+      Q_RBC,
+      Q_RIU,
+      Q_SAFECONSISTLENGTH,
       Q_SCALE,
       Q_SECTIONTIMER,
+      Q_SLEEPSESSION,
+      Q_SRSTOP,
+      Q_SSCODE,
       Q_STATUSLRBG,
+      Q_STOPLX,
+      Q_SUITABILITY,
+      Q_TEXT,
       Q_TEXTCLASS,
       Q_TEXTCONFIRM,
       Q_TEXTDISPLAY,
       Q_TEXTREPORT,
+      Q_TRACKINIT,
       Q_UPDOWN,
+      Q_VBCO,
+      T_CYCLOC,
+      T_CYCRQST,
       T_EMA,
       T_ENDTIMER,
+      T_LSSMA,
+      T_MAR,
       T_NVCONTACT,
       T_NVOVTRP,
       T_OL,
       T_SECTIONTIMER,
       T_TEXTDISPLAY,
+      T_TIMEOUTRQST,
       T_TRAIN,
+      T_VBC,
+      V_AXLELOAD,
       V_DIFF,
       V_EMA,
+      V_LX,
       V_MAIN,
+      V_MAMODE,
+      V_MAXTRAIN,
       V_NVALLOWOVTRP,
       V_NVKVINT,
       V_NVLIMSUPERV,
@@ -162,6 +253,7 @@ is
       V_NVUNFIT,
       V_RELEASEDP,
       V_RELEASEOL,
+      V_REVERSE,
       V_SM,
       V_STATIC,
       V_TRAIN,
@@ -175,47 +267,94 @@ is
       A_NVMAXREDADH3 => 6,
       A_NVP12 => 6,
       A_NVP23 => 6,
+      D_ADHESION => 15,
+      D_AXLELOAD => 15,
+      D_CURRENT => 15,
+      D_CYCLOC => 15,
       D_DP => 15,
       D_EMERGENCYSTOP => 15,
       D_ENDTIMERSTARTLOC => 15,
       D_GRADIENT => 15,
+      D_INFILL => 15,
       D_LEVELTR => 15,
       D_LINK => 15,
+      D_LOC => 15,
+      D_LOOP => 15,
       D_LRBG => 15,
+      D_LX => 15,
+      D_MAMODE => 15,
       D_NVOVTRP => 15,
       D_NVPOTRP => 15,
       D_NVROLL => 15,
       D_NVSTFF => 15,
       D_OL => 15,
+      D_PBD => 15,
+      D_PBDSR => 15,
+      D_POSOFF => 15,
+      D_RBCTR => 15,
       D_REF => 16,
+      D_REVERSE => 15,
       D_SECTIONTIMERSTOPLOC => 15,
       D_SR => 15,
       D_STARTOL => 15,
+      D_STARTREVERSE => 15,
       D_STATIC => 15,
+      D_SUITABILITY => 15,
       D_TAFDISPLAY => 15,
       D_TEXTDISPLAY => 15,
+      D_TRACKCOND => 15,
+      D_TRACKINIT => 15,
+      D_TRACTION => 15,
       D_TSR => 15,
       D_VALIDNV => 15,
       G_A => 8,
+      G_PBDSR => 8,
+      G_TSR => 8,
       L_ACKLEVELTR => 15,
+      L_ACKMAMODE => 15,
+      L_ADHESION => 15,
+      L_AXLELOAD => 15,
+      L_CONSISTFRONTENGINEMAX => 12,
+      L_CONSISTFRONTENGINEMIN => 12,
+      L_CONSISTFRONTENGINENOM => 12,
+      L_CONSISTREARENGINEMAX => 12,
+      L_CONSISTREARENGINEMIN => 12,
+      L_CONSISTREARENGINENOM => 12,
       L_DOUBTOVER => 15,
       L_DOUBTUNDER => 15,
       L_ENDSECTION => 15,
+      L_LOOP => 15,
+      L_LX => 15,
+      L_MAMODE => 15,
       L_MESSAGE => 10,
       L_NVKRINT => 5,
       L_PACKET => 13,
+      L_PBDSR => 15,
+      L_REVERSEAREA => 15,
       L_SECTION => 15,
+      L_STOPLX => 15,
       L_TAFDISPLAY => 15,
       L_TEXT => 8,
       L_TEXTDISPLAY => 15,
+      L_TRACKCOND => 15,
+      L_TRAIN => 12,
       L_TRAININT => 15,
       L_TSR => 15,
       M_ACK => 1,
+      M_ADHESION => 1,
+      M_AIRTIGHT => 2,
+      M_AXLELOADCAT => 7,
+      M_CURRENT => 10,
       M_DUP => 2,
       M_ERROR => 8,
       M_LEVEL => 3,
       M_LEVELTEXTDISPLAY => 3,
       M_LEVELTR => 3,
+      M_LINEAXLELOADCAT => 16,
+      M_LINEGAUGE => 8,
+      M_LOADINGGAUGE => 8,
+      M_LOC => 3,
+      M_MAMODE => 2,
       M_MCOUNT => 8,
       M_MODE => 5,
       M_MODETEXTDISPLAY => 4,
@@ -226,25 +365,39 @@ is
       M_NVKRINT => 5,
       M_NVKTINT => 5,
       M_NVKVINT => 7,
+      M_PLATFORM => 4,
+      M_POSITION => 24,
+      M_TRACKCOND => 4,
       M_VERSION => 7,
+      M_VOLTAGE => 4,
       NC_CDDIFF => 4,
+      NC_CDTRAIN => 4,
       NC_DIFF => 4,
+      NC_TRAIN => 15,
       NID_BG => 14,
       NID_C => 10,
+      NID_CTRACTION => 10,
       NID_EM => 4,
       NID_ENGINE => 24,
+      NID_LOOP => 14,
+      NID_LX => 8,
       NID_MESSAGE => 8,
+      NID_MN => 24,
       NID_NTC => 8,
       NID_OPERATIONAL => 32,
       NID_PACKET => 8,
+      NID_RADIO => 64,
       NID_RBC => 14,
+      NID_RIU => 14,
       NID_TEXTMESSAGE => 8,
       NID_TSR => 8,
       NID_VBCMK => 6,
       NID_XUSER => 9,
+      N_AXLE => 10,
       N_ITER => 5,
       N_PIG => 3,
       N_TOTAL => 3,
+      Q_ASPECT => 1,
       Q_CONFTEXTDISPLAY => 1,
       Q_DANGERPOINT => 1,
       Q_DESK => 1,
@@ -259,12 +412,19 @@ is
       Q_GDIR => 1,
       Q_INFILL => 1,
       Q_INTEGRITY => 2,
+      Q_LGTLOC => 1,
       Q_LINK => 1,
       Q_LINKORIENTATION => 1,
       Q_LINKREACTION => 2,
       Q_LOCACC => 6,
+      Q_LOOPDIR => 1,
+      Q_LSSMA => 1,
+      Q_LXSTATUS => 1,
+      Q_MAMODE => 1,
       Q_MARQSTREASON => 5,
       Q_MEDIA => 1,
+      Q_MPOSITION => 1,
+      Q_NETWORKTYPE => 2,
       Q_NEWCOUNTRY => 1,
       Q_NVDRIVER_ADHES => 1,
       Q_NVEMRRLS => 1,
@@ -277,25 +437,48 @@ is
       Q_NVSBTSMPERM => 1,
       Q_ORIENTATION => 1,
       Q_OVERLAP => 1,
+      Q_PBDSR => 1,
+      Q_PLATFORM => 2,
+      Q_RBC => 1,
+      Q_RIU => 1,
+      Q_SAFECONSISTLENGTH => 1,
       Q_SCALE => 2,
       Q_SECTIONTIMER => 1,
+      Q_SLEEPSESSION => 1,
+      Q_SRSTOP => 1,
+      Q_SSCODE => 4,
       Q_STATUSLRBG => 2,
+      Q_STOPLX => 1,
+      Q_SUITABILITY => 2,
+      Q_TEXT => 8,
       Q_TEXTCLASS => 2,
       Q_TEXTCONFIRM => 2,
       Q_TEXTDISPLAY => 1,
       Q_TEXTREPORT => 1,
+      Q_TRACKINIT => 1,
       Q_UPDOWN => 1,
+      Q_VBCO => 1,
+      T_CYCLOC => 8,
+      T_CYCRQST => 8,
       T_EMA => 10,
       T_ENDTIMER => 10,
+      T_LSSMA => 8,
+      T_MAR => 8,
       T_NVCONTACT => 8,
       T_NVOVTRP => 8,
       T_OL => 10,
       T_SECTIONTIMER => 10,
       T_TEXTDISPLAY => 10,
+      T_TIMEOUTRQST => 10,
       T_TRAIN => 32,
+      T_VBC => 8,
+      V_AXLELOAD => 7,
       V_DIFF => 7,
       V_EMA => 7,
+      V_LX => 7,
       V_MAIN => 7,
+      V_MAMODE => 7,
+      V_MAXTRAIN => 7,
       V_NVALLOWOVTRP => 7,
       V_NVKVINT => 7,
       V_NVLIMSUPERV => 7,
@@ -307,6 +490,7 @@ is
       V_NVUNFIT => 7,
       V_RELEASEDP => 7,
       V_RELEASEOL => 7,
+      V_REVERSE => 7,
       V_SM => 7,
       V_STATIC => 7,
       V_TRAIN => 7,
@@ -320,47 +504,94 @@ is
       A_NVMAXREDADH3 => 60,
       A_NVP12 => 63,
       A_NVP23 => 63,
+      D_ADHESION => 32767,
+      D_AXLELOAD => 32767,
+      D_CURRENT => 32767,
+      D_CYCLOC => 32766,
       D_DP => 32767,
       D_EMERGENCYSTOP => 32767,
       D_ENDTIMERSTARTLOC => 32767,
       D_GRADIENT => 32767,
+      D_INFILL => 32767,
       D_LEVELTR => 32766,
       D_LINK => 32767,
+      D_LOC => 32767,
+      D_LOOP => 32767,
       D_LRBG => 32766,
+      D_LX => 32767,
+      D_MAMODE => 32767,
       D_NVOVTRP => 32767,
       D_NVPOTRP => 32767,
       D_NVROLL => 32766,
       D_NVSTFF => 32766,
       D_OL => 32767,
+      D_PBD => 32767,
+      D_PBDSR => 32767,
+      D_POSOFF => 32767,
+      D_RBCTR => 32767,
       D_REF => 32767,
+      D_REVERSE => 32766,
       D_SECTIONTIMERSTOPLOC => 32767,
       D_SR => 32766,
       D_STARTOL => 32767,
+      D_STARTREVERSE => 32767,
       D_STATIC => 32767,
+      D_SUITABILITY => 32767,
       D_TAFDISPLAY => 32767,
       D_TEXTDISPLAY => 32766,
+      D_TRACKCOND => 32767,
+      D_TRACKINIT => 32767,
+      D_TRACTION => 32767,
       D_TSR => 32767,
       D_VALIDNV => 32766,
       G_A => 254,
+      G_PBDSR => 255,
+      G_TSR => 255,
       L_ACKLEVELTR => 32767,
+      L_ACKMAMODE => 32767,
+      L_ADHESION => 32767,
+      L_AXLELOAD => 32767,
+      L_CONSISTFRONTENGINEMAX => 4095,
+      L_CONSISTFRONTENGINEMIN => 4095,
+      L_CONSISTFRONTENGINENOM => 4095,
+      L_CONSISTREARENGINEMAX => 4095,
+      L_CONSISTREARENGINEMIN => 4095,
+      L_CONSISTREARENGINENOM => 4095,
       L_DOUBTOVER => 32766,
       L_DOUBTUNDER => 32766,
       L_ENDSECTION => 32767,
+      L_LOOP => 32767,
+      L_LX => 32767,
+      L_MAMODE => 32766,
       L_MESSAGE => 1023,
       L_NVKRINT => 31,
       L_PACKET => 8191,
+      L_PBDSR => 32767,
+      L_REVERSEAREA => 32767,
       L_SECTION => 32767,
+      L_STOPLX => 32767,
       L_TAFDISPLAY => 32767,
       L_TEXT => 255,
       L_TEXTDISPLAY => 32766,
+      L_TRACKCOND => 32767,
+      L_TRAIN => 4095,
       L_TRAININT => 32767,
       L_TSR => 32767,
       M_ACK => 1,
+      M_ADHESION => 1,
+      M_AIRTIGHT => 1,
+      M_AXLELOADCAT => 12,
+      M_CURRENT => 1000,
       M_DUP => 2,
       M_ERROR => 10,
       M_LEVEL => 3,
       M_LEVELTEXTDISPLAY => 4,
       M_LEVELTR => 3,
+      M_LINEAXLELOADCAT => 65535,
+      M_LINEGAUGE => 255,
+      M_LOADINGGAUGE => 4,
+      M_LOC => 2,
+      M_MAMODE => 2,
       M_MCOUNT => 253,
       M_MODE => 17,
       M_MODETEXTDISPLAY => 15,
@@ -371,25 +602,39 @@ is
       M_NVKRINT => 31,
       M_NVKTINT => 31,
       M_NVKVINT => 127,
+      M_PLATFORM => 13,
+      M_POSITION => 9999999,
+      M_TRACKCOND => 10,
       M_VERSION => 127,
+      M_VOLTAGE => 5,
       NC_CDDIFF => 10,
+      NC_CDTRAIN => 10,
       NC_DIFF => 2,
+      NC_TRAIN => 32767,
       NID_BG => 16382,
       NID_C => 1023,
+      NID_CTRACTION => 1023,
       NID_EM => 15,
       NID_ENGINE => 16777215,
+      NID_LOOP => 16383,
+      NID_LX => 255,
       NID_MESSAGE => 255,
+      NID_MN => 16777215,
       NID_NTC => 255,
       NID_OPERATIONAL => 4294967295,
       NID_PACKET => 255,
+      NID_RADIO => 18446744073709551615,
       NID_RBC => 16382,
+      NID_RIU => 16383,
       NID_TEXTMESSAGE => 255,
-      NID_TSR => 255,
+      NID_TSR => 254,
       NID_VBCMK => 63,
       NID_XUSER => 511,
+      N_AXLE => 1022,
       N_ITER => 31,
       N_PIG => 7,
       N_TOTAL => 7,
+      Q_ASPECT => 1,
       Q_CONFTEXTDISPLAY => 1,
       Q_DANGERPOINT => 1,
       Q_DESK => 1,
@@ -404,12 +649,19 @@ is
       Q_GDIR => 1,
       Q_INFILL => 1,
       Q_INTEGRITY => 3,
+      Q_LGTLOC => 1,
       Q_LINK => 1,
       Q_LINKORIENTATION => 1,
       Q_LINKREACTION => 2,
       Q_LOCACC => 63,
+      Q_LOOPDIR => 1,
+      Q_LSSMA => 1,
+      Q_LXSTATUS => 1,
+      Q_MAMODE => 1,
       Q_MARQSTREASON => 31,
       Q_MEDIA => 1,
+      Q_MPOSITION => 1,
+      Q_NETWORKTYPE => 2,
       Q_NEWCOUNTRY => 1,
       Q_NVDRIVER_ADHES => 1,
       Q_NVEMRRLS => 1,
@@ -422,25 +674,48 @@ is
       Q_NVSBTSMPERM => 1,
       Q_ORIENTATION => 1,
       Q_OVERLAP => 1,
+      Q_PBDSR => 1,
+      Q_PLATFORM => 2,
+      Q_RBC => 1,
+      Q_RIU => 1,
+      Q_SAFECONSISTLENGTH => 1,
       Q_SCALE => 2,
       Q_SECTIONTIMER => 1,
+      Q_SLEEPSESSION => 1,
+      Q_SRSTOP => 1,
+      Q_SSCODE => 14,
       Q_STATUSLRBG => 2,
+      Q_STOPLX => 1,
+      Q_SUITABILITY => 2,
+      Q_TEXT => 1,
       Q_TEXTCLASS => 1,
       Q_TEXTCONFIRM => 3,
       Q_TEXTDISPLAY => 1,
       Q_TEXTREPORT => 1,
+      Q_TRACKINIT => 1,
       Q_UPDOWN => 1,
+      Q_VBCO => 1,
+      T_CYCLOC => 254,
+      T_CYCRQST => 254,
       T_EMA => 1022,
       T_ENDTIMER => 1022,
+      T_LSSMA => 255,
+      T_MAR => 254,
       T_NVCONTACT => 254,
       T_NVOVTRP => 255,
       T_OL => 1022,
       T_SECTIONTIMER => 1022,
       T_TEXTDISPLAY => 1022,
+      T_TIMEOUTRQST => 1022,
       T_TRAIN => 4294967294,
+      T_VBC => 255,
+      V_AXLELOAD => 120,
       V_DIFF => 120,
       V_EMA => 120,
+      V_LX => 120,
       V_MAIN => 120,
+      V_MAMODE => 120,
+      V_MAXTRAIN => 120,
       V_NVALLOWOVTRP => 120,
       V_NVKVINT => 120,
       V_NVLIMSUPERV => 120,
@@ -452,6 +727,7 @@ is
       V_NVUNFIT => 120,
       V_RELEASEDP => 120,
       V_RELEASEOL => 120,
+      V_REVERSE => 120,
       V_SM => 120,
       V_STATIC => 120,
       V_TRAIN => 120,
@@ -460,12 +736,14 @@ is
 
    --  A_NVMAXREDADH1, 7.5.0.1: 6 bits, 0 .. 60, 0.05 m/s2
    type A_NVMAXREDADH1_T is range 0 .. 63;
-   A_NVMAXREDADH1_No_Maximum_Display_Target : constant A_NVMAXREDADH1_T := 61;
-   --  61: no maximum, display target
-   A_NVMAXREDADH1_No_Maximum_Display_Time : constant A_NVMAXREDADH1_T := 62;
-   --  62: no maximum, display time
-   A_NVMAXREDADH1_No_Maximum_No_Display : constant A_NVMAXREDADH1_T := 63;
-   --  63: no maximum, no display
+   A_NVMAXREDADH1_No_Maximum_Deceleration_Display :
+     constant A_NVMAXREDADH1_T := 61;
+   --  61: No maximum deceleration, display target information in CSM
+   A_NVMAXREDADH1_No_Maximum_Deceleration_Display_62 :
+     constant A_NVMAXREDADH1_T := 62;
+   --  62: No maximum deceleration, display time to Indication in CSM
+   A_NVMAXREDADH1_No_Maximum_Deceleration_No : constant A_NVMAXREDADH1_T := 63;
+   --  63: No maximum deceleration, no additional display
    function To_A_NVMAXREDADH1 (V : Unsigned_64) return A_NVMAXREDADH1_T is
      (A_NVMAXREDADH1_T (V))
      with Pre => Fits (V, 6);
@@ -477,12 +755,14 @@ is
 
    --  A_NVMAXREDADH2, 7.5.0.2: 6 bits, 0 .. 60, 0.05 m/s2
    type A_NVMAXREDADH2_T is range 0 .. 63;
-   A_NVMAXREDADH2_No_Maximum_Display_Target : constant A_NVMAXREDADH2_T := 61;
-   --  61: no maximum, display target
-   A_NVMAXREDADH2_No_Maximum_Display_Time : constant A_NVMAXREDADH2_T := 62;
-   --  62: no maximum, display time
-   A_NVMAXREDADH2_No_Maximum_No_Display : constant A_NVMAXREDADH2_T := 63;
-   --  63: no maximum, no display
+   A_NVMAXREDADH2_No_Maximum_Deceleration_Display :
+     constant A_NVMAXREDADH2_T := 61;
+   --  61: No maximum deceleration, display target information in CSM
+   A_NVMAXREDADH2_No_Maximum_Deceleration_Display_62 :
+     constant A_NVMAXREDADH2_T := 62;
+   --  62: No maximum deceleration, display time to Indication in CSM
+   A_NVMAXREDADH2_No_Maximum_Deceleration_No : constant A_NVMAXREDADH2_T := 63;
+   --  63: No maximum deceleration, no additional display
    function To_A_NVMAXREDADH2 (V : Unsigned_64) return A_NVMAXREDADH2_T is
      (A_NVMAXREDADH2_T (V))
      with Pre => Fits (V, 6);
@@ -494,12 +774,14 @@ is
 
    --  A_NVMAXREDADH3, 7.5.0.3: 6 bits, 0 .. 60, 0.05 m/s2
    type A_NVMAXREDADH3_T is range 0 .. 63;
-   A_NVMAXREDADH3_No_Maximum_Display_Target : constant A_NVMAXREDADH3_T := 61;
-   --  61: no maximum, display target
-   A_NVMAXREDADH3_No_Maximum_Display_Time : constant A_NVMAXREDADH3_T := 62;
-   --  62: no maximum, display time
-   A_NVMAXREDADH3_No_Maximum_No_Display : constant A_NVMAXREDADH3_T := 63;
-   --  63: no maximum, no display
+   A_NVMAXREDADH3_No_Maximum_Deceleration_Display :
+     constant A_NVMAXREDADH3_T := 61;
+   --  61: No maximum deceleration, display target information in CSM
+   A_NVMAXREDADH3_No_Maximum_Deceleration_Display_62 :
+     constant A_NVMAXREDADH3_T := 62;
+   --  62: No maximum deceleration, display time to Indication in CSM
+   A_NVMAXREDADH3_No_Maximum_Deceleration_No : constant A_NVMAXREDADH3_T := 63;
+   --  63: No maximum deceleration, no additional display
    function To_A_NVMAXREDADH3 (V : Unsigned_64) return A_NVMAXREDADH3_T is
      (A_NVMAXREDADH3_T (V))
      with Pre => Fits (V, 6);
@@ -529,6 +811,52 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 6);
    function Is_Valid (X : A_NVP23_T) return Boolean is
+     (True);
+
+   --  D_ADHESION, 7.5.1.1: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_ADHESION_T is range 0 .. 32767;
+   function To_D_ADHESION (V : Unsigned_64) return D_ADHESION_T is
+     (D_ADHESION_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_ADHESION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_ADHESION_T) return Boolean is
+     (True);
+
+   --  D_AXLELOAD, 7.5.1.2: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_AXLELOAD_T is range 0 .. 32767;
+   function To_D_AXLELOAD (V : Unsigned_64) return D_AXLELOAD_T is
+     (D_AXLELOAD_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_AXLELOAD_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_AXLELOAD_T) return Boolean is
+     (True);
+
+   --  D_CURRENT, 7.5.1.2.1: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_CURRENT_T is range 0 .. 32767;
+   function To_D_CURRENT (V : Unsigned_64) return D_CURRENT_T is
+     (D_CURRENT_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_CURRENT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_CURRENT_T) return Boolean is
+     (True);
+
+   --  D_CYCLOC, 7.5.1.3: 15 bits, 0 .. 32766, resolution by Q_SCALE
+   type D_CYCLOC_T is range 0 .. 32767;
+   D_CYCLOC_The_Train_Has_Not : constant D_CYCLOC_T := 32767;
+   --  32767: The train has not to report cyclically its position.
+   function To_D_CYCLOC (V : Unsigned_64) return D_CYCLOC_T is
+     (D_CYCLOC_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_CYCLOC_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_CYCLOC_T) return Boolean is
      (True);
 
    --  D_DP, 7.5.1.4: 15 bits, 0 .. 32767, resolution by Q_SCALE
@@ -576,10 +904,21 @@ is
    function Is_Valid (X : D_GRADIENT_T) return Boolean is
      (True);
 
+   --  D_INFILL, 7.5.1.8: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_INFILL_T is range 0 .. 32767;
+   function To_D_INFILL (V : Unsigned_64) return D_INFILL_T is
+     (D_INFILL_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_INFILL_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_INFILL_T) return Boolean is
+     (True);
+
    --  D_LEVELTR, 7.5.1.9: 15 bits, 0 .. 32766, resolution by Q_SCALE
    type D_LEVELTR_T is range 0 .. 32767;
-   D_LEVELTR_Now : constant D_LEVELTR_T := 32767;
-   --  32767: now
+   D_LEVELTR_Now_The_Level_Transition : constant D_LEVELTR_T := 32767;
+   --  32767: Now (The level transition is performed upon receipt of the order)
    function To_D_LEVELTR (V : Unsigned_64) return D_LEVELTR_T is
      (D_LEVELTR_T (V))
      with Pre => Fits (V, 15);
@@ -600,10 +939,32 @@ is
    function Is_Valid (X : D_LINK_T) return Boolean is
      (True);
 
+   --  D_LOC, 7.5.1.11: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_LOC_T is range 0 .. 32767;
+   function To_D_LOC (V : Unsigned_64) return D_LOC_T is
+     (D_LOC_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_LOC_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_LOC_T) return Boolean is
+     (True);
+
+   --  D_LOOP, 7.5.1.12: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_LOOP_T is range 0 .. 32767;
+   function To_D_LOOP (V : Unsigned_64) return D_LOOP_T is
+     (D_LOOP_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_LOOP_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_LOOP_T) return Boolean is
+     (True);
+
    --  D_LRBG, 7.5.1.13: 15 bits, 0 .. 32766, resolution by Q_SCALE
    type D_LRBG_T is range 0 .. 32767;
-   D_LRBG_Unknown : constant D_LRBG_T := 32767;
-   --  32767: unknown
+   D_LRBG_Unknown_Or_Greater_Than : constant D_LRBG_T := 32767;
+   --  32767: Unknown or greater than 327.660 km
    function To_D_LRBG (V : Unsigned_64) return D_LRBG_T is
      (D_LRBG_T (V))
      with Pre => Fits (V, 15);
@@ -611,6 +972,28 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 15);
    function Is_Valid (X : D_LRBG_T) return Boolean is
+     (True);
+
+   --  D_LX, 7.5.1.13.1: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_LX_T is range 0 .. 32767;
+   function To_D_LX (V : Unsigned_64) return D_LX_T is
+     (D_LX_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_LX_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_LX_T) return Boolean is
+     (True);
+
+   --  D_MAMODE, 7.5.1.14: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_MAMODE_T is range 0 .. 32767;
+   function To_D_MAMODE (V : Unsigned_64) return D_MAMODE_T is
+     (D_MAMODE_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_MAMODE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_MAMODE_T) return Boolean is
      (True);
 
    --  D_NVOVTRP, 7.5.1.15: 15 bits, 0 .. 32767, resolution by Q_SCALE
@@ -672,9 +1055,53 @@ is
    function Is_Valid (X : D_OL_T) return Boolean is
      (True);
 
+   --  D_PBD, 7.5.1.19.1: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_PBD_T is range 0 .. 32767;
+   function To_D_PBD (V : Unsigned_64) return D_PBD_T is
+     (D_PBD_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_PBD_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_PBD_T) return Boolean is
+     (True);
+
+   --  D_PBDSR, 7.5.1.19.2: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_PBDSR_T is range 0 .. 32767;
+   function To_D_PBDSR (V : Unsigned_64) return D_PBDSR_T is
+     (D_PBDSR_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_PBDSR_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_PBDSR_T) return Boolean is
+     (True);
+
+   --  D_POSOFF, 7.5.1.20: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_POSOFF_T is range 0 .. 32767;
+   function To_D_POSOFF (V : Unsigned_64) return D_POSOFF_T is
+     (D_POSOFF_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_POSOFF_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_POSOFF_T) return Boolean is
+     (True);
+
+   --  D_RBCTR, 7.5.1.21: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_RBCTR_T is range 0 .. 32767;
+   function To_D_RBCTR (V : Unsigned_64) return D_RBCTR_T is
+     (D_RBCTR_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_RBCTR_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_RBCTR_T) return Boolean is
+     (True);
+
    --  D_REF, 7.5.1.22: 16 bits, two's complement, -32768 .. 32767, resolution
-   --  by Q_SCALE, two's complement, positive in the nominal direction of the
-   --  LRBG
+   --  by Q_SCALE, signed, two's complement (7.3.2.7); 10 cm, 1 m or 10 m
+   --  depending on Q_SCALE
    type D_REF_T is range -32768 .. 32767;
    function To_D_REF (V : Unsigned_64) return D_REF_T is
      (if V >= 32768 then D_REF_T (Integer_64 (V) - 65536) else D_REF_T (V))
@@ -683,6 +1110,19 @@ is
      (if X < 0 then Unsigned_64 (Integer_64 (X) + 65536) else Unsigned_64 (X))
      with Post => Fits (Code'Result, 16);
    function Is_Valid (X : D_REF_T) return Boolean is
+     (True);
+
+   --  D_REVERSE, 7.5.1.23: 15 bits, 0 .. 32766, resolution by Q_SCALE
+   type D_REVERSE_T is range 0 .. 32767;
+   D_REVERSE_Infinite : constant D_REVERSE_T := 32767;
+   --  32767: infinite
+   function To_D_REVERSE (V : Unsigned_64) return D_REVERSE_T is
+     (D_REVERSE_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_REVERSE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_REVERSE_T) return Boolean is
      (True);
 
    --  D_SECTIONTIMERSTOPLOC, 7.5.1.24: 15 bits, 0 .. 32767, resolution by
@@ -722,6 +1162,17 @@ is
    function Is_Valid (X : D_STARTOL_T) return Boolean is
      (True);
 
+   --  D_STARTREVERSE, 7.5.1.27: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_STARTREVERSE_T is range 0 .. 32767;
+   function To_D_STARTREVERSE (V : Unsigned_64) return D_STARTREVERSE_T is
+     (D_STARTREVERSE_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_STARTREVERSE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_STARTREVERSE_T) return Boolean is
+     (True);
+
    --  D_STATIC, 7.5.1.28: 15 bits, 0 .. 32767, resolution by Q_SCALE
    type D_STATIC_T is range 0 .. 32767;
    function To_D_STATIC (V : Unsigned_64) return D_STATIC_T is
@@ -731,6 +1182,17 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 15);
    function Is_Valid (X : D_STATIC_T) return Boolean is
+     (True);
+
+   --  D_SUITABILITY, 7.5.1.29: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_SUITABILITY_T is range 0 .. 32767;
+   function To_D_SUITABILITY (V : Unsigned_64) return D_SUITABILITY_T is
+     (D_SUITABILITY_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_SUITABILITY_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_SUITABILITY_T) return Boolean is
      (True);
 
    --  D_TAFDISPLAY, 7.5.1.30: 15 bits, 0 .. 32767, resolution by Q_SCALE
@@ -746,8 +1208,9 @@ is
 
    --  D_TEXTDISPLAY, 7.5.1.31: 15 bits, 0 .. 32766, resolution by Q_SCALE
    type D_TEXTDISPLAY_T is range 0 .. 32767;
-   D_TEXTDISPLAY_No_Location : constant D_TEXTDISPLAY_T := 32767;
-   --  32767: no location
+   D_TEXTDISPLAY_No_Location_Sub_Condition : constant D_TEXTDISPLAY_T := 32767;
+   --  32767: No “location” sub-condition specified for the start condition of
+   --  the display of the text
    function To_D_TEXTDISPLAY (V : Unsigned_64) return D_TEXTDISPLAY_T is
      (D_TEXTDISPLAY_T (V))
      with Pre => Fits (V, 15);
@@ -755,6 +1218,39 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 15);
    function Is_Valid (X : D_TEXTDISPLAY_T) return Boolean is
+     (True);
+
+   --  D_TRACKCOND, 7.5.1.33: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_TRACKCOND_T is range 0 .. 32767;
+   function To_D_TRACKCOND (V : Unsigned_64) return D_TRACKCOND_T is
+     (D_TRACKCOND_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_TRACKCOND_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_TRACKCOND_T) return Boolean is
+     (True);
+
+   --  D_TRACKINIT, 7.5.1.32: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_TRACKINIT_T is range 0 .. 32767;
+   function To_D_TRACKINIT (V : Unsigned_64) return D_TRACKINIT_T is
+     (D_TRACKINIT_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_TRACKINIT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_TRACKINIT_T) return Boolean is
+     (True);
+
+   --  D_TRACTION, 7.5.1.34: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type D_TRACTION_T is range 0 .. 32767;
+   function To_D_TRACTION (V : Unsigned_64) return D_TRACTION_T is
+     (D_TRACTION_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : D_TRACTION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : D_TRACTION_T) return Boolean is
      (True);
 
    --  D_TSR, 7.5.1.35: 15 bits, 0 .. 32767, resolution by Q_SCALE
@@ -770,8 +1266,8 @@ is
 
    --  D_VALIDNV, 7.5.1.36: 15 bits, 0 .. 32766, resolution by Q_SCALE
    type D_VALIDNV_T is range 0 .. 32767;
-   D_VALIDNV_Now : constant D_VALIDNV_T := 32767;
-   --  32767: now
+   D_VALIDNV_Now_National_Values_Are : constant D_VALIDNV_T := 32767;
+   --  32767: Now (National Values are immediately applicable)
    function To_D_VALIDNV (V : Unsigned_64) return D_VALIDNV_T is
      (D_VALIDNV_T (V))
      with Pre => Fits (V, 15);
@@ -781,10 +1277,12 @@ is
    function Is_Valid (X : D_VALIDNV_T) return Boolean is
      (True);
 
-   --  G_A, 7.5.1.37: 8 bits, 0 .. 254, 1 permil
+   --  G_A, 7.5.1.37: 8 bits, 0 .. 254, 1 permille (absolute value, slope in
+   --  Q_GDIR)
    type G_A_T is range 0 .. 255;
-   G_A_End_Of_Description : constant G_A_T := 255;
-   --  255: end of description
+   G_A_Non_Numerical_Value_Telling : constant G_A_T := 255;
+   --  255: Non numerical value telling that the current gradient description
+   --  ends at D_GRADIENT(n)
    function To_G_A (V : Unsigned_64) return G_A_T is
      (G_A_T (V))
      with Pre => Fits (V, 8);
@@ -792,6 +1290,30 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 8);
    function Is_Valid (X : G_A_T) return Boolean is
+     (True);
+
+   --  G_PBDSR, 7.5.1.37.1: 8 bits, 0 .. 255, 1 permille (absolute value, slope
+   --  in Q_GDIR)
+   type G_PBDSR_T is range 0 .. 255;
+   function To_G_PBDSR (V : Unsigned_64) return G_PBDSR_T is
+     (G_PBDSR_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : G_PBDSR_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : G_PBDSR_T) return Boolean is
+     (True);
+
+   --  G_TSR, 7.5.1.38: 8 bits, 0 .. 255, 1 permille (absolute value, slope in
+   --  Q_GDIR)
+   type G_TSR_T is range 0 .. 255;
+   function To_G_TSR (V : Unsigned_64) return G_TSR_T is
+     (G_TSR_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : G_TSR_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : G_TSR_T) return Boolean is
      (True);
 
    --  L_ACKLEVELTR, 7.5.1.39: 15 bits, 0 .. 32767, resolution by Q_SCALE
@@ -805,10 +1327,115 @@ is
    function Is_Valid (X : L_ACKLEVELTR_T) return Boolean is
      (True);
 
+   --  L_ACKMAMODE, 7.5.1.40: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_ACKMAMODE_T is range 0 .. 32767;
+   function To_L_ACKMAMODE (V : Unsigned_64) return L_ACKMAMODE_T is
+     (L_ACKMAMODE_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_ACKMAMODE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_ACKMAMODE_T) return Boolean is
+     (True);
+
+   --  L_ADHESION, 7.5.1.41: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_ADHESION_T is range 0 .. 32767;
+   function To_L_ADHESION (V : Unsigned_64) return L_ADHESION_T is
+     (L_ADHESION_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_ADHESION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_ADHESION_T) return Boolean is
+     (True);
+
+   --  L_AXLELOAD, 7.5.1.42: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_AXLELOAD_T is range 0 .. 32767;
+   function To_L_AXLELOAD (V : Unsigned_64) return L_AXLELOAD_T is
+     (L_AXLELOAD_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_AXLELOAD_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_AXLELOAD_T) return Boolean is
+     (True);
+
+   --  L_CONSISTFRONTENGINEMAX, 7.5.1.42.1: 12 bits, 0 .. 4095, 1 m
+   type L_CONSISTFRONTENGINEMAX_T is range 0 .. 4095;
+   function To_L_CONSISTFRONTENGINEMAX (V : Unsigned_64)
+     return L_CONSISTFRONTENGINEMAX_T
+   is (L_CONSISTFRONTENGINEMAX_T (V))
+     with Pre => Fits (V, 12);
+   function Code (X : L_CONSISTFRONTENGINEMAX_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 12);
+   function Is_Valid (X : L_CONSISTFRONTENGINEMAX_T) return Boolean is
+     (True);
+
+   --  L_CONSISTFRONTENGINEMIN, 7.5.1.42.2: 12 bits, 0 .. 4095, 1 m
+   type L_CONSISTFRONTENGINEMIN_T is range 0 .. 4095;
+   function To_L_CONSISTFRONTENGINEMIN (V : Unsigned_64)
+     return L_CONSISTFRONTENGINEMIN_T
+   is (L_CONSISTFRONTENGINEMIN_T (V))
+     with Pre => Fits (V, 12);
+   function Code (X : L_CONSISTFRONTENGINEMIN_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 12);
+   function Is_Valid (X : L_CONSISTFRONTENGINEMIN_T) return Boolean is
+     (True);
+
+   --  L_CONSISTFRONTENGINENOM, 7.5.1.42.3: 12 bits, 0 .. 4095, 1 m
+   type L_CONSISTFRONTENGINENOM_T is range 0 .. 4095;
+   function To_L_CONSISTFRONTENGINENOM (V : Unsigned_64)
+     return L_CONSISTFRONTENGINENOM_T
+   is (L_CONSISTFRONTENGINENOM_T (V))
+     with Pre => Fits (V, 12);
+   function Code (X : L_CONSISTFRONTENGINENOM_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 12);
+   function Is_Valid (X : L_CONSISTFRONTENGINENOM_T) return Boolean is
+     (True);
+
+   --  L_CONSISTREARENGINEMAX, 7.5.1.42.4: 12 bits, 0 .. 4095, 1 m
+   type L_CONSISTREARENGINEMAX_T is range 0 .. 4095;
+   function To_L_CONSISTREARENGINEMAX (V : Unsigned_64)
+     return L_CONSISTREARENGINEMAX_T
+   is (L_CONSISTREARENGINEMAX_T (V))
+     with Pre => Fits (V, 12);
+   function Code (X : L_CONSISTREARENGINEMAX_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 12);
+   function Is_Valid (X : L_CONSISTREARENGINEMAX_T) return Boolean is
+     (True);
+
+   --  L_CONSISTREARENGINEMIN, 7.5.1.42.5: 12 bits, 0 .. 4095, 1 m
+   type L_CONSISTREARENGINEMIN_T is range 0 .. 4095;
+   function To_L_CONSISTREARENGINEMIN (V : Unsigned_64)
+     return L_CONSISTREARENGINEMIN_T
+   is (L_CONSISTREARENGINEMIN_T (V))
+     with Pre => Fits (V, 12);
+   function Code (X : L_CONSISTREARENGINEMIN_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 12);
+   function Is_Valid (X : L_CONSISTREARENGINEMIN_T) return Boolean is
+     (True);
+
+   --  L_CONSISTREARENGINENOM, 7.5.1.42.6: 12 bits, 0 .. 4095, 1 m
+   type L_CONSISTREARENGINENOM_T is range 0 .. 4095;
+   function To_L_CONSISTREARENGINENOM (V : Unsigned_64)
+     return L_CONSISTREARENGINENOM_T
+   is (L_CONSISTREARENGINENOM_T (V))
+     with Pre => Fits (V, 12);
+   function Code (X : L_CONSISTREARENGINENOM_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 12);
+   function Is_Valid (X : L_CONSISTREARENGINENOM_T) return Boolean is
+     (True);
+
    --  L_DOUBTOVER, 7.5.1.43: 15 bits, 0 .. 32766, resolution by Q_SCALE
    type L_DOUBTOVER_T is range 0 .. 32767;
-   L_DOUBTOVER_Unknown : constant L_DOUBTOVER_T := 32767;
-   --  32767: unknown
+   L_DOUBTOVER_Unknown_Or_Greater_Than : constant L_DOUBTOVER_T := 32767;
+   --  32767: Unknown or greater than 327.660 km
    function To_L_DOUBTOVER (V : Unsigned_64) return L_DOUBTOVER_T is
      (L_DOUBTOVER_T (V))
      with Pre => Fits (V, 15);
@@ -820,8 +1447,8 @@ is
 
    --  L_DOUBTUNDER, 7.5.1.44: 15 bits, 0 .. 32766, resolution by Q_SCALE
    type L_DOUBTUNDER_T is range 0 .. 32767;
-   L_DOUBTUNDER_Unknown : constant L_DOUBTUNDER_T := 32767;
-   --  32767: unknown
+   L_DOUBTUNDER_Unknown_Or_Greater_Than : constant L_DOUBTUNDER_T := 32767;
+   --  32767: Unknown or greater than 327.660 km
    function To_L_DOUBTUNDER (V : Unsigned_64) return L_DOUBTUNDER_T is
      (L_DOUBTUNDER_T (V))
      with Pre => Fits (V, 15);
@@ -842,6 +1469,41 @@ is
    function Is_Valid (X : L_ENDSECTION_T) return Boolean is
      (True);
 
+   --  L_LOOP, 7.5.1.46: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_LOOP_T is range 0 .. 32767;
+   function To_L_LOOP (V : Unsigned_64) return L_LOOP_T is
+     (L_LOOP_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_LOOP_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_LOOP_T) return Boolean is
+     (True);
+
+   --  L_LX, 7.5.1.46.1: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_LX_T is range 0 .. 32767;
+   function To_L_LX (V : Unsigned_64) return L_LX_T is
+     (L_LX_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_LX_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_LX_T) return Boolean is
+     (True);
+
+   --  L_MAMODE, 7.5.1.47: 15 bits, 0 .. 32766, resolution by Q_SCALE
+   type L_MAMODE_T is range 0 .. 32767;
+   L_MAMODE_Infinite : constant L_MAMODE_T := 32767;
+   --  32767: infinite
+   function To_L_MAMODE (V : Unsigned_64) return L_MAMODE_T is
+     (L_MAMODE_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_MAMODE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_MAMODE_T) return Boolean is
+     (True);
+
    --  L_MESSAGE, 7.5.1.48: 10 bits, 0 .. 1023, 1 byte
    type L_MESSAGE_T is range 0 .. 1023;
    function To_L_MESSAGE (V : Unsigned_64) return L_MESSAGE_T is
@@ -853,7 +1515,9 @@ is
    function Is_Valid (X : L_MESSAGE_T) return Boolean is
      (True);
 
-   --  L_NVKRINT, 7.5.1.48.1: 5 bits, 0 .. 31, 0 m, 25 m, 50 m, ... (table)
+   --  L_NVKRINT, 7.5.1.48.1: 5 bits, 0 .. 31, table: 0 = 0 m, 1 = 25 m, 2 = 50
+   --  m, 3 = 75 m, 4 = 100 m, 5 = 150 m, 6 = 200 m, 7 = 300 m, then steps of
+   --  100 m up to 31 = 2700 m
    type L_NVKRINT_T is range 0 .. 31;
    function To_L_NVKRINT (V : Unsigned_64) return L_NVKRINT_T is
      (L_NVKRINT_T (V))
@@ -875,6 +1539,28 @@ is
    function Is_Valid (X : L_PACKET_T) return Boolean is
      (True);
 
+   --  L_PBDSR, 7.5.1.49.1: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_PBDSR_T is range 0 .. 32767;
+   function To_L_PBDSR (V : Unsigned_64) return L_PBDSR_T is
+     (L_PBDSR_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_PBDSR_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_PBDSR_T) return Boolean is
+     (True);
+
+   --  L_REVERSEAREA, 7.5.1.50: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_REVERSEAREA_T is range 0 .. 32767;
+   function To_L_REVERSEAREA (V : Unsigned_64) return L_REVERSEAREA_T is
+     (L_REVERSEAREA_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_REVERSEAREA_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_REVERSEAREA_T) return Boolean is
+     (True);
+
    --  L_SECTION, 7.5.1.51: 15 bits, 0 .. 32767, resolution by Q_SCALE
    type L_SECTION_T is range 0 .. 32767;
    function To_L_SECTION (V : Unsigned_64) return L_SECTION_T is
@@ -884,6 +1570,17 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 15);
    function Is_Valid (X : L_SECTION_T) return Boolean is
+     (True);
+
+   --  L_STOPLX, 7.5.1.51.1: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_STOPLX_T is range 0 .. 32767;
+   function To_L_STOPLX (V : Unsigned_64) return L_STOPLX_T is
+     (L_STOPLX_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_STOPLX_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_STOPLX_T) return Boolean is
      (True);
 
    --  L_TAFDISPLAY, 7.5.1.52: 15 bits, 0 .. 32767, resolution by Q_SCALE
@@ -897,7 +1594,7 @@ is
    function Is_Valid (X : L_TAFDISPLAY_T) return Boolean is
      (True);
 
-   --  L_TEXT, 7.5.1.53: 8 bits, 0 .. 255, 1 text string element
+   --  L_TEXT, 7.5.1.53: 8 bits, 0 .. 255, number of X_TEXT elements
    type L_TEXT_T is range 0 .. 255;
    function To_L_TEXT (V : Unsigned_64) return L_TEXT_T is
      (L_TEXT_T (V))
@@ -910,8 +1607,9 @@ is
 
    --  L_TEXTDISPLAY, 7.5.1.54: 15 bits, 0 .. 32766, resolution by Q_SCALE
    type L_TEXTDISPLAY_T is range 0 .. 32767;
-   L_TEXTDISPLAY_No_Location : constant L_TEXTDISPLAY_T := 32767;
-   --  32767: no location
+   L_TEXTDISPLAY_No_Location_Sub_Condition : constant L_TEXTDISPLAY_T := 32767;
+   --  32767: No “location” sub-condition specified for the end condition of
+   --  the display of the text
    function To_L_TEXTDISPLAY (V : Unsigned_64) return L_TEXTDISPLAY_T is
      (L_TEXTDISPLAY_T (V))
      with Pre => Fits (V, 15);
@@ -919,6 +1617,28 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 15);
    function Is_Valid (X : L_TEXTDISPLAY_T) return Boolean is
+     (True);
+
+   --  L_TRACKCOND, 7.5.1.55: 15 bits, 0 .. 32767, resolution by Q_SCALE
+   type L_TRACKCOND_T is range 0 .. 32767;
+   function To_L_TRACKCOND (V : Unsigned_64) return L_TRACKCOND_T is
+     (L_TRACKCOND_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : L_TRACKCOND_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : L_TRACKCOND_T) return Boolean is
+     (True);
+
+   --  L_TRAIN, 7.5.1.56: 12 bits, 0 .. 4095, 1 m
+   type L_TRAIN_T is range 0 .. 4095;
+   function To_L_TRAIN (V : Unsigned_64) return L_TRAIN_T is
+     (L_TRAIN_T (V))
+     with Pre => Fits (V, 12);
+   function Code (X : L_TRAIN_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 12);
+   function Is_Valid (X : L_TRAIN_T) return Boolean is
      (True);
 
    --  L_TRAININT, 7.5.1.57: 15 bits, 0 .. 32767, 1 m
@@ -945,10 +1665,10 @@ is
 
    --  M_ACK, 7.5.1.59: 1 bits, 0 .. 1
    type M_ACK_T is range 0 .. 1;
-   M_ACK_No_Acknowledgement : constant M_ACK_T := 0;
-   --  0: no acknowledgement
+   M_ACK_No_Acknowledgement_Required : constant M_ACK_T := 0;
+   --  0: No acknowledgement required
    M_ACK_Acknowledgement_Required : constant M_ACK_T := 1;
-   --  1: acknowledgement required
+   --  1: Acknowledgement required
    function To_M_ACK (V : Unsigned_64) return M_ACK_T is
      (M_ACK_T (V))
      with Pre => Fits (V, 1);
@@ -958,14 +1678,96 @@ is
    function Is_Valid (X : M_ACK_T) return Boolean is
      (True);
 
+   --  M_ADHESION, 7.5.1.60: 1 bits, 0 .. 1
+   type M_ADHESION_T is range 0 .. 1;
+   M_ADHESION_Slippery_Rail : constant M_ADHESION_T := 0;
+   --  0: Slippery rail
+   M_ADHESION_Non_Slippery_Rail : constant M_ADHESION_T := 1;
+   --  1: Non slippery rail
+   function To_M_ADHESION (V : Unsigned_64) return M_ADHESION_T is
+     (M_ADHESION_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : M_ADHESION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : M_ADHESION_T) return Boolean is
+     (True);
+
+   --  M_AIRTIGHT, 7.5.1.61: 2 bits, 0 .. 1
+   type M_AIRTIGHT_T is range 0 .. 3;
+   M_AIRTIGHT_Not_Fitted : constant M_AIRTIGHT_T := 0;
+   --  0: Not fitted
+   M_AIRTIGHT_Fitted : constant M_AIRTIGHT_T := 1;
+   --  1: Fitted
+   function To_M_AIRTIGHT (V : Unsigned_64) return M_AIRTIGHT_T is
+     (M_AIRTIGHT_T (V))
+     with Pre => Fits (V, 2);
+   function Code (X : M_AIRTIGHT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 2);
+   function Is_Valid (X : M_AIRTIGHT_T) return Boolean is
+     (X <= 1);
+
+   --  M_AXLELOADCAT, 7.5.1.62: 7 bits, 0 .. 12
+   type M_AXLELOADCAT_T is range 0 .. 127;
+   M_AXLELOADCAT_A : constant M_AXLELOADCAT_T := 0;
+   --  0: A
+   M_AXLELOADCAT_HS17 : constant M_AXLELOADCAT_T := 1;
+   --  1: HS17
+   M_AXLELOADCAT_B1 : constant M_AXLELOADCAT_T := 2;
+   --  2: B1
+   M_AXLELOADCAT_B2 : constant M_AXLELOADCAT_T := 3;
+   --  3: B2
+   M_AXLELOADCAT_C2 : constant M_AXLELOADCAT_T := 4;
+   --  4: C2
+   M_AXLELOADCAT_C3 : constant M_AXLELOADCAT_T := 5;
+   --  5: C3
+   M_AXLELOADCAT_C4 : constant M_AXLELOADCAT_T := 6;
+   --  6: C4
+   M_AXLELOADCAT_D2 : constant M_AXLELOADCAT_T := 7;
+   --  7: D2
+   M_AXLELOADCAT_D3 : constant M_AXLELOADCAT_T := 8;
+   --  8: D3
+   M_AXLELOADCAT_D4 : constant M_AXLELOADCAT_T := 9;
+   --  9: D4
+   M_AXLELOADCAT_D4XL : constant M_AXLELOADCAT_T := 10;
+   --  10: D4XL
+   M_AXLELOADCAT_E4 : constant M_AXLELOADCAT_T := 11;
+   --  11: E4
+   M_AXLELOADCAT_E5 : constant M_AXLELOADCAT_T := 12;
+   --  12: E5
+   function To_M_AXLELOADCAT (V : Unsigned_64) return M_AXLELOADCAT_T is
+     (M_AXLELOADCAT_T (V))
+     with Pre => Fits (V, 7);
+   function Code (X : M_AXLELOADCAT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 7);
+   function Is_Valid (X : M_AXLELOADCAT_T) return Boolean is
+     (X <= 12);
+
+   --  M_CURRENT, 7.5.1.62.1: 10 bits, 0 .. 1000, 10 A
+   type M_CURRENT_T is range 0 .. 1023;
+   M_CURRENT_No_Restriction_For_Current : constant M_CURRENT_T := 1023;
+   --  1023: No restriction for current consumption
+   function To_M_CURRENT (V : Unsigned_64) return M_CURRENT_T is
+     (M_CURRENT_T (V))
+     with Pre => Fits (V, 10);
+   function Code (X : M_CURRENT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 10);
+   function Is_Valid (X : M_CURRENT_T) return Boolean is
+     (X <= 1000 or else X = 1023);
+
    --  M_DUP, 7.5.1.63: 2 bits, 0 .. 2
    type M_DUP_T is range 0 .. 3;
    M_DUP_No_Duplicates : constant M_DUP_T := 0;
-   --  0: no duplicates
-   M_DUP_Duplicate_Of_Next : constant M_DUP_T := 1;
-   --  1: duplicate of next
-   M_DUP_Duplicate_Of_Previous : constant M_DUP_T := 2;
-   --  2: duplicate of previous
+   --  0: No duplicates
+   M_DUP_This_Balise_Is_A : constant M_DUP_T := 1;
+   --  1: This balise is a duplicate of the next balise (seen in the nominal
+   --  direction of the balise group).
+   M_DUP_This_Balise_Is_A_2 : constant M_DUP_T := 2;
+   --  2: This balise is a duplicate of the previous balise (seen in the
+   --  nominal direction of the balise group).
    function To_M_DUP (V : Unsigned_64) return M_DUP_T is
      (M_DUP_T (V))
      with Pre => Fits (V, 2);
@@ -977,6 +1779,31 @@ is
 
    --  M_ERROR, 7.5.1.64: 8 bits, 0 .. 10
    type M_ERROR_T is range 0 .. 255;
+   M_ERROR_Balise_Group_Linking_Consistency : constant M_ERROR_T := 0;
+   --  0: Balise group: linking consistency error (ref. 3.16.2.3)
+   M_ERROR_Linked_Balise_Group_Message : constant M_ERROR_T := 1;
+   --  1: Linked balise group: message consistency error(ref. 3.16.2.4.1/4)
+   M_ERROR_Unlinked_Balise_Group_Message : constant M_ERROR_T := 2;
+   --  2: Unlinked balise group: message consistency error (ref. 3.16.2.5)
+   M_ERROR_Radio_Message_Consistency_Error : constant M_ERROR_T := 3;
+   --  3: Radio: message consistency error (ref. 3.16.3.1.1 except 3.16.3.1.1b)
+   M_ERROR_Radio_Sequence_Error_Ref : constant M_ERROR_T := 4;
+   --  4: Radio: sequence error (ref. 3.16.3.1.1b)
+   M_ERROR_Radio_Safe_Radio_Connection : constant M_ERROR_T := 5;
+   --  5: Radio: safe radio connection error (ref. 3.16.3.4, to be sent when
+   --  communication links re-established)
+   M_ERROR_Safety_Critical_Fault_Ref : constant M_ERROR_T := 6;
+   --  6: Safety critical fault (ref 4.4.6.1.6 , 4.4.15.1.5)
+   M_ERROR_Double_Linking_Error_3 : constant M_ERROR_T := 7;
+   --  7: Double linking error (3.16.2.7.1)
+   M_ERROR_Double_Repositioning_Error_3 : constant M_ERROR_T := 8;
+   --  8: Double repositioning error (3.16.2.7.2)
+   M_ERROR_Odometer_Accuracy_Monitoring_Impairment : constant M_ERROR_T := 9;
+   --  9: Odometer accuracy monitoring: impairment threshold reached (ref.
+   --  3.6.8.5)
+   M_ERROR_Odometer_Accuracy_Monitoring_Safety : constant M_ERROR_T := 10;
+   --  10: Odometer accuracy monitoring: safety threshold reached (ref.
+   --  3.6.8.7)
    function To_M_ERROR (V : Unsigned_64) return M_ERROR_T is
      (M_ERROR_T (V))
      with Pre => Fits (V, 8);
@@ -989,13 +1816,13 @@ is
    --  M_LEVEL, 7.5.1.65: 3 bits, 0 .. 3
    type M_LEVEL_T is range 0 .. 7;
    M_LEVEL_Level_0 : constant M_LEVEL_T := 0;
-   --  0: level 0
-   M_LEVEL_NTC : constant M_LEVEL_T := 1;
-   --  1: NTC
+   --  0: Level 0
+   M_LEVEL_Level_NTC_Specified_By : constant M_LEVEL_T := 1;
+   --  1: Level NTC specified by NID_NTC
    M_LEVEL_Level_1 : constant M_LEVEL_T := 2;
-   --  2: level 1
+   --  2: Level 1
    M_LEVEL_Level_2 : constant M_LEVEL_T := 3;
-   --  3: level 2
+   --  3: Level 2
    function To_M_LEVEL (V : Unsigned_64) return M_LEVEL_T is
      (M_LEVEL_T (V))
      with Pre => Fits (V, 3);
@@ -1008,15 +1835,18 @@ is
    --  M_LEVELTEXTDISPLAY, 7.5.1.66: 3 bits, 0 .. 4
    type M_LEVELTEXTDISPLAY_T is range 0 .. 7;
    M_LEVELTEXTDISPLAY_Level_0 : constant M_LEVELTEXTDISPLAY_T := 0;
-   --  0: level 0
-   M_LEVELTEXTDISPLAY_NTC : constant M_LEVELTEXTDISPLAY_T := 1;
-   --  1: NTC
+   --  0: Level 0
+   M_LEVELTEXTDISPLAY_Level_NTC_Specified_By :
+     constant M_LEVELTEXTDISPLAY_T := 1;
+   --  1: Level NTC specified by NID_NTC
    M_LEVELTEXTDISPLAY_Level_1 : constant M_LEVELTEXTDISPLAY_T := 2;
-   --  2: level 1
+   --  2: Level 1
    M_LEVELTEXTDISPLAY_Level_2 : constant M_LEVELTEXTDISPLAY_T := 3;
-   --  3: level 2
-   M_LEVELTEXTDISPLAY_No_Level : constant M_LEVELTEXTDISPLAY_T := 4;
-   --  4: no level
+   --  3: Level 2
+   M_LEVELTEXTDISPLAY_No_Level_Sub_Condition :
+     constant M_LEVELTEXTDISPLAY_T := 4;
+   --  4: No “level” sub-condition specified for the start/end condition of the
+   --  display of the text
    function To_M_LEVELTEXTDISPLAY (V : Unsigned_64)
      return M_LEVELTEXTDISPLAY_T
    is (M_LEVELTEXTDISPLAY_T (V))
@@ -1030,13 +1860,13 @@ is
    --  M_LEVELTR, 7.5.1.67: 3 bits, 0 .. 3
    type M_LEVELTR_T is range 0 .. 7;
    M_LEVELTR_Level_0 : constant M_LEVELTR_T := 0;
-   --  0: level 0
-   M_LEVELTR_NTC : constant M_LEVELTR_T := 1;
-   --  1: NTC
+   --  0: Level 0
+   M_LEVELTR_Level_NTC_Specified_By : constant M_LEVELTR_T := 1;
+   --  1: Level NTC specified by NID_NTC
    M_LEVELTR_Level_1 : constant M_LEVELTR_T := 2;
-   --  2: level 1
+   --  2: Level 1
    M_LEVELTR_Level_2 : constant M_LEVELTR_T := 3;
-   --  3: level 2
+   --  3: Level 2
    function To_M_LEVELTR (V : Unsigned_64) return M_LEVELTR_T is
      (M_LEVELTR_T (V))
      with Pre => Fits (V, 3);
@@ -1046,12 +1876,95 @@ is
    function Is_Valid (X : M_LEVELTR_T) return Boolean is
      (X <= 3);
 
+   --  M_LINEAXLELOADCAT, 7.5.1.67.2: 16 bits, 0 .. 65535, bitset: bit 0 A, 1
+   --  HS17, 2 B1, 3 B2, 4 C2, 5 C3, 6 C4, 7 D2, 8 D3, 9 D4, 10 D4XL, 11 E4, 12
+   --  E5; bits 13 .. 15 spare; all zero spare
+   type M_LINEAXLELOADCAT_T is range 0 .. 65535;
+   function To_M_LINEAXLELOADCAT (V : Unsigned_64)
+     return M_LINEAXLELOADCAT_T
+   is (M_LINEAXLELOADCAT_T (V))
+     with Pre => Fits (V, 16);
+   function Code (X : M_LINEAXLELOADCAT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 16);
+   function Is_Valid (X : M_LINEAXLELOADCAT_T) return Boolean is
+     (True);
+
+   --  M_LINEGAUGE, 7.5.1.67.1: 8 bits, 0 .. 255, bitset: bit 0 G1, bit 1 GA,
+   --  bit 2 GB, bit 3 GC; bits 4 .. 7 spare; 0000 0000 spare
+   type M_LINEGAUGE_T is range 0 .. 255;
+   function To_M_LINEGAUGE (V : Unsigned_64) return M_LINEGAUGE_T is
+     (M_LINEGAUGE_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : M_LINEGAUGE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : M_LINEGAUGE_T) return Boolean is
+     (True);
+
+   --  M_LOADINGGAUGE, 7.5.1.68: 8 bits, 0 .. 4
+   type M_LOADINGGAUGE_T is range 0 .. 255;
+   M_LOADINGGAUGE_The_Train_Does_Not : constant M_LOADINGGAUGE_T := 0;
+   --  0: The train does not fit to any of the interoperable loading gauge
+   --  profiles
+   M_LOADINGGAUGE_G1 : constant M_LOADINGGAUGE_T := 1;
+   --  1: G1
+   M_LOADINGGAUGE_GA : constant M_LOADINGGAUGE_T := 2;
+   --  2: GA
+   M_LOADINGGAUGE_GB : constant M_LOADINGGAUGE_T := 3;
+   --  3: GB
+   M_LOADINGGAUGE_GC : constant M_LOADINGGAUGE_T := 4;
+   --  4: GC
+   function To_M_LOADINGGAUGE (V : Unsigned_64) return M_LOADINGGAUGE_T is
+     (M_LOADINGGAUGE_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : M_LOADINGGAUGE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : M_LOADINGGAUGE_T) return Boolean is
+     (X <= 4);
+
+   --  M_LOC, 7.5.1.69: 3 bits, 0 .. 2
+   type M_LOC_T is range 0 .. 7;
+   M_LOC_Now_The_Position_Report : constant M_LOC_T := 0;
+   --  0: Now (The position report is sent upon receipt of the order)
+   M_LOC_Every_LRBG_Compliant_Balise : constant M_LOC_T := 1;
+   --  1: Every LRBG compliant balise group.
+   M_LOC_Do_Not_Send_Position : constant M_LOC_T := 2;
+   --  2: Do not send position report on passage of LRBG compliant balise
+   --  group.
+   function To_M_LOC (V : Unsigned_64) return M_LOC_T is
+     (M_LOC_T (V))
+     with Pre => Fits (V, 3);
+   function Code (X : M_LOC_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 3);
+   function Is_Valid (X : M_LOC_T) return Boolean is
+     (X <= 2);
+
+   --  M_MAMODE, 7.5.1.70: 2 bits, 0 .. 2
+   type M_MAMODE_T is range 0 .. 3;
+   M_MAMODE_On_Sight : constant M_MAMODE_T := 0;
+   --  0: On Sight
+   M_MAMODE_Shunting : constant M_MAMODE_T := 1;
+   --  1: Shunting
+   M_MAMODE_Limited_Supervision : constant M_MAMODE_T := 2;
+   --  2: Limited Supervision
+   function To_M_MAMODE (V : Unsigned_64) return M_MAMODE_T is
+     (M_MAMODE_T (V))
+     with Pre => Fits (V, 2);
+   function Code (X : M_MAMODE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 2);
+   function Is_Valid (X : M_MAMODE_T) return Boolean is
+     (X <= 2);
+
    --  M_MCOUNT, 7.5.1.71: 8 bits, 0 .. 253
    type M_MCOUNT_T is range 0 .. 255;
-   M_MCOUNT_Never_Fits : constant M_MCOUNT_T := 254;
-   --  254: never fits
-   M_MCOUNT_Fits_All : constant M_MCOUNT_T := 255;
-   --  255: fits all
+   M_MCOUNT_The_Telegram_Never_Fits : constant M_MCOUNT_T := 254;
+   --  254: The telegram never fits any message of the group
+   M_MCOUNT_The_Telegram_Fits_With : constant M_MCOUNT_T := 255;
+   --  255: The telegram fits with all telegrams of the same balise group
    function To_M_MCOUNT (V : Unsigned_64) return M_MCOUNT_T is
      (M_MCOUNT_T (V))
      with Pre => Fits (V, 8);
@@ -1063,6 +1976,42 @@ is
 
    --  M_MODE, 7.5.1.72: 5 bits, 0 .. 17
    type M_MODE_T is range 0 .. 31;
+   M_MODE_Full_Supervision : constant M_MODE_T := 0;
+   --  0: Full Supervision
+   M_MODE_On_Sight : constant M_MODE_T := 1;
+   --  1: On Sight
+   M_MODE_Staff_Responsible : constant M_MODE_T := 2;
+   --  2: Staff Responsible
+   M_MODE_Shunting : constant M_MODE_T := 3;
+   --  3: Shunting
+   M_MODE_Unfitted : constant M_MODE_T := 4;
+   --  4: Unfitted
+   M_MODE_Sleeping : constant M_MODE_T := 5;
+   --  5: Sleeping
+   M_MODE_Stand_By : constant M_MODE_T := 6;
+   --  6: Stand By
+   M_MODE_Trip : constant M_MODE_T := 7;
+   --  7: Trip
+   M_MODE_Post_Trip : constant M_MODE_T := 8;
+   --  8: Post Trip
+   M_MODE_System_Failure : constant M_MODE_T := 9;
+   --  9: System Failure
+   M_MODE_Isolation : constant M_MODE_T := 10;
+   --  10: Isolation
+   M_MODE_Non_Leading : constant M_MODE_T := 11;
+   --  11: Non Leading
+   M_MODE_Limited_Supervision : constant M_MODE_T := 12;
+   --  12: Limited Supervision
+   M_MODE_National_System : constant M_MODE_T := 13;
+   --  13: National System
+   M_MODE_Reversing : constant M_MODE_T := 14;
+   --  14: Reversing
+   M_MODE_Passive_Shunting : constant M_MODE_T := 15;
+   --  15: Passive Shunting
+   M_MODE_Automatic_Driving : constant M_MODE_T := 16;
+   --  16: Automatic Driving
+   M_MODE_Supervised_Manoeuvre : constant M_MODE_T := 17;
+   --  17: Supervised Manoeuvre
    function To_M_MODE (V : Unsigned_64) return M_MODE_T is
      (M_MODE_T (V))
      with Pre => Fits (V, 5);
@@ -1072,8 +2021,35 @@ is
    function Is_Valid (X : M_MODE_T) return Boolean is
      (X <= 17);
 
-   --  M_MODETEXTDISPLAY, 7.5.1.73: 4 bits, 0 .. 15
+   --  M_MODETEXTDISPLAY, 7.5.1.73: 4 bits, 0 .. 15, enumeration; 9, 10, 11 and
+   --  13 are spare
    type M_MODETEXTDISPLAY_T is range 0 .. 15;
+   M_MODETEXTDISPLAY_Full_Supervision : constant M_MODETEXTDISPLAY_T := 0;
+   --  0: Full Supervision
+   M_MODETEXTDISPLAY_On_Sight : constant M_MODETEXTDISPLAY_T := 1;
+   --  1: On Sight
+   M_MODETEXTDISPLAY_Staff_Responsible : constant M_MODETEXTDISPLAY_T := 2;
+   --  2: Staff Responsible
+   M_MODETEXTDISPLAY_Automatic_Driving : constant M_MODETEXTDISPLAY_T := 3;
+   --  3: Automatic Driving
+   M_MODETEXTDISPLAY_Unfitted : constant M_MODETEXTDISPLAY_T := 4;
+   --  4: Unfitted
+   M_MODETEXTDISPLAY_Supervised_Manoeuvre : constant M_MODETEXTDISPLAY_T := 5;
+   --  5: Supervised Manoeuvre
+   M_MODETEXTDISPLAY_Stand_By : constant M_MODETEXTDISPLAY_T := 6;
+   --  6: Stand By
+   M_MODETEXTDISPLAY_Trip : constant M_MODETEXTDISPLAY_T := 7;
+   --  7: Trip
+   M_MODETEXTDISPLAY_Post_Trip : constant M_MODETEXTDISPLAY_T := 8;
+   --  8: Post Trip
+   M_MODETEXTDISPLAY_Limited_Supervision : constant M_MODETEXTDISPLAY_T := 12;
+   --  12: Limited Supervision
+   M_MODETEXTDISPLAY_Reversing : constant M_MODETEXTDISPLAY_T := 14;
+   --  14: Reversing
+   M_MODETEXTDISPLAY_No_Mode_Sub_Condition :
+     constant M_MODETEXTDISPLAY_T := 15;
+   --  15: No “mode” sub-condition specified for the start/end condition of the
+   --  display of the text
    function To_M_MODETEXTDISPLAY (V : Unsigned_64)
      return M_MODETEXTDISPLAY_T
    is (M_MODETEXTDISPLAY_T (V))
@@ -1084,7 +2060,8 @@ is
    function Is_Valid (X : M_MODETEXTDISPLAY_T) return Boolean is
      (True);
 
-   --  M_NVAVADH, 7.5.1.73.1: 5 bits, 0 .. 20, 0.05
+   --  M_NVAVADH, 7.5.1.73.1: 5 bits, 0 .. 20, 0.05 (0 .. 1.00; 1.05 .. 1.55
+   --  spare)
    type M_NVAVADH_T is range 0 .. 31;
    function To_M_NVAVADH (V : Unsigned_64) return M_NVAVADH_T is
      (M_NVAVADH_T (V))
@@ -1098,11 +2075,11 @@ is
    --  M_NVCONTACT, 7.5.1.74: 2 bits, 0 .. 2
    type M_NVCONTACT_T is range 0 .. 3;
    M_NVCONTACT_Train_Trip : constant M_NVCONTACT_T := 0;
-   --  0: train trip
-   M_NVCONTACT_Service_Brake : constant M_NVCONTACT_T := 1;
-   --  1: service brake
+   --  0: Train trip
+   M_NVCONTACT_Apply_Service_Brake : constant M_NVCONTACT_T := 1;
+   --  1: Apply service brake
    M_NVCONTACT_No_Reaction : constant M_NVCONTACT_T := 2;
-   --  2: no reaction
+   --  2: No Reaction
    function To_M_NVCONTACT (V : Unsigned_64) return M_NVCONTACT_T is
      (M_NVCONTACT_T (V))
      with Pre => Fits (V, 2);
@@ -1115,9 +2092,9 @@ is
    --  M_NVDERUN, 7.5.1.75: 1 bits, 0 .. 1
    type M_NVDERUN_T is range 0 .. 1;
    M_NVDERUN_No : constant M_NVDERUN_T := 0;
-   --  0: no
+   --  0: No
    M_NVDERUN_Yes : constant M_NVDERUN_T := 1;
-   --  1: yes
+   --  1: Yes
    function To_M_NVDERUN (V : Unsigned_64) return M_NVDERUN_T is
      (M_NVDERUN_T (V))
      with Pre => Fits (V, 1);
@@ -1129,6 +2106,26 @@ is
 
    --  M_NVEBCL, 7.5.1.75.1: 4 bits, 0 .. 9
    type M_NVEBCL_T is range 0 .. 15;
+   M_NVEBCL_Confidence_Level_50 : constant M_NVEBCL_T := 0;
+   --  0: Confidence level = 50 %
+   M_NVEBCL_Confidence_Level_90 : constant M_NVEBCL_T := 1;
+   --  1: Confidence level = 90 %
+   M_NVEBCL_Confidence_Level_99 : constant M_NVEBCL_T := 2;
+   --  2: Confidence level = 99 %
+   M_NVEBCL_Confidence_Level_99_9 : constant M_NVEBCL_T := 3;
+   --  3: Confidence level = 99.9 %
+   M_NVEBCL_Confidence_Level_99_99 : constant M_NVEBCL_T := 4;
+   --  4: Confidence level = 99.99%
+   M_NVEBCL_Confidence_Level_99_999 : constant M_NVEBCL_T := 5;
+   --  5: Confidence level = 99.999 %
+   M_NVEBCL_Confidence_Level_99_9999 : constant M_NVEBCL_T := 6;
+   --  6: Confidence level = 99.9999 %
+   M_NVEBCL_Confidence_Level_99_99999 : constant M_NVEBCL_T := 7;
+   --  7: Confidence level = 99.99999 %
+   M_NVEBCL_Confidence_Level_99_999999 : constant M_NVEBCL_T := 8;
+   --  8: Confidence level = 99.999999 %
+   M_NVEBCL_Confidence_Level_99_9999999 : constant M_NVEBCL_T := 9;
+   --  9: Confidence level = 99.9999999 %
    function To_M_NVEBCL (V : Unsigned_64) return M_NVEBCL_T is
      (M_NVEBCL_T (V))
      with Pre => Fits (V, 4);
@@ -1138,7 +2135,7 @@ is
    function Is_Valid (X : M_NVEBCL_T) return Boolean is
      (X <= 9);
 
-   --  M_NVKRINT, 7.5.1.75.2: 5 bits, 0 .. 31, 0.05
+   --  M_NVKRINT, 7.5.1.75.2: 5 bits, 0 .. 31, 0.05 (0 .. 1.55)
    type M_NVKRINT_T is range 0 .. 31;
    function To_M_NVKRINT (V : Unsigned_64) return M_NVKRINT_T is
      (M_NVKRINT_T (V))
@@ -1149,7 +2146,7 @@ is
    function Is_Valid (X : M_NVKRINT_T) return Boolean is
      (True);
 
-   --  M_NVKTINT, 7.5.1.75.3: 5 bits, 0 .. 31, 0.05
+   --  M_NVKTINT, 7.5.1.75.3: 5 bits, 0 .. 31, 0.05 (0 .. 1.55)
    type M_NVKTINT_T is range 0 .. 31;
    function To_M_NVKTINT (V : Unsigned_64) return M_NVKTINT_T is
      (M_NVKTINT_T (V))
@@ -1160,7 +2157,7 @@ is
    function Is_Valid (X : M_NVKTINT_T) return Boolean is
      (True);
 
-   --  M_NVKVINT, 7.5.1.75.4: 7 bits, 0 .. 127, 0.02
+   --  M_NVKVINT, 7.5.1.75.4: 7 bits, 0 .. 127, 0.02 (0 .. 2.54)
    type M_NVKVINT_T is range 0 .. 127;
    function To_M_NVKVINT (V : Unsigned_64) return M_NVKVINT_T is
      (M_NVKVINT_T (V))
@@ -1171,22 +2168,118 @@ is
    function Is_Valid (X : M_NVKVINT_T) return Boolean is
      (True);
 
-   --  M_VERSION, 7.5.1.79: 7 bits, 0 .. 127
+   --  M_PLATFORM, 7.5.1.75.5: 4 bits, 0 .. 13
+   type M_PLATFORM_T is range 0 .. 15;
+   M_PLATFORM_200_Mm : constant M_PLATFORM_T := 0;
+   --  0: 200 mm
+   M_PLATFORM_300_380_Mm : constant M_PLATFORM_T := 1;
+   --  1: 300-380 mm
+   M_PLATFORM_550_Mm : constant M_PLATFORM_T := 2;
+   --  2: 550 mm
+   M_PLATFORM_580_Mm : constant M_PLATFORM_T := 3;
+   --  3: 580 mm
+   M_PLATFORM_680_Mm : constant M_PLATFORM_T := 4;
+   --  4: 680 mm
+   M_PLATFORM_685_Mm : constant M_PLATFORM_T := 5;
+   --  5: 685 mm
+   M_PLATFORM_730_Mm : constant M_PLATFORM_T := 6;
+   --  6: 730 mm
+   M_PLATFORM_760_Mm : constant M_PLATFORM_T := 7;
+   --  7: 760 mm
+   M_PLATFORM_840_Mm : constant M_PLATFORM_T := 8;
+   --  8: 840 mm
+   M_PLATFORM_900_Mm : constant M_PLATFORM_T := 9;
+   --  9: 900 mm
+   M_PLATFORM_915_Mm : constant M_PLATFORM_T := 10;
+   --  10: 915 mm
+   M_PLATFORM_920_Mm : constant M_PLATFORM_T := 11;
+   --  11: 920 mm
+   M_PLATFORM_960_Mm : constant M_PLATFORM_T := 12;
+   --  12: 960 mm
+   M_PLATFORM_1100_Mm : constant M_PLATFORM_T := 13;
+   --  13: 1100 mm
+   function To_M_PLATFORM (V : Unsigned_64) return M_PLATFORM_T is
+     (M_PLATFORM_T (V))
+     with Pre => Fits (V, 4);
+   function Code (X : M_PLATFORM_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 4);
+   function Is_Valid (X : M_PLATFORM_T) return Boolean is
+     (X <= 13);
+
+   --  M_POSITION, 7.5.1.76: 24 bits, 0 .. 9999999, 1 m
+   type M_POSITION_T is range 0 .. 16777215;
+   M_POSITION_No_More_Geographical_Position :
+     constant M_POSITION_T := 16777215;
+   --  16777215: No more geographical position calculation after this reference
+   --  location
+   function To_M_POSITION (V : Unsigned_64) return M_POSITION_T is
+     (M_POSITION_T (V))
+     with Pre => Fits (V, 24);
+   function Code (X : M_POSITION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 24);
+   function Is_Valid (X : M_POSITION_T) return Boolean is
+     (X <= 9999999 or else X = 16777215);
+
+   --  M_TRACKCOND, 7.5.1.77: 4 bits, 0 .. 10
+   type M_TRACKCOND_T is range 0 .. 15;
+   M_TRACKCOND_Non_Stopping_Area_Initial : constant M_TRACKCOND_T := 0;
+   --  0: Non stopping area. Initial state: stopping permitted
+   M_TRACKCOND_Tunnel_Stopping_Area_Initial : constant M_TRACKCOND_T := 1;
+   --  1: Tunnel stopping area. Initial state: no tunnel stopping area
+   M_TRACKCOND_Sound_Horn_Initial_State : constant M_TRACKCOND_T := 2;
+   --  2: Sound horn. Initial state: no request for sound horn
+   M_TRACKCOND_Powerless_Section_Lower_Pantograph :
+     constant M_TRACKCOND_T := 3;
+   --  3: Powerless section – lower pantograph. Initial state: not powerless
+   --  section
+   M_TRACKCOND_Radio_Hole_Stop_Supervising : constant M_TRACKCOND_T := 4;
+   --  4: Radio hole (stop supervising T_NVCONTACT). Initial state: supervise
+   --  T_NVCONTACT
+   M_TRACKCOND_Air_Tightness_Initial_State : constant M_TRACKCOND_T := 5;
+   --  5: Air tightness. Initial state: no request for air tightness
+   M_TRACKCOND_Switch_Off_Regenerative_Brake : constant M_TRACKCOND_T := 6;
+   --  6: Switch off regenerative brake. Initial state: regenerative brake on
+   M_TRACKCOND_Switch_Off_Eddy_Current : constant M_TRACKCOND_T := 7;
+   --  7: Switch off eddy current brake for service brake. Initial state: eddy
+   --  current brake for service brake on
+   M_TRACKCOND_Switch_Off_Magnetic_Shoe : constant M_TRACKCOND_T := 8;
+   --  8: Switch off magnetic shoe brake. Initial state: magnetic shoe brake on
+   M_TRACKCOND_Powerless_Section_Switch_Off : constant M_TRACKCOND_T := 9;
+   --  9: Powerless section – switch off the main power switch. Initial state:
+   --  not powerless section
+   M_TRACKCOND_Switch_Off_Eddy_Current_10 : constant M_TRACKCOND_T := 10;
+   --  10: Switch off eddy current brake for emergency brake. Initial state:
+   --  eddy current brake for emergency brake on
+   function To_M_TRACKCOND (V : Unsigned_64) return M_TRACKCOND_T is
+     (M_TRACKCOND_T (V))
+     with Pre => Fits (V, 4);
+   function Code (X : M_TRACKCOND_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 4);
+   function Is_Valid (X : M_TRACKCOND_T) return Boolean is
+     (X <= 10);
+
+   --  M_VERSION, 7.5.1.79: 7 bits, 0 .. 127, X in the 3 MSBs, Y in the 4 LSBs;
+   --  000 xxxx previous versions (EEIG, UIC A200); 001 0010 .. 001 1111 and
+   --  010 0100 .. 010 1111 not valid; 011 0001 .. 111 1111 reserved for future
+   --  use (valid values)
    type M_VERSION_T is range 0 .. 127;
-   M_VERSION_V1_0 : constant M_VERSION_T := 16;
-   --  16: V1.0
-   M_VERSION_V1_1 : constant M_VERSION_T := 17;
-   --  17: V1.1
-   M_VERSION_V2_0 : constant M_VERSION_T := 32;
-   --  32: V2.0
-   M_VERSION_V2_1 : constant M_VERSION_T := 33;
-   --  33: V2.1
-   M_VERSION_V2_2 : constant M_VERSION_T := 34;
-   --  34: V2.2
-   M_VERSION_V2_3 : constant M_VERSION_T := 35;
-   --  35: V2.3
-   M_VERSION_V3_0 : constant M_VERSION_T := 48;
-   --  48: V3.0
+   M_VERSION_Version_1_0_Introduced : constant M_VERSION_T := 16;
+   --  16: Version 1.0, introduced in SRS 1.2.0
+   M_VERSION_Version_1_1_Introduced : constant M_VERSION_T := 17;
+   --  17: Version 1.1, introduced in SRS 3.3.0
+   M_VERSION_Version_2_0_Introduced : constant M_VERSION_T := 32;
+   --  32: Version 2.0, introduced in SRS 3.3.0
+   M_VERSION_Version_2_1_Introduced : constant M_VERSION_T := 33;
+   --  33: Version 2.1, introduced in SRS 3.6.0
+   M_VERSION_Version_2_2_Introduced : constant M_VERSION_T := 34;
+   --  34: Version 2.2, introduced in SRS 4.0.0
+   M_VERSION_Version_2_3_Introduced : constant M_VERSION_T := 35;
+   --  35: Version 2.3, introduced in SRS 4.0.0
+   M_VERSION_Version_3_0_Introduced : constant M_VERSION_T := 48;
+   --  48: Version 3.0, introduced in SRS 4.0.0
    function To_M_VERSION (V : Unsigned_64) return M_VERSION_T is
      (M_VERSION_T (V))
      with Pre => Fits (V, 7);
@@ -1196,8 +2289,53 @@ is
    function Is_Valid (X : M_VERSION_T) return Boolean is
      (True);
 
+   --  M_VOLTAGE, 7.5.1.78: 4 bits, 0 .. 5
+   type M_VOLTAGE_T is range 0 .. 15;
+   M_VOLTAGE_Line_Not_Fitted_With : constant M_VOLTAGE_T := 0;
+   --  0: Line not fitted with any traction system
+   M_VOLTAGE_AC_25_Kv_50 : constant M_VOLTAGE_T := 1;
+   --  1: AC 25 kV 50 Hz
+   M_VOLTAGE_AC_15_Kv_16 : constant M_VOLTAGE_T := 2;
+   --  2: AC 15 kV 16.7 Hz
+   M_VOLTAGE_DC_3_Kv : constant M_VOLTAGE_T := 3;
+   --  3: DC 3 kV
+   M_VOLTAGE_DC_1_5_Kv : constant M_VOLTAGE_T := 4;
+   --  4: DC 1.5 kV
+   M_VOLTAGE_DC_600_750_V : constant M_VOLTAGE_T := 5;
+   --  5: DC 600/750 V
+   function To_M_VOLTAGE (V : Unsigned_64) return M_VOLTAGE_T is
+     (M_VOLTAGE_T (V))
+     with Pre => Fits (V, 4);
+   function Code (X : M_VOLTAGE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 4);
+   function Is_Valid (X : M_VOLTAGE_T) return Boolean is
+     (X <= 5);
+
    --  NC_CDDIFF, 7.5.1.82.1: 4 bits, 0 .. 10
    type NC_CDDIFF_T is range 0 .. 15;
+   NC_CDDIFF_Specific_SSP_Applicable_To : constant NC_CDDIFF_T := 0;
+   --  0: Specific SSP applicable to Cant Deficiency 80 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_1 : constant NC_CDDIFF_T := 1;
+   --  1: Specific SSP applicable to Cant Deficiency 100 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_2 : constant NC_CDDIFF_T := 2;
+   --  2: Specific SSP applicable to Cant Deficiency 130 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_3 : constant NC_CDDIFF_T := 3;
+   --  3: Specific SSP applicable to Cant Deficiency 150 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_4 : constant NC_CDDIFF_T := 4;
+   --  4: Specific SSP applicable to Cant Deficiency 165 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_5 : constant NC_CDDIFF_T := 5;
+   --  5: Specific SSP applicable to Cant Deficiency 180 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_6 : constant NC_CDDIFF_T := 6;
+   --  6: Specific SSP applicable to Cant Deficiency 210 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_7 : constant NC_CDDIFF_T := 7;
+   --  7: Specific SSP applicable to Cant Deficiency 225 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_8 : constant NC_CDDIFF_T := 8;
+   --  8: Specific SSP applicable to Cant Deficiency 245 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_9 : constant NC_CDDIFF_T := 9;
+   --  9: Specific SSP applicable to Cant Deficiency 275 mm
+   NC_CDDIFF_Specific_SSP_Applicable_To_10 : constant NC_CDDIFF_T := 10;
+   --  10: Specific SSP applicable to Cant Deficiency 300 mm
    function To_NC_CDDIFF (V : Unsigned_64) return NC_CDDIFF_T is
      (NC_CDDIFF_T (V))
      with Pre => Fits (V, 4);
@@ -1207,14 +2345,47 @@ is
    function Is_Valid (X : NC_CDDIFF_T) return Boolean is
      (X <= 10);
 
+   --  NC_CDTRAIN, 7.5.1.82.2: 4 bits, 0 .. 10
+   type NC_CDTRAIN_T is range 0 .. 15;
+   NC_CDTRAIN_Cant_Deficiency_80_Mm : constant NC_CDTRAIN_T := 0;
+   --  0: Cant Deficiency 80 mm
+   NC_CDTRAIN_Cant_Deficiency_100_Mm : constant NC_CDTRAIN_T := 1;
+   --  1: Cant Deficiency 100 mm
+   NC_CDTRAIN_Cant_Deficiency_130_Mm : constant NC_CDTRAIN_T := 2;
+   --  2: Cant Deficiency 130 mm
+   NC_CDTRAIN_Cant_Deficiency_150_Mm : constant NC_CDTRAIN_T := 3;
+   --  3: Cant Deficiency 150 mm
+   NC_CDTRAIN_Cant_Deficiency_165_Mm : constant NC_CDTRAIN_T := 4;
+   --  4: Cant Deficiency 165 mm
+   NC_CDTRAIN_Cant_Deficiency_180_Mm : constant NC_CDTRAIN_T := 5;
+   --  5: Cant Deficiency 180 mm
+   NC_CDTRAIN_Cant_Deficiency_210_Mm : constant NC_CDTRAIN_T := 6;
+   --  6: Cant Deficiency 210 mm
+   NC_CDTRAIN_Cant_Deficiency_225_Mm : constant NC_CDTRAIN_T := 7;
+   --  7: Cant Deficiency 225 mm
+   NC_CDTRAIN_Cant_Deficiency_245_Mm : constant NC_CDTRAIN_T := 8;
+   --  8: Cant Deficiency 245 mm
+   NC_CDTRAIN_Cant_Deficiency_275_Mm : constant NC_CDTRAIN_T := 9;
+   --  9: Cant Deficiency 275 mm
+   NC_CDTRAIN_Cant_Deficiency_300_Mm : constant NC_CDTRAIN_T := 10;
+   --  10: Cant Deficiency 300 mm
+   function To_NC_CDTRAIN (V : Unsigned_64) return NC_CDTRAIN_T is
+     (NC_CDTRAIN_T (V))
+     with Pre => Fits (V, 4);
+   function Code (X : NC_CDTRAIN_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 4);
+   function Is_Valid (X : NC_CDTRAIN_T) return Boolean is
+     (X <= 10);
+
    --  NC_DIFF, 7.5.1.83: 4 bits, 0 .. 2
    type NC_DIFF_T is range 0 .. 15;
-   NC_DIFF_Freight_P : constant NC_DIFF_T := 0;
-   --  0: freight P
-   NC_DIFF_Freight_G : constant NC_DIFF_T := 1;
-   --  1: freight G
-   NC_DIFF_Passenger : constant NC_DIFF_T := 2;
-   --  2: passenger
+   NC_DIFF_Specific_SSP_Applicable_To : constant NC_DIFF_T := 0;
+   --  0: Specific SSP applicable to Freight train braked in “P” position
+   NC_DIFF_Specific_SSP_Applicable_To_1 : constant NC_DIFF_T := 1;
+   --  1: Specific SSP applicable to Freight train braked in “G” position
+   NC_DIFF_Specific_SSP_Applicable_To_2 : constant NC_DIFF_T := 2;
+   --  2: Specific SSP applicable to Passenger train
    function To_NC_DIFF (V : Unsigned_64) return NC_DIFF_T is
      (NC_DIFF_T (V))
      with Pre => Fits (V, 4);
@@ -1224,10 +2395,23 @@ is
    function Is_Valid (X : NC_DIFF_T) return Boolean is
      (X <= 2);
 
+   --  NC_TRAIN, 7.5.1.84: 15 bits, 0 .. 32767, bitset: bit 0 freight train
+   --  braked in P, bit 1 freight train braked in G, bit 2 passenger train;
+   --  bits 3 .. 14 spare; 0 = train belongs to no other international category
+   type NC_TRAIN_T is range 0 .. 32767;
+   function To_NC_TRAIN (V : Unsigned_64) return NC_TRAIN_T is
+     (NC_TRAIN_T (V))
+     with Pre => Fits (V, 15);
+   function Code (X : NC_TRAIN_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 15);
+   function Is_Valid (X : NC_TRAIN_T) return Boolean is
+     (True);
+
    --  NID_BG, 7.5.1.85: 14 bits, 0 .. 16382
    type NID_BG_T is range 0 .. 16383;
-   NID_BG_Unknown : constant NID_BG_T := 16383;
-   --  16383: unknown
+   NID_BG_Identity_Is_Unknown_Only : constant NID_BG_T := 16383;
+   --  16383: Identity is unknown (only to be used for Linking information)
    function To_NID_BG (V : Unsigned_64) return NID_BG_T is
      (NID_BG_T (V))
      with Pre => Fits (V, 14);
@@ -1246,6 +2430,17 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 10);
    function Is_Valid (X : NID_C_T) return Boolean is
+     (True);
+
+   --  NID_CTRACTION, 7.5.1.86.1: 10 bits, 0 .. 1023
+   type NID_CTRACTION_T is range 0 .. 1023;
+   function To_NID_CTRACTION (V : Unsigned_64) return NID_CTRACTION_T is
+     (NID_CTRACTION_T (V))
+     with Pre => Fits (V, 10);
+   function Code (X : NID_CTRACTION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 10);
+   function Is_Valid (X : NID_CTRACTION_T) return Boolean is
      (True);
 
    --  NID_EM, 7.5.1.87: 4 bits, 0 .. 15
@@ -1270,6 +2465,30 @@ is
    function Is_Valid (X : NID_ENGINE_T) return Boolean is
      (True);
 
+   --  NID_LOOP, 7.5.1.89: 14 bits, 0 .. 16383
+   type NID_LOOP_T is range 0 .. 16383;
+   function To_NID_LOOP (V : Unsigned_64) return NID_LOOP_T is
+     (NID_LOOP_T (V))
+     with Pre => Fits (V, 14);
+   function Code (X : NID_LOOP_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 14);
+   function Is_Valid (X : NID_LOOP_T) return Boolean is
+     (True);
+
+   --  NID_LX, 7.5.1.90.2: 8 bits, 0 .. 255, 0 .. 126 reserved for non RBC
+   --  transmission (balise, loop or radio infill), 127 .. 255 reserved for RBC
+   --  transmission
+   type NID_LX_T is range 0 .. 255;
+   function To_NID_LX (V : Unsigned_64) return NID_LX_T is
+     (NID_LX_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : NID_LX_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : NID_LX_T) return Boolean is
+     (True);
+
    --  NID_MESSAGE, 7.5.1.91: 8 bits, 0 .. 255
    type NID_MESSAGE_T is range 0 .. 255;
    function To_NID_MESSAGE (V : Unsigned_64) return NID_MESSAGE_T is
@@ -1279,6 +2498,19 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 8);
    function Is_Valid (X : NID_MESSAGE_T) return Boolean is
+     (True);
+
+   --  NID_MN, 7.5.1.91.1: 24 bits, 0 .. 16777215, BCD, 6 digits left adjusted,
+   --  first digit to dial in the MSBs; digit values A .. E not used, F = no
+   --  digit
+   type NID_MN_T is range 0 .. 16777215;
+   function To_NID_MN (V : Unsigned_64) return NID_MN_T is
+     (NID_MN_T (V))
+     with Pre => Fits (V, 24);
+   function Code (X : NID_MN_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 24);
+   function Is_Valid (X : NID_MN_T) return Boolean is
      (True);
 
    --  NID_NTC, 7.5.1.98: 8 bits, 0 .. 255
@@ -1292,8 +2524,8 @@ is
    function Is_Valid (X : NID_NTC_T) return Boolean is
      (True);
 
-   --  NID_OPERATIONAL, 7.5.1.92: 32 bits, 0 .. 4294967295, 8 BCD digits, 15
-   --  (F) where no digit
+   --  NID_OPERATIONAL, 7.5.1.92: 32 bits, 0 .. 4294967295, BCD, 8 digits left
+   --  adjusted; digit values A .. E spare, F = no digit; FFFF FFFF spare
    type NID_OPERATIONAL_T is range 0 .. 4294967295;
    function To_NID_OPERATIONAL (V : Unsigned_64) return NID_OPERATIONAL_T is
      (NID_OPERATIONAL_T (V))
@@ -1315,10 +2547,26 @@ is
    function Is_Valid (X : NID_PACKET_T) return Boolean is
      (True);
 
+   --  NID_RADIO, 7.5.1.95: 64 bits, 0 .. 18446744073709551615, BCD, 16 digits
+   --  left adjusted, first digit to dial in the MSBs; digit values A .. E not
+   --  used, F = no digit (padding)
+   type NID_RADIO_T is new Unsigned_64;
+   NID_RADIO_Use_The_Short_Number :
+     constant NID_RADIO_T := 18446744073709551615;
+   --  18446744073709551615: Use the short number stored onboard
+   function To_NID_RADIO (V : Unsigned_64) return NID_RADIO_T is
+     (NID_RADIO_T (V))
+     with Pre => Fits (V, 64);
+   function Code (X : NID_RADIO_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 64);
+   function Is_Valid (X : NID_RADIO_T) return Boolean is
+     (True);
+
    --  NID_RBC, 7.5.1.96: 14 bits, 0 .. 16382
    type NID_RBC_T is range 0 .. 16383;
    NID_RBC_Contact_Last_Known_RBC : constant NID_RBC_T := 16383;
-   --  16383: contact last known RBC
+   --  16383: Contact last known RBC
    function To_NID_RBC (V : Unsigned_64) return NID_RBC_T is
      (NID_RBC_T (V))
      with Pre => Fits (V, 14);
@@ -1326,6 +2574,17 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 14);
    function Is_Valid (X : NID_RBC_T) return Boolean is
+     (True);
+
+   --  NID_RIU, 7.5.1.97: 14 bits, 0 .. 16383
+   type NID_RIU_T is range 0 .. 16383;
+   function To_NID_RIU (V : Unsigned_64) return NID_RIU_T is
+     (NID_RIU_T (V))
+     with Pre => Fits (V, 14);
+   function Code (X : NID_RIU_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 14);
+   function Is_Valid (X : NID_RIU_T) return Boolean is
      (True);
 
    --  NID_TEXTMESSAGE, 7.5.1.98.1: 8 bits, 0 .. 255
@@ -1339,10 +2598,13 @@ is
    function Is_Valid (X : NID_TEXTMESSAGE_T) return Boolean is
      (True);
 
-   --  NID_TSR, 7.5.1.99: 8 bits, 0 .. 255
+   --  NID_TSR, 7.5.1.99: 8 bits, 0 .. 254, 0 .. 126 reserved for non RBC
+   --  transmission (balise, loop or radio infill), 127 .. 254 reserved for RBC
+   --  transmission
    type NID_TSR_T is range 0 .. 255;
-   NID_TSR_Non_Revocable : constant NID_TSR_T := 255;
-   --  255: non revocable
+   NID_TSR_Non_Revocable_Speed_Restriction : constant NID_TSR_T := 255;
+   --  255: Non-revocable speed restriction (applicable for all transmission
+   --  media)
    function To_NID_TSR (V : Unsigned_64) return NID_TSR_T is
      (NID_TSR_T (V))
      with Pre => Fits (V, 8);
@@ -1374,6 +2636,19 @@ is
    function Is_Valid (X : NID_XUSER_T) return Boolean is
      (True);
 
+   --  N_AXLE, 7.5.1.79.1: 10 bits, 0 .. 1022
+   type N_AXLE_T is range 0 .. 1023;
+   N_AXLE_Unknown : constant N_AXLE_T := 1023;
+   --  1023: Unknown
+   function To_N_AXLE (V : Unsigned_64) return N_AXLE_T is
+     (N_AXLE_T (V))
+     with Pre => Fits (V, 10);
+   function Code (X : N_AXLE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 10);
+   function Is_Valid (X : N_AXLE_T) return Boolean is
+     (True);
+
    --  N_ITER, 7.5.1.80: 5 bits, 0 .. 31
    type N_ITER_T is range 0 .. 31;
    function To_N_ITER (V : Unsigned_64) return N_ITER_T is
@@ -1385,7 +2660,8 @@ is
    function Is_Valid (X : N_ITER_T) return Boolean is
      (True);
 
-   --  N_PIG, 7.5.1.81: 3 bits, 0 .. 7
+   --  N_PIG, 7.5.1.81: 3 bits, 0 .. 7, position in the balise group minus 1 (0
+   --  = 1st .. 7 = 8th)
    type N_PIG_T is range 0 .. 7;
    function To_N_PIG (V : Unsigned_64) return N_PIG_T is
      (N_PIG_T (V))
@@ -1396,7 +2672,8 @@ is
    function Is_Valid (X : N_PIG_T) return Boolean is
      (True);
 
-   --  N_TOTAL, 7.5.1.82: 3 bits, 0 .. 7
+   --  N_TOTAL, 7.5.1.82: 3 bits, 0 .. 7, number of balises in the group minus
+   --  1 (0 = 1 balise .. 7 = 8 balises)
    type N_TOTAL_T is range 0 .. 7;
    function To_N_TOTAL (V : Unsigned_64) return N_TOTAL_T is
      (N_TOTAL_T (V))
@@ -1407,14 +2684,30 @@ is
    function Is_Valid (X : N_TOTAL_T) return Boolean is
      (True);
 
+   --  Q_ASPECT, 7.5.1.101: 1 bits, 0 .. 1
+   type Q_ASPECT_T is range 0 .. 1;
+   Q_ASPECT_Stop_If_In_SH : constant Q_ASPECT_T := 0;
+   --  0: Stop if in SH mode
+   Q_ASPECT_Go_If_In_SH : constant Q_ASPECT_T := 1;
+   --  1: Go if in SH mode
+   function To_Q_ASPECT (V : Unsigned_64) return Q_ASPECT_T is
+     (Q_ASPECT_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_ASPECT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_ASPECT_T) return Boolean is
+     (True);
+
    --  Q_CONFTEXTDISPLAY, 7.5.1.101.1: 1 bits, 0 .. 1
    type Q_CONFTEXTDISPLAY_T is range 0 .. 1;
-   Q_CONFTEXTDISPLAY_Acknowledgement_Ends_Display :
+   Q_CONFTEXTDISPLAY_Driver_Acknowledgement_Always_Ends :
      constant Q_CONFTEXTDISPLAY_T := 0;
-   --  0: acknowledgement ends display
-   Q_CONFTEXTDISPLAY_Acknowledgement_Additional :
+   --  0: Driver acknowledgement always ends the text display, regardless of
+   --  the end condition
+   Q_CONFTEXTDISPLAY_Driver_Acknowledgement_Is_An :
      constant Q_CONFTEXTDISPLAY_T := 1;
-   --  1: acknowledgement additional
+   --  1: Driver acknowledgement is an additional condition to end the display
    function To_Q_CONFTEXTDISPLAY (V : Unsigned_64)
      return Q_CONFTEXTDISPLAY_T
    is (Q_CONFTEXTDISPLAY_T (V))
@@ -1427,10 +2720,10 @@ is
 
    --  Q_DANGERPOINT, 7.5.1.102: 1 bits, 0 .. 1
    type Q_DANGERPOINT_T is range 0 .. 1;
-   Q_DANGERPOINT_No_Danger_Point : constant Q_DANGERPOINT_T := 0;
-   --  0: no danger point
-   Q_DANGERPOINT_Danger_Point_Follows : constant Q_DANGERPOINT_T := 1;
-   --  1: danger point follows
+   Q_DANGERPOINT_No_Danger_Point_Information : constant Q_DANGERPOINT_T := 0;
+   --  0: No danger point information
+   Q_DANGERPOINT_Danger_Point_Information_To : constant Q_DANGERPOINT_T := 1;
+   --  1: Danger point information to follow
    function To_Q_DANGERPOINT (V : Unsigned_64) return Q_DANGERPOINT_T is
      (Q_DANGERPOINT_T (V))
      with Pre => Fits (V, 1);
@@ -1442,10 +2735,10 @@ is
 
    --  Q_DESK, 7.5.1.102.2: 1 bits, 0 .. 1
    type Q_DESK_T is range 0 .. 1;
-   Q_DESK_Desks_Closed : constant Q_DESK_T := 0;
-   --  0: desks closed
-   Q_DESK_Desk_Open : constant Q_DESK_T := 1;
-   --  1: desk open
+   Q_DESK_Desks_Are_Closed : constant Q_DESK_T := 0;
+   --  0: Desks are closed
+   Q_DESK_A_Desk_Is_Open : constant Q_DESK_T := 1;
+   --  1: A desk is open
    function To_Q_DESK (V : Unsigned_64) return Q_DESK_T is
      (Q_DESK_T (V))
      with Pre => Fits (V, 1);
@@ -1457,12 +2750,12 @@ is
 
    --  Q_DIFF, 7.5.1.102.1: 2 bits, 0 .. 2
    type Q_DIFF_T is range 0 .. 3;
-   Q_DIFF_Cant_Deficiency : constant Q_DIFF_T := 0;
-   --  0: cant deficiency
-   Q_DIFF_Other_Replaces : constant Q_DIFF_T := 1;
-   --  1: other, replaces
-   Q_DIFF_Other_Does_Not_Replace : constant Q_DIFF_T := 2;
-   --  2: other, does not replace
+   Q_DIFF_Cant_Deficiency_Specific_Category : constant Q_DIFF_T := 0;
+   --  0: Cant Deficiency specific category
+   Q_DIFF_Other_Specific_Category_Replaces : constant Q_DIFF_T := 1;
+   --  1: Other specific category, replaces the Cant Deficiency SSP
+   Q_DIFF_Other_Specific_Category_Does : constant Q_DIFF_T := 2;
+   --  2: Other specific category, does not replace the Cant Deficiency SSP
    function To_Q_DIFF (V : Unsigned_64) return Q_DIFF_T is
      (Q_DIFF_T (V))
      with Pre => Fits (V, 2);
@@ -1475,11 +2768,11 @@ is
    --  Q_DIR, 7.5.1.103: 2 bits, 0 .. 2
    type Q_DIR_T is range 0 .. 3;
    Q_DIR_Reverse : constant Q_DIR_T := 0;
-   --  0: reverse
+   --  0: Reverse
    Q_DIR_Nominal : constant Q_DIR_T := 1;
-   --  1: nominal
+   --  1: Nominal
    Q_DIR_Both_Directions : constant Q_DIR_T := 2;
-   --  2: both directions
+   --  2: Both directions
    function To_Q_DIR (V : Unsigned_64) return Q_DIR_T is
      (Q_DIR_T (V))
      with Pre => Fits (V, 2);
@@ -1492,11 +2785,11 @@ is
    --  Q_DIRLRBG, 7.5.1.104: 2 bits, 0 .. 2
    type Q_DIRLRBG_T is range 0 .. 3;
    Q_DIRLRBG_Reverse : constant Q_DIRLRBG_T := 0;
-   --  0: reverse
+   --  0: Reverse
    Q_DIRLRBG_Nominal : constant Q_DIRLRBG_T := 1;
-   --  1: nominal
+   --  1: Nominal
    Q_DIRLRBG_Unknown : constant Q_DIRLRBG_T := 2;
-   --  2: unknown
+   --  2: Unknown
    function To_Q_DIRLRBG (V : Unsigned_64) return Q_DIRLRBG_T is
      (Q_DIRLRBG_T (V))
      with Pre => Fits (V, 2);
@@ -1509,11 +2802,11 @@ is
    --  Q_DIRTRAIN, 7.5.1.105: 2 bits, 0 .. 2
    type Q_DIRTRAIN_T is range 0 .. 3;
    Q_DIRTRAIN_Reverse : constant Q_DIRTRAIN_T := 0;
-   --  0: reverse
+   --  0: Reverse
    Q_DIRTRAIN_Nominal : constant Q_DIRTRAIN_T := 1;
-   --  1: nominal
+   --  1: Nominal
    Q_DIRTRAIN_Unknown : constant Q_DIRTRAIN_T := 2;
-   --  2: unknown
+   --  2: Unknown
    function To_Q_DIRTRAIN (V : Unsigned_64) return Q_DIRTRAIN_T is
      (Q_DIRTRAIN_T (V))
      with Pre => Fits (V, 2);
@@ -1526,11 +2819,11 @@ is
    --  Q_DLRBG, 7.5.1.106: 2 bits, 0 .. 2
    type Q_DLRBG_T is range 0 .. 3;
    Q_DLRBG_Reverse : constant Q_DLRBG_T := 0;
-   --  0: reverse
+   --  0: Reverse
    Q_DLRBG_Nominal : constant Q_DLRBG_T := 1;
-   --  1: nominal
+   --  1: Nominal
    Q_DLRBG_Unknown : constant Q_DLRBG_T := 2;
-   --  2: unknown
+   --  2: Unknown
    function To_Q_DLRBG (V : Unsigned_64) return Q_DLRBG_T is
      (Q_DLRBG_T (V))
      with Pre => Fits (V, 2);
@@ -1542,6 +2835,21 @@ is
 
    --  Q_EMERGENCYSTOP, 7.5.1.107: 2 bits, 0 .. 3
    type Q_EMERGENCYSTOP_T is range 0 .. 3;
+   Q_EMERGENCYSTOP_Conditional_Emergency_Stop_Accepted :
+     constant Q_EMERGENCYSTOP_T := 0;
+   --  0: Conditional Emergency Stop accepted, with update of current EOA/LOA
+   --  (ref 3.10.2.2 b) 1st and 4th bullets)
+   Q_EMERGENCYSTOP_Conditional_Emergency_Stop_Accepted_1 :
+     constant Q_EMERGENCYSTOP_T := 1;
+   --  1: Conditional Emergency Stop accepted, with no update of current
+   --  EOA/LOA (ref 3.10.2.2 b) 2nd and 3rd bullets)
+   Q_EMERGENCYSTOP_Not_Relevant_Unconditional_Emergency :
+     constant Q_EMERGENCYSTOP_T := 2;
+   --  2: Not Relevant (Unconditional Emergency Stop) (ref 3.10.2.3)
+   Q_EMERGENCYSTOP_Conditional_Emergency_Stop_Rejected :
+     constant Q_EMERGENCYSTOP_T := 3;
+   --  3: Conditional Emergency Stop rejected because train has passed the
+   --  emergency stop location (ref 3.10.2.2 a))
    function To_Q_EMERGENCYSTOP (V : Unsigned_64) return Q_EMERGENCYSTOP_T is
      (Q_EMERGENCYSTOP_T (V))
      with Pre => Fits (V, 2);
@@ -1553,10 +2861,10 @@ is
 
    --  Q_ENDTIMER, 7.5.1.108: 1 bits, 0 .. 1
    type Q_ENDTIMER_T is range 0 .. 1;
-   Q_ENDTIMER_No_End_Timer : constant Q_ENDTIMER_T := 0;
-   --  0: no end timer
-   Q_ENDTIMER_End_Timer_Follows : constant Q_ENDTIMER_T := 1;
-   --  1: end timer follows
+   Q_ENDTIMER_No_End_Section_Timer : constant Q_ENDTIMER_T := 0;
+   --  0: No End section timer information
+   Q_ENDTIMER_End_Section_Timer_Information : constant Q_ENDTIMER_T := 1;
+   --  1: End section timer information to follow
    function To_Q_ENDTIMER (V : Unsigned_64) return Q_ENDTIMER_T is
      (Q_ENDTIMER_T (V))
      with Pre => Fits (V, 1);
@@ -1568,10 +2876,10 @@ is
 
    --  Q_FRONT, 7.5.1.109: 1 bits, 0 .. 1
    type Q_FRONT_T is range 0 .. 1;
-   Q_FRONT_Train_Length_Delay : constant Q_FRONT_T := 0;
-   --  0: train length delay
+   Q_FRONT_Train_Length_Delay_On : constant Q_FRONT_T := 0;
+   --  0: Train length delay on validity end point of profile element.
    Q_FRONT_No_Train_Length_Delay : constant Q_FRONT_T := 1;
-   --  1: no train length delay
+   --  1: No train length delay on validity end point of profile element
    function To_Q_FRONT (V : Unsigned_64) return Q_FRONT_T is
      (Q_FRONT_T (V))
      with Pre => Fits (V, 1);
@@ -1599,9 +2907,9 @@ is
    --  Q_INFILL, 7.5.1.111: 1 bits, 0 .. 1
    type Q_INFILL_T is range 0 .. 1;
    Q_INFILL_Enter : constant Q_INFILL_T := 0;
-   --  0: enter
+   --  0: Enter
    Q_INFILL_Exit : constant Q_INFILL_T := 1;
-   --  1: exit
+   --  1: Exit
    function To_Q_INFILL (V : Unsigned_64) return Q_INFILL_T is
      (Q_INFILL_T (V))
      with Pre => Fits (V, 1);
@@ -1613,14 +2921,14 @@ is
 
    --  Q_INTEGRITY, 7.5.1.112: 2 bits, 0 .. 3
    type Q_INTEGRITY_T is range 0 .. 3;
-   Q_INTEGRITY_No_Information : constant Q_INTEGRITY_T := 0;
-   --  0: no information
-   Q_INTEGRITY_Confirmed_By_External_Source : constant Q_INTEGRITY_T := 1;
-   --  1: confirmed by external source
-   Q_INTEGRITY_Confirmed_By_Driver : constant Q_INTEGRITY_T := 2;
-   --  2: confirmed by driver
-   Q_INTEGRITY_Lost : constant Q_INTEGRITY_T := 3;
-   --  3: lost
+   Q_INTEGRITY_No_Train_Integrity_Information : constant Q_INTEGRITY_T := 0;
+   --  0: No train integrity information
+   Q_INTEGRITY_Train_Integrity_Confirmed_By : constant Q_INTEGRITY_T := 1;
+   --  1: Train integrity confirmed by external source
+   Q_INTEGRITY_Train_Integrity_Confirmed_By_2 : constant Q_INTEGRITY_T := 2;
+   --  2: Train integrity confirmed by driver
+   Q_INTEGRITY_Train_Integrity_Lost : constant Q_INTEGRITY_T := 3;
+   --  3: Train integrity lost
    function To_Q_INTEGRITY (V : Unsigned_64) return Q_INTEGRITY_T is
      (Q_INTEGRITY_T (V))
      with Pre => Fits (V, 2);
@@ -1630,12 +2938,27 @@ is
    function Is_Valid (X : Q_INTEGRITY_T) return Boolean is
      (True);
 
+   --  Q_LGTLOC, 7.5.1.113: 1 bits, 0 .. 1
+   type Q_LGTLOC_T is range 0 .. 1;
+   Q_LGTLOC_Min_Safe_Rear_End : constant Q_LGTLOC_T := 0;
+   --  0: Min safe rear end
+   Q_LGTLOC_Max_Safe_Front_End : constant Q_LGTLOC_T := 1;
+   --  1: Max safe front end
+   function To_Q_LGTLOC (V : Unsigned_64) return Q_LGTLOC_T is
+     (Q_LGTLOC_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_LGTLOC_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_LGTLOC_T) return Boolean is
+     (True);
+
    --  Q_LINK, 7.5.1.114: 1 bits, 0 .. 1
    type Q_LINK_T is range 0 .. 1;
    Q_LINK_Unlinked : constant Q_LINK_T := 0;
-   --  0: unlinked
+   --  0: Unlinked
    Q_LINK_Linked : constant Q_LINK_T := 1;
-   --  1: linked
+   --  1: Linked
    function To_Q_LINK (V : Unsigned_64) return Q_LINK_T is
      (Q_LINK_T (V))
      with Pre => Fits (V, 1);
@@ -1647,10 +2970,10 @@ is
 
    --  Q_LINKORIENTATION, 7.5.1.116: 1 bits, 0 .. 1
    type Q_LINKORIENTATION_T is range 0 .. 1;
-   Q_LINKORIENTATION_Reverse : constant Q_LINKORIENTATION_T := 0;
-   --  0: reverse
-   Q_LINKORIENTATION_Nominal : constant Q_LINKORIENTATION_T := 1;
-   --  1: nominal
+   Q_LINKORIENTATION_The_Balise_Group_Is : constant Q_LINKORIENTATION_T := 0;
+   --  0: The balise group is seen by the train in reverse direction
+   Q_LINKORIENTATION_The_Balise_Group_Is_1 : constant Q_LINKORIENTATION_T := 1;
+   --  1: The balise group is seen by the train in nominal direction
    function To_Q_LINKORIENTATION (V : Unsigned_64)
      return Q_LINKORIENTATION_T
    is (Q_LINKORIENTATION_T (V))
@@ -1664,11 +2987,11 @@ is
    --  Q_LINKREACTION, 7.5.1.117: 2 bits, 0 .. 2
    type Q_LINKREACTION_T is range 0 .. 3;
    Q_LINKREACTION_Train_Trip : constant Q_LINKREACTION_T := 0;
-   --  0: train trip
-   Q_LINKREACTION_Service_Brake : constant Q_LINKREACTION_T := 1;
-   --  1: service brake
+   --  0: Train trip
+   Q_LINKREACTION_Apply_Service_Brake : constant Q_LINKREACTION_T := 1;
+   --  1: Apply service brake
    Q_LINKREACTION_No_Reaction : constant Q_LINKREACTION_T := 2;
-   --  2: no reaction
+   --  2: No Reaction
    function To_Q_LINKREACTION (V : Unsigned_64) return Q_LINKREACTION_T is
      (Q_LINKREACTION_T (V))
      with Pre => Fits (V, 2);
@@ -1678,7 +3001,7 @@ is
    function Is_Valid (X : Q_LINKREACTION_T) return Boolean is
      (X <= 2);
 
-   --  Q_LOCACC, 7.5.1.115: 6 bits, 0 .. 63, 1 m
+   --  Q_LOCACC, 7.5.1.115: 6 bits, 0 .. 63, 1 m (accuracy +/- value)
    type Q_LOCACC_T is range 0 .. 63;
    function To_Q_LOCACC (V : Unsigned_64) return Q_LOCACC_T is
      (Q_LOCACC_T (V))
@@ -1689,7 +3012,71 @@ is
    function Is_Valid (X : Q_LOCACC_T) return Boolean is
      (True);
 
-   --  Q_MARQSTREASON, 7.5.1.118.3: 5 bits, 0 .. 31, bit set
+   --  Q_LOOPDIR, 7.5.1.118: 1 bits, 0 .. 1
+   type Q_LOOPDIR_T is range 0 .. 1;
+   Q_LOOPDIR_Opposite : constant Q_LOOPDIR_T := 0;
+   --  0: Opposite
+   Q_LOOPDIR_Same : constant Q_LOOPDIR_T := 1;
+   --  1: Same
+   function To_Q_LOOPDIR (V : Unsigned_64) return Q_LOOPDIR_T is
+     (Q_LOOPDIR_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_LOOPDIR_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_LOOPDIR_T) return Boolean is
+     (True);
+
+   --  Q_LSSMA, 7.5.1.118.0: 1 bits, 0 .. 1
+   type Q_LSSMA_T is range 0 .. 1;
+   Q_LSSMA_Toggle_Off : constant Q_LSSMA_T := 0;
+   --  0: Toggle off
+   Q_LSSMA_Toggle_On : constant Q_LSSMA_T := 1;
+   --  1: Toggle on
+   function To_Q_LSSMA (V : Unsigned_64) return Q_LSSMA_T is
+     (Q_LSSMA_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_LSSMA_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_LSSMA_T) return Boolean is
+     (True);
+
+   --  Q_LXSTATUS, 7.5.1.118.1: 1 bits, 0 .. 1
+   type Q_LXSTATUS_T is range 0 .. 1;
+   Q_LXSTATUS_LX_Is_Protected : constant Q_LXSTATUS_T := 0;
+   --  0: LX is protected
+   Q_LXSTATUS_LX_Is_Not_Protected : constant Q_LXSTATUS_T := 1;
+   --  1: LX is not protected
+   function To_Q_LXSTATUS (V : Unsigned_64) return Q_LXSTATUS_T is
+     (Q_LXSTATUS_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_LXSTATUS_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_LXSTATUS_T) return Boolean is
+     (True);
+
+   --  Q_MAMODE, 7.5.1.118.2: 1 bits, 0 .. 1
+   type Q_MAMODE_T is range 0 .. 1;
+   Q_MAMODE_No_Temporary_Svl_To : constant Q_MAMODE_T := 0;
+   --  0: No temporary SvL to be considered with respect to the mode profile
+   Q_MAMODE_Beginning_Of_Mode_Profile : constant Q_MAMODE_T := 1;
+   --  1: Beginning of mode profile to be considered as temporary SvL
+   function To_Q_MAMODE (V : Unsigned_64) return Q_MAMODE_T is
+     (Q_MAMODE_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_MAMODE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_MAMODE_T) return Boolean is
+     (True);
+
+   --  Q_MARQSTREASON, 7.5.1.118.3: 5 bits, 0 .. 31, bitset: bit 0 start
+   --  selected by driver, bit 1 time before reaching the perturbation location
+   --  reached, bit 2 time before a section timer/LOA speed timer expires
+   --  reached, bit 3 track description deleted, bit 4 TAF up to level 2
+   --  transition location
    type Q_MARQSTREASON_T is range 0 .. 31;
    function To_Q_MARQSTREASON (V : Unsigned_64) return Q_MARQSTREASON_T is
      (Q_MARQSTREASON_T (V))
@@ -1703,9 +3090,9 @@ is
    --  Q_MEDIA, 7.5.1.119: 1 bits, 0 .. 1
    type Q_MEDIA_T is range 0 .. 1;
    Q_MEDIA_Balise : constant Q_MEDIA_T := 0;
-   --  0: balise
+   --  0: Balise
    Q_MEDIA_Loop : constant Q_MEDIA_T := 1;
-   --  1: loop
+   --  1: Loop
    function To_Q_MEDIA (V : Unsigned_64) return Q_MEDIA_T is
      (Q_MEDIA_T (V))
      with Pre => Fits (V, 1);
@@ -1715,12 +3102,47 @@ is
    function Is_Valid (X : Q_MEDIA_T) return Boolean is
      (True);
 
+   --  Q_MPOSITION, 7.5.1.120: 1 bits, 0 .. 1
+   type Q_MPOSITION_T is range 0 .. 1;
+   Q_MPOSITION_Opposite_Counting_Downwards_If : constant Q_MPOSITION_T := 0;
+   --  0: Opposite (counting downwards if passed in nominal direction or
+   --  counting upwards if passed in reverse direction)
+   Q_MPOSITION_Same_Counting_Upwards_If : constant Q_MPOSITION_T := 1;
+   --  1: Same (counting upwards if passed in nominal direction or counting
+   --  downwards if passed in reverse direction)
+   function To_Q_MPOSITION (V : Unsigned_64) return Q_MPOSITION_T is
+     (Q_MPOSITION_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_MPOSITION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_MPOSITION_T) return Boolean is
+     (True);
+
+   --  Q_NETWORKTYPE, 7.5.1.120.1: 2 bits, 0 .. 2
+   type Q_NETWORKTYPE_T is range 0 .. 3;
+   Q_NETWORKTYPE_FRMCS : constant Q_NETWORKTYPE_T := 0;
+   --  0: FRMCS
+   Q_NETWORKTYPE_FRMCS_GSM_R : constant Q_NETWORKTYPE_T := 1;
+   --  1: FRMCS+GSM-R
+   Q_NETWORKTYPE_GSM_R : constant Q_NETWORKTYPE_T := 2;
+   --  2: GSM-R
+   function To_Q_NETWORKTYPE (V : Unsigned_64) return Q_NETWORKTYPE_T is
+     (Q_NETWORKTYPE_T (V))
+     with Pre => Fits (V, 2);
+   function Code (X : Q_NETWORKTYPE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 2);
+   function Is_Valid (X : Q_NETWORKTYPE_T) return Boolean is
+     (X <= 2);
+
    --  Q_NEWCOUNTRY, 7.5.1.121: 1 bits, 0 .. 1
    type Q_NEWCOUNTRY_T is range 0 .. 1;
-   Q_NEWCOUNTRY_Same_Country : constant Q_NEWCOUNTRY_T := 0;
-   --  0: same country
-   Q_NEWCOUNTRY_NID_C_Follows : constant Q_NEWCOUNTRY_T := 1;
-   --  1: NID_C follows
+   Q_NEWCOUNTRY_Same_Country_Railway_Administration :
+     constant Q_NEWCOUNTRY_T := 0;
+   --  0: Same country / railway administration, no NID_C follows
+   Q_NEWCOUNTRY_Not_The_Same_Country : constant Q_NEWCOUNTRY_T := 1;
+   --  1: Not the same country / railway administration, NID_C follows
    function To_Q_NEWCOUNTRY (V : Unsigned_64) return Q_NEWCOUNTRY_T is
      (Q_NEWCOUNTRY_T (V))
      with Pre => Fits (V, 1);
@@ -1733,9 +3155,9 @@ is
    --  Q_NVDRIVER_ADHES, 7.5.1.122: 1 bits, 0 .. 1
    type Q_NVDRIVER_ADHES_T is range 0 .. 1;
    Q_NVDRIVER_ADHES_Not_Allowed : constant Q_NVDRIVER_ADHES_T := 0;
-   --  0: not allowed
+   --  0: Not allowed
    Q_NVDRIVER_ADHES_Allowed : constant Q_NVDRIVER_ADHES_T := 1;
-   --  1: allowed
+   --  1: Allowed
    function To_Q_NVDRIVER_ADHES (V : Unsigned_64) return Q_NVDRIVER_ADHES_T is
      (Q_NVDRIVER_ADHES_T (V))
      with Pre => Fits (V, 1);
@@ -1747,10 +3169,11 @@ is
 
    --  Q_NVEMRRLS, 7.5.1.123: 1 bits, 0 .. 1
    type Q_NVEMRRLS_T is range 0 .. 1;
-   Q_NVEMRRLS_At_Standstill : constant Q_NVEMRRLS_T := 0;
-   --  0: at standstill
-   Q_NVEMRRLS_When_Not_Exceeded : constant Q_NVEMRRLS_T := 1;
-   --  1: when not exceeded
+   Q_NVEMRRLS_Revoke_Emergency_Brake_Command : constant Q_NVEMRRLS_T := 0;
+   --  0: Revoke emergency brake command at standstill
+   Q_NVEMRRLS_Revoke_Emergency_Brake_Command_1 : constant Q_NVEMRRLS_T := 1;
+   --  1: Revoke emergency brake command when permitted speed supervision limit
+   --  is no longer exceeded
    function To_Q_NVEMRRLS (V : Unsigned_64) return Q_NVEMRRLS_T is
      (Q_NVEMRRLS_T (V))
      with Pre => Fits (V, 1);
@@ -1763,9 +3186,9 @@ is
    --  Q_NVGUIPERM, 7.5.1.123.1: 1 bits, 0 .. 1
    type Q_NVGUIPERM_T is range 0 .. 1;
    Q_NVGUIPERM_No : constant Q_NVGUIPERM_T := 0;
-   --  0: no
+   --  0: No
    Q_NVGUIPERM_Yes : constant Q_NVGUIPERM_T := 1;
-   --  1: yes
+   --  1: Yes
    function To_Q_NVGUIPERM (V : Unsigned_64) return Q_NVGUIPERM_T is
      (Q_NVGUIPERM_T (V))
      with Pre => Fits (V, 1);
@@ -1778,9 +3201,9 @@ is
    --  Q_NVINHSMICPERM, 7.5.1.123.2: 1 bits, 0 .. 1
    type Q_NVINHSMICPERM_T is range 0 .. 1;
    Q_NVINHSMICPERM_No : constant Q_NVINHSMICPERM_T := 0;
-   --  0: no
+   --  0: No
    Q_NVINHSMICPERM_Yes : constant Q_NVINHSMICPERM_T := 1;
-   --  1: yes
+   --  1: Yes
    function To_Q_NVINHSMICPERM (V : Unsigned_64) return Q_NVINHSMICPERM_T is
      (Q_NVINHSMICPERM_T (V))
      with Pre => Fits (V, 1);
@@ -1792,10 +3215,10 @@ is
 
    --  Q_NVKINT, 7.5.1.123.3: 1 bits, 0 .. 1
    type Q_NVKINT_T is range 0 .. 1;
-   Q_NVKINT_No_Correction_Factors : constant Q_NVKINT_T := 0;
-   --  0: no correction factors
-   Q_NVKINT_Correction_Factors_Follow : constant Q_NVKINT_T := 1;
-   --  1: correction factors follow
+   Q_NVKINT_No_Integrated_Correction_Factors : constant Q_NVKINT_T := 0;
+   --  0: No integrated correction factors follow
+   Q_NVKINT_Integrated_Correction_Factors_Follow : constant Q_NVKINT_T := 1;
+   --  1: Integrated correction factors follow
    function To_Q_NVKINT (V : Unsigned_64) return Q_NVKINT_T is
      (Q_NVKINT_T (V))
      with Pre => Fits (V, 1);
@@ -1808,9 +3231,9 @@ is
    --  Q_NVKVINTSET, 7.5.1.123.4: 2 bits, 0 .. 1
    type Q_NVKVINTSET_T is range 0 .. 3;
    Q_NVKVINTSET_Freight_Trains : constant Q_NVKVINTSET_T := 0;
-   --  0: freight trains
+   --  0: Freight trains
    Q_NVKVINTSET_Conventional_Passenger_Trains : constant Q_NVKVINTSET_T := 1;
-   --  1: conventional passenger trains
+   --  1: Conventional passenger trains
    function To_Q_NVKVINTSET (V : Unsigned_64) return Q_NVKVINTSET_T is
      (Q_NVKVINTSET_T (V))
      with Pre => Fits (V, 2);
@@ -1820,7 +3243,7 @@ is
    function Is_Valid (X : Q_NVKVINTSET_T) return Boolean is
      (X <= 1);
 
-   --  Q_NVLOCACC, 7.5.1.123.5: 6 bits, 0 .. 63, 1 m
+   --  Q_NVLOCACC, 7.5.1.123.5: 6 bits, 0 .. 63, 1 m (accuracy +/- value)
    type Q_NVLOCACC_T is range 0 .. 63;
    function To_Q_NVLOCACC (V : Unsigned_64) return Q_NVLOCACC_T is
      (Q_NVLOCACC_T (V))
@@ -1834,9 +3257,9 @@ is
    --  Q_NVSBFBPERM, 7.5.1.123.6: 1 bits, 0 .. 1
    type Q_NVSBFBPERM_T is range 0 .. 1;
    Q_NVSBFBPERM_No : constant Q_NVSBFBPERM_T := 0;
-   --  0: no
+   --  0: No
    Q_NVSBFBPERM_Yes : constant Q_NVSBFBPERM_T := 1;
-   --  1: yes
+   --  1: Yes
    function To_Q_NVSBFBPERM (V : Unsigned_64) return Q_NVSBFBPERM_T is
      (Q_NVSBFBPERM_T (V))
      with Pre => Fits (V, 1);
@@ -1849,9 +3272,9 @@ is
    --  Q_NVSBTSMPERM, 7.5.1.124: 1 bits, 0 .. 1
    type Q_NVSBTSMPERM_T is range 0 .. 1;
    Q_NVSBTSMPERM_No : constant Q_NVSBTSMPERM_T := 0;
-   --  0: no
+   --  0: No
    Q_NVSBTSMPERM_Yes : constant Q_NVSBTSMPERM_T := 1;
-   --  1: yes
+   --  1: Yes
    function To_Q_NVSBTSMPERM (V : Unsigned_64) return Q_NVSBTSMPERM_T is
      (Q_NVSBTSMPERM_T (V))
      with Pre => Fits (V, 1);
@@ -1864,9 +3287,9 @@ is
    --  Q_ORIENTATION, 7.5.1.125: 1 bits, 0 .. 1
    type Q_ORIENTATION_T is range 0 .. 1;
    Q_ORIENTATION_Reverse : constant Q_ORIENTATION_T := 0;
-   --  0: reverse
+   --  0: Reverse
    Q_ORIENTATION_Nominal : constant Q_ORIENTATION_T := 1;
-   --  1: nominal
+   --  1: Nominal
    function To_Q_ORIENTATION (V : Unsigned_64) return Q_ORIENTATION_T is
      (Q_ORIENTATION_T (V))
      with Pre => Fits (V, 1);
@@ -1878,10 +3301,10 @@ is
 
    --  Q_OVERLAP, 7.5.1.126: 1 bits, 0 .. 1
    type Q_OVERLAP_T is range 0 .. 1;
-   Q_OVERLAP_No_Overlap : constant Q_OVERLAP_T := 0;
-   --  0: no overlap
-   Q_OVERLAP_Overlap_Follows : constant Q_OVERLAP_T := 1;
-   --  1: overlap follows
+   Q_OVERLAP_No_Overlap_Information : constant Q_OVERLAP_T := 0;
+   --  0: No overlap information
+   Q_OVERLAP_Overlap_Information_To_Follow : constant Q_OVERLAP_T := 1;
+   --  1: Overlap information to follow
    function To_Q_OVERLAP (V : Unsigned_64) return Q_OVERLAP_T is
      (Q_OVERLAP_T (V))
      with Pre => Fits (V, 1);
@@ -1891,14 +3314,94 @@ is
    function Is_Valid (X : Q_OVERLAP_T) return Boolean is
      (True);
 
+   --  Q_PBDSR, 7.5.1.126.1: 1 bits, 0 .. 1
+   type Q_PBDSR_T is range 0 .. 1;
+   Q_PBDSR_EB_Intervention_Requested : constant Q_PBDSR_T := 0;
+   --  0: EB intervention requested
+   Q_PBDSR_SB_Intervention_Requested : constant Q_PBDSR_T := 1;
+   --  1: SB intervention requested
+   function To_Q_PBDSR (V : Unsigned_64) return Q_PBDSR_T is
+     (Q_PBDSR_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_PBDSR_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_PBDSR_T) return Boolean is
+     (True);
+
+   --  Q_PLATFORM, 7.5.1.126.2: 2 bits, 0 .. 2
+   type Q_PLATFORM_T is range 0 .. 3;
+   Q_PLATFORM_Platform_On_Left_Side : constant Q_PLATFORM_T := 0;
+   --  0: Platform on left side
+   Q_PLATFORM_Platform_On_Right_Side : constant Q_PLATFORM_T := 1;
+   --  1: Platform on right side
+   Q_PLATFORM_Platform_On_Both_Sides : constant Q_PLATFORM_T := 2;
+   --  2: Platform on both sides
+   function To_Q_PLATFORM (V : Unsigned_64) return Q_PLATFORM_T is
+     (Q_PLATFORM_T (V))
+     with Pre => Fits (V, 2);
+   function Code (X : Q_PLATFORM_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 2);
+   function Is_Valid (X : Q_PLATFORM_T) return Boolean is
+     (X <= 2);
+
+   --  Q_RBC, 7.5.1.127: 1 bits, 0 .. 1
+   type Q_RBC_T is range 0 .. 1;
+   Q_RBC_Terminate_Communication_Session : constant Q_RBC_T := 0;
+   --  0: Terminate communication session
+   Q_RBC_Establish_Communication_Session : constant Q_RBC_T := 1;
+   --  1: Establish communication session
+   function To_Q_RBC (V : Unsigned_64) return Q_RBC_T is
+     (Q_RBC_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_RBC_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_RBC_T) return Boolean is
+     (True);
+
+   --  Q_RIU, 7.5.1.128: 1 bits, 0 .. 1
+   type Q_RIU_T is range 0 .. 1;
+   Q_RIU_Terminate_Communication_Session : constant Q_RIU_T := 0;
+   --  0: Terminate communication session
+   Q_RIU_Establish_Communication_Session : constant Q_RIU_T := 1;
+   --  1: Establish communication session
+   function To_Q_RIU (V : Unsigned_64) return Q_RIU_T is
+     (Q_RIU_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_RIU_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_RIU_T) return Boolean is
+     (True);
+
+   --  Q_SAFECONSISTLENGTH, 7.5.1.112.1: 1 bits, 0 .. 1
+   type Q_SAFECONSISTLENGTH_T is range 0 .. 1;
+   Q_SAFECONSISTLENGTH_No_Safe_Consist_Length :
+     constant Q_SAFECONSISTLENGTH_T := 0;
+   --  0: No safe consist length information available
+   Q_SAFECONSISTLENGTH_Safe_Consist_Length_Information :
+     constant Q_SAFECONSISTLENGTH_T := 1;
+   --  1: Safe consist length information available
+   function To_Q_SAFECONSISTLENGTH (V : Unsigned_64)
+     return Q_SAFECONSISTLENGTH_T
+   is (Q_SAFECONSISTLENGTH_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_SAFECONSISTLENGTH_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_SAFECONSISTLENGTH_T) return Boolean is
+     (True);
+
    --  Q_SCALE, 7.5.1.129: 2 bits, 0 .. 2
    type Q_SCALE_T is range 0 .. 3;
-   Q_SCALE_10_Cm : constant Q_SCALE_T := 0;
-   --  0: 10 cm
-   Q_SCALE_1_M : constant Q_SCALE_T := 1;
-   --  1: 1 m
-   Q_SCALE_10_M : constant Q_SCALE_T := 2;
-   --  2: 10 m
+   Q_SCALE_10_Cm_Scale : constant Q_SCALE_T := 0;
+   --  0: 10 cm scale
+   Q_SCALE_1_M_Scale : constant Q_SCALE_T := 1;
+   --  1: 1 m scale
+   Q_SCALE_10_M_Scale : constant Q_SCALE_T := 2;
+   --  2: 10 m scale
    function To_Q_SCALE (V : Unsigned_64) return Q_SCALE_T is
      (Q_SCALE_T (V))
      with Pre => Fits (V, 2);
@@ -1910,10 +3413,12 @@ is
 
    --  Q_SECTIONTIMER, 7.5.1.130: 1 bits, 0 .. 1
    type Q_SECTIONTIMER_T is range 0 .. 1;
-   Q_SECTIONTIMER_No_Section_Timer : constant Q_SECTIONTIMER_T := 0;
-   --  0: no section timer
-   Q_SECTIONTIMER_Section_Timer_Follows : constant Q_SECTIONTIMER_T := 1;
-   --  1: section timer follows
+   Q_SECTIONTIMER_No_Section_Timer_Information :
+     constant Q_SECTIONTIMER_T := 0;
+   --  0: No Section Timer information
+   Q_SECTIONTIMER_Section_Timer_Information_To :
+     constant Q_SECTIONTIMER_T := 1;
+   --  1: Section Timer information to follow
    function To_Q_SECTIONTIMER (V : Unsigned_64) return Q_SECTIONTIMER_T is
      (Q_SECTIONTIMER_T (V))
      with Pre => Fits (V, 1);
@@ -1923,14 +3428,59 @@ is
    function Is_Valid (X : Q_SECTIONTIMER_T) return Boolean is
      (True);
 
+   --  Q_SLEEPSESSION, 7.5.1.131: 1 bits, 0 .. 1
+   type Q_SLEEPSESSION_T is range 0 .. 1;
+   Q_SLEEPSESSION_Ignore_Session_Establishment_Termination :
+     constant Q_SLEEPSESSION_T := 0;
+   --  0: Ignore session establishment/termination order
+   Q_SLEEPSESSION_Execute_Session_Establishment_Termination :
+     constant Q_SLEEPSESSION_T := 1;
+   --  1: Execute session establishment/termination order
+   function To_Q_SLEEPSESSION (V : Unsigned_64) return Q_SLEEPSESSION_T is
+     (Q_SLEEPSESSION_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_SLEEPSESSION_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_SLEEPSESSION_T) return Boolean is
+     (True);
+
+   --  Q_SRSTOP, 7.5.1.132: 1 bits, 0 .. 1
+   type Q_SRSTOP_T is range 0 .. 1;
+   Q_SRSTOP_Stop_If_In_SR : constant Q_SRSTOP_T := 0;
+   --  0: Stop if in SR mode
+   Q_SRSTOP_Go_If_In_SR : constant Q_SRSTOP_T := 1;
+   --  1: Go if in SR mode
+   function To_Q_SRSTOP (V : Unsigned_64) return Q_SRSTOP_T is
+     (Q_SRSTOP_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_SRSTOP_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_SRSTOP_T) return Boolean is
+     (True);
+
+   --  Q_SSCODE, 7.5.1.133: 4 bits, 0 .. 14
+   type Q_SSCODE_T is range 0 .. 15;
+   Q_SSCODE_Code_Reserved_For_Test : constant Q_SSCODE_T := 15;
+   --  15: Code reserved for test purposes
+   function To_Q_SSCODE (V : Unsigned_64) return Q_SSCODE_T is
+     (Q_SSCODE_T (V))
+     with Pre => Fits (V, 4);
+   function Code (X : Q_SSCODE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 4);
+   function Is_Valid (X : Q_SSCODE_T) return Boolean is
+     (True);
+
    --  Q_STATUSLRBG, 7.5.1.134: 2 bits, 0 .. 2
    type Q_STATUSLRBG_T is range 0 .. 3;
-   Q_STATUSLRBG_Invalid : constant Q_STATUSLRBG_T := 0;
-   --  0: invalid
-   Q_STATUSLRBG_Valid : constant Q_STATUSLRBG_T := 1;
-   --  1: valid
-   Q_STATUSLRBG_Unknown : constant Q_STATUSLRBG_T := 2;
-   --  2: unknown
+   Q_STATUSLRBG_Invalid_Train_Position_Referred : constant Q_STATUSLRBG_T := 0;
+   --  0: Invalid train position referred to an LRBG
+   Q_STATUSLRBG_Valid_Train_Position_Referred : constant Q_STATUSLRBG_T := 1;
+   --  1: Valid train position referred to an LRBG
+   Q_STATUSLRBG_No_Train_Position_Referred : constant Q_STATUSLRBG_T := 2;
+   --  2: No train position referred to an LRBG
    function To_Q_STATUSLRBG (V : Unsigned_64) return Q_STATUSLRBG_T is
      (Q_STATUSLRBG_T (V))
      with Pre => Fits (V, 2);
@@ -1940,12 +3490,59 @@ is
    function Is_Valid (X : Q_STATUSLRBG_T) return Boolean is
      (X <= 2);
 
+   --  Q_STOPLX, 7.5.1.134.1: 1 bits, 0 .. 1
+   type Q_STOPLX_T is range 0 .. 1;
+   Q_STOPLX_No_Stop_Required : constant Q_STOPLX_T := 0;
+   --  0: No stop required
+   Q_STOPLX_Stop_Required : constant Q_STOPLX_T := 1;
+   --  1: Stop required
+   function To_Q_STOPLX (V : Unsigned_64) return Q_STOPLX_T is
+     (Q_STOPLX_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_STOPLX_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_STOPLX_T) return Boolean is
+     (True);
+
+   --  Q_SUITABILITY, 7.5.1.135: 2 bits, 0 .. 2
+   type Q_SUITABILITY_T is range 0 .. 3;
+   Q_SUITABILITY_Loading_Gauge : constant Q_SUITABILITY_T := 0;
+   --  0: Loading gauge
+   Q_SUITABILITY_Axle_Load : constant Q_SUITABILITY_T := 1;
+   --  1: Axle load
+   Q_SUITABILITY_Traction_System : constant Q_SUITABILITY_T := 2;
+   --  2: Traction system
+   function To_Q_SUITABILITY (V : Unsigned_64) return Q_SUITABILITY_T is
+     (Q_SUITABILITY_T (V))
+     with Pre => Fits (V, 2);
+   function Code (X : Q_SUITABILITY_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 2);
+   function Is_Valid (X : Q_SUITABILITY_T) return Boolean is
+     (X <= 2);
+
+   --  Q_TEXT, 7.5.1.136: 8 bits, 0 .. 1
+   type Q_TEXT_T is range 0 .. 255;
+   Q_TEXT_Level_Crossing_Not_Protected : constant Q_TEXT_T := 0;
+   --  0: Level crossing not protected
+   Q_TEXT_Acknowledgement : constant Q_TEXT_T := 1;
+   --  1: Acknowledgement
+   function To_Q_TEXT (V : Unsigned_64) return Q_TEXT_T is
+     (Q_TEXT_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : Q_TEXT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : Q_TEXT_T) return Boolean is
+     (X <= 1);
+
    --  Q_TEXTCLASS, 7.5.1.137: 2 bits, 0 .. 1
    type Q_TEXTCLASS_T is range 0 .. 3;
-   Q_TEXTCLASS_Auxiliary : constant Q_TEXTCLASS_T := 0;
-   --  0: auxiliary
-   Q_TEXTCLASS_Important : constant Q_TEXTCLASS_T := 1;
-   --  1: important
+   Q_TEXTCLASS_Auxiliary_Information : constant Q_TEXTCLASS_T := 0;
+   --  0: Auxiliary Information
+   Q_TEXTCLASS_Important_Information : constant Q_TEXTCLASS_T := 1;
+   --  1: Important Information
    function To_Q_TEXTCLASS (V : Unsigned_64) return Q_TEXTCLASS_T is
      (Q_TEXTCLASS_T (V))
      with Pre => Fits (V, 2);
@@ -1957,14 +3554,20 @@ is
 
    --  Q_TEXTCONFIRM, 7.5.1.138: 2 bits, 0 .. 3
    type Q_TEXTCONFIRM_T is range 0 .. 3;
-   Q_TEXTCONFIRM_No_Confirmation : constant Q_TEXTCONFIRM_T := 0;
-   --  0: no confirmation
-   Q_TEXTCONFIRM_Confirmation : constant Q_TEXTCONFIRM_T := 1;
-   --  1: confirmation
-   Q_TEXTCONFIRM_Confirmation_Service_Brake : constant Q_TEXTCONFIRM_T := 2;
-   --  2: confirmation, service brake
-   Q_TEXTCONFIRM_Confirmation_Emergency_Brake : constant Q_TEXTCONFIRM_T := 3;
-   --  3: confirmation, emergency brake
+   Q_TEXTCONFIRM_No_Confirmation_Required : constant Q_TEXTCONFIRM_T := 0;
+   --  0: No confirmation required
+   Q_TEXTCONFIRM_Confirmation_Required : constant Q_TEXTCONFIRM_T := 1;
+   --  1: Confirmation required
+   Q_TEXTCONFIRM_Confirmation_Required_Command_Application :
+     constant Q_TEXTCONFIRM_T := 2;
+   --  2: Confirmation required: command application of the service brake when
+   --  display end condition is fulfilled, unless the text has already been
+   --  acknowledged by the driver
+   Q_TEXTCONFIRM_Confirmation_Required_Command_Application_3 :
+     constant Q_TEXTCONFIRM_T := 3;
+   --  3: Confirmation required: command application of the emergency brake
+   --  when display end condition is fulfilled, unless the text has already
+   --  been acknowledged by the driver
    function To_Q_TEXTCONFIRM (V : Unsigned_64) return Q_TEXTCONFIRM_T is
      (Q_TEXTCONFIRM_T (V))
      with Pre => Fits (V, 2);
@@ -1976,10 +3579,10 @@ is
 
    --  Q_TEXTDISPLAY, 7.5.1.139: 1 bits, 0 .. 1
    type Q_TEXTDISPLAY_T is range 0 .. 1;
-   Q_TEXTDISPLAY_One_Sub_Condition : constant Q_TEXTDISPLAY_T := 0;
-   --  0: one sub-condition
-   Q_TEXTDISPLAY_All_Sub_Conditions : constant Q_TEXTDISPLAY_T := 1;
-   --  1: all sub-conditions
+   Q_TEXTDISPLAY_No_Display_As_Soon : constant Q_TEXTDISPLAY_T := 0;
+   --  0: No, display as soon as / until one of the sub-conditions is fulfilled
+   Q_TEXTDISPLAY_Yes_Display_As_Soon : constant Q_TEXTDISPLAY_T := 1;
+   --  1: Yes, display as soon as / until all sub-conditions are fulfilled
    function To_Q_TEXTDISPLAY (V : Unsigned_64) return Q_TEXTDISPLAY_T is
      (Q_TEXTDISPLAY_T (V))
      with Pre => Fits (V, 1);
@@ -1991,10 +3594,12 @@ is
 
    --  Q_TEXTREPORT, 7.5.1.140: 1 bits, 0 .. 1
    type Q_TEXTREPORT_T is range 0 .. 1;
-   Q_TEXTREPORT_No_Report : constant Q_TEXTREPORT_T := 0;
-   --  0: no report
-   Q_TEXTREPORT_Report_Required : constant Q_TEXTREPORT_T := 1;
-   --  1: report required
+   Q_TEXTREPORT_No_Driver_Acknowledgement_Report :
+     constant Q_TEXTREPORT_T := 0;
+   --  0: No driver acknowledgement report required
+   Q_TEXTREPORT_Driver_Acknowledgement_Report_Required :
+     constant Q_TEXTREPORT_T := 1;
+   --  1: Driver acknowledgement report required
    function To_Q_TEXTREPORT (V : Unsigned_64) return Q_TEXTREPORT_T is
      (Q_TEXTREPORT_T (V))
      with Pre => Fits (V, 1);
@@ -2004,12 +3609,27 @@ is
    function Is_Valid (X : Q_TEXTREPORT_T) return Boolean is
      (True);
 
+   --  Q_TRACKINIT, 7.5.1.141: 1 bits, 0 .. 1
+   type Q_TRACKINIT_T is range 0 .. 1;
+   Q_TRACKINIT_No_Initial_States_To : constant Q_TRACKINIT_T := 0;
+   --  0: No initial states to be resumed, profile to follow
+   Q_TRACKINIT_Empty_Profile_Initial_States : constant Q_TRACKINIT_T := 1;
+   --  1: Empty profile, initial states to be resumed
+   function To_Q_TRACKINIT (V : Unsigned_64) return Q_TRACKINIT_T is
+     (Q_TRACKINIT_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_TRACKINIT_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_TRACKINIT_T) return Boolean is
+     (True);
+
    --  Q_UPDOWN, 7.5.1.142: 1 bits, 0 .. 1
    type Q_UPDOWN_T is range 0 .. 1;
-   Q_UPDOWN_Down_Link : constant Q_UPDOWN_T := 0;
-   --  0: down link
-   Q_UPDOWN_Up_Link : constant Q_UPDOWN_T := 1;
-   --  1: up link
+   Q_UPDOWN_Down_Link_Telegram : constant Q_UPDOWN_T := 0;
+   --  0: Down link telegram
+   Q_UPDOWN_Up_Link_Telegram : constant Q_UPDOWN_T := 1;
+   --  1: Up link telegram
    function To_Q_UPDOWN (V : Unsigned_64) return Q_UPDOWN_T is
      (Q_UPDOWN_T (V))
      with Pre => Fits (V, 1);
@@ -2019,10 +3639,51 @@ is
    function Is_Valid (X : Q_UPDOWN_T) return Boolean is
      (True);
 
+   --  Q_VBCO, 7.5.1.142.1: 1 bits, 0 .. 1
+   type Q_VBCO_T is range 0 .. 1;
+   Q_VBCO_Remove_The_Virtual_Balise : constant Q_VBCO_T := 0;
+   --  0: Remove the Virtual Balise Cover
+   Q_VBCO_Set_The_Virtual_Balise : constant Q_VBCO_T := 1;
+   --  1: Set the Virtual Balise Cover
+   function To_Q_VBCO (V : Unsigned_64) return Q_VBCO_T is
+     (Q_VBCO_T (V))
+     with Pre => Fits (V, 1);
+   function Code (X : Q_VBCO_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 1);
+   function Is_Valid (X : Q_VBCO_T) return Boolean is
+     (True);
+
+   --  T_CYCLOC, 7.5.1.143: 8 bits, 0 .. 254, 1 s
+   type T_CYCLOC_T is range 0 .. 255;
+   T_CYCLOC_Infinite : constant T_CYCLOC_T := 255;
+   --  255: infinite
+   function To_T_CYCLOC (V : Unsigned_64) return T_CYCLOC_T is
+     (T_CYCLOC_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : T_CYCLOC_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : T_CYCLOC_T) return Boolean is
+     (True);
+
+   --  T_CYCRQST, 7.5.1.144: 8 bits, 0 .. 254, 1 s
+   type T_CYCRQST_T is range 0 .. 255;
+   T_CYCRQST_No_Repetition : constant T_CYCRQST_T := 255;
+   --  255: No repetition
+   function To_T_CYCRQST (V : Unsigned_64) return T_CYCRQST_T is
+     (T_CYCRQST_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : T_CYCRQST_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : T_CYCRQST_T) return Boolean is
+     (True);
+
    --  T_EMA, 7.5.1.146: 10 bits, 0 .. 1022, 1 s
    type T_EMA_T is range 0 .. 1023;
-   T_EMA_No_Time_Out : constant T_EMA_T := 1023;
-   --  1023: no time-out
+   T_EMA_Infinite : constant T_EMA_T := 1023;
+   --  1023: infinite
    function To_T_EMA (V : Unsigned_64) return T_EMA_T is
      (T_EMA_T (V))
      with Pre => Fits (V, 10);
@@ -2043,6 +3704,30 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 10);
    function Is_Valid (X : T_ENDTIMER_T) return Boolean is
+     (True);
+
+   --  T_LSSMA, 7.5.1.144.1: 8 bits, 0 .. 255, 1 s
+   type T_LSSMA_T is range 0 .. 255;
+   function To_T_LSSMA (V : Unsigned_64) return T_LSSMA_T is
+     (T_LSSMA_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : T_LSSMA_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : T_LSSMA_T) return Boolean is
+     (True);
+
+   --  T_MAR, 7.5.1.147: 8 bits, 0 .. 254, 1 s
+   type T_MAR_T is range 0 .. 255;
+   T_MAR_No_MA_Request_Triggering : constant T_MAR_T := 255;
+   --  255: No MA request triggering with regards to this function
+   function To_T_MAR (V : Unsigned_64) return T_MAR_T is
+     (T_MAR_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : T_MAR_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : T_MAR_T) return Boolean is
      (True);
 
    --  T_NVCONTACT, 7.5.1.148: 8 bits, 0 .. 254, 1 s
@@ -2097,8 +3782,9 @@ is
 
    --  T_TEXTDISPLAY, 7.5.1.152: 10 bits, 0 .. 1022, 1 s
    type T_TEXTDISPLAY_T is range 0 .. 1023;
-   T_TEXTDISPLAY_No_Time : constant T_TEXTDISPLAY_T := 1023;
-   --  1023: no time
+   T_TEXTDISPLAY_No_Time_Sub_Condition : constant T_TEXTDISPLAY_T := 1023;
+   --  1023: No “time” sub-condition specified for the end condition of the
+   --  display of the text
    function To_T_TEXTDISPLAY (V : Unsigned_64) return T_TEXTDISPLAY_T is
      (T_TEXTDISPLAY_T (V))
      with Pre => Fits (V, 10);
@@ -2108,10 +3794,23 @@ is
    function Is_Valid (X : T_TEXTDISPLAY_T) return Boolean is
      (True);
 
+   --  T_TIMEOUTRQST, 7.5.1.153: 10 bits, 0 .. 1022, 1 s
+   type T_TIMEOUTRQST_T is range 0 .. 1023;
+   T_TIMEOUTRQST_No_MA_Request_Triggering : constant T_TIMEOUTRQST_T := 1023;
+   --  1023: No MA request triggering with regards to this function
+   function To_T_TIMEOUTRQST (V : Unsigned_64) return T_TIMEOUTRQST_T is
+     (T_TIMEOUTRQST_T (V))
+     with Pre => Fits (V, 10);
+   function Code (X : T_TIMEOUTRQST_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 10);
+   function Is_Valid (X : T_TIMEOUTRQST_T) return Boolean is
+     (True);
+
    --  T_TRAIN, 7.5.1.154: 32 bits, 0 .. 4294967294, 10 ms
    type T_TRAIN_T is range 0 .. 4294967295;
    T_TRAIN_Unknown : constant T_TRAIN_T := 4294967295;
-   --  4294967295: unknown
+   --  4294967295: Unknown
    function To_T_TRAIN (V : Unsigned_64) return T_TRAIN_T is
      (T_TRAIN_T (V))
      with Pre => Fits (V, 32);
@@ -2120,6 +3819,28 @@ is
      with Post => Fits (Code'Result, 32);
    function Is_Valid (X : T_TRAIN_T) return Boolean is
      (X <= 4294967294 or else X = 4294967295);
+
+   --  T_VBC, 7.5.1.154.1: 8 bits, 0 .. 255, 24 hours (0 .. 6120 hours)
+   type T_VBC_T is range 0 .. 255;
+   function To_T_VBC (V : Unsigned_64) return T_VBC_T is
+     (T_VBC_T (V))
+     with Pre => Fits (V, 8);
+   function Code (X : T_VBC_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 8);
+   function Is_Valid (X : T_VBC_T) return Boolean is
+     (True);
+
+   --  V_AXLELOAD, 7.5.1.155: 7 bits, 0 .. 120, 5 km/h
+   type V_AXLELOAD_T is range 0 .. 127;
+   function To_V_AXLELOAD (V : Unsigned_64) return V_AXLELOAD_T is
+     (V_AXLELOAD_T (V))
+     with Pre => Fits (V, 7);
+   function Code (X : V_AXLELOAD_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 7);
+   function Is_Valid (X : V_AXLELOAD_T) return Boolean is
+     (X <= 120);
 
    --  V_DIFF, 7.5.1.156: 7 bits, 0 .. 120, 5 km/h
    type V_DIFF_T is range 0 .. 127;
@@ -2143,8 +3864,21 @@ is
    function Is_Valid (X : V_EMA_T) return Boolean is
      (X <= 120);
 
+   --  V_LX, 7.5.1.157.1: 7 bits, 0 .. 120, 5 km/h
+   type V_LX_T is range 0 .. 127;
+   function To_V_LX (V : Unsigned_64) return V_LX_T is
+     (V_LX_T (V))
+     with Pre => Fits (V, 7);
+   function Code (X : V_LX_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 7);
+   function Is_Valid (X : V_LX_T) return Boolean is
+     (X <= 120);
+
    --  V_MAIN, 7.5.1.158: 7 bits, 0 .. 120, 5 km/h
    type V_MAIN_T is range 0 .. 127;
+   V_MAIN_Trip_Order : constant V_MAIN_T := 0;
+   --  0: Trip order
    function To_V_MAIN (V : Unsigned_64) return V_MAIN_T is
      (V_MAIN_T (V))
      with Pre => Fits (V, 7);
@@ -2152,6 +3886,30 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 7);
    function Is_Valid (X : V_MAIN_T) return Boolean is
+     (X <= 120);
+
+   --  V_MAMODE, 7.5.1.159: 7 bits, 0 .. 120, 5 km/h
+   type V_MAMODE_T is range 0 .. 127;
+   V_MAMODE_Use_The_National_Speed : constant V_MAMODE_T := 127;
+   --  127: Use the national speed value of the required mode
+   function To_V_MAMODE (V : Unsigned_64) return V_MAMODE_T is
+     (V_MAMODE_T (V))
+     with Pre => Fits (V, 7);
+   function Code (X : V_MAMODE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 7);
+   function Is_Valid (X : V_MAMODE_T) return Boolean is
+     (X <= 120 or else X = 127);
+
+   --  V_MAXTRAIN, 7.5.1.160: 7 bits, 0 .. 120, 5 km/h
+   type V_MAXTRAIN_T is range 0 .. 127;
+   function To_V_MAXTRAIN (V : Unsigned_64) return V_MAXTRAIN_T is
+     (V_MAXTRAIN_T (V))
+     with Pre => Fits (V, 7);
+   function Code (X : V_MAXTRAIN_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 7);
+   function Is_Valid (X : V_MAXTRAIN_T) return Boolean is
      (X <= 120);
 
    --  V_NVALLOWOVTRP, 7.5.1.161: 7 bits, 0 .. 120, 5 km/h
@@ -2255,10 +4013,10 @@ is
 
    --  V_RELEASEDP, 7.5.1.168: 7 bits, 0 .. 120, 5 km/h
    type V_RELEASEDP_T is range 0 .. 127;
-   V_RELEASEDP_On_Board_Calculated : constant V_RELEASEDP_T := 126;
-   --  126: on-board calculated
-   V_RELEASEDP_National_Value : constant V_RELEASEDP_T := 127;
-   --  127: national value
+   V_RELEASEDP_Use_Onboard_Calculated_Release : constant V_RELEASEDP_T := 126;
+   --  126: Use onboard calculated release speed
+   V_RELEASEDP_Use_National_Value : constant V_RELEASEDP_T := 127;
+   --  127: Use national value
    function To_V_RELEASEDP (V : Unsigned_64) return V_RELEASEDP_T is
      (V_RELEASEDP_T (V))
      with Pre => Fits (V, 7);
@@ -2270,10 +4028,10 @@ is
 
    --  V_RELEASEOL, 7.5.1.169: 7 bits, 0 .. 120, 5 km/h
    type V_RELEASEOL_T is range 0 .. 127;
-   V_RELEASEOL_On_Board_Calculated : constant V_RELEASEOL_T := 126;
-   --  126: on-board calculated
-   V_RELEASEOL_National_Value : constant V_RELEASEOL_T := 127;
-   --  127: national value
+   V_RELEASEOL_Use_Onboard_Calculated_Release : constant V_RELEASEOL_T := 126;
+   --  126: Use onboard calculated release speed
+   V_RELEASEOL_Use_National_Value : constant V_RELEASEOL_T := 127;
+   --  127: Use national value
    function To_V_RELEASEOL (V : Unsigned_64) return V_RELEASEOL_T is
      (V_RELEASEOL_T (V))
      with Pre => Fits (V, 7);
@@ -2282,6 +4040,17 @@ is
      with Post => Fits (Code'Result, 7);
    function Is_Valid (X : V_RELEASEOL_T) return Boolean is
      (X <= 120 or else X = 126 or else X = 127);
+
+   --  V_REVERSE, 7.5.1.170: 7 bits, 0 .. 120, 5 km/h
+   type V_REVERSE_T is range 0 .. 127;
+   function To_V_REVERSE (V : Unsigned_64) return V_REVERSE_T is
+     (V_REVERSE_T (V))
+     with Pre => Fits (V, 7);
+   function Code (X : V_REVERSE_T) return Unsigned_64 is
+     (Unsigned_64 (X))
+     with Post => Fits (Code'Result, 7);
+   function Is_Valid (X : V_REVERSE_T) return Boolean is
+     (X <= 120);
 
    --  V_SM, 7.5.1.170.1: 7 bits, 0 .. 120, 5 km/h
    type V_SM_T is range 0 .. 127;
@@ -2296,8 +4065,9 @@ is
 
    --  V_STATIC, 7.5.1.171: 7 bits, 0 .. 120, 5 km/h
    type V_STATIC_T is range 0 .. 127;
-   V_STATIC_End_Of_Description : constant V_STATIC_T := 127;
-   --  127: end of description
+   V_STATIC_Non_Numerical_Value_Telling : constant V_STATIC_T := 127;
+   --  127: Non numerical value telling that the static speed profile
+   --  description ends at D_STATIC(n)
    function To_V_STATIC (V : Unsigned_64) return V_STATIC_T is
      (V_STATIC_T (V))
      with Pre => Fits (V, 7);
@@ -2310,7 +4080,7 @@ is
    --  V_TRAIN, 7.5.1.172: 7 bits, 0 .. 120, 5 km/h
    type V_TRAIN_T is range 0 .. 127;
    V_TRAIN_Standstill : constant V_TRAIN_T := 127;
-   --  127: standstill
+   --  127: Standstill
    function To_V_TRAIN (V : Unsigned_64) return V_TRAIN_T is
      (V_TRAIN_T (V))
      with Pre => Fits (V, 7);
@@ -2331,7 +4101,7 @@ is
    function Is_Valid (X : V_TSR_T) return Boolean is
      (X <= 120);
 
-   --  X_TEXT, 7.5.1.174: 8 bits, 0 .. 255, ISO 8859-1 character
+   --  X_TEXT, 7.5.1.174: 8 bits, 0 .. 255, one character, ISO 8859-1
    type X_TEXT_T is range 0 .. 255;
    function To_X_TEXT (V : Unsigned_64) return X_TEXT_T is
      (X_TEXT_T (V))

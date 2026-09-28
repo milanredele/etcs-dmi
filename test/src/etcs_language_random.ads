@@ -47,13 +47,13 @@ package ETCS_Language_Random is
                            W      : in out ETCS_Bits.Writer;
                            OK     : out Boolean);
 
-   Condition_Count : constant := 35;
+   Condition_Count : constant := 76;
    function Condition_Name (C : Positive) return String;
    --  The condition was met holding (Value True) or not
    function Condition_Seen (C : Positive; Value : Boolean) return Boolean;
 
    type Items_T is (None, One, Maximum);
-   Loop_Count : constant := 15;
+   Loop_Count : constant := 33;
    function Loop_Name (L : Positive) return String;
    --  1 for a loop of the packet, 2 for a loop in a loop, ...
    function Loop_Depth (L : Positive) return Positive;

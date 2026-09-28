@@ -75,8 +75,8 @@ is
       N_ITER        : N_ITER_T := 0;
       --  loop over N_ITER
       Q_DIFF_List   : Q_DIFF_Array;
-      N_ITER_K      : N_ITER_T := 0;
-      --  loop over N_ITER_K
+      N_ITER_2      : N_ITER_T := 0;
+      --  loop over N_ITER
       D_STATIC_List : D_STATIC_Array;
    end record;
 

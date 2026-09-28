@@ -22,33 +22,33 @@ is
    is
       Start : constant Natural := Position (R);
       V     : Unsigned_64;
-      NID_PACKET             : NID_PACKET_T;
-      Q_DIR                  : Q_DIR_T;
-      L_PACKET               : L_PACKET_T;
-      Q_SCALE                : Q_SCALE_T;
-      Q_TEXTCLASS            : Q_TEXTCLASS_T;
-      Q_TEXTDISPLAY          : Q_TEXTDISPLAY_T;
-      D_TEXTDISPLAY          : D_TEXTDISPLAY_T;
-      M_MODETEXTDISPLAY      : M_MODETEXTDISPLAY_T;
-      M_LEVELTEXTDISPLAY     : M_LEVELTEXTDISPLAY_T;
-      Has_NID_NTC            : Boolean;
-      NID_NTC                : NID_NTC_T := 0;
-      L_TEXTDISPLAY          : L_TEXTDISPLAY_T;
-      T_TEXTDISPLAY          : T_TEXTDISPLAY_T;
-      M_MODETEXTDISPLAY_END  : M_MODETEXTDISPLAY_T;
-      M_LEVELTEXTDISPLAY_END : M_LEVELTEXTDISPLAY_T;
-      Has_NID_NTC_END        : Boolean;
-      NID_NTC_END            : NID_NTC_T := 0;
-      Q_TEXTCONFIRM          : Q_TEXTCONFIRM_T;
-      Has_Q_CONFTEXTDISPLAY  : Boolean;
-      Q_CONFTEXTDISPLAY      : Q_CONFTEXTDISPLAY_T := 0;
-      Q_TEXTREPORT           : Q_TEXTREPORT_T := 0;
-      Has_NID_TEXTMESSAGE    : Boolean := False;
-      NID_TEXTMESSAGE        : NID_TEXTMESSAGE_T := 0;
-      NID_C                  : NID_C_T := 0;
-      NID_RBC                : NID_RBC_T := 0;
-      L_TEXT                 : L_TEXT_T;
-      X_TEXT_List            : X_TEXT_Array := (others => 0);
+      NID_PACKET            : NID_PACKET_T;
+      Q_DIR                 : Q_DIR_T;
+      L_PACKET              : L_PACKET_T;
+      Q_SCALE               : Q_SCALE_T;
+      Q_TEXTCLASS           : Q_TEXTCLASS_T;
+      Q_TEXTDISPLAY         : Q_TEXTDISPLAY_T;
+      D_TEXTDISPLAY         : D_TEXTDISPLAY_T;
+      M_MODETEXTDISPLAY     : M_MODETEXTDISPLAY_T;
+      M_LEVELTEXTDISPLAY    : M_LEVELTEXTDISPLAY_T;
+      Has_NID_NTC           : Boolean;
+      NID_NTC               : NID_NTC_T := 0;
+      L_TEXTDISPLAY         : L_TEXTDISPLAY_T;
+      T_TEXTDISPLAY         : T_TEXTDISPLAY_T;
+      M_MODETEXTDISPLAY_2   : M_MODETEXTDISPLAY_T;
+      M_LEVELTEXTDISPLAY_2  : M_LEVELTEXTDISPLAY_T;
+      Has_NID_NTC_2         : Boolean;
+      NID_NTC_2             : NID_NTC_T := 0;
+      Q_TEXTCONFIRM         : Q_TEXTCONFIRM_T;
+      Has_Q_CONFTEXTDISPLAY : Boolean;
+      Q_CONFTEXTDISPLAY     : Q_CONFTEXTDISPLAY_T := 0;
+      Q_TEXTREPORT          : Q_TEXTREPORT_T := 0;
+      Has_NID_TEXTMESSAGE   : Boolean := False;
+      NID_TEXTMESSAGE       : NID_TEXTMESSAGE_T := 0;
+      NID_C                 : NID_C_T := 0;
+      NID_RBC               : NID_RBC_T := 0;
+      L_TEXT                : L_TEXT_T;
+      X_TEXT_List           : X_TEXT_Array := (others => 0);
    begin
       Read (R, 8, V);
       NID_PACKET := To_NID_PACKET (V);
@@ -78,13 +78,13 @@ is
       Read (R, 10, V);
       T_TEXTDISPLAY := To_T_TEXTDISPLAY (V);
       Read (R, 4, V);
-      M_MODETEXTDISPLAY_END := To_M_MODETEXTDISPLAY (V);
+      M_MODETEXTDISPLAY_2 := To_M_MODETEXTDISPLAY (V);
       Read (R, 3, V);
-      M_LEVELTEXTDISPLAY_END := To_M_LEVELTEXTDISPLAY (V);
-      Has_NID_NTC_END := M_LEVELTEXTDISPLAY_END = 1;
-      if Has_NID_NTC_END then
+      M_LEVELTEXTDISPLAY_2 := To_M_LEVELTEXTDISPLAY (V);
+      Has_NID_NTC_2 := M_LEVELTEXTDISPLAY_2 = 1;
+      if Has_NID_NTC_2 then
          Read (R, 8, V);
-         NID_NTC_END := To_NID_NTC (V);
+         NID_NTC_2 := To_NID_NTC (V);
       end if;
       Read (R, 2, V);
       Q_TEXTCONFIRM := To_Q_TEXTCONFIRM (V);
@@ -124,10 +124,10 @@ is
          NID_NTC => NID_NTC,
          L_TEXTDISPLAY => L_TEXTDISPLAY,
          T_TEXTDISPLAY => T_TEXTDISPLAY,
-         M_MODETEXTDISPLAY_END => M_MODETEXTDISPLAY_END,
-         M_LEVELTEXTDISPLAY_END => M_LEVELTEXTDISPLAY_END,
-         Has_NID_NTC_END => Has_NID_NTC_END,
-         NID_NTC_END => NID_NTC_END,
+         M_MODETEXTDISPLAY_2 => M_MODETEXTDISPLAY_2,
+         M_LEVELTEXTDISPLAY_2 => M_LEVELTEXTDISPLAY_2,
+         Has_NID_NTC_2 => Has_NID_NTC_2,
+         NID_NTC_2 => NID_NTC_2,
          Q_TEXTCONFIRM => Q_TEXTCONFIRM,
          Has_Q_CONFTEXTDISPLAY => Has_Q_CONFTEXTDISPLAY,
          Q_CONFTEXTDISPLAY => Q_CONFTEXTDISPLAY,
@@ -173,13 +173,13 @@ is
       end if;
       Write (W, 15, Code (P.L_TEXTDISPLAY));
       Write (W, 10, Code (P.T_TEXTDISPLAY));
-      Write (W, 4, Code (P.M_MODETEXTDISPLAY_END));
-      Write (W, 3, Code (P.M_LEVELTEXTDISPLAY_END));
-      if P.Has_NID_NTC_END /= (P.M_LEVELTEXTDISPLAY_END = 1) then
+      Write (W, 4, Code (P.M_MODETEXTDISPLAY_2));
+      Write (W, 3, Code (P.M_LEVELTEXTDISPLAY_2));
+      if P.Has_NID_NTC_2 /= (P.M_LEVELTEXTDISPLAY_2 = 1) then
          Good := False;
       end if;
-      if P.M_LEVELTEXTDISPLAY_END = 1 then
-         Write (W, 8, Code (P.NID_NTC_END));
+      if P.M_LEVELTEXTDISPLAY_2 = 1 then
+         Write (W, 8, Code (P.NID_NTC_2));
       end if;
       Write (W, 2, Code (P.Q_TEXTCONFIRM));
       if P.Has_Q_CONFTEXTDISPLAY /= (P.Q_TEXTCONFIRM /= 0) then

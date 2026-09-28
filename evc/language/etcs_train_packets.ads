@@ -11,6 +11,10 @@
 --     P2 Onboard supported system versions (7.4.3.3)
 --     P4 Error reporting (7.4.3.4)
 --     P5 Train running number (7.4.3.4.1)
+--     P9 Level 2 transition information (7.4.3.4.2)
+--     P10 Safe consist length information for Supervised Manoeuvre (7.4.3.4.3)
+--     P11 Validated train data (7.4.3.5)
+--     P12 Default train data for Supervised Manoeuvre (7.4.3.5.1)
 --     P44 Data used by applications outside the ERTMS/ETCS system (7.4.3.6)
 
 package ETCS_Train_Packets

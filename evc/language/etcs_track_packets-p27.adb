@@ -179,7 +179,7 @@ is
       Q_FRONT       : Q_FRONT_T;
       N_ITER        : N_ITER_T;
       Q_DIFF_List   : Q_DIFF_Array;
-      N_ITER_K      : N_ITER_T;
+      N_ITER_2      : N_ITER_T;
       D_STATIC_List : D_STATIC_Array;
    begin
       Read (R, 8, V);
@@ -202,8 +202,8 @@ is
          Decode_Q_DIFF_Item (R, Q_DIFF_List (I1));
       end loop;
       Read (R, 5, V);
-      N_ITER_K := To_N_ITER (V);
-      for I1 in 1 .. Natural (N_ITER_K) loop
+      N_ITER_2 := To_N_ITER (V);
+      for I1 in 1 .. Natural (N_ITER_2) loop
          Decode_D_STATIC_Item (R, D_STATIC_List (I1));
       end loop;
       P :=
@@ -216,7 +216,7 @@ is
          Q_FRONT => Q_FRONT,
          N_ITER => N_ITER,
          Q_DIFF_List => Q_DIFF_List,
-         N_ITER_K => N_ITER_K,
+         N_ITER_2 => N_ITER_2,
          D_STATIC_List => D_STATIC_List);
       OK := not Failed (R)
         and then NID_PACKET = NID
@@ -247,8 +247,8 @@ is
       for I1 in 1 .. Natural (P.N_ITER) loop
          Encode_Q_DIFF_Item (P.Q_DIFF_List (I1), W, Good);
       end loop;
-      Write (W, 5, Code (P.N_ITER_K));
-      for I1 in 1 .. Natural (P.N_ITER_K) loop
+      Write (W, 5, Code (P.N_ITER_2));
+      for I1 in 1 .. Natural (P.N_ITER_2) loop
          Encode_D_STATIC_Item (P.D_STATIC_List (I1), W, Good);
       end loop;
       --  L_PACKET: the bits written

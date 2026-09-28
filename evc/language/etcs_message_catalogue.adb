@@ -22,20 +22,50 @@ is
             case NID is
                when 2 => return Track_M2;
                when 3 => return Track_M3;
+               when 4 => return Track_M4;
+               when 5 => return Track_M5;
+               when 6 => return Track_M6;
+               when 7 => return Track_M7;
+               when 8 => return Track_M8;
+               when 9 => return Track_M9;
                when 15 => return Track_M15;
+               when 16 => return Track_M16;
+               when 18 => return Track_M18;
                when 24 => return Track_M24;
+               when 27 => return Track_M27;
+               when 28 => return Track_M28;
+               when 32 => return Track_M32;
+               when 33 => return Track_M33;
+               when 34 => return Track_M34;
                when 37 => return Track_M37;
                when 38 => return Track_M38;
                when 39 => return Track_M39;
+               when 40 => return Track_M40;
+               when 41 => return Track_M41;
+               when 43 => return Track_M43;
+               when 45 => return Track_M45;
                when others => return Unknown;
             end case;
          when Train_To_Track =>
             case NID is
                when 129 => return Train_M129;
+               when 130 => return Train_M130;
+               when 131 => return Train_M131;
                when 132 => return Train_M132;
+               when 133 => return Train_M133;
                when 136 => return Train_M136;
+               when 137 => return Train_M137;
+               when 138 => return Train_M138;
                when 146 => return Train_M146;
+               when 147 => return Train_M147;
+               when 149 => return Train_M149;
+               when 150 => return Train_M150;
+               when 153 => return Train_M153;
+               when 154 => return Train_M154;
+               when 155 => return Train_M155;
+               when 156 => return Train_M156;
                when 157 => return Train_M157;
+               when 158 => return Train_M158;
                when 159 => return Train_M159;
                when others => return Unknown;
             end case;
@@ -53,26 +83,86 @@ is
             return "SR Authorisation";
          when Track_M3 =>
             return "Movement Authority";
+         when Track_M4 =>
+            return "SM Authorisation";
+         when Track_M5 =>
+            return "SM Refused";
+         when Track_M6 =>
+            return "Recognition of exit from TRIP mode";
+         when Track_M7 =>
+            return "Acknowledgement of safe consist length info for SM";
+         when Track_M8 =>
+            return "Acknowledgement of Train Data";
+         when Track_M9 =>
+            return "Request to Shorten MA";
          when Track_M15 =>
             return "Conditional Emergency Stop";
+         when Track_M16 =>
+            return "Unconditional Emergency Stop";
+         when Track_M18 =>
+            return "Revocation of Emergency Stop";
          when Track_M24 =>
             return "General message";
+         when Track_M27 =>
+            return "SH Refused";
+         when Track_M28 =>
+            return "SH Authorised";
+         when Track_M32 =>
+            return "RBC/RIU System Version";
+         when Track_M33 =>
+            return "MA with Shifted Location Reference";
+         when Track_M34 =>
+            return "Track Ahead Free Request";
          when Track_M37 =>
             return "Infill MA";
          when Track_M38 =>
             return "Acknowledgement of session establishment";
          when Track_M39 =>
             return "Acknowledgement of termination of a communication session";
+         when Track_M40 =>
+            return "Train Rejected";
+         when Track_M41 =>
+            return "Train Accepted";
+         when Track_M43 =>
+            return "SoM position report confirmed by RBC";
+         when Track_M45 =>
+            return "Assignment of coordinate system";
          when Train_M129 =>
             return "Validated Train Data";
+         when Train_M130 =>
+            return "Request for Shunting";
+         when Train_M131 =>
+            return "Request for Supervised Manoeuvre";
          when Train_M132 =>
             return "MA Request";
+         when Train_M133 =>
+            return "Safe consist length information for SM";
          when Train_M136 =>
             return "Train Position Report";
+         when Train_M137 =>
+            return "Request to Shorten MA is granted";
+         when Train_M138 =>
+            return "Request to Shorten MA is rejected";
          when Train_M146 =>
             return "Acknowledgement";
+         when Train_M147 =>
+            return "Acknowledgement of Emergency Stop";
+         when Train_M149 =>
+            return "Track Ahead Free Granted";
+         when Train_M150 =>
+            return "End of Mission";
+         when Train_M153 =>
+            return "Radio infill request";
+         when Train_M154 =>
+            return "No compatible version supported";
+         when Train_M155 =>
+            return "Initiation of a communication session";
+         when Train_M156 =>
+            return "Termination of a communication session";
          when Train_M157 =>
             return "SoM Position Report";
+         when Train_M158 =>
+            return "Text Message Acknowledged by Driver";
          when Train_M159 =>
             return "Session established";
       end case;
@@ -89,26 +179,86 @@ is
             return "8.7.1";
          when Track_M3 =>
             return "8.7.2";
+         when Track_M4 =>
+            return "8.7.2.1";
+         when Track_M5 =>
+            return "8.7.2.2";
+         when Track_M6 =>
+            return "8.7.3";
+         when Track_M7 =>
+            return "8.7.3.1";
+         when Track_M8 =>
+            return "8.7.4";
+         when Track_M9 =>
+            return "8.7.5";
          when Track_M15 =>
             return "8.7.6";
+         when Track_M16 =>
+            return "8.7.7";
+         when Track_M18 =>
+            return "8.7.8";
          when Track_M24 =>
             return "8.7.9";
+         when Track_M27 =>
+            return "8.7.10";
+         when Track_M28 =>
+            return "8.7.11";
+         when Track_M32 =>
+            return "8.7.12";
+         when Track_M33 =>
+            return "8.7.13";
+         when Track_M34 =>
+            return "8.7.14";
          when Track_M37 =>
             return "8.7.15";
          when Track_M38 =>
             return "8.7.16";
          when Track_M39 =>
             return "8.7.17";
+         when Track_M40 =>
+            return "8.7.18";
+         when Track_M41 =>
+            return "8.7.19";
+         when Track_M43 =>
+            return "8.7.21";
+         when Track_M45 =>
+            return "8.7.22";
          when Train_M129 =>
             return "8.6.1";
+         when Train_M130 =>
+            return "8.6.2";
+         when Train_M131 =>
+            return "8.6.2.1";
          when Train_M132 =>
             return "8.6.3";
+         when Train_M133 =>
+            return "8.6.3.1";
          when Train_M136 =>
             return "8.6.4";
+         when Train_M137 =>
+            return "8.6.5";
+         when Train_M138 =>
+            return "8.6.6";
          when Train_M146 =>
             return "8.6.7";
+         when Train_M147 =>
+            return "8.6.8";
+         when Train_M149 =>
+            return "8.6.9";
+         when Train_M150 =>
+            return "8.6.10";
+         when Train_M153 =>
+            return "8.6.11";
+         when Train_M154 =>
+            return "8.6.12";
+         when Train_M155 =>
+            return "8.6.13";
+         when Train_M156 =>
+            return "8.6.14";
          when Train_M157 =>
             return "8.6.15";
+         when Train_M158 =>
+            return "8.6.16";
          when Train_M159 =>
             return "8.6.17";
       end case;
@@ -125,25 +275,85 @@ is
             return (False, False, True, False);
          when Track_M3 =>
             return (False, False, True, False);
+         when Track_M4 =>
+            return (False, False, True, False);
+         when Track_M5 =>
+            return (False, False, True, False);
+         when Track_M6 =>
+            return (False, False, True, False);
+         when Track_M7 =>
+            return (False, False, True, False);
+         when Track_M8 =>
+            return (False, False, True, False);
+         when Track_M9 =>
+            return (False, False, True, False);
          when Track_M15 =>
+            return (False, False, True, False);
+         when Track_M16 =>
+            return (False, False, True, False);
+         when Track_M18 =>
             return (False, False, True, False);
          when Track_M24 =>
             return (False, False, True, True);
+         when Track_M27 =>
+            return (False, False, True, False);
+         when Track_M28 =>
+            return (False, False, True, False);
+         when Track_M32 =>
+            return (False, False, True, True);
+         when Track_M33 =>
+            return (False, False, True, False);
+         when Track_M34 =>
+            return (False, False, True, False);
          when Track_M37 =>
             return (False, False, False, True);
          when Track_M38 =>
             return (False, False, True, True);
          when Track_M39 =>
             return (False, False, True, True);
+         when Track_M40 =>
+            return (False, False, True, False);
+         when Track_M41 =>
+            return (False, False, True, False);
+         when Track_M43 =>
+            return (False, False, True, False);
+         when Track_M45 =>
+            return (False, False, True, False);
          when Train_M129 =>
+            return (False, False, True, False);
+         when Train_M130 =>
+            return (False, False, True, False);
+         when Train_M131 =>
             return (False, False, True, False);
          when Train_M132 =>
             return (False, False, True, False);
+         when Train_M133 =>
+            return (False, False, True, False);
          when Train_M136 =>
             return (False, False, True, True);
+         when Train_M137 =>
+            return (False, False, True, False);
+         when Train_M138 =>
+            return (False, False, True, False);
          when Train_M146 =>
             return (False, False, True, True);
+         when Train_M147 =>
+            return (False, False, True, False);
+         when Train_M149 =>
+            return (False, False, True, False);
+         when Train_M150 =>
+            return (False, False, True, False);
+         when Train_M153 =>
+            return (False, False, False, True);
+         when Train_M154 =>
+            return (False, False, True, True);
+         when Train_M155 =>
+            return (False, False, True, True);
+         when Train_M156 =>
+            return (False, False, True, True);
          when Train_M157 =>
+            return (False, False, True, False);
+         when Train_M158 =>
             return (False, False, True, False);
          when Train_M159 =>
             return (False, False, True, True);

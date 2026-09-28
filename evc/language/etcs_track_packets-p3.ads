@@ -30,39 +30,39 @@ is
    type NID_C_Array is array (1 .. 31) of NID_C_T;
 
    type V_NVKVINT_Item_2 is record
-      V_NVKVINT         : V_NVKVINT_T := 0;
-      M_NVKVINT         : M_NVKVINT_T := 0;
+      V_NVKVINT       : V_NVKVINT_T := 0;
+      M_NVKVINT       : M_NVKVINT_T := 0;
       --  present when Q_NVKVINTSET == 1
-      Has_M_NVKVINT_P23 : Boolean := False;
-      M_NVKVINT_P23     : M_NVKVINT_T := 0;
+      Has_M_NVKVINT_2 : Boolean := False;
+      M_NVKVINT_2     : M_NVKVINT_T := 0;
    end record;
 
    type V_NVKVINT_Array_2 is array (1 .. 31) of V_NVKVINT_Item_2;
 
    type V_NVKVINT_Item is record
-      V_NVKVINT         : V_NVKVINT_T := 0;
-      M_NVKVINT         : M_NVKVINT_T := 0;
+      V_NVKVINT       : V_NVKVINT_T := 0;
+      M_NVKVINT       : M_NVKVINT_T := 0;
       --  present when Q_NVKVINTSET == 1
-      Has_M_NVKVINT_P23 : Boolean := False;
-      M_NVKVINT_P23     : M_NVKVINT_T := 0;
+      Has_M_NVKVINT_2 : Boolean := False;
+      M_NVKVINT_2     : M_NVKVINT_T := 0;
    end record;
 
    type V_NVKVINT_Array is array (1 .. 31) of V_NVKVINT_Item;
 
    type Q_NVKVINTSET_Item is record
-      Q_NVKVINTSET      : Q_NVKVINTSET_T := 0;
+      Q_NVKVINTSET    : Q_NVKVINTSET_T := 0;
       --  present when Q_NVKVINTSET == 1
-      Has_A_NVP12       : Boolean := False;
-      A_NVP12           : A_NVP12_T := 0;
-      A_NVP23           : A_NVP23_T := 0;
-      V_NVKVINT         : V_NVKVINT_T := 0;
-      M_NVKVINT         : M_NVKVINT_T := 0;
+      Has_A_NVP12     : Boolean := False;
+      A_NVP12         : A_NVP12_T := 0;
+      A_NVP23         : A_NVP23_T := 0;
+      V_NVKVINT       : V_NVKVINT_T := 0;
+      M_NVKVINT       : M_NVKVINT_T := 0;
       --  present when Q_NVKVINTSET == 1
-      Has_M_NVKVINT_P23 : Boolean := False;
-      M_NVKVINT_P23     : M_NVKVINT_T := 0;
-      N_ITER            : N_ITER_T := 0;
+      Has_M_NVKVINT_2 : Boolean := False;
+      M_NVKVINT_2     : M_NVKVINT_T := 0;
+      N_ITER          : N_ITER_T := 0;
       --  loop over N_ITER
-      V_NVKVINT_List    : V_NVKVINT_Array_2;
+      V_NVKVINT_List  : V_NVKVINT_Array_2;
    end record;
 
    type Q_NVKVINTSET_Array is array (1 .. 31) of Q_NVKVINTSET_Item;
@@ -123,18 +123,18 @@ is
       V_NVKVINT         : V_NVKVINT_T := 0;
       M_NVKVINT         : M_NVKVINT_T := 0;
       --  present when Q_NVKVINTSET == 1
-      Has_M_NVKVINT_P23 : Boolean := False;
-      M_NVKVINT_P23     : M_NVKVINT_T := 0;
-      N_ITER_KV         : N_ITER_T := 0;
-      --  loop over N_ITER_KV
+      Has_M_NVKVINT_2   : Boolean := False;
+      M_NVKVINT_2       : M_NVKVINT_T := 0;
+      N_ITER_2          : N_ITER_T := 0;
+      --  loop over N_ITER
       V_NVKVINT_List    : V_NVKVINT_Array;
-      N_ITER_SET        : N_ITER_T := 0;
-      --  loop over N_ITER_SET
+      N_ITER_3          : N_ITER_T := 0;
+      --  loop over N_ITER
       Q_NVKVINTSET_List : Q_NVKVINTSET_Array;
       L_NVKRINT         : L_NVKRINT_T := 0;
       M_NVKRINT         : M_NVKRINT_T := 0;
-      N_ITER_KR         : N_ITER_T := 0;
-      --  loop over N_ITER_KR
+      N_ITER_4          : N_ITER_T := 0;
+      --  loop over N_ITER
       L_NVKRINT_List    : L_NVKRINT_Array;
       M_NVKTINT         : M_NVKTINT_T := 0;
    end record;

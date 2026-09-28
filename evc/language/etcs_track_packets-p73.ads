@@ -30,38 +30,38 @@ is
    type X_TEXT_Array is array (1 .. 255) of X_TEXT_T;
 
    type Packet_T is record
-      NID_PACKET             : NID_PACKET_T := NID;
-      Q_DIR                  : Q_DIR_T := 0;
-      L_PACKET               : L_PACKET_T := 0;
-      Q_SCALE                : Q_SCALE_T := 0;
-      Q_TEXTCLASS            : Q_TEXTCLASS_T := 0;
-      Q_TEXTDISPLAY          : Q_TEXTDISPLAY_T := 0;
-      D_TEXTDISPLAY          : D_TEXTDISPLAY_T := 0;
-      M_MODETEXTDISPLAY      : M_MODETEXTDISPLAY_T := 0;
-      M_LEVELTEXTDISPLAY     : M_LEVELTEXTDISPLAY_T := 0;
+      NID_PACKET            : NID_PACKET_T := NID;
+      Q_DIR                 : Q_DIR_T := 0;
+      L_PACKET              : L_PACKET_T := 0;
+      Q_SCALE               : Q_SCALE_T := 0;
+      Q_TEXTCLASS           : Q_TEXTCLASS_T := 0;
+      Q_TEXTDISPLAY         : Q_TEXTDISPLAY_T := 0;
+      D_TEXTDISPLAY         : D_TEXTDISPLAY_T := 0;
+      M_MODETEXTDISPLAY     : M_MODETEXTDISPLAY_T := 0;
+      M_LEVELTEXTDISPLAY    : M_LEVELTEXTDISPLAY_T := 0;
       --  present when M_LEVELTEXTDISPLAY == 1
-      Has_NID_NTC            : Boolean := False;
-      NID_NTC                : NID_NTC_T := 0;
-      L_TEXTDISPLAY          : L_TEXTDISPLAY_T := 0;
-      T_TEXTDISPLAY          : T_TEXTDISPLAY_T := 0;
-      M_MODETEXTDISPLAY_END  : M_MODETEXTDISPLAY_T := 0;
-      M_LEVELTEXTDISPLAY_END : M_LEVELTEXTDISPLAY_T := 0;
-      --  present when M_LEVELTEXTDISPLAY_END == 1
-      Has_NID_NTC_END        : Boolean := False;
-      NID_NTC_END            : NID_NTC_T := 0;
-      Q_TEXTCONFIRM          : Q_TEXTCONFIRM_T := 0;
+      Has_NID_NTC           : Boolean := False;
+      NID_NTC               : NID_NTC_T := 0;
+      L_TEXTDISPLAY         : L_TEXTDISPLAY_T := 0;
+      T_TEXTDISPLAY         : T_TEXTDISPLAY_T := 0;
+      M_MODETEXTDISPLAY_2   : M_MODETEXTDISPLAY_T := 0;
+      M_LEVELTEXTDISPLAY_2  : M_LEVELTEXTDISPLAY_T := 0;
+      --  present when M_LEVELTEXTDISPLAY == 1
+      Has_NID_NTC_2         : Boolean := False;
+      NID_NTC_2             : NID_NTC_T := 0;
+      Q_TEXTCONFIRM         : Q_TEXTCONFIRM_T := 0;
       --  present when Q_TEXTCONFIRM != 0
-      Has_Q_CONFTEXTDISPLAY  : Boolean := False;
-      Q_CONFTEXTDISPLAY      : Q_CONFTEXTDISPLAY_T := 0;
-      Q_TEXTREPORT           : Q_TEXTREPORT_T := 0;
+      Has_Q_CONFTEXTDISPLAY : Boolean := False;
+      Q_CONFTEXTDISPLAY     : Q_CONFTEXTDISPLAY_T := 0;
+      Q_TEXTREPORT          : Q_TEXTREPORT_T := 0;
       --  present when Q_TEXTREPORT == 1
-      Has_NID_TEXTMESSAGE    : Boolean := False;
-      NID_TEXTMESSAGE        : NID_TEXTMESSAGE_T := 0;
-      NID_C                  : NID_C_T := 0;
-      NID_RBC                : NID_RBC_T := 0;
-      L_TEXT                 : L_TEXT_T := 0;
+      Has_NID_TEXTMESSAGE   : Boolean := False;
+      NID_TEXTMESSAGE       : NID_TEXTMESSAGE_T := 0;
+      NID_C                 : NID_C_T := 0;
+      NID_RBC               : NID_RBC_T := 0;
+      L_TEXT                : L_TEXT_T := 0;
       --  loop over L_TEXT
-      X_TEXT_List            : X_TEXT_Array := (others => 0);
+      X_TEXT_List           : X_TEXT_Array := (others => 0);
    end record;
 
    procedure Decode (R  : in out Reader;

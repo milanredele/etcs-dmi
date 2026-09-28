@@ -31,10 +31,10 @@ is
       E2.V_NVKVINT := To_V_NVKVINT (V);
       Read (R, 7, V);
       E2.M_NVKVINT := To_M_NVKVINT (V);
-      E2.Has_M_NVKVINT_P23 := E1_Q_NVKVINTSET = 1;
-      if E2.Has_M_NVKVINT_P23 then
+      E2.Has_M_NVKVINT_2 := E1_Q_NVKVINTSET = 1;
+      if E2.Has_M_NVKVINT_2 then
          Read (R, 7, V);
-         E2.M_NVKVINT_P23 := To_M_NVKVINT (V);
+         E2.M_NVKVINT_2 := To_M_NVKVINT (V);
       end if;
    end Decode_V_NVKVINT_Item_2;
 
@@ -53,10 +53,10 @@ is
       E1.V_NVKVINT := To_V_NVKVINT (V);
       Read (R, 7, V);
       E1.M_NVKVINT := To_M_NVKVINT (V);
-      E1.Has_M_NVKVINT_P23 := P_Q_NVKVINTSET = 1;
-      if E1.Has_M_NVKVINT_P23 then
+      E1.Has_M_NVKVINT_2 := P_Q_NVKVINTSET = 1;
+      if E1.Has_M_NVKVINT_2 then
          Read (R, 7, V);
-         E1.M_NVKVINT_P23 := To_M_NVKVINT (V);
+         E1.M_NVKVINT_2 := To_M_NVKVINT (V);
       end if;
    end Decode_V_NVKVINT_Item;
 
@@ -83,10 +83,10 @@ is
       E1.V_NVKVINT := To_V_NVKVINT (V);
       Read (R, 7, V);
       E1.M_NVKVINT := To_M_NVKVINT (V);
-      E1.Has_M_NVKVINT_P23 := E1.Q_NVKVINTSET = 1;
-      if E1.Has_M_NVKVINT_P23 then
+      E1.Has_M_NVKVINT_2 := E1.Q_NVKVINTSET = 1;
+      if E1.Has_M_NVKVINT_2 then
          Read (R, 7, V);
-         E1.M_NVKVINT_P23 := To_M_NVKVINT (V);
+         E1.M_NVKVINT_2 := To_M_NVKVINT (V);
       end if;
       Read (R, 5, V);
       E1.N_ITER := To_N_ITER (V);
@@ -122,11 +122,11 @@ is
    begin
       Write (W, 7, Code (E2.V_NVKVINT));
       Write (W, 7, Code (E2.M_NVKVINT));
-      if E2.Has_M_NVKVINT_P23 /= (E1_Q_NVKVINTSET = 1) then
+      if E2.Has_M_NVKVINT_2 /= (E1_Q_NVKVINTSET = 1) then
          Good := False;
       end if;
       if E1_Q_NVKVINTSET = 1 then
-         Write (W, 7, Code (E2.M_NVKVINT_P23));
+         Write (W, 7, Code (E2.M_NVKVINT_2));
       end if;
    end Encode_V_NVKVINT_Item_2;
 
@@ -142,11 +142,11 @@ is
    begin
       Write (W, 7, Code (E1.V_NVKVINT));
       Write (W, 7, Code (E1.M_NVKVINT));
-      if E1.Has_M_NVKVINT_P23 /= (P_Q_NVKVINTSET = 1) then
+      if E1.Has_M_NVKVINT_2 /= (P_Q_NVKVINTSET = 1) then
          Good := False;
       end if;
       if P_Q_NVKVINTSET = 1 then
-         Write (W, 7, Code (E1.M_NVKVINT_P23));
+         Write (W, 7, Code (E1.M_NVKVINT_2));
       end if;
    end Encode_V_NVKVINT_Item;
 
@@ -169,11 +169,11 @@ is
       end if;
       Write (W, 7, Code (E1.V_NVKVINT));
       Write (W, 7, Code (E1.M_NVKVINT));
-      if E1.Has_M_NVKVINT_P23 /= (E1.Q_NVKVINTSET = 1) then
+      if E1.Has_M_NVKVINT_2 /= (E1.Q_NVKVINTSET = 1) then
          Good := False;
       end if;
       if E1.Q_NVKVINTSET = 1 then
-         Write (W, 7, Code (E1.M_NVKVINT_P23));
+         Write (W, 7, Code (E1.M_NVKVINT_2));
       end if;
       Write (W, 5, Code (E1.N_ITER));
       for I2 in 1 .. Natural (E1.N_ITER) loop
@@ -251,15 +251,15 @@ is
       A_NVP23           : A_NVP23_T := 0;
       V_NVKVINT         : V_NVKVINT_T := 0;
       M_NVKVINT         : M_NVKVINT_T := 0;
-      Has_M_NVKVINT_P23 : Boolean := False;
-      M_NVKVINT_P23     : M_NVKVINT_T := 0;
-      N_ITER_KV         : N_ITER_T := 0;
+      Has_M_NVKVINT_2   : Boolean := False;
+      M_NVKVINT_2       : M_NVKVINT_T := 0;
+      N_ITER_2          : N_ITER_T := 0;
       V_NVKVINT_List    : V_NVKVINT_Array;
-      N_ITER_SET        : N_ITER_T := 0;
+      N_ITER_3          : N_ITER_T := 0;
       Q_NVKVINTSET_List : Q_NVKVINTSET_Array;
       L_NVKRINT         : L_NVKRINT_T := 0;
       M_NVKRINT         : M_NVKRINT_T := 0;
-      N_ITER_KR         : N_ITER_T := 0;
+      N_ITER_4          : N_ITER_T := 0;
       L_NVKRINT_List    : L_NVKRINT_Array;
       M_NVKTINT         : M_NVKTINT_T := 0;
    begin
@@ -354,19 +354,19 @@ is
          V_NVKVINT := To_V_NVKVINT (V);
          Read (R, 7, V);
          M_NVKVINT := To_M_NVKVINT (V);
-         Has_M_NVKVINT_P23 := Q_NVKVINTSET = 1;
-         if Has_M_NVKVINT_P23 then
+         Has_M_NVKVINT_2 := Q_NVKVINTSET = 1;
+         if Has_M_NVKVINT_2 then
             Read (R, 7, V);
-            M_NVKVINT_P23 := To_M_NVKVINT (V);
+            M_NVKVINT_2 := To_M_NVKVINT (V);
          end if;
          Read (R, 5, V);
-         N_ITER_KV := To_N_ITER (V);
-         for I1 in 1 .. Natural (N_ITER_KV) loop
+         N_ITER_2 := To_N_ITER (V);
+         for I1 in 1 .. Natural (N_ITER_2) loop
             Decode_V_NVKVINT_Item (R, V_NVKVINT_List (I1), Q_NVKVINTSET);
          end loop;
          Read (R, 5, V);
-         N_ITER_SET := To_N_ITER (V);
-         for I1 in 1 .. Natural (N_ITER_SET) loop
+         N_ITER_3 := To_N_ITER (V);
+         for I1 in 1 .. Natural (N_ITER_3) loop
             Decode_Q_NVKVINTSET_Item (R, Q_NVKVINTSET_List (I1));
          end loop;
          Read (R, 5, V);
@@ -374,8 +374,8 @@ is
          Read (R, 5, V);
          M_NVKRINT := To_M_NVKRINT (V);
          Read (R, 5, V);
-         N_ITER_KR := To_N_ITER (V);
-         for I1 in 1 .. Natural (N_ITER_KR) loop
+         N_ITER_4 := To_N_ITER (V);
+         for I1 in 1 .. Natural (N_ITER_4) loop
             Decode_L_NVKRINT_Item (R, L_NVKRINT_List (I1));
          end loop;
          Read (R, 5, V);
@@ -426,15 +426,15 @@ is
          A_NVP23 => A_NVP23,
          V_NVKVINT => V_NVKVINT,
          M_NVKVINT => M_NVKVINT,
-         Has_M_NVKVINT_P23 => Has_M_NVKVINT_P23,
-         M_NVKVINT_P23 => M_NVKVINT_P23,
-         N_ITER_KV => N_ITER_KV,
+         Has_M_NVKVINT_2 => Has_M_NVKVINT_2,
+         M_NVKVINT_2 => M_NVKVINT_2,
+         N_ITER_2 => N_ITER_2,
          V_NVKVINT_List => V_NVKVINT_List,
-         N_ITER_SET => N_ITER_SET,
+         N_ITER_3 => N_ITER_3,
          Q_NVKVINTSET_List => Q_NVKVINTSET_List,
          L_NVKRINT => L_NVKRINT,
          M_NVKRINT => M_NVKRINT,
-         N_ITER_KR => N_ITER_KR,
+         N_ITER_4 => N_ITER_4,
          L_NVKRINT_List => L_NVKRINT_List,
          M_NVKTINT => M_NVKTINT);
       OK := not Failed (R)
@@ -508,28 +508,28 @@ is
          end if;
          Write (W, 7, Code (P.V_NVKVINT));
          Write (W, 7, Code (P.M_NVKVINT));
-         if P.Has_M_NVKVINT_P23 /= (P.Q_NVKVINTSET = 1) then
+         if P.Has_M_NVKVINT_2 /= (P.Q_NVKVINTSET = 1) then
             Good := False;
          end if;
          if P.Q_NVKVINTSET = 1 then
-            Write (W, 7, Code (P.M_NVKVINT_P23));
+            Write (W, 7, Code (P.M_NVKVINT_2));
          end if;
-         Write (W, 5, Code (P.N_ITER_KV));
-         for I1 in 1 .. Natural (P.N_ITER_KV) loop
+         Write (W, 5, Code (P.N_ITER_2));
+         for I1 in 1 .. Natural (P.N_ITER_2) loop
             Encode_V_NVKVINT_Item
               (P.V_NVKVINT_List (I1),
                W,
                Good,
                P.Q_NVKVINTSET);
          end loop;
-         Write (W, 5, Code (P.N_ITER_SET));
-         for I1 in 1 .. Natural (P.N_ITER_SET) loop
+         Write (W, 5, Code (P.N_ITER_3));
+         for I1 in 1 .. Natural (P.N_ITER_3) loop
             Encode_Q_NVKVINTSET_Item (P.Q_NVKVINTSET_List (I1), W, Good);
          end loop;
          Write (W, 5, Code (P.L_NVKRINT));
          Write (W, 5, Code (P.M_NVKRINT));
-         Write (W, 5, Code (P.N_ITER_KR));
-         for I1 in 1 .. Natural (P.N_ITER_KR) loop
+         Write (W, 5, Code (P.N_ITER_4));
+         for I1 in 1 .. Natural (P.N_ITER_4) loop
             Encode_L_NVKRINT_Item (P.L_NVKRINT_List (I1), W);
          end loop;
          Write (W, 5, Code (P.M_NVKTINT));
