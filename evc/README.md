@@ -16,6 +16,12 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 | `EVC_Outbox` | The bounded queue of outputs: records `port u8, length u16, payload`. |
 | `EVC_Bytes` | Bytes and little endian fields, read and written byte by byte. |
 | `EVC_Received` | What came from the track: the last accepted telegram and radio message (bits plus packet index), the counts by status, a reader on packet I. |
+| `EVC_Distances` | Distances in cm (integers, saturating) and the senses of the odometer frame (Plus: towards cab A). |
+| `EVC_Odometry` | The odometer frame and its confidence from the odometer port's counters (never decreasing), the monitoring of the odometer accuracy (3.6.8, A.3.1), the cold movement detection read at power-up (3.15.8), virtual positions for the distances not referred to balise groups (3.6.7). |
+| `EVC_Balise_Groups` | One passage over a balise group: its telegrams with the frame position of their balises; location reference, orientation, crossing direction (3.4.1, 3.4.2). |
+| `EVC_Linking` | The linking information of packet 5 as a chain of cumulated distances (3.4.4, 3.6.3.2.6). |
+| `EVC_Location` | Reference balise groups as anchors in the odometer frame, the confidence interval against them (3.6.4.1), location items and their relocation to the SOLR (3.6.4.2.5). |
+| `EVC_Position` | The train position: orientation from the cab status, LRBG, SOLR, ORBGs, expectation windows and linking reactions, geographical position, the content of the position report and its triggers; the events for the JRU and the later phases. |
 
 The ERTMS/ETCS language (SUBSET-026 chapters 7 and 8) is in `language/`:
 
@@ -44,7 +50,16 @@ cycle MSG_MODE_LEVEL and MSG_ONBOARD on the DMI port; a JRU event on every
 mode change. Inputs of the wrong shape are ignored and counted. Phase E1: the
 telegrams and radio messages are parsed at the next cycle, the last
 accepted of each is kept and recorded on the JRU port, the rejections are
-counted by reason.
+counted by reason. Phase E2: a telegram comes with the odometer stamp of
+its balise; the position (`EVC_Position`, second step of the cycle) puts
+the telegrams of a balise group together, checks them against the stored
+linking, sets the LRBG and the SOLR, keeps the confidence interval from the
+odometer's over- and under-reading amounts, monitors the odometer accuracy,
+reads the cold movement detection, follows the active cab for the train
+orientation and computes the geographical position (MSG_STATUS to the
+DMI). It detects and reports (queries, JRU events 4 to 10): reacting on a
+linking error, an impaired odometer or a cold movement is phases E3 and E4,
+sending the position report E5.
 
 Checks:
 

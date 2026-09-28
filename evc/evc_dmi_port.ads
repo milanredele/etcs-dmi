@@ -18,6 +18,8 @@
 --  size, is rejected.
 --
 --  Outputs of phase E0: MSG_MODE_LEVEL and MSG_ONBOARD, every cycle.
+--  Phase E2: MSG_STATUS, for the geographical position (SUBSET-026
+--  3.6.6), in every cycle while it is known and once when it stops.
 
 with EVC_Bytes; use EVC_Bytes;
 with EVC_Modes; use EVC_Modes;
@@ -32,8 +34,10 @@ is
 
    --  EVC -> DMI
    MSG_MODE_LEVEL    : constant Byte := 16#02#;
+   MSG_STATUS        : constant Byte := 16#07#;
    MSG_ONBOARD       : constant Byte := 16#0A#;
    Mode_Level_Length : constant := 9;
+   Status_Length     : constant := 23;
    Onboard_Length    : constant := 11;
 
    --  DMI -> EVC
@@ -129,6 +133,9 @@ is
       Answer        : Byte := 0;
    end record;
 
+   --  Bits of Data
+   Data_Level_Valid    : constant Bits_T := 4;
+   Data_Position_Valid : constant Bits_T := 32;  -- valid, referred to an LRBG
    --  Bits of Train
    Train_Standstill      : constant Bits_T := 1;
    Train_Below_Override  : constant Bits_T := 2;
@@ -146,5 +153,20 @@ is
 
    function Onboard_Frame (Onboard : Onboard_T) return Onboard_Frame_T
      with Post => Onboard_Frame'Result (1) = MSG_ONBOARD;
+
+   subtype Status_Frame_T is Byte_Array (1 .. Header_Length + Status_Length);
+
+   --  No geographical position (geo_pos)
+   Geo_Unknown : constant Unsigned_32 := 16#FFFF_FFFF#;
+
+   --  MSG_STATUS as far as the on-board knows it in phase E2: no brake
+   --  command, no radio connection, no adhesion, BMM, reversing or SM
+   --  indication, no set speed, no TTI (TdispTTI 14 s, SUBSET-026
+   --  A.3.1), no tunnel; the geographical position Geo in m; the time of
+   --  the on-board clock, Seconds since power-up, as EVC_Mock does (the
+   --  clock of 3.20 is later)
+   function Status_Frame (Geo : Unsigned_32; Seconds : Unsigned_64)
+     return Status_Frame_T
+     with Post => Status_Frame'Result (1) = MSG_STATUS;
 
 end EVC_DMI_Port;

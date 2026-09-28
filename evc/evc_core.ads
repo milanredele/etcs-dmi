@@ -20,18 +20,33 @@
 --  MSG_ONBOARD). Phase E1: the telegrams (BTM) and radio messages (RTM)
 --  latched since the last cycle are parsed when the ports are read
 --  (EVC_Received keeps the last accepted of each, and counts the
---  rejections by reason) and recorded on the JRU port; nothing acts on
---  their content yet. The later phases fill the empty steps.
+--  rejections by reason) and recorded on the JRU port. Phase E2: the
+--  accepted telegrams go with the stamp of their balise to the train
+--  position (EVC_Position), which the second step updates with the cab
+--  status and the odometer sample of the cycle; its events are recorded
+--  on the JRU port, the geographical position goes to the DMI
+--  (MSG_STATUS) and the validity of the position to MSG_ONBOARD. The
+--  later phases fill the empty steps.
 
 --  The postconditions name the state before the call ('Old) of query
 --  functions behind "and then" and "if": allowed, and evaluated at entry
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Bytes;
+with EVC_Distances;
 with EVC_Modes;    use EVC_Modes;
+with EVC_Odometry;
 with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
+with EVC_Location;
+with EVC_Position;
 with EVC_Received;
+
+use type EVC_Distances.Cm_T;
+use type EVC_Distances.Sense_T;
+use type EVC_Location.Anchor_T;
+use type EVC_Position.Cab_T;
+use type EVC_Position.Status_T;
 
 package EVC_Core
   with SPARK_Mode => On,
@@ -92,7 +107,8 @@ is
    --  Power-up: the on-board starts in No Power (SUBSET-026 4.4.4.1.1)
    --  and nothing is stored (phase E0 keeps nothing over No Power)
    procedure Initialise
-     with Global => (Output => (State, EVC_Received.Store),
+     with Global => (Output => (State, EVC_Received.Store,
+                                EVC_Position.State, EVC_Odometry.State),
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
                   and then not Failed
@@ -102,7 +118,9 @@ is
                   and then not Isolation_Requested
                   and then EVC_Outbox.Used = 0
                   and then not EVC_Received.Has_Telegram
-                  and then not EVC_Received.Has_Message;
+                  and then not EVC_Received.Has_Message
+                  and then EVC_Position.Status = EVC_Position.Unknown
+                  and then not EVC_Position.LRBG.Valid;
 
    --  One input on a port. It is checked against the documented shape
    --  (EVC_Ports) and ignored when it does not match; otherwise it is
@@ -119,7 +137,8 @@ is
    --  one (any value: 0 and the largest are allowed)
    procedure Tick (Dt_Ms : Natural)
      with Global => (In_Out => (State, EVC_Outbox.Queue,
-                                EVC_Received.Store)),
+                                EVC_Received.Store, EVC_Position.State,
+                                EVC_Odometry.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed
@@ -140,7 +159,27 @@ is
                      and then (if Mode'Old = M_NP
                                then Mode = (if Isolation_Requested'Old
                                             then M_IS else M_SB))
-                     and then not Isolation_Requested);
+                     and then not Isolation_Requested)
+                  --  SUBSET-026 3.6.1.5: the orientation changes only
+                  --  with the cab status, to the cab that is active
+                  and then
+                  (if EVC_Position.Orientation
+                        /= EVC_Position.Orientation'Old
+                   then EVC_Position.Active_Cab
+                          = (if EVC_Position.Orientation
+                                  = EVC_Distances.Plus
+                             then EVC_Position.Cab_A
+                             else EVC_Position.Cab_B))
+                  --  3.6.4.1.2: against the same LRBG and orientation the
+                  --  confidence interval never shrinks
+                  and then
+                  (if EVC_Position.LRBG = EVC_Position.LRBG'Old
+                     and then EVC_Position.Orientation
+                                = EVC_Position.Orientation'Old
+                   then EVC_Position.Doubt_Over
+                          >= EVC_Position.Doubt_Over'Old
+                        and then EVC_Position.Doubt_Under
+                                   >= EVC_Position.Doubt_Under'Old);
 
    --  Move the queued outputs to Buffer: records (port u8, length u16,
    --  payload) as EVC_Outbox describes, as many whole records as fit;

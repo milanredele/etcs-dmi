@@ -12,6 +12,15 @@
 --  telegrams and radio messages built, parsed, damaged, and received by
 --  the core on the BTM and RTM ports.
 --
+--  The scenarios of phase E2 drive the train position with a small track
+--  model (balise groups with positions, sizes, linking, geographical
+--  information) and a simulated odometer with a chosen error model: first
+--  group, linking with its windows, missed, early, unexpected and
+--  wrongly oriented groups, single balise groups and the report on two
+--  groups, the geographical position on the DMI, odometer accuracy,
+--  cold movement, orientation from the cab, virtual positions, report
+--  triggers, round trips of the position report packets.
+--
 --  One scenario runs the whole chain: the DMI port of EVC_Core into
 --  DMI_Core, and the picture is compared pixel by pixel with the one
 --  EVC_Mock draws at start, itself checked against the DMI golden
@@ -43,21 +52,30 @@ with ETCS_Track_Packets.P0;
 with ETCS_Track_Packets.P2;
 with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P21;
+with ETCS_Track_Packets.P16;
 with ETCS_Track_Packets.P45;
+with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P73;
+with ETCS_Track_Packets.P79;
 with ETCS_Track_Packets.P140;
 with ETCS_Train_Packets.P0;
+with ETCS_Train_Packets.P1;
 with ETCS_Train_Packets.P4;
 with ETCS_Variables;
 with EVC_Bytes;
 with EVC_Core;
 with EVC_DMI_Port;
+with EVC_Distances;
 with EVC_Driver;
+with EVC_Linking;
+with EVC_Location;
 with EVC_Mock;
 with EVC_Modes;    use EVC_Modes;
+with EVC_Odometry;
 with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
+with EVC_Position;
 with EVC_Received;
 with General_Parameters;
 with Interfaces;   use Interfaces;
@@ -289,37 +307,41 @@ procedure EVC_Test is
              & Payload;
    end Frame;
 
-   --  An odometer sample (EVC_Ports)
-   function Odometer_Payload
-     (D_Est, D_Min, D_Max : Integer_32;
-      V_Est, V_Min, V_Max : Unsigned_16;
-      Direction           : Byte) return Byte_Array
-   is
-      function U32 (V : Integer_32) return Byte_Array is
-         U : constant Unsigned_64 :=
-           Unsigned_64 (Unsigned_32'Mod (Integer_64 (V)));
-      begin
-         return (EVC_Bytes.Byte_Of (U, 0), EVC_Bytes.Byte_Of (U, 1),
-                 EVC_Bytes.Byte_Of (U, 2), EVC_Bytes.Byte_Of (U, 3));
-      end U32;
-      function U16 (V : Unsigned_16) return Byte_Array is
-        (Byte (V mod 256), Byte (V / 256));
+   --  A 32 bit field, little endian, two's complement
+   function U32 (V : Integer_64) return Byte_Array is
+      U : constant Unsigned_64 := Unsigned_64 (Unsigned_32'Mod (V));
    begin
-      return U32 (D_Est) & U32 (D_Min) & U32 (D_Max)
-             & U16 (V_Est) & U16 (V_Min) & U16 (V_Max)
-             & Byte_Array'(1 => Direction);
-   end Odometer_Payload;
+      return (EVC_Bytes.Byte_Of (U, 0), EVC_Bytes.Byte_Of (U, 1),
+              EVC_Bytes.Byte_Of (U, 2), EVC_Bytes.Byte_Of (U, 3));
+   end U32;
 
-   --  A telegram of N_Bits bits, with Extra bytes more or fewer than its
-   --  shape asks for
+   function U16 (V : Unsigned_16) return Byte_Array is
+     (Byte (V mod 256), Byte (V / 256));
+
+   --  An odometer sample (EVC_Ports): the counters d_est, over, under,
+   --  the speeds, the movement, the cold movement detection
+   function Odometer_Payload
+     (D_Est               : Integer_64;
+      Over, Under         : Integer_64;
+      V_Est, V_Min, V_Max : Unsigned_16;
+      Movement            : Byte;
+      Cold                : Byte := 0;
+      Cold_Distance       : Unsigned_16 := 0) return Byte_Array
+   is (U32 (D_Est) & U32 (Over) & U32 (Under)
+       & U16 (V_Est) & U16 (V_Min) & U16 (V_Max)
+       & Byte_Array'(Movement, Cold) & U16 (Cold_Distance));
+
+   --  A telegram of N_Bits bits behind a detection stamp, with Extra
+   --  bytes more or fewer than its shape asks for
    function BTM_Payload (N_Bits : Natural; Extra : Integer := 0)
      return Byte_Array
    is
       Length : constant Natural := (N_Bits + 7) / 8 + Extra;
-      Result : Byte_Array (1 .. 2 + Length) := (others => 16#A5#);
+      Result : Byte_Array (1 .. 6 + Length) := (others => 16#A5#);
    begin
-      Result (1) := Byte (N_Bits mod 256);
-      Result (2) := Byte (N_Bits / 256 mod 256);
+      Result (1 .. 4) := (0, 0, 0, 0);
+      Result (5) := Byte (N_Bits mod 256);
+      Result (6) := Byte (N_Bits / 256 mod 256);
       return Result;
    end BTM_Payload;
 
@@ -356,6 +378,7 @@ procedure EVC_Test is
    begin
       Check (Unsigned_8 (MSG_MODE_LEVEL) = EVC_DMI_Port.MSG_MODE_LEVEL
              and then Unsigned_8 (MSG_ONBOARD) = EVC_DMI_Port.MSG_ONBOARD
+             and then Unsigned_8 (MSG_STATUS) = EVC_DMI_Port.MSG_STATUS
              and then Unsigned_8 (MSG_DRIVER_ACTION)
                         = EVC_DMI_Port.MSG_DRIVER_ACTION
              and then Unsigned_8 (MSG_DRIVER_DATA)
@@ -363,6 +386,7 @@ procedure EVC_Test is
              "message types equal DMI_Protocol");
       Check (Mode_Level_Length = EVC_DMI_Port.Mode_Level_Length
              and then Onboard_Length = EVC_DMI_Port.Onboard_Length
+             and then Status_Length = EVC_DMI_Port.Status_Length
              and then Driver_Action_Length
                         = EVC_DMI_Port.Driver_Action_Length
              and then Driver_Ack_Length = EVC_DMI_Port.Driver_Ack_Length
@@ -439,7 +463,7 @@ procedure EVC_Test is
       end Bad;
 
       Odo_Ok : constant Byte_Array :=
-        Odometer_Payload (100, 90, 110, 500, 400, 600, 1);
+        Odometer_Payload (100, 0, 0, 500, 400, 600, 1);
    begin
       EVC_Core.Initialise;
       EVC_Core.Tick (100);
@@ -461,25 +485,29 @@ procedure EVC_Test is
       Bad (BTM, BTM_Payload (210, 1), "one byte too many");
       Bad (BTM, BTM_Payload (210, -1), "one byte short");
       Bad (BTM, (1 => 50), "one byte");
+      Bad (BTM, (0, 0, 0, 0), "a stamp without a telegram");
+      Bad (BTM, BTM_Payload (210) (1 .. 5), "a stamp and one byte");
       --  RTM
       Bad (RTM, RTM_Payload (0, 2), "2 bytes");
       Bad (RTM, RTM_Payload (10, 9), "L_MESSAGE 10, 9 bytes");
       Bad (RTM, RTM_Payload (9, 10), "L_MESSAGE 9, 10 bytes");
       --  Odometer
-      Bad (Odometer, Odo_Ok (1 .. 18), "18 bytes");
-      Bad (Odometer, Odo_Ok & Byte_Array'(1 => 0), "20 bytes");
-      Bad (Odometer, Odometer_Payload (100, 101, 110, 500, 400, 600, 1),
-           "d_min above d_est");
-      Bad (Odometer, Odometer_Payload (100, 90, 99, 500, 400, 600, 1),
-           "d_max below d_est");
-      Bad (Odometer, Odometer_Payload (-5, 0, 10, 500, 400, 600, 1),
-           "d_min above a negative d_est");
-      Bad (Odometer, Odometer_Payload (100, 90, 110, 700, 400, 600, 1),
+      Bad (Odometer, Odo_Ok (1 .. 21), "21 bytes");
+      Bad (Odometer, Odo_Ok & Byte_Array'(1 => 0), "23 bytes");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 500, 400, 600, 0),
+           "standstill with a speed");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 0, 0, 1, 0),
+           "standstill with a max speed");
+      Bad (Odometer, Odometer_Payload (-5, 0, 0, 500, 400, 600, 1, 0, 5),
+           "no cold movement information but a distance");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 700, 400, 600, 1),
            "v_est above v_max");
-      Bad (Odometer, Odometer_Payload (100, 90, 110, 300, 400, 600, 1),
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 300, 400, 600, 1),
            "v_est below v_min");
-      Bad (Odometer, Odometer_Payload (100, 90, 110, 500, 400, 600, 3),
-           "direction 3");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 500, 400, 600, 4),
+           "movement 4");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 500, 400, 600, 1, 2),
+           "cold 2");
       --  TIU
       Bad (TIU, (1 => 1), "one byte");
       Bad (TIU, (0, 1), "signal 0");
@@ -524,7 +552,7 @@ procedure EVC_Test is
    --  Valid inputs are accepted; E0 uses the odometer (standstill), the
    --  TIU signals of MSG_ONBOARD and the isolation, nothing else
    procedure Scenario_Valid_Inputs is
-      Shifted : Byte_Array (1000 .. 1028);
+      Shifted : Byte_Array (1000 .. 1032);
    begin
       EVC_Core.Initialise;
       Reset_Capture;
@@ -534,8 +562,8 @@ procedure EVC_Test is
       Input (BTM, Shifted);                 -- index not starting at 1
       Input (RTM, RTM_Payload (3, 3));
       Input (RTM, RTM_Payload (1023, 1023));
-      Input (Odometer, Odometer_Payload (-200, -210, -190, 0, 0, 0, 0));
-      Input (Odometer, Odometer_Payload (5000, 4990, 5010, 1000, 990, 1010,
+      Input (Odometer, Odometer_Payload (-200, 0, 0, 0, 0, 0, 0));
+      Input (Odometer, Odometer_Payload (5000, 10, 10, 1000, 990, 1010,
                                          1));
       Input (TIU, (5, 1));                  -- non leading permitted
       Input (TIU, (4, 1));                  -- passive shunting permitted
@@ -562,7 +590,7 @@ procedure EVC_Test is
       Check (Onboard_Field (4) = 4,
              "valid: MSG_ONBOARD train = non leading only, got"
              & Img (Onboard_Field (4)));
-      Input (Odometer, Odometer_Payload (5000, 4990, 5010, 0, 0, 0, 1));
+      Input (Odometer, Odometer_Payload (5000, 10, 10, 0, 0, 0, 0));
       EVC_Core.Tick (100);
       Take;
       Check (Onboard_Field (4) = 7,
@@ -933,15 +961,19 @@ procedure EVC_Test is
       end loop;
    end Set_Bits;
 
-   --  The BTM payload of a telegram of Bits bits (EVC_Ports)
-   function BTM_Of (Data : Byte_Array; Bits : Natural) return Byte_Array is
+   --  The BTM payload of a telegram of Bits bits (EVC_Ports), its
+   --  balise detected at the odometer reading Stamp
+   function BTM_Of (Data  : Byte_Array;
+                    Bits  : Natural;
+                    Stamp : Integer_64 := 0) return Byte_Array
+   is
       Length : constant Natural := (Bits + 7) / 8;
       Result : Byte_Array (1 .. 2 + Length) := (others => 0);
    begin
       Result (1) := Byte (Bits mod 256);
       Result (2) := Byte (Bits / 256);
       Result (3 .. 2 + Length) := Data (Data'First .. Data'First + Length - 1);
-      return Result;
+      return U32 (Stamp) & Result;
    end BTM_Of;
 
    --  A telegram header: version 3.0, first balise of a group of two
@@ -2282,6 +2314,1065 @@ procedure EVC_Test is
              "received: Initialise forgets");
    end Scenario_Received;
 
+   ---------------------------------------------------------------------
+   --  E2: the train position (evc/evc_position.ads)
+   --
+   --  A small track model drives the on-board: balise groups at track
+   --  positions (cm), their telegrams built with the encoder, and a
+   --  train whose antenna moves along the track. The odometer measures
+   --  the true movement with an error of Error_Per_Mille and declares
+   --  over- and under-reading amounts of Bound_Per_Mille of every
+   --  movement. Every cycle (100 ms) the train moves one step; the
+   --  balises crossed in that step go to the BTM port with the odometer
+   --  reading at their crossing as stamp, then the odometer sample, then
+   --  Tick. Cab A points to growing track positions.
+   ---------------------------------------------------------------------
+
+   package Pos renames EVC_Position;
+   package Odo renames EVC_Odometry;
+   package T58 renames ETCS_Track_Packets.P58;
+   package T79 renames ETCS_Track_Packets.P79;
+   package T16 renames ETCS_Track_Packets.P16;
+   package R1 renames ETCS_Train_Packets.P1;
+
+   use type EVC_Distances.Cm_T;
+   use type EVC_Distances.Sense_T;
+   use type EVC_Distances.Direction_T;
+   use type Pos.Status_T;
+   use type Pos.Report_Kind_T;
+   use type Pos.Cab_T;
+   use type Odo.Cold_T;
+   use type R1.Packet_T;
+   use type ETCS_Variables.NID_BG_T;
+   use type ETCS_Variables.Q_LINKREACTION_T;
+   use type ETCS_Variables.D_LRBG_T;
+   use type ETCS_Variables.NID_C_T;
+   use type ETCS_Variables.Q_SCALE_T;
+   use type ETCS_Variables.L_DOUBTOVER_T;
+   use type ETCS_Variables.L_DOUBTUNDER_T;
+   use type ETCS_Variables.Q_DIRLRBG_T;
+   use type ETCS_Variables.Q_DLRBG_T;
+   use type ETCS_Variables.Q_DIRTRAIN_T;
+   use type ETCS_Variables.V_TRAIN_T;
+   use type ETCS_Variables.M_MODE_T;
+   use type ETCS_Variables.M_LEVEL_T;
+   use type ETCS_Variables.Q_INTEGRITY_T;
+   use type EVC_Location.Anchor_T;
+
+   Spacing : constant := 300;   -- between the balises of a group, cm
+
+   type Group_Def is record
+      NID_BG      : ETCS_Variables.NID_BG_T := 1;
+      At_Cm       : Integer_64 := 0;     -- track position of balise 1
+      Balises     : Positive := 2;
+      --  the nominal direction points to falling track positions
+      Reversed    : Boolean := False;
+      Linked      : Boolean := True;
+      --  N_PIG + 1 of a balise that is not read, 0: all are
+      Skip        : Natural := 0;
+      --  balises 1 and 2 duplicate each other
+      Dup_1_2     : Boolean := False;
+      Has_Linking : Boolean := False;
+      Linking     : T5.Packet_T;
+      Has_Geo     : Boolean := False;
+      Geo         : T79.Packet_T;
+      Reposition  : Boolean := False;
+   end record;
+
+   Max_Groups : constant := 12;
+   Track      : array (1 .. Max_Groups) of Group_Def;
+   Track_N    : Natural := 0;
+
+   procedure Add_Group (G : Group_Def) is
+   begin
+      Track_N := Track_N + 1;
+      Track (Track_N) := G;
+   end Add_Group;
+
+   function Balise_At (G : Group_Def; K : Natural) return Integer_64 is
+     (if G.Reversed then G.At_Cm - Integer_64 (K) * Spacing
+      else G.At_Cm + Integer_64 (K) * Spacing);
+
+   --  The telegram of balise K (N_PIG) of G, with the BTM stamp
+   function Telegram_Of (G : Group_Def; K : Natural; Stamp : Integer_64)
+     return Byte_Array
+   is
+      W  : Writer_T;
+      OK : Boolean;
+      H  : constant Tel.Header_T :=
+        (Q_UPDOWN  => 1,
+         M_VERSION => 48,
+         Q_MEDIA   => 0,
+         N_PIG     => ETCS_Variables.N_PIG_T (K),
+         N_TOTAL   => ETCS_Variables.N_TOTAL_T (G.Balises - 1),
+         M_DUP     => (if G.Dup_1_2 and then K = 0 then 1
+                       elsif G.Dup_1_2 and then K = 1 then 2
+                       else 0),
+         M_MCOUNT  => 7,
+         NID_C     => 123,
+         NID_BG    => G.NID_BG,
+         Q_LINK    => (if G.Linked then 1 else 0));
+   begin
+      Tel.Write_Header (W, H);
+      if G.Has_Linking then
+         Put (W, G.Linking);
+      end if;
+      if G.Has_Geo then
+         T79.Encode (G.Geo, W, OK);
+         Encodes_OK := Encodes_OK and then OK;
+      end if;
+      if G.Reposition then
+         declare
+            P : T16.Packet_T;
+         begin
+            P.Q_DIR := 2;
+            P.Q_SCALE := 1;
+            P.L_SECTION := 100;
+            T16.Encode (P, W, OK);
+            Encodes_OK := Encodes_OK and then OK;
+         end;
+      end if;
+      Tel.Finish (W, Tel.Long_Bits, OK);
+      Encodes_OK := Encodes_OK and then OK;
+      return BTM_Of (ETCS_Bits.Data (W), ETCS_Bits.Position (W), Stamp);
+   end Telegram_Of;
+
+   --  The simulated train
+   Train_Cm        : Integer_64 := 0;   -- true position of the antenna
+   Odo_D           : Integer_64 := 0;   -- the odometer's counters
+   Odo_Over        : Integer_64 := 0;
+   Odo_Under       : Integer_64 := 0;
+   Error_Per_Mille : Integer_64 := 0;
+   Bound_Per_Mille : Integer_64 := 20;
+   Speed_Cms       : Unsigned_16 := 1000;
+   Cold_Byte       : Byte := 0;
+   Cold_Distance   : Unsigned_16 := 0;
+
+   --  What the runs saw: JRU records by event, the last bytes of each,
+   --  the report triggers, the last geographical position on the DMI
+   type JRU_Seen_T is array (0 .. 15) of Natural;
+   JRU_Seen  : JRU_Seen_T := (others => 0);
+   type JRU_Bytes_T is array (0 .. 15, 2 .. 4) of Natural;
+   JRU_Last  : JRU_Bytes_T := (others => (others => 0));
+   Seen      : Pos.Triggers_T := Pos.No_Triggers;
+   Geo_Seen  : Unsigned_32 := 0;
+   Geo_Count : Natural := 0;
+
+   procedure Forget is
+   begin
+      JRU_Seen := (others => 0);
+      Seen := Pos.No_Triggers;
+      Geo_Count := 0;
+   end Forget;
+
+   procedure Collect is
+      T : constant Pos.Triggers_T := Pos.Report_Triggers;
+   begin
+      for I in 1 .. Rec_Count loop
+         if Recs (I).Port = JRU and then Byte_At (I, 1) <= 15 then
+            JRU_Seen (Byte_At (I, 1)) := JRU_Seen (Byte_At (I, 1)) + 1;
+            for B in 2 .. 4 loop
+               JRU_Last (Byte_At (I, 1), B) := Byte_At (I, B);
+            end loop;
+         elsif Recs (I).Port = DMI and then Rec_Length (I) = 28
+           and then Byte_At (I, 1) = Natural (EVC_DMI_Port.MSG_STATUS)
+         then
+            Geo_Count := Geo_Count + 1;
+            Geo_Seen := Unsigned_32 (Byte_At (I, 22))
+              + 256 * (Unsigned_32 (Byte_At (I, 23))
+                       + 256 * (Unsigned_32 (Byte_At (I, 24))
+                                + 256 * Unsigned_32 (Byte_At (I, 25))));
+         end if;
+      end loop;
+      Seen :=
+        (Standstill_Reached => Seen.Standstill_Reached
+                               or else T.Standstill_Reached,
+         Mode_Changed       => Seen.Mode_Changed or else T.Mode_Changed,
+         Level_Changed      => Seen.Level_Changed or else T.Level_Changed,
+         Standstill_Left    => Seen.Standstill_Left or else T.Standstill_Left,
+         LRBG_Passed        => Seen.LRBG_Passed or else T.LRBG_Passed,
+         Periodic_Time      => Seen.Periodic_Time or else T.Periodic_Time,
+         Periodic_Distance  => Seen.Periodic_Distance
+                               or else T.Periodic_Distance,
+         Location_Passed    => Seen.Location_Passed
+                               or else T.Location_Passed,
+         Immediate          => Seen.Immediate or else T.Immediate);
+   end Collect;
+
+   --  The odometer sample of now
+   procedure Sample (Moving : Integer) is
+      V : constant Unsigned_16 := (if Moving = 0 then 0 else Speed_Cms);
+   begin
+      Input (Odometer,
+             Odometer_Payload (Odo_D, Odo_Over, Odo_Under, V, V, V,
+                               (if Moving > 0 then 1
+                                elsif Moving < 0 then 2 else 0),
+                               Cold_Byte, Cold_Distance));
+   end Sample;
+
+   procedure Cycle is
+   begin
+      EVC_Core.Tick (100);
+      Take;
+      Collect;
+   end Cycle;
+
+   --  A new track, the train at Start_Cm, the odometer reading Start_Cm,
+   --  one sample at standstill (the frame starts there), cab A active
+   procedure Start_Track (Start_Cm : Integer_64 := 0) is
+   begin
+      EVC_Core.Initialise;
+      Reset_Capture;
+      Forget;
+      Track_N := 0;
+      Train_Cm := Start_Cm;
+      Odo_D := Start_Cm;
+      Odo_Over := 0;
+      Odo_Under := 0;
+      Error_Per_Mille := 0;
+      Bound_Per_Mille := 20;
+      Speed_Cms := 1000;
+      Cold_Byte := 0;
+      Cold_Distance := 0;
+      Input (TIU, (1, 1));
+      Sample (0);
+      Cycle;
+   end Start_Track;
+
+   --  One step of Step_Cm (signed): the balises crossed, then the sample
+   procedure Step (Step_Cm : Integer_64) is
+      Old_Train : constant Integer_64 := Train_Cm;
+      Old_D     : constant Integer_64 := Odo_D;
+      New_Train : constant Integer_64 := Train_Cm + Step_Cm;
+      Measured  : constant Integer_64 :=
+        Step_Cm * (1000 + Error_Per_Mille) / 1000;
+      type Crossing is record
+         At_Cm : Integer_64;
+         G, K  : Natural;
+      end record;
+      List : array (1 .. 64) of Crossing;
+      N    : Natural := 0;
+
+      function Crossed (P : Integer_64) return Boolean is
+        (if Step_Cm > 0 then P > Old_Train and then P <= New_Train
+         else P < Old_Train and then P >= New_Train);
+   begin
+      for G in 1 .. Track_N loop
+         for K in 0 .. Track (G).Balises - 1 loop
+            if Track (G).Skip /= K + 1
+              and then Crossed (Balise_At (Track (G), K))
+            then
+               N := N + 1;
+               List (N) := (Balise_At (Track (G), K), G, K);
+            end if;
+         end loop;
+      end loop;
+      --  in the order of passing
+      for I in 2 .. N loop
+         for J in reverse 2 .. I loop
+            if (Step_Cm > 0 and then List (J).At_Cm < List (J - 1).At_Cm)
+              or else (Step_Cm < 0
+                       and then List (J).At_Cm > List (J - 1).At_Cm)
+            then
+               declare
+                  Swap : constant Crossing := List (J);
+               begin
+                  List (J) := List (J - 1);
+                  List (J - 1) := Swap;
+               end;
+            end if;
+         end loop;
+      end loop;
+      for I in 1 .. N loop
+         Input (BTM, Telegram_Of
+                       (Track (List (I).G), List (I).K,
+                        Old_D + (List (I).At_Cm - Old_Train) * Measured
+                                / Step_Cm));
+      end loop;
+      Train_Cm := New_Train;
+      Odo_D := Odo_D + Measured;
+      Odo_Over := Odo_Over + abs Measured * Bound_Per_Mille / 1000;
+      Odo_Under := Odo_Under + abs Measured * Bound_Per_Mille / 1000;
+      Sample ((if Step_Cm > 0 then 1 elsif Step_Cm < 0 then -1 else 0));
+      Cycle;
+   end Step;
+
+   --  Move to the track position To_Cm in steps of Step_Cm, then stand
+   procedure Run_To (To_Cm : Integer_64; Step_Cm : Integer_64 := 1000) is
+   begin
+      while Train_Cm /= To_Cm loop
+         Step (if To_Cm > Train_Cm
+               then Integer_64'Min (Step_Cm, To_Cm - Train_Cm)
+               else -Integer_64'Min (Step_Cm, Train_Cm - To_Cm));
+      end loop;
+   end Run_To;
+
+   procedure Stand is
+   begin
+      Sample (0);
+      Cycle;
+   end Stand;
+
+   function Id (NID_BG : Natural) return Natural is
+     (123 * 2**14 + NID_BG);
+
+   --  The identity of the last JRU record of an event
+   function JRU_Id (Event : Natural) return Natural is
+     (JRU_Last (Event, 2) + 256 * JRU_Last (Event, 3)
+      + 65_536 * JRU_Last (Event, 4));
+
+   --  Linking from a group: to groups at the cumulated metres of
+   --  Distances, identities NID, all nominal, Q_LOCACC Locacc
+   type Nat_List is array (Positive range <>) of Natural;
+
+   function Link_To (D_Links  : Nat_List;
+                     NIDs     : Nat_List;
+                     Locacc   : Natural := 5;
+                     Reaction : Natural := 1;
+                     Nominal  : Boolean := True) return T5.Packet_T
+   is
+      L : T5.Packet_T;
+   begin
+      L.Q_DIR := 1;
+      L.Q_SCALE := 1;
+      L.D_LINK := ETCS_Variables.D_LINK_T (D_Links (D_Links'First));
+      L.NID_BG := ETCS_Variables.NID_BG_T (NIDs (NIDs'First));
+      L.Q_LINKORIENTATION := (if Nominal then 1 else 0);
+      L.Q_LINKREACTION := ETCS_Variables.Q_LINKREACTION_T (Reaction);
+      L.Q_LOCACC := ETCS_Variables.Q_LOCACC_T (Locacc);
+      L.N_ITER := ETCS_Variables.N_ITER_T (D_Links'Length - 1);
+      for I in 1 .. D_Links'Length - 1 loop
+         L.D_LINK_List (I).D_LINK :=
+           ETCS_Variables.D_LINK_T (D_Links (D_Links'First + I));
+         L.D_LINK_List (I).NID_BG :=
+           ETCS_Variables.NID_BG_T (NIDs (NIDs'First + I));
+         L.D_LINK_List (I).Q_LINKORIENTATION := (if Nominal then 1 else 0);
+         L.D_LINK_List (I).Q_LINKREACTION :=
+           ETCS_Variables.Q_LINKREACTION_T (Reaction);
+         L.D_LINK_List (I).Q_LOCACC := ETCS_Variables.Q_LOCACC_T (Locacc);
+      end loop;
+      return L;
+   end Link_To;
+
+   function Group (NID : Natural; At_M : Integer_64;
+                   Balises : Positive := 2) return Group_Def
+   is
+      G : Group_Def;
+   begin
+      G.NID_BG := ETCS_Variables.NID_BG_T (NID);
+      G.At_Cm := At_M * 100;
+      G.Balises := Balises;
+      return G;
+   end Group;
+
+   function With_Links (G : Group_Def; L : T5.Packet_T) return Group_Def is
+      R : Group_Def := G;
+   begin
+      R.Has_Linking := True;
+      R.Linking := L;
+      return R;
+   end With_Links;
+
+   --  Packet 0 and 1 through the encoder and back
+   function Round_Trip (P : R0.Packet_T) return Boolean is
+      W  : Writer_T;
+      R  : Reader_T;
+      D  : R0.Packet_T;
+      OK : Boolean;
+      E  : R0.Packet_T := P;
+   begin
+      R0.Encode (P, W, OK);
+      if not OK then
+         return False;
+      end if;
+      ETCS_Bits.Load (R, ETCS_Bits.Data (W), ETCS_Bits.Position (W));
+      R0.Decode (R, D, OK);
+      E.L_PACKET := D.L_PACKET;
+      return OK and then D = E;
+   end Round_Trip;
+
+   function Round_Trip (P : R1.Packet_T) return Boolean is
+      W  : Writer_T;
+      R  : Reader_T;
+      D  : R1.Packet_T;
+      OK : Boolean;
+      E  : R1.Packet_T := P;
+   begin
+      R1.Encode (P, W, OK);
+      if not OK then
+         return False;
+      end if;
+      ETCS_Bits.Load (R, ETCS_Bits.Data (W), ETCS_Bits.Position (W));
+      R1.Decode (R, D, OK);
+      E.L_PACKET := D.L_PACKET;
+      return OK and then D = E;
+   end Round_Trip;
+
+   --  The first balise group passed: the position becomes valid, the
+   --  group the LRBG and the SOLR (3.6.1.4, 3.6.2.2.2 a, 3.6.4.2.2 b),
+   --  the confidence interval from Q_NVLOCACC and the odometer
+   --  (3.6.4.1.3, 3.6.4.1.5); the position report (3.6.5.1.2)
+   procedure Scenario_Position_First_Group is
+      P : R0.Packet_T;
+   begin
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Check (Pos.Status = Pos.Unknown and then not Pos.LRBG.Valid,
+             "first group: position unknown before");
+      Check (Pos.Report_Kind = Pos.Report_P0
+             and then Pos.Position_Report (M_SB, L1).NID_BG = 16383
+             and then Pos.Position_Report (M_SB, L1).D_LRBG = 32767,
+             "first group: LRBG unknown in the report (3.6.2.2.2.1)");
+      Run_To (10_000);
+      Check (Pos.Status = Pos.Unknown and then Pos.Passage_Open,
+             "first group: balise 1 read, the passage is open");
+      Run_To (20_000);
+      Check (Pos.Status = Pos.Valid, "first group: position valid");
+      Check (Pos.LRBG.Valid and then Pos.LRBG.Id.NID_BG = 10
+             and then Pos.LRBG.X = 10_000
+             and then Pos.LRBG.Orientation = EVC_Distances.Plus
+             and then Pos.LRBG.Locacc = 1_200,
+             "first group: LRBG, its location reference, orientation, "
+             & "Q_NVLOCACC");
+      Check (Pos.SOLR = Pos.LRBG, "first group: the SOLR is the LRBG");
+      Check (Pos.Estimated_Front = 10_300,
+             "first group: estimated front end 100 m + antenna 3 m, got"
+             & EVC_Distances.Cm_T'Image (Pos.Estimated_Front));
+      --  2 % of 110 m since the sample before the detection
+      Check (Pos.Doubt_Over = 1_420 and then Pos.Doubt_Under = 1_420,
+             "first group: confidence 12 m + 2.2 m, got"
+             & EVC_Distances.Cm_T'Image (Pos.Doubt_Over));
+      Check (Pos.Min_Safe_Front = 10_300 - 1_420
+             and then Pos.Max_Safe_Front = 10_300 + 1_420,
+             "first group: min and max safe front ends");
+      Check (JRU_Seen (10) = 1 and then JRU_Id (10) = Id (10)
+             and then JRU_Seen (8) = 1 and then JRU_Last (8, 2) = 1,
+             "first group: JRU new LRBG and position valid");
+      Check (Seen.LRBG_Passed and then not Seen.Location_Passed,
+             "first group: report trigger 3.6.5.1.4 j)");
+      Check (Onboard_Field (1) = 32,
+             "first group: MSG_ONBOARD position valid, got"
+             & Img (Onboard_Field (1)));
+      Stand;
+      Check (Pos.Report_Triggers.Standstill_Reached,
+             "first group: standstill reached (3.6.5.1.4 a)");
+      P := Pos.Position_Report (M_SB, L1);
+      Check (P.NID_C = 123 and then P.NID_BG = 10 and then P.Q_SCALE = 0
+             and then P.D_LRBG = 1_030
+             and then P.L_DOUBTOVER = 142 and then P.L_DOUBTUNDER = 142
+             and then P.Q_DIRLRBG = 1 and then P.Q_DLRBG = 1
+             and then P.Q_DIRTRAIN = 1 and then P.V_TRAIN = 127
+             and then P.M_MODE = 6 and then P.M_LEVEL = 2
+             and then P.Q_INTEGRITY = 0,
+             "first group: packet 0");
+      Check (Round_Trip (P), "first group: packet 0 round trip");
+      Step (1_000);
+      Check (Pos.Report_Triggers.Standstill_Left
+             and then Pos.Position_Report (M_SB, L1).V_TRAIN = 7,
+             "first group: standstill left, 36 km/h reported as 7");
+      Check_Golden ("position_first_group");
+   end Scenario_Position_First_Group;
+
+   --  Linked groups with their windows met (3.4.4.4.3, 3.4.4.4.6 a):
+   --  each becomes LRBG and SOLR with the accuracy of the linking
+   --  (3.6.4.1.3); a location item of packet 58 follows by the linking
+   --  distance (3.6.4.2.5 a), and its "max" location passes
+   procedure Scenario_Linking is
+      P58 : T58.Packet_T;
+      OK  : Boolean;
+      Fired_At : Integer_64 := 0;
+   begin
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 400),
+                                                       (20, 30))));
+      Add_Group (Group (20, 600));
+      Add_Group (Group (30, 1000, 3));
+      Run_To (15_000);
+      Check (Pos.Linking.Stored and then Pos.Linking.Count = 2
+             and then Pos.Linking.Expected = 1
+             and then EVC_Linking.Checked (Pos.Linking),
+             "linking: stored, the window of the first group supervised");
+      P58.Q_SCALE := 1;
+      P58.T_CYCLOC := 255;
+      P58.D_CYCLOC := 32_767;
+      P58.M_LOC := 2;
+      P58.N_ITER := 1;
+      P58.D_LOC_List (1) := (D_LOC => 800, Q_LGTLOC => 1);
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Check (OK and then Pos.Report_Parameters_Stored,
+             "linking: packet 58 against the LRBG");
+      Pos.Set_Report_Parameters (P58, (123, 999), OK);
+      Check (not OK, "linking: packet 58 against an unknown group refused");
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Forget;
+      Run_To (65_000);
+      Check (Pos.LRBG.Id.NID_BG = 20 and then Pos.LRBG.Locacc = 500
+             and then Pos.SOLR.Id.NID_BG = 20
+             and then Pos.Linking.Expected = 2
+             and then Pos.Linking.Solr = 1,
+             "linking: the second group, LRBG and SOLR, Q_LOCACC 5 m");
+      Check (not Seen.LRBG_Passed,
+             "linking: M_LOC 2, no report at the LRBG (3.6.5.1.5 d)");
+      Check (Pos.Doubt_Over = 500 + 120,
+             "linking: the confidence restarts from the new LRBG, got"
+             & EVC_Distances.Cm_T'Image (Pos.Doubt_Over));
+      --  the location, 800 m from the first group, is 300 m from the
+      --  second; it passes when the max safe front end reaches it
+      while Train_Cm < 95_000 and then Fired_At = 0 loop
+         Step (1_000);
+         if Pos.Report_Triggers.Location_Passed then
+            Fired_At := Train_Cm;
+         end if;
+      end loop;
+      Check (Fired_At = 89_000,
+             "linking: the max safe front end passes the location at 890 m"
+             & " (relocated by the linking distance), got"
+             & Integer_64'Image (Fired_At));
+      Run_To (110_000);
+      Check (Pos.LRBG.Id.NID_BG = 30 and then Pos.Linking.Expected = 3
+             and then not EVC_Linking.Checked (Pos.Linking),
+             "linking: the third group, linking no longer checked");
+      Check (JRU_Seen (4) = 0 and then JRU_Seen (5) = 0
+             and then JRU_Seen (6) = 0,
+             "linking: no reaction, nothing unexpected, nothing missed");
+      Check (Pos.Doubt_Over = 500 + 220,
+             "linking: confidence against the third group");
+      Check_Golden ("position_linking");
+   end Scenario_Linking;
+
+   --  A linked group missed (3.16.2.3.1 b, 3.16.2.3.1.1), one detected
+   --  in rear of its window (a), one of a later group (c), a group not
+   --  in the linking (3.4.4.4.2), one passed the wrong way (3.4.4.4.7)
+   procedure Scenario_Linking_Errors is
+      Missed_At : Integer_64 := 0;
+   begin
+      --  missed: announced at 600 m with 5 m, nothing there
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 400),
+                                                       (20, 30))));
+      Add_Group (Group (30, 1000));
+      Run_To (20_000);
+      while Train_Cm < 70_000 and then Missed_At = 0 loop
+         Step (1_000);
+         if Pos.Missed_Group_Found then
+            Missed_At := Train_Cm;
+            Check (Pos.Linking_Reaction_Requested and then Pos.Reaction = 1,
+                   "missed: service brake requested (Q_LINKREACTION 1)");
+         end if;
+      end loop;
+      --  min safe antenna = (X - 100 m) - 12 m - 2 % of (X - 90 m) above
+      --  605 m + 1.3 m
+      Check (Missed_At = 63_000,
+             "missed: detected at 630 m, got" & Integer_64'Image (Missed_At));
+      Check (JRU_Seen (6) = 1 and then JRU_Id (6) = Id (20)
+             and then JRU_Seen (4) = 1 and then JRU_Last (4, 2) = 1
+             and then JRU_Last (4, 3) = Pos.Cause_Not_Detected
+             and then JRU_Last (4, 4) = 1,
+             "missed: JRU missed group and linking reaction");
+      Check (Pos.Linking.Expected = 2 and then Pos.LRBG.Id.NID_BG = 10,
+             "missed: the next window, the LRBG stays");
+      Run_To (105_000);
+      Check (Pos.LRBG.Id.NID_BG = 30, "missed: the next group accepted");
+
+      --  in rear of its window: at 400 m instead of 600 m +- 5 m
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 400),
+                                                       (20, 30), 5, 0)));
+      Add_Group (Group (20, 400));
+      Run_To (45_000);
+      Check (Pos.LRBG.Id.NID_BG = 10 and then JRU_Seen (4) = 1
+             and then JRU_Last (4, 2) = 0
+             and then JRU_Last (4, 3) = Pos.Cause_Early,
+             "early: rejected, train trip requested (3.16.2.3.1 a)");
+
+      --  the group announced after the expected one comes first (c,
+      --  3.4.4.4.6.1): it is checked against its own window
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 400),
+                                                       (20, 30), 5, 2)));
+      --  30, announced at 1000 m, lies inside the window of 20
+      Add_Group (Group (30, 602));
+      Run_To (65_000);
+      Check (JRU_Seen (4) = 2 and then JRU_Last (4, 3) = Pos.Cause_Early
+             and then Pos.LRBG.Id.NID_BG = 10,
+             "other group: reaction c) for 20, then 30 early in its own "
+             & "window");
+
+      --  a linked group not in the linking information (3.4.4.4.2)
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 400),
+                                                       (20, 30))));
+      Add_Group (Group (90, 300));
+      Add_Group (Group (20, 600));
+      Run_To (35_000);
+      Check (JRU_Seen (5) = 1 and then JRU_Id (5) = Id (90)
+             and then JRU_Seen (4) = 0
+             and then Pos.LRBG.Id.NID_BG = 10,
+             "unexpected: rejected without reaction (3.16.2.4.3)");
+      Run_To (65_000);
+      Check (Pos.LRBG.Id.NID_BG = 20, "unexpected: the expected one next");
+
+      --  unlinked groups are taken into account, not LRBG (3.4.4.4.2.2)
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 400),
+                                                       (20, 30))));
+      Add_Group (Group (80, 300));
+      Track (2).Linked := False;
+      Run_To (35_000);
+      Check (Pos.LRBG.Id.NID_BG = 10 and then Pos.Unlinked_ORBG (1).Valid
+             and then Pos.Unlinked_ORBG (1).Id.NID_BG = 80
+             and then Pos.SOLR.Id.NID_BG = 10 and then JRU_Seen (5) = 0,
+             "unlinked: an ORBG, neither LRBG nor SOLR");
+
+      --  passed in the unexpected direction (3.4.4.4.7)
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 400),
+                                                       (20, 30), 5, 2)));
+      Add_Group (Group (20, 600));
+      Track (2).Reversed := True;
+      Track (2).At_Cm := 60_300;
+      Run_To (65_000);
+      Check (JRU_Seen (4) = 1 and then JRU_Last (4, 2) = 0
+             and then JRU_Last (4, 3) = Pos.Cause_Wrong_Direction
+             and then Pos.LRBG.Id.NID_BG = 10,
+             "wrong direction: rejected, trip requested");
+      Check_Golden ("position_linking_errors");
+   end Scenario_Linking_Errors;
+
+   --  Single balise groups: orientation from linking (3.4.2.3.2.2), the
+   --  report based on two groups (3.4.2.3.3.1 to .4), the assignment by
+   --  the RBC (3.4.2.3.3.6, .8); duplicated balises (3.4.2.2.1.1,
+   --  3.4.2.4.1)
+   procedure Scenario_Single_Balise is
+      P  : R1.Packet_T;
+      OK : Boolean;
+   begin
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 200), (1 => 15))));
+      Add_Group (Group (15, 300, 1));
+      Add_Group (Group (30, 500, 1));
+      --  a single group behind 30, not read on the way there
+      Add_Group (Group (20, 520, 1));
+      Track (4).Skip := 1;
+      Run_To (35_000);
+      Check (Pos.LRBG.Id.NID_BG = 15
+             and then Pos.LRBG.Orientation = EVC_Distances.Plus
+             and then Pos.Report_Kind = Pos.Report_P0,
+             "single: co-ordinate system from the linking (3.4.2.3.2.2)");
+      Run_To (55_000);
+      Check (Pos.LRBG.Id.NID_BG = 30
+             and then Pos.LRBG.Orientation = EVC_Distances.Unknown
+             and then Pos.Previous_LRBG.Id.NID_BG = 15
+             and then Pos.Report_Kind = Pos.Report_P1,
+             "single: no co-ordinate system, report on two groups");
+      P := Pos.Position_Report_2 (M_SB, L1);
+      Check (P.NID_BG = 30 and then P.NID_BG_PRVLRBG = 15
+             and then P.Q_DIRLRBG = 1 and then P.Q_DLRBG = 1
+             and then P.Q_DIRTRAIN = 1 and then P.D_LRBG = 530,
+             "single: directions against prev -> LRBG (3.4.2.3.3.2)");
+      Check (Round_Trip (P), "single: packet 1 round trip");
+      Pos.Assign_Coordinate_System ((123, 30), False, OK);
+      Check (OK and then Pos.LRBG.Orientation = EVC_Distances.Minus
+             and then Pos.Report_Kind = Pos.Report_P0
+             and then Pos.Position_Report (M_SB, L1).Q_DIRLRBG = 0,
+             "single: the RBC assigns reverse (3.4.2.3.3.6)");
+
+      --  back over 20 only: passed against the direction 30 was passed
+      --  in, the previous LRBG is unknown (3.4.2.3.3.4)
+      Track (4).Skip := 0;
+      Run_To (51_000);
+      Check (Pos.LRBG.Id.NID_BG = 20 and then not Pos.Previous_LRBG.Valid,
+             "single: passed the other way, previous LRBG unknown");
+      P := Pos.Position_Report_2 (M_SB, L1);
+      Check (P.NID_BG_PRVLRBG = 16383 and then P.Q_DIRLRBG = 2
+             and then P.Q_DLRBG = 2 and then P.Q_DIRTRAIN = 2,
+             "single: directions unknown (3.4.2.3.3.3)");
+      --  back over 30: now after 20, another previous LRBG
+      Run_To (45_000);
+      Check (Pos.LRBG.Id.NID_BG = 30
+             and then Pos.Previous_LRBG.Id.NID_BG = 20,
+             "single: 30 again, after 20");
+      Pos.Assign_Coordinate_System ((123, 30), True, OK);
+      Check (not OK, "single: reported with different previous LRBGs, "
+             & "assignment refused (3.4.2.3.3.7, 3.4.2.3.3.8)");
+
+      --  duplicated balises, balise 1 not read: balise 2 is the location
+      --  reference, the group has no orientation of its own
+      Start_Track;
+      Add_Group (Group (40, 100));
+      Track (1).Dup_1_2 := True;
+      Track (1).Skip := 1;
+      Run_To (11_000);
+      Check (Pos.Passage_Open, "duplicate: waits for the other balise");
+      Run_To (30_000);
+      Check (Pos.LRBG.Id.NID_BG = 40 and then Pos.LRBG.X = 10_300
+             and then Pos.LRBG.Orientation = EVC_Distances.Unknown,
+             "duplicate: balise 2 is the location reference (3.4.2.2.1.1),"
+             & " a single balise group (3.4.2.4.1)");
+      Check_Golden ("position_single_balise");
+   end Scenario_Single_Balise;
+
+   --  3.6.6: the geographical position from packet 79
+   procedure Scenario_Geo is
+      G : T79.Packet_T;
+   begin
+      Start_Track;
+      G.Q_DIR := 1;
+      G.Q_SCALE := 1;
+      G.NID_BG := 10;
+      G.D_POSOFF := 50;
+      G.Q_MPOSITION := 1;
+      G.M_POSITION := 42_000;
+      G.N_ITER := 1;
+      G.Q_NEWCOUNTRY_List (1).NID_BG := 11;
+      G.Q_NEWCOUNTRY_List (1).D_POSOFF := 0;
+      G.Q_NEWCOUNTRY_List (1).Q_MPOSITION := 0;
+      G.Q_NEWCOUNTRY_List (1).M_POSITION := 50_000;
+      Add_Group (Group (10, 100));
+      Track (1).Has_Geo := True;
+      Track (1).Geo := G;
+      Add_Group (Group (11, 300));
+      Run_To (14_000);
+      Check (not Pos.Geo_Known and then Geo_Count = 0,
+             "geo: not before the offset (3.6.6.4.2)");
+      Run_To (15_000);
+      Check (Pos.Geo_Known and then Pos.Geo_Metres = 42_003,
+             "geo: 42 003 m at the reference + 3 m, got"
+             & Natural'Image (Pos.Geo_Metres));
+      Run_To (20_000);
+      Check (Pos.Geo_Metres = 42_053 and then Geo_Seen = 42_053,
+             "geo: 42 053 m, on the DMI (MSG_STATUS)");
+      Run_To (40_000);
+      Check (Pos.Geo_Metres = 50_000 - 103,
+             "geo: the second reference, counting down, got"
+             & Natural'Image (Pos.Geo_Metres));
+      Pos.Delete_Geo;
+      Geo_Count := 0;
+      Stand;
+      Check (Geo_Count = 1 and then Geo_Seen = 16#FFFF_FFFF#,
+             "geo: once unknown when it stops");
+      Stand;
+      Check (Geo_Count = 1, "geo: then nothing");
+      Check_Golden ("position_geo");
+   end Scenario_Geo;
+
+   --  3.6.8, A.3.1: odometer accuracy impaired, safety threshold
+   procedure Scenario_Odometer_Accuracy is
+      Impaired_At : Integer_64 := 0;
+      Nominal_At  : Integer_64 := 0;
+   begin
+      Start_Track;
+      Bound_Per_Mille := 60;
+      while Impaired_At = 0 and then Train_Cm < 600_000 loop
+         Step (1_000);
+         if Odo.Impaired then
+            Impaired_At := Train_Cm;
+         end if;
+      end loop;
+      Check (Impaired_At = 420_000,
+             "odometer: 6 % impaired after 4200 m (250 m), got"
+             & Integer_64'Image (Impaired_At));
+      Check (JRU_Seen (7) = 1 and then JRU_Last (7, 2) = 1
+             and then not Odo.Safety_Exceeded,
+             "odometer: JRU impaired");
+      Run_To (500_000);
+      Bound_Per_Mille := 10;
+      while Nominal_At = 0 and then Train_Cm < 2_000_000 loop
+         Step (1_000);
+         if not Odo.Impaired then
+            Nominal_At := Train_Cm;
+         end if;
+      end loop;
+      --  the window falls below 255 m after 10 intervals, then 5000 m
+      Check (Nominal_At = 1_090_000,
+             "odometer: nominal again after 5000 m below the accuracy "
+             & "(3.6.8.6), got" & Integer_64'Image (Nominal_At));
+      Check (JRU_Seen (7) = 2 and then JRU_Last (7, 2) = 0,
+             "odometer: JRU nominal");
+
+      Start_Track;
+      Bound_Per_Mille := 350;
+      Run_To (430_000);
+      Check (Odo.Safety_Exceeded and then Odo.Impaired
+             and then JRU_Last (7, 2) = 2,
+             "odometer: 35 % exceeds the safety threshold at 4300 m");
+      Run_To (429_000);
+      Check (Odo.Safety_Exceeded, "odometer: safety threshold latched");
+   end Scenario_Odometer_Accuracy;
+
+   --  3.15.8: cold movement at power-up
+   procedure Scenario_Cold_Movement is
+   begin
+      EVC_Core.Initialise;
+      Reset_Capture;
+      Forget;
+      Check (Odo.Cold = Odo.Cold_Unknown, "cold: unknown before a sample");
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 250));
+      Cycle;
+      Check (Odo.Cold = Odo.Cold_Movement and then JRU_Seen (9) = 1,
+             "cold: 2.5 m moved in No Power is a cold movement");
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 0));
+      Cycle;
+      Check (Odo.Cold = Odo.Cold_Movement and then JRU_Seen (9) = 1,
+             "cold: read once, at power-up");
+
+      EVC_Core.Initialise;
+      Forget;
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 200));
+      Cycle;
+      Check (Odo.Cold = Odo.No_Cold_Movement and then JRU_Seen (9) = 0,
+             "cold: 2 m allowed (3.15.8.1.1)");
+
+      EVC_Core.Initialise;
+      Forget;
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 0, 0));
+      Cycle;
+      Check (Odo.Cold = Odo.Cold_Not_Available and then JRU_Seen (9) = 0,
+             "cold: information not available (3.15.8.3)");
+   end Scenario_Cold_Movement;
+
+   --  3.6.1.5, 5.12.2.5: the active cab defines the orientation; the
+   --  front end and the report follow from the previous data
+   procedure Scenario_Orientation is
+      P : R0.Packet_T;
+   begin
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Run_To (15_000);
+      Stand;
+      Check (Pos.Orientation = EVC_Distances.Plus
+             and then Pos.Orientation_Known
+             and then Pos.Active_Cab = Pos.Cab_A
+             and then Pos.Estimated_Front = 5_300,
+             "orientation: cab A, front 53 m ahead of the LRBG");
+      Input (TIU, (1, 0));
+      Stand;
+      Check (Pos.Orientation = EVC_Distances.Plus
+             and then Pos.Active_Cab = Pos.No_Cab,
+             "orientation: no cab active, the last active one stays");
+      Input (TIU, (2, 1));
+      Stand;
+      Check (Pos.Orientation = EVC_Distances.Minus
+             and then Pos.Active_Cab = Pos.Cab_B
+             and then Pos.Estimated_Front = -3_300,
+             "orientation: cab B, its end 33 m in rear of the LRBG, got"
+             & EVC_Distances.Cm_T'Image (Pos.Estimated_Front));
+      P := Pos.Position_Report (M_SB, L1);
+      Check (P.Q_DIRLRBG = 0 and then P.Q_DLRBG = 1 and then P.D_LRBG = 330,
+             "orientation: reverse against the LRBG, front on its "
+             & "nominal side");
+      Input (TIU, (1, 1));
+      Stand;
+      Check (Pos.Orientation = EVC_Distances.Minus
+             and then Pos.Active_Cab = Pos.No_Cab,
+             "orientation: both cabs active, nothing changes");
+      Input (TIU, (1, 0));
+      Step (-2_000);
+      Check (Pos.Estimated_Front = -1_300
+             and then Pos.Position_Report (M_SB, L1).Q_DIRTRAIN = 0,
+             "orientation: moving towards cab B, reverse against the LRBG");
+      Check_Golden ("position_orientation");
+   end Scenario_Orientation;
+
+   --  3.6.7: distances not referred to balise groups
+   procedure Scenario_Virtual is
+      V : Odo.Virtual_T;
+   begin
+      Start_Track;
+      Run_To (10_000);
+      V := Odo.Start_Virtual (5_000, EVC_Distances.Plus);
+      Run_To (12_000);
+      Check (Odo.Remaining_Estimated (V) = 3_000
+             and then Odo.Remaining_Max_Safe (V) = 3_000 - 40
+             and then Odo.Remaining_Min_Safe (V) = 3_000 + 40,
+             "virtual: remaining distances (3.6.7.3)");
+      Check (Odo.Away (V, EVC_Distances.Plus) = 2_000
+             and then Odo.Away (V, EVC_Distances.Minus) = 0
+             and then Odo.Away (V, EVC_Distances.Unknown) = 2_000,
+             "virtual: travelled away (3.6.7.2)");
+      Odo.Set_Distance (V, 8_000);
+      Check (Odo.Remaining_Estimated (V) = 6_000,
+             "virtual: new national value, same start (3.6.7.5)");
+      Run_To (11_000);
+      Check (Odo.Away (V, EVC_Distances.Unknown) = 1_000
+             and then Odo.Remaining_Estimated (V) = 7_000,
+             "virtual: back");
+   end Scenario_Virtual;
+
+   --  3.6.5.1.4, 3.6.5.1.5: report triggers
+   procedure Scenario_Report_Triggers is
+      P58   : T58.Packet_T;
+      OK    : Boolean;
+      Times : Natural := 0;
+      Dists : Natural := 0;
+   begin
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 500));
+      Run_To (15_000);
+      P58.Q_SCALE := 1;
+      P58.T_CYCLOC := 2;
+      P58.D_CYCLOC := 50;
+      P58.M_LOC := 0;
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Stand;
+      Check (OK and then Pos.Report_Triggers.Immediate,
+             "triggers: M_LOC 0, immediately (3.6.5.1.5 e)");
+      Forget;
+      for I in 1 .. 40 loop
+         Step (500);
+         Times := Times + (if Pos.Report_Triggers.Periodic_Time then 1
+                           else 0);
+         Dists := Dists + (if Pos.Report_Triggers.Periodic_Distance then 1
+                           else 0);
+      end loop;
+      Check (Times = 2 and then Dists = 4,
+             "triggers: every 2 s and every 50 m in 4 s and 200 m, got"
+             & Img (Times) & Img (Dists));
+      Check (not Seen.LRBG_Passed,
+             "triggers: M_LOC 0 is not every LRBG");
+      P58.M_LOC := 1;
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Forget;
+      Run_To (52_000);
+      Check (Seen.LRBG_Passed, "triggers: M_LOC 1, the LRBG (3.6.5.1.5 d)");
+      Input (DMI, Isolate);
+      Stand;
+      Stand;
+      Check (Pos.Report_Triggers.Mode_Changed,
+             "triggers: the mode changed (3.6.5.1.4 b)");
+   end Scenario_Report_Triggers;
+
+   --  3.6.1.7: the min safe rear end with the train length
+   --  3.6.4.2.5 c) then b): a "max" location item of packet 58 referred
+   --  to a group, relocated without linking to the next SOLR by the
+   --  travelled distance, then with linking widened by twice the
+   --  accuracy of its former reference
+   procedure Scenario_Relocation is
+      P58      : T58.Packet_T;
+      OK       : Boolean;
+      Fired_At : Integer_64 := 0;
+
+      procedure Until_Passed (Limit : Integer_64) is
+      begin
+         Fired_At := 0;
+         while Train_Cm < Limit and then Fired_At = 0 loop
+            Step (1_000);
+            if Pos.Report_Triggers.Location_Passed then
+               Fired_At := Train_Cm;
+            end if;
+         end loop;
+      end Until_Passed;
+   begin
+      P58.Q_SCALE := 1;
+      P58.T_CYCLOC := 255;
+      P58.D_CYCLOC := 32_767;
+      P58.M_LOC := 2;
+      P58.N_ITER := 1;
+
+      --  c): at 500 m, 400 m from the first group; the max safe front
+      --  end against the second group reaches it where it would against
+      --  the first (3.6.4.2.5.4)
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 300));
+      Run_To (15_000);
+      P58.D_LOC_List (1) := (D_LOC => 400, Q_LGTLOC => 1);
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Until_Passed (60_000);
+      Check (OK and then Pos.SOLR.Id.NID_BG = 20 and then Fired_At = 48_000,
+             "relocation c): the location passed at 480 m, got"
+             & Integer_64'Image (Fired_At));
+
+      --  then b): at 900 m; the second group links the third
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Add_Group (With_Links (Group (20, 300), Link_To ((1 => 300),
+                                                        (1 => 30))));
+      Add_Group (Group (30, 600));
+      Run_To (15_000);
+      P58.D_LOC_List (1) := (D_LOC => 800, Q_LGTLOC => 1);
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Until_Passed (100_000);
+      Check (OK and then Pos.SOLR.Id.NID_BG = 30
+             and then Pos.LRBG.Locacc = 500
+             and then Fired_At = 86_000,
+             "relocation b): the linking distance plus twice 12 m, passed "
+             & "at 860 m, got" & Integer_64'Image (Fired_At));
+   end Scenario_Relocation;
+
+   --  3.4.4.4.2.1, 3.4.4.4.4: a group announced with an unknown identity
+   --  and repositioning information
+   procedure Scenario_Repositioning is
+      L : T5.Packet_T := Link_To ((1 => 500), (1 => 16383));
+   begin
+      L.D_LINK := 500;
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), L));
+      Add_Group (Group (55, 400));
+      Track (2).Reposition := True;
+      Run_To (45_000);
+      Check (Pos.LRBG.Id.NID_BG = 55 and then Pos.LRBG.Locacc = 500
+             and then JRU_Seen (5) = 0 and then JRU_Seen (4) = 0,
+             "repositioning: the group with packet 16 accepted in the "
+             & "window from the previous group on");
+
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), L));
+      Add_Group (Group (56, 400));
+      Run_To (45_000);
+      Check (Pos.LRBG.Id.NID_BG = 10 and then JRU_Seen (5) = 1
+             and then JRU_Id (5) = Id (56),
+             "repositioning: without packet 16 the group is rejected");
+
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), L));
+      Add_Group (Group (57, 400, 1));
+      Track (2).Reposition := True;
+      Run_To (45_000);
+      Check (Pos.LRBG.Id.NID_BG = 10 and then JRU_Seen (5) = 1,
+             "repositioning: a single balise group is rejected (a)");
+   end Scenario_Repositioning;
+
+   --  3.6.6.4.3: announced references deleted on a change of orientation
+   procedure Scenario_Geo_Orientation is
+      G : T79.Packet_T;
+   begin
+      Start_Track;
+      G.Q_DIR := 1;
+      G.Q_SCALE := 1;
+      G.Q_NEWCOUNTRY := 0;
+      G.NID_BG := 11;
+      G.M_POSITION := 50_000;
+      Add_Group (Group (10, 100));
+      Track (1).Has_Geo := True;
+      Track (1).Geo := G;
+      Add_Group (Group (11, 300));
+      Run_To (15_000);
+      Input (TIU, (1, 0));
+      Input (TIU, (2, 1));
+      Stand;
+      Input (TIU, (2, 0));
+      Input (TIU, (1, 1));
+      Run_To (35_000);
+      Check (not Pos.Geo_Known and then Geo_Count = 0,
+             "geo: the announced reference deleted with the orientation");
+   end Scenario_Geo_Orientation;
+
+   procedure Scenario_Rear_End is
+   begin
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Run_To (50_000);
+      Check (not Pos.Train_Length_Known
+             and then Pos.Min_Safe_Rear = Pos.Min_Safe_Front,
+             "rear end: no train length");
+      Pos.Set_Train_Length (20_000);
+      Check (Pos.Min_Safe_Rear = Pos.Min_Safe_Front - 20_000,
+             "rear end: the min safe front end minus 200 m");
+   end Scenario_Rear_End;
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -2300,6 +3391,21 @@ begin
    Scenario_Spare_Values;
    Scenario_Senders;
    Scenario_Received;
+   Scenario_Position_First_Group;
+   Scenario_Linking;
+   Scenario_Linking_Errors;
+   Scenario_Single_Balise;
+   Scenario_Geo;
+   Scenario_Odometer_Accuracy;
+   Scenario_Cold_Movement;
+   Scenario_Orientation;
+   Scenario_Virtual;
+   Scenario_Report_Triggers;
+   Scenario_Rear_End;
+   Scenario_Relocation;
+   Scenario_Repositioning;
+   Scenario_Geo_Orientation;
+   Check (Encodes_OK, "E2: every telegram of the track encoded");
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

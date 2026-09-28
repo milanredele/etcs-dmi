@@ -1,6 +1,8 @@
 --  ETCS on-board (EVC)
 --  Core of the ETCS on-board, implementation.
 
+pragma Unevaluated_Use_Of_Old (Allow);
+
 with ETCS_Message;
 with ETCS_Telegram;
 with ETCS_Variables;
@@ -17,6 +19,7 @@ package body EVC_Core
                                    Clock_Ms,
                                    Reported_Mode,
                                    Latched_Odometer,
+                                   Latched_Odometer_Fresh,
                                    Latched_TIU,
                                    Latched_Isolation,
                                    Latched_BTM,
@@ -24,6 +27,8 @@ package body EVC_Core
                                    Latched_RTM,
                                    Latched_RTM_Count,
                                    Odometer_Now,
+                                   Odometer_Fresh,
+                                   Geo_Sent,
                                    TIU_Now,
                                    Isolation_Now,
                                    Standstill,
@@ -76,6 +81,8 @@ is
 
    --  Inputs latched by Handle_Input since the last cycle
    Latched_Odometer  : Odometer_Sample_T := Standstill_Sample;
+   --  a sample arrived since the last cycle
+   Latched_Odometer_Fresh : Boolean := False;
    Latched_TIU       : TIU_Signals_T := (others => False);
    Latched_Isolation : Boolean := False;
 
@@ -105,6 +112,9 @@ is
 
    --  The inputs of the current cycle (Read_Ports)
    Odometer_Now  : Odometer_Sample_T := Standstill_Sample;
+   Odometer_Fresh : Boolean := False;
+   --  a geographical position was sent to the DMI in the last cycle
+   Geo_Sent      : Boolean := False;
    TIU_Now       : TIU_Signals_T := (others => False);
    Isolation_Now : Boolean := False;
 
@@ -163,6 +173,7 @@ is
       Clock_Ms := 0;
       Reported_Mode := M_NP;
       Latched_Odometer := Standstill_Sample;
+      Latched_Odometer_Fresh := False;
       Latched_TIU := (others => False);
       Latched_Isolation := False;
       Latched_BTM := (others => (Length => 0, Data => (others => 0)));
@@ -170,6 +181,8 @@ is
       Latched_RTM := (others => (Length => 0, Data => (others => 0)));
       Latched_RTM_Count := 0;
       Odometer_Now := Standstill_Sample;
+      Odometer_Fresh := False;
+      Geo_Sent := False;
       TIU_Now := (others => False);
       Isolation_Now := False;
       Standstill := True;
@@ -179,6 +192,7 @@ is
       Rejected_Count := (others => 0);
       Overflow_Count := (others => 0);
       EVC_Received.Clear;
+      EVC_Position.Clear;
       EVC_Outbox.Clear;
    end Initialise;
 
@@ -200,6 +214,7 @@ is
          when Odometer =>
             --  the latest sample of the cycle is the one that counts
             Latched_Odometer := To_Odometer (Payload);
+            Latched_Odometer_Fresh := True;
          when TIU =>
             declare
                Input : constant TIU_Input_T := To_TIU (Payload);
@@ -267,36 +282,69 @@ is
    JRU_Mode_Change : constant := 1;
    JRU_Telegram    : constant := 2;
    JRU_Message     : constant := 3;
+   --  the events of the position: 4 .. 10 (EVC_Ports)
+   JRU_Position    : constant := 4;
 
    --  1. Read the ports: take the inputs latched since the last cycle,
    --  parse the telegrams and radio messages (EVC_Received) and record
-   --  those accepted on the JRU port
+   --  those accepted on the JRU port; hand the telegrams accepted, with
+   --  the stamp of their balise, to the position
    procedure Read_Ports
      with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
-                                Latched_RTM, Cycle_Count, Clock_Ms),
-                     Output => (Odometer_Now, TIU_Now, Isolation_Now),
-                     In_Out => (Latched_Isolation, Latched_BTM_Count,
+                                Latched_RTM, Cycle_Count, Clock_Ms,
+                                EVC_Odometry.State),
+                     Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
+                                Isolation_Now),
+                     In_Out => (Latched_Isolation, Latched_Odometer_Fresh,
+                                Latched_BTM_Count,
                                 Latched_RTM_Count, EVC_Received.Store,
-                                EVC_Outbox.Queue)),
+                                EVC_Outbox.Queue, EVC_Position.State)),
           Post => Isolation_Now = Latched_Isolation'Old
                   and then not Latched_Isolation
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Orientation
+                             = EVC_Position.Orientation'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
    is
       T_Status : ETCS_Telegram.Status_T;
       M_Status : ETCS_Message.Status_T;
+      --  what the telegrams do not change (the position takes them at
+      --  its next Update)
+      LRBG_0        : constant EVC_Location.Anchor_T := EVC_Position.LRBG
+        with Ghost;
+      Orientation_0 : constant EVC_Distances.Sense_T :=
+        EVC_Position.Orientation
+        with Ghost;
+      Over_0        : constant EVC_Distances.Length_T :=
+        EVC_Position.Doubt_Over
+        with Ghost;
+      Under_0       : constant EVC_Distances.Length_T :=
+        EVC_Position.Doubt_Under
+        with Ghost;
    begin
       Odometer_Now := Latched_Odometer;
+      Odometer_Fresh := Latched_Odometer_Fresh;
+      Latched_Odometer_Fresh := False;
       TIU_Now := Latched_TIU;
       Isolation_Now := Latched_Isolation;
       Latched_Isolation := False;
 
       --  the telegrams in the order the BTM delivered them
       for I in 1 .. Latched_BTM_Count loop
+         pragma Loop_Invariant
+           (EVC_Position.LRBG = LRBG_0
+            and then EVC_Position.Orientation = Orientation_0
+            and then EVC_Position.Doubt_Over = Over_0
+            and then EVC_Position.Doubt_Under = Under_0);
          declare
             Slot : BTM_Slot_T renames Latched_BTM (I);
          begin
-            if Valid_BTM (Slot.Data (1 .. Slot.Length)) then
+            if Valid_BTM_Input (Slot.Data (1 .. Slot.Length)) then
                EVC_Received.Receive_Telegram
-                 (Slot.Data (1 .. Slot.Length), T_Status);
+                 (BTM_Telegram (Slot.Data (1 .. Slot.Length)), T_Status);
                if T_Status = ETCS_Telegram.Accepted then
                   --  the balise group, NID_C and NID_BG (24 bits)
                   declare
@@ -312,6 +360,9 @@ is
                                          EVC_Bytes.Byte_Of (Id, 1),
                                          EVC_Bytes.Byte_Of (Id, 2)));
                   end;
+                  EVC_Position.Receive_Telegram
+                    (EVC_Received.Last_Telegram,
+                     BTM_Stamp (Slot.Data (1 .. Slot.Length)));
                end if;
             end if;
          end;
@@ -340,14 +391,48 @@ is
       Latched_RTM_Count := 0;
    end Read_Ports;
 
-   --  2. Update the position. Phase E2 brings the train position, its
-   --  confidence interval and the balise groups (3.4, 3.6); E0 only
-   --  knows whether the train moves.
+   --  2. Update the position (EVC_Position): the cab status, the
+   --  telegrams of the cycle, the odometer sample; its events go to the
+   --  JRU. E0's standstill and override speed come from the sample.
    procedure Update_Position
-     with Global => (Input  => (Odometer_Now, National_Values),
-                     Output => (Standstill, Below_Override))
+     with Global => (Input  => (Odometer_Now, Odometer_Fresh, TIU_Now,
+                                National_Values, Current_Mode,
+                                Current_Level, Cycle_Count, Clock_Ms),
+                     Output => (Standstill, Below_Override),
+                     In_Out => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Outbox.Queue)),
+          Post =>
+            (if EVC_Position.Orientation /= EVC_Position.Orientation'Old
+             then EVC_Position.Active_Cab
+                    = (if EVC_Position.Orientation = EVC_Distances.Plus
+                       then EVC_Position.Cab_A else EVC_Position.Cab_B))
+            and then
+            (if EVC_Position.LRBG = EVC_Position.LRBG'Old
+               and then EVC_Position.Orientation
+                          = EVC_Position.Orientation'Old
+             then EVC_Position.Doubt_Over >= EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             >= EVC_Position.Doubt_Under'Old)
    is
    begin
+      EVC_Position.Update
+        (Cab_A_Active => TIU_Now (Cab_A_Active),
+         Cab_B_Active => TIU_Now (Cab_B_Active),
+         Sampled      => Odometer_Fresh,
+         Sample       => Odometer_Now,
+         Mode         => Current_Mode,
+         Level        => Current_Level,
+         Now_Ms       => Unsigned_64 (Clock_Ms));
+      for I in 1 .. EVC_Position.Event_Count loop
+         declare
+            E : constant EVC_Position.Event_T := EVC_Position.Event (I);
+         begin
+            EVC_Outbox.Put
+              (JRU, JRU_Record (JRU_Position
+                                  + EVC_Position.Event_Kind_T'Pos (E.Kind),
+                                E.B2, E.B3, E.B4));
+         end;
+      end loop;
       Standstill := Odometer_Now.V_Max = 0;
       Below_Override := Odometer_Now.V_Max <= National_Values.V_NVALLOWOVTRP;
    end Update_Position;
@@ -432,8 +517,8 @@ is
      with Global => (Input  => (Current_Mode, Current_Level_Status,
                                 Current_Level, Cycle_Count, Clock_Ms,
                                 Standstill, Below_Override, TIU_Now,
-                                National_Values),
-                     In_Out => (Reported_Mode, EVC_Outbox.Queue))
+                                National_Values, EVC_Position.State),
+                     In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue))
    is
       --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
       --  E0; the fields of the later phases are 0, "nothing known"
@@ -478,8 +563,25 @@ is
       if National_Values.Q_NVDRIVER_ADHES then
          National := National or National_Adhesion;
       end if;
+      --  SUBSET-026 3.6.6: the geographical position, while it is known,
+      --  and once "unknown" when it stops (the DMI shows it on request)
+      if EVC_Position.Geo_Known then
+         EVC_Outbox.Put
+           (DMI, Status_Frame (Unsigned_32 (EVC_Position.Geo_Metres),
+                               Unsigned_64 (Clock_Ms) / 1000));
+         Geo_Sent := True;
+      elsif Geo_Sent then
+         EVC_Outbox.Put
+           (DMI, Status_Frame (Geo_Unknown, Unsigned_64 (Clock_Ms) / 1000));
+         Geo_Sent := False;
+      end if;
+
       Onboard :=
-        (Data     => (if Current_Level_Status = Valid then 4 else 0),
+        (Data     => (if Current_Level_Status = Valid
+                      then Data_Level_Valid else 0)
+                     or (if EVC_Position.Status = EVC_Position.Valid
+                           and then EVC_Position.LRBG.Valid
+                         then Data_Position_Valid else 0),
          Train    => Train,
          National => National,
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
