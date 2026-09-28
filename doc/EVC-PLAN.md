@@ -406,6 +406,9 @@ on the events, E5 reports to the RBC, E6 for 3.16.2.4.1 and 3.7.3.1),
 49 `deferred`, 1 `n/a`. The partial rows close when those phases consume
 the events; the notes say which.
 
+**Cross build**: 295 kB code, 8.7 kB data, 18.7 kB static state on the
+TMS570LC43x after E2 (E1: 195 kB code).
+
 **Open points**: the wrap-around of the odometer counter is not
 exercised by a scenario; Q_DIRTRAIN at standstill reports the last
 movement; unknown-LRBG reports use NID_C 0; the balise detection error is
