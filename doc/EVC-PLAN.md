@@ -1,9 +1,7 @@
 # ETCS on-board (EVC) — Plan
 
-> **Status (2026-09-28):** E0 closed (§5). E1 (§6) merged on
-> `e1/language`; a fix round for the matrix findings (spare values,
-> senders, telegram length) runs on `e1/fix`. E2 (position) in progress on
-> `e2/position`. Then E3.
+> **Status (2026-09-28):** E0 closed (§5), E1 closed (§6, merged to
+> master). E2 (position) in progress on `e2/position`. Then E3.
 > The DMI is complete for its scope (PLAN.md §7 closed 2026-09-26). This
 > document plans the second product of the repository: an ETCS on-board
 > implementing SUBSET-026 v4.0.0, runnable on a microcontroller of the
@@ -302,13 +300,31 @@ and RTM, 0 raised. `dmi_test` 2156, `dmi_fuzz` clean, wasm unaffected
 whole language. Stack worst case for parsing a message about 10 kB
 (message record 1.8 kB, two 1 kB readers, packet record up to 6.1 kB).
 
+**Matrix review and fix round** (branches `e1/trace`, `e1/fix`). The
+classification of the 380 E1 clauses re-verified the catalogue against
+the PDF (no structural error) and found 66 clauses only partly met, all
+of one kind: the parsers accepted what they should refuse. Closed in one
+round: spare values are rejected at parse (3.16.1.1.1: a spare value
+makes the message non-compliant) through a generated `Valid (P)` per
+packet and `ETCS_Variables.Valid_Code` for message variables, with two
+new catalogue keys, `spare` (values and ranges inside the defined range:
+M_MODETEXTDISPLAY, M_VERSION, M_LINEGAUGE, M_LINEAXLELOADCAT, NC_TRAIN,
+NID_OPERATIONAL FFFF FFFF) and `bcd` (NID_MN, NID_OPERATIONAL,
+NID_RADIO: digits 0..9, F only as filler after the last digit); a packet
+is refused when its `Sent_By` excludes the medium (balise telegram) or
+the sender (RBC or RIU, a parameter of `ETCS_Message.Parse`; message 37
+is RIU only); a balise telegram has exactly 210 or 830 user bits, which
+SUBSET-036 4.3.1.2 states and 8.4.2 does not. E1 stands at 373 `done`
+and 7 `deferred` (sender identity and the version-invariant column of
+8.5.2/8.5.3 in E5; unknown packet and message numbers per 3.17.3.11 in
+E6; the packet 136 infill rule and Euroloop in E7; the A.3.11 data entry
+ranges in E4/E6). Proof after the round: 4451 checks, 0 unproved, 34 min
+wall alone; `evc_test` 649 checks.
+
 **Open points carried forward**
-- Rules the codec does not enforce yet, to be placed by the matrix
-  notes: telegram length exactly 210 or 830 bits; `sent_by` against the
-  medium; spare values (`Is_Valid` exists, `Decode` does not reject);
-  unknown packets are indexed and counted, the 7.3.3.4 / 3.17.3.11
-  decision depends on the operated version (E6); RTM messages are taken
-  as from an RBC (E5 tells the RIU apart).
+- `EVC_Received` passes RBC as the sender of every RTM message until E5
+  tells RIU sessions apart; until then message 37 and packet 143 on the
+  RTM port are refused.
 - The catalogue cannot express value constraints (M_ACK = 0 in message
   39, NID_TSR ranges by sender, D_REF using the message's Q_SCALE),
   spare values between defined ones (M_MODETEXTDISPLAY), or rules at
