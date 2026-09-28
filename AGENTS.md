@@ -60,7 +60,7 @@ ETCS on-board (EVC). The on-board is being built in phases, see
 
 ### 3. Workflow and Building
 - **Build**: Use `alr build` to compile the project (Alire package manager). Alternatively, `gprbuild -P etcsdmi.gpr` can be used. The on-board alone: `gprbuild -P etcs_evc.gpr`; for the TMS570, `ports/tms570/build.sh` (toolchain via `ports/tms570/setup-toolchain.sh`).
-- **Proof**: `evc/prove.sh` (gnatprove on `etcs_evc.gpr`) must report no unproved check.
+- **Proof**: `evc/prove.sh` (gnatprove on `etcs_evc.gpr`) must report no unproved check. Proof results are shared across worktrees and branches through gnatprove's file cache (`~/.local/share/etcs-dmi/proof-cache`, set in the gpr), so a fresh worktree re-proves only what changed; use `evc/prove.sh -u <unit>` during development, the full run once at the end, and `--replay` to verify a merge.
 - **Generated code**: `evc/language/` holds Ada generated from `etcs_language.toml`; never edit it by hand, run `python3 evc/language/gen_language.py` and keep `--check` green. Every unit under `evc/` is `SPARK_Mode => On`; a unit that cannot be SPARK says why in its header.
 - **Robustness**: `obj/dmi_fuzz` and `obj/evc_fuzz` must report `raised: 0`. Code under `dmi/`, `evc/` and `common/` must never raise on any message, input, touch or tick: validate and ignore, clamp, or draw nothing.
 - **Whole check**: `test/check.sh` builds everything and runs the four test programs and the three checkers (generator, catalogue, matrix); run it before every merge. The proof (`evc/prove.sh`) and the cross build (`ports/tms570/build.sh`) are separate because they take long.
