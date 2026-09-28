@@ -46,6 +46,7 @@ package body EVC_Position
                                    M_Loc,
                                    Locations,
                                    Last_Report_Ms,
+                                   Now_Seen,
                                    Last_Report_Travel,
                                    Immediate_Pending,
                                    Triggers,
@@ -145,6 +146,8 @@ is
    M_Loc              : M_LOC_T := 2;
    Locations          : Locations_T;
    Last_Report_Ms     : Unsigned_64 := 0;
+   --  the time of the last Update
+   Now_Seen           : Unsigned_64 := 0;
    Last_Report_Travel : Length_T := 0;
    Immediate_Pending  : Boolean := False;
    Triggers           : Triggers_T := No_Triggers;
@@ -1077,6 +1080,7 @@ is
       M_Loc := 2;
       Locations := (others => (others => <>));
       Last_Report_Ms := 0;
+      Now_Seen := 0;
       Last_Report_Travel := 0;
       Immediate_Pending := False;
       Triggers := No_Triggers;
@@ -1116,6 +1120,7 @@ is
       Low_0      : constant Length_T := EVC_Odometry.Low with Ghost;
       High_0     : constant Length_T := EVC_Odometry.High with Ghost;
    begin
+      Now_Seen := Now_Ms;
       Event_N := 0;
       Reaction_Flag := False;
       Reaction_Value := 2;
@@ -1274,7 +1279,7 @@ is
                    else Scaled (Natural (P.D_CYCLOC), Scale));
       M_Loc := P.M_LOC;
       Immediate_Pending := P.M_LOC = 0;
-      Last_Report_Ms := 0;
+      Last_Report_Ms := Now_Seen;
       Last_Report_Travel := EVC_Odometry.Travelled;
       Locations := (others => (others => <>));
       for K in 1 .. Natural (P.N_ITER) loop

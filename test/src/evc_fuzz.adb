@@ -34,8 +34,10 @@ with ETCS_Variables;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Modes;    use EVC_Modes;
+with EVC_Distances;
 with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
+with EVC_Position;
 with EVC_Received;
 with Interfaces;   use Interfaces;
 
@@ -538,6 +540,10 @@ procedure EVC_Fuzz is
       return True;
    end Whole_Records;
 
+   --  The events of the position seen, by kind
+   type Kind_Counts is array (EVC_Position.Event_Kind_T) of Natural;
+   Position_Events : Kind_Counts := (others => 0);
+
    Steps : Natural := 1_000_000;
    Port  : Port_T := BTM;
 
@@ -617,6 +623,26 @@ begin
                if not Decodes then
                   Violation ("an accepted packet does not decode", Step);
                end if;
+               for I in 1 .. EVC_Position.Event_Count loop
+                  declare
+                     K : constant EVC_Position.Event_Kind_T :=
+                       EVC_Position.Event (I).Kind;
+                  begin
+                     Position_Events (K) := Position_Events (K) + 1;
+                  end;
+               end loop;
+               declare
+                  use type EVC_Distances.Cm_T;
+               begin
+                  if EVC_Position.Min_Safe_Front
+                       > EVC_Position.Estimated_Front
+                    or else EVC_Position.Max_Safe_Front
+                              < EVC_Position.Estimated_Front
+                  then
+                     Violation ("confidence interval not around the "
+                                & "estimated front end", Step);
+                  end if;
+               end;
             end if;
          end if;
       exception
@@ -670,6 +696,12 @@ begin
       end if;
    end loop;
 
+   New_Line;
+   Put ("position events:");
+   for K in EVC_Position.Event_Kind_T loop
+      Put (" " & EVC_Position.Event_Kind_T'Image (K)
+           & Natural'Image (Position_Events (K)));
+   end loop;
    New_Line;
    for I in 1 .. Site_Count loop
       Put_Line (Natural'Image (Sites (I).Count) & " x  " & Sites (I).Text);
