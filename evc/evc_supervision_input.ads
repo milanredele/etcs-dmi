@@ -18,6 +18,22 @@
 --  the curves of 3.13 are computed in fixed point (plan §3).
 --  The owner of a type is the half that produces it; the other half
 --  may add what it needs, additively, and says so here.
+--  Added by supervision: Supervision_Extra_T and the Extra component of
+--  Snapshot_T (the train data, national values and configuration 3.13
+--  and 3.14 need beyond the first version of this interface).
+--
+--  Conventions the supervision reads into the types (e3/supervision):
+--  a Decel_Curve_T of Count steps gives Decel (K) for Speed (K - 1) <
+--  V <= Speed (K), the first step from 0 and the last one open ended
+--  (3.13.2.2.3.1.3 and .4), Count = 0 is no model; a Kv_Set_T and a
+--  Kr_Set_T as packet 3 gives them: step K from its Speed (Length) K,
+--  exclusive, to the next one, inclusive, the first from 0 and the last
+--  open ended (3.13.2.3.7.11, .12, 7.5.1.175 V_NVKVINT), and an empty
+--  set is the default of A.3.2 (Kv_int 0.7, Kr_int 0.9); Q_NVEMRRLS
+--  True is the
+--  value 1 of 7.5.1.123 (revoke the emergency brake when the Permitted
+--  speed is no longer exceeded), False the value 0 (at standstill, the
+--  default of A.3.2); A_NVMAXREDADHn is used as National_Extra_T says.
 
 with EVC_Distances; use EVC_Distances;
 
@@ -274,6 +290,143 @@ is
    end record;
 
    ---------------------------------------------------------------------
+   --  Added by supervision (e3/supervision): what 3.13 and 3.14 read
+   --  beyond the types above. The stored information fills them from
+   --  the train data, the national values and the configuration of the
+   --  on-board; their defaults are the values of A.3.2 or "not fitted",
+   --  so a snapshot that leaves them alone is valid.
+   ---------------------------------------------------------------------
+
+   --  3.13.2.2.6 (SUBSET-034 2.3.6): the special brakes
+   type Special_Brake_T is
+     (Regenerative, Eddy_Current, Magnetic_Shoe, Electro_Pneumatic);
+
+   --  3.13.2.2.6.1 Table 3: whether an interface with the special brake
+   --  exists and which brake models its status affects
+   type Special_Brake_Interface_T is
+     (No_Interface, Emergency_Only, Service_Only, Emergency_And_Service);
+   type Special_Brake_Interfaces_T is
+     array (Special_Brake_T) of Special_Brake_Interface_T;
+
+   --  The configuration of the on-board (3.13.2.2.6 to 3.13.2.2.8)
+   type Onboard_Config_T is record
+      --  3.13.2.2.7.1: a service brake interface commands a full
+      --  service brake
+      Service_Brake_Command    : Boolean := True;
+      --  3.13.2.2.7.2: the service brake feedback (the brake pressure
+      --  of SUBSET-034 2.3.2) is acquired; A.3.10.3: from the brake
+      --  cylinder instead of the main brake pipe, with the constant k1
+      --  (in thousandths)
+      Service_Brake_Feedback   : Boolean := False;
+      Feedback_From_Cylinder   : Boolean := False;
+      K1_Milli                 : Positive range 1_000 .. 5_000 := 2_500;
+      --  3.13.2.2.8.1: the traction cut-off command is implemented
+      Traction_Cut_Off         : Boolean := True;
+      Special_Brakes           : Special_Brake_Interfaces_T :=
+        (others => No_Interface);
+      --  3.13.2.2.6.4: the contribution of a special or additional brake
+      --  independent from the adhesion may select A_NVMAXREDADH1
+      Additional_Brake_Allowed : Boolean := False;
+   end record;
+
+   --  A combination of special brakes in use: bit 0 regenerative, bit 1
+   --  eddy current, bit 2 magnetic shoe, bit 3 Ep brake. The models of
+   --  the deceleration depend on the first three (3.13.2.2.3.1.7), the
+   --  brake build up times on all four (3.13.2.2.3.2.8, Table 4).
+   subtype Combination_T is Natural range 0 .. 15;
+   subtype Brake_Combination_T is Combination_T range 0 .. 7;
+   type Combination_Curves_T is
+     array (Brake_Combination_T) of Decel_Curve_T;
+
+   --  A brake reaction time and an equivalent brake build up time
+   --  (3.13.2.2.3.2.3, 3.13.2.2.3.2.4)
+   type Build_Up_T is record
+      React    : Time_Ms_T := 0;
+      Build_Up : Time_Ms_T := 0;
+   end record;
+   type Combination_Times_T is array (Combination_T) of Build_Up_T;
+
+   --  A factor per step of a deceleration curve (the steps of
+   --  A_brake_emergency, 3.13.2.2.9.1.3 and 3.13.2.2.9.1.5)
+   type Factor_Steps_T is array (1 .. Max_Curve_Steps) of Factor_Milli_T;
+   --  Kdry_rst by confidence level (M_NVEBCL 0 .. 9)
+   type Kdry_T is array (0 .. 9) of Factor_Steps_T;
+
+   --  3.13.2.2.3.1.9: a set of three normal service models, chosen by
+   --  A_brake_service (V = 0) against A_SB01 and A_SB12
+   type Normal_Service_Set_T is array (0 .. 2) of Decel_Curve_T;
+
+   type Train_Data_Extra_T is record
+      --  3.13.2.2.3.2.3 a): the brake reaction times of the braking
+      --  models (Train_Data_T has the equivalent build up times)
+      T_Brake_Emergency_React : Time_Ms_T := 0;
+      T_Brake_Service_React   : Time_Ms_T := 0;
+      --  3.13.2.2.9.1: the rolling stock correction factors, one set for
+      --  every deceleration model (the default: 1.00, no correction)
+      Kdry_Rst                : Kdry_T := (others => (others => 1_000));
+      Kwet_Rst                : Factor_Steps_T := (others => 1_000);
+      --  3.13.2.2.9.2: Kn+ and Kn-, mm/s² per unit of gradient (the
+      --  deceleration Kn * grad / 1000 of 3.13.6.4.3)
+      Kn_Plus                 : Decel_Curve_T;
+      Kn_Minus                : Decel_Curve_T;
+      --  3.13.2.2.3.1.9 a) and b), 3.13.2.2.3.1.10; an empty set takes
+      --  Train_Data_T.A_Brake_Normal
+      Normal_Service_G        : Normal_Service_Set_T;
+      Normal_Service_P        : Normal_Service_Set_T;
+      A_SB01                  : Decel_Mms2_T := 0;
+      A_SB12                  : Decel_Mms2_T := 0;
+      --  3.13.2.2.10.1: the nominal rotating mass, percent of the train
+      --  weight; 0 when not given (A.3.1 M_rotating_max and _min apply)
+      M_Rotating_Nom          : Natural range 0 .. 100 := 0;
+      --  3.13.2.2.3.1.7, 3.13.2.2.3.2.8: the models by combination of
+      --  the special brakes in use; when False the single models of
+      --  Train_Data_T apply to every combination
+      By_Combination          : Boolean := False;
+      A_Emergency_Combination : Combination_Curves_T;
+      A_Service_Combination   : Combination_Curves_T;
+      T_Emergency_Combination : Combination_Times_T;
+      T_Service_Combination   : Combination_Times_T;
+   end record;
+
+   --  A_NVMAXREDADHn (7.5.0.1 to 7.5.0.3): a deceleration limit, or one
+   --  of the special values 61 (no limit, target information in CSM), 62
+   --  (no limit, time to Indication in CSM) and 63 (no limit, nothing
+   --  more displayed)
+   type Redadh_Use_T is
+     (Limit, Target_Information, Time_To_Indication, No_Limit);
+   type Redadh_Uses_T is array (1 .. 3) of Redadh_Use_T;
+
+   type National_Extra_T is record
+      --  3.13.2.3.7.11.4: the subset b of the Kv_int of conventional
+      --  passenger trains and the pivot decelerations; A_NVP12 =
+      --  A_NVP23 = 0 when Q_NVKVINTSET gives a single set
+      Kv_Int_Passenger_B : Kv_Set_T;
+      A_NVP12            : Decel_Mms2_T := 0;
+      A_NVP23            : Decel_Mms2_T := 0;
+      --  how A_NVMAXREDADH1 .. 3 are used (National_Values_T holds the
+      --  limits): A.3.2 gives limits (1.0, 0.7, 0.7 m/s²)
+      Redadh_Use         : Redadh_Uses_T := (others => Limit);
+   end record;
+
+   type Supervision_Extra_T is record
+      Config         : Onboard_Config_T;
+      Train          : Train_Data_Extra_T;
+      National       : National_Extra_T;
+      --  3.13.9.4.8.2: the train position confidence interval predicted
+      --  at the EOA, 2 * Q_LOCACC of the reference balise group + 10 m +
+      --  10 % of its distance to the EOA (with the SM term when beta =
+      --  1); the on-board takes the larger of it and the current one
+      Trip_Margin    : Length_T := 0;
+      --  3.13.11.8: T_MAR of the MA request parameters (packet 57, E5);
+      --  0 when none is stored
+      T_MAR          : Time_Ms_T := 0;
+      --  3.13.2.3.6.1 b), 3.13.8.2.1 d): the end of the maximum
+      --  permitted distance to run in Staff Responsible (E4)
+      SR_Distance    : Boolean := False;
+      SR_End         : Dist_T := 0;
+   end record;
+
+   ---------------------------------------------------------------------
    --  Everything the supervision reads in one cycle
    ---------------------------------------------------------------------
 
@@ -292,6 +445,11 @@ is
       --  Train data valid and the supervision may run (4.5.2, E4);
       --  until E4 the stored information sets it when an MA is present
       Supervise    : Boolean := False;
+      --  added by supervision: the train data, national values and
+      --  on-board configuration 3.13 and 3.14 read beyond the components
+      --  above (Supervision_Extra_T below); the defaults are the A.3.2
+      --  values or "not fitted"
+      Extra        : Supervision_Extra_T;
    end record;
 
 end EVC_Supervision_Input;

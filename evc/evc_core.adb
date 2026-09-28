@@ -7,6 +7,8 @@ with ETCS_Message;
 with ETCS_Telegram;
 with ETCS_Variables;
 with EVC_DMI_Port; use EVC_DMI_Port;
+with EVC_Fixed;
+with EVC_Limits;
 with Interfaces;   use Interfaces;
 
 package body EVC_Core
@@ -36,7 +38,28 @@ package body EVC_Core
                                    National_Values,
                                    Accepted_Count,
                                    Rejected_Count,
-                                   Overflow_Count))
+                                   Overflow_Count,
+                                   --  the speed and distance monitoring
+                                   Latched_TIU_Value,
+                                   Latched_TIU_Known,
+                                   Latched_Brake_Ack,
+                                   TIU_Value_Now,
+                                   TIU_Known_Now,
+                                   Brake_Ack_Now,
+                                   Test_Snapshot,
+                                   Test_Snapshot_Set,
+                                   SDM_Work,
+                                   SDM_State,
+                                   SDM_Result,
+                                   Brake_State,
+                                   Brake_Output,
+                                   Speed_State,
+                                   Status_Brake_Sent,
+                                   Status_TTI_Sent,
+                                   TIU_Sent,
+                                   TIU_Reasons_Sent,
+                                   Supervision_Reported,
+                                   Overrun_Reported))
 is
 
    use type EVC_Bytes.Byte_Array;
@@ -131,6 +154,50 @@ is
    Overflow_Count : Counts_T := (others => 0);
 
    ---------------------------------------------------------------------
+   --  Speed and distance monitoring (phase E3, e3/supervision)
+   ---------------------------------------------------------------------
+
+   --  The value bytes of the TIU inputs (the direction controller, the
+   --  brake pressure) and which signals were ever received, latched and
+   --  of the cycle; the driver's acknowledgement of a brake release
+   type TIU_Values_T is array (TIU_Signal_T) of EVC_Bytes.Byte;
+   Latched_TIU_Value : TIU_Values_T := (others => 0);
+   Latched_TIU_Known : TIU_Signals_T := (others => False);
+   Latched_Brake_Ack : Boolean := False;
+   TIU_Value_Now     : TIU_Values_T := (others => 0);
+   TIU_Known_Now     : TIU_Signals_T := (others => False);
+   Brake_Ack_Now     : Boolean := False;
+
+   --  The snapshot of the stored information (3.13.2). The stored
+   --  information (e3/profiles) fills it at the third step of the cycle;
+   --  until the two halves of E3 are joined it is empty (nothing
+   --  supervised). The tests set one (Set_Snapshot_For_Test).
+   No_Snapshot : constant EVC_Supervision_Input.Snapshot_T :=
+     (others => <>);
+   Test_Snapshot     : EVC_Supervision_Input.Snapshot_T := No_Snapshot;
+   Test_Snapshot_Set : Boolean := False;
+
+   --  EVC_SDM's work area and state, its result; the brake commands
+   SDM_Work     : EVC_SDM.Work_T;
+   SDM_State    : EVC_SDM.State_T;
+   SDM_Result   : EVC_SDM.Result_T;
+   Brake_State  : EVC_Brake_Commands.State_T;
+   Brake_Output : EVC_Brake_Commands.Commands_T;
+   --  MSG_SPEED_STATE of the cycle
+   Speed_State  : Speed_State_T;
+
+   --  What was sent last: the brake and TTI of MSG_STATUS, the TIU
+   --  output, the monitoring / status / MRDT and the overruns recorded
+   --  on the JRU
+   Status_Brake_Sent    : EVC_Bytes.Byte := Brake_None;
+   Status_TTI_Sent      : Unsigned_16 := TTI_None;
+   TIU_Sent             : EVC_Bytes.Byte := 0;
+   TIU_Reasons_Sent     : EVC_Bytes.Byte := 0;
+   No_Supervision       : constant Unsigned_32 := 16#FFFF_FFFF#;
+   Supervision_Reported : Unsigned_32 := No_Supervision;
+   Overrun_Reported     : EVC_Bytes.Byte := 0;
+
+   ---------------------------------------------------------------------
    --  Queries
    ---------------------------------------------------------------------
 
@@ -147,6 +214,19 @@ is
      (Rejected_Count (Port));
    function Overflowed (Port : Port_T) return Natural is
      (Overflow_Count (Port));
+   function Supervision return EVC_SDM.Result_T is (SDM_Result);
+   function Brake_Commands return EVC_Brake_Commands.Commands_T is
+     (Brake_Output);
+
+   ---------------------------
+   -- Set_Snapshot_For_Test --
+   ---------------------------
+
+   procedure Set_Snapshot_For_Test (S : EVC_Supervision_Input.Snapshot_T) is
+   begin
+      Test_Snapshot := S;
+      Test_Snapshot_Set := True;
+   end Set_Snapshot_For_Test;
 
    procedure Count (Counter : in out Natural) is
    begin
@@ -191,6 +271,26 @@ is
       Accepted_Count := (others => 0);
       Rejected_Count := (others => 0);
       Overflow_Count := (others => 0);
+      Latched_TIU_Value := (others => 0);
+      Latched_TIU_Known := (others => False);
+      Latched_Brake_Ack := False;
+      TIU_Value_Now := (others => 0);
+      TIU_Known_Now := (others => False);
+      Brake_Ack_Now := False;
+      Test_Snapshot := No_Snapshot;
+      Test_Snapshot_Set := False;
+      SDM_Work := (others => <>);
+      SDM_State := (others => <>);
+      SDM_Result := (others => <>);
+      Brake_State := (others => <>);
+      Brake_Output := (others => <>);
+      Speed_State := (others => <>);
+      Status_Brake_Sent := Brake_None;
+      Status_TTI_Sent := TTI_None;
+      TIU_Sent := 0;
+      TIU_Reasons_Sent := 0;
+      Supervision_Reported := No_Supervision;
+      Overrun_Reported := 0;
       EVC_Received.Clear;
       EVC_Position.Clear;
       EVC_Outbox.Clear;
@@ -220,6 +320,8 @@ is
                Input : constant TIU_Input_T := To_TIU (Payload);
             begin
                Latched_TIU (Input.Signal) := Input.Value;
+               Latched_TIU_Value (Input.Signal) := TIU_Value (Payload);
+               Latched_TIU_Known (Input.Signal) := True;
             end;
          when DMI =>
             --  E0 acts on one driver action: the isolation of the
@@ -229,6 +331,10 @@ is
               and then Driver_Action (Payload) = Action_Isolate
             then
                Latched_Isolation := True;
+            end if;
+            --  3.14.1.5: the release of a brake acknowledged
+            if Is_Brake_Release_Ack (Payload) then
+               Latched_Brake_Ack := True;
             end if;
          when BTM =>
             --  parsed when the ports are read, at the next cycle
@@ -292,10 +398,13 @@ is
    procedure Read_Ports
      with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
                                 Latched_RTM, Cycle_Count, Clock_Ms,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State, Latched_TIU_Value,
+                                Latched_TIU_Known),
                      Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
-                                Isolation_Now),
+                                Isolation_Now, TIU_Value_Now,
+                                TIU_Known_Now, Brake_Ack_Now),
                      In_Out => (Latched_Isolation, Latched_Odometer_Fresh,
+                                Latched_Brake_Ack,
                                 Latched_BTM_Count,
                                 Latched_RTM_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Position.State)),
@@ -329,6 +438,10 @@ is
       Odometer_Fresh := Latched_Odometer_Fresh;
       Latched_Odometer_Fresh := False;
       TIU_Now := Latched_TIU;
+      TIU_Value_Now := Latched_TIU_Value;
+      TIU_Known_Now := Latched_TIU_Known;
+      Brake_Ack_Now := Latched_Brake_Ack;
+      Latched_Brake_Ack := False;
       Isolation_Now := Latched_Isolation;
       Latched_Isolation := False;
 
@@ -447,14 +560,106 @@ is
       null;
    end Evaluate_Stored_Information;
 
-   --  4. Speed and distance monitoring (3.13) and the brake commands
-   --  (3.14): phase E3. The Standstill Supervision of SB (4.4.7.1.5)
-   --  needs the train position of phase E2.
-   procedure Monitor_Speed_And_Distance
-     with Global => null
+   --  MSG_SPEED_STATE from the result of the speed and distance
+   --  monitoring (dmi_protocol.ads: the DMI derives nothing): speeds in
+   --  km/h to the nearest, the distance in m rounded down; the dial range
+   --  (DMI 8.2.1.1.3, pre-configured on-board) the smallest that shows
+   --  the ceiling EBI of the maximum train speed, 180 km/h without train
+   --  data
+   function To_Speed_State (S : EVC_Supervision_Input.Snapshot_T;
+                            R : EVC_SDM.Result_T) return Speed_State_T
    is
+      use EVC_Fixed;
+
+      function Kmh (V : Speed_T) return Unsigned_16 is
+        (Unsigned_16 (Min (Cms_To_Kmh (V), 65_535)));
+
+      V_Max : constant Speed_T := Speed_T (S.Train_Data.Max_Speed);
+      Top   : constant Num :=
+        V_Max + EVC_Limits.Margin (EVC_Limits.EBI, V_Max);
+      Dial  : constant EVC_Bytes.Byte :=
+        (if V_Max = 0 then 1
+         elsif Top * 36 <= 140_000 then 0
+         elsif Top * 36 <= 180_000 then 1
+         elsif Top * 36 <= 250_000 then 2
+         else 3);
    begin
-      null;
+      return (V_Cur      => Kmh (R.V_Est),
+              V_Perm     => Kmh (R.V_Perm),
+              V_Target   => Kmh (R.V_Target),
+              V_Release  => Kmh (R.V_Release),
+              V_SBI      => Kmh (R.V_SBI),
+              V_Wsl      => Kmh (R.V_Warning),
+              D_Target   => Unsigned_32 (Min (Max (R.D_Target, 0) / 100,
+                                              2**32 - 1)),
+              Monitoring => EVC_SDM.Monitoring_T'Pos (R.Monitoring),
+              Dial_Range => Dial,
+              Flags      => (if R.Release_Shown then Flag_Release_Shown
+                             else 0)
+                            or (if R.CSM_Target then Flag_CSM_Target
+                                else 0),
+              Status     => EVC_SDM.Status_T'Pos (R.Status),
+              MRDT       => EVC_Bytes.Byte (R.MRDT_Id));
+   end To_Speed_State;
+
+   --  4. Speed and distance monitoring (3.13, EVC_SDM) and the brake
+   --  commands (3.14, EVC_Brake_Commands) on the snapshot of the stored
+   --  information, with the inputs of the train interface and the
+   --  driver's acknowledgement of the cycle
+   procedure Monitor_Speed_And_Distance (Dt_Ms : Natural)
+     with Global => (Input  => (Test_Snapshot, Test_Snapshot_Set, TIU_Now,
+                                TIU_Value_Now, TIU_Known_Now, Brake_Ack_Now,
+                                Current_Mode, Current_Level,
+                                Current_Level_Status, EVC_Position.State),
+                     In_Out => (SDM_Work, SDM_State, Brake_State),
+                     Output => (SDM_Result, Brake_Output, Speed_State))
+   is
+      procedure Run (S : EVC_Supervision_Input.Snapshot_T) is
+         Controller : constant EVC_Brake_Commands.Controller_T :=
+           (if not TIU_Known_Now (Direction_Controller)
+            then EVC_Brake_Commands.Unknown
+            else (case TIU_Value_Now (Direction_Controller) is
+                     when 1      => EVC_Brake_Commands.Forwards,
+                     when 2      => EVC_Brake_Commands.Backwards,
+                     when others => EVC_Brake_Commands.Neutral));
+         Inputs : constant EVC_SDM.Inputs_T :=
+           (Dt_Ms          => Dt_Ms,
+            Special_Active =>
+              (EVC_Supervision_Input.Regenerative =>
+                 TIU_Now (Regenerative_Brake_Active),
+               EVC_Supervision_Input.Eddy_Current =>
+                 TIU_Now (Eddy_Current_Brake_Active),
+               EVC_Supervision_Input.Magnetic_Shoe =>
+                 TIU_Now (Magnetic_Shoe_Brake_Active),
+               EVC_Supervision_Input.Electro_Pneumatic =>
+                 TIU_Now (EP_Brake_Active)),
+            Additional     => TIU_Now (Additional_Brake_Active),
+            Pressure_Known => TIU_Known_Now (Brake_Pressure),
+            Pressure       => Natural (TIU_Value_Now (Brake_Pressure)) * 4,
+            Level_1        => Current_Level_Status = Valid
+                              and then Current_Level = L1,
+            Antenna_Offset =>
+              Natural (EVC_Position.Front_Offset
+                         (EVC_Position.Orientation)));
+      begin
+         EVC_SDM.Step (S, Inputs, SDM_Work, SDM_State, SDM_Result);
+         EVC_Brake_Commands.Step
+           (S, SDM_Result,
+            (Mode       => Current_Mode,
+             Controller => Controller,
+             Ack        => Brake_Ack_Now,
+             Dt_Ms      => Dt_Ms,
+             A_Est      => SDM_State.A_Est,
+             T_Bs       => SDM_Work.Model.Service_Target.Build_Up),
+            Brake_State, Brake_Output);
+         Speed_State := To_Speed_State (S, SDM_Result);
+      end Run;
+   begin
+      if Test_Snapshot_Set then
+         Run (Test_Snapshot);
+      else
+         Run (No_Snapshot);
+      end if;
    end Monitor_Speed_And_Distance;
 
    --  SUBSET-026 4.6.3: whether the condition of the transition From ->
@@ -517,8 +722,12 @@ is
      with Global => (Input  => (Current_Mode, Current_Level_Status,
                                 Current_Level, Cycle_Count, Clock_Ms,
                                 Standstill, Below_Override, TIU_Now,
-                                National_Values, EVC_Position.State),
-                     In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue))
+                                National_Values, EVC_Position.State,
+                                SDM_Result, Brake_Output, Speed_State),
+                     In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
+                                Status_Brake_Sent, Status_TTI_Sent,
+                                TIU_Sent, TIU_Reasons_Sent,
+                                Supervision_Reported, Overrun_Reported))
    is
       --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
       --  E0; the fields of the later phases are 0, "nothing known"
@@ -564,17 +773,36 @@ is
          National := National or National_Adhesion;
       end if;
       --  SUBSET-026 3.6.6: the geographical position, while it is known,
-      --  and once "unknown" when it stops (the DMI shows it on request)
-      if EVC_Position.Geo_Known then
-         EVC_Outbox.Put
-           (DMI, Status_Frame (Unsigned_32 (EVC_Position.Geo_Metres),
-                               Unsigned_64 (Clock_Ms) / 1000));
-         Geo_Sent := True;
-      elsif Geo_Sent then
-         EVC_Outbox.Put
-           (DMI, Status_Frame (Geo_Unknown, Unsigned_64 (Clock_Ms) / 1000));
-         Geo_Sent := False;
-      end if;
+      --  and once "unknown" when it stops (the DMI shows it on request);
+      --  phase E3: the brake indication (3.14.1.9, 3.14.2.6, 3.14.3.4)
+      --  and the time to Indication (3.13.10.3.10), whenever they change
+      declare
+         Brake : constant EVC_Bytes.Byte :=
+           (if Brake_Output.Ack_Required then Brake_Ack
+            elsif Brake_Output.EB or else Brake_Output.SB then Brake_Applied
+            else Brake_None);
+         TTI   : constant Unsigned_16 :=
+           (if SDM_Result.TTI = EVC_SDM.No_TTI then TTI_None
+            else Unsigned_16 (SDM_Result.TTI));
+         Changed : constant Boolean :=
+           Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent;
+      begin
+         if EVC_Position.Geo_Known then
+            EVC_Outbox.Put
+              (DMI, Status_Frame (Unsigned_32 (EVC_Position.Geo_Metres),
+                                  Unsigned_64 (Clock_Ms) / 1000,
+                                  Brake, TTI));
+            Geo_Sent := True;
+         elsif Geo_Sent or else Changed then
+            EVC_Outbox.Put
+              (DMI, Status_Frame (Geo_Unknown,
+                                  Unsigned_64 (Clock_Ms) / 1000,
+                                  Brake, TTI));
+            Geo_Sent := False;
+         end if;
+         Status_Brake_Sent := Brake;
+         Status_TTI_Sent := TTI;
+      end;
 
       Onboard :=
         (Data     => (if Current_Level_Status = Valid
@@ -591,6 +819,73 @@ is
          SoM      => (if Current_Mode = M_SB then SoM_Possible else 0),
          others   => 0);
       EVC_Outbox.Put (DMI, Onboard_Frame (Onboard));
+
+      --  The speed and distance monitoring and the brake commands
+      --  (phase E3): MSG_SPEED_STATE every cycle, the JRU records of what
+      --  changed, the commands to the train interface
+      declare
+         Reasons  : EVC_Brake_Commands.Reasons_T renames
+           Brake_Output.Reasons;
+         Commands : constant EVC_Bytes.Byte :=
+           (if Brake_Output.EB then TIU_EBC else 0)
+           or (if Brake_Output.SB then TIU_SBC else 0)
+           or (if Brake_Output.TCO then TIU_TCO else 0);
+         Why      : constant EVC_Bytes.Byte :=
+           (if Reasons (EVC_Brake_Commands.Speed_Distance) then 1 else 0)
+           or (if Reasons (EVC_Brake_Commands.Service_Brake_Failed)
+               then 2 else 0)
+           or (if Reasons (EVC_Brake_Commands.Roll_Away) then 4 else 0)
+           or (if Reasons (EVC_Brake_Commands.Direction) then 8 else 0)
+           or (if Reasons (EVC_Brake_Commands.Standstill_Supervision)
+               then 16 else 0);
+         Supervision_Now : constant Unsigned_32 :=
+           (if SDM_Result.Active
+            then Unsigned_32
+                   (EVC_SDM.Monitoring_T'Pos (SDM_Result.Monitoring))
+                 * 65_536
+                 + Unsigned_32 (EVC_SDM.Status_T'Pos (SDM_Result.Status))
+                   * 256
+                 + Unsigned_32 (SDM_Result.MRDT_Id)
+            else No_Supervision);
+         Overrun  : constant EVC_Bytes.Byte :=
+           (if SDM_Result.EOA_Passed then 1 else 0)
+           or (if SDM_Result.SvL_Passed then 2 else 0);
+      begin
+         EVC_Outbox.Put (DMI, Speed_State_Frame (Speed_State));
+         if Commands /= TIU_Sent or else Why /= TIU_Reasons_Sent then
+            EVC_Outbox.Put
+              (JRU, JRU_Record (JRU_Brake_Commands, Commands, Why,
+                                EVC_SDM.Status_T'Pos (SDM_Result.Status)));
+         end if;
+         if Supervision_Now /= Supervision_Reported
+           and then SDM_Result.Active
+         then
+            EVC_Outbox.Put
+              (JRU, JRU_Record
+                      (JRU_Supervision,
+                       EVC_SDM.Monitoring_T'Pos (SDM_Result.Monitoring),
+                       EVC_SDM.Status_T'Pos (SDM_Result.Status),
+                       EVC_Bytes.Byte (SDM_Result.MRDT_Id)));
+         end if;
+         Supervision_Reported := Supervision_Now;
+         for Bit in EVC_Bytes.Byte range 1 .. 2 loop
+            if (Overrun and Bit) /= 0
+              and then (Overrun_Reported and Bit) = 0
+            then
+               EVC_Outbox.Put (JRU, JRU_Record (JRU_Overrun, Bit, 0, 0));
+            end if;
+         end loop;
+         Overrun_Reported := Overrun;
+         --  the TIU output: when it changes, and every cycle while a
+         --  command is given
+         if Commands /= 0 or else Commands /= TIU_Sent
+           or else Why /= TIU_Reasons_Sent
+         then
+            EVC_Outbox.Put (TIU, TIU_Output (Commands, Why));
+         end if;
+         TIU_Sent := Commands;
+         TIU_Reasons_Sent := Why;
+      end;
    end Produce_Outputs;
 
    ----------
@@ -608,7 +903,7 @@ is
       Read_Ports;
       Update_Position;
       Evaluate_Stored_Information;
-      Monitor_Speed_And_Distance;
+      Monitor_Speed_And_Distance (Dt_Ms);
       Run_Mode_Machine;
       Produce_Outputs;
    end Tick;
