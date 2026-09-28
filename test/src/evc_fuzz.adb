@@ -35,6 +35,12 @@
 --  monitoring on the train interface, and above the ceiling EBI in CSM
 --  the emergency brake.
 --
+--  The installation configuration (EVC_Config): now and then an image
+--  to EVC_Core.Configure in the run above, and a phase of power-ups each
+--  with random, damaged and random-field images: the configuration is
+--  always valid, the image decoded when it is accepted in No Power, the
+--  previous one otherwise, the position takes its antenna.
+--
 --  Usage:  obj/evc_fuzz [steps [seed]]      default 1000000 steps, seed 1
 --  Exit status 1 when anything raised or a check was violated.
 
@@ -55,6 +61,8 @@ with ETCS_Track_Packets.P27;
 with ETCS_Track_Packets.P52;
 with ETCS_Variables;
 with EVC_Brake_Commands;
+with EVC_Bytes;
+with EVC_Config;
 with EVC_Core;
 with EVC_Distances;
 with EVC_DMI_Port;
@@ -1204,6 +1212,178 @@ procedure EVC_Fuzz is
    Steps : Natural := 1_000_000;
    Port  : Port_T := BTM;
 
+   ---------------------------------------------------------------------
+   --  The installation configuration (EVC_Config, EVC_Core.Configure):
+   --  random images, damaged images and images of random configurations
+   ---------------------------------------------------------------------
+
+   Config_Images   : Natural := 0;
+   Config_Accepted : Natural := 0;
+   type Status_Counts_T is array (EVC_Config.Status_T) of Natural;
+   Config_Status   : Status_Counts_T := (others => 0);
+
+   --  An image in Buffer (1 .. Last): random bytes, the default image
+   --  damaged (resealed or not), or the image of a random configuration
+   --  with random field bytes (Table 3 and the ranges not respected)
+   procedure Config_Image is
+      D : constant EVC_Config.Image_T :=
+        EVC_Config.Encode (EVC_Config.Default);
+
+      procedure Reseal is
+         C : constant Unsigned_32 :=
+           EVC_Config.CRC_32 (Buffer (1 .. EVC_Config.CRC_Offset));
+      begin
+         if Last >= EVC_Config.Image_Length then
+            for N in 0 .. 3 loop
+               Buffer (EVC_Config.CRC_Offset + 1 + N) :=
+                 EVC_Bytes.Byte_Of (Unsigned_64 (C), N);
+            end loop;
+         end if;
+      end Reseal;
+   begin
+      Last := 0;
+      case Pick (1, 4) is
+         when 1 =>
+            Random_Bytes (Pick (0, 80));
+         when 2 =>
+            for B of D loop
+               Add (Natural (B));
+            end loop;
+            for K in 1 .. Pick (1, 3) loop
+               Buffer (Pick (1, D'Length)) := Random_Byte;
+            end loop;
+            if Chance (70) then
+               Reseal;
+            end if;
+            Last := Pick (0, D'Length + 8);
+         when 3 =>
+            --  a random configuration in the ranges of its fields, its
+            --  special brake interfaces not always allowed by Table 3
+            declare
+               C : EVC_Config.Config_T;
+               S : EVC_Supervision_Input.Onboard_Config_T renames
+                 C.Supervision;
+            begin
+               S.Service_Brake_Command := Chance (50);
+               S.Service_Brake_Feedback := Chance (50);
+               S.Feedback_From_Cylinder := Chance (50);
+               S.K1_Milli := Pick (1_000, 5_000);
+               S.Traction_Cut_Off := Chance (50);
+               for B in S.Special_Brakes'Range loop
+                  S.Special_Brakes (B) :=
+                    EVC_Supervision_Input.Special_Brake_Interface_T'Val
+                      (Pick (0, 3));
+               end loop;
+               S.Additional_Brake_Allowed := Chance (50);
+               S.Regenerative_Needs_Catenary := Chance (50);
+               S.SB_Failure_Time_Ms := Pick (0, 60_000);
+               S.SB_Failure_Decel_Mms2 := Pick (0, 3_000);
+               C.Antenna_To_Cab_A := EVC_Config.Antenna_Offset_T
+                 (Pick (0, 100_000));
+               C.Antenna_To_Cab_B := EVC_Config.Antenna_Offset_T
+                 (Pick (0, 100_000));
+               for B of EVC_Config.Encode (C) loop
+                  Add (Natural (B));
+               end loop;
+            end;
+         when others =>
+            for B of D loop
+               Add (Natural (B));
+            end loop;
+            --  the fields, each a small random value or random bytes
+            for Offset in 8 .. EVC_Config.CRC_Offset - 1 loop
+               Buffer (Offset + 1) :=
+                 (if Chance (50) then Byte (Pick (0, 4)) else Random_Byte);
+            end loop;
+            --  plausible values of the wide fields now and then
+            if Chance (50) then
+               Buffer (13 .. 14) :=
+                 (Byte (Pick (0, 255)), Byte (Pick (3, 19)));
+               Buffer (21 .. 24) := (Random_Byte, Byte (Pick (0, 1)), 0, 0);
+               Buffer (25 .. 28) := (Random_Byte, Byte (Pick (0, 1)), 0, 0);
+               Buffer (29 .. 30) := (Random_Byte, Byte (Pick (0, 234)));
+               Buffer (31 .. 32) := (Random_Byte, Byte (Pick (0, 11)));
+            end if;
+            Reseal;
+      end case;
+   end Config_Image;
+
+   --  Configure with the image of Buffer, at index First; the contract of
+   --  EVC_Core.Configure checked by execution
+   procedure Try_Configure (Step : Natural) is
+      First   : constant Positive :=
+        (if Chance (80) then 1 else Pick (1, 1_000_000));
+      Payload : constant Byte_Array (First .. First + Last - 1) :=
+        Buffer (1 .. Last);
+      Before  : constant EVC_Config.Config_T := EVC_Core.Configuration;
+      In_NP   : constant Boolean := EVC_Core.Mode = M_NP;
+      R       : constant EVC_Config.Decoded_T :=
+        EVC_Config.Decoded (Payload);
+      use type EVC_Config.Config_T;
+      use type EVC_Config.Status_T;
+   begin
+      EVC_Core.Configure (Payload);
+      Config_Images := Config_Images + 1;
+      Config_Status (EVC_Config.Last_Status) :=
+        Config_Status (EVC_Config.Last_Status) + 1;
+      if not EVC_Config.Valid (EVC_Core.Configuration) then
+         Violation ("Configure: the configuration is not valid", Step);
+      end if;
+      if In_NP and then R.Status = EVC_Config.Accepted then
+         Config_Accepted := Config_Accepted + 1;
+         if EVC_Core.Configuration /= R.Config
+           or else not EVC_Core.Configured
+         then
+            Violation ("Configure: a valid image is not the configuration",
+                       Step);
+         end if;
+      elsif EVC_Core.Configuration /= Before then
+         Violation ("Configure: a refused image changed the configuration",
+                    Step);
+      end if;
+      if EVC_Position.Front_Offset (EVC_Distances.Plus)
+           /= EVC_Core.Configuration.Antenna_To_Cab_A
+        or else EVC_Position.Front_Offset (EVC_Distances.Minus)
+                  /= EVC_Core.Configuration.Antenna_To_Cab_B
+      then
+         Violation ("Configure: the position has another antenna", Step);
+      end if;
+   exception
+      when E : others =>
+         Report ("Configure", E, Step);
+         Contain_And_Restart (Step);
+   end Try_Configure;
+
+   --  Runs power-ups, each with an image in No Power and a few cycles
+   procedure Config_Phase (Runs : Natural) is
+      Out_B  : Byte_Array (1 .. EVC_Outbox.Capacity);
+      O_Last : Natural;
+   begin
+      for Run in 1 .. Runs loop
+         begin
+            EVC_Core.Initialise;
+            for K in 1 .. Pick (1, 3) loop
+               Config_Image;
+               Try_Configure (Run);
+            end loop;
+            for K in 1 .. Pick (1, 5) loop
+               EVC_Core.Tick (100);
+               EVC_Core.Take_Outputs (Out_B, O_Last);
+               if not Whole_Records (Out_B (1 .. O_Last)) then
+                  Violation ("configuration: not whole records", Run);
+               end if;
+            end loop;
+         exception
+            when E : others =>
+               Report ("configuration phase", E, Run);
+               Contain_And_Restart (Run);
+         end;
+      end loop;
+      --  back to the default
+      EVC_Core.Initialise;
+      EVC_Core.Configure (EVC_Config.Encode (EVC_Config.Default));
+   end Config_Phase;
+
 begin
    if Ada.Command_Line.Argument_Count >= 1 then
       Steps := Natural'Value (Ada.Command_Line.Argument (1));
@@ -1250,6 +1430,13 @@ begin
                Contain_And_Restart (Step);
          end;
       end loop;
+
+      --  1b. rarely an image of the installation configuration (in No
+      --  Power after a restart, refused otherwise)
+      if Chance (1) then
+         Config_Image;
+         Try_Configure (Step);
+      end if;
 
       --  2. the stored information: now and then a new random snapshot,
       --  the train of the last one moving on
@@ -1397,6 +1584,17 @@ begin
              & "  violations:" & Natural'Image (Violations)
              & "  raised:" & Natural'Image (Raised)
              & "  distinct sites:" & Natural'Image (Site_Count));
+
+   --  the installation configuration
+   Config_Phase (Steps / 20);
+   Put ("configuration: images:" & Natural'Image (Config_Images)
+        & "  accepted:" & Natural'Image (Config_Accepted) & " ");
+   for S in EVC_Config.Status_T loop
+      Put (" " & EVC_Config.Status_T'Image (S)
+           & Natural'Image (Config_Status (S)));
+   end loop;
+   Put_Line ("  violations:" & Natural'Image (Violations)
+             & "  raised:" & Natural'Image (Raised));
 
    --  E3 (profiles)
    E3_Phase (Steps / 5_000);
