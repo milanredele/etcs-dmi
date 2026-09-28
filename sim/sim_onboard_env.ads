@@ -1,0 +1,118 @@
+--  ETCS DMI test simulator
+--  The environment of the ETCS on-board (EVC_Core, evc/) on the bench:
+--  the trackside (Sim_Trackside), the vehicle (EVC_Train with the train
+--  interface of Sim_Vehicle), the odometer (Sim_Odometer), the JRU sink
+--  (Sim_JRU) and the driver (the desk or EVC_Driver.Auto_Drive_Onboard).
+--  The wasm module onboard.wasm (test/wasm/onboard_wasm), the hosted main
+--  obj/evc_onboard (ports/hosted/evc.adb) and evc_test run the on-board
+--  in it; they only move the bytes of the DMI link.
+--
+--  One Step (Dt_Ms) is one cycle of the on-board:
+--    1. the driver sets the demand, from what the on-board's DMI frames
+--       of the last cycle said (speed, permitted speed, monitoring) and
+--       its brake commands;
+--    2. the vehicle moves (EVC_Train), obeying the commands of the last
+--       TIU output, or the emergency brake if the on-board failed;
+--    3. the odometer samples the movement of the balise antenna (3 m in
+--       rear of the cab A end, EVC_Position.Antenna_To_Cab_A_Cm: the
+--       train runs cab A first); every balise the antenna passed goes
+--       to the BTM port with its stamp, in the order of passing, then
+--       the odometer sample, then the TIU inputs that changed;
+--    4. EVC_Core.Tick;
+--    5. the outputs: the DMI frames are queued for Take_DMI (and read
+--       for step 1), the TIU output goes to the vehicle, the JRU records
+--       to Sim_JRU.
+--  Frames from the DMI (Receive, any chunking) go to the on-board's DMI
+--  port as they arrive and are read at its next cycle; MSG_DESK (the
+--  desk of the TCP bench) sets the desk here. The brake release the
+--  on-board asks for (MSG_STATUS brake 2, 3.14.1.9) is acknowledged on
+--  the DMI, which sends MSG_DRIVER_ACTION 2 kind 5; the scenarios
+--  without a DMI send Brake_Release_Ack themselves when Ack_Requested.
+--
+--  Everything that reaches a port is integer: the vehicle integrates in
+--  Float (EVC_Train), its position and speed are quantised to cm and
+--  cm/s with Float'Floor at the boundary, and the odometer, the
+--  balises and the TIU work on those integers. The only Float
+--  operations are IEEE single +, -, *, / and comparisons, correctly
+--  rounded on every target (no library function, no fused multiply-add
+--  at -O0 natively or in wasm32), so the native and the wasm builds
+--  feed the on-board the same bytes (test/wasm/onboard_smoke.js).
+
+with Ada.Streams; use Ada.Streams;
+with EVC_Position;
+with EVC_Track;
+
+package Sim_Onboard_Env is
+
+   --  The train's front end at power-up (m): its antenna 1 m in rear of
+   --  the first balise of the first group
+   Start_Front_M : constant Float :=
+     Float (EVC_Track.Balise_Groups (1).At_M) - 1.0
+     + Float (EVC_Position.Antenna_To_Cab_A_Cm) / 100.0;
+
+   --  Power-up of the on-board and of the vehicle, the train at
+   --  Start_Front_M, the desk on auto drive
+   procedure Reset;
+
+   --  The driver desk: traction/brake demand in -100 .. 100, or the
+   --  automatic driver
+   procedure Set_Desk (Demand : Integer; Auto : Boolean);
+
+   --  Bytes from the DMI
+   procedure Receive (Data : Stream_Element_Array);
+
+   --  One cycle
+   procedure Step (Dt_Ms : Natural);
+
+   --  The DMI frames of the on-board since the last call, whole; those
+   --  that do not fit stay queued
+   procedure Take_DMI (Buffer : out Stream_Element_Array;
+                       Last   : out Stream_Element_Offset);
+
+   --  Containment (EVC_Core.Enter_Failure): the host calls it when a
+   --  call into the on-board failed (a trap in wasm, an exception
+   --  natively); the on-board falls silent and the vehicle brakes
+   procedure Enter_Failure;
+   function Failed return Boolean;
+
+   --  The driver's acknowledgement of a brake release, as the DMI sends
+   --  it (MSG_DRIVER_ACTION, action 2, kind 5, no id)
+   Brake_Release_Ack : constant Stream_Element_Array :=
+     (16#40#, 5, 0, 0, 0, 2, 5, 0, 0, 0);
+
+   ---------------------------------------------------------------------
+   --  What the on-board said last (its DMI frames) and the vehicle
+   ---------------------------------------------------------------------
+
+   --  MSG_MODE_LEVEL: the mode code (DMI Table 60) and the level code;
+   --  255 before the first frame
+   function Mode_Code return Natural;
+   function Level_Code return Natural;
+   --  MSG_SPEED_STATE (km/h), monitoring 0 CSM / 1 TSM / 2 RSM, status
+   --  0 NoS .. 4 IntS
+   function V_Cur_KMH return Natural;
+   function V_Perm_KMH return Natural;
+   function Monitoring return Natural;
+   function Status return Natural;
+   --  MSG_STATUS brake: 0 none, 1 applied, 2 acknowledgement asked
+   function Brake_Indication return Natural;
+   function Ack_Requested return Boolean;
+
+   --  The vehicle: front end (m, rounded down), speed (km/h)
+   function Position_M return Integer;
+   function Speed_KMH return Natural;
+
+   --  Balises detected, DMI bytes dropped because nobody took them
+   function Balises_Read return Natural;
+   function Dropped_DMI return Natural;
+
+   --  MSG_SIM_STATE for the page's track strip (dmi_protocol.ads): the
+   --  position (m, 0 in rear of the mission start), the speed, the mode
+   --  in the strip's numbering (0 SB / 1 SR / 2 FS / 3 TR / 4 AD / 5 SH
+   --  / 6 SM / 7 IS, 255 another one), the monitoring, the demand, a
+   --  brake commanded
+   procedure Sim_State_Payload (Buffer : out Stream_Element_Array;
+                                Last   : out Stream_Element_Offset)
+     with Pre => Buffer'Length >= 10;
+
+end Sim_Onboard_Env;

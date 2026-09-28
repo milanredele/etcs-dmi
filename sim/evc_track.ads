@@ -73,6 +73,56 @@ package EVC_Track is
       ("Knebworth   ", 6_300, 10, 65, Right),
       ("Stevenage   ", 9_900, 0, 30, Both));
 
+   ---------------------------------------------------------------------
+   -- The balise groups of the line, for the ETCS on-board of the bench
+   -- (Sim_Trackside builds their telegrams; EVC_Mock does not read
+   -- them). Every group has two balises Balise_Spacing_M apart, the
+   -- first (N_PIG 0) at At_M, nominal direction towards rising
+   -- positions, all in the country NID_C and linked (Q_LINK 1). The
+   -- first group is 12 m in rear of the mission start and carries the
+   -- national values, the SSP, the gradients and the level 1 MA of the
+   -- description above; the others repeat the linking and carry what
+   -- lies ahead of them.
+   ---------------------------------------------------------------------
+
+   NID_C            : constant := 123;
+   Balise_Spacing_M : constant := 3;
+   Balises_Per_Group : constant := 2;
+
+   -- What a group carries besides the linking to the groups after it
+   type Group_Content_T is
+     (Mission,           -- 3, 27, 21, 12
+      Neutral_Section,   -- 68: Conditions (1)
+      Pantograph_Level,  -- 68: Conditions (2); 41: the transition to L2
+      TSR_Text,          -- 65: the TSR below; 73: the text below
+      Tunnel,            -- 68: the tunnel stopping area
+      Linking_Only);
+
+   type Balise_Group_T is record
+      NID_BG  : Natural;
+      At_M    : Integer;
+      Content : Group_Content_T;
+   end record;
+
+   Balise_Groups : constant array (1 .. 6) of Balise_Group_T :=
+     ((1, -12, Mission),
+      (2, 1_500, Neutral_Section),
+      (3, 4_000, Pantograph_Level),
+      (4, 6_500, TSR_Text),
+      (5, 8_000, Tunnel),
+      (6, 9_600, Linking_Only));
+
+   -- A temporary speed restriction and a plain text message for the
+   -- on-board only (the mock has neither): 80 km/h from 7 400 m to
+   -- 7 900 m, the text shown from 6 600 m to 7 400 m
+   TSR_ID       : constant := 5;
+   TSR_From_M   : constant Natural := 7_400;
+   TSR_To_M     : constant Natural := 7_900;
+   TSR_Speed    : constant Natural := 80;
+   Text_From_M  : constant Natural := 6_600;
+   Text_To_M    : constant Natural := 7_400;
+   Text_Message : constant String := "Works on the line";
+
    function MRSP_At (Position_M : Natural) return Natural;
    function Gradient_At (Position_M : Natural) return Integer;
 
