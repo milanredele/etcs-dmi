@@ -3245,6 +3245,121 @@ procedure EVC_Test is
    end Scenario_Report_Triggers;
 
    --  3.6.1.7: the min safe rear end with the train length
+   --  3.6.4.2.5 c) then b): a "max" location item of packet 58 referred
+   --  to a group, relocated without linking to the next SOLR by the
+   --  travelled distance, then with linking widened by twice the
+   --  accuracy of its former reference
+   procedure Scenario_Relocation is
+      P58      : T58.Packet_T;
+      OK       : Boolean;
+      Fired_At : Integer_64 := 0;
+
+      procedure Until_Passed (Limit : Integer_64) is
+      begin
+         Fired_At := 0;
+         while Train_Cm < Limit and then Fired_At = 0 loop
+            Step (1_000);
+            if Pos.Report_Triggers.Location_Passed then
+               Fired_At := Train_Cm;
+            end if;
+         end loop;
+      end Until_Passed;
+   begin
+      P58.Q_SCALE := 1;
+      P58.T_CYCLOC := 255;
+      P58.D_CYCLOC := 32_767;
+      P58.M_LOC := 2;
+      P58.N_ITER := 1;
+
+      --  c): at 500 m, 400 m from the first group; the max safe front
+      --  end against the second group reaches it where it would against
+      --  the first (3.6.4.2.5.4)
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 300));
+      Run_To (15_000);
+      P58.D_LOC_List (1) := (D_LOC => 400, Q_LGTLOC => 1);
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Until_Passed (60_000);
+      Check (OK and then Pos.SOLR.Id.NID_BG = 20 and then Fired_At = 48_000,
+             "relocation c): the location passed at 480 m, got"
+             & Integer_64'Image (Fired_At));
+
+      --  then b): at 900 m; the second group links the third
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Add_Group (With_Links (Group (20, 300), Link_To ((1 => 300),
+                                                        (1 => 30))));
+      Add_Group (Group (30, 600));
+      Run_To (15_000);
+      P58.D_LOC_List (1) := (D_LOC => 800, Q_LGTLOC => 1);
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Until_Passed (100_000);
+      Check (OK and then Pos.SOLR.Id.NID_BG = 30
+             and then Pos.LRBG.Locacc = 500
+             and then Fired_At = 86_000,
+             "relocation b): the linking distance plus twice 12 m, passed "
+             & "at 860 m, got" & Integer_64'Image (Fired_At));
+   end Scenario_Relocation;
+
+   --  3.4.4.4.2.1, 3.4.4.4.4: a group announced with an unknown identity
+   --  and repositioning information
+   procedure Scenario_Repositioning is
+      L : T5.Packet_T := Link_To ((1 => 500), (1 => 16383));
+   begin
+      L.D_LINK := 500;
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), L));
+      Add_Group (Group (55, 400));
+      Track (2).Reposition := True;
+      Run_To (45_000);
+      Check (Pos.LRBG.Id.NID_BG = 55 and then Pos.LRBG.Locacc = 500
+             and then JRU_Seen (5) = 0 and then JRU_Seen (4) = 0,
+             "repositioning: the group with packet 16 accepted in the "
+             & "window from the previous group on");
+
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), L));
+      Add_Group (Group (56, 400));
+      Run_To (45_000);
+      Check (Pos.LRBG.Id.NID_BG = 10 and then JRU_Seen (5) = 1
+             and then JRU_Id (5) = Id (56),
+             "repositioning: without packet 16 the group is rejected");
+
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), L));
+      Add_Group (Group (57, 400, 1));
+      Track (2).Reposition := True;
+      Run_To (45_000);
+      Check (Pos.LRBG.Id.NID_BG = 10 and then JRU_Seen (5) = 1,
+             "repositioning: a single balise group is rejected (a)");
+   end Scenario_Repositioning;
+
+   --  3.6.6.4.3: announced references deleted on a change of orientation
+   procedure Scenario_Geo_Orientation is
+      G : T79.Packet_T;
+   begin
+      Start_Track;
+      G.Q_DIR := 1;
+      G.Q_SCALE := 1;
+      G.Q_NEWCOUNTRY := 0;
+      G.NID_BG := 11;
+      G.M_POSITION := 50_000;
+      Add_Group (Group (10, 100));
+      Track (1).Has_Geo := True;
+      Track (1).Geo := G;
+      Add_Group (Group (11, 300));
+      Run_To (15_000);
+      Input (TIU, (1, 0));
+      Input (TIU, (2, 1));
+      Stand;
+      Input (TIU, (2, 0));
+      Input (TIU, (1, 1));
+      Run_To (35_000);
+      Check (not Pos.Geo_Known and then Geo_Count = 0,
+             "geo: the announced reference deleted with the orientation");
+   end Scenario_Geo_Orientation;
+
    procedure Scenario_Rear_End is
    begin
       Start_Track;
@@ -3287,6 +3402,9 @@ begin
    Scenario_Virtual;
    Scenario_Report_Triggers;
    Scenario_Rear_End;
+   Scenario_Relocation;
+   Scenario_Repositioning;
+   Scenario_Geo_Orientation;
    Check (Encodes_OK, "E2: every telegram of the track encoded");
 
    Put_Line ("checks:" & Natural'Image (Checks)

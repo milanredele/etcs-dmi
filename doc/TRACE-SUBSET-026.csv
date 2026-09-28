@@ -13,16 +13,16 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.4.2.3.3.8,3,x,,,,,E2,done,EVC_Position.Assign_Coordinate_System refuses (Ambiguous); evc_test position_single_balise
 3.4.2.4.1,3,x,,,,,E2,done,EVC_Balise_Groups.Geometry (one of the duplicates read: no orientation); evc_test position_single_balise
 3.4.4.4.2,3,x,,,,,E2,done,"EVC_Position.Evaluate (linked group not in the linking rejected, Unexpected_Group); evc_test position_linking_errors"
-3.4.4.4.2.1,3,x,,,,,E2,partial,"EVC_Position.Evaluate (orientation from the group, packet 16 valid for the orientation, announced direction); no scenario with an unknown group yet; repositioning itself is E3"
-3.4.4.4.2.1 a),3,x,,,,,E2,partial,"EVC_Position.Evaluate (orientation from the group, packet 16 valid for the orientation, announced direction); no scenario with an unknown group yet; repositioning itself is E3"
-3.4.4.4.2.1 b),3,x,,,,,E2,partial,"EVC_Position.Evaluate (orientation from the group, packet 16 valid for the orientation, announced direction); no scenario with an unknown group yet; repositioning itself is E3"
-3.4.4.4.2.1 c),3,x,,,,,E2,partial,"EVC_Position.Evaluate (orientation from the group, packet 16 valid for the orientation, announced direction); no scenario with an unknown group yet; repositioning itself is E3"
+3.4.4.4.2.1,3,x,,,,,E2,done,"EVC_Position.Evaluate (orientation from the group, packet 16 valid for the orientation, announced direction); evc_test Scenario_Repositioning"
+3.4.4.4.2.1 a),3,x,,,,,E2,done,"EVC_Position.Evaluate (orientation from the group, packet 16 valid for the orientation, announced direction); evc_test Scenario_Repositioning"
+3.4.4.4.2.1 b),3,x,,,,,E2,done,"EVC_Position.Evaluate (orientation from the group, packet 16 valid for the orientation, announced direction); evc_test Scenario_Repositioning"
+3.4.4.4.2.1 c),3,x,,,,,E2,done,"EVC_Position.Evaluate (orientation from the group, packet 16 valid for the orientation, announced direction); evc_test Scenario_Repositioning"
 3.4.4.4.2.2,3,x,,,,,E2,done,"EVC_Position.Evaluate (unlinked group taken into account, ORBG); evc_test position_linking_errors"
 3.4.4.4.3,3,x,,,,,E2,done,"EVC_Position.Check_Window, Window_First/Last, Antenna (max/min safe antenna against the SOLR); evc_test position_linking, position_linking_errors"
 3.4.4.4.3 1st bullet,3,x,,,,,E2,done,"EVC_Position.Check_Window, Window_First/Last, Antenna (max/min safe antenna against the SOLR); evc_test position_linking, position_linking_errors"
 3.4.4.4.3 2nd bullet,3,x,,,,,E2,done,"EVC_Position.Check_Window, Window_First/Last, Antenna (max/min safe antenna against the SOLR); evc_test position_linking, position_linking_errors"
 3.4.4.4.3.2,3,x,,,,,E2,done,EVC_Position.Evaluate (outside the window or window no longer supervised: rejected); evc_test position_linking_errors
-3.4.4.4.4,3,x,,,,,E2,partial,EVC_Position.Window_First (repositioning: from the previous linked group); no scenario yet (repositioning: E3)
+3.4.4.4.4,3,x,,,,,E2,done,EVC_Position.Window_First (repositioning: from the previous linked group); evc_test Scenario_Repositioning
 3.4.4.4.5,3,x,,,,,E2,done,"EVC_Linking.Linking_T.Expected, one window at a time; evc_test position_linking"
 3.4.4.4.5.1,3,x,,,,,E2,done,EVC_Position.Take_Packets (first window whose end is not reached); evc_test position_linking
 3.4.4.4.6,3,x,,,,,E2,done,"EVC_Position.Next_Window, Evaluate, Supervise_Windows; evc_test position_linking, position_linking_errors"
@@ -184,14 +184,14 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.4.2.4 Table 2a,3,x,,,,,E2,partial,"kinds of location items (EVC_Location.Item_Kind_T); used for linking windows, packet 58 locations and the geographical position; the other rows of Table 2a are E3 to E6"
 3.6.4.2.5,3,x,,,,,E2,done,"EVC_Location.Relocate, EVC_Position.Relocate_Item (linking distance); evc_test position_linking (location passed at 890 m)"
 3.6.4.2.5 a),3,x,,,,,E2,done,"EVC_Location.Relocate, EVC_Position.Relocate_Item (linking distance); evc_test position_linking (location passed at 890 m)"
-3.6.4.2.5 b),3,x,,,,,E2,partial,"EVC_Location.Relocate implements b) and c); no scenario exercises them yet (information from unlinked groups and RBC messages: E3, E5)"
-3.6.4.2.5 b) 1st bullet,3,x,,,,,E2,partial,"EVC_Location.Relocate implements b) and c); no scenario exercises them yet (information from unlinked groups and RBC messages: E3, E5)"
-3.6.4.2.5 b) 2nd bullet,3,x,,,,,E2,partial,"EVC_Location.Relocate implements b) and c); no scenario exercises them yet (information from unlinked groups and RBC messages: E3, E5)"
-3.6.4.2.5 b) 3rd bullet,3,x,,,,,E2,partial,"EVC_Location.Relocate implements b) and c); no scenario exercises them yet (information from unlinked groups and RBC messages: E3, E5)"
-3.6.4.2.5 c),3,x,,,,,E2,partial,"EVC_Location.Relocate implements b) and c); no scenario exercises them yet (information from unlinked groups and RBC messages: E3, E5)"
-3.6.4.2.5 c) 1st bullet,3,x,,,,,E2,partial,"EVC_Location.Relocate implements b) and c); no scenario exercises them yet (information from unlinked groups and RBC messages: E3, E5)"
-3.6.4.2.5 c) 2nd bullet,3,x,,,,,E2,partial,"EVC_Location.Relocate implements b) and c); no scenario exercises them yet (information from unlinked groups and RBC messages: E3, E5)"
-3.6.4.2.5 c) 3rd bullet,3,x,,,,,E2,partial,"EVC_Location.Relocate implements b) and c); no scenario exercises them yet (information from unlinked groups and RBC messages: E3, E5)"
+3.6.4.2.5 b),3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
+3.6.4.2.5 b) 1st bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
+3.6.4.2.5 b) 2nd bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
+3.6.4.2.5 b) 3rd bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
+3.6.4.2.5 c),3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
+3.6.4.2.5 c) 1st bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
+3.6.4.2.5 c) 2nd bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
+3.6.4.2.5 c) 3rd bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
 3.6.4.2.6,3,x,,,,,E2,deferred,E3 (recomposition of SSP and gradient)
 3.6.4.2.6 1st bullet,3,x,,,,,E2,deferred,E3 (recomposition of SSP and gradient)
 3.6.4.2.6 2nd bullet,3,x,,,,,E2,deferred,E3 (recomposition of SSP and gradient)
@@ -241,7 +241,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.6.3,3,x,,,,,E2,done,EVC_Position.Take_Geo replaces the references not yet applicable; evc_test position_geo
 3.6.6.4.1,3,x,,,,,E2,deferred,E5 (geographical position by radio)
 3.6.6.4.2,3,x,,,,,E2,done,"EVC_Position.Anchor_Geo, Update_Geo (detected and offset travelled); evc_test position_geo"
-3.6.6.4.3,3,x,,,,,E2,partial,EVC_Position.Update deletes the announced references on a change of orientation; no scenario yet
+3.6.6.4.3,3,x,,,,,E2,done,EVC_Position.Update deletes the announced references on a change of orientation; evc_test Scenario_Geo_Orientation
 3.6.6.5,3,x,,,,,E2,done,EVC_Position.Geo_Of; evc_test position_geo
 3.6.6.7,3,x,,,,,E2,done,EVC_Position.Anchor_Geo (reference group without orientation dropped)
 3.6.6.9,3,x,,,,,E2,done,EVC_Position.Update_Geo; evc_test position_geo
