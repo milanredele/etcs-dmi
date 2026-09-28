@@ -60,7 +60,8 @@ ETCS on-board (EVC). The on-board is being built in phases, see
 
 ### 3. Workflow and Building
 - **Build**: Use `alr build` to compile the project (Alire package manager). Alternatively, `gprbuild -P etcsdmi.gpr` can be used. The on-board alone: `gprbuild -P etcs_evc.gpr`; for the TMS570, `ports/tms570/build.sh` (toolchain via `ports/tms570/setup-toolchain.sh`).
-- **Proof**: `evc/prove.sh` (gnatprove on `etcs_evc.gpr`) must report no unproved check. Every unit under `evc/` is `SPARK_Mode => On`; a unit that cannot be SPARK says why in its header.
+- **Proof**: `evc/prove.sh` (gnatprove on `etcs_evc.gpr`) must report no unproved check.
+- **Generated code**: `evc/language/` holds Ada generated from `etcs_language.toml`; never edit it by hand, run `python3 evc/language/gen_language.py` and keep `--check` green. Every unit under `evc/` is `SPARK_Mode => On`; a unit that cannot be SPARK says why in its header.
 - **Robustness**: `obj/dmi_fuzz` and `obj/evc_fuzz` must report `raised: 0`. Code under `dmi/`, `evc/` and `common/` must never raise on any message, input, touch or tick: validate and ignore, clamp, or draw nothing.
 - **Regression**: `obj/dmi_test` and `obj/evc_test` must stay at zero failures; `UPDATE=1` re-records goldens only after an intended change, and a changed golden is looked at before it is re-recorded.
 - **Visual Testing** (browser bench): `test/wasm/build.sh`, then serve the repository over HTTP and open `test/wasm/`; `node test/wasm/smoke.js` verifies the wasm build.
