@@ -11,7 +11,12 @@
 --  phases E2 to E6.
 --
 --  The radio messages are taken as coming from an RBC: the session
---  management of phase E5 will tell an RBC from an RIU.
+--  management of phase E5 will tell an RBC from an RIU. Until then a
+--  message or packet only an RIU sends is rejected (Wrong_Sender).
+--
+--  Every rejection reason is counted, among them a spare value of a
+--  variable (Invalid_Value, SUBSET-026 3.16.1.1.1: the information is
+--  not kept; the reaction of 3.16.2 / 3.16.3 is a later phase).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 

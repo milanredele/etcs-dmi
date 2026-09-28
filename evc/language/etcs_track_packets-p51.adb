@@ -108,6 +108,51 @@ is
       end loop;
    end Encode_D_AXLELOAD_Item;
 
+   --  Valid of one item of M_AXLELOADCAT_List
+   function Valid_M_AXLELOADCAT_Item_2
+     (E2 : M_AXLELOADCAT_Item_2) return Boolean
+   is (Is_Valid (E2.M_AXLELOADCAT)
+       and then Is_Valid (E2.V_AXLELOAD));
+
+   --  Valid of one item of M_AXLELOADCAT_List
+   function Valid_M_AXLELOADCAT_Item
+     (E1 : M_AXLELOADCAT_Item) return Boolean
+   is (Is_Valid (E1.M_AXLELOADCAT)
+       and then Is_Valid (E1.V_AXLELOAD));
+
+   --  Valid of one item of D_AXLELOAD_List
+   function Valid_D_AXLELOAD_Item (E1 : D_AXLELOAD_Item) return Boolean is
+     (Is_Valid (E1.D_AXLELOAD)
+      and then Is_Valid (E1.L_AXLELOAD)
+      and then Is_Valid (E1.Q_FRONT)
+      and then Is_Valid (E1.N_ITER)
+      and then (for all I2 in 1 .. Natural (E1.N_ITER) =>
+                  Valid_M_AXLELOADCAT_Item_2 (E1.M_AXLELOADCAT_List (I2))));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.Q_TRACKINIT)
+      and then (if P.Has_D_TRACKINIT then Is_Valid (P.D_TRACKINIT))
+      and then (if P.Has_D_AXLELOAD
+                then Is_Valid (P.D_AXLELOAD)
+                     and then Is_Valid (P.L_AXLELOAD)
+                     and then Is_Valid (P.Q_FRONT)
+                     and then Is_Valid (P.N_ITER)
+                     and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                                 Valid_M_AXLELOADCAT_Item
+                                   (P.M_AXLELOADCAT_List (I1)))
+                     and then Is_Valid (P.N_ITER_2)
+                     and then (for all I1 in 1 .. Natural (P.N_ITER_2) =>
+                                 Valid_D_AXLELOAD_Item
+                                   (P.D_AXLELOAD_List (I1)))));
+
    ------------
    -- Decode --
    ------------

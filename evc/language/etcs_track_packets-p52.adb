@@ -51,6 +51,37 @@ is
       Write (W, 15, Code (E1.L_PBDSR));
    end Encode_D_PBD_Item;
 
+   --  Valid of one item of D_PBD_List
+   function Valid_D_PBD_Item (E1 : D_PBD_Item) return Boolean is
+     (Is_Valid (E1.D_PBD)
+      and then Is_Valid (E1.Q_GDIR)
+      and then Is_Valid (E1.G_PBDSR)
+      and then Is_Valid (E1.Q_PBDSR)
+      and then Is_Valid (E1.D_PBDSR)
+      and then Is_Valid (E1.L_PBDSR));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.Q_TRACKINIT)
+      and then (if P.Has_D_TRACKINIT then Is_Valid (P.D_TRACKINIT))
+      and then (if P.Has_D_PBD
+                then Is_Valid (P.D_PBD)
+                     and then Is_Valid (P.Q_GDIR)
+                     and then Is_Valid (P.G_PBDSR)
+                     and then Is_Valid (P.Q_PBDSR)
+                     and then Is_Valid (P.D_PBDSR)
+                     and then Is_Valid (P.L_PBDSR)
+                     and then Is_Valid (P.N_ITER)
+                     and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                                 Valid_D_PBD_Item (P.D_PBD_List (I1)))));
+
    ------------
    -- Decode --
    ------------

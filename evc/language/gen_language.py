@@ -170,27 +170,121 @@ class Variable:
                      % (name, value, self.bits))
             self.special.append((value, str(text)))
         self.special.sort()
+        specials = set(v for v, _ in self.special)
+        # spare values between or among the meaningful ones (SCHEMA.md):
+        # single values and inclusive ranges "a..b"
+        self.spare = []
+        spare = spec.get("spare", [])
+        if not isinstance(spare, list) or not spare and "spare" in spec:
+            fail("variable %s: spare is not a list of values" % name)
+        for item in spare:
+            if isinstance(item, int) and not isinstance(item, bool):
+                a = b = item
+            else:
+                m = re.fullmatch(r"\s*(-?\d+)\s*\.\.\s*(-?\d+)\s*",
+                                 str(item))
+                if not m:
+                    fail("variable %s: spare %r is neither a value nor a"
+                         " range \"a..b\"" % (name, item))
+                a, b = int(m.group(1)), int(m.group(2))
+            if not lo <= a <= b <= hi:
+                fail("variable %s: spare %r outside the %d bits or empty"
+                     % (name, item, self.bits))
+            if any(a <= x <= b for x in specials):
+                fail("variable %s: spare %r holds a special value"
+                     % (name, item))
+            if b < self.min or a > self.max:
+                fail("variable %s: spare %r outside min .. max is spare"
+                     " already" % (name, item))
+            for c, d in self.spare:
+                if a <= d and c <= b:
+                    fail("variable %s: spare %r overlaps another"
+                         % (name, item))
+            self.spare.append((a, b))
+        self.spare.sort()
+        # binary coded decimal (SCHEMA.md): a digit 0 .. 9 or F per
+        # nibble, F only after the last digit
+        self.bcd = spec.get("bcd", False)
+        if not isinstance(self.bcd, bool):
+            fail("variable %s: bcd is not a Boolean" % name)
+        if self.bcd and (self.signed or self.bits % 4 != 0):
+            fail("variable %s: bcd needs an unsigned whole number of"
+                 " digits" % name)
+        self.digits = self.bits // 4
         self.interesting = set()
         self.scale = spec.get("scale")
         self.resolution = spec.get("resolution")
         known = {"bits", "clause", "min", "max", "special", "scale",
-                 "resolution", "signed"}
+                 "resolution", "signed", "spare", "bcd"}
         for key in spec:
             if key not in known:
                 fail("variable %s: unknown key %s" % (name, key))
+        if self.bcd and self.lowest_valid() is None:
+            fail("variable %s: no valid value" % name)
 
     @property
     def type_name(self):
         return self.name + "_T"
 
-    def valid_values(self):
-        """The valid codes: min .. max and the special values."""
-        vals = set(range(self.min, self.max + 1)) \
-            if self.max - self.min < 1 << 20 else None
-        return vals
+    def bcd_valid(self, x):
+        """x is a number of digits 0 .. 9, left adjusted, F after it."""
+        filler = False
+        for i in range(self.digits - 1, -1, -1):
+            d = (x >> (4 * i)) & 15
+            if d == 15:
+                filler = True
+            elif d > 9 or filler:
+                return False
+        return True
+
+    def is_valid(self, x):
+        """The code x is a value of 7.5, not a spare one."""
+        if not self.type_lo <= x <= self.type_hi:
+            return False
+        if any(a <= x <= b for a, b in self.spare):
+            return False
+        if self.bcd and not self.bcd_valid(x):
+            return False
+        return self.min <= x <= self.max \
+            or any(s == x for s, _ in self.special)
+
+    def lowest_valid(self):
+        """The smallest valid code within min .. max, None if none."""
+        x = self.min
+        while x <= self.max:
+            for a, b in self.spare:
+                if a <= x <= b:
+                    x = b + 1
+                    break
+            else:
+                if not self.bcd or self.bcd_valid(x):
+                    return x
+                x += 1
+        return None
+
+    def highest_valid(self):
+        """The largest valid code within min .. max, None if none."""
+        if self.bcd:
+            # nines then F, the fewest nines first: F...F, 9F...F, ...
+            for k in range(self.digits + 1):
+                x = int("9" * k + "F" * (self.digits - k), 16)
+                if x <= self.max and self.is_valid(x):
+                    return x
+            return None
+        x = self.max
+        while x >= self.min:
+            for a, b in self.spare:
+                if a <= x <= b:
+                    x = a - 1
+                    break
+            else:
+                return x
+        return None
 
     def full_range_valid(self):
         """Every code of the type is valid."""
+        if self.spare or self.bcd:
+            return False
         if self.min == self.type_lo and self.max == self.type_hi:
             return True
         covered = set(v for v, _ in self.special)
@@ -426,8 +520,7 @@ class Packet:
                  % (self.nid, var.name, v, var.bits))
         # values the random test prefers, so that both outcomes occur
         for x in ((v,) if op == "==" else (v - 1, v, v + 1)):
-            if var.min <= x <= var.max or any(s == x for s, _ in
-                                              var.special):
+            if var.is_valid(x):
                 var.interesting.add(x)
         return str(v)
 
@@ -775,6 +868,7 @@ def gen_variables(variables):
         "   type Variable_T is",
     ]
     names = list(variables)
+    bcd = [n for n in names if variables[n].bcd]
     for i, n in enumerate(names):
         sep = "," if i < len(names) - 1 else ");"
         L.append("     %s%s%s" % ("(" if i == 0 else " ", n, sep))
@@ -790,6 +884,27 @@ def gen_variables(variables):
         L.append("     %s%s => %d%s" % ("(" if i == 0 else " ", n,
                                         variables[n].max,
                                         "," if i < len(names) - 1 else ");"))
+    if bcd:
+        clauses = ", ".join(variables[n].clause for n in bcd)
+        L += [""] + wrap_comment(
+            "A number in binary coded decimal of N_Digits digits (%s):"
+            " every digit 0 .. 9, the number entered left adjusted and the"
+            " special character F filling the digits after its last one"
+            % clauses, 3) + [
+            "   function BCD_Digit (V : Unsigned_64; N_Digits : Positive;",
+            "                       I : Natural) return Unsigned_64",
+            "   is (Shift_Right (V, 4 * (N_Digits - 1 - I)) and 15)",
+            "     with Pre => N_Digits <= 16 and then I < N_Digits;",
+            "   function Valid_BCD (V : Unsigned_64; N_Digits : Positive)",
+            "     return Boolean",
+            "   is (for all I in 0 .. N_Digits - 1 =>",
+            "         BCD_Digit (V, N_Digits, I) <= 9",
+            "         or else (BCD_Digit (V, N_Digits, I) = 15",
+            "                  and then (I = N_Digits - 1",
+            "                            or else BCD_Digit (V, N_Digits, I + 1)",
+            "                                    = 15)))",
+            "     with Pre => N_Digits <= 16;",
+        ]
     for n in names:
         v = variables[n]
         L.append("")
@@ -801,6 +916,10 @@ def gen_variables(variables):
             desc += ", resolution by %s" % v.scale
         if v.resolution:
             desc += ", %s" % v.resolution
+        if v.spare:
+            desc += "; spare: %s" % spare_choices(v).replace(" | ", ", ")
+        if v.bcd:
+            desc += "; binary coded decimal of %d digits" % v.digits
         L += wrap_comment(desc, 3)
         if v.bits == 64 and not v.signed:
             L.append("   type %s is new Unsigned_64;" % v.type_name)
@@ -844,24 +963,28 @@ def gen_variables(variables):
                      "return Unsigned_64", expr,
                      "Post => Fits (Code'Result, %d)" % v.bits)
         # Is_Valid
-        if v.full_range_valid():
-            expr = "(True)"
-        else:
-            parts = []
-            if v.min == v.type_lo and v.max == v.type_hi:
-                parts = []
-            elif v.min == v.type_lo:
-                parts.append("X <= %d" % v.max)
-            elif v.max == v.type_hi:
-                parts.append("X >= %d" % v.min)
-            else:
-                parts.append("X in %d .. %d" % (v.min, v.max))
-            for value, _ in v.special:
-                if not v.min <= value <= v.max:
-                    parts.append("X = %d" % value)
-            expr = "(" + " or else ".join(parts) + ")"
+        expr = "(" + " and then ".join(valid_terms(v)) + ")"
         L += fn_expr(3, "function Is_Valid (X : %s)" % v.type_name,
                      "return Boolean", expr, None)
+    # Valid_Code: Is_Valid of any variable from its code
+    L += [
+        "",
+        "   --  The code V of the variable Var is a value of 7.5, not a spare",
+        "   --  one (Is_Valid of its type)",
+        "   function Valid_Code (Var : Variable_T; V : Unsigned_64)",
+        "     return Boolean",
+        "   is (Fits (V, Bits (Var))",
+        "       and then",
+        "         (case Var is",
+    ]
+    for n in names:
+        v = variables[n]
+        if not v.full_range_valid():
+            stmt(L, 12, "when %s => Is_Valid (To_%s (V))," % (n, n))
+    L += [
+        "            --  every code is a value",
+        "            when others => True));",
+    ]
     if "NID_C" in variables and "NID_BG" in variables:
         c, b = variables["NID_C"], variables["NID_BG"]
         L += [
@@ -875,6 +998,43 @@ def gen_variables(variables):
         ]
     L += ["", "end ETCS_Variables;", ""]
     return "\n".join(L)
+
+
+def spare_choices(v):
+    return " | ".join("%d" % a if a == b else "%d .. %d" % (a, b)
+                      for a, b in v.spare)
+
+
+def valid_terms(v):
+    """The conjuncts of Is_Valid (X) of the variable: its range and
+    special values, not a spare value, a BCD number."""
+    if v.full_range_valid():
+        return ["True"]
+    terms = []
+    parts = []
+    if v.min == v.type_lo and v.max == v.type_hi:
+        pass
+    elif v.min == v.type_lo:
+        parts.append("X <= %d" % v.max)
+    elif v.max == v.type_hi:
+        parts.append("X >= %d" % v.min)
+    else:
+        parts.append("X in %d .. %d" % (v.min, v.max))
+    if parts:
+        for value, _ in v.special:
+            if not v.min <= value <= v.max:
+                parts.append("X = %d" % value)
+    if len(parts) == 1:
+        terms.append(parts[0])
+    elif parts:
+        terms.append("(" + " or else ".join(parts) + ")")
+    if len(v.spare) == 1 and v.spare[0][0] == v.spare[0][1]:
+        terms.append("X /= %d" % v.spare[0][0])
+    elif v.spare:
+        terms.append("X not in " + spare_choices(v))
+    if v.bcd:
+        terms.append("Valid_BCD (Code (X), %d)" % v.digits)
+    return terms
 
 
 def fn_expr(indent, head, ret, expr, aspect):
@@ -894,6 +1054,14 @@ def fn_expr(indent, head, ret, expr, aspect):
         if m:
             out.append(m.group(1))
             body = pad + "      " + m.group(2)
+        elif " and then " in body:
+            # a conjunction, one conjunct per line
+            col = body.index("(") + 1
+            parts = body.split(" and then ")
+            out.append(parts[0])
+            for part in parts[1:-1]:
+                out.append(" " * col + "and then " + part)
+            body = " " * col + "and then " + parts[-1]
     out.append(body + (";" if not aspect else ""))
     if aspect:
         out.append(pad + "  with " + aspect + ";")
@@ -1054,6 +1222,14 @@ def gen_packet_spec(p):
     spec_components(L, p.top.components, 6)
     L.append("   end record;")
     L.append("")
+    L += [
+        "   --  Every variable read holds a value of 7.5, not a spare one",
+        "   --  (Is_Valid of its type; SUBSET-026 3.16.1.1.1): those of the",
+        "   --  packet, of the conditional blocks present and of the items of",
+        "   --  its loops. Decode does not check it.",
+        "   function Valid (P : Packet_T) return Boolean;",
+        "",
+    ]
     L.append("   procedure Decode (R  : in out Reader;")
     L.append("                     P  : out Packet_T;")
     L.append("                     OK : out Boolean)")
@@ -1373,6 +1549,116 @@ def gen_item_procedures(p, mode):
     return L
 
 
+# ---------------------------------------------------------------------
+#  Packets: Valid, Is_Valid of every variable read
+# ---------------------------------------------------------------------
+
+def valid_tree(p, nodes):
+    """The conjuncts of the validity of a record level, as terms:
+    ("atom", text), ("if", flag, [terms]), ("all", index, count, term),
+    ("guard", text, term)."""
+    terms = []
+    for n in nodes:
+        if n.kind == "var":
+            terms.append(("atom", "Is_Valid (%s)"
+                          % access(n.level, n.comp)))
+        elif n.kind == "if":
+            sub = valid_tree(p, n.children)
+            if sub:
+                terms.append(("if", access(n.level, n.flag), sub))
+        elif n.kind == "loop":
+            if n.count_level is not n.level:
+                fail("packet %d: the count of %s is read at an enclosing"
+                     " level: Valid does not support it" % (p.nid, n.list))
+            idx = "I%d" % n.depth
+            count = "Natural (%s)" % access(n.level, n.count.comp)
+            element = "%s (%s)" % (access(n.level, n.list), idx)
+            if n.single:
+                body = ("atom", "Is_Valid (%s)" % element)
+            else:
+                body = ("atom", "Valid_%s (%s)" % (n.item_type, element))
+            term = ("all", idx, count, body)
+            if needs_guard(n):
+                term = ("guard", "%s <= %d" % (count, n.max), term)
+            terms.append(term)
+    return terms
+
+
+def one_line(t):
+    if t[0] == "atom":
+        return t[1]
+    if t[0] == "if":
+        return "(if %s then %s)" % (t[1], " and then ".join(
+            one_line(x) for x in t[2]))
+    if t[0] == "all":
+        return "(for all %s in 1 .. %s => %s)" % (t[1], t[2], one_line(t[3]))
+    return "(%s and then %s)" % (t[1], one_line(t[2]))
+
+
+def lay_conj(terms, col):
+    """Lines of a conjunction starting at column col: the first without
+    its indentation, the others whole."""
+    lines = lay(terms[0], col)
+    for t in terms[1:]:
+        sub = lay(t, col + 9)
+        lines.append(" " * col + "and then " + sub[0])
+        lines += sub[1:]
+    return lines
+
+
+def lay(t, col):
+    text = one_line(t)
+    if col + len(text) + 3 <= MAX_LINE:
+        return [text]
+    if t[0] == "atom":
+        # a call: its arguments on the next line
+        m = re.match(r"(\w+) (\(.*\))$", text)
+        if m:
+            return [m.group(1), " " * (col + 2) + m.group(2)]
+        return [text]
+    if t[0] == "if":
+        body = lay_conj(t[2], col + 6)
+        lines = ["(if " + t[1], " " * (col + 1) + "then " + body[0]]
+        lines += body[1:]
+    elif t[0] == "all":
+        body = lay(t[3], col + 3)
+        lines = ["(for all %s in 1 .. %s =>" % (t[1], t[2]),
+                 " " * (col + 3) + body[0]]
+        lines += body[1:]
+    else:
+        body = lay_conj([("atom", t[1]), t[2]], col + 1)
+        lines = ["(" + body[0]] + body[1:]
+    lines[-1] += ")"
+    return lines
+
+
+def valid_function(name, formal, terms):
+    head = "   function %s (%s) return Boolean is" % (name, formal)
+    if len(head) <= MAX_LINE:
+        lines, pad = [head], "     ("
+    else:
+        lines = ["   function %s" % name,
+                 "     (%s) return Boolean" % formal]
+        pad = "   is ("
+    body = lay_conj(terms, len(pad)) if terms else ["True"]
+    body[-1] += ");"
+    return lines + [pad + body[0]] + body[1:]
+
+
+def gen_valid(p):
+    L = []
+    for n in sorted(p.item_types, key=lambda n: -n.depth):
+        L.append("   --  Valid of one item of %s" % n.list)
+        L += valid_function("Valid_" + n.item_type, "%s : %s"
+                            % (n.item.access, n.item_type),
+                            valid_tree(p, n.children))
+        L.append("")
+    L += ["   -----------", "   -- Valid --", "   -----------", ""]
+    L += valid_function("Valid", "P : Packet_T", valid_tree(p, p.nodes))
+    L.append("")
+    return L
+
+
 def gen_packet_body(p):
     L = header("Packet %d, %s: %s, implementation." % (
         p.nid, p.dir_text, p.name))
@@ -1389,6 +1675,7 @@ def gen_packet_body(p):
         L.append("")
     L += gen_item_procedures(p, "decode")
     L += gen_item_procedures(p, "encode")
+    L += gen_valid(p)
     # Decode: into local variables, the record assigned once at the end
     # (one aggregate instead of a chain of updates of a large record:
     # small proof tasks)
@@ -1508,9 +1795,10 @@ def gen_catalogue_spec(variables, packets):
         "--",
         "--  NID_PACKET of each direction to its kind; the name, clause and",
         "--  senders of every kind (7.4.1.1, 7.4.1.2, 7.3.3.10); a check",
-        "--  that decodes a packet of any kind (on the stack, the record is",
-        "--  dropped); and Skip, which passes over any packet with the",
-        "--  standard header of 7.3.3.2 by its L_PACKET, known or not.",
+        "--  that decodes a packet of any kind and validates its values",
+        "--  (on the stack, the record is dropped); and Skip, which passes",
+        "--  over any packet with the standard header of 7.3.3.2 by its",
+        "--  L_PACKET, known or not.",
         "",
         "with ETCS_Bits; use ETCS_Bits;",
         "",
@@ -1576,11 +1864,15 @@ def gen_catalogue_spec(variables, packets):
         "",
         "   --  Decode the packet of this kind at the position of R into a",
         "   --  record on the stack, and drop it: OK when it decodes (see the",
-        "   --  Decode of its package)",
-        "   procedure Check (Kind : Known_Kind_T;",
-        "                    R    : in out Reader;",
-        "                    OK   : out Boolean)",
-        "     with Post => (if OK then not Failed (R));",
+        "   --  Decode of its package), Valid when it decodes and every",
+        "   --  variable holds a value of 7.5, not a spare one (the Valid of",
+        "   --  its package, SUBSET-026 3.16.1.1.1)",
+        "   procedure Check (Kind  : Known_Kind_T;",
+        "                    R     : in out Reader;",
+        "                    OK    : out Boolean;",
+        "                    Valid : out Boolean)",
+        "     with Post => (if OK then not Failed (R))",
+        "                  and then (if Valid then OK);",
         "",
         "   --  Pass over the packet at the position of R by its L_PACKET:",
         "   --  OK when its header is complete, L_PACKET is at least the",
@@ -1642,29 +1934,29 @@ def gen_catalogue_body(variables, packets):
     # Check
     for p in packets:
         L += [
-            "   procedure Check_%s (R : in out Reader; OK : out Boolean)"
-            % p.kind,
+            "   procedure Check_%s" % p.kind,
+            "     (R : in out Reader; OK : out Boolean; Valid : out Boolean)",
             "     with Post => (if OK then not Failed (R))",
+            "                  and then (if Valid then OK)",
             "   is",
             "      P : %s.Packet_T;" % p.package,
-            "      pragma Warnings (Off, P);",
             "   begin",
-            "      pragma Warnings (GNATprove, Off, \"unused assignment\",",
-            "                       Reason => \"only whether it decodes\");",
             "      %s.Decode (R, P, OK);" % p.package,
-            "      pragma Warnings (GNATprove, On, \"unused assignment\");",
+            "      Valid := OK and then %s.Valid (P);" % p.package,
             "   end Check_%s;" % p.kind,
             "",
         ]
     L += ["   -----------", "   -- Check --", "   -----------", "",
-          "   procedure Check (Kind : Known_Kind_T;",
-          "                    R    : in out Reader;",
-          "                    OK   : out Boolean)",
+          "   procedure Check (Kind  : Known_Kind_T;",
+          "                    R     : in out Reader;",
+          "                    OK    : out Boolean;",
+          "                    Valid : out Boolean)",
           "   is",
           "   begin",
           "      case Kind is"]
     for p in packets:
-        L.append("         when %s => Check_%s (R, OK);" % (p.kind, p.kind))
+        L.append("         when %s => Check_%s (R, OK, Valid);"
+                 % (p.kind, p.kind))
     L += ["      end case;", "   end Check;", ""]
     lb = variables["L_PACKET"].bits
     qb = variables["Q_DIR"].bits
@@ -1937,7 +2229,8 @@ def gen_random_spec(packets, conds, loops):
         "      Encode_Failed,",
         "      Decode_Failed,",
         "      Length_Differs,  -- decoded length is not the encoded length",
-        "      Record_Differs);",
+        "      Record_Differs,",
+        "      Not_Valid);      -- the decoded packet holds a spare value",
         "",
         "   procedure Reset (Seed : Interfaces.Unsigned_32);",
         "",
@@ -2135,6 +2428,48 @@ def gen_random_body(variables, packets, conds, loops):
         "              else Unsigned_64 (X));",
         "   end Choose_Signed;",
         "",
+        "   --  A code of Low .. High or of Specials that is not a spare value",
+        "   --  of Var (Low and High are valid): Choose until valid",
+        "   function Choose_Valid (Var       : Variable_T;",
+        "                          Low, High : Unsigned_64;",
+        "                          Specials  : U64_Array) return Unsigned_64",
+        "   is",
+        "      X : Unsigned_64;",
+        "   begin",
+        "      for Try in 1 .. 100 loop",
+        "         X := Choose (Low, High, Specials);",
+        "         if Valid_Code (Var, X) then",
+        "            return X;",
+        "         end if;",
+        "      end loop;",
+        "      return Low;",
+        "   end Choose_Valid;",
+        "",
+        "   --  A binary coded decimal number of N_Digits digits, left adjusted",
+        "   --  and filled with F: 0 (the smallest), Highest (the largest",
+        "   --  valid) or a random count of random digits (none when",
+        "   --  All_F, FF...F, is valid)",
+        "   function Choose_BCD (N_Digits : Positive;",
+        "                        Highest  : Unsigned_64;",
+        "                        All_F    : Boolean) return Unsigned_64",
+        "   is",
+        "      X     : Unsigned_64 := 0;",
+        "      Count : Natural;",
+        "   begin",
+        "      case Value_Mode is",
+        "         when Min_Values => return 0;",
+        "         when Max_Values => return Highest;",
+        "         when Random_Values =>",
+        "            Count := Natural (Uniform",
+        "              ((if All_F then 0 else 1), Unsigned_64 (N_Digits)));",
+        "            for I in 1 .. N_Digits loop",
+        "               X := Shift_Left (X, 4)",
+        "                 or (if I <= Count then Uniform (0, 9) else 15);",
+        "            end loop;",
+        "            return X;",
+        "      end case;",
+        "   end Choose_BCD;",
+        "",
         "   --  A valid code of the variable, by the value mode",
         "   function Pick (Var : Variable_T) return Unsigned_64 is",
         "   begin",
@@ -2145,7 +2480,19 @@ def gen_random_body(variables, packets, conds, loops):
                               if not v.min <= x <= v.max)
                           | v.interesting)
         L.append("         when %s =>" % n)
-        if v.signed:
+        if v.bcd:
+            stmt(L, 12, "return Choose_BCD (%d, %d, %s);"
+                 % (v.digits, v.highest_valid(),
+                    "True" if v.is_valid((1 << v.bits) - 1) else "False"))
+        elif v.spare:
+            if specials:
+                sp = "(%s)" % ", ".join("%d => %d" % (i + 1, x)
+                                         for i, x in enumerate(specials))
+            else:
+                sp = "(1 .. 0 => 0)"
+            stmt(L, 12, "return Choose_Valid (%s, %d, %d, %s);"
+                 % (n, v.lowest_valid(), v.highest_valid(), sp))
+        elif v.signed:
             stmt(L, 12, "return Choose_Signed (%d, %d, %d);"
                  % (v.min, v.max, v.bits))
         else:
@@ -2187,6 +2534,7 @@ def gen_random_body(variables, packets, conds, loops):
         "                             OK : out Boolean);",
         "      with function Length (P : Packet_T) return Natural;",
         "      with procedure Set_Length (P : in out Packet_T; L : Natural);",
+        "      with function Valid (P : Packet_T) return Boolean;",
         "   procedure Generic_Round_Trip (Result : out Result_T;",
         "                                 Bits   : out Natural);",
         "",
@@ -2217,7 +2565,9 @@ def gen_random_body(variables, packets, conds, loops):
         "         Result := Length_Differs;",
         "      else",
         "         Set_Length (P, Length (Q));",
-        "         Result := (if P = Q then Passed else Record_Differs);",
+        "         Result := (if P /= Q then Record_Differs",
+        "                    elsif not Valid (Q) then Not_Valid",
+        "                    else Passed);",
         "      end if;",
         "   end Generic_Round_Trip;",
         "",
@@ -2249,7 +2599,7 @@ def gen_random_body(variables, packets, conds, loops):
             "     (%s.Packet_T, %s, Fill_%s," % (
                 pk, "True" if p.has_length else "False", k),
             "      %s.Encode, %s.Decode," % (pk, pk),
-            "      Length_%s, Set_Length_%s);" % (k, k),
+            "      Length_%s, Set_Length_%s, %s.Valid);" % (k, k, pk),
             "",
         ]
     L += [

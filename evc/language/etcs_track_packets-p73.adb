@@ -12,6 +12,38 @@ package body ETCS_Track_Packets.P73
   with SPARK_Mode => On
 is
 
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.Q_TEXTCLASS)
+      and then Is_Valid (P.Q_TEXTDISPLAY)
+      and then Is_Valid (P.D_TEXTDISPLAY)
+      and then Is_Valid (P.M_MODETEXTDISPLAY)
+      and then Is_Valid (P.M_LEVELTEXTDISPLAY)
+      and then (if P.Has_NID_NTC then Is_Valid (P.NID_NTC))
+      and then Is_Valid (P.L_TEXTDISPLAY)
+      and then Is_Valid (P.T_TEXTDISPLAY)
+      and then Is_Valid (P.M_MODETEXTDISPLAY_2)
+      and then Is_Valid (P.M_LEVELTEXTDISPLAY_2)
+      and then (if P.Has_NID_NTC_2 then Is_Valid (P.NID_NTC_2))
+      and then Is_Valid (P.Q_TEXTCONFIRM)
+      and then (if P.Has_Q_CONFTEXTDISPLAY
+                then Is_Valid (P.Q_CONFTEXTDISPLAY)
+                     and then Is_Valid (P.Q_TEXTREPORT)
+                     and then (if P.Has_NID_TEXTMESSAGE
+                               then Is_Valid (P.NID_TEXTMESSAGE)
+                                    and then Is_Valid (P.NID_C)
+                                    and then Is_Valid (P.NID_RBC)))
+      and then Is_Valid (P.L_TEXT)
+      and then (for all I1 in 1 .. Natural (P.L_TEXT) =>
+                  Is_Valid (P.X_TEXT_List (I1))));
+
    ------------
    -- Decode --
    ------------

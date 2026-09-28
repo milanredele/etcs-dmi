@@ -11,6 +11,15 @@ package body ETCS_Train_Packets.P5
   with SPARK_Mode => On
 is
 
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.NID_OPERATIONAL));
+
    ------------
    -- Decode --
    ------------

@@ -11,6 +11,29 @@ package body ETCS_Train_Packets.P0
   with SPARK_Mode => On
 is
 
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.NID_C)
+      and then Is_Valid (P.NID_BG)
+      and then Is_Valid (P.D_LRBG)
+      and then Is_Valid (P.Q_DIRLRBG)
+      and then Is_Valid (P.Q_DLRBG)
+      and then Is_Valid (P.L_DOUBTOVER)
+      and then Is_Valid (P.L_DOUBTUNDER)
+      and then Is_Valid (P.Q_INTEGRITY)
+      and then (if P.Has_L_TRAININT then Is_Valid (P.L_TRAININT))
+      and then Is_Valid (P.V_TRAIN)
+      and then Is_Valid (P.Q_DIRTRAIN)
+      and then Is_Valid (P.M_MODE)
+      and then Is_Valid (P.M_LEVEL)
+      and then (if P.Has_NID_NTC then Is_Valid (P.NID_NTC)));
+
    ------------
    -- Decode --
    ------------

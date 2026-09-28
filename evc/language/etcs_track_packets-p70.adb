@@ -87,6 +87,47 @@ is
       end if;
    end Encode_D_SUITABILITY_Item;
 
+   --  Valid of one item of D_SUITABILITY_List
+   function Valid_D_SUITABILITY_Item
+     (E1 : D_SUITABILITY_Item) return Boolean
+   is (Is_Valid (E1.D_SUITABILITY)
+       and then Is_Valid (E1.Q_SUITABILITY)
+       and then (if E1.Has_M_LINEGAUGE then Is_Valid (E1.M_LINEGAUGE))
+       and then (if E1.Has_M_LINEAXLELOADCAT
+                 then Is_Valid (E1.M_LINEAXLELOADCAT))
+       and then (if E1.Has_M_VOLTAGE
+                 then Is_Valid (E1.M_VOLTAGE)
+                      and then (if E1.Has_NID_CTRACTION
+                                then Is_Valid (E1.NID_CTRACTION))));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.Q_TRACKINIT)
+      and then (if P.Has_D_TRACKINIT then Is_Valid (P.D_TRACKINIT))
+      and then (if P.Has_D_SUITABILITY
+                then Is_Valid (P.D_SUITABILITY)
+                     and then Is_Valid (P.Q_SUITABILITY)
+                     and then (if P.Has_M_LINEGAUGE
+                               then Is_Valid (P.M_LINEGAUGE))
+                     and then (if P.Has_M_LINEAXLELOADCAT
+                               then Is_Valid (P.M_LINEAXLELOADCAT))
+                     and then (if P.Has_M_VOLTAGE
+                               then Is_Valid (P.M_VOLTAGE)
+                                    and then (if P.Has_NID_CTRACTION
+                                              then Is_Valid
+                                                     (P.NID_CTRACTION)))
+                     and then Is_Valid (P.N_ITER)
+                     and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                                 Valid_D_SUITABILITY_Item
+                                   (P.D_SUITABILITY_List (I1)))));
+
    ------------
    -- Decode --
    ------------

@@ -7,9 +7,10 @@
 --
 --  NID_PACKET of each direction to its kind; the name, clause and
 --  senders of every kind (7.4.1.1, 7.4.1.2, 7.3.3.10); a check
---  that decodes a packet of any kind (on the stack, the record is
---  dropped); and Skip, which passes over any packet with the
---  standard header of 7.3.3.2 by its L_PACKET, known or not.
+--  that decodes a packet of any kind and validates its values
+--  (on the stack, the record is dropped); and Skip, which passes
+--  over any packet with the standard header of 7.3.3.2 by its
+--  L_PACKET, known or not.
 
 with ETCS_Bits; use ETCS_Bits;
 
@@ -322,11 +323,15 @@ is
 
    --  Decode the packet of this kind at the position of R into a
    --  record on the stack, and drop it: OK when it decodes (see the
-   --  Decode of its package)
-   procedure Check (Kind : Known_Kind_T;
-                    R    : in out Reader;
-                    OK   : out Boolean)
-     with Post => (if OK then not Failed (R));
+   --  Decode of its package), Valid when it decodes and every
+   --  variable holds a value of 7.5, not a spare one (the Valid of
+   --  its package, SUBSET-026 3.16.1.1.1)
+   procedure Check (Kind  : Known_Kind_T;
+                    R     : in out Reader;
+                    OK    : out Boolean;
+                    Valid : out Boolean)
+     with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK);
 
    --  Pass over the packet at the position of R by its L_PACKET:
    --  OK when its header is complete, L_PACKET is at least the

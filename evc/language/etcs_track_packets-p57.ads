@@ -36,6 +36,12 @@ is
       T_CYCRQST     : T_CYCRQST_T := 0;
    end record;
 
+   --  Every variable read holds a value of 7.5, not a spare one
+   --  (Is_Valid of its type; SUBSET-026 3.16.1.1.1): those of the
+   --  packet, of the conditional blocks present and of the items of
+   --  its loops. Decode does not check it.
+   function Valid (P : Packet_T) return Boolean;
+
    procedure Decode (R  : in out Reader;
                      P  : out Packet_T;
                      OK : out Boolean)

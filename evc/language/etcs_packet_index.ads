@@ -8,9 +8,11 @@
 --  the memory model of the codec).
 --
 --  Scan reads the header of the next packet (7.3.3.2), checks that the
---  packet is complete and that a known packet decodes in exactly its
---  L_PACKET bits, and passes over it; an unknown packet is passed over
---  by its L_PACKET (7.3.3.4 leaves the reaction to the caller). Packet 0
+--  packet is complete, that a known packet decodes in exactly its
+--  L_PACKET bits and that its variables hold values of 7.5, not spare
+--  ones (3.16.1.1.1: the use of a spare value is not compliant), and
+--  passes over it; an unknown packet is passed over by its L_PACKET
+--  (7.3.3.4 leaves the reaction to the caller). Packet 0
 --  of the track to train direction has no L_PACKET (7.3.3.5): its length
 --  is what it decodes to. Packet 255 of that direction ends the string
 --  (7.4.2.39).
@@ -40,7 +42,8 @@ is
       End_Of_Data,   -- packet 255 (track to train) at E.Offset
       Truncated,     -- the header or the packet goes past the limit
       Bad_Length,    -- L_PACKET shorter than the header
-      Undecodable);  -- a known packet that does not decode in L_PACKET
+      Undecodable,   -- a known packet that does not decode in L_PACKET
+      Invalid_Value);  -- a known packet with a spare value (3.16.1.1.1)
 
    procedure Scan (Direction : Direction_T;
                    R         : in out Reader;
