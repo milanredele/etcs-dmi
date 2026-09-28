@@ -541,6 +541,12 @@ shows intervention where the mock shows a picture no compliant on-board
 would. The bench keeps the mock until E4 gives the on-board its modes;
 then the on-board drives the DMI.
 
+**Cross build**: 512 kB code, 13.5 kB data, 183 kB static state on the
+TMS570LC43x (of 4 MB flash and 512 kB RAM). The state grew with the
+96-element stores in 64-bit distances; E8 decides whether 32-bit
+distances in the stores (the frame never exceeds ±2⁴⁰ cm but the stores
+never need it) or smaller bounds are the way to trim it.
+
 **Matrix E3**: 393 `done`, 28 `partial`, 76 `deferred` of 497 before the
 follow-up. The partial rows wait on E4 (modes, trip, data entry: 13
 rows), E5 (level 2 parts and the MA request: 9), E6 and E7 (6).
