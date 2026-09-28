@@ -16,10 +16,15 @@
 --  restrictive value anywhere in the segment:
 --    - Gradient: 3.13.4.2, the lowest gradient under a fictive train
 --      whose front end is in the segment ([front - L_TRAIN, front]);
---      where the gradient profile gives nothing, 0 (3.13.4.1.3 b);
+--      where the gradient profile gives nothing (before its first
+--      segment, and its segments not Covered), 0 (3.13.4.1.3 b);
 --    - A_Gradient: 3.13.4.3.2, g * grad / (1000 + 10 * M_rotating),
 --      in 1e-5 m/s² (EVC_Braking), rounded down (M_rotating_max uphill,
 --      _min downhill, or the nominal one);
+--    - Gradient_TSR, A_Gradient_TSR: the same for the curves of a
+--      target due to a TSR, with the default gradient for TSR where the
+--      gradient profile gives nothing, when one is stored (3.13.4.1.2,
+--      3.13.4.1.3 a);
 --    - Reduced: 3.13.5.3 to 3.13.5.5, the segment meets a reduced
 --      adhesion area extended by the train length, or the driver
 --      selected "slippery rail";
@@ -27,6 +32,9 @@
 --      starts in or before the segment (the inhibition then holds up to
 --      the foot of any curve, which is always beyond the segments a
 --      curve walks). Areas the min safe rear end has left are ignored.
+--      A powerless section (3.13.2.3.4.1) inhibits the regenerative
+--      brake when it needs the catenary (3.12.1.3.3, the configuration
+--      Regenerative_Needs_Catenary).
 --  The size is bounded by the snapshot: Max_Points segments, the work
 --  of Build by the product of the profile sizes (a few 10^4 steps).
 
@@ -51,6 +59,8 @@ is
       Start      : Dist_T := -Max_Cm;
       Gradient   : Gradient_T := 0;
       A_Gradient : Gradient_Accel_T := 0;
+      Gradient_TSR   : Gradient_T := 0;
+      A_Gradient_TSR : Gradient_Accel_T := 0;
       Reduced    : Boolean := False;
       Inhibited  : Inhibitions_T := (others => False);
    end record;

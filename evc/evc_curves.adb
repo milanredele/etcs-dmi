@@ -14,11 +14,17 @@ is
    function Deceleration (M      : Model_T;
                           P      : Profile_T;
                           Kind   : Kind_T;
+                          TSR    : Boolean;
                           Seg    : Point_Index;
                           W      : Square_T;
                           Rising : Boolean) return Decel_Step_T
    is
       Pt : Point_T renames P.Points (Seg);
+      --  3.13.4.1.3: the gradient of a curve of a target due to a TSR
+      A_Grad : constant Gradient_Accel_T :=
+        (if TSR then Pt.A_Gradient_TSR else Pt.A_Gradient);
+      Grad   : constant Gradient_T :=
+        (if TSR then Pt.Gradient_TSR else Pt.Gradient);
    begin
       case Kind is
          when EBD =>
@@ -35,7 +41,7 @@ is
                if Pt.Reduced and then M.Redadh_Use = Limit then
                   A := Min (A, M.Redadh);
                end if;
-               return (A => A + Pt.A_Gradient, W_Lo => L.W_Lo,
+               return (A => A + A_Grad, W_Lo => L.W_Lo,
                        W_Hi => L.W_Hi);
             end;
          when SBD =>
@@ -46,7 +52,7 @@ is
                  Lookup (M.Service (Service_Combination (M, Pt.Inhibited)),
                          W, Rising);
             begin
-               return (A => L.Value + Pt.A_Gradient, W_Lo => L.W_Lo,
+               return (A => L.Value + A_Grad, W_Lo => L.W_Lo,
                        W_Hi => L.W_Hi);
             end;
          when GUI =>
@@ -59,12 +65,12 @@ is
                            (Service_Combination (M, Pt.Inhibited)),
                          W, Rising);
                K  : constant Lookup_T :=
-                 Lookup ((if Pt.Gradient > 0 then M.Kn_Plus
+                 Lookup ((if Grad > 0 then M.Kn_Plus
                           else M.Kn_Minus), W, Rising);
                Kn : constant Num := Min (K.Value, Max_Model_Decel);
             begin
-               return (A    => L.Value + Pt.A_Gradient
-                                 - Div_Ceil (Kn * Num (Pt.Gradient), 1000),
+               return (A    => L.Value + A_Grad
+                                 - Div_Ceil (Kn * Num (Grad), 1000),
                        W_Lo => Max (L.W_Lo, K.W_Lo),
                        W_Hi => Min (L.W_Hi, K.W_Hi));
             end;
@@ -99,6 +105,7 @@ is
    procedure Walk_Back (M      : Model_T;
                         P      : Profile_T;
                         Kind   : Kind_T;
+                        TSR    : Boolean;
                         X      : in out Num;
                         W      : in out Num;
                         X_Goal : Num;
@@ -127,9 +134,9 @@ is
             Seg_Lo : constant Num :=
               Min (Max (P.Points (Seg).Start, X_Goal), X);
             Up     : constant Decel_Step_T :=
-              Deceleration (M, P, Kind, Seg, W, Rising => True);
+              Deceleration (M, P, Kind, TSR, Seg, W, Rising => True);
             Down   : constant Decel_Step_T :=
-              Deceleration (M, P, Kind, Seg, W, Rising => False);
+              Deceleration (M, P, Kind, TSR, Seg, W, Rising => False);
             Next   : Boolean := False;   -- the segment ends here
          begin
             if Up.A > 0 then
@@ -194,6 +201,7 @@ is
    procedure Walk_Forward (M      : Model_T;
                            P      : Profile_T;
                            Kind   : Kind_T;
+                           TSR    : Boolean;
                            X      : in out Num;
                            W      : in out Num;
                            X_Goal : Num;
@@ -225,9 +233,9 @@ is
                Seg_Hi : constant Num :=
                  Max (Min (Segment_End (P, Seg), X_Goal), X);
                Up_D   : constant Decel_Step_T :=
-                 Deceleration (M, P, Kind, Seg, W, Rising => True);
+                 Deceleration (M, P, Kind, TSR, Seg, W, Rising => True);
                Down_D : constant Decel_Step_T :=
-                 Deceleration (M, P, Kind, Seg, W, Rising => False);
+                 Deceleration (M, P, Kind, TSR, Seg, W, Rising => False);
                Up     : constant Decel_Step_T :=
                  (A => Forward (Up_D.A), W_Lo => Up_D.W_Lo,
                   W_Hi => Up_D.W_Hi);
@@ -299,11 +307,11 @@ is
       Done : Boolean;
    begin
       if X <= C.Anchor then
-         Walk_Back (M, P, C.Kind, Here, W, X, Infinite_Square, Done);
+         Walk_Back (M, P, C.Kind, C.TSR, Here, W, X, Infinite_Square, Done);
          --  out of iterations: the lowest speed is the safe answer
          return (if Done and then Here = X then Speed_Of (W) else 0);
       else
-         Walk_Forward (M, P, C.Kind, Here, W, X, C.Floor_W, Done);
+         Walk_Forward (M, P, C.Kind, C.TSR, Here, W, X, C.Floor_W, Done);
          return (if Done and then Here <= X then Speed_Of (Max (W, C.Floor_W))
                  else Speed_Of (C.Floor_W));
       end if;
@@ -328,10 +336,10 @@ is
          if Stop > C.Anchor then
             return Stop - 1;
          end if;
-         Walk_Back (M, P, C.Kind, Here, W, Stop, Wanted, Done);
+         Walk_Back (M, P, C.Kind, C.TSR, Here, W, Stop, Wanted, Done);
          return (if Done and then W >= Wanted then Here else Stop - 1);
       else
-         Walk_Forward (M, P, C.Kind, Here, W, C.Anchor + Max_Forward,
+         Walk_Forward (M, P, C.Kind, C.TSR, Here, W, C.Anchor + Max_Forward,
                        Max (Wanted, C.Floor_W), Done);
          return (if Done and then W <= Max (Wanted, C.Floor_W) then Here
                  else C.Anchor);
@@ -344,6 +352,7 @@ is
 
    function Extremes (M            : Model_T;
                       P            : Profile_T;
+                      TSR          : Boolean;
                       X_From       : Num;
                       X_To         : Num;
                       Reduced_From : Num;
@@ -374,6 +383,8 @@ is
             Pt  : Point_T renames P.Points (I);
             Hi  : constant Num :=
               (if I < P.Count then P.Points (I + 1).Start else Max_Cm);
+            A_Grad : constant Gradient_Accel_T :=
+              (if TSR then Pt.A_Gradient_TSR else Pt.A_Gradient);
          begin
             if Pt.Start <= X_To and then Hi > X_From then
                declare
@@ -395,7 +406,7 @@ is
                            V : constant Num := EB.Steps (K).Value;
                            A : constant Num :=
                              (if Capped then Min (V, M.Redadh) else V)
-                             + Pt.A_Gradient;
+                             + A_Grad;
                         begin
                            EB_Min := Min (EB_Min, V);
                            Safe_Max := Max (Safe_Max,
@@ -413,7 +424,7 @@ is
                            SB_Min := Min (SB_Min, V);
                            Exp_Max :=
                              Max (Exp_Max,
-                                  Min (Max (Forward (V + Pt.A_Gradient), 0),
+                                  Min (Max (Forward (V + A_Grad), 0),
                                        Big));
                         end;
                      end if;

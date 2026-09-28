@@ -42,12 +42,17 @@ is
    type Target_Kind_T is (MRSP_Target, LOA_Target, EOA_Target, SR_Target);
 
    --  Location: the MRSP element start, the LOA, the SvL, the SR end;
-   --  EOA: the EOA of an EOA_Target (ahead coordinates, EVC_Profile)
+   --  EOA: the EOA of an EOA_Target (ahead coordinates, EVC_Profile).
+   --  3.13.1.5: the EOA and the SvL of an EOA_Target are the closest of
+   --  those of the MA and the temporary ones (Snapshot_T.Temporary);
+   --  TSR: an MRSP target due to a TSR (3.13.4.1.3 a, the MRSP's TSR
+   --  flag), whose curves take the default gradient for TSR
    type Target_T is record
       Kind     : Target_Kind_T := MRSP_Target;
       Location : Dist_T := 0;
       EOA      : Dist_T := 0;
       Speed    : Speed_T := 0;
+      TSR      : Boolean := False;
    end record;
 
    ---------------------------------------------------------------------
@@ -176,7 +181,9 @@ is
    --  in static memory, not on the stack)
    ---------------------------------------------------------------------
 
-   Max_Targets : constant := Max_Speed_Segments + 2;
+   --  the MRSP elements, the LOA, the EOA (and a temporary EOA beside
+   --  an LOA, 3.13.1.5), the end of the SR distance
+   Max_Targets : constant := Max_Speed_Segments + 3;
    subtype Target_Count_T is Natural range 0 .. Max_Targets;
    type Target_Array is array (1 .. Max_Targets) of Target_T;
 
@@ -186,6 +193,7 @@ is
    type Element_T is record
       Start : Dist_T := 0;
       Speed : Speed_T := 0;
+      TSR   : Boolean := False;
    end record;
    type Element_Array is array (1 .. Max_Speed_Segments) of Element_T;
 

@@ -58,11 +58,15 @@ is
       Anchor_W : Square_T := 0;
       --  the square of the target speed, at most Anchor_W
       Floor_W  : Square_T := 0;
+      --  the curve of a target due to a TSR: the gradients where the
+      --  gradient profile gives nothing are the default gradient for TSR
+      --  (EVC_Profile.Gradient_TSR, 3.13.4.1.3 a)
+      TSR      : Boolean := False;
    end record;
 
-   --  The deceleration of the curve Kind in the segment Seg of the
-   --  profile for W, and the squares bounding the step it holds for
-   --  (EVC_Braking.Lookup)
+   --  The deceleration of the curve Kind (of a target due to a TSR: TSR)
+   --  in the segment Seg of the profile for W, and the squares bounding
+   --  the step it holds for (EVC_Braking.Lookup)
    --  1e-5 m/s² (EVC_Braking)
    subtype Walk_Accel_T is Num range -20_000_000 .. 20_000_000;
    type Decel_Step_T is record
@@ -74,6 +78,7 @@ is
    function Deceleration (M      : Model_T;
                           P      : Profile_T;
                           Kind   : Kind_T;
+                          TSR    : Boolean;
                           Seg    : Point_Index;
                           W      : Square_T;
                           Rising : Boolean) return Decel_Step_T
@@ -112,7 +117,8 @@ is
           Post => Location_Of'Result in -Max_Cm .. Max_Cm + Max_Forward;
 
    --  A.3.12.2.2 to .5: the extreme decelerations along [X_From, X_To]
-   --  (ahead coordinates) for the speeds V_EB_Lo .. V_EB_Hi (the
+   --  (ahead coordinates; the gradients of a target due to a TSR: TSR)
+   --  for the speeds V_EB_Lo .. V_EB_Hi (the
    --  emergency brake) and V_SB_Lo .. V_SB_Hi (the service brake), 1e-5
    --  m/s²: the lowest A_brake_safe (limited by A_MAXREDADH when reduced
    --  adhesion applies anywhere from Reduced_From to X_To), the highest
@@ -129,6 +135,7 @@ is
 
    function Extremes (M            : Model_T;
                       P            : Profile_T;
+                      TSR          : Boolean;
                       X_From       : Num;
                       X_To         : Num;
                       Reduced_From : Num;

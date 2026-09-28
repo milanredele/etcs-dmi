@@ -25,7 +25,8 @@
 --  with Q_SCALE to cm, times to ms, the factors (M_NVKVINT 0.02,
 --  M_NVKRINT, M_NVKTINT and M_NVAVADH 0.05) to thousandths, the
 --  decelerations (0.05 m/s²) to mm/s²; "no maximum deceleration"
---  (A_NVMAXREDADHx 61 to 63) is Decel_Mms2_T'Last, an infinite
+--  (A_NVMAXREDADHx 61 to 63) is Decel_Mms2_T'Last, with the special
+--  value kept in Redadh_Use for what the DMI displays, an infinite
 --  D_NVROLL, D_NVSTFF or T_NVCONTACT the largest value of its type. The
 --  steps of Kv_int and Kr_int keep the first Max_Kv_Steps (the SRS
 --  allows five, 3.13.2.3.7.11.1 and .12.1).
@@ -59,6 +60,10 @@ is
       T_NVCONTACT      : Time_Ms_T := Time_Ms_T'Last;
       M_NVDERUN        : Boolean := True;
       Q_NVLOCACC       : Length_T := 1_200;
+      --  the use of A_NVMAXREDADH1 .. 3: a limit, or the special value
+      --  61, 62 or 63 of 7.5.0.1 to 7.5.0.3 (no maximum deceleration and
+      --  what is displayed in CSM); A.3.2 gives limits
+      Redadh_Use       : Redadh_Uses_T := (others => Limit);
       --  received from the trackside (not the defaults), for these
       --  countries or regions
       From_Trackside   : Boolean := False;

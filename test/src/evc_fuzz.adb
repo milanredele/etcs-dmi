@@ -693,6 +693,7 @@ procedure EVC_Fuzz is
          for K in 1 .. S.MRSP.Count loop
             S.MRSP.Segments (K) :=
               (Start => Start, Speed => Pick (0, 10_000));
+            S.MRSP.TSR (K) := Chance (20);
             Start := (if Chance (95) then Start + Pick_Cm (1, 300_000)
                       else Pick_Cm (-2_000_000, 2_000_000));
          end loop;
@@ -702,9 +703,12 @@ procedure EVC_Fuzz is
       declare
          Start : EVC_Distances.Cm_T := X - Pick_Cm (0, 500_000);
       begin
+         S.Gradients.Has_Default_TSR := Chance (40);
+         S.Gradients.Default_TSR := Pick (0, 510) - 255;
          for K in 1 .. S.Gradients.Count loop
             S.Gradients.Segments (K) :=
               (Start => Start, Gradient => Pick (0, 510) - 255);
+            S.Gradients.Covered (K) := Chance (85);
             Start := Start + Pick_Cm (1, 300_000);
          end loop;
       end;
@@ -727,7 +731,9 @@ procedure EVC_Fuzz is
       S.Inhibitions.Count := Pick (0, (if Big then 32 else 3));
       for K in 1 .. S.Inhibitions.Count loop
          S.Inhibitions.Areas (K) :=
-           (Kind   => SI.Brake_Inhibition_T'Val (Pick (0, 3)),
+           (Kind   => SI.Brake_Inhibition_T'Val
+                        (Pick (0, SI.Brake_Inhibition_T'Pos
+                                    (SI.Brake_Inhibition_T'Last))),
             Start  => X + Pick_Cm (-100_000, 1_000_000),
             Finish => X + Pick_Cm (-100_000, 1_000_000));
       end loop;
@@ -738,6 +744,20 @@ procedure EVC_Fuzz is
             Finish => X + Pick_Cm (-100_000, 1_000_000));
       end loop;
       S.Adhesion.Driver_Slippery := Chance (10);
+      --  a temporary EOA and SvL (3.13.1.5)
+      if Chance (25) then
+         declare
+            E : constant EVC_Distances.Cm_T :=
+              X + Pick_Cm (-10_000, 1_500_000);
+         begin
+            S.Temporary :=
+              (Present => True,
+               EOA     => E,
+               Has_SvL => Chance (70),
+               SvL     => (if Chance (90) then E + Pick_Cm (0, 30_000)
+                           else E - Pick_Cm (0, 30_000)));
+         end;
+      end if;
 
       S.Extra.Config.Service_Brake_Command := Chance (85);
       S.Extra.Config.Service_Brake_Feedback := Chance (30);
@@ -749,6 +769,7 @@ procedure EVC_Fuzz is
            SI.Special_Brake_Interface_T'Val (Pick (0, 3));
       end loop;
       S.Extra.Config.Additional_Brake_Allowed := Chance (30);
+      S.Extra.Config.Regenerative_Needs_Catenary := Chance (70);
       S.Extra.Train.T_Brake_Emergency_React := Pick (0, 20_000);
       S.Extra.Train.T_Brake_Service_React := Pick (0, 20_000);
       S.Extra.Train.Kn_Plus := Random_Curve;
@@ -763,9 +784,9 @@ procedure EVC_Fuzz is
       end loop;
       S.Extra.National.Redadh_Use (Pick (1, 3)) :=
         SI.Redadh_Use_T'Val (Pick (0, 3));
-      S.Extra.National.A_NVP12 := Pick (0, 3_000);
-      S.Extra.National.A_NVP23 := Pick (0, 3_000);
-      S.Extra.National.Kv_Int_Passenger_B := Random_Kv;
+      S.National.A_NVP12 := Pick (0, 3_000);
+      S.National.A_NVP23 := Pick (0, 3_000);
+      S.National.Kv_Int_Passenger_B := Random_Kv;
       S.Extra.Trip_Margin := Pick_Cm (0, 10_000);
       S.Extra.T_MAR := (if Chance (30) then Pick (0, 60_000) else 0);
       S.Extra.SR_Distance := Chance (10);
@@ -836,7 +857,8 @@ procedure EVC_Fuzz is
    --  kinds, on a train running over balise groups. Every cycle the
    --  MRSP must be sorted and below its sources, the SvL not before the
    --  EOA, no envelope check may fail (the proof says so; this is the
-   --  check by execution).
+   --  check by execution), no gradient where the profile gives nothing;
+   --  the supervision on this snapshot is checked as on the random ones.
    ---------------------------------------------------------------------
 
    E3_Kinds : constant array (1 .. 15) of Cat.Known_Kind_T :=
@@ -1029,6 +1051,14 @@ procedure EVC_Fuzz is
                Violation ("E3: the MRSP not sorted ahead", Step);
             end if;
          end loop;
+         for K in 1 .. S.Gradients.Count loop
+            if not S.Gradients.Covered (K)
+              and then S.Gradients.Segments (K).Gradient /= 0
+            then
+               Violation ("E3: a gradient where the profile gives nothing",
+                          Step);
+            end if;
+         end loop;
          if S.MA.Present then
             E3_MAs := E3_MAs + 1;
          end if;
@@ -1092,6 +1122,9 @@ procedure EVC_Fuzz is
                      end loop;
                   end;
                   Check_Snapshot (Step);
+                  --  the supervision on the snapshot of the stored
+                  --  information
+                  Check_Supervision (Step);
                end;
             end loop;
          exception

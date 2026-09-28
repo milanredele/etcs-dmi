@@ -47,6 +47,14 @@ is
      (if Code >= 61 then Decel_Mms2_T'Last else Decel_Mms2_T (Code * 50))
      with Pre => Code <= 63;
 
+   --  7.5.0.1 to 7.5.0.3: the special values of A_NVMAXREDADHn
+   function Use_Of (Code : Natural) return Redadh_Use_T is
+     (case Code is
+         when 61     => Target_Information,
+         when 62     => Time_To_Indication,
+         when 63     => No_Limit,
+         when others => Limit);
+
    --  L_NVKRINT (7.5.1.48.1): 0, 25, 50, 75, 100, 150, 200, then 100 m
    --  steps up to 2700 m
    function Kr_Length (Code : L_NVKRINT_T) return Length_T is
@@ -142,6 +150,9 @@ is
       V.A_NVMAXREDADH1 := Decel (Natural (P.A_NVMAXREDADH1));
       V.A_NVMAXREDADH2 := Decel (Natural (P.A_NVMAXREDADH2));
       V.A_NVMAXREDADH3 := Decel (Natural (P.A_NVMAXREDADH3));
+      S.Redadh_Use := (Use_Of (Natural (P.A_NVMAXREDADH1)),
+                       Use_Of (Natural (P.A_NVMAXREDADH2)),
+                       Use_Of (Natural (P.A_NVMAXREDADH3)));
       S.Q_NVLOCACC := Metres (Natural (P.Q_NVLOCACC));
       V.M_NVAVADH := Factor (Natural (P.M_NVAVADH), 50);
       V.M_NVEBCL := Natural'Min (Natural (P.M_NVEBCL), 9);

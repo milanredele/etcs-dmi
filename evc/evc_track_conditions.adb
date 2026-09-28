@@ -448,6 +448,7 @@ is
                                when 10     =>
                                  Eddy_Current_Emergency_Inhibited,
                                when 8      => Magnetic_Shoe_Inhibited,
+                               when 3 | 9  => Powerless_Section,
                                when others => Regenerative_Inhibited),
                   Start  => Frame (T, E.Start, Max_Item),
                   Finish => Advance (Frame (T, E.Finish, Min_Item), Ahead,

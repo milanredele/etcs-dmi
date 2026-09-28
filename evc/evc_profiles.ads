@@ -112,6 +112,11 @@ is
       Length     : Length_T := 0;
       Speed      : Natural := 0;   -- estimated, cm/s
       Standstill : Boolean := True;
+      --  the reference of the confidence interval, the SOLR: the frame
+      --  position of its location reference and its location accuracy
+      --  (3.6.4.1.3), for the trip location of 3.13.9.4.8.2
+      Ref_X      : Dist_T := 0;
+      Ref_Locacc : Length_T := 0;
    end record;
 
    --  A group message being evaluated: the origin of its distances (0:

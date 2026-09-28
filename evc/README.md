@@ -22,7 +22,6 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 | `EVC_Linking` | The linking information of packet 5 as a chain of cumulated distances (3.4.4, 3.6.3.2.6). |
 | `EVC_Location` | Reference balise groups as anchors in the odometer frame, the confidence interval against them (3.6.4.1), location items and their relocation to the SOLR (3.6.4.2.5). |
 | `EVC_Position` | The train position: orientation from the cab status, LRBG, SOLR, ORBGs, expectation windows and linking reactions, geographical position, the content of the position report and its triggers; the events for the JRU and the later phases. |
-| `EVC_Supervision_Input` | The boundary of the two halves of phase E3: `Snapshot_T`, what the speed and distance monitoring reads each cycle (types only). |
 | `EVC_Origins` | The origins of the stored location based information: per group message its location reference as the three location items of Table 2a, relocated by `EVC_Position` with its own items (3.6.4.2.5). |
 | `EVC_Profiles` | Locations of the stored information as offsets from an origin; stores of elements with replacement (3.7.3.1), deletion in rear (A.3.1) and coverage (3.7.2.3); the lower envelope of elements, proved sorted and never above any element (the MRSP of 3.13.7, the gradient profile). |
 | `EVC_Train_Data` | The Train Data the stored information and the supervision use, with a documented default train (entry from the DMI: phase E4). |
@@ -30,14 +29,15 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 | `EVC_Track_Description` | SSP with the train categories, gradients, ASP, TSR and their revocation, default gradient for TSR, level crossings, adhesion, route suitability (3.7.3, 3.11, 3.12.2, 3.12.5). |
 | `EVC_Movement_Authority` | The level 1 MA: sections, danger point, overlap, EOA/SvL and release speed (3.8.3, 3.8.4.5), the section, End Section, overlap and LOA timers and their effects (3.8.4), the signalling related speed restriction (3.11.6), the mode profile (3.12.4). |
 | `EVC_Track_Conditions` | Track conditions of packets 68, 39 and 67, their indication (5.18) and planning orders, the areas of lost braking (3.13.2.3.4). |
-| `EVC_Stored_Information` | The third step of the cycle: the group messages of the cycle, the deletions of A.3.4, the `Snapshot_T` (MRSP, gradients, MA, braking and adhesion areas, temporary EOA), the planning and the track conditions for the DMI, the JRU records. |
+| `EVC_Stored_Information` | The third step of the cycle: the group messages of the cycle, the deletions of A.3.4, the `Snapshot_T` (MRSP with its TSR flags, gradients with their coverage and the default gradient for TSR, MA, braking inhibitions and powerless sections, adhesion areas, temporary EOA and SvL, `Extra`: the configuration of the on-board, the use of A_NVMAXREDADHn, the trip margin), the planning and the track conditions for the DMI, the JRU records. |
+| `EVC_Supervision_Input` | The boundary between the third and the fourth step (the two halves of phase E3): `Snapshot_T`, what the speed and distance monitoring reads each cycle (types only). |
 | `EVC_Fixed` | The integer arithmetic of the supervision: speeds in cm/s, squares of speeds, times in ms, divisions rounded down or up, integer square root, km/h conversions. |
 | `EVC_Braking` | The braking models of 3.13.2.2 and 3.13.6: the deceleration steps, A.3.7 (basic deceleration), A.3.8 / A.3.9 (conversion model), the correction factors (Kdry_rst, Kwet_rst, Kv_int, Kr_int, Kt_int, Kn), A_MAXREDADH, the special brakes and the combinations of Table 4; decelerations in 1e-5 m/s². |
-| `EVC_Profile` | The track under the curves (3.13.4, 3.13.5): segments of the gradient acceleration for the train length and the rotating mass, reduced adhesion and brake inhibitions, ahead of the train. |
+| `EVC_Profile` | The track under the curves (3.13.4, 3.13.5): segments of the gradient acceleration for the train length and the rotating mass (with the default gradient for TSR where the profile gives nothing, for the targets due to a TSR, 3.13.4.1.3), reduced adhesion, brake inhibitions and powerless sections, ahead of the train. |
 | `EVC_Curves` | The EBD, SBD and GUI of 3.13.8 as arcs of parabola in fixed point, rounded to the safe side; speed at a location, location of a speed, the extremes of A.3.12.2. |
 | `EVC_Limits` | The supervision limits of 3.13.9.3: the speed margins, EBI, SBI1 / SBI2, W, P, I and the permitted speed, from the curves and the times. |
 | `EVC_Build_Up` | The reduced brake build up times of A.3.12 (T_be_reduced, T_bs_reduced) in fixed point, never shorter than the formulas. |
-| `EVC_SDM` | The speed and distance monitoring of 3.13.10 and 3.13.11: the target list, the release speed (given or calculated, 3.13.9.4), CSM / TSM / RSM and their commands and statuses (Tables 5 to 16), the MRDT and the displayed values, the indication location, the service brake feedback (A.3.10), the pawl (A.3.13), the perturbation location. |
+| `EVC_SDM` | The speed and distance monitoring of 3.13.10 and 3.13.11: the target list (the EOA and SvL the closest of the MA's and the temporary ones, 3.13.1.5), the release speed (given or calculated, 3.13.9.4), CSM / TSM / RSM and their commands and statuses (Tables 5 to 16), the MRDT and the displayed values, the indication location, the service brake feedback (A.3.10), the pawl (A.3.13), the perturbation location. |
 | `EVC_Brake_Commands` | The brake command handling of 3.14: the SDM commands, the service brake failure (3.14.1.2), roll away and reverse movement protection (3.14.2, 3.14.3) with D_NVROLL and the acknowledgement at standstill; the TIU outputs (EB, SB, TCO). |
 
 The ERTMS/ETCS language (SUBSET-026 chapters 7 and 8) is in `language/`:
@@ -77,40 +77,45 @@ orientation and computes the geographical position (MSG_STATUS to the
 DMI). It detects and reports (queries, JRU events 4 to 10): reacting on a
 linking error, an impaired odometer or a cold movement is phases E3 and E4,
 sending the position report E5.
-Phase E3, stored information (`e3/profiles`): the third step of the
-cycle takes the balise groups the position took into account, converts
-their location based information into offsets from an origin that
-relocation moves (3.6.4.2), stores it with the replacement rules of 3.7.3,
-runs the timers of the MA of level 1 (3.8.4) and the deletions they ask
-(A.3.4), and builds the `Snapshot_T` for the supervision: the MRSP of
-3.13.7 (proved sorted and never above any of its sources), the gradient
-profile, the MA with its EOA, SvL (never before the EOA) and release
-speed, the braking and adhesion areas, national values and Train Data.
-It sends MSG_PLANNING while an MA is supervised and MSG_TRACK_COND when
-the indications of 5.18 change, and records event 32 on the JRU. Level
-and mode filters (4.8), the reactions (trip, route suitability) and the
-data entry are phase E4.
-
-Phase E3 (supervision half): the fourth step of the cycle,
-`Monitor_Speed_And_Distance`, reads the snapshot of the stored
-information (`EVC_Supervision_Input.Snapshot_T`, filled by the profiles
-half) and runs `EVC_SDM.Step` and `EVC_Brake_Commands.Step`. The outputs
+Phase E3 (the stored information and the supervision, joined on
+`e3/integrate`): the third step of the cycle takes the balise groups the
+position took into account, converts their location based information
+into offsets from an origin that relocation moves (3.6.4.2), stores it
+with the replacement rules of 3.7.3, runs the timers of the MA of level 1
+(3.8.4) and the deletions they ask (A.3.4), and builds the `Snapshot_T`:
+the MRSP of 3.13.7 (proved sorted and never above any of its sources)
+with the segments due to a TSR, the gradient profile with its coverage
+and the default gradient for TSR, the MA with its EOA, SvL (never before
+the EOA) and release speed, the temporary EOA and SvL of a mode profile
+or a level crossing, the braking inhibition areas and powerless sections,
+the adhesion areas, national values, Train Data and the configuration of
+the on-board. It sends MSG_PLANNING while an MA is supervised and
+MSG_TRACK_COND when the indications of 5.18 change, and records event 32
+on the JRU. The fourth step, `Monitor_Speed_And_Distance`, runs
+`EVC_SDM.Step` and `EVC_Brake_Commands.Step` on that snapshot (the tests
+may set one in its place, `EVC_Core.Set_Snapshot_For_Test`). Its outputs
 are MSG_SPEED_STATE every cycle (speeds, distance to target, monitoring,
 status, release speed), the brake indication and the time to indication
 in MSG_STATUS, the TIU output (EB, SB, TCO and the reasons, see
 `EVC_Ports.TIU_Output`) when it changes and every cycle while a command
 is active, and the JRU events 20 (brake commands), 21 (supervision) and
-22 (the EOA or LOA, or the SvL, passed). Everything is in
-integers with the rounding to the safe side; `evc_test` compares the
-curves, limits, release speeds and reduced build up times with a floating
-point reference of the formulas. Tripping on an overrun, the procedures'
-brake reasons and the MA request are phases E4 and E5.
+22 (the EOA or LOA, or the SvL, passed). Everything is in integers with
+the rounding to the safe side; `evc_test` compares the curves, limits,
+release speeds and reduced build up times with a floating point
+reference of the formulas. Level and mode
+filters (4.8), tripping on an overrun, the reactions (trip, route
+suitability), the procedures' brake reasons, the data entry and the MA
+request are phases E4 and E5. Until the modes of E4 the on-board stays
+in Stand By, where the standstill supervision (4.4.7.1.5) brakes a train
+that moves more than D_NVROLL without an MA.
 
 Checks:
 
 ```
 evc/prove.sh           # gnatprove: flow and proof, no unproved check
 obj/evc_test           # golden runner (test/golden/evc/), UPDATE=1 records
+EVC_DUMP=dir obj/evc_test && test/tools/evc_dump.py --diff old.bin new.bin
+                       # what changed in the output of a golden
 obj/evc_fuzz           # random inputs, must end with raised: 0
 python3 evc/language/gen_language.py --check   # generated code up to date
 ```

@@ -172,6 +172,10 @@ is
       R.Min_Rear := Advance (R.Min_Front, Opposite (S), Length);
       R.Speed := Natural (EVC_Odometry.Speed);
       R.Standstill := EVC_Odometry.Standstill;
+      if R.Valid then
+         R.Ref_X := Solr.X;
+         R.Ref_Locacc := Solr.Locacc;
+      end if;
       return R;
    end Train_Frame;
 
@@ -575,9 +579,21 @@ is
       Grad_Src : Elements_T;
       G_Steps  : Steps_T;
       Checked  : Boolean;
+      Default_Known : constant Boolean :=
+        EVC_Track_Description.Default_Gradient_Known;
       Default_G : constant Gradient_T :=
-        (if EVC_Track_Description.Default_Gradient_Known
-         then EVC_Track_Description.Default_Gradient else 0);
+        (if Default_Known then EVC_Track_Description.Default_Gradient
+         else 0);
+      --  the value of the gradient envelope where no element of the
+      --  gradient profile is (3.13.4.1.3), above every gradient
+      Uncovered : constant Value_T := Gradient_T'Last + 1;
+      --  what the planning shows of a gradient step: where the profile
+      --  gives nothing, the default gradient for TSR or 0, as before the
+      --  supervision distinguished the targets
+      function Shown (V : Value_T) return Integer is
+        (if V = Uncovered then Default_G else V);
+      TSR_Flags : Segment_Flags_T := (others => False);
+      Covered_F : Gradient_Flags_T := (others => True);
       Movement : constant EVC_Ports.Movement_T := EVC_Odometry.Movement;
       Towards  : constant Sense_T :=
         (if Movement = EVC_Ports.Towards_Cab_B then Minus else Plus);
@@ -641,18 +657,26 @@ is
          Snap.MRSP.Segments (K) :=
            (Start => A (Ahead, Steps.List (K).Start),
             Speed => Speed_Cms_T (Steps.List (K).Value));
+         --  3.13.4.1.3 a): the step is due to a TSR
+         TSR_Flags (K) :=
+           EVC_Track_Description.TSR_Limits
+             (T, Ahead, Data.Length, Steps.List (K).Start,
+              Step_End (Steps, K), Steps.List (K).Value);
       end loop;
+      Snap.MRSP.TSR := TSR_Flags;
 
-      --  the gradients (3.11.12): the lowest where elements overlap, the
-      --  default gradient for TSR where none is (3.11.12.5)
+      --  the gradients (3.11.12): the lowest where elements overlap;
+      --  where none is, the segment is not covered (3.13.4.1.3: the
+      --  supervision takes the default gradient for TSR, 3.11.12.5, for a
+      --  target due to a TSR, else 0)
       Grad_Src := (Count => 0, List => (others => (others => <>)),
                    Lost => 0);
       EVC_Track_Description.Gradient_Elements (T, Ahead, Grad_Src);
       pragma Warnings
         (GNATprove, Off, """Grad_Src"" is set by ""Envelope"" but not used*",
          Reason => "only the steps of the gradients are kept");
-      Envelope (Grad_Src, Default => Default_G, Floor => -255,
-                Ceiling => 255, Capacity => Max_Gradient_Segments,
+      Envelope (Grad_Src, Default => Uncovered, Floor => -255,
+                Ceiling => Uncovered, Capacity => Max_Gradient_Segments,
                 P => G_Steps, Checked => Checked);
       if not Checked and then Failures < Natural'Last then
          Failures := Failures + 1;
@@ -665,10 +689,15 @@ is
             and then (for all K2 in 1 .. K - 1 =>
                         A (Ahead, Snap.Gradients.Segments (K2).Start)
                           = G_Steps.List (K2).Start));
+         Covered_F (K) := G_Steps.List (K).Value /= Uncovered;
          Snap.Gradients.Segments (K) :=
            (Start    => A (Ahead, G_Steps.List (K).Start),
-            Gradient => Gradient_T (G_Steps.List (K).Value));
+            Gradient => (if Covered_F (K)
+                         then Gradient_T (G_Steps.List (K).Value) else 0));
       end loop;
+      Snap.Gradients.Covered := Covered_F;
+      Snap.Gradients.Has_Default_TSR := Default_Known;
+      Snap.Gradients.Default_TSR := Default_G;
 
       --  the MA, the braking, the adhesion
       EVC_Movement_Authority.Authority (T, NV.V_NVREL, MA_R);
@@ -679,6 +708,31 @@ is
                         Driver_Slippery => Driver_Slippery);
       EVC_Track_Description.Adhesion_Areas (T, Ahead, Snap.Adhesion);
       Snap.Supervise := MA_R.Present and then EVC_Train_Data.Valid;
+
+      --  what 3.13 and 3.14 read beyond (EVC_Supervision_Input): the
+      --  configuration, the use of A_NVMAXREDADHn, the trip margin of
+      --  3.13.9.4.8.2 (2 Q_LOCACC of the SOLR + 10 m + 10 % of the
+      --  distance from it to the EOA; beta, the Supervised Manoeuvre
+      --  term, is phase E4); the others at their defaults
+      Snap.Extra := (Config      => Onboard_Config,
+                     Train       => (others => <>),
+                     National    =>
+                       (Redadh_Use =>
+                          EVC_National_Values.Current.Redadh_Use),
+                     Trip_Margin => 0,
+                     T_MAR       => 0,
+                     SR_Distance => False,
+                     SR_End      => 0);
+      if MA_R.Present and then Train.Valid then
+         declare
+            D : constant Dist_T :=
+              Diff (A (Ahead, MA_R.EOA), A (Ahead, Train.Ref_X));
+         begin
+            Snap.Extra.Trip_Margin :=
+              Add (Add (Train.Ref_Locacc, Train.Ref_Locacc),
+                   Add (1_000, (if D > 0 then D / 10 else 0)));
+         end;
+      end if;
 
       --  the temporary EOA and SvL: the nearest (3.12.2.5)
       declare
@@ -748,7 +802,7 @@ is
               (Start => 0,
                Value => Integer'Max
                  (-128, Integer'Min
-                    (127, Value_At (G_Steps, A (Ahead, Front)))));
+                    (127, Shown (Value_At (G_Steps, A (Ahead, Front))))));
             for K in 2 .. G_Steps.Count loop
                exit when Plan.Gradient_Count
                            = EVC_DMI_Port.Max_Planning_Gradients;
@@ -764,7 +818,8 @@ is
                                       A (Ahead, G_Steps.List (K).Start),
                                       32_000)),
                      Value => Integer'Max
-                       (-128, Integer'Min (127, G_Steps.List (K).Value)));
+                       (-128, Integer'Min
+                          (127, Shown (G_Steps.List (K).Value))));
                end if;
             end loop;
             --  the MRSP ahead up to the EOA, then the EOA or the LOA

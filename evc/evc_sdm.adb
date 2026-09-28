@@ -146,10 +146,11 @@ is
             --  below)
             Floor_W  => Min (Square (T.Speed),
                              Square (Min (T.Speed + Margin (EBI, T.Speed),
-                                          Max_Speed)))),
+                                          Max_Speed))),
+            TSR      => T.TSR),
          when EOA_Target | SR_Target =>
            (Kind => EBD, Anchor => T.Location, Anchor_W => 0,
-            Floor_W => 0))
+            Floor_W => 0, TSR => False))
      with Post => EBD_Of'Result.Floor_W <= EBD_Of'Result.Anchor_W;
 
    --  A.3.12.2.7, .8: T_traction_max
@@ -198,7 +199,7 @@ is
              Max_Speed);
       Zero  : constant Boolean := T.Kind in EOA_Target | SR_Target;
       Ext   : constant Extremes_T :=
-        Extremes (Work.Model, Work.Profile, C.X_Est,
+        Extremes (Work.Model, Work.Profile, T.TSR, C.X_Est,
                   (if EOA_Part then T.EOA else T.Location), C.X_Min,
                   V_EB_Lo => (if Zero then 0 else T.Speed),
                   V_EB_Hi => V_Bec,
@@ -320,11 +321,12 @@ is
          GUI_Curve := (Kind     => GUI,
                        Anchor   => Clamp (R.P_Target),
                        Anchor_W => Square (T.Speed),
-                       Floor_W  => Square (T.Speed));
+                       Floor_W  => Square (T.Speed),
+                       TSR      => T.TSR);
       else
          R.P_Target := T.Location;
          GUI_Curve := (Kind => GUI, Anchor => T.Location, Anchor_W => 0,
-                       Floor_W => 0);
+                       Floor_W => 0, TSR => T.TSR);
       end if;
       R.L := EBD_Limits (Work.Model, Work.Profile, Curve, T.Speed,
                          T.Location, C.GUI, GUI_Curve, Terms, C.X_Max,
@@ -332,9 +334,11 @@ is
       if T.Kind = EOA_Target then
          R.E := EOA_Limits
            (Work.Model, Work.Profile,
-            (Kind => SBD, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0),
+            (Kind => SBD, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0,
+             TSR => T.TSR),
             C.GUI,
-            (Kind => GUI, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0),
+            (Kind => GUI, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0,
+             TSR => T.TSR),
             Terms_E, C.X_Est, C.Stop);
       else
          R.E := R.L;
@@ -360,10 +364,10 @@ is
                   I_E : constant Limits_T := EOA_Limits
                     (Work.Model, Work.Profile,
                      (Kind => SBD, Anchor => T.EOA, Anchor_W => 0,
-                      Floor_W => 0),
+                      Floor_W => 0, TSR => T.TSR),
                      C.GUI,
                      (Kind => GUI, Anchor => T.EOA, Anchor_W => 0,
-                      Floor_W => 0),
+                      Floor_W => 0, TSR => T.TSR),
                      Terms_IE, C.X_Est, C.Stop);
                begin
                   R.E.I := Min (I_E.I, R.E.P);
@@ -721,7 +725,8 @@ is
       Serv  : constant Service_T :=
         Service_Times (C, Times.Bs, Times.Bs, False);
       EOA_SBD : constant Curve_T :=
-        (Kind => SBD, Anchor => EOA_T.EOA, Anchor_W => 0, Floor_W => 0);
+        (Kind => SBD, Anchor => EOA_T.EOA, Anchor_W => 0, Floor_W => 0,
+         TSR => False);
       MR    : Num := Max_Cm + Max_Forward;
    begin
       R.SBI1 := Location_Of (Work.Model, Work.Profile, EOA_SBD, V_R, C.Stop)
@@ -788,12 +793,14 @@ is
          T_Traction_Cut_Off => C.T_TCO);
       Far   : constant Dist_T := -Max_Cm + 1;
       No_GUI : constant Curve_T :=
-        (Kind => GUI, Anchor => T.Location, Anchor_W => 0, Floor_W => 0);
+        (Kind => GUI, Anchor => T.Location, Anchor_W => 0, Floor_W => 0,
+         TSR => T.TSR);
    begin
       if Use_SBD then
          return EOA_Limits
            (Work.Model, Work.Profile,
-            (Kind => SBD, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0),
+            (Kind => SBD, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0,
+             TSR => T.TSR),
             False, No_GUI, Terms, C.X_Est, Far).I;
       else
          return EBD_Limits
@@ -905,6 +912,9 @@ is
 
       --  the EOA target (0: none), and the target that is the MRDT
       EOA_Index  : Natural range 0 .. Max_Targets := 0;
+      --  the SvL of the EOA target is a temporary one: no release speed
+      --  (3.12.4.7, 3.12.5.8)
+      Temporary_SvL : Boolean := False;
 
       --  release speed monitoring (3.13.9.4.6)
       Start      : RSM_Start_T;
@@ -1012,7 +1022,11 @@ is
               or else X > Work.MRSP (Work.Elements).Start
             then
                Work.Elements := Work.Elements + 1;
-               Work.MRSP (Work.Elements) := (Start => X, Speed => Vk);
+               --  due to a TSR unless the mode related speed is lower
+               Work.MRSP (Work.Elements) :=
+                 (Start => X, Speed => Vk,
+                  TSR   => S.MRSP.TSR (K)
+                           and then Vk = Num (S.MRSP.Segments (K).Speed));
             end if;
          end;
       end loop;
@@ -1067,33 +1081,69 @@ is
                  (Kind     => MRSP_Target,
                   Location => Work.MRSP (K).Start,
                   EOA      => 0,
-                  Speed    => Work.MRSP (K).Speed);
+                  Speed    => Work.MRSP (K).Speed,
+                  TSR      => Work.MRSP (K).TSR);
             end if;
          end loop;
          pragma Assert (Work.Count <= Max_Speed_Segments);
-         --  b) the LOA, c) the EOA and the SvL
-         if S.MA.Present then
-            declare
-               EOA : constant Dist_T := EVC_Profile.Ahead_Of (S, S.MA.EOA);
-               SvL : constant Dist_T :=
-                 Max (EVC_Profile.Ahead_Of (S, S.MA.SvL), EOA);
-            begin
-               Work.Count := Work.Count + 1;
+         --  b) the LOA, c) the EOA and the SvL. 3.13.1.5: the EOA and the
+         --  SvL are the closest of those of the MA and of the temporary
+         --  EOA and SvL (3.12.2.5: the start of a mode profile, 3.12.4.7,
+         --  or of a level crossing not protected, 3.12.5.8), which have no
+         --  release speed: a temporary SvL supervised takes the release
+         --  speed away; without a temporary SvL the SvL of the MA holds
+         --  (3.12.4.7.1). An LOA stays a target beside a temporary EOA.
+         declare
+            Tmp   : Temporary_Target_T renames S.Temporary;
+            T_EOA : constant Dist_T := EVC_Profile.Ahead_Of (S, Tmp.EOA);
+            T_SvL : constant Dist_T :=
+              (if Tmp.Has_SvL
+               then Max (EVC_Profile.Ahead_Of (S, Tmp.SvL), T_EOA)
+               else T_EOA);
+            EOA   : Dist_T := T_EOA;
+            SvL   : Dist_T := T_SvL;
+            Has_EOA : Boolean := Tmp.Present;
+         begin
+            if S.MA.Present then
                if S.MA.LOA_Speed > 0 then
-                  Work.Targets (Work.Count) :=
-                    (Kind     => LOA_Target,
-                     Location => EOA,
-                     EOA      => EOA,
-                     Speed    => Speed_T (S.MA.LOA_Speed));
+                  declare
+                     LOA : constant Dist_T :=
+                       EVC_Profile.Ahead_Of (S, S.MA.EOA);
+                  begin
+                     Work.Count := Work.Count + 1;
+                     Work.Targets (Work.Count) :=
+                       (Kind     => LOA_Target,
+                        Location => LOA,
+                        EOA      => LOA,
+                        Speed    => Speed_T (S.MA.LOA_Speed),
+                        TSR      => False);
+                  end;
+                  Temporary_SvL := Tmp.Present;
                else
-                  Work.Targets (Work.Count) :=
-                    (Kind => EOA_Target, Location => SvL, EOA => EOA,
-                     Speed => 0);
-                  EOA_Index := Work.Count;
-                  C.SvL := SvL;
+                  EOA := EVC_Profile.Ahead_Of (S, S.MA.EOA);
+                  SvL := Max (EVC_Profile.Ahead_Of (S, S.MA.SvL), EOA);
+                  if Tmp.Present then
+                     EOA := Min (EOA, T_EOA);
+                     if Tmp.Has_SvL and then T_SvL < SvL then
+                        SvL := T_SvL;
+                        Temporary_SvL := True;
+                     end if;
+                     SvL := Max (SvL, EOA);
+                  end if;
+                  Has_EOA := True;
                end if;
-            end;
-         end if;
+            else
+               Temporary_SvL := Tmp.Present;
+            end if;
+            if Has_EOA then
+               Work.Count := Work.Count + 1;
+               Work.Targets (Work.Count) :=
+                 (Kind => EOA_Target, Location => SvL, EOA => EOA,
+                  Speed => 0, TSR => False);
+               EOA_Index := Work.Count;
+               C.SvL := SvL;
+            end if;
+         end;
          --  d) the end of the SR distance
          if S.Extra.SR_Distance then
             Work.Count := Work.Count + 1;
@@ -1101,7 +1151,8 @@ is
               (Kind     => SR_Target,
                Location => EVC_Profile.Ahead_Of (S, S.Extra.SR_End),
                EOA      => 0,
-               Speed    => 0);
+               Speed    => 0,
+               TSR      => False);
          end if;
       end if;
 
@@ -1157,7 +1208,8 @@ is
               + (if Inputs.Level_1 then Num (Inputs.Antenna_Offset) else 0)
               + Min (Max (Num (S.Extra.Trip_Margin), C.X_Max - C.X_Min),
                      Max_Cm);
-            case S.MA.Release_Speed.Kind is
+            case (if Temporary_SvL then None
+                  else S.MA.Release_Speed.Kind) is
                when None =>
                   null;
                when Fixed =>

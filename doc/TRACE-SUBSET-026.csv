@@ -278,7 +278,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.1 a),3,x,,,,,E3,done,EVC_Track_Description.Take_SSP; evc_test Scenario_SSP_Replacement
 3.7.3.1 b),3,x,,,,,E3,done,EVC_Track_Description.Take_Gradients; evc_test Scenario_MA_Shortening
 3.7.3.1 c),3,x,,,,,E3,done,"EVC_Track_Description.Take_ASP (Cut_Beyond from the first element, as a)); evc_test Scenario_Other_Profiles"
-3.7.3.1 d),3,x,,,,,E3,deferred,E3 e3/supervision: packet 52 and the PBD speed restriction of 3.11.11 need the braking curves (after the merge)
+3.7.3.1 d),3,x,,,,,E3,deferred,"E3 after the integration: packet 52 and the PBD speed restriction of 3.11.11 are computed from the braking curves (EVC_Curves), not yet done"
 3.7.3.1 e),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Traction (all replaced); evc_test Scenario_Track_Conditions
 3.7.3.1 f),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Big_Metal_Masses; evc_test Scenario_Track_Conditions
 3.7.3.1 g),3,x,,,,,E3,done,"EVC_Track_Conditions.Take_Conditions; evc_test Scenario_Track_Conditions, Scenario_Other_Profiles"
@@ -294,9 +294,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.1.1,3,x,,,,,E3,done,"Table 2a items: the replaced element ends at the ""min"" item of the new start, the new one starts at its ""max"" item, EVC_Profiles.Envelope keeps the lowest in between (proved postcondition); evc_test Scenario_SSP_Replacement"
 3.7.3.1.2,3,x,,,,,E3,done,"as 3.7.3.1.1, the gradient envelope (EVC_Stored_Information.Build)"
 3.7.3.1.3,3,x,,,,,E3,done,as 3.7.3.1.1 for the ASP elements
-3.7.3.1.4,3,x,,,,,E3,deferred,E3 e3/supervision: with 3.11.11 (PBD)
-3.7.3.2,3,x,,,,,E3,partial,"b) c) d) done; a) with 3.11.11 (e3/supervision), e) E4"
-3.7.3.2 a),3,x,,,,,E3,deferred,E3 e3/supervision: with 3.11.11 (PBD)
+3.7.3.1.4,3,x,,,,,E3,deferred,"E3 after the integration: with 3.11.11 (PBD), not yet done"
+3.7.3.2,3,x,,,,,E3,partial,"b) c) d) done; a) with 3.11.11 (PBD, not yet done), e) E4"
+3.7.3.2 a),3,x,,,,,E3,deferred,"E3 after the integration: with 3.11.11 (PBD), not yet done"
 3.7.3.2 b),3,x,,,,,E3,done,EVC_Track_Description.Take_ASP (Q_TRACKINIT); evc_test Scenario_Other_Profiles
 3.7.3.2 c),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Conditions (Q_TRACKINIT); evc_test Scenario_Other_Profiles
 3.7.3.2 d),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (Q_TRACKINIT); evc_test Scenario_Other_Profiles
@@ -448,23 +448,23 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.7.1.3,3,x,,,,,E3,deferred,E4 (driver entry)
 3.11.8.1,3,x,,,,,E3,done,V_MAXTRAIN the ceiling of the MRSP (EVC_Stored_Information.Build); evc_test Scenario_SSP_Gradients
 3.11.10.1,3,x,,,,,E3,deferred,E4 (override function; the MRSP takes the speed as the caller's ceiling)
-3.11.11.3,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 1st bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 2nd bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 3rd bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 4th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 5th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 6th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 7th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 8th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 9th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.4 10th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.6,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.7,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.8,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.9,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
-3.11.11.11,3,x,,,,,E3,deferred,E3 e3/supervision: with 3.11.11 (packet 52)
+3.11.11.3,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 1st bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 2nd bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 3rd bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 4th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 5th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 6th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 7th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 8th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 9th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.4 10th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.6,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.7,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.8,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.9,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.11,3,x,,,,,E3,deferred,"E3 after the integration: packet 52 and the PBD speed restriction of 3.11.11 are computed from the braking curves (EVC_Curves), not yet done"
 3.11.12.6,3,x,,,,,E3,done,EVC_Track_Description.Take_Default_Gradient; evc_test Scenario_Other_Profiles
 3.12.1.2.1,3,x,,,,,E3,done,"EVC_Track_Conditions.Evaluate, Inhibitions; evc_test Scenario_Track_Conditions"
 3.12.1.2.1.2,3,x,,,,,E3,partial,"the big metal masses are stored (EVC_Track_Conditions); their evaluation against the antenna is used by 3.15.7, E6"
@@ -507,13 +507,13 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.4.3.1 b),3,x,,,,,E3,deferred,E7 (infill)
 3.12.4.3.1 c),3,x,,,,,E3,deferred,E7 (infill)
 3.12.4.4,3,x,,,,,E3,deferred,E4 (list of balise groups for SH area)
-3.12.4.7,3,x,,,,,E3,partial,"EVC_Movement_Authority.Mode_Profile_Target to Snapshot_T.Temporary; evc_test Scenario_Other_Profiles; ""until switched to the mode"" is E4, its supervision e3/supervision"
-3.12.4.7 a),3,x,,,,,E3,partial,as 3.12.4.7
-3.12.4.7 b),3,x,,,,,E3,partial,as 3.12.4.7
-3.12.4.7 c),3,x,,,,,E3,partial,as 3.12.4.7
+3.12.4.7,3,x,,,,,E3,partial,"EVC_Movement_Authority.Mode_Profile_Target to Snapshot_T.Temporary, supervised by EVC_SDM (3.13.1.5); evc_test Other_Profiles, SDM_Seams; ""until switched to the mode"" is E4"
+3.12.4.7 a),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL at the start), supervised as an SvL without release speed (EVC_SDM, 3.13.1.5); evc_test Other_Profiles, SDM_Seams"
+3.12.4.7 b),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL of 3.8.4.5 as if no LOA had been given), supervised beside the LOA (EVC_SDM, 3.13.1.5); evc_test SDM_Seams"
+3.12.4.7 c),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL at the start with an LOA in rear of it), supervised (EVC_SDM, 3.13.1.5); evc_test SDM_Seams"
 3.12.5.3,3,x,,,,,E3,done,EVC_Track_Description.Take_LX; evc_test Scenario_Other_Profiles
-3.12.5.8,3,x,,,,,E3,partial,"EVC_Track_Description.LX_Target to Snapshot_T.Temporary; evc_test Scenario_Other_Profiles; its supervision e3/supervision, the substitution of 5.16 E4"
-3.13.1.5,3,x,,,,,E3,partial,"EVC_SDM supervises the EOA and SvL of the snapshot; that they are the closest temporary EOA / SvL (LX 3.12.5.8, route unsuitability 3.12.2.4, mode profile 3.12.4.7) is the stored information (e3/profiles; the mode profile E4)"
+3.12.5.8,3,x,,,,,E3,partial,"EVC_Track_Description.LX_Target to Snapshot_T.Temporary, supervised by EVC_SDM as the closest EOA and SvL, no release speed (3.13.1.5); evc_test Other_Profiles, SDM_Seams; the substitution of 5.16 is E4"
+3.13.1.5,3,x,,,,,E3,partial,"EVC_SDM: the EOA and the SvL are the closest of those of the MA and of Snapshot_T.Temporary (LX 3.12.5.8, mode profile 3.12.4.7), a temporary SvL with no release speed, an LOA kept beside a temporary EOA; evc_test SDM_Seams, Other_Profiles; the temporary EOA of a route unsuitability (3.12.2.4) is E4"
 3.13.2.2.1.3,3,x,,,,,E3,done,"EVC_Braking.Build, Conversion_Applicable; evc_test SDM_Precision (lambda and gamma trains)"
 3.13.2.2.2.1,3,x,,,,,E3,done,"T_Traction_Cut_Off of the train data, EVC_Limits.T_Traction (3.13.9.3.2.3); evc_test SDM_Precision"
 3.13.2.2.3.1.1,3,x,,,,,E3,done,"EVC_Braking.Steps_T and Lookup (step K from the previous upper speed, the last open ended), used for the emergency, service and normal service models; evc_test SDM_Precision"
@@ -556,10 +556,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.2.2.10.1,3,x,,,,,E3,done,"Train_Data_Extra_T.M_Rotating_Nom; EVC_Braking.Build (M_Rotating_Up / _Down), EVC_Profile.Gradient_Acceleration"
 3.13.2.2.11.1,3,x,,,,,E3,done,"L_TRAIN in EVC_Profile (3.13.4.2, 3.13.5.3) and EVC_Braking (A.3.8, A.3.9, Kr_int); evc_test SDM_Precision"
 3.13.2.2.12.1,3,x,,,,,E3,done,"A.3.1 in EVC_Limits (dV_*, T_warning, T_driver, T_dispTTI, T_bs2_locked) and EVC_Braking (M_rotating_max / _min); evc_test SDM_Precision (margins)"
-3.13.2.2.13.1,3,x,,,,,E3,done,"V_MAXTRAIN: A_ebmax (3.13.6.2.1.8.2), the validity of the conversion model, the dial range; the MRSP carries the train speed (e3/profiles, 3.13.7)"
-3.13.2.3.2.1,3,x,,,,,E3,done,"the MRSP of the snapshot (e3/profiles builds it from 3.11.2) and Mode_Speed; EVC_SDM (V_MRSP, targets); evc_test SDM_Ceiling, SDM_MRSP_Target"
-3.13.2.3.3.1,3,x,,,,,E3,partial,the gradient profile: EVC_Profile; the default gradient for TSR is not applied (the snapshot does not say which MRSP elements are TSRs: e3/profiles)
-3.13.2.3.4.1,3,x,,,,,E3,partial,"the special brake inhibition areas: EVC_Profile, EVC_Braking combinations (evc_test SDM_Special_Brakes); a powerless section acts only once the stored information gives it as an inhibition of the regenerative brake (e3/profiles)"
+3.13.2.2.13.1,3,x,,,,,E3,done,"V_MAXTRAIN: A_ebmax (3.13.6.2.1.8.2), the validity of the conversion model, the dial range; the MRSP carries the train speed (EVC_Stored_Information, 3.13.7)"
+3.13.2.3.2.1,3,x,,,,,E3,done,"the MRSP of the snapshot (EVC_Stored_Information builds it from 3.11.2) and Mode_Speed; EVC_SDM (V_MRSP, targets); evc_test SDM_Ceiling, SDM_MRSP_Target"
+3.13.2.3.3.1,3,x,,,,,E3,done,"the gradient profile with its coverage and the default gradient for TSR (Gradient_Profile_T.Covered, Has_Default_TSR: EVC_Stored_Information), the targets due to a TSR (Speed_Profile_T.TSR, EVC_SDM.Target_T.TSR), EVC_Profile; evc_test Snapshot_Seams, SDM_Seams"
+3.13.2.3.4.1,3,x,,,,,E3,done,"the special brake inhibition areas and the powerless sections (Powerless_Section from EVC_Track_Conditions.Inhibitions): EVC_Profile inhibits the regenerative brake in a powerless section when it needs the catenary (3.12.1.3.3, Onboard_Config_T.Regenerative_Needs_Catenary), EVC_Braking combinations; evc_test SDM_Special_Brakes, SDM_Seams, Track_Conditions"
 3.13.2.3.5.1,3,x,,,,,E3,done,"EVC_Profile (the adhesion areas extended by L_TRAIN, the driver's slippery rail); evc_test SDM_Adhesion"
 3.13.2.3.6.1,3,x,,,,,E3,done,"EVC_SDM targets: LOA, EOA / SvL with the release speed, the end of the SR distance (Supervision_Extra_T.SR_Distance, set by E4); evc_test SDM_LOA, SDM_Release, SDM_SR"
 3.13.2.3.6.1 a),3,x,,,,,E3,done,"EVC_SDM targets: LOA, EOA / SvL with the release speed, the end of the SR distance (Supervision_Extra_T.SR_Distance, set by E4); evc_test SDM_LOA, SDM_Release, SDM_SR"
@@ -583,9 +583,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.4.1.1,3,x,,,,,E3,done,"EVC_Profile.Build (Gradient: the lowest under the fictive train, A_Gradient with the rotating mass); evc_test SDM_Precision (uphill, downhill, mixed, steep)"
 3.13.4.1.1 a),3,x,,,,,E3,done,"EVC_Profile.Build (Gradient: the lowest under the fictive train, A_Gradient with the rotating mass); evc_test SDM_Precision (uphill, downhill, mixed, steep)"
 3.13.4.1.1 b),3,x,,,,,E3,done,"EVC_Profile.Build (Gradient: the lowest under the fictive train, A_Gradient with the rotating mass); evc_test SDM_Precision (uphill, downhill, mixed, steep)"
-3.13.4.1.2,3,x,,,,,E3,partial,the default gradient for TSR is not applied: the snapshot does not say which targets are due to a TSR (e3/profiles)
-3.13.4.1.3,3,x,,,,,E3,partial,"b) done (0 where the gradient profile gives nothing, EVC_Profile); a) the default gradient for TSR waits for the TSR origin of the MRSP elements (e3/profiles)"
-3.13.4.1.3 a),3,x,,,,,E3,partial,the default gradient for TSR is not applied: the snapshot does not say which targets are due to a TSR (e3/profiles)
+3.13.4.1.2,3,x,,,,,E3,done,"EVC_Profile: Gradient_TSR and A_Gradient_TSR with the rotating mass of 3.13.4.3, for the curves of a target due to a TSR (EVC_Curves.Curve_T.TSR); evc_test SDM_Seams"
+3.13.4.1.3,3,x,,,,,E3,done,"a) the default gradient for TSR where the gradient profile gives nothing, for a target due to a TSR, b) 0 otherwise (EVC_Profile, Gradient_Profile_T.Covered, Speed_Profile_T.TSR); evc_test SDM_Seams, Snapshot_Seams"
+3.13.4.1.3 a),3,x,,,,,E3,done,"EVC_Profile.Gradient_TSR with Gradient_Profile_T.Default_TSR where not Covered, for the targets whose MRSP segment is due to a TSR (EVC_Stored_Information: a TSR overlaps it at its speed); evc_test SDM_Seams (TSM earlier with a downhill default, not without one or where covered), TSR"
 3.13.4.1.3 b),3,x,,,,,E3,done,EVC_Profile.Build (Lowest: 0 before the gradient profile)
 3.13.4.2.1,3,x,,,,,E3,done,"EVC_Profile.Build: [front - L_TRAIN, front] over every segment; evc_test SDM_Precision"
 3.13.4.3.1,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
@@ -1075,7 +1075,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.6.1,3,x,,,,,E6,todo,
 3.18.6.2,3,x,,,,,E6,todo,
 3.20.1.2,3,x,,,,,E6,todo,
-A.3.1 Table,3,x,,,,,E3,partial,"the values of the stored information (300 m in rear, 5 s after the rear end, 4 s for the horn: EVC_Track_Description, EVC_Track_Conditions); the odometer ones in E2; the supervision ones e3/supervision; the radio ones E5"
+A.3.1 Table,3,x,,,,,E3,partial,"the values of the stored information (300 m in rear, 5 s after the rear end, 4 s for the horn: EVC_Track_Description, EVC_Track_Conditions); the odometer ones in E2; the supervision ones with their rows of 3.13 (EVC_Braking, EVC_Limits, EVC_SDM, EVC_Build_Up); the radio ones E5"
 A.3.2,3,x,,,x,,E6,todo,
 A.3.2 Table,3,x,,,,,E6,todo,
 A.3.3.2,3,x,,,,,E4,todo,

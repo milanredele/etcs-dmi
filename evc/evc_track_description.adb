@@ -762,6 +762,17 @@ is
    --  Element X of a store of the sense Ahead as an element along Ahead:
    --  from its "max" start to its "min" end, plus the train length when
    --  the rear end counts
+   function Element_Of (T      : Origin_Table_T;
+                        Ahead  : Sense_T;
+                        X      : Stored_T;
+                        Length : Length_T) return Element_T
+   is (Start  => A (Ahead, Frame (T, X.Start, Max_Item)),
+       Finish => (if X.Open then Max_Cm
+                  elsif X.Delay_Length
+                  then Sum (A (Ahead, Frame (T, X.Finish, Min_Item)), Length)
+                  else A (Ahead, Frame (T, X.Finish, Min_Item))),
+       Value  => X.Value);
+
    procedure Add_Stored (E      : in out Elements_T;
                          T      : Origin_Table_T;
                          Ahead  : Sense_T;
@@ -769,15 +780,9 @@ is
                          Length : Length_T)
      with Post => E.Count >= E.Count'Old
    is
-      Start  : constant Dist_T := A (Ahead, Frame (T, X.Start, Max_Item));
-      Finish : Dist_T :=
-        (if X.Open then Max_Cm
-         else A (Ahead, Frame (T, X.Finish, Min_Item)));
+      El : constant Element_T := Element_Of (T, Ahead, X, Length);
    begin
-      if X.Delay_Length and then not X.Open then
-         Finish := Sum (Finish, Length);
-      end if;
-      Add (E, Start, Finish, X.Value);
+      Add (E, El.Start, El.Finish, El.Value);
    end Add_Stored;
 
    procedure Speed_Elements (T      : Origin_Table_T;
@@ -818,6 +823,33 @@ is
          end loop;
       end if;
    end Speed_Elements;
+
+   function TSR_Limits (T      : Origin_Table_T;
+                        Ahead  : Sense_T;
+                        Length : Length_T;
+                        From   : Cm_T;
+                        To     : Cm_T;
+                        V      : Value_T) return Boolean
+     with Refined_Global => TSR_S
+   is
+   begin
+      if TSR_S.Sense /= Ahead then
+         return False;
+      end if;
+      for I in 1 .. TSR_S.Count loop
+         declare
+            El : constant Element_T :=
+              Element_Of (T, Ahead, TSR_S.List (I), Length);
+         begin
+            if El.Start < El.Finish and then El.Start < To
+              and then From < El.Finish and then El.Value <= V
+            then
+               return True;
+            end if;
+         end;
+      end loop;
+      return False;
+   end TSR_Limits;
 
    procedure Gradient_Elements (T     : Origin_Table_T;
                                 Ahead : Sense_T;

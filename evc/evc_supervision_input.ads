@@ -4,7 +4,7 @@
 --  them to the supervision once per cycle.
 --
 --  This package is the boundary between the two halves of phase E3
---  (doc/EVC-PLAN.md §7):
+--  (doc/EVC-PLAN.md §8):
 --    - the stored information (SSP, ASP, TSR, gradients, MA, track
 --      conditions, adhesion, national values, train data: 3.7, 3.8.4,
 --      3.11, 3.12, 3.13.7) fills a Snapshot_T at the third step of the
@@ -34,6 +34,20 @@
 --  value 1 of 7.5.1.123 (revoke the emergency brake when the Permitted
 --  speed is no longer exceeded), False the value 0 (at standstill, the
 --  default of A.3.2); A_NVMAXREDADHn is used as National_Extra_T says.
+--  The stored information always gives Kv_int and Kr_int sets of at
+--  least one step (a set not received keeps the default of A.3.2), so
+--  the passenger set applies to a train in "Passenger train in P".
+--
+--  Added at the integration of the two halves (e3/integrate): the TSR
+--  flags of the MRSP, the coverage of the gradient profile and the
+--  default gradient for TSR (3.13.4.1.3), the powerless sections
+--  (3.13.2.3.4.1), and how the stored information fills Extra: the
+--  configuration of this on-board (EVC_Stored_Information.Onboard_Config),
+--  the use of A_NVMAXREDADHn from the national values and the trip
+--  margin of 3.13.9.4.8.2 from the SOLR and the EOA; the other fields of
+--  Extra keep their defaults until their phase: the train data beyond
+--  Train_Data_T come with the data entry (E4), T_MAR with packet 57
+--  (E5), the SR distance with the mode SR (E4).
 
 with EVC_Distances; use EVC_Distances;
 
@@ -81,10 +95,17 @@ is
    --  train, mode, override and signalling related restrictions, per
    --  position, with the front end / rear end handling (3.11.2, 3.11.3)
    --  already applied by the stored information
+   --  Added at the integration of the two halves: TSR (K) says that
+   --  segment K is due to a TSR, the speed of a TSR that overlaps it is
+   --  the speed of the segment (3.13.4.1.3 a: the target of a speed
+   --  decrease at its start is "due to a TSR")
+   type Segment_Flags_T is
+     array (Positive range 1 .. Max_Speed_Segments) of Boolean;
    type Speed_Profile_T is record
       Count    : Natural range 0 .. Max_Speed_Segments := 0;
       Segments : Speed_Segment_Array :=
         (others => (Start => 0, Speed => No_Speed_Limit));
+      TSR      : Segment_Flags_T := (others => False);
    end record;
 
    type Gradient_Segment_T is record
@@ -94,10 +115,22 @@ is
    type Gradient_Segment_Array is
      array (Positive range 1 .. Max_Gradient_Segments)
      of Gradient_Segment_T;
+   --  Added at the integration of the two halves (3.13.4.1.3): Covered
+   --  (K) False says that segment K is not covered by the gradient
+   --  profile given from trackside (its Gradient is then 0), as are the
+   --  positions before the first segment; there the gradient is the
+   --  default gradient for TSR (3.11.12.5, packet 141), when one is
+   --  stored (Has_Default_TSR), for a target due to a TSR, and zero for
+   --  the other targets
+   type Gradient_Flags_T is
+     array (Positive range 1 .. Max_Gradient_Segments) of Boolean;
    type Gradient_Profile_T is record
       Count    : Natural range 0 .. Max_Gradient_Segments := 0;
       Segments : Gradient_Segment_Array :=
         (others => (Start => 0, Gradient => 0));
+      Covered         : Gradient_Flags_T := (others => True);
+      Has_Default_TSR : Boolean := False;
+      Default_TSR     : Gradient_T := 0;
    end record;
 
    ---------------------------------------------------------------------
@@ -127,11 +160,16 @@ is
    --  packet 68) and the adhesion (3.13.5, packet 71, the driver)
    ---------------------------------------------------------------------
 
+   --  Powerless_Section, added at the integration of the two halves:
+   --  a powerless section (M_TRACKCOND 3 and 9, 3.13.2.3.4.1), where a
+   --  regenerative brake that needs the voltage of the catenary gives
+   --  nothing (3.12.1.3.3, Onboard_Config_T.Regenerative_Needs_Catenary)
    type Brake_Inhibition_T is
      (Regenerative_Inhibited,
       Eddy_Current_Service_Inhibited,
       Eddy_Current_Emergency_Inhibited,
-      Magnetic_Shoe_Inhibited);
+      Magnetic_Shoe_Inhibited,
+      Powerless_Section);
 
    Max_Inhibition_Areas : constant := 32;
 
@@ -351,6 +389,10 @@ is
       --  3.13.2.2.6.4: the contribution of a special or additional brake
       --  independent from the adhesion may select A_NVMAXREDADH1
       Additional_Brake_Allowed : Boolean := False;
+      --  3.12.1.3.3 (added at the integration): the regenerative brake
+      --  depends on the voltage of the catenary, so a powerless section
+      --  inhibits it
+      Regenerative_Needs_Catenary : Boolean := True;
    end record;
 
    --  A combination of special brakes in use: bit 0 regenerative, bit 1
@@ -420,13 +462,9 @@ is
      (Limit, Target_Information, Time_To_Indication, No_Limit);
    type Redadh_Uses_T is array (1 .. 3) of Redadh_Use_T;
 
+   --  (The subset b of Kv_int and A_NVP12, A_NVP23, which the
+   --  supervision first had here, are those of National_Values_T.)
    type National_Extra_T is record
-      --  3.13.2.3.7.11.4: the subset b of the Kv_int of conventional
-      --  passenger trains and the pivot decelerations; A_NVP12 =
-      --  A_NVP23 = 0 when Q_NVKVINTSET gives a single set
-      Kv_Int_Passenger_B : Kv_Set_T;
-      A_NVP12            : Decel_Mms2_T := 0;
-      A_NVP23            : Decel_Mms2_T := 0;
       --  how A_NVMAXREDADH1 .. 3 are used (National_Values_T holds the
       --  limits): A.3.2 gives limits (1.0, 0.7, 0.7 m/s²)
       Redadh_Use         : Redadh_Uses_T := (others => Limit);

@@ -241,6 +241,17 @@ is
      with Global => State,
           Post => E.Count >= E.Count'Old;
 
+   --  3.13.4.1.3 a): a TSR, as an element of Speed_Elements, overlaps
+   --  [From, To) along Ahead with a speed at most V (a step of the MRSP
+   --  of that speed is then due to a TSR)
+   function TSR_Limits (T      : Origin_Table_T;
+                        Ahead  : Sense_T;
+                        Length : Length_T;
+                        From   : Cm_T;
+                        To     : Cm_T;
+                        V      : Value_T) return Boolean
+     with Global => State;
+
    --  The gradient profile as elements along Ahead (signed per mille)
    procedure Gradient_Elements (T     : Origin_Table_T;
                                 Ahead : Sense_T;

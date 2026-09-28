@@ -145,10 +145,10 @@ is
    TIU_Known_Now     : TIU_Signals_T := (others => False);
    Brake_Ack_Now     : Boolean := False;
 
-   --  The snapshot of the stored information (3.13.2). The stored
-   --  information (e3/profiles) fills it at the third step of the cycle;
-   --  until the two halves of E3 are joined it is empty (nothing
-   --  supervised). The tests set one (Set_Snapshot_For_Test).
+   --  The snapshot of the tests (Set_Snapshot_For_Test): once set, the
+   --  speed and distance monitoring reads it in place of the snapshot of
+   --  the stored information (EVC_Stored_Information.Current, 3.13.2)
+   --  in every cycle until Initialise
    No_Snapshot : constant EVC_Supervision_Input.Snapshot_T :=
      (others => <>);
    Test_Snapshot     : EVC_Supervision_Input.Snapshot_T := No_Snapshot;
@@ -622,14 +622,16 @@ is
    end To_Speed_State;
 
    --  4. Speed and distance monitoring (3.13, EVC_SDM) and the brake
-   --  commands (3.14, EVC_Brake_Commands) on the snapshot of the stored
-   --  information, with the inputs of the train interface and the
-   --  driver's acknowledgement of the cycle
+   --  commands (3.14, EVC_Brake_Commands) on the snapshot the stored
+   --  information built at the third step (or the tests' one), with the
+   --  inputs of the train interface and the driver's acknowledgement of
+   --  the cycle
    procedure Monitor_Speed_And_Distance (Dt_Ms : Natural)
      with Global => (Input  => (Test_Snapshot, Test_Snapshot_Set, TIU_Now,
                                 TIU_Value_Now, TIU_Known_Now, Brake_Ack_Now,
                                 Current_Mode, Current_Level,
-                                Current_Level_Status, EVC_Position.State),
+                                Current_Level_Status, EVC_Position.State,
+                                EVC_Stored_Information.State),
                      In_Out => (SDM_Work, SDM_State, Brake_State),
                      Output => (SDM_Result, Brake_Output, Speed_State))
    is
@@ -677,7 +679,7 @@ is
       if Test_Snapshot_Set then
          Run (Test_Snapshot);
       else
-         Run (No_Snapshot);
+         Run (EVC_Stored_Information.Current);
       end if;
    end Monitor_Speed_And_Distance;
 

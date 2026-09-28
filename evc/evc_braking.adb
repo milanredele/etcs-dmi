@@ -469,11 +469,9 @@ is
               (if T.Brake_Position = Passenger_P
                  and then NV.Kv_Int_Passenger.Count > 0
                then Kv_Passenger (NV.Kv_Int_Passenger,
-                                  S.Extra.National.Kv_Int_Passenger_B,
-                                  Num (S.Extra.National.A_NVP12)
-                                    * Decel_Unit_Per_Mms2,
-                                  Num (S.Extra.National.A_NVP23)
-                                    * Decel_Unit_Per_Mms2,
+                                  NV.Kv_Int_Passenger_B,
+                                  Num (NV.A_NVP12) * Decel_Unit_Per_Mms2,
+                                  Num (NV.A_NVP23) * Decel_Unit_Per_Mms2,
                                   A_Ebmax)
                elsif NV.Kv_Int_Fresh.Count > 0
                then From_Kv (NV.Kv_Int_Fresh)

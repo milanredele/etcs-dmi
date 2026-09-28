@@ -41,10 +41,10 @@
 --  supervision (phase E4).
 --
 --  Braking (3.13.2.3.4): the areas where a special brake is inhibited
---  (M_TRACKCOND 6, 7, 8, 10) and the powerless sections (3, 9), taken as
---  areas without the regenerative brake (3.12.1.3.3: a regenerative
---  brake that needs the catenary), from the max safe front end at their
---  start to the rear end leaving them.
+--  (M_TRACKCOND 6, 7, 8, 10) and the powerless sections (3, 9, the kind
+--  Powerless_Section: the supervision takes them as areas without the
+--  regenerative brake when it needs the catenary, 3.12.1.3.3), from the
+--  max safe front end at their start to the rear end leaving them.
 --
 --  The information for an external function of 3.12.1.5 b) and 5.20 is
 --  phase E4.

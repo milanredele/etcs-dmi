@@ -29,6 +29,9 @@
 --  Usage:  obj/evc_test            compare against goldens
 --          UPDATE=1 obj/evc_test   (re)record the goldens of test/golden/evc
 --          VERBOSE=1 obj/evc_test  list passing checks too
+--          EVC_DUMP=dir obj/evc_test  also write the output bytes of every
+--                                     golden to dir/<name>.bin, to decode
+--                                     what changed (test/tools/evc_dump.py)
 
 pragma Ada_2012;
 with Ada.Command_Line;
@@ -36,6 +39,7 @@ with Ada.Directories;
 with Ada.Environment_Variables;
 with Ada.Numerics.Long_Elementary_Functions;
 with Ada.Streams;  use Ada.Streams;
+with Ada.Streams.Stream_IO;
 with Ada.Text_IO;  use Ada.Text_IO;
 with Display.Screen;
 with Display.Screen.Files;
@@ -220,9 +224,28 @@ procedure EVC_Test is
       end if;
    end Check_Digest;
 
-   --  The digest of the capture against test/golden/evc/<Name>.sha256
+   --  The digest of the capture against test/golden/evc/<Name>.sha256;
+   --  with EVC_DUMP set, the capture itself to $EVC_DUMP/<Name>.bin
    procedure Check_Golden (Name : String) is
    begin
+      if Ada.Environment_Variables.Exists ("EVC_DUMP") then
+         declare
+            package SIO renames Ada.Streams.Stream_IO;
+            Dir  : constant String :=
+              Ada.Environment_Variables.Value ("EVC_DUMP");
+            F    : SIO.File_Type;
+            Data : Stream_Element_Array
+              (1 .. Stream_Element_Offset (Capture_Last));
+         begin
+            for I in Data'Range loop
+               Data (I) := Stream_Element (Capture (Natural (I)));
+            end loop;
+            Ada.Directories.Create_Path (Dir);
+            SIO.Create (F, SIO.Out_File, Dir & "/" & Name & ".bin");
+            SIO.Write (F, Data);
+            SIO.Close (F);
+         end;
+      end if;
       Check_Digest (Name, Digest (Capture (1 .. Capture_Last)));
    end Check_Golden;
 
@@ -2493,7 +2516,7 @@ procedure EVC_Test is
    type JRU_Bytes_T is array (0 .. 15, 2 .. 4) of Natural;
    JRU_Last  : JRU_Bytes_T := (others => (others => 0));
    Seen      : Pos.Triggers_T := Pos.No_Triggers;
-   Geo_Seen  : Unsigned_32 := 0;
+   Geo_Seen  : Unsigned_32 := EVC_DMI_Port.Geo_Unknown;
    Geo_Count : Natural := 0;
 
    procedure Forget is
@@ -2501,6 +2524,7 @@ procedure EVC_Test is
       JRU_Seen := (others => 0);
       Seen := Pos.No_Triggers;
       Geo_Count := 0;
+      Geo_Seen := EVC_DMI_Port.Geo_Unknown;
    end Forget;
 
    procedure Collect is
@@ -2515,11 +2539,24 @@ procedure EVC_Test is
          elsif Recs (I).Port = DMI and then Rec_Length (I) = 28
            and then Byte_At (I, 1) = Natural (EVC_DMI_Port.MSG_STATUS)
          then
-            Geo_Count := Geo_Count + 1;
-            Geo_Seen := Unsigned_32 (Byte_At (I, 22))
-              + 256 * (Unsigned_32 (Byte_At (I, 23))
-                       + 256 * (Unsigned_32 (Byte_At (I, 24))
-                                + 256 * Unsigned_32 (Byte_At (I, 25))));
+            --  the frames of the geographical position: a position, or
+            --  the first "unknown" after one (from E3 MSG_STATUS also
+            --  comes when the brake indication or the time to Indication
+            --  changes: those frames are not counted)
+            declare
+               Geo : constant Unsigned_32 :=
+                 Unsigned_32 (Byte_At (I, 22))
+                 + 256 * (Unsigned_32 (Byte_At (I, 23))
+                          + 256 * (Unsigned_32 (Byte_At (I, 24))
+                                   + 256 * Unsigned_32 (Byte_At (I, 25))));
+            begin
+               if Geo /= EVC_DMI_Port.Geo_Unknown
+                 or else Geo_Seen /= EVC_DMI_Port.Geo_Unknown
+               then
+                  Geo_Count := Geo_Count + 1;
+                  Geo_Seen := Geo;
+               end if;
+            end;
          end if;
       end loop;
       Seen :=
@@ -3446,6 +3483,8 @@ procedure EVC_Test is
    use type SIn.Kv_Step_T;
    use type SIn.Kr_Step_T;
    use type SIn.Brake_Inhibition_T;
+   use type SIn.Redadh_Use_T;
+   use type SIn.Onboard_Config_T;
    use type ETCS_Variables.M_MAMODE_T;
 
    type Extra_T is record
@@ -3653,8 +3692,10 @@ procedure EVC_Test is
       Collect_E3;
    end Cycle_X;
 
-   --  Step of E2 with the telegrams of Telegram_X
-   procedure Step_X (Step_Cm : Integer_64) is
+   --  The move of Step_X without its odometer sample and cycle: the
+   --  telegrams of the balises crossed, the train and the odometer's
+   --  counters moved
+   procedure Feed_X (Step_Cm : Integer_64) is
       Old_Train : constant Integer_64 := Train_Cm;
       Old_D     : constant Integer_64 := Odo_D;
       New_Train : constant Integer_64 := Train_Cm + Step_Cm;
@@ -3704,6 +3745,12 @@ procedure EVC_Test is
       Odo_D := Odo_D + Measured;
       Odo_Over := Odo_Over + abs Measured * Bound_Per_Mille / 1000;
       Odo_Under := Odo_Under + abs Measured * Bound_Per_Mille / 1000;
+   end Feed_X;
+
+   --  Step of E2 with the telegrams of Telegram_X
+   procedure Step_X (Step_Cm : Integer_64) is
+   begin
+      Feed_X (Step_Cm);
       Sample ((if Step_Cm > 0 then 1 elsif Step_Cm < 0 then -1 else 0));
       Cycle_X;
    end Step_X;
@@ -3726,9 +3773,9 @@ procedure EVC_Test is
       end loop;
    end Stand_X;
 
-   procedure Start_X is
+   procedure Start_X (Start_Cm : Integer_64 := 0) is
    begin
-      Start_Track;
+      Start_Track (Start_Cm);
       Extras := (others => (others => <>));
       Country := (others => 123);
       TC_Length := 0;
@@ -4108,6 +4155,13 @@ procedure EVC_Test is
              and then SI.Current.MRSP.Segments (6).Start = 82_000,
              "TSR: in the MRSP, the delayed one to its end plus the train "
              & "length (3.11.5.3)");
+      Check (not SI.Current.MRSP.TSR (1) and then SI.Current.MRSP.TSR (2)
+             and then SI.Current.MRSP.TSR (3)
+             and then not SI.Current.MRSP.TSR (4)
+             and then SI.Current.MRSP.TSR (5)
+             and then not SI.Current.MRSP.TSR (6),
+             "TSR: the MRSP segments due to a TSR flagged for the default "
+             & "gradient of the supervision (3.13.4.1.3 a)");
       --  the same identity again, elsewhere (3.11.5.9)
       Revoke.Q_DIR := 1;
       Revoke.NID_TSR := 5;
@@ -4529,6 +4583,11 @@ procedure EVC_Test is
              and then S.M_NVCONTACT = 1 and then S.T_NVCONTACT = 30_000
              and then S.Country_Count = 2 and then S.Countries (2) = 124,
              "national values: the packet in on-board units");
+      Check (S.Redadh_Use (1) = SIn.Limit
+             and then S.Redadh_Use (2) = SIn.No_Limit
+             and then S.Redadh_Use (3) = SIn.Limit,
+             "national values: A_NVMAXREDADH2 = 63, no maximum deceleration "
+             & "and no more display (7.5.0.2), kept for the supervision");
       Check (S.Values.Kv_Int_Passenger.Count = 2
              and then S.Values.Kv_Int_Passenger.Steps (1).Factor = 700
              and then S.Values.Kv_Int_Passenger.Steps (2) = (2_777, 600)
@@ -4560,6 +4619,10 @@ procedure EVC_Test is
              and then Onboard_Field (5) / 2 mod 2 = 1,
              "national values: applicable at once (D_VALIDNV now), the "
              & "driver's adhesion on the DMI");
+      Check (SI.Current.Extra.National.Redadh_Use (2) = SIn.No_Limit
+             and then SI.Current.Extra.National.Redadh_Use (1) = SIn.Limit,
+             "snapshot: the use of A_NVMAXREDADHn from the national values "
+             & "in use (3.13.6.2.1.6)");
       Run_X (35_000);
       Check (SI.Current.National.V_NVREL = 1_388 and then NVa.Pending,
              "national values: waiting for their location (3.18.2.3)");
@@ -4625,12 +4688,15 @@ procedure EVC_Test is
       Check (TC_Frames = 0, "track conditions: nothing indicated yet");
       Check (SI.Current.Inhibitions.Count = 2
              and then SI.Current.Inhibitions.Areas (1).Kind
-                        = SIn.Regenerative_Inhibited
+                        = SIn.Powerless_Section
              and then SI.Current.Inhibitions.Areas (1).Start = 110_000
              and then SI.Current.Inhibitions.Areas (1).Finish = 150_000
+             and then SI.Current.Inhibitions.Areas (2).Kind
+                        = SIn.Regenerative_Inhibited
              and then SI.Current.Inhibitions.Areas (2).Start = 240_000,
-             "track conditions: the areas without regenerative brake, to "
-             & "their end plus the train length (3.13.2.3.4)");
+             "track conditions: the powerless section and the area without "
+             & "regenerative brake, to their end plus the train length "
+             & "(3.13.2.3.4)");
       Check (Natural (Plan_Payload (13)) = 1
              and then Natural (Plan_Payload (18)) = 4
              and then Natural (Plan_Payload (19)) = 2
@@ -4760,9 +4826,12 @@ procedure EVC_Test is
              and then SI.Current.Adhesion.Areas (1).Finish = 50_000,
              "adhesion: a slippery rail area (3.13.2.3.5)");
       Check (SI.Current.Gradients.Count = 1
-             and then SI.Current.Gradients.Segments (1).Gradient = -7,
+             and then not SI.Current.Gradients.Covered (1)
+             and then SI.Current.Gradients.Segments (1).Gradient = 0
+             and then SI.Current.Gradients.Has_Default_TSR
+             and then SI.Current.Gradients.Default_TSR = -7,
              "default gradient for TSR where no gradient is known "
-             & "(3.11.12.5)");
+             & "(3.11.12.5), for the targets due to a TSR (3.13.4.1.3)");
       Check (SI.Current.MRSP.Segments (2).Start = 10_000
              and then SI.Current.MRSP.Segments (3).Start = 30_000
              and then SI.Current.MRSP.Segments (3).Speed = 1_666
@@ -4860,6 +4929,51 @@ procedure EVC_Test is
              "rear: an element 300 m behind the min safe rear end deleted "
              & "(A.3.1)");
    end Scenario_Rear_Deletion;
+
+   --  The seams of the two halves of E3 in the snapshot: the coverage of
+   --  the gradient profile and the default gradient for TSR (3.13.4.1.3),
+   --  Extra (the configuration, the trip margin of 3.13.9.4.8.2, the
+   --  fields of E4 and E5 at their defaults), and the speed and distance
+   --  monitoring on this snapshot
+   procedure Scenario_Snapshot_Seams is
+      DG : T141.Packet_T;
+      G  : SIn.Gradient_Profile_T;
+   begin
+      Start_X;
+      Add_Group (Group (10, 100));
+      DG.Q_DIR := 1;
+      DG.Q_GDIR := 0;
+      DG.G_TSR := 12;
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, -5), 2 => (3000, End_Mark))));
+      Carry (1, 1, MA_Of ((1 => 3000)));
+      Carry (1, 1, DG);
+      Run_X (15_000);
+      G := SI.Current.Gradients;
+      Check (G.Count = 3
+             and then not G.Covered (1) and then G.Segments (1).Gradient = 0
+             and then G.Covered (2) and then G.Segments (2).Start = 10_000
+             and then G.Segments (2).Gradient = -5
+             and then not G.Covered (3) and then G.Segments (3).Start = 310_000
+             and then G.Has_Default_TSR and then G.Default_TSR = -12,
+             "snapshot: the gradient profile covers 100 m to 3100 m, the "
+             & "default gradient for TSR beside it (3.13.4.1.3)");
+      Check (SI.Current.MA.Present and then SI.Current.Supervise
+             and then SI.Current.Extra.Config = SI.Onboard_Config
+             and then SI.Current.Extra.Trip_Margin
+                        = 2 * Pos.SOLR.Locacc + 1_000 + 300_000 / 10
+             and then SI.Current.Extra.T_MAR = 0
+             and then not SI.Current.Extra.SR_Distance
+             and then not SI.Current.Temporary.Present,
+             "snapshot: Extra, the trip margin 2 Q_LOCACC + 10 m + 10 % of "
+             & "the distance from the SOLR to the EOA (3.13.9.4.8.2)");
+      Check (EVC_Core.Supervision.Active
+             and then EVC_Core.Supervision.V_MRSP = 2_777
+             and then EVC_SDM."=" (EVC_Core.Supervision.Monitoring,
+                                   EVC_SDM.CSM),
+             "the speed and distance monitoring runs on the snapshot of the "
+             & "stored information: CSM at 100 km/h");
+   end Scenario_Snapshot_Seams;
 
    ---------------------------------------------------------------------
    --  E3: speed and distance monitoring (EVC_SDM, EVC_Brake_Commands
@@ -5590,21 +5704,25 @@ procedure EVC_Test is
             null;
          when Uphill =>
             S.Gradients := (Count => 1, Segments => (1 => (0, 10),
-                                                    others => (0, 0)));
+                                                    others => (0, 0)),
+                            others => <>);
          when Downhill =>
             S.Gradients := (Count => 1, Segments => (1 => (0, -15),
-                                                    others => (0, 0)));
+                                                    others => (0, 0)),
+                            others => <>);
          when Mixed =>
             S.Gradients :=
               (Count => 4,
                Segments => (1 => (-100_000, 5), 2 => (150_000, -20),
                             3 => (280_000, 8), 4 => (420_000, -3),
-                            others => (0, 0)));
+                            others => (0, 0)),
+               others   => <>);
          when Steep =>
             S.Gradients :=
               (Count => 3,
                Segments => (1 => (-100_000, 0), 2 => (200_000, -40),
-                            3 => (350_000, 0), others => (0, 0)));
+                            3 => (350_000, 0), others => (0, 0)),
+               others   => <>);
       end case;
       return S;
    end Case_Snapshot;
@@ -5632,10 +5750,10 @@ procedure EVC_Test is
                  Speed_T'Min (V_T + EVC_Limits.Margin (EVC_Limits.EBI, V_T),
                               Max_Speed);
                Curves : constant array (1 .. 4) of EVC_Curves.Curve_T :=
-                 ((EVC_Curves.EBD, SvL, 0, 0),
-                  (EVC_Curves.EBD, MT, A_W * A_W, V_T * V_T),
-                  (EVC_Curves.SBD, SvL, 0, 0),
-                  (EVC_Curves.GUI, SvL, 0, 0));
+                 ((EVC_Curves.EBD, SvL, 0, 0, False),
+                  (EVC_Curves.EBD, MT, A_W * A_W, V_T * V_T, False),
+                  (EVC_Curves.SBD, SvL, 0, 0, False),
+                  (EVC_Curves.GUI, SvL, 0, 0, False));
                R_Curves : constant array (1 .. 4) of R_Curve :=
                  ((R_EBD, LF (SvL), 0.0, 0.0),
                   (R_EBD, LF (MT), LF (A_W), LF (V_T)),
@@ -6397,7 +6515,8 @@ procedure EVC_Test is
       S.MRSP := (Count => 2,
                  Segments => (1 => (0, Cms (140.0)),
                               2 => (300_000, Cms (80.0)),
-                              others => (0, SIn.No_Speed_Limit)));
+                              others => (0, SIn.No_Speed_Limit)),
+                 others   => <>);
       Place (S, X, V);
       Sup_Start (S);
       MRDT0 := Speed_Frame.MRDT;
@@ -6504,7 +6623,8 @@ procedure EVC_Test is
       S.MRSP := (Count => 2,
                  Segments => (1 => (0, Cms (140.0)),
                               2 => (490_000, Cms (15.0)),
-                              others => (0, SIn.No_Speed_Limit)));
+                              others => (0, SIn.No_Speed_Limit)),
+                 others   => <>);
       Place (S, 100_000, Cms (100.0));
       Sup_Start (S);
       Check (Res.V_Release = EVC_Fixed.Num (Cms (15.0)),
@@ -6707,7 +6827,7 @@ procedure EVC_Test is
       use EVC_Fixed;
       S   : SIn.Snapshot_T := Case_Snapshot (Gamma_Train, Flat);
       Far : constant EVC_Distances.Dist_T := -EVC_Distances.Max_Cm + 1;
-      SvL : constant EVC_Curves.Curve_T := (EVC_Curves.EBD, 500_000, 0, 0);
+      SvL : constant EVC_Curves.Curve_T := (EVC_Curves.EBD, 500_000, 0, 0, False);
 
       function Speed_1000 (Active : Boolean) return Speed_T is
          M : EVC_Braking.Model_T;
@@ -6765,7 +6885,8 @@ procedure EVC_Test is
       S.MRSP := (Count => 2,
                  Segments => (1 => (0, Cms (140.0)),
                               2 => (300_000, Cms (100.0)),
-                              others => (0, SIn.No_Speed_Limit)));
+                              others => (0, SIn.No_Speed_Limit)),
+                 others   => <>);
       Give_MA (S, 3_300, 50);
       Place (S, X, V);
       Sup_Start (S);
@@ -6803,6 +6924,145 @@ procedure EVC_Test is
              and then Speed_Frame.D_Target <= 500 - Natural (X / 100),
              "SR distance: TSM to its end, target speed 0");
    end Scenario_SDM_SR;
+
+   ---------------------------------------------------------------------
+   --  The seams of the two halves of E3, on the supervision's side
+   ---------------------------------------------------------------------
+
+   --  3.13.4.1.3: where the gradient profile gives nothing, the default
+   --  gradient for TSR for a target due to a TSR, else 0; 3.13.1.5: the
+   --  temporary EOA and SvL (3.12.4.7, 3.12.5.8), with no release speed;
+   --  3.13.2.3.4.1: a powerless section without the regenerative brake
+   --  (3.12.1.3.3)
+   procedure Scenario_SDM_Seams is
+      S : SIn.Snapshot_T;
+      X : Integer_64;
+      V : SIn.Speed_Cms_T;
+      procedure To_TSM is new Drive (Never, In_TSM);
+
+      --  where TSM to the 80 km/h restriction at 3 km begins
+      function TSM_From (TSR, Default, Covered : Boolean) return Integer_64
+      is
+      begin
+         S := Base_Snapshot;
+         S.MRSP := (Count    => 2,
+                    Segments => (1 => (0, Cms (140.0)),
+                                 2 => (300_000, Cms (80.0)),
+                                 others => (0, SIn.No_Speed_Limit)),
+                    TSR      => (2 => TSR, others => False));
+         S.Gradients.Count := 2;
+         S.Gradients.Segments (1) := (Start => -100_000, Gradient => 0);
+         S.Gradients.Segments (2) := (Start => 100_000, Gradient => 0);
+         S.Gradients.Covered (2) := Covered;
+         S.Gradients.Has_Default_TSR := Default;
+         S.Gradients.Default_TSR := -30;
+         X := 0;
+         V := Cms (135.0);
+         Place (S, X, V);
+         Sup_Start (S);
+         To_TSM (X, V, 0, 3_000);
+         return X;
+      end TSM_From;
+
+      Plain, Due, No_Default, Covered : Integer_64;
+
+      --  where TSM to an end of authority at 5 km begins, with a
+      --  temporary EOA at 3 km and its SvL 100 m further (Has_SvL)
+      function EOA_TSM_From (Temporary, Has_SvL : Boolean;
+                             LOA : Boolean := False) return Integer_64
+      is
+      begin
+         S := Base_Snapshot;
+         if LOA then
+            Give_MA (S, 5_000, LOA_Kmh => 60.0);
+         else
+            Give_MA (S, 5_000, 200, SIn.Fixed, Cms (40.0));
+         end if;
+         if Temporary then
+            S.Temporary := (Present => True, EOA => 300_000,
+                            Has_SvL => Has_SvL, SvL => 310_000);
+         end if;
+         X := 0;
+         V := Cms (100.0);
+         Place (S, X, V);
+         Sup_Start (S);
+         To_TSM (X, V, 0, 5_000);
+         return X;
+      end EOA_TSM_From;
+
+      MA_Only, Tmp, Tmp_No_SvL, Tmp_LOA : Integer_64;
+      Release_MA, Release_Tmp, Release_No_SvL : Boolean;
+      Target_LOA : Natural;
+
+      Model : EVC_Braking.Model_T;
+      P     : EVC_Profile.Profile_T;
+      In_Area, Outside : EVC_Profile.Point_T;
+   begin
+      Plain := TSM_From (TSR => False, Default => True, Covered => False);
+      Due := TSM_From (TSR => True, Default => True, Covered => False);
+      No_Default :=
+        TSM_From (TSR => True, Default => False, Covered => False);
+      Covered := TSM_From (TSR => True, Default => True, Covered => True);
+      Check (Plain > 0 and then Due > 0 and then Due < Plain
+             and then No_Default = Plain and then Covered = Plain,
+             "3.13.4.1.3: TSM to a TSR from" & Integer_64'Image (Due / 100)
+             & " m with the downhill default gradient where the profile "
+             & "gives nothing, from" & Integer_64'Image (Plain / 100)
+             & " m for the same restriction not due to a TSR, without a "
+             & "default gradient, or where the profile covers the track");
+
+      MA_Only := EOA_TSM_From (Temporary => False, Has_SvL => False);
+      Release_MA := Res.Release_Exists;
+      Tmp := EOA_TSM_From (Temporary => True, Has_SvL => True);
+      Release_Tmp := Res.Release_Exists;
+      Check (Tmp > 0 and then Tmp < MA_Only
+             and then Speed_Frame.V_Target = 0
+             and then Speed_Frame.D_Target < 3_000 - Natural (Tmp / 100)
+             and then Release_MA and then not Release_Tmp,
+             "3.13.1.5: the temporary EOA and SvL are the closer ones (TSM "
+             & "from" & Integer_64'Image (Tmp / 100) & " m, not"
+             & Integer_64'Image (MA_Only / 100) & " m), with no release "
+             & "speed (3.12.4.7, 3.12.5.8)");
+      Tmp_No_SvL := EOA_TSM_From (Temporary => True, Has_SvL => False);
+      Release_No_SvL := Res.Release_Exists;
+      Check (Tmp_No_SvL > 0 and then Tmp_No_SvL < MA_Only
+             and then Release_No_SvL,
+             "3.12.4.7.1: a temporary EOA without a temporary SvL: the SvL "
+             & "of the MA and its release speed hold");
+      Tmp_LOA := EOA_TSM_From (Temporary => True, Has_SvL => True,
+                               LOA => True);
+      Target_LOA := Speed_Frame.V_Target;
+      Check (Tmp_LOA > 0 and then Target_LOA = 0,
+             "3.13.1.5: beside an LOA the temporary EOA is a target of "
+             & "speed 0");
+
+      --  the powerless section: a train with a regenerative brake that
+      --  needs the catenary
+      S := Base_Snapshot;
+      S.Train_Data.Has_Regenerative := True;
+      S.Inhibitions.Count := 1;
+      S.Inhibitions.Areas (1) :=
+        (Kind => SIn.Powerless_Section, Start => 100_000, Finish => 200_000);
+      EVC_Braking.Build (S, (others => True), False, Model);
+      EVC_Profile.Build (S, Model, 0, P);
+      In_Area := P.Points (EVC_Profile.Segment_Of (P, 150_000));
+      Outside := P.Points (EVC_Profile.Segment_Of (P, 50_000));
+      Check (In_Area.Inhibited (SIn.Regenerative_Inhibited)
+             and then In_Area.Inhibited (SIn.Powerless_Section)
+             and then not Outside.Inhibited (SIn.Regenerative_Inhibited)
+             and then EVC_Braking.Emergency_Combination
+                        (Model, In_Area.Inhibited) mod 2 = 0
+             and then EVC_Braking.Emergency_Combination
+                        (Model, Outside.Inhibited) mod 2 = 1,
+             "3.13.2.3.4.1: no regenerative brake in the powerless section "
+             & "(3.12.1.3.3)");
+      S.Extra.Config.Regenerative_Needs_Catenary := False;
+      EVC_Profile.Build (S, Model, 0, P);
+      In_Area := P.Points (EVC_Profile.Segment_Of (P, 150_000));
+      Check (not In_Area.Inhibited (SIn.Regenerative_Inhibited),
+             "3.12.1.3.3: a regenerative brake independent from the "
+             & "catenary is kept");
+   end Scenario_SDM_Seams;
 
    ---------------------------------------------------------------------
    --  The mission of the mock (dmi_test Scenario_Mission) with the
@@ -7471,6 +7731,7 @@ begin
    Scenario_Track_Conditions;
    Scenario_Other_Profiles;
    Scenario_Rear_Deletion;
+   Scenario_Snapshot_Seams;
    Check (Encodes_OK, "E3: every telegram of the track encoded");
    Scenario_SDM_Precision;
    Scenario_SDM_Ceiling;
@@ -7487,6 +7748,7 @@ begin
    Scenario_SDM_Special_Brakes;
    Scenario_SDM_Masking;
    Scenario_SDM_SR;
+   Scenario_SDM_Seams;
    Scenario_SDM_Mission;
    Scenario_SDM_Build_Up;
 

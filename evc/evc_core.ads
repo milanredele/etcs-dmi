@@ -25,8 +25,14 @@
 --  position (EVC_Position), which the second step updates with the cab
 --  status and the odometer sample of the cycle; its events are recorded
 --  on the JRU port, the geographical position goes to the DMI
---  (MSG_STATUS) and the validity of the position to MSG_ONBOARD. The
---  later phases fill the empty steps.
+--  (MSG_STATUS) and the validity of the position to MSG_ONBOARD. Phase
+--  E3: the third step evaluates the stored information
+--  (EVC_Stored_Information: the snapshot of 3.13.2, MSG_PLANNING,
+--  MSG_TRACK_COND, JRU event 32), the fourth runs the speed and distance
+--  monitoring and the brake command handling on that snapshot (EVC_SDM,
+--  EVC_Brake_Commands: MSG_SPEED_STATE every cycle, the brake and the
+--  time to Indication in MSG_STATUS, the TIU output, JRU events 20 to
+--  22). The later phases fill the empty steps.
 
 --  The postconditions name the state before the call ('Old) of query
 --  functions behind "and then" and "if": allowed, and evaluated at entry
@@ -241,7 +247,9 @@ is
    --  For the tests of the hosts (evc_test, evc_fuzz), not for an
    --  on-board in service: from the next cycle on and until Initialise,
    --  the speed and distance monitoring reads S instead of the snapshot
-   --  of the stored information (3.13.2)
+   --  of the stored information (EVC_Stored_Information.Current, 3.13.2);
+   --  the stored information is still evaluated and still sends its
+   --  frames. Called again, the last S counts.
    procedure Set_Snapshot_For_Test (S : EVC_Supervision_Input.Snapshot_T)
      with Global => (In_Out => State),
           Post => Mode = Mode'Old and then Failed = Failed'Old

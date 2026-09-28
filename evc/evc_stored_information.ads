@@ -23,9 +23,14 @@
 --    5. what lies more than 300 m in rear of the min safe rear end
 --       (A.3.1), and the origins nothing refers to any more;
 --    6. the snapshot (Current): the train, the Train Data, the national
---       values, the MRSP, the gradient profile, the MA, the braking
---       inhibitions, the adhesion, the temporary EOA and SvL, and
---       Supervise (an MA and valid Train Data; phase E4 adds the mode);
+--       values, the MRSP with its TSR flags, the gradient profile with
+--       its coverage and the default gradient for TSR (3.13.4.1.3), the
+--       MA, the braking inhibitions and the powerless sections, the
+--       adhesion, the temporary EOA and SvL, Supervise (an MA and valid
+--       Train Data; phase E4 adds the mode) and Extra (the configuration
+--       of the on-board, the use of A_NVMAXREDADHn, the trip margin of
+--       3.13.9.4.8.2; the rest at its defaults until E4 and E5, see
+--       EVC_Supervision_Input);
 --    7. the indications of the track conditions and the planning for the
 --       DMI (EVC_Core sends them), the records for the juridical
 --       recording (Event).
@@ -130,6 +135,26 @@ is
    ---------------------------------------------------------------------
    --  The snapshot and what it was built from
    ---------------------------------------------------------------------
+
+   --  The configuration of this on-board (3.13.2.2.6 to 3.13.2.2.8,
+   --  Snapshot_T.Extra.Config): a service brake command and the traction
+   --  cut-off (the TIU output), the brake pressure acquired from the
+   --  main brake pipe (TIU input 12; used only where Q_NVSBFBPERM allows
+   --  it), an interface with every special brake whose status counts
+   --  for both brake models (TIU inputs 7 to 10: a special brake is not
+   --  in use until the train interface says it is active), the
+   --  additional brake not taken as independent from the adhesion
+   --  (A_NVMAXREDADH2 rather than 1), a regenerative brake that needs the
+   --  catenary (3.12.1.3.3)
+   Onboard_Config : constant Onboard_Config_T :=
+     (Service_Brake_Command       => True,
+      Service_Brake_Feedback      => True,
+      Feedback_From_Cylinder      => False,
+      K1_Milli                    => 2_500,
+      Traction_Cut_Off            => True,
+      Special_Brakes              => (others => Emergency_And_Service),
+      Additional_Brake_Allowed    => False,
+      Regenerative_Needs_Catenary => True);
 
    function Current return Snapshot_T
      with Global => State;

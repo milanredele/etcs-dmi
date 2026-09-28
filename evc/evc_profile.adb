@@ -9,8 +9,9 @@ is
    type Candidates_T is array (Candidate_Index) of Num;
 
    type Grade_T is record
-      Start : Dist_T;
-      Grad  : Gradient_T;
+      Start   : Dist_T;
+      Grad    : Gradient_T;
+      Covered : Boolean;
    end record;
    type Grades_T is array (1 .. Max_Gradient_Segments) of Grade_T;
 
@@ -34,7 +35,12 @@ is
    is
       L : constant Num := Min (Num (S.Train_Data.Length), 1_000_000);
 
-      Grades  : Grades_T := (others => (Start => 0, Grad => 0));
+      Grades  : Grades_T :=
+        (others => (Start => 0, Grad => 0, Covered => True));
+      --  3.13.4.1.3 a): the default gradient for TSR, when one is stored
+      Default_TSR : constant Gradient_T :=
+        (if S.Gradients.Has_Default_TSR then S.Gradients.Default_TSR
+         else 0);
       G_Count : Natural range 0 .. Max_Gradient_Segments := 0;
 
       Cand    : Candidates_T := (others => 0);
@@ -49,20 +55,23 @@ is
       end Add;
 
       --  3.13.4.2: the lowest gradient met by a fictive train whose
-      --  front end is anywhere in [Lo, Hi]: over [Lo - L, Hi]
-      function Lowest (Lo, Hi : Num) return Gradient_T is
+      --  front end is anywhere in [Lo, Hi]: over [Lo - L, Hi]; Other
+      --  where the profile gives nothing (3.13.4.1.3)
+      function Lowest (Lo, Hi : Num; Other : Gradient_T) return Gradient_T
+      is
          Result : Gradient_T := Gradient_T'Last;
          From   : constant Num := Lo - L;
       begin
-         --  3.13.4.1.3 b): 0 where the profile gives nothing
          if G_Count = 0 or else From < Grades (1).Start then
-            Result := 0;
+            Result := Other;
          end if;
          for K in 1 .. G_Count loop
             if Grades (K).Start < Hi
               and then (K = G_Count or else Grades (K + 1).Start > From)
             then
-               Result := Integer'Min (Result, Grades (K).Grad);
+               Result := Integer'Min (Result,
+                                      (if Grades (K).Covered
+                                       then Grades (K).Grad else Other));
             end if;
          end loop;
          return Result;
@@ -81,7 +90,9 @@ is
                if G_Count < Max_Gradient_Segments then
                   G_Count := G_Count + 1;
                   Grades (G_Count) :=
-                    (Start => X, Grad => S.Gradients.Segments (K).Gradient);
+                    (Start   => X,
+                     Grad    => S.Gradients.Segments (K).Gradient,
+                     Covered => S.Gradients.Covered (K));
                end if;
             end if;
          end;
@@ -144,12 +155,19 @@ is
             Lo : constant Num := P.Points (I).Start;
             Hi : constant Num :=
               (if I < P.Count then P.Points (I + 1).Start else Max_Cm);
-            G  : constant Gradient_T := Lowest (Lo, Hi);
+            --  3.13.4.1.3 b), a)
+            G  : constant Gradient_T := Lowest (Lo, Hi, 0);
+            GT : constant Gradient_T := Lowest (Lo, Hi, Default_TSR);
             Point : Point_T renames P.Points (I);
          begin
             Point.Gradient := G;
             Point.A_Gradient :=
               Gradient_Acceleration (G, Model.M_Rotating_Up,
+                                     Model.M_Rotating_Down);
+            --  3.13.4.1.2: compensated for the rotating mass as well
+            Point.Gradient_TSR := GT;
+            Point.A_Gradient_TSR :=
+              Gradient_Acceleration (GT, Model.M_Rotating_Up,
                                      Model.M_Rotating_Down);
             Point.Reduced := S.Adhesion.Driver_Slippery;
             for K in 1 .. S.Adhesion.Count loop
@@ -172,6 +190,13 @@ is
                begin
                   if A.Last >= Num (Rear) and then A.First < Hi then
                      Point.Inhibited (S.Inhibitions.Areas (K).Kind) := True;
+                     --  3.13.2.3.4.1, 3.12.1.3.3: no regenerative brake
+                     --  in a powerless section when it needs the catenary
+                     if S.Inhibitions.Areas (K).Kind = Powerless_Section
+                       and then S.Extra.Config.Regenerative_Needs_Catenary
+                     then
+                        Point.Inhibited (Regenerative_Inhibited) := True;
+                     end if;
                   end if;
                end;
             end loop;
