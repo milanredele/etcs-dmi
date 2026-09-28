@@ -8881,7 +8881,7 @@ procedure EVC_Test is
       Start_X (Start_Cm => (Mission_Group_M - 13) * 100);
       Mission_Track (Q_NVEMRRLS => Q);
       Bound_Per_Mille := 2;
-      Run_X (-EVC_Position.Antenna_To_Cab_A_Cm, 100);
+      Run_X (-Integer_64 (EVC_Config.Default.Antenna_To_Cab_A), 100);
       Stand_X (500);
       Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 5, 0, 0, 0)));
       Stand_X (200);
@@ -9055,7 +9055,7 @@ procedure EVC_Test is
                EM_Cycle;
                exit when Cmd.EB;
             end loop;
-            Front_M := (Train_Cm + EVC_Position.Antenna_To_Cab_A_Cm) / 100;
+            Front_M := (Train_Cm + Integer_64 (EVC_Config.Default.Antenna_To_Cab_A)) / 100;
             Check (Cmd.EB and then Res.EB and then Res.Monitoring = SDM.TSM
                    and then Res.Status = SDM.IntS
                    and then Speed_Frame.V_Target = 100
@@ -9185,7 +9185,7 @@ procedure EVC_Test is
              Tag & "the EB triggered in TSM at"
              & Img_LF (Kmh_Of (EVC_Fixed.Num (EM_V))) & " km/h,"
              & Integer_64'Image
-                 ((Train_Cm + EVC_Position.Antenna_To_Cab_A_Cm) / 100)
+                 ((Train_Cm + Integer_64 (EVC_Config.Default.Antenna_To_Cab_A)) / 100)
              & " m, approaching the EOA, with the SB and the TCO; JRU 20 "
              & "(7, 1)");
    end EM_To_EOA_EB;
@@ -9306,7 +9306,7 @@ procedure EVC_Test is
                Held := Held and then Cmd.EB;
             end loop;
             Carried := Res.Monitoring = SDM.RSM and then Cmd.EB;
-            Front_M := (Train_Cm + EVC_Position.Antenna_To_Cab_A_Cm) / 100;
+            Front_M := (Train_Cm + Integer_64 (EVC_Config.Default.Antenna_To_Cab_A)) / 100;
             Check (Carried and then Held and then not Cmd.SB
                    and then not Cmd.TCO and then TIU_Out = TIU (1, 1)
                    and then Is_Record (1, 1, S_IntS),
@@ -9373,7 +9373,7 @@ procedure EVC_Test is
             end loop;
             EM_V := 0;
             EM_Cycle;
-            Front_M := (Train_Cm + EVC_Position.Antenna_To_Cab_A_Cm) / 100;
+            Front_M := (Train_Cm + Integer_64 (EVC_Config.Default.Antenna_To_Cab_A)) / 100;
             Check (Held_2 and then not Cmd.EB
                    and then TIU_Out = TIU (0, 0)
                    and then Is_Record (0, 0, S_IndS)
