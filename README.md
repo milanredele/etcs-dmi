@@ -160,10 +160,21 @@ wire is a configurable Ethernet stand-in: latency, jitter, loss,
 duplication, reordering, fragmentation (MTU) and a "cut the link"
 switch, with live statistics.
 1. `test/wasm/build.sh` — builds `test/wasm/dmi.wasm`, `evc.wasm` and
-   `onboard.wasm` in
-   a Docker container with GNAT-LLVM and the AdaWebPack wasm32 runtime
-   (the image is built on first use, see
-   [test/wasm/Dockerfile](test/wasm/Dockerfile))
+   `onboard.wasm` with GNAT-LLVM and the AdaWebPack wasm32 runtime:
+   - natively on an Apple Silicon Mac, once
+     [test/wasm/setup-native-toolchain.sh](test/wasm/setup-native-toolchain.sh)
+     has installed the toolchain under `~/.local/share/etcs-dmi/adawebpack-native`
+     (`$ETCS_TOOLS`): AdaWebPack 24.0.0 rebuilt from the sources of its
+     release (gnat-llvm, the GCC 14.1 front end, LLVM 16.0.4), pinned by
+     digest; it needs the Alire GNAT and gprbuild, the Xcode command line
+     tools and `brew install zstd`, and takes a few minutes once.
+     A clean build then takes about 10 s instead of half an hour in the
+     emulated container on the same Mac, and gives the same bytes;
+   - otherwise in a Docker container, the fallback and what CI uses (the
+     image is built on first use, see
+     [test/wasm/Dockerfile](test/wasm/Dockerfile); on Apple Silicon it
+     runs under emulation). `WASM_NATIVE=0` forces the container,
+     `WASM_NATIVE=1` the native toolchain.
 2. serve the repository over HTTP, e.g. `python3 -m http.server 8000`,
    and open <http://localhost:8000/test/wasm/>
 
