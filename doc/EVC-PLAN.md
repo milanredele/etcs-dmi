@@ -640,3 +640,63 @@ identifiers 55, 57 and 64 are not in the 4.0.0 table.
 At the end of E4 the on-board runs the mission of the mock through the
 DMI on the bench in level 1, from start of mission to the stop at the
 EOA, and `EVC_Mock` is retired from the default page.
+
+## 11. E4 bench: outcome (2026-09-28)
+
+Branch `e4/bench`, merged. The real on-board drives the DMI on the
+bench, and its wasm build sends exactly the bytes of the native one.
+
+**Environment** (`sim/`): `EVC_Track` extended with six linked balise
+groups (NID_C 123, two balises 3 m apart, at −12, 1500, 4000, 6500, 8000
+and 9600 m), a TSR and a plain text the mock ignores; `Sim_Telegrams`
+builds 830-bit telegrams with the on-board's own encoder (packets 3, 5,
+12, 21, 27, 41, 65, 68, 73); `Sim_Trackside` places them (national
+values and SSP in the first balise, gradients and the level 1 MA with its
+danger point and 25 km/h release speed in the second; linking with
+service brake reaction and 2 m accuracy); `Sim_Odometer` with an integer
+error model (+1000 ppm scale, ±500 ppm noise from a fixed seed, bounds
+that always cover the true error, interpolated balise stamps);
+`Sim_Vehicle` (cab A, direction controller, brake pipe pressure; the
+on-board's EB, SB and traction cut-off act on `EVC_Train`, which gained
+brake build-up times; a failed on-board makes the vehicle brake by
+itself); `Sim_JRU` (a ring of decoded records);
+`EVC_Driver.Auto_Drive_Onboard` following the permitted speed of
+MSG_SPEED_STATE; `Sim_Onboard_Env.Step` running driver → vehicle →
+odometer → balises → `EVC_Core.Tick` → outputs.
+
+**Modules**: `onboard.wasm` (960 kB) next to `dmi.wasm` and `evc.wasm`;
+the hosted `obj/evc_onboard` runs the same environment on the hub port.
+The wasm build needed `__multi3`: LLVM turns the overflow-checked 64-bit
+multiplications of the kernel into a 128-bit multiply, the modules link
+with `-nostdlib` and the AdaWebPack runtime has no compiler-rt, so
+`test/wasm/wasm_int128` provides it in Ada (64-bit modular arithmetic
+only) and the smoke check compares it with BigInt on 2000 operands.
+
+**Page**: a selector "On-board: simulator (mock) | ETCS on-board", the
+mock by default until E4 gives the on-board its modes; with the on-board,
+a panel with mode and level, TIU commands and reasons, brake pipe
+pressure, the last JRU records, the balise groups on the strip, and an
+"Acknowledge brake release" button, because the DMI shows no
+acknowledgement request during its start-up dialogue (11.7.1.8) and the
+on-board cannot end that dialogue before E4 (to review then).
+
+**Same bytes on wasm and natively**: the vehicle integrates in Float but
+quantises position and speed to cm and cm/s at the port boundary;
+everything after is integer. `test/wasm/onboard_smoke.js` runs 600 cycles
+and compares the SHA-256 of the on-board's DMI output with the golden of
+the native scenario `Scenario_Bench_Onboard`: identical. The native
+scenario then runs the whole mission: one standstill supervision brake
+before the group is read, MA supervised from −6 m, TSM at 2340 m, the TSR
+respected at 7390 m, RSM at 9871 m, stop at 9888 m before the EOA at
+10 000 m, no intervention under the MA, all 12 balises accepted.
+
+**What the mission needs from E4**: start of mission and the modes (the
+on-board stays in SB and the DMI in its start-up dialogue), train data
+from the driver (MSG_DRIVER_DATA is ignored, the default 200 m train is
+used), acting on packets 41 and 73, the linking reactions; the demo line
+orders level 2 at 5000 m, which needs E5 or a change of the line.
+
+**Open points**: the vehicle ignores gradients; the 1 MB wasm stack is
+not measured for the on-board; `evc/README.md` still describes
+`evc_onboard` as bridging the DMI port only; `Mission_Track` in
+`evc_test` can move to `Sim_Telegrams`.
