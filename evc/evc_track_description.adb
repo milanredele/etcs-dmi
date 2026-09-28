@@ -6,7 +6,7 @@ with EVC_Location; use EVC_Location;
 package body EVC_Track_Description
   with SPARK_Mode => On,
        Refined_State => (State => (SSP_S, Grad_S, ASP_S, TSR_S, Adh_S,
-                                   Grad_Default_Known, Grad_Default,
+                                   PBD_S, Grad_Default_Known, Grad_Default,
                                    LX_S, LX_Sense_S, Suit_S, Lost_N))
 is
 
@@ -15,6 +15,7 @@ is
    ASP_S              : Store_T := Empty_Store;
    TSR_S              : Store_T := Empty_Store;
    Adh_S              : Store_T := Empty_Store;
+   PBD_S              : Store_T := Empty_Store;
    Grad_Default_Known : Boolean := False;
    Grad_Default       : Gradient_T := 0;
    LX_S               : LX_Array_T;
@@ -32,6 +33,8 @@ is
      with Refined_Global => TSR_S;
    function Adhesion_Store return Store_T is (Adh_S)
      with Refined_Global => Adh_S;
+   function PBD return Store_T is (PBD_S)
+     with Refined_Global => PBD_S;
    function Default_Gradient_Known return Boolean is (Grad_Default_Known)
      with Refined_Global => Grad_Default_Known;
    function Default_Gradient return Gradient_T is (Grad_Default)
@@ -44,7 +47,8 @@ is
      with Refined_Global => Suit_S;
 
    function Lost return Natural
-     with Refined_Global => (SSP_S, Grad_S, ASP_S, TSR_S, Adh_S, Lost_N)
+     with Refined_Global => (SSP_S, Grad_S, ASP_S, TSR_S, Adh_S, PBD_S,
+                             Lost_N)
    is
       N : Natural := Lost_N;
 
@@ -58,6 +62,7 @@ is
       Plus (ASP_S.Lost);
       Plus (TSR_S.Lost);
       Plus (Adh_S.Lost);
+      Plus (PBD_S.Lost);
       return N;
    end Lost;
 
@@ -79,6 +84,7 @@ is
       ASP_S := Empty_Store;
       TSR_S := Empty_Store;
       Adh_S := Empty_Store;
+      PBD_S := Empty_Store;
       Grad_Default_Known := False;
       Grad_Default := 0;
       LX_S := (others => (others => <>));
@@ -401,6 +407,105 @@ is
    end Take_ASP;
 
    --------------
+   -- Take_PBD --
+   --------------
+
+   procedure Take_PBD (P : ETCS_Track_Packets.P52.Packet_T;
+                       M : Message_T;
+                       T : Origin_Table_T)
+   is
+      Scale : constant Natural := Natural (P.Q_SCALE);
+      Start : Dist_T;
+
+      --  A section from From, of the length Length: its order (3.11.11.2),
+      --  its speed computed in the cycle (Compute_PBD)
+      procedure Add_Section (From    : Dist_T;
+                             Length  : Dist_T;
+                             D_PBD   : D_PBD_T;
+                             Q_GDIR  : Q_GDIR_T;
+                             G       : G_PBDSR_T;
+                             Q_PBDSR : Q_PBDSR_T)
+      is
+         G_Signed : constant Gradient_T :=
+           (if Q_GDIR = 1 then Gradient_T (Natural'Min (Natural (G), 255))
+            else -Gradient_T (Natural'Min (Natural (G), 255)));
+      begin
+         Append (PBD_S, (Start        => At_Offset (M, From),
+                         Finish       => At_Offset (M, Sum (From, Length)),
+                         Open         => False,
+                         Value        => 0,
+                         Delay_Length => False,
+                         Id           => Natural (D (Natural (D_PBD), Scale)),
+                         Msg          => M.Msg,
+                         Noted        => False,
+                         Gradient     => G_Signed,
+                         Service      => Q_PBDSR = 1,
+                         others       => <>));
+      end Add_Section;
+   begin
+      if M.Origin = 0 or else Scale > 2 then
+         return;
+      end if;
+      Orient (PBD_S, M.Sense);
+      if P.Q_TRACKINIT = 1 then
+         --  3.7.3.2 a): no speed restriction to ensure a permitted
+         --  braking distance from D_TRACKINIT (3.11.11.11)
+         Start := D (Natural (P.D_TRACKINIT), Scale);
+         Cut_Beyond (PBD_S, T,
+                     Frame (T, At_Offset (M, Start), Estimated_Item),
+                     At_Offset (M, Start), M.Msg);
+         return;
+      end if;
+      Start := D (Natural (P.D_PBDSR), Scale);
+      --  3.7.3.1 d): from the start of the first element
+      Cut_Beyond (PBD_S, T, Frame (T, At_Offset (M, Start), Estimated_Item),
+                  At_Offset (M, Start), M.Msg);
+      Add_Section (Start, D (Natural (P.L_PBDSR), Scale), P.D_PBD,
+                   P.Q_GDIR, P.G_PBDSR, P.Q_PBDSR);
+      for K in 1 .. Natural (P.N_ITER) loop
+         declare
+            X : ETCS_Track_Packets.P52.D_PBD_Item renames P.D_PBD_List (K);
+         begin
+            --  3.6.3.2.4 a): increments between the starts
+            Start := Sum (Start, D (Natural (X.D_PBDSR), Scale));
+            Add_Section (Start, D (Natural (X.L_PBDSR), Scale), X.D_PBD,
+                         X.Q_GDIR, X.G_PBDSR, X.Q_PBDSR);
+         end;
+      end loop;
+   end Take_PBD;
+
+   -----------------
+   -- Compute_PBD --
+   -----------------
+
+   procedure Compute_PBD (I            : EVC_PBD.Inputs_T;
+                          All_Sections : Boolean;
+                          Computed     : out Natural)
+   is
+   begin
+      Computed := 0;
+      for K in 1 .. PBD_S.Count loop
+         pragma Loop_Invariant
+           (Computed < K
+            and then (for all J in 1 .. K - 1 => PBD_S.List (J).Noted));
+         if All_Sections or else not PBD_S.List (K).Noted then
+            PBD_S.List (K).Value :=
+              EVC_PBD.Restriction
+                (I,
+                 D_PBD    => Cm_T'Min (EVC_PBD.PBD_Distance_T'Last,
+                                         Cm_T (PBD_S.List (K).Id)),
+                 Gradient => Gradient_T'Max
+                               (Gradient_T'First,
+                                Gradient_T'Min (Gradient_T'Last,
+                                                PBD_S.List (K).Gradient)),
+                 Service  => PBD_S.List (K).Service);
+            PBD_S.List (K).Noted := True;
+            Computed := Computed + 1;
+         end if;
+      end loop;
+   end Compute_PBD;
+
+   --------------
    -- Take_TSR --
    --------------
 
@@ -682,6 +787,7 @@ is
       Cut_Beyond (Grad_S, T, X, To, Before_Msg);
       Cut_Beyond (SSP_S, T, X, To, Before_Msg);
       Cut_Beyond (ASP_S, T, X, To, Before_Msg);
+      Cut_Beyond (PBD_S, T, X, To, Before_Msg);
       for I in Suit_S'Range loop
          if Suit_S (I).Used and then Suit_S (I).Msg < Before_Msg
            and then A (SSP_S.Sense, Frame (T, Suit_S (I).At_Loc,
@@ -704,6 +810,7 @@ is
       Cut_Behind (ASP_S, T, Rear, Keep_In_Rear);
       Cut_Behind (TSR_S, T, Rear, Keep_In_Rear);
       Cut_Behind (Adh_S, T, Rear, Keep_In_Rear);
+      Cut_Behind (PBD_S, T, Rear, Keep_In_Rear);
       for I in LX_S'Range loop
          if LX_S (I).Used
            and then A (LX_Sense_S, Frame (T, LX_S (I).Finish, Min_Item))
@@ -742,6 +849,7 @@ is
       Mark (ASP_S, Marks);
       Mark (TSR_S, Marks);
       Mark (Adh_S, Marks);
+      Mark (PBD_S, Marks);
       for I in LX_S'Range loop
          if LX_S (I).Used then
             Mark (LX_S (I).Start, Marks);
@@ -809,6 +917,13 @@ is
             Add_Stored (E, T, Ahead, TSR_S.List (I), Length);
          end loop;
       end if;
+      --  3.11.11: the sections computed (Compute_PBD runs before)
+      if PBD_S.Sense = Ahead then
+         for I in 1 .. PBD_S.Count loop
+            pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);
+            Add_Stored (E, T, Ahead, PBD_S.List (I), Length);
+         end loop;
+      end if;
       --  3.11.9: the LX speed restriction of a level crossing not
       --  protected, over its area (its substitution for the temporary
       --  EOA and SvL, 5.16, is phase E4)
@@ -856,11 +971,35 @@ is
                                 E     : in out Elements_T)
    is
    begin
-      if Grad_S.Sense = Ahead then
-         for I in 1 .. Grad_S.Count loop
-            Add_Stored (E, T, Ahead, Grad_S.List (I), 0);
-         end loop;
+      if Grad_S.Sense /= Ahead then
+         return;
       end if;
+      for I in 1 .. Grad_S.Count loop
+         Add_Stored (E, T, Ahead, Grad_S.List (I), 0);
+      end loop;
+      --  3.11.12.2: between an element and the one that starts where it
+      --  ends, from the rearmost to the foremost item of the change, the
+      --  lower of the two (see the header); where the "max" item is not
+      --  ahead of the "min" item the two elements overlap there already
+      --  and the envelope takes the lower one: nothing changes
+      for I in 1 .. Grad_S.Count loop
+         for J in 1 .. Grad_S.Count loop
+            if J /= I and then not Grad_S.List (J).Open
+              and then Grad_S.List (J).Finish = Grad_S.List (I).Start
+            then
+               declare
+                  X_Min : constant Dist_T :=
+                    A (Ahead, Frame (T, Grad_S.List (I).Start, Min_Item));
+                  X_Max : constant Dist_T :=
+                    A (Ahead, Frame (T, Grad_S.List (I).Start, Max_Item));
+               begin
+                  Add (E, Dist_T'Min (X_Min, X_Max), Dist_T'Max (X_Min, X_Max),
+                       Value_T'Min (Grad_S.List (I).Value,
+                                    Grad_S.List (J).Value));
+               end;
+            end if;
+         end loop;
+      end loop;
    end Gradient_Elements;
 
    procedure Adhesion_Areas (T     : Origin_Table_T;

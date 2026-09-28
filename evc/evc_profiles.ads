@@ -164,9 +164,17 @@ is
       Id     : Natural := 0;
       Msg    : Natural := 0;
       --  a time the store notes on the element (a track condition: its
-      --  end passed by the min safe rear end, 5.18)
+      --  end passed by the min safe rear end, 5.18; a section of a speed
+      --  restriction to ensure a permitted braking distance: its Value
+      --  computed, 3.11.11.3)
       Noted    : Boolean := False;
       Noted_Ms : Unsigned_64 := 0;
+      --  the order of a speed restriction to ensure a permitted braking
+      --  distance (packet 52, 3.11.11.2): its gradient (per mille,
+      --  signed) and whether the service brake is to achieve it
+      --  (Q_PBDSR 1); the permitted braking distance is Id (cm)
+      Gradient : Value_T := 0;
+      Service  : Boolean := False;
    end record;
 
    Max_Stored : constant := 96;

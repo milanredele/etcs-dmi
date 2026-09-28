@@ -1,9 +1,10 @@
 --  ETCS on-board (EVC)
 --  The track description the on-board stores (SUBSET-026 3.7, 3.11,
 --  3.12.2, 3.12.5): static speed profile (packet 27), gradients (21),
---  axle load speed profile (51), temporary speed restrictions (65, 66),
---  the default gradient for TSR (141), level crossings (88), adhesion
---  (71) and route suitability (70).
+--  axle load speed profile (51), the speed restriction to ensure a
+--  permitted braking distance (52), temporary speed restrictions (65,
+--  66), the default gradient for TSR (141), level crossings (88),
+--  adhesion (71) and route suitability (70).
 --
 --  Every location is an offset from the origin of the group message
 --  that gave it (EVC_Profiles), so that relocation (3.6.4.2.5) moves the
@@ -14,18 +15,44 @@
 --
 --  Replacement (3.7.3.1): a new SSP, gradient profile or adhesion
 --  information replaces the stored one from the start location of the
---  new information (a, b, l), a new ASP from the start of its first
---  element (c): the stored elements beyond it go, the element across it
---  ends there (Cut_Beyond on the "estimated" items). Its "min" and "max"
---  items stay those of the two locations, so that when a relocation by
---  3.6.4.2.5 b) or c) made them differ, the envelope of the MRSP and of
---  the gradients takes the lowest of both over the distance between
---  them: 3.7.3.1.1 to 3.7.3.1.3 follow from Table 2a. New route
---  suitability data of a type replaces all of that type (h, i, j). A
---  TSR replaces the one of the same identity unless it is not revocable
---  (3.11.5.9); an LX information replaces the one of the same identity
---  (3.12.5.3). Q_TRACKINIT resumes the initial state from D_TRACKINIT
---  (3.7.3.2 b, d).
+--  new information (a, b, l), a new ASP or PBD information from the
+--  start of its first element (c, d): the stored elements beyond it go,
+--  the element across it ends there (Cut_Beyond on the "estimated"
+--  items). Its "min" and "max" items stay those of the two locations,
+--  so that when a relocation by 3.6.4.2.5 b) or c) made them differ,
+--  the envelope of the MRSP and of the gradients takes the lowest of
+--  both over the distance between them: 3.7.3.1.1 to 3.7.3.1.4 follow
+--  from Table 2a. New route suitability data of a type replaces all of
+--  that type (h, i, j). A TSR replaces the one of the same identity
+--  unless it is not revocable (3.11.5.9); an LX information replaces
+--  the one of the same identity (3.12.5.3). Q_TRACKINIT resumes the
+--  initial state from D_TRACKINIT (3.7.3.2 a, b, d).
+--
+--  The speed restriction to ensure a permitted braking distance (3.11.11,
+--  packet 52): a section is an element [D_PBDSR, D_PBDSR + L_PBDSR) of
+--  the store PBD, front end only (Table 2a: its end is a "min" item,
+--  3.13.7.2), keeping its order (the permitted braking distance in Id,
+--  cm, its gradient and brake: Stored_T); its Value, the speed V_PBD,
+--  is computed by EVC_PBD in Compute_PBD, which the stored information
+--  calls every cycle before the MRSP: the sections not computed yet, or
+--  all of them when the inputs of the computation changed (3.11.11.3).
+--  Until the first packet 52 (and beyond its sections) there is no
+--  restriction (3.11.11.11).
+--
+--  Gradients (3.11.12.2: the profile is continuous over the piece of
+--  track it covers). An element runs from the "max" item of its start
+--  to the "min" item of its end; where a relocation by 3.6.4.2.5 c)
+--  put the "max" item of a change of gradient ahead of its "min" item
+--  (the new reference less accurate than the former one), the element
+--  before the change and the one after it leave a gap. The gap lies
+--  inside the profile, so it is covered (not a location of 3.13.4.1.3);
+--  Table 2a places the change inside it by the curve (the EBD: a change
+--  to a lower value at the "max" item, to a higher one at the "min" item;
+--  the SBD and the GUI: the "estimated" item), so that every curve reads
+--  one of the two neighbouring gradients there. The one gradient profile
+--  of the snapshot takes the lower of the two over the whole gap
+--  (Gradient_Elements), never above what any curve reads: the safe side
+--  on a downhill.
 --
 --  Train categories (3.11.3.2.3, 3.11.3.2.6): the speed of each SSP
 --  element is chosen for the train when the packet is received (a change
@@ -34,16 +61,16 @@
 --  an element without it restricts nothing.
 --
 --  Not here: the comparison of route suitability with the train data
---  and its reaction (3.12.2.3, 3.12.2.4, phases E4 and E6), the speed
---  restriction for a permitted braking distance (3.11.11, packet 52: it
---  needs the braking curves of the supervision), the inhibition of
---  revocable TSRs from balises by the RBC (3.11.5.12 to .14, E5).
+--  and its reaction (3.12.2.3, 3.12.2.4, phases E4 and E6), the
+--  inhibition of revocable TSRs from balises by the RBC (3.11.5.12 to
+--  .14, E5).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Track_Packets.P51;
+with ETCS_Track_Packets.P52;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P66;
 with ETCS_Track_Packets.P70;
@@ -52,6 +79,7 @@ with ETCS_Track_Packets.P88;
 with ETCS_Track_Packets.P141;
 with ETCS_Variables;        use ETCS_Variables;
 with EVC_Distances;         use EVC_Distances;
+with EVC_PBD;
 with EVC_Profiles;          use EVC_Profiles;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with EVC_Train_Data;
@@ -77,6 +105,11 @@ is
      with Global => State;
    --  Value 0: a slippery rail area
    function Adhesion_Store return Store_T
+     with Global => State;
+   --  The sections of the speed restriction to ensure a permitted braking
+   --  distance: Value V_PBD (cm/s) once Noted, Id the permitted braking
+   --  distance (cm), Gradient, Service
+   function PBD return Store_T
      with Global => State;
 
    --  3.11.12.5, 3.11.12.6: the default gradient for TSR
@@ -134,6 +167,7 @@ is
      with Global => (Output => State),
           Post => SSP.Count = 0 and then Gradients.Count = 0
                   and then ASP.Count = 0 and then TSR.Count = 0
+                  and then PBD.Count = 0
                   and then not Default_Gradient_Known;
 
    --  The speed of an SSP element for the train (3.11.3.2.3, 3.11.3.2.6)
@@ -167,6 +201,21 @@ is
                        T    : Origin_Table_T;
                        Axle : M_AXLELOADCAT_T)
      with Global => (In_Out => State);
+
+   --  3.11.11.2, 3.7.3.1 d), 3.7.3.2 a)
+   procedure Take_PBD (P : ETCS_Track_Packets.P52.Packet_T;
+                       M : Message_T;
+                       T : Origin_Table_T)
+     with Global => (In_Out => State);
+
+   --  3.11.11.3: V_PBD of the sections not computed yet (every section
+   --  with All_Sections: the inputs changed), from the inputs I; Computed
+   --  the number of sections computed
+   procedure Compute_PBD (I            : EVC_PBD.Inputs_T;
+                          All_Sections : Boolean;
+                          Computed     : out Natural)
+     with Global => (In_Out => State),
+          Post => (for all K in 1 .. PBD.Count => PBD.List (K).Noted);
 
    procedure Take_TSR (P : ETCS_Track_Packets.P65.Packet_T;
                        M : Message_T;
@@ -204,10 +253,11 @@ is
    --  Deletion
    ---------------------------------------------------------------------
 
-   --  A.3.4.1.3 [1] and [10]: the gradients, the SSP, the ASP and the
-   --  route suitability data of the messages before Before_Msg, from the
-   --  frame position X (the location To) on; TSRs, level crossings, the
-   --  adhesion and the default gradient are unchanged
+   --  A.3.4.1.3 [1] and [10]: the gradients, the SSP, the ASP, the PBD
+   --  information and the route suitability data of the messages before
+   --  Before_Msg, from the frame position X (the location To) on; TSRs,
+   --  level crossings, the adhesion and the default gradient are
+   --  unchanged
    procedure Delete_Beyond (T          : Origin_Table_T;
                             X          : Dist_T;
                             To         : Location_T;
@@ -231,9 +281,10 @@ is
    --  For the snapshot
    ---------------------------------------------------------------------
 
-   --  The speed restrictions (SSP, ASP, TSR, LX not protected: 3.11.2
-   --  a, b, c, i) as elements along Ahead, their end moved by Length
-   --  where the rear end counts (3.11.3.1.3, 3.11.4.6, 3.11.5.3)
+   --  The speed restrictions (SSP, ASP, TSR, LX not protected, PBD SR:
+   --  3.11.2 a, b, c, i, k) as elements along Ahead, their end moved by
+   --  Length where the rear end counts (3.11.3.1.3, 3.11.4.6, 3.11.5.3;
+   --  the PBD SR by the front end only, Table 2a)
    procedure Speed_Elements (T      : Origin_Table_T;
                              Ahead  : Sense_T;
                              Length : Length_T;
@@ -252,7 +303,9 @@ is
                         V      : Value_T) return Boolean
      with Global => State;
 
-   --  The gradient profile as elements along Ahead (signed per mille)
+   --  The gradient profile as elements along Ahead (signed per mille),
+   --  with the gaps a relocation leaves between two of them filled with
+   --  the lower one (see the header)
    procedure Gradient_Elements (T     : Origin_Table_T;
                                 Ahead : Sense_T;
                                 E     : in out Elements_T)

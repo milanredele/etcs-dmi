@@ -10,6 +10,7 @@ with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Track_Packets.P39;
 with ETCS_Track_Packets.P51;
+with ETCS_Track_Packets.P52;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P66;
 with ETCS_Track_Packets.P67;
@@ -29,13 +30,14 @@ package body EVC_Stored_Information
                                    Orient_Seen, Events, Event_N,
                                    Indicated, Indicated_N, Sent, Sent_N,
                                    Cond_Due, Plan, Plan_Due,
-                                   Driver_Slippery))
+                                   Driver_Slippery, PBD_Last, PBD_Known))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
    use type EVC_Position.Status_T;
    use type EVC_Ports.Movement_T;
    use type EVC_DMI_Port.Track_Cond_Entry_T;
+   use type EVC_PBD.Inputs_T;
 
    type Event_Array is array (1 .. Max_Events) of Event_T;
 
@@ -58,6 +60,10 @@ is
    Plan            : EVC_DMI_Port.Planning_T;
    Plan_Due        : Boolean := False;
    Driver_Slippery : Boolean := False;
+   --  3.11.11.3: the inputs of the last computation of the speed
+   --  restrictions to ensure a permitted braking distance
+   PBD_Last        : EVC_PBD.Inputs_T;
+   PBD_Known       : Boolean := False;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -90,6 +96,8 @@ is
      with Refined_Global => Plan_Due;
    function Planning return EVC_DMI_Port.Planning_T is (Plan)
      with Refined_Global => Plan;
+   function PBD_Inputs return EVC_PBD.Inputs_T is (PBD_Last)
+     with Refined_Global => PBD_Last;
 
    procedure Record_Event (Info, Change, Detail : Natural)
      with Global => (In_Out => (Events, Event_N))
@@ -135,6 +143,8 @@ is
       Plan := (others => <>);
       Plan_Due := False;
       Driver_Slippery := False;
+      PBD_Last := (others => <>);
+      PBD_Known := False;
    end Clear;
 
    procedure Set_Driver_Slippery (Slippery : Boolean) is
@@ -228,8 +238,8 @@ is
 
    --  The order in which the packets of a message are evaluated
    type Order_Kind_T is
-     (K3, K27, K21, K51, K65, K66, K141, K68, K39, K67, K70, K71, K88,
-      K12, K80);
+     (K3, K27, K21, K51, K52, K65, K66, K141, K68, K39, K67, K70, K71,
+      K88, K12, K80);
 
    function Kind_Of (K : Order_Kind_T) return ETCS_Catalogue.Packet_Kind_T is
      (case K is
@@ -237,6 +247,7 @@ is
          when K27  => ETCS_Catalogue.Track_P27,
          when K21  => ETCS_Catalogue.Track_P21,
          when K51  => ETCS_Catalogue.Track_P51,
+         when K52  => ETCS_Catalogue.Track_P52,
          when K65  => ETCS_Catalogue.Track_P65,
          when K66  => ETCS_Catalogue.Track_P66,
          when K141 => ETCS_Catalogue.Track_P141,
@@ -320,6 +331,17 @@ is
                   EVC_Track_Description.Take_ASP
                     (X, M, T, EVC_Train_Data.Categories.Axle_Load);
                   Record_Event (Info_ASP, Change_Stored, M.Msg);
+               end if;
+            end;
+         when K52 =>
+            declare
+               X : ETCS_Track_Packets.P52.Packet_T;
+            begin
+               ETCS_Track_Packets.P52.Decode (R, X, OK);
+               if OK then
+                  --  3.11.11.3: computed in this cycle (Build)
+                  EVC_Track_Description.Take_PBD (X, M, T);
+                  Record_Event (Info_PBD, Change_Stored, M.Msg);
                end if;
             end;
          when K65 =>
@@ -537,18 +559,21 @@ is
                                Cm_T (Max))))
      with Pre => Max <= 2**16;
 
-   procedure Build (T          : Origin_Table_T;
-                    Train      : Train_Frame_T;
-                    Mode_Speed : Speed_Cms_T;
-                    Now_Ms     : Unsigned_64)
+   procedure Build (T              : Origin_Table_T;
+                    Train          : Train_Frame_T;
+                    Mode_Speed     : Speed_Cms_T;
+                    Now_Ms         : Unsigned_64;
+                    Special_Active : EVC_Braking.Brakes_T;
+                    Additional     : Boolean)
      with Global => (Output => (Sources, Steps, Ceiling, Indicated,
                                 Indicated_N, Cond_Due, Plan, Plan_Due),
                      In_Out => (Snap, Failures, Sent, Sent_N,
-                                EVC_Track_Conditions.State),
+                                EVC_Track_Conditions.State,
+                                EVC_Track_Description.State,
+                                PBD_Last, PBD_Known, Events, Event_N),
                      Input  => (Driver_Slippery, EVC_Odometry.State,
                                 EVC_Train_Data.State,
                                 EVC_National_Values.State,
-                                EVC_Track_Description.State,
                                 EVC_Movement_Authority.State)),
           Post => Snap.MRSP.Count = Steps.Count
                   and then Sorted (Steps)
@@ -623,6 +648,46 @@ is
       Snap.Train_Data := Data;
       Snap.National := NV;
       Snap.Mode_Speed := Mode_Speed;
+
+      --  the adhesion, and what 3.13 and 3.14 read beyond
+      --  (EVC_Supervision_Input): the configuration, the use of
+      --  A_NVMAXREDADHn, the trip margin (below); the others at their
+      --  defaults
+      Snap.Adhesion := (Count => 0, Areas => (others => (0, 0)),
+                        Driver_Slippery => Driver_Slippery);
+      EVC_Track_Description.Adhesion_Areas (T, Ahead, Snap.Adhesion);
+      Snap.Extra := (Config      => Onboard_Config,
+                     Train       => (others => <>),
+                     National    =>
+                       (Redadh_Use =>
+                          EVC_National_Values.Current.Redadh_Use),
+                     Trip_Margin => 0,
+                     T_MAR       => 0,
+                     SR_Distance => False,
+                     SR_End      => 0);
+
+      --  3.11.11.3: the speed restrictions to ensure a permitted braking
+      --  distance received are computed, and all of them again when an
+      --  input of the computation changed (the Train Data, the national
+      --  values, the status of the special brakes, the driver's slippery
+      --  rail, the antenna of the active cab), before the MRSP
+      declare
+         I       : constant EVC_PBD.Inputs_T :=
+           EVC_PBD.Inputs_Of
+             (Snap, Special_Active, Additional,
+              Natural (Length_T'Min
+                         (EVC_Position.Front_Offset (Train.Sense),
+                          EVC_PBD.Antenna_T'Last)));
+         Changed : constant Boolean := not PBD_Known or else I /= PBD_Last;
+         N       : Natural;
+      begin
+         EVC_Track_Description.Compute_PBD (I, Changed, N);
+         if Changed and then N > 0 then
+            Record_Event (Info_PBD, Change_Recalculated, N);
+         end if;
+         PBD_Last := I;
+         PBD_Known := True;
+      end;
 
       --  the MRSP (3.13.7): the speed restrictions, the signalling
       --  related one (3.11.6.2: from its reception on), under the
@@ -704,25 +769,11 @@ is
       Snap.MA := MA_R;
       EVC_Track_Conditions.Inhibitions (T, Ahead, Data.Length,
                                         Snap.Inhibitions);
-      Snap.Adhesion := (Count => 0, Areas => (others => (0, 0)),
-                        Driver_Slippery => Driver_Slippery);
-      EVC_Track_Description.Adhesion_Areas (T, Ahead, Snap.Adhesion);
       Snap.Supervise := MA_R.Present and then EVC_Train_Data.Valid;
 
-      --  what 3.13 and 3.14 read beyond (EVC_Supervision_Input): the
-      --  configuration, the use of A_NVMAXREDADHn, the trip margin of
-      --  3.13.9.4.8.2 (2 Q_LOCACC of the SOLR + 10 m + 10 % of the
-      --  distance from it to the EOA; beta, the Supervised Manoeuvre
-      --  term, is phase E4); the others at their defaults
-      Snap.Extra := (Config      => Onboard_Config,
-                     Train       => (others => <>),
-                     National    =>
-                       (Redadh_Use =>
-                          EVC_National_Values.Current.Redadh_Use),
-                     Trip_Margin => 0,
-                     T_MAR       => 0,
-                     SR_Distance => False,
-                     SR_End      => 0);
+      --  the trip margin of 3.13.9.4.8.2 (2 Q_LOCACC of the SOLR + 10 m
+      --  + 10 % of the distance from it to the EOA; beta, the Supervised
+      --  Manoeuvre term, is phase E4)
       if MA_R.Present and then Train.Valid then
          declare
             D : constant Dist_T :=
@@ -874,7 +925,12 @@ is
    -- Evaluate --
    --------------
 
-   procedure Evaluate (Now_Ms : Unsigned_64; Mode_Speed : Speed_Cms_T) is
+   procedure Evaluate (Now_Ms         : Unsigned_64;
+                       Mode_Speed     : Speed_Cms_T;
+                       Special_Active : EVC_Braking.Brakes_T :=
+                         (others => False);
+                       Additional     : Boolean := False)
+   is
       T     : constant Origin_Table_T := Origin_Table;
       Train : constant Train_Frame_T := Train_Frame;
       O     : EVC_Movement_Authority.Outcome_T;
@@ -941,7 +997,7 @@ is
       end loop;
 
       --  6., 7.
-      Build (T, Train, Mode_Speed, Now_Ms);
+      Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional);
    end Evaluate;
 
 end EVC_Stored_Information;

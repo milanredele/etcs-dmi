@@ -278,7 +278,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.1 a),3,x,,,,,E3,done,EVC_Track_Description.Take_SSP; evc_test Scenario_SSP_Replacement
 3.7.3.1 b),3,x,,,,,E3,done,EVC_Track_Description.Take_Gradients; evc_test Scenario_MA_Shortening
 3.7.3.1 c),3,x,,,,,E3,done,"EVC_Track_Description.Take_ASP (Cut_Beyond from the first element, as a)); evc_test Scenario_Other_Profiles"
-3.7.3.1 d),3,x,,,,,E3,deferred,"E3 after the integration: packet 52 and the PBD speed restriction of 3.11.11 are computed from the braking curves (EVC_Curves), not yet done"
+3.7.3.1 d),3,x,,,,,E3,done,EVC_Track_Description.Take_PBD: Cut_Beyond from the start of the first section; evc_test Scenario_PBD
 3.7.3.1 e),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Traction (all replaced); evc_test Scenario_Track_Conditions
 3.7.3.1 f),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Big_Metal_Masses; evc_test Scenario_Track_Conditions
 3.7.3.1 g),3,x,,,,,E3,done,"EVC_Track_Conditions.Take_Conditions; evc_test Scenario_Track_Conditions, Scenario_Other_Profiles"
@@ -294,9 +294,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.1.1,3,x,,,,,E3,done,"Table 2a items: the replaced element ends at the ""min"" item of the new start, the new one starts at its ""max"" item, EVC_Profiles.Envelope keeps the lowest in between (proved postcondition); evc_test Scenario_SSP_Replacement"
 3.7.3.1.2,3,x,,,,,E3,done,"as 3.7.3.1.1, the gradient envelope (EVC_Stored_Information.Build)"
 3.7.3.1.3,3,x,,,,,E3,done,as 3.7.3.1.1 for the ASP elements
-3.7.3.1.4,3,x,,,,,E3,deferred,"E3 after the integration: with 3.11.11 (PBD), not yet done"
-3.7.3.2,3,x,,,,,E3,partial,"b) c) d) done; a) with 3.11.11 (PBD, not yet done), e) E4"
-3.7.3.2 a),3,x,,,,,E3,deferred,"E3 after the integration: with 3.11.11 (PBD), not yet done"
+3.7.3.1.4,3,x,,,,,E3,done,"Table 2a items: a section from its ""max"" start item, the section cut ends at the ""min"" item of the new start, the MRSP envelope keeps the lowest between them; evc_test Scenario_PBD"
+3.7.3.2,3,x,,,,,E3,partial,"a) b) c) d) done (Q_TRACKINIT of packets 52, 51, 70, 68); e) E4 (station platforms, 5.20.8)"
+3.7.3.2 a),3,x,,,,,E3,done,"EVC_Track_Description.Take_PBD: Q_TRACKINIT, no restriction from D_TRACKINIT; evc_test Scenario_PBD"
 3.7.3.2 b),3,x,,,,,E3,done,EVC_Track_Description.Take_ASP (Q_TRACKINIT); evc_test Scenario_Other_Profiles
 3.7.3.2 c),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Conditions (Q_TRACKINIT); evc_test Scenario_Other_Profiles
 3.7.3.2 d),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (Q_TRACKINIT); evc_test Scenario_Other_Profiles
@@ -448,23 +448,23 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.7.1.3,3,x,,,,,E3,deferred,E4 (driver entry)
 3.11.8.1,3,x,,,,,E3,done,V_MAXTRAIN the ceiling of the MRSP (EVC_Stored_Information.Build); evc_test Scenario_SSP_Gradients
 3.11.10.1,3,x,,,,,E3,deferred,E4 (override function; the MRSP takes the speed as the caller's ceiling)
-3.11.11.3,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 1st bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 2nd bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 3rd bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 4th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 5th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 6th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 7th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 8th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 9th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.4 10th bullet,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.6,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.7,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.8,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.9,3,x,,,,,E3,deferred,"E3 after the integration: the PBD speed is computed from the braking curves (EVC_Curves), not yet done"
-3.11.11.11,3,x,,,,,E3,deferred,"E3 after the integration: packet 52 and the PBD speed restriction of 3.11.11 are computed from the braking curves (EVC_Curves), not yet done"
+3.11.11.3,3,x,,,,,E3,done,"EVC_Stored_Information: computed on reception (EVC_Track_Description.Compute_PBD), every section again when EVC_PBD.Inputs_T changes (Train Data, national values, special brake status, slippery rail, antenna), JRU 32/17/14; evc_test Scenario_PBD (Train Data change), evc_fuzz (the speed is the one of the inputs of the cycle)"
+3.11.11.4,3,x,,,,,E3,done,"EVC_PBD.Inputs_Of, Profile_Of, Holds; evc_test Scenario_PBD_Precision"
+3.11.11.4 1st bullet,3,x,,,,,E3,done,"EVC_PBD.Profile_Of: the gradient of the section, EVC_Profile.Gradient_Acceleration with M_rotating (3.13.4.3); evc_test Scenario_PBD_Precision"
+3.11.11.4 2nd bullet,3,x,,,,,E3,done,"EVC_PBD.Profile_Of: one segment, no adhesion profile, inhibition or powerless section from trackside (the driver's slippery rail kept, 3.13.5.4); the EBD of EVC_Curves; evc_test Scenario_PBD_Precision"
+3.11.11.4 3rd bullet,3,x,,,,,E3,done,EVC_PBD.Profile_Of: no inhibition or powerless section; the SBD of EVC_Curves; evc_test Scenario_PBD_Precision
+3.11.11.4 4th bullet,3,x,,,,,E3,done,EVC_PBD.Holds: the EBD anchored at zero speed at d_PBD; evc_test Scenario_PBD_Precision
+3.11.11.4 5th bullet,3,x,,,,,E3,done,EVC_PBD.Holds (Service_SBD): the SBD anchored at zero speed at d_PBD; evc_test Scenario_PBD_Precision
+3.11.11.4 6th bullet,3,x,,,,,E3,done,"EVC_PBD.Holds: no V_delta1, V_delta2 (A_est zero); evc_test Scenario_PBD_Precision"
+3.11.11.4 7th bullet,3,x,,,,,E3,done,"EVC_PBD.Holds: V_delta0PBD = EVC_Limits.F41 (V_PBD + dV), rounded up, 0 with Q_NVINHSMICPERM; evc_test Scenario_PBD_Precision"
+3.11.11.4 8th bullet,3,x,,,,,E3,done,"EVC_PBD.Holds: d_offset = L_antenna-front (EVC_Position.Front_Offset) + T41 (1 s, SUBSET-041 5.2.1.1) times the speed; evc_test Scenario_PBD_Precision"
+3.11.11.4 9th bullet,3,x,,,,,E3,done,"EVC_PBD.Holds: T_bs2 = T_bs (3.13.9.3.3.3 with T_bs), T_bs1 = T_bs, never shorter than the T_bs_reduced 3.13.9.3.3.3 names (the safe side), 0 without the service brake command (3.13.9.3.3.5); evc_test Scenario_PBD_Precision"
+3.11.11.4 10th bullet,3,x,,,,,E3,done,EVC_PBD.Inputs_Of: T_traction = T_traction_cut_off (3.13.9.3.2.3 b); evc_test Scenario_PBD_Precision
+3.11.11.6,3,x,,,,,E3,done,"EVC_PBD.Holds (Emergency), Unrounded (bisection in the integers, every term on the safe side), Restriction (5 km/h down, 0 when no speed fulfils); evc_test Scenario_PBD_Precision (float reference: never above, at most 2.6 cm/s below)"
+3.11.11.7,3,x,,,,,E3,done,"EVC_PBD.Restriction: the lower of 3.11.11.8 and 3.11.11.9, 5 km/h down; evc_test Scenario_PBD_Precision, evc_test Scenario_PBD"
+3.11.11.8,3,x,,,,,E3,done,EVC_PBD.Holds (Service_EBD); evc_test Scenario_PBD_Precision
+3.11.11.9,3,x,,,,,E3,done,"EVC_PBD.Holds (Service_SBD), T_bs1 = T_bs; evc_test Scenario_PBD_Precision"
+3.11.11.11,3,x,,,,,E3,done,"no restriction until packet 52 (the store PBD empty at Clear), outside its sections and beyond D_TRACKINIT; evc_test Scenario_PBD"
 3.11.12.6,3,x,,,,,E3,done,EVC_Track_Description.Take_Default_Gradient; evc_test Scenario_Other_Profiles
 3.12.1.2.1,3,x,,,,,E3,done,"EVC_Track_Conditions.Evaluate, Inhibitions; evc_test Scenario_Track_Conditions"
 3.12.1.2.1.2,3,x,,,,,E3,partial,"the big metal masses are stored (EVC_Track_Conditions); their evaluation against the antenna is used by 3.15.7, E6"
@@ -584,9 +584,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.4.1.1 a),3,x,,,,,E3,done,"EVC_Profile.Build (Gradient: the lowest under the fictive train, A_Gradient with the rotating mass); evc_test SDM_Precision (uphill, downhill, mixed, steep)"
 3.13.4.1.1 b),3,x,,,,,E3,done,"EVC_Profile.Build (Gradient: the lowest under the fictive train, A_Gradient with the rotating mass); evc_test SDM_Precision (uphill, downhill, mixed, steep)"
 3.13.4.1.2,3,x,,,,,E3,done,"EVC_Profile: Gradient_TSR and A_Gradient_TSR with the rotating mass of 3.13.4.3, for the curves of a target due to a TSR (EVC_Curves.Curve_T.TSR); evc_test SDM_Seams"
-3.13.4.1.3,3,x,,,,,E3,done,"a) the default gradient for TSR where the gradient profile gives nothing, for a target due to a TSR, b) 0 otherwise (EVC_Profile, Gradient_Profile_T.Covered, Speed_Profile_T.TSR); evc_test SDM_Seams, Snapshot_Seams"
+3.13.4.1.3,3,x,,,,,E3,done,"a) the default gradient for TSR where the gradient profile gives nothing, for a target due to a TSR, b) 0 otherwise (EVC_Profile, Gradient_Profile_T.Covered, Speed_Profile_T.TSR); evc_test SDM_Seams, Snapshot_Seams; a gap a relocation leaves between two elements of the profile is covered, with the lower of the two (3.11.12.2, EVC_Track_Description.Gradient_Elements); evc_test Scenario_Gradient_Gaps"
 3.13.4.1.3 a),3,x,,,,,E3,done,"EVC_Profile.Gradient_TSR with Gradient_Profile_T.Default_TSR where not Covered, for the targets whose MRSP segment is due to a TSR (EVC_Stored_Information: a TSR overlaps it at its speed); evc_test SDM_Seams (TSM earlier with a downhill default, not without one or where covered), TSR"
-3.13.4.1.3 b),3,x,,,,,E3,done,EVC_Profile.Build (Lowest: 0 before the gradient profile)
+3.13.4.1.3 b),3,x,,,,,E3,done,"EVC_Profile.Build (Lowest: 0 before the gradient profile); a gap a relocation leaves between two elements of the profile is covered, with the lower of the two (3.11.12.2, EVC_Track_Description.Gradient_Elements); evc_test Scenario_Gradient_Gaps"
 3.13.4.2.1,3,x,,,,,E3,done,"EVC_Profile.Build: [front - L_TRAIN, front] over every segment; evc_test SDM_Precision"
 3.13.4.3.1,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
 3.13.4.3.2,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
@@ -2043,7 +2043,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 7.4.2.11.2,7,x,x,,,,E1,done,ETCS_Track_Packets.P46; evc_test packet_round_trips
 7.4.2.12,7,x,x,,,,E1,done,ETCS_Track_Packets.P49; evc_test packet_round_trips
 7.4.2.13,7,x,x,,,,E1,done,ETCS_Track_Packets.P51; evc_test packet_round_trips
-7.4.2.13.1,7,x,x,,,,E1,done,ETCS_Track_Packets.P52; evc_test packet_round_trips
+7.4.2.13.1,7,x,x,,,,E1,done,"ETCS_Track_Packets.P52; evc_test packet_round_trips; used by EVC_Track_Description.Take_PBD (3.11.11), evc_test Scenario_PBD, evc_fuzz"
 7.4.2.14,7,x,x,,,,E1,done,"ETCS_Track_Packets.P57 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
 7.4.2.15,7,x,x,,,,E1,done,"ETCS_Track_Packets.P58 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
 7.4.2.16,7,x,x,,,,E1,done,"ETCS_Track_Packets.P63 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
@@ -2114,8 +2114,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 7.5.1.17,7,x,x,,,,E1,done,ETCS_Variables.D_NVROLL_T; evc_test packet_round_trips
 7.5.1.18,7,x,x,,,,E1,done,ETCS_Variables.D_NVSTFF_T; evc_test packet_round_trips
 7.5.1.19,7,x,x,,,,E1,done,ETCS_Variables.D_OL_T; evc_test packet_round_trips
-7.5.1.19.1,7,x,x,,,,E1,done,ETCS_Variables.D_PBD_T; evc_test packet_round_trips
-7.5.1.19.2,7,x,x,,,,E1,done,ETCS_Variables.D_PBDSR_T; evc_test packet_round_trips
+7.5.1.19.1,7,x,x,,,,E1,done,"ETCS_Variables.D_PBD_T; evc_test packet_round_trips; used by EVC_Track_Description.Take_PBD (3.11.11), evc_test Scenario_PBD, evc_fuzz"
+7.5.1.19.2,7,x,x,,,,E1,done,"ETCS_Variables.D_PBDSR_T; evc_test packet_round_trips; used by EVC_Track_Description.Take_PBD (3.11.11), evc_test Scenario_PBD, evc_fuzz"
 7.5.1.20,7,x,x,,,,E1,done,ETCS_Variables.D_POSOFF_T; evc_test packet_round_trips
 7.5.1.21,7,x,x,,,,E1,done,ETCS_Variables.D_RBCTR_T; evc_test packet_round_trips
 7.5.1.22,7,x,x,,,,E1,done,"ETCS_Variables.D_REF_T two's complement; messages 4, 15, 33, 34 (ETCS_Message.Parse)"
@@ -2134,7 +2134,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 7.5.1.35,7,x,x,,,,E1,done,ETCS_Variables.D_TSR_T; evc_test packet_round_trips
 7.5.1.36,7,x,x,,,,E1,done,ETCS_Variables.D_VALIDNV_T; evc_test packet_round_trips
 7.5.1.37,7,x,x,,,,E1,done,ETCS_Variables.G_A_T; evc_test packet_round_trips
-7.5.1.37.1,7,x,x,,,,E1,done,ETCS_Variables.G_PBDSR_T; evc_test packet_round_trips
+7.5.1.37.1,7,x,x,,,,E1,done,"ETCS_Variables.G_PBDSR_T; evc_test packet_round_trips; used by EVC_Track_Description.Take_PBD (3.11.11), evc_test Scenario_PBD, evc_fuzz"
 7.5.1.38,7,x,x,,,,E1,done,ETCS_Variables.G_TSR_T; evc_test packet_round_trips
 7.5.1.39,7,x,x,,,,E1,done,ETCS_Variables.L_ACKLEVELTR_T; evc_test packet_round_trips
 7.5.1.40,7,x,x,,,,E1,done,ETCS_Variables.L_ACKMAMODE_T; evc_test packet_round_trips
@@ -2155,7 +2155,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 7.5.1.48,7,x,x,,,,E1,done,"ETCS_Message.Parse checks it, ETCS_Message.Finish patches it; evc_test message"
 7.5.1.48.1,7,x,x,,,,E1,done,ETCS_Variables.L_NVKRINT_T; evc_test packet_round_trips
 7.5.1.49,7,x,x,,,,E1,done,"ETCS_Packet_Index.Scan, decode in exactly L_PACKET bits; evc_test telegram_damaged"
-7.5.1.49.1,7,x,x,,,,E1,done,ETCS_Variables.L_PBDSR_T; evc_test packet_round_trips
+7.5.1.49.1,7,x,x,,,,E1,done,"ETCS_Variables.L_PBDSR_T; evc_test packet_round_trips; used by EVC_Track_Description.Take_PBD (3.11.11), evc_test Scenario_PBD, evc_fuzz"
 7.5.1.50,7,x,x,,,,E1,done,ETCS_Variables.L_REVERSEAREA_T; evc_test packet_round_trips
 7.5.1.51,7,x,x,,,,E1,done,ETCS_Variables.L_SECTION_T; evc_test packet_round_trips
 7.5.1.51.1,7,x,x,,,,E1,done,ETCS_Variables.L_STOPLX_T; evc_test packet_round_trips
@@ -2267,7 +2267,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 7.5.1.124,7,x,x,,,,E1,done,ETCS_Variables.Q_NVSBTSMPERM_T; evc_test packet_round_trips
 7.5.1.125,7,x,x,,,,E1,done,"ETCS_Variables.Q_ORIENTATION_T, ETCS_Message.Parse; evc_test message"
 7.5.1.126,7,x,x,,,,E1,done,ETCS_Variables.Q_OVERLAP_T; evc_test packet_round_trips
-7.5.1.126.1,7,x,x,,,,E1,done,ETCS_Variables.Q_PBDSR_T; evc_test packet_round_trips
+7.5.1.126.1,7,x,x,,,,E1,done,"ETCS_Variables.Q_PBDSR_T; evc_test packet_round_trips; used by EVC_Track_Description.Take_PBD (3.11.11), evc_test Scenario_PBD, evc_fuzz"
 7.5.1.126.2,7,x,x,,,,E1,done,"ETCS_Variables.Q_PLATFORM_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.127,7,x,x,,,,E1,done,ETCS_Variables.Q_RBC_T; evc_test packet_round_trips
 7.5.1.128,7,x,x,,,,E1,done,ETCS_Variables.Q_RIU_T; evc_test packet_round_trips

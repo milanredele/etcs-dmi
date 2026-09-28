@@ -9,7 +9,8 @@
 --       (EVC_Position.Taken), each a message evaluated in its order:
 --       the country of the national values (3.18.2.10), then its
 --       packets valid for the train (3.6.3.1.3) in this order: national
---       values (3), SSP (27), gradients (21), ASP (51), TSR (65, 66),
+--       values (3), SSP (27), gradients (21), ASP (51), PBD (52), TSR
+--       (65, 66),
 --       default gradient (141), track conditions (68, 39, 67), route
 --       suitability (70), adhesion (71), level crossings (88), the MA
 --       (12) and the mode profile of an MA accepted (80). The stores
@@ -23,7 +24,10 @@
 --    5. what lies more than 300 m in rear of the min safe rear end
 --       (A.3.1), and the origins nothing refers to any more;
 --    6. the snapshot (Current): the train, the Train Data, the national
---       values, the MRSP with its TSR flags, the gradient profile with
+--       values, the speed restrictions to ensure a permitted braking
+--       distance computed (3.11.11.3: the sections received, or all of
+--       them when an input of EVC_PBD changed), the MRSP with its TSR
+--       flags, the gradient profile with
 --       its coverage and the default gradient for TSR (3.13.4.1.3), the
 --       MA, the braking inhibitions and the powerless sections, the
 --       adhesion, the temporary EOA and SvL, Supervise (an MA and valid
@@ -36,7 +40,8 @@
 --       recording (Event).
 --
 --  The MRSP (3.13.7): the lower envelope (EVC_Profiles.Envelope) of the
---  SSP, the ASP, the TSRs, the LX speed restrictions (EVC_Track_
+--  SSP, the ASP, the TSRs, the LX speed restrictions, the speed
+--  restrictions to ensure a permitted braking distance (EVC_Track_
 --  Description), the signalling related speed restriction (3.11.6, from
 --  its reception on), under the ceiling of the maximum train speed
 --  (3.11.8, V_MAXTRAIN) and of the mode related speed (the Mode_Speed of
@@ -55,12 +60,14 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
+with EVC_Braking;
 with EVC_DMI_Port;
 with EVC_Distances;          use EVC_Distances;
 with EVC_Movement_Authority;
 with EVC_National_Values;
 with EVC_Odometry;
 with EVC_Origins;
+with EVC_PBD;
 with EVC_Ports;
 with EVC_Position;
 with EVC_Profiles;           use EVC_Profiles;
@@ -99,6 +106,8 @@ is
    Info_Level_Crossing    : constant := 14;
    Info_Adhesion          : constant := 15;
    Info_Group             : constant := 16;
+   --  the speed restriction to ensure a permitted braking distance
+   Info_PBD               : constant := 17;
 
    --  The change (byte 3); byte 4 a detail
    Change_Stored     : constant := 1;   -- the message number mod 256
@@ -116,6 +125,9 @@ is
    Change_No_Origin  : constant := 12;
    --  the TSRs deleted with the orientation (3.11.5.10)
    Change_Orientation : constant := 13;
+   --  PBD: every section computed again, an input changed (3.11.11.3;
+   --  byte 4 the number of sections mod 256)
+   Change_Recalculated : constant := 14;
 
    type Event_T is record
       Info   : Unsigned_8 := 0;
@@ -216,9 +228,22 @@ is
    procedure Set_Driver_Slippery (Slippery : Boolean)
      with Global => (In_Out => State);
 
+   --  The inputs of the speed restrictions to ensure a permitted braking
+   --  distance in the last cycle (EVC_PBD)
+   function PBD_Inputs return EVC_PBD.Inputs_T
+     with Global => State;
+
    --  One cycle (see above). Mode_Speed: the mode related speed limit
-   --  (No_Speed_Limit until phase E4).
-   procedure Evaluate (Now_Ms : Unsigned_64; Mode_Speed : Speed_Cms_T)
+   --  (No_Speed_Limit until phase E4); Special_Active and Additional:
+   --  the status of the special brakes and of the additional brake on
+   --  the train interface (SUBSET-034 2.3.6, 2.3.7), which the braking
+   --  model of the speed restrictions to ensure a permitted braking
+   --  distance depends on (3.11.11.4, 3.13.6.2.1)
+   procedure Evaluate (Now_Ms         : Unsigned_64;
+                       Mode_Speed     : Speed_Cms_T;
+                       Special_Active : EVC_Braking.Brakes_T :=
+                         (others => False);
+                       Additional     : Boolean := False)
      with Global => (In_Out => (State, EVC_Origins.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,

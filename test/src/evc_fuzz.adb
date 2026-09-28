@@ -20,8 +20,10 @@
 --  Then (phase E3, stored information) a train runs over balise groups
 --  whose telegrams carry plausible and random packets of the stored
 --  information (SSP, gradients, MA, TSR, track conditions, national
---  values...); every cycle the snapshot must hold what
---  EVC_Stored_Information proves.
+--  values, permitted braking distances...); every cycle the snapshot
+--  must hold what EVC_Stored_Information proves, and every speed
+--  restriction to ensure a permitted braking distance must be the one
+--  of the inputs of the cycle (3.11.11.3).
 --  Phase E3, supervision: now and then a random snapshot of the stored
 --  information (EVC_Core.Set_Snapshot_For_Test): profiles of random
 --  sizes and orders, random train data, national values, MA, areas and
@@ -50,6 +52,7 @@ with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
+with ETCS_Track_Packets.P52;
 with ETCS_Variables;
 with EVC_Brake_Commands;
 with EVC_Core;
@@ -58,6 +61,7 @@ with EVC_DMI_Port;
 with EVC_Limits;
 with EVC_Modes;    use EVC_Modes;
 with EVC_Outbox;
+with EVC_PBD;
 with EVC_Ports;    use EVC_Ports;
 with EVC_Position;
 with EVC_Received;
@@ -65,6 +69,7 @@ with EVC_Profiles;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
+with EVC_Track_Description;
 with Interfaces;   use Interfaces;
 
 procedure EVC_Fuzz is
@@ -861,24 +866,27 @@ procedure EVC_Fuzz is
    --  the supervision on this snapshot is checked as on the random ones.
    ---------------------------------------------------------------------
 
-   E3_Kinds : constant array (1 .. 15) of Cat.Known_Kind_T :=
+   E3_Kinds : constant array (1 .. 16) of Cat.Known_Kind_T :=
      (Cat.Track_P3, Cat.Track_P12, Cat.Track_P21, Cat.Track_P27,
-      Cat.Track_P39, Cat.Track_P51, Cat.Track_P65, Cat.Track_P66,
-      Cat.Track_P67, Cat.Track_P68, Cat.Track_P70, Cat.Track_P71,
-      Cat.Track_P80, Cat.Track_P88, Cat.Track_P141);
+      Cat.Track_P39, Cat.Track_P51, Cat.Track_P52, Cat.Track_P65,
+      Cat.Track_P66, Cat.Track_P67, Cat.Track_P68, Cat.Track_P70,
+      Cat.Track_P71, Cat.Track_P80, Cat.Track_P88, Cat.Track_P141);
 
    E3_Cycles     : Natural := 0;
    E3_Messages   : Natural := 0;
    E3_MAs        : Natural := 0;
    E3_Plannings  : Natural := 0;
    E3_Conditions : Natural := 0;
+   E3_PBD        : Natural := 0;
+   E3_PBD_Check  : Natural := 0;
 
    --  A plausible SSP, gradient profile and MA, so that MAs are accepted
-   --  and their timers run
+   --  and their timers run, and now and then a plausible packet 52
    procedure Plausible (W : in out ETCS_Bits.Writer) is
       S  : ETCS_Track_Packets.P27.Packet_T;
       G  : ETCS_Track_Packets.P21.Packet_T;
       M  : ETCS_Track_Packets.P12.Packet_T;
+      B  : ETCS_Track_Packets.P52.Packet_T;
       OK : Boolean;
    begin
       S.Q_DIR := ETCS_Variables.Q_DIR_T (Pick (0, 2));
@@ -946,6 +954,35 @@ procedure EVC_Fuzz is
            (if Chance (50) then Pick (0, 20) else Pick (126, 127));
       end if;
       ETCS_Track_Packets.P12.Encode (M, W, OK);
+      if Chance (30) then
+         B.Q_DIR := S.Q_DIR;
+         B.Q_SCALE := 1;
+         if Chance (10) then
+            B.Q_TRACKINIT := 1;
+            B.Has_D_TRACKINIT := True;
+            B.D_TRACKINIT := ETCS_Variables.D_TRACKINIT_T (Pick (0, 800));
+         else
+            B.Q_TRACKINIT := 0;
+            B.Has_D_PBD := True;
+            B.D_PBD := ETCS_Variables.D_PBD_T (Pick (0, 3_000));
+            B.Q_GDIR := ETCS_Variables.Q_GDIR_T (Pick (0, 1));
+            B.G_PBDSR := ETCS_Variables.G_PBDSR_T (Pick (0, 40));
+            B.Q_PBDSR := ETCS_Variables.Q_PBDSR_T (Pick (0, 1));
+            B.D_PBDSR := ETCS_Variables.D_PBDSR_T (Pick (0, 800));
+            B.L_PBDSR := ETCS_Variables.L_PBDSR_T (Pick (0, 800));
+            B.N_ITER := ETCS_Variables.N_ITER_T (Pick (0, 3));
+            for I in 1 .. Natural (B.N_ITER) loop
+               B.D_PBD_List (I) :=
+                 (D_PBD   => ETCS_Variables.D_PBD_T (Pick (0, 3_000)),
+                  Q_GDIR  => ETCS_Variables.Q_GDIR_T (Pick (0, 1)),
+                  G_PBDSR => ETCS_Variables.G_PBDSR_T (Pick (0, 255)),
+                  Q_PBDSR => ETCS_Variables.Q_PBDSR_T (Pick (0, 1)),
+                  D_PBDSR => ETCS_Variables.D_PBDSR_T (Pick (0, 800)),
+                  L_PBDSR => ETCS_Variables.L_PBDSR_T (Pick (0, 800)));
+            end loop;
+         end if;
+         ETCS_Track_Packets.P52.Encode (B, W, OK);
+      end if;
    end Plausible;
 
    procedure E3_Phase (Runs : Natural) is
@@ -1059,6 +1096,35 @@ procedure EVC_Fuzz is
                           Step);
             end if;
          end loop;
+         --  3.11.11.3: every section computed, and (checked now and then,
+         --  the computation is long) with the inputs of this cycle
+         declare
+            P : constant Store_T := EVC_Track_Description.PBD;
+         begin
+            E3_PBD := E3_PBD + P.Count;
+            for K in 1 .. P.Count loop
+               if not P.List (K).Noted
+                 or else P.List (K).Value not in 0 .. EVC_PBD.Top_Speed
+               then
+                  Violation ("E3: a PBD section not computed", Step);
+               elsif Chance (2) then
+                  E3_PBD_Check := E3_PBD_Check + 1;
+                  if P.List (K).Value
+                     /= EVC_PBD.Restriction
+                          (EVC_Stored_Information.PBD_Inputs,
+                           EVC_Distances.Cm_T'Min
+                             (EVC_PBD.PBD_Distance_T'Last,
+                              EVC_Distances.Cm_T (P.List (K).Id)),
+                           Integer'Max (-255, Integer'Min
+                             (255, P.List (K).Gradient)),
+                           P.List (K).Service)
+                  then
+                     Violation ("E3: a PBD speed not the one of the inputs "
+                                & "of the cycle (3.11.11.3)", Step);
+                  end if;
+               end if;
+            end loop;
+         end;
          if S.MA.Present then
             E3_MAs := E3_MAs + 1;
          end if;
@@ -1339,6 +1405,8 @@ begin
              & "  cycles with an MA:" & Natural'Image (E3_MAs)
              & "  MSG_PLANNING:" & Natural'Image (E3_Plannings)
              & "  MSG_TRACK_COND:" & Natural'Image (E3_Conditions)
+             & "  PBD sections:" & Natural'Image (E3_PBD)
+             & " (checked:" & Natural'Image (E3_PBD_Check) & ")"
              & "  violations:" & Natural'Image (Violations)
              & "  raised:" & Natural'Image (Raised));
    Ada.Command_Line.Set_Exit_Status

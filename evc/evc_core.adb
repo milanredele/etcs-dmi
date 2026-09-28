@@ -540,7 +540,8 @@ is
 
    procedure Evaluate_Stored_Information
      with Global => (Input  => (Clock_Ms, Cycle_Count, EVC_Position.State,
-                                EVC_Odometry.State, EVC_Train_Data.State),
+                                EVC_Odometry.State, EVC_Train_Data.State,
+                                TIU_Now),
                      In_Out => (EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
@@ -552,10 +553,22 @@ is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
    begin
-      --  the mode related speed restriction (3.11.7) is phase E4
+      --  the mode related speed restriction (3.11.7) is phase E4; the
+      --  status of the special brakes for the speed restrictions to
+      --  ensure a permitted braking distance (3.11.11.4)
       EVC_Stored_Information.Evaluate
         (Unsigned_64 (Clock_Ms),
-         EVC_Supervision_Input.No_Speed_Limit);
+         EVC_Supervision_Input.No_Speed_Limit,
+         Special_Active =>
+           (EVC_Supervision_Input.Regenerative =>
+              TIU_Now (Regenerative_Brake_Active),
+            EVC_Supervision_Input.Eddy_Current =>
+              TIU_Now (Eddy_Current_Brake_Active),
+            EVC_Supervision_Input.Magnetic_Shoe =>
+              TIU_Now (Magnetic_Shoe_Brake_Active),
+            EVC_Supervision_Input.Electro_Pneumatic =>
+              TIU_Now (EP_Brake_Active)),
+         Additional     => TIU_Now (Additional_Brake_Active));
       for I in 1 .. EVC_Stored_Information.Event_Count loop
          declare
             E : constant EVC_Stored_Information.Event_T :=
