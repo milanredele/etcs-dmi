@@ -34,14 +34,14 @@ pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Directories;
 with Ada.Environment_Variables;
+with Ada.Numerics.Long_Elementary_Functions;
 with Ada.Streams;  use Ada.Streams;
 with Ada.Text_IO;  use Ada.Text_IO;
-with GNAT.SHA256;
+with Display.Screen;
+with Display.Screen.Files;
 with DMI_Core;
 with DMI_Protocol;
 with DMI_Status;
-with Display.Screen;
-with Display.Screen.Files;
 with ETCS_Bits;
 with ETCS_Catalogue;
 with ETCS_Language_Random;
@@ -49,16 +49,16 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Telegram;
 with ETCS_Track_Packets.P0;
-with ETCS_Track_Packets.P2;
-with ETCS_Track_Packets.P5;
-with ETCS_Track_Packets.P21;
+with ETCS_Track_Packets.P140;
 with ETCS_Track_Packets.P16;
+with ETCS_Track_Packets.P2;
+with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P45;
+with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P73;
 with ETCS_Track_Packets.P79;
-with ETCS_Track_Packets.P140;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P27;
@@ -76,11 +76,17 @@ with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P1;
 with ETCS_Train_Packets.P4;
 with ETCS_Variables;
+with EVC_Brake_Commands;
+with EVC_Braking;
+with EVC_Build_Up;
 with EVC_Bytes;
 with EVC_Core;
-with EVC_DMI_Port;
+with EVC_Curves;
 with EVC_Distances;
+with EVC_DMI_Port;
 with EVC_Driver;
+with EVC_Fixed;
+with EVC_Limits;
 with EVC_Linking;
 with EVC_Location;
 with EVC_Mock;
@@ -89,18 +95,24 @@ with EVC_Odometry;
 with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
 with EVC_Position;
+with EVC_Profile;
 with EVC_Received;
 with EVC_Movement_Authority;
 with EVC_National_Values;
 with EVC_Origins;
 with EVC_Profiles;
 with EVC_Stored_Information;
+with EVC_SDM;
 with EVC_Supervision_Input;
+with EVC_Track;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
+with EVC_Train;
 with EVC_Train_Data;
 with General_Parameters;
+with GNAT.SHA256;
 with Interfaces;   use Interfaces;
+with Test_Support;
 
 procedure EVC_Test is
 
@@ -433,16 +445,17 @@ procedure EVC_Test is
              "power-up: cycle 1 at 100 ms");
       Take;
       Check (Parsed, "power-up: whole records");
-      Check (Rec_Count = 3, "power-up: three records, got" & Img (Rec_Count));
-      if Rec_Count = 3 then
+      Check (Rec_Count = 4, "power-up: four records, got" & Img (Rec_Count));
+      if Rec_Count = 4 then
          Check (Recs (1).Port = JRU and then Rec_Length (1) = 16
                 and then Byte_At (1, 1) = 1
                 and then Byte_At (1, 2) = Mode_T'Pos (M_SB)
                 and then Byte_At (1, 5) = 1        -- cycle
                 and then Byte_At (1, 9) = 100,     -- time, ms
                 "power-up: JRU records the change to SB");
-         Check (Recs (2).Port = DMI and then Recs (3).Port = DMI,
-                "power-up: then two DMI frames");
+         Check (Recs (2).Port = DMI and then Recs (3).Port = DMI
+                and then Recs (4).Port = DMI,
+                "power-up: then three DMI frames");
       end if;
       Check (DMI_Mode_Byte = 1, "power-up: MSG_MODE_LEVEL mode SB (1), got"
              & Img (DMI_Mode_Byte));
@@ -458,8 +471,8 @@ procedure EVC_Test is
       for I in 2 .. 5 loop
          EVC_Core.Tick (100);
          Take;
-         Check (Parsed and then Rec_Count = 2
-                and then Count_Port (DMI) = 2
+         Check (Parsed and then Rec_Count = 3
+                and then Count_Port (DMI) = 3
                 and then DMI_Mode_Byte = 1,
                 "power-up: cycle" & Img (I) & " sends SB to the DMI only");
       end loop;
@@ -533,7 +546,7 @@ procedure EVC_Test is
       --  TIU
       Bad (TIU, (1 => 1), "one byte");
       Bad (TIU, (0, 1), "signal 0");
-      Bad (TIU, (6, 1), "signal 6");
+      Bad (TIU, (13, 1), "signal 13");
       Bad (TIU, (5, 2), "value 2");
       Bad (TIU, (1, 1, 0), "three bytes");
       --  DMI
@@ -704,7 +717,7 @@ procedure EVC_Test is
              & Img (Out_Last) & " bytes");
       Check (EVC_Outbox.Used = 0, "outbox: empty after a full take");
 
-      EVC_Core.Tick (100);  -- 17 + 19 bytes
+      EVC_Core.Tick (100);  -- 17 + 19 + 29 bytes
       EVC_Core.Take_Outputs (Tiny, Last);
       Check (Last = 0, "outbox: no record fits 10 bytes");
       EVC_Core.Take_Outputs (Small, Last);
@@ -714,8 +727,10 @@ procedure EVC_Test is
       EVC_Core.Take_Outputs (Null_Buffer, Last);
       Check (Last = 0, "outbox: a null buffer takes nothing");
       EVC_Core.Take_Outputs (Offset, Last);
-      Check (Last = 68 and then Offset (53) = EVC_DMI_Port.MSG_ONBOARD,
-             "outbox: a buffer from index 50 takes the MSG_ONBOARD record");
+      Check (Last = 97 and then Offset (53) = EVC_DMI_Port.MSG_ONBOARD
+             and then Offset (72) = EVC_DMI_Port.MSG_SPEED_STATE,
+             "outbox: a buffer from index 50 takes the MSG_ONBOARD and the"
+             & " MSG_SPEED_STATE records");
       EVC_Core.Take_Outputs (Offset, Last);
       Check (Last = 49, "outbox: then nothing is left");
    end Scenario_Outbox;
@@ -888,7 +903,8 @@ procedure EVC_Test is
          Pump_To_EVC;
       end loop;
       DMI_Core.Render;
-      Check (Frames = 10, "end to end: two frames per cycle reach the DMI");
+      Check (Frames = 15,
+             "end to end: three frames per cycle reach the DMI");
       Check (not DMI_Core.EVC_Link_Lost, "end to end: the DMI hears the EVC");
       Check (EVC_Core.Rejected (DMI) = 0,
              "end to end: the on-board accepts what the DMI sends");
@@ -4845,6 +4861,2567 @@ procedure EVC_Test is
              & "(A.3.1)");
    end Scenario_Rear_Deletion;
 
+   ---------------------------------------------------------------------
+   --  E3: speed and distance monitoring (EVC_SDM, EVC_Brake_Commands
+   --  and the units under them)
+   ---------------------------------------------------------------------
+
+   package SDM renames EVC_SDM;
+   package BC renames EVC_Brake_Commands;
+   use type SDM.Monitoring_T;
+   use type SDM.Status_T;
+   use type SIn.Brake_Position_T;
+   use type SIn.Brake_Model_T;
+   use type EVC_Limits.Margin_Kind_T;
+
+   subtype LF is Long_Float;
+
+   --  km/h in cm/s, rounded down (as the stored information converts
+   --  the V_ variables)
+   function Cms (Kmh : LF) return SIn.Speed_Cms_T is
+     (SIn.Speed_Cms_T (LF'Floor (Kmh * 1000.0 / 36.0)));
+
+   function Kmh_Of (Cms_V : EVC_Fixed.Num) return LF is
+     (LF (Cms_V) * 0.036);
+
+   function Img_LF (X : LF) return String is
+      Scaled : constant Integer_64 := Integer_64 (LF'Rounding (X * 100.0));
+      Sign   : constant String := (if Scaled < 0 then "-" else "");
+      A      : constant Integer_64 := abs Scaled;
+      Frac   : constant String := Integer_64'Image (100 + A mod 100);
+   begin
+      return Sign & Integer_64'Image (A / 100) & "." & Frac (3 .. 4);
+   end Img_LF;
+
+   --  A snapshot with an MRSP of 140 km/h from 0, flat, a passenger
+   --  train of 400 m, lambda 135 %, 140 km/h, and the national values of
+   --  A.3.2, the train at 0 at standstill, the position valid
+   function Base_Snapshot return SIn.Snapshot_T is
+      S : SIn.Snapshot_T;
+   begin
+      S.Supervise := True;
+      S.Train := (Position_Valid   => True,
+                  Ahead            => EVC_Distances.Plus,
+                  Est_Front        => 0,
+                  Max_Safe_Front   => 0,
+                  Min_Safe_Front   => 0,
+                  Speed            => 0,
+                  Speed_Max        => 0,
+                  Standstill       => True,
+                  Moving_Ahead     => False,
+                  Moving_Backwards => False);
+      S.Train_Data.Length := 40_000;
+      S.Train_Data.Max_Speed := Cms (140.0);
+      S.Train_Data.Model := SIn.Lambda;
+      S.Train_Data.Brake_Percentage := 135;
+      S.Train_Data.Brake_Position := SIn.Passenger_P;
+      S.Train_Data.T_Traction_Cut_Off := 1_000;
+      S.National.Q_NVSBTSMPERM := True;
+      S.National.Q_NVEMRRLS := False;
+      S.National.Q_NVGUIPERM := False;
+      S.National.Q_NVSBFBPERM := False;
+      S.National.Q_NVINHSMICPERM := False;
+      S.National.V_NVREL := Cms (40.0);
+      S.National.D_NVROLL := 200;
+      S.National.M_NVAVADH := 0;
+      S.National.M_NVEBCL := 9;
+      S.National.A_NVMAXREDADH1 := 1_000;
+      S.National.A_NVMAXREDADH2 := 700;
+      S.National.A_NVMAXREDADH3 := 700;
+      S.National.Kt_Int := 1_100;
+      S.MRSP.Count := 1;
+      S.MRSP.Segments (1) := (Start => 0, Speed => Cms (140.0));
+      return S;
+   end Base_Snapshot;
+
+   --  The train at At_Cm, the confidence interval +/- Doubt, at V
+   procedure Place (S     : in out SIn.Snapshot_T;
+                    At_Cm : Integer_64;
+                    V     : SIn.Speed_Cms_T;
+                    Doubt : Integer_64 := 1_000) is
+   begin
+      S.Train.Est_Front := EVC_Distances.Cm_T (At_Cm);
+      S.Train.Max_Safe_Front := EVC_Distances.Cm_T (At_Cm + Doubt);
+      S.Train.Min_Safe_Front := EVC_Distances.Cm_T (At_Cm - Doubt);
+      S.Train.Speed := V;
+      S.Train.Speed_Max := V;
+      S.Train.Standstill := V = 0;
+      S.Train.Moving_Ahead := V > 0;
+      S.Train.Moving_Backwards := False;
+   end Place;
+
+   --  An end of authority at EOA_M, the SvL SvL_M further, a release speed
+   procedure Give_MA (S       : in out SIn.Snapshot_T;
+                      EOA_M   : Natural;
+                      Over_M  : Natural := 0;
+                      Release : SIn.Release_Speed_Kind_T := SIn.None;
+                      V_Rel   : SIn.Speed_Cms_T := 0;
+                      LOA_Kmh : LF := 0.0) is
+   begin
+      S.MA := (Present       => True,
+               EOA           => EVC_Distances.Metres (EOA_M),
+               SvL           => EVC_Distances.Metres (EOA_M + Over_M),
+               LOA_Speed     => (if LOA_Kmh > 0.0 then Cms (LOA_Kmh) else 0),
+               Release_Speed => (Kind => Release, Speed => V_Rel));
+   end Give_MA;
+
+   ---------------------------------------------------------------------
+   --  The reference: the formulas of 3.13 and A.3.7 to A.3.9 in floating
+   --  point, from the snapshot, with the exact values of every boundary
+   --  (V_lim, the km/h limits), no rounding; its curves are walked the
+   --  way 3.13.8.1.3 says, arc by arc, in floating point
+   ---------------------------------------------------------------------
+
+   R_Inf : constant LF := 1.0E12;
+
+   type R_Step is record
+      Upper : LF;   -- cm/s, the last one R_Inf
+      Value : LF;   -- mm/s² or a factor
+   end record;
+   type R_Step_Array is array (1 .. 16) of R_Step;
+   type R_Fn is record
+      Count : Natural := 0;
+      S     : R_Step_Array := (others => (R_Inf, 0.0));
+   end record;
+
+   procedure R_Add (F : in out R_Fn; Upper, Value : LF) is
+   begin
+      F.Count := F.Count + 1;
+      F.S (F.Count) := (Upper, Value);
+   end R_Add;
+
+   --  The step of v: v <= Upper, or with Rising v < Upper
+   function R_Eval (F : R_Fn; V : LF; Rising : Boolean) return LF is
+   begin
+      if F.Count = 0 then
+         return 0.0;
+      end if;
+      for K in 1 .. F.Count - 1 loop
+         if (if Rising then V < F.S (K).Upper else V <= F.S (K).Upper) then
+            return F.S (K).Value;
+         end if;
+      end loop;
+      return F.S (F.Count).Value;
+   end R_Eval;
+
+   --  A.3.7: A_basic (V)
+   function R_Basic (Lambda_O : Natural) return R_Fn is
+      use Ada.Numerics.Long_Elementary_Functions;
+      L    : constant LF := LF (Lambda_O);
+      V_Lim : constant LF := 16.85 * L ** 0.428 * 250.0 / 9.0;
+      type Coefs is array (0 .. 3) of LF;
+      C    : constant array (1 .. 5) of Coefs :=
+        ((0.0663, 4.72E-03, 6.10E-05, -6.30E-07),
+         (0.1300, 5.14E-03, -4.54E-06, 2.73E-07),
+         (0.0479, 5.81E-03, -6.76E-06, 5.58E-08),
+         (0.0480, 5.52E-03, -3.85E-06, 3.00E-08),
+         (0.0559, 5.06E-03, 1.66E-06, 3.23E-09));
+      Lim  : constant array (1 .. 4) of LF := (100.0, 120.0, 150.0, 180.0);
+      F    : R_Fn;
+   begin
+      R_Add (F, V_Lim, (0.0075 * L + 0.076) * 1000.0);
+      for N in 1 .. 5 loop
+         declare
+            AD : constant LF :=
+              (C (N) (0) + C (N) (1) * L + C (N) (2) * L * L
+               + C (N) (3) * L * L * L) * 1000.0;
+         begin
+            if N = 5 then
+               R_Add (F, R_Inf, AD);
+            elsif Lim (N) * 250.0 / 9.0 > V_Lim then
+               R_Add (F, Lim (N) * 250.0 / 9.0, AD);
+            end if;
+         end;
+      end loop;
+      return F;
+   end R_Basic;
+
+   function R_Curve_Of (C : SIn.Decel_Curve_T) return R_Fn is
+      F : R_Fn;
+   begin
+      for K in 1 .. C.Count loop
+         R_Add (F, (if K < C.Count then LF (C.Steps (K).Speed) else R_Inf),
+                LF (C.Steps (K).Decel));
+      end loop;
+      return F;
+   end R_Curve_Of;
+
+   --  The reference model: A_brake_safe, A_brake_service and
+   --  A_brake_normal_service (no special brakes), the thresholds of the
+   --  speed, the gradient profile compensated
+   type R_Model_T is record
+      Safe, Service, Normal : R_Fn;
+      Kv                    : R_Fn;   -- Kv_int (lambda), factors
+      Kr                    : LF := 1.0;
+      Kdry, Kwet            : R_Fn;   -- gamma, factors
+      Avadh                 : LF := 0.0;
+      Lambda                : Boolean := True;
+      Kn_Plus, Kn_Minus     : R_Fn;
+      Up, Down              : LF := 0.0;   -- rotating masses
+   end record;
+
+   Max_R_Points : constant := 600;
+   type R_Point is record
+      Start     : LF;
+      Gradient  : LF;
+      A_Grad    : LF;
+   end record;
+   type R_Points is array (1 .. Max_R_Points) of R_Point;
+   type R_Profile_T is record
+      Count  : Natural := 0;
+      Points : R_Points;
+   end record;
+
+   function R_Model (S : SIn.Snapshot_T) return R_Model_T is
+      M : R_Model_T;
+      T : SIn.Train_Data_T renames S.Train_Data;
+   begin
+      M.Up := (if S.Extra.Train.M_Rotating_Nom > 0
+               then LF (S.Extra.Train.M_Rotating_Nom) else 15.0);
+      M.Down := (if S.Extra.Train.M_Rotating_Nom > 0
+                 then LF (S.Extra.Train.M_Rotating_Nom) else 2.0);
+      M.Kn_Plus := R_Curve_Of (S.Extra.Train.Kn_Plus);
+      M.Kn_Minus := R_Curve_Of (S.Extra.Train.Kn_Minus);
+      M.Normal := R_Curve_Of (T.A_Brake_Normal);
+      if T.Model = SIn.Lambda then
+         M.Lambda := True;
+         M.Safe := R_Basic (T.Brake_Percentage);
+         M.Service := R_Basic (Integer'Min (T.Brake_Percentage, 135));
+         declare
+            Set : constant SIn.Kv_Set_T := S.National.Kv_Int_Fresh;
+         begin
+            if Set.Count = 0 then
+               R_Add (M.Kv, R_Inf, 0.7);
+            else
+               for K in 1 .. Set.Count loop
+                  R_Add (M.Kv, (if K < Set.Count
+                                then LF (Set.Steps (K + 1).Speed)
+                                else R_Inf),
+                         LF (Set.Steps (K).Factor) / 1000.0);
+               end loop;
+            end if;
+         end;
+         M.Kr := (if S.National.Kr_Int.Count = 0 then 0.9
+                  else LF (S.National.Kr_Int.Steps (1).Factor) / 1000.0);
+      else
+         M.Lambda := False;
+         M.Safe := R_Curve_Of (T.A_Brake_Emergency);
+         M.Service := R_Curve_Of (T.A_Brake_Service);
+         for K in 1 .. T.A_Brake_Emergency.Count loop
+            R_Add (M.Kdry, M.Safe.S (K).Upper,
+                   LF (S.Extra.Train.Kdry_Rst (S.National.M_NVEBCL) (K))
+                   / 1000.0);
+            R_Add (M.Kwet, M.Safe.S (K).Upper,
+                   LF (S.Extra.Train.Kwet_Rst (K)) / 1000.0);
+         end loop;
+         M.Avadh := LF (S.National.M_NVAVADH) / 1000.0;
+      end if;
+      return M;
+   end R_Model;
+
+   --  3.13.6.2.1.4: A_brake_safe (V)
+   function R_Safe (M : R_Model_T; V : LF; Rising : Boolean) return LF is
+     (if M.Lambda
+      then R_Eval (M.Safe, V, Rising) * R_Eval (M.Kv, V, Rising) * M.Kr
+      else R_Eval (M.Safe, V, Rising) * R_Eval (M.Kdry, V, Rising)
+           * (R_Eval (M.Kwet, V, Rising)
+              + M.Avadh * (1.0 - R_Eval (M.Kwet, V, Rising))));
+
+   --  3.13.4: the profile along ahead coordinates
+   function R_Profile (S : SIn.Snapshot_T; M : R_Model_T) return R_Profile_T
+   is
+      P    : R_Profile_T;
+      L    : constant LF := LF (S.Train_Data.Length);
+      N    : constant Natural := S.Gradients.Count;
+      Cand : array (1 .. 2 * SIn.Max_Gradient_Segments + 1) of LF;
+      NC   : Natural := 0;
+
+      function G_Start (K : Positive) return LF is
+        (LF (S.Gradients.Segments (K).Start));
+
+      function Lowest (Lo, Hi : LF) return LF is
+         R : LF := 1000.0;
+      begin
+         if N = 0 or else Lo - L < G_Start (1) then
+            R := 0.0;
+         end if;
+         for K in 1 .. N loop
+            if G_Start (K) < Hi
+              and then (K = N or else G_Start (K + 1) > Lo - L)
+            then
+               R := LF'Min (R, LF (S.Gradients.Segments (K).Gradient));
+            end if;
+         end loop;
+         return R;
+      end Lowest;
+   begin
+      for K in 1 .. N loop
+         NC := NC + 1;
+         Cand (NC) := G_Start (K);
+         NC := NC + 1;
+         Cand (NC) := G_Start (K) + L;
+      end loop;
+      for I in 2 .. NC loop
+         for J in reverse 2 .. I loop
+            exit when Cand (J - 1) <= Cand (J);
+            declare
+               X : constant LF := Cand (J);
+            begin
+               Cand (J) := Cand (J - 1);
+               Cand (J - 1) := X;
+            end;
+         end loop;
+      end loop;
+      P.Count := 1;
+      P.Points (1).Start := -R_Inf;
+      for I in 1 .. NC loop
+         if Cand (I) > P.Points (P.Count).Start then
+            P.Count := P.Count + 1;
+            P.Points (P.Count).Start := Cand (I);
+         end if;
+      end loop;
+      for I in 1 .. P.Count loop
+         declare
+            Hi : constant LF :=
+              (if I < P.Count then P.Points (I + 1).Start else R_Inf);
+            G  : constant LF := Lowest (P.Points (I).Start, Hi);
+         begin
+            P.Points (I).Gradient := G;
+            P.Points (I).A_Grad :=
+              9810.0 * G / (1000.0 + 10.0 * (if G > 0.0 then M.Up
+                                              else M.Down));
+         end;
+      end loop;
+      return P;
+   end R_Profile;
+
+   type R_Kind is (R_EBD, R_SBD, R_GUI);
+
+   function R_Accel (M : R_Model_T; P : R_Profile_T; K : R_Kind;
+                     Seg : Positive; V : LF; Rising : Boolean) return LF
+   is
+      G : constant LF := P.Points (Seg).Gradient;
+   begin
+      case K is
+         when R_EBD =>
+            return R_Safe (M, V, Rising) + P.Points (Seg).A_Grad;
+         when R_SBD =>
+            return R_Eval (M.Service, V, Rising) + P.Points (Seg).A_Grad;
+         when R_GUI =>
+            return R_Eval (M.Normal, V, Rising) + P.Points (Seg).A_Grad
+              - R_Eval ((if G > 0.0 then M.Kn_Plus else M.Kn_Minus),
+                        V, Rising) * G / 1000.0;
+      end case;
+   end R_Accel;
+
+   --  The speed thresholds of the model around V
+   function R_Next_Up (M : R_Model_T; V : LF) return LF is
+      R : LF := R_Inf;
+
+      procedure Look (F : R_Fn) is
+      begin
+         for K in 1 .. F.Count - 1 loop
+            if F.S (K).Upper > V then
+               R := LF'Min (R, F.S (K).Upper);
+            end if;
+         end loop;
+      end Look;
+   begin
+      Look (M.Safe);
+      Look (M.Service);
+      Look (M.Normal);
+      Look (M.Kv);
+      Look (M.Kdry);
+      Look (M.Kwet);
+      Look (M.Kn_Plus);
+      Look (M.Kn_Minus);
+      return R;
+   end R_Next_Up;
+
+   function R_Next_Down (M : R_Model_T; V : LF) return LF is
+      R : LF := 0.0;
+
+      procedure Look (F : R_Fn) is
+      begin
+         for K in 1 .. F.Count - 1 loop
+            if F.S (K).Upper < V then
+               R := LF'Max (R, F.S (K).Upper);
+            end if;
+         end loop;
+      end Look;
+   begin
+      Look (M.Safe);
+      Look (M.Service);
+      Look (M.Normal);
+      Look (M.Kv);
+      Look (M.Kdry);
+      Look (M.Kwet);
+      Look (M.Kn_Plus);
+      Look (M.Kn_Minus);
+      return R;
+   end R_Next_Down;
+
+   function R_Segment (P : R_Profile_T; X : LF) return Positive is
+   begin
+      for I in reverse 2 .. P.Count loop
+         if P.Points (I).Start <= X then
+            return I;
+         end if;
+      end loop;
+      return 1;
+   end R_Segment;
+
+   --  The segment rearwards of X (walking rearwards from a boundary)
+   function R_Segment_Below (P : R_Profile_T; X : LF) return Positive is
+   begin
+      for I in reverse 2 .. P.Count loop
+         if P.Points (I).Start < X then
+            return I;
+         end if;
+      end loop;
+      return 1;
+   end R_Segment_Below;
+
+   type R_Curve is record
+      Kind     : R_Kind;
+      Anchor   : LF;
+      Anchor_V : LF;
+      Floor_V  : LF;
+   end record;
+
+   --  Walk rearwards from the anchor to X_Goal or to the speed V_Goal:
+   --  the location reached and the speed there. The speed is kept
+   --  exactly at the thresholds it reaches.
+   procedure R_Back (M : R_Model_T; P : R_Profile_T; C : R_Curve;
+                     X_Goal, V_Goal : LF; X, V : out LF) is
+      use Ada.Numerics.Long_Elementary_Functions;
+      Vh   : LF := C.Anchor_V;
+      W    : LF := C.Anchor_V ** 2;
+      W_G  : constant LF := V_Goal ** 2;
+      Here : LF := C.Anchor;
+   begin
+      for Iteration in 1 .. 100_000 loop
+         exit when W >= W_G or else Here <= X_Goal;
+         declare
+            Seg : constant Positive := R_Segment_Below (P, Here);
+            Lo  : constant LF := LF'Max (P.Points (Seg).Start, X_Goal);
+            A_U : constant LF := R_Accel (M, P, C.Kind, Seg, Vh, True);
+            A_D : constant LF := R_Accel (M, P, C.Kind, Seg, Vh, False);
+         begin
+            if A_U > 0.0 then
+               declare
+                  Top_V : constant LF := LF'Min (R_Next_Up (M, Vh), V_Goal);
+                  Need  : constant LF := (Top_V ** 2 - W) * 5.0 / A_U;
+               begin
+                  if Here - Need > Lo then
+                     Here := Here - Need;
+                     W := Top_V ** 2;
+                     Vh := Top_V;
+                  else
+                     W := W + A_U * (Here - Lo) / 5.0;
+                     Vh := Sqrt (W);
+                     Here := Lo;
+                  end if;
+               end;
+            elsif A_D < 0.0 and then W > 0.0 then
+               declare
+                  Bottom_V : constant LF := R_Next_Down (M, Vh);
+                  Need     : constant LF :=
+                    (W - Bottom_V ** 2) * 5.0 / (-A_D);
+               begin
+                  if Here - Need > Lo then
+                     Here := Here - Need;
+                     W := Bottom_V ** 2;
+                     Vh := Bottom_V;
+                  else
+                     W := LF'Max (W + A_D * (Here - Lo) / 5.0,
+                                  Bottom_V ** 2);
+                     Vh := Sqrt (W);
+                     Here := Lo;
+                  end if;
+               end;
+            else
+               Here := Lo;
+            end if;
+         end;
+      end loop;
+      X := Here;
+      V := Vh;
+   end R_Back;
+
+   --  Walk forwards from the anchor to X_Goal or down to V_Goal
+   procedure R_Forward (M : R_Model_T; P : R_Profile_T; C : R_Curve;
+                        X_Goal, V_Goal : LF; X, V : out LF) is
+      use Ada.Numerics.Long_Elementary_Functions;
+      Vh   : LF := C.Anchor_V;
+      W    : LF := C.Anchor_V ** 2;
+      W_G  : constant LF := V_Goal ** 2;
+      Here : LF := C.Anchor;
+   begin
+      for Iteration in 1 .. 100_000 loop
+         exit when W <= W_G or else Here >= X_Goal;
+         declare
+            Seg : Positive := R_Segment (P, Here);
+         begin
+            if Seg < P.Count and then Here >= P.Points (Seg + 1).Start then
+               Seg := Seg + 1;
+            end if;
+            declare
+               Hi  : constant LF :=
+                 LF'Min ((if Seg < P.Count then P.Points (Seg + 1).Start
+                          else R_Inf), X_Goal);
+               A_U : constant LF := R_Accel (M, P, C.Kind, Seg, Vh, True);
+               A_D : constant LF := R_Accel (M, P, C.Kind, Seg, Vh, False);
+            begin
+               if A_D > 0.0 then
+                  declare
+                     Bottom_V : constant LF :=
+                       LF'Max (R_Next_Down (M, Vh), V_Goal);
+                     Need     : constant LF :=
+                       (W - Bottom_V ** 2) * 5.0 / A_D;
+                  begin
+                     if Here + Need < Hi then
+                        Here := Here + Need;
+                        W := Bottom_V ** 2;
+                        Vh := Bottom_V;
+                     else
+                        W := LF'Max (W - A_D * (Hi - Here) / 5.0,
+                                     Bottom_V ** 2);
+                        Vh := Sqrt (W);
+                        Here := Hi;
+                     end if;
+                  end;
+               elsif A_U < 0.0 then
+                  declare
+                     Top_V : constant LF := R_Next_Up (M, Vh);
+                     Need  : constant LF := (Top_V ** 2 - W) * 5.0 / (-A_U);
+                  begin
+                     if Here + Need < Hi then
+                        Here := Here + Need;
+                        W := Top_V ** 2;
+                        Vh := Top_V;
+                     else
+                        W := LF'Min (W - A_U * (Hi - Here) / 5.0,
+                                     Top_V ** 2);
+                        Vh := Sqrt (W);
+                        Here := Hi;
+                     end if;
+                  end;
+               else
+                  Here := Hi;
+               end if;
+            end;
+         end;
+      end loop;
+      X := Here;
+      V := Vh;
+   end R_Forward;
+
+   function R_Speed_At (M : R_Model_T; P : R_Profile_T; C : R_Curve;
+                        X : LF) return LF
+   is
+      Xr, Vr : LF;
+   begin
+      if X <= C.Anchor then
+         R_Back (M, P, C, X, R_Inf, Xr, Vr);
+         return Vr;
+      else
+         R_Forward (M, P, C, X, C.Floor_V, Xr, Vr);
+         return LF'Max (Vr, C.Floor_V);
+      end if;
+   end R_Speed_At;
+
+   function R_Location_Of (M : R_Model_T; P : R_Profile_T; C : R_Curve;
+                           V : LF) return LF
+   is
+      Xr, Vr : LF;
+   begin
+      if V >= C.Anchor_V then
+         R_Back (M, P, C, -R_Inf, V, Xr, Vr);
+      else
+         R_Forward (M, P, C, R_Inf, LF'Max (V, C.Floor_V), Xr, Vr);
+      end if;
+      return Xr;
+   end R_Location_Of;
+
+   --  3.13.9.2.3: dV_ebi / sbi / warning in cm/s, exact
+   function R_Margin (Kind : EVC_Limits.Margin_Kind_T; V : LF) return LF is
+      D_Min : constant LF := (case Kind is when EVC_Limits.Warning => 4.0,
+                                           when EVC_Limits.SBI => 5.5,
+                                           when EVC_Limits.EBI => 7.5);
+      D_Max : constant LF := (case Kind is when EVC_Limits.Warning => 5.0,
+                                           when EVC_Limits.SBI => 10.0,
+                                           when EVC_Limits.EBI => 15.0);
+      V_Max : constant LF := (if Kind = EVC_Limits.Warning then 140.0
+                              else 210.0);
+      Kmh   : constant LF := V * 0.036;
+      D     : constant LF :=
+        (if Kmh <= 110.0 then D_Min
+         else LF'Min (D_Min + (D_Max - D_Min) / (V_Max - 110.0)
+                              * (Kmh - 110.0), D_Max));
+   begin
+      return D / 0.036;
+   end R_Margin;
+
+   ---------------------------------------------------------------------
+   --  The kernel against the reference
+   ---------------------------------------------------------------------
+
+   Compared      : Natural := 0;
+   Unsafe        : Natural := 0;
+   --  the largest distance by which a kernel location lies behind the
+   --  reference (cm, and relative to the distance from the anchor), and
+   --  the largest amount a kernel speed lies below it (cm/s)
+   Worst_Loc     : LF := 0.0;
+   Worst_Loc_Rel : LF := 0.0;
+   Worst_Speed   : LF := 0.0;
+
+   --  A location of a limit or a curve: never beyond the reference (the
+   --  float's own error aside), behind it by at most 1 m + 0.5 % of the
+   --  distance Span it was computed over
+   procedure Compare_Location (What   : String;
+                               Kernel : EVC_Fixed.Num;
+                               Ref    : LF;
+                               Span   : LF) is
+      D : constant LF := Ref - LF (Kernel);
+   begin
+      Compared := Compared + 1;
+      if D < -0.01 then
+         Unsafe := Unsafe + 1;
+         Check (False, What & ": beyond the reference by" & Img_LF (-D)
+                & " cm");
+      else
+         Check (D <= 100.0 + 0.005 * abs Span,
+                What & ": behind the reference by" & Img_LF (D)
+                & " cm over" & Img_LF (Span) & " cm");
+      end if;
+      Worst_Loc := LF'Max (Worst_Loc, D);
+      if abs Span > 10_000.0 then
+         Worst_Loc_Rel := LF'Max (Worst_Loc_Rel, (D - 1.0) / abs Span);
+      end if;
+   end Compare_Location;
+
+   --  A speed of a curve or a limit: never above the reference, below by
+   --  at most 3 cm/s (0.1 km/h)
+   procedure Compare_Speed (What : String; Kernel : EVC_Fixed.Num; Ref : LF)
+   is
+      D : constant LF := Ref - LF (Kernel);
+   begin
+      Compared := Compared + 1;
+      if D < -0.01 then
+         Unsafe := Unsafe + 1;
+         Check (False, What & ": above the reference by" & Img_LF (-D)
+                & " cm/s");
+      else
+         Check (D <= 3.0, What & ": below the reference by" & Img_LF (D)
+                & " cm/s");
+      end if;
+      Worst_Speed := LF'Max (Worst_Speed, D);
+   end Compare_Speed;
+
+   type Train_Case is
+     (Lambda_60, Lambda_100, Lambda_135, Lambda_180, Lambda_250,
+      Freight_P_100, Freight_G_135, Gamma_Train);
+
+   type Gradient_Case is (Flat, Uphill, Downhill, Mixed, Steep);
+
+   function Case_Snapshot (T : Train_Case; G : Gradient_Case)
+     return SIn.Snapshot_T
+   is
+      S : SIn.Snapshot_T := Base_Snapshot;
+   begin
+      S.Train_Data.Max_Speed := Cms (160.0);
+      case T is
+         when Lambda_60 =>
+            S.Train_Data.Brake_Percentage := 60;
+         when Lambda_100 =>
+            S.Train_Data.Brake_Percentage := 100;
+         when Lambda_135 =>
+            S.Train_Data.Brake_Percentage := 135;
+         when Lambda_180 =>
+            S.Train_Data.Brake_Percentage := 180;
+            --  a Kv_int set with speed steps (packet 3)
+            S.National.Kv_Int_Fresh :=
+              (Count => 3,
+               Steps => (1 => (0, 750), 2 => (Cms (80.0), 700),
+                         3 => (Cms (150.0), 650), others => (0, 1_000)));
+         when Lambda_250 =>
+            S.Train_Data.Brake_Percentage := 250;
+            S.Train_Data.Max_Speed := Cms (200.0);
+         when Freight_P_100 =>
+            S.Train_Data.Brake_Percentage := 100;
+            S.Train_Data.Brake_Position := SIn.Freight_P;
+            S.Train_Data.Length := 60_000;
+            S.Train_Data.Max_Speed := Cms (100.0);
+         when Freight_G_135 =>
+            S.Train_Data.Brake_Percentage := 135;
+            S.Train_Data.Brake_Position := SIn.Freight_G;
+            S.Train_Data.Length := 120_000;
+            S.Train_Data.Max_Speed := Cms (100.0);
+         when Gamma_Train =>
+            S.Train_Data.Model := SIn.Gamma;
+            S.Train_Data.A_Brake_Emergency :=
+              (Count => 3,
+               Steps => (1 => (Cms (100.0), 1_050), 2 => (Cms (160.0), 900),
+                         3 => (0, 780), others => (0, 0)));
+            S.Train_Data.A_Brake_Service :=
+              (Count => 2,
+               Steps => (1 => (Cms (120.0), 800), 2 => (0, 700),
+                         others => (0, 0)));
+            S.Train_Data.A_Brake_Normal :=
+              (Count => 2,
+               Steps => (1 => (Cms (90.0), 550), 2 => (0, 500),
+                         others => (0, 0)));
+            S.Train_Data.T_Brake_Emergency := 3_000;
+            S.Train_Data.T_Brake_Service := 4_000;
+            S.Extra.Train.T_Brake_Emergency_React := 1_000;
+            S.Extra.Train.T_Brake_Service_React := 1_500;
+            S.Extra.Train.Kdry_Rst (9) := (940, 910, 880, others => 1_000);
+            S.Extra.Train.Kwet_Rst := (820, 800, 790, others => 1_000);
+            S.Extra.Train.Kn_Plus :=
+              (Count => 2, Steps => (1 => (Cms (100.0), 40),
+                                     2 => (0, 30), others => (0, 0)));
+            S.Extra.Train.Kn_Minus :=
+              (Count => 1, Steps => (1 => (0, 50), others => (0, 0)));
+            S.National.M_NVAVADH := 500;
+      end case;
+      case G is
+         when Flat =>
+            null;
+         when Uphill =>
+            S.Gradients := (Count => 1, Segments => (1 => (0, 10),
+                                                    others => (0, 0)));
+         when Downhill =>
+            S.Gradients := (Count => 1, Segments => (1 => (0, -15),
+                                                    others => (0, 0)));
+         when Mixed =>
+            S.Gradients :=
+              (Count => 4,
+               Segments => (1 => (-100_000, 5), 2 => (150_000, -20),
+                            3 => (280_000, 8), 4 => (420_000, -3),
+                            others => (0, 0)));
+         when Steep =>
+            S.Gradients :=
+              (Count => 3,
+               Segments => (1 => (-100_000, 0), 2 => (200_000, -40),
+                            3 => (350_000, 0), others => (0, 0)));
+      end case;
+      return S;
+   end Case_Snapshot;
+
+   --  3.13.8: the curves (EBD of an SvL and of an MRSP target, SBD of an
+   --  EOA, GUI), 3.13.9.3: the limits, against the reference
+   procedure Scenario_SDM_Precision is
+      use EVC_Fixed;
+      Far : constant EVC_Distances.Dist_T := -EVC_Distances.Max_Cm + 1;
+   begin
+      for T in Train_Case loop
+         for G in Gradient_Case loop
+            declare
+               S   : constant SIn.Snapshot_T := Case_Snapshot (T, G);
+               M   : EVC_Braking.Model_T;
+               P   : EVC_Profile.Profile_T;
+               RM  : R_Model_T;
+               RP  : R_Profile_T;
+               Tag : constant String :=
+                 Train_Case'Image (T) & " " & Gradient_Case'Image (G);
+               SvL : constant EVC_Distances.Dist_T := 500_000;
+               MT  : constant EVC_Distances.Dist_T := 300_000;
+               V_T : constant Speed_T := Speed_T (Cms (80.0));
+               A_W : constant Speed_T :=
+                 Speed_T'Min (V_T + EVC_Limits.Margin (EVC_Limits.EBI, V_T),
+                              Max_Speed);
+               Curves : constant array (1 .. 4) of EVC_Curves.Curve_T :=
+                 ((EVC_Curves.EBD, SvL, 0, 0),
+                  (EVC_Curves.EBD, MT, A_W * A_W, V_T * V_T),
+                  (EVC_Curves.SBD, SvL, 0, 0),
+                  (EVC_Curves.GUI, SvL, 0, 0));
+               R_Curves : constant array (1 .. 4) of R_Curve :=
+                 ((R_EBD, LF (SvL), 0.0, 0.0),
+                  (R_EBD, LF (MT), LF (A_W), LF (V_T)),
+                  (R_SBD, LF (SvL), 0.0, 0.0),
+                  (R_GUI, LF (SvL), 0.0, 0.0));
+               Speeds : constant array (1 .. 5) of LF :=
+                 (20.0, 50.0, 90.0, 120.0, 150.0);
+               Backs  : constant array (1 .. 5) of LF :=
+                 (0.0, 10_000.0, 80_000.0, 200_000.0, 400_000.0);
+            begin
+               EVC_Braking.Build (S, (others => False), False, M);
+               EVC_Profile.Build (S, M, Far, P);
+               RM := R_Model (S);
+               RP := R_Profile (S, RM);
+               for K in Curves'Range loop
+                  if K /= 4 or else T = Gamma_Train then
+                     for V of Speeds loop
+                        declare
+                           Vc : constant Speed_T := Speed_T (Cms (V));
+                           Kx : constant Num :=
+                             EVC_Curves.Location_Of (M, P, Curves (K), Vc,
+                                                     Far);
+                           Rx : constant LF :=
+                             R_Location_Of (RM, RP, R_Curves (K), LF (Vc));
+                        begin
+                           if Rx > -1.0E11 then
+                              Compare_Location
+                                (Tag & " curve" & Img (K) & " location of"
+                                 & Img_LF (V) & " km/h", Kx, Rx,
+                                 R_Curves (K).Anchor - Rx);
+                           else
+                              --  never reached rearwards: behind Stop
+                              Check (Kx < Far, Tag & " curve" & Img (K)
+                                     & " never reaches" & Img_LF (V)
+                                     & " km/h");
+                           end if;
+                        end;
+                     end loop;
+                     for B of Backs loop
+                        declare
+                           X  : constant Num := Curves (K).Anchor - Num (B);
+                           Kv : constant Speed_T :=
+                             EVC_Curves.Speed_At (M, P, Curves (K), X);
+                           Rv : constant LF :=
+                             R_Speed_At (RM, RP, R_Curves (K), LF (X));
+                        begin
+                           Compare_Speed
+                             (Tag & " curve" & Img (K) & " speed at"
+                              & Img_LF (B / 100.0) & " m before", Kv, Rv);
+                        end;
+                     end loop;
+                     --  beyond the anchor (the MRSP target's EBD falls to
+                     --  its foot)
+                     declare
+                        X  : constant Num := Curves (K).Anchor + 5_000;
+                        Kv : constant Speed_T :=
+                          EVC_Curves.Speed_At (M, P, Curves (K), X);
+                        Rv : constant LF :=
+                          R_Speed_At (RM, RP, R_Curves (K), LF (X));
+                     begin
+                        Compare_Speed (Tag & " curve" & Img (K)
+                                       & " speed 50 m beyond", Kv, Rv);
+                     end;
+                  end if;
+               end loop;
+
+               --  the conversion model (A.3.7) at every speed step
+               if T /= Gamma_Train then
+                  for V in 0 .. 60 loop
+                     declare
+                        Vc : constant Speed_T := Speed_T (V * 100);
+                     begin
+                        --  (in 1e-5 m/s²: at most 3 units, 0.03 mm/s²,
+                        --  below)
+                        Compare_Speed
+                          (Tag & " A_brake_safe at" & Img (V * 100),
+                           EVC_Braking.Value_At (M.Emergency_Safe (0), Vc),
+                           100.0 * R_Safe (RM, LF (Vc), False));
+                     end;
+                  end loop;
+               end if;
+
+               --  3.13.9.3: the limits of the SvL and of the EOA
+               for V of Speeds loop
+                  for A in 0 .. 1 loop
+                     declare
+                        Vc    : constant Speed_T := Speed_T (Cms (V));
+                        Times : constant EVC_Braking.Times_T :=
+                          M.Emergency_Zero;
+                        Serv  : constant EVC_Braking.Times_T :=
+                          M.Service_Zero;
+                        Terms : constant EVC_Limits.Terms_T :=
+                          (V        => Vc,
+                           V_Delta0 => (if A = 1 then EVC_Limits.F41 (Vc)
+                                        else 0),
+                           A_Est1   => (if A = 1 then 300 else 0),
+                           A_Est2   => (if A = 1 then 300 else 0),
+                           T_Be     => Times.Build_Up,
+                           T_Bs1    => Serv.Build_Up,
+                           T_Bs2    => Serv.Build_Up,
+                           T_Ind    => EVC_Fixed.Max
+                                         (EVC_Fixed.Div_Ceil
+                                            (8 * Serv.Build_Up, 10), 5_000)
+                                       + 4_000,
+                           TCO      => True,
+                           T_Traction_Cut_Off => 1_000);
+                        L : constant EVC_Limits.Limits_T :=
+                          EVC_Limits.EBD_Limits
+                            (M, P, Curves (1), 0, SvL, False, Curves (4),
+                             Terms, 0, Far);
+                        E : constant EVC_Limits.Limits_T :=
+                          EVC_Limits.EOA_Limits
+                            (M, P, Curves (3), False, Curves (4), Terms, 0,
+                             Far);
+                        --  the reference formulas (3.13.9.3.2 to .6)
+                        Vr    : constant LF := LF (Vc);
+                        Vd0   : constant LF := LF (Terms.V_Delta0);
+                        T_Tr  : constant LF :=
+                          LF'Max (1.0 - (2.0 + LF (Serv.Build_Up) / 1000.0),
+                                  0.0);
+                        T_Rem : constant LF :=
+                          LF'Max (LF (Times.Build_Up) / 1000.0 - T_Tr, 0.0);
+                        A1    : constant LF := LF (Terms.A_Est1) / 10.0;
+                        Vd1   : constant LF := A1 * T_Tr;
+                        Vd2   : constant LF := A1 * T_Rem;
+                        V_Bec : constant LF := Vr + Vd0 + Vd1 + Vd2;
+                        D_Bec : constant LF :=
+                          (Vr + Vd0 + Vd1 / 2.0) * T_Tr
+                          + (Vr + Vd0 + Vd1 + Vd2 / 2.0) * T_Rem;
+                        R_EBI : constant LF :=
+                          R_Location_Of (RM, RP, R_Curves (1), V_Bec) - D_Bec;
+                        R_SBI : constant LF :=
+                          R_EBI - Vr * LF (Serv.Build_Up) / 1000.0;
+                        R_P   : constant LF :=
+                          LF'Min (R_SBI - Vr * 4.0, LF (SvL));
+                        R_SBI1 : constant LF :=
+                          R_Location_Of (RM, RP, R_Curves (3), Vr)
+                          - Vr * LF (Serv.Build_Up) / 1000.0;
+                        Span  : constant LF := LF (SvL) - R_EBI;
+                     begin
+                        if R_EBI > -1.0E11 then
+                           Compare_Location (Tag & " EBI at" & Img_LF (V),
+                                             L.EBI, R_EBI, Span);
+                           Compare_Location (Tag & " SBI2 at" & Img_LF (V),
+                                             L.SBI, R_SBI, Span);
+                           Compare_Location (Tag & " W at" & Img_LF (V),
+                                             L.W, R_SBI - Vr * 2.0, Span);
+                           Compare_Location (Tag & " P at" & Img_LF (V),
+                                             L.P, R_P, Span);
+                           Compare_Location
+                             (Tag & " I at" & Img_LF (V), L.I,
+                              R_P - Vr * LF (Terms.T_Ind) / 1000.0, Span);
+                        end if;
+                        if R_SBI1 > -1.0E11 then
+                           Compare_Location
+                             (Tag & " SBI1 at" & Img_LF (V), E.SBI, R_SBI1,
+                              LF (SvL) - R_SBI1);
+                        end if;
+                        Check (EVC_Limits.Ordered (L)
+                               and then EVC_Limits.Ordered (E),
+                               Tag & " limits ordered at" & Img_LF (V));
+                     end;
+                  end loop;
+               end loop;
+            end;
+         end loop;
+      end loop;
+
+      --  3.13.9.2: the ceiling margins
+      for V in 0 .. 300 loop
+         declare
+            Vc : constant Speed_T := Speed_T (Cms (LF (V)));
+         begin
+            for K in EVC_Limits.Margin_Kind_T loop
+               Compare_Speed ("margin " & EVC_Limits.Margin_Kind_T'Image (K)
+                              & " at" & Img (V) & " km/h",
+                              EVC_Limits.Margin (K, Vc),
+                              R_Margin (K, LF (Vc)));
+            end loop;
+            Check (EVC_Limits.Margin (EVC_Limits.Warning, Vc)
+                   <= EVC_Limits.Margin (EVC_Limits.SBI, Vc)
+                   and then EVC_Limits.Margin (EVC_Limits.SBI, Vc)
+                            <= EVC_Limits.Margin (EVC_Limits.EBI, Vc),
+                   "dV_warning <= dV_sbi <= dV_ebi at" & Img (V) & " km/h");
+         end;
+      end loop;
+
+      --  A.3.7.3: V_lim of the table
+      for L in 0 .. 250 loop
+         declare
+            use Ada.Numerics.Long_Elementary_Functions;
+            Exact : constant LF :=
+              (if L = 0 then 0.0
+               else 16.85 * LF (L) ** 0.428 * 250.0 / 9.0);
+            Table : constant Speed_T := EVC_Braking.V_Lim (L);
+         begin
+            Check (LF (Table) <= Exact and then Exact < LF (Table) + 1.0,
+                   "V_lim of" & Img (L) & " %");
+         end;
+      end loop;
+
+      --  A.3.8, A.3.9: the build up times of the conversion model
+      for Pos in SIn.Brake_Position_T loop
+         for L_M in 0 .. 15 loop
+            declare
+               Len  : constant EVC_Fixed.Num := EVC_Fixed.Num (L_M * 10_000);
+               Lm   : constant LF := LF (L_M) * 100.0;
+               function Basic (A, B, C : LF; L : LF) return LF is
+                 (A + B * (L / 100.0) + C * (L / 100.0) ** 2);
+               EB   : constant LF :=
+                 (case Pos is
+                     when SIn.Passenger_P =>
+                       Basic (2.30, 0.0, 0.17, LF'Max (400.0, Lm)),
+                     when SIn.Freight_P =>
+                       (if Lm <= 900.0
+                        then Basic (2.30, 0.0, 0.17, LF'Max (400.0, Lm))
+                        else Basic (-0.40, 1.60, 0.03, Lm)),
+                     when SIn.Freight_G =>
+                       (if Lm <= 900.0 then Basic (12.00, 0.0, 0.05, Lm)
+                        else Basic (-0.40, 1.60, 0.03, Lm)));
+               SB   : constant LF :=
+                 (case Pos is
+                     when SIn.Passenger_P => Basic (3.00, 1.50, 0.10, Lm),
+                     when SIn.Freight_P =>
+                       (if Lm <= 900.0 then Basic (3.00, 2.77, 0.0, Lm)
+                        else Basic (10.50, 0.32, 0.18, Lm)),
+                     when SIn.Freight_G =>
+                       (if Lm <= 900.0
+                        then Basic (3.00, 2.77, 0.0, LF'Max (400.0, Lm))
+                        else Basic (10.50, 0.32, 0.18, LF'Max (400.0, Lm))));
+               Kto  : constant LF :=
+                 (if Pos = SIn.Freight_G then 1.16 else 1.20);
+               E0   : constant EVC_Braking.Times_T :=
+                 EVC_Braking.Conversion_Emergency (Pos, Len, True);
+               ET   : constant EVC_Braking.Times_T :=
+                 EVC_Braking.Conversion_Emergency (Pos, Len, False);
+               S0   : constant EVC_Braking.Times_T :=
+                 EVC_Braking.Conversion_Service (Pos, Len, True);
+               ST   : constant EVC_Braking.Times_T :=
+                 EVC_Braking.Conversion_Service (Pos, Len, False);
+               Tag  : constant String :=
+                 SIn.Brake_Position_T'Image (Pos) & Img (L_M * 100) & " m";
+
+               function Near (Kernel : EVC_Fixed.Num; Ref_S : LF)
+                 return Boolean
+               is (LF (Kernel) >= Ref_S * 1000.0 - 0.001
+                   and then LF (Kernel) < Ref_S * 1000.0 + 1.0);
+            begin
+               Check (Near (E0.Build_Up, EB) and then Near (ET.Build_Up,
+                                                            EB * Kto),
+                      "A.3.8 " & Tag);
+               Check (Near (S0.Build_Up, SB) and then Near (ST.Build_Up,
+                                                            SB * Kto),
+                      "A.3.9 " & Tag);
+               Check (E0.React = (case Pos is when SIn.Passenger_P => 1_420,
+                                              when SIn.Freight_P => 2_990,
+                                              when SIn.Freight_G => 9_300)
+                      and then S0.React
+                               = (case Pos is
+                                     when SIn.Passenger_P => 1_060,
+                                     when SIn.Freight_P => 2_070,
+                                     when SIn.Freight_G => 5_700),
+                      "A.3.8.6, A.3.9.8 " & Tag);
+            end;
+         end loop;
+      end loop;
+
+      Check (Unsafe = 0, "reference: nothing on the unsafe side");
+      Put_Line ("  reference: " & Img (Compared) & " values compared, "
+                & "locations behind by at most" & Img_LF (Worst_Loc)
+                & " cm (" & Img_LF (Worst_Loc_Rel * 1000.0)
+                & " per mille beyond 1 cm), speeds below by at most"
+                & Img_LF (Worst_Speed) & " cm/s");
+   end Scenario_SDM_Precision;
+
+   ---------------------------------------------------------------------
+   --  Scenarios through EVC_Core, the snapshot set directly
+   ---------------------------------------------------------------------
+
+   Sup : SIn.Snapshot_T;
+
+   procedure Sup_Cycle (Dt : Natural := 100) is
+   begin
+      EVC_Core.Set_Snapshot_For_Test (Sup);
+      EVC_Core.Tick (Dt);
+      Take;
+   end Sup_Cycle;
+
+   procedure Sup_Start (S : SIn.Snapshot_T) is
+   begin
+      EVC_Core.Initialise;
+      Reset_Capture;
+      Sup := S;
+      Sup_Cycle;
+   end Sup_Start;
+
+   function Res return SDM.Result_T is (EVC_Core.Supervision);
+   function Cmd return BC.Commands_T is (EVC_Core.Brake_Commands);
+
+   --  The train of the scenario at At_Cm (the confidence interval
+   --  +/- 10 m), moving ahead at V
+   procedure Move (At_Cm : Integer_64; V : SIn.Speed_Cms_T) is
+   begin
+      Place (Sup, At_Cm, V);
+   end Move;
+
+   --  MSG_SPEED_STATE of the last Take, field by field
+   type Speed_Fields is record
+      Found                     : Boolean := False;
+      V_Cur, V_Perm, V_Target   : Natural := 0;
+      V_Release, V_SBI, V_Wsl   : Natural := 0;
+      D_Target                  : Natural := 0;
+      Monitoring, Dial, Flags   : Natural := 0;
+      Status, MRDT              : Natural := 0;
+   end record;
+
+   function Speed_Frame return Speed_Fields is
+      I : constant Natural := Find_DMI (EVC_DMI_Port.MSG_SPEED_STATE);
+
+      function W (N : Positive) return Natural is
+        (Byte_At (I, N) + 256 * Byte_At (I, N + 1));
+   begin
+      if I = 0 or else Rec_Length (I) /= 26 then
+         return (others => <>);
+      end if;
+      return (Found      => True,
+              V_Cur      => W (6),
+              V_Perm     => W (8),
+              V_Target   => W (10),
+              V_Release  => W (12),
+              V_SBI      => W (14),
+              V_Wsl      => W (16),
+              D_Target   => W (18) + 65_536 * W (20),
+              Monitoring => Byte_At (I, 22),
+              Dial       => Byte_At (I, 23),
+              Flags      => Byte_At (I, 24),
+              Status     => Byte_At (I, 25),
+              MRDT       => Byte_At (I, 26));
+   end Speed_Frame;
+
+   --  The TIU output of the last Take: commands and reasons, 16#FFFF#
+   --  when there is none
+   function TIU_Out return Natural is
+   begin
+      for I in 1 .. Rec_Count loop
+         if Recs (I).Port = TIU and then Rec_Length (I) = 2 then
+            return Byte_At (I, 1) + 256 * Byte_At (I, 2);
+         end if;
+      end loop;
+      return 16#FFFF#;
+   end TIU_Out;
+
+   --  The brake field of the MSG_STATUS of the last Take, 16#FFFF# when
+   --  there is none
+   function Status_Brake return Natural is
+      I : constant Natural := Find_DMI (EVC_DMI_Port.MSG_STATUS);
+   begin
+      return (if I = 0 then 16#FFFF# else Byte_At (I, 6));
+   end Status_Brake;
+
+   function JRU_Count (Event : Natural) return Natural is
+      N : Natural := 0;
+   begin
+      for I in 1 .. Rec_Count loop
+         if Recs (I).Port = JRU and then Byte_At (I, 1) = Event then
+            N := N + 1;
+         end if;
+      end loop;
+      return N;
+   end JRU_Count;
+
+   --  3.13.10.3: ceiling speed monitoring, Tables 5 to 7; the TIU output
+   --  and MSG_SPEED_STATE field by field
+   procedure Scenario_SDM_Ceiling is
+      S : SIn.Snapshot_T := Base_Snapshot;
+      F : Speed_Fields;
+   begin
+      Place (S, 100_000, Cms (120.0));
+      Sup_Start (S);
+      Check (Res.Active and then Res.Monitoring = SDM.CSM
+             and then Res.Status = SDM.NoS and then not Cmd.EB
+             and then not Cmd.SB,
+             "CSM: 120 km/h under 140 is Normal, no command");
+      F := Speed_Frame;
+      Check (F.Found and then F.V_Cur = 120 and then F.V_Perm = 140
+             and then F.V_Target = 0 and then F.V_Release = 0
+             and then F.V_Wsl = 145 and then F.V_SBI = 147
+             and then F.D_Target = 0 and then F.Monitoring = 0
+             and then F.Dial = 1 and then F.Flags = 0
+             and then F.Status = 0,
+             "CSM: MSG_SPEED_STATE 120 / 140, warning 145, SBI 147 (146.85)"
+             & ", dial 180 km/h");
+      Check (TIU_Out = 16#FFFF#, "CSM: no TIU output without a command");
+
+      Move (100_300, Cms (143.0));
+      Sup_Cycle;
+      Check (Res.Status = SDM.OvS and then not Cmd.SB,
+             "CSM t2: 143 km/h is Overspeed");
+      Move (100_600, Cms (146.0));
+      Sup_Cycle;
+      Check (Res.Status = SDM.WaS and then not Cmd.SB and then not Cmd.TCO,
+             "CSM t3: 146 km/h (above 145) is Warning");
+      Check (JRU_Count (EVC_Ports.JRU_Supervision) = 1,
+             "CSM: the JRU records the change of status");
+      Move (100_900, Cms (148.0));
+      Sup_Cycle;
+      Check (Res.Status = SDM.IntS and then Cmd.SB and then not Cmd.EB,
+             "CSM t4: 148 km/h (above 146.85) commands the service brake");
+      Check (TIU_Out = 2 + 256 * 1,
+             "CSM: TIU output SBC, reason speed and distance monitoring");
+      Check (Status_Brake = 1, "CSM: MSG_STATUS shows the brake");
+      Check (JRU_Count (EVC_Ports.JRU_Brake_Commands) = 1,
+             "CSM: the JRU records the brake command");
+      Move (101_200, Cms (151.0));
+      Sup_Cycle;
+      Check (Res.Status = SDM.IntS and then Cmd.SB and then Cmd.EB,
+             "CSM t5: 151 km/h (above 149.75) commands the emergency brake");
+      Check (Speed_Frame.Status = 4 and then Speed_Frame.V_SBI = 147,
+             "CSM: Intervention on the DMI with the SBI speed");
+      Move (101_500, Cms (139.0));
+      Sup_Cycle;
+      Check (Res.Status = SDM.IntS and then not Cmd.SB and then Cmd.EB,
+             "CSM r1: at 139 km/h the service brake is revoked, the "
+             & "emergency brake only at standstill (Q_NVEMRRLS = 0)");
+      Move (101_600, 0);
+      Sup_Cycle;
+      Check (Res.Status = SDM.NoS and then not Cmd.EB and then not Cmd.SB,
+             "CSM r0: at standstill everything is revoked");
+      Check (TIU_Out = 0, "CSM: the TIU output says so once");
+      Sup_Cycle;
+      Check (TIU_Out = 16#FFFF#, "CSM: then nothing on the TIU");
+
+      --  Q_NVEMRRLS = 1: the emergency brake revoked with the Permitted
+      --  speed
+      S.National.Q_NVEMRRLS := True;
+      Place (S, 100_000, Cms (151.0));
+      Sup_Start (S);
+      Check (Cmd.EB and then Res.Status = SDM.IntS,
+             "CSM, first cycle: 151 km/h gives Intervention at once "
+             & "(3.13.10.3.5)");
+      Move (100_300, Cms (140.0));
+      Sup_Cycle;
+      Check (not Cmd.EB and then Res.Status = SDM.NoS,
+             "CSM r1: Q_NVEMRRLS = 1 revokes the emergency brake at 140");
+
+      --  no service brake interface: the emergency brake instead
+      --  (3.13.10.2.3), revoked like the service brake (3.13.10.2.4)
+      S := Base_Snapshot;
+      S.Extra.Config.Service_Brake_Command := False;
+      Place (S, 100_000, Cms (148.0));
+      Sup_Start (S);
+      Check (Cmd.EB and then not Cmd.SB and then Res.Status = SDM.IntS,
+             "3.13.10.2.3: no service brake, the emergency brake instead");
+      Move (100_300, Cms (140.0));
+      Sup_Cycle;
+      Check (not Cmd.EB and then Res.Status = SDM.NoS,
+             "3.13.10.2.4: revoked as the service brake would be");
+
+      --  no ceiling speed, no monitoring (Stand By, nothing stored)
+      S := Base_Snapshot;
+      S.Supervise := False;
+      Place (S, 0, 0);
+      Sup_Start (S);
+      F := Speed_Frame;
+      Check (not Res.Active and then F.Found and then F.V_Perm = 0
+             and then F.Status = 0 and then F.Dial = 1,
+             "no ceiling speed: nothing supervised, v_perm 0 as the mock");
+
+      --  the dial range from V_MAXTRAIN (DMI 8.2.1.1.3)
+      S := Base_Snapshot;
+      Place (S, 0, 0);
+      S.Train_Data.Max_Speed := Cms (130.0);
+      Sup_Start (S);
+      Check (Speed_Frame.Dial = 0, "dial 140 for a train of 130 km/h");
+      S.Train_Data.Max_Speed := Cms (230.0);
+      Sup_Start (S);
+      Check (Speed_Frame.Dial = 2, "dial 250 for a train of 230 km/h");
+      S.Train_Data.Max_Speed := Cms (240.0);
+      Sup_Start (S);
+      Check (Speed_Frame.Dial = 3, "dial 400 for a train of 240 km/h "
+             & "(the EBI of 255 km/h is beyond 250)");
+      S.Train_Data.Max_Speed := Cms (300.0);
+      Sup_Start (S);
+      Check (Speed_Frame.Dial = 3, "dial 400 for a train of 300 km/h");
+   end Scenario_SDM_Ceiling;
+
+   --  3.13.10.4: target speed monitoring to an EOA at constant speed:
+   --  Indication, Overspeed, Warning with the traction cut-off,
+   --  Intervention with the service brake, in this order (Tables 9, 12);
+   --  then the driver brakes and the commands are revoked (Table 11)
+   procedure Scenario_SDM_Approach is
+      S       : SIn.Snapshot_T := Base_Snapshot;
+      X       : Integer_64 := 0;
+      V       : SIn.Speed_Cms_T := Cms (120.0);
+      Seen    : array (1 .. 16) of SDM.Status_T := (others => SDM.NoS);
+      N_Seen  : Natural := 0;
+      Last    : SDM.Status_T := SDM.NoS;
+      TSM_At  : Integer_64 := -1;
+      TCO_At  : Integer_64 := -1;
+      SB_At   : Integer_64 := -1;
+      Ind_Before : Natural := 0;
+      D_Prev  : Natural := Natural'Last;
+      D_Falls : Boolean := True;
+      Braking : Boolean := False;
+   begin
+      Give_MA (S, 5_000, 200);
+      Place (S, X, V);
+      Sup_Start (S);
+      for Step in 1 .. 3_000 loop
+         exit when V = 0;
+         if Braking then
+            V := SIn.Speed_Cms_T'Max (Integer (V) - 10, 0);  -- 1 m/s²
+         end if;
+         X := X + Integer_64 (V) / 10;
+         Move (X, V);
+         Sup_Cycle;
+         if Res.Monitoring = SDM.CSM and then Res.Indication then
+            Ind_Before := Ind_Before + 1;
+         end if;
+         if Res.Monitoring = SDM.TSM and then TSM_At < 0 then
+            TSM_At := X;
+         end if;
+         if Res.Status /= Last then
+            if N_Seen < Seen'Last then
+               N_Seen := N_Seen + 1;
+               Seen (N_Seen) := Res.Status;
+            end if;
+            Last := Res.Status;
+         end if;
+         if Cmd.TCO and then TCO_At < 0 then
+            TCO_At := X;
+         end if;
+         if Cmd.SB and then SB_At < 0 then
+            SB_At := X;
+            Braking := True;
+         end if;
+         if Res.Monitoring = SDM.TSM then
+            if Speed_Frame.D_Target > D_Prev and then not Braking then
+               D_Falls := False;
+            end if;
+            D_Prev := Speed_Frame.D_Target;
+         end if;
+      end loop;
+      Check (TSM_At > 0 and then Ind_Before > 0,
+             "approach: CSM with the first Indication location shown, then"
+             & " TSM from" & Integer_64'Image (TSM_At / 100) & " m");
+      Check (N_Seen >= 4 and then Seen (1) = SDM.IndS
+             and then Seen (2) = SDM.OvS and then Seen (3) = SDM.WaS
+             and then Seen (4) = SDM.IntS,
+             "approach: Indication, Overspeed, Warning, Intervention in "
+             & "that order (Table 12)");
+      Check (TCO_At > 0 and then SB_At > TCO_At,
+             "approach: the traction cut-off at W (" & Integer_64'Image
+               (TCO_At / 100) & " m), the service brake at SBI1 ("
+             & Integer_64'Image (SB_At / 100) & " m)");
+      Check (D_Falls, "approach: the distance to target falls");
+      Check (X < 500_000 and then not Cmd.SB and then not Cmd.EB
+             and then Res.Status = SDM.IndS,
+             "approach: braked to a stop before the EOA at"
+             & Integer_64'Image (X / 100) & " m, the commands revoked (r1,"
+             & " r3), Indication");
+      Check (Speed_Frame.V_Target = 0 and then Speed_Frame.Monitoring = 1,
+             "approach: MSG_SPEED_STATE target speed 0 in TSM");
+   end Scenario_SDM_Approach;
+
+   --  3.13.9.4, 3.13.10.5: release speed monitoring with a release speed
+   --  of 40 km/h: entered at the RSM start, the release speed shown,
+   --  Intervention above it (Table 13), revoked at standstill only
+   --  (Table 14)
+   procedure Scenario_SDM_Release is
+      S   : SIn.Snapshot_T := Base_Snapshot;
+      X   : Integer_64 := 300_000;
+      V   : SIn.Speed_Cms_T := Cms (60.0);
+      RSM_At : Integer_64 := -1;
+      F   : Speed_Fields;
+   begin
+      Give_MA (S, 5_000, 100, SIn.Fixed, Cms (40.0));
+      Place (S, X, V);
+      Sup_Start (S);
+      for Step in 1 .. 5_000 loop
+         --  the driver keeps 3 km/h below the displayed Permitted speed
+         declare
+            P : constant SIn.Speed_Cms_T :=
+              SIn.Speed_Cms_T
+                (EVC_Fixed.Max (Res.V_Perm - EVC_Fixed.Num (Cms (3.0)), 0));
+         begin
+            if Res.Monitoring = SDM.RSM then
+               V := Cms (35.0);
+            elsif V > P then
+               V := SIn.Speed_Cms_T'Max (Integer (V) - 8, Integer (P));
+            end if;
+         end;
+         X := X + Integer_64 (V) / 10;
+         Move (X, V);
+         Sup_Cycle;
+         if Res.Monitoring = SDM.RSM and then RSM_At < 0 then
+            RSM_At := X;
+            F := Speed_Frame;
+         end if;
+         exit when RSM_At > 0 and then X > RSM_At + 2_000;
+      end loop;
+      Check (RSM_At > 0 and then RSM_At < 500_000,
+             "release: RSM entered at" & Integer_64'Image (RSM_At / 100)
+             & " m, before the EOA");
+      Check (F.Monitoring = 2 and then F.V_Release = 40
+             and then F.Flags mod 2 = 1 and then F.Status = 1,
+             "release: MSG_SPEED_STATE RSM, release speed 40 shown, "
+             & "Indication");
+      Check (Res.Release_Exists and then not Cmd.EB,
+             "release: 35 km/h under the release speed, no command");
+      Move (X + 100, Cms (42.0));
+      Sup_Cycle;
+      Check (Cmd.EB and then Res.Status = SDM.IntS,
+             "release t2: 42 km/h is above the release speed: EB");
+      Move (X + 200, Cms (30.0));
+      Sup_Cycle;
+      Check (Cmd.EB and then Res.Status = SDM.IntS,
+             "release: the EB stays below the release speed (Table 14)");
+      Move (X + 250, 0);
+      Sup_Cycle;
+      Check (not Cmd.EB and then Res.Status = SDM.IndS
+             and then Res.Monitoring = SDM.RSM,
+             "release r0: revoked at standstill, Indication, still RSM");
+      Check (Speed_Frame.D_Target > 0
+             and then Speed_Frame.D_Target <= 5_000 - Natural (X / 100),
+             "release: the distance to the EOA shown");
+   end Scenario_SDM_Release;
+
+   --  3.14.2, 3.14.3, 4.4.7.1.5: the protections, released at standstill
+   --  after the acknowledgement (3.14.1.5, 3.14.1.9)
+   procedure Scenario_SDM_Protections is
+      S   : SIn.Snapshot_T := Base_Snapshot;
+      Ack : constant Byte_Array :=
+        Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 5, 0, 0, 0));
+
+      procedure Roll (From : Integer_64; Metres : Natural;
+                      Backwards : Boolean) is
+         X : Integer_64 := From;
+      begin
+         for I in 1 .. Metres * 2 loop
+            X := X + (if Backwards then -50 else 50);
+            Place (Sup, X, 500);
+            Sup.Train.Moving_Ahead := not Backwards;
+            Sup.Train.Moving_Backwards := Backwards;
+            Sup_Cycle;
+         end loop;
+      end Roll;
+
+      procedure Stop_And_Ack (Expect_Release : Boolean; What : String) is
+      begin
+         Place (Sup, Integer_64 (Sup.Train.Est_Front), 0);
+         Sup_Cycle;
+         Check (Cmd.EB and then Cmd.Ack_Required and then Status_Brake = 2,
+                What & ": at standstill the acknowledgement is asked");
+         Input (DMI, Ack);
+         Sup_Cycle;
+         Check (Cmd.EB /= Expect_Release,
+                What & ": released after the acknowledgement");
+      end Stop_And_Ack;
+   begin
+      --  roll away: the direction controller forward, the train rolls
+      --  backwards
+      Place (S, 100_000, 0);
+      Sup_Start (S);
+      Input (TIU, (6, 1));
+      Roll (100_000, 1, True);
+      Check (not Cmd.EB, "roll away: 1 m, under D_NVROLL (2 m)");
+      Roll (Integer_64 (Sup.Train.Est_Front), 2, True);
+      Check (Cmd.EB and then Cmd.Reasons (BC.Roll_Away)
+             and then TIU_Out = 1 + 256 * 4,
+             "roll away: beyond 2 m the emergency brake (TIU reason 4)");
+      Stop_And_Ack (True, "roll away");
+      Roll (Integer_64 (Sup.Train.Est_Front), 3, False);
+      Check (not Cmd.EB, "roll away: forwards is allowed");
+      Input (TIU, (6, 0));
+      Roll (Integer_64 (Sup.Train.Est_Front), 3, False);
+      Check (Cmd.EB and then Cmd.Reasons (BC.Roll_Away),
+             "roll away: in neutral no movement (3.14.2.3)");
+      Stop_And_Ack (True, "roll away, neutral");
+
+      --  unauthorised direction: an MA ahead, the train moves backwards
+      S := Base_Snapshot;
+      Give_MA (S, 5_000);
+      Place (S, 100_000, 0);
+      Sup_Start (S);
+      Roll (100_000, 3, True);
+      Check (Cmd.EB and then Cmd.Reasons (BC.Direction)
+             and then not Cmd.Reasons (BC.Roll_Away),
+             "direction: a movement against the MA beyond 2 m brakes");
+      --  the acknowledgement before standstill does nothing
+      Input (DMI, Ack);
+      Roll (Integer_64 (Sup.Train.Est_Front), 1, True);
+      Check (Cmd.EB, "direction: the acknowledgement counts at standstill "
+             & "only");
+      Stop_And_Ack (True, "direction");
+
+      --  standstill supervision in Stand By (nothing supervised)
+      S := Base_Snapshot;
+      S.Supervise := False;
+      Place (S, 100_000, 0);
+      Sup_Start (S);
+      Roll (100_000, 3, False);
+      Check (Cmd.EB and then Cmd.Reasons (BC.Standstill_Supervision),
+             "standstill supervision: 3 m in SB brakes");
+      Stop_And_Ack (True, "standstill supervision");
+   end Scenario_SDM_Protections;
+
+   --  Drive the scenario's train from X at V (cm/s) for up to Cycles
+   --  cycles of 100 ms, decelerating by Decel cm/s per cycle once
+   --  Brake_When holds, until Stop_When holds
+   generic
+      with function Brake_When return Boolean;
+      with function Stop_When return Boolean;
+   procedure Drive (X      : in out Integer_64;
+                    V      : in out SIn.Speed_Cms_T;
+                    Decel  : Natural;
+                    Cycles : Natural);
+
+   procedure Drive (X      : in out Integer_64;
+                    V      : in out SIn.Speed_Cms_T;
+                    Decel  : Natural;
+                    Cycles : Natural)
+   is
+      Braking : Boolean := False;
+   begin
+      for Step in 1 .. Cycles loop
+         exit when Stop_When;
+         if not Braking and then Brake_When then
+            Braking := True;
+         end if;
+         if Braking then
+            V := SIn.Speed_Cms_T'Max (Integer (V) - Decel, 0);
+         end if;
+         X := X + Integer_64 (V) / 10;
+         Move (X, V);
+         Sup_Cycle;
+      end loop;
+   end Drive;
+
+   function Never return Boolean is (False);
+   function In_TSM return Boolean is (Res.Monitoring = SDM.TSM);
+
+   --  3.13.8.2.1 a), 3.13.10.4.2, .5, .7, Table 16 [1], [3]: an MRSP
+   --  target: TSM, the target speed and distance shown, CSM once the max
+   --  safe front end passed it
+   procedure Scenario_SDM_MRSP_Target is
+      S     : SIn.Snapshot_T := Base_Snapshot;
+      X     : Integer_64 := 0;
+      V     : SIn.Speed_Cms_T := Cms (135.0);
+      MRDT0 : Natural;
+      D0    : Natural;
+
+      function Below_78 return Boolean is (Sup.Train.Speed <= Cms (78.0));
+      function Past return Boolean is (X > 310_000);
+      procedure To_TSM is new Drive (Never, In_TSM);
+      procedure Slow is new Drive (In_TSM, Below_78);
+      procedure Pass is new Drive (Never, Past);
+   begin
+      S.MRSP := (Count => 2,
+                 Segments => (1 => (0, Cms (140.0)),
+                              2 => (300_000, Cms (80.0)),
+                              others => (0, SIn.No_Speed_Limit)));
+      Place (S, X, V);
+      Sup_Start (S);
+      MRDT0 := Speed_Frame.MRDT;
+      Check (Res.Monitoring = SDM.CSM and then Res.Indication,
+             "MRSP target: CSM, the first Indication location known");
+      To_TSM (X, V, 0, 3_000);
+      Check (Res.Monitoring = SDM.TSM and then Res.Status = SDM.IndS
+             and then X < 300_000,
+             "MRSP target: TSM from" & Integer_64'Image (X / 100) & " m");
+      D0 := Speed_Frame.D_Target;
+      Check (Speed_Frame.V_Target = 80 and then Speed_Frame.MRDT /= MRDT0
+             and then Speed_Frame.Monitoring = 1
+             and then D0 > 0 and then D0 < 3_000 - Natural (X / 100),
+             "MRSP target: the MRDT is new, target speed 80, distance"
+             & Img (D0) & " m to its P location");
+      Slow (X, V, 5, 3_000);
+      Check (Res.Monitoring = SDM.TSM and then not Cmd.SB
+             and then not Cmd.EB
+             and then Res.Status in SDM.IndS | SDM.OvS,
+             "MRSP target: braking at 0.5 m/s² keeps below intervention");
+      Pass (X, V, 0, 3_000);
+      Check (Res.Monitoring = SDM.CSM and then Res.V_MRSP = EVC_Fixed.Num (Cms (80.0))
+             and then Speed_Frame.V_Perm = 80,
+             "MRSP target: passed by the max safe front end, CSM at 80");
+   end Scenario_SDM_MRSP_Target;
+
+   --  3.13.8.2.1 b), 3.13.9.4.4: the LOA, no release speed; 3.13.10.2.6
+   --  a): the overrun of the LOA
+   procedure Scenario_SDM_LOA is
+      S : SIn.Snapshot_T := Base_Snapshot;
+      X : Integer_64 := 0;
+      V : SIn.Speed_Cms_T := Cms (120.0);
+
+      function Past return Boolean is (X > 402_000);
+      procedure To_TSM is new Drive (Never, In_TSM);
+      procedure Slow is new Drive (In_TSM, Past);
+   begin
+      Give_MA (S, 4_000, 0, SIn.Fixed, Cms (40.0), LOA_Kmh => 60.0);
+      Place (S, X, V);
+      Sup_Start (S);
+      To_TSM (X, V, 0, 3_000);
+      Check (Res.Monitoring = SDM.TSM and then Speed_Frame.V_Target = 60
+             and then not Res.Release_Exists,
+             "LOA: TSM to the LOA speed, no release speed (3.13.9.4.4)");
+      V := Cms (58.0);
+      Slow (X, V, 0, 5_000);
+      Check (Res.EOA_Passed,
+             "LOA: the min safe front end passed the LOA (3.13.10.2.6 a)");
+   end Scenario_SDM_LOA;
+
+   --  3.13.9.4.8: the release speed calculated on-board, against the
+   --  reference; 3.13.9.4.9: limited by an MRSP element
+   procedure Scenario_SDM_Calculated_Release is
+      use EVC_Fixed;
+      S : SIn.Snapshot_T := Base_Snapshot;
+   begin
+      Give_MA (S, 5_000, 50, SIn.Calculated_On_Board);
+      Place (S, 100_000, Cms (100.0));
+      Sup_Start (S);
+      declare
+         --  the reference: V + Vd0 = V_EBD (d_trip + (V + Vd0) *
+         --  (T_traction + T_berem)), level 2, T_traction the cut-off
+         --  time (as not implemented), T_berem = T_be - T_traction
+         RM   : constant R_Model_T := R_Model (Sup);
+         RP   : constant R_Profile_T := R_Profile (Sup, RM);
+         SvL  : constant R_Curve := (R_EBD, 505_000.0, 0.0, 0.0);
+         Trip : constant LF := 500_000.0 + 2_000.0;
+         T_Be : constant LF :=
+           LF (EVC_Braking.Conversion_Emergency
+                 (SIn.Passenger_P, 40_000, True).Build_Up) * 1.1 / 1000.0;
+         Lo   : LF := 0.0;
+         Hi   : LF := 20_000.0;
+         Kernel : constant Num := Res.V_Release;
+      begin
+         for I in 1 .. 60 loop
+            declare
+               Mid : constant LF := (Lo + Hi) / 2.0;
+               Vd0 : constant LF :=
+                 LF'Max ((64_000.0 + 36.0 * Mid) / 1692.0, 2.0 / 0.036);
+               X   : constant LF :=
+                 Trip + (Mid + Vd0) * (1.0 + LF'Max (T_Be - 1.0, 0.0));
+            begin
+               if Mid + Vd0 <= R_Speed_At (RM, RP, SvL, X) then
+                  Lo := Mid;
+               else
+                  Hi := Mid;
+               end if;
+            end;
+         end loop;
+         Check (Res.Release_Exists and then LF (Kernel) <= Lo
+                and then Lo - LF (Kernel) <= 28.0,
+                "calculated release speed" & Img_LF (Kmh_Of (Kernel))
+                & " km/h, the reference" & Img_LF (Lo * 0.036)
+                & " km/h (within 1 km/h, not above)");
+      end;
+      --  3.13.9.4.9: an MRSP element of 15 km/h before the EOA, an SvL
+      --  far enough for a higher release speed
+      Give_MA (S, 5_000, 300, SIn.Calculated_On_Board);
+      Place (S, 100_000, Cms (100.0));
+      Sup_Start (S);
+      Check (Res.V_Release > EVC_Fixed.Num (Cms (15.0)),
+             "calculated release speed with an overlap of 300 m:"
+             & Img_LF (Kmh_Of (Res.V_Release)) & " km/h");
+      S.MRSP := (Count => 2,
+                 Segments => (1 => (0, Cms (140.0)),
+                              2 => (490_000, Cms (15.0)),
+                              others => (0, SIn.No_Speed_Limit)));
+      Place (S, 100_000, Cms (100.0));
+      Sup_Start (S);
+      Check (Res.V_Release = EVC_Fixed.Num (Cms (15.0)),
+             "calculated release speed limited by the MRSP to 15 km/h,"
+             & " got" & Img_LF (Kmh_Of (Res.V_Release)) & " km/h");
+   end Scenario_SDM_Calculated_Release;
+
+   --  3.13.11: the perturbation location of the EOA / SvL and the MA
+   --  request location, passed before the TSM
+   procedure Scenario_SDM_Perturbation is
+      S  : SIn.Snapshot_T := Base_Snapshot;
+      X  : Integer_64 := 0;
+      V  : constant SIn.Speed_Cms_T := Cms (100.0);
+      Requested_At : Integer_64 := -1;
+   begin
+      Give_MA (S, 5_000, 100);
+      S.Extra.T_MAR := 10_000;
+      Place (S, X, V);
+      Sup_Start (S);
+      Check (Res.Perturbation and then Res.Perturbation_X < 500_000
+             and then Res.Perturbation_X > 0 and then not Res.MA_Request,
+             "perturbation: the location at"
+             & Integer_64'Image (Integer_64 (Res.Perturbation_X) / 100)
+             & " m, not passed at 0 m");
+      for Step in 1 .. 3_000 loop
+         exit when Res.Monitoring = SDM.TSM;
+         X := X + Integer_64 (V) / 10;
+         Move (X, V);
+         Sup_Cycle;
+         if Res.MA_Request and then Requested_At < 0 then
+            Requested_At := X;
+         end if;
+      end loop;
+      Check (Requested_At > 0 and then Res.Monitoring = SDM.TSM,
+             "perturbation: the MA request location passed at"
+             & Integer_64'Image (Requested_At / 100)
+             & " m, before the TSM at" & Integer_64'Image (X / 100) & " m");
+   end Scenario_SDM_Perturbation;
+
+   --  A.3.10: the service brake feedback reduces and locks T_bs1 and
+   --  T_bs2: the service brake comes later; the displayed P never grows
+   procedure Scenario_SDM_Feedback is
+      Base : SIn.Snapshot_T := Base_Snapshot;
+
+      --  where the service brake is commanded at 120 km/h, with the
+      --  brake pipe at Pressure kPa in target speed monitoring
+      function SB_Location (Feedback : Boolean; Pressure : Natural;
+                            P_Grows  : out Boolean) return Integer_64
+      is
+         X      : Integer_64 := 0;
+         V      : constant SIn.Speed_Cms_T := Cms (120.0);
+         Last_P : Natural := Natural'Last;
+      begin
+         P_Grows := False;
+         Base.Extra.Config.Service_Brake_Feedback := Feedback;
+         Base.National.Q_NVSBFBPERM := Feedback;
+         Place (Base, X, V);
+         Sup_Start (Base);
+         Input (TIU, (12, 125));   -- 500 kPa
+         for Step in 1 .. 4_000 loop
+            if Res.Monitoring = SDM.TSM then
+               Input (TIU, (12, EVC_Bytes.Byte (Pressure / 4)));
+               if Speed_Frame.V_Perm > Last_P then
+                  P_Grows := True;
+               end if;
+               Last_P := Speed_Frame.V_Perm;
+            end if;
+            X := X + Integer_64 (V) / 10;
+            Move (X, V);
+            Sup_Cycle;
+            if Cmd.SB then
+               return X;
+            end if;
+         end loop;
+         return -1;
+      end SB_Location;
+
+      Grows : Boolean;
+      Plain, Reduced, Locked : Integer_64;
+   begin
+      Give_MA (Base, 5_000, 200);
+      Plain := SB_Location (False, 500, Grows);
+      Check (not Grows, "feedback: the displayed P never grows without it");
+      Reduced := SB_Location (True, 460, Grows);
+      Check (not Grows, "feedback: the displayed P never grows (A.3.10)");
+      Locked := SB_Location (True, 400, Grows);
+      Check (Plain > 0 and then Reduced > Plain and then Locked > Reduced,
+             "feedback: the service brake at" & Integer_64'Image
+               (Plain / 100) & " m without feedback," & Integer_64'Image
+               (Reduced / 100) & " m with 460 kPa (T_bs reduced),"
+             & Integer_64'Image (Locked / 100) & " m with 400 kPa (locked)");
+   end Scenario_SDM_Feedback;
+
+   --  3.13.8.5, 3.13.9.3.5.4: the guidance curve moves P (and I) earlier
+   procedure Scenario_SDM_GUI is
+      S : SIn.Snapshot_T := Case_Snapshot (Gamma_Train, Flat);
+
+      function TSM_From (GUI : Boolean) return Integer_64 is
+         X : Integer_64 := 0;
+         V : constant SIn.Speed_Cms_T := Cms (140.0);
+      begin
+         S.National.Q_NVGUIPERM := GUI;
+         S.MRSP.Segments (1).Speed := Cms (160.0);
+         Place (S, X, V);
+         Sup_Start (S);
+         for Step in 1 .. 4_000 loop
+            exit when Res.Monitoring = SDM.TSM;
+            X := X + Integer_64 (V) / 10;
+            Move (X, V);
+            Sup_Cycle;
+         end loop;
+         return X;
+      end TSM_From;
+
+      Without, With_GUI : Integer_64;
+   begin
+      Give_MA (S, 6_000, 200);
+      Without := TSM_From (False);
+      With_GUI := TSM_From (True);
+      Check (With_GUI < Without,
+             "GUI: the Indication from" & Integer_64'Image (With_GUI / 100)
+             & " m with the guidance curve," & Integer_64'Image
+               (Without / 100) & " m without");
+   end Scenario_SDM_GUI;
+
+   --  3.13.5, 3.13.6.2.1.3, .6, 3.13.10.3.9, .10: reduced adhesion, the
+   --  A_MAXREDADH limit, target information and TTI in CSM
+   procedure Scenario_SDM_Adhesion is
+      S : SIn.Snapshot_T := Base_Snapshot;
+
+      function TSM_From return Integer_64 is
+         X : Integer_64 := 0;
+         V : constant SIn.Speed_Cms_T := Cms (100.0);
+      begin
+         Place (S, X, V);
+         Sup_Start (S);
+         for Step in 1 .. 4_000 loop
+            exit when Res.Monitoring = SDM.TSM;
+            X := X + Integer_64 (V) / 10;
+            Move (X, V);
+            Sup_Cycle;
+         end loop;
+         return X;
+      end TSM_From;
+
+      Dry, Slippery : Integer_64;
+      TTI_Seen      : Natural := 0;
+      TTI_Falls     : Boolean := True;
+      Last_TTI      : Natural := Natural'Last;
+      X             : Integer_64 := 0;
+      V             : constant SIn.Speed_Cms_T := Cms (100.0);
+   begin
+      Give_MA (S, 5_000, 200);
+      Dry := TSM_From;
+      --  the driver's slippery rail: A_NVMAXREDADH2 (passenger, no
+      --  additional brake) of 0.4 m/s² limits the safe deceleration
+      S.Adhesion.Driver_Slippery := True;
+      S.National.A_NVMAXREDADH2 := 400;
+      Slippery := TSM_From;
+      Check (Slippery < Dry,
+             "adhesion: the Indication from" & Integer_64'Image
+               (Slippery / 100) & " m on slippery rail," & Integer_64'Image
+               (Dry / 100) & " m on dry rail");
+
+      --  62: the time to Indication in CSM (3.13.10.3.10)
+      S.Extra.National.Redadh_Use (2) := SIn.Time_To_Indication;
+      Place (S, X, V);
+      Sup_Start (S);
+      for Step in 1 .. 4_000 loop
+         exit when Res.Monitoring = SDM.TSM;
+         if Res.TTI /= SDM.No_TTI then
+            TTI_Seen := TTI_Seen + 1;
+            if Res.TTI > Last_TTI then
+               TTI_Falls := False;
+            end if;
+            Last_TTI := Res.TTI;
+         end if;
+         X := X + Integer_64 (V) / 10;
+         Move (X, V);
+         Sup_Cycle;
+      end loop;
+      Check (TTI_Seen in 100 .. 150 and then TTI_Falls,
+             "adhesion: the TTI shown for the last 14 s before the "
+             & "Indication (" & Img (TTI_Seen) & " cycles), falling");
+
+      --  61: target information in CSM (3.13.10.3.9)
+      S.Extra.National.Redadh_Use (2) := SIn.Target_Information;
+      Place (S, 100_000, V);
+      Sup_Start (S);
+      Check (Res.Monitoring = SDM.CSM and then Res.CSM_Target
+             and then Speed_Frame.Flags / 2 mod 2 = 1
+             and then Speed_Frame.D_Target in 3_900 .. 4_000,
+             "adhesion: the target information in CSM, distance"
+             & Img (Speed_Frame.D_Target) & " m");
+   end Scenario_SDM_Adhesion;
+
+   --  3.13.2.2.3.1.7, 3.13.2.2.6, 3.13.5.1, .2: special brakes, their
+   --  status and the inhibition areas change A_brake_emergency (V, d)
+   procedure Scenario_SDM_Special_Brakes is
+      use EVC_Fixed;
+      S   : SIn.Snapshot_T := Case_Snapshot (Gamma_Train, Flat);
+      Far : constant EVC_Distances.Dist_T := -EVC_Distances.Max_Cm + 1;
+      SvL : constant EVC_Curves.Curve_T := (EVC_Curves.EBD, 500_000, 0, 0);
+
+      function Speed_1000 (Active : Boolean) return Speed_T is
+         M : EVC_Braking.Model_T;
+         P : EVC_Profile.Profile_T;
+      begin
+         EVC_Braking.Build (S, (SIn.Regenerative => Active, others => False),
+                            False, M);
+         EVC_Profile.Build (S, M, Far, P);
+         return EVC_Curves.Speed_At (M, P, SvL, 400_000);
+      end Speed_1000;
+
+      Plain, Regen, Inhibited, Inactive : Speed_T;
+   begin
+      Plain := Speed_1000 (True);
+      S.Train_Data.Has_Regenerative := True;
+      S.Extra.Config.Special_Brakes (SIn.Regenerative) :=
+        SIn.Emergency_And_Service;
+      S.Extra.Train.By_Combination := True;
+      for C in SIn.Brake_Combination_T loop
+         S.Extra.Train.A_Emergency_Combination (C) :=
+           S.Train_Data.A_Brake_Emergency;
+         S.Extra.Train.A_Service_Combination (C) :=
+           S.Train_Data.A_Brake_Service;
+      end loop;
+      --  the regenerative brake adds 0.2 m/s² to the emergency brake
+      for K in 1 .. 3 loop
+         S.Extra.Train.A_Emergency_Combination (1).Steps (K).Decel :=
+           S.Train_Data.A_Brake_Emergency.Steps (K).Decel + 200;
+      end loop;
+      Regen := Speed_1000 (True);
+      Inactive := Speed_1000 (False);
+      S.Inhibitions := (Count => 1,
+                        Areas => (1 => (SIn.Regenerative_Inhibited, 450_000,
+                                        470_000),
+                                  others => (SIn.Regenerative_Inhibited,
+                                             0, 0)));
+      Inhibited := Speed_1000 (True);
+      Check (Regen > Plain and then Inactive = Plain
+             and then Inhibited < Regen and then Inhibited > Plain,
+             "special brakes: EBD 1 km before the SvL" & Img (Natural (Plain))
+             & " cm/s, with the regenerative brake" & Img (Natural (Regen))
+             & ", inhibited from 50 m before the SvL"
+             & Img (Natural (Inhibited)) & ", not active"
+             & Img (Natural (Inactive)));
+   end Scenario_SDM_Special_Brakes;
+
+   --  3.13.10.4.2: masking; two targets close to each other, the second
+   --  of a lower speed masked by the first: the MRDT is the second
+   procedure Scenario_SDM_Masking is
+      S : SIn.Snapshot_T := Base_Snapshot;
+      X : Integer_64 := 0;
+      V : SIn.Speed_Cms_T := Cms (135.0);
+      procedure To_TSM is new Drive (Never, In_TSM);
+   begin
+      S.MRSP := (Count => 2,
+                 Segments => (1 => (0, Cms (140.0)),
+                              2 => (300_000, Cms (100.0)),
+                              others => (0, SIn.No_Speed_Limit)));
+      Give_MA (S, 3_300, 50);
+      Place (S, X, V);
+      Sup_Start (S);
+      To_TSM (X, V, 0, 3_000);
+      Check (Res.Monitoring = SDM.TSM and then Speed_Frame.V_Target = 0,
+             "masking: the EOA, masked by the 100 km/h target 300 m "
+             & "before it, is the MRDT (target speed 0)");
+
+      S.MRSP.Segments (2).Start := 100_000;
+      Give_MA (S, 5_000, 50);
+      X := 0;
+      V := Cms (135.0);
+      Place (S, X, V);
+      Sup_Start (S);
+      To_TSM (X, V, 0, 3_000);
+      Check (Res.Monitoring = SDM.TSM and then Speed_Frame.V_Target = 100,
+             "masking: with the EOA far behind, the 100 km/h target is "
+             & "the MRDT");
+   end Scenario_SDM_Masking;
+
+   --  3.13.8.2.1 d), 3.13.10.4.13.1: the end of the SR distance
+   procedure Scenario_SDM_SR is
+      S : SIn.Snapshot_T := Base_Snapshot;
+      X : Integer_64 := 0;
+      V : SIn.Speed_Cms_T := Cms (40.0);
+      procedure To_TSM is new Drive (Never, In_TSM);
+   begin
+      S.MRSP.Segments (1).Speed := Cms (40.0);
+      S.Extra.SR_Distance := True;
+      S.Extra.SR_End := 50_000;
+      Place (S, X, V);
+      Sup_Start (S);
+      To_TSM (X, V, 0, 2_000);
+      Check (Res.Monitoring = SDM.TSM and then Speed_Frame.V_Target = 0
+             and then Speed_Frame.D_Target <= 500 - Natural (X / 100),
+             "SR distance: TSM to its end, target speed 0");
+   end Scenario_SDM_SR;
+
+   ---------------------------------------------------------------------
+   --  The mission of the mock (dmi_test Scenario_Mission) with the
+   --  on-board's speed and distance monitoring
+   ---------------------------------------------------------------------
+
+   --  The track of sim/evc_track.ads as a snapshot: MRSP 140 / 100 / 120
+   --  km/h, EOA at 10 km with a release speed of 25 km/h (the mock has
+   --  no SvL: the SvL is the EOA), the gradients 5, -8, 0, 12 per mille;
+   --  the train of the mission's train data (passenger, 400 m, 135 %,
+   --  140 km/h) with a traction cut-off time of 1 s; the national values
+   --  of A.3.2 but Q_NVEMRRLS = 1 (an emergency brake the mock's train
+   --  does not obey is revoked with the Permitted speed instead of
+   --  staying until a standstill that does not come); the train where
+   --  the mock's is, its position known within +/- 10 m, the speed exact
+   --  (the mock models no odometer error)
+   function Mission_Snapshot return SIn.Snapshot_T is
+      use type EVC_Mock.Mode_T;
+      S : SIn.Snapshot_T := Base_Snapshot;
+   begin
+      S.Supervise := EVC_Mock.Mode in EVC_Mock.FS | EVC_Mock.AD;
+      S.National.Q_NVEMRRLS := True;
+      S.MRSP.Count := EVC_Track.MRSP'Length;
+      for K in EVC_Track.MRSP'Range loop
+         S.MRSP.Segments (K) :=
+           (Start => EVC_Distances.Metres (EVC_Track.MRSP (K).Start_M),
+            Speed => Cms (LF (EVC_Track.MRSP (K).Speed)));
+      end loop;
+      S.Gradients.Count := EVC_Track.Gradients'Length;
+      for K in EVC_Track.Gradients'Range loop
+         S.Gradients.Segments (K) :=
+           (Start    => EVC_Distances.Metres (EVC_Track.Gradients (K).Start_M),
+            Gradient => EVC_Track.Gradients (K).Value);
+      end loop;
+      Give_MA (S, EVC_Track.EOA_M, 0, SIn.Fixed,
+               Cms (LF (EVC_Track.Release_Speed)));
+      declare
+         X : constant Integer_64 :=
+           Integer_64 (LF'Floor (LF (EVC_Train.Position_M) * 100.0));
+         V : constant SIn.Speed_Cms_T :=
+           SIn.Speed_Cms_T (LF'Floor (LF (EVC_Train.Speed_MS) * 100.0));
+      begin
+         Place (S, X, V);
+      end;
+      return S;
+   end Mission_Snapshot;
+
+   procedure Scenario_SDM_Mission is
+      use type General_Parameters.Color;
+
+      subtype X_T is Natural range 0 .. 639;
+      subtype Y_T is Natural range 0 .. 479;
+      type Frame_T is array (X_T, Y_T) of General_Parameters.Color;
+      type Point_T is
+        (Mission_SB, Mission_TSM, Mission_After_LX, Mission_RSM,
+         Mission_Stopped);
+      function Name (P : Point_T) return String is
+        (case P is
+            when Mission_SB       => "mission_sb",
+            when Mission_TSM      => "mission_tsm",
+            when Mission_After_LX => "mission_after_lx",
+            when Mission_RSM      => "mission_rsm",
+            when Mission_Stopped  => "mission_stopped");
+      type Frames_T is array (Point_T) of Frame_T;
+      type Frames_Access is access Frames_T;
+      Mock_Frames : constant Frames_Access := new Frames_T;
+
+      --  what each side showed at the checkpoints
+      type Shown_T is record
+         V_Cur, V_Perm, V_Target, D_Target, Monitoring, Status : Natural;
+      end record;
+      Mock_Shown    : array (Point_T) of Shown_T;
+      Onboard_Shown : array (Point_T) of Shown_T;
+
+      Mission_Diffs : array (Point_T) of Natural := (others => 0);
+      --  the pixels that differ outside the areas A and B (the distance
+      --  to target and the speed dial)
+      Outside_AB    : array (Point_T) of Natural := (others => 0);
+
+      On_Board : Boolean := False;
+
+      --  pass 2: where the on-board first entered TSM and RSM and
+      --  commanded the service and the emergency brake; pass 1: where
+      --  the mock entered TSM and RSM (m)
+      Board_TSM, Board_RSM, Board_SB, Board_EB : Integer := -1;
+      Mock_TSM, Mock_RSM : Integer := -1;
+
+      procedure Note (Where : in out Integer; Now : Boolean) is
+      begin
+         if Now and then Where < 0 then
+            Where := Integer (EVC_Train.Position_M);
+         end if;
+      end Note;
+      --  the mock's MSG_SPEED_STATE of the last step
+      Mock_Speed : Shown_T := (others => 0);
+
+      procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
+                      Payload  : Stream_Element_Array)
+      is
+         use type DMI_Protocol.Msg_Type_T;
+      begin
+         if The_Type = DMI_Protocol.MSG_SPEED_STATE then
+            declare
+               function W (N : Stream_Element_Offset) return Natural is
+                 (Natural (Payload (Payload'First + N))
+                  + 256 * Natural (Payload (Payload'First + N + 1)));
+            begin
+               Mock_Speed :=
+                 (V_Cur      => W (0),
+                  V_Perm     => W (2),
+                  V_Target   => W (4),
+                  D_Target   => W (12),
+                  Monitoring => Natural (Payload (Payload'First + 16)),
+                  Status     => Natural (Payload (Payload'First + 19)));
+            end;
+            if On_Board then
+               return;   -- the on-board's replaces it
+            end if;
+         end if;
+         DMI_Core.Handle_Message (The_Type, Payload);
+      end Emit;
+
+      --  One cycle of the on-board on the mock's state; its
+      --  MSG_SPEED_STATE goes to the DMI
+      procedure Onboard_Cycle (Dt : Natural) is
+      begin
+         Sup := Mission_Snapshot;
+         EVC_Core.Set_Snapshot_For_Test (Sup);
+         EVC_Core.Tick (Dt);
+         Take;
+         if On_Board and then Sup.Supervise then
+            Note (Board_TSM, Res.Monitoring = SDM.TSM);
+            Note (Board_RSM, Res.Monitoring = SDM.RSM);
+            Note (Board_SB, Cmd.SB);
+            Note (Board_EB, Cmd.EB);
+         elsif not On_Board then
+            Note (Mock_TSM, EVC_Mock.Monitoring = 1);
+            Note (Mock_RSM, EVC_Mock.Monitoring = 2);
+         end if;
+         if On_Board then
+            for I in 1 .. Rec_Count loop
+               if Recs (I).Port = DMI and then Rec_Length (I) = 26
+                 and then Out_Buf (Recs (I).First)
+                            = EVC_DMI_Port.MSG_SPEED_STATE
+               then
+                  declare
+                     Payload : Stream_Element_Array (1 .. 21);
+                  begin
+                     for K in Payload'Range loop
+                        Payload (K) := Stream_Element
+                          (Out_Buf (Recs (I).First + 4
+                                    + Natural (K)));
+                     end loop;
+                     DMI_Core.Handle_Message
+                       (DMI_Protocol.MSG_SPEED_STATE, Payload);
+                  end;
+               end if;
+            end loop;
+         end if;
+      end Onboard_Cycle;
+
+      --  The DMI's actions and data back to the mock, as dmi_test does
+      procedure Pump_To_Mock is
+         use DMI_Protocol;
+         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+         Last   : Stream_Element_Offset;
+         Offset : Stream_Element_Offset := Buffer'First;
+      begin
+         DMI_Core.Take_Outbox (Buffer, Last);
+         while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last
+         loop
+            declare
+               The_Type : constant Msg_Type_T :=
+                 Msg_Type_T (Get_U8 (Buffer, Offset));
+               Length   : constant Stream_Element_Offset :=
+                 Stream_Element_Offset (Get_U32 (Buffer, Offset));
+               Next     : constant Stream_Element_Offset := Offset + Length;
+            begin
+               exit when Next - 1 > Last;
+               if The_Type = MSG_DRIVER_ACTION
+                 and then Length = Driver_Action_Length
+               then
+                  declare
+                     Action : constant Unsigned_8 := Get_U8 (Buffer, Offset);
+                     Arg    : constant Unsigned_16 :=
+                       Get_U16 (Buffer, Offset);
+                  begin
+                     EVC_Mock.Handle_Driver_Action
+                       (Natural (Action), Natural (Arg));
+                  end;
+               elsif The_Type = MSG_DRIVER_DATA then
+                  EVC_Mock.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+               end if;
+               Offset := Next;
+            end;
+         end loop;
+      end Pump_To_Mock;
+
+      procedure Sim_Step is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
+         Onboard_Cycle (100);
+         DMI_Core.Tick (100);
+      end Sim_Step;
+
+      procedure Touch (X, Y : Natural) is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Mock.Step (0.05, Emit'Unrestricted_Access);
+         Onboard_Cycle (50);
+         Test_Support.Pointer_Down (X, Y);
+         Test_Support.Pointer_Up (X, Y);
+         DMI_Core.Tick (50);
+         Pump_To_Mock;
+         Test_Support.Drain_Sounds;
+      end Touch;
+
+      --  area by area, the pixels that differ from the mock's frame
+      procedure Compare (Point : Point_T) is
+         type Count_Array is array (Display.Main_ID_T) of Natural;
+         Counts : Count_Array := (others => 0);
+         Sub_Counts : array (Display.Sub_ID_T) of Natural :=
+           (others => 0);
+         Total  : Natural := 0;
+
+         function Inside (A : Display.Area_T; X, Y : Natural)
+           return Boolean
+         is (X >= A.Position.X and then X < A.Position.X + A.Width
+             and then Y >= A.Position.Y and then Y < A.Position.Y + A.Height);
+      begin
+         for X in X_T loop
+            for Y in Y_T loop
+               if Display.Screen.Get_Pixel (X, Y)
+                    /= Mock_Frames (Point) (X, Y)
+               then
+                  Total := Total + 1;
+                  for M in Display.Main_ID_T loop
+                     if Inside (Display.Get_Area (M), X, Y) then
+                        Counts (M) := Counts (M) + 1;
+                        exit;
+                     end if;
+                  end loop;
+                  for Sub in Display.Sub_ID_T loop
+                     declare
+                        Parent : constant Display.Main_ID_With_Sub_T :=
+                          (case Sub is
+                              when Display.A1 .. Display.A4 => Display.A,
+                              when Display.B0 .. Display.B8 => Display.B,
+                              when Display.C1 .. Display.C9 => Display.C,
+                              when Display.D1 .. Display.D14 => Display.D,
+                              when Display.E1 .. Display.E11 => Display.E,
+                              when Display.F1 .. Display.F9 => Display.F,
+                              when Display.G1 .. Display.G13 => Display.G);
+                        R  : constant Display.Area_T :=
+                          Display.Get_Sub_Area_With_Relative_Position (Sub);
+                        PA : constant Display.Area_T :=
+                          Display.Get_Area (Parent);
+                        A  : constant Display.Area_T :=
+                          (Position => (PA.Position.X + R.Position.X,
+                                        PA.Position.Y + R.Position.Y),
+                           Width    => R.Width,
+                           Height   => R.Height);
+                     begin
+                        if Inside (A, X, Y) then
+                           Sub_Counts (Sub) := Sub_Counts (Sub) + 1;
+                           exit;
+                        end if;
+                     end;
+                  end loop;
+               end if;
+            end loop;
+         end loop;
+         Put ("  mission " & Name (Point) & ": mock v_perm"
+              & Img (Mock_Shown (Point).V_Perm) & " v_target"
+              & Img (Mock_Shown (Point).V_Target) & " d_target"
+              & Img (Mock_Shown (Point).D_Target) & " mon"
+              & Img (Mock_Shown (Point).Monitoring) & " st"
+              & Img (Mock_Shown (Point).Status) & " | on-board v_perm"
+              & Img (Onboard_Shown (Point).V_Perm) & " v_target"
+              & Img (Onboard_Shown (Point).V_Target) & " d_target"
+              & Img (Onboard_Shown (Point).D_Target) & " mon"
+              & Img (Onboard_Shown (Point).Monitoring) & " st"
+              & Img (Onboard_Shown (Point).Status) & " (v"
+              & Img (Onboard_Shown (Point).V_Cur) & ") | pixels"
+              & Img (Total));
+         for M in Display.Main_ID_T loop
+            if Counts (M) > 0 then
+               Put (" " & Display.Main_ID_T'Image (M) & Img (Counts (M)));
+            end if;
+         end loop;
+         Put (" | sub-areas");
+         for Sub in Display.Sub_ID_T loop
+            if Sub_Counts (Sub) > 0 then
+               Put (" " & Display.Sub_ID_T'Image (Sub)
+                    & Img (Sub_Counts (Sub)));
+            end if;
+         end loop;
+         New_Line;
+         Mission_Diffs (Point) := Total;
+         Outside_AB (Point) :=
+           Total - Counts (Display.A) - Counts (Display.B);
+      end Compare;
+
+      procedure Checkpoint (Point : Point_T) is
+      begin
+         DMI_Core.Render;
+         if On_Board then
+            Onboard_Shown (Point) :=
+              (V_Cur      => Speed_Frame.V_Cur,
+               V_Perm     => Speed_Frame.V_Perm,
+               V_Target   => Speed_Frame.V_Target,
+               D_Target   => Speed_Frame.D_Target,
+               Monitoring => Speed_Frame.Monitoring,
+               Status     => Speed_Frame.Status);
+            Compare (Point);
+         else
+            Mock_Shown (Point) := Mock_Speed;
+            declare
+               Golden : constant String :=
+                 DMI_Golden_Dir & Name (Point) & ".sha256";
+            begin
+               Check (Ada.Directories.Exists (Golden)
+                      and then Read_Line (Golden)
+                               = Display.Screen.Files.Digest,
+                      "mission: the mock draws " & Name (Point)
+                      & " as recorded");
+            end;
+            for X in X_T loop
+               for Y in Y_T loop
+                  Mock_Frames (Point) (X, Y) :=
+                    Display.Screen.Get_Pixel (X, Y);
+               end loop;
+            end loop;
+         end if;
+      end Checkpoint;
+
+      function In_TSM return Boolean is (EVC_Mock.Monitoring = 1);
+      function In_RSM return Boolean is (EVC_Mock.Monitoring = 2);
+      function Stopped return Boolean is
+        (EVC_Train.Speed_KMH = 0 and then EVC_Train.Position_M > 9_000.0);
+      function Past_LX return Boolean is
+        (EVC_Train.Position_M > 5_600.0);
+
+      generic
+         with function Done return Boolean;
+      procedure Run_Until (What : String; Max_Steps : Natural);
+
+      procedure Run_Until (What : String; Max_Steps : Natural) is
+      begin
+         for I in 1 .. Max_Steps loop
+            Sim_Step;
+            if Done then
+               return;
+            end if;
+         end loop;
+         Check (False, "mission: timeout waiting for " & What);
+      end Run_Until;
+
+      procedure Wait_TSM is new Run_Until (In_TSM);
+      procedure Wait_RSM is new Run_Until (In_RSM);
+      procedure Wait_Stop is new Run_Until (Stopped);
+      procedure Wait_LX is new Run_Until (Past_LX);
+
+      Timeout : constant Natural := General_Parameters.EVC_Link_Timeout_Ms;
+   begin
+      for Pass in 1 .. 2 loop
+         On_Board := Pass = 2;
+         DMI_Core.Initialise;
+         Test_Support.Reset_EVC_Model;
+         General_Parameters.EVC_Link_Timeout_Ms := 0;
+         Test_Support.Drain_Sounds;
+         EVC_Mock.Reset;
+         Test_Support.External_EVC;
+         EVC_Core.Initialise;
+         Reset_Capture;
+
+         for I in 1 .. 5 loop
+            Sim_Step;
+         end loop;
+         Checkpoint (Mission_SB);
+
+         --  the start of mission by touch, as dmi_test
+         Touch (385, 240); Touch (487, 90);
+         Touch (385, 240); Touch (487, 90);
+         Touch (410, 140);
+         Touch (385, 240); Touch (589, 40);
+         Touch (385, 290); Touch (487, 390); Touch (487, 390);
+         Touch (589, 90);
+         Touch (385, 240); Touch (589, 240); Touch (487, 290);
+         Touch (589, 140);
+         Touch (385, 240); Touch (385, 290); Touch (487, 390);
+         Touch (589, 190);
+         Touch (539, 440);
+         Touch (385, 240); Touch (589, 40);
+         Touch (385, 340); Touch (589, 90);
+         Touch (487, 290); Touch (589, 140);
+         Touch (167, 440);
+         Touch (487, 40);
+         Touch (385, 240); Touch (487, 90);
+         Touch (410, 90);
+         Pump_To_Mock;
+         Sim_Step;
+         Test_Support.Drain_Sounds;
+
+         Wait_TSM ("TSM entry", 2_000);
+         Test_Support.Drain_Sounds;
+         Checkpoint (Mission_TSM);
+         Wait_LX ("passing the level crossing", 3_000);
+         Test_Support.Drain_Sounds;
+         Checkpoint (Mission_After_LX);
+         Wait_RSM ("RSM entry", 8_000);
+         Test_Support.Drain_Sounds;
+         Checkpoint (Mission_RSM);
+         Wait_Stop ("standstill at the EOA", 4_000);
+         Test_Support.Drain_Sounds;
+         Checkpoint (Mission_Stopped);
+      end loop;
+      General_Parameters.EVC_Link_Timeout_Ms := Timeout;
+      DMI_Core.Initialise;
+      Test_Support.Reset_EVC_Model;
+      Put_Line ("  mission: the mock enters TSM at" & Integer'Image (Mock_TSM)
+                & " m, RSM at" & Integer'Image (Mock_RSM)
+                & " m; the on-board, on the mock's train, TSM at"
+                & Integer'Image (Board_TSM) & " m, commands the service "
+                & "brake at" & Integer'Image (Board_SB)
+                & " m, the emergency brake at" & Integer'Image (Board_EB)
+                & " m, RSM at" & Integer'Image (Board_RSM) & " m");
+
+      Check (Mission_Diffs (Mission_SB) = 0,
+             "mission: SB, the on-board's picture is the mock's");
+      Check (Board_TSM in 0 .. Mock_TSM - 1
+             and then Board_SB in Board_TSM .. Mock_TSM - 1,
+             "mission: with build up times and correction factors the "
+             & "Indication of the 100 km/h target comes before the mock's "
+             & "TSM, and the mock's train passes the on-board's SBI before "
+             & "the mock shows the target");
+      Check (Outside_AB (Mission_TSM) = 0 and then Outside_AB (Mission_RSM) = 0
+             and then Outside_AB (Mission_Stopped) = 0,
+             "mission: the pictures differ in the areas A and B only");
+      Check (Board_RSM in 0 .. Mock_RSM - 1,
+             "mission: the on-board starts RSM before the mock (SBI1 of the "
+             & "EOA and SBI2 of the SvL at the release speed)");
+      Check (Mission_Diffs (Mission_After_LX) = 0,
+             "mission: after the level crossing (CSM at 100 km/h) the "
+             & "on-board's picture is the mock's");
+   end Scenario_SDM_Mission;
+
+   ---------------------------------------------------------------------
+   --  A.3.12: the reduced build up times against the formulas in
+   --  floating point
+   ---------------------------------------------------------------------
+
+   function R_Be_Reduced (I : EVC_Build_Up.Input_T) return LF is
+      use Ada.Numerics.Long_Elementary_Functions;
+      use type EVC_Build_Up.Target_Kind_T;
+      --  s, cm/s, cm/s²
+      Tbe  : constant LF := LF (I.T_Be) / 1000.0;
+      Tr   : constant LF := LF (I.T_Be_React) / 1000.0;
+      Ttm  : constant LF := LF (I.T_Traction_Max) / 1000.0;
+      Ttn  : constant LF := LF (I.T_Traction_Min) / 1000.0;
+      A1   : constant LF := LF (I.A_Est1) / 10.0;
+      A2   : constant LF := LF (I.A_Est2) / 10.0;
+      AEB  : constant LF := LF (I.A_EB) / 1000.0;
+      ASM  : constant LF := LF (I.A_Safe_Max) / 1000.0;
+      V0   : constant LF := LF (I.V_Est + I.V_Delta0);
+      Vt   : constant LF := LF (I.V_Target);
+      T2   : constant LF := 2.0 * Tbe - Tr;
+      Tinc : constant LF := T2 - Tr;
+      Vt1, Vt2, Te, D, T_Dist : LF;
+      Speed : constant Boolean := I.Kind = EVC_Build_Up.Speed_Target;
+   begin
+      if I.Kind = EVC_Build_Up.EOA_Target or else I.Kt_Zero
+        or else I.T_Traction >= I.T_Be
+      then
+         return Tbe;
+      end if;
+      Vt1 := (if Ttm < Tr then V0 + A1 * Ttm + A2 * (Tr - Ttm)
+              else V0 + A1 * Tr);
+      if (Speed and then Vt1 <= Vt) or else (not Speed and then Vt1 = 0.0)
+      then
+         return Tr;
+      end if;
+      Vt2 := LF'Max (0.0, V0 + A1 * Ttm + A2 * (T2 - Ttm)
+                          - AEB * (T2 - Tr) / 2.0);
+      if (Speed and then Vt2 >= Vt) or else (not Speed and then Vt2 > 0.0)
+      then
+         return Tbe;
+      end if;
+      declare
+         R  : constant LF := A2 / AEB * Tinc;
+         DV : constant LF := LF'Max (0.0, V0 - Vt);
+      begin
+         Te := Tr + R + Sqrt (R ** 2 + 2.0 * Tinc / AEB
+                                    * (DV + (A1 - A2) * Ttm + A2 * Tr));
+      end;
+      D := ((A2 - A1) * Ttm ** 2 / 2.0 + AEB * Tr ** 3 / (6.0 * Tinc))
+        + (V0 + (A1 - A2) * Ttm - AEB * Tr ** 2 / (2.0 * Tinc)) * Te
+        + (A2 + AEB * Tr / Tinc) * Te ** 2 / 2.0
+        - AEB / Tinc * Te ** 3 / 6.0;
+      if A2 = 0.0 then
+         T_Dist := (D + Vt ** 2 / (2.0 * ASM)) / V0 - V0 / (2.0 * ASM);
+      else
+         declare
+            TX : constant LF := (V0 + (A1 - A2) * Ttn) / (-A2);
+         begin
+            T_Dist := TX + Sqrt (ASM / (ASM + A2)
+                                 * (TX ** 2 + ((A1 - A2) * Ttn ** 2
+                                               + 2.0 * D) / A2)
+                                 + Vt ** 2 / (A2 * (ASM + A2)));
+         end;
+      end if;
+      return LF'Max (Tr, LF'Min (LF'Max ((Tr + Te) / 2.0, T_Dist), Tbe));
+   end R_Be_Reduced;
+
+   function R_Bs_Reduced (I : EVC_Build_Up.Input_T) return LF is
+      use Ada.Numerics.Long_Elementary_Functions;
+      use type EVC_Build_Up.Target_Kind_T;
+      Tbs  : constant LF := LF (I.T_Bs) / 1000.0;
+      Tr   : constant LF := LF (I.T_Bs_React) / 1000.0;
+      ASB  : constant LF := LF (I.A_SB) / 1000.0;
+      AEM  : constant LF := LF (I.A_Expected_Max) / 1000.0;
+      V    : constant LF := LF (I.V_Est);
+      Vt   : constant LF := LF (I.V_Target);
+      T2   : constant LF := 2.0 * Tbs - Tr;
+      Tinc : constant LF := T2 - Tr;
+      Speed : constant Boolean := I.Kind = EVC_Build_Up.Speed_Target;
+      Te, D, T_Dist : LF;
+   begin
+      if (Speed and then V <= Vt) or else (not Speed and then V = 0.0) then
+         return Tr;
+      end if;
+      declare
+         V2 : constant LF := LF'Max (0.0, V - ASB * (T2 - Tr) / 2.0);
+      begin
+         if (Speed and then V2 >= Vt) or else (not Speed and then V2 > 0.0)
+         then
+            return Tbs;
+         end if;
+      end;
+      Te := Tr + Sqrt (2.0 * Tinc / ASB * LF'Max (0.0, V - Vt));
+      D := V * Te - ASB / (6.0 * Tinc) * (Te - Tr) ** 3;
+      T_Dist := (D + Vt ** 2 / (2.0 * AEM)) / V - V / (2.0 * AEM);
+      return LF'Max (Tr, LF'Min (LF'Max ((Tr + Te) / 2.0, T_Dist), Tbs));
+   end R_Bs_Reduced;
+
+   procedure Scenario_SDM_Build_Up is
+      use EVC_Fixed;
+      E0      : constant EVC_Braking.Times_T :=
+        EVC_Braking.Conversion_Emergency (SIn.Passenger_P, 40_000, True);
+      S0      : constant EVC_Braking.Times_T :=
+        EVC_Braking.Conversion_Service (SIn.Passenger_P, 40_000, True);
+      Speeds  : constant array (1 .. 4) of LF := (20.0, 60.0, 120.0, 160.0);
+      Targets : constant array (1 .. 3) of LF := (0.0, 40.0, 80.0);
+      Accels  : constant array (1 .. 3) of Num := (0, 20, 300);
+      Reduced : Natural := 0;
+      Compared_BU : Natural := 0;
+      Worst   : LF := 0.0;
+   begin
+      for V of Speeds loop
+         for VT of Targets loop
+            for A of Accels loop
+               for Ttm in 0 .. 1 loop
+                  declare
+                     I : constant EVC_Build_Up.Input_T :=
+                       (Kind           => (if VT = 0.0
+                                           then EVC_Build_Up.Zero_Target
+                                           else EVC_Build_Up.Speed_Target),
+                        V_Est          => Speed_T (Cms (V)),
+                        V_Delta0       => 56,
+                        V_Target       => Speed_T (Cms (VT)),
+                        A_Est1         => A,
+                        A_Est2         => Min (A, 400),
+                        T_Be_React     => Div_Ceil (E0.React * 1_100, 1_000),
+                        T_Be           => Div_Ceil (E0.Build_Up * 1_100,
+                                                    1_000),
+                        T_Bs_React     => S0.React,
+                        T_Bs           => S0.Build_Up,
+                        T_Traction     => Num (Ttm) * 500,
+                        T_Traction_Min => 0,
+                        T_Traction_Max => Num (Ttm) * 500,
+                        A_EB           => 55_000,
+                        A_Safe_Max     => 72_000,
+                        A_SB           => 80_000,
+                        A_Expected_Max => 95_000,
+                        Kt_Zero        => False);
+                     K_Be : constant Num := EVC_Build_Up.T_Be_Reduced (I);
+                     K_Bs : constant Num := EVC_Build_Up.T_Bs_Reduced (I);
+                     R_Be : constant LF := R_Be_Reduced (I) * 1000.0;
+                     R_Bs : constant LF := R_Bs_Reduced (I) * 1000.0;
+                     Tag  : constant String :=
+                       Img_LF (V) & " km/h to" & Img_LF (VT) & " km/h, A"
+                       & Img (Natural (A)) & ", traction" & Img (Ttm * 500);
+                  begin
+                     Compared_BU := Compared_BU + 2;
+                     if K_Be < I.T_Be or else K_Bs < I.T_Bs then
+                        Reduced := Reduced + 1;
+                     end if;
+                     Worst := LF'Max (Worst, LF'Max (LF (K_Be) - R_Be,
+                                                     LF (K_Bs) - R_Bs));
+                     Check (LF (K_Be) >= R_Be - 0.001
+                            and then LF (K_Be) - R_Be <= 50.0,
+                            "A.3.12 T_be_reduced " & Tag & ":" & Img_LF (LF (K_Be))
+                            & " ms, the formulas" & Img_LF (R_Be) & " ms");
+                     Check (LF (K_Bs) >= R_Bs - 0.001
+                            and then LF (K_Bs) - R_Bs <= 50.0,
+                            "A.3.12 T_bs_reduced " & Tag & ":" & Img_LF (LF (K_Bs))
+                            & " ms, the formulas" & Img_LF (R_Bs) & " ms");
+                  end;
+               end loop;
+            end loop;
+         end loop;
+      end loop;
+      Check (Reduced > 0, "A.3.12: some build up times reduced");
+      Put_Line ("  A.3.12:" & Img (Compared_BU) & " reduced times compared,"
+                & Img (Reduced) & " cases reduced, the kernel at most"
+                & Img_LF (Worst) & " ms longer (never shorter)");
+   end Scenario_SDM_Build_Up;
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -4895,6 +7472,23 @@ begin
    Scenario_Other_Profiles;
    Scenario_Rear_Deletion;
    Check (Encodes_OK, "E3: every telegram of the track encoded");
+   Scenario_SDM_Precision;
+   Scenario_SDM_Ceiling;
+   Scenario_SDM_Approach;
+   Scenario_SDM_Release;
+   Scenario_SDM_Protections;
+   Scenario_SDM_MRSP_Target;
+   Scenario_SDM_LOA;
+   Scenario_SDM_Calculated_Release;
+   Scenario_SDM_Perturbation;
+   Scenario_SDM_Feedback;
+   Scenario_SDM_GUI;
+   Scenario_SDM_Adhesion;
+   Scenario_SDM_Special_Brakes;
+   Scenario_SDM_Masking;
+   Scenario_SDM_SR;
+   Scenario_SDM_Mission;
+   Scenario_SDM_Build_Up;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

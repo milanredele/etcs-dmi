@@ -32,6 +32,7 @@
 --  functions behind "and then" and "if": allowed, and evaluated at entry
 pragma Unevaluated_Use_Of_Old (Allow);
 
+with EVC_Brake_Commands;
 with EVC_Bytes;
 with EVC_Distances;
 with EVC_Modes;    use EVC_Modes;
@@ -44,7 +45,9 @@ with EVC_Ports;    use EVC_Ports;
 with EVC_Location;
 with EVC_Position;
 with EVC_Received;
+with EVC_SDM;
 with EVC_Stored_Information;
+with EVC_Supervision_Input;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
@@ -230,5 +233,27 @@ is
                   and then EVC_Outbox.Used = 0
                   and then (if Transition_Exists (Mode'Old, M_SF)
                             then Mode = M_SF else Mode = Mode'Old);
+
+   ---------------------------------------------------------------------
+   --  Speed and distance monitoring (phase E3, e3/supervision)
+   ---------------------------------------------------------------------
+
+   --  For the tests of the hosts (evc_test, evc_fuzz), not for an
+   --  on-board in service: from the next cycle on and until Initialise,
+   --  the speed and distance monitoring reads S instead of the snapshot
+   --  of the stored information (3.13.2)
+   procedure Set_Snapshot_For_Test (S : EVC_Supervision_Input.Snapshot_T)
+     with Global => (In_Out => State),
+          Post => Mode = Mode'Old and then Failed = Failed'Old
+                  and then Cycle = Cycle'Old;
+
+   --  What the speed and distance monitoring found in the last cycle
+   --  (3.13.10)
+   function Supervision return EVC_SDM.Result_T
+     with Global => State;
+
+   --  The commands to the train interface of the last cycle (3.14.1)
+   function Brake_Commands return EVC_Brake_Commands.Commands_T
+     with Global => State;
 
 end EVC_Core;

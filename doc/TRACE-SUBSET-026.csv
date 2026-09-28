@@ -513,296 +513,296 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.4.7 c),3,x,,,,,E3,partial,as 3.12.4.7
 3.12.5.3,3,x,,,,,E3,done,EVC_Track_Description.Take_LX; evc_test Scenario_Other_Profiles
 3.12.5.8,3,x,,,,,E3,partial,"EVC_Track_Description.LX_Target to Snapshot_T.Temporary; evc_test Scenario_Other_Profiles; its supervision e3/supervision, the substitution of 5.16 E4"
-3.13.1.5,3,x,,,,,E3,todo,
-3.13.2.2.1.3,3,x,,,,,E3,todo,
-3.13.2.2.2.1,3,x,,,,,E3,todo,
-3.13.2.2.3.1.1,3,x,,,,,E3,todo,
-3.13.2.2.3.1.2,3,x,,,,,E3,todo,
-3.13.2.2.3.1.4,3,x,,,,,E3,todo,
-3.13.2.2.3.1.5,3,x,,,,,E3,todo,
-3.13.2.2.3.1.6,3,x,,,,,E3,todo,
-3.13.2.2.3.1.7,3,x,,,,,E3,todo,
-3.13.2.2.3.1.9,3,x,,,,,E3,todo,
-3.13.2.2.3.1.9 a),3,x,,,,,E3,todo,
-3.13.2.2.3.1.9 b),3,x,,,,,E3,todo,
-3.13.2.2.3.1.10,3,x,,,,,E3,todo,
-3.13.2.2.3.2.2,3,x,,,,,E3,todo,
-3.13.2.2.3.2.5,3,x,,,,,E3,todo,
-3.13.2.2.3.2.8,3,x,,,,,E3,todo,
-3.13.2.2.4.1,3,x,,,,,E3,todo,
-3.13.2.2.4.1 a),3,x,,,,,E3,todo,
-3.13.2.2.4.1 b),3,x,,,,,E3,todo,
-3.13.2.2.4.1 c),3,x,,,,,E3,todo,
-3.13.2.2.6.1,3,x,,,,,E3,todo,
-3.13.2.2.6.1 Table 3,3,x,,,,,E3,todo,
-3.13.2.2.6.2,3,x,,,,,E3,todo,
-3.13.2.2.6.2 Table 4,3,x,,,,,E3,todo,
-3.13.2.2.6.3,3,x,,,,,E3,todo,
-3.13.2.2.6.4,3,x,,,,,E3,todo,
-3.13.2.2.6.6,3,x,,,,,E3,todo,
-3.13.2.2.7.1,3,x,,,,,E3,todo,
-3.13.2.2.7.2,3,x,,,,,E3,todo,
-3.13.2.2.7.3,3,x,,,,,E3,todo,
-3.13.2.2.8.1,3,x,,,,,E3,todo,
-3.13.2.2.9.1.1,3,x,,,,,E3,todo,
-3.13.2.2.9.1.2,3,x,,,,,E3,todo,
-3.13.2.2.9.1.3,3,x,,,,,E3,todo,
-3.13.2.2.9.1.5,3,x,,,,,E3,todo,
-3.13.2.2.9.2.1,3,x,,,,,E3,todo,
-3.13.2.2.9.2.2,3,x,,,,,E3,todo,
-3.13.2.2.9.2.4,3,x,,,,,E3,todo,
-3.13.2.2.9.2.5,3,x,,,,,E3,todo,
-3.13.2.2.9.2.6,3,x,,,,,E3,todo,
-3.13.2.2.10.1,3,x,,,,,E3,todo,
-3.13.2.2.11.1,3,x,,,,,E3,todo,
-3.13.2.2.12.1,3,x,,,,,E3,todo,
-3.13.2.2.13.1,3,x,,,,,E3,todo,
-3.13.2.3.2.1,3,x,,,,,E3,todo,
-3.13.2.3.3.1,3,x,,,,,E3,todo,
-3.13.2.3.4.1,3,x,,,,,E3,todo,
-3.13.2.3.5.1,3,x,,,,,E3,todo,
-3.13.2.3.6.1,3,x,,,,,E3,todo,
-3.13.2.3.6.1 a),3,x,,,,,E3,todo,
-3.13.2.3.6.1 b),3,x,,,,,E3,todo,
-3.13.2.3.7.13,3,x,x,,,,E3,todo,
-3.13.3.2.1,3,x,,,,,E3,todo,
-3.13.3.2.1 a),3,x,,,,,E3,todo,
-3.13.3.2.1 b),3,x,,,,,E3,todo,
-3.13.3.2.1 c),3,x,,,,,E3,todo,
-3.13.3.2.2,3,x,,,,,E3,todo,
-3.13.3.3.1.1,3,x,,,,,E3,todo,
-3.13.3.3.2.1,3,x,,,,,E3,todo,
-3.13.3.3.3.1,3,x,,,,,E3,todo,
-3.13.3.4.1.1,3,x,,,,,E3,todo,
-3.13.3.4.2.1,3,x,,,,,E3,todo,
-3.13.3.4.3.1,3,x,,,,,E3,todo,
-3.13.3.4.4.1,3,x,,,,,E3,todo,
-3.13.3.4.4.1 a),3,x,,,,,E3,todo,
-3.13.3.4.4.1 b),3,x,,,,,E3,todo,
-3.13.3.4.4.1 c),3,x,,,,,E3,todo,
-3.13.4.1.1,3,x,,,,,E3,todo,
-3.13.4.1.1 a),3,x,,,,,E3,todo,
-3.13.4.1.1 b),3,x,,,,,E3,todo,
-3.13.4.1.2,3,x,,,,,E3,todo,
-3.13.4.1.3,3,x,,,,,E3,todo,
-3.13.4.1.3 a),3,x,,,,,E3,todo,
-3.13.4.1.3 b),3,x,,,,,E3,todo,
-3.13.4.2.1,3,x,,,,,E3,todo,
-3.13.4.3.1,3,x,,,,,E3,todo,
-3.13.4.3.2,3,x,,,,,E3,todo,
-3.13.4.3.2 a),3,x,,,,,E3,todo,
-3.13.4.3.2 a) 1st bullet,3,x,,,,,E3,todo,
-3.13.4.3.2 a) 2nd bullet,3,x,,,,,E3,todo,
-3.13.4.3.2 b),3,x,,,,,E3,todo,
-3.13.4.3.2 b) 1st bullet,3,x,,,,,E3,todo,
-3.13.4.3.2 b) 2nd bullet,3,x,,,,,E3,todo,
-3.13.5.1,3,x,,,,,E3,todo,
-3.13.5.2,3,x,,,,,E3,todo,
-3.13.5.3,3,x,,,,,E3,todo,
-3.13.5.4,3,x,,,,,E3,todo,
-3.13.5.5,3,x,,,,,E3,todo,
-3.13.6.2.1.1,3,x,,,,,E3,todo,
-3.13.6.2.1.3,3,x,,,,,E3,todo,
-3.13.6.2.1.4,3,x,,,,,E3,todo,
-3.13.6.2.1.5,3,x,,,,,E3,todo,
-3.13.6.2.1.6,3,x,,,,,E3,todo,
-3.13.6.2.1.6 a),3,x,,,,,E3,todo,
-3.13.6.2.1.6 b),3,x,,,,,E3,todo,
-3.13.6.2.1.7,3,x,,,,,E3,todo,
-3.13.6.2.1.8,3,x,,,,,E3,todo,
-3.13.6.2.1.8.1,3,x,,,,,E3,todo,
-3.13.6.2.1.8.2,3,x,,,,,E3,todo,
-3.13.6.2.2.1,3,x,,,,,E3,todo,
-3.13.6.2.2.3,3,x,,,,,E3,todo,
-3.13.6.2.2.4,3,x,,,,,E3,todo,
-3.13.6.3.1.3,3,x,,,,,E3,todo,
-3.13.6.3.1.4,3,x,,,,,E3,todo,
-3.13.6.3.2.4,3,x,,,,,E3,todo,
-3.13.6.3.2.5,3,x,,,,,E3,todo,
-3.13.6.4.3,3,x,,,,,E3,todo,
-3.13.6.4.4,3,x,,,,,E3,todo,
+3.13.1.5,3,x,,,,,E3,partial,"EVC_SDM supervises the EOA and SvL of the snapshot; that they are the closest temporary EOA / SvL (LX 3.12.5.8, route unsuitability 3.12.2.4, mode profile 3.12.4.7) is the stored information (e3/profiles; the mode profile E4)"
+3.13.2.2.1.3,3,x,,,,,E3,done,"EVC_Braking.Build, Conversion_Applicable; evc_test SDM_Precision (lambda and gamma trains)"
+3.13.2.2.2.1,3,x,,,,,E3,done,"T_Traction_Cut_Off of the train data, EVC_Limits.T_Traction (3.13.9.3.2.3); evc_test SDM_Precision"
+3.13.2.2.3.1.1,3,x,,,,,E3,done,"EVC_Braking.Steps_T and Lookup (step K from the previous upper speed, the last open ended), used for the emergency, service and normal service models; evc_test SDM_Precision"
+3.13.2.2.3.1.2,3,x,,,,,E3,done,EVC_Supervision_Input.Max_Curve_Steps (8 >= 7); EVC_Braking.From_Curve
+3.13.2.2.3.1.4,3,x,,,,,E3,done,"EVC_Braking.Steps_T and Lookup (step K from the previous upper speed, the last open ended), used for the emergency, service and normal service models; evc_test SDM_Precision"
+3.13.2.2.3.1.5,3,x,,,,,E3,done,"the step model applies after the equivalent build up time (EVC_Limits.EBD_Limits: D_bec over T_traction and T_berem, then the EBD)"
+3.13.2.2.3.1.6,3,x,,,,,E3,done,"EVC_Braking.Steps_T and Lookup (step K from the previous upper speed, the last open ended), used for the emergency, service and normal service models; evc_test SDM_Precision"
+3.13.2.2.3.1.7,3,x,,,,,E3,done,Train_Data_Extra_T.A_Emergency_Combination / A_Service_Combination; EVC_Braking.Build and Emergency_Combination / Service_Combination; evc_test SDM_Special_Brakes
+3.13.2.2.3.1.9,3,x,,,,,E3,done,"Train_Data_Extra_T.Normal_Service_G / _P with A_SB01, A_SB12; EVC_Braking.Build chooses by the brake position and A_brake_service (V = 0) of the combination; evc_test SDM_GUI"
+3.13.2.2.3.1.9 a),3,x,,,,,E3,done,"Train_Data_Extra_T.Normal_Service_G / _P with A_SB01, A_SB12; EVC_Braking.Build chooses by the brake position and A_brake_service (V = 0) of the combination; evc_test SDM_GUI"
+3.13.2.2.3.1.9 b),3,x,,,,,E3,done,"Train_Data_Extra_T.Normal_Service_G / _P with A_SB01, A_SB12; EVC_Braking.Build chooses by the brake position and A_brake_service (V = 0) of the combination; evc_test SDM_GUI"
+3.13.2.2.3.1.10,3,x,,,,,E3,done,"Train_Data_Extra_T.Normal_Service_G / _P with A_SB01, A_SB12; EVC_Braking.Build chooses by the brake position and A_brake_service (V = 0) of the combination; evc_test SDM_GUI"
+3.13.2.2.3.2.2,3,x,,,,,E3,done,"the step model (T_brake_build_up: EVC_Braking.Times_T, EVC_Limits) and the ramp model (EVC_Build_Up, A.3.12); evc_test SDM_Build_Up"
+3.13.2.2.3.2.5,3,x,,,,,E3,done,"EVC_Braking.Model_T.Emergency_* / Service_* (T_be, T_bs); evc_test SDM_Precision"
+3.13.2.2.3.2.8,3,x,,,,,E3,done,Train_Data_Extra_T.T_Emergency_Combination / T_Service_Combination by the brakes in use (Table 4); EVC_Braking.Build
+3.13.2.2.4.1,3,x,,,,,E3,done,"EVC_Supervision_Input.Brake_Position_T; used by EVC_Braking (A.3.8, A.3.9, Kv_int set, normal service set, A_MAXREDADH); evc_test SDM_Precision"
+3.13.2.2.4.1 a),3,x,,,,,E3,done,"EVC_Supervision_Input.Brake_Position_T; used by EVC_Braking (A.3.8, A.3.9, Kv_int set, normal service set, A_MAXREDADH); evc_test SDM_Precision"
+3.13.2.2.4.1 b),3,x,,,,,E3,done,"EVC_Supervision_Input.Brake_Position_T; used by EVC_Braking (A.3.8, A.3.9, Kv_int set, normal service set, A_MAXREDADH); evc_test SDM_Precision"
+3.13.2.2.4.1 c),3,x,,,,,E3,done,"EVC_Supervision_Input.Brake_Position_T; used by EVC_Braking (A.3.8, A.3.9, Kv_int set, normal service set, A_MAXREDADH); evc_test SDM_Precision"
+3.13.2.2.6.1,3,x,,,,,E3,done,Onboard_Config_T.Special_Brakes (Special_Brake_Interface_T); EVC_Braking.Build; evc_test SDM_Special_Brakes
+3.13.2.2.6.1 Table 3,3,x,,,,,E3,done,Onboard_Config_T.Special_Brakes (Special_Brake_Interface_T); EVC_Braking.Build; evc_test SDM_Special_Brakes
+3.13.2.2.6.2,3,x,,,,,E3,done,EVC_Braking.Build: Emergency_Brakes / Service_Brakes from the TIU status (inputs 7 to 10) where the interface affects the model; the times by the combination in use; evc_test SDM_Special_Brakes
+3.13.2.2.6.2 Table 4,3,x,,,,,E3,done,EVC_Braking.Build: Emergency_Brakes / Service_Brakes from the TIU status (inputs 7 to 10) where the interface affects the model; the times by the combination in use; evc_test SDM_Special_Brakes
+3.13.2.2.6.3,3,x,,,,,E3,done,EVC_Braking.Build: the conversion model gives every combination the same models; the option of A.3.9.6 for T_brake_service is not taken
+3.13.2.2.6.4,3,x,,,,,E3,done,Onboard_Config_T.Additional_Brake_Allowed and the additional brake status (TIU input 11) select A_NVMAXREDADH1 (EVC_Braking.Build)
+3.13.2.2.6.6,3,x,,,,,E3,done,Onboard_Config_T.Additional_Brake_Allowed and the additional brake status (TIU input 11) select A_NVMAXREDADH1 (EVC_Braking.Build)
+3.13.2.2.7.1,3,x,,,,,E3,done,"Onboard_Config_T.Service_Brake_Command; EVC_SDM (EB instead, 3.13.10.2.3); evc_test SDM_Ceiling"
+3.13.2.2.7.2,3,x,,,,,E3,done,Onboard_Config_T.Service_Brake_Feedback; EVC_SDM.Update_Feedback; evc_test SDM_Feedback
+3.13.2.2.7.3,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback: the brake pipe or, converted (A.3.10.3), the brake cylinder pressure (TIU input 12); evc_test SDM_Feedback"
+3.13.2.2.8.1,3,x,,,,,E3,done,"Onboard_Config_T.Traction_Cut_Off; EVC_Limits.T_Traction, EVC_SDM (TCO only if implemented); evc_test SDM_Approach"
+3.13.2.2.9.1.1,3,x,,,,,E3,done,"EVC_Braking.Build: Kdry_rst / Kwet_rst for braking models, none for the conversion model"
+3.13.2.2.9.1.2,3,x,,,,,E3,partial,"one set of Kdry_rst / Kwet_rst (Train_Data_Extra_T) serves every combination model, applied step by step; a set per combination is not in the train data yet (E6 train data)"
+3.13.2.2.9.1.3,3,x,,,,,E3,done,"Train_Data_Extra_T.Kdry_Rst (by M_NVEBCL) and Kwet_Rst, per step of A_brake_emergency; EVC_Braking.Build; evc_test SDM_Precision (gamma train)"
+3.13.2.2.9.1.5,3,x,,,,,E3,done,"Train_Data_Extra_T.Kdry_Rst (by M_NVEBCL) and Kwet_Rst, per step of A_brake_emergency; EVC_Braking.Build; evc_test SDM_Precision (gamma train)"
+3.13.2.2.9.2.1,3,x,,,,,E3,done,"Train_Data_Extra_T.Kn_Plus / Kn_Minus (step functions, up to 8 steps, the last open ended); EVC_Curves.Deceleration (GUI); evc_test SDM_Precision (GUI of the gamma train)"
+3.13.2.2.9.2.2,3,x,,,,,E3,done,"Train_Data_Extra_T.Kn_Plus / Kn_Minus (step functions, up to 8 steps, the last open ended); EVC_Curves.Deceleration (GUI); evc_test SDM_Precision (GUI of the gamma train)"
+3.13.2.2.9.2.4,3,x,,,,,E3,done,"Train_Data_Extra_T.Kn_Plus / Kn_Minus (step functions, up to 8 steps, the last open ended); EVC_Curves.Deceleration (GUI); evc_test SDM_Precision (GUI of the gamma train)"
+3.13.2.2.9.2.5,3,x,,,,,E3,done,"Train_Data_Extra_T.Kn_Plus / Kn_Minus (step functions, up to 8 steps, the last open ended); EVC_Curves.Deceleration (GUI); evc_test SDM_Precision (GUI of the gamma train)"
+3.13.2.2.9.2.6,3,x,,,,,E3,done,"Train_Data_Extra_T.Kn_Plus / Kn_Minus (step functions, up to 8 steps, the last open ended); EVC_Curves.Deceleration (GUI); evc_test SDM_Precision (GUI of the gamma train)"
+3.13.2.2.10.1,3,x,,,,,E3,done,"Train_Data_Extra_T.M_Rotating_Nom; EVC_Braking.Build (M_Rotating_Up / _Down), EVC_Profile.Gradient_Acceleration"
+3.13.2.2.11.1,3,x,,,,,E3,done,"L_TRAIN in EVC_Profile (3.13.4.2, 3.13.5.3) and EVC_Braking (A.3.8, A.3.9, Kr_int); evc_test SDM_Precision"
+3.13.2.2.12.1,3,x,,,,,E3,done,"A.3.1 in EVC_Limits (dV_*, T_warning, T_driver, T_dispTTI, T_bs2_locked) and EVC_Braking (M_rotating_max / _min); evc_test SDM_Precision (margins)"
+3.13.2.2.13.1,3,x,,,,,E3,done,"V_MAXTRAIN: A_ebmax (3.13.6.2.1.8.2), the validity of the conversion model, the dial range; the MRSP carries the train speed (e3/profiles, 3.13.7)"
+3.13.2.3.2.1,3,x,,,,,E3,done,"the MRSP of the snapshot (e3/profiles builds it from 3.11.2) and Mode_Speed; EVC_SDM (V_MRSP, targets); evc_test SDM_Ceiling, SDM_MRSP_Target"
+3.13.2.3.3.1,3,x,,,,,E3,partial,the gradient profile: EVC_Profile; the default gradient for TSR is not applied (the snapshot does not say which MRSP elements are TSRs: e3/profiles)
+3.13.2.3.4.1,3,x,,,,,E3,partial,"the special brake inhibition areas: EVC_Profile, EVC_Braking combinations (evc_test SDM_Special_Brakes); a powerless section acts only once the stored information gives it as an inhibition of the regenerative brake (e3/profiles)"
+3.13.2.3.5.1,3,x,,,,,E3,done,"EVC_Profile (the adhesion areas extended by L_TRAIN, the driver's slippery rail); evc_test SDM_Adhesion"
+3.13.2.3.6.1,3,x,,,,,E3,done,"EVC_SDM targets: LOA, EOA / SvL with the release speed, the end of the SR distance (Supervision_Extra_T.SR_Distance, set by E4); evc_test SDM_LOA, SDM_Release, SDM_SR"
+3.13.2.3.6.1 a),3,x,,,,,E3,done,"EVC_SDM targets: LOA, EOA / SvL with the release speed, the end of the SR distance (Supervision_Extra_T.SR_Distance, set by E4); evc_test SDM_LOA, SDM_Release, SDM_SR"
+3.13.2.3.6.1 b),3,x,,,,,E3,done,"EVC_SDM targets: LOA, EOA / SvL with the release speed, the end of the SR distance (Supervision_Extra_T.SR_Distance, set by E4); evc_test SDM_LOA, SDM_Release, SDM_SR"
+3.13.2.3.7.13,3,x,x,,,,E3,done,"EVC_Braking.From_Kv, Kr_Int (packet 3 lower bounds, the last step open ended)"
+3.13.3.2.1,3,x,,,,,E3,done,"EVC_Braking.Conversion_Applicable (V <= 200 km/h exactly, 30 .. 250 %, 900 / 1500 m), braking models otherwise"
+3.13.3.2.1 a),3,x,,,,,E3,done,"EVC_Braking.Conversion_Applicable (V <= 200 km/h exactly, 30 .. 250 %, 900 / 1500 m), braking models otherwise"
+3.13.3.2.1 b),3,x,,,,,E3,done,"EVC_Braking.Conversion_Applicable (V <= 200 km/h exactly, 30 .. 250 %, 900 / 1500 m), braking models otherwise"
+3.13.3.2.1 c),3,x,,,,,E3,done,"EVC_Braking.Conversion_Applicable (V <= 200 km/h exactly, 30 .. 250 %, 900 / 1500 m), braking models otherwise"
+3.13.3.2.2,3,x,,,,,E3,done,"EVC_Braking.Conversion_Applicable (V <= 200 km/h exactly, 30 .. 250 %, 900 / 1500 m), braking models otherwise"
+3.13.3.3.1.1,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (A.3.7) for lambda and min (lambda, 135); evc_test SDM_Precision (A_brake_safe against the formulas)"
+3.13.3.3.2.1,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (A.3.7) for lambda and min (lambda, 135); evc_test SDM_Precision (A_brake_safe against the formulas)"
+3.13.3.3.3.1,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (A.3.7) for lambda and min (lambda, 135); evc_test SDM_Precision (A_brake_safe against the formulas)"
+3.13.3.4.1.1,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency / Conversion_Service (cm0 for V_target = 0, cmt otherwise, the reaction times); EVC_SDM.Times_Of; evc_test SDM_Precision (A.3.8, A.3.9)"
+3.13.3.4.2.1,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency / Conversion_Service (cm0 for V_target = 0, cmt otherwise, the reaction times); EVC_SDM.Times_Of; evc_test SDM_Precision (A.3.8, A.3.9)"
+3.13.3.4.3.1,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency / Conversion_Service (cm0 for V_target = 0, cmt otherwise, the reaction times); EVC_SDM.Times_Of; evc_test SDM_Precision (A.3.8, A.3.9)"
+3.13.3.4.4.1,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency / Conversion_Service (cm0 for V_target = 0, cmt otherwise, the reaction times); EVC_SDM.Times_Of; evc_test SDM_Precision (A.3.8, A.3.9)"
+3.13.3.4.4.1 a),3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency / Conversion_Service (cm0 for V_target = 0, cmt otherwise, the reaction times); EVC_SDM.Times_Of; evc_test SDM_Precision (A.3.8, A.3.9)"
+3.13.3.4.4.1 b),3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency / Conversion_Service (cm0 for V_target = 0, cmt otherwise, the reaction times); EVC_SDM.Times_Of; evc_test SDM_Precision (A.3.8, A.3.9)"
+3.13.3.4.4.1 c),3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency / Conversion_Service (cm0 for V_target = 0, cmt otherwise, the reaction times); EVC_SDM.Times_Of; evc_test SDM_Precision (A.3.8, A.3.9)"
+3.13.4.1.1,3,x,,,,,E3,done,"EVC_Profile.Build (Gradient: the lowest under the fictive train, A_Gradient with the rotating mass); evc_test SDM_Precision (uphill, downhill, mixed, steep)"
+3.13.4.1.1 a),3,x,,,,,E3,done,"EVC_Profile.Build (Gradient: the lowest under the fictive train, A_Gradient with the rotating mass); evc_test SDM_Precision (uphill, downhill, mixed, steep)"
+3.13.4.1.1 b),3,x,,,,,E3,done,"EVC_Profile.Build (Gradient: the lowest under the fictive train, A_Gradient with the rotating mass); evc_test SDM_Precision (uphill, downhill, mixed, steep)"
+3.13.4.1.2,3,x,,,,,E3,partial,the default gradient for TSR is not applied: the snapshot does not say which targets are due to a TSR (e3/profiles)
+3.13.4.1.3,3,x,,,,,E3,partial,"b) done (0 where the gradient profile gives nothing, EVC_Profile); a) the default gradient for TSR waits for the TSR origin of the MRSP elements (e3/profiles)"
+3.13.4.1.3 a),3,x,,,,,E3,partial,the default gradient for TSR is not applied: the snapshot does not say which targets are due to a TSR (e3/profiles)
+3.13.4.1.3 b),3,x,,,,,E3,done,EVC_Profile.Build (Lowest: 0 before the gradient profile)
+3.13.4.2.1,3,x,,,,,E3,done,"EVC_Profile.Build: [front - L_TRAIN, front] over every segment; evc_test SDM_Precision"
+3.13.4.3.1,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
+3.13.4.3.2,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
+3.13.4.3.2 a),3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
+3.13.4.3.2 a) 1st bullet,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
+3.13.4.3.2 a) 2nd bullet,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
+3.13.4.3.2 b),3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
+3.13.4.3.2 b) 1st bullet,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
+3.13.4.3.2 b) 2nd bullet,3,x,,,,,E3,done,"EVC_Profile.Gradient_Acceleration (M_rotating_max uphill, _min downhill, or the nominal one), rounded down; evc_test SDM_Precision"
+3.13.5.1,3,x,,,,,E3,done,EVC_Profile.Build (inhibited from the area start; the curves end at their foot); EVC_Braking combinations; evc_test SDM_Special_Brakes
+3.13.5.2,3,x,,,,,E3,done,EVC_Braking.Build (a brake whose status is not active contributes nowhere); evc_test SDM_Special_Brakes
+3.13.5.3,3,x,,,,,E3,done,"EVC_Profile.Build (Reduced: the area to its end plus L_TRAIN, or the driver's slippery rail, the most restrictive); evc_test SDM_Adhesion"
+3.13.5.4,3,x,,,,,E3,done,"EVC_Profile.Build (Reduced: the area to its end plus L_TRAIN, or the driver's slippery rail, the most restrictive); evc_test SDM_Adhesion"
+3.13.5.5,3,x,,,,,E3,done,"EVC_Profile.Build (Reduced: the area to its end plus L_TRAIN, or the driver's slippery rail, the most restrictive); evc_test SDM_Adhesion"
+3.13.6.2.1.1,3,x,,,,,E3,done,"EVC_Braking.Build (A_brake_safe with Kdry_rst, Kwet_rst, M_NVAVADH or Kv_int, Kr_int), EVC_Curves.Deceleration (A_safe with A_MAXREDADH and A_gradient); evc_test SDM_Precision, SDM_Adhesion"
+3.13.6.2.1.3,3,x,,,,,E3,done,"EVC_Braking.Build (A_brake_safe with Kdry_rst, Kwet_rst, M_NVAVADH or Kv_int, Kr_int), EVC_Curves.Deceleration (A_safe with A_MAXREDADH and A_gradient); evc_test SDM_Precision, SDM_Adhesion"
+3.13.6.2.1.4,3,x,,,,,E3,done,"EVC_Braking.Build (A_brake_safe with Kdry_rst, Kwet_rst, M_NVAVADH or Kv_int, Kr_int), EVC_Curves.Deceleration (A_safe with A_MAXREDADH and A_gradient); evc_test SDM_Precision, SDM_Adhesion"
+3.13.6.2.1.5,3,x,,,,,E3,done,EVC_Curves.Deceleration by the combination of the profile segment (EVC_Braking.Emergency_Combination); evc_test SDM_Special_Brakes
+3.13.6.2.1.6,3,x,,,,,E3,done,"EVC_Braking.Build (Redadh, Redadh_Use by the brake position and the additional brake); evc_test SDM_Adhesion"
+3.13.6.2.1.6 a),3,x,,,,,E3,done,"EVC_Braking.Build (Redadh, Redadh_Use by the brake position and the additional brake); evc_test SDM_Adhesion"
+3.13.6.2.1.6 b),3,x,,,,,E3,done,"EVC_Braking.Build (Redadh, Redadh_Use by the brake position and the additional brake); evc_test SDM_Adhesion"
+3.13.6.2.1.7,3,x,,,,,E3,done,"EVC_Braking.Build: Kdry_Rst (M_NVEBCL), step by step"
+3.13.6.2.1.8,3,x,,,,,E3,done,"EVC_Braking.Build and Kv_Passenger (the subsets a / b with A_NVP12 / A_NVP23, A_ebmax up to V_MAXTRAIN); evc_test SDM_Precision (Kv_int with speed steps)"
+3.13.6.2.1.8.1,3,x,,,,,E3,done,"EVC_Braking.Build and Kv_Passenger (the subsets a / b with A_NVP12 / A_NVP23, A_ebmax up to V_MAXTRAIN); evc_test SDM_Precision (Kv_int with speed steps)"
+3.13.6.2.1.8.2,3,x,,,,,E3,done,"EVC_Braking.Build and Kv_Passenger (the subsets a / b with A_NVP12 / A_NVP23, A_ebmax up to V_MAXTRAIN); evc_test SDM_Precision (Kv_int with speed steps)"
+3.13.6.2.2.1,3,x,,,,,E3,done,"EVC_Braking.Build (T_be_react, T_be: the combination in use, or Kt_int times the conversion model, rounded up)"
+3.13.6.2.2.3,3,x,,,,,E3,done,"EVC_Braking.Build (T_be_react, T_be: the combination in use, or Kt_int times the conversion model, rounded up)"
+3.13.6.2.2.4,3,x,,,,,E3,done,EVC_Build_Up.T_Be_Reduced per target (EVC_SDM.Reduced_Of); evc_test SDM_Build_Up
+3.13.6.3.1.3,3,x,,,,,E3,done,EVC_Curves.Deceleration (SBD: A_brake_service of the combination plus A_gradient); evc_test SDM_Precision
+3.13.6.3.1.4,3,x,,,,,E3,done,EVC_Curves.Deceleration (SBD: A_brake_service of the combination plus A_gradient); evc_test SDM_Precision
+3.13.6.3.2.4,3,x,,,,,E3,done,"EVC_Braking.Build (T_bs_react, T_bs by the combination in use or A.3.9)"
+3.13.6.3.2.5,3,x,,,,,E3,done,"EVC_SDM.Reduced_Of: EVC_Build_Up.T_Bs_Reduced, T_bs with the service brake feedback; evc_test SDM_Build_Up, SDM_Feedback"
+3.13.6.4.3,3,x,,,,,E3,done,"EVC_Curves.Deceleration (GUI: A_brake_normal_service + A_gradient - Kn * grad / 1000), EVC_Braking normal service by combination; evc_test SDM_Precision (gamma), SDM_GUI"
+3.13.6.4.4,3,x,,,,,E3,done,"EVC_Curves.Deceleration (GUI: A_brake_normal_service + A_gradient - Kn * grad / 1000), EVC_Braking normal service by combination; evc_test SDM_Precision (gamma), SDM_GUI"
 3.13.7.2,3,x,,,,,E3,done,"EVC_Stored_Information.Evaluate (postcondition: sorted, never above a source; the train length where it counts, Table 2a items); evc_test Scenario_SSP_Gradients, Scenario_TSR; evc_fuzz"
-3.13.8.1.2,3,x,,,,,E3,todo,
-3.13.8.1.3,3,x,,,,,E3,todo,
-3.13.8.2.1,3,x,,,,,E3,todo,
-3.13.8.2.1 a),3,x,,,,,E3,todo,
-3.13.8.2.1 b),3,x,,,,,E3,todo,
-3.13.8.2.1 c),3,x,,,,,E3,todo,
-3.13.8.2.1 d),3,x,,,,,E3,todo,
-3.13.8.2.2,3,x,,,,,E3,todo,
-3.13.8.2.3,3,x,,,,,E3,todo,
-3.13.8.3.1,3,x,,,,,E3,todo,
-3.13.8.3.2,3,x,,,,,E3,todo,
-3.13.8.3.3,3,x,,,,,E3,todo,
-3.13.8.4.1,3,x,,,,,E3,todo,
-3.13.8.5.2,3,x,,,,,E3,todo,
-3.13.8.5.2 a),3,x,,,,,E3,todo,
-3.13.8.5.2 b),3,x,,,,,E3,todo,
-3.13.9.2.3,3,x,,,,,E3,todo,
-3.13.9.2.5,3,x,,,,,E3,todo,
-3.13.9.2.6,3,x,,,,,E3,todo,
-3.13.9.2.7,3,x,,,,,E3,todo,
-3.13.9.3.2.1,3,x,,,,,E3,todo,
-3.13.9.3.2.2,3,x,,,,,E3,todo,
-3.13.9.3.2.2 a),3,x,,,,,E3,todo,
-3.13.9.3.2.2 b),3,x,,,,,E3,todo,
-3.13.9.3.2.3,3,x,,,,,E3,todo,
-3.13.9.3.2.3 a),3,x,,,,,E3,todo,
-3.13.9.3.2.3 b),3,x,,,,,E3,todo,
-3.13.9.3.2.6,3,x,,,,,E3,todo,
-3.13.9.3.2.8,3,x,,,,,E3,todo,
-3.13.9.3.2.9,3,x,,,,,E3,todo,
-3.13.9.3.2.10,3,x,,,,,E3,todo,
-3.13.9.3.2.12,3,x,,,,,E3,todo,
-3.13.9.3.3.1,3,x,,,,,E3,todo,
-3.13.9.3.3.2,3,x,,,,,E3,todo,
-3.13.9.3.3.3,3,x,,,,,E3,todo,
-3.13.9.3.3.4,3,x,,,,,E3,todo,
-3.13.9.3.3.4.1,3,x,,,,,E3,todo,
-3.13.9.3.3.5,3,x,,,,,E3,todo,
-3.13.9.3.3.7,3,x,,,,,E3,todo,
-3.13.9.3.3.8,3,x,,,,,E3,todo,
-3.13.9.3.4.1,3,x,,,,,E3,todo,
-3.13.9.3.5.1,3,x,,,,,E3,todo,
-3.13.9.3.5.4,3,x,,,,,E3,todo,
-3.13.9.3.5.5,3,x,,,,,E3,todo,
-3.13.9.3.5.6,3,x,,,,,E3,todo,
-3.13.9.3.5.7,3,x,,,,,E3,todo,
-3.13.9.3.5.8,3,x,,,,,E3,todo,
-3.13.9.3.5.9,3,x,,,,,E3,todo,
-3.13.9.3.5.9 a),3,x,,,,,E3,todo,
-3.13.9.3.5.9 b),3,x,,,,,E3,todo,
-3.13.9.3.5.9 c),3,x,,,,,E3,todo,
-3.13.9.3.5.9 d),3,x,,,,,E3,todo,
-3.13.9.3.5.9 e),3,x,,,,,E3,todo,
-3.13.9.3.5.10,3,x,,,,,E3,todo,
-3.13.9.3.5.11,3,x,,,,,E3,todo,
-3.13.9.3.5.12,3,x,,,,,E3,todo,
-3.13.9.3.6.1,3,x,,,,,E3,todo,
-3.13.9.3.6.2,3,x,,,,,E3,todo,
-3.13.9.3.6.4,3,x,,,,,E3,todo,
-3.13.9.3.6.5,3,x,,,,,E3,todo,
-3.13.9.4.4,3,x,,,,,E3,todo,
-3.13.9.4.6,3,x,,,,,E3,todo,
-3.13.9.4.6 a),3,x,,,,,E3,todo,
-3.13.9.4.6 b),3,x,,,,,E3,todo,
-3.13.9.4.7,3,x,,,,,E3,todo,
-3.13.9.4.8,3,x,,,,,E3,todo,
-3.13.9.4.8.1,3,x,,,,,E3,todo,
-3.13.9.4.8.2,3,x,,,,,E3,todo,
-3.13.9.4.9,3,x,,,,,E3,todo,
-3.13.10.2.1,3,x,,,,,E3,todo,
-3.13.10.2.2,3,x,,,,,E3,todo,
-3.13.10.2.3,3,x,,,,,E3,todo,
-3.13.10.2.4,3,x,,,,,E3,todo,
-3.13.10.2.5,3,x,,,,,E3,todo,
-3.13.10.2.6,3,x,,,,,E3,todo,
-3.13.10.2.6 a),3,x,,,,,E3,todo,
-3.13.10.2.6 b),3,x,,,,,E3,todo,
-3.13.10.2.6 b) 1st bullet,3,x,,,,,E3,todo,
-3.13.10.2.6 b) 2nd bullet,3,x,,,,,E3,todo,
-3.13.10.2.6 b) 3rd bullet,3,x,,,,,E3,todo,
-3.13.10.2.7,3,x,,,,,E3,todo,
-3.13.10.3.1,3,x,,,,,E3,todo,
-3.13.10.3.2,3,x,,,,,E3,todo,
-3.13.10.3.3,3,x,,,,,E3,todo,
-3.13.10.3.3 Table 5,3,x,,,,,E3,todo,
-3.13.10.3.3 Table 6,3,x,,,,,E3,todo,
-3.13.10.3.4,3,x,,,,,E3,todo,
-3.13.10.3.4 Table 7,3,x,,,,,E3,todo,
-3.13.10.3.5,3,x,,,,,E3,todo,
-3.13.10.3.6,3,x,,,,,E3,todo,
-3.13.10.3.8,3,x,,,,,E3,todo,
-3.13.10.3.8.1,3,x,,,,,E3,todo,
-3.13.10.3.8.2,3,x,,,,,E3,todo,
-3.13.10.3.9,3,x,,,,,E3,todo,
-3.13.10.3.9.1,3,x,,,,,E3,todo,
-3.13.10.3.10,3,x,,,,,E3,todo,
-3.13.10.3.10.1,3,x,,,,,E3,todo,
-3.13.10.4.2,3,x,,,,,E3,todo,
-3.13.10.4.3,3,x,,,,,E3,todo,
-3.13.10.4.4,3,x,,,,,E3,todo,
-3.13.10.4.5,3,x,,,,,E3,todo,
-3.13.10.4.6,3,x,,,,,E3,todo,
-3.13.10.4.7,3,x,,,,,E3,todo,
-3.13.10.4.8,3,x,,,,,E3,todo,
-3.13.10.4.8.1,3,x,,,,,E3,todo,
-3.13.10.4.9,3,x,,,,,E3,todo,
-3.13.10.4.9 a),3,x,,,,,E3,todo,
-3.13.10.4.9 b),3,x,,,,,E3,todo,
-3.13.10.4.10,3,x,,,,,E3,todo,
-3.13.10.4.10.1,3,x,,,,,E3,todo,
-3.13.10.4.10.1 Table 8,3,x,,,,,E3,todo,
-3.13.10.4.10.1 Table 9,3,x,,,,,E3,todo,
-3.13.10.4.10.1 Table 10,3,x,,,,,E3,todo,
-3.13.10.4.10.1 Table 11,3,x,,,,,E3,todo,
-3.13.10.4.13,3,x,,,,,E3,todo,
-3.13.10.4.13.1,3,x,,,,,E3,todo,
-3.13.10.4.14,3,x,,,,,E3,todo,
-3.13.10.4.15,3,x,,,,,E3,todo,
-3.13.10.4.15 Table 12,3,x,,,,,E3,todo,
-3.13.10.4.16,3,x,,,,,E3,todo,
-3.13.10.4.17,3,x,,,,,E3,todo,
-3.13.10.5.1,3,x,,,,,E3,todo,
-3.13.10.5.2,3,x,,,,,E3,todo,
-3.13.10.5.3,3,x,,,,,E3,todo,
-3.13.10.5.3.1,3,x,,,,,E3,todo,
-3.13.10.5.4,3,x,,,,,E3,todo,
-3.13.10.5.4 Table 13,3,x,,,,,E3,todo,
-3.13.10.5.4 Table 14,3,x,,,,,E3,todo,
-3.13.10.5.5,3,x,,,,,E3,todo,
-3.13.10.5.5 Table 15,3,x,,,,,E3,todo,
-3.13.10.5.6,3,x,,,,,E3,todo,
-3.13.10.5.7,3,x,,,,,E3,todo,
-3.13.10.6.1,3,x,,,,,E3,todo,
-3.13.10.6.1 Table 16,3,x,,,,,E3,todo,
-3.13.10.6.2,3,x,,,,,E3,todo,
-3.13.10.6.3,3,x,,,,,E3,todo,
-3.13.10.6.4,3,x,,,,,E3,todo,
-3.13.10.6.5,3,x,,,,,E3,todo,
-3.13.11.2,3,x,,,,,E3,todo,
-3.13.11.3,3,x,,,,,E3,todo,
-3.13.11.3 a),3,x,,,,,E3,todo,
-3.13.11.3 b),3,x,,,,,E3,todo,
-3.13.11.3 c),3,x,,,,,E3,todo,
-3.13.11.4,3,x,,,,,E3,todo,
-3.13.11.5,3,x,,,,,E3,todo,
-3.13.11.6,3,x,,,,,E3,todo,
-3.13.11.7,3,x,,,,,E3,todo,
-3.13.11.7.1,3,x,,,,,E3,todo,
-3.13.11.7.1 a),3,x,,,,,E3,todo,
-3.13.11.7.1 b),3,x,,,,,E3,todo,
-3.13.11.7.1.1,3,x,,,,,E3,todo,
-3.13.11.7.1.2,3,x,,,,,E3,todo,
-3.13.11.8,3,x,,,,,E3,todo,
-3.13.11.9,3,x,,,,,E3,todo,
-3.14.1.2,3,x,,,,,E3,todo,
-3.14.1.3,3,x,,,,,E3,todo,
-3.14.1.5,3,x,,,,,E3,todo,
-3.14.1.6,3,x,,,,,E3,todo,
-3.14.1.7,3,x,,,,,E3,todo,
-3.14.1.7.1,3,x,,,,,E3,todo,
-3.14.1.7.2,3,x,,,,,E3,todo,
-3.14.1.7.3,3,x,,,,,E3,todo,
-3.14.1.7.4,3,x,,,,,E3,todo,
-3.14.1.7.5,3,x,,,,,E3,todo,
-3.14.1.7.6,3,x,,,,,E3,todo,
-3.14.1.8,3,x,,,,,E3,todo,
-3.14.1.9,3,x,,,,,E3,todo,
-3.14.1.10,3,x,,,,,E3,todo,
-3.14.1.11,3,x,,,,,E3,todo,
-3.14.1.11.1,3,x,,,,,E3,todo,
-3.14.1.11.2,3,x,,,,,E3,todo,
-3.14.2.2,3,x,,,,,E3,todo,
-3.14.2.3,3,x,,,,,E3,todo,
-3.14.2.4,3,x,,,,,E3,todo,
-3.14.2.6,3,x,,,,,E3,todo,
-3.14.2.7,3,x,,,,,E3,todo,
-3.14.3.1,3,x,,,,,E3,todo,
-3.14.3.2,3,x,,,,,E3,todo,
-3.14.3.4,3,x,,,,,E3,todo,
-3.14.3.5,3,x,,,,,E3,todo,
-3.14.3.6,3,x,,,,,E3,todo,
+3.13.8.1.2,3,x,,,,,E3,done,"EVC_Curves (arcs of parabola per profile segment and speed step, fixed point, rounding to the safe side); evc_test SDM_Precision against the floating point reference"
+3.13.8.1.3,3,x,,,,,E3,done,"EVC_Curves (arcs of parabola per profile segment and speed step, fixed point, rounding to the safe side); evc_test SDM_Precision against the floating point reference"
+3.13.8.2.1,3,x,,,,,E3,done,"EVC_SDM.Step (the MRSP elements below V_MRSP ahead of the max safe front end, the LOA, the EOA with the SvL, the end of the SR distance); evc_test SDM_MRSP_Target, SDM_LOA, SDM_Approach, SDM_SR"
+3.13.8.2.1 a),3,x,,,,,E3,done,"EVC_SDM.Step (the MRSP elements below V_MRSP ahead of the max safe front end, the LOA, the EOA with the SvL, the end of the SR distance); evc_test SDM_MRSP_Target, SDM_LOA, SDM_Approach, SDM_SR"
+3.13.8.2.1 b),3,x,,,,,E3,done,"EVC_SDM.Step (the MRSP elements below V_MRSP ahead of the max safe front end, the LOA, the EOA with the SvL, the end of the SR distance); evc_test SDM_MRSP_Target, SDM_LOA, SDM_Approach, SDM_SR"
+3.13.8.2.1 c),3,x,,,,,E3,done,"EVC_SDM.Step (the MRSP elements below V_MRSP ahead of the max safe front end, the LOA, the EOA with the SvL, the end of the SR distance); evc_test SDM_MRSP_Target, SDM_LOA, SDM_Approach, SDM_SR"
+3.13.8.2.1 d),3,x,,,,,E3,done,"EVC_SDM.Step (the MRSP elements below V_MRSP ahead of the max safe front end, the LOA, the EOA with the SvL, the end of the SR distance); evc_test SDM_MRSP_Target, SDM_LOA, SDM_Approach, SDM_SR"
+3.13.8.2.2,3,x,,,,,E3,done,EVC_SDM.Step rebuilds the list every cycle from the snapshot
+3.13.8.2.3,3,x,,,,,E3,done,EVC_SDM.Step (MRSP targets only ahead of the max safe front end); evc_test SDM_MRSP_Target
+3.13.8.3.1,3,x,,,,,E3,done,"EVC_SDM.EBD_Of (anchored at the target location at V_target + dV_ebi (V_target), falling to the foot), EVC_Curves; evc_test SDM_Precision (MRSP target curve)"
+3.13.8.3.2,3,x,,,,,E3,done,"EVC_SDM.EBD_Of (zero speed at the SvL, at the end of the SR distance); evc_test SDM_Precision, SDM_SR"
+3.13.8.3.3,3,x,,,,,E3,done,"EVC_SDM.EBD_Of (zero speed at the SvL, at the end of the SR distance); evc_test SDM_Precision, SDM_SR"
+3.13.8.4.1,3,x,,,,,E3,done,"EVC_Limits.EOA_Limits (the SBD at zero speed at the EOA); evc_test SDM_Precision, SDM_Approach"
+3.13.8.5.2,3,x,,,,,E3,done,"EVC_SDM.Evaluate (GUI when Q_NVGUIPERM and a normal service model: foot at the EOA / SvL, or at P for V_target, 3.13.9.3.5.9); evc_test SDM_GUI"
+3.13.8.5.2 a),3,x,,,,,E3,done,"EVC_SDM.Evaluate (GUI when Q_NVGUIPERM and a normal service model: foot at the EOA / SvL, or at P for V_target, 3.13.9.3.5.9); evc_test SDM_GUI"
+3.13.8.5.2 b),3,x,,,,,E3,done,"EVC_SDM.Evaluate (GUI when Q_NVGUIPERM and a normal service model: foot at the EOA / SvL, or at P for V_target, 3.13.9.3.5.9); evc_test SDM_GUI"
+3.13.9.2.3,3,x,,,,,E3,done,"EVC_Limits.Margin (one division, rounded down; dV_warning <= dV_sbi <= dV_ebi checked); evc_test SDM_Precision (margins 0 .. 300 km/h), SDM_Ceiling"
+3.13.9.2.5,3,x,,,,,E3,done,"EVC_Limits.Margin (one division, rounded down; dV_warning <= dV_sbi <= dV_ebi checked); evc_test SDM_Precision (margins 0 .. 300 km/h), SDM_Ceiling"
+3.13.9.2.6,3,x,,,,,E3,done,"EVC_Limits.Margin (one division, rounded down; dV_warning <= dV_sbi <= dV_ebi checked); evc_test SDM_Precision (margins 0 .. 300 km/h), SDM_Ceiling"
+3.13.9.2.7,3,x,,,,,E3,done,"EVC_SDM: the ceiling margins of the LOA speed (EBD_Of, Flags_Of); evc_test SDM_LOA"
+3.13.9.3.2.1,3,x,,,,,E3,done,V_delta0 = V_ura (Speed_Max - Speed of the snapshot) unless Q_NVINHSMICPERM (EVC_SDM.Terms_Of)
+3.13.9.3.2.2,3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.2 a),3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.2 b),3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.3,3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.3 a),3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.3 b),3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.6,3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.8,3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.9,3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.10,3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.2.12,3,x,,,,,E3,done,"EVC_Limits.EBD_Limits (T_traction, T_berem, A_est1, A_est2 from the measured acceleration, V_bec, D_bec, d_EBI), rounded to the safe side; evc_test SDM_Precision (limits against the formulas)"
+3.13.9.3.3.1,3,x,,,,,E3,done,"EVC_Limits.EOA_Limits (SBI1), EBD_Limits (SBI2); evc_test SDM_Precision, SDM_Approach"
+3.13.9.3.3.2,3,x,,,,,E3,done,"EVC_Limits.EOA_Limits (SBI1), EBD_Limits (SBI2); evc_test SDM_Precision, SDM_Approach"
+3.13.9.3.3.3,3,x,,,,,E3,done,"EVC_SDM.Service_Times (T_bs_reduced, or 0 without the service brake)"
+3.13.9.3.3.4,3,x,,,,,E3,done,EVC_SDM.Service_Times with Update_Feedback (A.3.10); evc_test SDM_Feedback
+3.13.9.3.3.4.1,3,x,,,,,E3,done,EVC_SDM.Service_Times with Update_Feedback (A.3.10); evc_test SDM_Feedback
+3.13.9.3.3.5,3,x,,,,,E3,done,"EVC_SDM.Service_Times (T_bs_reduced, or 0 without the service brake)"
+3.13.9.3.3.7,3,x,,,,,E3,done,"EVC_Limits.EOA_Limits / EBD_Limits (V_SBI with D_bedisplay, the target speed beyond the foot); MSG_SPEED_STATE v_sbi; evc_test SDM_Ceiling"
+3.13.9.3.3.8,3,x,,,,,E3,done,"EVC_Limits.EOA_Limits / EBD_Limits (V_SBI with D_bedisplay, the target speed beyond the foot); MSG_SPEED_STATE v_sbi; evc_test SDM_Ceiling"
+3.13.9.3.4.1,3,x,,,,,E3,done,EVC_Limits (W from SBI1 / SBI2); evc_test SDM_Approach (the traction cut-off at W)
+3.13.9.3.5.1,3,x,,,,,E3,done,"EVC_Limits (P from SBI with T_driver, the target location, the GUI); evc_test SDM_Approach, SDM_GUI"
+3.13.9.3.5.4,3,x,,,,,E3,done,"EVC_Limits (P from SBI with T_driver, the target location, the GUI); evc_test SDM_Approach, SDM_GUI"
+3.13.9.3.5.5,3,x,,,,,E3,done,"EVC_Limits V_P (SBD at the estimated front end, EBD at the max safe front end with D_bedisplay, GUI); MSG_SPEED_STATE v_perm; evc_test SDM_Release, SDM_MRSP_Target"
+3.13.9.3.5.6,3,x,,,,,E3,done,"EVC_Limits V_P (SBD at the estimated front end, EBD at the max safe front end with D_bedisplay, GUI); MSG_SPEED_STATE v_perm; evc_test SDM_Release, SDM_MRSP_Target"
+3.13.9.3.5.7,3,x,,,,,E3,done,"EVC_Limits V_P (SBD at the estimated front end, EBD at the max safe front end with D_bedisplay, GUI); MSG_SPEED_STATE v_perm; evc_test SDM_Release, SDM_MRSP_Target"
+3.13.9.3.5.8,3,x,,,,,E3,done,"EVC_Limits V_P (SBD at the estimated front end, EBD at the max safe front end with D_bedisplay, GUI); MSG_SPEED_STATE v_perm; evc_test SDM_Release, SDM_MRSP_Target"
+3.13.9.3.5.9,3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
+3.13.9.3.5.9 a),3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
+3.13.9.3.5.9 b),3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
+3.13.9.3.5.9 c),3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
+3.13.9.3.5.9 d),3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
+3.13.9.3.5.9 e),3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
+3.13.9.3.5.10,3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
+3.13.9.3.5.11,3,x,,,,,E3,deferred,E4: the non protected LX supervised as temporary EOA / SvL (5.16.3) comes with the level crossings of the procedures
+3.13.9.3.5.12,3,x,,,,,E3,deferred,E4: the non protected LX supervised as temporary EOA / SvL (5.16.3) comes with the level crossings of the procedures
+3.13.9.3.6.1,3,x,,,,,E3,done,"EVC_Limits (I from P with T_indication), EVC_SDM.T_Indication; evc_test SDM_Approach, SDM_MRSP_Target"
+3.13.9.3.6.2,3,x,,,,,E3,done,"EVC_Limits (I from P with T_indication), EVC_SDM.T_Indication; evc_test SDM_Approach, SDM_MRSP_Target"
+3.13.9.3.6.4,3,x,,,,,E3,done,"EVC_Limits (I from P with T_indication), EVC_SDM.T_Indication; evc_test SDM_Approach, SDM_MRSP_Target"
+3.13.9.3.6.5,3,x,,,,,E3,done,EVC_SDM.Evaluate: the Indication with T_bs1 = T_bs2 = T_bs when the feedback is available; evc_test SDM_Feedback
+3.13.9.4.4,3,x,,,,,E3,done,EVC_SDM.Step (no release speed without a variant or for an LOA); evc_test SDM_LOA
+3.13.9.4.6,3,x,,,,,E3,done,"EVC_SDM.RSM_Start (SBI1 of the EOA, SBI2 of the SvL and of the targets between the trip location and the SvL at the release speed, zero acceleration, f41); Table 16 [2]; evc_test SDM_Release"
+3.13.9.4.6 a),3,x,,,,,E3,done,"EVC_SDM.RSM_Start (SBI1 of the EOA, SBI2 of the SvL and of the targets between the trip location and the SvL at the release speed, zero acceleration, f41); Table 16 [2]; evc_test SDM_Release"
+3.13.9.4.6 b),3,x,,,,,E3,done,"EVC_SDM.RSM_Start (SBI1 of the EOA, SBI2 of the SvL and of the targets between the trip location and the SvL at the release speed, zero acceleration, f41); Table 16 [2]; evc_test SDM_Release"
+3.13.9.4.7,3,x,,,,,E3,done,"EVC_SDM.RSM_Start (SBI1 of the EOA, SBI2 of the SvL and of the targets between the trip location and the SvL at the release speed, zero acceleration, f41); Table 16 [2]; evc_test SDM_Release"
+3.13.9.4.8,3,x,,,,,E3,done,"EVC_SDM.Calculated_Release / Release_Of (bisection of 16 steps on V + Vd0 <= V_EBD (d_tripEOA + alpha D41 + D_bec), zero acceleration, the trip margin of the snapshot or the confidence interval); evc_test SDM_Calculated_Release against the reference"
+3.13.9.4.8.1,3,x,,,,,E3,done,"EVC_SDM.Calculated_Release / Release_Of (bisection of 16 steps on V + Vd0 <= V_EBD (d_tripEOA + alpha D41 + D_bec), zero acceleration, the trip margin of the snapshot or the confidence interval); evc_test SDM_Calculated_Release against the reference"
+3.13.9.4.8.2,3,x,,,,,E3,done,"EVC_SDM.Calculated_Release / Release_Of (bisection of 16 steps on V + Vd0 <= V_EBD (d_tripEOA + alpha D41 + D_bec), zero acceleration, the trip margin of the snapshot or the confidence interval); evc_test SDM_Calculated_Release against the reference"
+3.13.9.4.9,3,x,,,,,E3,done,"EVC_SDM.Step (the release speed limited by the MRSP between the presumed RSM start less the confidence interval and the trip location, the start re-evaluated); evc_test SDM_Calculated_Release"
+3.13.10.2.1,3,x,,,,,E3,done,"MSG_SPEED_STATE v_cur is the snapshot's estimated speed, the one EVC_SDM supervises"
+3.13.10.2.2,3,x,,,,,E3,done,"EVC_SDM.State_T (TCO, SB, EB, EB_For_SB held until revoked); contract of EVC_SDM.Step; evc_test SDM_Ceiling"
+3.13.10.2.3,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling"
+3.13.10.2.4,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling"
+3.13.10.2.5,3,x,,,,,E3,done,EVC_SDM.Step (Intervention left only without a brake command; proven: Intervention implies a command); evc_test SDM_Ceiling
+3.13.10.2.6,3,x,,,,,E3,partial,"a) the condition is EVC_SDM.Result_T.EOA_Passed (JRU event 22), the trip itself is E4; b) the balise group beyond the EOA in RSM needs the linking of E2 and the trip of E4"
+3.13.10.2.6 a),3,x,,,,,E3,partial,"EVC_SDM.Result_T.EOA_Passed (min safe front end beyond the EOA or LOA, JRU event 22); evc_test SDM_LOA; the transition to TR is E4"
+3.13.10.2.6 b),3,x,,,,,E3,deferred,"E4: the first possible location of a group from the linking (EVC_Position) against the EOA in RSM, with the trip"
+3.13.10.2.6 b) 1st bullet,3,x,,,,,E3,deferred,"E4: the first possible location of a group from the linking (EVC_Position) against the EOA in RSM, with the trip"
+3.13.10.2.6 b) 2nd bullet,3,x,,,,,E3,deferred,"E4: the first possible location of a group from the linking (EVC_Position) against the EOA in RSM, with the trip"
+3.13.10.2.6 b) 3rd bullet,3,x,,,,,E3,deferred,"E4: the first possible location of a group from the linking (EVC_Position) against the EOA in RSM, with the trip"
+3.13.10.2.7,3,x,,,,,E3,partial,EVC_SDM.Result_T.EOA_Passed with the min safe antenna position in level 1 (JRU event 22); the transition to TR is E4
+3.13.10.3.1,3,x,,,,,E3,done,"EVC_SDM.Step (CSM: v_perm = V_MRSP, v_sbi = V_MRSP + dV_sbi); MSG_SPEED_STATE; evc_test SDM_Ceiling"
+3.13.10.3.2,3,x,,,,,E3,done,"EVC_SDM.Step (CSM: v_perm = V_MRSP, v_sbi = V_MRSP + dV_sbi); MSG_SPEED_STATE; evc_test SDM_Ceiling"
+3.13.10.3.3,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"
+3.13.10.3.3 Table 5,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"
+3.13.10.3.3 Table 6,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"
+3.13.10.3.4,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"
+3.13.10.3.4 Table 7,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"
+3.13.10.3.5,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"
+3.13.10.3.6,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"
+3.13.10.3.8,3,x,,,,,E3,done,"EVC_SDM.Step (Result_T.Indication_D: the first Indication location, with the RSM start limits below the release speed; none without a target); evc_test SDM_Approach, SDM_MRSP_Target"
+3.13.10.3.8.1,3,x,,,,,E3,done,"EVC_SDM.Step (Result_T.Indication_D: the first Indication location, with the RSM start limits below the release speed; none without a target); evc_test SDM_Approach, SDM_MRSP_Target"
+3.13.10.3.8.2,3,x,,,,,E3,done,"EVC_SDM.Step (Result_T.Indication_D: the first Indication location, with the RSM start limits below the release speed; none without a target); evc_test SDM_Approach, SDM_MRSP_Target"
+3.13.10.3.9,3,x,,,,,E3,done,EVC_SDM.Step (CSM target information when A_NVMAXREDADH is 61 under reduced adhesion; MSG_SPEED_STATE flag bit 1); evc_test SDM_Adhesion
+3.13.10.3.9.1,3,x,,,,,E3,done,EVC_SDM.Step (CSM target information when A_NVMAXREDADH is 61 under reduced adhesion; MSG_SPEED_STATE flag bit 1); evc_test SDM_Adhesion
+3.13.10.3.10,3,x,,,,,E3,done,"EVC_SDM.Step (TTI when A_NVMAXREDADH is 62 under reduced adhesion, shorter than T_dispTTI; MSG_STATUS tti in tenths of a second); evc_test SDM_Adhesion"
+3.13.10.3.10.1,3,x,,,,,E3,done,"EVC_SDM.Step (TTI when A_NVMAXREDADH is 62 under reduced adhesion, shorter than T_dispTTI; MSG_STATUS tti in tenths of a second); evc_test SDM_Adhesion"
+3.13.10.4.2,3,x,,,,,E3,done,"EVC_SDM.Step (concerned targets, step 0 the lowest P, masking at the MRDT speed, kept until removed or replaced by a lower one; MSG_SPEED_STATE mrdt); evc_test SDM_Masking, SDM_MRSP_Target"
+3.13.10.4.3,3,x,,,,,E3,done,"EVC_SDM.Step (the displayed P and SBI speeds over every target, V_MRSP and its SBI); evc_test SDM_Approach"
+3.13.10.4.4,3,x,,,,,E3,done,"EVC_SDM.Step (the displayed P and SBI speeds over every target, V_MRSP and its SBI); evc_test SDM_Approach"
+3.13.10.4.5,3,x,,,,,E3,done,"EVC_SDM.Step (concerned targets, step 0 the lowest P, masking at the MRDT speed, kept until removed or replaced by a lower one; MSG_SPEED_STATE mrdt); evc_test SDM_Masking, SDM_MRSP_Target"
+3.13.10.4.6,3,x,,,,,E3,done,EVC_SDM.Step (the release speed shown with the EOA / SvL as MRDT; MSG_SPEED_STATE flag bit 0); evc_test SDM_Release
+3.13.10.4.7,3,x,,,,,E3,done,"EVC_SDM.Step (the distance to P (V_target) from the max safe front end, or min (EOA - est, SvL - max safe)); evc_test SDM_MRSP_Target, SDM_Approach"
+3.13.10.4.8,3,x,,,,,E3,done,"EVC_SDM.Step (the distance to P (V_target) from the max safe front end, or min (EOA - est, SvL - max safe)); evc_test SDM_MRSP_Target, SDM_Approach"
+3.13.10.4.8.1,3,x,,,,,E3,done,"EVC_SDM.Step (displayed values locked by the feedback, A.3.10, and by the pawl, A.3.13); evc_test SDM_Feedback"
+3.13.10.4.9,3,x,,,,,E3,done,EVC_SDM (SB_Avail: Service_Brake_Command and Q_NVSBTSMPERM)
+3.13.10.4.9 a),3,x,,,,,E3,done,EVC_SDM (SB_Avail: Service_Brake_Command and Q_NVSBTSMPERM)
+3.13.10.4.9 b),3,x,,,,,E3,done,EVC_SDM (SB_Avail: Service_Brake_Command and Q_NVSBTSMPERM)
+3.13.10.4.10,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.10.1,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.10.1 Table 8,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.10.1 Table 9,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.10.1 Table 10,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.10.1 Table 11,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.13,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.13.1,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.14,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.15,3,x,,,,,E3,done,"EVC_SDM.Step (TSM statuses by priority, from Indication at entry, Normal not used); evc_test SDM_Approach (Indication, Overspeed, Warning, Intervention in order)"
+3.13.10.4.15 Table 12,3,x,,,,,E3,done,"EVC_SDM.Step (TSM statuses by priority, from Indication at entry, Normal not used); evc_test SDM_Approach (Indication, Overspeed, Warning, Intervention in order)"
+3.13.10.4.16,3,x,,,,,E3,done,"EVC_SDM.Step (TSM statuses by priority, from Indication at entry, Normal not used); evc_test SDM_Approach (Indication, Overspeed, Warning, Intervention in order)"
+3.13.10.4.17,3,x,,,,,E3,done,"EVC_SDM.Step (TSM statuses by priority, from Indication at entry, Normal not used); evc_test SDM_Approach (Indication, Overspeed, Warning, Intervention in order)"
+3.13.10.5.1,3,x,,,,,E3,done,"EVC_SDM.Step (RSM: v_release, the EOA / SvL distance, P of the EOA / SvL, the locks); evc_test SDM_Release"
+3.13.10.5.2,3,x,,,,,E3,done,"EVC_SDM.Step (RSM: v_release, the EOA / SvL distance, P of the EOA / SvL, the locks); evc_test SDM_Release"
+3.13.10.5.3,3,x,,,,,E3,done,"EVC_SDM.Step (RSM: v_release, the EOA / SvL distance, P of the EOA / SvL, the locks); evc_test SDM_Release"
+3.13.10.5.3.1,3,x,,,,,E3,done,"EVC_SDM.Step (RSM: v_release, the EOA / SvL distance, P of the EOA / SvL, the locks); evc_test SDM_Release"
+3.13.10.5.4,3,x,,,,,E3,done,"EVC_SDM.Step (EB above the release speed, revoked at standstill; statuses of Table 15; proven: RSM only with a release speed); evc_test SDM_Release"
+3.13.10.5.4 Table 13,3,x,,,,,E3,done,"EVC_SDM.Step (EB above the release speed, revoked at standstill; statuses of Table 15; proven: RSM only with a release speed); evc_test SDM_Release"
+3.13.10.5.4 Table 14,3,x,,,,,E3,done,"EVC_SDM.Step (EB above the release speed, revoked at standstill; statuses of Table 15; proven: RSM only with a release speed); evc_test SDM_Release"
+3.13.10.5.5,3,x,,,,,E3,done,"EVC_SDM.Step (EB above the release speed, revoked at standstill; statuses of Table 15; proven: RSM only with a release speed); evc_test SDM_Release"
+3.13.10.5.5 Table 15,3,x,,,,,E3,done,"EVC_SDM.Step (EB above the release speed, revoked at standstill; statuses of Table 15; proven: RSM only with a release speed); evc_test SDM_Release"
+3.13.10.5.6,3,x,,,,,E3,done,"EVC_SDM.Step (EB above the release speed, revoked at standstill; statuses of Table 15; proven: RSM only with a release speed); evc_test SDM_Release"
+3.13.10.5.7,3,x,,,,,E3,done,"EVC_SDM.Step (EB above the release speed, revoked at standstill; statuses of Table 15; proven: RSM only with a release speed); evc_test SDM_Release"
+3.13.10.6.1,3,x,,,,,E3,done,"EVC_SDM.Step (conditions [1] to [6], the list update as a change of its content, the status of the monitoring entered); evc_test SDM_Approach, SDM_Release, SDM_MRSP_Target"
+3.13.10.6.1 Table 16,3,x,,,,,E3,done,"EVC_SDM.Step (conditions [1] to [6], the list update as a change of its content, the status of the monitoring entered); evc_test SDM_Approach, SDM_Release, SDM_MRSP_Target"
+3.13.10.6.2,3,x,,,,,E3,done,"EVC_SDM.Step (commands kept across a transition; TCO revoked leaving TSM, SB entering RSM from TSM; an SB of CSM revoked at the release speed in RSM, a stated choice)"
+3.13.10.6.3,3,x,,,,,E3,done,"EVC_SDM.Step (commands kept across a transition; TCO revoked leaving TSM, SB entering RSM from TSM; an SB of CSM revoked at the release speed in RSM, a stated choice)"
+3.13.10.6.4,3,x,,,,,E3,done,"EVC_SDM.Step (commands kept across a transition; TCO revoked leaving TSM, SB entering RSM from TSM; an SB of CSM revoked at the release speed in RSM, a stated choice)"
+3.13.10.6.5,3,x,,,,,E3,done,"EVC_SDM.Step (conditions [1] to [6], the list update as a change of its content, the status of the monitoring entered); evc_test SDM_Approach, SDM_Release, SDM_MRSP_Target"
+3.13.11.2,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.3,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.3 a),3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.3 b),3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.3 c),3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.4,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.5,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.6,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.7,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.7.1,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.7.1 a),3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.7.1 b),3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.7.1.1,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.7.1.2,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
+3.13.11.8,3,x,,,,,E3,partial,EVC_SDM.Result_T.MA_Request (the location d_MAR with T_MAR of the snapshot passed); evc_test SDM_Perturbation; sending the MA request is E5 (3.8.2.2)
+3.13.11.9,3,x,,,,,E3,done,EVC_SDM.Step (the EBD at the MRSP start below the first element: the MA request location passed)
+3.14.1.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Step (the service brake alone, the train not decelerating T_bs + 2 s after: the emergency brake, released with the service brake command; TIU reason bit 1)"
+3.14.1.3,3,x,,,,,E3,deferred,E4: the trip (TR) and its acknowledgement
+3.14.1.5,3,x,,,,,E3,partial,"EVC_Brake_Commands (roll away, unauthorised direction, standstill supervision released at standstill after the acknowledgement, DMI ack kind 5); evc_test SDM_Protections; the train data / SR entry movement reasons are E4"
+3.14.1.6,3,x,,,,,E3,deferred,E4: the reactions to the linking errors and inconsistencies E2 reports (EVC_Position events)
+3.14.1.7,3,x,,,,,E3,deferred,E5: supervision of the safe radio connection (T_NVCONTACT)
+3.14.1.7.1,3,x,,,,,E3,deferred,E6: reversing areas (3.15.4)
+3.14.1.7.2,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
+3.14.1.7.3,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
+3.14.1.7.4,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
+3.14.1.7.5,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
+3.14.1.7.6,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
+3.14.1.8,3,x,,,,,E3,partial,"EVC_Brake_Commands keeps each reason of this phase until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons and acknowledgements of E4 join them there"
+3.14.1.9,3,x,,,,,E3,done,EVC_Brake_Commands.Commands_T.Ack_Required only at standstill (MSG_STATUS brake 2); evc_test SDM_Protections (an acknowledgement before standstill does nothing)
+3.14.1.10,3,x,,,,,E3,partial,"EVC_Brake_Commands keeps each reason of this phase until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons and acknowledgements of E4 join them there"
+3.14.1.11,3,x,,,,,E3,deferred,E4: the brake reasons on a mode change (4.12)
+3.14.1.11.1,3,x,,,,,E3,deferred,E4: the brake reasons on a mode change (4.12)
+3.14.1.11.2,3,x,,,,,E3,deferred,E4: the brake reasons on a mode change (4.12)
+3.14.2.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
+3.14.2.3,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
+3.14.2.4,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
+3.14.2.6,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections"
+3.14.2.7,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
+3.14.3.1,3,x,,,,,E3,partial,"EVC_Brake_Commands: the permitted direction is the one of the MA; the special cases of chapter 4 (PT, RV) are E4"
+3.14.3.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"
+3.14.3.4,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections"
+3.14.3.5,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"
+3.14.3.6,3,x,,,,,E3,deferred,E4: the position ignores the telegrams while EVC_Brake_Commands watches a movement against the authorised direction
 3.15.1.3.1,3,x,,,,,E5,todo,
 3.15.1.3.1 a),3,x,,,,,E5,todo,
 3.15.1.3.1 b),3,x,,,,,E5,todo,
@@ -1112,61 +1112,61 @@ A.3.6.2.1 2nd bullet,3,x,,,,,E4,todo,
 A.3.6.2.1 3rd bullet,3,x,,,,,E4,todo,
 A.3.6.2.1 4th bullet,3,x,,,,,E4,todo,
 A.3.6.2.1 5th bullet,3,x,,,,,E4,todo,
-A.3.7.1,3,x,,,,,E3,todo,
-A.3.7.2,3,x,,,,,E3,todo,
-A.3.7.3,3,x,,,,,E3,todo,
-A.3.7.4,3,x,,,,,E3,todo,
-A.3.7.5,3,x,,,,,E3,todo,
-A.3.7.6,3,x,,,,,E3,todo,
-A.3.7.6 Table,3,x,,,,,E3,todo,
-A.3.8.1,3,x,,,,,E3,todo,
-A.3.8.2,3,x,,,,,E3,todo,
-A.3.8.3,3,x,,,,,E3,todo,
-A.3.8.4,3,x,,,,,E3,todo,
-A.3.8.5,3,x,,,,,E3,todo,
-A.3.8.6,3,x,,,,,E3,todo,
-A.3.9.1,3,x,,,,,E3,todo,
-A.3.9.2,3,x,,,,,E3,todo,
-A.3.9.3,3,x,,,,,E3,todo,
-A.3.9.4,3,x,,,,,E3,todo,
-A.3.9.5,3,x,,,,,E3,todo,
-A.3.9.6,3,x,,,,,E3,todo,
-A.3.9.8,3,x,,,,,E3,todo,
-A.3.10.2,3,x,,,,,E3,todo,
-A.3.10.2 a),3,x,,,,,E3,todo,
-A.3.10.2 b),3,x,,,,,E3,todo,
-A.3.10.3,3,x,,,,,E3,todo,
-A.3.10.4,3,x,,,,,E3,todo,
+A.3.7.1,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
+A.3.7.2,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
+A.3.7.3,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
+A.3.7.4,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
+A.3.7.5,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
+A.3.7.6,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
+A.3.7.6 Table,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
+A.3.8.1,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency (Kt_int in Build); evc_test SDM_Precision (0 .. 1500 m, every brake position)"
+A.3.8.2,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency (Kt_int in Build); evc_test SDM_Precision (0 .. 1500 m, every brake position)"
+A.3.8.3,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency (Kt_int in Build); evc_test SDM_Precision (0 .. 1500 m, every brake position)"
+A.3.8.4,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency (Kt_int in Build); evc_test SDM_Precision (0 .. 1500 m, every brake position)"
+A.3.8.5,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency (Kt_int in Build); evc_test SDM_Precision (0 .. 1500 m, every brake position)"
+A.3.8.6,3,x,,,,,E3,done,"EVC_Braking.Conversion_Emergency (Kt_int in Build); evc_test SDM_Precision (0 .. 1500 m, every brake position)"
+A.3.9.1,3,x,,,,,E3,done,EVC_Braking.Conversion_Service; evc_test SDM_Precision
+A.3.9.2,3,x,,,,,E3,done,EVC_Braking.Conversion_Service; evc_test SDM_Precision
+A.3.9.3,3,x,,,,,E3,done,EVC_Braking.Conversion_Service; evc_test SDM_Precision
+A.3.9.4,3,x,,,,,E3,done,EVC_Braking.Conversion_Service; evc_test SDM_Precision
+A.3.9.5,3,x,,,,,E3,done,EVC_Braking.Conversion_Service; evc_test SDM_Precision
+A.3.9.6,3,x,,,,,E3,done,EVC_Braking uses the reference values of A.3.9 (the maximum ones allowed)
+A.3.9.8,3,x,,,,,E3,done,EVC_Braking.Conversion_Service; evc_test SDM_Precision
+A.3.10.2,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
+A.3.10.2 a),3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
+A.3.10.2 b),3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
+A.3.10.3,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
+A.3.10.4,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
 A.3.11 Table,3,x,,,,,E1,deferred,"E4/E6: driver data entry ranges (train data, driver ID, RBC ID, SR); language widths fit"
-A.3.12.1.4,3,x,,,,,E3,todo,
-A.3.12.1.5,3,x,,,,,E3,todo,
-A.3.12.2.1,3,x,,,,,E3,todo,
-A.3.12.2.2,3,x,,,,,E3,todo,
-A.3.12.2.3,3,x,,,,,E3,todo,
-A.3.12.2.4,3,x,,,,,E3,todo,
-A.3.12.2.5,3,x,,,,,E3,todo,
-A.3.12.2.6,3,x,,,,,E3,todo,
-A.3.12.2.7,3,x,,,,,E3,todo,
-A.3.12.2.8,3,x,,,,,E3,todo,
-A.3.12.3.1,3,x,,,,,E3,todo,
-A.3.12.3.2,3,x,,,,,E3,todo,
-A.3.12.3.3,3,x,,,,,E3,todo,
-A.3.12.3.4,3,x,,,,,E3,todo,
-A.3.12.3.5,3,x,,,,,E3,todo,
-A.3.12.4.1,3,x,,,,,E3,todo,
-A.3.12.4.2,3,x,,,,,E3,todo,
-A.3.12.4.3,3,x,,,,,E3,todo,
-A.3.12.4.4,3,x,,,,,E3,todo,
-A.3.12.4.5,3,x,,,,,E3,todo,
-A.3.12.4.6,3,x,,,,,E3,todo,
-A.3.12.5.1,3,x,,,,,E3,todo,
-A.3.12.5.2,3,x,,,,,E3,todo,
-A.3.12.6.1,3,x,,,,,E3,todo,
-A.3.12.6.2,3,x,,,,,E3,todo,
-A.3.12.7.1,3,x,,,,,E3,todo,
-A.3.12.7.2,3,x,,,,,E3,todo,
-A.3.12.8.1,3,x,,,,,E3,todo,
-A.3.13.2,3,x,,,,,E3,todo,
+A.3.12.1.4,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.1.5,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.2.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.2.2,3,x,,,,,E3,done,"EVC_Curves.Extremes (minimum A_brake_safe with A_MAXREDADH under reduced adhesion, maximum A_safe raised by the rounding bound, likewise for the service brake) over the est front end .. target and the speed ranges; EVC_SDM.Reduced_Of"
+A.3.12.2.3,3,x,,,,,E3,done,"EVC_Curves.Extremes (minimum A_brake_safe with A_MAXREDADH under reduced adhesion, maximum A_safe raised by the rounding bound, likewise for the service brake) over the est front end .. target and the speed ranges; EVC_SDM.Reduced_Of"
+A.3.12.2.4,3,x,,,,,E3,done,"EVC_Curves.Extremes (minimum A_brake_safe with A_MAXREDADH under reduced adhesion, maximum A_safe raised by the rounding bound, likewise for the service brake) over the est front end .. target and the speed ranges; EVC_SDM.Reduced_Of"
+A.3.12.2.5,3,x,,,,,E3,done,"EVC_Curves.Extremes (minimum A_brake_safe with A_MAXREDADH under reduced adhesion, maximum A_safe raised by the rounding bound, likewise for the service brake) over the est front end .. target and the speed ranges; EVC_SDM.Reduced_Of"
+A.3.12.2.6,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.2.7,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.2.8,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.3.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.3.2,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.3.3,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.3.4,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.3.5,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.4.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.4.2,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.4.3,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.4.4,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.4.5,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.4.6,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.5.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.5.2,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.6.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.6.2,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.7.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.7.2,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.12.8.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
+A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time of any target, released with a new MRDT; the displayed P and SBI do not increase)"
 4.3.1.6,4,x,,,,,E4,todo,
 4.4.2.1,4,x,,,,,E4,todo,
 4.4.3.1.2,4,x,,,,,E4,todo,

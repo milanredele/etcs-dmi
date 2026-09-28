@@ -31,6 +31,14 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 | `EVC_Movement_Authority` | The level 1 MA: sections, danger point, overlap, EOA/SvL and release speed (3.8.3, 3.8.4.5), the section, End Section, overlap and LOA timers and their effects (3.8.4), the signalling related speed restriction (3.11.6), the mode profile (3.12.4). |
 | `EVC_Track_Conditions` | Track conditions of packets 68, 39 and 67, their indication (5.18) and planning orders, the areas of lost braking (3.13.2.3.4). |
 | `EVC_Stored_Information` | The third step of the cycle: the group messages of the cycle, the deletions of A.3.4, the `Snapshot_T` (MRSP, gradients, MA, braking and adhesion areas, temporary EOA), the planning and the track conditions for the DMI, the JRU records. |
+| `EVC_Fixed` | The integer arithmetic of the supervision: speeds in cm/s, squares of speeds, times in ms, divisions rounded down or up, integer square root, km/h conversions. |
+| `EVC_Braking` | The braking models of 3.13.2.2 and 3.13.6: the deceleration steps, A.3.7 (basic deceleration), A.3.8 / A.3.9 (conversion model), the correction factors (Kdry_rst, Kwet_rst, Kv_int, Kr_int, Kt_int, Kn), A_MAXREDADH, the special brakes and the combinations of Table 4; decelerations in 1e-5 m/s². |
+| `EVC_Profile` | The track under the curves (3.13.4, 3.13.5): segments of the gradient acceleration for the train length and the rotating mass, reduced adhesion and brake inhibitions, ahead of the train. |
+| `EVC_Curves` | The EBD, SBD and GUI of 3.13.8 as arcs of parabola in fixed point, rounded to the safe side; speed at a location, location of a speed, the extremes of A.3.12.2. |
+| `EVC_Limits` | The supervision limits of 3.13.9.3: the speed margins, EBI, SBI1 / SBI2, W, P, I and the permitted speed, from the curves and the times. |
+| `EVC_Build_Up` | The reduced brake build up times of A.3.12 (T_be_reduced, T_bs_reduced) in fixed point, never shorter than the formulas. |
+| `EVC_SDM` | The speed and distance monitoring of 3.13.10 and 3.13.11: the target list, the release speed (given or calculated, 3.13.9.4), CSM / TSM / RSM and their commands and statuses (Tables 5 to 16), the MRDT and the displayed values, the indication location, the service brake feedback (A.3.10), the pawl (A.3.13), the perturbation location. |
+| `EVC_Brake_Commands` | The brake command handling of 3.14: the SDM commands, the service brake failure (3.14.1.2), roll away and reverse movement protection (3.14.2, 3.14.3) with D_NVROLL and the acknowledgement at standstill; the TIU outputs (EB, SB, TCO). |
 
 The ERTMS/ETCS language (SUBSET-026 chapters 7 and 8) is in `language/`:
 
@@ -82,6 +90,21 @@ It sends MSG_PLANNING while an MA is supervised and MSG_TRACK_COND when
 the indications of 5.18 change, and records event 32 on the JRU. Level
 and mode filters (4.8), the reactions (trip, route suitability) and the
 data entry are phase E4.
+
+Phase E3 (supervision half): the fourth step of the cycle,
+`Monitor_Speed_And_Distance`, reads the snapshot of the stored
+information (`EVC_Supervision_Input.Snapshot_T`, filled by the profiles
+half) and runs `EVC_SDM.Step` and `EVC_Brake_Commands.Step`. The outputs
+are MSG_SPEED_STATE every cycle (speeds, distance to target, monitoring,
+status, release speed), the brake indication and the time to indication
+in MSG_STATUS, the TIU output (EB, SB, TCO and the reasons, see
+`EVC_Ports.TIU_Output`) when it changes and every cycle while a command
+is active, and the JRU events 20 (brake commands), 21 (supervision) and
+22 (the EOA or LOA, or the SvL, passed). Everything is in
+integers with the rounding to the safe side; `evc_test` compares the
+curves, limits, release speeds and reduced build up times with a floating
+point reference of the formulas. Tripping on an overrun, the procedures'
+brake reasons and the MA request are phases E4 and E5.
 
 Checks:
 

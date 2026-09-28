@@ -175,4 +175,63 @@ is
       Last := Header_Length + Planning_Length (P);
    end Planning_Frame;
 
+   ---------------------------------------------------------------------
+   --  Phase E3 (supervision)
+   ---------------------------------------------------------------------
+
+   -----------------------
+   -- Speed_State_Frame --
+   -----------------------
+
+   function Speed_State_Frame (S : Speed_State_T) return Speed_State_Frame_T
+   is
+     (MSG_SPEED_STATE,
+      Speed_State_Length, 0, 0, 0,    -- length u32
+      Byte (S.V_Cur and 16#FF#), Byte (Shift_Right (S.V_Cur, 8)),
+      Byte (S.V_Perm and 16#FF#), Byte (Shift_Right (S.V_Perm, 8)),
+      Byte (S.V_Target and 16#FF#), Byte (Shift_Right (S.V_Target, 8)),
+      Byte (S.V_Release and 16#FF#), Byte (Shift_Right (S.V_Release, 8)),
+      Byte (S.V_SBI and 16#FF#), Byte (Shift_Right (S.V_SBI, 8)),
+      Byte (S.V_Wsl and 16#FF#), Byte (Shift_Right (S.V_Wsl, 8)),
+      Byte (S.D_Target and 16#FF#),
+      Byte (Shift_Right (S.D_Target, 8) and 16#FF#),
+      Byte (Shift_Right (S.D_Target, 16) and 16#FF#),
+      Byte (Shift_Right (S.D_Target, 24)),
+      S.Monitoring,
+      S.Dial_Range,
+      S.Flags,
+      S.Status,
+      S.MRDT);
+
+   ------------------
+   -- Status_Frame --
+   ------------------
+
+   function Status_Frame (Geo     : Unsigned_32;
+                          Seconds : Unsigned_64;
+                          Brake   : Byte;
+                          TTI     : Unsigned_16) return Status_Frame_T
+   is
+     (MSG_STATUS,
+      Status_Length, 0, 0, 0,         -- length u32
+      Brake,                          -- brake
+      0,                              -- radio: no connection
+      0,                              -- adhesion
+      0,                              -- bmm
+      0,                              -- reversing
+      0,                              -- sm_direction
+      16#FF#, 16#FF#,                 -- set_speed: none
+      Byte (TTI and 16#FF#),          -- tti u16
+      Byte (Shift_Right (TTI, 8)),
+      14,                             -- t_disp_tti
+      0,                              -- tunnel: unknown
+      0, 0, 0, 0,                     -- tunnel_dist
+      Byte (Geo and 16#FF#),          -- geo_pos u32
+      Byte (Shift_Right (Geo, 8) and 16#FF#),
+      Byte (Shift_Right (Geo, 16) and 16#FF#),
+      Byte (Shift_Right (Geo, 24)),
+      Byte (Seconds / 3600 mod 24),   -- hour
+      Byte (Seconds / 60 mod 60),     -- minute
+      Byte (Seconds mod 60));         -- second
+
 end EVC_DMI_Port;

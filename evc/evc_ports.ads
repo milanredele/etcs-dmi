@@ -67,8 +67,10 @@
 --     status of SUBSET-034 2.5.1: signal u8 (1 cab A active, 2 cab B
 --     active: one input per cab, "cab active" is "desk open"; 3 sleeping
 --     requested [3] [14], 4 passive shunting permitted [26], 5 non
---     leading permitted [46]), value u8 (0 or 1). The active cab gives
---     the train orientation (SUBSET-026 3.6.1.5, EVC_Position).
+--     leading permitted [46]; 6 to 12, of the speed and distance
+--     monitoring, at the end of this package), value u8 (0 or 1). The
+--     active cab gives the train orientation (SUBSET-026 3.6.1.5,
+--     EVC_Position). The TIU output is at the end of this package.
 --  DMI (in and out): one frame of the DMI protocol v2
 --     (common/dmi_protocol.ads): type u8, length u32, payload. See
 --     EVC_DMI_Port for the frames the on-board accepts and sends.
@@ -88,7 +90,9 @@
 --     nominal, 1 impaired, 2 safety threshold exceeded); 8 status of the
 --     train position (u8 0 unknown, 1 valid, 2 invalid); 9 cold movement
 --     (u8 1: detected at power-up); 10 new LRBG
---     (u24 identity). Every input is rejected.
+--     (u24 identity); the events of the supervision, 20 to 22, and of
+--     the stored information, 32, at the end of this package (11 to 19
+--     and 23 to 31 are free). Every input is rejected.
 
 with EVC_Bytes;
 with EVC_DMI_Port;
@@ -212,8 +216,13 @@ is
 
    function Valid_TIU (Payload : Byte_Array) return Boolean is
      (Payload'Length = TIU_Length
-      and then Payload (Payload'First) in 1 .. 5
-      and then Payload (Payload'First + 1) <= 1);
+      and then Payload (Payload'First) in 1 .. 12
+      --  the direction controller has three positions, the brake
+      --  pressure is a number, every other signal is 0 or 1
+      and then (case Payload (Payload'First) is
+                   when 6      => Payload (Payload'First + 1) <= 2,
+                   when 12     => True,
+                   when others => Payload (Payload'First + 1) <= 1));
 
    --  True when Payload has the documented shape of an input on Port
    function Valid_Input (Port : Port_T; Payload : Byte_Array) return Boolean
@@ -267,7 +276,15 @@ is
       Cab_B_Active,
       Sleeping_Requested,
       Passive_Shunting_Permitted,
-      Non_Leading_Permitted);
+      Non_Leading_Permitted,
+      --  added by supervision (see the end of this package)
+      Direction_Controller,
+      Regenerative_Brake_Active,
+      Eddy_Current_Brake_Active,
+      Magnetic_Shoe_Brake_Active,
+      EP_Brake_Active,
+      Additional_Brake_Active,
+      Brake_Pressure);
 
    type TIU_Input_T is record
       Signal : TIU_Signal_T;
@@ -299,5 +316,61 @@ is
    ---------------------------------------------------------------------
 
    JRU_Stored_Information : constant := 32;
+
+   ---------------------------------------------------------------------
+   --  Added by supervision (phase E3, SUBSET-026 3.13 and 3.14)
+   ---------------------------------------------------------------------
+
+   --  TIU inputs 6 to 12 (SUBSET-034):
+   --     6 the direction controller of the active desk (2.5.2): value 0
+   --       neutral, 1 forward, 2 reverse; unknown until the first input
+   --       (then the roll away protection does not run, 3.14.2.1);
+   --     7 regenerative, 8 eddy current, 9 magnetic shoe, 10 Ep brake
+   --       active (the special brake status, 2.3.6), 11 additional brake
+   --       active (2.3.7): value 0 or 1, "not active" until an input;
+   --     12 the brake pressure (2.3.2, the service brake feedback of
+   --       3.13.2.2.7.3 and A.3.10): value in units of 4 kPa (0 .. 1020
+   --       kPa); unknown until the first input.
+
+   --  The raw value byte of a TIU input
+   function TIU_Value (Payload : Byte_Array) return Byte is
+     (Payload (Payload'First + 1))
+     with Pre => Valid_TIU (Payload);
+
+   --  TIU output (TIU_Output_Length bytes), the commands to the train
+   --  (SUBSET-034 2.3.3 emergency brake command EBC, 2.3.1 service brake
+   --  command SBC, 2.4.9 traction cut-off TCO): commands u8 (bit 0 EBC
+   --  "emergency brake commanded", bit 1 SBC "service brake commanded",
+   --  bit 2 TCO "cut off traction"; a bit at 0 is the other value of the
+   --  signal), reasons u8 (why the brakes are commanded: bit 0 the speed
+   --  and distance monitoring, 3.13.10; bit 1 the service brake failed,
+   --  3.14.1.2; bit 2 roll away protection, 3.14.2; bit 3 unauthorised
+   --  direction movement protection, 3.14.3; bit 4 standstill
+   --  supervision, 4.4.7.1.5). Sent when it changes and in every cycle
+   --  while a command is given; the train interface is fail safe
+   --  (EVC_Core.Enter_Failure: silence applies the emergency brake).
+   TIU_Output_Length : constant := 2;
+   TIU_EBC : constant Byte := 1;
+   TIU_SBC : constant Byte := 2;
+   TIU_TCO : constant Byte := 4;
+
+   subtype TIU_Output_T is Byte_Array (1 .. TIU_Output_Length);
+
+   function TIU_Output (Commands, Reasons : Byte) return TIU_Output_T is
+     ((1 => Commands, 2 => Reasons));
+
+   --  JRU events of the supervision (the record of the header):
+   --     20 brake commands changed: commands u8 and reasons u8 as the TIU
+   --        output has them, the supervision status u8 (Status_T'Pos);
+   --     21 speed and distance monitoring changed: monitoring u8 (0 CSM,
+   --        1 TSM, 2 RSM), status u8 (0 NoS .. 4 IntS), MRDT u8 (the
+   --        number of the most relevant displayed target);
+   --     22 overrun: u8 1 the min safe front end (level 2) or the min
+   --        safe antenna position (level 1) passed the EOA or the LOA
+   --        (3.13.10.2.6 a, 3.13.10.2.7: the trip of E4), 2 the max safe
+   --        front end passed the SvL.
+   JRU_Brake_Commands : constant := 20;
+   JRU_Supervision    : constant := 21;
+   JRU_Overrun        : constant := 22;
 
 end EVC_Ports;

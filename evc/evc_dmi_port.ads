@@ -249,4 +249,69 @@ is
      with Post => Last = Header_Length + Planning_Length (P)
                   and then Frame (1) = MSG_PLANNING;
 
+   ---------------------------------------------------------------------
+   --  Added by supervision (phase E3): MSG_SPEED_STATE, the fields of
+   --  MSG_STATUS of the speed and distance monitoring and of the brake
+   --  command handling, the driver's acknowledgement of a brake release
+   ---------------------------------------------------------------------
+
+   MSG_SPEED_STATE    : constant Byte := 16#01#;
+   Speed_State_Length : constant := 21;
+
+   --  MSG_SPEED_STATE, field by field as dmi_protocol.ads defines it:
+   --  speeds in km/h, the distance to target in m, monitoring 0 CSM / 1
+   --  TSM / 2 RSM, dial range 0 .. 3 (140 / 180 / 250 / 400 km/h), flags
+   --  (bit 0 the release speed is shown, bit 1 target information in
+   --  CSM), status 0 NoS .. 4 IntS, MRDT the number of the most relevant
+   --  displayed target
+   type Speed_State_T is record
+      V_Cur, V_Perm, V_Target, V_Release, V_SBI, V_Wsl : Unsigned_16 := 0;
+      D_Target   : Unsigned_32 := 0;
+      Monitoring : Byte := 0;
+      Dial_Range : Byte := 1;
+      Flags      : Byte := 0;
+      Status     : Byte := 0;
+      MRDT       : Byte := 0;
+   end record;
+
+   Flag_Release_Shown : constant Byte := 1;
+   Flag_CSM_Target    : constant Byte := 2;
+
+   subtype Speed_State_Frame_T is
+     Byte_Array (1 .. Header_Length + Speed_State_Length);
+
+   function Speed_State_Frame (S : Speed_State_T) return Speed_State_Frame_T
+     with Post => Speed_State_Frame'Result (1) = MSG_SPEED_STATE;
+
+   --  MSG_STATUS brake: 0 none, 1 the on-board commands a brake (DMI
+   --  8.2.2.3.x, ST01), 2 and asks the driver to acknowledge its release
+   --  (SUBSET-026 3.14.1.9)
+   Brake_None    : constant Byte := 0;
+   Brake_Applied : constant Byte := 1;
+   Brake_Ack     : constant Byte := 2;
+
+   --  No time to Indication (tti)
+   TTI_None : constant Unsigned_16 := 16#FFFF#;
+
+   --  MSG_STATUS with the brake indication and the time to Indication
+   --  (tenths of a second) of the supervision; the other fields as
+   --  Status_Frame
+   function Status_Frame (Geo     : Unsigned_32;
+                          Seconds : Unsigned_64;
+                          Brake   : Byte;
+                          TTI     : Unsigned_16) return Status_Frame_T
+     with Post => Status_Frame'Result (1) = MSG_STATUS;
+
+   --  The acknowledgement kind of a brake release (DMI_Ack, the arg of
+   --  MSG_DRIVER_ACTION 2)
+   Ack_Brake_Release : constant := 5;
+
+   --  A valid MSG_DRIVER_ACTION that acknowledges a brake release
+   function Is_Brake_Release_Ack (Frame : Byte_Array) return Boolean is
+     (Frame'Length = Header_Length + Driver_Ack_Length
+      and then Frame (Frame'First) = MSG_DRIVER_ACTION
+      and then Frame (Frame'First + Header_Length) = Action_Ack
+      and then Get_U16 (Frame, Frame'First + Header_Length + 1)
+                 = Ack_Brake_Release);
+
 end EVC_DMI_Port;

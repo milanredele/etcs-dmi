@@ -17,10 +17,21 @@
 --  Besides, after every step the outputs must be whole records and the
 --  mode must follow the contracts of EVC_Core (a violation is counted).
 --
---  Then (phase E3) a train runs over balise groups whose telegrams carry
---  plausible and random packets of the stored information (SSP,
---  gradients, MA, TSR, track conditions, national values...); every
---  cycle the snapshot must hold what EVC_Stored_Information proves.
+--  Then (phase E3, stored information) a train runs over balise groups
+--  whose telegrams carry plausible and random packets of the stored
+--  information (SSP, gradients, MA, TSR, track conditions, national
+--  values...); every cycle the snapshot must hold what
+--  EVC_Stored_Information proves.
+--  Phase E3, supervision: now and then a random snapshot of the stored
+--  information (EVC_Core.Set_Snapshot_For_Test): profiles of random
+--  sizes and orders, random train data, national values, MA, areas and
+--  train state; the train then moves a little every cycle. After every
+--  cycle the supervision must be consistent with its limits: no
+--  Intervention status without a brake command, no release speed
+--  monitoring without a release speed, the displayed speeds ordered (P
+--  <= W <= SBI), the emergency brake of the speed and distance
+--  monitoring on the train interface, and above the ceiling EBI in CSM
+--  the emergency brake.
 --
 --  Usage:  obj/evc_fuzz [steps [seed]]      default 1000000 steps, seed 1
 --  Exit status 1 when anything raised or a check was violated.
@@ -40,15 +51,18 @@ with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Variables;
+with EVC_Brake_Commands;
 with EVC_Core;
-with EVC_DMI_Port;
-with EVC_Modes;    use EVC_Modes;
 with EVC_Distances;
+with EVC_DMI_Port;
+with EVC_Limits;
+with EVC_Modes;    use EVC_Modes;
 with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
 with EVC_Position;
 with EVC_Received;
 with EVC_Profiles;
+with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
 with Interfaces;   use Interfaces;
@@ -565,6 +579,254 @@ procedure EVC_Fuzz is
       return True;
    end Whole_Records;
 
+   ---------------------------------------------------------------------
+   --  Random snapshots of the stored information (phase E3)
+   ---------------------------------------------------------------------
+
+   package SI renames EVC_Supervision_Input;
+   use type EVC_Distances.Cm_T;
+   use type EVC_SDM.Monitoring_T;
+   use type EVC_SDM.Status_T;
+
+   Snapshot     : SI.Snapshot_T;
+   Snapshot_Set : Boolean := False;
+   Snapshots    : Natural := 0;
+   Supervised   : Natural := 0;
+
+   function Pick_Cm (Low, High : Integer) return EVC_Distances.Cm_T is
+     (EVC_Distances.Cm_T (Low) + EVC_Distances.Cm_T (Next mod Unsigned_32
+                                                     (High - Low + 1)));
+
+   function Random_Curve return SI.Decel_Curve_T is
+      C : SI.Decel_Curve_T;
+      V : Natural := 0;
+   begin
+      C.Count := Pick (0, SI.Max_Curve_Steps);
+      for K in 1 .. C.Count loop
+         V := (if Chance (90) then Natural'Min (V + Pick (0, 3_000), 30_000)
+               else Pick (0, 30_000));
+         C.Steps (K) := (Speed => V, Decel => Pick (0, 3_000));
+      end loop;
+      return C;
+   end Random_Curve;
+
+   function Random_Kv return SI.Kv_Set_T is
+      K : SI.Kv_Set_T;
+      V : Natural := 0;
+   begin
+      K.Count := (if Chance (50) then 0 else Pick (1, SI.Max_Kv_Steps));
+      for I in 1 .. K.Count loop
+         K.Steps (I) := (Speed => V, Factor => Pick (0, 2_000));
+         V := Natural'Min (V + Pick (0, 4_000), 30_000);
+      end loop;
+      return K;
+   end Random_Kv;
+
+   procedure Random_Snapshot is
+      S     : SI.Snapshot_T;
+      Big   : constant Boolean := Chance (3);
+      X     : EVC_Distances.Cm_T;
+      Speed : Natural;
+   begin
+      S.Supervise := Chance (85);
+      S.Mode_Speed :=
+        (if Chance (15) then Pick (0, SI.No_Speed_Limit)
+         else SI.No_Speed_Limit);
+      X := Pick_Cm (-1_000_000, 1_000_000);
+      Speed := (if Chance (20) then 0 else Pick (0, 8_000));
+      S.Train :=
+        (Position_Valid   => Chance (92),
+         Ahead            => (if Chance (80) then EVC_Distances.Plus
+                              else EVC_Distances.Minus),
+         Est_Front        => X,
+         Max_Safe_Front   => X + Pick_Cm (0, 5_000),
+         Min_Safe_Front   => X - Pick_Cm (0, 5_000),
+         Speed            => Speed,
+         Speed_Max        => Natural'Min (Speed + Pick (0, 300), 30_000),
+         Standstill       => Speed = 0,
+         Moving_Ahead     => Speed > 0 and then Chance (90),
+         Moving_Backwards => Chance (5));
+      S.Train_Data.Length := Pick_Cm (0, 200_000);
+      S.Train_Data.Max_Speed := Pick (0, 30_000);
+      S.Train_Data.Model := (if Chance (60) then SI.Lambda else SI.Gamma);
+      S.Train_Data.Brake_Percentage := Pick (0, 250);
+      S.Train_Data.Brake_Position :=
+        SI.Brake_Position_T'Val (Pick (0, 2));
+      S.Train_Data.A_Brake_Emergency := Random_Curve;
+      S.Train_Data.A_Brake_Service := Random_Curve;
+      S.Train_Data.A_Brake_Normal := Random_Curve;
+      S.Train_Data.T_Brake_Emergency := Pick (0, 60_000);
+      S.Train_Data.T_Brake_Service := Pick (0, 60_000);
+      S.Train_Data.T_Traction_Cut_Off := Pick (0, 10_000);
+      S.Train_Data.Has_Regenerative := Chance (30);
+      S.Train_Data.Has_Eddy_Current := Chance (20);
+      S.Train_Data.Has_Magnetic_Shoe := Chance (20);
+      S.Train_Data.Has_Electro_Pneumatic := Chance (20);
+
+      S.National.M_NVEBCL := Pick (0, 9);
+      S.National.Q_NVGUIPERM := Chance (30);
+      S.National.Q_NVSBTSMPERM := Chance (80);
+      S.National.Q_NVEMRRLS := Chance (50);
+      S.National.Q_NVSBFBPERM := Chance (30);
+      S.National.Q_NVINHSMICPERM := Chance (20);
+      S.National.D_NVROLL := Pick_Cm (0, 1_000);
+      S.National.M_NVAVADH := Pick (0, 1_000);
+      S.National.A_NVMAXREDADH1 := Pick (0, 3_000);
+      S.National.A_NVMAXREDADH2 := Pick (0, 3_000);
+      S.National.A_NVMAXREDADH3 := Pick (0, 3_000);
+      S.National.Kv_Int_Fresh := Random_Kv;
+      S.National.Kv_Int_Passenger := Random_Kv;
+      S.National.Kt_Int := Pick (0, 2_000);
+      S.National.Kr_Int.Count := Pick (0, 2);
+      for I in 1 .. S.National.Kr_Int.Count loop
+         S.National.Kr_Int.Steps (I) :=
+           (Length => Pick_Cm (0, 100_000), Factor => Pick (0, 2_000));
+      end loop;
+
+      --  the MRSP: mostly a few elements in order, now and then many or
+      --  out of order
+      S.MRSP.Count := (if Big then Pick (0, SI.Max_Speed_Segments)
+                       else Pick (0, 8));
+      declare
+         Start : EVC_Distances.Cm_T := X - Pick_Cm (0, 500_000);
+      begin
+         for K in 1 .. S.MRSP.Count loop
+            S.MRSP.Segments (K) :=
+              (Start => Start, Speed => Pick (0, 10_000));
+            Start := (if Chance (95) then Start + Pick_Cm (1, 300_000)
+                      else Pick_Cm (-2_000_000, 2_000_000));
+         end loop;
+      end;
+      S.Gradients.Count := (if Big then Pick (0, SI.Max_Gradient_Segments)
+                            else Pick (0, 6));
+      declare
+         Start : EVC_Distances.Cm_T := X - Pick_Cm (0, 500_000);
+      begin
+         for K in 1 .. S.Gradients.Count loop
+            S.Gradients.Segments (K) :=
+              (Start => Start, Gradient => Pick (0, 510) - 255);
+            Start := Start + Pick_Cm (1, 300_000);
+         end loop;
+      end;
+      if Chance (70) then
+         declare
+            EOA : constant EVC_Distances.Cm_T :=
+              X + Pick_Cm (-100_000, 2_000_000);
+         begin
+            S.MA :=
+              (Present       => True,
+               EOA           => EOA,
+               SvL           => (if Chance (90) then EOA + Pick_Cm (0, 50_000)
+                                 else EOA - Pick_Cm (0, 50_000)),
+               LOA_Speed     => (if Chance (20) then Pick (0, 8_000) else 0),
+               Release_Speed =>
+                 (Kind  => SI.Release_Speed_Kind_T'Val (Pick (0, 2)),
+                  Speed => Pick (0, 3_000)));
+         end;
+      end if;
+      S.Inhibitions.Count := Pick (0, (if Big then 32 else 3));
+      for K in 1 .. S.Inhibitions.Count loop
+         S.Inhibitions.Areas (K) :=
+           (Kind   => SI.Brake_Inhibition_T'Val (Pick (0, 3)),
+            Start  => X + Pick_Cm (-100_000, 1_000_000),
+            Finish => X + Pick_Cm (-100_000, 1_000_000));
+      end loop;
+      S.Adhesion.Count := Pick (0, (if Big then 32 else 2));
+      for K in 1 .. S.Adhesion.Count loop
+         S.Adhesion.Areas (K) :=
+           (Start  => X + Pick_Cm (-100_000, 1_000_000),
+            Finish => X + Pick_Cm (-100_000, 1_000_000));
+      end loop;
+      S.Adhesion.Driver_Slippery := Chance (10);
+
+      S.Extra.Config.Service_Brake_Command := Chance (85);
+      S.Extra.Config.Service_Brake_Feedback := Chance (30);
+      S.Extra.Config.Feedback_From_Cylinder := Chance (30);
+      S.Extra.Config.K1_Milli := Pick (1_000, 5_000);
+      S.Extra.Config.Traction_Cut_Off := Chance (70);
+      for B in SI.Special_Brake_T loop
+         S.Extra.Config.Special_Brakes (B) :=
+           SI.Special_Brake_Interface_T'Val (Pick (0, 3));
+      end loop;
+      S.Extra.Config.Additional_Brake_Allowed := Chance (30);
+      S.Extra.Train.T_Brake_Emergency_React := Pick (0, 20_000);
+      S.Extra.Train.T_Brake_Service_React := Pick (0, 20_000);
+      S.Extra.Train.Kn_Plus := Random_Curve;
+      S.Extra.Train.Kn_Minus := Random_Curve;
+      S.Extra.Train.Normal_Service_P (Pick (0, 2)) := Random_Curve;
+      S.Extra.Train.M_Rotating_Nom := (if Chance (50) then 0
+                                       else Pick (0, 100));
+      S.Extra.Train.By_Combination := Chance (20);
+      for C in SI.Brake_Combination_T loop
+         S.Extra.Train.A_Emergency_Combination (C) := Random_Curve;
+         S.Extra.Train.A_Service_Combination (C) := Random_Curve;
+      end loop;
+      S.Extra.National.Redadh_Use (Pick (1, 3)) :=
+        SI.Redadh_Use_T'Val (Pick (0, 3));
+      S.Extra.National.A_NVP12 := Pick (0, 3_000);
+      S.Extra.National.A_NVP23 := Pick (0, 3_000);
+      S.Extra.National.Kv_Int_Passenger_B := Random_Kv;
+      S.Extra.Trip_Margin := Pick_Cm (0, 10_000);
+      S.Extra.T_MAR := (if Chance (30) then Pick (0, 60_000) else 0);
+      S.Extra.SR_Distance := Chance (10);
+      S.Extra.SR_End := X + Pick_Cm (-10_000, 500_000);
+      Snapshot := S;
+      Snapshot_Set := True;
+      Snapshots := Snapshots + 1;
+   end Random_Snapshot;
+
+   --  The train of the snapshot runs on for a cycle
+   procedure Move_On is
+      T : SI.Train_State_T renames Snapshot.Train;
+      Dv : constant Integer := Pick (0, 60) - 30;
+      V  : constant Natural :=
+        Natural'Max (Natural'Min (T.Speed + Dv, 30_000), 0);
+      D  : constant EVC_Distances.Cm_T := EVC_Distances.Cm_T (V / 10);
+   begin
+      T.Speed := V;
+      T.Speed_Max := Natural'Min (V + Pick (0, 100), 30_000);
+      T.Standstill := V = 0;
+      T.Moving_Ahead := V > 0;
+      T.Est_Front := EVC_Distances.Clamp (T.Est_Front + D);
+      T.Max_Safe_Front := EVC_Distances.Clamp (T.Max_Safe_Front + D);
+      T.Min_Safe_Front := EVC_Distances.Clamp (T.Min_Safe_Front + D);
+   end Move_On;
+
+   --  The supervision after a cycle, against its limits
+   procedure Check_Supervision (Step : Natural) is
+      R : constant EVC_SDM.Result_T := EVC_Core.Supervision;
+      B : constant EVC_Brake_Commands.Commands_T :=
+        EVC_Core.Brake_Commands;
+   begin
+      if R.Active then
+         Supervised := Supervised + 1;
+      end if;
+      if R.Status = EVC_SDM.IntS and then not (R.SB or else R.EB) then
+         Violation ("Intervention without a brake command", Step);
+      end if;
+      if R.Monitoring = EVC_SDM.RSM and then not R.Release_Exists then
+         Violation ("release speed monitoring without a release speed",
+                    Step);
+      end if;
+      if R.V_Perm > R.V_Warning or else R.V_Warning > R.V_SBI then
+         Violation ("displayed speeds not ordered", Step);
+      end if;
+      if (R.EB and then not B.EB) or else (R.SB and then not B.SB) then
+         Violation ("a command of the supervision not on the TIU", Step);
+      end if;
+      if R.Active and then R.Monitoring = EVC_SDM.CSM
+        and then R.V_Est
+                 > R.V_MRSP + EVC_Limits.Margin (EVC_Limits.EBI, R.V_MRSP)
+        and then not B.EB
+      then
+         Violation ("above the ceiling EBI without the emergency brake",
+                    Step);
+      end if;
+      if R.EB_Triggered and then not R.EB then
+         Violation ("an emergency brake trigger without the command", Step);
+      end if;
+   end Check_Supervision;
+
    --  The events of the position seen, by kind
    type Kind_Counts is array (EVC_Position.Event_Kind_T) of Natural;
    Position_Events : Kind_Counts := (others => 0);
@@ -665,7 +927,6 @@ procedure EVC_Fuzz is
    end Plausible;
 
    procedure E3_Phase (Runs : Natural) is
-      use type EVC_Distances.Cm_T;
       Odo_D   : Unsigned_32 := 0;
       Over    : Unsigned_32 := 0;
       Under   : Unsigned_32 := 0;
@@ -891,7 +1152,24 @@ begin
          end;
       end loop;
 
-      --  2. one cycle, mostly of 100 ms; sometimes none, sometimes huge
+      --  2. the stored information: now and then a new random snapshot,
+      --  the train of the last one moving on
+      if Chance (2) then
+         Random_Snapshot;
+      elsif Snapshot_Set then
+         Move_On;
+      end if;
+      if Snapshot_Set then
+         begin
+            EVC_Core.Set_Snapshot_For_Test (Snapshot);
+         exception
+            when E : others =>
+               Report ("Set_Snapshot_For_Test", E, Step);
+               Contain_And_Restart (Step);
+         end;
+      end if;
+
+      --  3. one cycle, mostly of 100 ms; sometimes none, sometimes huge
       declare
          Mode_Before : constant Mode_T := EVC_Core.Mode;
          Isolation   : constant Boolean := EVC_Core.Isolation_Requested;
@@ -928,18 +1206,15 @@ begin
                      Position_Events (K) := Position_Events (K) + 1;
                   end;
                end loop;
-               declare
-                  use type EVC_Distances.Cm_T;
-               begin
-                  if EVC_Position.Min_Safe_Front
-                       > EVC_Position.Estimated_Front
-                    or else EVC_Position.Max_Safe_Front
-                              < EVC_Position.Estimated_Front
-                  then
-                     Violation ("confidence interval not around the "
-                                & "estimated front end", Step);
-                  end if;
-               end;
+               if EVC_Position.Min_Safe_Front
+                    > EVC_Position.Estimated_Front
+                 or else EVC_Position.Max_Safe_Front
+                           < EVC_Position.Estimated_Front
+               then
+                  Violation ("confidence interval not around the "
+                             & "estimated front end", Step);
+               end if;
+               Check_Supervision (Step);
             end if;
          end if;
       exception
@@ -948,7 +1223,7 @@ begin
             Contain_And_Restart (Step);
       end;
 
-      --  3. the outputs, into a buffer of random size and index; now
+      --  4. the outputs, into a buffer of random size and index; now
       --     and then nobody takes them for a while
       if Chance (80) then
          declare
@@ -975,7 +1250,7 @@ begin
          end;
       end if;
 
-      --  4. rarely: an internal failure, and later the restart
+      --  5. rarely: an internal failure, and later the restart
       if Chance (1) and then Chance (10) then
          begin
             if EVC_Core.Failed then
@@ -1018,6 +1293,8 @@ begin
              & Natural'Image (EVC_Received.Message_Count
                                 (ETCS_Message.Accepted))
              & "  packets decoded:" & Natural'Image (Checked)
+             & "  snapshots:" & Natural'Image (Snapshots)
+             & "  cycles supervised:" & Natural'Image (Supervised)
              & "  violations:" & Natural'Image (Violations)
              & "  raised:" & Natural'Image (Raised)
              & "  distinct sites:" & Natural'Image (Site_Count));
