@@ -22,6 +22,15 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 | `EVC_Linking` | The linking information of packet 5 as a chain of cumulated distances (3.4.4, 3.6.3.2.6). |
 | `EVC_Location` | Reference balise groups as anchors in the odometer frame, the confidence interval against them (3.6.4.1), location items and their relocation to the SOLR (3.6.4.2.5). |
 | `EVC_Position` | The train position: orientation from the cab status, LRBG, SOLR, ORBGs, expectation windows and linking reactions, geographical position, the content of the position report and its triggers; the events for the JRU and the later phases. |
+| `EVC_Supervision_Input` | The boundary of the two halves of phase E3: `Snapshot_T`, what the speed and distance monitoring reads each cycle (types only). |
+| `EVC_Origins` | The origins of the stored location based information: per group message its location reference as the three location items of Table 2a, relocated by `EVC_Position` with its own items (3.6.4.2.5). |
+| `EVC_Profiles` | Locations of the stored information as offsets from an origin; stores of elements with replacement (3.7.3.1), deletion in rear (A.3.1) and coverage (3.7.2.3); the lower envelope of elements, proved sorted and never above any element (the MRSP of 3.13.7, the gradient profile). |
+| `EVC_Train_Data` | The Train Data the stored information and the supervision use, with a documented default train (entry from the DMI: phase E4). |
+| `EVC_National_Values` | Packet 3 in on-board units, applicable now or at D_VALIDNV, the countries of 3.18.2, the defaults of A.3.2. |
+| `EVC_Track_Description` | SSP with the train categories, gradients, ASP, TSR and their revocation, default gradient for TSR, level crossings, adhesion, route suitability (3.7.3, 3.11, 3.12.2, 3.12.5). |
+| `EVC_Movement_Authority` | The level 1 MA: sections, danger point, overlap, EOA/SvL and release speed (3.8.3, 3.8.4.5), the section, End Section, overlap and LOA timers and their effects (3.8.4), the signalling related speed restriction (3.11.6), the mode profile (3.12.4). |
+| `EVC_Track_Conditions` | Track conditions of packets 68, 39 and 67, their indication (5.18) and planning orders, the areas of lost braking (3.13.2.3.4). |
+| `EVC_Stored_Information` | The third step of the cycle: the group messages of the cycle, the deletions of A.3.4, the `Snapshot_T` (MRSP, gradients, MA, braking and adhesion areas, temporary EOA), the planning and the track conditions for the DMI, the JRU records. |
 
 The ERTMS/ETCS language (SUBSET-026 chapters 7 and 8) is in `language/`:
 
@@ -60,6 +69,19 @@ orientation and computes the geographical position (MSG_STATUS to the
 DMI). It detects and reports (queries, JRU events 4 to 10): reacting on a
 linking error, an impaired odometer or a cold movement is phases E3 and E4,
 sending the position report E5.
+Phase E3, stored information (`e3/profiles`): the third step of the
+cycle takes the balise groups the position took into account, converts
+their location based information into offsets from an origin that
+relocation moves (3.6.4.2), stores it with the replacement rules of 3.7.3,
+runs the timers of the MA of level 1 (3.8.4) and the deletions they ask
+(A.3.4), and builds the `Snapshot_T` for the supervision: the MRSP of
+3.13.7 (proved sorted and never above any of its sources), the gradient
+profile, the MA with its EOA, SvL (never before the EOA) and release
+speed, the braking and adhesion areas, national values and Train Data.
+It sends MSG_PLANNING while an MA is supervised and MSG_TRACK_COND when
+the indications of 5.18 change, and records event 32 on the JRU. Level
+and mode filters (4.8), the reactions (trip, route suitability) and the
+data entry are phase E4.
 
 Checks:
 

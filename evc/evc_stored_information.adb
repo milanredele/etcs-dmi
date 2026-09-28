@@ -21,7 +21,6 @@ with ETCS_Track_Packets.P88;
 with ETCS_Track_Packets.P141;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_Location;           use EVC_Location;
-with EVC_Ports;
 
 package body EVC_Stored_Information
   with SPARK_Mode => On,
@@ -273,11 +272,14 @@ is
                X : ETCS_Track_Packets.P3.Packet_T;
             begin
                ETCS_Track_Packets.P3.Decode (R, X, OK);
-               if OK and then X.Q_SCALE <= 2 then
-                  --  3.18.2.3: now, or at D_VALIDNV ("estimated" item)
+               --  3.18.2.3: now, or at D_VALIDNV ("estimated" item),
+               --  which needs the origin of the message
+               if OK and then X.Q_SCALE <= 2
+                 and then (X.D_VALIDNV = 32_767 or else M.Origin /= 0)
+               then
                   EVC_National_Values.Receive
                     (X,
-                     Immediate   => X.D_VALIDNV = 32_767 or else M.Origin = 0,
+                     Immediate   => X.D_VALIDNV = 32_767,
                      At_Location =>
                        At_Offset (M, Scaled (Natural (X.D_VALIDNV),
                                              Natural (X.Q_SCALE))));

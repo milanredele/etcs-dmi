@@ -56,6 +56,7 @@ with EVC_Movement_Authority;
 with EVC_National_Values;
 with EVC_Odometry;
 with EVC_Origins;
+with EVC_Ports;
 with EVC_Position;
 with EVC_Profiles;           use EVC_Profiles;
 with EVC_Supervision_Input;  use EVC_Supervision_Input;
@@ -74,7 +75,7 @@ is
    --  Juridical recording (EVC_Ports: event 32, stored information)
    ---------------------------------------------------------------------
 
-   JRU_Event : constant := 32;
+   JRU_Event : constant := EVC_Ports.JRU_Stored_Information;
 
    --  The information (byte 2 of the record)
    Info_National_Values   : constant := 1;
