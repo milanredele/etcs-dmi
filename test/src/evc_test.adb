@@ -126,6 +126,10 @@ with EVC_Train_Data;
 with General_Parameters;
 with GNAT.SHA256;
 with Interfaces;   use Interfaces;
+with Sim_JRU;
+with Sim_Onboard_Env;
+with Sim_Trackside;
+with Sim_Vehicle;
 with Test_Support;
 
 procedure EVC_Test is
@@ -7783,6 +7787,141 @@ procedure EVC_Test is
                 & Img_LF (Worst) & " ms longer (never shorter)");
    end Scenario_SDM_Build_Up;
 
+   ---------------------------------------------------------------------
+   --  The bench: the on-board in the environment of sim/ (Sim_Onboard_Env)
+   --  that onboard.wasm and obj/evc_onboard run. The first Bench_Cycles
+   --  cycles are the scenario of test/wasm/onboard_smoke.js: the digest of
+   --  the on-board's DMI frames is the golden bench_onboard, which the
+   --  wasm build must reproduce byte for byte. Then the mission goes on to
+   --  its end, and what the on-board did on the way is checked and
+   --  printed.
+   ---------------------------------------------------------------------
+
+   Bench_Cycles : constant := 600;
+
+   procedure Scenario_Bench_Onboard is
+      package Env renames Sim_Onboard_Env;
+
+      Frames : Stream_Element_Array (1 .. 16_384);
+      Last   : Stream_Element_Offset;
+      Ctx    : GNAT.SHA256.Context := GNAT.SHA256.Initial_Context;
+      Bytes  : Natural := 0;
+      Trace  : constant Boolean :=
+        Ada.Environment_Variables.Exists ("BENCH_TRACE");
+
+      --  where things happened (m of the front end)
+      Never : constant Integer := Integer'First;
+      Supervised_At, TSM_At, RSM_At, SB_At, EB_At : Integer := Never;
+      Acks, Acks_Supervised : Natural := 0;
+      Max_Kmh : Natural := 0;
+      Last_Mon, Last_Cmd, Last_Brake : Natural := 99;
+
+      procedure Note (Where : in out Integer; Now : Boolean) is
+      begin
+         if Now and then Where = Never then
+            Where := Env.Position_M;
+         end if;
+      end Note;
+
+      procedure Cycle (Digest : Boolean) is
+         Cmd : constant Natural := Natural (Sim_Vehicle.Commands);
+      begin
+         Env.Step (100);
+         Env.Take_DMI (Frames, Last);
+         if Digest then
+            GNAT.SHA256.Update (Ctx, Frames (Frames'First .. Last));
+            Bytes := Bytes + Natural (Last - Frames'First + 1);
+         end if;
+         if Env.V_Perm_KMH > 0 then
+            Note (Supervised_At, True);
+            Note (TSM_At, Env.Monitoring = 1);
+            Note (RSM_At, Env.Monitoring = 2);
+            Note (SB_At, (Sim_Vehicle.Commands and EVC_Ports.TIU_SBC) /= 0);
+            Note (EB_At, (Sim_Vehicle.Commands and EVC_Ports.TIU_EBC) /= 0);
+         end if;
+         Max_Kmh := Natural'Max (Max_Kmh, Env.Speed_KMH);
+         if Trace and then (Env.Monitoring /= Last_Mon
+                            or else Cmd /= Last_Cmd
+                            or else Env.Brake_Indication /= Last_Brake)
+         then
+            Put_Line ("  bench t" & Img (Natural (EVC_Core.Time_Ms / 100))
+                      & " x" & Integer'Image (Env.Position_M)
+                      & " v" & Img (Env.Speed_KMH)
+                      & " vperm" & Img (Env.V_Perm_KMH)
+                      & " mon" & Img (Env.Monitoring)
+                      & " st" & Img (Env.Status)
+                      & " tiu" & Img (Cmd)
+                      & " brake" & Img (Env.Brake_Indication));
+         end if;
+         Last_Mon := Env.Monitoring;
+         Last_Cmd := Cmd;
+         Last_Brake := Env.Brake_Indication;
+         if Env.Ack_Requested then
+            Env.Receive (Env.Brake_Release_Ack);
+            Acks := Acks + 1;
+            if Env.V_Perm_KMH > 0 then
+               Acks_Supervised := Acks_Supervised + 1;
+            end if;
+         end if;
+      end Cycle;
+
+      Stopped_At : Integer := Never;
+      function Img_M (M : Integer) return String is
+        (if M = Never then " never" else Integer'Image (M) & " m");
+   begin
+      Env.Reset;
+      Check (Sim_Trackside.Built_OK,
+             "bench: every telegram of the line encoded");
+      Env.Set_Desk (0, Auto => True);
+      for I in 1 .. Bench_Cycles loop
+         Cycle (Digest => True);
+      end loop;
+      Check_Digest ("bench_onboard", GNAT.SHA256.Digest (Ctx));
+      Put_Line ("  bench:" & Img (Bench_Cycles) & " cycles," & Img (Bytes)
+                & " bytes of DMI frames, the train at"
+                & Integer'Image (Env.Position_M) & " m,"
+                & Img (Env.Speed_KMH) & " km/h");
+      Check (EVC_Position.LRBG.Valid and then Env.V_Perm_KMH > 0,
+             "bench: the first group read, its MA supervised");
+
+      --  the rest of the mission, to the stop in front of the EOA
+      for I in 1 .. 6_000 loop
+         Cycle (Digest => False);
+         if RSM_At /= Never and then Env.Speed_KMH = 0 then
+            Stopped_At := Env.Position_M;
+            exit;
+         end if;
+      end loop;
+      Put_Line ("  bench: the MA supervised from" & Img_M (Supervised_At)
+                & ", TSM at" & Img_M (TSM_At)
+                & ", RSM at" & Img_M (RSM_At)
+                & ", stopped at" & Img_M (Stopped_At)
+                & " (EOA" & Integer'Image (EVC_Track.EOA_M)
+                & " m); service brake" & Img_M (SB_At)
+                & ", emergency brake" & Img_M (EB_At)
+                & " under the MA; top speed" & Img (Max_Kmh) & " km/h;"
+                & Img (Acks) & " brake releases acknowledged;"
+                & Img (Env.Balises_Read) & " balises;"
+                & Img (Sim_JRU.Count) & " JRU records");
+      Check (Env.Balises_Read = Sim_Trackside.Balise_Count
+             and then Sim_JRU.Count_Of (2) = Sim_Trackside.Balise_Count,
+             "bench: every balise of the line read and its telegram "
+             & "accepted");
+      Check (RSM_At /= Never and then Stopped_At /= Never
+             and then Stopped_At <= EVC_Track.EOA_M,
+             "bench: the train stops in front of the EOA in RSM");
+      Check (Acks >= 1 and then Acks_Supervised = 0,
+             "bench: moving in Stand By without an MA the standstill "
+             & "supervision brakes (4.4.7.1.5), released at standstill "
+             & "with the driver's acknowledgement (3.14.1.5)");
+      Check (SB_At = Never and then EB_At = Never,
+             "bench: the automatic driver keeps below the on-board's "
+             & "permitted speed, no intervention under the MA");
+      Check (not Env.Failed and then Env.Dropped_DMI = 0
+             and then Sim_JRU.Malformed = 0,
+             "bench: no failure, no DMI frame lost, JRU records whole");
+   end Scenario_Bench_Onboard;
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -7852,6 +7991,7 @@ begin
    Scenario_SDM_Seams;
    Scenario_SDM_Mission;
    Scenario_SDM_Build_Up;
+   Scenario_Bench_Onboard;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));
