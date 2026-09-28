@@ -2020,15 +2020,15 @@ A.3.13.2,3,x,,,,,E3,todo,
 6.6.5.6.3 Table-footnote [2],6,x,,,,,E7,deferred,E7
 7.3.2.7,7,x,x,,,,E1,done,"ETCS_Variables.To_D_REF/Code, two's complement (proved AoRTE); no negative D_REF scenario"
 7.3.2.10,7,x,x,,,,E1,done,"ETCS_Bits Reader/Writer, MSB first (proved); evc_test telegram"
-7.3.3.4,7,x,,,,,E1,partial,"unknown NID_PACKET indexed and counted, not rejected; the 3.17.3.11 Y-exception decision is E6"
+7.3.3.4,7,x,,,,,E1,deferred,"structure done; unknown NID_PACKET indexed and counted (Unknown), its consistency by the operated version in E6 (3.17.3.11)"
 7.4.2.0,7,x,x,,,,E1,done,"ETCS_Track_Packets.P0, no L_PACKET (7.3.3.5) in ETCS_Packet_Index.Scan; evc_test telegram"
 7.4.2.1,7,x,x,,,,E1,done,"ETCS_Track_Packets.P2; evc_test packet_round_trips, evc_test telegram"
 7.4.2.1.1,7,x,x,,,,E1,done,ETCS_Track_Packets.P3; evc_test packet_round_trips
 7.4.2.2,7,x,x,,,,E1,done,"ETCS_Track_Packets.P5; evc_test packet_round_trips, evc_test telegram"
 7.4.2.2.1,7,x,x,,,,E1,done,ETCS_Track_Packets.P6; evc_test packet_round_trips
 7.4.2.3,7,x,x,,,,E1,done,ETCS_Track_Packets.P12; evc_test packet_round_trips
-7.4.2.3.1,7,x,x,,,,E1,partial,ETCS_Track_Packets.P13 (evc_test packet_round_trips); loop-only packet accepted in a telegram (E1)
-7.4.2.4,7,x,x,,,,E1,partial,ETCS_Track_Packets.P15 (evc_test packet_round_trips); RBC-only packet accepted in a telegram (E1)
+7.4.2.3.1,7,x,x,,,,E1,done,"ETCS_Track_Packets.P13 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
+7.4.2.4,7,x,x,,,,E1,done,"ETCS_Track_Packets.P15 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
 7.4.2.5,7,x,x,,,,E1,done,ETCS_Track_Packets.P16; evc_test packet_round_trips
 7.4.2.6,7,x,x,,,,E1,done,"ETCS_Track_Packets.P21; evc_test packet_round_trips, evc_test telegram"
 7.4.2.7,7,x,x,,,,E1,done,ETCS_Track_Packets.P27; evc_test packet_round_trips
@@ -2044,10 +2044,10 @@ A.3.13.2,3,x,,,,,E3,todo,
 7.4.2.12,7,x,x,,,,E1,done,ETCS_Track_Packets.P49; evc_test packet_round_trips
 7.4.2.13,7,x,x,,,,E1,done,ETCS_Track_Packets.P51; evc_test packet_round_trips
 7.4.2.13.1,7,x,x,,,,E1,done,ETCS_Track_Packets.P52; evc_test packet_round_trips
-7.4.2.14,7,x,x,,,,E1,partial,ETCS_Track_Packets.P57 (evc_test packet_round_trips); RBC-only packet accepted in a telegram (E1)
-7.4.2.15,7,x,x,,,,E1,partial,ETCS_Track_Packets.P58 (evc_test packet_round_trips); RBC-only packet accepted in a telegram (E1)
-7.4.2.16,7,x,x,,,,E1,partial,ETCS_Track_Packets.P63 (evc_test packet_round_trips); RBC-only packet accepted in a telegram (E1)
-7.4.2.16.1,7,x,x,,,,E1,partial,ETCS_Track_Packets.P64 (evc_test packet_round_trips); RBC-only packet accepted in a telegram (E1)
+7.4.2.14,7,x,x,,,,E1,done,"ETCS_Track_Packets.P57 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
+7.4.2.15,7,x,x,,,,E1,done,"ETCS_Track_Packets.P58 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
+7.4.2.16,7,x,x,,,,E1,done,"ETCS_Track_Packets.P63 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
+7.4.2.16.1,7,x,x,,,,E1,done,"ETCS_Track_Packets.P64 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
 7.4.2.17,7,x,x,,,,E1,done,"ETCS_Track_Packets.P65; evc_test packet_round_trips, evc_test telegram"
 7.4.2.18,7,x,x,,,,E1,done,ETCS_Track_Packets.P66; evc_test packet_round_trips
 7.4.2.19,7,x,x,,,,E1,done,ETCS_Track_Packets.P67; evc_test packet_round_trips
@@ -2070,9 +2070,9 @@ A.3.13.2,3,x,,,,,E3,todo,
 7.4.2.33,7,x,x,,,,E1,done,ETCS_Track_Packets.P137; evc_test packet_round_trips
 7.4.2.34,7,x,x,,,,E1,done,ETCS_Track_Packets.P138; evc_test packet_round_trips
 7.4.2.35,7,x,x,,,,E1,done,ETCS_Track_Packets.P139; evc_test packet_round_trips
-7.4.2.36,7,x,x,,,,E1,partial,ETCS_Track_Packets.P140 (evc_test packet_round_trips); RBC-only packet accepted in a telegram (E1)
+7.4.2.36,7,x,x,,,,E1,done,"ETCS_Track_Packets.P140 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
 7.4.2.37,7,x,x,,,,E1,done,ETCS_Track_Packets.P141; evc_test packet_round_trips
-7.4.2.37.1,7,x,x,,,,E1,partial,ETCS_Track_Packets.P143 (evc_test packet_round_trips); RIU-only packet accepted in a telegram (E1)
+7.4.2.37.1,7,x,x,,,,E1,done,"ETCS_Track_Packets.P143 (evc_test packet_round_trips); rejected in a balise telegram (ETCS_Telegram.Parse Wrong_Sender), checked against the sender in ETCS_Message.Parse; evc_test senders"
 7.4.2.37.2,7,x,x,,,,E1,done,ETCS_Track_Packets.P145; evc_test packet_round_trips
 7.4.2.37.3,7,x,x,,,,E1,done,ETCS_Track_Packets.P180; evc_test packet_round_trips
 7.4.2.37.4,7,x,x,,,,E1,done,ETCS_Track_Packets.P181; evc_test packet_round_trips
@@ -2169,41 +2169,41 @@ A.3.13.2,3,x,,,,,E3,todo,
 7.5.1.59,7,x,x,,,,E1,done,"ETCS_Variables.M_ACK_T, ETCS_Message.Parse; evc_test message"
 7.5.1.60,7,x,x,,,,E1,done,ETCS_Variables.M_ADHESION_T; evc_test packet_round_trips
 7.5.1.61,7,x,x,,,,E1,done,ETCS_Variables.M_AIRTIGHT_T (sent only); evc_test packet_round_trips
-7.5.1.62,7,x,x,,,,E1,partial,spare 13..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.62.1,7,x,x,,,,E1,partial,spare 1001..1022 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.62,7,x,x,,,,E1,done,"ETCS_Variables.M_AXLELOADCAT_T Is_Valid (spare 13..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.62.1,7,x,x,,,,E1,done,"ETCS_Variables.M_CURRENT_T Is_Valid (spare 1001..1022); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.63,7,x,x,,,,E1,done,ETCS_Telegram.Parse rejects spare 3 (Bad_Header); evc_test telegram
 7.5.1.64,7,x,x,,,,E1,done,ETCS_Variables.M_ERROR_T (sent only); evc_test packet_round_trips
 7.5.1.65,7,x,x,,,,E1,done,ETCS_Variables.M_LEVEL_T (sent only); evc_test packet_round_trips
-7.5.1.66,7,x,x,,,,E1,partial,spare 5..7 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.67,7,x,x,,,,E1,partial,spare 4..7 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.67.1,7,x,x,,,,E1,partial,"bitset: spare 0 and bits 4..7 not detected, Is_Valid always True (E1)"
-7.5.1.67.2,7,x,x,,,,E1,partial,"bitset: spare 0 and bits 13..15 not detected, Is_Valid always True (E1)"
+7.5.1.66,7,x,x,,,,E1,done,"ETCS_Variables.M_LEVELTEXTDISPLAY_T Is_Valid (spare 5..7); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.67,7,x,x,,,,E1,done,"ETCS_Variables.M_LEVELTR_T Is_Valid (spare 4..7); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.67.1,7,x,x,,,,E1,done,"ETCS_Variables.M_LINEGAUGE_T: spare 0 and bits 4..7 (TOML spare); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.67.2,7,x,x,,,,E1,done,"ETCS_Variables.M_LINEAXLELOADCAT_T: spare 0 and bits 13..15 (TOML spare); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.68,7,x,x,,,,E1,done,ETCS_Variables.M_LOADINGGAUGE_T (sent only); evc_test packet_round_trips
-7.5.1.69,7,x,x,,,,E1,partial,spare 3..7 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.70,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.69,7,x,x,,,,E1,done,"ETCS_Variables.M_LOC_T Is_Valid (spare 3..7); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.70,7,x,x,,,,E1,done,"ETCS_Variables.M_MAMODE_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.71,7,x,x,,,,E1,done,ETCS_Telegram.Parse header; evc_test telegram
 7.5.1.72,7,x,x,,,,E1,done,ETCS_Variables.M_MODE_T (sent only); evc_test packet_round_trips
-7.5.1.73,7,x,x,,,,E1,partial,"spare 9, 10, 11, 13 pass Is_Valid (no max; gaps not in catalogue), not rejected (E1)"
-7.5.1.73.1,7,x,x,,,,E1,partial,spare 21..31 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.74,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.73,7,x,x,,,,E1,done,"ETCS_Variables.M_MODETEXTDISPLAY_T: spare 9, 10, 11, 13 (TOML spare); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values (packet 73)"
+7.5.1.73.1,7,x,x,,,,E1,done,"ETCS_Variables.M_NVAVADH_T Is_Valid (spare 21..31); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.74,7,x,x,,,,E1,done,"ETCS_Variables.M_NVCONTACT_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.75,7,x,x,,,,E1,done,ETCS_Variables.M_NVDERUN_T; evc_test packet_round_trips
-7.5.1.75.1,7,x,x,,,,E1,partial,spare 10..15 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.75.1,7,x,x,,,,E1,done,"ETCS_Variables.M_NVEBCL_T Is_Valid (spare 10..15); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.75.2,7,x,x,,,,E1,done,ETCS_Variables.M_NVKRINT_T; evc_test packet_round_trips
 7.5.1.75.3,7,x,x,,,,E1,done,ETCS_Variables.M_NVKTINT_T; evc_test packet_round_trips
 7.5.1.75.4,7,x,x,,,,E1,done,ETCS_Variables.M_NVKVINT_T; evc_test packet_round_trips
-7.5.1.75.5,7,x,x,,,,E1,partial,spare 14..15 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.76,7,x,x,,,,E1,partial,spare 10000000..16777214 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.77,7,x,x,,,,E1,partial,spare 11..15 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.78,7,x,x,,,,E1,partial,spare 6..15 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.79,7,x,x,,,,E1,partial,"not-valid codes 18..31, 36..47 pass Is_Valid; only ETCS_Telegram.Supported checks (msg 32: E5)"
+7.5.1.75.5,7,x,x,,,,E1,done,"ETCS_Variables.M_PLATFORM_T Is_Valid (spare 14..15); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.76,7,x,x,,,,E1,done,"ETCS_Variables.M_POSITION_T Is_Valid (spare 10000000..16777214); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.77,7,x,x,,,,E1,done,"ETCS_Variables.M_TRACKCOND_T Is_Valid (spare 11..15); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.78,7,x,x,,,,E1,done,"ETCS_Variables.M_VOLTAGE_T Is_Valid (spare 6..15); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.79,7,x,x,,,,E1,done,"ETCS_Variables.M_VERSION_T: not valid 18..31, 36..47 (TOML spare), 49..63 valid; telegram header by ETCS_Telegram.Supported; Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values (packet 2, message 32)"
 7.5.1.79.1,7,x,x,,,,E1,done,ETCS_Variables.N_AXLE_T (sent only); evc_test packet_round_trips
 7.5.1.80,7,x,x,,,,E1,done,loops as bounded arrays of N_ITER max 31 (generated packets); evc_test packet_round_trips
 7.5.1.81,7,x,x,,,,E1,done,"ETCS_Telegram.Parse header, N_PIG above N_TOTAL rejected; evc_test telegram"
 7.5.1.82,7,x,x,,,,E1,done,"ETCS_Telegram.Parse header, N_PIG above N_TOTAL rejected; evc_test telegram"
-7.5.1.82.1,7,x,x,,,,E1,partial,spare 11..15 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.82.1,7,x,x,,,,E1,done,"ETCS_Variables.NC_CDDIFF_T Is_Valid (spare 11..15); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.82.2,7,x,x,,,,E1,done,ETCS_Variables.NC_CDTRAIN_T (sent only); evc_test packet_round_trips
-7.5.1.83,7,x,x,,,,E1,partial,spare 3..15 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.84,7,x,x,,,,E1,done,ETCS_Variables.NC_TRAIN_T (sent only); evc_test packet_round_trips
+7.5.1.83,7,x,x,,,,E1,done,"ETCS_Variables.NC_DIFF_T Is_Valid (spare 3..15); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.84,7,x,x,,,,E1,done,"ETCS_Variables.NC_TRAIN_T (sent only): spare bits 3..14 (TOML spare); evc_test packet_round_trips, spare_values"
 7.5.1.85,7,x,x,,,,E1,done,"ETCS_Variables.NID_BG_T, telegram header and packets; evc_test telegram"
 7.5.1.86,7,x,x,,,,E1,done,"ETCS_Variables.NID_C_T, telegram header and packets; evc_test telegram"
 7.5.1.86.1,7,x,x,,,,E1,done,ETCS_Variables.NID_CTRACTION_T; evc_test packet_round_trips
@@ -2214,11 +2214,11 @@ A.3.13.2,3,x,,,,,E3,todo,
 7.5.1.90.1,7,x,x,,,,E1,done,NID_C + NID_BG (10 + 14) in ETCS_Train_Packets.P9; evc_test packet_round_trips
 7.5.1.90.2,7,x,x,,,,E1,done,ETCS_Variables.NID_LX_T; evc_test packet_round_trips
 7.5.1.91,7,x,x,,,,E1,done,"ETCS_Message_Catalogue.Kind, ETCS_Message.Parse; evc_test message"
-7.5.1.91.1,7,x,x,,,,E1,partial,"BCD: digits A..E (not used) not detected, Is_Valid always True (E1)"
-7.5.1.92,7,x,x,,,,E1,partial,"BCD: spare digits A..E and FFFF FFFF not detected, Is_Valid always True (E1)"
+7.5.1.91.1,7,x,x,,,,E1,done,"ETCS_Variables.NID_MN_T: BCD (TOML bcd), digits A..E and a digit after F invalid; Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values (packet 45)"
+7.5.1.92,7,x,x,,,,E1,done,"ETCS_Variables.NID_OPERATIONAL_T: BCD (TOML bcd), digits A..E, a digit after F and FFFF FFFF invalid; Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values (packet 140 in message 24)"
 7.5.1.93,7,x,x,,,,E1,done,"ETCS_Catalogue.Kind, ETCS_Packet_Index.Scan; evc_test telegram"
 7.5.1.94,7,x,x,,,,E1,done,NID_C_PRVLRBG + NID_BG_PRVLRBG (10 + 14) in ETCS_Train_Packets.P1; evc_test packet_round_trips
-7.5.1.95,7,x,x,,,,E1,partial,"BCD: digits A..E (not used) not detected, Is_Valid always True (E1)"
+7.5.1.95,7,x,x,,,,E1,done,"ETCS_Variables.NID_RADIO_T: BCD (TOML bcd), digits A..E and a digit after F invalid, all F the short number; Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.96,7,x,x,,,,E1,done,ETCS_Variables.NID_RBC_T; evc_test packet_round_trips
 7.5.1.97,7,x,x,,,,E1,done,ETCS_Variables.NID_RIU_T; evc_test packet_round_trips
 7.5.1.98,7,x,x,,,,E1,done,ETCS_Variables.NID_NTC_T; evc_test packet_round_trips
@@ -2229,9 +2229,9 @@ A.3.13.2,3,x,,,,,E3,todo,
 7.5.1.101,7,x,x,,,,E1,done,ETCS_Variables.Q_ASPECT_T; evc_test packet_round_trips
 7.5.1.101.1,7,x,x,,,,E1,done,ETCS_Variables.Q_CONFTEXTDISPLAY_T; evc_test packet_round_trips
 7.5.1.102,7,x,x,,,,E1,done,ETCS_Variables.Q_DANGERPOINT_T; evc_test packet_round_trips
-7.5.1.102.1,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.102.1,7,x,x,,,,E1,done,"ETCS_Variables.Q_DIFF_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.102.2,7,x,x,,,,E1,done,"ETCS_Variables.Q_DESK_T, ETCS_Message.Parse; evc_test message"
-7.5.1.103,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.103,7,x,x,,,,E1,done,"ETCS_Variables.Q_DIR_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.104,7,x,x,,,,E1,done,ETCS_Variables.Q_DIRLRBG_T (sent only); evc_test packet_round_trips
 7.5.1.105,7,x,x,,,,E1,done,ETCS_Variables.Q_DIRTRAIN_T (sent only); evc_test packet_round_trips
 7.5.1.106,7,x,x,,,,E1,done,ETCS_Variables.Q_DLRBG_T (sent only); evc_test packet_round_trips
@@ -2246,7 +2246,7 @@ A.3.13.2,3,x,,,,,E3,todo,
 7.5.1.114,7,x,x,,,,E1,done,ETCS_Telegram.Parse header; evc_test telegram
 7.5.1.115,7,x,x,,,,E1,done,ETCS_Variables.Q_LOCACC_T; evc_test packet_round_trips
 7.5.1.116,7,x,x,,,,E1,done,ETCS_Variables.Q_LINKORIENTATION_T; evc_test packet_round_trips
-7.5.1.117,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.117,7,x,x,,,,E1,done,"ETCS_Variables.Q_LINKREACTION_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.118,7,x,x,,,,E1,done,ETCS_Variables.Q_LOOPDIR_T; evc_test packet_round_trips
 7.5.1.118.0,7,x,x,,,,E1,done,ETCS_Variables.Q_LSSMA_T; evc_test packet_round_trips
 7.5.1.118.1,7,x,x,,,,E1,done,ETCS_Variables.Q_LXSTATUS_T; evc_test packet_round_trips
@@ -2254,33 +2254,33 @@ A.3.13.2,3,x,,,,,E3,todo,
 7.5.1.118.3,7,x,x,,,,E1,done,"ETCS_Variables.Q_MARQSTREASON_T, ETCS_Message.Parse; evc_test message"
 7.5.1.119,7,x,x,,,,E1,done,"ETCS_Telegram.Parse rejects 1, loop (Bad_Header; Euroloop E7); evc_test telegram"
 7.5.1.120,7,x,x,,,,E1,done,ETCS_Variables.Q_MPOSITION_T; evc_test packet_round_trips
-7.5.1.120.1,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.120.1,7,x,x,,,,E1,done,"ETCS_Variables.Q_NETWORKTYPE_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.121,7,x,x,,,,E1,done,ETCS_Variables.Q_NEWCOUNTRY_T; evc_test packet_round_trips
 7.5.1.122,7,x,x,,,,E1,done,ETCS_Variables.Q_NVDRIVER_ADHES_T; evc_test packet_round_trips
 7.5.1.123,7,x,x,,,,E1,done,ETCS_Variables.Q_NVEMRRLS_T; evc_test packet_round_trips
 7.5.1.123.1,7,x,x,,,,E1,done,ETCS_Variables.Q_NVGUIPERM_T; evc_test packet_round_trips
 7.5.1.123.2,7,x,x,,,,E1,done,ETCS_Variables.Q_NVINHSMICPERM_T; evc_test packet_round_trips
 7.5.1.123.3,7,x,x,,,,E1,done,ETCS_Variables.Q_NVKINT_T; evc_test packet_round_trips
-7.5.1.123.4,7,x,x,,,,E1,partial,spare 2..3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.123.4,7,x,x,,,,E1,done,"ETCS_Variables.Q_NVKVINTSET_T Is_Valid (spare 2..3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.123.5,7,x,x,,,,E1,done,ETCS_Variables.Q_NVLOCACC_T; evc_test packet_round_trips
 7.5.1.123.6,7,x,x,,,,E1,done,ETCS_Variables.Q_NVSBFBPERM_T; evc_test packet_round_trips
 7.5.1.124,7,x,x,,,,E1,done,ETCS_Variables.Q_NVSBTSMPERM_T; evc_test packet_round_trips
 7.5.1.125,7,x,x,,,,E1,done,"ETCS_Variables.Q_ORIENTATION_T, ETCS_Message.Parse; evc_test message"
 7.5.1.126,7,x,x,,,,E1,done,ETCS_Variables.Q_OVERLAP_T; evc_test packet_round_trips
 7.5.1.126.1,7,x,x,,,,E1,done,ETCS_Variables.Q_PBDSR_T; evc_test packet_round_trips
-7.5.1.126.2,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.126.2,7,x,x,,,,E1,done,"ETCS_Variables.Q_PLATFORM_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.127,7,x,x,,,,E1,done,ETCS_Variables.Q_RBC_T; evc_test packet_round_trips
 7.5.1.128,7,x,x,,,,E1,done,ETCS_Variables.Q_RIU_T; evc_test packet_round_trips
-7.5.1.129,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.129,7,x,x,,,,E1,done,"ETCS_Variables.Q_SCALE_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.130,7,x,x,,,,E1,done,ETCS_Variables.Q_SECTIONTIMER_T; evc_test packet_round_trips
 7.5.1.131,7,x,x,,,,E1,done,ETCS_Variables.Q_SLEEPSESSION_T; evc_test packet_round_trips
 7.5.1.132,7,x,x,,,,E1,done,ETCS_Variables.Q_SRSTOP_T; evc_test packet_round_trips
 7.5.1.133,7,x,x,,,,E1,done,ETCS_Variables.Q_SSCODE_T; evc_test packet_round_trips
 7.5.1.134,7,x,x,,,,E1,done,"ETCS_Variables.Q_STATUSLRBG_T, ETCS_Message.Parse; evc_test message"
 7.5.1.134.1,7,x,x,,,,E1,done,ETCS_Variables.Q_STOPLX_T; evc_test packet_round_trips
-7.5.1.135,7,x,x,,,,E1,partial,spare 3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.136,7,x,x,,,,E1,partial,spare 2..255 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.137,7,x,x,,,,E1,partial,spare 2..3 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.135,7,x,x,,,,E1,done,"ETCS_Variables.Q_SUITABILITY_T Is_Valid (spare 3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.136,7,x,x,,,,E1,done,"ETCS_Variables.Q_TEXT_T Is_Valid (spare 2..255); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.137,7,x,x,,,,E1,done,"ETCS_Variables.Q_TEXTCLASS_T Is_Valid (spare 2..3); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.138,7,x,x,,,,E1,done,ETCS_Variables.Q_TEXTCONFIRM_T; evc_test packet_round_trips
 7.5.1.139,7,x,x,,,,E1,done,ETCS_Variables.Q_TEXTDISPLAY_T; evc_test packet_round_trips
 7.5.1.140,7,x,x,,,,E1,done,ETCS_Variables.Q_TEXTREPORT_T; evc_test packet_round_trips
@@ -2301,41 +2301,41 @@ A.3.13.2,3,x,,,,,E3,todo,
 7.5.1.153,7,x,x,,,,E1,done,ETCS_Variables.T_TIMEOUTRQST_T; evc_test packet_round_trips
 7.5.1.154,7,x,x,,,,E1,done,"ETCS_Variables.T_TRAIN_T, ETCS_Message.Parse; evc_test message"
 7.5.1.154.1,7,x,x,,,,E1,done,ETCS_Variables.T_VBC_T; evc_test packet_round_trips
-7.5.1.155,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.156,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.157,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.157.1,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.158,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.159,7,x,x,,,,E1,partial,spare 121..126 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.155,7,x,x,,,,E1,done,"ETCS_Variables.V_AXLELOAD_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.156,7,x,x,,,,E1,done,"ETCS_Variables.V_DIFF_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.157,7,x,x,,,,E1,done,"ETCS_Variables.V_EMA_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.157.1,7,x,x,,,,E1,done,"ETCS_Variables.V_LX_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.158,7,x,x,,,,E1,done,"ETCS_Variables.V_MAIN_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.159,7,x,x,,,,E1,done,"ETCS_Variables.V_MAMODE_T Is_Valid (spare 121..126); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.160,7,x,x,,,,E1,done,ETCS_Variables.V_MAXTRAIN_T (sent only); evc_test packet_round_trips
-7.5.1.161,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.161.1,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.161.2,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.162,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.163,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.164,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.165,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.166,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.167,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.168,7,x,x,,,,E1,partial,spare 121..125 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.169,7,x,x,,,,E1,partial,spare 121..125 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.170,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.170.1,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
-7.5.1.171,7,x,x,,,,E1,partial,spare 121..126 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.161,7,x,x,,,,E1,done,"ETCS_Variables.V_NVALLOWOVTRP_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.161.1,7,x,x,,,,E1,done,"ETCS_Variables.V_NVKVINT_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.161.2,7,x,x,,,,E1,done,"ETCS_Variables.V_NVLIMSUPERV_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.162,7,x,x,,,,E1,done,"ETCS_Variables.V_NVONSIGHT_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.163,7,x,x,,,,E1,done,"ETCS_Variables.V_NVSUPOVTRP_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.164,7,x,x,,,,E1,done,"ETCS_Variables.V_NVREL_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.165,7,x,x,,,,E1,done,"ETCS_Variables.V_NVSHUNT_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.166,7,x,x,,,,E1,done,"ETCS_Variables.V_NVSTFF_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.167,7,x,x,,,,E1,done,"ETCS_Variables.V_NVUNFIT_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.168,7,x,x,,,,E1,done,"ETCS_Variables.V_RELEASEDP_T Is_Valid (spare 121..125); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.169,7,x,x,,,,E1,done,"ETCS_Variables.V_RELEASEOL_T Is_Valid (spare 121..125); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.170,7,x,x,,,,E1,done,"ETCS_Variables.V_REVERSE_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.170.1,7,x,x,,,,E1,done,"ETCS_Variables.V_SM_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
+7.5.1.171,7,x,x,,,,E1,done,"ETCS_Variables.V_STATIC_T Is_Valid (spare 121..126); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.172,7,x,x,,,,E1,done,ETCS_Variables.V_TRAIN_T (sent only); evc_test packet_round_trips
-7.5.1.173,7,x,x,,,,E1,partial,spare 121..127 accepted: decode does not apply Is_Valid (E1 codec; 3.16.1.1.1)
+7.5.1.173,7,x,x,,,,E1,done,"ETCS_Variables.V_TSR_T Is_Valid (spare 121..127); Valid of every packet at parse (ETCS_Packet_Index.Scan) and Valid_Code of message variables (ETCS_Message.Parse): Invalid_Value, 3.16.1.1.1; evc_test spare_values"
 7.5.1.174,7,x,x,,,,E1,done,ETCS_Variables.X_TEXT_T; evc_test packet_round_trips
 8.4.1.2,8,x,x,,,,E1,done,"ETCS_Message.Parse/Write_Fields in table order, mandatory packets in order; evc_test message (msg 3)"
 8.4.1.3,8,x,x,,,,E1,done,ETCS_Message/ETCS_Telegram.Parse index optional packets in any order; evc_test message (msg 24)
 8.4.1.3.1,8,x,x,,,,E1,deferred,E7 (3.9 infill): locations after packet 136 refer to its balise group
 8.4.1.5,8,x,,,,,E1,done,"ETCS_Message.Parse Duplicate_Packet (train to track); evc_test message (136, packet 4 twice)"
 8.4.1.5.1,8,x,,,,,E1,done,"catalogue: packet 44 repeat in 136, 157; evc_test message (136, packet 44 twice)"
-8.4.4.1.1,8,x,,,,,E1,partial,unknown NID_MESSAGE rejected (Unknown_Message); 3.17.3.11 b) Y-exception not done (E6)
+8.4.4.1.1,8,x,,,,,E1,deferred,"structure done; unknown NID_MESSAGE rejected (Unknown_Message), the Y-exception in E6 (3.17.3.11)"
 8.4.4.2,8,x,x,,,,E1,done,"L_MESSAGE read by ETCS_Message.Parse, written by Finish; evc_test message"
 8.4.4.2.1,8,x,x,,,,E1,done,"ETCS_Message.Parse Bad_Length, padding under 8 bits; evc_test message"
 8.4.4.3,8,x,x,,,,E1,done,"ETCS_Message_Catalogue fields and packet rules, Packet_Not_Allowed; evc_test message"
 8.4.4.4,8,x,x,,,,E1,done,"ETCS_Message.Parse: mandatory packets first, then optional ones; evc_test message"
-8.4.4.4.1 Table,8,x,x,,,,E1,partial,"catalogue matches; msg 24 ""From RIU"" rules unused: EVC_Received always passes Sender RBC (E5)"
+8.4.4.4.1 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse applies the ""From RIU"" rules of message 24 by its Sender (evc_test senders); EVC_Received passes RBC until the RIU session in E5"
 8.4.4.4.1.1 Table,8,x,x,,,,E1,done,"common optional packets in messages 3, 24, 33 (ETCS_Message_Catalogue); evc_test message"
 8.4.4.4.2,8,x,x,,,,E1,done,"ETCS_Message_Catalogue Train_M136 optional 4, 5, 44; evc_test message (136)"
 8.4.4.4.2 a),8,x,x,,,,E1,done,"ETCS_Message_Catalogue Train_M136 optional 4, 5, 44; evc_test message (136)"
@@ -2352,8 +2352,8 @@ A.3.13.2,3,x,,,,,E3,todo,
 8.4.4.4.5,8,x,x,,,,E1,done,ETCS_Message_Catalogue Train_M131 optional packet 12; check_catalogue.py
 8.4.4.4.5 a),8,x,x,,,,E1,done,ETCS_Message_Catalogue Train_M131 optional packet 12; check_catalogue.py
 8.4.4.5,8,x,x,,,,E1,done,"ETCS_Message.Finish pads to a byte, Parse takes under 8 bits as padding; evc_test message"
-8.5.2 Table,8,x,x,,,,E1,partial,"ids, names, receivers in ETCS_Message_Catalogue; Invariant column not carried (3.17, E5)"
-8.5.3 Table,8,x,x,,,,E1,partial,"ids, names in catalogue; Parse ignores Sent_By (RBC/RIU), Invariant column not carried (E5)"
+8.5.2 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse checks the receiver (Wrong_Sender, evc_test senders); Invariant column (3.17) in E5"
+8.5.3 Table,8,x,x,,,,E1,deferred,"structure done; ETCS_Message.Parse checks the sender (message 37 RIU only, Wrong_Sender, evc_test senders); Invariant column and the RIU session in E5"
 8.6.1,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M129; check_catalogue.py; evc_test message
 8.6.2,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M130; check_catalogue.py
 8.6.2.1,8,x,x,,,,E1,done,ETCS_Message_Catalogue.Train_M131; check_catalogue.py
