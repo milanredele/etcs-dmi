@@ -8,7 +8,10 @@
 --  Three kinds of inputs are generated: the documented shape of the port
 --  with random fields, the documented length with random bytes, and a
 --  random length with random bytes; the index of a payload does not
---  always start at 1. Every exception is caught here (native runtime),
+--  always start at 1. On the BTM and RTM ports the shaped inputs are
+--  often real telegrams and radio messages of random valid packets
+--  (ETCS_Language_Random), sometimes damaged (bits flipped, cut). Every
+--  telegram and message the core accepts must decode, packet by packet. Every exception is caught here (native runtime),
 --  reported once per distinct site, and the on-board is re-initialised.
 --  Besides, after every step the outputs must be whole records and the
 --  mode must follow the contracts of EVC_Core (a violation is counted).
@@ -20,11 +23,19 @@ pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Exceptions;
 with Ada.Text_IO;  use Ada.Text_IO;
+with ETCS_Bits;
+with ETCS_Catalogue;
+with ETCS_Language_Random;
+with ETCS_Message;
+with ETCS_Message_Catalogue;
+with ETCS_Telegram;
+with ETCS_Variables;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Modes;    use EVC_Modes;
 with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
+with EVC_Received;
 with Interfaces;   use Interfaces;
 
 procedure EVC_Fuzz is
@@ -84,6 +95,142 @@ procedure EVC_Fuzz is
       end loop;
    end Random_Bytes;
 
+   ---------------------------------------------------------------------
+   --  Telegrams and radio messages of random valid packets
+   ---------------------------------------------------------------------
+
+   package Cat renames ETCS_Catalogue;
+   package MCat renames ETCS_Message_Catalogue;
+   package Rnd renames ETCS_Language_Random;
+   use type Cat.Direction_T;
+
+   W : ETCS_Bits.Writer (ETCS_Bits.Max_Bytes);
+
+   --  A random packet of the direction (not 0 or 255 of the track)
+   function Random_Kind (Direction : Cat.Direction_T)
+     return Cat.Known_Kind_T
+   is
+      First : constant Natural := Cat.Known_Kind_T'Pos (Cat.Known_Kind_T'First);
+      Count : constant Natural :=
+        Cat.Known_Kind_T'Pos (Cat.Known_Kind_T'Last) - First;
+      K     : Cat.Known_Kind_T;
+   begin
+      loop
+         K := Cat.Known_Kind_T'Val (First + Pick (0, Count));
+         exit when Cat.Direction_Of (K) = Direction
+           and then not (Direction = Cat.Track_To_Train
+                         and then Cat.NID_Of (K) in 0 | 255);
+      end loop;
+      return K;
+   end Random_Kind;
+
+   procedure Random_Packets (Direction : Cat.Direction_T; Count : Natural) is
+      OK : Boolean;
+   begin
+      for I in 1 .. Count loop
+         Rnd.Write_Random (Random_Kind (Direction),
+                           (if Chance (50) then Rnd.Random_Values
+                            else Rnd.Min_Values),
+                           (if Chance (50) then Rnd.Random_Items
+                            else Rnd.One_Item),
+                           W, OK);
+         exit when not OK;
+      end loop;
+   end Random_Packets;
+
+   --  Flip a few bits of Buffer (1 .. Last) from bit From_Bit on, or none
+   procedure Damage (From_Bit : Natural) is
+   begin
+      if Last > From_Bit / 8 and then Chance (40) then
+         for I in 1 .. Pick (1, 3) loop
+            declare
+               N : constant Natural := Pick (From_Bit, 8 * Last - 1);
+            begin
+               Buffer (1 + N / 8) :=
+                 Buffer (1 + N / 8) xor Shift_Left (1, 7 - N mod 8);
+            end;
+         end loop;
+      end if;
+   end Damage;
+
+   --  A telegram in the BTM shape: n_bits, then the bits
+   procedure Telegram is
+      H : constant ETCS_Telegram.Header_T :=
+        (Q_UPDOWN  => (if Chance (95) then 1 else 0),
+         M_VERSION => (if Chance (90) then 48
+                       else ETCS_Variables.M_VERSION_T (Pick (0, 127))),
+         Q_MEDIA   => 0,
+         N_PIG     => 0,
+         N_TOTAL   => ETCS_Variables.N_TOTAL_T (Pick (0, 7)),
+         M_DUP     => 0,
+         M_MCOUNT  => ETCS_Variables.M_MCOUNT_T (Pick (0, 255)),
+         NID_C     => ETCS_Variables.NID_C_T (Pick (0, 1023)),
+         NID_BG    => ETCS_Variables.NID_BG_T (Pick (0, 16383)),
+         Q_LINK    => ETCS_Variables.Q_LINK_T (Pick (0, 1)));
+      OK   : Boolean;
+      Bits : Natural;
+   begin
+      ETCS_Bits.Clear (W);
+      ETCS_Telegram.Write_Header (W, H);
+      Random_Packets (Cat.Track_To_Train, Pick (0, 4));
+      ETCS_Telegram.Finish
+        (W, (if Chance (50) then ETCS_Telegram.Long_Bits
+             else ETCS_Telegram.Short_Bits), OK);
+      if not OK then
+         ETCS_Bits.Clear (W);
+         ETCS_Telegram.Write_Header (W, H);
+         ETCS_Telegram.Finish (W, ETCS_Telegram.Short_Bits, OK);
+      end if;
+      Bits := ETCS_Bits.Position (W);
+      if Chance (20) then
+         Bits := Pick (BTM_Min_Bits, Bits);   -- cut
+      end if;
+      declare
+         Data : constant Byte_Array := ETCS_Bits.Data (W);
+      begin
+         Add_U16 (Bits);
+         for I in 1 .. (Bits + 7) / 8 loop
+            Add (Natural (Data (I)));
+         end loop;
+      end;
+      Damage (16);
+   end Telegram;
+
+   --  A track to train radio message of the list; Last = 0 for a train
+   --  to track message
+   procedure Message is
+      K  : constant MCat.Known_Message_T :=
+        MCat.Known_Message_T'Val
+          (Pick (MCat.Known_Message_T'Pos (MCat.Known_Message_T'First),
+                 MCat.Known_Message_T'Pos (MCat.Known_Message_T'Last)));
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      if MCat.Direction_Of (K) /= Cat.Track_To_Train then
+         return;
+      end if;
+      for I in 3 .. MCat.Field_Count (K) loop
+         V (I) := Unsigned_64 (Next)
+           and (Shift_Left (1, Natural'Min
+                  (32, ETCS_Variables.Bits (MCat.Fields (K) (I)))) - 1);
+      end loop;
+      ETCS_Bits.Clear (W);
+      ETCS_Message.Write_Fields (W, K, V, OK);
+      Random_Packets (Cat.Track_To_Train, Pick (0, 3));
+      ETCS_Message.Finish (W, OK);
+      if not OK then
+         return;
+      end if;
+      declare
+         Data : constant Byte_Array := ETCS_Bits.Data (W);
+      begin
+         for I in Data'Range loop
+            Add (Natural (Data (I)));
+         end loop;
+      end;
+      Damage (18);
+   end Message;
+
    --  The documented length of an input on Port (0 where none)
    function Documented_Length (Port : Port_T) return Natural is
      (case Port is
@@ -100,6 +247,10 @@ procedure EVC_Fuzz is
    begin
       case Port is
          when BTM =>
+            if Chance (60) then
+               Telegram;
+               return;
+            end if;
             declare
                Bits : constant Natural :=
                  (if Chance (90) then Pick (BTM_Min_Bits, BTM_Max_Bits)
@@ -109,6 +260,12 @@ procedure EVC_Fuzz is
                Random_Bytes (Natural'Min ((Bits + 7) / 8, 1000));
             end;
          when RTM =>
+            if Chance (60) then
+               Message;
+               if Last > 0 then
+                  return;
+               end if;
+            end if;
             declare
                Length : constant Natural := Pick (RTM_Min_Length, 1023);
             begin
@@ -211,12 +368,67 @@ procedure EVC_Fuzz is
       end if;
    end Violation;
 
+   --  Every packet of the last telegram and message accepted decodes
+   Telegrams_Seen : Natural := 0;
+   Messages_Seen  : Natural := 0;
+   Checked        : Natural := 0;
+
+   function Decodes return Boolean is
+      use type Cat.Packet_Kind_T;
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      OK : Boolean;
+   begin
+      if EVC_Received.Telegram_Count (ETCS_Telegram.Accepted)
+           /= Telegrams_Seen
+      then
+         Telegrams_Seen :=
+           EVC_Received.Telegram_Count (ETCS_Telegram.Accepted);
+         declare
+            T : constant ETCS_Telegram.Telegram_T :=
+              EVC_Received.Last_Telegram;
+         begin
+            for I in 1 .. T.Count loop
+               if T.Index (I).Kind /= Cat.Unknown then
+                  EVC_Received.Open_Telegram_Packet (I, R);
+                  Cat.Check (T.Index (I).Kind, R, OK);
+                  Checked := Checked + 1;
+                  if not OK then
+                     return False;
+                  end if;
+               end if;
+            end loop;
+         end;
+      end if;
+      if EVC_Received.Message_Count (ETCS_Message.Accepted)
+           /= Messages_Seen
+      then
+         Messages_Seen := EVC_Received.Message_Count (ETCS_Message.Accepted);
+         declare
+            M : constant ETCS_Message.Message_T := EVC_Received.Last_Message;
+         begin
+            for I in 1 .. M.Count loop
+               if M.Index (I).Kind /= Cat.Unknown then
+                  EVC_Received.Open_Message_Packet (I, R);
+                  Cat.Check (M.Index (I).Kind, R, OK);
+                  Checked := Checked + 1;
+                  if not OK then
+                     return False;
+                  end if;
+               end if;
+            end loop;
+         end;
+      end if;
+      return True;
+   end Decodes;
+
    --  After a raise the host contains the failure; that path must never
    --  raise itself. Then start over.
    procedure Contain_And_Restart (Step : Natural) is
    begin
       EVC_Core.Enter_Failure;
       EVC_Core.Initialise;
+      Telegrams_Seen := 0;
+      Messages_Seen := 0;
    exception
       when E : others =>
          Report ("failure containment", E, Step);
@@ -322,6 +534,9 @@ begin
                then
                   Violation ("the mode after NP", Step);
                end if;
+               if not Decodes then
+                  Violation ("an accepted packet does not decode", Step);
+               end if;
             end if;
          end if;
       exception
@@ -362,6 +577,8 @@ begin
          begin
             if EVC_Core.Failed then
                EVC_Core.Initialise;
+               Telegrams_Seen := 0;
+               Messages_Seen := 0;
             else
                EVC_Core.Enter_Failure;
             end if;
@@ -385,6 +602,13 @@ begin
                               + EVC_Core.Accepted (Odometer)
                               + EVC_Core.Accepted (TIU)
                               + EVC_Core.Accepted (DMI))
+             & "  telegrams accepted:"
+             & Natural'Image (EVC_Received.Telegram_Count
+                                (ETCS_Telegram.Accepted))
+             & "  messages accepted:"
+             & Natural'Image (EVC_Received.Message_Count
+                                (ETCS_Message.Accepted))
+             & "  packets decoded:" & Natural'Image (Checked)
              & "  violations:" & Natural'Image (Violations)
              & "  raised:" & Natural'Image (Raised)
              & "  distinct sites:" & Natural'Image (Site_Count));

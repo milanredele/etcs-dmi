@@ -17,16 +17,21 @@
 --  Phase E0: power-up in No Power, transition NP -> SB (SUBSET-026
 --  4.6.2, condition [4]), isolation by the driver (condition [1]), and
 --  every cycle the DMI messages that show the mode (MSG_MODE_LEVEL,
---  MSG_ONBOARD). The later phases fill the empty steps.
+--  MSG_ONBOARD). Phase E1: the telegrams (BTM) and radio messages (RTM)
+--  latched since the last cycle are parsed when the ports are read
+--  (EVC_Received keeps the last accepted of each, and counts the
+--  rejections by reason) and recorded on the JRU port; nothing acts on
+--  their content yet. The later phases fill the empty steps.
 
 --  The postconditions name the state before the call ('Old) of query
 --  functions behind "and then" and "if": allowed, and evaluated at entry
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Bytes;
-with EVC_Modes;  use EVC_Modes;
+with EVC_Modes;    use EVC_Modes;
 with EVC_Outbox;
-with EVC_Ports;  use EVC_Ports;
+with EVC_Ports;    use EVC_Ports;
+with EVC_Received;
 
 package EVC_Core
   with SPARK_Mode => On,
@@ -74,6 +79,12 @@ is
    function Rejected (Port : Port_T) return Natural
      with Global => State;
 
+   --  Inputs accepted on a port but dropped because the latch of the
+   --  cycle was full (BTM: the 8 telegrams of a balise group, RTM: 4
+   --  radio messages), since Initialise (saturating)
+   function Overflowed (Port : Port_T) return Natural
+     with Global => State;
+
    ---------------------------------------------------------------------
    --  Operations
    ---------------------------------------------------------------------
@@ -81,14 +92,17 @@ is
    --  Power-up: the on-board starts in No Power (SUBSET-026 4.4.4.1.1)
    --  and nothing is stored (phase E0 keeps nothing over No Power)
    procedure Initialise
-     with Global => (Output => State, In_Out => EVC_Outbox.Queue),
+     with Global => (Output => (State, EVC_Received.Store),
+                     In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
                   and then not Failed
                   and then Level_Status = Unknown
                   and then Cycle = 0
                   and then Time_Ms = 0
                   and then not Isolation_Requested
-                  and then EVC_Outbox.Used = 0;
+                  and then EVC_Outbox.Used = 0
+                  and then not EVC_Received.Has_Telegram
+                  and then not EVC_Received.Has_Message;
 
    --  One input on a port. It is checked against the documented shape
    --  (EVC_Ports) and ignored when it does not match; otherwise it is
@@ -104,7 +118,8 @@ is
    --  One cycle of the on-board, Dt_Ms milliseconds after the previous
    --  one (any value: 0 and the largest are allowed)
    procedure Tick (Dt_Ms : Natural)
-     with Global => (In_Out => (State, EVC_Outbox.Queue)),
+     with Global => (In_Out => (State, EVC_Outbox.Queue,
+                                EVC_Received.Store)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

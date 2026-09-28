@@ -5,7 +5,8 @@
 project Etcsdmi is
 
    for Source_Dirs use
-     ("common", "dmi", "evc", "sim", "ports/hosted", "test/src");
+     ("common", "dmi", "evc", "evc/language", "sim", "ports/hosted",
+      "test/src");
    for Object_Dir use "obj";
    for Main use ("dmi.adb", "dmi_test.adb", "dmi_fuzz.adb", "evc_sim.adb",
                  "evc.adb", "evc_test.adb", "evc_fuzz.adb");

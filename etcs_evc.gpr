@@ -10,7 +10,7 @@
 
 project Etcs_Evc is
 
-   for Source_Dirs use ("evc");
+   for Source_Dirs use ("evc", "evc/language");
    for Object_Dir use "obj/evc";
 
    package Builder is
