@@ -29,7 +29,8 @@
 --  reference of the formulas of 3.13. The speed restriction to ensure a
 --  permitted braking distance (3.11.11, packet 52) is compared with a
 --  floating point reference of its inequalities and followed through
---  the store, the MRSP and MSG_PLANNING.
+--  the store, the MRSP and MSG_PLANNING; the gaps a relocation leaves in
+--  the gradient profile are filled with the lower neighbour.
 --
 --  One scenario runs the whole chain: the DMI port of EVC_Core into
 --  DMI_Core, and the picture is compared pixel by pixel with the one
@@ -7797,7 +7798,8 @@ procedure EVC_Test is
 
    ---------------------------------------------------------------------
    --  E3 after the integration: the speed restriction to ensure a
-   --  permitted braking distance (3.11.11, packet 52, EVC_PBD)
+   --  permitted braking distance (3.11.11, packet 52, EVC_PBD) and the
+   --  gaps of the gradient profile (3.11.12.2)
    ---------------------------------------------------------------------
 
    --  SUBSET-041 5.3.1.2: f41 (V), cm/s, exact
@@ -8238,6 +8240,51 @@ procedure EVC_Test is
       Check (MRSP_Below_Sources, "PBD: the MRSP below its sources");
    end Scenario_PBD;
 
+   --  3.11.12.2: the gradient profile of an unlinked group, relocated to
+   --  the SOLR by the travelled distance (3.6.4.2.5 c), has the "max"
+   --  items of its changes ahead of the "min" items (the SOLR less
+   --  accurate than the unlinked group); between two elements the lower
+   --  of the two, the profile covered, only the start of the profile left
+   --  open
+   procedure Scenario_Gradient_Gaps is
+      St : Prof.Store_T;
+      G  : SIn.Gradient_Profile_T;
+   begin
+      Start_X;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 900), (1 => 30))));
+      declare
+         U : Group_Def := Group (20, 300);
+      begin
+         U.Linked := False;
+         Add_Group (U);
+      end;
+      Add_Group (Group (30, 1000));
+      Carry (1, 0, SSP ((1 => (0, 200, False))));
+      Carry (2, 0, Grad ((1 => (0, -10), 2 => (100, 5), 3 => (100, -20))));
+      Run_X (32_000);
+      St := TD.Gradients;
+      G := SI.Current.Gradients;
+      Check (St.Count = 3
+             and then Min_X (St.List (2).Start) < Max_X (St.List (2).Start)
+             and then Min_X (St.List (3).Start) < Max_X (St.List (3).Start),
+             "gradient gaps: the max items of the changes ahead of the min "
+             & "items (3.6.4.2.5 c)");
+      Check (G.Count = 4 and then not G.Covered (1)
+             and then Integer_64 (G.Segments (2).Start)
+                        = Max_X (St.List (1).Start)
+             and then G.Segments (2).Gradient = -10 and then G.Covered (2)
+             and then Integer_64 (G.Segments (3).Start)
+                        = Max_X (St.List (2).Start)
+             and then G.Segments (3).Gradient = 5 and then G.Covered (3)
+             and then Integer_64 (G.Segments (4).Start)
+                        = Min_X (St.List (3).Start)
+             and then G.Segments (4).Gradient = -20 and then G.Covered (4),
+             "gradient gaps: covered, the lower neighbour over the gap "
+             & "(-10 up to the max item of the change to 5, -20 from the "
+             & "min item of the change to -20, 3.11.12.2)");
+   end Scenario_Gradient_Gaps;
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -8309,6 +8356,7 @@ begin
    Scenario_SDM_Build_Up;
    Scenario_PBD_Precision;
    Scenario_PBD;
+   Scenario_Gradient_Gaps;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

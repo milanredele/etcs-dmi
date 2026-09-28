@@ -121,7 +121,9 @@ is
    --  positions before the first segment; there the gradient is the
    --  default gradient for TSR (3.11.12.5, packet 141), when one is
    --  stored (Has_Default_TSR), for a target due to a TSR, and zero for
-   --  the other targets
+   --  the other targets. A gap a relocation leaves between two elements
+   --  of the profile is covered, with the lower of the two (3.11.12.2,
+   --  EVC_Track_Description)
    type Gradient_Flags_T is
      array (Positive range 1 .. Max_Gradient_Segments) of Boolean;
    type Gradient_Profile_T is record

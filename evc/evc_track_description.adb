@@ -971,11 +971,35 @@ is
                                 E     : in out Elements_T)
    is
    begin
-      if Grad_S.Sense = Ahead then
-         for I in 1 .. Grad_S.Count loop
-            Add_Stored (E, T, Ahead, Grad_S.List (I), 0);
-         end loop;
+      if Grad_S.Sense /= Ahead then
+         return;
       end if;
+      for I in 1 .. Grad_S.Count loop
+         Add_Stored (E, T, Ahead, Grad_S.List (I), 0);
+      end loop;
+      --  3.11.12.2: between an element and the one that starts where it
+      --  ends, from the rearmost to the foremost item of the change, the
+      --  lower of the two (see the header); where the "max" item is not
+      --  ahead of the "min" item the two elements overlap there already
+      --  and the envelope takes the lower one: nothing changes
+      for I in 1 .. Grad_S.Count loop
+         for J in 1 .. Grad_S.Count loop
+            if J /= I and then not Grad_S.List (J).Open
+              and then Grad_S.List (J).Finish = Grad_S.List (I).Start
+            then
+               declare
+                  X_Min : constant Dist_T :=
+                    A (Ahead, Frame (T, Grad_S.List (I).Start, Min_Item));
+                  X_Max : constant Dist_T :=
+                    A (Ahead, Frame (T, Grad_S.List (I).Start, Max_Item));
+               begin
+                  Add (E, Dist_T'Min (X_Min, X_Max), Dist_T'Max (X_Min, X_Max),
+                       Value_T'Min (Grad_S.List (I).Value,
+                                    Grad_S.List (J).Value));
+               end;
+            end if;
+         end loop;
+      end loop;
    end Gradient_Elements;
 
    procedure Adhesion_Areas (T     : Origin_Table_T;

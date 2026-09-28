@@ -39,6 +39,21 @@
 --  Until the first packet 52 (and beyond its sections) there is no
 --  restriction (3.11.11.11).
 --
+--  Gradients (3.11.12.2: the profile is continuous over the piece of
+--  track it covers). An element runs from the "max" item of its start
+--  to the "min" item of its end; where a relocation by 3.6.4.2.5 c)
+--  put the "max" item of a change of gradient ahead of its "min" item
+--  (the new reference less accurate than the former one), the element
+--  before the change and the one after it leave a gap. The gap lies
+--  inside the profile, so it is covered (not a location of 3.13.4.1.3);
+--  Table 2a places the change inside it by the curve (the EBD: a change
+--  to a lower value at the "max" item, to a higher one at the "min" item;
+--  the SBD and the GUI: the "estimated" item), so that every curve reads
+--  one of the two neighbouring gradients there. The one gradient profile
+--  of the snapshot takes the lower of the two over the whole gap
+--  (Gradient_Elements), never above what any curve reads: the safe side
+--  on a downhill.
+--
 --  Train categories (3.11.3.2.3, 3.11.3.2.6): the speed of each SSP
 --  element is chosen for the train when the packet is received (a change
 --  of the categories at standstill deletes the SSP, A.3.4.1.2 j, E4).
@@ -288,7 +303,9 @@ is
                         V      : Value_T) return Boolean
      with Global => State;
 
-   --  The gradient profile as elements along Ahead (signed per mille)
+   --  The gradient profile as elements along Ahead (signed per mille),
+   --  with the gaps a relocation leaves between two of them filled with
+   --  the lower one (see the header)
    procedure Gradient_Elements (T     : Origin_Table_T;
                                 Ahead : Sense_T;
                                 E     : in out Elements_T)
