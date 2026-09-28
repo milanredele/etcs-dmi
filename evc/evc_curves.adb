@@ -338,4 +338,97 @@ is
       end if;
    end Location_Of;
 
+   --------------
+   -- Extremes --
+   --------------
+
+   function Extremes (M            : Model_T;
+                      P            : Profile_T;
+                      X_From       : Num;
+                      X_To         : Num;
+                      Reduced_From : Num;
+                      V_EB_Lo      : Speed_T;
+                      V_EB_Hi      : Speed_T;
+                      V_SB_Lo      : Speed_T;
+                      V_SB_Hi      : Speed_T) return Extremes_T
+   is
+      Big       : constant Num := 20_000_000;
+      EB_Min    : Num := Big;
+      Safe_Max  : Num := 0;
+      SB_Min    : Num := Big;
+      Exp_Max   : Num := 0;
+      Reduced   : Boolean := False;
+
+      --  Step K of S meets the speeds Lo .. Hi
+      function Meets (S : Steps_T; K : Positive; Lo, Hi : Speed_T)
+        return Boolean
+      is ((K = 1 or else S.Steps (K - 1).Upper <= Hi)
+          and then (K = S.Count or else S.Steps (K).Upper >= Lo))
+        with Pre => K <= S.Count;
+   begin
+      for I in 1 .. P.Count loop
+         pragma Loop_Invariant
+           (EB_Min in 0 .. Big and then Safe_Max in 0 .. Big
+            and then SB_Min in 0 .. Big and then Exp_Max in 0 .. Big);
+         declare
+            Pt  : Point_T renames P.Points (I);
+            Hi  : constant Num :=
+              (if I < P.Count then P.Points (I + 1).Start else Max_Cm);
+         begin
+            if Pt.Start <= X_To and then Hi > X_From then
+               declare
+                  EB : Steps_T renames
+                    M.Emergency_Safe (Emergency_Combination (M, Pt.Inhibited));
+                  SB : Steps_T renames
+                    M.Service (Service_Combination (M, Pt.Inhibited));
+                  Capped : constant Boolean :=
+                    Pt.Reduced and then M.Redadh_Use = Limit;
+               begin
+                  if Pt.Reduced and then Hi > Reduced_From then
+                     Reduced := True;
+                  end if;
+                  for K in 1 .. EB.Count loop
+                     pragma Loop_Invariant
+                       (EB_Min in 0 .. Big and then Safe_Max in 0 .. Big);
+                     if Meets (EB, K, V_EB_Lo, V_EB_Hi) then
+                        declare
+                           V : constant Num := EB.Steps (K).Value;
+                           A : constant Num :=
+                             (if Capped then Min (V, M.Redadh) else V)
+                             + Pt.A_Gradient;
+                        begin
+                           EB_Min := Min (EB_Min, V);
+                           Safe_Max := Max (Safe_Max,
+                                            Min (Max (Forward (A), 0), Big));
+                        end;
+                     end if;
+                  end loop;
+                  for K in 1 .. SB.Count loop
+                     pragma Loop_Invariant
+                       (SB_Min in 0 .. Big and then Exp_Max in 0 .. Big);
+                     if Meets (SB, K, V_SB_Lo, V_SB_Hi) then
+                        declare
+                           V : constant Num := SB.Steps (K).Value;
+                        begin
+                           SB_Min := Min (SB_Min, V);
+                           Exp_Max :=
+                             Max (Exp_Max,
+                                  Min (Max (Forward (V + Pt.A_Gradient), 0),
+                                       Big));
+                        end;
+                     end if;
+                  end loop;
+               end;
+            end if;
+         end;
+      end loop;
+      if Reduced and then M.Redadh_Use = Limit then
+         EB_Min := Min (EB_Min, M.Redadh);
+      end if;
+      return (A_EB           => (if EB_Min = Big then 0 else EB_Min),
+              A_Safe_Max     => Safe_Max,
+              A_SB           => (if SB_Min = Big then 0 else SB_Min),
+              A_Expected_Max => Exp_Max);
+   end Extremes;
+
 end EVC_Curves;

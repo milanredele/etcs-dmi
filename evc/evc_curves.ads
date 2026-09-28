@@ -22,19 +22,23 @@
 --  keeps the target speed beyond.
 --
 --  Fixed point and precision. The curve keeps W = v², (cm/s)², and the
---  location, cm; with the deceleration a in mm/s², a dx of D cm changes
---  W by a * D / 5. Every rounding keeps the curve below the exact one:
---  along an arc the change of W is rounded down (rearwards it is a
---  gain, forwards a loss), the location where the curve reaches a
---  given W is rounded towards where the curve is lower, and the speed
---  is the integer square root of W rounded down. The error per arc is
---  below 1 (cm/s)² and 1 cm; over the at most a few hundred arcs of a
---  curve it stays below 0.1 km/h and 1 m at the speeds of the
---  supervision (evc_test measures it against a floating point
---  reference). Every query walks the arcs from the anchor, at most
---  Max_Iterations of them (every segment of the profile times every
---  step of the deceleration); the callers make a fixed number of
---  queries per target (EVC_Limits).
+--  location, cm; the deceleration a is in 1e-5 m/s² (EVC_Braking), so a
+--  dx of D cm changes W by a * D / 500, computed exactly and rounded
+--  down once (Gain). Every rounding keeps the curve below the exact one:
+--  rearwards of the anchor the gain of W is rounded down with the model
+--  values rounded down; forwards of the anchor the loss of W is taken
+--  with a deceleration raised by a margin that covers the rounding of
+--  the model (Forward); the location where the curve reaches a given W
+--  is rounded towards where the curve is lower, and the speed is the
+--  integer square root of W rounded down. Measured by evc_test against
+--  a floating point reference (Scenario_SDM_Precision, some 6800 values
+--  over trains, gradients and targets): the locations are never ahead of
+--  the exact ones and at most 4.2 m (1.5 per mille of the distance)
+--  behind, the speeds never above and at most 1.5 cm/s below. Every
+--  query walks the arcs from the anchor, at most Max_Iterations of them
+--  (every segment of the profile times every step of the deceleration);
+--  the callers make a fixed number of queries per target (EVC_Limits,
+--  EVC_SDM).
 
 with EVC_Braking;   use EVC_Braking;
 with EVC_Distances; use EVC_Distances;
@@ -106,5 +110,36 @@ is
      with Pre  => C.Floor_W <= C.Anchor_W
                   and then Stop in -Max_Cm + 1 .. Max_Cm,
           Post => Location_Of'Result in -Max_Cm .. Max_Cm + Max_Forward;
+
+   --  A.3.12.2.2 to .5: the extreme decelerations along [X_From, X_To]
+   --  (ahead coordinates) for the speeds V_EB_Lo .. V_EB_Hi (the
+   --  emergency brake) and V_SB_Lo .. V_SB_Hi (the service brake), 1e-5
+   --  m/s²: the lowest A_brake_safe (limited by A_MAXREDADH when reduced
+   --  adhesion applies anywhere from Reduced_From to X_To), the highest
+   --  A_safe, the lowest A_brake_service and the highest A_expected. The
+   --  lowest ones are those of the model (never above the exact ones),
+   --  the highest ones are raised as Walk_Forward raises the deceleration
+   --  (never below the exact ones).
+   type Extremes_T is record
+      A_EB           : Num := 0;
+      A_Safe_Max     : Num := 0;
+      A_SB           : Num := 0;
+      A_Expected_Max : Num := 0;
+   end record;
+
+   function Extremes (M            : Model_T;
+                      P            : Profile_T;
+                      X_From       : Num;
+                      X_To         : Num;
+                      Reduced_From : Num;
+                      V_EB_Lo      : Speed_T;
+                      V_EB_Hi      : Speed_T;
+                      V_SB_Lo      : Speed_T;
+                      V_SB_Hi      : Speed_T) return Extremes_T
+     with Post => Extremes'Result.A_EB in 0 .. 20_000_000
+                  and then Extremes'Result.A_Safe_Max in 0 .. 20_000_000
+                  and then Extremes'Result.A_SB in 0 .. 20_000_000
+                  and then Extremes'Result.A_Expected_Max
+                             in 0 .. 20_000_000;
 
 end EVC_Curves;

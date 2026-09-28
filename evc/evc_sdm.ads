@@ -118,6 +118,8 @@ is
       Lock_P      : Boolean := False;
       Lock_SBI    : Boolean := False;
       Lock_D      : Boolean := False;
+      --  the values shown last were of TSM or RSM (A.3.13)
+      Active_Display : Boolean := False;
    end record;
 
    ---------------------------------------------------------------------

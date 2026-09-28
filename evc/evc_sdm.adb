@@ -6,9 +6,11 @@
 --    - the MRSP before its first element takes the speed of the first
 --      element (the stored information starts it at or behind the
 --      train);
---    - T_be_reduced = T_be and T_bs_reduced = T_bs: the reductions of
---      A.3.12 are not applied (longer build up times, earlier limits,
---      the safe side), hence the pawl of A.3.13 never engages;
+--    - T_be_reduced and T_bs_reduced (A.3.12, EVC_Build_Up) are those
+--      of the train's current speed for every target; the locations
+--      calculated in advance (the RSM start, the release speed, the
+--      perturbation location) take T_be as 3.13.9.4 and 3.13.11 say or
+--      as the safe side;
 --    - a service brake commanded in ceiling speed monitoring and carried
 --      into release speed monitoring is revoked at the release speed
 --      (3.13.10.6.2 gives no revocation for it there, 3.13.10.6.4 revokes
@@ -21,6 +23,7 @@
 --    - the acceleration of the train is measured from the estimated
 --      speed of successive cycles, filtered with a time constant of 1 s.
 
+with EVC_Build_Up;
 with EVC_Curves; use EVC_Curves;
 with EVC_Limits; use EVC_Limits;
 
@@ -72,6 +75,8 @@ is
       Trip        : Loc_T := 0;
       Calculated  : Boolean := False;
       SvL         : Dist_T := 0;
+      --  A.3.12.1.4: the conversion model with Kt_int = 0
+      Kt_Zero     : Boolean := False;
    end record;
 
    --  The time margins of a target (3.13.6.2.2.3, 3.13.6.3.2.4)
@@ -95,17 +100,20 @@ is
    end record;
 
    --  3.13.9.3.3.3 to .5 and A.3.10.4: T_bs1 and T_bs2 of a target with
-   --  T_bs; Indication: for the Indication limit (3.13.9.3.6.5)
-   function Service_Times (C : Ctx_T; Bs : Time_T; Indication : Boolean)
-     return Service_T
+   --  T_bs and T_bs_reduced; Indication: for the Indication limit
+   --  (3.13.9.3.6.5)
+   function Service_Times (C          : Ctx_T;
+                           Bs         : Time_T;
+                           Bs_Reduced : Time_T;
+                           Indication : Boolean) return Service_T
    is
       T1 : Time_T;
    begin
       if not C.SB_Avail then
          return (0, 0);
       elsif not C.Feedback then
-         --  T_bs_reduced (= T_bs, see the header)
-         return (Bs, Bs);
+         --  3.13.9.3.3.3
+         return (Bs_Reduced, Bs_Reduced);
       elsif Indication then
          return (Bs, Bs);
       end if;
@@ -152,6 +160,79 @@ is
       else C.T_TCO);
 
    ---------------------------------------------------------------------
+   --  The reduced brake build up times of a target (A.3.12)
+   ---------------------------------------------------------------------
+
+   type Reduced_T is record
+      Be : Time_T := 0;   -- T_be_reduced
+      Bs : Time_T := 0;   -- T_bs_reduced
+   end record;
+
+   --  For the EBD part of a target (the SvL of an EOA target), or with
+   --  EOA_Part for its EOA, at the speed V
+   function Reduced_Of (Work       : Work_T;
+                        C          : Ctx_T;
+                        T          : Target_T;
+                        V          : Speed_T;
+                        In_Advance : Boolean;
+                        EOA_Part   : Boolean) return Reduced_T
+   is
+      Times : constant Times4_T := Times_Of (Work.Model, T);
+      Vd0   : constant Speed_T :=
+        (if C.Inhibit then 0 elsif In_Advance then F41 (V) else C.V_Ura);
+      A1    : constant Decel_T := (if In_Advance then 0 else C.A1);
+      A2    : constant Decel_T := (if In_Advance then 0 else C.A2);
+      --  A.3.12.2.6 to .8
+      T_Min : constant Time_T :=
+        (if C.TCO
+         then Max (C.T_TCO - (T_Warning
+                              + (if C.SB_Avail then Times.Bs else 0)), 0)
+         else C.T_TCO);
+      T_Max : constant Time_T := T_Traction_Max (C, Times);
+      --  A.3.12.2.2: V_bec with T_be (the longest traction time: the
+      --  widest range of speeds)
+      V_Bec : constant Speed_T :=
+        Min (Max (V + Vd0 + Min (Gain_Ceil (A1, T_Max), Max_Speed),
+                  T.Speed)
+             + Min (Gain_Ceil (A2, Max (Times.Be - T_Max, 0)), Max_Speed),
+             Max_Speed);
+      Zero  : constant Boolean := T.Kind in EOA_Target | SR_Target;
+      Ext   : constant Extremes_T :=
+        Extremes (Work.Model, Work.Profile, C.X_Est,
+                  (if EOA_Part then T.EOA else T.Location), C.X_Min,
+                  V_EB_Lo => (if Zero then 0 else T.Speed),
+                  V_EB_Hi => V_Bec,
+                  V_SB_Lo => (if Zero then 0 else T.Speed),
+                  V_SB_Hi => V);
+      Input : constant EVC_Build_Up.Input_T :=
+        (Kind           => (if EOA_Part then EVC_Build_Up.EOA_Target
+                            elsif Zero then EVC_Build_Up.Zero_Target
+                            else EVC_Build_Up.Speed_Target),
+         V_Est          => V,
+         V_Delta0       => Vd0,
+         V_Target       => T.Speed,
+         A_Est1         => A1,
+         A_Est2         => A2,
+         T_Be_React     => Times.Be_React,
+         T_Be           => Times.Be,
+         T_Bs_React     => Times.Bs_React,
+         T_Bs           => Times.Bs,
+         T_Traction     => T_Max,
+         T_Traction_Min => T_Min,
+         T_Traction_Max => T_Max,
+         A_EB           => Ext.A_EB,
+         A_Safe_Max     => Ext.A_Safe_Max,
+         A_SB           => Ext.A_SB,
+         A_Expected_Max => Ext.A_Expected_Max,
+         Kt_Zero        => C.Kt_Zero);
+   begin
+      return (Be => EVC_Build_Up.T_Be_Reduced (Input),
+              --  3.13.6.3.2.5: T_bs with the service brake feedback
+              Bs => (if C.Feedback then Times.Bs
+                     else EVC_Build_Up.T_Bs_Reduced (Input)));
+   end Reduced_Of;
+
+   ---------------------------------------------------------------------
    --  The limits of a target at a speed
    ---------------------------------------------------------------------
 
@@ -159,6 +240,8 @@ is
       L        : Limits_T;   -- the EBD based limits (the SvL of an EOA)
       E        : Limits_T;   -- the EOA
       P_Target : Num := 0;   -- 3.13.9.3.5.9 for MRSP and LOA targets
+      --  A.3.13: a build up time of the target is reduced
+      Reduced  : Boolean := False;
    end record;
 
    --  V_Delta0 and the accelerations: the ones of the train, or those of
@@ -167,10 +250,12 @@ is
    function Terms_Of (C          : Ctx_T;
                       V          : Speed_T;
                       Times      : Times4_T;
+                      Red        : Reduced_T;
                       Indication : Boolean;
                       In_Advance : Boolean) return Terms_T
    is
-      Serv : constant Service_T := Service_Times (C, Times.Bs, Indication);
+      Serv : constant Service_T :=
+        Service_Times (C, Times.Bs, Red.Bs, Indication);
    begin
       return (V        => V,
               V_Delta0 => (if C.Inhibit then 0
@@ -178,10 +263,10 @@ is
                            else C.V_Ura),
               A_Est1   => (if In_Advance then 0 else C.A1),
               A_Est2   => (if In_Advance then 0 else C.A2),
-              T_Be     => Times.Be,
+              T_Be     => Red.Be,
               T_Bs1    => Serv.Bs1,
               T_Bs2    => Serv.Bs2,
-              T_Ind    => T_Indication (C, Times.Bs),
+              T_Ind    => T_Indication (C, Red.Bs),
               TCO      => C.TCO,
               T_Traction_Cut_Off => C.T_TCO);
    end Terms_Of;
@@ -201,12 +286,26 @@ is
                   and then Evaluate'Result.P_Target in Location_T
    is
       Times : constant Times4_T := Times_Of (Work.Model, T);
-      Terms : constant Terms_T := Terms_Of (C, V, Times, False, In_Advance);
+      Red_L : constant Reduced_T :=
+        Reduced_Of (Work, C, T, V, In_Advance, EOA_Part => False);
+      Red_E : constant Reduced_T :=
+        (if T.Kind = EOA_Target
+         then Reduced_Of (Work, C, T, V, In_Advance, EOA_Part => True)
+         else Red_L);
+      Terms : constant Terms_T :=
+        Terms_Of (C, V, Times, Red_L, False, In_Advance);
+      Terms_E : constant Terms_T :=
+        Terms_Of (C, V, Times, Red_E, False, In_Advance);
       Curve : constant Curve_T := EBD_Of (T);
-      Serv  : constant Service_T := Service_Times (C, Times.Bs, False);
+      Serv  : constant Service_T :=
+        Service_Times (C, Times.Bs, Red_L.Bs, False);
       R     : Eval_T;
       GUI_Curve : Curve_T;
    begin
+      R.Reduced :=
+        Red_L.Be < Times.Be
+        or else (C.SB_Avail and then not C.Feedback
+                 and then (Red_L.Bs < Times.Bs or else Red_E.Bs < Times.Bs));
       if T.Kind in MRSP_Target | LOA_Target then
          R.P_Target :=
            P_At_Target
@@ -236,7 +335,7 @@ is
             (Kind => SBD, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0),
             C.GUI,
             (Kind => GUI, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0),
-            Terms, C.X_Est, C.Stop);
+            Terms_E, C.X_Est, C.Stop);
       else
          R.E := R.L;
       end if;
@@ -247,7 +346,9 @@ is
       if C.Feedback and then C.SB_Avail then
          declare
             Terms_I : constant Terms_T :=
-              Terms_Of (C, V, Times, True, In_Advance);
+              Terms_Of (C, V, Times, Red_L, True, In_Advance);
+            Terms_IE : constant Terms_T :=
+              Terms_Of (C, V, Times, Red_E, True, In_Advance);
             I_L : constant Limits_T :=
               EBD_Limits (Work.Model, Work.Profile, Curve, T.Speed,
                           T.Location, C.GUI, GUI_Curve, Terms_I, C.X_Max,
@@ -263,7 +364,7 @@ is
                      C.GUI,
                      (Kind => GUI, Anchor => T.EOA, Anchor_W => 0,
                       Floor_W => 0),
-                     Terms_I, C.X_Est, C.Stop);
+                     Terms_IE, C.X_Est, C.Stop);
                begin
                   R.E.I := Min (I_E.I, R.E.P);
                end;
@@ -617,7 +718,8 @@ is
       Vd0   : constant Speed_T := (if C.Inhibit then 0 else F41 (V_R));
       V1    : constant Speed_T := Min (V_R + Vd0, Max_Speed);
       Times : constant Times4_T := Times_Of (Work.Model, EOA_T);
-      Serv  : constant Service_T := Service_Times (C, Times.Bs, False);
+      Serv  : constant Service_T :=
+        Service_Times (C, Times.Bs, Times.Bs, False);
       EOA_SBD : constant Curve_T :=
         (Kind => SBD, Anchor => EOA_T.EOA, Anchor_W => 0, Floor_W => 0);
       MR    : Num := Max_Cm + Max_Forward;
@@ -633,7 +735,7 @@ is
                declare
                   Tt    : constant Times4_T := Times_Of (Work.Model, T);
                   St    : constant Service_T :=
-                    Service_Times (C, Tt.Bs, False);
+                    Service_Times (C, Tt.Bs, Tt.Bs, False);
                   Terms : constant Terms_T :=
                     (V => V_R, V_Delta0 => Vd0, A_Est1 => 0, A_Est2 => 0,
                      T_Be => Tt.Be, T_Bs1 => St.Bs1, T_Bs2 => St.Bs2,
@@ -776,6 +878,9 @@ is
       NV     : National_Values_T renames S.National;
       Config : Onboard_Config_T renames S.Extra.Config;
       C      : Ctx_T;
+      --  the emergency brake command on entry, for the proof of the
+      --  revocation (the postcondition)
+      EB_In  : constant Boolean := State.EB with Ghost;
 
       procedure Deactivate is
       begin
@@ -794,6 +899,7 @@ is
          State.Feedback.Locked := False;
          State.Feedback.Ratio_Prev := 1_000;
          State.Signature := 0;
+         State.Active_Display := False;
          State.Target_Count := 0;
       end Deactivate;
 
@@ -818,6 +924,9 @@ is
       Ind_Target : Natural range 0 .. Max_Targets := 0;
       MRDT_Here  : Boolean := False;
       Signature  : Num := 0;
+      --  A.3.13: a build up time of some target is reduced
+      Pawl       : Boolean := False;
+      MRDT_Changed : Boolean := False;
 
       type Concerned_T is record
          Index : Positive range 1 .. Max_Targets := 1;
@@ -1009,6 +1118,7 @@ is
       C.SB_Avail := Config.Service_Brake_Command and then NV.Q_NVSBTSMPERM;
       C.GUI := NV.Q_NVGUIPERM and then Work.Model.Has_Normal;
       C.Inhibit := NV.Q_NVINHSMICPERM;
+      C.Kt_Zero := Work.Model.Conversion and then NV.Kt_Int = 0;
       C.TCO := Config.Traction_Cut_Off;
       C.T_TCO := Time_T (S.Train_Data.T_Traction_Cut_Off);
 
@@ -1133,6 +1243,7 @@ is
             Rev_All := Rev_All and then F.Rev;
             Passed_I := Passed_I or else F.Passed_I;
             Passed_I_B := Passed_I_B or else F.Passed_I_B;
+            Pawl := Pawl or else R.Reduced;
             MRDT_Here := MRDT_Here
                          or else (State.MRDT_Valid
                                   and then Same (T, State.MRDT));
@@ -1373,6 +1484,9 @@ is
             end if;
             State.TCO := False;
       end case;
+      pragma Assert (if EB_In and then not State.EB
+                     then C.Standstill
+                          or else (Mon /= RSM and then C.V <= C.V_MRSP));
       Brake := State.SB or else State.EB or else State.EB_For_SB;
 
       ------------------------------------------------------------------
@@ -1539,11 +1653,13 @@ is
                then
                   State.MRDT := Work.Targets (Candidate);
                   State.MRDT_Id := (State.MRDT_Id + 1) mod 256;
+                  MRDT_Changed := True;
                end if;
             elsif Candidate > 0 then
                State.MRDT := Work.Targets (Candidate);
                State.MRDT_Valid := True;
                State.MRDT_Id := (State.MRDT_Id + 1) mod 256;
+               MRDT_Changed := True;
             else
                State.MRDT_Valid := False;
             end if;
@@ -1624,6 +1740,16 @@ is
             Result.V_Target := T_Shown.Speed;
          end if;
 
+         --  3.13.10.4.8.1, A.3.13: while a build up time is reduced the
+         --  displayed P and SBI do not increase (the pawl; released with a
+         --  new MRDT)
+         if Mon /= CSM and then Pawl and then not MRDT_Changed
+           and then State.Active_Display
+         then
+            V_Perm := Min (V_Perm, State.Shown_P);
+            V_SBI := Min (V_SBI, State.Shown_SBI);
+         end if;
+
          --  3.13.10.4.8.1, A.3.10: locked values do not increase
          if State.Lock_P then
             if V_Perm < State.Shown_P then
@@ -1655,6 +1781,7 @@ is
          State.Shown_P := Result.V_Perm;
          State.Shown_SBI := Result.V_SBI;
          State.Shown_D := Result.D_Target;
+         State.Active_Display := Mon /= CSM;
       end;
 
       Result.Monitoring := Mon;
@@ -1667,6 +1794,10 @@ is
       Result.EB := State.EB or else State.EB_For_SB;
       pragma Assert (if Result.Status = IntS
                      then Result.SB or else Result.EB);
+      pragma Assert (if EB_In and then not State.EB
+                     then S.Train.Standstill
+                          or else (Result.Monitoring /= RSM
+                                   and then Result.V_Est <= Result.V_MRSP));
 
       ------------------------------------------------------------------
       --  The EOA, LOA and SvL passed (3.13.10.2.6 a, 3.13.10.2.7), the

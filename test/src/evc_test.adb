@@ -65,6 +65,7 @@ with ETCS_Train_Packets.P4;
 with ETCS_Variables;
 with EVC_Brake_Commands;
 with EVC_Braking;
+with EVC_Build_Up;
 with EVC_Bytes;
 with EVC_Core;
 with EVC_Curves;
@@ -3399,7 +3400,6 @@ procedure EVC_Test is
    package BC renames EVC_Brake_Commands;
    use type SDM.Monitoring_T;
    use type SDM.Status_T;
-   use type SDM.Target_Kind_T;
    use type SI.Brake_Position_T;
    use type SI.Brake_Model_T;
    use type EVC_Limits.Margin_Kind_T;
@@ -4537,12 +4537,6 @@ procedure EVC_Test is
       return N;
    end JRU_Count;
 
-   function State_Img return String is
-     (SDM.Monitoring_T'Image (Res.Monitoring) & "/"
-      & SDM.Status_T'Image (Res.Status)
-      & (if Cmd.EB then " EB" else "") & (if Cmd.SB then " SB" else "")
-      & (if Cmd.TCO then " TCO" else ""));
-
    --  3.13.10.3: ceiling speed monitoring, Tables 5 to 7; the TIU output
    --  and MSG_SPEED_STATE field by field
    procedure Scenario_SDM_Ceiling is
@@ -4913,7 +4907,6 @@ procedure EVC_Test is
 
    function Never return Boolean is (False);
    function In_TSM return Boolean is (Res.Monitoring = SDM.TSM);
-   function Stopped return Boolean is (Sup.Train.Speed = 0);
 
    --  3.13.8.2.1 a), 3.13.10.4.2, .5, .7, Table 16 [1], [3]: an MRSP
    --  target: TSM, the target speed and distance shown, CSM once the max
@@ -5054,7 +5047,7 @@ procedure EVC_Test is
    procedure Scenario_SDM_Perturbation is
       S  : SI.Snapshot_T := Base_Snapshot;
       X  : Integer_64 := 0;
-      V  : SI.Speed_Cms_T := Cms (100.0);
+      V  : constant SI.Speed_Cms_T := Cms (100.0);
       Requested_At : Integer_64 := -1;
    begin
       Give_MA (S, 5_000, 100);
@@ -5124,6 +5117,7 @@ procedure EVC_Test is
    begin
       Give_MA (Base, 5_000, 200);
       Plain := SB_Location (False, 500, Grows);
+      Check (not Grows, "feedback: the displayed P never grows without it");
       Reduced := SB_Location (True, 460, Grows);
       Check (not Grows, "feedback: the displayed P never grows (A.3.10)");
       Locked := SB_Location (True, 400, Grows);
@@ -5395,10 +5389,13 @@ procedure EVC_Test is
       type Point_T is
         (Mission_SB, Mission_TSM, Mission_After_LX, Mission_RSM,
          Mission_Stopped);
-      Names : constant array (Point_T) of access constant String :=
-        (new String'("mission_sb"), new String'("mission_tsm"),
-         new String'("mission_after_lx"), new String'("mission_rsm"),
-         new String'("mission_stopped"));
+      function Name (P : Point_T) return String is
+        (case P is
+            when Mission_SB       => "mission_sb",
+            when Mission_TSM      => "mission_tsm",
+            when Mission_After_LX => "mission_after_lx",
+            when Mission_RSM      => "mission_rsm",
+            when Mission_Stopped  => "mission_stopped");
       type Frames_T is array (Point_T) of Frame_T;
       type Frames_Access is access Frames_T;
       Mock_Frames : constant Frames_Access := new Frames_T;
@@ -5609,7 +5606,7 @@ procedure EVC_Test is
                end if;
             end loop;
          end loop;
-         Put ("  mission " & Names (Point).all & ": mock v_perm"
+         Put ("  mission " & Name (Point) & ": mock v_perm"
               & Img (Mock_Shown (Point).V_Perm) & " v_target"
               & Img (Mock_Shown (Point).V_Target) & " d_target"
               & Img (Mock_Shown (Point).D_Target) & " mon"
@@ -5656,12 +5653,12 @@ procedure EVC_Test is
             Mock_Shown (Point) := Mock_Speed;
             declare
                Golden : constant String :=
-                 DMI_Golden_Dir & Names (Point).all & ".sha256";
+                 DMI_Golden_Dir & Name (Point) & ".sha256";
             begin
                Check (Ada.Directories.Exists (Golden)
                       and then Read_Line (Golden)
                                = Display.Screen.Files.Digest,
-                      "mission: the mock draws " & Names (Point).all
+                      "mission: the mock draws " & Name (Point)
                       & " as recorded");
             end;
             for X in X_T loop
@@ -5784,6 +5781,177 @@ procedure EVC_Test is
              & "on-board's picture is the mock's");
    end Scenario_SDM_Mission;
 
+   ---------------------------------------------------------------------
+   --  A.3.12: the reduced build up times against the formulas in
+   --  floating point
+   ---------------------------------------------------------------------
+
+   function R_Be_Reduced (I : EVC_Build_Up.Input_T) return LF is
+      use Ada.Numerics.Long_Elementary_Functions;
+      use type EVC_Build_Up.Target_Kind_T;
+      --  s, cm/s, cm/s²
+      Tbe  : constant LF := LF (I.T_Be) / 1000.0;
+      Tr   : constant LF := LF (I.T_Be_React) / 1000.0;
+      Ttm  : constant LF := LF (I.T_Traction_Max) / 1000.0;
+      Ttn  : constant LF := LF (I.T_Traction_Min) / 1000.0;
+      A1   : constant LF := LF (I.A_Est1) / 10.0;
+      A2   : constant LF := LF (I.A_Est2) / 10.0;
+      AEB  : constant LF := LF (I.A_EB) / 1000.0;
+      ASM  : constant LF := LF (I.A_Safe_Max) / 1000.0;
+      V0   : constant LF := LF (I.V_Est + I.V_Delta0);
+      Vt   : constant LF := LF (I.V_Target);
+      T2   : constant LF := 2.0 * Tbe - Tr;
+      Tinc : constant LF := T2 - Tr;
+      Vt1, Vt2, Te, D, T_Dist : LF;
+      Speed : constant Boolean := I.Kind = EVC_Build_Up.Speed_Target;
+   begin
+      if I.Kind = EVC_Build_Up.EOA_Target or else I.Kt_Zero
+        or else I.T_Traction >= I.T_Be
+      then
+         return Tbe;
+      end if;
+      Vt1 := (if Ttm < Tr then V0 + A1 * Ttm + A2 * (Tr - Ttm)
+              else V0 + A1 * Tr);
+      if (Speed and then Vt1 <= Vt) or else (not Speed and then Vt1 = 0.0)
+      then
+         return Tr;
+      end if;
+      Vt2 := LF'Max (0.0, V0 + A1 * Ttm + A2 * (T2 - Ttm)
+                          - AEB * (T2 - Tr) / 2.0);
+      if (Speed and then Vt2 >= Vt) or else (not Speed and then Vt2 > 0.0)
+      then
+         return Tbe;
+      end if;
+      declare
+         R  : constant LF := A2 / AEB * Tinc;
+         DV : constant LF := LF'Max (0.0, V0 - Vt);
+      begin
+         Te := Tr + R + Sqrt (R ** 2 + 2.0 * Tinc / AEB
+                                    * (DV + (A1 - A2) * Ttm + A2 * Tr));
+      end;
+      D := ((A2 - A1) * Ttm ** 2 / 2.0 + AEB * Tr ** 3 / (6.0 * Tinc))
+        + (V0 + (A1 - A2) * Ttm - AEB * Tr ** 2 / (2.0 * Tinc)) * Te
+        + (A2 + AEB * Tr / Tinc) * Te ** 2 / 2.0
+        - AEB / Tinc * Te ** 3 / 6.0;
+      if A2 = 0.0 then
+         T_Dist := (D + Vt ** 2 / (2.0 * ASM)) / V0 - V0 / (2.0 * ASM);
+      else
+         declare
+            TX : constant LF := (V0 + (A1 - A2) * Ttn) / (-A2);
+         begin
+            T_Dist := TX + Sqrt (ASM / (ASM + A2)
+                                 * (TX ** 2 + ((A1 - A2) * Ttn ** 2
+                                               + 2.0 * D) / A2)
+                                 + Vt ** 2 / (A2 * (ASM + A2)));
+         end;
+      end if;
+      return LF'Max (Tr, LF'Min (LF'Max ((Tr + Te) / 2.0, T_Dist), Tbe));
+   end R_Be_Reduced;
+
+   function R_Bs_Reduced (I : EVC_Build_Up.Input_T) return LF is
+      use Ada.Numerics.Long_Elementary_Functions;
+      use type EVC_Build_Up.Target_Kind_T;
+      Tbs  : constant LF := LF (I.T_Bs) / 1000.0;
+      Tr   : constant LF := LF (I.T_Bs_React) / 1000.0;
+      ASB  : constant LF := LF (I.A_SB) / 1000.0;
+      AEM  : constant LF := LF (I.A_Expected_Max) / 1000.0;
+      V    : constant LF := LF (I.V_Est);
+      Vt   : constant LF := LF (I.V_Target);
+      T2   : constant LF := 2.0 * Tbs - Tr;
+      Tinc : constant LF := T2 - Tr;
+      Speed : constant Boolean := I.Kind = EVC_Build_Up.Speed_Target;
+      Te, D, T_Dist : LF;
+   begin
+      if (Speed and then V <= Vt) or else (not Speed and then V = 0.0) then
+         return Tr;
+      end if;
+      declare
+         V2 : constant LF := LF'Max (0.0, V - ASB * (T2 - Tr) / 2.0);
+      begin
+         if (Speed and then V2 >= Vt) or else (not Speed and then V2 > 0.0)
+         then
+            return Tbs;
+         end if;
+      end;
+      Te := Tr + Sqrt (2.0 * Tinc / ASB * LF'Max (0.0, V - Vt));
+      D := V * Te - ASB / (6.0 * Tinc) * (Te - Tr) ** 3;
+      T_Dist := (D + Vt ** 2 / (2.0 * AEM)) / V - V / (2.0 * AEM);
+      return LF'Max (Tr, LF'Min (LF'Max ((Tr + Te) / 2.0, T_Dist), Tbs));
+   end R_Bs_Reduced;
+
+   procedure Scenario_SDM_Build_Up is
+      use EVC_Fixed;
+      E0      : constant EVC_Braking.Times_T :=
+        EVC_Braking.Conversion_Emergency (SI.Passenger_P, 40_000, True);
+      S0      : constant EVC_Braking.Times_T :=
+        EVC_Braking.Conversion_Service (SI.Passenger_P, 40_000, True);
+      Speeds  : constant array (1 .. 4) of LF := (20.0, 60.0, 120.0, 160.0);
+      Targets : constant array (1 .. 3) of LF := (0.0, 40.0, 80.0);
+      Accels  : constant array (1 .. 3) of Num := (0, 20, 300);
+      Reduced : Natural := 0;
+      Compared_BU : Natural := 0;
+      Worst   : LF := 0.0;
+   begin
+      for V of Speeds loop
+         for VT of Targets loop
+            for A of Accels loop
+               for Ttm in 0 .. 1 loop
+                  declare
+                     I : constant EVC_Build_Up.Input_T :=
+                       (Kind           => (if VT = 0.0
+                                           then EVC_Build_Up.Zero_Target
+                                           else EVC_Build_Up.Speed_Target),
+                        V_Est          => Speed_T (Cms (V)),
+                        V_Delta0       => 56,
+                        V_Target       => Speed_T (Cms (VT)),
+                        A_Est1         => A,
+                        A_Est2         => Min (A, 400),
+                        T_Be_React     => Div_Ceil (E0.React * 1_100, 1_000),
+                        T_Be           => Div_Ceil (E0.Build_Up * 1_100,
+                                                    1_000),
+                        T_Bs_React     => S0.React,
+                        T_Bs           => S0.Build_Up,
+                        T_Traction     => Num (Ttm) * 500,
+                        T_Traction_Min => 0,
+                        T_Traction_Max => Num (Ttm) * 500,
+                        A_EB           => 55_000,
+                        A_Safe_Max     => 72_000,
+                        A_SB           => 80_000,
+                        A_Expected_Max => 95_000,
+                        Kt_Zero        => False);
+                     K_Be : constant Num := EVC_Build_Up.T_Be_Reduced (I);
+                     K_Bs : constant Num := EVC_Build_Up.T_Bs_Reduced (I);
+                     R_Be : constant LF := R_Be_Reduced (I) * 1000.0;
+                     R_Bs : constant LF := R_Bs_Reduced (I) * 1000.0;
+                     Tag  : constant String :=
+                       Img_LF (V) & " km/h to" & Img_LF (VT) & " km/h, A"
+                       & Img (Natural (A)) & ", traction" & Img (Ttm * 500);
+                  begin
+                     Compared_BU := Compared_BU + 2;
+                     if K_Be < I.T_Be or else K_Bs < I.T_Bs then
+                        Reduced := Reduced + 1;
+                     end if;
+                     Worst := LF'Max (Worst, LF'Max (LF (K_Be) - R_Be,
+                                                     LF (K_Bs) - R_Bs));
+                     Check (LF (K_Be) >= R_Be - 0.001
+                            and then LF (K_Be) - R_Be <= 50.0,
+                            "A.3.12 T_be_reduced " & Tag & ":" & Img_LF (LF (K_Be))
+                            & " ms, the formulas" & Img_LF (R_Be) & " ms");
+                     Check (LF (K_Bs) >= R_Bs - 0.001
+                            and then LF (K_Bs) - R_Bs <= 50.0,
+                            "A.3.12 T_bs_reduced " & Tag & ":" & Img_LF (LF (K_Bs))
+                            & " ms, the formulas" & Img_LF (R_Bs) & " ms");
+                  end;
+               end loop;
+            end loop;
+         end loop;
+      end loop;
+      Check (Reduced > 0, "A.3.12: some build up times reduced");
+      Put_Line ("  A.3.12:" & Img (Compared_BU) & " reduced times compared,"
+                & Img (Reduced) & " cases reduced, the kernel at most"
+                & Img_LF (Worst) & " ms longer (never shorter)");
+   end Scenario_SDM_Build_Up;
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -5833,6 +6001,7 @@ begin
    Scenario_SDM_Masking;
    Scenario_SDM_SR;
    Scenario_SDM_Mission;
+   Scenario_SDM_Build_Up;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));
