@@ -533,17 +533,17 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.2.2.4.1 a),3,x,,,,,E3,done,"EVC_Supervision_Input.Brake_Position_T; used by EVC_Braking (A.3.8, A.3.9, Kv_int set, normal service set, A_MAXREDADH); evc_test SDM_Precision"
 3.13.2.2.4.1 b),3,x,,,,,E3,done,"EVC_Supervision_Input.Brake_Position_T; used by EVC_Braking (A.3.8, A.3.9, Kv_int set, normal service set, A_MAXREDADH); evc_test SDM_Precision"
 3.13.2.2.4.1 c),3,x,,,,,E3,done,"EVC_Supervision_Input.Brake_Position_T; used by EVC_Braking (A.3.8, A.3.9, Kv_int set, normal service set, A_MAXREDADH); evc_test SDM_Precision"
-3.13.2.2.6.1,3,x,,,,,E3,done,Onboard_Config_T.Special_Brakes (Special_Brake_Interface_T); EVC_Braking.Build; evc_test SDM_Special_Brakes
-3.13.2.2.6.1 Table 3,3,x,,,,,E3,done,Onboard_Config_T.Special_Brakes (Special_Brake_Interface_T); EVC_Braking.Build; evc_test SDM_Special_Brakes
+3.13.2.2.6.1,3,x,,,,,E3,done,"Onboard_Config_T.Special_Brakes (Special_Brake_Interface_T); EVC_Braking.Build; evc_test SDM_Special_Brakes; configured as data: EVC_Config (Valid: Table 3), EVC_Core.Configure; evc_test Config_Image, Config_Behaviour"
+3.13.2.2.6.1 Table 3,3,x,,,,,E3,done,"Onboard_Config_T.Special_Brakes (Special_Brake_Interface_T); EVC_Braking.Build; evc_test SDM_Special_Brakes; EVC_Config.Valid refuses an interface Table 3 does not allow (magnetic shoe: service only, both; Ep: emergency only); evc_test Config_Image"
 3.13.2.2.6.2,3,x,,,,,E3,done,EVC_Braking.Build: Emergency_Brakes / Service_Brakes from the TIU status (inputs 7 to 10) where the interface affects the model; the times by the combination in use; evc_test SDM_Special_Brakes
 3.13.2.2.6.2 Table 4,3,x,,,,,E3,done,EVC_Braking.Build: Emergency_Brakes / Service_Brakes from the TIU status (inputs 7 to 10) where the interface affects the model; the times by the combination in use; evc_test SDM_Special_Brakes
 3.13.2.2.6.3,3,x,,,,,E3,done,EVC_Braking.Build: the conversion model gives every combination the same models; the option of A.3.9.6 for T_brake_service is not taken
-3.13.2.2.6.4,3,x,,,,,E3,done,Onboard_Config_T.Additional_Brake_Allowed and the additional brake status (TIU input 11) select A_NVMAXREDADH1 (EVC_Braking.Build)
+3.13.2.2.6.4,3,x,,,,,E3,done,Onboard_Config_T.Additional_Brake_Allowed and the additional brake status (TIU input 11) select A_NVMAXREDADH1 (EVC_Braking.Build); configured as data (EVC_Config); evc_test Config_Behaviour
 3.13.2.2.6.6,3,x,,,,,E3,done,Onboard_Config_T.Additional_Brake_Allowed and the additional brake status (TIU input 11) select A_NVMAXREDADH1 (EVC_Braking.Build)
-3.13.2.2.7.1,3,x,,,,,E3,done,"Onboard_Config_T.Service_Brake_Command; EVC_SDM (EB instead, 3.13.10.2.3); evc_test SDM_Ceiling"
-3.13.2.2.7.2,3,x,,,,,E3,done,Onboard_Config_T.Service_Brake_Feedback; EVC_SDM.Update_Feedback; evc_test SDM_Feedback
+3.13.2.2.7.1,3,x,,,,,E3,done,"Onboard_Config_T.Service_Brake_Command; EVC_SDM (EB instead, 3.13.10.2.3); evc_test SDM_Ceiling; configured as data (EVC_Config); evc_test Config_Behaviour"
+3.13.2.2.7.2,3,x,,,,,E3,done,Onboard_Config_T.Service_Brake_Feedback; EVC_SDM.Update_Feedback; evc_test SDM_Feedback; configured as data (EVC_Config); evc_test Config_Behaviour
 3.13.2.2.7.3,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback: the brake pipe or, converted (A.3.10.3), the brake cylinder pressure (TIU input 12); evc_test SDM_Feedback"
-3.13.2.2.8.1,3,x,,,,,E3,done,"Onboard_Config_T.Traction_Cut_Off; EVC_Limits.T_Traction, EVC_SDM (TCO only if implemented); evc_test SDM_Approach"
+3.13.2.2.8.1,3,x,,,,,E3,done,"Onboard_Config_T.Traction_Cut_Off; EVC_Limits.T_Traction, EVC_SDM (TCO only if implemented); evc_test SDM_Approach; configured as data (EVC_Config); evc_test Config_Behaviour"
 3.13.2.2.9.1.1,3,x,,,,,E3,done,"EVC_Braking.Build: Kdry_rst / Kwet_rst for braking models, none for the conversion model"
 3.13.2.2.9.1.2,3,x,,,,,E3,partial,"one set of Kdry_rst / Kwet_rst (Train_Data_Extra_T) serves every combination model, applied step by step; a set per combination is not in the train data yet (E6 train data)"
 3.13.2.2.9.1.3,3,x,,,,,E3,done,"Train_Data_Extra_T.Kdry_Rst (by M_NVEBCL) and Kwet_Rst, per step of A_brake_emergency; EVC_Braking.Build; evc_test SDM_Precision (gamma train)"
@@ -776,7 +776,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.11.7.1.2,3,x,,,,,E3,done,"EVC_SDM.Perturbation_Of / Indication_For (MRSP elements from the first, I at their speed with zero acceleration, f41, T_bs, T_be; SvL, EOA, LOA rules); evc_test SDM_Perturbation"
 3.13.11.8,3,x,,,,,E3,partial,EVC_SDM.Result_T.MA_Request (the location d_MAR with T_MAR of the snapshot passed); evc_test SDM_Perturbation; sending the MA request is E5 (3.8.2.2)
 3.13.11.9,3,x,,,,,E3,done,EVC_SDM.Step (the EBD at the MRSP start below the first element: the MA request location passed)
-3.14.1.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Step (the service brake alone, the train not decelerating T_bs + 2 s after: the emergency brake, released with the service brake command; TIU reason bit 1)"
+3.14.1.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Step (the service brake alone, the train not decelerating T_bs + 2 s after: the emergency brake, released with the service brake command; TIU reason bit 1); the time and the deceleration configured as data (EVC_Config); evc_test Config_Behaviour"
 3.14.1.3,3,x,,,,,E3,deferred,E4: the trip (TR) and its acknowledgement
 3.14.1.5,3,x,,,,,E3,partial,"EVC_Brake_Commands (roll away, unauthorised direction, standstill supervision released at standstill after the acknowledgement, DMI ack kind 5); evc_test SDM_Protections; the train data / SR entry movement reasons are E4"
 3.14.1.6,3,x,,,,,E3,deferred,E4: the reactions to the linking errors and inconsistencies E2 reports (EVC_Position events)
@@ -1135,7 +1135,7 @@ A.3.9.8,3,x,,,,,E3,done,EVC_Braking.Conversion_Service; evc_test SDM_Precision
 A.3.10.2,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
 A.3.10.2 a),3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
 A.3.10.2 b),3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
-A.3.10.3,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
+A.3.10.3,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback; the cylinder and k1 configured as data (EVC_Config); evc_test Config_Behaviour"
 A.3.10.4,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
 A.3.11 Table,3,x,,,,,E1,deferred,"E4/E6: driver data entry ranges (train data, driver ID, RBC ID, SR); language widths fit"
 A.3.12.1.4,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"

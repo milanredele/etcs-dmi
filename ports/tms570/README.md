@@ -190,3 +190,63 @@ heap beyond what the linker script leaves, `Ada.Text_IO` on SCI1/LIN1 at
   (TMS570 support) or TI UniFlash, and `arm-eabi-gdb` from the toolchain.
 - **Measurements.** Worst-case execution time of one tick, stack use
   (`-fstack-usage`), flash and RAM use against the budget.
+- **The installation configuration in flash** (see below).
+
+### The installation configuration in flash (E8, not built yet)
+
+The configuration of the vehicle installation (brake interfaces of
+SUBSET-026 3.13.2.2.6 to 3.13.2.2.8, traction cut-off, the service brake
+failure detection, the antenna from each cab: `evc/evc_config.ads`) is
+data, not code: the same on-board binary runs on every vehicle, and the
+configuration is flashed with it as a separate block.
+
+- **The block.** A section of its own, `.evc_config`, at a fixed address
+  in our linker script (`LOADER=USER`), in a flash sector that holds
+  nothing else, so that the configuration is erased and written without
+  touching the code (the sector is chosen from the sector map of the
+  TMS570LC4357 data sheet when the script is written; the image needs
+  36 bytes, a whole sector is reserved). The script only reserves it and
+  names its bounds for the startup:
+
+  ```
+  MEMORY
+  {
+    FLASH  (rx) : ORIGIN = 0x00000000, LENGTH = <code>
+    CONFIG (r)  : ORIGIN = <config sector>, LENGTH = <sector size>
+    RAM    (rw) : ORIGIN = 0x08000000, LENGTH = 512K
+  }
+  SECTIONS
+  {
+    .evc_config (NOLOAD) :
+    {
+      __evc_config_start = .;
+      . = . + LENGTH(CONFIG);
+      __evc_config_end = .;
+    } > CONFIG
+    ...
+  }
+  ```
+
+  `NOLOAD`: the binary of the on-board carries no configuration.
+- **The image.** The byte image of `test/tools/evc_config.py` (the text
+  form of the vehicle, e.g. from `ports/hosted/evc.cfg`, to the image:
+  magic, version, length, the fields little endian, CRC-32), written
+  unchanged at the start of the sector by the flashing tool, e.g.
+  OpenOCD `flash write_image erase evc.img <config sector> bin`, or
+  UniFlash with the binary at that address. The fields are read byte by
+  byte, so the big-endian target reads the same image as the host.
+  The CRC covers what the flash ECC does not (a wrong or half-written
+  image); the version keeps an old image from being read by a newer
+  on-board.
+- **The startup.** Before `EVC_Core.Initialise`, while the on-board is
+  in No Power, the target main passes the block to `EVC_Core.Configure`:
+  an array of bytes at `__evc_config_start` of the length
+  `__evc_config_end - __evc_config_start` (declared with `Import` and
+  `Address` in the main, which is not SPARK; `EVC_Config` reads the
+  image at the start of the block and ignores the rest of the sector,
+  erased to `16#FF#`). When `EVC_Config.Last_Status` is not `Accepted`
+  (an erased sector gives a bad magic) the main does not start the
+  cyclic executive: the on-board stays silent and the fail-safe train
+  interface keeps the emergency brake, as the hosted main refuses to
+  start. `EVC_Config.Default` is for the tests and the bench, not for a
+  vehicle.
