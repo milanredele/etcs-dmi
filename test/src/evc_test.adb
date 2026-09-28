@@ -21,10 +21,20 @@
 --  cold movement, orientation from the cab, virtual positions, report
 --  triggers, round trips of the position report packets.
 --
+--  The scenarios of phase E3 give the stored information as telegrams
+--  on that track (SSP, gradients, TSR, MA, track conditions, national
+--  values, ...) and check the snapshot, the planning and the track
+--  conditions; the supervision's run on snapshots set directly
+--  (Set_Snapshot_For_Test) and are compared with a floating point
+--  reference of the formulas of 3.13.
+--
 --  One scenario runs the whole chain: the DMI port of EVC_Core into
 --  DMI_Core, and the picture is compared pixel by pixel with the one
 --  EVC_Mock draws at start, itself checked against the DMI golden
 --  test/golden/mission_sb.sha256 (read only, never recorded from here).
+--  The mission of the mock (Scenario_SDM_Mission) runs the on-board on
+--  the track of sim/evc_track.ads given as telegrams of a balise group
+--  and the mock's train, and compares the pictures at five checkpoints.
 --
 --  Usage:  obj/evc_test            compare against goldens
 --          UPDATE=1 obj/evc_test   (re)record the goldens of test/golden/evc
@@ -7069,46 +7079,97 @@ procedure EVC_Test is
    --  on-board's speed and distance monitoring
    ---------------------------------------------------------------------
 
-   --  The track of sim/evc_track.ads as a snapshot: MRSP 140 / 100 / 120
-   --  km/h, EOA at 10 km with a release speed of 25 km/h (the mock has
-   --  no SvL: the SvL is the EOA), the gradients 5, -8, 0, 12 per mille;
-   --  the train of the mission's train data (passenger, 400 m, 135 %,
-   --  140 km/h) with a traction cut-off time of 1 s; the national values
-   --  of A.3.2 but Q_NVEMRRLS = 1 (an emergency brake the mock's train
-   --  does not obey is revoked with the Permitted speed instead of
-   --  staying until a standstill that does not come); the train where
-   --  the mock's is, its position known within +/- 10 m, the speed exact
-   --  (the mock models no odometer error)
-   function Mission_Snapshot return SIn.Snapshot_T is
-      use type EVC_Mock.Mode_T;
-      S : SIn.Snapshot_T := Base_Snapshot;
+   --  The track of sim/evc_track.ads for the on-board: one balise group
+   --  12 m in rear of the start of the mission (its balises at -12 m and
+   --  -9 m, read before the mission starts) with the national values
+   --  (packet 3: those of A.3.2 but Q_NVEMRRLS = 1, an emergency brake the
+   --  mock's train does not obey is revoked with the Permitted speed
+   --  instead of staying until a standstill that does not come), the SSP
+   --  (27: 140, 100 from 4 km, 120 from 7 km, to 10.5 km, no train length
+   --  delay as the mock has none), the gradients (21: 5, -8 from 2 km, 0
+   --  from 5 km, 12 from 8 km, to 10.5 km) and the MA (12: V_MAIN 140
+   --  km/h, the EOA at 10 km, a danger point there with a release speed of
+   --  25 km/h: the mock has no SvL, the SvL is the EOA). The train data
+   --  of the mission (passenger, 400 m, 135 %, 140 km/h, a traction
+   --  cut-off time of 1 s; data entry is phase E4) go straight to the
+   --  store.
+   Mission_Group_M : constant := -12;
+
+   procedure Mission_Track is
+      M  : T12.Packet_T;
+      NV : T3.Packet_T;
+      D  : SIn.Train_Data_T := EVC_Train_Data.Default;
+      From : constant Integer := -Mission_Group_M;
    begin
-      S.Supervise := EVC_Mock.Mode in EVC_Mock.FS | EVC_Mock.AD;
-      S.National.Q_NVEMRRLS := True;
-      S.MRSP.Count := EVC_Track.MRSP'Length;
-      for K in EVC_Track.MRSP'Range loop
-         S.MRSP.Segments (K) :=
-           (Start => EVC_Distances.Metres (EVC_Track.MRSP (K).Start_M),
-            Speed => Cms (LF (EVC_Track.MRSP (K).Speed)));
-      end loop;
-      S.Gradients.Count := EVC_Track.Gradients'Length;
-      for K in EVC_Track.Gradients'Range loop
-         S.Gradients.Segments (K) :=
-           (Start    => EVC_Distances.Metres (EVC_Track.Gradients (K).Start_M),
-            Gradient => EVC_Track.Gradients (K).Value);
-      end loop;
-      Give_MA (S, EVC_Track.EOA_M, 0, SIn.Fixed,
-               Cms (LF (EVC_Track.Release_Speed)));
-      declare
-         X : constant Integer_64 :=
-           Integer_64 (LF'Floor (LF (EVC_Train.Position_M) * 100.0));
-         V : constant SIn.Speed_Cms_T :=
-           SIn.Speed_Cms_T (LF'Floor (LF (EVC_Train.Speed_MS) * 100.0));
-      begin
-         Place (S, X, V);
-      end;
-      return S;
-   end Mission_Snapshot;
+      NV.Q_DIR := 2;
+      NV.Q_SCALE := 1;
+      NV.D_VALIDNV := 0;
+      NV.NID_C := 123;
+      NV.N_ITER := 0;
+      NV.V_NVSHUNT := 6;
+      NV.V_NVSTFF := 8;
+      NV.V_NVONSIGHT := 6;
+      NV.V_NVLIMSUPERV := 20;
+      NV.V_NVUNFIT := 20;
+      NV.V_NVREL := 8;
+      NV.D_NVROLL := 2;
+      NV.Q_NVSBTSMPERM := 1;
+      NV.Q_NVEMRRLS := 1;
+      NV.Q_NVGUIPERM := 0;
+      NV.Q_NVSBFBPERM := 0;
+      NV.Q_NVINHSMICPERM := 0;
+      NV.V_NVALLOWOVTRP := 0;
+      NV.V_NVSUPOVTRP := 6;
+      NV.D_NVOVTRP := 200;
+      NV.T_NVOVTRP := 60;
+      NV.D_NVPOTRP := 200;
+      NV.M_NVCONTACT := 2;
+      NV.T_NVCONTACT := 255;
+      NV.M_NVDERUN := 1;
+      NV.D_NVSTFF := 32_767;
+      NV.Q_NVDRIVER_ADHES := 0;
+      NV.A_NVMAXREDADH1 := 20;
+      NV.A_NVMAXREDADH2 := 14;
+      NV.A_NVMAXREDADH3 := 14;
+      NV.Q_NVLOCACC := 12;
+      NV.M_NVAVADH := 0;
+      NV.M_NVEBCL := 9;
+      NV.Q_NVKINT := 0;
+      M := MA_Of ((1 => EVC_Track.EOA_M + From), V_Main_Kmh => 140);
+      M.Q_DANGERPOINT := 1;
+      M.Has_D_DP := True;
+      M.D_DP := 0;
+      M.V_RELEASEDP :=
+        ETCS_Variables.V_RELEASEDP_T (EVC_Track.Release_Speed / 5);
+      Add_Group (Group (1, Mission_Group_M));
+      Carry (1, 0, NV);
+      Carry (1, 0, SSP ((1 => (0, EVC_Track.MRSP (1).Speed, False),
+                         2 => (EVC_Track.MRSP (2).Start_M + From,
+                               EVC_Track.MRSP (2).Speed, False),
+                         3 => (EVC_Track.MRSP (3).Start_M
+                                 - EVC_Track.MRSP (2).Start_M,
+                               EVC_Track.MRSP (3).Speed, False),
+                         4 => (10_500 - EVC_Track.MRSP (3).Start_M,
+                               End_Mark, False))));
+      Carry (1, 1, Grad ((1 => (0, EVC_Track.Gradients (1).Value),
+                          2 => (EVC_Track.Gradients (2).Start_M + From,
+                                EVC_Track.Gradients (2).Value),
+                          3 => (EVC_Track.Gradients (3).Start_M
+                                  - EVC_Track.Gradients (2).Start_M,
+                                EVC_Track.Gradients (3).Value),
+                          4 => (EVC_Track.Gradients (4).Start_M
+                                  - EVC_Track.Gradients (3).Start_M,
+                                EVC_Track.Gradients (4).Value),
+                          5 => (10_500 - EVC_Track.Gradients (4).Start_M,
+                                End_Mark))));
+      Carry (1, 1, M);
+      D.Length := 40_000;
+      D.Max_Speed := Cms (140.0);
+      D.Brake_Percentage := 135;
+      D.Brake_Position := SIn.Passenger_P;
+      D.T_Traction_Cut_Off := 1_000;
+      EVC_Train_Data.Set (D, EVC_Train_Data.Default_Categories);
+   end Mission_Track;
 
    procedure Scenario_SDM_Mission is
       use type General_Parameters.Color;
@@ -7143,6 +7204,13 @@ procedure EVC_Test is
       Outside_AB    : array (Point_T) of Natural := (others => 0);
 
       On_Board : Boolean := False;
+
+      --  the odometer of the mission: 2 per mille of the distance run on
+      --  each side (the mock models no odometer error; the confidence
+      --  interval of the on-board grows from the group on)
+      Travel : Integer_64 := 0;
+      Base_Over, Base_Under : Integer_64 := 0;
+      Supervised : Boolean := False;
 
       --  pass 2: where the on-board first entered TSM and RSM and
       --  commanded the service and the emergency brake; pass 1: where
@@ -7185,15 +7253,26 @@ procedure EVC_Test is
          DMI_Core.Handle_Message (The_Type, Payload);
       end Emit;
 
-      --  One cycle of the on-board on the mock's state; its
-      --  MSG_SPEED_STATE goes to the DMI
+      --  One cycle of the on-board with the mock's train: its antenna
+      --  3 m behind the mock's front end (EVC_Position), its odometer
+      --  sample; its MSG_SPEED_STATE goes to the DMI
       procedure Onboard_Cycle (Dt : Natural) is
+         Antenna : constant Integer_64 :=
+           Integer_64 (LF'Floor (LF (EVC_Train.Position_M) * 100.0))
+           - EVC_Position.Antenna_To_Cab_A_Cm;
+         Step_Cm : constant Integer_64 := Antenna - Train_Cm;
       begin
-         Sup := Mission_Snapshot;
-         EVC_Core.Set_Snapshot_For_Test (Sup);
+         Speed_Cms := Unsigned_16
+           (LF'Floor (LF (EVC_Train.Speed_MS) * 100.0));
+         Feed_X (Step_Cm);
+         Travel := Travel + abs Step_Cm;
+         Odo_Over := Base_Over + Travel * 2 / 1000;
+         Odo_Under := Base_Under + Travel * 2 / 1000;
+         Sample ((if Step_Cm > 0 then 1 elsif Step_Cm < 0 then -1 else 0));
          EVC_Core.Tick (Dt);
          Take;
-         if On_Board and then Sup.Supervise then
+         Supervised := EVC_Stored_Information.Current.Supervise;
+         if On_Board and then Supervised then
             Note (Board_TSM, Res.Monitoring = SDM.TSM);
             Note (Board_RSM, Res.Monitoring = SDM.RSM);
             Note (Board_SB, Cmd.SB);
@@ -7437,7 +7516,29 @@ procedure EVC_Test is
          Test_Support.Drain_Sounds;
          EVC_Mock.Reset;
          Test_Support.External_EVC;
-         EVC_Core.Initialise;
+         --  the on-board passes its balise group before the mission:
+         --  moving in Stand By without an MA, the standstill supervision
+         --  brakes it after D_NVROLL (4.4.7.1.5); at standstill the
+         --  driver acknowledges (3.14.1.5), and the MA is supervised
+         Start_X (Start_Cm => (Mission_Group_M - 13) * 100);
+         Mission_Track;
+         Bound_Per_Mille := 2;
+         Run_X (-EVC_Position.Antenna_To_Cab_A_Cm, 100);
+         Stand_X (500);
+         Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 5, 0, 0, 0)));
+         Stand_X (200);
+         Check (SI.Current.Supervise and then SI.Current.MA.Present
+                and then not EVC_Core.Brake_Commands.EB
+                and then EVC_Core.Supervision.Active
+                and then SI.Current.National.Q_NVEMRRLS
+                and then SI.Current.MRSP.Count = 4
+                and then SI.Current.Gradients.Count = 6,
+                "mission: before the start the group is read, the MA of 10 "
+                & "km supervised, the brake of the standstill supervision "
+                & "released");
+         Travel := 0;
+         Base_Over := Odo_Over;
+         Base_Under := Odo_Under;
          Reset_Capture;
 
          for I in 1 .. 5 loop

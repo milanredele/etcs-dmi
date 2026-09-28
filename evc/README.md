@@ -102,7 +102,8 @@ is active, and the JRU events 20 (brake commands), 21 (supervision) and
 22 (the EOA or LOA, or the SvL, passed). Everything is in integers with
 the rounding to the safe side; `evc_test` compares the curves, limits,
 release speeds and reduced build up times with a floating point
-reference of the formulas. Level and mode
+reference of the formulas, and runs the mission of the mock
+(`sim/evc_track.ads`) with the track given as telegrams. Level and mode
 filters (4.8), tripping on an overrun, the reactions (trip, route
 suitability), the procedures' brake reasons, the data entry and the MA
 request are phases E4 and E5. Until the modes of E4 the on-board stays
