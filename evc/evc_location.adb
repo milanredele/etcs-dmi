@@ -5,6 +5,22 @@ package body EVC_Location
   with SPARK_Mode => On
 is
 
+   -----------------------
+   -- Lemma_Doubts_Grow --
+   -----------------------
+
+   procedure Lemma_Doubts_Grow (A : Anchor_T; S : Sense_T;
+                                Low_1, High_1, Low_2, High_2 : Length_T)
+   is
+   begin
+      pragma Assert (Growth (Low_2, A.Low) >= Growth (Low_1, A.Low));
+      pragma Assert (Growth (High_2, A.High) >= Growth (High_1, A.High));
+      pragma Assert (Rear_Growth (A, S, Low_2, High_2)
+                     >= Rear_Growth (A, S, Low_1, High_1));
+      pragma Assert (Front_Growth (A, S, Low_2, High_2)
+                     >= Front_Growth (A, S, Low_1, High_1));
+   end Lemma_Doubts_Grow;
+
    --------------
    -- Relocate --
    --------------

@@ -1226,6 +1226,12 @@ is
          Put_Event (Position_Status, Status_T'Pos (Pos_Status), 0, 0);
          Reported_Status := Pos_Status;
       end if;
+      --  3.6.4.1.2: the frame deviations only grew in this cycle
+      pragma Assert (EVC_Odometry.Low >= Low_0
+                     and then EVC_Odometry.High >= High_0);
+      EVC_Location.Lemma_Doubts_Grow
+        (LRBG_A, Orient, Low_0, High_0,
+         EVC_Odometry.Low, EVC_Odometry.High);
    end Update;
 
    ----------------------
