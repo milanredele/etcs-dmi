@@ -7,7 +7,9 @@
       Browser test bench: the DMI (dmi.wasm) and the EVC simulator
       (evc.wasm) run as two separate WebAssembly modules with their own
       memories; this page is the clock, the display unit, the touch
-      screen, the driver desk and the wire between the two. The wire is
+      screen, the driver desk and the wire between the two. The ETCS
+      on-board of evc/ in its bench environment (onboard.wasm, optional)
+      can take the simulator's place ("On-board" selector). The wire is
       a configurable, slightly hostile Ethernet: latency, jitter, loss,
       duplication, reordering and fragmentation are all adjustable.
 
@@ -55,6 +57,9 @@
       .lamp { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
               background: #411; margin-right: 4px; vertical-align: -1px; }
       .lamp.on { background: #f33; box-shadow: 0 0 6px #f33; }
+      #onboard_state { font-family: monospace; }
+      #onboard_jru { font-family: monospace; font-size: 12px; margin: 4px 0 0;
+                     white-space: pre-wrap; color: #bbc; }
     </style>
   </head>
   <body>
@@ -179,6 +184,22 @@
             volume, and tells the EVC (the console shows
             <i>language "de"</i> or <i>"hu"</i>); <i>English</i> brings it
             back.</li>
+          <li><b>The real on-board.</b> <i>On-board: ETCS on-board</i>
+            puts the ETCS on-board of the project (SUBSET-026, in SPARK,
+            <a href="https://github.com/milanredele/etcs-dmi/tree/master/evc">evc/</a>)
+            in the simulator's place, in a simulated environment: balise
+            groups along the same line, an odometer with its error, the
+            train interface and a train that obeys its brake commands.
+            It has no modes yet (phase E4): it powers up in Stand By, where
+            its standstill supervision brakes a train that moves without a
+            movement authority. The automatic driver creeps towards the
+            first balise group; after the emergency brake acknowledge the
+            brake release on the DMI, drive on, and once the group is read
+            the on-board supervises its movement authority (speeds,
+            braking curves, track conditions, the stop in front of the end
+            of authority). The panel below the wire shows its mode and
+            level, its train interface commands and its juridical
+            records.</li>
           <li><b>Feed it by hand.</b> Switch the source to the manual EVC
             panel to put any speed, target, mode or level on the
             display. Its last rows raise any system status message of
@@ -223,6 +244,12 @@
             <option value="manual">manual EVC panel</option>
           </select>
         </label>
+        <label title="the on-board behind the source: the simulator of sim/ (evc.wasm) or the ETCS on-board of evc/ in its bench environment (onboard.wasm); changing it resets the mission">On-board:
+          <select id="onboard">
+            <option value="mock" selected>simulator (mock)</option>
+            <option value="etcs">ETCS on-board</option>
+          </select>
+        </label>
         <label>Auto drive <input type="checkbox" id="auto_drive" checked></label>
         <label>Throttle/Brake <input type="range" id="demand" min="-100" max="100" value="0"></label>
         <span id="demand_value">0</span>
@@ -241,6 +268,15 @@
         <label title="drop everything: the DMI must notice the silence (EVC link supervision)"><input type="checkbox" id="cut"> Cut the link</label>
       </div>
       <div class="row" id="stats"></div>
+    </div>
+
+    <div class="panel" id="onboard_panel" hidden>
+      <h3>ETCS on-board (evc/)</h3>
+      <div class="row" id="onboard_state"></div>
+      <div class="row" title="MSG_DRIVER_ACTION 2, kind 5 (the DMI's frame) over the wire: the DMI shows no acknowledgement request during its Start Up (11.7.1.8), and the on-board stays in SB, so until the start of mission of phase E4 the page sends the driver's acknowledgement in its place">
+        <button id="onboard_ack">Acknowledge brake release</button>
+      </div>
+      <div class="row" title="the last records of the on-board's JRU port (Sim_JRU), newest first"><pre id="onboard_jru"></pre></div>
     </div>
 
     <details class="panel" id="controls">
@@ -697,6 +733,8 @@
       const tctx = track.getContext('2d');
       let layout = null;
       let sim = { pos: 0, speed: 0, mode: 0, monitoring: 0, demand: 0, brake: 0 };
+      // the balise groups of the line (m), while the ETCS on-board runs
+      let balises = null;
       // what the simulator's ERTMS/ATO on-board tells the DMI (MSG_ATO)
       let ato = null;
       const ATO_STATUS = ['', 'ATO selected', 'ATO ready', 'ATO engaged',
@@ -874,6 +912,14 @@
           tctx.fillRect(eoaX - 2, trackY - 6, 5, 6);
           tctx.fillStyle = '#f88';
           tctx.fillText('EOA', eoaX, trackY - 28);
+
+          if (balises) {
+            tctx.fillStyle = '#dd0';
+            for (const at of balises) {
+              tctx.fillRect(x(at) - 1, trackY + 2, 3, 5);
+              tctx.fillRect(x(at + 3) - 1, trackY + 2, 3, 5);
+            }
+          }
         }
 
         tctx.strokeStyle = '#889';
@@ -1205,6 +1251,16 @@
       (async () => {
         const dmi = await load('dmi.wasm');
         const evc = await load('evc.wasm');
+        // the ETCS on-board in its environment: optional, the bench runs
+        // with the simulator alone when the module is not there
+        let onboard = null;
+        try {
+          onboard = await load('onboard.wasm');
+        } catch (e) {
+          console.warn('onboard.wasm not loaded: the ETCS on-board is not available', e);
+          $('onboard').disabled = true;
+        }
+        const onboardMode = () => onboard !== null && $('onboard').value === 'etcs';
         $('status').textContent = '';
 
         // Containment: the wasm runtime cannot propagate exceptions, so a
@@ -1222,9 +1278,29 @@
           try { fn(); } catch (e) { dmiFailure(e); }
         }
 
+        // The same containment for the ETCS on-board (EVC_Core.Enter_Failure
+        // through onboard_enter_failure): after a trap it falls silent, its
+        // train interface brakes the train, the DMI shows SF once its link
+        // supervision expires; the environment goes on until the reset.
+        let onboardFailed = null;
+        let onboardModeLevel = null;   // the last MSG_MODE_LEVEL of the on-board
+        function onboardGuarded(fn) {
+          try {
+            return fn();
+          } catch (e) {
+            if (!onboardFailed) {
+              onboardFailed = lastException['onboard.wasm'] || e.message;
+              try { onboard.onboard_enter_failure(); } catch (_) { /* silent anyway */ }
+            }
+            return undefined;
+          }
+        }
+
         // the two directions of the wire
         const toDmi = new Wire((bytes) => guarded(() => receive(dmi, 'dmi', bytes)));
-        const toEvc = new Wire((bytes) => receive(evc, 'evc', bytes));
+        const toEvc = new Wire((bytes) => onboardMode()
+          ? onboardGuarded(() => receive(onboard, 'onboard', bytes))
+          : receive(evc, 'evc', bytes));
 
         let running = true;
         let now = 0;           // simulated time in ms
@@ -1235,6 +1311,16 @@
           dmiFailed = null;
           dmi.dmi_initialise();
           evc.evc_reset();
+          if (onboard) {
+            onboardFailed = null;
+            onboardModeLevel = null;
+            onboardGuarded(() => onboard.onboard_reset());
+            balises = null;
+            if (onboardMode()) {
+              balises = [];
+              for (let i = 1; i <= onboard.onboard_group_count(); i++) balises.push(onboard.onboard_group_at(i));
+            }
+          }
           toDmi.clear(); toEvc.clear();
           for (const w of [toDmi, toEvc]) Object.keys(w.stats).forEach((k) => { w.stats[k] = 0; });
           layout = null;
@@ -1246,8 +1332,16 @@
           const demand = val('demand');
           $('demand_value').textContent = demand;
           evc.evc_set_desk(demand, checked('auto_drive') ? 1 : 0);
+          if (onboard) onboardGuarded(() => onboard.onboard_set_desk(demand, checked('auto_drive') ? 1 : 0));
         }
         $('source').addEventListener('input', () => { if (manualMode()) $('controls').open = true; });
+        $('onboard_ack').addEventListener('click', () => {
+          toEvc.send(new Uint8Array([MSG_DRIVER_ACTION, 5, 0, 0, 0, 2, 5, 0, 0, 0]), now);
+        });
+        $('onboard').addEventListener('input', () => {
+          $('onboard_panel').hidden = !onboardMode();
+          reset();
+        });
         $('demand').addEventListener('input', sendDesk);
         $('auto_drive').addEventListener('input', sendDesk);
         $('reset').addEventListener('click', reset);
@@ -1318,6 +1412,54 @@
           }
         }
 
+        // the ETCS on-board: its DMI frames travel over the wire like the
+        // simulator's, the track strip frames are for this page; the
+        // panel shows its mode and level (MSG_MODE_LEVEL), its train
+        // interface and its last JRU records
+        function routeFromOnboard() {
+          const bytes = onboardGuarded(() => transmit(onboard, 'onboard'));
+          if (!bytes) return;
+          for (const f of splitFrames(bytes)) {
+            const type = f[0];
+            if (type === MSG_TRACK_LAYOUT) parseLayout(f.subarray(HEADER_LENGTH));
+            else if (type === MSG_SIM_STATE) parseSimState(f.subarray(HEADER_LENGTH));
+            else {
+              if (type === MSG_MODE_LEVEL && f.length >= HEADER_LENGTH + 2) {
+                onboardModeLevel = { mode: f[HEADER_LENGTH], level: f[HEADER_LENGTH + 1] };
+              }
+              toDmi.send(f, now);
+            }
+          }
+        }
+
+        // DMI 13.3 Table 60 order and the level codes of MSG_MODE_LEVEL
+        const DMI_MODES = ['NP', 'SB', 'FS', 'AD', 'SM', 'LS', 'OS', 'SR', 'SH',
+                           'UN', 'RV', 'TR', 'SN', 'PT', 'NL', 'SF', 'SL', 'IS'];
+        const DMI_LEVELS = ['unknown', 'invalid', '0', 'NTC', '1', '2'];
+        function showOnboard() {
+          const ml = onboardModeLevel;
+          const cmd = onboard.onboard_tiu_commands(), why = onboard.onboard_tiu_reasons();
+          const bits = (v, names) => names.filter((_, i) => v & (1 << i)).join(' ');
+          $('onboard_state').textContent =
+            `mode ${ml ? DMI_MODES[ml.mode] ?? ml.mode : '-'}, level ` +
+            `${ml ? DMI_LEVELS[ml.level] ?? ml.level : '-'} | TIU ` +
+            (cmd & 7 ? bits(cmd, ['EB', 'SB', 'TCO']) : 'no command') +
+            (why ? ` (${bits(why, ['supervision', 'SB failed', 'roll away', 'direction', 'standstill'])})` : '') +
+            `, brake pipe ${onboard.onboard_brake_pressure()} kPa, controller ` +
+            `${['neutral', 'forwards', 'backwards'][onboard.onboard_controller()] ?? '?'}` +
+            (onboard.onboard_ack_requested() ? ' | brake release: acknowledge (button below)' : '') +
+            (onboardFailed ? ` | FAILED at ${onboardFailed}: silent, emergency brake` : '');
+          const lines = [];
+          const n = Math.min(onboard.onboard_jru_available(), 8);
+          for (let age = 0; age < n; age++) {
+            const len = onboard.onboard_jru_describe(age);
+            lines.push(new TextDecoder('latin1').decode(
+              new Uint8Array(onboard.memory.buffer, onboard.onboard_text_buffer(), len)));
+          }
+          $('onboard_jru').textContent =
+            `JRU, ${onboard.onboard_jru_count()} records, the newest first:\n` + lines.join('\n');
+        }
+
         function evcCycle() {
           if (manualMode()) {
             toDmi.send(manualSpeedState(), now);
@@ -1327,6 +1469,10 @@
             toDmi.send(manualATO(), now);
             toDmi.send(manualSystemVersion(), now);
             toDmi.send(manualVBCList(), now);
+          } else if (onboardMode()) {
+            onboardGuarded(() => onboard.onboard_step(EVC_STEP_MS));
+            routeFromOnboard();
+            onboardGuarded(showOnboard);
           } else {
             evc.evc_step(EVC_STEP_MS);
             routeFromEvc();

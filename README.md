@@ -133,7 +133,11 @@ Seven programs are built (`alr build`):
   through a complete mission (braking curves, monitoring transitions,
   level transition, track conditions, TAF, stop at the EOA)
 - `obj/evc_onboard` — the ETCS on-board of [evc/](evc/) on the same hub
-  port as the simulator (phase E0: powers up into Stand By)
+  port as the simulator, in the environment of the bench
+  ([sim/sim_onboard_env.ads](sim/sim_onboard_env.ads): the balise
+  groups of the demo line, an odometer with its error, the train
+  interface and a train that obeys the on-board's brakes; see *The ETCS
+  on-board on the bench* below)
 - `obj/dmi_test` — the headless golden-frame regression runner
 - `obj/dmi_fuzz` — the robustness fuzzer
 - `obj/evc_test`, `obj/evc_fuzz` — the same two for the on-board
@@ -147,13 +151,16 @@ installs.
 
 **Browser test bench** (everything in one page, no hub, no sockets):
 the DMI and the EVC simulator are compiled to WebAssembly and run as
-two separate modules with their own memories;
+two separate modules with their own memories (a third module,
+`onboard.wasm`, is the ETCS on-board: the *On-board* selector of the
+page puts it in the simulator's place, see below);
 [test/wasm/index.html](test/wasm/index.html) is the clock, the display
 unit, the touch screen, the driver desk and the wire between them. The
 wire is a configurable Ethernet stand-in: latency, jitter, loss,
 duplication, reordering, fragmentation (MTU) and a "cut the link"
 switch, with live statistics.
-1. `test/wasm/build.sh` — builds `test/wasm/dmi.wasm` and `evc.wasm` in
+1. `test/wasm/build.sh` — builds `test/wasm/dmi.wasm`, `evc.wasm` and
+   `onboard.wasm` in
    a Docker container with GNAT-LLVM and the AdaWebPack wasm32 runtime
    (the image is built on first use, see
    [test/wasm/Dockerfile](test/wasm/Dockerfile))
@@ -171,7 +178,47 @@ driving the page in headless Chrome.
 `node test/wasm/smoke.js` replays regression scenarios through the
 wasm modules and checks the rendered screens against the same golden
 digests as the native runner: the two builds render pixel for pixel
-the same.
+the same. `node test/wasm/onboard_smoke.js` runs the bench scenario of
+`evc_test` (`Scenario_Bench_Onboard`) on `onboard.wasm` and compares
+the SHA-256 of the on-board's DMI frames with the one the native run
+records ([test/golden/evc/bench_onboard.sha256](test/golden/evc/bench_onboard.sha256)):
+the wasm on-board must send the same bytes.
+
+**The ETCS on-board on the bench**: until phase E4 the DMI is driven by
+the simulator `EVC_Mock` by default; the on-board of [evc/](evc/) runs
+in an environment made for it in [sim/](sim/), shared by
+`onboard.wasm`, `obj/evc_onboard` and `evc_test`:
+- `Sim_Trackside` and `Sim_Telegrams`: the balise groups of
+  `EVC_Track.Balise_Groups` (two balises each, linked), their telegrams
+  built with the on-board's own encoder: 12 m in rear of the start the
+  national values, the SSP, the gradients and the level 1 MA of the demo
+  line, then linking, track conditions (neutral section, lower
+  pantograph, tunnel stopping area), the order to level 2 (stored for
+  E4), a TSR and a plain text;
+- `Sim_Odometer`: the odometer samples and the balise stamps from the
+  true movement of the antenna (3 m in rear of cab A), with a scale error
+  (+1 ‰) and noise (±0.5 ‰) and honest over- and under-reading bounds
+  (2 ‰ plus 1 cm per sample);
+- `Sim_Vehicle`: the train interface: cab A active, the direction
+  controller, the brake pipe pressure; the on-board's emergency brake,
+  service brake and traction cut-off act on the train (`EVC_Train`: 1.2
+  and 0.9 m/s² built up in 1 and 2 s), which brakes on its own when the
+  on-board fails;
+- `Sim_JRU`: the on-board's juridical records in a ring, as short texts;
+- `Sim_Onboard_Env`: one `Step` is vehicle, odometer, balises, one
+  cycle of the on-board, its outputs back to the vehicle and the DMI;
+  the automatic driver (`EVC_Driver.Auto_Drive_Onboard`) follows the
+  permitted speed of the on-board's MSG_SPEED_STATE.
+
+The on-board powers up in Stand By and has no modes yet: moving without
+a movement authority, its standstill supervision stops the train after
+D_NVROLL; acknowledge the brake release (the page's panel sends the
+DMI's acknowledgement frame: the DMI shows no acknowledgement request
+during its start-up dialogue, which the on-board cannot end before E4)
+and drive on. Once
+the first balise group is read it supervises the movement authority to
+the stop in front of its end. The page shows its mode and level, its
+train interface commands and its last JRU records.
 
 **Interactive session over TCP** (mimics the embedded setup where
 framebuffer content is sent to the display driver; also the way to
@@ -182,7 +229,9 @@ attach a DMI running on real hardware):
    renders the screen, forwards touch input, plays the DMI sounds and
    provides the driver desk (throttle / auto-drive) plus a manual EVC
    panel
-3. `obj/dmi` and (for the simulator source) `obj/evc_sim`
+3. `obj/dmi` and (for the simulator source) `obj/evc_sim`, or
+   `obj/evc_onboard` for the ETCS on-board in its bench environment (the
+   desk's throttle and auto-drive drive its train)
 
 The DMI opens with the start-up dialogue (driver ID, level); then enter
 the train data and the train running number from the Main window and
