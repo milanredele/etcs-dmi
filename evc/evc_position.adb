@@ -272,6 +272,35 @@ is
      with Refined_Global => (LRBG_A, Orient, Length_Known, Train_Length,
                              EVC_Odometry.State);
 
+   --  3.6.4.1.2: against the same anchor the interval only widens when
+   --  the frame deviations grow
+   procedure Lemma_Doubts_Grow (A : Anchor_T; S : Sense_T;
+                                Low_1, High_1, Low_2, High_2 : Length_T)
+     with Ghost,
+          Global => null,
+          Pre => Low_2 >= Low_1 and then High_2 >= High_1,
+          Post => EVC_Location.Doubt_Over (A, S, Low_2, High_2)
+                    >= EVC_Location.Doubt_Over (A, S, Low_1, High_1)
+                  and then EVC_Location.Doubt_Under (A, S, Low_2, High_2)
+                             >= EVC_Location.Doubt_Under
+                                  (A, S, Low_1, High_1);
+
+   -----------------------
+   -- Lemma_Doubts_Grow --
+   -----------------------
+
+   procedure Lemma_Doubts_Grow (A : Anchor_T; S : Sense_T;
+                                Low_1, High_1, Low_2, High_2 : Length_T)
+   is
+   begin
+      pragma Assert (Growth (Low_2, A.Low) >= Growth (Low_1, A.Low));
+      pragma Assert (Growth (High_2, A.High) >= Growth (High_1, A.High));
+      pragma Assert (Rear_Growth (A, S, Low_2, High_2)
+                     >= Rear_Growth (A, S, Low_1, High_1));
+      pragma Assert (Front_Growth (A, S, Low_2, High_2)
+                     >= Front_Growth (A, S, Low_1, High_1));
+   end Lemma_Doubts_Grow;
+
    ---------------------------------------------------------------------
    --  Events
    ---------------------------------------------------------------------
@@ -1229,7 +1258,7 @@ is
       --  3.6.4.1.2: the frame deviations only grew in this cycle
       pragma Assert (EVC_Odometry.Low >= Low_0
                      and then EVC_Odometry.High >= High_0);
-      EVC_Location.Lemma_Doubts_Grow
+      Lemma_Doubts_Grow
         (LRBG_A, Orient, Low_0, High_0,
          EVC_Odometry.Low, EVC_Odometry.High);
    end Update;

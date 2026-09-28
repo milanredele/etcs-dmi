@@ -80,18 +80,6 @@ is
      return Length_T
    is (Add (A.Locacc, Front_Growth (A, S, Low, High)));
 
-   --  3.6.4.1.2: against the same anchor the interval only widens when
-   --  the frame deviations grow
-   procedure Lemma_Doubts_Grow (A : Anchor_T; S : Sense_T;
-                                Low_1, High_1, Low_2, High_2 : Length_T)
-     with Ghost,
-          Global => null,
-          Pre => Low_2 >= Low_1 and then High_2 >= High_1,
-          Post => Doubt_Over (A, S, Low_2, High_2)
-                    >= Doubt_Over (A, S, Low_1, High_1)
-                  and then Doubt_Under (A, S, Low_2, High_2)
-                             >= Doubt_Under (A, S, Low_1, High_1);
-
    --  The estimated distance along S from the location reference to the
    --  frame position X
    function Estimated (A : Anchor_T; S : Sense_T; X : Dist_T) return Dist_T
