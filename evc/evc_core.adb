@@ -7,6 +7,7 @@ with ETCS_Message;
 with ETCS_Telegram;
 with ETCS_Variables;
 with EVC_DMI_Port; use EVC_DMI_Port;
+with EVC_Supervision_Input;
 with Interfaces;   use Interfaces;
 
 package body EVC_Core
@@ -33,7 +34,6 @@ package body EVC_Core
                                    Isolation_Now,
                                    Standstill,
                                    Below_Override,
-                                   National_Values,
                                    Accepted_Count,
                                    Rejected_Count,
                                    Overflow_Count))
@@ -42,26 +42,6 @@ is
    use type EVC_Bytes.Byte_Array;
    use type ETCS_Message.Status_T;
    use type ETCS_Telegram.Status_T;
-
-   ---------------------------------------------------------------------
-   --  National values: those E0 uses. Until the trackside gives others
-   --  (packet 3, phase E4) they are the default values of SUBSET-026
-   --  A.3.2.
-   ---------------------------------------------------------------------
-
-   type National_Values_T is record
-      --  V_NVALLOWOVTRP, the speed limit for triggering the override
-      V_NVALLOWOVTRP   : Speed_Cms_T;
-      --  M_NVDERUN, change of driver ID permitted while running
-      M_NVDERUN        : Boolean;
-      --  Q_NVDRIVER_ADHES, modification of adhesion factor by driver
-      Q_NVDRIVER_ADHES : Boolean;
-   end record;
-
-   Default_National_Values : constant National_Values_T :=
-     (V_NVALLOWOVTRP   => 0,       -- 0 km/h
-      M_NVDERUN        => True,    -- Yes
-      Q_NVDRIVER_ADHES => False);  -- Not allowed
 
    ---------------------------------------------------------------------
    --  State
@@ -124,8 +104,6 @@ is
    Standstill     : Boolean := True;
    Below_Override : Boolean := True;
 
-   National_Values : National_Values_T := Default_National_Values;
-
    Accepted_Count : Counts_T := (others => 0);
    Rejected_Count : Counts_T := (others => 0);
    Overflow_Count : Counts_T := (others => 0);
@@ -187,12 +165,13 @@ is
       Isolation_Now := False;
       Standstill := True;
       Below_Override := True;
-      National_Values := Default_National_Values;
       Accepted_Count := (others => 0);
       Rejected_Count := (others => 0);
       Overflow_Count := (others => 0);
       EVC_Received.Clear;
       EVC_Position.Clear;
+      --  phase E3: nothing stored, the default train
+      EVC_Stored_Information.Clear;
       EVC_Outbox.Clear;
    end Initialise;
 
@@ -396,11 +375,11 @@ is
    --  JRU. E0's standstill and override speed come from the sample.
    procedure Update_Position
      with Global => (Input  => (Odometer_Now, Odometer_Fresh, TIU_Now,
-                                National_Values, Current_Mode,
+                                EVC_National_Values.State, Current_Mode,
                                 Current_Level, Cycle_Count, Clock_Ms),
                      Output => (Standstill, Below_Override),
                      In_Out => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Outbox.Queue)),
+                                EVC_Origins.State, EVC_Outbox.Queue)),
           Post =>
             (if EVC_Position.Orientation /= EVC_Position.Orientation'Old
              then EVC_Position.Active_Cab
@@ -434,17 +413,58 @@ is
          end;
       end loop;
       Standstill := Odometer_Now.V_Max = 0;
-      Below_Override := Odometer_Now.V_Max <= National_Values.V_NVALLOWOVTRP;
+      Below_Override :=
+        Natural (Odometer_Now.V_Max) <= EVC_National_Values.V_NVALLOWOVTRP;
    end Update_Position;
 
-   --  3. Evaluate the stored information: the data status changes of
-   --  4.10 on a mode transition, the validity of the stored data.
-   --  Phase E4; E0 stores nothing but the level, which stays "unknown".
+   --  3. Evaluate the stored information (EVC_Stored_Information, phase
+   --  E3): the information of the groups taken into account, its
+   --  replacement and deletion, the timers of the MA, the snapshot for
+   --  the supervision; its records go to the JRU, the indications of the
+   --  track conditions (MSG_TRACK_COND, when they change) and the
+   --  planning (MSG_PLANNING, while an MA is supervised) to the DMI. The
+   --  data status changes of 4.10 on a mode transition are phase E4.
+   JRU_Stored : constant := EVC_Stored_Information.JRU_Event;
+
    procedure Evaluate_Stored_Information
-     with Global => null
+     with Global => (Input  => (Clock_Ms, Cycle_Count, EVC_Position.State,
+                                EVC_Odometry.State, EVC_Train_Data.State),
+                     In_Out => (EVC_Stored_Information.State,
+                                EVC_Origins.State,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Outbox.Queue))
    is
+      Frame : EVC_DMI_Port.Frame_Buffer_T;
+      Last  : Natural;
    begin
-      null;
+      --  the mode related speed restriction (3.11.7) is phase E4
+      EVC_Stored_Information.Evaluate
+        (Unsigned_64 (Clock_Ms),
+         EVC_Supervision_Input.No_Speed_Limit);
+      for I in 1 .. EVC_Stored_Information.Event_Count loop
+         declare
+            E : constant EVC_Stored_Information.Event_T :=
+              EVC_Stored_Information.Event (I);
+         begin
+            EVC_Outbox.Put (JRU, JRU_Record (JRU_Stored, E.Info, E.Change,
+                                             E.Detail));
+         end;
+      end loop;
+      if EVC_Stored_Information.Track_Cond_Due then
+         Track_Cond_Frame (EVC_Stored_Information.Track_Cond_Count,
+                           EVC_Stored_Information.Track_Cond_List,
+                           Frame, Last);
+         EVC_Outbox.Put (DMI, Frame (1 .. Last));
+      end if;
+      if EVC_Stored_Information.Planning_Due then
+         Planning_Frame (EVC_Stored_Information.Planning, Frame, Last);
+         if Last <= DMI_Max_Length then
+            EVC_Outbox.Put (DMI, Frame (1 .. Last));
+         end if;
+      end if;
    end Evaluate_Stored_Information;
 
    --  4. Speed and distance monitoring (3.13) and the brake commands
@@ -517,7 +537,8 @@ is
      with Global => (Input  => (Current_Mode, Current_Level_Status,
                                 Current_Level, Cycle_Count, Clock_Ms,
                                 Standstill, Below_Override, TIU_Now,
-                                National_Values, EVC_Position.State),
+                                EVC_National_Values.State,
+                                EVC_Position.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue))
    is
       --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
@@ -557,10 +578,10 @@ is
       if TIU_Now (Passive_Shunting_Permitted) then
          Train := Train or Train_Passive_Shunting;
       end if;
-      if National_Values.M_NVDERUN then
+      if EVC_National_Values.M_NVDERUN then
          National := National or National_Driver_ID_Running;
       end if;
-      if National_Values.Q_NVDRIVER_ADHES then
+      if EVC_National_Values.Q_NVDRIVER_ADHES then
          National := National or National_Adhesion;
       end if;
       --  SUBSET-026 3.6.6: the geographical position, while it is known,

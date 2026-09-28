@@ -35,12 +35,19 @@ pragma Unevaluated_Use_Of_Old (Allow);
 with EVC_Bytes;
 with EVC_Distances;
 with EVC_Modes;    use EVC_Modes;
+with EVC_Movement_Authority;
+with EVC_National_Values;
 with EVC_Odometry;
+with EVC_Origins;
 with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
 with EVC_Location;
 with EVC_Position;
 with EVC_Received;
+with EVC_Stored_Information;
+with EVC_Track_Conditions;
+with EVC_Track_Description;
+with EVC_Train_Data;
 
 use type EVC_Distances.Cm_T;
 use type EVC_Distances.Sense_T;
@@ -108,7 +115,14 @@ is
    --  and nothing is stored (phase E0 keeps nothing over No Power)
    procedure Initialise
      with Global => (Output => (State, EVC_Received.Store,
-                                EVC_Position.State, EVC_Odometry.State),
+                                EVC_Position.State, EVC_Odometry.State,
+                                EVC_Origins.State,
+                                EVC_Stored_Information.State,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Train_Data.State),
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
                   and then not Failed
@@ -138,7 +152,13 @@ is
    procedure Tick (Dt_Ms : Natural)
      with Global => (In_Out => (State, EVC_Outbox.Queue,
                                 EVC_Received.Store, EVC_Position.State,
-                                EVC_Odometry.State)),
+                                EVC_Odometry.State, EVC_Origins.State,
+                                EVC_Stored_Information.State,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State),
+                     Input  => EVC_Train_Data.State),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

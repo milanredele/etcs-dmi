@@ -1,0 +1,273 @@
+--  ETCS on-board (EVC)
+--  The track description the on-board stores (SUBSET-026 3.7, 3.11,
+--  3.12.2, 3.12.5): static speed profile (packet 27), gradients (21),
+--  axle load speed profile (51), temporary speed restrictions (65, 66),
+--  the default gradient for TSR (141), level crossings (88), adhesion
+--  (71) and route suitability (70).
+--
+--  Every location is an offset from the origin of the group message
+--  that gave it (EVC_Profiles), so that relocation (3.6.4.2.5) moves the
+--  information with its reference. A profile of one message is a list
+--  of elements [start, end) with a value; the last element of a
+--  continuous profile is open ended unless the packet ends it
+--  (3.6.3.2.2 d): V_STATIC 127, G_A 255.
+--
+--  Replacement (3.7.3.1): a new SSP, gradient profile or adhesion
+--  information replaces the stored one from the start location of the
+--  new information (a, b, l), a new ASP from the start of its first
+--  element (c): the stored elements beyond it go, the element across it
+--  ends there (Cut_Beyond on the "estimated" items). Its "min" and "max"
+--  items stay those of the two locations, so that when a relocation by
+--  3.6.4.2.5 b) or c) made them differ, the envelope of the MRSP and of
+--  the gradients takes the lowest of both over the distance between
+--  them: 3.7.3.1.1 to 3.7.3.1.3 follow from Table 2a. New route
+--  suitability data of a type replaces all of that type (h, i, j). A
+--  TSR replaces the one of the same identity unless it is not revocable
+--  (3.11.5.9); an LX information replaces the one of the same identity
+--  (3.12.5.3). Q_TRACKINIT resumes the initial state from D_TRACKINIT
+--  (3.7.3.2 b, d).
+--
+--  Train categories (3.11.3.2.3, 3.11.3.2.6): the speed of each SSP
+--  element is chosen for the train when the packet is received (a change
+--  of the categories at standstill deletes the SSP, A.3.4.1.2 j, E4).
+--  The ASP takes the speed of the train's axle load category (3.11.4.3);
+--  an element without it restricts nothing.
+--
+--  Not here: the comparison of route suitability with the train data
+--  and its reaction (3.12.2.3, 3.12.2.4, phases E4 and E6), the speed
+--  restriction for a permitted braking distance (3.11.11, packet 52: it
+--  needs the braking curves of the supervision), the inhibition of
+--  revocable TSRs from balises by the RBC (3.11.5.12 to .14, E5).
+
+pragma Unevaluated_Use_Of_Old (Allow);
+
+with ETCS_Track_Packets.P21;
+with ETCS_Track_Packets.P27;
+with ETCS_Track_Packets.P51;
+with ETCS_Track_Packets.P65;
+with ETCS_Track_Packets.P66;
+with ETCS_Track_Packets.P70;
+with ETCS_Track_Packets.P71;
+with ETCS_Track_Packets.P88;
+with ETCS_Track_Packets.P141;
+with ETCS_Variables;        use ETCS_Variables;
+with EVC_Distances;         use EVC_Distances;
+with EVC_Profiles;          use EVC_Profiles;
+with EVC_Supervision_Input; use EVC_Supervision_Input;
+with EVC_Train_Data;
+
+package EVC_Track_Description
+  with SPARK_Mode => On,
+       Abstract_State => State,
+       Initializes => State
+is
+
+   --  A.3.1: information more than this in rear of the min safe rear end
+   --  is deleted
+   Keep_In_Rear : constant Length_T := 30_000;
+
+   function SSP return Store_T
+     with Global => State;
+   function Gradients return Store_T
+     with Global => State;
+   function ASP return Store_T
+     with Global => State;
+   --  Id: NID_TSR
+   function TSR return Store_T
+     with Global => State;
+   --  Value 0: a slippery rail area
+   function Adhesion_Store return Store_T
+     with Global => State;
+
+   --  3.11.12.5, 3.11.12.6: the default gradient for TSR
+   function Default_Gradient_Known return Boolean
+     with Global => State;
+   function Default_Gradient return Gradient_T
+     with Global => State;
+
+   --  Level crossings (packet 88)
+   Max_LX : constant := 16;
+   type LX_T is record
+      Used          : Boolean := False;
+      Id            : NID_LX_T := 0;
+      Start         : Location_T;
+      Finish        : Location_T;
+      Protected_LX  : Boolean := True;
+      Speed         : Speed_Cms_T := 0;       -- V_LX, not protected
+      Stop_Required : Boolean := False;
+      Stop_Length   : Length_T := 0;          -- L_STOPLX
+      Msg           : Natural := 0;
+   end record;
+   type LX_Array_T is array (1 .. Max_LX) of LX_T;
+
+   function LX return LX_Array_T
+     with Global => State;
+   function LX_Sense return Sense_T
+     with Global => State;
+
+   --  Route suitability data (packet 70): at a location, a type
+   --  (Q_SUITABILITY 0 loading gauge, 1 axle load, 2 traction system)
+   --  and its value (M_LINEGAUGE, M_LINEAXLELOADCAT, M_VOLTAGE)
+   Max_Suitability : constant := 32;
+   type Suitability_T is record
+      Used     : Boolean := False;
+      At_Loc   : Location_T;
+      Kind     : Natural range 0 .. 2 := 0;
+      Value    : Natural range 0 .. 65_535 := 0;
+      Traction : NID_CTRACTION_T := 0;
+      Msg      : Natural := 0;
+   end record;
+   type Suitability_Array_T is array (1 .. Max_Suitability) of Suitability_T;
+
+   function Suitability return Suitability_Array_T
+     with Global => State;
+
+   --  Information that found no room in its store, since Clear
+   function Lost return Natural
+     with Global => State;
+
+   ---------------------------------------------------------------------
+   --  Reception: packets of a group message M (M.Origin /= 0)
+   ---------------------------------------------------------------------
+
+   procedure Clear
+     with Global => (Output => State),
+          Post => SSP.Count = 0 and then Gradients.Count = 0
+                  and then ASP.Count = 0 and then TSR.Count = 0
+                  and then not Default_Gradient_Known;
+
+   --  The speed of an SSP element for the train (3.11.3.2.3, 3.11.3.2.6)
+   type Diff_T is record
+      Q_DIFF : Q_DIFF_T := 0;
+      NC     : Natural range 0 .. 15 := 0;   -- NC_CDDIFF or NC_DIFF
+      V_DIFF : V_DIFF_T := 0;
+   end record;
+   type Diff_Array is array (1 .. 31) of Diff_T;
+
+   function Train_Speed (V_STATIC : V_STATIC_T;
+                         N        : Natural;
+                         Diffs    : Diff_Array;
+                         C        : EVC_Train_Data.Categories_T)
+     return Speed_Cms_T
+     with Pre => N <= 31;
+
+   procedure Take_SSP (P : ETCS_Track_Packets.P27.Packet_T;
+                       M : Message_T;
+                       T : Origin_Table_T;
+                       C : EVC_Train_Data.Categories_T)
+     with Global => (In_Out => State);
+
+   procedure Take_Gradients (P : ETCS_Track_Packets.P21.Packet_T;
+                             M : Message_T;
+                             T : Origin_Table_T)
+     with Global => (In_Out => State);
+
+   procedure Take_ASP (P    : ETCS_Track_Packets.P51.Packet_T;
+                       M    : Message_T;
+                       T    : Origin_Table_T;
+                       Axle : M_AXLELOADCAT_T)
+     with Global => (In_Out => State);
+
+   procedure Take_TSR (P : ETCS_Track_Packets.P65.Packet_T;
+                       M : Message_T;
+                       T : Origin_Table_T)
+     with Global => (In_Out => State);
+
+   --  3.11.5.5, 3.11.5.8: the TSRs of the identity go, at once and
+   --  without delay for the train length; a non revocable one (NID_TSR
+   --  255) stays
+   procedure Revoke_TSR (P       : ETCS_Track_Packets.P66.Packet_T;
+                         Revoked : out Natural)
+     with Global => (In_Out => State),
+          Post => TSR.Count = TSR.Count'Old - Revoked;
+
+   procedure Take_Default_Gradient (P : ETCS_Track_Packets.P141.Packet_T)
+     with Global => (In_Out => State),
+          Post => Default_Gradient_Known;
+
+   procedure Take_LX (P : ETCS_Track_Packets.P88.Packet_T;
+                      M : Message_T;
+                      T : Origin_Table_T)
+     with Global => (In_Out => State);
+
+   procedure Take_Adhesion (P : ETCS_Track_Packets.P71.Packet_T;
+                            M : Message_T;
+                            T : Origin_Table_T)
+     with Global => (In_Out => State);
+
+   procedure Take_Suitability (P : ETCS_Track_Packets.P70.Packet_T;
+                               M : Message_T;
+                               T : Origin_Table_T)
+     with Global => (In_Out => State);
+
+   ---------------------------------------------------------------------
+   --  Deletion
+   ---------------------------------------------------------------------
+
+   --  A.3.4.1.3 [1] and [10]: the gradients, the SSP, the ASP and the
+   --  route suitability data of the messages before Before_Msg, from the
+   --  frame position X (the location To) on; TSRs, level crossings, the
+   --  adhesion and the default gradient are unchanged
+   procedure Delete_Beyond (T          : Origin_Table_T;
+                            X          : Dist_T;
+                            To         : Location_T;
+                            Before_Msg : Natural)
+     with Global => (In_Out => State);
+
+   --  A.3.1: what ends more than Keep_In_Rear behind the min safe rear
+   --  end Rear
+   procedure Delete_Behind (T : Origin_Table_T; Rear : Dist_T)
+     with Global => (In_Out => State);
+
+   --  3.11.5.10: the orientation changed, every TSR is deleted
+   procedure Delete_TSRs
+     with Global => (In_Out => State),
+          Post => TSR.Count = 0;
+
+   procedure Mark (Marks : in out Origin_Marks_T)
+     with Global => State;
+
+   ---------------------------------------------------------------------
+   --  For the snapshot
+   ---------------------------------------------------------------------
+
+   --  The speed restrictions (SSP, ASP, TSR, LX not protected: 3.11.2
+   --  a, b, c, i) as elements along Ahead, their end moved by Length
+   --  where the rear end counts (3.11.3.1.3, 3.11.4.6, 3.11.5.3)
+   procedure Speed_Elements (T      : Origin_Table_T;
+                             Ahead  : Sense_T;
+                             Length : Length_T;
+                             E      : in out Elements_T)
+     with Global => State,
+          Post => E.Count >= E.Count'Old;
+
+   --  The gradient profile as elements along Ahead (signed per mille)
+   procedure Gradient_Elements (T     : Origin_Table_T;
+                                Ahead : Sense_T;
+                                E     : in out Elements_T)
+     with Global => State;
+
+   --  3.13.2.3.5: the slippery rail areas, frame positions
+   procedure Adhesion_Areas (T     : Origin_Table_T;
+                             Ahead : Sense_T;
+                             Areas : in out Adhesion_T)
+     with Global => State;
+
+   --  3.7.2.3: the SSP and the gradients cover From .. To (frame
+   --  positions along Ahead)
+   function Covered (T : Origin_Table_T; Ahead : Sense_T; From, To : Dist_T)
+     return Boolean
+     with Global => State;
+
+   --  3.12.5.8: the start of the nearest level crossing not protected
+   --  that the estimated front end Front has not reached, a temporary
+   --  EOA and SvL (Found False when none)
+   procedure LX_Target (T     : Origin_Table_T;
+                        Ahead : Sense_T;
+                        Front : Dist_T;
+                        Found : out Boolean;
+                        EOA   : out Dist_T;
+                        SvL   : out Dist_T)
+     with Global => State;
+
+end EVC_Track_Description;
