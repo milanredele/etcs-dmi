@@ -558,3 +558,63 @@ rows), E5 (level 2 parts and the MA request: 9), E6 and E7 (6).
   triggers the standstill supervision, correctly.
 - `Snapshot_T.Extra`: the extra train data, T_MAR and the SR distance
   stay at their defaults until E4/E5.
+
+## 10. E4 — Modes and procedures, level 1: plan (2026-09-28)
+
+766 clauses, split in two halves plus the bench, along the 84 transition
+conditions of 4.6.3, which are the joint: `EVC_Modes.Transitions` says
+which condition allows which transition with which priority (E0), and
+[evc/evc_transition_conditions.ads](../evc/evc_transition_conditions.ads)
+(generated once by `doc/SRS/tools/gen_conditions_skeleton.py` with the
+text of every condition, then edited by hand) says whether a condition
+holds. Each half implements the arms of the conditions it owns; the
+identifiers 55, 57 and 64 are not in the 4.0.0 table.
+
+- **Modes and levels** (`e4/modes`): the mode machine of 4.6 with its
+  priorities running in `EVC_Core.Run_Mode_Machine`; the mode definitions
+  and responsibilities of 4.4 (what each mode supervises, the ceiling
+  speeds into `Snapshot_T.Mode_Speed`, the `Supervise` gating), the
+  active functions table 4.5, the DMI per mode 4.7 (what MSG_MODE_LEVEL,
+  MSG_ONBOARD and the acknowledgement fields carry, as the DMI expects
+  them: read `common/dmi_protocol.ads` and how `EVC_Mock` fills them),
+  the acceptance of information by level, mode and origin 4.8, what
+  happens to stored information on level and mode entry 4.9 to 4.12 and
+  A.3.3 to A.3.6 (reset entry points in the E3 stores), level transitions
+  5.10 (packets 41 and 46, announcement and acknowledgement, the
+  transition location and the immediate transition), start and end of
+  mission 5.4 and 5.5 in levels 0 and 1 (the S-states, driver ID, level,
+  train data validation from the DMI, train running number; the RBC parts
+  are E5), the decoding of the DMI's MSG_DRIVER_ACTION and
+  MSG_DRIVER_DATA into `EVC_Driver_Requests` (queries named after the DMI
+  actions, latched per cycle; the procedures half may add queries
+  additively), the isolation and the conditions [1] to [4], [13], [14],
+  [21] to [23], [25], [26], [29], [44] to [46], [56], [58] to [60], [67],
+  [77] to [79], [84] and every level related one.
+- **Procedures** (`e4/procedures`): shunting 5.6 and 5.7 (SH, PS,
+  conditions [5], [6], [19], [22], [23], [27], [28], [30], [49] to [52],
+  [61]), override 5.8 ([37] and the override state, 3.11.10), on sight
+  5.9 ([15], [34], [40], [73], [75]), train trip and post trip 5.11
+  ([7], [11], [12], [16] to [18], [20], [41], [62], [63], [65], [66],
+  [68], [69]: the reactions to the E2 events and the E3 overrun), reversing
+  5.13 ([59]), non protected level crossings 5.16 ([9]), train data
+  changes from other sources 5.17, the indication of track conditions
+  5.18 (rows to classify against what the E3 profiles already do),
+  limited supervision 5.19 ([70] to [72], [74], [76]), the track condition
+  outputs to the train interface 5.20 (TIU outputs: pantograph, main
+  switch, air tightness, brakes inhibition, per SUBSET-034), supervised
+  manoeuvre 5.21 ([81], [82]), inhibition of the balise transmission alarm
+  5.22, text messages 3.12.3 (packets 72 and 76: display and end
+  conditions, acknowledgement, MSG_TEXT and MSG_TEXT_REMOVE to the DMI),
+  the mode related speed restrictions 3.11.7 as the source of
+  `Mode_Speed`, and the E2/E3 partial rows these procedures close.
+- **Bench** (`e4/bench`, started 2026-09-28 from E3): the environment
+  simulator for the on-board in `sim/` (trackside with balise groups and
+  telegrams from the encoder, odometer with an error model, vehicle that
+  obeys the on-board's brakes, JRU sink), `onboard.wasm` next to the mock,
+  a switch on the page, the hosted `evc_onboard` on the same environment,
+  and a wasm smoke check proving the wasm on-board byte-identical to the
+  native one.
+
+At the end of E4 the on-board runs the mission of the mock through the
+DMI on the bench in level 1, from start of mission to the stop at the
+EOA, and `EVC_Mock` is retired from the default page.
