@@ -8389,6 +8389,282 @@ procedure EVC_Test is
              "bench: no failure, no DMI frame lost, JRU records whole");
    end Scenario_Bench_Onboard;
 
+   ---------------------------------------------------------------------
+   --  The wrap of the odometer counters (EVC_Ports: d_est is a wrapping
+   --  32 bit counter, over and under are wrapping u32 counters;
+   --  EVC_Odometry takes the difference of two samples modulo 2**32)
+   ---------------------------------------------------------------------
+
+   --  Two power-ups whose first sample has d_est just below a 32 bit
+   --  boundary: the signed one (2**31 - 1 to -2**31, the frame goes on
+   --  beyond the 32 bit range) and the unsigned one (2**32 - 1 to 0, the
+   --  frame goes through 0); over and under start below the other
+   --  boundary and wrap on the way. A balise group straddles the wrap of
+   --  d_est, the next one is read after it. Every cycle the frame, its
+   --  confidence, the front ends and the geographical position move by
+   --  the change of the sample, forth and back, without a jump and
+   --  without saturation. An over- or under-reading counter that goes
+   --  back (across its wrap) is an anomaly; d_est going back while the
+   --  train moves towards cab B is not.
+   procedure Scenario_Odometer_Wrap is
+      subtype Cm is EVC_Distances.Cm_T;
+      Two_31 : constant Integer_64 := 2**31;
+      Two_32 : constant Integer_64 := 2**32;
+
+      --  A and B on different sides of a multiple of 2**31 (the signed
+      --  and the unsigned boundaries of a 32 bit counter)
+      function Crosses (A, B : Integer_64) return Boolean is
+        (A - A mod Two_31 /= B - B mod Two_31);
+
+      --  D0: the first reading of d_est, 499.5 m below a boundary, so
+      --  that it wraps between the balises of group 10 (498 m, 501 m)
+      procedure Phase (Name : String; D0, Over0, Under0 : Integer_64) is
+         --  the first reading as a signed 32 bit value
+         X0      : constant Integer_64 :=
+           (if D0 mod Two_32 >= Two_31 then D0 mod Two_32 - Two_32
+            else D0 mod Two_32);
+         Cycles  : Natural := 0;
+         Jumps   : Natural := 0;
+         Wrapped_D, Wrapped_Over, Wrapped_Under, Back_D : Boolean := False;
+         G       : T79.Packet_T;
+         P       : R0.Packet_T;
+
+         function Frame_Of (Track_Cm : Integer_64) return Cm is
+           (Cm (X0 + Track_Cm));
+
+         --  One step of the track model, the under-reading counter
+         --  growing Extra more than the over-reading one, checked
+         --  against the change of the sample
+         procedure Checked_Step (Step_Cm : Integer_64;
+                                 Extra   : Integer_64 := 10) is
+            D_0    : constant Integer_64 := Odo_D;
+            O_0    : constant Integer_64 := Odo_Over;
+            U_0    : constant Integer_64 := Odo_Under;
+            X      : constant Cm := Odo.Position;
+            Low    : constant Cm := Odo.Low;
+            High   : constant Cm := Odo.High;
+            Over   : constant Cm := Odo.Over;
+            Under  : constant Cm := Odo.Under;
+            Trav   : constant Cm := Odo.Travelled;
+            Anom   : constant Natural := Odo.Anomalies;
+            LRBG   : constant EVC_Location.Anchor_T := Pos.LRBG;
+            Est    : constant Cm := Pos.Estimated_Front;
+            D_Over : constant Cm := Pos.Doubt_Over;
+            D_Und  : constant Cm := Pos.Doubt_Under;
+            Min_S  : constant Cm := Pos.Min_Safe_Front;
+            Max_S  : constant Cm := Pos.Max_Safe_Front;
+            Geo_K  : constant Boolean := Pos.Geo_Known;
+            Geo    : constant Natural := Pos.Geo_Metres;
+            DX, D_O, D_U, D_Low, D_High : Cm;
+            OK     : Boolean;
+         begin
+            Odo_Under := Odo_Under + Extra;
+            Step (Step_Cm);
+            DX := Cm (Odo_D - D_0);
+            D_O := Cm (Odo_Over - O_0);
+            D_U := Cm (Odo_Under - U_0);
+            --  towards cab A the over-reading widens the low side,
+            --  towards cab B the high side
+            D_Low := (if Step_Cm > 0 then D_O else D_U);
+            D_High := (if Step_Cm > 0 then D_U else D_O);
+            OK := Odo.Position = Frame_Of (Train_Cm)
+              and then Odo.Position - X = DX
+              and then Odo.Low - Low = D_Low
+              and then Odo.High - High = D_High
+              and then Odo.Over - Over = D_O
+              and then Odo.Under - Under = D_U
+              and then Odo.Travelled - Trav = abs DX
+              and then Odo.Anomalies = Anom;
+            if LRBG.Valid and then Pos.LRBG = LRBG then
+               OK := OK
+                 and then Pos.Estimated_Front - Est = DX
+                 and then Pos.Doubt_Over - D_Over = D_Low
+                 and then Pos.Doubt_Under - D_Und = D_High
+                 and then Pos.Min_Safe_Front - Min_S = DX - D_Low
+                 and then Pos.Max_Safe_Front - Max_S = DX + D_High;
+            end if;
+            if Geo_K and then Pos.Geo_Known then
+               OK := OK
+                 and then Integer_64 (Pos.Geo_Metres) - Integer_64 (Geo)
+                          = Integer_64 (DX) / 100
+                 and then Geo_Seen = Unsigned_32 (Pos.Geo_Metres);
+            end if;
+            Cycles := Cycles + 1;
+            if not OK then
+               Jumps := Jumps + 1;
+               Put_Line ("odometer wrap: " & Name
+                         & ", a jump in the step to"
+                         & Integer_64'Image (Train_Cm));
+            end if;
+            if Step_Cm > 0 then
+               Wrapped_D := Wrapped_D or else Crosses (D_0, Odo_D);
+            else
+               Back_D := Back_D or else Crosses (D_0, Odo_D);
+            end if;
+            Wrapped_Over := Wrapped_Over or else Crosses (O_0, Odo_Over);
+            Wrapped_Under := Wrapped_Under
+                             or else Crosses (U_0, Odo_Under);
+         end Checked_Step;
+
+      begin
+         --  Start_Track with the counters of the odometer elsewhere
+         EVC_Core.Initialise;
+         Reset_Capture;
+         Forget;
+         Track_N := 0;
+         Train_Cm := 0;
+         Odo_D := D0;
+         Odo_Over := Over0;
+         Odo_Under := Under0;
+         Error_Per_Mille := 0;
+         Bound_Per_Mille := 20;
+         Speed_Cms := 1000;
+         Cold_Byte := 0;
+         Cold_Distance := 0;
+         Input (TIU, (1, 1));
+         Sample (0);
+         Cycle;
+         Check (Odo.Known and then Odo.Position = Cm (X0)
+                and then Odo.Low = 0 and then Odo.High = 0
+                and then Odo.Anomalies = 0,
+                "odometer wrap: " & Name & ", the frame starts at the "
+                & "first reading taken as signed");
+
+         --  group 10 straddles the wrap of d_est: balise 0 at 498 m is
+         --  read below it, balise 1 at 501 m above it, in one step;
+         --  group 20 at 520 m is read after it
+         G.Q_DIR := 1;
+         G.Q_SCALE := 1;
+         G.NID_BG := 10;
+         G.D_POSOFF := 0;
+         G.Q_MPOSITION := 1;
+         G.M_POSITION := 42_000;
+         G.N_ITER := 0;
+         Add_Group (Group (10, 498));
+         Track (1).Has_Geo := True;
+         Track (1).Geo := G;
+         Add_Group (Group (20, 520));
+
+         while Train_Cm < 51_000 loop
+            Checked_Step (1_000);
+         end loop;
+         Check (Pos.Status = Pos.Valid
+                and then Pos.LRBG.Valid and then Pos.LRBG.Id.NID_BG = 10
+                and then Pos.LRBG.X = Frame_Of (49_800)
+                and then Pos.LRBG.Orientation = EVC_Distances.Plus
+                and then Pos.Estimated_Front = 51_300 - 49_800,
+                "odometer wrap: " & Name & ", the group read across the "
+                & "wrap is the LRBG at its place, nominal, got X"
+                & Cm'Image (Pos.LRBG.X) & ", expected"
+                & Cm'Image (Frame_Of (49_800)));
+         Check (Pos.Geo_Known and then Pos.Geo_Metres = 42_015
+                and then Geo_Seen = 42_015,
+                "odometer wrap: " & Name & ", geographical position "
+                & "42 015 m, on the DMI (MSG_STATUS), got"
+                & Natural'Image (Pos.Geo_Metres));
+
+         while Train_Cm < 60_000 loop
+            Checked_Step (1_000);
+         end loop;
+         Check (Pos.LRBG.Id.NID_BG = 20
+                and then Pos.LRBG.X = Frame_Of (52_000)
+                and then Pos.LRBG.Orientation = EVC_Distances.Plus
+                and then Pos.Estimated_Front = 60_300 - 52_000
+                and then Pos.Geo_Metres = 42_105
+                and then Geo_Seen = 42_105,
+                "odometer wrap: " & Name & ", the group read after the "
+                & "wrap is the LRBG at its place, got X"
+                & Cm'Image (Pos.LRBG.X));
+         Check (JRU_Seen (4) = 0 and then JRU_Seen (5) = 0
+                and then JRU_Seen (6) = 0 and then JRU_Seen (10) = 2,
+                "odometer wrap: " & Name & ", two new LRBGs, nothing "
+                & "unexpected, nothing missed");
+         Stand;
+         P := Pos.Position_Report (M_SB, L1);
+         Check (P.NID_BG = 20 and then P.Q_DIRLRBG = 1
+                and then P.Q_DLRBG = 1 and then P.Q_DIRTRAIN = 1
+                and then Integer (P.D_LRBG) = 830,
+                "odometer wrap: " & Name
+                & ", packet 0 83 m from the LRBG");
+
+         --  the over-reading counter back by 10 m, across its own wrap:
+         --  an anomaly, its growth ignored for this sample
+         declare
+            X     : constant Cm := Odo.Position;
+            Low   : constant Cm := Odo.Low;
+            High  : constant Cm := Odo.High;
+            Over  : constant Cm := Odo.Over;
+            Under : constant Cm := Odo.Under;
+            Back  : constant Boolean :=
+              Crosses (Odo_Over, Odo_Over - 1_000);
+         begin
+            Odo_Over := Odo_Over - 1_000;
+            Step (1_000);
+            Check (Back and then Odo.Anomalies = 1
+                   and then Odo.Position - X = 1_000
+                   and then Odo.Over = Over and then Odo.Low = Low
+                   and then Odo.Under - Under = 20
+                   and then Odo.High - High = 20,
+                   "odometer wrap: " & Name & ", the over counter back "
+                   & "across its wrap is an anomaly, nothing added");
+         end;
+         declare
+            Under : constant Cm := Odo.Under;
+            High  : constant Cm := Odo.High;
+         begin
+            Odo_Under := Odo_Under - 1;
+            Stand;
+            Check (Odo.Anomalies = 2 and then Odo.Under = Under
+                   and then Odo.High = High,
+                   "odometer wrap: " & Name & ", the under counter back "
+                   & "by 1 cm at standstill is an anomaly");
+         end;
+         --  from the new readings on, normal again
+         Checked_Step (1_000);
+         Stand;
+
+         --  back towards cab B, the track without balises: d_est goes
+         --  back across its wrap
+         Track_N := 0;
+         while Train_Cm > 45_000 loop
+            Checked_Step (-1_000);
+         end loop;
+         Check (Odo.Anomalies = 2
+                and then Odo.Position = Frame_Of (45_000)
+                and then Pos.LRBG.Id.NID_BG = 20
+                and then Pos.Estimated_Front = 45_300 - 52_000
+                and then Pos.Geo_Metres = 42_000 - 45
+                and then Geo_Seen = 42_000 - 45,
+                "odometer wrap: " & Name & ", back towards cab B across "
+                & "the wrap, no anomaly");
+
+         Check (Jumps = 0 and then Cycles = 78,
+                "odometer wrap: " & Name & "," & Natural'Image (Cycles)
+                & " cycles, each changed the frame, its confidence, the "
+                & "front ends and the geographical position by the "
+                & "sample's change," & Natural'Image (Jumps) & " did not");
+         Check (Wrapped_D and then Back_D and then Wrapped_Over
+                and then Wrapped_Under,
+                "odometer wrap: " & Name & ", d_est crossed its boundary "
+                & "forth and back, over and under crossed theirs");
+         Check (Odo.Position /= EVC_Distances.Max_Cm
+                and then Odo.Position /= -EVC_Distances.Max_Cm
+                and then Odo.Travelled = 60_000 + 2_000 + 17_000,
+                "odometer wrap: " & Name & ", no saturation");
+      end Phase;
+
+   begin
+      --  d_est 2**31 - 499.5 m; over below 2**32, under below 2**31
+      Phase ("signed", Two_31 - 49_950, Two_32 - 500, Two_31 - 300);
+      Check (Pos.LRBG.X = Cm (Two_31) + 2_050,
+             "odometer wrap: the frame goes on beyond the 32 bit range");
+      --  d_est 2**32 - 499.5 m (-499.5 m signed); over below 2**31,
+      --  under below 2**32
+      Phase ("unsigned", Two_32 - 49_950, Two_31 - 500, Two_32 - 300);
+      Check (Pos.LRBG.X = 2_050 and then Odo.Position = 45_000 - 49_950,
+             "odometer wrap: the frame through 0 and back");
+   end Scenario_Odometer_Wrap;
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -8463,6 +8739,7 @@ begin
    Scenario_Gradient_Gaps;
 
    Scenario_Bench_Onboard;
+   Scenario_Odometer_Wrap;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));
