@@ -63,6 +63,7 @@ ETCS on-board (EVC). The on-board is being built in phases, see
 - **Proof**: `evc/prove.sh` (gnatprove on `etcs_evc.gpr`) must report no unproved check.
 - **Generated code**: `evc/language/` holds Ada generated from `etcs_language.toml`; never edit it by hand, run `python3 evc/language/gen_language.py` and keep `--check` green. Every unit under `evc/` is `SPARK_Mode => On`; a unit that cannot be SPARK says why in its header.
 - **Robustness**: `obj/dmi_fuzz` and `obj/evc_fuzz` must report `raised: 0`. Code under `dmi/`, `evc/` and `common/` must never raise on any message, input, touch or tick: validate and ignore, clamp, or draw nothing.
+- **Whole check**: `test/check.sh` builds everything and runs the four test programs and the three checkers (generator, catalogue, matrix); run it before every merge. The proof (`evc/prove.sh`) and the cross build (`ports/tms570/build.sh`) are separate because they take long.
 - **Regression**: `obj/dmi_test` and `obj/evc_test` must stay at zero failures; `UPDATE=1` re-records goldens only after an intended change, and a changed golden is looked at before it is re-recorded.
 - **Visual Testing** (browser bench): `test/wasm/build.sh`, then serve the repository over HTTP and open `test/wasm/`; `node test/wasm/smoke.js` verifies the wasm build.
 - **Visual Testing** (TCP setup):
