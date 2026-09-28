@@ -16,7 +16,7 @@ done
 rm -rf "$OUT"
 mkdir -p "$OUT/test/wasm" "$OUT/$SOUNDS"
 cp "$ROOT/test/wasm/index.html" "$ROOT/test/wasm/dmi.wasm" "$ROOT/test/wasm/evc.wasm" \
-   "$ROOT/test/wasm/onboard.wasm" "$OUT/test/wasm/"
+   "$ROOT/test/wasm/onboard.wasm" "$ROOT/test/wasm/onboard.cfg" "$OUT/test/wasm/"
 cp "$ROOT/$SOUNDS"/*.wav "$OUT/$SOUNDS/"
 cat > "$OUT/index.html" <<'HTML'
 <!DOCTYPE html>

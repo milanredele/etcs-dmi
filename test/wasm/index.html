@@ -1260,6 +1260,25 @@
           console.warn('onboard.wasm not loaded: the ETCS on-board is not available', e);
           $('onboard').disabled = true;
         }
+        // its installation configuration (evc/evc_config.ads, data and not
+        // code): the byte image onboard.cfg (test/tools/evc_config.py makes
+        // it from the text form), loaded once, before the first reset; the
+        // on-board keeps it over every reset. Without it, or refused, the
+        // on-board runs with EVC_Config.Default and the console says why.
+        if (onboard) {
+          try {
+            const response = await fetch('onboard.cfg');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const image = new Uint8Array(await response.arrayBuffer());
+            if (image.length > onboard.onboard_rx_capacity()) throw new Error('too large');
+            new Uint8Array(onboard.memory.buffer, onboard.onboard_rx_buffer(), image.length).set(image);
+            if (onboard.onboard_configure(image.length) !== 1) {
+              console.warn('onboard.cfg refused by the on-board (see its JRU): the default configuration');
+            }
+          } catch (e) {
+            console.warn('onboard.cfg not loaded: the default configuration', e);
+          }
+        }
         const onboardMode = () => onboard !== null && $('onboard').value === 'etcs';
         $('status').textContent = '';
 

@@ -59,7 +59,8 @@ package body EVC_Position
                                    Taken_Tels,
                                    Taken_Tel_N,
                                    Passage_Ms,
-                                   Previous_Ms))
+                                   Previous_Ms,
+                                   Antenna_Offset))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -113,6 +114,13 @@ is
    --  3.6.5.1.5 c): locations where to report
    Max_Locations : constant := 31;
    type Locations_T is array (1 .. Max_Locations) of Item_T;
+
+   --  The installation: the antenna from the cab A end (Plus) and from
+   --  the cab B end (Minus), cm (EVC_Config, Set_Antenna)
+   type Offsets_T is array (Sense_T) of EVC_Config.Antenna_Offset_T;
+   Antenna_Offset     : Offsets_T :=
+     (Plus  => EVC_Config.Default.Antenna_To_Cab_A,
+      Minus => EVC_Config.Default.Antenna_To_Cab_B);
 
    Orient             : Sense_T := Plus;
    Orient_Known       : Boolean := False;
@@ -231,14 +239,19 @@ is
       then Report_P1 else Report_P0)
      with Refined_Global => LRBG_A;
 
+   function Front_Offset (S : Sense_T) return EVC_Config.Antenna_Offset_T
+   is
+     (Antenna_Offset (S))
+     with Refined_Global => Antenna_Offset;
+
    function Front_X return Dist_T is
-     (Advance (EVC_Odometry.Position, Orient, Front_Offset (Orient)))
-     with Refined_Global => (Orient, EVC_Odometry.State);
+     (Advance (EVC_Odometry.Position, Orient, Antenna_Offset (Orient)))
+     with Refined_Global => (Orient, Antenna_Offset, EVC_Odometry.State);
 
    --  Against an anchor, along the orientation
    function Front_From (A : Anchor_T) return Dist_T is
      (Estimated (A, Orient, Front_X))
-     with Global => (Orient, EVC_Odometry.State);
+     with Global => (Orient, Antenna_Offset, EVC_Odometry.State);
 
    function Over_From (A : Anchor_T) return Length_T is
      (EVC_Location.Doubt_Over
@@ -252,7 +265,8 @@ is
 
    function Estimated_Front return Dist_T is
      (if LRBG_A.Valid then Front_From (LRBG_A) else 0)
-     with Refined_Global => (LRBG_A, Orient, EVC_Odometry.State);
+     with Refined_Global => (LRBG_A, Orient, Antenna_Offset,
+                             EVC_Odometry.State);
 
    function Doubt_Over return Length_T is
      (if LRBG_A.Valid then Over_From (LRBG_A) else 0)
@@ -264,31 +278,36 @@ is
 
    function Min_Safe_Front return Dist_T is
      (Min_Safe (Estimated_Front, Doubt_Over))
-     with Refined_Global => (LRBG_A, Orient, EVC_Odometry.State);
+     with Refined_Global => (LRBG_A, Orient, Antenna_Offset,
+                             EVC_Odometry.State);
 
    function Max_Safe_Front return Dist_T is
      (Max_Safe (Estimated_Front, Doubt_Under))
-     with Refined_Global => (LRBG_A, Orient, EVC_Odometry.State);
+     with Refined_Global => (LRBG_A, Orient, Antenna_Offset,
+                             EVC_Odometry.State);
 
    function SOLR_Estimated_Front return Dist_T is
      (if SOLR_A.Valid then Front_From (SOLR_A) else 0)
-     with Refined_Global => (SOLR_A, Orient, EVC_Odometry.State);
+     with Refined_Global => (SOLR_A, Orient, Antenna_Offset,
+                             EVC_Odometry.State);
 
    function SOLR_Min_Safe_Front return Dist_T is
      (Min_Safe (SOLR_Estimated_Front,
                 (if SOLR_A.Valid then Over_From (SOLR_A) else 0)))
-     with Refined_Global => (SOLR_A, Orient, EVC_Odometry.State);
+     with Refined_Global => (SOLR_A, Orient, Antenna_Offset,
+                             EVC_Odometry.State);
 
    function SOLR_Max_Safe_Front return Dist_T is
      (Max_Safe (SOLR_Estimated_Front,
                 (if SOLR_A.Valid then Under_From (SOLR_A) else 0)))
-     with Refined_Global => (SOLR_A, Orient, EVC_Odometry.State);
+     with Refined_Global => (SOLR_A, Orient, Antenna_Offset,
+                             EVC_Odometry.State);
 
    function Min_Safe_Rear return Dist_T is
      (if Length_Known then Diff (Min_Safe_Front, Train_Length)
       else Min_Safe_Front)
      with Refined_Global => (LRBG_A, Orient, Length_Known, Train_Length,
-                             EVC_Odometry.State);
+                             Antenna_Offset, EVC_Odometry.State);
 
    --  3.6.4.1.2: against the same anchor the interval only widens when
    --  the frame deviations grow
@@ -1158,6 +1177,8 @@ is
       Empty_T       : ETCS_Telegram.Telegram_T;
    begin
       EVC_Odometry.Clear;
+      Antenna_Offset := (Plus  => EVC_Config.Default.Antenna_To_Cab_A,
+                         Minus => EVC_Config.Default.Antenna_To_Cab_B);
       Orient := Plus;
       Orient_Known := False;
       Cab_In := No_Cab;
@@ -1358,6 +1379,16 @@ is
         (LRBG_A, Orient, Low_0, High_0,
          EVC_Odometry.Low, EVC_Odometry.High);
    end Update;
+
+   -----------------
+   -- Set_Antenna --
+   -----------------
+
+   procedure Set_Antenna (To_Cab_A, To_Cab_B : EVC_Config.Antenna_Offset_T)
+   is
+   begin
+      Antenna_Offset := (Plus => To_Cab_A, Minus => To_Cab_B);
+   end Set_Antenna;
 
    ----------------------
    -- Set_Train_Length --

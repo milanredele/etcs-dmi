@@ -574,7 +574,8 @@ is
                      Input  => (Driver_Slippery, EVC_Odometry.State,
                                 EVC_Train_Data.State,
                                 EVC_National_Values.State,
-                                EVC_Movement_Authority.State)),
+                                EVC_Movement_Authority.State,
+                                EVC_Config.State)),
           Post => Snap.MRSP.Count = Steps.Count
                   and then Sorted (Steps)
                   and then Below (Steps, Sources, 0, Ceiling)
@@ -596,6 +597,8 @@ is
    is
       MA_Now   : constant EVC_Movement_Authority.MA_T :=
         EVC_Movement_Authority.MA;
+      --  the installation configuration (EVC_Config)
+      Configuration : constant EVC_Config.Config_T := EVC_Config.Current;
       Ahead    : constant Sense_T :=
         (if MA_Now.Present then MA_Now.Sense else Train.Sense);
       Data     : constant Train_Data_T := EVC_Train_Data.Data;
@@ -656,7 +659,7 @@ is
       Snap.Adhesion := (Count => 0, Areas => (others => (0, 0)),
                         Driver_Slippery => Driver_Slippery);
       EVC_Track_Description.Adhesion_Areas (T, Ahead, Snap.Adhesion);
-      Snap.Extra := (Config      => Onboard_Config,
+      Snap.Extra := (Config      => Configuration.Supervision,
                      Train       => (others => <>),
                      National    =>
                        (Redadh_Use =>
@@ -676,7 +679,8 @@ is
            EVC_PBD.Inputs_Of
              (Snap, Special_Active, Additional,
               Natural (Length_T'Min
-                         (EVC_Position.Front_Offset (Train.Sense),
+                         (EVC_Config.Front_Offset (Configuration,
+                                                   Train.Sense),
                           EVC_PBD.Antenna_T'Last)));
          Changed : constant Boolean := not PBD_Known or else I /= PBD_Last;
          N       : Natural;

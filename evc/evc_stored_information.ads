@@ -61,6 +61,7 @@
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Braking;
+with EVC_Config;
 with EVC_DMI_Port;
 with EVC_Distances;          use EVC_Distances;
 with EVC_Movement_Authority;
@@ -149,24 +150,8 @@ is
    ---------------------------------------------------------------------
 
    --  The configuration of this on-board (3.13.2.2.6 to 3.13.2.2.8,
-   --  Snapshot_T.Extra.Config): a service brake command and the traction
-   --  cut-off (the TIU output), the brake pressure acquired from the
-   --  main brake pipe (TIU input 12; used only where Q_NVSBFBPERM allows
-   --  it), an interface with every special brake whose status counts
-   --  for both brake models (TIU inputs 7 to 10: a special brake is not
-   --  in use until the train interface says it is active), the
-   --  additional brake not taken as independent from the adhesion
-   --  (A_NVMAXREDADH2 rather than 1), a regenerative brake that needs the
-   --  catenary (3.12.1.3.3)
-   Onboard_Config : constant Onboard_Config_T :=
-     (Service_Brake_Command       => True,
-      Service_Brake_Feedback      => True,
-      Feedback_From_Cylinder      => False,
-      K1_Milli                    => 2_500,
-      Traction_Cut_Off            => True,
-      Special_Brakes              => (others => Emergency_And_Service),
-      Additional_Brake_Allowed    => False,
-      Regenerative_Needs_Catenary => True);
+   --  Snapshot_T.Extra.Config) is the installation's, data loaded by
+   --  EVC_Core.Configure: EVC_Config.Current.Supervision
 
    function Current return Snapshot_T
      with Global => State;
@@ -250,7 +235,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Train_Data.State)),
+                                EVC_Train_Data.State, EVC_Config.State)),
           Post =>
             --  3.13.7: sorted in the sense Ahead, never above a source
             Current.MRSP.Count = MRSP_Steps.Count

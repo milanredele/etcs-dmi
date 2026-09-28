@@ -3,6 +3,9 @@
 
 with Ada.Streams;  use Ada.Streams;
 with DMI_Protocol; use DMI_Protocol;
+with EVC_Bytes;
+with EVC_Config;
+with EVC_Core;
 with EVC_Track;
 with Sim_JRU;
 with Sim_Odometer;
@@ -26,6 +29,20 @@ package body Onboard_Wasm is
       Env.Reset;
       Layout_Countdown := 0;
    end Reset;
+
+   function Configure (Length : Unsigned_32) return Integer_32 is
+      N     : constant Natural :=
+        Natural (Unsigned_32'Min (Length, Rx'Length));
+      Image : EVC_Bytes.Byte_Array (1 .. N);
+   begin
+      for I in Image'Range loop
+         Image (I) := EVC_Bytes.Byte (Rx (Stream_Element_Offset (I)));
+      end loop;
+      EVC_Core.Configure (Image);
+      return (if EVC_Config."=" (EVC_Config.Last_Status,
+                                 EVC_Config.Accepted)
+              then 1 else 0);
+   end Configure;
 
    function Rx_Buffer return System.Address is (Rx'Address);
    function Rx_Capacity return Unsigned_32 is (Rx'Length);

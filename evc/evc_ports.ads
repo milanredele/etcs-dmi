@@ -90,9 +90,10 @@
 --     nominal, 1 impaired, 2 safety threshold exceeded); 8 status of the
 --     train position (u8 0 unknown, 1 valid, 2 invalid); 9 cold movement
 --     (u8 1: detected at power-up); 10 new LRBG
---     (u24 identity); the events of the supervision, 20 to 22, and of
---     the stored information, 32, at the end of this package (11 to 19
---     and 23 to 31 are free). Every input is rejected.
+--     (u24 identity); the events of the supervision, 20 to 22, of the
+--     stored information, 32, and of the installation configuration, 33,
+--     at the end of this package (11 to 19 and 23 to 31 are free).
+--     Every input is rejected.
 
 with EVC_Bytes;
 with EVC_DMI_Port;
@@ -376,5 +377,20 @@ is
    JRU_Brake_Commands : constant := 20;
    JRU_Supervision    : constant := 21;
    JRU_Overrun        : constant := 22;
+
+   ---------------------------------------------------------------------
+   --  Added with the installation configuration (e3/config)
+   ---------------------------------------------------------------------
+
+   --  JRU event 33, the installation configuration (EVC_Config), recorded
+   --  at the first cycle after EVC_Core.Configure: u8 1 the image was
+   --  loaded and is the configuration now, 2 it was refused and the
+   --  previous configuration stays; u8 the outcome (EVC_Config.Status_T
+   --  'Pos: 0 accepted, 1 truncated, 2 bad magic, 3 bad version, 4 bad
+   --  length, 5 bad CRC, 6 a field out of range, 7 Table 3 of
+   --  3.13.2.2.6.1 violated, 8 refused because the on-board is not in
+   --  No Power); u8 the images refused since the start, saturating at
+   --  255.
+   JRU_Configuration : constant := 33;
 
 end EVC_Ports;

@@ -191,6 +191,9 @@ is
      (Rejected_Count (Port));
    function Overflowed (Port : Port_T) return Natural is
      (Overflow_Count (Port));
+   function Configured return Boolean is (EVC_Config.Loaded);
+   function Configuration return EVC_Config.Config_T is
+     (EVC_Config.Current);
    function Supervision return EVC_SDM.Result_T is (SDM_Result);
    function Brake_Commands return EVC_Brake_Commands.Commands_T is
      (Brake_Output);
@@ -269,10 +272,28 @@ is
       Overrun_Reported := 0;
       EVC_Received.Clear;
       EVC_Position.Clear;
+      --  the installation: the antenna of the configuration
+      EVC_Position.Set_Antenna (EVC_Config.Current.Antenna_To_Cab_A,
+                                EVC_Config.Current.Antenna_To_Cab_B);
       --  phase E3: nothing stored, the default train
       EVC_Stored_Information.Clear;
       EVC_Outbox.Clear;
    end Initialise;
+
+   ---------------
+   -- Configure --
+   ---------------
+
+   procedure Configure (Bytes : EVC_Bytes.Byte_Array) is
+   begin
+      if Current_Mode = M_NP then
+         EVC_Config.Load (Bytes);
+      else
+         EVC_Config.Refuse (EVC_Config.Refused_In_Service);
+      end if;
+      EVC_Position.Set_Antenna (EVC_Config.Current.Antenna_To_Cab_A,
+                                EVC_Config.Current.Antenna_To_Cab_B);
+   end Configure;
 
    ------------------
    -- Handle_Input --
@@ -368,6 +389,29 @@ is
    JRU_Message     : constant := 3;
    --  the events of the position: 4 .. 10 (EVC_Ports)
    JRU_Position    : constant := 4;
+
+   --  0. The installation configuration loaded or refused since the last
+   --  cycle (Configure): event 33 (EVC_Ports)
+   procedure Report_Configuration
+     with Global => (Input  => (Cycle_Count, Clock_Ms),
+                     In_Out => (EVC_Config.State, EVC_Outbox.Queue)),
+          Post => EVC_Config.Current = EVC_Config.Current'Old
+                  and then EVC_Config.Loaded = EVC_Config.Loaded'Old
+   is
+      Loaded : constant Boolean :=
+        EVC_Config.Last_Status = EVC_Config.Accepted;
+   begin
+      if EVC_Config.Report_Pending then
+         EVC_Outbox.Put
+           (JRU, JRU_Record
+                   (JRU_Configuration,
+                    (if Loaded then 1 else 2),
+                    EVC_Config.Status_T'Pos (EVC_Config.Last_Status),
+                    EVC_Bytes.Byte
+                      (Natural'Min (EVC_Config.Rejections, 255))));
+         EVC_Config.Report_Taken;
+      end if;
+   end Report_Configuration;
 
    --  1. Read the ports: take the inputs latched since the last cycle,
    --  parse the telegrams and radio messages (EVC_Received) and record
@@ -541,7 +585,7 @@ is
    procedure Evaluate_Stored_Information
      with Global => (Input  => (Clock_Ms, Cycle_Count, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,
-                                TIU_Now),
+                                TIU_Now, EVC_Config.State),
                      In_Out => (EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
@@ -935,6 +979,7 @@ is
       Cycle_Count := Cycle_Count + 1;
       Clock_Ms := Clock_Ms + Time_Ms_T (Dt_Ms);
 
+      Report_Configuration;
       Read_Ports;
       Update_Position;
       Evaluate_Stored_Information;

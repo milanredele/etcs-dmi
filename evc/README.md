@@ -9,7 +9,8 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 
 | Package | Role |
 |---|---|
-| `EVC_Core` | The core: `Initialise`, `Handle_Input (Port, Payload)`, `Tick (Dt_Ms)`, `Take_Outputs`, `Enter_Failure` / `Failed`. One `Tick` is one cycle, in the order of the plan: read ports, position, stored information, monitoring, mode machine, outputs. |
+| `EVC_Core` | The core: `Configure (Image)`, `Initialise`, `Handle_Input (Port, Payload)`, `Tick (Dt_Ms)`, `Take_Outputs`, `Enter_Failure` / `Failed`. One `Tick` is one cycle, in the order of the plan: read ports, position, stored information, monitoring, mode machine, outputs. |
+| `EVC_Config` | The installation configuration, data and not code: the configuration of 3.13.2.2.6 to 3.13.2.2.8 (service brake command and feedback, the cylinder and k1 of A.3.10.3, traction cut-off, the interface of each special brake, the additional brake, the regenerative brake and the catenary), the detection of the service brake failure (3.14.1.2) and the antenna from each cab (3.6.1.3.4); `Valid` (Table 3 of 3.13.2.2.6.1), `Default`, the byte image (magic, version, length, fields, CRC-32) with `Decoded` / `Decode` / `Encode`, and the configuration in use. |
 | `EVC_Modes` | The 19 modes of 4.3.2 (`M_FS` .. `M_RV`), the levels (0, NTC, 1, 2), the status of the stored level, and the transitions table of 4.6.2 with its priorities. |
 | `EVC_Transition_Conditions` | The 84 conditions of the mode transitions of 4.6.3, one identifier each (`C_1` .. `C_84`, the text of the table quoted), and `Holds`, which asks the unit that owns the state a condition speaks about; the skeleton of phase E4, every condition False until implemented. |
 | `EVC_Ports` | The ports (BTM, RTM, odometer, TIU, DMI, ATO, JRU), the maximum payload of each and the documented shape of every payload; `Valid_Input` checks it. |
@@ -116,6 +117,38 @@ suitability), the procedures' brake reasons, the data entry and the MA
 request are phases E4 and E5. Until the modes of E4 the on-board stays
 in Stand By, where the standstill supervision (4.4.7.1.5) brakes a train
 that moves more than D_NVROLL without an MA.
+
+**Configuration is data.** What SUBSET-026 lets the engineering of the
+on-board define for the vehicle it is fitted to is not a constant of the
+code but the installation configuration (`EVC_Config`): the same build
+runs on any vehicle, and every value the SRS allows is accepted. The
+host hands its byte image to `EVC_Core.Configure` before or at the
+power-up (`Initialise`): a file on the host (`obj/evc_onboard --config
+<image>` or `EVC_CONFIG`), the page's `test/wasm/onboard.cfg`
+(`onboard_configure`), a block of flash on the target
+(ports/tms570/README.md, phase E8). `test/tools/evc_config.py` converts
+the readable text form (`ports/hosted/evc.cfg`, every field with its
+clause) to the image and back, and validates it as the on-board does.
+The image is accepted in No Power only (an installation does not change
+under a running on-board) and stays over `Initialise`; an image that is
+refused (a bad magic, version, length or CRC, a field out of range, an
+interface Table 3 does not allow, or given in service) is counted and
+leaves the previous configuration; either outcome is recorded on the
+JRU at the next cycle (event 33). Without an image the on-board runs
+with `EVC_Config.Default`. The proof states that the configuration is
+always valid and that a valid image given in No Power becomes it. The
+stored information puts `Current.Supervision` into the snapshot
+(`Extra.Config`), the position takes the antenna (`Set_Antenna`).
+What stays constant, with the reason: the capacities of the stores and
+latches (`Max_Origins`, the 96-element stores, the BTM and RTM
+latches: static memory, no allocation), the values the SRS or its
+subsets fix (A.3.1 odometry, 3.16.2.3.1.1 1.3 m, 3.15.8.1.1 2 m,
+SUBSET-041 T41), the national value defaults of A.3.2 (the national
+values replace them), and `EVC_Position.Group_End_Cm` (a property of
+the trackside's balise groups, not of the vehicle). The fixed values of
+the Train Data (the braking models, the rolling stock correction
+factors, Kn, the rotating mass: 3.18.3, 3.13.2.2.9) are train data and
+come with the data entry of phase E4.
 
 Checks:
 

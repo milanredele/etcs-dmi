@@ -42,7 +42,8 @@
 --  flags of the MRSP, the coverage of the gradient profile and the
 --  default gradient for TSR (3.13.4.1.3), the powerless sections
 --  (3.13.2.3.4.1), and how the stored information fills Extra: the
---  configuration of this on-board (EVC_Stored_Information.Onboard_Config),
+--  configuration of this on-board (EVC_Config.Current.Supervision: the
+--  installation configuration, data loaded by EVC_Core.Configure),
 --  the use of A_NVMAXREDADHn from the national values and the trip
 --  margin of 3.13.9.4.8.2 from the SOLR and the EOA; the other fields of
 --  Extra keep their defaults until their phase: the train data beyond
@@ -395,6 +396,14 @@ is
       --  depends on the voltage of the catenary, so a powerless section
       --  inhibits it
       Regenerative_Needs_Catenary : Boolean := True;
+      --  3.14.1.2 (added with the configuration, e3/config): the service
+      --  brake failed when, SB_Failure_Time_Ms beyond its build up time
+      --  T_bs after the command, the train does not decelerate by at
+      --  least SB_Failure_Decel_Mms2 (3.14.1.1 leaves the detection to
+      --  the implementation; how fast a vehicle's brake answers is a
+      --  property of the vehicle)
+      SB_Failure_Time_Ms       : Natural range 0 .. 60_000 := 2_000;
+      SB_Failure_Decel_Mms2    : Natural range 0 .. 3_000 := 100;
    end record;
 
    --  A combination of special brakes in use: bit 0 regenerative, bit 1

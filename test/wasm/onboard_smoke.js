@@ -6,7 +6,9 @@
 // whenever the on-board asks for it) and compares the SHA-256 of the
 // on-board's DMI frames with test/golden/evc/bench_onboard.sha256, which
 // evc_test records natively. The two builds must feed the DMI the same
-// bytes. Then the containment path of the page (a trap, Enter_Failure).
+// bytes. Before it, the installation configuration of the page
+// (onboard.cfg, onboard_configure); after it, the containment path of the
+// page (a trap, Enter_Failure).
 // Run from the repository root: node test/wasm/onboard_smoke.js
 const fs = require('fs');
 const crypto = require('crypto');
@@ -90,6 +92,23 @@ const ex = load('onboard.wasm');
     if (got !== ((a * b) & M128)) bad++;
   }
   check(bad === 0, '__multi3 is the 128-bit product (2000 random operands)');
+}
+
+// --- The installation configuration, as the page loads it ------------
+// onboard.cfg (the image of the default configuration, made by
+// test/tools/evc_config.py from ports/hosted/evc.cfg) before the first
+// reset; the golden stays that of the native run without an image, which
+// uses the same default. A damaged copy is refused.
+function configure(ex, image) {
+  new Uint8Array(ex.memory.buffer, ex.onboard_rx_buffer(), image.length).set(image);
+  return ex.onboard_configure(image.length);
+}
+{
+  const image = fs.readFileSync(path.join(__dirname, 'onboard.cfg'));
+  const damaged = Uint8Array.from(image);
+  damaged[20] ^= 1;   // the antenna to cab A: the CRC no longer matches
+  check(configure(ex, damaged) === 0, 'a damaged configuration image is refused');
+  check(configure(ex, image) === 1, `onboard.cfg (${image.length} bytes) is the configuration`);
 }
 
 // --- The scenario of evc_test Scenario_Bench_Onboard ------------------

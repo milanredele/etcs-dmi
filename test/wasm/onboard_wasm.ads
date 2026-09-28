@@ -17,6 +17,16 @@ package Onboard_Wasm is
    procedure Reset
      with Export, Convention => C, Link_Name => "onboard_reset";
 
+   -- The installation configuration (evc/evc_config.ads, data and not
+   -- code): the host writes its byte image (test/wasm/onboard.cfg, made
+   -- by test/tools/evc_config.py) at Rx_Buffer and calls Configure with
+   -- its length, before Reset. 1 when the on-board took it, 0 when it
+   -- refused it (a bad image, or the on-board not in No Power: only
+   -- before the first Step after the module was loaded or Reset); the
+   -- on-board records either on its JRU at its next cycle
+   function Configure (Length : Unsigned_32) return Integer_32
+     with Export, Convention => C, Link_Name => "onboard_configure";
+
    -- Receive path (frames from the DMI): the host writes up to
    -- Rx_Capacity bytes at Rx_Buffer and calls Receive with the count
    function Rx_Buffer return System.Address

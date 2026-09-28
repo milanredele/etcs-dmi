@@ -42,9 +42,12 @@ package body Sim_Onboard_Env is
 
    --  The vehicle, quantised: the antenna (cm of the track) and the speed
    --  (cm/s)
+   function Antenna_To_Cab_A_Cm return Integer is
+     (Integer (EVC_Core.Configuration.Antenna_To_Cab_A));
+
    function Antenna_Cm return Integer_64 is
      (Integer_64 (Float'Floor (EVC_Train.Position_M * 100.0))
-      - EVC_Position.Antenna_To_Cab_A_Cm);
+      - Integer_64 (Antenna_To_Cab_A_Cm));
 
    function Speed_Cms return Natural is
      (Natural (Float'Floor (Float'Min (655.35, EVC_Train.Speed_MS)

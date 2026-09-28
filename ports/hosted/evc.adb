@@ -12,15 +12,37 @@
 --
 --  This is the only place of the on-board where GNAT.Sockets appears:
 --  EVC_Core only sees bytes.
+--
+--  The installation configuration (evc/evc_config.ads) is a byte image
+--  in a file, given with --config <file> or in the environment variable
+--  EVC_CONFIG (the option wins); test/tools/evc_config.py makes it from
+--  the text form (ports/hosted/evc.cfg is the default). The on-board
+--  loads it before its power-up (EVC_Core.Configure); an image it
+--  refuses stops the program with the reason on stderr. Without either,
+--  the on-board runs with EVC_Config.Default.
+--
+--  Usage: obj/evc_onboard [--config <image>]
 
+with Ada.Command_Line;
+with Ada.Directories;
+with Ada.Environment_Variables;
 with Ada.Real_Time; use Ada.Real_Time;
 with Ada.Streams;   use Ada.Streams;
+with Ada.Streams.Stream_IO;
+with Ada.Text_IO;
 with DMI_Protocol;  use DMI_Protocol;
+with EVC_Bytes;
+with EVC_Config;
+with EVC_Core;
 with GNAT.Sockets;  use GNAT.Sockets;
 with Sim_Onboard_Env;
 with Sim_Trackside;
 
 procedure Evc is
+
+   use type Ada.Directories.File_Kind;
+   use type Ada.Directories.File_Size;
+   use type EVC_Config.Status_T;
 
    Client  : Socket_Type;
    Address : Sock_Addr_Type;
@@ -62,7 +84,74 @@ procedure Evc is
    Sim_Payload      : Stream_Element_Array (1 .. 256);
    Sim_Last         : Stream_Element_Offset;
 
+   --  The command line: nothing, or --config <image>
+   function Usage_OK return Boolean is
+     (Ada.Command_Line.Argument_Count = 0
+      or else (Ada.Command_Line.Argument_Count = 2
+               and then Ada.Command_Line.Argument (1) = "--config"));
+
+   --  The configuration file of the command line or of EVC_CONFIG, ""
+   --  when there is none
+   function Config_Path return String is
+     (if Ada.Command_Line.Argument_Count = 2
+      then Ada.Command_Line.Argument (2)
+      elsif Ada.Environment_Variables.Exists ("EVC_CONFIG")
+      then Ada.Environment_Variables.Value ("EVC_CONFIG")
+      else "");
+
+   --  Load the image of Path into the on-board: False (and the reason on
+   --  stderr) when it cannot be read or the on-board refuses it
+   function Configure (Path : String) return Boolean is
+      use Ada.Streams.Stream_IO;
+      Max  : constant := 65_536;
+      File : File_Type;
+   begin
+      if not Ada.Directories.Exists (Path)
+        or else Ada.Directories.Kind (Path) /= Ada.Directories.Ordinary_File
+        or else Ada.Directories.Size (Path) > Max
+      then
+         Ada.Text_IO.Put_Line
+           (Ada.Text_IO.Standard_Error,
+            "evc_onboard: " & Path & ": no such file, or larger than"
+            & Natural'Image (Max) & " bytes");
+         return False;
+      end if;
+      Open (File, In_File, Path);
+      declare
+         Data  : Stream_Element_Array
+           (1 .. Stream_Element_Offset (Size (File)));
+         Last  : Stream_Element_Offset;
+         Image : EVC_Bytes.Byte_Array (1 .. Data'Length);
+      begin
+         Read (File, Data, Last);
+         Close (File);
+         for I in 1 .. Natural (Last) loop
+            Image (I) := EVC_Bytes.Byte (Data (Stream_Element_Offset (I)));
+         end loop;
+         EVC_Core.Configure (Image (1 .. Natural (Last)));
+      end;
+      if EVC_Config.Last_Status /= EVC_Config.Accepted then
+         Ada.Text_IO.Put_Line
+           (Ada.Text_IO.Standard_Error,
+            "evc_onboard: " & Path & ": configuration refused ("
+            & EVC_Config.Status_T'Image (EVC_Config.Last_Status) & ")");
+         return False;
+      end if;
+      Ada.Text_IO.Put_Line ("evc_onboard: configuration " & Path);
+      return True;
+   end Configure;
+
 begin
+   if not Usage_OK then
+      Ada.Text_IO.Put_Line (Ada.Text_IO.Standard_Error,
+                            "usage: evc_onboard [--config <image>]");
+      Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
+      return;
+   end if;
+   if Config_Path /= "" and then not Configure (Config_Path) then
+      Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
+      return;
+   end if;
    Sim_Onboard_Env.Reset;
 
    Create_Socket (Client);

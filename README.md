@@ -207,7 +207,8 @@ in an environment made for it in [sim/](sim/), shared by
   pantograph, tunnel stopping area), the order to level 2 (stored for
   E4), a TSR and a plain text;
 - `Sim_Odometer`: the odometer samples and the balise stamps from the
-  true movement of the antenna (3 m in rear of cab A), with a scale error
+  true movement of the antenna (3 m in rear of cab A, the antenna of the
+  on-board's configuration), with a scale error
   (+1 ‰) and noise (±0.5 ‰) and honest over- and under-reading bounds
   (2 ‰ plus 1 cm per sample);
 - `Sim_Vehicle`: the train interface: cab A active, the direction
@@ -242,7 +243,19 @@ attach a DMI running on real hardware):
    panel
 3. `obj/dmi` and (for the simulator source) `obj/evc_sim`, or
    `obj/evc_onboard` for the ETCS on-board in its bench environment (the
-   desk's throttle and auto-drive drive its train)
+   desk's throttle and auto-drive drive its train). The on-board's
+   installation configuration (brake interfaces, traction cut-off, the
+   antenna from each cab, [evc/evc_config.ads](evc/evc_config.ads)) is
+   data: `obj/evc_onboard --config <image>` (or `EVC_CONFIG=<image>`)
+   loads a byte image, which
+   [test/tools/evc_config.py](test/tools/evc_config.py) makes from the
+   text form ([ports/hosted/evc.cfg](ports/hosted/evc.cfg) is the
+   default, every field with its clause):
+   `test/tools/evc_config.py ports/hosted/evc.cfg obj/evc.img`, and
+   back with `--decode`. An image the on-board refuses (a bad CRC, a
+   field out of range, Table 3 of SUBSET-026 3.13.2.2.6.1) stops it with
+   the reason; without one it runs with the default. The page loads
+   `test/wasm/onboard.cfg`, the image of the default.
 
 The DMI opens with the start-up dialogue (driver ID, level); then enter
 the train data and the train running number from the Main window and
