@@ -8289,6 +8289,116 @@ procedure EVC_Test is
              & "min item of the change to -20, 3.11.12.2)");
    end Scenario_Gradient_Gaps;
 
+   --  3.6.3.2.2, 3.6.4.2.6, 3.13.7.2: the SSP of an unlinked group,
+   --  relocated to the SOLR by the travelled distance (3.6.4.2.5 c), has
+   --  the "max" items of its changes ahead of the "min" items (the SOLR
+   --  less accurate than the unlinked group); between two elements the
+   --  MRSP takes the lower of the two, not the maximum train speed, in
+   --  the snapshot and in MSG_PLANNING; where the rear end counts
+   --  (Q_FRONT 0) the element before the change ends a train length
+   --  later and leaves no gap
+   procedure Scenario_SSP_Gaps is
+      St    : Prof.Store_T;
+      V     : array (1 .. 6) of Integer := (others => 0);
+      Apart : Boolean := True;
+      Front : Integer_64;
+      Ceil  : Boolean := False;
+
+      --  MSG_PLANNING distance of the frame position X
+      function Plan_M (X : Integer_64) return Natural is
+        (Natural ((X - Front) / 100));
+      function Lo (A, B : Integer) return Integer renames Integer'Min;
+   begin
+      Start_X;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 900), (1 => 30))));
+      declare
+         U : Group_Def := Group (20, 300);
+      begin
+         U.Linked := False;
+         Add_Group (U);
+      end;
+      Add_Group (Group (30, 1000));
+      Carry (1, 0, SSP ((1 => (0, 120, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((1 => 3000), 160));
+      --  from 300 m: 100, 60, 80 (rear end), 40 and 120 km/h
+      Carry (2, 0, SSP ((1 => (0, 100, False), 2 => (100, 60, False),
+                         3 => (100, 80, True), 4 => (100, 40, False),
+                         5 => (100, 120, False))));
+      Run_X (32_000);
+      St := TD.SSP;
+      --  the estimated front end, 3 m ahead of the antenna
+      Front := Train_Cm + 300;
+      for K in 1 .. Integer'Min (St.Count, 6) loop
+         V (K) := St.List (K).Value;
+      end loop;
+      for K in 2 .. Integer'Min (St.Count, 6) loop
+         Apart := Apart
+           and then Min_X (St.List (K).Start) < Max_X (St.List (K).Start)
+           and then Prof."=" (St.List (K - 1).Finish, St.List (K).Start);
+      end loop;
+      Check (St.Count = 6 and then Apart and then St.List (4).Delay_Length
+             and then St.List (6).Open,
+             "SSP gaps: the max items of the changes ahead of the min "
+             & "items (3.6.4.2.5 c), the SSP of the linked group cut at the "
+             & "start of the new one (3.7.3.1 a)");
+      if St.Count /= 6 then
+         return;
+      end if;
+      Check (MRSP_Is ((0, 10_000, Min_X (St.List (2).Start),
+                       Min_X (St.List (3).Start), Max_X (St.List (4).Start),
+                       Max_X (St.List (5).Start), Max_X (St.List (6).Start),
+                       Min_X (St.List (4).Finish) + 20_000),
+                      (4_444, V (1), V (2), V (3), V (4), V (5), V (4),
+                       V (6))),
+             "SSP gaps: the MRSP continuous, no step to the maximum train "
+             & "speed between two SSP elements (3.6.3.2.2, 3.13.7.2)");
+      Check (MRSP_At (Min_X (St.List (2).Start)) = Lo (V (1), V (2))
+             and then MRSP_At (Max_X (St.List (2).Start) - 1)
+                        = Lo (V (1), V (2))
+             and then MRSP_At (Min_X (St.List (3).Start)) = Lo (V (2), V (3))
+             and then MRSP_At (Max_X (St.List (3).Start) - 1)
+                        = Lo (V (2), V (3))
+             and then MRSP_At (Min_X (St.List (4).Start)) = Lo (V (3), V (4))
+             and then MRSP_At (Max_X (St.List (4).Start) - 1)
+                        = Lo (V (3), V (4))
+             and then MRSP_At (Min_X (St.List (6).Start)) = Lo (V (5), V (6))
+             and then MRSP_At (Max_X (St.List (6).Start) - 1)
+                        = Lo (V (5), V (6)),
+             "SSP gaps: the lower neighbour over the gap, at a decrease "
+             & "(120 to 100, 100 to 60) and at an increase (60 to 80, 40 "
+             & "to 120)");
+      Check (Min_X (St.List (4).Finish) + 20_000 > Max_X (St.List (5).Start)
+             and then MRSP_At (Min_X (St.List (5).Start)) = V (4)
+             and then MRSP_At (Max_X (St.List (5).Start)) = V (5),
+             "SSP gaps: the 80 km/h element up to its min end plus the "
+             & "train length (3.11.3.1.3), no gap before the 40 km/h one");
+      Check (MRSP_Below_Sources, "SSP gaps: the MRSP below its sources");
+      --  MSG_PLANNING: the gap at 120 to 100 is behind the front end
+      declare
+         G    : constant Natural := Natural (Plan_Payload (9));
+         Base : constant Natural := 10 + 3 * G;
+         N    : constant Natural := Natural (Plan_Payload (Base));
+      begin
+         for K in 0 .. N - 1 loop
+            Ceil := Ceil or else Plan_U16 (Base + 4 * K + 2) = 160;
+         end loop;
+      end;
+      Check (Plan_Frames > 0 and then not Ceil
+             and then Plan_Has_Speed (Plan_M (Min_X (St.List (3).Start)),
+                                      Kmh_Plan (V (3)))
+             and then Plan_Has_Speed (Plan_M (Max_X (St.List (4).Start)),
+                                      Kmh_Plan (V (4)))
+             and then Plan_Has_Speed (Plan_M (Max_X (St.List (5).Start)),
+                                      Kmh_Plan (V (5)))
+             and then Plan_Has_Speed (Plan_M (Max_X (St.List (6).Start)),
+                                      Kmh_Plan (V (4))),
+             "SSP gaps: MSG_PLANNING without the maximum train speed, 60 "
+             & "km/h from the min item of the change to it, 80 km/h from "
+             & "the max item of the change to it");
+   end Scenario_SSP_Gaps;
+
    --  The bench: the on-board in the environment of sim/ (Sim_Onboard_Env)
    --  that onboard.wasm and obj/evc_onboard run. The first Bench_Cycles
    --  cycles are the scenario of test/wasm/onboard_smoke.js: the digest of
@@ -8495,6 +8605,7 @@ begin
    Scenario_PBD_Precision;
    Scenario_PBD;
    Scenario_Gradient_Gaps;
+   Scenario_SSP_Gaps;
 
    Scenario_Bench_Onboard;
 

@@ -39,20 +39,34 @@
 --  Until the first packet 52 (and beyond its sections) there is no
 --  restriction (3.11.11.11).
 --
---  Gradients (3.11.12.2: the profile is continuous over the piece of
---  track it covers). An element runs from the "max" item of its start
---  to the "min" item of its end; where a relocation by 3.6.4.2.5 c)
---  put the "max" item of a change of gradient ahead of its "min" item
---  (the new reference less accurate than the former one), the element
---  before the change and the one after it leave a gap. The gap lies
---  inside the profile, so it is covered (not a location of 3.13.4.1.3);
---  Table 2a places the change inside it by the curve (the EBD: a change
---  to a lower value at the "max" item, to a higher one at the "min" item;
---  the SBD and the GUI: the "estimated" item), so that every curve reads
---  one of the two neighbouring gradients there. The one gradient profile
---  of the snapshot takes the lower of the two over the whole gap
---  (Gradient_Elements), never above what any curve reads: the safe side
---  on a downhill.
+--  Gaps in the continuous profiles, the SSP and the gradients (3.6.3.2.2
+--  a, d: every value holds up to the next change; 3.6.4.2.6; 3.11.12.2:
+--  the gradient profile gives a value for each location of the track it
+--  covers). An element runs from the "max" item of its start to the
+--  "min" item of its end; where a relocation by 3.6.4.2.5 c) put the
+--  "max" item of a change ahead of its "min" item (the new reference
+--  less accurate than the former one), the element before the change
+--  and the one after it leave a gap. The gap lies inside the profile,
+--  so it is covered: for the gradients it is not a location of
+--  3.13.4.1.3, for the SSP the MRSP does not fall back to the maximum
+--  train speed there. Table 2a places the change inside the gap:
+--  - gradients, by the curve (the EBD: a change to a lower value at the
+--    "max" item, to a higher one at the "min" item; the SBD and the GUI:
+--    the "estimated" item), so that every curve reads one of the two
+--    neighbouring gradients there;
+--  - the SSP (3.13.7.2 with 3.11.2.2 a): a change to a lower speed at
+--    its "max" item, the far end of the gap, a change to a higher speed
+--    at its "min" item, the near end, so that read literally the higher
+--    neighbour would hold over the gap (3.6.4.2.5.4: relocation c) does
+--    not change what is compared with the min and max safe front ends).
+--  The one gradient profile and the one MRSP of the snapshot take the
+--  lower of the two neighbours over the whole gap (Add_Gaps, for both
+--  profiles), never above what any curve or Table 2a reads there: the
+--  safe side on a downhill and for the speed, as the rules 3.6.4.2.6
+--  and 3.7.3.1.1 are where the elements overlap ("the lowest parts").
+--  Where the rear end counts (Q_FRONT, 3.11.3.1.3) the element before
+--  the change ends a train length later, and the gap, if any, begins
+--  there. The start and the end of a profile are left as they are.
 --
 --  Train categories (3.11.3.2.3, 3.11.3.2.6): the speed of each SSP
 --  element is chosen for the train when the packet is received (a change
@@ -284,7 +298,9 @@ is
    --  The speed restrictions (SSP, ASP, TSR, LX not protected, PBD SR:
    --  3.11.2 a, b, c, i, k) as elements along Ahead, their end moved by
    --  Length where the rear end counts (3.11.3.1.3, 3.11.4.6, 3.11.5.3;
-   --  the PBD SR by the front end only, Table 2a)
+   --  the PBD SR by the front end only, Table 2a), with the gaps a
+   --  relocation leaves between two SSP elements filled with the lower
+   --  one (see the header)
    procedure Speed_Elements (T      : Origin_Table_T;
                              Ahead  : Sense_T;
                              Length : Length_T;

@@ -291,7 +291,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.1 n),3,x,,,,,E3,deferred,E7 (infill)
 3.7.3.1 o),3,x,,,,,E3,deferred,"E4 (station platforms, packet 69, 5.20.8)"
 3.7.3.1 p),3,x,,,,,E3,deferred,"E4 (allowed current consumption, packet 40, 5.20.7)"
-3.7.3.1.1,3,x,,,,,E3,done,"Table 2a items: the replaced element ends at the ""min"" item of the new start, the new one starts at its ""max"" item, EVC_Profiles.Envelope keeps the lowest in between (proved postcondition); evc_test Scenario_SSP_Replacement"
+3.7.3.1.1,3,x,,,,,E3,done,"Table 2a items: the replaced element ends at the ""min"" item of the new start, the new one starts at its ""max"" item, EVC_Profiles.Envelope keeps the lowest in between (proved postcondition); evc_test Scenario_SSP_Replacement; where the relocation puts the ""max"" item ahead of the ""min"" item the gap between them takes the lower of the two; evc_test Scenario_SSP_Gaps"
 3.7.3.1.2,3,x,,,,,E3,done,"as 3.7.3.1.1, the gradient envelope (EVC_Stored_Information.Build)"
 3.7.3.1.3,3,x,,,,,E3,done,as 3.7.3.1.1 for the ASP elements
 3.7.3.1.4,3,x,,,,,E3,done,"Table 2a items: a section from its ""max"" start item, the section cut ends at the ""min"" item of the new start, the MRSP envelope keeps the lowest between them; evc_test Scenario_PBD"
@@ -621,7 +621,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.6.3.2.5,3,x,,,,,E3,done,"EVC_SDM.Reduced_Of: EVC_Build_Up.T_Bs_Reduced, T_bs with the service brake feedback; evc_test SDM_Build_Up, SDM_Feedback"
 3.13.6.4.3,3,x,,,,,E3,done,"EVC_Curves.Deceleration (GUI: A_brake_normal_service + A_gradient - Kn * grad / 1000), EVC_Braking normal service by combination; evc_test SDM_Precision (gamma), SDM_GUI"
 3.13.6.4.4,3,x,,,,,E3,done,"EVC_Curves.Deceleration (GUI: A_brake_normal_service + A_gradient - Kn * grad / 1000), EVC_Braking normal service by combination; evc_test SDM_Precision (gamma), SDM_GUI"
-3.13.7.2,3,x,,,,,E3,done,"EVC_Stored_Information.Evaluate (postcondition: sorted, never above a source; the train length where it counts, Table 2a items); evc_test Scenario_SSP_Gradients, Scenario_TSR; evc_fuzz"
+3.13.7.2,3,x,,,,,E3,done,"EVC_Stored_Information.Evaluate (postcondition: sorted, never above a source; the train length where it counts, Table 2a items); evc_test Scenario_SSP_Gradients, Scenario_TSR; evc_fuzz; a gap a relocation leaves between two SSP elements takes the lower of the two, not the maximum train speed (3.6.3.2.2, EVC_Track_Description.Speed_Elements); evc_test Scenario_SSP_Gaps"
 3.13.8.1.2,3,x,,,,,E3,done,"EVC_Curves (arcs of parabola per profile segment and speed step, fixed point, rounding to the safe side); evc_test SDM_Precision against the floating point reference"
 3.13.8.1.3,3,x,,,,,E3,done,"EVC_Curves (arcs of parabola per profile segment and speed step, fixed point, rounding to the safe side); evc_test SDM_Precision against the floating point reference"
 3.13.8.2.1,3,x,,,,,E3,done,"EVC_SDM.Step (the MRSP elements below V_MRSP ahead of the max safe front end, the LOA, the EOA with the SvL, the end of the SR distance); evc_test SDM_MRSP_Target, SDM_LOA, SDM_Approach, SDM_SR"

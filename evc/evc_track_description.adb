@@ -893,6 +893,45 @@ is
       Add (E, El.Start, El.Finish, El.Value);
    end Add_Stored;
 
+   --  The gaps a relocation by 3.6.4.2.5 c) leaves inside a continuous
+   --  profile (the SSP, the gradients: 3.6.3.2.2, 3.6.4.2.6), between an
+   --  element of St and the one that starts where it ends: from the end
+   --  of the element before the change (its "min" item, plus the train
+   --  length where the rear end counts) to the start of the one after it
+   --  (its "max" item), the lower of the two (see the header). Where the
+   --  two elements meet or overlap there is no gap: the envelope takes
+   --  the lower one over the overlap already
+   procedure Add_Gaps (E      : in out Elements_T;
+                       T      : Origin_Table_T;
+                       Ahead  : Sense_T;
+                       St     : Store_T;
+                       Length : Length_T)
+     with Post => E.Count >= E.Count'Old
+   is
+   begin
+      for I in 1 .. St.Count loop
+         pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);
+         for J in 1 .. St.Count loop
+            pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);
+            if J /= I and then not St.List (J).Open
+              and then St.List (J).Finish = St.List (I).Start
+            then
+               declare
+                  Before : constant Element_T :=
+                    Element_Of (T, Ahead, St.List (J), Length);
+                  After  : constant Element_T :=
+                    Element_Of (T, Ahead, St.List (I), Length);
+               begin
+                  if Before.Finish < After.Start then
+                     Add (E, Before.Finish, After.Start,
+                          Value_T'Min (Before.Value, After.Value));
+                  end if;
+               end;
+            end if;
+         end loop;
+      end loop;
+   end Add_Gaps;
+
    procedure Speed_Elements (T      : Origin_Table_T;
                              Ahead  : Sense_T;
                              Length : Length_T;
@@ -904,6 +943,9 @@ is
             pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);
             Add_Stored (E, T, Ahead, SSP_S.List (I), Length);
          end loop;
+         --  the SSP is continuous over the track it covers: the gaps a
+         --  relocation leaves take the lower neighbour (see the header)
+         Add_Gaps (E, T, Ahead, SSP_S, Length);
       end if;
       if ASP_S.Sense = Ahead then
          for I in 1 .. ASP_S.Count loop
@@ -977,29 +1019,9 @@ is
       for I in 1 .. Grad_S.Count loop
          Add_Stored (E, T, Ahead, Grad_S.List (I), 0);
       end loop;
-      --  3.11.12.2: between an element and the one that starts where it
-      --  ends, from the rearmost to the foremost item of the change, the
-      --  lower of the two (see the header); where the "max" item is not
-      --  ahead of the "min" item the two elements overlap there already
-      --  and the envelope takes the lower one: nothing changes
-      for I in 1 .. Grad_S.Count loop
-         for J in 1 .. Grad_S.Count loop
-            if J /= I and then not Grad_S.List (J).Open
-              and then Grad_S.List (J).Finish = Grad_S.List (I).Start
-            then
-               declare
-                  X_Min : constant Dist_T :=
-                    A (Ahead, Frame (T, Grad_S.List (I).Start, Min_Item));
-                  X_Max : constant Dist_T :=
-                    A (Ahead, Frame (T, Grad_S.List (I).Start, Max_Item));
-               begin
-                  Add (E, Dist_T'Min (X_Min, X_Max), Dist_T'Max (X_Min, X_Max),
-                       Value_T'Min (Grad_S.List (I).Value,
-                                    Grad_S.List (J).Value));
-               end;
-            end if;
-         end loop;
-      end loop;
+      --  3.11.12.2: the gaps a relocation leaves take the lower
+      --  neighbour (see the header)
+      Add_Gaps (E, T, Ahead, Grad_S, 0);
    end Gradient_Elements;
 
    procedure Adhesion_Areas (T     : Origin_Table_T;
