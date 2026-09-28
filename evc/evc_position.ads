@@ -101,7 +101,10 @@ with EVC_Linking;
 with EVC_Location;      use EVC_Location;
 with EVC_Modes;         use EVC_Modes;
 with EVC_Odometry;
+with EVC_Origins;
 with EVC_Ports;         use EVC_Ports;
+with ETCS_Bits;
+with ETCS_Packet_Index;
 with ETCS_Telegram;
 with ETCS_Track_Packets.P58;
 with ETCS_Train_Packets.P0;
@@ -349,7 +352,8 @@ is
                      Mode         : Mode_T;
                      Level        : Level_T;
                      Now_Ms       : Unsigned_64)
-     with Global => (In_Out => (State, EVC_Odometry.State)),
+     with Global => (In_Out => (State, EVC_Odometry.State,
+                                EVC_Origins.State)),
           Post =>
             --  3.6.1.5: the active cab defines the orientation, with none
             --  (or both, SUBSET-034 2.5.1.4.7) the last active one stays
@@ -418,5 +422,64 @@ is
    procedure Delete_Geo
      with Global => (In_Out => State),
           Post => not Geo_Known;
+
+   ---------------------------------------------------------------------
+   --  For the stored information (phase E3)
+   ---------------------------------------------------------------------
+
+   --  3.6.3.1: information with this Q_DIR from a group of orientation
+   --  G is valid for a train whose direction (orientation, or crossing
+   --  direction in SL, PS and SH) is T: nominal when both point the
+   --  same way. When one is not known only "both directions" is taken
+   --  (3.6.3.1.4).
+   function Valid_For (Q_DIR : Q_DIR_T; G, T : Direction_T) return Boolean
+   is (case Q_DIR is
+          when 2 => True,
+          when 1 => G /= Unknown and then T /= Unknown and then G = T,
+          when 0 => G /= Unknown and then T /= Unknown and then G /= T,
+          when others => False);
+
+   --  The balise groups taken into account in the last Update, in their
+   --  order, with the telegrams of their passage: the stored information
+   --  (EVC_Stored_Information, third step of the cycle) takes their
+   --  packets valid for T (Valid_For with the orientation of the group),
+   --  distances along S from the group's location reference, which is
+   --  the origin Origin (EVC_Origins, allocated and, when the group is not
+   --  the SOLR, relocated to the SOLR when the group was taken; 0 when
+   --  the table was full). Start_Ms is the time of the cycle before the
+   --  one that read the first balise of the passage: at or before the
+   --  passage over it (3.8.4.2.1 b, 3.8.4.3.1 b).
+   Max_Taken           : constant := Max_Pending + 1;
+   Max_Taken_Telegrams : constant := 2 * Max_Balises;
+
+   type Taken_T is record
+      Group    : Anchor_T;
+      T        : Direction_T := Unknown;
+      S        : Sense_T := Plus;
+      Origin   : EVC_Origins.Count_T := 0;
+      First    : Positive := 1;
+      Count    : Natural range 0 .. Max_Balises := 0;
+      Start_Ms : Unsigned_64 := 0;
+   end record;
+
+   function Taken_Count return Natural
+     with Global => State,
+          Post => Taken_Count'Result <= Max_Taken;
+   function Taken (I : Positive) return Taken_T
+     with Global => State,
+          Pre => I <= Taken_Count;
+
+   --  The packets of taken telegram J (0 for no such telegram)
+   function Taken_Packet_Count (J : Positive) return Natural
+     with Global => State,
+          Post => Taken_Packet_Count'Result <= ETCS_Telegram.Max_Packets;
+   function Taken_Entry (J, P : Positive) return ETCS_Packet_Index.Entry_T
+     with Global => State,
+          Pre => P <= Taken_Packet_Count (J);
+   --  A reader on packet P of taken telegram J
+   procedure Open_Taken_Packet (J, P : Positive;
+                                R    : in out ETCS_Bits.Reader)
+     with Global => State,
+          Pre => P <= Taken_Packet_Count (J);
 
 end EVC_Position;
