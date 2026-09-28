@@ -14,10 +14,19 @@
 --  ones of 8.4.4.4 in any order (8.4.1.3). Rejected, by reason:
 --    - L_MESSAGE other than the length received (8.4.4.2.1);
 --    - an NID_MESSAGE not listed for the direction (8.4.4.1.1);
+--    - a message this sender does not send (8.5.3 "Transmitted by":
+--      message 37 by an RIU only, the others by an RBC, some by both;
+--      train to track, 8.5.2 "Transmitted to", the receiver);
+--    - a spare value of a variable of the message or of a known packet,
+--      or a spare Q_DIR of an unknown packet (3.16.1.1.1: not compliant
+--      with the ETCS specifications; the reaction is 3.16.2 / 3.16.3,
+--      later phases);
 --    - the message ends within its variables or a packet;
 --    - an L_PACKET shorter than the header, a known packet that does
 --      not decode in its L_PACKET;
 --    - a mandatory packet missing or not in its place;
+--    - a known packet this sender does not transmit (the "Transmitted
+--      by" / "Transmitted to" of 7.4.2 / 7.4.3);
 --    - a packet the message may not carry, or not from this sender
 --      (message 24);
 --    - a second instance of a packet (8.4.1.4 for a direction, 8.4.1.5),
@@ -57,7 +66,9 @@ is
       Missing_Packet,
       Packet_Not_Allowed,
       Duplicate_Packet,
-      Too_Many_Packets);
+      Too_Many_Packets,
+      Invalid_Value,        -- a spare value (3.16.1.1.1)
+      Wrong_Sender);        -- a message or packet not from this sender
 
    --  The values of the variables of a message, as coded: Values (I) is
    --  the variable Fields (Kind) (I)

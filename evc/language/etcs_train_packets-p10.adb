@@ -12,6 +12,22 @@ package body ETCS_Train_Packets.P10
   with SPARK_Mode => On
 is
 
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SAFECONSISTLENGTH)
+      and then (if P.Has_L_CONSISTFRONTENGINENOM
+                then Is_Valid (P.L_CONSISTFRONTENGINENOM)
+                     and then Is_Valid (P.L_CONSISTFRONTENGINEMIN)
+                     and then Is_Valid (P.L_CONSISTFRONTENGINEMAX)
+                     and then Is_Valid (P.L_CONSISTREARENGINENOM)
+                     and then Is_Valid (P.L_CONSISTREARENGINEMIN)
+                     and then Is_Valid (P.L_CONSISTREARENGINEMAX)));
+
    ------------
    -- Decode --
    ------------

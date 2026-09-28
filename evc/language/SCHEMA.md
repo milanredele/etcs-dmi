@@ -21,6 +21,8 @@ max = 255                    # largest, default 2**bits - 1
 special = { 1023 = "unknown" }   # special values, by value
 scale = "Q_SCALE"            # the resolution depends on Q_SCALE (D_, L_)
 resolution = "km/h, 5 km/h steps"   # free text otherwise
+spare = [9, 10, "18..31"]    # spare values within min .. max
+bcd = true                   # binary coded decimal
 ```
 
 A variable name is exactly the SRS name (upper case, underscores). The
@@ -38,11 +40,28 @@ Clarifications (as the catalogue is written):
   (7.3.2.7); D_REF is the only one.
 - A variable whose every value is listed in 7.5 (qualifiers, M_ codes)
   has all its defined values in `special` and `max` = the highest one;
-  spare values are not listed. Where spare values sit between defined
-  ones (M_MODETEXTDISPLAY), `resolution` says so.
-- Bitsets (M_LINEGAUGE, M_LINEAXLELOADCAT, NC_TRAIN, Q_MARQSTREASON) and
-  BCD numbers (NID_MN, NID_OPERATIONAL, NID_RADIO) describe their coding
-  in `resolution`; they have no `special` except NID_RADIO's all-F value.
+  the spare values above it are not listed.
+- `spare` lists the spare values that `min`, `max` and `special` cannot
+  express: those between defined values (M_MODETEXTDISPLAY 9, 10, 11,
+  13), the "not valid" codes of M_VERSION, and the spare codes of a
+  bitset (M_LINEGAUGE: 0 and every code with one of the bits 4 .. 7).
+  An item is a raw value (an integer) or an inclusive range of raw
+  values written as a string `"a..b"`. The items lie within the width
+  and within `min` .. `max` (above `max` is spare already), hold no
+  special value and do not overlap. A spare value is not valid
+  (3.16.1.1.1).
+- `bcd = true`: the variable is a number in binary coded decimal of
+  `bits / 4` digits (NID_MN 7.5.1.91.1, NID_OPERATIONAL 7.5.1.92,
+  NID_RADIO 7.5.1.95): every digit is 0 .. 9, the number is entered
+  left adjusted and the special character F fills the digits after its
+  last one; a digit A .. E ("Not Used", "Spare") or a digit after an F
+  is not valid. A number of no digit (all F) is valid unless `spare`
+  lists it (NID_OPERATIONAL: FFFF FFFF spare) or it is a special value
+  (NID_RADIO: FFFF FFFF FFFF FFFF, the short number stored on-board).
+  `bcd` needs an unsigned variable whose `bits` is a multiple of 4.
+- The bitsets describe their coding in `resolution` as well (M_LINEGAUGE,
+  M_LINEAXLELOADCAT, NC_TRAIN with `spare`; every code of Q_MARQSTREASON
+  is a value).
 - `bits` is 1 .. 32 except NID_RADIO, 64 bits (BCD, 16 digits, 7.5.1.95):
   the generator has to read it as two 32-bit halves or as a 64-bit
   modular type. Its special value 2**64 - 1 is a TOML key (a string), so
@@ -210,20 +229,28 @@ packets = [
   `Has_<first component>` Boolean), `Decode (Reader, Packet, OK)` and
   `Encode (Packet, Writer, OK)` in SPARK; `Decode` never raises, fails on
   a truncated or inconsistent packet (L_PACKET not matching what was
-  read), and consumes exactly L_PACKET bits on success. Each variable is
-  a range type `<V>_T` (two's complement when `min < 0`, `Unsigned_64`
-  for 64 bits) with `To_<V>`, `Code` and `Is_Valid` (min .. max or a
-  special value). The combined NID_LRBG is
-  `ETCS_Variables.Balise_Group_Identity (NID_C, NID_BG)`, not a record
-  component.
+  read), and consumes exactly L_PACKET bits on success; it is
+  structural: `Valid (P)` of the package is the conjunction of
+  `Is_Valid` of every variable read (those of the conditional blocks
+  present, of the loop items within the count), in SPARK. Each variable
+  is a range type `<V>_T` (two's complement when `min < 0`,
+  `Unsigned_64` for 64 bits) with `To_<V>`, `Code` and `Is_Valid` (min
+  .. max or a special value, not a `spare` one, a BCD number where
+  `bcd`: `Valid_BCD`). `Valid_Code (Var, Code)` is `Is_Valid` of any
+  variable from its code (the message variables). The combined NID_LRBG
+  is `ETCS_Variables.Balise_Group_Identity (NID_C, NID_BG)`, not a
+  record component.
 - The catalogues: `ETCS_Catalogue` (`NID_PACKET` to `Packet_Kind_T`,
-  direction, clause, `Check`, `Skip`) and `ETCS_Message_Catalogue` from
+  direction, clause, senders, `Check`: decodes and says whether the
+  packet is `Valid`, `Skip`) and `ETCS_Message_Catalogue` from
   the `[[messages]]` section (fields with the header, the packet rules).
   The framing of telegrams (8.4.2) and radio messages (8.4.4) is written
   by hand in `ETCS_Telegram` and `ETCS_Message` on top of them, and
   `ETCS_Packet_Index` scans one packet.
 - `test/src/etcs_language_random.ad[sb]` (host only): random valid
-  packets for the round trip tests.
+  packets for the round trip tests (no spare value: a `spare` variable
+  is drawn until `Valid_Code`, a `bcd` one digit by digit); a round
+  trip also checks that the decoded packet is `Valid`.
 
 ## Rules
 

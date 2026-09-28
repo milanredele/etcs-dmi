@@ -38,6 +38,27 @@ is
       Write (W, 1, Code (E1.Q_LGTLOC));
    end Encode_D_LOC_Item;
 
+   --  Valid of one item of D_LOC_List
+   function Valid_D_LOC_Item (E1 : D_LOC_Item) return Boolean is
+     (Is_Valid (E1.D_LOC)
+      and then Is_Valid (E1.Q_LGTLOC));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.T_CYCLOC)
+      and then Is_Valid (P.D_CYCLOC)
+      and then Is_Valid (P.M_LOC)
+      and then Is_Valid (P.N_ITER)
+      and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                  Valid_D_LOC_Item (P.D_LOC_List (I1))));
+
    ------------
    -- Decode --
    ------------

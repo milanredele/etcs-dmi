@@ -54,6 +54,29 @@ is
       Write (W, 15, Code (E1.L_ACKLEVELTR));
    end Encode_M_LEVELTR_Item;
 
+   --  Valid of one item of M_LEVELTR_List
+   function Valid_M_LEVELTR_Item (E1 : M_LEVELTR_Item) return Boolean is
+     (Is_Valid (E1.M_LEVELTR)
+      and then (if E1.Has_NID_NTC then Is_Valid (E1.NID_NTC))
+      and then Is_Valid (E1.L_ACKLEVELTR));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.D_LEVELTR)
+      and then Is_Valid (P.M_LEVELTR)
+      and then (if P.Has_NID_NTC then Is_Valid (P.NID_NTC))
+      and then Is_Valid (P.L_ACKLEVELTR)
+      and then Is_Valid (P.N_ITER)
+      and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                  Valid_M_LEVELTR_Item (P.M_LEVELTR_List (I1))));
+
    ------------
    -- Decode --
    ------------

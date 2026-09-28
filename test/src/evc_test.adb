@@ -43,7 +43,10 @@ with ETCS_Track_Packets.P0;
 with ETCS_Track_Packets.P2;
 with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P21;
+with ETCS_Track_Packets.P45;
 with ETCS_Track_Packets.P65;
+with ETCS_Track_Packets.P73;
+with ETCS_Track_Packets.P140;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P4;
 with ETCS_Variables;
@@ -450,9 +453,13 @@ procedure EVC_Test is
       end loop;
       --  BTM
       Bad (BTM, BTM_Payload (49), "49 bits, shorter than the header");
+      Bad (BTM, BTM_Payload (50), "50 bits, the header alone");
+      Bad (BTM, BTM_Payload (209), "209 bits");
+      Bad (BTM, BTM_Payload (211), "211 bits");
+      Bad (BTM, BTM_Payload (829), "829 bits");
       Bad (BTM, BTM_Payload (831), "831 bits");
-      Bad (BTM, BTM_Payload (100, 1), "one byte too many");
-      Bad (BTM, BTM_Payload (100, -1), "one byte short");
+      Bad (BTM, BTM_Payload (210, 1), "one byte too many");
+      Bad (BTM, BTM_Payload (210, -1), "one byte short");
       Bad (BTM, (1 => 50), "one byte");
       --  RTM
       Bad (RTM, RTM_Payload (0, 2), "2 bytes");
@@ -517,13 +524,13 @@ procedure EVC_Test is
    --  Valid inputs are accepted; E0 uses the odometer (standstill), the
    --  TIU signals of MSG_ONBOARD and the isolation, nothing else
    procedure Scenario_Valid_Inputs is
-      Shifted : Byte_Array (1000 .. 1008);
+      Shifted : Byte_Array (1000 .. 1028);
    begin
       EVC_Core.Initialise;
       Reset_Capture;
-      Input (BTM, BTM_Payload (50));
+      Input (BTM, BTM_Payload (210));
       Input (BTM, BTM_Payload (830));
-      Shifted := BTM_Payload (56);
+      Shifted := BTM_Payload (210);
       Input (BTM, Shifted);                 -- index not starting at 1
       Input (RTM, RTM_Payload (3, 3));
       Input (RTM, RTM_Payload (1023, 1023));
@@ -876,7 +883,10 @@ procedure EVC_Test is
    package T2 renames ETCS_Track_Packets.P2;
    package T5 renames ETCS_Track_Packets.P5;
    package T21 renames ETCS_Track_Packets.P21;
+   package T45 renames ETCS_Track_Packets.P45;
    package T65 renames ETCS_Track_Packets.P65;
+   package T73 renames ETCS_Track_Packets.P73;
+   package T140 renames ETCS_Track_Packets.P140;
    package R0 renames ETCS_Train_Packets.P0;
    package R4 renames ETCS_Train_Packets.P4;
 
@@ -993,7 +1003,9 @@ procedure EVC_Test is
       return G;
    end Gradient;
 
-   function TSR (Id : ETCS_Variables.NID_TSR_T) return T65.Packet_T is
+   function TSR (Id    : ETCS_Variables.NID_TSR_T;
+                 V_TSR : ETCS_Variables.V_TSR_T := 16) return T65.Packet_T
+   is
       T : T65.Packet_T;
    begin
       T.Q_DIR := 2;
@@ -1002,7 +1014,7 @@ procedure EVC_Test is
       T.D_TSR := 1000;
       T.L_TSR := 500;
       T.Q_FRONT := 1;
-      T.V_TSR := 16;
+      T.V_TSR := V_TSR;
       return T;
    end TSR;
 
@@ -1067,12 +1079,15 @@ procedure EVC_Test is
       Encodes_OK := Encodes_OK and then OK;
    end Put_VBC_Marker;
 
-   procedure Put_Version_Order (W : in out Writer_T) is
+   procedure Put_Version_Order
+     (W       : in out Writer_T;
+      Version : ETCS_Variables.M_VERSION_T := 48)
+   is
       V  : T2.Packet_T;
       OK : Boolean;
    begin
       V.Q_DIR := 2;
-      V.M_VERSION := 48;
+      V.M_VERSION := Version;
       T2.Encode (V, W, OK);
       Encodes_OK := Encodes_OK and then OK;
    end Put_Version_Order;
@@ -1344,14 +1359,26 @@ procedure EVC_Test is
          Bad_Header (H, "M_DUP spare");
       end;
 
-      --  no packet 255
-      ETCS_Bits.Clear (W);
-      Tel.Write_Header (W, Header);
-      Put (W, Gradient);
-      Check (Telegram_Status (W) = Tel.No_End, "telegram: no packet 255");
-      ETCS_Bits.Fill (W, 7, One => True);
-      Check (Telegram_Status (W) = Tel.No_End,
-             "telegram: no packet 255, 7 bits left");
+      --  no packet 255: the packets end at the end of the telegram, or
+      --  7 bits before it
+      declare
+         procedure No_End (Left : Natural) is
+         begin
+            ETCS_Bits.Clear (W);
+            Tel.Write_Header (W, Header);
+            Put (W, Gradient);
+            Put_Unknown (W, 200, Track => True,
+                         Extra => Tel.Long_Bits - Left
+                                  - ETCS_Bits.Position (W) - 23);
+            ETCS_Bits.Fill (W, Left, One => True);
+            Check (ETCS_Bits.Position (W) = Tel.Long_Bits
+                   and then Telegram_Status (W) = Tel.No_End,
+                   "telegram: no packet 255," & Left'Image & " bits left");
+         end No_End;
+      begin
+         No_End (0);
+         No_End (7);
+      end;
 
       --  8.4.2.3: packet 0 is the first packet
       ETCS_Bits.Clear (W);
@@ -1405,7 +1432,7 @@ procedure EVC_Test is
       Tel.Write_Header (W, Header);
       Put (W, Gradient);
       Put (W, Linking);
-      Tel.Finish (W, ETCS_Bits.Position (W) + 8, OK);
+      Tel.Finish (W, Tel.Long_Bits, OK);
       Bits := ETCS_Bits.Position (W);
       Tel.Parse (ETCS_Bits.Data (W), Bits, T, Status);
       Check (OK and then Status = Tel.Accepted,
@@ -1413,11 +1440,13 @@ procedure EVC_Test is
       declare
          Data : constant Byte_Array := ETCS_Bits.Data (W);
       begin
+         --  every length but 210 is not a telegram (SUBSET-036 4.3.1.2);
+         --  at 210 bits the packets go past the end
          for B in 0 .. Bits - 1 loop
             Tel.Parse (Data (Data'First .. Data'First + (B + 7) / 8 - 1), B,
                        T, Status);
-            if Status = Tel.Accepted
-              or else (B < Tel.Header_Bits and then Status /= Tel.Truncated)
+            if Status /= (if B = Tel.Short_Bits then Tel.Truncated
+                          else Tel.Bad_Length)
             then
                Wrong := Wrong + 1;
             end if;
@@ -1427,6 +1456,7 @@ procedure EVC_Test is
 
          --  L_PACKET of packet 21 (bits 60 .. 72) one more, one less,
          --  shorter than the header, beyond the telegram
+         Tel.Parse (Data, Bits, T, Status);
          declare
             L : constant Unsigned_64 := Unsigned_64 (T.Index (1).Length);
             procedure Try (Value : Unsigned_64; Expected : Tel.Status_T) is
@@ -1439,7 +1469,6 @@ procedure EVC_Test is
                       & Tel.Status_T'Image (Status));
             end Try;
          begin
-            Tel.Parse (Data, Bits, T, Status);
             Try (L + 1, Tel.Packet_Structure);
             Try (L - 1, Tel.Packet_Structure);
             Try (10, Tel.Packet_Structure);
@@ -1477,7 +1506,8 @@ procedure EVC_Test is
 
    function Message_Status
      (W         : in out Writer_T;
-      Direction : Cat.Direction_T := Cat.Track_To_Train) return Msg.Status_T
+      Direction : Cat.Direction_T := Cat.Track_To_Train;
+      Sender    : Cat.Sender_T := Cat.RBC) return Msg.Status_T
    is
       M      : Msg.Message_T;
       Status : Msg.Status_T;
@@ -1485,7 +1515,7 @@ procedure EVC_Test is
    begin
       Msg.Finish (W, OK);
       Encodes_OK := Encodes_OK and then OK;
-      Msg.Parse (ETCS_Bits.Data (W), Direction, Cat.RBC, M, Status);
+      Msg.Parse (ETCS_Bits.Data (W), Direction, Sender, M, Status);
       return Status;
    end Message_Status;
 
@@ -1539,11 +1569,16 @@ procedure EVC_Test is
          Check (OK and then L = Expected, "message 24: packet 5 decoded");
       end;
 
-      --  a packet 24 may not carry (12), twice a packet without repeat
+      --  a packet an RBC does not send (12), one 24 may not carry (15),
+      --  twice a packet without repeat
       Start (W, MCat.Track_M24);
       Put_Random (W, Cat.Track_P12);
+      Check (Message_Status (W) = Msg.Wrong_Sender,
+             "message 24: packet 12 not from an RBC");
+      Start (W, MCat.Track_M24);
+      Put_Random (W, Cat.Track_P15);
       Check (Message_Status (W) = Msg.Packet_Not_Allowed,
-             "message 24: packet 12 not allowed");
+             "message 24: packet 15 not allowed");
       Start (W, MCat.Track_M24);
       Put (W, Gradient);
       Put (W, Gradient);
@@ -1678,6 +1713,386 @@ procedure EVC_Test is
       end;
    end Scenario_Message;
 
+   --  8.4.2 and SUBSET-036 4.3.1.2: a telegram has 210 or 830 user bits
+   procedure Scenario_Telegram_Length is
+      W      : Writer_T;
+      T      : Tel.Telegram_T;
+      Status : Tel.Status_T;
+      OK     : Boolean;
+   begin
+      Tel.Write_Header (W, Header);
+      Put_Version_Order (W);
+      Tel.Finish (W, Tel.Short_Bits, OK);
+      declare
+         Data : constant Byte_Array := ETCS_Bits.Data (W);
+      begin
+         for Bits in 209 .. 211 loop
+            Tel.Parse (Data, Bits, T, Status);
+            Check (Status = (if Bits = 210 then Tel.Accepted
+                             else Tel.Bad_Length),
+                   "length: short telegram read as" & Img (Bits)
+                   & " bits, got " & Tel.Status_T'Image (Status));
+         end loop;
+      end;
+      ETCS_Bits.Clear (W);
+      Tel.Write_Header (W, Header);
+      Put (W, Linking);
+      Tel.Finish (W, Tel.Long_Bits, OK);
+      declare
+         Data : constant Byte_Array := ETCS_Bits.Data (W);
+      begin
+         for Bits in 829 .. 830 loop
+            Tel.Parse (Data, Bits, T, Status);
+            Check (Status = (if Bits = 830 then Tel.Accepted
+                             else Tel.Bad_Length),
+                   "length: long telegram read as" & Img (Bits)
+                   & " bits, got " & Tel.Status_T'Image (Status));
+         end loop;
+      end;
+      --  the builder: 210 or 830 only
+      for Bits in 209 .. 211 loop
+         ETCS_Bits.Clear (W);
+         Tel.Write_Header (W, Header);
+         Tel.Finish (W, Bits, OK);
+         Check (OK = (Bits = 210), "length: Finish at" & Img (Bits)
+                & " bits " & (if OK then "builds" else "refuses"));
+      end loop;
+      ETCS_Bits.Clear (W);
+      Tel.Write_Header (W, Header);
+      Tel.Finish (W, 300, OK);
+      Check (not OK, "length: Finish at 300 bits refuses");
+   end Scenario_Telegram_Length;
+
+   --  SUBSET-026 3.16.1.1.1: a spare value of a variable is not
+   --  compliant, the telegram or message is rejected (Invalid_Value).
+   --  Spare values above the largest one (Q_SCALE 7.5.1.129, V_TSR
+   --  7.5.1.173, Q_LINKREACTION 7.5.1.117, Q_DIR 7.5.1.103), between the
+   --  defined ones (M_MODETEXTDISPLAY 7.5.1.73, M_VERSION 7.5.1.79), of
+   --  bitsets (M_LINEGAUGE 7.5.1.67.1, M_LINEAXLELOADCAT 7.5.1.67.2,
+   --  NC_TRAIN 7.5.1.84) and of BCD numbers (NID_MN 7.5.1.91.1,
+   --  NID_OPERATIONAL 7.5.1.92, NID_RADIO 7.5.1.95)
+   procedure Scenario_Spare_Values is
+      use ETCS_Variables;
+      W  : Writer_T;
+      OK : Boolean;
+
+      --  A long telegram of one packet written by Put_It
+      generic
+         with procedure Put_It (W : in out Writer_T);
+      function Telegram_Of return Tel.Status_T;
+      function Telegram_Of return Tel.Status_T is
+      begin
+         ETCS_Bits.Clear (W);
+         Tel.Write_Header (W, Header);
+         Put_It (W);
+         Tel.Finish (W, Tel.Long_Bits, OK);
+         return Telegram_Status (W);
+      end Telegram_Of;
+
+      procedure Expect (Status   : Tel.Status_T;
+                        Expected : Tel.Status_T;
+                        What     : String) is
+      begin
+         Check (Status = Expected, "spare: " & What & ", got "
+                & Tel.Status_T'Image (Status));
+      end Expect;
+
+      --  the packet under test, set before each Telegram_Of
+      G    : T21.Packet_T;
+      L    : T5.Packet_T;
+      S    : T65.Packet_T;
+      Text : T73.Packet_T;
+      Net  : T45.Packet_T;
+      Ver  : M_VERSION_T;
+
+      procedure Put_G (W : in out Writer_T) is
+      begin
+         Put (W, G);
+      end Put_G;
+      procedure Put_L (W : in out Writer_T) is
+      begin
+         Put (W, L);
+      end Put_L;
+      procedure Put_S (W : in out Writer_T) is
+      begin
+         Put (W, S);
+      end Put_S;
+      procedure Put_Text (W : in out Writer_T) is
+         Done : Boolean;
+      begin
+         T73.Encode (Text, W, Done);
+         Encodes_OK := Encodes_OK and then Done;
+      end Put_Text;
+      procedure Put_Net (W : in out Writer_T) is
+         Done : Boolean;
+      begin
+         T45.Encode (Net, W, Done);
+         Encodes_OK := Encodes_OK and then Done;
+      end Put_Net;
+      procedure Put_Ver (W : in out Writer_T) is
+      begin
+         Put_Version_Order (W, Ver);
+      end Put_Ver;
+      procedure Put_Unknown_Dir (W : in out Writer_T) is
+      begin
+         ETCS_Bits.Write (W, 8, 200);
+         ETCS_Bits.Write (W, 2, 3);        -- Q_DIR spare
+         ETCS_Bits.Write (W, 13, 40);
+         ETCS_Bits.Fill (W, 17, One => True);
+      end Put_Unknown_Dir;
+
+      function G_Status is new Telegram_Of (Put_G);
+      function L_Status is new Telegram_Of (Put_L);
+      function S_Status is new Telegram_Of (Put_S);
+      function Text_Status is new Telegram_Of (Put_Text);
+      function Net_Status is new Telegram_Of (Put_Net);
+      function Ver_Status is new Telegram_Of (Put_Ver);
+      function Unknown_Status is new Telegram_Of (Put_Unknown_Dir);
+
+      --  Valid_Code through a variable, so that the compiler does not
+      --  fold the constants
+      Code : Unsigned_64;
+      function Valid (Var : Variable_T; Value : Unsigned_64) return Boolean
+      is
+      begin
+         Code := Value;
+         return Valid_Code (Var, Code);
+      end Valid;
+
+      type U64_Array is array (Positive range <>) of Unsigned_64;
+   begin
+      Encodes_OK := True;
+      --  above the largest value, in the packet, in a loop item
+      G := Gradient;
+      Expect (G_Status, Tel.Accepted, "packet 21, Q_SCALE 1");
+      G.Q_SCALE := 3;
+      Expect (G_Status, Tel.Invalid_Value, "packet 21, Q_SCALE 3");
+      G := Gradient (Q_DIR => 3);
+      Expect (G_Status, Tel.Invalid_Value, "packet 21, Q_DIR 3");
+      S := TSR (1, V_TSR => 120);
+      Expect (S_Status, Tel.Accepted, "packet 65, V_TSR 120 (600 km/h)");
+      S := TSR (1, V_TSR => 121);
+      Expect (S_Status, Tel.Invalid_Value, "packet 65, V_TSR 121");
+      L := Linking;
+      L.D_LINK_List (2).Q_LINKREACTION := 3;
+      Expect (L_Status, Tel.Invalid_Value,
+              "packet 5, Q_LINKREACTION 3 in the second item");
+      L := Linking;
+      L.D_LINK_List (3).Q_LINKREACTION := 3;
+      Expect (L_Status, Tel.Accepted,
+              "packet 5, Q_LINKREACTION 3 after the last item (not sent)");
+      Expect (Unknown_Status, Tel.Invalid_Value,
+              "unknown packet 200, Q_DIR 3");
+
+      --  between the defined values
+      Text.Q_DIR := 1;
+      for V in M_MODETEXTDISPLAY_T loop
+         Text.M_MODETEXTDISPLAY := V;
+         Expect (Text_Status,
+                 (if V in 9 .. 11 | 13 then Tel.Invalid_Value
+                  else Tel.Accepted),
+                 "packet 73, M_MODETEXTDISPLAY" & V'Image);
+      end loop;
+      Text.M_MODETEXTDISPLAY := 0;
+      Text.M_MODETEXTDISPLAY_2 := 13;
+      Expect (Text_Status, Tel.Invalid_Value,
+              "packet 73, the second M_MODETEXTDISPLAY 13");
+      for V in M_VERSION_T range 16 .. 50 loop
+         Ver := V;
+         Expect (Ver_Status,
+                 (if V in 18 .. 31 | 36 .. 47 then Tel.Invalid_Value
+                  else Tel.Accepted),
+                 "packet 2, M_VERSION" & V'Image);
+      end loop;
+
+      --  BCD: NID_MN of packet 45, present when Q_NETWORKTYPE is 1 or 2
+      Net.Q_DIR := 1;
+      Net.Q_NETWORKTYPE := 1;
+      Net.Has_NID_MN := True;
+      Net.NID_MN := 16#123456#;
+      Expect (Net_Status, Tel.Accepted, "packet 45, NID_MN 123456");
+      Net.NID_MN := 16#1234FF#;
+      Expect (Net_Status, Tel.Accepted, "packet 45, NID_MN 1234FF");
+      Net.NID_MN := 16#FFFFFF#;
+      Expect (Net_Status, Tel.Accepted,
+              "packet 45, NID_MN FFFFFF (no digit, not spare)");
+      Net.NID_MN := 16#12A456#;
+      Expect (Net_Status, Tel.Invalid_Value, "packet 45, NID_MN digit A");
+      Net.NID_MN := 16#1234E5#;
+      Expect (Net_Status, Tel.Invalid_Value, "packet 45, NID_MN digit E");
+      Net.NID_MN := 16#12F456#;
+      Expect (Net_Status, Tel.Invalid_Value,
+              "packet 45, NID_MN a digit after F");
+      Net.Q_NETWORKTYPE := 0;
+      Net.Has_NID_MN := False;
+      Expect (Net_Status, Tel.Accepted,
+              "packet 45, NID_MN absent (Q_NETWORKTYPE 0)");
+
+      --  the other codes, by the variables
+      Check (Valid (NID_OPERATIONAL, 16#1234_5678#)
+             and then Valid (NID_OPERATIONAL, 16#1234_FFFF#)
+             and then Valid (NID_OPERATIONAL, 16#9FFF_FFFF#)
+             and then not Valid (NID_OPERATIONAL, 16#FFFF_FFFF#)
+             and then not Valid (NID_OPERATIONAL, 16#1234_B678#)
+             and then not Valid (NID_OPERATIONAL, 16#1234_F678#),
+             "spare: NID_OPERATIONAL, digits A .. E, F only at the end,"
+             & " FFFF FFFF");
+      Check (Valid (NID_RADIO, 16#FFFF_FFFF_FFFF_FFFF#)
+             and then Valid (NID_RADIO, 16#0036_1234_5678_FFFF#)
+             and then Valid (NID_RADIO, 16#9999_9999_9999_9999#)
+             and then not Valid (NID_RADIO, 16#0036_1234_5678_FFFE#)
+             and then not Valid (NID_RADIO, 16#C036_1234_5678_FFFF#)
+             and then not Valid (NID_RADIO, 16#F036_1234_5678_FFFF#),
+             "spare: NID_RADIO, digits A .. E not used, FFFF FFFF FFFF"
+             & " FFFF the short number");
+      Check (not Valid (M_LINEGAUGE, 0) and then Valid (M_LINEGAUGE, 1)
+             and then Valid (M_LINEGAUGE, 15)
+             and then not Valid (M_LINEGAUGE, 16)
+             and then not Valid (M_LINEGAUGE, 128),
+             "spare: M_LINEGAUGE 0 and bits 4 .. 7");
+      Check (not Valid (M_LINEAXLELOADCAT, 0)
+             and then Valid (M_LINEAXLELOADCAT, 8191)
+             and then not Valid (M_LINEAXLELOADCAT, 8192)
+             and then not Valid (M_LINEAXLELOADCAT, 32768),
+             "spare: M_LINEAXLELOADCAT 0 and bits 13 .. 15");
+      Check (Valid (NC_TRAIN, 0) and then Valid (NC_TRAIN, 7)
+             and then not Valid (NC_TRAIN, 8)
+             and then not Valid (NC_TRAIN, 16384),
+             "spare: NC_TRAIN bits 3 .. 14");
+      Check (not Valid (M_MODE, 18) and then Valid (M_MODE, 17)
+             and then not Valid (V_TSR, 127) and then Valid (T_TRAIN, 0)
+             and then not Valid (Q_SCALE, 4),
+             "spare: above the largest value, and a code wider than the"
+             & " variable");
+
+      --  a message variable: M_VERSION of message 32, Q_SCALE of 2
+      declare
+         V : Msg.Value_Array := Values_For (MCat.Track_M32);
+      begin
+         for Version in Unsigned_64 range 17 .. 49 loop
+            V (7) := Version;
+            ETCS_Bits.Clear (W);
+            Msg.Write_Fields (W, MCat.Track_M32, V, OK);
+            Check (Message_Status (W)
+                   = (if Version in 18 .. 31 | 36 .. 47
+                      then Msg.Invalid_Value else Msg.Accepted),
+                   "spare: message 32, M_VERSION" & Version'Image);
+         end loop;
+         V := Values_For (MCat.Track_M2);
+         V (7) := 3;
+         ETCS_Bits.Clear (W);
+         Msg.Write_Fields (W, MCat.Track_M2, V, OK);
+         Check (Message_Status (W) = Msg.Invalid_Value,
+                "spare: message 2, Q_SCALE 3");
+      end;
+      --  a packet of a message: NID_OPERATIONAL of packet 140 in 24
+      declare
+         P : T140.Packet_T;
+      begin
+         P.Q_DIR := 1;
+         for Id of U64_Array'(16#1234_FFFF#, 16#FFFF_FFFF#, 16#12D4_FFFF#)
+         loop
+            P.NID_OPERATIONAL := NID_OPERATIONAL_T (Id);
+            Start (W, MCat.Track_M24);
+            T140.Encode (P, W, OK);
+            Encodes_OK := Encodes_OK and then OK;
+            Check (Message_Status (W)
+                   = (if Id = 16#1234_FFFF# then Msg.Accepted
+                      else Msg.Invalid_Value),
+                   "spare: message 24, packet 140, NID_OPERATIONAL"
+                   & Id'Image);
+         end loop;
+      end;
+      Check (Encodes_OK, "spare: every packet encodes");
+   end Scenario_Spare_Values;
+
+   --  7.4.2 "Transmitted by", 8.5.3: what the sender may send. The
+   --  packets a balise does not transmit (13 by a loop; 15, 57, 58, 63,
+   --  64, 140 by an RBC; 143 by an RIU) are rejected in a telegram and
+   --  accepted in a radio message of their sender; message 37 comes
+   --  from an RIU only
+   procedure Scenario_Senders is
+      W      : Writer_T;
+      OK     : Boolean;
+      Status : Msg.Status_T;
+      type Kind_Array is array (Positive range <>) of Cat.Known_Kind_T;
+      Not_Balise : constant Kind_Array :=
+        (Cat.Track_P13, Cat.Track_P15, Cat.Track_P57, Cat.Track_P58,
+         Cat.Track_P63, Cat.Track_P64, Cat.Track_P140, Cat.Track_P143);
+   begin
+      Encodes_OK := True;
+      for K of Not_Balise loop
+         ETCS_Bits.Clear (W);
+         Tel.Write_Header (W, Header);
+         Put_Random (W, K);
+         Tel.Finish (W, Tel.Long_Bits, OK);
+         Check (OK and then Telegram_Status (W) = Tel.Wrong_Sender,
+                "sender: packet" & Cat.NID_Of (K)'Image
+                & " in a balise telegram rejected");
+      end loop;
+      ETCS_Bits.Clear (W);
+      Tel.Write_Header (W, Header);
+      Put_Random (W, Cat.Track_P5);
+      Tel.Finish (W, Tel.Long_Bits, OK);
+      Check (Telegram_Status (W) = Tel.Accepted,
+             "sender: packet 5 (any sender) in a balise telegram");
+
+      --  15 first in message 3, then 57, 58, 64, 140; 63 in 2
+      Start (W, MCat.Track_M3);
+      for K of Not_Balise (2 .. 7) loop
+         if K /= Cat.Track_P63 then
+            Put_Random (W, K);
+         end if;
+      end loop;
+      Status := Message_Status (W);
+      Check (Status = Msg.Accepted,
+             "sender: packets 15, 57, 58, 64, 140 in message 3 from an"
+             & " RBC, got " & Msg.Status_T'Image (Status));
+      Start (W, MCat.Track_M2);
+      Put_Random (W, Cat.Track_P63);
+      Check (Message_Status (W) = Msg.Accepted,
+             "sender: packet 63 in message 2 from an RBC");
+      Start (W, MCat.Track_M24);
+      Put_Random (W, Cat.Track_P143);
+      Check (Message_Status (W, Sender => Cat.RIU) = Msg.Accepted,
+             "sender: packet 143 in message 24 from an RIU");
+      Start (W, MCat.Track_M24);
+      Put_Random (W, Cat.Track_P143);
+      Check (Message_Status (W) = Msg.Wrong_Sender,
+             "sender: packet 143 in message 24 from an RBC");
+      Start (W, MCat.Track_M24);
+      Put_Random (W, Cat.Track_P57);
+      Check (Message_Status (W, Sender => Cat.RIU) = Msg.Wrong_Sender,
+             "sender: packet 57 in message 24 from an RIU");
+      Start (W, MCat.Track_M24);
+      Put_Random (W, Cat.Track_P13);
+      Check (Message_Status (W) = Msg.Wrong_Sender,
+             "sender: packet 13 (a loop's) in message 24 from an RBC");
+
+      --  8.5.3: message 37 (infill MA) by an RIU only
+      Start (W, MCat.Track_M37);
+      Put_Random (W, Cat.Track_P136);
+      Put_Random (W, Cat.Track_P12);
+      Check (Message_Status (W, Sender => Cat.RIU) = Msg.Accepted,
+             "sender: message 37 from an RIU");
+      Start (W, MCat.Track_M37);
+      Put_Random (W, Cat.Track_P136);
+      Put_Random (W, Cat.Track_P12);
+      Check (Message_Status (W) = Msg.Wrong_Sender,
+             "sender: message 37 from an RBC");
+      Start (W, MCat.Track_M3);
+      Put_Random (W, Cat.Track_P15);
+      Check (Message_Status (W, Sender => Cat.RIU) = Msg.Wrong_Sender,
+             "sender: message 3 from an RIU");
+      --  train to track: the receiver (8.5.2), message 153 to an RIU
+      Start (W, MCat.Train_M153);
+      Put (W, Position_Report);
+      Check (Message_Status (W, Cat.Train_To_Track, Cat.RBC)
+             = Msg.Wrong_Sender,
+             "sender: message 153 (radio infill request) to an RBC");
+      Check (Encodes_OK, "sender: every packet encodes");
+   end Scenario_Senders;
+
    --  The core: telegrams and messages through the BTM and RTM ports
    procedure Scenario_Received is
       W      : Writer_T;
@@ -1791,27 +2206,62 @@ procedure EVC_Test is
              and then EVC_Received.Last_Message.Count = 1,
              "received: a message of 5 bytes, truncated");
 
-      --  a telegram cut at every bit from the header on, through the port
+      --  a long telegram cut at every bit from the header on, through
+      --  the port: the port takes 210 bits only (a short telegram, whose
+      --  packets then go past the end), the others are not of its shape
       ETCS_Bits.Clear (W);
       Tel.Write_Header (W, Header);
       Put (W, Gradient);
       Put (W, Linking);
-      Tel.Finish (W, ETCS_Bits.Position (W) + 8, OK);
+      Tel.Finish (W, Tel.Long_Bits, OK);
       Before := Rejected_Telegrams;
       declare
-         Data : constant Byte_Array := ETCS_Bits.Data (W);
-         Bits : constant Natural := ETCS_Bits.Position (W);
+         Data        : constant Byte_Array := ETCS_Bits.Data (W);
+         Bits        : constant Natural := ETCS_Bits.Position (W);
+         Port_Before : constant Natural := EVC_Core.Rejected (BTM);
       begin
-         for B in BTM_Min_Bits .. Bits - 1 loop
+         for B in Tel.Header_Bits .. Bits - 1 loop
             Input (BTM, BTM_Of (Data, B));
             EVC_Core.Tick (100);
             Take;
          end loop;
-         Check (Rejected_Telegrams - Before = Bits - BTM_Min_Bits
+         Check (Rejected_Telegrams - Before = 1
+                and then EVC_Received.Telegram_Count (Tel.Truncated) = 1
+                and then EVC_Core.Rejected (BTM) - Port_Before
+                         = Bits - Tel.Header_Bits - 1
                 and then EVC_Received.Telegram_Count (Tel.Accepted) = 1,
                 "received: cut at every bit from 50 to" & Img (Bits - 1)
-                & ", every one rejected");
+                & ", every one rejected (210 by the parser, the others"
+                & " by the port)");
       end;
+
+      --  a spare value (3.16.1.1.1), and what only an RIU sends: counted,
+      --  not kept
+      ETCS_Bits.Clear (W);
+      Tel.Write_Header (W, Header);
+      Put (W, TSR (7, V_TSR => 121));
+      Tel.Finish (W, Tel.Long_Bits, OK);
+      Input (BTM, BTM_Of (ETCS_Bits.Data (W), ETCS_Bits.Position (W)));
+      Start (W, MCat.Track_M37);
+      Put_Random (W, Cat.Track_P136);
+      Put_Random (W, Cat.Track_P12);
+      Msg.Finish (W, OK);
+      Input (RTM, ETCS_Bits.Data (W));
+      Start (W, MCat.Track_M24);
+      Put (W, TSR (5, V_TSR => 127));
+      Msg.Finish (W, OK);
+      Input (RTM, ETCS_Bits.Data (W));
+      EVC_Core.Tick (100);
+      Take;
+      Check (EVC_Received.Telegram_Count (Tel.Invalid_Value) = 1
+             and then EVC_Received.Last_Telegram.Count = 2
+             and then EVC_Received.Message_Count (Msg.Wrong_Sender) = 1
+             and then EVC_Received.Message_Count (Msg.Invalid_Value) = 1
+             and then EVC_Received.Last_Message.Kind = MCat.Track_M24
+             and then EVC_Received.Last_Message.Count = 1
+             and then JRU_Event (2) = 0 and then JRU_Event (3) = 0,
+             "received: V_TSR spare in a telegram and in a message,"
+             & " message 37 from the RBC session: counted, not kept");
 
       --  more than a balise group in one cycle
       ETCS_Bits.Clear (W);
@@ -1846,6 +2296,9 @@ begin
    Scenario_Telegram;
    Scenario_Telegram_Damaged;
    Scenario_Message;
+   Scenario_Telegram_Length;
+   Scenario_Spare_Values;
+   Scenario_Senders;
    Scenario_Received;
 
    Put_Line ("checks:" & Natural'Image (Checks)

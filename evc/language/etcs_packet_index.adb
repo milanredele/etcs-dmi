@@ -21,6 +21,7 @@ is
       V      : Unsigned_64;
       Length : Natural;
       OK     : Boolean;
+      Valid  : Boolean;
    begin
       E := (Offset => Start, others => <>);
       if Failed (R) or else Remaining (R) < 8 then
@@ -44,7 +45,7 @@ is
             Probe : Reader := R;
          begin
             Seek (Probe, Start);
-            Check (E.Kind, Probe, OK);
+            Check (E.Kind, Probe, OK, Valid);
             if OK
               and then Position (Probe) > Start
               and then Position (Probe) <= Limit (R)
@@ -54,6 +55,8 @@ is
          end;
          if E.Length = 0 then
             Result := Truncated;
+         elsif not Valid then
+            Result := Invalid_Value;
          else
             Seek (R, Start + E.Length);
             Result := (if Failed (R) then Truncated else Scanned);
@@ -81,9 +84,15 @@ is
          return;
       end if;
       E.Length := Length;
+      --  3.16.1.1.1: Q_DIR spare (7.5.1.103), for an unknown packet too
+      if not Is_Valid (E.Q_DIR) then
+         Result := Invalid_Value;
+         return;
+      end if;
 
-      --  a known packet decodes in exactly its L_PACKET bits: checked on
-      --  a copy of the reader limited to the packet
+      --  a known packet decodes in exactly its L_PACKET bits, and holds
+      --  no spare value: checked on a copy of the reader limited to the
+      --  packet
       if E.Kind /= Unknown then
          declare
             Probe : Reader := R;
@@ -92,11 +101,15 @@ is
             Set_Limit (Probe, Start + Length);
             pragma Warnings (GNATprove, Off, "*set by ""Check"" but not used",
                              Reason => "only whether the packet decodes");
-            Check (E.Kind, Probe, OK);
+            Check (E.Kind, Probe, OK, Valid);
             pragma Warnings (GNATprove, On, "*set by ""Check"" but not used");
          end;
          if not OK then
             Result := Undecodable;
+            return;
+         end if;
+         if not Valid then
+            Result := Invalid_Value;
             return;
          end if;
       end if;

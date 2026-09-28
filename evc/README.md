@@ -22,13 +22,13 @@ The ERTMS/ETCS language (SUBSET-026 chapters 7 and 8) is in `language/`:
 | Package | Role |
 |---|---|
 | `ETCS_Bits` | `Reader` and `Writer` of bit strings, MSB first, variables of 1 to 64 bits; total operations with a sticky `Failed` flag. |
-| `ETCS_Variables` | *Generated.* One type per variable of 7.5, the special values, `To_X`, `Code`, `Is_Valid`, `Bits (V)`, `Max (V)`. |
-| `ETCS_Track_Packets.P<n>`, `ETCS_Train_Packets.P<n>` | *Generated.* One package per packet: `Packet_T` (loops as bounded arrays with their count, conditions as components plus `Has_` flags), `Decode`, `Encode`. |
-| `ETCS_Catalogue` | *Generated.* NID_PACKET to kind, direction, name, clause, senders; `Check` (decode any kind), `Skip` by L_PACKET. |
+| `ETCS_Variables` | *Generated.* One type per variable of 7.5, the special values, `To_X`, `Code`, `Is_Valid` (not a spare value, BCD numbers), `Valid_Code (V, Code)`, `Bits (V)`, `Max (V)`. |
+| `ETCS_Track_Packets.P<n>`, `ETCS_Train_Packets.P<n>` | *Generated.* One package per packet: `Packet_T` (loops as bounded arrays with their count, conditions as components plus `Has_` flags), `Decode` (structural), `Valid` (no spare value, 3.16.1.1.1), `Encode`. |
+| `ETCS_Catalogue` | *Generated.* NID_PACKET to kind, direction, name, clause, senders; `Check` (decode any kind, and `Valid`), `Skip` by L_PACKET. |
 | `ETCS_Message_Catalogue` | *Generated.* The radio messages of 8.6 and 8.7: variables and packet rules. |
-| `ETCS_Packet_Index` | Scan of one packet: header, length, decode check; the index entry. |
-| `ETCS_Telegram` | The Eurobalise telegram of 8.4.2: header checks, versions, index of the packets; building (header, 255, padding with ones). |
-| `ETCS_Message` | The radio message of 8.4.4: L_MESSAGE, variables, mandatory and optional packets by the message catalogue; building. |
+| `ETCS_Packet_Index` | Scan of one packet: header, length, decode and spare value check; the index entry. |
+| `ETCS_Telegram` | The Eurobalise telegram of 8.4.2: 210 or 830 user bits, header checks, versions, index of the packets, no spare value, only packets a balise transmits; building (header, 255, padding with ones to 210 or 830 bits). |
+| `ETCS_Message` | The radio message of 8.4.4: L_MESSAGE, the sender (RBC or RIU) of the message and of each packet, variables, no spare value, mandatory and optional packets by the message catalogue; building. |
 
 The generated units come from `language/etcs_language.toml` (format:
 `language/SCHEMA.md`) by `language/gen_language.py`, never by hand:

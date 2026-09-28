@@ -50,6 +50,34 @@ is
       Write (W, 1, Code (E1.Q_MAMODE));
    end Encode_D_MAMODE_Item;
 
+   --  Valid of one item of D_MAMODE_List
+   function Valid_D_MAMODE_Item (E1 : D_MAMODE_Item) return Boolean is
+     (Is_Valid (E1.D_MAMODE)
+      and then Is_Valid (E1.M_MAMODE)
+      and then Is_Valid (E1.V_MAMODE)
+      and then Is_Valid (E1.L_MAMODE)
+      and then Is_Valid (E1.L_ACKMAMODE)
+      and then Is_Valid (E1.Q_MAMODE));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.D_MAMODE)
+      and then Is_Valid (P.M_MAMODE)
+      and then Is_Valid (P.V_MAMODE)
+      and then Is_Valid (P.L_MAMODE)
+      and then Is_Valid (P.L_ACKMAMODE)
+      and then Is_Valid (P.Q_MAMODE)
+      and then Is_Valid (P.N_ITER)
+      and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                  Valid_D_MAMODE_Item (P.D_MAMODE_List (I1))));
+
    ------------
    -- Decode --
    ------------

@@ -11,6 +11,19 @@ package body ETCS_Track_Packets.P71
   with SPARK_Mode => On
 is
 
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.D_ADHESION)
+      and then Is_Valid (P.L_ADHESION)
+      and then Is_Valid (P.M_ADHESION));
+
    ------------
    -- Decode --
    ------------

@@ -51,6 +51,33 @@ is
       end if;
    end Encode_M_VOLTAGE_Item;
 
+   --  Valid of one item of M_VOLTAGE_List
+   function Valid_M_VOLTAGE_Item (E1 : M_VOLTAGE_Item) return Boolean is
+     (Is_Valid (E1.M_VOLTAGE)
+      and then (if E1.Has_NID_CTRACTION then Is_Valid (E1.NID_CTRACTION)));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.NC_CDTRAIN)
+      and then Is_Valid (P.NC_TRAIN)
+      and then Is_Valid (P.L_TRAIN)
+      and then Is_Valid (P.V_MAXTRAIN)
+      and then Is_Valid (P.M_LOADINGGAUGE)
+      and then Is_Valid (P.M_AXLELOADCAT)
+      and then Is_Valid (P.M_AIRTIGHT)
+      and then Is_Valid (P.N_AXLE)
+      and then Is_Valid (P.N_ITER)
+      and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                  Valid_M_VOLTAGE_Item (P.M_VOLTAGE_List (I1)))
+      and then Is_Valid (P.N_ITER_2)
+      and then (for all I1 in 1 .. Natural (P.N_ITER_2) =>
+                  Is_Valid (P.NID_NTC_List (I1))));
+
    ------------
    -- Decode --
    ------------

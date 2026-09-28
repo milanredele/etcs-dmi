@@ -29,7 +29,8 @@ package ETCS_Language_Random is
       Encode_Failed,
       Decode_Failed,
       Length_Differs,  -- decoded length is not the encoded length
-      Record_Differs);
+      Record_Differs,
+      Not_Valid);      -- the decoded packet holds a spare value
 
    procedure Reset (Seed : Interfaces.Unsigned_32);
 

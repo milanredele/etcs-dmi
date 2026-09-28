@@ -11,7 +11,8 @@
 --  always start at 1. On the BTM and RTM ports the shaped inputs are
 --  often real telegrams and radio messages of random valid packets
 --  (ETCS_Language_Random), sometimes damaged (bits flipped, cut). Every
---  telegram and message the core accepts must decode, packet by packet. Every exception is caught here (native runtime),
+--  telegram and message the core accepts must decode, packet by packet,
+--  without a spare value. Every exception is caught here (native runtime),
 --  reported once per distinct site, and the on-board is re-initialised.
 --  Besides, after every step the outputs must be whole records and the
 --  mode must follow the contracts of EVC_Core (a violation is counted).
@@ -106,29 +107,36 @@ procedure EVC_Fuzz is
 
    W : ETCS_Bits.Writer (ETCS_Bits.Max_Bytes);
 
-   --  A random packet of the direction (not 0 or 255 of the track)
-   function Random_Kind (Direction : Cat.Direction_T)
+   --  A random packet of the direction (not 0 or 255 of the track),
+   --  mostly one the sender transmits
+   function Random_Kind (Direction : Cat.Direction_T;
+                         Sender    : Cat.Sender_T)
      return Cat.Known_Kind_T
    is
       First : constant Natural := Cat.Known_Kind_T'Pos (Cat.Known_Kind_T'First);
       Count : constant Natural :=
         Cat.Known_Kind_T'Pos (Cat.Known_Kind_T'Last) - First;
+      Any   : constant Boolean := Chance (10);
       K     : Cat.Known_Kind_T;
    begin
       loop
          K := Cat.Known_Kind_T'Val (First + Pick (0, Count));
          exit when Cat.Direction_Of (K) = Direction
            and then not (Direction = Cat.Track_To_Train
-                         and then Cat.NID_Of (K) in 0 | 255);
+                         and then Cat.NID_Of (K) in 0 | 255)
+           and then (Any or else Cat.Sent_By (K) (Sender));
       end loop;
       return K;
    end Random_Kind;
 
-   procedure Random_Packets (Direction : Cat.Direction_T; Count : Natural) is
+   procedure Random_Packets (Direction : Cat.Direction_T;
+                             Sender    : Cat.Sender_T;
+                             Count     : Natural)
+   is
       OK : Boolean;
    begin
       for I in 1 .. Count loop
-         Rnd.Write_Random (Random_Kind (Direction),
+         Rnd.Write_Random (Random_Kind (Direction, Sender),
                            (if Chance (50) then Rnd.Random_Values
                             else Rnd.Min_Values),
                            (if Chance (50) then Rnd.Random_Items
@@ -172,7 +180,7 @@ procedure EVC_Fuzz is
    begin
       ETCS_Bits.Clear (W);
       ETCS_Telegram.Write_Header (W, H);
-      Random_Packets (Cat.Track_To_Train, Pick (0, 4));
+      Random_Packets (Cat.Track_To_Train, Cat.Balise, Pick (0, 4));
       ETCS_Telegram.Finish
         (W, (if Chance (50) then ETCS_Telegram.Long_Bits
              else ETCS_Telegram.Short_Bits), OK);
@@ -182,8 +190,10 @@ procedure EVC_Fuzz is
          ETCS_Telegram.Finish (W, ETCS_Telegram.Short_Bits, OK);
       end if;
       Bits := ETCS_Bits.Position (W);
-      if Chance (20) then
-         Bits := Pick (BTM_Min_Bits, Bits);   -- cut
+      if Chance (10) then
+         Bits := Pick (ETCS_Telegram.Header_Bits, Bits);   -- cut
+      elsif Chance (10) then
+         Bits := BTM_Short_Bits;   -- a long telegram read as a short one
       end if;
       declare
          Data : constant Byte_Array := ETCS_Bits.Data (W);
@@ -216,7 +226,7 @@ procedure EVC_Fuzz is
       end loop;
       ETCS_Bits.Clear (W);
       ETCS_Message.Write_Fields (W, K, V, OK);
-      Random_Packets (Cat.Track_To_Train, Pick (0, 3));
+      Random_Packets (Cat.Track_To_Train, Cat.RBC, Pick (0, 3));
       ETCS_Message.Finish (W, OK);
       if not OK then
          return;
@@ -234,7 +244,8 @@ procedure EVC_Fuzz is
    --  The documented length of an input on Port (0 where none)
    function Documented_Length (Port : Port_T) return Natural is
      (case Port is
-         when BTM      => 2 + (Pick (BTM_Min_Bits, BTM_Max_Bits) + 7) / 8,
+         when BTM      => 2 + ((if Chance (50) then BTM_Short_Bits
+                                else BTM_Long_Bits) + 7) / 8,
          when RTM      => Pick (RTM_Min_Length, 64),
          when Odometer => Odometer_Length,
          when TIU      => TIU_Length,
@@ -253,7 +264,8 @@ procedure EVC_Fuzz is
             end if;
             declare
                Bits : constant Natural :=
-                 (if Chance (90) then Pick (BTM_Min_Bits, BTM_Max_Bits)
+                 (if Chance (90)
+                  then (if Chance (50) then BTM_Short_Bits else BTM_Long_Bits)
                   else Pick (0, 65_535));
             begin
                Add_U16 (Bits);
@@ -368,15 +380,17 @@ procedure EVC_Fuzz is
       end if;
    end Violation;
 
-   --  Every packet of the last telegram and message accepted decodes
+   --  Every packet of the last telegram and message accepted decodes and
+   --  holds no spare value
    Telegrams_Seen : Natural := 0;
    Messages_Seen  : Natural := 0;
    Checked        : Natural := 0;
 
    function Decodes return Boolean is
       use type Cat.Packet_Kind_T;
-      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
-      OK : Boolean;
+      R     : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      OK    : Boolean;
+      Valid : Boolean;
    begin
       if EVC_Received.Telegram_Count (ETCS_Telegram.Accepted)
            /= Telegrams_Seen
@@ -390,9 +404,9 @@ procedure EVC_Fuzz is
             for I in 1 .. T.Count loop
                if T.Index (I).Kind /= Cat.Unknown then
                   EVC_Received.Open_Telegram_Packet (I, R);
-                  Cat.Check (T.Index (I).Kind, R, OK);
+                  Cat.Check (T.Index (I).Kind, R, OK, Valid);
                   Checked := Checked + 1;
-                  if not OK then
+                  if not (OK and then Valid) then
                      return False;
                   end if;
                end if;
@@ -409,9 +423,9 @@ procedure EVC_Fuzz is
             for I in 1 .. M.Count loop
                if M.Index (I).Kind /= Cat.Unknown then
                   EVC_Received.Open_Message_Packet (I, R);
-                  Cat.Check (M.Index (I).Kind, R, OK);
+                  Cat.Check (M.Index (I).Kind, R, OK, Valid);
                   Checked := Checked + 1;
-                  if not OK then
+                  if not (OK and then Valid) then
                      return False;
                   end if;
                end if;

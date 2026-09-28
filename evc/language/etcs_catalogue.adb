@@ -597,887 +597,821 @@ is
       end case;
    end Clause;
 
-   procedure Check_Track_P0 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P0.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P0.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P0.Valid (P);
    end Check_Track_P0;
 
-   procedure Check_Track_P2 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P2
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P2.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P2.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P2.Valid (P);
    end Check_Track_P2;
 
-   procedure Check_Track_P3 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P3
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P3.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P3.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P3.Valid (P);
    end Check_Track_P3;
 
-   procedure Check_Track_P5 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P5
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P5.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P5.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P5.Valid (P);
    end Check_Track_P5;
 
-   procedure Check_Track_P6 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P6
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P6.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P6.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P6.Valid (P);
    end Check_Track_P6;
 
-   procedure Check_Track_P12 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P12
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P12.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P12.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P12.Valid (P);
    end Check_Track_P12;
 
-   procedure Check_Track_P13 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P13
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P13.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P13.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P13.Valid (P);
    end Check_Track_P13;
 
-   procedure Check_Track_P15 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P15
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P15.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P15.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P15.Valid (P);
    end Check_Track_P15;
 
-   procedure Check_Track_P16 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P16
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P16.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P16.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P16.Valid (P);
    end Check_Track_P16;
 
-   procedure Check_Track_P21 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P21
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P21.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P21.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P21.Valid (P);
    end Check_Track_P21;
 
-   procedure Check_Track_P27 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P27
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P27.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P27.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P27.Valid (P);
    end Check_Track_P27;
 
-   procedure Check_Track_P31 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P31
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P31.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P31.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P31.Valid (P);
    end Check_Track_P31;
 
-   procedure Check_Track_P32 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P32
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P32.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P32.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P32.Valid (P);
    end Check_Track_P32;
 
-   procedure Check_Track_P39 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P39
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P39.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P39.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P39.Valid (P);
    end Check_Track_P39;
 
-   procedure Check_Track_P40 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P40
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P40.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P40.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P40.Valid (P);
    end Check_Track_P40;
 
-   procedure Check_Track_P41 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P41
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P41.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P41.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P41.Valid (P);
    end Check_Track_P41;
 
-   procedure Check_Track_P42 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P42
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P42.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P42.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P42.Valid (P);
    end Check_Track_P42;
 
-   procedure Check_Track_P44 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P44
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P44.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P44.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P44.Valid (P);
    end Check_Track_P44;
 
-   procedure Check_Track_P45 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P45
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P45.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P45.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P45.Valid (P);
    end Check_Track_P45;
 
-   procedure Check_Track_P46 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P46
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P46.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P46.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P46.Valid (P);
    end Check_Track_P46;
 
-   procedure Check_Track_P49 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P49
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P49.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P49.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P49.Valid (P);
    end Check_Track_P49;
 
-   procedure Check_Track_P51 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P51
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P51.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P51.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P51.Valid (P);
    end Check_Track_P51;
 
-   procedure Check_Track_P52 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P52
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P52.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P52.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P52.Valid (P);
    end Check_Track_P52;
 
-   procedure Check_Track_P57 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P57
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P57.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P57.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P57.Valid (P);
    end Check_Track_P57;
 
-   procedure Check_Track_P58 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P58
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P58.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P58.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P58.Valid (P);
    end Check_Track_P58;
 
-   procedure Check_Track_P63 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P63
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P63.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P63.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P63.Valid (P);
    end Check_Track_P63;
 
-   procedure Check_Track_P64 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P64
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P64.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P64.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P64.Valid (P);
    end Check_Track_P64;
 
-   procedure Check_Track_P65 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P65
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P65.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P65.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P65.Valid (P);
    end Check_Track_P65;
 
-   procedure Check_Track_P66 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P66
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P66.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P66.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P66.Valid (P);
    end Check_Track_P66;
 
-   procedure Check_Track_P67 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P67
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P67.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P67.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P67.Valid (P);
    end Check_Track_P67;
 
-   procedure Check_Track_P68 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P68
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P68.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P68.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P68.Valid (P);
    end Check_Track_P68;
 
-   procedure Check_Track_P69 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P69
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P69.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P69.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P69.Valid (P);
    end Check_Track_P69;
 
-   procedure Check_Track_P70 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P70
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P70.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P70.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P70.Valid (P);
    end Check_Track_P70;
 
-   procedure Check_Track_P71 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P71
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P71.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P71.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P71.Valid (P);
    end Check_Track_P71;
 
-   procedure Check_Track_P73 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P73
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P73.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P73.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P73.Valid (P);
    end Check_Track_P73;
 
-   procedure Check_Track_P74 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P74
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P74.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P74.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P74.Valid (P);
    end Check_Track_P74;
 
-   procedure Check_Track_P79 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P79
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P79.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P79.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P79.Valid (P);
    end Check_Track_P79;
 
-   procedure Check_Track_P80 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P80
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P80.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P80.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P80.Valid (P);
    end Check_Track_P80;
 
-   procedure Check_Track_P88 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P88
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P88.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P88.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P88.Valid (P);
    end Check_Track_P88;
 
-   procedure Check_Track_P90 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P90
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P90.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P90.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P90.Valid (P);
    end Check_Track_P90;
 
-   procedure Check_Track_P131 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P131
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P131.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P131.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P131.Valid (P);
    end Check_Track_P131;
 
-   procedure Check_Track_P132 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P132
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P132.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P132.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P132.Valid (P);
    end Check_Track_P132;
 
-   procedure Check_Track_P133 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P133
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P133.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P133.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P133.Valid (P);
    end Check_Track_P133;
 
-   procedure Check_Track_P134 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P134
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P134.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P134.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P134.Valid (P);
    end Check_Track_P134;
 
-   procedure Check_Track_P135 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P135
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P135.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P135.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P135.Valid (P);
    end Check_Track_P135;
 
-   procedure Check_Track_P136 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P136
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P136.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P136.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P136.Valid (P);
    end Check_Track_P136;
 
-   procedure Check_Track_P137 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P137
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P137.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P137.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P137.Valid (P);
    end Check_Track_P137;
 
-   procedure Check_Track_P138 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P138
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P138.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P138.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P138.Valid (P);
    end Check_Track_P138;
 
-   procedure Check_Track_P139 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P139
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P139.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P139.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P139.Valid (P);
    end Check_Track_P139;
 
-   procedure Check_Track_P140 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P140
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P140.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P140.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P140.Valid (P);
    end Check_Track_P140;
 
-   procedure Check_Track_P141 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P141
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P141.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P141.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P141.Valid (P);
    end Check_Track_P141;
 
-   procedure Check_Track_P143 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P143
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P143.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P143.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P143.Valid (P);
    end Check_Track_P143;
 
-   procedure Check_Track_P145 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P145
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P145.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P145.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P145.Valid (P);
    end Check_Track_P145;
 
-   procedure Check_Track_P180 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P180
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P180.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P180.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P180.Valid (P);
    end Check_Track_P180;
 
-   procedure Check_Track_P181 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P181
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P181.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P181.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P181.Valid (P);
    end Check_Track_P181;
 
-   procedure Check_Track_P254 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P254
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P254.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P254.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P254.Valid (P);
    end Check_Track_P254;
 
-   procedure Check_Track_P255 (R : in out Reader; OK : out Boolean)
+   procedure Check_Track_P255
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Track_Packets.P255.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Track_Packets.P255.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Track_Packets.P255.Valid (P);
    end Check_Track_P255;
 
-   procedure Check_Train_P0 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P0
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P0.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P0.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P0.Valid (P);
    end Check_Train_P0;
 
-   procedure Check_Train_P1 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P1
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P1.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P1.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P1.Valid (P);
    end Check_Train_P1;
 
-   procedure Check_Train_P2 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P2
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P2.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P2.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P2.Valid (P);
    end Check_Train_P2;
 
-   procedure Check_Train_P4 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P4
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P4.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P4.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P4.Valid (P);
    end Check_Train_P4;
 
-   procedure Check_Train_P5 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P5
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P5.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P5.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P5.Valid (P);
    end Check_Train_P5;
 
-   procedure Check_Train_P9 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P9
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P9.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P9.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P9.Valid (P);
    end Check_Train_P9;
 
-   procedure Check_Train_P10 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P10
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P10.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P10.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P10.Valid (P);
    end Check_Train_P10;
 
-   procedure Check_Train_P11 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P11
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P11.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P11.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P11.Valid (P);
    end Check_Train_P11;
 
-   procedure Check_Train_P12 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P12
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P12.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P12.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P12.Valid (P);
    end Check_Train_P12;
 
-   procedure Check_Train_P44 (R : in out Reader; OK : out Boolean)
+   procedure Check_Train_P44
+     (R : in out Reader; OK : out Boolean; Valid : out Boolean)
      with Post => (if OK then not Failed (R))
+                  and then (if Valid then OK)
    is
       P : ETCS_Train_Packets.P44.Packet_T;
-      pragma Warnings (Off, P);
    begin
-      pragma Warnings (GNATprove, Off, "unused assignment",
-                       Reason => "only whether it decodes");
       ETCS_Train_Packets.P44.Decode (R, P, OK);
-      pragma Warnings (GNATprove, On, "unused assignment");
+      Valid := OK and then ETCS_Train_Packets.P44.Valid (P);
    end Check_Train_P44;
 
    -----------
    -- Check --
    -----------
 
-   procedure Check (Kind : Known_Kind_T;
-                    R    : in out Reader;
-                    OK   : out Boolean)
+   procedure Check (Kind  : Known_Kind_T;
+                    R     : in out Reader;
+                    OK    : out Boolean;
+                    Valid : out Boolean)
    is
    begin
       case Kind is
-         when Track_P0 => Check_Track_P0 (R, OK);
-         when Track_P2 => Check_Track_P2 (R, OK);
-         when Track_P3 => Check_Track_P3 (R, OK);
-         when Track_P5 => Check_Track_P5 (R, OK);
-         when Track_P6 => Check_Track_P6 (R, OK);
-         when Track_P12 => Check_Track_P12 (R, OK);
-         when Track_P13 => Check_Track_P13 (R, OK);
-         when Track_P15 => Check_Track_P15 (R, OK);
-         when Track_P16 => Check_Track_P16 (R, OK);
-         when Track_P21 => Check_Track_P21 (R, OK);
-         when Track_P27 => Check_Track_P27 (R, OK);
-         when Track_P31 => Check_Track_P31 (R, OK);
-         when Track_P32 => Check_Track_P32 (R, OK);
-         when Track_P39 => Check_Track_P39 (R, OK);
-         when Track_P40 => Check_Track_P40 (R, OK);
-         when Track_P41 => Check_Track_P41 (R, OK);
-         when Track_P42 => Check_Track_P42 (R, OK);
-         when Track_P44 => Check_Track_P44 (R, OK);
-         when Track_P45 => Check_Track_P45 (R, OK);
-         when Track_P46 => Check_Track_P46 (R, OK);
-         when Track_P49 => Check_Track_P49 (R, OK);
-         when Track_P51 => Check_Track_P51 (R, OK);
-         when Track_P52 => Check_Track_P52 (R, OK);
-         when Track_P57 => Check_Track_P57 (R, OK);
-         when Track_P58 => Check_Track_P58 (R, OK);
-         when Track_P63 => Check_Track_P63 (R, OK);
-         when Track_P64 => Check_Track_P64 (R, OK);
-         when Track_P65 => Check_Track_P65 (R, OK);
-         when Track_P66 => Check_Track_P66 (R, OK);
-         when Track_P67 => Check_Track_P67 (R, OK);
-         when Track_P68 => Check_Track_P68 (R, OK);
-         when Track_P69 => Check_Track_P69 (R, OK);
-         when Track_P70 => Check_Track_P70 (R, OK);
-         when Track_P71 => Check_Track_P71 (R, OK);
-         when Track_P73 => Check_Track_P73 (R, OK);
-         when Track_P74 => Check_Track_P74 (R, OK);
-         when Track_P79 => Check_Track_P79 (R, OK);
-         when Track_P80 => Check_Track_P80 (R, OK);
-         when Track_P88 => Check_Track_P88 (R, OK);
-         when Track_P90 => Check_Track_P90 (R, OK);
-         when Track_P131 => Check_Track_P131 (R, OK);
-         when Track_P132 => Check_Track_P132 (R, OK);
-         when Track_P133 => Check_Track_P133 (R, OK);
-         when Track_P134 => Check_Track_P134 (R, OK);
-         when Track_P135 => Check_Track_P135 (R, OK);
-         when Track_P136 => Check_Track_P136 (R, OK);
-         when Track_P137 => Check_Track_P137 (R, OK);
-         when Track_P138 => Check_Track_P138 (R, OK);
-         when Track_P139 => Check_Track_P139 (R, OK);
-         when Track_P140 => Check_Track_P140 (R, OK);
-         when Track_P141 => Check_Track_P141 (R, OK);
-         when Track_P143 => Check_Track_P143 (R, OK);
-         when Track_P145 => Check_Track_P145 (R, OK);
-         when Track_P180 => Check_Track_P180 (R, OK);
-         when Track_P181 => Check_Track_P181 (R, OK);
-         when Track_P254 => Check_Track_P254 (R, OK);
-         when Track_P255 => Check_Track_P255 (R, OK);
-         when Train_P0 => Check_Train_P0 (R, OK);
-         when Train_P1 => Check_Train_P1 (R, OK);
-         when Train_P2 => Check_Train_P2 (R, OK);
-         when Train_P4 => Check_Train_P4 (R, OK);
-         when Train_P5 => Check_Train_P5 (R, OK);
-         when Train_P9 => Check_Train_P9 (R, OK);
-         when Train_P10 => Check_Train_P10 (R, OK);
-         when Train_P11 => Check_Train_P11 (R, OK);
-         when Train_P12 => Check_Train_P12 (R, OK);
-         when Train_P44 => Check_Train_P44 (R, OK);
+         when Track_P0 => Check_Track_P0 (R, OK, Valid);
+         when Track_P2 => Check_Track_P2 (R, OK, Valid);
+         when Track_P3 => Check_Track_P3 (R, OK, Valid);
+         when Track_P5 => Check_Track_P5 (R, OK, Valid);
+         when Track_P6 => Check_Track_P6 (R, OK, Valid);
+         when Track_P12 => Check_Track_P12 (R, OK, Valid);
+         when Track_P13 => Check_Track_P13 (R, OK, Valid);
+         when Track_P15 => Check_Track_P15 (R, OK, Valid);
+         when Track_P16 => Check_Track_P16 (R, OK, Valid);
+         when Track_P21 => Check_Track_P21 (R, OK, Valid);
+         when Track_P27 => Check_Track_P27 (R, OK, Valid);
+         when Track_P31 => Check_Track_P31 (R, OK, Valid);
+         when Track_P32 => Check_Track_P32 (R, OK, Valid);
+         when Track_P39 => Check_Track_P39 (R, OK, Valid);
+         when Track_P40 => Check_Track_P40 (R, OK, Valid);
+         when Track_P41 => Check_Track_P41 (R, OK, Valid);
+         when Track_P42 => Check_Track_P42 (R, OK, Valid);
+         when Track_P44 => Check_Track_P44 (R, OK, Valid);
+         when Track_P45 => Check_Track_P45 (R, OK, Valid);
+         when Track_P46 => Check_Track_P46 (R, OK, Valid);
+         when Track_P49 => Check_Track_P49 (R, OK, Valid);
+         when Track_P51 => Check_Track_P51 (R, OK, Valid);
+         when Track_P52 => Check_Track_P52 (R, OK, Valid);
+         when Track_P57 => Check_Track_P57 (R, OK, Valid);
+         when Track_P58 => Check_Track_P58 (R, OK, Valid);
+         when Track_P63 => Check_Track_P63 (R, OK, Valid);
+         when Track_P64 => Check_Track_P64 (R, OK, Valid);
+         when Track_P65 => Check_Track_P65 (R, OK, Valid);
+         when Track_P66 => Check_Track_P66 (R, OK, Valid);
+         when Track_P67 => Check_Track_P67 (R, OK, Valid);
+         when Track_P68 => Check_Track_P68 (R, OK, Valid);
+         when Track_P69 => Check_Track_P69 (R, OK, Valid);
+         when Track_P70 => Check_Track_P70 (R, OK, Valid);
+         when Track_P71 => Check_Track_P71 (R, OK, Valid);
+         when Track_P73 => Check_Track_P73 (R, OK, Valid);
+         when Track_P74 => Check_Track_P74 (R, OK, Valid);
+         when Track_P79 => Check_Track_P79 (R, OK, Valid);
+         when Track_P80 => Check_Track_P80 (R, OK, Valid);
+         when Track_P88 => Check_Track_P88 (R, OK, Valid);
+         when Track_P90 => Check_Track_P90 (R, OK, Valid);
+         when Track_P131 => Check_Track_P131 (R, OK, Valid);
+         when Track_P132 => Check_Track_P132 (R, OK, Valid);
+         when Track_P133 => Check_Track_P133 (R, OK, Valid);
+         when Track_P134 => Check_Track_P134 (R, OK, Valid);
+         when Track_P135 => Check_Track_P135 (R, OK, Valid);
+         when Track_P136 => Check_Track_P136 (R, OK, Valid);
+         when Track_P137 => Check_Track_P137 (R, OK, Valid);
+         when Track_P138 => Check_Track_P138 (R, OK, Valid);
+         when Track_P139 => Check_Track_P139 (R, OK, Valid);
+         when Track_P140 => Check_Track_P140 (R, OK, Valid);
+         when Track_P141 => Check_Track_P141 (R, OK, Valid);
+         when Track_P143 => Check_Track_P143 (R, OK, Valid);
+         when Track_P145 => Check_Track_P145 (R, OK, Valid);
+         when Track_P180 => Check_Track_P180 (R, OK, Valid);
+         when Track_P181 => Check_Track_P181 (R, OK, Valid);
+         when Track_P254 => Check_Track_P254 (R, OK, Valid);
+         when Track_P255 => Check_Track_P255 (R, OK, Valid);
+         when Train_P0 => Check_Train_P0 (R, OK, Valid);
+         when Train_P1 => Check_Train_P1 (R, OK, Valid);
+         when Train_P2 => Check_Train_P2 (R, OK, Valid);
+         when Train_P4 => Check_Train_P4 (R, OK, Valid);
+         when Train_P5 => Check_Train_P5 (R, OK, Valid);
+         when Train_P9 => Check_Train_P9 (R, OK, Valid);
+         when Train_P10 => Check_Train_P10 (R, OK, Valid);
+         when Train_P11 => Check_Train_P11 (R, OK, Valid);
+         when Train_P12 => Check_Train_P12 (R, OK, Valid);
+         when Train_P44 => Check_Train_P44 (R, OK, Valid);
       end case;
    end Check;
 

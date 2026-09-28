@@ -734,6 +734,24 @@ is
       V_TSR => 120,
       X_TEXT => 255);
 
+   --  A number in binary coded decimal of N_Digits digits (7.5.1.91.1,
+   --  7.5.1.92, 7.5.1.95): every digit 0 .. 9, the number entered left
+   --  adjusted and the special character F filling the digits after its last
+   --  one
+   function BCD_Digit (V : Unsigned_64; N_Digits : Positive;
+                       I : Natural) return Unsigned_64
+   is (Shift_Right (V, 4 * (N_Digits - 1 - I)) and 15)
+     with Pre => N_Digits <= 16 and then I < N_Digits;
+   function Valid_BCD (V : Unsigned_64; N_Digits : Positive)
+     return Boolean
+   is (for all I in 0 .. N_Digits - 1 =>
+         BCD_Digit (V, N_Digits, I) <= 9
+         or else (BCD_Digit (V, N_Digits, I) = 15
+                  and then (I = N_Digits - 1
+                            or else BCD_Digit (V, N_Digits, I + 1)
+                                    = 15)))
+     with Pre => N_Digits <= 16;
+
    --  A_NVMAXREDADH1, 7.5.0.1: 6 bits, 0 .. 60, 0.05 m/s2
    type A_NVMAXREDADH1_T is range 0 .. 63;
    A_NVMAXREDADH1_No_Maximum_Deceleration_Display :
@@ -1756,7 +1774,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 10);
    function Is_Valid (X : M_CURRENT_T) return Boolean is
-     (X <= 1000 or else X = 1023);
+     ((X <= 1000 or else X = 1023));
 
    --  M_DUP, 7.5.1.63: 2 bits, 0 .. 2
    type M_DUP_T is range 0 .. 3;
@@ -1878,7 +1896,7 @@ is
 
    --  M_LINEAXLELOADCAT, 7.5.1.67.2: 16 bits, 0 .. 65535, bitset: bit 0 A, 1
    --  HS17, 2 B1, 3 B2, 4 C2, 5 C3, 6 C4, 7 D2, 8 D3, 9 D4, 10 D4XL, 11 E4, 12
-   --  E5; bits 13 .. 15 spare; all zero spare
+   --  E5; bits 13 .. 15 spare; all zero spare; spare: 0, 8192 .. 65535
    type M_LINEAXLELOADCAT_T is range 0 .. 65535;
    function To_M_LINEAXLELOADCAT (V : Unsigned_64)
      return M_LINEAXLELOADCAT_T
@@ -1888,10 +1906,11 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 16);
    function Is_Valid (X : M_LINEAXLELOADCAT_T) return Boolean is
-     (True);
+     (X not in 0 | 8192 .. 65535);
 
    --  M_LINEGAUGE, 7.5.1.67.1: 8 bits, 0 .. 255, bitset: bit 0 G1, bit 1 GA,
-   --  bit 2 GB, bit 3 GC; bits 4 .. 7 spare; 0000 0000 spare
+   --  bit 2 GB, bit 3 GC; bits 4 .. 7 spare; 0000 0000 spare; spare: 0, 16 ..
+   --  255
    type M_LINEGAUGE_T is range 0 .. 255;
    function To_M_LINEGAUGE (V : Unsigned_64) return M_LINEGAUGE_T is
      (M_LINEGAUGE_T (V))
@@ -1900,7 +1919,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 8);
    function Is_Valid (X : M_LINEGAUGE_T) return Boolean is
-     (True);
+     (X not in 0 | 16 .. 255);
 
    --  M_LOADINGGAUGE, 7.5.1.68: 8 bits, 0 .. 4
    type M_LOADINGGAUGE_T is range 0 .. 255;
@@ -2021,8 +2040,8 @@ is
    function Is_Valid (X : M_MODE_T) return Boolean is
      (X <= 17);
 
-   --  M_MODETEXTDISPLAY, 7.5.1.73: 4 bits, 0 .. 15, enumeration; 9, 10, 11 and
-   --  13 are spare
+   --  M_MODETEXTDISPLAY, 7.5.1.73: 4 bits, 0 .. 15, enumeration; spare: 9, 10,
+   --  11, 13
    type M_MODETEXTDISPLAY_T is range 0 .. 15;
    M_MODETEXTDISPLAY_Full_Supervision : constant M_MODETEXTDISPLAY_T := 0;
    --  0: Full Supervision
@@ -2058,7 +2077,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 4);
    function Is_Valid (X : M_MODETEXTDISPLAY_T) return Boolean is
-     (True);
+     (X not in 9 | 10 | 11 | 13);
 
    --  M_NVAVADH, 7.5.1.73.1: 5 bits, 0 .. 20, 0.05 (0 .. 1.00; 1.05 .. 1.55
    --  spare)
@@ -2220,7 +2239,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 24);
    function Is_Valid (X : M_POSITION_T) return Boolean is
-     (X <= 9999999 or else X = 16777215);
+     ((X <= 9999999 or else X = 16777215));
 
    --  M_TRACKCOND, 7.5.1.77: 4 bits, 0 .. 10
    type M_TRACKCOND_T is range 0 .. 15;
@@ -2264,7 +2283,7 @@ is
    --  M_VERSION, 7.5.1.79: 7 bits, 0 .. 127, X in the 3 MSBs, Y in the 4 LSBs;
    --  000 xxxx previous versions (EEIG, UIC A200); 001 0010 .. 001 1111 and
    --  010 0100 .. 010 1111 not valid; 011 0001 .. 111 1111 reserved for future
-   --  use (valid values)
+   --  use (valid values); spare: 18 .. 31, 36 .. 47
    type M_VERSION_T is range 0 .. 127;
    M_VERSION_Version_1_0_Introduced : constant M_VERSION_T := 16;
    --  16: Version 1.0, introduced in SRS 1.2.0
@@ -2287,7 +2306,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 7);
    function Is_Valid (X : M_VERSION_T) return Boolean is
-     (True);
+     (X not in 18 .. 31 | 36 .. 47);
 
    --  M_VOLTAGE, 7.5.1.78: 4 bits, 0 .. 5
    type M_VOLTAGE_T is range 0 .. 15;
@@ -2397,7 +2416,8 @@ is
 
    --  NC_TRAIN, 7.5.1.84: 15 bits, 0 .. 32767, bitset: bit 0 freight train
    --  braked in P, bit 1 freight train braked in G, bit 2 passenger train;
-   --  bits 3 .. 14 spare; 0 = train belongs to no other international category
+   --  bits 3 .. 14 spare; 0 = train belongs to no other international
+   --  category; spare: 8 .. 32767
    type NC_TRAIN_T is range 0 .. 32767;
    function To_NC_TRAIN (V : Unsigned_64) return NC_TRAIN_T is
      (NC_TRAIN_T (V))
@@ -2406,7 +2426,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 15);
    function Is_Valid (X : NC_TRAIN_T) return Boolean is
-     (True);
+     (X not in 8 .. 32767);
 
    --  NID_BG, 7.5.1.85: 14 bits, 0 .. 16382
    type NID_BG_T is range 0 .. 16383;
@@ -2502,7 +2522,7 @@ is
 
    --  NID_MN, 7.5.1.91.1: 24 bits, 0 .. 16777215, BCD, 6 digits left adjusted,
    --  first digit to dial in the MSBs; digit values A .. E not used, F = no
-   --  digit
+   --  digit; binary coded decimal of 6 digits
    type NID_MN_T is range 0 .. 16777215;
    function To_NID_MN (V : Unsigned_64) return NID_MN_T is
      (NID_MN_T (V))
@@ -2511,7 +2531,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 24);
    function Is_Valid (X : NID_MN_T) return Boolean is
-     (True);
+     (Valid_BCD (Code (X), 6));
 
    --  NID_NTC, 7.5.1.98: 8 bits, 0 .. 255
    type NID_NTC_T is range 0 .. 255;
@@ -2525,7 +2545,8 @@ is
      (True);
 
    --  NID_OPERATIONAL, 7.5.1.92: 32 bits, 0 .. 4294967295, BCD, 8 digits left
-   --  adjusted; digit values A .. E spare, F = no digit; FFFF FFFF spare
+   --  adjusted; digit values A .. E spare, F = no digit; FFFF FFFF spare;
+   --  spare: 4294967295; binary coded decimal of 8 digits
    type NID_OPERATIONAL_T is range 0 .. 4294967295;
    function To_NID_OPERATIONAL (V : Unsigned_64) return NID_OPERATIONAL_T is
      (NID_OPERATIONAL_T (V))
@@ -2534,7 +2555,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 32);
    function Is_Valid (X : NID_OPERATIONAL_T) return Boolean is
-     (True);
+     (X /= 4294967295 and then Valid_BCD (Code (X), 8));
 
    --  NID_PACKET, 7.5.1.93: 8 bits, 0 .. 255
    type NID_PACKET_T is range 0 .. 255;
@@ -2549,7 +2570,7 @@ is
 
    --  NID_RADIO, 7.5.1.95: 64 bits, 0 .. 18446744073709551615, BCD, 16 digits
    --  left adjusted, first digit to dial in the MSBs; digit values A .. E not
-   --  used, F = no digit (padding)
+   --  used, F = no digit (padding); binary coded decimal of 16 digits
    type NID_RADIO_T is new Unsigned_64;
    NID_RADIO_Use_The_Short_Number :
      constant NID_RADIO_T := 18446744073709551615;
@@ -2561,7 +2582,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 64);
    function Is_Valid (X : NID_RADIO_T) return Boolean is
-     (True);
+     (Valid_BCD (Code (X), 16));
 
    --  NID_RBC, 7.5.1.96: 14 bits, 0 .. 16382
    type NID_RBC_T is range 0 .. 16383;
@@ -3818,7 +3839,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 32);
    function Is_Valid (X : T_TRAIN_T) return Boolean is
-     (X <= 4294967294 or else X = 4294967295);
+     ((X <= 4294967294 or else X = 4294967295));
 
    --  T_VBC, 7.5.1.154.1: 8 bits, 0 .. 255, 24 hours (0 .. 6120 hours)
    type T_VBC_T is range 0 .. 255;
@@ -3899,7 +3920,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 7);
    function Is_Valid (X : V_MAMODE_T) return Boolean is
-     (X <= 120 or else X = 127);
+     ((X <= 120 or else X = 127));
 
    --  V_MAXTRAIN, 7.5.1.160: 7 bits, 0 .. 120, 5 km/h
    type V_MAXTRAIN_T is range 0 .. 127;
@@ -4024,7 +4045,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 7);
    function Is_Valid (X : V_RELEASEDP_T) return Boolean is
-     (X <= 120 or else X = 126 or else X = 127);
+     ((X <= 120 or else X = 126 or else X = 127));
 
    --  V_RELEASEOL, 7.5.1.169: 7 bits, 0 .. 120, 5 km/h
    type V_RELEASEOL_T is range 0 .. 127;
@@ -4039,7 +4060,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 7);
    function Is_Valid (X : V_RELEASEOL_T) return Boolean is
-     (X <= 120 or else X = 126 or else X = 127);
+     ((X <= 120 or else X = 126 or else X = 127));
 
    --  V_REVERSE, 7.5.1.170: 7 bits, 0 .. 120, 5 km/h
    type V_REVERSE_T is range 0 .. 127;
@@ -4075,7 +4096,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 7);
    function Is_Valid (X : V_STATIC_T) return Boolean is
-     (X <= 120 or else X = 127);
+     ((X <= 120 or else X = 127));
 
    --  V_TRAIN, 7.5.1.172: 7 bits, 0 .. 120, 5 km/h
    type V_TRAIN_T is range 0 .. 127;
@@ -4088,7 +4109,7 @@ is
      (Unsigned_64 (X))
      with Post => Fits (Code'Result, 7);
    function Is_Valid (X : V_TRAIN_T) return Boolean is
-     (X <= 120 or else X = 127);
+     ((X <= 120 or else X = 127));
 
    --  V_TSR, 7.5.1.173: 7 bits, 0 .. 120, 5 km/h
    type V_TSR_T is range 0 .. 127;
@@ -4111,6 +4132,84 @@ is
      with Post => Fits (Code'Result, 8);
    function Is_Valid (X : X_TEXT_T) return Boolean is
      (True);
+
+   --  The code V of the variable Var is a value of 7.5, not a spare
+   --  one (Is_Valid of its type)
+   function Valid_Code (Var : Variable_T; V : Unsigned_64)
+     return Boolean
+   is (Fits (V, Bits (Var))
+       and then
+         (case Var is
+            when M_AIRTIGHT => Is_Valid (To_M_AIRTIGHT (V)),
+            when M_AXLELOADCAT => Is_Valid (To_M_AXLELOADCAT (V)),
+            when M_CURRENT => Is_Valid (To_M_CURRENT (V)),
+            when M_DUP => Is_Valid (To_M_DUP (V)),
+            when M_ERROR => Is_Valid (To_M_ERROR (V)),
+            when M_LEVEL => Is_Valid (To_M_LEVEL (V)),
+            when M_LEVELTEXTDISPLAY => Is_Valid (To_M_LEVELTEXTDISPLAY (V)),
+            when M_LEVELTR => Is_Valid (To_M_LEVELTR (V)),
+            when M_LINEAXLELOADCAT => Is_Valid (To_M_LINEAXLELOADCAT (V)),
+            when M_LINEGAUGE => Is_Valid (To_M_LINEGAUGE (V)),
+            when M_LOADINGGAUGE => Is_Valid (To_M_LOADINGGAUGE (V)),
+            when M_LOC => Is_Valid (To_M_LOC (V)),
+            when M_MAMODE => Is_Valid (To_M_MAMODE (V)),
+            when M_MODE => Is_Valid (To_M_MODE (V)),
+            when M_MODETEXTDISPLAY => Is_Valid (To_M_MODETEXTDISPLAY (V)),
+            when M_NVAVADH => Is_Valid (To_M_NVAVADH (V)),
+            when M_NVCONTACT => Is_Valid (To_M_NVCONTACT (V)),
+            when M_NVEBCL => Is_Valid (To_M_NVEBCL (V)),
+            when M_PLATFORM => Is_Valid (To_M_PLATFORM (V)),
+            when M_POSITION => Is_Valid (To_M_POSITION (V)),
+            when M_TRACKCOND => Is_Valid (To_M_TRACKCOND (V)),
+            when M_VERSION => Is_Valid (To_M_VERSION (V)),
+            when M_VOLTAGE => Is_Valid (To_M_VOLTAGE (V)),
+            when NC_CDDIFF => Is_Valid (To_NC_CDDIFF (V)),
+            when NC_CDTRAIN => Is_Valid (To_NC_CDTRAIN (V)),
+            when NC_DIFF => Is_Valid (To_NC_DIFF (V)),
+            when NC_TRAIN => Is_Valid (To_NC_TRAIN (V)),
+            when NID_MN => Is_Valid (To_NID_MN (V)),
+            when NID_OPERATIONAL => Is_Valid (To_NID_OPERATIONAL (V)),
+            when NID_RADIO => Is_Valid (To_NID_RADIO (V)),
+            when Q_DIFF => Is_Valid (To_Q_DIFF (V)),
+            when Q_DIR => Is_Valid (To_Q_DIR (V)),
+            when Q_DIRLRBG => Is_Valid (To_Q_DIRLRBG (V)),
+            when Q_DIRTRAIN => Is_Valid (To_Q_DIRTRAIN (V)),
+            when Q_DLRBG => Is_Valid (To_Q_DLRBG (V)),
+            when Q_LINKREACTION => Is_Valid (To_Q_LINKREACTION (V)),
+            when Q_NETWORKTYPE => Is_Valid (To_Q_NETWORKTYPE (V)),
+            when Q_NVKVINTSET => Is_Valid (To_Q_NVKVINTSET (V)),
+            when Q_PLATFORM => Is_Valid (To_Q_PLATFORM (V)),
+            when Q_SCALE => Is_Valid (To_Q_SCALE (V)),
+            when Q_STATUSLRBG => Is_Valid (To_Q_STATUSLRBG (V)),
+            when Q_SUITABILITY => Is_Valid (To_Q_SUITABILITY (V)),
+            when Q_TEXT => Is_Valid (To_Q_TEXT (V)),
+            when Q_TEXTCLASS => Is_Valid (To_Q_TEXTCLASS (V)),
+            when T_TRAIN => Is_Valid (To_T_TRAIN (V)),
+            when V_AXLELOAD => Is_Valid (To_V_AXLELOAD (V)),
+            when V_DIFF => Is_Valid (To_V_DIFF (V)),
+            when V_EMA => Is_Valid (To_V_EMA (V)),
+            when V_LX => Is_Valid (To_V_LX (V)),
+            when V_MAIN => Is_Valid (To_V_MAIN (V)),
+            when V_MAMODE => Is_Valid (To_V_MAMODE (V)),
+            when V_MAXTRAIN => Is_Valid (To_V_MAXTRAIN (V)),
+            when V_NVALLOWOVTRP => Is_Valid (To_V_NVALLOWOVTRP (V)),
+            when V_NVKVINT => Is_Valid (To_V_NVKVINT (V)),
+            when V_NVLIMSUPERV => Is_Valid (To_V_NVLIMSUPERV (V)),
+            when V_NVONSIGHT => Is_Valid (To_V_NVONSIGHT (V)),
+            when V_NVREL => Is_Valid (To_V_NVREL (V)),
+            when V_NVSHUNT => Is_Valid (To_V_NVSHUNT (V)),
+            when V_NVSTFF => Is_Valid (To_V_NVSTFF (V)),
+            when V_NVSUPOVTRP => Is_Valid (To_V_NVSUPOVTRP (V)),
+            when V_NVUNFIT => Is_Valid (To_V_NVUNFIT (V)),
+            when V_RELEASEDP => Is_Valid (To_V_RELEASEDP (V)),
+            when V_RELEASEOL => Is_Valid (To_V_RELEASEOL (V)),
+            when V_REVERSE => Is_Valid (To_V_REVERSE (V)),
+            when V_SM => Is_Valid (To_V_SM (V)),
+            when V_STATIC => Is_Valid (To_V_STATIC (V)),
+            when V_TRAIN => Is_Valid (To_V_TRAIN (V)),
+            when V_TSR => Is_Valid (To_V_TSR (V)),
+            --  every code is a value
+            when others => True));
 
    --  NID_LRBG and the other identities of a balise group given as
    --  NID_C + NID_BG (10 + 14 bits, 7.5.1.90) as one number

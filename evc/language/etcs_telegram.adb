@@ -40,6 +40,11 @@ is
          Status := Too_Long;
          return;
       end if;
+      --  SUBSET-036 4.3.1.2: 210 user bits (short) or 830 (long)
+      if Bits not in Short_Bits | Long_Bits then
+         Status := Bad_Length;
+         return;
+      end if;
       Load (R, Data, Bits);
       T.Data (1 .. Data'Length) := Data;
       T.Bits := Bits;
@@ -107,7 +112,17 @@ is
             when Bad_Length | Undecodable =>
                Status := Packet_Structure;
                return;
+            when Invalid_Value =>
+               Status := Invalid_Value;
+               return;
             when Scanned =>
+               --  7.4.2: a packet the balise may transmit ("Transmitted
+               --  by"; 7.3.3.10)
+               if E.Kind /= Unknown and then not Sent_By (E.Kind) (Balise)
+               then
+                  Status := Wrong_Sender;
+                  return;
+               end if;
                --  8.4.2.3: packet 0 is the first packet
                if E.Kind = Track_P0 and then T.Count > 0 then
                   Status := Packet_Structure;
@@ -176,7 +191,9 @@ is
    is
    begin
       Write (W, 8, 255);
-      OK := not Failed (W) and then Position (W) <= User_Bits;
+      OK := User_Bits in Short_Bits | Long_Bits
+        and then not Failed (W)
+        and then Position (W) <= User_Bits;
       if OK then
          Fill (W, User_Bits - Position (W), One => True);
          OK := not Failed (W);
