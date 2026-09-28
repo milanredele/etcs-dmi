@@ -27,4 +27,29 @@ package body EVC_Driver is
       end if;
    end Auto_Drive;
 
+   procedure Auto_Drive_Onboard (V_Cur_KMH       : Natural;
+                                 V_Perm_KMH      : Natural;
+                                 Monitoring      : Natural;
+                                 Brake_Commanded : Boolean)
+   is
+      Creep_KMH : constant := 5;
+   begin
+      if Brake_Commanded then
+         EVC_Train.Demand := 0;
+      elsif Monitoring = 2 then
+         EVC_Train.Demand := -100; -- brake to a stand in RSM
+      elsif V_Perm_KMH = 0 then
+         EVC_Train.Demand :=
+           (if V_Cur_KMH < Creep_KMH then 30
+            elsif V_Cur_KMH > Creep_KMH then -30
+            else 0);
+      elsif V_Cur_KMH + 3 < V_Perm_KMH then
+         EVC_Train.Demand := 60;
+      elsif V_Cur_KMH + 1 >= V_Perm_KMH then
+         EVC_Train.Demand := -80;
+      else
+         EVC_Train.Demand := 0;
+      end if;
+   end Auto_Drive_Onboard;
+
 end EVC_Driver;

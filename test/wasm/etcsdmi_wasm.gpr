@@ -1,6 +1,8 @@
---  WebAssembly build of the DMI (dmi.wasm) and of the EVC simulator
---  (evc.wasm) with GNAT-LLVM and the AdaWebPack wasm32 runtime; built
---  through build.sh in the container described by the Dockerfile.
+--  WebAssembly build of the DMI (dmi.wasm), of the EVC simulator
+--  (evc.wasm) and of the ETCS on-board of evc/ in the environment of the
+--  bench (onboard.wasm) with GNAT-LLVM and the AdaWebPack wasm32
+--  runtime; built through build.sh in the container described by the
+--  Dockerfile.
 --
 --  The hosted mains (ports/hosted) and the regression tools (test/src)
 --  stay native; everything else is shared with the native build
@@ -9,10 +11,11 @@
 project Etcsdmi_Wasm is
 
    for Target use "llvm";
-   for Source_Dirs use ("../../common", "../../dmi", "../../sim", ".");
+   for Source_Dirs use ("../../common", "../../dmi", "../../sim",
+                        "../../evc", "../../evc/language", ".");
    for Object_Dir use "obj";
    for Exec_Dir use ".";
-   for Main use ("dmi_main.adb", "evc_main.adb");
+   for Main use ("dmi_main.adb", "evc_main.adb", "onboard_main.adb");
 
    package Compiler is
       -- -gnatw.X: the runtime has No_Exception_Propagation, every
@@ -34,6 +37,7 @@ project Etcsdmi_Wasm is
    package Builder is
       for Executable ("dmi_main.adb") use "dmi.wasm";
       for Executable ("evc_main.adb") use "evc.wasm";
+      for Executable ("onboard_main.adb") use "onboard.wasm";
    end Builder;
 
 end Etcsdmi_Wasm;

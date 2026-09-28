@@ -10,4 +10,18 @@ package EVC_Driver is
    -- Set EVC_Train.Demand from the current supervision state
    procedure Auto_Drive;
 
+   -- The same driver on the ETCS on-board of evc/ (Sim_Onboard_Env),
+   -- from what its DMI shows (MSG_SPEED_STATE: the speed, the permitted
+   -- speed, the monitoring) and whether its train interface commands a
+   -- brake. With a permitted speed it drives as Auto_Drive does; without
+   -- one (Stand By without a movement authority, until the modes of
+   -- phase E4) it moves the train at walking pace, as a driver looking
+   -- for the first balise group would, and the on-board's standstill
+   -- supervision stops it after D_NVROLL; while a brake is commanded it
+   -- takes the traction off.
+   procedure Auto_Drive_Onboard (V_Cur_KMH       : Natural;
+                                 V_Perm_KMH      : Natural;
+                                 Monitoring      : Natural;
+                                 Brake_Commanded : Boolean);
+
 end EVC_Driver;

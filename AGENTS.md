@@ -38,7 +38,7 @@ ETCS on-board (EVC). The on-board is being built in phases, see
   hub setup. The wasm glue lives with the bench in `test/wasm/`; a Hercules
   port comes in plan phase E8.
 - **Testing & Tooling**:
-    - `test/wasm/`: browser test bench. The DMI and the EVC simulator are built to WebAssembly (`build.sh`, Docker + GNAT-LLVM/AdaWebPack) and run as two modules; `index.html` is the display, touch screen, desk and a fault-injecting wire; `smoke.js` cross-checks the wasm rendering against the native goldens.
+    - `test/wasm/`: browser test bench. The DMI and the EVC simulator are built to WebAssembly (`build.sh`, Docker + GNAT-LLVM/AdaWebPack) and run as two modules; `index.html` is the display, touch screen, desk and a fault-injecting wire; `smoke.js` cross-checks the wasm rendering against the native goldens. A third module, `onboard.wasm`, is the ETCS on-board of `evc/` in the bench environment of `sim/` (`Sim_Onboard_Env`); `onboard_smoke.js` checks that it sends the bytes of the native golden `test/golden/evc/bench_onboard.sha256`.
     - `test/tools/`: a Node.js hub ([server.js](test/tools/server.js)) and HTML client ([client.html](test/tools/client.html)) for the TCP setup; `frame2png.py` renders frame dumps.
     - `test/src/`: the golden-frame regression runner (`dmi_test`), the fuzzer and host-only helpers (`Display.Screen.Files`) — keep file I/O and GNAT-only packages out of `dmi/`, `evc/`, `common/` and `sim/`, which must build for the wasm32 light runtime and the bare-board runtimes (no tasking, no exception propagation, no `Interfaces.C`, no dynamic allocation).
 - **Utilities (`utils/`)**:
