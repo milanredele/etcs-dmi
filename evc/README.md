@@ -26,7 +26,8 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 | `EVC_Profiles` | Locations of the stored information as offsets from an origin; stores of elements with replacement (3.7.3.1), deletion in rear (A.3.1) and coverage (3.7.2.3); the lower envelope of elements, proved sorted and never above any element (the MRSP of 3.13.7, the gradient profile). |
 | `EVC_Train_Data` | The Train Data the stored information and the supervision use, with a documented default train (entry from the DMI: phase E4). |
 | `EVC_National_Values` | Packet 3 in on-board units, applicable now or at D_VALIDNV, the countries of 3.18.2, the defaults of A.3.2. |
-| `EVC_Track_Description` | SSP with the train categories, gradients, ASP, TSR and their revocation, default gradient for TSR, level crossings, adhesion, route suitability (3.7.3, 3.11, 3.12.2, 3.12.5). |
+| `EVC_Track_Description` | SSP with the train categories, gradients, ASP, the sections of the speed restriction to ensure a permitted braking distance (packet 52), TSR and their revocation, default gradient for TSR, level crossings, adhesion, route suitability (3.7.3, 3.11, 3.12.2, 3.12.5). |
+| `EVC_PBD` | The speed restriction to ensure a permitted braking distance of 3.11.11: V_PBD of a section from the braking model and the curves of the supervision (EVC_Braking, EVC_Curves, EVC_Limits), found by bisection in the integers and never above the exact one; the inputs whose change has every section computed again (3.11.11.3). |
 | `EVC_Movement_Authority` | The level 1 MA: sections, danger point, overlap, EOA/SvL and release speed (3.8.3, 3.8.4.5), the section, End Section, overlap and LOA timers and their effects (3.8.4), the signalling related speed restriction (3.11.6), the mode profile (3.12.4). |
 | `EVC_Track_Conditions` | Track conditions of packets 68, 39 and 67, their indication (5.18) and planning orders, the areas of lost braking (3.13.2.3.4). |
 | `EVC_Stored_Information` | The third step of the cycle: the group messages of the cycle, the deletions of A.3.4, the `Snapshot_T` (MRSP with its TSR flags, gradients with their coverage and the default gradient for TSR, MA, braking inhibitions and powerless sections, adhesion areas, temporary EOA and SvL, `Extra`: the configuration of the on-board, the use of A_NVMAXREDADHn, the trip margin), the planning and the track conditions for the DMI, the JRU records. |
@@ -84,8 +85,11 @@ into offsets from an origin that relocation moves (3.6.4.2), stores it
 with the replacement rules of 3.7.3, runs the timers of the MA of level 1
 (3.8.4) and the deletions they ask (A.3.4), and builds the `Snapshot_T`:
 the MRSP of 3.13.7 (proved sorted and never above any of its sources)
-with the segments due to a TSR, the gradient profile with its coverage
-and the default gradient for TSR, the MA with its EOA, SvL (never before
+with the segments due to a TSR and the speed restrictions to ensure a
+permitted braking distance (3.11.11, computed on reception and again
+when the Train Data, the national values or the status of the special
+brakes change), the gradient profile with its coverage and the default
+gradient for TSR, the MA with its EOA, SvL (never before
 the EOA) and release speed, the temporary EOA and SvL of a mode profile
 or a level crossing, the braking inhibition areas and powerless sections,
 the adhesion areas, national values, Train Data and the configuration of

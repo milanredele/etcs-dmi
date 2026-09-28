@@ -304,7 +304,8 @@ is
    --  signalling related speed restriction, 9 track conditions, 10
    --  change of traction system, 11 big metal masses, 12 route
    --  suitability, 13 mode profile, 14 level crossing, 15 adhesion, 16
-   --  a balise group. Byte 3 the change: 1 stored (byte 4: the number of
+   --  a balise group, 17 speed restriction to ensure a permitted braking
+   --  distance. Byte 3 the change: 1 stored (byte 4: the number of
    --  the group message mod 256; a TSR its NID_TSR, an LX its NID_LX,
    --  V_MAIN its value), 2 deleted or revoked (byte 4: the NID_TSR), 3
    --  rejected (an MA its SSP and gradients do not cover, 3.7.2.3), 4
@@ -312,7 +313,10 @@ is
    --  overlap time-out, 7 LOA speed time-out, 8 MA shortened, 9 national
    --  values applicable, 10 national values back to the defaults, 11
    --  trip order (V_MAIN 0), 12 the information of a group could not be
-   --  kept (no origin left), 13 TSRs deleted with the orientation.
+   --  kept (no origin left), 13 TSRs deleted with the orientation, 14
+   --  the speed restrictions to ensure a permitted braking distance
+   --  computed again, an input changed (3.11.11.3; byte 4: the number of
+   --  sections).
    ---------------------------------------------------------------------
 
    JRU_Stored_Information : constant := 32;
