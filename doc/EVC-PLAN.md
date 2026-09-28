@@ -551,9 +551,31 @@ never need it) or smaller bounds are the way to trim it.
 follow-up. The partial rows wait on E4 (modes, trip, data entry: 13
 rows), E5 (level 2 parts and the MA request: 9), E6 and E7 (6).
 
+**Follow-up `e3/pbd`** (merged): the speed restriction to ensure the
+permitted braking distance (3.11.11, packet 52) as a store in
+`EVC_Track_Description`, replaced and deleted per 3.7.3.1 d), 3.7.3.1.4
+and 3.7.3.2 a), entering the MRSP and the planning; `EVC_PBD` computes
+V_PBD with the braking model of E3 (single section gradient, no trackside
+adhesion or inhibition, d_offset from the antenna and the 1 s of
+SUBSET-041 5.2.1.1, a 15-step bisection, rounded down to 5 km/h; against
+the floating point reference none of 720 speeds is above it, 472 of 480
+equal it, the rest one step below), recomputed when train data, national
+values, brake status, slippery rail or antenna change (JRU 32, change 14).
+Gradient gaps left by relocation towards a less accurate reference
+(3.6.4.2.5 c) are covered track (3.11.12.2), so the snapshot takes the
+lower neighbouring gradient in a gap, never above what any curve of
+Table 2a reads there. Proof 7458 checks, 0 unproved, 17 min; `evc_test`
+10223. Matrix E3: 413 `done`, 28 `partial`, 56 `deferred`.
+
 **Open points**
-- 3.11.11 and packet 52 (permitted braking distance): the follow-up
-  `e3/pbd`, with the gradient gaps between relocated elements.
+- The same relocation gap exists between SSP elements, where the MRSP
+  falls back to the ceiling: to close in E4 with the same rule.
+- Conservative choices to review: T_bs1 = T_bs in the PBD computation
+  where 3.13.9.3.3.3 names T_bs_reduced; the ±1 km/h tolerance of 3.11.11
+  is not used; the driver's slippery rail is kept as an input.
+- Cost on target: a full PBD recalculation (96 sections) is a few 10⁴ arc
+  steps, and `EVC_PBD` builds a 14 kB profile on the stack: to time and
+  measure in E8.
 - Until E4 the on-board stays in Stand By: moving a train without an MA
   triggers the standstill supervision, correctly.
 - `Snapshot_T.Extra`: the extra train data, T_MAR and the SR distance
