@@ -1,6 +1,7 @@
-# Builds the DMI and the EVC simulator to WebAssembly, cross-checks the
-# rendering against the golden frames and publishes the browser test
-# bench (test/wasm) on GitHub Pages.
+# Builds the DMI, the EVC simulator and the ETCS on-board to
+# WebAssembly, cross-checks the rendering against the golden frames and
+# the on-board's output against the native one, and publishes the
+# browser test bench (test/wasm) on GitHub Pages.
 #
 # One-time repository setup: Settings > Pages > Source: "GitHub Actions".
 # Deployments from a branch other than the default one also need that
@@ -38,11 +39,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build dmi.wasm and evc.wasm
+      - name: Build dmi.wasm, evc.wasm and onboard.wasm
         run: test/wasm/build.sh
 
       - name: Cross-check the wasm rendering against the golden frames
         run: node test/wasm/smoke.js
+
+      - name: Cross-check the wasm on-board against its native golden
+        run: node test/wasm/onboard_smoke.js
 
       - name: Fuzz the wasm DMI (no message, touch or tick may trap it)
         run: node test/wasm/fuzz.js 60000 1
