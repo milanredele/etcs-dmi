@@ -43,4 +43,32 @@ is
       Onboard.Radio_Wait,
       Onboard.Answer);
 
+   ------------------
+   -- Status_Frame --
+   ------------------
+
+   function Status_Frame (Geo : Unsigned_32; Seconds : Unsigned_64)
+     return Status_Frame_T
+   is
+     (MSG_STATUS,
+      Status_Length, 0, 0, 0,         -- length u32
+      0,                              -- brake: none
+      0,                              -- radio: no connection
+      0,                              -- adhesion
+      0,                              -- bmm
+      0,                              -- reversing
+      0,                              -- sm_direction
+      16#FF#, 16#FF#,                 -- set_speed: none
+      16#FF#, 16#FF#,                 -- tti: none
+      14,                             -- t_disp_tti
+      0,                              -- tunnel: unknown
+      0, 0, 0, 0,                     -- tunnel_dist
+      Byte (Geo and 16#FF#),          -- geo_pos u32
+      Byte (Shift_Right (Geo, 8) and 16#FF#),
+      Byte (Shift_Right (Geo, 16) and 16#FF#),
+      Byte (Shift_Right (Geo, 24)),
+      Byte (Seconds / 3600 mod 24),   -- hour
+      Byte (Seconds / 60 mod 60),     -- minute
+      Byte (Seconds mod 60));         -- second
+
 end EVC_DMI_Port;

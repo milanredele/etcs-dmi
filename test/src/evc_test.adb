@@ -286,37 +286,41 @@ procedure EVC_Test is
              & Payload;
    end Frame;
 
-   --  An odometer sample (EVC_Ports)
-   function Odometer_Payload
-     (D_Est, D_Min, D_Max : Integer_32;
-      V_Est, V_Min, V_Max : Unsigned_16;
-      Direction           : Byte) return Byte_Array
-   is
-      function U32 (V : Integer_32) return Byte_Array is
-         U : constant Unsigned_64 :=
-           Unsigned_64 (Unsigned_32'Mod (Integer_64 (V)));
-      begin
-         return (EVC_Bytes.Byte_Of (U, 0), EVC_Bytes.Byte_Of (U, 1),
-                 EVC_Bytes.Byte_Of (U, 2), EVC_Bytes.Byte_Of (U, 3));
-      end U32;
-      function U16 (V : Unsigned_16) return Byte_Array is
-        (Byte (V mod 256), Byte (V / 256));
+   --  A 32 bit field, little endian, two's complement
+   function U32 (V : Integer_64) return Byte_Array is
+      U : constant Unsigned_64 := Unsigned_64 (Unsigned_32'Mod (V));
    begin
-      return U32 (D_Est) & U32 (D_Min) & U32 (D_Max)
-             & U16 (V_Est) & U16 (V_Min) & U16 (V_Max)
-             & Byte_Array'(1 => Direction);
-   end Odometer_Payload;
+      return (EVC_Bytes.Byte_Of (U, 0), EVC_Bytes.Byte_Of (U, 1),
+              EVC_Bytes.Byte_Of (U, 2), EVC_Bytes.Byte_Of (U, 3));
+   end U32;
 
-   --  A telegram of N_Bits bits, with Extra bytes more or fewer than its
-   --  shape asks for
+   function U16 (V : Unsigned_16) return Byte_Array is
+     (Byte (V mod 256), Byte (V / 256));
+
+   --  An odometer sample (EVC_Ports): the counters d_est, over, under,
+   --  the speeds, the movement, the cold movement detection
+   function Odometer_Payload
+     (D_Est               : Integer_64;
+      Over, Under         : Integer_64;
+      V_Est, V_Min, V_Max : Unsigned_16;
+      Movement            : Byte;
+      Cold                : Byte := 0;
+      Cold_Distance       : Unsigned_16 := 0) return Byte_Array
+   is (U32 (D_Est) & U32 (Over) & U32 (Under)
+       & U16 (V_Est) & U16 (V_Min) & U16 (V_Max)
+       & Byte_Array'(Movement, Cold) & U16 (Cold_Distance));
+
+   --  A telegram of N_Bits bits behind a detection stamp, with Extra
+   --  bytes more or fewer than its shape asks for
    function BTM_Payload (N_Bits : Natural; Extra : Integer := 0)
      return Byte_Array
    is
       Length : constant Natural := (N_Bits + 7) / 8 + Extra;
-      Result : Byte_Array (1 .. 2 + Length) := (others => 16#A5#);
+      Result : Byte_Array (1 .. 6 + Length) := (others => 16#A5#);
    begin
-      Result (1) := Byte (N_Bits mod 256);
-      Result (2) := Byte (N_Bits / 256 mod 256);
+      Result (1 .. 4) := (0, 0, 0, 0);
+      Result (5) := Byte (N_Bits mod 256);
+      Result (6) := Byte (N_Bits / 256 mod 256);
       return Result;
    end BTM_Payload;
 
@@ -353,6 +357,7 @@ procedure EVC_Test is
    begin
       Check (Unsigned_8 (MSG_MODE_LEVEL) = EVC_DMI_Port.MSG_MODE_LEVEL
              and then Unsigned_8 (MSG_ONBOARD) = EVC_DMI_Port.MSG_ONBOARD
+             and then Unsigned_8 (MSG_STATUS) = EVC_DMI_Port.MSG_STATUS
              and then Unsigned_8 (MSG_DRIVER_ACTION)
                         = EVC_DMI_Port.MSG_DRIVER_ACTION
              and then Unsigned_8 (MSG_DRIVER_DATA)
@@ -360,6 +365,7 @@ procedure EVC_Test is
              "message types equal DMI_Protocol");
       Check (Mode_Level_Length = EVC_DMI_Port.Mode_Level_Length
              and then Onboard_Length = EVC_DMI_Port.Onboard_Length
+             and then Status_Length = EVC_DMI_Port.Status_Length
              and then Driver_Action_Length
                         = EVC_DMI_Port.Driver_Action_Length
              and then Driver_Ack_Length = EVC_DMI_Port.Driver_Ack_Length
@@ -436,7 +442,7 @@ procedure EVC_Test is
       end Bad;
 
       Odo_Ok : constant Byte_Array :=
-        Odometer_Payload (100, 90, 110, 500, 400, 600, 1);
+        Odometer_Payload (100, 0, 0, 500, 400, 600, 1);
    begin
       EVC_Core.Initialise;
       EVC_Core.Tick (100);
@@ -454,25 +460,29 @@ procedure EVC_Test is
       Bad (BTM, BTM_Payload (100, 1), "one byte too many");
       Bad (BTM, BTM_Payload (100, -1), "one byte short");
       Bad (BTM, (1 => 50), "one byte");
+      Bad (BTM, (0, 0, 0, 0), "a stamp without a telegram");
+      Bad (BTM, BTM_Payload (100) (1 .. 5), "a stamp and one byte");
       --  RTM
       Bad (RTM, RTM_Payload (0, 2), "2 bytes");
       Bad (RTM, RTM_Payload (10, 9), "L_MESSAGE 10, 9 bytes");
       Bad (RTM, RTM_Payload (9, 10), "L_MESSAGE 9, 10 bytes");
       --  Odometer
-      Bad (Odometer, Odo_Ok (1 .. 18), "18 bytes");
-      Bad (Odometer, Odo_Ok & Byte_Array'(1 => 0), "20 bytes");
-      Bad (Odometer, Odometer_Payload (100, 101, 110, 500, 400, 600, 1),
-           "d_min above d_est");
-      Bad (Odometer, Odometer_Payload (100, 90, 99, 500, 400, 600, 1),
-           "d_max below d_est");
-      Bad (Odometer, Odometer_Payload (-5, 0, 10, 500, 400, 600, 1),
-           "d_min above a negative d_est");
-      Bad (Odometer, Odometer_Payload (100, 90, 110, 700, 400, 600, 1),
+      Bad (Odometer, Odo_Ok (1 .. 21), "21 bytes");
+      Bad (Odometer, Odo_Ok & Byte_Array'(1 => 0), "23 bytes");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 500, 400, 600, 0),
+           "standstill with a speed");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 0, 0, 1, 0),
+           "standstill with a max speed");
+      Bad (Odometer, Odometer_Payload (-5, 0, 0, 500, 400, 600, 1, 0, 5),
+           "no cold movement information but a distance");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 700, 400, 600, 1),
            "v_est above v_max");
-      Bad (Odometer, Odometer_Payload (100, 90, 110, 300, 400, 600, 1),
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 300, 400, 600, 1),
            "v_est below v_min");
-      Bad (Odometer, Odometer_Payload (100, 90, 110, 500, 400, 600, 3),
-           "direction 3");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 500, 400, 600, 4),
+           "movement 4");
+      Bad (Odometer, Odometer_Payload (100, 0, 0, 500, 400, 600, 1, 2),
+           "cold 2");
       --  TIU
       Bad (TIU, (1 => 1), "one byte");
       Bad (TIU, (0, 1), "signal 0");
@@ -517,7 +527,7 @@ procedure EVC_Test is
    --  Valid inputs are accepted; E0 uses the odometer (standstill), the
    --  TIU signals of MSG_ONBOARD and the isolation, nothing else
    procedure Scenario_Valid_Inputs is
-      Shifted : Byte_Array (1000 .. 1008);
+      Shifted : Byte_Array (1000 .. 1012);
    begin
       EVC_Core.Initialise;
       Reset_Capture;
@@ -527,8 +537,8 @@ procedure EVC_Test is
       Input (BTM, Shifted);                 -- index not starting at 1
       Input (RTM, RTM_Payload (3, 3));
       Input (RTM, RTM_Payload (1023, 1023));
-      Input (Odometer, Odometer_Payload (-200, -210, -190, 0, 0, 0, 0));
-      Input (Odometer, Odometer_Payload (5000, 4990, 5010, 1000, 990, 1010,
+      Input (Odometer, Odometer_Payload (-200, 0, 0, 0, 0, 0, 0));
+      Input (Odometer, Odometer_Payload (5000, 10, 10, 1000, 990, 1010,
                                          1));
       Input (TIU, (5, 1));                  -- non leading permitted
       Input (TIU, (4, 1));                  -- passive shunting permitted
@@ -555,7 +565,7 @@ procedure EVC_Test is
       Check (Onboard_Field (4) = 4,
              "valid: MSG_ONBOARD train = non leading only, got"
              & Img (Onboard_Field (4)));
-      Input (Odometer, Odometer_Payload (5000, 4990, 5010, 0, 0, 0, 1));
+      Input (Odometer, Odometer_Payload (5000, 10, 10, 0, 0, 0, 0));
       EVC_Core.Tick (100);
       Take;
       Check (Onboard_Field (4) = 7,
@@ -923,15 +933,19 @@ procedure EVC_Test is
       end loop;
    end Set_Bits;
 
-   --  The BTM payload of a telegram of Bits bits (EVC_Ports)
-   function BTM_Of (Data : Byte_Array; Bits : Natural) return Byte_Array is
+   --  The BTM payload of a telegram of Bits bits (EVC_Ports), its
+   --  balise detected at the odometer reading Stamp
+   function BTM_Of (Data  : Byte_Array;
+                    Bits  : Natural;
+                    Stamp : Integer_64 := 0) return Byte_Array
+   is
       Length : constant Natural := (Bits + 7) / 8;
       Result : Byte_Array (1 .. 2 + Length) := (others => 0);
    begin
       Result (1) := Byte (Bits mod 256);
       Result (2) := Byte (Bits / 256);
       Result (3 .. 2 + Length) := Data (Data'First .. Data'First + Length - 1);
-      return Result;
+      return U32 (Stamp) & Result;
    end BTM_Of;
 
    --  A telegram header: version 3.0, first balise of a group of two

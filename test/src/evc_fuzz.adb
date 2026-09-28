@@ -29,6 +29,7 @@ with ETCS_Language_Random;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Telegram;
+with ETCS_Track_Packets.P5;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_DMI_Port;
@@ -106,6 +107,9 @@ procedure EVC_Fuzz is
 
    W : ETCS_Bits.Writer (ETCS_Bits.Max_Bytes);
 
+   --  the over and under counters of the odometer samples
+   Odo_Over, Odo_Under : Unsigned_32 := 0;
+
    --  A random packet of the direction (not 0 or 255 of the track)
    function Random_Kind (Direction : Cat.Direction_T)
      return Cat.Known_Kind_T
@@ -153,26 +157,72 @@ procedure EVC_Fuzz is
       end if;
    end Damage;
 
-   --  A telegram in the BTM shape: n_bits, then the bits
+   --  The detection stamp of a balise: near the last odometer reading
+   --  sent, else anywhere
+   Last_D_Est : Unsigned_32 := 0;
+
+   procedure Add_Stamp is
+   begin
+      Add_U32 (if Chance (80)
+               then Last_D_Est - 500 + Unsigned_32 (Pick (0, 1_000))
+               else Next);
+   end Add_Stamp;
+
+   --  A telegram in the BTM shape: stamp, n_bits, then the bits
    procedure Telegram is
+      --  a few groups, so that linking meets the groups it announces
+      Total : constant Natural := Pick (0, 7);
       H : constant ETCS_Telegram.Header_T :=
         (Q_UPDOWN  => (if Chance (95) then 1 else 0),
          M_VERSION => (if Chance (90) then 48
                        else ETCS_Variables.M_VERSION_T (Pick (0, 127))),
          Q_MEDIA   => 0,
-         N_PIG     => 0,
-         N_TOTAL   => ETCS_Variables.N_TOTAL_T (Pick (0, 7)),
-         M_DUP     => 0,
+         N_PIG     => ETCS_Variables.N_PIG_T (Pick (0, Total)),
+         N_TOTAL   => ETCS_Variables.N_TOTAL_T (Total),
+         M_DUP     => ETCS_Variables.M_DUP_T (if Chance (80) then 0
+                                               else Pick (0, 2)),
          M_MCOUNT  => ETCS_Variables.M_MCOUNT_T (Pick (0, 255)),
-         NID_C     => ETCS_Variables.NID_C_T (Pick (0, 1023)),
-         NID_BG    => ETCS_Variables.NID_BG_T (Pick (0, 16383)),
+         NID_C     => ETCS_Variables.NID_C_T (if Chance (70) then 1
+                                               else Pick (0, 1023)),
+         NID_BG    => ETCS_Variables.NID_BG_T (if Chance (70) then Pick (0, 7)
+                                                else Pick (0, 16383)),
          Q_LINK    => ETCS_Variables.Q_LINK_T (Pick (0, 1)));
       OK   : Boolean;
       Bits : Natural;
    begin
       ETCS_Bits.Clear (W);
       ETCS_Telegram.Write_Header (W, H);
-      Random_Packets (Cat.Track_To_Train, Pick (0, 4));
+      if Chance (30) then
+         --  linking to the few groups, along a short chain
+         declare
+            L : ETCS_Track_Packets.P5.Packet_T;
+         begin
+            L.Q_DIR := ETCS_Variables.Q_DIR_T (Pick (0, 2));
+            L.Q_SCALE := ETCS_Variables.Q_SCALE_T (Pick (0, 2));
+            L.D_LINK := ETCS_Variables.D_LINK_T (Pick (0, 300));
+            L.NID_BG := ETCS_Variables.NID_BG_T
+              (if Chance (90) then Pick (0, 7) else 16383);
+            L.Q_LINKORIENTATION := ETCS_Variables.Q_LINKORIENTATION_T
+              (Pick (0, 1));
+            L.Q_LINKREACTION := ETCS_Variables.Q_LINKREACTION_T (Pick (0, 2));
+            L.Q_LOCACC := ETCS_Variables.Q_LOCACC_T (Pick (0, 63));
+            L.N_ITER := ETCS_Variables.N_ITER_T (Pick (0, 4));
+            for I in 1 .. Natural (L.N_ITER) loop
+               L.D_LINK_List (I).D_LINK :=
+                 ETCS_Variables.D_LINK_T (Pick (0, 300));
+               L.D_LINK_List (I).NID_BG :=
+                 ETCS_Variables.NID_BG_T (Pick (0, 7));
+               L.D_LINK_List (I).Q_LINKORIENTATION :=
+                 ETCS_Variables.Q_LINKORIENTATION_T (Pick (0, 1));
+               L.D_LINK_List (I).Q_LINKREACTION :=
+                 ETCS_Variables.Q_LINKREACTION_T (Pick (0, 2));
+               L.D_LINK_List (I).Q_LOCACC :=
+                 ETCS_Variables.Q_LOCACC_T (Pick (0, 63));
+            end loop;
+            ETCS_Track_Packets.P5.Encode (L, W, OK);
+         end;
+      end if;
+      Random_Packets (Cat.Track_To_Train, Pick (0, 3));
       ETCS_Telegram.Finish
         (W, (if Chance (50) then ETCS_Telegram.Long_Bits
              else ETCS_Telegram.Short_Bits), OK);
@@ -188,12 +238,13 @@ procedure EVC_Fuzz is
       declare
          Data : constant Byte_Array := ETCS_Bits.Data (W);
       begin
+         Add_Stamp;
          Add_U16 (Bits);
          for I in 1 .. (Bits + 7) / 8 loop
             Add (Natural (Data (I)));
          end loop;
       end;
-      Damage (16);
+      Damage (48);
    end Telegram;
 
    --  A track to train radio message of the list; Last = 0 for a train
@@ -234,7 +285,8 @@ procedure EVC_Fuzz is
    --  The documented length of an input on Port (0 where none)
    function Documented_Length (Port : Port_T) return Natural is
      (case Port is
-         when BTM      => 2 + (Pick (BTM_Min_Bits, BTM_Max_Bits) + 7) / 8,
+         when BTM      => BTM_Stamp_Length + 2
+                          + (Pick (BTM_Min_Bits, BTM_Max_Bits) + 7) / 8,
          when RTM      => Pick (RTM_Min_Length, 64),
          when Odometer => Odometer_Length,
          when TIU      => TIU_Length,
@@ -256,6 +308,7 @@ procedure EVC_Fuzz is
                  (if Chance (90) then Pick (BTM_Min_Bits, BTM_Max_Bits)
                   else Pick (0, 65_535));
             begin
+               Add_Stamp;
                Add_U16 (Bits);
                Random_Bytes (Natural'Min ((Bits + 7) / 8, 1000));
             end;
@@ -275,22 +328,49 @@ procedure EVC_Fuzz is
                Random_Bytes (Length - 3);
             end;
          when Odometer =>
+            --  mostly a train that moves on from the last sample, its
+            --  over and under counters growing (now and then going back,
+            --  or jumping anywhere)
             declare
-               D : constant Unsigned_32 := Next;
-               V : constant Natural := Pick (0, 65_535);
+               Step : constant Unsigned_32 := Unsigned_32 (Pick (0, 5_000));
+               D    : constant Unsigned_32 :=
+                 (if Chance (85)
+                  then (if Chance (70) then Last_D_Est + Step
+                        else Last_D_Est - Step)
+                  else Next);
+               V    : constant Natural :=
+                 (if Chance (20) then 0 else Pick (0, 65_535));
+               Move : constant Natural :=
+                 (if V = 0 and then Chance (80) then 0
+                  elsif Chance (90) then Pick (1, 3)
+                  else Pick (0, 255));
             begin
+               Last_D_Est := D;
+               Odo_Over := (if Chance (95)
+                            then Odo_Over + Step / Unsigned_32 (Pick (5, 40))
+                            else Next);
+               Odo_Under := (if Chance (95)
+                             then Odo_Under + Step / Unsigned_32 (Pick (5, 40))
+                             else Next);
                Add_U32 (D);
-               Add_U32 (if Chance (80) then D - Unsigned_32 (Pick (0, 99))
-                        else Next);
-               Add_U32 (if Chance (80) then D + Unsigned_32 (Pick (0, 99))
-                        else Next);
+               Add_U32 (Odo_Over);
+               Add_U32 (Odo_Under);
                Add_U16 (V);
                Add_U16 (if Chance (80) then V / 2 else Pick (0, 65_535));
                Add_U16 (if Chance (80) then V else Pick (0, 65_535));
-               Add (if Chance (90) then Pick (0, 2) else Pick (0, 255));
+               Add (Move);
+               if Chance (80) then
+                  Add (Pick (0, 1));
+                  Add_U16 (Pick (0, 400));
+               else
+                  Add (0);
+                  Add_U16 (0);
+               end if;
             end;
          when TIU =>
-            Add (if Chance (90) then Pick (1, 5) else Pick (0, 255));
+            --  the cab status signals (1, 2) more often than the others
+            Add (if Chance (50) then Pick (1, 2)
+                 elsif Chance (80) then Pick (1, 5) else Pick (0, 255));
             Add (if Chance (90) then Pick (0, 1) else Pick (0, 255));
          when DMI =>
             declare
