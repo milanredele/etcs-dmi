@@ -192,10 +192,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.4.2.5 c) 1st bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
 3.6.4.2.5 c) 2nd bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
 3.6.4.2.5 c) 3rd bullet,3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
-3.6.4.2.6,3,x,,,,,E2,deferred,E3 (recomposition of SSP and gradient)
-3.6.4.2.6 1st bullet,3,x,,,,,E2,deferred,E3 (recomposition of SSP and gradient)
-3.6.4.2.6 2nd bullet,3,x,,,,,E2,deferred,E3 (recomposition of SSP and gradient)
-3.6.4.2.6 3rd bullet,3,x,,,,,E2,deferred,E3 (recomposition of SSP and gradient)
+3.6.4.2.6,3,x,,,,,E2,done,"taken by E3 profiles: the SSP and the gradients as elements from their ""max"" to their ""min"" items, EVC_Profiles.Envelope keeps the lowest where a relocation made them overlap and sorts the steps (proved postcondition); evc_test Scenario_SSP_Replacement"
+3.6.4.2.6 1st bullet,3,x,,,,,E2,done,"taken by E3 profiles: the SSP and the gradients as elements from their ""max"" to their ""min"" items, EVC_Profiles.Envelope keeps the lowest where a relocation made them overlap and sorts the steps (proved postcondition); evc_test Scenario_SSP_Replacement"
+3.6.4.2.6 2nd bullet,3,x,,,,,E2,done,"taken by E3 profiles: the SSP and the gradients as elements from their ""max"" to their ""min"" items, EVC_Profiles.Envelope keeps the lowest where a relocation made them overlap and sorts the steps (proved postcondition); evc_test Scenario_SSP_Replacement"
+3.6.4.2.6 3rd bullet,3,x,,,,,E2,done,"taken by E3 profiles: the SSP and the gradients as elements from their ""max"" to their ""min"" items, EVC_Profiles.Envelope keeps the lowest where a relocation made them overlap and sorts the steps (proved postcondition); evc_test Scenario_SSP_Replacement"
 3.6.5.1.2,3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.2 a),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.2 b),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
@@ -273,38 +273,38 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.8.6.2,3,x,,,,,E2,partial,"EVC_Odometry.Impaired, JRU event 7 (evc_test Scenario_Odometer_Accuracy); informing the driver is E4"
 3.6.8.7,3,x,,,,,E2,partial,"EVC_Odometry.Safety_Exceeded, latched, JRU event 7 (evc_test Scenario_Odometer_Accuracy); System Failure is E4"
 3.6.8.8,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
-3.7.2.3,3,x,,,,,E3,todo,
-3.7.3.1,3,x,,,,,E3,todo,
-3.7.3.1 a),3,x,,,,,E3,todo,
-3.7.3.1 b),3,x,,,,,E3,todo,
-3.7.3.1 c),3,x,,,,,E3,todo,
-3.7.3.1 d),3,x,,,,,E3,todo,
-3.7.3.1 e),3,x,,,,,E3,todo,
-3.7.3.1 f),3,x,,,,,E3,todo,
-3.7.3.1 g),3,x,,,,,E3,todo,
-3.7.3.1 h),3,x,,,,,E3,todo,
-3.7.3.1 i),3,x,,,,,E3,todo,
-3.7.3.1 j),3,x,,,,,E3,todo,
-3.7.3.1 k),3,x,,,,,E3,todo,
-3.7.3.1 l),3,x,,,,,E3,todo,
-3.7.3.1 m),3,x,,,,,E3,todo,
-3.7.3.1 n),3,x,,,,,E3,todo,
-3.7.3.1 o),3,x,,,,,E3,todo,
-3.7.3.1 p),3,x,,,,,E3,todo,
-3.7.3.1.1,3,x,,,,,E3,todo,
-3.7.3.1.2,3,x,,,,,E3,todo,
-3.7.3.1.3,3,x,,,,,E3,todo,
-3.7.3.1.4,3,x,,,,,E3,todo,
-3.7.3.2,3,x,,,,,E3,todo,
-3.7.3.2 a),3,x,,,,,E3,todo,
-3.7.3.2 b),3,x,,,,,E3,todo,
-3.7.3.2 c),3,x,,,,,E3,todo,
-3.7.3.2 d),3,x,,,,,E3,todo,
-3.7.3.2 e),3,x,,,,,E3,todo,
-3.7.3.3,3,x,,,,,E3,todo,
-3.7.3.4,3,x,,,,,E3,todo,
-3.7.3.4 a),3,x,,,,,E3,todo,
-3.7.3.4 b),3,x,,,,,E3,todo,
+3.7.2.3,3,x,,,,,E3,done,EVC_Stored_Information.Take_Packet (EVC_Track_Description.Covered from the estimated front end to the SvL); evc_test Scenario_MA
+3.7.3.1,3,x,,,,,E3,partial,"the stores of EVC_Track_Description, EVC_Track_Conditions (Cut_Beyond of EVC_Profiles); d) k) m) n) o) p): see their rows"
+3.7.3.1 a),3,x,,,,,E3,done,EVC_Track_Description.Take_SSP; evc_test Scenario_SSP_Replacement
+3.7.3.1 b),3,x,,,,,E3,done,EVC_Track_Description.Take_Gradients; evc_test Scenario_MA_Shortening
+3.7.3.1 c),3,x,,,,,E3,done,"EVC_Track_Description.Take_ASP (Cut_Beyond from the first element, as a)); evc_test Scenario_Other_Profiles"
+3.7.3.1 d),3,x,,,,,E3,deferred,E3 e3/supervision: packet 52 and the PBD speed restriction of 3.11.11 need the braking curves (after the merge)
+3.7.3.1 e),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Traction (all replaced); evc_test Scenario_Track_Conditions
+3.7.3.1 f),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Big_Metal_Masses; evc_test Scenario_Track_Conditions
+3.7.3.1 g),3,x,,,,,E3,done,"EVC_Track_Conditions.Take_Conditions; evc_test Scenario_Track_Conditions, Scenario_Other_Profiles"
+3.7.3.1 h),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (per type); evc_test Scenario_Other_Profiles
+3.7.3.1 i),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (per type); evc_test Scenario_Other_Profiles
+3.7.3.1 j),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (per type); evc_test Scenario_Other_Profiles
+3.7.3.1 k),3,x,,,,,E3,deferred,"E6 (reversing area, packet 138, 3.15.4)"
+3.7.3.1 l),3,x,,,,,E3,done,EVC_Track_Description.Take_Adhesion; evc_test Scenario_Other_Profiles
+3.7.3.1 m),3,x,,,,,E3,partial,EVC_Position (E2) replaces all the stored linking with the new one; keeping the part in rear of its reference group is E6
+3.7.3.1 n),3,x,,,,,E3,deferred,E7 (infill)
+3.7.3.1 o),3,x,,,,,E3,deferred,"E4 (station platforms, packet 69, 5.20.8)"
+3.7.3.1 p),3,x,,,,,E3,deferred,"E4 (allowed current consumption, packet 40, 5.20.7)"
+3.7.3.1.1,3,x,,,,,E3,done,"Table 2a items: the replaced element ends at the ""min"" item of the new start, the new one starts at its ""max"" item, EVC_Profiles.Envelope keeps the lowest in between (proved postcondition); evc_test Scenario_SSP_Replacement"
+3.7.3.1.2,3,x,,,,,E3,done,"as 3.7.3.1.1, the gradient envelope (EVC_Stored_Information.Build)"
+3.7.3.1.3,3,x,,,,,E3,done,as 3.7.3.1.1 for the ASP elements
+3.7.3.1.4,3,x,,,,,E3,deferred,E3 e3/supervision: with 3.11.11 (PBD)
+3.7.3.2,3,x,,,,,E3,partial,"b) c) d) done; a) with 3.11.11 (e3/supervision), e) E4"
+3.7.3.2 a),3,x,,,,,E3,deferred,E3 e3/supervision: with 3.11.11 (PBD)
+3.7.3.2 b),3,x,,,,,E3,done,EVC_Track_Description.Take_ASP (Q_TRACKINIT); evc_test Scenario_Other_Profiles
+3.7.3.2 c),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Conditions (Q_TRACKINIT); evc_test Scenario_Other_Profiles
+3.7.3.2 d),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (Q_TRACKINIT); evc_test Scenario_Other_Profiles
+3.7.3.2 e),3,x,,,,,E3,deferred,"E4 (station platforms, 5.20.8)"
+3.7.3.3,3,x,,,,,E3,partial,"A.3.4.1.2 b) c) d) e) n) applied (EVC_Movement_Authority.Outcome_T, EVC_Stored_Information.Apply; evc_test Scenario_MA_Shortening, Scenario_Section_Timer, Scenario_End_Section_Timer); a) f) E5, g) to m) and o) and the table A.3.4 itself E4"
+3.7.3.4,3,x,,,,,E3,deferred,E4 (Supervised Manoeuvre)
+3.7.3.4 a),3,x,,,,,E3,deferred,E4 (Supervised Manoeuvre)
+3.7.3.4 b),3,x,,,,,E3,deferred,E4 (Supervised Manoeuvre)
 3.8.2.1.4,3,x,,,,,E5,todo,
 3.8.2.1.5,3,x,,,,,E5,todo,
 3.8.2.1.6,3,x,,,,,E5,todo,
@@ -322,45 +322,45 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.2.4.3,3,x,,,,,E5,todo,
 3.8.2.5.1,3,x,,,,,E5,todo,
 3.8.2.5.2,3,x,,,,,E5,todo,
-3.8.4.1.1,3,x,,,,,E3,todo,
-3.8.4.1.2,3,x,,,,,E3,todo,
-3.8.4.1.2 a),3,x,,,,,E3,todo,
-3.8.4.1.2 b),3,x,,,,,E3,todo,
-3.8.4.1.3,3,x,,,,,E3,todo,
-3.8.4.1.4,3,x,,,,,E3,todo,
-3.8.4.2.1,3,x,,,,,E3,todo,
-3.8.4.2.1 a),3,x,,,,,E3,todo,
-3.8.4.2.1 b),3,x,,,,,E3,todo,
-3.8.4.2.2,3,x,,,,,E3,todo,
-3.8.4.2.2 a),3,x,,,,,E3,todo,
-3.8.4.2.2 b),3,x,,,,,E3,todo,
-3.8.4.2.2 c),3,x,,,,,E3,todo,
-3.8.4.2.3,3,x,,,,,E3,todo,
-3.8.4.2.4,3,x,,,,,E3,todo,
-3.8.4.2.5,3,x,,,,,E3,todo,
-3.8.4.3.1,3,x,,,,,E3,todo,
-3.8.4.3.1 a),3,x,,,,,E3,todo,
-3.8.4.3.1 b),3,x,,,,,E3,todo,
-3.8.4.3.2,3,x,,,,,E3,todo,
-3.8.4.4.1,3,x,,,,,E3,todo,
-3.8.4.4.2,3,x,,,,,E3,todo,
-3.8.4.4.2 a),3,x,,,,,E3,todo,
-3.8.4.4.2 b),3,x,,,,,E3,todo,
-3.8.4.4.2 c),3,x,,,,,E3,todo,
-3.8.4.4.3,3,x,,,,,E3,todo,
-3.8.4.4.4,3,x,,,,,E3,todo,
-3.8.4.4.5,3,x,,,,,E3,todo,
-3.8.4.5.1,3,x,,,,,E3,todo,
-3.8.4.5.1 a),3,x,,,,,E3,todo,
-3.8.4.5.1 b),3,x,,,,,E3,todo,
-3.8.4.5.1 c),3,x,,,,,E3,todo,
-3.8.4.5.2,3,x,,,,,E3,todo,
-3.8.4.6.2,3,x,,,,,E3,todo,
-3.8.4.6.4,3,x,,,,,E3,todo,
-3.8.4.6.5,3,x,,,,,E3,todo,
-3.8.4.6.5 a),3,x,,,,,E3,todo,
-3.8.4.6.5 b),3,x,,,,,E3,todo,
-3.8.4.6.5 c),3,x,,,,,E3,todo,
+3.8.4.1.1,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise; evc_test Scenario_End_Section_Timer
+3.8.4.1.2,3,x,,,,,E3,done,EVC_Movement_Authority.End_Section_Over; evc_test Scenario_End_Section_Timer
+3.8.4.1.2 a),3,x,,,,,E3,done,"EOA/SvL withdrawn to the estimated / max safe front end, deletion [10]; evc_test Scenario_End_Section_Timer"
+3.8.4.1.2 b),3,x,,,,,E3,done,EVC_Movement_Authority.End_Section_Over (Target_Speed 0)
+3.8.4.1.3,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_LOA_Timer
+3.8.4.1.4,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_End_Section_Timer
+3.8.4.2.1,3,x,,,,,E3,partial,b) done (level 1); a) is E5
+3.8.4.2.1 a),3,x,,,,,E3,deferred,E5 (time stamp of the RBC message)
+3.8.4.2.1 b),3,x,,,,,E3,done,"EVC_Position.Taken_T.Start_Ms, EVC_Movement_Authority.Accept_MA; evc_test Scenario_Section_Timer"
+3.8.4.2.2,3,x,,,,,E3,partial,"EVC_Movement_Authority.Supervise; evc_test Scenario_Section_Timer; the exception of an MA shortened with A.3.4.1.3 [11] is applied, the conditional emergency stop and the co-operative shortening are E5"
+3.8.4.2.2 a),3,x,,,,,E3,done,"EVC_Movement_Authority.Supervise, deletion beyond the new SvL; evc_test Scenario_Section_Timer"
+3.8.4.2.2 b),3,x,,,,,E3,done,Authority: Fixed V_NVREL; evc_test Scenario_Section_Timer
+3.8.4.2.2 c),3,x,,,,,E3,done,EVC_Movement_Authority.Supervise (Target_Speed 0)
+3.8.4.2.3,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise; evc_test Scenario_Section_Timer_Stopped
+3.8.4.2.4,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise; evc_test Scenario_Section_Timer_Stopped
+3.8.4.2.5,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA (Stopped when the min safe front end is beyond the stop location)
+3.8.4.3.1,3,x,,,,,E3,partial,b) done (level 1); a) is E5
+3.8.4.3.1 a),3,x,,,,,E3,deferred,E5 (time stamp of the RBC message)
+3.8.4.3.1 b),3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA (LOA_Timer from Start_Ms); evc_test Scenario_LOA_Timer
+3.8.4.3.2,3,x,,,,,E3,done,"EVC_Movement_Authority.Supervise, deletion beyond the SvL (A.3.4.1.2 n); evc_test Scenario_LOA_Timer"
+3.8.4.4.1,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise (started even when infinite); evc_test Scenario_Overlap_Timer
+3.8.4.4.2,3,x,,,,,E3,done,EVC_Movement_Authority.Overlap_Over; evc_test Scenario_Overlap_Timer
+3.8.4.4.2 a),3,x,,,,,E3,done,"SvL per 3.8.4.5, deletion beyond it; evc_test Scenario_Overlap_Timer"
+3.8.4.4.2 b),3,x,,,,,E3,done,the release speed of the danger point applies; evc_test Scenario_Overlap_Timer
+3.8.4.4.2 c),3,x,,,,,E3,done,EVC_Movement_Authority.Overlap_Over (Target_Speed 0)
+3.8.4.4.3,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise; evc_test Scenario_Overlap_Timer
+3.8.4.4.4,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_LOA_Timer
+3.8.4.4.5,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA (as 3.8.4.1.4)
+3.8.4.5.1,3,x,,,,,E3,done,"EVC_Movement_Authority.SvL_Location, Authority (SvL never before the EOA, proved); evc_test Scenario_MA, Scenario_Overlap_Timer"
+3.8.4.5.1 a),3,x,,,,,E3,done,evc_test Scenario_MA
+3.8.4.5.1 b),3,x,,,,,E3,done,evc_test Scenario_Overlap_Timer
+3.8.4.5.1 c),3,x,,,,,E3,done,"evc_test Scenario_Section_Timer, Scenario_MA_Shortening"
+3.8.4.5.2,3,x,,,,,E3,done,EVC_Movement_Authority.Authority (LOA: no SvL); evc_test Scenario_LOA_Timer
+3.8.4.6.2,3,x,,,,,E3,deferred,E7 (infill)
+3.8.4.6.4,3,x,,,,,E3,deferred,E7 (infill)
+3.8.4.6.5,3,x,,,,,E3,deferred,E7 (infill)
+3.8.4.6.5 a),3,x,,,,,E3,deferred,E7 (infill)
+3.8.4.6.5 b),3,x,,,,,E3,deferred,E7 (infill)
+3.8.4.6.5 c),3,x,,,,,E3,deferred,E7 (infill)
 3.8.5.1,3,x,,,,,E5,todo,
 3.8.5.1 a),3,x,,,,,E5,todo,
 3.8.5.1 b),3,x,,,,,E5,todo,
@@ -414,74 +414,74 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.10.2.4,3,x,,,,,E5,todo,
 3.10.3.2,3,x,,,,,E5,todo,
 3.10.3.3,3,x,,,,,E5,todo,
-3.11.1.1,3,x,,,,,E3,todo,
-3.11.1.2,3,x,,,,,E3,todo,
-3.11.2.4,3,x,,,,,E3,todo,
-3.11.3.2.3,3,x,,,,,E3,todo,
-3.11.3.2.3 a),3,x,,,,,E3,todo,
-3.11.3.2.3 b),3,x,,,,,E3,todo,
-3.11.3.2.3 c),3,x,,,,,E3,todo,
-3.11.3.2.5,3,x,,,,,E3,todo,
-3.11.3.2.6,3,x,,,,,E3,todo,
-3.11.3.2.6 a),3,x,,,,,E3,todo,
-3.11.3.2.6 b),3,x,,,,,E3,todo,
-3.11.3.3.2,3,x,,,,,E3,todo,
-3.11.4.3,3,x,,,,,E3,todo,
-3.11.4.5,3,x,,,,,E3,todo,
-3.11.5.4,3,x,,,,,E3,todo,
-3.11.5.5,3,x,x,,,,E3,todo,
-3.11.5.7,3,x,,,,,E3,todo,
-3.11.5.8,3,x,,,,,E3,todo,
-3.11.5.9,3,x,,,,,E3,todo,
-3.11.5.10,3,x,,,,,E3,todo,
-3.11.5.13,3,x,,,,,E3,todo,
-3.11.5.14,3,x,,,,,E3,todo,
-3.11.5.14 1st bullet,3,x,,,,,E3,todo,
-3.11.5.14 2nd bullet,3,x,,,,,E3,todo,
-3.11.6.2,3,x,,,,,E3,todo,
-3.11.6.3,3,x,,,,,E3,todo,
-3.11.6.3.1,3,x,,,,,E3,todo,
-3.11.6.4,3,x,x,,,,E3,todo,
-3.11.6.5,3,x,,,,,E3,todo,
-3.11.7.1,3,x,,,,,E3,todo,
-3.11.7.1.1,3,x,,,,,E3,todo,
-3.11.7.1.3,3,x,,,,,E3,todo,
-3.11.8.1,3,x,,,,,E3,todo,
-3.11.10.1,3,x,,,,,E3,todo,
-3.11.11.3,3,x,,,,,E3,todo,
-3.11.11.4,3,x,,,,,E3,todo,
-3.11.11.4 1st bullet,3,x,,,,,E3,todo,
-3.11.11.4 2nd bullet,3,x,,,,,E3,todo,
-3.11.11.4 3rd bullet,3,x,,,,,E3,todo,
-3.11.11.4 4th bullet,3,x,,,,,E3,todo,
-3.11.11.4 5th bullet,3,x,,,,,E3,todo,
-3.11.11.4 6th bullet,3,x,,,,,E3,todo,
-3.11.11.4 7th bullet,3,x,,,,,E3,todo,
-3.11.11.4 8th bullet,3,x,,,,,E3,todo,
-3.11.11.4 9th bullet,3,x,,,,,E3,todo,
-3.11.11.4 10th bullet,3,x,,,,,E3,todo,
-3.11.11.6,3,x,,,,,E3,todo,
-3.11.11.7,3,x,,,,,E3,todo,
-3.11.11.8,3,x,,,,,E3,todo,
-3.11.11.9,3,x,,,,,E3,todo,
-3.11.11.11,3,x,,,,,E3,todo,
-3.11.12.6,3,x,,,,,E3,todo,
-3.12.1.2.1,3,x,,,,,E3,todo,
-3.12.1.2.1.2,3,x,,,,,E3,todo,
-3.12.1.2.1.3,3,x,,,,,E3,todo,
-3.12.1.2.1.4,3,x,,,,,E3,todo,
-3.12.1.2.1.5,3,x,,,,,E3,todo,
-3.12.1.5,3,x,,,,,E3,todo,
-3.12.1.5 a),3,x,,,,,E3,todo,
-3.12.1.5 b),3,x,,,,,E3,todo,
-3.12.1.6,3,x,,,,,E3,todo,
-3.12.2.3,3,x,,,,,E3,todo,
-3.12.2.3 a),3,x,,,,,E3,todo,
-3.12.2.3 b),3,x,,,,,E3,todo,
-3.12.2.3 c),3,x,,,,,E3,todo,
-3.12.2.3.1,3,x,,,,,E3,todo,
-3.12.2.4,3,x,,,,,E3,todo,
-3.12.2.10,3,x,,,,,E3,todo,
+3.11.1.1,3,x,,,,,E3,done,the MRSP of EVC_Stored_Information (3.13.7); evc_test Scenario_SSP_Gradients
+3.11.1.2,3,x,,,,,E3,done,the static speed restrictions do not depend on the level (EVC_Track_Description)
+3.11.2.4,3,x,,,,,E3,done,"EVC_Track_Description.Speed_Elements (the train length where Q_FRONT asks); evc_test Scenario_SSP_Gradients, Scenario_TSR"
+3.11.3.2.3,3,x,,,,,E3,done,EVC_Track_Description.Train_Speed; evc_test Scenario_SSP_Categories
+3.11.3.2.3 a),3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
+3.11.3.2.3 b),3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
+3.11.3.2.3 c),3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
+3.11.3.2.5,3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
+3.11.3.2.6,3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
+3.11.3.2.6 a),3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
+3.11.3.2.6 b),3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
+3.11.3.3.2,3,x,,,,,E3,partial,"EVC_Train_Data.Categories_T (one cant deficiency category, a set of others; the default train); their entry is E4"
+3.11.4.3,3,x,,,,,E3,done,EVC_Track_Description.Take_ASP; evc_test Scenario_Other_Profiles
+3.11.4.5,3,x,,,,,E3,done,"no ASP element stored, none after Q_TRACKINIT; evc_test Scenario_Other_Profiles"
+3.11.5.4,3,x,,,,,E3,done,"EVC_Profiles.Envelope (the lowest of overlapping elements, proved)"
+3.11.5.5,3,x,x,,,,E3,done,EVC_Track_Description.Revoke_TSR; evc_test Scenario_TSR
+3.11.5.7,3,x,,,,,E3,done,EVC_Track_Description.Take_TSR; evc_test Scenario_TSR
+3.11.5.8,3,x,,,,,E3,done,EVC_Track_Description.Revoke_TSR (NID_TSR 255 stays); evc_test Scenario_TSR
+3.11.5.9,3,x,,,,,E3,done,EVC_Track_Description.Take_TSR; evc_test Scenario_TSR
+3.11.5.10,3,x,,,,,E3,done,EVC_Stored_Information.Evaluate; evc_test Scenario_TSR
+3.11.5.13,3,x,,,,,E3,deferred,E5 (order of the RBC)
+3.11.5.14,3,x,,,,,E3,deferred,E5 (order of the RBC)
+3.11.5.14 1st bullet,3,x,,,,,E3,deferred,E5 (order of the RBC)
+3.11.5.14 2nd bullet,3,x,,,,,E3,deferred,E5 (RBC/RBC handover)
+3.11.6.2,3,x,,,,,E3,partial,EVC_Movement_Authority.Take_V_Main at reception; evc_test Scenario_MA; infill: E7
+3.11.6.3,3,x,,,,,E3,done,EVC_Movement_Authority.Take_V_Main (until a new one or A.3.4 deletes it)
+3.11.6.3.1,3,x,,,,,E3,deferred,E5 (level 2 MA)
+3.11.6.4,3,x,x,,,,E3,partial,"V_MAIN 0 is not a speed limit, recorded as a trip order (EVC_Movement_Authority.Trip_Ordered, JRU); the trip is E4"
+3.11.6.5,3,x,,,,,E3,deferred,E7 (infill)
+3.11.7.1,3,x,,,,,E3,partial,the MRSP takes the mode related speed of the caller (EVC_Stored_Information.Evaluate Mode_Speed); its value per mode from the national values is E4
+3.11.7.1.1,3,x,,,,,E3,deferred,"E4 (V_MAMODE is stored with the mode profile, EVC_Movement_Authority)"
+3.11.7.1.3,3,x,,,,,E3,deferred,E4 (driver entry)
+3.11.8.1,3,x,,,,,E3,done,V_MAXTRAIN the ceiling of the MRSP (EVC_Stored_Information.Build); evc_test Scenario_SSP_Gradients
+3.11.10.1,3,x,,,,,E3,deferred,E4 (override function; the MRSP takes the speed as the caller's ceiling)
+3.11.11.3,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 1st bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 2nd bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 3rd bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 4th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 5th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 6th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 7th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 8th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 9th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.4 10th bullet,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.6,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.7,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.8,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.9,3,x,,,,,E3,deferred,E3 e3/supervision: the PBD speed needs the braking curves
+3.11.11.11,3,x,,,,,E3,deferred,E3 e3/supervision: with 3.11.11 (packet 52)
+3.11.12.6,3,x,,,,,E3,done,EVC_Track_Description.Take_Default_Gradient; evc_test Scenario_Other_Profiles
+3.12.1.2.1,3,x,,,,,E3,done,"EVC_Track_Conditions.Evaluate, Inhibitions; evc_test Scenario_Track_Conditions"
+3.12.1.2.1.2,3,x,,,,,E3,partial,"the big metal masses are stored (EVC_Track_Conditions); their evaluation against the antenna is used by 3.15.7, E6"
+3.12.1.2.1.3,3,x,,,,,E3,done,EVC_Track_Conditions.Evaluate (powerless section: min safe front end); evc_test Scenario_Track_Conditions
+3.12.1.2.1.4,3,x,,,,,E3,partial,"sound horn done (EVC_Track_Conditions.Evaluate); the tunnel stopping area is shown on request, E4"
+3.12.1.2.1.5,3,x,,,,,E3,partial,the estimated front end stands for the engine (EVC_Track_Conditions.Evaluate); the radio supervision is E5
+3.12.1.5,3,x,,,,,E3,partial,a) done; b) E4
+3.12.1.5 a),3,x,,,,,E3,done,"EVC_Track_Conditions.Evaluate, MSG_TRACK_COND and the planning orders (EVC_Core); evc_test Scenario_Track_Conditions"
+3.12.1.5 b),3,x,,,,,E3,deferred,E4 (5.20 external function)
+3.12.1.6,3,x,,,,,E3,done,"nothing stored: no indication, no inhibition (EVC_Track_Conditions); evc_test Scenario_SSP_Gradients"
+3.12.2.3,3,x,,,,,E3,deferred,"E4 (the comparison with the Train Data; route suitability stored by EVC_Track_Description, E6 for other sources)"
+3.12.2.3 a),3,x,,,,,E3,deferred,E4 (with 3.12.2.3)
+3.12.2.3 b),3,x,,,,,E3,deferred,E4 (with 3.12.2.3)
+3.12.2.3 c),3,x,,,,,E3,deferred,E4 (with 3.12.2.3)
+3.12.2.3.1,3,x,,,,,E3,deferred,E4 (with 3.12.2.3)
+3.12.2.4,3,x,,,,,E3,deferred,"E4 (the reaction; the snapshot has the temporary EOA/SvL for it, EVC_Supervision_Input.Temporary_Target_T)"
+3.12.2.10,3,x,,,,,E3,done,no route suitability data: nothing supervised (EVC_Track_Description)
 3.12.3.1.10,3,x,,,,,E4,todo,
 3.12.3.3.1,3,x,,,,,E4,todo,
 3.12.3.4.3.1,3,x,x,,,,E4,todo,
@@ -500,19 +500,19 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.3.4.7.2,3,x,,,,,E4,todo,
 3.12.3.5.2,3,x,,,,,E4,todo,
 3.12.3.5.3,3,x,,,,,E4,todo,
-3.12.4.2,3,x,,,,,E3,todo,
-3.12.4.3,3,x,,,,,E3,todo,
-3.12.4.3.1,3,x,,,,,E3,todo,
-3.12.4.3.1 a),3,x,,,,,E3,todo,
-3.12.4.3.1 b),3,x,,,,,E3,todo,
-3.12.4.3.1 c),3,x,,,,,E3,todo,
-3.12.4.4,3,x,,,,,E3,todo,
-3.12.4.7,3,x,,,,,E3,todo,
-3.12.4.7 a),3,x,,,,,E3,todo,
-3.12.4.7 b),3,x,,,,,E3,todo,
-3.12.4.7 c),3,x,,,,,E3,todo,
-3.12.5.3,3,x,,,,,E3,todo,
-3.12.5.8,3,x,,,,,E3,todo,
+3.12.4.2,3,x,,,,,E3,done,EVC_Movement_Authority.Take_Mode_Profile (SH: no length); evc_test Scenario_Other_Profiles
+3.12.4.3,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_Other_Profiles
+3.12.4.3.1,3,x,,,,,E3,deferred,E7 (infill)
+3.12.4.3.1 a),3,x,,,,,E3,deferred,E7 (infill)
+3.12.4.3.1 b),3,x,,,,,E3,deferred,E7 (infill)
+3.12.4.3.1 c),3,x,,,,,E3,deferred,E7 (infill)
+3.12.4.4,3,x,,,,,E3,deferred,E4 (list of balise groups for SH area)
+3.12.4.7,3,x,,,,,E3,partial,"EVC_Movement_Authority.Mode_Profile_Target to Snapshot_T.Temporary; evc_test Scenario_Other_Profiles; ""until switched to the mode"" is E4, its supervision e3/supervision"
+3.12.4.7 a),3,x,,,,,E3,partial,as 3.12.4.7
+3.12.4.7 b),3,x,,,,,E3,partial,as 3.12.4.7
+3.12.4.7 c),3,x,,,,,E3,partial,as 3.12.4.7
+3.12.5.3,3,x,,,,,E3,done,EVC_Track_Description.Take_LX; evc_test Scenario_Other_Profiles
+3.12.5.8,3,x,,,,,E3,partial,"EVC_Track_Description.LX_Target to Snapshot_T.Temporary; evc_test Scenario_Other_Profiles; its supervision e3/supervision, the substitution of 5.16 E4"
 3.13.1.5,3,x,,,,,E3,todo,
 3.13.2.2.1.3,3,x,,,,,E3,todo,
 3.13.2.2.2.1,3,x,,,,,E3,todo,
@@ -621,7 +621,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.6.3.2.5,3,x,,,,,E3,todo,
 3.13.6.4.3,3,x,,,,,E3,todo,
 3.13.6.4.4,3,x,,,,,E3,todo,
-3.13.7.2,3,x,,,,,E3,todo,
+3.13.7.2,3,x,,,,,E3,done,"EVC_Stored_Information.Evaluate (postcondition: sorted, never above a source; the train length where it counts, Table 2a items); evc_test Scenario_SSP_Gradients, Scenario_TSR; evc_fuzz"
 3.13.8.1.2,3,x,,,,,E3,todo,
 3.13.8.1.3,3,x,,,,,E3,todo,
 3.13.8.2.1,3,x,,,,,E3,todo,
@@ -1075,7 +1075,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.6.1,3,x,,,,,E6,todo,
 3.18.6.2,3,x,,,,,E6,todo,
 3.20.1.2,3,x,,,,,E6,todo,
-A.3.1 Table,3,x,,,,,E3,todo,
+A.3.1 Table,3,x,,,,,E3,partial,"the values of the stored information (300 m in rear, 5 s after the rear end, 4 s for the horn: EVC_Track_Description, EVC_Track_Conditions); the odometer ones in E2; the supervision ones e3/supervision; the radio ones E5"
 A.3.2,3,x,,,x,,E6,todo,
 A.3.2 Table,3,x,,,,,E6,todo,
 A.3.3.2,3,x,,,,,E4,todo,

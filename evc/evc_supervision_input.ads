@@ -254,6 +254,15 @@ is
       Kv_Int_Passenger : Kv_Set_T;   -- when Q_NVKVINTSET gives two sets
       Kr_Int           : Kr_Set_T;
       Kt_Int           : Factor_Milli_T := 1_000;
+      --  added by profiles: the second subset of the passenger set of
+      --  Kv_int (3.13.2.3.7.11.4 to .6: Kv_Int_Passenger is subset "a",
+      --  for a maximum emergency brake deceleration up to A_NVP12, this
+      --  one subset "b", from A_NVP23), and the two limits. A step of a
+      --  Kv_Set_T holds from its Speed up to the next step's (M_NVKVINT
+      --  of 7.5.1.75.4), a Kr_Step_T likewise from its Length.
+      Kv_Int_Passenger_B : Kv_Set_T;
+      A_NVP12          : Decel_Mms2_T := 0;
+      A_NVP23          : Decel_Mms2_T := 0;
    end record;
 
    ---------------------------------------------------------------------
@@ -271,6 +280,21 @@ is
       Standstill       : Boolean := True;
       Moving_Ahead     : Boolean := False;  -- in the sense Ahead
       Moving_Backwards : Boolean := False;
+   end record;
+
+   ---------------------------------------------------------------------
+   --  Added by profiles: the temporary EOA and SvL (3.12.2.5), distinct
+   --  from those of the MA, with no release speed: the start of a mode
+   --  profile (3.12.4.7) and of a level crossing not protected
+   --  (3.12.5.8); the nearest of them. Has_SvL False: no temporary SvL
+   --  (3.12.4.7.1), the SvL of the MA holds. SvL >= EOA ahead.
+   ---------------------------------------------------------------------
+
+   type Temporary_Target_T is record
+      Present : Boolean := False;
+      EOA     : Dist_T := 0;
+      Has_SvL : Boolean := False;
+      SvL     : Dist_T := 0;
    end record;
 
    ---------------------------------------------------------------------
@@ -292,6 +316,8 @@ is
       --  Train data valid and the supervision may run (4.5.2, E4);
       --  until E4 the stored information sets it when an MA is present
       Supervise    : Boolean := False;
+      --  added by profiles: the temporary EOA and SvL (see above)
+      Temporary    : Temporary_Target_T;
    end record;
 
 end EVC_Supervision_Input;

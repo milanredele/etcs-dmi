@@ -1,9 +1,7 @@
 --  ETCS on-board (EVC)
 --  The train position, implementation.
 
-with ETCS_Bits;
 with ETCS_Catalogue;
-with ETCS_Packet_Index;
 with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P79;
 with EVC_Bytes;
@@ -55,7 +53,13 @@ package body EVC_Position
                                    Last_Level,
                                    Mode_Seen,
                                    Train_Length,
-                                   Length_Known))
+                                   Length_Known,
+                                   Taken_List,
+                                   Taken_N,
+                                   Taken_Tels,
+                                   Taken_Tel_N,
+                                   Passage_Ms,
+                                   Previous_Ms))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -157,6 +161,20 @@ is
    Mode_Seen          : Boolean := False;
    Train_Length       : Length_T := 0;
    Length_Known       : Boolean := False;
+
+   --  The groups taken into account in the last Update and the telegrams
+   --  of their passages (phase E3)
+   type Taken_Array_T is array (1 .. Max_Taken) of Taken_T;
+   type Taken_Tels_T is
+     array (1 .. Max_Taken_Telegrams) of ETCS_Telegram.Telegram_T;
+   Taken_List  : Taken_Array_T;
+   Taken_N     : Natural range 0 .. Max_Taken := 0;
+   Taken_Tels  : Taken_Tels_T;
+   Taken_Tel_N : Natural range 0 .. Max_Taken_Telegrams := 0;
+   --  the Start_Ms of the open passage, and the time of the Update
+   --  before the current one
+   Passage_Ms  : Unsigned_64 := 0;
+   Previous_Ms : Unsigned_64 := 0;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -337,22 +355,6 @@ is
    end Request_Reaction;
 
    ---------------------------------------------------------------------
-   --  Validity direction (3.6.3.1)
-   ---------------------------------------------------------------------
-
-   --  Information with this Q_DIR from a group of orientation G is
-   --  valid for a train whose direction (orientation, or crossing
-   --  direction in SL, PS and SH) is T: nominal when both point the same
-   --  way. When one is not known only "both directions" is taken
-   --  (3.6.3.1.4).
-   function Valid_For (Q_DIR : Q_DIR_T; G, T : Direction_T) return Boolean
-   is (case Q_DIR is
-          when 2 => True,
-          when 1 => G /= Unknown and then T /= Unknown and then G = T,
-          when 0 => G /= Unknown and then T /= Unknown and then G /= T,
-          when others => False);
-
-   ---------------------------------------------------------------------
    --  Relocation
    ---------------------------------------------------------------------
 
@@ -419,6 +421,20 @@ is
       for I in Locations'Range loop
          pragma Loop_Invariant (SOLR_A = A);
          Relocate_Item (Locations (I));
+      end loop;
+      --  the origins of the stored information (phase E3) likewise
+      for I in EVC_Origins.Index_T loop
+         pragma Loop_Invariant (SOLR_A = A);
+         declare
+            O : EVC_Origins.Origin_T := EVC_Origins.Get (I);
+         begin
+            if O.Used then
+               Relocate_Item (O.Est);
+               Relocate_Item (O.Min);
+               Relocate_Item (O.Max);
+               EVC_Origins.Put (I, O);
+            end if;
+         end;
       end loop;
    end Set_SOLR;
 
@@ -794,6 +810,49 @@ is
       end if;
    end Take_Packets;
 
+   --  The group A was taken into account: its origin for the stored
+   --  information, referred to the SOLR (3.6.4.2.5: information of a
+   --  group that is not the SOLR is relocated when it is evaluated), and
+   --  the telegrams of its passage
+   procedure Record_Taken (A : Anchor_T; T : Direction_T; S : Sense_T)
+     with Pre => Passage.Count >= 1,
+          Post => SOLR_A = SOLR_A'Old and then LRBG_A = LRBG_A'Old
+   is
+      I : EVC_Origins.Count_T;
+   begin
+      if Taken_N = Max_Taken
+        or else Taken_Tel_N + Passage.Count > Max_Taken_Telegrams
+      then
+         return;
+      end if;
+      EVC_Origins.Allocate (A, S, I);
+      if I /= 0 and then SOLR_A.Valid and then SOLR_A.Id /= A.Id then
+         declare
+            O : EVC_Origins.Origin_T := EVC_Origins.Get (I);
+         begin
+            Relocate_Item (O.Est);
+            Relocate_Item (O.Min);
+            Relocate_Item (O.Max);
+            EVC_Origins.Put (I, O);
+         end;
+      end if;
+      Taken_N := Taken_N + 1;
+      Taken_List (Taken_N) :=
+        (Group    => A,
+         T        => T,
+         S        => S,
+         Origin   => I,
+         First    => Taken_Tel_N + 1,
+         Count    => Passage.Count,
+         Start_Ms => Passage_Ms);
+      for K in 1 .. Passage.Count loop
+         pragma Loop_Invariant (Taken_Tel_N + Passage.Count - K + 1
+                                <= Max_Taken_Telegrams);
+         Taken_Tel_N := Taken_Tel_N + 1;
+         Taken_Tels (Taken_Tel_N) := Passage.Telegrams (K);
+      end loop;
+   end Record_Taken;
+
    --  The passage is over: accept or reject its group (see the spec)
    procedure Evaluate (Mode : Mode_T)
      with Pre => Passage.Open and then Passage.Count >= 1,
@@ -982,6 +1041,7 @@ is
          --  3.6.6.4.2: a geographical reference group detected
          Anchor_Geo (A);
          Take_Packets (A, T, S);
+         Record_Taken (A, T, S);
       end;
    end Evaluate;
 
@@ -1062,6 +1122,32 @@ is
    end Evaluate_Periods;
 
    ---------------------------------------------------------------------
+   --  For the stored information
+   ---------------------------------------------------------------------
+
+   function Taken_Count return Natural is (Taken_N)
+     with Refined_Global => Taken_N;
+
+   function Taken (I : Positive) return Taken_T is (Taken_List (I))
+     with Refined_Global => (Input => Taken_List, Proof_In => Taken_N);
+
+   function Taken_Packet_Count (J : Positive) return Natural is
+     (if J <= Taken_Tel_N then Taken_Tels (J).Count else 0)
+     with Refined_Global => (Taken_Tels, Taken_Tel_N);
+
+   function Taken_Entry (J, P : Positive) return ETCS_Packet_Index.Entry_T
+   is (Taken_Tels (J).Index (P))
+     with Refined_Global => (Input => Taken_Tels, Proof_In => Taken_Tel_N);
+
+   procedure Open_Taken_Packet (J, P : Positive;
+                                R    : in out ETCS_Bits.Reader)
+     with Refined_Global => (Input => Taken_Tels, Proof_In => Taken_Tel_N)
+   is
+   begin
+      ETCS_Telegram.Open_Packet (Taken_Tels (J), P, R);
+   end Open_Taken_Packet;
+
+   ---------------------------------------------------------------------
    --  Operations
    ---------------------------------------------------------------------
 
@@ -1119,6 +1205,12 @@ is
       Mode_Seen := False;
       Train_Length := 0;
       Length_Known := False;
+      Taken_List := (others => (others => <>));
+      Taken_N := 0;
+      Taken_Tels := (others => Empty_T);
+      Taken_Tel_N := 0;
+      Passage_Ms := 0;
+      Previous_Ms := 0;
    end Clear;
 
    procedure Receive_Telegram (T : ETCS_Telegram.Telegram_T;
@@ -1149,7 +1241,10 @@ is
       Low_0      : constant Length_T := EVC_Odometry.Low with Ghost;
       High_0     : constant Length_T := EVC_Odometry.High with Ghost;
    begin
+      Previous_Ms := Now_Seen;
       Now_Seen := Now_Ms;
+      Taken_N := 0;
+      Taken_Tel_N := 0;
       Event_N := 0;
       Reaction_Flag := False;
       Reaction_Value := 2;
@@ -1197,6 +1292,7 @@ is
             end if;
             if not Passage.Open then
                Start (Passage, T, R);
+               Passage_Ms := Previous_Ms;
             elsif Passage.Count < Max_Balises
               and then not Has (Passage, R.N_PIG)
             then

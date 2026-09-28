@@ -71,4 +71,108 @@ is
       Byte (Seconds / 60 mod 60),     -- minute
       Byte (Seconds mod 60));         -- second
 
+   ---------------------------------------------------------------------
+   --  Phase E3 (profiles)
+   ---------------------------------------------------------------------
+
+   --  A u16 at Frame (I .. I + 1), little endian
+   procedure Put_U16 (Frame : in out Frame_Buffer_T;
+                      I     : Positive;
+                      V     : Unsigned_16)
+     with Pre => I in 2 .. Max_Frame_Length - 1,
+          Post => Frame (1) = Frame'Old (1)
+   is
+   begin
+      Frame (I) := Byte (V and 16#FF#);
+      Frame (I + 1) := Byte (Shift_Right (V, 8));
+   end Put_U16;
+
+   --  The frame header: type, payload length u32
+   procedure Put_Header (Frame  : in out Frame_Buffer_T;
+                         Kind   : Byte;
+                         Length : Natural)
+     with Pre => Length <= Max_Frame_Length,
+          Post => Frame (1) = Kind
+   is
+   begin
+      Frame (1) := Kind;
+      Frame (2) := Byte (Length mod 256);
+      Frame (3) := Byte (Length / 256);
+      Frame (4) := 0;
+      Frame (5) := 0;
+   end Put_Header;
+
+   ----------------------
+   -- Track_Cond_Frame --
+   ----------------------
+
+   procedure Track_Cond_Frame (Count  : Natural;
+                               List   : Track_Cond_List_T;
+                               Frame  : out Frame_Buffer_T;
+                               Last   : out Natural)
+   is
+   begin
+      Frame := (others => 0);
+      Put_Header (Frame, MSG_TRACK_COND, 1 + 2 * Count);
+      Frame (6) := Byte (Count);
+      for I in 1 .. Count loop
+         pragma Loop_Invariant (Frame (1) = MSG_TRACK_COND);
+         Frame (5 + 2 * I) := List (I).Id;
+         Frame (6 + 2 * I) := List (I).Kind;
+      end loop;
+      Last := Header_Length + 1 + 2 * Count;
+   end Track_Cond_Frame;
+
+   --------------------
+   -- Planning_Frame --
+   --------------------
+
+   procedure Planning_Frame (P     : Planning_T;
+                             Frame : out Frame_Buffer_T;
+                             Last  : out Natural)
+   is
+      I : Positive := Header_Length + 1;
+   begin
+      Frame := (others => 0);
+      Put_Header (Frame, MSG_PLANNING, Planning_Length (P));
+      Put_U16 (Frame, I, P.MA_Dist);
+      Put_U16 (Frame, I + 2, P.Indication_Dist);
+      Put_U16 (Frame, I + 4, P.Advice_Dist);
+      Put_U16 (Frame, I + 6, P.Ceiling);
+      I := I + 8;
+      Frame (I) := Byte (P.Gradient_Count);
+      I := I + 1;
+      for K in 1 .. P.Gradient_Count loop
+         pragma Loop_Invariant
+           (I = Header_Length + 10 + 3 * (K - 1)
+            and then Frame (1) = MSG_PLANNING);
+         Put_U16 (Frame, I, P.Gradients (K).Start);
+         Frame (I + 2) :=
+           Byte ((P.Gradients (K).Value + 256) mod 256);
+         I := I + 3;
+      end loop;
+      Frame (I) := Byte (P.Speed_Count);
+      I := I + 1;
+      for K in 1 .. P.Speed_Count loop
+         pragma Loop_Invariant
+           (I = Header_Length + 11 + 3 * P.Gradient_Count + 4 * (K - 1)
+            and then Frame (1) = MSG_PLANNING);
+         Put_U16 (Frame, I, P.Speeds (K).Dist);
+         Put_U16 (Frame, I + 2, P.Speeds (K).Speed);
+         I := I + 4;
+      end loop;
+      Frame (I) := Byte (P.Order_Count);
+      I := I + 1;
+      for K in 1 .. P.Order_Count loop
+         pragma Loop_Invariant
+           (I = Header_Length + 12 + 3 * P.Gradient_Count
+                + 4 * P.Speed_Count + 3 * (K - 1)
+            and then Frame (1) = MSG_PLANNING);
+         Frame (I) := P.Orders (K).Symbol;
+         Put_U16 (Frame, I + 1, P.Orders (K).Dist);
+         I := I + 3;
+      end loop;
+      Last := Header_Length + Planning_Length (P);
+   end Planning_Frame;
+
 end EVC_DMI_Port;

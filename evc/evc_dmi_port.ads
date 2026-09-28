@@ -169,4 +169,84 @@ is
      return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 
+   ---------------------------------------------------------------------
+   --  Phase E3 (profiles): the planning and the track conditions
+   ---------------------------------------------------------------------
+
+   MSG_TRACK_COND : constant Byte := 16#05#;
+   MSG_PLANNING   : constant Byte := 16#06#;
+
+   subtype Frame_Buffer_T is Byte_Array (1 .. Max_Frame_Length);
+
+   --  MSG_TRACK_COND: count u8, then per entry id u8, kind u8 (TC symbol
+   --  number 1 .. 37, 38 the level crossing)
+   Max_Track_Cond : constant := 16;
+   type Track_Cond_Entry_T is record
+      Id   : Byte := 0;
+      Kind : Byte := 0;
+   end record;
+   type Track_Cond_List_T is array (1 .. Max_Track_Cond)
+     of Track_Cond_Entry_T;
+
+   procedure Track_Cond_Frame (Count  : Natural;
+                               List   : Track_Cond_List_T;
+                               Frame  : out Frame_Buffer_T;
+                               Last   : out Natural)
+     with Pre => Count <= Max_Track_Cond,
+          Post => Last = Header_Length + 1 + 2 * Count
+                  and then Frame (1) = MSG_TRACK_COND;
+
+   --  MSG_PLANNING (dmi_protocol.ads): four u16 (the distance to the
+   --  end of the MA in m, the indication marker, the next advice change,
+   --  the ceiling speed in km/h), then the gradients (start u16 m, value
+   --  i8 per mille), the speed profile (distance u16 m, speed u16 km/h,
+   --  bit 15 for the target of the indication marker) and the orders
+   --  (symbol u8, distance u16 m), each list after its count u8
+   Max_Planning_Gradients : constant := 64;
+   Max_Planning_Speeds    : constant := 32;
+   Max_Planning_Orders    : constant := 32;
+   No_Distance            : constant Unsigned_16 := 16#FFFF#;
+
+   type Planning_Gradient_T is record
+      Start : Unsigned_16 := 0;
+      Value : Integer range -128 .. 127 := 0;
+   end record;
+   type Planning_Speed_T is record
+      Dist  : Unsigned_16 := 0;
+      Speed : Unsigned_16 := 0;
+   end record;
+   type Planning_Order_T is record
+      Symbol : Byte := 0;
+      Dist   : Unsigned_16 := 0;
+   end record;
+   type Planning_Gradients_T is array (1 .. Max_Planning_Gradients)
+     of Planning_Gradient_T;
+   type Planning_Speeds_T is array (1 .. Max_Planning_Speeds)
+     of Planning_Speed_T;
+   type Planning_Orders_T is array (1 .. Max_Planning_Orders)
+     of Planning_Order_T;
+
+   type Planning_T is record
+      MA_Dist         : Unsigned_16 := 0;
+      Indication_Dist : Unsigned_16 := No_Distance;
+      Advice_Dist     : Unsigned_16 := No_Distance;
+      Ceiling         : Unsigned_16 := 0;
+      Gradient_Count  : Natural range 0 .. Max_Planning_Gradients := 0;
+      Gradients       : Planning_Gradients_T;
+      Speed_Count     : Natural range 0 .. Max_Planning_Speeds := 0;
+      Speeds          : Planning_Speeds_T;
+      Order_Count     : Natural range 0 .. Max_Planning_Orders := 0;
+      Orders          : Planning_Orders_T;
+   end record;
+
+   function Planning_Length (P : Planning_T) return Natural is
+     (8 + 1 + 3 * P.Gradient_Count + 1 + 4 * P.Speed_Count
+      + 1 + 3 * P.Order_Count);
+
+   procedure Planning_Frame (P     : Planning_T;
+                             Frame : out Frame_Buffer_T;
+                             Last  : out Natural)
+     with Post => Last = Header_Length + Planning_Length (P)
+                  and then Frame (1) = MSG_PLANNING;
+
 end EVC_DMI_Port;

@@ -279,4 +279,25 @@ is
       Value  => Payload (Payload'First + 1) = 1)
      with Pre => Valid_TIU (Payload);
 
+   ---------------------------------------------------------------------
+   --  JRU, phase E3 (profiles): event 32, a change of the stored
+   --  information (EVC_Stored_Information). Byte 2 the information: 1
+   --  national values, 2 SSP, 3 gradients, 4 axle load speed profile,
+   --  5 TSR, 6 default gradient for TSR, 7 movement authority, 8
+   --  signalling related speed restriction, 9 track conditions, 10
+   --  change of traction system, 11 big metal masses, 12 route
+   --  suitability, 13 mode profile, 14 level crossing, 15 adhesion, 16
+   --  a balise group. Byte 3 the change: 1 stored (byte 4: the number of
+   --  the group message mod 256; a TSR its NID_TSR, an LX its NID_LX,
+   --  V_MAIN its value), 2 deleted or revoked (byte 4: the NID_TSR), 3
+   --  rejected (an MA its SSP and gradients do not cover, 3.7.2.3), 4
+   --  section time-out (byte 4: the section), 5 End Section time-out, 6
+   --  overlap time-out, 7 LOA speed time-out, 8 MA shortened, 9 national
+   --  values applicable, 10 national values back to the defaults, 11
+   --  trip order (V_MAIN 0), 12 the information of a group could not be
+   --  kept (no origin left), 13 TSRs deleted with the orientation.
+   ---------------------------------------------------------------------
+
+   JRU_Stored_Information : constant := 32;
+
 end EVC_Ports;
