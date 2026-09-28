@@ -90,6 +90,7 @@ with EVC_Train;
 with General_Parameters;
 with GNAT.SHA256;
 with Interfaces;   use Interfaces;
+with Test_Support;
 
 procedure EVC_Test is
 
@@ -5339,6 +5340,450 @@ procedure EVC_Test is
              "SR distance: TSM to its end, target speed 0");
    end Scenario_SDM_SR;
 
+   ---------------------------------------------------------------------
+   --  The mission of the mock (dmi_test Scenario_Mission) with the
+   --  on-board's speed and distance monitoring
+   ---------------------------------------------------------------------
+
+   --  The track of sim/evc_track.ads as a snapshot: MRSP 140 / 100 / 120
+   --  km/h, EOA at 10 km with a release speed of 25 km/h (the mock has
+   --  no SvL: the SvL is the EOA), the gradients 5, -8, 0, 12 per mille;
+   --  the train of the mission's train data (passenger, 400 m, 135 %,
+   --  140 km/h) with a traction cut-off time of 1 s; the national values
+   --  of A.3.2 but Q_NVEMRRLS = 1 (an emergency brake the mock's train
+   --  does not obey is revoked with the Permitted speed instead of
+   --  staying until a standstill that does not come); the train where
+   --  the mock's is, its position known within +/- 10 m, the speed exact
+   --  (the mock models no odometer error)
+   function Mission_Snapshot return SI.Snapshot_T is
+      use type EVC_Mock.Mode_T;
+      S : SI.Snapshot_T := Base_Snapshot;
+   begin
+      S.Supervise := EVC_Mock.Mode in EVC_Mock.FS | EVC_Mock.AD;
+      S.National.Q_NVEMRRLS := True;
+      S.MRSP.Count := EVC_Track.MRSP'Length;
+      for K in EVC_Track.MRSP'Range loop
+         S.MRSP.Segments (K) :=
+           (Start => EVC_Distances.Metres (EVC_Track.MRSP (K).Start_M),
+            Speed => Cms (LF (EVC_Track.MRSP (K).Speed)));
+      end loop;
+      S.Gradients.Count := EVC_Track.Gradients'Length;
+      for K in EVC_Track.Gradients'Range loop
+         S.Gradients.Segments (K) :=
+           (Start    => EVC_Distances.Metres (EVC_Track.Gradients (K).Start_M),
+            Gradient => EVC_Track.Gradients (K).Value);
+      end loop;
+      Give_MA (S, EVC_Track.EOA_M, 0, SI.Fixed,
+               Cms (LF (EVC_Track.Release_Speed)));
+      declare
+         X : constant Integer_64 :=
+           Integer_64 (LF'Floor (LF (EVC_Train.Position_M) * 100.0));
+         V : constant SI.Speed_Cms_T :=
+           SI.Speed_Cms_T (LF'Floor (LF (EVC_Train.Speed_MS) * 100.0));
+      begin
+         Place (S, X, V);
+      end;
+      return S;
+   end Mission_Snapshot;
+
+   procedure Scenario_SDM_Mission is
+      use type General_Parameters.Color;
+
+      subtype X_T is Natural range 0 .. 639;
+      subtype Y_T is Natural range 0 .. 479;
+      type Frame_T is array (X_T, Y_T) of General_Parameters.Color;
+      type Point_T is
+        (Mission_SB, Mission_TSM, Mission_After_LX, Mission_RSM,
+         Mission_Stopped);
+      Names : constant array (Point_T) of access constant String :=
+        (new String'("mission_sb"), new String'("mission_tsm"),
+         new String'("mission_after_lx"), new String'("mission_rsm"),
+         new String'("mission_stopped"));
+      type Frames_T is array (Point_T) of Frame_T;
+      type Frames_Access is access Frames_T;
+      Mock_Frames : constant Frames_Access := new Frames_T;
+
+      --  what each side showed at the checkpoints
+      type Shown_T is record
+         V_Cur, V_Perm, V_Target, D_Target, Monitoring, Status : Natural;
+      end record;
+      Mock_Shown    : array (Point_T) of Shown_T;
+      Onboard_Shown : array (Point_T) of Shown_T;
+
+      Mission_Diffs : array (Point_T) of Natural := (others => 0);
+      --  the pixels that differ outside the areas A and B (the distance
+      --  to target and the speed dial)
+      Outside_AB    : array (Point_T) of Natural := (others => 0);
+
+      On_Board : Boolean := False;
+
+      --  pass 2: where the on-board first entered TSM and RSM and
+      --  commanded the service and the emergency brake; pass 1: where
+      --  the mock entered TSM and RSM (m)
+      Board_TSM, Board_RSM, Board_SB, Board_EB : Integer := -1;
+      Mock_TSM, Mock_RSM : Integer := -1;
+
+      procedure Note (Where : in out Integer; Now : Boolean) is
+      begin
+         if Now and then Where < 0 then
+            Where := Integer (EVC_Train.Position_M);
+         end if;
+      end Note;
+      --  the mock's MSG_SPEED_STATE of the last step
+      Mock_Speed : Shown_T := (others => 0);
+
+      procedure Emit (The_Type : DMI_Protocol.Msg_Type_T;
+                      Payload  : Stream_Element_Array)
+      is
+         use type DMI_Protocol.Msg_Type_T;
+      begin
+         if The_Type = DMI_Protocol.MSG_SPEED_STATE then
+            declare
+               function W (N : Stream_Element_Offset) return Natural is
+                 (Natural (Payload (Payload'First + N))
+                  + 256 * Natural (Payload (Payload'First + N + 1)));
+            begin
+               Mock_Speed :=
+                 (V_Cur      => W (0),
+                  V_Perm     => W (2),
+                  V_Target   => W (4),
+                  D_Target   => W (12),
+                  Monitoring => Natural (Payload (Payload'First + 16)),
+                  Status     => Natural (Payload (Payload'First + 19)));
+            end;
+            if On_Board then
+               return;   -- the on-board's replaces it
+            end if;
+         end if;
+         DMI_Core.Handle_Message (The_Type, Payload);
+      end Emit;
+
+      --  One cycle of the on-board on the mock's state; its
+      --  MSG_SPEED_STATE goes to the DMI
+      procedure Onboard_Cycle (Dt : Natural) is
+      begin
+         Sup := Mission_Snapshot;
+         EVC_Core.Set_Snapshot_For_Test (Sup);
+         EVC_Core.Tick (Dt);
+         Take;
+         if On_Board and then Sup.Supervise then
+            Note (Board_TSM, Res.Monitoring = SDM.TSM);
+            Note (Board_RSM, Res.Monitoring = SDM.RSM);
+            Note (Board_SB, Cmd.SB);
+            Note (Board_EB, Cmd.EB);
+         elsif not On_Board then
+            Note (Mock_TSM, EVC_Mock.Monitoring = 1);
+            Note (Mock_RSM, EVC_Mock.Monitoring = 2);
+         end if;
+         if On_Board then
+            for I in 1 .. Rec_Count loop
+               if Recs (I).Port = DMI and then Rec_Length (I) = 26
+                 and then Out_Buf (Recs (I).First)
+                            = EVC_DMI_Port.MSG_SPEED_STATE
+               then
+                  declare
+                     Payload : Stream_Element_Array (1 .. 21);
+                  begin
+                     for K in Payload'Range loop
+                        Payload (K) := Stream_Element
+                          (Out_Buf (Recs (I).First + 4
+                                    + Natural (K)));
+                     end loop;
+                     DMI_Core.Handle_Message
+                       (DMI_Protocol.MSG_SPEED_STATE, Payload);
+                  end;
+               end if;
+            end loop;
+         end if;
+      end Onboard_Cycle;
+
+      --  The DMI's actions and data back to the mock, as dmi_test does
+      procedure Pump_To_Mock is
+         use DMI_Protocol;
+         Buffer : Stream_Element_Array (1 .. DMI_Core.Outbox_Size);
+         Last   : Stream_Element_Offset;
+         Offset : Stream_Element_Offset := Buffer'First;
+      begin
+         DMI_Core.Take_Outbox (Buffer, Last);
+         while Offset + Stream_Element_Offset (Header_Length) - 1 <= Last
+         loop
+            declare
+               The_Type : constant Msg_Type_T :=
+                 Msg_Type_T (Get_U8 (Buffer, Offset));
+               Length   : constant Stream_Element_Offset :=
+                 Stream_Element_Offset (Get_U32 (Buffer, Offset));
+               Next     : constant Stream_Element_Offset := Offset + Length;
+            begin
+               exit when Next - 1 > Last;
+               if The_Type = MSG_DRIVER_ACTION
+                 and then Length = Driver_Action_Length
+               then
+                  declare
+                     Action : constant Unsigned_8 := Get_U8 (Buffer, Offset);
+                     Arg    : constant Unsigned_16 :=
+                       Get_U16 (Buffer, Offset);
+                  begin
+                     EVC_Mock.Handle_Driver_Action
+                       (Natural (Action), Natural (Arg));
+                  end;
+               elsif The_Type = MSG_DRIVER_DATA then
+                  EVC_Mock.Handle_Driver_Data (Buffer (Offset .. Next - 1));
+               end if;
+               Offset := Next;
+            end;
+         end loop;
+      end Pump_To_Mock;
+
+      procedure Sim_Step is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Mock.Step (0.1, Emit'Unrestricted_Access);
+         Onboard_Cycle (100);
+         DMI_Core.Tick (100);
+      end Sim_Step;
+
+      procedure Touch (X, Y : Natural) is
+      begin
+         EVC_Driver.Auto_Drive;
+         EVC_Mock.Step (0.05, Emit'Unrestricted_Access);
+         Onboard_Cycle (50);
+         Test_Support.Pointer_Down (X, Y);
+         Test_Support.Pointer_Up (X, Y);
+         DMI_Core.Tick (50);
+         Pump_To_Mock;
+         Test_Support.Drain_Sounds;
+      end Touch;
+
+      --  area by area, the pixels that differ from the mock's frame
+      procedure Compare (Point : Point_T) is
+         type Count_Array is array (Display.Main_ID_T) of Natural;
+         Counts : Count_Array := (others => 0);
+         Sub_Counts : array (Display.Sub_ID_T) of Natural :=
+           (others => 0);
+         Total  : Natural := 0;
+
+         function Inside (A : Display.Area_T; X, Y : Natural)
+           return Boolean
+         is (X >= A.Position.X and then X < A.Position.X + A.Width
+             and then Y >= A.Position.Y and then Y < A.Position.Y + A.Height);
+      begin
+         for X in X_T loop
+            for Y in Y_T loop
+               if Display.Screen.Get_Pixel (X, Y)
+                    /= Mock_Frames (Point) (X, Y)
+               then
+                  Total := Total + 1;
+                  for M in Display.Main_ID_T loop
+                     if Inside (Display.Get_Area (M), X, Y) then
+                        Counts (M) := Counts (M) + 1;
+                        exit;
+                     end if;
+                  end loop;
+                  for Sub in Display.Sub_ID_T loop
+                     declare
+                        Parent : constant Display.Main_ID_With_Sub_T :=
+                          (case Sub is
+                              when Display.A1 .. Display.A4 => Display.A,
+                              when Display.B0 .. Display.B8 => Display.B,
+                              when Display.C1 .. Display.C9 => Display.C,
+                              when Display.D1 .. Display.D14 => Display.D,
+                              when Display.E1 .. Display.E11 => Display.E,
+                              when Display.F1 .. Display.F9 => Display.F,
+                              when Display.G1 .. Display.G13 => Display.G);
+                        R  : constant Display.Area_T :=
+                          Display.Get_Sub_Area_With_Relative_Position (Sub);
+                        PA : constant Display.Area_T :=
+                          Display.Get_Area (Parent);
+                        A  : constant Display.Area_T :=
+                          (Position => (PA.Position.X + R.Position.X,
+                                        PA.Position.Y + R.Position.Y),
+                           Width    => R.Width,
+                           Height   => R.Height);
+                     begin
+                        if Inside (A, X, Y) then
+                           Sub_Counts (Sub) := Sub_Counts (Sub) + 1;
+                           exit;
+                        end if;
+                     end;
+                  end loop;
+               end if;
+            end loop;
+         end loop;
+         Put ("  mission " & Names (Point).all & ": mock v_perm"
+              & Img (Mock_Shown (Point).V_Perm) & " v_target"
+              & Img (Mock_Shown (Point).V_Target) & " d_target"
+              & Img (Mock_Shown (Point).D_Target) & " mon"
+              & Img (Mock_Shown (Point).Monitoring) & " st"
+              & Img (Mock_Shown (Point).Status) & " | on-board v_perm"
+              & Img (Onboard_Shown (Point).V_Perm) & " v_target"
+              & Img (Onboard_Shown (Point).V_Target) & " d_target"
+              & Img (Onboard_Shown (Point).D_Target) & " mon"
+              & Img (Onboard_Shown (Point).Monitoring) & " st"
+              & Img (Onboard_Shown (Point).Status) & " (v"
+              & Img (Onboard_Shown (Point).V_Cur) & ") | pixels"
+              & Img (Total));
+         for M in Display.Main_ID_T loop
+            if Counts (M) > 0 then
+               Put (" " & Display.Main_ID_T'Image (M) & Img (Counts (M)));
+            end if;
+         end loop;
+         Put (" | sub-areas");
+         for Sub in Display.Sub_ID_T loop
+            if Sub_Counts (Sub) > 0 then
+               Put (" " & Display.Sub_ID_T'Image (Sub)
+                    & Img (Sub_Counts (Sub)));
+            end if;
+         end loop;
+         New_Line;
+         Mission_Diffs (Point) := Total;
+         Outside_AB (Point) :=
+           Total - Counts (Display.A) - Counts (Display.B);
+      end Compare;
+
+      procedure Checkpoint (Point : Point_T) is
+      begin
+         DMI_Core.Render;
+         if On_Board then
+            Onboard_Shown (Point) :=
+              (V_Cur      => Speed_Frame.V_Cur,
+               V_Perm     => Speed_Frame.V_Perm,
+               V_Target   => Speed_Frame.V_Target,
+               D_Target   => Speed_Frame.D_Target,
+               Monitoring => Speed_Frame.Monitoring,
+               Status     => Speed_Frame.Status);
+            Compare (Point);
+         else
+            Mock_Shown (Point) := Mock_Speed;
+            declare
+               Golden : constant String :=
+                 DMI_Golden_Dir & Names (Point).all & ".sha256";
+            begin
+               Check (Ada.Directories.Exists (Golden)
+                      and then Read_Line (Golden)
+                               = Display.Screen.Files.Digest,
+                      "mission: the mock draws " & Names (Point).all
+                      & " as recorded");
+            end;
+            for X in X_T loop
+               for Y in Y_T loop
+                  Mock_Frames (Point) (X, Y) :=
+                    Display.Screen.Get_Pixel (X, Y);
+               end loop;
+            end loop;
+         end if;
+      end Checkpoint;
+
+      function In_TSM return Boolean is (EVC_Mock.Monitoring = 1);
+      function In_RSM return Boolean is (EVC_Mock.Monitoring = 2);
+      function Stopped return Boolean is
+        (EVC_Train.Speed_KMH = 0 and then EVC_Train.Position_M > 9_000.0);
+      function Past_LX return Boolean is
+        (EVC_Train.Position_M > 5_600.0);
+
+      generic
+         with function Done return Boolean;
+      procedure Run_Until (What : String; Max_Steps : Natural);
+
+      procedure Run_Until (What : String; Max_Steps : Natural) is
+      begin
+         for I in 1 .. Max_Steps loop
+            Sim_Step;
+            if Done then
+               return;
+            end if;
+         end loop;
+         Check (False, "mission: timeout waiting for " & What);
+      end Run_Until;
+
+      procedure Wait_TSM is new Run_Until (In_TSM);
+      procedure Wait_RSM is new Run_Until (In_RSM);
+      procedure Wait_Stop is new Run_Until (Stopped);
+      procedure Wait_LX is new Run_Until (Past_LX);
+
+      Timeout : constant Natural := General_Parameters.EVC_Link_Timeout_Ms;
+   begin
+      for Pass in 1 .. 2 loop
+         On_Board := Pass = 2;
+         DMI_Core.Initialise;
+         Test_Support.Reset_EVC_Model;
+         General_Parameters.EVC_Link_Timeout_Ms := 0;
+         Test_Support.Drain_Sounds;
+         EVC_Mock.Reset;
+         Test_Support.External_EVC;
+         EVC_Core.Initialise;
+         Reset_Capture;
+
+         for I in 1 .. 5 loop
+            Sim_Step;
+         end loop;
+         Checkpoint (Mission_SB);
+
+         --  the start of mission by touch, as dmi_test
+         Touch (385, 240); Touch (487, 90);
+         Touch (385, 240); Touch (487, 90);
+         Touch (410, 140);
+         Touch (385, 240); Touch (589, 40);
+         Touch (385, 290); Touch (487, 390); Touch (487, 390);
+         Touch (589, 90);
+         Touch (385, 240); Touch (589, 240); Touch (487, 290);
+         Touch (589, 140);
+         Touch (385, 240); Touch (385, 290); Touch (487, 390);
+         Touch (589, 190);
+         Touch (539, 440);
+         Touch (385, 240); Touch (589, 40);
+         Touch (385, 340); Touch (589, 90);
+         Touch (487, 290); Touch (589, 140);
+         Touch (167, 440);
+         Touch (487, 40);
+         Touch (385, 240); Touch (487, 90);
+         Touch (410, 90);
+         Pump_To_Mock;
+         Sim_Step;
+         Test_Support.Drain_Sounds;
+
+         Wait_TSM ("TSM entry", 2_000);
+         Test_Support.Drain_Sounds;
+         Checkpoint (Mission_TSM);
+         Wait_LX ("passing the level crossing", 3_000);
+         Test_Support.Drain_Sounds;
+         Checkpoint (Mission_After_LX);
+         Wait_RSM ("RSM entry", 8_000);
+         Test_Support.Drain_Sounds;
+         Checkpoint (Mission_RSM);
+         Wait_Stop ("standstill at the EOA", 4_000);
+         Test_Support.Drain_Sounds;
+         Checkpoint (Mission_Stopped);
+      end loop;
+      General_Parameters.EVC_Link_Timeout_Ms := Timeout;
+      DMI_Core.Initialise;
+      Test_Support.Reset_EVC_Model;
+      Put_Line ("  mission: the mock enters TSM at" & Integer'Image (Mock_TSM)
+                & " m, RSM at" & Integer'Image (Mock_RSM)
+                & " m; the on-board, on the mock's train, TSM at"
+                & Integer'Image (Board_TSM) & " m, commands the service "
+                & "brake at" & Integer'Image (Board_SB)
+                & " m, the emergency brake at" & Integer'Image (Board_EB)
+                & " m, RSM at" & Integer'Image (Board_RSM) & " m");
+
+      Check (Mission_Diffs (Mission_SB) = 0,
+             "mission: SB, the on-board's picture is the mock's");
+      Check (Board_TSM in 0 .. Mock_TSM - 1
+             and then Board_SB in Board_TSM .. Mock_TSM - 1,
+             "mission: with build up times and correction factors the "
+             & "Indication of the 100 km/h target comes before the mock's "
+             & "TSM, and the mock's train passes the on-board's SBI before "
+             & "the mock shows the target");
+      Check (Outside_AB (Mission_TSM) = 0 and then Outside_AB (Mission_RSM) = 0
+             and then Outside_AB (Mission_Stopped) = 0,
+             "mission: the pictures differ in the areas A and B only");
+      Check (Board_RSM in 0 .. Mock_RSM - 1,
+             "mission: the on-board starts RSM before the mock (SBI1 of the "
+             & "EOA and SBI2 of the SvL at the release speed)");
+      Check (Mission_Diffs (Mission_After_LX) = 0,
+             "mission: after the level crossing (CSM at 100 km/h) the "
+             & "on-board's picture is the mock's");
+   end Scenario_SDM_Mission;
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -5387,6 +5832,7 @@ begin
    Scenario_SDM_Special_Brakes;
    Scenario_SDM_Masking;
    Scenario_SDM_SR;
+   Scenario_SDM_Mission;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));
