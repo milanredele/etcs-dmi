@@ -79,7 +79,8 @@ is
    procedure Put_U16 (Frame : in out Frame_Buffer_T;
                       I     : Positive;
                       V     : Unsigned_16)
-     with Pre => I < Max_Frame_Length
+     with Pre => I in 2 .. Max_Frame_Length - 1,
+          Post => Frame (1) = Frame'Old (1)
    is
    begin
       Frame (I) := Byte (V and 16#FF#);

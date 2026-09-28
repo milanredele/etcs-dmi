@@ -267,8 +267,9 @@ is
                         V_NVREL : Speed_Cms_T;
                         R       : out Movement_Authority_T)
      with Global => State,
-          Post => (if R.Present
-                   then A (MA.Sense, R.SvL) >= A (MA.Sense, R.EOA));
+          Post => R.Present = MA.Present
+                  and then (if R.Present
+                            then A (MA.Sense, R.SvL) >= A (MA.Sense, R.EOA));
 
    --  3.12.4.7: the temporary EOA of the start of the nearest mode
    --  profile that the estimated front end Front has not reached (E3:

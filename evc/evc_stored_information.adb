@@ -260,6 +260,9 @@ is
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => P <= EVC_Position.Taken_Packet_Count (J)
    is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
       R  : Reader_T;
       OK : Boolean;
    begin
@@ -532,9 +535,9 @@ is
                     Train      : Train_Frame_T;
                     Mode_Speed : Speed_Cms_T;
                     Now_Ms     : Unsigned_64)
-     with Global => (In_Out => (Snap, Sources, Steps, Ceiling, Failures,
-                                Indicated, Indicated_N, Sent, Sent_N,
-                                Cond_Due, Plan, Plan_Due,
+     with Global => (Output => (Sources, Steps, Ceiling, Indicated,
+                                Indicated_N, Cond_Due, Plan, Plan_Due),
+                     In_Out => (Snap, Failures, Sent, Sent_N,
                                 EVC_Track_Conditions.State),
                      Input  => (Driver_Slippery, EVC_Odometry.State,
                                 EVC_Train_Data.State,
@@ -637,6 +640,9 @@ is
       Grad_Src := (Count => 0, List => (others => (others => <>)),
                    Lost => 0);
       EVC_Track_Description.Gradient_Elements (T, Ahead, Grad_Src);
+      pragma Warnings
+        (GNATprove, Off, """Grad_Src"" is set by ""Envelope"" but not used*",
+         Reason => "only the steps of the gradients are kept");
       Envelope (Grad_Src, Default => Default_G, Floor => -255,
                 Ceiling => 255, Capacity => Max_Gradient_Segments,
                 P => G_Steps, Checked => Checked);
@@ -719,7 +725,7 @@ is
          begin
             Plan.MA_Dist := Unsigned_16 (MA_M);
             Plan.Ceiling := Unsigned_16
-              (Natural'Min (Kmh (Natural (Lowest
+              (Natural'Min (Kmh (Natural'Max (0, Lowest
                  (Steps, A (Ahead, Train.Min_Front),
                   A (Ahead, Train.Max_Front)))), 400));
             --  the gradient at the front, then its changes ahead
@@ -750,7 +756,7 @@ is
             --  the MRSP ahead up to the EOA, then the EOA or the LOA
             for K in 2 .. Steps.Count loop
                exit when Plan.Speed_Count
-                           = EVC_DMI_Port.Max_Planning_Speeds - 1;
+                           >= EVC_DMI_Port.Max_Planning_Speeds - 1;
                declare
                   D : constant Natural :=
                     Metres_Ahead (Ahead, Front,

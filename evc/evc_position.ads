@@ -457,7 +457,7 @@ is
       T        : Direction_T := Unknown;
       S        : Sense_T := Plus;
       Origin   : EVC_Origins.Count_T := 0;
-      First    : Positive := 1;
+      First    : Positive range 1 .. Max_Taken_Telegrams + 1 := 1;
       Count    : Natural range 0 .. Max_Balises := 0;
       Start_Ms : Unsigned_64 := 0;
    end record;

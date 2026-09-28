@@ -212,7 +212,7 @@ is
    --  the planning orders at the start and at the end (0: none), for a
    --  type of track condition (DMI 8.2.3.5, 8.3.4)
    type Symbols_T is record
-      Announce, Active, After, PL_Start, PL_End : Natural range 0 .. 40;
+      Announce, Active, After, PL_Start, PL_End : Natural range 0 .. 38;
    end record;
 
    function Symbols (Kind : Natural) return Symbols_T is
@@ -309,11 +309,12 @@ is
 
       if Cond_S.Sense = Train.Sense then
          for I in 1 .. Cond_S.Count loop
+            pragma Loop_Invariant (Cond_S.Count = Cond_S.Count'Loop_Entry);
             declare
                S   : constant Sense_T := Cond_S.Sense;
                E   : constant Stored_T := Cond_S.List (I);
                Sym : constant Symbols_T :=
-                 Symbols (Natural'Min (E.Value, 15));
+                 Symbols (Natural'Min (Natural'Max (E.Value, 0), 15));
                Id  : constant Natural := Natural'Min (E.Id, 255);
                D   : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
                Fin : constant Dist_T :=
@@ -384,6 +385,8 @@ is
 
       if Traction_S.Sense = Train.Sense then
          for I in 1 .. Traction_S.Count loop
+            pragma Loop_Invariant
+              (Traction_S.Count = Traction_S.Count'Loop_Entry);
             declare
                S   : constant Sense_T := Traction_S.Sense;
                E   : constant Stored_T := Traction_S.List (I);
