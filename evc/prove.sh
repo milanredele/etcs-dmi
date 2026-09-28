@@ -10,13 +10,24 @@
 # The GNAT compiler must be on PATH as for the build.
 #
 # Usage: evc/prove.sh [extra gnatprove switches]
-# e.g. evc/prove.sh --report=all to list every proved check.
+# e.g. evc/prove.sh --report=all to list every proved check,
+#      evc/prove.sh -u evc_fixed.adb for one unit during development,
+#      evc/prove.sh --replay to replay the recorded proofs without
+#      attempting new ones (a verification of a merge).
 # The full report is obj/evc/gnatprove/gnatprove.out.
+#
+# Proof results are shared across worktrees and branches through
+# gnatprove's file cache (package Prove in etcs_evc.gpr): the directory
+# ETCS_PROOF_CACHE, by default ~/.local/share/etcs-dmi/proof-cache. A
+# fresh worktree therefore re-proves only what changed.
 
 set -eu
 
 here=$(cd "$(dirname "$0")/.." && pwd)
 cd "$here"
+
+cache=${ETCS_PROOF_CACHE:-$HOME/.local/share/etcs-dmi/proof-cache}
+mkdir -p "$cache"
 
 gnatprove=${GNATPROVE:-gnatprove}
 if ! command -v "$gnatprove" >/dev/null 2>&1; then

@@ -34,10 +34,23 @@ project Etcs_Evc is
 
    package Prove is
       --  flow analysis and proof of absence of run-time errors and of
-      --  the contracts; evc/prove.sh adds the reporting switches
+      --  the contracts; evc/prove.sh adds the reporting switches.
+      --
+      --  --memcached-server=file:<dir> is gnatprove's shared cache of
+      --  proof results, keyed by the hash of each verification condition
+      --  (AdaCore, "GNATprove tricks and tips: minimizing rework"). The
+      --  session under obj/evc/gnatprove is per checkout; the cache is
+      --  shared by every worktree and branch on the machine, so a proof
+      --  in a fresh worktree only runs the provers on the conditions
+      --  that changed. The directory is outside the repository:
+      --  ETCS_PROOF_CACHE, by default ~/.local/share/etcs-dmi/proof-cache
+      --  (evc/prove.sh creates it).
       for Proof_Switches ("Ada") use
         ("--mode=all", "--level=2", "--checks-as-errors=on",
-         "--warnings=continue");
+         "--warnings=continue",
+         "--memcached-server=file:"
+         & external ("ETCS_PROOF_CACHE",
+                     external ("HOME") & "/.local/share/etcs-dmi/proof-cache"));
    end Prove;
 
 end Etcs_Evc;
