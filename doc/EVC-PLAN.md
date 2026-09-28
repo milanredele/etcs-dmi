@@ -700,3 +700,13 @@ orders level 2 at 5000 m, which needs E5 or a change of the line.
 not measured for the on-board; `evc/README.md` still describes
 `evc_onboard` as bridging the DMI port only; `Mission_Track` in
 `evc_test` can move to `Sim_Telegrams`.
+
+**Tooling** (same day): the wasm bench builds natively on the Mac,
+`test/wasm/setup-native-toolchain.sh` installs GNAT-LLVM with the GCC 14
+front end, LLVM 16.0.4 and the AdaWebPack 24.0.0 runtime from pinned
+sources outside the repository; a clean build of the three modules takes
+about 9 s against 28 min in the Docker image under Rosetta, with
+byte-identical modules (Docker stays the fallback and the CI path).
+gnatprove's proof results are shared across worktrees through its file
+cache (`etcs_evc.gpr`, package `Prove`), so an agent's worktree re-proves
+only what it changed.
