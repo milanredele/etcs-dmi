@@ -1,10 +1,7 @@
 # ETCS on-board (EVC) — Plan
 
-> **Status (2026-09-27):** phase E0 closed (§5, merged to master at
-> ac07d97). E1 (language) in progress on branches `e1/codec` and
-> `e1/catalogue`: the description format is
-> [evc/language/SCHEMA.md](../evc/language/SCHEMA.md). E2 (position)
-> follows once the codec is merged, then E3.
+> **Status (2026-09-28):** E0 closed (§5), E1 closed (§6). Next: E2
+> (position), then E3.
 > The DMI is complete for its scope (PLAN.md §7 closed 2026-09-26). This
 > document plans the second product of the repository: an ETCS on-board
 > implementing SUBSET-026 v4.0.0, runnable on a microcontroller of the
@@ -241,3 +238,81 @@ stimuli.
   DMI link over EMAC or SCI, flashing via XDS110.
 - The 2.7 GB GCC build tree under `~/.local/share/etcs-dmi/build` can be
   deleted after the setup.
+
+## 6. E1 — Language: outcome (2026-09-28)
+
+Two parallel branches, `e1/codec` and `e1/catalogue`, merged on
+`e1/language`; the seed catalogue of the codec replaced by the complete
+one at merge, the Ada regenerated.
+
+**Catalogue** ([evc/language/etcs_language.toml](../evc/language/etcs_language.toml),
+format [SCHEMA.md](../evc/language/SCHEMA.md)): 234 variables (7.5), 67
+packets (57 track to train including 44 as raw data and 255, 10 train to
+track), 43 radio messages (24 track to train, 19 train to track), every
+entry with its clause. Written from the PDF pages, because the markdown
+loses which fields belong to a loop or a condition: 31 packets needed the
+page for their structure, 5 had headings the markdown lost.
+`check_catalogue.py` validates the file against the schema and
+cross-checks every packet's flattened field list and lengths, the 7.4.1
+lists, the 7.5 headings and the message tables against the markdown; the
+markdown defects it tolerates are listed in it with the PDF page.
+
+**Generator** (`gen_language.py`, standard library): 143 checked-in Ada
+files, `--check` regenerates and diffs. One package per packet with a
+record type, `Decode` and `Encode`; a range type per variable with
+`To_`, `Code` and `Is_Valid`; `ETCS_Catalogue` and
+`ETCS_Message_Catalogue` as data. Record sizes total 19.9 kB, the largest
+packet 27 (6.1 kB) and packet 3 (4.4 kB).
+
+**Codec** (hand-written, SPARK): `ETCS_Bits` (reader and writer over
+their own copy of up to 1024 bytes, MSB first, 1 to 64 bit variables,
+total operations with a sticky `Failed`), `ETCS_Packet_Index` (one
+packet: header, L_PACKET consistency by decoding on a copy, skip of an
+unknown packet), `ETCS_Telegram` (8.4.2: header checks, packet index
+over the kept bits, 8.4.1.4 duplicate rule with its exceptions, packet 0
+first, 255 at the end, 210 and 830 bit formats, building), `ETCS_Message`
+(8.4.4: L_MESSAGE, message variables from the catalogue, mandatory
+packets in order then optional ones by the rules, padding, building).
+Versions accepted: 2.0 to 2.3 and 3.x as 7.5.1.79 defines them; 0.x and
+1.x rejected under `Unsupported_Version` with the header kept.
+
+**Core**: `EVC_Received` keeps the last accepted telegram and message
+(bits plus index) and counts every rejection reason; `EVC_Core.Read_Ports`
+latches up to 8 telegrams and 4 messages per cycle, parses them and
+writes a JRU record each. No behaviour on the content yet. The E0
+contracts stay proven.
+
+**Proof**: 4101 checks, 0 unproved, 0 justified (858 run-time, 1297
+functional contracts, 42 assertions, 772 termination, 1090
+initialisation). 26 min CPU; 77 min wall on a machine shared with the
+cross build. A generator change made this feasible: `Decode` fills locals
+and assigns the record once, each loop item has its own procedure
+(packet 3 went from 32 min to 14 s).
+
+**Tests**: `evc_test` 503 checks (27,202 encode → decode round trips of
+random valid packets with boundary values, framing, padding, truncation
+at every bit boundary, L_PACKET mismatch, unknown packet skipped,
+duplicate rule, versions), one new golden; `evc_fuzz` random bits on BTM
+and RTM, 0 raised. `dmi_test` 2156, `dmi_fuzz` clean, wasm unaffected
+(evc/ is not in the wasm build yet).
+
+**Cross build**: 195 kB code, 7.5 kB data on the TMS570LC43x with the
+whole language. Stack worst case for parsing a message about 10 kB
+(message record 1.8 kB, two 1 kB readers, packet record up to 6.1 kB).
+
+**Open points carried forward**
+- Rules the codec does not enforce yet, to be placed by the matrix
+  notes: telegram length exactly 210 or 830 bits; `sent_by` against the
+  medium; spare values (`Is_Valid` exists, `Decode` does not reject);
+  unknown packets are indexed and counted, the 7.3.3.4 / 3.17.3.11
+  decision depends on the operated version (E6); RTM messages are taken
+  as from an RBC (E5 tells the RIU apart).
+- The catalogue cannot express value constraints (M_ACK = 0 in message
+  39, NID_TSR ranges by sender, D_REF using the message's Q_SCALE),
+  spare values between defined ones (M_MODETEXTDISPLAY), or rules at
+  telegram level (packet 136 applies to the packets after it): these are
+  behaviour of E2 to E6 and are noted in the TOML.
+- Euroloop telegram header (8.4.3) is E7 with the loop.
+- The proof of the whole on-board is now long: run it on an idle
+  machine; consider `--level=1` for the generated packets once the
+  contracts are stable.
