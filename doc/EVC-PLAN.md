@@ -1,9 +1,8 @@
 # ETCS on-board (EVC) — Plan
 
 > **Status (2026-09-28):** E0 closed (§5), E1 closed (§6), E2 closed
-> (§7). E3 (supervision) in progress in two halves, `e3/profiles` and
-> `e3/supervision`, joined by
-> [evc/evc_supervision_input.ads](../evc/evc_supervision_input.ads) (§8).
+> (§7), E3 integrated and merged (§8 plan, §9 outcome); its follow-up
+> `e3/pbd` (3.11.11) runs. Next: E4 (modes and procedures, level 1).
 > The DMI is complete for its scope (PLAN.md §7 closed 2026-09-26). This
 > document plans the second product of the repository: an ETCS on-board
 > implementing SUBSET-026 v4.0.0, runnable on a microcontroller of the
@@ -447,3 +446,109 @@ monitoring), fixed in
 Each half classifies its rows of the matrix; the coordinator merges the
 profiles first, then the supervision, and runs the mission of the mock
 against the on-board through the DMI goldens.
+
+## 9. E3 — Supervision: outcome (2026-09-28)
+
+Three branches: `e3/profiles`, `e3/supervision` in parallel from the
+same base, then `e3/integrate` for the merge (ten files in conflict, all
+"both appended at the end", both sides kept) and the seams the halves
+left for each other. A follow-up branch `e3/pbd` adds 3.11.11 (§9,
+"Open points").
+
+**Stored information** (profiles): `EVC_Origins` (32 location
+references, each the three items of Table 2a, relocated with the SOLR),
+`EVC_Profiles` (locations as offsets from an origin; replacement,
+deletion in rear, coverage; the lower envelope proven sorted and never
+above any element), `EVC_Train_Data` (a documented default train until
+E4 enters one: 200 m, 160 km/h, lambda 135 % P), `EVC_National_Values`
+(packet 3 with D_VALIDNV and the NID_C rule of 3.18.2, A.3.2 defaults;
+replaces the E0 record), `EVC_Track_Description` (SSP with categories,
+gradients, ASP, TSR and revocation, default gradient, LX, adhesion, route
+suitability), `EVC_Movement_Authority` (level 1 MA, section / End
+Section / overlap / LOA timers and their effects, EOA, SvL, release speed,
+V_MAIN, mode profile), `EVC_Track_Conditions` (68, 39, 67; the 5.18
+indications and planning orders; braking inhibition areas),
+`EVC_Stored_Information` (runs the step, builds `Snapshot_T`). Bounds: 96
+elements per store, 32 MA sections, 400 MRSP sources; about 90 kB of
+state. An MA is refused unless SSP and gradients cover it to the SvL
+(3.7.2.3); a shortening deletes only information of earlier messages
+(3.8.5.1.5); the announcement point of a track condition is 10 s at the
+current speed, at least 100 m (a choice the SRS leaves open).
+
+**Supervision**: `EVC_Fixed` (cm/s, squares of speeds, ms, divisions
+rounded down or up, integer square root), `EVC_Braking` (A.3.7 basic
+deceleration, the A.3.8/A.3.9 conversion model, Kdry_rst, Kwet_rst,
+Kv_int, Kr_int, Kt_int, Kn, A_MAXREDADH, special brakes and the Table 4
+combinations; decelerations in 10⁻⁵ m/s²), `EVC_Profile` (the track under
+the curves: gradient with train length and rotating mass, reduced
+adhesion, inhibition and powerless areas), `EVC_Curves` (EBD, SBD, GUI as
+arcs of parabola on v²; speed at a location, location of a speed, the
+A.3.12.2 extremes), `EVC_Limits` (margins, EBI, SBI1/SBI2, W, P, I,
+permitted speed, P at the target), `EVC_Build_Up` (A.3.12 reduced times),
+`EVC_SDM` (targets including the temporary EOA/SvL of the mode profile
+and of a non-protected LX, given and calculated release speed with the
+3.13.9.4.9 cap, CSM / TSM / RSM with Tables 5 to 16, MRDT, indication
+location, service brake feedback, the pawl of A.3.13, perturbation and
+MA request locations), `EVC_Brake_Commands` (3.14: SDM commands, service
+brake failure, roll away and unauthorised direction with D_NVROLL,
+release after acknowledgement at standstill). Every rounding is on the
+safe side: against a floating point reference in the tests, 6813 curve
+values are never ahead of the exact location and at most 4.13 m behind
+(1.5 ‰), speeds never above and at most 1.5 cm/s below; the calculated
+release speed 11.16 km/h against 11.18. The per-cycle cost is bounded:
+a fixed number of arc walks per target, 16 bisection steps for the
+release speed. Choices recorded in the `EVC_SDM` header: measured
+acceleration from the speed with a 1 s filter; reduced times at the
+current speed; service brake failure after T_bs + 2 s without
+deceleration.
+
+**Outputs**: MSG_SPEED_STATE every cycle, MSG_PLANNING while an MA is
+present, MSG_TRACK_COND on change, MSG_STATUS brake indication and TTI;
+the TIU output (2 bytes: EB, SB, traction cut-off commands and the
+reason) when it changes and every cycle while active; JRU events 20
+(brake commands), 21 (supervision), 22 (EOA/SvL passed), 32 (stored
+information). `Onboard_Config` is this on-board's configuration and is a
+project choice to confirm: service brake feedback on, special brakes
+counting for both brake models, the additional brake not taken as
+adhesion independent, regenerative brake needs the catenary.
+
+**Proof**: 7385 checks, 0 unproved (3129 flow, 4256 provers). Contracts
+that state the SRS: intervention implies a brake command; a triggered EB
+implies EB commanded; EB revoked only when supervision stops, at
+standstill, or outside RSM at or below the MRSP; RSM only with a release
+speed; V_perm ≤ V_warning ≤ V_SBI; the MRSP never above any source; the
+SvL never before the EOA.
+
+**Tests**: `evc_test` 9001 checks (the profiles' telegrams and stores,
+the supervision's reference comparison and the tables, the seams);
+`evc_fuzz` random snapshots and random valid packets of every kind, the
+supervision on the real snapshot, 10⁶ steps clean. Goldens: the E2
+scenarios move a train in Stand By without an MA, so the standstill
+supervision of 4.4.7.1.5 now commands the emergency brake after D_NVROLL
+and their goldens changed by exactly that (TIU output, JRU 20, MSG_STATUS
+brake indication); the position records are identical.
+`test/tools/evc_dump.py` decodes a golden's output for such comparisons.
+
+**Mission of the mock** (fed as telegrams: one balise group with packets
+3, 27, 21 and 12 carrying `sim/evc_track.ads`): the pictures at `mission_sb`
+and `mission_after_lx` are identical to the DMI goldens; TSM, RSM and
+stopped differ in areas A and B only. The on-board enters TSM at 2220 m
+where the mock does at 3547 m, commands the service brake at 2850 m and
+the emergency brake at 3282 m, enters RSM at 9818 m against 9970 m: the
+mock's constant 0.8 m/s² without build-up times or correction factors is
+optimistic, and its train ignores the on-board's brakes, so the on-board
+shows intervention where the mock shows a picture no compliant on-board
+would. The bench keeps the mock until E4 gives the on-board its modes;
+then the on-board drives the DMI.
+
+**Matrix E3**: 393 `done`, 28 `partial`, 76 `deferred` of 497 before the
+follow-up. The partial rows wait on E4 (modes, trip, data entry: 13
+rows), E5 (level 2 parts and the MA request: 9), E6 and E7 (6).
+
+**Open points**
+- 3.11.11 and packet 52 (permitted braking distance): the follow-up
+  `e3/pbd`, with the gradient gaps between relocated elements.
+- Until E4 the on-board stays in Stand By: moving a train without an MA
+  triggers the standstill supervision, correctly.
+- `Snapshot_T.Extra`: the extra train data, T_MAR and the SR distance
+  stay at their defaults until E4/E5.
