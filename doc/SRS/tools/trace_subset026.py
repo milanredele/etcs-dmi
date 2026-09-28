@@ -88,7 +88,11 @@ PHASES = [
     ("3.6", "E2"),
     ("3.15.8", "E2"),
     ("5.12", "E2"),
-    # E3 Supervision
+    # E3 Supervision (3.7 completeness of stored data and 3.8.4 use of
+    # the MA on board go with the stored information the supervision
+    # works on; 3.8.2, 3.8.5, 3.8.6 stay with the radio, E5)
+    ("3.7", "E3"),
+    ("3.8.4", "E3"),
     ("3.11", "E3"),
     ("3.12", "E3"),
     ("3.13", "E3"),
@@ -105,7 +109,6 @@ PHASES = [
     ("3.16.3", "E5"),
     ("5.15", "E5"),
     # E6 Special functions and data
-    ("3.7", "E6"),
     ("3.15", "E6"),
     ("3.16", "E6"),
     ("3.17", "E6"),

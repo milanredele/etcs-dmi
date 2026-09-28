@@ -1,7 +1,9 @@
 # ETCS on-board (EVC) — Plan
 
-> **Status (2026-09-28):** E0 closed (§5), E1 closed (§6, merged to
-> master). E2 (position) in progress on `e2/position`. Then E3.
+> **Status (2026-09-28):** E0 closed (§5), E1 closed (§6), E2 closed
+> (§7). E3 (supervision) in progress in two halves, `e3/profiles` and
+> `e3/supervision`, joined by
+> [evc/evc_supervision_input.ads](../evc/evc_supervision_input.ads) (§8).
 > The DMI is complete for its scope (PLAN.md §7 closed 2026-09-26). This
 > document plans the second product of the repository: an ETCS on-board
 > implementing SUBSET-026 v4.0.0, runnable on a microcontroller of the
@@ -95,10 +97,10 @@ accident.
 | **E0 Foundation** | Repository split, `EVC_Core` skeleton with ports and scheduler, `evc_test` and `evc_fuzz`, SPARK and gnatprove in the build, chapter 9 matrix, cross build for arm-eabi, this plan | 9 | M |
 | **E1 Language** | Codec generator, all track-to-train and train-to-track packets, radio messages, telegram fixtures, round trips, fuzz | 7, 8, A.3.11 | L |
 | **E2 Position** | Balise groups, linking, train position and confidence interval, relocation, odometer accuracy monitoring, cold movement, train orientation | 3.4, 3.6, 3.15.8, 5.12 | L |
-| **E3 Supervision** | SSP, ASP, TSR, gradients, conversion models, brake build-up, MRSP, EBD/SBD/GUI curves, supervision limits, commands, perturbation location, brake command handling, roll away protection. Replaces the constant-deceleration mock | 3.11, 3.12 (except 3.12.3), 3.13, 3.14, A.3.1, A.3.7 to A.3.10, A.3.12, A.3.13 | XL |
+| **E3 Supervision** | SSP, ASP, TSR, gradients, completeness of stored data, use of the MA on board, conversion models, brake build-up, MRSP, EBD/SBD/GUI curves, supervision limits, commands, perturbation location, brake command handling, roll away protection. Replaces the constant-deceleration mock | 3.7, 3.8.4, 3.11, 3.12 (except 3.12.3), 3.13, 3.14, A.3.1, A.3.7 to A.3.10, A.3.12, A.3.13 | XL |
 | **E4 Modes and procedures, level 1** | All 17 modes, 4.6 transitions, 4.8 acceptance, 4.10 stored information, 4.12 brakes, SoM and EoM in L0/L1, SH, override, OS, level transitions, trip, reversing, LS, SM, LX, track conditions and 5.20 outputs, train data changes, text messages | 4, 5 (except 5.12, 5.15), 3.12.3, A.3.3 to A.3.6 | XL |
-| **E5 Radio, level 2** | Session management, MA request and update, co-operative shortening, emergency messages, position reports, handover, radio data consistency, SoM in L2, RBC simulator in `sim/` | 3.5, 3.8, 3.10, 3.15.1, 3.16.3, 5.15 | L |
-| **E6 Special functions and data** | Non-leading engines, splitting and joining, TAF, big metal mass, VBC, advance route information, system version, national values, train data and data view, completeness of data, balise consistency, juridical data port | 3.7, 3.15 (rest), 3.16 (except 3.16.3), 3.17, 3.18, 3.20, A.3.2 | L |
+| **E5 Radio, level 2** | Session management, MA request and update, co-operative shortening, emergency messages, position reports, handover, radio data consistency, SoM in L2, RBC simulator in `sim/` | 3.5, 3.8 (except 3.8.4), 3.10, 3.15.1, 3.16.3, 5.15 | L |
+| **E6 Special functions and data** | Non-leading engines, splitting and joining, TAF, big metal mass, VBC, advance route information, system version, national values, train data and data view, balise consistency, juridical data port | 3.15 (rest), 3.16 (except 3.16.3), 3.17, 3.18, 3.20, A.3.2 | L |
 | **E7 Compatibility** | Older system versions X = 1 and X = 2; Euroloop and radio infill if wanted | 6, 3.9 | L, deferrable |
 | **E8 Hercules** | TMS570LC43x LaunchPad, `gnat_arm_elf` with a light runtime for TMS570 (bb-runtimes), RTI timer executive, ESM and lockstep fault reporting, DMI link over Ethernet with CRC and sequence numbers, memory and timing measurements | — | L |
 
@@ -112,11 +114,16 @@ the DMI. E3 is the critical path.
   The TMS570 family is big-endian: multi-byte fields on any wire are read
   and written byte by byte, as the DMI protocol already does, never by
   overlay.
-- **Floating point**: `Float` for the curves (Cortex-R4F/R5F have an FPU,
-  the light runtime has the elementary functions). Bit-identical results
-  across host, wasm and target are required for the goldens: no
-  `Long_Float`, no fused operations, one rounding convention, and the
-  proof of the kernel does not depend on floating point identities.
+- **Arithmetic**: integers only under `evc/` (revised 2026-09-28, after
+  E2). Distances are cm, speeds cm/s, accelerations mm/s², times ms,
+  factors in thousandths, in 64-bit integers with saturation
+  (`EVC_Distances`). The curves of 3.13 are computed in fixed point with
+  an integer square root. Reasons: bit-identical results on host, wasm
+  and target come for free; the proof of absence of run-time errors
+  stays in the integer theory the provers handle well; the light runtime
+  restriction `No_Floating_Point` holds. The precision is documented
+  where a curve is computed and checked against the ERA braking curve
+  workbook of SUBSET-076 in E3.
 - **Formal verification**: SPARK on the safety kernel (position, speed and
   distance monitoring, brake commands, mode machine, codec) and wherever a
   proof is cheaper than a test; the host-only tooling and the bench are
@@ -334,3 +341,106 @@ wall alone; `evc_test` 649 checks.
 - The proof of the whole on-board is now long: run it on an idle
   machine; consider `--level=1` for the generated packets once the
   contracts are stable.
+
+## 7. E2 — Position: outcome (2026-09-28)
+
+One branch, `e2/position`, 3.3 kloc of SPARK in six units, merged with
+the E1 fix round.
+
+**Units**: `EVC_Distances` (cm in 64-bit integers with saturation, the
+senses of the odometer frame), `EVC_Odometry` (frame position and its
+confidence from the odometer's over- and under-reading counters, all
+accumulators proven monotone; 3.6.8 accuracy monitoring with the A.3.1
+values: 100 m intervals, a 5000 m window, impairment and safety
+thresholds, recovery per SUBSET-041 5.3.1.1; 3.15.8 cold movement; 3.6.7
+virtual positions), `EVC_Balise_Groups` (one passage: location reference
+balise 1 or its duplicate, orientation from the numbering against the
+stamps, single balise and duplicated pairs without orientation),
+`EVC_Linking` (packet 5 as a chain of cumulated distances),
+`EVC_Location` (anchors with their deviations at detection and Q_LOCACC,
+`Doubt_Over`/`Doubt_Under` per 3.6.4.1.5, location items relocated per
+3.6.4.2.5 a to c), `EVC_Position` (orientation from the cab, LRBG, SOLR,
+the last 8 LRBGs, unlinked groups, expectation windows and the linking
+reactions of 3.4.4.4 and 3.16.2.3, geographical position, packet 58
+parameters and the report triggers of 3.6.5.1.4/.5, packets 0 and 1).
+
+**Ports**: the odometer sample is 22 bytes (wrapping distance counter
+towards cab A, over- and under-reading amounts, estimated / min / max
+speed, movement code, cold movement flag and distance); the BTM payload
+carries the odometer stamp of the balise before the telegram; the cab A /
+cab B signals of SUBSET-034 2.5.1 give the orientation; JRU events 4 to
+10 report linking reaction, unexpected and missed groups, odometer
+accuracy, position status, cold movement and a new LRBG.
+
+**Design**: positions stay in the odometer frame; an anchor keeps the
+deviations it had when processed, telegrams are processed before the
+cycle's odometer sample, so every interval measured from an anchor is
+the wider one. E2 detects and reports; the reactions (trip, brakes,
+driver information) are E3 and E4. Engineering constants in
+`EVC_Position` to make configuration later: end of a passage 15 m past
+the last balise, antenna offsets 3 m to cab A and 17 m to cab B.
+
+**Contracts proven**: min safe ≤ estimated ≤ max safe front end and min
+safe rear end ≤ min safe front end; the orientation changes only with the
+cab status; against the same LRBG and orientation the confidence never
+shrinks (with a ghost lemma in the body of `EVC_Position`: the same lemma
+in a package spec made gnatprove 15.1.0 crash on `evc_core.adb`); the
+LRBG changes only at the end of a passage. Proof of the whole on-board:
+5084 checks, 0 unproved (1056 run-time, 1461 contracts, 70 assertions,
+990 termination, 1384 initialisation), 39 min CPU.
+
+**Tests**: `evc_test` 747 checks, six new goldens: a track model with an
+odometer error model drives first group, linking windows, missed / early /
+unexpected / unlinked / wrong-direction groups, single balises and
+packet 1 with the RBC assignment, duplicated balises, geographical
+position on the DMI, odometer impaired / recovered / safety threshold,
+cold movement, orientation from the cab, virtual positions, report
+triggers, relocation b and c, repositioning, packet 0 and 1 round trips.
+`evc_fuzz` sends stamped telegrams of linked groups, moving odometer
+samples and cab signals, checks the confidence interval every cycle.
+`dmi_test` 2156, `dmi_fuzz` clean.
+
+**Matrix E2**: 100 `done`, 34 `partial` (all waiting on a later phase for
+the reaction or the consumer: E3 supervision uses the position, E4 acts
+on the events, E5 reports to the RBC, E6 for 3.16.2.4.1 and 3.7.3.1),
+49 `deferred`, 1 `n/a`. The partial rows close when those phases consume
+the events; the notes say which.
+
+**Open points**: the wrap-around of the odometer counter is not
+exercised by a scenario; Q_DIRTRAIN at standstill reports the last
+movement; unknown-LRBG reports use NID_C 0; the balise detection error is
+taken as inside the odometer's amounts (SUBSET-041 5.3.1.1).
+
+## 8. E3 — Supervision: plan (2026-09-28)
+
+E3 is the critical path and is split in two halves along the boundary
+the SRS itself draws in 3.13.2 (the inputs of the speed and distance
+monitoring), fixed in
+[evc/evc_supervision_input.ads](../evc/evc_supervision_input.ads):
+
+- **Profiles** (`e3/profiles`): the stored information. Reception,
+  storage, completeness, extension, replacement and deletion (3.7) of
+  SSP (27), ASP (51), TSR (65, 66, 141), gradients (21), MA in level 1
+  (12) with section and overlap timers, danger point, overlap and release
+  speed (3.8.3, 3.8.4), track conditions (68, 39, 67; 3.12.1 and 5.18
+  displays: MSG_TRACK_COND), route suitability (70; 3.12.2), mode profile
+  (80; 3.12.4, stored for E4), level crossings (88; 3.12.5), adhesion
+  (71), national values (3, replacing the E0 record), train data as a
+  store with defaults; the distances converted to the odometer frame at
+  reception with the location items of E2; the MRSP of 3.13.7 with the
+  front / rear end rules of 3.11.2 and 3.11.3; the `Snapshot_T` per
+  cycle; MSG_PLANNING to the DMI.
+- **Supervision** (`e3/supervision`): from the snapshot, 3.13.2 to
+  3.13.6 (conversion models A.3.7 to A.3.10, gradient acceleration,
+  reduced adhesion, deceleration and brake build-up with the correction
+  factors), 3.13.8 (targets, EBD / SBD / GUI curves), 3.13.9 (EBI, SBI,
+  W, P, I limits, release speed calculation), 3.13.10 (CSM / TSM / RSM,
+  statuses, brake commands, Tables 5 to 15), 3.13.11 (perturbation
+  location), 3.14 (brake command handling, roll away, reverse movement
+  and standstill supervision); the TIU brake outputs; MSG_SPEED_STATE
+  and the MSG_STATUS fields the DMI shows; fixed point with an integer
+  square root, precision checked against the ERA braking curve workbook.
+
+Each half classifies its rows of the matrix; the coordinator merges the
+profiles first, then the supervision, and runs the mission of the mock
+against the on-board through the DMI goldens.
