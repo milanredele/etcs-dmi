@@ -11,6 +11,7 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 |---|---|
 | `EVC_Core` | The core: `Initialise`, `Handle_Input (Port, Payload)`, `Tick (Dt_Ms)`, `Take_Outputs`, `Enter_Failure` / `Failed`. One `Tick` is one cycle, in the order of the plan: read ports, position, stored information, monitoring, mode machine, outputs. |
 | `EVC_Modes` | The 19 modes of 4.3.2 (`M_FS` .. `M_RV`), the levels (0, NTC, 1, 2), the status of the stored level, and the transitions table of 4.6.2 with its priorities. |
+| `EVC_Transition_Conditions` | The 84 conditions of the mode transitions of 4.6.3, one identifier each (`C_1` .. `C_84`, the text of the table quoted), and `Holds`, which asks the unit that owns the state a condition speaks about; the skeleton of phase E4, every condition False until implemented. |
 | `EVC_Ports` | The ports (BTM, RTM, odometer, TIU, DMI, ATO, JRU), the maximum payload of each and the documented shape of every payload; `Valid_Input` checks it. |
 | `EVC_DMI_Port` | The frames of the DMI protocol v2 the on-board accepts and sends, byte by byte (the constants repeat `common/dmi_protocol.ads`; `evc_test` checks them). |
 | `EVC_Outbox` | The bounded queue of outputs: records `port u8, length u16, payload`. |
@@ -128,5 +129,17 @@ python3 evc/language/gen_language.py --check   # generated code up to date
 
 The hosted TCP main is `ports/hosted/evc.adb`, built as `obj/evc_onboard`
 (`obj/evc` is the object directory of `etcs_evc.gpr`): it takes the hub
-port 1338 of `evc_sim` and moves DMI protocol frames between the socket
-and the DMI port.
+port 1338 of `evc_sim`, which it replaces on the bench, and runs the
+on-board at 10 Hz in the environment of `sim/` (`Sim_Onboard_Env`): the
+trackside with the balise groups of the demo line and their telegrams
+(`Sim_Trackside`, `Sim_Telegrams`), the odometer model, the vehicle that
+obeys the brake commands of the TIU output, the driver desk or the
+automatic driver, and the JRU sink. The DMI frames from the hub go to
+the DMI port and MSG_DESK to the desk; the on-board's DMI frames go to
+the hub with the track strip frames of the browser client
+(MSG_SIM_STATE every cycle, MSG_TRACK_LAYOUT every 2 s) as `evc_sim`
+sends them. An exception inside the on-board or its environment is a
+failure (`EVC_Core.Enter_Failure`): the on-board falls silent, the DMI
+shows SF and the vehicle applies the emergency brake. The same
+environment runs in the browser bench (`onboard.wasm`) and in
+`evc_test`.

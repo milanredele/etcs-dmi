@@ -134,6 +134,7 @@ with GNAT.SHA256;
 with Interfaces;   use Interfaces;
 with Sim_JRU;
 with Sim_Onboard_Env;
+with Sim_Telegrams;
 with Sim_Trackside;
 with Sim_Vehicle;
 with Test_Support;
@@ -7106,80 +7107,45 @@ procedure EVC_Test is
    --  delay as the mock has none), the gradients (21: 5, -8 from 2 km, 0
    --  from 5 km, 12 from 8 km, to 10.5 km) and the MA (12: V_MAIN 140
    --  km/h, the EOA at 10 km, a danger point there with a release speed of
-   --  25 km/h: the mock has no SvL, the SvL is the EOA). The train data
-   --  of the mission (passenger, 400 m, 135 %, 140 km/h, a traction
-   --  cut-off time of 1 s; data entry is phase E4) go straight to the
-   --  store.
+   --  25 km/h: the mock has no SvL, the SvL is the EOA). The packets are
+   --  those of the first group of the bench (Sim_Trackside), built by
+   --  Sim_Telegrams, but for Q_NVEMRRLS and the linking the bench adds.
+   --  The train data of the mission (passenger, 400 m, 135 %, 140 km/h, a
+   --  traction cut-off time of 1 s; data entry is phase E4) go straight
+   --  to the store.
    Mission_Group_M : constant := -12;
 
    procedure Mission_Track is
-      M  : T12.Packet_T;
-      NV : T3.Packet_T;
-      D  : SIn.Train_Data_T := EVC_Train_Data.Default;
+      D    : SIn.Train_Data_T := EVC_Train_Data.Default;
       From : constant Integer := -Mission_Group_M;
+      package ST renames Sim_Telegrams;
    begin
-      NV.Q_DIR := 2;
-      NV.Q_SCALE := 1;
-      NV.D_VALIDNV := 0;
-      NV.NID_C := 123;
-      NV.N_ITER := 0;
-      NV.V_NVSHUNT := 6;
-      NV.V_NVSTFF := 8;
-      NV.V_NVONSIGHT := 6;
-      NV.V_NVLIMSUPERV := 20;
-      NV.V_NVUNFIT := 20;
-      NV.V_NVREL := 8;
-      NV.D_NVROLL := 2;
-      NV.Q_NVSBTSMPERM := 1;
-      NV.Q_NVEMRRLS := 1;
-      NV.Q_NVGUIPERM := 0;
-      NV.Q_NVSBFBPERM := 0;
-      NV.Q_NVINHSMICPERM := 0;
-      NV.V_NVALLOWOVTRP := 0;
-      NV.V_NVSUPOVTRP := 6;
-      NV.D_NVOVTRP := 200;
-      NV.T_NVOVTRP := 60;
-      NV.D_NVPOTRP := 200;
-      NV.M_NVCONTACT := 2;
-      NV.T_NVCONTACT := 255;
-      NV.M_NVDERUN := 1;
-      NV.D_NVSTFF := 32_767;
-      NV.Q_NVDRIVER_ADHES := 0;
-      NV.A_NVMAXREDADH1 := 20;
-      NV.A_NVMAXREDADH2 := 14;
-      NV.A_NVMAXREDADH3 := 14;
-      NV.Q_NVLOCACC := 12;
-      NV.M_NVAVADH := 0;
-      NV.M_NVEBCL := 9;
-      NV.Q_NVKINT := 0;
-      M := MA_Of ((1 => EVC_Track.EOA_M + From), V_Main_Kmh => 140);
-      M.Q_DANGERPOINT := 1;
-      M.Has_D_DP := True;
-      M.D_DP := 0;
-      M.V_RELEASEDP :=
-        ETCS_Variables.V_RELEASEDP_T (EVC_Track.Release_Speed / 5);
       Add_Group (Group (1, Mission_Group_M));
-      Carry (1, 0, NV);
-      Carry (1, 0, SSP ((1 => (0, EVC_Track.MRSP (1).Speed, False),
-                         2 => (EVC_Track.MRSP (2).Start_M + From,
-                               EVC_Track.MRSP (2).Speed, False),
-                         3 => (EVC_Track.MRSP (3).Start_M
-                                 - EVC_Track.MRSP (2).Start_M,
-                               EVC_Track.MRSP (3).Speed, False),
-                         4 => (10_500 - EVC_Track.MRSP (3).Start_M,
-                               End_Mark, False))));
-      Carry (1, 1, Grad ((1 => (0, EVC_Track.Gradients (1).Value),
-                          2 => (EVC_Track.Gradients (2).Start_M + From,
-                                EVC_Track.Gradients (2).Value),
-                          3 => (EVC_Track.Gradients (3).Start_M
-                                  - EVC_Track.Gradients (2).Start_M,
-                                EVC_Track.Gradients (3).Value),
-                          4 => (EVC_Track.Gradients (4).Start_M
-                                  - EVC_Track.Gradients (3).Start_M,
-                                EVC_Track.Gradients (4).Value),
-                          5 => (10_500 - EVC_Track.Gradients (4).Start_M,
-                                End_Mark))));
-      Carry (1, 1, M);
+      Carry (1, 0, ST.National_Values (123, Q_NVEMRRLS => 1));
+      Carry (1, 0, ST.SSP ((1 => (0, EVC_Track.MRSP (1).Speed),
+                            2 => (EVC_Track.MRSP (2).Start_M + From,
+                                  EVC_Track.MRSP (2).Speed),
+                            3 => (EVC_Track.MRSP (3).Start_M
+                                    - EVC_Track.MRSP (2).Start_M,
+                                  EVC_Track.MRSP (3).Speed),
+                            4 => (Sim_Trackside.Profiles_End_M
+                                    - EVC_Track.MRSP (3).Start_M,
+                                  ST.End_Mark))));
+      Carry (1, 1, ST.Gradients
+                     ((1 => (0, EVC_Track.Gradients (1).Value),
+                       2 => (EVC_Track.Gradients (2).Start_M + From,
+                             EVC_Track.Gradients (2).Value),
+                       3 => (EVC_Track.Gradients (3).Start_M
+                               - EVC_Track.Gradients (2).Start_M,
+                             EVC_Track.Gradients (3).Value),
+                       4 => (EVC_Track.Gradients (4).Start_M
+                               - EVC_Track.Gradients (3).Start_M,
+                             EVC_Track.Gradients (4).Value),
+                       5 => (Sim_Trackside.Profiles_End_M
+                               - EVC_Track.Gradients (4).Start_M,
+                             ST.End_Mark))));
+      Carry (1, 1, ST.MA ((1 => EVC_Track.EOA_M + From), V_Main_Kmh => 140,
+                          Release_Kmh => EVC_Track.Release_Speed));
       D.Length := 40_000;
       D.Max_Speed := Cms (140.0);
       D.Brake_Percentage := 135;
