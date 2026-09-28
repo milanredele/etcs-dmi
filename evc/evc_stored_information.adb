@@ -558,6 +558,12 @@ is
                   and then (if Snap.MA.Present
                             then A (Snap.Train.Ahead, Snap.MA.SvL)
                                    >= A (Snap.Train.Ahead, Snap.MA.EOA))
+                  and then Snap.Gradients.Count >= 1
+                  and then (for all K in 1 .. Snap.Gradients.Count - 1 =>
+                              A (Snap.Train.Ahead,
+                                 Snap.Gradients.Segments (K).Start)
+                                < A (Snap.Train.Ahead,
+                                     Snap.Gradients.Segments (K + 1).Start))
    is
       MA_Now   : constant EVC_Movement_Authority.MA_T :=
         EVC_Movement_Authority.MA;
@@ -653,6 +659,12 @@ is
       end if;
       Snap.Gradients.Count := G_Steps.Count;
       for K in 1 .. G_Steps.Count loop
+         pragma Loop_Invariant
+           (Snap.Gradients.Count = G_Steps.Count
+            and then Snap.Train.Ahead = Ahead
+            and then (for all K2 in 1 .. K - 1 =>
+                        A (Ahead, Snap.Gradients.Segments (K2).Start)
+                          = G_Steps.List (K2).Start));
          Snap.Gradients.Segments (K) :=
            (Start    => A (Ahead, G_Steps.List (K).Start),
             Gradient => Gradient_T (G_Steps.List (K).Value));

@@ -220,6 +220,13 @@ is
             --  3.8.4.5: the SvL is never before the EOA
             and then (if Current.MA.Present
                       then A (Current.Train.Ahead, Current.MA.SvL)
-                             >= A (Current.Train.Ahead, Current.MA.EOA));
+                             >= A (Current.Train.Ahead, Current.MA.EOA))
+            --  3.11.12: the gradient profile sorted in the sense Ahead
+            and then Current.Gradients.Count >= 1
+            and then (for all K in 1 .. Current.Gradients.Count - 1 =>
+                        A (Current.Train.Ahead,
+                           Current.Gradients.Segments (K).Start)
+                          < A (Current.Train.Ahead,
+                               Current.Gradients.Segments (K + 1).Start));
 
 end EVC_Stored_Information;
