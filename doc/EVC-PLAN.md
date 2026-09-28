@@ -1,7 +1,9 @@
 # ETCS on-board (EVC) — Plan
 
-> **Status (2026-09-28):** E0 closed (§5), E1 closed (§6). Next: E2
-> (position), then E3.
+> **Status (2026-09-28):** E0 closed (§5). E1 (§6) merged on
+> `e1/language`; a fix round for the matrix findings (spare values,
+> senders, telegram length) runs on `e1/fix`. E2 (position) in progress on
+> `e2/position`. Then E3.
 > The DMI is complete for its scope (PLAN.md §7 closed 2026-09-26). This
 > document plans the second product of the repository: an ETCS on-board
 > implementing SUBSET-026 v4.0.0, runnable on a microcontroller of the
