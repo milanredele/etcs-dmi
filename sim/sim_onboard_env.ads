@@ -13,11 +13,12 @@
 --       its brake commands;
 --    2. the vehicle moves (EVC_Train), obeying the commands of the last
 --       TIU output, or the emergency brake if the on-board failed;
---    3. the odometer samples the movement of the balise antenna (3 m in
---       rear of the cab A end, EVC_Position.Antenna_To_Cab_A_Cm: the
---       train runs cab A first); every balise the antenna passed goes
---       to the BTM port with its stamp, in the order of passing, then
---       the odometer sample, then the TIU inputs that changed;
+--    3. the odometer samples the movement of the balise antenna (in
+--       rear of the cab A end by the antenna of the configuration,
+--       EVC_Core.Configuration, 3 m by default: the train runs cab A
+--       first); every balise the antenna passed goes to the BTM port
+--       with its stamp, in the order of passing, then the odometer
+--       sample, then the TIU inputs that changed;
 --    4. EVC_Core.Tick;
 --    5. the outputs: the DMI frames are queued for Take_DMI (and read
 --       for step 1), the TIU output goes to the vehicle, the JRU records
@@ -39,16 +40,20 @@
 --  feed the on-board the same bytes (test/wasm/onboard_smoke.js).
 
 with Ada.Streams; use Ada.Streams;
-with EVC_Position;
 with EVC_Track;
 
 package Sim_Onboard_Env is
 
+   --  The balise antenna of the vehicle, cm in rear of its cab A end:
+   --  the installation the on-board is configured with
+   --  (EVC_Core.Configuration, EVC_Config)
+   function Antenna_To_Cab_A_Cm return Integer;
+
    --  The train's front end at power-up (m): its antenna 1 m in rear of
    --  the first balise of the first group
-   Start_Front_M : constant Float :=
-     Float (EVC_Track.Balise_Groups (1).At_M) - 1.0
-     + Float (EVC_Position.Antenna_To_Cab_A_Cm) / 100.0;
+   function Start_Front_M return Float is
+     (Float (EVC_Track.Balise_Groups (1).At_M) - 1.0
+      + Float (Antenna_To_Cab_A_Cm) / 100.0);
 
    --  Power-up of the on-board and of the vehicle, the train at
    --  Start_Front_M, the desk on auto drive

@@ -283,6 +283,12 @@ package body Sim_JRU is
             end if;
             Add (" ");
             Add_Nat (R.B4);
+         when 33 =>
+            Add (if R.B2 = 1 then "configuration loaded"
+                 else "configuration refused, status ");
+            if R.B2 /= 1 then
+               Add_Nat (R.B3);
+            end if;
          when others =>
             Add ("event ");
             Add_Nat (R.Event);

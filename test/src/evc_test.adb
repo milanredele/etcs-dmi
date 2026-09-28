@@ -4987,7 +4987,8 @@ procedure EVC_Test is
              "snapshot: the gradient profile covers 100 m to 3100 m, the "
              & "default gradient for TSR beside it (3.13.4.1.3)");
       Check (SI.Current.MA.Present and then SI.Current.Supervise
-             and then SI.Current.Extra.Config = SI.Onboard_Config
+             and then SI.Current.Extra.Config
+                        = EVC_Core.Configuration.Supervision
              and then SI.Current.Extra.Trip_Margin
                         = 2 * Pos.SOLR.Locacc + 1_000 + 300_000 / 10
              and then SI.Current.Extra.T_MAR = 0
@@ -7242,7 +7243,7 @@ procedure EVC_Test is
       procedure Onboard_Cycle (Dt : Natural) is
          Antenna : constant Integer_64 :=
            Integer_64 (LF'Floor (LF (EVC_Train.Position_M) * 100.0))
-           - EVC_Position.Antenna_To_Cab_A_Cm;
+           - Integer_64 (EVC_Core.Configuration.Antenna_To_Cab_A);
          Step_Cm : constant Integer_64 := Antenna - Train_Cm;
       begin
          Speed_Cms := Unsigned_16
@@ -7506,7 +7507,7 @@ procedure EVC_Test is
          Start_X (Start_Cm => (Mission_Group_M - 13) * 100);
          Mission_Track;
          Bound_Per_Mille := 2;
-         Run_X (-EVC_Position.Antenna_To_Cab_A_Cm, 100);
+         Run_X (-Integer_64 (EVC_Core.Configuration.Antenna_To_Cab_A), 100);
          Stand_X (500);
          Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 5, 0, 0, 0)));
          Stand_X (200);
@@ -8664,6 +8665,7 @@ procedure EVC_Test is
       Check (Pos.LRBG.X = 2_050 and then Odo.Position = 45_000 - 49_950,
              "odometer wrap: the frame through 0 and back");
    end Scenario_Odometer_Wrap;
+
 
 begin
    Scenario_Protocol_Constants;

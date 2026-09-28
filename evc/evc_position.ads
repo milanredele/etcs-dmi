@@ -96,6 +96,7 @@
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Balise_Groups; use EVC_Balise_Groups;
+with EVC_Config;
 with EVC_Distances;     use EVC_Distances;
 with EVC_Linking;
 with EVC_Location;      use EVC_Location;
@@ -118,13 +119,16 @@ package EVC_Position
        Initializes => State
 is
 
-   --  Installation of the engine: the balise antenna from each end
+   --  The installation of the engine, the balise antenna from each end
    --  (3.6.1.3.4: the front end is the end of the engine the train
-   --  orientation points to)
-   Antenna_To_Cab_A_Cm : constant := 300;
-   Antenna_To_Cab_B_Cm : constant := 1_700;
+   --  orientation points to), is data: EVC_Config.Config_T, which
+   --  EVC_Core hands over with Set_Antenna (Clear takes the antenna of
+   --  EVC_Config.Default).
 
-   --  A passage over a group ends this far from its last balise
+   --  A passage over a group ends this far from its last balise: an
+   --  engineering constant of the trackside, not of the vehicle (above
+   --  the largest distance between two balises of a group that the
+   --  dimensioning rules of the trackside allow), so it stays a constant
    Group_End_Cm : constant := 1_500;
 
    --  A.3.2: Q_NVLOCACC, default location accuracy of a balise group
@@ -227,9 +231,9 @@ is
      with Global => State;
 
    --  The distance from the end of the engine the orientation points to,
-   --  to the antenna
-   function Front_Offset (S : Sense_T) return Length_T is
-     (if S = Plus then Antenna_To_Cab_A_Cm else Antenna_To_Cab_B_Cm);
+   --  to the antenna (the installation, Set_Antenna)
+   function Front_Offset (S : Sense_T) return EVC_Config.Antenna_Offset_T
+     with Global => State;
 
    --  The frame position of the estimated front end
    function Front_X return Dist_T
@@ -327,7 +331,29 @@ is
                   and then Pending_Count = 0
                   and then not Passage_Open
                   and then Event_Count = 0
-                  and then not Geo_Known;
+                  and then not Geo_Known
+                  and then Front_Offset (Plus)
+                             = EVC_Config.Default.Antenna_To_Cab_A
+                  and then Front_Offset (Minus)
+                             = EVC_Config.Default.Antenna_To_Cab_B;
+
+   --  The installation (EVC_Config: Antenna_To_Cab_A, Antenna_To_Cab_B):
+   --  the balise antenna from the cab A end and from the cab B end of
+   --  the engine, cm. The positions of the front end against every
+   --  reference follow at once; nothing else changes.
+   procedure Set_Antenna (To_Cab_A, To_Cab_B : EVC_Config.Antenna_Offset_T)
+     with Global => (In_Out => State),
+          Post => Front_Offset (Plus) = To_Cab_A
+                  and then Front_Offset (Minus) = To_Cab_B
+                  and then Status = Status'Old
+                  and then LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Pending_Count = Pending_Count'Old
+                  and then Passage_Open = Passage_Open'Old
+                  and then Event_Count = Event_Count'Old
+                  and then Geo_Known = Geo_Known'Old;
 
    --  An accepted telegram and the stamp of its balise, for the next
    --  Update; dropped when Max_Pending are waiting

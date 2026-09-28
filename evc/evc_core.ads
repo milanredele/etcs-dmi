@@ -40,6 +40,7 @@ pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Brake_Commands;
 with EVC_Bytes;
+with EVC_Config;
 with EVC_Distances;
 with EVC_Modes;    use EVC_Modes;
 with EVC_Movement_Authority;
@@ -58,6 +59,8 @@ with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
 
+use type EVC_Config.Config_T;
+use type EVC_Config.Status_T;
 use type EVC_Distances.Cm_T;
 use type EVC_Distances.Sense_T;
 use type EVC_Location.Anchor_T;
@@ -121,7 +124,9 @@ is
    ---------------------------------------------------------------------
 
    --  Power-up: the on-board starts in No Power (SUBSET-026 4.4.4.1.1)
-   --  and nothing is stored (phase E0 keeps nothing over No Power)
+   --  and nothing is stored (phase E0 keeps nothing over No Power). The
+   --  installation configuration (Configure) stays, as the installation
+   --  does over a power-up.
    procedure Initialise
      with Global => (Output => (State, EVC_Received.Store,
                                 EVC_Position.State, EVC_Odometry.State,
@@ -132,6 +137,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Train_Data.State),
+                     Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
                   and then not Failed
@@ -143,7 +149,57 @@ is
                   and then not EVC_Received.Has_Telegram
                   and then not EVC_Received.Has_Message
                   and then EVC_Position.Status = EVC_Position.Unknown
-                  and then not EVC_Position.LRBG.Valid;
+                  and then not EVC_Position.LRBG.Valid
+                  and then Installed;
+
+   ---------------------------------------------------------------------
+   --  The installation configuration (EVC_Config): data, not code
+   ---------------------------------------------------------------------
+
+   --  A valid image was loaded (else the configuration is
+   --  EVC_Config.Default)
+   function Configured return Boolean
+     with Global => EVC_Config.State;
+
+   --  The configuration in use: always valid (the ranges and Table 3 of
+   --  3.13.2.2.6.1)
+   function Configuration return EVC_Config.Config_T
+     with Global => EVC_Config.State,
+          Post => EVC_Config.Valid (Configuration'Result);
+
+   --  The position uses the antenna of the configuration
+   function Installed return Boolean is
+     (EVC_Position.Front_Offset (EVC_Distances.Plus)
+        = EVC_Config.Current.Antenna_To_Cab_A
+      and then EVC_Position.Front_Offset (EVC_Distances.Minus)
+                 = EVC_Config.Current.Antenna_To_Cab_B)
+     with Global => (EVC_Config.State, EVC_Position.State);
+
+   --  The installation configuration as a byte image (EVC_Config: the
+   --  layout, the CRC, the checks). The host calls it before or at
+   --  Initialise: it is accepted while the on-board is in No Power
+   --  (before the first cycle after the power-up), refused in any other
+   --  mode (an installation does not change under a running on-board);
+   --  it stays over Initialise. A valid image becomes the configuration;
+   --  an invalid or refused one is counted (EVC_Config.Rejections) and
+   --  leaves the previous configuration. Either is recorded on the JRU
+   --  at the next cycle (EVC_Ports, event 33).
+   procedure Configure (Bytes : EVC_Bytes.Byte_Array)
+     with Global => (Input  => State,
+                     In_Out => (EVC_Config.State, EVC_Position.State)),
+          Post => (if Mode = M_NP
+                     and then EVC_Config.Decoded (Bytes).Status
+                                = EVC_Config.Accepted
+                   then Configured
+                        and then Configuration
+                                   = EVC_Config.Decoded (Bytes).Config
+                   else Configured = Configured'Old
+                        and then Configuration = Configuration'Old)
+                  and then EVC_Config.Valid (Configuration)
+                  and then Installed
+                  and then EVC_Config.Report_Pending
+                  and then EVC_Position.Status = EVC_Position.Status'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old;
 
    --  One input on a port. It is checked against the documented shape
    --  (EVC_Ports) and ignored when it does not match; otherwise it is
@@ -166,7 +222,8 @@ is
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
-                                EVC_National_Values.State),
+                                EVC_National_Values.State,
+                                EVC_Config.State),
                      Input  => EVC_Train_Data.State),
           Post => Failed = Failed'Old
                   and then
@@ -208,7 +265,11 @@ is
                    then EVC_Position.Doubt_Over
                           >= EVC_Position.Doubt_Over'Old
                         and then EVC_Position.Doubt_Under
-                                   >= EVC_Position.Doubt_Under'Old);
+                                   >= EVC_Position.Doubt_Under'Old)
+                  --  the installation configuration does not change in
+                  --  service (only Configure, in No Power, changes it)
+                  and then Configuration = Configuration'Old
+                  and then Configured = Configured'Old;
 
    --  Move the queued outputs to Buffer: records (port u8, length u16,
    --  payload) as EVC_Outbox describes, as many whole records as fit;
