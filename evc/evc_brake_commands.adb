@@ -5,13 +5,6 @@ package body EVC_Brake_Commands
   with SPARK_Mode => On
 is
 
-   --  3.14.1.2: how long after the service brake command, beyond its
-   --  build up time, the train must be decelerating (an engineering
-   --  value: 3.14.1.1 leaves the detection to the implementation), and
-   --  the deceleration that counts as braking, mm/s²
-   SB_Margin_Ms : constant := 2_000;
-   SB_Braking   : constant := -100;
-
    --  One protection (3.14.2.4, 3.14.3.2, 4.4.7.1.5.1): watch an unwanted
    --  movement from where it was detected; brake once the train ran
    --  away more than D_NVROLL; release at standstill and after the
@@ -115,12 +108,18 @@ is
          Ack      => Inputs.Ack);
 
       --  3.14.1.2: the service brake alone, not applied: the emergency
-      --  brake (released with the service brake command)
+      --  brake (released with the service brake command). The train must
+      --  decelerate by SB_Failure_Decel_Mms2 once SB_Failure_Time_Ms
+      --  passed beyond the build up time of the service brake: 3.14.1.1
+      --  leaves the detection to the implementation, the values are the
+      --  installation's (EVC_Config)
       if SDM.SB and then not SDM.EB then
          State.SB_Ms := Min (State.SB_Ms + Num (Inputs.Dt_Ms), Max_Time);
          if State.SB_Ms
-              > Min (Inputs.T_Bs + SB_Margin_Ms, Max_Time)
-           and then Inputs.A_Est > SB_Braking
+              > Min (Inputs.T_Bs + Num (S.Extra.Config.SB_Failure_Time_Ms),
+                     Max_Time)
+           and then Inputs.A_Est
+                      > -Num (S.Extra.Config.SB_Failure_Decel_Mms2)
            and then not T.Standstill
          then
             State.SB_Failed := True;
