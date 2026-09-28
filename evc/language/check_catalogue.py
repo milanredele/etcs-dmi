@@ -7,7 +7,10 @@ Standard library only; needs Python 3.11 or newer (tomllib).
 
 1. Schema: every variable, packet and message entry has the keys SCHEMA.md
    defines and nothing else; bits in 1 .. 32 (NID_RADIO: 64); min/max and
-   special values fit the width; every packet starts NID_PACKET [Q_DIR]
+   special values fit the width; spare values (single values and "a..b"
+   ranges) fit, lie within min .. max, hold no special value and do not
+   overlap; bcd variables are unsigned with a whole number of digits;
+   every packet starts NID_PACKET [Q_DIR]
    L_PACKET (packet 255 and track-to-train packet 0 excepted, 7.3.3.5); every
    `var` is defined; every `if`, `loop` and `raw` variable was read before
    at this level or an enclosing one; condition values fit the variable;
@@ -113,7 +116,28 @@ R = Report()
 # --------------------------------------------------------------------------
 # 1. Schema
 # --------------------------------------------------------------------------
-VAR_KEYS = {"bits", "clause", "min", "max", "special", "scale", "resolution"}
+VAR_KEYS = {"bits", "clause", "min", "max", "special", "scale", "resolution",
+            "spare", "bcd"}
+SPARE_RANGE_RE = re.compile(r"^\s*(-?\d+)\s*\.\.\s*(-?\d+)\s*$")
+
+
+def spare_ranges(v):
+    """The spare values of a variable as (a, b) ranges; None items for
+    the malformed ones."""
+    out = []
+    for item in v.get("spare", []) if isinstance(v.get("spare", []), list) else []:
+        if isinstance(item, int) and not isinstance(item, bool):
+            out.append((item, item))
+        elif isinstance(item, str) and SPARE_RANGE_RE.match(item):
+            m = SPARE_RANGE_RE.match(item)
+            out.append((int(m.group(1)), int(m.group(2))))
+        else:
+            out.append(None)
+    return out
+
+
+def is_spare(v, x):
+    return any(r and r[0] <= x <= r[1] for r in spare_ranges(v))
 PACKET_KEYS = {"nid", "name", "clause", "direction", "sent_by", "fields"}
 MESSAGE_KEYS = {"nid", "name", "clause", "direction", "sent_by", "fields", "packets"}
 NAME_RE = re.compile(r"^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$")
@@ -173,6 +197,32 @@ def check_variables(variables):
                 R.err(w, f"special value {k} outside {lo} .. {hi}")
             if not isinstance(t, str) or not t:
                 R.err(w, f"special value {k} has no text")
+        if "spare" in v:
+            if not isinstance(v["spare"], list) or not v["spare"]:
+                R.err(w, "spare is not a non-empty list")
+            seen = []
+            for item, r in zip(v["spare"] if isinstance(v["spare"], list) else [],
+                               spare_ranges(v)):
+                if r is None:
+                    R.err(w, f"spare {item!r} is neither a value nor a range \"a..b\"")
+                    continue
+                a, b = r
+                if not lo <= a <= b <= hi:
+                    R.err(w, f"spare {item!r} outside {lo} .. {hi} or empty")
+                if isinstance(mn, int) and isinstance(mx, int) and (b < mn or a > mx):
+                    R.err(w, f"spare {item!r} outside min .. max, spare already")
+                for k in sp:
+                    if re.fullmatch(r"-?\d+", k) and a <= int(k) <= b:
+                        R.err(w, f"spare {item!r} holds the special value {k}")
+                for c, d in seen:
+                    if a <= d and c <= b:
+                        R.err(w, f"spare {item!r} overlaps another")
+                seen.append((a, b))
+        if "bcd" in v:
+            if not isinstance(v["bcd"], bool):
+                R.err(w, "bcd is not true or false")
+            elif v["bcd"] and (bits % 4 != 0 or lo < 0):
+                R.err(w, "bcd needs an unsigned variable of whole 4-bit digits")
         if "scale" in v and v["scale"] != "Q_SCALE":
             R.err(w, f"scale {v['scale']!r}")
         if "resolution" in v and not isinstance(v["resolution"], str):
@@ -202,6 +252,8 @@ def parse_cond(cond, variables, readable, where):
                 R.err(where, f"condition value {x} outside the width of {var}")
             elif x not in valid:
                 R.err(where, f"condition value {x} of {var} is neither in min .. max nor special")
+            elif is_spare(v, x):
+                R.err(where, f"condition value {x} of {var} is spare")
     return var
 
 

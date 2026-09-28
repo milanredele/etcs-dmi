@@ -287,6 +287,48 @@ package body ETCS_Language_Random is
               else Unsigned_64 (X));
    end Choose_Signed;
 
+   --  A code of Low .. High or of Specials that is not a spare value
+   --  of Var (Low and High are valid): Choose until valid
+   function Choose_Valid (Var       : Variable_T;
+                          Low, High : Unsigned_64;
+                          Specials  : U64_Array) return Unsigned_64
+   is
+      X : Unsigned_64;
+   begin
+      for Try in 1 .. 100 loop
+         X := Choose (Low, High, Specials);
+         if Valid_Code (Var, X) then
+            return X;
+         end if;
+      end loop;
+      return Low;
+   end Choose_Valid;
+
+   --  A binary coded decimal number of N_Digits digits, left adjusted
+   --  and filled with F: 0 (the smallest), Highest (the largest
+   --  valid) or a random count of random digits (none when
+   --  All_F, FF...F, is valid)
+   function Choose_BCD (N_Digits : Positive;
+                        Highest  : Unsigned_64;
+                        All_F    : Boolean) return Unsigned_64
+   is
+      X     : Unsigned_64 := 0;
+      Count : Natural;
+   begin
+      case Value_Mode is
+         when Min_Values => return 0;
+         when Max_Values => return Highest;
+         when Random_Values =>
+            Count := Natural (Uniform
+              ((if All_F then 0 else 1), Unsigned_64 (N_Digits)));
+            for I in 1 .. N_Digits loop
+               X := Shift_Left (X, 4)
+                 or (if I <= Count then Uniform (0, 9) else 15);
+            end loop;
+            return X;
+      end case;
+   end Choose_BCD;
+
    --  A valid code of the variable, by the value mode
    function Pick (Var : Variable_T) return Unsigned_64 is
    begin
@@ -468,9 +510,9 @@ package body ETCS_Language_Random is
          when M_LEVELTR =>
             return Choose (0, 3, (1 => 1));
          when M_LINEAXLELOADCAT =>
-            return Choose (0, 65535, (1 .. 0 => 0));
+            return Choose_Valid (M_LINEAXLELOADCAT, 1, 8191, (1 .. 0 => 0));
          when M_LINEGAUGE =>
-            return Choose (0, 255, (1 .. 0 => 0));
+            return Choose_Valid (M_LINEGAUGE, 1, 15, (1 .. 0 => 0));
          when M_LOADINGGAUGE =>
             return Choose (0, 4, (1 .. 0 => 0));
          when M_LOC =>
@@ -482,7 +524,7 @@ package body ETCS_Language_Random is
          when M_MODE =>
             return Choose (0, 17, (1 .. 0 => 0));
          when M_MODETEXTDISPLAY =>
-            return Choose (0, 15, (1 .. 0 => 0));
+            return Choose_Valid (M_MODETEXTDISPLAY, 0, 15, (1 .. 0 => 0));
          when M_NVAVADH =>
             return Choose (0, 20, (1 .. 0 => 0));
          when M_NVCONTACT =>
@@ -504,7 +546,7 @@ package body ETCS_Language_Random is
          when M_TRACKCOND =>
             return Choose (0, 10, (1 .. 0 => 0));
          when M_VERSION =>
-            return Choose (0, 127, (1 .. 0 => 0));
+            return Choose_Valid (M_VERSION, 0, 127, (1 .. 0 => 0));
          when M_VOLTAGE =>
             return Choose (0, 5, (1 => 0, 2 => 1));
          when NC_CDDIFF =>
@@ -514,7 +556,7 @@ package body ETCS_Language_Random is
          when NC_DIFF =>
             return Choose (0, 2, (1 .. 0 => 0));
          when NC_TRAIN =>
-            return Choose (0, 32767, (1 .. 0 => 0));
+            return Choose_Valid (NC_TRAIN, 0, 7, (1 .. 0 => 0));
          when NID_BG =>
             return Choose (0, 16382, (1 => 16383));
          when NID_C =>
@@ -532,15 +574,15 @@ package body ETCS_Language_Random is
          when NID_MESSAGE =>
             return Choose (0, 255, (1 .. 0 => 0));
          when NID_MN =>
-            return Choose (0, 16777215, (1 .. 0 => 0));
+            return Choose_BCD (6, 16777215, True);
          when NID_NTC =>
             return Choose (0, 255, (1 .. 0 => 0));
          when NID_OPERATIONAL =>
-            return Choose (0, 4294967295, (1 .. 0 => 0));
+            return Choose_BCD (8, 2684354559, False);
          when NID_PACKET =>
             return Choose (0, 255, (1 .. 0 => 0));
          when NID_RADIO =>
-            return Choose (0, 18446744073709551615, (1 .. 0 => 0));
+            return Choose_BCD (16, 18446744073709551615, True);
          when NID_RBC =>
             return Choose (0, 16382, (1 => 16383));
          when NID_RIU =>
@@ -2261,6 +2303,7 @@ package body ETCS_Language_Random is
                              OK : out Boolean);
       with function Length (P : Packet_T) return Natural;
       with procedure Set_Length (P : in out Packet_T; L : Natural);
+      with function Valid (P : Packet_T) return Boolean;
    procedure Generic_Round_Trip (Result : out Result_T;
                                  Bits   : out Natural);
 
@@ -2290,7 +2333,9 @@ package body ETCS_Language_Random is
          Result := Length_Differs;
       else
          Set_Length (P, Length (Q));
-         Result := (if P = Q then Passed else Record_Differs);
+         Result := (if P /= Q then Record_Differs
+                    elsif not Valid (Q) then Not_Valid
+                    else Passed);
       end if;
    end Generic_Round_Trip;
 
@@ -2301,7 +2346,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P0 is new Generic_Round_Trip
      (Track_P0_Pkg.Packet_T, False, Fill_Track_P0,
       Track_P0_Pkg.Encode, Track_P0_Pkg.Decode,
-      Length_Track_P0, Set_Length_Track_P0);
+      Length_Track_P0, Set_Length_Track_P0, Track_P0_Pkg.Valid);
 
    function Length_Track_P2 (P : Track_P2_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2315,7 +2360,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P2 is new Generic_Round_Trip
      (Track_P2_Pkg.Packet_T, True, Fill_Track_P2,
       Track_P2_Pkg.Encode, Track_P2_Pkg.Decode,
-      Length_Track_P2, Set_Length_Track_P2);
+      Length_Track_P2, Set_Length_Track_P2, Track_P2_Pkg.Valid);
 
    function Length_Track_P3 (P : Track_P3_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2329,7 +2374,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P3 is new Generic_Round_Trip
      (Track_P3_Pkg.Packet_T, True, Fill_Track_P3,
       Track_P3_Pkg.Encode, Track_P3_Pkg.Decode,
-      Length_Track_P3, Set_Length_Track_P3);
+      Length_Track_P3, Set_Length_Track_P3, Track_P3_Pkg.Valid);
 
    function Length_Track_P5 (P : Track_P5_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2343,7 +2388,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P5 is new Generic_Round_Trip
      (Track_P5_Pkg.Packet_T, True, Fill_Track_P5,
       Track_P5_Pkg.Encode, Track_P5_Pkg.Decode,
-      Length_Track_P5, Set_Length_Track_P5);
+      Length_Track_P5, Set_Length_Track_P5, Track_P5_Pkg.Valid);
 
    function Length_Track_P6 (P : Track_P6_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2357,7 +2402,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P6 is new Generic_Round_Trip
      (Track_P6_Pkg.Packet_T, True, Fill_Track_P6,
       Track_P6_Pkg.Encode, Track_P6_Pkg.Decode,
-      Length_Track_P6, Set_Length_Track_P6);
+      Length_Track_P6, Set_Length_Track_P6, Track_P6_Pkg.Valid);
 
    function Length_Track_P12 (P : Track_P12_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2371,7 +2416,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P12 is new Generic_Round_Trip
      (Track_P12_Pkg.Packet_T, True, Fill_Track_P12,
       Track_P12_Pkg.Encode, Track_P12_Pkg.Decode,
-      Length_Track_P12, Set_Length_Track_P12);
+      Length_Track_P12, Set_Length_Track_P12, Track_P12_Pkg.Valid);
 
    function Length_Track_P13 (P : Track_P13_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2385,7 +2430,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P13 is new Generic_Round_Trip
      (Track_P13_Pkg.Packet_T, True, Fill_Track_P13,
       Track_P13_Pkg.Encode, Track_P13_Pkg.Decode,
-      Length_Track_P13, Set_Length_Track_P13);
+      Length_Track_P13, Set_Length_Track_P13, Track_P13_Pkg.Valid);
 
    function Length_Track_P15 (P : Track_P15_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2399,7 +2444,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P15 is new Generic_Round_Trip
      (Track_P15_Pkg.Packet_T, True, Fill_Track_P15,
       Track_P15_Pkg.Encode, Track_P15_Pkg.Decode,
-      Length_Track_P15, Set_Length_Track_P15);
+      Length_Track_P15, Set_Length_Track_P15, Track_P15_Pkg.Valid);
 
    function Length_Track_P16 (P : Track_P16_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2413,7 +2458,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P16 is new Generic_Round_Trip
      (Track_P16_Pkg.Packet_T, True, Fill_Track_P16,
       Track_P16_Pkg.Encode, Track_P16_Pkg.Decode,
-      Length_Track_P16, Set_Length_Track_P16);
+      Length_Track_P16, Set_Length_Track_P16, Track_P16_Pkg.Valid);
 
    function Length_Track_P21 (P : Track_P21_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2427,7 +2472,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P21 is new Generic_Round_Trip
      (Track_P21_Pkg.Packet_T, True, Fill_Track_P21,
       Track_P21_Pkg.Encode, Track_P21_Pkg.Decode,
-      Length_Track_P21, Set_Length_Track_P21);
+      Length_Track_P21, Set_Length_Track_P21, Track_P21_Pkg.Valid);
 
    function Length_Track_P27 (P : Track_P27_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2441,7 +2486,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P27 is new Generic_Round_Trip
      (Track_P27_Pkg.Packet_T, True, Fill_Track_P27,
       Track_P27_Pkg.Encode, Track_P27_Pkg.Decode,
-      Length_Track_P27, Set_Length_Track_P27);
+      Length_Track_P27, Set_Length_Track_P27, Track_P27_Pkg.Valid);
 
    function Length_Track_P31 (P : Track_P31_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2455,7 +2500,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P31 is new Generic_Round_Trip
      (Track_P31_Pkg.Packet_T, True, Fill_Track_P31,
       Track_P31_Pkg.Encode, Track_P31_Pkg.Decode,
-      Length_Track_P31, Set_Length_Track_P31);
+      Length_Track_P31, Set_Length_Track_P31, Track_P31_Pkg.Valid);
 
    function Length_Track_P32 (P : Track_P32_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2469,7 +2514,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P32 is new Generic_Round_Trip
      (Track_P32_Pkg.Packet_T, True, Fill_Track_P32,
       Track_P32_Pkg.Encode, Track_P32_Pkg.Decode,
-      Length_Track_P32, Set_Length_Track_P32);
+      Length_Track_P32, Set_Length_Track_P32, Track_P32_Pkg.Valid);
 
    function Length_Track_P39 (P : Track_P39_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2483,7 +2528,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P39 is new Generic_Round_Trip
      (Track_P39_Pkg.Packet_T, True, Fill_Track_P39,
       Track_P39_Pkg.Encode, Track_P39_Pkg.Decode,
-      Length_Track_P39, Set_Length_Track_P39);
+      Length_Track_P39, Set_Length_Track_P39, Track_P39_Pkg.Valid);
 
    function Length_Track_P40 (P : Track_P40_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2497,7 +2542,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P40 is new Generic_Round_Trip
      (Track_P40_Pkg.Packet_T, True, Fill_Track_P40,
       Track_P40_Pkg.Encode, Track_P40_Pkg.Decode,
-      Length_Track_P40, Set_Length_Track_P40);
+      Length_Track_P40, Set_Length_Track_P40, Track_P40_Pkg.Valid);
 
    function Length_Track_P41 (P : Track_P41_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2511,7 +2556,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P41 is new Generic_Round_Trip
      (Track_P41_Pkg.Packet_T, True, Fill_Track_P41,
       Track_P41_Pkg.Encode, Track_P41_Pkg.Decode,
-      Length_Track_P41, Set_Length_Track_P41);
+      Length_Track_P41, Set_Length_Track_P41, Track_P41_Pkg.Valid);
 
    function Length_Track_P42 (P : Track_P42_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2525,7 +2570,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P42 is new Generic_Round_Trip
      (Track_P42_Pkg.Packet_T, True, Fill_Track_P42,
       Track_P42_Pkg.Encode, Track_P42_Pkg.Decode,
-      Length_Track_P42, Set_Length_Track_P42);
+      Length_Track_P42, Set_Length_Track_P42, Track_P42_Pkg.Valid);
 
    function Length_Track_P44 (P : Track_P44_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2539,7 +2584,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P44 is new Generic_Round_Trip
      (Track_P44_Pkg.Packet_T, True, Fill_Track_P44,
       Track_P44_Pkg.Encode, Track_P44_Pkg.Decode,
-      Length_Track_P44, Set_Length_Track_P44);
+      Length_Track_P44, Set_Length_Track_P44, Track_P44_Pkg.Valid);
 
    function Length_Track_P45 (P : Track_P45_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2553,7 +2598,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P45 is new Generic_Round_Trip
      (Track_P45_Pkg.Packet_T, True, Fill_Track_P45,
       Track_P45_Pkg.Encode, Track_P45_Pkg.Decode,
-      Length_Track_P45, Set_Length_Track_P45);
+      Length_Track_P45, Set_Length_Track_P45, Track_P45_Pkg.Valid);
 
    function Length_Track_P46 (P : Track_P46_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2567,7 +2612,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P46 is new Generic_Round_Trip
      (Track_P46_Pkg.Packet_T, True, Fill_Track_P46,
       Track_P46_Pkg.Encode, Track_P46_Pkg.Decode,
-      Length_Track_P46, Set_Length_Track_P46);
+      Length_Track_P46, Set_Length_Track_P46, Track_P46_Pkg.Valid);
 
    function Length_Track_P49 (P : Track_P49_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2581,7 +2626,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P49 is new Generic_Round_Trip
      (Track_P49_Pkg.Packet_T, True, Fill_Track_P49,
       Track_P49_Pkg.Encode, Track_P49_Pkg.Decode,
-      Length_Track_P49, Set_Length_Track_P49);
+      Length_Track_P49, Set_Length_Track_P49, Track_P49_Pkg.Valid);
 
    function Length_Track_P51 (P : Track_P51_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2595,7 +2640,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P51 is new Generic_Round_Trip
      (Track_P51_Pkg.Packet_T, True, Fill_Track_P51,
       Track_P51_Pkg.Encode, Track_P51_Pkg.Decode,
-      Length_Track_P51, Set_Length_Track_P51);
+      Length_Track_P51, Set_Length_Track_P51, Track_P51_Pkg.Valid);
 
    function Length_Track_P52 (P : Track_P52_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2609,7 +2654,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P52 is new Generic_Round_Trip
      (Track_P52_Pkg.Packet_T, True, Fill_Track_P52,
       Track_P52_Pkg.Encode, Track_P52_Pkg.Decode,
-      Length_Track_P52, Set_Length_Track_P52);
+      Length_Track_P52, Set_Length_Track_P52, Track_P52_Pkg.Valid);
 
    function Length_Track_P57 (P : Track_P57_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2623,7 +2668,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P57 is new Generic_Round_Trip
      (Track_P57_Pkg.Packet_T, True, Fill_Track_P57,
       Track_P57_Pkg.Encode, Track_P57_Pkg.Decode,
-      Length_Track_P57, Set_Length_Track_P57);
+      Length_Track_P57, Set_Length_Track_P57, Track_P57_Pkg.Valid);
 
    function Length_Track_P58 (P : Track_P58_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2637,7 +2682,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P58 is new Generic_Round_Trip
      (Track_P58_Pkg.Packet_T, True, Fill_Track_P58,
       Track_P58_Pkg.Encode, Track_P58_Pkg.Decode,
-      Length_Track_P58, Set_Length_Track_P58);
+      Length_Track_P58, Set_Length_Track_P58, Track_P58_Pkg.Valid);
 
    function Length_Track_P63 (P : Track_P63_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2651,7 +2696,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P63 is new Generic_Round_Trip
      (Track_P63_Pkg.Packet_T, True, Fill_Track_P63,
       Track_P63_Pkg.Encode, Track_P63_Pkg.Decode,
-      Length_Track_P63, Set_Length_Track_P63);
+      Length_Track_P63, Set_Length_Track_P63, Track_P63_Pkg.Valid);
 
    function Length_Track_P64 (P : Track_P64_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2665,7 +2710,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P64 is new Generic_Round_Trip
      (Track_P64_Pkg.Packet_T, True, Fill_Track_P64,
       Track_P64_Pkg.Encode, Track_P64_Pkg.Decode,
-      Length_Track_P64, Set_Length_Track_P64);
+      Length_Track_P64, Set_Length_Track_P64, Track_P64_Pkg.Valid);
 
    function Length_Track_P65 (P : Track_P65_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2679,7 +2724,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P65 is new Generic_Round_Trip
      (Track_P65_Pkg.Packet_T, True, Fill_Track_P65,
       Track_P65_Pkg.Encode, Track_P65_Pkg.Decode,
-      Length_Track_P65, Set_Length_Track_P65);
+      Length_Track_P65, Set_Length_Track_P65, Track_P65_Pkg.Valid);
 
    function Length_Track_P66 (P : Track_P66_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2693,7 +2738,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P66 is new Generic_Round_Trip
      (Track_P66_Pkg.Packet_T, True, Fill_Track_P66,
       Track_P66_Pkg.Encode, Track_P66_Pkg.Decode,
-      Length_Track_P66, Set_Length_Track_P66);
+      Length_Track_P66, Set_Length_Track_P66, Track_P66_Pkg.Valid);
 
    function Length_Track_P67 (P : Track_P67_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2707,7 +2752,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P67 is new Generic_Round_Trip
      (Track_P67_Pkg.Packet_T, True, Fill_Track_P67,
       Track_P67_Pkg.Encode, Track_P67_Pkg.Decode,
-      Length_Track_P67, Set_Length_Track_P67);
+      Length_Track_P67, Set_Length_Track_P67, Track_P67_Pkg.Valid);
 
    function Length_Track_P68 (P : Track_P68_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2721,7 +2766,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P68 is new Generic_Round_Trip
      (Track_P68_Pkg.Packet_T, True, Fill_Track_P68,
       Track_P68_Pkg.Encode, Track_P68_Pkg.Decode,
-      Length_Track_P68, Set_Length_Track_P68);
+      Length_Track_P68, Set_Length_Track_P68, Track_P68_Pkg.Valid);
 
    function Length_Track_P69 (P : Track_P69_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2735,7 +2780,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P69 is new Generic_Round_Trip
      (Track_P69_Pkg.Packet_T, True, Fill_Track_P69,
       Track_P69_Pkg.Encode, Track_P69_Pkg.Decode,
-      Length_Track_P69, Set_Length_Track_P69);
+      Length_Track_P69, Set_Length_Track_P69, Track_P69_Pkg.Valid);
 
    function Length_Track_P70 (P : Track_P70_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2749,7 +2794,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P70 is new Generic_Round_Trip
      (Track_P70_Pkg.Packet_T, True, Fill_Track_P70,
       Track_P70_Pkg.Encode, Track_P70_Pkg.Decode,
-      Length_Track_P70, Set_Length_Track_P70);
+      Length_Track_P70, Set_Length_Track_P70, Track_P70_Pkg.Valid);
 
    function Length_Track_P71 (P : Track_P71_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2763,7 +2808,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P71 is new Generic_Round_Trip
      (Track_P71_Pkg.Packet_T, True, Fill_Track_P71,
       Track_P71_Pkg.Encode, Track_P71_Pkg.Decode,
-      Length_Track_P71, Set_Length_Track_P71);
+      Length_Track_P71, Set_Length_Track_P71, Track_P71_Pkg.Valid);
 
    function Length_Track_P73 (P : Track_P73_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2777,7 +2822,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P73 is new Generic_Round_Trip
      (Track_P73_Pkg.Packet_T, True, Fill_Track_P73,
       Track_P73_Pkg.Encode, Track_P73_Pkg.Decode,
-      Length_Track_P73, Set_Length_Track_P73);
+      Length_Track_P73, Set_Length_Track_P73, Track_P73_Pkg.Valid);
 
    function Length_Track_P74 (P : Track_P74_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2791,7 +2836,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P74 is new Generic_Round_Trip
      (Track_P74_Pkg.Packet_T, True, Fill_Track_P74,
       Track_P74_Pkg.Encode, Track_P74_Pkg.Decode,
-      Length_Track_P74, Set_Length_Track_P74);
+      Length_Track_P74, Set_Length_Track_P74, Track_P74_Pkg.Valid);
 
    function Length_Track_P79 (P : Track_P79_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2805,7 +2850,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P79 is new Generic_Round_Trip
      (Track_P79_Pkg.Packet_T, True, Fill_Track_P79,
       Track_P79_Pkg.Encode, Track_P79_Pkg.Decode,
-      Length_Track_P79, Set_Length_Track_P79);
+      Length_Track_P79, Set_Length_Track_P79, Track_P79_Pkg.Valid);
 
    function Length_Track_P80 (P : Track_P80_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2819,7 +2864,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P80 is new Generic_Round_Trip
      (Track_P80_Pkg.Packet_T, True, Fill_Track_P80,
       Track_P80_Pkg.Encode, Track_P80_Pkg.Decode,
-      Length_Track_P80, Set_Length_Track_P80);
+      Length_Track_P80, Set_Length_Track_P80, Track_P80_Pkg.Valid);
 
    function Length_Track_P88 (P : Track_P88_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2833,7 +2878,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P88 is new Generic_Round_Trip
      (Track_P88_Pkg.Packet_T, True, Fill_Track_P88,
       Track_P88_Pkg.Encode, Track_P88_Pkg.Decode,
-      Length_Track_P88, Set_Length_Track_P88);
+      Length_Track_P88, Set_Length_Track_P88, Track_P88_Pkg.Valid);
 
    function Length_Track_P90 (P : Track_P90_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2847,7 +2892,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P90 is new Generic_Round_Trip
      (Track_P90_Pkg.Packet_T, True, Fill_Track_P90,
       Track_P90_Pkg.Encode, Track_P90_Pkg.Decode,
-      Length_Track_P90, Set_Length_Track_P90);
+      Length_Track_P90, Set_Length_Track_P90, Track_P90_Pkg.Valid);
 
    function Length_Track_P131 (P : Track_P131_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2861,7 +2906,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P131 is new Generic_Round_Trip
      (Track_P131_Pkg.Packet_T, True, Fill_Track_P131,
       Track_P131_Pkg.Encode, Track_P131_Pkg.Decode,
-      Length_Track_P131, Set_Length_Track_P131);
+      Length_Track_P131, Set_Length_Track_P131, Track_P131_Pkg.Valid);
 
    function Length_Track_P132 (P : Track_P132_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2875,7 +2920,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P132 is new Generic_Round_Trip
      (Track_P132_Pkg.Packet_T, True, Fill_Track_P132,
       Track_P132_Pkg.Encode, Track_P132_Pkg.Decode,
-      Length_Track_P132, Set_Length_Track_P132);
+      Length_Track_P132, Set_Length_Track_P132, Track_P132_Pkg.Valid);
 
    function Length_Track_P133 (P : Track_P133_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2889,7 +2934,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P133 is new Generic_Round_Trip
      (Track_P133_Pkg.Packet_T, True, Fill_Track_P133,
       Track_P133_Pkg.Encode, Track_P133_Pkg.Decode,
-      Length_Track_P133, Set_Length_Track_P133);
+      Length_Track_P133, Set_Length_Track_P133, Track_P133_Pkg.Valid);
 
    function Length_Track_P134 (P : Track_P134_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2903,7 +2948,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P134 is new Generic_Round_Trip
      (Track_P134_Pkg.Packet_T, True, Fill_Track_P134,
       Track_P134_Pkg.Encode, Track_P134_Pkg.Decode,
-      Length_Track_P134, Set_Length_Track_P134);
+      Length_Track_P134, Set_Length_Track_P134, Track_P134_Pkg.Valid);
 
    function Length_Track_P135 (P : Track_P135_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2917,7 +2962,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P135 is new Generic_Round_Trip
      (Track_P135_Pkg.Packet_T, True, Fill_Track_P135,
       Track_P135_Pkg.Encode, Track_P135_Pkg.Decode,
-      Length_Track_P135, Set_Length_Track_P135);
+      Length_Track_P135, Set_Length_Track_P135, Track_P135_Pkg.Valid);
 
    function Length_Track_P136 (P : Track_P136_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2931,7 +2976,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P136 is new Generic_Round_Trip
      (Track_P136_Pkg.Packet_T, True, Fill_Track_P136,
       Track_P136_Pkg.Encode, Track_P136_Pkg.Decode,
-      Length_Track_P136, Set_Length_Track_P136);
+      Length_Track_P136, Set_Length_Track_P136, Track_P136_Pkg.Valid);
 
    function Length_Track_P137 (P : Track_P137_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2945,7 +2990,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P137 is new Generic_Round_Trip
      (Track_P137_Pkg.Packet_T, True, Fill_Track_P137,
       Track_P137_Pkg.Encode, Track_P137_Pkg.Decode,
-      Length_Track_P137, Set_Length_Track_P137);
+      Length_Track_P137, Set_Length_Track_P137, Track_P137_Pkg.Valid);
 
    function Length_Track_P138 (P : Track_P138_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2959,7 +3004,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P138 is new Generic_Round_Trip
      (Track_P138_Pkg.Packet_T, True, Fill_Track_P138,
       Track_P138_Pkg.Encode, Track_P138_Pkg.Decode,
-      Length_Track_P138, Set_Length_Track_P138);
+      Length_Track_P138, Set_Length_Track_P138, Track_P138_Pkg.Valid);
 
    function Length_Track_P139 (P : Track_P139_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2973,7 +3018,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P139 is new Generic_Round_Trip
      (Track_P139_Pkg.Packet_T, True, Fill_Track_P139,
       Track_P139_Pkg.Encode, Track_P139_Pkg.Decode,
-      Length_Track_P139, Set_Length_Track_P139);
+      Length_Track_P139, Set_Length_Track_P139, Track_P139_Pkg.Valid);
 
    function Length_Track_P140 (P : Track_P140_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -2987,7 +3032,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P140 is new Generic_Round_Trip
      (Track_P140_Pkg.Packet_T, True, Fill_Track_P140,
       Track_P140_Pkg.Encode, Track_P140_Pkg.Decode,
-      Length_Track_P140, Set_Length_Track_P140);
+      Length_Track_P140, Set_Length_Track_P140, Track_P140_Pkg.Valid);
 
    function Length_Track_P141 (P : Track_P141_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3001,7 +3046,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P141 is new Generic_Round_Trip
      (Track_P141_Pkg.Packet_T, True, Fill_Track_P141,
       Track_P141_Pkg.Encode, Track_P141_Pkg.Decode,
-      Length_Track_P141, Set_Length_Track_P141);
+      Length_Track_P141, Set_Length_Track_P141, Track_P141_Pkg.Valid);
 
    function Length_Track_P143 (P : Track_P143_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3015,7 +3060,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P143 is new Generic_Round_Trip
      (Track_P143_Pkg.Packet_T, True, Fill_Track_P143,
       Track_P143_Pkg.Encode, Track_P143_Pkg.Decode,
-      Length_Track_P143, Set_Length_Track_P143);
+      Length_Track_P143, Set_Length_Track_P143, Track_P143_Pkg.Valid);
 
    function Length_Track_P145 (P : Track_P145_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3029,7 +3074,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P145 is new Generic_Round_Trip
      (Track_P145_Pkg.Packet_T, True, Fill_Track_P145,
       Track_P145_Pkg.Encode, Track_P145_Pkg.Decode,
-      Length_Track_P145, Set_Length_Track_P145);
+      Length_Track_P145, Set_Length_Track_P145, Track_P145_Pkg.Valid);
 
    function Length_Track_P180 (P : Track_P180_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3043,7 +3088,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P180 is new Generic_Round_Trip
      (Track_P180_Pkg.Packet_T, True, Fill_Track_P180,
       Track_P180_Pkg.Encode, Track_P180_Pkg.Decode,
-      Length_Track_P180, Set_Length_Track_P180);
+      Length_Track_P180, Set_Length_Track_P180, Track_P180_Pkg.Valid);
 
    function Length_Track_P181 (P : Track_P181_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3057,7 +3102,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P181 is new Generic_Round_Trip
      (Track_P181_Pkg.Packet_T, True, Fill_Track_P181,
       Track_P181_Pkg.Encode, Track_P181_Pkg.Decode,
-      Length_Track_P181, Set_Length_Track_P181);
+      Length_Track_P181, Set_Length_Track_P181, Track_P181_Pkg.Valid);
 
    function Length_Track_P254 (P : Track_P254_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3071,7 +3116,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P254 is new Generic_Round_Trip
      (Track_P254_Pkg.Packet_T, True, Fill_Track_P254,
       Track_P254_Pkg.Encode, Track_P254_Pkg.Decode,
-      Length_Track_P254, Set_Length_Track_P254);
+      Length_Track_P254, Set_Length_Track_P254, Track_P254_Pkg.Valid);
 
    function Length_Track_P255 (P : Track_P255_Pkg.Packet_T)
      return Natural is (0);
@@ -3080,7 +3125,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Track_P255 is new Generic_Round_Trip
      (Track_P255_Pkg.Packet_T, False, Fill_Track_P255,
       Track_P255_Pkg.Encode, Track_P255_Pkg.Decode,
-      Length_Track_P255, Set_Length_Track_P255);
+      Length_Track_P255, Set_Length_Track_P255, Track_P255_Pkg.Valid);
 
    function Length_Train_P0 (P : Train_P0_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3094,7 +3139,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P0 is new Generic_Round_Trip
      (Train_P0_Pkg.Packet_T, True, Fill_Train_P0,
       Train_P0_Pkg.Encode, Train_P0_Pkg.Decode,
-      Length_Train_P0, Set_Length_Train_P0);
+      Length_Train_P0, Set_Length_Train_P0, Train_P0_Pkg.Valid);
 
    function Length_Train_P1 (P : Train_P1_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3108,7 +3153,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P1 is new Generic_Round_Trip
      (Train_P1_Pkg.Packet_T, True, Fill_Train_P1,
       Train_P1_Pkg.Encode, Train_P1_Pkg.Decode,
-      Length_Train_P1, Set_Length_Train_P1);
+      Length_Train_P1, Set_Length_Train_P1, Train_P1_Pkg.Valid);
 
    function Length_Train_P2 (P : Train_P2_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3122,7 +3167,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P2 is new Generic_Round_Trip
      (Train_P2_Pkg.Packet_T, True, Fill_Train_P2,
       Train_P2_Pkg.Encode, Train_P2_Pkg.Decode,
-      Length_Train_P2, Set_Length_Train_P2);
+      Length_Train_P2, Set_Length_Train_P2, Train_P2_Pkg.Valid);
 
    function Length_Train_P4 (P : Train_P4_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3136,7 +3181,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P4 is new Generic_Round_Trip
      (Train_P4_Pkg.Packet_T, True, Fill_Train_P4,
       Train_P4_Pkg.Encode, Train_P4_Pkg.Decode,
-      Length_Train_P4, Set_Length_Train_P4);
+      Length_Train_P4, Set_Length_Train_P4, Train_P4_Pkg.Valid);
 
    function Length_Train_P5 (P : Train_P5_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3150,7 +3195,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P5 is new Generic_Round_Trip
      (Train_P5_Pkg.Packet_T, True, Fill_Train_P5,
       Train_P5_Pkg.Encode, Train_P5_Pkg.Decode,
-      Length_Train_P5, Set_Length_Train_P5);
+      Length_Train_P5, Set_Length_Train_P5, Train_P5_Pkg.Valid);
 
    function Length_Train_P9 (P : Train_P9_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3164,7 +3209,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P9 is new Generic_Round_Trip
      (Train_P9_Pkg.Packet_T, True, Fill_Train_P9,
       Train_P9_Pkg.Encode, Train_P9_Pkg.Decode,
-      Length_Train_P9, Set_Length_Train_P9);
+      Length_Train_P9, Set_Length_Train_P9, Train_P9_Pkg.Valid);
 
    function Length_Train_P10 (P : Train_P10_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3178,7 +3223,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P10 is new Generic_Round_Trip
      (Train_P10_Pkg.Packet_T, True, Fill_Train_P10,
       Train_P10_Pkg.Encode, Train_P10_Pkg.Decode,
-      Length_Train_P10, Set_Length_Train_P10);
+      Length_Train_P10, Set_Length_Train_P10, Train_P10_Pkg.Valid);
 
    function Length_Train_P11 (P : Train_P11_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3192,7 +3237,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P11 is new Generic_Round_Trip
      (Train_P11_Pkg.Packet_T, True, Fill_Train_P11,
       Train_P11_Pkg.Encode, Train_P11_Pkg.Decode,
-      Length_Train_P11, Set_Length_Train_P11);
+      Length_Train_P11, Set_Length_Train_P11, Train_P11_Pkg.Valid);
 
    function Length_Train_P12 (P : Train_P12_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3206,7 +3251,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P12 is new Generic_Round_Trip
      (Train_P12_Pkg.Packet_T, True, Fill_Train_P12,
       Train_P12_Pkg.Encode, Train_P12_Pkg.Decode,
-      Length_Train_P12, Set_Length_Train_P12);
+      Length_Train_P12, Set_Length_Train_P12, Train_P12_Pkg.Valid);
 
    function Length_Train_P44 (P : Train_P44_Pkg.Packet_T)
      return Natural is (Natural (P.L_PACKET));
@@ -3220,7 +3265,7 @@ package body ETCS_Language_Random is
    procedure Round_Trip_Train_P44 is new Generic_Round_Trip
      (Train_P44_Pkg.Packet_T, True, Fill_Train_P44,
       Train_P44_Pkg.Encode, Train_P44_Pkg.Decode,
-      Length_Train_P44, Set_Length_Train_P44);
+      Length_Train_P44, Set_Length_Train_P44, Train_P44_Pkg.Valid);
 
    procedure Round_Trip (Kind   : ETCS_Catalogue.Known_Kind_T;
                          Values : Value_Mode_T;

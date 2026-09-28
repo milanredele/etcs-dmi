@@ -15,11 +15,11 @@
 --     odometer (the d_est the odometer had when the antenna passed the
 --     centre of the balise, cm, same wrapping counter as d_est below);
 --     then the telegram:
---     n_bits u16 (BTM_Min_Bits .. BTM_Max_Bits), then the n_bits user
---     bits, the first bit (Q_UPDOWN, SUBSET-026 8.4.2.1) in the most
---     significant bit of the first byte, packed into (n_bits + 7) / 8
---     bytes. The length must be exactly that. The telegram header of
---     8.4.2.1 alone has 50 bits; a long telegram carries 830 user bits.
+--     n_bits u16, then the n_bits user bits, the first bit (Q_UPDOWN,
+--     SUBSET-026 8.4.2.1) in the most significant bit of the first
+--     byte, packed into (n_bits + 7) / 8 bytes. The length must be
+--     exactly that. n_bits is BTM_Short_Bits (210, a short telegram) or
+--     BTM_Long_Bits (830, a long one): SUBSET-036 4.3.1.2.
 --     The core parses the telegram at the next cycle (ETCS_Telegram,
 --     EVC_Received) and hands it with its stamp to the position
 --     (EVC_Position): the stamp places the balise, hence the balise
@@ -103,12 +103,13 @@ is
    subtype Byte is EVC_Bytes.Byte;
    subtype Byte_Array is EVC_Bytes.Byte_Array;
 
-   BTM_Min_Bits    : constant := 50;
-   BTM_Max_Bits    : constant := 830;
+   BTM_Short_Bits  : constant := 210;
+   BTM_Long_Bits   : constant := 830;
+   --  the telegram part: n_bits and the bits
+   BTM_Telegram_Max_Length : constant := 2 + (BTM_Long_Bits + 7) / 8;
    --  the detection stamp in front of the telegram
    BTM_Stamp_Length : constant := 4;
-   BTM_Max_Length  : constant :=
-     BTM_Stamp_Length + 2 + (BTM_Max_Bits + 7) / 8;
+   BTM_Max_Length  : constant := BTM_Stamp_Length + BTM_Telegram_Max_Length;
    RTM_Min_Length  : constant := 3;     -- NID_MESSAGE and L_MESSAGE
    RTM_Max_Length  : constant := 1023;  -- L_MESSAGE is 10 bits
    Odometer_Length : constant := 22;
@@ -132,13 +133,14 @@ is
    --  Shapes
    ---------------------------------------------------------------------
 
-   --  SUBSET-036: a telegram of n_bits user bits in (n_bits + 7) / 8
-   --  bytes behind its count (the telegram part of a BTM input, which
-   --  EVC_Received parses)
+   --  SUBSET-036: a telegram of n_bits user bits, 210 or 830, in
+   --  (n_bits + 7) / 8 bytes behind its count (the telegram part of a
+   --  BTM input, which EVC_Received parses)
    function Valid_BTM (Payload : Byte_Array) return Boolean is
-     (Payload'Length in 2 + (BTM_Min_Bits + 7) / 8 .. BTM_Max_Length
+     (Payload'Length in 2 + (BTM_Short_Bits + 7) / 8
+                          .. BTM_Telegram_Max_Length
       and then EVC_Bytes.Get_U16 (Payload, Payload'First)
-                 in BTM_Min_Bits .. BTM_Max_Bits
+                 in BTM_Short_Bits | BTM_Long_Bits
       and then Payload'Length
                  = 2 + (Natural (EVC_Bytes.Get_U16 (Payload, Payload'First))
                         + 7) / 8);

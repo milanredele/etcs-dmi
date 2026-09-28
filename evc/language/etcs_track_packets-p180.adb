@@ -11,6 +11,17 @@ package body ETCS_Track_Packets.P180
   with SPARK_Mode => On
 is
 
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_LSSMA)
+      and then (if P.Has_T_LSSMA then Is_Valid (P.T_LSSMA)));
+
    ------------
    -- Decode --
    ------------

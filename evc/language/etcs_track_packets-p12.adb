@@ -57,6 +57,49 @@ is
       end if;
    end Encode_L_SECTION_Item;
 
+   --  Valid of one item of L_SECTION_List
+   function Valid_L_SECTION_Item (E1 : L_SECTION_Item) return Boolean is
+     (Is_Valid (E1.L_SECTION)
+      and then Is_Valid (E1.Q_SECTIONTIMER)
+      and then (if E1.Has_T_SECTIONTIMER
+                then Is_Valid (E1.T_SECTIONTIMER)
+                     and then Is_Valid (E1.D_SECTIONTIMERSTOPLOC)));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.V_MAIN)
+      and then Is_Valid (P.V_EMA)
+      and then Is_Valid (P.T_EMA)
+      and then Is_Valid (P.N_ITER)
+      and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                  Valid_L_SECTION_Item (P.L_SECTION_List (I1)))
+      and then Is_Valid (P.L_ENDSECTION)
+      and then Is_Valid (P.Q_SECTIONTIMER)
+      and then (if P.Has_T_SECTIONTIMER
+                then Is_Valid (P.T_SECTIONTIMER)
+                     and then Is_Valid (P.D_SECTIONTIMERSTOPLOC))
+      and then Is_Valid (P.Q_ENDTIMER)
+      and then (if P.Has_T_ENDTIMER
+                then Is_Valid (P.T_ENDTIMER)
+                     and then Is_Valid (P.D_ENDTIMERSTARTLOC))
+      and then Is_Valid (P.Q_DANGERPOINT)
+      and then (if P.Has_D_DP
+                then Is_Valid (P.D_DP)
+                     and then Is_Valid (P.V_RELEASEDP))
+      and then Is_Valid (P.Q_OVERLAP)
+      and then (if P.Has_D_STARTOL
+                then Is_Valid (P.D_STARTOL)
+                     and then Is_Valid (P.T_OL)
+                     and then Is_Valid (P.D_OL)
+                     and then Is_Valid (P.V_RELEASEOL)));
+
    ------------
    -- Decode --
    ------------

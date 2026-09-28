@@ -82,6 +82,11 @@ is
          return;
       end if;
       M.Kind := K;
+      --  8.5.3 "Transmitted by" (8.5.2 "Transmitted to")
+      if not Sent_By (K) (Sender) then
+         Status := Wrong_Sender;
+         return;
+      end if;
 
       --  the other variables of the message, header included
       for I in 3 .. Field_Count (K) loop
@@ -92,6 +97,13 @@ is
          Status := Truncated;
          return;
       end if;
+      --  3.16.1.1.1: no spare value
+      for I in 1 .. Field_Count (K) loop
+         if not Valid_Code (Fields (K) (I), M.Values (I)) then
+            Status := Invalid_Value;
+            return;
+         end if;
+      end loop;
 
       --  the rules of its packets
       First := First_Rule (K);
@@ -133,7 +145,17 @@ is
             when Bad_Length | Undecodable =>
                Status := Packet_Structure;
                return;
+            when Invalid_Value =>
+               Status := Invalid_Value;
+               return;
             when Scanned =>
+               --  7.4.2 "Transmitted by", 7.4.3 "Transmitted to"
+               if E.Kind /= Unknown
+                 and then not ETCS_Catalogue.Sent_By (E.Kind) (Sender)
+               then
+                  Status := Wrong_Sender;
+                  return;
+               end if;
                if Expect /= 0 then
                   --  8.4.1.2: the mandatory packets in their order
                   if not Matches (Rules (Expect), E.NID) then

@@ -11,6 +11,13 @@ package body ETCS_Track_Packets.P255
   with SPARK_Mode => On
 is
 
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET));
+
    ------------
    -- Decode --
    ------------

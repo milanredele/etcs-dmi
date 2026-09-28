@@ -11,6 +11,8 @@
 --  them into records (ETCS_Packet_Index): a telegram is kept as its bits
 --  plus the index, and a packet is decoded on demand (Open_Packet, then
 --  the Decode of its package). Rejected, by reason (Status_T):
+--    - user bits other than those of a short or a long telegram, 210 or
+--      830 (SUBSET-036 4.3.1.2);
 --    - a header of another medium or direction (Q_UPDOWN = 0 down-link,
 --      Q_MEDIA = 1 loop), N_PIG above N_TOTAL, M_DUP spare (7.5.1.63);
 --    - M_VERSION other than 2.0 .. 2.3 and 3.x (7.5.1.79): X = 0 is
@@ -20,7 +22,13 @@
 --    - a packet that does not fit, an L_PACKET shorter than the header,
 --      a known packet that does not decode in its L_PACKET, packet 0 not
 --      first (8.4.2.3), a second instance of a packet for the same
---      direction (8.4.1.4, with its exceptions), no packet 255.
+--      direction (8.4.1.4, with its exceptions), no packet 255;
+--    - a known packet with a spare value of a variable, or an unknown
+--      one with a spare Q_DIR (3.16.1.1.1: not compliant with the ETCS
+--      specifications; the reaction is 3.16.2 / 3.16.3, later phases);
+--    - a known packet that a balise does not transmit ("Transmitted
+--      by" of 7.4.2: 13 by a loop, 15, 57, 58, 63, 64, 140 by an RBC,
+--      143 by an RIU).
 --  A packet of an unknown NID_PACKET is passed over by its L_PACKET and
 --  counted (Unknown): whether the telegram is then consistent (7.3.3.4,
 --  3.17.3.11 a) is decided with the operated system version (E2, E6).
@@ -64,13 +72,16 @@ is
    type Status_T is
      (Accepted,
       Too_Long,             -- more than Long_Bits, or Data too short
+      Bad_Length,           -- neither Short_Bits nor Long_Bits
       Truncated,            -- the header or a packet goes past the end
       Bad_Header,
       Unsupported_Version,
       Packet_Structure,
       Duplicate_Packet,
       Too_Many_Packets,
-      No_End);              -- no packet 255
+      No_End,               -- no packet 255
+      Invalid_Value,        -- a spare value (3.16.1.1.1)
+      Wrong_Sender);        -- a packet a balise does not transmit
 
    subtype Packet_Count_T is Natural range 0 .. Max_Packets;
    subtype Packet_Index_T is Positive range 1 .. Max_Packets;
@@ -106,6 +117,7 @@ is
                     Status : out Status_T)
      with Post => (if Status = Accepted
                    then T.Bits = Bits
+                        and then Bits in Short_Bits | Long_Bits
                         and then (for all I in 1 .. T.Count =>
                                     T.Index (I).Length > 0
                                     and then T.Index (I).Offset
@@ -125,10 +137,12 @@ is
      with Post => (if not Failed (W)
                    then Position (W) = Position (W)'Old + Header_Bits);
 
-   --  Packet 255, then ones up to User_Bits bits (Short_Bits or
-   --  Long_Bits); OK when it fits
+   --  Packet 255, then ones up to User_Bits bits; OK when User_Bits is
+   --  Short_Bits or Long_Bits and the telegram fits
    procedure Finish (W : in out Writer; User_Bits : Natural; OK : out Boolean)
      with Post => (if OK
-                   then not Failed (W) and then Position (W) = User_Bits);
+                   then not Failed (W)
+                        and then User_Bits in Short_Bits | Long_Bits
+                        and then Position (W) = User_Bits);
 
 end ETCS_Telegram;

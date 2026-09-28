@@ -58,6 +58,33 @@ is
       Write (W, 15, Code (E1.D_SR));
    end Encode_Q_NEWCOUNTRY_Item;
 
+   --  Valid of one item of Q_NEWCOUNTRY_List
+   function Valid_Q_NEWCOUNTRY_Item (E1 : Q_NEWCOUNTRY_Item) return Boolean is
+     (Is_Valid (E1.Q_NEWCOUNTRY)
+      and then (if E1.Has_NID_C then Is_Valid (E1.NID_C))
+      and then Is_Valid (E1.NID_BG)
+      and then Is_Valid (E1.D_SR));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.Q_NEWCOUNTRY)
+      and then (if P.Has_NID_C then Is_Valid (P.NID_C))
+      and then Is_Valid (P.NID_BG)
+      and then Is_Valid (P.Q_NEWCOUNTRY_2)
+      and then (if P.Has_NID_C_2 then Is_Valid (P.NID_C_2))
+      and then Is_Valid (P.NID_BG_2)
+      and then Is_Valid (P.D_SR)
+      and then Is_Valid (P.N_ITER)
+      and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                  Valid_Q_NEWCOUNTRY_Item (P.Q_NEWCOUNTRY_List (I1))));
+
    ------------
    -- Decode --
    ------------

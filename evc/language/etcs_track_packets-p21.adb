@@ -41,6 +41,28 @@ is
       Write (W, 8, Code (E1.G_A));
    end Encode_D_GRADIENT_Item;
 
+   --  Valid of one item of D_GRADIENT_List
+   function Valid_D_GRADIENT_Item (E1 : D_GRADIENT_Item) return Boolean is
+     (Is_Valid (E1.D_GRADIENT)
+      and then Is_Valid (E1.Q_GDIR)
+      and then Is_Valid (E1.G_A));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.D_GRADIENT)
+      and then Is_Valid (P.Q_GDIR)
+      and then Is_Valid (P.G_A)
+      and then Is_Valid (P.N_ITER)
+      and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                  Valid_D_GRADIENT_Item (P.D_GRADIENT_List (I1))));
+
    ------------
    -- Decode --
    ------------

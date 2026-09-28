@@ -197,6 +197,104 @@ is
       Write (W, 5, Code (E1.M_NVKRINT));
    end Encode_L_NVKRINT_Item;
 
+   --  Valid of one item of V_NVKVINT_List
+   function Valid_V_NVKVINT_Item_2 (E2 : V_NVKVINT_Item_2) return Boolean is
+     (Is_Valid (E2.V_NVKVINT)
+      and then Is_Valid (E2.M_NVKVINT)
+      and then (if E2.Has_M_NVKVINT_2 then Is_Valid (E2.M_NVKVINT_2)));
+
+   --  Valid of one item of V_NVKVINT_List
+   function Valid_V_NVKVINT_Item (E1 : V_NVKVINT_Item) return Boolean is
+     (Is_Valid (E1.V_NVKVINT)
+      and then Is_Valid (E1.M_NVKVINT)
+      and then (if E1.Has_M_NVKVINT_2 then Is_Valid (E1.M_NVKVINT_2)));
+
+   --  Valid of one item of Q_NVKVINTSET_List
+   function Valid_Q_NVKVINTSET_Item (E1 : Q_NVKVINTSET_Item) return Boolean is
+     (Is_Valid (E1.Q_NVKVINTSET)
+      and then (if E1.Has_A_NVP12
+                then Is_Valid (E1.A_NVP12)
+                     and then Is_Valid (E1.A_NVP23))
+      and then Is_Valid (E1.V_NVKVINT)
+      and then Is_Valid (E1.M_NVKVINT)
+      and then (if E1.Has_M_NVKVINT_2 then Is_Valid (E1.M_NVKVINT_2))
+      and then Is_Valid (E1.N_ITER)
+      and then (for all I2 in 1 .. Natural (E1.N_ITER) =>
+                  Valid_V_NVKVINT_Item_2 (E1.V_NVKVINT_List (I2))));
+
+   --  Valid of one item of L_NVKRINT_List
+   function Valid_L_NVKRINT_Item (E1 : L_NVKRINT_Item) return Boolean is
+     (Is_Valid (E1.L_NVKRINT)
+      and then Is_Valid (E1.M_NVKRINT));
+
+   -----------
+   -- Valid --
+   -----------
+
+   function Valid (P : Packet_T) return Boolean is
+     (Is_Valid (P.NID_PACKET)
+      and then Is_Valid (P.Q_DIR)
+      and then Is_Valid (P.L_PACKET)
+      and then Is_Valid (P.Q_SCALE)
+      and then Is_Valid (P.D_VALIDNV)
+      and then Is_Valid (P.NID_C)
+      and then Is_Valid (P.N_ITER)
+      and then (for all I1 in 1 .. Natural (P.N_ITER) =>
+                  Is_Valid (P.NID_C_List (I1)))
+      and then Is_Valid (P.V_NVSHUNT)
+      and then Is_Valid (P.V_NVSTFF)
+      and then Is_Valid (P.V_NVONSIGHT)
+      and then Is_Valid (P.V_NVLIMSUPERV)
+      and then Is_Valid (P.V_NVUNFIT)
+      and then Is_Valid (P.V_NVREL)
+      and then Is_Valid (P.D_NVROLL)
+      and then Is_Valid (P.Q_NVSBTSMPERM)
+      and then Is_Valid (P.Q_NVEMRRLS)
+      and then Is_Valid (P.Q_NVGUIPERM)
+      and then Is_Valid (P.Q_NVSBFBPERM)
+      and then Is_Valid (P.Q_NVINHSMICPERM)
+      and then Is_Valid (P.V_NVALLOWOVTRP)
+      and then Is_Valid (P.V_NVSUPOVTRP)
+      and then Is_Valid (P.D_NVOVTRP)
+      and then Is_Valid (P.T_NVOVTRP)
+      and then Is_Valid (P.D_NVPOTRP)
+      and then Is_Valid (P.M_NVCONTACT)
+      and then Is_Valid (P.T_NVCONTACT)
+      and then Is_Valid (P.M_NVDERUN)
+      and then Is_Valid (P.D_NVSTFF)
+      and then Is_Valid (P.Q_NVDRIVER_ADHES)
+      and then Is_Valid (P.A_NVMAXREDADH1)
+      and then Is_Valid (P.A_NVMAXREDADH2)
+      and then Is_Valid (P.A_NVMAXREDADH3)
+      and then Is_Valid (P.Q_NVLOCACC)
+      and then Is_Valid (P.M_NVAVADH)
+      and then Is_Valid (P.M_NVEBCL)
+      and then Is_Valid (P.Q_NVKINT)
+      and then (if P.Has_Q_NVKVINTSET
+                then Is_Valid (P.Q_NVKVINTSET)
+                     and then (if P.Has_A_NVP12
+                               then Is_Valid (P.A_NVP12)
+                                    and then Is_Valid (P.A_NVP23))
+                     and then Is_Valid (P.V_NVKVINT)
+                     and then Is_Valid (P.M_NVKVINT)
+                     and then (if P.Has_M_NVKVINT_2
+                               then Is_Valid (P.M_NVKVINT_2))
+                     and then Is_Valid (P.N_ITER_2)
+                     and then (for all I1 in 1 .. Natural (P.N_ITER_2) =>
+                                 Valid_V_NVKVINT_Item
+                                   (P.V_NVKVINT_List (I1)))
+                     and then Is_Valid (P.N_ITER_3)
+                     and then (for all I1 in 1 .. Natural (P.N_ITER_3) =>
+                                 Valid_Q_NVKVINTSET_Item
+                                   (P.Q_NVKVINTSET_List (I1)))
+                     and then Is_Valid (P.L_NVKRINT)
+                     and then Is_Valid (P.M_NVKRINT)
+                     and then Is_Valid (P.N_ITER_4)
+                     and then (for all I1 in 1 .. Natural (P.N_ITER_4) =>
+                                 Valid_L_NVKRINT_Item
+                                   (P.L_NVKRINT_List (I1)))
+                     and then Is_Valid (P.M_NVKTINT)));
+
    ------------
    -- Decode --
    ------------

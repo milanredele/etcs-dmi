@@ -105,6 +105,9 @@ is
    is
       M : ETCS_Message.Message_T;
    begin
+      --  Every message is taken as sent by an RBC until phase E5 tells
+      --  an RIU session from an RBC one: what only an RIU sends (message
+      --  37, 8.5.3; packet 143, 7.4.2.37.1) is rejected as Wrong_Sender
       ETCS_Message.Parse (Payload, ETCS_Catalogue.Track_To_Train,
                           ETCS_Catalogue.RBC, M, Status);
       Count (Message_Counts (Status));
