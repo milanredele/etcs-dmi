@@ -142,6 +142,28 @@ is
      with Pre => Length in 0 .. 150_000;
 
    ---------------------------------------------------------------------
+   --  Correction factors of the conversion model (3.13.2.3.7, 3.13.6.2.1)
+   ---------------------------------------------------------------------
+
+   --  3.13.2.3.7.12: Kr_int (Length) of a set as packet 3 gives it (a
+   --  step holds above its Length, the first from 0), in millionths; the
+   --  default of A.3.2 for an empty set
+   function Kr_Int (Set : Kr_Set_T; Length : Num) return Value_T;
+
+   --  3.13.6.2.1.8.2: A_ebmax, the largest value of the deceleration
+   --  model Emergency at the speeds from 0 to V_Max
+   function A_Ebmax (Emergency : Steps_T; V_Max : Speed_T) return Value_T;
+
+   --  3.13.2.3.7.11, 3.13.6.2.1.8: Kv_int (V) as a step function of the
+   --  speed, in millionths: for a passenger train in P the passenger set
+   --  when one is given (between its subsets a and b by A_Ebmax, in
+   --  Decel_Unit, 3.13.6.2.1.8.1), else the set for freight trains, else
+   --  the default of A.3.2
+   function Kv_Int (NV       : National_Values_T;
+                    Position : Brake_Position_T;
+                    A_Ebmax  : Value_T) return Steps_T;
+
+   ---------------------------------------------------------------------
    --  The model
    ---------------------------------------------------------------------
 

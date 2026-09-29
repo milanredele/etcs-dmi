@@ -81,6 +81,29 @@ is
       then Max (Terms.T_Traction_Cut_Off - (T_Warning + T_Bs2), 0)
       else Terms.T_Traction_Cut_Off);
 
+   --  A bound of the distances of the limits, cm (4 * 10**9: every
+   --  distance run within the times of Time_T at the speeds of Speed_T)
+   Distance_Bound : constant := 4_000_000_000;
+
+   --  3.13.9.3.2.3 to .10: the terms of the EBI of an EBD based target
+   --  with the target speed V_Target at the speed Terms.V: T_traction
+   --  (for T_bs2), T_berem, V_delta1, V_delta2 (rounded up), V_bec and
+   --  D_bec (rounded up), and D_bedisplay of 3.13.9.3.3.8
+   type Bec_T is record
+      T_Traction : Time_T := 0;
+      T_Berem    : Time_T := 0;
+      V_Delta1   : Speed_T := 0;
+      V_Delta2   : Speed_T := 0;
+      V_Bec      : Num := 0;
+      D_Bec      : Num := 0;
+      D_Disp     : Num := 0;
+   end record;
+
+   function Bec (Terms : Terms_T; V_Target : Speed_T) return Bec_T
+     with Post => Bec'Result.V_Bec in 0 .. 4 * Max_Speed
+                  and then Bec'Result.D_Bec in 0 .. Distance_Bound
+                  and then Bec'Result.D_Disp in 0 .. Distance_Bound;
+
    --  The locations of the limits of an EBD based target (EBD, EBI, SBI2,
    --  W, P, I) or of the EOA (SBD, -, SBI1, W, P, I), and the speeds
    --  displayed for them (3.13.9.3.3.7, .8, 3.13.9.3.5.5 to .8)

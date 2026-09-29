@@ -47,11 +47,46 @@ is
    function F41 (V : Speed_T) return Speed_T is
      (Div_Ceil (Max (64_000 + 36 * V, 94_000), 1_692));
 
+   ---------
+   -- Bec --
+   ---------
+
+   function Bec (Terms : Terms_T; V_Target : Speed_T) return Bec_T is
+      V      : constant Speed_T := Terms.V;
+      --  3.13.9.3.2.3, .6
+      T_Tr   : constant Time_T := T_Traction (Terms, Terms.T_Bs2);
+      T_Rem  : constant Time_T := Max (Terms.T_Be - T_Tr, 0);
+      --  3.13.9.3.2.10: V_delta1, V_delta2, V_bec, D_bec (in half cm/s
+      --  before the division, rounded up)
+      Vd1    : constant Speed_T :=
+        Min (Gain_Ceil (Terms.A_Est1, T_Tr), Max_Speed);
+      Vd2    : constant Speed_T :=
+        Min (Gain_Ceil (Terms.A_Est2, T_Rem), Max_Speed);
+      V0     : constant Num := V + Terms.V_Delta0;
+   begin
+      --  (the speeds are below 5 * Max_Speed and the times below Max_Time:
+      --  the distances below 2 * 10**9 cm, the bound never applies)
+      return (T_Traction => T_Tr,
+              T_Berem    => T_Rem,
+              V_Delta1   => Vd1,
+              V_Delta2   => Vd2,
+              V_Bec      => Max (V0 + Vd1, V_Target) + Vd2,
+              D_Bec      =>
+                Min (Div_Ceil (Max (2 * V0 + Vd1, 2 * V_Target) * T_Tr
+                               + (2 * Max (V0 + Vd1, V_Target) + Vd2)
+                                 * T_Rem,
+                               2_000),
+                     Distance_Bound),
+              --  3.13.9.3.3.8: D_bedisplay
+              D_Disp     =>
+                Min (Div_Ceil ((2 * V0 + Vd1) * T_Tr
+                               + (2 * (V0 + Vd1) + Vd2) * T_Rem, 2_000),
+                     Distance_Bound));
+   end Bec;
+
    ----------------
    -- EBD_Limits --
    ----------------
-
-   Distance_Bound : constant := 4_000_000_000;
 
    function EBD_Limits (M        : Model_T;
                         P        : Profile_T;
@@ -65,30 +100,11 @@ is
                         Stop     : Dist_T) return Limits_T
    is
       V      : constant Speed_T := Terms.V;
-      --  3.13.9.3.2.3, .6
-      T_Tr   : constant Time_T := T_Traction (Terms, Terms.T_Bs2);
-      T_Rem  : constant Time_T := Max (Terms.T_Be - T_Tr, 0);
-      --  3.13.9.3.2.10: V_delta1, V_delta2, V_bec, D_bec (in half cm/s
-      --  before the division, rounded up)
-      Vd1    : constant Num :=
-        Min (Gain_Ceil (Terms.A_Est1, T_Tr), Max_Speed);
-      Vd2    : constant Num :=
-        Min (Gain_Ceil (Terms.A_Est2, T_Rem), Max_Speed);
-      V0     : constant Num := V + Terms.V_Delta0;
-      V_Bec  : constant Num := Max (V0 + Vd1, V_Target) + Vd2;
-      --  (the speeds are below 5 * Max_Speed and the times below Max_Time:
-      --  the distances below 2 * 10**9 cm, the bound never applies)
-      D_Bec  : constant Num :=
-        Min (Div_Ceil (Max (2 * V0 + Vd1, 2 * V_Target) * T_Tr
-                       + (2 * Max (V0 + Vd1, V_Target) + Vd2) * T_Rem,
-                       2_000),
-             Distance_Bound);
-      --  3.13.9.3.3.8: D_bedisplay
-      D_Disp : constant Num :=
-        Min (Div_Ceil ((2 * V0 + Vd1) * T_Tr
-                       + (2 * (V0 + Vd1) + Vd2) * T_Rem, 2_000),
-             Distance_Bound);
-      Deltas : constant Num := Terms.V_Delta0 + Vd1 + Vd2;
+      B      : constant Bec_T := Bec (Terms, V_Target);
+      V_Bec  : constant Num := B.V_Bec;
+      D_Bec  : constant Num := B.D_Bec;
+      D_Disp : constant Num := B.D_Disp;
+      Deltas : constant Num := Terms.V_Delta0 + B.V_Delta1 + B.V_Delta2;
       L      : Limits_T;
    begin
       --  3.13.9.3.2.12: d_EBI = d_EBD (V_bec) - D_bec; a V_bec no curve

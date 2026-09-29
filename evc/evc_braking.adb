@@ -380,18 +380,34 @@ is
    end Kv_Passenger;
 
    --  3.13.6.2.1.8.2: the largest value of a curve between 0 and V
-   function Largest_Below (S : Steps_T; V : Speed_T) return Value_T is
+   function A_Ebmax (Emergency : Steps_T; V_Max : Speed_T) return Value_T
+   is
       Best  : Value_T := 0;
       Lower : Speed_T := 0;
    begin
-      for K in 1 .. S.Count loop
-         if K = 1 or else Lower < V then
-            Best := Max (Best, S.Steps (K).Value);
+      for K in 1 .. Emergency.Count loop
+         if K = 1 or else Lower < V_Max then
+            Best := Max (Best, Emergency.Steps (K).Value);
          end if;
-         Lower := S.Steps (K).Upper;
+         Lower := Emergency.Steps (K).Upper;
       end loop;
       return Best;
-   end Largest_Below;
+   end A_Ebmax;
+
+   --  3.13.6.2.1.8: the set by the brake position; a passenger set, when
+   --  given, for passenger trains
+   function Kv_Int (NV       : National_Values_T;
+                    Position : Brake_Position_T;
+                    A_Ebmax  : Value_T) return Steps_T
+   is (if Position = Passenger_P and then NV.Kv_Int_Passenger.Count > 0
+       then Kv_Passenger (NV.Kv_Int_Passenger,
+                          NV.Kv_Int_Passenger_B,
+                          Num (NV.A_NVP12) * Decel_Unit_Per_Mms2,
+                          Num (NV.A_NVP23) * Decel_Unit_Per_Mms2,
+                          A_Ebmax)
+       elsif NV.Kv_Int_Fresh.Count > 0
+       then From_Kv (NV.Kv_Int_Fresh)
+       else Constant_Steps (Default_Kv));
 
    ---------------------------------------------------------------------
    --  Build
@@ -461,21 +477,10 @@ is
               Basic_Deceleration (T.Brake_Percentage);
             Service   : constant Steps_T :=
               Basic_Deceleration (Integer'Min (T.Brake_Percentage, 135));
-            A_Ebmax   : constant Value_T :=
-              Largest_Below (Emergency, Speed_T (T.Max_Speed));
-            --  3.13.6.2.1.8: the set by the brake position; a passenger
-            --  set, when given, for passenger trains
+            Ebmax     : constant Value_T :=
+              A_Ebmax (Emergency, Speed_T (T.Max_Speed));
             Kv        : constant Steps_T :=
-              (if T.Brake_Position = Passenger_P
-                 and then NV.Kv_Int_Passenger.Count > 0
-               then Kv_Passenger (NV.Kv_Int_Passenger,
-                                  NV.Kv_Int_Passenger_B,
-                                  Num (NV.A_NVP12) * Decel_Unit_Per_Mms2,
-                                  Num (NV.A_NVP23) * Decel_Unit_Per_Mms2,
-                                  A_Ebmax)
-               elsif NV.Kv_Int_Fresh.Count > 0
-               then From_Kv (NV.Kv_Int_Fresh)
-               else Constant_Steps (Default_Kv));
+              Kv_Int (NV, T.Brake_Position, Ebmax);
             Kr        : constant Value_T := Kr_Int (NV.Kr_Int, Length);
             --  Kv_int (V) * Kr_int, then one product: one rounding
             Safe      : constant Steps_T :=
