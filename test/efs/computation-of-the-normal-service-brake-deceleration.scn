@@ -175,19 +175,28 @@ expect A_brake_normal_service 300.0 800.0 == 0.41
 step Eddy Current brake switched off (BNS_0)
 sub Sub-step1
 expect A_brake_normal_service 50.0 1800.0 == 0.87
+xfail EFS defect: its normal service set at a location (A_brk_service_TrackCondition) drops the eddy current brake where it is switched off for the emergency brake; 3.13.6.4.4 and 3.12.1.3 (3.4.0 = 4.0): the set of A_brake_service (V = 0) there, which the switch-off for the service brake only changes
 expect A_brake_normal_service 150.0 1800.0 == 0.65
+xfail EFS defect: its normal service set at a location (A_brk_service_TrackCondition) drops the eddy current brake where it is switched off for the emergency brake; 3.13.6.4.4 and 3.12.1.3 (3.4.0 = 4.0): the set of A_brake_service (V = 0) there, which the switch-off for the service brake only changes
 expect A_brake_normal_service 100.0 1800.0 == 0.84
+xfail EFS defect: its normal service set at a location (A_brk_service_TrackCondition) drops the eddy current brake where it is switched off for the emergency brake; 3.13.6.4.4 and 3.12.1.3 (3.4.0 = 4.0): the set of A_brake_service (V = 0) there, which the switch-off for the service brake only changes
 expect A_brake_normal_service 200.0 1800.0 == 0.58
+xfail EFS defect: its normal service set at a location (A_brk_service_TrackCondition) drops the eddy current brake where it is switched off for the emergency brake; 3.13.6.4.4 and 3.12.1.3 (3.4.0 = 4.0): the set of A_brake_service (V = 0) there, which the switch-off for the service brake only changes
 expect A_brake_normal_service 0.0 1800.0 == 0.9
+xfail EFS defect: its normal service set at a location (A_brk_service_TrackCondition) drops the eddy current brake where it is switched off for the emergency brake; 3.13.6.4.4 and 3.12.1.3 (3.4.0 = 4.0): the set of A_brake_service (V = 0) there, which the switch-off for the service brake only changes
 expect A_brake_normal_service 250.0 1800.0 == 0.47
+xfail EFS defect: its normal service set at a location (A_brk_service_TrackCondition) drops the eddy current brake where it is switched off for the emergency brake; 3.13.6.4.4 and 3.12.1.3 (3.4.0 = 4.0): the set of A_brake_service (V = 0) there, which the switch-off for the service brake only changes
 expect A_brake_normal_service 300.0 1800.0 == 0.47
 step Regenerative brake switched off (BNS_2)
 sub Sub-step1
+xfail 3.13.2.2.3.1.3 (3.4.0 = 4.0): at a step boundary V1 the step below applies (AD_0 for 0 <= V <= V1); EFS BrakingModelFunction takes the step above (SpeedStep <= V)
 expect A_brake_normal_service 50.0 2500.0 == 0.71
 expect A_brake_normal_service 150.0 2500.0 == 0.58
+xfail 3.13.2.2.3.1.3 (3.4.0 = 4.0): at a step boundary V1 the step below applies (AD_0 for 0 <= V <= V1); EFS BrakingModelFunction takes the step above (SpeedStep <= V)
 expect A_brake_normal_service 100.0 2500.0 == 0.58
 expect A_brake_normal_service 200.0 2500.0 == 0.43
 expect A_brake_normal_service 0.0 2500.0 == 0.8
+xfail 3.13.2.2.3.1.3 (3.4.0 = 4.0): at a step boundary V1 the step below applies (AD_0 for 0 <= V <= V1); EFS BrakingModelFunction takes the step above (SpeedStep <= V)
 expect A_brake_normal_service 250.0 2500.0 == 0.24
 expect A_brake_normal_service 300.0 2500.0 == 0.24
 case Check A_brake_normal_service values - Freight train in G
@@ -364,15 +373,19 @@ set train.kn_plus 0:0.0:0.17 1:40.0:0.28 2:80.0:0.35 3:150.0:0.41 4:250.0:0.52
 step Check KnMin
 sub Sub-step1
 expect Kn_minus 0.0 == 0.21
+xfail 3.13.2.2.9.2.3 (3.4.0 = 4.0): at a step boundary V1 Kn_0 applies (0 <= V <= V1); EFS takes the step above
 expect Kn_minus 100.0 == 0.39
 expect Kn_minus 150.0 == 0.39
 expect Kn_minus 250.0 == 0.49
+xfail 3.13.2.2.9.2.3 (3.4.0 = 4.0): at a step boundary V1 Kn_0 applies (0 <= V <= V1); EFS takes the step above
 expect Kn_minus 50.0 == 0.34
 step Check KnPlus
 sub Sub-step1
 expect Kn_plus 0.0 == 0.17
 expect Kn_plus 100.0 == 0.35
+xfail 3.13.2.2.9.2.3 (3.4.0 = 4.0): at a step boundary V1 Kn_0 applies (0 <= V <= V1); EFS takes the step above
 expect Kn_plus 150.0 == 0.41
+xfail 3.13.2.2.9.2.3 (3.4.0 = 4.0): at a step boundary V1 Kn_0 applies (0 <= V <= V1); EFS takes the step above
 expect Kn_plus 250.0 == 0.52
 expect Kn_plus 50.0 == 0.28
 step Check GradientInfoProfile_NonCompensated

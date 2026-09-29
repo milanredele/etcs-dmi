@@ -468,7 +468,9 @@ sub Sub-step1
 set train.interface ep sb
 set tiu.active ep true
 expect T_brake_service == 0.46
+xfail not clear-cut, reported: 3.13.2.2.6.2 (3.4.0 = 4.0) does not say which T_brake_emergency applies when the status of the Ep brake does not affect it (interface for the service brake only): EFS takes the Ep brake as not in use, ours (EVC_Braking.Build) as in use, the shorter T_be
 expect T_brake_emergency == 1.82
+xfail not clear-cut, reported: 3.13.2.2.6.2 (3.4.0 = 4.0) does not say which T_brake_emergency applies when the status of the Ep brake does not affect it (interface for the service brake only): EFS takes the Ep brake as not in use, ours (EVC_Braking.Build) as in use, the shorter T_be
 expect T_be 0.0 == 1.82
 expect T_bs 0.0 == 0.46
 step Conversion model is used

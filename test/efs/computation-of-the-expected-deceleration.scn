@@ -146,6 +146,7 @@ clause - absent 3.13.6.3.1.2 c) ; efs 3.13.6.3.1.2.c
 step No brakes switched off
 sub Sub-step1
 expect A_brake_service 50.0 1000.0 == 0.81
+xfail 3.13.2.2.3.1.3 (3.4.0 = 4.0): at a step boundary V1 the step below applies (AD_0 for 0 <= V <= V1); EFS BrakingModelFunction takes the step above (SpeedStep <= V)
 expect A_brake_service 150.0 1000.0 == 0.27
 expect A_brake_service 100.0 1000.0 == 0.6
 expect A_brake_service 200.0 1000.0 == 0.22
@@ -159,6 +160,7 @@ expect A_brake_service 150.0 1200.0 == 0.4
 expect A_brake_service 100.0 1200.0 == 0.6
 expect A_brake_service 200.0 1200.0 == 0.3
 expect A_brake_service 0.0 1200.0 == 0.8
+xfail 3.13.2.2.3.1.3 (3.4.0 = 4.0): at a step boundary V1 the step below applies (AD_0 for 0 <= V <= V1); EFS BrakingModelFunction takes the step above (SpeedStep <= V)
 expect A_brake_service 250.0 1200.0 == 0.2
 expect A_brake_service 300.0 1200.0 == 0.2
 expect efs: Kernel.TrainData.BrakingParameters.A_brk_service ( V => 100.0, d => 1200.0, aCondition => FIRST X IN Kernel.TrainData.BrakingParameters.BrakeConditionsProfile() ) == 0.6
@@ -167,12 +169,19 @@ expect efs: Kernel.TrainData.BrakingParameters.Default_brk_service ( 50.0 ) == 0
 expect efs: Kernel.TrainData.BrakingParameters.Default_brk_service ( 100.0 ) == 0.6
 step Regenerative brake switched off
 sub Sub-step1
+xfail 3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake from the start of the track condition to the foot of the curve: ours (EVC_Profile) from the start of the area on, EFS A_brake_*(V, d) only inside the area
 expect A_brake_service 50.0 2500.0 == 0.65
+xfail 3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake from the start of the track condition to the foot of the curve: ours (EVC_Profile) from the start of the area on, EFS A_brake_*(V, d) only inside the area; the speed is also a step boundary (see R_STEP)
 expect A_brake_service 150.0 2500.0 == 0.31
+xfail 3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake from the start of the track condition to the foot of the curve: ours (EVC_Profile) from the start of the area on, EFS A_brake_*(V, d) only inside the area; the speed is also a step boundary (see R_STEP)
 expect A_brake_service 100.0 2500.0 == 0.38
+xfail 3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake from the start of the track condition to the foot of the curve: ours (EVC_Profile) from the start of the area on, EFS A_brake_*(V, d) only inside the area
 expect A_brake_service 200.0 2500.0 == 0.27
+xfail 3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake from the start of the track condition to the foot of the curve: ours (EVC_Profile) from the start of the area on, EFS A_brake_*(V, d) only inside the area
 expect A_brake_service 0.0 2500.0 == 0.8
+xfail 3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake from the start of the track condition to the foot of the curve: ours (EVC_Profile) from the start of the area on, EFS A_brake_*(V, d) only inside the area
 expect A_brake_service 250.0 2500.0 == 0.2
+xfail 3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake from the start of the track condition to the foot of the curve: ours (EVC_Profile) from the start of the area on, EFS A_brake_*(V, d) only inside the area
 expect A_brake_service 300.0 2500.0 == 0.2
 sequence Computation of A_expected
 case Setup

@@ -119,12 +119,276 @@ HEADER = [
 ]
 
 # ----------------------------------------------------------------------
-# Expected differences (ours): a translated expectation that is known to
-# fail, with the reason. Matched on the frame name and the text of the
-# expect line (before the attributes); the reason goes on an xfail line.
+# Expected differences (ours): translated expectations that are known to
+# fail, each with its reason, which the converter writes on an xfail
+# line before the expect line. An entry is (reason, frame, case, step,
+# expectations): the names exactly, the expectations as the text of the
+# expect line after "expect " and before the attributes. The runner
+# prints, for a failure of a step function, whether it passes 1 cm/s
+# above the speed (a step boundary); that and the analysis of each
+# group are in doc/EVC-PLAN.md §11.
 # ----------------------------------------------------------------------
 
-EXPECTED_DIFFERENCES = []   # filled in below the translator
+R_STEP = ("3.13.2.2.3.1.3 (3.4.0 = 4.0): at a step boundary V1 the step"
+          " below applies (AD_0 for 0 <= V <= V1); EFS BrakingModelFunction"
+          " takes the step above (SpeedStep <= V)")
+R_KN = ("3.13.2.2.9.2.3 (3.4.0 = 4.0): at a step boundary V1 Kn_0 applies"
+        " (0 <= V <= V1); EFS takes the step above")
+R_EXTENT = ("3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake"
+            " from the start of the track condition to the foot of the"
+            " curve: ours (EVC_Profile) from the start of the area on, EFS"
+            " A_brake_*(V, d) only inside the area")
+R_EXTENT_STEP = R_EXTENT + "; the speed is also a step boundary (see R_STEP)"
+R_BNS_EB = ("EFS defect: its normal service set at a location"
+            " (A_brk_service_TrackCondition) drops the eddy current brake"
+            " where it is switched off for the emergency brake;"
+            " 3.13.6.4.4 and 3.12.1.3 (3.4.0 = 4.0): the set of"
+            " A_brake_service (V = 0) there, which the switch-off for the"
+            " service brake only changes")
+R_GRADIENT = ("3.13.4.2.1 (3.4.0 = 4.0): the lowest gradient under the"
+              " train, front at d and rear L_TRAIN behind; EFS A_gradient (d)"
+              " is the gradient at d (and ours takes M_rotating_nom 0 as"
+              " not given, 3.13.4.3.2 then uses M_rotating_max)")
+R_UNITS = ("EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to"
+           " speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and"
+           " V_delta2 themselves agree)")
+R_EP = ("not clear-cut, reported: 3.13.2.2.6.2 (3.4.0 = 4.0) does not say"
+        " which T_brake_emergency applies when the status of the Ep brake"
+        " does not affect it (interface for the service brake only): EFS"
+        " takes the Ep brake as not in use, ours (EVC_Braking.Build) as in"
+        " use, the shorter T_be")
+
+EXPECTED_DIFFERENCES = [
+    (R_STEP,
+     'Braking models',
+     'Check emergency braking model information',
+     'Eddy Current + Magnetic Shoe brakes',
+     ('braking_model eb 250.0 == 0.1',
+      'braking_model eb 150.0 == 0.2',)),
+    (R_STEP,
+     'Braking models',
+     'Check emergency braking model information',
+     'Eddy Current + Regenerative brakes',
+     ('braking_model eb 50.0 == 0.9',
+      'braking_model eb 100.0 == 0.8',)),
+    (R_STEP,
+     'Braking models',
+     'Check emergency braking model information',
+     'Eddy Current brake',
+     ('braking_model eb 30.0 == 0.65',
+      'braking_model eb 100.0 == 0.5',)),
+    (R_STEP,
+     'Braking models',
+     'Check emergency braking model information',
+     'Magnetic Shoe + Regenerative Brakes',
+     ('braking_model eb 250.0 == 0.1',
+      'braking_model eb 120.0 == 0.6',)),
+    (R_STEP,
+     'Braking models',
+     'Check emergency braking model information',
+     'Magnetic Shoe brake',
+     ('braking_model eb 150.0 == 0.45',)),
+    (R_STEP,
+     'Braking models',
+     'Check service braking model information',
+     'Eddy Current + Magnetic Shoe + Regenerative brakes',
+     ('braking_model sb 100.0 == 0.7',
+      'braking_model sb 50.0 == 0.9',)),
+    (R_STEP,
+     'Braking models',
+     'Check service braking model information',
+     'Eddy Current + Magnetic Shoe brakes',
+     ('braking_model sb 100.0 == 0.55',
+      'braking_model sb 30.0 == 0.65',)),
+    (R_STEP,
+     'Braking models',
+     'Check service braking model information',
+     'Eddy Current + Regenerative brakes',
+     ('braking_model sb 50.0 == 0.9',
+      'braking_model sb 100.0 == 0.7',)),
+    (R_STEP,
+     'Braking models',
+     'Check service braking model information',
+     'Eddy Current brake',
+     ('braking_model sb 30.0 == 0.65',
+      'braking_model sb 100.0 == 0.55',)),
+    (R_STEP,
+     'Braking models',
+     'Freight train in G',
+     'BNS0',
+     ('braking_model nsb 250.0 == 0.3',
+      'braking_model nsb 50.0 == 0.72',)),
+    (R_STEP,
+     'Braking models',
+     'Freight train in G',
+     'BNS1',
+     ('braking_model nsb 200.0 == 0.27',
+      'braking_model nsb 100.0 == 0.51',
+      'braking_model nsb 50.0 == 0.7',
+      'braking_model nsb 150.0 == 0.34',)),
+    (R_STEP,
+     'Braking models',
+     'Freight train in G',
+     'BNS2',
+     ('braking_model nsb 200.0 == 0.35',
+      'braking_model nsb 100.0 == 0.5',
+      'braking_model nsb 250.0 == 0.3',
+      'braking_model nsb 150.0 == 0.4',)),
+    (R_STEP,
+     'Braking models',
+     'Freigth train in P / Passenger train in P',
+     'BNS0',
+     ('braking_model nsb 200.0 == 0.2',)),
+    (R_STEP,
+     'Braking models',
+     'Freigth train in P / Passenger train in P',
+     'BNS1',
+     ('braking_model nsb 100.0 == 0.35',
+      'braking_model nsb 150.0 == 0.2',
+      'braking_model nsb 25.0 == 0.8',
+      'braking_model nsb 75.0 == 0.5',
+      'braking_model nsb 200.0 == 0.14',)),
+    (R_STEP,
+     'Braking models',
+     'Freigth train in P / Passenger train in P',
+     'BNS2',
+     ('braking_model nsb 200.0 == 0.1',)),
+    (R_STEP,
+     'Computation of the expected deceleration',
+     'Check A_brake_service values',
+     'No brakes switched off',
+     ('A_brake_service 150.0 1000.0 == 0.27',)),
+    (R_STEP,
+     'Computation of the expected deceleration',
+     'Check A_brake_service values',
+     'Eddy Current brake switched off',
+     ('A_brake_service 250.0 1200.0 == 0.2',)),
+    (R_EXTENT,
+     'Computation of the expected deceleration',
+     'Check A_brake_service values',
+     'Regenerative brake switched off',
+     ('A_brake_service 50.0 2500.0 == 0.65',
+      'A_brake_service 200.0 2500.0 == 0.27',
+      'A_brake_service 0.0 2500.0 == 0.8',
+      'A_brake_service 250.0 2500.0 == 0.2',
+      'A_brake_service 300.0 2500.0 == 0.2',)),
+    (R_BNS_EB,
+     'Computation of the normal service brake deceleration',
+     'Check A_brake_normal_service values - Passenger  train in P',
+     'Eddy Current brake switched off (BNS_0)',
+     ('A_brake_normal_service 150.0 1800.0 == 0.65',
+      'A_brake_normal_service 100.0 1800.0 == 0.84',
+      'A_brake_normal_service 200.0 1800.0 == 0.58',
+      'A_brake_normal_service 0.0 1800.0 == 0.9',
+      'A_brake_normal_service 250.0 1800.0 == 0.47',
+      'A_brake_normal_service 300.0 1800.0 == 0.47',)),
+    (R_STEP,
+     'Computation of the normal service brake deceleration',
+     'Check A_brake_normal_service values - Passenger  train in P',
+     'Regenerative brake switched off (BNS_2)',
+     ('A_brake_normal_service 50.0 2500.0 == 0.71',
+      'A_brake_normal_service 100.0 2500.0 == 0.58',
+      'A_brake_normal_service 250.0 2500.0 == 0.24',)),
+    (R_KN,
+     'Computation of the normal service brake deceleration',
+     'Check gradient profile without compensation of rotating mass',
+     'Check KnMin',
+     ('Kn_minus 100.0 == 0.39',
+      'Kn_minus 50.0 == 0.34',)),
+    (R_KN,
+     'Computation of the normal service brake deceleration',
+     'Check gradient profile without compensation of rotating mass',
+     'Check KnPlus',
+     ('Kn_plus 150.0 == 0.41',
+      'Kn_plus 250.0 == 0.52',)),
+    (R_STEP,
+     'Computation of the safe deceleration',
+     'Check A_brake_emergency values',
+     'Regenerative brake switched off',
+     ('A_brake_emergency 250.0 1700.0 == 0.2',)),
+    (R_EXTENT,
+     'Computation of the safe deceleration',
+     'Check A_brake_emergency values',
+     'No brakes switched off',
+     ('A_brake_emergency 50.0 2000.0 == 0.95',
+      'A_brake_emergency 150.0 2000.0 == 0.8',
+      'A_brake_emergency 100.0 2000.0 == 0.9',
+      'A_brake_emergency 200.0 2000.0 == 0.7',
+      'A_brake_emergency 0.0 2000.0 == 0.999',
+      'A_brake_emergency 250.0 2000.0 == 0.6',
+      'A_brake_emergency 300.0 2000.0 == 0.4',)),
+    (R_EXTENT,
+     'Computation of the safe deceleration',
+     'Check A_brake_emergency values',
+     'Magnetic shoe brake switched off',
+     ('A_brake_emergency 50.0 2500.0 == 0.9',
+      'A_brake_emergency 100.0 2500.0 == 0.8',
+      'A_brake_emergency 200.0 2500.0 == 0.5',
+      'A_brake_emergency 0.0 2500.0 == 0.99',
+      'A_brake_emergency 250.0 2500.0 == 0.45',
+      'A_brake_emergency 300.0 2500.0 == 0.45',)),
+    (R_STEP,
+     'Computation of the safe deceleration',
+     'Check A_brake_emergency values',
+     'Magnetic shoe and regenerative brakes switched off',
+     ('A_brake_emergency 150.0 3100.0 == 0.45',
+      'A_brake_emergency 100.0 3100.0 == 0.5',)),
+    (R_GRADIENT,
+     'Computation of the safe deceleration',
+     'Locations with normal adhesion conditions',
+     'Check A_safe values - gradient defined',
+     ('A_gradient 1400.0 == 0.03924',)),
+    (R_GRADIENT,
+     'Computation of the safe deceleration',
+     'Locations with reduced adhesion conditions',
+     'Check A_safe values - gradient defined',
+     ('A_gradient 1500.0 == 0.03924',)),
+    (R_EP,
+     'Speed and distance monitoring',
+     'Brake build up time, T_be and T_bs',
+     'Disable Electro pneumatic brake for EB',
+     ('T_brake_emergency == 1.82',
+      'T_be 0.0 == 1.82',)),
+    (R_UNITS,
+     'Supervision limits',
+     'Vbec',
+     'Check Vbec',
+     ('Vbec 88.0 90.0 == 93.824',
+      'Vbec 75.0 90.0 == 91.408',)),
+    (R_UNITS,
+     'Supervision limits',
+     'Dbec',
+     'Check Dbec',
+     ('Dbec 88.0 90.0 in 235.377 235.378',
+      'Dbec 75.0 90.0 in 229.3767 229.3768',)),
+    (R_UNITS,
+     'Supervision limits',
+     'd_EBI',
+     'Check d_EBI',
+     ('Vbec 30.0 0.0 == 34.34',
+      'Vbec 30.0 20.0 == 34.34',)),
+    (R_UNITS,
+     'Supervision limits',
+     'Vsbi2',
+     'Check Vsbi2',
+     ('Vbec 88.0 25.0 == 91.34',)),
+    (R_UNITS,
+     'Supervision limits',
+     'V_P_EBD',
+     'Check V_P_EBD, V_EBD',
+     ('Vbec 100.0 20.0 == 103.34',)),
+    (R_EXTENT_STEP,
+     'Computation of the expected deceleration',
+     'Check A_brake_service values',
+     'Regenerative brake switched off',
+     ('A_brake_service 150.0 2500.0 == 0.31',
+      'A_brake_service 100.0 2500.0 == 0.38',)),
+    (R_EXTENT_STEP,
+     'Computation of the safe deceleration',
+     'Check A_brake_emergency values',
+     'Magnetic shoe brake switched off',
+     ('A_brake_emergency 150.0 2500.0 == 0.6',)),
+]
 
 
 # ----------------------------------------------------------------------
@@ -1431,12 +1695,11 @@ def attributes(e):
     return (" @ " + " ".join(out)) if out else ""
 
 
-def xfail_for(frame, where, line):
-    """The reason of a known difference: the first entry whose patterns
-    match the frame name, "case | step" and the expect line"""
-    for pat_frame, pat_where, pat_line, reason in EXPECTED_DIFFERENCES:
-        if re.search(pat_frame, frame) and re.search(pat_where, where) \
-                and re.search(pat_line, line):
+def xfail_for(frame, case, step, line):
+    """The reason of a known difference of the expect line, or None"""
+    text = line[len("expect "):]
+    for reason, f, c, s, texts in EXPECTED_DIFFERENCES:
+        if f == frame and c == case and s == step and text in texts:
             return reason
     return None
 
@@ -1471,9 +1734,8 @@ def convert_frame(path, paragraphs, trace, init_lines):
                         st["expectations translated" if ok
                            else "expectations verbatim"] += 1
                         if ok:
-                            reason = xfail_for(
-                                name, case + " | " + step.get("Name", ""),
-                                line)
+                            reason = xfail_for(name, case,
+                                               step.get("Name", ""), line)
                             if reason:
                                 out.append("xfail " + reason)
                                 st["xfail"] += 1

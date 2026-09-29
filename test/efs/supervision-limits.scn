@@ -378,7 +378,9 @@ sub Sub-step1
 expect Vdelta1 0.0 == 0.416
 expect Vdelta0 == 4.0
 expect Vdelta2 0.0 == 1.408
+xfail EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and V_delta2 themselves agree)
 expect Vbec 88.0 90.0 == 93.824
+xfail EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and V_delta2 themselves agree)
 expect Vbec 75.0 90.0 == 91.408
 expect T_berem 0.0 == 7.04
 expect T_traction 0.0 == 2.08
@@ -389,7 +391,9 @@ clause E3 done 3.13.9.3.2.2 ; efs 3.13.9.3.2.2
 clause E3 done 3.13.9.3.2.10 ; efs 3.13.9.3.2.10
 step Check Dbec
 sub Sub-step1
+xfail EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and V_delta2 themselves agree)
 expect Dbec 88.0 90.0 in 235.377 235.378
+xfail EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and V_delta2 themselves agree)
 expect Dbec 75.0 90.0 in 229.3767 229.3768
 case d_EBI
 clause E3 done 3.13.9.3.2.12 ; efs 3.13.9.3.2.12
@@ -443,6 +447,7 @@ step Check d_EBI
 sub Sub-step1
 expect efs: Kernel.SpeedAndDistanceMonitoring.TargetSpeedMonitoring.d_EBI ( Vest => 30.0, aTarget => Kernel.MA.SvL.SvL() ) > 5095.0 AND Kernel.SpeedAndDistanceMonitoring.TargetSpeedMonitoring.d_EBI ( Vest => 30.0, aTarget => Kernel.MA.SvL.SvL() ) < 5096.0
 expect Dbec 30.0 0.0 in 16.0 17.0
+xfail EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and V_delta2 themselves agree)
 expect Vbec 30.0 0.0 == 34.34
 expect efs: DistanceForSpeed ( Function => FUNCTION d : Default.BaseTypes.Distance => Kernel.SpeedAndDistanceMonitoring.DecelerationCurves.EBD_Target ( Distance => d, aTarget => Kernel.MA.SvL.SvL() ), Speed => 34.416 ) > 5089.533 AND DistanceForSpeed ( Function => FUNCTION d : Default.BaseTypes.Distance => Kernel.SpeedAndDistanceMonitoring.DecelerationCurves.EBD_Target ( Distance => d, aTarget => Kernel.MA.SvL.SvL() ), Speed => 34.416 ) < 5089.534
 step Add TSRs
@@ -452,6 +457,7 @@ step Check d_EBI
 sub Sub-step1
 expect efs: Kernel.SpeedAndDistanceMonitoring.TargetSpeedMonitoring.d_EBI ( Vest => 30.0, aTarget => FIRST X IN TARGETS (Kernel.MRSP.SpeedRestrictions) ) > 2230.0 AND Kernel.SpeedAndDistanceMonitoring.TargetSpeedMonitoring.d_EBI ( Vest => 30.0, aTarget => FIRST X IN TARGETS (Kernel.MRSP.SpeedRestrictions) ) < 2231.0
 expect Dbec 30.0 20.0 in 16.0 17.0
+xfail EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and V_delta2 themselves agree)
 expect Vbec 30.0 20.0 == 34.34
 expect efs: DistanceForSpeed ( Function => FUNCTION d : Default.BaseTypes.Distance => Kernel.SpeedAndDistanceMonitoring.DecelerationCurves.EBD_Target ( Distance => d, aTarget => FIRST X IN TARGETS (Kernel.MRSP.SpeedRestrictions) ), Speed => 34.416 ) >= 2224.748
 expect efs: DistanceForSpeed ( Function => FUNCTION d : Default.BaseTypes.Distance => Kernel.SpeedAndDistanceMonitoring.DecelerationCurves.EBD_Target ( Distance => d, aTarget => FIRST X IN TARGETS (Kernel.MRSP.SpeedRestrictions) ), Speed => 34.416 ) <= 2224.749
@@ -497,6 +503,7 @@ efs: INSERT BTM.LRBG.PreviousBaliseGroupStruct{ BaliseGroup => BTM.LRBG.BaliseGr
 set odo.speed 88.0
 step Check Vsbi2
 sub Sub-step1
+xfail EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and V_delta2 themselves agree)
 expect Vbec 88.0 25.0 == 91.34
 expect Dbec 88.0 25.0 in 43.00 44.00
 expect efs: Kernel.SpeedAndDistanceMonitoring.TargetSpeedMonitoring.Vsbi2 ( Dmaxsafefrontend => Kernel.TrainPosition.FrontEndPosition ( DistanceIntervalEnum.Max ), aTarget => Kernel.MA.SvL.SvL(), NoA_est => False ) > 46.0 AND Kernel.SpeedAndDistanceMonitoring.TargetSpeedMonitoring.Vsbi2 ( Dmaxsafefrontend => Kernel.TrainPosition.FrontEndPosition ( DistanceIntervalEnum.Max ), aTarget => Kernel.MA.SvL.SvL(), NoA_est => False ) < 47.0
@@ -559,6 +566,7 @@ efs: Testing.InitializeLinkings( aLinkings => [] )
 step Check V_P_EBD, V_EBD
 sub Sub-step1
 expect efs: Kernel.TrainPosition.FrontEndPosition ( DistanceIntervalEnum.Max ) == 1011.0
+xfail EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and V_delta2 themselves agree)
 expect Vbec 100.0 20.0 == 103.34
 expect efs: Kernel.SpeedAndDistanceMonitoring.Display.V_P_EBD_Target ( d_maxsafefront => Kernel.TrainPosition.FrontEndPosition ( DistanceIntervalEnum.Max ), aTarget => Kernel.SpeedAndDistanceMonitoring.Display.MRDT(), Vest => 100.0 ) > 27.0 AND Kernel.SpeedAndDistanceMonitoring.Display.V_P_EBD_Target ( d_maxsafefront => Kernel.TrainPosition.FrontEndPosition ( DistanceIntervalEnum.Max ), aTarget => Kernel.SpeedAndDistanceMonitoring.Display.MRDT(), Vest => 100.0 ) < 28.0
 expect Dbec 100.0 20.0 in 48.0 49.0
