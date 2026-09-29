@@ -1150,7 +1150,7 @@ procedure EVC_EFS_Test is
       A1     : constant Num := Round (St.Accel * 1000.0, 0, 30_000);
    begin
       if F = "Vdelta0" or else F = "Aest1" or else F = "Aest2" then
-         return Not_Run ("an input of ours, computed inside EVC_SDM");
+         return Not_Run ("computed inside EVC_SDM / an input of ours");
       end if;
       Build_Safe;
       if not Model.Valid then

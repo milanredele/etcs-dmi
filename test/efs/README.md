@@ -33,7 +33,8 @@ ERTMSFormalSpecs (EFS) is an executable model of SUBSET-026 3.4.0 /
   verbatim actions and expectations, known differences, clause statuses.
 - `README.md` (this file) and `LICENSE` (the EUPL v1.1).
 
-The files are generated, never edited by hand:
+The `.scn` files and `INDEX.md` are generated, never edited by hand
+(`README.md` and `LICENSE` are kept as they are):
 
     python3 test/tools/efs_frames.py [--efs ../ERTMSFormalSpecs]
     python3 test/tools/efs_frames.py --check   # in test/check.sh

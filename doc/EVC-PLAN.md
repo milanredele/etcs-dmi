@@ -761,3 +761,41 @@ the L_PACKET patching in one place. Inheritance was considered and
 rejected: the packets share shape, not behaviour, and class-wide
 dispatching would add verification conditions to a kernel whose
 consumers always know which packet they hold.
+
+**ERTMSFormalSpecs frames** (`e3/efs`): the 49 functional test frames
+of ERTMSFormalSpecs (EFS, an executable model of SUBSET-026 3.4.0 by
+ERTMS Solutions, EUPL v1.1) are converted by `test/tools/efs_frames.py`
+into scenarios in `test/efs/` (derived data under the EUPL, apart from
+the GPL of the repository; the folder is optional). Of 3610 actions
+1576 are translated (the EFS test environment expanded from its model),
+of 3376 expectations 657; the rest is kept verbatim for E4. The 828
+cases cite 1361 requirements: in our matrix 250 done, 21 partial, 39
+deferred, 402 todo, 597 without a row (3.4.0 numbering, or no on-board
+row), 52 of other documents. `obj/evc_efs_test`
+checks the supervision family against the SPARK units, one unit of our
+resolution on the safe side: 518 checks (braking models 111, safe
+deceleration 187, conversion model 87, normal service 53, expected
+deceleration 32, supervision limits 35, build up times 13), 424 pass,
+94 known differences in the table of the converter, 0 failures; 2858
+skipped (2556 verbatim, 163 in the five frames without the test
+environment, 111 SSP / TSR / MRSP that need the stored information of
+the telegrams, E4, 18 computed inside `EVC_SDM`, 10 after a telegram). To call the code the supervision
+runs, `EVC_Braking` exports `Kr_Int`, `Kv_Int`, `A_Ebmax` and
+`EVC_Limits` `Bec` (the terms of the EBI, used by `EBD_Limits`), both
+re-proved. What the known differences are: at a step boundary EFS takes
+the step above, 3.13.2.2.3.1.3 and 3.13.2.2.9.2.3 (same in 3.4.0) the
+step below (46); EFS inhibits a special brake only inside the track
+condition, 3.13.5.1 (same in 3.4.0) up to the foot of the curve, as
+`EVC_Profile` does (21); EFS takes the gradient at d without the train
+length compensation of 3.13.4.2.1 (5); 3.13.6.4.3 went from Kn(V) *
+grad (3.4.0) to Kn(V) * grad / 1000 (4.0), ours is 4.0 (4); two defects
+of EFS: V_bec and D_bec add V_delta1/2 in m/s to km/h (8), and its
+normal service set drops the eddy current brake where it is switched off
+for the emergency brake (8). No defect of ours was found; open for
+review: with the Ep brake interface for the service brake only, ours
+takes the Ep brake as in use for T_brake_emergency (EFS: not in use,
+3.13.2.2.6.2 is silent), which gives the shorter T_be (2); and
+`Train_Data_Extra_T` keeps one set of Kdry_rst / Kwet_rst for every
+combination, where 3.13.2.2.9.1.2 wants one per combination (the runner
+gives it the set of the combination in use); both for the train data of
+E4.

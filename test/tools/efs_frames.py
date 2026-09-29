@@ -1893,6 +1893,11 @@ def main():
         with open(os.path.join(OUT_DIR, fname), "w", encoding="utf-8") as f:
             f.write(text)
     print("efs_frames.py: %d files written to test/efs" % len(files))
+    for fname in ("README.md", "LICENSE"):
+        if not os.path.exists(os.path.join(OUT_DIR, fname)):
+            print("efs_frames.py: test/efs/%s is missing (not generated:"
+                  " restore it from git; the folder is under the EUPL"
+                  " v1.1)" % fname, file=sys.stderr)
     return 0
 
 
