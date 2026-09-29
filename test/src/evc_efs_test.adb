@@ -94,6 +94,7 @@ with Ada.Environment_Variables;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;            use Ada.Text_IO;
 with EVC_Braking;            use EVC_Braking;
+with EVC_Curves;
 with EVC_Distances;          use EVC_Distances;
 with EVC_Fixed;              use EVC_Fixed;
 with EVC_Limits;
@@ -1296,6 +1297,35 @@ procedure EVC_EFS_Test is
                else Model.Normal_Service (Service_Combination (Model, I)));
          begin
             return Got (At_Speed (S, V1), Decel_Scale, Lower_Safe);
+         end;
+      end if;
+
+      --  the deceleration of the EBD (A_safe), SBD (A_expected), GUI
+      --  (A_normal_service) at d, with the gradient and the reduced
+      --  adhesion (EVC_Curves.Deceleration), for a target not due to a
+      --  TSR
+      if F = "A_safe" or else F = "A_expected"
+        or else F = "A_normal_service"
+      then
+         if Needs (Train) or else Needs (Track) or else Needs (NV) then
+            return Not_Run ("after an untranslated action or a telegram");
+         end if;
+         Build_Safe;
+         if not Model.Valid then
+            return Not_Run ("no emergency brake model");
+         end if;
+         EVC_Profile.Build (Sn, Model, -Max_Cm / 2, P);
+         declare
+            V : constant Speed_T := Min (Cms (V1) + Speed_Offset, Max_Speed);
+         begin
+            return Got (EVC_Curves.Deceleration
+                          (Model, P,
+                           (if F = "A_safe" then EVC_Curves.EBD
+                            elsif F = "A_expected" then EVC_Curves.SBD
+                            else EVC_Curves.GUI),
+                           False, EVC_Profile.Segment_Of (P, Cm_Of (V2)),
+                           V * V, False).A,
+                        Decel_Scale, Lower_Safe);
          end;
       end if;
 

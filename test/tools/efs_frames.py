@@ -138,7 +138,8 @@ R_EXTENT = ("3.13.5.1 (3.4.0 = 4.0): no contribution of the special brake"
             " from the start of the track condition to the foot of the"
             " curve: ours (EVC_Profile) from the start of the area on, EFS"
             " A_brake_*(V, d) only inside the area")
-R_EXTENT_STEP = R_EXTENT + "; the speed is also a step boundary (see R_STEP)"
+R_EXTENT_STEP = (R_EXTENT + "; and the speed is a step boundary, where"
+                 " 3.13.2.2.3.1.3 takes the step below, EFS the step above")
 R_BNS_EB = ("EFS defect: its normal service set at a location"
             " (A_brk_service_TrackCondition) drops the eddy current brake"
             " where it is switched off for the emergency brake;"
@@ -149,6 +150,11 @@ R_GRADIENT = ("3.13.4.2.1 (3.4.0 = 4.0): the lowest gradient under the"
               " train, front at d and rear L_TRAIN behind; EFS A_gradient (d)"
               " is the gradient at d (and ours takes M_rotating_nom 0 as"
               " not given, 3.13.4.3.2 then uses M_rotating_max)")
+R_KN_GRAD = ("3.13.6.4.3: 3.4.0 subtracts Kn(V) * grad, 4.0 Kn(V) * grad /"
+             " 1000 (grad per mille); ours is 4.0")
+R_KN_GRAD_BNS = (R_KN_GRAD + "; and at d EFS drops the eddy current brake"
+                 " from its normal service set where it is switched off for"
+                 " the emergency brake (an EFS defect)")
 R_UNITS = ("EFS defect: V_bec and D_bec add V_delta1 and V_delta2 in m/s to"
            " speeds in km/h (3.13.9.3.2.10, 3.4.0 = 4.0; V_delta1 and"
            " V_delta2 themselves agree)")
@@ -388,6 +394,39 @@ EXPECTED_DIFFERENCES = [
      'Check A_brake_emergency values',
      'Magnetic shoe brake switched off',
      ('A_brake_emergency 150.0 2500.0 == 0.6',)),
+    (R_GRADIENT,
+     'Computation of the expected deceleration',
+     'Conversion model is used',
+     'Check A_brake_safe values - gradient defined',
+     ('A_expected 100.0 1500.0 in 1.12262 1.12263',)),
+    (R_GRADIENT,
+     'Computation of the safe deceleration',
+     'Locations with normal adhesion conditions',
+     'Check A_safe values - gradient defined',
+     ('A_safe 100.0 1400.0 == 0.0954',)),
+    (R_GRADIENT,
+     'Computation of the safe deceleration',
+     'Locations with reduced adhesion conditions',
+     'Check A_safe values - gradient defined',
+     ('A_safe 100.0 1500.0 == 0.04624',)),
+    (R_BNS_EB,
+     'Computation of the normal service brake deceleration',
+     'Check A_normal_service',
+     'Check A_normal_service',
+     ('A_normal_service 0.0 700.0 == 0.9',
+      'A_normal_service 100.0 700.0 == 0.84',)),
+    (R_KN_GRAD_BNS,
+     'Computation of the normal service brake deceleration',
+     'Check A_normal_service',
+     'Check A_normal_service',
+     ('A_normal_service 0.0 941.0 in 0.2541 0.2542',
+      'A_normal_service 100.0 941.0 in -0.5259 -0.5258',)),
+    (R_KN_GRAD,
+     'Computation of the normal service brake deceleration',
+     'Check A_normal_service',
+     'Check A_normal_service',
+     ('A_normal_service 0.0 1300.0 in 1.34076 1.34077',
+      'A_normal_service 100.0 1300.0 in 1.52076 1.52077',)),
 ]
 
 
@@ -1382,6 +1421,17 @@ def quantity(node):
                   "A_brake_normal_service", "A_brake_safe"):
             if n == KB + f:
                 return "%s %s %s" % (f, num(arg(a, "V", None)),
+                                     num(arg(a, "d", None)))
+        # the deceleration of the EBD, SBD, GUI at d for the target
+        # of the test environment (not due to a TSR)
+        for f, key in (("A_safe", "A_safe"), ("A_expected", "A_expected"),
+                       ("A_normal_service", "A_normal_service")):
+            if n == KB + f:
+                t = arg(a, "aTarget", None)
+                if t != ("call", "Testing.DecelerationCurves."
+                                 "SupervisedTarget", []):
+                    raise Untranslated("target")
+                return "%s %s %s" % (key, num(arg(a, "V", None)),
                                      num(arg(a, "d", None)))
         if n == KB + "Kdry_rst":
             cl = arg(a, "aM_NVEBCL", 1)

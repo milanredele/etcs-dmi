@@ -12,9 +12,9 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | BTM | btm.scn | 15 | 32 | 51 / 12 | 0 / 46 | 0 | absent 12, done 2, partial 1, todo 1 |
 | Braking models | braking-models.scn | 13 | 42 | 91 / 2 | 111 / 27 | 34 | absent 2, done 16 |
 | Change of train orientation | change-of-train-orientation.scn | 2 | 6 | 0 / 8 | 0 / 10 | 0 | absent 4, done 2 |
-| Computation of the expected deceleration | computation-of-the-expected-deceleration.scn | 5 | 12 | 28 / 1 | 28 / 8 | 9 | absent 3, done 2 |
-| Computation of the normal service brake deceleration | computation-of-the-normal-service-brake-deceleration.scn | 6 | 16 | 32 / 2 | 45 / 22 | 13 | absent 11, done 4 |
-| Computation of the safe deceleration | computation-of-the-safe-deceleration.scn | 19 | 44 | 91 / 1 | 183 / 14 | 19 | absent 23, done 18, partial 2 |
+| Computation of the expected deceleration | computation-of-the-expected-deceleration.scn | 5 | 12 | 28 / 1 | 32 / 4 | 10 | absent 3, done 2 |
+| Computation of the normal service brake deceleration | computation-of-the-normal-service-brake-deceleration.scn | 6 | 16 | 32 / 2 | 53 / 14 | 19 | absent 11, done 4 |
+| Computation of the safe deceleration | computation-of-the-safe-deceleration.scn | 19 | 44 | 91 / 1 | 187 / 10 | 21 | absent 23, done 18, partial 2 |
 | Conversion model | conversion-model.scn | 7 | 33 | 70 / 0 | 87 / 46 | 0 | absent 10, done 35 |
 | Date and time | date-and-time.scn | 1 | 2 | 1 / 2 | 0 / 1 | 0 | - |
 | EURORADIO Communication session | euroradio-communication-session.scn | 3 | 10 | 3 / 13 | 0 / 13 | 0 | todo 3 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, todo 38 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, deferred 2, done 12, other 6, partial 9, todo 5 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 641 / 2735 | 85 | absent 597, deferred 39, done 250, other 52, partial 21, todo 402 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 39, done 250, other 52, partial 21, todo 402 |
