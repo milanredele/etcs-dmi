@@ -54,7 +54,36 @@ Actions:
                                frame's own
   end init
   set <key> <values...>        an assignment translated into a state
-                               variable of ours (keys: see SET_KEYS)
+                               variable of ours; the keys:
+      train.length m | v_max km/h | lambda % or na | brake_position
+        passenger_p/freight_p/freight_g | m_rotating_nom % or na |
+        interface <brake> none/eb/sb/both | sb_command | sb_feedback |
+        traction_cut_off (true/false) | traction_model <coef> <const>
+      train.eb_models / sb_models clear|empty (clear: the defaults of
+        EFS, every combination one step of 1.0 m/s², Kdry and Kwet 1.0)
+      train.eb_model / sb_model <comb> k:speed:accel ...  (comb: bit 0
+        regenerative, 1 eddy current, 2 magnetic shoe, 3 Ep; the speed
+        the lower bound of step k as EFS gives it, km/h; m/s²)
+      train.eb_step / sb_step <comb> <k> <speed> <accel>
+      train.kdry <comb> <M_NVEBCL> k:factor ... | train.kwet <comb> ...
+      train.t_brake_emergency / t_brake_service clear|empty|<comb> <s>
+      train.nsb clear|empty | nsb_a_sb01 / nsb_a_sb12 m/s² |
+        nsb_model p|g 0..2 k:speed:accel ...
+      train.kn_plus / kn_minus clear | k:speed:factor ...
+      train.data_state <state> | tiu.active <brake> true/false |
+      tiu.additional | config.additional_brake_allowed
+      nv defaults (A.3.2) | nv <variable> <value> (M_NVEBCL, M_NVAVADH,
+        A_NVMAXREDADHn, Kt_int, Q_NV..., V_NV..., D_NV..., A_NVP12/23)
+        | nv Kr_int k:length:value ... | nv Kv_int_freight
+        k:speed:value ... | nv Kv_int_passenger k:speed:a:b ... (the
+        length / speed the upper bound of step k, inclusive, as EFS
+        evaluates them) | nv data_state / countries / start / stop
+      track_conditions kind@from+length ... | gradients from:per_mille
+        ... | adhesion from+length:M_ADHESION ... |
+        adhesion.driver_slippery | tsrs id@from+length:speed ...
+      odo.speed km/h | odo.accel m/s² | odo.position m |
+        odo.accuracy D_ura=.. D_ora=.. V_ura=.. V_ora=..
+      ma.target_speed km/h
   call <procedure>             an EFS procedure without effect on the
                                translated state (the model recomputes
                                derived values on it; ours at every use)
