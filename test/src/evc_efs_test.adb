@@ -101,114 +101,26 @@ with EVC_Limits;
 with EVC_National_Values;
 with EVC_Profile;
 with EVC_Supervision_Input;  use EVC_Supervision_Input;
+with Scn_Reader;             use Scn_Reader;
 
 procedure EVC_EFS_Test is
 
    Verbose : constant Boolean :=
      Ada.Environment_Variables.Exists ("VERBOSE");
 
-   subtype Real is Long_Float;
+   subtype Real is Scn_Reader.Real;
    Inf : constant Real := Real'Last;
 
-   ---------------------------------------------------------------------
-   --  Words of a line
-   ---------------------------------------------------------------------
-
-   Max_Words : constant := 400;
-   type Word_T is record
-      First, Last : Natural := 0;
-   end record;
-   type Words_T is array (1 .. Max_Words) of Word_T;
-
-   type Line_T (Length : Natural) is record
-      Text  : String (1 .. Length);
-      Count : Natural := 0;
-      W     : Words_T;
-   end record;
-
-   procedure Split (L : in out Line_T) is
-      I : Natural := L.Text'First;
-   begin
-      L.Count := 0;
-      while I <= L.Text'Last loop
-         while I <= L.Text'Last and then L.Text (I) = ' ' loop
-            I := I + 1;
-         end loop;
-         exit when I > L.Text'Last;
-         declare
-            J : Natural := I;
-         begin
-            while J <= L.Text'Last and then L.Text (J) /= ' ' loop
-               J := J + 1;
-            end loop;
-            if L.Count < Max_Words then
-               L.Count := L.Count + 1;
-               L.W (L.Count) := (I, J - 1);
-            end if;
-            I := J;
-         end;
-      end loop;
-   end Split;
-
-   function Word (L : Line_T; K : Positive) return String is
-     (if K <= L.Count then L.Text (L.W (K).First .. L.W (K).Last) else "");
-
-   --  The text from word K to the end of the line
-   function Rest (L : Line_T; K : Positive) return String is
-     (if K <= L.Count then L.Text (L.W (K).First .. L.Text'Last) else "");
-
-   ---------------------------------------------------------------------
-   --  Numbers (never raise: Valid False on anything else)
-   ---------------------------------------------------------------------
-
-   Valid : Boolean := True;
-
-   function To_Real (S : String) return Real is
-   begin
-      if S = "inf" then
-         return Inf;
-      elsif S'Length = 0 or else S'Length > 40 then
-         Valid := False;
-         return 0.0;
-      end if;
-      for C of S loop
-         if not (C in '0' .. '9' | '.' | '-' | '+' | 'e' | 'E') then
-            Valid := False;
-            return 0.0;
-         end if;
-      end loop;
-      declare
-         R : constant Real := Real'Value (S);
-      begin
-         if R'Valid and then abs R < 1.0E12 then
-            return R;
-         end if;
-         Valid := False;
-         return 0.0;
-      end;
-   exception
-      when others =>
-         Valid := False;
-         return 0.0;
-   end To_Real;
-
-   --  Field K (1-based) of a word of fields separated by ':' or '=',
-   --  '@', '+'
-   function Field (S : String; K : Positive) return String is
-      N     : Natural := 1;
-      First : Natural := S'First;
-   begin
-      for I in S'Range loop
-         if S (I) in ':' | '=' | '@' | '+' then
-            if N = K then
-               return S (First .. I - 1);
-            end if;
-            N := N + 1;
-            First := I + 1;
-         end if;
-      end loop;
-      return (if N = K then S (First .. S'Last) else "");
-   end Field;
+   --  Words of a line, numbers: Scn_Reader (Word_T, Words_T, Line_T,
+   --  Split, Word, Rest, Field, Valid, To_Real). Field is renamed here:
+   --  "use Scn_Reader" and "use Ada.Text_IO" both make a "Field" visible
+   --  (the function and Ada.Text_IO's column type), so the bare name is
+   --  ambiguous without it (GNAT calls the renaming itself "redundant",
+   --  which it is not: removing it does not compile).
+   pragma Warnings (Off, "redundant renaming");
+   function Field (S : String; K : Positive; Delims : String := ":=@+")
+     return String renames Scn_Reader.Field;
+   pragma Warnings (On, "redundant renaming");
 
    --  Rounded to the nearest integer, clamped
    function Round (X : Real; Lo, Hi : Num) return Num is
@@ -1701,14 +1613,9 @@ procedure EVC_EFS_Test is
    Case_Name : String (1 .. 80) := (others => ' ');
    Case_Len  : Natural := 0;
 
-   procedure Line (Text : String) is
-      L : Line_T (Text'Length);
+   procedure On_Line (L : Line_T; Line_No : Positive) is
+      pragma Unreferenced (Line_No);
    begin
-      L.Text := Text;
-      Split (L);
-      if L.Count = 0 then
-         return;
-      end if;
       declare
          K : constant String := Word (L, 1);
       begin
@@ -1771,10 +1678,10 @@ procedure EVC_EFS_Test is
       when others =>
          Skip ("invalid line");
          Taint := (others => True);
-   end Line;
+   end On_Line;
 
    procedure Run_File (Path : String) is
-      F : File_Type;
+      Ok : Boolean;
    begin
       Frame := (others => 0);
       Frame_Len := 0;
@@ -1783,11 +1690,11 @@ procedure EVC_EFS_Test is
       Initialised := False;
       Pending_Xfail := False;
       Taint := (others => True);
-      Open (F, In_File, Path);
-      while not End_Of_File (F) loop
-         Line (Get_Line (F));
-      end loop;
-      Close (F);
+      Scn_Reader.Read_File (Path, On_Line'Access, Ok);
+      if not Ok then
+         Put_Line ("evc_efs_test: " & Path & " unreadable, skipped");
+         return;
+      end if;
       Put_Line (Frame_Name (1 .. Frame_Len) & ":" & Frame.Checks'Image
                 & " checks," & Frame.Failures'Image & " failures,"
                 & Frame.Xfails'Image & " expected differences,"
@@ -1796,12 +1703,6 @@ procedure EVC_EFS_Test is
       Total.Failures := Total.Failures + Frame.Failures;
       Total.Xfails := Total.Xfails + Frame.Xfails;
       Total.Skipped := Total.Skipped + Frame.Skipped;
-   exception
-      when others =>
-         if Is_Open (F) then
-            Close (F);
-         end if;
-         Put_Line ("evc_efs_test: " & Path & " unreadable, skipped");
    end Run_File;
 
    ---------------------------------------------------------------------
@@ -1812,52 +1713,19 @@ procedure EVC_EFS_Test is
      (if Ada.Command_Line.Argument_Count >= 1
       then Ada.Command_Line.Argument (1) else "test/efs");
 
-   Max_Files : constant := 256;
-   type Name_T is record
-      S : String (1 .. 200) := (others => ' ');
-      N : Natural := 0;
-   end record;
-   Names : array (1 .. Max_Files) of Name_T;
+   Paths : Scn_Reader.Paths_T;
    Count : Natural := 0;
 
    use Ada.Directories;
-   Search : Search_Type;
-   Item   : Directory_Entry_Type;
 begin
    if not Exists (Dir) or else Kind (Dir) /= Directory then
       Put_Line ("evc_efs_test: " & Dir & " absent, skipped");
       return;
    end if;
-   Start_Search (Search, Dir, "*.scn", (Ordinary_File => True,
-                                        others => False));
-   while More_Entries (Search) loop
-      Get_Next_Entry (Search, Item);
-      declare
-         N : constant String := Full_Name (Item);
-      begin
-         if Count < Max_Files and then N'Length <= 200 then
-            Count := Count + 1;
-            Names (Count).S (1 .. N'Length) := N;
-            Names (Count).N := N'Length;
-         end if;
-      end;
-   end loop;
-   End_Search (Search);
-   --  sorted, for a stable output
-   for I in 2 .. Count loop
-      for J in reverse 2 .. I loop
-         exit when Names (J - 1).S (1 .. Names (J - 1).N)
-                   <= Names (J).S (1 .. Names (J).N);
-         declare
-            T : constant Name_T := Names (J);
-         begin
-            Names (J) := Names (J - 1);
-            Names (J - 1) := T;
-         end;
-      end loop;
-   end loop;
+   Scn_Reader.List_Scn_Files (Dir, Recurse => False,
+                              Paths => Paths, Count => Count);
    for I in 1 .. Count loop
-      Run_File (Names (I).S (1 .. Names (I).N));
+      Run_File (Paths (I).S (1 .. Paths (I).N));
    end loop;
 
    --  the reasons of the skipped expectations, the most frequent first
