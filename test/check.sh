@@ -1,10 +1,12 @@
 #!/bin/sh
 # The whole host check of the repository, as AGENTS.md requires before a
 # merge: build everything, run the four test programs, the generator and
-# catalogue checks and the coverage matrix check, and the ERTMSFormalSpecs
+# catalogue checks and the coverage matrix check, the ERTMSFormalSpecs
 # frames (test/efs/, optional: both skip when the folder or the EFS
-# checkout is absent). The SPARK proof (evc/prove.sh) and the cross build
-# (ports/tms570/build.sh) are separate, they take long.
+# checkout is absent) and the SUBSET-076 test sequences (also optional:
+# evc_s076_check skips when the sibling checkout, ../etcs-subset076 or
+# $S076_CHECKOUT, is absent). The SPARK proof (evc/prove.sh) and the
+# cross build (ports/tms570/build.sh) are separate, they take long.
 #
 #   test/check.sh            # build and check
 #   FUZZ_STEPS=1000000 test/check.sh
@@ -39,4 +41,5 @@ python3 evc/language/check_catalogue.py | tail -1
 python3 doc/SRS/tools/trace_subset026.py --check | tail -1
 python3 test/tools/efs_frames.py --check | tail -1
 ./obj/evc_efs_test | tail -1
+./obj/evc_s076_check | tail -1
 echo "check.sh: ok"

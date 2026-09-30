@@ -1,0 +1,25 @@
+# A deliberately broken telegram, for the failure path of
+# evc_s076_check: Q_UPDOWN is 0 (down-link) on the wire, which our
+# on-board rejects (up-link only, 7.5.1.142) -- Bad_Header. Same bits
+# otherwise as sv1/valid.scn's telegram, packet 0 included, so the
+# "var" rows past the header would still match if the decode did not
+# already fail on the header.
+sequence broken header
+case Q_UPDOWN down-link
+step balise group read
+text: a telegram whose Q_UPDOWN is wrong
+telegram 1 1 1/1 0 bits 210 2000028020008003ffffffffffffffffffffffffffffffffffffc0
+var Q_UPDOWN 1 0
+var M_VERSION 7 32
+var Q_MEDIA 1 0
+var N_PIG 3 0
+var N_TOTAL 3 0
+var M_DUP 2 0
+var M_MCOUNT 8 5
+var NID_C 10 1
+var NID_BG 14 1
+var Q_LINK 1 0
+var NID_PACKET 8 0
+var NID_VBCMK 6 3
+var NID_PACKET 8 255
+result: rejected (Bad_Header)

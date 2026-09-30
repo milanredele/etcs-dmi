@@ -1,0 +1,38 @@
+# Hand-written sample in the SUBSET-076 format family, for
+# evc_s076_check development (test/src/evc_s076_check.adb): a valid
+# balise telegram (packet 0, the Virtual Balise Cover marker) and a
+# valid radio message (message 5), both built with our own encoder so
+# that the "var" rows below are exactly what SUBSET-076's own reference
+# decoder would emit. Kept until the sibling checkout has real ones.
+sequence VBC and message 5
+meta author: evc_s076_check development
+case packet 0 on a short telegram
+step balise group read
+text: a balise sends a telegram with packet 0 and no other information
+telegram 1 1 1/1 0 bits 210 a000028020008003ffffffffffffffffffffffffffffffffffffc0
+var Q_UPDOWN 1 1
+var M_VERSION 7 32
+var Q_MEDIA 1 0
+var N_PIG 3 0
+var N_TOTAL 3 0
+var M_DUP 2 0
+var M_MCOUNT 8 5
+var NID_C 10 1
+var NID_BG 14 1
+var Q_LINK 1 0
+var NID_PACKET 8 0
+var NID_VBCMK 6 3 ; virtual balise cover marker
+var NID_PACKET 8 255
+result: accepted
+case message 5, track to train
+step radio message received
+text: an RBC sends message 5 (MA without packets)
+message 1 0 nid 5 bits 112 050380000c0e4008004000060720
+var NID_MESSAGE 8 5
+var L_MESSAGE 10 14
+var T_TRAIN 32 12345
+var M_ACK 1 0
+var NID_C 10 1
+var NID_BG 14 2
+var T_TRAIN 32 12345
+result: accepted

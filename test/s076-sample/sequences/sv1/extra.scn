@@ -1,0 +1,25 @@
+# Exercises two things evc_s076_check must handle without failing:
+# a "var" row with no telegram/message open yet (skipped, not a
+# failure), and a "var" row whose name is not one of ours (its bits
+# are still walked to stay in sync, just not compared).
+var STRAY 8 1
+sequence extra
+case a var row this on-board does not model
+step balise group read
+text: same telegram as sv1/valid.scn, with one extra trailing field
+telegram 1 1 1/1 0 bits 210 a000028020008003ffffffffffffffffffffffffffffffffffffc0
+var Q_UPDOWN 1 1
+var M_VERSION 7 32
+var Q_MEDIA 1 0
+var N_PIG 3 0
+var N_TOTAL 3 0
+var M_DUP 2 0
+var M_MCOUNT 8 5
+var NID_C 10 1
+var NID_BG 14 1
+var Q_LINK 1 0
+var NID_PACKET 8 0
+var NID_VBCMK 6 3
+var NID_PACKET 8 255
+var CHECKSUM 8 0
+result: accepted

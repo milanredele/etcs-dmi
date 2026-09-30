@@ -10,7 +10,7 @@ project Etcsdmi is
    for Object_Dir use "obj";
    for Main use ("dmi.adb", "dmi_test.adb", "dmi_fuzz.adb", "evc_sim.adb",
                  "evc.adb", "evc_test.adb", "evc_fuzz.adb",
-                 "evc_efs_test.adb");
+                 "evc_efs_test.adb", "evc_s076_check.adb");
 
    package Ide is
       for Vcs_Kind use "git";

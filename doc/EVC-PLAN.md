@@ -799,3 +799,14 @@ takes the Ep brake as in use for T_brake_emergency (EFS: not in use,
 combination, where 3.13.2.2.9.1.2 wants one per combination (the runner
 gives it the set of the combination in use); both for the train data of
 E4.
+
+**`e3/scn-reader`** (same phase): the generic part of the EFS reader
+moved into `Scn_Reader` (`test/src/`) so that a second consumer can
+share it: `evc_s076_check` reads SUBSET-076's own test sequences, a
+sibling repository (`../etcs-subset076`, optional like the EFS
+checkout) generating `sequences/<SV>/*.scn` in the same format family;
+for every telegram / message it decodes the hex with `ETCS_Telegram` /
+`ETCS_Message` as the BTM / RTM ports do and walks the sequence's own
+"var" rows with `ETCS_Bits.Reader` directly, checking the ones that
+name a variable of our catalogue and skipping the rest without losing
+its place in the bits.
