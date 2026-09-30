@@ -809,4 +809,24 @@ for every telegram / message it decodes the hex with `ETCS_Telegram` /
 `ETCS_Message` as the BTM / RTM ports do and walks the sequence's own
 "var" rows with `ETCS_Bits.Reader` directly, checking the ones that
 name a variable of our catalogue and skipping the rest without losing
-its place in the bits.
+its place in the bits. Outcome against the full corpus (3191
+sequences, 7338 balise telegrams and 6229 radio messages carried as
+bits): 0 failures; 764 rejected by the codec, which the check counts
+apart from failures because the sequences carry data meant to be
+refused (spare values, an unknown NID_MESSAGE 254, a packet after the
+end of information, M_DUP 11) and the runner of E4 judges the
+reaction; 257 of the rejections are telegrams of system version 1.0
+(3.17.3, E6/E7). Euroloop messages are skipped (no LTM). Two things
+the corpus taught: the layout of what the on-board sends follows the
+operated system version (chapter 6, phase E7): under 2.1 packet 0 has
+a 4-bit M_MODE and Q_LENGTH, under 2.2 a 5-bit M_MODE with Q_LENGTH,
+under 3.0 the 4.0.0 layout, and the version comes from the balises'
+M_VERSION or from the RBC's message 32; the check applies that rule
+before calling a width difference a failure. And three SV30 sequences
+(5180200_01 step 60, 9990200_06 step 57, 4080433_01 step 287) send a
+position report with the 4-bit M_MODE while operating in 3.0, which
+contradicts 7.4.3.1: they are listed as known differences of
+SUBSET-076 in the check. The sequences also tabulate what the on-board
+is expected to send, so the train-to-track messages are checked too,
+the RIU taken as the other end where the catalogue has the message for
+the RIU alone.

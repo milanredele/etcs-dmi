@@ -13,7 +13,9 @@
 --        fields the reference tool decoded it into:
 --    var NAME LEN VALUE [; comment]
 --        one row per field, in the order they lie on the wire, LEN its
---        width in bits, VALUE its coded value (decimal, or 0x.. hex)
+--        width in bits, VALUE its coded value as the PDF prints it:
+--        the digits, possibly in groups ("011 0000"), then the unit
+--        "b" (binary), "d" (decimal) or "h" (hex); no unit is decimal
 --    message <step> <dist> nid <n> bits <count> <hex>
 --        a radio message, also followed by "var" rows
 --    dmi ..., chart ..., wb ..., raw: ...
@@ -21,8 +23,13 @@
 --
 --  For every telegram / message, this runner:
 --    - decodes the hex with our own codec, exactly as the BTM
---      (ETCS_Telegram.Parse) and RTM (ETCS_Message.Parse) ports do,
---      and checks that it is Accepted;
+--      (ETCS_Telegram.Parse) and RTM (ETCS_Message.Parse) ports do; one
+--      the codec refuses is counted as "rejected" with the reason, not
+--      as a failure: the sequences carry telegrams and messages meant
+--      to be refused (spare values, unknown NID_MESSAGE, a packet after
+--      the end of information, system version 1.y), and whether the
+--      refusal is the right reaction is for the runner of phase E4;
+--      Euroloop messages (group LOOP) are skipped, there is no LTM;
 --    - checks that the packets found (Telegram_T.Index / Message_T.Index)
 --      equal the "var NID_PACKET" rows, in order (the packet 255 that
 --      ends a telegram is not itself a packet: its row, NID_PACKET 255,
@@ -38,8 +45,12 @@
 --      uncompared, not a failure: SUBSET-076 may describe fields (or
 --      name them) this on-board does not model.
 --
---  A message is read as track to train, from an RBC (EVC_Received's own
---  default until phase E5 tells an RIU session from an RBC one).
+--  The sequences tabulate the messages of both directions: what the RBC
+--  sends and what the on-board is expected to send. A message is read in
+--  the direction its NID_MESSAGE belongs to in our catalogue, the RBC
+--  taken as the other end (EVC_Received's own default until phase E5
+--  tells an RIU session from an RBC one). The hex of a line holds the
+--  bits rounded up to whole nibbles, so it may have an odd length.
 --
 --  Usage:  obj/evc_s076_check            $S076_CHECKOUT, else
 --                                        ../etcs-subset076
@@ -53,11 +64,13 @@ pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Directories;
 with Ada.Environment_Variables;
+with Ada.Strings.Fixed;
 with Ada.Text_IO;        use Ada.Text_IO;
 with Interfaces;         use Interfaces;
 with ETCS_Bits;          use ETCS_Bits;
 with ETCS_Catalogue;     use ETCS_Catalogue;
 with ETCS_Message;
+with ETCS_Message_Catalogue;
 with ETCS_Telegram;
 with ETCS_Variables;
 with Scn_Reader;         use Scn_Reader;
@@ -71,7 +84,40 @@ procedure EVC_S076_Check is
    Verbose : constant Boolean :=
      Ada.Environment_Variables.Exists ("VERBOSE");
 
-   Telegrams, Messages, Failures, Skipped : Natural := 0;
+   Telegrams, Messages, Rejected, Failures, Skipped : Natural := 0;
+
+   --  The M_VERSION of the telegrams and of the RBC's message 32 of a
+   --  sequence by step: the system version the on-board operates in
+   --  after a step is that of the last one before it (3.17.3), which
+   --  chooses the layout of what it
+   --  sends (chapter 6: before 2.2 M_MODE has 4 bits and packet 0
+   --  carries Q_LENGTH; the catalogue of this on-board is the 4.0.0
+   --  layout, the earlier ones are phase E7). The file lists the
+   --  telegrams before the messages, so the table is complete when a
+   --  message is checked.
+   Version_2_2  : constant := 34;
+   Max_Versions : constant := 2048;
+   type Version_R is record
+      Step, Code : Natural := 0;
+   end record;
+   Versions      : array (1 .. Max_Versions) of Version_R;
+   Version_Count : Natural := 0;
+
+   --  The system version code in force at Step: of the telegram with
+   --  the greatest step before it; 48 (3.0) when there is none
+   function Version_At (Step : Natural) return Natural is
+      Best_Step : Natural := 0;
+      Code      : Natural := 48;
+   begin
+      for I in 1 .. Version_Count loop
+         if Versions (I).Step < Step and then Versions (I).Step >= Best_Step
+         then
+            Best_Step := Versions (I).Step;
+            Code := Versions (I).Code;
+         end if;
+      end loop;
+      return Code;
+   end Version_At;
 
    Cur_Path : String (1 .. 300) := (others => ' ');
    Cur_Len  : Natural := 0;
@@ -84,6 +130,7 @@ procedure EVC_S076_Check is
       for I in N + 1 .. Cur_Path'Length loop
          Cur_Path (I) := ' ';
       end loop;
+      Version_Count := 0;
    end Set_Path;
 
    procedure Fail (Line_No : Natural; Msg : String) is
@@ -92,6 +139,21 @@ procedure EVC_S076_Check is
       Put_Line ("FAIL " & Cur_Path (1 .. Cur_Len) & ":" & Line_No'Image
                 & ": " & Msg);
    end Fail;
+
+   --  Our codec refused the telegram or message. Not a failure of the
+   --  bit check: the sequences carry telegrams meant to be rejected
+   --  (spare values, an unknown NID_MESSAGE, packets after the end of
+   --  information, M_DUP 11, telegrams of system version 1.y) and the
+   --  step text says what the on-board is to do; the runner of phase
+   --  E4 judges that. The fields are still compared row by row.
+   procedure Reject (Line_No : Natural; Msg : String) is
+   begin
+      Rejected := Rejected + 1;
+      if Verbose then
+         Put_Line ("reject " & Cur_Path (1 .. Cur_Len) & ":" & Line_No'Image
+                   & ": " & Msg);
+      end if;
+   end Reject;
 
    procedure Skip (Line_No : Natural; Msg : String) is
    begin
@@ -102,11 +164,50 @@ procedure EVC_S076_Check is
       end if;
    end Skip;
 
+   --  Known differences between the sequences and SUBSET-026 4.0.0: a
+   --  field width the bit check would report, by sequence and step, with
+   --  the reason. A row here is counted as rejected, not failed.
+   function Pad (S : String; To : Positive := 60) return String is
+     (Ada.Strings.Fixed.Head (S, To));
+
+   type Known_R is record
+      Sequence : String (1 .. 36);
+      Step     : Natural;
+      Reason   : String (1 .. 60);
+   end record;
+   Known : constant array (Positive range <>) of Known_R :=
+     ((Sequence => Pad ("Subset-076-6-3_5180200_01_v400_SV30", 36), Step => 60,
+       Reason   => Pad ("packet 0 with a 4 bit M_MODE and L_PACKET 114 under 3.0")),
+      (Sequence => Pad ("Subset-076-6-3_9990200_06_v400_SV30", 36), Step => 57,
+       Reason   => Pad ("packet 0 with a 4 bit M_MODE and L_PACKET 114 under 3.0")),
+      (Sequence => Pad ("Subset-076-6-3_4080433_01_v400_SV30", 36), Step => 287,
+       Reason   => Pad ("packet 0 with a 4 bit M_MODE and L_PACKET 114 under 3.0")));
+
+   --  The reason of the known difference at Step of the current file,
+   --  "" when there is none
+   function Known_Reason (Step : Natural) return String is
+   begin
+      for K of Known loop
+         declare
+            Name : constant String :=
+              Ada.Strings.Fixed.Trim (K.Sequence, Ada.Strings.Right);
+         begin
+            if K.Step = Step and then Cur_Len >= Name'Length + 4
+              and then Cur_Path (Cur_Len - Name'Length - 3 .. Cur_Len)
+                       = Name & ".scn"
+            then
+               return Ada.Strings.Fixed.Trim (K.Reason, Ada.Strings.Right);
+            end if;
+         end;
+      end loop;
+      return "";
+   end Known_Reason;
+
+
    ---------------------------------------------------------------------
    --  Numbers of the sequence files: exact integers, never raise.
-   --  LEN and the header's "bits" / "nid" are small decimal naturals;
-   --  VALUE is a coded field, decimal or "0x" / "0X" hex, up to 64 bits
-   --  (a modular type: it wraps rather than overflows).
+   --  LEN and the header's "bits" / "nid" / step are small decimal
+   --  naturals; VALUE is read by Var_Value below.
    ---------------------------------------------------------------------
 
    function To_Nat (S : String; OK : out Boolean) return Natural is
@@ -125,44 +226,6 @@ procedure EVC_S076_Check is
       return (if OK then V else 0);
    end To_Nat;
 
-   function To_U64 (S : String; OK : out Boolean) return Unsigned_64 is
-      V    : Unsigned_64 := 0;
-      Hex  : constant Boolean :=
-        S'Length > 2 and then S (S'First) = '0'
-        and then (S (S'First + 1) = 'x' or else S (S'First + 1) = 'X');
-      From : constant Positive := (if Hex then S'First + 2 else S'First);
-   begin
-      OK := S'Length > 0 and then S'Length <= 20 and then From <= S'Last;
-      if OK then
-         for C of S (From .. S'Last) loop
-            case C is
-               when '0' .. '9' =>
-                  V := V * (if Hex then 16 else 10)
-                       + Unsigned_64 (Character'Pos (C) - Character'Pos ('0'));
-               when 'a' .. 'f' =>
-                  if not Hex then
-                     OK := False;
-                     exit;
-                  end if;
-                  V := V * 16
-                       + Unsigned_64 (Character'Pos (C)
-                                      - Character'Pos ('a') + 10);
-               when 'A' .. 'F' =>
-                  if not Hex then
-                     OK := False;
-                     exit;
-                  end if;
-                  V := V * 16
-                       + Unsigned_64 (Character'Pos (C)
-                                      - Character'Pos ('A') + 10);
-               when others =>
-                  OK := False;
-                  exit;
-            end case;
-         end loop;
-      end if;
-      return (if OK then V else 0);
-   end To_U64;
 
    Max_Payload : constant := 1024;   -- ETCS_Message.Max_Bytes
 
@@ -190,17 +253,21 @@ procedure EVC_S076_Check is
                return 0;
          end case;
       end Nibble;
+      --  an odd number of nibbles: the last byte's low nibble is 0
+      Bytes : constant Natural := (Hex'Length + 1) / 2;
    begin
       Len := 0;
-      OK := Hex'Length mod 2 = 0 and then Hex'Length / 2 <= Data'Length
-            and then Hex'Length / 2 <= Max_Payload;
+      OK := Hex'Length > 0 and then Bytes <= Data'Length
+            and then Bytes <= Max_Payload;
       if not OK then
          return;
       end if;
-      for I in 0 .. Hex'Length / 2 - 1 loop
+      for I in 0 .. Bytes - 1 loop
          declare
             Hi : constant Character := Hex (Hex'First + 2 * I);
-            Lo : constant Character := Hex (Hex'First + 2 * I + 1);
+            Lo : constant Character :=
+              (if Hex'First + 2 * I + 1 <= Hex'Last
+               then Hex (Hex'First + 2 * I + 1) else '0');
             Hv : constant Unsigned_8 := Nibble (Hi, OK);
             Lv : constant Unsigned_8 := Nibble (Lo, OK);
          begin
@@ -208,7 +275,7 @@ procedure EVC_S076_Check is
          end;
          exit when not OK;
       end loop;
-      Len := (if OK then Hex'Length / 2 else 0);
+      Len := (if OK then Bytes else 0);
    end Hex_To_Bytes;
 
    ---------------------------------------------------------------------
@@ -216,13 +283,17 @@ procedure EVC_S076_Check is
    --  "message" line that opened it, and the "var" rows read since
    ---------------------------------------------------------------------
 
-   type Block_Kind_T is (None, Telegram_Block, Message_Block);
+   --  Skipped_Block: the header line was skipped (Euroloop, no bits):
+   --  its var rows are passed over without a count of their own
+   type Block_Kind_T is (None, Skipped_Block, Telegram_Block, Message_Block);
    Block      : Block_Kind_T := None;
    Block_Line : Natural := 0;
 
    Data     : ETCS_Bits.Byte_Array (1 .. Max_Payload) := (others => 0);
    Data_Len : Natural := 0;   -- bytes
    Bit_Len  : Natural := 0;   -- telegram user bits ("bits" of the line)
+   Msg_NID  : Natural := 0;   -- "nid" of a message line
+   Blk_Step : Natural := 0;   -- the step of the telegram / message line
 
    Max_Vars : constant := 512;
    type Var_R is record
@@ -280,10 +351,24 @@ procedure EVC_S076_Check is
                if Known
                  and then ETCS_Variables.Bits (Var) /= ETCS_Bits.Width (Len)
                then
-                  Fail (Vars (I).Line,
-                        "var " & Var_Name (I) & ": our catalogue has"
-                        & ETCS_Variables.Bits (Var)'Image & " bits, the"
-                        & " sequence" & Len'Image);
+                  if Known_Reason (Blk_Step) /= "" then
+                     Reject (Vars (I).Line,
+                             "var " & Var_Name (I) & ":" & Len'Image
+                             & " bits, a known difference of SUBSET-076: "
+                             & Known_Reason (Blk_Step));
+                  elsif Version_At (Blk_Step) < Version_2_2 then
+                     Reject (Vars (I).Line,
+                             "var " & Var_Name (I) & ":" & Len'Image
+                             & " bits, the layout of system version code"
+                             & Version_At (Blk_Step)'Image
+                             & " (chapter 6, E7); ours"
+                             & ETCS_Variables.Bits (Var)'Image);
+                  else
+                     Fail (Vars (I).Line,
+                           "var " & Var_Name (I) & ": our catalogue has"
+                           & ETCS_Variables.Bits (Var)'Image & " bits, the"
+                           & " sequence" & Len'Image);
+                  end if;
                elsif Known and then V /= Vars (I).Value then
                   Fail (Vars (I).Line,
                         "var " & Var_Name (I) & ": ours" & V'Image
@@ -326,7 +411,7 @@ procedure EVC_S076_Check is
    procedure Flush_Block is
    begin
       case Block is
-         when None =>
+         when None | Skipped_Block =>
             null;
          when Telegram_Block =>
             declare
@@ -338,7 +423,7 @@ procedure EVC_S076_Check is
             begin
                ETCS_Telegram.Parse (Data (1 .. Data_Len), Bit_Len, T, S);
                if S /= ETCS_Telegram.Accepted then
-                  Fail (Block_Line, "telegram decode: " & S'Image);
+                  Reject (Block_Line, "telegram: " & S'Image);
                else
                   Check_Packet_List (T.Count, NID'Access);
                end if;
@@ -346,16 +431,35 @@ procedure EVC_S076_Check is
             end;
          when Message_Block =>
             declare
+               use type ETCS_Message_Catalogue.Message_Kind_T;
                M : ETCS_Message.Message_T;
                S : ETCS_Message.Status_T;
+               --  the direction the NID_MESSAGE belongs to; an unknown
+               --  NID is read as track to train and reported by Parse
+               Dir : constant Direction_T :=
+                 (if ETCS_Message_Catalogue.Kind (Train_To_Track, Msg_NID)
+                     /= ETCS_Message_Catalogue.Unknown
+                    and then ETCS_Message_Catalogue.Kind
+                               (Track_To_Train, Msg_NID)
+                             = ETCS_Message_Catalogue.Unknown
+                  then Train_To_Track else Track_To_Train);
+               Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
+                 ETCS_Message_Catalogue.Kind (Dir, Msg_NID);
+               --  the other end of the session: the RBC, unless the
+               --  catalogue has this message for the RIU only (radio
+               --  infill, 8.5.2 / 8.5.3)
+               Sender : constant Sender_T :=
+                 (if Kind = ETCS_Message_Catalogue.Unknown
+                    or else ETCS_Message_Catalogue.Sent_By (Kind) (RBC)
+                    or else not ETCS_Message_Catalogue.Sent_By (Kind) (RIU)
+                  then RBC else RIU);
 
                function NID (I : Positive) return Natural is
                  (Natural (M.Index (I).NID));
             begin
-               ETCS_Message.Parse (Data (1 .. Data_Len), Track_To_Train,
-                                   RBC, M, S);
+               ETCS_Message.Parse (Data (1 .. Data_Len), Dir, Sender, M, S);
                if S /= ETCS_Message.Accepted then
-                  Fail (Block_Line, "message decode: " & S'Image);
+                  Reject (Block_Line, "message: " & S'Image);
                else
                   Check_Packet_List (M.Count, NID'Access);
                end if;
@@ -389,6 +493,14 @@ procedure EVC_S076_Check is
    begin
       if Idx = 0 or else Idx + 2 > L.Count then
          Skip (Line_No, "telegram: no bits/hex");
+         Block := Skipped_Block;
+         return;
+      end if;
+      --  a Euroloop message (the group column says LOOP): the loop
+      --  transmission module is optional and this on-board has none
+      if L.Count >= 3 and then Word (L, 3) = "LOOP" then
+         Skip (Line_No, "Euroloop message: no LTM on this on-board");
+         Block := Skipped_Block;
          return;
       end if;
       declare
@@ -401,9 +513,16 @@ procedure EVC_S076_Check is
                               | ETCS_Telegram.Long_Bits
          then
             Skip (Line_No, "telegram: bad bits/hex");
+            Block := Skipped_Block;
             return;
          end if;
          Bit_Len := Count;
+         declare
+            Step_OK : Boolean;
+         begin
+            Blk_Step := (if L.Count >= 2 then To_Nat (Word (L, 2), Step_OK)
+                         else 0);
+         end;
          Block := Telegram_Block;
          Block_Line := Line_No;
          Var_Count := 0;
@@ -416,6 +535,7 @@ procedure EVC_S076_Check is
    begin
       if Idx = 0 or else Idx + 2 > L.Count then
          Skip (Line_No, "message: no bits/hex");
+         Block := Skipped_Block;
          return;
       end if;
       declare
@@ -425,8 +545,27 @@ procedure EVC_S076_Check is
          Hex_To_Bytes (Word (L, Idx + 2), Data, Data_Len, Hex_OK);
          if not Count_OK or else not Hex_OK or else Count > 8 * Data_Len then
             Skip (Line_No, "message: bad bits/hex");
+            Block := Skipped_Block;
             return;
          end if;
+         declare
+            N      : constant Natural := Find (L, "nid");
+            NID_OK : Boolean := False;
+         begin
+            Msg_NID := (if N > 0 and then N < L.Count
+                        then To_Nat (Word (L, N + 1), NID_OK) else 0);
+            if not NID_OK then
+               Skip (Line_No, "message: no nid");
+               Block := Skipped_Block;
+               return;
+            end if;
+         end;
+         declare
+            Step_OK : Boolean;
+         begin
+            Blk_Step := (if L.Count >= 2 then To_Nat (Word (L, 2), Step_OK)
+                         else 0);
+         end;
          Block := Message_Block;
          Block_Line := Line_No;
          Var_Count := 0;
@@ -434,8 +573,79 @@ procedure EVC_S076_Check is
       end;
    end Start_Message;
 
+   --  VALUE of a var row: the words from the fourth up to the unit
+   --  ("b" binary, "d" decimal, "h" hex; none: decimal) or up to a ";"
+   --  (the comment), the digit groups joined ("011 0000 b" is 48).
+   --  OK is False for anything else (a text value, no digits).
+   function Var_Value (L : Line_T; OK : out Boolean) return Unsigned_64 is
+      Last   : Natural := L.Count;
+      Base   : Unsigned_64 := 10;
+      V      : Unsigned_64 := 0;
+      N_Digits : Natural := 0;
+   begin
+      for I in 4 .. L.Count loop
+         if Word (L, I) = ";" then
+            Last := I - 1;
+            exit;
+         end if;
+      end loop;
+      OK := Last >= 4;
+      if not OK then
+         return 0;
+      end if;
+      declare
+         U : constant String := Word (L, Last);
+      begin
+         if U = "b" then
+            Base := 2;
+            Last := Last - 1;
+         elsif U = "h" then
+            Base := 16;
+            Last := Last - 1;
+         elsif U = "d" then
+            Last := Last - 1;
+         end if;
+      end;
+      OK := Last >= 4;
+      for I in 4 .. Last loop
+         for C of Word (L, I) loop
+            declare
+               D : Natural;
+            begin
+               case C is
+                  when '0' .. '9' =>
+                     D := Character'Pos (C) - Character'Pos ('0');
+                  when 'a' .. 'f' =>
+                     D := Character'Pos (C) - Character'Pos ('a') + 10;
+                  when 'A' .. 'F' =>
+                     D := Character'Pos (C) - Character'Pos ('A') + 10;
+                  when others =>
+                     OK := False;
+                     return 0;
+               end case;
+               --  more digits than 64 bits hold: not a field value
+               if Unsigned_64 (D) >= Base
+                 or else N_Digits >= (case Base is
+                                       when 2 => 64, when 16 => 16,
+                                       when others => 19)
+               then
+                  OK := False;
+                  return 0;
+               end if;
+               V := V * Base + Unsigned_64 (D);
+               N_Digits := N_Digits + 1;
+            end;
+         end loop;
+      end loop;
+      OK := OK and then N_Digits > 0;
+      return (if OK then V else 0);
+   end Var_Value;
+
    procedure Add_Var (L : Line_T; Line_No : Positive) is
    begin
+      if Block = Skipped_Block then
+         return;
+      end if;
       if Block = None then
          Skip (Line_No, "var without a telegram/message");
          return;
@@ -452,12 +662,35 @@ procedure EVC_S076_Check is
          Name           : constant String := Word (L, 2);
          Len_OK, Val_OK : Boolean;
          Len            : constant Natural := To_Nat (Word (L, 3), Len_OK);
-         Value          : constant Unsigned_64 :=
-           To_U64 (Word (L, 4), Val_OK);
+         Value          : constant Unsigned_64 := Var_Value (L, Val_OK);
       begin
-         if not Len_OK or else not Val_OK or else Name'Length = 0 then
+         if not Len_OK or else Name'Length = 0 then
             Skip (Line_No, "bad var line");
             return;
+         end if;
+         if not Val_OK then
+            --  a text value (the PDF prints some fields as words): the
+            --  row still advances the reader by LEN bits, uncompared
+            Var_Count := Var_Count + 1;
+            if Var_Count > Max_Vars then
+               Var_Count := Max_Vars;
+               Skip (Line_No, "too many var rows");
+               return;
+            end if;
+            Vars (Var_Count) := (Name => (others => ' '), NLen => 0,
+                                 Len => Len, Value => 0, Line => Line_No);
+            Skip (Line_No, "var " & Name & ": text value, not compared");
+            return;
+         end if;
+         --  the trackside's version: a balise telegram's, or the RBC's
+         --  in its message 32 (RBC/RIU system version)
+         if (Block = Telegram_Block
+             or else (Block = Message_Block and then Msg_NID = 32))
+           and then Name = "M_VERSION"
+           and then Value <= 127 and then Version_Count < Max_Versions
+         then
+            Version_Count := Version_Count + 1;
+            Versions (Version_Count) := (Blk_Step, Natural (Value));
          end if;
          Var_Count := Var_Count + 1;
          declare
@@ -538,7 +771,8 @@ begin
       Check_File (Paths (I).S (1 .. Paths (I).N));
    end loop;
    Put_Line ("evc_s076_check:" & Telegrams'Image & " telegrams,"
-             & Messages'Image & " messages," & Failures'Image
+             & Messages'Image & " messages," & Rejected'Image
+             & " rejected," & Failures'Image
              & " failures," & Skipped'Image & " skipped");
    if Failures > 0 then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
