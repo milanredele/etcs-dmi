@@ -51,7 +51,9 @@
 --          VERBOSE=1 obj/evc_test  list passing checks too
 --          EVC_DUMP=dir obj/evc_test  also write the output bytes of every
 --                                     golden to dir/<name>.bin, to decode
---                                     what changed (test/tools/evc_dump.py)
+--                                     what changed (test/tools/evc_dump.py;
+--                                     bench_onboard: its hashed DMI frames,
+--                                     one record each)
 
 pragma Ada_2012;
 with Ada.Command_Line;
@@ -8501,6 +8503,40 @@ procedure EVC_Test is
       Max_Kmh : Natural := 0;
       Last_Mon, Last_Cmd, Last_Brake : Natural := 99;
 
+      --  EVC_DUMP=dir: the hashed frames also go to dir/bench_onboard.bin,
+      --  one record per DMI frame in the format of the other dumps (port
+      --  u8, length u16 little endian, payload; test/tools/evc_dump.py),
+      --  so that golden_review.py sees this golden too; the digest is the
+      --  frames' alone, as before
+      package SIO renames Ada.Streams.Stream_IO;
+      Dumping : constant Boolean :=
+        Ada.Environment_Variables.Exists ("EVC_DUMP");
+      Dump_F  : SIO.File_Type;
+
+      procedure Dump_Frames (Data : Stream_Element_Array) is
+         P : Stream_Element_Offset := Data'First;
+      begin
+         while P <= Data'Last loop
+            declare
+               --  a frame: type u8, length u32 (little endian), payload
+               N : constant Stream_Element_Offset :=
+                 (if P + 4 <= Data'Last
+                  then Stream_Element_Offset'Min
+                         (5 + Stream_Element_Offset (Data (P + 1))
+                            + 256 * Stream_Element_Offset (Data (P + 2)),
+                          Data'Last - P + 1)
+                  else Data'Last - P + 1);
+               Head : constant Stream_Element_Array (1 .. 3) :=
+                 (Stream_Element (Port_T'Pos (DMI)),
+                  Stream_Element (N mod 256), Stream_Element (N / 256));
+            begin
+               SIO.Write (Dump_F, Head);
+               SIO.Write (Dump_F, Data (P .. P + N - 1));
+               P := P + N;
+            end;
+         end loop;
+      end Dump_Frames;
+
       procedure Note (Where : in out Integer; Now : Boolean) is
       begin
          if Now and then Where = Never then
@@ -8526,6 +8562,9 @@ procedure EVC_Test is
          if Digest then
             GNAT.SHA256.Update (Ctx, Frames (Frames'First .. Last));
             Bytes := Bytes + Natural (Last - Frames'First + 1);
+            if Dumping then
+               Dump_Frames (Frames (Frames'First .. Last));
+            end if;
          end if;
          if Env.V_Perm_KMH > 0 then
             Note (Supervised_At, True);
@@ -8568,6 +8607,13 @@ procedure EVC_Test is
       Check (Sim_Trackside.Built_OK,
              "bench: every telegram of the line encoded");
       Env.Set_Desk (0, Auto => True);
+      if Dumping then
+         Ada.Directories.Create_Path
+           (Ada.Environment_Variables.Value ("EVC_DUMP"));
+         SIO.Create (Dump_F, SIO.Out_File,
+                     Ada.Environment_Variables.Value ("EVC_DUMP")
+                     & "/bench_onboard.bin");
+      end if;
       for I in 1 .. Bench_Cycles loop
          Cycle (Digest => True);
          --  phase E4: the start of mission in level 1, a step a cycle
@@ -8576,6 +8622,9 @@ procedure EVC_Test is
          end if;
 
       end loop;
+      if Dumping then
+         SIO.Close (Dump_F);
+      end if;
       Check_Digest ("bench_onboard", GNAT.SHA256.Digest (Ctx));
       Put_Line ("  bench:" & Img (Bench_Cycles) & " cycles," & Img (Bytes)
                 & " bytes of DMI frames, the train at"

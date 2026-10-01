@@ -8,6 +8,7 @@ with EVC_DMI_Port;
 with EVC_Modes;     use EVC_Modes;
 with EVC_Outbox;
 with EVC_Ports;     use EVC_Ports;
+with EVC_Procedures;
 with Interfaces;    use Interfaces;
 with Sim_Telegrams;
 
@@ -39,17 +40,23 @@ package body EVC_Test_Procedures is
    Out_Buf  : Byte_Array (1 .. EVC_Outbox.Capacity);
    Out_Last : Natural := 0;
 
-   --  The last MSG_MODE_LEVEL: mode, mode_ack, override
+   --  The last MSG_MODE_LEVEL: mode, mode_ack, override; the level, the
+   --  level announced and whether its acknowledgement is asked
    Mode_Byte     : Natural := 0;
    Ack_Byte      : Natural := No_Ack;
    Override_Byte : Natural := 0;
+   Level_Byte    : Natural := 0;
+   Level_Ann     : Natural := No_Ack;
+   Level_Ann_Ack : Natural := 0;
    --  MSG_SPEED_STATE: the permitted speed, km/h
    V_Perm        : Natural := 0;
    --  MSG_STATUS: brake, reversing (the last one sent)
    Status_Brake  : Natural := 0;
    Reversing     : Natural := 0;
-   --  MSG_ONBOARD: train
+   --  MSG_ONBOARD: train; the data statuses, the start of mission
    Onboard_Train : Natural := 0;
+   Onboard_Data  : Natural := 0;
+   Onboard_SoM   : Natural := 0;
    --  MSG_PLANNING in the last cycle
    Planning_Now  : Boolean := False;
    --  MSG_TRACK_COND: the last one shows the symbol LX01 (kind 38), the
@@ -103,6 +110,9 @@ package body EVC_Test_Procedures is
    J23       : Kinds_T := (others => 0);
    J23_B3    : Kinds_T := (others => 0);
    J24       : Kinds_T := (others => 0);
+   --  the events 40 (levels) and 41 (mission) of the modes and levels
+   J40       : Kinds_T := (others => 0);
+   J41       : Kinds_T := (others => 0);
    Parse_OK  : Boolean := True;
 
    procedure Forget is
@@ -115,6 +125,8 @@ package body EVC_Test_Procedures is
       J23 := (others => 0);
       J23_B3 := (others => 0);
       J24 := (others => 0);
+      J40 := (others => 0);
+      J41 := (others => 0);
    end Forget;
 
    function Seen_SS (Entry_N, Event : Natural) return Boolean is
@@ -164,7 +176,10 @@ package body EVC_Test_Procedures is
                case P (1) is
                   when 16#02# =>
                      Mode_Byte := P (6);
+                     Level_Byte := P (7);
                      Ack_Byte := P (8);
+                     Level_Ann := P (9);
+                     Level_Ann_Ack := P (10);
                      Override_Byte := P (11);
                   when 16#01# =>
                      V_Perm := P (8) + 256 * P (9);
@@ -185,7 +200,9 @@ package body EVC_Test_Procedures is
                      Tunnel := P (17);
                      Tunnel_M := P (18) + 256 * P (19);
                   when 16#0A# =>
+                     Onboard_Data := P (6);
                      Onboard_Train := P (9);
+                     Onboard_SoM := P (11);
                   when 16#06# =>
                      Planning_Now := True;
                   when 16#0C# =>
@@ -254,6 +271,10 @@ package body EVC_Test_Procedures is
                   J23_B3 (P (2)) := P (3);
                elsif P (1) = JRU_Text_Messages and then P (2) <= 15 then
                   J24 (P (2)) := J24 (P (2)) + 1;
+               elsif P (1) = JRU_Levels and then P (2) <= 15 then
+                  J40 (P (2)) := J40 (P (2)) + 1;
+               elsif P (1) = JRU_Mission and then P (2) <= 15 then
+                  J41 (P (2)) := J41 (P (2)) + 1;
                end if;
             end if;
             Pos := Pos + 3 + Len;
@@ -376,6 +397,10 @@ package body EVC_Test_Procedures is
       ST.Put (W, P, Build_OK);
    end Add;
    procedure Add (P : ST.T139.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
+   procedure Add (P : ST.T41.Packet_T) is
    begin
       ST.Put (W, P, Build_OK);
    end Add;
@@ -558,9 +583,9 @@ package body EVC_Test_Procedures is
 
    --  A new scenario: the on-board powered up with cab A active and the
    --  direction controller forwards, the train standing with its front
-   --  end at Front_At_M, in mode M and level L
-   procedure Begin_Scenario (M : Mode_T; L : Level_T;
-                             Front_At_M : Integer := -7) is
+   --  end at Front_At_M, in SB (Power_Up), then in mode M and level L
+   --  (Begin_Scenario, EVC_Core.Set_Mode_For_Test)
+   procedure Power_Up (Front_At_M : Integer := -7) is
    begin
       EVC_Core.Initialise;
       Forget;
@@ -582,9 +607,20 @@ package body EVC_Test_Procedures is
       Tunnel_M := 0;
       Monitoring := 0;
       TC_N := 0;
+      Level_Byte := 0;
+      Level_Ann := No_Ack;
+      Level_Ann_Ack := 0;
+      Onboard_Data := 0;
+      Onboard_SoM := 0;
       TIU_In (1, 1);
       TIU_In (6, 1);
       Cycle;
+   end Power_Up;
+
+   procedure Begin_Scenario (M : Mode_T; L : Level_T;
+                             Front_At_M : Integer := -7) is
+   begin
+      Power_Up (Front_At_M);
       --  the train running number of the start of mission (5.4.2, the
       --  driver's entry in SB: 5.8.2.1 c) reads it)
       Input (DMI, Frame (16#41#, (1, 4, Character'Pos ('1'),
@@ -1750,6 +1786,336 @@ package body EVC_Test_Procedures is
       Check (V_Perm = 40, "3.11.7.1: V_NVSTFF in SR");
    end Scenario_Mode_Speeds;
 
+
+   ---------------------------------------------------------------------
+   --  Phase E4, the two halves together (e4/integration): the start of
+   --  mission of the modes and levels, then the procedures, through the
+   --  ports only (after the SUBSET-076 sequences of level 1 named)
+   ---------------------------------------------------------------------
+
+   --  A text the driver enters (MSG_DRIVER_DATA kind 0 driver ID, 1
+   --  train running number)
+   procedure Text_Data (Kind : Natural; Text : String) is
+      R : Byte_Array (1 .. 2 + Text'Length);
+   begin
+      R (1) := Byte (Kind);
+      R (2) := Byte (Text'Length);
+      for I in Text'Range loop
+         R (3 + I - Text'First) := Character'Pos (Text (I));
+      end loop;
+      Input (DMI, Frame (16#41#, R));
+   end Text_Data;
+
+   --  MSG_DRIVER_DATA kind 2 (DMI Table 40): 200 m, 135 %, 160 km/h,
+   --  NC_CDTRAIN 130 mm, a passenger train, axle load A, not airtight,
+   --  loading gauge G1
+   procedure Train_Data_Entry is
+   begin
+      Input (DMI, Frame (16#41#, (2, 200, 0, 135, 0, 160, 0, 2, 4, 0,
+                                  0, 0, 1)));
+   end Train_Data_Entry;
+
+   --  The driver's start of mission in SB (5.4.3.2: S1 driver ID, S2 the
+   --  level, S12 Train Data, S13 train running number, S20 'Start'), one
+   --  entry per cycle as the DMI's dialogue sends them
+   procedure Driver_Start_Of_Mission (Level_Code : Natural) is
+   begin
+      Text_Data (0, "1234");
+      Cycle;
+      Driver (11, Level_Code);
+      Cycle;
+      Train_Data_Entry;
+      Cycle;
+      Text_Data (1, "5678");
+      Cycle;
+      Driver (5);
+      Cycle;
+   end Driver_Start_Of_Mission;
+
+   Code_L0 : constant := 2;
+   Code_L1 : constant := 4;
+
+   --  Level 1: start of mission -> SR -> override with the SR distance
+   --  -> trip at its end -> acknowledgement -> PT -> 'Start' -> SR ->
+   --  "stop if in SR" with and without override (SUBSET-076 5080300_01,
+   --  5080400_02, 5110200)
+   procedure Scenario_Integration_SR_Override_Trip is
+   begin
+      Power_Up;
+      Check (Mode_Byte = Code_SB and then Onboard_SoM = 2,
+             "E4 integration: SB, the start of mission engaged (5.4.3.2 S0)");
+      Driver_Start_Of_Mission (Code_L1);
+      Check (Ack_Byte = Code_SR and then Level_Byte = Code_L1,
+             "E4 integration, 5.4.3.2 S24: 'Start' in level 1 proposes SR");
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_SR and then J41 (9) = 1,
+             "E4 integration, 4.6.3 [8], 5.4.6.1: SR, the mission started");
+      Cycle;
+      Check (V_Perm = 40,
+             "E4 integration, 3.11.7.1: V_NVSTFF in SR (EVC_Procedures."
+             & "Mode_Speed with EVC_Mission's SR speed)");
+      --  5.8.2.1: override at standstill in SR, valid Train Data and train
+      --  running number from the start of mission
+      Driver (6);
+      Cycle;
+      Check (Mode_Byte = Code_SR and then Override_Byte = 1
+             and then J23 (2) = 1,
+             "E4 integration, 5.8.2.1 c), 5.8.3.7: override in SR with the "
+             & "data of the start of mission, indicated");
+      Cycle;
+      Check (V_Perm = 30,
+             "E4 integration, 3.11.10.1: the override speed V_NVSUPOVTRP "
+             & "under the SR mode speed limit");
+      --  5.8.4.1 b): D_NVOVTRP (200 m) run, the override ends
+      Run_Front (100, 25);
+      Check (Override_Byte = 1, "E4 integration: override within D_NVOVTRP");
+      Run_Front (205, 25);
+      Check (Override_Byte = 0 and then Mode_Byte = Code_SR,
+             "E4 integration, 5.8.4.1 b): override ends after D_NVOVTRP");
+      --  4.4.11.1.5: the driver's SR speed and distance at standstill
+      Stand;
+      Input (DMI, Frame (16#41#, (3, 35, 0, 100, 0)));
+      Cycle;
+      Cycle;
+      Check (V_Perm = 35 and then J41 (11) = 1,
+             "E4 integration, 4.4.11.1.5, 4.4.11.1.3.1 b): the SR speed "
+             & "and distance entered");
+      Driver (6);
+      Cycle;
+      Check (Override_Byte = 1 and then J23 (2) = 2,
+             "E4 integration, 5.8.2.3: override selected again in SR");
+      --  5.8.4.1 h): the SR distance supervised before overriding passed
+      --  with the estimated front end: the override ends, then the SR
+      --  distance trips (4.6.3 [42], one trip entry, its reason)
+      Run_Front (Front_M + 60, 20);
+      Check (Mode_Byte = Code_SR and then Override_Byte = 1,
+             "E4 integration: SR with override within the SR distance");
+      Run_Front (Front_M + 50, 20);
+      Check (J23 (3) >= 1 and then J23_B3 (3) = 8,
+             "E4 integration, 5.8.4.1 h): override ended by the SR "
+             & "distance passed");
+      Check (Mode_Byte = Code_TR
+             and then J23_B3 (1)
+                        = EVC_Procedures.Trip_Reason_T'Pos
+                            (EVC_Procedures.SR_Distance_Passed)
+             and then Seen_SS (23, 0)
+             and then EB and then Why (EVC_Ports.TIU_Reason_Trip),
+             "E4 integration, 4.6.3 [42], 4.4.13.1.3: the SR distance "
+             & "trips, reason SR distance exceeded (SS 23), TIU reason trip");
+      Stand;
+      Check (Ack_Byte = Code_TR,
+             "E4 integration, 5.11.2.2 S060: the trip acknowledgement");
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_PT and then not EB,
+             "E4 integration, 4.6.3 [7]: PT in level 1, the emergency "
+             & "brake revoked");
+      --  5.11.2.2 S140 a), S160, 4.4.14.1.6: 'Start' in PT, level 1
+      Driver (5);
+      Cycle;
+      Check (Ack_Byte = Code_SR and then Mode_Byte = Code_PT,
+             "E4 integration, 5.11.2.2 S140 a), S160: 'Start' in PT asks "
+             & "to acknowledge SR");
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_SR and then Seen_SS (23, 1),
+             "E4 integration, 4.6.3 [8]: SR from PT; the trip reason ends "
+             & "(DMI Table 68)");
+      Cycle;
+      Check (V_Perm = 40,
+             "E4 integration, 4.4.11.1.6.2: entering SR the national "
+             & "values apply again");
+      --  "stop if in SR" with override: no trip, the override ends
+      --  (5.8.4.1 d); then without: the trip (4.6.3 [54])
+      Group (20, Front_M + 50);
+      Add (ST.Stop_If_In_SR (Stop => True));
+      Close;
+      Group (21, Front_M + 120);
+      Add (ST.Stop_If_In_SR (Stop => True));
+      Close;
+      Stand;
+      Driver (6);
+      Cycle;
+      Run_Front (Front_M + 60, 20);
+      Check (Mode_Byte = Code_SR and then Override_Byte = 0,
+             "E4 integration, 5.8.3.6, 5.8.4.1 d): ""stop if in SR"" with "
+             & "override: no trip, the override ends");
+      Run_Front (Front_M + 70, 20);
+      Check (Mode_Byte = Code_TR and then J23_B3 (1) = 8
+             and then Seen_SS (25, 0),
+             "E4 integration, 4.6.3 [54]: ""stop if in SR"" trips (SR "
+             & "stop order, SS 25)");
+      Stand;
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_PT, "E4 integration, 4.6.3 [7]: PT again");
+      --  4.7.2: the driver selects no level in PT (5.11.4.3 is a level
+      --  transition of level 2, phase E5)
+      Driver (11, Code_L0);
+      Cycle;
+      Check (Level_Byte = Code_L1 and then Mode_Byte = Code_PT,
+             "E4 integration, 4.7.2: no level selection in PT");
+   end Scenario_Integration_SR_Override_Trip;
+
+   --  Level 1: start of mission -> SR -> FS -> shunting at standstill ->
+   --  SH (the end of mission) -> exit of shunting -> SB, the start of
+   --  mission engaged again (SUBSET-076 5060200, 5050300)
+   procedure Scenario_Integration_Shunting is
+   begin
+      Power_Up;
+      Driver_Start_Of_Mission (Code_L1);
+      Ack (1);
+      Cycle;
+      Line_Group (EOA_M => 1_000, At_M => 10);
+      Close;
+      Run_Front (60, 30);
+      Check (Mode_Byte = Code_FS and then Planning_Now,
+             "E4 integration, 4.6.3 [32]: SR to FS at the MA of level 1");
+      Stand;
+      Driver (7);
+      Cycle;
+      Check (Mode_Byte = Code_SH and then J41 (10) = 1,
+             "E4 integration, 4.6.3 [5], 5.6.2.2 A050, D040, A100: SH at "
+             & "standstill, the end of mission of the ongoing mission "
+             & "(5.5.2)");
+      Cycle;
+      Check (V_Perm = 30 and then not Planning_Now
+             and then (Onboard_Data / 2) mod 2 = 0,
+             "E4 integration, 4.10 (SH): the MA deleted, the Train Data to "
+             & "be revalidated; V_NVSHUNT");
+      Driver (8);
+      Cycle;
+      Check (Mode_Byte = Code_SB and then Onboard_SoM = 2,
+             "E4 integration, 4.6.3 [19]: exit of Shunting to SB, the start "
+             & "of mission engaged again (5.4.3.2 S0)");
+      --  4.4.20.1.5: "Maintain Shunting" (Continue Shunting on desk
+      --  closure, EVC_Mission's: one state for [26] and [27])
+      Driver (7);
+      Cycle;
+      Driver (19);
+      Cycle;
+      TIU_In (4, 1);
+      TIU_In (1, 0);
+      Cycle;
+      Cycle;
+      Check (Mode_Byte = Code_SH and then J41 (12) = 2,
+             "E4 integration, 4.6.3 [26], 4.4.20.1.6, 4.4.20.1.7: PS on the "
+             & "desk closure, the function ended (no MSG_MODE_LEVEL in PS)");
+      TIU_In (1, 1);
+      Cycle;
+      Check (Mode_Byte = Code_SH,
+             "E4 integration, 4.6.3 [23], 4.4.20.1.8: SH on the desk opening");
+      TIU_In (1, 0);
+      Cycle;
+      Check (Mode_Byte = Code_SB,
+             "E4 integration, 4.6.3 [27]: SH to SB on the desk closure, the "
+             & "function inactive once SH was left (4.4.20.1.7)");
+   end Scenario_Integration_Shunting;
+
+   --  Level 1: FS -> an On Sight mode profile acknowledged -> OS -> a
+   --  transition to level 0 announced inside OS, acknowledged, taken ->
+   --  UN (SUBSET-076 5090200, 5100200)
+   procedure Scenario_Integration_OS_Level is
+   begin
+      Power_Up;
+      Driver_Start_Of_Mission (Code_L1);
+      Ack (1);
+      Cycle;
+      Line_Group (EOA_M => 1_000, At_M => 10);
+      Add (ST.Mode_Profile (D_M => 300, M_MAMODE => 0, L_M => 600,
+                            Ack_M => 100));
+      Add (ST.Level_Order (0, D_M => 600, Ack_M => 100));
+      Close;
+      Run_Front (60, 20);
+      Check (Mode_Byte = Code_FS,
+             "E4 integration, 4.6.3 [32]: FS, the mode profile and the "
+             & "level order of the group stored");
+      Run_Front (230, 20);
+      Check (Ack_Byte = Code_OS and then Level_Ann = Code_L0
+             and then Level_Ann_Ack = 0,
+             "E4 integration, 5.9.3.2, 5.10.1.3: the On Sight request; the "
+             & "transition to level 0 announced, no acknowledgement asked "
+             & "before its area");
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_OS,
+             "E4 integration, 4.6.3 [15]: OS on the acknowledgement");
+      Run_Front (520, 20);
+      Check (Mode_Byte = Code_OS and then Level_Ann = Code_L0
+             and then Level_Ann_Ack = 1,
+             "E4 integration, 5.10.1.3, 5.10.4: the transition to level 0 "
+             & "announced in OS, its acknowledgement asked");
+      Ack (0);
+      Cycle;
+      Check (Level_Ann_Ack = 0 and then Mode_Byte = Code_OS,
+             "E4 integration, 5.10.4: the level transition acknowledged");
+      Run_Front (620, 20);
+      Check (Level_Byte = Code_L0 and then Mode_Byte = Code_UN,
+             "E4 integration, 4.6.3 [21]: level 0 at the transition "
+             & "location, OS to UN");
+      Cycle;
+      Check (V_Perm = 100 and then not Planning_Now,
+             "E4 integration, 4.10 (UN): the MA and the mode profile "
+             & "deleted; V_NVUNFIT");
+   end Scenario_Integration_OS_Level;
+
+   --  A text message to acknowledge, read during the start of mission (in
+   --  SB, at standstill, a desk open: 4.8.4 [2]); its acknowledgement and
+   --  that of the mode proposed are two (SUBSET-076 3120300)
+   procedure Scenario_Integration_Text_In_SoM is
+      C  : ST.Text_Conditions_T;
+      T  : ST.T73.Packet_T;
+      G  : Group_T;
+      Id : Natural := 0;
+   begin
+      Power_Up (Front_At_M => 10);
+      Text_Data (0, "1234");
+      Cycle;
+      --  4.8.3: with the level unknown, only what every level accepts is
+      --  accepted (no text in level NTC): the level first
+      Driver (11, Code_L1);
+      Cycle;
+      --  a group of one balise under the antenna, read at standstill:
+      --  the direction of its passage is not known, so its information is
+      --  for both directions (Q_DIR 2, 3.4.2.2)
+      C.Confirm := 1;
+      T := ST.Plain_Text ("Check the doors", C);
+      T.Q_DIR := 2;
+      ST.Start (W, 123, 30, 0, 1, True, Build_OK);
+      Add (T);
+      ST.Finish (W, G.T0, Build_OK);
+      Input (BTM, ST.BTM_Payload (G.T0, Unsigned_32'Mod (X_Cm)));
+      Cycle;
+      Check (Text_N = 1 and then Texts (1).Flags mod 2 = 1
+             and then Mode_Byte = Code_SB,
+             "E4 integration, 3.12.3, 4.8.4: a text to acknowledge shown in "
+             & "SB during the start of mission");
+      if Text_N >= 1 then
+         Id := Texts (1).Id;
+      end if;
+      Train_Data_Entry;
+      Cycle;
+      Text_Data (1, "5678");
+      Cycle;
+      Driver (5);
+      Cycle;
+      Check (Ack_Byte = Code_SR and then not Removed_Id (Id),
+             "E4 integration: SR proposed, the text still shown");
+      Ack (3, Id);
+      Cycle;
+      Check (Removed_Id (Id) and then Mode_Byte = Code_SB
+             and then Ack_Byte = Code_SR,
+             "E4 integration, 3.12.3.4.3.2: the text's acknowledgement "
+             & "ends it, not the mode's proposal (one decoder, two "
+             & "consumers)");
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_SR and then J24 (3) = 1,
+             "E4 integration, 4.6.3 [8]: the mode's acknowledgement gives "
+             & "SR");
+   end Scenario_Integration_Text_In_SoM;
+
    procedure Run is
    begin
       Scenario_Protocol;
@@ -1771,6 +2137,10 @@ package body EVC_Test_Procedures is
       Scenario_External_Track_Conditions;
       Scenario_Train_Data_Change;
       Scenario_Track_Condition_Limits;
+      Scenario_Integration_SR_Override_Trip;
+      Scenario_Integration_Shunting;
+      Scenario_Integration_OS_Level;
+      Scenario_Integration_Text_In_SoM;
       Check (Build_OK and then Parse_OK,
              "E4 procedures: every telegram built, every output parsed");
    end Run;

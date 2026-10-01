@@ -420,18 +420,23 @@ procedure EVC_Fuzz is
                end if;
             end;
          when TIU =>
-            --  the cab status signals (1, 2) more often than the others
+            --  the cab status signals (1, 2) more often than the others;
+            --  the train configuration of 5.17 (13, phase E4) now and then
             Add (if Chance (50) then Pick (1, 2)
-                 elsif Chance (80) then Pick (1, 5) else Pick (0, 255));
+                 elsif Chance (80) then Pick (1, 5)
+                 elsif Chance (30) then 13 else Pick (0, 255));
             Add (if Chance (90) then Pick (0, 1) else Pick (0, 255));
          when DMI =>
             --  phase E4: the frames of the start of mission and of the
             --  modes, well formed with values in and out of their ranges
             --  (driver ID, train running number, Train Data, SR data, the
             --  level, 'Start', the acknowledgements, NL, maintain
-            --  shunting)
+            --  shunting) and of the procedures (e4/integration: override,
+            --  shunting, exit of shunting, exit of SM, the BTM alarm
+            --  inhibition and its revocation, maintain shunting, the
+            --  tunnel toggle, with arguments in and out of their ranges)
             if Chance (40) then
-               case Pick (1, 8) is
+               case Pick (1, 9) is
                   when 1 | 2 =>
                      declare
                         N : constant Natural := Pick (0, 18);
@@ -474,6 +479,17 @@ procedure EVC_Fuzz is
                      Add (2);
                      Add_U16 (Pick (0, 7));
                      Add_U16 (Pick (0, 3));
+                  when 9 =>
+                     declare
+                        Actions : constant array (1 .. 7) of Natural :=
+                          (3, 6, 7, 8, 17, 18, 19);
+                     begin
+                        Add (16#40#);
+                        Add_U32 (3);
+                        Add (Actions (Pick (1, 7)));
+                        Add_U16 (if Chance (90) then Pick (0, 2)
+                                 else Pick (0, 65_535));
+                     end;
                   when others =>
                      Add (16#40#);
                      Add_U32 (3);
