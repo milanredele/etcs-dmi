@@ -34,7 +34,8 @@ package body EVC_Stored_Information
                                    Indicated, Indicated_N, Sent, Sent_N,
                                    Cond_Due, Plan, Plan_Due,
                                    Driver_Slippery, PBD_Last, PBD_Known,
-                                   MA_Board, Profile_Overlap))
+                                   MA_Board, Profile_Overlap,
+                                   Covered_Flag))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -71,6 +72,7 @@ is
    --  added by e4/modes: the facts of 4.6.3 of the last Evaluate
    MA_Board        : Boolean := False;
    Profile_Overlap : Boolean := False;
+   Covered_Flag    : Boolean := False;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -109,6 +111,8 @@ is
      with Refined_Global => MA_Board;
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
      with Refined_Global => Profile_Overlap;
+   function Train_Covered return Boolean is (Covered_Flag)
+     with Refined_Global => Covered_Flag;
 
    procedure Record_Event (Info, Change, Detail : Natural)
      with Global => (In_Out => (Events, Event_N))
@@ -158,6 +162,7 @@ is
       PBD_Known := False;
       MA_Board := False;
       Profile_Overlap := False;
+      Covered_Flag := False;
    end Clear;
 
    procedure Set_Driver_Slippery (Slippery : Boolean) is
@@ -707,7 +712,7 @@ is
                     Ctx            : Mode_Context_T)
      with Global => (Output => (Sources, Steps, Ceiling, Indicated,
                                 Indicated_N, Cond_Due, Plan, Plan_Due,
-                                MA_Board, Profile_Overlap),
+                                MA_Board, Profile_Overlap, Covered_Flag),
                      In_Out => (Snap, Failures, Sent, Sent_N,
                                 EVC_Track_Conditions.State,
                                 EVC_Track_Description.State,
@@ -947,6 +952,12 @@ is
         Train.Valid
         and then EVC_Movement_Authority.Mode_Profile_Overlap
                    (T, Train.Min_Front, Train.Max_Front);
+      --  4.4.9.1.4: SSP and gradient known for the whole length of the
+      --  train, from its min safe rear end to its estimated front end
+      Covered_Flag :=
+        Train.Valid
+        and then EVC_Track_Description.Covered
+                   (T, Ahead, Train.Min_Rear, Train.Est_Front);
 
       --  the trip margin of 3.13.9.4.8.2 (2 Q_LOCACC of the SOLR + 10 m
       --  + 10 % of the distance from it to the EOA; beta, the Supervised

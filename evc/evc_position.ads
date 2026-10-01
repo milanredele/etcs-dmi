@@ -446,8 +446,17 @@ is
           Post => Status = Unknown and then not LRBG.Valid;
    --  3.6.6.9 d)
    procedure Delete_Geo
-     with Global => (In_Out => State),
-          Post => not Geo_Known;
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => not Geo_Known
+                  --  added by e4/modes: nothing else changes (EVC_Core,
+                  --  the data of 4.10)
+                  and then Status = Status'Old and then LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old
+                  and then Active_Cab = Active_Cab'Old;
 
    --  Added by e4/modes: the linking of packet 5 is accepted (4.8, in
    --  the level and the mode of the on-board) and its consistency is
@@ -455,7 +464,7 @@ is
    --  EVC_Core sets them, as in phase E2. The settings apply from the
    --  next Update.
    procedure Set_Linking_Context (Accept_Info, Check : Boolean)
-     with Global => (In_Out => State),
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
@@ -465,7 +474,7 @@ is
                   and then Active_Cab = Active_Cab'Old;
    --  4.10: entering a mode deletes the linking
    procedure Delete_Linking
-     with Global => (In_Out => State),
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old

@@ -249,7 +249,8 @@ is
                         C         : Context_T)
      with Global => (In_Out => (Current, Current_Status, Switched_N,
                                 Pending, Pending_Level, Pending_Since,
-                                Events, Event_N, Applicable)),
+                                Events, Event_N),
+                     Output => Applicable),
           Pre => T.Count >= 1
    is
       To : constant Level_T := T.List (Selected (T)).Level;
@@ -374,11 +375,11 @@ is
    begin
       --  1. the driver's level: in the start of mission (5.4.3.2 S2),
       --  else at standstill (5.10.3.15.1) in the modes where the DMI
-      --  offers it (4.7.2: SB, FS, AD, LS, SR, OS, UN, SN)
+      --  offers it (4.7.2: SB, FS, AD, LS, SR, OS, NL, UN, SN)
       if Driver_Level and then Code in 2 .. 5
         and then C.Standstill
-        and then C.Mode in M_SB | M_FS | M_AD | M_LS | M_SR | M_OS | M_UN
-                         | M_SN
+        and then C.Mode in M_SB | M_FS | M_AD | M_LS | M_SR | M_OS | M_NL
+                         | M_UN | M_SN
       then
          if Order.Stored then
             --  5.10.1.6.1, 5.10.2.10 b)
@@ -477,8 +478,8 @@ is
       --  modes, and evaluated once another mode than SH, PS, SM is
       --  entered (4.4.8.1.5, 4.4.20.1.11, 4.4.21.1.11)
       if Kept.Stored then
-         if To in M_FS | M_AD | M_LS | M_SR | M_OS | M_UN | M_PT | M_SN
-                | M_RV
+         if To in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS | M_UN | M_PT
+                | M_SN | M_RV
          then
             Put_Event (Event_Deleted,
                        Level_T'Pos (Kept.Table.List (1).Level), 1);

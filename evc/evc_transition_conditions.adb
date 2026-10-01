@@ -90,7 +90,11 @@ is
               and then EVC_Stored_Information.MA_On_Board
               and then not EVC_Stored_Information.Mode_Profile_Overlap;
          when C_26 =>
-            return False;  --  not implemented yet
+            --  e4/modes: 4.4.20.1.6 ("Continue Shunting on desk closure",
+            --  EVC_Mission)
+            return not EVC_Train_Inputs.Desk_Open
+              and then EVC_Mission.Continue_Shunting
+              and then EVC_Train_Inputs.Passive_Shunting_Permitted;
          when C_27 =>
             return False;  --  not implemented yet
          when C_28 =>

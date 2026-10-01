@@ -23,8 +23,9 @@
 --      S13, 5.4.5.3 c), the Train Data (S12, 5.4.5.3 d) are taken in the
 --      modes where 4.7.2 makes them available; the level (S2) is
 --      EVC_Levels';
---    - 'Start' with the driver ID, the level, the Train Data and the
---      train running number valid: level 1 proposes Staff Responsible
+--    - 'Start' with the driver ID, the level and the Train Data valid
+--      (5.4.5.3 h: 'Start' at S10 needs valid Train Data, not a train
+--      running number): level 1 proposes Staff Responsible
 --      (S24), level 0 Unfitted (S23), level NTC National System (S22);
 --      level 2 sends an MA request to the RBC (S21, E5): until E5 the
 --      on-board has no session and proposes Staff Responsible as
@@ -129,6 +130,17 @@ is
    function SR_Distance_Passed return Boolean
      with Global => (State, EVC_Odometry.State);
 
+   --  4.4.20.1.5 to 4.4.20.1.7: the function "Continue Shunting on desk
+   --  closure", enabled by the driver in SH (MSG_DRIVER_ACTION 19), active
+   --  until SH is left (4.6.3 [26], [27])
+   function Continue_Shunting return Boolean
+     with Global => State;
+
+   --  4.4.15.1.1.3: in NL, the non-leading input became "Non-leading not
+   --  permitted" in this cycle (the driver is informed, EVC_Core)
+   function NL_No_Longer_Permitted return Boolean
+     with Global => State;
+
    ---------------------------------------------------------------------
    --  Juridical recording (EVC_Ports, event 41: the mission): kind
    --  (byte 2), two bytes
@@ -141,7 +153,9 @@ is
    --  (EVC_Modes.Mode_T'Pos), 7 acknowledged (the mode), 8 start of
    --  mission engaged (1) or ended (0), 9 mission started (the mode),
    --  10 end of mission (the mode), 11 SR speed and distance entered
-   --  (km/h / 5, m / 100 saturated at 255)
+   --  (km/h / 5, m / 100 saturated at 255), 12 "Continue Shunting on desk
+   --  closure" enabled (1) or ended (0), 13 non-leading no longer
+   --  permitted in NL
    Event_Driver_ID  : constant := 1;
    Event_TRN        : constant := 2;
    Event_Train_Data : constant := 3;
@@ -153,6 +167,8 @@ is
    Event_Mission    : constant := 9;
    Event_EoM        : constant := 10;
    Event_SR_Data    : constant := 11;
+   Event_Continue   : constant := 12;
+   Event_NL_Lost    : constant := 13;
 
    type Event_T is record
       Kind, B3, B4 : Unsigned_8 := 0;
@@ -175,6 +191,8 @@ is
       Level       : Level_T := L0;
       Standstill  : Boolean := True;
       Desk_Open   : Boolean := False;
+      --  the non-leading input (4.4.15.1.1.3)
+      Non_Leading : Boolean := False;
       --  the train orientation (the sense of the SR distance, 3.6.7)
       Sense       : Sense_T := Plus;
       --  the national values of SR (A.3.2, packet 3)

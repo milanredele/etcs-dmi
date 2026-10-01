@@ -9,6 +9,7 @@ package body EVC_Mission
                                    Train_Known, Engaged, Mission_On,
                                    Proposal, Proposal_Mode, Acked_Now,
                                    Acked_M, Desk_Closed_Now, SR_V, SR_D,
+                                   Continue_On, NL_Lost, NL_Input,
                                    Events, Event_N))
 is
 
@@ -29,6 +30,10 @@ is
    Desk_Closed_Now : Boolean := False;
    SR_V            : Speed_Cms_T := 0;
    SR_D            : EVC_Odometry.Virtual_T;
+   Continue_On     : Boolean := False;
+   --  4.4.15.1.1.3: the input lost in this cycle, the input of the last
+   NL_Lost         : Boolean := False;
+   NL_Input        : Boolean := False;
    Events          : Event_Array;
    Event_N         : Natural range 0 .. Max_Events := 0;
 
@@ -69,6 +74,10 @@ is
    function SR_Distance_Passed return Boolean is
      (SR_D.Active and then EVC_Odometry.Remaining_Estimated (SR_D) < 0)
      with Refined_Global => (SR_D, EVC_Odometry.State);
+   function Continue_Shunting return Boolean is (Continue_On)
+     with Refined_Global => Continue_On;
+   function NL_No_Longer_Permitted return Boolean is (NL_Lost)
+     with Refined_Global => NL_Lost;
    function Event_Count return Natural is (Event_N)
      with Refined_Global => Event_N;
    function Event (I : Positive) return Event_T is (Events (I))
@@ -106,6 +115,9 @@ is
       Desk_Closed_Now := False;
       SR_V := 0;
       SR_D := (others => <>);
+      Continue_On := False;
+      NL_Lost := False;
+      NL_Input := False;
       Events := (others => (others => <>));
       Event_N := 0;
    end Clear;
@@ -198,6 +210,21 @@ is
       Event_N := 0;
       Acked_Now := False;
       Desk_Closed_Now := False;
+
+      --  4.4.15.1.1.3: the non-leading input lost while in NL
+      NL_Lost := M = M_NL and then NL_Input and then not C.Non_Leading;
+      NL_Input := C.Non_Leading;
+      if NL_Lost then
+         Put_Event (Event_NL_Lost, 0, 0);
+      end if;
+
+      --  4.4.20.1.5: "Continue Shunting on desk closure" in SH (4.7.2)
+      if Maintain_Shunting_Selected and then M = M_SH
+        and then not Continue_On
+      then
+         Continue_On := True;
+         Put_Event (Event_Continue, 1, 0);
+      end if;
 
       --  5.4.3.2.1, A.3.4.1.2 k): the desk closed during the start of
       --  mission
@@ -295,10 +322,12 @@ is
          end;
       end if;
 
-      --  'Start' (5.4.3.2 S20, 5.4.5.3 h; 4.4.14.1.6)
+      --  'Start' (5.4.3.2 S20; 5.4.5.3 h: at S10 with valid Train Data,
+      --  so a valid train running number, which S13 asks before S20, is
+      --  not a condition; 4.4.14.1.6)
       if Start_Selected then
          if M = M_SB and then Engaged and then C.Standstill
-           and then Driver_S = Valid and then TRN_S = Valid
+           and then Driver_S = Valid
            and then Train_Known and then EVC_Train_Data.Valid
            and then C.Level_Valid
          then
@@ -345,6 +374,11 @@ is
    begin
       Proposal := False;
       Acked_Now := False;
+      --  4.4.20.1.7: one transition SH -> PS, inactive once SH is left
+      if From = M_SH and then Continue_On then
+         Continue_On := False;
+         Put_Event (Event_Continue, 0, Mode_T'Pos (To));
+      end if;
       --  5.4.3.2 S0 in the mode entered (5.4.3.2.1: the procedure ends
       --  with the transition to another mode than SB)
       if (To = M_SB and then C.Desk_Open) /= Engaged then

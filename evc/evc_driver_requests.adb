@@ -118,7 +118,8 @@ is
                            Last : Natural;
                            T    : out Text_T;
                            OK   : out Boolean)
-        with Pre => P <= Last and then Last = Frame'Last
+        with Pre => P >= Frame'First and then P <= Last
+                       and then Last = Frame'Last
       is
          Len : constant Natural := Natural (Frame (P));
       begin

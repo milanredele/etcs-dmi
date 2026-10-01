@@ -408,7 +408,10 @@ is
    --  Event 32, change 15: an information of a group rejected by the
    --  filters of 4.8 (EVC_Stored_Information).
    --  The TIU output, reason bit 5 (32): the service brake of a level
-   --  transition not acknowledged (5.10.4.2).
+   --  transition not acknowledged (5.10.4.2); reason bit 6 (64): the
+   --  emergency brake that System Failure commands permanently
+   --  (4.4.5.1.2, entered by 4.6.3 [84]; a failure of the host is
+   --  EVC_Core.Enter_Failure, which falls silent).
    JRU_Levels  : constant := 40;
    JRU_Mission : constant := 41;
 

@@ -57,7 +57,8 @@ package body EVC_Core
                                    TIU_Sent,
                                    TIU_Reasons_Sent,
                                    Supervision_Reported,
-                                   Overrun_Reported))
+                                   Overrun_Reported,
+                                   Entering_FS_Shown))
 is
 
    use type EVC_Bytes.Byte_Array;
@@ -171,6 +172,8 @@ is
    No_Supervision       : constant Unsigned_32 := 16#FFFF_FFFF#;
    Supervision_Reported : Unsigned_32 := No_Supervision;
    Overrun_Reported     : EVC_Bytes.Byte := 0;
+   --  phase E4: the indication "Entering FS" (4.4.9.1.4) is shown
+   Entering_FS_Shown    : Boolean := False;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -278,6 +281,7 @@ is
       TIU_Reasons_Sent := 0;
       Supervision_Reported := No_Supervision;
       Overrun_Reported := 0;
+      Entering_FS_Shown := False;
       EVC_Received.Clear;
       EVC_Position.Clear;
       --  the installation: the antenna of the configuration
@@ -834,9 +838,9 @@ is
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Odometry.State, EVC_Origins.State,
-                                EVC_National_Values.State,
                                 EVC_Config.State),
                      In_Out => (EVC_Levels.State, EVC_Mission.State,
+                                EVC_National_Values.State,
                                 EVC_Train_Data.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
@@ -882,14 +886,17 @@ is
           Level       => EVC_Levels.Level,
           Standstill  => EVC_Odometry.Standstill,
           Desk_Open   => EVC_Train_Inputs.Desk_Open,
+          Non_Leading => EVC_Train_Inputs.Non_Leading_Permitted,
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => NV.V_NVSTFF,
           D_NVSTFF    => NV.D_NVSTFF));
       --  A.3.4.1.2 k), column k: what entering SB has not deleted
       --  already (the TSRs, the adhesion, the big metal masses, the level
-      --  transition orders); the Train Data, the driver ID and the train
-      --  running number are to be revalidated (EVC_Mission)
+      --  transition orders, the national values not yet applicable); the
+      --  Train Data, the driver ID and the train running number are to be
+      --  revalidated (EVC_Mission)
       if EVC_Mission.Desk_Closed_In_SoM then
+         EVC_National_Values.Delete_Pending;
          EVC_Track_Description.Delete
            ((Track       => True,
              PBD         => True,
@@ -1010,6 +1017,7 @@ is
           Level       => EVC_Levels.Level,
           Standstill  => EVC_Odometry.Standstill,
           Desk_Open   => EVC_Train_Inputs.Desk_Open,
+          Non_Leading => EVC_Train_Inputs.Non_Leading_Permitted,
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => NV.V_NVSTFF,
           D_NVSTFF    => NV.D_NVSTFF));
@@ -1097,11 +1105,13 @@ is
                                 EVC_Position.State,
                                 SDM_Result, Brake_Output, Speed_State,
                                 EVC_Levels.State, EVC_Mission.State,
-                                EVC_Train_Data.State),
+                                EVC_Train_Data.State,
+                                EVC_Stored_Information.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
-                                Supervision_Reported, Overrun_Reported))
+                                Supervision_Reported, Overrun_Reported,
+                                Entering_FS_Shown))
    is
       --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
       --  E0; the fields of the later phases are 0, "nothing known"
@@ -1135,6 +1145,31 @@ is
                                              E.B4));
          end;
       end loop;
+      --  4.4.15.1.1.3: the driver is informed that the non-leading
+      --  operation is no longer permitted and asked to acknowledge it
+      --  (the DMI's catalogue entry 35, ended by the acknowledgement)
+      if EVC_Mission.NL_No_Longer_Permitted then
+         EVC_Outbox.Put (DMI, System_Status_Frame
+                                (SS_NL_No_Longer_Permitted,
+                                 SS_Event_Start));
+      end if;
+      --  4.4.9.1.4: in FS, "Entering FS" until SSP and gradient are known
+      --  for the whole length of the train (the DMI's catalogue entry 6;
+      --  a mode change ends it on the DMI as well)
+      declare
+         Entering : constant Boolean :=
+           Current_Mode = M_FS
+           and then EVC_Stored_Information.MA_On_Board
+           and then not EVC_Stored_Information.Train_Covered;
+      begin
+         if Entering /= Entering_FS_Shown then
+            EVC_Outbox.Put (DMI, System_Status_Frame
+                                   (SS_Entering_FS,
+                                    (if Entering then SS_Event_Start
+                                     else SS_Event_End)));
+            Entering_FS_Shown := Entering;
+         end if;
+      end;
 
       --  DMI: the mode and the level (4.4.2.1: a clear indication of the
       --  mode when the desk is open); 4.7.2: the acknowledgement of a mode
@@ -1188,7 +1223,9 @@ is
          Brake : constant EVC_Bytes.Byte :=
            (if Current_Mode = M_IS then Brake_None
             elsif Brake_Output.Ack_Required then Brake_Ack
-            elsif Brake_Output.EB or else Brake_Output.SB then Brake_Applied
+            elsif Brake_Output.EB or else Brake_Output.SB
+              or else Current_Mode = M_SF
+            then Brake_Applied
             elsif EVC_Levels.Ack_Brake then Brake_Ack_Pending
             else Brake_None);
          TTI   : constant Unsigned_16 :=
@@ -1244,11 +1281,13 @@ is
          Reasons  : EVC_Brake_Commands.Reasons_T renames
            Brake_Output.Reasons;
          --  phase E4: the service brake of 5.10.4.2 (reason bit 5, the
-         --  levels); in IS no command (4.4.3.1.1)
+         --  levels); in SF the emergency brake, permanently (4.4.5.1.2,
+         --  reason bit 6); in IS no command (4.4.3.1.1)
          Isolated : constant Boolean := Current_Mode = M_IS;
+         Failure  : constant Boolean := Current_Mode = M_SF;
          Commands : constant EVC_Bytes.Byte :=
            (if Isolated then 0
-            else (if Brake_Output.EB then TIU_EBC else 0)
+            else (if Brake_Output.EB or else Failure then TIU_EBC else 0)
                  or (if Brake_Output.SB or else EVC_Levels.Ack_Brake
                      then TIU_SBC else 0)
                  or (if Brake_Output.TCO then TIU_TCO else 0));
@@ -1264,7 +1303,8 @@ is
                      else 0)
                  or (if Reasons (EVC_Brake_Commands.Standstill_Supervision)
                      then 16 else 0)
-                 or (if EVC_Levels.Ack_Brake then 32 else 0));
+                 or (if EVC_Levels.Ack_Brake then 32 else 0)
+                 or (if Failure then 64 else 0));
          Supervision_Now : constant Unsigned_32 :=
            (if SDM_Result.Active
             then Unsigned_32

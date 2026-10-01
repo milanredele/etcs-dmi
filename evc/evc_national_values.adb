@@ -260,6 +260,15 @@ is
       Has_Waiting := False;
    end Apply_Pending;
 
+   --------------------
+   -- Delete_Pending --
+   --------------------
+
+   procedure Delete_Pending is
+   begin
+      Has_Waiting := False;
+   end Delete_Pending;
+
    -------------------
    -- Check_Country --
    -------------------

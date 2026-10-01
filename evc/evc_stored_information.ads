@@ -264,6 +264,11 @@ is
      with Global => State;
    function Mode_Profile_Overlap return Boolean
      with Global => State;
+   --  4.4.9.1.4: the SSP and the gradients cover the whole length of the
+   --  train (from the min safe rear end to the estimated front end, the
+   --  Train Data's length), as of the last Evaluate
+   function Train_Covered return Boolean
+     with Global => State;
 
    --  One cycle (see above). Mode_Speed: the mode related speed limit
    --  (No_Speed_Limit until phase E4); Special_Active and Additional:

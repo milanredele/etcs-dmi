@@ -344,4 +344,29 @@ is
       and then Get_U16 (Frame, Frame'First + Header_Length + 1)
                  = Ack_Brake_Release);
 
+   ---------------------------------------------------------------------
+   --  Added by e4/modes: MSG_SYSTEM_STATUS (dmi_protocol.ads), an event of
+   --  a system status message of the catalogue of the DMI's chapter 15:
+   --  item u8 (the catalogue entry), event u8 (0 start, 1 end, 2 the
+   --  event that starts the 30 s of an entry)
+   ---------------------------------------------------------------------
+
+   MSG_SYSTEM_STATUS    : constant Byte := 16#0C#;
+   System_Status_Length : constant := 2;
+   SS_Event_Start       : constant Byte := 0;
+   SS_Event_End         : constant Byte := 1;
+   --  "Non-leading no longer permitted" (SUBSET-026 4.4.15.1.1.3), to be
+   --  acknowledged; the DMI ends it with the acknowledgement
+   SS_NL_No_Longer_Permitted : constant Byte := 35;
+   --  "Entering FS" (SUBSET-026 4.4.9.1.4): ends when SSP and gradient are
+   --  known for the whole length of the train
+   SS_Entering_FS            : constant Byte := 6;
+
+   subtype System_Status_Frame_T is
+     Byte_Array (1 .. Header_Length + System_Status_Length);
+
+   function System_Status_Frame (Item, Event : Byte)
+     return System_Status_Frame_T
+   is (MSG_SYSTEM_STATUS, System_Status_Length, 0, 0, 0, Item, Event);
+
 end EVC_DMI_Port;

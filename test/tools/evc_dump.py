@@ -19,7 +19,8 @@ import sys
 
 PORTS = ['BTM', 'RTM', 'ODO', 'TIU', 'DMI', 'ATO', 'JRU']
 DMI_TYPES = {0x01: 'SPEED_STATE', 0x02: 'MODE_LEVEL', 0x05: 'TRACK_COND',
-             0x06: 'PLANNING', 0x07: 'STATUS', 0x0A: 'ONBOARD'}
+             0x06: 'PLANNING', 0x07: 'STATUS', 0x0A: 'ONBOARD',
+             0x0C: 'SYSTEM_STATUS'}
 
 
 def records(data):
