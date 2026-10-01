@@ -248,7 +248,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.6.9 a),3,x,,,,,E2,done,EVC_Position.Update_Geo; evc_test position_geo
 3.6.6.9 b),3,x,,,,,E2,done,EVC_Position.Update_Geo; evc_test position_geo
 3.6.6.9 c),3,x,,,,,E2,done,EVC_Position.Update_Geo; evc_test position_geo
-3.6.6.9 d),3,x,,,,,E2,partial,EVC_Position.Delete_Geo (evc_test position_geo); the deletions of chapter 4 call it in E4
+3.6.6.9 d),3,x,,,,,E2,done,"EVC_Position.Delete_Geo, called on entering NP, PS, SH, SL, SN, RV (4.10, EVC_Core.Enter_Mode); evc_test position_geo"
 3.6.6.9.1,3,x,,,,,E2,done,EVC_Position.Update_Geo (a reference no longer applicable is dropped); evc_test position_geo
 3.6.7.1,3,x,,,,,E2,partial,EVC_Odometry.Virtual_T service; the supervisions using it are E3 and E4
 3.6.7.1 a),3,x,,,,,E2,partial,"EVC_Odometry.Virtual_T; roll away, reverse movement and standstill supervision are E3"
@@ -271,7 +271,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.8.5,3,x,,,,,E2,partial,"EVC_Odometry.Impaired, JRU event 7 (evc_test Scenario_Odometer_Accuracy); informing the driver is E4"
 3.6.8.6,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.6.8.6.2,3,x,,,,,E2,partial,"EVC_Odometry.Impaired, JRU event 7 (evc_test Scenario_Odometer_Accuracy); informing the driver is E4"
-3.6.8.7,3,x,,,,,E2,partial,"EVC_Odometry.Safety_Exceeded, latched, JRU event 7 (evc_test Scenario_Odometer_Accuracy); System Failure is E4"
+3.6.8.7,3,x,,,,,E2,done,"EVC_Odometry.Safety_Exceeded, latched, JRU event 7; System Failure by 4.6.3 [84] (evc_test E4_Odometer_Failure)"
 3.6.8.8,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.7.2.3,3,x,,,,,E3,done,EVC_Stored_Information.Take_Packet (EVC_Track_Description.Covered from the estimated front end to the SvL); evc_test Scenario_MA
 3.7.3.1,3,x,,,,,E3,partial,"the stores of EVC_Track_Description, EVC_Track_Conditions (Cut_Beyond of EVC_Profiles); d) k) m) n) o) p): see their rows"
@@ -425,7 +425,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.3.2.6,3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
 3.11.3.2.6 a),3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
 3.11.3.2.6 b),3,x,,,,,E3,done,evc_test Scenario_SSP_Categories
-3.11.3.3.2,3,x,,,,,E3,partial,"EVC_Train_Data.Categories_T (one cant deficiency category, a set of others; the default train); their entry is E4"
+3.11.3.3.2,3,x,,,,,E3,done,"EVC_Train_Data.Categories_T from the driver's entry (EVC_Mission: NC_CDTRAIN, NC_TRAIN of DMI Table 40)"
 3.11.4.3,3,x,,,,,E3,done,EVC_Track_Description.Take_ASP; evc_test Scenario_Other_Profiles
 3.11.4.5,3,x,,,,,E3,done,"no ASP element stored, none after Q_TRACKINIT; evc_test Scenario_Other_Profiles"
 3.11.5.4,3,x,,,,,E3,done,"EVC_Profiles.Envelope (the lowest of overlapping elements, proved)"
@@ -443,9 +443,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.6.3.1,3,x,,,,,E3,deferred,E5 (level 2 MA)
 3.11.6.4,3,x,x,,,,E3,partial,"V_MAIN 0 is not a speed limit, recorded as a trip order (EVC_Movement_Authority.Trip_Ordered, JRU); the trip is E4"
 3.11.6.5,3,x,,,,,E3,deferred,E7 (infill)
-3.11.7.1,3,x,,,,,E3,partial,the MRSP takes the mode related speed of the caller (EVC_Stored_Information.Evaluate Mode_Speed); its value per mode from the national values is E4
+3.11.7.1,3,x,,,,,E3,partial,"EVC_Core.Mode_Speed: SR (V_NVSTFF or the driver's), SH (V_NVSHUNT), OS, LS, UN from the national values; the mode profile and RV speeds are the procedures half's"
 3.11.7.1.1,3,x,,,,,E3,deferred,"E4 (V_MAMODE is stored with the mode profile, EVC_Movement_Authority)"
-3.11.7.1.3,3,x,,,,,E3,deferred,E4 (driver entry)
+3.11.7.1.3,3,x,,,,,E3,done,"the driver's SR speed limit (EVC_Mission, 4.4.11.1.5)"
 3.11.8.1,3,x,,,,,E3,done,V_MAXTRAIN the ceiling of the MRSP (EVC_Stored_Information.Build); evc_test Scenario_SSP_Gradients
 3.11.10.1,3,x,,,,,E3,deferred,E4 (override function; the MRSP takes the speed as the caller's ceiling)
 3.11.11.3,3,x,,,,,E3,done,"EVC_Stored_Information: computed on reception (EVC_Track_Description.Compute_PBD), every section again when EVC_PBD.Inputs_T changes (Train Data, national values, special brake status, slippery rail, antenna), JRU 32/17/14; evc_test Scenario_PBD (Train Data change), evc_fuzz (the speed is the one of the inputs of the cycle)"
@@ -790,7 +790,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.14.1.8,3,x,,,,,E3,partial,"EVC_Brake_Commands keeps each reason of this phase until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons and acknowledgements of E4 join them there"
 3.14.1.9,3,x,,,,,E3,done,"EVC_Brake_Commands.Commands_T.Ack_Required only at standstill (MSG_STATUS brake 2); evc_test SDM_Protections (an acknowledgement before standstill does nothing); evc_test EMRRLS_Acknowledgement (with the EB of 3.13.10 revoked at the stop or before, Q_NVEMRRLS 0 and 1); the EB of 3.13.10 alone asks none (3.14.1.4, DMI 8.2.2.3.6): evc_test EMRRLS_*"
 3.14.1.10,3,x,,,,,E3,partial,"EVC_Brake_Commands keeps each reason of this phase until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons and acknowledgements of E4 join them there; evc_test EMRRLS_Acknowledgement (the EB of 3.13.10 and the roll away brake together: the EB stays until both are released)"
-3.14.1.11,3,x,,,,,E3,deferred,E4: the brake reasons on a mode change (4.12)
+3.14.1.11,3,x,,,,,E3,partial,EVC_Core.Enter_Mode and EVC_Levels.Mode_Entered revoke the reasons of 4.12 of this half; the procedures' reasons with them
 3.14.1.11.1,3,x,,,,,E3,deferred,E4: the brake reasons on a mode change (4.12)
 3.14.1.11.2,3,x,,,,,E3,deferred,E4: the brake reasons on a mode change (4.12)
 3.14.2.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
@@ -798,7 +798,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.14.2.4,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
 3.14.2.6,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections"
 3.14.2.7,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
-3.14.3.1,3,x,,,,,E3,partial,"EVC_Brake_Commands: the permitted direction is the one of the MA; the special cases of chapter 4 (PT, RV) are E4"
+3.14.3.1,3,x,,,,,E3,partial,"EVC_Brake_Commands: the direction of the MA, and in SR the train orientation (4.4.11.1.3 e); PT and RV are the procedures half's"
 3.14.3.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"
 3.14.3.4,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections"
 3.14.3.5,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"
@@ -1078,40 +1078,40 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 A.3.1 Table,3,x,,,,,E3,partial,"the values of the stored information (300 m in rear, 5 s after the rear end, 4 s for the horn: EVC_Track_Description, EVC_Track_Conditions); the odometer ones in E2; the supervision ones with their rows of 3.13 (EVC_Braking, EVC_Limits, EVC_SDM, EVC_Build_Up); the radio ones E5"
 A.3.2,3,x,,,x,,E6,todo,
 A.3.2 Table,3,x,,,,,E6,todo,
-A.3.3.2,3,x,,,,,E4,todo,
-A.3.4.1.3,3,x,,,,,E4,todo,
-A.3.4.1.3 a),3,x,,,,,E4,todo,
-A.3.4.1.3 b),3,x,,,,,E4,todo,
-A.3.4.1.3 c),3,x,,,,,E4,todo,
-A.3.4.1.3 d),3,x,,,,,E4,todo,
-A.3.4.1.3 Table,3,x,,,,,E4,todo,
-A.3.4.1.3 Table-footnote [1],3,x,,,,,E4,todo,
-A.3.4.1.3 Table-footnote [7],3,x,,,,,E4,todo,
-A.3.4.1.3 Table-footnote [8],3,x,,,,,E4,todo,
-A.3.4.1.3 Table-footnote [9],3,x,,,,,E4,todo,
-A.3.4.1.3 Table-footnote [10],3,x,,,,,E4,todo,
-A.3.4.1.3 Table-footnote [11],3,x,,,,,E4,todo,
-A.3.4.1.3 Table-footnote [12],3,x,,,,,E4,todo,
-A.3.4.1.3 Table-footnote [13],3,x,,,,,E4,todo,
-A.3.5.1,3,x,,,,,E4,todo,
-A.3.5.1 1st bullet,3,x,,,,,E4,todo,
-A.3.5.1 2nd bullet,3,x,,,,,E4,todo,
-A.3.5.1 3rd bullet,3,x,,,,,E4,todo,
-A.3.5.1 4th bullet,3,x,,,,,E4,todo,
-A.3.5.1 5th bullet,3,x,,,,,E4,todo,
-A.3.5.1 6th bullet,3,x,,,,,E4,todo,
-A.3.5.1 7th bullet,3,x,,,,,E4,todo,
-A.3.5.1 9th bullet,3,x,,,,,E4,todo,
-A.3.5.1 11th bullet,3,x,,,,,E4,todo,
-A.3.5.1 12th bullet,3,x,,,,,E4,todo,
-A.3.5.2,3,x,,,,,E4,todo,
-A.3.6.1.1,3,x,,,,,E4,todo,
-A.3.6.2.1,3,x,,,,,E4,todo,
-A.3.6.2.1 1st bullet,3,x,,,,,E4,todo,
-A.3.6.2.1 2nd bullet,3,x,,,,,E4,todo,
-A.3.6.2.1 3rd bullet,3,x,,,,,E4,todo,
-A.3.6.2.1 4th bullet,3,x,,,,,E4,todo,
-A.3.6.2.1 5th bullet,3,x,,,,,E4,todo,
+A.3.3.2,3,x,,,,,E4,done,"the filters of 4.8 after the checks of E1 to E3 (EVC_Received, EVC_Position)"
+A.3.4.1.3,3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
+A.3.4.1.3 a),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
+A.3.4.1.3 b),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
+A.3.4.1.3 c),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
+A.3.4.1.3 d),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
+A.3.4.1.3 Table,3,x,,,,,E4,partial,"column k done (EVC_Core, EVC_Mission, EVC_National_Values.Delete_Pending); the other columns as E3 left them (3.7.3.3)"
+A.3.4.1.3 Table-footnote [1],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half"
+A.3.4.1.3 Table-footnote [7],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half"
+A.3.4.1.3 Table-footnote [8],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half"
+A.3.4.1.3 Table-footnote [9],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half"
+A.3.4.1.3 Table-footnote [10],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half"
+A.3.4.1.3 Table-footnote [11],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half"
+A.3.4.1.3 Table-footnote [12],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half"
+A.3.4.1.3 Table-footnote [13],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half"
+A.3.5.1,3,x,,,,,E4,done,"national values and the level transition actions are taken once (the order and the stored set are deleted when executed: EVC_National_Values, EVC_Levels)"
+A.3.5.1 1st bullet,3,x,,,,,E4,done,"national values and the level transition actions are taken once (the order and the stored set are deleted when executed: EVC_National_Values, EVC_Levels)"
+A.3.5.1 2nd bullet,3,x,,,,,E4,done,"national values and the level transition actions are taken once (the order and the stored set are deleted when executed: EVC_National_Values, EVC_Levels)"
+A.3.5.1 3rd bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover)"
+A.3.5.1 4th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover)"
+A.3.5.1 5th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover)"
+A.3.5.1 6th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover)"
+A.3.5.1 7th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover)"
+A.3.5.1 9th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover)"
+A.3.5.1 11th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover)"
+A.3.5.1 12th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover)"
+A.3.5.2,3,x,,,,,E4,partial,"the telegrams of a cycle are taken before the supervision of the cycle (EVC_Core: Read_Ports, Update_Position, stored information, then monitoring)"
+A.3.6.1.1,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
+A.3.6.2.1,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
+A.3.6.2.1 1st bullet,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
+A.3.6.2.1 2nd bullet,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
+A.3.6.2.1 3rd bullet,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
+A.3.6.2.1 4th bullet,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
+A.3.6.2.1 5th bullet,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
 A.3.7.1,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
 A.3.7.2,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
 A.3.7.3,3,x,,,,,E3,done,"EVC_Braking.Basic_Deceleration (V_lim table checked against 16.85 lambda^0.428, AD_0 exact, the polynomials in 1e-11 m/s², the boundaries to the lower deceleration); evc_test SDM_Precision"
@@ -1137,7 +1137,7 @@ A.3.10.2 a),3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 
 A.3.10.2 b),3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
 A.3.10.3,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback; the cylinder and k1 configured as data (EVC_Config); evc_test Config_Behaviour"
 A.3.10.4,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback (p0 from 3 s stable within 20 kPa, adapted every second; p1, p2, p3; active, locked; the display locks), Service_Times; evc_test SDM_Feedback"
-A.3.11 Table,3,x,,,,,E1,deferred,"E4/E6: driver data entry ranges (train data, driver ID, RBC ID, SR); language widths fit"
+A.3.11 Table,3,x,,,,,E1,partial,"EVC_Mission checks the driver's entries: driver ID 1 to 16 printable characters, train running number 1 to 8 digits, the Train Data of DMI Table 40 (L_TRAIN, brake percentage 10 to 250, V_MAXTRAIN, categories), the SR speed 5 to 600 km/h; RBC data E5"
 A.3.12.1.4,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
 A.3.12.1.5,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
 A.3.12.2.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
@@ -1167,32 +1167,32 @@ A.3.12.7.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer tim
 A.3.12.7.2,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
 A.3.12.8.1,3,x,,,,,E3,done,"EVC_Build_Up (fixed point, rounded to the longer time, T_be / T_bs outside its evaluation bounds); evc_test SDM_Build_Up against the formulas in floating point (never shorter, at most 1 ms longer)"
 A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time of any target, released with a new MRDT; the displayed P and SBI do not increase)"
-4.3.1.6,4,x,,,,,E4,todo,
-4.4.2.1,4,x,,,,,E4,todo,
-4.4.3.1.2,4,x,,,,,E4,todo,
-4.4.4.1.2,4,x,,,,,E4,todo,
-4.4.5.1.1,4,x,,,,,E4,todo,
-4.4.5.1.2,4,x,,,,,E4,todo,
-4.4.6.1.2,4,x,,,,,E4,todo,
-4.4.6.1.3,4,x,,,,,E4,todo,
-4.4.6.1.4,4,x,,,,,E4,todo,
-4.4.6.1.5,4,x,,,,,E4,todo,
-4.4.6.1.7,4,x,,,,,E4,todo,
-4.4.6.1.8,4,x,,,,,E4,todo,
-4.4.6.1.10,4,x,,,,,E4,todo,
-4.4.6.1.10 a),4,x,,,,,E4,todo,
-4.4.6.1.10 b),4,x,,,,,E4,todo,
-4.4.6.1.10 c),4,x,,,,,E4,todo,
-4.4.6.1.12,4,x,,,,,E4,todo,
-4.4.6.1.13,4,x,,,,,E4,todo,
-4.4.7.1.4,4,x,,,,,E4,todo,
-4.4.7.1.5,4,x,,,,,E4,todo,
-4.4.7.1.5.1,4,x,,,,,E4,todo,
-4.4.7.1.5.3,4,x,,,,,E4,todo,
-4.4.7.1.5.4,4,x,,,,,E4,todo,
-4.4.7.1.6,4,x,,,,,E4,todo,
-4.4.7.1.6 a),4,x,,,,,E4,todo,
-4.4.7.1.6 b),4,x,,,,,E4,todo,
+4.3.1.6,4,x,,,,,E4,done,"the tables as data: EVC_Modes.Transitions / Conditions (4.6.2), EVC_Acceptance (4.8), EVC_Core.Enter_Mode (4.10, 4.12); evc_test E4_Tables"
+4.4.2.1,4,x,,,,,E4,done,MSG_MODE_LEVEL every cycle with the mode (EVC_Core.Produce_Outputs); evc_test E4 scenarios
+4.4.3.1.2,4,x,,,,,E4,done,"MSG_MODE_LEVEL mode IS (17), the DMI lights the isolation device (dmi_protocol MSG_SETTINGS); evc_test Isolation, E4_SL_NL_IS"
+4.4.4.1.2,4,x,,,,,E4,done,"No Power is the state before the first cycle (EVC_Core.Initialise): no code runs, no release is given to the fail-safe train interface; the first cycle leaves NP (4.6.3 [4])"
+4.4.5.1.1,4,x,,,,,E4,done,"4.6.3 [84] (EVC_Odometry.Safety_Exceeded) through the mode machine; a fault of the host is EVC_Core.Enter_Failure ([13], SF where 4.6.2 allows it); evc_test E4_Odometer_Failure, Failure"
+4.4.5.1.2,4,x,,,,,E4,done,"EVC_Core.Produce_Outputs: the emergency brake in SF, TIU reason bit 6, every cycle; evc_test E4_Odometer_Failure"
+4.4.6.1.2,4,x,,,,,E4,done,"4.6.3 [2], [3], [14] (EVC_Train_Inputs, EVC_Transition_Conditions); evc_test E4_SL_NL_IS"
+4.4.6.1.3,4,x,,,,,E4,done,"no supervision in SL: EVC_Modes.TSR_Mode, no mode speed, no Supervise (EVC_Stored_Information)"
+4.4.6.1.4,4,x,,,,,E4,partial,"the train position runs in every mode (EVC_Position); the rear end from the train length is not used by the position yet (EVC_Position.Set_Train_Length, position reports of E5)"
+4.4.6.1.5,4,x,,,,,E4,done,"4.6.3 [2], [3], [14] (EVC_Train_Inputs, EVC_Transition_Conditions); evc_test E4_SL_NL_IS"
+4.4.6.1.7,4,x,,,,,E4,done,"4.6.3 [2], [3], [14] (EVC_Train_Inputs, EVC_Transition_Conditions); evc_test E4_SL_NL_IS"
+4.4.6.1.8,4,x,,,,,E4,done,"4.6.3 [2], [3], [14] (EVC_Train_Inputs, EVC_Transition_Conditions); evc_test E4_SL_NL_IS"
+4.4.6.1.10,4,x,,,,,E4,deferred,E5 (radio sessions)
+4.4.6.1.10 a),4,x,,,,,E4,deferred,E5 (radio sessions)
+4.4.6.1.10 b),4,x,,,,,E4,deferred,E5 (radio sessions)
+4.4.6.1.10 c),4,x,,,,,E4,deferred,E5 (radio sessions)
+4.4.6.1.12,4,x,,,,,E4,deferred,"with the linking and consistency reactions of the procedures half (3.14.1.6, e4/procedures)"
+4.4.6.1.13,4,x,,,,,E4,deferred,E5 (system version with the RBC)
+4.4.7.1.4,4,x,,,,,E4,done,"the start of mission is engaged only with a desk open (EVC_Mission, MSG_ONBOARD som); the isolation in every mode ([1]); evc_test E4_SL_NL_IS, E4_Desk_Closed"
+4.4.7.1.5,4,x,,,,,E4,done,"EVC_Brake_Commands standstill supervision in SB (E3), revoked on leaving SB by Enter_Mode (4.12); evc_test SDM_Protections, bench"
+4.4.7.1.5.1,4,x,,,,,E4,done,"EVC_Brake_Commands standstill supervision in SB (E3), revoked on leaving SB by Enter_Mode (4.12); evc_test SDM_Protections, bench"
+4.4.7.1.5.3,4,x,,,,,E4,done,"EVC_Brake_Commands standstill supervision in SB (E3), revoked on leaving SB by Enter_Mode (4.12); evc_test SDM_Protections, bench"
+4.4.7.1.5.4,4,x,,,,,E4,done,MSG_STATUS brake indication (E3)
+4.4.7.1.6,4,x,,,,,E4,partial,the train position runs in SB (EVC_Position); train integrity reports are E5
+4.4.7.1.6 a),4,x,,,,,E4,partial,the train position runs in SB (EVC_Position); train integrity reports are E5
+4.4.7.1.6 b),4,x,,,,,E4,partial,the train position runs in SB (EVC_Position); train integrity reports are E5
 4.4.8.1.1,4,x,,,,,E4,todo,
 4.4.8.1.1 a),4,x,,,,,E4,todo,
 4.4.8.1.1 b),4,x,,,,,E4,todo,
@@ -1205,38 +1205,38 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.8.1.5.3,4,x,,,,,E4,todo,
 4.4.8.1.6,4,x,,,,,E4,todo,
 4.4.8.1.10,4,x,,,,,E4,todo,
-4.4.9.1.1,4,x,,,,,E4,todo,
-4.4.9.1.4,4,x,,,,,E4,todo,
-4.4.9.1.5,4,x,,,,,E4,todo,
-4.4.9.1.6,4,x,,,,,E4,todo,
-4.4.10.1.2,4,x,,,,,E4,todo,
-4.4.10.1.3,4,x,,,,,E4,todo,
-4.4.10.1.4,4,x,,,,,E4,todo,
-4.4.11.1.3,4,x,,,,,E4,todo,
-4.4.11.1.3 a),4,x,,,,,E4,todo,
-4.4.11.1.3 b),4,x,,,,,E4,todo,
-4.4.11.1.3 c),4,x,,,,,E4,todo,
-4.4.11.1.3 d),4,x,,,,,E4,todo,
-4.4.11.1.3 e),4,x,,,,,E4,todo,
-4.4.11.1.3.1,4,x,,,,,E4,todo,
-4.4.11.1.3.1 a),4,x,,,,,E4,todo,
-4.4.11.1.3.1 b),4,x,,,,,E4,todo,
-4.4.11.1.3.1 c),4,x,x,,,,E4,todo,
-4.4.11.1.5,4,x,,,,,E4,todo,
-4.4.11.1.5.1,4,x,,,,,E4,todo,
-4.4.11.1.5.2,4,x,,,,,E4,todo,
-4.4.11.1.6,4,x,,,,,E4,todo,
-4.4.11.1.6.2,4,x,,,,,E4,todo,
-4.4.11.1.6.3,4,x,,,,,E4,todo,
-4.4.11.1.6.4,4,x,,,,,E4,todo,
-4.4.11.1.6.4 a),4,x,,,,,E4,todo,
-4.4.11.1.6.4 b),4,x,,,,,E4,todo,
+4.4.9.1.1,4,x,,,,,E4,done,"4.6.3 [10], [25], [32] (EVC_Transition_Conditions: MA + SSP + gradient on-board, no mode profile overlap); evc_test E4_SoM_Level_1, E4_Acceptance, E4_Level_Transition_0"
+4.4.9.1.4,4,x,,,,,E4,done,"EVC_Stored_Information.Train_Covered (SSP and gradient from the min safe rear end to the front), EVC_Core: MSG_SYSTEM_STATUS 6 started in FS while not covered, ended once covered; evc_test E4_SoM_Level_1"
+4.4.9.1.5,4,x,,,,,E4,done,"FS: the supervision of E3 on the snapshot of the mode (EVC_Modes.MA_Mode, Track_Speed_Mode), MSG_SPEED_STATE and MSG_PLANNING; evc_test E4_SoM_Level_1"
+4.4.9.1.6,4,x,,,,,E4,done,"FS: the supervision of E3 on the snapshot of the mode (EVC_Modes.MA_Mode, Track_Speed_Mode), MSG_SPEED_STATE and MSG_PLANNING; evc_test E4_SoM_Level_1"
+4.4.10.1.2,4,x,,,,,E4,done,"UN: ceiling min(V_NVUNFIT, V_MAXTRAIN) (EVC_Core.Mode_Speed, EVC_Modes.Train_Speed_Mode) and the TSRs (EVC_Track_Description.Speed_Elements Only_TSR); evc_test E4_SoM_Other_Levels, E4_Level_Transition_0"
+4.4.10.1.3,4,x,,,,,E4,done,"UN: ceiling min(V_NVUNFIT, V_MAXTRAIN) (EVC_Core.Mode_Speed, EVC_Modes.Train_Speed_Mode) and the TSRs (EVC_Track_Description.Speed_Elements Only_TSR); evc_test E4_SoM_Other_Levels, E4_Level_Transition_0"
+4.4.10.1.4,4,x,,,,,E4,done,MSG_SPEED_STATE every cycle
+4.4.11.1.3,4,x,,,,,E4,partial,"a) b) e) done; c) d) the lists of balise groups and ""stop if in SR"" are the RBC (E5) and the procedures half ([36], [54])"
+4.4.11.1.3 a),4,x,,,,,E4,done,"EVC_Mission.SR_Speed into Mode_Speed; evc_test E4_SoM_Level_1, E4_SR_Distance"
+4.4.11.1.3 b),4,x,,,,,E4,done,"EVC_Mission.SR_Distance (EVC_Odometry virtual position) to Snapshot_T.Extra.SR_Distance / SR_End, supervised by EVC_SDM (E3), 4.6.3 [42] trips; evc_test E4_SR_Distance"
+4.4.11.1.3 c),4,x,,,,,E4,deferred,"c) E5 (list from the RBC); d) ""stop if in SR"" (4.6.3 [54]) with the procedures half"
+4.4.11.1.3 d),4,x,,,,,E4,deferred,"c) E5 (list from the RBC); d) ""stop if in SR"" (4.6.3 [54]) with the procedures half"
+4.4.11.1.3 e),4,x,,,,,E4,done,EVC_Brake_Commands: unauthorised direction protection in SR against the train orientation
+4.4.11.1.3.1,4,x,,,,,E4,partial,a) b) done; c) Euroloop is E7
+4.4.11.1.3.1 a),4,x,,,,,E4,done,EVC_Mission: the distance from the entry of SR or from the driver's entry (override: the procedures half); evc_test E4_SR_Distance
+4.4.11.1.3.1 b),4,x,,,,,E4,done,EVC_Mission: the distance from the entry of SR or from the driver's entry (override: the procedures half); evc_test E4_SR_Distance
+4.4.11.1.3.1 c),4,x,x,,,,E4,deferred,E7 (Euroloop)
+4.4.11.1.5,4,x,,,,,E4,done,"EVC_Mission: MSG_DRIVER_DATA kind 3 in SR at standstill, refused otherwise (JRU 41 kind 4); evc_test E4_SR_Distance"
+4.4.11.1.5.1,4,x,,,,,E4,todo,the movement during the entry: the on-board does not know when the driver is in the SR data window
+4.4.11.1.5.2,4,x,,,,,E4,done,"EVC_Mission: 5 .. 600 km/h, 0 .. 65535 m as the DMI sends them (A.3.11)"
+4.4.11.1.6,4,x,,,,,E4,deferred,E5 (MA request in level 2)
+4.4.11.1.6.2,4,x,,,,,E4,done,"EVC_Mission.Mode_Entered (V_NVSTFF, D_NVSTFF) and Evaluate (the driver's entry); evc_test E4_SR_Distance"
+4.4.11.1.6.3,4,x,,,,,E4,done,"EVC_Mission.Mode_Entered (V_NVSTFF, D_NVSTFF) and Evaluate (the driver's entry); evc_test E4_SR_Distance"
+4.4.11.1.6.4,4,x,,,,,E4,partial,a) done; b) the RBC (E5)
+4.4.11.1.6.4 a),4,x,,,,,E4,done,EVC_Mission: the last entry replaces the distance
+4.4.11.1.6.4 b),4,x,,,,,E4,deferred,E5 (SR distance from the RBC)
 4.4.11.1.6.5,4,x,,,,,E4,todo,
-4.4.11.1.6.6,4,x,,,,,E4,todo,
-4.4.11.1.6.7,4,x,,,,,E4,todo,
-4.4.11.1.7,4,x,,,,,E4,todo,
-4.4.11.1.8,4,x,,,,,E4,todo,
-4.4.11.1.9,4,x,,,,,E4,todo,
+4.4.11.1.6.6,4,x,,,,,E4,deferred,E5 (RBC list) / E7 (Euroloop)
+4.4.11.1.6.7,4,x,,,,,E4,deferred,E5 (RBC list) / E7 (Euroloop)
+4.4.11.1.7,4,x,,,,,E4,partial,MSG_SPEED_STATE every cycle (the DMI shows the permitted speed on request); the override status is the procedures half's
+4.4.11.1.8,4,x,,,,,E4,done,the SR distance is a virtual position of 3.6.7 (EVC_Odometry.Virtual_T)
+4.4.11.1.9,4,x,,,,,E4,deferred,E5 (track ahead free from the RBC)
 4.4.12.1.2,4,x,,,,,E4,todo,
 4.4.12.1.3,4,x,,,,,E4,todo,
 4.4.12.1.4,4,x,,,,,E4,todo,
@@ -1254,17 +1254,17 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.14.1.3.2,4,x,,,,,E4,todo,
 4.4.14.1.4,4,x,,,,,E4,todo,
 4.4.14.1.9,4,x,,,,,E4,todo,
-4.4.15.1.1.2,4,x,,,,,E4,todo,
-4.4.15.1.1.3,4,x,,,,,E4,todo,
-4.4.15.1.2,4,x,,,,,E4,todo,
-4.4.15.1.3,4,x,,,,,E4,todo,
-4.4.15.1.4,4,x,,,,,E4,todo,
-4.4.15.1.6,4,x,,,,,E4,todo,
-4.4.15.1.10,4,x,,,,,E4,todo,
-4.4.16.1.4,4,x,,,,,E4,todo,
-4.4.16.1.5,4,x,,,,,E4,todo,
-4.4.16.1.6,4,x,,,,,E4,todo,
-4.4.17.1.2,4,x,,,,,E4,todo,
+4.4.15.1.1.2,4,x,,,,,E4,done,4.6.3 [46] needs the non-leading input (EVC_Train_Inputs); evc_test E4_SL_NL_IS
+4.4.15.1.1.3,4,x,,,,,E4,done,"EVC_Mission.NL_No_Longer_Permitted: MSG_SYSTEM_STATUS 35 (to be acknowledged, the DMI ends it), SB at standstill (4.6.3 [47]); evc_test E4_SL_NL_IS"
+4.4.15.1.2,4,x,,,,,E4,done,no supervision in NL (EVC_Modes); evc_test E4_SL_NL_IS
+4.4.15.1.3,4,x,,,,,E4,partial,the train position runs in NL (EVC_Position); the engine's rear end and the integrity reports are E5
+4.4.15.1.4,4,x,,,,,E4,deferred,E5 (position reports)
+4.4.15.1.6,4,x,,,,,E4,done,MSG_SPEED_STATE every cycle
+4.4.15.1.10,4,x,,,,,E4,deferred,"with the linking and consistency reactions of the procedures half (3.14.1.6, e4/procedures)"
+4.4.16.1.4,4,x,,,,,E4,deferred,"AD: the ATO port (SUBSET-125), with the ATO on-board after E4; AD is not entered (4.6.3 [80] not implemented)"
+4.4.16.1.5,4,x,,,,,E4,deferred,"AD: the ATO port (SUBSET-125), with the ATO on-board after E4; AD is not entered (4.6.3 [80] not implemented)"
+4.4.16.1.6,4,x,,,,,E4,deferred,"AD: the ATO port (SUBSET-125), with the ATO on-board after E4; AD is not entered (4.6.3 [80] not implemented)"
+4.4.17.1.2,4,x,,,,,E4,done,SN: the third filter of 4.8.4 (EVC_Acceptance); the National System itself is out of scope (PLAN.md)
 4.4.18.1.3,4,x,,,,,E4,todo,
 4.4.18.1.3 a),4,x,,,,,E4,todo,
 4.4.18.1.3 b),4,x,,,,,E4,todo,
@@ -1324,183 +1324,183 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.21.1.11,4,x,,,,,E4,todo,
 4.4.21.1.12,4,x,,,,,E4,todo,
 4.4.21.1.13,4,x,,,,,E4,todo,
-4.5.1.4,4,x,,,,,E4,todo,
-4.5.2.1,4,x,,,,,E4,todo,
-4.5.2.2 Table,4,x,,,,,E4,todo,
-4.5.2.2 Table-footnote {2},4,x,,,,,E4,todo,
-4.5.2.2 Table-footnote {4},4,x,,,,,E4,todo,
-4.6.2 Table,4,x,,,,,E4,todo,
-4.6.3 Table,4,x,,,,,E4,todo,
+4.5.1.4,4,x,,,,,E4,done,nothing runs in No Power (EVC_Core: the state before the first cycle)
+4.5.2.1,4,x,,,,,E4,done,"EVC_Modes (MA_Mode, Track_Speed_Mode, TSR_Mode, Train_Speed_Mode, Linking_Check_Mode, Odometer_Check_Mode) used by EVC_Stored_Information.Build (the MRSP sources, the MA, Supervise), EVC_Position.Set_Linking_Context, EVC_Brake_Commands (roll away, direction); the ceiling only modes {4} by the mode speed (EVC_SDM); the RBC and ATO rows are E5"
+4.5.2.2 Table,4,x,,,,,E4,done,"EVC_Modes (MA_Mode, Track_Speed_Mode, TSR_Mode, Train_Speed_Mode, Linking_Check_Mode, Odometer_Check_Mode) used by EVC_Stored_Information.Build (the MRSP sources, the MA, Supervise), EVC_Position.Set_Linking_Context, EVC_Brake_Commands (roll away, direction); the ceiling only modes {4} by the mode speed (EVC_SDM); the RBC and ATO rows are E5"
+4.5.2.2 Table-footnote {2},4,x,,,,,E4,done,"EVC_Modes (MA_Mode, Track_Speed_Mode, TSR_Mode, Train_Speed_Mode, Linking_Check_Mode, Odometer_Check_Mode) used by EVC_Stored_Information.Build (the MRSP sources, the MA, Supervise), EVC_Position.Set_Linking_Context, EVC_Brake_Commands (roll away, direction); the ceiling only modes {4} by the mode speed (EVC_SDM); the RBC and ATO rows are E5"
+4.5.2.2 Table-footnote {4},4,x,,,,,E4,done,"EVC_Modes (MA_Mode, Track_Speed_Mode, TSR_Mode, Train_Speed_Mode, Linking_Check_Mode, Odometer_Check_Mode) used by EVC_Stored_Information.Build (the MRSP sources, the MA, Supervise), EVC_Position.Set_Linking_Context, EVC_Brake_Commands (roll away, direction); the ceiling only modes {4} by the mode speed (EVC_SDM); the RBC and ATO rows are E5"
+4.6.2 Table,4,x,,,,,E4,done,"EVC_Modes.Transitions and Conditions; EVC_Core.Run_Mode_Machine takes the transition of the highest priority whose condition holds (proved: only transitions of the table, nothing leaves IS, NP -> IS before SB); evc_test E4_Tables"
+4.6.3 Table,4,x,,,,,E4,partial,"EVC_Transition_Conditions: [1] to [4], [10], [13] (host fault), [14], [21], [25], [26], [29], [32], [39], [42], [44] to [47], [56], [58], [60], [67], [77] to [79], [84] by e4/modes; the others are the procedures half's (doc/EVC-PLAN.md §10) or E5"
 4.6.3 Table-footnote {9},4,x,,,,,E4,todo,
-4.7.2.1.1,4,x,,,,,E4,todo,
-4.7.2.1.2,4,x,,,,,E4,todo,
-4.7.2.1.4 Table,4,x,,,,,E4,todo,
-4.8.1.3,4,x,,,,,E4,todo,
-4.8.1.3.1,4,x,,,,,E4,todo,
-4.8.1.3.1 1),4,x,,,,,E4,todo,
-4.8.1.3.1 2),4,x,,,,,E4,todo,
-4.8.1.5,4,x,,,,,E4,todo,
-4.8.1.6,4,x,,,,,E4,todo,
-4.8.2.1,4,x,,,,,E4,todo,
-4.8.2.1 a),4,x,,,,,E4,todo,
-4.8.2.1 b),4,x,,,,,E4,todo,
-4.8.2.1 c),4,x,,,,,E4,todo,
-4.8.2.1 d),4,x,,,,,E4,todo,
-4.8.2.1 e),4,x,,,,,E4,todo,
-4.8.2.2,4,x,,,,,E4,todo,
-4.8.2.3,4,x,,,,,E4,todo,
-4.8.3.1.1 Table,4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [1],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [2],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [3],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [4],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [5],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [8],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [9],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [10],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [11],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [12],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [13],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [14],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [15],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [16],4,x,,,,,E4,todo,
-4.8.3.1.1 Table-footnote [17],4,x,,,,,E4,todo,
-4.8.3.2 Table,4,x,,,,,E4,todo,
-4.8.3.2 Table-footnote [6],4,x,,,,,E4,todo,
-4.8.3.2 Table-footnote [7],4,x,,,,,E4,todo,
-4.8.4.1.1,4,x,,,,,E4,todo,
-4.8.4.2 Table,4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [1],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [2],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [3],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [4],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [5],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [6],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [7],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [8],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [9],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [10],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [11],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [12],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [13],4,x,,,,,E4,todo,
-4.8.4.2 Table-footnote [14],4,x,,,,,E4,todo,
-4.8.5.1,4,x,,,,,E4,todo,
-4.8.5.2,4,x,,,,,E4,todo,
-4.8.5.3,4,x,,,,,E4,todo,
-4.8.5.4,4,x,,,,,E4,todo,
-4.8.5.4 a),4,x,,,,,E4,todo,
-4.8.5.4 b),4,x,,,,,E4,todo,
-4.8.5.4 c),4,x,,,,,E4,todo,
-4.8.5.5,4,x,,,,,E4,todo,
-4.8.5.6,4,x,,,,,E4,todo,
-4.8.5.6 a),4,x,,,,,E4,todo,
-4.8.5.6 b),4,x,,,,,E4,todo,
-4.8.5.6 c),4,x,,,,,E4,todo,
-4.8.5.7,4,x,,,,,E4,todo,
-4.9.1.3,4,x,,,,,E4,todo,
-4.9.1.3.1,4,x,,,,,E4,todo,
-4.10.1.3,4,x,,,,,E4,todo,
-4.10.1.3 a),4,x,,,,,E4,todo,
-4.10.1.3 b),4,x,,,,,E4,todo,
-4.10.1.3 c),4,x,,,,,E4,todo,
-4.10.1.3 d),4,x,,,,,E4,todo,
-4.10.1.3 e),4,x,,,,,E4,todo,
-4.10.1.3 Table,4,x,,,,,E4,todo,
-4.10.1.3 Table-footnote [1],4,x,,,,,E4,todo,
-4.11.1.1,4,x,,,,,E4,todo,
-4.11.1.1 Table,4,x,,,,,E4,todo,
-4.11.1.3,4,x,,,,,E4,todo,
-4.11.1.4,4,x,,,,,E4,todo,
-4.11.1.4 a),4,x,,,,,E4,todo,
-4.11.1.4 b),4,x,,,,,E4,todo,
-4.11.1.4 c),4,x,,,,,E4,todo,
-4.11.1.4 d),4,x,,,,,E4,todo,
-4.11.1.4 e),4,x,,,,,E4,todo,
-4.12.1.2,4,x,,,,,E4,todo,
-4.12.1.2 a),4,x,,,,,E4,todo,
-4.12.1.2 b),4,x,,,,,E4,todo,
-4.12.1.2 c),4,x,,,,,E4,todo,
-4.12.1.2 d),4,x,,,,,E4,todo,
-4.12.1.2 e),4,x,,,,,E4,todo,
-4.12.1.2 Table,4,x,,,,,E4,todo,
-4.12.1.2 Table-footnote [1],4,x,,,,,E4,todo,
-4.12.1.2 Table-footnote [2],4,x,,,,,E4,todo,
-5.3.1.3,5,x,,,,,E4,todo,
-5.4.1.4,5,x,,,,,E4,todo,
-5.4.3.2 A24,5,x,,,,,E4,todo,
-5.4.3.2 A29,5,x,,,,,E4,todo,
-5.4.3.2 A31,5,x,,,,,E4,todo,
-5.4.3.2 A32,5,x,,,,,E4,todo,
-5.4.3.2 A33,5,x,,,,,E4,todo,
-5.4.3.2 A34,5,x,,,,,E4,todo,
-5.4.3.2 A35,5,x,x,,,,E4,todo,
-5.4.3.2 A39,5,x,,,,,E4,todo,
-5.4.3.2 A40,5,x,,,,,E4,todo,
-5.4.3.2 A41,5,x,,,,,E4,todo,
-5.4.3.2 A42,5,x,,,,,E4,todo,
-5.4.3.2 A43,5,x,,,,,E4,todo,
-5.4.3.2 D2,5,x,,,,,E4,todo,
-5.4.3.2 D3,5,x,,,,,E4,todo,
-5.4.3.2 D7,5,x,,,,,E4,todo,
-5.4.3.2 D8,5,x,,,,,E4,todo,
-5.4.3.2 D9,5,x,,,,,E4,todo,
-5.4.3.2 D10,5,x,,,,,E4,todo,
-5.4.3.2 D11,5,x,,,,,E4,todo,
-5.4.3.2 D12,5,x,,,,,E4,todo,
-5.4.3.2 D15,5,x,,,,,E4,todo,
-5.4.3.2 D31,5,x,,,,,E4,todo,
-5.4.3.2 D32,5,x,,,,,E4,todo,
-5.4.3.2 D34,5,x,,,,,E4,todo,
-5.4.3.2 D35,5,x,,,,,E4,todo,
-5.4.3.2 S0,5,x,,,,,E4,todo,
-5.4.3.2 S1,5,x,,,,,E4,todo,
-5.4.3.2 S2,5,x,,,,,E4,todo,
-5.4.3.2 S3,5,x,,,,,E4,todo,
-5.4.3.2 S4,5,x,,,,,E4,todo,
-5.4.3.2 S5,5,x,,,,,E4,todo,
-5.4.3.2 S10,5,x,,,,,E4,todo,
-5.4.3.2 S11,5,x,,,,,E4,todo,
-5.4.3.2 S12,5,x,,,,,E4,todo,
-5.4.3.2 S13,5,x,,,,,E4,todo,
-5.4.3.2 S20,5,x,,,,,E4,todo,
-5.4.3.2 S21,5,x,,,,,E4,todo,
-5.4.3.2 S22,5,x,,,,,E4,todo,
-5.4.3.2 S23,5,x,,,,,E4,todo,
-5.4.3.2 S24,5,x,,,,,E4,todo,
-5.4.3.2 S25,5,x,,,,,E4,todo,
-5.4.3.2.1,5,x,,,,,E4,todo,
-5.4.3.2.1 1st bullet,5,x,,,,,E4,todo,
-5.4.3.2.1 2nd bullet,5,x,,,,,E4,todo,
-5.4.3.2.2,5,x,,,,,E4,todo,
-5.4.3.3 Table,5,x,,,,,E4,todo,
-5.4.5.1,5,x,,,,,E4,todo,
-5.4.5.3,5,x,,,,,E4,todo,
+4.7.2.1.1,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
+4.7.2.1.2,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
+4.7.2.1.4 Table,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
+4.8.1.3,4,x,,,,,E4,done,"EVC_Stored_Information: packets 41 and 46 first, an immediate order switches the level before the rest of the message is filtered (EVC_Levels.Take_Order); evc_test E4_Level_Transition_0"
+4.8.1.3.1,4,x,,,,,E4,done,"EVC_Stored_Information: packets 41 and 46 first, an immediate order switches the level before the rest of the message is filtered (EVC_Levels.Take_Order); evc_test E4_Level_Transition_0"
+4.8.1.3.1 1),4,x,,,,,E4,done,"EVC_Stored_Information: packets 41 and 46 first, an immediate order switches the level before the rest of the message is filtered (EVC_Levels.Take_Order); evc_test E4_Level_Transition_0"
+4.8.1.3.1 2),4,x,,,,,E4,done,"EVC_Stored_Information: packets 41 and 46 first, an immediate order switches the level before the rest of the message is filtered (EVC_Levels.Take_Order); evc_test E4_Level_Transition_0"
+4.8.1.5,4,x,,,,,E4,n/a,"no infill information is taken by this on-board (3.9, E7)"
+4.8.1.6,4,x,,,,,E4,deferred,E5 (radio)
+4.8.2.1,4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.2.1 a),4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.2.1 b),4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.2.1 c),4,x,,,,,E4,deferred,E5 (RBC handover)
+4.8.2.1 d),4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.2.1 e),4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.2.2,4,x,,,,,E4,done,"E2/E3: the consistency reaction inhibition and the VBC (EVC_Position, EVC_Received)"
+4.8.2.3,4,x,,,,,E4,done,"E2/E3: the consistency reaction inhibition and the VBC (EVC_Position, EVC_Received)"
+4.8.3.1.1 Table,4,x,,,,,E4,partial,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; the balise rows of 4.8.3 for this on-board's information; [1] accepted at once (no transition buffer, see 4.8.5); the RBC rows are E5"
+4.8.3.1.1 Table-footnote [1],4,x,,,,,E4,partial,"accepted at once instead of stored (EVC_Acceptance header: no transition buffer, 4.8.5)"
+4.8.3.1.1 Table-footnote [2],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [3],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [4],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.3.1.1 Table-footnote [5],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [8],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [9],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [10],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [11],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.3.1.1 Table-footnote [12],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [13],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [14],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [15],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.1.1 Table-footnote [16],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.3.1.1 Table-footnote [17],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids)"
+4.8.3.2 Table,4,x,,,,,E4,n/a,STM interface out of scope (PLAN.md)
+4.8.3.2 Table-footnote [6],4,x,,,,,E4,n/a,STM interface out of scope (PLAN.md)
+4.8.3.2 Table-footnote [7],4,x,,,,,E4,n/a,STM interface out of scope (PLAN.md)
+4.8.4.1.1,4,x,,,,,E4,n/a,"no infill information is taken by this on-board (3.9, E7)"
+4.8.4.2 Table,4,x,,,,,E4,partial,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; the rows of the balise information this on-board takes; the RBC rows are E5; track conditions of packet 68 are one kind (the sound horn etc. rows are not split)"
+4.8.4.2 Table-footnote [1],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.4.2 Table-footnote [2],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.4.2 Table-footnote [3],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.4.2 Table-footnote [4],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.4.2 Table-footnote [5],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.4.2 Table-footnote [6],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.4.2 Table-footnote [7],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.4.2 Table-footnote [8],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.4.2 Table-footnote [9],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.4.2 Table-footnote [10],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.4.2 Table-footnote [11],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
+4.8.4.2 Table-footnote [12],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.4.2 Table-footnote [13],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.4.2 Table-footnote [14],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half"
+4.8.5.1,4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.2,4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.3,4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.4,4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.4 a),4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.4 b),4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.4 c),4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.5,4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.6,4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.6 a),4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.6 b),4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.6 c),4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.8.5.7,4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2])"
+4.9.1.3,4,x,,,,,E4,deferred,"E5 (MA request and position report parameters, TAF request, inhibition of revocable TSRs from balises in level 2)"
+4.9.1.3.1,4,x,,,,,E4,deferred,"E5 (MA request and position report parameters, TAF request, inhibition of revocable TSRs from balises in level 2)"
+4.10.1.3,4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
+4.10.1.3 a),4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
+4.10.1.3 b),4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
+4.10.1.3 c),4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
+4.10.1.3 d),4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
+4.10.1.3 e),4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
+4.10.1.3 Table,4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
+4.10.1.3 Table-footnote [1],4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
+4.11.1.1,4,x,,,,,E4,n/a,"nothing is kept over No Power (EVC_Core.Initialise: every status unknown), so no status is set to ""invalid"" by No Power and none is revalidated by the cold movement detection"
+4.11.1.1 Table,4,x,,,,,E4,n/a,"nothing is kept over No Power (EVC_Core.Initialise: every status unknown), so no status is set to ""invalid"" by No Power and none is revalidated by the cold movement detection"
+4.11.1.3,4,x,,,,,E4,n/a,"nothing is kept over No Power (EVC_Core.Initialise: every status unknown), so no status is set to ""invalid"" by No Power and none is revalidated by the cold movement detection"
+4.11.1.4,4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
+4.11.1.4 a),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
+4.11.1.4 b),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
+4.11.1.4 c),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
+4.11.1.4 d),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
+4.11.1.4 e),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
+4.12.1.2,4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2 a),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2 b),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2 c),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2 d),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2 e),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2 Table,4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2 Table-footnote [1],4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2 Table-footnote [2],4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+5.3.1.3,5,x,,,,,E4,done,"the procedures of 5.4, 5.5 and 5.10 in EVC_Mission and EVC_Levels"
+5.4.1.4,5,x,,,,,E4,deferred,E5 (sessions)
+5.4.3.2 A24,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A29,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A31,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A32,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A33,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A34,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A35,5,x,x,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A39,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A40,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A41,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A42,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 A43,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D2,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 D3,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 D7,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D8,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D9,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D10,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 D11,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D12,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 D15,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D31,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D32,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D34,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 D35,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 S0,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S1,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S2,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S3,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 S4,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 S5,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 S10,5,x,,,,,E4,partial,NL (E10) done ([46]); SH and SM are the procedures half's; Train Data entry (E11) done
+5.4.3.2 S11,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 S12,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S13,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S20,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S21,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2 S22,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S23,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S24,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.3.2 S25,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
+5.4.3.2.1,5,x,,,,,E4,done,"EVC_Mission: the start of mission ends with another mode or the desk closed; evc_test E4_SoM_Level_1, E4_Desk_Closed"
+5.4.3.2.1 1st bullet,5,x,,,,,E4,done,"EVC_Mission: the start of mission ends with another mode or the desk closed; evc_test E4_SoM_Level_1, E4_Desk_Closed"
+5.4.3.2.1 2nd bullet,5,x,,,,,E4,done,"EVC_Mission: the start of mission ends with another mode or the desk closed; evc_test E4_SoM_Level_1, E4_Desk_Closed"
+5.4.3.2.2,5,x,,,,,E4,deferred,E5 (sessions)
+5.4.3.3 Table,5,x,,,,,E4,partial,"EVC_Mission (driver ID, train running number, Train Data), EVC_Levels (level): the statuses of the rows without the RBC; the position and the RBC contact rows are E5"
+5.4.5.1,5,x,,,,,E4,deferred,E5 (loss of a session)
+5.4.5.3,5,x,,,,,E4,partial,b) c) d) e) f) h) done; a) g) k) the procedures half; i) j) l) E5/E6
 5.4.5.3 a),5,x,,,,,E4,todo,
-5.4.5.3 b),5,x,,,,,E4,todo,
-5.4.5.3 c),5,x,,,,,E4,todo,
-5.4.5.3 d),5,x,,,,,E4,todo,
-5.4.5.3 e),5,x,,,,,E4,todo,
-5.4.5.3 f),5,x,,,,,E4,todo,
+5.4.5.3 b),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 c),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 d),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 e),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 f),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 g),5,x,,,,,E4,todo,
-5.4.5.3 h),5,x,,,,,E4,todo,
-5.4.5.3 h) 1st bullet,5,x,,,,,E4,todo,
-5.4.5.3 h) 2nd bullet,5,x,,,,,E4,todo,
-5.4.5.3 h) 3rd bullet,5,x,,,,,E4,todo,
-5.4.5.3 h) 4th bullet,5,x,,,,,E4,todo,
-5.4.5.3 h) 5th bullet,5,x,,,,,E4,todo,
-5.4.5.3 i),5,x,,,,,E4,todo,
-5.4.5.3 j),5,x,,,,,E4,todo,
-5.4.5.3 j) 1st bullet,5,x,,,,,E4,todo,
-5.4.5.3 j) 2nd bullet,5,x,,,,,E4,todo,
+5.4.5.3 h),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 h) 1st bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 h) 2nd bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 h) 3rd bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 h) 4th bullet,5,x,,,,,E4,deferred,E5 (level 2 with a session)
+5.4.5.3 h) 5th bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
+5.4.5.3 i),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
+5.4.5.3 j),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
+5.4.5.3 j) 1st bullet,5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
+5.4.5.3 j) 2nd bullet,5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
 5.4.5.3 k),5,x,,,,,E4,todo,
-5.4.5.3 l),5,x,,,,,E4,todo,
-5.5.3.1.2,5,x,,,,,E4,todo,
-5.5.3.1.3,5,x,,,,,E4,todo,
-5.5.3.1.4,5,x,,,,,E4,todo,
-5.5.3.1.4 step 4,5,x,,,,,E4,todo,
-5.5.4.1.1,5,x,,,,,E4,todo,
-5.5.4.1.1.1,5,x,,,,,E4,todo,
-5.5.4.1.2,5,x,,,,,E4,todo,
+5.4.5.3 l),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
+5.5.3.1.2,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10)"
+5.5.3.1.3,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10)"
+5.5.3.1.4,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10)"
+5.5.3.1.4 step 4,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10)"
+5.5.4.1.1,5,x,,,,,E4,deferred,E5 (sessions)
+5.5.4.1.1.1,5,x,,,,,E4,deferred,E5 (sessions)
+5.5.4.1.2,5,x,,,,,E4,deferred,E5 (sessions)
 5.6.2.2 A030,5,x,,,,,E4,todo,
 5.6.2.2 A045,5,x,,,,,E4,todo,
 5.6.2.2 A050,5,x,,,,,E4,todo,
@@ -1579,68 +1579,68 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.9.5.1,5,x,,,,,E4,todo,
 5.9.5.2,5,x,,,,,E4,todo,
 5.9.6.1.1,5,x,,,,,E4,todo,
-5.10.1.3,5,x,,,,,E4,todo,
-5.10.1.5,5,x,,,,,E4,todo,
-5.10.1.6,5,x,,,,,E4,todo,
-5.10.1.6.1,5,x,,,,,E4,todo,
-5.10.1.7,5,x,,,,,E4,todo,
-5.10.1.8,5,x,,,,,E4,todo,
-5.10.2.4,5,x,,,,,E4,todo,
-5.10.2.4.1,5,x,,,,,E4,todo,
-5.10.2.4.1 a),5,x,,,,,E4,todo,
-5.10.2.4.1 a) 1st bullet,5,x,,,,,E4,todo,
-5.10.2.4.1 a) 2nd bullet,5,x,,,,,E4,todo,
-5.10.2.4.1 a) 3rd bullet,5,x,,,,,E4,todo,
-5.10.2.4.1 a) 4th bullet,5,x,,,,,E4,todo,
-5.10.2.4.1 a) last sentence,5,x,,,,,E4,todo,
-5.10.2.4.1 b),5,x,,,,,E4,todo,
-5.10.2.4.1 c),5,x,,,,,E4,todo,
-5.10.2.5,5,x,,,,,E4,todo,
-5.10.2.6,5,x,,,,,E4,todo,
-5.10.2.7,5,x,,,,,E4,todo,
-5.10.2.8,5,x,,,,,E4,todo,
-5.10.2.9,5,x,,,,,E4,todo,
-5.10.2.9 a),5,x,,,,,E4,todo,
-5.10.2.9 b),5,x,,,,,E4,todo,
-5.10.2.10,5,x,,,,,E4,todo,
-5.10.2.10 a),5,x,,,,,E4,todo,
-5.10.2.10 b),5,x,,,,,E4,todo,
-5.10.3.1.3,5,x,,,,,E4,todo,
-5.10.3.1.4,5,x,,,,,E4,todo,
-5.10.3.1.5,5,x,,,,,E4,todo,
-5.10.3.2.2,5,x,,,,,E4,todo,
-5.10.3.2.5,5,x,,,,,E4,todo,
-5.10.3.3.2,5,x,,,,,E4,todo,
-5.10.3.3.3,5,x,,,,,E4,todo,
-5.10.3.3.5,5,x,,,,,E4,todo,
-5.10.3.6.2,5,x,,,,,E4,todo,
-5.10.3.6.5,5,x,,,,,E4,todo,
-5.10.3.7.2,5,x,,,,,E4,todo,
-5.10.3.7.5,5,x,,,,,E4,todo,
-5.10.3.10.3,5,x,,,,,E4,todo,
-5.10.3.10.6,5,x,,,,,E4,todo,
-5.10.3.14.1,5,x,,,,,E4,todo,
-5.10.3.14.2,5,x,,,,,E4,todo,
-5.10.3.14.3,5,x,,,,,E4,todo,
-5.10.3.14.4,5,x,,,,,E4,todo,
-5.10.3.15.2,5,x,,,,,E4,todo,
-5.10.3.15.2 a),5,x,,,,,E4,todo,
-5.10.3.15.2 a) 1st bullet,5,x,,,,,E4,todo,
-5.10.3.15.2 a) 2nd bullet,5,x,,,,,E4,todo,
-5.10.3.15.2 a) 3rd bullet,5,x,,,,,E4,todo,
-5.10.3.15.2 b),5,x,,,,,E4,todo,
-5.10.3.15.3,5,x,x,,,,E4,todo,
-5.10.3.15.4,5,x,,,,,E4,todo,
-5.10.4.1,5,x,,,,,E4,todo,
-5.10.4.1 a),5,x,,,,,E4,todo,
-5.10.4.1 b),5,x,,,,,E4,todo,
-5.10.4.1.1,5,x,,,,,E4,todo,
-5.10.4.1.2,5,x,,,,,E4,todo,
-5.10.4.1.3,5,x,,,,,E4,todo,
-5.10.4.1.4,5,x,,,,,E4,todo,
-5.10.4.2,5,x,,,,,E4,todo,
-5.10.4.4,5,x,,,,,E4,todo,
-5.10.4.4 Table,5,x,,,,,E4,todo,
+5.10.1.3,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.1.5,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.1.6,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.1.6.1,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.1.7,5,x,,,,,E4,partial,"the information of the new level is accepted at once (4.8.3 [1], no transition buffer: EVC_Acceptance); rejected once the level is left (the first filter)"
+5.10.1.8,5,x,,,,,E4,partial,"the information of the new level is accepted at once (4.8.3 [1], no transition buffer: EVC_Acceptance); rejected once the level is left (the first filter)"
+5.10.2.4,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.4.1,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.4.1 a),5,x,,,,,E4,deferred,E5: level 2 is never available before the radio (EVC_Levels.Available)
+5.10.2.4.1 a) 1st bullet,5,x,,,,,E4,deferred,E5: level 2 is never available before the radio (EVC_Levels.Available)
+5.10.2.4.1 a) 2nd bullet,5,x,,,,,E4,deferred,E5: level 2 is never available before the radio (EVC_Levels.Available)
+5.10.2.4.1 a) 3rd bullet,5,x,,,,,E4,deferred,E5: level 2 is never available before the radio (EVC_Levels.Available)
+5.10.2.4.1 a) 4th bullet,5,x,,,,,E4,deferred,E5: level 2 is never available before the radio (EVC_Levels.Available)
+5.10.2.4.1 a) last sentence,5,x,,,,,E4,deferred,E5: level 2 is never available before the radio (EVC_Levels.Available)
+5.10.2.4.1 b),5,x,,,,,E4,done,"EVC_Levels.Available: levels 0 and 1 always, NTC never (no National System, PLAN.md)"
+5.10.2.4.1 c),5,x,,,,,E4,done,"EVC_Levels.Available: levels 0 and 1 always, NTC never (no National System, PLAN.md)"
+5.10.2.5,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.6,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.7,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.8,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.9,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.9 a),5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.9 b),5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.10,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.10 a),5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.2.10 b),5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.3.1.3,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.1.4,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.1.5,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.2.2,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.2.5,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.3.2,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.3.3,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.3.5,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.6.2,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.6.5,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.7.2,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.7.5,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.10.3,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.10.6,5,x,,,,,E4,deferred,"E5 (radio, sessions, position reports)"
+5.10.3.14.1,5,x,,,,,E4,done,EVC_Levels.Take_Conditional; evc_test E4_Level_Orders
+5.10.3.14.2,5,x,,,,,E4,done,EVC_Levels.Take_Conditional; evc_test E4_Level_Orders
+5.10.3.14.3,5,x,,,,,E4,done,EVC_Levels.Take_Conditional; evc_test E4_Level_Orders
+5.10.3.14.4,5,x,,,,,E4,done,EVC_Levels.Take_Conditional; evc_test E4_Level_Orders
+5.10.3.15.2,5,x,,,,,E4,deferred,E5 (sessions on a driver's change of level)
+5.10.3.15.2 a),5,x,,,,,E4,deferred,E5 (sessions on a driver's change of level)
+5.10.3.15.2 a) 1st bullet,5,x,,,,,E4,deferred,E5 (sessions on a driver's change of level)
+5.10.3.15.2 a) 2nd bullet,5,x,,,,,E4,deferred,E5 (sessions on a driver's change of level)
+5.10.3.15.2 a) 3rd bullet,5,x,,,,,E4,deferred,E5 (sessions on a driver's change of level)
+5.10.3.15.2 b),5,x,,,,,E4,deferred,E5 (sessions on a driver's change of level)
+5.10.3.15.3,5,x,x,,,,E4,deferred,E5 (sessions on a driver's change of level)
+5.10.3.15.4,5,x,,,,,E4,deferred,E5 (sessions on a driver's change of level)
+5.10.4.1,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.4.1 a),5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.4.1 b),5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
+5.10.4.1.1,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before)"
+5.10.4.1.2,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before)"
+5.10.4.1.3,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before)"
+5.10.4.1.4,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before)"
+5.10.4.2,5,x,,,,,E4,done,"EVC_Levels: the service brake T_ACK after the transition, TIU reason bit 5, MSG_STATUS brake 3, released by the acknowledgement; evc_test E4_Level_Transition_0"
+5.10.4.4,5,x,,,,,E4,done,EVC_Levels.Ack_Needed
+5.10.4.4 Table,5,x,,,,,E4,done,EVC_Levels.Ack_Needed
 5.11.2.2 A025,5,x,,,,,E4,todo,
 5.11.2.2 A030,5,x,,,,,E4,todo,
 5.11.2.2 A035,5,x,,,,,E4,todo,

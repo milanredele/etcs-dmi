@@ -4,8 +4,8 @@
 frame Track conditions
 sequence New LRBG and delete TC
 case New LRBG
-clause E4 todo A.3.6.1.1 ; efs 3.A3.6.1.1
-clause E4 todo A.3.6.2.1 ; efs 3.A3.6.2.1
+clause E4 done A.3.6.1.1 ; efs 3.A3.6.1.1
+clause E4 done A.3.6.2.1 ; efs 3.A3.6.2.1
 clause - absent 3.6.4.3 ; efs 3.6.4.3
 clause - absent 3.6.4.3 a) ; efs 3.6.4.3.a
 clause - absent 3.13.1.4 ; efs 3.13.1.4

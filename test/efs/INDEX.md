@@ -6,7 +6,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 
 | frame | file | cases | steps | actions tr. / verb. | expectations tr. / verb. | xfail | clauses |
 |---|---|---:|---:|---:|---:|---:|---|
-| Active Functions | active-functions.scn | 1 | 18 | 1 / 17 | 0 / 17 | 0 | todo 1 |
+| Active Functions | active-functions.scn | 1 | 18 | 1 / 17 | 0 / 17 | 0 | done 1 |
 | Adhesion factors | adhesion-factors.scn | 4 | 9 | 14 / 3 | 0 / 17 | 0 | absent 2, done 2, todo 5 |
 | Axle load | axle-load.scn | 7 | 15 | 15 / 5 | 0 / 63 | 0 | absent 5, done 5 |
 | BTM | btm.scn | 15 | 32 | 51 / 12 | 0 / 46 | 0 | absent 12, done 2, partial 1, todo 1 |
@@ -22,16 +22,16 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | EURORADIO Terminal registration | euroradio-terminal-registration.scn | 2 | 10 | 8 / 12 | 0 / 24 | 0 | todo 8 |
 | Gradient | gradient.scn | 7 | 28 | 46 / 15 | 0 / 51 | 0 | absent 8, done 14 |
 | Handling of Accepted and Stored Information | handling-of-accepted-and-stored-information.scn | 72 | 522 | 54 / 75 | 0 / 67 | 0 | absent 54 |
-| Infill | infill.scn | 2 | 11 | 13 / 4 | 0 / 3 | 0 | deferred 2, partial 1, todo 1 |
+| Infill | infill.scn | 2 | 11 | 13 / 4 | 0 / 3 | 0 | deferred 2, n/a 1, partial 1 |
 | JRU | jru.scn | 29 | 99 | 35 / 54 | 0 / 136 | 0 | other 30 |
 | LX | lx.scn | 9 | 44 | 40 / 33 | 0 / 126 | 0 | absent 20, done 5, todo 14 |
-| Level transitions | level-transitions.scn | 10 | 33 | 52 / 36 | 0 / 42 | 0 | absent 8, other 1, todo 8 |
+| Level transitions | level-transitions.scn | 10 | 33 | 52 / 36 | 0 / 42 | 0 | absent 8, deferred 8, other 1 |
 | Linking | linking.scn | 12 | 34 | 64 / 23 | 0 / 93 | 0 | absent 19, done 24, partial 1, todo 14 |
 | MA | ma.scn | 18 | 64 | 85 / 84 | 0 / 208 | 0 | absent 34, deferred 2, done 5, todo 12 |
 | MRSP | mrsp.scn | 10 | 11 | 14 / 7 | 35 / 2 | 0 | absent 18, deferred 1, done 8 |
 | Mode Profile | mode-profile.scn | 14 | 54 | 42 / 30 | 0 / 63 | 0 | absent 5, deferred 2, done 5, other 3, todo 1 |
 | Movement | movement.scn | 6 | 20 | 17 / 49 | 0 / 45 | 0 | other 12 |
-| National and default data | national-and-default-data.scn | 110 | 131 | 21 / 30 | 7 / 179 | 0 | absent 134, deferred 2, done 3, partial 1, todo 4 |
+| National and default data | national-and-default-data.scn | 110 | 131 | 21 / 30 | 7 / 179 | 0 | absent 134, deferred 1, done 4, partial 1, todo 4 |
 | On Sight | on-sight.scn | 3 | 12 | 12 / 17 | 0 / 20 | 0 | absent 2, todo 7 |
 | Override | override.scn | 23 | 63 | 118 / 153 | 0 / 155 | 0 | absent 2, todo 57 |
 | Position Reporting to the RBC | position-reporting-to-the-rbc.scn | 28 | 51 | 66 / 169 | 0 / 121 | 0 | absent 12, deferred 17, done 29, partial 5 |
@@ -39,20 +39,20 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Release speed | release-speed.scn | 1 | 2 | 2 / 1 | 0 / 4 | 0 | done 3 |
 | Reversing | reversing.scn | 5 | 13 | 16 / 15 | 0 / 30 | 0 | absent 8, todo 8 |
 | Route suitability | route-suitability.scn | 7 | 23 | 36 / 47 | 0 / 50 | 0 | absent 3, deferred 10 |
-| Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | todo 64 |
+| Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | partial 1, todo 63 |
 | Speed and distance monitoring | speed-and-distance-monitoring.scn | 15 | 22 | 51 / 14 | 49 / 5 | 2 | absent 19, deferred 1, done 6 |
 | Speed restriction to ensure permitted braking distance | speed-restriction-to-ensure-permitted-braking-distance.scn | 5 | 18 | 10 / 7 | 0 / 43 | 0 | absent 4, done 4 |
-| Staff Responsible | staff-responsible.scn | 3 | 6 | 6 / 16 | 0 / 12 | 0 | absent 3, todo 6 |
-| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, todo 135 |
-| Static Speed Profile | static-speed-profile.scn | 3 | 9 | 10 / 6 | 15 / 18 | 0 | absent 6, done 8, partial 1 |
+| Staff Responsible | staff-responsible.scn | 3 | 6 | 6 / 16 | 0 / 12 | 0 | absent 3, deferred 3, partial 3 |
+| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, deferred 52, done 68, partial 5, todo 10 |
+| Static Speed Profile | static-speed-profile.scn | 3 | 9 | 10 / 6 | 15 / 18 | 0 | absent 6, done 9 |
 | Supervision limits | supervision-limits.scn | 22 | 48 | 59 / 12 | 51 / 32 | 8 | absent 19, done 30 |
 | System Version 1 Translations | system-version-1-translations.scn | 30 | 64 | 30 / 34 | 0 / 34 | 0 | absent 41 |
 | System version order | system-version-order.scn | 1 | 5 | 5 / 4 | 0 / 5 | 0 | - |
-| TSR | tsr.scn | 10 | 31 | 28 / 9 | 11 / 35 | 0 | absent 5, done 7, todo 1 |
+| TSR | tsr.scn | 10 | 31 | 28 / 9 | 11 / 35 | 0 | absent 5, done 8 |
 | Targets and brake deceleration curves | targets-and-brake-deceleration-curves.scn | 7 | 14 | 34 / 8 | 15 / 6 | 0 | absent 4 |
 | Text messages | text-messages.scn | 5 | 10 | 11 / 36 | 0 / 44 | 0 | absent 21, todo 5 |
-| Track conditions | track-conditions.scn | 1 | 13 | 14 / 3 | 0 / 18 | 0 | absent 3, todo 2 |
+| Track conditions | track-conditions.scn | 1 | 13 | 14 / 3 | 0 / 18 | 0 | absent 3, done 2 |
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, todo 38 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, deferred 2, done 12, other 6, partial 9, todo 5 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 39, done 250, other 52, partial 21, todo 402 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 101, done 324, n/a 1, other 52, partial 29, todo 257 |

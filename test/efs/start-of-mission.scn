@@ -130,7 +130,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A23
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.A24
 sequence A24 : Delete train position data
 case Setup
-clause E4 todo 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
+clause E4 deferred 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
 step Setup
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
@@ -250,7 +250,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Delete train position data
-clause E4 todo 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
+clause E4 deferred 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
 clause - absent Entry 5.4.3.3.16 ; efs Entry 5.4.3.3.16
 step Delete train position data
 sub Sub-step1
@@ -380,7 +380,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Inform failure of the Radio Network registration
-clause E4 todo 5.4.3.2 A29 ; efs Entry 5.4.3.2.A29
+clause E4 deferred 5.4.3.2 A29 ; efs Entry 5.4.3.2.A29
 step In S3, driver selected to Reenter Network Id
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S3
@@ -525,7 +525,7 @@ efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURO
 efs: EURORADIO.Terminal.Terminal1.RegistrationState <- EURORADIO.Terminal.TerminalStruct.RegistrationStateSM.Registered
 efs: EURORADIO.RBCConnection.Contact.LastKnownRBC <- EURORADIO.RBCConnection.Contact.RBCContactStruct { Id => EURORADIO.RBCConnection.Contact.RBCIdStruct{ Country => 8, Id => 1212 }, PhoneNumber => '987654321', DataState => DataStateEnum.Valid }
 case Open communication session with RBC
-clause E4 todo 5.4.3.2 A31 ; efs Entry 5.4.3.2.A31
+clause E4 deferred 5.4.3.2 A31 ; efs Entry 5.4.3.2.A31
 step Open communication with RBC
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A31
@@ -655,14 +655,14 @@ efs: Testing.InitializeTerminals()
 sub SubStep3
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.IndicationStatus <- EURORADIO.RBCConnection.SafeRadioConnection.SafeRadioConnectionStruct.IndicationStatusSM.ConnectionLost_SetupFailed
 case Alert driver
-clause E4 todo 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.1
+clause E4 deferred 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.1
 step Alert driver
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A32
 expect efs: DMI.MasterDMI().Out_SafeRadioConnectionIndication.OutputInformation.DisplayRequested
 expect efs: DMI.MasterDMI().Out_SafeRadioConnectionIndication.ConnectionStatus == EURORADIO.RBCConnection.SafeRadioConnection.IndicationStatusEnum.ConnectionLostOrSetUpFailed @ deadline=1
 case Exit to S10
-clause E4 todo 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.3
+clause E4 deferred 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.3
 step Alert driver
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A32
@@ -790,8 +790,8 @@ end init
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Valid position data
-clause E4 todo 5.4.3.2 A33 ; efs Entry 5.4.3.2.A33.1
-clause E4 todo 5.4.3.2 A33 ; efs Entry 5.4.3.2.A33.2
+clause E4 deferred 5.4.3.2 A33 ; efs Entry 5.4.3.2.A33.1
+clause E4 deferred 5.4.3.2 A33 ; efs Entry 5.4.3.2.A33.2
 step Send SoM position report
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A33
@@ -924,8 +924,8 @@ end init
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Send SoM position report
-clause E4 todo 5.4.3.2 A34 ; efs Entry 5.4.3.2.A34.1
-clause E4 todo 5.4.3.2 A34 ; efs Entry 5.4.3.2.A34.2
+clause E4 deferred 5.4.3.2 A34 ; efs Entry 5.4.3.2.A34.1
+clause E4 deferred 5.4.3.2 A34 ; efs Entry 5.4.3.2.A34.2
 step Invalid position data
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A34
@@ -1086,7 +1086,7 @@ end init
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case RBC informs that the position is valid
-clause E4 todo 5.4.3.2 A35 ; efs Entry 5.4.3.2.A35
+clause E4 deferred 5.4.3.2 A35 ; efs Entry 5.4.3.2.A35
 clause - absent Entry 5.4.3.3.15 ; efs Entry 5.4.3.3.15
 step RBC informs that the position is valid
 sub Sub-step1
@@ -1098,7 +1098,7 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S10
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Valid
 sequence A38 : RBC informs that it rejects the train
 case Setup
-clause E4 todo 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
+clause E4 deferred 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
 step Setup
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
@@ -1348,7 +1348,7 @@ efs: Testing.InitializeTerminals()
 sub Sub-step3
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.Established
 case Delete train position data and terminate RBC session
-clause E4 todo 5.4.3.2 A39 ; efs Entry 5.4.3.2.A39
+clause E4 deferred 5.4.3.2 A39 ; efs Entry 5.4.3.2.A39
 clause - absent Entry 5.4.3.3.17 ; efs Entry 5.4.3.3.17
 step Delete train position data
 sub Sub-step1
@@ -1478,7 +1478,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Inform driver that the train is rejected
-clause E4 todo 5.4.3.2 A40 ; efs Entry 5.4.3.2.A40
+clause E4 deferred 5.4.3.2 A40 ; efs Entry 5.4.3.2.A40
 step Inform driver
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A39
@@ -1607,7 +1607,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Level 2
-clause E4 todo 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.1
+clause E4 done 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.1
 step Level 2
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D10
@@ -1615,7 +1615,7 @@ efs: Kernel.Level.DataState <- DataStateEnum.Valid
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.D11
 case Level 3
-clause E4 todo 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.1
+clause E4 done 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.1
 step Level 3
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D10
@@ -1623,7 +1623,7 @@ efs: Kernel.Level.DataState <- DataStateEnum.Valid
 efs: Kernel.Level.Value.Value <- LevelEnum.L3
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.D11
 case Level 0
-clause E4 todo 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.2
+clause E4 done 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.2
 step Level 0
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D10
@@ -1631,7 +1631,7 @@ efs: Kernel.Level.DataState <- DataStateEnum.Valid
 efs: Kernel.Level.Value.Value <- LevelEnum.L0
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S20
 case Level 1
-clause E4 todo 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.2
+clause E4 done 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.2
 step Level 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D10
@@ -1639,7 +1639,7 @@ efs: Kernel.Level.DataState <- DataStateEnum.Valid
 efs: Kernel.Level.Value.Value <- LevelEnum.L1
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S20
 case Level NTC
-clause E4 todo 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.2
+clause E4 done 5.4.3.2 D10 ; efs Entry 5.4.3.2.D10.2
 step Level NTC
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D10
@@ -1770,7 +1770,7 @@ end init
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Session is open
-clause E4 todo 5.4.3.2 D11 ; efs Entry 5.4.3.2.D11
+clause E4 deferred 5.4.3.2 D11 ; efs Entry 5.4.3.2.D11
 step Session is open
 sub Sub-step1 - Open the session
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.Established
@@ -1779,7 +1779,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D11
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S11
 expect efs: EURORADIO.Terminal.HasActiveSession() @ deadline=1
 case Session is not open
-clause E4 todo 5.4.3.2 D11 ; efs Entry 5.4.3.2.D11
+clause E4 deferred 5.4.3.2 D11 ; efs Entry 5.4.3.2.D11
 step Session is not open
 sub Sub-step1 - Open the session
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.NoSession
@@ -1908,14 +1908,14 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Valid train running number
-clause E4 todo 5.4.3.2 D12 ; efs Entry 5.4.3.2.D12.1
+clause E4 done 5.4.3.2 D12 ; efs Entry 5.4.3.2.D12.1
 step Valid train running number
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D12
 efs: Kernel.TrainRunningNumber.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.D12
 case Invalid train running number
-clause E4 todo 5.4.3.2 D12 ; efs Entry 5.4.3.2.D12.2
+clause E4 done 5.4.3.2 D12 ; efs Entry 5.4.3.2.D12.2
 step Invalid train running number
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D12
@@ -2049,7 +2049,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Both level and position are valid
-clause E4 todo 5.4.3.2 D2 ; efs Entry 5.4.3.2.D2.1
+clause E4 done 5.4.3.2 D2 ; efs Entry 5.4.3.2.D2.1
 step Valid level & position
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -2058,7 +2058,7 @@ efs: Kernel.TrainPosition.Position.DataState <- DataStateEnum.Valid
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D2
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.D3
 case Invalid level
-clause E4 todo 5.4.3.2 D2 ; efs Entry 5.4.3.2.D2.2
+clause E4 done 5.4.3.2 D2 ; efs Entry 5.4.3.2.D2.2
 step Valid level & position
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Invalid
@@ -2067,7 +2067,7 @@ efs: Kernel.TrainPosition.Position.DataState <- DataStateEnum.Valid
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D2
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S2
 case Invalid position
-clause E4 todo 5.4.3.2 D2 ; efs Entry 5.4.3.2.D2.2
+clause E4 done 5.4.3.2 D2 ; efs Entry 5.4.3.2.D2.2
 step Valid level & position
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -2077,7 +2077,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D2
 efs: BTM.LRBG.PreviousBaliseGroups <- []
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S2
 case Invalid level and position
-clause E4 todo 5.4.3.2 D2 ; efs Entry 5.4.3.2.D2.2
+clause E4 done 5.4.3.2 D2 ; efs Entry 5.4.3.2.D2.2
 step Valid level & position
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Invalid
@@ -2270,7 +2270,7 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Level2 or 3
-clause E4 todo 5.4.3.2 D3 ; efs Entry 5.4.3.2.D3.1
+clause E4 done 5.4.3.2 D3 ; efs Entry 5.4.3.2.D3.1
 step Level2
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -2284,7 +2284,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L3
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D3
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.D7
 case Level0, 1 or NTC
-clause E4 todo 5.4.3.2 D3 ; efs Entry 5.4.3.2.D3.2
+clause E4 done 5.4.3.2 D3 ; efs Entry 5.4.3.2.D3.2
 step Level0
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -2427,7 +2427,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Check open communication status
-clause E4 todo 5.4.3.2 D31 ; efs Entry 5.4.3.2.D31
+clause E4 deferred 5.4.3.2 D31 ; efs Entry 5.4.3.2.D31
 clause - absent Entry 5.4.3.3.13 ; efs Entry 5.4.3.3.13
 clause - absent Entry 5.4.3.3.14 ; efs Entry 5.4.3.3.14
 step Communication established, where RBC contact information was invalid
@@ -2574,7 +2574,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Position is valid
-clause E4 todo 5.4.3.2 D32 ; efs Entry 5.4.3.2.D32
+clause E4 deferred 5.4.3.2 D32 ; efs Entry 5.4.3.2.D32
 step Valid position
 sub Sub-step1
 taint odo
@@ -2582,7 +2582,7 @@ efs: Kernel.TrainPosition.Position.DataState <- DataStateEnum.Valid
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D32
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.A33
 case Invalid position
-clause E4 todo 5.4.3.2 D32 ; efs Entry 5.4.3.2.D32
+clause E4 deferred 5.4.3.2 D32 ; efs Entry 5.4.3.2.D32
 step Invalid position
 sub Sub-step1
 taint odo
@@ -2711,8 +2711,8 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Mobile terminal registered
-clause E4 todo 5.4.3.2 D7 ; efs Entry 5.4.3.2.D7.1
-clause E4 todo 5.4.3.2 D7 ; efs Entry 5.4.3.2.D7.2
+clause E4 deferred 5.4.3.2 D7 ; efs Entry 5.4.3.2.D7.1
+clause E4 deferred 5.4.3.2 D7 ; efs Entry 5.4.3.2.D7.2
 step Mobile terminal registered
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D7
@@ -2850,7 +2850,7 @@ sub SubStep2
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 case Loss of connection after D11
-clause E4 todo 5.4.5.1 ; efs 5.4.5.1
+clause E4 deferred 5.4.5.1 ; efs 5.4.5.1
 step Somewhere in SoM, after D11
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S21
@@ -2985,7 +2985,7 @@ sub SubStep2
 efs: Testing.InitializeTerminals()
 case Propose Non Leading in S20
 clause - absent Entry 5.4.3.3.19 ; efs Entry 5.4.3.3.19
-clause E4 todo 5.4.5.3 f) ; efs 5.4.5.3.f
+clause E4 done 5.4.5.3 f) ; efs 5.4.5.3.f
 step Non leading is proposed in S20
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -3476,7 +3476,7 @@ sub SubStep2
 efs: Testing.InitializeTerminals()
 case Propose Start in S10
 clause - absent Entry 5.4.3.3.24 ; efs Entry 5.4.3.3.24
-clause E4 todo 5.4.5.3 h) ; efs 5.4.5.3.h
+clause E4 done 5.4.5.3 h) ; efs 5.4.5.3.h
 step Start is proposed in S10
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -3654,7 +3654,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Propose to re-enter driver id in S10
-clause E4 todo 5.4.5.3 b) ; efs 5.4.5.3.b
+clause E4 done 5.4.5.3 b) ; efs 5.4.5.3.b
 step Re-enter driver id is proposed in S10
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -3680,7 +3680,7 @@ step We are still in S10
 sub Sub-step1
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S10
 case Propose to re-enter driver id in S20
-clause E4 todo 5.4.5.3 b) ; efs 5.4.5.3.b
+clause E4 done 5.4.5.3 b) ; efs 5.4.5.3.b
 step Re-enter Driver id is proposed in S20
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -3830,7 +3830,7 @@ sub SubStep2
 efs: Testing.InitializeTerminals()
 case Propose to re-enter level in S10
 clause - absent Entry 5.4.3.3.24 ; efs Entry 5.4.3.3.24
-clause E4 todo 5.4.5.3 e) ; efs 5.4.5.3.e
+clause E4 done 5.4.5.3 e) ; efs 5.4.5.3.e
 step Re-enter level is proposed in S10, level is valid, RBC data is valid
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -3882,7 +3882,7 @@ step We reach S2
 sub Sub-step1
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S2 @ deadline=1
 case Propose to re-enter level in S20
-clause E4 todo 5.4.5.3 e) ; efs 5.4.5.3.e
+clause E4 done 5.4.5.3 e) ; efs 5.4.5.3.e
 step Re-enter level is proposed in S20
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -4025,7 +4025,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Propose to re-enter train data in S20
-clause E4 todo 5.4.5.3 d) ; efs 5.4.5.3.d
+clause E4 done 5.4.5.3 d) ; efs 5.4.5.3.d
 step Re-enter train data is proposed in S20
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -4161,7 +4161,7 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Propose to re-enter train running number in S10
-clause E4 todo 5.4.5.3 c) ; efs 5.4.5.3.c
+clause E4 done 5.4.5.3 c) ; efs 5.4.5.3.c
 step Re-enter train running number is proposed in S10
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -4188,7 +4188,7 @@ step We are still in S10
 sub Sub-step1
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S10
 case Propose to re-enter train running number in S20
-clause E4 todo 5.4.5.3 c) ; efs 5.4.5.3.c
+clause E4 done 5.4.5.3 c) ; efs 5.4.5.3.c
 step Re-enter train running number is proposed in S20
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -4334,7 +4334,7 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Transition to any mode other than SB
-clause E4 todo 5.4.3.2.1 ; efs 5.4.3.2.1
+clause E4 done 5.4.3.2.1 ; efs 5.4.3.2.1
 step Somewhere in SoM
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -4345,7 +4345,7 @@ sub Sub-step1
 efs: Testing.SetFSMode(False)
 expect efs: NOT ( Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission )
 case Close the desk
-clause E4 todo 5.4.3.2.1 ; efs 5.4.3.2.1
+clause E4 done 5.4.3.2.1 ; efs 5.4.3.2.1
 step Somewhere in SoM
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -4358,7 +4358,7 @@ efs: DMI.CabOfDMI ( DMI.DMI1 ).Desk1IsActive <- False
 expect efs: NOT ( Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission )
 sequence S0 : Initiation
 case Initiating start of mission
-clause E4 todo 5.4.3.2 S0 ; efs Entry 5.4.3.2.S0
+clause E4 done 5.4.3.2 S0 ; efs Entry 5.4.3.2.S0
 step Setup
 sub Sub-step1
 init 100.0 SB
@@ -4609,9 +4609,9 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Initial state: data entry proposed
-clause E4 todo 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.1
-clause E4 todo 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.2
-clause E4 todo 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.3
+clause E4 done 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.1
+clause E4 done 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.2
+clause E4 done 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.3
 step Data entry is proposed
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S1
@@ -4620,7 +4620,7 @@ expect efs: DMI.MasterDMI().In_DriverIdEntryRequest.InputInformation.RequestStat
 expect efs: DMI.MasterDMI().In_VirtualBaliseCoverEntryRequest.InputInformation.RequestStatus == RequestEnum.Request @ deadline=1
 expect efs: DMI.MasterDMI().In_TrainRunningNumberEntryRequest.InputInformation.RequestStatus == RequestEnum.Request @ deadline=1
 case Entry of unknown driver id
-clause E4 todo 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.1
+clause E4 done 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.1
 clause - absent Entry 5.4.3.3.2 ; efs Entry 5.4.3.3.2
 step Driver id is unknown
 sub Sub-step1
@@ -4644,7 +4644,7 @@ expect efs: DMI.MasterDMI().In_TrainRunningNumber.InputInformation.RequestStatus
 expect efs: DMI.MasterDMI().In_DriverId.InputInformation.RequestStatus == RequestEnum.Disabled @ deadline=1
 expect efs: DMI.MasterDMI().In_VirtualBaliseCover.InputInformation.RequestStatus == RequestEnum.Disabled @ deadline=1
 case Entry of invalid driver id
-clause E4 todo 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.1
+clause E4 done 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.1
 clause - absent Entry 5.4.3.3.3 ; efs Entry 5.4.3.3.3
 step Driver id is invalid
 sub Sub-step1
@@ -4668,7 +4668,7 @@ expect efs: DMI.MasterDMI().In_TrainRunningNumber.InputInformation.RequestStatus
 expect efs: DMI.MasterDMI().In_VirtualBaliseCover.InputInformation.RequestStatus == RequestEnum.Disabled @ deadline=1
 expect efs: DMI.MasterDMI().In_DriverId.InputInformation.RequestStatus == RequestEnum.Disabled @ deadline=1
 case Entry of unknown train running number
-clause E4 todo 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.2
+clause E4 done 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.2
 clause - absent Entry 5.4.3.3.4 ; efs Entry 5.4.3.3.4
 step Train running number is unknown
 sub Sub-step1
@@ -4691,7 +4691,7 @@ expect efs: Kernel.TrainRunningNumber.DataState == DataStateEnum.Valid
 expect efs: Kernel.TrainRunningNumber.Value == '4567'
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S1.AskToEnterValues @ deadline=1
 case Entry of invalid train running number
-clause E4 todo 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.2
+clause E4 done 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.2
 clause - absent Entry 5.4.3.3.5 ; efs Entry 5.4.3.3.5
 step Train running number is invalid
 sub Sub-step1
@@ -4714,7 +4714,7 @@ expect efs: Kernel.TrainRunningNumber.DataState == DataStateEnum.Valid
 expect efs: Kernel.TrainRunningNumber.Value == '4567'
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S1.AskToEnterValues @ deadline=1
 case Entry of virtual balise cover
-clause E4 todo 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.3
+clause E4 done 5.4.3.2 S1 ; efs Entry 5.4.3.2.S1.3
 step Virtual balise cover entry is proposed
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedureSM.StartOfMission.S1
@@ -4854,7 +4854,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Offer selection of SH, NL or Data Entry
-clause E4 todo 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10
+clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10
 step Offer possibility to select SH, NL or Data Entry
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -4864,7 +4864,7 @@ expect efs: DMI.MasterDMI().In_ShuntingRequest.InputInformation.RequestStatus ==
 expect efs: DMI.MasterDMI().In_NonLeadingRequest.InputInformation.RequestStatus == RequestEnum.Request
 expect efs: Kernel.MissionIsOngoing == False
 case Driver selects SH
-clause E4 todo 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1
+clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1
 clause - absent Entry 5.4.3.3.18 ; efs Entry 5.4.3.3.18
 step Driver selects SH (E12), Level 0
 sub Sub-step1 - Set HandleModeChange and Mode
@@ -4908,8 +4908,8 @@ expect efs: DMI.MasterDMI().In_TrainData.InputInformation.RequestStatus == Reque
 expect efs: DMI.MasterDMI().In_NonLeadingRequest.InputInformation.RequestStatus == RequestEnum.Disabled
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Unknown
 case Driver selects NL
-clause E4 todo 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.2
-clause E4 todo 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.2.1
+clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.2
+clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.2.1
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 clause - absent Entry 5.4.3.3.17 ; efs Entry 5.4.3.3.17
 step Driver selects NL (E10), Level0
@@ -4993,7 +4993,7 @@ expect efs: Kernel.Mode == ModeEnum.NL
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Unknown
 expect efs: Kernel.MissionIsOngoing
 case Driver selects Train Data Entry
-clause E4 todo 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.3
+clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.3
 step Driver selects Train Data Entry
 sub Sub-step1 - Set HandleModeChange and Mode
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedureSM.StartOfMission.S10.DriverSelectionRequested
@@ -5126,8 +5126,8 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Send train data
-clause E4 todo 5.4.3.2 S11 ; efs Entry 5.4.3.2.S11
-clause E4 todo 5.4.3.2 S11 ; efs Entry 5.4.3.2.S11.1
+clause E4 deferred 5.4.3.2 S11 ; efs Entry 5.4.3.2.S11
+clause E4 deferred 5.4.3.2 S11 ; efs Entry 5.4.3.2.S11.1
 step Send train data
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S11
@@ -5260,8 +5260,8 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Request train data
-clause E4 todo 5.4.3.2 S12 ; efs Entry 5.4.3.2.S12
-clause E4 todo 5.4.3.2 S12 ; efs Entry 5.4.3.2.S12.1
+clause E4 done 5.4.3.2 S12 ; efs Entry 5.4.3.2.S12
+clause E4 done 5.4.3.2 S12 ; efs Entry 5.4.3.2.S12.1
 clause - absent Entry 5.4.3.3.20 ; efs Entry 5.4.3.3.20
 clause - absent Entry 5.4.3.3.21 ; efs Entry 5.4.3.3.21
 step Request train data
@@ -5395,8 +5395,8 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Unknown train running number
-clause E4 todo 5.4.3.2 S13 ; efs Entry 5.4.3.2.S13
-clause E4 todo 5.4.3.2 S13 ; efs Entry 5.4.3.2.S13.1
+clause E4 done 5.4.3.2 S13 ; efs Entry 5.4.3.2.S13
+clause E4 done 5.4.3.2 S13 ; efs Entry 5.4.3.2.S13.1
 clause - absent Entry 5.4.3.3.22 ; efs Entry 5.4.3.3.22
 step Unknown train running number
 sub Sub-step1
@@ -5418,8 +5418,8 @@ expect efs: Kernel.TrainRunningNumber.DataState == DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.D10 @ deadline=1
 expect efs: DMI.MasterDMI().In_TrainRunningNumber.InputInformation.RequestStatus == RequestEnum.Disabled
 case Invalid train running number
-clause E4 todo 5.4.3.2 S13 ; efs Entry 5.4.3.2.S13
-clause E4 todo 5.4.3.2 S13 ; efs Entry 5.4.3.2.S13.1
+clause E4 done 5.4.3.2 S13 ; efs Entry 5.4.3.2.S13
+clause E4 done 5.4.3.2 S13 ; efs Entry 5.4.3.2.S13.1
 clause - absent Entry 5.4.3.3.23 ; efs Entry 5.4.3.3.23
 step Invalid train running number
 sub Sub-step1
@@ -5561,8 +5561,8 @@ set nv M_NVAVADH 0.0
 end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 case Request level if unknown or invalid
-clause E4 todo 5.4.3.2 S2 ; efs Entry 5.4.3.2.S2.2
-clause E4 todo 5.4.3.2 S2 ; efs Entry 5.4.3.2.S2.1
+clause E4 done 5.4.3.2 S2 ; efs Entry 5.4.3.2.S2.2
+clause E4 done 5.4.3.2 S2 ; efs Entry 5.4.3.2.S2.1
 step Request level : Unknown level
 sub Sub-step1 - Level entry is proposed
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedureSM.StartOfMission.S2
@@ -5596,7 +5596,7 @@ expect efs: DMI.MasterDMI().In_ErtmsEtcsLevel.InputInformation.RequestStatus == 
 case Selected level is L2 or L3
 clause - absent Entry 5.4.3.3.8 ; efs Entry 5.4.3.3.8
 clause - absent Entry 5.4.3.3.9 ; efs Entry 5.4.3.3.9
-clause E4 todo 5.4.3.2 S2 ; efs Entry 5.4.3.2.S2.3
+clause E4 done 5.4.3.2 S2 ; efs Entry 5.4.3.2.S2.3
 step Level is L2
 sub Sub-step1
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
@@ -5612,7 +5612,7 @@ expect efs: Kernel.Level.DataState == DataStateEnum.Valid
 case Selected level is L0, L1 or NTC
 clause - absent Entry 5.4.3.3.8 ; efs Entry 5.4.3.3.8
 clause - absent Entry 5.4.3.3.9 ; efs Entry 5.4.3.3.9
-clause E4 todo 5.4.3.2 S2 ; efs Entry 5.4.3.2.S2.4
+clause E4 done 5.4.3.2 S2 ; efs Entry 5.4.3.2.S2.4
 step Level is L0
 sub Sub-step1
 efs: Kernel.Level.Value.Value <- LevelEnum.L0
@@ -5757,8 +5757,8 @@ efs: Testing.InitializeTerminals()
 sub SubStep3
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.Established
 case Offer the possibility to select Start, level is NTC
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.1
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.1
 step Offer possibility to select Start
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -5770,8 +5770,8 @@ sub Sub-step1
 efs: DMI.MasterDMI().In_Start.ProvideDriverResponse()
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S22
 case Offer the possibility to select Start, level is Level 0
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.2
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.2
 step Offer possibility to select Start
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -5782,8 +5782,8 @@ sub Sub-step1
 efs: DMI.MasterDMI().In_Start.ProvideDriverResponse()
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S23
 case Offer the possibility to select Start, level is Level 1
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.3
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.3
 step Offer possibility to select Start
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -5794,8 +5794,8 @@ sub Sub-step1
 efs: DMI.MasterDMI().In_Start.ProvideDriverResponse()
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S24
 case Offer the possibility to select Start, level is Level 2
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.4
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.4
 step Offer possibility to select Start
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -5806,8 +5806,8 @@ sub Sub-step1
 efs: DMI.MasterDMI().In_Start.ProvideDriverResponse()
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S21
 case Offer the possibility to select Start, level is Level 3
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
-clause E4 todo 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.4
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20
+clause E4 done 5.4.3.2 S20 ; efs Entry 5.4.3.2.S20.4
 step Offer possibility to select Start
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -5944,8 +5944,8 @@ sub SubStep3
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.Established
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.ConnectionState <- EURORADIO.RBCConnection.SafeRadioConnection.SafeRadioConnectionStruct.ConnectionStateSM.Established
 case Send MA request and receive SR
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.1
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.1
 step Send MA
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S21
@@ -5958,8 +5958,8 @@ taint ma
 efs: Kernel.MA.MA <- EMPTY
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S24
 case Send MA request and receive MA allowing OS
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
 step Setup
 sub SubStep1
 efs: Kernel.Modes.StaffResponsible.DeleteSRAuthorisation()
@@ -5977,8 +5977,8 @@ efs: Kernel.MA.ModeProfile.Profile <- [ Kernel.MA.ModeProfile.ModeProfileStruct 
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S25
 case Send MA request and receive MA allowing LS
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
 step Send MA
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S21
@@ -5992,8 +5992,8 @@ taint ma
 efs: Kernel.MA.ModeProfile.Profile <- [ Kernel.MA.ModeProfile.ModeProfileStruct { AcknLength => 0.0, Location => 0.0, Length => 1000.0, Mode => ModeEnum.ModeProfile.LS, Speed => 40.0, SupervisionQualifier => Messages.Q_MAMODE.as_both_the_EOA_and_SvL__instead_of_the_EOA_and_SvL_given_by_the_MA } ]
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S25
 case Send MA request and receive MA allowing SH
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
 step Send MA
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S21
@@ -6007,8 +6007,8 @@ taint ma
 efs: Kernel.MA.ModeProfile.Profile <- [ Kernel.MA.ModeProfile.ModeProfileStruct { AcknLength => 0.0, Location => 0.0, Length => 1000.0, Mode => ModeEnum.ModeProfile.SH, Speed => 40.0, SupervisionQualifier => Messages.Q_MAMODE.as_both_the_EOA_and_SvL__instead_of_the_EOA_and_SvL_given_by_the_MA } ]
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S25
 case Send MA request and receive MA allowing FS
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 todo 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.3
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 deferred 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.3
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Send MA
 sub Sub-step1
@@ -6148,8 +6148,8 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Request acknowledgement for SN mode, valid train position
-clause E4 todo 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22
-clause E4 todo 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22.1
+clause E4 done 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22
+clause E4 done 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22.1
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Ack SN, valid train position
 sub Sub-step1
@@ -6168,9 +6168,9 @@ expect efs: DMI.MasterDMI().In_AcknOfSNMode.InputInformation.RequestStatus == Re
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Valid
 expect efs: Kernel.MissionIsOngoing
 case Request acknowledgement for SN mode, invalid train position
-clause E4 todo 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22
-clause E4 todo 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22.2
-clause E4 todo 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22.1
+clause E4 done 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22
+clause E4 done 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22.2
+clause E4 done 5.4.3.2 S22 ; efs Entry 5.4.3.2.S22.1
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 clause - absent Entry 5.4.3.3.18 ; efs Entry 5.4.3.3.18
 step Ack SN, invalid train position
@@ -6313,8 +6313,8 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Request acknowledgement for UN mode, valid train position
-clause E4 todo 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23
-clause E4 todo 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23.1
+clause E4 done 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23
+clause E4 done 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23.1
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Ack UN, valid train position
 sub Sub-step1
@@ -6334,9 +6334,9 @@ expect efs: DMI.MasterDMI().In_AcknOfUNMode.InputInformation.RequestStatus == Re
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Valid
 expect efs: Kernel.MissionIsOngoing
 case Request acknowledgement for UN mode, invalid train position
-clause E4 todo 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23
-clause E4 todo 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23.2
-clause E4 todo 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23.1
+clause E4 done 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23
+clause E4 done 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23.2
+clause E4 done 5.4.3.2 S23 ; efs Entry 5.4.3.2.S23.1
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 clause - absent Entry 5.4.3.3.18 ; efs Entry 5.4.3.3.18
 step Ack UN, invalid train position
@@ -6482,8 +6482,8 @@ set nv D_NVSTFF 450.0
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Request acknowledgement for SR mode, valid train position
-clause E4 todo 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24
-clause E4 todo 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24.1
+clause E4 done 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24
+clause E4 done 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24.1
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Ack SR, valid train position
 sub Sub-step1
@@ -6502,9 +6502,9 @@ expect efs: DMI.MasterDMI().In_AcknOfSRMode.InputInformation.RequestStatus == Re
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Valid
 expect efs: Kernel.MissionIsOngoing
 case Request acknowledgement for SR mode, invalid train position
-clause E4 todo 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24
-clause E4 todo 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24.1
-clause E4 todo 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24.2
+clause E4 done 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24
+clause E4 done 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24.1
+clause E4 done 5.4.3.2 S24 ; efs Entry 5.4.3.2.S24.2
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 clause - absent Entry 5.4.3.3.18 ; efs Entry 5.4.3.3.18
 step Ack SR, invalid train position
@@ -6649,8 +6649,8 @@ efs: Kernel.Level <- Kernel.LevelData{ Value => LevelDataStruct{ NTC => NID_NTC.
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Request acknowledgement for OS mode
-clause E4 todo 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
-clause E4 todo 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
+clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
+clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Ack OS
 sub Sub-step1
@@ -6670,8 +6670,8 @@ expect efs: Kernel.Mode == ModeEnum.OS
 expect efs: DMI.MasterDMI().In_AcknOfOSMode.InputInformation.RequestStatus == RequestEnum.Disabled
 expect efs: Kernel.MissionIsOngoing
 case Request acknowledgement for LS mode
-clause E4 todo 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
-clause E4 todo 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
+clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
+clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Ack LS
 sub SubStep0
@@ -6693,8 +6693,8 @@ expect efs: Kernel.Mode == ModeEnum.LS
 expect efs: DMI.MasterDMI().In_AcknOfLSMode.InputInformation.RequestStatus == RequestEnum.Disabled
 expect efs: Kernel.MissionIsOngoing
 case Request acknowledgement for SH mode
-clause E4 todo 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
-clause E4 todo 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
+clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
+clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
 clause - absent 5.4.6.2 ; efs 5.4.6.2
 step Ack SH
 sub SubStep0
@@ -6837,16 +6837,16 @@ end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 efs: EURORADIO.Terminal.DefaultRadioNetworkId<- ''
 case Offer possibility to ReEnter the Radio Network ID
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1
 step Offer possibility to reenter Radio Network ID
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S3
 expect efs: DMI.MasterDMI().In_RBCContactInformation.ProposedActions == [ DMI.RBCContactActionEnum.ReenterNetworkId ]
 expect efs: DMI.MasterDMI().In_RBCContactInformation.InputInformation.RequestStatus == RequestEnum.Request
 case Driver Elects to Re-Enter Radio Network ID
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1.1
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1.2
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1.1
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1.2
 clause - absent Entry 5.4.3.3.10 ; efs Entry 5.4.3.3.10
 step Retrieve list of allowed networks
 sub Sub-step1
@@ -6883,10 +6883,10 @@ efs: EURORADIO.RBCConnection.Contact.AvailableNetworks.Networks <- []
 efs: EURORADIO.RBCConnection.Contact.AvailableNetworks.RequestState <- RequestEnum.Response
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.A29
 case One mobile terminal registerd on network
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.1
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.2
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.3
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.1
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.2
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.3
 step Status of RBC ID/Phone number is invalid
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S3
@@ -6920,7 +6920,7 @@ expect efs: DMI.MasterDMI().In_RBCContactInformation.InputInformation.RequestSta
 expect efs: DMI.MasterDMI().In_RBCContactInformation.ProposedActions == [ DMI.RBCContactActionEnum.ReenterNetworkId, DMI.RBCContactActionEnum.EnterContactInfo, DMI.RBCContactActionEnum.UseEireneShortNumber ]
 expect efs: DMI.MasterDMI().In_RBCContactInformation.RBCContactInformation == EMPTY
 case At the end, go to A31
-clause E4 todo 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.3
+clause E4 deferred 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.3
 clause - absent Entry 5.4.3.3.11 ; efs Entry 5.4.3.3.11
 clause - absent Entry 5.4.3.3.12 ; efs Entry 5.4.3.3.12
 step After driver responds, go to A31
@@ -7098,7 +7098,7 @@ expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.S
 sub Answers a failure
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.SAConnect.Indication <- EURORADIO.RBCConnection.SafeRadioConnection.SRCIndicationEnum.SA_DISCONNECT_Indication
 case Handle RBC connection failure
-clause E4 todo 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.2.1
+clause E4 deferred 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.2.1
 step Handle failure
 sub State change due to connection failure
 expect efs: Kernel.ActiveProcedure in [Kernel.ActiveProcedureSM.StartOfMission.A32] @ deadline=1
@@ -7242,13 +7242,13 @@ expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.S
 sub Answers a success
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.SAConnect.Indication <- EURORADIO.RBCConnection.SafeRadioConnection.SRCIndicationEnum.SA_CONNECT_Confirmation
 case Wrong version number received
-clause E4 todo 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.2.2
+clause E4 deferred 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.2.2
 step Wrong version number
 sub Wrong version number received
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SessionManagementData.SystemVersion.Value <- VersionManagement.SystemVersionEnum.Unknown
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SessionManagementData.SystemVersion.DataState <- DataStateEnum.Valid
 case Handle RBC connection failure
-clause E4 todo 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.2.1
+clause E4 deferred 5.4.3.2 A32 ; efs Entry 5.4.3.2.A32.2.1
 step Handle failure
 sub State change due to connection failure
 expect efs: Kernel.ActiveProcedure in [Kernel.ActiveProcedureSM.StartOfMission.A32] @ deadline=1

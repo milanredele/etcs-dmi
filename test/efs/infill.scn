@@ -142,7 +142,7 @@ expect efs: (FIRST X IN Kernel.TSR.TSRs).Location == 60.0 @ deadline=1
 expect efs: (FIRST X IN Kernel.TSR.TSRs).Speed == 10.0 @ deadline=1
 case Send TSR in OS
 clause E3 deferred 3.8.4.6.2 ; efs 3.8.4.6.2
-clause E4 todo 4.8.4.1.1 ; efs 4.8.4.1.1
+clause E4 n/a 4.8.4.1.1 ; efs 4.8.4.1.1
 clause E3 partial 3.11.6.2 ; efs 3.11.6.2
 step Setup
 sub SubStep1 - Initialize test environment

@@ -4,7 +4,7 @@
 frame Active Functions
 sequence Provide Juridical Data
 case Test function ProvideJuridicalData
-clause E4 todo 4.5.2.1 ; efs 4.5.2.1.79
+clause E4 done 4.5.2.1 ; efs 4.5.2.1.79
 step Setup
 sub SubStep1
 init 100.0 NP

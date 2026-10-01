@@ -830,3 +830,119 @@ SUBSET-076 in the check. The sequences also tabulate what the on-board
 is expected to send, so the train-to-track messages are checked too,
 the RIU taken as the other end where the catalogue has the message for
 the RIU alone.
+
+## 12. E4 — Modes and procedures, level 1: outcome (2026-10-01)
+
+**Modes and levels** (`e4/modes`). The mode machine runs:
+`EVC_Core.Run_Mode_Machine` takes, of the transitions of 4.6.2
+(`EVC_Modes.Transitions`, now with the condition lists of Figure 2 in
+`EVC_Modes.Conditions`), the one of the highest priority whose condition
+of 4.6.3 holds (`EVC_Transition_Conditions.Holds`); the proof shows that
+only transitions of the table are taken, that nothing leaves IS and that
+NP goes to IS before SB. One cycle is now: ports (the DMI's frames
+decoded into `EVC_Driver_Requests`, the train interface into
+`EVC_Train_Inputs`), position, stored information (filtered by 4.8),
+supervision, the levels and the mission (`EVC_Levels`, `EVC_Mission`),
+the mode machine and what entering the mode means (`Enter_Mode`: the
+data of 4.10 through reset entry points added to the E3 stores, the
+brake reasons of 4.12), outputs. The supervision runs before the mode
+machine, so the ceiling of a new mode shows from the next cycle.
+
+- Conditions of this half: [1] to [4], [10], [13] (a fault of the host,
+  `Enter_Failure`), [14], [21], [25], [26], [29], [32], [39], [42],
+  [44], [45] (override not active until the merge), [46], [47], [56],
+  [58], [60], [67], [77] to [79], [84]. [22], [23] and [59] are listed
+  for both halves in §10 and left to `e4/procedures` (packet 135 and
+  reversing); the mode profile ones ([34], [61], [71]) are theirs.
+- 4.4 and 4.5: the functions of each mode as predicates of `EVC_Modes`
+  (Figure 1) that the snapshot uses: the MA, the SSP, ASP, LX and PBD
+  restrictions, V_MAIN in FS / AD / LS / OS (and SM for the track
+  description), the TSRs also in SR and UN, the train speed where the
+  table has it, `Supervise` in those modes with valid Train Data; the
+  mode speed of SR (V_NVSTFF or the driver's), SH, OS, LS, UN; the SR
+  distance (4.4.11.1.3 b) as a virtual position supervised by E3's
+  `EVC_SDM`; the unauthorised direction protection in SR against the
+  train orientation; the emergency brake of SF every cycle (TIU reason
+  bit 6); IS commands nothing; "Entering FS" (4.4.9.1.4) while SSP and
+  gradient do not cover the train; "non-leading no longer permitted"
+  (4.4.15.1.1.3), both as MSG_SYSTEM_STATUS.
+- 4.7: MSG_MODE_LEVEL carries the mode, the level, the mode to
+  acknowledge, the level announced and its acknowledgement; MSG_ONBOARD
+  the data statuses (driver ID, Train Data, level, train running number,
+  position), the train inputs and the start of mission; MSG_STATUS brake
+  3 while the service brake of 5.10.4.2 waits for the acknowledgement.
+- 4.8: `EVC_Acceptance`, the first filter by level and the third by mode
+  as tables for the balise information this on-board takes, applied to
+  every packet of a group message after the level orders (4.8.1.3: an
+  immediate order switches the level before the rest is filtered); a
+  rejection is JRU event 32, change 15. Information of 4.8.3 [1] is
+  accepted at once: there is no transition buffer (4.8.5, with E5).
+- 4.10, 4.12, A.3.4 k: `Enter_Mode` with `EVC_Track_Description.Delete`,
+  `EVC_Movement_Authority.Delete_MA`, `EVC_Track_Conditions.Reset`,
+  `EVC_Position.Delete_Linking` / `Delete_Geo`,
+  `EVC_National_Values.Delete_Pending`, `EVC_Levels.Mode_Entered`,
+  `EVC_Mission.Mode_Entered`, each with the modes of its row. Nothing is
+  kept over No Power, so 4.11 does not apply.
+- 5.4, 5.5 in levels 0, 1, NTC: the start of mission is engaged in SB
+  with a desk open; the driver's entries are taken in the modes of 4.7.2
+  and checked against A.3.11 and 7.5 (a refusal is JRU event 41, kind
+  4); 'Start' with a valid driver ID, level and Train Data proposes UN,
+  SN or SR (level 2 without a radio: SR, 5.4.5.3 h); the mission starts
+  and ends as 5.4.6 and 5.5.2 say (JRU event 41). The Train Data are
+  the driver's entry (DMI Table 40) with the installation's fixed part
+  (`EVC_Config.Fixed_Train_T`, in `Config_T` but not yet in the byte
+  image, see below). The RBC steps are E5.
+- 5.10: `EVC_Levels`, the table of priority (level 2 is not available
+  before the radio, NTC never), the announcement shown when it changes
+  the level, the acknowledgement area and the transition location, the
+  immediate and the conditional order, the driver's level, the
+  acknowledgement and the service brake after T_ACK (TIU reason bit 5).
+- `EVC_Driver_Requests` decodes MSG_DRIVER_ACTION and MSG_DRIVER_DATA,
+  latched per cycle, with queries named after the actions; the
+  procedures half adds its own.
+
+**Tests**: eleven scenarios `Scenario_E4_*` drive the on-board through
+its ports (start of mission in levels 0, 1, NTC and 2, SR distance and
+SR data, the transition to level 0 with its acknowledgement and brake,
+the immediate, conditional and prioritised orders, acceptance, SL, NL,
+IS, the odometer's safety threshold, the desk closed during the start of
+mission, "Continue Shunting on desk closure", the tables); the scenarios
+of E2 and E3 run in FS, level 1, with the default train
+(`EVC_Core.Set_Mode_For_Test`). `evc_fuzz` sends the start of mission
+frames with values in and out of range. The bench mission
+(`Scenario_Bench_Onboard`, `onboard_smoke.js`) now starts with the
+driver's start of mission in level 1, runs in SR and enters FS at the
+first group; no brake release needs acknowledging any more. Goldens
+re-recorded, each looked at with `test/tools/evc_dump.py --diff`: the
+E2 position scenarios (FS instead of SB: no standstill supervision
+brake, the supervision recorded, the mission events); the power-up,
+malformed, valid inputs, isolation and received telegram scenarios
+(MSG_ONBOARD som 0 without a desk open); the two profile scenarios (the
+same and "Entering FS"); the bench.
+
+**Proof**: the full `evc/prove.sh`, 7989 checks, 0 unproved (3498 flow,
+4491 provers). The postcondition of `EVC_Position.Update` (the doubts
+never shrink against the same LRBG) was found unproved twice while the
+WIP state was proved and proved after; it is near the provers' limit
+at level 2 and the first place to look if a later change upsets it.
+`evc_test` 10487 checks, `evc_fuzz` raised 0, the wasm smoke checks
+identical bytes.
+
+**Matrix** (the 337 clauses of this half, 4.3 to 4.12, 5.3, 5.4, 5.5,
+5.10, A.3.3 to A.3.6): 142 `done`, 53 `partial`, 127 `deferred` (E5
+radio and sessions above all, E7 Euroloop, AD with the ATO), 14 `n/a`
+(4.11: nothing is kept over No Power; infill; STM), 1 `todo`
+(4.4.11.1.5.1); eight E2/E3 rows closed or narrowed (3.6.6.9 d,
+3.6.8.7, 3.11.3.3.2, 3.11.7.1, 3.11.7.1.3, 3.14.1.11, 3.14.3.1, A.3.11
+Table). The other 431 E4 rows are the procedures half's.
+
+**Left**: [22], [23], [59] (see above); 4.4.11.1.5.1 (a movement while
+the SR data window is open: the on-board does not know the window); the
+position's train length (`EVC_Position.Set_Train_Length` is still not
+called: the engine ends of SB, SL, NL, PS and the train integrity are
+E5's reports); the transition buffer of 4.8.5; the fixed Train Data in
+the configuration image (a format version 2 of `EVC_Config` with the
+gamma curves and the correction factors of `Train_Data_Extra_T`, with
+the train data view of E6). The bench page still offers the stopgap
+"Acknowledge brake release" and says the on-board has no modes; with
+the real start of mission the DMI's start-up dialogue drives it.

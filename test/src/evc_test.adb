@@ -10502,7 +10502,10 @@ procedure EVC_Test is
    end Scenario_E4_Tables;
 
    --  5.4.3.2 in level 1: S0, S1, S2, S12, S13, S20, S24; 4.6.3 [8]; the
-   --  mission (5.4.6.1); SR (4.4.11); FS on the first MA (4.6.3 [32])
+   --  mission (5.4.6.1); SR (4.4.11); FS on the first MA (4.6.3 [32]).
+   --  The steps in the order of SUBSET-076 5040300_01 (SV30): cab A,
+   --  driver ID, level 1, Train Data, train running number, 'Start', SR
+   --  acknowledged
    procedure Scenario_E4_SoM_Level_1 is
    begin
       Start_E4;

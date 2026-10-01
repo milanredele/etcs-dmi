@@ -723,7 +723,7 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S140 @ de
 expect efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested @ deadline=1
 case Mode SB (E13)
 clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
-clause E4 todo 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1.1
+clause E4 partial 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1.1
 step Mode SB (E13)
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.S050
