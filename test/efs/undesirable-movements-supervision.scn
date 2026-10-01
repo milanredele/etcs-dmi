@@ -1312,7 +1312,7 @@ case Maximum reverse distance in PT exceeded
 clause E4 todo 4.4.14.1.3 ; efs 4.4.14.1.3
 clause E4 todo 4.4.14.1.3.1 ; efs 4.4.14.1.3.1
 clause E4 todo 4.4.14.1.3.2 ; efs 4.4.14.1.3.2
-clause E3 deferred 3.14.1.7.4 ; efs 3.14.1.7.4
+clause E3 done 3.14.1.7.4 ; efs 3.14.1.7.4
 step Setup
 sub SubStep1
 init 500.0 PT

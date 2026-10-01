@@ -178,7 +178,7 @@ expect MRSP 50.0 == 40.0 @ deadline=1
 expect MRSP 500.0 == 60.0 @ deadline=1
 case Override function is activated
 clause - absent 3.11.2.2 j) ; efs 3.11.2.2.j
-clause E3 deferred 3.11.10.1 ; efs 3.11.10.1
+clause E3 done 3.11.10.1 ; efs 3.11.10.1
 clause E3 done 3.13.7.2 ; efs 3.13.7.2
 clause - absent 3.13.7.3 ; efs 3.13.7.3
 step Provide applicable NV

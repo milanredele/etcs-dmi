@@ -4,11 +4,14 @@
 --  initiated by the driver and ordered by the trackside (5.6, 5.7) with
 --  Passive Shunting, override (5.8, the override function related speed
 --  restriction of 3.11.10), On Sight (5.9), train trip and post trip
---  (5.11), reversing (5.13), Limited Supervision (5.19), supervised
---  manoeuvre (its exit, 5.21), the inhibition of the balise
---  transmission alarm reaction (5.22) and the mode related speed
---  restrictions of 3.11.7. The text messages of 3.12.3 are
---  EVC_Text_Messages.
+--  (5.11), reversing (5.13), passing a level crossing not protected
+--  (5.16), changing Train Data from sources different from the driver
+--  (5.17), Limited Supervision (5.19), supervised manoeuvre (its exit,
+--  5.21), the inhibition of the balise transmission alarm reaction
+--  (5.22) and the mode related speed restrictions of 3.11.7. The text
+--  messages of 3.12.3 are EVC_Text_Messages; the indication of track
+--  conditions (5.18) and the information for an external function
+--  (5.20) are EVC_Track_Conditions.
 --
 --  The joint with the mode machine. A transition of 4.6.2 is taken by
 --  the mode machine of EVC_Core when one of its conditions of 4.6.3
@@ -43,16 +46,21 @@
 --       version, the track description) and the reaction of a linking
 --       error set to the service brake (3.16.2.3, 3.14.1.6);
 --    5. the post trip supervision (4.4.14.1.3), the reversing (5.13,
---       3.15.4), the inhibition of the BTM alarm reaction (5.22);
+--       3.15.4), the inhibition of the BTM alarm reaction (5.22), the
+--       level crossing of the temporary EOA (5.16: its substitution, from
+--       the stopping area or the location EVC_SDM found, and the
+--       indication to the driver), the Train Data changed by another
+--       source (5.17, the TIU's train configuration in Context_T);
 --    6. the conditions of 4.6.3 of this half.
 --  After the mode machine, Brake_Demand is what the procedures command
---  (3.14.1.3, 3.14.1.6, 3.14.1.7.1, 3.14.1.7.3, 3.14.1.7.4, 4.4.13.1.2),
+--  (3.14.1.3, 3.14.1.6, 3.14.1.7.1 to 3.14.1.7.4, 4.4.13.1.2),
 --  and the queries below what the DMI and the JRU are told.
 --
 --  Positions are frame positions of the odometer frame (EVC_Distances),
 --  "ahead" the sense of the snapshot (EVC_Supervision_Input). The
 --  locations the procedures keep (the former EOA, the reversing area, the
---  start of the post trip movement) are frame positions taken when the
+--  start of the post trip movement, the substitution of a level
+--  crossing) are frame positions taken when the
 --  information is received or the procedure starts, not relocated with
 --  the reference balise group: a choice, the relocation moves a location
 --  by less than the confidence interval it already had.
@@ -64,7 +72,9 @@
 --  ([34], [61], [71] read Context_T.Level_Switched, which the modes half
 --  sets); the National System ([35], [38], [63] in level NTC: out of
 --  scope, PLAN.md); the SR distance and the list of balise groups in SR
---  authority ([36], [42]: the SR mode of the modes half).
+--  authority ([36], [42]: the SR mode of the modes half); the Train
+--  Data entry that S6 of 5.17 asks for (the modes half calls
+--  Train_Data_Revalidated); the automatic triggering of 5.22.3.1.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 

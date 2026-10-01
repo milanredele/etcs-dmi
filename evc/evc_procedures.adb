@@ -1081,14 +1081,14 @@ is
       --  ahead of where the procedure was triggered (along the sense of
       --  its store; one in which the train stood then starts in rear)
       --  shortens the distance to its start
-      function BMM_Area_Reached return Boolean
+      function BMM_Area_Reached (Front : Dist_T) return Boolean
         with Global => (Input => (EVC_Track_Conditions.State,
                                   EVC_Origins.State, BMM_From))
       is
          St : constant Store_T := EVC_Track_Conditions.Big_Metal_Masses;
          T  : constant Origin_Table_T := Origin_Table;
          F  : constant Dist_T := A (St.Sense, BMM_From);
-         Cur : constant Dist_T := A (St.Sense, S.Train.Est_Front);
+         Cur : constant Dist_T := A (St.Sense, Front);
       begin
          for I in 1 .. St.Count loop
             declare
@@ -1119,7 +1119,7 @@ is
          if EVC_Procedure_Requests.Revoke_BMM_Inhibition
            or else Abs_Dist (Diff (S.Train.Est_Front, BMM_From))
                      > BMM_Distance_Cm
-           or else BMM_Area_Reached
+           or else BMM_Area_Reached (S.Train.Est_Front)
          then
             BMM_On := False;
             Record_Event (Event_BMM, 0, 0);

@@ -830,3 +830,111 @@ SUBSET-076 in the check. The sequences also tabulate what the on-board
 is expected to send, so the train-to-track messages are checked too,
 the RIU taken as the other end where the catalogue has the message for
 the RIU alone.
+
+## 12. E4 outcome
+
+**Procedures** (branch `e4/procedures`, 2026-10-01). The procedures of
+chapter 5 in `EVC_Procedures` (SPARK), the text messages in
+`EVC_Text_Messages`, the driver's actions they read in the interim
+`EVC_Procedure_Requests` (to be folded into the modes half's
+`EVC_Driver_Requests` at the merge), the transitions they own in the
+interim `EVC_Procedure_Transitions` (replaced by the mode machine of the
+modes half). One cycle: after the speed and distance monitoring,
+`EVC_Procedures.Evaluate` takes the packets of the cycle (132, 135, 49,
+137, 12, 138, 139; 73, 74 for the texts), runs override, the mode
+profile against the train position, the trip conditions, post trip,
+reversing, the BTM alarm inhibition, the level crossings and the Train
+Data changes, and sets the conditions of 4.6.3 it owns; after the mode
+machine `Mode_Changed` does what entering a mode means for them and
+`Finish_Cycle` gives their brake demand. What is in:
+- shunting 5.6 and 5.7 ([5], [19], [22], [23], [27], [28], [30], [49]
+  to [52]; [61] waits for the level switch of the modes half), the list
+  of balise groups for the SH area (packet 49, 4.4.8.1.1 b, deleted with
+  its mode profile, 3.12.4.4), "stop if in shunting", Passive Shunting
+  with "stop shunting on desk opening" and "continue shunting on desk
+  closure";
+- override 5.8 ([37], [43], [54]), the former EOA, every trip inhibited
+  while it is active, its end conditions a) to e), g), i), the override
+  speed restriction (3.11.10);
+- On Sight 5.9 and Limited Supervision 5.19 ([15], [40], [70], [72] to
+  [76]; [34], [71] wait for the level switch): the rectangle of
+  acknowledgement, the request never taken back, the service brake after
+  T_ACK (3.14.1.7.3), the profile of the mode in use no temporary EOA
+  (3.12.4.7);
+- train trip and post trip 5.11 ([7], [12], [16] to [18], [62], [63],
+  [65], [66], [68], [69]): the reason as a system status message, the MA
+  and track description deleted and refused in TR (A035), the
+  acknowledgement at standstill, the PT reverse distance (4.4.14.1.3,
+  3.14.1.7.4), the forward movement protected in PT and RV
+  (EVC_Brake_Commands);
+- reversing 5.13 with 3.15.4 ([59], the RV speed and distance, 3.14.1.7.1);
+- level crossings 5.16 ([9]): the substitution of the temporary EOA and
+  SvL by the LX speed restriction, stopped in the stopping area or at the
+  location of the Permitted limit for V_LX computed by `EVC_SDM` with the
+  formulas of V_est (3.13.9.3.5.11), LX01 on the DMI; a start passed
+  without the substitution trips;
+- Train Data changed by another source 5.17, from a new TIU input 13
+  (the train configuration of SUBSET-034 2.6.4.2, with two bits standing
+  for the train implementation's choices of D0 and D1): the service brake
+  and its acknowledgement, "Train data changed", the re-validation asked
+  (S6 is a query for the Train Data entry of the modes half);
+- the indication of track conditions 5.18: the E3 profiles already did
+  everything but the virtual SBI limits of a non stopping area (5.18.4.2)
+  and the tunnel stopping area (5.18.8), which now use SBD curves the
+  supervision evaluates at the estimated speed for feet the stored
+  information puts in the snapshot (`Snapshot_T.Virtual`, one cycle
+  late); the tunnel area goes in MSG_STATUS, its display toggle is the
+  DMI's;
+- the information for an external function 5.20 (SUBSET-034 2.3.4,
+  2.4.1, 2.4.2, 2.4.4, 2.4.6, 2.4.7, 2.4.10) as a second TIU output (tag
+  16#54#), with packets 69 and 40 now stored;
+- Supervised Manoeuvre 5.21: the exit [82]; the rest is level 2;
+- the inhibition of the BTM alarm reaction 5.22 (manual triggering, its
+  three ends, 5.22.5.2.1); text messages 3.12.3 (packets 73 and 74,
+  MSG_TEXT and MSG_TEXT_REMOVE, the acknowledgement by id, the brake of
+  3.12.3.4.7, 3.12.3.5.3); the mode related speed restrictions 3.11.7 as
+  `Snapshot_T.Mode_Speed`.
+
+The DMI gets the acknowledgement of a mode and "override" in
+MSG_MODE_LEVEL, reversing, the tunnel area and brake 3 ("applied because
+an acknowledgement is pending") in MSG_STATUS, the system status
+messages of the trip reasons, the reverse distances and 5.17; the TIU
+three more brake reasons (trip, acknowledgement missing, procedure); the
+JRU events 23 (procedures) and 24 (text messages). The joint files
+changed additively only: `Snapshot_T` gained `LX` and `Virtual`,
+`EVC_Transition_Conditions.Holds` reads `EVC_Procedures.State`.
+
+**Choices**: locations the procedures keep (former EOA, reversing area,
+start of PT, the substitution of an LX, the text conditions) are frame
+positions taken when the information arrives, not relocated; the speed
+of 5.8.2.1 a) is the upper bound of the odometer's; T_ACK 5 s and the
+BMM distance 300 m of A.3.1; the fixed texts in English only.
+
+**Not here, and why**: everything of level 2 and the RBC ([6], [11],
+[20], [41], [81], the reports and requests of 5.6, 5.11, 5.21: E5); the
+level transitions and the start of mission ([34], [61], [71] read a
+level switch the modes half sets; "start" in PT; the train running
+number is taken as valid); the SR distance of 5.8.4.1 h) (SR mode, the
+modes half); National Systems; the automatic triggering of 5.22.3.1
+(needs the resets of a BMM track condition with the antenna in it); the
+4.x rows the procedures implement (4.4.8.1.1, 4.4.13, 4.4.14.1.3,
+4.4.18, 4.4.20, parts of 4.10 and 4.12) are left to the merge, so that
+the two halves do not edit the same rows of the matrix.
+
+**Tests**: `evc_test` RESULT_EVC_TEST, 19 scenarios of the procedures
+in `test/src/evc_test_procedures.adb` that drive the on-board through
+its ports only (balise telegrams of `Sim_Telegrams`, now with packets 39,
+40, 67, 69, 88 and the mode profile, odometer, TIU, DMI frames) and
+check MSG_MODE_LEVEL, MSG_STATUS, MSG_SPEED_STATE, MSG_TRACK_COND,
+MSG_SYSTEM_STATUS, MSG_TEXT, the two TIU outputs and the JRU; the
+scenarios follow the SUBSET-076 sequences of their features where
+level 1 allows (5160000_01, 5170200_01, 5090200_01, ...). Until the
+start of mission of the modes half they start from a mode set with
+`EVC_Core.Set_Mode_For_Test`. One golden changed, profiles_track_conditions,
+by the 175 TIU track condition outputs alone (without them it hashes to
+the old golden). `evc_fuzz` raised: 0. Proof RESULT_PROOF.
+
+**Matrix**: of the 336 E4 rows of these sections 266 `done`, 22
+`partial`, 36 `deferred` (E5, E7), 4 `n/a` (National Systems, the BTM
+alarm), 8 `todo` that belong to the modes half or remain (5.22.3.1);
+25 E3 rows, 1 E2 row and the 7 rows of 3.15.4 (E6) closed with them.

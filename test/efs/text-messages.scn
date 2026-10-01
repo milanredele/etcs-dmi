@@ -9,7 +9,7 @@ clause - absent 3.12.3.4.2 c) ; efs 3.12.3.4.2.c
 clause - absent 3.12.3.4.2 ; efs 3.12.3.4.2
 clause - absent 3.12.3.4.3 ; efs 3.12.3.4.3
 clause - absent 3.12.3.4.3 d) ; efs 3.12.3.4.3.d
-clause E4 todo 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
+clause E4 done 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
 step Setup
 sub SubStep1
 init 0.0 FS
@@ -155,7 +155,7 @@ clause - absent 3.12.3.4.2 ; efs 3.12.3.4.2
 clause - absent 3.12.3.4.2 b) ; efs 3.12.3.4.2.b
 clause - absent 3.12.3.4.3 ; efs 3.12.3.4.3
 clause - absent 3.12.3.4.3 c) ; efs 3.12.3.4.3.c
-clause E4 todo 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
+clause E4 done 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
 step Setup
 sub SubStep1
 init 0.0 FS
@@ -302,7 +302,7 @@ clause - absent 3.12.3.4.2 ; efs 3.12.3.4.2
 clause - absent 3.12.3.4.2 a) ; efs 3.12.3.4.2.a
 clause - absent 3.12.3.4.3 ; efs 3.12.3.4.3
 clause - absent 3.12.3.4.3 a) ; efs 3.12.3.4.3.a
-clause E4 todo 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
+clause E4 done 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
 step Setup
 sub SubStep1
 init 0.0 FS
@@ -461,7 +461,7 @@ case Plain text message limited by time
 clause - absent 3.12.3.1.1 ; efs 3.12.3.1.1
 clause - absent 3.12.3.4.3 ; efs 3.12.3.4.3
 clause - absent 3.12.3.4.3 b) ; efs 3.12.3.4.3.b
-clause E4 todo 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
+clause E4 done 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
 step Setup
 sub SubStep1
 init 0.0 FS
@@ -609,7 +609,7 @@ sub Check the text is not displayed anymore
 expect efs: COUNT X IN DMI.MasterDMI().Out_PlainTextInformation.Messages == 0 @ blocking=FALSE
 expect efs: COUNT X IN Kernel.TextMessages.PlainTextMessages == 0 @ blocking=FALSE
 case Plain text message limited by multiple conditions
-clause E4 todo 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
+clause E4 done 3.12.3.4.3.1 ; efs 3.12.3.4.3.1
 clause - absent 3.12.3.4.2 a) ; efs 3.12.3.4.2.a
 clause - absent 3.12.3.4.2 b) ; efs 3.12.3.4.2.b
 clause - absent 3.12.3.4.2 c) ; efs 3.12.3.4.2.c

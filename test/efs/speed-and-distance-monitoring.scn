@@ -185,7 +185,7 @@ taint track
 efs: Kernel.LX.SupervisedLevelCrossings <- []
 case Override function is activate
 clause - absent 3.11.2.2 j) ; efs 3.11.2.2.j
-clause E3 deferred 3.11.10.1 ; efs 3.11.10.1
+clause E3 done 3.11.10.1 ; efs 3.11.10.1
 step Provide applicable NV
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.Override

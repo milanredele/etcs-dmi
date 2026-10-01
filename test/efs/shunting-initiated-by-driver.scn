@@ -126,7 +126,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 expect efs: EURORADIO.Terminal.HasActiveSession()
 case Go to Train Trip procedure
-clause E4 todo 5.6.2.2 A030 ; efs Entry 5.6.2.2.A030
+clause E4 n/a 5.6.2.2 A030 ; efs Entry 5.6.2.2.A030
 step Go to Train Trip procedure
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A030
@@ -251,8 +251,8 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Send Request for Shunting, position is known
-clause E4 todo 5.6.2.2 A045 ; efs Entry 5.6.2.2.A045
-clause E4 todo 5.6.2.2 A045 ; efs Entry 5.6.2.2.A045.1
+clause E4 deferred 5.6.2.2 A045 ; efs Entry 5.6.2.2.A045
+clause E4 deferred 5.6.2.2 A045 ; efs Entry 5.6.2.2.A045.1
 step Send Request for Shunting, position is known
 sub Sub-step1
 set odo.position 1040.0
@@ -265,8 +265,8 @@ expect efs: Available ( (LAST message IN EURORADIO.RBCConnection.CurrentRBCConne
 expect efs: (LAST message IN EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageOut).SystemVersion2.REQUEST_FOR_SHUNTING.POSITION_REPORT.POSITION_REPORT.D_LRBG == 170
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.S050
 case Send Request for Shunting, position is uknown
-clause E4 todo 5.6.2.2 A045 ; efs Entry 5.6.2.2.A045
-clause E4 todo 5.6.2.2 A045 ; efs Entry 5.6.2.2.A045.1
+clause E4 deferred 5.6.2.2 A045 ; efs Entry 5.6.2.2.A045
+clause E4 deferred 5.6.2.2 A045 ; efs Entry 5.6.2.2.A045.1
 step Send Request for Shunting, position is unknown
 sub Sub-step1
 set odo.position 1060.0
@@ -403,8 +403,8 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 expect efs: EURORADIO.Terminal.HasActiveSession()
 case Change the mode and verify it is reported
-clause E4 todo 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095
-clause E4 todo 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095.1
+clause E4 deferred 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095
+clause E4 deferred 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095.1
 step Change the mode and verify it is reported
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A095
@@ -657,8 +657,8 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Mode FS
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220.1
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220.1
 step Mode FS
 sub Sub-step1
 efs: Testing.SetFSMode(False)
@@ -671,8 +671,8 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageIn.SystemVersion2 <- Messages.MESSAGE.TRACK_TO_TRAIN.Message { SR_AUTHORISATION => EMPTY, MOVEMENT_AUTHORITY => EMPTY, RECOGNITION_OF_EXIT_FROM_TRIP_MODE => EMPTY, ACKNOWLEDGEMENT_OF_TRAIN_DATA => EMPTY, REQUEST_TO_SHORTEN_MA => EMPTY, CONDITIONAL_EMERGENCY_STOP => EMPTY, UNCONDITIONAL_EMERGENCY_STOP => EMPTY, REVOCATION_OF_EMERGENCY_STOP => EMPTY, GENERAL_MESSAGE => EMPTY, SH_REFUSED => Messages.MESSAGE.TRACK_TO_TRAIN.SH_REFUSED.Message { NID_MESSAGE => 27, L_MESSAGE => 0, T_TRAIN_0 => 0, M_ACK => Messages.M_ACK.No_acknowledgement_required, NID_LRBG => 0, T_TRAIN_1 => 0 }, SH_AUTHORISED => EMPTY, MA_WITH_SHIFTED_LOCATION_REFERENCE => EMPTY, TRACK_AHEAD_FREE_REQUEST => EMPTY, INFILL_MA => EMPTY, TRAIN_REJECTED => EMPTY, RIU_SYSTEM_VERSION => EMPTY, INITIATION_OF_A_COMMUNICATION_SESSION => EMPTY, ACKNOWLEDGEMENT_OF_TERMINATION_OF_A_COMMUNICATION_SESSION => EMPTY, TRAIN_ACCEPTED => EMPTY, SOM_POSITION_REPORT_CONFIRMED_BY_RBC => EMPTY, ASSIGNMENT_OF_COORDINATE_SYSTEM => EMPTY, OTHER_MESSAGE => EMPTY, BitField => '' }
 expect efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested @ deadline=1
 case Mode LS
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220.1
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220.1
 step Mode LS
 sub Sub-step1
 efs: Testing.SetLSMode(False)
@@ -684,8 +684,8 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageIn.SystemVersion2 <- Messages.MESSAGE.TRACK_TO_TRAIN.Message { SR_AUTHORISATION => EMPTY, MOVEMENT_AUTHORITY => EMPTY, RECOGNITION_OF_EXIT_FROM_TRIP_MODE => EMPTY, ACKNOWLEDGEMENT_OF_TRAIN_DATA => EMPTY, REQUEST_TO_SHORTEN_MA => EMPTY, CONDITIONAL_EMERGENCY_STOP => EMPTY, UNCONDITIONAL_EMERGENCY_STOP => EMPTY, REVOCATION_OF_EMERGENCY_STOP => EMPTY, GENERAL_MESSAGE => EMPTY, SH_REFUSED => Messages.MESSAGE.TRACK_TO_TRAIN.SH_REFUSED.Message { NID_MESSAGE => 27, L_MESSAGE => 0, T_TRAIN_0 => 0, M_ACK => Messages.M_ACK.No_acknowledgement_required, NID_LRBG => 0, T_TRAIN_1 => 0 }, SH_AUTHORISED => EMPTY, MA_WITH_SHIFTED_LOCATION_REFERENCE => EMPTY, TRACK_AHEAD_FREE_REQUEST => EMPTY, INFILL_MA => EMPTY, TRAIN_REJECTED => EMPTY, RIU_SYSTEM_VERSION => EMPTY, INITIATION_OF_A_COMMUNICATION_SESSION => EMPTY, ACKNOWLEDGEMENT_OF_TERMINATION_OF_A_COMMUNICATION_SESSION => EMPTY, TRAIN_ACCEPTED => EMPTY, SOM_POSITION_REPORT_CONFIRMED_BY_RBC => EMPTY, ASSIGNMENT_OF_COORDINATE_SYSTEM => EMPTY, OTHER_MESSAGE => EMPTY, BitField => '' }
 expect efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested @ deadline=1
 case Mode OS
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220.1
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220.1
 step Mode OS
 sub Sub-step1
 efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested <- False
@@ -697,8 +697,8 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageIn.SystemVersion2 <- Messages.MESSAGE.TRACK_TO_TRAIN.Message { SR_AUTHORISATION => EMPTY, MOVEMENT_AUTHORITY => EMPTY, RECOGNITION_OF_EXIT_FROM_TRIP_MODE => EMPTY, ACKNOWLEDGEMENT_OF_TRAIN_DATA => EMPTY, REQUEST_TO_SHORTEN_MA => EMPTY, CONDITIONAL_EMERGENCY_STOP => EMPTY, UNCONDITIONAL_EMERGENCY_STOP => EMPTY, REVOCATION_OF_EMERGENCY_STOP => EMPTY, GENERAL_MESSAGE => EMPTY, SH_REFUSED => Messages.MESSAGE.TRACK_TO_TRAIN.SH_REFUSED.Message { NID_MESSAGE => 27, L_MESSAGE => 0, T_TRAIN_0 => 0, M_ACK => Messages.M_ACK.No_acknowledgement_required, NID_LRBG => 0, T_TRAIN_1 => 0 }, SH_AUTHORISED => EMPTY, MA_WITH_SHIFTED_LOCATION_REFERENCE => EMPTY, TRACK_AHEAD_FREE_REQUEST => EMPTY, INFILL_MA => EMPTY, TRAIN_REJECTED => EMPTY, RIU_SYSTEM_VERSION => EMPTY, INITIATION_OF_A_COMMUNICATION_SESSION => EMPTY, ACKNOWLEDGEMENT_OF_TERMINATION_OF_A_COMMUNICATION_SESSION => EMPTY, TRAIN_ACCEPTED => EMPTY, SOM_POSITION_REPORT_CONFIRMED_BY_RBC => EMPTY, ASSIGNMENT_OF_COORDINATE_SYSTEM => EMPTY, OTHER_MESSAGE => EMPTY, BitField => '' }
 expect efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested @ deadline=1
 case Mode SR
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220.1
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220.1
 step Mode SR
 sub Sub-step1
 efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested <- False
@@ -710,8 +710,8 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageIn.SystemVersion2 <- Messages.MESSAGE.TRACK_TO_TRAIN.Message { SR_AUTHORISATION => EMPTY, MOVEMENT_AUTHORITY => EMPTY, RECOGNITION_OF_EXIT_FROM_TRIP_MODE => EMPTY, ACKNOWLEDGEMENT_OF_TRAIN_DATA => EMPTY, REQUEST_TO_SHORTEN_MA => EMPTY, CONDITIONAL_EMERGENCY_STOP => EMPTY, UNCONDITIONAL_EMERGENCY_STOP => EMPTY, REVOCATION_OF_EMERGENCY_STOP => EMPTY, GENERAL_MESSAGE => EMPTY, SH_REFUSED => Messages.MESSAGE.TRACK_TO_TRAIN.SH_REFUSED.Message { NID_MESSAGE => 27, L_MESSAGE => 0, T_TRAIN_0 => 0, M_ACK => Messages.M_ACK.No_acknowledgement_required, NID_LRBG => 0, T_TRAIN_1 => 0 }, SH_AUTHORISED => EMPTY, MA_WITH_SHIFTED_LOCATION_REFERENCE => EMPTY, TRACK_AHEAD_FREE_REQUEST => EMPTY, INFILL_MA => EMPTY, TRAIN_REJECTED => EMPTY, RIU_SYSTEM_VERSION => EMPTY, INITIATION_OF_A_COMMUNICATION_SESSION => EMPTY, ACKNOWLEDGEMENT_OF_TERMINATION_OF_A_COMMUNICATION_SESSION => EMPTY, TRAIN_ACCEPTED => EMPTY, SOM_POSITION_REPORT_CONFIRMED_BY_RBC => EMPTY, ASSIGNMENT_OF_COORDINATE_SYSTEM => EMPTY, OTHER_MESSAGE => EMPTY, BitField => '' }
 expect efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested @ deadline=1
 case Mode PT (E165)
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
-clause E4 todo 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.4
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
+clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.4
 step Mode PT (E165)
 sub Sub-step1 - Set PT mode
 efs: Testing.SetPTMode(False)
@@ -722,7 +722,7 @@ efs: EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageIn.SystemVersion
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S140 @ deadline=1
 expect efs: DMI.MasterDMI().Out_ShuntingRefusedByRbc.OutputInformation.DisplayRequested @ deadline=1
 case Mode SB (E13)
-clause E4 todo 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
+clause E4 deferred 5.6.2.2 A220 ; efs Entry 5.6.2.2.A220
 clause E4 todo 5.4.3.2 S10 ; efs Entry 5.4.3.2.S10.1.1
 step Mode SB (E13)
 sub Sub-step1
@@ -852,7 +852,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Level 0
-clause E4 todo 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.1
+clause E4 partial 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.1
 step Level 0
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
@@ -860,7 +860,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L0
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A050
 case Level 1
-clause E4 todo 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.1
+clause E4 partial 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.1
 step Level 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
@@ -868,7 +868,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A050
 case Level 2
-clause E4 todo 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.2
+clause E4 partial 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.2
 step Level 2
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -876,7 +876,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A045
 case Level 3
-clause E4 todo 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.2
+clause E4 partial 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.2
 step Level 3
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -884,7 +884,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L3
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A045
 case Level NTC
-clause E4 todo 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.1
+clause E4 partial 5.6.2.2 D020 ; efs Entry 5.6.2.2.D020.1
 step Level NTC
 sub Sub-step1
 efs: Kernel.Level.Value.Value <- LevelEnum.LNTC
@@ -1012,14 +1012,14 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case National Trip procedure is on-going
-clause E4 todo 5.6.2.2 D030 ; efs Entry 5.6.2.2.D030.1
+clause E4 n/a 5.6.2.2 D030 ; efs Entry 5.6.2.2.D030.1
 step National Trip procedure is on-going
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D030
 efs: STM.NationalTripProcedureIsOnGoing <- True
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A030
 case No National Trip procedure is on-going
-clause E4 todo 5.6.2.2 D030 ; efs Entry 5.6.2.2.D030.2
+clause E4 n/a 5.6.2.2 D030 ; efs Entry 5.6.2.2.D030.2
 step No National Trip procedure is on-going
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D030
@@ -1278,7 +1278,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Level 0
-clause E4 todo 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
+clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
 step Level 0
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D080
@@ -1286,7 +1286,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L0
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.NoProcedure
 case Level 1
-clause E4 todo 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
+clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
 step Level 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D080
@@ -1294,7 +1294,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.NoProcedure
 case Level 2
-clause E4 todo 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.1
+clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.1
 step Level 2
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1302,7 +1302,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D080
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A095
 case Level 3
-clause E4 todo 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
+clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
 step Level 3
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1310,7 +1310,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L3
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D080
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A095
 case Level NTC
-clause E4 todo 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
+clause E4 partial 5.6.2.2 D080 ; efs Entry 5.6.2.2.D080.2
 step Level NTC
 sub Sub-step1
 efs: Kernel.Level.Value.Value <- LevelEnum.LNTC
@@ -1438,8 +1438,8 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Standstill, mode FS, driver selects Shunting
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
 step Standstill, mode FS, driver selects Shunting
 sub Sub-step1 - Launch ShuntingInitiatedByDriver
 efs: Testing.SetFSMode(False)
@@ -1451,8 +1451,8 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedBy
 sub Sub-step2 - Go to D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 case Standstill, mode LS, driver selects Shunting
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
 step Standstill, mode LS, driver selects Shunting
 sub Sub-step1 - Launch ShuntingInitiatedByDriver
 efs: Testing.SetLSMode(False)
@@ -1463,8 +1463,8 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedBy
 sub Sub-step2 - Go to D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 case Standstill, mode OS, driver selects Shunting
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
 step Standstill, mode OS, driver selects Shunting
 sub Sub-step1 - Launch ShuntingInitiatedByDriver
 set odo.speed 0.0
@@ -1475,8 +1475,8 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedBy
 sub Sub-step2 - Go to D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 case Standstill, mode SR, driver selects Shunting
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
 step Standstill, mode SR, driver selects Shunting
 sub Sub-step1 - Launch ShuntingInitiatedByDriver
 set odo.speed 0.0
@@ -1487,8 +1487,8 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedBy
 sub Sub-step2 - Go to D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 case Standstill, mode SN, driver selects Shunting
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
 step Standstill, mode SN, driver selects Shunting
 sub Sub-step1 - Launch ShuntingInitiatedByDriver
 efs: Testing.SetSNMode(False)
@@ -1500,8 +1500,8 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedBy
 sub Sub-step2 - Go to D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 case Standstill, mode UN, driver selects Shunting
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
 step Standstill, mode UN, driver selects Shunting
 sub Sub-step1 - Launch ShuntingInitiatedByDriver
 set odo.speed 0.0
@@ -1512,8 +1512,8 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedBy
 sub Sub-step2 - Go to D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 case Standstill, mode PT, driver selects Shunting
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
 step Standstill, mode PT, driver selects Shunting
 sub SubStep0 - Initialize environment
 efs: Testing.SetPTMode(False)
@@ -1525,8 +1525,8 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedBy
 sub Sub-step2 - Go to D020
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D020
 case Standstill, mode SB, driver selects Shunting
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
-clause E4 todo 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015
+clause E4 done 5.6.2.2 E015 ; efs Entry 5.6.2.2.E015.1
 step Standstill, mode SB, driver selects Shunting
 sub Sub-step1 - Set HandleModeChange and Mode
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedureSM.StartOfMission.S10.DriverSelectionRequested
@@ -1661,10 +1661,10 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 expect efs: EURORADIO.Terminal.HasActiveSession()
 case SH authorized, no balise groups for SH area
-clause E4 todo 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050.1
-clause E4 todo 5.6.2.2 A050 ; efs Entry 5.6.2.2.A050
-clause E4 todo 5.6.2.2 A050 ; efs Entry 5.6.2.2.A050.1
-clause E4 todo 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050
+clause E4 deferred 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050.1
+clause E4 done 5.6.2.2 A050 ; efs Entry 5.6.2.2.A050
+clause E4 done 5.6.2.2 A050 ; efs Entry 5.6.2.2.A050.1
+clause E4 deferred 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050
 step SH authorized, no balise groups for SH area received
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedureSM.ShuntingInitiatedByDriver.S050
@@ -1674,10 +1674,10 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedBy
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D040 @ deadline=1
 expect efs: Kernel.Modes.Shunting.BaliseGroupsForShArea.BGs == [] @ deadline=1
 case SH authorized, balise groups for SH area received
-clause E4 todo 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050.1
-clause E4 todo 5.6.2.2 A050 ; efs Entry 5.6.2.2.A050
-clause E4 todo 5.6.2.2 A050 ; efs Entry 5.6.2.2.A050.1
-clause E4 todo 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050
+clause E4 deferred 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050.1
+clause E4 done 5.6.2.2 A050 ; efs Entry 5.6.2.2.A050
+clause E4 done 5.6.2.2 A050 ; efs Entry 5.6.2.2.A050.1
+clause E4 deferred 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050
 step SH authorized, balise groups for SH area received
 sub Sub-step1
 efs: Kernel.Modes.Shunting.BaliseGroupsForShArea.BGs <- [ Kernel.BaliseGroup { NID_BG => 4072, NID_C => 7, NewCountry => False }, Kernel.BaliseGroup { NID_BG => 4098, NID_C => 7, NewCountry => False }, Kernel.BaliseGroup { NID_BG => 5040, NID_C => 7, NewCountry => False } ]
@@ -1689,8 +1689,8 @@ expect efs: Kernel.Modes.Shunting.BaliseGroupsForShArea.BGs == [ Kernel.BaliseGr
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.D040 @ deadline=1
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A050
 case SH refused received
-clause E4 todo 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050.2
-clause E4 todo 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050
+clause E4 deferred 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050.2
+clause E4 deferred 5.6.2.2 S050 ; efs Entry 5.6.2.2.S050
 step SH refused received
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.S050
@@ -1820,10 +1820,10 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 expect efs: EURORADIO.Terminal.HasActiveSession()
 case Receive order to terminate the communication session
-clause E4 todo 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100
-clause E4 todo 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100.1
-clause E4 todo 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115
-clause E4 todo 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115.1
+clause E4 deferred 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100
+clause E4 deferred 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100.1
+clause E4 deferred 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115
+clause E4 deferred 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115.1
 step Receive order to terminate the communication session
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.S100

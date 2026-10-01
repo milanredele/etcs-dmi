@@ -4,7 +4,7 @@
 frame Mode Profile
 sequence A previous list of balise groups for SH area shall be deleted or replaced by a new list
 case A previous list of balise groups for SH area shall be deleted or replaced by a new list
-clause E3 deferred 3.12.4.4 ; efs 3.12.4.4
+clause E3 done 3.12.4.4 ; efs 3.12.4.4
 step Setup
 sub Sub-step1 - Initialize test environment
 init 100.0 FS
@@ -1277,7 +1277,7 @@ expect efs: Kernel.Mode == ModeEnum.SH @ deadline=1
 sequence The Mode Profile can request OS Mode
 case OS Mode Profile received
 clause - absent 3.12.4.1 ; efs 3.12.4.1
-clause E4 todo 5.9.2.1 ; efs 5.9.2.1
+clause E4 done 5.9.2.1 ; efs 5.9.2.1
 step Setup
 sub Sub-step1 - Initialize test environment
 init 100.0 FS
