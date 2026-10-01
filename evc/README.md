@@ -9,10 +9,17 @@ the same sources build for the host, wasm32 and a bare-board light runtime
 
 | Package | Role |
 |---|---|
-| `EVC_Core` | The core: `Configure (Image)`, `Initialise`, `Handle_Input (Port, Payload)`, `Tick (Dt_Ms)`, `Take_Outputs`, `Enter_Failure` / `Failed`. One `Tick` is one cycle, in the order of the plan: read ports, position, stored information, monitoring, mode machine, outputs. |
+| `EVC_Core` | The core: `Configure (Image)`, `Initialise`, `Handle_Input (Port, Payload)`, `Tick (Dt_Ms)`, `Take_Outputs`, `Enter_Failure` / `Failed`. One `Tick` is one cycle, in the order of the plan: read ports, position, stored information, monitoring, the levels and the mission, the procedures, mode machine and what entering the mode means (4.10, 4.12), outputs. |
 | `EVC_Config` | The installation configuration, data and not code: the configuration of 3.13.2.2.6 to 3.13.2.2.8 (service brake command and feedback, the cylinder and k1 of A.3.10.3, traction cut-off, the interface of each special brake, the additional brake, the regenerative brake and the catenary), the detection of the service brake failure (3.14.1.2) and the antenna from each cab (3.6.1.3.4); `Valid` (Table 3 of 3.13.2.2.6.1), `Default`, the byte image (magic, version, length, fields, CRC-32) with `Decoded` / `Decode` / `Encode`, and the configuration in use. |
 | `EVC_Modes` | The 19 modes of 4.3.2 (`M_FS` .. `M_RV`), the levels (0, NTC, 1, 2), the status of the stored level, and the transitions table of 4.6.2 with its priorities. |
-| `EVC_Transition_Conditions` | The 84 conditions of the mode transitions of 4.6.3, one identifier each (`C_1` .. `C_84`, the text of the table quoted), and `Holds`, which asks the unit that owns the state a condition speaks about; the skeleton of phase E4, every condition False until implemented. |
+| `EVC_Transition_Conditions` | The 84 conditions of the mode transitions of 4.6.3, one identifier each (`C_1` .. `C_84`, the text of the table quoted), and `Holds`, which asks the unit that owns the state a condition speaks about (the levels, the mission, the train inputs, the driver's requests, the stored information; the procedures, which compute every trip condition); the ones of level 2, AD and the National System answer False. |
+| `EVC_Acceptance` | The filters of 4.8 as tables: the first by the level, the third by the mode, for the balise information the stored information and the procedures take. |
+| `EVC_Driver_Requests` | MSG_DRIVER_ACTION and MSG_DRIVER_DATA decoded, latched per cycle, queries named after the actions (start of mission, levels, procedures, the text acknowledgements). |
+| `EVC_Train_Inputs` | The inputs of the train interface of the cycle that the modes read: the desks, sleeping, passive shunting, non leading. |
+| `EVC_Levels` | The level and its status, the level transitions of 5.10 (packets 41, 46, the driver's level, the announcement, the acknowledgement and its service brake), the orders kept in SH, PS, SM. |
+| `EVC_Mission` | The start and the end of mission (5.4, 5.5) in levels 0, 1, NTC, the driver ID, the train running number, the Train Data entry, the modes proposed and acknowledged, the SR speed limit and distance (4.4.11), "Continue Shunting on desk closure". |
+| `EVC_Procedures` | The procedures of chapter 5: shunting (5.6, 5.7), override (5.8), On Sight and Limited Supervision (5.9, 5.19), trip and post trip (5.11, every trip condition and its reason), reversing (5.13), level crossings (5.16), Train Data from other sources (5.17), the BTM alarm inhibition (5.22), the mode related speed restrictions (3.11.7, 3.11.10). |
+| `EVC_Text_Messages` | The text messages of 3.12.3 (packets 73, 74): their conditions, MSG_TEXT and MSG_TEXT_REMOVE, the acknowledgement and its brake. |
 | `EVC_Ports` | The ports (BTM, RTM, odometer, TIU, DMI, ATO, JRU), the maximum payload of each and the documented shape of every payload; `Valid_Input` checks it. |
 | `EVC_DMI_Port` | The frames of the DMI protocol v2 the on-board accepts and sends, byte by byte (the constants repeat `common/dmi_protocol.ads`; `evc_test` checks them). |
 | `EVC_Outbox` | The bounded queue of outputs: records `port u8, length u16, payload`. |
@@ -113,10 +120,8 @@ release speeds and reduced build up times with a floating point
 reference of the formulas, and runs the mission of the mock
 (`sim/evc_track.ads`) with the track given as telegrams. Level and mode
 filters (4.8), tripping on an overrun, the reactions (trip, route
-suitability), the procedures' brake reasons, the data entry and the MA
-request are phases E4 and E5. Until the modes of E4 the on-board stays
-in Stand By, where the standstill supervision (4.4.7.1.5) brakes a train
-that moves more than D_NVROLL without an MA.
+suitability), the procedures' brake reasons and the data entry are phase
+E4 (the units above); the MA request is E5.
 
 **Configuration is data.** What SUBSET-026 lets the engineering of the
 on-board define for the vehicle it is fitted to is not a constant of the

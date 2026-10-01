@@ -227,9 +227,8 @@ is
      with Global => State;
 
    --  5.17.2.2 S6: the driver is requested to re-enter or re-validate
-   --  the Train Data (the Train Data entry of the start of mission, the
-   --  modes half, shows it; E6, the data validated, ends the request
-   --  there: Train_Data_Revalidated)
+   --  the Train Data (the Train Data entry of EVC_Mission; E6, the data
+   --  validated, ends the request: Train_Data_Revalidated)
    function Train_Data_Revalidation return Boolean
      with Global => State;
 
@@ -362,8 +361,8 @@ is
      with Global => (In_Out => State);
 
    --  5.17.2.2 E6: the Train Data were validated by the driver while
-   --  the re-validation was requested (the modes half calls it with the
-   --  Train Data entry); A7 follows
+   --  the re-validation was requested (EVC_Core calls it when
+   --  EVC_Mission took the driver's Train Data entry); A7 follows
    procedure Train_Data_Revalidated
      with Global => (In_Out => State),
           Post => not Train_Data_Revalidation;
