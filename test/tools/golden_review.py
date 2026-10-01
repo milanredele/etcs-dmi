@@ -10,9 +10,16 @@ This tool builds both sides of a change, dumps every golden's raw bytes
 on each side (DUMP=1 obj/dmi_test, EVC_DUMP=dir obj/evc_test -- the dump
 interfaces test/check.sh and AGENTS.md already rely on; this tool does
 not change them), diffs the two sets, and turns every difference into
-something a reviewer -- human or a small model given the report and the
-pictures -- can judge against a stated intent, before `UPDATE=1`
-re-records the goldens.
+something a reviewer can judge against a stated intent, before
+`UPDATE=1` re-records the goldens, in two steps (a small model is
+enough for either): first a reviewer who is shown the pictures and diff
+excerpts alone (BLIND.md) and does not know the intent describes,
+literally, every visible difference; then a reviewer who knows the
+intent (REPORT.md) judges those descriptions against it. Splitting the
+two matters: a reviewer told the intent tends to see only the change it
+names and approve a picture where text also silently re-wrapped
+elsewhere; a reviewer who must describe everything it sees, with no
+idea what the change was meant to do, does not get to skip that.
 
 Sides
 -----
@@ -85,22 +92,32 @@ text) say what the change is meant to do. Every group is still
 reported and still needs a look; the inside/OUTSIDE marking only
 orders the report (outside first) and tells a reviewer where to be
 suspicious. Without --areas, groups are marked "no --areas given"
-instead -- the tool does not guess an expectation nobody declared.
+instead -- the tool does not guess an expectation nobody declared. None
+of this -- the intent, the declared areas, the marking, a golden's own
+name -- appears in BLIND.md: the describing reviewer must have nothing
+to go on but the pictures and diff excerpts themselves.
 
 Output
 ------
-<out>/REPORT.md (for a reviewer) and <out>/review.json (the same,
-structured) in --out (default obj/golden-review/, git-ignored). Exit
-status is 0 whenever the tool ran to completion -- a changed golden is
-not an error, a build or dump failure is. The last stdout line is a
-one-line summary:
+<out>/REPORT.md (the judging sheet: sides, intent, declared areas, the
+one-line-per-group table, marking, and a Verdict: line per group) and
+<out>/BLIND.md (the describing sheet: the same groups with no
+intent/areas/marking/golden names, each picture's layout stated in
+words, and a Description: line per group to fill in first) in --out
+(default obj/golden-review/, git-ignored); <out>/review.json carries
+REPORT.md's content structured, plus BLIND.md's file name. Exit status
+is 0 whenever the tool ran to completion -- a changed golden is not an
+error, a build or dump failure is. The last stdout line is a one-line
+summary:
 
   golden_review: N display groups (M frames), K on-board groups
   (L goldens), X outside declared areas
 
 Self test: --check-tool synthesises small frame dumps and a small area
 table (no build) and checks pixel attribution, grouping, bounding
-boxes and the picture scaling rule; test/check.sh runs it.
+boxes, the picture scaling/layout rule, and that a synthetic BLIND.md
+carries none of a run's intent, declared areas or OUTSIDE marking;
+test/check.sh runs it.
 """
 
 import argparse
@@ -508,13 +525,27 @@ def choose_layout(w, h, sep=SEPARATOR_W, min_short=400, max_long=1500):
     (before, after, difference) side by side, or stacked -- and the
     integer scale factor: whichever layout reaches the larger factor
     under the picture sizing rule (short edge >= ~min_short where
-    possible, long edge <= ~max_long, factor 1..8); side by side on a
-    tie. A wide, short crop (adjacent text lines merged into one region,
-    say) stacks taller instead of staying a thin strip; a tall, narrow
-    one stays side by side."""
-    f_side = _best_factor(lambda f: (3 * w * f + 2 * sep, h * f), min_short, max_long)
-    f_stack = _best_factor(lambda f: (w * f, 3 * h * f + 2 * sep), min_short, max_long)
+    possible, long edge <= ~max_long, factor 1..8). A wide, short crop
+    (adjacent text lines merged into one region, say) stacks taller
+    instead of staying a thin strip; a tall, narrow one stays side by
+    side.
+
+    On a tie (most often factor 1 each, neither reaching min_short: the
+    whole-frame case, 640x480), prefer whichever of the two stays within
+    max_long over one that does not (a whole frame is 1924px wide side
+    by side at factor 1, over the cap, but 640 x 1444 stacked, within
+    it); side by side if both do, or neither does."""
+    side_dims = lambda f: (3 * w * f + 2 * sep, h * f)
+    stack_dims = lambda f: (w * f, 3 * h * f + 2 * sep)
+    f_side = _best_factor(side_dims, min_short, max_long)
+    f_stack = _best_factor(stack_dims, min_short, max_long)
     if f_stack > f_side:
+        return "stacked", f_stack
+    if f_side > f_stack:
+        return "side_by_side", f_side
+    stack_ok = max(stack_dims(f_stack)) <= max_long
+    side_ok = max(side_dims(f_side)) <= max_long
+    if stack_ok and not side_ok:
         return "stacked", f_stack
     return "side_by_side", f_side
 
@@ -538,7 +569,9 @@ def render_triptych(before_idx, after_idx, changed, box, width=FRAME_W):
     difference panel. box: (x, y, w, h) to crop to. Panels are laid out
     side by side or stacked, whichever choose_layout picks for this
     crop's shape, in reading order (before, after, difference). Returns
-    PNG bytes."""
+    (PNG bytes, layout) -- the caller needs the layout too, to say it in
+    words next to the picture (BLIND.md, for a reviewer who must not
+    need REPORT.md's area/caption text to make sense of the picture)."""
     x0, y0, w, h = box
     layout, f = choose_layout(w, h)
 
@@ -583,13 +616,13 @@ def render_triptych(before_idx, after_idx, changed, box, width=FRAME_W):
         total_w = 3 * pw + 2 * SEPARATOR_W
         out_rows = [panels[0][r] + sep_col + panels[1][r] + sep_col + panels[2][r]
                     for r in range(ph)]
-        return encode_png(total_w, ph, out_rows)
+        return encode_png(total_w, ph, out_rows), layout
     else:  # stacked: before on top, then after, then difference
         sep_row = bytes(SEPARATOR) * pw
         out_rows = (panels[0] + [sep_row] * SEPARATOR_W
                     + panels[1] + [sep_row] * SEPARATOR_W
                     + panels[2])
-        return encode_png(pw, 3 * ph + 2 * SEPARATOR_W, out_rows)
+        return encode_png(pw, 3 * ph + 2 * SEPARATOR_W, out_rows), layout
 
 
 def render_single(idx_buf, box, width=FRAME_W, missing_rgb=(40, 40, 40)):
@@ -960,9 +993,21 @@ def compare_sides(base, head, areas_decl, out_dir):
 # Rendering the report
 # ---------------------------------------------------------------------
 
+def layout_words(layout):
+    """How a triptych's panels are laid out, in words, so a reviewer who
+    must not be told what the area/caption means (BLIND.md) still knows
+    which panel is which."""
+    if layout == "side_by_side":
+        return "three panels side by side, left to right: before, after, difference"
+    return "three panels stacked, top to bottom: before, after, difference"
+
+
 def render_group_pictures(gid, g, base, head, out_dir):
-    """Write the PNGs (or diff text) for one display group; return a list
-    of (caption, relative_path)."""
+    """Write the PNGs for one display group; return a list of
+    {"caption", "path" (relative), "layout_words"} dicts -- caption is
+    the area/region name (REPORT.md only; BLIND.md must not use it to
+    say what changed), layout_words says the panel order in words
+    (needed by both: a picture alone does not say which panel is which)."""
     pics = []
     gdir = out_dir / "display" / gid
     gdir.mkdir(parents=True, exist_ok=True)
@@ -989,25 +1034,32 @@ def render_group_pictures(gid, g, base, head, out_dir):
             union_area = (xs1 - xs0) * (ys1 - ys0)
             covers_most = union_area >= 0.6 * FRAME_SIZE
         if covers_most or not regions:
-            png = render_triptych(before, after, changed, (0, 0, FRAME_W, FRAME_H))
+            png, layout = render_triptych(before, after, changed, (0, 0, FRAME_W, FRAME_H))
             path = gdir / "whole_frame.png"
             path.write_bytes(png)
-            pics.append(("whole frame", "display/%s/whole_frame.png" % gid))
+            pics.append({"caption": "whole frame",
+                         "path": "display/%s/whole_frame.png" % gid,
+                         "layout_words": layout_words(layout)})
         else:
             for idx, (box, labels) in enumerate(regions, start=1):
                 name = region_name(labels, idx)
-                png = render_triptych(before, after, changed, box)
+                png, layout = render_triptych(before, after, changed, box)
                 path = gdir / ("%s.png" % name)
                 path.write_bytes(png)
                 caption = ", ".join(sorted(set(labels)))
-                pics.append((caption, "display/%s/%s.png" % (gid, name)))
+                pics.append({"caption": caption,
+                             "path": "display/%s/%s.png" % (gid, name),
+                             "layout_words": layout_words(layout)})
     else:
         data = g["data"]
         box = (0, 0, FRAME_W, FRAME_H)
         png = render_single(data, box)
         path = gdir / "frame.png"
         path.write_bytes(png)
-        pics.append((g["status"], "display/%s/frame.png" % gid))
+        which = "new" if g["status"] == "added" else "removed"
+        pics.append({"caption": g["status"],
+                     "path": "display/%s/frame.png" % gid,
+                     "layout_words": "one panel: the %s picture" % which})
     return pics
 
 
@@ -1033,22 +1085,71 @@ def fmt_sides(base, head):
             % (base.commit, base.label, head.commit, head.label))
 
 
-INSTRUCTIONS = """## Instructions for the reviewer
+INSTRUCTIONS = """## Instructions for the judging reviewer
 
-Look at every group below -- its picture (display) or its diff excerpt
-(on-board) -- and compare it with the stated intent. A display picture's
-three panels are before, after, difference, in reading order -- left to
-right when laid out side by side, top to bottom when stacked. For each
-group, answer **as intended** / **not intended** / **cannot tell**, with
-one sentence saying what visibly changed, on the group's `Verdict:`
-line. Be especially suspicious of a group marked `OUTSIDE declared
-areas`. Never approve a group you did not look at.
+The descriptions below come from a reviewer who has not seen this file
+or review.json (BLIND.md, next to this report -- a small model is
+enough for that first pass; it looked at the pictures and diff
+excerpts alone, with no idea what the change was meant to do). For each
+group, compare its description and its numbers (changed pixel count or
+record kinds) with the stated intent and answer **as intended** /
+**not intended** / **cannot tell**, on the group's `Verdict:` line, and
+name every side effect the intent does not mention -- even one that is
+acceptable (text that re-wrapped along with an intended character
+change, say). A group whose description is missing, or does not account
+for its changed pixel count (a few characters described against
+thousands of changed pixels, say), is `cannot tell` and goes back to
+BLIND.md's reviewer. Be especially suspicious of a group marked
+`OUTSIDE declared areas`. Never approve a group you did not look at.
+"""
+
+BLIND_INSTRUCTIONS = """# Golden review: picture descriptions
+
+Describe every group below from its pictures (display) or diff excerpt
+(on-board) alone. Do not read REPORT.md or review.json -- nothing here
+says what the change was meant to do, and the description must not
+guess it either.
+
+Open every picture. For each group, list **every** visible difference
+between the before and after panels, as separate items:
+- characters or symbols that appeared, disappeared, or changed;
+- text that moved sideways or to another line -- which words, and
+  where the line breaks fall before and after;
+- text cut off, or gaining or losing an ellipsis;
+- changes of colour, frames, lines, spacing.
+
+Quote text literally, exactly as it reads in each panel. Then add a
+line `magenta covers:` saying which part of the picture is magenta in
+the difference panel (a few characters, whole lines, everything). For
+an on-board group, say literally which record kinds and fields differ
+and how, with the values before and after, from the diff excerpt.
+
+No summary, no guess at the purpose of the change, no judgement of
+whether it is correct -- only what is visibly different. Say so plainly
+when something is unreadable or cut off at an edge.
 """
 
 
 def write_report(out_dir, result, args, base, head):
     disp = result["display_groups"]
     onb = result["onboard_groups"]
+
+    group_ids = {}
+    gi = 0
+    for g in disp:
+        gi += 1
+        group_ids[id(g)] = "d%d" % gi
+    gi = 0
+    for g in onb:
+        gi += 1
+        group_ids[id(g)] = "o%d" % gi
+
+    # Render/compute once, reuse for both REPORT.md and BLIND.md.
+    disp_pics = {group_ids[id(g)]: render_group_pictures(group_ids[id(g)], g, base, head, out_dir)
+                 for g in disp}
+    onb_render = {group_ids[id(g)]: render_group_onboard(group_ids[id(g)], g, result["onboard_details"], out_dir)
+                  for g in onb}
+
     lines = []
     lines.append("# Golden review\n")
     lines.append(fmt_sides(base, head))
@@ -1068,25 +1169,18 @@ def write_report(out_dir, result, args, base, head):
     lines.append("| id | kind | members | changed | areas | marking |")
     lines.append("|----|------|---------|---------|-------|---------|")
 
-    group_ids = {}
-    gi = 0
     for g in disp:
-        gi += 1
-        gid = "d%d" % gi
-        group_ids[id(g)] = gid
+        gid = group_ids[id(g)]
         changed_col = ("%d pixels" % g["pixel_count"]) if g["pixel_count"] is not None else g["status"]
         areas_col = ", ".join(sorted(g["buckets"])) if g.get("buckets") else "-"
         lines.append("| %s | display | %d | %s | %s | %s |"
                       % (gid, len(g["members"]), changed_col, areas_col or "-", g["marking"]))
-    gi = 0
     for g in onb:
-        gi += 1
-        gid = "o%d" % gi
-        group_ids[id(g)] = gid
+        gid = group_ids[id(g)]
         if g["status"] == "changed":
             # g["signature"] (set at grouping time) is used here rather than
-            # g["summary"] (set later, in render_group_onboard, when the
-            # per-group section is written) so the table reflects it too.
+            # g["summary"] (set by render_group_onboard above) so the table
+            # reflects it too, independent of render order.
             changed_col = ", ".join("%s -%d +%d" % (k, counts[0], counts[1])
                                      for k, counts in g["signature"]) or "(no record kind differs)"
         else:
@@ -1098,13 +1192,12 @@ def write_report(out_dir, result, args, base, head):
     lines.append("## Display groups\n")
     for g in disp:
         gid = group_ids[id(g)]
-        pics = render_group_pictures(gid, g, base, head, out_dir)
         lines.append("### %s (%s, %d member%s)\n"
                       % (gid, g["status"], len(g["members"]), "" if len(g["members"]) == 1 else "s"))
         lines.append("Members: " + ", ".join(g["members"]) + "\n")
         lines.append("Marking: " + g["marking"] + "\n")
-        for caption, relpath in pics:
-            lines.append("- %s: ![%s](%s)" % (caption, caption, relpath))
+        for pic in disp_pics[gid]:
+            lines.append("- %s: ![%s](%s)" % (pic["caption"], pic["caption"], pic["path"]))
         lines.append("")
         lines.append("Verdict: ")
         lines.append("")
@@ -1112,7 +1205,7 @@ def write_report(out_dir, result, args, base, head):
     lines.append("## On-board groups\n")
     for g in onb:
         gid = group_ids[id(g)]
-        excerpt, relpath = render_group_onboard(gid, g, result["onboard_details"], out_dir)
+        excerpt, relpath = onb_render[gid]
         lines.append("### %s (%s, %d member%s)\n"
                       % (gid, g["status"], len(g["members"]), "" if len(g["members"]) == 1 else "s"))
         lines.append("Members: " + ", ".join(g["members"]) + "\n")
@@ -1132,6 +1225,8 @@ def write_report(out_dir, result, args, base, head):
 
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "REPORT.md").write_text("\n".join(lines) + "\n")
+    (out_dir / "BLIND.md").write_text(
+        write_blind(result, group_ids, disp_pics, onb_render))
 
     def group_json(g, gid):
         d = {"id": gid, "status": g["status"], "members": g["members"], "marking": g["marking"]}
@@ -1154,6 +1249,7 @@ def write_report(out_dir, result, args, base, head):
         "sha_only": result["sha_only"],
         "display_groups": [group_json(g, group_ids[id(g)]) for g in disp],
         "onboard_groups": [group_json(g, group_ids[id(g)]) for g in onb],
+        "blind_file": "BLIND.md",
     }
     (out_dir / "review.json").write_text(json.dumps(review, indent=2))
 
@@ -1164,6 +1260,50 @@ def write_report(out_dir, result, args, base, head):
                % (len(disp), sum(len(g["members"]) for g in disp),
                   len(onb), sum(len(g["members"]) for g in onb), outside))
     return summary
+
+
+def write_blind(result, group_ids, disp_pics, onb_render):
+    """BLIND.md's text: instructions, then per group its id, kind, member
+    count, pictures (each with its layout in words) or on-board diff
+    excerpt, and an empty Description: line -- nothing here may say what
+    the change was meant to do: no intent, no declared areas, no
+    inside/OUTSIDE marking, no commit subjects, no member (golden) names
+    either (a scenario's own name, e.g. one naming the fix, could give
+    the game away)."""
+    disp = result["display_groups"]
+    onb = result["onboard_groups"]
+    lines = [BLIND_INSTRUCTIONS]
+
+    lines.append("## Display groups\n")
+    for g in disp:
+        gid = group_ids[id(g)]
+        lines.append("### %s (display, %d member%s)\n"
+                      % (gid, len(g["members"]), "" if len(g["members"]) == 1 else "s"))
+        for pic in disp_pics[gid]:
+            lines.append("- ![%s](%s) -- %s" % (gid, pic["path"], pic["layout_words"]))
+        lines.append("")
+        lines.append("Description: ")
+        lines.append("")
+
+    lines.append("## On-board groups\n")
+    for g in onb:
+        gid = group_ids[id(g)]
+        excerpt, relpath = onb_render[gid]
+        lines.append("### %s (on-board, %d member%s)\n"
+                      % (gid, len(g["members"]), "" if len(g["members"]) == 1 else "s"))
+        if relpath:
+            lines.append("Full diff: [%s](%s)\n" % (relpath, relpath))
+        if excerpt:
+            lines.append("```")
+            lines.extend(excerpt)
+            lines.append("```")
+        else:
+            lines.append("(no record kind differs)")
+        lines.append("")
+        lines.append("Description: ")
+        lines.append("")
+
+    return "\n".join(lines) + "\n"
 
 
 # ---------------------------------------------------------------------
@@ -1282,6 +1422,42 @@ def check_tool():
     layout4, f4 = choose_layout(60, 200)
     check((layout4, f4) == ("side_by_side", 3),
           "60x200 crop picks the side-by-side layout, factor 3")
+
+    # Tie at factor 1 (the whole-frame case): side by side is 1924px
+    # wide, over the long-edge cap; stacked is 640 x 1444, within it --
+    # take the one within the limit instead of defaulting to side by
+    # side.
+    layout5, f5 = choose_layout(FRAME_W, FRAME_H)
+    check((layout5, f5) == ("stacked", 1),
+          "whole-frame crop ties at factor 1, picks stacked (within the long-edge cap)")
+    check(3 * FRAME_H * f5 + 2 * SEPARATOR_W <= 1500,
+          "whole-frame stacked triptych respects the long-edge cap")
+
+    # BLIND.md must not leak the intent, the declared areas, or the
+    # inside/OUTSIDE marking -- build a tiny synthetic review with a
+    # recognisable intent and a declared area that does not cover the
+    # change (forcing an OUTSIDE marking in REPORT.md) and check BLIND.md
+    # carries none of it.
+    with tempfile.TemporaryDirectory(prefix="golden-review-blind-") as td:
+        blind_dir = Path(td)
+        tiny_areas = [Area("M", "-", 0, 0, 4, 4)]
+        base_frame = bytes(FRAME_SIZE)
+        head_frame = bytearray(base_frame)
+        head_frame[0] = 5
+        base_side = Side("base", "deadbeef", {"f1": base_frame}, {}, {"f1": "x"}, tiny_areas)
+        head_side = Side("head", "cafef00d", {"f1": bytes(head_frame)}, {}, {"f1": "x"}, tiny_areas)
+        secret_intent = "SECRET SPECIFIC INTENT TEXT"
+        secret_area = "NOWHERE"
+        fake_args = argparse.Namespace(intent=secret_intent, areas_list=[secret_area])
+        blind_result = compare_sides(base_side, head_side, [secret_area], blind_dir)
+        write_report(blind_dir, blind_result, fake_args, base_side, head_side)
+        report_text = (blind_dir / "REPORT.md").read_text()
+        blind_text = (blind_dir / "BLIND.md").read_text()
+        check("OUTSIDE" in report_text, "synthetic REPORT.md marks the group OUTSIDE declared areas")
+        check(secret_intent not in blind_text, "BLIND.md does not contain the intent text")
+        check(secret_area not in blind_text, "BLIND.md does not contain the declared area list")
+        check("OUTSIDE" not in blind_text, "BLIND.md does not contain the word OUTSIDE")
+        check("f1" not in blind_text, "BLIND.md does not name the golden")
 
     # On-board diff: a record added, a record removed between two cycles.
     def rec(port, payload):
