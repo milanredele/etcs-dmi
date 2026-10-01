@@ -50,10 +50,17 @@ group; forty goldens that all changed the same banner are one line in
 the report, not forty. Each changed pixel is attributed to the
 smallest DMI layout area containing it (dmi/display.ads, via the
 vendored dmi_areas helper compiled against the *head* side's dmi/
-sources -- see test/tools/golden_review/dmi_areas.adb) and a picture
-(a before | after | difference triptych, magenta marking the changed
-pixels) is rendered per touched area, or once for the whole frame when
-the touched areas cover most of it.
+sources -- see test/tools/golden_review/dmi_areas.adb); that per-area
+attribution and its pixel counts go in the report text. The pictures
+themselves are per touched *region* instead: adjacent or overlapping
+areas' bounding boxes are merged (merge_boxes) so one continuous change
+spanning several sub-areas (several text-message lines, say) is one
+picture, not a strip per line -- or once for the whole frame when the
+merged regions cover most of it. Each picture is a before | after |
+difference triptych (magenta marking the changed pixels in the dimmed
+difference panel), its three panels laid out side by side or stacked,
+whichever gets the crop's shape the larger integer scale factor
+(choose_layout).
 
 Changed on-board goldens (test/golden/evc/*.sha256, EVC_Outbox output
 records, see test/tools/evc_dump.py) are grouped by which record kinds
@@ -408,25 +415,108 @@ def bbox_of(positions, width=FRAME_W, height=FRAME_H, margin=12):
     return x0, y0, x1 - x0, y1 - y0
 
 
+def _boxes_touch(a, b):
+    """True if two (x, y, w, h) boxes (half-open: x .. x+w, y .. y+h)
+    overlap or share an edge with no gap between them."""
+    ax0, ay0, aw, ah = a
+    bx0, by0, bw, bh = b
+    ax1, ay1 = ax0 + aw, ay0 + ah
+    bx1, by1 = bx0 + bw, by0 + bh
+    return ax0 <= bx1 and bx0 <= ax1 and ay0 <= by1 and by0 <= ay1
+
+
+def merge_boxes(boxes_by_label):
+    """One picture per touched *area* (bbox_of per area) cuts an adjacent,
+    visually continuous change (e.g. several text-message lines, each its
+    own sub-area) into separate strips. Merge boxes that overlap or touch
+    into regions instead -- repeat pairwise merging until nothing more
+    joins -- and return [(region_box, [labels])], the area labels making
+    up each region (the per-area pixel counts and attribution stay in the
+    report text; only the pictures are per merged region)."""
+    items = [{"box": list(box), "labels": [label]} for label, box in boxes_by_label.items()]
+    changed = True
+    while changed:
+        changed = False
+        for i in range(len(items)):
+            for j in range(i + 1, len(items)):
+                if _boxes_touch(tuple(items[i]["box"]), tuple(items[j]["box"])):
+                    ax0, ay0, aw, ah = items[i]["box"]
+                    bx0, by0, bw, bh = items[j]["box"]
+                    x0, y0 = min(ax0, bx0), min(ay0, by0)
+                    x1 = max(ax0 + aw, bx0 + bw)
+                    y1 = max(ay0 + ah, by0 + bh)
+                    items[i]["box"] = [x0, y0, x1 - x0, y1 - y0]
+                    items[i]["labels"].extend(items[j]["labels"])
+                    del items[j]
+                    changed = True
+                    break
+            if changed:
+                break
+    return [(tuple(it["box"]), it["labels"]) for it in items]
+
+
+def bare_area_name(label):
+    """"E5 (in E)" -> "E5"; a label with no parent (e.g. "B",
+    "(outside any area)") is returned unchanged."""
+    return label.split(" (")[0]
+
+
+def slug(text):
+    return "".join(c if c.isalnum() or c == "-" else "_" for c in text).strip("_") or "area"
+
+
+def region_name(labels, index):
+    """A filename for a merged region: the bare area names joined by "-"
+    when there are few enough to stay a sane filename (dmi_display's own
+    naming, e.g. "E5-E9"), else "r<index>" (the full label list still
+    goes in the report caption)."""
+    bare = sorted(set(bare_area_name(l) for l in labels))
+    if len(bare) <= 4:
+        return slug("-".join(bare))
+    return "r%d" % index
+
+
 # ---------------------------------------------------------------------
 # Picture rendering: before | after | difference triptychs
 # ---------------------------------------------------------------------
 
-def choose_scale(w, h, sep=SEPARATOR_W, min_short=400, max_long=1500):
-    """Integer scale factor 1..8: grow the triptych until its short edge
-    reaches about min_short, but never past max_long on its long edge,
-    except factor 1 itself is always accepted (a whole-frame triptych is
-    already wider than max_long at factor 1, and there is no smaller
-    factor to fall back to)."""
+def _best_factor(dims_fn, min_short=400, max_long=1500, max_f=8):
+    """The integer factor 1..max_f that grows a picture (whose total
+    width/height at factor f is given by dims_fn(f)) until its short edge
+    reaches about min_short, but never past max_long on its long edge --
+    except factor 1 is always accepted (a crop already wider than
+    max_long at factor 1 has no smaller factor to fall back to)."""
     best = 1
-    for f in range(1, 9):
-        tw, th = 3 * w * f + 2 * sep, h * f
+    for f in range(1, max_f + 1):
+        tw, th = dims_fn(f)
         if f > 1 and max(tw, th) > max_long:
             break
         best = f
         if min(tw, th) >= min_short:
             break
     return best
+
+
+def choose_scale(w, h, min_short=400, max_long=1500):
+    """Integer scale factor 1..8 for a single w x h panel (render_single:
+    an added/removed golden has only one side to show)."""
+    return _best_factor(lambda f: (w * f, h * f), min_short, max_long)
+
+
+def choose_layout(w, h, sep=SEPARATOR_W, min_short=400, max_long=1500):
+    """Pick the triptych's panel layout -- the three w x h panels
+    (before, after, difference) side by side, or stacked -- and the
+    integer scale factor: whichever layout reaches the larger factor
+    under the picture sizing rule (short edge >= ~min_short where
+    possible, long edge <= ~max_long, factor 1..8); side by side on a
+    tie. A wide, short crop (adjacent text lines merged into one region,
+    say) stacks taller instead of staying a thin strip; a tall, narrow
+    one stays side by side."""
+    f_side = _best_factor(lambda f: (3 * w * f + 2 * sep, h * f), min_short, max_long)
+    f_stack = _best_factor(lambda f: (w * f, 3 * h * f + 2 * sep), min_short, max_long)
+    if f_stack > f_side:
+        return "stacked", f_stack
+    return "side_by_side", f_side
 
 
 def _pixels_rgb(index_row, w):
@@ -445,9 +535,12 @@ def render_triptych(before_idx, after_idx, changed, box, width=FRAME_W):
     """before_idx/after_idx: full-frame bytes of colour indices (or None
     for an added/removed golden, where only one side exists).
     changed: a set of raw frame indices that differ, used for the
-    difference panel. box: (x, y, w, h) to crop to. Returns PNG bytes."""
+    difference panel. box: (x, y, w, h) to crop to. Panels are laid out
+    side by side or stacked, whichever choose_layout picks for this
+    crop's shape, in reading order (before, after, difference). Returns
+    PNG bytes."""
     x0, y0, w, h = box
-    f = choose_scale(w, h)
+    layout, f = choose_layout(w, h)
 
     def panel(idx_buf, dim_panel):
         rows = []
@@ -485,18 +578,24 @@ def render_triptych(before_idx, after_idx, changed, box, width=FRAME_W):
 
     panels = [scale_rows(before_rows), scale_rows(after_rows), scale_rows(diff_rows)]
     pw, ph = w * f, h * f
-    sep_col = bytes(SEPARATOR) * SEPARATOR_W
-    total_w = 3 * pw + 2 * SEPARATOR_W
-    out_rows = []
-    for r in range(ph):
-        out_rows.append(panels[0][r] + sep_col + panels[1][r] + sep_col + panels[2][r])
-    return encode_png(total_w, ph, out_rows)
+    if layout == "side_by_side":
+        sep_col = bytes(SEPARATOR) * SEPARATOR_W
+        total_w = 3 * pw + 2 * SEPARATOR_W
+        out_rows = [panels[0][r] + sep_col + panels[1][r] + sep_col + panels[2][r]
+                    for r in range(ph)]
+        return encode_png(total_w, ph, out_rows)
+    else:  # stacked: before on top, then after, then difference
+        sep_row = bytes(SEPARATOR) * pw
+        out_rows = (panels[0] + [sep_row] * SEPARATOR_W
+                    + panels[1] + [sep_row] * SEPARATOR_W
+                    + panels[2])
+        return encode_png(pw, 3 * ph + 2 * SEPARATOR_W, out_rows)
 
 
 def render_single(idx_buf, box, width=FRAME_W, missing_rgb=(40, 40, 40)):
     """A single scaled picture (added/removed golden: only one side)."""
     x0, y0, w, h = box
-    f = choose_scale(w, h, sep=0)
+    f = choose_scale(w, h)
     rows = []
     for yy in range(y0, y0 + h):
         pixels = []
@@ -874,26 +973,34 @@ def render_group_pictures(gid, g, base, head, out_dir):
         changed = set(i for i, _, _ in g["diffs"])
         buckets = g["buckets"]
         boxes = {label: bbox_of(b["positions"]) for label, b in buckets.items()}
+        # One picture per touched *region* (adjacent/overlapping touched
+        # areas merged), not one per area: several sub-areas forming one
+        # visually continuous change (e.g. adjacent text-message lines)
+        # would otherwise be cut into separate strips. The per-area
+        # attribution and pixel counts (buckets, above) stay in the
+        # report text regardless.
+        regions = merge_boxes(boxes)
         covers_most = False
-        if boxes:
-            xs0 = min(b[0] for b in boxes.values())
-            ys0 = min(b[1] for b in boxes.values())
-            xs1 = max(b[0] + b[2] for b in boxes.values())
-            ys1 = max(b[1] + b[3] for b in boxes.values())
+        if regions:
+            xs0 = min(r[0][0] for r in regions)
+            ys0 = min(r[0][1] for r in regions)
+            xs1 = max(r[0][0] + r[0][2] for r in regions)
+            ys1 = max(r[0][1] + r[0][3] for r in regions)
             union_area = (xs1 - xs0) * (ys1 - ys0)
             covers_most = union_area >= 0.6 * FRAME_SIZE
-        if covers_most or not boxes:
+        if covers_most or not regions:
             png = render_triptych(before, after, changed, (0, 0, FRAME_W, FRAME_H))
             path = gdir / "whole_frame.png"
             path.write_bytes(png)
             pics.append(("whole frame", "display/%s/whole_frame.png" % gid))
         else:
-            for label, box in boxes.items():
-                safe = "".join(c if c.isalnum() else "_" for c in label).strip("_") or "area"
+            for idx, (box, labels) in enumerate(regions, start=1):
+                name = region_name(labels, idx)
                 png = render_triptych(before, after, changed, box)
-                path = gdir / ("%s.png" % safe)
+                path = gdir / ("%s.png" % name)
                 path.write_bytes(png)
-                pics.append((label, "display/%s/%s.png" % (gid, safe)))
+                caption = ", ".join(sorted(set(labels)))
+                pics.append((caption, "display/%s/%s.png" % (gid, name)))
     else:
         data = g["data"]
         box = (0, 0, FRAME_W, FRAME_H)
@@ -929,11 +1036,13 @@ def fmt_sides(base, head):
 INSTRUCTIONS = """## Instructions for the reviewer
 
 Look at every group below -- its picture (display) or its diff excerpt
-(on-board) -- and compare it with the stated intent. For each group,
-answer **as intended** / **not intended** / **cannot tell**, with one
-sentence saying what visibly changed, on the group's `Verdict:` line.
-Be especially suspicious of a group marked `OUTSIDE declared areas`.
-Never approve a group you did not look at.
+(on-board) -- and compare it with the stated intent. A display picture's
+three panels are before, after, difference, in reading order -- left to
+right when laid out side by side, top to bottom when stacked. For each
+group, answer **as intended** / **not intended** / **cannot tell**, with
+one sentence saying what visibly changed, on the group's `Verdict:`
+line. Be especially suspicious of a group marked `OUTSIDE declared
+areas`. Never approve a group you did not look at.
 """
 
 
@@ -1094,6 +1203,25 @@ def check_tool():
     box = bbox_of(buckets["S (in M)"]["positions"], width=W, height=H, margin=1)
     check(box == (0, 0, 3, 3), "bounding box of the S bucket, with margin, clamped")
 
+    # Merging adjacent/overlapping boxes into regions (several touched
+    # sub-areas that are really one visually continuous change).
+    check(bare_area_name("E5 (in E)") == "E5", "bare_area_name strips the parent suffix")
+    check(region_name(["E5 (in E)", "E6 (in E)", "E7 (in E)"], 1) == "E5-E6-E7",
+          "region_name joins bare area names")
+
+    touching = merge_boxes({"A": (0, 0, 5, 5), "B": (5, 0, 5, 5), "C": (100, 100, 5, 5)})
+    check(len(touching) == 2, "two touching boxes merge, a far one stays separate")
+    merged = next(r for r in touching if len(r[1]) == 2)
+    check(merged[0] == (0, 0, 10, 5), "merged region box covers both touching boxes")
+    check(set(merged[1]) == {"A", "B"}, "merged region keeps both area labels")
+
+    overlapping = merge_boxes({"A": (0, 0, 10, 10), "B": (5, 5, 10, 10)})
+    check(len(overlapping) == 1 and overlapping[0][0] == (0, 0, 15, 15),
+          "overlapping boxes merge into their union")
+
+    gapped = merge_boxes({"A": (0, 0, 5, 5), "B": (6, 0, 5, 5)})
+    check(len(gapped) == 2, "boxes with a one-pixel gap do not merge")
+
     # Grouping: two identical changes group together, a third different one does not.
     names_bh = {
         "f1": (bytes(base), bytes(head)),
@@ -1112,20 +1240,48 @@ def check_tool():
     agroups = group_added_removed(added, "added")
     check(len(agroups) == 2, "added goldens grouped by content (two of three identical)")
 
-    # Scale rule: short edge >= ~400 where the factor allows, long edge
-    # <= ~1500, factor in 1..8, and factor 1 is accepted even if it
-    # already busts the cap (a whole 640x480 frame triptych).
-    f = choose_scale(50, 50)
-    check(1 <= f <= 8, "scale factor in range for a 50x50 crop")
-    tw, th = 3 * 50 * f + 2 * SEPARATOR_W, 50 * f
-    check(min(tw, th) >= 400 or f == 8, "50x50 crop reaches ~400px short edge (or caps at factor 8)")
-    check(max(tw, th) <= 1500, "50x50 crop triptych stays within ~1500px long edge")
-    fw = choose_scale(FRAME_W, FRAME_H)
-    check(fw == 1, "a whole-frame crop falls back to factor 1 (already over the cap)")
+    # Scale rule (single panel, render_single: an added/removed golden):
+    # short edge >= ~400 where the factor allows, long edge <= ~1500,
+    # factor in 1..8.
+    fs = choose_scale(50, 50)
+    check(1 <= fs <= 8, "single-panel scale factor in range for a 50x50 crop")
+    check(50 * fs >= 400 or fs == 8, "single-panel 50x50 crop reaches ~400px (or caps at factor 8)")
+    check(50 * fs <= 1500, "single-panel 50x50 crop stays within ~1500px")
 
-    f2 = choose_scale(200, 100)
-    tw2, th2 = 3 * 200 * f2 + 2 * SEPARATOR_W, 100 * f2
-    check(max(tw2, th2) <= 1500, "200x100 crop triptych respects the long-edge cap")
+    # Layout + scale rule (triptych, render_triptych): whichever of side
+    # by side / stacked reaches the larger factor under the same limits;
+    # side by side on a tie.
+    def dims(layout, w, h, f):
+        return ((3 * w * f + 2 * SEPARATOR_W, h * f) if layout == "side_by_side"
+                else (w * f, 3 * h * f + 2 * SEPARATOR_W))
+
+    layout, f = choose_layout(50, 50)
+    tw, th = dims(layout, 50, 50, f)
+    check(min(tw, th) >= 400 or f == 8, "50x50 triptych reaches ~400px short edge (or caps at factor 8)")
+    check(max(tw, th) <= 1500, "50x50 triptych stays within ~1500px long edge")
+
+    layout_fw, f_fw = choose_layout(FRAME_W, FRAME_H)
+    check(f_fw == 1, "a whole-frame triptych falls back to factor 1 (already over the cap)")
+
+    layout2, f2 = choose_layout(200, 100)
+    tw2, th2 = dims(layout2, 200, 100, f2)
+    check(max(tw2, th2) <= 1500, "200x100 triptych respects the long-edge cap")
+
+    # A wide, short crop (several adjacent sub-areas merged into one wide
+    # region) stacks instead of staying a thin strip: side by side caps
+    # out at factor 1 (80px high), stacked reaches factor 2 (short edge
+    # 484px).
+    layout3, f3 = choose_layout(434, 80)
+    check((layout3, f3) == ("stacked", 2),
+          "434x80 crop picks the stacked layout, factor 2 (not an 80px-tall strip)")
+    tw3, th3 = dims(layout3, 434, 80, f3)
+    check(min(tw3, th3) >= 400, "434x80 crop's stacked triptych clears ~400px on its short edge")
+
+    # A tall, narrow crop stays side by side (reaches a larger factor
+    # that way: 3, vs 2 stacked).
+    layout4, f4 = choose_layout(60, 200)
+    check((layout4, f4) == ("side_by_side", 3),
+          "60x200 crop picks the side-by-side layout, factor 3")
 
     # On-board diff: a record added, a record removed between two cycles.
     def rec(port, payload):
