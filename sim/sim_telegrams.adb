@@ -537,14 +537,17 @@ package body Sim_Telegrams is
       return P;
    end Level_2_Order;
 
-   function Level_Order (Level : Natural; D_M, Ack_M : Natural)
+   function Level_Order (Level : Natural; D_M, Ack_M : Natural;
+                         Now   : Boolean := False)
      return T41.Packet_T
    is
       P : T41.Packet_T;
    begin
       P.Q_DIR := 1;
       P.Q_SCALE := 1;
-      P.D_LEVELTR := D_LEVELTR_T (Clamp (D_M, 0, 32_766));
+      P.D_LEVELTR :=
+        (if Now then D_LEVELTR_Now_The_Level_Transition
+         else D_LEVELTR_T (Clamp (D_M, 0, 32_766)));
       P.M_LEVELTR := M_LEVELTR_T (Level);
       P.Has_NID_NTC := False;
       P.L_ACKLEVELTR := L_ACKLEVELTR_T (D15 (Ack_M));

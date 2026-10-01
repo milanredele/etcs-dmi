@@ -1873,25 +1873,41 @@ package body EVC_Test_Procedures is
       Run_Front (205, 25);
       Check (Override_Byte = 0 and then Mode_Byte = Code_SR,
              "E4 integration, 5.8.4.1 b): override ends after D_NVOVTRP");
+      --  the national values with an SR distance of 150 m (D_NVSTFF)
+      declare
+         NV : ST.T3.Packet_T := ST.National_Values (123);
+      begin
+         NV.D_NVSTFF := 150;
+         Group (30, Front_M + 10);
+         Add (NV);
+         Close;
+      end;
+      Run_Front (Front_M + 20, 20);
       --  4.4.11.1.5: the driver's SR speed and distance at standstill
       Stand;
       Input (DMI, Frame (16#41#, (3, 35, 0, 100, 0)));
       Cycle;
       Cycle;
-      Check (V_Perm = 35 and then J41 (11) = 1,
+      Check (V_Perm = 35 and then J41 (11) = 2,
              "E4 integration, 4.4.11.1.5, 4.4.11.1.3.1 b): the SR speed "
              & "and distance entered");
       Driver (6);
       Cycle;
-      Check (Override_Byte = 1 and then J23 (2) = 2,
-             "E4 integration, 5.8.2.3: override selected again in SR");
+      Check (Override_Byte = 1 and then J23 (2) = 2 and then J41 (11) = 3,
+             "E4 integration, 5.8.2.3, 4.4.11.1.6.5: override selected "
+             & "again in SR, the driver's SR data deleted, the national "
+             & "values in force");
+      --  4.4.11.1.3.1 a): the national SR distance counted from the
+      --  override; the driver's 100 m no longer apply
+      Run_Front (Front_M + 120, 20);
+      Check (Mode_Byte = Code_SR and then Override_Byte = 1,
+             "E4 integration, 4.4.11.1.6.5: beyond the driver's 100 m, "
+             & "within the national 150 m, override active");
       --  5.8.4.1 h): the SR distance supervised before overriding passed
       --  with the estimated front end: the override ends, then the SR
       --  distance trips (4.6.3 [42], one trip entry, its reason)
-      Run_Front (Front_M + 60, 20);
-      Check (Mode_Byte = Code_SR and then Override_Byte = 1,
-             "E4 integration: SR with override within the SR distance");
-      Run_Front (Front_M + 50, 20);
+      Run_Front (Front_M + 35, 20);
+      Cycle;
       Check (J23 (3) >= 1 and then J23_B3 (3) = 8,
              "E4 integration, 5.8.4.1 h): override ended by the SR "
              & "distance passed");
@@ -2011,6 +2027,29 @@ package body EVC_Test_Procedures is
       Check (Mode_Byte = Code_SB,
              "E4 integration, 4.6.3 [27]: SH to SB on the desk closure, the "
              & "function inactive once SH was left (4.4.20.1.7)");
+      --  4.4.20.1.9, 4.8.4: "stop shunting on desk opening" (packet 135)
+      --  read in PS, where it is accepted; the desk opened: SB ([22])
+      TIU_In (1, 1);
+      Cycle;
+      Driver (7);
+      Cycle;
+      Driver (19);
+      Cycle;
+      TIU_In (1, 0);
+      Cycle;
+      Group (40, Front_M + 10);
+      Add (ST.Stop_Shunting_On_Desk_Opening);
+      Close;
+      Run_Front (Front_M + 20, 5);
+      Stand;
+      Check (J23 (7) = 1 and then J23_B3 (7) = 1,
+             "E4 integration, 4.4.20.1.9: ""stop shunting on desk opening"" "
+             & "stored in PS (4.8.4)");
+      TIU_In (1, 1);
+      Cycle;
+      Check (Mode_Byte = Code_SB,
+             "E4 integration, 4.6.3 [22], 4.4.20.1.9: PS to SB on the desk "
+             & "opening with ""stop shunting on desk opening"" stored");
    end Scenario_Integration_Shunting;
 
    --  Level 1: FS -> an On Sight mode profile acknowledged -> OS -> a
@@ -2023,15 +2062,15 @@ package body EVC_Test_Procedures is
       Ack (1);
       Cycle;
       Line_Group (EOA_M => 1_000, At_M => 10);
-      Add (ST.Mode_Profile (D_M => 300, M_MAMODE => 0, L_M => 600,
-                            Ack_M => 100));
+      Add (ST.Mode_Profile (D_M => 150, M_MAMODE => 0, L_M => 750,
+                            Ack_M => 120));
       Add (ST.Level_Order (0, D_M => 600, Ack_M => 100));
       Close;
       Run_Front (60, 20);
       Check (Mode_Byte = Code_FS,
              "E4 integration, 4.6.3 [32]: FS, the mode profile and the "
              & "level order of the group stored");
-      Run_Front (230, 20);
+      Run_Front (100, 20);
       Check (Ack_Byte = Code_OS and then Level_Ann = Code_L0
              and then Level_Ann_Ack = 0,
              "E4 integration, 5.9.3.2, 5.10.1.3: the On Sight request; the "
@@ -2039,9 +2078,14 @@ package body EVC_Test_Procedures is
              & "before its area");
       Ack (1);
       Cycle;
-      Check (Mode_Byte = Code_OS,
-             "E4 integration, 4.6.3 [15]: OS on the acknowledgement");
+      Check (Mode_Byte = Code_OS and then Seen_SS (7, 0),
+             "E4 integration, 4.6.3 [15]: OS on the acknowledgement; "
+             & "'Entering OS' while the SSP and gradient do not cover the "
+             & "train (4.4.12.1.7)");
       Run_Front (520, 20);
+      Check (Seen_SS (7, 1),
+             "E4 integration, 4.4.12.1.7: 'Entering OS' ends once the SSP "
+             & "and gradient cover the train");
       Check (Mode_Byte = Code_OS and then Level_Ann = Code_L0
              and then Level_Ann_Ack = 1,
              "E4 integration, 5.10.1.3, 5.10.4: the transition to level 0 "
@@ -2116,6 +2160,70 @@ package body EVC_Test_Procedures is
              & "SR");
    end Scenario_Integration_Text_In_SoM;
 
+   --  Level 0 to 1 with and without override: 4.6.3 [44] (UN to SR, its
+   --  priority above the trip of [39]), 5.8.3.1 c); without override,
+   --  [39] trips with its reason (SS 22) (SUBSET-076 5080400, 5100300)
+   procedure Scenario_Integration_Override_Level is
+   begin
+      Begin_Scenario (M_UN, L0);
+      Group (1, 20);
+      Add (ST.Level_Order (2, D_M => 10, Ack_M => 0));
+      Close;
+      Driver (6);
+      Cycle;
+      Check (Mode_Byte = Code_UN and then Override_Byte = 1,
+             "E4 integration, 5.8.2.1, 5.8.3.1 c): override in UN, UN "
+             & "stays");
+      Run_Front (40, 20);
+      Check (Level_Byte = Code_L1 and then Mode_Byte = Code_SR
+             and then Override_Byte = 1,
+             "E4 integration, 4.6.3 [44], 5.8.3.1 c): level 1 with "
+             & "override: SR (its priority above the trip of [39])");
+
+      Begin_Scenario (M_UN, L0);
+      Group (1, 20);
+      Add (ST.Level_Order (2, D_M => 10, Ack_M => 0));
+      Close;
+      Run_Front (40, 20);
+      Check (Level_Byte = Code_L1 and then Mode_Byte = Code_TR
+             and then J23_B3 (1)
+                        = EVC_Procedures.Trip_Reason_T'Pos
+                            (EVC_Procedures.No_MA_Level_Switch)
+             and then Seen_SS (22, 0),
+             "E4 integration, 4.6.3 [39]: level 1 without an MA trips, "
+             & "reason SS 22 (one trip entry)");
+   end Scenario_Integration_Override_Level;
+
+   --  4.4.8.1.5, 4.8.4 [7]: in Shunting an immediate level order is kept
+   --  and taken once SH is left (EVC_Levels); a further location is
+   --  rejected (SUBSET-076 5060400)
+   procedure Scenario_Integration_Shunting_Levels is
+   begin
+      Begin_Scenario (M_SB, L1);
+      Driver (7);
+      Cycle;
+      Group (1, 20);
+      Add (ST.Level_Order (0, D_M => 0, Ack_M => 0, Now => True));
+      Close;
+      Group (2, 40);
+      Add (ST.Level_Order (0, D_M => 100, Ack_M => 50));
+      Close;
+      Run_Front (50, 10);
+      Check (Mode_Byte = Code_SH and then Level_Byte = Code_L1
+             and then Level_Ann = No_Ack,
+             "E4 integration, 4.4.8.1.5: no level transition in SH, no "
+             & "announcement");
+      Stand;
+      Driver (8);
+      Cycle;
+      Cycle;
+      Check (Mode_Byte = Code_SB and then Level_Byte = Code_L0
+             and then Level_Ann = Code_L0 and then Level_Ann_Ack = 1,
+             "E4 integration, 4.4.8.1.5: the immediate order kept in SH "
+             & "taken once SH is left, its acknowledgement asked (5.10.4.1 "
+             & "b)");
+   end Scenario_Integration_Shunting_Levels;
+
    procedure Run is
    begin
       Scenario_Protocol;
@@ -2141,6 +2249,8 @@ package body EVC_Test_Procedures is
       Scenario_Integration_Shunting;
       Scenario_Integration_OS_Level;
       Scenario_Integration_Text_In_SoM;
+      Scenario_Integration_Override_Level;
+      Scenario_Integration_Shunting_Levels;
       Check (Build_OK and then Parse_OK,
              "E4 procedures: every telegram built, every output parsed");
    end Run;

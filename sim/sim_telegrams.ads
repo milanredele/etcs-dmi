@@ -192,9 +192,10 @@ package Sim_Telegrams is
    function Level_2_Order (D_M, Ack_M : Natural) return T41.Packet_T;
 
    --  Packet 41: the order to switch to the level of M_LEVELTR Level (0
-   --  level 0, 2 level 1, 3 level 2) at D_M, with an acknowledgement
-   --  area Ack_M long (e4/integration)
-   function Level_Order (Level : Natural; D_M, Ack_M : Natural)
+   --  level 0, 2 level 1, 3 level 2) at D_M (Now: an immediate order),
+   --  with an acknowledgement area Ack_M long (e4/integration)
+   function Level_Order (Level : Natural; D_M, Ack_M : Natural;
+                         Now   : Boolean := False)
      return T41.Packet_T
      with Pre => Level in 0 | 2 | 3;
 

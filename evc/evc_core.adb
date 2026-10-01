@@ -58,7 +58,7 @@ package body EVC_Core
                                    TIU_Reasons_Sent,
                                    Supervision_Reported,
                                    Overrun_Reported,
-                                   Entering_FS_Shown,
+                                   Entering_Shown,
                                    --  the procedures (phase E4)
                                    Proc_Ctx,
                                    Ack_For_Protection,
@@ -178,8 +178,9 @@ is
    No_Supervision       : constant Unsigned_32 := 16#FFFF_FFFF#;
    Supervision_Reported : Unsigned_32 := No_Supervision;
    Overrun_Reported     : EVC_Bytes.Byte := 0;
-   --  phase E4: the indication "Entering FS" (4.4.9.1.4) is shown
-   Entering_FS_Shown    : Boolean := False;
+   --  phase E4: the indication "Entering FS" (4.4.9.1.4) or "Entering
+   --  OS" (4.4.12.1.7) shown: its catalogue entry, 0 none
+   Entering_Shown       : EVC_Bytes.Byte := 0;
 
    ---------------------------------------------------------------------
    --  The procedures (phase E4, e4/procedures)
@@ -319,7 +320,7 @@ is
       TIU_Reasons_Sent := 0;
       Supervision_Reported := No_Supervision;
       Overrun_Reported := 0;
-      Entering_FS_Shown := False;
+      Entering_Shown := 0;
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
@@ -1003,13 +1004,15 @@ is
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Data.State,
                                 EVC_Track_Conditions.State,
-                                EVC_Levels.State, EVC_Mission.State,
+                                EVC_Levels.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Odometry.State,
-                                EVC_Movement_Authority.State),
+                                EVC_Movement_Authority.State,
+                                EVC_National_Values.State),
                      Output => Proc_Ctx,
                      In_Out => (EVC_Procedures.State, EVC_Text_Messages.State,
                                 EVC_Track_Description.State,
+                                EVC_Mission.State,
                                 Config_Last, Config_Seen))
    is
       S : constant EVC_Supervision_Input.Snapshot_T := Snapshot_In_Use;
@@ -1061,6 +1064,21 @@ is
                               and then not EVC_Mission.Ack_Taken,
          Filters           => Acceptance_Context);
       EVC_Procedures.Evaluate (Proc_Ctx, S, SDM_Result);
+      --  4.4.11.1.6.5, 4.4.11.1.3.1 a): "Override" selected in SR: the SR
+      --  speed limit and distance of the driver are deleted, the national
+      --  values apply, the distance counted from here (EVC_Mission)
+      if Current_Mode = M_SR and then EVC_Procedures.Condition (37) then
+         EVC_Mission.Override_In_SR
+           ((Mode        => Current_Mode,
+             Level_Valid => EVC_Levels.Valid,
+             Level       => EVC_Levels.Level,
+             Standstill  => EVC_Odometry.Standstill,
+             Desk_Open   => EVC_Train_Inputs.Desk_Open,
+             Non_Leading => EVC_Train_Inputs.Non_Leading_Permitted,
+             Sense       => EVC_Position.Orientation,
+             V_NVSTFF    => EVC_National_Values.Current.Values.V_NVSTFF,
+             D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF));
+      end if;
       EVC_Text_Messages.Evaluate
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
          S.Train.Est_Front, Unsigned_64 (Clock_Ms),
@@ -1305,7 +1323,7 @@ is
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, Overrun_Reported,
-                                Entering_FS_Shown,
+                                Entering_Shown,
                                 Status_Rev_Sent, Status_Tunnel_Sent,
                                 TC_Sent))
    is
@@ -1357,20 +1375,29 @@ is
                                  SS_Event_Start));
       end if;
       --  4.4.9.1.4: in FS, "Entering FS" until SSP and gradient are known
-      --  for the whole length of the train (the DMI's catalogue entry 6;
-      --  a mode change ends it on the DMI as well)
+      --  for the whole length of the train (the DMI's catalogue entry 6);
+      --  4.4.12.1.7: in OS, "Entering OS" (entry 7) the same (a mode
+      --  change ends either on the DMI as well)
       declare
-         Entering : constant Boolean :=
-           Current_Mode = M_FS
-           and then EVC_Stored_Information.MA_On_Board
+         Not_Covered : constant Boolean :=
+           EVC_Stored_Information.MA_On_Board
            and then not EVC_Stored_Information.Train_Covered;
+         Entering    : constant EVC_Bytes.Byte :=
+           (if Not_Covered and then Current_Mode = M_FS then SS_Entering_FS
+            elsif Not_Covered and then Current_Mode = M_OS
+            then SS_Entering_OS
+            else 0);
       begin
-         if Entering /= Entering_FS_Shown then
-            EVC_Outbox.Put (DMI, System_Status_Frame
-                                   (SS_Entering_FS,
-                                    (if Entering then SS_Event_Start
-                                     else SS_Event_End)));
-            Entering_FS_Shown := Entering;
+         if Entering /= Entering_Shown then
+            if Entering_Shown /= 0 then
+               EVC_Outbox.Put (DMI, System_Status_Frame
+                                      (Entering_Shown, SS_Event_End));
+            end if;
+            if Entering /= 0 then
+               EVC_Outbox.Put (DMI, System_Status_Frame
+                                      (Entering, SS_Event_Start));
+            end if;
+            Entering_Shown := Entering;
          end if;
       end;
 

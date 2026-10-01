@@ -226,6 +226,13 @@ is
                      Input  => (EVC_Driver_Requests.State,
                                 EVC_Odometry.State, EVC_Config.State));
 
+   --  4.4.11.1.6.5, 4.4.11.1.3.1 a): "Override" selected in SR: the SR
+   --  mode speed limit and the SR distance the driver entered are
+   --  deleted, the national values of C apply, the SR distance counted
+   --  from now (event 11 with the national values)
+   procedure Override_In_SR (C : Context_T)
+     with Global => (In_Out => State, Input => EVC_Odometry.State);
+
    --  For the tests of the hosts (EVC_Core.Set_Mode_For_Test): the mode
    --  is set to M without a transition; in SR the SR mode speed limit and
    --  the SR distance of the national values apply from here, as on

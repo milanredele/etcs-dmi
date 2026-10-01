@@ -375,6 +375,23 @@ is
       end if;
    end Evaluate;
 
+   --------------------
+   -- Override_In_SR --
+   --------------------
+
+   procedure Override_In_SR (C : Context_T) is
+   begin
+      SR_V := C.V_NVSTFF;
+      if C.D_NVSTFF < Max_Cm then
+         SR_D := EVC_Odometry.Start_Virtual (C.D_NVSTFF, C.Sense);
+      else
+         SR_D := (others => <>);
+      end if;
+      Put_Event (Event_SR_Data,
+                 Natural (C.V_NVSTFF) * 36 / 1000 / 5,
+                 Natural (Length_T'Min (C.D_NVSTFF / 10_000, 255)));
+   end Override_In_SR;
+
    ------------------
    -- Set_For_Test --
    ------------------
