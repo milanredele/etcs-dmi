@@ -12,7 +12,7 @@ clause - absent 3.11.3.2.2 ; efs 3.11.3.2.2
 clause E3 done 3.11.3.2.3 ; efs 3.11.3.2.3
 clause E3 done 3.11.3.2.5 ; efs 3.11.3.2.5
 clause E3 done 3.11.3.2.6 ; efs 3.11.3.2.6
-clause E3 partial 3.11.3.3.2 ; efs 3.11.3.3.2
+clause E3 done 3.11.3.3.2 ; efs 3.11.3.3.2
 step Initialize train data
 sub Sub-step1
 init 100.0 SR

@@ -60,7 +60,9 @@ package body EVC_Position
                                    Taken_Tel_N,
                                    Passage_Ms,
                                    Previous_Ms,
-                                   Antenna_Offset))
+                                   Antenna_Offset,
+                                   Accept_Linking,
+                                   Check_Linking))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -121,6 +123,11 @@ is
    Antenna_Offset     : Offsets_T :=
      (Plus  => EVC_Config.Default.Antenna_To_Cab_A,
       Minus => EVC_Config.Default.Antenna_To_Cab_B);
+
+   --  Added by e4/modes (Set_Linking_Context): packet 5 is accepted
+   --  (4.8), the linking consistency is checked (3.4.4.2.1.1 b)
+   Accept_Linking     : Boolean := True;
+   Check_Linking      : Boolean := True;
 
    Orient             : Sense_T := Plus;
    Orient_Known       : Boolean := False;
@@ -604,7 +611,7 @@ is
    is
    begin
       for Step in 1 .. EVC_Linking.Max_Links loop
-         exit when not EVC_Linking.Checked (Links);
+         exit when not Check_Linking or else not EVC_Linking.Checked (Links);
          declare
             E : constant EVC_Linking.Link_Index_T := Links.Expected;
             L : constant EVC_Linking.Link_T := Links.Links (E);
@@ -783,7 +790,9 @@ is
                  Passage.Telegrams (I).Index (J);
             begin
                if Valid_For (E.Q_DIR, A.Orientation, T) then
-                  if E.Kind = ETCS_Catalogue.Track_P5 then
+                  if E.Kind = ETCS_Catalogue.Track_P5
+                    and then Accept_Linking
+                  then
                      declare
                         P : ETCS_Track_Packets.P5.Packet_T;
                         L : EVC_Linking.Linking_T;
@@ -952,7 +961,7 @@ is
             elsif T = Plus then Plus
             else Orient);
 
-      if not EVC_Linking.Checked (Links) then
+      if not Check_Linking or else not EVC_Linking.Checked (Links) then
          --  3.4.4.5.1, 3.6.4.2.2 b), 3.6.2.2.2 a) second bullet
          Taken := True;
          Compliant := Passage.Linked;
@@ -1193,6 +1202,8 @@ is
       Unlinked_Next := 1;
       Seq_Counter := 0;
       Links := Empty_Links;
+      Accept_Linking := True;
+      Check_Linking := True;
       Passage := Empty_Passage;
       Passage.Open := False;
       Pending := (others => Empty_T);
@@ -1538,6 +1549,26 @@ is
       Recent := (others => (others => <>));
       Unlinked := (others => (others => <>));
    end Delete_Position;
+
+   -------------------------
+   -- Set_Linking_Context --
+   -------------------------
+
+   procedure Set_Linking_Context (Accept_Info, Check : Boolean) is
+   begin
+      Accept_Linking := Accept_Info;
+      Check_Linking := Check;
+   end Set_Linking_Context;
+
+   --------------------
+   -- Delete_Linking --
+   --------------------
+
+   procedure Delete_Linking is
+      Empty_Links : EVC_Linking.Linking_T;
+   begin
+      Links := Empty_Links;
+   end Delete_Linking;
 
    ----------------
    -- Delete_Geo --

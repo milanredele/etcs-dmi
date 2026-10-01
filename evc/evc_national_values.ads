@@ -155,6 +155,12 @@ is
      with Global => (In_Out => State),
           Post => not Pending;
 
+   --  Added by e4/modes, A.3.4.1.3 column k (the desk closed during the
+   --  start of mission): the set not yet applicable is deleted
+   procedure Delete_Pending
+     with Global => (In_Out => State),
+          Post => not Pending and then Current = Current'Old;
+
    --  A balise group of the country NID_C was read: Reverted when the set
    --  in use was not for it and the defaults apply again (3.18.2.10)
    procedure Check_Country (NID_C : NID_C_T; Reverted : out Boolean)

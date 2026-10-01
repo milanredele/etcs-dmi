@@ -141,7 +141,9 @@ package Sim_Telegrams is
    function TSR (Id : Natural; D_M, L_M, Kmh : Natural) return T65.Packet_T;
 
    --  Packet 41: the order to switch to level 2 (M_LEVELTR 3) at D_M,
-   --  with an acknowledgement area Ack_M long
+   --  with an acknowledgement area Ack_M long; level 1 with the lower
+   --  priority (a line of levels 2 and 1 from there: the on-board stays in
+   --  level 1 until it has the radio of level 2, 5.10.2.4)
    function Level_2_Order (D_M, Ack_M : Natural) return T41.Packet_T;
 
    --  Packet 73: an auxiliary plain text shown from D_M on for L_M, in

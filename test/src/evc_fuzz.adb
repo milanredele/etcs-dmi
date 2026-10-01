@@ -425,6 +425,63 @@ procedure EVC_Fuzz is
                  elsif Chance (80) then Pick (1, 5) else Pick (0, 255));
             Add (if Chance (90) then Pick (0, 1) else Pick (0, 255));
          when DMI =>
+            --  phase E4: the frames of the start of mission and of the
+            --  modes, well formed with values in and out of their ranges
+            --  (driver ID, train running number, Train Data, SR data, the
+            --  level, 'Start', the acknowledgements, NL, maintain
+            --  shunting)
+            if Chance (40) then
+               case Pick (1, 8) is
+                  when 1 | 2 =>
+                     declare
+                        N : constant Natural := Pick (0, 18);
+                     begin
+                        Add (16#41#);
+                        Add_U32 (Unsigned_32 (N + 2));
+                        Add (Pick (0, 1));
+                        Add (N);
+                        for I in 1 .. N loop
+                           Add (if Chance (80) then Pick (48, 57)
+                                else Pick (0, 255));
+                        end loop;
+                     end;
+                  when 3 =>
+                     Add (16#41#);
+                     Add_U32 (13);
+                     Add (2);
+                     Add_U16 (Pick (0, 5_000));
+                     Add_U16 (Pick (0, 300));
+                     Add_U16 (Pick (0, 700));
+                     Add (Pick (0, 12));
+                     Add_U16 (Pick (0, 8));
+                     Add (Pick (0, 13));
+                     Add (Pick (0, 2));
+                     Add (Pick (0, 5));
+                  when 4 =>
+                     Add (16#41#);
+                     Add_U32 (5);
+                     Add (3);
+                     Add_U16 (Pick (0, 700));
+                     Add_U16 (Pick (0, 65_535));
+                  when 5 =>
+                     Add (16#40#);
+                     Add_U32 (3);
+                     Add (11);
+                     Add_U16 (Pick (0, 7));
+                  when 6 =>
+                     Add (16#40#);
+                     Add_U32 (5);
+                     Add (2);
+                     Add_U16 (Pick (0, 7));
+                     Add_U16 (Pick (0, 3));
+                  when others =>
+                     Add (16#40#);
+                     Add_U32 (3);
+                     Add (Pick (0, 1) * 7 + 5);  -- 'Start' or 12 (NL)
+                     Add_U16 (0);
+               end case;
+               return;
+            end if;
             declare
                The_Type : constant Natural :=
                  (case Pick (1, 10) is
@@ -1142,6 +1199,9 @@ procedure EVC_Fuzz is
          begin
             EVC_Core.Initialise;
             EVC_Core.Handle_Input (TIU, (1, 1));
+            --  phase E4: the stored information in FS, level 1, with the
+            --  default train (as evc_test runs the scenarios of E3)
+            EVC_Core.Set_Mode_For_Test (M_FS, L1);
             Odo_D := Next;
             Over := 0;
             Under := 0;

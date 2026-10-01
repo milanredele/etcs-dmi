@@ -136,6 +136,10 @@ is
    --  Bits of Data
    Data_Level_Valid    : constant Bits_T := 4;
    Data_Position_Valid : constant Bits_T := 32;  -- valid, referred to an LRBG
+   --  added by e4/modes
+   Data_Driver_ID_Valid  : constant Bits_T := 1;
+   Data_Train_Data_Valid : constant Bits_T := 2;
+   Data_TRN_Valid        : constant Bits_T := 8;
    --  Bits of Train
    Train_Standstill      : constant Bits_T := 1;
    Train_Below_Override  : constant Bits_T := 2;
@@ -148,6 +152,28 @@ is
    National_VBC_Stored        : constant Bits_T := 8;
    --  SoM
    SoM_Possible : constant Byte := 2;
+
+   --  Added by e4/modes: MSG_MODE_LEVEL with the acknowledgement of a
+   --  mode (Mode_Ack: the code of the mode, 16#FF# none), the level
+   --  announced (Level_Ann: the code of the level, 16#FF# none) and
+   --  whether its acknowledgement is asked; no override, no TAF request,
+   --  no LSSMA (the procedures half fills those)
+   No_Code : constant Byte := 16#FF#;
+
+   function Mode_Level_Frame (Mode          : Mode_T;
+                              Status        : Level_Status_T;
+                              Level         : Level_T;
+                              Mode_Ack      : Byte;
+                              Level_Ann     : Byte;
+                              Level_Ann_Ack : Boolean)
+     return Mode_Level_Frame_T
+   with Pre => Has_Mode_Code (Mode),
+        Post => Mode_Level_Frame'Result (1) = MSG_MODE_LEVEL
+                and then Mode_Level_Frame'Result (6) = Mode_Code (Mode)
+                and then Mode_Level_Frame'Result (7)
+                           = Level_Code (Status, Level)
+                and then Mode_Level_Frame'Result (8) = Mode_Ack
+                and then Mode_Level_Frame'Result (9) = Level_Ann;
 
    subtype Onboard_Frame_T is Byte_Array (1 .. Header_Length + Onboard_Length);
 
@@ -289,6 +315,10 @@ is
    Brake_None    : constant Byte := 0;
    Brake_Applied : constant Byte := 1;
    Brake_Ack     : constant Byte := 2;
+   --  added by e4/modes: applied because a requested acknowledgement of
+   --  a level, a mode or a text message is pending (its release comes
+   --  with that acknowledgement, dmi_protocol.ads)
+   Brake_Ack_Pending : constant Byte := 3;
 
    --  No time to Indication (tti)
    TTI_None : constant Unsigned_16 := 16#FFFF#;
@@ -313,5 +343,30 @@ is
       and then Frame (Frame'First + Header_Length) = Action_Ack
       and then Get_U16 (Frame, Frame'First + Header_Length + 1)
                  = Ack_Brake_Release);
+
+   ---------------------------------------------------------------------
+   --  Added by e4/modes: MSG_SYSTEM_STATUS (dmi_protocol.ads), an event of
+   --  a system status message of the catalogue of the DMI's chapter 15:
+   --  item u8 (the catalogue entry), event u8 (0 start, 1 end, 2 the
+   --  event that starts the 30 s of an entry)
+   ---------------------------------------------------------------------
+
+   MSG_SYSTEM_STATUS    : constant Byte := 16#0C#;
+   System_Status_Length : constant := 2;
+   SS_Event_Start       : constant Byte := 0;
+   SS_Event_End         : constant Byte := 1;
+   --  "Non-leading no longer permitted" (SUBSET-026 4.4.15.1.1.3), to be
+   --  acknowledged; the DMI ends it with the acknowledgement
+   SS_NL_No_Longer_Permitted : constant Byte := 35;
+   --  "Entering FS" (SUBSET-026 4.4.9.1.4): ends when SSP and gradient are
+   --  known for the whole length of the train
+   SS_Entering_FS            : constant Byte := 6;
+
+   subtype System_Status_Frame_T is
+     Byte_Array (1 .. Header_Length + System_Status_Length);
+
+   function System_Status_Frame (Item, Event : Byte)
+     return System_Status_Frame_T
+   is (MSG_SYSTEM_STATUS, System_Status_Length, 0, 0, 0, Item, Event);
 
 end EVC_DMI_Port;

@@ -6,6 +6,8 @@ with ETCS_Catalogue;
 with ETCS_Packet_Index;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P12;
+with ETCS_Track_Packets.P41;
+with ETCS_Track_Packets.P46;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Track_Packets.P39;
@@ -21,6 +23,7 @@ with ETCS_Track_Packets.P80;
 with ETCS_Track_Packets.P88;
 with ETCS_Track_Packets.P141;
 with ETCS_Variables;         use ETCS_Variables;
+with EVC_Acceptance;
 with EVC_Location;           use EVC_Location;
 
 package body EVC_Stored_Information
@@ -30,7 +33,9 @@ package body EVC_Stored_Information
                                    Orient_Seen, Events, Event_N,
                                    Indicated, Indicated_N, Sent, Sent_N,
                                    Cond_Due, Plan, Plan_Due,
-                                   Driver_Slippery, PBD_Last, PBD_Known))
+                                   Driver_Slippery, PBD_Last, PBD_Known,
+                                   MA_Board, Profile_Overlap,
+                                   Covered_Flag))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -64,6 +69,10 @@ is
    --  restrictions to ensure a permitted braking distance
    PBD_Last        : EVC_PBD.Inputs_T;
    PBD_Known       : Boolean := False;
+   --  added by e4/modes: the facts of 4.6.3 of the last Evaluate
+   MA_Board        : Boolean := False;
+   Profile_Overlap : Boolean := False;
+   Covered_Flag    : Boolean := False;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -98,6 +107,12 @@ is
      with Refined_Global => Plan;
    function PBD_Inputs return EVC_PBD.Inputs_T is (PBD_Last)
      with Refined_Global => PBD_Last;
+   function MA_On_Board return Boolean is (MA_Board)
+     with Refined_Global => MA_Board;
+   function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
+     with Refined_Global => Profile_Overlap;
+   function Train_Covered return Boolean is (Covered_Flag)
+     with Refined_Global => Covered_Flag;
 
    procedure Record_Event (Info, Change, Detail : Natural)
      with Global => (In_Out => (Events, Event_N))
@@ -145,6 +160,9 @@ is
       Driver_Slippery := False;
       PBD_Last := (others => <>);
       PBD_Known := False;
+      MA_Board := False;
+      Profile_Overlap := False;
+      Covered_Flag := False;
    end Clear;
 
    procedure Set_Driver_Slippery (Slippery : Boolean) is
@@ -236,13 +254,16 @@ is
 
    subtype Reader_T is ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
 
-   --  The order in which the packets of a message are evaluated
+   --  The order in which the packets of a message are evaluated: the
+   --  level transition orders first (4.8.1.3, added by e4/modes)
    type Order_Kind_T is
-     (K3, K27, K21, K51, K52, K65, K66, K141, K68, K39, K67, K70, K71,
-      K88, K12, K80);
+     (K41, K46, K3, K27, K21, K51, K52, K65, K66, K141, K68, K39, K67, K70,
+      K71, K88, K12, K80);
 
    function Kind_Of (K : Order_Kind_T) return ETCS_Catalogue.Packet_Kind_T is
      (case K is
+         when K41  => ETCS_Catalogue.Track_P41,
+         when K46  => ETCS_Catalogue.Track_P46,
          when K3   => ETCS_Catalogue.Track_P3,
          when K27  => ETCS_Catalogue.Track_P27,
          when K21  => ETCS_Catalogue.Track_P21,
@@ -260,16 +281,83 @@ is
          when K12  => ETCS_Catalogue.Track_P12,
          when K80  => ETCS_Catalogue.Track_P80);
 
+   --  4.8: the kind of information of a packet (K12: the MA; its
+   --  V_MAIN is the signalling related speed restriction)
+   function Info_Of (K : Order_Kind_T) return EVC_Acceptance.Info_T is
+     (case K is
+         when K41  => EVC_Acceptance.Level_Order,
+         when K46  => EVC_Acceptance.Conditional_Order,
+         when K3   => EVC_Acceptance.National_Values,
+         when K27  => EVC_Acceptance.International_SSP,
+         when K21  => EVC_Acceptance.Gradient_Profile,
+         when K51  => EVC_Acceptance.Axle_Load_Profile,
+         when K52  => EVC_Acceptance.Braking_Distance,
+         when K65  => EVC_Acceptance.TSR,
+         when K66  => EVC_Acceptance.TSR_Revocation,
+         when K141 => EVC_Acceptance.Default_Gradient,
+         when K68 | K39 => EVC_Acceptance.Track_Conditions,
+         when K67  => EVC_Acceptance.Big_Metal_Masses,
+         when K70  => EVC_Acceptance.Route_Suitability,
+         when K71  => EVC_Acceptance.Adhesion,
+         when K88  => EVC_Acceptance.Level_Crossing,
+         when K12 | K80 => EVC_Acceptance.Movement_Authority);
+
+   --  The NID_PACKET of a kind (the record of a rejection)
+   function NID_Of (K : Order_Kind_T) return Natural is
+     (case K is
+         when K41 => 41, when K46 => 46, when K3 => 3, when K27 => 27,
+         when K21 => 21, when K51 => 51, when K52 => 52, when K65 => 65,
+         when K66 => 66, when K141 => 141, when K68 => 68, when K39 => 39,
+         when K67 => 67, when K70 => 70, when K71 => 71, when K88 => 88,
+         when K12 => 12, when K80 => 80);
+
+   --  The context of 4.8 of a packet of a group: the mode and the inputs
+   --  of the cycle, the level as it is now (an immediate order of the
+   --  message may have changed it)
+   function Acceptance (Ctx              : Mode_Context_T;
+                        Linked           : Boolean;
+                        Order_In_Message : Boolean)
+     return EVC_Acceptance.Context_T
+   is (EVC_Acceptance.Context_T'
+         (Mode             => Ctx.Mode,
+          Level_Valid      => EVC_Levels.Valid,
+          Level            => EVC_Levels.Level,
+          Cab_Active       => Ctx.Cab_Active,
+          Train_Data_Valid => EVC_Train_Data.Valid,
+          TRN_Valid        => Ctx.TRN_Valid,
+          L1_Announced     => EVC_Levels.L1_Announced,
+          Order_In_Message => Order_In_Message,
+          Order_Pending    => EVC_Levels.Order_Pending,
+          Unlinked_Group   => not Linked))
+     with Global => (EVC_Levels.State, EVC_Train_Data.State);
+
+   --  The context of the levels of a packet 41 or 46
+   function Levels_Context (Ctx    : Mode_Context_T;
+                            Train  : Train_Frame_T;
+                            Now_Ms : Unsigned_64)
+     return EVC_Levels.Context_T
+   is ((Mode           => Ctx.Mode,
+        Standstill     => Train.Standstill,
+        Position_Valid => Train.Valid,
+        Est_Front      => Train.Est_Front,
+        Max_Front      => Train.Max_Front,
+        Now_Ms         => Now_Ms));
+
    procedure Take_Packet (K           : Order_Kind_T;
                           J, P        : Positive;
                           M           : Message_T;
                           T           : Origin_Table_T;
                           Train       : Train_Frame_T;
-                          MA_Accepted : in out Boolean)
+                          MA_Accepted : in out Boolean;
+                          Ctx         : Mode_Context_T;
+                          Linked      : Boolean;
+                          Has_41      : Boolean;
+                          Now_Ms      : Unsigned_64)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
+                                EVC_Levels.State,
                                 Events, Event_N),
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => P <= EVC_Position.Taken_Packet_Count (J)
@@ -279,9 +367,44 @@ is
          Reason => "the reader of one packet is not used after it");
       R  : Reader_T;
       OK : Boolean;
+      A  : constant EVC_Acceptance.Context_T :=
+        Acceptance (Ctx, Linked, Has_41);
    begin
+      --  4.8: the first and the third filter (the signalling related
+      --  speed restriction of a packet 12 apart from its MA; the mode
+      --  profile with its MA)
+      if not EVC_Acceptance.Accepted (Info_Of (K), A)
+        and then not (K = K12
+                      and then EVC_Acceptance.Accepted
+                                 (EVC_Acceptance.Signalling_Speed, A))
+      then
+         if K /= K80 then
+            Record_Event (Info_Group, Change_Filtered, NID_Of (K));
+         end if;
+         return;
+      end if;
       EVC_Position.Open_Taken_Packet (J, P, R);
       case K is
+         when K41 =>
+            declare
+               X : ETCS_Track_Packets.P41.Packet_T;
+            begin
+               ETCS_Track_Packets.P41.Decode (R, X, OK);
+               if OK then
+                  EVC_Levels.Take_Order
+                    (X, M, Levels_Context (Ctx, Train, Now_Ms));
+               end if;
+            end;
+         when K46 =>
+            declare
+               X : ETCS_Track_Packets.P46.Packet_T;
+            begin
+               ETCS_Track_Packets.P46.Decode (R, X, OK);
+               if OK then
+                  EVC_Levels.Take_Conditional
+                    (X, Levels_Context (Ctx, Train, Now_Ms));
+               end if;
+            end;
          when K3 =>
             declare
                X : ETCS_Track_Packets.P3.Packet_T;
@@ -448,7 +571,9 @@ is
                O  : EVC_Movement_Authority.Outcome_T;
             begin
                ETCS_Track_Packets.P12.Decode (R, X, OK);
-               if OK then
+               if OK and then EVC_Acceptance.Accepted
+                                (EVC_Acceptance.Signalling_Speed, A)
+               then
                   --  3.11.6.2: taken as soon as received
                   EVC_Movement_Authority.Take_V_Main (X);
                   if X.V_MAIN = 0 then
@@ -457,6 +582,10 @@ is
                      Record_Event (Info_Signalling_Speed, Change_Stored,
                                    Natural (X.V_MAIN));
                   end if;
+               end if;
+               if OK and then EVC_Acceptance.Accepted
+                                (EVC_Acceptance.Movement_Authority, A)
+               then
                   MA := EVC_Movement_Authority.From_Packet (X, M);
                   if MA.Present
                     and then Train.Valid
@@ -493,13 +622,16 @@ is
    end Take_Packet;
 
    --  Group G of the position's last Update, as message number Msg_Count
-   procedure Take_Group (G     : Positive;
-                         T     : Origin_Table_T;
-                         Train : Train_Frame_T)
+   procedure Take_Group (G      : Positive;
+                         T      : Origin_Table_T;
+                         Train  : Train_Frame_T;
+                         Ctx    : Mode_Context_T;
+                         Now_Ms : Unsigned_64)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
+                                EVC_Levels.State,
                                 Events, Event_N, Msg_Count),
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => G <= EVC_Position.Taken_Count
@@ -508,7 +640,18 @@ is
       M           : Message_T;
       Reverted    : Boolean;
       MA_Accepted : Boolean := False;
+      --  4.8.3 [11]: a level transition order in the message
+      Has_41      : Boolean := False;
    begin
+      for J in Tk.First .. Tk.First + Tk.Count - 1 loop
+         for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
+            if EVC_Position.Taken_Entry (J, P).Kind
+                 = ETCS_Catalogue.Track_P41
+            then
+               Has_41 := True;
+            end if;
+         end loop;
+      end loop;
       if Msg_Count < Natural'Last - 1 then
          Msg_Count := Msg_Count + 1;
       end if;
@@ -535,7 +678,8 @@ is
                     and then EVC_Position.Valid_For
                                (E.Q_DIR, Tk.Group.Orientation, Tk.T)
                   then
-                     Take_Packet (K, J, P, M, T, Train, MA_Accepted);
+                     Take_Packet (K, J, P, M, T, Train, MA_Accepted, Ctx,
+                                  Tk.Group.Linked, Has_41, Now_Ms);
                   end if;
                end;
             end loop;
@@ -564,9 +708,11 @@ is
                     Mode_Speed     : Speed_Cms_T;
                     Now_Ms         : Unsigned_64;
                     Special_Active : EVC_Braking.Brakes_T;
-                    Additional     : Boolean)
+                    Additional     : Boolean;
+                    Ctx            : Mode_Context_T)
      with Global => (Output => (Sources, Steps, Ceiling, Indicated,
-                                Indicated_N, Cond_Due, Plan, Plan_Due),
+                                Indicated_N, Cond_Due, Plan, Plan_Due,
+                                MA_Board, Profile_Overlap, Covered_Flag),
                      In_Out => (Snap, Failures, Sent, Sent_N,
                                 EVC_Track_Conditions.State,
                                 EVC_Track_Description.State,
@@ -628,6 +774,10 @@ is
       Ind      : EVC_Track_Conditions.Indications_T;
       Orders   : EVC_Track_Conditions.Orders_T;
       MA_R     : Movement_Authority_T;
+      --  4.5.2 Figure 1 (EVC_Modes, added by e4/modes)
+      Mode     : constant EVC_Modes.Mode_T := Ctx.Mode;
+      With_MA  : constant Boolean :=
+        EVC_Modes.MA_Mode (Mode) or else EVC_Modes."=" (Mode, EVC_Modes.M_SM);
    begin
       --  the train
       Snap.Train :=
@@ -666,8 +816,9 @@ is
                           EVC_National_Values.Current.Redadh_Use),
                      Trip_Margin => 0,
                      T_MAR       => 0,
-                     SR_Distance => False,
-                     SR_End      => 0);
+                     --  4.4.11.1.3 b) (e4/modes)
+                     SR_Distance => Ctx.SR_Distance,
+                     SR_End      => Ctx.SR_End);
 
       --  3.11.11.3: the speed restrictions to ensure a permitted braking
       --  distance received are computed, and all of them again when an
@@ -698,8 +849,17 @@ is
       --  maximum train speed (3.11.8) and the mode related speed
       Sources := (Count => 0, List => (others => (others => <>)),
                   Lost => 0);
-      EVC_Track_Description.Speed_Elements (T, Ahead, Data.Length, Sources);
+      --  4.5.2: the SSP, the ASP, the LX and the PBD speed restrictions in
+      --  the modes with an MA, the TSRs also in SR and UN
+      if EVC_Modes.Track_Speed_Mode (Mode) then
+         EVC_Track_Description.Speed_Elements
+           (T, Ahead, Data.Length, Sources);
+      elsif EVC_Modes.TSR_Mode (Mode) then
+         EVC_Track_Description.Speed_Elements
+           (T, Ahead, Data.Length, Sources, Only_TSR => True);
+      end if;
       if EVC_Movement_Authority.V_Main_Known and then MA_Now.Sense = Ahead
+        and then EVC_Modes.MA_Mode (Mode)
       then
          Add (Sources, Axis_Start,
               (if EVC_Movement_Authority.V_Main_Open then Max_Cm
@@ -707,7 +867,10 @@ is
                                      Min_Item))),
               EVC_Movement_Authority.V_Main);
       end if;
-      Ceiling := Value_T (Speed_Cms_T'Min (Data.Max_Speed, Mode_Speed));
+      Ceiling := Value_T (Speed_Cms_T'Min
+        ((if EVC_Modes.Train_Speed_Mode (Mode) then Data.Max_Speed
+          else No_Speed_Limit),
+         Mode_Speed));
       Envelope (Sources, Default => No_Speed_Limit, Floor => 0,
                 Ceiling => Ceiling, Capacity => Max_Speed_Segments,
                 P => Steps, Checked => Checked);
@@ -770,10 +933,31 @@ is
 
       --  the MA, the braking, the adhesion
       EVC_Movement_Authority.Authority (T, NV.V_NVREL, MA_R);
+      --  4.5.2: the MA is monitored in the modes with an MA
+      if not With_MA then
+         MA_R := (others => <>);
+      end if;
       Snap.MA := MA_R;
       EVC_Track_Conditions.Inhibitions (T, Ahead, Data.Length,
                                         Snap.Inhibitions);
-      Snap.Supervise := MA_R.Present and then EVC_Train_Data.Valid;
+      --  4.5.2: the MRSP is supervised with its curves in the modes of
+      --  TSR_Mode, with valid Train Data (e4/modes)
+      Snap.Supervise :=
+        EVC_Modes.TSR_Mode (Mode) and then EVC_Train_Data.Valid;
+      --  4.6.3 [10], [25], [31], [32]
+      MA_Board := EVC_Movement_Authority.MA.Present
+                  and then EVC_Track_Description.SSP.Count > 0
+                  and then EVC_Track_Description.Gradients.Count > 0;
+      Profile_Overlap :=
+        Train.Valid
+        and then EVC_Movement_Authority.Mode_Profile_Overlap
+                   (T, Train.Min_Front, Train.Max_Front);
+      --  4.4.9.1.4: SSP and gradient known for the whole length of the
+      --  train, from its min safe rear end to its estimated front end
+      Covered_Flag :=
+        Train.Valid
+        and then EVC_Track_Description.Covered
+                   (T, Ahead, Train.Min_Rear, Train.Est_Front);
 
       --  the trip margin of 3.13.9.4.8.2 (2 Q_LOCACC of the SOLR + 10 m
       --  + 10 % of the distance from it to the EOA; beta, the Supervised
@@ -801,7 +985,9 @@ is
            (T, Train.Est_Front, F1, E1, Has_SvL, S1);
          EVC_Track_Description.LX_Target
            (T, Ahead, Train.Est_Front, F2, E2, S2);
-         if F1 and then (not F2 or else A (Ahead, E1) <= A (Ahead, E2)) then
+         if not With_MA then
+            null;
+         elsif F1 and then (not F2 or else A (Ahead, E1) <= A (Ahead, E2)) then
             Snap.Temporary := (Present => True, EOA => E1,
                                Has_SvL => Has_SvL, SvL => S1);
          elsif F2 then
@@ -838,7 +1024,7 @@ is
 
       --  the planning (DMI 8.3): distances from the estimated front end
       Plan := (others => <>);
-      Plan_Due := Snap.Supervise and then Train.Valid;
+      Plan_Due := Snap.Supervise and then MA_R.Present and then Train.Valid;
       if Plan_Due then
          declare
             Front : constant Dist_T := Train.Est_Front;
@@ -933,7 +1119,8 @@ is
                        Mode_Speed     : Speed_Cms_T;
                        Special_Active : EVC_Braking.Brakes_T :=
                          (others => False);
-                       Additional     : Boolean := False)
+                       Additional     : Boolean := False;
+                       Context        : Mode_Context_T := (others => <>))
    is
       T     : constant Origin_Table_T := Origin_Table;
       Train : constant Train_Frame_T := Train_Frame;
@@ -956,7 +1143,7 @@ is
 
       --  2. the groups of the cycle
       for G in 1 .. EVC_Position.Taken_Count loop
-         Take_Group (G, T, Train);
+         Take_Group (G, T, Train, Context, Now_Ms);
       end loop;
 
       --  3. the timers of the MA
@@ -991,6 +1178,7 @@ is
       EVC_Track_Description.Mark (Marks);
       EVC_Movement_Authority.Mark (Marks);
       EVC_Track_Conditions.Mark (Marks);
+      EVC_Levels.Mark (Marks);
       if EVC_National_Values.Pending then
          Mark (EVC_National_Values.Pending_At, Marks);
       end if;
@@ -1001,7 +1189,8 @@ is
       end loop;
 
       --  6., 7.
-      Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional);
+      Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional,
+             Context);
    end Evaluate;
 
 end EVC_Stored_Information;

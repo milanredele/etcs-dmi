@@ -393,4 +393,26 @@ is
    --  255.
    JRU_Configuration : constant := 33;
 
+   ---------------------------------------------------------------------
+   --  Added by e4/modes (phase E4, the modes and the levels)
+   ---------------------------------------------------------------------
+
+   --  JRU event 40, the levels (EVC_Levels: the kinds of byte 2 and the
+   --  bytes 3 and 4 are listed there): a level switched, an order stored
+   --  or deleted, the acknowledgement of a level transition asked or
+   --  given, the service brake of 5.10.4.2.
+   --  JRU event 41, the mission (EVC_Mission): the driver ID, the train
+   --  running number, the Train Data and the SR data entered or refused,
+   --  'Start', a mode proposed and acknowledged, the start of mission
+   --  engaged or ended, a mission started or ended (5.4.6, 5.5).
+   --  Event 32, change 15: an information of a group rejected by the
+   --  filters of 4.8 (EVC_Stored_Information).
+   --  The TIU output, reason bit 5 (32): the service brake of a level
+   --  transition not acknowledged (5.10.4.2); reason bit 6 (64): the
+   --  emergency brake that System Failure commands permanently
+   --  (4.4.5.1.2, entered by 4.6.3 [84]; a failure of the host is
+   --  EVC_Core.Enter_Failure, which falls silent).
+   JRU_Levels  : constant := 40;
+   JRU_Mission : constant := 41;
+
 end EVC_Ports;

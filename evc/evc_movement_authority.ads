@@ -271,6 +271,27 @@ is
                   and then (if R.Present
                             then A (MA.Sense, R.SvL) >= A (MA.Sense, R.EOA));
 
+   ---------------------------------------------------------------------
+   --  Added by e4/modes
+   ---------------------------------------------------------------------
+
+   --  4.10: entering a mode that deletes the MA, the mode profile and
+   --  the signalling related speed restriction (the same modes for the
+   --  three); a trip order received (V_MAIN 0) is not stored information
+   --  (4.10.1.4.2 x) and stays
+   procedure Delete_MA
+     with Global => (In_Out => State),
+          Post => not MA.Present and then not V_Main_Known
+                  and then Trip_Ordered = Trip_Ordered'Old;
+
+   --  4.6.3 [10], [25], [31], [32]: the train position confidence
+   --  interval, from Min_Front to Max_Front (frame positions), overlaps
+   --  a mode profile stored with the MA
+   function Mode_Profile_Overlap (T         : Origin_Table_T;
+                                  Min_Front : Dist_T;
+                                  Max_Front : Dist_T) return Boolean
+     with Global => State;
+
    --  3.12.4.7: the temporary EOA of the start of the nearest mode
    --  profile that the estimated front end Front has not reached (E3:
    --  the on-board never is in the mode it asks, phase E4), and the

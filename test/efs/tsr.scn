@@ -305,7 +305,7 @@ expect TSR 3000.0 == 50.0
 expect efs: ( COUNT X IN Kernel.TSR.TSRs ) == 1 @ deadline=1
 case Train passes the TSR
 clause - absent Entry 3.A3.1.1.27 ; efs Entry 3.A3.1.1.27
-clause E4 todo A.3.6.2.1 ; efs 3.A3.6.2.1
+clause E4 done A.3.6.2.1 ; efs 3.A3.6.2.1
 step Train has almost passed the TSR
 sub SubStep1
 taint odo

@@ -3,7 +3,8 @@
 // build: runs the scenario of Scenario_Bench_Onboard in
 // test/src/evc_test.adb (reset, the desk on auto drive, Bench_Cycles
 // cycles of 100 ms, the brake release acknowledged on the DMI port
-// whenever the on-board asks for it) and compares the SHA-256 of the
+// whenever the on-board asks for it, the driver's start of mission in
+// level 1 after the first cycles) and compares the SHA-256 of the
 // on-board's DMI frames with test/golden/evc/bench_onboard.sha256, which
 // evc_test records natively. The two builds must feed the DMI the same
 // bytes. Before it, the installation configuration of the page
@@ -114,6 +115,18 @@ function configure(ex, image) {
 // --- The scenario of evc_test Scenario_Bench_Onboard ------------------
 // MSG_DRIVER_ACTION, action 2 (acknowledgement), kind 5 (brake release)
 const ACK = new Uint8Array([0x40, 5, 0, 0, 0, 2, 5, 0, 0, 0]);
+// The driver's start of mission in level 1, one frame after each of the
+// first cycles (Sim_Onboard_Env.SoM_Frame, phase E4): the driver ID
+// "1234", level 1, the Train Data (200 m, 135 %, 160 km/h, ...), the train
+// running number "5678", 'Start', the acknowledgement of SR
+const SOM = [
+  [0x41, 6, 0, 0, 0, 0, 4, 0x31, 0x32, 0x33, 0x34],
+  [0x40, 3, 0, 0, 0, 11, 4, 0],
+  [0x41, 13, 0, 0, 0, 2, 200, 0, 135, 0, 160, 0, 2, 4, 0, 0, 0, 1],
+  [0x41, 6, 0, 0, 0, 1, 4, 0x35, 0x36, 0x37, 0x38],
+  [0x40, 3, 0, 0, 0, 5, 0, 0],
+  [0x40, 5, 0, 0, 0, 2, 1, 0, 0, 0],
+].map((f) => new Uint8Array(f));
 ex.onboard_reset();
 ex.onboard_set_desk(0, 1);
 const hash = crypto.createHash('sha256');
@@ -126,6 +139,7 @@ for (let i = 0; i < CYCLES; i++) {
     bytes += f.length;
   }
   if (ex.onboard_ack_requested()) { receive(ex, ACK); acks++; }
+  if (i < SOM.length) receive(ex, SOM[i]);
 }
 const actual = hash.digest('hex');
 const expected = fs.readFileSync(

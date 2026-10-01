@@ -88,11 +88,13 @@ is
          Ack      => Inputs.Ack);
 
       --  3.14.3: against the direction of the MA, when there is one
-      --  (3.14.3.1; the reverse movements of PT and RV come with E4)
+      --  (3.14.3.1), and in SR against the train orientation (4.4.11.1.3
+      --  e, phase E4); the reverse movements of PT and RV are the
+      --  procedures' (e4/procedures)
       Protect
         (State.Direction,
          Active   => (Supervised or else Direction_Mode (Inputs.Mode))
-                     and then S.MA.Present,
+                     and then (S.MA.Present or else Inputs.Mode = M_SR),
          Unwanted => T.Moving_Backwards,
          Allowed  => T.Moving_Ahead,
          S        => S,

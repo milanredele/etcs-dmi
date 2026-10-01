@@ -6,24 +6,24 @@ pragma Unevaluated_Use_Of_Old (Allow);
 with ETCS_Message;
 with ETCS_Telegram;
 with ETCS_Variables;
+with EVC_Acceptance;
 with EVC_DMI_Port; use EVC_DMI_Port;
 with EVC_Fixed;
 with EVC_Limits;
+with EVC_Profiles;
+with EVC_Transition_Conditions;
 with Interfaces;   use Interfaces;
 
 package body EVC_Core
   with SPARK_Mode => On,
        Refined_State => (State => (Failed_Flag,
                                    Current_Mode,
-                                   Current_Level_Status,
-                                   Current_Level,
                                    Cycle_Count,
                                    Clock_Ms,
                                    Reported_Mode,
                                    Latched_Odometer,
                                    Latched_Odometer_Fresh,
                                    Latched_TIU,
-                                   Latched_Isolation,
                                    Latched_BTM,
                                    Latched_BTM_Count,
                                    Latched_RTM,
@@ -32,7 +32,6 @@ package body EVC_Core
                                    Odometer_Fresh,
                                    Geo_Sent,
                                    TIU_Now,
-                                   Isolation_Now,
                                    Standstill,
                                    Below_Override,
                                    Accepted_Count,
@@ -58,10 +57,12 @@ package body EVC_Core
                                    TIU_Sent,
                                    TIU_Reasons_Sent,
                                    Supervision_Reported,
-                                   Overrun_Reported))
+                                   Overrun_Reported,
+                                   Entering_FS_Shown))
 is
 
    use type EVC_Bytes.Byte_Array;
+   use type EVC_Mission.Data_Status_T;
    use type ETCS_Message.Status_T;
    use type ETCS_Telegram.Status_T;
 
@@ -74,8 +75,7 @@ is
 
    Failed_Flag          : Boolean := False;
    Current_Mode         : Mode_T := M_NP;
-   Current_Level_Status : Level_Status_T := Unknown;
-   Current_Level        : Level_T := L0;
+   --  (the level and its status are EVC_Levels', phase E4)
    Cycle_Count          : Cycle_T := 0;
    Clock_Ms             : Time_Ms_T := 0;
    --  The mode last reported to the juridical recording
@@ -86,7 +86,7 @@ is
    --  a sample arrived since the last cycle
    Latched_Odometer_Fresh : Boolean := False;
    Latched_TIU       : TIU_Signals_T := (others => False);
-   Latched_Isolation : Boolean := False;
+   --  (the driver's requests are EVC_Driver_Requests', phase E4)
 
    --  Telegrams and radio messages latched since the last cycle, as
    --  they arrived: at most the telegrams of one balise group (8,
@@ -118,7 +118,6 @@ is
    --  a geographical position was sent to the DMI in the last cycle
    Geo_Sent      : Boolean := False;
    TIU_Now       : TIU_Signals_T := (others => False);
-   Isolation_Now : Boolean := False;
 
    --  What the position step knows of the movement (Update_Position):
    --  the train stands still, its speed is not above the limit for
@@ -173,18 +172,21 @@ is
    No_Supervision       : constant Unsigned_32 := 16#FFFF_FFFF#;
    Supervision_Reported : Unsigned_32 := No_Supervision;
    Overrun_Reported     : EVC_Bytes.Byte := 0;
+   --  phase E4: the indication "Entering FS" (4.4.9.1.4) is shown
+   Entering_FS_Shown    : Boolean := False;
 
    ---------------------------------------------------------------------
    --  Queries
    ---------------------------------------------------------------------
 
    function Mode return Mode_T is (Current_Mode);
-   function Level_Status return Level_Status_T is (Current_Level_Status);
-   function Level return Level_T is (Current_Level);
+   function Level_Status return Level_Status_T is (EVC_Levels.Status);
+   function Level return Level_T is (EVC_Levels.Level);
    function Failed return Boolean is (Failed_Flag);
    function Cycle return Cycle_T is (Cycle_Count);
    function Time_Ms return Time_Ms_T is (Clock_Ms);
-   function Isolation_Requested return Boolean is (Latched_Isolation);
+   function Isolation_Requested return Boolean is
+     (EVC_Driver_Requests.Isolation_Latched);
    function Accepted (Port : Port_T) return Natural is
      (Accepted_Count (Port));
    function Rejected (Port : Port_T) return Natural is
@@ -208,6 +210,18 @@ is
       Test_Snapshot_Set := True;
    end Set_Snapshot_For_Test;
 
+   -----------------------
+   -- Set_Mode_For_Test --
+   -----------------------
+
+   procedure Set_Mode_For_Test (Mode : Mode_T; Level : Level_T) is
+   begin
+      Current_Mode := Mode;
+      EVC_Levels.Set_For_Test (Level);
+      EVC_Train_Data.Set (EVC_Train_Data.Default,
+                          EVC_Train_Data.Default_Categories);
+   end Set_Mode_For_Test;
+
    procedure Count (Counter : in out Natural) is
    begin
       if Counter < Natural'Last then
@@ -225,17 +239,15 @@ is
       --  SUBSET-026 4.4.4.1.1: the equipment is in No Power until it is
       --  powered; the first cycle takes the transition NP -> SB
       Current_Mode := M_NP;
-      --  5.4.3.2 D2: nothing is stored over No Power in E0, the level
-      --  is "unknown" and the start of mission asks the driver for it
-      Current_Level_Status := Unknown;
-      Current_Level := L0;
+      --  5.4.3.2 D2: nothing is stored over No Power, the level is
+      --  "unknown" and the start of mission asks the driver for it
+      --  (EVC_Levels.Clear below)
       Cycle_Count := 0;
       Clock_Ms := 0;
       Reported_Mode := M_NP;
       Latched_Odometer := Standstill_Sample;
       Latched_Odometer_Fresh := False;
       Latched_TIU := (others => False);
-      Latched_Isolation := False;
       Latched_BTM := (others => (Length => 0, Data => (others => 0)));
       Latched_BTM_Count := 0;
       Latched_RTM := (others => (Length => 0, Data => (others => 0)));
@@ -244,7 +256,6 @@ is
       Odometer_Fresh := False;
       Geo_Sent := False;
       TIU_Now := (others => False);
-      Isolation_Now := False;
       Standstill := True;
       Below_Override := True;
       Accepted_Count := (others => 0);
@@ -270,13 +281,20 @@ is
       TIU_Reasons_Sent := 0;
       Supervision_Reported := No_Supervision;
       Overrun_Reported := 0;
+      Entering_FS_Shown := False;
       EVC_Received.Clear;
       EVC_Position.Clear;
       --  the installation: the antenna of the configuration
       EVC_Position.Set_Antenna (EVC_Config.Current.Antenna_To_Cab_A,
                                 EVC_Config.Current.Antenna_To_Cab_B);
-      --  phase E3: nothing stored, the default train
+      --  phase E3: nothing stored (phase E4: no valid Train Data)
       EVC_Stored_Information.Clear;
+      --  phase E4: no request, no input, the level and the mission data
+      --  unknown
+      EVC_Driver_Requests.Clear;
+      EVC_Train_Inputs.Clear;
+      EVC_Levels.Clear;
+      EVC_Mission.Clear;
       EVC_Outbox.Clear;
    end Initialise;
 
@@ -323,14 +341,10 @@ is
                Latched_TIU_Known (Input.Signal) := True;
             end;
          when DMI =>
-            --  E0 acts on one driver action: the isolation of the
-            --  on-board (4.6.3 condition [1]). The driver's other
-            --  actions and data are accepted and left to phase E4.
-            if Is_Driver_Action (Payload)
-              and then Driver_Action (Payload) = Action_Isolate
-            then
-               Latched_Isolation := True;
-            end if;
+            --  phase E4: the driver's actions and data, decoded
+            --  (EVC_Driver_Requests; the isolation, 4.6.3 condition [1],
+            --  among them)
+            EVC_Driver_Requests.Receive (Payload);
             --  3.14.1.5: the release of a brake acknowledged
             if Is_Brake_Release_Ack (Payload) then
                Latched_Brake_Ack := True;
@@ -423,15 +437,19 @@ is
                                 EVC_Odometry.State, Latched_TIU_Value,
                                 Latched_TIU_Known),
                      Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
-                                Isolation_Now, TIU_Value_Now,
-                                TIU_Known_Now, Brake_Ack_Now),
-                     In_Out => (Latched_Isolation, Latched_Odometer_Fresh,
+                                TIU_Value_Now,
+                                TIU_Known_Now, Brake_Ack_Now,
+                                EVC_Train_Inputs.State),
+                     In_Out => (Latched_Odometer_Fresh,
                                 Latched_Brake_Ack,
                                 Latched_BTM_Count,
                                 Latched_RTM_Count, EVC_Received.Store,
-                                EVC_Outbox.Queue, EVC_Position.State)),
-          Post => Isolation_Now = Latched_Isolation'Old
-                  and then not Latched_Isolation
+                                EVC_Outbox.Queue, EVC_Position.State,
+                                EVC_Driver_Requests.State,
+                                EVC_Levels.State)),
+          Post => EVC_Driver_Requests.Isolation_Selected
+                    = EVC_Driver_Requests.Isolation_Latched'Old
+                  and then not EVC_Driver_Requests.Isolation_Latched
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
@@ -464,8 +482,16 @@ is
       TIU_Known_Now := Latched_TIU_Known;
       Brake_Ack_Now := Latched_Brake_Ack;
       Latched_Brake_Ack := False;
-      Isolation_Now := Latched_Isolation;
-      Latched_Isolation := False;
+      --  phase E4: the driver's requests and the inputs of the train
+      --  interface of the cycle; nothing switched the level yet
+      EVC_Driver_Requests.Take;
+      EVC_Train_Inputs.Set
+        (Cab_A            => TIU_Now (Cab_A_Active),
+         Cab_B            => TIU_Now (Cab_B_Active),
+         Sleeping         => TIU_Now (Sleeping_Requested),
+         Passive_Shunting => TIU_Now (Passive_Shunting_Permitted),
+         Non_Leading      => TIU_Now (Non_Leading_Permitted));
+      EVC_Levels.Begin_Cycle;
 
       --  the telegrams in the order the BTM delivered them
       for I in 1 .. Latched_BTM_Count loop
@@ -526,13 +552,31 @@ is
       Latched_RTM_Count := 0;
    end Read_Ports;
 
+   --  4.8 (phase E4): the context of the filters in the cycle, for the
+   --  information the position takes itself (the linking)
+   function Acceptance_Context return EVC_Acceptance.Context_T is
+     ((Mode             => Current_Mode,
+       Level_Valid      => EVC_Levels.Valid,
+       Level            => EVC_Levels.Level,
+       Cab_Active       => EVC_Train_Inputs.Desk_Open,
+       Train_Data_Valid => EVC_Train_Data.Valid,
+       TRN_Valid        => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+       L1_Announced     => EVC_Levels.L1_Announced,
+       Order_In_Message => False,
+       Order_Pending    => EVC_Levels.Order_Pending,
+       Unlinked_Group   => False))
+     with Global => (Current_Mode, EVC_Levels.State, EVC_Train_Inputs.State,
+                     EVC_Train_Data.State, EVC_Mission.State);
+
    --  2. Update the position (EVC_Position): the cab status, the
    --  telegrams of the cycle, the odometer sample; its events go to the
    --  JRU. E0's standstill and override speed come from the sample.
    procedure Update_Position
      with Global => (Input  => (Odometer_Now, Odometer_Fresh, TIU_Now,
                                 EVC_National_Values.State, Current_Mode,
-                                Current_Level, Cycle_Count, Clock_Ms),
+                                EVC_Levels.State, Cycle_Count, Clock_Ms,
+                                EVC_Train_Inputs.State, EVC_Mission.State,
+                                EVC_Train_Data.State),
                      Output => (Standstill, Below_Override),
                      In_Out => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Origins.State, EVC_Outbox.Queue)),
@@ -550,13 +594,19 @@ is
                              >= EVC_Position.Doubt_Under'Old)
    is
    begin
+      --  phase E4: the linking accepted by 4.8 and checked in the modes
+      --  of 4.5.2 (3.4.4.2.1.1 b)
+      EVC_Position.Set_Linking_Context
+        (Accept_Info => EVC_Acceptance.Accepted
+                          (EVC_Acceptance.Linking, Acceptance_Context),
+         Check       => Linking_Check_Mode (Current_Mode));
       EVC_Position.Update
         (Cab_A_Active => TIU_Now (Cab_A_Active),
          Cab_B_Active => TIU_Now (Cab_B_Active),
          Sampled      => Odometer_Fresh,
          Sample       => Odometer_Now,
          Mode         => Current_Mode,
-         Level        => Current_Level,
+         Level        => EVC_Levels.Level,
          Now_Ms       => Unsigned_64 (Clock_Ms));
       for I in 1 .. EVC_Position.Event_Count loop
          declare
@@ -582,27 +632,58 @@ is
    --  data status changes of 4.10 on a mode transition are phase E4.
    JRU_Stored : constant := EVC_Stored_Information.JRU_Event;
 
+   --  The mode related speed restriction (3.11.7) of the modes of this
+   --  half, from the national values (A.3.2, packet 3): the SR mode speed
+   --  limit (the driver's or V_NVSTFF, EVC_Mission), V_NVSHUNT,
+   --  V_NVONSIGHT, V_NVLIMSUPERV, V_NVUNFIT. The speeds a mode profile or
+   --  the reversing supervision information give, and the override
+   --  related speed of 3.11.10, are the procedures half's
+   --  (EVC_Procedures.Mode_Speed, e4/procedures), which replaces this at
+   --  the merge.
+   function Mode_Speed return EVC_Supervision_Input.Speed_Cms_T is
+     (case Current_Mode is
+         when M_SR => EVC_Mission.SR_Speed,
+         when M_SH => EVC_National_Values.Current.Values.V_NVSHUNT,
+         when M_OS => EVC_National_Values.Current.Values.V_NVONSIGHT,
+         when M_LS => EVC_National_Values.Current.Values.V_NVLIMSUPERV,
+         when M_UN => EVC_National_Values.Current.Values.V_NVUNFIT,
+         when others => EVC_Supervision_Input.No_Speed_Limit)
+     with Global => (Current_Mode, EVC_Mission.State,
+                     EVC_National_Values.State);
+
+   --  4.4.11.1.3 b): the end of the SR distance, a frame position along
+   --  the train orientation (the virtual position of 3.6.7)
+   function SR_End return EVC_Distances.Dist_T is
+     (EVC_Distances.Advance
+        (EVC_Position.Front_X, EVC_Position.Orientation,
+         EVC_Odometry.Remaining_Estimated (EVC_Mission.SR_Distance)))
+     with Global => (EVC_Position.State, EVC_Odometry.State,
+                     EVC_Mission.State);
+
    procedure Evaluate_Stored_Information
      with Global => (Input  => (Clock_Ms, Cycle_Count, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,
-                                TIU_Now, EVC_Config.State),
+                                TIU_Now, EVC_Config.State, Current_Mode,
+                                EVC_Train_Inputs.State, EVC_Mission.State),
                      In_Out => (EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
+                                EVC_Levels.State,
                                 EVC_Outbox.Queue))
    is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
    begin
-      --  the mode related speed restriction (3.11.7) is phase E4; the
+      --  the mode related speed restriction (3.11.7, Mode_Speed); the
       --  status of the special brakes for the speed restrictions to
-      --  ensure a permitted braking distance (3.11.11.4)
+      --  ensure a permitted braking distance (3.11.11.4); the mode and
+      --  the inputs of 4.8 and the SR distance (phase E4)
       EVC_Stored_Information.Evaluate
         (Unsigned_64 (Clock_Ms),
-         EVC_Supervision_Input.No_Speed_Limit,
+         Mode_Speed,
          Special_Active =>
            (EVC_Supervision_Input.Regenerative =>
               TIU_Now (Regenerative_Brake_Active),
@@ -612,7 +693,14 @@ is
               TIU_Now (Magnetic_Shoe_Brake_Active),
             EVC_Supervision_Input.Electro_Pneumatic =>
               TIU_Now (EP_Brake_Active)),
-         Additional     => TIU_Now (Additional_Brake_Active));
+         Additional     => TIU_Now (Additional_Brake_Active),
+         Context        =>
+           (Mode        => Current_Mode,
+            Cab_Active  => EVC_Train_Inputs.Desk_Open,
+            TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+            SR_Distance => Current_Mode = M_SR
+                           and then EVC_Mission.SR_Distance.Active,
+            SR_End      => SR_End));
       for I in 1 .. EVC_Stored_Information.Event_Count loop
          declare
             E : constant EVC_Stored_Information.Event_T :=
@@ -686,8 +774,8 @@ is
    procedure Monitor_Speed_And_Distance (Dt_Ms : Natural)
      with Global => (Input  => (Test_Snapshot, Test_Snapshot_Set, TIU_Now,
                                 TIU_Value_Now, TIU_Known_Now, Brake_Ack_Now,
-                                Current_Mode, Current_Level,
-                                Current_Level_Status, EVC_Position.State,
+                                Current_Mode, EVC_Levels.State,
+                                EVC_Position.State,
                                 EVC_Stored_Information.State),
                      In_Out => (SDM_Work, SDM_State, Brake_State),
                      Output => (SDM_Result, Brake_Output, Speed_State))
@@ -714,8 +802,8 @@ is
             Additional     => TIU_Now (Additional_Brake_Active),
             Pressure_Known => TIU_Known_Now (Brake_Pressure),
             Pressure       => Natural (TIU_Value_Now (Brake_Pressure)) * 4,
-            Level_1        => Current_Level_Status = Valid
-                              and then Current_Level = L1,
+            Level_1        => EVC_Levels.Valid
+                              and then EVC_Levels.Level = L1,
             Antenna_Offset =>
               Natural (EVC_Position.Front_Offset
                          (EVC_Position.Orientation)));
@@ -740,22 +828,115 @@ is
       end if;
    end Monitor_Speed_And_Distance;
 
-   --  SUBSET-026 4.6.3: whether the condition of the transition From ->
-   --  To holds in this cycle. E0 evaluates two conditions:
-   --    [1]  the driver isolates the ERTMS/ETCS on-board equipment,
-   --    [4]  the ERTMS/ETCS on-board equipment is powered: always true
-   --         while this code runs, so [29] ("NOT powered") never holds.
-   function Condition_Holds (From, To : Mode_T) return Boolean is
-     (case To is
-         when M_IS     => Isolation_Now,
-         when M_SB     => From = M_NP,
-         when others => False)
-     with Global => Isolation_Now;
+   --  5. The modes and the levels (phase E4): the level transitions and
+   --  the driver's level (EVC_Levels, 5.10), the mission data, the start
+   --  of mission and the mode proposed to the driver (EVC_Mission, 5.4),
+   --  on the requests of the cycle; the desk closed during the start of
+   --  mission (A.3.4.1.2 k)
+   procedure Evaluate_Modes_And_Levels
+     with Global => (Input  => (Current_Mode, Clock_Ms,
+                                EVC_Driver_Requests.State,
+                                EVC_Train_Inputs.State,
+                                EVC_Odometry.State, EVC_Origins.State,
+                                EVC_Config.State),
+                     In_Out => (EVC_Levels.State, EVC_Mission.State,
+                                EVC_National_Values.State,
+                                EVC_Train_Data.State,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_Position.State,
+                                EVC_Stored_Information.State)),
+          Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Orientation
+                             = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+      Solr  : constant EVC_Location.Anchor_T := EVC_Position.SOLR;
+      Valid : constant Boolean :=
+        EVC_Position.Status = EVC_Position.Valid and then Solr.Valid;
+      NV    : constant EVC_Supervision_Input.National_Values_T :=
+        EVC_National_Values.Current.Values;
+   begin
+      EVC_Levels.Evaluate
+        (T            => EVC_Profiles.Origin_Table,
+         C            =>
+           (Mode           => Current_Mode,
+            Standstill     => EVC_Odometry.Standstill,
+            Position_Valid => Valid,
+            Est_Front      => EVC_Position.Front_X,
+            Max_Front      =>
+              (if Valid
+               then EVC_Distances.Advance
+                      (Solr.X, EVC_Position.Orientation,
+                       EVC_Position.SOLR_Max_Safe_Front)
+               else EVC_Position.Front_X),
+            Now_Ms         => Unsigned_64 (Clock_Ms)),
+         Driver_Level => EVC_Driver_Requests.Level_Selected,
+         Code         => EVC_Driver_Requests.Selected_Level_Code,
+         Ack          => EVC_Driver_Requests.Level_Acknowledged);
+      EVC_Mission.Evaluate
+        ((Mode        => Current_Mode,
+          Level_Valid => EVC_Levels.Valid,
+          Level       => EVC_Levels.Level,
+          Standstill  => EVC_Odometry.Standstill,
+          Desk_Open   => EVC_Train_Inputs.Desk_Open,
+          Non_Leading => EVC_Train_Inputs.Non_Leading_Permitted,
+          Sense       => EVC_Position.Orientation,
+          V_NVSTFF    => NV.V_NVSTFF,
+          D_NVSTFF    => NV.D_NVSTFF));
+      --  A.3.4.1.2 k), column k: what entering SB has not deleted
+      --  already (the TSRs, the adhesion, the big metal masses, the level
+      --  transition orders, the national values not yet applicable); the
+      --  Train Data, the driver ID and the train running number are to be
+      --  revalidated (EVC_Mission)
+      if EVC_Mission.Desk_Closed_In_SoM then
+         EVC_National_Values.Delete_Pending;
+         EVC_Track_Description.Delete
+           ((Track       => True,
+             PBD         => True,
+             Suitability => True,
+             TSR         => True,
+             Adhesion    => True));
+         EVC_Movement_Authority.Delete_MA;
+         EVC_Track_Conditions.Reset (Rest => True, Horn => True,
+                                     BMM => True);
+         EVC_Position.Delete_Linking;
+         EVC_Stored_Information.Set_Driver_Slippery (False);
+         EVC_Levels.Delete_Orders;
+      end if;
+   end Evaluate_Modes_And_Levels;
 
-   --  5. Mode machine: of the transitions of 4.6.2 whose condition
-   --  holds, the one of the highest priority (4.6.1.4)
+   --  Any condition of the list L holds (4.6.1.6: "16, 17, 18" means "16
+   --  or 17 or 18")
+   function Any_Holds (L : Condition_List_T) return Boolean is
+     (for some I in L'Range =>
+        L (I) /= 0 and then EVC_Transition_Conditions.Holds (L (I)))
+     with Global => (EVC_Driver_Requests.State, EVC_Train_Inputs.State,
+                     EVC_Levels.State, EVC_Mission.State,
+                     EVC_Odometry.State, EVC_Stored_Information.State,
+                     EVC_Movement_Authority.State, EVC_Train_Data.State);
+
+   --  6. Mode machine: of the transitions of 4.6.2 whose condition of
+   --  4.6.3 holds (EVC_Modes.Conditions, EVC_Transition_Conditions), the
+   --  one of the highest priority (4.6.1.4; of two of the same priority,
+   --  which 4.6.1.5 says cannot hold together, the first in the order of
+   --  Mode_T). The transition to NP is not looked at: while this code
+   --  runs the on-board is powered and [29] does not hold.
    procedure Run_Mode_Machine
-     with Global => (Input => Isolation_Now, In_Out => Current_Mode),
+     with Global => (Input  => (EVC_Driver_Requests.State,
+                                EVC_Train_Inputs.State,
+                                EVC_Levels.State, EVC_Mission.State,
+                                EVC_Odometry.State,
+                                EVC_Stored_Information.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Train_Data.State),
+                     In_Out => Current_Mode),
           Post => (Current_Mode = Current_Mode'Old
                    or else Transition_Exists
                              (Current_Mode'Old, Current_Mode))
@@ -763,18 +944,20 @@ is
                   and then (if Current_Mode'Old = M_IS
                             then Current_Mode = M_IS)
                   and then (if Current_Mode'Old = M_NP
-                            then Current_Mode = (if Isolation_Now
-                                                 then M_IS else M_SB))
+                            then Current_Mode =
+                                   (if EVC_Driver_Requests.Isolation_Selected
+                                    then M_IS else M_SB))
    is
       From          : constant Mode_T := Current_Mode;
       Best          : Mode_T := From;
       Best_Priority : Priority_T := No_Transition;
    begin
       for To in Mode_T loop
-         if Transitions (From, To) /= No_Transition
-           and then Condition_Holds (From, To)
+         if To /= M_NP
+           and then Transitions (From, To) /= No_Transition
            and then (Best_Priority = No_Transition
                      or else Transitions (From, To) < Best_Priority)
+           and then Any_Holds (Conditions (From, To))
          then
             Best := To;
             Best_Priority := Transitions (From, To);
@@ -783,30 +966,152 @@ is
            (if Best_Priority = No_Transition
             then Best = From
             else Transitions (From, Best) = Best_Priority
-                 and then Condition_Holds (From, Best));
+                 and then Best /= M_NP);
          pragma Loop_Invariant
            (if From = M_NP and then To >= M_SB
             then Best_Priority /= No_Transition);
          pragma Loop_Invariant
            (if From = M_NP and then Best_Priority /= No_Transition
-            then Best = (if Isolation_Now and then To >= M_IS then M_IS
-                         else M_SB));
+            then Best = (if EVC_Driver_Requests.Isolation_Selected
+                           and then To >= M_IS
+                         then M_IS else M_SB));
       end loop;
       Current_Mode := Best;
    end Run_Mode_Machine;
 
-   --  6. Produce the outputs of the cycle
+   --  7. What entering the mode To from From means (phase E4): the data
+   --  of 4.10 (the stores, the position, the level, the mission), the
+   --  brake command reasons of 4.12 (the speed and distance monitoring,
+   --  the protections; the levels' own, EVC_Levels), the end and the
+   --  start of mission (5.5.2, 5.4.6)
+   procedure Enter_Mode (From, To : Mode_T)
+     with Global => (Input  => (EVC_Odometry.State,
+                                EVC_National_Values.State,
+                                EVC_Train_Inputs.State),
+                     In_Out => (EVC_Levels.State, EVC_Mission.State,
+                                EVC_Train_Data.State,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_Position.State,
+                                EVC_Stored_Information.State,
+                                Brake_State, SDM_State)),
+          Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Orientation
+                             = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+      NV : constant EVC_Supervision_Input.National_Values_T :=
+        EVC_National_Values.Current.Values;
+   begin
+      EVC_Levels.Mode_Entered (From, To);
+      EVC_Mission.Mode_Entered
+        (From, To,
+         (Mode        => To,
+          Level_Valid => EVC_Levels.Valid,
+          Level       => EVC_Levels.Level,
+          Standstill  => EVC_Odometry.Standstill,
+          Desk_Open   => EVC_Train_Inputs.Desk_Open,
+          Non_Leading => EVC_Train_Inputs.Non_Leading_Permitted,
+          Sense       => EVC_Position.Orientation,
+          V_NVSTFF    => NV.V_NVSTFF,
+          D_NVSTFF    => NV.D_NVSTFF));
+
+      --  4.10: the stored information, each with the modes of its row
+      EVC_Track_Description.Delete
+        ((Track       => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL
+                             | M_NL | M_UN | M_TR | M_SN | M_RV,
+          PBD         => To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR
+                             | M_SL | M_NL | M_UN | M_TR | M_SN | M_RV,
+          Suitability => To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR
+                             | M_SL | M_NL | M_UN | M_TR | M_SN | M_RV,
+          TSR         => To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL
+                             | M_SN | M_RV,
+          Adhesion    => To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL
+                             | M_SN));
+      --  the MA, the mode profile, the signalling related speed
+      --  restriction
+      if To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR | M_SL | M_NL
+             | M_UN | M_TR | M_SN | M_RV
+      then
+         EVC_Movement_Authority.Delete_MA;
+      end if;
+      EVC_Track_Conditions.Reset
+        (Rest   => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_UN
+                       | M_SN | M_RV,
+         Horn   => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL
+                       | M_UN | M_TR | M_PT | M_SN | M_RV,
+         BMM    => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_RV);
+      if To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL | M_UN
+             | M_TR | M_SN | M_RV
+      then
+         EVC_Position.Delete_Linking;
+      end if;
+      if To in M_NP | M_PS | M_SH | M_SL | M_SN | M_RV then
+         EVC_Position.Delete_Geo;
+      end if;
+      --  the adhesion factor from the driver
+      if To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL then
+         EVC_Stored_Information.Set_Driver_Slippery (False);
+      end if;
+      --  (the train position: "D" in SL when invalid, and the deletions
+      --  of 5.4.3.2 after E10, E12, E30, E31, E32 when still invalid: the
+      --  position of this on-board is never "invalid", nothing is kept
+      --  over No Power)
+
+      --  4.12: Speed & Distance monitoring revoked in NP, SB, TR (to be
+      --  re-evaluated in the others: the monitoring runs again on the
+      --  data of the new mode)
+      if To in M_NP | M_SB | M_TR then
+         SDM_State.TCO := False;
+         SDM_State.SB := False;
+         SDM_State.EB := False;
+         SDM_State.EB_For_SB := False;
+      end if;
+      --  4.12: Roll Away Protection revoked in NP, SB, TR, SN; the
+      --  Unauthorised Direction Movement Protection in NP, SB, SH, UN, TR,
+      --  SN and, from PT, in FS, LS, SR, OS ([1]); the Standstill
+      --  Supervision in NP, SH, SM, FS, LS, SR, OS, SL, UN, TR, SN; in IS
+      --  the on-board is isolated from the brakes (4.4.3.1.1)
+      if To in M_NP | M_SB | M_TR | M_SN | M_IS then
+         Brake_State.Roll_Away := (others => <>);
+      end if;
+      if To in M_NP | M_SB | M_SH | M_UN | M_TR | M_SN | M_IS
+        or else (From = M_PT and then To in M_FS | M_LS | M_SR | M_OS)
+      then
+         Brake_State.Direction := (others => <>);
+      end if;
+      if To in M_NP | M_SH | M_SM | M_FS | M_LS | M_SR | M_OS | M_SL
+             | M_UN | M_TR | M_SN | M_IS
+      then
+         Brake_State.Standstill := (others => <>);
+      end if;
+   end Enter_Mode;
+
+   --  JRU events of phase E4 (EVC_Ports): 40 the levels, 41 the mission
+   JRU_Levels  : constant := EVC_Ports.JRU_Levels;
+   JRU_Mission : constant := EVC_Ports.JRU_Mission;
+
+   --  8. Produce the outputs of the cycle
    procedure Produce_Outputs
-     with Global => (Input  => (Current_Mode, Current_Level_Status,
-                                Current_Level, Cycle_Count, Clock_Ms,
+     with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
                                 Standstill, Below_Override, TIU_Now,
                                 EVC_National_Values.State,
                                 EVC_Position.State,
-                                SDM_Result, Brake_Output, Speed_State),
+                                SDM_Result, Brake_Output, Speed_State,
+                                EVC_Levels.State, EVC_Mission.State,
+                                EVC_Train_Data.State,
+                                EVC_Stored_Information.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
-                                Supervision_Reported, Overrun_Reported))
+                                Supervision_Reported, Overrun_Reported,
+                                Entering_FS_Shown))
    is
       --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
       --  E0; the fields of the later phases are 0, "nothing known"
@@ -819,18 +1124,74 @@ is
          EVC_Outbox.Put
            (JRU, JRU_Record (JRU_Mode_Change,
                              Mode_T'Pos (Current_Mode),
-                             Level_Status_T'Pos (Current_Level_Status),
-                             Level_T'Pos (Current_Level)));
+                             Level_Status_T'Pos (EVC_Levels.Status),
+                             Level_T'Pos (EVC_Levels.Level)));
          Reported_Mode := Current_Mode;
       end if;
+      --  JRU: the events of the levels and of the mission (phase E4)
+      for I in 1 .. EVC_Levels.Event_Count loop
+         declare
+            E : constant EVC_Levels.Event_T := EVC_Levels.Event (I);
+         begin
+            EVC_Outbox.Put (JRU, JRU_Record (JRU_Levels, E.Kind, E.B3,
+                                             E.B4));
+         end;
+      end loop;
+      for I in 1 .. EVC_Mission.Event_Count loop
+         declare
+            E : constant EVC_Mission.Event_T := EVC_Mission.Event (I);
+         begin
+            EVC_Outbox.Put (JRU, JRU_Record (JRU_Mission, E.Kind, E.B3,
+                                             E.B4));
+         end;
+      end loop;
+      --  4.4.15.1.1.3: the driver is informed that the non-leading
+      --  operation is no longer permitted and asked to acknowledge it
+      --  (the DMI's catalogue entry 35, ended by the acknowledgement)
+      if EVC_Mission.NL_No_Longer_Permitted then
+         EVC_Outbox.Put (DMI, System_Status_Frame
+                                (SS_NL_No_Longer_Permitted,
+                                 SS_Event_Start));
+      end if;
+      --  4.4.9.1.4: in FS, "Entering FS" until SSP and gradient are known
+      --  for the whole length of the train (the DMI's catalogue entry 6;
+      --  a mode change ends it on the DMI as well)
+      declare
+         Entering : constant Boolean :=
+           Current_Mode = M_FS
+           and then EVC_Stored_Information.MA_On_Board
+           and then not EVC_Stored_Information.Train_Covered;
+      begin
+         if Entering /= Entering_FS_Shown then
+            EVC_Outbox.Put (DMI, System_Status_Frame
+                                   (SS_Entering_FS,
+                                    (if Entering then SS_Event_Start
+                                     else SS_Event_End)));
+            Entering_FS_Shown := Entering;
+         end if;
+      end;
 
       --  DMI: the mode and the level (4.4.2.1: a clear indication of the
-      --  mode when the desk is open)
+      --  mode when the desk is open); 4.7.2: the acknowledgement of a mode
+      --  proposed (the start of mission, 5.4.3.2 S22 to S24), the level
+      --  transition announced (5.10.1.3) and its acknowledgement (5.10.4)
       if Has_Mode_Code (Current_Mode) then
          EVC_Outbox.Put
            (DMI,
             Mode_Level_Frame
-              (Current_Mode, Current_Level_Status, Current_Level));
+              (Current_Mode, EVC_Levels.Status, EVC_Levels.Level,
+               Mode_Ack      =>
+                 (if EVC_Mission.Proposed
+                    and then Has_Mode_Code (EVC_Mission.Proposed_Mode)
+                  then Mode_Code (EVC_Mission.Proposed_Mode)
+                  else No_Code),
+               Level_Ann     =>
+                 (if EVC_Levels.Ack_Asked
+                  then Level_Code (Valid, EVC_Levels.Ack_Level)
+                  elsif EVC_Levels.Announced
+                  then Level_Code (Valid, EVC_Levels.Announced_Level)
+                  else No_Code),
+               Level_Ann_Ack => EVC_Levels.Ack_Asked));
       end if;
 
       if Standstill then
@@ -856,9 +1217,16 @@ is
       --  phase E3: the brake indication (3.14.1.9, 3.14.2.6, 3.14.3.4)
       --  and the time to Indication (3.13.10.3.10), whenever they change
       declare
+         --  phase E4: the service brake of 5.10.4.2 is applied because the
+         --  acknowledgement of the level is pending; in IS the on-board
+         --  is isolated from the brakes (4.4.3.1.1)
          Brake : constant EVC_Bytes.Byte :=
-           (if Brake_Output.Ack_Required then Brake_Ack
-            elsif Brake_Output.EB or else Brake_Output.SB then Brake_Applied
+           (if Current_Mode = M_IS then Brake_None
+            elsif Brake_Output.Ack_Required then Brake_Ack
+            elsif Brake_Output.EB or else Brake_Output.SB
+              or else Current_Mode = M_SF
+            then Brake_Applied
+            elsif EVC_Levels.Ack_Brake then Brake_Ack_Pending
             else Brake_None);
          TTI   : constant Unsigned_16 :=
            (if SDM_Result.TTI = EVC_SDM.No_TTI then TTI_None
@@ -884,18 +1252,25 @@ is
       end;
 
       Onboard :=
-        (Data     => (if Current_Level_Status = Valid
-                      then Data_Level_Valid else 0)
+        (Data     => (if EVC_Levels.Valid then Data_Level_Valid else 0)
                      or (if EVC_Position.Status = EVC_Position.Valid
                            and then EVC_Position.LRBG.Valid
-                         then Data_Position_Valid else 0),
+                         then Data_Position_Valid else 0)
+                     --  phase E4: the data of the start of mission
+                     or (if EVC_Mission.Driver_ID_Status = EVC_Mission.Valid
+                         then Data_Driver_ID_Valid else 0)
+                     or (if EVC_Mission.Train_Data_Status
+                              = EVC_Mission.Valid
+                         then Data_Train_Data_Valid else 0)
+                     or (if EVC_Mission.TRN_Status = EVC_Mission.Valid
+                         then Data_TRN_Valid else 0),
          Train    => Train,
          National => National,
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
          --  desk is open and no session with an RBC exists or is being
-         --  established, so the start of mission may begin. E0 has no
-         --  cab signals in its scenarios yet and takes the desk as open.
-         SoM      => (if Current_Mode = M_SB then SoM_Possible else 0),
+         --  established, so the start of mission may begin (phase E4:
+         --  the desk is the cab status input, EVC_Mission)
+         SoM      => (if EVC_Mission.SoM_Engaged then SoM_Possible else 0),
          others   => 0);
       EVC_Outbox.Put (DMI, Onboard_Frame (Onboard));
 
@@ -905,18 +1280,31 @@ is
       declare
          Reasons  : EVC_Brake_Commands.Reasons_T renames
            Brake_Output.Reasons;
+         --  phase E4: the service brake of 5.10.4.2 (reason bit 5, the
+         --  levels); in SF the emergency brake, permanently (4.4.5.1.2,
+         --  reason bit 6); in IS no command (4.4.3.1.1)
+         Isolated : constant Boolean := Current_Mode = M_IS;
+         Failure  : constant Boolean := Current_Mode = M_SF;
          Commands : constant EVC_Bytes.Byte :=
-           (if Brake_Output.EB then TIU_EBC else 0)
-           or (if Brake_Output.SB then TIU_SBC else 0)
-           or (if Brake_Output.TCO then TIU_TCO else 0);
+           (if Isolated then 0
+            else (if Brake_Output.EB or else Failure then TIU_EBC else 0)
+                 or (if Brake_Output.SB or else EVC_Levels.Ack_Brake
+                     then TIU_SBC else 0)
+                 or (if Brake_Output.TCO then TIU_TCO else 0));
          Why      : constant EVC_Bytes.Byte :=
-           (if Reasons (EVC_Brake_Commands.Speed_Distance) then 1 else 0)
-           or (if Reasons (EVC_Brake_Commands.Service_Brake_Failed)
-               then 2 else 0)
-           or (if Reasons (EVC_Brake_Commands.Roll_Away) then 4 else 0)
-           or (if Reasons (EVC_Brake_Commands.Direction) then 8 else 0)
-           or (if Reasons (EVC_Brake_Commands.Standstill_Supervision)
-               then 16 else 0);
+           (if Isolated then 0
+            else (if Reasons (EVC_Brake_Commands.Speed_Distance) then 1
+                  else 0)
+                 or (if Reasons (EVC_Brake_Commands.Service_Brake_Failed)
+                     then 2 else 0)
+                 or (if Reasons (EVC_Brake_Commands.Roll_Away) then 4
+                     else 0)
+                 or (if Reasons (EVC_Brake_Commands.Direction) then 8
+                     else 0)
+                 or (if Reasons (EVC_Brake_Commands.Standstill_Supervision)
+                     then 16 else 0)
+                 or (if EVC_Levels.Ack_Brake then 32 else 0)
+                 or (if Failure then 64 else 0));
          Supervision_Now : constant Unsigned_32 :=
            (if SDM_Result.Active
             then Unsigned_32
@@ -984,7 +1372,15 @@ is
       Update_Position;
       Evaluate_Stored_Information;
       Monitor_Speed_And_Distance (Dt_Ms);
-      Run_Mode_Machine;
+      Evaluate_Modes_And_Levels;
+      declare
+         From : constant Mode_T := Current_Mode;
+      begin
+         Run_Mode_Machine;
+         if Current_Mode /= From then
+            Enter_Mode (From, Current_Mode);
+         end if;
+      end;
       Produce_Outputs;
    end Tick;
 

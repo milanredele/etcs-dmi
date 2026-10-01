@@ -97,10 +97,40 @@ is
    --  The balise antenna from an end of the engine, cm
    subtype Antenna_Offset_T is Length_T range 0 .. 100_000;
 
+   --  Added by e4/modes: the fixed Train Data of the vehicle, the part
+   --  of the Train Data of 3.18.3.2 that the driver does not enter (DMI
+   --  Table 40 has length, brake percentage, maximum speed, categories,
+   --  axle load, airtight and loading gauge), installation data
+   --  (3.13.2.2.9.1.1). EVC_Mission builds the Train Data from the
+   --  driver's entry and these. Not in the byte image of format version
+   --  1: Decoded gives the defaults below (the train of E3), until a
+   --  format version brings them with the train data view of E6 (the
+   --  gamma models, the correction factors and the rotating mass of
+   --  EVC_Supervision_Input.Train_Data_Extra_T go there too).
+   type Fixed_Train_T is record
+      --  the braking model (3.13.2.2.2): the lambda model only, the
+      --  curves of the gamma model are not installation data here yet
+      Model                 : Brake_Model_T := Lambda;
+      --  the special brakes the vehicle has (3.13.2.2.6)
+      Has_Regenerative      : Boolean := False;
+      Has_Eddy_Current      : Boolean := False;
+      Has_Magnetic_Shoe     : Boolean := False;
+      Has_Electro_Pneumatic : Boolean := False;
+      --  the traction cut-off time (3.13.2.2.8.2), ms
+      T_Traction_Cut_Off    : Time_Ms_T := 1_000;
+      --  the traction systems accepted by the engine (M_VOLTAGE bits,
+      --  3.18.3.2 i): bit 1 AC 25 kV 50 Hz
+      Voltages              : Natural range 0 .. 2**16 - 1 := 2;
+   end record;
+
+   Default_Fixed_Train : constant Fixed_Train_T := (others => <>);
+
    type Config_T is record
       Supervision      : Onboard_Config_T;
       Antenna_To_Cab_A : Antenna_Offset_T := 300;
       Antenna_To_Cab_B : Antenna_Offset_T := 1_700;
+      --  added by e4/modes (see Fixed_Train_T)
+      Train            : Fixed_Train_T;
    end record;
 
    --  3.13.2.2.6.1 Table 3: the interface I is a possibility for the
@@ -151,7 +181,8 @@ is
          SB_Failure_Time_Ms          => 2_000,
          SB_Failure_Decel_Mms2       => 100),
       Antenna_To_Cab_A => 300,
-      Antenna_To_Cab_B => 1_700);
+      Antenna_To_Cab_B => 1_700,
+      Train            => Default_Fixed_Train);
 
    ---------------------------------------------------------------------
    --  The byte image

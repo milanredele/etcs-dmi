@@ -320,6 +320,31 @@ package body Sim_Onboard_Env is
       EVC_Core.Enter_Failure;
    end Enter_Failure;
 
+   function SoM_Frame (K : Positive) return Stream_Element_Array is
+     (case K is
+         --  MSG_DRIVER_DATA kind 0, the driver ID
+         when 1 => (16#41#, 6, 0, 0, 0, 0, 4,
+                    Character'Pos ('1'), Character'Pos ('2'),
+                    Character'Pos ('3'), Character'Pos ('4')),
+         --  MSG_DRIVER_ACTION 11, level 1
+         when 2 => (16#40#, 3, 0, 0, 0, 11, 4, 0),
+         --  MSG_DRIVER_DATA kind 2, the Train Data
+         when 3 => (16#41#, 13, 0, 0, 0, 2,
+                    200, 0,       -- 200 m
+                    135, 0,       -- 135 %
+                    160, 0,       -- 160 km/h
+                    2,            -- NC_CDTRAIN 130 mm
+                    4, 0,         -- NC_TRAIN passenger train
+                    0, 0, 1),     -- axle load A, not airtight, G1
+         --  MSG_DRIVER_DATA kind 1, the train running number
+         when 4 => (16#41#, 6, 0, 0, 0, 1, 4,
+                    Character'Pos ('5'), Character'Pos ('6'),
+                    Character'Pos ('7'), Character'Pos ('8')),
+         --  MSG_DRIVER_ACTION 5, 'Start'
+         when 5 => (16#40#, 3, 0, 0, 0, 5, 0, 0),
+         --  MSG_DRIVER_ACTION 2, kind 1: the mode acknowledged
+         when others => (16#40#, 5, 0, 0, 0, 2, 1, 0, 0, 0));
+
    function Failed return Boolean is (EVC_Core.Failed);
 
    function Mode_Code return Natural is (Shown_Mode);

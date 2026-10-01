@@ -115,6 +115,19 @@ is
    procedure Mark (Marks : in out Origin_Marks_T)
      with Global => State;
 
+   --  Added by e4/modes, 4.10: entering a mode resets (to the initial
+   --  states: nothing stored) the track conditions of its rows: Rest,
+   --  every track condition but the sound horn, the non stopping and the
+   --  tunnel stopping areas (M_TRACKCOND 0 to 2) and the big metal
+   --  masses, with the changes of traction system; Horn, those three;
+   --  BMM, the big metal masses
+   procedure Reset (Rest, Horn, BMM : Boolean)
+     with Global => (In_Out => State),
+          Post => (if BMM then Big_Metal_Masses.Count = 0)
+                  and then (if Rest then Traction_Changes.Count = 0)
+                  and then (if Rest and then Horn
+                            then Conditions.Count = 0);
+
    ---------------------------------------------------------------------
    --  Indication and braking
    ---------------------------------------------------------------------

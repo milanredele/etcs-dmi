@@ -359,7 +359,14 @@ package body Sim_Telegrams is
       P.M_LEVELTR := M_LEVELTR_Level_2;
       P.Has_NID_NTC := False;
       P.L_ACKLEVELTR := L_ACKLEVELTR_T (D15 (Ack_M));
-      P.N_ITER := 0;
+      --  phase E4: level 1 too, with a lower priority (5.10.2.2, 5.10.2.4:
+      --  an on-board without a radio for level 2 stays in level 1)
+      P.N_ITER := 1;
+      P.M_LEVELTR_List (1) :=
+        (M_LEVELTR    => M_LEVELTR_Level_1,
+         Has_NID_NTC  => False,
+         NID_NTC      => 0,
+         L_ACKLEVELTR => L_ACKLEVELTR_T (D15 (Ack_M)));
       return P;
    end Level_2_Order;
 

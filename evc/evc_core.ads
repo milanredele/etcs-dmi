@@ -32,7 +32,20 @@
 --  monitoring and the brake command handling on that snapshot (EVC_SDM,
 --  EVC_Brake_Commands: MSG_SPEED_STATE every cycle, the brake and the
 --  time to Indication in MSG_STATUS, the TIU output, JRU events 20 to
---  22). The later phases fill the empty steps.
+--  22). Phase E4, modes and levels (e4/modes): the driver's requests of
+--  the DMI port (EVC_Driver_Requests) and the inputs of the train
+--  interface (EVC_Train_Inputs) are taken with the ports; the stored
+--  information filters what it receives by level and mode (4.8) and
+--  takes the level transition orders (EVC_Levels); after the
+--  supervision the levels (5.10) and the mission (5.4, 5.5:
+--  EVC_Mission) evaluate the cycle; the mode machine takes the
+--  transition of 4.6.2 of the highest priority whose condition of 4.6.3
+--  holds (EVC_Modes.Conditions, EVC_Transition_Conditions.Holds) and
+--  carries out what entering the mode means (4.10, 4.12, 5.4.3.2, 5.5);
+--  the outputs show the mode, the level, the announcement and the
+--  acknowledgements (4.7, MSG_MODE_LEVEL, MSG_ONBOARD) and record the
+--  events of the levels and the mission (JRU events 40 and 41). The later
+--  phases fill the empty steps.
 
 --  The postconditions name the state before the call ('Old) of query
 --  functions behind "and then" and "if": allowed, and evaluated at entry
@@ -42,6 +55,9 @@ with EVC_Brake_Commands;
 with EVC_Bytes;
 with EVC_Config;
 with EVC_Distances;
+with EVC_Driver_Requests;
+with EVC_Levels;
+with EVC_Mission;
 with EVC_Modes;    use EVC_Modes;
 with EVC_Movement_Authority;
 with EVC_National_Values;
@@ -58,6 +74,7 @@ with EVC_Supervision_Input;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
+with EVC_Train_Inputs;
 
 use type EVC_Config.Config_T;
 use type EVC_Config.Status_T;
@@ -83,12 +100,13 @@ is
    function Mode return Mode_T
      with Global => State;
 
+   --  The level and its status (EVC_Levels, phase E4)
    function Level_Status return Level_Status_T
-     with Global => State;
+     with Global => EVC_Levels.State;
 
    --  The stored level; meaningful when Level_Status is Valid
    function Level return Level_T
-     with Global => State;
+     with Global => EVC_Levels.State;
 
    function Failed return Boolean
      with Global => State;
@@ -104,7 +122,7 @@ is
    --  DMI port) since the last cycle: 4.6.3 condition [1] holds at the
    --  next Tick
    function Isolation_Requested return Boolean
-     with Global => State;
+     with Global => EVC_Driver_Requests.State;
 
    --  Inputs accepted and rejected on each port since Initialise
    --  (saturating)
@@ -136,7 +154,11 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Train_Data.State),
+                                EVC_Train_Data.State,
+                                EVC_Driver_Requests.State,
+                                EVC_Train_Inputs.State,
+                                EVC_Levels.State,
+                                EVC_Mission.State),
                      Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -205,7 +227,7 @@ is
    --  (EVC_Ports) and ignored when it does not match; otherwise it is
    --  latched for the next cycle. Nothing changes the mode here.
    procedure Handle_Input (Port : Port_T; Payload : EVC_Bytes.Byte_Array)
-     with Global => (In_Out => State),
+     with Global => (In_Out => (State, EVC_Driver_Requests.State)),
           Post => Mode = Mode'Old
                   and then Failed = Failed'Old
                   and then Cycle = Cycle'Old
@@ -223,8 +245,12 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Config.State),
-                     Input  => EVC_Train_Data.State),
+                                EVC_Config.State,
+                                EVC_Train_Data.State,
+                                EVC_Driver_Requests.State,
+                                EVC_Train_Inputs.State,
+                                EVC_Levels.State,
+                                EVC_Mission.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed
@@ -315,6 +341,25 @@ is
      with Global => (In_Out => State),
           Post => Mode = Mode'Old and then Failed = Failed'Old
                   and then Cycle = Cycle'Old;
+
+   --  For the tests of the hosts (evc_test, evc_fuzz), not for an
+   --  on-board in service, like Set_Snapshot_For_Test (phase E4): the
+   --  scenarios of phases E2 and E3 exercise the position, the stored
+   --  information and the supervision as they were written, before the
+   --  modes, in a mode of their own: from the next cycle on, the mode is
+   --  Mode (the mode machine runs from there), the level Level (valid)
+   --  and the Train Data the default train of EVC_Train_Data (valid), as
+   --  after a start of mission. Nothing of entering the mode (4.10,
+   --  4.12) is done. The scenarios of E4 start their missions through
+   --  the ports.
+   procedure Set_Mode_For_Test (Mode : Mode_T; Level : Level_T)
+     with Global => (In_Out => (State, EVC_Levels.State),
+                     Output => EVC_Train_Data.State),
+          Pre  => Mode /= M_NP,
+          Post => EVC_Core.Mode = Mode and then Failed = Failed'Old
+                  and then Cycle = Cycle'Old
+                  and then EVC_Core.Level = Level
+                  and then Level_Status = Valid;
 
    --  What the speed and distance monitoring found in the last cycle
    --  (3.13.10)

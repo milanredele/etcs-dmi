@@ -23,6 +23,20 @@
 --    4. national values waiting for their location (3.18.2.3);
 --    5. what lies more than 300 m in rear of the min safe rear end
 --       (A.3.1), and the origins nothing refers to any more;
+--  Added by e4/modes: the filters of 4.8 (EVC_Acceptance) in the mode of
+--  the Context and the level of EVC_Levels, before an information of a
+--  group is taken; the level transition orders (41, 46) first
+--  (4.8.1.3: the rest of the message is evaluated with them, an
+--  immediate order switches the level at once, EVC_Levels); in the
+--  snapshot, the functions of the mode (4.5.2 Figure 1, EVC_Modes): the
+--  SSP, the ASP, the LX speed restrictions, the speed restrictions to
+--  ensure a permitted braking distance, the signalling related speed
+--  restriction, the MA and its temporary targets in the modes with an MA
+--  (Track_Speed_Mode, MA_Mode), the TSRs and the gradients where the
+--  MRSP is supervised with its curves (TSR_Mode), the maximum train
+--  speed (Train_Speed_Mode); Supervise is a mode of TSR_Mode with valid
+--  Train Data; the SR distance (Extra.SR_Distance) from the Context.
+--
 --    6. the snapshot (Current): the train, the Train Data, the national
 --       values, the speed restrictions to ensure a permitted braking
 --       distance computed (3.11.11.3: the sections received, or all of
@@ -64,6 +78,8 @@ with EVC_Braking;
 with EVC_Config;
 with EVC_DMI_Port;
 with EVC_Distances;          use EVC_Distances;
+with EVC_Levels;
+with EVC_Modes;
 with EVC_Movement_Authority;
 with EVC_National_Values;
 with EVC_Odometry;
@@ -124,6 +140,9 @@ is
    Change_Trip       : constant := 11;  -- V_MAIN 0, trip order
    --  a group whose information could not be kept (no origin)
    Change_No_Origin  : constant := 12;
+   --  added by e4/modes: an information rejected by the filters of 4.8
+   --  (byte 2 Info_Group, byte 4 its NID_PACKET)
+   Change_Filtered   : constant := 15;
    --  the TSRs deleted with the orientation (3.11.5.10)
    Change_Orientation : constant := 13;
    --  PBD: every section computed again, an input changed (3.11.11.3;
@@ -218,6 +237,39 @@ is
    function PBD_Inputs return EVC_PBD.Inputs_T
      with Global => State;
 
+   ---------------------------------------------------------------------
+   --  Added by e4/modes: the mode of the on-board (4.5.2, 4.8) and what
+   --  the conditions of 4.6.3 read of the stored information
+   ---------------------------------------------------------------------
+
+   --  What the cycle tells the stored information besides the time: the
+   --  mode (the functions of 4.5.2 Figure 1, EVC_Modes; the filter of
+   --  4.8.4), the inputs of the exceptions of 4.8.4 (a cab active, a
+   --  valid train running number), the SR distance (4.4.11.1.3 b, a
+   --  frame position), the antenna... The default is E3's: FS, every
+   --  information accepted and used.
+   type Mode_Context_T is record
+      Mode        : EVC_Modes.Mode_T := EVC_Modes.M_FS;
+      Cab_Active  : Boolean := True;
+      TRN_Valid   : Boolean := True;
+      SR_Distance : Boolean := False;
+      SR_End      : Dist_T := 0;
+   end record;
+
+   --  4.6.3 [10], [25], [31], [32]: "MA + SSP + gradient are on-board"
+   --  (an MA is accepted only when SSP and gradients cover it, 3.7.2.3)
+   --  and the train position confidence interval overlaps a mode
+   --  profile, as of the last Evaluate
+   function MA_On_Board return Boolean
+     with Global => State;
+   function Mode_Profile_Overlap return Boolean
+     with Global => State;
+   --  4.4.9.1.4: the SSP and the gradients cover the whole length of the
+   --  train (from the min safe rear end to the estimated front end, the
+   --  Train Data's length), as of the last Evaluate
+   function Train_Covered return Boolean
+     with Global => State;
+
    --  One cycle (see above). Mode_Speed: the mode related speed limit
    --  (No_Speed_Limit until phase E4); Special_Active and Additional:
    --  the status of the special brakes and of the additional brake on
@@ -228,12 +280,14 @@ is
                        Mode_Speed     : Speed_Cms_T;
                        Special_Active : EVC_Braking.Brakes_T :=
                          (others => False);
-                       Additional     : Boolean := False)
+                       Additional     : Boolean := False;
+                       Context        : Mode_Context_T := (others => <>))
      with Global => (In_Out => (State, EVC_Origins.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
-                                EVC_National_Values.State),
+                                EVC_National_Values.State,
+                                EVC_Levels.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Train_Data.State, EVC_Config.State)),
           Post =>
