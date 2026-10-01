@@ -6,7 +6,7 @@ package body EVC_Train_Data
        Refined_State => (State => (Is_Valid, Current, Current_Categories))
 is
 
-   Is_Valid           : Boolean := True;
+   Is_Valid           : Boolean := False;
    Current            : Train_Data_T := Default;
    Current_Categories : Categories_T := Default_Categories;
 
@@ -21,7 +21,7 @@ is
 
    procedure Clear is
    begin
-      Is_Valid := True;
+      Is_Valid := False;
       Current := Default;
       Current_Categories := Default_Categories;
    end Clear;

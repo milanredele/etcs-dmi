@@ -291,6 +291,30 @@ is
    procedure Mark (Marks : in out Origin_Marks_T)
      with Global => State;
 
+   --  Added by e4/modes: what entering a mode deletes (4.10), each kind
+   --  with the modes of its row: the SSP, the ASP, the gradients and the
+   --  level crossings (Track); the speed restrictions to ensure a
+   --  permitted braking distance; the route suitability data; the TSRs
+   --  and the default gradient for TSR; the adhesion from trackside
+   --  (reset: no reduced adhesion)
+   type Deletion_T is record
+      Track       : Boolean := False;
+      PBD         : Boolean := False;
+      Suitability : Boolean := False;
+      TSR         : Boolean := False;
+      Adhesion    : Boolean := False;
+   end record;
+
+   procedure Delete (What : Deletion_T)
+     with Global => (In_Out => State),
+          Post => (if What.Track then SSP.Count = 0
+                                      and then Gradients.Count = 0
+                                      and then ASP.Count = 0)
+                  and then (if What.TSR then TSR.Count = 0
+                                             and then not
+                                               Default_Gradient_Known)
+                  and then (if What.PBD then PBD.Count = 0);
+
    ---------------------------------------------------------------------
    --  For the snapshot
    ---------------------------------------------------------------------
@@ -301,10 +325,13 @@ is
    --  the PBD SR by the front end only, Table 2a), with the gaps a
    --  relocation leaves between two SSP elements filled with the lower
    --  one (see the header)
-   procedure Speed_Elements (T      : Origin_Table_T;
-                             Ahead  : Sense_T;
-                             Length : Length_T;
-                             E      : in out Elements_T)
+   --  (added by e4/modes) Only_TSR: the TSRs alone, for the modes in
+   --  which the other restrictions are not in the MRSP (4.5.2: SR, UN)
+   procedure Speed_Elements (T        : Origin_Table_T;
+                             Ahead    : Sense_T;
+                             Length   : Length_T;
+                             E        : in out Elements_T;
+                             Only_TSR : Boolean := False)
      with Global => State,
           Post => E.Count >= E.Count'Old;
 

@@ -506,8 +506,10 @@ procedure EVC_Test is
              & Img (DMI_Mode_Byte));
       Check (DMI_Level_Byte = 0,
              "power-up: MSG_MODE_LEVEL level unknown (0)");
-      Check (Onboard_Field (6) = 2,
-             "power-up: MSG_ONBOARD som 2, start of mission possible");
+      --  phase E4: the start of mission is engaged with a desk open
+      --  (5.4.3.2 S0), and no cab status input came
+      Check (Onboard_Field (6) = 0,
+             "power-up: MSG_ONBOARD som 0, no desk open (5.4.3.2 S0)");
       Check (Onboard_Field (4) = 3,
              "power-up: MSG_ONBOARD standstill, below override speed");
       Check_Golden ("power_up_cycle_1");
@@ -938,9 +940,12 @@ procedure EVC_Test is
          end loop;
       end loop;
 
-      --  2. the on-board, the link supervised
+      --  2. the on-board, the link supervised; the desk of cab A open
+      --  (phase E4: the start of mission is engaged with a desk open,
+      --  5.4.3.2 S0, which EVC_Mock takes for granted)
       DMI_Core.Initialise;
       EVC_Core.Initialise;
+      EVC_Core.Handle_Input (TIU, (1, 1));
       for I in 1 .. 5 loop
          EVC_Core.Tick (100);
          Feed_DMI;
@@ -2615,7 +2620,13 @@ procedure EVC_Test is
    end Cycle;
 
    --  A new track, the train at Start_Cm, the odometer reading Start_Cm,
-   --  one sample at standstill (the frame starts there), cab A active
+   --  one sample at standstill (the frame starts there), cab A active.
+   --  Phase E4: the scenarios of E2 and E3 run in FS, level 1, with the
+   --  default train (EVC_Core.Set_Mode_For_Test), the mode in which the
+   --  linking is checked and the information of the groups is accepted
+   --  and used, as they were written before the modes
+   Legacy_Mode : constant Mode_T := M_FS;
+
    procedure Start_Track (Start_Cm : Integer_64 := 0) is
    begin
       EVC_Core.Initialise;
@@ -2634,6 +2645,7 @@ procedure EVC_Test is
       Input (TIU, (1, 1));
       Sample (0);
       Cycle;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L1);
    end Start_Track;
 
    --  One step of Step_Cm (signed): the balises crossed, then the sample
@@ -2847,7 +2859,7 @@ procedure EVC_Test is
              "first group: JRU new LRBG and position valid");
       Check (Seen.LRBG_Passed and then not Seen.Location_Passed,
              "first group: report trigger 3.6.5.1.4 j)");
-      Check (Onboard_Field (1) = 32,
+      Check (Onboard_Field (1) / 32 mod 2 = 1,
              "first group: MSG_ONBOARD position valid, got"
              & Img (Onboard_Field (1)));
       Stand;
@@ -4095,9 +4107,11 @@ procedure EVC_Test is
              and then SI.Current.Gradients.Segments (3).Start = 210_000
              and then SI.Current.Gradients.Segments (3).Gradient = -3,
              "gradients: the profile in the frame (3.11.12)");
-      Check (not SI.Current.MA.Present and then not SI.Current.Supervise
+      --  phase E4: Supervise is the mode's (FS, valid Train Data), the
+      --  MA is not there
+      Check (not SI.Current.MA.Present and then SI.Current.Supervise
              and then Plan_Frames = 0,
-             "no MA: nothing supervised, no planning");
+             "no MA: no MA supervised, no planning");
       Check (SI_Seen (SI.Info_SSP, SI.Change_Stored) = 1
              and then SI_Seen (SI.Info_Gradients, SI.Change_Stored) = 1,
              "JRU: SSP and gradients stored");
@@ -8397,6 +8411,10 @@ procedure EVC_Test is
       --  where things happened (m of the front end)
       Never : constant Integer := Integer'First;
       Supervised_At, TSM_At, RSM_At, SB_At, EB_At : Integer := Never;
+      --  phase E4: the cycle of SR and of FS, the levels shown
+      SR_Cycle, FS_Cycle : Natural := 0;
+      Cycles             : Natural := 0;
+      Other_Level        : Boolean := False;
       Acks, Acks_Supervised : Natural := 0;
       Max_Kmh : Natural := 0;
       Last_Mon, Last_Cmd, Last_Brake : Natural := 99;
@@ -8412,6 +8430,16 @@ procedure EVC_Test is
          Cmd : constant Natural := Natural (Sim_Vehicle.Commands);
       begin
          Env.Step (100);
+         Cycles := Cycles + 1;
+         if Env.Mode_Code = 7 and then SR_Cycle = 0 then
+            SR_Cycle := Cycles;
+         end if;
+         if Env.Mode_Code = 2 and then FS_Cycle = 0 then
+            FS_Cycle := Cycles;
+         end if;
+         if Cycles > 3 and then Env.Level_Code /= 4 then
+            Other_Level := True;
+         end if;
          Env.Take_DMI (Frames, Last);
          if Digest then
             GNAT.SHA256.Update (Ctx, Frames (Frames'First .. Last));
@@ -8460,6 +8488,11 @@ procedure EVC_Test is
       Env.Set_Desk (0, Auto => True);
       for I in 1 .. Bench_Cycles loop
          Cycle (Digest => True);
+         --  phase E4: the start of mission in level 1, a step a cycle
+         if I <= Env.SoM_Steps then
+            Env.Receive (Env.SoM_Frame (I));
+         end if;
+
       end loop;
       Check_Digest ("bench_onboard", GNAT.SHA256.Digest (Ctx));
       Put_Line ("  bench:" & Img (Bench_Cycles) & " cycles," & Img (Bytes)
@@ -8495,10 +8528,18 @@ procedure EVC_Test is
       Check (RSM_At /= Never and then Stopped_At /= Never
              and then Stopped_At <= EVC_Track.EOA_M,
              "bench: the train stops in front of the EOA in RSM");
-      Check (Acks >= 1 and then Acks_Supervised = 0,
-             "bench: moving in Stand By without an MA the standstill "
-             & "supervision brakes (4.4.7.1.5), released at standstill "
-             & "with the driver's acknowledgement (3.14.1.5)");
+      --  phase E4: the start of mission in level 1 (5.4.3.2: driver ID,
+      --  level, Train Data, train running number, 'Start', SR
+      --  acknowledged) before the train moves, FS at the MA of the first
+      --  group (4.6.3 [32]); the order to level 2 at 5000 m keeps level 1
+      --  (5.10.2.4: no radio before E5)
+      Check (Acks = 0 and then SR_Cycle = Env.SoM_Steps + 1
+             and then FS_Cycle > SR_Cycle and then not Other_Level
+             and then Env.Mode_Code = 2,
+             "bench: SR after the start of mission at cycle"
+             & Img (SR_Cycle) & ", FS at cycle" & Img (FS_Cycle)
+             & ", level 1 throughout, no brake to acknowledge (5.4.3.2, "
+             & "4.6.3 [8], [32], 5.10.2.4)");
       Check (SB_At = Never and then EB_At = Never,
              "bench: the automatic driver keeps below the on-board's "
              & "permitted speed, no intervention under the MA");
@@ -8642,6 +8683,7 @@ procedure EVC_Test is
          Input (TIU, (1, 1));
          Sample (0);
          Cycle;
+         EVC_Core.Set_Mode_For_Test (Legacy_Mode, L1);
          Check (Odo.Known and then Odo.Position = Cm (X0)
                 and then Odo.Low = 0 and then Odo.High = 0
                 and then Odo.Anomalies = 0,

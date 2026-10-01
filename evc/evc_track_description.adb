@@ -838,6 +838,34 @@ is
       TSR_S.Count := 0;
    end Delete_TSRs;
 
+   ------------
+   -- Delete --
+   ------------
+
+   procedure Delete (What : Deletion_T) is
+   begin
+      if What.Track then
+         SSP_S := Empty_Store;
+         Grad_S := Empty_Store;
+         ASP_S := Empty_Store;
+         LX_S := (others => (others => <>));
+      end if;
+      if What.PBD then
+         PBD_S := Empty_Store;
+      end if;
+      if What.Suitability then
+         Suit_S := (others => (others => <>));
+      end if;
+      if What.TSR then
+         TSR_S := Empty_Store;
+         Grad_Default_Known := False;
+         Grad_Default := 0;
+      end if;
+      if What.Adhesion then
+         Adh_S := Empty_Store;
+      end if;
+   end Delete;
+
    ----------
    -- Mark --
    ----------
@@ -932,12 +960,22 @@ is
       end loop;
    end Add_Gaps;
 
-   procedure Speed_Elements (T      : Origin_Table_T;
-                             Ahead  : Sense_T;
-                             Length : Length_T;
-                             E      : in out Elements_T)
+   procedure Speed_Elements (T        : Origin_Table_T;
+                             Ahead    : Sense_T;
+                             Length   : Length_T;
+                             E        : in out Elements_T;
+                             Only_TSR : Boolean := False)
    is
    begin
+      if Only_TSR then
+         if TSR_S.Sense = Ahead then
+            for I in 1 .. TSR_S.Count loop
+               pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);
+               Add_Stored (E, T, Ahead, TSR_S.List (I), Length);
+            end loop;
+         end if;
+         return;
+      end if;
       if SSP_S.Sense = Ahead then
          for I in 1 .. SSP_S.Count loop
             pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);

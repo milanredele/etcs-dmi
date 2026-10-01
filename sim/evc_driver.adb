@@ -32,17 +32,15 @@ package body EVC_Driver is
                                  Monitoring      : Natural;
                                  Brake_Commanded : Boolean)
    is
-      Creep_KMH : constant := 5;
    begin
       if Brake_Commanded then
          EVC_Train.Demand := 0;
       elsif Monitoring = 2 then
          EVC_Train.Demand := -100; -- brake to a stand in RSM
       elsif V_Perm_KMH = 0 then
-         EVC_Train.Demand :=
-           (if V_Cur_KMH < Creep_KMH then 30
-            elsif V_Cur_KMH > Creep_KMH then -30
-            else 0);
+         --  no permitted speed (Stand By, before the start of mission):
+         --  the train stays where it is
+         EVC_Train.Demand := (if V_Cur_KMH > 0 then -30 else 0);
       elsif V_Cur_KMH + 3 < V_Perm_KMH then
          EVC_Train.Demand := 60;
       elsif V_Cur_KMH + 1 >= V_Perm_KMH then

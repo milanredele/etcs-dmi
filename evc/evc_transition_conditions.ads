@@ -11,6 +11,15 @@
 --  The texts are quoted from the table of 4.6.3 (SUBSET-026-4 v4.0.0,
 --  pages 49 to 51); {n} refers to the notes below the table.
 
+with EVC_Driver_Requests;
+with EVC_Levels;
+with EVC_Mission;
+with EVC_Movement_Authority;
+with EVC_Odometry;
+with EVC_Stored_Information;
+with EVC_Train_Data;
+with EVC_Train_Inputs;
+
 package EVC_Transition_Conditions
   with SPARK_Mode => On
 is
@@ -486,8 +495,25 @@ is
    --    threshold
    C_84 : constant Condition_Id_T := 84;
 
-   --  True when the condition holds in the current cycle
+   --  True when the condition holds in the current cycle. The modes
+   --  half (e4/modes) reads the driver's requests, the inputs of the
+   --  train interface, the level, the mission data, the odometer, the
+   --  stored information and the Train Data; [1], [4] and [29] are
+   --  stated (the transitions out of No Power that EVC_Core.Tick
+   --  proves).
    function Holds (C : Condition_Id_T) return Boolean
-     with Global => null;  -- to be replaced by the real Global set
+     with Global => (Input => (EVC_Driver_Requests.State,
+                               EVC_Train_Inputs.State,
+                               EVC_Levels.State,
+                               EVC_Mission.State,
+                               EVC_Odometry.State,
+                               EVC_Stored_Information.State,
+                               EVC_Movement_Authority.State,
+                               EVC_Train_Data.State)),
+          Post => (if C = C_1
+                   then Holds'Result
+                          = EVC_Driver_Requests.Isolation_Selected)
+                  and then (if C = C_4 then Holds'Result)
+                  and then (if C = C_29 then not Holds'Result);
 
 end EVC_Transition_Conditions;

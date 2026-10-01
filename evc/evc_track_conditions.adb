@@ -31,6 +31,39 @@ is
       Serial := 1;
    end Clear;
 
+   -----------
+   -- Reset --
+   -----------
+
+   procedure Reset (Rest, Horn, BMM : Boolean) is
+   begin
+      if BMM then
+         BMM_S := Empty_Store;
+      end if;
+      if Rest then
+         Traction_S := Empty_Store;
+      end if;
+      if Rest and then Horn then
+         Cond_S := Empty_Store;
+      elsif Rest or else Horn then
+         --  keep the conditions of the other group
+         declare
+            Kept : Store_T := (Sense => Cond_S.Sense, Count => 0,
+                               List => (others => (others => <>)),
+                               Lost => Cond_S.Lost);
+         begin
+            for I in 1 .. Cond_S.Count loop
+               pragma Loop_Invariant (Kept.Count < I);
+               if (Cond_S.List (I).Value in 0 .. 2) = Rest then
+                  Kept.Count := Kept.Count + 1;
+                  Kept.List (Kept.Count) := Cond_S.List (I);
+               end if;
+            end loop;
+            Cond_S := Kept;
+         end;
+      end if;
+   end Reset;
+
    procedure Orient (St : in out Store_T; S : Sense_T)
      with Post => St.Sense = S
    is

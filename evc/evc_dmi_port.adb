@@ -24,6 +24,25 @@ is
       0,                              -- taf
       16#FF#, 16#FF#);                -- lssma: not shown
 
+   function Mode_Level_Frame (Mode          : Mode_T;
+                              Status        : Level_Status_T;
+                              Level         : Level_T;
+                              Mode_Ack      : Byte;
+                              Level_Ann     : Byte;
+                              Level_Ann_Ack : Boolean)
+     return Mode_Level_Frame_T
+   is
+     (MSG_MODE_LEVEL,
+      Mode_Level_Length, 0, 0, 0,     -- length u32
+      Mode_Code (Mode),               -- mode
+      Level_Code (Status, Level),     -- level
+      Mode_Ack,                       -- mode_ack
+      Level_Ann,                      -- level_ann
+      (if Level_Ann_Ack then 1 else 0),  -- level_ann_ack
+      0,                              -- override
+      0,                              -- taf
+      16#FF#, 16#FF#);                -- lssma: not shown
+
    -------------------
    -- Onboard_Frame --
    -------------------

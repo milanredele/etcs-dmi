@@ -1142,6 +1142,9 @@ procedure EVC_Fuzz is
          begin
             EVC_Core.Initialise;
             EVC_Core.Handle_Input (TIU, (1, 1));
+            --  phase E4: the stored information in FS, level 1, with the
+            --  default train (as evc_test runs the scenarios of E3)
+            EVC_Core.Set_Mode_For_Test (M_FS, L1);
             Odo_D := Next;
             Over := 0;
             Under := 0;

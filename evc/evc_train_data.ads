@@ -2,11 +2,11 @@
 --  The Train Data of the on-board (SUBSET-026 3.18.3), as far as the
 --  stored information and the supervision use them.
 --
---  Phase E3 has no data entry: the store holds a documented default
---  train, valid from power-up, so that the stored information and the
---  supervision can be exercised. Phase E4 fills it from the DMI (the
---  Train Data entry of the Start of Mission, 5.4, 5.17) through Set and
---  Invalidate, and E6 adds the data view and the other sources.
+--  Phase E3 had no data entry: the store held a documented default
+--  train, valid from power-up. Phase E4 (e4/modes) fills it from the DMI
+--  (the Train Data entry of the Start of Mission, 5.4, EVC_Mission)
+--  through Set and Invalidate, and starts invalid (4.10); E6 adds the
+--  data view and the other sources (5.17 is the procedures half's).
 --
 --  The default train (Default below): a passenger train in brake
 --  position "Passenger train in P" with 135 % brake percentage (lambda
@@ -67,10 +67,14 @@ is
    function Categories return Categories_T
      with Global => State;
 
-   --  Power-up: the default train, valid (phase E3; E4 starts invalid)
+   --  Power-up: no valid Train Data (4.10: deleted in No Power; phase
+   --  E4, e4/modes: the driver enters them in the start of mission,
+   --  EVC_Mission). Data keeps the default train as the values of the
+   --  invalid set, which nothing supervises (EVC_Stored_Information:
+   --  Supervise needs valid Train Data).
    procedure Clear
      with Global => (Output => State),
-          Post => Valid and then Data = Default
+          Post => not Valid and then Data = Default
                   and then Categories = Default_Categories;
 
    --  New Train Data (phase E4)

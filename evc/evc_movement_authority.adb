@@ -644,4 +644,43 @@ is
       end if;
    end Mode_Profile_Target;
 
+   ---------------
+   -- Delete_MA --
+   ---------------
+
+   procedure Delete_MA is
+   begin
+      Current := (others => <>);
+      Main_Known := False;
+      Main_Speed := 0;
+      Main_Finish := (others => <>);
+      Main_Open := True;
+      Profiles := (others => (others => <>));
+   end Delete_MA;
+
+   --------------------------
+   -- Mode_Profile_Overlap --
+   --------------------------
+
+   function Mode_Profile_Overlap (T         : Origin_Table_T;
+                                  Min_Front : Dist_T;
+                                  Max_Front : Dist_T) return Boolean
+   is
+      S : constant Sense_T := Current.Sense;
+   begin
+      for I in Profiles'Range loop
+         if Profiles (I).Used
+           and then A (S, Max_Front)
+                      >= A (S, Frame (T, Profiles (I).Start, Max_Item))
+           and then (Profiles (I).Open
+                     or else A (S, Min_Front)
+                               < A (S, Frame (T, Profiles (I).Finish,
+                                              Min_Item)))
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Mode_Profile_Overlap;
+
 end EVC_Movement_Authority;

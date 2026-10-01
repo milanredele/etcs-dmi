@@ -85,6 +85,22 @@ package Sim_Onboard_Env is
    Brake_Release_Ack : constant Stream_Element_Array :=
      (16#40#, 5, 0, 0, 0, 2, 5, 0, 0, 0);
 
+   --  Phase E4: the driver's start of mission in level 1 (SUBSET-026
+   --  5.4.3.2), as the DMI sends it at the end of each step of its
+   --  start-up dialogue (DMI 11.7.2, Table 49): the driver ID "1234"
+   --  (S1), level 1 (S2, MSG_DRIVER_ACTION 11, the level code 4), the
+   --  Train Data of the train of the line (S12: 200 m, 135 %, 160 km/h,
+   --  cant deficiency 130 mm, passenger train, axle load A, not airtight,
+   --  loading gauge G1: the default train of EVC_Train_Data), the train
+   --  running number "5678" (S13), 'Start' (S20) and the acknowledgement
+   --  of Staff Responsible (S24, MSG_DRIVER_ACTION 2, kind 1). The
+   --  scenarios without a DMI send step K after cycle K
+   --  (test/src/evc_test.adb Scenario_Bench_Onboard and
+   --  test/wasm/onboard_smoke.js, which must send the same bytes).
+   SoM_Steps : constant := 6;
+   function SoM_Frame (K : Positive) return Stream_Element_Array
+     with Pre => K <= SoM_Steps;
+
    ---------------------------------------------------------------------
    --  What the on-board said last (its DMI frames) and the vehicle
    ---------------------------------------------------------------------
