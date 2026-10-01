@@ -186,6 +186,11 @@ is
       LX_MRDT        : Boolean := False;
       LX_Release     : Boolean := False;
       LX_From        : Dist_T := 0;
+      --  added by the procedures of phase E4 (5.18.4.2, 5.18.8.3): for
+      --  each foot of Snapshot_T.Virtual, the locations of the SBI (SBI1)
+      --  and of the Permitted limit without the GUI of an SBD curve with
+      --  that foot, at the estimated speed (frame positions)
+      Virtual        : Virtual_Limits_T;
    end record;
 
    ---------------------------------------------------------------------

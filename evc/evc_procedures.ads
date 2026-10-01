@@ -77,6 +77,7 @@ with EVC_Position;
 with EVC_Procedure_Requests;
 with EVC_SDM;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
+with EVC_Track_Conditions;
 with EVC_Track_Description;
 with Interfaces;            use Interfaces;
 
@@ -336,7 +337,8 @@ is
                                 EVC_Track_Description.State),
                      Input  => (EVC_Position.State, EVC_Origins.State,
                                 EVC_Movement_Authority.State,
-                                EVC_Procedure_Requests.State));
+                                EVC_Procedure_Requests.State,
+                                EVC_Track_Conditions.State));
 
    --  The mode machine took the transition From -> To in this cycle
    --  (From /= To), the context of the cycle

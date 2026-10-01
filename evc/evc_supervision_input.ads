@@ -365,6 +365,35 @@ is
    --  Present False: the temporary EOA is not an LX.
    ---------------------------------------------------------------------
 
+   ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4 (e4/procedures): the feet of
+   --  virtual SBD curves (frame positions) that the supervision
+   --  evaluates at the estimated speed for the indication of the track
+   --  conditions (5.18.4.2: the SBI limits SBID and SBIG of a non
+   --  stopping area; 5.18.8.3: the Permitted limit, without the GUI, of
+   --  a tunnel stopping area), each with the number of its condition;
+   --  and what the supervision found for them (Virtual_Limits_T, frame
+   --  positions of the SBI and the Permitted limit, Valid False when
+   --  nothing was supervised)
+   ---------------------------------------------------------------------
+
+   Max_Virtual : constant := 6;
+   type Virtual_Foot_T is record
+      Used : Boolean := False;
+      Id   : Natural range 0 .. 255 := 0;
+      Foot : Dist_T := 0;
+   end record;
+   type Virtual_Feet_T is array (1 .. Max_Virtual) of Virtual_Foot_T;
+
+   type Virtual_Limit_T is record
+      Valid : Boolean := False;
+      Id    : Natural range 0 .. 255 := 0;
+      Foot  : Dist_T := 0;
+      SBI   : Dist_T := 0;
+      P     : Dist_T := 0;
+   end record;
+   type Virtual_Limits_T is array (1 .. Max_Virtual) of Virtual_Limit_T;
+
    type LX_Approach_T is record
       Present   : Boolean := False;
       Index     : Natural range 0 .. 255 := 0;
@@ -548,6 +577,9 @@ is
       --  crossing not protected whose start is the temporary EOA and SvL
       --  of Temporary (5.16, LX_Approach_T below)
       LX           : LX_Approach_T;
+      --  added by the procedures of phase E4: the feet of the virtual SBD
+      --  curves of the track conditions (5.18.4.2, 5.18.8.3)
+      Virtual      : Virtual_Feet_T;
    end record;
 
 end EVC_Supervision_Input;

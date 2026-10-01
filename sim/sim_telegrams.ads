@@ -22,6 +22,7 @@ with ETCS_Track_Packets.P39;
 with ETCS_Track_Packets.P40;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P65;
+with ETCS_Track_Packets.P67;
 with ETCS_Track_Packets.P68;
 with ETCS_Track_Packets.P69;
 with ETCS_Track_Packets.P73;
@@ -48,6 +49,7 @@ package Sim_Telegrams is
    package T68 renames ETCS_Track_Packets.P68;
    package T39 renames ETCS_Track_Packets.P39;
    package T40 renames ETCS_Track_Packets.P40;
+   package T67 renames ETCS_Track_Packets.P67;
    package T69 renames ETCS_Track_Packets.P69;
    package T73 renames ETCS_Track_Packets.P73;
    --  added with the procedures of phase E4 (e4/procedures)
@@ -93,6 +95,7 @@ package Sim_Telegrams is
    procedure Put (W : in out Writer_T; P : T68.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T39.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T40.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T67.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T69.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T73.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T49.Packet_T; OK : in out Boolean);
@@ -246,6 +249,9 @@ package Sim_Telegrams is
    --  Voltage (0: not fitted) of the country NID_CTRACTION
    function Traction_Change (D_M, Voltage, Country : Natural)
      return T39.Packet_T;
+
+   --  Packet 67: one big metal mass area from D_M, L_M long
+   function Big_Metal_Mass (D_M, L_M : Natural) return T67.Packet_T;
 
    --  Packet 40: a change of allowed current consumption at D_M to
    --  M_CURRENT Current

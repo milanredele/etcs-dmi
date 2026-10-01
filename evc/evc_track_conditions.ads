@@ -40,6 +40,20 @@
 --  rear end leaving it; the virtual SBI limits of 5.18.4.2 need the
 --  supervision (phase E4).
 --
+--  Phase E4 (the procedures half) adds the supervision's part: the feet
+--  of virtual SBD curves (Virtual_Feet: D and G of the two nearest non
+--  stopping areas, the end of the two nearest tunnel stopping areas)
+--  go in the snapshot, EVC_SDM gives the locations of the SBI and of the
+--  Permitted limit at the estimated speed, and the next cycle shows a
+--  non stopping area only between SBID and SBIG (5.18.4.2; when the
+--  supervision gave nothing for it, from point C as before) and reports
+--  the nearest tunnel stopping area the train can stop in rear of the
+--  end of (Tunnel_Indication, 5.18.8.3 to 5.18.8.5: MSG_STATUS tunnel,
+--  announced with the distance to its start, then active). The
+--  enabling of its display by the driver (5.18.8.2) is the DMI's (DMI
+--  8.2.3.6: the toggle, DR05), so the on-board reports the area
+--  whatever the toggle.
+--
 --  Braking (3.13.2.3.4): the areas where a special brake is inhibited
 --  (M_TRACKCOND 6, 7, 8, 10) and the powerless sections (3, 9, the kind
 --  Powerless_Section: the supervision takes them as areas without the
@@ -182,12 +196,36 @@ is
 
    --  The indications and orders of now; notes when the min safe rear
    --  end passes the end of a condition (for the 5 s of A.3.1)
+   --  Phase E4: Last, the virtual limits the supervision found in the
+   --  last cycle (5.18.4.2)
    procedure Evaluate (T      : Origin_Table_T;
                        Train  : Train_Frame_T;
                        Now_Ms : Unsigned_64;
                        Ind    : out Indications_T;
-                       Orders : out Orders_T)
+                       Orders : out Orders_T;
+                       Last   : Virtual_Limits_T := (others => <>))
      with Global => (In_Out => State);
+
+   --  Added by the procedures of phase E4: the feet of the virtual SBD
+   --  curves for the next supervision (see the header)
+   procedure Virtual_Feet (T     : Origin_Table_T;
+                           Train : Train_Frame_T;
+                           Feet  : out Virtual_Feet_T)
+     with Global => State;
+
+   --  5.18.8.3 to 5.18.8.5: the tunnel stopping area reported (State 0
+   --  none, 1 active, 2 announced, as MSG_STATUS tunnel; Distance_M the
+   --  distance from the estimated front end to its start when announced)
+   type Tunnel_T is record
+      State      : Natural range 0 .. 2 := 0;
+      Distance_M : Natural range 0 .. 99_999 := 0;
+   end record;
+
+   procedure Tunnel_Indication (T      : Origin_Table_T;
+                                Train  : Train_Frame_T;
+                                Last   : Virtual_Limits_T;
+                                Tunnel : out Tunnel_T)
+     with Global => State;
 
    ---------------------------------------------------------------------
    --  Added by the procedures of phase E4: the information for an

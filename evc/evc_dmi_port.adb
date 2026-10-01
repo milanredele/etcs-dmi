@@ -255,11 +255,14 @@ is
       0,                              -- taf
       16#FF#, 16#FF#);                -- lssma: not shown
 
-   function Status_Frame (Geo       : Unsigned_32;
-                          Seconds   : Unsigned_64;
-                          Brake     : Byte;
-                          TTI       : Unsigned_16;
-                          Reversing : Boolean) return Status_Frame_T
+   function Status_Frame (Geo         : Unsigned_32;
+                          Seconds     : Unsigned_64;
+                          Brake       : Byte;
+                          TTI         : Unsigned_16;
+                          Reversing   : Boolean;
+                          Tunnel      : Byte := 0;
+                          Tunnel_Dist : Unsigned_32 := 0)
+     return Status_Frame_T
    is
      (MSG_STATUS,
       Status_Length, 0, 0, 0,         -- length u32
@@ -273,8 +276,11 @@ is
       Byte (TTI and 16#FF#),          -- tti u16
       Byte (Shift_Right (TTI, 8)),
       14,                             -- t_disp_tti
-      0,                              -- tunnel: unknown
-      0, 0, 0, 0,                     -- tunnel_dist
+      Tunnel,                         -- tunnel
+      Byte (Tunnel_Dist and 16#FF#),  -- tunnel_dist u32
+      Byte (Shift_Right (Tunnel_Dist, 8) and 16#FF#),
+      Byte (Shift_Right (Tunnel_Dist, 16) and 16#FF#),
+      Byte (Shift_Right (Tunnel_Dist, 24)),
       Byte (Geo and 16#FF#),          -- geo_pos u32
       Byte (Shift_Right (Geo, 8) and 16#FF#),
       Byte (Shift_Right (Geo, 16) and 16#FF#),

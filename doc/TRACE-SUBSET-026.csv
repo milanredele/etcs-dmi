@@ -30,7 +30,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.4.4.4.6 b),3,x,,,,,E2,done,"EVC_Position.Next_Window, Evaluate, Supervise_Windows; evc_test position_linking, position_linking_errors"
 3.4.4.4.6 c),3,x,,,,,E2,partial,the window stops on a linking error (EVC_Position.Next_Window); the balise group message consistency of 3.16.2.4.1 is E6
 3.4.4.4.6.1,3,x,,,,,E2,done,EVC_Position.Evaluate (the next announced group checked against its own window); evc_test position_linking_errors
-3.4.4.4.7,3,x,,,,,E2,partial,"EVC_Position.Evaluate rejects and requests a train trip (Linking_Reaction 0, JRU 4); evc_test position_linking_errors; the trip itself is E4"
+3.4.4.4.7,3,x,,,,,E2,done,"EVC_Position.Evaluate rejects and requests a train trip (Linking_Reaction 0, JRU 4); the trip 4.6.3 [17] (EVC_Procedures); evc_test position_linking_errors, evc_test_procedures Scenario_Linking"
 3.4.4.5.1,3,x,,,,,E2,done,EVC_Position.Evaluate (linking not checked: every group taken); evc_test position_first_group
 3.4.5.1.4,3,x,,,,,E2,deferred,E7 (Euroloop)
 3.4.5.1.6,3,x,,,,,E2,deferred,E7 (Euroloop)
@@ -289,18 +289,18 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.1 l),3,x,,,,,E3,done,EVC_Track_Description.Take_Adhesion; evc_test Scenario_Other_Profiles
 3.7.3.1 m),3,x,,,,,E3,partial,EVC_Position (E2) replaces all the stored linking with the new one; keeping the part in rear of its reference group is E6
 3.7.3.1 n),3,x,,,,,E3,deferred,E7 (infill)
-3.7.3.1 o),3,x,,,,,E3,deferred,"E4 (station platforms, packet 69, 5.20.8)"
-3.7.3.1 p),3,x,,,,,E3,deferred,"E4 (allowed current consumption, packet 40, 5.20.7)"
+3.7.3.1 o),3,x,,,,,E3,done,"packets 69 and 40 stored (EVC_Track_Conditions.Take_Platforms, Take_Current), for 5.20; evc_test_procedures Scenario_External_Track_Conditions"
+3.7.3.1 p),3,x,,,,,E3,done,"packets 69 and 40 stored (EVC_Track_Conditions.Take_Platforms, Take_Current), for 5.20; evc_test_procedures Scenario_External_Track_Conditions"
 3.7.3.1.1,3,x,,,,,E3,done,"Table 2a items: the replaced element ends at the ""min"" item of the new start, the new one starts at its ""max"" item, EVC_Profiles.Envelope keeps the lowest in between (proved postcondition); evc_test Scenario_SSP_Replacement; where the relocation puts the ""max"" item ahead of the ""min"" item the gap between them takes the lower of the two; evc_test Scenario_SSP_Gaps"
 3.7.3.1.2,3,x,,,,,E3,done,"as 3.7.3.1.1, the gradient envelope (EVC_Stored_Information.Build)"
 3.7.3.1.3,3,x,,,,,E3,done,as 3.7.3.1.1 for the ASP elements
 3.7.3.1.4,3,x,,,,,E3,done,"Table 2a items: a section from its ""max"" start item, the section cut ends at the ""min"" item of the new start, the MRSP envelope keeps the lowest between them; evc_test Scenario_PBD"
-3.7.3.2,3,x,,,,,E3,partial,"a) b) c) d) done (Q_TRACKINIT of packets 52, 51, 70, 68); e) E4 (station platforms, 5.20.8)"
+3.7.3.2,3,x,,,,,E3,done,"a) b) c) d) done (Q_TRACKINIT of packets 52, 51, 70, 68); e) packet 69 (EVC_Track_Conditions.Take_Platforms)"
 3.7.3.2 a),3,x,,,,,E3,done,"EVC_Track_Description.Take_PBD: Q_TRACKINIT, no restriction from D_TRACKINIT; evc_test Scenario_PBD"
 3.7.3.2 b),3,x,,,,,E3,done,EVC_Track_Description.Take_ASP (Q_TRACKINIT); evc_test Scenario_Other_Profiles
 3.7.3.2 c),3,x,,,,,E3,done,EVC_Track_Conditions.Take_Conditions (Q_TRACKINIT); evc_test Scenario_Other_Profiles
 3.7.3.2 d),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (Q_TRACKINIT); evc_test Scenario_Other_Profiles
-3.7.3.2 e),3,x,,,,,E3,deferred,"E4 (station platforms, 5.20.8)"
+3.7.3.2 e),3,x,,,,,E3,done,packet 69 Q_TRACKINIT 1: no platform from D_TRACKINIT on (EVC_Track_Conditions.Take_Platforms)
 3.7.3.3,3,x,,,,,E3,partial,"A.3.4.1.2 b) c) d) e) n) applied (EVC_Movement_Authority.Outcome_T, EVC_Stored_Information.Apply; evc_test Scenario_MA_Shortening, Scenario_Section_Timer, Scenario_End_Section_Timer); a) f) E5, g) to m) and o) and the table A.3.4 itself E4"
 3.7.3.4,3,x,,,,,E3,deferred,E4 (Supervised Manoeuvre)
 3.7.3.4 a),3,x,,,,,E3,deferred,E4 (Supervised Manoeuvre)
@@ -441,13 +441,13 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.6.2,3,x,,,,,E3,partial,EVC_Movement_Authority.Take_V_Main at reception; evc_test Scenario_MA; infill: E7
 3.11.6.3,3,x,,,,,E3,done,EVC_Movement_Authority.Take_V_Main (until a new one or A.3.4 deletes it)
 3.11.6.3.1,3,x,,,,,E3,deferred,E5 (level 2 MA)
-3.11.6.4,3,x,x,,,,E3,partial,"V_MAIN 0 is not a speed limit, recorded as a trip order (EVC_Movement_Authority.Trip_Ordered, JRU); the trip is E4"
+3.11.6.4,3,x,x,,,,E3,done,"V_MAIN 0 recorded as a trip order (EVC_Movement_Authority.Trip_Ordered, JRU); the trip 4.6.3 [18] (EVC_Procedures); evc_test_procedures Scenario_Trip_Order"
 3.11.6.5,3,x,,,,,E3,deferred,E7 (infill)
-3.11.7.1,3,x,,,,,E3,partial,the MRSP takes the mode related speed of the caller (EVC_Stored_Information.Evaluate Mode_Speed); its value per mode from the national values is E4
-3.11.7.1.1,3,x,,,,,E3,deferred,"E4 (V_MAMODE is stored with the mode profile, EVC_Movement_Authority)"
+3.11.7.1,3,x,,,,,E3,done,"the MRSP takes the mode related speed (EVC_Procedures.Mode_Speed: V_NVSHUNT, V_NVONSIGHT, V_NVLIMSUPERV, V_NVSTFF, V_NVUNFIT, V_REVERSE); evc_test_procedures Scenario_Mode_Speeds and the mode scenarios"
+3.11.7.1.1,3,x,,,,,E3,done,"the V_MAMODE of the mode profile the mode was entered with (EVC_Procedures.Mode_Speed); evc_test_procedures Scenario_On_Sight, Scenario_Limited_Supervision"
 3.11.7.1.3,3,x,,,,,E3,deferred,E4 (driver entry)
 3.11.8.1,3,x,,,,,E3,done,V_MAXTRAIN the ceiling of the MRSP (EVC_Stored_Information.Build); evc_test Scenario_SSP_Gradients
-3.11.10.1,3,x,,,,,E3,deferred,E4 (override function; the MRSP takes the speed as the caller's ceiling)
+3.11.10.1,3,x,,,,,E3,done,"V_NVSUPOVTRP while the override is active, levels 0, 1, 2 (EVC_Procedures.Mode_Speed); evc_test_procedures Scenario_Trip_Order"
 3.11.11.3,3,x,,,,,E3,done,"EVC_Stored_Information: computed on reception (EVC_Track_Description.Compute_PBD), every section again when EVC_PBD.Inputs_T changes (Train Data, national values, special brake status, slippery rail, antenna), JRU 32/17/14; evc_test Scenario_PBD (Train Data change), evc_fuzz (the speed is the one of the inputs of the cycle)"
 3.11.11.4,3,x,,,,,E3,done,"EVC_PBD.Inputs_Of, Profile_Of, Holds; evc_test Scenario_PBD_Precision"
 3.11.11.4 1st bullet,3,x,,,,,E3,done,"EVC_PBD.Profile_Of: the gradient of the section, EVC_Profile.Gradient_Acceleration with M_rotating (3.13.4.3); evc_test Scenario_PBD_Precision"
@@ -469,11 +469,11 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.1.2.1,3,x,,,,,E3,done,"EVC_Track_Conditions.Evaluate, Inhibitions; evc_test Scenario_Track_Conditions"
 3.12.1.2.1.2,3,x,,,,,E3,partial,"the big metal masses are stored (EVC_Track_Conditions); their evaluation against the antenna is used by 3.15.7, E6"
 3.12.1.2.1.3,3,x,,,,,E3,done,EVC_Track_Conditions.Evaluate (powerless section: min safe front end); evc_test Scenario_Track_Conditions
-3.12.1.2.1.4,3,x,,,,,E3,partial,"sound horn done (EVC_Track_Conditions.Evaluate); the tunnel stopping area is shown on request, E4"
+3.12.1.2.1.4,3,x,,,,,E3,done,"sound horn (EVC_Track_Conditions.Evaluate, E3); the tunnel stopping area against the estimated front end (Tunnel_Indication, E4)"
 3.12.1.2.1.5,3,x,,,,,E3,partial,the estimated front end stands for the engine (EVC_Track_Conditions.Evaluate); the radio supervision is E5
-3.12.1.5,3,x,,,,,E3,partial,a) done; b) E4
+3.12.1.5,3,x,,,,,E3,done,"a) EVC_Track_Conditions.Evaluate; b) EVC_Track_Conditions.External, the TIU track condition output (5.20)"
 3.12.1.5 a),3,x,,,,,E3,done,"EVC_Track_Conditions.Evaluate, MSG_TRACK_COND and the planning orders (EVC_Core); evc_test Scenario_Track_Conditions"
-3.12.1.5 b),3,x,,,,,E3,deferred,E4 (5.20 external function)
+3.12.1.5 b),3,x,,,,,E3,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
 3.12.1.6,3,x,,,,,E3,done,"nothing stored: no indication, no inhibition (EVC_Track_Conditions); evc_test Scenario_SSP_Gradients"
 3.12.2.3,3,x,,,,,E3,deferred,"E4 (the comparison with the Train Data; route suitability stored by EVC_Track_Description, E6 for other sources)"
 3.12.2.3 a),3,x,,,,,E3,deferred,E4 (with 3.12.2.3)
@@ -482,37 +482,37 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.2.3.1,3,x,,,,,E3,deferred,E4 (with 3.12.2.3)
 3.12.2.4,3,x,,,,,E3,deferred,"E4 (the reaction; the snapshot has the temporary EOA/SvL for it, EVC_Supervision_Input.Temporary_Target_T)"
 3.12.2.10,3,x,,,,,E3,done,no route suitability data: nothing supervised (EVC_Track_Description)
-3.12.3.1.10,3,x,,,,,E4,todo,
-3.12.3.3.1,3,x,,,,,E4,todo,
-3.12.3.4.3.1,3,x,x,,,,E4,todo,
-3.12.3.4.3.1.1,3,x,,,,,E4,todo,
-3.12.3.4.3.1.2,3,x,,,,,E4,todo,
-3.12.3.4.3.1.3,3,x,,,,,E4,todo,
-3.12.3.4.3.1.4,3,x,,,,,E4,todo,
-3.12.3.4.3.2,3,x,x,,,,E4,todo,
-3.12.3.4.3.2 a),3,x,x,,,,E4,todo,
-3.12.3.4.3.2 b),3,x,x,,,,E4,todo,
-3.12.3.4.4,3,x,,,,,E4,todo,
-3.12.3.4.5,3,x,,,,,E4,todo,
-3.12.3.4.6,3,x,,,,,E4,todo,
-3.12.3.4.7,3,x,x,,,,E4,todo,
-3.12.3.4.7.1,3,x,,,,,E4,todo,
-3.12.3.4.7.2,3,x,,,,,E4,todo,
-3.12.3.5.2,3,x,,,,,E4,todo,
-3.12.3.5.3,3,x,,,,,E4,todo,
+3.12.3.1.10,3,x,,,,,E4,done,"MSG_TEXT flags: acknowledgement, first group for the important class, plain or fixed (EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300))"
+3.12.3.3.1,3,x,,,,,E4,done,"the fixed texts of Q_TEXT stored in English, the one language of this on-board (EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300))"
+3.12.3.4.3.1,3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.3.1.1,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.3.1.2,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.3.1.3,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.3.1.4,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.3.2,3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.3.2 a),3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.3.2 b),3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.4,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.5,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.6,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.7,3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.7.1,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.7.2,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.5.2,3,x,,,,,E4,deferred,E5 (the acknowledgement report to the RBC)
+3.12.3.5.3,3,x,,,,,E4,done,a message with a report request and the identifier of one not acknowledged is rejected (JRU 24 kind 4; EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300))
 3.12.4.2,3,x,,,,,E3,done,EVC_Movement_Authority.Take_Mode_Profile (SH: no length); evc_test Scenario_Other_Profiles
 3.12.4.3,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_Other_Profiles
 3.12.4.3.1,3,x,,,,,E3,deferred,E7 (infill)
 3.12.4.3.1 a),3,x,,,,,E3,deferred,E7 (infill)
 3.12.4.3.1 b),3,x,,,,,E3,deferred,E7 (infill)
 3.12.4.3.1 c),3,x,,,,,E3,deferred,E7 (infill)
-3.12.4.4,3,x,,,,,E3,deferred,E4 (list of balise groups for SH area)
-3.12.4.7,3,x,,,,,E3,partial,"EVC_Movement_Authority.Mode_Profile_Target to Snapshot_T.Temporary, supervised by EVC_SDM (3.13.1.5); evc_test Other_Profiles, SDM_Seams; ""until switched to the mode"" is E4"
+3.12.4.4,3,x,,,,,E3,done,the list of balise groups for the SH area deleted when the SH mode profile is deleted other than by entering SH (EVC_Procedures.Profiles_Step)
+3.12.4.7,3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target to Snapshot_T.Temporary, supervised by EVC_SDM (3.13.1.5); not for the profiles of the mode in use (Set_Mode_In_Use, E4); evc_test Other_Profiles, SDM_Seams, evc_test_procedures Scenario_On_Sight"
 3.12.4.7 a),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL at the start), supervised as an SvL without release speed (EVC_SDM, 3.13.1.5); evc_test Other_Profiles, SDM_Seams"
 3.12.4.7 b),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL of 3.8.4.5 as if no LOA had been given), supervised beside the LOA (EVC_SDM, 3.13.1.5); evc_test SDM_Seams"
 3.12.4.7 c),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL at the start with an LOA in rear of it), supervised (EVC_SDM, 3.13.1.5); evc_test SDM_Seams"
 3.12.5.3,3,x,,,,,E3,done,EVC_Track_Description.Take_LX; evc_test Scenario_Other_Profiles
-3.12.5.8,3,x,,,,,E3,partial,"EVC_Track_Description.LX_Target to Snapshot_T.Temporary, supervised by EVC_SDM as the closest EOA and SvL, no release speed (3.13.1.5); evc_test Other_Profiles, SDM_Seams; the substitution of 5.16 is E4"
+3.12.5.8,3,x,,,,,E3,done,"EVC_Track_Description.LX_Target to Snapshot_T.Temporary, supervised by EVC_SDM as the closest EOA and SvL, no release speed (3.13.1.5), until the substitution of 5.16 or the min safe front end past the LX end; evc_test Other_Profiles, SDM_Seams, evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
 3.13.1.5,3,x,,,,,E3,partial,"EVC_SDM: the EOA and the SvL are the closest of those of the MA and of Snapshot_T.Temporary (LX 3.12.5.8, mode profile 3.12.4.7), a temporary SvL with no release speed, an LOA kept beside a temporary EOA; evc_test SDM_Seams, Other_Profiles; the temporary EOA of a route unsuitability (3.12.2.4) is E4"
 3.13.2.2.1.3,3,x,,,,,E3,done,"EVC_Braking.Build, Conversion_Applicable; evc_test SDM_Precision (lambda and gamma trains)"
 3.13.2.2.2.1,3,x,,,,,E3,done,"T_Traction_Cut_Off of the train data, EVC_Limits.T_Traction (3.13.9.3.2.3); evc_test SDM_Precision"
@@ -676,8 +676,8 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.9.3.5.9 d),3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
 3.13.9.3.5.9 e),3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
 3.13.9.3.5.10,3,x,,,,,E3,done,"EVC_Limits.P_At_Target (zero acceleration, f41 (V_target), T_be_react, T_traction_max, T_bs_foot, not beyond the target), used for the distance to target, the masking and the GUI foot; evc_test SDM_MRSP_Target, SDM_Masking"
-3.13.9.3.5.11,3,x,,,,,E3,deferred,E4: the non protected LX supervised as temporary EOA / SvL (5.16.3) comes with the level crossings of the procedures
-3.13.9.3.5.12,3,x,,,,,E3,deferred,E4: the non protected LX supervised as temporary EOA / SvL (5.16.3) comes with the level crossings of the procedures
+3.13.9.3.5.11,3,x,,,,,E3,done,"EVC_SDM: the EOA target of the LX evaluated at V_LX with the formulas of V_est, the most restrictive of SBI1 and SBI2 (Result_T.LX_Release, LX_From); evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
+3.13.9.3.5.12,3,x,,,,,E3,done,"EVC_SDM: the EOA target of the LX evaluated at V_LX with the formulas of V_est, the most restrictive of SBI1 and SBI2 (Result_T.LX_Release, LX_From); evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
 3.13.9.3.6.1,3,x,,,,,E3,done,"EVC_Limits (I from P with T_indication), EVC_SDM.T_Indication; evc_test SDM_Approach, SDM_MRSP_Target"
 3.13.9.3.6.2,3,x,,,,,E3,done,"EVC_Limits (I from P with T_indication), EVC_SDM.T_Indication; evc_test SDM_Approach, SDM_MRSP_Target"
 3.13.9.3.6.4,3,x,,,,,E3,done,"EVC_Limits (I from P with T_indication), EVC_SDM.T_Indication; evc_test SDM_Approach, SDM_MRSP_Target"
@@ -696,13 +696,13 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.10.2.3,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling"
 3.13.10.2.4,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling"
 3.13.10.2.5,3,x,,,,,E3,done,EVC_SDM.Step (Intervention left only without a brake command; proven: Intervention implies a command); evc_test SDM_Ceiling
-3.13.10.2.6,3,x,,,,,E3,partial,"a) the condition is EVC_SDM.Result_T.EOA_Passed (JRU event 22), the trip itself is E4; b) the balise group beyond the EOA in RSM needs the linking of E2 and the trip of E4"
-3.13.10.2.6 a),3,x,,,,,E3,partial,"EVC_SDM.Result_T.EOA_Passed (min safe front end beyond the EOA or LOA, JRU event 22); evc_test SDM_LOA; the transition to TR is E4"
-3.13.10.2.6 b),3,x,,,,,E3,deferred,"E4: the first possible location of a group from the linking (EVC_Position) against the EOA in RSM, with the trip"
-3.13.10.2.6 b) 1st bullet,3,x,,,,,E3,deferred,"E4: the first possible location of a group from the linking (EVC_Position) against the EOA in RSM, with the trip"
-3.13.10.2.6 b) 2nd bullet,3,x,,,,,E3,deferred,"E4: the first possible location of a group from the linking (EVC_Position) against the EOA in RSM, with the trip"
-3.13.10.2.6 b) 3rd bullet,3,x,,,,,E3,deferred,"E4: the first possible location of a group from the linking (EVC_Position) against the EOA in RSM, with the trip"
-3.13.10.2.7,3,x,,,,,E3,partial,EVC_SDM.Result_T.EOA_Passed with the min safe antenna position in level 1 (JRU event 22); the transition to TR is E4
+3.13.10.2.6,3,x,,,,,E3,partial,"a) done (the trip 4.6.3 [12], [16], EVC_Procedures); b) the balise group beyond the EOA in RSM is level 2 (4.6.3 [11], E5)"
+3.13.10.2.6 a),3,x,,,,,E3,done,"EVC_SDM.Result_T.EOA_Passed (JRU event 22); the trip 4.6.3 [12], [16] (EVC_Procedures); evc_test SDM_LOA, evc_test_procedures Scenario_Trip_EOA"
+3.13.10.2.6 b),3,x,,,,,E3,deferred,E5 (4.6.3 [11] is a level 2 condition)
+3.13.10.2.6 b) 1st bullet,3,x,,,,,E3,deferred,E5 (4.6.3 [11] is a level 2 condition)
+3.13.10.2.6 b) 2nd bullet,3,x,,,,,E3,deferred,E5 (4.6.3 [11] is a level 2 condition)
+3.13.10.2.6 b) 3rd bullet,3,x,,,,,E3,deferred,E5 (4.6.3 [11] is a level 2 condition)
+3.13.10.2.7,3,x,,,,,E3,done,EVC_SDM.Result_T.EOA_Passed with the min safe antenna position in level 1 (JRU event 22); the trip 4.6.3 [12] (EVC_Procedures); evc_test_procedures Scenario_Trip_EOA
 3.13.10.3.1,3,x,,,,,E3,done,"EVC_SDM.Step (CSM: v_perm = V_MRSP, v_sbi = V_MRSP + dV_sbi); MSG_SPEED_STATE; evc_test SDM_Ceiling"
 3.13.10.3.2,3,x,,,,,E3,done,"EVC_SDM.Step (CSM: v_perm = V_MRSP, v_sbi = V_MRSP + dV_sbi); MSG_SPEED_STATE; evc_test SDM_Ceiling"
 3.13.10.3.3,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"
@@ -777,15 +777,15 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.11.8,3,x,,,,,E3,partial,EVC_SDM.Result_T.MA_Request (the location d_MAR with T_MAR of the snapshot passed); evc_test SDM_Perturbation; sending the MA request is E5 (3.8.2.2)
 3.13.11.9,3,x,,,,,E3,done,EVC_SDM.Step (the EBD at the MRSP start below the first element: the MA request location passed)
 3.14.1.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Step (the service brake alone, the train not decelerating T_bs + 2 s after: the emergency brake, released with the service brake command; TIU reason bit 1); the time and the deceleration configured as data (EVC_Config); evc_test Config_Behaviour"
-3.14.1.3,3,x,,,,,E3,deferred,E4: the trip (TR) and its acknowledgement
+3.14.1.3,3,x,,,,,E3,done,"the trip brake (TIU reason 32) until the trip is acknowledged at standstill ([7], [62], [63], [68], EVC_Procedures); evc_test_procedures Scenario_Trip_EOA"
 3.14.1.5,3,x,,,,,E3,partial,"EVC_Brake_Commands (roll away, unauthorised direction, standstill supervision released at standstill after the acknowledgement, DMI ack kind 5); evc_test SDM_Protections; the train data / SR entry movement reasons are E4; evc_test EMRRLS_Acknowledgement (the roll away brake with the EB of 3.13.10, ack kind 5 as the bench and the DMI send it)"
-3.14.1.6,3,x,,,,,E3,deferred,E4: the reactions to the linking errors and inconsistencies E2 reports (EVC_Position events)
+3.14.1.6,3,x,,,,,E3,done,"the service brake of a linking reaction apply service brake until standstill (TIU reason 128, {P}); {T} Scenario_Linking"
 3.14.1.7,3,x,,,,,E3,deferred,E5: supervision of the safe radio connection (T_NVCONTACT)
-3.14.1.7.1,3,x,,,,,E3,deferred,E6: reversing areas (3.15.4)
-3.14.1.7.2,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
-3.14.1.7.3,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
-3.14.1.7.4,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
-3.14.1.7.5,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
+3.14.1.7.1,3,x,,,,,E3,done,released when the distance is no longer overpassed or at standstill after the acknowledgement (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing
+3.14.1.7.2,3,x,,,,,E3,done,released at standstill after the acknowledgement (EVC_Procedures.Train_Data_Step); evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)
+3.14.1.7.3,3,x,,,,,E3,done,"the service brake of a mode not acknowledged released with the acknowledgement (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trackside, Scenario_On_Sight"
+3.14.1.7.4,3,x,,,,,E3,done,"released at standstill after the acknowledgement, again for any further reverse movement (EVC_Procedures.Post_Trip_Step); evc_test_procedures Scenario_Trip_EOA"
+3.14.1.7.5,3,x,,,,,E3,done,released with the acknowledgement of the text (EVC_Text_Messages); evc_test_procedures Scenario_Text_Messages
 3.14.1.7.6,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
 3.14.1.8,3,x,,,,,E3,partial,"EVC_Brake_Commands keeps each reason of this phase until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons and acknowledgements of E4 join them there"
 3.14.1.9,3,x,,,,,E3,done,"EVC_Brake_Commands.Commands_T.Ack_Required only at standstill (MSG_STATUS brake 2); evc_test SDM_Protections (an acknowledgement before standstill does nothing); evc_test EMRRLS_Acknowledgement (with the EB of 3.13.10 revoked at the stop or before, Q_NVEMRRLS 0 and 1); the EB of 3.13.10 alone asks none (3.14.1.4, DMI 8.2.2.3.6): evc_test EMRRLS_*"
@@ -826,13 +826,13 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.1.3.8 a),3,x,,,,,E5,todo,
 3.15.1.3.8 b),3,x,,,,,E5,todo,
 3.15.1.3.9,3,x,,,,,E5,todo,
-3.15.4.1.1,3,x,,,,,E6,todo,
-3.15.4.2.1,3,x,,,,,E6,todo,
-3.15.4.3,3,x,,,,,E6,todo,
-3.15.4.4,3,x,,,,,E6,todo,
-3.15.4.5,3,x,,,,,E6,todo,
-3.15.4.7,3,x,,,,,E6,todo,
-3.15.4.8,3,x,,,,,E6,todo,
+3.15.4.1.1,3,x,,,,,E6,done,"packets 138 and 139 replace the stored ones (EVC_Procedures.Take_Packet), also in RV (5.13.1.6, .7); E4 with 5.13"
+3.15.4.2.1,3,x,,,,,E6,done,the end of the area received last is the reference of the distance to run (EVC_Procedures); E4 with 5.13
+3.15.4.3,3,x,,,,,E6,done,"packets 138 and 139 replace the stored ones (EVC_Procedures.Take_Packet), also in RV (5.13.1.6, .7); E4 with 5.13"
+3.15.4.4,3,x,,,,,E6,done,reversing possible at standstill with the front end in the area (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing; E4 with 5.13
+3.15.4.5,3,x,,,,,E6,done,"in RV the movement opposite to the orientation is the allowed one (EVC_Brake_Commands), at V_REVERSE (EVC_Procedures.Mode_Speed); evc_test_procedures Scenario_Reversing; E4 with 5.13"
+3.15.4.7,3,x,,,,,E6,done,reversing possible at standstill with the front end in the area (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing; E4 with 5.13
+3.15.4.8,3,x,,,,,E6,done,"the emergency brake beyond the distance (from the end of the area), SS 27, released per 3.14.1.7.1 (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing; E4 with 5.13"
 3.15.5.2,3,x,x,,,,E6,todo,
 3.15.5.2 a),3,x,x,,,,E6,todo,
 3.15.5.2 b),3,x,x,,,,E6,todo,
@@ -1501,84 +1501,84 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.5.4.1.1,5,x,,,,,E4,todo,
 5.5.4.1.1.1,5,x,,,,,E4,todo,
 5.5.4.1.2,5,x,,,,,E4,todo,
-5.6.2.2 A030,5,x,,,,,E4,todo,
-5.6.2.2 A045,5,x,,,,,E4,todo,
-5.6.2.2 A050,5,x,,,,,E4,todo,
-5.6.2.2 A095,5,x,,,,,E4,todo,
-5.6.2.2 A100,5,x,,,,,E4,todo,
-5.6.2.2 A115,5,x,,,,,E4,todo,
-5.6.2.2 A220,5,x,,,,,E4,todo,
-5.6.2.2 D020,5,x,,,,,E4,todo,
-5.6.2.2 D030,5,x,,,,,E4,todo,
-5.6.2.2 D040,5,x,,,,,E4,todo,
-5.6.2.2 D080,5,x,,,,,E4,todo,
-5.6.2.2 E015,5,x,,,,,E4,todo,
-5.6.2.2 S050,5,x,,,,,E4,todo,
-5.6.2.2 S100,5,x,,,,,E4,todo,
-5.6.4.1.1,5,x,,,,,E4,todo,
-5.6.4.1.2,5,x,,,,,E4,todo,
-5.6.4.2,5,x,,,,,E4,todo,
-5.6.4.3,5,x,,,,,E4,todo,
-5.7.2.3,5,x,,,,,E4,todo,
-5.7.2.4,5,x,,,,,E4,todo,
-5.7.3.2,5,x,,,,,E4,todo,
-5.7.3.2 a),5,x,,,,,E4,todo,
-5.7.3.2 b),5,x,,,,,E4,todo,
-5.7.3.3,5,x,,,,,E4,todo,
-5.7.3.5,5,x,,,,,E4,todo,
-5.7.3.6,5,x,,,,,E4,todo,
-5.7.3.7,5,x,,,,,E4,todo,
-5.7.4.1,5,x,,,,,E4,todo,
-5.7.4.2,5,x,,,,,E4,todo,
-5.8.1.9,5,x,,,,,E4,todo,
-5.8.2.1,5,x,,,,,E4,todo,
-5.8.2.1 a),5,x,,,,,E4,todo,
-5.8.2.1 b),5,x,,,,,E4,todo,
-5.8.2.1 c),5,x,,,,,E4,todo,
-5.8.2.3,5,x,,,,,E4,todo,
-5.8.3.1,5,x,,,,,E4,todo,
-5.8.3.1 a),5,x,,,,,E4,todo,
-5.8.3.1 b),5,x,,,,,E4,todo,
-5.8.3.1 c),5,x,,,,,E4,todo,
-5.8.3.1.1,5,x,,,,,E4,todo,
-5.8.3.1.3,5,x,,,,,E4,todo,
-5.8.3.1.3 a),5,x,,,,,E4,todo,
-5.8.3.1.3 b),5,x,,,,,E4,todo,
-5.8.3.6,5,x,,,,,E4,todo,
-5.8.3.7,5,x,,,,,E4,todo,
-5.8.3.7.1,5,x,,,,,E4,todo,
-5.8.3.7.2,5,x,,,,,E4,todo,
-5.8.3.8,5,x,,,,,E4,todo,
-5.8.3.9,5,x,,,,,E4,todo,
-5.8.4.1,5,x,,,,,E4,todo,
-5.8.4.1 a),5,x,,,,,E4,todo,
-5.8.4.1 b),5,x,,,,,E4,todo,
-5.8.4.1 c),5,x,,,,,E4,todo,
-5.8.4.1 d),5,x,,,,,E4,todo,
-5.8.4.1 e),5,x,,,,,E4,todo,
-5.8.4.1 f),5,x,,,,,E4,todo,
-5.8.4.1 g),5,x,,,,,E4,todo,
-5.8.4.1 h),5,x,,,,,E4,todo,
-5.8.4.1 i),5,x,,,,,E4,todo,
-5.8.4.2,5,x,,,,,E4,todo,
-5.9.1.1,5,x,,,,,E4,todo,
-5.9.2.1,5,x,,,,,E4,todo,
-5.9.2.2,5,x,,,,,E4,todo,
-5.9.2.3,5,x,,,,,E4,todo,
-5.9.2.4,5,x,,,,,E4,todo,
-5.9.2.7,5,x,,,,,E4,todo,
-5.9.3.2,5,x,,,,,E4,todo,
-5.9.3.2 a),5,x,,,,,E4,todo,
-5.9.3.2 b),5,x,,,,,E4,todo,
-5.9.3.2 c),5,x,,,,,E4,todo,
-5.9.3.4,5,x,,,,,E4,todo,
-5.9.3.6,5,x,,,,,E4,todo,
-5.9.3.7,5,x,,,,,E4,todo,
-5.9.3.8,5,x,,,,,E4,todo,
-5.9.4.2,5,x,,,,,E4,todo,
-5.9.5.1,5,x,,,,,E4,todo,
-5.9.5.2,5,x,,,,,E4,todo,
-5.9.6.1.1,5,x,,,,,E4,todo,
+5.6.2.2 A030,5,x,,,,,E4,n/a,"level NTC and the national trip of an STM: National Systems are out of scope (EVC-PLAN §1, PLAN.md)"
+5.6.2.2 A045,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.2.2 A050,5,x,,,,,E4,done,"SH entered by 4.6.3 [5]; the list of balise groups for the SH area deleted (EVC_Procedures.Mode_Changed; a new list comes with the RBC's authorisation, E5); evc_test_procedures Scenario_Shunting_Driver"
+5.6.2.2 A095,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.2.2 A100,5,x,,,,,E4,todo,End of Mission (5.5) is the modes half of E4 (e4/modes)
+5.6.2.2 A115,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.2.2 A220,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.2.2 D020,5,x,,,,,E4,partial,"levels 0 and 1 go to A050 (4.6.3 [5], EVC_Procedures); level 2 (A045) is E5; level NTC (D030) is out of scope (PLAN.md, National Systems)"
+5.6.2.2 D030,5,x,,,,,E4,n/a,"level NTC and the national trip of an STM: National Systems are out of scope (EVC-PLAN §1, PLAN.md)"
+5.6.2.2 D040,5,x,,,,,E4,todo,End of Mission (5.5) is the modes half of E4 (e4/modes)
+5.6.2.2 D080,5,x,,,,,E4,partial,levels 0 and 1: the procedure ends in SH; level 2 (A095) is E5
+5.6.2.2 E015,5,x,,,,,E4,done,"EVC_Procedure_Requests.Shunting_Request (DMI action 7), 4.6.3 [5] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Driver"
+5.6.2.2 S050,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.2.2 S100,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.4.1.1,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.4.1.2,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.4.2,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.6.4.3,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
+5.7.2.3,5,x,,,,,E4,done,"4.6.3 [51] (the max safe front end at the start of the SH mode profile), the acknowledgement asked after the transition (EVC_Procedures.Mode_Changed); evc_test_procedures Scenario_Shunting_Trackside"
+5.7.2.4,5,x,,,,,E4,done,"the service brake T_ACK after the transition until acknowledged (3.14.1.7.3, EVC_Procedures.Finish_Cycle, TIU reason 64, MSG_STATUS brake 3); evc_test_procedures Scenario_Shunting_Trackside"
+5.7.3.2,5,x,,,,,E4,done,"the request in the rectangle: estimated front end within L_ACKMAMODE, speed at or below V_MAMODE or V_NVSHUNT (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_Shunting_Trackside"
+5.7.3.2 a),5,x,,,,,E4,done,"the request in the rectangle: estimated front end within L_ACKMAMODE, speed at or below V_MAMODE or V_NVSHUNT (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_Shunting_Trackside"
+5.7.3.2 b),5,x,,,,,E4,done,"the request in the rectangle: estimated front end within L_ACKMAMODE, speed at or below V_MAMODE or V_NVSHUNT (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_Shunting_Trackside"
+5.7.3.3,5,x,,,,,E4,done,the request is never taken back (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trackside
+5.7.3.5,5,x,,,,,E4,done,4.6.3 [50] on the acknowledgement; evc_test_procedures Scenario_Shunting_Trackside
+5.7.3.6,5,x,,,,,E4,done,"4.6.3 [51], then the request (EVC_Procedures.Mode_Changed); evc_test_procedures Scenario_Shunting_Trackside"
+5.7.3.7,5,x,,,,,E4,done,"the service brake T_ACK after the transition until acknowledged (3.14.1.7.3, EVC_Procedures.Finish_Cycle, TIU reason 64, MSG_STATUS brake 3); evc_test_procedures Scenario_Shunting_Trackside"
+5.7.4.1,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step, then [50]); the mode profile of level 2 comes from the RBC (E5), not exercised"
+5.7.4.2,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step, then [50]); the mode profile of level 2 comes from the RBC (E5), not exercised"
+5.8.1.9,5,x,,,,,E4,done,the former EOA is the temporary EOA when it is closer (EVC_Procedures.Override_Step)
+5.8.2.1,5,x,,,,,E4,done,"EVC_Procedures.Override_Allowed: the upper bound of the speed at or below V_NVALLOWOVTRP, the modes listed (SB in level 2 only); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
+5.8.2.1 a),5,x,,,,,E4,done,"EVC_Procedures.Override_Allowed: the upper bound of the speed at or below V_NVALLOWOVTRP, the modes listed (SB in level 2 only); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
+5.8.2.1 b),5,x,,,,,E4,done,"EVC_Procedures.Override_Allowed: the upper bound of the speed at or below V_NVALLOWOVTRP, the modes listed (SB in level 2 only); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
+5.8.2.1 c),5,x,,,,,E4,partial,"valid Train Data checked (except in SH); the train running number is the start of mission's (the modes half of E4 (e4/modes)), taken as valid until then"
+5.8.2.3,5,x,,,,,E4,done,EVC_Procedure_Requests.Override_EOA (DMI action 6); evc_test_procedures Scenario_Override
+5.8.3.1,5,x,,,,,E4,partial,"a) and b) done; c) (UN, SN to SR at the change to level 1 or 2) needs the level transitions of the modes half of E4 (e4/modes)"
+5.8.3.1 a),5,x,,,,,E4,done,"4.6.3 [37] from FS, AD, LS, OS, SB, PT (SR stays); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
+5.8.3.1 b),5,x,,,,,E4,done,"no transition from SH, override active (EVC_Procedures)"
+5.8.3.1 c),5,x,,,,,E4,partial,override active in UN and SN (EVC_Procedures); the transition to SR at the level change is the level transitions' (the modes half of E4 (e4/modes))
+5.8.3.1.1,5,x,,,,,E4,done,"the former EOA/LOA kept from OS, LS, FS, AD; in SB and PT the estimated front end (the virtual front position without a valid position) (EVC_Procedures.Override_Step); evc_test_procedures Scenario_Override"
+5.8.3.1.3,5,x,,,,,E4,done,deleted on stop if in SR and when SR is left ({P})
+5.8.3.1.3 a),5,x,,,,,E4,done,deleted on stop if in SR and when SR is left ({P})
+5.8.3.1.3 b),5,x,,,,,E4,done,deleted on stop if in SR and when SR is left ({P})
+5.8.3.6,5,x,,,,,E4,done,"every trip condition of EVC_Procedures is inhibited while override is active (as before the information of the cycle ended it, 5.8.4.2); the override speed restriction in the MRSP in levels 0, 1, 2 (EVC_Procedures.Mode_Speed); evc_test_procedures Scenario_Trip_Order, Scenario_Override"
+5.8.3.7,5,x,,,,,E4,done,MSG_MODE_LEVEL override (EVC_Procedures.Override_Indicated); evc_test_procedures Scenario_Override
+5.8.3.7.1,5,x,,,,,E4,n/a,an override activated by an STM: National Systems are out of scope (EVC-PLAN §1)
+5.8.3.7.2,5,x,,,,,E4,done,not indicated in level NTC (EVC_Procedures.Override_Indicated)
+5.8.3.8,5,x,,,,,E4,deferred,E7 (Euroloop)
+5.8.3.9,5,x,,,,,E4,done,selected again: the time and the distance restart (EVC_Procedures.Override_Step); JRU 23 kind 2 byte 3 1
+5.8.4.1,5,x,,,,,E4,partial,"a) to e), g) (SH list) and i) done; f) and the SR list of g) are E5; h) the SR distance is the modes half of E4 (e4/modes)"
+5.8.4.1 a),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
+5.8.4.1 b),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
+5.8.4.1 c),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
+5.8.4.1 d),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
+5.8.4.1 e),5,x,,,,,E4,done,a balise group with a packet 12 of V_MAIN not 0 (EVC_Procedures.Override_Step)
+5.8.4.1 f),5,x,,,,,E4,deferred,E5 (an MA of the RBC)
+5.8.4.1 g),5,x,,,,,E4,partial,the list of balise groups for the SH area (packet 49) done; the SR list comes from the RBC (E5)
+5.8.4.1 h),5,x,,,,,E4,todo,the SR distance supervision of SR mode is the modes half of E4 (e4/modes)
+5.8.4.1 i),5,x,,,,,E4,done,"EVC_Procedures.Mode_Changed (TR, LS, OS, SH)"
+5.8.4.2,5,x,,,,,E4,done,the trips of the cycle see the override as before the group's information ended it (EVC_Procedures.Ovr_For_Trips)
+5.9.1.1,5,x,,,,,E4,done,4.6.3 [40] at the latest when the max safe front end reaches the area (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
+5.9.2.1,5,x,,,,,E4,done,4.6.3 [40] at the latest when the max safe front end reaches the area (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
+5.9.2.2,5,x,,,,,E4,partial,4.6.3 [40] is level independent (EVC_Procedures); the mode profile of level 2 comes from the RBC (E5)
+5.9.2.3,5,x,,,,,E4,done,the request after the transition (EVC_Procedures.Mode_Changed); evc_test_procedures Scenario_On_Sight
+5.9.2.4,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_On_Sight
+5.9.2.7,5,x,,,,,E4,done,no request when already in OS (EVC_Procedures: requests only for another mode)
+5.9.3.2,5,x,,,,,E4,done,the rectangle (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
+5.9.3.2 a),5,x,,,,,E4,done,the rectangle (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
+5.9.3.2 b),5,x,,,,,E4,done,the rectangle (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
+5.9.3.2 c),5,x,,,,,E4,done,the rectangle (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
+5.9.3.4,5,x,,,,,E4,done,"EVC_Procedures; 4.6.3 [15], [40]; evc_test_procedures Scenario_On_Sight"
+5.9.3.6,5,x,,,,,E4,done,"EVC_Procedures; 4.6.3 [15], [40]; evc_test_procedures Scenario_On_Sight"
+5.9.3.7,5,x,,,,,E4,done,"EVC_Procedures; 4.6.3 [15], [40]; evc_test_procedures Scenario_On_Sight"
+5.9.3.8,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_On_Sight
+5.9.4.2,5,x,,,,,E4,partial,"4.6.3 [34] is [40] with the level switched to 1 or 2, which the level transitions of the modes half of E4 (e4/modes) signal (Context_T.Level_Switched)"
+5.9.5.1,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised"
+5.9.5.2,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised"
+5.9.6.1.1,5,x,,,,,E4,done,4.6.3 [75] (EVC_Procedures); evc_test_procedures Scenario_On_Sight
 5.10.1.3,5,x,,,,,E4,todo,
 5.10.1.5,5,x,,,,,E4,todo,
 5.10.1.6,5,x,,,,,E4,todo,
@@ -1641,251 +1641,251 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.10.4.2,5,x,,,,,E4,todo,
 5.10.4.4,5,x,,,,,E4,todo,
 5.10.4.4 Table,5,x,,,,,E4,todo,
-5.11.2.2 A025,5,x,,,,,E4,todo,
-5.11.2.2 A030,5,x,,,,,E4,todo,
-5.11.2.2 A035,5,x,,,,,E4,todo,
-5.11.2.2 A105,5,x,,,,,E4,todo,
-5.11.2.2 A115,5,x,x,,,,E4,todo,
-5.11.2.2 A140,5,x,,,,,E4,todo,
-5.11.2.2 A145,5,x,,,,,E4,todo,
-5.11.2.2 A150,5,x,,,,,E4,todo,
-5.11.2.2 D020,5,x,,,,,E4,todo,
-5.11.2.2 D80,5,x,,,,,E4,todo,
-5.11.2.2 D085,5,x,,,,,E4,todo,
-5.11.2.2 D090,5,x,,,,,E4,todo,
-5.11.2.2 D110,5,x,,,,,E4,todo,
-5.11.2.2 D130,5,x,,,,,E4,todo,
-5.11.2.2 S010,5,x,,,,,E4,todo,
-5.11.2.2 S050,5,x,,,,,E4,todo,
-5.11.2.2 S060,5,x,,,,,E4,todo,
-5.11.2.2 S120,5,x,,,,,E4,todo,
-5.11.2.2 S130,5,x,,,,,E4,todo,
-5.11.2.2 S140,5,x,,,,,E4,todo,
-5.11.2.2 S140 a),5,x,,,,,E4,todo,
-5.11.2.2 S140 b),5,x,,,,,E4,todo,
-5.11.2.2 S140 c),5,x,,,,,E4,todo,
-5.11.2.2 S140 d),5,x,,,,,E4,todo,
-5.11.2.2 S150,5,x,,,,,E4,todo,
-5.11.2.2 S150 a),5,x,,,,,E4,todo,
-5.11.2.2 S150 b),5,x,,,,,E4,todo,
-5.11.2.2 S150 c),5,x,,,,,E4,todo,
-5.11.2.2 S160,5,x,,,,,E4,todo,
-5.11.2.2 S170,5,x,,,,,E4,todo,
-5.11.4.1.1,5,x,,,,,E4,todo,
-5.11.4.1.2,5,x,,,,,E4,todo,
-5.11.4.2,5,x,,,,,E4,todo,
-5.11.4.3,5,x,,,,,E4,todo,
+5.11.2.2 A025,5,x,,,,,E4,done,"TR with its reason (DMI system status message, JRU 23 kind 1); evc_test_procedures Scenario_Trip_EOA"
+5.11.2.2 A030,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
+5.11.2.2 A035,5,x,,,,,E4,done,"the MA, the mode profile, the signalling related speed restriction and the track description but the track conditions deleted on entry, none accepted in TR (EVC_Stored_Information.Delete_Authority_And_Description, Refuse_Authority); evc_test_procedures Scenario_Trip_EOA"
+5.11.2.2 A105,5,x,,,,,E4,done,"4.6.3 [7] to PT, the trip brake revoked; evc_test_procedures Scenario_Trip_EOA, Scenario_Linking"
+5.11.2.2 A115,5,x,x,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
+5.11.2.2 A140,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
+5.11.2.2 A145,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
+5.11.2.2 A150,5,x,,,,,E4,partial,4.6.3 [63] evaluated (EVC_Procedures); level NTC and SN are out of scope (National Systems)
+5.11.2.2 D020,5,x,,,,,E4,done,level 1: A035; level 2: A030 (E5); levels 0 and NTC: S050
+5.11.2.2 D80,5,x,,,,,E4,done,"4.6.3 [7] to PT, the trip brake revoked; evc_test_procedures Scenario_Trip_EOA, Scenario_Linking"
+5.11.2.2 D085,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
+5.11.2.2 D090,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
+5.11.2.2 D110,5,x,,,,,E4,done,level 1: S140; level 2: A115 (E5)
+5.11.2.2 D130,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
+5.11.2.2 S010,5,x,,,,,E4,done,"the trip conditions of EVC_Procedures ([12], [16] to [18], [43], [49], [52], [54], [65], [66], [69]; [11], [20], [41] are E5); evc_test_procedures Scenario_Trip_EOA, _Trip_Order, _Linking, _Track_And_Version, _Shunting_Trips, _Override"
+5.11.2.2 S050,5,x,,,,,E4,done,the acknowledgement asked at standstill (EVC_Procedures.Finish_Cycle); evc_test_procedures Scenario_Trip_EOA
+5.11.2.2 S060,5,x,,,,,E4,done,the acknowledgement asked at standstill (EVC_Procedures.Finish_Cycle); evc_test_procedures Scenario_Trip_EOA
+5.11.2.2 S120,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
+5.11.2.2 S130,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
+5.11.2.2 S140,5,x,,,,,E4,partial,"d) SH (4.6.3 [5] from PT) and override from PT done; a) start in level 1 is the start of mission of {MODES}; b), c) are E5"
+5.11.2.2 S140 a),5,x,,,,,E4,todo,"start"""" in PT and the SR acknowledgement are the modes half of E4 (e4/modes)"
+5.11.2.2 S140 b),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
+5.11.2.2 S140 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
+5.11.2.2 S140 d),5,x,,,,,E4,done,4.6.3 [5] from PT (EVC_Procedures)
+5.11.2.2 S150,5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
+5.11.2.2 S150 a),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
+5.11.2.2 S150 b),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
+5.11.2.2 S150 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
+5.11.2.2 S160,5,x,,,,,E4,todo,"start"""" in PT and the SR acknowledgement are the modes half of E4 (e4/modes)"
+5.11.2.2 S170,5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
+5.11.4.1.1,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
+5.11.4.1.2,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
+5.11.4.2,5,x,,,,,E4,done,"override is selectable in PT in every level (5.8.2.1, EVC_Procedures)"
+5.11.4.3,5,x,,,,,E4,todo,the level transitions in PT are the modes half of E4 (e4/modes)
 5.12.2.5,5,x,,,,,E2,done,"EVC_Position: anchors in the odometer frame, front end and orientation follow the active cab; evc_test position_orientation"
 5.12.4.2.1,5,x,,,,,E2,deferred,E4 (SH/PS on desk closure)
 5.12.4.2.2,5,x,,,,,E2,deferred,E4 (SH/PS on desk closure)
 5.12.4.3,5,x,,,,,E2,done,"EVC_Position: anchors in the odometer frame, front end and orientation follow the active cab; evc_test position_orientation"
-5.13.1.3,5,x,,,,,E4,todo,
-5.13.1.4,5,x,,,,,E4,todo,
-5.13.1.5,5,x,,,,,E4,todo,
+5.13.1.3,5,x,,,,,E4,done,MSG_STATUS reversing at standstill with the front end in the area (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing
+5.13.1.4,5,x,,,,,E4,done,the direction controller in reverse (TIU 6) asks the RV acknowledgement (EVC_Procedures); evc_test_procedures Scenario_Reversing
+5.13.1.5,5,x,,,,,E4,done,4.6.3 [59]; evc_test_procedures Scenario_Reversing
 5.15.1.4,5,x,,,,,E5,todo,
-5.16.1.2,5,x,,,,,E4,todo,
-5.16.1.3,5,x,,,,,E4,todo,
-5.16.1.4,5,x,,,,,E4,todo,
-5.16.1.4 a),5,x,,,,,E4,todo,
-5.16.1.4 b),5,x,,,,,E4,todo,
-5.16.1.5,5,x,,,,,E4,todo,
-5.16.2.1,5,x,,,,,E4,todo,
-5.16.3.1,5,x,,,,,E4,todo,
-5.16.3.2,5,x,,,,,E4,todo,
-5.17.2.2 A1,5,x,,,,,E4,todo,
-5.17.2.2 A5,5,x,,,,,E4,todo,
-5.17.2.2 A6,5,x,,,,,E4,todo,
-5.17.2.2 A7,5,x,,,,,E4,todo,
-5.17.2.2 D0,5,x,,,,,E4,todo,
-5.17.2.2 D1,5,x,,,,,E4,todo,
-5.17.2.2 D2,5,x,,,,,E4,todo,
-5.17.2.2 D3,5,x,,,,,E4,todo,
-5.17.2.2 D4,5,x,,,,,E4,todo,
-5.17.2.2 D5,5,x,,,,,E4,todo,
-5.17.2.2 D7,5,x,,,,,E4,todo,
-5.17.2.2 D9,5,x,,,,,E4,todo,
-5.17.2.2 S0,5,x,,,,,E4,todo,
-5.17.2.2 S1,5,x,,,,,E4,todo,
-5.17.2.2 S2,5,x,,,,,E4,todo,
-5.17.2.2 S3,5,x,,,,,E4,todo,
-5.17.2.2 S4,5,x,,,,,E4,todo,
-5.17.2.2 S5,5,x,,,,,E4,todo,
-5.17.2.2 S6,5,x,,,,,E4,todo,
-5.18.2.2,5,x,,,,,E4,todo,
-5.18.2.2.1,5,x,,,,,E4,todo,
-5.18.2.2.2,5,x,,,,,E4,todo,
-5.18.2.2.2 1st bullet,5,x,,,,,E4,todo,
-5.18.2.2.2 2nd bullet,5,x,,,,,E4,todo,
-5.18.2.3,5,x,,,,,E4,todo,
-5.18.2.3 1st bullet,5,x,,,,,E4,todo,
-5.18.2.3 2nd bullet,5,x,,,,,E4,todo,
-5.18.2.5,5,x,,,,,E4,todo,
-5.18.2.5 1st bullet,5,x,,,,,E4,todo,
-5.18.2.5 2nd bullet,5,x,,,,,E4,todo,
-5.18.2.5.1,5,x,,,,,E4,todo,
-5.18.2.5.1 1st bullet,5,x,,,,,E4,todo,
-5.18.2.5.1 2nd bullet,5,x,,,,,E4,todo,
-5.18.2.6,5,x,,,,,E4,todo,
-5.18.3.2,5,x,,,,,E4,todo,
-5.18.3.2.1,5,x,,,,,E4,todo,
-5.18.3.2.2,5,x,,,,,E4,todo,
-5.18.3.2.2 1st bullet,5,x,,,,,E4,todo,
-5.18.3.2.2 2nd bullet,5,x,,,,,E4,todo,
-5.18.3.3,5,x,,,,,E4,todo,
-5.18.3.3 1st bullet,5,x,,,,,E4,todo,
-5.18.3.3 2nd bullet,5,x,,,,,E4,todo,
-5.18.3.4,5,x,,,,,E4,todo,
-5.18.3.4 1st bullet,5,x,,,,,E4,todo,
-5.18.3.4 2nd bullet,5,x,,,,,E4,todo,
-5.18.3.4.1,5,x,,,,,E4,todo,
-5.18.3.4.1 1st bullet,5,x,,,,,E4,todo,
-5.18.3.4.1 2nd bullet,5,x,,,,,E4,todo,
-5.18.3.5,5,x,,,,,E4,todo,
-5.18.4.2,5,x,,,,,E4,todo,
-5.18.4.2 a),5,x,,,,,E4,todo,
-5.18.4.2 b),5,x,,,,,E4,todo,
-5.18.4.2 c),5,x,,,,,E4,todo,
-5.18.4.3,5,x,,,,,E4,todo,
-5.18.4.4,5,x,,,,,E4,todo,
-5.18.4.4 1st bullet,5,x,,,,,E4,todo,
-5.18.4.4 2nd bullet,5,x,,,,,E4,todo,
-5.18.5.2,5,x,,,,,E4,todo,
-5.18.5.3,5,x,,,,,E4,todo,
-5.18.6.2,5,x,,,,,E4,todo,
-5.18.6.2.1,5,x,,,,,E4,todo,
-5.18.6.2.2,5,x,,,,,E4,todo,
-5.18.6.2.2 1st bullet,5,x,,,,,E4,todo,
-5.18.6.2.2 2nd bullet,5,x,,,,,E4,todo,
-5.18.6.3,5,x,,,,,E4,todo,
-5.18.6.3 1st bullet,5,x,,,,,E4,todo,
-5.18.6.3 2nd bullet,5,x,,,,,E4,todo,
-5.18.6.4,5,x,,,,,E4,todo,
-5.18.6.4 1st bullet,5,x,,,,,E4,todo,
-5.18.6.4 2nd bullet,5,x,,,,,E4,todo,
-5.18.6.4.1,5,x,,,,,E4,todo,
-5.18.6.4.1 1st bullet,5,x,,,,,E4,todo,
-5.18.6.4.1 2nd bullet,5,x,,,,,E4,todo,
-5.18.6.5,5,x,,,,,E4,todo,
-5.18.7.3,5,x,,,,,E4,todo,
-5.18.7.3.1,5,x,,,,,E4,todo,
-5.18.7.3.1 1st bullet,5,x,,,,,E4,todo,
-5.18.7.3.1 2nd bullet,5,x,,,,,E4,todo,
-5.18.7.3.2,5,x,,,,,E4,todo,
-5.18.7.4,5,x,,,,,E4,todo,
-5.18.7.4 1st bullet,5,x,,,,,E4,todo,
-5.18.7.4 2nd bullet,5,x,,,,,E4,todo,
-5.18.7.5,5,x,,,,,E4,todo,
-5.18.8.2,5,x,,,,,E4,todo,
-5.18.8.3,5,x,,,,,E4,todo,
-5.18.8.3 a),5,x,,,,,E4,todo,
-5.18.8.3 b),5,x,,,,,E4,todo,
-5.18.8.4,5,x,,,,,E4,todo,
-5.18.8.5,5,x,,,,,E4,todo,
-5.18.8.5 1st bullet,5,x,,,,,E4,todo,
-5.18.8.5 2nd bullet,5,x,,,,,E4,todo,
-5.18.9.2,5,x,,,,,E4,todo,
-5.18.9.2.1,5,x,,,,,E4,todo,
-5.18.9.3,5,x,,,,,E4,todo,
-5.18.10.2,5,x,,,,,E4,todo,
-5.18.10.3,5,x,,,,,E4,todo,
-5.18.10.4,5,x,,,,,E4,todo,
-5.18.10.4 1st bullet,5,x,,,,,E4,todo,
-5.18.10.4 2nd bullet,5,x,,,,,E4,todo,
-5.18.10.5,5,x,,,,,E4,todo,
-5.18.10.5 1st bullet,5,x,,,,,E4,todo,
-5.18.10.5 2nd bullet,5,x,,,,,E4,todo,
-5.18.10.6,5,x,,,,,E4,todo,
-5.19.1.2,5,x,,,,,E4,todo,
-5.19.2.1,5,x,,,,,E4,todo,
-5.19.2.2,5,x,,,,,E4,todo,
-5.19.2.3,5,x,,,,,E4,todo,
-5.19.2.4,5,x,,,,,E4,todo,
-5.19.2.7,5,x,,,,,E4,todo,
-5.19.3.2,5,x,,,,,E4,todo,
-5.19.3.2 a),5,x,,,,,E4,todo,
-5.19.3.2 b),5,x,,,,,E4,todo,
-5.19.3.2 c),5,x,,,,,E4,todo,
-5.19.3.4,5,x,,,,,E4,todo,
-5.19.3.6,5,x,,,,,E4,todo,
-5.19.3.7,5,x,,,,,E4,todo,
-5.19.3.8,5,x,,,,,E4,todo,
-5.19.4.2,5,x,,,,,E4,todo,
-5.19.5.1,5,x,,,,,E4,todo,
-5.19.5.2,5,x,,,,,E4,todo,
-5.19.6.1.1,5,x,,,,,E4,todo,
-5.20.1.2,5,x,,,,,E4,todo,
-5.20.2.2,5,x,,,,,E4,todo,
-5.20.2.3,5,x,,,,,E4,todo,
-5.20.2.3 1st bullet,5,x,,,,,E4,todo,
-5.20.2.3 2nd bullet,5,x,,,,,E4,todo,
-5.20.2.4,5,x,,,,,E4,todo,
-5.20.2.5,5,x,,,,,E4,todo,
-5.20.2.8,5,x,,,,,E4,todo,
-5.20.3.2,5,x,,,,,E4,todo,
-5.20.3.3,5,x,,,,,E4,todo,
-5.20.3.3 1st bullet,5,x,,,,,E4,todo,
-5.20.3.3 2nd bullet,5,x,,,,,E4,todo,
-5.20.3.4,5,x,,,,,E4,todo,
-5.20.3.5,5,x,,,,,E4,todo,
-5.20.3.8,5,x,,,,,E4,todo,
-5.20.4.2,5,x,,,,,E4,todo,
-5.20.4.3,5,x,,,,,E4,todo,
-5.20.4.3 1st bullet,5,x,,,,,E4,todo,
-5.20.4.3 2nd bullet,5,x,,,,,E4,todo,
-5.20.4.4,5,x,,,,,E4,todo,
-5.20.4.5,5,x,,,,,E4,todo,
-5.20.4.7,5,x,,,,,E4,todo,
-5.20.5.3,5,x,,,,,E4,todo,
-5.20.5.4,5,x,,,,,E4,todo,
-5.20.5.4 1st bullet,5,x,,,,,E4,todo,
-5.20.5.4 2nd bullet,5,x,,,,,E4,todo,
-5.20.5.5,5,x,,,,,E4,todo,
-5.20.5.6,5,x,,,,,E4,todo,
-5.20.5.8,5,x,,,,,E4,todo,
-5.20.6.2,5,x,,,,,E4,todo,
-5.20.6.3,5,x,,,,,E4,todo,
-5.20.6.3 1st bullet,5,x,,,,,E4,todo,
-5.20.6.3 2nd bullet,5,x,,,,,E4,todo,
-5.20.6.4,5,x,,,,,E4,todo,
-5.20.6.6,5,x,,,,,E4,todo,
-5.20.7.2,5,x,,,,,E4,todo,
-5.20.7.3,5,x,,,,,E4,todo,
-5.20.7.4,5,x,,,,,E4,todo,
-5.20.7.4 1st bullet,5,x,,,,,E4,todo,
-5.20.7.4 2nd bullet,5,x,,,,,E4,todo,
-5.20.7.5,5,x,,,,,E4,todo,
-5.20.7.7,5,x,,,,,E4,todo,
-5.20.8.2,5,x,,,,,E4,todo,
-5.20.8.3,5,x,,,,,E4,todo,
-5.20.8.4,5,x,,,,,E4,todo,
-5.20.8.4 1st bullet,5,x,,,,,E4,todo,
-5.20.8.4 2nd bullet,5,x,,,,,E4,todo,
-5.20.8.4 3rd bullet,5,x,,,,,E4,todo,
-5.20.8.4 4th bullet,5,x,,,,,E4,todo,
-5.20.8.5,5,x,,,,,E4,todo,
-5.20.8.6,5,x,,,,,E4,todo,
-5.20.8.9,5,x,,,,,E4,todo,
-5.21.2.2 A045,5,x,,,,,E4,todo,
-5.21.2.2 A050,5,x,,,,,E4,todo,
-5.21.2.2 A075,5,x,,,,,E4,todo,
-5.21.2.2 A095,5,x,,,,,E4,todo,
-5.21.2.2 A220,5,x,,,,,E4,todo,
-5.21.2.2 D080,5,x,,,,,E4,todo,
-5.21.2.2 S0,5,x,,,,,E4,todo,
-5.21.2.2 S050,5,x,,,,,E4,todo,
-5.21.4.1,5,x,,,,,E4,todo,
-5.22.2.1,5,x,,,,,E4,todo,
-5.22.2.2,5,x,,,,,E4,todo,
-5.22.3.1,5,x,,,,,E4,todo,
-5.22.3.1.1,5,x,,,,,E4,todo,
-5.22.4.1,5,x,,,,,E4,todo,
-5.22.4.2,5,x,,,,,E4,todo,
-5.22.5.1,5,x,,,,,E4,todo,
-5.22.5.1 a),5,x,,,,,E4,todo,
-5.22.5.1 b),5,x,,,,,E4,todo,
-5.22.5.1 c),5,x,,,,,E4,todo,
-5.22.5.2,5,x,,,,,E4,todo,
-5.22.5.2.1,5,x,,,,,E4,todo,
+5.16.1.2,5,x,,,,,E4,done,"the LX speed restriction enters the MRSP from the location of the substitution to the LX end (EVC_Track_Description.Release_LX, Speed_Elements); evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
+5.16.1.3,5,x,,,,,E4,done,"the LX speed restriction enters the MRSP from the location of the substitution to the LX end (EVC_Track_Description.Release_LX, Speed_Elements); evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
+5.16.1.4,5,x,,,,,E4,done,LX01 in MSG_TRACK_COND when the temporary EOA/SvL of the LX is the MRDT (EVC_SDM.Result_T.LX_MRDT) or at the substitution (EVC_Procedures.LX_Step); 4.6.3 [9] then; evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)
+5.16.1.4 a),5,x,,,,,E4,done,LX01 in MSG_TRACK_COND when the temporary EOA/SvL of the LX is the MRDT (EVC_SDM.Result_T.LX_MRDT) or at the substitution (EVC_Procedures.LX_Step); 4.6.3 [9] then; evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)
+5.16.1.4 b),5,x,,,,,E4,done,LX01 in MSG_TRACK_COND when the temporary EOA/SvL of the LX is the MRDT (EVC_SDM.Result_T.LX_MRDT) or at the substitution (EVC_Procedures.LX_Step); 4.6.3 [9] then; evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)
+5.16.1.5,5,x,,,,,E4,done,shown while the min safe front end is in rear of the LX end (EVC_Stored_Information); evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)
+5.16.2.1,5,x,,,,,E4,done,stopped with the estimated front end in the stopping area: released from the estimated front end (EVC_Procedures.LX_Step); evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)
+5.16.3.1,5,x,,,,,E4,done,"the location of the Permitted speed supervision limit for V_LX of the start as EOA (SBI1, estimated front end) or SvL (SBI2, max safe front end), the most restrictive, at or below V_LX (EVC_SDM.Result_T.LX_Release, LX_From); a start passed without it trips; evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
+5.16.3.2,5,x,,,,,E4,done,"the location of the Permitted speed supervision limit for V_LX of the start as EOA (SBI1, estimated front end) or SvL (SBI2, max safe front end), the most restrictive, at or below V_LX (EVC_SDM.Result_T.LX_Release, LX_From); a start passed without it trips; evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
+5.17.2.2 A1,5,x,,,,,E4,done,"TIU input 13, the train configuration with the validation and category bits of the train implementation (EVC_Ports); EVC_Procedures.Train_Data_Step; Train data changed SS 17 (its 30 s from a movement); {TDC}"
+5.17.2.2 A5,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
+5.17.2.2 A6,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
+5.17.2.2 A7,5,x,,,,,E4,partial,"recorded (JRU 23 kind 11 byte 3 6); of 3.18.3.4, .7, .8 the report to the RBC is E5, the PBD restrictions follow the Train Data (3.11.11.3)"
+5.17.2.2 D0,5,x,,,,,E4,done,"TIU input 13, the train configuration with the validation and category bits of the train implementation (EVC_Ports); EVC_Procedures.Train_Data_Step; Train data changed SS 17 (its 30 s from a movement); {TDC}"
+5.17.2.2 D1,5,x,,,,,E4,done,"TIU input 13, the train configuration with the validation and category bits of the train implementation (EVC_Ports); EVC_Procedures.Train_Data_Step; Train data changed SS 17 (its 30 s from a movement); {TDC}"
+5.17.2.2 D2,5,x,,,,,E4,done,"TIU input 13, the train configuration with the validation and category bits of the train implementation (EVC_Ports); EVC_Procedures.Train_Data_Step; Train data changed SS 17 (its 30 s from a movement); {TDC}"
+5.17.2.2 D3,5,x,,,,,E4,done,"TIU input 13, the train configuration with the validation and category bits of the train implementation (EVC_Ports); EVC_Procedures.Train_Data_Step; Train data changed SS 17 (its 30 s from a movement); {TDC}"
+5.17.2.2 D4,5,x,,,,,E4,done,"in TR and PT the end of the trip procedure is awaited, then S6 (EVC_Procedures.Mode_Changed); in SH the Train Data are invalid already (4.6.3 [68]); evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
+5.17.2.2 D5,5,x,,,,,E4,partial,"level 1: A1; the MA and track description of an RBC (level 2 transition, RBC transition) are E5"
+5.17.2.2 D7,5,x,,,,,E4,done,"TIU input 13, the train configuration with the validation and category bits of the train implementation (EVC_Ports); EVC_Procedures.Train_Data_Step; Train data changed SS 17 (its 30 s from a movement); {TDC}"
+5.17.2.2 D9,5,x,,,,,E4,done,"TIU input 13, the train configuration with the validation and category bits of the train implementation (EVC_Ports); EVC_Procedures.Train_Data_Step; Train data changed SS 17 (its 30 s from a movement); {TDC}"
+5.17.2.2 S0,5,x,,,,,E4,done,"TIU input 13, the train configuration with the validation and category bits of the train implementation (EVC_Ports); EVC_Procedures.Train_Data_Step; Train data changed SS 17 (its 30 s from a movement); {TDC}"
+5.17.2.2 S1,5,x,,,,,E4,done,"in TR and PT the end of the trip procedure is awaited, then S6 (EVC_Procedures.Mode_Changed); in SH the Train Data are invalid already (4.6.3 [68]); evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
+5.17.2.2 S2,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
+5.17.2.2 S3,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
+5.17.2.2 S4,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
+5.17.2.2 S5,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
+5.17.2.2 S6,5,x,,,,,E4,partial,"the re-validation is requested (EVC_Procedures.Train_Data_Revalidation, JRU 23 kind 11); the Train Data entry that shows it and E6 (EVC_Procedures.Train_Data_Revalidated) are the modes half of E4 (e4/modes)"
+5.18.2.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.2.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.2.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.2.2 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.2.2 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.3,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.3 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.3 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.5,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.5 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.5 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.5.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.5.1 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.5.1 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.2.6,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.2.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.2.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.2.2 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.2.2 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.3,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.3 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.3 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.4,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.4 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.4 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.4.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.4.1 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.4.1 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.3.5,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.4.2,5,x,,,,,E4,done,"the non stopping area shown between SBID (max safe front end) and SBIG (min safe front end, G the train length beyond its end); without a supervision result (no MA) from point C as in E3; the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.4.2 a),5,x,,,,,E4,done,"the non stopping area shown between SBID (max safe front end) and SBIG (min safe front end, G the train length beyond its end); without a supervision result (no MA) from point C as in E3; the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.4.2 b),5,x,,,,,E4,done,"the non stopping area shown between SBID (max safe front end) and SBIG (min safe front end, G the train length beyond its end); without a supervision result (no MA) from point C as in E3; the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.4.2 c),5,x,,,,,E4,done,"the non stopping area shown between SBID (max safe front end) and SBIG (min safe front end, G the train length beyond its end); without a supervision result (no MA) from point C as in E3; the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.4.3,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.4.4,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.4.4 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.4.4 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.5.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (the estimated front end stands for the engine, 3.12.1.2.1.5)"
+5.18.5.3,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (the estimated front end stands for the engine, 3.12.1.2.1.5)"
+5.18.6.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.2.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.2.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.2.2 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.2.2 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.3,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.3 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.3 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.4,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.4 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.4 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.4.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.4.1 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.4.1 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.6.5,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.3,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.3.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.3.1 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.3.1 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.3.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.4,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.4 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.4 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.7.5,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.8.2,5,x,,,,,E4,done,"the DMI toggles the display (DMI 8.2.3.6, DR05; its action 3 is decoded, EVC_Procedure_Requests.Tunnel_Toggle); the on-board reports the area whatever the toggle so that the DMI can offer it"
+5.18.8.3,5,x,,,,,E4,done,"MSG_STATUS tunnel (2 announced with the distance to the start, 1 active) for the nearest tunnel stopping area whose Permitted limit (no GUI) of the SBD to its end the estimated front end has not passed (EVC_Track_Conditions.Tunnel_Indication); the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.8.3 a),5,x,,,,,E4,done,"MSG_STATUS tunnel (2 announced with the distance to the start, 1 active) for the nearest tunnel stopping area whose Permitted limit (no GUI) of the SBD to its end the estimated front end has not passed (EVC_Track_Conditions.Tunnel_Indication); the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.8.3 b),5,x,,,,,E4,done,"MSG_STATUS tunnel (2 announced with the distance to the start, 1 active) for the nearest tunnel stopping area whose Permitted limit (no GUI) of the SBD to its end the estimated front end has not passed (EVC_Track_Conditions.Tunnel_Indication); the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.8.4,5,x,,,,,E4,done,"MSG_STATUS tunnel (2 announced with the distance to the start, 1 active) for the nearest tunnel stopping area whose Permitted limit (no GUI) of the SBD to its end the estimated front end has not passed (EVC_Track_Conditions.Tunnel_Indication); the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.8.5,5,x,,,,,E4,done,"MSG_STATUS tunnel (2 announced with the distance to the start, 1 active) for the nearest tunnel stopping area whose Permitted limit (no GUI) of the SBD to its end the estimated front end has not passed (EVC_Track_Conditions.Tunnel_Indication); the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.8.5 1st bullet,5,x,,,,,E4,done,"MSG_STATUS tunnel (2 announced with the distance to the start, 1 active) for the nearest tunnel stopping area whose Permitted limit (no GUI) of the SBD to its end the estimated front end has not passed (EVC_Track_Conditions.Tunnel_Indication); the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.8.5 2nd bullet,5,x,,,,,E4,done,"MSG_STATUS tunnel (2 announced with the distance to the start, 1 active) for the nearest tunnel stopping area whose Permitted limit (no GUI) of the SBD to its end the estimated front end has not passed (EVC_Track_Conditions.Tunnel_Indication); the virtual SBD curves evaluated by EVC_SDM at the estimated speed (Snapshot_T.Virtual, Result_T.Virtual), used by EVC_Track_Conditions the next cycle; evc_test_procedures Scenario_Track_Condition_Limits"
+5.18.9.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.9.2.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.9.3,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.3,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.4,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.4 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.4 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.5,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.5 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.5 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.18.10.6,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
+5.19.1.2,5,x,,,,,E4,done,the request after the transition or in the rectangle (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
+5.19.2.1,5,x,,,,,E4,done,4.6.3 [72] at the balise group (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
+5.19.2.2,5,x,,,,,E4,partial,4.6.3 [72] is level independent (EVC_Procedures); the mode profile of level 2 comes from the RBC (E5)
+5.19.2.3,5,x,,,,,E4,done,the request after the transition or in the rectangle (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
+5.19.2.4,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_Limited_Supervision
+5.19.2.7,5,x,,,,,E4,done,no request when already in LS (EVC_Procedures)
+5.19.3.2,5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
+5.19.3.2 a),5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
+5.19.3.2 b),5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
+5.19.3.2 c),5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
+5.19.3.4,5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
+5.19.3.6,5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
+5.19.3.7,5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
+5.19.3.8,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_Limited_Supervision
+5.19.4.2,5,x,,,,,E4,partial,"4.6.3 [71] is [72] with the level switched to 1 or 2, which the level transitions of the modes half of E4 (e4/modes) signal"
+5.19.5.1,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised"
+5.19.5.2,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised"
+5.19.6.1.1,5,x,,,,,E4,done,4.6.3 [76] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
+5.20.1.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.2.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.2.3,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.2.3 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.2.3 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.2.4,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.2.5,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.2.8,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.3.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.3.3,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.3.3 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.3.3 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.3.4,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.3.5,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.3.8,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.4.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.4.3,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.4.3 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.4.3 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.4.4,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.4.5,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.4.7,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.5.3,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.5.4,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.5.4 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.5.4 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.5.5,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.5.6,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.5.8,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.6.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.6.3,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.6.3 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.6.3 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.6.4,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.6.6,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.7.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.7.3,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.7.4,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.7.4 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.7.4 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.7.5,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.7.7,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.2,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.3,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.4,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.4 1st bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.4 2nd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.4 3rd bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.4 4th bullet,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.5,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.6,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.20.8.9,5,x,,,,,E4,done,"EVC_Track_Conditions.External, the TIU track condition output (EVC_Ports, tag 16#54#, every cycle while generated, once empty); evc_test_procedures Scenario_External_Track_Conditions"
+5.21.2.2 A045,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.21.2.2 A050,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.21.2.2 A075,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.21.2.2 A095,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.21.2.2 A220,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.21.2.2 D080,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.21.2.2 S0,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.21.2.2 S050,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.21.4.1,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2)"
+5.22.2.1,5,x,,,,,E4,done,"EVC_Procedure_Requests.BMM_Inhibition (DMI action 18 arg 0) at standstill in level 1 or 2, SB, SH or SR (EVC_Procedures.BMM_Step); evc_test_procedures Scenario_BMM"
+5.22.2.2,5,x,,,,,E4,done,"EVC_Procedure_Requests.BMM_Inhibition (DMI action 18 arg 0) at standstill in level 1 or 2, SB, SH or SR (EVC_Procedures.BMM_Step); evc_test_procedures Scenario_BMM"
+5.22.3.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented
+5.22.3.1.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented
+5.22.4.1,5,x,,,,,E4,done,"MSG_ONBOARD train bit 4 (EVC_Procedures.BMM_Inhibited), JRU 23 kind 9; evc_test_procedures Scenario_BMM"
+5.22.4.2,5,x,,,,,E4,n/a,"the BTM port carries no transmission alarm (SUBSET-036 is outside the project, EVC-PLAN §1): there is no reaction to inhibit"
+5.22.5.1,5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
+5.22.5.1 a),5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
+5.22.5.1 b),5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
+5.22.5.1 c),5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
+5.22.5.2,5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
+5.22.5.2.1,5,x,,,,,E4,done,a BMM track condition (packet 67) starting within the 300 m ahead of the location of the triggering ends the procedure at its start (EVC_Procedures.BMM_Step); evc_test_procedures Scenario_BMM
 6.4.2.1,6,x,,,,,E7,deferred,E7
 6.4.2.2,6,x,,,,,E7,deferred,E7
 6.6.2.1.1,6,x,,,,,E7,deferred,E7

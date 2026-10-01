@@ -63,7 +63,8 @@ package body EVC_Core
                                    --  the procedures (phase E4)
                                    Proc_Ctx,
                                    Ack_For_Protection,
-                                   Status_Rev_Sent, TC_Sent,
+                                   Status_Rev_Sent, Status_Tunnel_Sent,
+                                   TC_Sent,
                                    Config_Last, Config_Seen))
 is
 
@@ -191,6 +192,8 @@ is
    Ack_For_Protection : Boolean := False;
    --  the reversing indication sent last (MSG_STATUS)
    Status_Rev_Sent : Boolean := False;
+   --  the tunnel stopping area sent last (MSG_STATUS, 5.18.8)
+   Status_Tunnel_Sent : EVC_Track_Conditions.Tunnel_T;
    --  5.20: an item of the information for an external function was
    --  sent in the last cycle (the TIU track condition output)
    TC_Sent : Boolean := False;
@@ -309,6 +312,7 @@ is
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
+      Status_Tunnel_Sent := (others => <>);
       TC_Sent := False;
       Config_Last := 0;
       Config_Seen := False;
@@ -647,7 +651,7 @@ is
      with Global => (Input  => (Clock_Ms, Cycle_Count, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,
                                 TIU_Now, EVC_Config.State, Current_Mode,
-                                EVC_Procedures.State),
+                                EVC_Procedures.State, SDM_Result),
                      In_Out => (EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
@@ -686,7 +690,10 @@ is
               TIU_Now (Magnetic_Shoe_Brake_Active),
             EVC_Supervision_Input.Electro_Pneumatic =>
               TIU_Now (EP_Brake_Active)),
-         Additional     => TIU_Now (Additional_Brake_Active));
+         Additional     => TIU_Now (Additional_Brake_Active),
+         --  phase E4: the virtual limits of the last cycle (5.18.4.2,
+         --  5.18.8.3)
+         Virtual_Last   => SDM_Result.Virtual);
       for I in 1 .. EVC_Stored_Information.Event_Count loop
          declare
             E : constant EVC_Stored_Information.Event_T :=
@@ -839,7 +846,8 @@ is
                                 EVC_Position.State,
                                 EVC_Origins.State,
                                 EVC_Procedure_Requests.State,
-                                EVC_Train_Data.State),
+                                EVC_Train_Data.State,
+                                EVC_Track_Conditions.State),
                      Output => Proc_Ctx,
                      In_Out => (EVC_Procedures.State, EVC_Text_Messages.State,
                                 EVC_Movement_Authority.State,
@@ -1000,7 +1008,8 @@ is
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, Overrun_Reported,
-                                Status_Rev_Sent, TC_Sent))
+                                Status_Rev_Sent, Status_Tunnel_Sent,
+                                TC_Sent))
    is
       --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
       --  E0; the fields of the later phases are 0, "nothing known"
@@ -1132,26 +1141,35 @@ is
            (if SDM_Result.TTI = EVC_SDM.No_TTI then TTI_None
             else Unsigned_16 (SDM_Result.TTI));
          Rev   : constant Boolean := EVC_Procedures.Reversing_Possible;
+         --  phase E4, 5.18.8: the tunnel stopping area
+         Tun   : constant EVC_Track_Conditions.Tunnel_T :=
+           EVC_Stored_Information.Tunnel;
          Changed : constant Boolean :=
            Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent
-           or else Rev /= Status_Rev_Sent;
+           or else Rev /= Status_Rev_Sent
+           or else EVC_Track_Conditions."/=" (Tun, Status_Tunnel_Sent);
       begin
          if EVC_Position.Geo_Known then
             EVC_Outbox.Put
               (DMI, Status_Frame (Unsigned_32 (EVC_Position.Geo_Metres),
                                   Unsigned_64 (Clock_Ms) / 1000,
-                                  Brake, TTI, Rev));
+                                  Brake, TTI, Rev,
+                                  EVC_Bytes.Byte (Tun.State),
+                                  Unsigned_32 (Tun.Distance_M)));
             Geo_Sent := True;
          elsif Geo_Sent or else Changed then
             EVC_Outbox.Put
               (DMI, Status_Frame (Geo_Unknown,
                                   Unsigned_64 (Clock_Ms) / 1000,
-                                  Brake, TTI, Rev));
+                                  Brake, TTI, Rev,
+                                  EVC_Bytes.Byte (Tun.State),
+                                  Unsigned_32 (Tun.Distance_M)));
             Geo_Sent := False;
          end if;
          Status_Brake_Sent := Brake;
          Status_TTI_Sent := TTI;
          Status_Rev_Sent := Rev;
+         Status_Tunnel_Sent := Tun;
       end;
 
       Onboard :=

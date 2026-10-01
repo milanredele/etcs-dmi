@@ -52,8 +52,14 @@ package body EVC_Test_Procedures is
    Onboard_Train : Natural := 0;
    --  MSG_PLANNING in the last cycle
    Planning_Now  : Boolean := False;
-   --  MSG_TRACK_COND: the last one shows the symbol LX01 (kind 38)
+   --  MSG_TRACK_COND: the last one shows the symbol LX01 (kind 38), the
+   --  non stopping area announcement (TC11) or the area (TC10)
    LX_Shown      : Boolean := False;
+   NSA_Shown     : Natural := 0;
+   --  MSG_STATUS: the tunnel stopping area (0, 1 active, 2 announced)
+   --  and its distance, m
+   Tunnel        : Natural := 0;
+   Tunnel_M      : Natural := 0;
    --  MSG_SPEED_STATE: the monitoring (0 CSM, 1 TSM, 2 RSM)
    Monitoring    : Natural := 0;
    --  The TIU track condition output (5.20): the frames of the last
@@ -165,14 +171,19 @@ package body EVC_Test_Procedures is
                      Monitoring := P (22);
                   when 16#05# =>
                      LX_Shown := False;
+                     NSA_Shown := 0;
                      for K in 1 .. P (6) loop
                         if P (6 + 2 * K) = 38 then
                            LX_Shown := True;
+                        elsif P (6 + 2 * K) in 10 | 11 then
+                           NSA_Shown := P (6 + 2 * K);
                         end if;
                      end loop;
                   when 16#07# =>
                      Status_Brake := P (6);
                      Reversing := P (10);
+                     Tunnel := P (17);
+                     Tunnel_M := P (18) + 256 * P (19);
                   when 16#0A# =>
                      Onboard_Train := P (9);
                   when 16#06# =>
@@ -318,6 +329,10 @@ package body EVC_Test_Procedures is
       ST.Put (W, P, Build_OK);
    end Add;
    procedure Add (P : ST.T68.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
+   procedure Add (P : ST.T67.Packet_T) is
    begin
       ST.Put (W, P, Build_OK);
    end Add;
@@ -559,6 +574,9 @@ package body EVC_Test_Procedures is
       Status_Brake := 0;
       Reversing := 0;
       LX_Shown := False;
+      NSA_Shown := 0;
+      Tunnel := 0;
+      Tunnel_M := 0;
       Monitoring := 0;
       TC_N := 0;
       TIU_In (1, 1);
@@ -908,6 +926,29 @@ package body EVC_Test_Procedures is
    --  5.7 entry in Shunting ordered by the trackside (SUBSET-076 5070300)
    procedure Scenario_Shunting_Trackside is
    begin
+      --  3.12.4.4: the SH mode profile replaced by a new MA without one,
+      --  its list of balise groups for the SH area goes with it
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 1_000);
+      Add (ST.Mode_Profile (D_M => 400, M_MAMODE => 1, L_M => 0,
+                            Ack_M => 100));
+      Add (ST.Shunting_Area_List ((1 => 7)));
+      Close;
+      Line_Group (EOA_M => 900, NID => 2, At_M => 100);
+      Close;
+      Line_Group (EOA_M => 800, NID => 3, At_M => 200);
+      Add (ST.Mode_Profile (D_M => 200, M_MAMODE => 1, L_M => 0,
+                            Ack_M => 50));
+      Close;
+      Group (8, 450);
+      Close;
+      Run_Front (410, 40);
+      Check (Mode_Byte = Code_SH, "5.7.3.6: SH at the area of the new MA");
+      Run_Front (470, 20);
+      Check (Mode_Byte = Code_SH,
+             "3.12.4.4: the list of the deleted SH mode profile deleted, "
+             & "a group not in it passed without a trip");
+
       Begin_Scenario (M_FS, L1);
       Line_Group (EOA_M => 1_000);
       Add (ST.Mode_Profile (D_M => 200, M_MAMODE => 1, L_M => 0,
@@ -1304,6 +1345,21 @@ package body EVC_Test_Procedures is
       Run_Front (310, 25);
       Check ((Onboard_Train / 16) mod 2 = 0 and then J23 (9) = 2,
              "5.22.5.1 a): ended after the 300 m of A.3.1");
+
+      --  5.22.5.2.1: a BMM area announced within the 300 m
+      Begin_Scenario (M_SH, L1);
+      Driver (18, 0);
+      Cycle;
+      Group (3, 20);
+      Add (ST.Big_Metal_Mass (100, 50));
+      Close;
+      Run_Front (110, 25);
+      Check ((Onboard_Train / 16) mod 2 = 1,
+             "5.22.5.2.1: still inhibited before the announced BMM area");
+      Run_Front (130, 25);
+      Check ((Onboard_Train / 16) mod 2 = 0 and then J23 (9) = 2,
+             "5.22.5.2.1: the distance shortened to the start of the "
+             & "announced BMM area");
    end Scenario_BMM;
 
    --  5.16 Passing a level crossing not protected (SUBSET-076 5160000_01:
@@ -1610,7 +1666,69 @@ package body EVC_Test_Procedures is
       Check (Mode_Byte = Code_SR and then J23_B3 (11) = 5,
              "5.17.2.2 E1, D4, S6: the trip procedure exited to SR, the "
              & "re-validation requested");
+
+      --  4.12: the brake revoked when SB is entered
+      Begin_Scenario (M_FS, L1);
+      TIU_In (13, 0);
+      Line_Group (EOA_M => 2_000);
+      Close;
+      Run_Front (100, 40);
+      TIU_In (13, Cat + 6);
+      Cycle;
+      Check (Why (EVC_Ports.TIU_Reason_Procedure),
+             "5.17.2.2 S2: the service brake");
+      TIU_In (1, 0);
+      Cycle;
+      Check (Mode_Byte = Code_SB
+             and then not Why (EVC_Ports.TIU_Reason_Procedure)
+             and then Seen_SS (18, 1),
+             "4.12: the brake of the Train Data change revoked on entering "
+             & "SB (4.6.3 [28])");
    end Scenario_Train_Data_Change;
+
+   --  5.18.4.2, 5.18.8: the indication of a non stopping area between
+   --  its virtual SBI limits, and of a tunnel stopping area while the
+   --  train can stop before its end (the SBD curves of the supervision)
+   procedure Scenario_Track_Condition_Limits is
+   begin
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 3_000, Length_M => 4_000, Kmh => 120);
+      Close;
+      Group (2, 20);
+      Add (ST.Track_Condition (780, 100, 0));     -- non stopping area
+      Close;
+      Group (3, 30);
+      Add (ST.Track_Condition (1_470, 200, 1));   -- tunnel stopping area
+      Close;
+      Run_Front (60, 100);
+      Check (NSA_Shown = 0,
+             "5.18.4.2 a): the max safe front end in rear of SBID, nothing "
+             & "shown");
+      Run_Front (300, 100);
+      Check (NSA_Shown = 11,
+             "5.18.4.2 b), 5.18.4.3: between SBID and SBIG the announcement "
+             & "of the non stopping area (far before point C at 100 km/h)");
+      Check (Tunnel = 2 and then Tunnel_M in 1_190 .. 1_210,
+             "5.18.8.3 a), 5.18.8.4: the tunnel stopping area announced with "
+             & "the distance to its start (MSG_STATUS tunnel)");
+      Run_Front (620, 100);
+      Check (NSA_Shown = 0,
+             "5.18.4.2 c): the min safe front end beyond SBIG, a full "
+             & "service brake would stop beyond the area: nothing shown");
+      Run_Front (1_100, 100);
+      Check (Tunnel = 0,
+             "5.18.8.3 b): beyond the Permitted limit of the SBD to its end, "
+             & "the tunnel stopping area no longer shown");
+      Run_Front (1_300, 30);
+      Check (Tunnel = 2,
+             "5.18.8.3 a): slower, the train can stop before its end again");
+      Run_Front (1_550, 30);
+      Check (Tunnel = 1,
+             "5.18.8.5: the front end in the tunnel stopping area, the area "
+             & "shown");
+      Run_Front (1_720, 30);
+      Check (Tunnel = 0, "5.18.8.6: no display at its end");
+   end Scenario_Track_Condition_Limits;
 
    --  3.11.7: the national values of UN and SR
    procedure Scenario_Mode_Speeds is
@@ -1643,6 +1761,7 @@ package body EVC_Test_Procedures is
       Scenario_Level_Crossing;
       Scenario_External_Track_Conditions;
       Scenario_Train_Data_Change;
+      Scenario_Track_Condition_Limits;
       Check (Build_OK and then Parse_OK,
              "E4 procedures: every telegram built, every output parsed");
    end Run;

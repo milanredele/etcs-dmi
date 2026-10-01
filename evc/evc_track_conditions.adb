@@ -350,11 +350,39 @@ is
        PL_End   => 0))
      with Pre => V <= 5;
 
+   --  Phase E4: the virtual limit found last cycle for the foot X of
+   --  the condition Id (5.18.4.2, 5.18.8.3)
+   procedure Find_Virtual (Last  : Virtual_Limits_T;
+                           Id    : Natural;
+                           X     : Dist_T;
+                           Found : out Boolean;
+                           L     : out Virtual_Limit_T)
+   is
+   begin
+      Found := False;
+      L := (others => <>);
+      for K in Last'Range loop
+         if Last (K).Valid and then Last (K).Id = Id
+           and then Last (K).Foot = X
+         then
+            Found := True;
+            L := Last (K);
+         end if;
+      end loop;
+   end Find_Virtual;
+
+   --  5.18.4.2: G, the train length in advance of the end of a non
+   --  stopping area (the "min" item, as for its end)
+   function G_Of (T : Origin_Table_T; E : Stored_T; S : Sense_T;
+                  Length : Length_T) return Dist_T
+   is (Advance (Frame (T, E.Finish, Min_Item), S, Length));
+
    procedure Evaluate (T      : Origin_Table_T;
                        Train  : Train_Frame_T;
                        Now_Ms : Unsigned_64;
                        Ind    : out Indications_T;
-                       Orders : out Orders_T)
+                       Orders : out Orders_T;
+                       Last   : Virtual_Limits_T := (others => <>))
    is
       Announce : constant Length_T :=
         Length_T'Max (Announce_Min_Cm,
@@ -461,8 +489,35 @@ is
                      then
                         Show (Id, Sym.After);
                      end if;
-                  when 0 | 6 | 7 | 8 | 10 =>
-                     --  5.18.4 (without its SBI limits), 5.18.7
+                  when 0 =>
+                     --  5.18.4.2 to 5.18.4.4: between the virtual SBI
+                     --  limits SBID (max safe front end) and SBIG (min
+                     --  safe front end) that the supervision found last
+                     --  cycle; without them from point C to the rear end
+                     --  leaving it (E3)
+                     declare
+                        F_D, F_G : Boolean;
+                        L_D, L_G : Virtual_Limit_T;
+                        Shown    : Boolean;
+                     begin
+                        Find_Virtual (Last, E.Id,
+                                      Frame (T, E.Start, Max_Item), F_D, L_D);
+                        Find_Virtual (Last, E.Id,
+                                      G_Of (T, E, S, Train.Length), F_G, L_G);
+                        if F_D and then F_G then
+                           Shown := Max_F >= A (S, L_D.SBI)
+                                    and then Min_F < A (S, L_G.SBI);
+                        else
+                           Shown := Max_F >= C and then Min_R < Fin;
+                        end if;
+                        if Shown and then Max_F < D then
+                           Show (Id, Sym.Announce);
+                        elsif Shown then
+                           Show (Id, Sym.Active);
+                        end if;
+                     end;
+                  when 6 | 7 | 8 | 10 =>
+                     --  5.18.7
                      if Max_F >= C and then Max_F < D then
                         Show (Id, Sym.Announce);
                      elsif Max_F >= D and then Min_R < Fin then
@@ -518,6 +573,111 @@ is
          end loop;
       end if;
    end Evaluate;
+
+   ------------------
+   -- Virtual_Feet --
+   ------------------
+
+   procedure Virtual_Feet (T     : Origin_Table_T;
+                           Train : Train_Frame_T;
+                           Feet  : out Virtual_Feet_T)
+   is
+      N        : Natural range 0 .. Max_Virtual := 0;
+      Areas    : Natural := 0;
+      Tunnels  : Natural := 0;
+
+      procedure Put (Id : Natural; X : Dist_T)
+        with Global => (In_Out => (Feet, N))
+      is
+      begin
+         if N < Max_Virtual then
+            N := N + 1;
+            Feet (N) := (Used => True, Id => Natural'Min (Id, 255),
+                         Foot => X);
+         end if;
+      end Put;
+   begin
+      Feet := (others => (others => <>));
+      if not Train.Valid or else Cond_S.Sense /= Train.Sense then
+         return;
+      end if;
+      for I in 1 .. Cond_S.Count loop
+         declare
+            S : constant Sense_T := Cond_S.Sense;
+            E : constant Stored_T := Cond_S.List (I);
+         begin
+            --  5.18.4.2: the two nearest non stopping areas whose G the
+            --  min safe front end has not passed
+            if E.Value = 0 and then Areas < 2
+              and then A (S, Train.Min_Front)
+                         < A (S, G_Of (T, E, S, Train.Length))
+            then
+               Areas := Areas + 1;
+               Put (E.Id, Frame (T, E.Start, Max_Item));
+               Put (E.Id, G_Of (T, E, S, Train.Length));
+            --  5.18.8.3: the two nearest tunnel stopping areas whose end
+            --  the estimated front end has not reached
+            elsif E.Value = 1 and then Tunnels < 2
+              and then A (S, Train.Est_Front)
+                         < A (S, Frame (T, E.Finish, Min_Item))
+            then
+               Tunnels := Tunnels + 1;
+               Put (E.Id, Frame (T, E.Finish, Min_Item));
+            end if;
+         end;
+      end loop;
+   end Virtual_Feet;
+
+   -----------------------
+   -- Tunnel_Indication --
+   -----------------------
+
+   procedure Tunnel_Indication (T      : Origin_Table_T;
+                                Train  : Train_Frame_T;
+                                Last   : Virtual_Limits_T;
+                                Tunnel : out Tunnel_T)
+   is
+   begin
+      Tunnel := (others => <>);
+      if not Train.Valid or else Cond_S.Sense /= Train.Sense then
+         return;
+      end if;
+      for I in 1 .. Cond_S.Count loop
+         declare
+            S     : constant Sense_T := Cond_S.Sense;
+            E     : constant Stored_T := Cond_S.List (I);
+            Found : Boolean;
+            L     : Virtual_Limit_T;
+         begin
+            if E.Value = 1 then
+               Find_Virtual (Last, E.Id, Frame (T, E.Finish, Min_Item),
+                             Found, L);
+               --  5.18.8.3 a): the front end in rear of the Permitted
+               --  limit of the SBD to its end; b) else the next one
+               if Found
+                 and then A (S, Train.Est_Front) < A (S, L.P)
+               then
+                  declare
+                     D_M : constant Cm_T :=
+                       (A (S, Frame (T, E.Start, Estimated_Item))
+                        - A (S, Train.Est_Front)) / 100;
+                  begin
+                     if D_M > 0 then
+                        --  5.18.8.4
+                        Tunnel := (State      => 2,
+                                   Distance_M =>
+                                     Natural (Cm_T'Min (D_M, 99_999)));
+                     else
+                        --  5.18.8.5
+                        Tunnel := (State => 1, Distance_M => 0);
+                     end if;
+                  end;
+                  return;
+               end if;
+            end if;
+         end;
+      end loop;
+   end Tunnel_Indication;
 
    --------------
    -- External --

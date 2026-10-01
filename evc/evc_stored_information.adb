@@ -33,7 +33,7 @@ package body EVC_Stored_Information
                                    Indicated, Indicated_N, Sent, Sent_N,
                                    Cond_Due, Plan, Plan_Due,
                                    Driver_Slippery, PBD_Last, PBD_Known,
-                                   Refusing, Ext))
+                                   Refusing, Ext, Tun))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -71,6 +71,8 @@ is
    Refusing        : Boolean := False;
    --  5.20: the information for an external function of the last cycle
    Ext             : EVC_Track_Conditions.External_T;
+   --  5.18.8: the tunnel stopping area reported
+   Tun             : EVC_Track_Conditions.Tunnel_T;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -154,10 +156,13 @@ is
       PBD_Known := False;
       Refusing := False;
       Ext := (Count => 0, List => (others => (others => <>)));
+      Tun := (others => <>);
    end Clear;
 
    function External_Info return EVC_Track_Conditions.External_T is (Ext)
      with Refined_Global => Ext;
+   function Tunnel return EVC_Track_Conditions.Tunnel_T is (Tun)
+     with Refined_Global => Tun;
 
    procedure Delete_Authority_And_Description (LX : Boolean) is
    begin
@@ -618,9 +623,11 @@ is
                     Mode_Speed     : Speed_Cms_T;
                     Now_Ms         : Unsigned_64;
                     Special_Active : EVC_Braking.Brakes_T;
-                    Additional     : Boolean)
+                    Additional     : Boolean;
+                    Virtual_Last   : Virtual_Limits_T)
      with Global => (Output => (Sources, Steps, Ceiling, Indicated,
-                                Indicated_N, Cond_Due, Plan, Plan_Due),
+                                Indicated_N, Cond_Due, Plan, Plan_Due,
+                                Ext, Tun),
                      In_Out => (Snap, Failures, Sent, Sent_N,
                                 EVC_Track_Conditions.State,
                                 EVC_Track_Description.State,
@@ -881,7 +888,12 @@ is
       end;
 
       --  the track conditions: MSG_TRACK_COND when they changed
-      EVC_Track_Conditions.Evaluate (T, Train, Now_Ms, Ind, Orders);
+      EVC_Track_Conditions.Evaluate (T, Train, Now_Ms, Ind, Orders,
+                                     Virtual_Last);
+      --  phase E4, 5.18.4.2, 5.18.8: the virtual SBD curves for the
+      --  supervision of this cycle, the tunnel stopping area of the last
+      EVC_Track_Conditions.Virtual_Feet (T, Train, Snap.Virtual);
+      EVC_Track_Conditions.Tunnel_Indication (T, Train, Virtual_Last, Tun);
       Indicated := (others => (others => <>));
       Indicated_N := 0;
       for I in 1 .. Ind.Count loop
@@ -1029,7 +1041,9 @@ is
                        Mode_Speed     : Speed_Cms_T;
                        Special_Active : EVC_Braking.Brakes_T :=
                          (others => False);
-                       Additional     : Boolean := False)
+                       Additional     : Boolean := False;
+                       Virtual_Last   : Virtual_Limits_T :=
+                         (others => <>))
    is
       T     : constant Origin_Table_T := Origin_Table;
       Train : constant Train_Frame_T := Train_Frame;
@@ -1097,7 +1111,8 @@ is
       end loop;
 
       --  6., 7.
-      Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional);
+      Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional,
+             Virtual_Last);
    end Evaluate;
 
 end EVC_Stored_Information;

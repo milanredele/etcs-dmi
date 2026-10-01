@@ -239,6 +239,10 @@ is
    function External_Info return EVC_Track_Conditions.External_T
      with Global => State;
 
+   --  5.18.8: the tunnel stopping area reported (MSG_STATUS)
+   function Tunnel return EVC_Track_Conditions.Tunnel_T
+     with Global => State;
+
    --  5.11.2.2 A035: while Refuse is set no new MA and no new track
    --  description (packets 12, 80, 27, 21, 51, 52, 70, 88) are taken from
    --  the balise groups; the track conditions and the other information
@@ -257,11 +261,16 @@ is
    --  the train interface (SUBSET-034 2.3.6, 2.3.7), which the braking
    --  model of the speed restrictions to ensure a permitted braking
    --  distance depends on (3.11.11.4, 3.13.6.2.1)
+   --  Phase E4: Virtual_Last, the virtual limits the supervision found
+   --  in the last cycle for the indication of the track conditions
+   --  (EVC_Track_Conditions, 5.18.4.2, 5.18.8.3)
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
                        Special_Active : EVC_Braking.Brakes_T :=
                          (others => False);
-                       Additional     : Boolean := False)
+                       Additional     : Boolean := False;
+                       Virtual_Last   : Virtual_Limits_T :=
+                         (others => <>))
      with Global => (In_Out => (State, EVC_Origins.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,

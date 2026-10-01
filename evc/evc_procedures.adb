@@ -34,7 +34,7 @@ package body EVC_Procedures
                     RV_EB, BMM_On, BMM_From, Link_SB, Demand, Demand_Sent,
                     Status_N, Status_List, Event_N, Events,
                     TD_Step, TD_Then_Revalidate, TD_Revalidate,
-                    TD_Moving_Due))
+                    TD_Moving_Due, SH_Profile_Seen))
 is
 
    ---------------------------------------------------------------------
@@ -162,6 +162,8 @@ is
    SH_List_N     : Natural range 0 .. Max_SH_List := 0;
    SH_List       : Id_List_T := (others => (others => <>));
    Continue_SH   : Boolean := False;
+   --  3.12.4.4: an SH mode profile was stored in the last cycle
+   SH_Profile_Seen : Boolean := False;
 
    --  What the balise groups of the cycle said
    type Now_Flags_T is record
@@ -368,6 +370,7 @@ is
       SH_List_N := 0;
       SH_List := (others => (others => <>));
       Continue_SH := False;
+      SH_Profile_Seen := False;
       Now_Flags := (others => <>);
       Rev := (others => <>);
       Rev_Possible := False;
@@ -1069,9 +1072,38 @@ is
    end Reversing_Step;
 
    procedure BMM_Step (C : Context_T; S : Snapshot_T)
-     with Global => (Input  => EVC_Procedure_Requests.State,
+     with Global => (Input  => (EVC_Procedure_Requests.State,
+                                EVC_Track_Conditions.State,
+                                EVC_Origins.State),
                      In_Out => (BMM_On, BMM_From, Events, Event_N))
    is
+      --  5.22.5.2.1: a BMM track condition starting within the 300 m
+      --  ahead of where the procedure was triggered (along the sense of
+      --  its store; one in which the train stood then starts in rear)
+      --  shortens the distance to its start
+      function BMM_Area_Reached return Boolean
+        with Global => (Input => (EVC_Track_Conditions.State,
+                                  EVC_Origins.State, BMM_From))
+      is
+         St : constant Store_T := EVC_Track_Conditions.Big_Metal_Masses;
+         T  : constant Origin_Table_T := Origin_Table;
+         F  : constant Dist_T := A (St.Sense, BMM_From);
+         Cur : constant Dist_T := A (St.Sense, S.Train.Est_Front);
+      begin
+         for I in 1 .. St.Count loop
+            declare
+               X : constant Dist_T :=
+                 A (St.Sense, Frame (T, St.List (I).Start, Estimated_Item));
+            begin
+               if X > F and then Diff (X, F) <= BMM_Distance_Cm
+                 and then Cur >= X
+               then
+                  return True;
+               end if;
+            end;
+         end loop;
+         return False;
+      end BMM_Area_Reached;
    begin
       --  5.22.2.1: at standstill, in level 1 or 2, in SB, SH or SR
       if EVC_Procedure_Requests.BMM_Inhibition and then not BMM_On
@@ -1087,6 +1119,7 @@ is
          if EVC_Procedure_Requests.Revoke_BMM_Inhibition
            or else Abs_Dist (Diff (S.Train.Est_Front, BMM_From))
                      > BMM_Distance_Cm
+           or else BMM_Area_Reached
          then
             BMM_On := False;
             Record_Event (Event_BMM, 0, 0);
@@ -1100,7 +1133,8 @@ is
 
    --  S6: the driver requested to re-enter or re-validate the data
    procedure TD_Request_Revalidation
-     with Global => (In_Out => (TD_Revalidate, Events, Event_N))
+     with Global => (Output => TD_Revalidate,
+                     In_Out => (Events, Event_N))
    is
    begin
       TD_Revalidate := True;
@@ -1116,8 +1150,8 @@ is
 
       --  A1, then A7
       procedure Inform
-        with Global => (In_Out => (TD_Moving_Due, Status_List, Status_N,
-                                   Events, Event_N))
+        with Global => (Output => TD_Moving_Due,
+                        In_Out => (Status_List, Status_N, Events, Event_N))
       is
       begin
          Status (SS_Train_Data_Changed, 0);
@@ -1259,6 +1293,25 @@ is
 
       --  1.
       Take_Packets (C);
+      --  3.12.4.4: the SH mode profile deleted for another reason than
+      --  entering SH (a new MA, 3.12.4.3; a shortening), the list of
+      --  balise groups for the SH area goes with it
+      declare
+         P      : constant EVC_Movement_Authority.Mode_Profile_Array :=
+           EVC_Movement_Authority.Mode_Profiles;
+         Now_SH : Boolean := False;
+      begin
+         for I in P'Range loop
+            if P (I).Used and then P (I).Mode = 1 then
+               Now_SH := True;
+            end if;
+         end loop;
+         if SH_Profile_Seen and then not Now_SH and then C.Mode /= M_SH then
+            SH_List_Known := False;
+            SH_List_N := 0;
+         end if;
+         SH_Profile_Seen := Now_SH;
+      end;
       Linking_Events;
       if Now_Flags.Link_SB
         and then C.Mode in M_FS | M_AD | M_LS | M_OS | M_SM
@@ -1453,6 +1506,15 @@ is
          Former := False;
          Former_Passed := False;
       end if;
+      --  4.12: the brake of a change of Train Data while running is
+      --  revoked on entering NP, SB, SH, SM, SL, NL, maintained otherwise
+      if TD_Step in TD_Brake | TD_Ack
+        and then To in M_NP | M_SB | M_SH | M_SM | M_SL | M_NL
+      then
+         TD_Step := TD_Idle;
+         Status (SS_Train_Data_Changed_Brake, 1);
+      end if;
+
       --  5.17.2.2 E1, D4: the trip procedure exited, the re-validation
       --  (S6) in FS, LS, OS, SR, SN, UN; in SH the Train Data are invalid
       --  already (4.6.3 [68]): the procedure ends

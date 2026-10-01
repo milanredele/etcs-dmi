@@ -129,6 +129,14 @@ package body Sim_Telegrams is
       OK := OK and then Done;
    end Put;
 
+   procedure Put (W : in out Writer_T; P : T67.Packet_T; OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T67.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
    procedure Put (W : in out Writer_T; P : T69.Packet_T; OK : in out Boolean)
    is
       Done : Boolean;
@@ -456,6 +464,17 @@ package body Sim_Telegrams is
          else 0);
       return P;
    end Traction_Change;
+
+   function Big_Metal_Mass (D_M, L_M : Natural) return T67.Packet_T is
+      P : T67.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_TRACKCOND := D_TRACKCOND_T (D15 (D_M));
+      P.L_TRACKCOND := L_TRACKCOND_T (D15 (L_M));
+      P.N_ITER := 0;
+      return P;
+   end Big_Metal_Mass;
 
    function Current_Change (D_M, Current : Natural) return T40.Packet_T is
       P : T40.Packet_T;

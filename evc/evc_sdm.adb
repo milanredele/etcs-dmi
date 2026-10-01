@@ -876,6 +876,78 @@ is
 
    Max_Concerned : constant := 16;
 
+   ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4
+   ---------------------------------------------------------------------
+
+   --  5.18.4.2, 5.18.8.3: for each foot of S.Virtual, the SBI (SBI1) and
+   --  the Permitted limit of an SBD curve with that foot, at the
+   --  estimated speed, without the GUI. 5.16.3.2 (with LX_Here: LX_T is
+   --  the EOA target whose EOA is the start of the level crossing of
+   --  S.LX, stopping in rear of it not required): the location of the
+   --  Permitted speed supervision limit for V_LX (3.13.9.3.5.11, .12:
+   --  the formulas of V_est with V_LX) of its start as EOA (SBI1, the
+   --  estimated front end) and as SvL (SBI2, the max safe front end),
+   --  the most restrictive of the two, and whether the train has reached
+   --  it at or below V_LX
+   procedure Procedure_Targets (Work    : Work_T;
+                                C       : Ctx_T;
+                                S       : Snapshot_T;
+                                LX_T    : Target_T;
+                                LX_Here : Boolean;
+                                Virtual : out Virtual_Limits_T;
+                                Release : out Boolean;
+                                From    : out Dist_T)
+     with Pre => C.Stop > -Max_Cm
+   is
+   begin
+      Virtual := (others => <>);
+      Release := False;
+      From := 0;
+      if S.Train.Position_Valid then
+         declare
+            Cn : Ctx_T := C;
+         begin
+            Cn.GUI := False;
+            for K in S.Virtual'Range loop
+               if S.Virtual (K).Used then
+                  declare
+                     X : constant Dist_T :=
+                       EVC_Profile.Ahead_Of (S, S.Virtual (K).Foot);
+                     R : constant Eval_T :=
+                       Evaluate (Work, Cn,
+                                 (Kind => EOA_Target, Location => X,
+                                  EOA => X, Speed => 0, TSR => False),
+                                 C.V, False);
+                  begin
+                     Virtual (K) :=
+                       (Valid => True,
+                        Id    => S.Virtual (K).Id,
+                        Foot  => S.Virtual (K).Foot,
+                        SBI   => Along (S.Train.Ahead, Clamp (R.E.SBI)),
+                        P     => Along (S.Train.Ahead, Clamp (R.E.P)));
+                  end;
+               end if;
+            end loop;
+         end;
+      end if;
+
+      if LX_Here then
+         declare
+            V_LX : constant Speed_T := Speed_T (S.LX.Speed);
+            R    : constant Eval_T := Evaluate (Work, C, LX_T, V_LX, False);
+            By_E : constant Boolean :=
+              R.E.SBI - C.X_Est <= R.L.SBI - C.X_Max;
+            P    : constant Num := (if By_E then R.E.P else R.L.P);
+         begin
+            Release :=
+              C.V <= V_LX
+              and then (if By_E then C.X_Est >= R.E.P else C.X_Max >= R.L.P);
+            From := Along (S.Train.Ahead, Clamp (P));
+         end;
+      end if;
+   end Procedure_Targets;
+
    procedure Step (S       : Snapshot_T;
                    Inputs  : Inputs_T;
                    Work    : in out Work_T;
@@ -1385,25 +1457,17 @@ is
       Result.Indication := Ind_Found;
       Result.Indication_D := (if Ind_Found then Max (Ind_D, 0) else 0);
 
-      --  phase E4, 5.16.3.2: stopping in rear of the level crossing not
-      --  required, the location of the Permitted speed supervision limit
-      --  for V_LX (3.13.9.3.5.11, .12: the formulas of V_est with V_LX)
-      --  of its start as EOA (SBI1, the estimated front end) and as SvL
-      --  (SBI2, the max safe front end), the most restrictive of the two
-      if LX_Here and then EOA_Index > 0 and then not S.LX.Stop then
-         declare
-            V_LX : constant Speed_T := Speed_T (S.LX.Speed);
-            R    : constant Eval_T :=
-              Evaluate (Work, C, Work.Targets (EOA_Index), V_LX, False);
-            By_E : constant Boolean := R.E.SBI - C.X_Est <= R.L.SBI - C.X_Max;
-            P    : constant Num := (if By_E then R.E.P else R.L.P);
-         begin
-            Result.LX_Release :=
-              C.V <= V_LX
-              and then (if By_E then C.X_Est >= R.E.P else C.X_Max >= R.L.P);
-            Result.LX_From := Along (S.Train.Ahead, Clamp (P));
-         end;
-      end if;
+      --  phase E4: the virtual SBD curves of the track conditions
+      --  (5.18.4.2, 5.18.8.3), the substitution of a level crossing not
+      --  protected (5.16.3.2)
+      Procedure_Targets
+        (Work, C, S,
+         LX_T    => (if EOA_Index > 0 then Work.Targets (EOA_Index)
+                     else (others => <>)),
+         LX_Here => LX_Here and then EOA_Index > 0 and then not S.LX.Stop,
+         Virtual => Result.Virtual,
+         Release => Result.LX_Release,
+         From    => Result.LX_From);
 
       ------------------------------------------------------------------
       --  The type of monitoring (3.13.10.6, Table 16)

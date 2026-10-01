@@ -344,12 +344,17 @@ is
    --  a level, a mode or a text message is pending (3.14.1.7.3, 3.14.1.7.5)
    Brake_Pending_Ack : constant Byte := 3;
 
-   --  MSG_STATUS with the reversing indication (3.15.4.7)
-   function Status_Frame (Geo       : Unsigned_32;
-                          Seconds   : Unsigned_64;
-                          Brake     : Byte;
-                          TTI       : Unsigned_16;
-                          Reversing : Boolean) return Status_Frame_T
+   --  MSG_STATUS with the reversing indication (3.15.4.7) and the tunnel
+   --  stopping area (5.18.8: tunnel 0 none / unknown, 1 active, 2
+   --  announced; its distance, m)
+   function Status_Frame (Geo         : Unsigned_32;
+                          Seconds     : Unsigned_64;
+                          Brake       : Byte;
+                          TTI         : Unsigned_16;
+                          Reversing   : Boolean;
+                          Tunnel      : Byte := 0;
+                          Tunnel_Dist : Unsigned_32 := 0)
+     return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 
    --  MSG_SYSTEM_STATUS: entry u8 (the catalogue number, SS_* of
