@@ -921,7 +921,8 @@ modes half); National Systems; the automatic triggering of 5.22.3.1
 4.4.18, 4.4.20, parts of 4.10 and 4.12) are left to the merge, so that
 the two halves do not edit the same rows of the matrix.
 
-**Tests**: `evc_test` RESULT_EVC_TEST, 19 scenarios of the procedures
+**Tests**: `evc_test` 10595 checks, 0 failures (10223 at E3; the
+WIP of this branch 10540), 19 scenarios of the procedures
 in `test/src/evc_test_procedures.adb` that drive the on-board through
 its ports only (balise telegrams of `Sim_Telegrams`, now with packets 39,
 40, 67, 69, 88 and the mode profile, odometer, TIU, DMI frames) and
@@ -932,7 +933,14 @@ level 1 allows (5160000_01, 5170200_01, 5090200_01, ...). Until the
 start of mission of the modes half they start from a mode set with
 `EVC_Core.Set_Mode_For_Test`. One golden changed, profiles_track_conditions,
 by the 175 TIU track condition outputs alone (without them it hashes to
-the old golden). `evc_fuzz` raised: 0. Proof RESULT_PROOF.
+the old golden). `evc_fuzz` raised: 0; `test/check.sh` green with the EFS and
+SUBSET-076 checkouts (test/efs regenerated: its frames carry the
+matrix statuses); the wasm smoke checks pass. Proof: 7955 checks, 0
+unproved (3518 flow, 4437 provers); the LX and virtual-curve
+computations of `EVC_SDM` sit in their own subprogram
+(`Procedure_Targets`) so that the contracts of `Step` keep proving.
+Cross build: 598 kB code, 21 kB data, 219 kB static state (E3: 512,
+13.5, 183).
 
 **Matrix**: of the 336 E4 rows of these sections 266 `done`, 22
 `partial`, 36 `deferred` (E5, E7), 4 `n/a` (National Systems, the BTM
