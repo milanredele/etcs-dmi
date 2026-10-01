@@ -3144,7 +3144,7 @@ sub SubStep1
 efs: Kernel.Level.Value.Value <- Default.LevelEnum.L2
 case Propose Override in S10
 clause - absent Entry 5.4.3.3.19 ; efs Entry 5.4.3.3.19
-clause E4 todo 5.4.5.3 a) ; efs 5.4.5.3.a
+clause E4 partial 5.4.5.3 a) ; efs 5.4.5.3.a
 step Override is proposed in S10
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S10
@@ -3171,7 +3171,7 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.Override @ deadline
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Unknown @ deadline=1
 expect efs: DMI.MasterDMI().In_OverrideRequest.InputInformation.DriverAnswered @ deadline=1
 case Propose Override in S20
-clause E4 todo 5.4.5.3 a) ; efs 5.4.5.3.a
+clause E4 partial 5.4.5.3 a) ; efs 5.4.5.3.a
 step Override is proposed in S20
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S20
@@ -3320,7 +3320,7 @@ sub SubStep2
 efs: Testing.InitializeTerminals()
 case Propose Shunting in S20
 clause - absent Entry 5.4.3.3.19 ; efs Entry 5.4.3.3.19
-clause E4 todo 5.4.5.3 g) ; efs 5.4.5.3.g
+clause E4 done 5.4.5.3 g) ; efs 5.4.5.3.g
 clause - absent 5.4.5.3.g.1 ; efs 5.4.5.3.g.1
 step Shunting is proposed in S20
 sub Sub-step1

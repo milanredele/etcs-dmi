@@ -1243,7 +1243,8 @@ is
       --  The context
       ------------------------------------------------------------------
 
-      C.SB_Avail := Config.Service_Brake_Command and then NV.Q_NVSBTSMPERM;
+      C.SB_Avail := Config.Service_Brake_Command and then NV.Q_NVSBTSMPERM
+                    and then not Inputs.EB_Instead_Of_SB;
       C.GUI := NV.Q_NVGUIPERM and then Work.Model.Has_Normal;
       C.Inhibit := NV.Q_NVINHSMICPERM;
       C.Kt_Zero := Work.Model.Conversion and then NV.Kt_Int = 0;
@@ -1568,7 +1569,9 @@ is
             end if;
             --  Table 5: t4, t5
             if C.V > C.M_SBI then
-               if Config.Service_Brake_Command then
+               if Config.Service_Brake_Command
+                 and then not Inputs.EB_Instead_Of_SB
+               then
                   State.SB := True;
                else
                   State.EB_For_SB := True;

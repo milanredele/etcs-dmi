@@ -833,8 +833,8 @@ efs: Testing.SetUNMode(False)
 expect efs: Kernel.Modes.ModeRelatedSpeedLimits.SpeedRestrictions ( 0.0 ) == 70.0
 case Speed limits given by the trackside or by the driver
 clause - absent 3.11.2.2 f) ; efs 3.11.2.2.f
-clause E3 deferred 3.11.7.1.1 ; efs 3.11.7.1.1
-clause E3 partial 3.11.7.1 ; efs 3.11.7.1.2
+clause E3 done 3.11.7.1.1 ; efs 3.11.7.1.1
+clause E3 done 3.11.7.1 ; efs 3.11.7.1.2
 clause E3 done 3.11.7.1.3 ; efs 3.11.7.1.3
 step Speed limits given by the trackside
 sub Sub-step1

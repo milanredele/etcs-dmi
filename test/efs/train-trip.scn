@@ -916,7 +916,7 @@ expect efs: Kernel.Mode == ModeEnum.SN
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.NoProcedure
 sequence Close desk in Trip mode
 case Close desk
-clause E4 todo 4.4.13.1.6 ; efs 4.4.13.1.6
+clause E4 partial 4.4.13.1.6 ; efs 4.4.13.1.6
 step Initialize test environment
 sub Sub-step1
 init 100.0 TR
@@ -3025,13 +3025,13 @@ set nv M_NVAVADH 0.0
 end init
 set nv D_NVSTFF 450.0
 case Request driver acknowledgement
-clause E4 todo 5.11.2.2 S160 ; efs Entry 5.11.2.2.S160.1
+clause E4 done 5.11.2.2 S160 ; efs Entry 5.11.2.2.S160.1
 step Request driver acknowledgement
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S160
 expect efs: DMI.MasterDMI().In_AcknOfSRMode.InputInformation.RequestStatus == RequestEnum.Request
 case Mode change to SR
-clause E4 todo 5.11.2.2 S160 ; efs Entry 5.11.2.2.S160.2
+clause E4 done 5.11.2.2 S160 ; efs Entry 5.11.2.2.S160.2
 step Mode change to SR
 sub Sub-step1
 efs: DMI.MasterDMI().In_AcknOfSRMode.ProvideDriverResponse()

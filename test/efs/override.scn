@@ -1589,7 +1589,7 @@ expect efs: NOT Kernel.Override.OverrideIsActive() @ deadline=1
 sequence End of Override: SR distance supervised is overpassed
 case End of Override: SR distance supervised is overpassed
 clause E4 partial 5.8.4.1 ; efs 5.8.4.1
-clause E4 todo 5.8.4.1 h) ; efs 5.8.4.1.h
+clause E4 done 5.8.4.1 h) ; efs 5.8.4.1.h
 step Setup - Trigger Override
 sub Setup
 init 0.0 SR
@@ -2323,7 +2323,7 @@ case Trigger Override
 clause E4 done 5.8.2.1 ; efs 5.8.2.1
 clause E4 done 5.8.2.1 a) ; efs 5.8.2.1.a
 clause E4 done 5.8.2.1 b) ; efs 5.8.2.1.b
-clause E4 partial 5.8.2.1 c) ; efs 5.8.2.1.c
+clause E4 done 5.8.2.1 c) ; efs 5.8.2.1.c
 clause E4 done 5.8.2.3 ; efs 5.8.2.3
 clause - absent 5.8.3.4 ; efs 5.8.3.4
 clause - absent 5.8.3.5 ; efs 5.8.3.5
@@ -2512,7 +2512,7 @@ case All conditions satisfied
 clause E4 done 5.8.2.1 ; efs 5.8.2.1
 clause E4 done 5.8.2.1 a) ; efs 5.8.2.1.a
 clause E4 done 5.8.2.1 b) ; efs 5.8.2.1.b
-clause E4 partial 5.8.2.1 c) ; efs 5.8.2.1.c
+clause E4 done 5.8.2.1 c) ; efs 5.8.2.1.c
 clause E4 done 5.8.2.3 ; efs 5.8.2.3
 step Setup
 sub SubStep1
@@ -3851,7 +3851,7 @@ case Mode condition not satisfied
 clause E4 done 5.8.2.1 ; efs 5.8.2.1
 clause E4 done 5.8.2.1 a) ; efs 5.8.2.1.a
 clause E4 done 5.8.2.1 b) ; efs 5.8.2.1.b
-clause E4 partial 5.8.2.1 c) ; efs 5.8.2.1.c
+clause E4 done 5.8.2.1 c) ; efs 5.8.2.1.c
 step Setup
 sub Set mode
 init 0.0 FS
@@ -4129,7 +4129,7 @@ case Speed condition not satisfied
 clause E4 done 5.8.2.1 ; efs 5.8.2.1
 clause E4 done 5.8.2.1 a) ; efs 5.8.2.1.a
 clause E4 done 5.8.2.1 b) ; efs 5.8.2.1.b
-clause E4 partial 5.8.2.1 c) ; efs 5.8.2.1.c
+clause E4 done 5.8.2.1 c) ; efs 5.8.2.1.c
 step Setup
 sub Set mode
 init 0.0 FS
@@ -4269,7 +4269,7 @@ case Train Data condition not satisfied
 clause E4 done 5.8.2.1 ; efs 5.8.2.1
 clause E4 done 5.8.2.1 a) ; efs 5.8.2.1.a
 clause E4 done 5.8.2.1 b) ; efs 5.8.2.1.b
-clause E4 partial 5.8.2.1 c) ; efs 5.8.2.1.c
+clause E4 done 5.8.2.1 c) ; efs 5.8.2.1.c
 step Setup
 sub Set mode
 init 0.0 FS

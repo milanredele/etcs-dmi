@@ -1303,6 +1303,26 @@ package body EVC_Test_Procedures is
       Cycle;
       Check (not EB and then Seen_SS (27, 1),
              "3.14.1.7.1: released at standstill after acknowledgement");
+
+      --  4.4.18.1.6 (e4/integration): above the reversing speed the SBI
+      --  commands the emergency brake instead of the service brake
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 1_000);
+      Add (ST.Reversing_Area (D_M => 100, L_M => 200));
+      Add (ST.Reversing_Supervision (D_M => 150, Kmh => 15));
+      Close;
+      Run_Front (200, 20);
+      Stand;
+      TIU_In (6, 2);
+      Cycle;
+      Ack (1);
+      Cycle;
+      --  21 km/h: above the SBI (15 + 5.5), below the EBI (15 + 7.5)
+      Run_Front (185, 21);
+      Check (Mode_Byte = Code_RV and then EB and then not SB
+             and then Why (EVC_Ports.TIU_Reason_Speed_Distance),
+             "4.4.18.1.6, 3.13.10.2.4: the SBI exceeded in RV, the "
+             & "emergency brake instead of the service brake");
    end Scenario_Reversing;
 
    --  3.12.3 text messages (SUBSET-076 3120300)

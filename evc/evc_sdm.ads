@@ -71,6 +71,10 @@ is
       Level_1        : Boolean := False;
       --  the distance from the active antenna to the front end
       Antenna_Offset : Natural range 0 .. 100_000 := 0;
+      --  phase E4, 4.4.18.1.6: in Reversing an SBI exceeded commands the
+      --  emergency brake instead of the service brake (revoked as the
+      --  service brake would be, 3.13.10.2.4)
+      EB_Instead_Of_SB : Boolean := False;
    end record;
 
    ---------------------------------------------------------------------

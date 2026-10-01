@@ -874,7 +874,9 @@ is
                               and then EVC_Levels.Level = L1,
             Antenna_Offset =>
               Natural (EVC_Position.Front_Offset
-                         (EVC_Position.Orientation)));
+                         (EVC_Position.Orientation)),
+            --  4.4.18.1.6: in RV the emergency brake for the SBI
+            EB_Instead_Of_SB => Current_Mode = M_RV);
       begin
          EVC_SDM.Step (S, Inputs, SDM_Work, SDM_State, SDM_Result);
          EVC_Brake_Commands.Step

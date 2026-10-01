@@ -443,7 +443,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.6.3.1,3,x,,,,,E3,deferred,E5 (level 2 MA)
 3.11.6.4,3,x,x,,,,E3,done,"V_MAIN 0 recorded as a trip order (EVC_Movement_Authority.Trip_Ordered, JRU); the trip 4.6.3 [18] (EVC_Procedures); evc_test_procedures Scenario_Trip_Order"
 3.11.6.5,3,x,,,,,E3,deferred,E7 (infill)
-3.11.7.1,3,x,,,,,E3,partial,"EVC_Core.Mode_Speed: SR (V_NVSTFF or the driver's), SH (V_NVSHUNT), OS, LS, UN from the national values; the mode profile and RV speeds are the procedures half's"
+3.11.7.1,3,x,,,,,E3,done,"the MRSP takes the mode related speed of EVC_Procedures.Mode_Speed, the one source (V_NVSHUNT, V_NVONSIGHT, V_NVLIMSUPERV, V_NVUNFIT, the V_MAMODE of the mode profile, V_REVERSE, in SR EVC_Mission's SR speed, the override speed); evc_test_procedures Mode_Speeds and the mode scenarios, Integration_SR_Override_Trip"
 3.11.7.1.1,3,x,,,,,E3,done,"the V_MAMODE of the mode profile the mode was entered with (EVC_Procedures.Mode_Speed); evc_test_procedures Scenario_On_Sight, Scenario_Limited_Supervision"
 3.11.7.1.3,3,x,,,,,E3,done,"the driver's SR speed limit (EVC_Mission, 4.4.11.1.5)"
 3.11.8.1,3,x,,,,,E3,done,V_MAXTRAIN the ceiling of the MRSP (EVC_Stored_Information.Build); evc_test Scenario_SSP_Gradients
@@ -1193,18 +1193,18 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.7.1.6,4,x,,,,,E4,partial,the train position runs in SB (EVC_Position); train integrity reports are E5
 4.4.7.1.6 a),4,x,,,,,E4,partial,the train position runs in SB (EVC_Position); train integrity reports are E5
 4.4.7.1.6 b),4,x,,,,,E4,partial,the train position runs in SB (EVC_Position); train integrity reports are E5
-4.4.8.1.1,4,x,,,,,E4,todo,
-4.4.8.1.1 a),4,x,,,,,E4,todo,
-4.4.8.1.1 b),4,x,,,,,E4,todo,
-4.4.8.1.1 c),4,x,,,,,E4,todo,
-4.4.8.1.2,4,x,,,,,E4,todo,
-4.4.8.1.3,4,x,,,,,E4,todo,
-4.4.8.1.4,4,x,,,,,E4,todo,
-4.4.8.1.5,4,x,,,,,E4,todo,
-4.4.8.1.5.2,4,x,,,,,E4,todo,
-4.4.8.1.5.3,4,x,,,,,E4,todo,
-4.4.8.1.6,4,x,,,,,E4,todo,
-4.4.8.1.10,4,x,,,,,E4,todo,
+4.4.8.1.1,4,x,,,,,E4,done,"SH: the ceiling V_NVSHUNT (EVC_Procedures.Mode_Speed), the list of balise groups for the SH area (packet 49, 4.6.3 [52]), ""stop if in shunting"" (packet 132, [49]); evc_test_procedures Shunting_Driver, Shunting_Trackside, Shunting_Trips"
+4.4.8.1.1 a),4,x,,,,,E4,done,"V_NVSHUNT or the V_MAMODE of the SH profile (EVC_Procedures.Mode_Speed, 3.11.7.1); evc_test_procedures Shunting_Driver, Integration_Shunting"
+4.4.8.1.1 b),4,x,,,,,E4,done,"packet 49 stored with the MA, a group not in it trips ([52]); evc_test_procedures Shunting_Trackside"
+4.4.8.1.1 c),4,x,,,,,E4,done,"packet 132 accepted in SH (4.8.4), [49]; evc_test_procedures Shunting_Trips"
+4.4.8.1.2,4,x,,,,,E4,done,"[5], [50], [51], [23] read no Train Data; 4.10: the Train Data to be revalidated in SH (EVC_Mission); evc_test_procedures Integration_Shunting"
+4.4.8.1.3,4,x,,,,,E4,partial,"the train position runs in the mode (EVC_Position); the engine's front and rear end: the train length is not given to the position yet (EVC_Position.Set_Train_Length, with the position reports of E5)"
+4.4.8.1.4,4,x,,,,,E4,todo,"no TIU output ""ready for remote shunting"" (SUBSET-034) yet"
+4.4.8.1.5,4,x,,,,,E4,done,"EVC_Levels: the announcements rejected, the immediate and conditional orders kept in SH, PS and SM and evaluated once another mode is entered (4.8.4 [7]); evc_test_procedures Integration_Shunting_Levels"
+4.4.8.1.5.2,4,x,,,,,E4,deferred,"the RBC (communication session, handover): E5"
+4.4.8.1.5.3,4,x,,,,,E4,deferred,"the RBC (communication session, handover): E5"
+4.4.8.1.6,4,x,,,,,E4,done,"[5] at standstill (the driver), [50], [51] (the trackside); evc_test_procedures Shunting_Driver, Shunting_Trackside, Integration_Shunting"
+4.4.8.1.10,4,x,,,,,E4,done,MSG_SPEED_STATE every cycle (the DMI shows the permitted speed on request)
 4.4.9.1.1,4,x,,,,,E4,done,"4.6.3 [10], [25], [32] (EVC_Transition_Conditions: MA + SSP + gradient on-board, no mode profile overlap); evc_test E4_SoM_Level_1, E4_Acceptance, E4_Level_Transition_0"
 4.4.9.1.4,4,x,,,,,E4,done,"EVC_Stored_Information.Train_Covered (SSP and gradient from the min safe rear end to the front), EVC_Core: MSG_SYSTEM_STATUS 6 started in FS while not covered, ended once covered; evc_test E4_SoM_Level_1"
 4.4.9.1.5,4,x,,,,,E4,done,"FS: the supervision of E3 on the snapshot of the mode (EVC_Modes.MA_Mode, Track_Speed_Mode), MSG_SPEED_STATE and MSG_PLANNING; evc_test E4_SoM_Level_1"
@@ -1212,7 +1212,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.10.1.2,4,x,,,,,E4,done,"UN: ceiling min(V_NVUNFIT, V_MAXTRAIN) (EVC_Core.Mode_Speed, EVC_Modes.Train_Speed_Mode) and the TSRs (EVC_Track_Description.Speed_Elements Only_TSR); evc_test E4_SoM_Other_Levels, E4_Level_Transition_0"
 4.4.10.1.3,4,x,,,,,E4,done,"UN: ceiling min(V_NVUNFIT, V_MAXTRAIN) (EVC_Core.Mode_Speed, EVC_Modes.Train_Speed_Mode) and the TSRs (EVC_Track_Description.Speed_Elements Only_TSR); evc_test E4_SoM_Other_Levels, E4_Level_Transition_0"
 4.4.10.1.4,4,x,,,,,E4,done,MSG_SPEED_STATE every cycle
-4.4.11.1.3,4,x,,,,,E4,partial,"a) b) e) done; c) d) the lists of balise groups and ""stop if in SR"" are the RBC (E5) and the procedures half ([36], [54])"
+4.4.11.1.3,4,x,,,,,E4,partial,"a) b) d) e) done ([54], evc_test_procedures Integration_SR_Override_Trip); c) the list of balise groups in SR comes from the RBC (E5)"
 4.4.11.1.3 a),4,x,,,,,E4,done,"EVC_Mission.SR_Speed into Mode_Speed; evc_test E4_SoM_Level_1, E4_SR_Distance"
 4.4.11.1.3 b),4,x,,,,,E4,done,"EVC_Mission.SR_Distance (EVC_Odometry virtual position) to Snapshot_T.Extra.SR_Distance / SR_End, supervised by EVC_SDM (E3), 4.6.3 [42] trips; evc_test E4_SR_Distance"
 4.4.11.1.3 c),4,x,,,,,E4,deferred,"c) E5 (list from the RBC); d) ""stop if in SR"" (4.6.3 [54]) with the procedures half"
@@ -1231,29 +1231,29 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.11.1.6.4,4,x,,,,,E4,partial,a) done; b) the RBC (E5)
 4.4.11.1.6.4 a),4,x,,,,,E4,done,EVC_Mission: the last entry replaces the distance
 4.4.11.1.6.4 b),4,x,,,,,E4,deferred,E5 (SR distance from the RBC)
-4.4.11.1.6.5,4,x,,,,,E4,todo,
+4.4.11.1.6.5,4,x,,,,,E4,done,"EVC_Mission.Override_In_SR, called by EVC_Core.Run_Procedures on [37] in SR (the distance counted from the selection, 4.4.11.1.3.1 a); evc_test_procedures Integration_SR_Override_Trip"
 4.4.11.1.6.6,4,x,,,,,E4,deferred,E5 (RBC list) / E7 (Euroloop)
 4.4.11.1.6.7,4,x,,,,,E4,deferred,E5 (RBC list) / E7 (Euroloop)
-4.4.11.1.7,4,x,,,,,E4,partial,MSG_SPEED_STATE every cycle (the DMI shows the permitted speed on request); the override status is the procedures half's
+4.4.11.1.7,4,x,,,,,E4,done,MSG_SPEED_STATE every cycle (the DMI shows the permitted speed on request); the override in MSG_MODE_LEVEL (5.8.3.7)
 4.4.11.1.8,4,x,,,,,E4,done,the SR distance is a virtual position of 3.6.7 (EVC_Odometry.Virtual_T)
 4.4.11.1.9,4,x,,,,,E4,deferred,E5 (track ahead free from the RBC)
-4.4.12.1.2,4,x,,,,,E4,todo,
-4.4.12.1.3,4,x,,,,,E4,todo,
-4.4.12.1.4,4,x,,,,,E4,todo,
-4.4.12.1.5,4,x,,,,,E4,todo,
-4.4.12.1.7,4,x,,,,,E4,todo,
-4.4.13.1.2,4,x,,,,,E4,todo,
-4.4.13.1.3,4,x,,,,,E4,todo,
-4.4.13.1.4,4,x,,,,,E4,todo,
-4.4.13.1.6,4,x,,,,,E4,todo,
-4.4.14.1.1,4,x,,,,,E4,todo,
-4.4.14.1.2,4,x,,,,,E4,todo,
-4.4.14.1.2.1,4,x,,,,,E4,todo,
-4.4.14.1.3,4,x,,,,,E4,todo,
-4.4.14.1.3.1,4,x,,,,,E4,todo,
-4.4.14.1.3.2,4,x,,,,,E4,todo,
-4.4.14.1.4,4,x,,,,,E4,todo,
-4.4.14.1.9,4,x,,,,,E4,todo,
+4.4.12.1.2,4,x,,,,,E4,done,"[15], [40], [73] from the mode profile (EVC_Procedures); evc_test_procedures On_Sight, Integration_OS_Level"
+4.4.12.1.3,4,x,,,,,E4,done,"the MRSP with its curves in OS (EVC_Modes.TSR_Mode, Snapshot_T.Supervise); evc_test_procedures On_Sight"
+4.4.12.1.4,4,x,,,,,E4,done,"MSG_SPEED_STATE every cycle (the DMI shows the permitted speed, target and release speed on request)"
+4.4.12.1.5,4,x,,,,,E4,deferred,the track ahead free request comes from the RBC: E5
+4.4.12.1.7,4,x,,,,,E4,done,EVC_Core: MSG_SYSTEM_STATUS 7 while SSP and gradient do not cover the train in OS (EVC_Stored_Information.Train_Covered); evc_test_procedures Integration_OS_Level
+4.4.13.1.2,4,x,,,,,E4,done,"EVC_Procedures.Brake_Demand: the emergency brake while in TR, TIU reason bit 7 (trip); evc_test_procedures Trip_EOA, Integration_SR_Override_Trip"
+4.4.13.1.3,4,x,,,,,E4,done,"one trip entry: the reason is the first condition of the transition taken (EVC_Procedures.Mode_Changed), MSG_SYSTEM_STATUS 2, 16, 21 to 25, 29; evc_test_procedures Trip_*, Integration_SR_Override_Trip, Integration_Override_Level"
+4.4.13.1.4,4,x,,,,,E4,done,EVC_Procedures.Finish_Cycle asks it at standstill (MSG_MODE_LEVEL mode_ack TR); evc_test_procedures Trip_EOA
+4.4.13.1.6,4,x,,,,,E4,partial,no transition out of TR on the desk closure (EVC_Modes.Conditions); the driver's actions are not refused while the desk is closed (the DMI of a closed desk sends none)
+4.4.14.1.1,4,x,,,,,E4,done,"[7], [62], [63], [68] on the acknowledgement at standstill; evc_test_procedures Trip_EOA, Integration_SR_Override_Trip"
+4.4.14.1.2,4,x,,,,,E4,done,the emergency brake of the trip released in PT (EVC_Procedures.Finish_Cycle); evc_test_procedures Trip_EOA
+4.4.14.1.2.1,4,x,,,,,E4,done,the trip reason ends when PT is left (EVC_Procedures.Mode_Changed); evc_test_procedures Trip_EOA
+4.4.14.1.3,4,x,,,,,E4,done,"D_NVPOTRP from the estimated front end at the entry, the service brake (EVC_Procedures.Post_Trip_Step); evc_test_procedures Trip_EOA"
+4.4.14.1.3.1,4,x,,,,,E4,done,EVC_Brake_Commands: the reverse movement allowed in PT; evc_test_procedures Trip_EOA
+4.4.14.1.3.2,4,x,,,,,E4,done,EVC_Procedures.Post_Trip_Step; evc_test_procedures Trip_EOA
+4.4.14.1.4,4,x,,,,,E4,done,4.6.2 has no transition PT -> TR (EVC_Modes.Transitions)
+4.4.14.1.9,4,x,,,,,E4,deferred,"the reaction to a balise group message consistency error (3.16.2.4.4, 3.16.2.5.1) is E6"
 4.4.15.1.1.2,4,x,,,,,E4,done,4.6.3 [46] needs the non-leading input (EVC_Train_Inputs); evc_test E4_SL_NL_IS
 4.4.15.1.1.3,4,x,,,,,E4,done,"EVC_Mission.NL_No_Longer_Permitted: MSG_SYSTEM_STATUS 35 (to be acknowledged, the DMI ends it), SB at standstill (4.6.3 [47]); evc_test E4_SL_NL_IS"
 4.4.15.1.2,4,x,,,,,E4,done,no supervision in NL (EVC_Modes); evc_test E4_SL_NL_IS
@@ -1265,73 +1265,73 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.16.1.5,4,x,,,,,E4,deferred,"AD: the ATO port (SUBSET-125), with the ATO on-board after E4; AD is not entered (4.6.3 [80] not implemented)"
 4.4.16.1.6,4,x,,,,,E4,deferred,"AD: the ATO port (SUBSET-125), with the ATO on-board after E4; AD is not entered (4.6.3 [80] not implemented)"
 4.4.17.1.2,4,x,,,,,E4,done,SN: the third filter of 4.8.4 (EVC_Acceptance); the National System itself is out of scope (PLAN.md)
-4.4.18.1.3,4,x,,,,,E4,todo,
-4.4.18.1.3 a),4,x,,,,,E4,todo,
-4.4.18.1.3 b),4,x,,,,,E4,todo,
-4.4.18.1.4,4,x,,,,,E4,todo,
-4.4.18.1.5,4,x,,,,,E4,todo,
-4.4.18.1.6,4,x,,,,,E4,todo,
-4.4.18.1.7,4,x,,,,,E4,todo,
-4.4.18.1.8,4,x,,,,,E4,todo,
-4.4.18.1.10,4,x,,,,,E4,todo,
-4.4.18.1.11,4,x,,,,,E4,todo,
-4.4.18.1.12,4,x,,,,,E4,todo,
-4.4.19.1.2,4,x,,,,,E4,todo,
-4.4.19.1.3,4,x,,,,,E4,todo,
-4.4.19.1.4,4,x,,,,,E4,todo,
-4.4.19.1.4 a),4,x,,,,,E4,todo,
-4.4.19.1.4 b),4,x,,,,,E4,todo,
-4.4.19.1.4.2,4,x,,,,,E4,todo,
-4.4.19.1.4.2 a),4,x,,,,,E4,todo,
-4.4.19.1.4.2 b),4,x,,,,,E4,todo,
-4.4.19.1.4.2 c),4,x,,,,,E4,todo,
-4.4.19.1.4.3,4,x,,,,,E4,todo,
-4.4.19.1.4.4,4,x,,,,,E4,todo,
-4.4.19.1.4.5,4,x,,,,,E4,todo,
-4.4.19.1.4.5 a),4,x,,,,,E4,todo,
-4.4.19.1.4.5 b),4,x,,,,,E4,todo,
-4.4.19.1.4.6,4,x,,,,,E4,todo,
-4.4.19.1.4.7,4,x,,,,,E4,todo,
-4.4.19.1.4.7 a),4,x,,,,,E4,todo,
-4.4.19.1.4.7 b),4,x,,,,,E4,todo,
-4.4.19.1.4.8,4,x,,,,,E4,todo,
-4.4.20.1.2,4,x,,,,,E4,todo,
-4.4.20.1.3,4,x,,,,,E4,todo,
-4.4.20.1.4,4,x,,,,,E4,todo,
-4.4.20.1.5,4,x,,,,,E4,todo,
-4.4.20.1.6,4,x,,,,,E4,todo,
-4.4.20.1.7,4,x,,,,,E4,todo,
-4.4.20.1.8,4,x,,,,,E4,todo,
-4.4.20.1.9,4,x,,,,,E4,todo,
-4.4.20.1.11,4,x,,,,,E4,todo,
-4.4.20.1.12,4,x,,,,,E4,todo,
-4.4.20.1.13,4,x,,,,,E4,todo,
-4.4.20.1.15,4,x,,,,,E4,todo,
-4.4.21.1.3,4,x,,,,,E4,todo,
-4.4.21.1.4,4,x,,,,,E4,todo,
-4.4.21.1.5,4,x,,,,,E4,todo,
-4.4.21.1.6,4,x,,,,,E4,todo,
-4.4.21.1.7,4,x,,,,,E4,todo,
-4.4.21.1.7 a),4,x,,,,,E4,todo,
-4.4.21.1.7 b),4,x,,,,,E4,todo,
-4.4.21.1.7 b) 1st bullet,4,x,,,,,E4,todo,
-4.4.21.1.7 b) 2nd bullet,4,x,,,,,E4,todo,
-4.4.21.1.7 c) 1st bullet,4,x,,,,,E4,todo,
-4.4.21.1.7 c) 2nd bullet,4,x,,,,,E4,todo,
-4.4.21.1.8,4,x,,,,,E4,todo,
-4.4.21.1.9,4,x,,,,,E4,todo,
-4.4.21.1.10,4,x,,,,,E4,todo,
-4.4.21.1.11,4,x,,,,,E4,todo,
-4.4.21.1.12,4,x,,,,,E4,todo,
-4.4.21.1.13,4,x,,,,,E4,todo,
+4.4.18.1.3,4,x,,,,,E4,done,"V_REVERSE and D_REVERSE of packet 139 (EVC_Procedures.Mode_Speed, Reversing_Step); evc_test_procedures Reversing"
+4.4.18.1.3 a),4,x,,,,,E4,done,the reversing speed as the ceiling (3.11.7.1.2); evc_test_procedures Reversing
+4.4.18.1.3 b),4,x,,,,,E4,done,"the distance to run from the end of the area (3.15.4.2.1), the emergency brake; evc_test_procedures Reversing"
+4.4.18.1.4,4,x,,,,,E4,done,EVC_Procedures.Reversing_Step; evc_test_procedures Reversing
+4.4.18.1.5,4,x,,,,,E4,partial,MSG_SPEED_STATE every cycle; the remaining distance to run in reverse is not sent to the DMI
+4.4.18.1.6,4,x,,,,,E4,done,"EVC_SDM.Inputs_T.EB_Instead_Of_SB in RV (EVC_Core): the SBI commands the emergency brake, revoked as the service brake (3.13.10.2.4); evc_test_procedures Reversing"
+4.4.18.1.7,4,x,,,,,E4,deferred,the position reports are E5
+4.4.18.1.8,4,x,,,,,E4,done,"EVC_Brake_Commands: the reverse movement allowed in RV, the forward one protected; evc_test_procedures Reversing"
+4.4.18.1.10,4,x,,,,,E4,deferred,"the reaction to a balise group message consistency error (3.16.2.4.4, 3.16.2.5.1) is E6"
+4.4.18.1.11,4,x,,,,,E4,n/a,"no alarm of the balise transmission function reaches this on-board (SUBSET-036 is out, doc/EVC-PLAN.md §1; as the alarm rows of 5.22)"
+4.4.18.1.12,4,x,,,,,E4,done,"the telegram is refused (ETCS_Telegram, 3.17.3.5); [65] is no transition from RV, nothing is indicated"
+4.4.19.1.2,4,x,,,,,E4,done,"[70], [72], [74] from the mode profile (EVC_Procedures); evc_test_procedures Limited_Supervision"
+4.4.19.1.3,4,x,,,,,E4,done,the MRSP with its curves in LS (EVC_Modes.TSR_Mode); evc_test_procedures Limited_Supervision
+4.4.19.1.4,4,x,,,,,E4,partial,"MSG_SPEED_STATE every cycle; the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.2,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.2 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.2 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.2 c),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.3,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.4,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.5,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.5 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.5 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.6,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.7,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.7 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.7 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4.8,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.20.1.2,4,x,,,,,E4,done,"PS has no MSG_MODE_LEVEL (the DMI has no PS); a desk opened leaves PS ([22], [23])"
+4.4.20.1.3,4,x,,,,,E4,done,"no supervision in PS (EVC_Modes, no mode speed: EVC_Procedures.Mode_Speed)"
+4.4.20.1.4,4,x,,,,,E4,partial,"the train position runs in the mode (EVC_Position); the engine's front and rear end: the train length is not given to the position yet (EVC_Position.Set_Train_Length, with the position reports of E5)"
+4.4.20.1.5,4,x,,,,,E4,done,"EVC_Mission.Continue_Shunting (MSG_DRIVER_ACTION 19 in SH), one state for [26] and [27]; evc_test E4_Continue_Shunting, evc_test_procedures Integration_Shunting"
+4.4.20.1.6,4,x,,,,,E4,done,"[26], [27], [30]; evc_test_procedures Shunting_Driver, Integration_Shunting"
+4.4.20.1.7,4,x,,,,,E4,done,EVC_Mission.Mode_Entered ends the function when SH is left; evc_test_procedures Integration_Shunting
+4.4.20.1.8,4,x,,,,,E4,done,[23]; evc_test_procedures Integration_Shunting
+4.4.20.1.9,4,x,,,,,E4,done,"packet 135 accepted in PS (4.8.4), [22]; evc_test_procedures Integration_Shunting"
+4.4.20.1.11,4,x,,,,,E4,done,"EVC_Levels: as 4.4.8.1.5, the same code for SH, PS and SM (4.8.4 [7])"
+4.4.20.1.12,4,x,,,,,E4,deferred,"the RBC (communication session, handover): E5"
+4.4.20.1.13,4,x,,,,,E4,deferred,"the RBC (communication session, handover): E5"
+4.4.20.1.15,4,x,,,,,E4,deferred,"the reaction to a balise group message consistency error (3.16.2.4.4, 3.16.2.5.1) is E6"
+4.4.21.1.3,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.4,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.5,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.6,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.7,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.7 a),4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.7 b),4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.7 b) 1st bullet,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.7 b) 2nd bullet,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.7 c) 1st bullet,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.7 c) 2nd bullet,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.8,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.9,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.10,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.11,4,x,,,,,E4,done,"EVC_Levels: as 4.4.8.1.5, the same code for SH, PS and SM (4.8.4 [7])"
+4.4.21.1.12,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
+4.4.21.1.13,4,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
 4.5.1.4,4,x,,,,,E4,done,nothing runs in No Power (EVC_Core: the state before the first cycle)
 4.5.2.1,4,x,,,,,E4,done,"EVC_Modes (MA_Mode, Track_Speed_Mode, TSR_Mode, Train_Speed_Mode, Linking_Check_Mode, Odometer_Check_Mode) used by EVC_Stored_Information.Build (the MRSP sources, the MA, Supervise), EVC_Position.Set_Linking_Context, EVC_Brake_Commands (roll away, direction); the ceiling only modes {4} by the mode speed (EVC_SDM); the RBC and ATO rows are E5"
 4.5.2.2 Table,4,x,,,,,E4,done,"EVC_Modes (MA_Mode, Track_Speed_Mode, TSR_Mode, Train_Speed_Mode, Linking_Check_Mode, Odometer_Check_Mode) used by EVC_Stored_Information.Build (the MRSP sources, the MA, Supervise), EVC_Position.Set_Linking_Context, EVC_Brake_Commands (roll away, direction); the ceiling only modes {4} by the mode speed (EVC_SDM); the RBC and ATO rows are E5"
 4.5.2.2 Table-footnote {2},4,x,,,,,E4,done,"EVC_Modes (MA_Mode, Track_Speed_Mode, TSR_Mode, Train_Speed_Mode, Linking_Check_Mode, Odometer_Check_Mode) used by EVC_Stored_Information.Build (the MRSP sources, the MA, Supervise), EVC_Position.Set_Linking_Context, EVC_Brake_Commands (roll away, direction); the ceiling only modes {4} by the mode speed (EVC_SDM); the RBC and ATO rows are E5"
 4.5.2.2 Table-footnote {4},4,x,,,,,E4,done,"EVC_Modes (MA_Mode, Track_Speed_Mode, TSR_Mode, Train_Speed_Mode, Linking_Check_Mode, Odometer_Check_Mode) used by EVC_Stored_Information.Build (the MRSP sources, the MA, Supervise), EVC_Position.Set_Linking_Context, EVC_Brake_Commands (roll away, direction); the ceiling only modes {4} by the mode speed (EVC_SDM); the RBC and ATO rows are E5"
 4.6.2 Table,4,x,,,,,E4,done,"EVC_Modes.Transitions and Conditions; EVC_Core.Run_Mode_Machine takes the transition of the highest priority whose condition holds (proved: only transitions of the table, nothing leaves IS, NP -> IS before SB); evc_test E4_Tables"
-4.6.3 Table,4,x,,,,,E4,partial,"EVC_Transition_Conditions: [1] to [4], [10], [13] (host fault), [14], [21], [25], [26], [29], [32], [39], [42], [44] to [47], [56], [58], [60], [67], [77] to [79], [84] by e4/modes; the others are the procedures half's (doc/EVC-PLAN.md §10) or E5"
-4.6.3 Table-footnote {9},4,x,,,,,E4,todo,
+4.6.3 Table,4,x,,,,,E4,partial,"EVC_Transition_Conditions: every condition of levels 0 and 1 (e4/modes and e4/procedures, integrated: one mode machine, every trip condition in EVC_Procedures); not implemented: level 2 and the RBC ([6], [11], [20], [31], [36], [41], [81]; [45] needs level 2: E5), AD ([24], [33], [48], [53], [80]), the safe consist length ([83], E5), the National System ([35], [38]); [13] is the host's (EVC_Core.Enter_Failure)"
+4.6.3 Table-footnote {9},4,x,,,,,E4,done,"the temporary EOA is a target of EVC_SDM (EOA_Passed: [12], [16]) and the former EOA of the override takes the temporary one (5.8.1.9); evc_test_procedures Level_Crossing"
 4.7.2.1.1,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
 4.7.2.1.2,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
 4.7.2.1.4 Table,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
@@ -1458,7 +1458,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.3.2 S3,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
 5.4.3.2 S4,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
 5.4.3.2 S5,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
-5.4.3.2 S10,5,x,,,,,E4,partial,NL (E10) done ([46]); SH and SM are the procedures half's; Train Data entry (E11) done
+5.4.3.2 S10,5,x,,,,,E4,partial,"NL (E10, [46]), SH ([5] from SB, EVC_Procedures) and the Train Data entry (E11) done; SM is E5"
 5.4.3.2 S11,5,x,,,,,E4,deferred,"E5 (radio, RBC)"
 5.4.3.2 S12,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S13,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
@@ -1474,14 +1474,14 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.3.2.2,5,x,,,,,E4,deferred,E5 (sessions)
 5.4.3.3 Table,5,x,,,,,E4,partial,"EVC_Mission (driver ID, train running number, Train Data), EVC_Levels (level): the statuses of the rows without the RBC; the position and the RBC contact rows are E5"
 5.4.5.1,5,x,,,,,E4,deferred,E5 (loss of a session)
-5.4.5.3,5,x,,,,,E4,partial,b) c) d) e) f) h) done; a) g) k) the procedures half; i) j) l) E5/E6
-5.4.5.3 a),5,x,,,,,E4,todo,
+5.4.5.3,5,x,,,,,E4,partial,b) c) d) e) f) g) h) done; a) override in SB is level 2's; i) j) k) l) E5/E6
+5.4.5.3 a),5,x,,,,,E4,partial,"override in SB in level 2 only (5.8.2.1, EVC_Procedures.Override_Allowed): the start of mission of level 2 is E5"
 5.4.5.3 b),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 c),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 d),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 e),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 f),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
-5.4.5.3 g),5,x,,,,,E4,todo,
+5.4.5.3 g),5,x,,,,,E4,done,"[5] from SB at standstill (EVC_Procedures); the position of this on-board is never ""invalid"" (EVC_Core.Enter_Mode); evc_test_procedures Shunting_Driver"
 5.4.5.3 h),5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 h) 1st bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 h) 2nd bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
@@ -1492,7 +1492,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.5.3 j),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
 5.4.5.3 j) 1st bullet,5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
 5.4.5.3 j) 2nd bullet,5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
-5.4.5.3 k),5,x,,,,,E4,todo,
+5.4.5.3 k),5,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5
 5.4.5.3 l),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22)"
 5.5.3.1.2,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10)"
 5.5.3.1.3,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10)"
@@ -1505,12 +1505,12 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.6.2.2 A045,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
 5.6.2.2 A050,5,x,,,,,E4,done,"SH entered by 4.6.3 [5]; the list of balise groups for the SH area deleted (EVC_Procedures.Mode_Changed; a new list comes with the RBC's authorisation, E5); evc_test_procedures Scenario_Shunting_Driver"
 5.6.2.2 A095,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
-5.6.2.2 A100,5,x,,,,,E4,todo,End of Mission (5.5) is the modes half of E4 (e4/modes)
+5.6.2.2 A100,5,x,,,,,E4,done,"EVC_Mission.Mode_Entered: SH from FS, AD, LS, OS, SR, SM, SN, UN ends the mission (5.5.2); evc_test_procedures Integration_Shunting"
 5.6.2.2 A115,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
 5.6.2.2 A220,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
 5.6.2.2 D020,5,x,,,,,E4,partial,"levels 0 and 1 go to A050 (4.6.3 [5], EVC_Procedures); level 2 (A045) is E5; level NTC (D030) is out of scope (PLAN.md, National Systems)"
 5.6.2.2 D030,5,x,,,,,E4,n/a,"level NTC and the national trip of an STM: National Systems are out of scope (EVC-PLAN §1, PLAN.md)"
-5.6.2.2 D040,5,x,,,,,E4,todo,End of Mission (5.5) is the modes half of E4 (e4/modes)
+5.6.2.2 D040,5,x,,,,,E4,done,EVC_Mission.Mode_Entered (the end of mission only when one is going on); evc_test_procedures Integration_Shunting
 5.6.2.2 D080,5,x,,,,,E4,partial,levels 0 and 1: the procedure ends in SH; level 2 (A095) is E5
 5.6.2.2 E015,5,x,,,,,E4,done,"EVC_Procedure_Requests.Shunting_Request (DMI action 7), 4.6.3 [5] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Driver"
 5.6.2.2 S050,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session)"
@@ -1534,12 +1534,12 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.8.2.1,5,x,,,,,E4,done,"EVC_Procedures.Override_Allowed: the upper bound of the speed at or below V_NVALLOWOVTRP, the modes listed (SB in level 2 only); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
 5.8.2.1 a),5,x,,,,,E4,done,"EVC_Procedures.Override_Allowed: the upper bound of the speed at or below V_NVALLOWOVTRP, the modes listed (SB in level 2 only); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
 5.8.2.1 b),5,x,,,,,E4,done,"EVC_Procedures.Override_Allowed: the upper bound of the speed at or below V_NVALLOWOVTRP, the modes listed (SB in level 2 only); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
-5.8.2.1 c),5,x,,,,,E4,partial,"valid Train Data checked (except in SH); the train running number is the start of mission's (the modes half of E4 (e4/modes)), taken as valid until then"
+5.8.2.1 c),5,x,,,,,E4,done,valid Train Data (except in SH) and the train running number of the start of mission (EVC_Mission); evc_test_procedures Integration_SR_Override_Trip
 5.8.2.3,5,x,,,,,E4,done,EVC_Procedure_Requests.Override_EOA (DMI action 6); evc_test_procedures Scenario_Override
-5.8.3.1,5,x,,,,,E4,partial,"a) and b) done; c) (UN, SN to SR at the change to level 1 or 2) needs the level transitions of the modes half of E4 (e4/modes)"
+5.8.3.1,5,x,,,,,E4,done,"a) b) c) ([37], [44], [45]); evc_test_procedures Override, Integration_Override_Level"
 5.8.3.1 a),5,x,,,,,E4,done,"4.6.3 [37] from FS, AD, LS, OS, SB, PT (SR stays); evc_test_procedures Scenario_Override, Scenario_Trip_EOA"
 5.8.3.1 b),5,x,,,,,E4,done,"no transition from SH, override active (EVC_Procedures)"
-5.8.3.1 c),5,x,,,,,E4,partial,override active in UN and SN (EVC_Procedures); the transition to SR at the level change is the level transitions' (the modes half of E4 (e4/modes))
+5.8.3.1 c),5,x,,,,,E4,done,override in UN and SN; [44] takes SR at the switch to level 1 (its priority above the trip of [39]); evc_test_procedures Integration_Override_Level
 5.8.3.1.1,5,x,,,,,E4,done,"the former EOA/LOA kept from OS, LS, FS, AD; in SB and PT the estimated front end (the virtual front position without a valid position) (EVC_Procedures.Override_Step); evc_test_procedures Scenario_Override"
 5.8.3.1.3,5,x,,,,,E4,done,deleted on stop if in SR and when SR is left ({P})
 5.8.3.1.3 a),5,x,,,,,E4,done,deleted on stop if in SR and when SR is left ({P})
@@ -1550,7 +1550,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.8.3.7.2,5,x,,,,,E4,done,not indicated in level NTC (EVC_Procedures.Override_Indicated)
 5.8.3.8,5,x,,,,,E4,deferred,E7 (Euroloop)
 5.8.3.9,5,x,,,,,E4,done,selected again: the time and the distance restart (EVC_Procedures.Override_Step); JRU 23 kind 2 byte 3 1
-5.8.4.1,5,x,,,,,E4,partial,"a) to e), g) (SH list) and i) done; f) and the SR list of g) are E5; h) the SR distance is the modes half of E4 (e4/modes)"
+5.8.4.1,5,x,,,,,E4,partial,"a) to e), g) (SH list), h), i) done; f) and the SR list of g) are E5"
 5.8.4.1 a),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
 5.8.4.1 b),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
 5.8.4.1 c),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (JRU 23 kind 3, byte 3 the condition); evc_test_procedures Scenario_Override"
@@ -1558,7 +1558,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.8.4.1 e),5,x,,,,,E4,done,a balise group with a packet 12 of V_MAIN not 0 (EVC_Procedures.Override_Step)
 5.8.4.1 f),5,x,,,,,E4,deferred,E5 (an MA of the RBC)
 5.8.4.1 g),5,x,,,,,E4,partial,the list of balise groups for the SH area (packet 49) done; the SR list comes from the RBC (E5)
-5.8.4.1 h),5,x,,,,,E4,todo,the SR distance supervision of SR mode is the modes half of E4 (e4/modes)
+5.8.4.1 h),5,x,,,,,E4,done,"EVC_Procedures.Override_Step (the override selected in SR, the SR distance of EVC_Mission passed); evc_test_procedures Integration_SR_Override_Trip"
 5.8.4.1 i),5,x,,,,,E4,done,"EVC_Procedures.Mode_Changed (TR, LS, OS, SH)"
 5.8.4.2,5,x,,,,,E4,done,the trips of the cycle see the override as before the group's information ended it (EVC_Procedures.Ovr_For_Trips)
 5.9.1.1,5,x,,,,,E4,done,4.6.3 [40] at the latest when the max safe front end reaches the area (EVC_Procedures.Profiles_Step); evc_test_procedures Scenario_On_Sight
@@ -1575,7 +1575,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.9.3.6,5,x,,,,,E4,done,"EVC_Procedures; 4.6.3 [15], [40]; evc_test_procedures Scenario_On_Sight"
 5.9.3.7,5,x,,,,,E4,done,"EVC_Procedures; 4.6.3 [15], [40]; evc_test_procedures Scenario_On_Sight"
 5.9.3.8,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_On_Sight
-5.9.4.2,5,x,,,,,E4,partial,"4.6.3 [34] is [40] with the level switched to 1 or 2, which the level transitions of the modes half of E4 (e4/modes) signal (Context_T.Level_Switched)"
+5.9.4.2,5,x,,,,,E4,done,"[34] is [40] with the level switched to 1 or 2 (EVC_Levels.Switched_To, Context_T.Level_Switched)"
 5.9.5.1,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised"
 5.9.5.2,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised"
 5.9.6.1.1,5,x,,,,,E4,done,4.6.3 [75] (EVC_Procedures); evc_test_procedures Scenario_On_Sight
@@ -1660,8 +1660,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.11.2.2 S060,5,x,,,,,E4,done,the acknowledgement asked at standstill (EVC_Procedures.Finish_Cycle); evc_test_procedures Scenario_Trip_EOA
 5.11.2.2 S120,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
 5.11.2.2 S130,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
-5.11.2.2 S140,5,x,,,,,E4,partial,"d) SH (4.6.3 [5] from PT) and override from PT done; a) start in level 1 is the start of mission of {MODES}; b), c) are E5"
-5.11.2.2 S140 a),5,x,,,,,E4,todo,"start"""" in PT and the SR acknowledgement are the modes half of E4 (e4/modes)"
+5.11.2.2 S140,5,x,,,,,E4,partial,"a) start in level 1 (EVC_Mission) and d) SH ([5] from PT) and override from PT done; b), c) are E5"
+5.11.2.2 S140 a),5,x,,,,,E4,done,"'Start' in PT, level 1, proposes SR (EVC_Mission, 4.4.14.1.6); evc_test_procedures Integration_SR_Override_Trip"
 5.11.2.2 S140 b),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
 5.11.2.2 S140 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
 5.11.2.2 S140 d),5,x,,,,,E4,done,4.6.3 [5] from PT (EVC_Procedures)
@@ -1669,12 +1669,12 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.11.2.2 S150 a),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
 5.11.2.2 S150 b),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
 5.11.2.2 S150 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
-5.11.2.2 S160,5,x,,,,,E4,todo,"start"""" in PT and the SR acknowledgement are the modes half of E4 (e4/modes)"
+5.11.2.2 S160,5,x,,,,,E4,done,"the SR acknowledgement, [8] from PT; evc_test_procedures Integration_SR_Override_Trip"
 5.11.2.2 S170,5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations)"
 5.11.4.1.1,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
 5.11.4.1.2,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops)"
 5.11.4.2,5,x,,,,,E4,done,"override is selectable in PT in every level (5.8.2.1, EVC_Procedures)"
-5.11.4.3,5,x,,,,,E4,todo,the level transitions in PT are the modes half of E4 (e4/modes)
+5.11.4.3,5,x,,,,,E4,deferred,"a level transition in PT: in level 1 the balise information is rejected in PT (4.8.4 [1]) and the driver selects no level (4.7.2); the level 2 orders are E5 ([77] to [79] are implemented, EVC_Transition_Conditions)"
 5.12.2.5,5,x,,,,,E2,done,"EVC_Position: anchors in the odometer frame, front end and orientation follow the active cab; evc_test position_orientation"
 5.12.4.2.1,5,x,,,,,E2,deferred,E4 (SH/PS on desk closure)
 5.12.4.2.2,5,x,,,,,E2,deferred,E4 (SH/PS on desk closure)
@@ -1710,7 +1710,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.17.2.2 S3,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
 5.17.2.2 S4,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
 5.17.2.2 S5,5,x,,,,,E4,done,"the service brake (TIU reason 128, SS 18), the acknowledgement at standstill (MSG_STATUS brake 2, DMI ack kind 5), released (3.14.1.7.2); revoked per 4.12; evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)"
-5.17.2.2 S6,5,x,,,,,E4,partial,"the re-validation is requested (EVC_Procedures.Train_Data_Revalidation, JRU 23 kind 11); the Train Data entry that shows it and E6 (EVC_Procedures.Train_Data_Revalidated) are the modes half of E4 (e4/modes)"
+5.17.2.2 S6,5,x,,,,,E4,done,"the re-validation requested (EVC_Procedures.Train_Data_Revalidation, JRU 23 kind 11); the driver's Train Data entry ends it (EVC_Mission.Train_Data_Validated, EVC_Procedures.Train_Data_Revalidated, 5.17.2.2 E6)"
 5.18.2.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
 5.18.2.2.1,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
 5.18.2.2.2,5,x,,,,,E4,done,"EVC_Track_Conditions.Evaluate (E3): MSG_TRACK_COND and the planning orders; evc_test profiles_track_conditions (point C: 10 s at the current speed, at least 100 m; automatic or by the driver: the constant Automatic, the driver here; the symbols after the end 5 s, A.3.1)"
@@ -1809,7 +1809,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.19.3.6,5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
 5.19.3.7,5,x,,,,,E4,done,"the rectangle, 4.6.3 [70], [72] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision"
 5.19.3.8,5,x,,,,,E4,done,the service brake after T_ACK (3.14.1.7.3); evc_test_procedures Scenario_Limited_Supervision
-5.19.4.2,5,x,,,,,E4,partial,"4.6.3 [71] is [72] with the level switched to 1 or 2, which the level transitions of the modes half of E4 (e4/modes) signal"
+5.19.4.2,5,x,,,,,E4,done,"[71] is [72] with the level switched to 1 or 2 (EVC_Levels.Switched_To, Context_T.Level_Switched)"
 5.19.5.1,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised"
 5.19.5.2,5,x,,,,,E4,partial,"implemented for SB and PT in level 2 (EVC_Procedures.Profiles_Step); the mode profile of level 2 comes from the RBC (E5), not exercised"
 5.19.6.1.1,5,x,,,,,E4,done,4.6.3 [76] (EVC_Procedures); evc_test_procedures Scenario_Limited_Supervision
