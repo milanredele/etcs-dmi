@@ -32,7 +32,15 @@
 --  monitoring and the brake command handling on that snapshot (EVC_SDM,
 --  EVC_Brake_Commands: MSG_SPEED_STATE every cycle, the brake and the
 --  time to Indication in MSG_STATUS, the TIU output, JRU events 20 to
---  22). The later phases fill the empty steps.
+--  22). Phase E4, the procedures half (e4/procedures): after the
+--  monitoring, the procedures of chapter 5 (EVC_Procedures, the text
+--  messages of EVC_Text_Messages) evaluate the conditions of 4.6.3 they
+--  own, the mode machine takes the transitions they allow
+--  (EVC_Procedure_Transitions, interim until the modes half), and what
+--  entering a mode means for them is done before the outputs (the
+--  acknowledgements and "override" in MSG_MODE_LEVEL, the system status
+--  messages, the text messages, their brake commands on the TIU, JRU
+--  events 23 and 24). The later phases fill the empty steps.
 
 --  The postconditions name the state before the call ('Old) of query
 --  functions behind "and then" and "if": allowed, and evaluated at entry
@@ -51,10 +59,13 @@ with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
 with EVC_Location;
 with EVC_Position;
+with EVC_Procedure_Requests;
+with EVC_Procedures;
 with EVC_Received;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
+with EVC_Text_Messages;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
@@ -136,7 +147,10 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Train_Data.State),
+                                EVC_Train_Data.State,
+                                EVC_Procedure_Requests.State,
+                                EVC_Procedures.State,
+                                EVC_Text_Messages.State),
                      Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -205,7 +219,7 @@ is
    --  (EVC_Ports) and ignored when it does not match; otherwise it is
    --  latched for the next cycle. Nothing changes the mode here.
    procedure Handle_Input (Port : Port_T; Payload : EVC_Bytes.Byte_Array)
-     with Global => (In_Out => State),
+     with Global => (In_Out => (State, EVC_Procedure_Requests.State)),
           Post => Mode = Mode'Old
                   and then Failed = Failed'Old
                   and then Cycle = Cycle'Old
@@ -223,7 +237,10 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Config.State),
+                                EVC_Config.State,
+                                EVC_Procedure_Requests.State,
+                                EVC_Procedures.State,
+                                EVC_Text_Messages.State),
                      Input  => EVC_Train_Data.State),
           Post => Failed = Failed'Old
                   and then
@@ -315,6 +332,20 @@ is
      with Global => (In_Out => State),
           Post => Mode = Mode'Old and then Failed = Failed'Old
                   and then Cycle = Cycle'Old;
+
+   --  For the tests of the hosts, not for an on-board in service, and
+   --  INTERIM (phase E4, e4/procedures): the mode and the valid level a
+   --  start of mission would leave, so that the scenarios of the
+   --  procedures start from them until the start of mission of the modes
+   --  half (e4/modes) runs in them. No transition of 4.6.2 is taken: the
+   --  mode is set, recorded on the JRU at the next cycle, and the
+   --  procedures start from it.
+   procedure Set_Mode_For_Test (M : Mode_T; L : Level_T)
+     with Global => (In_Out => State),
+          Pre => M /= M_NP,
+          Post => Mode = M and then Level = L
+                  and then Level_Status = Valid
+                  and then Failed = Failed'Old and then Cycle = Cycle'Old;
 
    --  What the speed and distance monitoring found in the last cycle
    --  (3.13.10)

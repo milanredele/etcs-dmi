@@ -9,6 +9,7 @@ with ETCS_Variables;
 with EVC_DMI_Port; use EVC_DMI_Port;
 with EVC_Fixed;
 with EVC_Limits;
+with EVC_Procedure_Transitions;
 with Interfaces;   use Interfaces;
 
 package body EVC_Core
@@ -58,7 +59,11 @@ package body EVC_Core
                                    TIU_Sent,
                                    TIU_Reasons_Sent,
                                    Supervision_Reported,
-                                   Overrun_Reported))
+                                   Overrun_Reported,
+                                   --  the procedures (phase E4)
+                                   Proc_Ctx,
+                                   Ack_For_Protection,
+                                   Status_Rev_Sent))
 is
 
    use type EVC_Bytes.Byte_Array;
@@ -175,6 +180,18 @@ is
    Overrun_Reported     : EVC_Bytes.Byte := 0;
 
    ---------------------------------------------------------------------
+   --  The procedures (phase E4, e4/procedures)
+   ---------------------------------------------------------------------
+
+   --  The context of the procedures in the cycle (Run_Procedures)
+   Proc_Ctx : EVC_Procedures.Context_T;
+   --  the acknowledgement of a brake release of the cycle went to the
+   --  protections of 3.14.1.5 (EVC_Brake_Commands asked for it)
+   Ack_For_Protection : Boolean := False;
+   --  the reversing indication sent last (MSG_STATUS)
+   Status_Rev_Sent : Boolean := False;
+
+   ---------------------------------------------------------------------
    --  Queries
    ---------------------------------------------------------------------
 
@@ -207,6 +224,17 @@ is
       Test_Snapshot := S;
       Test_Snapshot_Set := True;
    end Set_Snapshot_For_Test;
+
+   -----------------------
+   -- Set_Mode_For_Test --
+   -----------------------
+
+   procedure Set_Mode_For_Test (M : Mode_T; L : Level_T) is
+   begin
+      Current_Mode := M;
+      Current_Level_Status := Valid;
+      Current_Level := L;
+   end Set_Mode_For_Test;
 
    procedure Count (Counter : in out Natural) is
    begin
@@ -270,6 +298,12 @@ is
       TIU_Reasons_Sent := 0;
       Supervision_Reported := No_Supervision;
       Overrun_Reported := 0;
+      Proc_Ctx := (others => <>);
+      Ack_For_Protection := False;
+      Status_Rev_Sent := False;
+      EVC_Procedure_Requests.Clear;
+      EVC_Procedures.Clear;
+      EVC_Text_Messages.Clear;
       EVC_Received.Clear;
       EVC_Position.Clear;
       --  the installation: the antenna of the configuration
@@ -335,6 +369,9 @@ is
             if Is_Brake_Release_Ack (Payload) then
                Latched_Brake_Ack := True;
             end if;
+            --  phase E4: the driver's actions of the procedures
+            --  (interim, EVC_Procedure_Requests)
+            EVC_Procedure_Requests.Latch (Payload);
          when BTM =>
             --  parsed when the ports are read, at the next cycle
             if Latched_BTM_Count < BTM_Latch_Size then
@@ -429,7 +466,9 @@ is
                                 Latched_Brake_Ack,
                                 Latched_BTM_Count,
                                 Latched_RTM_Count, EVC_Received.Store,
-                                EVC_Outbox.Queue, EVC_Position.State)),
+                                EVC_Outbox.Queue, EVC_Position.State,
+                                EVC_Procedure_Requests.State,
+                                EVC_Procedures.State)),
           Post => Isolation_Now = Latched_Isolation'Old
                   and then not Latched_Isolation
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -466,6 +505,8 @@ is
       Latched_Brake_Ack := False;
       Isolation_Now := Latched_Isolation;
       Latched_Isolation := False;
+      --  phase E4: the driver's actions of the procedures
+      EVC_Procedure_Requests.Take;
 
       --  the telegrams in the order the BTM delivered them
       for I in 1 .. Latched_BTM_Count loop
@@ -498,6 +539,15 @@ is
                   EVC_Position.Receive_Telegram
                     (EVC_Received.Last_Telegram,
                      BTM_Stamp (Slot.Data (1 .. Slot.Length)));
+               elsif T_Status = ETCS_Telegram.Unsupported_Version
+                 --  3.17.3.5, 4.6.3 [65]: the X of M_VERSION, the three
+                 --  most significant of the seven bits after Q_UPDOWN
+                 --  (the first byte of the telegram), above the 3 of
+                 --  this on-board (SUBSET-026 v4.0.0, system version 3.x)
+                 and then (Slot.Data (BTM_Stamp_Length + 3) and 16#7F#) / 16
+                            > 3
+               then
+                  EVC_Procedures.Note_Version_Not_Supported;
                end if;
             end if;
          end;
@@ -585,7 +635,8 @@ is
    procedure Evaluate_Stored_Information
      with Global => (Input  => (Clock_Ms, Cycle_Count, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,
-                                TIU_Now, EVC_Config.State),
+                                TIU_Now, EVC_Config.State, Current_Mode,
+                                EVC_Procedures.State),
                      In_Out => (EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
@@ -597,12 +648,24 @@ is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
    begin
-      --  the mode related speed restriction (3.11.7) is phase E4; the
-      --  status of the special brakes for the speed restrictions to
-      --  ensure a permitted braking distance (3.11.11.4)
+      --  phase E4: the mode profile of the mode in use is no temporary
+      --  EOA (3.12.4.7); 5.11.2.2 A035: in Trip no MA and no track
+      --  description are taken
+      EVC_Movement_Authority.Set_Mode_In_Use
+        (case Current_Mode is
+            when M_OS   => 0,
+            when M_SH   => 1,
+            when M_LS   => 2,
+            when others => 3);
+      EVC_Stored_Information.Refuse_Authority (Current_Mode = M_TR);
+      --  the mode related speed restriction (3.11.7, 3.11.10:
+      --  EVC_Procedures) of the mode of the last cycle; the status of the
+      --  special brakes for the speed restrictions to ensure a permitted
+      --  braking distance (3.11.11.4)
       EVC_Stored_Information.Evaluate
         (Unsigned_64 (Clock_Ms),
-         EVC_Supervision_Input.No_Speed_Limit,
+         EVC_Procedures.Mode_Speed
+           (Current_Mode, EVC_National_Values.Current.Values),
          Special_Active =>
            (EVC_Supervision_Input.Regenerative =>
               TIU_Now (Regenerative_Brake_Active),
@@ -689,8 +752,10 @@ is
                                 Current_Mode, Current_Level,
                                 Current_Level_Status, EVC_Position.State,
                                 EVC_Stored_Information.State),
-                     In_Out => (SDM_Work, SDM_State, Brake_State),
-                     Output => (SDM_Result, Brake_Output, Speed_State))
+                     In_Out => (SDM_Work, SDM_State, Brake_State,
+                                Brake_Output),
+                     Output => (SDM_Result, Speed_State,
+                                Ack_For_Protection))
    is
       procedure Run (S : EVC_Supervision_Input.Snapshot_T) is
          Controller : constant EVC_Brake_Commands.Controller_T :=
@@ -733,6 +798,9 @@ is
          Speed_State := To_Speed_State (S, SDM_Result);
       end Run;
    begin
+      --  the acknowledgement of a release goes first to the protections
+      --  of 3.14.1.5 when they ask for it (3.14.1.10)
+      Ack_For_Protection := Brake_Ack_Now and then Brake_Output.Ack_Required;
       if Test_Snapshot_Set then
          Run (Test_Snapshot);
       else
@@ -740,22 +808,91 @@ is
       end if;
    end Monitor_Speed_And_Distance;
 
+   --  The snapshot the speed and distance monitoring read in the cycle
+   function Snapshot_In_Use return EVC_Supervision_Input.Snapshot_T is
+     (if Test_Snapshot_Set then Test_Snapshot
+      else EVC_Stored_Information.Current)
+     with Global => (Test_Snapshot, Test_Snapshot_Set,
+                     EVC_Stored_Information.State);
+
+   --  4b. Phase E4, the procedures (EVC_Procedures, EVC_Text_Messages):
+   --  the context of the cycle, the conditions of 4.6.3 they own; the
+   --  trip order of the cycle is taken (3.11.6.4)
+   procedure Run_Procedures
+     with Global => (Input  => (Current_Mode, Current_Level,
+                                Current_Level_Status, TIU_Now,
+                                TIU_Value_Now, TIU_Known_Now, Odometer_Now,
+                                Brake_Ack_Now, Ack_For_Protection, Clock_Ms,
+                                SDM_Result, Test_Snapshot, Test_Snapshot_Set,
+                                EVC_Stored_Information.State,
+                                EVC_Position.State,
+                                EVC_Origins.State, EVC_Track_Description.State,
+                                EVC_Procedure_Requests.State,
+                                EVC_Train_Data.State),
+                     Output => Proc_Ctx,
+                     In_Out => (EVC_Procedures.State, EVC_Text_Messages.State,
+                                EVC_Movement_Authority.State))
+   is
+      S : constant EVC_Supervision_Input.Snapshot_T := Snapshot_In_Use;
+   begin
+      Proc_Ctx :=
+        (Mode              => Current_Mode,
+         Level_Valid       => Current_Level_Status = Valid,
+         Level             => Current_Level,
+         --  the level transitions are the modes half's
+         Level_Switched    => False,
+         Desk_Open         => TIU_Now (Cab_A_Active)
+                              or else TIU_Now (Cab_B_Active),
+         Passive_Shunting  => TIU_Now (Passive_Shunting_Permitted),
+         Controller        =>
+           (if not TIU_Known_Now (Direction_Controller)
+            then EVC_Brake_Commands.Unknown
+            else (case TIU_Value_Now (Direction_Controller) is
+                     when 1      => EVC_Brake_Commands.Forwards,
+                     when 2      => EVC_Brake_Commands.Backwards,
+                     when others => EVC_Brake_Commands.Neutral)),
+         Train_Data_Valid  => EVC_Train_Data.Valid,
+         --  the train running number is the start of mission's (modes
+         --  half): taken as valid until then
+         TRN_Valid         => True,
+         Speed_Max         =>
+           EVC_Supervision_Input.Speed_Cms_T
+             (Natural'Min (Natural (Odometer_Now.V_Max),
+                           EVC_Supervision_Input.Speed_Cms_T'Last)),
+         Antenna_Offset    =>
+           EVC_Position.Front_Offset (EVC_Position.Orientation),
+         Brake_Release_Ack => Brake_Ack_Now and then not Ack_For_Protection,
+         Now_Ms            => Unsigned_64 (Clock_Ms));
+      EVC_Procedures.Evaluate (Proc_Ctx, S, SDM_Result);
+      EVC_Text_Messages.Evaluate
+        (Current_Mode, Current_Level_Status = Valid, Current_Level,
+         S.Train.Est_Front, Unsigned_64 (Clock_Ms));
+      --  3.11.6.4: the trip order of the cycle was taken
+      if EVC_Movement_Authority.Trip_Ordered then
+         EVC_Movement_Authority.Clear_Trip_Order;
+      end if;
+   end Run_Procedures;
+
    --  SUBSET-026 4.6.3: whether the condition of the transition From ->
    --  To holds in this cycle. E0 evaluates two conditions:
    --    [1]  the driver isolates the ERTMS/ETCS on-board equipment,
    --    [4]  the ERTMS/ETCS on-board equipment is powered: always true
    --         while this code runs, so [29] ("NOT powered") never holds.
+   --  Phase E4, interim until the mode machine of the modes half: the
+   --  conditions of the procedures (EVC_Procedure_Transitions).
    function Condition_Holds (From, To : Mode_T) return Boolean is
      (case To is
          when M_IS     => Isolation_Now,
-         when M_SB     => From = M_NP,
-         when others => False)
-     with Global => Isolation_Now;
+         when M_SB     => From = M_NP
+                          or else EVC_Procedure_Transitions.Holds (From, To),
+         when others => EVC_Procedure_Transitions.Holds (From, To))
+     with Global => (Isolation_Now, EVC_Procedures.State);
 
    --  5. Mode machine: of the transitions of 4.6.2 whose condition
    --  holds, the one of the highest priority (4.6.1.4)
    procedure Run_Mode_Machine
-     with Global => (Input => Isolation_Now, In_Out => Current_Mode),
+     with Global => (Input  => (Isolation_Now, EVC_Procedures.State),
+                     In_Out => Current_Mode),
           Post => (Current_Mode = Current_Mode'Old
                    or else Transition_Exists
                              (Current_Mode'Old, Current_Mode))
@@ -795,6 +932,33 @@ is
       Current_Mode := Best;
    end Run_Mode_Machine;
 
+   --  5b. Phase E4: what entering a mode means for the procedures
+   --  (EVC_Procedures.Mode_Changed, EVC_Text_Messages.Mode_Changed), the
+   --  information they delete (5.11.2.2 A035 on a trip; the rows of 4.10
+   --  the procedures need for Staff Responsible after an override,
+   --  Shunting and Reversing, until the table of 4.10 of the modes half),
+   --  then their brake demand in the mode of the end of the cycle
+   procedure Mode_Effects (From : Mode_T)
+     with Global => (Input  => (Current_Mode, Proc_Ctx, Test_Snapshot,
+                                Test_Snapshot_Set),
+                     In_Out => (EVC_Procedures.State, EVC_Text_Messages.State,
+                                EVC_Stored_Information.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Description.State))
+   is
+      S : constant EVC_Supervision_Input.Snapshot_T := Snapshot_In_Use;
+   begin
+      if Current_Mode /= From then
+         EVC_Procedures.Mode_Changed (From, Current_Mode, Proc_Ctx, S);
+         EVC_Text_Messages.Mode_Changed (From, Current_Mode);
+         if Current_Mode in M_TR | M_SR | M_SH | M_RV then
+            EVC_Stored_Information.Delete_Authority_And_Description
+              (LX => True);
+         end if;
+      end if;
+      EVC_Procedures.Finish_Cycle (Proc_Ctx, Current_Mode, S);
+   end Mode_Effects;
+
    --  6. Produce the outputs of the cycle
    procedure Produce_Outputs
      with Global => (Input  => (Current_Mode, Current_Level_Status,
@@ -802,17 +966,27 @@ is
                                 Standstill, Below_Override, TIU_Now,
                                 EVC_National_Values.State,
                                 EVC_Position.State,
-                                SDM_Result, Brake_Output, Speed_State),
+                                SDM_Result, Brake_Output, Speed_State,
+                                EVC_Procedures.State,
+                                EVC_Text_Messages.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
-                                Supervision_Reported, Overrun_Reported))
+                                Supervision_Reported, Overrun_Reported,
+                                Status_Rev_Sent))
    is
       --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
       --  E0; the fields of the later phases are 0, "nothing known"
       Train : Bits_T := 0;
       National : Bits_T := National_VBC_Room;  -- E0 stores no VBC
       Onboard : Onboard_T;
+      --  phase E4: the brake demands of the procedures and of the text
+      --  messages
+      D       : constant EVC_Procedures.Brake_Demand_T :=
+        EVC_Procedures.Brake_Demand;
+      Text_SB : constant Boolean := EVC_Text_Messages.Service_Brake;
+      Text_EB : constant Boolean := EVC_Text_Messages.Emergency_Brake;
+      Seconds : constant Unsigned_64 := Unsigned_64 (Clock_Ms) / 1000;
    begin
       --  JRU: the mode changed since the last report
       if Current_Mode /= Reported_Mode then
@@ -826,12 +1000,69 @@ is
 
       --  DMI: the mode and the level (4.4.2.1: a clear indication of the
       --  mode when the desk is open)
+      --  phase E4: the acknowledgement of a mode the procedures ask
+      --  (5.7, 5.9, 5.11, 5.13, 5.19) and "override active" (5.8.3.7)
       if Has_Mode_Code (Current_Mode) then
          EVC_Outbox.Put
            (DMI,
             Mode_Level_Frame
-              (Current_Mode, Current_Level_Status, Current_Level));
+              (Current_Mode, Current_Level_Status, Current_Level,
+               Ack      =>
+                 (if EVC_Procedures.Ack_Requested
+                    and then Has_Mode_Code (EVC_Procedures.Ack_Mode)
+                  then Mode_Code (EVC_Procedures.Ack_Mode)
+                  else No_Mode_Ack),
+               Override => EVC_Procedures.Override_Indicated));
       end if;
+      --  phase E4: the system status messages of the procedures (the
+      --  reason of a trip, the reverse movement distances)
+      for I in 1 .. EVC_Procedures.Status_Event_Count loop
+         declare
+            E : constant EVC_Procedures.Status_Event_T :=
+              EVC_Procedures.Status_Event (I);
+         begin
+            EVC_Outbox.Put
+              (DMI, System_Status_Frame (EVC_Bytes.Byte (E.Entry_Number),
+                                         EVC_Bytes.Byte (E.Event)));
+         end;
+      end loop;
+      --  phase E4: the text messages (3.12.3)
+      for I in 1 .. EVC_Text_Messages.Output_Count loop
+         declare
+            O : constant EVC_Text_Messages.Output_T :=
+              EVC_Text_Messages.Output (I);
+            F : Frame_Buffer_T;
+            L : Natural;
+         begin
+            if EVC_Text_Messages."=" (O.Kind, EVC_Text_Messages.Show) then
+               Text_Frame (O.Id, O.Flags,
+                           EVC_Bytes.Byte (Seconds / 3600 mod 24),
+                           EVC_Bytes.Byte (Seconds / 60 mod 60),
+                           O.Text (1 .. O.Length), F, L);
+               EVC_Outbox.Put (DMI, F (1 .. L));
+            else
+               EVC_Outbox.Put (DMI, Text_Remove_Frame (O.Id));
+            end if;
+         end;
+      end loop;
+      --  phase E4: the records of the procedures and the text messages
+      for I in 1 .. EVC_Procedures.Event_Count loop
+         declare
+            E : constant EVC_Procedures.Event_T := EVC_Procedures.Event (I);
+         begin
+            EVC_Outbox.Put (JRU, JRU_Record (JRU_Procedures, E.Kind, E.B3,
+                                             E.B4));
+         end;
+      end loop;
+      for I in 1 .. EVC_Text_Messages.Event_Count loop
+         declare
+            E : constant EVC_Text_Messages.Event_T :=
+              EVC_Text_Messages.Event (I);
+         begin
+            EVC_Outbox.Put (JRU, JRU_Record (JRU_Text_Messages, E.Kind, E.B3,
+                                             E.B4));
+         end;
+      end loop;
 
       if Standstill then
          Train := Train or Train_Standstill;
@@ -845,6 +1076,9 @@ is
       if TIU_Now (Passive_Shunting_Permitted) then
          Train := Train or Train_Passive_Shunting;
       end if;
+      if EVC_Procedures.BMM_Inhibited then
+         Train := Train or Train_BMM_Inhibition;
+      end if;
       if EVC_National_Values.M_NVDERUN then
          National := National or National_Driver_ID_Running;
       end if;
@@ -856,31 +1090,41 @@ is
       --  phase E3: the brake indication (3.14.1.9, 3.14.2.6, 3.14.3.4)
       --  and the time to Indication (3.13.10.3.10), whenever they change
       declare
+         --  phase E4: the brakes of the procedures; 3 (DMI 8.2.2.3.4.1)
+         --  while only an acknowledgement of a mode or a text is missing
          Brake : constant EVC_Bytes.Byte :=
-           (if Brake_Output.Ack_Required then Brake_Ack
-            elsif Brake_Output.EB or else Brake_Output.SB then Brake_Applied
+           (if Brake_Output.Ack_Required or else D.Ack_Required
+            then Brake_Ack
+            elsif Brake_Output.EB or else Brake_Output.SB or else D.Trip
+              or else D.Other
+            then Brake_Applied
+            elsif D.Ack_Missing or else Text_SB or else Text_EB
+            then Brake_Pending_Ack
             else Brake_None);
          TTI   : constant Unsigned_16 :=
            (if SDM_Result.TTI = EVC_SDM.No_TTI then TTI_None
             else Unsigned_16 (SDM_Result.TTI));
+         Rev   : constant Boolean := EVC_Procedures.Reversing_Possible;
          Changed : constant Boolean :=
-           Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent;
+           Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent
+           or else Rev /= Status_Rev_Sent;
       begin
          if EVC_Position.Geo_Known then
             EVC_Outbox.Put
               (DMI, Status_Frame (Unsigned_32 (EVC_Position.Geo_Metres),
                                   Unsigned_64 (Clock_Ms) / 1000,
-                                  Brake, TTI));
+                                  Brake, TTI, Rev));
             Geo_Sent := True;
          elsif Geo_Sent or else Changed then
             EVC_Outbox.Put
               (DMI, Status_Frame (Geo_Unknown,
                                   Unsigned_64 (Clock_Ms) / 1000,
-                                  Brake, TTI));
+                                  Brake, TTI, Rev));
             Geo_Sent := False;
          end if;
          Status_Brake_Sent := Brake;
          Status_TTI_Sent := TTI;
+         Status_Rev_Sent := Rev;
       end;
 
       Onboard :=
@@ -906,8 +1150,10 @@ is
          Reasons  : EVC_Brake_Commands.Reasons_T renames
            Brake_Output.Reasons;
          Commands : constant EVC_Bytes.Byte :=
-           (if Brake_Output.EB then TIU_EBC else 0)
-           or (if Brake_Output.SB then TIU_SBC else 0)
+           (if Brake_Output.EB or else D.EB or else Text_EB
+            then TIU_EBC else 0)
+           or (if Brake_Output.SB or else D.SB or else Text_SB
+               then TIU_SBC else 0)
            or (if Brake_Output.TCO then TIU_TCO else 0);
          Why      : constant EVC_Bytes.Byte :=
            (if Reasons (EVC_Brake_Commands.Speed_Distance) then 1 else 0)
@@ -916,7 +1162,12 @@ is
            or (if Reasons (EVC_Brake_Commands.Roll_Away) then 4 else 0)
            or (if Reasons (EVC_Brake_Commands.Direction) then 8 else 0)
            or (if Reasons (EVC_Brake_Commands.Standstill_Supervision)
-               then 16 else 0);
+               then 16 else 0)
+           --  phase E4: the reasons of the procedures (EVC_Ports)
+           or (if D.Trip then TIU_Reason_Trip else 0)
+           or (if D.Ack_Missing or else Text_SB or else Text_EB
+               then TIU_Reason_Ack_Missing else 0)
+           or (if D.Other then TIU_Reason_Procedure else 0);
          Supervision_Now : constant Unsigned_32 :=
            (if SDM_Result.Active
             then Unsigned_32
@@ -972,6 +1223,7 @@ is
    ----------
 
    procedure Tick (Dt_Ms : Natural) is
+      From : Mode_T;
    begin
       if Failed_Flag then
          return;
@@ -984,7 +1236,10 @@ is
       Update_Position;
       Evaluate_Stored_Information;
       Monitor_Speed_And_Distance (Dt_Ms);
+      Run_Procedures;
+      From := Current_Mode;
       Run_Mode_Machine;
+      Mode_Effects (From);
       Produce_Outputs;
    end Tick;
 

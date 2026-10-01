@@ -393,4 +393,28 @@ is
    --  255.
    JRU_Configuration : constant := 33;
 
+   ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4 (e4/procedures)
+   ---------------------------------------------------------------------
+
+   --  The TIU output carries in its reasons byte (above) three more
+   --  reasons of the procedures: bit 5 the train trip (3.14.1.3,
+   --  4.4.13.1.2), bit 6 an acknowledgement of a mode or of a text
+   --  message ordered by trackside missing (3.14.1.7.3, 3.14.1.7.5),
+   --  bit 7 another brake reason of the procedures (the service brake of
+   --  a linking reaction 3.14.1.6, the reverse movement distances of PT
+   --  and RV 3.14.1.7.1 and 3.14.1.7.4).
+   TIU_Reason_Trip        : constant Byte := 32;
+   TIU_Reason_Ack_Missing : constant Byte := 64;
+   TIU_Reason_Procedure   : constant Byte := 128;
+
+   --  JRU event 23, the procedures (EVC_Procedures: byte 2 the kind,
+   --  bytes 3 and 4 its details, see Event_Trip .. Event_PT_Distance
+   --  there); JRU event 24, the text messages (EVC_Text_Messages: byte 2
+   --  1 displayed, 2 removed, 3 acknowledged, 4 rejected (3.12.3.5.3),
+   --  5 its brake commanded; byte 3 the id of MSG_TEXT mod 256, byte 4
+   --  the class, 0 fixed, 1 plain)
+   JRU_Procedures    : constant := 23;
+   JRU_Text_Messages : constant := 24;
+
 end EVC_Ports;

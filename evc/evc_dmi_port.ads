@@ -314,4 +314,90 @@ is
       and then Get_U16 (Frame, Frame'First + Header_Length + 1)
                  = Ack_Brake_Release);
 
+   ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4 (e4/procedures): the
+   --  acknowledgement of a mode and "override active" in
+   --  MSG_MODE_LEVEL, the reversing and the pending acknowledgement in
+   --  MSG_STATUS, the system status messages of the trip and of the
+   --  procedures (MSG_SYSTEM_STATUS), the text messages (MSG_TEXT,
+   --  MSG_TEXT_REMOVE), the BTM alarm reaction inhibition in MSG_ONBOARD
+   ---------------------------------------------------------------------
+
+   --  mode_ack: none
+   No_Mode_Ack : constant Byte := 16#FF#;
+
+   --  MSG_MODE_LEVEL with the acknowledgement asked (Ack: Mode_Code of
+   --  the mode, or No_Mode_Ack) and "override active" (5.8.3.7)
+   function Mode_Level_Frame (Mode     : Mode_T;
+                              Status   : Level_Status_T;
+                              Level    : Level_T;
+                              Ack      : Byte;
+                              Override : Boolean) return Mode_Level_Frame_T
+   with Pre => Has_Mode_Code (Mode),
+        Post => Mode_Level_Frame'Result (1) = MSG_MODE_LEVEL
+                and then Mode_Level_Frame'Result (6) = Mode_Code (Mode)
+                and then Mode_Level_Frame'Result (7)
+                           = Level_Code (Status, Level)
+                and then Mode_Level_Frame'Result (8) = Ack;
+
+   --  MSG_STATUS brake 3: applied because a requested acknowledgement of
+   --  a level, a mode or a text message is pending (3.14.1.7.3, 3.14.1.7.5)
+   Brake_Pending_Ack : constant Byte := 3;
+
+   --  MSG_STATUS with the reversing indication (3.15.4.7)
+   function Status_Frame (Geo       : Unsigned_32;
+                          Seconds   : Unsigned_64;
+                          Brake     : Byte;
+                          TTI       : Unsigned_16;
+                          Reversing : Boolean) return Status_Frame_T
+     with Post => Status_Frame'Result (1) = MSG_STATUS;
+
+   --  MSG_SYSTEM_STATUS: entry u8 (the catalogue number, SS_* of
+   --  dmi_protocol.ads), event u8 (0 start, 1 end, 2 the start of its
+   --  30 s)
+   MSG_SYSTEM_STATUS    : constant Byte := 16#0C#;
+   System_Status_Length : constant := 2;
+
+   subtype System_Status_Frame_T is
+     Byte_Array (1 .. Header_Length + System_Status_Length);
+
+   function System_Status_Frame (Entry_Number, Event : Byte)
+     return System_Status_Frame_T
+   is ((MSG_SYSTEM_STATUS, System_Status_Length, 0, 0, 0,
+        Entry_Number, Event));
+
+   --  MSG_TEXT: id u16, flags u8 (bit 0 ack required, bit 1 first group,
+   --  bits 2-3 class: 0 fixed text, 1 plain text), hour u8, minute u8,
+   --  length u8, the text (Latin-1); MSG_TEXT_REMOVE: id u16
+   MSG_TEXT           : constant Byte := 16#03#;
+   MSG_TEXT_REMOVE    : constant Byte := 16#04#;
+   Text_Header_Length : constant := 6;
+   Text_Remove_Length : constant := 2;
+   Text_Ack_Required  : constant Byte := 1;
+   Text_First_Group   : constant Byte := 2;
+   Text_Class_Plain   : constant Byte := 4;
+   Max_Text_Length    : constant := 255;
+
+   procedure Text_Frame (Id     : Unsigned_16;
+                         Flags  : Byte;
+                         Hour   : Byte;
+                         Minute : Byte;
+                         Text   : Byte_Array;
+                         Frame  : out Frame_Buffer_T;
+                         Last   : out Natural)
+     with Pre => Text'Length <= Max_Text_Length,
+          Post => Last = Header_Length + Text_Header_Length + Text'Length
+                  and then Frame (1) = MSG_TEXT;
+
+   subtype Text_Remove_Frame_T is
+     Byte_Array (1 .. Header_Length + Text_Remove_Length);
+
+   function Text_Remove_Frame (Id : Unsigned_16) return Text_Remove_Frame_T
+   is ((MSG_TEXT_REMOVE, Text_Remove_Length, 0, 0, 0,
+        Byte (Id and 16#FF#), Byte (Shift_Right (Id, 8))));
+
+   --  MSG_ONBOARD train bit 4: the "BTM alarm reaction inhibition"
+   --  function is active (5.22.4.1)
+   Train_BMM_Inhibition : constant Bits_T := 16;
+
 end EVC_DMI_Port;

@@ -8,7 +8,7 @@ package body EVC_Movement_Authority
   with SPARK_Mode => On,
        Refined_State => (State => (Current, Main_Known, Main_Speed,
                                    Main_Finish, Main_Open, Trip,
-                                   Profiles))
+                                   Profiles, Mode_In_Use))
 is
 
    Current     : MA_T;
@@ -18,6 +18,8 @@ is
    Main_Open   : Boolean := True;
    Trip        : Boolean := False;
    Profiles    : Mode_Profile_Array;
+   --  the M_MAMODE of the mode in use, 3 for another mode
+   Mode_In_Use : Natural range 0 .. 3 := 3;
 
    function MA return MA_T is (Current)
      with Refined_Global => Current;
@@ -65,6 +67,7 @@ is
       Main_Open := True;
       Trip := False;
       Profiles := (others => (others => <>));
+      Mode_In_Use := 3;
    end Clear;
 
    -----------------
@@ -584,6 +587,11 @@ is
    -- Mode_Profile_Target --
    -------------------------
 
+   procedure Set_Mode_In_Use (Code : Natural) is
+   begin
+      Mode_In_Use := Code;
+   end Set_Mode_In_Use;
+
    procedure Mode_Profile_Target (T       : Origin_Table_T;
                                   Front   : Dist_T;
                                   Found   : out Boolean;
@@ -603,7 +611,9 @@ is
          return;
       end if;
       for I in Profiles'Range loop
-         if Profiles (I).Used then
+         if Profiles (I).Used
+           and then Natural (Profiles (I).Mode) /= Mode_In_Use
+         then
             declare
                E : constant Dist_T :=
                  A (S, Frame (T, Profiles (I).Start, Estimated_Item));

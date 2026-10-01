@@ -799,6 +799,22 @@ is
       end loop;
    end Delete_Beyond;
 
+   ------------------------
+   -- Delete_Description --
+   ------------------------
+
+   procedure Delete_Description (LX : Boolean) is
+   begin
+      SSP_S.Count := 0;
+      Grad_S.Count := 0;
+      ASP_S.Count := 0;
+      PBD_S.Count := 0;
+      Suit_S := (others => (others => <>));
+      if LX then
+         LX_S := (others => (others => <>));
+      end if;
+   end Delete_Description;
+
    -------------------
    -- Delete_Behind --
    -------------------

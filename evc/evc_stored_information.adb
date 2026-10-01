@@ -30,7 +30,8 @@ package body EVC_Stored_Information
                                    Orient_Seen, Events, Event_N,
                                    Indicated, Indicated_N, Sent, Sent_N,
                                    Cond_Due, Plan, Plan_Due,
-                                   Driver_Slippery, PBD_Last, PBD_Known))
+                                   Driver_Slippery, PBD_Last, PBD_Known,
+                                   Refusing))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -64,6 +65,8 @@ is
    --  restrictions to ensure a permitted braking distance
    PBD_Last        : EVC_PBD.Inputs_T;
    PBD_Known       : Boolean := False;
+   --  5.11.2.2 A035 (Refuse_Authority)
+   Refusing        : Boolean := False;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -145,7 +148,20 @@ is
       Driver_Slippery := False;
       PBD_Last := (others => <>);
       PBD_Known := False;
+      Refusing := False;
    end Clear;
+
+   procedure Delete_Authority_And_Description (LX : Boolean) is
+   begin
+      EVC_Movement_Authority.Clear;
+      EVC_Track_Description.Delete_Description (LX);
+      Record_Event (Info_MA, Change_Deleted, 0);
+   end Delete_Authority_And_Description;
+
+   procedure Refuse_Authority (Refuse : Boolean) is
+   begin
+      Refusing := Refuse;
+   end Refuse_Authority;
 
    procedure Set_Driver_Slippery (Slippery : Boolean) is
    begin
@@ -501,7 +517,8 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 Events, Event_N, Msg_Count),
-                     Input  => (EVC_Position.State, EVC_Train_Data.State)),
+                     Input  => (EVC_Position.State, EVC_Train_Data.State,
+                                Refusing)),
           Pre => G <= EVC_Position.Taken_Count
    is
       Tk          : constant EVC_Position.Taken_T := EVC_Position.Taken (G);
@@ -534,6 +551,10 @@ is
                   if E.Kind = Kind_Of (K)
                     and then EVC_Position.Valid_For
                                (E.Q_DIR, Tk.Group.Orientation, Tk.T)
+                    --  5.11.2.2 A035 (Refuse_Authority)
+                    and then not (Refusing
+                                  and then K in K27 | K21 | K51 | K52
+                                              | K70 | K88 | K12 | K80)
                   then
                      Take_Packet (K, J, P, M, T, Train, MA_Accepted);
                   end if;

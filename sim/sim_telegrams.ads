@@ -22,6 +22,15 @@ with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P68;
 with ETCS_Track_Packets.P73;
+with ETCS_Track_Packets.P49;
+with ETCS_Track_Packets.P74;
+with ETCS_Track_Packets.P80;
+with ETCS_Track_Packets.P88;
+with ETCS_Track_Packets.P132;
+with ETCS_Track_Packets.P135;
+with ETCS_Track_Packets.P137;
+with ETCS_Track_Packets.P138;
+with ETCS_Track_Packets.P139;
 with Interfaces;
 
 package Sim_Telegrams is
@@ -35,6 +44,16 @@ package Sim_Telegrams is
    package T65 renames ETCS_Track_Packets.P65;
    package T68 renames ETCS_Track_Packets.P68;
    package T73 renames ETCS_Track_Packets.P73;
+   --  added with the procedures of phase E4 (e4/procedures)
+   package T49 renames ETCS_Track_Packets.P49;
+   package T74 renames ETCS_Track_Packets.P74;
+   package T80 renames ETCS_Track_Packets.P80;
+   package T88 renames ETCS_Track_Packets.P88;
+   package T132 renames ETCS_Track_Packets.P132;
+   package T135 renames ETCS_Track_Packets.P135;
+   package T137 renames ETCS_Track_Packets.P137;
+   package T138 renames ETCS_Track_Packets.P138;
+   package T139 renames ETCS_Track_Packets.P139;
 
    subtype Byte_Array is EVC_Bytes.Byte_Array;
    subtype Writer_T is ETCS_Bits.Writer (ETCS_Bits.Max_Bytes);
@@ -67,6 +86,20 @@ package Sim_Telegrams is
    procedure Put (W : in out Writer_T; P : T65.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T68.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T73.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T49.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T74.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T80.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T88.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T132.Packet_T;
+                  OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T135.Packet_T;
+                  OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T137.Packet_T;
+                  OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T138.Packet_T;
+                  OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T139.Packet_T;
+                  OK : in out Boolean);
 
    --  Packet 255 and the padding to a long telegram (830 bits)
    procedure Finish (W  : in out Writer_T;
@@ -149,5 +182,85 @@ package Sim_Telegrams is
    function Plain_Text (Text : String; D_M, L_M, NID_C : Natural)
      return T73.Packet_T
      with Pre => Text'Length in 1 .. 255;
+
+   ---------------------------------------------------------------------
+   --  Added with the procedures of phase E4 (e4/procedures): the
+   --  packets of the mode profile, shunting, reversing, level crossings
+   --  and text messages, for the scenarios of test/src/evc_test.adb
+   ---------------------------------------------------------------------
+
+   --  Packet 80, one area: M_MAMODE 0 On Sight, 1 Shunting, 2 Limited
+   --  Supervision, from D_M, L_M long, its speed (km/h; 127 * 5: the
+   --  national value), the acknowledgement area Ack_M in rear of it,
+   --  Q_MAMODE (1: the beginning is a temporary SvL)
+   National_Speed : constant := 635;
+   function Mode_Profile (D_M      : Natural;
+                          M_MAMODE : Natural;
+                          L_M      : Natural;
+                          Ack_M    : Natural;
+                          Kmh      : Natural := National_Speed;
+                          Q_MAMODE : Natural := 0) return T80.Packet_T;
+
+   --  Packet 132: "stop if in shunting" (Stop) or "go if in shunting"
+   function Danger_For_Shunting (Stop : Boolean) return T132.Packet_T;
+
+   --  Packet 135: stop shunting on desk opening
+   function Stop_Shunting_On_Desk_Opening return T135.Packet_T;
+
+   --  Packet 49: the balise groups (of the country of the group) that
+   --  may be passed in the shunting area
+   function Shunting_Area_List (NIDs : Nat_List) return T49.Packet_T
+     with Pre => NIDs'Length <= 31;
+
+   --  Packet 137: "stop if in SR" (Stop) or "go if in SR"
+   function Stop_If_In_SR (Stop : Boolean) return T137.Packet_T;
+
+   --  Packet 138: the reversing area from D_M, L_M long
+   function Reversing_Area (D_M, L_M : Natural) return T138.Packet_T;
+
+   --  Packet 139: the distance to run in reverse (m; 32_767 infinite) and
+   --  the reversing speed (km/h)
+   function Reversing_Supervision (D_M, Kmh : Natural)
+     return T139.Packet_T;
+
+   --  Packet 88: a level crossing, from D_M, L_M long, protected or
+   --  not (Guarded False: then with its speed, and the stopping area
+   --  of L_Stop_M when stopping is required)
+   function Level_Crossing (Id        : Natural;
+                            D_M, L_M  : Natural;
+                            Guarded   : Boolean;
+                            Kmh       : Natural := 0;
+                            Stop      : Boolean := False;
+                            L_Stop_M  : Natural := 0) return T88.Packet_T;
+
+   --  The conditions of a text message (packets 73 and 74, 7.5.1):
+   --  start at D_M (No_Location: none), in mode Start_Mode
+   --  (M_MODETEXTDISPLAY, 15 none), level Start_Level
+   --  (M_LEVELTEXTDISPLAY, 4 none); end after L_M (No_Location: none),
+   --  T_S seconds (1023 none), a transition from End_Mode (15 none);
+   --  All_Of: Q_TEXTDISPLAY 1; Confirm: Q_TEXTCONFIRM;
+   --  Ack_Ends: Q_CONFTEXTDISPLAY 0; Important: Q_TEXTCLASS 1
+   No_Location : constant := 32_767;
+   type Text_Conditions_T is record
+      D_M         : Natural := No_Location;
+      Start_Mode  : Natural := 15;
+      Start_Level : Natural := 4;
+      L_M         : Natural := No_Location;
+      T_S         : Natural := 1023;
+      End_Mode    : Natural := 15;
+      All_Of      : Boolean := False;
+      Confirm     : Natural := 0;
+      Ack_Ends    : Boolean := True;
+      Important   : Boolean := False;
+   end record;
+
+   function Plain_Text (Text : String; C : Text_Conditions_T)
+     return T73.Packet_T
+     with Pre => Text'Length in 1 .. 255;
+
+   --  Packet 74: fixed text Q_TEXT (0 "Level crossing not protected", 1
+   --  "Acknowledgement")
+   function Fixed_Text (Q_TEXT : Natural; C : Text_Conditions_T)
+     return T74.Packet_T;
 
 end Sim_Telegrams;

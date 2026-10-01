@@ -11,6 +11,8 @@
 --  The texts are quoted from the table of 4.6.3 (SUBSET-026-4 v4.0.0,
 --  pages 49 to 51); {n} refers to the notes below the table.
 
+with EVC_Procedures;
+
 package EVC_Transition_Conditions
   with SPARK_Mode => On
 is
@@ -487,7 +489,9 @@ is
    C_84 : constant Condition_Id_T := 84;
 
    --  True when the condition holds in the current cycle
+   --  The procedures half (e4/procedures) evaluates its conditions in
+   --  EVC_Procedures (Evaluate, once per cycle before the mode machine)
    function Holds (C : Condition_Id_T) return Boolean
-     with Global => null;  -- to be replaced by the real Global set
+     with Global => EVC_Procedures.State;
 
 end EVC_Transition_Conditions;

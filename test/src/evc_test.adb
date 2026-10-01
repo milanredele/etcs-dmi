@@ -40,6 +40,12 @@
 --  the track of sim/evc_track.ads given as telegrams of a balise group
 --  and the mock's train, and compares the pictures at five checkpoints.
 --
+--  The scenarios of phase E4, procedures half (shunting, override, On
+--  Sight, trip and post trip, reversing, Limited Supervision, text
+--  messages, the inhibition of the BTM alarm reaction, the mode related
+--  speed restrictions) are in EVC_Test_Procedures, instantiated with
+--  Check: they drive the on-board through its ports only.
+--
 --  Usage:  obj/evc_test            compare against goldens
 --          UPDATE=1 obj/evc_test   (re)record the goldens of test/golden/evc
 --          VERBOSE=1 obj/evc_test  list passing checks too
@@ -129,6 +135,7 @@ with EVC_Track;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train;
+with EVC_Test_Procedures;
 with EVC_Train_Data;
 with General_Parameters;
 with GNAT.SHA256;
@@ -10139,6 +10146,13 @@ procedure EVC_Test is
       EVC_Core.Configure (CFG.Encode (CFG.Default));
    end Scenario_Config_Behaviour;
 
+   ---------------------------------------------------------------------
+   --  Phase E4, the procedures (e4/procedures): the scenarios are in
+   --  EVC_Test_Procedures (test/src/evc_test_procedures.adb)
+   ---------------------------------------------------------------------
+
+   package Procedures is new EVC_Test_Procedures (Check);
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -10224,6 +10238,8 @@ begin
    Scenario_Config_Image;
    Scenario_Config_Core;
    Scenario_Config_Behaviour;
+
+   Procedures.Run;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

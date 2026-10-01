@@ -213,6 +213,30 @@ is
    procedure Set_Driver_Slippery (Slippery : Boolean)
      with Global => (In_Out => State);
 
+   ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4 (e4/procedures)
+   ---------------------------------------------------------------------
+
+   --  5.11.2.2 A035: on a train trip the MA (with the mode profile and
+   --  the signalling related speed restriction) and the track
+   --  description but the track conditions are deleted
+   --  (EVC_Track_Description.Delete_Description, with the level
+   --  crossings when LX); also what the procedures need of 4.10 when
+   --  Override, Shunting or Reversing is entered, until the table of
+   --  4.10 of the modes half replaces those calls (EVC_Core). Recorded
+   --  on the JRU (event 32: the MA, change 2 deleted).
+   procedure Delete_Authority_And_Description (LX : Boolean)
+     with Global => (In_Out => (State, EVC_Track_Description.State),
+                     Output => EVC_Movement_Authority.State),
+          Post => not EVC_Movement_Authority.MA.Present;
+
+   --  5.11.2.2 A035: while Refuse is set no new MA and no new track
+   --  description (packets 12, 80, 27, 21, 51, 52, 70, 88) are taken from
+   --  the balise groups; the track conditions and the other information
+   --  are (EVC_Core sets it in Trip mode)
+   procedure Refuse_Authority (Refuse : Boolean)
+     with Global => (In_Out => State);
+
    --  The inputs of the speed restrictions to ensure a permitted braking
    --  distance in the last cycle (EVC_PBD)
    function PBD_Inputs return EVC_PBD.Inputs_T

@@ -288,6 +288,19 @@ is
      with Global => (In_Out => State),
           Post => TSR.Count = 0;
 
+   --  Added by the procedures of phase E4 (e4/procedures): the track
+   --  description of 3.7.1.1 c) the procedures delete, the SSP, the
+   --  gradients, the ASP, the speed restriction to ensure a permitted
+   --  braking distance and the route suitability data, and with LX the
+   --  level crossings (5.11.2.2 A035: on a train trip all of it but the
+   --  track conditions, which EVC_Track_Conditions keeps; 4.10 deletes
+   --  the level crossings with it). The TSRs, the default gradient for
+   --  TSR and the adhesion stay.
+   procedure Delete_Description (LX : Boolean)
+     with Global => (In_Out => State),
+          Post => SSP.Count = 0 and then Gradients.Count = 0
+                  and then ASP.Count = 0 and then PBD.Count = 0;
+
    procedure Mark (Marks : in out Origin_Marks_T)
      with Global => State;
 
