@@ -144,6 +144,15 @@ is
       Stop_Required : Boolean := False;
       Stop_Length   : Length_T := 0;          -- L_STOPLX
       Msg           : Natural := 0;
+      --  added by the procedures of phase E4 (5.16): the supervision of
+      --  its start as temporary EOA and SvL substituted by its speed
+      --  restriction, from Released_From (a frame position: 5.16.2.1 the
+      --  estimated front end, 5.16.3.2 the location of the Permitted
+      --  speed supervision limit for V_LX); the driver informed of its
+      --  status (5.16.1.4)
+      Released      : Boolean := False;
+      Released_From : Dist_T := 0;
+      Indicated     : Boolean := False;
    end record;
    type LX_Array_T is array (1 .. Max_LX) of LX_T;
 
@@ -366,15 +375,34 @@ is
      return Boolean
      with Global => State;
 
-   --  3.12.5.8: the start of the nearest level crossing not protected
-   --  that the estimated front end Front has not reached, a temporary
-   --  EOA and SvL (Found False when none)
+   --  3.12.5.8: the start of the nearest level crossing not protected,
+   --  a temporary EOA and SvL (Found False when none); phase E4, 5.16:
+   --  until the min safe front end Front has passed its end (a start
+   --  passed without the substitution is an EOA passed, the trip of
+   --  4.6.3 [12], {9}; E3 dropped it once the estimated front end had
+   --  reached the start), not once its supervision is substituted by
+   --  its speed restriction (Released); Index its place in LX
    procedure LX_Target (T     : Origin_Table_T;
                         Ahead : Sense_T;
                         Front : Dist_T;
                         Found : out Boolean;
                         EOA   : out Dist_T;
-                        SvL   : out Dist_T)
-     with Global => State;
+                        SvL   : out Dist_T;
+                        Index : out Natural)
+     with Global => State,
+          Post => Index <= Max_LX and then (if Found then Index >= 1);
+
+   --  Added by the procedures of phase E4 (5.16): the level crossing I
+   --  is released (5.16.2.1, 5.16.3.2: its speed restriction from From,
+   --  a frame position, instead of its start as temporary EOA and SvL),
+   --  and the driver is informed of its status (5.16.1.4 b); Indicate_LX
+   --  the driver is informed (5.16.1.4 a). Nothing when I is not a level
+   --  crossing not protected.
+   procedure Release_LX (I : Positive; From : Dist_T)
+     with Global => (In_Out => State),
+          Pre => I <= Max_LX;
+   procedure Indicate_LX (I : Positive)
+     with Global => (In_Out => State),
+          Pre => I <= Max_LX;
 
 end EVC_Track_Description;

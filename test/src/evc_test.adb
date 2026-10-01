@@ -40,6 +40,12 @@
 --  the track of sim/evc_track.ads given as telegrams of a balise group
 --  and the mock's train, and compares the pictures at five checkpoints.
 --
+--  The scenarios of phase E4, procedures half (shunting, override, On
+--  Sight, trip and post trip, reversing, Limited Supervision, text
+--  messages, the inhibition of the BTM alarm reaction, the mode related
+--  speed restrictions) are in EVC_Test_Procedures, instantiated with
+--  Check: they drive the on-board through its ports only.
+--
 --  Usage:  obj/evc_test            compare against goldens
 --          UPDATE=1 obj/evc_test   (re)record the goldens of test/golden/evc
 --          VERBOSE=1 obj/evc_test  list passing checks too
@@ -131,6 +137,7 @@ with EVC_Track;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train;
+with EVC_Test_Procedures;
 with EVC_Train_Data;
 with General_Parameters;
 with GNAT.SHA256;
@@ -595,7 +602,7 @@ procedure EVC_Test is
       --  TIU
       Bad (TIU, (1 => 1), "one byte");
       Bad (TIU, (0, 1), "signal 0");
-      Bad (TIU, (13, 1), "signal 13");
+      Bad (TIU, (14, 1), "signal 14");
       Bad (TIU, (5, 2), "value 2");
       Bad (TIU, (1, 1, 0), "three bytes");
       --  DMI
@@ -3784,8 +3791,12 @@ procedure EVC_Test is
            and then Byte_At (I, 1) = Natural (EVC_DMI_Port.MSG_STATUS)
          then
             Last_Brake := Byte_At (I, 6);
-         elsif Recs (I).Port = TIU and then Rec_Length (I) = 2 then
-            Last_TIU := Byte_At (I, 1) + 256 * Byte_At (I, 2);
+         elsif Recs (I).Port = TIU
+           and then Rec_Length (I) = EVC_Ports.TIU_Output_Length
+           and then Byte_At (I, 1) /= Natural (EVC_Ports.TIU_TC_Tag)
+         then
+            Last_TIU := Byte_At (I, 1)
+                        + 256 * (Byte_At (I, 2) + 256 * Byte_At (I, 3));
          end if;
       end loop;
    end Collect_E4;
@@ -4563,10 +4574,13 @@ procedure EVC_Test is
       Carry (1, 0, Grad ((1 => (0, 0))));
       Carry (1, 1, M);
       Run_X (15_000);
-      Check (MAu.MA.Withdrawn
+      --  phase E4: the train is beyond the EOA the time-out withdrew it
+      --  to, so it trips (4.6.3 [12]) and the trip deletes the MA (4.10)
+      Check ((MAu.MA.Withdrawn or else EVC_Core.Mode = M_TR)
              and then SI_Seen (SI.Info_MA, SI.Change_End) = 1,
              "End Section timer start location passed at reception: over "
-             & "at once (3.8.4.1.3)");
+             & "at once (3.8.4.1.3); beyond the EOA withdrawn, a trip "
+             & "(4.6.3 [12], phase E4)");
 
       Start_X;
       Add_Group (Group (10, 100));
@@ -6202,13 +6216,17 @@ procedure EVC_Test is
               MRDT       => Byte_At (I, 26));
    end Speed_Frame;
 
-   --  The TIU output of the last Take: commands and reasons, 16#FFFF#
-   --  when there is none
+   --  The TIU output of the last Take: commands + 256 * reasons (u16),
+   --  16#FFFF# when there is none
    function TIU_Out return Natural is
    begin
       for I in 1 .. Rec_Count loop
-         if Recs (I).Port = TIU and then Rec_Length (I) = 2 then
-            return Byte_At (I, 1) + 256 * Byte_At (I, 2);
+         if Recs (I).Port = TIU
+           and then Rec_Length (I) = EVC_Ports.TIU_Output_Length
+           and then Byte_At (I, 1) /= Natural (EVC_Ports.TIU_TC_Tag)
+         then
+            return Byte_At (I, 1)
+                   + 256 * (Byte_At (I, 2) + 256 * Byte_At (I, 3));
          end if;
       end loop;
       return 16#FFFF#;
@@ -8938,7 +8956,11 @@ procedure EVC_Test is
          if Recs (I).Port = JRU
            and then Byte_At (I, 1) = EVC_Ports.JRU_Brake_Commands
          then
-            return (True, Byte_At (I, 2), Byte_At (I, 3), Byte_At (I, 4));
+            --  the commands are bits 0 to 2 of byte 2, bits 3 to 7 the
+            --  reasons bits 8 to 12 (phase E4)
+            return (True, Byte_At (I, 2) mod 8,
+                    Byte_At (I, 3) + 256 * (Byte_At (I, 2) / 8),
+                    Byte_At (I, 4));
          end if;
       end loop;
       return (others => <>);
@@ -10954,6 +10976,13 @@ procedure EVC_Test is
              & "no MSG_MODE_LEVEL: the DMI has no PS");
    end Scenario_E4_Continue_Shunting;
 
+   ---------------------------------------------------------------------
+   --  Phase E4, the procedures (e4/procedures): the scenarios are in
+   --  EVC_Test_Procedures (test/src/evc_test_procedures.adb)
+   ---------------------------------------------------------------------
+
+   package Procedures is new EVC_Test_Procedures (Check);
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -11052,6 +11081,7 @@ begin
    Scenario_E4_Desk_Closed;
    Scenario_E4_Continue_Shunting;
    Check (Encodes_OK, "E4: every telegram of the track encoded");
+   Procedures.Run;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

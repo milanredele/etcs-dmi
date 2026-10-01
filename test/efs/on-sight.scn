@@ -4,8 +4,8 @@
 frame On Sight
 sequence AckLevel1
 case Ack Level1
-clause E4 todo 5.9.2.3 ; efs 5.9.2.3
-clause E4 todo 5.9.2.7 ; efs 5.9.2.7
+clause E4 done 5.9.2.3 ; efs 5.9.2.3
+clause E4 done 5.9.2.7 ; efs 5.9.2.7
 clause - absent 5.9.2.5 ; efs 5.9.2.5
 step Setup
 sub Sub-step1 - Initialize test environment
@@ -145,8 +145,8 @@ sub Sub-step3
 expect efs: (FIRST X IN Kernel.MA.ModeProfile.Profile).Speed == 50.0 @ deadline=1
 sequence AckLevel2
 case Ack Level2
-clause E4 todo 5.9.2.3 ; efs 5.9.2.3
-clause E4 todo 5.9.2.7 ; efs 5.9.2.7
+clause E4 done 5.9.2.3 ; efs 5.9.2.3
+clause E4 done 5.9.2.7 ; efs 5.9.2.7
 clause - absent 5.9.2.5 ; efs 5.9.2.5
 step Setup
 sub Sub-step1 - Initialize test environment
@@ -289,9 +289,9 @@ sub Sub-step3
 expect efs: TIU.Brakes.BrakeCommanded() @ deadline=1
 sequence On Sight Mode Profile
 case OS Mode Profile received
-clause E4 todo 5.9.2.1 ; efs 5.9.2.1
-clause E4 todo 5.9.1.1 ; efs 5.9.1.1
-clause E4 todo 5.9.2.2 ; efs 5.9.2.2
+clause E4 done 5.9.2.1 ; efs 5.9.2.1
+clause E4 done 5.9.1.1 ; efs 5.9.1.1
+clause E4 partial 5.9.2.2 ; efs 5.9.2.2
 step Setup
 sub Sub-step1 - Initialize test environment
 init 100.0 SR

@@ -19,6 +19,7 @@ is
    type Entered_Array is array (Data_Kind_T) of Boolean;
    type Data_Bytes_Array is array (Data_Kind_T) of Byte;
    type Code_Array is array (Data_Kind_T) of Unsigned_32;
+   type Text_Ack_Array is array (1 .. Max_Text_Acks) of Unsigned_16;
 
    type Requests_T is record
       Selected : Selected_Array := (others => False);
@@ -34,6 +35,8 @@ is
       RBC      : Bytes_23_T := (others => 0);
       Bytes    : Data_Bytes_Array := (others => 0);
       Codes    : Code_Array := (others => 0);
+      Text_N   : Natural range 0 .. Max_Text_Acks := 0;
+      Texts    : Text_Ack_Array := (others => 0);
    end record;
 
    None : constant Requests_T := (others => <>);
@@ -72,6 +75,23 @@ is
      with Refined_Global => Now;
    function VBC_Code (K : Data_Kind_T) return Unsigned_32 is (Now.Codes (K))
      with Refined_Global => Now;
+   function Text_Ack_Count return Natural is (Now.Text_N)
+     with Refined_Global => Now;
+   function Text_Ack (I : Positive) return Unsigned_16 is (Now.Texts (I))
+     with Refined_Global => Now;
+
+   function Text_Acknowledged (Id : Unsigned_16) return Boolean
+     with Refined_Global => Now
+   is
+   begin
+      for I in 1 .. Now.Text_N loop
+         if Now.Texts (I) = Id then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Text_Acknowledged;
+
    function Isolation_Latched return Boolean is (Latched.Selected (Isolate))
      with Refined_Global => Latched;
    function Ignored return Natural is (Ignored_N)
@@ -165,6 +185,12 @@ is
                   Latched.Args (Acknowledge) := Get_U16 (Frame, P + 1);
                   Latched.Acks (K) := True;
                   Latched.Ack_Ids (K) := Get_U16 (Frame, P + 3);
+                  if K in Fixed_Text | Plain_Text
+                    and then Latched.Text_N < Max_Text_Acks
+                  then
+                     Latched.Text_N := Latched.Text_N + 1;
+                     Latched.Texts (Latched.Text_N) := Get_U16 (Frame, P + 3);
+                  end if;
                end;
             end if;
 

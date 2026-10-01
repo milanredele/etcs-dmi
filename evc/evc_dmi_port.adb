@@ -9,27 +9,13 @@ is
    -- Mode_Level_Frame --
    ----------------------
 
-   function Mode_Level_Frame (Mode   : Mode_T;
-                              Status : Level_Status_T;
-                              Level  : Level_T) return Mode_Level_Frame_T
-   is
-     (MSG_MODE_LEVEL,
-      Mode_Level_Length, 0, 0, 0,     -- length u32
-      Mode_Code (Mode),               -- mode
-      Level_Code (Status, Level),     -- level
-      16#FF#,                         -- mode_ack: none
-      16#FF#,                         -- level_ann: none
-      0,                              -- level_ann_ack
-      0,                              -- override
-      0,                              -- taf
-      16#FF#, 16#FF#);                -- lssma: not shown
-
    function Mode_Level_Frame (Mode          : Mode_T;
                               Status        : Level_Status_T;
                               Level         : Level_T;
-                              Mode_Ack      : Byte;
-                              Level_Ann     : Byte;
-                              Level_Ann_Ack : Boolean)
+                              Mode_Ack      : Byte := No_Code;
+                              Level_Ann     : Byte := No_Code;
+                              Level_Ann_Ack : Boolean := False;
+                              Override      : Boolean := False)
      return Mode_Level_Frame_T
    is
      (MSG_MODE_LEVEL,
@@ -39,7 +25,7 @@ is
       Mode_Ack,                       -- mode_ack
       Level_Ann,                      -- level_ann
       (if Level_Ann_Ack then 1 else 0),  -- level_ann_ack
-      0,                              -- override
+      (if Override then 1 else 0),    -- override
       0,                              -- taf
       16#FF#, 16#FF#);                -- lssma: not shown
 
@@ -222,14 +208,22 @@ is
       S.Status,
       S.MRDT);
 
+   ---------------------------------------------------------------------
+   --  Phase E3 (supervision), phase E4 (the procedures)
+   ---------------------------------------------------------------------
+
    ------------------
    -- Status_Frame --
    ------------------
 
-   function Status_Frame (Geo     : Unsigned_32;
-                          Seconds : Unsigned_64;
-                          Brake   : Byte;
-                          TTI     : Unsigned_16) return Status_Frame_T
+   function Status_Frame (Geo         : Unsigned_32;
+                          Seconds     : Unsigned_64;
+                          Brake       : Byte;
+                          TTI         : Unsigned_16;
+                          Reversing   : Boolean := False;
+                          Tunnel      : Byte := 0;
+                          Tunnel_Dist : Unsigned_32 := 0)
+     return Status_Frame_T
    is
      (MSG_STATUS,
       Status_Length, 0, 0, 0,         -- length u32
@@ -237,14 +231,17 @@ is
       0,                              -- radio: no connection
       0,                              -- adhesion
       0,                              -- bmm
-      0,                              -- reversing
+      (if Reversing then 1 else 0),   -- reversing
       0,                              -- sm_direction
       16#FF#, 16#FF#,                 -- set_speed: none
       Byte (TTI and 16#FF#),          -- tti u16
       Byte (Shift_Right (TTI, 8)),
       14,                             -- t_disp_tti
-      0,                              -- tunnel: unknown
-      0, 0, 0, 0,                     -- tunnel_dist
+      Tunnel,                         -- tunnel
+      Byte (Tunnel_Dist and 16#FF#),  -- tunnel_dist u32
+      Byte (Shift_Right (Tunnel_Dist, 8) and 16#FF#),
+      Byte (Shift_Right (Tunnel_Dist, 16) and 16#FF#),
+      Byte (Shift_Right (Tunnel_Dist, 24)),
       Byte (Geo and 16#FF#),          -- geo_pos u32
       Byte (Shift_Right (Geo, 8) and 16#FF#),
       Byte (Shift_Right (Geo, 16) and 16#FF#),
@@ -252,5 +249,29 @@ is
       Byte (Seconds / 3600 mod 24),   -- hour
       Byte (Seconds / 60 mod 60),     -- minute
       Byte (Seconds mod 60));         -- second
+
+   procedure Text_Frame (Id     : Unsigned_16;
+                         Flags  : Byte;
+                         Hour   : Byte;
+                         Minute : Byte;
+                         Text   : Byte_Array;
+                         Frame  : out Frame_Buffer_T;
+                         Last   : out Natural)
+   is
+      First : constant Positive := Header_Length + Text_Header_Length + 1;
+   begin
+      Frame := (others => 0);
+      Put_Header (Frame, MSG_TEXT, Text_Header_Length + Text'Length);
+      Put_U16 (Frame, Header_Length + 1, Id);
+      Frame (Header_Length + 3) := Flags;
+      Frame (Header_Length + 4) := Hour;
+      Frame (Header_Length + 5) := Minute;
+      Frame (Header_Length + 6) := Byte (Text'Length);
+      for I in 0 .. Text'Length - 1 loop
+         pragma Loop_Invariant (Frame (1) = MSG_TEXT);
+         Frame (First + I) := Text (Text'First + I);
+      end loop;
+      Last := Header_Length + Text_Header_Length + Text'Length;
+   end Text_Frame;
 
 end EVC_DMI_Port;

@@ -89,14 +89,19 @@ is
 
       --  3.14.3: against the direction of the MA, when there is one
       --  (3.14.3.1), and in SR against the train orientation (4.4.11.1.3
-      --  e, phase E4); the reverse movements of PT and RV are the
-      --  procedures' (e4/procedures)
+      --  e); in Post Trip and Reversing the allowed movement is the
+      --  reverse one (4.4.14.1.3.1, 4.4.18.1.8: the special cases of
+      --  chapter 4), the snapshot's Ahead being the train orientation
+      --  without an MA (phase E4)
       Protect
         (State.Direction,
-         Active   => (Supervised or else Direction_Mode (Inputs.Mode))
-                     and then (S.MA.Present or else Inputs.Mode = M_SR),
-         Unwanted => T.Moving_Backwards,
-         Allowed  => T.Moving_Ahead,
+         Active   => ((Supervised or else Direction_Mode (Inputs.Mode))
+                      and then (S.MA.Present or else Inputs.Mode = M_SR))
+                     or else Inputs.Mode in M_PT | M_RV,
+         Unwanted => (if Inputs.Mode in M_PT | M_RV then T.Moving_Ahead
+                      else T.Moving_Backwards),
+         Allowed  => (if Inputs.Mode in M_PT | M_RV then T.Moving_Backwards
+                      else T.Moving_Ahead),
          S        => S,
          Ack      => Inputs.Ack);
 

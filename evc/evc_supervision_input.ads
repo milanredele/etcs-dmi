@@ -355,6 +355,54 @@ is
    end record;
 
    ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4 (e4/procedures): the level
+   --  crossing not protected whose start is the temporary EOA and SvL of
+   --  the snapshot (Temporary), for its procedure (5.16): Index, its
+   --  place in the store of the stored information
+   --  (EVC_Track_Description.LX); Speed, V_LX; Stop, stopping in rear of
+   --  it is required (Q_STOPLX); Stop_From, the start of the stopping
+   --  area (3.12.5.7, the estimated item of the LX start less L_STOPLX).
+   --  Present False: the temporary EOA is not an LX.
+   ---------------------------------------------------------------------
+
+   ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4 (e4/procedures): the feet of
+   --  virtual SBD curves (frame positions) that the supervision
+   --  evaluates at the estimated speed for the indication of the track
+   --  conditions (5.18.4.2: the SBI limits SBID and SBIG of a non
+   --  stopping area; 5.18.8.3: the Permitted limit, without the GUI, of
+   --  a tunnel stopping area), each with the number of its condition;
+   --  and what the supervision found for them (Virtual_Limits_T, frame
+   --  positions of the SBI and the Permitted limit, Valid False when
+   --  nothing was supervised)
+   ---------------------------------------------------------------------
+
+   Max_Virtual : constant := 6;
+   type Virtual_Foot_T is record
+      Used : Boolean := False;
+      Id   : Natural range 0 .. 255 := 0;
+      Foot : Dist_T := 0;
+   end record;
+   type Virtual_Feet_T is array (1 .. Max_Virtual) of Virtual_Foot_T;
+
+   type Virtual_Limit_T is record
+      Valid : Boolean := False;
+      Id    : Natural range 0 .. 255 := 0;
+      Foot  : Dist_T := 0;
+      SBI   : Dist_T := 0;
+      P     : Dist_T := 0;
+   end record;
+   type Virtual_Limits_T is array (1 .. Max_Virtual) of Virtual_Limit_T;
+
+   type LX_Approach_T is record
+      Present   : Boolean := False;
+      Index     : Natural range 0 .. 255 := 0;
+      Speed     : Speed_Cms_T := 0;
+      Stop      : Boolean := False;
+      Stop_From : Dist_T := 0;
+   end record;
+
+   ---------------------------------------------------------------------
    --  Added by supervision (e3/supervision): what 3.13 and 3.14 read
    --  beyond the types above. The stored information fills them from
    --  the train data, the national values and the configuration of the
@@ -525,6 +573,13 @@ is
       --  above (Supervision_Extra_T below); the defaults are the A.3.2
       --  values or "not fitted"
       Extra        : Supervision_Extra_T;
+      --  added by the procedures of phase E4 (e4/procedures): the level
+      --  crossing not protected whose start is the temporary EOA and SvL
+      --  of Temporary (5.16, LX_Approach_T below)
+      LX           : LX_Approach_T;
+      --  added by the procedures of phase E4: the feet of the virtual SBD
+      --  curves of the track conditions (5.18.4.2, 5.18.8.3)
+      Virtual      : Virtual_Feet_T;
    end record;
 
 end EVC_Supervision_Input;

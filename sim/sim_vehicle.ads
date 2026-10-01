@@ -19,6 +19,7 @@
 
 with EVC_Bytes;
 with EVC_Ports;
+with Interfaces;
 
 package Sim_Vehicle is
 
@@ -33,8 +34,9 @@ package Sim_Vehicle is
    procedure Reset;
 
    --  The TIU output of the on-board: commands and reasons as
-   --  EVC_Ports.TIU_Output has them
-   procedure Command (Commands, Reasons : Byte);
+   --  EVC_Ports.TIU_Output has them (the reasons u16, one bit each)
+   subtype Reasons_T is Interfaces.Unsigned_16;
+   procedure Command (Commands : Byte; Reasons : Reasons_T);
 
    --  Before the vehicle moves: the commands onto EVC_Train (all brakes
    --  when the on-board failed)
@@ -53,7 +55,7 @@ package Sim_Vehicle is
 
    --  State, for the page and the tests
    function Commands return Byte;       -- the last TIU output
-   function Reasons return Byte;
+   function Reasons return Reasons_T;
    function Brake_Pressure_Kpa return Natural;
    function Controller return Byte;
    function Fail_Safe return Boolean;   -- braking for a failed on-board

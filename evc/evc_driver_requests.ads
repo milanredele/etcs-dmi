@@ -21,9 +21,14 @@
 --  above 20 or an acknowledgement of an unknown kind. The ranges of the
 --  values (A.3.11, 7.5) are checked by the unit that uses them.
 --
---  The package is open ended: the procedures half of E4 adds the
---  queries of its actions (e4/procedures) as further expression
---  functions on Selected, Argument, Acknowledged and Entered.
+--  The queries named after the actions serve the modes and the levels
+--  (EVC_Mission, EVC_Levels, the conditions of 4.6.3) and the procedures
+--  (EVC_Procedures, EVC_Text_Messages), one query per action: an
+--  acknowledgement of kind "mode change" is the start of mission's
+--  (the mode proposed, 5.4.3.2) or the procedures' (the request of
+--  5.7, 5.9, 5.11, 5.13, 5.19), whichever is displayed. The text
+--  messages acknowledged in a cycle are all kept (Text_Ack, up to
+--  Max_Text_Acks: the DMI sends one per press), not only the last.
 
 with EVC_Bytes;  use EVC_Bytes;
 with Interfaces; use Interfaces;
@@ -192,6 +197,41 @@ is
    function Maintain_Shunting_Selected return Boolean is
      (Selected (Maintain_Shunting))
      with Global => State;
+   --  the procedures (5.6, 5.8, 5.21, 5.22, 5.18.8)
+   function Override_Selected return Boolean is (Selected (Override))
+     with Global => State;
+   function Shunting_Selected return Boolean is (Selected (Shunting))
+     with Global => State;
+   function Exit_Shunting_Selected return Boolean is
+     (Selected (Exit_Shunting))
+     with Global => State;
+   --  action 17 with arg 2, "Exit SM" (4.6.3 [82])
+   function Exit_SM_Selected return Boolean is
+     (Selected (Supervised_Manoeuvre)
+      and then Argument (Supervised_Manoeuvre) = 2)
+     with Global => State;
+   --  action 18 with arg 0 (5.22.2) and arg 1 (5.22.5.1 c)
+   function BMM_Inhibition_Selected return Boolean is
+     (Selected (BMM_Inhibition) and then Argument (BMM_Inhibition) = 0)
+     with Global => State;
+   function BMM_Revoke_Selected return Boolean is
+     (Selected (BMM_Inhibition) and then Argument (BMM_Inhibition) = 1)
+     with Global => State;
+   function Tunnel_Toggle_Selected return Boolean is
+     (Selected (Tunnel_Toggle))
+     with Global => State;
+
+   --  The text messages acknowledged in the cycle (kinds 2 and 3, fixed
+   --  and plain text: the ids of MSG_TEXT), in their order
+   Max_Text_Acks : constant := 8;
+   function Text_Ack_Count return Natural
+     with Global => State,
+          Post => Text_Ack_Count'Result <= Max_Text_Acks;
+   function Text_Ack (I : Positive) return Unsigned_16
+     with Global => State,
+          Pre => I <= Text_Ack_Count;
+   function Text_Acknowledged (Id : Unsigned_16) return Boolean
+     with Global => State;
 
    ---------------------------------------------------------------------
    --  Operations
@@ -203,7 +243,8 @@ is
           Post => not Isolation_Latched
                   and then (for all A in Action_T => not Selected (A))
                   and then (for all K in Ack_Kind_T => not Acknowledged (K))
-                  and then (for all K in Data_Kind_T => not Entered (K));
+                  and then (for all K in Data_Kind_T => not Entered (K))
+                  and then Text_Ack_Count = 0;
 
    --  One frame of the DMI port (any frame: what is not a well formed
    --  MSG_DRIVER_ACTION or MSG_DRIVER_DATA changes nothing), latched for

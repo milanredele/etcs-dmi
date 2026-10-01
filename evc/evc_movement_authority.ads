@@ -292,9 +292,21 @@ is
                                   Max_Front : Dist_T) return Boolean
      with Global => State;
 
+   --  Added by the procedures of phase E4: the mode the on-board is in,
+   --  as an M_MAMODE (0 On Sight, 1 Shunting, 2 Limited Supervision; 3
+   --  another mode), which EVC_Core sets before the stored information
+   --  is evaluated. 3.12.4.7: the beginning of a mode profile is a
+   --  temporary EOA "until the on-board has switched to the concerned
+   --  mode"; the profiles of the mode in use are not
+   procedure Set_Mode_In_Use (Code : Natural)
+     with Global => (In_Out => State),
+          Pre => Code <= 3,
+          Post => MA = MA'Old and then Mode_Profiles = Mode_Profiles'Old
+                  and then Trip_Ordered = Trip_Ordered'Old;
+
    --  3.12.4.7: the temporary EOA of the start of the nearest mode
-   --  profile that the estimated front end Front has not reached (E3:
-   --  the on-board never is in the mode it asks, phase E4), and the
+   --  profile that the estimated front end Front has not reached, of a
+   --  mode other than the one in use (Set_Mode_In_Use), and the
    --  temporary SvL of the cases a) to c)
    procedure Mode_Profile_Target (T       : Origin_Table_T;
                                   Front   : Dist_T;

@@ -4,10 +4,10 @@
 frame LX
 sequence Display of non protected level crossing
 case EOA or SvL related to the LX becomes the MRDT
-clause E4 todo 5.16.1.4 ; efs 5.16.1.4
-clause E4 todo 5.16.1.4 a) ; efs 5.16.1.4.a
-clause E4 todo 5.16.1.5 ; efs 5.16.1.5
-clause E4 todo 5.16.1.5 ; efs 5.16.1.5.a
+clause E4 done 5.16.1.4 ; efs 5.16.1.4
+clause E4 done 5.16.1.4 a) ; efs 5.16.1.4.a
+clause E4 done 5.16.1.5 ; efs 5.16.1.5
+clause E4 done 5.16.1.5 ; efs 5.16.1.5.a
 step Setup
 sub Sub-step1
 init 100.0 FS
@@ -163,10 +163,10 @@ expect efs: DMI.MasterDMI().Out_LXStatusNotProtected.OutputInformation.DisplayRe
 expect efs: COUNT X IN Kernel.LX.MRSPLevelCrossings == 1 @ deadline=1
 expect efs: COUNT X IN Kernel.LX.SupervisedLevelCrossings == 0 @ deadline=1
 case LX Supervision is substituted by inclusion in MRSP
-clause E4 todo 5.16.1.4 ; efs 5.16.1.4
-clause E4 todo 5.16.1.4 b) ; efs 5.16.1.4.b
-clause E4 todo 5.16.1.5 ; efs 5.16.1.5
-clause E4 todo 5.16.1.5 ; efs 5.16.1.5.b
+clause E4 done 5.16.1.4 ; efs 5.16.1.4
+clause E4 done 5.16.1.4 b) ; efs 5.16.1.4.b
+clause E4 done 5.16.1.5 ; efs 5.16.1.5
+clause E4 done 5.16.1.5 ; efs 5.16.1.5.b
 step Setup
 sub Sub-step1
 init 100.0 FS
@@ -759,8 +759,8 @@ clause - absent 3.12.5.2 ; efs 3.12.5.2
 clause - absent 3.11.9.1 ; efs 3.11.9.1
 clause - absent 3.12.5.1 ; efs 3.12.5.1
 clause E1 done 7.4.2.26.1 ; efs 7.4.2.26.1.bis
-clause E4 todo 5.16.3.1 ; efs 5.16.3.1
-clause E4 todo 5.16.3.2 ; efs 5.16.3.2
+clause E4 done 5.16.3.1 ; efs 5.16.3.1
+clause E4 done 5.16.3.2 ; efs 5.16.3.2
 step Setup
 sub Sub-step1
 init 100.0 FS
@@ -919,7 +919,7 @@ clause - absent 3.12.5.2 ; efs 3.12.5.2
 clause - absent 3.11.9.1 ; efs 3.11.9.1
 clause - absent 3.12.5.1 ; efs 3.12.5.1
 clause E1 done 7.4.2.26.1 ; efs 7.4.2.26.1.bis
-clause E4 todo 5.16.2.1 ; efs 5.16.2.1
+clause E4 done 5.16.2.1 ; efs 5.16.2.1
 step Setup
 sub Sub-step1
 init 100.0 FS
@@ -1230,9 +1230,9 @@ clause - absent 3.11.2.2 i) ; efs 3.11.2.2.i
 clause - absent 3.12.5.2 ; efs 3.12.5.2
 clause - absent 3.12.5.1 ; efs 3.12.5.1
 clause E1 done 7.4.2.26.1 ; efs 7.4.2.26.1.bis
-clause E4 todo 5.16.2.1 ; efs 5.16.2.1
-clause E4 todo 5.16.3.1 ; efs 5.16.3.1
-clause E4 todo 5.16.3.2 ; efs 5.16.3.2
+clause E4 done 5.16.2.1 ; efs 5.16.2.1
+clause E4 done 5.16.3.1 ; efs 5.16.3.1
+clause E4 done 5.16.3.2 ; efs 5.16.3.2
 step Setup
 sub Sub-step1
 init 100.0 SR

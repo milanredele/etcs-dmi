@@ -62,8 +62,8 @@
 --  3.6.7, EVC_Odometry); the driver's entry at standstill in SR (kind 3,
 --  4.4.11.1.5) replaces both and restarts the distance (4.4.11.1.3.1 b).
 --  The estimated front end beyond the end of the distance is the
---  condition [42] (with the override of 5.8, the procedures', not
---  active).
+--  condition [42] (with the override of 5.8, EVC_Procedures, not
+--  active; the trip is EVC_Procedures', which reports its reason).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -114,6 +114,16 @@ is
    function Proposed_Mode return Mode_T
      with Global => State;
    function Acknowledged (M : Mode_T) return Boolean
+     with Global => State;
+   --  The driver's acknowledgement of a mode change of the cycle was the
+   --  start of mission's (the procedures do not take it,
+   --  e4/integration)
+   function Ack_Taken return Boolean
+     with Global => State;
+
+   --  The driver validated Train Data in this cycle (5.4.3.2 S12; the
+   --  re-validation of 5.17.2.2 E6, EVC_Procedures)
+   function Train_Data_Validated return Boolean
      with Global => State;
 
    --  The desk was closed in this cycle during the start of mission
@@ -215,6 +225,13 @@ is
      with Global => (In_Out => (State, EVC_Train_Data.State),
                      Input  => (EVC_Driver_Requests.State,
                                 EVC_Odometry.State, EVC_Config.State));
+
+   --  For the tests of the hosts (EVC_Core.Set_Mode_For_Test): the mode
+   --  is set to M without a transition; in SR the SR mode speed limit and
+   --  the SR distance of the national values apply from here, as on
+   --  entering SR (4.4.11.1.3.1 a). No event is recorded.
+   procedure Set_For_Test (M : Mode_T; C : Context_T)
+     with Global => (In_Out => State, Input => EVC_Odometry.State);
 
    --  The mode machine took the transition From -> To (4.10, 5.4.6,
    --  5.5.2, 4.4.11)

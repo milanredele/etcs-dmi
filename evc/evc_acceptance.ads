@@ -34,6 +34,14 @@
 --    4.8.4 [13], [14]: SM authorisations, E5.
 --  A level that is not valid (unknown, or invalid: 5.4.3.2 D2) is no
 --  level of the tables: only what every level accepts is accepted.
+--  The procedures (EVC_Procedures, EVC_Text_Messages, e4/integration)
+--  filter the information they take with the same tables: the rows
+--  "Danger for SH information", "Stop Shunting on desk opening", "Stop
+--  if in SR mode", "Reversing Area Information", "Reversing Supervision
+--  Information", "Plain / Fixed Text Information". 4.8.3 [13] (danger
+--  for SH in level 0 or NTC, rejected unless it comes with an immediate
+--  transition order to level 1 or 2) is not applied: the order is
+--  accepted, on the safe side.
 
 with EVC_Modes; use EVC_Modes;
 
@@ -62,7 +70,14 @@ is
       Track_Conditions,       -- 68, 39 (excluding big metal masses)
       Big_Metal_Masses,       -- 67
       Braking_Distance,       -- 52
-      Level_Crossing);        -- 88
+      Level_Crossing,         -- 88
+      --  the procedures (e4/integration)
+      Danger_For_SH,          -- 132
+      Stop_SH_On_Desk,        -- 135
+      Stop_If_In_SR,          -- 137
+      Reversing_Area,         -- 138
+      Reversing_Supervision,  -- 139
+      Text_Message);          -- 72, 76 (73, 74 of 7.4.2)
 
    type Context_T is record
       Mode             : Mode_T := M_SB;
@@ -101,10 +116,13 @@ is
              not C.Order_In_Message and then not C.Order_Pending
              and then not (L = L2 and then C.Unlinked_Group),
           when TSR | TSR_Revocation | Default_Gradient
-             | Geographical_Position =>
+             | Geographical_Position | Text_Message =>
              L /= NTC or else C.L1_Announced,
-          when Level_Crossing =>
-             L in L1 | L2 or else C.L1_Announced);
+          when Level_Crossing | Stop_If_In_SR =>
+             L in L1 | L2 or else C.L1_Announced,
+          when Danger_For_SH | Stop_SH_On_Desk => True,
+          when Reversing_Area | Reversing_Supervision =>
+             L = L1 or else C.L1_Announced);
 
    --  4.8.3 for the on-board: in its level when valid, else in every
    --  level
@@ -121,21 +139,27 @@ is
              and then
              (case I is
                  when National_Values | Level_Order | Conditional_Order
-                    | Geographical_Position => True,
+                    | Geographical_Position | Text_Message => True,
                  when Movement_Authority =>
                     C.Train_Data_Valid and then C.TRN_Valid,     -- [4][11]
+                 when Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR =>
+                    False,
                  when others => C.Train_Data_Valid),             -- [4]
           when M_PS =>
              I in National_Values | Level_Order | Conditional_Order
-                | Big_Metal_Masses,                              -- [7]
+                | Big_Metal_Masses | Stop_SH_On_Desk,            -- [7]
           when M_SH =>
              I in National_Values | Level_Order | Conditional_Order
-                | Big_Metal_Masses,                              -- [7]
+                | Big_Metal_Masses | Danger_For_SH,              -- [7]
           when M_SM =>
              I not in Signalling_Speed | Movement_Authority
-                    | Route_Suitability | Braking_Distance,
-          when M_FS | M_AD | M_LS | M_SR | M_OS | M_UN | M_SN =>
-             True,
+                    | Route_Suitability | Braking_Distance
+                    | Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
+                    | Reversing_Area | Reversing_Supervision,
+          when M_FS | M_AD | M_LS | M_OS | M_UN | M_SN =>
+             I not in Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR,
+          when M_SR =>
+             I not in Danger_For_SH | Stop_SH_On_Desk,
           when M_SL =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses,
@@ -147,11 +171,13 @@ is
              I in National_Values | Level_Order | Conditional_Order
                 | TSR | TSR_Revocation | Default_Gradient
                 | Geographical_Position | Track_Conditions
-                | Big_Metal_Masses,
+                | Big_Metal_Masses | Text_Message,
           --  [1]: every information of these tables is marked [1] in PT,
           --  rejected in level 1 (in level 2 the RBC's, phase E5)
           when M_PT => False,
-          when M_RV => I = National_Values);
+          when M_RV =>
+             I in National_Values | Reversing_Area | Reversing_Supervision
+                | Text_Message);
 
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));

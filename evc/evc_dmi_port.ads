@@ -106,16 +106,31 @@ is
    subtype Mode_Level_Frame_T is
      Byte_Array (1 .. Header_Length + Mode_Level_Length);
 
-   --  MSG_MODE_LEVEL: the mode and the level, no acknowledgement asked,
-   --  no level announced, no override, no TAF request, no LSSMA
-   function Mode_Level_Frame (Mode   : Mode_T;
-                              Status : Level_Status_T;
-                              Level  : Level_T) return Mode_Level_Frame_T
+   --  "None" in the code fields of MSG_MODE_LEVEL (mode_ack, level_ann)
+   No_Code : constant Byte := 16#FF#;
+
+   --  MSG_MODE_LEVEL: the mode and the level; phase E4: the
+   --  acknowledgement of a mode (Mode_Ack: the code of the mode, No_Code
+   --  none; the start of mission's proposal, 5.4.3.2, or the request of
+   --  a procedure, 5.7, 5.9, 5.11, 5.13, 5.19), the level announced
+   --  (Level_Ann: the code of the level, No_Code none) and whether its
+   --  acknowledgement is asked (5.10), "override active" (5.8.3.7); no
+   --  TAF request, no LSSMA (phase E5)
+   function Mode_Level_Frame (Mode          : Mode_T;
+                              Status        : Level_Status_T;
+                              Level         : Level_T;
+                              Mode_Ack      : Byte := No_Code;
+                              Level_Ann     : Byte := No_Code;
+                              Level_Ann_Ack : Boolean := False;
+                              Override      : Boolean := False)
+     return Mode_Level_Frame_T
    with Pre => Has_Mode_Code (Mode),
         Post => Mode_Level_Frame'Result (1) = MSG_MODE_LEVEL
                 and then Mode_Level_Frame'Result (6) = Mode_Code (Mode)
                 and then Mode_Level_Frame'Result (7)
-                           = Level_Code (Status, Level);
+                           = Level_Code (Status, Level)
+                and then Mode_Level_Frame'Result (8) = Mode_Ack
+                and then Mode_Level_Frame'Result (9) = Level_Ann;
 
    --  MSG_ONBOARD, field by field as dmi_protocol.ads defines it
    subtype Bits_T is Byte;
@@ -152,28 +167,6 @@ is
    National_VBC_Stored        : constant Bits_T := 8;
    --  SoM
    SoM_Possible : constant Byte := 2;
-
-   --  Added by e4/modes: MSG_MODE_LEVEL with the acknowledgement of a
-   --  mode (Mode_Ack: the code of the mode, 16#FF# none), the level
-   --  announced (Level_Ann: the code of the level, 16#FF# none) and
-   --  whether its acknowledgement is asked; no override, no TAF request,
-   --  no LSSMA (the procedures half fills those)
-   No_Code : constant Byte := 16#FF#;
-
-   function Mode_Level_Frame (Mode          : Mode_T;
-                              Status        : Level_Status_T;
-                              Level         : Level_T;
-                              Mode_Ack      : Byte;
-                              Level_Ann     : Byte;
-                              Level_Ann_Ack : Boolean)
-     return Mode_Level_Frame_T
-   with Pre => Has_Mode_Code (Mode),
-        Post => Mode_Level_Frame'Result (1) = MSG_MODE_LEVEL
-                and then Mode_Level_Frame'Result (6) = Mode_Code (Mode)
-                and then Mode_Level_Frame'Result (7)
-                           = Level_Code (Status, Level)
-                and then Mode_Level_Frame'Result (8) = Mode_Ack
-                and then Mode_Level_Frame'Result (9) = Level_Ann;
 
    subtype Onboard_Frame_T is Byte_Array (1 .. Header_Length + Onboard_Length);
 
@@ -315,21 +308,28 @@ is
    Brake_None    : constant Byte := 0;
    Brake_Applied : constant Byte := 1;
    Brake_Ack     : constant Byte := 2;
-   --  added by e4/modes: applied because a requested acknowledgement of
-   --  a level, a mode or a text message is pending (its release comes
-   --  with that acknowledgement, dmi_protocol.ads)
+   --  phase E4: applied because a requested acknowledgement of a level, a
+   --  mode or a text message is pending (its release comes with that
+   --  acknowledgement, dmi_protocol.ads; 3.14.1.7.2, 3.14.1.7.3,
+   --  3.14.1.7.5)
    Brake_Ack_Pending : constant Byte := 3;
 
    --  No time to Indication (tti)
    TTI_None : constant Unsigned_16 := 16#FFFF#;
 
    --  MSG_STATUS with the brake indication and the time to Indication
-   --  (tenths of a second) of the supervision; the other fields as
-   --  Status_Frame
-   function Status_Frame (Geo     : Unsigned_32;
-                          Seconds : Unsigned_64;
-                          Brake   : Byte;
-                          TTI     : Unsigned_16) return Status_Frame_T
+   --  (tenths of a second) of the supervision (phase E3); phase E4: the
+   --  reversing indication (3.15.4.7) and the tunnel stopping area
+   --  (5.18.8: tunnel 0 none / unknown, 1 active, 2 announced; its
+   --  distance, m); the other fields as Status_Frame
+   function Status_Frame (Geo         : Unsigned_32;
+                          Seconds     : Unsigned_64;
+                          Brake       : Byte;
+                          TTI         : Unsigned_16;
+                          Reversing   : Boolean := False;
+                          Tunnel      : Byte := 0;
+                          Tunnel_Dist : Unsigned_32 := 0)
+     return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 
    --  The acknowledgement kind of a brake release (DMI_Ack, the arg of
@@ -345,28 +345,78 @@ is
                  = Ack_Brake_Release);
 
    ---------------------------------------------------------------------
-   --  Added by e4/modes: MSG_SYSTEM_STATUS (dmi_protocol.ads), an event of
-   --  a system status message of the catalogue of the DMI's chapter 15:
-   --  item u8 (the catalogue entry), event u8 (0 start, 1 end, 2 the
-   --  event that starts the 30 s of an entry)
+   --  Phase E4 (e4/modes, e4/procedures): MSG_SYSTEM_STATUS, the text
+   --  messages (MSG_TEXT, MSG_TEXT_REMOVE), the BTM alarm reaction
+   --  inhibition in MSG_ONBOARD
    ---------------------------------------------------------------------
 
+   --  MSG_SYSTEM_STATUS (dmi_protocol.ads), an event of a system status
+   --  message of the catalogue of the DMI's chapter 15: entry u8 (the
+   --  catalogue number, SS_* below as dmi_protocol.ads has them), event
+   --  u8 (0 start, 1 end, 2 the event that starts the 30 s of an entry)
    MSG_SYSTEM_STATUS    : constant Byte := 16#0C#;
    System_Status_Length : constant := 2;
    SS_Event_Start       : constant Byte := 0;
    SS_Event_End         : constant Byte := 1;
-   --  "Non-leading no longer permitted" (SUBSET-026 4.4.15.1.1.3), to be
-   --  acknowledged; the DMI ends it with the acknowledgement
-   SS_NL_No_Longer_Permitted : constant Byte := 35;
-   --  "Entering FS" (SUBSET-026 4.4.9.1.4): ends when SSP and gradient are
-   --  known for the whole length of the train
-   SS_Entering_FS            : constant Byte := 6;
+   SS_Event_Timer       : constant Byte := 2;
+
+   --  The entries the on-board reports (the catalogue of dmi_protocol.ads;
+   --  evc_test checks that the numbers are the same)
+   SS_Balise_Read_Error_Trip        : constant := 2;   -- [17], [66]
+   SS_Entering_FS                   : constant := 6;   -- 4.4.9.1.4
+   SS_Trackside_Not_Compatible_Trip : constant := 16;  -- [65]
+   SS_Train_Data_Changed            : constant := 17;  -- 5.17.2.2 A1
+   SS_Train_Data_Changed_Brake      : constant := 18;  -- 5.17.2.2 S2, S4
+   SS_Unauthorized_Passing          : constant := 21;  -- [12] [16] [18] [43]
+   SS_No_MA_Level_Transition        : constant := 22;  -- [39], [67]
+   SS_SR_Distance_Exceeded          : constant := 23;  -- [42]
+   SS_SH_Stop_Order                 : constant := 24;  -- [49], [52]
+   SS_SR_Stop_Order                 : constant := 25;  -- [54]
+   SS_RV_Distance_Exceeded          : constant := 27;  -- 3.15.4.8
+   SS_PT_Distance_Exceeded          : constant := 28;  -- 4.4.14.1.3
+   SS_No_Track_Description          : constant := 29;  -- [69]
+   SS_NL_No_Longer_Permitted        : constant := 35;  -- 4.4.15.1.1.3
 
    subtype System_Status_Frame_T is
      Byte_Array (1 .. Header_Length + System_Status_Length);
 
-   function System_Status_Frame (Item, Event : Byte)
+   function System_Status_Frame (Entry_Number, Event : Byte)
      return System_Status_Frame_T
-   is (MSG_SYSTEM_STATUS, System_Status_Length, 0, 0, 0, Item, Event);
+   is ((MSG_SYSTEM_STATUS, System_Status_Length, 0, 0, 0,
+        Entry_Number, Event));
+
+   --  MSG_TEXT: id u16, flags u8 (bit 0 ack required, bit 1 first group,
+   --  bits 2-3 class: 0 fixed text, 1 plain text), hour u8, minute u8,
+   --  length u8, the text (Latin-1); MSG_TEXT_REMOVE: id u16
+   MSG_TEXT           : constant Byte := 16#03#;
+   MSG_TEXT_REMOVE    : constant Byte := 16#04#;
+   Text_Header_Length : constant := 6;
+   Text_Remove_Length : constant := 2;
+   Text_Ack_Required  : constant Byte := 1;
+   Text_First_Group   : constant Byte := 2;
+   Text_Class_Plain   : constant Byte := 4;
+   Max_Text_Length    : constant := 255;
+
+   procedure Text_Frame (Id     : Unsigned_16;
+                         Flags  : Byte;
+                         Hour   : Byte;
+                         Minute : Byte;
+                         Text   : Byte_Array;
+                         Frame  : out Frame_Buffer_T;
+                         Last   : out Natural)
+     with Pre => Text'Length <= Max_Text_Length,
+          Post => Last = Header_Length + Text_Header_Length + Text'Length
+                  and then Frame (1) = MSG_TEXT;
+
+   subtype Text_Remove_Frame_T is
+     Byte_Array (1 .. Header_Length + Text_Remove_Length);
+
+   function Text_Remove_Frame (Id : Unsigned_16) return Text_Remove_Frame_T
+   is ((MSG_TEXT_REMOVE, Text_Remove_Length, 0, 0, 0,
+        Byte (Id and 16#FF#), Byte (Shift_Right (Id, 8))));
+
+   --  MSG_ONBOARD train bit 4: the "BTM alarm reaction inhibition"
+   --  function is active (5.22.4.1)
+   Train_BMM_Inhibition : constant Bits_T := 16;
 
 end EVC_DMI_Port;

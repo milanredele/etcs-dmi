@@ -8,7 +8,7 @@ package body Sim_Vehicle is
    use type EVC_Bytes.Byte;
 
    Last_Commands : Byte := 0;
-   Last_Reasons  : Byte := 0;
+   Last_Reasons  : Reasons_T := 0;
    Failed_Safe   : Boolean := False;
    Pressure      : Natural := 500;   -- kPa
    The_Controller : Byte := Forwards;
@@ -30,7 +30,7 @@ package body Sim_Vehicle is
       Sent_Cab := False;
    end Reset;
 
-   procedure Command (Commands, Reasons : Byte) is
+   procedure Command (Commands : Byte; Reasons : Reasons_T) is
    begin
       Last_Commands := Commands;
       Last_Reasons := Reasons;
@@ -90,7 +90,7 @@ package body Sim_Vehicle is
    end Take_Inputs;
 
    function Commands return Byte is (Last_Commands);
-   function Reasons return Byte is (Last_Reasons);
+   function Reasons return Reasons_T is (Last_Reasons);
    function Brake_Pressure_Kpa return Natural is (Pressure);
    function Controller return Byte is (The_Controller);
    function Fail_Safe return Boolean is (Failed_Safe);

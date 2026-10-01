@@ -180,9 +180,15 @@ package body Sim_Onboard_Env is
                when EVC_Ports.Port_T'Pos (EVC_Ports.DMI) =>
                   Take_Frame (Payload);
                when EVC_Ports.Port_T'Pos (EVC_Ports.TIU) =>
-                  if Length = EVC_Ports.TIU_Output_Length then
-                     Sim_Vehicle.Command (Payload (Payload'First),
-                                          Payload (Payload'First + 1));
+                  --  the commands, not the track condition output (5.20)
+                  if Length = EVC_Ports.TIU_Output_Length
+                    and then not EVC_Ports.Is_TIU_TC_Output (Payload)
+                  then
+                     Sim_Vehicle.Command
+                       (Payload (Payload'First),
+                        Sim_Vehicle.Reasons_T (Payload (Payload'First + 1))
+                        + 256 * Sim_Vehicle.Reasons_T
+                                  (Payload (Payload'First + 2)));
                   end if;
                when EVC_Ports.Port_T'Pos (EVC_Ports.JRU) =>
                   Sim_JRU.Put (Payload);

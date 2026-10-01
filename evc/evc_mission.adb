@@ -10,7 +10,7 @@ package body EVC_Mission
                                    Proposal, Proposal_Mode, Acked_Now,
                                    Acked_M, Desk_Closed_Now, SR_V, SR_D,
                                    Continue_On, NL_Lost, NL_Input,
-                                   Events, Event_N))
+                                   TD_Now, Events, Event_N))
 is
 
    type Event_Array is array (1 .. Max_Events) of Event_T;
@@ -34,6 +34,8 @@ is
    --  4.4.15.1.1.3: the input lost in this cycle, the input of the last
    NL_Lost         : Boolean := False;
    NL_Input        : Boolean := False;
+   --  Train Data validated in this cycle
+   TD_Now          : Boolean := False;
    Events          : Event_Array;
    Event_N         : Natural range 0 .. Max_Events := 0;
 
@@ -65,6 +67,10 @@ is
    function Acknowledged (M : Mode_T) return Boolean is
      (Acked_Now and then Acked_M = M)
      with Refined_Global => (Acked_Now, Acked_M);
+   function Ack_Taken return Boolean is (Acked_Now)
+     with Refined_Global => Acked_Now;
+   function Train_Data_Validated return Boolean is (TD_Now)
+     with Refined_Global => TD_Now;
    function Desk_Closed_In_SoM return Boolean is (Desk_Closed_Now)
      with Refined_Global => Desk_Closed_Now;
    function SR_Speed return Speed_Cms_T is (SR_V)
@@ -118,6 +124,7 @@ is
       Continue_On := False;
       NL_Lost := False;
       NL_Input := False;
+      TD_Now := False;
       Events := (others => (others => <>));
       Event_N := 0;
    end Clear;
@@ -210,6 +217,7 @@ is
       Event_N := 0;
       Acked_Now := False;
       Desk_Closed_Now := False;
+      TD_Now := False;
 
       --  4.4.15.1.1.3: the non-leading input lost while in NL
       NL_Lost := M = M_NL and then NL_Input and then not C.Non_Leading;
@@ -292,6 +300,7 @@ is
             then
                EVC_Train_Data.Set (D, Cs);
                Train_Known := True;
+               TD_Now := True;
                Put_Event (Event_Train_Data,
                           Natural (E.Length_M) / 100,
                           Natural (E.Brake_Percentage) / 2);
@@ -365,6 +374,22 @@ is
          Put_Event (Event_Acked, Mode_T'Pos (Proposal_Mode), 0);
       end if;
    end Evaluate;
+
+   ------------------
+   -- Set_For_Test --
+   ------------------
+
+   procedure Set_For_Test (M : Mode_T; C : Context_T) is
+   begin
+      if M = M_SR then
+         SR_V := C.V_NVSTFF;
+         if C.D_NVSTFF < Max_Cm then
+            SR_D := EVC_Odometry.Start_Virtual (C.D_NVSTFF, C.Sense);
+         else
+            SR_D := (others => <>);
+         end if;
+      end if;
+   end Set_For_Test;
 
    ------------------
    -- Mode_Entered --

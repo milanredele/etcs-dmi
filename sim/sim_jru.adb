@@ -176,6 +176,23 @@ package body Sim_JRU is
             if (R.B3 and 16) /= 0 then
                Add (" standstill");
             end if;
+            --  phase E4 (EVC_Ports: the reasons bits 8 and 9 in bits 3
+            --  and 4 of byte 2)
+            if (R.B3 and 32) /= 0 then
+               Add (" level ack");
+            end if;
+            if (R.B3 and 64) /= 0 then
+               Add (" failure");
+            end if;
+            if (R.B3 and 128) /= 0 then
+               Add (" trip");
+            end if;
+            if (R.B2 and 8) /= 0 then
+               Add (" ack missing");
+            end if;
+            if (R.B2 and 16) /= 0 then
+               Add (" procedure");
+            end if;
             Add (" )");
          end if;
       end Add_Brakes;
@@ -289,6 +306,18 @@ package body Sim_JRU is
             if R.B2 /= 1 then
                Add_Nat (R.B3);
             end if;
+         when 23 | 24 | 40 | 41 =>
+            --  phase E4: the kind (byte 2) and its two bytes
+            Add (case R.Event is
+                    when 23     => "procedures ",
+                    when 24     => "text message ",
+                    when 40     => "levels ",
+                    when others => "mission ");
+            Add_Nat (R.B2);
+            Add (": ");
+            Add_Nat (R.B3);
+            Add (" ");
+            Add_Nat (R.B4);
          when others =>
             Add ("event ");
             Add_Nat (R.Event);

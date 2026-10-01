@@ -44,8 +44,17 @@
 --  carries out what entering the mode means (4.10, 4.12, 5.4.3.2, 5.5);
 --  the outputs show the mode, the level, the announcement and the
 --  acknowledgements (4.7, MSG_MODE_LEVEL, MSG_ONBOARD) and record the
---  events of the levels and the mission (JRU events 40 and 41). The later
---  phases fill the empty steps.
+--  events of the levels and the mission (JRU events 40 and 41). Phase
+--  E4, the procedures (e4/procedures, integrated with the modes in
+--  e4/integration): after the levels and the mission, the procedures of
+--  chapter 5 (EVC_Procedures, the text messages of EVC_Text_Messages)
+--  evaluate the conditions of 4.6.3 they own; after the mode machine
+--  they do what entering the mode means for them and give their brake
+--  demand; the outputs carry the acknowledgements and "override" in
+--  MSG_MODE_LEVEL, the system status messages, the text messages, their
+--  brake commands on the TIU, the information for an external function
+--  (the second TIU output) and JRU events 23 and 24. The later phases
+--  fill the empty steps.
 
 --  The postconditions name the state before the call ('Old) of query
 --  functions behind "and then" and "if": allowed, and evaluated at entry
@@ -67,10 +76,12 @@ with EVC_Outbox;
 with EVC_Ports;    use EVC_Ports;
 with EVC_Location;
 with EVC_Position;
+with EVC_Procedures;
 with EVC_Received;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
+with EVC_Text_Messages;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
@@ -158,7 +169,9 @@ is
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Levels.State,
-                                EVC_Mission.State),
+                                EVC_Mission.State,
+                                EVC_Procedures.State,
+                                EVC_Text_Messages.State),
                      Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -250,7 +263,9 @@ is
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Levels.State,
-                                EVC_Mission.State)),
+                                EVC_Mission.State,
+                                EVC_Procedures.State,
+                                EVC_Text_Messages.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed
@@ -349,12 +364,16 @@ is
    --  modes, in a mode of their own: from the next cycle on, the mode is
    --  Mode (the mode machine runs from there), the level Level (valid)
    --  and the Train Data the default train of EVC_Train_Data (valid), as
-   --  after a start of mission. Nothing of entering the mode (4.10,
+   --  after a start of mission; in SR the SR data of the national values
+   --  (EVC_Mission.Set_For_Test). Nothing of entering the mode (4.10,
    --  4.12) is done. The scenarios of E4 start their missions through
-   --  the ports.
+   --  the ports; those of the procedures (evc_test_procedures) start
+   --  from a mode set here when the mode is not their subject.
    procedure Set_Mode_For_Test (Mode : Mode_T; Level : Level_T)
-     with Global => (In_Out => (State, EVC_Levels.State),
-                     Output => EVC_Train_Data.State),
+     with Global => (In_Out => (State, EVC_Levels.State, EVC_Mission.State),
+                     Output => EVC_Train_Data.State,
+                     Input  => (EVC_National_Values.State,
+                                EVC_Position.State, EVC_Odometry.State)),
           Pre  => Mode /= M_NP,
           Post => EVC_Core.Mode = Mode and then Failed = Failed'Old
                   and then Cycle = Cycle'Old

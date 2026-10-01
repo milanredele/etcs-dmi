@@ -16,6 +16,7 @@ with EVC_Levels;
 with EVC_Mission;
 with EVC_Movement_Authority;
 with EVC_Odometry;
+with EVC_Procedures;
 with EVC_Stored_Information;
 with EVC_Train_Data;
 with EVC_Train_Inputs;
@@ -496,10 +497,13 @@ is
    C_84 : constant Condition_Id_T := 84;
 
    --  True when the condition holds in the current cycle. The modes
-   --  half (e4/modes) reads the driver's requests, the inputs of the
-   --  train interface, the level, the mission data, the odometer, the
-   --  stored information and the Train Data; [1], [4] and [29] are
-   --  stated (the transitions out of No Power that EVC_Core.Tick
+   --  and levels (e4/modes) read the driver's requests, the inputs of
+   --  the train interface, the level, the mission data, the odometer, the
+   --  stored information and the Train Data; the procedures
+   --  (e4/procedures) evaluate theirs in EVC_Procedures (Evaluate, once
+   --  per cycle before the mode machine; every trip condition is theirs,
+   --  so that the trip has one reason, 4.4.13.1.3). [1], [4] and [29]
+   --  are stated (the transitions out of No Power that EVC_Core.Tick
    --  proves).
    function Holds (C : Condition_Id_T) return Boolean
      with Global => (Input => (EVC_Driver_Requests.State,
@@ -509,7 +513,8 @@ is
                                EVC_Odometry.State,
                                EVC_Stored_Information.State,
                                EVC_Movement_Authority.State,
-                               EVC_Train_Data.State)),
+                               EVC_Train_Data.State,
+                               EVC_Procedures.State)),
           Post => (if C = C_1
                    then Holds'Result
                           = EVC_Driver_Requests.Isolation_Selected)

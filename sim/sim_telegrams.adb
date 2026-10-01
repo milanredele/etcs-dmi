@@ -113,11 +113,124 @@ package body Sim_Telegrams is
       OK := OK and then Done;
    end Put;
 
+   procedure Put (W : in out Writer_T; P : T39.Packet_T; OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T39.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T40.Packet_T; OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T40.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T67.Packet_T; OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T67.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T69.Packet_T; OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T69.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
    procedure Put (W : in out Writer_T; P : T73.Packet_T; OK : in out Boolean)
    is
       Done : Boolean;
    begin
       T73.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T49.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T49.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T74.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T74.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T80.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T80.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T88.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T88.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T132.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T132.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T135.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T135.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T137.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T137.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T138.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T138.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T139.Packet_T;
+                  OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T139.Encode (P, W, Done);
       OK := OK and then Done;
    end Put;
 
@@ -336,6 +449,60 @@ package body Sim_Telegrams is
       return P;
    end Track_Condition;
 
+   function Traction_Change (D_M, Voltage, Country : Natural)
+     return T39.Packet_T
+   is
+      P : T39.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_TRACTION := D_TRACTION_T (D15 (D_M));
+      P.M_VOLTAGE := M_VOLTAGE_T (Clamp (Voltage, 0, 5));
+      P.Has_NID_CTRACTION := Voltage /= 0;
+      P.NID_CTRACTION :=
+        (if Voltage /= 0 then NID_CTRACTION_T (Clamp (Country, 0, 1023))
+         else 0);
+      return P;
+   end Traction_Change;
+
+   function Big_Metal_Mass (D_M, L_M : Natural) return T67.Packet_T is
+      P : T67.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_TRACKCOND := D_TRACKCOND_T (D15 (D_M));
+      P.L_TRACKCOND := L_TRACKCOND_T (D15 (L_M));
+      P.N_ITER := 0;
+      return P;
+   end Big_Metal_Mass;
+
+   function Current_Change (D_M, Current : Natural) return T40.Packet_T is
+      P : T40.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_CURRENT := D_CURRENT_T (D15 (D_M));
+      P.M_CURRENT := M_CURRENT_T (Clamp (Current, 0, 1022));
+      return P;
+   end Current_Change;
+
+   function Station_Platform (D_M, L_M, Height, Side : Natural)
+     return T69.Packet_T
+   is
+      P : T69.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.Q_TRACKINIT := 0;
+      P.Has_D_TRACKCOND := True;
+      P.D_TRACKCOND := D_TRACKCOND_T (D15 (D_M));
+      P.L_TRACKCOND := L_TRACKCOND_T (D15 (L_M));
+      P.M_PLATFORM := M_PLATFORM_T (Clamp (Height, 0, 15));
+      P.Q_PLATFORM := Q_PLATFORM_T (Clamp (Side, 0, 2));
+      P.N_ITER := 0;
+      return P;
+   end Station_Platform;
+
    function TSR (Id : Natural; D_M, L_M, Kmh : Natural) return T65.Packet_T
    is
       T : T65.Packet_T;
@@ -397,5 +564,174 @@ package body Sim_Telegrams is
       end loop;
       return P;
    end Plain_Text;
+
+   ---------------------------------------------------------------------
+   --  Added with the procedures of phase E4
+   ---------------------------------------------------------------------
+
+   function Mode_Profile (D_M      : Natural;
+                          M_MAMODE : Natural;
+                          L_M      : Natural;
+                          Ack_M    : Natural;
+                          Kmh      : Natural := National_Speed;
+                          Q_MAMODE : Natural := 0) return T80.Packet_T
+   is
+      P : T80.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_MAMODE := D_MAMODE_T (D15 (D_M));
+      P.M_MAMODE := M_MAMODE_T (Clamp (M_MAMODE, 0, 2));
+      P.V_MAMODE := V_MAMODE_T (Clamp (Kmh / 5, 0, 127));
+      P.L_MAMODE := L_MAMODE_T (D15 (L_M));
+      P.L_ACKMAMODE := L_ACKMAMODE_T (D15 (Ack_M));
+      P.Q_MAMODE := Q_MAMODE_T (Clamp (Q_MAMODE, 0, 1));
+      P.N_ITER := 0;
+      return P;
+   end Mode_Profile;
+
+   function Danger_For_Shunting (Stop : Boolean) return T132.Packet_T is
+      P : T132.Packet_T;
+   begin
+      P.Q_DIR := 2;
+      P.Q_ASPECT := (if Stop then 0 else 1);
+      return P;
+   end Danger_For_Shunting;
+
+   function Stop_Shunting_On_Desk_Opening return T135.Packet_T is
+      P : T135.Packet_T;
+   begin
+      P.Q_DIR := 2;
+      return P;
+   end Stop_Shunting_On_Desk_Opening;
+
+   function Shunting_Area_List (NIDs : Nat_List) return T49.Packet_T is
+      P : T49.Packet_T;
+   begin
+      P.Q_DIR := 2;
+      P.N_ITER := N_ITER_T (Clamp (NIDs'Length, 0, 31));
+      for I in 1 .. Clamp (NIDs'Length, 0, 31) loop
+         P.Q_NEWCOUNTRY_List (I).Q_NEWCOUNTRY := 0;
+         P.Q_NEWCOUNTRY_List (I).Has_NID_C := False;
+         P.Q_NEWCOUNTRY_List (I).NID_BG :=
+           NID_BG_T (Clamp (NIDs (NIDs'First + I - 1), 0, 16_383));
+      end loop;
+      return P;
+   end Shunting_Area_List;
+
+   function Stop_If_In_SR (Stop : Boolean) return T137.Packet_T is
+      P : T137.Packet_T;
+   begin
+      P.Q_DIR := 2;
+      P.Q_SRSTOP := (if Stop then 0 else 1);
+      return P;
+   end Stop_If_In_SR;
+
+   function Reversing_Area (D_M, L_M : Natural) return T138.Packet_T is
+      P : T138.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_STARTREVERSE := D_STARTREVERSE_T (D15 (D_M));
+      P.L_REVERSEAREA := L_REVERSEAREA_T (D15 (L_M));
+      return P;
+   end Reversing_Area;
+
+   function Reversing_Supervision (D_M, Kmh : Natural)
+     return T139.Packet_T
+   is
+      P : T139.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_REVERSE := D_REVERSE_T (D15 (D_M));
+      P.V_REVERSE := V_REVERSE_T (Clamp (Kmh / 5, 0, 120));
+      return P;
+   end Reversing_Supervision;
+
+   function Level_Crossing (Id        : Natural;
+                            D_M, L_M  : Natural;
+                            Guarded   : Boolean;
+                            Kmh       : Natural := 0;
+                            Stop      : Boolean := False;
+                            L_Stop_M  : Natural := 0) return T88.Packet_T
+   is
+      P : T88.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.NID_LX := NID_LX_T (Clamp (Id, 0, 255));
+      P.D_LX := D_LX_T (D15 (D_M));
+      P.L_LX := L_LX_T (D15 (L_M));
+      P.Q_LXSTATUS := (if Guarded then 0 else 1);
+      P.Has_V_LX := not Guarded;
+      P.V_LX := V_LX_T (Clamp (Kmh / 5, 0, 120));
+      P.Q_STOPLX := (if Stop then 1 else 0);
+      P.Has_L_STOPLX := Stop;
+      P.L_STOPLX := L_STOPLX_T (D15 (L_Stop_M));
+      return P;
+   end Level_Crossing;
+
+   function Plain_Text (Text : String; C : Text_Conditions_T)
+     return T73.Packet_T
+   is
+      P : T73.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.Q_TEXTCLASS := (if C.Important then 1 else 0);
+      P.Q_TEXTDISPLAY := (if C.All_Of then 1 else 0);
+      P.D_TEXTDISPLAY := D_TEXTDISPLAY_T (D15 (C.D_M));
+      P.M_MODETEXTDISPLAY :=
+        M_MODETEXTDISPLAY_T (Clamp (C.Start_Mode, 0, 15));
+      P.M_LEVELTEXTDISPLAY :=
+        M_LEVELTEXTDISPLAY_T (Clamp (C.Start_Level, 0, 4));
+      P.L_TEXTDISPLAY := L_TEXTDISPLAY_T (D15 (C.L_M));
+      P.T_TEXTDISPLAY := T_TEXTDISPLAY_T (Clamp (C.T_S, 0, 1023));
+      P.M_MODETEXTDISPLAY_2 :=
+        M_MODETEXTDISPLAY_T (Clamp (C.End_Mode, 0, 15));
+      P.M_LEVELTEXTDISPLAY_2 := M_LEVELTEXTDISPLAY_No_Level_Sub_Condition;
+      P.Q_TEXTCONFIRM := Q_TEXTCONFIRM_T (Clamp (C.Confirm, 0, 3));
+      P.Has_Q_CONFTEXTDISPLAY := C.Confirm /= 0;
+      P.Q_CONFTEXTDISPLAY := (if C.Ack_Ends then 0 else 1);
+      P.Q_TEXTREPORT := 0;
+      P.NID_C := 123;
+      P.NID_RBC := 0;
+      P.L_TEXT := L_TEXT_T (Clamp (Text'Length, 0, 255));
+      for I in 1 .. Clamp (Text'Length, 0, 255) loop
+         P.X_TEXT_List (I) :=
+           X_TEXT_T (Character'Pos (Text (Text'First + I - 1)));
+      end loop;
+      return P;
+   end Plain_Text;
+
+   function Fixed_Text (Q_TEXT : Natural; C : Text_Conditions_T)
+     return T74.Packet_T
+   is
+      P : T74.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.Q_TEXTCLASS := (if C.Important then 1 else 0);
+      P.Q_TEXTDISPLAY := (if C.All_Of then 1 else 0);
+      P.D_TEXTDISPLAY := D_TEXTDISPLAY_T (D15 (C.D_M));
+      P.M_MODETEXTDISPLAY :=
+        M_MODETEXTDISPLAY_T (Clamp (C.Start_Mode, 0, 15));
+      P.M_LEVELTEXTDISPLAY :=
+        M_LEVELTEXTDISPLAY_T (Clamp (C.Start_Level, 0, 4));
+      P.L_TEXTDISPLAY := L_TEXTDISPLAY_T (D15 (C.L_M));
+      P.T_TEXTDISPLAY := T_TEXTDISPLAY_T (Clamp (C.T_S, 0, 1023));
+      P.M_MODETEXTDISPLAY_2 :=
+        M_MODETEXTDISPLAY_T (Clamp (C.End_Mode, 0, 15));
+      P.M_LEVELTEXTDISPLAY_2 := M_LEVELTEXTDISPLAY_No_Level_Sub_Condition;
+      P.Q_TEXTCONFIRM := Q_TEXTCONFIRM_T (Clamp (C.Confirm, 0, 3));
+      P.Has_Q_CONFTEXTDISPLAY := C.Confirm /= 0;
+      P.Q_CONFTEXTDISPLAY := (if C.Ack_Ends then 0 else 1);
+      P.Q_TEXTREPORT := 0;
+      P.NID_C := 123;
+      P.NID_RBC := 0;
+      P.Q_TEXT := Q_TEXT_T (Clamp (Q_TEXT, 0, 255));
+      return P;
+   end Fixed_Text;
 
 end Sim_Telegrams;

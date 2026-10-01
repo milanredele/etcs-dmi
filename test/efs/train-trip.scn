@@ -124,7 +124,7 @@ end init
 expect efs: Kernel.MA.EOA.EOA().Location == 4500.0 @ deadline=1
 expect efs: Kernel.MA.EOA.EOA().Location > BTM.AntennaDistance(DistanceIntervalEnum.Min) @ deadline=1
 case Mode change to TR
-clause E4 todo 5.11.2.2 A025 ; efs Entry 5.11.2.2.A025
+clause E4 done 5.11.2.2 A025 ; efs Entry 5.11.2.2.A025
 step Mode change to TR
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A025
@@ -255,7 +255,7 @@ sub Sub-step2
 efs: Testing.SetSBMode(False)
 efs: Testing.InitializeEURORADIO()
 case Report mode change to the RBC
-clause E4 todo 5.11.2.2 A030 ; efs Entry 5.11.2.2.A030
+clause E4 deferred 5.11.2.2 A030 ; efs Entry 5.11.2.2.A030
 step 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A030
@@ -507,7 +507,7 @@ end init
 sub SubStep2
 efs: Testing.SetTRMode(False)
 case Mode change to PT
-clause E4 todo 5.11.2.2 A105 ; efs Entry 5.11.2.2.A105
+clause E4 done 5.11.2.2 A105 ; efs Entry 5.11.2.2.A105
 step Mode change to PT
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A105
@@ -522,7 +522,7 @@ efs: Testing.InitializeTestEnvironment( aTrainPosition => 0.0, aMode => Default.
 sub Sub-step2
 efs: Testing.InitializeEURORADIO()
 case Report mode change to RBC
-clause E4 todo 5.11.2.2 A115 ; efs Entry 5.11.2.2.A115
+clause E4 deferred 5.11.2.2 A115 ; efs Entry 5.11.2.2.A115
 step Report mode change to RBC
 sub SubStep1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A115
@@ -652,7 +652,7 @@ end init
 sub SubStep2
 efs: Testing.SetTRMode(False)
 case Mode change to SH
-clause E4 todo 5.11.2.2 A140 ; efs Entry 5.11.2.2.A140
+clause E4 done 5.11.2.2 A140 ; efs Entry 5.11.2.2.A140
 step Mode change to SH
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A140
@@ -780,7 +780,7 @@ end init
 sub SubStep2
 efs: Testing.SetTRMode(False)
 case Mode change to UN
-clause E4 todo 5.11.2.2 A145 ; efs Entry 5.11.2.2.A145
+clause E4 done 5.11.2.2 A145 ; efs Entry 5.11.2.2.A145
 step Mode change to SH
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A145
@@ -908,7 +908,7 @@ end init
 sub SubStep2
 efs: Testing.SetTRMode(False)
 case Mode change to SN
-clause E4 todo 5.11.2.2 A150 ; efs Entry 5.11.2.2.A150
+clause E4 partial 5.11.2.2 A150 ; efs Entry 5.11.2.2.A150
 step Mode change to SN
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A150
@@ -1164,7 +1164,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Level 0 or NTC
-clause E4 todo 5.11.2.2 D020 ; efs Entry 5.11.2.2.D020.3
+clause E4 done 5.11.2.2 D020 ; efs Entry 5.11.2.2.D020.3
 step Level 0
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1179,7 +1179,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.LNTC
 efs: Kernel.Level.Value.NTC <- 254
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S050
 case Level 1
-clause E4 todo 5.11.2.2 D020 ; efs Entry 5.11.2.2.D020.1
+clause E4 done 5.11.2.2 D020 ; efs Entry 5.11.2.2.D020.1
 step Level 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedureSM.TrainTrip.D020
@@ -1187,7 +1187,7 @@ efs: Kernel.Level.DataState <- DataStateEnum.Valid
 efs: Kernel.Level.Value.Value <- LevelEnum.L1
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.A035
 case Level 2 or 3
-clause E4 todo 5.11.2.2 D020 ; efs Entry 5.11.2.2.D020.2
+clause E4 done 5.11.2.2 D020 ; efs Entry 5.11.2.2.D020.2
 step Level 2
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1320,7 +1320,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Level 1, 2 or 3
-clause E4 todo 5.11.2.2 D80 ; efs Entry 5.11.2.2.D80.1
+clause E4 done 5.11.2.2 D80 ; efs Entry 5.11.2.2.D80.1
 step Level 1
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1340,7 +1340,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L3
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D080
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.A105
 case Level 0 or NTC
-clause E4 todo 5.11.2.2 D80 ; efs Entry 5.11.2.2.D80.2
+clause E4 done 5.11.2.2 D80 ; efs Entry 5.11.2.2.D80.2
 step Level 0
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1474,7 +1474,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case No valid train data
-clause E4 todo 5.11.2.2 D085 ; efs Entry 5.11.2.2.D085.1
+clause E4 done 5.11.2.2 D085 ; efs Entry 5.11.2.2.D085.1
 step Invalid train data
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D085
@@ -1486,7 +1486,7 @@ set train.data_state unknown
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D085
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.A140
 case Valid train data
-clause E4 todo 5.11.2.2 D085 ; efs Entry 5.11.2.2.D085.2
+clause E4 done 5.11.2.2 D085 ; efs Entry 5.11.2.2.D085.2
 step Valid train data
 sub Sub-step1
 set train.data_state valid
@@ -1612,7 +1612,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Level 0
-clause E4 todo 5.11.2.2 D090 ; efs Entry 5.11.2.2.D090.1
+clause E4 done 5.11.2.2 D090 ; efs Entry 5.11.2.2.D090.1
 step Level 0
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1620,7 +1620,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L0
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D090
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.A145
 case Level NTC
-clause E4 todo 5.11.2.2 D090 ; efs Entry 5.11.2.2.D090.2
+clause E4 done 5.11.2.2 D090 ; efs Entry 5.11.2.2.D090.2
 step Level NTC
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D090
@@ -1748,7 +1748,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Level 1
-clause E4 todo 5.11.2.2 D110 ; efs Entry 5.11.2.2.D110.1
+clause E4 done 5.11.2.2 D110 ; efs Entry 5.11.2.2.D110.1
 step Level 1
 sub Sub-step1
 efs: Kernel.Level.DataState <- DataStateEnum.Valid
@@ -1756,7 +1756,7 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D110
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S140
 case Level 2 or 3
-clause E4 todo 5.11.2.2 D110 ; efs Entry 5.11.2.2.D110.2
+clause E4 done 5.11.2.2 D110 ; efs Entry 5.11.2.2.D110.2
 step Level 2
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D110
@@ -1889,14 +1889,14 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case There is at least one emergency stop
-clause E4 todo 5.11.2.2 D130 ; efs Entry 5.11.2.2.D130.1
+clause E4 deferred 5.11.2.2 D130 ; efs Entry 5.11.2.2.D130.1
 step There is at least one emergency stop
 sub Sub-step1
 efs: Kernel.BrakeCommands.EmergencyStops <- [ Kernel.BrakeCommands.EmergencyStopStruct { IsConditional => True, StopLocation => 1040.0 } ]
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D130
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S130
 case No pending emergency stops
-clause E4 todo 5.11.2.2 D130 ; efs Entry 5.11.2.2.D130.2
+clause E4 deferred 5.11.2.2 D130 ; efs Entry 5.11.2.2.D130.2
 step No emergency stops
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.D130
@@ -2142,7 +2142,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Standstill reached
-clause E4 todo 5.11.2.2 S050 ; efs Entry 5.11.2.2.S050.2
+clause E4 done 5.11.2.2 S050 ; efs Entry 5.11.2.2.S050.2
 step Standstill reached
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S050
@@ -2268,14 +2268,14 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Display request for driver acknowledgement
-clause E4 todo 5.11.2.2 S060 ; efs Entry 5.11.2.2.S060.1
+clause E4 done 5.11.2.2 S060 ; efs Entry 5.11.2.2.S060.1
 step Display request for driver acknowledgement
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S060
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S060.DriverAckRequested
 expect efs: DMI.MasterDMI().In_AcknOfTrainTrip.InputInformation.RequestStatus == RequestEnum.Request
 case Driver acknowledged
-clause E4 todo 5.11.2.2 S060 ; efs Entry 5.11.2.2.S060.2
+clause E4 done 5.11.2.2 S060 ; efs Entry 5.11.2.2.S060.2
 step Driver acknowledged
 sub Sub-step1
 efs: DMI.MasterDMI().In_AcknOfTrainTrip.ProvideDriverResponse()
@@ -2404,7 +2404,7 @@ end init
 sub SubStep2
 efs: Testing.InitializeEURORADIO()
 case RBC acknowledge received
-clause E4 todo 5.11.2.2 S120 ; efs Entry 5.11.2.2.S120.1
+clause E4 deferred 5.11.2.2 S120 ; efs Entry 5.11.2.2.S120.1
 step RBC acknowledge received
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S120
@@ -2531,7 +2531,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case All emergency stops revoked
-clause E4 todo 5.11.2.2 S130 ; efs Entry 5.11.2.2.S130
+clause E4 deferred 5.11.2.2 S130 ; efs Entry 5.11.2.2.S130
 step All emergency stops revoked
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S130
@@ -2659,7 +2659,7 @@ end init
 sub SubStep2
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
 case Offer driver selection
-clause E4 todo 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.1
+clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.1
 step Offer driver selection, valid train data
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S140.RequestDriverSelection
@@ -2679,7 +2679,7 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S140.Driv
 expect efs: DMI.MasterDMI().In_Start.InputInformation.RequestStatus == RequestEnum.Disabled
 expect efs: DMI.MasterDMI().In_ShuntingRequest.InputInformation.RequestStatus == RequestEnum.Request
 case Driver selects Start, level 1
-clause E4 todo 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.2
+clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.2
 step Start selected, level 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S140.DriverSelectionRequested
@@ -2689,7 +2689,7 @@ efs: Kernel.Level.DataState <- DataStateEnum.Valid
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S160
 expect efs: DMI.MasterDMI().In_Start.InputInformation.RequestStatus == RequestEnum.Disabled
 case Driver selects Start, level 2 or 3
-clause E4 todo 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.3
+clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.3
 step Start selected, level 2
 sub Sub-step1
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
@@ -2707,7 +2707,7 @@ efs: DMI.MasterDMI().In_Start.ProvideDriverResponse()
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S150
 expect efs: DMI.MasterDMI().In_Start.InputInformation.RequestStatus == RequestEnum.Disabled
 case Driver selects SH
-clause E4 todo 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.4
+clause E4 partial 5.11.2.2 S140 ; efs Entry 5.11.2.2.S140.4
 step SH selected
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S140.DriverSelectionRequested
@@ -2836,7 +2836,7 @@ efs: Kernel.Level.Value <- Default.LevelDataStruct{ NTC => NID_NTC.NOT_APPLICABL
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Send MA request to the RBC and wait
-clause E4 todo 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.1
+clause E4 deferred 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.1
 clause - absent 3.8.2.1 ; efs 3.8.2.1
 step Send MA request to the RBC and wait
 sub Sub-step1
@@ -2852,7 +2852,7 @@ expect efs: (LAST message IN EURORADIO.RBCConnection.CurrentRBCConnection().Data
 expect efs: (LAST message IN EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageOut).SystemVersion2.MA_REQUEST != EMPTY @ deadline=1
 expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageOut != [] @ deadline=1
 case SR authorisation received
-clause E4 todo 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.2
+clause E4 deferred 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.2
 step SR authorisation received
 sub Sub-step1
 efs: Kernel.Modes.StaffResponsible.SRAuthorisation <- Kernel.Modes.StaffResponsible.SRStruct { Location => 1000.0, BGs => [] }
@@ -2864,7 +2864,7 @@ step Clean up
 sub SubStep1
 efs: Kernel.Modes.StaffResponsible.DeleteSRAuthorisation()
 case MA allowing OS/LS/SH received
-clause E4 todo 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.3
+clause E4 deferred 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.3
 step MA allowing OS received
 sub Sub-step1
 taint ma
@@ -2891,7 +2891,7 @@ efs: Kernel.MA.MA <- Kernel.MA.MAStruct{}
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S150.MARequestSent
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S170
 case MA allowing FS received
-clause E4 todo 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.4
+clause E4 deferred 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.4
 step MA allowing FS received
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S150.MARequestSent
@@ -3159,7 +3159,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Request driver acknowledgement
-clause E4 todo 5.11.2.2 S170 ; efs Entry 5.11.2.2.S170.1
+clause E4 deferred 5.11.2.2 S170 ; efs Entry 5.11.2.2.S170.1
 step Request driver ackwnowledgement for OS
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S170.RequestDriverAck
@@ -3197,7 +3197,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S170.RequestDriv
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S170.DriverAckRequested
 expect efs: DMI.MasterDMI().In_AcknOfSHMode.InputInformation.RequestStatus == RequestEnum.Request @ deadline=2
 case Mode change to OS/LS/SH
-clause E4 todo 5.11.2.2 S170 ; efs Entry 5.11.2.2.S170.2
+clause E4 deferred 5.11.2.2 S170 ; efs Entry 5.11.2.2.S170.2
 step Mode change to OS
 sub Sub-step1
 efs: Testing.SetPTMode(False)

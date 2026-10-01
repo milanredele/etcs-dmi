@@ -11,12 +11,14 @@ with ETCS_Track_Packets.P46;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Track_Packets.P39;
+with ETCS_Track_Packets.P40;
 with ETCS_Track_Packets.P51;
 with ETCS_Track_Packets.P52;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P66;
 with ETCS_Track_Packets.P67;
 with ETCS_Track_Packets.P68;
+with ETCS_Track_Packets.P69;
 with ETCS_Track_Packets.P70;
 with ETCS_Track_Packets.P71;
 with ETCS_Track_Packets.P80;
@@ -35,7 +37,7 @@ package body EVC_Stored_Information
                                    Cond_Due, Plan, Plan_Due,
                                    Driver_Slippery, PBD_Last, PBD_Known,
                                    MA_Board, Profile_Overlap,
-                                   Covered_Flag))
+                                   Covered_Flag, Ext, Tun))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -73,6 +75,10 @@ is
    MA_Board        : Boolean := False;
    Profile_Overlap : Boolean := False;
    Covered_Flag    : Boolean := False;
+   --  5.20: the information for an external function of the last cycle
+   Ext             : EVC_Track_Conditions.External_T;
+   --  5.18.8: the tunnel stopping area reported
+   Tun             : EVC_Track_Conditions.Tunnel_T;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -163,7 +169,14 @@ is
       MA_Board := False;
       Profile_Overlap := False;
       Covered_Flag := False;
+      Ext := (Count => 0, List => (others => (others => <>)));
+      Tun := (others => <>);
    end Clear;
+
+   function External_Info return EVC_Track_Conditions.External_T is (Ext)
+     with Refined_Global => Ext;
+   function Tunnel return EVC_Track_Conditions.Tunnel_T is (Tun)
+     with Refined_Global => Tun;
 
    procedure Set_Driver_Slippery (Slippery : Boolean) is
    begin
@@ -258,7 +271,10 @@ is
    --  level transition orders first (4.8.1.3, added by e4/modes)
    type Order_Kind_T is
      (K41, K46, K3, K27, K21, K51, K52, K65, K66, K141, K68, K39, K67, K70,
-      K71, K88, K12, K80);
+      K71, K88, K12, K80,
+      --  phase E4: the station platforms, the allowed current
+      --  consumption (track conditions, 5.18, 5.20)
+      K69, K40);
 
    function Kind_Of (K : Order_Kind_T) return ETCS_Catalogue.Packet_Kind_T is
      (case K is
@@ -279,7 +295,9 @@ is
          when K71  => ETCS_Catalogue.Track_P71,
          when K88  => ETCS_Catalogue.Track_P88,
          when K12  => ETCS_Catalogue.Track_P12,
-         when K80  => ETCS_Catalogue.Track_P80);
+         when K80  => ETCS_Catalogue.Track_P80,
+         when K69  => ETCS_Catalogue.Track_P69,
+         when K40  => ETCS_Catalogue.Track_P40);
 
    --  4.8: the kind of information of a packet (K12: the MA; its
    --  V_MAIN is the signalling related speed restriction)
@@ -295,7 +313,7 @@ is
          when K65  => EVC_Acceptance.TSR,
          when K66  => EVC_Acceptance.TSR_Revocation,
          when K141 => EVC_Acceptance.Default_Gradient,
-         when K68 | K39 => EVC_Acceptance.Track_Conditions,
+         when K68 | K39 | K69 | K40 => EVC_Acceptance.Track_Conditions,
          when K67  => EVC_Acceptance.Big_Metal_Masses,
          when K70  => EVC_Acceptance.Route_Suitability,
          when K71  => EVC_Acceptance.Adhesion,
@@ -309,7 +327,7 @@ is
          when K21 => 21, when K51 => 51, when K52 => 52, when K65 => 65,
          when K66 => 66, when K141 => 141, when K68 => 68, when K39 => 39,
          when K67 => 67, when K70 => 70, when K71 => 71, when K88 => 88,
-         when K12 => 12, when K80 => 80);
+         when K12 => 12, when K80 => 80, when K69 => 69, when K40 => 40);
 
    --  The context of 4.8 of a packet of a group: the mode and the inputs
    --  of the cycle, the level as it is now (an immediate order of the
@@ -532,6 +550,26 @@ is
                   Record_Event (Info_Big_Metal_Masses, Change_Stored, M.Msg);
                end if;
             end;
+         when K69 =>
+            declare
+               X : ETCS_Track_Packets.P69.Packet_T;
+            begin
+               ETCS_Track_Packets.P69.Decode (R, X, OK);
+               if OK then
+                  EVC_Track_Conditions.Take_Platforms (X, M, T);
+                  Record_Event (Info_Platforms, Change_Stored, M.Msg);
+               end if;
+            end;
+         when K40 =>
+            declare
+               X : ETCS_Track_Packets.P40.Packet_T;
+            begin
+               ETCS_Track_Packets.P40.Decode (R, X, OK);
+               if OK then
+                  EVC_Track_Conditions.Take_Current (X, M);
+                  Record_Event (Info_Current, Change_Stored, M.Msg);
+               end if;
+            end;
          when K70 =>
             declare
                X : ETCS_Track_Packets.P70.Packet_T;
@@ -709,10 +747,12 @@ is
                     Now_Ms         : Unsigned_64;
                     Special_Active : EVC_Braking.Brakes_T;
                     Additional     : Boolean;
-                    Ctx            : Mode_Context_T)
+                    Ctx            : Mode_Context_T;
+                    Virtual_Last   : Virtual_Limits_T)
      with Global => (Output => (Sources, Steps, Ceiling, Indicated,
                                 Indicated_N, Cond_Due, Plan, Plan_Due,
-                                MA_Board, Profile_Overlap, Covered_Flag),
+                                MA_Board, Profile_Overlap, Covered_Flag,
+                                Ext, Tun),
                      In_Out => (Snap, Failures, Sent, Sent_N,
                                 EVC_Track_Conditions.State,
                                 EVC_Track_Description.State,
@@ -979,12 +1019,14 @@ is
          E1, E2   : Dist_T;
          S1, S2   : Dist_T;
          Has_SvL  : Boolean;
+         LX_I     : Natural;
       begin
          Snap.Temporary := (others => <>);
+         Snap.LX := (others => <>);
          EVC_Movement_Authority.Mode_Profile_Target
            (T, Train.Est_Front, F1, E1, Has_SvL, S1);
          EVC_Track_Description.LX_Target
-           (T, Ahead, Train.Est_Front, F2, E2, S2);
+           (T, Ahead, Train.Min_Front, F2, E2, S2, LX_I);
          if not With_MA then
             null;
          elsif F1 and then (not F2 or else A (Ahead, E1) <= A (Ahead, E2)) then
@@ -993,11 +1035,30 @@ is
          elsif F2 then
             Snap.Temporary := (Present => True, EOA => E2,
                                Has_SvL => True, SvL => S2);
+            --  phase E4, 5.16: the level crossing of the temporary EOA
+            declare
+               X : constant EVC_Track_Description.LX_T :=
+                 EVC_Track_Description.LX (LX_I);
+            begin
+               Snap.LX :=
+                 (Present   => True,
+                  Index     => LX_I,
+                  Speed     => X.Speed,
+                  Stop      => X.Stop_Required,
+                  Stop_From =>
+                    Advance (Frame (T, X.Start, Estimated_Item),
+                             Opposite (Ahead), X.Stop_Length));
+            end;
          end if;
       end;
 
       --  the track conditions: MSG_TRACK_COND when they changed
-      EVC_Track_Conditions.Evaluate (T, Train, Now_Ms, Ind, Orders);
+      EVC_Track_Conditions.Evaluate (T, Train, Now_Ms, Ind, Orders,
+                                     Virtual_Last);
+      --  phase E4, 5.18.4.2, 5.18.8: the virtual SBD curves for the
+      --  supervision of this cycle, the tunnel stopping area of the last
+      EVC_Track_Conditions.Virtual_Feet (T, Train, Snap.Virtual);
+      EVC_Track_Conditions.Tunnel_Indication (T, Train, Virtual_Last, Tun);
       Indicated := (others => (others => <>));
       Indicated_N := 0;
       for I in 1 .. Ind.Count loop
@@ -1007,6 +1068,32 @@ is
            (Id   => Unsigned_8 (Ind.List (I).Id),
             Kind => Unsigned_8 (Ind.List (I).Kind));
       end loop;
+      --  phase E4, 5.20: the information for an external function
+      EVC_Track_Conditions.External (T, Train, Ext);
+      --  phase E4, 5.16.1.4, 5.16.1.5: a level crossing not protected
+      --  whose status the driver is informed of, while the min safe front
+      --  end is in rear of its end (LX01, the symbol 38 of
+      --  MSG_TRACK_COND; the numbers 232 .. 247, apart from those of
+      --  EVC_Track_Conditions)
+      if Train.Valid and then EVC_Track_Description.LX_Sense = Ahead then
+         declare
+            L : constant EVC_Track_Description.LX_Array_T :=
+              EVC_Track_Description.LX;
+         begin
+            for I in L'Range loop
+               exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
+               if L (I).Used and then not L (I).Protected_LX
+                 and then L (I).Indicated
+                 and then A (Ahead, Train.Min_Front)
+                            < A (Ahead, Frame (T, L (I).Finish, Min_Item))
+               then
+                  Indicated_N := Indicated_N + 1;
+                  Indicated (Indicated_N) :=
+                    (Id => Unsigned_8 (231 + I), Kind => 38);
+               end if;
+            end loop;
+         end;
+      end if;
       Cond_Due := False;
       if Indicated_N /= Sent_N then
          Cond_Due := True;
@@ -1120,7 +1207,9 @@ is
                        Special_Active : EVC_Braking.Brakes_T :=
                          (others => False);
                        Additional     : Boolean := False;
-                       Context        : Mode_Context_T := (others => <>))
+                       Context        : Mode_Context_T := (others => <>);
+                       Virtual_Last   : Virtual_Limits_T :=
+                         (others => <>))
    is
       T     : constant Origin_Table_T := Origin_Table;
       Train : constant Train_Frame_T := Train_Frame;
@@ -1190,7 +1279,7 @@ is
 
       --  6., 7.
       Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional,
-             Context);
+             Context, Virtual_Last);
    end Evaluate;
 
 end EVC_Stored_Information;

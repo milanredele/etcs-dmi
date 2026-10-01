@@ -125,6 +125,10 @@ is
    Info_Group             : constant := 16;
    --  the speed restriction to ensure a permitted braking distance
    Info_PBD               : constant := 17;
+   --  phase E4: the station platforms (packet 69), the allowed current
+   --  consumption (packet 40)
+   Info_Platforms         : constant := 18;
+   Info_Current           : constant := 19;
 
    --  The change (byte 3); byte 4 a detail
    Change_Stored     : constant := 1;   -- the message number mod 256
@@ -232,6 +236,19 @@ is
    procedure Set_Driver_Slippery (Slippery : Boolean)
      with Global => (In_Out => State);
 
+   ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4 (e4/procedures)
+   ---------------------------------------------------------------------
+
+   --  5.20: the information for an external function of the last
+   --  cycle (EVC_Track_Conditions.External), for the train interface
+   function External_Info return EVC_Track_Conditions.External_T
+     with Global => State;
+
+   --  5.18.8: the tunnel stopping area reported (MSG_STATUS)
+   function Tunnel return EVC_Track_Conditions.Tunnel_T
+     with Global => State;
+
    --  The inputs of the speed restrictions to ensure a permitted braking
    --  distance in the last cycle (EVC_PBD)
    function PBD_Inputs return EVC_PBD.Inputs_T
@@ -276,12 +293,17 @@ is
    --  the train interface (SUBSET-034 2.3.6, 2.3.7), which the braking
    --  model of the speed restrictions to ensure a permitted braking
    --  distance depends on (3.11.11.4, 3.13.6.2.1)
+   --  Phase E4: Virtual_Last, the virtual limits the supervision found
+   --  in the last cycle for the indication of the track conditions
+   --  (EVC_Track_Conditions, 5.18.4.2, 5.18.8.3)
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
                        Special_Active : EVC_Braking.Brakes_T :=
                          (others => False);
                        Additional     : Boolean := False;
-                       Context        : Mode_Context_T := (others => <>))
+                       Context        : Mode_Context_T := (others => <>);
+                       Virtual_Last   : Virtual_Limits_T :=
+                         (others => <>))
      with Global => (In_Out => (State, EVC_Origins.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
