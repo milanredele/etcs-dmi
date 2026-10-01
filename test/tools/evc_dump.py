@@ -70,7 +70,14 @@ def describe(rec):
         cyc = p[4] + 256 * (p[5] + 256 * (p[6] + 256 * p[7]))
         return '%s %d %d %d (cycle %d)' % (k, p[1], p[2], p[3], cyc)
     if port == 'TIU' and len(p) == 2:
+        # before phase E4's integration: the reasons u8
         return 'TIU commands %d reasons %d' % (p[0], p[1])
+    if port == 'TIU' and len(p) == 3 and p[0] != 0x54:
+        # EVC_Ports: commands u8, reasons u16 (one bit each)
+        return 'TIU commands %d reasons %d' % (p[0], p[1] + 256 * p[2])
+    if port == 'TIU' and len(p) >= 3 and p[0] == 0x54:
+        # the track condition output of 5.20 (tag, version, count, items)
+        return 'TIU track conditions %d items %s' % (p[2], p[3:].hex())
     return '%s %s' % (k, p.hex())
 
 
