@@ -1128,8 +1128,9 @@ merged and made one on-board.
 - 4.4.18.1.6: in RV the SBI commands the emergency brake
   (`EVC_SDM.Inputs_T.EB_Instead_Of_SB`).
 
-Tests: `evc_test` 10704 checks, 0 failures, with eight integration
-scenarios in `evc_test_procedures` that need both halves, through the
+Tests: `evc_test` 10705 checks, 0 failures, with six integration
+scenarios (`Scenario_Integration_*` of `evc_test_procedures`, and a
+part of `Scenario_Reversing`) that need both halves, through the
 ports: the start of mission in level 1, SR, override with D_NVOVTRP and
 with the national SR distance (h), the trip of [42] with its reason, PT,
 'Start' in PT, SR, "stop if in SR" with and without override; SR, FS, SH

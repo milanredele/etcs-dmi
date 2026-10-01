@@ -669,6 +669,37 @@ package body EVC_Test_Procedures is
                         = EVC_DMI_Port.System_Status_Length,
              "E4 procedures: MSG_TEXT, MSG_TEXT_REMOVE, MSG_SYSTEM_STATUS "
              & "as dmi_protocol.ads");
+      --  e4/integration: the catalogue numbers the on-board sends
+      Check (SS_Balise_Read_Error_Trip
+               = EVC_DMI_Port.SS_Balise_Read_Error_Trip
+             and then SS_Entering_FS = EVC_DMI_Port.SS_Entering_FS
+             and then SS_Entering_OS = EVC_DMI_Port.SS_Entering_OS
+             and then SS_Trackside_Not_Compatible_Trip
+                        = EVC_DMI_Port.SS_Trackside_Not_Compatible_Trip
+             and then SS_Train_Data_Changed
+                        = EVC_DMI_Port.SS_Train_Data_Changed
+             and then SS_Train_Data_Changed_Brake
+                        = EVC_DMI_Port.SS_Train_Data_Changed_Brake
+             and then SS_Unauthorized_Passing
+                        = EVC_DMI_Port.SS_Unauthorized_Passing
+             and then SS_No_MA_Level_Transition
+                        = EVC_DMI_Port.SS_No_MA_Level_Transition
+             and then SS_SR_Distance_Exceeded
+                        = EVC_DMI_Port.SS_SR_Distance_Exceeded
+             and then SS_SH_Stop_Order = EVC_DMI_Port.SS_SH_Stop_Order
+             and then SS_SR_Stop_Order = EVC_DMI_Port.SS_SR_Stop_Order
+             and then SS_RV_Distance_Exceeded
+                        = EVC_DMI_Port.SS_RV_Distance_Exceeded
+             and then SS_PT_Distance_Exceeded
+                        = EVC_DMI_Port.SS_PT_Distance_Exceeded
+             and then SS_No_Track_Description
+                        = EVC_DMI_Port.SS_No_Track_Description
+             and then SS_NL_No_Longer_Permitted
+                        = EVC_DMI_Port.SS_NL_No_Longer_Permitted
+             and then Unsigned_8 (MSG_MODE_LEVEL)
+                        = EVC_DMI_Port.MSG_MODE_LEVEL,
+             "E4 integration: the system status entries of EVC_DMI_Port "
+             & "as the catalogue of dmi_protocol.ads");
    end Scenario_Protocol;
    pragma Warnings (On, "condition is always*");
 
