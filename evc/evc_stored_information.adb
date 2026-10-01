@@ -9,12 +9,14 @@ with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Track_Packets.P39;
+with ETCS_Track_Packets.P40;
 with ETCS_Track_Packets.P51;
 with ETCS_Track_Packets.P52;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P66;
 with ETCS_Track_Packets.P67;
 with ETCS_Track_Packets.P68;
+with ETCS_Track_Packets.P69;
 with ETCS_Track_Packets.P70;
 with ETCS_Track_Packets.P71;
 with ETCS_Track_Packets.P80;
@@ -31,7 +33,7 @@ package body EVC_Stored_Information
                                    Indicated, Indicated_N, Sent, Sent_N,
                                    Cond_Due, Plan, Plan_Due,
                                    Driver_Slippery, PBD_Last, PBD_Known,
-                                   Refusing))
+                                   Refusing, Ext))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -67,6 +69,8 @@ is
    PBD_Known       : Boolean := False;
    --  5.11.2.2 A035 (Refuse_Authority)
    Refusing        : Boolean := False;
+   --  5.20: the information for an external function of the last cycle
+   Ext             : EVC_Track_Conditions.External_T;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -149,7 +153,11 @@ is
       PBD_Last := (others => <>);
       PBD_Known := False;
       Refusing := False;
+      Ext := (Count => 0, List => (others => (others => <>)));
    end Clear;
+
+   function External_Info return EVC_Track_Conditions.External_T is (Ext)
+     with Refined_Global => Ext;
 
    procedure Delete_Authority_And_Description (LX : Boolean) is
    begin
@@ -255,7 +263,10 @@ is
    --  The order in which the packets of a message are evaluated
    type Order_Kind_T is
      (K3, K27, K21, K51, K52, K65, K66, K141, K68, K39, K67, K70, K71,
-      K88, K12, K80);
+      K88, K12, K80,
+      --  phase E4: the station platforms, the allowed current
+      --  consumption (track conditions)
+      K69, K40);
 
    function Kind_Of (K : Order_Kind_T) return ETCS_Catalogue.Packet_Kind_T is
      (case K is
@@ -274,7 +285,9 @@ is
          when K71  => ETCS_Catalogue.Track_P71,
          when K88  => ETCS_Catalogue.Track_P88,
          when K12  => ETCS_Catalogue.Track_P12,
-         when K80  => ETCS_Catalogue.Track_P80);
+         when K80  => ETCS_Catalogue.Track_P80,
+         when K69  => ETCS_Catalogue.Track_P69,
+         when K40  => ETCS_Catalogue.Track_P40);
 
    procedure Take_Packet (K           : Order_Kind_T;
                           J, P        : Positive;
@@ -423,6 +436,26 @@ is
                if OK then
                   EVC_Track_Conditions.Take_Big_Metal_Masses (X, M, T);
                   Record_Event (Info_Big_Metal_Masses, Change_Stored, M.Msg);
+               end if;
+            end;
+         when K69 =>
+            declare
+               X : ETCS_Track_Packets.P69.Packet_T;
+            begin
+               ETCS_Track_Packets.P69.Decode (R, X, OK);
+               if OK then
+                  EVC_Track_Conditions.Take_Platforms (X, M, T);
+                  Record_Event (Info_Platforms, Change_Stored, M.Msg);
+               end if;
+            end;
+         when K40 =>
+            declare
+               X : ETCS_Track_Packets.P40.Packet_T;
+            begin
+               ETCS_Track_Packets.P40.Decode (R, X, OK);
+               if OK then
+                  EVC_Track_Conditions.Take_Current (X, M);
+                  Record_Event (Info_Current, Change_Stored, M.Msg);
                end if;
             end;
          when K70 =>
@@ -816,18 +849,34 @@ is
          E1, E2   : Dist_T;
          S1, S2   : Dist_T;
          Has_SvL  : Boolean;
+         LX_I     : Natural;
       begin
          Snap.Temporary := (others => <>);
+         Snap.LX := (others => <>);
          EVC_Movement_Authority.Mode_Profile_Target
            (T, Train.Est_Front, F1, E1, Has_SvL, S1);
          EVC_Track_Description.LX_Target
-           (T, Ahead, Train.Est_Front, F2, E2, S2);
+           (T, Ahead, Train.Min_Front, F2, E2, S2, LX_I);
          if F1 and then (not F2 or else A (Ahead, E1) <= A (Ahead, E2)) then
             Snap.Temporary := (Present => True, EOA => E1,
                                Has_SvL => Has_SvL, SvL => S1);
          elsif F2 then
             Snap.Temporary := (Present => True, EOA => E2,
                                Has_SvL => True, SvL => S2);
+            --  phase E4, 5.16: the level crossing of the temporary EOA
+            declare
+               X : constant EVC_Track_Description.LX_T :=
+                 EVC_Track_Description.LX (LX_I);
+            begin
+               Snap.LX :=
+                 (Present   => True,
+                  Index     => LX_I,
+                  Speed     => X.Speed,
+                  Stop      => X.Stop_Required,
+                  Stop_From =>
+                    Advance (Frame (T, X.Start, Estimated_Item),
+                             Opposite (Ahead), X.Stop_Length));
+            end;
          end if;
       end;
 
@@ -842,6 +891,32 @@ is
            (Id   => Unsigned_8 (Ind.List (I).Id),
             Kind => Unsigned_8 (Ind.List (I).Kind));
       end loop;
+      --  phase E4, 5.20: the information for an external function
+      EVC_Track_Conditions.External (T, Train, Ext);
+      --  phase E4, 5.16.1.4, 5.16.1.5: a level crossing not protected
+      --  whose status the driver is informed of, while the min safe front
+      --  end is in rear of its end (LX01, the symbol 38 of
+      --  MSG_TRACK_COND; the numbers 232 .. 247, apart from those of
+      --  EVC_Track_Conditions)
+      if Train.Valid and then EVC_Track_Description.LX_Sense = Ahead then
+         declare
+            L : constant EVC_Track_Description.LX_Array_T :=
+              EVC_Track_Description.LX;
+         begin
+            for I in L'Range loop
+               exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
+               if L (I).Used and then not L (I).Protected_LX
+                 and then L (I).Indicated
+                 and then A (Ahead, Train.Min_Front)
+                            < A (Ahead, Frame (T, L (I).Finish, Min_Item))
+               then
+                  Indicated_N := Indicated_N + 1;
+                  Indicated (Indicated_N) :=
+                    (Id => Unsigned_8 (231 + I), Kind => 38);
+               end if;
+            end loop;
+         end;
+      end if;
       Cond_Due := False;
       if Indicated_N /= Sent_N then
          Cond_Due := True;

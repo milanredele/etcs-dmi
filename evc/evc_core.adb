@@ -63,7 +63,8 @@ package body EVC_Core
                                    --  the procedures (phase E4)
                                    Proc_Ctx,
                                    Ack_For_Protection,
-                                   Status_Rev_Sent))
+                                   Status_Rev_Sent, TC_Sent,
+                                   Config_Last, Config_Seen))
 is
 
    use type EVC_Bytes.Byte_Array;
@@ -190,6 +191,13 @@ is
    Ack_For_Protection : Boolean := False;
    --  the reversing indication sent last (MSG_STATUS)
    Status_Rev_Sent : Boolean := False;
+   --  5.20: an item of the information for an external function was
+   --  sent in the last cycle (the TIU track condition output)
+   TC_Sent : Boolean := False;
+   --  5.17: the train configuration of the train interface seen last
+   --  (EVC_Ports, TIU input 13), whether one was seen since power-up
+   Config_Last : EVC_Bytes.Byte := 0;
+   Config_Seen : Boolean := False;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -301,6 +309,9 @@ is
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
+      TC_Sent := False;
+      Config_Last := 0;
+      Config_Seen := False;
       EVC_Procedure_Requests.Clear;
       EVC_Procedures.Clear;
       EVC_Text_Messages.Clear;
@@ -826,15 +837,27 @@ is
                                 SDM_Result, Test_Snapshot, Test_Snapshot_Set,
                                 EVC_Stored_Information.State,
                                 EVC_Position.State,
-                                EVC_Origins.State, EVC_Track_Description.State,
+                                EVC_Origins.State,
                                 EVC_Procedure_Requests.State,
                                 EVC_Train_Data.State),
                      Output => Proc_Ctx,
                      In_Out => (EVC_Procedures.State, EVC_Text_Messages.State,
-                                EVC_Movement_Authority.State))
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Description.State,
+                                Config_Last, Config_Seen))
    is
       S : constant EVC_Supervision_Input.Snapshot_T := Snapshot_In_Use;
+      --  5.17.2.2 E0: the train configuration changed
+      Config : constant EVC_Bytes.Byte :=
+        TIU_Value_Now (Train_Configuration);
+      Config_Changed : constant Boolean :=
+        TIU_Known_Now (Train_Configuration) and then Config_Seen
+        and then Config /= Config_Last;
    begin
+      if TIU_Known_Now (Train_Configuration) then
+         Config_Last := Config;
+         Config_Seen := True;
+      end if;
       Proc_Ctx :=
         (Mode              => Current_Mode,
          Level_Valid       => Current_Level_Status = Valid,
@@ -862,7 +885,10 @@ is
          Antenna_Offset    =>
            EVC_Position.Front_Offset (EVC_Position.Orientation),
          Brake_Release_Ack => Brake_Ack_Now and then not Ack_For_Protection,
-         Now_Ms            => Unsigned_64 (Clock_Ms));
+         Now_Ms            => Unsigned_64 (Clock_Ms),
+         TD_Change         => Config_Changed,
+         TD_Validation     => (Config and TIU_Config_Validation) /= 0,
+         TD_Category       => (Config and TIU_Config_Category) /= 0);
       EVC_Procedures.Evaluate (Proc_Ctx, S, SDM_Result);
       EVC_Text_Messages.Evaluate
         (Current_Mode, Current_Level_Status = Valid, Current_Level,
@@ -968,12 +994,13 @@ is
                                 EVC_Position.State,
                                 SDM_Result, Brake_Output, Speed_State,
                                 EVC_Procedures.State,
-                                EVC_Text_Messages.State),
+                                EVC_Text_Messages.State,
+                                EVC_Stored_Information.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, Overrun_Reported,
-                                Status_Rev_Sent))
+                                Status_Rev_Sent, TC_Sent))
    is
       --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
       --  E0; the fields of the later phases are 0, "nothing known"
@@ -1215,6 +1242,64 @@ is
          end if;
          TIU_Sent := Commands;
          TIU_Reasons_Sent := Why;
+      end;
+
+      --  phase E4, 5.20: the information for an external function
+      --  (EVC_Ports, the TIU track condition output), every cycle while
+      --  an item is generated and once when none is any more
+      declare
+         Info  : constant EVC_Track_Conditions.External_T :=
+           EVC_Stored_Information.External_Info;
+         Frame : EVC_Bytes.Byte_Array (1 .. TIU_Out_Max_Length) :=
+           (others => 0);
+         Last  : Natural := TIU_TC_Header_Length;
+
+         --  a distance, cm, within the i32 range below TIU_TC_None, or
+         --  TIU_TC_None when Present is False
+         procedure Put_I32 (Present : Boolean; V : EVC_Distances.Dist_T)
+           with Global => (In_Out => (Frame, Last)),
+                Pre => Last <= TIU_Out_Max_Length - 4,
+                Post => Last = Last'Old + 4
+         is
+            C : constant Integer_64 :=
+              (if Present
+               then Integer_64'Max (-(2**31 - 1),
+                                    Integer_64'Min (Integer_64 (V),
+                                                    TIU_TC_None - 1))
+               else TIU_TC_None);
+            U : constant Unsigned_64 :=
+              Unsigned_64 (Unsigned_32'Mod (C));
+         begin
+            for K in 0 .. 3 loop
+               Frame (Last + 1 + K) := EVC_Bytes.Byte_Of (U, K);
+            end loop;
+            Last := Last + 4;
+         end Put_I32;
+      begin
+         if Info.Count > 0 or else TC_Sent then
+            Frame (1) := TIU_TC_Tag;
+            Frame (2) := 1;
+            Frame (3) := EVC_Bytes.Byte (Natural'Min (Info.Count, TIU_TC_Max));
+            for I in 1 .. Natural'Min (Info.Count, TIU_TC_Max) loop
+               pragma Loop_Invariant
+                 (Last = TIU_TC_Header_Length + (I - 1) * TIU_TC_Entry_Length);
+               declare
+                  E : constant EVC_Track_Conditions.External_Item_T :=
+                    Info.List (I);
+               begin
+                  Frame (Last + 1) := EVC_Bytes.Byte (E.Kind);
+                  Frame (Last + 2) := EVC_Bytes.Byte (E.Id);
+                  Last := Last + 2;
+                  Put_I32 (E.Has_Start, E.To_Start);
+                  Put_I32 (E.Has_End, E.To_End);
+                  Frame (Last + 1) := EVC_Bytes.Byte (E.Value mod 256);
+                  Frame (Last + 2) := EVC_Bytes.Byte (E.Value / 256);
+                  Last := Last + 2;
+               end;
+            end loop;
+            EVC_Outbox.Put (TIU, Frame (1 .. Last));
+         end if;
+         TC_Sent := Info.Count > 0;
       end;
    end Produce_Outputs;
 

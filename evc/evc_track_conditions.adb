@@ -6,7 +6,8 @@ with EVC_Location;   use EVC_Location;
 
 package body EVC_Track_Conditions
   with SPARK_Mode => On,
-       Refined_State => (State => (Cond_S, Traction_S, BMM_S, Serial))
+       Refined_State => (State => (Cond_S, Traction_S, BMM_S, Serial,
+                                   Platform_S, Current_S))
 is
 
    Cond_S     : Store_T := Empty_Store;
@@ -15,6 +16,9 @@ is
    --  the number of the next condition on the DMI (1 .. 127; the
    --  changes of traction system take 128 .. 255)
    Serial     : Natural range 1 .. 127 := 1;
+   --  phase E4: packets 69 and 40
+   Platform_S : Store_T := Empty_Store;
+   Current_S  : Store_T := Empty_Store;
 
    function Conditions return Store_T is (Cond_S)
      with Refined_Global => Cond_S;
@@ -22,6 +26,10 @@ is
      with Refined_Global => Traction_S;
    function Big_Metal_Masses return Store_T is (BMM_S)
      with Refined_Global => BMM_S;
+   function Platforms return Store_T is (Platform_S)
+     with Refined_Global => Platform_S;
+   function Current_Changes return Store_T is (Current_S)
+     with Refined_Global => Current_S;
 
    procedure Clear is
    begin
@@ -29,6 +37,8 @@ is
       Traction_S := Empty_Store;
       BMM_S := Empty_Store;
       Serial := 1;
+      Platform_S := Empty_Store;
+      Current_S := Empty_Store;
    end Clear;
 
    procedure Orient (St : in out Store_T; S : Sense_T)
@@ -173,6 +183,89 @@ is
       end loop;
    end Take_Big_Metal_Masses;
 
+   --------------------
+   -- Take_Platforms --
+   --------------------
+
+   procedure Take_Platforms (P : ETCS_Track_Packets.P69.Packet_T;
+                             M : Message_T;
+                             T : Origin_Table_T)
+   is
+      Scale : constant Natural := Natural (P.Q_SCALE);
+      Start : Dist_T;
+
+      procedure Put (L : Natural; Height, Side : Natural)
+        with Pre => L <= 32_767 and then Scale <= 2 and then Height <= 15
+                    and then Side <= 3,
+             Global => (In_Out => Platform_S, Input => (Start, M, Scale))
+      is
+      begin
+         Append (Platform_S,
+                 (Start    => At_Offset (M, Start),
+                  Finish   => At_Offset (M, Sum (Start, Scaled (L, Scale))),
+                  Open     => False,
+                  Value    => Height * 4 + Side,
+                  Id       => 0,
+                  Msg      => M.Msg,
+                  others   => <>));
+      end Put;
+   begin
+      if M.Origin = 0 or else Scale > 2 then
+         return;
+      end if;
+      Orient (Platform_S, M.Sense);
+      if P.Q_TRACKINIT = 1 then
+         --  3.7.3.2 e): the initial state (no platform, 3.12.1.3) from
+         --  D_TRACKINIT
+         Start := Scaled (Natural (P.D_TRACKINIT), Scale);
+         Cut_Beyond (Platform_S, T,
+                     Frame (T, At_Offset (M, Start), Estimated_Item),
+                     At_Offset (M, Start), M.Msg);
+         return;
+      end if;
+      Start := Scaled (Natural (P.D_TRACKCOND), Scale);
+      --  3.7.3.1 o)
+      Cut_Beyond (Platform_S, T,
+                  Frame (T, At_Offset (M, Start), Estimated_Item),
+                  At_Offset (M, Start), M.Msg);
+      Put (Natural (P.L_TRACKCOND), Natural (P.M_PLATFORM),
+           Natural (P.Q_PLATFORM));
+      for K in 1 .. Natural (P.N_ITER) loop
+         Start := Sum (Start, Scaled (Natural (P.D_TRACKCOND_List (K)
+                                                .D_TRACKCOND), Scale));
+         Put (Natural (P.D_TRACKCOND_List (K).L_TRACKCOND),
+              Natural (P.D_TRACKCOND_List (K).M_PLATFORM),
+              Natural (P.D_TRACKCOND_List (K).Q_PLATFORM));
+      end loop;
+   end Take_Platforms;
+
+   ------------------
+   -- Take_Current --
+   ------------------
+
+   procedure Take_Current (P : ETCS_Track_Packets.P40.Packet_T;
+                           M : Message_T)
+   is
+      Scale : constant Natural := Natural (P.Q_SCALE);
+      At_D  : Dist_T;
+   begin
+      if M.Origin = 0 or else Scale > 2 then
+         return;
+      end if;
+      --  3.7.3.1 p): all the stored ones
+      Current_S := Empty_Store;
+      Current_S.Sense := M.Sense;
+      At_D := Scaled (Natural (P.D_CURRENT), Scale);
+      Append (Current_S,
+              (Start    => At_Offset (M, At_D),
+               Finish   => At_Offset (M, At_D),
+               Open     => False,
+               Value    => Natural (P.M_CURRENT),
+               Id       => 160,
+               Msg      => M.Msg,
+               others   => <>));
+   end Take_Current;
+
    -------------------
    -- Delete_Beyond --
    -------------------
@@ -186,6 +279,8 @@ is
       Cut_Beyond (Cond_S, T, X, To, Before_Msg);
       Cut_Beyond (Traction_S, T, X, To, Before_Msg);
       Cut_Beyond (BMM_S, T, X, To, Before_Msg);
+      Cut_Beyond (Platform_S, T, X, To, Before_Msg);
+      Cut_Beyond (Current_S, T, X, To, Before_Msg);
    end Delete_Beyond;
 
    procedure Delete_Behind (T : Origin_Table_T; Rear : Dist_T;
@@ -195,6 +290,8 @@ is
       Cut_Behind (Cond_S, T, Rear, Keep);
       Cut_Behind (Traction_S, T, Rear, Keep);
       Cut_Behind (BMM_S, T, Rear, Keep);
+      Cut_Behind (Platform_S, T, Rear, Keep);
+      Cut_Behind (Current_S, T, Rear, Keep);
    end Delete_Behind;
 
    procedure Mark (Marks : in out Origin_Marks_T) is
@@ -202,6 +299,8 @@ is
       Mark (Cond_S, Marks);
       Mark (Traction_S, Marks);
       Mark (BMM_S, Marks);
+      Mark (Platform_S, Marks);
+      Mark (Current_S, Marks);
    end Mark;
 
    ---------------------------------------------------------------------
@@ -419,6 +518,170 @@ is
          end loop;
       end if;
    end Evaluate;
+
+   --------------
+   -- External --
+   --------------
+
+   procedure External (T     : Origin_Table_T;
+                       Train : Train_Frame_T;
+                       Info  : out External_T)
+   is
+      --  point C, as for the indication (5.18.2.2.1, 5.18.3.2.1,
+      --  5.18.6.2.1, 5.18.7.3.2, 5.18.10.3)
+      Announce : constant Length_T :=
+        Length_T'Max (Announce_Min_Cm,
+                      Cm_T (Natural'Min (Train.Speed, 100_000))
+                        * Announce_Time_Ms / 1_000);
+
+      procedure Put (Item : External_Item_T) is
+      begin
+         if Info.Count < Max_External then
+            Info.Count := Info.Count + 1;
+            Info.List (Info.Count) := Item;
+         end if;
+      end Put;
+   begin
+      Info := (Count => 0, List => (others => (others => <>)));
+      if not Train.Valid then
+         return;
+      end if;
+
+      if Cond_S.Sense = Train.Sense then
+         for I in 1 .. Cond_S.Count loop
+            declare
+               S      : constant Sense_T := Cond_S.Sense;
+               E      : constant Stored_T := Cond_S.List (I);
+               D      : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
+               Fin    : constant Dist_T :=
+                 A (S, Frame (T, E.Finish, Min_Item));
+               C      : constant Dist_T := Diff (D, Announce);
+               Max_F  : constant Dist_T := A (S, Train.Max_Front);
+               Min_F  : constant Dist_T := A (S, Train.Min_Front);
+               Min_R  : constant Dist_T := A (S, Train.Min_Rear);
+               Kind   : constant Natural :=
+                 (case E.Value is
+                     when 3      => Ext_Pantograph,
+                     when 9      => Ext_Main_Switch,
+                     when 5      => Ext_Air_Tight,
+                     when 6      => Ext_Regenerative,
+                     when 7      => Ext_Eddy_Service,
+                     when 10     => Ext_Eddy_Emergency,
+                     when 8      => Ext_Magnetic_Shoe,
+                     when others => 0);
+               Id     : constant Natural := Natural'Min (E.Id, 255);
+            begin
+               if Kind /= 0 and then Max_F >= C and then Min_R < Fin then
+                  if Kind in Ext_Pantograph | Ext_Main_Switch then
+                     --  5.20.2.3 to .5, 5.20.3.3 to .5: to D from the max
+                     --  safe front end while the min safe rear end is in
+                     --  rear of D; to E from the min safe front end
+                     Put ((Kind      => Kind,
+                           Id        => Id,
+                           Has_Start => Min_R < D,
+                           To_Start  => Diff (D, Max_F),
+                           Has_End   => True,
+                           To_End    => Diff (Fin, Min_F),
+                           Value     => 0));
+                  else
+                     --  5.20.4.3 to .5, 5.20.5.4 to .6: to D from the max
+                     --  safe front end until it reaches D; to E from the
+                     --  min safe rear end
+                     Put ((Kind      => Kind,
+                           Id        => Id,
+                           Has_Start => Max_F < D,
+                           To_Start  => Diff (D, Max_F),
+                           Has_End   => True,
+                           To_End    => Diff (Fin, Min_R),
+                           Value     => 0));
+                  end if;
+               end if;
+            end;
+         end loop;
+      end if;
+
+      if Traction_S.Sense = Train.Sense then
+         for I in 1 .. Traction_S.Count loop
+            declare
+               S     : constant Sense_T := Traction_S.Sense;
+               E     : constant Stored_T := Traction_S.List (I);
+               F     : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
+               C     : constant Dist_T := Diff (F, Announce);
+               Max_F : constant Dist_T := A (S, Train.Max_Front);
+               Min_R : constant Dist_T := A (S, Train.Min_Rear);
+            begin
+               --  5.20.6.2 to .4: to F from the max safe front end, and
+               --  the new traction system, until the min safe rear end
+               --  reaches F
+               if Max_F >= C and then Min_R < F then
+                  Put ((Kind      => Ext_Traction,
+                        Id        => 128 + Natural'Min (I, 127),
+                        Has_Start => True,
+                        To_Start  => Diff (F, Max_F),
+                        Has_End   => False,
+                        To_End    => 0,
+                        Value     => Natural'Min (Natural'Max (E.Value, 0),
+                                                  65_535)));
+               end if;
+            end;
+         end loop;
+      end if;
+
+      --  5.20.7.2 to .5: the change of allowed current consumption
+      if Current_S.Sense = Train.Sense then
+         for I in 1 .. Current_S.Count loop
+            declare
+               S     : constant Sense_T := Current_S.Sense;
+               E     : constant Stored_T := Current_S.List (I);
+               F     : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
+               C     : constant Dist_T := Diff (F, Announce);
+               Max_F : constant Dist_T := A (S, Train.Max_Front);
+               Min_R : constant Dist_T := A (S, Train.Min_Rear);
+            begin
+               if Max_F >= C and then Min_R < F then
+                  Put ((Kind      => Ext_Current,
+                        Id        => 160,
+                        Has_Start => True,
+                        To_Start  => Diff (F, Max_F),
+                        Has_End   => False,
+                        To_End    => 0,
+                        Value     => Natural'Min (Natural'Max (E.Value, 0),
+                                                  65_535)));
+               end if;
+            end;
+         end loop;
+      end if;
+
+      --  5.20.8.2 to .6: the station platforms, to D from the max safe
+      --  front end while the min safe rear end is in rear of D, to E from
+      --  the min safe front end, with the height and the side, until the
+      --  min safe rear end reaches E
+      if Platform_S.Sense = Train.Sense then
+         for I in 1 .. Platform_S.Count loop
+            declare
+               S     : constant Sense_T := Platform_S.Sense;
+               E     : constant Stored_T := Platform_S.List (I);
+               D     : constant Dist_T := A (S, Frame (T, E.Start, Max_Item));
+               Fin   : constant Dist_T := A (S, Frame (T, E.Finish, Min_Item));
+               C     : constant Dist_T := Diff (D, Announce);
+               Max_F : constant Dist_T := A (S, Train.Max_Front);
+               Min_F : constant Dist_T := A (S, Train.Min_Front);
+               Min_R : constant Dist_T := A (S, Train.Min_Rear);
+            begin
+               if Max_F >= C and then Min_R < Fin then
+                  Put ((Kind      => Ext_Platform,
+                        Id        => 192 + Natural'Min (I, 63),
+                        Has_Start => Min_R < D,
+                        To_Start  => Diff (D, Max_F),
+                        Has_End   => True,
+                        To_End    => Diff (Fin, Min_F),
+                        Value     => Natural'Min (Natural'Max (E.Value, 0),
+                                                  65_535)));
+               end if;
+            end;
+         end loop;
+      end if;
+   end External;
 
    -----------------
    -- Inhibitions --

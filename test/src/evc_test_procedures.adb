@@ -52,6 +52,21 @@ package body EVC_Test_Procedures is
    Onboard_Train : Natural := 0;
    --  MSG_PLANNING in the last cycle
    Planning_Now  : Boolean := False;
+   --  MSG_TRACK_COND: the last one shows the symbol LX01 (kind 38)
+   LX_Shown      : Boolean := False;
+   --  MSG_SPEED_STATE: the monitoring (0 CSM, 1 TSM, 2 RSM)
+   Monitoring    : Natural := 0;
+   --  The TIU track condition output (5.20): the frames of the last
+   --  Take, the items of the last one
+   type TC_Item_T is record
+      Kind, Id           : Natural := 0;
+      To_Start, To_End   : Integer_64 := 0;
+      Value              : Natural := 0;
+   end record;
+   TC_Frames : Natural := 0;
+   TC_N      : Natural := 0;
+   TC        : array (1 .. 8) of TC_Item_T;
+   TC_None   : constant Integer_64 := 16#7FFF_FFFF#;
    --  The TIU output (the last one sent)
    TIU_Cmd       : Natural := 0;
    TIU_Why       : Natural := 0;
@@ -123,6 +138,7 @@ package body EVC_Test_Procedures is
       Pos : Natural := 0;
    begin
       Planning_Now := False;
+      TC_Frames := 0;
       while Pos + 3 <= Out_Last loop
          declare
             Port : constant Natural := Natural (Out_Buf (Pos + 1));
@@ -146,6 +162,14 @@ package body EVC_Test_Procedures is
                      Override_Byte := P (11);
                   when 16#01# =>
                      V_Perm := P (8) + 256 * P (9);
+                     Monitoring := P (22);
+                  when 16#05# =>
+                     LX_Shown := False;
+                     for K in 1 .. P (6) loop
+                        if P (6 + 2 * K) = 38 then
+                           LX_Shown := True;
+                        end if;
+                     end loop;
                   when 16#07# =>
                      Status_Brake := P (6);
                      Reversing := P (10);
@@ -180,6 +204,32 @@ package body EVC_Test_Procedures is
             elsif Port = Port_T'Pos (TIU) and then Len = 2 then
                TIU_Cmd := P (1);
                TIU_Why := P (2);
+            elsif Port = Port_T'Pos (TIU) and then Len >= 3
+              and then P (1) = Natural (EVC_Ports.TIU_TC_Tag)
+            then
+               TC_Frames := TC_Frames + 1;
+               TC_N := Natural'Min (P (3), TC'Last);
+               if Len /= 3 + 12 * P (3) then
+                  Parse_OK := False;
+               end if;
+               for K in 1 .. TC_N loop
+                  declare
+                     B : constant Natural := 3 + 12 * (K - 1);
+                     function I32 (At_B : Natural) return Integer_64 is
+                       (Integer_64 (Integer_32'Val
+                          (Integer_64 (Unsigned_32'(Unsigned_32 (P (At_B))
+                             + 256 * Unsigned_32 (P (At_B + 1))
+                             + 65_536 * Unsigned_32 (P (At_B + 2))
+                             + 16_777_216 * Unsigned_32 (P (At_B + 3))))
+                           - (if P (At_B + 3) >= 128 then 2**32 else 0))));
+                  begin
+                     TC (K) := (Kind     => P (B + 1),
+                                Id       => P (B + 2),
+                                To_Start => I32 (B + 3),
+                                To_End   => I32 (B + 7),
+                                Value    => P (B + 11) + 256 * P (B + 12));
+                  end;
+               end loop;
             elsif Port = Port_T'Pos (JRU) and then Len >= 4 then
                if P (1) = 1 then
                   JRU_Modes := JRU_Modes + 1;
@@ -264,6 +314,26 @@ package body EVC_Test_Procedures is
       ST.Put (W, P, Build_OK);
    end Add;
    procedure Add (P : ST.T74.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
+   procedure Add (P : ST.T68.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
+   procedure Add (P : ST.T40.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
+   procedure Add (P : ST.T69.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
+   procedure Add (P : ST.T39.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
+   procedure Add (P : ST.T88.Packet_T) is
    begin
       ST.Put (W, P, Build_OK);
    end Add;
@@ -488,6 +558,9 @@ package body EVC_Test_Procedures is
       TIU_Why := 0;
       Status_Brake := 0;
       Reversing := 0;
+      LX_Shown := False;
+      Monitoring := 0;
+      TC_N := 0;
       TIU_In (1, 1);
       TIU_In (6, 1);
       Cycle;
@@ -1233,6 +1306,312 @@ package body EVC_Test_Procedures is
              "5.22.5.1 a): ended after the 300 m of A.3.1");
    end Scenario_BMM;
 
+   --  5.16 Passing a level crossing not protected (SUBSET-076 5160000_01:
+   --  two level crossings not protected, stopping not required, passed
+   --  in FS; 5160000 with stopping required)
+   procedure Scenario_Level_Crossing is
+   begin
+      --  stopping not required: the train at or below V_LX at the
+      --  location of the Permitted speed supervision limit for V_LX
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 800, 200, Guarded => False, Kmh => 70));
+      Add (ST.Level_Crossing (2, 1_800, 100, Guarded => False, Kmh => 60));
+      Close;
+      Run_Front (600, 60);
+      Check (Mode_Byte = Code_FS and then not LX_Shown,
+             "5.16.1.4: no indication before the LX is the most relevant "
+             & "target");
+      Run_Front (650, 60);
+      Check (Monitoring = 1 and then LX_Shown and then V_Perm > 70,
+             "5.16.1.4 a): ""LX not protected"" once the temporary EOA "
+             & "and SvL of the LX start is the most relevant displayed "
+             & "target");
+      Run_Front (1_000, 60);
+      Check (Monitoring = 0 and then V_Perm = 70,
+             "5.16.3.2, 3.13.9.3.5.11: at or below V_LX at the location of "
+             & "the Permitted speed supervision limit for V_LX, the LX speed "
+             & "restriction in the MRSP instead of the temporary EOA");
+      Run_Front (1_300, 60);
+      Check (Mode_Byte = Code_FS and then not EB and then not SB,
+             "5.16.3.2: at or below V_LX at the location of the Permitted "
+             & "speed supervision limit for V_LX, its start no longer a "
+             & "temporary EOA: no trip, no brake");
+      Check (V_Perm = 70 and then LX_Shown,
+             "5.16.1.2, 5.16.3.2: the LX speed restriction in the MRSP, "
+             & "the indication kept (5.16.1.5)");
+      Run_Front (1_480, 60);
+      Check (not LX_Shown,
+             "5.16.1.5: the indication ends once the min safe front end "
+             & "passed the LX end");
+      Run_Front (2_200, 50);
+      Check (LX_Shown and then Mode_Byte = Code_FS,
+             "5.16.1.4: the second level crossing indicated");
+      Run_Front (2_400, 50);
+      Check (Mode_Byte = Code_FS and then not LX_Shown,
+             "5.16: the second level crossing passed at V_LX, its "
+             & "indication ended");
+
+      --  too fast at that location: its start stays the EOA
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 800, 200, Guarded => False, Kmh => 40));
+      Close;
+      Run_Front (1_300, 60);
+      Check (Mode_Byte = Code_TR,
+             "5.16.3.2: above V_LX the start stays a temporary EOA, passed "
+             & "it trips (4.6.3 [12], {9})");
+
+      --  stopping required: stopped in the stopping area
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 800, 50, Guarded => False, Kmh => 20,
+                              Stop => True, L_Stop_M => 100));
+      Close;
+      Run_Front (1_100, 30);
+      Stand;
+      Run_Front (1_120, 10);
+      Check (Mode_Byte = Code_FS and then Monitoring /= 0
+             and then V_Perm /= 20,
+             "5.16.2.1: stopped in rear of the stopping area, the start "
+             & "still the EOA (no LX speed restriction yet)");
+      Run_Front (1_200, 10);
+      Stand;
+      Check (LX_Shown,
+             "5.16.2.1, 5.16.1.4 b): stopped in the stopping area, the "
+             & "speed restriction substituted, the driver informed");
+      Run_Front (1_240, 15);
+      Check (Mode_Byte = Code_FS and then not EB and then V_Perm = 20,
+             "5.16.2.1: the LX speed from the estimated front end, the "
+             & "start passed without a trip");
+      Run_Front (1_330, 15);
+      Check (not LX_Shown, "5.16.1.5: the indication ends");
+
+      --  4.6.3 [9]: AD to FS when the indication starts
+      Begin_Scenario (M_AD, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 800, 200, Guarded => False, Kmh => 70));
+      Close;
+      Run_Front (600, 60);
+      Check (Mode_Byte = 3,
+             "4.6.3 [9]: AD before the indication of the level crossing");
+      Run_Front (1_000, 60);
+      Check (Mode_Byte = Code_FS and then LX_Shown,
+             "4.6.3 [9]: AD to FS when the on-board starts to indicate the "
+             & "level crossing not protected");
+   end Scenario_Level_Crossing;
+
+   --  5.20 The information for an external function related to the
+   --  track conditions (the TIU track condition output of EVC_Ports;
+   --  SUBSET-034 2.3.4, 2.4.1, 2.4.2). The default train is 200 m long;
+   --  point C is 100 m (10 s at 36 km/h, at least 100 m) in rear of the
+   --  start
+   procedure Scenario_External_Track_Conditions is
+      function Find (Kind : Natural) return Natural is
+      begin
+         for K in 1 .. TC_N loop
+            if TC (K).Kind = Kind then
+               return K;
+            end if;
+         end loop;
+         return 0;
+      end Find;
+      I : Natural;
+   begin
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 3_000, Length_M => 4_000);
+      Add (ST.Track_Condition (500, 100, 3));   -- lower pantograph
+      Close;
+      Group (2, 50);
+      Add (ST.Track_Condition (750, 100, 6));   -- regenerative brake
+      Add (ST.Traction_Change (1_150, 1, 5));
+      Close;
+      Run_Front (380, 36);
+      Check (TC_Frames = 0,
+             "5.20.2.2: nothing generated before point C");
+      Run_Front (420, 36);
+      I := Find (1);
+      Check (TC_Frames = 1 and then TC_N = 1 and then I = 1
+             and then TC (1).To_Start in 5_000 .. 8_000
+             and then TC (1).To_End in 17_000 .. 21_000,
+             "5.20.2.2, 5.20.2.3, SUBSET-034 2.4.2: from point C, the "
+             & "distances from the max safe front end to D and from the min "
+             & "safe front end to E");
+      Run_Front (560, 36);
+      I := Find (1);
+      Check (I > 0 and then TC (I).To_Start < 0 and then TC (I).To_End > 0,
+             "5.20.1.2: negative once the front end is beyond D, still "
+             & "generated while the min safe rear end is in rear of D");
+      Run_Front (730, 36);
+      I := Find (1);
+      Check (I > 0 and then TC (I).To_Start = TC_None
+             and then TC (I).To_End < 0,
+             "5.20.2.4: the distance to D no longer generated once the min "
+             & "safe rear end reached D; the one to E still");
+      I := Find (4);
+      Check (I > 0 and then TC (I).To_Start > 0
+             and then TC (I).To_End > TC (I).To_Start,
+             "5.20.5.3, 5.20.5.4, SUBSET-034 2.3.4: the regenerative brake "
+             & "inhibition area from point C, to E from the min safe rear "
+             & "end");
+      Run_Front (870, 36);
+      I := Find (4);
+      Check (Find (1) = 0 and then I > 0 and then TC (I).To_Start = TC_None
+             and then TC (I).To_End > 0,
+             "5.20.2.5: the pantograph item ends with the min safe rear end "
+             & "at E; 5.20.5.5: the distance to D ends once the max safe "
+             & "front end reached it");
+      Run_Front (1_100, 36);
+      I := Find (8);
+      Check (I > 0 and then TC (I).Value = 1_024 + 5
+             and then TC (I).To_Start > 0 and then TC (I).To_End = TC_None,
+             "5.20.6.2, 5.20.6.3, SUBSET-034 2.4.1: the change of traction "
+             & "system, its distance and the new traction system");
+      Run_Front (1_480, 36);
+      Check (TC_Frames = 0 and then TC_N = 0,
+             "5.20.6.4: the last item ended, the output sent once empty, "
+             & "then nothing more");
+
+      --  5.20.7, 5.20.8 (SUBSET-076 5200800): a station platform and a
+      --  change of allowed current consumption (packets 69 and 40,
+      --  3.7.3.1 o, p)
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 3_000, Length_M => 4_000);
+      Add (ST.Station_Platform (500, 300, 3, 1));
+      Add (ST.Current_Change (600, 250));
+      Close;
+      Run_Front (380, 36);
+      Check (TC_Frames = 0, "5.20.8.2, 5.20.7.2: nothing before point C");
+      Run_Front (420, 36);
+      I := Find (10);
+      Check (I > 0 and then TC (I).Value = 3 * 4 + 1
+             and then TC (I).To_Start > 0 and then TC (I).To_End > 0,
+             "5.20.8.2, 5.20.8.4, SUBSET-034 2.4.6: the station platform "
+             & "from point C, its distances, height and side");
+      Run_Front (520, 36);
+      I := Find (9);
+      Check (I > 0 and then TC (I).Value = 250 and then TC (I).To_Start > 0
+             and then TC (I).To_End = TC_None,
+             "5.20.7.2, 5.20.7.4, SUBSET-034 2.4.10: the change of allowed "
+             & "current consumption from point C, the new value");
+      Run_Front (740, 36);
+      I := Find (10);
+      Check (I > 0 and then TC (I).To_Start = TC_None
+             and then TC (I).To_End > 0,
+             "5.20.8.5: the distance to D ends with the min safe rear end "
+             & "at D, the one to E, the height and the side go on");
+      Run_Front (1_050, 36);
+      Check (Find (10) = 0 and then Find (9) = 0,
+             "5.20.8.6, 5.20.7.5: both end with the min safe rear end at E "
+             & "and at F");
+   end Scenario_External_Track_Conditions;
+
+   --  5.17 Changing Train Data from sources different from the driver
+   --  (SUBSET-076 5170200_01: the train interface's "other train data"
+   --  in SB, in TR, then in FS while moving), TIU input 13: bit 7 the
+   --  data are category / axle load / traction / gauge, bit 6 they need
+   --  the driver's validation
+   procedure Scenario_Train_Data_Change is
+      Cat : constant := 128;
+      Val : constant := 64;
+   begin
+      Begin_Scenario (M_SB, L1);
+      TIU_In (13, 0);
+      Cycle;
+      Check (J23 (11) = 0 and then not Seen_SS (17, 0),
+             "5.17.2.2 E0: the first train configuration is no change");
+      TIU_In (13, Cat + 1);
+      Cycle;
+      Check (Seen_SS (17, 0) and then not SB and then J23_B3 (11) = 6,
+             "5.17.2.2 D1, D3 (SB), A1, A7: ""Train data changed"" "
+             & "displayed, no brake (SUBSET-076 5170200_01 steps 29, 30)");
+      Run_Front (0, 10);
+      Check (Seen_SS (17, 2),
+             "DMI Table 68: ""Train data changed"" for 30 s from a train "
+             & "movement");
+
+      --  in TR (D3, D5: A1)
+      Begin_Scenario (M_SR, L1);
+      TIU_In (13, 0);
+      Group (4, 50);
+      Add (ST.Stop_If_In_SR (Stop => True));
+      Close;
+      Run_Front (60, 20);
+      Check (Mode_Byte = Code_TR, "5.17: the trip of the sequence");
+      TIU_In (13, Cat + 2);
+      Cycle;
+      Check (Seen_SS (17, 0),
+             "5.17.2.2 D3, D5 (TR, no MA of an RBC), A1 (steps 58, 59)");
+
+      --  in FS while moving: the service brake (S2), the acknowledgement
+      --  at standstill (S3), the release (A5)
+      Begin_Scenario (M_FS, L1);
+      TIU_In (13, 0);
+      Line_Group (EOA_M => 2_000);
+      Close;
+      Run_Front (100, 40);
+      TIU_In (13, Cat + 3);
+      Cycle;
+      Check (SB and then Why (EVC_Ports.TIU_Reason_Procedure)
+             and then Seen_SS (18, 0) and then Mode_Byte = Code_FS,
+             "5.17.2.2 D7, S2: the service brake while moving, the reason "
+             & "indicated (steps 91 to 95)");
+      Stand;
+      Check (SB and then Status_Brake = 2,
+             "5.17.2.2 E2, S3: at standstill the acknowledgement of the "
+             & "brake command asked (steps 97, 98)");
+      Ack (5);
+      Cycle;
+      Check (not SB and then Seen_SS (18, 1) and then J23_B3 (11) = 6,
+             "5.17.2.2 E3, A5, A7: released on the acknowledgement (steps "
+             & "99, 100)");
+
+      --  needing the driver's validation, moving: S4, S5, A6, S6
+      Run_Front (150, 40);
+      TIU_In (13, Val + 4);
+      Cycle;
+      Check (SB and then Seen_SS (18, 0),
+             "5.17.2.2 D2, D9, S4: the service brake while moving");
+      Stand;
+      Ack (5);
+      Cycle;
+      Check (not SB and then J23_B3 (11) = 5,
+             "5.17.2.2 E5, A6, S6: released, the re-validation of the "
+             & "Train Data requested");
+
+      --  needing the driver's validation in TR: S1, then D4 when the trip
+      --  procedure is exited
+      Begin_Scenario (M_SR, L1);
+      TIU_In (13, 0);
+      Group (4, 50);
+      Add (ST.Stop_If_In_SR (Stop => True));
+      Close;
+      Run_Front (60, 20);
+      TIU_In (13, Val + 5);
+      Cycle;
+      Check (Mode_Byte = Code_TR and then J23 (11) = 1 and then J23_B3 (11) = 1,
+             "5.17.2.2 D2, S1: in TR the end of the trip procedure is "
+             & "awaited");
+      Stand;
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_PT and then J23 (11) = 1,
+             "5.17.2.2 S1: PT is still the trip procedure");
+      Driver (6);
+      Cycle;
+      Check (Mode_Byte = Code_SR and then J23_B3 (11) = 5,
+             "5.17.2.2 E1, D4, S6: the trip procedure exited to SR, the "
+             & "re-validation requested");
+   end Scenario_Train_Data_Change;
+
    --  3.11.7: the national values of UN and SR
    procedure Scenario_Mode_Speeds is
    begin
@@ -1261,6 +1640,9 @@ package body EVC_Test_Procedures is
       Scenario_Text_Messages;
       Scenario_BMM;
       Scenario_Mode_Speeds;
+      Scenario_Level_Crossing;
+      Scenario_External_Track_Conditions;
+      Scenario_Train_Data_Change;
       Check (Build_OK and then Parse_OK,
              "E4 procedures: every telegram built, every output parsed");
    end Run;

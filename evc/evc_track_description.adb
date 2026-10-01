@@ -639,7 +639,12 @@ is
          Speed         => V5_To_Cms (Natural (P.V_LX)),
          Stop_Required => P.Q_STOPLX = 1,
          Stop_Length   => D (Natural (P.L_STOPLX), Scale),
-         Msg           => M.Msg);
+         Msg           => M.Msg,
+         --  phase E4, 5.16: a new information starts the procedure
+         --  again
+         Released      => False,
+         Released_From => 0,
+         Indicated     => False);
    end Take_LX;
 
    -------------------
@@ -983,13 +988,19 @@ is
          end loop;
       end if;
       --  3.11.9: the LX speed restriction of a level crossing not
-      --  protected, over its area (its substitution for the temporary
-      --  EOA and SvL, 5.16, is phase E4)
+      --  protected, over its area; once it substitutes the supervision
+      --  of its start as temporary EOA and SvL (5.16.2.1, 5.16.3.2),
+      --  from the location of the substitution
       if LX_Sense_S = Ahead then
          for I in LX_S'Range loop
             pragma Loop_Invariant (E.Count >= E.Count'Loop_Entry);
             if LX_S (I).Used and then not LX_S (I).Protected_LX then
-               Add (E, A (Ahead, Frame (T, LX_S (I).Start, Max_Item)),
+               Add (E,
+                    (if LX_S (I).Released
+                     then Dist_T'Min
+                            (A (Ahead, LX_S (I).Released_From),
+                             A (Ahead, Frame (T, LX_S (I).Start, Max_Item)))
+                     else A (Ahead, Frame (T, LX_S (I).Start, Max_Item))),
                     A (Ahead, Frame (T, LX_S (I).Finish, Min_Item)),
                     LX_S (I).Speed);
             end if;
@@ -1069,27 +1080,38 @@ is
                         Front : Dist_T;
                         Found : out Boolean;
                         EOA   : out Dist_T;
-                        SvL   : out Dist_T)
+                        SvL   : out Dist_T;
+                        Index : out Natural)
    is
       Best : Dist_T := Max_Cm;
    begin
       Found := False;
       EOA := 0;
       SvL := 0;
+      Index := 0;
       if LX_Sense_S /= Ahead then
          return;
       end if;
       for I in LX_S'Range loop
-         if LX_S (I).Used and then not LX_S (I).Protected_LX then
+         pragma Loop_Invariant (Index <= Max_LX
+                                and then (if Found then Index >= 1));
+         if LX_S (I).Used and then not LX_S (I).Protected_LX
+           and then not LX_S (I).Released
+         then
             declare
                E : constant Dist_T :=
                  Frame (T, LX_S (I).Start, Estimated_Item);
             begin
-               if A (Ahead, E) > A (Ahead, Front)
+               --  phase E4: kept until the min safe front end passed
+               --  its end (a start passed without the substitution of
+               --  5.16 is an EOA passed: the trip of 4.6.3 [12], {9})
+               if A (Ahead, Frame (T, LX_S (I).Finish, Max_Item))
+                    >= A (Ahead, Front)
                  and then A (Ahead, E) < Best
                then
                   Best := A (Ahead, E);
                   Found := True;
+                  Index := I;
                   EOA := E;
                   SvL := Frame (T, LX_S (I).Start, Max_Item);
                end if;
@@ -1101,5 +1123,29 @@ is
          EOA := SvL;
       end if;
    end LX_Target;
+
+   ----------------
+   -- Release_LX --
+   ----------------
+
+   procedure Release_LX (I : Positive; From : Dist_T) is
+   begin
+      if LX_S (I).Used and then not LX_S (I).Protected_LX then
+         LX_S (I).Released := True;
+         LX_S (I).Released_From := From;
+         LX_S (I).Indicated := True;
+      end if;
+   end Release_LX;
+
+   -----------------
+   -- Indicate_LX --
+   -----------------
+
+   procedure Indicate_LX (I : Positive) is
+   begin
+      if LX_S (I).Used and then not LX_S (I).Protected_LX then
+         LX_S (I).Indicated := True;
+      end if;
+   end Indicate_LX;
 
 end EVC_Track_Description;

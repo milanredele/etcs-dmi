@@ -68,7 +68,8 @@
 --     active: one input per cab, "cab active" is "desk open"; 3 sleeping
 --     requested [3] [14], 4 passive shunting permitted [26], 5 non
 --     leading permitted [46]; 6 to 12, of the speed and distance
---     monitoring, at the end of this package), value u8 (0 or 1). The
+--     monitoring, at the end of this package; 13 the train
+--     configuration, phase E4, there too), value u8 (0 or 1). The
 --     active cab gives the train orientation (SUBSET-026 3.6.1.5,
 --     EVC_Position). The TIU output is at the end of this package.
 --  DMI (in and out): one frame of the DMI protocol v2
@@ -119,6 +120,8 @@ is
    RTM_Max_Length  : constant := 1023;  -- L_MESSAGE is 10 bits
    Odometer_Length : constant := 22;
    TIU_Length      : constant := 2;
+   --  the longest TIU output: the track conditions of phase E4 (below)
+   TIU_Out_Max_Length : constant := 3 + 8 * 12;
    DMI_Max_Length  : constant := EVC_DMI_Port.Max_Frame_Length;
    JRU_Record_Length : constant := 16;
 
@@ -127,7 +130,7 @@ is
      (BTM      => BTM_Max_Length,
       RTM      => RTM_Max_Length,
       Odometer => Odometer_Length,
-      TIU      => TIU_Length,
+      TIU      => TIU_Out_Max_Length,
       DMI      => DMI_Max_Length,
       ATO      => 0,
       JRU      => JRU_Record_Length);
@@ -217,12 +220,13 @@ is
 
    function Valid_TIU (Payload : Byte_Array) return Boolean is
      (Payload'Length = TIU_Length
-      and then Payload (Payload'First) in 1 .. 12
+      and then Payload (Payload'First) in 1 .. 13
       --  the direction controller has three positions, the brake
-      --  pressure is a number, every other signal is 0 or 1
+      --  pressure and the train configuration (phase E4) are numbers,
+      --  every other signal is 0 or 1
       and then (case Payload (Payload'First) is
                    when 6      => Payload (Payload'First + 1) <= 2,
-                   when 12     => True,
+                   when 12 | 13 => True,
                    when others => Payload (Payload'First + 1) <= 1));
 
    --  True when Payload has the documented shape of an input on Port
@@ -285,7 +289,10 @@ is
       Magnetic_Shoe_Brake_Active,
       EP_Brake_Active,
       Additional_Brake_Active,
-      Brake_Pressure);
+      Brake_Pressure,
+      --  added by the procedures of phase E4 (see the end of this
+      --  package)
+      Train_Configuration);
 
    type TIU_Input_T is record
       Signal : TIU_Signal_T;
@@ -306,7 +313,8 @@ is
    --  change of traction system, 11 big metal masses, 12 route
    --  suitability, 13 mode profile, 14 level crossing, 15 adhesion, 16
    --  a balise group, 17 speed restriction to ensure a permitted braking
-   --  distance. Byte 3 the change: 1 stored (byte 4: the number of
+   --  distance, 18 station platforms and 19 allowed current consumption
+   --  (phase E4). Byte 3 the change: 1 stored (byte 4: the number of
    --  the group message mod 256; a TSR its NID_TSR, an LX its NID_LX,
    --  V_MAIN its value), 2 deleted or revoked (byte 4: the NID_TSR), 3
    --  rejected (an MA its SSP and gradients do not cover, 3.7.2.3), 4
@@ -416,5 +424,50 @@ is
    --  the class, 0 fixed, 1 plain)
    JRU_Procedures    : constant := 23;
    JRU_Text_Messages : constant := 24;
+
+   --  TIU input 13, the train data from the train interface (SUBSET-034
+   --  2.6.3, 2.6.4: "other train data information", the "type of train
+   --  configuration" of 2.6.4.2), for the procedure "Changing Train Data
+   --  from sources different from the driver" (SUBSET-026 5.17): value
+   --  u8, bits 0 to 5 the train configuration, bit 6 the Train Data it
+   --  changes need the driver's validation (5.17.2.2 D0), bit 7 they
+   --  concern the train category, the axle load category, the traction
+   --  systems accepted or the loading gauge (D1); which data a
+   --  configuration changes, and whether they need validation, is the
+   --  specific train implementation's (D0), which this input states.
+   --  A value that differs from the last one received is a change of
+   --  input information (E0); the first one after power-up is not.
+   TIU_Config_Validation : constant Byte := 64;
+   TIU_Config_Category   : constant Byte := 128;
+
+   --  The second TIU output, the information for an external function
+   --  related to the track conditions (SUBSET-026 3.12.1.5 b, 5.20;
+   --  SUBSET-034 2.3.4 special brake inhibition area, 2.4.1 change of
+   --  traction system, 2.4.2 powerless section with pantograph to be
+   --  lowered, 2.4.4 air tightness area, 2.4.7 powerless section with
+   --  main power switch to be switched off), TIU_TC_Header_Length +
+   --  count * TIU_TC_Entry_Length bytes (never the 2 bytes of the
+   --  commands): tag u8 TIU_TC_Tag, version u8 1, count u8 (0 ..
+   --  TIU_TC_Max), then per item: kind u8 (1 pantograph, 2 main power
+   --  switch, 3 air tightness, 4 regenerative brake, 5 eddy current
+   --  brake for service braking, 6 eddy current brake for emergency
+   --  braking, 7 magnetic shoe brake, 8 change of traction system, 9
+   --  change of allowed current consumption (2.4.10), 10 station
+   --  platform (2.4.6)), id
+   --  u8 (the number of the condition, as on the DMI: the same area
+   --  keeps it), to_start i32 and to_end i32 (the remaining distances in
+   --  cm of SUBSET-034, 5.20.1.2: positive while the train end is in rear
+   --  of the location; TIU_TC_None when not generated: 5.20.2.4 ...),
+   --  value u16 (a change of traction system: M_VOLTAGE * 1024 +
+   --  NID_CTRACTION; of allowed current consumption: M_CURRENT; a station
+   --  platform: M_PLATFORM * 4 + Q_PLATFORM, its height and its side;
+   --  0 otherwise). Sent in every cycle while an item is
+   --  generated, and once with count 0 when the last one ends (5.20.2.5,
+   --  5.20.2.8 ...); the nearest items first, at most TIU_TC_Max.
+   TIU_TC_Tag           : constant Byte := 16#54#;
+   TIU_TC_Header_Length : constant := 3;
+   TIU_TC_Entry_Length  : constant := 12;
+   TIU_TC_Max           : constant := 8;
+   TIU_TC_None          : constant := 16#7FFF_FFFF#;
 
 end EVC_Ports;

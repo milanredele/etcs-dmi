@@ -122,6 +122,14 @@ is
       Brake_Release_Ack : Boolean := False;
       --  the on-board time, ms
       Now_Ms           : Unsigned_64 := 0;
+      --  5.17.2.2 E0: a change of the input information from the train
+      --  interface that affects Train Data in this cycle (EVC_Ports, TIU
+      --  input 13), whether the data need the driver's validation (D0)
+      --  and whether they are the train category, axle load category,
+      --  traction systems or loading gauge (D1)
+      TD_Change        : Boolean := False;
+      TD_Validation    : Boolean := False;
+      TD_Category      : Boolean := False;
    end record;
 
    ---------------------------------------------------------------------
@@ -179,6 +187,13 @@ is
    function Override_Indicated return Boolean
      with Global => State;
 
+   --  5.17.2.2 S6: the driver is requested to re-enter or re-validate
+   --  the Train Data (the Train Data entry of the start of mission, the
+   --  modes half, shows it; E6, the data validated, ends the request
+   --  there: Train_Data_Revalidated)
+   function Train_Data_Revalidation return Boolean
+     with Global => State;
+
    --  3.15.4.7: reversing is permitted (MSG_STATUS reversing)
    function Reversing_Possible return Boolean
      with Global => State;
@@ -218,7 +233,8 @@ is
       --  acknowledgement is pending", MSG_STATUS brake 3)
       Ack_Missing     : Boolean := False;
       --  3.14.1.6, 3.14.1.7.1, 3.14.1.7.4: the linking reaction, the
-      --  reverse movement distances of RV and PT
+      --  reverse movement distances of RV and PT; 5.17.2.2 S2, S4: the
+      --  Train Data changed by another source
       Other           : Boolean := False;
       --  3.14.1.9: the acknowledgement of the release is asked
       Ack_Required    : Boolean := False;
@@ -270,7 +286,10 @@ is
    --  "stop"), 8 reversing (byte 3 1 area stored, 2 supervision stored,
    --  3 reversing possible, 4 the distance overpassed), 9 BTM alarm
    --  reaction inhibition (byte 3 1 started, 0 ended), 10 post trip
-   --  distance overpassed
+   --  distance overpassed, 11 Train Data changed by another source
+   --  (5.17: byte 3 1 the change detected, 2 the driver informed (A1),
+   --  3 the service brake commanded (S2, S4), 4 released (A5, A6), 5
+   --  the re-validation requested (S6), 6 considered changed (A7))
    Event_Trip           : constant := 1;
    Event_Override_Start : constant := 2;
    Event_Override_End   : constant := 3;
@@ -281,6 +300,7 @@ is
    Event_Reversing      : constant := 8;
    Event_BMM            : constant := 9;
    Event_PT_Distance    : constant := 10;
+   Event_Train_Data     : constant := 11;
 
    ---------------------------------------------------------------------
    --  Operations
@@ -299,14 +319,23 @@ is
    procedure Note_Version_Not_Supported
      with Global => (In_Out => State);
 
+   --  5.17.2.2 E6: the Train Data were validated by the driver while
+   --  the re-validation was requested (the modes half calls it with the
+   --  Train Data entry); A7 follows
+   procedure Train_Data_Revalidated
+     with Global => (In_Out => State),
+          Post => not Train_Data_Revalidation;
+
    --  One cycle (see above)
    procedure Evaluate (C   : Context_T;
                        S   : Snapshot_T;
                        SDM : EVC_SDM.Result_T)
-     with Global => (In_Out => State,
+     with Global => (In_Out => (State,
+                                --  5.16: the substitution of a level
+                                --  crossing not protected
+                                EVC_Track_Description.State),
                      Input  => (EVC_Position.State, EVC_Origins.State,
                                 EVC_Movement_Authority.State,
-                                EVC_Track_Description.State,
                                 EVC_Procedure_Requests.State));
 
    --  The mode machine took the transition From -> To in this cycle

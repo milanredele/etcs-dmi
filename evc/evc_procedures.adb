@@ -32,7 +32,9 @@ package body EVC_Procedures
                     Stop_On_Desk, SH_List_Known, SH_List_N, SH_List,
                     Continue_SH, Now_Flags, Rev, Rev_Possible, RV_Over,
                     RV_EB, BMM_On, BMM_From, Link_SB, Demand, Demand_Sent,
-                    Status_N, Status_List, Event_N, Events))
+                    Status_N, Status_List, Event_N, Events,
+                    TD_Step, TD_Then_Revalidate, TD_Revalidate,
+                    TD_Moving_Due))
 is
 
    ---------------------------------------------------------------------
@@ -57,6 +59,8 @@ is
    SS_RV_Distance_Exceeded          : constant := 27;
    SS_PT_Distance_Exceeded          : constant := 28;
    SS_No_Track_Description          : constant := 29;
+   SS_Train_Data_Changed            : constant := 17;
+   SS_Train_Data_Changed_Brake      : constant := 18;
 
    --  4.4.13.1.3: the system status message that indicates the reason
    --  of the trip (DMI Table 68)
@@ -201,6 +205,18 @@ is
    --  3.14.1.6: the service brake of a linking reaction, to standstill
    Link_SB : Boolean := False;
 
+   --  5.17: Train Data changed by another source. The step of the
+   --  procedure (5.17.2.2: S1 waiting for the end of the trip, S2 / S4
+   --  the service brake until standstill, S3 / S5 the acknowledgement of
+   --  the brake command), whether S6 follows the release (A6) rather
+   --  than A7 (A5), the re-validation requested (S6), and the event 2 of
+   --  "Train data changed" (its 30 s from a train movement) due
+   type TD_Step_T is (TD_Idle, TD_Wait_Trip, TD_Brake, TD_Ack);
+   TD_Step            : TD_Step_T := TD_Idle;
+   TD_Then_Revalidate : Boolean := False;
+   TD_Revalidate      : Boolean := False;
+   TD_Moving_Due      : Boolean := False;
+
    --  The brake demand, and the one recorded last
    Demand      : Brake_Demand_T;
    Demand_Sent : Brake_Demand_T;
@@ -233,6 +249,8 @@ is
      with Refined_Global => (Ovr, Ctx);
    function Reversing_Possible return Boolean is (Rev_Possible)
      with Refined_Global => Rev_Possible;
+   function Train_Data_Revalidation return Boolean is (TD_Revalidate)
+     with Refined_Global => TD_Revalidate;
    function BMM_Inhibited return Boolean is (BMM_On)
      with Refined_Global => BMM_On;
    function Status_Event_Count return Natural is (Status_N)
@@ -364,12 +382,25 @@ is
       Status_List := (others => (others => <>));
       Event_N := 0;
       Events := (others => (others => <>));
+      TD_Step := TD_Idle;
+      TD_Then_Revalidate := False;
+      TD_Revalidate := False;
+      TD_Moving_Due := False;
    end Clear;
 
    procedure Note_Version_Not_Supported is
    begin
       Version_Seen := True;
    end Note_Version_Not_Supported;
+
+   procedure Train_Data_Revalidated is
+   begin
+      if TD_Revalidate then
+         TD_Revalidate := False;
+         --  A7
+         Record_Event (Event_Train_Data, 6, 0);
+      end if;
+   end Train_Data_Revalidated;
 
    ---------------------------------------------------------------------
    --  1. The packets of the balise groups of the cycle
@@ -669,6 +700,12 @@ is
 
       Ovr_For_Trips := Ovr;
 
+      --  5.8.3.1.3 a): "stop if in SR" read, the former EOA/LOA deleted
+      if Now_Flags.SR_Stop then
+         Former := False;
+         Former_Passed := False;
+      end if;
+
       --  [43]: the former EOA overpassed with the min safe antenna
       --  position (a crossing in this cycle), the override not active
       if Former then
@@ -870,13 +907,19 @@ is
       In_L1 : constant Boolean := C.Level_Valid and then C.Level = L1;
       In_L2 : constant Boolean := C.Level_Valid and then C.Level = L2;
 
+      --  5.8.3.6: the train trip is inhibited while the override
+      --  function is active (as it was before the information of the
+      --  balise groups of the cycle ended it, 5.8.4.2)
       procedure Trip (Id : Condition_T; R : Trip_Reason_T)
-        with Global => (In_Out => (Conds, Pending))
+        with Global => (In_Out => (Conds, Pending),
+                        Input  => Ovr_For_Trips)
       is
       begin
-         Conds (Id) := True;
-         if Pending = No_Trip then
-            Pending := R;
+         if not Ovr_For_Trips then
+            Conds (Id) := True;
+            if Pending = No_Trip then
+               Pending := R;
+            end if;
          end if;
       end Trip;
    begin
@@ -896,19 +939,19 @@ is
          Trip (66, Wrong_Direction);
       end if;
       --  [18]: 3.11.6.4, the trip order of a balise
-      if EVC_Movement_Authority.Trip_Ordered and then not Ovr_For_Trips then
+      if EVC_Movement_Authority.Trip_Ordered then
          Trip (18, Trip_Order);
       end if;
       --  [49], [52]
-      if Now_Flags.SH_Stop and then not Ovr_For_Trips then
+      if Now_Flags.SH_Stop then
          Trip (49, SH_Stop_Order);
       end if;
-      if Now_Flags.SH_Unlisted and then not Ovr_For_Trips then
+      if Now_Flags.SH_Unlisted then
          Trip (52, SH_Balise_Not_Listed);
       end if;
       --  [54]: "stop if in SR"; a list of balise groups in SR authority
       --  comes from the RBC (phase E5): none here
-      if Now_Flags.SR_Stop and then not Ovr_For_Trips then
+      if Now_Flags.SR_Stop then
          Trip (54, SR_Stop_Order);
       end if;
       --  [65]
@@ -1052,6 +1095,149 @@ is
    end BMM_Step;
 
    ---------------------------------------------------------------------
+   --  Changing Train Data from sources different from the driver (5.17)
+   ---------------------------------------------------------------------
+
+   --  S6: the driver requested to re-enter or re-validate the data
+   procedure TD_Request_Revalidation
+     with Global => (In_Out => (TD_Revalidate, Events, Event_N))
+   is
+   begin
+      TD_Revalidate := True;
+      Record_Event (Event_Train_Data, 5, 0);
+   end TD_Request_Revalidation;
+
+   procedure Train_Data_Step (C : Context_T; S : Snapshot_T)
+     with Global => (In_Out => (TD_Step, TD_Then_Revalidate, TD_Revalidate,
+                                TD_Moving_Due, Status_List, Status_N,
+                                Events, Event_N))
+   is
+      Standstill : constant Boolean := S.Train.Standstill;
+
+      --  A1, then A7
+      procedure Inform
+        with Global => (In_Out => (TD_Moving_Due, Status_List, Status_N,
+                                   Events, Event_N))
+      is
+      begin
+         Status (SS_Train_Data_Changed, 0);
+         Record_Event (Event_Train_Data, 2, 0);
+         TD_Moving_Due := True;
+         Record_Event (Event_Train_Data, 6, 0);
+      end Inform;
+
+      --  S2, S4: the service brake and the reason indicated
+      procedure Brake (Then_Revalidate : Boolean)
+        with Global => (Output => (TD_Step, TD_Then_Revalidate),
+                        In_Out => (Status_List, Status_N, Events, Event_N))
+      is
+      begin
+         TD_Step := TD_Brake;
+         TD_Then_Revalidate := Then_Revalidate;
+         Status (SS_Train_Data_Changed_Brake, 0);
+         Record_Event (Event_Train_Data, 3, 0);
+      end Brake;
+   begin
+      --  "Train data changed" is displayed for 30 s from a train
+      --  movement (DMI Table 68: event 2)
+      if TD_Moving_Due and then not Standstill then
+         Status (SS_Train_Data_Changed, 2);
+         TD_Moving_Due := False;
+      end if;
+      --  the re-validation is no longer asked once no valid Train Data
+      --  are stored (they are entered again anyway)
+      if TD_Revalidate and then not C.Train_Data_Valid then
+         TD_Revalidate := False;
+      end if;
+      --  E2, E4: at standstill, the acknowledgement asked (S3, S5)
+      if TD_Step = TD_Brake and then Standstill then
+         TD_Step := TD_Ack;
+      end if;
+      --  E3, E5: acknowledged, the brake released (A5, A6), then A7 or S6
+      if TD_Step = TD_Ack and then C.Brake_Release_Ack then
+         TD_Step := TD_Idle;
+         Status (SS_Train_Data_Changed_Brake, 1);
+         Record_Event (Event_Train_Data, 4, 0);
+         if TD_Then_Revalidate then
+            TD_Request_Revalidation;
+         else
+            Record_Event (Event_Train_Data, 6, 0);
+         end if;
+      end if;
+      --  S0, E0 (5.17.1.3: not in RV)
+      if C.TD_Change and then C.Train_Data_Valid and then TD_Step = TD_Idle
+        and then C.Mode in M_FS | M_AD | M_LS | M_OS | M_SR | M_SB | M_SN
+                         | M_UN | M_TR | M_PT
+      then
+         Record_Event (Event_Train_Data, 1, 0);
+         if C.TD_Validation then
+            --  D2
+            if C.Mode in M_TR | M_PT then
+               TD_Step := TD_Wait_Trip;                    -- S1
+            elsif Standstill then
+               TD_Request_Revalidation;                    -- D9, S6
+            else
+               Brake (Then_Revalidate => True);            -- S4
+            end if;
+         elsif not C.TD_Category then
+            Inform;                                        -- D1, A1
+         elsif C.Mode in M_SB | M_PT | M_UN | M_SN | M_SR | M_TR then
+            --  D3; D5: the MA and track description of an RBC (level 2,
+            --  phase E5) are not stored
+            Inform;                                        -- A1
+         elsif Standstill then
+            Inform;                                        -- D7, A1
+         else
+            Brake (Then_Revalidate => False);              -- S2
+         end if;
+      end if;
+   end Train_Data_Step;
+
+   ---------------------------------------------------------------------
+   --  6. Passing a level crossing not protected (5.16)
+   ---------------------------------------------------------------------
+
+   --  The level crossing of the temporary EOA and SvL (Snapshot_T.LX):
+   --  the substitution of its start by its speed restriction (5.16.2.1
+   --  stopped in the stopping area, from the estimated front end;
+   --  5.16.3.2 at the location of the Permitted speed supervision limit
+   --  for V_LX, which EVC_SDM finds), the driver informed (5.16.1.4: the
+   --  temporary EOA or SvL the most relevant displayed target, or the
+   --  substitution) and 4.6.3 [9] when the indication starts
+   procedure LX_Step (C : Context_T; S : Snapshot_T; SDM : EVC_SDM.Result_T)
+     with Global => (In_Out => (EVC_Track_Description.State, Conds))
+   is
+      I   : constant Natural := S.LX.Index;
+      Was : Boolean;
+   begin
+      if not S.LX.Present or else I not in 1 .. EVC_Track_Description.Max_LX
+        or else C.Mode not in M_FS | M_AD | M_LS | M_OS | M_SM
+      then
+         return;
+      end if;
+      Was := EVC_Track_Description.LX (I).Indicated;
+      if S.LX.Stop then
+         if S.Train.Standstill
+           and then A (S.Train.Ahead, S.Train.Est_Front)
+                      >= A (S.Train.Ahead, S.LX.Stop_From)
+         then
+            EVC_Track_Description.Release_LX (I, S.Train.Est_Front);
+         end if;
+      elsif SDM.LX_Release then
+         EVC_Track_Description.Release_LX (I, SDM.LX_From);
+      end if;
+      if SDM.LX_MRDT then
+         EVC_Track_Description.Indicate_LX (I);
+      end if;
+      --  [9]
+      if not Was and then EVC_Track_Description.LX (I).Indicated
+        and then S.MA.Present
+      then
+         Conds (9) := True;
+      end if;
+   end LX_Step;
+
+   ---------------------------------------------------------------------
    --  Evaluate
    ---------------------------------------------------------------------
 
@@ -1106,6 +1292,8 @@ is
       Post_Trip_Step (C, S);
       Reversing_Step (C, S);
       BMM_Step (C, S);
+      LX_Step (C, S, SDM);
+      Train_Data_Step (C, S);
 
       --  6. The conditions of 4.6.3 of this half
       --  [5]
@@ -1127,8 +1315,7 @@ is
                        and then C.Level in L0 | NTC
                        and then not C.Train_Data_Valid;
       end;
-      --  [9]: the indication of a level crossing not protected (5.16)
-      --  is not implemented; [11]: level 2 (phase E5)
+      --  [9]: LX_Step; [11]: level 2 (phase E5)
       --  [15], [50], [70]: the acknowledgement of a request displayed
       Conds (15) := Acked_Now and then Acked_M = M_OS;
       Conds (50) := Acked_Now and then Acked_M = M_SH;
@@ -1266,6 +1453,16 @@ is
          Former := False;
          Former_Passed := False;
       end if;
+      --  5.17.2.2 E1, D4: the trip procedure exited, the re-validation
+      --  (S6) in FS, LS, OS, SR, SN, UN; in SH the Train Data are invalid
+      --  already (4.6.3 [68]): the procedure ends
+      if TD_Step = TD_Wait_Trip and then To not in M_TR | M_PT then
+         TD_Step := TD_Idle;
+         if To in M_FS | M_LS | M_OS | M_SR | M_SN | M_UN then
+            TD_Request_Revalidation;
+         end if;
+      end if;
+
       --  4.4.20.1.7: one transition SH -> PS, inactive once SH is left
       if From in M_SH | M_PS and then To /= M_PS then
          Continue_SH := False;
@@ -1336,11 +1533,15 @@ is
       end if;
       Demand :=
         (EB           => Mode = M_TR or else RV_EB,
-         SB           => Ack_SB or else PT_SB or else Link_SB,
+         SB           => Ack_SB or else PT_SB or else Link_SB
+                         or else TD_Step in TD_Brake | TD_Ack,
          Trip         => Mode = M_TR,
          Ack_Missing  => Ack_SB,
-         Other        => PT_SB or else RV_EB or else Link_SB,
-         Ack_Required => S.Train.Standstill and then (PT_SB or else RV_EB));
+         Other        => PT_SB or else RV_EB or else Link_SB
+                         or else TD_Step in TD_Brake | TD_Ack,
+         Ack_Required => S.Train.Standstill
+                         and then (PT_SB or else RV_EB
+                                   or else TD_Step = TD_Ack));
       if Demand.EB /= Demand_Sent.EB or else Demand.SB /= Demand_Sent.SB then
          Record_Event (Event_Brake, Boolean'Pos (Demand.EB),
                        Boolean'Pos (Demand.SB));

@@ -598,7 +598,7 @@ procedure EVC_Test is
       --  TIU
       Bad (TIU, (1 => 1), "one byte");
       Bad (TIU, (0, 1), "signal 0");
-      Bad (TIU, (13, 1), "signal 13");
+      Bad (TIU, (14, 1), "signal 14");
       Bad (TIU, (5, 2), "value 2");
       Bad (TIU, (1, 1, 0), "three bytes");
       --  DMI

@@ -113,6 +113,30 @@ package body Sim_Telegrams is
       OK := OK and then Done;
    end Put;
 
+   procedure Put (W : in out Writer_T; P : T39.Packet_T; OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T39.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T40.Packet_T; OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T40.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
+   procedure Put (W : in out Writer_T; P : T69.Packet_T; OK : in out Boolean)
+   is
+      Done : Boolean;
+   begin
+      T69.Encode (P, W, Done);
+      OK := OK and then Done;
+   end Put;
+
    procedure Put (W : in out Writer_T; P : T73.Packet_T; OK : in out Boolean)
    is
       Done : Boolean;
@@ -416,6 +440,49 @@ package body Sim_Telegrams is
       P.N_ITER := 0;
       return P;
    end Track_Condition;
+
+   function Traction_Change (D_M, Voltage, Country : Natural)
+     return T39.Packet_T
+   is
+      P : T39.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_TRACTION := D_TRACTION_T (D15 (D_M));
+      P.M_VOLTAGE := M_VOLTAGE_T (Clamp (Voltage, 0, 5));
+      P.Has_NID_CTRACTION := Voltage /= 0;
+      P.NID_CTRACTION :=
+        (if Voltage /= 0 then NID_CTRACTION_T (Clamp (Country, 0, 1023))
+         else 0);
+      return P;
+   end Traction_Change;
+
+   function Current_Change (D_M, Current : Natural) return T40.Packet_T is
+      P : T40.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_CURRENT := D_CURRENT_T (D15 (D_M));
+      P.M_CURRENT := M_CURRENT_T (Clamp (Current, 0, 1022));
+      return P;
+   end Current_Change;
+
+   function Station_Platform (D_M, L_M, Height, Side : Natural)
+     return T69.Packet_T
+   is
+      P : T69.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.Q_TRACKINIT := 0;
+      P.Has_D_TRACKCOND := True;
+      P.D_TRACKCOND := D_TRACKCOND_T (D15 (D_M));
+      P.L_TRACKCOND := L_TRACKCOND_T (D15 (L_M));
+      P.M_PLATFORM := M_PLATFORM_T (Clamp (Height, 0, 15));
+      P.Q_PLATFORM := Q_PLATFORM_T (Clamp (Side, 0, 2));
+      P.N_ITER := 0;
+      return P;
+   end Station_Platform;
 
    function TSR (Id : Natural; D_M, L_M, Kmh : Natural) return T65.Packet_T
    is

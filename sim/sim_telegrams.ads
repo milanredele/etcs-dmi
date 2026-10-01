@@ -18,9 +18,12 @@ with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
+with ETCS_Track_Packets.P39;
+with ETCS_Track_Packets.P40;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P65;
 with ETCS_Track_Packets.P68;
+with ETCS_Track_Packets.P69;
 with ETCS_Track_Packets.P73;
 with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P74;
@@ -43,6 +46,9 @@ package Sim_Telegrams is
    package T41 renames ETCS_Track_Packets.P41;
    package T65 renames ETCS_Track_Packets.P65;
    package T68 renames ETCS_Track_Packets.P68;
+   package T39 renames ETCS_Track_Packets.P39;
+   package T40 renames ETCS_Track_Packets.P40;
+   package T69 renames ETCS_Track_Packets.P69;
    package T73 renames ETCS_Track_Packets.P73;
    --  added with the procedures of phase E4 (e4/procedures)
    package T49 renames ETCS_Track_Packets.P49;
@@ -85,6 +91,9 @@ package Sim_Telegrams is
    procedure Put (W : in out Writer_T; P : T41.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T65.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T68.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T39.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T40.Packet_T; OK : in out Boolean);
+   procedure Put (W : in out Writer_T; P : T69.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T73.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T49.Packet_T; OK : in out Boolean);
    procedure Put (W : in out Writer_T; P : T74.Packet_T; OK : in out Boolean);
@@ -232,6 +241,20 @@ package Sim_Telegrams is
                             Kmh       : Natural := 0;
                             Stop      : Boolean := False;
                             L_Stop_M  : Natural := 0) return T88.Packet_T;
+
+   --  Packet 39: a change of traction system at D_M to M_VOLTAGE
+   --  Voltage (0: not fitted) of the country NID_CTRACTION
+   function Traction_Change (D_M, Voltage, Country : Natural)
+     return T39.Packet_T;
+
+   --  Packet 40: a change of allowed current consumption at D_M to
+   --  M_CURRENT Current
+   function Current_Change (D_M, Current : Natural) return T40.Packet_T;
+
+   --  Packet 69: one station platform from D_M, L_M long, M_PLATFORM
+   --  Height, Q_PLATFORM Side
+   function Station_Platform (D_M, L_M, Height, Side : Natural)
+     return T69.Packet_T;
 
    --  The conditions of a text message (packets 73 and 74, 7.5.1):
    --  start at D_M (No_Location: none), in mode Start_Mode

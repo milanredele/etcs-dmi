@@ -109,6 +109,10 @@ is
    Info_Group             : constant := 16;
    --  the speed restriction to ensure a permitted braking distance
    Info_PBD               : constant := 17;
+   --  phase E4: the station platforms (packet 69), the allowed current
+   --  consumption (packet 40)
+   Info_Platforms         : constant := 18;
+   Info_Current           : constant := 19;
 
    --  The change (byte 3); byte 4 a detail
    Change_Stored     : constant := 1;   -- the message number mod 256
@@ -229,6 +233,11 @@ is
      with Global => (In_Out => (State, EVC_Track_Description.State),
                      Output => EVC_Movement_Authority.State),
           Post => not EVC_Movement_Authority.MA.Present;
+
+   --  5.20: the information for an external function of the last
+   --  cycle (EVC_Track_Conditions.External), for the train interface
+   function External_Info return EVC_Track_Conditions.External_T
+     with Global => State;
 
    --  5.11.2.2 A035: while Refuse is set no new MA and no new track
    --  description (packets 12, 80, 27, 21, 51, 52, 70, 88) are taken from

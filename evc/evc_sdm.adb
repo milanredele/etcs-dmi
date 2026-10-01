@@ -915,6 +915,9 @@ is
       --  the SvL of the EOA target is a temporary one: no release speed
       --  (3.12.4.7, 3.12.5.8)
       Temporary_SvL : Boolean := False;
+      --  phase E4, 5.16: the EOA of the EOA target is the start of the
+      --  level crossing of S.LX
+      LX_Here       : Boolean := False;
 
       --  release speed monitoring (3.13.9.4.6)
       Start      : RSM_Start_T;
@@ -1142,6 +1145,8 @@ is
                   Speed => 0, TSR => False);
                EOA_Index := Work.Count;
                C.SvL := SvL;
+               LX_Here := S.LX.Present and then Tmp.Present
+                          and then EOA = T_EOA;
             end if;
          end;
          --  d) the end of the SR distance
@@ -1379,6 +1384,26 @@ is
       end loop;
       Result.Indication := Ind_Found;
       Result.Indication_D := (if Ind_Found then Max (Ind_D, 0) else 0);
+
+      --  phase E4, 5.16.3.2: stopping in rear of the level crossing not
+      --  required, the location of the Permitted speed supervision limit
+      --  for V_LX (3.13.9.3.5.11, .12: the formulas of V_est with V_LX)
+      --  of its start as EOA (SBI1, the estimated front end) and as SvL
+      --  (SBI2, the max safe front end), the most restrictive of the two
+      if LX_Here and then EOA_Index > 0 and then not S.LX.Stop then
+         declare
+            V_LX : constant Speed_T := Speed_T (S.LX.Speed);
+            R    : constant Eval_T :=
+              Evaluate (Work, C, Work.Targets (EOA_Index), V_LX, False);
+            By_E : constant Boolean := R.E.SBI - C.X_Est <= R.L.SBI - C.X_Max;
+            P    : constant Num := (if By_E then R.E.P else R.L.P);
+         begin
+            Result.LX_Release :=
+              C.V <= V_LX
+              and then (if By_E then C.X_Est >= R.E.P else C.X_Max >= R.L.P);
+            Result.LX_From := Along (S.Train.Ahead, Clamp (P));
+         end;
+      end if;
 
       ------------------------------------------------------------------
       --  The type of monitoring (3.13.10.6, Table 16)
@@ -1835,6 +1860,13 @@ is
          State.Shown_D := Result.D_Target;
          State.Active_Display := Mon /= CSM;
       end;
+
+      --  phase E4, 5.16.1.4 a): the EOA target of the level crossing is
+      --  the most relevant displayed target
+      Result.LX_MRDT :=
+        LX_Here and then EOA_Index > 0 and then Mon /= CSM
+        and then State.MRDT_Valid
+        and then Same (State.MRDT, Work.Targets (EOA_Index));
 
       Result.Monitoring := Mon;
       Result.Status := Status;

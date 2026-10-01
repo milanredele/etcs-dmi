@@ -174,6 +174,18 @@ is
       Perturbation   : Boolean := False;
       Perturbation_X : Num := 0;
       MA_Request     : Boolean := False;
+      --  added by the procedures of phase E4, 5.16 (the temporary EOA
+      --  and SvL of the target c) is the start of the level crossing not
+      --  protected of Snapshot_T.LX): LX_MRDT, it is the most relevant
+      --  displayed target (5.16.1.4 a); LX_Release, stopping in rear of
+      --  it not being required, the estimated or the max safe front end
+      --  (as the SBI1 or the SBI2 for V_LX is the most restrictive) has
+      --  reached the location of the Permitted speed supervision limit
+      --  calculated for V_LX (3.13.9.3.5.11, .12) at or below V_LX
+      --  (5.16.3.2), and LX_From that location, a frame position
+      LX_MRDT        : Boolean := False;
+      LX_Release     : Boolean := False;
+      LX_From        : Dist_T := 0;
    end record;
 
    ---------------------------------------------------------------------

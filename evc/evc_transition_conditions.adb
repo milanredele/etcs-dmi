@@ -33,8 +33,9 @@ is
          when C_8 =>
             return False;  --  not implemented yet
          when C_9 =>
-            --  the LX indication of 5.16 (EVC_Procedures): not yet
-            return False;
+            --  EVC_Procedures: the indication of a level crossing not
+            --  protected starts (5.16.1.4)
+            return EVC_Procedures.Condition (9);
          when C_10 =>
             return False;  --  not implemented yet
          when C_11 =>
