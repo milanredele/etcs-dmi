@@ -1,0 +1,17 @@
+--  Ad hoc project for dmi_areas.adb (golden_review.py): compiles the
+--  helper against the dmi/ sources of whichever revision is under
+--  review, given as the external variable DMI_DIR (an absolute path),
+--  e.g. gprbuild -P dmi_areas.gpr -XDMI_DIR=/path/to/that/revision/dmi
+--  -XOBJ_DIR=/some/scratch/dir (OBJ_DIR defaults to "obj" here, which
+--  golden_review.py avoids so it never leaves build output in the repo)
+project Dmi_Areas is
+
+   for Source_Dirs use (".", external ("DMI_DIR"));
+   for Object_Dir use external ("OBJ_DIR", "obj");
+   for Main use ("dmi_areas.adb");
+
+   package Compiler is
+      for Switches ("ada") use ("-gnat2012");
+   end Compiler;
+
+end Dmi_Areas;

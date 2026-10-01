@@ -4,6 +4,7 @@ test/tools/node_modules/*
 .DS_Store
 test/golden/*.actual
 test/golden/evc/*.actual
+__pycache__/
 test/wasm/obj/*
 test/wasm/*.wasm
 _site/

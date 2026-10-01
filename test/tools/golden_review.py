@@ -1,0 +1,1197 @@
+#!/usr/bin/env python3
+"""Deterministic review of changed golden frames (AGENTS.md "Regression").
+
+  golden_review.py [--base REV] [--head REV] [--out DIR]
+                    [--areas A,B,...] [--intent TEXT] [--check-tool]
+
+A "golden" is one test/golden*/<name>.sha256: a digest obj/dmi_test or
+obj/evc_test checks a scenario against (AGENTS.md "Testing & Tooling").
+This tool builds both sides of a change, dumps every golden's raw bytes
+on each side (DUMP=1 obj/dmi_test, EVC_DUMP=dir obj/evc_test -- the dump
+interfaces test/check.sh and AGENTS.md already rely on; this tool does
+not change them), diffs the two sets, and turns every difference into
+something a reviewer -- human or a small model given the report and the
+pictures -- can judge against a stated intent, before `UPDATE=1`
+re-records the goldens.
+
+Sides
+-----
+--base (default "HEAD") and --head (default: the working tree as it
+stands, uncommitted changes included) each name a side. A side that is
+a revision (anything other than an omitted --head) is checked out into
+a throwaway detached `git worktree`, built, dumped, and discarded; its
+dumps are cached under ~/.cache/etcs-dmi/golden-review/<commit sha>/ so
+a second run against the same revision does not rebuild. The working
+tree side is built and dumped in place (it is not cached: its content
+can change from one run to the next); the .actual frame dumps that
+DUMP=1 leaves next to the committed goldens are moved out to
+<out>/_dumps/worktree/ so test/golden/ is left exactly as it was found.
+`obj/dmi_test` and `obj/evc_test` are run for their DUMP/EVC_DUMP side
+effect only -- their own pass/fail exit status is not the tool's
+concern (the whole point of a review is that the head side's dumped
+bytes usually do NOT match its still-old committed .sha256 yet).
+
+Comparison
+----------
+Every golden name present on either side is compared. A changed, added
+(head only) or removed (base only) golden goes into the report. Two
+further, separately flagged conditions: a golden whose dumped bytes
+changed but whose .sha256 text did NOT (nobody ran UPDATE=1 yet -- "not
+re-recorded"), and the mirror oddity, a golden whose .sha256 text
+changed while its dumped bytes did not (the digest was edited, or
+something about the dump is nondeterministic).
+
+Grouping
+--------
+Changed display goldens (test/golden/*.sha256, 640x480 colour-index
+frames, Display.Screen.Files) that end up with the very same set of
+changed pixels and the same before/after colours at each one are one
+group; forty goldens that all changed the same banner are one line in
+the report, not forty. Each changed pixel is attributed to the
+smallest DMI layout area containing it (dmi/display.ads, via the
+vendored dmi_areas helper compiled against the *head* side's dmi/
+sources -- see test/tools/golden_review/dmi_areas.adb) and a picture
+(a before | after | difference triptych, magenta marking the changed
+pixels) is rendered per touched area, or once for the whole frame when
+the touched areas cover most of it.
+
+Changed on-board goldens (test/golden/evc/*.sha256, EVC_Outbox output
+records, see test/tools/evc_dump.py) are grouped by which record kinds
+differ and by how many; the grouping and the diff text reuse this
+tool's own vendored copy of evc_dump.py's --diff logic (not the
+reviewed tree's test/tools/evc_dump.py: an old base revision may not
+have the options this tool needs).
+
+One on-board golden, evc/end_to_end_sb, is a 640x480 frame digest
+(Display.Screen.Files.Digest) living under test/golden/evc/ rather than
+an EVC_Outbox byte stream (evc_test.adb's Scenario_End_To_End uses
+Check_Digest directly, not Check_Golden); this tool tells display from
+on-board goldens by which dump each run actually produced (a DUMP=1
+.actual next to the .sha256, or an EVC_DUMP .bin) rather than by
+directory, so that golden is reviewed as a display frame like any
+other, picture included.
+
+Declared expectation
+---------------------
+--areas (comma separated DMI area names, e.g. B3,D) and --intent (free
+text) say what the change is meant to do. Every group is still
+reported and still needs a look; the inside/OUTSIDE marking only
+orders the report (outside first) and tells a reviewer where to be
+suspicious. Without --areas, groups are marked "no --areas given"
+instead -- the tool does not guess an expectation nobody declared.
+
+Output
+------
+<out>/REPORT.md (for a reviewer) and <out>/review.json (the same,
+structured) in --out (default obj/golden-review/, git-ignored). Exit
+status is 0 whenever the tool ran to completion -- a changed golden is
+not an error, a build or dump failure is. The last stdout line is a
+one-line summary:
+
+  golden_review: N display groups (M frames), K on-board groups
+  (L goldens), X outside declared areas
+
+Self test: --check-tool synthesises small frame dumps and a small area
+table (no build) and checks pixel attribution, grouping, bounding
+boxes and the picture scaling rule; test/check.sh runs it.
+"""
+
+import argparse
+import hashlib
+import json
+import os
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import time
+import zlib
+from pathlib import Path
+
+TOOL_DIR = Path(__file__).resolve().parent               # test/tools
+HELPER_DIR = TOOL_DIR / "golden_review"                   # dmi_areas.adb/.gpr
+REPO_ROOT = TOOL_DIR.parent.parent                         # repository root
+
+FRAME_W, FRAME_H = 640, 480
+FRAME_SIZE = FRAME_W * FRAME_H
+
+# General_Parameters.RGB_Colors (dmi/general_parameters.ads), mirrored here
+# and in frame2png.py -- both are the tool's own data, not the reviewed
+# tree's, same reasoning as the vendored evc_dump.py logic below.
+PALETTE = [
+    (255, 255, 255), (0, 0, 0), (195, 195, 195), (150, 150, 150),
+    (85, 85, 85), (3, 17, 34), (8, 24, 57), (223, 223, 0),
+    (234, 145, 0), (191, 0, 2), (33, 49, 74), (41, 74, 107),
+]
+MAGENTA = (255, 0, 255)  # not in PALETTE: the diff-picture marker colour
+SEPARATOR = (128, 128, 128)
+SEPARATOR_W = 2
+
+DEFAULT_OUT = REPO_ROOT / "obj" / "golden-review"
+CACHE_ROOT = Path(os.environ.get(
+    "GOLDEN_REVIEW_CACHE", Path.home() / ".cache" / "etcs-dmi" / "golden-review"))
+
+
+class ToolError(Exception):
+    """A build or dump failure: the tool could not produce one side."""
+
+
+# ---------------------------------------------------------------------
+# Build environment (mirrors test/check.sh)
+# ---------------------------------------------------------------------
+
+def build_env():
+    """An environment dict with SDKROOT/LIBRARY_PATH/PATH set the way
+    test/check.sh sets them on macOS, so this script runs from a plain
+    shell without the caller having to prepare anything."""
+    env = dict(os.environ)
+    if sys.platform == "darwin" and "SDKROOT" not in env:
+        try:
+            sdk = subprocess.run(["xcrun", "--show-sdk-path"], check=True,
+                                  capture_output=True, text=True).stdout.strip()
+        except Exception:
+            sdk = ""
+        if sdk:
+            env["SDKROOT"] = sdk
+            env["LIBRARY_PATH"] = str(Path(sdk) / "usr" / "lib")
+    toolchains = Path.home() / ".local" / "share" / "alire" / "toolchains"
+    extra = []
+    if toolchains.is_dir():
+        for pattern in ("gprbuild_*/bin", "gnat_native_*/bin"):
+            extra.extend(sorted(str(p) for p in toolchains.glob(pattern)))
+    if extra:
+        env["PATH"] = ":".join(extra) + ":" + env.get("PATH", "")
+    return env
+
+
+def run(cmd, cwd, env, check=True, capture=True):
+    """Run a subprocess, printing the command line to stderr first."""
+    print("+ %s   (in %s)" % (" ".join(str(c) for c in cmd), cwd), file=sys.stderr)
+    kw = dict(cwd=str(cwd), env=env)
+    if capture:
+        kw.update(capture_output=True, text=True)
+    r = subprocess.run(cmd, **kw)
+    if check and r.returncode != 0:
+        tail = ""
+        if capture:
+            tail = ((r.stdout or "") + (r.stderr or ""))[-4000:]
+        raise ToolError("command failed (%d): %s\n%s"
+                         % (r.returncode, " ".join(str(c) for c in cmd), tail))
+    return r
+
+
+def git(args, cwd=REPO_ROOT, check=True):
+    return run(["git"] + args, cwd=cwd, env=os.environ.copy(), check=check)
+
+
+# ---------------------------------------------------------------------
+# Building and dumping one side
+# ---------------------------------------------------------------------
+
+def build_mains(root, env):
+    """gprbuild the two mains the runners need; fall back to the whole
+    project if that target list does not work on this revision."""
+    r = run(["gprbuild", "-s", "-j0", "-p", "-q", "-P", "etcsdmi.gpr",
+             "dmi_test.adb", "evc_test.adb"], cwd=root, env=env, check=False)
+    if r.returncode == 0:
+        return
+    run(["gprbuild", "-s", "-j0", "-p", "-q", "-P", "etcsdmi.gpr"],
+        cwd=root, env=env)
+
+
+def run_dumps(root, env, evc_dump_dir):
+    """Run obj/dmi_test and obj/evc_test with DUMP=1 (both) and
+    EVC_DUMP=evc_dump_dir (the on-board one), ignoring their own exit
+    status: the dump is unconditional (Check_Frame/Check_Golden dump on
+    every checked golden when DUMP is set), the pass/fail of the check
+    against whatever .sha256 happens to be committed on this side is not
+    what this tool is asking.
+
+    A revision from before evc_test.adb existed (the on-board predates
+    phase E1, see doc/EVC-PLAN.md) simply has no obj/evc_test to run: its
+    on-board golden set is then empty on that side, not a tool failure."""
+    dmi_env = dict(env)
+    dmi_env["DUMP"] = "1"
+    if (Path(root) / "obj" / "dmi_test").exists():
+        run(["obj/dmi_test"], cwd=root, env=dmi_env, check=False)
+    else:
+        print("golden_review: no obj/dmi_test on this side, skipping", file=sys.stderr)
+    evc_env = dict(env)
+    evc_env["DUMP"] = "1"
+    evc_env["EVC_DUMP"] = str(evc_dump_dir)
+    if (Path(root) / "obj" / "evc_test").exists():
+        run(["obj/evc_test"], cwd=root, env=evc_env, check=False)
+    else:
+        print("golden_review: no obj/evc_test on this side, skipping", file=sys.stderr)
+
+
+def golden_name(golden_dir, path):
+    return path.relative_to(golden_dir).with_suffix("").as_posix()
+
+
+def collect_dumps(root, evc_dump_dir, *, move_actuals_to=None):
+    """Read every *.sha256 under test/golden/, and every *.actual next to
+    them (dmi_test's and evc_test's DUMP output; evc_test's own on-board
+    .bin files live in evc_dump_dir, EVC_DUMP's target).
+
+    When move_actuals_to is given (the working-tree side), the .actual
+    files are moved there rather than merely read, and none are left
+    behind in test/golden/ -- the AGENTS.md "regression" rule is that a
+    working tree review leaves the tree as found. For a throwaway
+    revision worktree this does not matter (the whole worktree is about
+    to be discarded), so move_actuals_to is left None there and the
+    .actual files are simply read in place.
+    """
+    golden_dir = root / "test" / "golden"
+    sha = {}
+    for p in golden_dir.rglob("*.sha256"):
+        sha[golden_name(golden_dir, p)] = p.read_text().strip()
+    display = {}
+    for p in sorted(golden_dir.rglob("*.actual")):
+        name = golden_name(golden_dir, p)
+        data = p.read_bytes()
+        display[name] = data
+        if move_actuals_to is not None:
+            dest = Path(move_actuals_to) / (name + ".actual")
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(p), str(dest))
+    onboard = {}
+    evc_dump_dir = Path(evc_dump_dir)
+    if evc_dump_dir.is_dir():
+        for p in sorted(evc_dump_dir.glob("*.bin")):
+            onboard["evc/" + p.stem] = p.read_bytes()
+    return display, onboard, sha
+
+
+# ---------------------------------------------------------------------
+# The dmi_areas helper: the DMI layout area table of one side's dmi/
+# ---------------------------------------------------------------------
+
+class Area:
+    __slots__ = ("name", "parent", "x", "y", "w", "h")
+
+    def __init__(self, name, parent, x, y, w, h):
+        self.name, self.parent = name, parent
+        self.x, self.y, self.w, self.h = x, y, w, h
+
+    @property
+    def size(self):
+        return self.w * self.h
+
+    def to_json(self):
+        return {"name": self.name, "parent": self.parent,
+                "x": self.x, "y": self.y, "w": self.w, "h": self.h}
+
+    @staticmethod
+    def from_json(d):
+        return Area(d["name"], d["parent"], d["x"], d["y"], d["w"], d["h"])
+
+    def label(self):
+        return self.name if self.parent == "-" else "%s (in %s)" % (self.name, self.parent)
+
+
+def find_dmi_dir(root):
+    """Where this side's Display package (dmi/display.ads) lives. Before
+    the dmi/common/evc split the DMI alone sat in src/; rather than
+    hardcode both names, find display.ads itself so an even older or
+    differently laid out revision still has a chance."""
+    for candidate in ("dmi", "src"):
+        p = Path(root) / candidate / "display.ads"
+        if p.exists():
+            return p.parent
+    matches = list(Path(root).rglob("display.ads"))
+    if matches:
+        return matches[0].parent
+    raise ToolError("cannot find display.ads under %s" % root)
+
+
+def compile_areas(dmi_dir, env):
+    """Build and run the dmi_areas helper against dmi_dir (some side's
+    Display package sources, see find_dmi_dir) and return its area table.
+    dmi_dir may belong to an old revision that does not carry
+    test/tools/golden_review/ itself -- the helper always comes from this
+    checkout."""
+    gpr = HELPER_DIR / "dmi_areas.gpr"
+    with tempfile.TemporaryDirectory(prefix="golden-review-areas-obj-") as obj:
+        run(["gprbuild", "-q", "-p", "-P", str(gpr),
+             "-XDMI_DIR=%s" % dmi_dir, "-XOBJ_DIR=%s" % obj],
+            cwd=HELPER_DIR, env=env)
+        r = run([str(Path(obj) / "dmi_areas")], cwd=HELPER_DIR, env=env)
+    areas = []
+    for line in r.stdout.splitlines():
+        name, parent, x, y, w, h = line.split()
+        areas.append(Area(name, parent, int(x), int(y), int(w), int(h)))
+    return areas
+
+
+def build_area_grid(areas, width=FRAME_W, height=FRAME_H):
+    """A width*height lookup table mapping every pixel to the smallest
+    area containing it (main areas drawn first, sub-areas drawn over
+    them, so a sub-area wins where it nests inside its parent)."""
+    grid = [None] * (width * height)
+    ordered = sorted(areas, key=lambda a: (a.parent != "-", a.size))
+    for area in ordered:
+        y0, y1 = max(0, area.y), min(height, area.y + area.h)
+        x0, x1 = max(0, area.x), min(width, area.x + area.w)
+        for yy in range(y0, y1):
+            row = yy * width
+            grid[row + x0:row + x1] = [area] * (x1 - x0)
+    return grid
+
+
+# ---------------------------------------------------------------------
+# Pixel diffing and grouping (display goldens)
+# ---------------------------------------------------------------------
+
+def diff_positions(a, b):
+    """Indices where two equal-length byte strings differ. Fast path: an
+    unconditional equality check in C; the per-byte XOR trick only runs
+    for frames that actually differ, and only touches as many bytes."""
+    if a == b:
+        return []
+    x = (int.from_bytes(a, "big") ^ int.from_bytes(b, "big")).to_bytes(len(a), "big")
+    return [i for i, v in enumerate(x) if v]
+
+
+def group_changed_display(names_bh, width=FRAME_W):
+    """names_bh: {name: (base_bytes, head_bytes)}. Returns a list of
+    groups: {positions, diffs (list of (i, old, new)), members}. Frames
+    with the exact same changed pixels and before/after colours group
+    together."""
+    groups = {}
+    order = []
+    for name in sorted(names_bh):
+        b, h = names_bh[name]
+        diffs = tuple((i, b[i], h[i]) for i in diff_positions(b, h))
+        key = ("changed", diffs)
+        if key not in groups:
+            groups[key] = {"status": "changed", "diffs": diffs, "members": []}
+            order.append(key)
+        groups[key]["members"].append(name)
+    return [groups[k] for k in order]
+
+
+def group_added_removed(names_bytes, status):
+    """names_bytes: {name: bytes}. Goldens present on one side only
+    group by content (forty identical new goldens are one group too)."""
+    groups = {}
+    order = []
+    for name in sorted(names_bytes):
+        data = names_bytes[name]
+        key = (status, hashlib.sha256(data).hexdigest())
+        if key not in groups:
+            groups[key] = {"status": status, "data": data, "members": []}
+            order.append(key)
+        groups[key]["members"].append(name)
+    return [groups[k] for k in order]
+
+
+def attribute_areas(diffs, grid, width=FRAME_W):
+    """diffs: iterable of (i, old, new). Returns {area_label: {"positions":
+    [...], "area": Area_or_None}}; positions outside every area go under
+    the key "(outside any area)"."""
+    buckets = {}
+    for i, _old, _new in diffs:
+        area = grid[i] if i < len(grid) else None
+        label = area.label() if area else "(outside any area)"
+        b = buckets.setdefault(label, {"area": area, "positions": []})
+        b["positions"].append(i)
+    return buckets
+
+
+def bbox_of(positions, width=FRAME_W, height=FRAME_H, margin=12):
+    xs = [p % width for p in positions]
+    ys = [p // width for p in positions]
+    x0, x1 = max(0, min(xs) - margin), min(width, max(xs) + margin + 1)
+    y0, y1 = max(0, min(ys) - margin), min(height, max(ys) + margin + 1)
+    return x0, y0, x1 - x0, y1 - y0
+
+
+# ---------------------------------------------------------------------
+# Picture rendering: before | after | difference triptychs
+# ---------------------------------------------------------------------
+
+def choose_scale(w, h, sep=SEPARATOR_W, min_short=400, max_long=1500):
+    """Integer scale factor 1..8: grow the triptych until its short edge
+    reaches about min_short, but never past max_long on its long edge,
+    except factor 1 itself is always accepted (a whole-frame triptych is
+    already wider than max_long at factor 1, and there is no smaller
+    factor to fall back to)."""
+    best = 1
+    for f in range(1, 9):
+        tw, th = 3 * w * f + 2 * sep, h * f
+        if f > 1 and max(tw, th) > max_long:
+            break
+        best = f
+        if min(tw, th) >= min_short:
+            break
+    return best
+
+
+def _pixels_rgb(index_row, w):
+    out = []
+    for x in range(w):
+        c = index_row[x]
+        out.append(bytes(PALETTE[c]) if 0 <= c < len(PALETTE) else bytes(MAGENTA))
+    return out
+
+
+def _dim(rgb, factor=0.4):
+    return bytes(int(v * factor) for v in rgb)
+
+
+def render_triptych(before_idx, after_idx, changed, box, width=FRAME_W):
+    """before_idx/after_idx: full-frame bytes of colour indices (or None
+    for an added/removed golden, where only one side exists).
+    changed: a set of raw frame indices that differ, used for the
+    difference panel. box: (x, y, w, h) to crop to. Returns PNG bytes."""
+    x0, y0, w, h = box
+    f = choose_scale(w, h)
+
+    def panel(idx_buf, dim_panel):
+        rows = []
+        for yy in range(y0, y0 + h):
+            row = idx_buf[yy * width + x0: yy * width + x0 + w] if idx_buf else None
+            pixels = []
+            for xx in range(w):
+                i = yy * width + x0 + xx
+                if dim_panel:
+                    base_c = after_idx if after_idx is not None else before_idx
+                    c = base_c[i] if base_c is not None else 0
+                    rgb = bytes(PALETTE[c]) if 0 <= c < len(PALETTE) else bytes(MAGENTA)
+                    pixels.append(bytes(MAGENTA) if i in changed else _dim(rgb))
+                else:
+                    if row is None:
+                        pixels.append(bytes((40, 40, 40)))  # no such side
+                    else:
+                        c = row[xx]
+                        pixels.append(bytes(PALETTE[c]) if 0 <= c < len(PALETTE)
+                                      else bytes(MAGENTA))
+            rows.append(b"".join(pixels))
+        return rows
+
+    before_rows = panel(before_idx, False)
+    after_rows = panel(after_idx, False)
+    diff_rows = panel(None, True)
+
+    def scale_rows(rows):
+        out = []
+        for row in rows:
+            cells = [row[i:i + 3] for i in range(0, len(row), 3)]
+            scaled = b"".join(c * f for c in cells)
+            out.extend([scaled] * f)
+        return out
+
+    panels = [scale_rows(before_rows), scale_rows(after_rows), scale_rows(diff_rows)]
+    pw, ph = w * f, h * f
+    sep_col = bytes(SEPARATOR) * SEPARATOR_W
+    total_w = 3 * pw + 2 * SEPARATOR_W
+    out_rows = []
+    for r in range(ph):
+        out_rows.append(panels[0][r] + sep_col + panels[1][r] + sep_col + panels[2][r])
+    return encode_png(total_w, ph, out_rows)
+
+
+def render_single(idx_buf, box, width=FRAME_W, missing_rgb=(40, 40, 40)):
+    """A single scaled picture (added/removed golden: only one side)."""
+    x0, y0, w, h = box
+    f = choose_scale(w, h, sep=0)
+    rows = []
+    for yy in range(y0, y0 + h):
+        pixels = []
+        for xx in range(w):
+            c = idx_buf[yy * width + x0 + xx]
+            pixels.append(bytes(PALETTE[c]) if 0 <= c < len(PALETTE) else bytes(MAGENTA))
+        rows.append(b"".join(pixels))
+
+    def scale_rows(rows):
+        out = []
+        for row in rows:
+            cells = [row[i:i + 3] for i in range(0, len(row), 3)]
+            scaled = b"".join(c * f for c in cells)
+            out.extend([scaled] * f)
+        return out
+
+    scaled = scale_rows(rows)
+    return encode_png(w * f, h * f, scaled)
+
+
+def encode_png(width, height, rgb_rows):
+    """A minimal truecolor PNG encoder (stdlib zlib only), one filter
+    byte 0 per row, no palette (the diff picture needs a colour -
+    magenta - the palette itself does not carry)."""
+    def chunk(tag, data):
+        return (struct.pack(">I", len(data)) + tag + data
+                + struct.pack(">I", zlib.crc32(tag + data) & 0xffffffff))
+    raw = b"".join(b"\0" + row for row in rgb_rows)
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 9))
+            + chunk(b"IEND", b""))
+
+
+# ---------------------------------------------------------------------
+# On-board (EVC_Outbox) record decoding -- a vendored copy of
+# test/tools/evc_dump.py's --diff logic (kept separate on purpose: a
+# base revision under review may not carry evc_dump.py, or an older
+# version of it without the options this tool needs). Keep this in sync
+# with evc_dump.py by hand if the record wire format changes.
+# ---------------------------------------------------------------------
+
+EVC_PORTS = ['BTM', 'RTM', 'ODO', 'TIU', 'DMI', 'ATO', 'JRU']
+EVC_DMI_TYPES = {0x01: 'SPEED_STATE', 0x02: 'MODE_LEVEL', 0x05: 'TRACK_COND',
+                 0x06: 'PLANNING', 0x07: 'STATUS', 0x0A: 'ONBOARD'}
+
+
+def evc_records(data):
+    i, out = 0, []
+    while i + 3 <= len(data):
+        port = data[i]
+        length = data[i + 1] + 256 * data[i + 2]
+        payload = data[i + 3:i + 3 + length]
+        out.append((EVC_PORTS[port] if port < len(EVC_PORTS) else str(port),
+                    bytes(payload)))
+        i += 3 + length
+    if i != len(data):
+        raise ValueError("not a sequence of whole records")
+    return out
+
+
+def evc_kind(rec):
+    port, p = rec
+    if port == 'DMI' and p:
+        return 'DMI:' + EVC_DMI_TYPES.get(p[0], '%02X' % p[0])
+    if port == 'JRU' and p:
+        return 'JRU:%d' % p[0]
+    return port
+
+
+def evc_describe(rec):
+    port, p = rec
+    k = evc_kind(rec)
+    if k == 'DMI:SPEED_STATE' and len(p) == 26:
+        q = p[5:]
+
+        def u16(n):
+            return q[n] + 256 * q[n + 1]
+        return ('%s v %d perm %d target %d rel %d sbi %d w %d d %d mon %d '
+                'dial %d flags %d st %d mrdt %d'
+                % (k, u16(0), u16(2), u16(4), u16(6), u16(8), u16(10),
+                   q[12] + 256 * (q[13] + 256 * (q[14] + 256 * q[15])),
+                   q[16], q[17], q[18], q[19], q[20]))
+    if k == 'DMI:STATUS' and len(p) == 28:
+        q = p[5:]
+        geo = q[16] + 256 * (q[17] + 256 * (q[18] + 256 * q[19]))
+        return ('%s brake %d tti %d geo %s' % (
+            k, q[0], q[8] + 256 * q[9],
+            'unknown' if geo == 0xFFFFFFFF else str(geo)))
+    if port == 'JRU' and len(p) >= 8:
+        cyc = p[4] + 256 * (p[5] + 256 * (p[6] + 256 * p[7]))
+        return '%s %d %d %d (cycle %d)' % (k, p[1], p[2], p[3], cyc)
+    if port == 'TIU' and len(p) == 2:
+        return 'TIU commands %d reasons %d' % (p[0], p[1])
+    return '%s %s' % (k, p.hex())
+
+
+def evc_cycles(recs):
+    out = [[]]
+    for r in recs:
+        if evc_kind(r) == 'DMI:MODE_LEVEL' and out[-1]:
+            out.append([])
+        out[-1].append(r)
+    return out
+
+
+def evc_diff(old_bytes, new_bytes, max_lines=40):
+    """Diff two evc_test golden captures cycle-group by cycle-group, the
+    way evc_dump.py --diff does. Returns (lines, kind_delta, diff_groups,
+    total_groups): lines is the full diff text (not just the excerpt),
+    kind_delta maps a record kind to [removed, added] counts (the group
+    signature), diff_groups/total_groups the cycle-group counts."""
+    co = evc_cycles(evc_records(old_bytes))
+    cn = evc_cycles(evc_records(new_bytes))
+    lines = []
+    kind_delta = {}
+    diff_groups = 0
+    for n in range(max(len(co), len(cn))):
+        ca = co[n] if n < len(co) else []
+        cb = cn[n] if n < len(cn) else []
+        da = [evc_describe(r) for r in ca]
+        db = [evc_describe(r) for r in cb]
+        if da == db:
+            continue
+        diff_groups += 1
+        removed = [r for r, d in zip(ca, da) if d not in db]
+        added = [r for r, d in zip(cb, db) if d not in da]
+        lines.append("cycle group %d:" % n)
+        for r in removed:
+            lines.append("  - " + evc_describe(r))
+            kind_delta.setdefault(evc_kind(r), [0, 0])[0] += 1
+        for r in added:
+            lines.append("  + " + evc_describe(r))
+            kind_delta.setdefault(evc_kind(r), [0, 0])[1] += 1
+    return lines, kind_delta, diff_groups, max(len(co), len(cn))
+
+
+def group_changed_onboard(names_bh):
+    """names_bh: {name: (base_bytes, head_bytes)}. Groups by signature:
+    the set of record kinds that differ with their +/- counts."""
+    groups = {}
+    order = []
+    details = {}
+    for name in sorted(names_bh):
+        b, h = names_bh[name]
+        lines, kind_delta, diff_groups, total_groups = evc_diff(b, h)
+        sig = tuple(sorted((k, tuple(v)) for k, v in kind_delta.items()))
+        key = ("changed", sig)
+        if key not in groups:
+            groups[key] = {"status": "changed", "signature": sig, "members": []}
+            order.append(key)
+        groups[key]["members"].append(name)
+        details[name] = (lines, kind_delta, diff_groups, total_groups)
+    return [groups[k] for k in order], details
+
+
+# ---------------------------------------------------------------------
+# Sides
+# ---------------------------------------------------------------------
+
+class Side:
+    def __init__(self, label, commit, display, onboard, sha, areas):
+        self.label = label
+        self.commit = commit
+        self.display = display
+        self.onboard = onboard
+        self.sha = sha
+        self.areas = areas
+
+
+def cache_paths(sha):
+    base = CACHE_ROOT / sha
+    return base, base / "display", base / "onboard", base / "sha.json", base / "areas.json", base / "DONE"
+
+
+def load_cached_side(sha, label):
+    base, disp_dir, onb_dir, sha_json, areas_json, done = cache_paths(sha)
+    display = {}
+    for p in disp_dir.rglob("*.actual"):
+        display[golden_name(disp_dir, p)] = p.read_bytes()
+    onboard = {}
+    for p in onb_dir.glob("*.bin"):
+        onboard["evc/" + p.stem] = p.read_bytes()
+    sha_map = json.loads(sha_json.read_text())
+    areas = [Area.from_json(d) for d in json.loads(areas_json.read_text())]
+    return Side(label, sha, display, onboard, sha_map, areas)
+
+
+def save_cache(sha, display, onboard, sha_map, areas):
+    base, disp_dir, onb_dir, sha_json, areas_json, done = cache_paths(sha)
+    if base.exists():
+        shutil.rmtree(base)
+    disp_dir.mkdir(parents=True)
+    onb_dir.mkdir(parents=True)
+    for name, data in display.items():
+        dest = disp_dir / (name + ".actual")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+    for name, data in onboard.items():
+        (onb_dir / (name[4:] + ".bin") if name.startswith("evc/")
+         else onb_dir / (name + ".bin")).write_bytes(data)
+    sha_json.write_text(json.dumps(sha_map))
+    areas_json.write_text(json.dumps([a.to_json() for a in areas]))
+    done.write_text("ok\n")
+
+
+def get_revision_side(rev, env):
+    sha = git(["rev-parse", rev]).stdout.strip()
+    _, _, _, _, _, done = cache_paths(sha)
+    label = "%s (%s)" % (rev, sha) if rev != sha else sha
+    if done.exists():
+        print("golden_review: %s: cached" % label, file=sys.stderr)
+        return load_cached_side(sha, label)
+    tmp = Path(tempfile.mkdtemp(prefix="golden-review-wt-"))
+    wt = tmp / "wt"
+    try:
+        git(["worktree", "add", "--detach", str(wt), sha])
+        try:
+            build_mains(wt, env)
+            evc_dump_dir = tmp / "evc_dump"
+            evc_dump_dir.mkdir()
+            run_dumps(wt, env, evc_dump_dir)
+            display, onboard, sha_map = collect_dumps(wt, evc_dump_dir)
+            areas = compile_areas(find_dmi_dir(wt), env)
+            save_cache(sha, display, onboard, sha_map, areas)
+        finally:
+            git(["worktree", "remove", "-f", "-f", str(wt)], check=False)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return Side(label, sha, display, onboard, sha_map, areas)
+
+
+def get_worktree_side(env, out_dir):
+    root = REPO_ROOT
+    commit = git(["rev-parse", "HEAD"], cwd=root, check=False).stdout.strip() or "?"
+    dirty = bool(git(["status", "--porcelain"], cwd=root, check=False).stdout.strip())
+    label = "working tree (%s%s)" % (commit, ", uncommitted changes" if dirty else "")
+    build_mains(root, env)
+    dumps_dir = out_dir / "_dumps" / "worktree"
+    if dumps_dir.exists():
+        shutil.rmtree(dumps_dir)
+    dumps_dir.mkdir(parents=True)
+    evc_dump_dir = dumps_dir / "evc_dump"
+    evc_dump_dir.mkdir()
+    run_dumps(root, env, evc_dump_dir)
+    display, onboard, sha_map = collect_dumps(
+        root, evc_dump_dir, move_actuals_to=dumps_dir / "display")
+    areas = compile_areas(find_dmi_dir(root), env)
+    return Side(label, commit, display, onboard, sha_map, areas)
+
+
+# ---------------------------------------------------------------------
+# Comparing two sides
+# ---------------------------------------------------------------------
+
+def declared_marking(touched_area_names, declared):
+    """touched_area_names: iterable of Area objects or None (outside).
+    declared: list of area names from --areas. Returns (marking_text,
+    outside_list)."""
+    if not declared:
+        return "no --areas given", []
+    declared_set = set(declared)
+    outside = []
+    for area in touched_area_names:
+        if area is None:
+            outside.append("(outside any area)")
+            continue
+        covered = area.name in declared_set or (area.parent != "-" and area.parent in declared_set)
+        if not covered:
+            outside.append(area.name)
+    if outside:
+        return "OUTSIDE declared areas: " + ", ".join(sorted(set(outside))), sorted(set(outside))
+    return "inside declared areas", []
+
+
+def compare_sides(base, head, areas_decl, out_dir):
+    display_names = sorted(set(base.display) | set(head.display))
+    onboard_names = sorted(set(base.onboard) | set(head.onboard))
+
+    changed_display_bh = {}
+    added_display, removed_display = {}, {}
+    not_rerecorded, sha_only = [], []
+    for name in display_names:
+        b, h = base.display.get(name), head.display.get(name)
+        if b is None and h is not None:
+            added_display[name] = h
+        elif h is None and b is not None:
+            removed_display[name] = b
+        elif b != h:
+            changed_display_bh[name] = (b, h)
+            if base.sha.get(name) == head.sha.get(name):
+                not_rerecorded.append(name)
+        else:
+            if base.sha.get(name) != head.sha.get(name):
+                sha_only.append(name)
+
+    changed_onboard_bh = {}
+    added_onboard, removed_onboard = {}, {}
+    for name in onboard_names:
+        b, h = base.onboard.get(name), head.onboard.get(name)
+        if b is None and h is not None:
+            added_onboard[name] = h
+        elif h is None and b is not None:
+            removed_onboard[name] = b
+        elif b != h:
+            changed_onboard_bh[name] = (b, h)
+            if base.sha.get(name) == head.sha.get(name):
+                not_rerecorded.append(name)
+        else:
+            if base.sha.get(name) != head.sha.get(name):
+                sha_only.append(name)
+
+    grid = build_area_grid(head.areas)
+
+    disp_groups = (group_changed_display(changed_display_bh)
+                   + group_added_removed(added_display, "added")
+                   + group_added_removed(removed_display, "removed"))
+    onb_groups, onb_details = group_changed_onboard(changed_onboard_bh)
+    onb_groups += (group_added_removed(added_onboard, "added")
+                   + group_added_removed(removed_onboard, "removed"))
+
+    # Attach area attribution + marking to each display group.
+    for g in disp_groups:
+        if g["status"] == "changed":
+            buckets = attribute_areas(g["diffs"], grid)
+            g["buckets"] = buckets
+            areas_touched = [b["area"] for b in buckets.values()]
+            g["marking"], g["outside"] = declared_marking(areas_touched, areas_decl)
+            g["pixel_count"] = len(g["diffs"])
+        else:
+            # An added/removed golden has no "before" to diff against, so
+            # it is not attributed to an area; treat it as OUTSIDE whenever
+            # areas were declared (a new or vanished golden is always worth
+            # a second look), "no --areas given" otherwise.
+            g["buckets"] = {}
+            if areas_decl:
+                g["marking"] = "OUTSIDE declared areas: %s golden, not attributed to an area" % g["status"]
+            else:
+                g["marking"] = "no --areas given"
+            g["outside"] = []
+            g["pixel_count"] = None
+
+    for g in onb_groups:
+        g["marking"] = "n/a (on-board)"
+        g["outside"] = []
+
+    # Order: display groups outside-first, then onboard groups outside-first.
+    disp_groups.sort(key=lambda g: (0 if g["marking"].startswith("OUTSIDE") else 1,
+                                     -(g["pixel_count"] or 0)))
+    onb_groups.sort(key=lambda g: (0,))
+
+    return {
+        "display_groups": disp_groups,
+        "onboard_groups": onb_groups,
+        "onboard_details": onb_details,
+        "not_rerecorded": sorted(set(not_rerecorded)),
+        "sha_only": sorted(set(sha_only)),
+    }
+
+
+# ---------------------------------------------------------------------
+# Rendering the report
+# ---------------------------------------------------------------------
+
+def render_group_pictures(gid, g, base, head, out_dir):
+    """Write the PNGs (or diff text) for one display group; return a list
+    of (caption, relative_path)."""
+    pics = []
+    gdir = out_dir / "display" / gid
+    gdir.mkdir(parents=True, exist_ok=True)
+    rep = g["members"][0]
+    if g["status"] == "changed":
+        before = base.display[rep]
+        after = head.display[rep]
+        changed = set(i for i, _, _ in g["diffs"])
+        buckets = g["buckets"]
+        boxes = {label: bbox_of(b["positions"]) for label, b in buckets.items()}
+        covers_most = False
+        if boxes:
+            xs0 = min(b[0] for b in boxes.values())
+            ys0 = min(b[1] for b in boxes.values())
+            xs1 = max(b[0] + b[2] for b in boxes.values())
+            ys1 = max(b[1] + b[3] for b in boxes.values())
+            union_area = (xs1 - xs0) * (ys1 - ys0)
+            covers_most = union_area >= 0.6 * FRAME_SIZE
+        if covers_most or not boxes:
+            png = render_triptych(before, after, changed, (0, 0, FRAME_W, FRAME_H))
+            path = gdir / "whole_frame.png"
+            path.write_bytes(png)
+            pics.append(("whole frame", "display/%s/whole_frame.png" % gid))
+        else:
+            for label, box in boxes.items():
+                safe = "".join(c if c.isalnum() else "_" for c in label).strip("_") or "area"
+                png = render_triptych(before, after, changed, box)
+                path = gdir / ("%s.png" % safe)
+                path.write_bytes(png)
+                pics.append((label, "display/%s/%s.png" % (gid, safe)))
+    else:
+        data = g["data"]
+        box = (0, 0, FRAME_W, FRAME_H)
+        png = render_single(data, box)
+        path = gdir / "frame.png"
+        path.write_bytes(png)
+        pics.append((g["status"], "display/%s/frame.png" % gid))
+    return pics
+
+
+def render_group_onboard(gid, g, details, out_dir):
+    gdir = out_dir / "onboard" / gid
+    gdir.mkdir(parents=True, exist_ok=True)
+    rep = g["members"][0]
+    excerpt = []
+    full_path = None
+    if g["status"] == "changed":
+        lines, kind_delta, diff_groups, total_groups = details[rep]
+        full_path = gdir / "diff.txt"
+        full_path.write_text("\n".join(lines) + "\n")
+        excerpt = lines[:40]
+        g["summary"] = {k: "-%d +%d" % (v[0], v[1]) for k, v in kind_delta.items()}
+        g["diff_groups"] = diff_groups
+        g["total_groups"] = total_groups
+    return excerpt, (("onboard/%s/diff.txt" % gid) if full_path else None)
+
+
+def fmt_sides(base, head):
+    return ("- base: `%s` -- %s\n- head: `%s` -- %s\n"
+            % (base.commit, base.label, head.commit, head.label))
+
+
+INSTRUCTIONS = """## Instructions for the reviewer
+
+Look at every group below -- its picture (display) or its diff excerpt
+(on-board) -- and compare it with the stated intent. For each group,
+answer **as intended** / **not intended** / **cannot tell**, with one
+sentence saying what visibly changed, on the group's `Verdict:` line.
+Be especially suspicious of a group marked `OUTSIDE declared areas`.
+Never approve a group you did not look at.
+"""
+
+
+def write_report(out_dir, result, args, base, head):
+    disp = result["display_groups"]
+    onb = result["onboard_groups"]
+    lines = []
+    lines.append("# Golden review\n")
+    lines.append(fmt_sides(base, head))
+    lines.append("Intent: %s\n" % (args.intent or "(none given)"))
+    lines.append("Declared areas: %s\n" % (", ".join(args.areas_list) if args.areas_list else "(none given)"))
+    lines.append("")
+    lines.append(INSTRUCTIONS)
+
+    if result["not_rerecorded"]:
+        lines.append("**Not re-recorded** (dumped bytes changed, .sha256 text did not): "
+                      + ", ".join(result["not_rerecorded"]) + "\n")
+    if result["sha_only"]:
+        lines.append("**.sha256 text changed, dumped bytes did not** (suspicious): "
+                      + ", ".join(result["sha_only"]) + "\n")
+
+    lines.append("## Groups\n")
+    lines.append("| id | kind | members | changed | areas | marking |")
+    lines.append("|----|------|---------|---------|-------|---------|")
+
+    group_ids = {}
+    gi = 0
+    for g in disp:
+        gi += 1
+        gid = "d%d" % gi
+        group_ids[id(g)] = gid
+        changed_col = ("%d pixels" % g["pixel_count"]) if g["pixel_count"] is not None else g["status"]
+        areas_col = ", ".join(sorted(g["buckets"])) if g.get("buckets") else "-"
+        lines.append("| %s | display | %d | %s | %s | %s |"
+                      % (gid, len(g["members"]), changed_col, areas_col or "-", g["marking"]))
+    gi = 0
+    for g in onb:
+        gi += 1
+        gid = "o%d" % gi
+        group_ids[id(g)] = gid
+        if g["status"] == "changed":
+            # g["signature"] (set at grouping time) is used here rather than
+            # g["summary"] (set later, in render_group_onboard, when the
+            # per-group section is written) so the table reflects it too.
+            changed_col = ", ".join("%s -%d +%d" % (k, counts[0], counts[1])
+                                     for k, counts in g["signature"]) or "(no record kind differs)"
+        else:
+            changed_col = g["status"]
+        lines.append("| %s | on-board | %d | %s | - | %s |"
+                      % (gid, len(g["members"]), changed_col, g["marking"]))
+
+    lines.append("")
+    lines.append("## Display groups\n")
+    for g in disp:
+        gid = group_ids[id(g)]
+        pics = render_group_pictures(gid, g, base, head, out_dir)
+        lines.append("### %s (%s, %d member%s)\n"
+                      % (gid, g["status"], len(g["members"]), "" if len(g["members"]) == 1 else "s"))
+        lines.append("Members: " + ", ".join(g["members"]) + "\n")
+        lines.append("Marking: " + g["marking"] + "\n")
+        for caption, relpath in pics:
+            lines.append("- %s: ![%s](%s)" % (caption, caption, relpath))
+        lines.append("")
+        lines.append("Verdict: ")
+        lines.append("")
+
+    lines.append("## On-board groups\n")
+    for g in onb:
+        gid = group_ids[id(g)]
+        excerpt, relpath = render_group_onboard(gid, g, result["onboard_details"], out_dir)
+        lines.append("### %s (%s, %d member%s)\n"
+                      % (gid, g["status"], len(g["members"]), "" if len(g["members"]) == 1 else "s"))
+        lines.append("Members: " + ", ".join(g["members"]) + "\n")
+        if g["status"] == "changed":
+            lines.append("Record kinds: " + (", ".join("%s %s" % (k, v) for k, v in g.get("summary", {}).items())
+                                              or "(none)") + "\n")
+            lines.append("%d of %d cycle groups differ.\n" % (g.get("diff_groups", 0), g.get("total_groups", 0)))
+            if relpath:
+                lines.append("Full diff: [%s](%s)\n" % (relpath, relpath))
+            if excerpt:
+                lines.append("```")
+                lines.extend(excerpt)
+                lines.append("```")
+        lines.append("")
+        lines.append("Verdict: ")
+        lines.append("")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "REPORT.md").write_text("\n".join(lines) + "\n")
+
+    def group_json(g, gid):
+        d = {"id": gid, "status": g["status"], "members": g["members"], "marking": g["marking"]}
+        if "pixel_count" in g:
+            d["pixel_count"] = g["pixel_count"]
+        if "buckets" in g and g["buckets"]:
+            d["areas"] = sorted(g["buckets"])
+        if "signature" in g:
+            d["signature"] = g["signature"]
+        if "summary" in g:
+            d["record_kinds"] = g["summary"]
+        return d
+
+    review = {
+        "base": {"commit": base.commit, "label": base.label},
+        "head": {"commit": head.commit, "label": head.label},
+        "intent": args.intent,
+        "areas": args.areas_list,
+        "not_rerecorded": result["not_rerecorded"],
+        "sha_only": result["sha_only"],
+        "display_groups": [group_json(g, group_ids[id(g)]) for g in disp],
+        "onboard_groups": [group_json(g, group_ids[id(g)]) for g in onb],
+    }
+    (out_dir / "review.json").write_text(json.dumps(review, indent=2))
+
+    outside = sum(1 for g in disp if g["marking"].startswith("OUTSIDE")) \
+        + sum(1 for g in onb if g["marking"].startswith("OUTSIDE"))
+    summary = ("golden_review: %d display groups (%d frames), "
+               "%d on-board groups (%d goldens), %d outside declared areas"
+               % (len(disp), sum(len(g["members"]) for g in disp),
+                  len(onb), sum(len(g["members"]) for g in onb), outside))
+    return summary
+
+
+# ---------------------------------------------------------------------
+# Self test (--check-tool)
+# ---------------------------------------------------------------------
+
+def check_tool():
+    ok = True
+
+    def check(cond, what):
+        nonlocal ok
+        status = "ok" if cond else "FAIL"
+        if not cond:
+            ok = False
+        print("%-60s %s" % (what, status))
+
+    # A tiny synthetic 8x6 "frame" with a main area M (0,0,4,6) holding a
+    # sub-area S (1,1,2,2), and the rest outside any area.
+    areas = [Area("M", "-", 0, 0, 4, 6), Area("S", "M", 1, 1, 2, 2)]
+    W, H = 8, 6
+    grid = build_area_grid(areas, width=W, height=H)
+    check(grid[1 * W + 1].name == "S", "pixel (1,1) attributed to the sub-area S")
+    check(grid[0 * W + 0].name == "M", "pixel (0,0) attributed to the main area M")
+    check(grid[5 * W + 7] is None, "pixel (7,5) outside any area")
+
+    base = bytearray(W * H)
+    head = bytearray(W * H)
+    # Change one pixel inside S, one inside M but outside S, one outside.
+    head[1 * W + 1] = 3     # inside S
+    head[0 * W + 0] = 2     # inside M only
+    head[5 * W + 7] = 9     # outside any area
+    diffs = tuple((i, base[i], head[i]) for i in diff_positions(bytes(base), bytes(head)))
+    check(len(diffs) == 3, "three changed pixels found")
+    buckets = attribute_areas(diffs, grid, width=W)
+    check(set(buckets) == {"S (in M)", "M", "(outside any area)"},
+          "attribution buckets: S (in M), M, (outside any area)")
+    box = bbox_of(buckets["S (in M)"]["positions"], width=W, height=H, margin=1)
+    check(box == (0, 0, 3, 3), "bounding box of the S bucket, with margin, clamped")
+
+    # Grouping: two identical changes group together, a third different one does not.
+    names_bh = {
+        "f1": (bytes(base), bytes(head)),
+        "f2": (bytes(base), bytes(head)),
+    }
+    head2 = bytearray(base)
+    head2[2] = 5
+    names_bh["f3"] = (bytes(base), bytes(head2))
+    groups = group_changed_display(names_bh, width=W)
+    check(len(groups) == 2, "two groups from three frames, two identical")
+    sizes = sorted(len(g["members"]) for g in groups)
+    check(sizes == [1, 2], "group sizes 2 and 1")
+
+    # Added/removed grouping by content.
+    added = {"a1": b"\x01\x02", "a2": b"\x01\x02", "a3": b"\x03\x04"}
+    agroups = group_added_removed(added, "added")
+    check(len(agroups) == 2, "added goldens grouped by content (two of three identical)")
+
+    # Scale rule: short edge >= ~400 where the factor allows, long edge
+    # <= ~1500, factor in 1..8, and factor 1 is accepted even if it
+    # already busts the cap (a whole 640x480 frame triptych).
+    f = choose_scale(50, 50)
+    check(1 <= f <= 8, "scale factor in range for a 50x50 crop")
+    tw, th = 3 * 50 * f + 2 * SEPARATOR_W, 50 * f
+    check(min(tw, th) >= 400 or f == 8, "50x50 crop reaches ~400px short edge (or caps at factor 8)")
+    check(max(tw, th) <= 1500, "50x50 crop triptych stays within ~1500px long edge")
+    fw = choose_scale(FRAME_W, FRAME_H)
+    check(fw == 1, "a whole-frame crop falls back to factor 1 (already over the cap)")
+
+    f2 = choose_scale(200, 100)
+    tw2, th2 = 3 * 200 * f2 + 2 * SEPARATOR_W, 100 * f2
+    check(max(tw2, th2) <= 1500, "200x100 crop triptych respects the long-edge cap")
+
+    # On-board diff: a record added, a record removed between two cycles.
+    def rec(port, payload):
+        pb = bytes(payload)
+        return bytes([port]) + struct.pack("<H", len(pb)) + pb
+
+    mode_level = rec(4, bytes([0x02] + [0] * 5))  # DMI:MODE_LEVEL, port 4 = DMI
+    tiu_old = rec(3, bytes([1, 0]))                # TIU
+    tiu_new = rec(3, bytes([2, 0]))                # TIU, different payload
+    old_bytes = mode_level + tiu_old
+    new_bytes = mode_level + tiu_new
+    lines, kind_delta, diff_groups, total_groups = evc_diff(old_bytes, new_bytes)
+    check(diff_groups == 1 and total_groups == 1, "one on-board cycle group differs")
+    check(kind_delta.get("TIU") == [1, 1], "TIU counted as one removed, one added")
+
+    print("golden_review --check-tool: %s" % ("ok" if ok else "FAILED"))
+    return 0 if ok else 1
+
+
+# ---------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------
+
+def parse_args(argv):
+    p = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--base", default="HEAD",
+                    help="revision for the 'before' side (default: HEAD)")
+    p.add_argument("--head", default=None,
+                    help="revision for the 'after' side (default: the working tree)")
+    p.add_argument("--out", default=None, help="output directory (default: obj/golden-review/)")
+    p.add_argument("--areas", default="", help="comma separated DMI areas the change should touch")
+    p.add_argument("--intent", default="", help="free text: what the change is meant to do")
+    p.add_argument("--check-tool", action="store_true", help="run the fast self test and exit")
+    args = p.parse_args(argv)
+    args.areas_list = [a.strip() for a in args.areas.split(",") if a.strip()]
+    return args
+
+
+def main(argv):
+    args = parse_args(argv)
+    if args.check_tool:
+        return check_tool()
+
+    out_dir = Path(args.out).resolve() if args.out else DEFAULT_OUT.resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    env = build_env()
+
+    t0 = time.time()
+    try:
+        base = get_revision_side(args.base, env)
+        if args.head is None:
+            head = get_worktree_side(env, out_dir)
+        else:
+            head = get_revision_side(args.head, env)
+    except ToolError as e:
+        print("golden_review: %s" % e, file=sys.stderr)
+        return 1
+
+    result = compare_sides(base, head, args.areas_list, out_dir)
+    summary = write_report(out_dir, result, args, base, head)
+    print("golden_review: report in %s (%.1fs)" % (out_dir / "REPORT.md", time.time() - t0),
+          file=sys.stderr)
+    print(summary)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

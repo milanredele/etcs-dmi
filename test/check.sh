@@ -40,6 +40,7 @@ python3 evc/language/gen_language.py --check | tail -1
 python3 evc/language/check_catalogue.py | tail -1
 python3 doc/SRS/tools/trace_subset026.py --check | tail -1
 python3 test/tools/efs_frames.py --check | tail -1
+python3 test/tools/golden_review.py --check-tool | tail -1
 ./obj/evc_efs_test | tail -1
 ./obj/evc_s076_check | tail -1
 echo "check.sh: ok"
