@@ -146,6 +146,9 @@ package S076_Sequences is
       --  its train: the length (Train (main)!D18, m) and the brake
       --  percentage (Brake parameters (lambda)!F2); 0 when not given
       WB_Length, WB_Lambda : Natural := 0;
+      --  its brake position (Train (main), "Current brake position:"):
+      --  0 not given, 1 passenger in P, 2 freight in P, 3 freight in G
+      WB_Brake_Position : Natural := 0;
    end record;
 
    --  The sequence read last (Read): too big for a stack, one at a time

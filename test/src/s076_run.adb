@@ -115,6 +115,17 @@ package body S076_Run is
    ---------------------------------------------------------------------
 
    Debug : constant Boolean := Ada.Environment_Variables.Exists ("DEBUG");
+
+   --  the SUBSET-027 fields of a JRU expectation this JRU port does not
+   --  carry: the step is judged on the others, these are listed
+   Field_Gap : Text_T;
+
+   procedure Note_Gap (S : String) is
+   begin
+      if Field_Gap.N = 0 then
+         Field_Gap := To_Text (S);
+      end if;
+   end Note_Gap;
    Cur            : Natural := 0;       -- the index of the step
    Step_Start_Ms  : Unsigned_64 := 0;   -- the time the last step ended
    Explicit_Speed : Integer := -1;      -- cm/s set by an ODO input
@@ -439,7 +450,15 @@ package body S076_Run is
          return S (S'First + 1 .. S'Last);
       end Digits_Of;
    begin
-      Key (1); Enter_Field (1);               -- train category PASS 1
+      --  the train category (Table 41, DMI_Train_Data): PASS 1 (key 1),
+      --  FP 1 (key 11) or FG 1 (key 4 after [More]) for the brake
+      --  position of the workbook's train
+      case Seq.WB_Brake_Position is
+         when 2 => Key (11);
+         when 3 => Key (12); Key (4);
+         when others => Key (1);
+      end case;
+      Enter_Field (1);
       Type_Digits (Digits_Of (Train_Length_M)); Enter_Field (2);
       Type_Digits (Digits_Of (Brake_Percentage)); Enter_Field (3);
       Type_Digits ("200"); Enter_Field (4);   -- maximum speed, km/h
@@ -1990,7 +2009,7 @@ package body S076_Run is
                         elsif not Same (Name, "M_MODE")
                           and then not Same (Name, "M_LEVEL")
                         then
-                           return NJ (R_JRU_Not_Modelled, "20." & Name);
+                           Note_Gap ("20." & Name);
                         end if;
                      end;
                   end loop;
@@ -2057,8 +2076,7 @@ package body S076_Run is
                           and then not (Eq > 0 and then Eq < Wd'Last
                                         and then Wd (Eq + 1) not in '0' .. '9')
                         then
-                           return NJ (R_JRU_Not_Modelled,
-                                      Img (Id) & "." & Name);
+                           Note_Gap (Img (Id) & "." & Name);
                         end if;
                      end;
                   end loop;
@@ -2080,16 +2098,20 @@ package body S076_Run is
             if Same (Name, "M_MODE") or else Same (Name, "M_LEVEL")
               or else Same (Name, "DRIVER_ID") or else Id = 0
             then
-               Any_Field := True;
                J := Header_Field (Name, Value, Positive, Handled);
-               if J.Verdict /= Passed then
-                  return J;
+               if not Handled then
+                  Note_Gap ("ALL." & Name);
+               else
+                  Any_Field := True;
+                  if J.Verdict /= Passed then
+                     return J;
+                  end if;
                end if;
             end if;
          end;
       end loop;
       if Id = 0 and then not Any_Field then
-         return NJ (R_JRU_Not_Modelled, "ALL");
+         return NJ (R_JRU_Not_Modelled, Image (Field_Gap));
       end if;
       return Result;
    end JRU_Expect;
@@ -2140,6 +2162,7 @@ package body S076_Run is
          R.Verdict := J.Verdict;
          R.Reason := J.Reason;
          R.Signature := J.Sig;
+         R.Detail := Field_Gap;
          R.After_First_Failure := J.Verdict = Failed and then First_Fail > 0;
          if J.Verdict = Failed and then First_Fail = 0 then
             First_Fail := I;
@@ -2196,6 +2219,7 @@ package body S076_Run is
                   Block (I, J);
                end if;
             else
+               Field_Gap := (others => <>);
                Load_Line (St.Line);
                --  an input opens a new observation window, before the
                --  move to its distance: what happens on the way is the

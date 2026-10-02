@@ -145,6 +145,8 @@ package body S076_Sequences is
    --  index in Telegrams), 2 a message
    Block      : Natural := 0;
    Block_Step : Natural := 0;
+   --  the rows of the labels of the workbook's train
+   Length_Row, Brake_Row : Text_T;
 
    procedure On_Line (L : Line_T; Line_No : Positive) is
       S : Sequence_T renames Cur.all;
@@ -339,16 +341,39 @@ package body S076_Sequences is
          end;
       elsif K = "workbook" then
          S.Workbook := True;
+      elsif K = "cell" and then L.Count >= 4 and then Word (L, 2) = "Train"
+        and then Word (L, 3)'Length > 8
+        and then Word (L, 3) (Word (L, 3)'First .. Word (L, 3)'First + 6)
+                 = "(main)!"
+      then
+         --  the Train (main) sheet: a label in column C, its value in
+         --  column D of the same row (the rows come in order)
+         declare
+            Ref  : constant String := Word (L, 3);
+            Col  : constant Character := Ref (Ref'First + 7);
+            Row  : constant String := Ref (Ref'First + 8 .. Ref'Last);
+            Text : constant String := Rest (L, 4);
+            OK1  : Boolean;
+         begin
+            if Col = 'C' and then Text = "Train length (m)" then
+               Length_Row := To_Text (Row);
+            elsif Col = 'C' and then Text = "Current brake position:" then
+               Brake_Row := To_Text (Row);
+            elsif Col = 'D' and then Row = Image (Length_Row) then
+               S.WB_Length := To_Nat (Word (L, 4), OK1);
+            elsif Col = 'D' and then Row = Image (Brake_Row) then
+               S.WB_Brake_Position :=
+                 (if Text = "Passenger in P" then 1
+                  elsif Text = "Freight in P" then 2
+                  elsif Text = "Freight in G" then 3 else 0);
+            end if;
+         end;
       elsif K = "cell" and then L.Count >= 4 then
          declare
             OK1 : Boolean;
             V   : constant Natural := To_Nat (Word (L, L.Count), OK1);
-            Ref : constant String := Word (L, L.Count - 1);
          begin
-            if OK1 and then Ref = "(main)!D18" and then Word (L, 2) = "Train"
-            then
-               S.WB_Length := V;
-            elsif OK1 and then Ref = "(lambda)!F2" then
+            if OK1 and then Word (L, L.Count - 1) = "(lambda)!F2" then
                S.WB_Lambda := V;
             end if;
          end;
@@ -393,6 +418,9 @@ package body S076_Sequences is
       Loaded.Workbook := False;
       Loaded.WB_Length := 0;
       Loaded.WB_Lambda := 0;
+      Loaded.WB_Brake_Position := 0;
+      Length_Row := (others => <>);
+      Brake_Row := (others => <>);
       Cur := Loaded'Access;
       Block := 0;
       Scn_Reader.Read_File (Path, On_Line'Access, Ok);

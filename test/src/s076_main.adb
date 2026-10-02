@@ -432,6 +432,12 @@ package body S076_Main is
                declare
                   R : Result_T renames Results (I);
                begin
+                  if R.Verdict in Passed | Failed and then R.Detail.N > 0
+                  then
+                     Count_Detail (R_JRU_Not_Modelled,
+                                   "field (step judged on the others): "
+                                   & Image (R.Detail), Is_Block => False);
+                  end if;
                   if R.Verdict = Not_Judged then
                      Reason_Steps (R.Reason) := Reason_Steps (R.Reason) + 1;
                      if R.Reason in R_JRU_Not_Modelled | R_DMI_Internal
