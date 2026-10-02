@@ -1603,12 +1603,15 @@ package body S076_Run is
          --  the level announced: any
          declare
             In_W : Boolean := False;
+            --  DMI 8.2.3.2: the announcement (LE06, LE08, LE10, LE12)
+            --  gives way to its acknowledgement (LE07, LE09) when asked
             Now  : constant Boolean :=
-              S.Level_Ann /= B.No_Value and then (S.Level_Ann_Ack or not Ack);
+              S.Level_Ann /= B.No_Value
+              and then S.Level_Ann_Ack = Ack;
          begin
             for C in 2 .. 5 loop
-               In_W := In_W or else Seen.Level_Ann_Ack (C)
-                 or else (not Ack and then Seen.Level_Ann (C));
+               In_W := In_W or else (if Ack then Seen.Level_Ann_Ack (C)
+                                     else Seen.Level_Ann (C));
             end loop;
             return Shown (St_W, In_W, Now, "level announcement " & Name);
          end;
@@ -1825,6 +1828,13 @@ package body S076_Run is
          elsif Same (Name, "indication-marker") then
             return Shown (St_W, Seen.Indication, S.Indication,
                           "indication marker");
+         elsif Has (Name, "PASP") or else Has (Name, "speed-profile") then
+            --  DMI 8.3.4, 8.3.6: drawn from the speed profile of the
+            --  planning information
+            return Shown (St_W, S.Speeds > 0, S.Speeds > 0,
+                          "planning speed profile");
+         elsif Has (Name, "orders") then
+            return Shown (St_W, S.Orders > 0, S.Orders > 0, "planning orders");
          end if;
          return NJ (R_Runner, "planning " & Name);
       elsif Same (Kind, "track-condition-symbol")
@@ -2313,7 +2323,10 @@ package body S076_Run is
                              "events 4 to 6");
             when 20 =>
                declare
-                  Mon, Sup : Integer := -1;
+                  --  the alternatives of each field ("0/2"), none: any
+                  Mons, Sups : Values_T := (others => -1);
+                  Mon_N, Sup_N : Natural := 0;
+                  Hit : Boolean := False;
                begin
                   for K in 5 .. Line.Count loop
                      declare
@@ -2333,13 +2346,15 @@ package body S076_Run is
                               return NJ (R_Unclassified, "JRU 20 " & Wd);
                            end if;
                            Alternatives (Wd (Eq + 1 .. Wd'Last), 10, V, N, Ok);
-                           if not Ok or else N /= 1 then
+                           if not Ok then
                               return NJ (R_Unclassified, "JRU 20 " & Wd);
                            end if;
                            if Same (Name, "M_SDMTYPE") then
-                              Mon := V (1);
+                              Mons := V;
+                              Mon_N := N;
                            else
-                              Sup := V (1);
+                              Sups := V;
+                              Sup_N := N;
                            end if;
                         elsif not Same (Name, "M_MODE")
                           and then not Same (Name, "M_LEVEL")
@@ -2348,24 +2363,40 @@ package body S076_Run is
                         end if;
                      end;
                   end loop;
-                  if Mon < 0 and then Sup < 0 then
+                  if Mon_N = 0 and then Sup_N = 0 then
                      return NJ (R_JRU_Not_Modelled,
                                 "20 without M_SDMTYPE / M_SDMSUPSTAT");
                   end if;
                   --  event 21 is recorded when the monitoring or the
                   --  status changes: a record of message 20 for another
                   --  change carries the values of the last one
-                  Result := Check ((Any_Rec (21, Mon, Sup)
-                                    or else (Positive
-                                             and then (Mon < 0
-                                                       or else B.JRU_Monitoring
-                                                                 = Mon)
-                                             and then (Sup < 0
-                                                       or else B.JRU_Sup_Status
-                                                                 = Sup)))
-                                   = Positive,
-                                   "JRU supervision monitoring" & Img (Mon)
-                                   & " status" & Img (Sup)
+                  for I in 1 .. Natural'Max (1, Mon_N) loop
+                     for J in 1 .. Natural'Max (1, Sup_N) loop
+                        declare
+                           Mon : constant Integer :=
+                             (if Mon_N = 0 then -1 else Mons (I));
+                           Sup : constant Integer :=
+                             (if Sup_N = 0 then -1 else Sups (J));
+                        begin
+                           if Any_Rec (21, Mon, Sup)
+                             or else (Positive
+                                      and then (Mon < 0
+                                                or else B.JRU_Monitoring = Mon)
+                                      and then (Sup < 0
+                                                or else B.JRU_Sup_Status = Sup))
+                           then
+                              Hit := True;
+                           end if;
+                        end;
+                     end loop;
+                  end loop;
+                  Result := Check (Hit = Positive,
+                                   "JRU supervision monitoring"
+                                   & (if Mon_N = 0 then "-1"
+                                      else Img (Mons (1)))
+                                   & " status"
+                                   & (if Sup_N = 0 then "-1"
+                                      else Img (Sups (1)))
                                    & (if Positive then "" else " not"),
                                    "monitoring" & Img (B.JRU_Monitoring)
                                    & " status" & Img (B.JRU_Sup_Status));
