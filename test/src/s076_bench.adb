@@ -159,6 +159,8 @@ package body S076_Bench is
                   S_At : constant Natural := B + 9 + 3 * G;
                begin
                   Now.Has_Planning := True;
+                  Now.Plan_MA := Get16 (P, B);
+                  Now.Ceiling := Get16 (P, B + 6);
                   Now.Indication := Get16 (P, B + 2) /= 16#FFFF#;
                   Now.Gradients := G;
                   if S_At <= P'Last then

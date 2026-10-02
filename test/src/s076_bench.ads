@@ -140,6 +140,7 @@ package S076_Bench is
       Monitoring, Sup_Status, Flags : Natural := 0;
       --  MSG_PLANNING
       Has_Planning : Boolean := False;
+      Plan_MA, Ceiling : Natural := 0;
       Gradients, Speeds, Orders : Natural := 0;
       Indication : Boolean := False;
       --  MSG_TRACK_COND: the kinds shown (1 .. 37 TC, 38 LX)

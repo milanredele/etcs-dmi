@@ -103,6 +103,7 @@ package body S076_Run is
    ---------------------------------------------------------------------
 
    Cur            : Natural := 0;       -- the index of the step
+   Step_Start_Ms  : Unsigned_64 := 0;   -- the time the last step ended
    Explicit_Speed : Integer := -1;      -- cm/s set by an ODO input
    Wait_Used      : Natural := 0;       -- cycles waited in the window
    Train_Length   : constant := 4_000;  -- cm, the Train Data entered
@@ -410,7 +411,10 @@ package body S076_Run is
       Key (1); Enter_Field (1);               -- train category PASS 1
       Type_Digits ("40"); Enter_Field (2);    -- length, m
       Type_Digits ("150"); Enter_Field (3);   -- brake percentage
-      Type_Digits ("400"); Enter_Field (4);   -- maximum speed, km/h
+      --  3.13.3.2.1: within the conversion model (at most 200 km/h), the
+      --  only braking model of a Train Data entry (no pre-programmed one
+      --  in the configuration yet, E6)
+      Type_Digits ("200"); Enter_Field (4);   -- maximum speed, km/h
       Press (539, 440);                       -- [Next]
       Key (1); Enter_Field (1);               -- axle load category
       Key (7); Enter_Field (2);               -- airtight
@@ -669,6 +673,17 @@ package body S076_Run is
       return Best;
    end Timer_Seconds;
 
+   --  The timer is taken to have started when the step before ended: the
+   --  time the train took to reach the step's distance counts
+   procedure Run_Timer (Seconds : Natural) is
+      Elapsed : constant Unsigned_64 := B.Time_Ms - Step_Start_Ms;
+      Due     : constant Unsigned_64 := Unsigned_64 (Seconds) * 1000 + 200;
+   begin
+      if Elapsed < Due then
+         B.Run (Natural (Due - Elapsed));
+      end if;
+   end Run_Timer;
+
    function Timer_Input (St : Step_T) return Judgement_T is
       Name : constant String := W (4);
       subtype Name_T is String (1 .. 14);
@@ -704,7 +719,7 @@ package body S076_Run is
       end if;
       if K (Chosen) = "T_ACK" then
          --  A.3.1: T_ACK 5 s
-         B.Run (5_000 + 200);
+         Run_Timer (5);
          return Pass ("T_ACK elapsed");
       end if;
       declare
@@ -714,7 +729,7 @@ package body S076_Run is
             return NJ (R_Runner, "timer " & K (Chosen)
                        & " without a value");
          end if;
-         B.Run (S * 1000 + 200);
+         Run_Timer (S);
          return Pass (K (Chosen) & Natural'Image (S) & " s elapsed");
       end;
    end Timer_Input;
@@ -1986,6 +2001,7 @@ package body S076_Run is
       end Block;
    begin
       B.Reset;
+      Step_Start_Ms := 0;
       Explicit_Speed := -1;
       Wait_Used := 0;
       Outcome := Seq_Passed;
@@ -2021,6 +2037,17 @@ package body S076_Run is
                end if;
             else
                Load_Line (St.Line);
+               --  an input opens a new observation window, before the
+               --  move to its distance: what happens on the way is the
+               --  input's too (a timer that runs out on the way). A
+               --  balise group input without telegrams continues the one
+               --  before (several rows of one transmission).
+               if St.IO = Input
+                 and then not (W (2) = "BTM" and then Line.Count < 4)
+               then
+                  B.New_Window;
+                  Wait_Used := 0;
+               end if;
                --  move to the step's distance, unless the input moves
                --  the train itself
                if not (St.IO = Input
@@ -2034,12 +2061,6 @@ package body S076_Run is
                   declare
                      C : Judgement_T;
                   begin
-                     --  a balise group input without telegrams continues
-                     --  the one before (several rows of one transmission)
-                     if not (W (2) = "BTM" and then Line.Count < 4) then
-                        B.New_Window;
-                        Wait_Used := 0;
-                     end if;
                      J := Apply_Input (St);
                      if J.Verdict = Not_Judged then
                         Record_Result (I, J);
@@ -2083,6 +2104,7 @@ package body S076_Run is
                   end;
                end if;
             end if;
+            Step_Start_Ms := B.Time_Ms;
             if Verbose then
                declare
                   R : Result_T renames Results (I);
@@ -2105,7 +2127,7 @@ package body S076_Run is
                             & Level_Abbrev (Our_Level) & " x="
                             & Img (Integer (B.Position / 100)) & "m v="
                             & Img (B.Speed * 36 / 1000) & "km/h perm="
-                            & Img (B.State.V_Perm) & " t="
+                            & Img (B.State.V_Perm) & "/" & Img (B.State.V_Cur) & "/sbi" & Img (B.State.V_SBI) & "/st" & Img (B.State.Sup_Status) & (if B.State.EBC then " EB" else "") & (if B.State.SBC then " SB" else "") & " r" & Img (B.State.Reasons) & " ma" & Img (B.State.Plan_MA) & "/c" & Img (B.State.Ceiling) & " t="
                             & Unsigned_64'Image (B.Time_Ms / 100) & "00ms");
                end;
             end if;
