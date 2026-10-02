@@ -41,8 +41,9 @@
 --  acknowledgement area, L_ACKLEVELTR in rear of the transition location
 --  (a), in SB only at the transition (5.10.4.1.2), or upon the receipt
 --  of an immediate order (b). An order to the level of an order not yet
---  executed that the driver acknowledged asks nothing again (5.10.4.1.3,
---  5.10.4.1.4). Not acknowledged T_ACK (A.3.1) after the transition: the
+--  executed that the driver acknowledged asks nothing again when it is
+--  immediate (5.10.4.1.4) or its area is entered upon the receipt
+--  (5.10.4.1.3); an area entered later asks again. Not acknowledged T_ACK (A.3.1) after the transition: the
 --  service brake (5.10.4.2), released by the acknowledgement; the
 --  reason is revoked by the modes of 4.12 (the rows "Change to level 0
 --  / NTC not acknowledged").

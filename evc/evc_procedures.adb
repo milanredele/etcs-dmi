@@ -53,6 +53,8 @@ is
 
    --  The catalogue of the system status messages (dmi_protocol.ads,
    --  MSG_SYSTEM_STATUS)
+   SS_Balise_Read_Error_Brake       : constant :=
+     EVC_DMI_Port.SS_Balise_Read_Error_Brake;
    SS_Balise_Read_Error_Trip        : constant :=
      EVC_DMI_Port.SS_Balise_Read_Error_Trip;
    SS_Trackside_Not_Compatible_Trip : constant :=
@@ -1395,7 +1397,13 @@ is
       if Now_Flags.Link_SB
         and then C.Mode in M_FS | M_AD | M_LS | M_OS | M_SM
       then
-         --  3.16.2.3.1, 3.14.1.6: the service brake to standstill
+         --  3.16.2.3.1, 3.14.1.6: the service brake to standstill;
+         --  3.16.2.6.1: the driver is informed that the intervention is
+         --  due to a data consistency problem with the expected group
+         --  ("Balise read error", the DMI's entry 1)
+         if not Link_SB then
+            Status (SS_Balise_Read_Error_Brake, 0);
+         end if;
          Link_SB := True;
       end if;
       --  2.
@@ -1677,9 +1685,11 @@ is
       then
          Ack_SB := True;
       end if;
-      --  3.14.1.6: released at standstill
+      --  3.14.1.6: released at standstill; the message stays 30 s from
+      --  then (the DMI's entry 1, event 2)
       if Link_SB and then S.Train.Standstill then
          Link_SB := False;
+         Status (SS_Balise_Read_Error_Brake, 2);
       end if;
       Demand :=
         (EB           => Mode = M_TR or else RV_EB,

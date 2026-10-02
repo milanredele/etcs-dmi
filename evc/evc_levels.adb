@@ -23,6 +23,10 @@ is
       Ack_Needed : Boolean := False;
       Ack_Shown  : Boolean := False;
       Acked      : Boolean := False;
+      --  received, the acknowledgement area not looked at yet: Acked
+      --  from a former order stands only if the max safe front end is
+      --  in the area upon the receipt (5.10.4.1.3)
+      Fresh      : Boolean := False;
    end record;
 
    --  An immediate or conditional order kept in SH, PS or SM
@@ -313,7 +317,8 @@ is
                   Sense      => M.Sense,
                   Ack_Needed => Ack_For (To, C.Mode),
                   Ack_Shown  => False,
-                  Acked      => Same_Acked);
+                  Acked      => Same_Acked,
+                  Fresh      => True);
                Put_Event (Event_Stored, Level_T'Pos (To), 1);
             end;
          end if;
@@ -407,6 +412,18 @@ is
       --  3. the announcement: the acknowledgement area (5.10.4.1 a), not
       --  in SB, 5.10.4.1.2), the transition location (5.10.1.5)
       if Order.Stored and then C.Position_Valid then
+         --  5.10.4.1.3: the acknowledgement of a former order to the
+         --  same level is kept only when the condition a) is fulfilled
+         --  upon the receipt; else the driver is asked again
+         if Order.Fresh then
+            Order.Fresh := False;
+            if Order.Acked
+              and then not Passed (T, Order.Sense, C.Max_Front,
+                                   Order.Ack_Loc)
+            then
+               Order.Acked := False;
+            end if;
+         end if;
          if Order.Ack_Needed and then not Order.Ack_Shown
            and then C.Mode /= M_SB
            and then Passed (T, Order.Sense, C.Max_Front, Order.Ack_Loc)

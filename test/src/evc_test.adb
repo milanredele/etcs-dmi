@@ -6518,6 +6518,25 @@ procedure EVC_Test is
       Ack : constant Byte_Array :=
         Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 5, 0, 0, 0));
 
+      --  3.14.2.6, 3.14.3.4: "Runaway movement" (the DMI's entry 9)
+      --  started and ended on the DMI port
+      Runaway_Started, Runaway_Ended : Natural := 0;
+
+      procedure Scan is
+      begin
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = DMI and then Rec_Length (I) = 7
+              and then Byte_At (I, 1) = 16#0C# and then Byte_At (I, 6) = 9
+            then
+               if Byte_At (I, 7) = 0 then
+                  Runaway_Started := Runaway_Started + 1;
+               elsif Byte_At (I, 7) = 1 then
+                  Runaway_Ended := Runaway_Ended + 1;
+               end if;
+            end if;
+         end loop;
+      end Scan;
+
       procedure Roll (From : Integer_64; Metres : Natural;
                       Backwards : Boolean) is
          X : Integer_64 := From;
@@ -6528,6 +6547,7 @@ procedure EVC_Test is
             Sup.Train.Moving_Ahead := not Backwards;
             Sup.Train.Moving_Backwards := Backwards;
             Sup_Cycle;
+            Scan;
          end loop;
       end Roll;
 
@@ -6535,10 +6555,12 @@ procedure EVC_Test is
       begin
          Place (Sup, Integer_64 (Sup.Train.Est_Front), 0);
          Sup_Cycle;
+         Scan;
          Check (Cmd.EB and then Cmd.Ack_Required and then Status_Brake = 2,
                 What & ": at standstill the acknowledgement is asked");
          Input (DMI, Ack);
          Sup_Cycle;
+         Scan;
          Check (Cmd.EB /= Expect_Release,
                 What & ": released after the acknowledgement");
       end Stop_And_Ack;
@@ -6554,7 +6576,13 @@ procedure EVC_Test is
       Check (Cmd.EB and then Cmd.Reasons (BC.Roll_Away)
              and then TIU_Out = 1 + 256 * 4,
              "roll away: beyond 2 m the emergency brake (TIU reason 4)");
+      Check (Runaway_Started = 1 and then Runaway_Ended = 0,
+             "roll away: 3.14.2.6, the driver is shown the protection's "
+             & "brake: 'Runaway movement' (the DMI's entry 9; found by "
+             & "SUBSET-076 4120100_10)");
       Stop_And_Ack (True, "roll away");
+      Check (Runaway_Ended = 1,
+             "roll away: 'Runaway movement' ends with the brake (3.14.1.5)");
       Roll (Integer_64 (Sup.Train.Est_Front), 3, False);
       Check (not Cmd.EB, "roll away: forwards is allowed");
       Input (TIU, (6, 0));
@@ -6564,6 +6592,8 @@ procedure EVC_Test is
       Stop_And_Ack (True, "roll away, neutral");
 
       --  unauthorised direction: an MA ahead, the train moves backwards
+      Runaway_Started := 0;
+      Runaway_Ended := 0;
       S := Base_Snapshot;
       Give_MA (S, 5_000);
       Place (S, 100_000, 0);
@@ -6572,6 +6602,9 @@ procedure EVC_Test is
       Check (Cmd.EB and then Cmd.Reasons (BC.Direction)
              and then not Cmd.Reasons (BC.Roll_Away),
              "direction: a movement against the MA beyond 2 m brakes");
+      Check (Runaway_Started = 1,
+             "direction: 3.14.3.4, 'Runaway movement' while the brake is "
+             & "commanded");
       --  the acknowledgement before standstill does nothing
       Input (DMI, Ack);
       Roll (Integer_64 (Sup.Train.Est_Front), 1, True);
@@ -10791,6 +10824,45 @@ procedure EVC_Test is
              & "(4.6.3 [25]), no acknowledgement (5.10.4.1 table)");
    end Scenario_E4_Level_Transition_0;
 
+   --  5.10.4.1.3: a new announcement to the level of one the driver
+   --  acknowledged keeps the acknowledgement only when its area is
+   --  entered upon the receipt; an area ahead asks again (found by
+   --  SUBSET-076 5100400_09)
+   procedure Scenario_E4_Level_Ack_Again is
+      Asked_Again : Boolean := False;
+   begin
+      Mission (L1_Code);
+      Group_With_MA (10, 100, (900, 400));
+      Add_Group (Group (20, 300));
+      Carry (2, 0, Order_41 ((1 => Lv_0), 600, Ack_M => 300));
+      Add_Group (Group (30, 650));
+      Carry (3, 0, Order_41 ((1 => Lv_0), 250, Ack_M => 150));
+      Add_Group (Group (40, 800));
+      Carry (4, 0, Order_41 ((1 => Lv_0), 100, Ack_M => 150));
+      Run_X (61_000);
+      Check (ML (5) = 1,
+             "level: the acknowledgement asked in the area at 600 m "
+             & "(5.10.4.1 a)");
+      Send (Ack_Of (0));
+      Run_X (70_000);
+      Check (ML (5) = 0,
+             "level: acknowledged; the new announcement at 650 m to the "
+             & "same level, its area at 750 m, asks nothing yet");
+      while Train_Cm < 79_000 loop
+         Step_X (500);
+         Asked_Again := Asked_Again or else ML (5) = 1;
+      end loop;
+      Check (Asked_Again,
+             "level: its area entered after the receipt asks the driver "
+             & "again (5.10.4.1.3 applies only to an area entered upon the "
+             & "receipt)");
+      Send (Ack_Of (0));
+      Run_X (85_000);
+      Check (ML (5) = 0 and then ML (2) = L1_Code,
+             "level: the announcement at 800 m, its area already entered, "
+             & "asks nothing again (5.10.4.1.3)");
+   end Scenario_E4_Level_Ack_Again;
+
    --  5.10.3.14: the conditional order; 4.6.3 [39]: level 1 without an
    --  MA trips; 5.10.2.4, 5.10.2.7: the level selected from the table
    procedure Scenario_E4_Level_Orders is
@@ -11130,6 +11202,7 @@ begin
    Scenario_E4_SoM_Other_Levels;
    Scenario_E4_SR_Distance;
    Scenario_E4_Level_Transition_0;
+   Scenario_E4_Level_Ack_Again;
    Scenario_E4_Level_Orders;
    Scenario_E4_Acceptance;
    Scenario_E4_SL_NL_IS;

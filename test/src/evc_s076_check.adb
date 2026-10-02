@@ -122,6 +122,13 @@ procedure EVC_S076_Check is
    Cur_Path : String (1 .. 300) := (others => ' ');
    Cur_Len  : Natural := 0;
 
+   --  The sequence is one of the envelopes up to 2.1 or 2.2 (its name
+   --  ends in _SV21 or _SV22): the on-board under test supports at most
+   --  that system version, and with an RBC of system version 2.1 to 2.3
+   --  the layout of 6.5.2.3.3 (M_MODE of 4 bits, 6.5.2.3.2.4) applies
+   --  also where the RBC says 2.2 (chapter 6, E7)
+   Envelope_2 : Boolean := False;
+
    procedure Set_Path (S : String) is
       N : constant Natural := Natural'Min (S'Length, Cur_Path'Length);
    begin
@@ -131,6 +138,8 @@ procedure EVC_S076_Check is
          Cur_Path (I) := ' ';
       end loop;
       Version_Count := 0;
+      Envelope_2 := Ada.Strings.Fixed.Index (S, "_SV21") > 0
+                    or else Ada.Strings.Fixed.Index (S, "_SV22") > 0;
    end Set_Path;
 
    procedure Fail (Line_No : Natural; Msg : String) is
@@ -181,6 +190,8 @@ procedure EVC_S076_Check is
       (Sequence => Pad ("Subset-076-6-3_9990200_06_v400_SV30", 36), Step => 57,
        Reason   => Pad ("packet 0 with a 4 bit M_MODE and L_PACKET 114 under 3.0")),
       (Sequence => Pad ("Subset-076-6-3_4080433_01_v400_SV30", 36), Step => 287,
+       Reason   => Pad ("packet 0 with a 4 bit M_MODE and L_PACKET 114 under 3.0")),
+      (Sequence => Pad ("Subset-076-6-3_5180200_03_v400_SV30", 36), Step => 60,
        Reason   => Pad ("packet 0 with a 4 bit M_MODE and L_PACKET 114 under 3.0")));
 
    --  The reason of the known difference at Step of the current file,
@@ -356,7 +367,8 @@ procedure EVC_S076_Check is
                              "var " & Var_Name (I) & ":" & Len'Image
                              & " bits, a known difference of SUBSET-076: "
                              & Known_Reason (Blk_Step));
-                  elsif Version_At (Blk_Step) < Version_2_2 then
+                  elsif Version_At (Blk_Step) < Version_2_2 or else Envelope_2
+                  then
                      Reject (Vars (I).Line,
                              "var " & Var_Name (I) & ":" & Len'Image
                              & " bits, the layout of system version code"

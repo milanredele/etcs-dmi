@@ -4,8 +4,10 @@
 # catalogue checks and the coverage matrix check, the ERTMSFormalSpecs
 # frames (test/efs/, optional: both skip when the folder or the EFS
 # checkout is absent) and the SUBSET-076 test sequences (also optional:
-# evc_s076_check skips when the sibling checkout, ../etcs-subset076 or
-# $S076_CHECKOUT, is absent). The SPARK proof (evc/prove.sh) and the
+# evc_s076_check, the codec, and evc_s076_run, the sequences replayed
+# against the on-board and compared with test/s076/baseline.csv, skip
+# the corpus when the sibling checkout, ../etcs-subset076 or
+# $S076_CHECKOUT, is absent; the runner's own fixture runs always). The SPARK proof (evc/prove.sh) and the
 # cross build (ports/tms570/build.sh) are separate, they take long.
 #
 #   test/check.sh            # build and check
@@ -63,4 +65,5 @@ check python3 test/tools/efs_frames.py --check
 check python3 test/tools/golden_review.py --check-tool
 check ./obj/evc_efs_test
 check ./obj/evc_s076_check
+check ./obj/evc_s076_run
 echo "check.sh: ok"

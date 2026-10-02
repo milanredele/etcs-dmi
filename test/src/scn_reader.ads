@@ -85,7 +85,7 @@ package Scn_Reader is
    ------------------------------------------------------------------
 
    Max_Path  : constant := 300;
-   Max_Files : constant := 1024;
+   Max_Files : constant := 4096;
 
    type Path_T is record
       S : String (1 .. Max_Path) := (others => ' ');
