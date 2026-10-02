@@ -1196,6 +1196,109 @@ is
       Current_Mode := Best;
    end Run_Mode_Machine;
 
+   --  7a. 4.10: the stored information deleted on entering the mode To,
+   --  each with the modes of its row (the track description, the MA, the
+   --  mode profile and the signalling related speed restriction, the
+   --  track conditions, the linking, the geographical position, the
+   --  adhesion factor from the driver); the reference and the confidence
+   --  interval of the position stay
+   procedure Delete_On_Mode_Entry (To : Mode_T)
+     with Global => (In_Out   => (EVC_Track_Description.State,
+                                  EVC_Movement_Authority.State,
+                                  EVC_Track_Conditions.State,
+                                  EVC_Position.State,
+                                  EVC_Stored_Information.State),
+                     Proof_In => EVC_Odometry.State),
+          Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Orientation
+                             = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+   begin
+      EVC_Track_Description.Delete
+        ((Track       => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL
+                             | M_NL | M_UN | M_TR | M_SN | M_RV,
+          PBD         => To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR
+                             | M_SL | M_NL | M_UN | M_TR | M_SN | M_RV,
+          Suitability => To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR
+                             | M_SL | M_NL | M_UN | M_TR | M_SN | M_RV,
+          TSR         => To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL
+                             | M_SN | M_RV,
+          Adhesion    => To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL
+                             | M_SN));
+      --  the MA, the mode profile, the signalling related speed
+      --  restriction
+      if To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR | M_SL | M_NL
+             | M_UN | M_TR | M_SN | M_RV
+      then
+         EVC_Movement_Authority.Delete_MA;
+      end if;
+      EVC_Track_Conditions.Reset
+        (Rest   => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_UN
+                       | M_SN | M_RV,
+         Horn   => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL
+                       | M_UN | M_TR | M_PT | M_SN | M_RV,
+         BMM    => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_RV);
+      if To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL | M_UN
+             | M_TR | M_SN | M_RV
+      then
+         EVC_Position.Delete_Linking;
+      end if;
+      if To in M_NP | M_PS | M_SH | M_SL | M_SN | M_RV then
+         EVC_Position.Delete_Geo;
+      end if;
+      --  the adhesion factor from the driver
+      if To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL then
+         EVC_Stored_Information.Set_Driver_Slippery (False);
+      end if;
+      --  (the train position: "D" in SL when invalid, and the deletions
+      --  of 5.4.3.2 after E10, E12, E30, E31, E32 when still invalid: the
+      --  position of this on-board is never "invalid", nothing is kept
+      --  over No Power)
+   end Delete_On_Mode_Entry;
+
+   --  7b. 4.12: the brake command reasons revoked on entering the mode To
+   --  from From: the speed and distance monitoring, the roll away, the
+   --  unauthorised direction movement and the standstill protections
+   --  (3.14.2, 3.14.3)
+   procedure Revoke_Brake_Reasons (From, To : Mode_T)
+     with Global => (In_Out => (Brake_State, SDM_State))
+   is
+   begin
+      --  4.12: Speed & Distance monitoring revoked in NP, SB, TR (to be
+      --  re-evaluated in the others: the monitoring runs again on the
+      --  data of the new mode)
+      if To in M_NP | M_SB | M_TR then
+         SDM_State.TCO := False;
+         SDM_State.SB := False;
+         SDM_State.EB := False;
+         SDM_State.EB_For_SB := False;
+      end if;
+      --  4.12: Roll Away Protection revoked in NP, SB, TR, SN; the
+      --  Unauthorised Direction Movement Protection in NP, SB, SH, UN, TR,
+      --  SN and, from PT, in FS, LS, SR, OS ([1]); the Standstill
+      --  Supervision in NP, SH, SM, FS, LS, SR, OS, SL, UN, TR, SN; in IS
+      --  the on-board is isolated from the brakes (4.4.3.1.1)
+      if To in M_NP | M_SB | M_TR | M_SN | M_IS then
+         Brake_State.Roll_Away := (others => <>);
+      end if;
+      if To in M_NP | M_SB | M_SH | M_UN | M_TR | M_SN | M_IS
+        or else (From = M_PT and then To in M_FS | M_LS | M_SR | M_OS)
+      then
+         Brake_State.Direction := (others => <>);
+      end if;
+      if To in M_NP | M_SH | M_SM | M_FS | M_LS | M_SR | M_OS | M_SL
+             | M_UN | M_TR | M_SN | M_IS
+      then
+         Brake_State.Standstill := (others => <>);
+      end if;
+   end Revoke_Brake_Reasons;
+
    --  7. What entering the mode To from From means (phase E4): the data
    --  of 4.10 (the stores, the position, the level, the mission, the
    --  information of the procedures and the text messages), the brake
@@ -1249,76 +1352,8 @@ is
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => NV.V_NVSTFF,
           D_NVSTFF    => NV.D_NVSTFF));
-
-      --  4.10: the stored information, each with the modes of its row
-      EVC_Track_Description.Delete
-        ((Track       => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL
-                             | M_NL | M_UN | M_TR | M_SN | M_RV,
-          PBD         => To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR
-                             | M_SL | M_NL | M_UN | M_TR | M_SN | M_RV,
-          Suitability => To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR
-                             | M_SL | M_NL | M_UN | M_TR | M_SN | M_RV,
-          TSR         => To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL
-                             | M_SN | M_RV,
-          Adhesion    => To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL
-                             | M_SN));
-      --  the MA, the mode profile, the signalling related speed
-      --  restriction
-      if To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR | M_SL | M_NL
-             | M_UN | M_TR | M_SN | M_RV
-      then
-         EVC_Movement_Authority.Delete_MA;
-      end if;
-      EVC_Track_Conditions.Reset
-        (Rest   => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_UN
-                       | M_SN | M_RV,
-         Horn   => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL
-                       | M_UN | M_TR | M_PT | M_SN | M_RV,
-         BMM    => To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_RV);
-      if To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL | M_UN
-             | M_TR | M_SN | M_RV
-      then
-         EVC_Position.Delete_Linking;
-      end if;
-      if To in M_NP | M_PS | M_SH | M_SL | M_SN | M_RV then
-         EVC_Position.Delete_Geo;
-      end if;
-      --  the adhesion factor from the driver
-      if To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL then
-         EVC_Stored_Information.Set_Driver_Slippery (False);
-      end if;
-      --  (the train position: "D" in SL when invalid, and the deletions
-      --  of 5.4.3.2 after E10, E12, E30, E31, E32 when still invalid: the
-      --  position of this on-board is never "invalid", nothing is kept
-      --  over No Power)
-
-      --  4.12: Speed & Distance monitoring revoked in NP, SB, TR (to be
-      --  re-evaluated in the others: the monitoring runs again on the
-      --  data of the new mode)
-      if To in M_NP | M_SB | M_TR then
-         SDM_State.TCO := False;
-         SDM_State.SB := False;
-         SDM_State.EB := False;
-         SDM_State.EB_For_SB := False;
-      end if;
-      --  4.12: Roll Away Protection revoked in NP, SB, TR, SN; the
-      --  Unauthorised Direction Movement Protection in NP, SB, SH, UN, TR,
-      --  SN and, from PT, in FS, LS, SR, OS ([1]); the Standstill
-      --  Supervision in NP, SH, SM, FS, LS, SR, OS, SL, UN, TR, SN; in IS
-      --  the on-board is isolated from the brakes (4.4.3.1.1)
-      if To in M_NP | M_SB | M_TR | M_SN | M_IS then
-         Brake_State.Roll_Away := (others => <>);
-      end if;
-      if To in M_NP | M_SB | M_SH | M_UN | M_TR | M_SN | M_IS
-        or else (From = M_PT and then To in M_FS | M_LS | M_SR | M_OS)
-      then
-         Brake_State.Direction := (others => <>);
-      end if;
-      if To in M_NP | M_SH | M_SM | M_FS | M_LS | M_SR | M_OS | M_SL
-             | M_UN | M_TR | M_SN | M_IS
-      then
-         Brake_State.Standstill := (others => <>);
-      end if;
+      Delete_On_Mode_Entry (To);
+      Revoke_Brake_Reasons (From, To);
    end Enter_Mode;
 
    --  7b. After the mode machine: the brake demand of the procedures in
