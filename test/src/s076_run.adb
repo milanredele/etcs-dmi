@@ -927,6 +927,25 @@ package body S076_Run is
       return 0;
    end Point_Offset;
 
+   --  The output steps of the input's block (up to the next input)
+   --  expect the emergency brake (EB) or the service brake commanded
+   function Brake_Expected (EB : Boolean) return Boolean is
+   begin
+      for I in Cur + 1 .. Seq.Step_Count loop
+         exit when Seq.Steps (I).IO = Input;
+         declare
+            L : constant String := Image (Seq.Steps (I).Line);
+         begin
+            if Has (L, (if EB then "TIU emergency-brake commanded"
+                        else "TIU service-brake commanded"))
+            then
+               return True;
+            end if;
+         end;
+      end loop;
+      return False;
+   end Brake_Expected;
+
    function ODO_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
    begin
@@ -1033,6 +1052,12 @@ package body S076_Run is
                   Kmh := S.V_Perm + 7;
                elsif E'Length > 8 and then E (E'First + 8) = '>' then
                   Kmh := S.V_Perm + 15;
+               elsif Brake_Expected (EB => True) then
+                  --  "above the limit" where the steps that follow expect
+                  --  a brake: above the supervision limit that commands it
+                  Kmh := S.V_SBI + 8;
+               elsif Brake_Expected (EB => False) then
+                  Kmh := S.V_SBI + 1;
                else
                   Kmh := S.V_Perm + 1;
                end if;
