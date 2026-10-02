@@ -1,0 +1,111 @@
+# The triage of the failure signatures of obj/evc_s076_run (see the
+# header of test/src/s076_main.adb): match,category,note. A match is a
+# signature id (S + 8 hex digits) or ~text (a part of the signature);
+# the first line that matches gives the triage, so the specific lines
+# come before the families at the end. Categories: onboard (a defect or
+# gap of this on-board still open), E5, E6, E7 (a later phase), curves
+# (the supervision limits against the ERA tool's), s076 (SUBSET-076 or
+# its extraction), model (the runner's model of the train, the driver,
+# the track), dmi (our DMI).
+#
+# on-board gaps still open
+Sbc7dc0b2,onboard,4.11.1.1: the level (and the train position) kept over No Power and made valid by the cold movement detection; this on-board keeps nothing over NP (E4 decision)
+Sc6b7c1bb,onboard,4.11.1.1: the level kept over No Power (see Sbc7dc0b2)
+Sdbd54349,onboard,4.11.1.1: the level kept over No Power (see Sbc7dc0b2)
+S3eba5bcc,onboard,4.11.1.1: the stored level shown after the power-up (see Sbc7dc0b2)
+S40db9a42,onboard,3.12.2.3: route suitability not compared with the Train Data (matrix: deferred)
+S3b91603a,onboard,3.12.2.3: route suitability not compared with the Train Data (matrix: deferred)
+Scb539e7a,onboard,4.4.19.1.4: the LSSMA display (packets 180 and 181) is not implemented (matrix: todo)
+S6b9f37cf,onboard,4.4.19.1.4: the LSSMA display is not implemented (matrix: todo)
+S2f278aca,onboard,4.8.5: no transition buffer: an MA in the same message as a level order at D_LEVELTR 0 is filtered in the old level and the switch to level 1 trips ([39])
+Sa9693d77,onboard,4.8.5: no transition buffer (see S2f278aca)
+Sdf2f3388,onboard,4.8.5: no transition buffer (see S2f278aca)
+S1531c721,E5,3.8.5.2.2: the repositioning information (packet 16) does not update the MA section (matrix: E5 todo); the train trips at the old EOA
+S1621d3a3,onboard,JRU 52 (odometer accuracy) expected at the first interval after SH/UN/...: the accuracy monitoring of 3.6.8 is not restarted on leaving those modes
+S56315725,onboard,3.15.4.8: "RV distance exceeded" not shown at the reversing distance
+S27b17752,onboard,3.6.8.5: "Odometer impaired" not shown
+Sa06b325b,onboard,5.22: the BMM inhibition symbol (MSG_STATUS bmm) not set after the driver's inhibition
+Sf2942686,E7,an infill group (packet 136) with a level order: the location reference of infill (3.9, E7) is not applied, the order is taken at the infill group
+# later phases
+S5436c26d,E6,3.16.2.7.1.1 (two linked groups missed) and 3.16.2.4 (message consistency): balise consistency is phase E6 (matrix: todo)
+Saf042fa6,E6,mostly 3.16.2.4 / 3.16.2.7 (balise consistency, E6); 5090200_02: OS entered above the OS speed by the chart (model)
+S6eaf2ed7,E6,telegrams with errors (M_DUP 11, wrong counters) of the balise consistency tests (3.16, E6): our JRU records only accepted telegrams
+S79ea000a,E6,3.16.2.4.9: "Trackside malfunction" for default balise information (matrix: E6 todo)
+S711f7ea0,E6,3.16.2.4.4.3, 3.16.2.5.3: "Balise read error" of the message consistency reactions (E6)
+S6c605c52,E6,JRU 12 for a balise missed inside a group (3.16.2.4, E6)
+Sd56a8154,E6,linking: a missed group with "no reaction" still brakes or a consistency case of 3.16 (E6)
+S63b7a729,E5,JRU 9 (message from the RBC): level 2 only (the comment says so)
+S9519b1f5,E5,an immediate order to level 2 is taken without the radio (the level is not available: 5.10, E5)
+S5cebf0dd,E5,an order to level 2 (E5)
+Sa03cccdc,E5,an order to level 2 (E5)
+S5a550185,NTC,an announcement of level NTC (STM out of scope)
+Sa6df275b,NTC,an announcement of level NTC (STM out of scope)
+S1b7d1437,NTC,the level NTC announcement (STM out of scope)
+# SUBSET-076
+S122decbf,s076,override expected while the train runs: V_NVALLOWOVTRP is 0 by default (A.3.2) and no packet 3 raises it, so override is at standstill only; 5080400_11: in SB DMI Table 34 needs level 2
+S03d81c7b,s076,override button expected disabled at a speed the sequence does not give (V_NVALLOWOVTRP of the packet, see S122decbf)
+S1ebd7f2d,s076,FS expected at a group of which a balise is missing or carries errors in the tables (3160200_14: consistency test, E6)
+Sf1cbf469,s076,the override symbol expected removed where the train passes the SR distance of before the override: the override restarts the SR distance (3.6.7.5, 4.4.11.1.6.5) and ends after D_NVOVTRP (300 m) or T_NVOVTRP (60 s) of packet 3 (5.8.4.1)
+# the runner's model
+S86d6c102,model,the generation of a change of allowed current consumption starts at point C, which the sequence says is not real (implementation dependent: our 10 s at the current speed, 5.18.2.2)
+Seb6766c6,model,the train runs on per the speed chart into the next EOA or trip location before the step's group (chart and step distances)
+S7b03e0c6,model,a group outside the SH list read while the train is beyond the step's distance (chart)
+Safc57294,model,3.6.8: the runner's odometer degradation reaches the safety threshold at another distance than the sequence's (implementation dependent step)
+S6fbcb091,model,a mode profile at a further location taken at once: the train runs past the start of the profile before the step (chart)
+S2976e4ba,model,the speed of "start moving" after a stop (chart): the protection is not reached
+Se041b7f8,model,the train's speed after an EB (the chart keeps it running)
+S6cedaecc,model,the mode profile's acknowledgement removed by the train passing its location (chart and distances)
+S5ea84fdd,model,see S6cedaecc
+S651d8d0e,model,see S6cedaecc
+S749b2957,model,a level announcement at a further location already passed when the step comes (chart)
+S6f9a81c3,model,the emergency brake of a speed above the EBI from the speed chart (a drawing): the sequence expects the service brake only
+S7e87699f,model,the speed of the chart against the supervision limits (see S6f9a81c3)
+S24b29e6c,model,the trip at V_MAIN 0 recorded before the window of the step (the brake change of the train's JRU event 20 is earlier)
+S44d454a8,curves,see the supervision family
+S8938132d,model,reversing area left before the step (chart distances)
+S1be077b7,model,the reversing area not reached at the standstill of the step (chart distances)
+S611ee114,model,Post Trip expected after the acknowledgement: the train still moves (chart)
+Sc1ccfe8c,model,the release acknowledgement asked once the train is at standstill: the runner's train reaches it later (chart)
+S69f1f87e,model,the warning of over-speeding removed: the chart's speed stays above
+S76bafa1f,model,the indication marker: the train's speed and position against the chart
+S26354625,model,the SIM fault in RV: the on-board in RV at the step (chart)
+S82aed3fc,model,mode and level of the step: the train runs past a mode profile (chart)
+S472076d0,model,NL left on "non-leading not permitted": the sequence goes to SB by the driver's desk (TIU) that the runner does not model
+S862b2e14,s076,M_MODE=21 is not a mode of SUBSET-026 (7.5.1.72 ends at 17)
+S828969ca,model,the end of the LS area passed (chart)
+S4c072841,model,a new OS mode profile while in OS: the symbol recorded before the window
+Sfcb09815,model,see S4c072841
+Sa429fd0f,model,a level announcement location passed before the step (chart)
+S5ab10d16,model,JRU records of the group read in the window (events 2, 10) while the sequence expects none for a table of priority without change
+Sc7afe42a,model,the level after a cab change: the stored level of 4.11 (see Sbc7dc0b2)
+S3f6059ba,onboard,5.17: the level status after Train Data changed by another source: the level is still shown (the sequence expects it invalid)
+Sfaaa30ed,onboard,5.4.3.2 D2: the driver re-enters the level (the level kept over NP, 4.11)
+S12fb6c82,dmi,after the System version window the DMI shows the Settings window, the sequence the Driver ID window (11.7.2 S1)
+S36505082,dmi,Shunting from the Driver ID window of the Start Up (11.7.2): the Main window cannot be reached
+S79fc4827,dmi,the Level window from the Driver ID window of the Start Up: the Main window cannot be reached
+S256875a4,dmi,the speed and distance information in SR / OS / SH after the driver's request (DMI 8.2.2.4, Table 10) or before it
+S4a8f271f,dmi,the Level button disabled (DMI Table 33 #5) in the state of the step
+S9d052087,dmi,the Train data button disabled (DMI Table 33 #3) in the state of the step
+S607331e5,dmi,the Start button disabled (DMI Table 33 #1) in the state of the step
+S560e94da,dmi,the EOA button disabled (DMI Table 34) at the speed of the step (see S122decbf)
+S362493f1,model,the level selected where the sequence's columns keep N/A
+S26bf650c,s076,power off in IS: the sequence keeps IS after the power off, the on-board is in No Power
+S363c8035,model,the Driver ID window of the Start Up: the sequence starts without the cab activation the start of mission needs
+S9928e3a7,model,see S363c8035
+Sac5a37a6,E5,a mode profile with an MA in level 2 (SV21 envelope)
+S81316df3,onboard,JRU: the selection of Shunting is not recorded (M_DRIVERACTIONS 1 maps to the acknowledgement of SH)
+S31584e9f,onboard,JRU: the selection of override (M_DRIVERACTIONS 14) recorded only when override starts
+Saf17a2ce,onboard,JRU: the acknowledgement of OS (M_DRIVERACTIONS 0) not recorded when the request was not for OS
+Sc1c4236f,onboard,JRU: a level selected during the start of mission that does not switch (the level already valid) is not recorded
+S2dde4dd3,onboard,JRU: the driver ID recorded once (event 41 kind 1) where the sequence repeats the header field
+# families (after the specific lines)
+~[workbook train],curves,a braking curve sequence (the ERA workbook's train): our supervision limits are placed metres to tens of metres from the ERA tool's for the train of the workbook (freight trains of 750 m, Freight in P), and the chart speed is a drawing; open point of E3 (needs the ERA tool's numbers); pre-programmed braking models are E6
+~JRU supervision,curves,the supervision status at a location of the sequence: our limits against the ERA tool's (see the workbook family) and the chart speed
+~JRU3 state,curves,the emergency brake command at the location of the sequence (see the supervision family)
+~JRU4 state,curves,the service brake command at the location of the sequence (see the supervision family)
+~JRU43 state,curves,the traction cut-off at the location of the sequence (see the supervision family)
+~TIU service-brake,curves,the service brake at the location of the sequence (see the supervision family)
+~TIU emergency-brake,curves,the emergency brake at the location of the sequence (see the supervision family)
+~TIU traction-cutoff,curves,the traction cut-off at the location of the sequence (see the supervision family)
+~track condition,model,a track condition symbol at a location the train reaches with the chart's speed and the runner's confidence interval
+~speed and distance information,dmi,the speed and distance information the DMI shows in the mode of the step (DMI Table 10, 8.2.2.4)
