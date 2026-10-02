@@ -272,6 +272,61 @@ is
               T_Traction_Cut_Off => C.T_TCO);
    end Terms_Of;
 
+   --  What Evaluate guarantees of the limits it gives
+   function Valid_Limits (L : Limits_T) return Boolean is
+     (Ordered (L) and then L.I in Location_T and then L.Curve in Location_T)
+   with Ghost;
+
+   --  3.13.9.3.6.5: with the service brake feedback the Indication limit
+   --  is calculated with T_bs1 = T_bs2 = T_bs (taken no later than P):
+   --  for L, the EBD based limits of target T, and, for an EOA target,
+   --  for E, the limits of its EOA (Curve and GUI_Curve: those of L)
+   procedure Feedback_Indication (Work       : Work_T;
+                                  C          : Ctx_T;
+                                  T          : Target_T;
+                                  V          : Speed_T;
+                                  In_Advance : Boolean;
+                                  Times      : Times4_T;
+                                  Red_L      : Reduced_T;
+                                  Red_E      : Reduced_T;
+                                  Curve      : Curve_T;
+                                  GUI_Curve  : Curve_T;
+                                  L          : in out Limits_T;
+                                  E          : in out Limits_T)
+     with Pre  => C.Stop > -Max_Cm
+                  and then Curve.Floor_W <= Curve.Anchor_W
+                  and then GUI_Curve.Floor_W <= GUI_Curve.Anchor_W
+                  and then Valid_Limits (L) and then Valid_Limits (E),
+          Post => Valid_Limits (L) and then Valid_Limits (E)
+   is
+      Terms_I : constant Terms_T :=
+        Terms_Of (C, V, Times, Red_L, True, In_Advance);
+      Terms_IE : constant Terms_T :=
+        Terms_Of (C, V, Times, Red_E, True, In_Advance);
+      I_L : constant Limits_T :=
+        EBD_Limits (Work.Model, Work.Profile, Curve, T.Speed,
+                    T.Location, C.GUI, GUI_Curve, Terms_I, C.X_Max,
+                    C.Stop);
+   begin
+      L.I := Min (I_L.I, L.P);
+      if T.Kind = EOA_Target then
+         declare
+            I_E : constant Limits_T := EOA_Limits
+              (Work.Model, Work.Profile,
+               (Kind => SBD, Anchor => T.EOA, Anchor_W => 0,
+                Floor_W => 0, TSR => T.TSR),
+               C.GUI,
+               (Kind => GUI, Anchor => T.EOA, Anchor_W => 0,
+                Floor_W => 0, TSR => T.TSR),
+               Terms_IE, C.X_Est, C.Stop);
+         begin
+            E.I := Min (I_E.I, E.P);
+         end;
+      else
+         E := L;
+      end if;
+   end Feedback_Indication;
+
    function Evaluate (Work       : Work_T;
                       C          : Ctx_T;
                       T          : Target_T;
@@ -348,34 +403,8 @@ is
       --  limit is calculated with T_bs1 = T_bs2 = T_bs (taken no later
       --  than P)
       if C.Feedback and then C.SB_Avail then
-         declare
-            Terms_I : constant Terms_T :=
-              Terms_Of (C, V, Times, Red_L, True, In_Advance);
-            Terms_IE : constant Terms_T :=
-              Terms_Of (C, V, Times, Red_E, True, In_Advance);
-            I_L : constant Limits_T :=
-              EBD_Limits (Work.Model, Work.Profile, Curve, T.Speed,
-                          T.Location, C.GUI, GUI_Curve, Terms_I, C.X_Max,
-                          C.Stop);
-         begin
-            R.L.I := Min (I_L.I, R.L.P);
-            if T.Kind = EOA_Target then
-               declare
-                  I_E : constant Limits_T := EOA_Limits
-                    (Work.Model, Work.Profile,
-                     (Kind => SBD, Anchor => T.EOA, Anchor_W => 0,
-                      Floor_W => 0, TSR => T.TSR),
-                     C.GUI,
-                     (Kind => GUI, Anchor => T.EOA, Anchor_W => 0,
-                      Floor_W => 0, TSR => T.TSR),
-                     Terms_IE, C.X_Est, C.Stop);
-               begin
-                  R.E.I := Min (I_E.I, R.E.P);
-               end;
-            else
-               R.E := R.L;
-            end if;
-         end;
+         Feedback_Indication (Work, C, T, V, In_Advance, Times, Red_L,
+                              Red_E, Curve, GUI_Curve, R.L, R.E);
       end if;
       return R;
    end Evaluate;
@@ -949,7 +978,9 @@ is
    --  writes what its parameters say: the context of the cycle (Ctx_T),
    --  the work area and the state by reference, single components where
    --  a stage writes only a few. Their contracts carry what the stages
-   --  after them and the postcondition of Step need.
+   --  after them and the postcondition of Step need; a stage that has
+   --  nothing to carry has Global => null, a contract all the same, so
+   --  that gnatprove proves it alone instead of inlining it in Step.
    ---------------------------------------------------------------------
 
    subtype Target_Index_T is Positive range 1 .. Max_Targets;
@@ -1264,7 +1295,9 @@ is
 
    --  Table 16 [4], [5]: the signature of the list of targets, to see
    --  its updates
-   function Signature_Of (Work : Work_T) return Num is
+   function Signature_Of (Work : Work_T) return Num
+     with Global => null
+   is
       Signature : Num := 0;
    begin
       for K in 1 .. Work.Count loop
@@ -1417,6 +1450,7 @@ is
                             N_Concerned : in out Concerned_Count_T;
                             K           : Target_Index_T;
                             V_P0        : Speed_T)
+     with Global => null
    is
    begin
       if N_Concerned < Max_Concerned then
@@ -2151,6 +2185,7 @@ is
                                Perturbation   : out Boolean;
                                Perturbation_X : out Num;
                                MA_Request     : out Boolean)
+     with Global => null
    is
       Passed_E : Boolean := False;
       Passed_S : Boolean := False;
