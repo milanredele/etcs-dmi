@@ -86,6 +86,37 @@ on wasm32 and on a light runtime, and to be testable headless:
   margin of every run; it also lets one proof run at a time on the
   machine. The host build is `-O2` and the whole check runs its programs
   side by side: 150 s became 15 s.
+- **Size of subprograms** (2026-10-02): the largest one per cent of the
+  subprogram bodies were split, without any change of behaviour (every
+  test line, golden and sequence outcome identical). In the on-board a
+  part is a subprogram at package level with its own contract and is
+  headed by its clauses: a nested subprogram without a contract is
+  inlined by gnatprove and gains nothing. `EVC_SDM.Step` (876 code
+  lines) became the list of its stages, likewise `Build` and
+  `Take_Packet` of the stored information (394, 288), `Build` of the
+  braking model, `Produce_Outputs`, `Read_Ports` and `Enter_Mode` of the
+  core, `Holds` of the transition conditions, `Take_Packet` and
+  `Mode_Changed` of the procedures; nothing in those units is over 100
+  code lines. A unit proved from nothing: EVC_SDM 334 s -> 43 s, the
+  stored information 265 s -> 37 s, the braking model 95 s -> 18 s, the
+  core 264 s -> 79 s; the whole on-board 12 min -> 6 min (8803 checks).
+  A loop with static bounds and no invariant is unrolled by gnatprove,
+  one condition per iteration and branch: a loop invariant on four such
+  loops took the braking model from 1205 conditions to 464. New
+  subprograms stay under about 100 code lines; a loop over a table gets
+  an invariant. The two regression runners are split by subject
+  (`EVC_Test_<Subject>`, `DMI_Test_<Subject>`): a new scenario goes into
+  the package of its subject. Noticed while reading, to be checked
+  against their clauses (nothing changed): `Passed_Locations` keeps only
+  the last target's result for the EOA or LOA passed and for the MA
+  request (3.13.10.2.6 a, 3.13.11.8, .9), and 3.13.11.9 is tested on the
+  EBD only; `Build_Speed_Sources` tests the sense of an MA that may be
+  absent (3.11.6.2); the direction controller is decoded in two places;
+  the stack frames of `EVC_Core.Initialise` (57 KB) and of the
+  subprograms that copy the snapshot (11 to 17 KB each) are to be
+  reduced before the TMS570 port (E8); two checks of the test runners
+  verify nothing (`Without_ATO` in the ATO display scenario, `Grows` in
+  the feedback scenario).
 - **SPARK**: `SPARK_Mode (On)` on `evc/` from the first package. What leaves
   SPARK is stated per unit with the reason. The proof runs in the regular
   check (`gnatprove -P etcs_evc.gpr`), not as an afterthought.
