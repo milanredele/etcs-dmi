@@ -34,6 +34,7 @@ S79ea000a,E6,3.16.2.4.9: "Trackside malfunction" for default balise information 
 S711f7ea0,E6,3.16.2.4.4.3, 3.16.2.5.3: "Balise read error" of the message consistency reactions (E6)
 S6c605c52,E6,JRU 12 for a balise missed inside a group (3.16.2.4, E6)
 Sd56a8154,E6,linking: a missed group with "no reaction" still brakes or a consistency case of 3.16 (E6)
+S424295a6,E6,3.18.4.6: the adhesion factor selected by the driver (driver action 9) is not taken by the on-board yet (matrix: E6 todo)
 S63b7a729,E5,JRU 9 (message from the RBC): level 2 only (the comment says so)
 S9519b1f5,E5,an immediate order to level 2 is taken without the radio (the level is not available: 5.10, E5)
 S5cebf0dd,E5,an order to level 2 (E5)
@@ -71,6 +72,7 @@ S76bafa1f,model,the indication marker: the train's speed and position against th
 S26354625,model,the SIM fault in RV: the on-board in RV at the step (chart)
 S82aed3fc,model,mode and level of the step: the train runs past a mode profile (chart)
 S472076d0,model,NL left on "non-leading not permitted": the sequence goes to SB by the driver's desk (TIU) that the runner does not model
+S0e924843,s076,the input steps that select override (the case 5080300 inserted in the braking curve sequences) are missing from the sequence: only its outputs are listed
 S862b2e14,s076,M_MODE=21 is not a mode of SUBSET-026 (7.5.1.72 ends at 17)
 S828969ca,model,the end of the LS area passed (chart)
 S4c072841,model,a new OS mode profile while in OS: the symbol recorded before the window
