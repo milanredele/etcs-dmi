@@ -1128,7 +1128,7 @@ merged and made one on-board.
 - 4.4.18.1.6: in RV the SBI commands the emergency brake
   (`EVC_SDM.Inputs_T.EB_Instead_Of_SB`).
 
-Tests: `evc_test` 10705 checks, 0 failures, with six integration
+Tests: `evc_test` 10706 checks, 0 failures, with six integration
 scenarios (`Scenario_Integration_*` of `evc_test_procedures`, and a
 part of `Scenario_Reversing`) that need both halves, through the
 ports: the start of mission in level 1, SR, override with D_NVOVTRP and
@@ -1146,7 +1146,29 @@ passed in the unexpected direction now trips, [66]), position_orientation
 of mission, the start of mission engaged), profiles_track_conditions
 (the 175 records of 5.20); `EVC_DUMP` also writes bench_onboard.bin (its
 digest unchanged). `evc_fuzz` sends the procedures' actions and TIU input
-13: raised 0 (1 000 000 steps). `test/check.sh` green with the EFS and
+13: raised 0 (1 000 000 steps).
+
+The fuzzer had lost its stored information phase without saying so: the
+random data of its groups now trip the train (mostly [69], the SSP or
+the gradients starting ahead of the front end, and [12] at the EOA,
+which the fuzz train passes as it ignores the brakes), TR deletes the MA
+and 4.8.4 refuses the next one, so the cycles with an MA fell from 17 350
+of 45 849 (E3) to 956 of 44 658 at the default step count and to 0 of
+9 219 at check.sh's. The phase now enters FS by the hook or by the
+driver's start of mission, enters an MA mode again some cycles after
+the train left it (half of the time by the driver: the trip
+acknowledgement and 'Start' in PT, or the start of mission in SB; else
+the hook), visits TR, PT, SR, SH, OS, RV and UN on purpose every 50
+cycles, and gives the SSP and the gradients of its plausible groups from
+the group four times in five. With it: 16 227 of 47 645 cycles with an
+MA at the default step count, 2 847 of 8 603 at check.sh's, the cycles
+by mode in its summary line; it fails (and check.sh with it) below a
+floor of a tenth of the cycles with an MA or with a mode of the visits
+without a cycle, at 5000 steps or more (five runs of the phase at
+least; the lowest share over 30 seeds at 5000 steps was 19 %).
+`test/check.sh` no longer loses the exit status of a check behind
+`| tail -1` (it did for every program: a failing test let it say ok).
+`test/check.sh` green with the EFS and
 SUBSET-076 checkouts; the wasm smoke checks pass; the full proof 8543
 checks, 0 unproved; cross build 655 kB code, 21 kB data, 221 kB static
 state.

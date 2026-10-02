@@ -31,16 +31,36 @@ export PATH
 
 steps=${FUZZ_STEPS:-200000}
 
+# Run a check, show the last N lines of its output and stop with its
+# exit status when it fails: a plain "cmd | tail -1" takes the exit
+# status of tail and loses the check's (sh has no pipefail), so a failing
+# test would let check.sh say ok.
+check_tail() {
+   n=$1
+   shift
+   out=$("$@" 2>&1) && status=0 || status=$?
+   if [ "$status" -ne 0 ]; then
+      printf '%s\n' "$out" | tail -n 12
+      echo "check.sh: FAILED: $* (exit $status)" >&2
+      exit "$status"
+   fi
+   printf '%s\n' "$out" | tail -n "$n"
+}
+check() {
+   check_tail 1 "$@"
+}
+
 gprbuild -s -j0 -p -q -P etcsdmi.gpr
-./obj/dmi_test | tail -1
-./obj/dmi_fuzz | tail -1
-./obj/evc_test | tail -1
-./obj/evc_fuzz "$steps" | tail -1
-python3 evc/language/gen_language.py --check | tail -1
-python3 evc/language/check_catalogue.py | tail -1
-python3 doc/SRS/tools/trace_subset026.py --check | tail -1
-python3 test/tools/efs_frames.py --check | tail -1
-python3 test/tools/golden_review.py --check-tool | tail -1
-./obj/evc_efs_test | tail -1
-./obj/evc_s076_check | tail -1
+check ./obj/dmi_test
+check ./obj/dmi_fuzz
+check ./obj/evc_test
+# the stored information phase: its line and the cycles by mode
+check_tail 2 ./obj/evc_fuzz "$steps"
+check python3 evc/language/gen_language.py --check
+check python3 evc/language/check_catalogue.py
+check python3 doc/SRS/tools/trace_subset026.py --check
+check python3 test/tools/efs_frames.py --check
+check python3 test/tools/golden_review.py --check-tool
+check ./obj/evc_efs_test
+check ./obj/evc_s076_check
 echo "check.sh: ok"
