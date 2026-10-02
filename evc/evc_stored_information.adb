@@ -361,47 +361,32 @@ is
         Max_Front      => Train.Max_Front,
         Now_Ms         => Now_Ms));
 
-   procedure Take_Packet (K           : Order_Kind_T;
-                          J, P        : Positive;
-                          M           : Message_T;
-                          T           : Origin_Table_T;
-                          Train       : Train_Frame_T;
-                          MA_Accepted : in out Boolean;
-                          Ctx         : Mode_Context_T;
-                          Linked      : Boolean;
-                          Has_41      : Boolean;
-                          Now_Ms      : Unsigned_64)
-     with Global => (In_Out => (EVC_Track_Description.State,
-                                EVC_Movement_Authority.State,
-                                EVC_Track_Conditions.State,
-                                EVC_National_Values.State,
-                                EVC_Levels.State,
-                                Events, Event_N),
-                     Input  => (EVC_Position.State, EVC_Train_Data.State)),
-          Pre => P <= EVC_Position.Taken_Packet_Count (J)
+   --  The kinds of the packets of one store (Take_Packet)
+   subtype Level_Kind_T is Order_Kind_T
+     with Static_Predicate => Level_Kind_T in K41 | K46;
+   subtype Speed_Kind_T is Order_Kind_T
+     with Static_Predicate => Speed_Kind_T in K27 | K51 | K52 | K65 | K66
+                                            | K88;
+   subtype Description_Kind_T is Order_Kind_T
+     with Static_Predicate => Description_Kind_T in K21 | K141 | K70 | K71;
+   subtype Condition_Kind_T is Order_Kind_T
+     with Static_Predicate => Condition_Kind_T in K68 | K39 | K67 | K69
+                                                | K40;
+   subtype MA_Kind_T is Order_Kind_T
+     with Static_Predicate => MA_Kind_T in K12 | K80;
+
+   --  5.10: the level transition order (41) and the conditional level
+   --  transition order (46), to EVC_Levels
+   procedure Take_Level_Packet (K      : Level_Kind_T;
+                                R      : in out Reader_T;
+                                M      : Message_T;
+                                Ctx    : Mode_Context_T;
+                                Train  : Train_Frame_T;
+                                Now_Ms : Unsigned_64)
+     with Global => (In_Out => EVC_Levels.State)
    is
-      pragma Warnings
-        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
-         Reason => "the reader of one packet is not used after it");
-      R  : Reader_T;
       OK : Boolean;
-      A  : constant EVC_Acceptance.Context_T :=
-        Acceptance (Ctx, Linked, Has_41);
    begin
-      --  4.8: the first and the third filter (the signalling related
-      --  speed restriction of a packet 12 apart from its MA; the mode
-      --  profile with its MA)
-      if not EVC_Acceptance.Accepted (Info_Of (K), A)
-        and then not (K = K12
-                      and then EVC_Acceptance.Accepted
-                                 (EVC_Acceptance.Signalling_Speed, A))
-      then
-         if K /= K80 then
-            Record_Event (Info_Group, Change_Filtered, NID_Of (K));
-         end if;
-         return;
-      end if;
-      EVC_Position.Open_Taken_Packet (J, P, R);
       case K is
          when K41 =>
             declare
@@ -423,25 +408,48 @@ is
                     (X, Levels_Context (Ctx, Train, Now_Ms));
                end if;
             end;
-         when K3 =>
-            declare
-               X : ETCS_Track_Packets.P3.Packet_T;
-            begin
-               ETCS_Track_Packets.P3.Decode (R, X, OK);
-               --  3.18.2.3: now, or at D_VALIDNV ("estimated" item),
-               --  which needs the origin of the message
-               if OK and then X.Q_SCALE <= 2
-                 and then (X.D_VALIDNV = 32_767 or else M.Origin /= 0)
-               then
-                  EVC_National_Values.Receive
-                    (X,
-                     Immediate   => X.D_VALIDNV = 32_767,
-                     At_Location =>
-                       At_Offset (M, Scaled (Natural (X.D_VALIDNV),
-                                             Natural (X.Q_SCALE))));
-                  Record_Event (Info_National_Values, Change_Stored, M.Msg);
-               end if;
-            end;
+      end case;
+   end Take_Level_Packet;
+
+   --  3.18.2: the national values (3), to EVC_National_Values
+   procedure Take_National_Packet (R : in out Reader_T; M : Message_T)
+     with Global => (In_Out => (EVC_National_Values.State, Events, Event_N))
+   is
+      OK : Boolean;
+      X  : ETCS_Track_Packets.P3.Packet_T;
+   begin
+      ETCS_Track_Packets.P3.Decode (R, X, OK);
+      --  3.18.2.3: now, or at D_VALIDNV ("estimated" item),
+      --  which needs the origin of the message
+      if OK and then X.Q_SCALE <= 2
+        and then (X.D_VALIDNV = 32_767 or else M.Origin /= 0)
+      then
+         EVC_National_Values.Receive
+           (X,
+            Immediate   => X.D_VALIDNV = 32_767,
+            At_Location =>
+              At_Offset (M, Scaled (Natural (X.D_VALIDNV),
+                                    Natural (X.Q_SCALE))));
+         Record_Event (Info_National_Values, Change_Stored, M.Msg);
+      end if;
+   end Take_National_Packet;
+
+   --  The speed restrictions of the track description: the SSP (27,
+   --  3.11.3), the ASP (51, 3.11.4), the speed restrictions to ensure a
+   --  permitted braking distance (52, 3.11.11), the TSRs and their
+   --  revocation (65, 66, 3.11.5), the level crossings (88, 3.11.9,
+   --  3.12.5), to EVC_Track_Description
+   procedure Take_Speed_Packet (K : Speed_Kind_T;
+                                R : in out Reader_T;
+                                M : Message_T;
+                                T : Origin_Table_T)
+     with Global => (In_Out => (EVC_Track_Description.State,
+                                Events, Event_N),
+                     Input  => EVC_Train_Data.State)
+   is
+      OK : Boolean;
+   begin
+      case K is
          when K27 =>
             declare
                X : ETCS_Track_Packets.P27.Packet_T;
@@ -451,16 +459,6 @@ is
                   EVC_Track_Description.Take_SSP
                     (X, M, T, EVC_Train_Data.Categories);
                   Record_Event (Info_SSP, Change_Stored, M.Msg);
-               end if;
-            end;
-         when K21 =>
-            declare
-               X : ETCS_Track_Packets.P21.Packet_T;
-            begin
-               ETCS_Track_Packets.P21.Decode (R, X, OK);
-               if OK then
-                  EVC_Track_Description.Take_Gradients (X, M, T);
-                  Record_Event (Info_Gradients, Change_Stored, M.Msg);
                end if;
             end;
          when K51 =>
@@ -510,6 +508,44 @@ is
                   end if;
                end if;
             end;
+         when K88 =>
+            declare
+               X : ETCS_Track_Packets.P88.Packet_T;
+            begin
+               ETCS_Track_Packets.P88.Decode (R, X, OK);
+               if OK then
+                  EVC_Track_Description.Take_LX (X, M, T);
+                  Record_Event (Info_Level_Crossing, Change_Stored,
+                                Natural (X.NID_LX));
+               end if;
+            end;
+      end case;
+   end Take_Speed_Packet;
+
+   --  The rest of the track description: the gradients (21, 3.11.12),
+   --  the default gradient for TSR (141, 3.11.12.5), the route
+   --  suitability (70, 3.12.2), the adhesion (71, 3.18.4.6), to
+   --  EVC_Track_Description
+   procedure Take_Description_Packet (K : Description_Kind_T;
+                                      R : in out Reader_T;
+                                      M : Message_T;
+                                      T : Origin_Table_T)
+     with Global => (In_Out => (EVC_Track_Description.State,
+                                Events, Event_N))
+   is
+      OK : Boolean;
+   begin
+      case K is
+         when K21 =>
+            declare
+               X : ETCS_Track_Packets.P21.Packet_T;
+            begin
+               ETCS_Track_Packets.P21.Decode (R, X, OK);
+               if OK then
+                  EVC_Track_Description.Take_Gradients (X, M, T);
+                  Record_Event (Info_Gradients, Change_Stored, M.Msg);
+               end if;
+            end;
          when K141 =>
             declare
                X : ETCS_Track_Packets.P141.Packet_T;
@@ -520,6 +556,44 @@ is
                   Record_Event (Info_Default_Gradient, Change_Stored, M.Msg);
                end if;
             end;
+         when K70 =>
+            declare
+               X : ETCS_Track_Packets.P70.Packet_T;
+            begin
+               ETCS_Track_Packets.P70.Decode (R, X, OK);
+               if OK then
+                  EVC_Track_Description.Take_Suitability (X, M, T);
+                  Record_Event (Info_Route_Suitability, Change_Stored,
+                                M.Msg);
+               end if;
+            end;
+         when K71 =>
+            declare
+               X : ETCS_Track_Packets.P71.Packet_T;
+            begin
+               ETCS_Track_Packets.P71.Decode (R, X, OK);
+               if OK then
+                  EVC_Track_Description.Take_Adhesion (X, M, T);
+                  Record_Event (Info_Adhesion, Change_Stored, M.Msg);
+               end if;
+            end;
+      end case;
+   end Take_Description_Packet;
+
+   --  3.12.1, 5.18, 5.20: the track conditions (68), the change of
+   --  traction system (39), the big metal masses (67), the station
+   --  platforms (69), the allowed current consumption (40), to
+   --  EVC_Track_Conditions
+   procedure Take_Condition_Packet (K : Condition_Kind_T;
+                                    R : in out Reader_T;
+                                    M : Message_T;
+                                    T : Origin_Table_T)
+     with Global => (In_Out => (EVC_Track_Conditions.State,
+                                Events, Event_N))
+   is
+      OK : Boolean;
+   begin
+      case K is
          when K68 =>
             declare
                X : ETCS_Track_Packets.P68.Packet_T;
@@ -570,38 +644,27 @@ is
                   Record_Event (Info_Current, Change_Stored, M.Msg);
                end if;
             end;
-         when K70 =>
-            declare
-               X : ETCS_Track_Packets.P70.Packet_T;
-            begin
-               ETCS_Track_Packets.P70.Decode (R, X, OK);
-               if OK then
-                  EVC_Track_Description.Take_Suitability (X, M, T);
-                  Record_Event (Info_Route_Suitability, Change_Stored,
-                                M.Msg);
-               end if;
-            end;
-         when K71 =>
-            declare
-               X : ETCS_Track_Packets.P71.Packet_T;
-            begin
-               ETCS_Track_Packets.P71.Decode (R, X, OK);
-               if OK then
-                  EVC_Track_Description.Take_Adhesion (X, M, T);
-                  Record_Event (Info_Adhesion, Change_Stored, M.Msg);
-               end if;
-            end;
-         when K88 =>
-            declare
-               X : ETCS_Track_Packets.P88.Packet_T;
-            begin
-               ETCS_Track_Packets.P88.Decode (R, X, OK);
-               if OK then
-                  EVC_Track_Description.Take_LX (X, M, T);
-                  Record_Event (Info_Level_Crossing, Change_Stored,
-                                Natural (X.NID_LX));
-               end if;
-            end;
+      end case;
+   end Take_Condition_Packet;
+
+   --  3.8, 3.11.6, 3.12.4: the MA with its signalling related speed
+   --  restriction (12) and the mode profile of an MA accepted (80), to
+   --  EVC_Movement_Authority; the deletions an accepted MA asks (Apply)
+   procedure Take_MA_Packet (K           : MA_Kind_T;
+                             R           : in out Reader_T;
+                             M           : Message_T;
+                             T           : Origin_Table_T;
+                             Train       : Train_Frame_T;
+                             A           : EVC_Acceptance.Context_T;
+                             MA_Accepted : in out Boolean)
+     with Global => (In_Out => (EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                Events, Event_N))
+   is
+      OK : Boolean;
+   begin
+      case K is
          when K12 =>
             declare
                X  : ETCS_Track_Packets.P12.Packet_T;
@@ -656,6 +719,63 @@ is
                   Record_Event (Info_Mode_Profile, Change_Stored, M.Msg);
                end if;
             end;
+      end case;
+   end Take_MA_Packet;
+
+   --  4.8: the filters, then the packet to its store
+   procedure Take_Packet (K           : Order_Kind_T;
+                          J, P        : Positive;
+                          M           : Message_T;
+                          T           : Origin_Table_T;
+                          Train       : Train_Frame_T;
+                          MA_Accepted : in out Boolean;
+                          Ctx         : Mode_Context_T;
+                          Linked      : Boolean;
+                          Has_41      : Boolean;
+                          Now_Ms      : Unsigned_64)
+     with Global => (In_Out => (EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State,
+                                Events, Event_N),
+                     Input  => (EVC_Position.State, EVC_Train_Data.State)),
+          Pre => P <= EVC_Position.Taken_Packet_Count (J)
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Take_*"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R  : Reader_T;
+      A  : constant EVC_Acceptance.Context_T :=
+        Acceptance (Ctx, Linked, Has_41);
+   begin
+      --  4.8: the first and the third filter (the signalling related
+      --  speed restriction of a packet 12 apart from its MA; the mode
+      --  profile with its MA)
+      if not EVC_Acceptance.Accepted (Info_Of (K), A)
+        and then not (K = K12
+                      and then EVC_Acceptance.Accepted
+                                 (EVC_Acceptance.Signalling_Speed, A))
+      then
+         if K /= K80 then
+            Record_Event (Info_Group, Change_Filtered, NID_Of (K));
+         end if;
+         return;
+      end if;
+      EVC_Position.Open_Taken_Packet (J, P, R);
+      case K is
+         when K41 | K46 =>
+            Take_Level_Packet (K, R, M, Ctx, Train, Now_Ms);
+         when K3 =>
+            Take_National_Packet (R, M);
+         when K27 | K51 | K52 | K65 | K66 | K88 =>
+            Take_Speed_Packet (K, R, M, T);
+         when K21 | K141 | K70 | K71 =>
+            Take_Description_Packet (K, R, M, T);
+         when K68 | K39 | K67 | K69 | K40 =>
+            Take_Condition_Packet (K, R, M, T);
+         when K12 | K80 =>
+            Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted);
       end case;
    end Take_Packet;
 
@@ -741,6 +861,640 @@ is
                                Cm_T (Max))))
      with Pre => Max <= 2**16;
 
+   --  The value of the gradient envelope where no element of the
+   --  gradient profile is (3.13.4.1.3), above every gradient
+   Uncovered : constant Value_T := Gradient_T'Last + 1;
+
+   --  What the planning shows of a gradient step: where the profile
+   --  gives nothing, the default gradient for TSR or 0, as before the
+   --  supervision distinguished the targets
+   function Shown (V : Value_T; Default_G : Gradient_T) return Integer is
+     (if V = Uncovered then Default_G else V);
+
+   --  The parts of Build, in their order. What they pass: the snapshot
+   --  and the other state of the package are written in place (a
+   --  component of Snap is an "out" or "in out" parameter, passed by
+   --  reference), the tables of the other units are read in place, the
+   --  copies Build makes once (the Train Data, the national values, the
+   --  configuration, the MA) are "in" parameters, passed by reference.
+
+   --  The train, the Train Data, the national values and the mode
+   --  related speed (3.11.7); the adhesion (3.18.4.6, 3.13.2.3.5) and
+   --  what 3.13 and 3.14 read beyond them (EVC_Supervision_Input): the
+   --  configuration (3.13.2.2.6 to 3.13.2.2.8), the use of A_NVMAXREDADHn
+   --  (3.13.6.2.1.6), the SR distance (4.4.11.1.3 b); the trip margin at
+   --  0 (Build_Trip_Margin)
+   procedure Build_Train (T             : Origin_Table_T;
+                          Train         : Train_Frame_T;
+                          Ahead         : Sense_T;
+                          Data          : Train_Data_T;
+                          NV            : National_Values_T;
+                          Mode_Speed    : Speed_Cms_T;
+                          Configuration : EVC_Config.Config_T;
+                          Ctx           : Mode_Context_T)
+     with Global => (In_Out => Snap,
+                     Input  => (Driver_Slippery, EVC_Odometry.State,
+                                EVC_Track_Description.State,
+                                EVC_National_Values.State)),
+          Post => Snap.Train.Ahead = Ahead
+   is
+      Movement : constant EVC_Ports.Movement_T := EVC_Odometry.Movement;
+      Towards  : constant Sense_T :=
+        (if Movement = EVC_Ports.Towards_Cab_B then Minus else Plus);
+   begin
+      --  the train
+      Snap.Train :=
+        (Position_Valid   => Train.Valid,
+         Ahead            => Ahead,
+         Est_Front        => Train.Est_Front,
+         Max_Safe_Front   => Train.Max_Front,
+         Min_Safe_Front   => Train.Min_Front,
+         Speed            => Speed_Cms_T (Natural'Min (Train.Speed,
+                                                       Speed_Cms_T'Last)),
+         Speed_Max        =>
+           Speed_Cms_T (Natural'Min (Natural (EVC_Odometry.Speed_Max),
+                                     Speed_Cms_T'Last)),
+         Standstill       => Train.Standstill,
+         Moving_Ahead     => Movement in EVC_Ports.Towards_Cab_A
+                                       | EVC_Ports.Towards_Cab_B
+                             and then Towards = Ahead,
+         Moving_Backwards => Movement in EVC_Ports.Towards_Cab_A
+                                       | EVC_Ports.Towards_Cab_B
+                             and then Towards /= Ahead);
+      Snap.Train_Data := Data;
+      Snap.National := NV;
+      Snap.Mode_Speed := Mode_Speed;
+
+      --  the adhesion, and what 3.13 and 3.14 read beyond
+      --  (EVC_Supervision_Input): the configuration, the use of
+      --  A_NVMAXREDADHn, the trip margin (below); the others at their
+      --  defaults
+      Snap.Adhesion := (Count => 0, Areas => (others => (0, 0)),
+                        Driver_Slippery => Driver_Slippery);
+      EVC_Track_Description.Adhesion_Areas (T, Ahead, Snap.Adhesion);
+      Snap.Extra := (Config      => Configuration.Supervision,
+                     Train       => (others => <>),
+                     National    =>
+                       (Redadh_Use =>
+                          EVC_National_Values.Current.Redadh_Use),
+                     Trip_Margin => 0,
+                     T_MAR       => 0,
+                     --  4.4.11.1.3 b) (e4/modes)
+                     SR_Distance => Ctx.SR_Distance,
+                     SR_End      => Ctx.SR_End);
+   end Build_Train;
+
+   --  3.11.11.3: the speed restrictions to ensure a permitted braking
+   --  distance received are computed, and all of them again when an
+   --  input of the computation changed (the Train Data, the national
+   --  values, the status of the special brakes, the driver's slippery
+   --  rail, the antenna of the active cab), before the MRSP
+   procedure Build_PBD (Train          : Train_Frame_T;
+                        Special_Active : EVC_Braking.Brakes_T;
+                        Additional     : Boolean;
+                        Configuration  : EVC_Config.Config_T)
+     with Global => (In_Out => (EVC_Track_Description.State,
+                                PBD_Last, PBD_Known, Events, Event_N),
+                     Input  => Snap)
+   is
+      I       : constant EVC_PBD.Inputs_T :=
+        EVC_PBD.Inputs_Of
+          (Snap, Special_Active, Additional,
+           Natural (Length_T'Min
+                      (EVC_Config.Front_Offset (Configuration,
+                                                Train.Sense),
+                       EVC_PBD.Antenna_T'Last)));
+      Changed : constant Boolean := not PBD_Known or else I /= PBD_Last;
+      N       : Natural;
+   begin
+      EVC_Track_Description.Compute_PBD (I, Changed, N);
+      if Changed and then N > 0 then
+         Record_Event (Info_PBD, Change_Recalculated, N);
+      end if;
+      PBD_Last := I;
+      PBD_Known := True;
+   end Build_PBD;
+
+   --  The sources of the MRSP (3.13.7): the speed restrictions, the
+   --  signalling related one (3.11.6.2: from its reception on); 4.5.2:
+   --  the SSP, the ASP, the LX and the PBD speed restrictions in the
+   --  modes with an MA, the TSRs also in SR and UN
+   procedure Build_Speed_Sources (T        : Origin_Table_T;
+                                  Ahead    : Sense_T;
+                                  Length   : Length_T;
+                                  Mode     : EVC_Modes.Mode_T;
+                                  MA_Sense : Sense_T)
+     with Global => (Output => Sources,
+                     Input  => (EVC_Track_Description.State,
+                                EVC_Movement_Authority.State))
+   is
+   begin
+      Sources := (Count => 0, List => (others => (others => <>)),
+                  Lost => 0);
+      if EVC_Modes.Track_Speed_Mode (Mode) then
+         EVC_Track_Description.Speed_Elements
+           (T, Ahead, Length, Sources);
+      elsif EVC_Modes.TSR_Mode (Mode) then
+         EVC_Track_Description.Speed_Elements
+           (T, Ahead, Length, Sources, Only_TSR => True);
+      end if;
+      if EVC_Movement_Authority.V_Main_Known and then MA_Sense = Ahead
+        and then EVC_Modes.MA_Mode (Mode)
+      then
+         Add (Sources, Axis_Start,
+              (if EVC_Movement_Authority.V_Main_Open then Max_Cm
+               else A (Ahead, Frame (T, EVC_Movement_Authority.V_Main_Finish,
+                                     Min_Item))),
+              EVC_Movement_Authority.V_Main);
+      end if;
+   end Build_Speed_Sources;
+
+   --  The MRSP (3.13.7): the envelope of its sources under the maximum
+   --  train speed (3.11.8) and the mode related speed, as segments along
+   --  Ahead with the steps due to a TSR (3.13.4.1.3 a)
+   procedure Build_MRSP (T          : Origin_Table_T;
+                         Ahead      : Sense_T;
+                         Length     : Length_T;
+                         Max_Speed  : Speed_Cms_T;
+                         Mode       : EVC_Modes.Mode_T;
+                         Mode_Speed : Speed_Cms_T;
+                         MRSP       : in out Speed_Profile_T)
+     with Global => (Output => (Steps, Ceiling),
+                     In_Out => (Sources, Failures),
+                     Input  => EVC_Track_Description.State),
+          Post => MRSP.Count = Steps.Count
+                  and then Sorted (Steps)
+                  and then Below (Steps, Sources, 0, Ceiling)
+                  and then (for all K in 1 .. MRSP.Count =>
+                              A (Ahead, MRSP.Segments (K).Start)
+                                = Steps.List (K).Start
+                              and then MRSP.Segments (K).Speed
+                                         = Steps.List (K).Value)
+   is
+      Checked   : Boolean;
+      TSR_Flags : Segment_Flags_T := (others => False);
+   begin
+      Ceiling := Value_T (Speed_Cms_T'Min
+        ((if EVC_Modes.Train_Speed_Mode (Mode) then Max_Speed
+          else No_Speed_Limit),
+         Mode_Speed));
+      Envelope (Sources, Default => No_Speed_Limit, Floor => 0,
+                Ceiling => Ceiling, Capacity => Max_Speed_Segments,
+                P => Steps, Checked => Checked);
+      if not Checked and then Failures < Natural'Last then
+         Failures := Failures + 1;
+      end if;
+      MRSP.Count := Steps.Count;
+      for K in 1 .. Steps.Count loop
+         pragma Loop_Invariant
+           (MRSP.Count = Steps.Count
+            and then (for all K2 in 1 .. K - 1 =>
+                        A (Ahead, MRSP.Segments (K2).Start)
+                          = Steps.List (K2).Start
+                        and then MRSP.Segments (K2).Speed
+                                   = Steps.List (K2).Value));
+         MRSP.Segments (K) :=
+           (Start => A (Ahead, Steps.List (K).Start),
+            Speed => Speed_Cms_T (Steps.List (K).Value));
+         --  3.13.4.1.3 a): the step is due to a TSR
+         TSR_Flags (K) :=
+           EVC_Track_Description.TSR_Limits
+             (T, Ahead, Length, Steps.List (K).Start,
+              Step_End (Steps, K), Steps.List (K).Value);
+      end loop;
+      MRSP.TSR := TSR_Flags;
+   end Build_MRSP;
+
+   --  The gradients (3.11.12): the lowest where elements overlap; where
+   --  none is, the segment is not covered (3.13.4.1.3: the supervision
+   --  takes the default gradient for TSR, 3.11.12.5, for a target due to
+   --  a TSR, else 0); G_Steps the envelope along Ahead, for the planning
+   procedure Build_Gradients (T             : Origin_Table_T;
+                              Ahead         : Sense_T;
+                              Default_Known : Boolean;
+                              Default_G     : Gradient_T;
+                              Gradients     : in out Gradient_Profile_T;
+                              G_Steps       : out Steps_T)
+     with Global => (In_Out => Failures,
+                     Input  => EVC_Track_Description.State),
+          Post => Sorted (G_Steps)
+                  and then Gradients.Count >= 1
+                  and then (for all K in 1 .. Gradients.Count - 1 =>
+                              A (Ahead, Gradients.Segments (K).Start)
+                                < A (Ahead, Gradients.Segments (K + 1).Start))
+   is
+      Grad_Src  : Elements_T;
+      Checked   : Boolean;
+      Covered_F : Gradient_Flags_T := (others => True);
+   begin
+      Grad_Src := (Count => 0, List => (others => (others => <>)),
+                   Lost => 0);
+      EVC_Track_Description.Gradient_Elements (T, Ahead, Grad_Src);
+      pragma Warnings
+        (GNATprove, Off, """Grad_Src"" is set by ""Envelope"" but not used*",
+         Reason => "only the steps of the gradients are kept");
+      Envelope (Grad_Src, Default => Uncovered, Floor => -255,
+                Ceiling => Uncovered, Capacity => Max_Gradient_Segments,
+                P => G_Steps, Checked => Checked);
+      if not Checked and then Failures < Natural'Last then
+         Failures := Failures + 1;
+      end if;
+      Gradients.Count := G_Steps.Count;
+      for K in 1 .. G_Steps.Count loop
+         pragma Loop_Invariant
+           (Gradients.Count = G_Steps.Count
+            and then (for all K2 in 1 .. K - 1 =>
+                        A (Ahead, Gradients.Segments (K2).Start)
+                          = G_Steps.List (K2).Start));
+         Covered_F (K) := G_Steps.List (K).Value /= Uncovered;
+         Gradients.Segments (K) :=
+           (Start    => A (Ahead, G_Steps.List (K).Start),
+            Gradient => (if Covered_F (K)
+                         then Gradient_T (G_Steps.List (K).Value) else 0));
+      end loop;
+      Gradients.Covered := Covered_F;
+      Gradients.Has_Default_TSR := Default_Known;
+      Gradients.Default_TSR := Default_G;
+   end Build_Gradients;
+
+   --  The MA (3.8.4; 4.5.2: monitored in the modes with an MA), the
+   --  areas of lost braking (3.13.2.3.4), and Supervise (4.5.2: the
+   --  MRSP is supervised with its curves in the modes of TSR_Mode, with
+   --  valid Train Data, e4/modes)
+   procedure Build_MA (T           : Origin_Table_T;
+                       Ahead       : Sense_T;
+                       V_NVREL     : Speed_Cms_T;
+                       Length      : Length_T;
+                       Mode        : EVC_Modes.Mode_T;
+                       With_MA     : Boolean;
+                       MA_R        : out Movement_Authority_T;
+                       MA          : out Movement_Authority_T;
+                       Inhibitions : out Inhibition_Areas_T;
+                       Supervise   : out Boolean)
+     with Global => (Input => (EVC_Movement_Authority.State,
+                               EVC_Track_Conditions.State,
+                               EVC_Train_Data.State)),
+          Pre  => (if EVC_Movement_Authority.MA.Present
+                   then Ahead = EVC_Movement_Authority.MA.Sense),
+          Post => (if MA.Present
+                   then A (Ahead, MA.SvL) >= A (Ahead, MA.EOA))
+   is
+   begin
+      EVC_Movement_Authority.Authority (T, V_NVREL, MA_R);
+      if not With_MA then
+         MA_R := (others => <>);
+      end if;
+      MA := MA_R;
+      EVC_Track_Conditions.Inhibitions (T, Ahead, Length, Inhibitions);
+      Supervise := EVC_Modes.TSR_Mode (Mode) and then EVC_Train_Data.Valid;
+   end Build_MA;
+
+   --  4.6.3 [10], [25], [31], [32]: an MA, the SSP and the gradients on
+   --  board; the train position confidence interval overlaps a mode
+   --  profile. 4.4.9.1.4: SSP and gradient known for the whole length of
+   --  the train, from its min safe rear end to its estimated front end
+   procedure Build_Mode_Conditions (T     : Origin_Table_T;
+                                    Train : Train_Frame_T;
+                                    Ahead : Sense_T)
+     with Global => (Output => (MA_Board, Profile_Overlap, Covered_Flag),
+                     Input  => (EVC_Movement_Authority.State,
+                                EVC_Track_Description.State))
+   is
+   begin
+      MA_Board := EVC_Movement_Authority.MA.Present
+                  and then EVC_Track_Description.SSP.Count > 0
+                  and then EVC_Track_Description.Gradients.Count > 0;
+      Profile_Overlap :=
+        Train.Valid
+        and then EVC_Movement_Authority.Mode_Profile_Overlap
+                   (T, Train.Min_Front, Train.Max_Front);
+      Covered_Flag :=
+        Train.Valid
+        and then EVC_Track_Description.Covered
+                   (T, Ahead, Train.Min_Rear, Train.Est_Front);
+   end Build_Mode_Conditions;
+
+   --  The trip margin of 3.13.9.4.8.2 (2 Q_LOCACC of the SOLR + 10 m
+   --  + 10 % of the distance from it to the EOA; beta, the Supervised
+   --  Manoeuvre term, is phase E4)
+   procedure Build_Trip_Margin (Train       : Train_Frame_T;
+                                Ahead       : Sense_T;
+                                MA_R        : Movement_Authority_T;
+                                Trip_Margin : in out Length_T)
+     with Global => null
+   is
+   begin
+      if MA_R.Present and then Train.Valid then
+         declare
+            D : constant Dist_T :=
+              Diff (A (Ahead, MA_R.EOA), A (Ahead, Train.Ref_X));
+         begin
+            Trip_Margin :=
+              Add (Add (Train.Ref_Locacc, Train.Ref_Locacc),
+                   Add (1_000, (if D > 0 then D / 10 else 0)));
+         end;
+      end if;
+   end Build_Trip_Margin;
+
+   --  The temporary EOA and SvL: the nearest (3.12.2.5) of the mode
+   --  profile's (3.12.4) and the level crossing's (3.12.5.8); phase E4,
+   --  5.16: the level crossing of the temporary EOA
+   procedure Build_Temporary (T         : Origin_Table_T;
+                              Train     : Train_Frame_T;
+                              Ahead     : Sense_T;
+                              With_MA   : Boolean;
+                              Temporary : out Temporary_Target_T;
+                              LX        : out LX_Approach_T)
+     with Global => (Input => (EVC_Movement_Authority.State,
+                               EVC_Track_Description.State))
+   is
+      F1, F2   : Boolean;
+      E1, E2   : Dist_T;
+      S1, S2   : Dist_T;
+      Has_SvL  : Boolean;
+      LX_I     : Natural;
+   begin
+      Temporary := (others => <>);
+      LX := (others => <>);
+      EVC_Movement_Authority.Mode_Profile_Target
+        (T, Train.Est_Front, F1, E1, Has_SvL, S1);
+      EVC_Track_Description.LX_Target
+        (T, Ahead, Train.Min_Front, F2, E2, S2, LX_I);
+      if not With_MA then
+         null;
+      elsif F1 and then (not F2 or else A (Ahead, E1) <= A (Ahead, E2)) then
+         Temporary := (Present => True, EOA => E1,
+                       Has_SvL => Has_SvL, SvL => S1);
+      elsif F2 then
+         Temporary := (Present => True, EOA => E2,
+                       Has_SvL => True, SvL => S2);
+         --  phase E4, 5.16: the level crossing of the temporary EOA
+         declare
+            X : constant EVC_Track_Description.LX_T :=
+              EVC_Track_Description.LX (LX_I);
+         begin
+            LX :=
+              (Present   => True,
+               Index     => LX_I,
+               Speed     => X.Speed,
+               Stop      => X.Stop_Required,
+               Stop_From =>
+                 Advance (Frame (T, X.Start, Estimated_Item),
+                          Opposite (Ahead), X.Stop_Length));
+         end;
+      end if;
+   end Build_Temporary;
+
+   --  The track conditions (3.12.1, 5.18): their indications and the
+   --  orders for the planning; phase E4, 5.18.4.2, 5.18.8: the virtual
+   --  SBD curves for the supervision of this cycle, the tunnel stopping
+   --  area of the last; 5.20: the information for an external function
+   procedure Build_Track_Conditions (T            : Origin_Table_T;
+                                     Train        : Train_Frame_T;
+                                     Now_Ms       : Unsigned_64;
+                                     Virtual_Last : Virtual_Limits_T;
+                                     Orders       : out
+                                       EVC_Track_Conditions.Orders_T;
+                                     Virtual      : out Virtual_Feet_T)
+     with Global => (Output => (Indicated, Indicated_N, Tun, Ext),
+                     In_Out => EVC_Track_Conditions.State)
+   is
+      Ind : EVC_Track_Conditions.Indications_T;
+   begin
+      EVC_Track_Conditions.Evaluate (T, Train, Now_Ms, Ind, Orders,
+                                     Virtual_Last);
+      EVC_Track_Conditions.Virtual_Feet (T, Train, Virtual);
+      EVC_Track_Conditions.Tunnel_Indication (T, Train, Virtual_Last, Tun);
+      Indicated := (others => (others => <>));
+      Indicated_N := 0;
+      for I in 1 .. Ind.Count loop
+         exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
+         Indicated_N := Indicated_N + 1;
+         Indicated (Indicated_N) :=
+           (Id   => Unsigned_8 (Ind.List (I).Id),
+            Kind => Unsigned_8 (Ind.List (I).Kind));
+      end loop;
+      EVC_Track_Conditions.External (T, Train, Ext);
+   end Build_Track_Conditions;
+
+   --  Phase E4, 5.16.1.4, 5.16.1.5: a level crossing not protected whose
+   --  status the driver is informed of, while the min safe front end is
+   --  in rear of its end (LX01, the symbol 38 of MSG_TRACK_COND; the
+   --  numbers 232 .. 247, apart from those of EVC_Track_Conditions)
+   procedure Build_LX_Indications (T     : Origin_Table_T;
+                                   Train : Train_Frame_T;
+                                   Ahead : Sense_T)
+     with Global => (In_Out => (Indicated, Indicated_N),
+                     Input  => EVC_Track_Description.State)
+   is
+   begin
+      if Train.Valid and then EVC_Track_Description.LX_Sense = Ahead then
+         declare
+            L : constant EVC_Track_Description.LX_Array_T :=
+              EVC_Track_Description.LX;
+         begin
+            for I in L'Range loop
+               exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
+               if L (I).Used and then not L (I).Protected_LX
+                 and then L (I).Indicated
+                 and then A (Ahead, Train.Min_Front)
+                            < A (Ahead, Frame (T, L (I).Finish, Min_Item))
+               then
+                  Indicated_N := Indicated_N + 1;
+                  Indicated (Indicated_N) :=
+                    (Id => Unsigned_8 (231 + I), Kind => 38);
+               end if;
+            end loop;
+         end;
+      end if;
+   end Build_LX_Indications;
+
+   --  MSG_TRACK_COND (5.18) when the indications changed
+   procedure Build_Track_Cond_Due
+     with Global => (Output => Cond_Due,
+                     In_Out => (Sent, Sent_N),
+                     Input  => (Indicated, Indicated_N))
+   is
+   begin
+      Cond_Due := False;
+      if Indicated_N /= Sent_N then
+         Cond_Due := True;
+      else
+         for I in 1 .. Indicated_N loop
+            if Indicated (I) /= Sent (I) then
+               Cond_Due := True;
+            end if;
+         end loop;
+      end if;
+      if Cond_Due then
+         Sent := Indicated;
+         Sent_N := Indicated_N;
+      end if;
+   end Build_Track_Cond_Due;
+
+   --  The planning (ERA_ERTMS_015560 8.3), distances from the estimated
+   --  front end Front: the distance to the EOA, the ceiling speed at the
+   --  train (the lowest of the MRSP over the confidence interval of its
+   --  front end, 3.13.7.2), the gradient at the front
+   procedure Plan_Head (Train     : Train_Frame_T;
+                        Ahead     : Sense_T;
+                        Front     : Dist_T;
+                        MA_M      : Natural;
+                        G_Steps   : Steps_T;
+                        Default_G : Gradient_T)
+     with Global => (In_Out => Plan, Input => Steps),
+          Pre  => MA_M <= 65_534 and then Sorted (Steps)
+                  and then Sorted (G_Steps)
+   is
+   begin
+      Plan.MA_Dist := Unsigned_16 (MA_M);
+      Plan.Ceiling := Unsigned_16
+        (Natural'Min (Kmh (Natural'Max (0, Lowest
+           (Steps, A (Ahead, Train.Min_Front),
+            A (Ahead, Train.Max_Front)))), 400));
+      Plan.Gradient_Count := 1;
+      Plan.Gradients (1) :=
+        (Start => 0,
+         Value => Integer'Max
+           (-128, Integer'Min
+              (127, Shown (Value_At (G_Steps, A (Ahead, Front)),
+                           Default_G))));
+   end Plan_Head;
+
+   --  The planning (ERA_ERTMS_015560 8.3): the changes of the gradient
+   --  ahead of Front, up to 32 km
+   procedure Plan_Gradients (Ahead     : Sense_T;
+                             Front     : Dist_T;
+                             G_Steps   : Steps_T;
+                             Default_G : Gradient_T)
+     with Global => (In_Out => Plan)
+   is
+   begin
+      for K in 2 .. G_Steps.Count loop
+         exit when Plan.Gradient_Count
+                     = EVC_DMI_Port.Max_Planning_Gradients;
+         if G_Steps.List (K).Start > A (Ahead, Front)
+           and then Metres_Ahead (Ahead, Front,
+                                  A (Ahead, G_Steps.List (K).Start),
+                                  65_535) <= 32_000
+         then
+            Plan.Gradient_Count := Plan.Gradient_Count + 1;
+            Plan.Gradients (Plan.Gradient_Count) :=
+              (Start => Unsigned_16
+                 (Metres_Ahead (Ahead, Front,
+                                A (Ahead, G_Steps.List (K).Start),
+                                32_000)),
+               Value => Integer'Max
+                 (-128, Integer'Min
+                    (127, Shown (G_Steps.List (K).Value, Default_G))));
+         end if;
+      end loop;
+   end Plan_Gradients;
+
+   --  The planning (ERA_ERTMS_015560 8.3): the MRSP ahead of Front up to
+   --  the EOA (MA_M metres), then the EOA or the LOA (3.8.3) with its
+   --  speed
+   procedure Plan_Speeds (Ahead     : Sense_T;
+                          Front     : Dist_T;
+                          MA_M      : Natural;
+                          LOA_Speed : Speed_Cms_T)
+     with Global => (In_Out => Plan, Input => Steps),
+          Pre    => (for all K in 1 .. Steps.Count =>
+                       Steps.List (K).Value >= 0)
+   is
+   begin
+      for K in 2 .. Steps.Count loop
+         exit when Plan.Speed_Count
+                     >= EVC_DMI_Port.Max_Planning_Speeds - 1;
+         declare
+            D : constant Natural :=
+              Metres_Ahead (Ahead, Front,
+                            A (Ahead, Steps.List (K).Start), 65_535);
+         begin
+            if Steps.List (K).Start > A (Ahead, Front)
+              and then D < MA_M and then D <= 32_000
+            then
+               Plan.Speed_Count := Plan.Speed_Count + 1;
+               Plan.Speeds (Plan.Speed_Count) :=
+                 (Dist  => Unsigned_16 (D),
+                  Speed => Unsigned_16
+                    (Natural'Min (Kmh (Steps.List (K).Value), 400)));
+            end if;
+         end;
+      end loop;
+      if MA_M <= 32_000
+        and then Plan.Speed_Count < EVC_DMI_Port.Max_Planning_Speeds
+      then
+         Plan.Speed_Count := Plan.Speed_Count + 1;
+         Plan.Speeds (Plan.Speed_Count) :=
+           (Dist  => Unsigned_16 (MA_M),
+            Speed => Unsigned_16
+              (Natural'Min (Kmh (LOA_Speed), 400)));
+      end if;
+   end Plan_Speeds;
+
+   --  The planning (ERA_ERTMS_015560 8.3): the orders of the track
+   --  conditions ahead (3.12.1, 5.18), up to 32 km
+   procedure Plan_Orders (Ahead  : Sense_T;
+                          Front  : Dist_T;
+                          Orders : EVC_Track_Conditions.Orders_T)
+     with Global => (In_Out => Plan)
+   is
+   begin
+      for I in 1 .. Orders.Count loop
+         exit when Plan.Order_Count = EVC_DMI_Port.Max_Planning_Orders;
+         declare
+            D : constant Natural :=
+              Metres_Ahead (Ahead, Front, Orders.List (I).At_X, 65_535);
+         begin
+            if D <= 32_000 then
+               Plan.Order_Count := Plan.Order_Count + 1;
+               Plan.Orders (Plan.Order_Count) :=
+                 (Symbol => Unsigned_8 (Orders.List (I).Symbol),
+                  Dist   => Unsigned_16 (D));
+            end if;
+         end;
+      end loop;
+   end Plan_Orders;
+
+   --  The planning (ERA_ERTMS_015560 8.3) for MSG_PLANNING: due when the
+   --  MRSP is supervised (Supervise), an MA is and the position is valid
+   procedure Build_Planning (Train     : Train_Frame_T;
+                             Ahead     : Sense_T;
+                             Supervise : Boolean;
+                             MA_R      : Movement_Authority_T;
+                             G_Steps   : Steps_T;
+                             Default_G : Gradient_T;
+                             Orders    : EVC_Track_Conditions.Orders_T)
+     with Global => (Output => (Plan, Plan_Due), Input => Steps),
+          Pre  => Sorted (Steps) and then Sorted (G_Steps)
+                  and then (for all K in 1 .. Steps.Count =>
+                              Steps.List (K).Value >= 0)
+   is
+   begin
+      Plan := (others => <>);
+      Plan_Due := Supervise and then MA_R.Present and then Train.Valid;
+      if Plan_Due then
+         declare
+            Front : constant Dist_T := Train.Est_Front;
+            EOA   : constant Dist_T := MA_R.EOA;
+            MA_M  : constant Natural :=
+              Metres_Ahead (Ahead, Front, EOA, 65_534);
+         begin
+            Plan_Head (Train, Ahead, Front, MA_M, G_Steps, Default_G);
+            --  the gradient at the front, then its changes ahead
+            Plan_Gradients (Ahead, Front, G_Steps, Default_G);
+            --  the MRSP ahead up to the EOA, then the EOA or the LOA
+            Plan_Speeds (Ahead, Front, MA_M, MA_R.LOA_Speed);
+            --  the orders of the track conditions ahead
+            Plan_Orders (Ahead, Front, Orders);
+         end;
+      end if;
+   end Build_Planning;
+
+   --  6. and 7. of Evaluate: the snapshot, the indications of the track
+   --  conditions and the planning, from the stores; the parts above in
+   --  their order
    procedure Build (T              : Origin_Table_T;
                     Train          : Train_Frame_T;
                     Mode_Speed     : Speed_Cms_T;
@@ -790,28 +1544,12 @@ is
       Data     : constant Train_Data_T := EVC_Train_Data.Data;
       NV       : constant National_Values_T :=
         EVC_National_Values.Current.Values;
-      Grad_Src : Elements_T;
       G_Steps  : Steps_T;
-      Checked  : Boolean;
       Default_Known : constant Boolean :=
         EVC_Track_Description.Default_Gradient_Known;
       Default_G : constant Gradient_T :=
         (if Default_Known then EVC_Track_Description.Default_Gradient
          else 0);
-      --  the value of the gradient envelope where no element of the
-      --  gradient profile is (3.13.4.1.3), above every gradient
-      Uncovered : constant Value_T := Gradient_T'Last + 1;
-      --  what the planning shows of a gradient step: where the profile
-      --  gives nothing, the default gradient for TSR or 0, as before the
-      --  supervision distinguished the targets
-      function Shown (V : Value_T) return Integer is
-        (if V = Uncovered then Default_G else V);
-      TSR_Flags : Segment_Flags_T := (others => False);
-      Covered_F : Gradient_Flags_T := (others => True);
-      Movement : constant EVC_Ports.Movement_T := EVC_Odometry.Movement;
-      Towards  : constant Sense_T :=
-        (if Movement = EVC_Ports.Towards_Cab_B then Minus else Plus);
-      Ind      : EVC_Track_Conditions.Indications_T;
       Orders   : EVC_Track_Conditions.Orders_T;
       MA_R     : Movement_Authority_T;
       --  4.5.2 Figure 1 (EVC_Modes, added by e4/modes)
@@ -819,384 +1557,26 @@ is
       With_MA  : constant Boolean :=
         EVC_Modes.MA_Mode (Mode) or else EVC_Modes."=" (Mode, EVC_Modes.M_SM);
    begin
-      --  the train
-      Snap.Train :=
-        (Position_Valid   => Train.Valid,
-         Ahead            => Ahead,
-         Est_Front        => Train.Est_Front,
-         Max_Safe_Front   => Train.Max_Front,
-         Min_Safe_Front   => Train.Min_Front,
-         Speed            => Speed_Cms_T (Natural'Min (Train.Speed,
-                                                       Speed_Cms_T'Last)),
-         Speed_Max        =>
-           Speed_Cms_T (Natural'Min (Natural (EVC_Odometry.Speed_Max),
-                                     Speed_Cms_T'Last)),
-         Standstill       => Train.Standstill,
-         Moving_Ahead     => Movement in EVC_Ports.Towards_Cab_A
-                                       | EVC_Ports.Towards_Cab_B
-                             and then Towards = Ahead,
-         Moving_Backwards => Movement in EVC_Ports.Towards_Cab_A
-                                       | EVC_Ports.Towards_Cab_B
-                             and then Towards /= Ahead);
-      Snap.Train_Data := Data;
-      Snap.National := NV;
-      Snap.Mode_Speed := Mode_Speed;
-
-      --  the adhesion, and what 3.13 and 3.14 read beyond
-      --  (EVC_Supervision_Input): the configuration, the use of
-      --  A_NVMAXREDADHn, the trip margin (below); the others at their
-      --  defaults
-      Snap.Adhesion := (Count => 0, Areas => (others => (0, 0)),
-                        Driver_Slippery => Driver_Slippery);
-      EVC_Track_Description.Adhesion_Areas (T, Ahead, Snap.Adhesion);
-      Snap.Extra := (Config      => Configuration.Supervision,
-                     Train       => (others => <>),
-                     National    =>
-                       (Redadh_Use =>
-                          EVC_National_Values.Current.Redadh_Use),
-                     Trip_Margin => 0,
-                     T_MAR       => 0,
-                     --  4.4.11.1.3 b) (e4/modes)
-                     SR_Distance => Ctx.SR_Distance,
-                     SR_End      => Ctx.SR_End);
-
-      --  3.11.11.3: the speed restrictions to ensure a permitted braking
-      --  distance received are computed, and all of them again when an
-      --  input of the computation changed (the Train Data, the national
-      --  values, the status of the special brakes, the driver's slippery
-      --  rail, the antenna of the active cab), before the MRSP
-      declare
-         I       : constant EVC_PBD.Inputs_T :=
-           EVC_PBD.Inputs_Of
-             (Snap, Special_Active, Additional,
-              Natural (Length_T'Min
-                         (EVC_Config.Front_Offset (Configuration,
-                                                   Train.Sense),
-                          EVC_PBD.Antenna_T'Last)));
-         Changed : constant Boolean := not PBD_Known or else I /= PBD_Last;
-         N       : Natural;
-      begin
-         EVC_Track_Description.Compute_PBD (I, Changed, N);
-         if Changed and then N > 0 then
-            Record_Event (Info_PBD, Change_Recalculated, N);
-         end if;
-         PBD_Last := I;
-         PBD_Known := True;
-      end;
-
-      --  the MRSP (3.13.7): the speed restrictions, the signalling
-      --  related one (3.11.6.2: from its reception on), under the
-      --  maximum train speed (3.11.8) and the mode related speed
-      Sources := (Count => 0, List => (others => (others => <>)),
-                  Lost => 0);
-      --  4.5.2: the SSP, the ASP, the LX and the PBD speed restrictions in
-      --  the modes with an MA, the TSRs also in SR and UN
-      if EVC_Modes.Track_Speed_Mode (Mode) then
-         EVC_Track_Description.Speed_Elements
-           (T, Ahead, Data.Length, Sources);
-      elsif EVC_Modes.TSR_Mode (Mode) then
-         EVC_Track_Description.Speed_Elements
-           (T, Ahead, Data.Length, Sources, Only_TSR => True);
-      end if;
-      if EVC_Movement_Authority.V_Main_Known and then MA_Now.Sense = Ahead
-        and then EVC_Modes.MA_Mode (Mode)
-      then
-         Add (Sources, Axis_Start,
-              (if EVC_Movement_Authority.V_Main_Open then Max_Cm
-               else A (Ahead, Frame (T, EVC_Movement_Authority.V_Main_Finish,
-                                     Min_Item))),
-              EVC_Movement_Authority.V_Main);
-      end if;
-      Ceiling := Value_T (Speed_Cms_T'Min
-        ((if EVC_Modes.Train_Speed_Mode (Mode) then Data.Max_Speed
-          else No_Speed_Limit),
-         Mode_Speed));
-      Envelope (Sources, Default => No_Speed_Limit, Floor => 0,
-                Ceiling => Ceiling, Capacity => Max_Speed_Segments,
-                P => Steps, Checked => Checked);
-      if not Checked and then Failures < Natural'Last then
-         Failures := Failures + 1;
-      end if;
-      Snap.MRSP.Count := Steps.Count;
-      for K in 1 .. Steps.Count loop
-         pragma Loop_Invariant
-           (Snap.MRSP.Count = Steps.Count
-            and then (for all K2 in 1 .. K - 1 =>
-                        A (Ahead, Snap.MRSP.Segments (K2).Start)
-                          = Steps.List (K2).Start
-                        and then Snap.MRSP.Segments (K2).Speed
-                                   = Steps.List (K2).Value));
-         Snap.MRSP.Segments (K) :=
-           (Start => A (Ahead, Steps.List (K).Start),
-            Speed => Speed_Cms_T (Steps.List (K).Value));
-         --  3.13.4.1.3 a): the step is due to a TSR
-         TSR_Flags (K) :=
-           EVC_Track_Description.TSR_Limits
-             (T, Ahead, Data.Length, Steps.List (K).Start,
-              Step_End (Steps, K), Steps.List (K).Value);
-      end loop;
-      Snap.MRSP.TSR := TSR_Flags;
-
-      --  the gradients (3.11.12): the lowest where elements overlap;
-      --  where none is, the segment is not covered (3.13.4.1.3: the
-      --  supervision takes the default gradient for TSR, 3.11.12.5, for a
-      --  target due to a TSR, else 0)
-      Grad_Src := (Count => 0, List => (others => (others => <>)),
-                   Lost => 0);
-      EVC_Track_Description.Gradient_Elements (T, Ahead, Grad_Src);
-      pragma Warnings
-        (GNATprove, Off, """Grad_Src"" is set by ""Envelope"" but not used*",
-         Reason => "only the steps of the gradients are kept");
-      Envelope (Grad_Src, Default => Uncovered, Floor => -255,
-                Ceiling => Uncovered, Capacity => Max_Gradient_Segments,
-                P => G_Steps, Checked => Checked);
-      if not Checked and then Failures < Natural'Last then
-         Failures := Failures + 1;
-      end if;
-      Snap.Gradients.Count := G_Steps.Count;
-      for K in 1 .. G_Steps.Count loop
-         pragma Loop_Invariant
-           (Snap.Gradients.Count = G_Steps.Count
-            and then Snap.Train.Ahead = Ahead
-            and then (for all K2 in 1 .. K - 1 =>
-                        A (Ahead, Snap.Gradients.Segments (K2).Start)
-                          = G_Steps.List (K2).Start));
-         Covered_F (K) := G_Steps.List (K).Value /= Uncovered;
-         Snap.Gradients.Segments (K) :=
-           (Start    => A (Ahead, G_Steps.List (K).Start),
-            Gradient => (if Covered_F (K)
-                         then Gradient_T (G_Steps.List (K).Value) else 0));
-      end loop;
-      Snap.Gradients.Covered := Covered_F;
-      Snap.Gradients.Has_Default_TSR := Default_Known;
-      Snap.Gradients.Default_TSR := Default_G;
-
-      --  the MA, the braking, the adhesion
-      EVC_Movement_Authority.Authority (T, NV.V_NVREL, MA_R);
-      --  4.5.2: the MA is monitored in the modes with an MA
-      if not With_MA then
-         MA_R := (others => <>);
-      end if;
-      Snap.MA := MA_R;
-      EVC_Track_Conditions.Inhibitions (T, Ahead, Data.Length,
-                                        Snap.Inhibitions);
-      --  4.5.2: the MRSP is supervised with its curves in the modes of
-      --  TSR_Mode, with valid Train Data (e4/modes)
-      Snap.Supervise :=
-        EVC_Modes.TSR_Mode (Mode) and then EVC_Train_Data.Valid;
-      --  4.6.3 [10], [25], [31], [32]
-      MA_Board := EVC_Movement_Authority.MA.Present
-                  and then EVC_Track_Description.SSP.Count > 0
-                  and then EVC_Track_Description.Gradients.Count > 0;
-      Profile_Overlap :=
-        Train.Valid
-        and then EVC_Movement_Authority.Mode_Profile_Overlap
-                   (T, Train.Min_Front, Train.Max_Front);
-      --  4.4.9.1.4: SSP and gradient known for the whole length of the
-      --  train, from its min safe rear end to its estimated front end
-      Covered_Flag :=
-        Train.Valid
-        and then EVC_Track_Description.Covered
-                   (T, Ahead, Train.Min_Rear, Train.Est_Front);
-
-      --  the trip margin of 3.13.9.4.8.2 (2 Q_LOCACC of the SOLR + 10 m
-      --  + 10 % of the distance from it to the EOA; beta, the Supervised
-      --  Manoeuvre term, is phase E4)
-      if MA_R.Present and then Train.Valid then
-         declare
-            D : constant Dist_T :=
-              Diff (A (Ahead, MA_R.EOA), A (Ahead, Train.Ref_X));
-         begin
-            Snap.Extra.Trip_Margin :=
-              Add (Add (Train.Ref_Locacc, Train.Ref_Locacc),
-                   Add (1_000, (if D > 0 then D / 10 else 0)));
-         end;
-      end if;
-
-      --  the temporary EOA and SvL: the nearest (3.12.2.5)
-      declare
-         F1, F2   : Boolean;
-         E1, E2   : Dist_T;
-         S1, S2   : Dist_T;
-         Has_SvL  : Boolean;
-         LX_I     : Natural;
-      begin
-         Snap.Temporary := (others => <>);
-         Snap.LX := (others => <>);
-         EVC_Movement_Authority.Mode_Profile_Target
-           (T, Train.Est_Front, F1, E1, Has_SvL, S1);
-         EVC_Track_Description.LX_Target
-           (T, Ahead, Train.Min_Front, F2, E2, S2, LX_I);
-         if not With_MA then
-            null;
-         elsif F1 and then (not F2 or else A (Ahead, E1) <= A (Ahead, E2)) then
-            Snap.Temporary := (Present => True, EOA => E1,
-                               Has_SvL => Has_SvL, SvL => S1);
-         elsif F2 then
-            Snap.Temporary := (Present => True, EOA => E2,
-                               Has_SvL => True, SvL => S2);
-            --  phase E4, 5.16: the level crossing of the temporary EOA
-            declare
-               X : constant EVC_Track_Description.LX_T :=
-                 EVC_Track_Description.LX (LX_I);
-            begin
-               Snap.LX :=
-                 (Present   => True,
-                  Index     => LX_I,
-                  Speed     => X.Speed,
-                  Stop      => X.Stop_Required,
-                  Stop_From =>
-                    Advance (Frame (T, X.Start, Estimated_Item),
-                             Opposite (Ahead), X.Stop_Length));
-            end;
-         end if;
-      end;
-
-      --  the track conditions: MSG_TRACK_COND when they changed
-      EVC_Track_Conditions.Evaluate (T, Train, Now_Ms, Ind, Orders,
-                                     Virtual_Last);
-      --  phase E4, 5.18.4.2, 5.18.8: the virtual SBD curves for the
-      --  supervision of this cycle, the tunnel stopping area of the last
-      EVC_Track_Conditions.Virtual_Feet (T, Train, Snap.Virtual);
-      EVC_Track_Conditions.Tunnel_Indication (T, Train, Virtual_Last, Tun);
-      Indicated := (others => (others => <>));
-      Indicated_N := 0;
-      for I in 1 .. Ind.Count loop
-         exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
-         Indicated_N := Indicated_N + 1;
-         Indicated (Indicated_N) :=
-           (Id   => Unsigned_8 (Ind.List (I).Id),
-            Kind => Unsigned_8 (Ind.List (I).Kind));
-      end loop;
-      --  phase E4, 5.20: the information for an external function
-      EVC_Track_Conditions.External (T, Train, Ext);
-      --  phase E4, 5.16.1.4, 5.16.1.5: a level crossing not protected
-      --  whose status the driver is informed of, while the min safe front
-      --  end is in rear of its end (LX01, the symbol 38 of
-      --  MSG_TRACK_COND; the numbers 232 .. 247, apart from those of
-      --  EVC_Track_Conditions)
-      if Train.Valid and then EVC_Track_Description.LX_Sense = Ahead then
-         declare
-            L : constant EVC_Track_Description.LX_Array_T :=
-              EVC_Track_Description.LX;
-         begin
-            for I in L'Range loop
-               exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
-               if L (I).Used and then not L (I).Protected_LX
-                 and then L (I).Indicated
-                 and then A (Ahead, Train.Min_Front)
-                            < A (Ahead, Frame (T, L (I).Finish, Min_Item))
-               then
-                  Indicated_N := Indicated_N + 1;
-                  Indicated (Indicated_N) :=
-                    (Id => Unsigned_8 (231 + I), Kind => 38);
-               end if;
-            end loop;
-         end;
-      end if;
-      Cond_Due := False;
-      if Indicated_N /= Sent_N then
-         Cond_Due := True;
-      else
-         for I in 1 .. Indicated_N loop
-            if Indicated (I) /= Sent (I) then
-               Cond_Due := True;
-            end if;
-         end loop;
-      end if;
-      if Cond_Due then
-         Sent := Indicated;
-         Sent_N := Indicated_N;
-      end if;
-
-      --  the planning (DMI 8.3): distances from the estimated front end
-      Plan := (others => <>);
-      Plan_Due := Snap.Supervise and then MA_R.Present and then Train.Valid;
-      if Plan_Due then
-         declare
-            Front : constant Dist_T := Train.Est_Front;
-            EOA   : constant Dist_T := MA_R.EOA;
-            MA_M  : constant Natural :=
-              Metres_Ahead (Ahead, Front, EOA, 65_534);
-         begin
-            Plan.MA_Dist := Unsigned_16 (MA_M);
-            Plan.Ceiling := Unsigned_16
-              (Natural'Min (Kmh (Natural'Max (0, Lowest
-                 (Steps, A (Ahead, Train.Min_Front),
-                  A (Ahead, Train.Max_Front)))), 400));
-            --  the gradient at the front, then its changes ahead
-            Plan.Gradient_Count := 1;
-            Plan.Gradients (1) :=
-              (Start => 0,
-               Value => Integer'Max
-                 (-128, Integer'Min
-                    (127, Shown (Value_At (G_Steps, A (Ahead, Front))))));
-            for K in 2 .. G_Steps.Count loop
-               exit when Plan.Gradient_Count
-                           = EVC_DMI_Port.Max_Planning_Gradients;
-               if G_Steps.List (K).Start > A (Ahead, Front)
-                 and then Metres_Ahead (Ahead, Front,
-                                        A (Ahead, G_Steps.List (K).Start),
-                                        65_535) <= 32_000
-               then
-                  Plan.Gradient_Count := Plan.Gradient_Count + 1;
-                  Plan.Gradients (Plan.Gradient_Count) :=
-                    (Start => Unsigned_16
-                       (Metres_Ahead (Ahead, Front,
-                                      A (Ahead, G_Steps.List (K).Start),
-                                      32_000)),
-                     Value => Integer'Max
-                       (-128, Integer'Min
-                          (127, Shown (G_Steps.List (K).Value))));
-               end if;
-            end loop;
-            --  the MRSP ahead up to the EOA, then the EOA or the LOA
-            for K in 2 .. Steps.Count loop
-               exit when Plan.Speed_Count
-                           >= EVC_DMI_Port.Max_Planning_Speeds - 1;
-               declare
-                  D : constant Natural :=
-                    Metres_Ahead (Ahead, Front,
-                                  A (Ahead, Steps.List (K).Start), 65_535);
-               begin
-                  if Steps.List (K).Start > A (Ahead, Front)
-                    and then D < MA_M and then D <= 32_000
-                  then
-                     Plan.Speed_Count := Plan.Speed_Count + 1;
-                     Plan.Speeds (Plan.Speed_Count) :=
-                       (Dist  => Unsigned_16 (D),
-                        Speed => Unsigned_16
-                          (Natural'Min (Kmh (Steps.List (K).Value), 400)));
-                  end if;
-               end;
-            end loop;
-            if MA_M <= 32_000
-              and then Plan.Speed_Count < EVC_DMI_Port.Max_Planning_Speeds
-            then
-               Plan.Speed_Count := Plan.Speed_Count + 1;
-               Plan.Speeds (Plan.Speed_Count) :=
-                 (Dist  => Unsigned_16 (MA_M),
-                  Speed => Unsigned_16
-                    (Natural'Min (Kmh (MA_R.LOA_Speed), 400)));
-            end if;
-            --  the orders of the track conditions ahead
-            for I in 1 .. Orders.Count loop
-               exit when Plan.Order_Count = EVC_DMI_Port.Max_Planning_Orders;
-               declare
-                  D : constant Natural :=
-                    Metres_Ahead (Ahead, Front, Orders.List (I).At_X, 65_535);
-               begin
-                  if D <= 32_000 then
-                     Plan.Order_Count := Plan.Order_Count + 1;
-                     Plan.Orders (Plan.Order_Count) :=
-                       (Symbol => Unsigned_8 (Orders.List (I).Symbol),
-                        Dist   => Unsigned_16 (D));
-                  end if;
-               end;
-            end loop;
-         end;
-      end if;
+      Build_Train (T, Train, Ahead, Data, NV, Mode_Speed, Configuration, Ctx);
+      Build_PBD (Train, Special_Active, Additional, Configuration);
+      Build_Speed_Sources (T, Ahead, Data.Length, Mode, MA_Now.Sense);
+      Build_MRSP (T, Ahead, Data.Length, Data.Max_Speed, Mode, Mode_Speed,
+                  Snap.MRSP);
+      Build_Gradients (T, Ahead, Default_Known, Default_G, Snap.Gradients,
+                       G_Steps);
+      Build_MA (T, Ahead, NV.V_NVREL, Data.Length, Mode, With_MA, MA_R,
+                Snap.MA, Snap.Inhibitions, Snap.Supervise);
+      Build_Mode_Conditions (T, Train, Ahead);
+      Build_Trip_Margin (Train, Ahead, MA_R, Snap.Extra.Trip_Margin);
+      Build_Temporary (T, Train, Ahead, With_MA, Snap.Temporary, Snap.LX);
+      Build_Track_Conditions (T, Train, Now_Ms, Virtual_Last, Orders,
+                              Snap.Virtual);
+      Build_LX_Indications (T, Train, Ahead);
+      Build_Track_Cond_Due;
+      Build_Planning (Train, Ahead, Snap.Supervise, MA_R, G_Steps,
+                      Default_G, Orders);
    end Build;
+
 
    --------------
    -- Evaluate --

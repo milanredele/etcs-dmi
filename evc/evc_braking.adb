@@ -350,6 +350,25 @@ is
       return Value_T (Set.Steps (K).Factor) * 1_000;
    end Kr_Int;
 
+
+   --  3.13.6.2.1.8.1: Kv_int of a passenger train for an A_ebmax between
+   --  A_NVP12 and A_NVP23, the factors Fa of the subset a and Fb of the
+   --  subset b interpolated linearly, millionths rounded down. A
+   --  function with a contract, not an expression: the callers' checks
+   --  see the range of the result, not the cases of its rounding
+   function Kv_Between (Fa, Fb, P12, P23, A_Ebmax : Num) return Value_T
+     with Pre => Fa in 0 .. Value_T'Last
+                 and then Fb in 0 .. Value_T'Last
+                 and then P12 in 0 .. Max_Model_Decel
+                 and then P23 in P12 + 1 .. Max_Model_Decel
+                 and then A_Ebmax in P12 + 1 .. Value_T'Last
+   is
+   begin
+      return Min (Max (Fa + Div_Floor ((A_Ebmax - P12) * (Fb - Fa),
+                                       P23 - P12), 0),
+                  Value_T'Last);
+   end Kv_Between;
+
    --  3.13.6.2.1.8.1: Kv_int of a passenger train between the subsets a
    --  and b by A_ebmax, millionths rounded down; the steps are those of
    --  a; the decelerations in Decel_Unit
@@ -371,9 +390,7 @@ is
          begin
             R.Steps (K).Value :=
               (if A_Ebmax >= P23 then Fb
-               else Min (Max (Fa + Div_Floor ((A_Ebmax - P12) * (Fb - Fa),
-                                              P23 - P12), 0),
-                         Value_T'Last));
+               else Kv_Between (Fa, Fb, P12, P23, A_Ebmax));
          end;
       end loop;
       return R;
@@ -422,171 +439,197 @@ is
      (React    => Time_T (B.React),
       Build_Up => Time_T (Integer'Max (B.Build_Up, B.React)));
 
-   procedure Build (S          : Snapshot_T;
-                    Active     : Brakes_T;
-                    Additional : Boolean;
-                    Model      : out Model_T)
+
+   --  3.13.2.2.6.2: whether the status of a special brake counts for
+   --  the emergency or the service brake models
+   function Status_Counts (Config    : Onboard_Config_T;
+                           B         : Special_Brake_T;
+                           Emergency : Boolean) return Boolean
+   is (case Config.Special_Brakes (B) is
+          when No_Interface          => False,
+          when Emergency_Only        => Emergency,
+          when Service_Only          => not Emergency,
+          when Emergency_And_Service => True);
+
+   --  3.13.2.2.3.1.7: the train has the special brake B
+   function Has (T : Train_Data_T; B : Special_Brake_T) return Boolean is
+     (case B is
+         when Regenerative      => T.Has_Regenerative,
+         when Eddy_Current      => T.Has_Eddy_Current,
+         when Magnetic_Shoe     => T.Has_Magnetic_Shoe,
+         when Electro_Pneumatic => T.Has_Electro_Pneumatic);
+
+   --  The parts of Build, in their order; each fills its components of
+   --  the model, passed by reference ("in out"), from the snapshot's,
+   --  also by reference.
+
+   --  3.13.5.2, 3.13.2.2.6.2: the special brakes that contribute to the
+   --  emergency and to the service brake models: the train has them and
+   --  their status, where it counts, does not say "not active"
+   procedure Build_Brakes (T      : Train_Data_T;
+                           Config : Onboard_Config_T;
+                           Active : Brakes_T;
+                           Model  : in out Model_T)
+     with Global => null
    is
-      T      : Train_Data_T renames S.Train_Data;
-      X      : Train_Data_Extra_T renames S.Extra.Train;
-      NV     : National_Values_T renames S.National;
-      Config : Onboard_Config_T renames S.Extra.Config;
-
-      --  3.13.2.2.6.2: whether the status of a special brake counts for
-      --  the emergency or the service brake models
-      function Status_Counts (B : Special_Brake_T; Emergency : Boolean)
-        return Boolean
-      is (case Config.Special_Brakes (B) is
-             when No_Interface          => False,
-             when Emergency_Only        => Emergency,
-             when Service_Only          => not Emergency,
-             when Emergency_And_Service => True);
-
-      function Has (B : Special_Brake_T) return Boolean is
-        (case B is
-            when Regenerative      => T.Has_Regenerative,
-            when Eddy_Current      => T.Has_Eddy_Current,
-            when Magnetic_Shoe     => T.Has_Magnetic_Shoe,
-            when Electro_Pneumatic => T.Has_Electro_Pneumatic);
-
-      Conversion : constant Boolean := Conversion_Applicable (T);
-      Length     : constant Num := Min (Num (T.Length), 150_000);
    begin
-      Model := (others => <>);
-      Model.Conversion := Conversion;
-
       for B in Special_Brake_T loop
          Model.Emergency_Brakes (B) :=
-           Has (B) and then (not Status_Counts (B, True) or else Active (B));
+           Has (T, B)
+           and then (not Status_Counts (Config, B, True) or else Active (B));
          Model.Service_Brakes (B) :=
-           Has (B) and then (not Status_Counts (B, False) or else Active (B));
+           Has (T, B)
+           and then (not Status_Counts (Config, B, False) or else Active (B));
       end loop;
+   end Build_Brakes;
 
-      --  3.13.4.3.2
-      if X.M_Rotating_Nom > 0 then
-         Model.M_Rotating_Up := X.M_Rotating_Nom;
-         Model.M_Rotating_Down := X.M_Rotating_Nom;
-      end if;
+   --  3.13.6.2.2.3: T_be = Kt_int * T_brake_emergency, and likewise the
+   --  reaction time
+   function With_Kt (Times : Times_T; Kt : Factor_T) return Times_T is
+     (React    => Min (Div_Ceil (Times.React * Kt, 1000), Max_Time),
+      Build_Up => Min (Div_Ceil (Times.Build_Up * Kt, 1000), Max_Time));
 
-      if Conversion then
-         --  3.13.3.3, A.3.7; 3.13.6.2.1.4: A_brake_safe = Kv_int (V) *
-         --  Kr_int (L_TRAIN) * A_brake_emergency (V); no special brake
-         --  changes these models (3.13.2.2.6.3)
+   --  The conversion model (3.13.3.3, A.3.7 to A.3.9); 3.13.6.2.1.4:
+   --  A_brake_safe = Kv_int (V) * Kr_int (L_TRAIN) * A_brake_emergency
+   --  (V); no special brake changes these models (3.13.2.2.6.3); the
+   --  times of A.3.8 and A.3.9, the emergency ones by Kt_int
+   --  (3.13.6.2.2.3)
+   procedure Build_Conversion (T      : Train_Data_T;
+                               NV     : National_Values_T;
+                               Length : Num;
+                               Model  : in out Model_T)
+     with Global => null,
+          Pre    => Length in 0 .. 150_000
+   is
+      Emergency : constant Steps_T :=
+        Basic_Deceleration (T.Brake_Percentage);
+      Service   : constant Steps_T :=
+        Basic_Deceleration (Integer'Min (T.Brake_Percentage, 135));
+      Ebmax     : constant Value_T :=
+        A_Ebmax (Emergency, Speed_T (T.Max_Speed));
+      Kv        : constant Steps_T :=
+        Kv_Int (NV, T.Brake_Position, Ebmax);
+      Kr        : constant Value_T := Kr_Int (NV.Kr_Int, Length);
+      --  Kv_int (V) * Kr_int, then one product: one rounding
+      Safe      : constant Steps_T :=
+        Product (Emergency, Product (Kv, Constant_Steps (Kr)));
+      Kt        : constant Factor_T := Factor_T (NV.Kt_Int);
+   begin
+      Model.Valid := True;
+      Model.Emergency_Safe := (others => Safe);
+      Model.Service := (others => Service);
+      Model.Emergency_Zero := With_Kt
+        (Conversion_Emergency (T.Brake_Position, Length, True), Kt);
+      Model.Emergency_Target := With_Kt
+        (Conversion_Emergency (T.Brake_Position, Length, False), Kt);
+      Model.Service_Zero :=
+        Conversion_Service (T.Brake_Position, Length, True);
+      Model.Service_Target :=
+        Conversion_Service (T.Brake_Position, Length, False);
+   end Build_Conversion;
+
+   --  3.13.6.2.1.4: the rolling stock correction factor Kdry_rst (V,
+   --  M_NVEBCL) * (Kwet_rst (V) + M_NVAVADH * (1 - Kwet_rst (V))) of the
+   --  step K of a braking model, millionths rounded down
+   function Rst_Factor (X     : Train_Data_Extra_T;
+                        EBCL  : Natural;
+                        Avadh : Num;
+                        K     : Positive) return Value_T
+     with Pre => EBCL <= 9 and then Avadh in 0 .. 1_000
+                 and then K <= Max_Curve_Steps
+   is
+      Kdry : constant Num := Num (X.Kdry_Rst (EBCL) (K));
+      Kwet : constant Num := Num (X.Kwet_Rst (K));
+      --  Kwet + M_NVAVADH * (1 - Kwet), exact in millionths
+      Wet  : constant Num :=
+        Max (Kwet * 1_000 + Avadh * (1_000 - Kwet), 0);
+   begin
+      --  Kdry * Wet, millionths rounded down
+      return Min (Kdry * Wet / 1_000, Value_T'Last);
+   end Rst_Factor;
+
+   --  The braking models (3.13.2.2.1.3): A_brake_safe (V) by
+   --  combination with the rolling stock correction factors
+   --  (3.13.6.2.1.4), A_brake_service (V) (3.13.6.3.1.4); a model of the
+   --  emergency brake exists
+   procedure Build_Braking_Models (T     : Train_Data_T;
+                                   X     : Train_Data_Extra_T;
+                                   NV    : National_Values_T;
+                                   Model : in out Model_T)
+     with Global => null
+   is
+      EBCL  : constant Natural range 0 .. 9 := NV.M_NVEBCL;
+      Avadh : constant Num := Min (Num (NV.M_NVAVADH), 1_000);
+   begin
+      for C in Brake_Combination_T loop
          declare
             Emergency : constant Steps_T :=
-              Basic_Deceleration (T.Brake_Percentage);
-            Service   : constant Steps_T :=
-              Basic_Deceleration (Integer'Min (T.Brake_Percentage, 135));
-            Ebmax     : constant Value_T :=
-              A_Ebmax (Emergency, Speed_T (T.Max_Speed));
-            Kv        : constant Steps_T :=
-              Kv_Int (NV, T.Brake_Position, Ebmax);
-            Kr        : constant Value_T := Kr_Int (NV.Kr_Int, Length);
-            --  Kv_int (V) * Kr_int, then one product: one rounding
-            Safe      : constant Steps_T :=
-              Product (Emergency, Product (Kv, Constant_Steps (Kr)));
+              From_Curve (if X.By_Combination
+                          then X.A_Emergency_Combination (C)
+                          else T.A_Brake_Emergency);
+            Safe : Steps_T := Emergency;
          begin
-            Model.Valid := True;
-            Model.Emergency_Safe := (others => Safe);
-            Model.Service := (others => Service);
-            --  3.13.6.2.2.3: T_be = Kt_int * T_brake_emergency, and
-            --  likewise the reaction time
-            declare
-               Kt : constant Factor_T := Factor_T (NV.Kt_Int);
-
-               function With_Kt (Times : Times_T) return Times_T is
-                 (React    => Min (Div_Ceil (Times.React * Kt, 1000),
-                                   Max_Time),
-                  Build_Up => Min (Div_Ceil (Times.Build_Up * Kt, 1000),
-                                   Max_Time));
-            begin
-               Model.Emergency_Zero := With_Kt
-                 (Conversion_Emergency (T.Brake_Position, Length, True));
-               Model.Emergency_Target := With_Kt
-                 (Conversion_Emergency (T.Brake_Position, Length, False));
-            end;
-            Model.Service_Zero :=
-              Conversion_Service (T.Brake_Position, Length, True);
-            Model.Service_Target :=
-              Conversion_Service (T.Brake_Position, Length, False);
-         end;
-      else
-         --  braking models (3.13.2.2.1.3), with the rolling stock
-         --  correction factors (3.13.6.2.1.4)
-         declare
-            EBCL : constant Natural range 0 .. 9 := NV.M_NVEBCL;
-            Avadh : constant Num :=
-              Min (Num (NV.M_NVAVADH), 1_000);
-         begin
-            for C in Brake_Combination_T loop
-               declare
-                  Emergency : constant Steps_T :=
-                    From_Curve (if X.By_Combination
-                                then X.A_Emergency_Combination (C)
-                                else T.A_Brake_Emergency);
-                  Safe : Steps_T := Emergency;
-               begin
-                  for K in 1 .. Safe.Count loop
-                     declare
-                        Kdry : constant Num := Num (X.Kdry_Rst (EBCL) (K));
-                        Kwet : constant Num := Num (X.Kwet_Rst (K));
-                        --  Kwet + M_NVAVADH * (1 - Kwet), exact in
-                        --  millionths
-                        Wet  : constant Num :=
-                          Max (Kwet * 1_000 + Avadh * (1_000 - Kwet), 0);
-                        --  Kdry * Wet, millionths rounded down
-                        Factor : constant Num :=
-                          Min (Kdry * Wet / 1_000, Value_T'Last);
-                     begin
-                        Safe.Steps (K).Value :=
-                          Scaled (Safe.Steps (K).Value, Factor);
-                     end;
-                  end loop;
-                  Model.Emergency_Safe (C) := Safe;
-                  Model.Service (C) :=
-                    From_Curve (if X.By_Combination
-                                then X.A_Service_Combination (C)
-                                else T.A_Brake_Service);
-               end;
+            for K in 1 .. Safe.Count loop
+               Safe.Steps (K).Value :=
+                 Scaled (Safe.Steps (K).Value,
+                         Rst_Factor (X, EBCL, Avadh, K));
             end loop;
-            Model.Valid := T.A_Brake_Emergency.Count > 0
-              or else (X.By_Combination
-                       and then (for some C in Brake_Combination_T =>
-                                   X.A_Emergency_Combination (C).Count > 0));
-            --  3.13.6.2.2.3, 3.13.6.3.2.4: the times of the combination
-            --  of special brakes in use (Table 4)
-            declare
-               EB : Brakes_T renames Model.Emergency_Brakes;
-               SB : Brakes_T renames Model.Service_Brakes;
-               Emergency : constant Times_T :=
-                 (if X.By_Combination
-                  then To_Times (X.T_Emergency_Combination
-                                  (Index (EB (Regenerative),
-                                          EB (Eddy_Current),
-                                          EB (Magnetic_Shoe),
-                                          EB (Electro_Pneumatic))))
-                  else To_Times ((React    => X.T_Brake_Emergency_React,
-                                  Build_Up => T.T_Brake_Emergency)));
-               Service : constant Times_T :=
-                 (if X.By_Combination
-                  then To_Times (X.T_Service_Combination
-                                  (Index (SB (Regenerative),
-                                          SB (Eddy_Current),
-                                          False,
-                                          SB (Electro_Pneumatic))))
-                  else To_Times ((React    => X.T_Brake_Service_React,
-                                  Build_Up => T.T_Brake_Service)));
-            begin
-               Model.Emergency_Zero := Emergency;
-               Model.Emergency_Target := Emergency;
-               Model.Service_Zero := Service;
-               Model.Service_Target := Service;
-            end;
+            Model.Emergency_Safe (C) := Safe;
+            Model.Service (C) :=
+              From_Curve (if X.By_Combination
+                          then X.A_Service_Combination (C)
+                          else T.A_Brake_Service);
          end;
-      end if;
+      end loop;
+      Model.Valid := T.A_Brake_Emergency.Count > 0
+        or else (X.By_Combination
+                 and then (for some C in Brake_Combination_T =>
+                             X.A_Emergency_Combination (C).Count > 0));
+   end Build_Braking_Models;
 
-      --  3.13.6.4: the normal service model, by the set of the brake
-      --  position and A_brake_service (V = 0) (3.13.2.2.3.1.9, .10)
+   --  3.13.6.2.2.3, 3.13.6.3.2.4: the brake times of the braking models,
+   --  those of the combination of special brakes in use (Table 4)
+   procedure Build_Braking_Times (T     : Train_Data_T;
+                                  X     : Train_Data_Extra_T;
+                                  Model : in out Model_T)
+     with Global => null
+   is
+      EB : Brakes_T renames Model.Emergency_Brakes;
+      SB : Brakes_T renames Model.Service_Brakes;
+      Emergency : constant Times_T :=
+        (if X.By_Combination
+         then To_Times (X.T_Emergency_Combination
+                         (Index (EB (Regenerative),
+                                 EB (Eddy_Current),
+                                 EB (Magnetic_Shoe),
+                                 EB (Electro_Pneumatic))))
+         else To_Times ((React    => X.T_Brake_Emergency_React,
+                         Build_Up => T.T_Brake_Emergency)));
+      Service : constant Times_T :=
+        (if X.By_Combination
+         then To_Times (X.T_Service_Combination
+                         (Index (SB (Regenerative),
+                                 SB (Eddy_Current),
+                                 False,
+                                 SB (Electro_Pneumatic))))
+         else To_Times ((React    => X.T_Brake_Service_React,
+                         Build_Up => T.T_Brake_Service)));
+   begin
+      Model.Emergency_Zero := Emergency;
+      Model.Emergency_Target := Emergency;
+      Model.Service_Zero := Service;
+      Model.Service_Target := Service;
+   end Build_Braking_Times;
+
+   --  3.13.6.4: the normal service model, by the set of the brake
+   --  position and A_brake_service (V = 0) (3.13.2.2.3.1.9, .10); Kn+
+   --  and Kn- (3.13.2.2.9.2)
+   procedure Build_Normal_Service (T     : Train_Data_T;
+                                   X     : Train_Data_Extra_T;
+                                   Model : in out Model_T)
+     with Global => null
+   is
+   begin
       for C in Brake_Combination_T loop
          declare
             Set : constant Normal_Service_Set_T :=
@@ -608,22 +651,62 @@ is
            Model.Normal_Service (C).Count > 0);
       Model.Kn_Plus := From_Curve (X.Kn_Plus);
       Model.Kn_Minus := From_Curve (X.Kn_Minus);
+   end Build_Normal_Service;
 
-      --  3.13.6.2.1.6: A_MAXREDADH by the brake position and the
-      --  special or additional brakes independent from the adhesion
-      declare
-         N : constant Positive range 1 .. 3 :=
-           (if T.Brake_Position /= Passenger_P then 3
-            elsif Config.Additional_Brake_Allowed and then Additional
-            then 1 else 2);
-      begin
-         Model.Redadh_Use := S.Extra.National.Redadh_Use (N);
-         Model.Redadh := Value_T (case N is
-                                    when 1 => NV.A_NVMAXREDADH1,
-                                    when 2 => NV.A_NVMAXREDADH2,
-                                    when 3 => NV.A_NVMAXREDADH3)
-                         * Decel_Unit_Per_Mms2;
-      end;
+   --  3.13.6.2.1.6: A_MAXREDADH by the brake position and the special or
+   --  additional brakes independent from the adhesion
+   procedure Build_Redadh (S          : Snapshot_T;
+                           Additional : Boolean;
+                           Model      : in out Model_T)
+     with Global => null
+   is
+      T  : Train_Data_T renames S.Train_Data;
+      NV : National_Values_T renames S.National;
+      N  : constant Positive range 1 .. 3 :=
+        (if T.Brake_Position /= Passenger_P then 3
+         elsif S.Extra.Config.Additional_Brake_Allowed and then Additional
+         then 1 else 2);
+   begin
+      Model.Redadh_Use := S.Extra.National.Redadh_Use (N);
+      Model.Redadh := Value_T (case N is
+                                 when 1 => NV.A_NVMAXREDADH1,
+                                 when 2 => NV.A_NVMAXREDADH2,
+                                 when 3 => NV.A_NVMAXREDADH3)
+                      * Decel_Unit_Per_Mms2;
+   end Build_Redadh;
+
+   procedure Build (S          : Snapshot_T;
+                    Active     : Brakes_T;
+                    Additional : Boolean;
+                    Model      : out Model_T)
+   is
+      T          : Train_Data_T renames S.Train_Data;
+      X          : Train_Data_Extra_T renames S.Extra.Train;
+      NV         : National_Values_T renames S.National;
+      Conversion : constant Boolean := Conversion_Applicable (T);
+      Length     : constant Num := Min (Num (T.Length), 150_000);
+   begin
+      Model := (others => <>);
+      Model.Conversion := Conversion;
+      Build_Brakes (T, S.Extra.Config, Active, Model);
+
+      --  3.13.4.3.2
+      if X.M_Rotating_Nom > 0 then
+         Model.M_Rotating_Up := X.M_Rotating_Nom;
+         Model.M_Rotating_Down := X.M_Rotating_Nom;
+      end if;
+
+      if Conversion then
+         Build_Conversion (T, NV, Length, Model);
+      else
+         --  braking models (3.13.2.2.1.3), with the rolling stock
+         --  correction factors (3.13.6.2.1.4)
+         Build_Braking_Models (T, X, NV, Model);
+         Build_Braking_Times (T, X, Model);
+      end if;
+
+      Build_Normal_Service (T, X, Model);
+      Build_Redadh (S, Additional, Model);
    end Build;
 
 end EVC_Braking;
