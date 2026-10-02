@@ -68,6 +68,24 @@ on wasm32 and on a light runtime, and to be testable headless:
   0` rule; gnatprove on the kernel packages for absence of run-time errors,
   and functional contracts where the SRS states a property directly (limits
   ordered, a mode transition only from its source modes, …).
+- **Proof settings** (measured 2026-10-02 on the E4 on-board, 8548
+  checks, a ten core host): with the shared cache warm a proof costs 8 s
+  when nothing changed, 13 to 16 s after one file, 35 s in a fresh
+  worktree. From nothing, `--level=2` with its three provers took 22 min
+  (155 min of processor time): Alt-Ergo 37 % of it for 120 of 10 000
+  conditions, `gnatwhy3` 34 % (it generates, transforms and prints every
+  condition anew for each prover and after each failed attempt), CVC5
+  12 %, Z3 3 %. CVC5 and Z3 alone prove everything in 12 min; Z3 alone
+  leaves 20 checks; the order of the provers and a quick first pass at
+  `--level=1` change nothing. The limit of an attempt is 100000 steps
+  with 60 s as a backstop, in place of the 5 s of level 2: a
+  postcondition of `EVC_Position` needed 4.8 of those 5 s and failed in
+  three of five runs from nothing, while the cache held a lucky result.
+  Steps are the same in every run, so `evc/prove.sh` can demand a margin
+  (a proved check over 60000 steps or 20 s fails the run) and prints the
+  margin of every run; it also lets one proof run at a time on the
+  machine. The host build is `-O2` and the whole check runs its programs
+  side by side: 150 s became 15 s.
 - **SPARK**: `SPARK_Mode (On)` on `evc/` from the first package. What leaves
   SPARK is stated per unit with the reason. The proof runs in the regular
   check (`gnatprove -P etcs_evc.gpr`), not as an afterthought.
