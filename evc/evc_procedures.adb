@@ -1408,12 +1408,84 @@ is
    --  Evaluate
    ---------------------------------------------------------------------
 
+   --  6. The conditions of 4.6.3 of this half that the steps of the
+   --  cycle do not set themselves ([9] LX_Step, the trips Trip_Step):
+   --  the driver's selections and acknowledgements, the desks, the mode
+   --  profile (3.12.4), the level switched (5.10); Standstill: the train
+   --  is at standstill
+   procedure Set_Conditions (C : Context_T; Standstill : Boolean)
+     with Global => (Input  => (Acked_Now, Acked_M, Stop_On_Desk,
+                                Ovr_Selected_Now, Profile_Info,
+                                EVC_Driver_Requests.State),
+                     In_Out => Conds)
+   is
+      L_Valid : constant Boolean := C.Level_Valid;
+   begin
+      --  [5]
+      Conds (5) := Standstill and then L_Valid
+                   and then C.Level in L0 | NTC | L1
+                   and then EVC_Driver_Requests.Shunting_Selected;
+      --  [6]: level 2, the RBC (phase E5)
+      --  [7], [62], [63], [68]: the train trip acknowledged
+      declare
+         Trip_Ack : constant Boolean :=
+           Acked_Now and then Acked_M = M_TR and then Standstill;
+      begin
+         Conds (7) := Trip_Ack and then L_Valid and then C.Level in L1 | L2;
+         Conds (62) := Trip_Ack and then L_Valid and then C.Level = L0
+                       and then C.Train_Data_Valid;
+         Conds (63) := Trip_Ack and then L_Valid and then C.Level = NTC
+                       and then C.Train_Data_Valid;
+         Conds (68) := Trip_Ack and then L_Valid
+                       and then C.Level in L0 | NTC
+                       and then not C.Train_Data_Valid;
+      end;
+      --  [9]: LX_Step; [11]: level 2 (phase E5)
+      --  [15], [50], [70]: the acknowledgement of a request displayed
+      Conds (15) := Acked_Now and then Acked_M = M_OS;
+      Conds (50) := Acked_Now and then Acked_M = M_SH;
+      Conds (70) := Acked_Now and then Acked_M = M_LS;
+      --  [19]
+      Conds (19) := EVC_Driver_Requests.Exit_Shunting_Selected
+                    and then Standstill;
+      --  [20]: the unconditional emergency stop (radio, phase E5)
+      --  [22], [23]: Passive Shunting, a desk opened
+      Conds (22) := C.Desk_Open and then Stop_On_Desk;
+      Conds (23) := C.Desk_Open and then not Stop_On_Desk;
+      --  [28], [30]: the desks closed ([26], [27] read "Continue
+      --  Shunting on desk closure", EVC_Mission: EVC_Transition_Conditions)
+      Conds (28) := not C.Desk_Open;
+      Conds (30) := not C.Desk_Open and then not C.Passive_Shunting;
+      --  [37]: "override" selected (Override_Step: 5.8.2.1)
+      Conds (37) := Ovr_Selected_Now;
+      --  [40], [72], [73], [74], [75], [76], [51] and those with the
+      --  level transition, [34], [61], [71]
+      Conds (40) := Profile_Info.Furthest = 0;
+      Conds (72) := Profile_Info.Furthest = 2;
+      Conds (73) := Profile_Info.Furthest = 0
+                    and then not Profile_Info.In_LS_Ack;
+      Conds (74) := Profile_Info.Furthest = 2
+                    and then not Profile_Info.In_OS_Ack;
+      Conds (75) := not Profile_Info.In_OS_Ack and then not Profile_Info.Any;
+      Conds (76) := not Profile_Info.In_LS_Ack and then not Profile_Info.Any;
+      Conds (51) := Profile_Info.SH_Reached;
+      Conds (34) := Conds (40) and then C.Level_Switched;
+      Conds (61) := Conds (51) and then C.Level_Switched;
+      Conds (71) := Conds (72) and then C.Level_Switched;
+      --  [59]: the reversing acknowledged at standstill
+      Conds (59) := Acked_Now and then Acked_M = M_RV and then Standstill;
+      --  [81]: the SM authorisation of the RBC (phase E5)
+      --  [82]
+      Conds (82) := EVC_Driver_Requests.Exit_SM_Selected
+                    and then Standstill;
+
+   end Set_Conditions;
+
    procedure Evaluate (C   : Context_T;
                        S   : Snapshot_T;
                        SDM : EVC_SDM.Result_T)
    is
       Standstill : constant Boolean := S.Train.Standstill;
-      L_Valid    : constant Boolean := C.Level_Valid;
    begin
       Ctx := C;
       Conds := (others => False);
@@ -1482,63 +1554,7 @@ is
       Train_Data_Step (C, S);
 
       --  6. The conditions of 4.6.3 of this half
-      --  [5]
-      Conds (5) := Standstill and then L_Valid
-                   and then C.Level in L0 | NTC | L1
-                   and then EVC_Driver_Requests.Shunting_Selected;
-      --  [6]: level 2, the RBC (phase E5)
-      --  [7], [62], [63], [68]: the train trip acknowledged
-      declare
-         Trip_Ack : constant Boolean :=
-           Acked_Now and then Acked_M = M_TR and then Standstill;
-      begin
-         Conds (7) := Trip_Ack and then L_Valid and then C.Level in L1 | L2;
-         Conds (62) := Trip_Ack and then L_Valid and then C.Level = L0
-                       and then C.Train_Data_Valid;
-         Conds (63) := Trip_Ack and then L_Valid and then C.Level = NTC
-                       and then C.Train_Data_Valid;
-         Conds (68) := Trip_Ack and then L_Valid
-                       and then C.Level in L0 | NTC
-                       and then not C.Train_Data_Valid;
-      end;
-      --  [9]: LX_Step; [11]: level 2 (phase E5)
-      --  [15], [50], [70]: the acknowledgement of a request displayed
-      Conds (15) := Acked_Now and then Acked_M = M_OS;
-      Conds (50) := Acked_Now and then Acked_M = M_SH;
-      Conds (70) := Acked_Now and then Acked_M = M_LS;
-      --  [19]
-      Conds (19) := EVC_Driver_Requests.Exit_Shunting_Selected
-                    and then Standstill;
-      --  [20]: the unconditional emergency stop (radio, phase E5)
-      --  [22], [23]: Passive Shunting, a desk opened
-      Conds (22) := C.Desk_Open and then Stop_On_Desk;
-      Conds (23) := C.Desk_Open and then not Stop_On_Desk;
-      --  [28], [30]: the desks closed ([26], [27] read "Continue
-      --  Shunting on desk closure", EVC_Mission: EVC_Transition_Conditions)
-      Conds (28) := not C.Desk_Open;
-      Conds (30) := not C.Desk_Open and then not C.Passive_Shunting;
-      --  [37]: "override" selected (Override_Step: 5.8.2.1)
-      Conds (37) := Ovr_Selected_Now;
-      --  [40], [72], [73], [74], [75], [76], [51] and those with the
-      --  level transition, [34], [61], [71]
-      Conds (40) := Profile_Info.Furthest = 0;
-      Conds (72) := Profile_Info.Furthest = 2;
-      Conds (73) := Profile_Info.Furthest = 0
-                    and then not Profile_Info.In_LS_Ack;
-      Conds (74) := Profile_Info.Furthest = 2
-                    and then not Profile_Info.In_OS_Ack;
-      Conds (75) := not Profile_Info.In_OS_Ack and then not Profile_Info.Any;
-      Conds (76) := not Profile_Info.In_LS_Ack and then not Profile_Info.Any;
-      Conds (51) := Profile_Info.SH_Reached;
-      Conds (34) := Conds (40) and then C.Level_Switched;
-      Conds (61) := Conds (51) and then C.Level_Switched;
-      Conds (71) := Conds (72) and then C.Level_Switched;
-      --  [59]: the reversing acknowledged at standstill
-      Conds (59) := Acked_Now and then Acked_M = M_RV and then Standstill;
-      --  [81]: the SM authorisation of the RBC (phase E5)
-      --  [82]
-      Conds (82) := EVC_Driver_Requests.Exit_SM_Selected
-                    and then Standstill;
+      Set_Conditions (C, Standstill);
 
       Version_Seen := False;
    end Evaluate;
