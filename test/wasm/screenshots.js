@@ -42,6 +42,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const evalJSON = async (expr) => JSON.parse((await send('Runtime.evaluate', { expression: `JSON.stringify(${expr})`, returnByValue: true })).result.value);
 
     await sleep(2500);
+    // this script was written for EVC_Mock's dynamics (the final wait
+    // below, "braking towards the 100 km/h restriction"); the bench
+    // page's default changed to the real on-board at the end of phase
+    // E4 (doc/EVC-PLAN.md), so ask for the mock explicitly instead of
+    // taking whatever the page defaults to
+    await evalJSON(`(() => {
+      const el = document.getElementById('onboard');
+      el.value = 'mock';
+      el.dispatchEvent(new Event('input'));
+      return true;
+    })()`);
+    await sleep(300);
     const rect = await evalJSON(`document.getElementById('myCanvas').getBoundingClientRect()`);
     const press = async (x, y) => {
       const p = { x: rect.left + x, y: rect.top + y, button: 'left', clickCount: 1 };
@@ -49,6 +61,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       await sleep(160);
       await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...p });
       await sleep(320);
+    };
+    // DMI_Windows.Window_ID_T, in its declaration order (dmi/dmi_windows.ads):
+    // dmi.dmi_window_top() names the window a navigation touch reached, so a
+    // stale coordinate fails loudly here instead of silently taking a wrong
+    // screenshot
+    const WINDOWS = ['Main', 'Override', 'Data_View', 'Special', 'Settings',
+      'Driver_ID', 'Level', 'TRN', 'Train_Data', 'Train_Data_Validation',
+      'SR_Data', 'Adhesion', 'Volume', 'Brightness', 'ATO_Selector',
+      'Radio_Data', 'GSMR_Network', 'RBC_Data', 'Radio_Network_Type',
+      'One_Radio', 'Set_VBC', 'Set_VBC_Validation', 'Remove_VBC',
+      'Remove_VBC_Validation', 'System_Version', 'Language'];
+    const expectWindow = async (name) => {
+      const code = await evalJSON('window.dmi.dmi_window_top()');
+      const got = code < 0 ? 'none' : (WINDOWS[code] ?? `#${code}`);
+      if (got !== name) {
+        throw new Error(`expected the ${name} window, the DMI shows ${got} `
+          + `(dmi_window_top ${code}): a touch coordinate is stale`);
+      }
     };
     const shot = async (name) => {
       const top = await evalJSON(`document.querySelector('.panel').getBoundingClientRect().top + window.scrollY`);
@@ -69,8 +99,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // within 2 s would walk through its letters instead (10.3.2.5)
     for (const k of [[385, 240], [487, 240], [589, 240]]) await press(...k); // 123
     await press(...ENTER);                      // -> level
+    await expectWindow('Level');
     await press(385, 240); await press(...ENTER); // Level 1, accepted
+    await expectWindow('Main');
     await press(410, 140);                      // Train data (1/2)
+    await expectWindow('Train_Data');
     await press(385, 240); await press(...FIELD(1)); // train category PASS 1
     for (const k of [[385, 290], [487, 390], [487, 390]]) await press(...k); // 400
     await press(...FIELD(2));
@@ -79,13 +112,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     for (const k of [[385, 240], [385, 290], [487, 390]]) await press(...k); // 140
     await press(...FIELD(4));
     await press(...NEXT);                       // Train data (2/2)
+    await expectWindow('Train_Data');
     await press(385, 240); await press(...FIELD(1)); // axle load category A
     await press(385, 340); await press(...FIELD(2)); // airtight: No
     await press(487, 290); await press(...FIELD(3)); // loading gauge Out of GC
     await press(167, 440);                      // entry complete? -> validation
+    await expectWindow('Train_Data_Validation');
     await press(487, 40);                       // validation: accept 'Yes'
+    await expectWindow('TRN');                  // Table 50 D6, not yet valid
     for (const k of [[385, 290], [385, 340], [385, 240], [385, 240]]) await press(...k); // 4711
     await press(...ENTER);                      // -> Main window
+    await expectWindow('Main');
     await press(410, 90);                       // Start -> default window, mission starts
     await sleep(1500);
     const simTime = async () => parseFloat((await evalJSON(`document.getElementById('stats').textContent`)).match(/t=([0-9.]+)/)[1]);

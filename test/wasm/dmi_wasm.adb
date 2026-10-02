@@ -4,6 +4,7 @@
 with Ada.Streams; use Ada.Streams;
 with DMI_Core;
 with DMI_Link;
+with DMI_Windows;
 with Display.Screen;
 with General_Parameters;
 
@@ -66,5 +67,10 @@ package body DMI_Wasm is
 
    function Link_Lost return Integer_32 is
      (if DMI_Core.EVC_Link_Lost then 1 else 0);
+
+   function Window_Top return Integer_32 is
+     (if DMI_Windows.Is_Open
+      then Integer_32 (DMI_Windows.Window_ID_T'Pos (DMI_Windows.Top))
+      else -1);
 
 end DMI_Wasm;

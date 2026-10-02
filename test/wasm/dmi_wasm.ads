@@ -60,4 +60,13 @@ package DMI_Wasm is
    function Link_Lost return Integer_32
      with Export, Convention => C, Link_Name => "dmi_link_lost";
 
+   -- The sub-level window currently on top of the stack (DMI_Windows,
+   -- chapters 10 and 11): DMI_Windows.Window_ID_T'Pos, -1 when none is
+   -- open (the default window). Read only, for a test harness that
+   -- wants to assert the window a touch was meant to reach instead of
+   -- trusting its coordinates blindly (test/wasm/screenshots.js); no
+   -- behaviour of the DMI itself depends on this export.
+   function Window_Top return Integer_32
+     with Export, Convention => C, Link_Name => "dmi_window_top";
+
 end DMI_Wasm;

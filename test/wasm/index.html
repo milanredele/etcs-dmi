@@ -1311,6 +1311,12 @@
       // ------------------------------------------------------------------
       (async () => {
         const dmi = await load('dmi.wasm');
+        // exposed read-only for a test driver outside the page's own
+        // closure (test/wasm/screenshots.js, through the DevTools
+        // protocol): dmi.dmi_window_top() names the sub-level window on
+        // top of the stack (DMI_Windows.Window_ID_T'Pos, -1 none), so a
+        // navigation touch can be asserted instead of trusted blindly
+        window.dmi = dmi;
         const evc = await load('evc.wasm');
         // the ETCS on-board in its environment: optional, the bench runs
         // with the simulator alone when the module is not there

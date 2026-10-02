@@ -140,6 +140,7 @@ with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train;
 with EVC_Test_Procedures;
+with Evc_Test_Touch;
 with EVC_Train_Data;
 with General_Parameters;
 with GNAT.SHA256;
@@ -11032,6 +11033,12 @@ procedure EVC_Test is
 
    package Procedures is new EVC_Test_Procedures (Check);
 
+   --  A native, touch-only start of mission (test/src/evc_test_touch.adb,
+   --  the e4/bench-page follow-up): DMI_Core and EVC_Core connected as
+   --  the bench page connects them, the driver acting only through touch
+   --  coordinates taken from the DMI's own layout queries.
+   package Touch is new Evc_Test_Touch (Check);
+
 begin
    Scenario_Protocol_Constants;
    Scenario_Power_Up;
@@ -11131,6 +11138,7 @@ begin
    Scenario_E4_Continue_Shunting;
    Check (Encodes_OK, "E4: every telegram of the track encoded");
    Procedures.Run;
+   Touch.Run;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));
