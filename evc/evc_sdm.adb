@@ -871,12 +871,6 @@ is
    end Perturbation_Of;
 
    ---------------------------------------------------------------------
-   --  Step
-   ---------------------------------------------------------------------
-
-   Max_Concerned : constant := 16;
-
-   ---------------------------------------------------------------------
    --  Added by the procedures of phase E4
    ---------------------------------------------------------------------
 
@@ -948,93 +942,123 @@ is
       end if;
    end Procedure_Targets;
 
-   procedure Step (S       : Snapshot_T;
-                   Inputs  : Inputs_T;
-                   Work    : in out Work_T;
-                   State   : in out State_T;
-                   Result  : out Result_T)
-   is
-      NV     : National_Values_T renames S.National;
-      Config : Onboard_Config_T renames S.Extra.Config;
-      C      : Ctx_T;
-      --  the emergency brake command on entry, for the proof of the
-      --  revocation (the postcondition)
-      EB_In  : constant Boolean := State.EB with Ghost;
+   ---------------------------------------------------------------------
+   --  Step and its stages
+   --
+   --  Step runs the stages below in their order. Each stage reads and
+   --  writes what its parameters say: the context of the cycle (Ctx_T),
+   --  the work area and the state by reference, single components where
+   --  a stage writes only a few. Their contracts carry what the stages
+   --  after them and the postcondition of Step need.
+   ---------------------------------------------------------------------
 
-      procedure Deactivate is
-      begin
-         State.Active := False;
-         State.Monitoring := CSM;
-         State.Status := NoS;
-         State.TCO := False;
-         State.SB := False;
-         State.EB := False;
-         State.EB_For_SB := False;
-         State.MRDT_Valid := False;
-         State.Lock_P := False;
-         State.Lock_SBI := False;
-         State.Lock_D := False;
-         State.Feedback.Active := False;
-         State.Feedback.Locked := False;
-         State.Feedback.Ratio_Prev := 1_000;
-         State.Signature := 0;
-         State.Active_Display := False;
-         State.Target_Count := 0;
-      end Deactivate;
+   subtype Target_Index_T is Positive range 1 .. Max_Targets;
+   subtype Element_Count_T is Natural range 0 .. Max_Speed_Segments;
+   subtype MRDT_Id_T is Natural range 0 .. 255;
+   subtype TTI_T is Natural range 0 .. No_TTI;
 
-      --  the EOA target (0: none), and the target that is the MRDT
-      EOA_Index  : Natural range 0 .. Max_Targets := 0;
-      --  the SvL of the EOA target is a temporary one: no release speed
-      --  (3.12.4.7, 3.12.5.8)
-      Temporary_SvL : Boolean := False;
-      --  phase E4, 5.16: the EOA of the EOA target is the start of the
-      --  level crossing of S.LX
-      LX_Here       : Boolean := False;
+   Max_Concerned : constant := 16;
+   subtype Concerned_Count_T is Natural range 0 .. Max_Concerned;
 
-      --  release speed monitoring (3.13.9.4.6)
-      Start      : RSM_Start_T;
-      Cond_2     : Boolean := False;
+   --  3.13.10.4.2: a concerned target, by its index in Work.Targets, with
+   --  its speed of the Permitted limit at the max safe front end
+   type Concerned_T is record
+      Index : Target_Index_T := 1;
+      V_P0  : Speed_T := 0;
+   end record;
+   type Concerned_Array is array (1 .. Max_Concerned) of Concerned_T;
 
-      --  what the targets give (3.13.10.4.10 to .15, 3.13.10.6.1)
+   --  What the targets give (3.13.10.4.10 to .15, 3.13.10.6.1)
+   type Survey_T is record
       Trig_Ind, Trig_Ovs, Trig_Was, Trig_SB, Trig_EB : Boolean := False;
-      Rev_All    : Boolean;
-      Passed_I   : Boolean := False;
-      Passed_I_B : Boolean := False;
-      V_P_Min    : Num;
-      V_SBI_Min  : Num;
-      RSM_V_P    : Num := Max_Speed;
-      RSM_V_SBI  : Num := Max_Speed;
-      Ind_Found  : Boolean := False;
-      Ind_D      : Num := 0;
-      Ind_Target : Natural range 0 .. Max_Targets := 0;
-      MRDT_Here  : Boolean := False;
-      Signature  : Num := 0;
+      --  a revocation condition holds for every target
+      Rev_All     : Boolean := False;
+      Passed_I    : Boolean := False;
+      Passed_I_B  : Boolean := False;
+      --  3.13.10.4.3, .4, 3.13.10.5.3: the displayed P and SBI speeds
+      V_P_Min     : Num := 0;
+      V_SBI_Min   : Num := 0;
+      RSM_V_P     : Num := Max_Speed;
+      RSM_V_SBI   : Num := Max_Speed;
+      --  3.13.10.3.8: the first Indication location, its distance and
+      --  its target
+      Ind_Found   : Boolean := False;
+      Ind_D       : Num := 0;
+      Ind_Target  : Target_Count_T := 0;
+      --  the most relevant displayed target of the last cycle is still
+      --  a target
+      MRDT_Here   : Boolean := False;
       --  A.3.13: a build up time of some target is reduced
-      Pawl       : Boolean := False;
-      MRDT_Changed : Boolean := False;
+      Pawl        : Boolean := False;
+      Concerned   : Concerned_Array := (others => (1, 0));
+      N_Concerned : Concerned_Count_T := 0;
+   end record;
 
-      type Concerned_T is record
-         Index : Positive range 1 .. Max_Targets := 1;
-         V_P0  : Speed_T := 0;
-      end record;
-      type Concerned_Array is array (1 .. Max_Concerned) of Concerned_T;
-      Concerned  : Concerned_Array := (others => (1, 0));
-      N_Concerned : Natural range 0 .. Max_Concerned := 0;
+   --  What the stages after the survey of the targets need of it
+   function Survey_Valid (C : Ctx_T; Sv : Survey_T) return Boolean is
+     ((if Sv.Rev_All then C.V <= C.V_MRSP)
+      and then (if Sv.Ind_Found
+                then Sv.Ind_D in -16 * Max_Cm .. 16 * Max_Cm))
+   with Ghost;
 
-      Mon        : Monitoring_T;
-      Status     : Status_T;
-      Brake      : Boolean;
-      Rel        : Speed_T;
+   --  The train and the ceiling speed, which every stage after the first
+   --  ones keeps (for the postcondition of Step)
+   function Same_Basis (A, B : Ctx_T) return Boolean is
+     (A.Stop = B.Stop and then A.V = B.V
+      and then A.Standstill = B.Standstill and then A.V_MRSP = B.V_MRSP)
+   with Ghost;
 
+   --  The commands in force, which the stages after the commands keep
+   function Same_Commands (A, B : State_T) return Boolean is
+     (A.SB = B.SB and then A.EB = B.EB and then A.EB_For_SB = B.EB_For_SB)
+   with Ghost;
+
+   ---------------------------------------------------------------------
+   --  No ceiling speed: nothing is supervised
+   ---------------------------------------------------------------------
+
+   procedure Deactivate (State : in out State_T)
+     with Post => not State.SB and then not State.EB
+                  and then not State.EB_For_SB
+   is
    begin
-      Result := (others => <>);
-      Work.Count := 0;
-      Work.Elements := 0;
+      State.Active := False;
+      State.Monitoring := CSM;
+      State.Status := NoS;
+      State.TCO := False;
+      State.SB := False;
+      State.EB := False;
+      State.EB_For_SB := False;
+      State.MRDT_Valid := False;
+      State.Lock_P := False;
+      State.Lock_SBI := False;
+      State.Lock_D := False;
+      State.Feedback.Active := False;
+      State.Feedback.Locked := False;
+      State.Feedback.Ratio_Prev := 1_000;
+      State.Signature := 0;
+      State.Active_Display := False;
+      State.Target_Count := 0;
+   end Deactivate;
 
-      ------------------------------------------------------------------
-      --  The train
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  The train: its locations in ahead coordinates, its speed, and the
+   --  measured acceleration (filtered, 1 s), with A_est1 and A_est2 of
+   --  3.13.9.3.2.8, .9
+   ---------------------------------------------------------------------
 
+   procedure Observe_Train (S      : Snapshot_T;
+                            Inputs : Inputs_T;
+                            Active : Boolean;
+                            A_Est  : in out Accel_T;
+                            V_Prev : in out Speed_T;
+                            C      : in out Ctx_T;
+                            V_Est  : out Speed_T)
+     with Post => C.Stop > -Max_Cm
+                  and then C.Standstill = S.Train.Standstill
+                  and then V_Est = C.V
+   is
+   begin
       if S.Train.Position_Valid then
          C.X_Est := EVC_Profile.Ahead_Of (S, S.Train.Est_Front);
          C.X_Max := Max (EVC_Profile.Ahead_Of (S, S.Train.Max_Safe_Front),
@@ -1046,59 +1070,61 @@ is
       C.V := Speed_T (S.Train.Speed);
       C.V_Ura := Max (Speed_T (S.Train.Speed_Max) - C.V, 0);
       C.Standstill := S.Train.Standstill;
-      Result.V_Est := C.V;
+      V_Est := C.V;
 
       --  the measured acceleration (filtered, 1 s)
-      if not State.Active then
-         State.A_Est := 0;
+      if not Active then
+         A_Est := 0;
       elsif Inputs.Dt_Ms > 0 then
          declare
             Dt  : constant Num := Min (Num (Inputs.Dt_Ms), 1_000);
             Raw : constant Num :=
-              Max (Min (Div_Floor ((C.V - State.V_Prev) * 10_000,
+              Max (Min (Div_Floor ((C.V - V_Prev) * 10_000,
                                    Min (Num (Inputs.Dt_Ms), 2**40)),
                         Max_Accel), -Max_Accel);
          begin
-            State.A_Est :=
-              Max (Min (State.A_Est
-                        + Div_Floor ((Raw - State.A_Est) * Dt, 1_000),
+            A_Est :=
+              Max (Min (A_Est
+                        + Div_Floor ((Raw - A_Est) * Dt, 1_000),
                         Max_Accel), -Max_Accel);
          end;
       end if;
-      State.V_Prev := C.V;
+      V_Prev := C.V;
       --  3.13.9.3.2.8, .9
-      C.A1 := Max (State.A_Est, 0);
-      C.A2 := Min (Max (State.A_Est, 0), 400);
+      C.A1 := Max (A_Est, 0);
+      C.A2 := Min (Max (A_Est, 0), 400);
+   end Observe_Train;
 
-      ------------------------------------------------------------------
-      --  The braking model and the track (3.13.2 to 3.13.6)
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  The MRSP and V_MRSP (3.13.7.2)
+   ---------------------------------------------------------------------
 
-      EVC_Braking.Build (S, Inputs.Special_Active, Inputs.Additional,
-                         Work.Model);
-      EVC_Profile.Build
-        (S, Work.Model,
-         Clamp (C.X_Min - Min (Num (S.Train_Data.Length), Max_Cm)),
-         Work.Profile);
-
-      ------------------------------------------------------------------
-      --  The MRSP and V_MRSP (3.13.7.2)
-      ------------------------------------------------------------------
-
+   --  The MRSP in ahead coordinates (Work_T) from the elements of the
+   --  snapshot and the mode related speed, and V_MRSP, the lowest speed
+   --  of its elements between the min and the max safe front end
+   procedure Ceiling_Speed (S        : Snapshot_T;
+                            X_Min    : Dist_T;
+                            X_Max    : Dist_T;
+                            Elements : in out Element_Count_T;
+                            MRSP     : in out Element_Array;
+                            V_MRSP   : out Speed_T)
+     with Pre => Elements = 0
+   is
+   begin
       for K in 1 .. S.MRSP.Count loop
-         pragma Loop_Invariant (Work.Elements < K);
+         pragma Loop_Invariant (Elements < K);
          declare
             X  : constant Dist_T :=
               EVC_Profile.Ahead_Of (S, S.MRSP.Segments (K).Start);
             Vk : constant Speed_T :=
               Min (Num (S.MRSP.Segments (K).Speed), Num (S.Mode_Speed));
          begin
-            if Work.Elements = 0
-              or else X > Work.MRSP (Work.Elements).Start
+            if Elements = 0
+              or else X > MRSP (Elements).Start
             then
-               Work.Elements := Work.Elements + 1;
+               Elements := Elements + 1;
                --  due to a TSR unless the mode related speed is lower
-               Work.MRSP (Work.Elements) :=
+               MRSP (Elements) :=
                  (Start => X, Speed => Vk,
                   TSR   => S.MRSP.TSR (K)
                            and then Vk = Num (S.MRSP.Segments (K).Speed));
@@ -1109,47 +1135,49 @@ is
       declare
          Ceiling : Speed_T := Speed_T (S.Mode_Speed);
       begin
-         for K in 1 .. Work.Elements loop
+         for K in 1 .. Elements loop
             --  the elements between the min and the max safe front end;
             --  the first one also before its start (see the header)
             if not S.Train.Position_Valid
-              or else ((K = 1 or else Work.MRSP (K).Start <= C.X_Max)
-                       and then (K = Work.Elements
-                                 or else Work.MRSP (K + 1).Start > C.X_Min))
+              or else ((K = 1 or else MRSP (K).Start <= X_Max)
+                       and then (K = Elements
+                                 or else MRSP (K + 1).Start > X_Min))
             then
-               Ceiling := Min (Ceiling, Work.MRSP (K).Speed);
+               Ceiling := Min (Ceiling, MRSP (K).Speed);
             end if;
          end loop;
-         C.V_MRSP := Ceiling;
+         V_MRSP := Ceiling;
       end;
+   end Ceiling_Speed;
 
-      if not ((S.Supervise and then Work.Elements > 0)
-              or else S.Mode_Speed < No_Speed_Limit)
-      then
-         --  no ceiling speed: nothing is supervised
-         Deactivate;
-         State.V_MRSP := 0;
-         Result.V_Est := C.V;
-         return;
-      end if;
+   ---------------------------------------------------------------------
+   --  The supervised targets (3.13.8.2)
+   ---------------------------------------------------------------------
 
-      C.M_EBI := Min (C.V_MRSP + Margin (EBI, C.V_MRSP), Max_Speed);
-      C.M_SBI := Min (C.V_MRSP + Margin (SBI, C.V_MRSP), C.M_EBI);
-      C.M_W := Min (C.V_MRSP + Margin (Warning, C.V_MRSP), C.M_SBI);
-      Result.Active := True;
-      Result.V_MRSP := C.V_MRSP;
-
-      ------------------------------------------------------------------
-      --  The supervised targets (3.13.8.2)
-      ------------------------------------------------------------------
-
+   --  Work.Targets: a) the MRSP elements, b) the LOA, c) the EOA with the
+   --  SvL, d) the end of the SR distance. EOA_Index: the EOA target (0:
+   --  none), its SvL in SvL; Temporary_SvL: the SvL of the EOA target is
+   --  a temporary one, without release speed (3.12.4.7, 3.12.5.8);
+   --  LX_Here (phase E4, 5.16): the EOA of the EOA target is the start of
+   --  the level crossing of S.LX
+   procedure Supervised_Targets (S             : Snapshot_T;
+                                 X_Max         : Dist_T;
+                                 V_MRSP        : Speed_T;
+                                 Work          : in out Work_T;
+                                 EOA_Index     : in out Target_Count_T;
+                                 Temporary_SvL : in out Boolean;
+                                 LX_Here       : in out Boolean;
+                                 SvL           : in out Dist_T)
+     with Pre => Work.Count = 0
+   is
+   begin
       if S.Supervise and then S.Train.Position_Valid then
          --  a) the MRSP elements lower than V_MRSP in advance of the max
          --  safe front end (3.13.8.2.3: the passed ones are gone)
          for K in 1 .. Work.Elements loop
             pragma Loop_Invariant (Work.Count < K);
-            if Work.MRSP (K).Start > C.X_Max
-              and then Work.MRSP (K).Speed < C.V_MRSP
+            if Work.MRSP (K).Start > X_Max
+              and then Work.MRSP (K).Speed < V_MRSP
             then
                Work.Count := Work.Count + 1;
                Work.Targets (Work.Count) :=
@@ -1176,7 +1204,7 @@ is
                then Max (EVC_Profile.Ahead_Of (S, Tmp.SvL), T_EOA)
                else T_EOA);
             EOA   : Dist_T := T_EOA;
-            SvL   : Dist_T := T_SvL;
+            SvL_X : Dist_T := T_SvL;
             Has_EOA : Boolean := Tmp.Present;
          begin
             if S.MA.Present then
@@ -1196,14 +1224,14 @@ is
                   Temporary_SvL := Tmp.Present;
                else
                   EOA := EVC_Profile.Ahead_Of (S, S.MA.EOA);
-                  SvL := Max (EVC_Profile.Ahead_Of (S, S.MA.SvL), EOA);
+                  SvL_X := Max (EVC_Profile.Ahead_Of (S, S.MA.SvL), EOA);
                   if Tmp.Present then
                      EOA := Min (EOA, T_EOA);
-                     if Tmp.Has_SvL and then T_SvL < SvL then
-                        SvL := T_SvL;
+                     if Tmp.Has_SvL and then T_SvL < SvL_X then
+                        SvL_X := T_SvL;
                         Temporary_SvL := True;
                      end if;
-                     SvL := Max (SvL, EOA);
+                     SvL_X := Max (SvL_X, EOA);
                   end if;
                   Has_EOA := True;
                end if;
@@ -1213,10 +1241,10 @@ is
             if Has_EOA then
                Work.Count := Work.Count + 1;
                Work.Targets (Work.Count) :=
-                 (Kind => EOA_Target, Location => SvL, EOA => EOA,
+                 (Kind => EOA_Target, Location => SvL_X, EOA => EOA,
                   Speed => 0, TSR => False);
                EOA_Index := Work.Count;
-               C.SvL := SvL;
+               SvL := SvL_X;
                LX_Here := S.LX.Present and then Tmp.Present
                           and then EOA = T_EOA;
             end if;
@@ -1232,22 +1260,44 @@ is
                TSR      => False);
          end if;
       end if;
+   end Supervised_Targets;
 
+   --  Table 16 [4], [5]: the signature of the list of targets, to see
+   --  its updates
+   function Signature_Of (Work : Work_T) return Num is
+      Signature : Num := 0;
+   begin
       for K in 1 .. Work.Count loop
          pragma Loop_Invariant (Signature in 0 .. 1_000_000_000_038);
          Signature := (Signature * 31 + Digest (Work.Targets (K)))
                       mod 1_000_000_000_039;
       end loop;
+      return Signature;
+   end Signature_Of;
 
-      ------------------------------------------------------------------
-      --  The context
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  The context of the targets: the service brake command available
+   --  (3.13.10.4.9), the guidance curves (3.13.8.5.2), the compensation
+   --  of the speed inaccuracy (3.13.9.3.2.1), the conversion model
+   --  (A.3.12.1.4), the traction cut-off (A.3.12.2.7, .8) and the service
+   --  brake feedback (A.3.10) with the locks of the displayed values
+   ---------------------------------------------------------------------
 
+   procedure Configure (S      : Snapshot_T;
+                        Inputs : Inputs_T;
+                        Model  : Model_T;
+                        State  : in out State_T;
+                        C      : in out Ctx_T)
+     with Post => Same_Basis (C, C'Old) and then State.EB = State.EB'Old
+   is
+      NV     : National_Values_T renames S.National;
+      Config : Onboard_Config_T renames S.Extra.Config;
+   begin
       C.SB_Avail := Config.Service_Brake_Command and then NV.Q_NVSBTSMPERM
                     and then not Inputs.EB_Instead_Of_SB;
-      C.GUI := NV.Q_NVGUIPERM and then Work.Model.Has_Normal;
+      C.GUI := NV.Q_NVGUIPERM and then Model.Has_Normal;
       C.Inhibit := NV.Q_NVINHSMICPERM;
-      C.Kt_Zero := Work.Model.Conversion and then NV.Kt_Int = 0;
+      C.Kt_Zero := Model.Conversion and then NV.Kt_Int = 0;
       C.TCO := Config.Traction_Cut_Off;
       C.T_TCO := Time_T (S.Train_Data.T_Traction_Cut_Off);
 
@@ -1271,11 +1321,30 @@ is
             State.Lock_D := True;
          end if;
       end;
+   end Configure;
 
-      ------------------------------------------------------------------
-      --  The release speed (3.13.9.4)
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  The release speed (3.13.9.4)
+   ---------------------------------------------------------------------
 
+   --  The release speed of the EOA target, given (3.13.9.4.3) or
+   --  calculated on-board (3.13.9.4.8), not above the MRSP before the
+   --  trip location (3.13.9.4.9), and the start of the release speed
+   --  monitoring (3.13.9.4.6, .7) in Start; Rel: the release speed or 0;
+   --  Cond_2: condition [2] of Table 16
+   procedure Release_Speed (S             : Snapshot_T;
+                            Inputs        : Inputs_T;
+                            Work          : Work_T;
+                            EOA_Index     : Target_Count_T;
+                            Temporary_SvL : Boolean;
+                            C             : in out Ctx_T;
+                            Start         : in out RSM_Start_T;
+                            Rel           : out Speed_T;
+                            Cond_2        : out Boolean)
+     with Pre  => C.Stop > -Max_Cm,
+          Post => Same_Basis (C, C'Old) and then (if Cond_2 then C.Has_Release)
+   is
+   begin
       if EOA_Index > 0 then
          declare
             T : constant Target_T := Work.Targets (EOA_Index);
@@ -1336,308 +1405,378 @@ is
                 and then ((Start.From_SBD and then C.X_Est > Start.Start)
                           or else (not Start.From_SBD
                                    and then C.X_Max > Start.Start));
+   end Release_Speed;
 
-      ------------------------------------------------------------------
-      --  Every target (3.13.10.4.10 to .15, 3.13.10.3.8, 3.13.10.4.3,
-      --  .4)
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  Every target (3.13.10.4.10 to .15, 3.13.10.3.8, 3.13.10.4.3, .4)
+   ---------------------------------------------------------------------
 
-      Rev_All := C.V <= C.V_MRSP;
-      V_P_Min := C.V_MRSP;
-      V_SBI_Min := C.M_SBI;
-      for K in 1 .. Work.Count loop
-         pragma Loop_Invariant (V_P_Min in 0 .. Max_Speed
-                                and then V_SBI_Min in 0 .. Max_Speed
-                                and then RSM_V_P in 0 .. Max_Speed
-                                and then RSM_V_SBI in 0 .. Max_Speed
-                                and then Ind_Target < K
-                                and then (if Rev_All
-                                          then C.V <= C.V_MRSP)
-                                and then (if Ind_Found
-                                          then Ind_D in -16 * Max_Cm
-                                                        .. 16 * Max_Cm));
+   --  3.13.10.4.2: target K joins the concerned targets; the list full,
+   --  the one with the highest P gives way
+   procedure Add_Concerned (Concerned   : in out Concerned_Array;
+                            N_Concerned : in out Concerned_Count_T;
+                            K           : Target_Index_T;
+                            V_P0        : Speed_T)
+   is
+   begin
+      if N_Concerned < Max_Concerned then
+         N_Concerned := N_Concerned + 1;
+         Concerned (N_Concerned) := (Index => K, V_P0 => V_P0);
+      else
+         --  full: the one with the highest P gives way
          declare
-            T : constant Target_T := Work.Targets (K);
-            R : constant Eval_T := Evaluate (Work, C, T, C.V, False);
-            F : constant Flags_T := Flags_Of (C, T, R, Between (C, T));
-            --  the distances to the Indication locations of the target
-            --  (3.13.10.3.8)
-            D1, D2 : Num := 0;
-            N_D    : Natural range 0 .. 2 := 0;
+            Worst : Positive range 1 .. Max_Concerned := 1;
          begin
-            Trig_Ind := Trig_Ind or else F.Ind;
-            Trig_Ovs := Trig_Ovs or else F.Ovs;
-            Trig_Was := Trig_Was or else F.Was;
-            Trig_SB := Trig_SB or else F.SB;
-            Trig_EB := Trig_EB or else F.EB;
-            Rev_All := Rev_All and then F.Rev;
-            Passed_I := Passed_I or else F.Passed_I;
-            Passed_I_B := Passed_I_B or else F.Passed_I_B;
-            Pawl := Pawl or else R.Reduced;
-            MRDT_Here := MRDT_Here
-                         or else (State.MRDT_Valid
-                                  and then Same (T, State.MRDT));
-
-            --  3.13.10.4.3, .4: the displayed P and SBI speeds
-            case T.Kind is
-               when MRSP_Target | LOA_Target | SR_Target =>
-                  V_P_Min := Min (V_P_Min, R.L.V_P);
-                  V_SBI_Min := Min (V_SBI_Min, R.L.V_SBI);
-               when EOA_Target =>
-                  V_P_Min := Min (V_P_Min, Min (R.E.V_P, R.L.V_P));
-                  V_SBI_Min :=
-                    Min (V_SBI_Min, Min (Max (R.E.V_SBI, Rel),
-                                         Max (R.L.V_SBI, Rel)));
-                  --  3.13.10.5.3
-                  RSM_V_P := Min (R.E.V_P, R.L.V_P);
-                  RSM_V_SBI := Min (Max (R.E.V_SBI, Rel),
-                                    Max (R.L.V_SBI, Rel));
-            end case;
-
-            --  3.13.10.3.8: the first Indication location
-            if T.Kind in MRSP_Target | LOA_Target then
-               if T.Speed < C.V_MRSP and then T.Speed < C.V
-                 and then (C.V >= Rel or else not Between (C, T))
-               then
-                  D1 := R.L.I - C.X_Max;
-                  N_D := 1;
+            for J in 2 .. Max_Concerned loop
+               if Concerned (J).V_P0 > Concerned (Worst).V_P0 then
+                  Worst := J;
                end if;
-            elsif T.Kind = SR_Target then
-               D1 := R.L.I - C.X_Max;
-               N_D := 1;
-            elsif C.V >= Rel then
-               D1 := R.E.I - C.X_Est;
-               D2 := R.L.I - C.X_Max;
-               N_D := 2;
-            else
-               D1 := Start.SBI1 - C.X_Est;
-               D2 := Start.SBI2 - C.X_Max;
-               N_D := 2;
-            end if;
-            for J in 1 .. N_D loop
-               pragma Loop_Invariant
-                 (Ind_Target <= K
-                  and then (if Ind_Found
-                            then Ind_D in -16 * Max_Cm .. 16 * Max_Cm));
-               declare
-                  D : constant Num := (if J = 1 then D1 else D2);
-               begin
-                  if not Ind_Found or else D < Ind_D then
-                     Ind_Found := True;
-                     Ind_D := D;
-                     Ind_Target := K;
-                  end if;
-               end;
             end loop;
+            if V_P0 < Concerned (Worst).V_P0 then
+               Concerned (Worst) := (Index => K, V_P0 => V_P0);
+            end if;
+         end;
+      end if;
+   end Add_Concerned;
 
-            --  3.13.10.4.2: the concerned targets
-            if F.Concerned and then (T.Kind not in MRSP_Target | LOA_Target
-                                     or else T.Speed < C.V_MRSP)
-            then
-               if N_Concerned < Max_Concerned then
-                  N_Concerned := N_Concerned + 1;
-                  Concerned (N_Concerned) := (Index => K, V_P0 => F.V_P0);
-               else
-                  --  full: the one with the highest P gives way
-                  declare
-                     Worst : Positive range 1 .. Max_Concerned := 1;
-                  begin
-                     for J in 2 .. Max_Concerned loop
-                        if Concerned (J).V_P0 > Concerned (Worst).V_P0 then
-                           Worst := J;
-                        end if;
-                     end loop;
-                     if F.V_P0 < Concerned (Worst).V_P0 then
-                        Concerned (Worst) := (Index => K, V_P0 => F.V_P0);
-                     end if;
-                  end;
-               end if;
+   --  Target K: the conditions of Tables 8 to 11, the displayed P and SBI
+   --  speeds (3.13.10.4.3, .4, 3.13.10.5.3), the first Indication location
+   --  (3.13.10.3.8) and the concerned targets (3.13.10.4.2)
+   procedure Survey_Target (Work       : Work_T;
+                            C          : Ctx_T;
+                            K          : Target_Index_T;
+                            Rel        : Speed_T;
+                            Start      : RSM_Start_T;
+                            MRDT_Valid : Boolean;
+                            MRDT       : Target_T;
+                            Sv         : in out Survey_T)
+     with Pre  => C.Stop > -Max_Cm and then Sv.Ind_Target < K
+                  and then Survey_Valid (C, Sv),
+          Post => Sv.Ind_Target <= K and then Survey_Valid (C, Sv)
+   is
+      T : constant Target_T := Work.Targets (K);
+      R : constant Eval_T := Evaluate (Work, C, T, C.V, False);
+      F : constant Flags_T := Flags_Of (C, T, R, Between (C, T));
+      --  the distances to the Indication locations of the target
+      --  (3.13.10.3.8)
+      D1, D2 : Num := 0;
+      N_D    : Natural range 0 .. 2 := 0;
+   begin
+      Sv.Trig_Ind := Sv.Trig_Ind or else F.Ind;
+      Sv.Trig_Ovs := Sv.Trig_Ovs or else F.Ovs;
+      Sv.Trig_Was := Sv.Trig_Was or else F.Was;
+      Sv.Trig_SB := Sv.Trig_SB or else F.SB;
+      Sv.Trig_EB := Sv.Trig_EB or else F.EB;
+      Sv.Rev_All := Sv.Rev_All and then F.Rev;
+      Sv.Passed_I := Sv.Passed_I or else F.Passed_I;
+      Sv.Passed_I_B := Sv.Passed_I_B or else F.Passed_I_B;
+      Sv.Pawl := Sv.Pawl or else R.Reduced;
+      Sv.MRDT_Here := Sv.MRDT_Here
+                      or else (MRDT_Valid and then Same (T, MRDT));
+
+      --  3.13.10.4.3, .4: the displayed P and SBI speeds
+      case T.Kind is
+         when MRSP_Target | LOA_Target | SR_Target =>
+            Sv.V_P_Min := Min (Sv.V_P_Min, R.L.V_P);
+            Sv.V_SBI_Min := Min (Sv.V_SBI_Min, R.L.V_SBI);
+         when EOA_Target =>
+            Sv.V_P_Min := Min (Sv.V_P_Min, Min (R.E.V_P, R.L.V_P));
+            Sv.V_SBI_Min :=
+              Min (Sv.V_SBI_Min, Min (Max (R.E.V_SBI, Rel),
+                                      Max (R.L.V_SBI, Rel)));
+            --  3.13.10.5.3
+            Sv.RSM_V_P := Min (R.E.V_P, R.L.V_P);
+            Sv.RSM_V_SBI := Min (Max (R.E.V_SBI, Rel),
+                                 Max (R.L.V_SBI, Rel));
+      end case;
+
+      --  3.13.10.3.8: the first Indication location
+      if T.Kind in MRSP_Target | LOA_Target then
+         if T.Speed < C.V_MRSP and then T.Speed < C.V
+           and then (C.V >= Rel or else not Between (C, T))
+         then
+            D1 := R.L.I - C.X_Max;
+            N_D := 1;
+         end if;
+      elsif T.Kind = SR_Target then
+         D1 := R.L.I - C.X_Max;
+         N_D := 1;
+      elsif C.V >= Rel then
+         D1 := R.E.I - C.X_Est;
+         D2 := R.L.I - C.X_Max;
+         N_D := 2;
+      else
+         D1 := Start.SBI1 - C.X_Est;
+         D2 := Start.SBI2 - C.X_Max;
+         N_D := 2;
+      end if;
+      for J in 1 .. N_D loop
+         pragma Loop_Invariant
+           (Sv.Ind_Target <= K
+            and then (if Sv.Ind_Found
+                      then Sv.Ind_D in -16 * Max_Cm .. 16 * Max_Cm));
+         declare
+            D : constant Num := (if J = 1 then D1 else D2);
+         begin
+            if not Sv.Ind_Found or else D < Sv.Ind_D then
+               Sv.Ind_Found := True;
+               Sv.Ind_D := D;
+               Sv.Ind_Target := K;
             end if;
          end;
       end loop;
-      Result.Indication := Ind_Found;
-      Result.Indication_D := (if Ind_Found then Max (Ind_D, 0) else 0);
 
-      --  phase E4: the virtual SBD curves of the track conditions
-      --  (5.18.4.2, 5.18.8.3), the substitution of a level crossing not
-      --  protected (5.16.3.2)
-      Procedure_Targets
-        (Work, C, S,
-         LX_T    => (if EOA_Index > 0 then Work.Targets (EOA_Index)
-                     else (others => <>)),
-         LX_Here => LX_Here and then EOA_Index > 0 and then not S.LX.Stop,
-         Virtual => Result.Virtual,
-         Release => Result.LX_Release,
-         From    => Result.LX_From);
+      --  3.13.10.4.2: the concerned targets
+      if F.Concerned and then (T.Kind not in MRSP_Target | LOA_Target
+                               or else T.Speed < C.V_MRSP)
+      then
+         Add_Concerned (Sv.Concerned, Sv.N_Concerned, K, F.V_P0);
+      end if;
+   end Survey_Target;
 
-      ------------------------------------------------------------------
-      --  The type of monitoring (3.13.10.6, Table 16)
-      ------------------------------------------------------------------
+   --  Every target in turn; Indication and Indication_D: the distance to
+   --  the first Indication location (3.13.10.3.8)
+   procedure Survey_Targets (Work         : Work_T;
+                             C            : Ctx_T;
+                             Rel          : Speed_T;
+                             Start        : RSM_Start_T;
+                             MRDT_Valid   : Boolean;
+                             MRDT         : Target_T;
+                             Sv           : out Survey_T;
+                             Indication   : out Boolean;
+                             Indication_D : out Num)
+     with Pre  => C.Stop > -Max_Cm,
+          Post => Survey_Valid (C, Sv)
+   is
+   begin
+      Sv := (others => <>);
+      Sv.Rev_All := C.V <= C.V_MRSP;
+      Sv.V_P_Min := C.V_MRSP;
+      Sv.V_SBI_Min := C.M_SBI;
+      for K in 1 .. Work.Count loop
+         pragma Loop_Invariant (Sv.Ind_Target < K
+                                and then Survey_Valid (C, Sv));
+         Survey_Target (Work, C, K, Rel, Start, MRDT_Valid, MRDT, Sv);
+      end loop;
+      Indication := Sv.Ind_Found;
+      Indication_D := (if Sv.Ind_Found then Max (Sv.Ind_D, 0) else 0);
+   end Survey_Targets;
 
-      declare
-         --  [1]
-         Cond_1 : constant Boolean :=
-           (not C.Standstill and then Passed_I
-            and then (not C.Has_Release or else C.V >= C.Release))
-           or else (C.Has_Release and then C.V < C.Release
-                    and then Passed_I_B);
-         Updated : constant Boolean :=
-           Signature /= State.Signature
-           or else Work.Count /= State.Target_Count;
-         Old_Mon : constant Monitoring_T := State.Monitoring;
-      begin
-         if not State.Active then
-            --  3.13.10.3.5, 3.13.10.4.16, 3.13.10.5.6: the first type
-            --  entered, from the Normal status
-            Mon := (if Cond_2 then RSM elsif Cond_1 then TSM else CSM);
-            State.Status := NoS;
-         else
-            Mon := Old_Mon;
-            case Old_Mon is
-               when CSM =>
-                  if Cond_2 then
-                     Mon := RSM;                                   -- [2]
-                  elsif Cond_1 then
-                     Mon := TSM;                                   -- [1]
-                  end if;
-               when TSM =>
-                  if Cond_2 then
-                     Mon := RSM;                                   -- [2]
-                  elsif not MRDT_Here and then not Cond_1 then
-                     Mon := CSM;                                   -- [3]
-                  elsif C.V_MRSP /= State.V_MRSP
-                    and then State.MRDT.Speed >= C.V_MRSP
-                    and then not Cond_1
-                  then
-                     Mon := CSM;                                   -- [6]
-                  end if;
-               when RSM =>
-                  if not C.Has_Release then
-                     --  the release speed is gone with the MA
-                     Mon := (if Cond_1 then TSM else CSM);
-                  elsif not MRDT_Here and then not Cond_1
-                    and then not Cond_2
-                  then
-                     Mon := CSM;                                   -- [3]
-                  elsif Updated and then Cond_1 and then not Cond_2 then
-                     Mon := TSM;                                   -- [4]
-                  end if;
-            end case;
-            --  3.13.10.6.3, .4
-            if Old_Mon = TSM and then Mon /= TSM then
-               State.TCO := False;
-               if Mon = RSM then
-                  State.SB := False;
-                  State.EB_For_SB := False;
+   ---------------------------------------------------------------------
+   --  The type of monitoring (3.13.10.6, Table 16)
+   ---------------------------------------------------------------------
+
+   --  With 3.13.10.6.3, .4 (the commands of target speed monitoring that
+   --  stop with it) and the initial values of A.3.10.4 on a change
+   procedure Monitoring_Type (C         : Ctx_T;
+                              Sv        : Survey_T;
+                              Cond_2    : Boolean;
+                              Signature : Num;
+                              Count     : Target_Count_T;
+                              State     : in out State_T;
+                              Mon       : out Monitoring_T)
+     with Pre  => (if Cond_2 then C.Has_Release),
+          Post => State.EB = State.EB'Old
+                  and then (if Mon = RSM then C.Has_Release)
+   is
+      --  [1]
+      Cond_1 : constant Boolean :=
+        (not C.Standstill and then Sv.Passed_I
+         and then (not C.Has_Release or else C.V >= C.Release))
+        or else (C.Has_Release and then C.V < C.Release
+                 and then Sv.Passed_I_B);
+      Updated : constant Boolean :=
+        Signature /= State.Signature
+        or else Count /= State.Target_Count;
+      Old_Mon : constant Monitoring_T := State.Monitoring;
+   begin
+      if not State.Active then
+         --  3.13.10.3.5, 3.13.10.4.16, 3.13.10.5.6: the first type
+         --  entered, from the Normal status
+         Mon := (if Cond_2 then RSM elsif Cond_1 then TSM else CSM);
+         State.Status := NoS;
+      else
+         Mon := Old_Mon;
+         case Old_Mon is
+            when CSM =>
+               if Cond_2 then
+                  Mon := RSM;                                   -- [2]
+               elsif Cond_1 then
+                  Mon := TSM;                                   -- [1]
                end if;
-            end if;
-            if Mon = CSM and then Old_Mon /= CSM then
-               State.MRDT_Valid := False;
+            when TSM =>
+               if Cond_2 then
+                  Mon := RSM;                                   -- [2]
+               elsif not Sv.MRDT_Here and then not Cond_1 then
+                  Mon := CSM;                                   -- [3]
+               elsif C.V_MRSP /= State.V_MRSP
+                 and then State.MRDT.Speed >= C.V_MRSP
+                 and then not Cond_1
+               then
+                  Mon := CSM;                                   -- [6]
+               end if;
+            when RSM =>
+               if not C.Has_Release then
+                  --  the release speed is gone with the MA
+                  Mon := (if Cond_1 then TSM else CSM);
+               elsif not Sv.MRDT_Here and then not Cond_1
+                 and then not Cond_2
+               then
+                  Mon := CSM;                                   -- [3]
+               elsif Updated and then Cond_1 and then not Cond_2 then
+                  Mon := TSM;                                   -- [4]
+               end if;
+         end case;
+         --  3.13.10.6.3, .4
+         if Old_Mon = TSM and then Mon /= TSM then
+            State.TCO := False;
+            if Mon = RSM then
+               State.SB := False;
+               State.EB_For_SB := False;
             end if;
          end if;
-         if Mon /= Old_Mon or else not State.Active then
-            --  A.3.10.4: the initial values
-            State.Feedback.Active := False;
-            State.Feedback.Locked := False;
-            State.Feedback.Ratio_Prev := 1_000;
-            State.Lock_P := False;
-            State.Lock_SBI := False;
-            State.Lock_D := False;
+         if Mon = CSM and then Old_Mon /= CSM then
+            State.MRDT_Valid := False;
          end if;
-         State.Signature := Signature;
-         State.Target_Count := Work.Count;
-      end;
+      end if;
+      if Mon /= Old_Mon or else not State.Active then
+         --  A.3.10.4: the initial values
+         State.Feedback.Active := False;
+         State.Feedback.Locked := False;
+         State.Feedback.Ratio_Prev := 1_000;
+         State.Lock_P := False;
+         State.Lock_SBI := False;
+         State.Lock_D := False;
+      end if;
+      State.Signature := Signature;
+      State.Target_Count := Count;
       State.Active := True;
       State.Monitoring := Mon;
+   end Monitoring_Type;
 
-      ------------------------------------------------------------------
-      --  The commands (Tables 5, 6, 8 to 11, 13, 14; 3.13.10.2.3, .4)
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  The commands (Tables 5, 6, 8 to 11, 13, 14; 3.13.10.2.3, .4)
+   ---------------------------------------------------------------------
 
+   --  TCO, SB, EB, EB_For_SB: the commands in force (State_T);
+   --  EB_Triggered: an emergency brake triggering condition holds; Brake:
+   --  a brake command is in force
+   procedure Set_Commands (S            : Snapshot_T;
+                           Inputs       : Inputs_T;
+                           C            : Ctx_T;
+                           Mon          : Monitoring_T;
+                           Sv           : Survey_T;
+                           TCO          : in out Boolean;
+                           SB           : in out Boolean;
+                           EB           : in out Boolean;
+                           EB_For_SB    : in out Boolean;
+                           EB_Triggered : in out Boolean;
+                           Brake        : out Boolean)
+     with Pre  => (if Sv.Rev_All then C.V <= C.V_MRSP)
+                  and then not EB_Triggered,
+          Post => (if EB'Old and then not EB
+                   then C.Standstill
+                        or else (Mon /= RSM and then C.V <= C.V_MRSP))
+                  and then (if EB_Triggered then EB)
+                  and then Brake = (SB or else EB or else EB_For_SB)
+   is
+      NV     : National_Values_T renames S.National;
+      Config : Onboard_Config_T renames S.Extra.Config;
+   begin
       case Mon is
          when CSM =>
             --  Table 6: r1, r0
             if C.V <= C.V_MRSP then
-               State.SB := False;
-               State.EB_For_SB := False;
+               SB := False;
+               EB_For_SB := False;
                if NV.Q_NVEMRRLS then
-                  State.EB := False;
+                  EB := False;
                end if;
             end if;
             if C.Standstill then
-               State.EB := False;
+               EB := False;
             end if;
             --  Table 5: t4, t5
             if C.V > C.M_SBI then
                if Config.Service_Brake_Command
                  and then not Inputs.EB_Instead_Of_SB
                then
-                  State.SB := True;
+                  SB := True;
                else
-                  State.EB_For_SB := True;
+                  EB_For_SB := True;
                end if;
             end if;
             if C.V > C.M_EBI then
-               State.EB := True;
-               Result.EB_Triggered := True;
+               EB := True;
+               EB_Triggered := True;
             end if;
-            State.TCO := False;
+            TCO := False;
 
          when TSM =>
             --  Tables 10, 11: r1, r3 for every target; r0
-            if Rev_All then
-               State.TCO := False;
-               State.SB := False;
-               State.EB_For_SB := False;
+            if Sv.Rev_All then
+               TCO := False;
+               SB := False;
+               EB_For_SB := False;
                if NV.Q_NVEMRRLS then
-                  State.EB := False;
+                  EB := False;
                end if;
             end if;
             if C.Standstill then
-               State.EB := False;
+               EB := False;
             end if;
             --  Tables 8, 9: for at least one target (3.13.10.4.14)
-            if Trig_Was and then Config.Traction_Cut_Off then
-               State.TCO := True;
+            if Sv.Trig_Was and then Config.Traction_Cut_Off then
+               TCO := True;
             end if;
-            if Trig_SB then
+            if Sv.Trig_SB then
                if C.SB_Avail then
-                  State.SB := True;
+                  SB := True;
                else
-                  State.EB_For_SB := True;
+                  EB_For_SB := True;
                end if;
             end if;
-            if Trig_EB then
-               State.EB := True;
-               Result.EB_Triggered := True;
+            if Sv.Trig_EB then
+               EB := True;
+               EB_Triggered := True;
             end if;
 
          when RSM =>
             --  Table 14: r0
             if C.Standstill then
-               State.EB := False;
+               EB := False;
             end if;
             if C.V <= C.Release then
-               State.SB := False;
-               State.EB_For_SB := False;
+               SB := False;
+               EB_For_SB := False;
             end if;
             --  Table 13: t2
             if C.V > C.Release then
-               State.EB := True;
-               Result.EB_Triggered := True;
+               EB := True;
+               EB_Triggered := True;
             end if;
-            State.TCO := False;
+            TCO := False;
       end case;
-      pragma Assert (if EB_In and then not State.EB
-                     then C.Standstill
-                          or else (Mon /= RSM and then C.V <= C.V_MRSP));
-      Brake := State.SB or else State.EB or else State.EB_For_SB;
+      Brake := SB or else EB or else EB_For_SB;
+   end Set_Commands;
 
-      ------------------------------------------------------------------
-      --  The supervision status (Tables 7, 12, 15)
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  The supervision status (Tables 7, 12, 15)
+   ---------------------------------------------------------------------
 
-      Status := State.Status;
+   --  Last: the status of the last cycle, then the new one (State_T);
+   --  no Intervention status without a brake command (see the header)
+   procedure Supervision_Status (C      : Ctx_T;
+                                 Mon    : Monitoring_T;
+                                 Sv     : Survey_T;
+                                 Brake  : Boolean;
+                                 Last   : in out Status_T;
+                                 V_MRSP : out Speed_T;
+                                 Status : out Status_T)
+     with Post => (if Status = IntS then Brake)
+   is
+   begin
+      Status := Last;
       case Mon is
          when CSM =>
             case Status is
@@ -1672,26 +1811,27 @@ is
             case Status is
                when NoS | IndS =>
                   --  3.13.10.4.17: the Normal status is not used
-                  Status := (if Trig_SB or else Trig_EB then IntS
-                             elsif Trig_Was then WaS
-                             elsif Trig_Ovs then OvS
+                  Status := (if Sv.Trig_SB or else Sv.Trig_EB then IntS
+                             elsif Sv.Trig_Was then WaS
+                             elsif Sv.Trig_Ovs then OvS
                              else IndS);
                when OvS =>
-                  if Trig_SB or else Trig_EB then
+                  if Sv.Trig_SB or else Sv.Trig_EB then
                      Status := IntS;
-                  elsif Trig_Was then
+                  elsif Sv.Trig_Was then
                      Status := WaS;
-                  elsif Rev_All then
+                  elsif Sv.Rev_All then
                      Status := IndS;
                   end if;
                when WaS =>
-                  if Trig_SB or else Trig_EB then
+                  if Sv.Trig_SB or else Sv.Trig_EB then
                      Status := IntS;
-                  elsif Rev_All then
+                  elsif Sv.Rev_All then
                      Status := IndS;
                   end if;
                when IntS =>
-                  if (Rev_All or else C.Standstill) and then not Brake then
+                  if (Sv.Rev_All or else C.Standstill) and then not Brake
+                  then
                      Status := IndS;
                   end if;
             end case;
@@ -1710,223 +1850,468 @@ is
       if Status = IntS and then not Brake then
          Status := (if Mon = CSM then NoS else IndS);
       end if;
-      pragma Assert (if Status = IntS then Brake);
-      pragma Assert
-        (Brake = (State.SB or else State.EB or else State.EB_For_SB));
-      State.Status := Status;
-      State.V_MRSP := C.V_MRSP;
+      Last := Status;
+      V_MRSP := C.V_MRSP;
+   end Supervision_Status;
 
-      ------------------------------------------------------------------
-      --  The most relevant displayed target (3.13.10.4.2, .5; RSM: the
-      --  EOA; 3.13.10.3.9)
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  The most relevant displayed target (3.13.10.4.2, .5; RSM: the
+   --  EOA; 3.13.10.3.9)
+   ---------------------------------------------------------------------
 
-      declare
-         Candidate : Natural range 0 .. Max_Targets := 0;
-      begin
-         if Mon = TSM and then N_Concerned > 0 then
+   --  3.13.10.4.2: among the concerned targets, step 0: the one of the
+   --  lowest P; steps 1 to n: a masked target of a lower speed, as long
+   --  as there is one (3.13.10.4.2.3: not beyond a target of speed zero)
+   function Most_Relevant_Concerned (Work : Work_T;
+                                     C    : Ctx_T;
+                                     Sv   : Survey_T) return Target_Index_T
+     with Pre => C.Stop > -Max_Cm
+   is
+      Concerned : Concerned_Array renames Sv.Concerned;
+      Chosen  : array (1 .. Max_Concerned) of Boolean :=
+        (others => False);
+      Current : Positive range 1 .. Max_Concerned := 1;
+   begin
+      --  step 0: the lowest P
+      for J in 2 .. Sv.N_Concerned loop
+         if Concerned (J).V_P0 < Concerned (Current).V_P0 then
+            Current := J;
+         end if;
+      end loop;
+      Chosen (Current) := True;
+      --  steps 1 .. n: a masked target of a lower speed
+      for Round in 1 .. Max_Concerned loop
+         declare
+            Tk   : constant Target_T :=
+              Work.Targets (Concerned (Current).Index);
+            Next : Natural range 0 .. Max_Concerned := 0;
+            Best : Num := 0;
+         begin
+            exit when Tk.Speed = 0;   -- 3.13.10.4.2.3
             declare
-               Chosen  : array (1 .. Max_Concerned) of Boolean :=
-                 (others => False);
-               Current : Positive range 1 .. Max_Concerned := 1;
+               Pk : constant Num :=
+                 Evaluate (Work, C, Tk, Tk.Speed, False).L.P;
             begin
-               --  step 0: the lowest P
-               for J in 2 .. N_Concerned loop
-                  if Concerned (J).V_P0 < Concerned (Current).V_P0 then
-                     Current := J;
-                  end if;
-               end loop;
-               Chosen (Current) := True;
-               --  steps 1 .. n: a masked target of a lower speed
-               for Round in 1 .. Max_Concerned loop
+               for J in 1 .. Sv.N_Concerned loop
                   declare
-                     Tk   : constant Target_T :=
-                       Work.Targets (Concerned (Current).Index);
-                     Next : Natural range 0 .. Max_Concerned := 0;
-                     Best : Num := 0;
+                     Tj : constant Target_T :=
+                       Work.Targets (Concerned (J).Index);
                   begin
-                     exit when Tk.Speed = 0;   -- 3.13.10.4.2.3
-                     declare
-                        Pk : constant Num :=
-                          Evaluate (Work, C, Tk, Tk.Speed, False).L.P;
-                     begin
-                        for J in 1 .. N_Concerned loop
-                           declare
-                              Tj : constant Target_T :=
-                                Work.Targets (Concerned (J).Index);
-                           begin
-                              if not Chosen (J) and then Tj.Speed < Tk.Speed
-                              then
-                                 declare
-                                    Rj : constant Eval_T :=
-                                      Evaluate (Work, C, Tj, Tk.Speed, False);
-                                    Ij : constant Num :=
-                                      (if Tj.Kind = EOA_Target
-                                       then Min (Rj.E.I, Rj.L.I)
-                                       else Rj.L.I);
-                                 begin
-                                    if Ij < Pk
-                                      and then (Next = 0 or else Ij < Best)
-                                    then
-                                       Next := J;
-                                       Best := Ij;
-                                    end if;
-                                 end;
-                              end if;
-                           end;
-                        end loop;
-                     end;
-                     exit when Next = 0;
-                     Current := Next;
-                     Chosen (Current) := True;
+                     if not Chosen (J) and then Tj.Speed < Tk.Speed
+                     then
+                        declare
+                           Rj : constant Eval_T :=
+                             Evaluate (Work, C, Tj, Tk.Speed, False);
+                           Ij : constant Num :=
+                             (if Tj.Kind = EOA_Target
+                              then Min (Rj.E.I, Rj.L.I)
+                              else Rj.L.I);
+                        begin
+                           if Ij < Pk
+                             and then (Next = 0 or else Ij < Best)
+                           then
+                              Next := J;
+                              Best := Ij;
+                           end if;
+                        end;
+                     end if;
                   end;
                end loop;
-               Candidate := Concerned (Current).Index;
             end;
-         elsif Mon = RSM then
-            Candidate := EOA_Index;
-         end if;
+            exit when Next = 0;
+            Current := Next;
+            Chosen (Current) := True;
+         end;
+      end loop;
+      return Concerned (Current).Index;
+   end Most_Relevant_Concerned;
 
-         if Mon /= CSM then
-            if State.MRDT_Valid and then MRDT_Here then
-               --  3.13.10.4.5: kept, unless a target of no higher speed
-               --  is selected
-               if Candidate > 0
-                 and then not Same (Work.Targets (Candidate), State.MRDT)
-                 and then Work.Targets (Candidate).Speed <= State.MRDT.Speed
-               then
-                  State.MRDT := Work.Targets (Candidate);
-                  State.MRDT_Id := (State.MRDT_Id + 1) mod 256;
-                  MRDT_Changed := True;
-               end if;
-            elsif Candidate > 0 then
-               State.MRDT := Work.Targets (Candidate);
-               State.MRDT_Valid := True;
-               State.MRDT_Id := (State.MRDT_Id + 1) mod 256;
+   --  MRDT, MRDT_Valid, MRDT_Id: those of State_T; MRDT_Changed: a new
+   --  most relevant displayed target is selected
+   procedure Most_Relevant_Target (Work         : Work_T;
+                                   C            : Ctx_T;
+                                   Mon          : Monitoring_T;
+                                   Sv           : Survey_T;
+                                   EOA_Index    : Target_Count_T;
+                                   MRDT         : in out Target_T;
+                                   MRDT_Valid   : in out Boolean;
+                                   MRDT_Id      : in out MRDT_Id_T;
+                                   MRDT_Changed : in out Boolean)
+     with Pre => C.Stop > -Max_Cm
+   is
+      Candidate : Target_Count_T := 0;
+   begin
+      if Mon = TSM and then Sv.N_Concerned > 0 then
+         Candidate := Most_Relevant_Concerned (Work, C, Sv);
+      elsif Mon = RSM then
+         Candidate := EOA_Index;
+      end if;
+
+      if Mon /= CSM then
+         if MRDT_Valid and then Sv.MRDT_Here then
+            --  3.13.10.4.5: kept, unless a target of no higher speed
+            --  is selected
+            if Candidate > 0
+              and then not Same (Work.Targets (Candidate), MRDT)
+              and then Work.Targets (Candidate).Speed <= MRDT.Speed
+            then
+               MRDT := Work.Targets (Candidate);
+               MRDT_Id := (MRDT_Id + 1) mod 256;
                MRDT_Changed := True;
-            else
-               State.MRDT_Valid := False;
             end if;
+         elsif Candidate > 0 then
+            MRDT := Work.Targets (Candidate);
+            MRDT_Valid := True;
+            MRDT_Id := (MRDT_Id + 1) mod 256;
+            MRDT_Changed := True;
+         else
+            MRDT_Valid := False;
          end if;
-      end;
+      end if;
+   end Most_Relevant_Target;
 
-      ------------------------------------------------------------------
-      --  What the driver is shown (3.13.10.3 to 3.13.10.5)
-      ------------------------------------------------------------------
+   ---------------------------------------------------------------------
+   --  What the driver is shown (3.13.10.3 to 3.13.10.5)
+   ---------------------------------------------------------------------
 
-      declare
-         V_Perm  : Num;
-         V_SBI   : Num;
-         D       : Num := 0;
-         Show_T  : Boolean := False;
-         T_Shown : Target_T;
-         Reduced : constant Boolean :=
-           S.Adhesion.Driver_Slippery
-           or else Work.Profile.Points
-                     (Segment_Of (Work.Profile, C.X_Est)).Reduced;
-      begin
-         case Mon is
-            when CSM =>
-               --  3.13.10.3.1, .2
-               V_Perm := C.V_MRSP;
-               V_SBI := C.M_SBI;
-               --  3.13.10.3.9, .10: under reduced adhesion, when
-               --  A_MAXREDADH asks for it
-               if Reduced and then Ind_Found and then Ind_Target > 0 then
-                  if Work.Model.Redadh_Use = Target_Information then
-                     Show_T := True;
-                     T_Shown := Work.Targets (Ind_Target);
-                     Result.CSM_Target := True;
-                  elsif Work.Model.Redadh_Use = Time_To_Indication
-                    and then C.V > 0
-                  then
-                     declare
-                        TTI : constant Num :=
-                          Div_Floor (Max (Ind_D, 0) * 10, C.V);
-                     begin
-                        if TTI < T_Disp_TTI / 100 then
-                           Result.TTI := Natural (TTI);
-                        end if;
-                     end;
-                  end if;
-               end if;
-            when TSM =>
-               --  3.13.10.4.3, .4
-               V_Perm := V_P_Min;
-               V_SBI := V_SBI_Min;
-               if State.MRDT_Valid then
+   --  V_Perm, V_SBI: the Permitted and SBI speeds of the type of
+   --  monitoring (3.13.10.3.1, .2, 3.13.10.4.3, .4, 3.13.10.5.1 to .3);
+   --  the target shown (3.13.10.3.9, 3.13.10.4.6 to .8, 3.13.10.5.2),
+   --  its distance in D, and the time to Indication (3.13.10.3.10)
+   procedure Shown_Target (S             : Snapshot_T;
+                           Work          : Work_T;
+                           C             : Ctx_T;
+                           Mon           : Monitoring_T;
+                           Sv            : Survey_T;
+                           EOA_Index     : Target_Count_T;
+                           MRDT_Valid    : Boolean;
+                           MRDT          : Target_T;
+                           V_Perm        : out Num;
+                           V_SBI         : out Num;
+                           D             : in out Num;
+                           CSM_Target    : in out Boolean;
+                           TTI           : in out TTI_T;
+                           Release_Shown : in out Boolean;
+                           V_Target      : in out Speed_T)
+     with Pre => C.Stop > -Max_Cm and then Survey_Valid (C, Sv)
+   is
+      Show_T  : Boolean := False;
+      T_Shown : Target_T;
+      Reduced : constant Boolean :=
+        S.Adhesion.Driver_Slippery
+        or else Work.Profile.Points
+                  (Segment_Of (Work.Profile, C.X_Est)).Reduced;
+   begin
+      case Mon is
+         when CSM =>
+            --  3.13.10.3.1, .2
+            V_Perm := C.V_MRSP;
+            V_SBI := C.M_SBI;
+            --  3.13.10.3.9, .10: under reduced adhesion, when
+            --  A_MAXREDADH asks for it
+            if Reduced and then Sv.Ind_Found and then Sv.Ind_Target > 0 then
+               if Work.Model.Redadh_Use = Target_Information then
                   Show_T := True;
-                  T_Shown := State.MRDT;
+                  T_Shown := Work.Targets (Sv.Ind_Target);
+                  CSM_Target := True;
+               elsif Work.Model.Redadh_Use = Time_To_Indication
+                 and then C.V > 0
+               then
+                  declare
+                     TTI_Here : constant Num :=
+                       Div_Floor (Max (Sv.Ind_D, 0) * 10, C.V);
+                  begin
+                     if TTI_Here < T_Disp_TTI / 100 then
+                        TTI := Natural (TTI_Here);
+                     end if;
+                  end;
                end if;
-            when RSM =>
-               --  3.13.10.5.1 to .3
-               V_Perm := RSM_V_P;
-               V_SBI := Max (RSM_V_SBI, C.Release);
-               if EOA_Index > 0 then
-                  Show_T := True;
-                  T_Shown := Work.Targets (EOA_Index);
-               end if;
+            end if;
+         when TSM =>
+            --  3.13.10.4.3, .4
+            V_Perm := Sv.V_P_Min;
+            V_SBI := Sv.V_SBI_Min;
+            if MRDT_Valid then
+               Show_T := True;
+               T_Shown := MRDT;
+            end if;
+         when RSM =>
+            --  3.13.10.5.1 to .3
+            V_Perm := Sv.RSM_V_P;
+            V_SBI := Max (Sv.RSM_V_SBI, C.Release);
+            if EOA_Index > 0 then
+               Show_T := True;
+               T_Shown := Work.Targets (EOA_Index);
+            end if;
+      end case;
+
+      if Show_T then
+         --  3.13.10.4.6 to .8, 3.13.10.5.2
+         case T_Shown.Kind is
+            when EOA_Target =>
+               D := Max (Min (T_Shown.EOA - C.X_Est,
+                              T_Shown.Location - C.X_Max), 0);
+               Release_Shown := C.Has_Release;
+            when SR_Target =>
+               D := Max (T_Shown.Location - C.X_Max, 0);
+            when MRSP_Target | LOA_Target =>
+               D := Max (Evaluate (Work, C, T_Shown, C.V, False).P_Target
+                         - C.X_Max, 0);
          end case;
+         V_Target := T_Shown.Speed;
+      end if;
+   end Shown_Target;
 
-         if Show_T then
-            --  3.13.10.4.6 to .8, 3.13.10.5.2
-            case T_Shown.Kind is
-               when EOA_Target =>
-                  D := Max (Min (T_Shown.EOA - C.X_Est,
-                                 T_Shown.Location - C.X_Max), 0);
-                  Result.Release_Shown := C.Has_Release;
-               when SR_Target =>
-                  D := Max (T_Shown.Location - C.X_Max, 0);
-               when MRSP_Target | LOA_Target =>
-                  D := Max (Evaluate (Work, C, T_Shown, C.V, False).P_Target
-                            - C.X_Max, 0);
-            end case;
-            Result.V_Target := T_Shown.Speed;
+   --  The values shown with the pawl (3.13.10.4.8.1, A.3.13) and the
+   --  locks (A.3.10) that keep them from increasing; State_T keeps them
+   --  for the next cycle
+   procedure Show_Driver (S             : Snapshot_T;
+                          Work          : Work_T;
+                          C             : Ctx_T;
+                          Mon           : Monitoring_T;
+                          Sv            : Survey_T;
+                          EOA_Index     : Target_Count_T;
+                          MRDT_Changed  : Boolean;
+                          State         : in out State_T;
+                          V_Perm        : out Speed_T;
+                          V_Warning     : out Speed_T;
+                          V_SBI         : out Speed_T;
+                          D_Target      : out Num;
+                          V_Target      : in out Speed_T;
+                          Release_Shown : in out Boolean;
+                          CSM_Target    : in out Boolean;
+                          TTI           : in out TTI_T)
+     with Pre  => C.Stop > -Max_Cm and then Survey_Valid (C, Sv),
+          Post => V_Perm <= V_Warning and then V_Warning <= V_SBI
+                  and then Same_Commands (State, State'Old)
+   is
+      V_P   : Num;
+      V_S   : Num;
+      D     : Num := 0;
+   begin
+      Shown_Target (S, Work, C, Mon, Sv, EOA_Index, State.MRDT_Valid,
+                    State.MRDT, V_P, V_S, D, CSM_Target, TTI,
+                    Release_Shown, V_Target);
+
+      --  3.13.10.4.8.1, A.3.13: while a build up time is reduced the
+      --  displayed P and SBI do not increase (the pawl; released with a
+      --  new MRDT)
+      if Mon /= CSM and then Sv.Pawl and then not MRDT_Changed
+        and then State.Active_Display
+      then
+         V_P := Min (V_P, State.Shown_P);
+         V_S := Min (V_S, State.Shown_SBI);
+      end if;
+
+      --  3.13.10.4.8.1, A.3.10: locked values do not increase
+      if State.Lock_P then
+         if V_P < State.Shown_P then
+            State.Lock_P := False;
+         else
+            V_P := State.Shown_P;
          end if;
-
-         --  3.13.10.4.8.1, A.3.13: while a build up time is reduced the
-         --  displayed P and SBI do not increase (the pawl; released with a
-         --  new MRDT)
-         if Mon /= CSM and then Pawl and then not MRDT_Changed
-           and then State.Active_Display
-         then
-            V_Perm := Min (V_Perm, State.Shown_P);
-            V_SBI := Min (V_SBI, State.Shown_SBI);
+      end if;
+      if State.Lock_SBI then
+         if V_S < State.Shown_SBI then
+            State.Lock_SBI := False;
+         else
+            V_S := State.Shown_SBI;
          end if;
+      end if;
+      if State.Lock_D then
+         if D < State.Shown_D then
+            State.Lock_D := False;
+         else
+            D := State.Shown_D;
+         end if;
+      end if;
 
-         --  3.13.10.4.8.1, A.3.10: locked values do not increase
-         if State.Lock_P then
-            if V_Perm < State.Shown_P then
-               State.Lock_P := False;
-            else
-               V_Perm := State.Shown_P;
+      V_SBI := Min (Max (V_S, 0), Max_Speed);
+      V_Warning :=
+        (if Mon = CSM then Min (C.M_W, V_SBI) else V_SBI);
+      V_Perm := Min (Max (V_P, 0), V_Warning);
+      D_Target := Min (D, Max_Cm);
+      State.Shown_P := V_Perm;
+      State.Shown_SBI := V_SBI;
+      State.Shown_D := D_Target;
+      State.Active_Display := Mon /= CSM;
+   end Show_Driver;
+
+   ---------------------------------------------------------------------
+   --  The EOA, LOA and SvL passed (3.13.10.2.6 a, 3.13.10.2.7), the
+   --  perturbation location (3.13.11)
+   ---------------------------------------------------------------------
+
+   procedure Passed_Locations (S              : Snapshot_T;
+                               Inputs         : Inputs_T;
+                               Work           : Work_T;
+                               C              : Ctx_T;
+                               EOA_Passed     : out Boolean;
+                               SvL_Passed     : out Boolean;
+                               Perturbation   : out Boolean;
+                               Perturbation_X : out Num;
+                               MA_Request     : out Boolean)
+   is
+      Passed_E : Boolean := False;
+      Passed_S : Boolean := False;
+      Pert     : Boolean := False;
+      Pert_X   : Num := 0;
+      MA_Req   : Boolean := False;
+   begin
+      for K in 1 .. Work.Count loop
+         declare
+            T : constant Target_T := Work.Targets (K);
+         begin
+            if T.Kind in EOA_Target | LOA_Target then
+               Passed_E :=
+                 (if Inputs.Level_1
+                  then C.X_Min - Num (Inputs.Antenna_Offset) > T.EOA
+                  else C.X_Min > T.EOA);
             end if;
-         end if;
-         if State.Lock_SBI then
-            if V_SBI < State.Shown_SBI then
-               State.Lock_SBI := False;
-            else
-               V_SBI := State.Shown_SBI;
+            if T.Kind = EOA_Target then
+               Passed_S := C.X_Max > T.Location;
             end if;
-         end if;
-         if State.Lock_D then
-            if D < State.Shown_D then
-               State.Lock_D := False;
-            else
-               D := State.Shown_D;
+            if T.Kind in EOA_Target | LOA_Target
+              and then S.Extra.T_MAR > 0
+            then
+               declare
+                  Found_S, Found_E : Boolean;
+                  X_S, X_E         : Num;
+                  Lead             : constant Num :=
+                    Travel_Ceil (C.M_W, Time_T (S.Extra.T_MAR));
+               begin
+                  Perturbation_Of (Work, C, T, False, Found_S, X_S);
+                  if T.Kind = EOA_Target then
+                     Perturbation_Of (Work, C, T, True, Found_E, X_E);
+                  else
+                     Found_E := False;
+                     X_E := 0;
+                  end if;
+                  Pert := Found_S or else Found_E;
+                  Pert_X := (if Found_S then X_S else X_E);
+                  --  3.13.11.8
+                  MA_Req :=
+                    (Found_S and then C.X_Max > X_S - Lead)
+                    or else (Found_E and then C.X_Est > X_E - Lead);
+                  --  3.13.11.9
+                  if Work.Elements > 0
+                    and then Speed_At (Work.Model, Work.Profile, EBD_Of (T),
+                                       Work.MRSP (1).Start)
+                             < Work.MRSP (1).Speed
+                  then
+                     MA_Req := True;
+                  end if;
+               end;
             end if;
-         end if;
+         end;
+      end loop;
+      EOA_Passed := Passed_E;
+      SvL_Passed := Passed_S;
+      Perturbation := Pert;
+      Perturbation_X := Pert_X;
+      MA_Request := MA_Req;
+   end Passed_Locations;
 
-         Result.V_SBI := Min (Max (V_SBI, 0), Max_Speed);
-         Result.V_Warning :=
-           (if Mon = CSM then Min (C.M_W, Result.V_SBI) else Result.V_SBI);
-         Result.V_Perm := Min (Max (V_Perm, 0), Result.V_Warning);
-         Result.D_Target := Min (D, Max_Cm);
-         State.Shown_P := Result.V_Perm;
-         State.Shown_SBI := Result.V_SBI;
-         State.Shown_D := Result.D_Target;
-         State.Active_Display := Mon /= CSM;
-      end;
+   ---------------------------------------------------------------------
+   --  Step
+   ---------------------------------------------------------------------
+
+   procedure Step (S       : Snapshot_T;
+                   Inputs  : Inputs_T;
+                   Work    : in out Work_T;
+                   State   : in out State_T;
+                   Result  : out Result_T)
+   is
+      C      : Ctx_T;
+      --  the emergency brake command on entry, for the proof of the
+      --  revocation (the postcondition)
+      EB_In  : constant Boolean := State.EB with Ghost;
+
+      --  the EOA target (0: none), see Supervised_Targets
+      EOA_Index     : Target_Count_T := 0;
+      Temporary_SvL : Boolean := False;
+      LX_Here       : Boolean := False;
+      Signature     : Num;
+
+      --  release speed monitoring (3.13.9.4.6)
+      Start      : RSM_Start_T;
+      Cond_2     : Boolean;
+      Rel        : Speed_T;
+
+      Sv           : Survey_T;
+      Mon          : Monitoring_T;
+      Status       : Status_T;
+      Brake        : Boolean;
+      MRDT_Changed : Boolean := False;
+   begin
+      Result := (others => <>);
+      Work.Count := 0;
+      Work.Elements := 0;
+
+      Observe_Train (S, Inputs, State.Active, State.A_Est, State.V_Prev, C,
+                     Result.V_Est);
+
+      --  The braking model and the track (3.13.2 to 3.13.6)
+      EVC_Braking.Build (S, Inputs.Special_Active, Inputs.Additional,
+                         Work.Model);
+      EVC_Profile.Build
+        (S, Work.Model,
+         Clamp (C.X_Min - Min (Num (S.Train_Data.Length), Max_Cm)),
+         Work.Profile);
+
+      Ceiling_Speed (S, C.X_Min, C.X_Max, Work.Elements, Work.MRSP,
+                     C.V_MRSP);
+      if not ((S.Supervise and then Work.Elements > 0)
+              or else S.Mode_Speed < No_Speed_Limit)
+      then
+         --  no ceiling speed: nothing is supervised
+         Deactivate (State);
+         State.V_MRSP := 0;
+         Result.V_Est := C.V;
+         return;
+      end if;
+
+      C.M_EBI := Min (C.V_MRSP + Margin (EBI, C.V_MRSP), Max_Speed);
+      C.M_SBI := Min (C.V_MRSP + Margin (SBI, C.V_MRSP), C.M_EBI);
+      C.M_W := Min (C.V_MRSP + Margin (Warning, C.V_MRSP), C.M_SBI);
+      Result.Active := True;
+      Result.V_MRSP := C.V_MRSP;
+
+      Supervised_Targets (S, C.X_Max, C.V_MRSP, Work, EOA_Index,
+                          Temporary_SvL, LX_Here, C.SvL);
+      Signature := Signature_Of (Work);
+      Configure (S, Inputs, Work.Model, State, C);
+      Release_Speed (S, Inputs, Work, EOA_Index, Temporary_SvL, C, Start,
+                     Rel, Cond_2);
+      Survey_Targets (Work, C, Rel, Start, State.MRDT_Valid, State.MRDT,
+                      Sv, Result.Indication, Result.Indication_D);
+
+      --  phase E4: the virtual SBD curves of the track conditions
+      --  (5.18.4.2, 5.18.8.3), the substitution of a level crossing not
+      --  protected (5.16.3.2)
+      Procedure_Targets
+        (Work, C, S,
+         LX_T    => (if EOA_Index > 0 then Work.Targets (EOA_Index)
+                     else (others => <>)),
+         LX_Here => LX_Here and then EOA_Index > 0 and then not S.LX.Stop,
+         Virtual => Result.Virtual,
+         Release => Result.LX_Release,
+         From    => Result.LX_From);
+
+      Monitoring_Type (C, Sv, Cond_2, Signature, Work.Count, State, Mon);
+      Set_Commands (S, Inputs, C, Mon, Sv, State.TCO, State.SB, State.EB,
+                    State.EB_For_SB, Result.EB_Triggered, Brake);
+      pragma Assert (if EB_In and then not State.EB
+                     then C.Standstill
+                          or else (Mon /= RSM and then C.V <= C.V_MRSP));
+      Supervision_Status (C, Mon, Sv, Brake, State.Status, State.V_MRSP,
+                          Status);
+      Most_Relevant_Target (Work, C, Mon, Sv, EOA_Index, State.MRDT,
+                            State.MRDT_Valid, State.MRDT_Id, MRDT_Changed);
+      Show_Driver (S, Work, C, Mon, Sv, EOA_Index, MRDT_Changed, State,
+                   Result.V_Perm, Result.V_Warning, Result.V_SBI,
+                   Result.D_Target, Result.V_Target, Result.Release_Shown,
+                   Result.CSM_Target, Result.TTI);
 
       --  phase E4, 5.16.1.4 a): the EOA target of the level crossing is
       --  the most relevant displayed target
@@ -1950,71 +2335,9 @@ is
                           or else (Result.Monitoring /= RSM
                                    and then Result.V_Est <= Result.V_MRSP));
 
-      ------------------------------------------------------------------
-      --  The EOA, LOA and SvL passed (3.13.10.2.6 a, 3.13.10.2.7), the
-      --  perturbation location (3.13.11)
-      ------------------------------------------------------------------
-
-      declare
-         EOA_Passed : Boolean := False;
-         SvL_Passed : Boolean := False;
-         Pert       : Boolean := False;
-         Pert_X     : Num := 0;
-         MA_Req     : Boolean := False;
-      begin
-         for K in 1 .. Work.Count loop
-            declare
-               T : constant Target_T := Work.Targets (K);
-            begin
-               if T.Kind in EOA_Target | LOA_Target then
-                  EOA_Passed :=
-                    (if Inputs.Level_1
-                     then C.X_Min - Num (Inputs.Antenna_Offset) > T.EOA
-                     else C.X_Min > T.EOA);
-               end if;
-               if T.Kind = EOA_Target then
-                  SvL_Passed := C.X_Max > T.Location;
-               end if;
-               if T.Kind in EOA_Target | LOA_Target
-                 and then S.Extra.T_MAR > 0
-               then
-                  declare
-                     Found_S, Found_E : Boolean;
-                     X_S, X_E         : Num;
-                     Lead             : constant Num :=
-                       Travel_Ceil (C.M_W, Time_T (S.Extra.T_MAR));
-                  begin
-                     Perturbation_Of (Work, C, T, False, Found_S, X_S);
-                     if T.Kind = EOA_Target then
-                        Perturbation_Of (Work, C, T, True, Found_E, X_E);
-                     else
-                        Found_E := False;
-                        X_E := 0;
-                     end if;
-                     Pert := Found_S or else Found_E;
-                     Pert_X := (if Found_S then X_S else X_E);
-                     --  3.13.11.8
-                     MA_Req :=
-                       (Found_S and then C.X_Max > X_S - Lead)
-                       or else (Found_E and then C.X_Est > X_E - Lead);
-                     --  3.13.11.9
-                     if Work.Elements > 0
-                       and then Speed_At (Work.Model, Work.Profile, EBD_Of (T),
-                                          Work.MRSP (1).Start)
-                                < Work.MRSP (1).Speed
-                     then
-                        MA_Req := True;
-                     end if;
-                  end;
-               end if;
-            end;
-         end loop;
-         Result.EOA_Passed := EOA_Passed;
-         Result.SvL_Passed := SvL_Passed;
-         Result.Perturbation := Pert;
-         Result.Perturbation_X := Pert_X;
-         Result.MA_Request := MA_Req;
-      end;
+      Passed_Locations (S, Inputs, Work, C, Result.EOA_Passed,
+                        Result.SvL_Passed, Result.Perturbation,
+                        Result.Perturbation_X, Result.MA_Request);
    end Step;
 
 end EVC_SDM;
