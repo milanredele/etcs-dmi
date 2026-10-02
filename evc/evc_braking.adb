@@ -384,6 +384,10 @@ is
          return R;
       end if;
       for K in 1 .. R.Count loop
+         --  Without an invariant the proof unrolls the loop up to the
+         --  last value of the type of R.Count (16 iterations, two paths
+         --  each: every check of the body 32 times)
+         pragma Loop_Invariant (R.Count = A.Count);
          declare
             Fa : constant Num := Num (A.Steps (K).Factor) * 1_000;
             Fb : constant Num := Num (B.Steps (K).Factor) * 1_000;
@@ -570,6 +574,8 @@ is
             Safe : Steps_T := Emergency;
          begin
             for K in 1 .. Safe.Count loop
+               --  not unrolled by the proof (see Kv_Passenger)
+               pragma Loop_Invariant (Safe.Count = Emergency.Count);
                Safe.Steps (K).Value :=
                  Scaled (Safe.Steps (K).Value,
                          Rst_Factor (X, EBCL, Avadh, K));
