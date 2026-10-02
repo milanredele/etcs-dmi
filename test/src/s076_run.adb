@@ -275,7 +275,10 @@ package body S076_Run is
    --  to the step before the next input), of the block before and of
    --  the block after it: the corpus writes a state change in the block
    --  of its cause, or one block early or late. A level column "N/A"
-   --  accepts an unknown level; in No Power the level is not judged.
+   --  accepts an unknown level, a mode column "N/A" (a state the
+   --  sequence does not name: 5120400_01 writes the passive shunting
+   --  after the cab is closed so) any mode; in No Power the level is
+   --  not judged.
    type Level_Set_T is array (Level_Kind_T) of Boolean;
 
    function Columns (I : Positive) return Judgement_T is
@@ -285,6 +288,7 @@ package body S076_Run is
       M  : constant Mode_T := Our_Mode;
       Lv : constant Level_Kind_T := Our_Level;
       Any_Level : Boolean := False;
+      Any_Mode  : Boolean := False;
 
       procedure Add (St : Step_T) is
          Mb : constant Mode_Set_T := Mode_Of (Trim (St.Mode_Before));
@@ -293,6 +297,8 @@ package body S076_Run is
          for X in Mode_T loop
             Modes (X) := Modes (X) or else Mb (X) or else Ma (X);
          end loop;
+         Any_Mode := Any_Mode or else Trim (St.Mode_Before) = "N/A"
+                     or else Trim (St.Mode_After) = "N/A";
          Levels (Level_Of (Trim (St.Lvl_Before))) := True;
          Levels (Level_Of (Trim (St.Lvl_After))) := True;
       end Add;
@@ -324,7 +330,8 @@ package body S076_Run is
       for K in Level_Kind_T range K_L0 .. K_L3 loop
          Any_Level := Any_Level or else Levels (K);
       end loop;
-      if Modes /= No_Modes and then not Modes (M) then
+      if Modes /= No_Modes and then not Any_Mode and then not Modes (M)
+      then
          return Fail ("mode " & Trim (Seq.Steps (I).Mode_After) & ", got "
                       & Mode_Abbrev (M));
       end if;
@@ -1881,8 +1888,22 @@ package body S076_Run is
          end if;
          return NJ (R_Version, "operated system version " & Name);
       elsif Same (Kind, "speed-distance-monitoring") then
-         return Shown (St_W, Speed_Info_Shown, Speed_Info_Shown,
-                       "speed and distance information on the DMI");
+         --  "displayed" is the speed dial with the aspect of the
+         --  supervision status (the comments: "the DMI aspect is coherent
+         --  with ... Status"), shown in OS, SR and SH too where the hooks
+         --  and the distance wait for the toggle (DMI 8.2.2.4, Table 15);
+         --  "removed" and "not displayed" are the toggled objects (5120400:
+         --  "the permitted speed is not displayed", then "the train speed
+         --  is displayed"), or a mode without them
+         declare
+            Dial : constant Boolean :=
+              Speed_Info_Shown
+              or else (St_W = Displayed
+                       and then SDI.Mode in SDI.M_OS | SDI.M_SR | SDI.M_SH);
+         begin
+            return Shown (St_W, Dial, Dial,
+                          "speed and distance information on the DMI");
+         end;
       elsif Same (Kind, "window") then
          return DMI_Window (St_W, Name);
       elsif Same (Kind, "button") then
