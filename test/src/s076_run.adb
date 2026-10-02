@@ -18,6 +18,10 @@ with DMI_Protocol;
 with DMI_System_Status;
 with DMI_Windows;             use DMI_Windows;
 with EVC_Core;
+with EVC_Distances;
+with EVC_Odometry;
+with EVC_Ports;
+with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
 with S076_Bench;
 with S076_Tables;             use S076_Tables;
@@ -46,6 +50,9 @@ package body S076_Run is
          when R_Not_Modelled     => "on-board input/output not modelled",
          when R_Unclassified     => "vocabulary unclassified in the sibling",
          when R_Extractor        => "unreadable in the sibling (extractor)",
+         when R_S076_Defect      => "a defect of SUBSET-076 (known list)",
+         when R_Optional         =>
+            "optional or implementation dependent step not taken",
          when R_Runner           => "runner not implemented for this kind");
 
    ---------------------------------------------------------------------
@@ -80,6 +87,10 @@ package body S076_Run is
      (Ada.Strings.Fixed.Index (Up (S), Up (Part)) > 0);
 
    function Same (A, Bb : String) return Boolean is (Up (A) = Up (Bb));
+
+   function Starts (S, Prefix : String) return Boolean is
+     (S'Length >= Prefix'Length
+      and then Up (S (S'First .. S'First + Prefix'Length - 1)) = Up (Prefix));
 
    function Trim (C : Column_T) return String is
      (Ada.Strings.Fixed.Trim (C, Ada.Strings.Both));
@@ -829,6 +840,27 @@ package body S076_Run is
          then
             B.Set_Direction (-1);
          end if;
+         --  backwards from where the speed chart stops the train, when
+         --  that is just ahead (the step's distance is where the reverse
+         --  movement is seen, not where it starts)
+         if B.Direction < 0 and then Seq.Chart_Count > 1 then
+            for K in 2 .. Seq.Chart_Count loop
+               declare
+                  X : constant Integer_64 :=
+                    Integer_64 (Seq.Chart (K).X_M * 100.0);
+               begin
+                  if Seq.Chart (K).V_Kmh < 1.0
+                    and then X > B.Position
+                    and then X - St.Dist_Cm <= 2_000
+                  then
+                     B.Set_Direction (1);
+                     B.Move_To (X, Kmh_To_Cms (10.0));
+                     B.Set_Direction (-1);
+                     exit;
+                  end if;
+               end;
+            end loop;
+         end if;
          B.Set_Speed (Transit_Cms);
          return Pass ("ODO moving"
                       & (if B.Direction < 0 then " backwards" else ""));
@@ -890,12 +922,16 @@ package body S076_Run is
       Arg  : constant String := W (4);
    begin
       if Same (Kind, "cab") then
+         --  the driver who opens a desk puts its direction controller
+         --  forward (the sequences set it themselves only to change it)
          if Same (Arg, "A") then
             B.TIU_Input (2, 0);
             B.TIU_Input (1, 1);
+            B.TIU_Input (6, 1);
          elsif Same (Arg, "B") then
             B.TIU_Input (1, 0);
             B.TIU_Input (2, 1);
+            B.TIU_Input (6, 1);
          else
             B.TIU_Input (1, 0);
             B.TIU_Input (2, 0);
@@ -978,6 +1014,18 @@ package body S076_Run is
                      if not T.Has_Bits then
                         return NJ (R_Extractor, "telegram " & Tag
                                    & " refused by the extractor");
+                     end if;
+                     --  Known defects of SUBSET-076 v4.0.0 against
+                     --  SUBSET-026 v4.0.0: M_LEVELTEXTDISPLAY 5 ("no
+                     --  level" before 4.0.0, spare in 4.0.0 7.5.1.66,
+                     --  which has it as 4) in sequences of system
+                     --  version 3.0; in those of 2.1 and 2.2 the coding
+                     --  of their version (chapter 6, E7)
+                     if T.Old_Level_Text then
+                        return NJ ((if Seq.SV = 30 then R_S076_Defect
+                                    else R_Version),
+                                   "telegram " & Tag & ": M_LEVELTEXTDISPLAY"
+                                   & " 5, the coding before 4.0.0 (7.5.1.66)");
                      end if;
                      if T.M_Version in 16 .. 31 then
                         return NJ (R_Version, "telegram " & Tag
@@ -2165,7 +2213,9 @@ package body S076_Run is
                if not (St.IO = Input
                        and then (W (2) = "BTM"
                                  or else (W (2) = "ODO"
-                                          and then Same (W (3), "reach-point"))))
+                                          and then (Same (W (3), "reach-point")
+                                                    or else Same (W (3),
+                                                      "start-moving")))))
                then
                   Move_To (St.Dist_Cm);
                end if;
@@ -2206,7 +2256,16 @@ package body S076_Run is
                         Wait_Used := Wait_Used + 1;
                         C := Columns (I);
                      end loop;
-                     if J.Verdict = Failed then
+                     --  an optional or implementation dependent step
+                     --  (its comment says so) that fails is the other
+                     --  alternative: not judged
+                     if J.Verdict = Failed
+                       and then (Starts (Image (St.Comment), "Optional step")
+                                 or else Starts (Image (St.Comment),
+                                           "Implementation dependent"))
+                     then
+                        Record_Result (I, NJ (R_Optional, Image (J.Sig)));
+                     elsif J.Verdict = Failed then
                         Record_Result (I, J);
                      elsif C.Verdict = Failed then
                         Record_Result (I, C);
@@ -2217,6 +2276,33 @@ package body S076_Run is
                end if;
             end if;
             Step_Start_Ms := B.Time_Ms;
+            if Verbose and then Debug and then B.Powered then
+               Put_Line ("      brakes: EB "
+                         & Boolean'Image (EVC_Core.Brake_Commands.EB)
+                         & " SB " & Boolean'Image (EVC_Core.Brake_Commands.SB)
+                         & " protection "
+                         & Boolean'Image (EVC_Core.Brake_Commands.Protection)
+                         & " back "
+                         & Boolean'Image
+                             (EVC_Stored_Information.Current.Train
+                                .Moving_Backwards)
+                         & " ahead "
+                         & Boolean'Image
+                             (EVC_Stored_Information.Current.Train
+                                .Moving_Ahead)
+                         & " sup "
+                         & Boolean'Image
+                             (EVC_Stored_Information.Current.Supervise)
+                         & " ma "
+                         & Boolean'Image
+                             (EVC_Stored_Information.Current.MA.Present)
+                         & " ahead-sense "
+                         & EVC_Distances.Sense_T'Image
+                             (EVC_Stored_Information.Current.Train.Ahead)
+                         & " odo "
+                         & EVC_Ports.Movement_T'Image (EVC_Odometry.Movement)
+                         & " dir" & Integer'Image (B.Direction));
+            end if;
             if Verbose and then Debug then
                for K in 1 .. B.JRU_Count loop
                   Put_Line ("      jru" & Natural'Image (B.JRU (K).Event)

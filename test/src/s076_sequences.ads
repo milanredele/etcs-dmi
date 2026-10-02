@@ -84,6 +84,9 @@ package S076_Sequences is
       --  the NID_PACKET of its var rows (255 left out)
       Packets   : Byte_Array (1 .. 24) := (others => 0);
       Packet_Count : Natural := 0;
+      --  a var row M_LEVELTEXTDISPLAY 5: "no level" in the coding before
+      --  4.0.0 (7.5.1.66 of 4.0.0 has it as 4, 5 is spare)
+      Old_Level_Text : Boolean := False;
       Loop_Tag  : Boolean := False;
       Packet_Tag : Boolean := False;
    end record;

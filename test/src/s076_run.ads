@@ -51,6 +51,11 @@ package S076_Run is
       R_Unclassified,     -- vocabulary unclassified in the sibling
       R_Extractor,        -- the step line or the telegram could not be
                           -- read by the sibling's extractor
+      R_Optional,         -- an optional or implementation dependent
+                          -- step of the sequence that our on-board does
+                          -- not take (its comment says so)
+      R_S076_Defect,      -- a defect of SUBSET-076 against SUBSET-026
+                          -- 4.0.0 (the Known list of S076_Run)
       R_Runner);          -- runner not implemented for this kind
 
    function Reason_Image (R : Reason_T) return String;

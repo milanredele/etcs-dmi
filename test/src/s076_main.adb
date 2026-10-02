@@ -249,6 +249,8 @@ package body S076_Main is
          when R_Not_Modelled     => "not-modelled",
          when R_Unclassified     => "unclassified",
          when R_Extractor        => "extractor",
+         when R_S076_Defect      => "S076-defect",
+         when R_Optional         => "optional",
          when R_Runner           => "runner");
 
    procedure Read_Baseline is
