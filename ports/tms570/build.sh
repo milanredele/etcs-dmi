@@ -41,7 +41,7 @@ TARGET_FLAGS="-mbig-endian -mbe32 -marm -mcpu=cortex-r5 -mfpu=vfpv3-d16 -mfloat-
 
 cd "$ROOT"
 set -x
-gprbuild -p -P "$ETCS_PROJECT" --target=arm-eabi --RTS="$RTS" --subdirs=tms570 \
+gprbuild -p -j0 -P "$ETCS_PROJECT" --target=arm-eabi --RTS="$RTS" --subdirs=tms570 \
    "$@" \
    -cargs $TARGET_FLAGS -O2 -ffunction-sections -fdata-sections \
    -largs $TARGET_FLAGS -Wl,--gc-sections

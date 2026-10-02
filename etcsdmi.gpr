@@ -2,12 +2,24 @@
 --  what both share (common/), the environment simulator (sim/), the
 --  hosted TCP mains (ports/hosted/) and the regression tools (test/src).
 --  The on-board alone, for the cross and proof builds, is etcs_evc.gpr.
+--
+--  ETCS_BUILD selects the code generation: "fast" (the default, -O2: the
+--  regression runners and fuzzers run four times faster than without
+--  optimisation, with the same results) or "debug" (-O0, objects and
+--  executables under obj/debug, for a debugger). Both keep the validity
+--  checks (-gnatVa) and the debug information.
 project Etcsdmi is
+
+   type Build_T is ("fast", "debug");
+   Build : Build_T := external ("ETCS_BUILD", "fast");
 
    for Source_Dirs use
      ("common", "dmi", "evc", "evc/language", "sim", "ports/hosted",
       "test/src");
-   for Object_Dir use "obj";
+   case Build is
+      when "fast"  => for Object_Dir use "obj";
+      when "debug" => for Object_Dir use "obj/debug";
+   end case;
    for Main use ("dmi.adb", "dmi_test.adb", "dmi_fuzz.adb", "evc_sim.adb",
                  "evc.adb", "evc_test.adb", "evc_fuzz.adb",
                  "evc_efs_test.adb", "evc_s076_check.adb",
@@ -18,13 +30,20 @@ project Etcsdmi is
    end Ide;
 
    package Builder is
-      for Switches ("ada") use ("-g", "-s");
+      --  -j0: compile on every core (a clean build is 20 s against a
+      --  few minutes on one)
+      for Switches ("ada") use ("-g", "-s", "-j0");
       --  obj/evc is the object directory of etcs_evc.gpr
       for Executable ("evc.adb") use "evc_onboard";
    end Builder;
 
    package Compiler is
-      for Switches ("ada") use ("-gnatVa", "-gnatwa", "-g");
+      case Build is
+         when "fast" =>
+            for Switches ("ada") use ("-gnatVa", "-gnatwa", "-g", "-O2");
+         when "debug" =>
+            for Switches ("ada") use ("-gnatVa", "-gnatwa", "-g", "-O0");
+      end case;
    end Compiler;
 
    package Linker is

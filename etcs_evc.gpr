@@ -14,7 +14,7 @@ project Etcs_Evc is
    for Object_Dir use "obj/evc";
 
    package Builder is
-      for Switches ("ada") use ("-g", "-s");
+      for Switches ("ada") use ("-g", "-s", "-j0");
    end Builder;
 
    package Compiler is

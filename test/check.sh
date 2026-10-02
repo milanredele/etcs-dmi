@@ -33,37 +33,59 @@ export PATH
 
 steps=${FUZZ_STEPS:-200000}
 
-# Run a check, show the last N lines of its output and stop with its
-# exit status when it fails: a plain "cmd | tail -1" takes the exit
-# status of tail and loses the check's (sh has no pipefail), so a failing
-# test would let check.sh say ok.
-check_tail() {
-   n=$1
-   shift
-   out=$("$@" 2>&1) && status=0 || status=$?
-   if [ "$status" -ne 0 ]; then
-      printf '%s\n' "$out" | tail -n 12
-      echo "check.sh: FAILED: $* (exit $status)" >&2
-      exit "$status"
+gprbuild -s -j0 -p -q -P etcsdmi.gpr
+
+# The checks are independent programs on one core each: they run side by
+# side, every one into its own file, and are reported in this order when
+# all have ended (CHECK_SERIAL=1 runs them one after the other, for a
+# machine with few cores or to read a trace).
+tmp=$(mktemp -d "${TMPDIR:-/tmp}/etcs-check.XXXXXX")
+trap 'rm -rf "$tmp"' EXIT
+names=""
+start() {   # start <name> <lines shown> <command...>
+   name=$1
+   lines=$2
+   shift 2
+   names="$names $name"
+   echo "$lines" > "$tmp/$name.n"
+   echo "$*" > "$tmp/$name.cmd"
+   if [ -n "${CHECK_SERIAL:-}" ]; then
+      "$@" > "$tmp/$name.out" 2>&1 && echo 0 > "$tmp/$name.rc" \
+         || echo $? > "$tmp/$name.rc"
+   else
+      ( "$@" > "$tmp/$name.out" 2>&1 && echo 0 > "$tmp/$name.rc" \
+           || echo $? > "$tmp/$name.rc" ) &
    fi
-   printf '%s\n' "$out" | tail -n "$n"
-}
-check() {
-   check_tail 1 "$@"
 }
 
-gprbuild -s -j0 -p -q -P etcsdmi.gpr
-check ./obj/dmi_test
-check ./obj/dmi_fuzz
-check ./obj/evc_test
+start dmi_test 1 ./obj/dmi_test
+start dmi_fuzz 1 ./obj/dmi_fuzz
+start evc_test 1 ./obj/evc_test
 # the stored information phase: its line and the cycles by mode
-check_tail 2 ./obj/evc_fuzz "$steps"
-check python3 evc/language/gen_language.py --check
-check python3 evc/language/check_catalogue.py
-check python3 doc/SRS/tools/trace_subset026.py --check
-check python3 test/tools/efs_frames.py --check
-check python3 test/tools/golden_review.py --check-tool
-check ./obj/evc_efs_test
-check ./obj/evc_s076_check
-check ./obj/evc_s076_run
+start evc_fuzz 2 ./obj/evc_fuzz "$steps"
+start gen_language 1 python3 evc/language/gen_language.py --check
+start check_catalogue 1 python3 evc/language/check_catalogue.py
+start trace 1 python3 doc/SRS/tools/trace_subset026.py --check
+start efs_frames 1 python3 test/tools/efs_frames.py --check
+start golden_review 1 python3 test/tools/golden_review.py --check-tool
+start evc_efs_test 1 ./obj/evc_efs_test
+start evc_s076_check 1 ./obj/evc_s076_check
+start evc_s076_run 1 ./obj/evc_s076_run
+wait
+
+# Every result in the order above; a failing check shows its last lines
+# and fails the script with its exit status (a plain "cmd | tail -1"
+# would take the exit status of tail and lose the check's).
+failed=0
+for name in $names; do
+   status=$(cat "$tmp/$name.rc" 2>/dev/null || echo 99)
+   if [ "$status" -ne 0 ]; then
+      tail -n 12 "$tmp/$name.out"
+      echo "check.sh: FAILED: $(cat "$tmp/$name.cmd") (exit $status)" >&2
+      [ "$failed" -ne 0 ] || failed=$status
+   else
+      tail -n "$(cat "$tmp/$name.n")" "$tmp/$name.out"
+   fi
+done
+[ "$failed" -eq 0 ] || exit "$failed"
 echo "check.sh: ok"
