@@ -121,7 +121,8 @@ package body S076_Main is
       Scn_Reader.Split (L);
       return Scn_Reader.Word (L, 1) & " " & Scn_Reader.Word (L, 2) & " "
         & Scn_Reader.Word (L, 3) & ": "
-        & Image (Results (Index).Signature);
+        & Image (Results (Index).Signature)
+        & (if Loaded.Workbook then " [workbook train]" else "");
    end Signature;
 
    ---------------------------------------------------------------------

@@ -81,6 +81,9 @@ package S076_Sequences is
       Bits      : Natural := 0;
       Data      : Byte_Array (1 .. Max_Bytes) := (others => 0);
       M_Version : Integer := -1;                 -- -1: no var row
+      --  the NID_PACKET of its var rows (255 left out)
+      Packets   : Byte_Array (1 .. 24) := (others => 0);
+      Packet_Count : Natural := 0;
       Loop_Tag  : Boolean := False;
       Packet_Tag : Boolean := False;
    end record;
@@ -134,6 +137,12 @@ package S076_Sequences is
       Chart     : Points_T;
       Chart_Count : Natural := 0;
       Truncated : Boolean := False;
+      --  a "workbook" line: the braking curves are those of the ERA
+      --  braking curve workbook's train (not the Train Data entered)
+      Workbook  : Boolean := False;
+      --  its train: the length (Train (main)!D18, m) and the brake
+      --  percentage (Brake parameters (lambda)!F2); 0 when not given
+      WB_Length, WB_Lambda : Natural := 0;
    end record;
 
    --  The sequence read last (Read): too big for a stack, one at a time

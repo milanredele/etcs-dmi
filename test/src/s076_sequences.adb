@@ -273,6 +273,18 @@ package body S076_Sequences is
             then
                S.Telegrams (S.Telegram_Count).M_Version := Integer (V mod 128);
             end if;
+            if OK and then Block = 1 and then Name = "NID_PACKET"
+              and then V < 255 and then S.Telegram_Count > 0
+            then
+               declare
+                  T : Telegram_T renames S.Telegrams (S.Telegram_Count);
+               begin
+                  if T.Packet_Count < T.Packets'Length then
+                     T.Packet_Count := T.Packet_Count + 1;
+                     T.Packets (T.Packet_Count) := Unsigned_8 (V);
+                  end if;
+               end;
+            end if;
             if OK and then Name'Length > 2
               and then Name (Name'First .. Name'First + 1) = "T_"
               and then S.Timer_Count < Max_Timers
@@ -320,6 +332,21 @@ package body S076_Sequences is
                end;
             end if;
          end;
+      elsif K = "workbook" then
+         S.Workbook := True;
+      elsif K = "cell" and then L.Count >= 4 then
+         declare
+            OK1 : Boolean;
+            V   : constant Natural := To_Nat (Word (L, L.Count), OK1);
+            Ref : constant String := Word (L, L.Count - 1);
+         begin
+            if OK1 and then Ref = "(main)!D18" and then Word (L, 2) = "Train"
+            then
+               S.WB_Length := V;
+            elsif OK1 and then Ref = "(lambda)!F2" then
+               S.WB_Lambda := V;
+            end if;
+         end;
       elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "speedprofile"
         and then S.Chart_Count = 0
       then
@@ -358,6 +385,9 @@ package body S076_Sequences is
       Loaded.Timer_Count := 0;
       Loaded.Chart_Count := 0;
       Loaded.Truncated := False;
+      Loaded.Workbook := False;
+      Loaded.WB_Length := 0;
+      Loaded.WB_Lambda := 0;
       Cur := Loaded'Access;
       Block := 0;
       Scn_Reader.Read_File (Path, On_Line'Access, Ok);

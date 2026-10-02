@@ -3,6 +3,7 @@
 
 pragma Ada_2012;
 with Ada.Characters.Handling;
+with Ada.Environment_Variables;
 with Ada.Streams;             use Ada.Streams;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;             use Ada.Text_IO;
@@ -102,11 +103,11 @@ package body S076_Run is
    --  The state of the replay
    ---------------------------------------------------------------------
 
+   Debug : constant Boolean := Ada.Environment_Variables.Exists ("DEBUG");
    Cur            : Natural := 0;       -- the index of the step
    Step_Start_Ms  : Unsigned_64 := 0;   -- the time the last step ended
    Explicit_Speed : Integer := -1;      -- cm/s set by an ODO input
    Wait_Used      : Natural := 0;       -- cycles waited in the window
-   Train_Length   : constant := 4_000;  -- cm, the Train Data entered
    Default_Kmh    : constant := 30;
 
    function Kmh_To_Cms (Kmh : Long_Float) return Natural is
@@ -406,14 +407,30 @@ package body S076_Run is
 
    --  11.3.9: the seven items of Table 40 over the two windows, then the
    --  entry ends (167, 440) and the validation window follows
+   --  The Train Data the driver enters: those of the sequence's braking
+   --  curve workbook where it has one (its train length and brake
+   --  percentage), else a 40 m train (the L_TRAIN of the corpus' radio
+   --  messages) with the workbook's 109 %. The maximum speed stays in
+   --  the conversion model (3.13.3.2.1: at most 200 km/h), the only
+   --  braking model of a Train Data entry (no pre-programmed one in the
+   --  configuration yet, E6).
+   function Train_Length_M return Natural is
+     (if Seq.WB_Length in 1 .. 4095 then Seq.WB_Length else 40);
+   function Brake_Percentage return Natural is
+     (if Seq.WB_Lambda in 10 .. 250 then Seq.WB_Lambda else 109);
+
+   --  11.3.9: the seven items of Table 40 over the two windows, then the
+   --  entry ends (167, 440) and the validation window follows
    procedure Enter_Train_Data is
+      function Digits_Of (N : Natural) return String is
+         S : constant String := Natural'Image (N);
+      begin
+         return S (S'First + 1 .. S'Last);
+      end Digits_Of;
    begin
       Key (1); Enter_Field (1);               -- train category PASS 1
-      Type_Digits ("40"); Enter_Field (2);    -- length, m
-      Type_Digits ("150"); Enter_Field (3);   -- brake percentage
-      --  3.13.3.2.1: within the conversion model (at most 200 km/h), the
-      --  only braking model of a Train Data entry (no pre-programmed one
-      --  in the configuration yet, E6)
+      Type_Digits (Digits_Of (Train_Length_M)); Enter_Field (2);
+      Type_Digits (Digits_Of (Brake_Percentage)); Enter_Field (3);
       Type_Digits ("200"); Enter_Field (4);   -- maximum speed, km/h
       Press (539, 440);                       -- [Next]
       Key (1); Enter_Field (1);               -- axle load category
@@ -750,7 +767,7 @@ package body S076_Run is
       elsif Same (Kind, "min-safe-front-end") then
          return F - B.Doubt_Under;
       elsif Same (Kind, "min-safe-rear-end") then
-         return F - B.Doubt_Under - Train_Length;
+         return F - B.Doubt_Under - Integer_64 (Train_Length_M) * 100;
       elsif Same (Kind, "min-safe-antenna") then
          return -B.Doubt_Under;
       elsif Same (Kind, "max-safe-antenna") then
@@ -799,7 +816,12 @@ package body S076_Run is
             S   : constant B.State_T := B.State;
             Kmh : Integer := -1;
             --  A.3.1 default dV_ebi / dV_sbi below V_ebi_min / V_sbi_min
-            Below : constant Boolean := Has (E, "<");
+            --  the operator after V_TRAIN; "<x>" brackets an expression
+            Op : constant Character :=
+              (if E'Length > 7 then E (E'First + 7) else '>');
+            Below : constant Boolean := Op = '<';
+            Much  : constant Boolean :=
+              Below and then E'Length > 8 and then E (E'First + 8) = '<';
          begin
             if not S.Has_Speed then
                return NJ (R_Runner, "ODO speed without supervision shown");
@@ -813,7 +835,7 @@ package body S076_Run is
             elsif Has (E, "V_PERM") or else Has (E, "MRSP")
               or else Has (E, "VMRSP")
             then
-               if Has (E, "<<") then
+               if Much then
                   Kmh := S.V_Perm / 2;
                elsif Below then
                   Kmh := S.V_Perm - 2;
@@ -923,7 +945,7 @@ package body S076_Run is
                         return NJ (R_Extractor, "telegram " & Tag
                                    & " refused by the extractor");
                      end if;
-                     if T.M_Version in 0 .. 31 then
+                     if T.M_Version in 16 .. 31 then
                         return NJ (R_Version, "telegram " & Tag
                                    & " of system version"
                                    & Integer'Image (T.M_Version / 16) & "."
@@ -951,6 +973,41 @@ package body S076_Run is
       if Found = 0 then
          return NJ (R_Extractor, "BTM: no telegram for " & W (4));
       end if;
+      --  the packets the step's text names must be in the telegrams: the
+      --  extractor of the sibling loses a balise's table now and then
+      declare
+         Txt : constant String := Image (St.Text);
+         P   : Natural := Ada.Strings.Fixed.Index (Txt, "packet ");
+      begin
+         while P > 0 loop
+            declare
+               N : Natural := 0;
+               K : Natural := P + 7;
+               Have : Boolean := False;
+            begin
+               while K <= Txt'Last and then Txt (K) in '0' .. '9' loop
+                  N := N * 10 + Character'Pos (Txt (K)) - 48;
+                  K := K + 1;
+               end loop;
+               if K > P + 7 and then N < 255 then
+                  for I in 1 .. Seq.Telegram_Count loop
+                     for J in 1 .. Seq.Telegrams (I).Packet_Count loop
+                        if Seq.Telegrams (I).Step <= St.Number
+                          and then Natural (Seq.Telegrams (I).Packets (J)) = N
+                        then
+                           Have := True;
+                        end if;
+                     end loop;
+                  end loop;
+                  if not Have then
+                     return NJ (R_Extractor, "BTM: packet" & Natural'Image (N)
+                                & " of the text in no telegram");
+                  end if;
+               end if;
+               P := Ada.Strings.Fixed.Index (Txt, "packet ", K);
+            end;
+         end loop;
+      end;
       --  move past the last balise
       if B.Speed = 0 and then Explicit_Speed < 0 then
          null;
@@ -2105,6 +2162,14 @@ package body S076_Run is
                end if;
             end if;
             Step_Start_Ms := B.Time_Ms;
+            if Verbose and then Debug then
+               for K in 1 .. B.JRU_Count loop
+                  Put_Line ("      jru" & Natural'Image (B.JRU (K).Event)
+                            & Natural'Image (B.JRU (K).B2)
+                            & Natural'Image (B.JRU (K).B3)
+                            & Natural'Image (B.JRU (K).B4));
+               end loop;
+            end if;
             if Verbose then
                declare
                   R : Result_T renames Results (I);
@@ -2127,7 +2192,7 @@ package body S076_Run is
                             & Level_Abbrev (Our_Level) & " x="
                             & Img (Integer (B.Position / 100)) & "m v="
                             & Img (B.Speed * 36 / 1000) & "km/h perm="
-                            & Img (B.State.V_Perm) & "/" & Img (B.State.V_Cur) & "/sbi" & Img (B.State.V_SBI) & "/st" & Img (B.State.Sup_Status) & (if B.State.EBC then " EB" else "") & (if B.State.SBC then " SB" else "") & " r" & Img (B.State.Reasons) & " ma" & Img (B.State.Plan_MA) & "/c" & Img (B.State.Ceiling) & " t="
+                            & Img (B.State.V_Perm) & "/" & Img (B.State.V_Cur) & "/sbi" & Img (B.State.V_SBI) & "/st" & Img (B.State.Sup_Status) & (if B.State.EBC then " EB" else "") & (if B.State.SBC then " SB" else "") & " r" & Img (B.State.Reasons) & " tgt" & Img (B.State.V_Target) & "@" & Img (B.State.D_Target) & " ma" & Img (B.State.Plan_MA) & "/c" & Img (B.State.Ceiling) & " t="
                             & Unsigned_64'Image (B.Time_Ms / 100) & "00ms");
                end;
             end if;
