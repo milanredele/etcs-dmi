@@ -668,7 +668,9 @@ package body EVC_Test_Procedures is
              "E4 procedures: MSG_TEXT, MSG_TEXT_REMOVE, MSG_SYSTEM_STATUS "
              & "as dmi_protocol.ads");
       --  e4/integration: the catalogue numbers the on-board sends
-      Check (SS_Balise_Read_Error_Trip
+      Check (SS_Balise_Read_Error_Brake
+               = EVC_DMI_Port.SS_Balise_Read_Error_Brake
+             and then SS_Balise_Read_Error_Trip
                = EVC_DMI_Port.SS_Balise_Read_Error_Trip
              and then SS_Entering_FS = EVC_DMI_Port.SS_Entering_FS
              and then SS_Entering_OS = EVC_DMI_Port.SS_Entering_OS
@@ -850,8 +852,15 @@ package body EVC_Test_Procedures is
       Check (Mode_Byte = Code_FS and then SB
              and then Why (EVC_Ports.TIU_Reason_Procedure),
              "3.14.1.6, 3.16.2.3.1 b): reaction service brake, FS stays");
+      Check (Seen_SS (1, 0),
+             "3.16.2.6.1: the driver is informed of the service brake of "
+             & "the linking reaction (Balise read error, entry 1; found by "
+             & "SUBSET-076 3040400_03)");
       Stand;
       Check (not SB, "3.14.1.6: the service brake released at standstill");
+      Check (Seen_SS (1, 2),
+             "3.14.1.6 fulfilled: the 30 s of Balise read error start "
+             & "(entry 1, event 2)");
    end Scenario_Linking;
 
    --  4.6.3 [69] and [65]

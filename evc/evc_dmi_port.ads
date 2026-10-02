@@ -362,6 +362,7 @@ is
 
    --  The entries the on-board reports (the catalogue of dmi_protocol.ads;
    --  evc_test checks that the numbers are the same)
+   SS_Balise_Read_Error_Brake       : constant := 1;   -- 3.16.2.6.1
    SS_Balise_Read_Error_Trip        : constant := 2;   -- [17], [66]
    SS_Entering_FS                   : constant := 6;   -- 4.4.9.1.4
    SS_Entering_OS                   : constant := 7;   -- 4.4.12.1.7

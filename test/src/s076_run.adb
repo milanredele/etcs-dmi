@@ -547,6 +547,11 @@ package body S076_Run is
         and then (Same (Item, "Train-Data")
                   or else Same (Item, "Flexible-Train-Data"))
       then
+         --  the data the window proposes, accepted as they are (the
+         --  driver revalidates the Train Data the on-board has)
+         if Top_Is (W_Train_Data) then
+            Press (167, 440);
+         end if;
          if not Top_Is (W_Train_Data_Validation) then
             return Fail ("DMI validate Train Data: the validation window is "
                          & "not open, top is " & Top_Image);
@@ -601,6 +606,16 @@ package body S076_Run is
          return (if Open_Window (W_Data_View) then Pass ("DMI Data view")
                  else Fail ("DMI Data view: cannot be opened over "
                             & Top_Image));
+      elsif Same (Verb, "press") and then Top_Is (W_Driver_ID)
+        and then (Has (Item, "Settings") or else Has (Item, "Train-Running"))
+        and then DMI_Windows.Button_Count >= 2
+      then
+         --  11.3.3.6, 11.3.3.7: in the step S1 of Start Up the Driver ID
+         --  window has 'TRN' and 'settings' buttons, its last two
+         Press_Area (DMI_Windows.Button_Area
+                       (DMI_Windows.Button_Count
+                        - (if Has (Item, "Settings") then 0 else 1)));
+         return Pass ("DMI " & Item & " from the Driver ID window");
       elsif Same (Verb, "press") and then Has (Item, "Settings") then
          return (if Open_Window (W_Settings) then Pass ("DMI Settings")
                  else Fail ("DMI Settings: cannot be opened over "
@@ -802,8 +817,21 @@ package body S076_Run is
          return Pass ("ODO standstill");
       elsif Same (Kind, "start-moving") then
          Explicit_Speed := -1;
+         --  the comment, or the next distance, says which way
+         if Has (Image (St.Comment), "backward")
+           or else Has (Image (St.Comment), "reverse")
+         then
+            B.Set_Direction (-1);
+         elsif Has (Image (St.Comment), "forward") then
+            B.Set_Direction (1);
+         elsif Cur < Seq.Step_Count
+           and then Seq.Steps (Cur + 1).Dist_Cm < St.Dist_Cm - 100
+         then
+            B.Set_Direction (-1);
+         end if;
          B.Set_Speed (Transit_Cms);
-         return Pass ("ODO moving");
+         return Pass ("ODO moving"
+                      & (if B.Direction < 0 then " backwards" else ""));
       elsif Same (Kind, "direction-reversed") then
          B.Set_Direction (-B.Direction);
          if B.Speed = 0 then
@@ -876,6 +904,12 @@ package body S076_Run is
       elsif Same (Kind, "direction") then
          B.TIU_Input (6, (if Same (Arg, "forward") then 1
                           elsif Same (Arg, "backward") then 2 else 0));
+         --  the train will move the way the controller says
+         if Same (Arg, "forward") then
+            B.Set_Direction (1);
+         elsif Same (Arg, "backward") then
+            B.Set_Direction (-1);
+         end if;
          return Pass ("TIU direction " & Arg);
       elsif Same (Kind, "sleeping") then
          B.TIU_Input (3, (if Same (Arg, "requested") then 1 else 0));
@@ -1039,6 +1073,7 @@ package body S076_Run is
                end if;
             else
                B.Power_Off;
+               B.New_Window;
             end if;
             return Pass ("SIM power " & W (4));
          elsif Same (Kind, "fault") then
@@ -1822,6 +1857,26 @@ package body S076_Run is
                               Any := Any or else Holds (F, Positive);
                            end;
                         end loop;
+                        --  a level selected that is the level in force
+                        --  already switches nothing: EVC_Levels records no
+                        --  event for it
+                        if not Any and then Positive
+                          and then not Any_Rec (40, 1, -1)
+                        then
+                           for I in 1 .. N loop
+                              if V (I) in 34 .. 36 | 38
+                                and then B.JRU_Level_Status = 2
+                                and then B.JRU_Level
+                                           = (case V (I) is
+                                                 when 34 => 0, when 35 => 2,
+                                                 when 36 => 3, when others => 1)
+                              then
+                                 return NJ (R_JRU_Not_Modelled,
+                                            "11/M_DRIVERACTIONS=level in "
+                                            & "force selected again");
+                              end if;
+                           end loop;
+                        end if;
                         return Check (Any, "JRU driver action "
                                       & Wd (Eq + 1 .. Wd'Last),
                                       "no event of ours for it in the window");
