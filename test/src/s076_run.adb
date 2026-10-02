@@ -139,17 +139,12 @@ package body S076_Run is
    function Chart_Kmh return Long_Float is
      (Chart_Speed (Seq, Long_Float (B.Position) / 100.0));
 
-   --  The driver keeps under the permitted speed the on-board shows,
-   --  by 2 km/h (the charts of the sequences are read off a drawing and
-   --  are not exact): km/h, 0 when none is shown
-   function Driver_Limit_Kmh return Natural is
-     (if B.State.Has_Speed and then B.State.V_Perm > 4
-      then B.State.V_Perm - 2 else 0);
-
-   function Capped (Cms : Natural) return Natural is
-     (if Driver_Limit_Kmh > 0
-      then Natural'Min (Cms, Kmh_To_Cms (Long_Float (Driver_Limit_Kmh)))
-      else Cms);
+   --  The speed charts are the reference of the speed (the driver of
+   --  a sequence runs above a limit on purpose where the chart does); a
+   --  limit to keep under the on-board's permitted speed was tried and
+   --  broke more sequences than it repaired (the charts are drawings, not
+   --  exact, both ways)
+   function Capped (Cms : Natural) return Natural is (Cms);
 
    --  the speed to travel at
    function Transit_Cms return Positive is
@@ -184,15 +179,56 @@ package body S076_Run is
       end if;
    end Arrive;
 
+   --  The train follows the speed chart from cycle to cycle (the speed
+   --  of the chart where it is), at least 10 km/h until it reaches To_Cm,
+   --  cycle by
+   --  cycle; the last cycle ends at To_Cm. At most an hour.
+   procedure Drive_To (To_Cm : Integer_64) is
+      Dir : constant Integer := (if To_Cm >= B.Position then 1 else -1);
+   begin
+      B.Set_Direction (Dir);
+      for I in 1 .. 36_000 loop
+         declare
+            Left : constant Integer_64 :=
+              (To_Cm - B.Position) * Integer_64 (Dir);
+            V    : constant Positive := Transit_Cms;
+            Full : constant Integer_64 := Integer_64 (V) * B.Cycle_Ms / 1000;
+         begin
+            exit when Left <= 0;
+            B.Set_Speed
+              (if Left < Full
+               then Natural (Integer_64'Max (1, Left * 1000 / B.Cycle_Ms))
+               else V);
+            B.Cycle;
+         end;
+      end loop;
+   end Drive_To;
+
    procedure Move_To (To_Cm : Integer_64) is
    begin
       if (B.Direction > 0 and then To_Cm > B.Position + 50)
         or else (B.Direction < 0 and then To_Cm < B.Position - 50)
       then
-         B.Move_To (To_Cm, Transit_Cms);
+         Drive_To (To_Cm);
          Arrive;
       end if;
    end Move_To;
+
+   --  One cycle while the runner waits or settles: a train that runs
+   --  without an explicit speed keeps following the chart
+   --  After a "reach-point" input the speed of the train at that point
+   --  stays until the next input: the sequences state where a limit is
+   --  passed at a speed, and the on-board's curve may place it some
+   --  metres beyond the workbook's
+   Hold_Speed : Boolean := False;
+
+   procedure Wait_Cycle is
+   begin
+      if Explicit_Speed < 0 and then B.Speed > 0 and then not Hold_Speed then
+         Arrive;
+      end if;
+      B.Cycle;
+   end Wait_Cycle;
 
    ---------------------------------------------------------------------
    --  The step's level and mode columns
@@ -756,7 +792,10 @@ package body S076_Run is
       Due     : constant Unsigned_64 := Unsigned_64 (Seconds) * 1000 + 200;
    begin
       if Elapsed < Due then
-         B.Run (Natural (Due - Elapsed));
+         for K in 1 .. (Natural (Due - Elapsed) + B.Cycle_Ms - 1) / B.Cycle_Ms
+         loop
+            Wait_Cycle;
+         end loop;
       end if;
    end Run_Timer;
 
@@ -1132,7 +1171,7 @@ package body S076_Run is
          Was    : constant Natural := B.Speed;
       begin
          if (Target - B.Position) * Integer_64 (B.Direction) > 0 then
-            B.Move_To (Target, Transit_Cms);
+            Drive_To (Target);
             B.Set_Speed (Was);
             Arrive;
          else
@@ -2199,6 +2238,7 @@ package body S076_Run is
    begin
       B.Reset;
       Step_Start_Ms := 0;
+      Hold_Speed := False;
       Explicit_Speed := -1;
       Wait_Used := 0;
       Outcome := Seq_Passed;
@@ -2261,12 +2301,16 @@ package body S076_Run is
                   declare
                      C : Judgement_T;
                   begin
+                     Hold_Speed := W (2) = "ODO"
+                       and then Same (W (3), "reach-point");
                      J := Apply_Input (St);
                      if J.Verdict = Not_Judged then
                         Record_Result (I, J);
                         Block (I, J);
                      else
-                        B.Run (Settle_Cycles * B.Cycle_Ms);
+                        for K in 1 .. Settle_Cycles loop
+                           Wait_Cycle;
+                        end loop;
                         C := Columns (I);
                         if J.Verdict = Failed then
                            Record_Result (I, J);
@@ -2281,7 +2325,7 @@ package body S076_Run is
                   J := Expect (St);
                   while J.Verdict = Failed and then Wait_Used < Wait_Cycles
                   loop
-                     B.Cycle;
+                     Wait_Cycle;
                      Wait_Used := Wait_Used + 1;
                      J := Expect (St);
                   end loop;
@@ -2290,7 +2334,7 @@ package body S076_Run is
                   begin
                      while C.Verdict = Failed and then Wait_Used < Wait_Cycles
                      loop
-                        B.Cycle;
+                        Wait_Cycle;
                         Wait_Used := Wait_Used + 1;
                         C := Columns (I);
                      end loop;
