@@ -1183,10 +1183,19 @@ package body S076_Run is
          then
             return NJ (R_Not_Modelled, "TIU set speed (cruise control)");
          end if;
-         --  5.17: new Train Data from the train interface, to be
-         --  validated by the driver (EVC_Ports TIU input 13, D0)
+         --  5.17: new Train Data from the train interface (EVC_Ports TIU
+         --  input 13): to be validated by the driver (D0) when the comment
+         --  says so, of a category, axle load, gauge or traction (D1) when
+         --  it names one
          Train_Configuration := (Train_Configuration mod 63) + 1;
-         B.TIU_Input (13, Train_Configuration + 64);
+         B.TIU_Input
+           (13, Train_Configuration
+                + (if Has (Image (St.Comment), "validat") then 64 else 0)
+                + (if Has (Image (St.Comment), "category")
+                     or else Has (Image (St.Comment), "axle load")
+                     or else Has (Image (St.Comment), "loading gauge")
+                     or else Has (Image (St.Comment), "traction system")
+                   then 128 else 0));
          return Pass ("TIU train configuration changed");
       end if;
       return NJ ((if Same (Kind, "train-integrity")
@@ -1955,7 +1964,12 @@ package body S076_Run is
          when Event_Seen =>
             return Any_Rec (F.Event, F.Sub, F.B3) = Positive;
          when Mode_Proposed =>
-            return (Any_Rec (41, 6, M) or else Any_Rec (23, 4, M)) = Positive;
+            --  recorded in the window, or still asked (the record of its
+            --  symbol was made when it was asked, and stands)
+            return (Any_Rec (41, 6, M) or else Any_Rec (23, 4, M)
+                    or else (Positive
+                             and then B.State.Mode_Ack = DMI_Code (F.Mode)))
+                   = Positive;
          when Mode_Acked =>
             return (Any_Rec (41, 7, M) or else Any_Rec (23, 5, M)) = Positive;
          when Brake_Change =>
@@ -2364,6 +2378,12 @@ package body S076_Run is
                         Found := True;
                      end if;
                   end loop;
+                  --  the Train Data are also recorded when they changed
+                  --  by another source (5.17.2.2 A7, event 23 kind 11
+                  --  byte 3 6)
+                  if Id = 2 and then Any_Rec (23, 11, 6) then
+                     Found := True;
+                  end if;
                   Result := Check (Found = Positive,
                                    "JRU" & Id_S & " as event" & Img (Map.Event)
                                    & (if Positive then "" else " not"),
