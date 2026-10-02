@@ -139,6 +139,18 @@ package body S076_Run is
    function Chart_Kmh return Long_Float is
      (Chart_Speed (Seq, Long_Float (B.Position) / 100.0));
 
+   --  The driver keeps under the permitted speed the on-board shows,
+   --  by 2 km/h (the charts of the sequences are read off a drawing and
+   --  are not exact): km/h, 0 when none is shown
+   function Driver_Limit_Kmh return Natural is
+     (if B.State.Has_Speed and then B.State.V_Perm > 4
+      then B.State.V_Perm - 2 else 0);
+
+   function Capped (Cms : Natural) return Natural is
+     (if Driver_Limit_Kmh > 0
+      then Natural'Min (Cms, Kmh_To_Cms (Long_Float (Driver_Limit_Kmh)))
+      else Cms);
+
    --  the speed to travel at
    function Transit_Cms return Positive is
    begin
@@ -149,9 +161,11 @@ package body S076_Run is
          C : constant Long_Float := Chart_Kmh;
       begin
          if C < 0.0 then
-            return Kmh_To_Cms (Long_Float (Default_Kmh));
+            return Positive'Max
+              (1, Capped (Kmh_To_Cms (Long_Float (Default_Kmh))));
          end if;
-         return Positive'Max (Kmh_To_Cms (C), Kmh_To_Cms (10.0));
+         return Positive'Max
+           (1, Capped (Natural'Max (Kmh_To_Cms (C), Kmh_To_Cms (10.0))));
       end;
    end Transit_Cms;
 
@@ -165,7 +179,7 @@ package body S076_Run is
          declare
             C : constant Long_Float := Chart_Kmh;
          begin
-            B.Set_Speed (if C >= 1.0 then Kmh_To_Cms (C) else 0);
+            B.Set_Speed (if C >= 1.0 then Capped (Kmh_To_Cms (C)) else 0);
          end;
       end if;
    end Arrive;
