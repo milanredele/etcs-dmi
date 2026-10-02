@@ -126,6 +126,73 @@ package body S076_Main is
    end Signature;
 
    ---------------------------------------------------------------------
+   --  The triage of the failure signatures (test/s076/triage.csv): a
+   --  line "match,category,note" where match is a signature id
+   --  (S + 8 hex digits) or "~text", a part of the signature's text; the
+   --  first line that matches a signature gives its triage. Categories:
+   --  onboard (an on-board defect still open), E5, E6, E7 (a later
+   --  phase), curves (the braking curves against the ERA workbook's),
+   --  s076 (a defect of SUBSET-076 or of its extraction), model (a gap of
+   --  the runner's model of the train, the driver or the track), dmi
+   --  (our DMI).
+   ---------------------------------------------------------------------
+
+   Triage_Path : constant String := "test/s076/triage.csv";
+   Max_Triage  : constant := 512;
+   type Triage_T is record
+      Match, Category, Note : Text_T;
+      Used : Natural := 0;
+   end record;
+   Triage   : array (1 .. Max_Triage) of Triage_T;
+   Triage_N : Natural := 0;
+
+   procedure Read_Triage is
+      F : File_Type;
+   begin
+      if not Exists (Triage_Path) then
+         return;
+      end if;
+      Open (F, In_File, Triage_Path);
+      while not End_Of_File (F) and then Triage_N < Max_Triage loop
+         declare
+            L  : constant String := Get_Line (F);
+            C1 : constant Natural := Ada.Strings.Fixed.Index (L, ",");
+            C2 : constant Natural :=
+              (if C1 > 0 then Ada.Strings.Fixed.Index (L, ",", C1 + 1) else 0);
+         begin
+            if L'Length > 0 and then L (L'First) /= '#' and then C2 > 0 then
+               Triage_N := Triage_N + 1;
+               Triage (Triage_N) :=
+                 (Match    => To_Text (L (L'First .. C1 - 1)),
+                  Category => To_Text (L (C1 + 1 .. C2 - 1)),
+                  Note     => To_Text (L (C2 + 1 .. L'Last)),
+                  Used     => 0);
+            end if;
+         end;
+      end loop;
+      Close (F);
+   end Read_Triage;
+
+   --  The triage line of a signature, 0 when none matches
+   function Triage_Of (Id, Text : String) return Natural is
+   begin
+      for I in 1 .. Triage_N loop
+         declare
+            M : constant String := Image (Triage (I).Match);
+         begin
+            if M = Id
+              or else (M'Length > 1 and then M (M'First) = '~'
+                       and then Ada.Strings.Fixed.Index
+                                  (Text, M (M'First + 1 .. M'Last)) > 0)
+            then
+               return I;
+            end if;
+         end;
+      end loop;
+      return 0;
+   end Triage_Of;
+
+   ---------------------------------------------------------------------
    --  Counters
    ---------------------------------------------------------------------
 
@@ -543,8 +610,59 @@ package body S076_Main is
          end if;
       end loop;
       Put_Line (F, "");
+      --  the failed sequences by the triage of their first failure
+      Put_Line (F, "## Failed sequences by the triage of their first "
+                & "failure");
+      declare
+         Untriaged : Natural := 0;
+         Seen_Cat  : array (1 .. Max_Triage) of Boolean := (others => False);
+      begin
+         for I in 1 .. Triage_N loop
+            Triage (I).Used := 0;
+         end loop;
+         for I in 1 .. Sig_N loop
+            declare
+               T : constant Natural :=
+                 Triage_Of (Sigs (I).Id, Image (Sigs (I).Text));
+            begin
+               if T > 0 then
+                  Triage (T).Used := Triage (T).Used + Sigs (I).Sequences;
+               else
+                  Untriaged := Untriaged + Sigs (I).Sequences;
+               end if;
+            end;
+         end loop;
+         --  per category, then per line
+         for I in 1 .. Triage_N loop
+            if not Seen_Cat (I) then
+               declare
+                  Cat : constant String := Image (Triage (I).Category);
+                  Sum : Natural := 0;
+               begin
+                  for J in I .. Triage_N loop
+                     if Image (Triage (J).Category) = Cat then
+                        Seen_Cat (J) := True;
+                        Sum := Sum + Triage (J).Used;
+                     end if;
+                  end loop;
+                  Put_Line (F, Img (Sum) & "  " & Cat);
+                  for J in I .. Triage_N loop
+                     if Image (Triage (J).Category) = Cat
+                       and then Triage (J).Used > 0
+                     then
+                        Put_Line (F, "      " & Img (Triage (J).Used) & "  "
+                                  & Image (Triage (J).Match) & "  "
+                                  & Image (Triage (J).Note));
+                     end if;
+                  end loop;
+               end;
+            end if;
+         end loop;
+         Put_Line (F, Img (Untriaged) & "  not triaged");
+      end;
+      Put_Line (F, "");
       Put_Line (F, "## Failure signatures (sequences stopped, failed steps, "
-                & "id, signature, examples)");
+                & "id, signature, triage, examples)");
       for I in Order'Range loop
          Order (I) := I;
       end loop;
@@ -565,11 +683,23 @@ package body S076_Main is
          end loop;
       end loop;
       for I of Order loop
-         Put_Line (F, Img (Sigs (I).Sequences) & "  " & Img (Sigs (I).Steps)
-                   & "  " & Sigs (I).Id & "  " & Image (Sigs (I).Text));
-         if Sigs (I).Example_N > 0 then
-            Put_Line (F, "        e.g. " & Image (Sigs (I).Examples));
-         end if;
+         declare
+            T : constant Natural :=
+              Triage_Of (Sigs (I).Id, Image (Sigs (I).Text));
+         begin
+            Put_Line (F, Img (Sigs (I).Sequences) & "  "
+                      & Img (Sigs (I).Steps) & "  " & Sigs (I).Id & "  "
+                      & Image (Sigs (I).Text));
+            if T > 0 then
+               Put_Line (F, "        triage: " & Image (Triage (T).Category)
+                         & ": " & Image (Triage (T).Note));
+            elsif Sigs (I).Sequences > 0 then
+               Put_Line (F, "        triage: NONE");
+            end if;
+            if Sigs (I).Example_N > 0 then
+               Put_Line (F, "        e.g. " & Image (Sigs (I).Examples));
+            end if;
+         end;
       end loop;
       Put_Line (F, "");
       Put_Line (F, "## Per feature");
@@ -646,6 +776,7 @@ begin
    end if;
 
    Read_Baseline;
+   Read_Triage;
 
    --  the fixture, always
    Scn_Reader.List_Scn_Files (Fixture_Dir, Recurse => False,

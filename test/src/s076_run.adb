@@ -1120,6 +1120,23 @@ package body S076_Run is
                  "TIU " & Kind);
    end TIU_Input;
 
+   --  Bits From .. From + Len - 1 (0 = the first, msb first) of a
+   --  telegram's data
+   function Field (T : Telegram_T; From, Len : Natural) return Natural is
+      V : Natural := 0;
+   begin
+      for I in From .. From + Len - 1 loop
+         V := V * 2
+           + Natural (T.Data (1 + I / 8) / 2**(7 - I mod 8)) mod 2;
+      end loop;
+      return V;
+   end Field;
+
+   --  The header of a telegram (7.4.1.1): N_PIG, N_TOTAL, NID_BG
+   function N_PIG (T : Telegram_T) return Natural is (Field (T, 9, 3));
+   function N_TOTAL (T : Telegram_T) return Natural is (Field (T, 12, 3));
+   function NID_BG (T : Telegram_T) return Natural is (Field (T, 35, 14));
+
    --  The telegrams of a balise group input: placed on the track and
    --  passed by the antenna
    function BTM_Input (St : Step_T) return Judgement_T is
@@ -1214,6 +1231,30 @@ package body S076_Run is
       if Found = 0 then
          return NJ (R_Extractor, "BTM: no telegram for " & W (4));
       end if;
+      --  the balises of one group (N_TOTAL alike, N_PIG different) that
+      --  carry different identities: a defect of SUBSET-076 (the tables
+      --  of the second balise of a group copied with another NID_BG)
+      for I in 1 .. Seq.Telegram_Count loop
+         for J in 1 .. Seq.Telegram_Count loop
+            declare
+               A : Telegram_T renames Seq.Telegrams (I);
+               C : Telegram_T renames Seq.Telegrams (J);
+            begin
+               if A.Step = St.Number and then C.Step = St.Number
+                 and then A.Has_Bits and then C.Has_Bits
+                 and then not A.Loop_Tag and then not C.Loop_Tag
+                 and then N_TOTAL (A) = N_TOTAL (C) and then N_TOTAL (A) > 0
+                 and then N_PIG (A) /= N_PIG (C)
+                 and then NID_BG (A) /= NID_BG (C)
+               then
+                  return NJ (R_S076_Defect,
+                             "BTM: the balises of one group with NID_BG"
+                             & Natural'Image (NID_BG (A)) & " and"
+                             & Natural'Image (NID_BG (C)));
+               end if;
+            end;
+         end loop;
+      end loop;
       --  the packets the step's text names must be in the telegrams: the
       --  extractor of the sibling loses a balise's table now and then
       declare
