@@ -1246,9 +1246,32 @@ standstill in UN, and tripped or passed the level-back and SR-stop
 points depending on whether Override still covered the distance
 (5.8.4.1 a, b) when reached — the override timing is sensitive to the
 driving distances chosen there, same as a real driver's; no exception
-was raised and `Sim_Trackside.Built_OK` was true throughout. The old
-screenshot driver (`test/wasm/screenshots.js`) still renders the
-default mission's bench picture; a new touch-coordinate replay of the
-Start Up dialogue against the real on-board (headless, no browser)
-reached the level window and the train data window correctly but
-diverged filling its second window, not run to completion.
+was raised and `Sim_Trackside.Built_OK` was true throughout.
+
+**Follow-up, touch only** (2026-10-02): the touch-coordinate replay
+above (a throwaway Node script, not committed) was found to diverge
+while filling the Train Data window's second page because of two bugs
+of the *reproduction*, not of `dmi/` or `evc/`: airtight is a Yes/No
+keyboard (Table 40, 10.3.5.18), not a dedicated choice list, so "choice
+1" never gave it a value; and, more importantly, a long run of touches
+that ticks `DMI_Core` without ever letting the on-board run starves the
+simulated EVC link past `General_Parameters.EVC_Link_Timeout_Ms` (1 s),
+which the DMI correctly answers by entering System Failure and closing
+every window (DMI 5.6.1, 11.7.1.7 / Table 48's
+`DMI_Windows.Check_Enabling_Conditions`, active once S10 is reached and
+`Sequence_Active` ends). The bench page itself has no such bug: it
+steps the DMI and the on-board on two independent timers
+(`requestAnimationFrame`), so neither ever starves the other. A native
+scenario, `test/src/evc_test_touch.adb` (instantiated like
+`EVC_Test_Procedures`), now drives the whole start of mission through
+`DMI_Core`/`EVC_Core` connected as the bench page connects them, the
+driver acting only through touch coordinates taken from
+`DMI_Windows.Button_Area` and `Display.C_Area` (never a copied pixel),
+with a cycle of the on-board on every touch; it reaches FS at the
+first balise group (10721 `evc_test` checks, 0 failures).
+`test/wasm/dmi_wasm.ads` gained a read-only `dmi_window_top` export (no
+behaviour change) and `test/wasm/screenshots.js` now asserts the window
+a navigation touch reached instead of trusting its coordinates blindly,
+and selects "simulator (mock)" explicitly (it was written for
+`EVC_Mock`'s dynamics, and the page's default changed above); its own
+coordinates were already correct.
