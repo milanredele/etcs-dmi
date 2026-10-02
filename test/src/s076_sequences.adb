@@ -275,6 +275,11 @@ package body S076_Sequences is
             then
                S.Telegrams (S.Telegram_Count).M_Version := Integer (V mod 128);
             end if;
+            if OK and then Block = 1 and then Name = "M_LEVELTR"
+              and then V = 4 and then S.Telegram_Count > 0
+            then
+               S.Telegrams (S.Telegram_Count).Level_3 := True;
+            end if;
             if OK and then Block = 1 and then Name = "M_LEVELTEXTDISPLAY"
               and then V = 5 and then S.Telegram_Count > 0
             then

@@ -87,6 +87,9 @@ package S076_Sequences is
       --  a var row M_LEVELTEXTDISPLAY 5: "no level" in the coding before
       --  4.0.0 (7.5.1.66 of 4.0.0 has it as 4, 5 is spare)
       Old_Level_Text : Boolean := False;
+      --  a var row M_LEVELTR 4: an order to level 3, which 4.0.0 has
+      --  no longer (7.5.1.67: 4 is spare)
+      Level_3 : Boolean := False;
       Loop_Tag  : Boolean := False;
       Packet_Tag : Boolean := False;
    end record;

@@ -1172,6 +1172,14 @@ package body S076_Run is
                      --  which has it as 4) in sequences of system
                      --  version 3.0; in those of 2.1 and 2.2 the coding
                      --  of their version (chapter 6, E7)
+                     if T.M_Version < 0 then
+                        return NJ (R_Extractor, "telegram " & Tag
+                                   & ": the rows of its header are missing");
+                     end if;
+                     if T.Level_3 then
+                        return NJ (R_Level_2, "telegram " & Tag
+                                   & ": an order to level 3 (M_LEVELTR 4)");
+                     end if;
                      if T.Old_Level_Text then
                         return NJ ((if Seq.SV = 30 then R_S076_Defect
                                     else R_Version),
