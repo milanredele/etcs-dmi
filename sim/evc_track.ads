@@ -89,14 +89,29 @@ package EVC_Track is
    Balise_Spacing_M : constant := 3;
    Balises_Per_Group : constant := 2;
 
-   -- What a group carries besides the linking to the groups after it
+   --  The bench page's track selector: the default mission (the
+   --  acceptance run, the native golden) or the alternate "features"
+   --  track below (never mixed with it)
+   type Preset_T is (Default, Features);
+
+   -- What a group carries besides the linking to the groups after it.
+   -- The first five are the default mission (unchanged: the native
+   -- golden test/golden/evc/bench_onboard.sha256 depends on their
+   -- bytes); the last five are the alternate "features" preset below,
+   -- never mixed with the default one in the same table.
    type Group_Content_T is
      (Mission,           -- 3, 27, 21, 12
       Neutral_Section,   -- 68: Conditions (1)
       Pantograph_Level,  -- 68: Conditions (2); 41: the transition to L2
       TSR_Text,          -- 65: the TSR below; 73: the text below
       Tunnel,            -- 68: the tunnel stopping area
-      Linking_Only);
+      Linking_Only,
+      --  the "features" preset (bench page only, below)
+      On_Sight_To_Level0, -- 80 (On Sight) + 41 (level order to level 0)
+      Level_Back,         -- 41 (level order back to level 1)
+      SR_Stop,            -- 137 ("stop if in SR")
+      Shunting_Demo,      -- 80 (Shunting) + 49 (the SH area list)
+      Text_Ack);          -- 73, a plain text with its acknowledgement
 
    type Balise_Group_T is record
       NID_BG  : Natural;
@@ -104,7 +119,9 @@ package EVC_Track is
       Content : Group_Content_T;
    end record;
 
-   Balise_Groups : constant array (1 .. 6) of Balise_Group_T :=
+   type Group_Table_T is array (1 .. 6) of Balise_Group_T;
+
+   Balise_Groups : constant Group_Table_T :=
      ((1, -12, Mission),
       (2, 1_500, Neutral_Section),
       (3, 4_000, Pantograph_Level),
@@ -122,6 +139,53 @@ package EVC_Track is
    Text_From_M  : constant Natural := 6_600;
    Text_To_M    : constant Natural := 7_400;
    Text_Message : constant String := "Works on the line";
+
+   ---------------------------------------------------------------------
+   -- The "features" preset: a second, independent track of the same
+   -- shape (six groups, the same country and spacing) selectable from
+   -- the bench page's "Track" selector in place of the default mission
+   -- above, so that a visitor can reach, besides the acceptance run of
+   -- the default mission, an On Sight profile with its acknowledgement,
+   -- a level transition to level 0 and back (needing the DMI's own
+   -- Override window, 5.8, to come back without tripping: 4.6.3 [39],
+   -- [44]), a "stop if in SR" balise (5.8.4.1 d, 4.6.3 [54]: override
+   -- again just before it to see it pass, nothing to see it trip), a
+   -- Shunting area (5.7.3, the trackside order) and a text message with
+   -- its acknowledgement (3.12.3). Group 1 is the same Mission content
+   -- as the default preset (the same SSP, gradients and MA, so SR and
+   -- FS are reached the same way); the group positions are the
+   -- default's, for the same picture on the track strip.
+   ---------------------------------------------------------------------
+
+   Balise_Groups_Features : constant Group_Table_T :=
+     ((1, -12, Mission),
+      (2, 1_500, On_Sight_To_Level0),
+      (3, 4_000, Level_Back),
+      (4, 6_500, SR_Stop),
+      (5, 8_000, Shunting_Demo),
+      (6, 9_600, Text_Ack));
+
+   --  On_Sight_To_Level0 (group at 1 500 m): the On Sight area from
+   --  1 650 to 2 400 m, its acknowledgement rectangle from 1 530 m
+   --  (Scenario_Integration_OS_Level scaled to this group); the level 0
+   --  order at 2 100 m (inside the area), announced from 2 000 m
+   OS_D_M       : constant Natural := 150;
+   OS_L_M       : constant Natural := 750;
+   OS_Ack_M     : constant Natural := 120;
+   Level0_D_M   : constant Natural := 600;
+   Level0_Ack_M : constant Natural := 100;
+   --  Level_Back (group at 4 000 m): the order back to level 1 at
+   --  4 400 m, no announcement (Scenario_Integration_Override_Level):
+   --  the driver stops in UN and presses Override there before it
+   Level1_D_M   : constant Natural := 400;
+   Level1_Ack_M : constant Natural := 0;
+   --  Shunting_Demo (group at 8 000 m): the SH area from the group on
+   --  (3.12.4.4: no length, like the trackside order of
+   --  Scenario_Shunting_Trackside), acknowledged from 150 m before the
+   --  max safe front end would reach it; the list keeps the Text_Ack
+   --  group (NID_BG 6) passable in SH
+   Shunting_D_M   : constant Natural := 300;
+   Shunting_Ack_M : constant Natural := 150;
 
    function MRSP_At (Position_M : Natural) return Natural;
    function Gradient_At (Position_M : Natural) return Integer;

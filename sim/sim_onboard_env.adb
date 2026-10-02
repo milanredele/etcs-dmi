@@ -14,9 +14,10 @@ with Sim_JRU;
 with Sim_Odometer;
 with Sim_Telegrams;
 with Sim_Trackside;
-with Sim_Vehicle;
 
 package body Sim_Onboard_Env is
+
+   use type EVC_Track.Preset_T;
 
    subtype Byte is EVC_Bytes.Byte;
 
@@ -28,6 +29,9 @@ package body Sim_Onboard_Env is
    --  The desk
    Desk_Demand : Integer range -100 .. 100 := 0;
    Auto        : Boolean := True;
+
+   --  The track of the next Reset (Set_Track_Preset)
+   Preset : EVC_Track.Preset_T := EVC_Track.Default;
 
    --  What the on-board said last
    Shown_Mode, Shown_Level : Natural := 255;
@@ -109,6 +113,43 @@ package body Sim_Onboard_Env is
       end if;
    end Set_Desk;
 
+   procedure Set_Track_Preset (Preset : EVC_Track.Preset_T) is
+   begin
+      Sim_Onboard_Env.Preset := Preset;
+   end Set_Track_Preset;
+
+   function Track_Preset return EVC_Track.Preset_T is (Preset);
+
+   procedure Set_Cab (Cab : Sim_Vehicle.Cab_T) is
+   begin
+      Sim_Vehicle.Set_Cab (Cab);
+   end Set_Cab;
+
+   procedure Set_Controller (Position : Sim_Vehicle.Byte) is
+   begin
+      Sim_Vehicle.Set_Controller (Position);
+   end Set_Controller;
+
+   procedure Set_Sleeping (On : Boolean) is
+   begin
+      Sim_Vehicle.Set_Sleeping (On);
+   end Set_Sleeping;
+
+   procedure Set_Passive_Shunting (On : Boolean) is
+   begin
+      Sim_Vehicle.Set_Passive_Shunting (On);
+   end Set_Passive_Shunting;
+
+   procedure Set_Non_Leading (On : Boolean) is
+   begin
+      Sim_Vehicle.Set_Non_Leading (On);
+   end Set_Non_Leading;
+
+   procedure Set_Train_Configuration (Value : Sim_Vehicle.Byte) is
+   begin
+      Sim_Vehicle.Set_Train_Configuration (Value);
+   end Set_Train_Configuration;
+
    ---------------------------------------------------------------------
    --  From the on-board
    ---------------------------------------------------------------------
@@ -180,10 +221,21 @@ package body Sim_Onboard_Env is
                when EVC_Ports.Port_T'Pos (EVC_Ports.DMI) =>
                   Take_Frame (Payload);
                when EVC_Ports.Port_T'Pos (EVC_Ports.TIU) =>
-                  --  the commands, not the track condition output (5.20)
-                  if Length = EVC_Ports.TIU_Output_Length
-                    and then not EVC_Ports.Is_TIU_TC_Output (Payload)
-                  then
+                  if EVC_Ports.Is_TIU_TC_Output (Payload) then
+                     --  the second TIU output (5.20, track conditions)
+                     declare
+                        TC : Sim_Vehicle.TIU_TC_Array := (others => 0);
+                     begin
+                        for I in Payload'Range loop
+                           exit when I - Payload'First + 1
+                                       > Sim_Vehicle.TIU_TC_Max_Length;
+                           TC (I - Payload'First + 1) := Payload (I);
+                        end loop;
+                        Sim_Vehicle.Command_TC
+                          (TC, Natural'Min (Length,
+                                           Sim_Vehicle.TIU_TC_Max_Length));
+                     end;
+                  elsif Length = EVC_Ports.TIU_Output_Length then
                      Sim_Vehicle.Command
                        (Payload (Payload'First),
                         Sim_Vehicle.Reasons_T (Payload (Payload'First + 1))
@@ -216,7 +268,7 @@ package body Sim_Onboard_Env is
 
    procedure Reset is
    begin
-      Sim_Trackside.Build;
+      Sim_Trackside.Build (Preset);
       EVC_Core.Initialise;
       EVC_Train.Reset;
       EVC_Train.Position_M := Start_Front_M;
@@ -366,6 +418,19 @@ package body Sim_Onboard_Env is
    function Speed_KMH return Natural is (EVC_Train.Speed_KMH);
    function Balises_Read return Natural is (Detected);
    function Dropped_DMI return Natural is (Dropped);
+
+   function Group_Count return Natural is
+     ((if Preset = EVC_Track.Features
+       then EVC_Track.Balise_Groups_Features'Length
+       else EVC_Track.Balise_Groups'Length));
+   function Group_At (Index : Positive) return Integer is
+     ((if Preset = EVC_Track.Features
+       then EVC_Track.Balise_Groups_Features (Index).At_M
+       else EVC_Track.Balise_Groups (Index).At_M));
+
+   function TC_Length return Natural is (Sim_Vehicle.TC_Length);
+   function TC_Payload return Sim_Vehicle.TIU_TC_Array is
+     (Sim_Vehicle.TC_Payload);
 
    procedure Sim_State_Payload (Buffer : out Stream_Element_Array;
                                 Last   : out Stream_Element_Offset)

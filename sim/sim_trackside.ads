@@ -33,10 +33,15 @@ package Sim_Trackside is
 
    subtype Balise_Index is Positive range 1 .. Balise_Count;
 
-   --  Build the telegrams (once; later calls do nothing). False when one
-   --  did not encode, which a check of the tests catches.
-   procedure Build;
+   --  Build the telegrams of Preset (once per preset; a call with the
+   --  preset already built does nothing). False when one did not
+   --  encode, which a check of the tests catches. The default Preset
+   --  keeps every existing caller's behaviour (and the native golden)
+   --  unchanged; Features is the bench page's alternate "features"
+   --  track (EVC_Track.Preset_T).
+   procedure Build (Preset : EVC_Track.Preset_T := EVC_Track.Default);
    function Built_OK return Boolean;
+   function Current_Preset return EVC_Track.Preset_T;
 
    --  The balises in the order of the track: position of the centre
    --  (cm), group (index in EVC_Track.Balise_Groups) and N_PIG

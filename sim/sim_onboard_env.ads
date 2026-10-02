@@ -41,6 +41,7 @@
 
 with Ada.Streams; use Ada.Streams;
 with EVC_Track;
+with Sim_Vehicle;
 
 package Sim_Onboard_Env is
 
@@ -56,12 +57,30 @@ package Sim_Onboard_Env is
       + Float (Antenna_To_Cab_A_Cm) / 100.0);
 
    --  Power-up of the on-board and of the vehicle, the train at
-   --  Start_Front_M, the desk on auto drive
+   --  Start_Front_M, the desk on auto drive, the track of the last
+   --  Set_Track_Preset (Default, until the page or a host calls it)
    procedure Reset;
+
+   --  The track of the next Reset (EVC_Track.Preset_T): the default
+   --  mission (the acceptance run, the native golden) or the bench
+   --  page's alternate "features" track (Sim_Trackside, EVC_Track)
+   procedure Set_Track_Preset (Preset : EVC_Track.Preset_T);
+   function Track_Preset return EVC_Track.Preset_T;
 
    --  The driver desk: traction/brake demand in -100 .. 100, or the
    --  automatic driver
    procedure Set_Desk (Demand : Integer; Auto : Boolean);
+
+   --  The train interface inputs besides the desk demand (Sim_Vehicle):
+   --  the cab, the direction controller, sleeping requested, passive
+   --  shunting and non leading permitted, the train configuration (TIU
+   --  input 13)
+   procedure Set_Cab (Cab : Sim_Vehicle.Cab_T);
+   procedure Set_Controller (Position : Sim_Vehicle.Byte);
+   procedure Set_Sleeping (On : Boolean);
+   procedure Set_Passive_Shunting (On : Boolean);
+   procedure Set_Non_Leading (On : Boolean);
+   procedure Set_Train_Configuration (Value : Sim_Vehicle.Byte);
 
    --  Bytes from the DMI
    procedure Receive (Data : Stream_Element_Array);
@@ -126,6 +145,17 @@ package Sim_Onboard_Env is
    --  Balises detected, DMI bytes dropped because nobody took them
    function Balises_Read return Natural;
    function Dropped_DMI return Natural;
+
+   --  The balise groups of the active track preset (m of their first
+   --  balise), for the page's track strip: Sim_Trackside's own table,
+   --  not EVC_Track.Balise_Groups directly, which is the default's
+   function Group_Count return Natural;
+   function Group_At (Index : Positive) return Integer
+     with Pre => Index <= Group_Count;
+
+   --  The second TIU output (5.20), as Sim_Vehicle has it, for the page
+   function TC_Length return Natural;
+   function TC_Payload return Sim_Vehicle.TIU_TC_Array;
 
    --  MSG_SIM_STATE for the page's track strip (dmi_protocol.ads): the
    --  position (m, 0 in rear of the mission start), the speed, the mode

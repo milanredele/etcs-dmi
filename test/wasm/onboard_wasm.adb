@@ -24,11 +24,62 @@ package body Onboard_Wasm is
 
    Text : String (1 .. Sim_JRU.Max_Text);
 
+   --  The second TIU output (5.20), refreshed at every Transmit
+   TC_Buf : EVC_Bytes.Byte_Array (1 .. Sim_Vehicle.TIU_TC_Max_Length) :=
+     (others => 0);
+   TC_Len : Natural := 0;
+
    procedure Reset is
    begin
       Env.Reset;
       Layout_Countdown := 0;
+      TC_Buf := (others => 0);
+      TC_Len := 0;
    end Reset;
+
+   procedure Set_Track_Preset (Preset : Integer_32) is
+   begin
+      Env.Set_Track_Preset
+        (if Preset = 1 then EVC_Track.Features else EVC_Track.Default);
+   end Set_Track_Preset;
+
+   procedure Set_Cab (Cab : Integer_32) is
+   begin
+      Env.Set_Cab
+        ((case Cab is
+             when 1 => Sim_Vehicle.Cab_A,
+             when 2 => Sim_Vehicle.Cab_B,
+             when others => Sim_Vehicle.No_Cab));
+   end Set_Cab;
+
+   procedure Set_Controller (Position : Integer_32) is
+   begin
+      if Position in 0 .. 2 then
+         Env.Set_Controller (Sim_Vehicle.Byte (Position));
+      end if;
+   end Set_Controller;
+
+   procedure Set_Sleeping (On : Integer_32) is
+   begin
+      Env.Set_Sleeping (On /= 0);
+   end Set_Sleeping;
+
+   procedure Set_Passive_Shunting (On : Integer_32) is
+   begin
+      Env.Set_Passive_Shunting (On /= 0);
+   end Set_Passive_Shunting;
+
+   procedure Set_Non_Leading (On : Integer_32) is
+   begin
+      Env.Set_Non_Leading (On /= 0);
+   end Set_Non_Leading;
+
+   procedure Set_Train_Configuration (Value : Integer_32) is
+   begin
+      if Value in 0 .. 255 then
+         Env.Set_Train_Configuration (Sim_Vehicle.Byte (Value));
+      end if;
+   end Set_Train_Configuration;
 
    function Configure (Length : Unsigned_32) return Integer_32 is
       N     : constant Natural :=
@@ -93,6 +144,8 @@ package body Onboard_Wasm is
       else
          Layout_Countdown := Layout_Countdown - 1;
       end if;
+      TC_Len := Env.TC_Length;
+      TC_Buf := Env.TC_Payload;
       return Unsigned_32 (Last);
    end Transmit;
 
@@ -137,12 +190,14 @@ package body Onboard_Wasm is
    function Position return Integer_32 is (Integer_32 (Env.Position_M));
    function Speed return Integer_32 is (Integer_32 (Env.Speed_KMH));
 
-   function Group_Count return Integer_32 is
-     (EVC_Track.Balise_Groups'Length);
+   function Group_Count return Integer_32 is (Integer_32 (Env.Group_Count));
    function Group_At (Index : Integer_32) return Integer_32 is
-     (if Index in 1 .. EVC_Track.Balise_Groups'Length
-      then Integer_32 (EVC_Track.Balise_Groups (Integer (Index)).At_M)
+     (if Index in 1 .. Integer_32 (Env.Group_Count)
+      then Integer_32 (Env.Group_At (Integer (Index)))
       else 0);
+
+   function TC_Buffer return System.Address is (TC_Buf'Address);
+   function TC_Length return Integer_32 is (Integer_32 (TC_Len));
 
    function JRU_Count return Integer_32 is
      (Integer_32 (Natural'Min (Sim_JRU.Count, Natural (Integer_32'Last))));

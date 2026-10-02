@@ -10,8 +10,13 @@ package body Sim_Trackside is
    use type Interfaces.Integer_64;
    use type Ada.Streams.Stream_Element_Offset;
 
-   Built : Boolean := False;
-   Good  : Boolean := False;
+   Built        : Boolean := False;
+   Good         : Boolean := False;
+   Built_Preset : EVC_Track.Preset_T := EVC_Track.Default;
+
+   --  The active preset's group table (the default is unchanged: same
+   --  object, same bytes, the native golden depends on it)
+   Active_Groups : Group_Table_T := Balise_Groups;
 
    Telegrams : array (Balise_Index) of Telegram_T;
 
@@ -22,12 +27,13 @@ package body Sim_Trackside is
      ((B - 1) mod Balises_Per_Group);
 
    function Balise_At_Cm (B : Balise_Index) return Interfaces.Integer_64 is
-     (Interfaces.Integer_64 (Balise_Groups (Group_Of (B)).At_M) * 100
+     (Interfaces.Integer_64 (Active_Groups (Group_Of (B)).At_M) * 100
       + Interfaces.Integer_64 (Pig_Of (B) * Balise_Spacing_M) * 100);
 
    function Telegram (B : Balise_Index) return Telegram_T is (Telegrams (B));
 
    function Built_OK return Boolean is (Built and then Good);
+   function Current_Preset return EVC_Track.Preset_T is (Built_Preset);
 
    --  The linking of group G: every group after it
    Last_Group : constant Positive := Balise_Groups'Last;
@@ -44,9 +50,9 @@ package body Sim_Trackside is
          begin
             for I in 1 .. Count loop
                D_Links (I) := Natural'Max
-                 (0, Balise_Groups (G + I).At_M
-                     - Balise_Groups (G + I - 1).At_M);
-               NIDs (I) := Balise_Groups (G + I).NID_BG;
+                 (0, Active_Groups (G + I).At_M
+                     - Active_Groups (G + I - 1).At_M);
+               NIDs (I) := Active_Groups (G + I).NID_BG;
             end loop;
             Put (W, Linking (D_Links, NIDs), OK);
          end;
@@ -94,23 +100,26 @@ package body Sim_Trackside is
       end if;
    end Put_Mission;
 
-   procedure Build is
+   procedure Build (Preset : EVC_Track.Preset_T := EVC_Track.Default) is
       W : Writer_T;
    begin
-      if Built then
+      if Built and then Built_Preset = Preset then
          return;
       end if;
+      Active_Groups :=
+        (if Preset = EVC_Track.Features
+         then Balise_Groups_Features else Balise_Groups);
       Good := True;
       for B in Balise_Index loop
          declare
             G   : constant Positive := Group_Of (B);
             Pig : constant Natural := Pig_Of (B);
-            At_M : constant Integer := Balise_Groups (G).At_M;
+            At_M : constant Integer := Active_Groups (G).At_M;
          begin
-            Start (W, NID_C, Balise_Groups (G).NID_BG, Pig,
+            Start (W, NID_C, Active_Groups (G).NID_BG, Pig,
                    Balises_Per_Group, Linked => True, OK => Good);
             Put_Linking (W, G, Good);
-            case Balise_Groups (G).Content is
+            case Active_Groups (G).Content is
                when Mission =>
                   Put_Mission (W, Pig, -At_M, Good);
                when Neutral_Section =>
@@ -147,11 +156,48 @@ package body Sim_Trackside is
                   end if;
                when Linking_Only =>
                   null;
+               --  the "features" preset (bench page only)
+               when On_Sight_To_Level0 =>
+                  if Pig = 0 then
+                     Put (W, Mode_Profile (D_M => OS_D_M, M_MAMODE => 0,
+                                           L_M => OS_L_M, Ack_M => OS_Ack_M),
+                          Good);
+                     Put (W, Level_Order (0, D_M => Level0_D_M,
+                                          Ack_M => Level0_Ack_M), Good);
+                  end if;
+               when Level_Back =>
+                  if Pig = 0 then
+                     Put (W, Level_Order (2, D_M => Level1_D_M,
+                                          Ack_M => Level1_Ack_M), Good);
+                  end if;
+               when SR_Stop =>
+                  if Pig = 0 then
+                     Put (W, Stop_If_In_SR (Stop => True), Good);
+                  end if;
+               when Shunting_Demo =>
+                  if Pig = 0 then
+                     Put (W, Mode_Profile (D_M => Shunting_D_M,
+                                           M_MAMODE => 1, L_M => 0,
+                                           Ack_M => Shunting_Ack_M), Good);
+                     Put (W, Shunting_Area_List ((1 => 6)), Good);
+                  end if;
+               when Text_Ack =>
+                  if Pig = 0 then
+                     declare
+                        C : Text_Conditions_T;
+                     begin
+                        C.Confirm := 1;
+                        Put (W, Plain_Text
+                               ("Features demo: acknowledge to go on", C),
+                             Good);
+                     end;
+                  end if;
             end case;
             Finish (W, Telegrams (B), Good);
          end;
       end loop;
       Built := True;
+      Built_Preset := Preset;
    end Build;
 
    procedure Layout_Payload (Buffer : out Ada.Streams.Stream_Element_Array;

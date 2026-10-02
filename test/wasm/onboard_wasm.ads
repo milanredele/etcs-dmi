@@ -41,6 +41,34 @@ package Onboard_Wasm is
    procedure Set_Desk (Demand : Integer_32; Auto_Drive : Integer_32)
      with Export, Convention => C, Link_Name => "onboard_set_desk";
 
+   -- The track of the next Reset (0 the default mission, the acceptance
+   -- run and the native golden; 1 the alternate "features" track:
+   -- EVC_Track.Preset_T); a host calls it before Reset
+   procedure Set_Track_Preset (Preset : Integer_32)
+     with Export, Convention => C, Link_Name => "onboard_set_track_preset";
+
+   -- The train interface inputs besides the desk (Sim_Vehicle,
+   -- SUBSET-034 2.5.1, 2.6.4.2): the cab (0 none, 1 A, 2 B; one desk
+   -- open at a time), the direction controller of the active cab (0
+   -- neutral, 1 forwards, 2 backwards), sleeping requested, passive
+   -- shunting and non leading permitted, the train configuration of
+   -- TIU input 13 (phase E4, a raw byte: bits 0-5 the configuration,
+   -- bit 6 "needs validation", bit 7 "train category etc.", 5.17.2.2)
+   procedure Set_Cab (Cab : Integer_32)
+     with Export, Convention => C, Link_Name => "onboard_set_cab";
+   procedure Set_Controller (Position : Integer_32)
+     with Export, Convention => C, Link_Name => "onboard_set_controller";
+   procedure Set_Sleeping (On : Integer_32)
+     with Export, Convention => C, Link_Name => "onboard_set_sleeping";
+   procedure Set_Passive_Shunting (On : Integer_32)
+     with Export, Convention => C,
+          Link_Name => "onboard_set_passive_shunting";
+   procedure Set_Non_Leading (On : Integer_32)
+     with Export, Convention => C, Link_Name => "onboard_set_non_leading";
+   procedure Set_Train_Configuration (Value : Integer_32)
+     with Export, Convention => C,
+          Link_Name => "onboard_set_train_configuration";
+
    -- One cycle of the on-board and its environment, Dt_Ms milliseconds
    procedure Step (Dt_Ms : Unsigned_32)
      with Export, Convention => C, Link_Name => "onboard_step";
@@ -91,6 +119,14 @@ package Onboard_Wasm is
      with Export, Convention => C, Link_Name => "onboard_tiu_commands";
    function TIU_Reasons return Integer_32
      with Export, Convention => C, Link_Name => "onboard_tiu_reasons";
+
+   -- The second TIU output (5.20, track conditions): the raw bytes at
+   -- TC_Buffer (tag, version, count, items as EVC_Ports documents),
+   -- TC_Length of them
+   function TC_Buffer return System.Address
+     with Export, Convention => C, Link_Name => "onboard_tiu_tc_buffer";
+   function TC_Length return Integer_32
+     with Export, Convention => C, Link_Name => "onboard_tiu_tc_length";
    function Brake_Pressure return Integer_32
      with Export, Convention => C, Link_Name => "onboard_brake_pressure";
    function Controller return Integer_32
