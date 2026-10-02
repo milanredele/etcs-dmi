@@ -58,6 +58,10 @@
               background: #411; margin-right: 4px; vertical-align: -1px; }
       .lamp.on { background: #f33; box-shadow: 0 0 6px #f33; }
       #onboard_state { font-family: monospace; }
+      #onboard_tc { font-family: monospace; color: #bbc; }
+      #onboard_panel fieldset { border: 1px solid #444; border-radius: 4px; }
+      #onboard_panel legend { color: #9ab; }
+      #onboard_panel details summary { cursor: pointer; color: #8cf; }
       #onboard_jru { font-family: monospace; font-size: 12px; margin: 4px 0 0;
                      white-space: pre-wrap; color: #bbc; }
     </style>
@@ -80,10 +84,12 @@
       </p>
       <p>
         What runs below is that same Ada code compiled to WebAssembly;
-        nothing is reimplemented in JavaScript. The DMI and a simplified
-        on-board computer (EVC) with a track and train model run as two
+        nothing is reimplemented in JavaScript. The DMI and the ETCS
+        on-board computer (EVC), with a track and train model, run as two
         separate modules that share no memory and exchange the binary
-        messages they would exchange over Ethernet on a train. This page
+        messages they would exchange over Ethernet on a train; a third
+        module, a simplified on-board the DMI's golden frames were
+        recorded against, can take the real one's place. This page
         plays everything around them: the display, the touch screen, the
         loudspeaker, the driver's desk and the cable in between, which
         you can degrade or cut to see how the DMI copes.
@@ -184,22 +190,36 @@
             volume, and tells the EVC (the console shows
             <i>language "de"</i> or <i>"hu"</i>); <i>English</i> brings it
             back.</li>
-          <li><b>The real on-board.</b> <i>On-board: ETCS on-board</i>
-            puts the ETCS on-board of the project (SUBSET-026, in SPARK,
+          <li><b>The real on-board (the default).</b> <i>On-board: ETCS
+            on-board</i> runs the ETCS on-board of the project (SUBSET-026,
+            in SPARK,
             <a href="https://github.com/milanredele/etcs-dmi/tree/master/evc">evc/</a>)
-            in the simulator's place, in a simulated environment: balise
-            groups along the same line, an odometer with its error, the
-            train interface and a train that obeys its brake commands.
-            It has no modes yet (phase E4): it powers up in Stand By, where
-            its standstill supervision brakes a train that moves without a
-            movement authority. The automatic driver creeps towards the
-            first balise group; after the emergency brake acknowledge the
-            brake release on the DMI, drive on, and once the group is read
-            the on-board supervises its movement authority (speeds,
-            braking curves, track conditions, the stop in front of the end
-            of authority). The panel below the wire shows its mode and
-            level, its train interface commands and its juridical
-            records.</li>
+            in a simulated environment: balise groups along a line, an
+            odometer with its error, the train interface and a train that
+            obeys its brake commands; <i>simulator (mock)</i> puts back the
+            simplified on-board the DMI's golden frames were recorded
+            against. With the real on-board the driver does the whole
+            start-up dialogue of the first bullet on the DMI itself (no
+            page button): it powers up in Stand By, brakes a standing train
+            that moves without a movement authority, and once 'Start' and
+            the mode proposed are acknowledged runs the mission exactly as
+            the first two bullets describe, down to the stop at the end of
+            authority. <i>Track: features demo</i> puts the on-board on a
+            second line instead, built to be driven into an On Sight
+            profile, a level transition to level 0 and back (press
+            <i>Override</i> in time to come back without tripping, DMI
+            11.2.2, 5.8), a "stop if in SR" balise (the same window, for
+            both outcomes), a Shunting area (announced by the trackside,
+            acknowledged like On Sight) and a text message to acknowledge.
+            The panel below the wire shows its mode and level, its train
+            interface commands with the reasons of a brake, the second TIU
+            output of 5.20 (the information for an external function:
+            pantograph, main switch, air tightness, braking, traction and
+            platforms) and its juridical records; a "Train interface"
+            fieldset offers the cab, the direction controller, sleeping,
+            passive shunting and non leading permitted and the train
+            configuration of TIU input 13, the inputs the DMI itself has no
+            window for.</li>
           <li><b>Feed it by hand.</b> Switch the source to the manual EVC
             panel to put any speed, target, mode or level on the
             display. Its last rows raise any system status message of
@@ -244,10 +264,16 @@
             <option value="manual">manual EVC panel</option>
           </select>
         </label>
-        <label title="the on-board behind the source: the simulator of sim/ (evc.wasm) or the ETCS on-board of evc/ in its bench environment (onboard.wasm); changing it resets the mission">On-board:
+        <label title="the on-board behind the source: the ETCS on-board of evc/ in its bench environment (onboard.wasm, the default since phase E4), or the simulator of sim/ (evc.wasm), the simplified on-board the DMI goldens were recorded against; changing it resets the mission">On-board:
           <select id="onboard">
-            <option value="mock" selected>simulator (mock)</option>
-            <option value="etcs">ETCS on-board</option>
+            <option value="etcs" selected>ETCS on-board</option>
+            <option value="mock">simulator (mock)</option>
+          </select>
+        </label>
+        <label title="the ETCS on-board's track (EVC_Track.Preset_T): the default mission (start of mission in level 1, SR, FS at the first balise group, the stop at the end of authority) or a second, independent track exercising the procedures the default mission does not (On Sight, a level transition to level 0 and back, override, a Shunting area, a text message); changing it resets the mission">Track:
+          <select id="track_preset">
+            <option value="0" selected>default mission</option>
+            <option value="1">features demo</option>
           </select>
         </label>
         <label>Auto drive <input type="checkbox" id="auto_drive" checked></label>
@@ -273,9 +299,44 @@
     <div class="panel" id="onboard_panel" hidden>
       <h3>ETCS on-board (evc/)</h3>
       <div class="row" id="onboard_state"></div>
-      <div class="row" title="MSG_DRIVER_ACTION 2, kind 5 (the DMI's frame) over the wire: the DMI shows no acknowledgement request during its Start Up (11.7.1.8), and the on-board stays in SB, so until the start of mission of phase E4 the page sends the driver's acknowledgement in its place">
-        <button id="onboard_ack">Acknowledge brake release</button>
-      </div>
+      <div class="row" id="onboard_tc" title="the second TIU output (5.20, SUBSET-034 2.3.4 etc.): the information for an external function, tag 16#54# told from the brake commands"></div>
+      <details class="row">
+        <summary>How to drive it</summary>
+        <p class="note">
+          Start of mission: in the <i>Driver ID</i> window enter an id and
+          touch <i>&#10003;</i> (or press <i>Settings</i> &gt; <i>Train
+          running number</i> first); pick <i>Level 1</i> and accept it;
+          in <i>Main</i> press <i>Train data</i>, fill the two windows,
+          <i>Train data entry complete?</i> &gt; <i>Yes</i>, confirm in
+          the validation window, enter a train running number; back in
+          <i>Main</i> press <i>Start</i>; accept the mode proposed in the
+          acknowledgement area. The on-board stays in SB and brakes a
+          standing train until then; it shows SR, then FS once the first
+          balise group is read.
+        </p>
+      </details>
+      <fieldset class="row" title="SUBSET-034 2.5.1, 2.6.4.2: the desk and train interface inputs the bench offers besides the throttle/brake slider and Auto drive; every driver action (override, shunting, exit/maintain shunting, BMM inhibition, the tunnel toggle, SR speed and distance, acknowledgements, ...) is already on the DMI's own windows (Main, Override, Special), so only these need a bench control">
+        <legend>Train interface (TIU)</legend>
+        <label>Cab:
+          <select id="tiu_cab">
+            <option value="0">none</option>
+            <option value="1" selected>A</option>
+            <option value="2">B</option>
+          </select>
+        </label>
+        <label>Direction controller:
+          <select id="tiu_controller">
+            <option value="0">neutral</option>
+            <option value="1" selected>forwards</option>
+            <option value="2">backwards</option>
+          </select>
+        </label>
+        <label><input type="checkbox" id="tiu_sleeping">Sleeping requested</label>
+        <label><input type="checkbox" id="tiu_passive_shunting">Passive shunting permitted</label>
+        <label><input type="checkbox" id="tiu_non_leading">Non leading permitted</label>
+        <label title="TIU input 13 (5.17): bits 0-5 the configuration, bit 6 needs the driver's validation (64), bit 7 train category/axle load/traction/gauge (128)">Train configuration
+          <input type="number" id="tiu_config" value="0" min="0" max="255"></label>
+      </fieldset>
       <div class="row" title="the last records of the on-board's JRU port (Sim_JRU), newest first"><pre id="onboard_jru"></pre></div>
     </div>
 
@@ -1333,6 +1394,7 @@
           if (onboard) {
             onboardFailed = null;
             onboardModeLevel = null;
+            onboardGuarded(() => onboard.onboard_set_track_preset(val('track_preset')));
             onboardGuarded(() => onboard.onboard_reset());
             balises = null;
             if (onboardMode()) {
@@ -1345,6 +1407,7 @@
           layout = null;
           ato = null;
           sendDesk();
+          sendEnvironment();
         }
 
         function sendDesk() {
@@ -1353,16 +1416,32 @@
           evc.evc_set_desk(demand, checked('auto_drive') ? 1 : 0);
           if (onboard) onboardGuarded(() => onboard.onboard_set_desk(demand, checked('auto_drive') ? 1 : 0));
         }
+        // the train interface inputs besides the desk (Sim_Vehicle, through
+        // Sim_Onboard_Env): sent every cycle while the on-board is the
+        // source, cheaply (Sim_Vehicle only tells the on-board of a change)
+        function sendEnvironment() {
+          if (!onboard) return;
+          onboardGuarded(() => {
+            onboard.onboard_set_cab(val('tiu_cab'));
+            onboard.onboard_set_controller(val('tiu_controller'));
+            onboard.onboard_set_sleeping(checked('tiu_sleeping') ? 1 : 0);
+            onboard.onboard_set_passive_shunting(checked('tiu_passive_shunting') ? 1 : 0);
+            onboard.onboard_set_non_leading(checked('tiu_non_leading') ? 1 : 0);
+            onboard.onboard_set_train_configuration(val('tiu_config') || 0);
+          });
+        }
         $('source').addEventListener('input', () => { if (manualMode()) $('controls').open = true; });
-        $('onboard_ack').addEventListener('click', () => {
-          toEvc.send(new Uint8Array([MSG_DRIVER_ACTION, 5, 0, 0, 0, 2, 5, 0, 0, 0]), now);
-        });
         $('onboard').addEventListener('input', () => {
           $('onboard_panel').hidden = !onboardMode();
           reset();
         });
+        $('track_preset').addEventListener('input', reset);
         $('demand').addEventListener('input', sendDesk);
         $('auto_drive').addEventListener('input', sendDesk);
+        for (const id of ['tiu_cab', 'tiu_controller', 'tiu_sleeping',
+                          'tiu_passive_shunting', 'tiu_non_leading', 'tiu_config']) {
+          $(id).addEventListener('input', sendEnvironment);
+        }
         $('reset').addEventListener('click', reset);
         $('ss_start').addEventListener('click', () => toDmi.send(systemStatus(0), now));
         $('ss_end').addEventListener('click', () => toDmi.send(systemStatus(1), now));
@@ -1455,6 +1534,41 @@
         const DMI_MODES = ['NP', 'SB', 'FS', 'AD', 'SM', 'LS', 'OS', 'SR', 'SH',
                            'UN', 'RV', 'TR', 'SN', 'PT', 'NL', 'SF', 'SL', 'IS'];
         const DMI_LEVELS = ['unknown', 'invalid', '0', 'NTC', '1', '2'];
+        // EVC_Ports.TIU_Reasons_T: bits 0 to 9 of the u16 (one brake reason
+        // each, the integration of phase E4)
+        const TIU_REASONS = ['speed/distance monitoring', 'service brake failed',
+          'roll away', 'unauthorised direction', 'standstill supervision',
+          'level transition not acknowledged', 'System Failure', 'trip',
+          'acknowledgement missing', 'other procedure'];
+        // the second TIU output (5.20): the kind of an item (EVC_Ports)
+        const TC_KINDS = ['', 'pantograph', 'main power switch', 'air tightness',
+          'regenerative brake', 'eddy current brake (service)',
+          'eddy current brake (emergency)', 'magnetic shoe brake',
+          'traction system change', 'current consumption change',
+          'station platform'];
+
+        // the second TIU output (5.20, tag 16#54#): tag, version, count,
+        // then per item kind/id/to_start/to_end (cm, TIU_TC_None 0x7FFFFFFF
+        // none)/value, as EVC_Ports documents (test/tools/evc_dump.py the
+        // same shape)
+        function describeTC() {
+          const len = onboard.onboard_tiu_tc_length();
+          if (len < 3) return 'no track condition item';
+          const buf = new Uint8Array(onboard.memory.buffer, onboard.onboard_tiu_tc_buffer(), len);
+          const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+          const count = buf[2];
+          const items = [];
+          for (let i = 0; i < count && 3 + 12 * i + 12 <= len; i++) {
+            const o = 3 + 12 * i;
+            const kind = buf[o], id = buf[o + 1];
+            const toStart = dv.getInt32(o + 2, true), toEnd = dv.getInt32(o + 6, true);
+            const value = dv.getUint16(o + 10, true);
+            const dist = (cm) => cm === 0x7FFFFFFF ? 'none' : (cm / 100).toFixed(0) + ' m';
+            items.push(`${TC_KINDS[kind] ?? kind} #${id} to_start ${dist(toStart)} to_end ${dist(toEnd)} value ${value}`);
+          }
+          return count === 0 ? 'no track condition item' : items.join(', ');
+        }
+
         function showOnboard() {
           const ml = onboardModeLevel;
           const cmd = onboard.onboard_tiu_commands(), why = onboard.onboard_tiu_reasons();
@@ -1463,11 +1577,12 @@
             `mode ${ml ? DMI_MODES[ml.mode] ?? ml.mode : '-'}, level ` +
             `${ml ? DMI_LEVELS[ml.level] ?? ml.level : '-'} | TIU ` +
             (cmd & 7 ? bits(cmd, ['EB', 'SB', 'TCO']) : 'no command') +
-            (why ? ` (${bits(why, ['supervision', 'SB failed', 'roll away', 'direction', 'standstill'])})` : '') +
+            (why ? ` (${bits(why, TIU_REASONS)})` : '') +
             `, brake pipe ${onboard.onboard_brake_pressure()} kPa, controller ` +
             `${['neutral', 'forwards', 'backwards'][onboard.onboard_controller()] ?? '?'}` +
-            (onboard.onboard_ack_requested() ? ' | brake release: acknowledge (button below)' : '') +
+            (onboard.onboard_ack_requested() ? ' | brake release: acknowledge on the DMI' : '') +
             (onboardFailed ? ` | FAILED at ${onboardFailed}: silent, emergency brake` : '');
+          $('onboard_tc').textContent = 'track conditions (5.20): ' + describeTC();
           const lines = [];
           const n = Math.min(onboard.onboard_jru_available(), 8);
           for (let age = 0; age < n; age++) {
@@ -1566,6 +1681,7 @@
         });
 
         readWireParams();
+        $('onboard_panel').hidden = !onboardMode();
         reset();
         requestAnimationFrame(loop);
       })().catch((e) => {

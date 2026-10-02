@@ -1192,3 +1192,63 @@ driver's actions of the procedures offered (override, shunting, exit of
 shunting, maintain shunting, BMM inhibition), the JRU events 23, 24, 40,
 41 described (Sim_JRU now names them), the second TIU output (5.20)
 shown.
+
+**The bench page after E4** (branch `e4/bench-page`, 2026-10-02): the
+list above done. The real on-board is the page's default ("On-board:
+ETCS on-board"); `EVC_Mock` stays selectable ("simulator (mock)") for
+the DMI's own goldens. Checking the DMI's windows (`dmi/`) against the
+driver actions `EVC_Driver_Requests` decodes found every one of them
+already offered: driver ID, level, train data entry and validation,
+train running number and 'Start' (the Start Up windows of 11.3 and
+11.4), acknowledgements of a mode, a level transition, a text and a
+brake release (one acknowledgement area, 5.4.1.4, `DMI_Ack`), override
+(`W_Override`), shunting, exit shunting and maintain shunting (the
+Main window, Table 50), the BMM inhibition (`W_Special`), the tunnel
+toggle (C2/C3/C4) and the SR speed and distance (`W_SR_Data`); the
+stopgap "Acknowledge brake release" button is gone, acknowledged on
+the DMI like everything else now that the on-board models the Start
+Up dialogue's brake release properly (`DMI_Ack.Brake_Release`,
+3.14.1.9). What the DMI has no window for and the bench adds instead:
+the train interface inputs besides the desk demand and Auto drive
+(SUBSET-034 2.5.1, 2.6.4.2) — the cab, the direction controller
+(including neutral), sleeping requested, passive shunting and non
+leading permitted, and the train configuration of TIU input 13 (5.17)
+— a "Train interface" fieldset in the on-board panel, `Sim_Vehicle`
+gaining the setters and `Sim_Onboard_Env` the pass-through
+(`Set_Cab`, `Set_Controller`, ...). The panel also shows the TIU
+reasons bits 0 to 9 by name, the second TIU output of 5.20 decoded
+from `Sim_Vehicle.TC_Payload` (a new capture: `Collect_Outputs` used to
+discard it), and the JRU (`Sim_JRU` already named events 23, 24, 40,
+41). `EVC_Track` gained a second, independent track of the same shape
+(`Preset_T`, a page selector): an On Sight profile with a level
+transition to level 0 inside it, a level order back to level 1
+(needing Override to avoid the trip of [39], 5.8.4.1), a "stop if in
+SR" balise (override avoids its trip too, 5.8.4.1 d, 4.6.3 [54]), a
+Shunting area ordered by the trackside (5.7.3) and a plain text with
+its acknowledgement (3.12.3), all built with `Sim_Telegrams`'
+encoders, parameterised like the proven scenarios of
+`evc_test_procedures.adb` (`Scenario_Integration_OS_Level`,
+`Scenario_Integration_Override_Level`, `Scenario_Override`,
+`Scenario_Shunting_Trackside`); `Sim_Trackside.Build` takes the preset
+(default `Default`, so every other caller and the native golden are
+unaffected). `test/wasm/onboard_smoke.js` extended: the modes seen
+during the driver's start of mission include SB, SR and FS; a further
+20 000 cycles (not hashed) run the mission to the stop at 9888 m,
+before the EOA at 10 000 m, the acceptance of phase E4; the page's
+default selector and the new exports (`onboard_set_track_preset`, the
+TIU setters, `onboard_tiu_tc_buffer`/`length`) are exercised without a
+trap. A manual walk of the features track (a throwaway harness in
+`sim/`'s shape, not committed) reached the On Sight / level 0 group
+correctly (the level order switches FS to UN at the group's D_M
+regardless of speed; the On Sight request itself needs a speed below
+the national value, as 5.9.3.2 b) requires), engaged Override at
+standstill in UN, and tripped or passed the level-back and SR-stop
+points depending on whether Override still covered the distance
+(5.8.4.1 a, b) when reached — the override timing is sensitive to the
+driving distances chosen there, same as a real driver's; no exception
+was raised and `Sim_Trackside.Built_OK` was true throughout. The old
+screenshot driver (`test/wasm/screenshots.js`) still renders the
+default mission's bench picture; a new touch-coordinate replay of the
+Start Up dialogue against the real on-board (headless, no browser)
+reached the level window and the train data window correctly but
+diverged filling its second window, not run to completion.

@@ -131,6 +131,7 @@ ex.onboard_reset();
 ex.onboard_set_desk(0, 1);
 const hash = crypto.createHash('sha256');
 let bytes = 0, acks = 0, simFrames = 0;
+const modesSeen = new Set();
 for (let i = 0; i < CYCLES; i++) {
   ex.onboard_step(100);
   for (const f of frames(transmit(ex))) {
@@ -140,8 +141,14 @@ for (let i = 0; i < CYCLES; i++) {
   }
   if (ex.onboard_ack_requested()) { receive(ex, ACK); acks++; }
   if (i < SOM.length) receive(ex, SOM[i]);
+  modesSeen.add(ex.onboard_mode());
 }
 const actual = hash.digest('hex');
+// SB (1) before the start of mission, SR (7) once it is engaged, FS (2)
+// once the first balise group is read (DMI Table 60 codes, EVC_DMI_Port)
+check(modesSeen.has(1) && modesSeen.has(7) && modesSeen.has(2),
+      `the start of mission on the DMI's own frames reaches SR then FS `
+      + `(modes seen: ${[...modesSeen].sort().join(',')})`);
 const expected = fs.readFileSync(
   path.join(root, 'test', 'golden', 'evc', 'bench_onboard.sha256'), 'utf8').trim();
 console.log(`  ${CYCLES} cycles, ${bytes} bytes of DMI frames, ${acks} acknowledgement(s), ` +
@@ -160,6 +167,57 @@ check(ex.onboard_jru_available() > 0 && jruText(ex, 0).length > 0,
       `the JRU sink describes its records ("${jruText(ex, 0)}")`);
 check(ex.onboard_group_count() === 6 && ex.onboard_group_at(1) === -12,
       'the balise groups of the line');
+
+// --- The acceptance of EVC-PLAN.md phase E4: from the same run (not
+// --- reset, so the start of mission above is not repeated), go on until
+// --- the train stops, and check it is before the end of authority -----
+{
+  const EOA_M = 10_000;
+  let stopped = false;
+  for (let i = 0; i < 20_000 && !stopped; i++) {
+    ex.onboard_step(100);
+    transmit(ex); // drained, not hashed: only the golden run above is
+    if (ex.onboard_ack_requested()) receive(ex, ACK);
+    stopped = ex.onboard_speed() === 0 && i > 0;
+  }
+  check(ex.onboard_failed() === 0 && stopped
+        && ex.onboard_position() > 0 && ex.onboard_position() < EOA_M,
+        `the on-board runs the mission from start of mission to the stop `
+        + `at the EOA (level 1, ${EOA_M} m): stopped at `
+        + `${ex.onboard_position()} m`);
+}
+
+// --- The environment inputs and the features track preset of the bench
+// --- page (test/wasm/index.html): the exports do not trap -------------
+{
+  ex.onboard_set_track_preset(1); // EVC_Track.Features
+  ex.onboard_reset();
+  check(ex.onboard_failed() === 0 && ex.onboard_group_count() === 6
+        && ex.onboard_group_at(1) === -12,
+        'the features track preset resets without a trap');
+  ex.onboard_set_cab(2);
+  ex.onboard_set_controller(0);
+  ex.onboard_set_sleeping(1);
+  ex.onboard_set_passive_shunting(1);
+  ex.onboard_set_non_leading(1);
+  ex.onboard_set_train_configuration(42);
+  ex.onboard_step(100);
+  check(ex.onboard_failed() === 0,
+        'the train interface inputs besides the desk do not trap');
+  check(ex.onboard_tiu_tc_length() === 0 || ex.onboard_tiu_tc_buffer() !== 0,
+        'the second TIU output buffer is reachable');
+  ex.onboard_set_track_preset(0); // back to the default mission
+  ex.onboard_reset();
+}
+
+// --- The page itself: the ETCS on-board is the default, phase E4's -----
+// --- acceptance ("EVC_Mock is retired from the default page") ----------
+{
+  const html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+  const m = /<select id="onboard">\s*<option value="([a-z]+)" selected>/.exec(html);
+  check(!!m && m[1] === 'etcs',
+        'the page selects the ETCS on-board by default, not the mock');
+}
 
 // --- Containment: a trap, then Enter_Failure (the page's path) ---------
 ex.onboard_enter_failure();
