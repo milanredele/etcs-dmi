@@ -1,0 +1,64 @@
+# Hand-written sequence for obj/evc_s076_run (test/src/s076_run.adb),
+# in the format of the SUBSET-076 sequences of the sibling repository
+# (its README.md, "Executable step descriptions"); our own text, not
+# SUBSET-076's. A start of mission in level 1 to Staff Responsible:
+# every step is meant to pass.
+sequence runner_pass
+meta version 4.0.0 ; sv 30 ; feature 9000001
+step 1 1 0.00 N/A NP I SIM N/A NP
+  text: the on-board is switched on
+input SIM power on
+step 2 2 0.00 N/A NP O JRU N/A SB
+  text: the mode Stand By is recorded
+expect JRU record ALL M_MODE=6
+step 3 3 0.00 N/A SB I TIU N/A SB
+  text: the desk of cab A is opened
+input TIU cab A active
+step 4 4 0.00 N/A SB O DMI N/A SB
+  text: the DMI shows Stand By
+expect DMI mode-symbol displayed Stand-By
+step 5 5 0.00 N/A SB O DMI N/A SB
+  text: the DMI asks for the driver identity
+expect DMI window displayed Driver-ID
+step 6 6 0.00 N/A SB I DMI N/A SB
+  text: the driver types an identity
+input DMI enter Driver-ID
+step 7 7 0.00 N/A SB O DMI N/A SB
+  text: the DMI asks for the level
+expect DMI window displayed Level
+step 8 8 0.00 N/A SB I DMI L1 SB
+  text: the driver chooses level 1
+input DMI select Level-1
+step 9 9 0.00 L1 SB O JRU L1 SB
+  text: level 1 is recorded
+expect JRU record ALL M_LEVEL=2
+step 10 10 0.00 L1 SB I DMI L1 SB
+  text: the driver opens the Train Data entry
+input DMI press Train-Data
+step 11 11 0.00 L1 SB I DMI L1 SB
+  text: the driver types the Train Data
+input DMI enter Train-Data
+step 12 12 0.00 L1 SB I DMI L1 SB
+  text: the driver validates them
+input DMI validate Train-Data
+step 13 13 0.00 L1 SB O JRU L1 SB
+  text: the Train Data are recorded
+expect JRU record 2
+step 14 14 0.00 L1 SB I DMI L1 SB
+  text: the driver types a train running number
+input DMI enter Train-Running-Number
+step 15 15 0.00 L1 SB I DMI L1 SB
+  text: the driver presses Start
+input DMI press Start
+step 16 16 0.00 L1 SB O DMI L1 SB
+  text: the DMI asks to acknowledge Staff Responsible
+expect DMI mode-symbol displayed Acknowledge-Staff-Responsible
+step 17 17 0.00 L1 SB I DMI L1 SR
+  text: the driver acknowledges
+input DMI acknowledge Staff-Responsible
+step 18 18 0.00 L1 SR O DMI L1 SR
+  text: the DMI shows Staff Responsible
+expect DMI mode-symbol displayed Staff-Responsible
+step 19 19 0.00 L1 SR O TIU L1 SR
+  text: no brake at standstill in SR
+expect TIU emergency-brake not-commanded

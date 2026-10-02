@@ -183,6 +183,10 @@ package S076_Bench is
    function JRU_Mode return Natural;
    function JRU_Level_Status return Natural;
    function JRU_Level return Natural;
+   --  the monitoring and the status of the last JRU event 21 since the
+   --  power-up (0 CSM, NoS before any)
+   function JRU_Monitoring return Natural;
+   function JRU_Sup_Status return Natural;
 
    --  Text and system status events of the window
    type Text_Event_T is record

@@ -71,7 +71,7 @@ package S076_Sequences is
    --  A balise telegram (or a Euroloop or standalone packet block)
    type Telegram_T is record
       Step      : Natural := 0;
-      Tag       : Column_T := (others => ' ');   -- BG1d, LOOP, PACKET6
+      Tag       : String (1 .. 16) := (others => ' ');  -- BG1d, LOOP
       Tag_Len   : Natural := 0;
       Part      : Natural := 1;                  -- k of k/n
       Parts     : Natural := 1;                  -- n

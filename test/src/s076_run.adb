@@ -118,7 +118,7 @@ package body S076_Run is
    --  the speed to travel at
    function Transit_Cms return Positive is
    begin
-      if Explicit_Speed > 0 then
+      if Explicit_Speed >= Kmh_To_Cms (10.0) then
          return Explicit_Speed;
       end if;
       declare
@@ -196,9 +196,11 @@ package body S076_Run is
    --  listed over the output steps that follow it in an order of their
    --  own. So the mode and the level are judged against every state
    --  the reaction block of the step names: the before and after
-   --  columns of the steps from the input that opens the block (for an
-   --  input step, also the block before it) to the step before the next
-   --  input. A level column "N/A" accepts an unknown level.
+   --  columns of the steps of its block (from the input that opens it
+   --  to the step before the next input), of the block before and of
+   --  the block after it: the corpus writes a state change in the block
+   --  of its cause, or one block early or late. A level column "N/A"
+   --  accepts an unknown level; in No Power the level is not judged.
    type Level_Set_T is array (Level_Kind_T) of Boolean;
 
    function Columns (I : Positive) return Judgement_T is
@@ -220,15 +222,24 @@ package body S076_Run is
          Levels (Level_Of (Trim (St.Lvl_After))) := True;
       end Add;
    begin
-      --  the input that opens the block (for an input: the one before)
-      while First > 1
-        and then (Seq.Steps (First).IO /= Input or else First = I)
-      loop
-         First := First - 1;
+      --  the input that opens the block, and the block before it
+      for Round in 1 .. 2 loop
+         if First > 1 then
+            First := First - 1;
+         end if;
+         while First > 1 and then Seq.Steps (First).IO /= Input loop
+            First := First - 1;
+         end loop;
       end loop;
-      while Last < Seq.Step_Count and then Seq.Steps (Last + 1).IO /= Input
-      loop
-         Last := Last + 1;
+      --  the end of the block, and of the block after it
+      for Round in 1 .. 2 loop
+         if Last < Seq.Step_Count then
+            Last := Last + 1;
+         end if;
+         while Last < Seq.Step_Count and then Seq.Steps (Last + 1).IO /= Input
+         loop
+            Last := Last + 1;
+         end loop;
       end loop;
       for K in First .. Last loop
          if Seq.Steps (K).Well_Formed then
@@ -242,7 +253,7 @@ package body S076_Run is
          return Fail ("mode " & Trim (Seq.Steps (I).Mode_After) & ", got "
                       & Mode_Abbrev (M));
       end if;
-      if Any_Level and then not Levels (Lv) then
+      if Any_Level and then M /= M_NP and then not Levels (Lv) then
          return Fail ("level " & Trim (Seq.Steps (I).Lvl_After) & ", got "
                       & Level_Abbrev (Lv));
       end if;
@@ -879,9 +890,7 @@ package body S076_Run is
                declare
                   T : Telegram_T renames Seq.Telegrams (I);
                begin
-                  if T.Tag (1 .. T.Tag_Len) = Tag (Tag'First .. Tag'First
-                       + Natural'Min (Tag'Length, 4) - 1)
-                    and then Tag'Length <= 4
+                  if T.Tag (1 .. T.Tag_Len) = Tag
                     and then T.Step <= St.Number and then T.Step >= Step_Of
                   then
                      Step_Of := T.Step;
@@ -892,8 +901,7 @@ package body S076_Run is
                declare
                   T : Telegram_T renames Seq.Telegrams (I);
                begin
-                  if Tag'Length <= 4
-                    and then T.Tag (1 .. T.Tag_Len) = Tag
+                  if T.Tag (1 .. T.Tag_Len) = Tag
                     and then T.Step = Step_Of
                   then
                      if not T.Has_Bits then
@@ -1811,11 +1819,27 @@ package body S076_Run is
                         end if;
                      end;
                   end loop;
-                  Result := Check (Any_Rec (21, Mon, Sup) = Positive,
+                  if Mon < 0 and then Sup < 0 then
+                     return NJ (R_JRU_Not_Modelled,
+                                "20 without M_SDMTYPE / M_SDMSUPSTAT");
+                  end if;
+                  --  event 21 is recorded when the monitoring or the
+                  --  status changes: a record of message 20 for another
+                  --  change carries the values of the last one
+                  Result := Check ((Any_Rec (21, Mon, Sup)
+                                    or else (Positive
+                                             and then (Mon < 0
+                                                       or else B.JRU_Monitoring
+                                                                 = Mon)
+                                             and then (Sup < 0
+                                                       or else B.JRU_Sup_Status
+                                                                 = Sup)))
+                                   = Positive,
                                    "JRU supervision monitoring" & Img (Mon)
                                    & " status" & Img (Sup)
                                    & (if Positive then "" else " not"),
-                                   "no such event 21");
+                                   "monitoring" & Img (B.JRU_Monitoring)
+                                   & " status" & Img (B.JRU_Sup_Status));
                   if Result.Verdict /= Passed then
                      return Result;
                   end if;
@@ -2010,8 +2034,12 @@ package body S076_Run is
                   declare
                      C : Judgement_T;
                   begin
-                     B.New_Window;
-                     Wait_Used := 0;
+                     --  a balise group input without telegrams continues
+                     --  the one before (several rows of one transmission)
+                     if not (W (2) = "BTM" and then Line.Count < 4) then
+                        B.New_Window;
+                        Wait_Used := 0;
+                     end if;
                      J := Apply_Input (St);
                      if J.Verdict = Not_Judged then
                         Record_Result (I, J);
@@ -2076,7 +2104,8 @@ package body S076_Run is
                             & "  | ours: " & Mode_Abbrev (Our_Mode) & " "
                             & Level_Abbrev (Our_Level) & " x="
                             & Img (Integer (B.Position / 100)) & "m v="
-                            & Img (B.Speed * 36 / 1000) & "km/h t="
+                            & Img (B.Speed * 36 / 1000) & "km/h perm="
+                            & Img (B.State.V_Perm) & " t="
                             & Unsigned_64'Image (B.Time_Ms / 100) & "00ms");
                end;
             end if;

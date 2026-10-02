@@ -214,16 +214,14 @@ package body S076_Sequences is
             OK1 : Boolean;
          begin
             T.Step := To_Nat (Word (L, 2), OK1);
-            T.Tag := Column (Word (L, 3));
-            T.Tag_Len := Natural'Min (Word (L, 3)'Length, 4);
+            T.Tag_Len := Natural'Min (Word (L, 3)'Length, T.Tag'Length);
+            T.Tag (1 .. T.Tag_Len) :=
+              Word (L, 3) (Word (L, 3)'First
+                           .. Word (L, 3)'First + T.Tag_Len - 1);
             T.Loop_Tag := Word (L, 3) = "LOOP";
             T.Packet_Tag := Word (L, 3)'Length > 6
               and then Word (L, 3) (Word (L, 3)'First
                                     .. Word (L, 3)'First + 5) = "PACKET";
-            if Word (L, 3)'Length > 4 then
-               --  a tag longer than the column: keep it whole
-               T.Tag_Len := 4;
-            end if;
             --  k/n
             if Field (Word (L, I), 2, "/") /= "" then
                T.Part := To_Nat (Field (Word (L, I), 1, "/"), OK1);

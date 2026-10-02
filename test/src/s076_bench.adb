@@ -58,6 +58,7 @@ package body S076_Bench is
    JRU_N     : Natural := 0;
    Last_Mode, Last_Level_Status, Last_Level : Natural := No_Value;
    Last_Commands : Natural := 0;
+   Last_Mon, Last_Sup : Natural := 0;
 
    Texts   : array (1 .. Max_Events) of Text_Event_T;
    Texts_N : Natural := 0;
@@ -259,6 +260,9 @@ package body S076_Bench is
          Last_Level := Natural (P (P'First + 2));
       elsif P (P'First) = 20 then
          Last_Commands := Natural (P (P'First + 1));
+      elsif P (P'First) = 21 then
+         Last_Mon := Natural (P (P'First + 1));
+         Last_Sup := Natural (P (P'First + 2));
       end if;
    end Observe_JRU;
 
@@ -421,6 +425,8 @@ package body S076_Bench is
       Last_Level_Status := No_Value;
       Last_Level := No_Value;
       Last_Commands := 0;
+      Last_Mon := 0;
+      Last_Sup := 0;
       New_Window;
    end Reset;
 
@@ -435,6 +441,8 @@ package body S076_Bench is
       Last_Level_Status := No_Value;
       Last_Level := No_Value;
       Last_Commands := 0;
+      Last_Mon := 0;
+      Last_Sup := 0;
       --  the odometer's first sample: the frame starts at the train
       Cycle;
    end Power_On;
@@ -698,6 +706,8 @@ package body S076_Bench is
    function JRU_Mode return Natural is (Last_Mode);
    function JRU_Level_Status return Natural is (Last_Level_Status);
    function JRU_Level return Natural is (Last_Level);
+   function JRU_Monitoring return Natural is (Last_Mon);
+   function JRU_Sup_Status return Natural is (Last_Sup);
    function Text_Count return Natural is (Texts_N);
    function Text (I : Positive) return Text_Event_T is (Texts (I));
    function SS_Count return Natural is (SSs_N);
