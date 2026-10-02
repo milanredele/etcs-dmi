@@ -1269,6 +1269,8 @@ is
       Indicated_N := 0;
       for I in 1 .. Ind.Count loop
          exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
+         --  not unrolled by the proof (up to Max_Indications iterations)
+         pragma Loop_Invariant (Indicated_N < EVC_DMI_Port.Max_Track_Cond);
          Indicated_N := Indicated_N + 1;
          Indicated (Indicated_N) :=
            (Id   => Unsigned_8 (Ind.List (I).Id),
@@ -1295,6 +1297,9 @@ is
          begin
             for I in L'Range loop
                exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
+               --  not unrolled by the proof (16 iterations, the range of L)
+               pragma Loop_Invariant
+                 (Indicated_N < EVC_DMI_Port.Max_Track_Cond);
                if L (I).Used and then not L (I).Protected_LX
                  and then L (I).Indicated
                  and then A (Ahead, Train.Min_Front)
