@@ -927,6 +927,42 @@ package body S076_Run is
       return 0;
    end Point_Offset;
 
+   --  The national speed value an expression names (V_NVALLOWOVTRP,
+   --  V_NVSUPOVTRP, V_NVONSIGHT, V_NVSHUNT, V_NVSTFF), km/h: the last one
+   --  the sequence's telegrams gave before the step, else the default of
+   --  A.3.2; -1 when the expression names none
+   function National_Limit (E : String) return Integer is
+      type Name_Default is record
+         Name : String (1 .. 14);
+         Kmh  : Natural;
+      end record;
+      Names : constant array (1 .. 5) of Name_Default :=
+        (("V_NVALLOWOVTRP", 0), ("V_NVSUPOVTRP  ", 30),
+         ("V_NVONSIGHT   ", 30), ("V_NVSHUNT     ", 30),
+         ("V_NVSTFF      ", 40));
+   begin
+      for N of Names loop
+         declare
+            Nm : constant String :=
+              Ada.Strings.Fixed.Trim (N.Name, Ada.Strings.Right);
+            V  : Integer := N.Kmh;
+         begin
+            if Has (E, Nm) then
+               for I in 1 .. Seq.Timer_Count loop
+                  if Same (Image (Seq.Timers (I).Name_Text), Nm)
+                    and then Seq.Timers (I).Step < Seq.Steps (Cur).Number
+                    and then Seq.Timers (I).Value < 127
+                  then
+                     V := Natural (Seq.Timers (I).Value) * 5;
+                  end if;
+               end loop;
+               return V;
+            end if;
+         end;
+      end loop;
+      return -1;
+   end National_Limit;
+
    --  The output steps of the input's block (up to the next input)
    --  expect the emergency brake (EB) or the service brake commanded
    function Brake_Expected (EB : Boolean) return Boolean is
@@ -1035,6 +1071,20 @@ package body S076_Run is
                Kmh := (if Below then S.V_SBI - 1 else S.V_SBI + 1);
             elsif Has (E, "warning") then
                Kmh := (if Below then S.V_Wsl - 1 else S.V_Wsl + 1);
+            elsif National_Limit (E) >= 0 then
+               --  a national speed value (A.3.2, or the sequence's packet
+               --  3): above or below it by 5 km/h
+               declare
+                  V : constant Natural := National_Limit (E);
+               begin
+                  Kmh := (if Much then V / 2
+                          elsif Below then Integer'Max (1, V - 5)
+                          elsif E'Length > 8 and then E (E'First + 8) = '>'
+                          then V + 15
+                          elsif Brake_Expected (EB => True) then S.V_SBI + 8
+                          elsif Brake_Expected (EB => False) then S.V_SBI + 1
+                          else V + 5);
+               end;
             elsif Has (E, "V_STEP") or else Has (E, "V_1>")
               or else Has (E, "V1>")
             then

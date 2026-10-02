@@ -298,7 +298,10 @@ package body S076_Sequences is
                end;
             end if;
             if OK and then Name'Length > 2
-              and then Name (Name'First .. Name'First + 1) = "T_"
+              and then (Name (Name'First .. Name'First + 1) = "T_"
+                        or else (Name'Length > 4
+                                 and then Name (Name'First .. Name'First + 3)
+                                          = "V_NV"))
               and then S.Timer_Count < Max_Timers
             then
                S.Timer_Count := S.Timer_Count + 1;

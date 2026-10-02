@@ -110,7 +110,8 @@ package S076_Sequences is
    end record;
    type DMI_Events_T is array (1 .. Max_DMI) of DMI_Event_T;
 
-   --  A timer value of a var row (T_SECTIONTIMER, T_TEXTDISPLAY, ...):
+   --  A timer value or a national speed value of a var row
+   --  (T_SECTIONTIMER, T_TEXTDISPLAY, ..., V_NVALLOWOVTRP, ...):
    --  the name, the value as coded, the step of its telegram / message
    type Timer_T is record
       Name  : Column_T := (others => ' ');
