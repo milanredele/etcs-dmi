@@ -2,13 +2,14 @@
 --  The mapping tables of the SUBSET-076 runner, body.
 
 pragma Ada_2012;
-with Ada.Characters.Handling; use Ada.Characters.Handling;
+with Ada.Characters.Handling;
 with Ada.Strings.Fixed;
 with EVC_DMI_Port;
 
 package body S076_Tables is
 
-   function Up (S : String) return String renames To_Upper;
+   function Up (S : String) return String
+     renames Ada.Characters.Handling.To_Upper;
 
    function Starts (S, Prefix : String) return Boolean is
      (S'Length >= Prefix'Length

@@ -13,7 +13,8 @@ with EVC_Position;
 
 package body S076_Bench is
 
-   use type EVC_Bytes.Byte;
+
+   use type EVC_Bytes.Byte_Array;
 
    ---------------------------------------------------------------------
    --  State of the world
@@ -68,10 +69,10 @@ package body S076_Bench is
    --  Byte helpers
    ---------------------------------------------------------------------
 
-   function U16_At (B : Byte_Array; I : Natural) return Natural is
+   function Get16 (B : Byte_Array; I : Natural) return Natural is
      (Natural (B (I)) + 256 * Natural (B (I + 1)));
 
-   function U32_At (B : Byte_Array; I : Natural) return Unsigned_32 is
+   function Get32 (B : Byte_Array; I : Natural) return Unsigned_32 is
      (Unsigned_32 (B (I)) + 256 * (Unsigned_32 (B (I + 1))
       + 256 * (Unsigned_32 (B (I + 2)) + 256 * Unsigned_32 (B (I + 3)))));
 
@@ -119,7 +120,7 @@ package body S076_Bench is
                Now.Level_Ann_Ack := P (B + 4) /= 0;
                Now.Override := P (B + 5) /= 0;
                Now.TAF := P (B + 6) /= 0;
-               Now.LSSMA := U16_At (P, B + 7);
+               Now.LSSMA := Get16 (P, B + 7);
             end if;
          when 16#0A# =>   -- MSG_ONBOARD
             if P'Length >= 11 then
@@ -134,18 +135,18 @@ package body S076_Bench is
                Now.BMM := P (B + 3) /= 0;
                Now.Reversing := P (B + 4) /= 0;
                Now.Tunnel := Natural (P (B + 11));
-               Now.Geo_Known := U32_At (P, B + 16) /= 16#FFFF_FFFF#;
+               Now.Geo_Known := Get32 (P, B + 16) /= 16#FFFF_FFFF#;
             end if;
          when 16#01# =>   -- MSG_SPEED_STATE
             if P'Length >= 21 then
                Now.Has_Speed := True;
-               Now.V_Cur := U16_At (P, B);
-               Now.V_Perm := U16_At (P, B + 2);
-               Now.V_Target := U16_At (P, B + 4);
-               Now.V_Release := U16_At (P, B + 6);
-               Now.V_SBI := U16_At (P, B + 8);
-               Now.V_Wsl := U16_At (P, B + 10);
-               Now.D_Target := Natural (U32_At (P, B + 12) and 16#7FFF_FFFF#);
+               Now.V_Cur := Get16 (P, B);
+               Now.V_Perm := Get16 (P, B + 2);
+               Now.V_Target := Get16 (P, B + 4);
+               Now.V_Release := Get16 (P, B + 6);
+               Now.V_SBI := Get16 (P, B + 8);
+               Now.V_Wsl := Get16 (P, B + 10);
+               Now.D_Target := Natural (Get32 (P, B + 12) and 16#7FFF_FFFF#);
                Now.Monitoring := Natural (P (B + 16));
                Now.Flags := Natural (P (B + 18));
                Now.Sup_Status := Natural (P (B + 19));
@@ -157,7 +158,7 @@ package body S076_Bench is
                   S_At : constant Natural := B + 9 + 3 * G;
                begin
                   Now.Has_Planning := True;
-                  Now.Indication := U16_At (P, B + 2) /= 16#FFFF#;
+                  Now.Indication := Get16 (P, B + 2) /= 16#FFFF#;
                   Now.Gradients := G;
                   if S_At <= P'Last then
                      Now.Speeds := Natural (P (S_At));
@@ -184,7 +185,7 @@ package body S076_Bench is
             if P'Length >= 6 and then Texts_N < Max_Events then
                Texts_N := Texts_N + 1;
                Texts (Texts_N) :=
-                 (Remove => False, Id => U16_At (P, B),
+                 (Remove => False, Id => Get16 (P, B),
                   Class  => Natural (P (B + 2)) / 4 mod 4,
                   Ack    => P (B + 2) mod 2 = 1);
             end if;
@@ -192,7 +193,7 @@ package body S076_Bench is
             if P'Length >= 2 and then Texts_N < Max_Events then
                Texts_N := Texts_N + 1;
                Texts (Texts_N) :=
-                 (Remove => True, Id => U16_At (P, B), Class => 0,
+                 (Remove => True, Id => Get16 (P, B), Class => 0,
                   Ack => False);
             end if;
          when 16#0C# =>   -- MSG_SYSTEM_STATUS
@@ -233,7 +234,7 @@ package body S076_Bench is
          Now.EBC := (P (P'First) and TIU_EBC) /= 0;
          Now.SBC := (P (P'First) and TIU_SBC) /= 0;
          Now.TCO := (P (P'First) and TIU_TCO) /= 0;
-         Now.Reasons := U16_At (P, P'First + 1);
+         Now.Reasons := Get16 (P, P'First + 1);
       end if;
    end Observe_TIU;
 
@@ -274,7 +275,7 @@ package body S076_Bench is
          while Pos + 3 <= Last loop
             declare
                Port_Pos : constant Natural := Natural (Out_Buf (Pos + 1));
-               Len      : constant Natural := U16_At (Out_Buf, Pos + 2);
+               Len      : constant Natural := Get16 (Out_Buf, Pos + 2);
                First    : constant Natural := Pos + 4;
                L        : constant Natural := Pos + 3 + Len;
             begin
