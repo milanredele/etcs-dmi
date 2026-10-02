@@ -43,6 +43,7 @@ package body S076_Run is
          when R_Version          =>
             "system version other than 4.0 layout (chapter 6, E7)",
          when R_Euroloop         => "Euroloop (E7)",
+         when R_E6               => "a function of phase E6",
          when R_NTC              => "NTC/STM (out of scope)",
          when R_ATO              => "ATO (no ATO port payload yet)",
          when R_DMI_Internal     => "DMI internal, not judged",
@@ -551,6 +552,17 @@ package body S076_Run is
             return Level_Of (W (I));
          end if;
       end loop;
+      --  the level the steps that follow have
+      for I in Cur + 1 .. Natural'Min (Cur + 12, Seq.Step_Count) loop
+         declare
+            L : constant Level_Kind_T :=
+              Level_Of (Trim (Seq.Steps (I).Lvl_Before));
+         begin
+            if L /= K_None then
+               return L;
+            end if;
+         end;
+      end loop;
       return K_None;
    end Selected_Level;
 
@@ -746,6 +758,46 @@ package body S076_Run is
          end if;
          Press_Area (DMI_Windows.Close_Button_Area);
          return Pass ("DMI " & Item & " closed");
+      elsif (Same (Verb, "modify") or else Same (Verb, "confirm"))
+        and then Same (Item, "Adhesion-Factor")
+      then
+         if not Top_Is (W_Adhesion) and then Same (Verb, "modify") then
+            return Press_Menu (W_Special, 1, "Adhesion");
+         elsif not Top_Is (W_Adhesion) then
+            return Fail ("DMI confirm adhesion: the window is not open, top "
+                         & "is " & Top_Image);
+         end if;
+         --  11.3.11: the dedicated keyboard, key 1 non slippery, key 2
+         --  slippery rail
+         if Has (Image (St.Comment), "Non Slippery")
+           or else Has (Image (St.Comment), "non-slippery")
+         then
+            Key (1);
+         elsif Has (Image (St.Comment), "Slippery") then
+            Key (2);
+         end if;
+         Enter_Single;
+         return Pass ("DMI adhesion entered");
+      elsif Same (Verb, "press") and then Same (Item, "Geographical-Position")
+      then
+         if DMI_Windows.Is_Open then
+            return Fail ("DMI geographical position: a window is open: "
+                         & Top_Image);
+         end if;
+         Press_Area (Display.Get_Area (Display.G12));
+         return Pass ("DMI geographical position toggled");
+      elsif Same (Verb, "request") and then Has (Item, "tunnel-stopping-area")
+      then
+         if DMI_Windows.Is_Open then
+            return Fail ("DMI tunnel toggle: a window is open: " & Top_Image);
+         end if;
+         Press_Area (Display.C_Area.Tunnel_Toggle_Area);
+         return Pass ("DMI tunnel stopping area toggled");
+      elsif Same (Verb, "press") and then Same (Item, "BMM-reaction-inhibition")
+      then
+         return Press_Menu (W_Special, 4, "BMM reaction inhibition");
+      elsif Has (Item, "VBC") then
+         return NJ (R_E6, "DMI " & Verb & " " & Item & " (VBC, 3.15.9)");
       elsif Same (Verb, "isolate") then
          Desk_Isolation;
          return Pass ("DMI isolation");
@@ -964,15 +1016,23 @@ package body S076_Run is
                Kmh := (if Below then S.V_SBI - 1 else S.V_SBI + 1);
             elsif Has (E, "warning") then
                Kmh := (if Below then S.V_Wsl - 1 else S.V_Wsl + 1);
-            elsif Has (E, "V_PERM") or else Has (E, "MRSP")
-              or else Has (E, "VMRSP")
+            elsif Has (E, "V_STEP") or else Has (E, "V_1>")
+              or else Has (E, "V1>")
             then
+               --  a value of the step's own table: not in the text
+               Kmh := -1;
+            else
+               --  V_PERM, V_MRSP, a mode limit (V_NVONSIGHT, V_NVSHUNT,
+               --  ...) or a TSR the train runs under: the permitted speed
+               --  the on-board shows stands for it
                if Much then
                   Kmh := S.V_Perm / 2;
                elsif Below then
                   Kmh := S.V_Perm - 2;
                elsif Has (E, "+6") then
                   Kmh := S.V_Perm + 7;
+               elsif E'Length > 8 and then E (E'First + 8) = '>' then
+                  Kmh := S.V_Perm + 15;
                else
                   Kmh := S.V_Perm + 1;
                end if;
@@ -989,21 +1049,28 @@ package body S076_Run is
       return NJ (R_Runner, "ODO " & Kind);
    end ODO_Input;
 
-   function TIU_Input return Judgement_T is
+   --  the train configuration the TIU reports (bits 0 to 5 of input 13)
+   Train_Configuration : Natural := 1;
+
+   function TIU_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
       Arg  : constant String := W (4);
    begin
       if Same (Kind, "cab") then
          --  the driver who opens a desk puts its direction controller
          --  forward (the sequences set it themselves only to change it)
+         --  and the train configuration of the train interface is known
+         --  (EVC_Ports TIU input 13: the first value is not a change)
          if Same (Arg, "A") then
             B.TIU_Input (2, 0);
             B.TIU_Input (1, 1);
             B.TIU_Input (6, 1);
+            B.TIU_Input (13, Train_Configuration);
          elsif Same (Arg, "B") then
             B.TIU_Input (1, 0);
             B.TIU_Input (2, 1);
             B.TIU_Input (6, 1);
+            B.TIU_Input (13, Train_Configuration);
          else
             B.TIU_Input (1, 0);
             B.TIU_Input (2, 0);
@@ -1034,6 +1101,18 @@ package body S076_Run is
       elsif Same (Kind, "magnetic-shoe-brake") then
          B.TIU_Input (9, (if Same (Arg, "active") then 1 else 0));
          return Pass ("TIU magnetic shoe brake " & Arg);
+      end if;
+      if Same (Kind, "other-train-data") then
+         if Has (Image (St.Comment), "set speed")
+           or else Has (Image (St.Comment), "SETSPEED")
+         then
+            return NJ (R_Not_Modelled, "TIU set speed (cruise control)");
+         end if;
+         --  5.17: new Train Data from the train interface, to be
+         --  validated by the driver (EVC_Ports TIU input 13, D0)
+         Train_Configuration := (Train_Configuration mod 63) + 1;
+         B.TIU_Input (13, Train_Configuration + 64);
+         return Pass ("TIU train configuration changed");
       end if;
       return NJ ((if Same (Kind, "train-integrity")
                     or else Same (Kind, "safe-consist-length")
@@ -1199,12 +1278,28 @@ package body S076_Run is
          elsif Same (Kind, "fault") then
             B.Fault;
             return Pass ("SIM fault");
+         elsif Same (Kind, "odometer-performance") then
+            --  3.6.8, A.3.1: the sums of the over- and under-reading
+            --  growth over the last 5000 m against 250 m (impaired) and
+            --  1500 m (safety threshold); the odometer states the growth
+            --  at once, the on-board checks it at the end of its next
+            --  100 m interval
+            if Same (W (4), "impaired") then
+               B.Odometer_Error (30_000);
+               B.Set_Accuracy (60);
+            elsif Same (W (4), "critical") then
+               B.Odometer_Error (160_000);
+               B.Set_Accuracy (400);
+            else
+               B.Set_Accuracy (S076_Bench.Accuracy_Per_Mille);
+            end if;
+            return Pass ("SIM odometer " & W (4));
          elsif Same (Kind, "door-command") then
             return NJ (R_Not_Modelled, "SIM door command");
          end if;
          return NJ (R_Runner, "SIM " & Kind);
       elsif Iface = "TIU" then
-         return TIU_Input;
+         return TIU_Input (St);
       elsif Iface = "ODO" then
          return ODO_Input (St);
       elsif Iface = "INT" then
@@ -2239,6 +2334,7 @@ package body S076_Run is
       B.Reset;
       Step_Start_Ms := 0;
       Hold_Speed := False;
+      Train_Configuration := 1;
       Explicit_Speed := -1;
       Wait_Used := 0;
       Outcome := Seq_Passed;

@@ -678,6 +678,12 @@ package body S076_Bench is
       Acc := Integer_64 (Per_Mille);
    end Set_Accuracy;
 
+   procedure Odometer_Error (Extra_Cm : Natural) is
+   begin
+      Odo_Over := Odo_Over + Integer_64 (Extra_Cm);
+      Odo_Under := Odo_Under + Integer_64 (Extra_Cm);
+   end Odometer_Error;
+
    procedure Pointer (Event : Natural; X, Y : Natural) is
       P : constant Stream_Element_Array :=
         (Stream_Element (Event),

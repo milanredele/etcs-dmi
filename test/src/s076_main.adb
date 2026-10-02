@@ -242,6 +242,7 @@ package body S076_Main is
          when R_Level_2          => "E5-level2",
          when R_Version          => "E7-version",
          when R_Euroloop         => "E7-euroloop",
+         when R_E6               => "E6",
          when R_NTC              => "NTC",
          when R_ATO              => "ATO",
          when R_DMI_Internal     => "DMI-internal",

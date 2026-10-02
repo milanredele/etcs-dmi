@@ -102,6 +102,9 @@ package S076_Bench is
    procedure DMI_Frame (Frame : Byte_Array);
    --  The odometer's stated accuracy per mille from now on
    procedure Set_Accuracy (Per_Mille : Natural);
+   --  The odometer states Extra_Cm more over- and under-reading at its
+   --  next sample (a degraded measurement)
+   procedure Odometer_Error (Extra_Cm : Natural);
 
    --  The driver touches the DMI screen at X, Y: pointer down, Hold_Ms
    --  of cycles (at least one), pointer up, one cycle

@@ -41,6 +41,7 @@ package S076_Run is
       R_Version,          -- system version other than the 4.0 layout
                           -- (chapter 6, E7)
       R_Euroloop,         -- Euroloop (E7)
+      R_E6,               -- a function of phase E6 (VBC, set speed, ...)
       R_NTC,              -- NTC / STM (out of scope)
       R_ATO,              -- ATO (the ATO port has no payload yet)
       R_DMI_Internal,     -- DMI internal, no query of DMI_Core for it
