@@ -59,6 +59,7 @@ package body EVC_Core
                                    Supervision_Reported,
                                    Overrun_Reported,
                                    Entering_Shown,
+                                   Runaway_Shown,
                                    --  the procedures (phase E4)
                                    Proc_Ctx,
                                    Ack_For_Protection,
@@ -181,6 +182,9 @@ is
    --  phase E4: the indication "Entering FS" (4.4.9.1.4) or "Entering
    --  OS" (4.4.12.1.7) shown: its catalogue entry, 0 none
    Entering_Shown       : EVC_Bytes.Byte := 0;
+   --  3.14.2.6, 3.14.3.4, 4.4.7.1.5.4: "Runaway movement" shown (the DMI's
+   --  catalogue entry 9) while a protection commands the brake
+   Runaway_Shown        : Boolean := False;
 
    ---------------------------------------------------------------------
    --  The procedures (phase E4, e4/procedures)
@@ -321,6 +325,7 @@ is
       Supervision_Reported := No_Supervision;
       Overrun_Reported := 0;
       Entering_Shown := 0;
+      Runaway_Shown := False;
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
@@ -1325,7 +1330,7 @@ is
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, Overrun_Reported,
-                                Entering_Shown,
+                                Entering_Shown, Runaway_Shown,
                                 Status_Rev_Sent, Status_Tunnel_Sent,
                                 TC_Sent))
    is
@@ -1402,6 +1407,18 @@ is
             Entering_Shown := Entering;
          end if;
       end;
+      --  3.14.2.6, 3.14.3.4, 4.4.7.1.5.4: the driver is shown that the
+      --  roll away, the unauthorised direction movement or the standstill
+      --  protection commands the brake ("Runaway movement", the DMI's
+      --  entry 9, Table 68: 3.14.2.4, 3.14.3.2), until its revocation
+      --  (3.14.1.5)
+      if Brake_Output.Protection /= Runaway_Shown then
+         EVC_Outbox.Put (DMI, System_Status_Frame
+                                (SS_Runaway_Movement,
+                                 (if Brake_Output.Protection
+                                  then SS_Event_Start else SS_Event_End)));
+         Runaway_Shown := Brake_Output.Protection;
+      end if;
 
       --  DMI: the mode and the level (4.4.2.1: a clear indication of the
       --  mode when the desk is open); 4.7.2: the acknowledgement of a mode

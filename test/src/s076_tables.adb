@@ -331,11 +331,13 @@ package body S076_Tables is
          when 6  => return (if On then Event (40, 2, Level_T'Pos (L0))
                             else None);
          when 7  => return (if On then Event (40, 4, Level_T'Pos (L0))
-                            else Event (40, 5, Level_T'Pos (L0)));
+                            else (Kind => Ack_Not_Asked, Level => L0,
+                                  others => <>));
          when 8  => return (if On then Event (40, 2, Level_T'Pos (NTC))
                             else None);
          when 9  => return (if On then Event (40, 4, Level_T'Pos (NTC))
-                            else Event (40, 5, Level_T'Pos (NTC)));
+                            else (Kind => Ack_Not_Asked, Level => NTC,
+                                  others => <>));
          when 10 => return (if On then Event (40, 2, Level_T'Pos (L1))
                             else None);
          when 12 => return (if On then Event (40, 2, Level_T'Pos (L2))

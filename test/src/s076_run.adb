@@ -753,7 +753,13 @@ package body S076_Run is
          return Press_Menu (W_Settings, 4, "System version");
       elsif Same (Verb, "request") and then Has (Item, "speed-and-distance")
       then
-         --  8.2.2.4: the A/B toggle, where the default window shows it
+         --  8.2.2.4: the A/B toggle, where the default window shows it:
+         --  the driver closes the windows that are open first
+         for I in 1 .. 4 loop
+            exit when not DMI_Windows.Is_Open
+              or else not DMI_Windows.Close_Enabled;
+            Press_Area (DMI_Windows.Close_Button_Area);
+         end loop;
          if DMI_Windows.Is_Open then
             return Fail ("DMI speed information toggle: a window is open: "
                          & Top_Image);
@@ -2019,6 +2025,13 @@ package body S076_Run is
                end;
             end loop;
             return not Positive;
+         when Ack_Not_Asked =>
+            declare
+               Lv : constant Natural := Level_T'Pos (F.Level);
+            begin
+               return (Any_Rec (40, 5, Lv) or else not Any_Rec (40, 4, Lv))
+                      = Positive;
+            end;
          when Trip_Reason =>
             for I in 1 .. F.B3_List.Count loop
                if Any_Rec (23, 1, F.B3_List.List (I)) then

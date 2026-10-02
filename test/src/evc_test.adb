@@ -6517,6 +6517,25 @@ procedure EVC_Test is
       Ack : constant Byte_Array :=
         Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 5, 0, 0, 0));
 
+      --  3.14.2.6, 3.14.3.4: "Runaway movement" (the DMI's entry 9)
+      --  started and ended on the DMI port
+      Runaway_Started, Runaway_Ended : Natural := 0;
+
+      procedure Scan is
+      begin
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = DMI and then Rec_Length (I) = 7
+              and then Byte_At (I, 1) = 16#0C# and then Byte_At (I, 6) = 9
+            then
+               if Byte_At (I, 7) = 0 then
+                  Runaway_Started := Runaway_Started + 1;
+               elsif Byte_At (I, 7) = 1 then
+                  Runaway_Ended := Runaway_Ended + 1;
+               end if;
+            end if;
+         end loop;
+      end Scan;
+
       procedure Roll (From : Integer_64; Metres : Natural;
                       Backwards : Boolean) is
          X : Integer_64 := From;
@@ -6527,6 +6546,7 @@ procedure EVC_Test is
             Sup.Train.Moving_Ahead := not Backwards;
             Sup.Train.Moving_Backwards := Backwards;
             Sup_Cycle;
+            Scan;
          end loop;
       end Roll;
 
@@ -6534,10 +6554,12 @@ procedure EVC_Test is
       begin
          Place (Sup, Integer_64 (Sup.Train.Est_Front), 0);
          Sup_Cycle;
+         Scan;
          Check (Cmd.EB and then Cmd.Ack_Required and then Status_Brake = 2,
                 What & ": at standstill the acknowledgement is asked");
          Input (DMI, Ack);
          Sup_Cycle;
+         Scan;
          Check (Cmd.EB /= Expect_Release,
                 What & ": released after the acknowledgement");
       end Stop_And_Ack;
@@ -6553,7 +6575,13 @@ procedure EVC_Test is
       Check (Cmd.EB and then Cmd.Reasons (BC.Roll_Away)
              and then TIU_Out = 1 + 256 * 4,
              "roll away: beyond 2 m the emergency brake (TIU reason 4)");
+      Check (Runaway_Started = 1 and then Runaway_Ended = 0,
+             "roll away: 3.14.2.6, the driver is shown the protection's "
+             & "brake: 'Runaway movement' (the DMI's entry 9; found by "
+             & "SUBSET-076 4120100_10)");
       Stop_And_Ack (True, "roll away");
+      Check (Runaway_Ended = 1,
+             "roll away: 'Runaway movement' ends with the brake (3.14.1.5)");
       Roll (Integer_64 (Sup.Train.Est_Front), 3, False);
       Check (not Cmd.EB, "roll away: forwards is allowed");
       Input (TIU, (6, 0));
@@ -6563,6 +6591,8 @@ procedure EVC_Test is
       Stop_And_Ack (True, "roll away, neutral");
 
       --  unauthorised direction: an MA ahead, the train moves backwards
+      Runaway_Started := 0;
+      Runaway_Ended := 0;
       S := Base_Snapshot;
       Give_MA (S, 5_000);
       Place (S, 100_000, 0);
@@ -6571,6 +6601,9 @@ procedure EVC_Test is
       Check (Cmd.EB and then Cmd.Reasons (BC.Direction)
              and then not Cmd.Reasons (BC.Roll_Away),
              "direction: a movement against the MA beyond 2 m brakes");
+      Check (Runaway_Started = 1,
+             "direction: 3.14.3.4, 'Runaway movement' while the brake is "
+             & "commanded");
       --  the acknowledgement before standstill does nothing
       Input (DMI, Ack);
       Roll (Integer_64 (Sup.Train.Est_Front), 1, True);
