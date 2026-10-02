@@ -2032,6 +2032,13 @@ package body S076_Run is
                return (Any_Rec (40, 5, Lv) or else not Any_Rec (40, 4, Lv))
                       = Positive;
             end;
+         when Announced =>
+            declare
+               Lv : constant Natural := Level_T'Pos (F.Level);
+            begin
+               return (Any_Rec (40, 2, Lv) or else Any_Rec (40, 5, Lv))
+                      = Positive;
+            end;
          when Trip_Reason =>
             for I in 1 .. F.B3_List.Count loop
                if Any_Rec (23, 1, F.B3_List.List (I)) then

@@ -328,19 +328,23 @@ package body S076_Tables is
          when 4  => return Level (L2);
          --  LE06 / LE07: level 0 announced / its acknowledgement asked;
          --  LE08 / LE09 NTC; LE10 level 1, LE12 level 2 announced
-         when 6  => return (if On then Event (40, 2, Level_T'Pos (L0))
+         when 6  => return (if On then (Kind => Announced, Level => L0,
+                                        others => <>)
                             else None);
          when 7  => return (if On then Event (40, 4, Level_T'Pos (L0))
                             else (Kind => Ack_Not_Asked, Level => L0,
                                   others => <>));
-         when 8  => return (if On then Event (40, 2, Level_T'Pos (NTC))
+         when 8  => return (if On then (Kind => Announced, Level => NTC,
+                                        others => <>)
                             else None);
          when 9  => return (if On then Event (40, 4, Level_T'Pos (NTC))
                             else (Kind => Ack_Not_Asked, Level => NTC,
                                   others => <>));
-         when 10 => return (if On then Event (40, 2, Level_T'Pos (L1))
+         when 10 => return (if On then (Kind => Announced, Level => L1,
+                                        others => <>)
                             else None);
-         when 12 => return (if On then Event (40, 2, Level_T'Pos (L2))
+         when 12 => return (if On then (Kind => Announced, Level => L2,
+                                        others => <>)
                             else None);
          when 14 => return Is_Mode (M_AD);
          when 15 => return Is_Mode (M_SM);

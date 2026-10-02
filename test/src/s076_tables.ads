@@ -85,9 +85,12 @@ package S076_Tables is
       Brakes_Shown,     -- an event 20 with an EB or SB command (Value 1)
                         -- or with none (Value 0)
       Trip_Reason,      -- event 23 kind 1, byte 3 in the list B3_List
-      Ack_Not_Asked);   -- the acknowledgement of level Level is not asked:
+      Ack_Not_Asked,    -- the acknowledgement of level Level is not asked:
                         -- given (event 40 kind 5) or never asked in the
                         -- window (no event 40 kind 4)
+      Announced);       -- the transition to level Level announced without
+                        -- an acknowledgement asked: stored (event 40 kind
+                        -- 2) or acknowledged (kind 5) in the window
 
    type Fact_T is record
       Kind   : Fact_Kind_T := No_Fact;

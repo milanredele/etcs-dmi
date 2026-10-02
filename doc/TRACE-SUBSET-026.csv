@@ -796,11 +796,11 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.14.2.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
 3.14.2.3,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
 3.14.2.4,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
-3.14.2.6,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections"
+3.14.2.6,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections; the system status message ""Runaway movement"" (SS 9) while the protection commands the brake (3.14.2.4, 3.14.3.2), found by SUBSET-076 4120100_10"
 3.14.2.7,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
 3.14.3.1,3,x,,,,,E3,partial,"EVC_Brake_Commands: the direction of the MA, and in SR the train orientation (4.4.11.1.3 e); PT and RV are the procedures half's"
 3.14.3.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"
-3.14.3.4,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections"
+3.14.3.4,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections; the system status message ""Runaway movement"" (SS 9) while the protection commands the brake (3.14.2.4, 3.14.3.2), found by SUBSET-076 4120100_10"
 3.14.3.5,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"
 3.14.3.6,3,x,,,,,E3,deferred,E4: the position ignores the telegrams while EVC_Brake_Commands watches a movement against the authorised direction
 3.15.1.3.1,3,x,,,,,E5,todo,
@@ -923,7 +923,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.5.1.1 b),3,x,,,,,E6,todo,
 3.16.2.5.2,3,x,,,,,E6,todo,
 3.16.2.5.3,3,x,,,,,E6,todo,
-3.16.2.6.1,3,x,,,,,E6,todo,
+3.16.2.6.1,3,x,,,,,E6,todo,"the service brake of the linking reaction already shows ""Balise read error"" (SS 1, EVC_Procedures; evc_test procedures Linking, found by SUBSET-076); the trip case with the consistency of E6"
 3.16.2.6.2,3,x,,,,,E6,todo,
 3.16.2.7.1.1,3,x,,,,,E6,todo,
 3.16.2.7.2.1,3,x,,,,,E6,todo,
@@ -1636,7 +1636,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.10.4.1 b),5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
 5.10.4.1.1,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before)"
 5.10.4.1.2,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before)"
-5.10.4.1.3,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before)"
+5.10.4.1.3,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before); kept only when the area is entered upon the receipt, an area entered later asks again: evc_test E4_Level_Ack_Again, found by SUBSET-076 5100400_09"
 5.10.4.1.4,5,x,,,,,E4,done,"EVC_Levels (Ack_For, the SB exception, the order acknowledged before)"
 5.10.4.2,5,x,,,,,E4,done,"EVC_Levels: the service brake T_ACK after the transition, TIU reason bit 5, MSG_STATUS brake 3, released by the acknowledgement; evc_test E4_Level_Transition_0"
 5.10.4.4,5,x,,,,,E4,done,EVC_Levels.Ack_Needed
