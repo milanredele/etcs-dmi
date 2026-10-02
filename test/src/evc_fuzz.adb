@@ -41,8 +41,20 @@
 --  always valid, the image decoded when it is accepted in No Power, the
 --  previous one otherwise, the position takes its antenna.
 --
+--  Phase E4: the stored information runs in FS, level 1, entered by the
+--  hook (EVC_Core.Set_Mode_For_Test) or by the driver's start of mission
+--  through the DMI port; when random data trip the train or take it out
+--  of FS, an MA mode is entered again after some cycles (the driver's
+--  trip acknowledgement and 'Start' in PT, or the hook), and every 50
+--  cycles the train visits one of TR, PT, SR, SH, OS, RV, UN on purpose.
+--  The summary says how many cycles ran in each mode; the run fails when
+--  the cycles with an MA fall below a tenth of the cycles, or a mode of
+--  the visits ran none (at 5000 steps or more), so that "violations: 0"
+--  keeps saying something about the MA and the supervision.
+--
 --  Usage:  obj/evc_fuzz [steps [seed]]      default 1000000 steps, seed 1
---  Exit status 1 when anything raised or a check was violated.
+--  Exit status 1 when anything raised, a check was violated or the
+--  coverage of the stored information phase was lost.
 
 pragma Ada_2012;
 with Ada.Command_Line;
@@ -70,6 +82,7 @@ with EVC_Limits;
 with EVC_Modes;    use EVC_Modes;
 with EVC_Outbox;
 with EVC_PBD;
+with EVC_Procedures;
 with EVC_Ports;    use EVC_Ports;
 with EVC_Position;
 with EVC_Received;
@@ -960,6 +973,31 @@ procedure EVC_Fuzz is
    E3_Conditions : Natural := 0;
    E3_PBD        : Natural := 0;
    E3_PBD_Check  : Natural := 0;
+   --  Phase E4: the cycles that ran in each mode (the mode at the start
+   --  of the cycle: the one the stored information and the supervision of
+   --  the cycle ran in), the modes FS was left for and the reasons of the
+   --  trips; how often an MA mode was re-established, by the hook
+   --  (EVC_Core.Set_Mode_For_Test) or by the driver through the DMI port
+   --  (the start of mission, the trip acknowledgement and 'Start' in PT),
+   --  and the visits to the other modes on purpose
+   type Mode_Counts_T is array (Mode_T) of Natural;
+   E3_In_Mode    : Mode_Counts_T := (others => 0);
+   E3_FS_Exits   : Mode_Counts_T := (others => 0);
+   E3_Prev_Mode  : Mode_T := M_NP;
+   type Reason_Counts_T is array (EVC_Procedures.Trip_Reason_T) of Natural;
+   E3_Trips      : Reason_Counts_T := (others => 0);
+   E3_By_Hook    : Natural := 0;
+   E3_By_Driver  : Natural := 0;
+   E3_Visits     : Natural := 0;
+
+   --  The modes the phase visits on purpose (besides FS, where the MA is
+   --  supervised), and the floor of the cycles with an MA: the phase fails
+   --  below it, or when one of these modes ran no cycle, at 5000 steps or
+   --  more (the share of the cycles with an MA is about a third; the floor
+   --  is a tenth of the cycles, see doc/EVC-PLAN.md §12)
+   Visited : constant array (1 .. 7) of Mode_T :=
+     (M_TR, M_PT, M_SR, M_SH, M_OS, M_RV, M_UN);
+   MA_Floor_Percent : constant := 10;
 
    --  A plausible SSP, gradient profile and MA, so that MAs are accepted
    --  and their timers run, and now and then a plausible packet 52
@@ -970,9 +1008,15 @@ procedure EVC_Fuzz is
       B  : ETCS_Track_Packets.P52.Packet_T;
       OK : Boolean;
    begin
-      S.Q_DIR := ETCS_Variables.Q_DIR_T (Pick (0, 2));
+      --  mostly the nominal direction, as the train passes the groups
+      S.Q_DIR := ETCS_Variables.Q_DIR_T
+        (if Chance (80) then 1 else Pick (0, 2));
       S.Q_SCALE := 1;
-      S.D_STATIC := ETCS_Variables.D_STATIC_T (Pick (0, 50));
+      --  4.6.3 [69] trips a train whose front end is in rear of the
+      --  start of the SSP or the gradients (phase E4): mostly from the
+      --  group, as a trackside gives them
+      S.D_STATIC := ETCS_Variables.D_STATIC_T
+        (if Chance (80) then 0 else Pick (0, 50));
       S.V_STATIC := ETCS_Variables.V_STATIC_T (Pick (4, 40));
       S.Q_FRONT := ETCS_Variables.Q_FRONT_T (Pick (0, 1));
       S.N_ITER_2 := ETCS_Variables.N_ITER_T (Pick (0, 3));
@@ -987,7 +1031,8 @@ procedure EVC_Fuzz is
       ETCS_Track_Packets.P27.Encode (S, W, OK);
       G.Q_DIR := S.Q_DIR;
       G.Q_SCALE := 1;
-      G.D_GRADIENT := ETCS_Variables.D_GRADIENT_T (Pick (0, 50));
+      G.D_GRADIENT := ETCS_Variables.D_GRADIENT_T
+        (if Chance (80) then 0 else Pick (0, 50));
       G.Q_GDIR := ETCS_Variables.Q_GDIR_T (Pick (0, 1));
       G.G_A := ETCS_Variables.G_A_T (Pick (0, 30));
       ETCS_Track_Packets.P21.Encode (G, W, OK);
@@ -1109,7 +1154,9 @@ procedure EVC_Fuzz is
       begin
          ETCS_Bits.Clear (W);
          ETCS_Telegram.Write_Header (W, H);
-         if Chance (40) then
+         --  phase E4: more often, as the trips of the random data take
+         --  the MA away (an MA mode is entered again, Reestablish)
+         if Chance (70) then
             Plausible (W);
          end if;
          for I in 1 .. Pick (0, 3) loop
@@ -1209,74 +1256,221 @@ procedure EVC_Fuzz is
          if S.MA.Present then
             E3_MAs := E3_MAs + 1;
          end if;
+         declare
+            M : constant Mode_T := EVC_Core.Mode;
+         begin
+            if E3_Prev_Mode = M_FS and then M /= M_FS then
+               E3_FS_Exits (M) := E3_FS_Exits (M) + 1;
+            end if;
+            --  (a trip without a reason is a visit by the hook)
+            if M = M_TR and then E3_Prev_Mode /= M_TR
+              and then EVC_Procedures."/="
+                         (EVC_Procedures.Trip_Reason, EVC_Procedures.No_Trip)
+            then
+               E3_Trips (EVC_Procedures.Trip_Reason) :=
+                 E3_Trips (EVC_Procedures.Trip_Reason) + 1;
+            end if;
+            E3_Prev_Mode := M;
+         end;
       end Check_Snapshot;
+
+      --  One cycle of 100 ms in which the train moves by Move cm: the
+      --  groups passed, the odometer sample, the cycle, its outputs and
+      --  the checks
+      procedure One_Cycle (Move : Unsigned_32; Step : Natural) is
+      begin
+         --  the groups passed in the move
+         while Move > 0 and then Next_BG - Odo_D <= Move loop
+            Id := (Id + 1) mod 16_000;
+            declare
+               Total : constant Natural := Pick (0, 1);
+            begin
+               for B in 0 .. Total loop
+                  Balise (B, Total, Next_BG + Unsigned_32 (B * 300));
+               end loop;
+            end;
+            E3_Messages := E3_Messages + 1;
+            Next_BG := Next_BG + Unsigned_32 (Pick (5_000, 60_000));
+         end loop;
+         Odo_D := Odo_D + Move;
+         Over := Over + Move / 50;
+         Under := Under + Move / 50;
+         Odometer_Sample (Move > 0);
+         E3_In_Mode (EVC_Core.Mode) := E3_In_Mode (EVC_Core.Mode) + 1;
+         EVC_Core.Tick (100);
+         EVC_Core.Take_Outputs (Out_B, O_Last);
+         if not Whole_Records (Out_B (1 .. O_Last)) then
+            Violation ("E3: not whole records", Step);
+         end if;
+         --  MSG_PLANNING and MSG_TRACK_COND seen
+         declare
+            Pos : Natural := 1;
+         begin
+            while Pos + 3 <= O_Last loop
+               if Out_B (Pos) = Byte (Port_T'Pos (DMI))
+                 and then Out_B (Pos + 3) = EVC_DMI_Port.MSG_PLANNING
+               then
+                  E3_Plannings := E3_Plannings + 1;
+               elsif Out_B (Pos) = Byte (Port_T'Pos (DMI))
+                 and then Out_B (Pos + 3) = EVC_DMI_Port.MSG_TRACK_COND
+               then
+                  E3_Conditions := E3_Conditions + 1;
+               end if;
+               Pos := Pos + EVC_Outbox.Record_Header
+                      + Natural (Out_B (Pos + 1))
+                      + 256 * Natural (Out_B (Pos + 2));
+            end loop;
+         end;
+         Check_Snapshot (Step);
+         --  the supervision on the snapshot of the stored information
+         Check_Supervision (Step);
+      end One_Cycle;
+
+      --  A frame of the DMI to the on-board (type, length u32, payload)
+      procedure DMI_Frame (Kind : Natural; Payload : Byte_Array) is
+      begin
+         Last := 0;
+         Add (Kind);
+         Add_U32 (Unsigned_32 (Payload'Length));
+         for B of Payload loop
+            Add (Natural (B));
+         end loop;
+         EVC_Core.Handle_Input (DMI, Buffer (1 .. Last));
+      end DMI_Frame;
+
+      --  The driver's acknowledgement of a mode (MSG_DRIVER_ACTION 2,
+      --  kind 1), an action with its argument
+      procedure Ack_Mode is
+      begin
+         DMI_Frame (16#40#, (2, 1, 0, 0, 0));
+      end Ack_Mode;
+      procedure Action (Code : Byte; Arg : Byte := 0) is
+      begin
+         DMI_Frame (16#40#, (Code, Arg, 0));
+      end Action;
+
+      --  The start of mission of level 1 by the driver, at standstill in
+      --  SB (5.4.3.2: driver ID, level 1, Train Data, train running
+      --  number, 'Start', the acknowledgement of SR), a cycle each
+      procedure Driver_Start (Step : Natural) is
+      begin
+         DMI_Frame (16#41#, (0, 4, 49, 50, 51, 52));
+         One_Cycle (0, Step);
+         Action (11, 4);
+         One_Cycle (0, Step);
+         DMI_Frame (16#41#, (2, 200, 0, 135, 0, 160, 0, 2, 4, 0, 0, 0, 1));
+         One_Cycle (0, Step);
+         DMI_Frame (16#41#, (1, 4, 53, 54, 55, 56));
+         One_Cycle (0, Step);
+         Action (5);
+         One_Cycle (0, Step);
+         Ack_Mode;
+         One_Cycle (0, Step);
+      end Driver_Start;
+
+      --  An MA mode again after the train left it: by the driver where
+      --  the procedures allow it (TR: stop, acknowledge the trip, PT:
+      --  'Start' and the acknowledgement of SR, 5.11.2.2; SB: the start of
+      --  mission), half of the time, else by the hook (FS, level 1)
+      procedure Reestablish (Step : Natural) is
+         Before : constant Natural := E3_By_Driver;
+      begin
+         if Chance (50) then
+            if EVC_Core.Mode = M_TR then
+               One_Cycle (0, Step);
+               One_Cycle (0, Step);
+               Ack_Mode;
+               One_Cycle (0, Step);
+            end if;
+            if EVC_Core.Mode = M_PT then
+               Action (5);
+               One_Cycle (0, Step);
+               Ack_Mode;
+               One_Cycle (0, Step);
+            elsif EVC_Core.Mode = M_SB then
+               Driver_Start (Step);
+            end if;
+            if EVC_Core.Mode in M_SR | M_FS then
+               E3_By_Driver := E3_By_Driver + 1;
+            end if;
+         end if;
+         if E3_By_Driver = Before then
+            EVC_Core.Set_Mode_For_Test (M_FS, L1);
+            E3_By_Hook := E3_By_Hook + 1;
+         end if;
+         --  a group soon, for an MA
+         Next_BG := Odo_D + Unsigned_32 (Pick (500, 5_000));
+      end Reestablish;
+
+      --  The modes where an MA is accepted and supervised, or comes with
+      --  the next group (SR: 4.6.3 [32])
+      function MA_Mode return Boolean is
+        (EVC_Core.Mode in M_FS | M_OS | M_LS | M_SR);
+
+      Next_Visit : Positive := 1;
    begin
       for Run in 1 .. Runs loop
          begin
             EVC_Core.Initialise;
             EVC_Core.Handle_Input (TIU, (1, 1));
-            --  phase E4: the stored information in FS, level 1, with the
-            --  default train (as evc_test runs the scenarios of E3)
-            EVC_Core.Set_Mode_For_Test (M_FS, L1);
             Odo_D := Next;
             Over := 0;
             Under := 0;
             Next_BG := Odo_D + Unsigned_32 (Pick (1_000, 30_000));
-            for Step in 1 .. Pick (50, 400) loop
-               declare
-                  Move : constant Unsigned_32 :=
-                    (if Chance (10) then 0
-                     else Unsigned_32 (Pick (100, 3_000)));
-               begin
-                  --  the groups passed in the move
-                  while Move > 0 and then Next_BG - Odo_D <= Move loop
-                     Id := (Id + 1) mod 16_000;
-                     declare
-                        Total : constant Natural := Pick (0, 1);
-                     begin
-                        for B in 0 .. Total loop
-                           Balise (B, Total, Next_BG + Unsigned_32 (B * 300));
-                        end loop;
-                     end;
-                     E3_Messages := E3_Messages + 1;
-                     Next_BG := Next_BG + Unsigned_32 (Pick (5_000, 60_000));
-                  end loop;
-                  Odo_D := Odo_D + Move;
-                  Over := Over + Move / 50;
-                  Under := Under + Move / 50;
-                  Odometer_Sample (Move > 0);
-                  EVC_Core.Tick (100);
-                  EVC_Core.Take_Outputs (Out_B, O_Last);
-                  if not Whole_Records (Out_B (1 .. O_Last)) then
-                     Violation ("E3: not whole records", Step);
+            --  phase E4: the stored information in FS, level 1, with the
+            --  default train (as evc_test runs the scenarios of E3), or in
+            --  every other run after the driver's start of mission (SR,
+            --  then FS at the first MA)
+            if Run mod 2 = 0 then
+               EVC_Core.Set_Mode_For_Test (M_FS, L1);
+               E3_By_Hook := E3_By_Hook + 1;
+            else
+               One_Cycle (0, 0);
+               Driver_Start (0);
+               E3_By_Driver := E3_By_Driver + 1;
+            end if;
+            declare
+               --  the first run is long enough to visit every mode of
+               --  Visited (a visit every 50 cycles)
+               Length   : constant Natural :=
+                 (if Run = 1 then 400 else Pick (50, 400));
+               Away     : Natural := 0;
+               Patience : Natural := Pick (1, 8);
+               Visiting : Natural := 0;
+            begin
+               for Step in 1 .. Length loop
+                  --  a visit to another mode on purpose, in turn
+                  if Step mod 50 = 25 then
+                     EVC_Core.Set_Mode_For_Test
+                       (Visited (Next_Visit),
+                        (if Visited (Next_Visit) = M_UN then L0 else L1));
+                     Next_Visit := Next_Visit mod Visited'Last + 1;
+                     Visiting := Pick (3, 10);
+                     E3_Visits := E3_Visits + 1;
                   end if;
-                  --  MSG_PLANNING and MSG_TRACK_COND seen
-                  declare
-                     Pos : Natural := 1;
-                  begin
-                     while Pos + 3 <= O_Last loop
-                        if Out_B (Pos) = Byte (Port_T'Pos (DMI))
-                          and then Out_B (Pos + 3)
-                                     = EVC_DMI_Port.MSG_PLANNING
-                        then
-                           E3_Plannings := E3_Plannings + 1;
-                        elsif Out_B (Pos) = Byte (Port_T'Pos (DMI))
-                          and then Out_B (Pos + 3)
-                                     = EVC_DMI_Port.MSG_TRACK_COND
-                        then
-                           E3_Conditions := E3_Conditions + 1;
-                        end if;
-                        Pos := Pos + EVC_Outbox.Record_Header
-                               + Natural (Out_B (Pos + 1))
-                               + 256 * Natural (Out_B (Pos + 2));
-                     end loop;
-                  end;
-                  Check_Snapshot (Step);
-                  --  the supervision on the snapshot of the stored
-                  --  information
-                  Check_Supervision (Step);
-               end;
-            end loop;
+                  One_Cycle ((if Chance (10) then 0
+                              else Unsigned_32 (Pick (100, 3_000))),
+                             Step);
+                  if Visiting > 0 then
+                     Visiting := Visiting - 1;
+                     if Visiting = 0 then
+                        Reestablish (Step);
+                        Away := 0;
+                     end if;
+                  elsif MA_Mode then
+                     Away := 0;
+                  else
+                     --  left: some cycles in the mode it went to, then an
+                     --  MA mode again
+                     Away := Away + 1;
+                     if Away > Patience then
+                        Reestablish (Step);
+                        Away := 0;
+                        Patience := Pick (1, 8);
+                     end if;
+                  end if;
+               end loop;
+            end;
          exception
             when E : others =>
                Report ("E3 stored information", E, Run);
@@ -1287,6 +1481,8 @@ procedure EVC_Fuzz is
 
    Steps : Natural := 1_000_000;
    Port  : Port_T := BTM;
+   --  the stored information phase did not reach its states
+   Coverage_Lost : Boolean := False;
 
    ---------------------------------------------------------------------
    --  The installation configuration (EVC_Config, EVC_Core.Configure):
@@ -1673,7 +1869,10 @@ begin
              & "  raised:" & Natural'Image (Raised));
 
    --  E3 (profiles)
-   E3_Phase (Steps / 5_000);
+   --  a run per 5000 steps, at least five from 5000 steps on (the floor
+   --  of the cycles with an MA is checked over them: one run alone
+   --  varies too much)
+   E3_Phase (Natural'Max (Steps / 5_000, (if Steps >= 5_000 then 5 else 0)));
    Put_Line ("stored information: cycles:" & Natural'Image (E3_Cycles)
              & "  group messages:" & Natural'Image (E3_Messages)
              & "  cycles with an MA:" & Natural'Image (E3_MAs)
@@ -1683,7 +1882,55 @@ begin
              & " (checked:" & Natural'Image (E3_PBD_Check) & ")"
              & "  violations:" & Natural'Image (Violations)
              & "  raised:" & Natural'Image (Raised));
+   Put ("stored information, cycles by mode:");
+   for M in Mode_T loop
+      if E3_In_Mode (M) > 0 then
+         Put (" " & Mode_T'Image (M) (3 .. Mode_T'Image (M)'Last)
+              & Natural'Image (E3_In_Mode (M)));
+      end if;
+   end loop;
+   Put ("  FS left for:");
+   for M in Mode_T loop
+      if E3_FS_Exits (M) > 0 then
+         Put (" " & Mode_T'Image (M) (3 .. Mode_T'Image (M)'Last)
+              & Natural'Image (E3_FS_Exits (M)));
+      end if;
+   end loop;
+   Put ("  trips:");
+   for R in EVC_Procedures.Trip_Reason_T loop
+      if E3_Trips (R) > 0 then
+         Put (" " & EVC_Procedures.Trip_Reason_T'Image (R)
+              & Natural'Image (E3_Trips (R)));
+      end if;
+   end loop;
+   Put_Line ("  MA mode again by the hook:" & Natural'Image (E3_By_Hook)
+             & ", by the driver:" & Natural'Image (E3_By_Driver)
+             & "  visits:" & Natural'Image (E3_Visits));
+
+   --  the coverage of the stored information phase (at 5000 steps or
+   --  more: one run of it at least)
+   if Steps >= 5_000 then
+      declare
+         Floor : constant Natural := E3_Cycles * MA_Floor_Percent / 100;
+      begin
+         if E3_MAs < Floor then
+            Coverage_Lost := True;
+            Put_Line ("coverage lost: cycles with an MA"
+                      & Natural'Image (E3_MAs) & " below the floor of"
+                      & Natural'Image (MA_Floor_Percent) & "% of"
+                      & Natural'Image (E3_Cycles) & " cycles");
+         end if;
+         for M of Visited loop
+            if E3_In_Mode (M) = 0 then
+               Coverage_Lost := True;
+               Put_Line ("coverage lost: no cycle in mode "
+                         & Mode_T'Image (M));
+            end if;
+         end loop;
+      end;
+   end if;
    Ada.Command_Line.Set_Exit_Status
-     (if Raised = 0 and then Violations = 0 then Ada.Command_Line.Success
+     (if Raised = 0 and then Violations = 0 and then not Coverage_Lost
+      then Ada.Command_Line.Success
       else Ada.Command_Line.Failure);
 end EVC_Fuzz;

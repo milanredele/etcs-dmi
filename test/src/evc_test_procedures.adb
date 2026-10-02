@@ -17,8 +17,6 @@ package body EVC_Test_Procedures is
    package ST renames Sim_Telegrams;
    use type EVC_Bytes.Byte_Array;
 
-   function Img (N : Integer) return String is (Integer'Image (N));
-
    ---------------------------------------------------------------------
    --  What the on-board said
    ---------------------------------------------------------------------
@@ -953,6 +951,7 @@ package body EVC_Test_Procedures is
       Check (Mode_Byte = Code_SB, "4.6.3 [28]: FS to SB, the desk closed");
 
       Begin_Scenario (M_SM, L2);
+      Check (Mode_Byte = Code_SM, "5.21: Supervised Manoeuvre (set)");
       Driver (17, 2);
       Cycle;
       Check (Mode_Byte = Code_SB,
