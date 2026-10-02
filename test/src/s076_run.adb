@@ -1231,6 +1231,45 @@ package body S076_Run is
       if Found = 0 then
          return NJ (R_Extractor, "BTM: no telegram for " & W (4));
       end if;
+      --  a balise of the step's group marked down-link (Q_UPDOWN 0, which
+      --  no balise sends to a train: 7.4.1.1): outside the tests of the
+      --  balise group consistency (feature 3.16), where a telegram may be
+      --  wrong on purpose, a defect of SUBSET-076
+      if Image (Seq.Feature)'Length < 3
+        or else Image (Seq.Feature) (1 .. 3) /= "316"
+      then
+         for I in 1 .. Seq.Telegram_Count loop
+            if Seq.Telegrams (I).Step = St.Number
+              and then Seq.Telegrams (I).Has_Bits
+              and then not Seq.Telegrams (I).Loop_Tag
+              and then Field (Seq.Telegrams (I), 0, 1) = 0
+            then
+               return NJ (R_S076_Defect,
+                          "BTM: a balise of the group marked down-link "
+                          & "(Q_UPDOWN 0)");
+            end if;
+         end loop;
+         --  two balises of the step's group with the same N_PIG
+         for I in 1 .. Seq.Telegram_Count loop
+            for J in I + 1 .. Seq.Telegram_Count loop
+               declare
+                  A : Telegram_T renames Seq.Telegrams (I);
+                  C : Telegram_T renames Seq.Telegrams (J);
+               begin
+                  if A.Step = St.Number and then C.Step = St.Number
+                    and then A.Has_Bits and then C.Has_Bits
+                    and then not A.Loop_Tag and then not C.Loop_Tag
+                    and then NID_BG (A) = NID_BG (C)
+                    and then N_PIG (A) = N_PIG (C)
+                  then
+                     return NJ (R_S076_Defect,
+                                "BTM: two balises of the group with N_PIG"
+                                & Natural'Image (N_PIG (A)));
+                  end if;
+               end;
+            end loop;
+         end loop;
+      end if;
       --  the balises of one group (N_TOTAL alike, N_PIG different) that
       --  carry different identities: a defect of SUBSET-076 (the tables
       --  of the second balise of a group copied with another NID_BG)
