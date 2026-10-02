@@ -1192,3 +1192,78 @@ driver's actions of the procedures offered (override, shunting, exit of
 shunting, maintain shunting, BMM inhibition), the JRU events 23, 24, 40,
 41 described (Sim_JRU now names them), the second TIU output (5.20)
 shown.
+
+**SUBSET-076 runner** (branch `e4/s076-runner`, 2026-10-02):
+`obj/evc_s076_run` replays the SUBSET-076 sequences of the sibling
+checkout (3190 sequences of SV21, SV22, SV30; 276 000 steps) against
+the whole on-board through its ports, with `DMI_Core` in the loop so
+that the driver's inputs are touches on the real windows (no Render).
+`S076_Sequences` parses a `.scn` (steps with their state columns,
+telegrams with their tags and bits, the national timers, the speed
+chart, the ERA workbook's train); `S076_Bench` is the world: a train
+following the chart (or the step's speed) cycle by cycle at 100 ms,
+balises placed at the step distance and crossed by the antenna, the
+odometer sample with its confidence interval, the TIU inputs, and what
+the on-board sends (the DMI frames, the two TIU outputs, the JRU
+records), folded into a window per step; `S076_Run` maps each step: an
+input is applied (BTM, ODO reach points and speeds against the
+supervision limits and the national values of the sequence, TIU cab,
+direction, sleeping, train data, SIM power, fault, odometer
+degradation, INT timers, DMI touches), an output is judged against the
+state, the window or the JRU (`S076_Tables`: JRU M_DRIVERACTIONS 21 of
+56, DMI_SYMB_STATUS 36 of 110 bits, SYSTEM_STATUS_MESSAGE 13 of 31
+bits, 12 whole JRU messages plus 3, 4, 11, 12, 20, 21, 23, 43 and ALL
+by their fields), and the mode and level columns are checked against
+the states the step's reaction block names. A step ends passed, failed
+or not judged with one of fourteen reasons (never counted as passed); a
+sequence passed, failed at step N, or blocked at step N by a reason.
+The baseline (`test/s076/baseline.csv`) turns any earlier stop into a
+failing run; `test/s076/triage.csv` gives every first failure a
+category; `test/check.sh` runs it (30 s for the corpus).
+
+Outcome: 468 passed, 808 failed, 1914 blocked; steps 133 714 passed,
+5 501 failed (4 693 of them after the first failure of their
+sequence), 16 034 not judged, 121 089 not run. Per version (passed /
+failed / blocked): SV21 153 / 266 / 590, SV22 153 / 268 / 616, SV30
+162 / 274 / 708. Blocked: 1214 need level 2/3 or the RBC (E5), 203
+unreadable telegrams or steps in the sibling, 135 another system
+version (E7), 72 SUBSET-076 defects, 67 runner gaps (the modification
+of the maximum speed and of the SR data, the language, V_STEP speeds),
+63 Euroloop, 60 NTC, 44 ATO, 27 E6. Not judged steps: 9920 JRU
+messages or fields we do not record (38 cab status, 45 track
+conditions, 51 remote shunting, the V_* fields of 20, NID_SOLR of the
+header, ...), 3192 DMI internals (data values, echo texts, the time),
+1639 E5. The failed sequences by the triage of their first failure:
+371 braking curves (the ERA workbook's train, 750 m freight trains: our
+supervision limits sit metres to tens of metres from the ERA tool's at
+the sequence's locations, and the chart speed is a drawing; no
+pre-programmed braking models, E6), 156 the runner's model (the chart
+drives the train past a location before the step), 95 on-board gaps
+still open (4.11 nothing kept over NP; 3.12.2.3 route suitability;
+4.4.19.1.4 the LSSMA display; 4.8.5 the transition buffer; JRU driver
+actions), 82 E6 (balise consistency 3.16.2.4 and 3.16.2.7, the
+driver's adhesion 3.18.4.6), 41 SUBSET-076 (override at speed with the
+default V_NVALLOWOVTRP 0, the override restarting the SR distance,
+M_MODE 21, IS kept over a power off, the inputs of an inserted case
+missing), 34 E5, 23 our DMI (the Main window from the start-up Driver
+ID window, buttons enabled in a state), 3 E7, 3 NTC.
+
+On-board defects found and fixed: the linking reaction's service brake
+without "Balise read error" (3.16.2.6.1, SS 1, procedures Linking); the
+roll away and reverse movement protections without "Runaway movement"
+(3.14.2.6, 3.14.3.4, SS 9, SDM_Protections); a new announcement to an
+acknowledged level kept the acknowledgement when its area was entered
+later (5.10.4.1.3, E4_Level_Ack_Again). SUBSET-076 and extraction
+defects met: M_LEVELTEXTDISPLAY 5 (the coding before 4.0.0) in 33 SV30
+sequences, orders to level 3 in SV30, balise groups with a second
+NID_BG, Q_UPDOWN 0 or a repeated N_PIG, the 4-bit M_MODE in SV30
+5180200_03, telegram tables and header rows lost by the extractor. And
+`evc_s076_check` had checked 1024 of the 3190 files
+(`Scn_Reader.Max_Files`, now 4096): with all of them 23 451 telegrams
+and 18 706 messages, 0 failures, the SV21 and SV22 envelope widths
+counted as rejections.
+
+Next: the 371 curve failures need the ERA tool's numbers for the
+workbook train (or the pre-programmed models, E6); recording JRU 38,
+45, 51 and the fields of 20, and a queryable DMI data view, would turn
+13 000 not judged steps into judged ones; E5 unblocks 1214 sequences.
