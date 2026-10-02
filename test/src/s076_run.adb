@@ -592,8 +592,18 @@ package body S076_Run is
          if not Top_Is (W_Driver_ID) and then not Top_Is (W_TRN)
            and then not Top_Is (W_Level)
          then
-            return Fail ("DMI confirm " & Item & ": no entry window, top is "
-                         & Top_Image);
+            --  the window of the item, from the Main window
+            declare
+               J : constant Judgement_T :=
+                 Press_Menu (W_Main,
+                             (if Same (Item, "Driver-ID") then 2
+                              elsif Same (Item, "Level") then 5 else 6),
+                             Item);
+            begin
+               if J.Verdict = Failed then
+                  return J;
+               end if;
+            end;
          end if;
          Enter_Single;
          return Pass ("DMI " & Item & " confirmed");
@@ -2529,6 +2539,19 @@ package body S076_Run is
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);
       end loop;
+      --  a sequence that starts with the on-board in a mode other than No
+      --  Power starts powered (its first step is not "powered up")
+      for I in 1 .. Seq.Step_Count loop
+         if Seq.Steps (I).Well_Formed then
+            if Trim (Seq.Steps (I).Mode_Before) /= "NP"
+              and then Trim (Seq.Steps (I).Mode_Before) /= "N/A"
+            then
+               B.Power_On;
+               B.Run (Settle_Cycles * B.Cycle_Ms);
+            end if;
+            exit;
+         end if;
+      end loop;
 
       for I in 1 .. Seq.Step_Count loop
          Cur := I;
@@ -2583,7 +2606,15 @@ package body S076_Run is
                      Hold_Speed := W (2) = "ODO"
                        and then Same (W (3), "reach-point");
                      J := Apply_Input (St);
-                     if J.Verdict = Not_Judged then
+                     if J.Verdict = Failed
+                       and then (Starts (Image (St.Comment), "Optional step")
+                                 or else Has (Image (St.Comment),
+                                              "Optional step"))
+                     then
+                        --  an optional input the driver cannot make here:
+                        --  the sequence's other alternative
+                        Record_Result (I, NJ (R_Optional, Image (J.Sig)));
+                     elsif J.Verdict = Not_Judged then
                         Record_Result (I, J);
                         Block (I, J);
                      else
