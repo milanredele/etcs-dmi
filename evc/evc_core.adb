@@ -481,30 +481,21 @@ is
       end if;
    end Report_Configuration;
 
-   --  1. Read the ports: take the inputs latched since the last cycle,
-   --  parse the telegrams and radio messages (EVC_Received) and record
-   --  those accepted on the JRU port; hand the telegrams accepted, with
-   --  the stamp of their balise, to the position
-   procedure Read_Ports
-     with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
-                                Latched_RTM, Cycle_Count, Clock_Ms,
-                                EVC_Odometry.State, Latched_TIU_Value,
-                                Latched_TIU_Known),
-                     Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
-                                TIU_Value_Now,
-                                TIU_Known_Now, Brake_Ack_Now,
-                                EVC_Train_Inputs.State),
-                     In_Out => (Latched_Odometer_Fresh,
-                                Latched_Brake_Ack,
-                                Latched_BTM_Count,
-                                Latched_RTM_Count, EVC_Received.Store,
+   --  1a. The telegrams latched since the last cycle, in the order the
+   --  BTM delivered them: parsed (EVC_Received, chapter 7, 8), those
+   --  accepted recorded on the JRU port (event 2, the balise group,
+   --  NID_C and NID_BG) and handed, with the stamp of their balise, to
+   --  the position (EVC_Position, 3.6, which takes them at its next
+   --  Update: the reference and the confidence interval do not change
+   --  here); 3.17.3.5, 4.6.3 [65]: a telegram of a system version not
+   --  supported noted for the procedures
+   procedure Read_Telegrams
+     with Global => (Input  => (Latched_BTM, Cycle_Count, Clock_Ms,
+                                EVC_Odometry.State),
+                     In_Out => (Latched_BTM_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Position.State,
-                                EVC_Driver_Requests.State,
-                                EVC_Levels.State, EVC_Procedures.State)),
-          Post => EVC_Driver_Requests.Isolation_Selected
-                    = EVC_Driver_Requests.Isolation_Latched'Old
-                  and then not EVC_Driver_Requests.Isolation_Latched
-                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                                EVC_Procedures.State)),
+          Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
                   and then EVC_Position.Doubt_Over
@@ -513,7 +504,6 @@ is
                              = EVC_Position.Doubt_Under'Old
    is
       T_Status : ETCS_Telegram.Status_T;
-      M_Status : ETCS_Message.Status_T;
       --  what the telegrams do not change (the position takes them at
       --  its next Update)
       LRBG_0        : constant EVC_Location.Anchor_T := EVC_Position.LRBG
@@ -528,26 +518,6 @@ is
         EVC_Position.Doubt_Under
         with Ghost;
    begin
-      Odometer_Now := Latched_Odometer;
-      Odometer_Fresh := Latched_Odometer_Fresh;
-      Latched_Odometer_Fresh := False;
-      TIU_Now := Latched_TIU;
-      TIU_Value_Now := Latched_TIU_Value;
-      TIU_Known_Now := Latched_TIU_Known;
-      Brake_Ack_Now := Latched_Brake_Ack;
-      Latched_Brake_Ack := False;
-      --  phase E4: the driver's requests and the inputs of the train
-      --  interface of the cycle; nothing switched the level yet
-      EVC_Driver_Requests.Take;
-      EVC_Train_Inputs.Set
-        (Cab_A            => TIU_Now (Cab_A_Active),
-         Cab_B            => TIU_Now (Cab_B_Active),
-         Sleeping         => TIU_Now (Sleeping_Requested),
-         Passive_Shunting => TIU_Now (Passive_Shunting_Permitted),
-         Non_Leading      => TIU_Now (Non_Leading_Permitted));
-      EVC_Levels.Begin_Cycle;
-
-      --  the telegrams in the order the BTM delivered them
       for I in 1 .. Latched_BTM_Count loop
          pragma Loop_Invariant
            (EVC_Position.LRBG = LRBG_0
@@ -592,8 +562,18 @@ is
          end;
       end loop;
       Latched_BTM_Count := 0;
+   end Read_Telegrams;
 
-      --  the radio messages in the order the RTM delivered them
+   --  1b. The radio messages latched since the last cycle, in the order
+   --  the RTM delivered them: parsed (EVC_Received, chapter 8), those
+   --  accepted recorded on the JRU port (event 3: NID_MESSAGE, L_MESSAGE)
+   procedure Read_Radio_Messages
+     with Global => (Input  => (Latched_RTM, Cycle_Count, Clock_Ms),
+                     In_Out => (Latched_RTM_Count, EVC_Received.Store,
+                                EVC_Outbox.Queue))
+   is
+      M_Status : ETCS_Message.Status_T;
+   begin
       for I in 1 .. Latched_RTM_Count loop
          declare
             Slot : RTM_Slot_T renames Latched_RTM (I);
@@ -613,6 +593,60 @@ is
          end;
       end loop;
       Latched_RTM_Count := 0;
+   end Read_Radio_Messages;
+
+   --  1. Read the ports: take the inputs latched since the last cycle,
+   --  parse the telegrams and radio messages (EVC_Received) and record
+   --  those accepted on the JRU port; hand the telegrams accepted, with
+   --  the stamp of their balise, to the position
+   procedure Read_Ports
+     with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
+                                Latched_RTM, Cycle_Count, Clock_Ms,
+                                EVC_Odometry.State, Latched_TIU_Value,
+                                Latched_TIU_Known),
+                     Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
+                                TIU_Value_Now,
+                                TIU_Known_Now, Brake_Ack_Now,
+                                EVC_Train_Inputs.State),
+                     In_Out => (Latched_Odometer_Fresh,
+                                Latched_Brake_Ack,
+                                Latched_BTM_Count,
+                                Latched_RTM_Count, EVC_Received.Store,
+                                EVC_Outbox.Queue, EVC_Position.State,
+                                EVC_Driver_Requests.State,
+                                EVC_Levels.State, EVC_Procedures.State)),
+          Post => EVC_Driver_Requests.Isolation_Selected
+                    = EVC_Driver_Requests.Isolation_Latched'Old
+                  and then not EVC_Driver_Requests.Isolation_Latched
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Orientation
+                             = EVC_Position.Orientation'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+   begin
+      Odometer_Now := Latched_Odometer;
+      Odometer_Fresh := Latched_Odometer_Fresh;
+      Latched_Odometer_Fresh := False;
+      TIU_Now := Latched_TIU;
+      TIU_Value_Now := Latched_TIU_Value;
+      TIU_Known_Now := Latched_TIU_Known;
+      Brake_Ack_Now := Latched_Brake_Ack;
+      Latched_Brake_Ack := False;
+      --  phase E4: the driver's requests and the inputs of the train
+      --  interface of the cycle; nothing switched the level yet
+      EVC_Driver_Requests.Take;
+      EVC_Train_Inputs.Set
+        (Cab_A            => TIU_Now (Cab_A_Active),
+         Cab_B            => TIU_Now (Cab_B_Active),
+         Sleeping         => TIU_Now (Sleeping_Requested),
+         Passive_Shunting => TIU_Now (Passive_Shunting_Permitted),
+         Non_Leading      => TIU_Now (Non_Leading_Permitted));
+      EVC_Levels.Begin_Cycle;
+      Read_Telegrams;
+      Read_Radio_Messages;
    end Read_Ports;
 
    --  4.8 (phase E4): the context of the filters in the cycle, for the
@@ -1314,40 +1348,21 @@ is
    JRU_Levels  : constant := EVC_Ports.JRU_Levels;
    JRU_Mission : constant := EVC_Ports.JRU_Mission;
 
-   --  8. Produce the outputs of the cycle
-   procedure Produce_Outputs
+   ---------------------------------------------------------------------
+   --  8. The outputs of the cycle (Produce_Outputs), in the order they
+   --  are sent: the order of the records within a cycle is part of the
+   --  goldens
+   ---------------------------------------------------------------------
+
+   --  8a. JRU: the mode changed since the last report (event 1); the
+   --  events of the levels (5.10, event 40) and of the mission (5.4,
+   --  5.5, event 41) of the cycle (phase E4)
+   procedure Record_Mode_Levels_Mission
      with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
-                                Standstill, Below_Override, TIU_Now,
-                                EVC_National_Values.State,
-                                EVC_Position.State,
-                                SDM_Result, Brake_Output, Speed_State,
-                                EVC_Levels.State, EVC_Mission.State,
-                                EVC_Train_Data.State,
-                                EVC_Stored_Information.State,
-                                EVC_Procedures.State,
-                                EVC_Text_Messages.State),
-                     In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
-                                Status_Brake_Sent, Status_TTI_Sent,
-                                TIU_Sent, TIU_Reasons_Sent,
-                                Supervision_Reported, Overrun_Reported,
-                                Entering_Shown, Runaway_Shown,
-                                Status_Rev_Sent, Status_Tunnel_Sent,
-                                TC_Sent))
+                                EVC_Levels.State, EVC_Mission.State),
+                     In_Out => (Reported_Mode, EVC_Outbox.Queue))
    is
-      --  MSG_ONBOARD (dmi_protocol.ads) from what the on-board knows in
-      --  E0; the fields of the later phases are 0, "nothing known"
-      Train : Bits_T := 0;
-      National : Bits_T := National_VBC_Room;  -- E0 stores no VBC
-      Onboard : Onboard_T;
-      --  phase E4: the brake demands of the procedures and of the text
-      --  messages
-      D       : constant EVC_Procedures.Brake_Demand_T :=
-        EVC_Procedures.Brake_Demand;
-      Text_SB : constant Boolean := EVC_Text_Messages.Service_Brake;
-      Text_EB : constant Boolean := EVC_Text_Messages.Emergency_Brake;
-      Seconds : constant Unsigned_64 := Unsigned_64 (Clock_Ms) / 1000;
    begin
-      --  JRU: the mode changed since the last report
       if Current_Mode /= Reported_Mode then
          EVC_Outbox.Put
            (JRU, JRU_Record (JRU_Mode_Change,
@@ -1356,7 +1371,6 @@ is
                              Level_T'Pos (EVC_Levels.Level)));
          Reported_Mode := Current_Mode;
       end if;
-      --  JRU: the events of the levels and of the mission (phase E4)
       for I in 1 .. EVC_Levels.Event_Count loop
          declare
             E : constant EVC_Levels.Event_T := EVC_Levels.Event (I);
@@ -1373,6 +1387,21 @@ is
                                              E.B4));
          end;
       end loop;
+   end Record_Mode_Levels_Mission;
+
+   --  8b. DMI: the system status messages of the modes and of the
+   --  protections of 3.14 (MSG_SYSTEM_STATUS): 4.4.15.1.1.3 the
+   --  non-leading operation no longer permitted, 4.4.9.1.4 "Entering FS",
+   --  4.4.12.1.7 "Entering OS"; 3.14.2.6, 3.14.3.4, 4.4.7.1.5.4 "Runaway
+   --  movement"
+   procedure Show_Mode_Indications
+     with Global => (Input  => (Current_Mode, Brake_Output,
+                                EVC_Mission.State,
+                                EVC_Stored_Information.State),
+                     In_Out => (Entering_Shown, Runaway_Shown,
+                                EVC_Outbox.Queue))
+   is
+   begin
       --  4.4.15.1.1.3: the driver is informed that the non-leading
       --  operation is no longer permitted and asked to acknowledge it
       --  (the DMI's catalogue entry 35, ended by the acknowledgement)
@@ -1419,14 +1448,21 @@ is
                                   then SS_Event_Start else SS_Event_End)));
          Runaway_Shown := Brake_Output.Protection;
       end if;
+   end Show_Mode_Indications;
 
-      --  DMI: the mode and the level (4.4.2.1: a clear indication of the
-      --  mode when the desk is open); 4.7.2: the acknowledgement of a mode
-      --  proposed (the start of mission, 5.4.3.2 S22 to S24) or asked by
-      --  a procedure (5.7, 5.9, 5.11, 5.13, 5.19; the start of mission's
-      --  first, which takes the driver's acknowledgement first), the level
-      --  transition announced (5.10.1.3) and its acknowledgement (5.10.4),
-      --  "override active" (5.8.3.7)
+   --  8c. DMI: the mode and the level (MSG_MODE_LEVEL; 4.4.2.1: a clear
+   --  indication of the mode when the desk is open); 4.7.2: the
+   --  acknowledgement of a mode proposed (the start of mission, 5.4.3.2
+   --  S22 to S24) or asked by a procedure (5.7, 5.9, 5.11, 5.13, 5.19; the
+   --  start of mission's first, which takes the driver's acknowledgement
+   --  first), the level transition announced (5.10.1.3) and its
+   --  acknowledgement (5.10.4), "override active" (5.8.3.7)
+   procedure Send_Mode_Level
+     with Global => (Input  => (Current_Mode, EVC_Levels.State,
+                                EVC_Mission.State, EVC_Procedures.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+   begin
       if Has_Mode_Code (Current_Mode) then
          EVC_Outbox.Put
            (DMI,
@@ -1449,8 +1485,19 @@ is
                Level_Ann_Ack => EVC_Levels.Ack_Asked,
                Override      => EVC_Procedures.Override_Indicated));
       end if;
-      --  phase E4: the system status messages of the procedures (the
-      --  reason of a trip, the reverse movement distances, 5.17)
+   end Send_Mode_Level;
+
+   --  8d. DMI (phase E4): the system status messages of the procedures
+   --  (the reason of a trip, 5.11; the reverse movement distances, 5.13;
+   --  5.17), the text messages (3.12.3: shown with the hour and the
+   --  minute of the on-board time, or removed)
+   procedure Send_Procedure_Messages
+     with Global => (Input  => (Clock_Ms, EVC_Procedures.State,
+                                EVC_Text_Messages.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      Seconds : constant Unsigned_64 := Unsigned_64 (Clock_Ms) / 1000;
+   begin
       for I in 1 .. EVC_Procedures.Status_Event_Count loop
          declare
             E : constant EVC_Procedures.Status_Event_T :=
@@ -1461,7 +1508,6 @@ is
                                          EVC_Bytes.Byte (E.Event)));
          end;
       end loop;
-      --  phase E4: the text messages (3.12.3)
       for I in 1 .. EVC_Text_Messages.Output_Count loop
          declare
             O : constant EVC_Text_Messages.Output_T :=
@@ -1480,7 +1526,16 @@ is
             end if;
          end;
       end loop;
-      --  phase E4: the records of the procedures and the text messages
+   end Send_Procedure_Messages;
+
+   --  8e. JRU (phase E4): the records of the procedures of chapter 5
+   --  (event 23) and of the text messages (3.12.3, event 24)
+   procedure Record_Procedures
+     with Global => (Input  => (Cycle_Count, Clock_Ms, EVC_Procedures.State,
+                                EVC_Text_Messages.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+   begin
       for I in 1 .. EVC_Procedures.Event_Count loop
          declare
             E : constant EVC_Procedures.Event_T := EVC_Procedures.Event (I);
@@ -1498,84 +1553,115 @@ is
                                              E.B4));
          end;
       end loop;
+   end Record_Procedures;
 
-      if Standstill then
-         Train := Train or Train_Standstill;
+   --  8f. DMI: MSG_STATUS. SUBSET-026 3.6.6: the geographical position,
+   --  while it is known, and once "unknown" when it stops (the DMI shows
+   --  it on request); phase E3: the brake indication (3.14.1.9, 3.14.2.6,
+   --  3.14.3.4) and the time to Indication (3.13.10.3.10), whenever they
+   --  change; phase E4: the reversing possible (5.13), the tunnel
+   --  stopping area (5.18.8). D, Text_SB, Text_EB: the brake demands of
+   --  the procedures and of the text messages (phase E4)
+   procedure Send_Status (D                : EVC_Procedures.Brake_Demand_T;
+                          Text_SB, Text_EB : Boolean)
+     with Global => (Input  => (Current_Mode, Clock_Ms, Brake_Output,
+                                SDM_Result, EVC_Levels.State,
+                                EVC_Procedures.State,
+                                EVC_Stored_Information.State,
+                                EVC_Position.State),
+                     In_Out => (Geo_Sent, Status_Brake_Sent,
+                                Status_TTI_Sent, Status_Rev_Sent,
+                                Status_Tunnel_Sent, EVC_Outbox.Queue))
+   is
+      --  phase E4: the brakes of the procedures; 3 (DMI 8.2.2.3.4.1)
+      --  while only an acknowledgement of a level (5.10.4.2), a mode or
+      --  a text is missing; in IS the on-board is isolated from the
+      --  brakes (4.4.3.1.1)
+      Brake : constant EVC_Bytes.Byte :=
+        (if Current_Mode = M_IS then Brake_None
+         elsif Brake_Output.Ack_Required or else D.Ack_Required
+         then Brake_Ack
+         elsif Brake_Output.EB or else Brake_Output.SB
+           or else Current_Mode = M_SF or else D.Trip or else D.Other
+         then Brake_Applied
+         elsif EVC_Levels.Ack_Brake or else D.Ack_Missing
+           or else Text_SB or else Text_EB
+         then Brake_Ack_Pending
+         else Brake_None);
+      TTI   : constant Unsigned_16 :=
+        (if SDM_Result.TTI = EVC_SDM.No_TTI then TTI_None
+         else Unsigned_16 (SDM_Result.TTI));
+      Rev   : constant Boolean := EVC_Procedures.Reversing_Possible;
+      --  phase E4, 5.18.8: the tunnel stopping area
+      Tun   : constant EVC_Track_Conditions.Tunnel_T :=
+        EVC_Stored_Information.Tunnel;
+      Changed : constant Boolean :=
+        Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent
+        or else Rev /= Status_Rev_Sent
+        or else EVC_Track_Conditions."/=" (Tun, Status_Tunnel_Sent);
+   begin
+      if EVC_Position.Geo_Known then
+         EVC_Outbox.Put
+           (DMI, Status_Frame (Unsigned_32 (EVC_Position.Geo_Metres),
+                               Unsigned_64 (Clock_Ms) / 1000,
+                               Brake, TTI, Rev,
+                               EVC_Bytes.Byte (Tun.State),
+                               Unsigned_32 (Tun.Distance_M)));
+         Geo_Sent := True;
+      elsif Geo_Sent or else Changed then
+         EVC_Outbox.Put
+           (DMI, Status_Frame (Geo_Unknown,
+                               Unsigned_64 (Clock_Ms) / 1000,
+                               Brake, TTI, Rev,
+                               EVC_Bytes.Byte (Tun.State),
+                               Unsigned_32 (Tun.Distance_M)));
+         Geo_Sent := False;
       end if;
-      if Below_Override then
-         Train := Train or Train_Below_Override;
-      end if;
-      if TIU_Now (Non_Leading_Permitted) then
-         Train := Train or Train_Non_Leading;
-      end if;
-      if TIU_Now (Passive_Shunting_Permitted) then
-         Train := Train or Train_Passive_Shunting;
-      end if;
-      if EVC_Procedures.BMM_Inhibited then
-         Train := Train or Train_BMM_Inhibition;
-      end if;
-      if EVC_National_Values.M_NVDERUN then
-         National := National or National_Driver_ID_Running;
-      end if;
-      if EVC_National_Values.Q_NVDRIVER_ADHES then
-         National := National or National_Adhesion;
-      end if;
-      --  SUBSET-026 3.6.6: the geographical position, while it is known,
-      --  and once "unknown" when it stops (the DMI shows it on request);
-      --  phase E3: the brake indication (3.14.1.9, 3.14.2.6, 3.14.3.4)
-      --  and the time to Indication (3.13.10.3.10), whenever they change
-      declare
-         --  phase E4: the brakes of the procedures; 3 (DMI 8.2.2.3.4.1)
-         --  while only an acknowledgement of a level (5.10.4.2), a mode or
-         --  a text is missing; in IS the on-board is isolated from the
-         --  brakes (4.4.3.1.1)
-         Brake : constant EVC_Bytes.Byte :=
-           (if Current_Mode = M_IS then Brake_None
-            elsif Brake_Output.Ack_Required or else D.Ack_Required
-            then Brake_Ack
-            elsif Brake_Output.EB or else Brake_Output.SB
-              or else Current_Mode = M_SF or else D.Trip or else D.Other
-            then Brake_Applied
-            elsif EVC_Levels.Ack_Brake or else D.Ack_Missing
-              or else Text_SB or else Text_EB
-            then Brake_Ack_Pending
-            else Brake_None);
-         TTI   : constant Unsigned_16 :=
-           (if SDM_Result.TTI = EVC_SDM.No_TTI then TTI_None
-            else Unsigned_16 (SDM_Result.TTI));
-         Rev   : constant Boolean := EVC_Procedures.Reversing_Possible;
-         --  phase E4, 5.18.8: the tunnel stopping area
-         Tun   : constant EVC_Track_Conditions.Tunnel_T :=
-           EVC_Stored_Information.Tunnel;
-         Changed : constant Boolean :=
-           Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent
-           or else Rev /= Status_Rev_Sent
-           or else EVC_Track_Conditions."/=" (Tun, Status_Tunnel_Sent);
-      begin
-         if EVC_Position.Geo_Known then
-            EVC_Outbox.Put
-              (DMI, Status_Frame (Unsigned_32 (EVC_Position.Geo_Metres),
-                                  Unsigned_64 (Clock_Ms) / 1000,
-                                  Brake, TTI, Rev,
-                                  EVC_Bytes.Byte (Tun.State),
-                                  Unsigned_32 (Tun.Distance_M)));
-            Geo_Sent := True;
-         elsif Geo_Sent or else Changed then
-            EVC_Outbox.Put
-              (DMI, Status_Frame (Geo_Unknown,
-                                  Unsigned_64 (Clock_Ms) / 1000,
-                                  Brake, TTI, Rev,
-                                  EVC_Bytes.Byte (Tun.State),
-                                  Unsigned_32 (Tun.Distance_M)));
-            Geo_Sent := False;
-         end if;
-         Status_Brake_Sent := Brake;
-         Status_TTI_Sent := TTI;
-         Status_Rev_Sent := Rev;
-         Status_Tunnel_Sent := Tun;
-      end;
+      Status_Brake_Sent := Brake;
+      Status_TTI_Sent := TTI;
+      Status_Rev_Sent := Rev;
+      Status_Tunnel_Sent := Tun;
+   end Send_Status;
 
-      Onboard :=
+   --  The train bits of MSG_ONBOARD (dmi_protocol.ads): standstill and
+   --  the speed not above the limit for triggering the override (5.8,
+   --  Update_Position), the non-leading and passive shunting inputs
+   --  (4.4.15, 4.4.20), the "BTM alarm reaction inhibition" (5.22.4.1)
+   function Train_Bits return Bits_T is
+     ((if Standstill then Train_Standstill else 0)
+      or (if Below_Override then Train_Below_Override else 0)
+      or (if TIU_Now (Non_Leading_Permitted) then Train_Non_Leading else 0)
+      or (if TIU_Now (Passive_Shunting_Permitted)
+          then Train_Passive_Shunting else 0)
+      or (if EVC_Procedures.BMM_Inhibited then Train_BMM_Inhibition
+          else 0))
+     with Global => (Standstill, Below_Override, TIU_Now,
+                     EVC_Procedures.State);
+
+   --  The national bits of MSG_ONBOARD: no VBC stored (E0), the driver
+   --  ID changeable while running (M_NVDERUN) and the adhesion by the
+   --  driver (Q_NVDRIVER_ADHES), A.3.2
+   function National_Bits return Bits_T is
+     (National_VBC_Room
+      or (if EVC_National_Values.M_NVDERUN then National_Driver_ID_Running
+          else 0)
+      or (if EVC_National_Values.Q_NVDRIVER_ADHES then National_Adhesion
+          else 0))
+     with Global => EVC_National_Values.State;
+
+   --  8g. DMI: MSG_ONBOARD (dmi_protocol.ads) every cycle, from what the
+   --  on-board knows: the validity of the level, the position and the
+   --  data of the start of mission (5.4), the train and national bits;
+   --  the fields of the later phases are 0, "nothing known"
+   procedure Send_Onboard
+     with Global => (Input  => (Standstill, Below_Override, TIU_Now,
+                                EVC_Procedures.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State, EVC_Position.State,
+                                EVC_Mission.State, EVC_Train_Data.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      Onboard : constant Onboard_T :=
         (Data     => (if EVC_Levels.Valid then Data_Level_Valid else 0)
                      or (if EVC_Position.Status = EVC_Position.Valid
                            and then EVC_Position.LRBG.Valid
@@ -1588,167 +1674,241 @@ is
                          then Data_Train_Data_Valid else 0)
                      or (if EVC_Mission.TRN_Status = EVC_Mission.Valid
                          then Data_TRN_Valid else 0),
-         Train    => Train,
-         National => National,
+         Train    => Train_Bits,
+         National => National_Bits,
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
          --  desk is open and no session with an RBC exists or is being
          --  established, so the start of mission may begin (phase E4:
          --  the desk is the cab status input, EVC_Mission)
          SoM      => (if EVC_Mission.SoM_Engaged then SoM_Possible else 0),
          others   => 0);
+   begin
       EVC_Outbox.Put (DMI, Onboard_Frame (Onboard));
+   end Send_Onboard;
 
-      --  The speed and distance monitoring and the brake commands
-      --  (phase E3): MSG_SPEED_STATE every cycle, the JRU records of what
-      --  changed, the commands to the train interface
-      declare
-         Reasons  : EVC_Brake_Commands.Reasons_T renames
-           Brake_Output.Reasons;
-         --  phase E4: the service brake of 5.10.4.2 (the levels); in SF
-         --  the emergency brake, permanently (4.4.5.1.2); the brakes of
-         --  the procedures and of the text messages; in IS no command
-         --  (4.4.3.1.1). Each reason its bit (EVC_Ports).
-         Isolated : constant Boolean := Current_Mode = M_IS;
-         Failure  : constant Boolean := Current_Mode = M_SF;
-         Commands : constant EVC_Bytes.Byte :=
-           (if Isolated then 0
-            else (if Brake_Output.EB or else Failure or else D.EB
-                     or else Text_EB
-                  then TIU_EBC else 0)
-                 or (if Brake_Output.SB or else EVC_Levels.Ack_Brake
-                        or else D.SB or else Text_SB
-                     then TIU_SBC else 0)
-                 or (if Brake_Output.TCO then TIU_TCO else 0));
-         Why      : constant TIU_Reasons_T :=
-           (if Isolated then 0
-            else (if Reasons (EVC_Brake_Commands.Speed_Distance)
-                  then TIU_Reason_Speed_Distance else 0)
-                 or (if Reasons (EVC_Brake_Commands.Service_Brake_Failed)
-                     then TIU_Reason_SB_Failed else 0)
-                 or (if Reasons (EVC_Brake_Commands.Roll_Away)
-                     then TIU_Reason_Roll_Away else 0)
-                 or (if Reasons (EVC_Brake_Commands.Direction)
-                     then TIU_Reason_Direction else 0)
-                 or (if Reasons (EVC_Brake_Commands.Standstill_Supervision)
-                     then TIU_Reason_Standstill else 0)
-                 or (if EVC_Levels.Ack_Brake then TIU_Reason_Level_Ack
-                     else 0)
-                 or (if Failure then TIU_Reason_Failure else 0)
-                 or (if D.Trip then TIU_Reason_Trip else 0)
-                 or (if D.Ack_Missing or else Text_SB or else Text_EB
-                     then TIU_Reason_Ack_Missing else 0)
-                 or (if D.Other then TIU_Reason_Procedure else 0));
-         Supervision_Now : constant Unsigned_32 :=
-           (if SDM_Result.Active
-            then Unsigned_32
-                   (EVC_SDM.Monitoring_T'Pos (SDM_Result.Monitoring))
-                 * 65_536
-                 + Unsigned_32 (EVC_SDM.Status_T'Pos (SDM_Result.Status))
-                   * 256
-                 + Unsigned_32 (SDM_Result.MRDT_Id)
-            else No_Supervision);
-         Overrun  : constant EVC_Bytes.Byte :=
-           (if SDM_Result.EOA_Passed then 1 else 0)
-           or (if SDM_Result.SvL_Passed then 2 else 0);
-      begin
-         EVC_Outbox.Put (DMI, Speed_State_Frame (Speed_State));
-         if Commands /= TIU_Sent or else Why /= TIU_Reasons_Sent then
-            EVC_Outbox.Put
-              (JRU, JRU_Record
-                      (JRU_Brake_Commands,
-                       Commands
-                       or EVC_Bytes.Byte (Shift_Left (Shift_Right (Why, 8),
-                                                      3) and 16#F8#),
-                       EVC_Bytes.Byte (Why and 16#FF#),
-                       EVC_SDM.Status_T'Pos (SDM_Result.Status)));
-         end if;
-         if Supervision_Now /= Supervision_Reported
-           and then SDM_Result.Active
+   --  The commands of the TIU output (EVC_Ports): phase E3 the speed and
+   --  distance monitoring and the protections (3.13, 3.14); phase E4 the
+   --  service brake of 5.10.4.2 (the levels), in SF the emergency brake,
+   --  permanently (4.4.5.1.2), the brakes of the procedures and of the
+   --  text messages (D, Text_SB, Text_EB); in IS no command (4.4.3.1.1)
+   function TIU_Commands (D                : EVC_Procedures.Brake_Demand_T;
+                          Text_SB, Text_EB : Boolean)
+     return EVC_Bytes.Byte
+   is (if Current_Mode = M_IS then 0
+       else (if Brake_Output.EB or else Current_Mode = M_SF
+                or else D.EB or else Text_EB
+             then TIU_EBC else 0)
+            or (if Brake_Output.SB or else EVC_Levels.Ack_Brake
+                   or else D.SB or else Text_SB
+                then TIU_SBC else 0)
+            or (if Brake_Output.TCO then TIU_TCO else 0))
+     with Global => (Current_Mode, Brake_Output, EVC_Levels.State);
+
+   --  The reasons of the TIU output, each its bit (EVC_Ports), the same
+   --  sources as TIU_Commands; none in IS (4.4.3.1.1)
+   function TIU_Reasons (D                : EVC_Procedures.Brake_Demand_T;
+                         Text_SB, Text_EB : Boolean)
+     return TIU_Reasons_T
+   is (if Current_Mode = M_IS then 0
+       else (if Brake_Output.Reasons (EVC_Brake_Commands.Speed_Distance)
+             then TIU_Reason_Speed_Distance else 0)
+            or (if Brake_Output.Reasons
+                     (EVC_Brake_Commands.Service_Brake_Failed)
+                then TIU_Reason_SB_Failed else 0)
+            or (if Brake_Output.Reasons (EVC_Brake_Commands.Roll_Away)
+                then TIU_Reason_Roll_Away else 0)
+            or (if Brake_Output.Reasons (EVC_Brake_Commands.Direction)
+                then TIU_Reason_Direction else 0)
+            or (if Brake_Output.Reasons
+                     (EVC_Brake_Commands.Standstill_Supervision)
+                then TIU_Reason_Standstill else 0)
+            or (if EVC_Levels.Ack_Brake then TIU_Reason_Level_Ack
+                else 0)
+            or (if Current_Mode = M_SF then TIU_Reason_Failure else 0)
+            or (if D.Trip then TIU_Reason_Trip else 0)
+            or (if D.Ack_Missing or else Text_SB or else Text_EB
+                then TIU_Reason_Ack_Missing else 0)
+            or (if D.Other then TIU_Reason_Procedure else 0))
+     with Global => (Current_Mode, Brake_Output, EVC_Levels.State);
+
+   --  8h. The speed and distance monitoring and the brake commands
+   --  (phase E3, 3.13, 3.14): MSG_SPEED_STATE every cycle; the JRU records
+   --  of what changed (events 20 the brake commands, 21 the supervision,
+   --  22 an overrun of the EOA or the SvL); the commands to the train
+   --  interface (the TIU output) when they change, and every cycle while
+   --  a command is given. D, Text_SB, Text_EB: as Send_Status.
+   procedure Send_Supervision
+     (D                : EVC_Procedures.Brake_Demand_T;
+      Text_SB, Text_EB : Boolean)
+     with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
+                                SDM_Result, Brake_Output, Speed_State,
+                                EVC_Levels.State),
+                     In_Out => (TIU_Sent, TIU_Reasons_Sent,
+                                Supervision_Reported, Overrun_Reported,
+                                EVC_Outbox.Queue))
+   is
+      Commands : constant EVC_Bytes.Byte :=
+        TIU_Commands (D, Text_SB, Text_EB);
+      Why      : constant TIU_Reasons_T :=
+        TIU_Reasons (D, Text_SB, Text_EB);
+      Supervision_Now : constant Unsigned_32 :=
+        (if SDM_Result.Active
+         then Unsigned_32
+                (EVC_SDM.Monitoring_T'Pos (SDM_Result.Monitoring))
+              * 65_536
+              + Unsigned_32 (EVC_SDM.Status_T'Pos (SDM_Result.Status))
+                * 256
+              + Unsigned_32 (SDM_Result.MRDT_Id)
+         else No_Supervision);
+      Overrun  : constant EVC_Bytes.Byte :=
+        (if SDM_Result.EOA_Passed then 1 else 0)
+        or (if SDM_Result.SvL_Passed then 2 else 0);
+   begin
+      EVC_Outbox.Put (DMI, Speed_State_Frame (Speed_State));
+      if Commands /= TIU_Sent or else Why /= TIU_Reasons_Sent then
+         EVC_Outbox.Put
+           (JRU, JRU_Record
+                   (JRU_Brake_Commands,
+                    Commands
+                    or EVC_Bytes.Byte (Shift_Left (Shift_Right (Why, 8),
+                                                   3) and 16#F8#),
+                    EVC_Bytes.Byte (Why and 16#FF#),
+                    EVC_SDM.Status_T'Pos (SDM_Result.Status)));
+      end if;
+      if Supervision_Now /= Supervision_Reported
+        and then SDM_Result.Active
+      then
+         EVC_Outbox.Put
+           (JRU, JRU_Record
+                   (JRU_Supervision,
+                    EVC_SDM.Monitoring_T'Pos (SDM_Result.Monitoring),
+                    EVC_SDM.Status_T'Pos (SDM_Result.Status),
+                    EVC_Bytes.Byte (SDM_Result.MRDT_Id)));
+      end if;
+      Supervision_Reported := Supervision_Now;
+      for Bit in EVC_Bytes.Byte range 1 .. 2 loop
+         if (Overrun and Bit) /= 0
+           and then (Overrun_Reported and Bit) = 0
          then
-            EVC_Outbox.Put
-              (JRU, JRU_Record
-                      (JRU_Supervision,
-                       EVC_SDM.Monitoring_T'Pos (SDM_Result.Monitoring),
-                       EVC_SDM.Status_T'Pos (SDM_Result.Status),
-                       EVC_Bytes.Byte (SDM_Result.MRDT_Id)));
+            EVC_Outbox.Put (JRU, JRU_Record (JRU_Overrun, Bit, 0, 0));
          end if;
-         Supervision_Reported := Supervision_Now;
-         for Bit in EVC_Bytes.Byte range 1 .. 2 loop
-            if (Overrun and Bit) /= 0
-              and then (Overrun_Reported and Bit) = 0
-            then
-               EVC_Outbox.Put (JRU, JRU_Record (JRU_Overrun, Bit, 0, 0));
-            end if;
+      end loop;
+      Overrun_Reported := Overrun;
+      if Commands /= 0 or else Commands /= TIU_Sent
+        or else Why /= TIU_Reasons_Sent
+      then
+         EVC_Outbox.Put (TIU, TIU_Output (Commands, Why));
+      end if;
+      TIU_Sent := Commands;
+      TIU_Reasons_Sent := Why;
+   end Send_Supervision;
+
+   --  The second TIU output, the information for an external function
+   --  (5.20, EVC_Ports): header, then per item kind, id, the distances to
+   --  its start and its end, its value
+   subtype TIU_TC_Frame_T is EVC_Bytes.Byte_Array (1 .. TIU_Out_Max_Length);
+
+   --  5.20.2.4: a distance, cm, within the i32 range below TIU_TC_None,
+   --  or TIU_TC_None when Present is False, little endian at Last + 1
+   procedure Put_I32 (Frame   : in out TIU_TC_Frame_T;
+                      Last    : in out Natural;
+                      Present : Boolean;
+                      V       : EVC_Distances.Dist_T)
+     with Global => null,
+          Pre  => Last <= TIU_Out_Max_Length - 4,
+          Post => Last = Last'Old + 4
+   is
+      C : constant Integer_64 :=
+        (if Present
+         then Integer_64'Max (-(2**31 - 1),
+                              Integer_64'Min (Integer_64 (V),
+                                              TIU_TC_None - 1))
+         else TIU_TC_None);
+      U : constant Unsigned_64 :=
+        Unsigned_64 (Unsigned_32'Mod (C));
+   begin
+      for K in 0 .. 3 loop
+         Frame (Last + 1 + K) := EVC_Bytes.Byte_Of (U, K);
+      end loop;
+      Last := Last + 4;
+   end Put_I32;
+
+   --  8i. TIU (phase E4, 5.20): the information for an external function
+   --  (EVC_Ports, the TIU track condition output), every cycle while an
+   --  item is generated and once when none is any more
+   procedure Send_External_Info
+     with Global => (Input  => EVC_Stored_Information.State,
+                     In_Out => (TC_Sent, EVC_Outbox.Queue))
+   is
+      Info  : constant EVC_Track_Conditions.External_T :=
+        EVC_Stored_Information.External_Info;
+      Frame : TIU_TC_Frame_T := (others => 0);
+      Last  : Natural := TIU_TC_Header_Length;
+   begin
+      if Info.Count > 0 or else TC_Sent then
+         Frame (1) := TIU_TC_Tag;
+         Frame (2) := 1;
+         Frame (3) := EVC_Bytes.Byte (Natural'Min (Info.Count, TIU_TC_Max));
+         for I in 1 .. Natural'Min (Info.Count, TIU_TC_Max) loop
+            pragma Loop_Invariant
+              (Last = TIU_TC_Header_Length + (I - 1) * TIU_TC_Entry_Length);
+            declare
+               E : constant EVC_Track_Conditions.External_Item_T :=
+                 Info.List (I);
+            begin
+               Frame (Last + 1) := EVC_Bytes.Byte (E.Kind);
+               Frame (Last + 2) := EVC_Bytes.Byte (E.Id);
+               Last := Last + 2;
+               Put_I32 (Frame, Last, E.Has_Start, E.To_Start);
+               Put_I32 (Frame, Last, E.Has_End, E.To_End);
+               Frame (Last + 1) := EVC_Bytes.Byte (E.Value mod 256);
+               Frame (Last + 2) := EVC_Bytes.Byte (E.Value / 256);
+               Last := Last + 2;
+            end;
          end loop;
-         Overrun_Reported := Overrun;
-         --  the TIU output: when it changes, and every cycle while a
-         --  command is given
-         if Commands /= 0 or else Commands /= TIU_Sent
-           or else Why /= TIU_Reasons_Sent
-         then
-            EVC_Outbox.Put (TIU, TIU_Output (Commands, Why));
-         end if;
-         TIU_Sent := Commands;
-         TIU_Reasons_Sent := Why;
-      end;
+         EVC_Outbox.Put (TIU, Frame (1 .. Last));
+      end if;
+      TC_Sent := Info.Count > 0;
+   end Send_External_Info;
 
-      --  phase E4, 5.20: the information for an external function
-      --  (EVC_Ports, the TIU track condition output), every cycle while
-      --  an item is generated and once when none is any more
-      declare
-         Info  : constant EVC_Track_Conditions.External_T :=
-           EVC_Stored_Information.External_Info;
-         Frame : EVC_Bytes.Byte_Array (1 .. TIU_Out_Max_Length) :=
-           (others => 0);
-         Last  : Natural := TIU_TC_Header_Length;
-
-         --  a distance, cm, within the i32 range below TIU_TC_None, or
-         --  TIU_TC_None when Present is False
-         procedure Put_I32 (Present : Boolean; V : EVC_Distances.Dist_T)
-           with Global => (In_Out => (Frame, Last)),
-                Pre => Last <= TIU_Out_Max_Length - 4,
-                Post => Last = Last'Old + 4
-         is
-            C : constant Integer_64 :=
-              (if Present
-               then Integer_64'Max (-(2**31 - 1),
-                                    Integer_64'Min (Integer_64 (V),
-                                                    TIU_TC_None - 1))
-               else TIU_TC_None);
-            U : constant Unsigned_64 :=
-              Unsigned_64 (Unsigned_32'Mod (C));
-         begin
-            for K in 0 .. 3 loop
-               Frame (Last + 1 + K) := EVC_Bytes.Byte_Of (U, K);
-            end loop;
-            Last := Last + 4;
-         end Put_I32;
-      begin
-         if Info.Count > 0 or else TC_Sent then
-            Frame (1) := TIU_TC_Tag;
-            Frame (2) := 1;
-            Frame (3) := EVC_Bytes.Byte (Natural'Min (Info.Count, TIU_TC_Max));
-            for I in 1 .. Natural'Min (Info.Count, TIU_TC_Max) loop
-               pragma Loop_Invariant
-                 (Last = TIU_TC_Header_Length + (I - 1) * TIU_TC_Entry_Length);
-               declare
-                  E : constant EVC_Track_Conditions.External_Item_T :=
-                    Info.List (I);
-               begin
-                  Frame (Last + 1) := EVC_Bytes.Byte (E.Kind);
-                  Frame (Last + 2) := EVC_Bytes.Byte (E.Id);
-                  Last := Last + 2;
-                  Put_I32 (E.Has_Start, E.To_Start);
-                  Put_I32 (E.Has_End, E.To_End);
-                  Frame (Last + 1) := EVC_Bytes.Byte (E.Value mod 256);
-                  Frame (Last + 2) := EVC_Bytes.Byte (E.Value / 256);
-                  Last := Last + 2;
-               end;
-            end loop;
-            EVC_Outbox.Put (TIU, Frame (1 .. Last));
-         end if;
-         TC_Sent := Info.Count > 0;
-      end;
+   --  8. Produce the outputs of the cycle, port by port in this order
+   --  (the goldens are their byte stream)
+   procedure Produce_Outputs
+     with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
+                                Standstill, Below_Override, TIU_Now,
+                                EVC_National_Values.State,
+                                EVC_Position.State,
+                                SDM_Result, Brake_Output, Speed_State,
+                                EVC_Levels.State, EVC_Mission.State,
+                                EVC_Train_Data.State,
+                                EVC_Stored_Information.State,
+                                EVC_Procedures.State,
+                                EVC_Text_Messages.State),
+                     In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
+                                Status_Brake_Sent, Status_TTI_Sent,
+                                TIU_Sent, TIU_Reasons_Sent,
+                                Supervision_Reported, Overrun_Reported,
+                                Entering_Shown, Runaway_Shown,
+                                Status_Rev_Sent, Status_Tunnel_Sent,
+                                TC_Sent))
+   is
+      --  phase E4: the brake demands of the procedures and of the text
+      --  messages (MSG_STATUS and the TIU output)
+      D       : constant EVC_Procedures.Brake_Demand_T :=
+        EVC_Procedures.Brake_Demand;
+      Text_SB : constant Boolean := EVC_Text_Messages.Service_Brake;
+      Text_EB : constant Boolean := EVC_Text_Messages.Emergency_Brake;
+   begin
+      Record_Mode_Levels_Mission;   -- JRU 1, 40, 41
+      Show_Mode_Indications;        -- DMI MSG_SYSTEM_STATUS
+      Send_Mode_Level;              -- DMI MSG_MODE_LEVEL
+      Send_Procedure_Messages;      -- DMI MSG_SYSTEM_STATUS, MSG_TEXT
+      Record_Procedures;            -- JRU 23, 24
+      Send_Status (D, Text_SB, Text_EB);  -- DMI MSG_STATUS
+      Send_Onboard;                 -- DMI MSG_ONBOARD
+      --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
+      Send_Supervision (D, Text_SB, Text_EB);
+      Send_External_Info;           -- TIU the information of 5.20
    end Produce_Outputs;
 
    ----------
