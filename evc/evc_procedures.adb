@@ -467,6 +467,157 @@ is
           when ETCS_Catalogue.Track_P12  => EVC_Acceptance.Signalling_Speed,
           when others => EVC_Acceptance.Movement_Authority);
 
+   --  A distance of the group message of the group taken Tk, from its
+   --  location reference along its sense, as a frame position (from the
+   --  anchor of the group: its origin of EVC_Origins may be released in
+   --  the cycle when no store refers to it)
+   function At_D (Tk : EVC_Position.Taken_T; D : Length_T) return Dist_T is
+     (Advance (Tk.Group.X, Tk.S, D));
+
+   --  Packet 132, danger for Shunting information (7.4.2.28; 4.4.8.1.1
+   --  c): Q_ASPECT "stop if in SH"
+   procedure Take_P132 (R : in out Reader_T)
+     with Global => (In_Out => (Now_Flags, Events, Event_N))
+   is
+      X  : ETCS_Track_Packets.P132.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P132.Decode (R, X, OK);
+      if OK and then X.Q_ASPECT = 0 then
+         Now_Flags.SH_Stop := True;
+         Record_Event (Event_Shunting, 3, 0);
+      end if;
+   end Take_P132;
+
+   --  Packet 135, stop Shunting on desk opening (7.4.2.31; 4.6.3 [22],
+   --  [23])
+   procedure Take_P135 (R : in out Reader_T)
+     with Global => (In_Out => (Stop_On_Desk, Events, Event_N))
+   is
+      pragma Warnings
+        (GNATprove, Off, """X"" is set by ""Decode"" but not used*",
+         Reason => "the packet has no variable besides its header");
+      X  : ETCS_Track_Packets.P135.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P135.Decode (R, X, OK);
+      if OK then
+         Stop_On_Desk := True;
+         Record_Event (Event_Shunting, 1, 0);
+      end if;
+   end Take_P135;
+
+   --  Packet 49, the list of balise groups for the SH area (7.4.2.12;
+   --  4.4.8.1.1 b), of the group taken Tk (its country unless an item
+   --  gives another)
+   procedure Take_P49 (R : in out Reader_T; Tk : EVC_Position.Taken_T)
+     with Global => (In_Out => (SH_List_Known, SH_List_N, SH_List, Events,
+                                Event_N))
+   is
+      X  : ETCS_Track_Packets.P49.Packet_T;
+      OK : Boolean;
+      C  : NID_C_T := Tk.Group.Id.NID_C;
+   begin
+      ETCS_Track_Packets.P49.Decode (R, X, OK);
+      if OK then
+         --  4.4.8.1.1 b): a new list replaces the stored one; an
+         --  empty list lets no group pass
+         SH_List_Known := True;
+         SH_List_N := 0;
+         SH_List := (others => (others => <>));
+         for I in 1 .. Natural (X.N_ITER) loop
+            pragma Loop_Invariant (SH_List_N <= I - 1);
+            declare
+               It : ETCS_Track_Packets.P49.Q_NEWCOUNTRY_Item renames
+                 X.Q_NEWCOUNTRY_List (I);
+            begin
+               if It.Q_NEWCOUNTRY = 1 then
+                  C := It.NID_C;
+               end if;
+               SH_List_N := SH_List_N + 1;
+               SH_List (SH_List_N) := (NID_C => C, NID_BG => It.NID_BG);
+            end;
+         end loop;
+         Record_Event (Event_Shunting, 2, SH_List_N);
+      end if;
+   end Take_P49;
+
+   --  Packet 137, stop if in Staff Responsible (7.4.2.33; 4.6.3 [54],
+   --  5.8.3.1.3 a)
+   procedure Take_P137 (R : in out Reader_T)
+     with Global => (In_Out => Now_Flags)
+   is
+      X  : ETCS_Track_Packets.P137.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P137.Decode (R, X, OK);
+      if OK and then X.Q_SRSTOP = 0 then
+         Now_Flags.SR_Stop := True;
+      end if;
+   end Take_P137;
+
+   --  Packet 12, the level 1 MA (7.4.2.3): a proceed aspect, V_MAIN not
+   --  0, ends the override (5.8.4.1 e)
+   procedure Take_P12 (R : in out Reader_T)
+     with Global => (In_Out => Now_Flags)
+   is
+      X  : ETCS_Track_Packets.P12.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P12.Decode (R, X, OK);
+      if OK and then X.V_MAIN /= 0 then
+         Now_Flags.Proceed := True;
+      end if;
+   end Take_P12;
+
+   --  Packet 138, the reversing area information (7.4.2.34; 3.15.4.1.1:
+   --  a new area replaces the stored one), from the group taken Tk
+   procedure Take_P138 (R : in out Reader_T; Tk : EVC_Position.Taken_T)
+     with Global => (In_Out => (Rev, Events, Event_N))
+   is
+      X  : ETCS_Track_Packets.P138.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P138.Decode (R, X, OK);
+      --  3.15.4.1.1: a new area replaces the stored one
+      if OK and then X.Q_SCALE <= 2 then
+         declare
+            S0 : constant Length_T :=
+              Scaled (Natural (X.D_STARTREVERSE), Natural (X.Q_SCALE));
+            L  : constant Length_T :=
+              Scaled (Natural (X.L_REVERSEAREA), Natural (X.Q_SCALE));
+         begin
+            Rev.Area := True;
+            Rev.Sense := Tk.S;
+            Rev.Start := At_D (Tk, S0);
+            Rev.Finish := At_D (Tk, Add (S0, L));
+            Record_Event (Event_Reversing, 1, 0);
+         end;
+      end if;
+   end Take_P138;
+
+   --  Packet 139, the reversing supervision information (7.4.2.35;
+   --  3.15.4.3: replaces the distance and the speed)
+   procedure Take_P139 (R : in out Reader_T)
+     with Global => (In_Out => (Rev, Events, Event_N))
+   is
+      X  : ETCS_Track_Packets.P139.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P139.Decode (R, X, OK);
+      --  3.15.4.3: replaces the distance and the speed
+      if OK and then X.Q_SCALE <= 2 then
+         Rev.Sup := True;
+         Rev.Infinite := X.D_REVERSE = D_REVERSE_Infinite;
+         Rev.Distance :=
+           Scaled (Natural (X.D_REVERSE), Natural (X.Q_SCALE));
+         Rev.Speed := Speed_Cms_T (V5_To_Cms (Natural (X.V_REVERSE)));
+         Record_Event (Event_Reversing, 2, 0);
+      end if;
+   end Take_P139;
+
+   --  Packet P of the telegram J of the group taken Tk, of kind Kind (one
+   --  of the packets of this unit): decoded and taken
    procedure Take_Packet (Kind : ETCS_Catalogue.Packet_Kind_T;
                           J, P : Positive;
                           Tk   : EVC_Position.Taken_T)
@@ -476,125 +627,26 @@ is
           Pre => P <= EVC_Position.Taken_Packet_Count (J)
    is
       pragma Warnings
-        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+        (GNATprove, Off, """R"" is set by * but not used after*",
          Reason => "the reader of one packet is not used after it");
       R  : Reader_T;
-      OK : Boolean;
       use type ETCS_Catalogue.Packet_Kind_T;
-
-      --  A distance of the group message, from its location reference
-      --  along its sense, as a frame position (from the anchor of the
-      --  group: its origin of EVC_Origins may be released in the cycle
-      --  when no store refers to it)
-      function At_D (D : Length_T) return Dist_T is
-        (Advance (Tk.Group.X, Tk.S, D));
    begin
       EVC_Position.Open_Taken_Packet (J, P, R);
       if Kind = ETCS_Catalogue.Track_P132 then
-         declare
-            X : ETCS_Track_Packets.P132.Packet_T;
-         begin
-            ETCS_Track_Packets.P132.Decode (R, X, OK);
-            if OK and then X.Q_ASPECT = 0 then
-               Now_Flags.SH_Stop := True;
-               Record_Event (Event_Shunting, 3, 0);
-            end if;
-         end;
+         Take_P132 (R);
       elsif Kind = ETCS_Catalogue.Track_P135 then
-         declare
-            pragma Warnings
-              (GNATprove, Off, """X"" is set by ""Decode"" but not used*",
-               Reason => "the packet has no variable besides its header");
-            X : ETCS_Track_Packets.P135.Packet_T;
-         begin
-            ETCS_Track_Packets.P135.Decode (R, X, OK);
-            if OK then
-               Stop_On_Desk := True;
-               Record_Event (Event_Shunting, 1, 0);
-            end if;
-         end;
+         Take_P135 (R);
       elsif Kind = ETCS_Catalogue.Track_P49 then
-         declare
-            X : ETCS_Track_Packets.P49.Packet_T;
-            C : NID_C_T := Tk.Group.Id.NID_C;
-         begin
-            ETCS_Track_Packets.P49.Decode (R, X, OK);
-            if OK then
-               --  4.4.8.1.1 b): a new list replaces the stored one; an
-               --  empty list lets no group pass
-               SH_List_Known := True;
-               SH_List_N := 0;
-               SH_List := (others => (others => <>));
-               for I in 1 .. Natural (X.N_ITER) loop
-                  pragma Loop_Invariant (SH_List_N <= I - 1);
-                  declare
-                     It : ETCS_Track_Packets.P49.Q_NEWCOUNTRY_Item renames
-                       X.Q_NEWCOUNTRY_List (I);
-                  begin
-                     if It.Q_NEWCOUNTRY = 1 then
-                        C := It.NID_C;
-                     end if;
-                     SH_List_N := SH_List_N + 1;
-                     SH_List (SH_List_N) := (NID_C => C, NID_BG => It.NID_BG);
-                  end;
-               end loop;
-               Record_Event (Event_Shunting, 2, SH_List_N);
-            end if;
-         end;
+         Take_P49 (R, Tk);
       elsif Kind = ETCS_Catalogue.Track_P137 then
-         declare
-            X : ETCS_Track_Packets.P137.Packet_T;
-         begin
-            ETCS_Track_Packets.P137.Decode (R, X, OK);
-            if OK and then X.Q_SRSTOP = 0 then
-               Now_Flags.SR_Stop := True;
-            end if;
-         end;
+         Take_P137 (R);
       elsif Kind = ETCS_Catalogue.Track_P12 then
-         declare
-            X : ETCS_Track_Packets.P12.Packet_T;
-         begin
-            ETCS_Track_Packets.P12.Decode (R, X, OK);
-            if OK and then X.V_MAIN /= 0 then
-               Now_Flags.Proceed := True;
-            end if;
-         end;
+         Take_P12 (R);
       elsif Kind = ETCS_Catalogue.Track_P138 then
-         declare
-            X : ETCS_Track_Packets.P138.Packet_T;
-         begin
-            ETCS_Track_Packets.P138.Decode (R, X, OK);
-            --  3.15.4.1.1: a new area replaces the stored one
-            if OK and then X.Q_SCALE <= 2 then
-               declare
-                  S0 : constant Length_T :=
-                    Scaled (Natural (X.D_STARTREVERSE), Natural (X.Q_SCALE));
-                  L  : constant Length_T :=
-                    Scaled (Natural (X.L_REVERSEAREA), Natural (X.Q_SCALE));
-               begin
-                  Rev.Area := True;
-                  Rev.Sense := Tk.S;
-                  Rev.Start := At_D (S0);
-                  Rev.Finish := At_D (Add (S0, L));
-                  Record_Event (Event_Reversing, 1, 0);
-               end;
-            end if;
-         end;
+         Take_P138 (R, Tk);
       elsif Kind = ETCS_Catalogue.Track_P139 then
-         declare
-            X : ETCS_Track_Packets.P139.Packet_T;
-         begin
-            ETCS_Track_Packets.P139.Decode (R, X, OK);
-            --  3.15.4.3: replaces the distance and the speed
-            if OK and then X.Q_SCALE <= 2 then
-               Rev.Sup := True;
-               Rev.Infinite := X.D_REVERSE = D_REVERSE_Infinite;
-               Rev.Distance :=
-                 Scaled (Natural (X.D_REVERSE), Natural (X.Q_SCALE));
-               Rev.Speed := Speed_Cms_T (V5_To_Cms (Natural (X.V_REVERSE)));
-               Record_Event (Event_Reversing, 2, 0);
-            end if;
-         end;
+         Take_P139 (R);
       end if;
    end Take_Packet;
 
@@ -1356,12 +1408,84 @@ is
    --  Evaluate
    ---------------------------------------------------------------------
 
+   --  6. The conditions of 4.6.3 of this half that the steps of the
+   --  cycle do not set themselves ([9] LX_Step, the trips Trip_Step):
+   --  the driver's selections and acknowledgements, the desks, the mode
+   --  profile (3.12.4), the level switched (5.10); Standstill: the train
+   --  is at standstill
+   procedure Set_Conditions (C : Context_T; Standstill : Boolean)
+     with Global => (Input  => (Acked_Now, Acked_M, Stop_On_Desk,
+                                Ovr_Selected_Now, Profile_Info,
+                                EVC_Driver_Requests.State),
+                     In_Out => Conds)
+   is
+      L_Valid : constant Boolean := C.Level_Valid;
+   begin
+      --  [5]
+      Conds (5) := Standstill and then L_Valid
+                   and then C.Level in L0 | NTC | L1
+                   and then EVC_Driver_Requests.Shunting_Selected;
+      --  [6]: level 2, the RBC (phase E5)
+      --  [7], [62], [63], [68]: the train trip acknowledged
+      declare
+         Trip_Ack : constant Boolean :=
+           Acked_Now and then Acked_M = M_TR and then Standstill;
+      begin
+         Conds (7) := Trip_Ack and then L_Valid and then C.Level in L1 | L2;
+         Conds (62) := Trip_Ack and then L_Valid and then C.Level = L0
+                       and then C.Train_Data_Valid;
+         Conds (63) := Trip_Ack and then L_Valid and then C.Level = NTC
+                       and then C.Train_Data_Valid;
+         Conds (68) := Trip_Ack and then L_Valid
+                       and then C.Level in L0 | NTC
+                       and then not C.Train_Data_Valid;
+      end;
+      --  [9]: LX_Step; [11]: level 2 (phase E5)
+      --  [15], [50], [70]: the acknowledgement of a request displayed
+      Conds (15) := Acked_Now and then Acked_M = M_OS;
+      Conds (50) := Acked_Now and then Acked_M = M_SH;
+      Conds (70) := Acked_Now and then Acked_M = M_LS;
+      --  [19]
+      Conds (19) := EVC_Driver_Requests.Exit_Shunting_Selected
+                    and then Standstill;
+      --  [20]: the unconditional emergency stop (radio, phase E5)
+      --  [22], [23]: Passive Shunting, a desk opened
+      Conds (22) := C.Desk_Open and then Stop_On_Desk;
+      Conds (23) := C.Desk_Open and then not Stop_On_Desk;
+      --  [28], [30]: the desks closed ([26], [27] read "Continue
+      --  Shunting on desk closure", EVC_Mission: EVC_Transition_Conditions)
+      Conds (28) := not C.Desk_Open;
+      Conds (30) := not C.Desk_Open and then not C.Passive_Shunting;
+      --  [37]: "override" selected (Override_Step: 5.8.2.1)
+      Conds (37) := Ovr_Selected_Now;
+      --  [40], [72], [73], [74], [75], [76], [51] and those with the
+      --  level transition, [34], [61], [71]
+      Conds (40) := Profile_Info.Furthest = 0;
+      Conds (72) := Profile_Info.Furthest = 2;
+      Conds (73) := Profile_Info.Furthest = 0
+                    and then not Profile_Info.In_LS_Ack;
+      Conds (74) := Profile_Info.Furthest = 2
+                    and then not Profile_Info.In_OS_Ack;
+      Conds (75) := not Profile_Info.In_OS_Ack and then not Profile_Info.Any;
+      Conds (76) := not Profile_Info.In_LS_Ack and then not Profile_Info.Any;
+      Conds (51) := Profile_Info.SH_Reached;
+      Conds (34) := Conds (40) and then C.Level_Switched;
+      Conds (61) := Conds (51) and then C.Level_Switched;
+      Conds (71) := Conds (72) and then C.Level_Switched;
+      --  [59]: the reversing acknowledged at standstill
+      Conds (59) := Acked_Now and then Acked_M = M_RV and then Standstill;
+      --  [81]: the SM authorisation of the RBC (phase E5)
+      --  [82]
+      Conds (82) := EVC_Driver_Requests.Exit_SM_Selected
+                    and then Standstill;
+
+   end Set_Conditions;
+
    procedure Evaluate (C   : Context_T;
                        S   : Snapshot_T;
                        SDM : EVC_SDM.Result_T)
    is
       Standstill : constant Boolean := S.Train.Standstill;
-      L_Valid    : constant Boolean := C.Level_Valid;
    begin
       Ctx := C;
       Conds := (others => False);
@@ -1430,63 +1554,7 @@ is
       Train_Data_Step (C, S);
 
       --  6. The conditions of 4.6.3 of this half
-      --  [5]
-      Conds (5) := Standstill and then L_Valid
-                   and then C.Level in L0 | NTC | L1
-                   and then EVC_Driver_Requests.Shunting_Selected;
-      --  [6]: level 2, the RBC (phase E5)
-      --  [7], [62], [63], [68]: the train trip acknowledged
-      declare
-         Trip_Ack : constant Boolean :=
-           Acked_Now and then Acked_M = M_TR and then Standstill;
-      begin
-         Conds (7) := Trip_Ack and then L_Valid and then C.Level in L1 | L2;
-         Conds (62) := Trip_Ack and then L_Valid and then C.Level = L0
-                       and then C.Train_Data_Valid;
-         Conds (63) := Trip_Ack and then L_Valid and then C.Level = NTC
-                       and then C.Train_Data_Valid;
-         Conds (68) := Trip_Ack and then L_Valid
-                       and then C.Level in L0 | NTC
-                       and then not C.Train_Data_Valid;
-      end;
-      --  [9]: LX_Step; [11]: level 2 (phase E5)
-      --  [15], [50], [70]: the acknowledgement of a request displayed
-      Conds (15) := Acked_Now and then Acked_M = M_OS;
-      Conds (50) := Acked_Now and then Acked_M = M_SH;
-      Conds (70) := Acked_Now and then Acked_M = M_LS;
-      --  [19]
-      Conds (19) := EVC_Driver_Requests.Exit_Shunting_Selected
-                    and then Standstill;
-      --  [20]: the unconditional emergency stop (radio, phase E5)
-      --  [22], [23]: Passive Shunting, a desk opened
-      Conds (22) := C.Desk_Open and then Stop_On_Desk;
-      Conds (23) := C.Desk_Open and then not Stop_On_Desk;
-      --  [28], [30]: the desks closed ([26], [27] read "Continue
-      --  Shunting on desk closure", EVC_Mission: EVC_Transition_Conditions)
-      Conds (28) := not C.Desk_Open;
-      Conds (30) := not C.Desk_Open and then not C.Passive_Shunting;
-      --  [37]: "override" selected (Override_Step: 5.8.2.1)
-      Conds (37) := Ovr_Selected_Now;
-      --  [40], [72], [73], [74], [75], [76], [51] and those with the
-      --  level transition, [34], [61], [71]
-      Conds (40) := Profile_Info.Furthest = 0;
-      Conds (72) := Profile_Info.Furthest = 2;
-      Conds (73) := Profile_Info.Furthest = 0
-                    and then not Profile_Info.In_LS_Ack;
-      Conds (74) := Profile_Info.Furthest = 2
-                    and then not Profile_Info.In_OS_Ack;
-      Conds (75) := not Profile_Info.In_OS_Ack and then not Profile_Info.Any;
-      Conds (76) := not Profile_Info.In_LS_Ack and then not Profile_Info.Any;
-      Conds (51) := Profile_Info.SH_Reached;
-      Conds (34) := Conds (40) and then C.Level_Switched;
-      Conds (61) := Conds (51) and then C.Level_Switched;
-      Conds (71) := Conds (72) and then C.Level_Switched;
-      --  [59]: the reversing acknowledged at standstill
-      Conds (59) := Acked_Now and then Acked_M = M_RV and then Standstill;
-      --  [81]: the SM authorisation of the RBC (phase E5)
-      --  [82]
-      Conds (82) := EVC_Driver_Requests.Exit_SM_Selected
-                    and then Standstill;
+      Set_Conditions (C, Standstill);
 
       Version_Seen := False;
    end Evaluate;
@@ -1495,94 +1563,93 @@ is
    --  Mode_Changed
    ---------------------------------------------------------------------
 
-   procedure Mode_Changed (From, To : Mode_T; C : Context_T;
-                           S : Snapshot_T)
+   --  TR entered from From (5.11.2.2 A025): the trip and its reason
+   --  (4.4.13.1.3): the first condition of the transition taken that
+   --  held, else the first trip condition found in the cycle; its system
+   --  status message (DMI Table 68); the override ends (5.8.4.1 i); no
+   --  request for acknowledgement
+   procedure Enter_Trip (From : Mode_T)
+     with Global => (Input  => (Conds, Pending),
+                     Output => Ack_On,
+                     In_Out => (Reason, Status_List, Status_N, Ovr, Events,
+                                Event_N))
+   is
+      L : constant Condition_List_T := Conditions (From, M_TR);
+      R : Trip_Reason_T := No_Trip;
+   begin
+      for I in L'Range loop
+         if R = No_Trip and then L (I) in Condition_T
+           and then Conds (L (I))
+         then
+            R := Reason_Of (L (I));
+         end if;
+      end loop;
+      if R = No_Trip then
+         R := Pending;
+      end if;
+      if R /= No_Trip then
+         Reason := R;
+      end if;
+      Status (Trip_Entry (Reason), 0);
+      Record_Event (Event_Trip, Trip_Reason_T'Pos (Reason), 0);
+      --  5.8.4.1 i)
+      End_Override (9);
+      Ack_On := False;
+   end Enter_Trip;
+
+   --  OS, LS or SH (To) entered: the override ends (5.8.4.1 i); the speed
+   --  of the mode profile, of the acknowledgement or of the area
+   --  (3.12.4); entered by the order of the trackside, the
+   --  acknowledgement is asked now (5.7.2.3, 5.9.2.3, 5.19.2.3)
+   procedure Enter_Profile_Mode (To : Mode_T; C : Context_T)
+     with Global => (Input  => (Acked_Now, Acked_M, Conds, Profile_Info),
+                     Output => Use_V,
+                     In_Out => (Ovr, Ack_On, Ack_M, Ack_After, Ack_Since,
+                                Ack_V, SH_List_Known, SH_List_N, Events,
+                                Event_N))
    is
    begin
-      --  The request for acknowledgement of the mode left, and its brake
-      --  (4.12: "mode change to OS / SH / LS not acknowledged" revoked
-      --  on leaving the mode); a request for another mode ends with a
-      --  transition elsewhere
-      if Ack_On and then (Ack_After or else Ack_M /= To) then
-         Ack_On := False;
+      End_Override (9);
+      if Acked_Now and then Acked_M = To then
+         --  [15], [50], [70]: entered with the acknowledgement
+         Use_V := Ack_V;
+      elsif To = M_SH and then not Conds (51) and then not Conds (61)
+      then
+         --  [5], [23], [68] (the driver, Passive Shunting, the
+         --  trip): no acknowledgement, the national value
+         Use_V := 127;
+         if Conds (5) then
+            --  5.6.2.2 A050: the list of the SH area is deleted
+            --  (level 0 or 1: no new one)
+            SH_List_Known := False;
+            SH_List_N := 0;
+         end if;
+      else
+         --  [40], [72], [73], [74], [51], [34], [61], [71]: entered
+         --  by the order of the trackside, the acknowledgement is
+         --  asked now (5.7.2.3, 5.7.3.6, 5.9.2.3, 5.9.3.7,
+         --  5.19.2.3, 5.19.3.7); 5.9.2.7, 5.19.2.7 do not apply as
+         --  the mode was another one
+         Use_V := (if To = M_SH then Profile_Info.SH_V
+                   else Profile_Info.Furthest_V);
+         Ack_On := True;
+         Ack_M := To;
+         Ack_After := True;
+         Ack_Since := C.Now_Ms;
+         Ack_V := Use_V;
+         Record_Event (Event_Ack_Request, Mode_T'Pos (To), 1);
       end if;
-      Ack_SB := False;
-      Ack_After := False;
+   end Enter_Profile_Mode;
 
-      --  The mode entered
-      case To is
-         when M_TR =>
-            --  5.11.2.2 A025: the trip and its reason (4.4.13.1.3): the
-            --  first condition of the transition taken that held, else
-            --  the first trip condition found in the cycle
-            declare
-               L : constant Condition_List_T := Conditions (From, M_TR);
-               R : Trip_Reason_T := No_Trip;
-            begin
-               for I in L'Range loop
-                  if R = No_Trip and then L (I) in Condition_T
-                    and then Conds (L (I))
-                  then
-                     R := Reason_Of (L (I));
-                  end if;
-               end loop;
-               if R = No_Trip then
-                  R := Pending;
-               end if;
-               if R /= No_Trip then
-                  Reason := R;
-               end if;
-            end;
-            Status (Trip_Entry (Reason), 0);
-            Record_Event (Event_Trip, Trip_Reason_T'Pos (Reason), 0);
-            --  5.8.4.1 i)
-            End_Override (9);
-            Ack_On := False;
-         when M_PT =>
-            --  4.4.14.1.3: the reverse movement is counted from here
-            PT_Start := S.Train.Est_Front;
-            PT_Sense := Orientation_Now;
-            PT_Over := False;
-            PT_SB := False;
-         when M_OS | M_LS | M_SH =>
-            End_Override (9);
-            if Acked_Now and then Acked_M = To then
-               --  [15], [50], [70]: entered with the acknowledgement
-               Use_V := Ack_V;
-            elsif To = M_SH and then not Conds (51) and then not Conds (61)
-            then
-               --  [5], [23], [68] (the driver, Passive Shunting, the
-               --  trip): no acknowledgement, the national value
-               Use_V := 127;
-               if Conds (5) then
-                  --  5.6.2.2 A050: the list of the SH area is deleted
-                  --  (level 0 or 1: no new one)
-                  SH_List_Known := False;
-                  SH_List_N := 0;
-               end if;
-            else
-               --  [40], [72], [73], [74], [51], [34], [61], [71]: entered
-               --  by the order of the trackside, the acknowledgement is
-               --  asked now (5.7.2.3, 5.7.3.6, 5.9.2.3, 5.9.3.7,
-               --  5.19.2.3, 5.19.3.7); 5.9.2.7, 5.19.2.7 do not apply as
-               --  the mode was another one
-               Use_V := (if To = M_SH then Profile_Info.SH_V
-                         else Profile_Info.Furthest_V);
-               Ack_On := True;
-               Ack_M := To;
-               Ack_After := True;
-               Ack_Since := C.Now_Ms;
-               Ack_V := Use_V;
-               Record_Event (Event_Ack_Request, Mode_T'Pos (To), 1);
-            end if;
-         when M_RV =>
-            RV_Over := False;
-            RV_EB := False;
-         when others =>
-            null;
-      end case;
-
-      --  The mode left
+   --  The mode From left for To: PT or TR (the trip reason no longer
+   --  indicated, DMI Table 68; 4.12: the reverse movement distance of PT
+   --  revoked), RV (4.12), SR (5.8.3.1.3 b: the former EOA/LOA deleted)
+   procedure Leave_Mode (From, To : Mode_T)
+     with Global => (In_Out => (Reason, Status_List, Status_N, PT_SB,
+                                PT_Over, RV_EB, RV_Over, Former,
+                                Former_Passed))
+   is
+   begin
       if From = M_PT or else (From = M_TR and then To /= M_PT) then
          --  the trip reason is no longer indicated (DMI Table 68: "PT
          --  mode left", [62], [63], [68]); 4.12: the reverse movement
@@ -1607,6 +1674,15 @@ is
          Former := False;
          Former_Passed := False;
       end if;
+   end Leave_Mode;
+
+   --  The change of Train Data (5.17) on entering To: 4.12, its brake
+   --  while running revoked; 5.17.2.2 E1, D4, the trip procedure exited
+   procedure Train_Data_Mode_Entered (To : Mode_T)
+     with Global => (In_Out => (TD_Step, TD_Revalidate, Status_List,
+                                Status_N, Events, Event_N))
+   is
+   begin
       --  4.12: the brake of a change of Train Data while running is
       --  revoked on entering NP, SB, SH, SM, SL, NL, maintained otherwise
       if TD_Step in TD_Brake | TD_Ack
@@ -1625,7 +1701,19 @@ is
             TD_Request_Revalidation;
          end if;
       end if;
+   end Train_Data_Mode_Entered;
 
+   --  The information of this unit deleted on entering To (4.10: "Stop
+   --  Shunting on desk opening", the list of balise groups for the SH
+   --  area, the reversing information; 5.22.5.1 b: the big metal masses
+   --  inhibition; 4.12: the brake of the linking inconsistency, revoked
+   --  on NP and SB)
+   procedure Delete_On_Mode_Entry (To : Mode_T)
+     with Global => (Output => Rev_Possible,
+                     In_Out => (Stop_On_Desk, SH_List_Known, SH_List_N,
+                                Rev, BMM_On, Link_SB, Events, Event_N))
+   is
+   begin
       --  4.10: "Stop Shunting on desk opening", the list of balise groups
       --  for the SH area, the reversing information
       if To in M_NP | M_SB | M_SM | M_SL then
@@ -1653,6 +1741,45 @@ is
       if To in M_NP | M_SB then
          Link_SB := False;
       end if;
+   end Delete_On_Mode_Entry;
+
+   procedure Mode_Changed (From, To : Mode_T; C : Context_T;
+                           S : Snapshot_T)
+   is
+   begin
+      --  The request for acknowledgement of the mode left, and its brake
+      --  (4.12: "mode change to OS / SH / LS not acknowledged" revoked
+      --  on leaving the mode); a request for another mode ends with a
+      --  transition elsewhere
+      if Ack_On and then (Ack_After or else Ack_M /= To) then
+         Ack_On := False;
+      end if;
+      Ack_SB := False;
+      Ack_After := False;
+
+      --  The mode entered
+      case To is
+         when M_TR =>
+            Enter_Trip (From);
+         when M_PT =>
+            --  4.4.14.1.3: the reverse movement is counted from here
+            PT_Start := S.Train.Est_Front;
+            PT_Sense := Orientation_Now;
+            PT_Over := False;
+            PT_SB := False;
+         when M_OS | M_LS | M_SH =>
+            Enter_Profile_Mode (To, C);
+         when M_RV =>
+            RV_Over := False;
+            RV_EB := False;
+         when others =>
+            null;
+      end case;
+
+      --  The mode left
+      Leave_Mode (From, To);
+      Train_Data_Mode_Entered (To);
+      Delete_On_Mode_Entry (To);
 
       if To = M_TR then
          Demand.EB := True;
