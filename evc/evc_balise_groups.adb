@@ -14,13 +14,22 @@ is
                     R : Reading_T)
    is
    begin
-      P := (Open      => True,
-            Id        => Identity (T.Header),
-            N_TOTAL   => T.Header.N_TOTAL,
-            Linked    => T.Header.Q_LINK = 1,
-            Count     => 1,
-            Readings  => (others => R),
-            Telegrams => (others => T));
+      --  component by component: the aggregate of the whole passage,
+      --  which reads the parameters, was built in a temporary (4.6 KB)
+      --  and copied
+      P := (others => <>);
+      P.Open := True;
+      P.Id := Identity (T.Header);
+      P.N_TOTAL := T.Header.N_TOTAL;
+      P.Linked := T.Header.Q_LINK = 1;
+      P.Count := 1;
+      for I in Slot_T loop
+         pragma Loop_Invariant
+           (P.Open and then P.Count = 1
+            and then P.Id = Identity (T.Header));
+         P.Readings (I) := R;
+         P.Telegrams (I) := T;
+      end loop;
    end Start;
 
    ---------
