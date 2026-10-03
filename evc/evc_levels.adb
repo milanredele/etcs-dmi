@@ -61,6 +61,8 @@ is
    function Selected (T : Priority_Table_T) return Positive is
    begin
       for I in 1 .. T.Count loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Available (T.List (I).Level) then
             return I;
          end if;

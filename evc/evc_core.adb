@@ -575,6 +575,8 @@ is
       M_Status : ETCS_Message.Status_T;
    begin
       for I in 1 .. Latched_RTM_Count loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          declare
             Slot : RTM_Slot_T renames Latched_RTM (I);
          begin
@@ -1822,6 +1824,8 @@ is
       end if;
       Supervision_Reported := Supervision_Now;
       for Bit in EVC_Bytes.Byte range 1 .. 2 loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if (Overrun and Bit) /= 0
            and then (Overrun_Reported and Bit) = 0
          then
@@ -1863,6 +1867,8 @@ is
         Unsigned_64 (Unsigned_32'Mod (C));
    begin
       for K in 0 .. 3 loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          Frame (Last + 1 + K) := EVC_Bytes.Byte_Of (U, K);
       end loop;
       Last := Last + 4;

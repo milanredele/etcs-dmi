@@ -612,12 +612,16 @@ is
       end if;
       --  3.12.5.3: the one of the same identity is replaced
       for I in LX_S'Range loop
+         --  the one found so far, an index or 0 after the loop
+         pragma Loop_Invariant (Slot < I);
          if LX_S (I).Used and then LX_S (I).Id = P.NID_LX then
             Slot := I;
          end if;
       end loop;
       if Slot = 0 then
          for I in LX_S'Range loop
+            --  no free slot before I: an index or 0 after the loop
+            pragma Loop_Invariant (Slot = 0);
             if not LX_S (I).Used then
                Slot := I;
                exit;
@@ -817,6 +821,8 @@ is
       Cut_Behind (Adh_S, T, Rear, Keep_In_Rear);
       Cut_Behind (PBD_S, T, Rear, Keep_In_Rear);
       for I in LX_S'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if LX_S (I).Used
            and then A (LX_Sense_S, Frame (T, LX_S (I).Finish, Min_Item))
                     < Diff (A (LX_Sense_S, Rear), Keep_In_Rear)
@@ -884,6 +890,8 @@ is
       Mark (Adh_S, Marks);
       Mark (PBD_S, Marks);
       for I in LX_S'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if LX_S (I).Used then
             Mark (LX_S (I).Start, Marks);
             Mark (LX_S (I).Finish, Marks);

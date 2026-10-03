@@ -511,6 +511,8 @@ is
             Ambiguous  => False);
          --  3.4.2.3.3.7: the same group with another previous LRBG
          for I in Recent_Index_T loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             if Recent (I).A.Valid and then Recent (I).A.Id = A.Id
               and then (Recent (I).Ambiguous
                         or else Recent (I).Prev_Known /= Entry_R.Prev_Known
@@ -762,6 +764,8 @@ is
    is
    begin
       for I in 1 .. Passage.Count loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          for J in 1 .. Passage.Telegrams (I).Count loop
             if Passage.Telegrams (I).Index (J).Kind
                  = ETCS_Catalogue.Track_P16
@@ -1436,6 +1440,8 @@ is
       else
          A := (others => <>);
          for I in Recent_Index_T loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             if Recent (I).A.Valid and then Recent (I).A.Id = Ref then
                A := Recent (I).A;
             end if;

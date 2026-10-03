@@ -41,6 +41,8 @@ is
       for I in Data'Range loop
          C := C xor Unsigned_32 (Data (I));
          for K in 1 .. 8 loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             if (C and 1) = 1 then
                C := Shift_Right (C, 1) xor 16#EDB8_8320#;
             else
@@ -186,6 +188,8 @@ is
       is
       begin
          for N in 0 .. 3 loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             Image (Offset + 1 + N) := Byte_Of (Unsigned_64 (V), N);
          end loop;
       end Put_U32;

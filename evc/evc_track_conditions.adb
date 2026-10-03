@@ -399,6 +399,8 @@ is
       Found := False;
       L := (others => <>);
       for K in Last'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Last (K).Valid and then Last (K).Id = Id
            and then Last (K).Foot = X
          then
