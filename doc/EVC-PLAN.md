@@ -109,26 +109,34 @@ on wasm32 and on a light runtime, and to be testable headless:
   with an invariant each, `True` where nothing is needed after the loop,
   the checks of 16 conditions or more went from 16 to 4 (postconditions
   over many paths), the conditions from 9363 to 9154 and the processor
-  time of a proof from nothing from 2416 s to 2274-2341 s (the loops held
-  cheap checks; wall time on a machine loaded by other proofs: 387 s
-  against 435-634 s, noise), and `evc/prove.sh` fails above 6 such
+  time of a proof from nothing from 2416 s to 2274-2341 s (the loops
+  held cheap checks; wall time on a machine loaded by other proofs: 387
+  s against 435-634 s, noise), and `evc/prove.sh` fails above 6 such
   checks. The two regression runners are split by subject
   (`EVC_Test_<Subject>`, `DMI_Test_<Subject>`): a new scenario goes into
-  the package of its subject. Of what was noticed while reading, checked against the clauses on
-  2026-10-03: the MA request and the perturbation location over several
-  targets and 3.13.11.9 on every curve were defects and are fixed; the
-  EOA or LOA passed and V_MAIN without an MA were not (the code now says
-  why); the stack is the "Stack" bullet; the two test checks are fixed.
-  Still to be checked against their clauses (nothing changed):
-  `EVC_Text_Messages.Store` gives way by slot order, not by age;
-  `EVC_Position.Set_Report_Parameters` takes the match with the highest
-  index of the ring of recent groups, not the most recent; the temporary
-  EOA of a level crossing is not limited to the MA; the direction
-  controller is decoded in two places; two supervision scenarios
-  (`Scenario_SDM_LOA`, `Scenario_SDM_MRSP_Target`) have a stop condition
-  that is never true. The compiler enforces the embedded constraints of
-  the on-board through `evc/restrictions.adc`; No_Secondary_Stack is not
-  among them yet (247 uses, in the catalogues of the language mostly).
+  the package of its subject. Of what was noticed while reading, checked
+  against the clauses on 2026-10-03: the MA request and the perturbation
+  location over several targets and 3.13.11.9 on every curve were
+  defects and are fixed; the EOA or LOA passed and V_MAIN without an MA
+  were not (the code now says why); the stack is the "Stack" bullet; the
+  two test checks are fixed. The next five, checked on 2026-10-03:
+  `EVC_Text_Messages.Store` was a defect (no room: it took the first
+  message not displayed in slot order, else slot 1, dropping a message
+  waiting for its acknowledgement with its brake, against 3.12.3.4.7.1;
+  3.12.3 sets no number, now the oldest not displayed gives way, else
+  the oldest displayed not waiting, else the new one is refused);
+  `EVC_Position.Set_Report_Parameters` and `Assign_Coordinate_System`
+  were a defect (a group passed again is twice in the wrapping ring of
+  the last LRBGs; now its last passage, 3.6.1.3); the temporary EOA of a
+  level crossing beyond the MA is not one (3.12.2.5, 3.13.1.5: the
+  closer of the two; 3.7.2.2.1 beyond an LOA; A.3.4 keeps it on an MA
+  shortening: the comment says so); the direction controller's two
+  decodings were the same, now one function; the stop conditions of
+  `Scenario_SDM_LOA` and `Scenario_SDM_MRSP_Target` read the train, and
+  their checks hold where they were meant. Nothing of that list is open.
+  The compiler enforces the embedded constraints of the on-board through
+  `evc/restrictions.adc`; No_Secondary_Stack is not among them yet (247
+  uses, in the catalogues of the language mostly).
 - **Stack** (2026-10-03): `ports/tms570/stack.sh` builds the on-board
   for the TMS570 with `-fstack-usage -fcallgraph-info=su,da` and walks
   GCC's call graph: the frame of each subprogram plus its deepest
