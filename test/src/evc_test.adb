@@ -165,6 +165,8 @@ begin
    Scenario_SDM_LOA;
    Scenario_SDM_Calculated_Release;
    Scenario_SDM_Perturbation;
+   Scenario_SDM_LOA_And_Temporary;
+   Scenario_SDM_Perturbation_Curves;
    Scenario_SDM_Feedback;
    Scenario_SDM_GUI;
    Scenario_SDM_Adhesion;
