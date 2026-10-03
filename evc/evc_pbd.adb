@@ -216,7 +216,10 @@ is
       Work : Profile_T;
       V    : Speed_Cms_T;
    begin
+      pragma Warnings (GNATprove, Off, """Work"" is set by ""Restrict""*",
+                       Reason => "only the speed is kept");
       Restrict (I, D_PBD, Gradient, Service, Work, V);
+      pragma Warnings (GNATprove, On, """Work"" is set by ""Restrict""*");
       return V;
    end Restriction;
 
