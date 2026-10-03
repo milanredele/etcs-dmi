@@ -32,9 +32,10 @@
 # close to the limit to stay proved when the code around it changes, and
 # is to be made easier (an assertion, a lemma, a smaller subprogram).
 #
-# The conditions (VCs) of a check: a loop over at most 20 values without
-# a loop invariant is unrolled by gnatprove, every check of its body
-# proved once per iteration and path (16 or 32 VCs where 1 or 2 do).
+# The conditions (VCs) of a check: a loop without a loop invariant of at
+# most 20 iterations (by its bounds, or by the range of their types) is
+# unrolled by gnatprove, every check of its body proved once per
+# iteration and path (16 or 32 VCs where 1 or 2 do).
 # The run prints the number of checks of 16 VCs or more and the largest,
 # and fails when there are more than ETCS_PROOF_MAX_WIDE (default 6) of
 # them: today 4, postconditions over many paths (EVC-PLAN §2); a new one
