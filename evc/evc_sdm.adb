@@ -2268,13 +2268,17 @@ is
    --  Supervised_Targets gives at most one EOA target (3.13.1.5: the
    --  closest of the EOA of the MA and the temporary one) and at most
    --  one LOA target, both when the MA ends with an LOA and a temporary
-   --  EOA is supervised. Passing the EOA or the LOA is a trip (3.13.10.2.6
-   --  a, 3.13.10.2.7: "the EOA/LOA location"), and the MA request is
-   --  triggered by the first of the locations of 3.13.11.8 passed, or at
-   --  once by 3.13.11.9, of any of them (3.13.11.1: before the train
-   --  would have to brake to an EOA/SvL or LOA target): the results of
-   --  the targets are combined, whatever their order. The perturbation
-   --  location given is the nearest one found.
+   --  EOA is supervised (3.12.4.7, 3.12.5.8). The EOA/LOA passed
+   --  (3.13.10.2.6 a, 3.13.10.2.7) is then the EOA target's: the LOA
+   --  stays a speed target, and the train may pass it towards a
+   --  temporary EOA beyond it (3.12.4.7 c: a temporary SvL at the start
+   --  of a mode profile beyond the LOA; SUBSET-076 3.12.4, the train
+   --  passing the LOA does not trip), while a temporary EOA in rear of
+   --  the LOA is passed first anyway; the LOA's only without an EOA
+   --  target. The MA request is triggered by the first of the locations
+   --  of 3.13.11.8 passed, or at once by 3.13.11.9, of any of the targets
+   --  (3.13.11.1: before the train would have to brake to an EOA/SvL or
+   --  LOA target). The perturbation location given is the nearest one.
    ---------------------------------------------------------------------
 
    procedure Passed_Locations (S              : Snapshot_T;
@@ -2288,6 +2292,9 @@ is
                                MA_Request     : out Boolean)
      with Global => null
    is
+      --  an EOA target is supervised; the LOA passed
+      Has_EOA : Boolean := False;
+      LOA_P   : Boolean := False;
    begin
       EOA_Passed := False;
       SvL_Passed := False;
@@ -2297,13 +2304,18 @@ is
       for K in 1 .. Work.Count loop
          declare
             T : constant Target_T := Work.Targets (K);
+            --  the min safe front end (level 2) or antenna (level 1)
+            --  passed its EOA or LOA
+            P : constant Boolean :=
+              (if Inputs.Level_1
+               then C.X_Min - Num (Inputs.Antenna_Offset) > T.EOA
+               else C.X_Min > T.EOA);
          begin
-            if T.Kind in EOA_Target | LOA_Target then
-               EOA_Passed :=
-                 EOA_Passed
-                 or else (if Inputs.Level_1
-                          then C.X_Min - Num (Inputs.Antenna_Offset) > T.EOA
-                          else C.X_Min > T.EOA);
+            if T.Kind = EOA_Target then
+               Has_EOA := True;
+               EOA_Passed := EOA_Passed or else P;
+            elsif T.Kind = LOA_Target then
+               LOA_P := LOA_P or else P;
             end if;
             if T.Kind = EOA_Target then
                SvL_Passed := SvL_Passed or else C.X_Max > T.Location;
@@ -2351,6 +2363,9 @@ is
             end if;
          end;
       end loop;
+      if not Has_EOA then
+         EOA_Passed := LOA_P;
+      end if;
    end Passed_Locations;
 
    ---------------------------------------------------------------------

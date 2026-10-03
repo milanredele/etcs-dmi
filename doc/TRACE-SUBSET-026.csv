@@ -513,7 +513,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.4.7 c),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL at the start with an LOA in rear of it), supervised (EVC_SDM, 3.13.1.5); evc_test SDM_Seams"
 3.12.5.3,3,x,,,,,E3,done,EVC_Track_Description.Take_LX; evc_test Scenario_Other_Profiles
 3.12.5.8,3,x,,,,,E3,done,"EVC_Track_Description.LX_Target to Snapshot_T.Temporary, supervised by EVC_SDM as the closest EOA and SvL, no release speed (3.13.1.5), until the substitution of 5.16 or the min safe front end past the LX end; evc_test Other_Profiles, SDM_Seams, evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
-3.13.1.5,3,x,,,,,E3,partial,"EVC_SDM: the EOA and the SvL are the closest of those of the MA and of Snapshot_T.Temporary (LX 3.12.5.8, mode profile 3.12.4.7), a temporary SvL with no release speed, an LOA kept beside a temporary EOA (passing either is the EOA/LOA passed, the MA request location of either counts: EVC_SDM.Passed_Locations); evc_test SDM_Seams, SDM_LOA_And_Temporary, Other_Profiles; the temporary EOA of a route unsuitability (3.12.2.4) is E4"
+3.13.1.5,3,x,,,,,E3,partial,"EVC_SDM: the EOA and the SvL are the closest of those of the MA and of Snapshot_T.Temporary (LX 3.12.5.8, mode profile 3.12.4.7), a temporary SvL with no release speed, an LOA kept beside a temporary EOA as a speed target (the EOA/LOA passed is the temporary EOA's, 3.12.4.7 c; the MA request location of either counts: EVC_SDM.Passed_Locations); evc_test SDM_Seams, SDM_LOA_And_Temporary, Other_Profiles; the temporary EOA of a route unsuitability (3.12.2.4) is E4"
 3.13.2.2.1.3,3,x,,,,,E3,done,"EVC_Braking.Build, Conversion_Applicable; evc_test SDM_Precision (lambda and gamma trains)"
 3.13.2.2.2.1,3,x,,,,,E3,done,"T_Traction_Cut_Off of the train data, EVC_Limits.T_Traction (3.13.9.3.2.3); evc_test SDM_Precision"
 3.13.2.2.3.1.1,3,x,,,,,E3,done,"EVC_Braking.Steps_T and Lookup (step K from the previous upper speed, the last open ended), used for the emergency, service and normal service models; evc_test SDM_Precision"
@@ -697,12 +697,12 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.10.2.4,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling"
 3.13.10.2.5,3,x,,,,,E3,done,EVC_SDM.Step (Intervention left only without a brake command; proven: Intervention implies a command); evc_test SDM_Ceiling
 3.13.10.2.6,3,x,,,,,E3,partial,"a) done (the trip 4.6.3 [12], [16], EVC_Procedures); b) the balise group beyond the EOA in RSM is level 2 (4.6.3 [11], E5)"
-3.13.10.2.6 a),3,x,,,,,E3,done,"EVC_SDM.Result_T.EOA_Passed (any EOA or LOA target: with an LOA and a temporary EOA, either; JRU event 22); the trip 4.6.3 [12], [16] (EVC_Procedures); evc_test SDM_LOA, SDM_LOA_And_Temporary, evc_test_procedures Scenario_Trip_EOA"
+3.13.10.2.6 a),3,x,,,,,E3,done,"EVC_SDM.Result_T.EOA_Passed (the EOA target's, else the LOA's: beside a temporary EOA the LOA is passed without a trip, 3.12.4.7 c, SUBSET-076 3.12.4; JRU event 22); the trip 4.6.3 [12], [16] (EVC_Procedures); evc_test SDM_LOA, SDM_LOA_And_Temporary, evc_test_procedures Scenario_Trip_EOA"
 3.13.10.2.6 b),3,x,,,,,E3,deferred,E5 (4.6.3 [11] is a level 2 condition)
 3.13.10.2.6 b) 1st bullet,3,x,,,,,E3,deferred,E5 (4.6.3 [11] is a level 2 condition)
 3.13.10.2.6 b) 2nd bullet,3,x,,,,,E3,deferred,E5 (4.6.3 [11] is a level 2 condition)
 3.13.10.2.6 b) 3rd bullet,3,x,,,,,E3,deferred,E5 (4.6.3 [11] is a level 2 condition)
-3.13.10.2.7,3,x,,,,,E3,done,"EVC_SDM.Result_T.EOA_Passed with the min safe antenna position in level 1 (any EOA or LOA target: with an LOA and a temporary EOA, either; JRU event 22); the trip 4.6.3 [12] (EVC_Procedures); evc_test SDM_LOA_And_Temporary, evc_test_procedures Scenario_Trip_EOA"
+3.13.10.2.7,3,x,,,,,E3,done,"EVC_SDM.Result_T.EOA_Passed with the min safe antenna position in level 1 (the EOA target's, else the LOA's: beside a temporary EOA the LOA is passed without a trip, 3.12.4.7 c, SUBSET-076 3.12.4; JRU event 22); the trip 4.6.3 [12] (EVC_Procedures); evc_test SDM_LOA_And_Temporary, evc_test_procedures Scenario_Trip_EOA"
 3.13.10.3.1,3,x,,,,,E3,done,"EVC_SDM.Step (CSM: v_perm = V_MRSP, v_sbi = V_MRSP + dV_sbi); MSG_SPEED_STATE; evc_test SDM_Ceiling"
 3.13.10.3.2,3,x,,,,,E3,done,"EVC_SDM.Step (CSM: v_perm = V_MRSP, v_sbi = V_MRSP + dV_sbi); MSG_SPEED_STATE; evc_test SDM_Ceiling"
 3.13.10.3.3,3,x,,,,,E3,done,"EVC_SDM.Step (CSM commands and statuses, the first cycle from Normal, Indication left at once); evc_test SDM_Ceiling; evc_fuzz (EB above the ceiling EBI)"

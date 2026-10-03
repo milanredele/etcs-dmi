@@ -874,24 +874,27 @@ package body EVC_Test_Supervision is
    end Scenario_SDM_Perturbation;
 
    --  3.13.1.5, 3.13.8.2.1 b), c): an MA ending with an LOA and a
-   --  temporary EOA beyond it (the start of a level crossing not
-   --  protected further on, 3.12.5.8) are two targets, the LOA first.
-   --  3.13.10.2.6 a), 3.13.10.2.7: the min safe front end (antenna)
-   --  passing the LOA is "the EOA/LOA location" passed, whatever the
-   --  temporary EOA beyond; 3.13.11.8 with 3.13.11.1 (the MA request
-   --  before the train would have to brake to an EOA/SvL or LOA target):
-   --  the MA request location of the LOA, the nearer one, is not lost
-   --  beside the temporary EOA, and the perturbation location given is
-   --  the nearest one
+   --  temporary EOA beyond it (the start of a mode profile further on,
+   --  3.12.4.7 c) are two targets, the LOA first. 3.13.10.2.6 a),
+   --  3.13.10.2.7: the EOA/LOA passed is then the temporary EOA's, the
+   --  train passing the LOA does not trip (as SUBSET-076 3.12.4, the
+   --  sequences 3120400_07 and _08, have it); 3.13.11.8 with 3.13.11.1
+   --  (the MA request before the train would have to brake to an
+   --  EOA/SvL or LOA target): the MA request location of the LOA, the
+   --  nearer one, is not lost beside the temporary EOA, and the
+   --  perturbation location given is the nearest one
    procedure Scenario_SDM_LOA_And_Temporary is
       S : SIn.Snapshot_T;
       X : Integer_64;
       V : SIn.Speed_Cms_T;
 
       --  (the train of the snapshot: Drive updates X on return only)
-      function Past return Boolean is
+      function Past_LOA return Boolean is
         (Integer_64 (Sup.Train.Est_Front) > 402_000);
-      procedure Pass is new Drive (Never, Past);
+      function Past_Tmp return Boolean is
+        (Integer_64 (Sup.Train.Est_Front) > 502_000);
+      procedure To_LOA is new Drive (Never, Past_LOA);
+      procedure To_Tmp is new Drive (Never, Past_Tmp);
 
       --  At_X: where the MA request location is passed at 100 km/h (-1:
       --  not before 4 km), Pert: the perturbation location at the start;
@@ -937,11 +940,17 @@ package body EVC_Test_Supervision is
       Place (S, X, V);
       Sup_Start (S);
       Check (not Res.EOA_Passed, "LOA and temporary EOA: not passed at 380 m");
-      Pass (X, V, 0, 1_000);
-      Check (Res.EOA_Passed,
+      To_LOA (X, V, 0, 1_000);
+      Check (not Res.EOA_Passed,
              "LOA and temporary EOA beyond it: the min safe front end "
              & "passed the LOA at" & Integer_64'Image (X / 100)
-             & " m (3.13.10.2.6 a, 3.13.10.2.7 with 3.13.1.5)");
+             & " m, not the EOA/LOA passed (3.13.10.2.6 a, 3.13.10.2.7 "
+             & "with 3.13.1.5, 3.12.4.7 c)");
+      To_Tmp (X, V, 0, 1_000);
+      Check (Res.EOA_Passed,
+             "LOA and temporary EOA beyond it: the min safe front end "
+             & "passed the temporary EOA at" & Integer_64'Image (X / 100)
+             & " m");
 
       Request (False, LOA_At, LOA_Pert);
       Request (True, Both_At, Both_Pert);
