@@ -477,6 +477,29 @@ is
    --  LRBG
    ---------------------------------------------------------------------
 
+   --  The entry of the ring of the last passage of group Id, 0 for none.
+   --  A group passed again after another one (the train came back, or
+   --  passed it the other way) is in the ring twice, and the ring wraps:
+   --  it is read from its oldest entry (Recent_Next) to its newest, the
+   --  last match wins (3.6.1.3: the position in relation to a reference
+   --  group is that of its last passage).
+   function Latest (Id : Identity_T) return Natural
+     with Post => Latest'Result <= Max_Recent
+   is
+      Found : Natural range 0 .. Max_Recent := 0;
+      I     : Recent_Index_T := Recent_Next;
+   begin
+      for K in Recent_Index_T loop
+         --  not unrolled by the proof, Found's range is its type's
+         pragma Loop_Invariant (True);
+         if Recent (I).A.Valid and then Recent (I).A.Id = Id then
+            Found := I;
+         end if;
+         I := (if I = Max_Recent then 1 else I + 1);
+      end loop;
+      return Found;
+   end Latest;
+
    --  3.6.2.2.2 a): A, LRBG compliant, was passed. After it the LRBG is
    --  the group just passed.
    procedure Set_LRBG (A : Anchor_T)
@@ -1444,17 +1467,15 @@ is
       elsif SOLR_A.Valid and then SOLR_A.Id = Ref then
          A := SOLR_A;
       else
-         A := (others => <>);
-         for I in Recent_Index_T loop
-            --  not unrolled by the proof, nothing needed after the loop
-            pragma Loop_Invariant (True);
-            if Recent (I).A.Valid and then Recent (I).A.Id = Ref then
-               A := Recent (I).A;
+         --  3.6.2.2.2 c): one of the last LRBGs; its last passage
+         declare
+            Found : constant Natural := Latest (Ref);
+         begin
+            if Found = 0 then
+               return;
             end if;
-         end loop;
-         if not A.Valid then
-            return;
-         end if;
+            A := Recent (Found).A;
+         end;
       end if;
       OK := True;
       Params_Stored := True;
@@ -1510,22 +1531,32 @@ is
    begin
       OK := False;
       for I in Recent_Index_T loop
-         pragma Loop_Invariant (Found <= Max_Recent);
-         if Recent (I).A.Valid and then Recent (I).A.Id = Id then
-            if Recent (I).Ambiguous then
-               --  3.4.2.3.3.8
-               return;
-            end if;
-            Found := I;
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
+         if Recent (I).A.Valid and then Recent (I).A.Id = Id
+           and then Recent (I).Ambiguous
+         then
+            --  3.4.2.3.3.8
+            return;
          end if;
       end loop;
+      --  the direction reference of the last report based on the group
+      --  (3.4.2.3.3.6)
+      Found := Latest (Id);
       if Found = 0 or else Recent (Found).Dref = Unknown then
          return;
       end if;
       G := (if Nominal then Recent (Found).Dref
             elsif Recent (Found).Dref = Plus then Minus
             else Plus);
-      Recent (Found).A.Orientation := G;
+      --  the orientation is the group's, every passage kept of it
+      for I in Recent_Index_T loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
+         if Recent (I).A.Valid and then Recent (I).A.Id = Id then
+            Recent (I).A.Orientation := G;
+         end if;
+      end loop;
       if LRBG_A.Valid and then LRBG_A.Id = Id then
          LRBG_A.Orientation := G;
       end if;

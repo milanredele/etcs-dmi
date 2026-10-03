@@ -142,7 +142,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.2.2.2 a),3,x,,,,,E2,done,"EVC_Position.Evaluate (LRBG compliant: linked and announced when checked, not unlinked when not checked); evc_test position_linking, position_linking_errors"
 3.6.2.2.2 a) 1st bullet,3,x,,,,,E2,done,"EVC_Position.Evaluate (LRBG compliant: linked and announced when checked, not unlinked when not checked); evc_test position_linking, position_linking_errors"
 3.6.2.2.2 a) 2nd bullet,3,x,,,,,E2,done,"EVC_Position.Evaluate (LRBG compliant: linked and announced when checked, not unlinked when not checked); evc_test position_linking, position_linking_errors"
-3.6.2.2.2 c),3,x,,,,,E2,partial,EVC_Position keeps the last 8 LRBGs with their anchors (Set_Report_Parameters looks them up); evaluating RBC messages against them is E5
+3.6.2.2.2 c),3,x,,,,,E2,partial,"EVC_Position keeps the last 8 LRBGs with their anchors (Set_Report_Parameters and Assign_Coordinate_System look them up by the last passage of the group, Latest: the ring wraps and a group passed again is in it twice; evc_test Scenario_Report_Reference); evaluating RBC messages against them is E5"
 3.6.2.2.2.1,3,x,,,,,E2,partial,"EVC_Position.Position_Report: LRBG ""unknown"" without LRBG (evc_test position_first_group); position deleted at SoM is E4 (Delete_Position)"
 3.6.2.2.2.3,3,x,,,,,E2,deferred,E5 (RBC messages with LRBG unknown)
 3.6.3.1.3,3,x,,,,,E2,partial,"EVC_Position.Valid_For, applied to packets 5 and 79; the packets of E3 to E6 use it in turn"
