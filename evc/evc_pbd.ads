@@ -103,17 +103,26 @@ is
    --  The inputs from the Train Data, the national values and the
    --  configuration of the snapshot S, the status of the special brakes
    --  (Active, Additional: SUBSET-034 2.3.6, 2.3.7) and the distance from
-   --  the active antenna to the front end
+   --  the active antenna to the front end, into I (the on-board's way:
+   --  an Inputs_T, 7 KB, returned by a function is built on the stack of
+   --  its caller; Inputs_Of is for the tests)
+   procedure Get_Inputs (S          : Snapshot_T;
+                         Active     : Brakes_T;
+                         Additional : Boolean;
+                         Antenna    : Natural;
+                         I          : out Inputs_T);
    function Inputs_Of (S          : Snapshot_T;
                        Active     : Brakes_T;
                        Additional : Boolean;
                        Antenna    : Natural) return Inputs_T;
 
-   --  The profile of a section: its gradient everywhere, compensated
-   --  for the rotating mass, no reduced adhesion but the driver's, no
-   --  inhibition
-   function Profile_Of (I : Inputs_T; Gradient : Gradient_T)
-     return Profile_T;
+   --  The profile of a section into P: its gradient everywhere,
+   --  compensated for the rotating mass, no reduced adhesion but the
+   --  driver's, no inhibition
+   procedure Section_Profile (I        : Inputs_T;
+                              Gradient : Gradient_T;
+                              P        : out Profile_T)
+     with Post => P.Count = 1;
 
    --  3.11.11.6 (Emergency), 3.11.11.8 (Service_EBD), 3.11.11.9
    --  (Service_SBD)
@@ -128,7 +137,13 @@ is
      with Pre => V <= Top_Speed;
 
    --  The largest speed of 0 .. Top_Speed for which C holds, cm/s, 0 when
-   --  none; before the rounding to 5 km/h
+   --  none; before the rounding to 5 km/h. Unrounded_On: on the profile P
+   --  of the section (Section_Profile); Unrounded builds it.
+   function Unrounded_On (I        : Inputs_T;
+                          P        : Profile_T;
+                          C        : Condition_T;
+                          D_PBD    : PBD_Distance_T) return Speed_T
+     with Post => Unrounded_On'Result <= Top_Speed;
    function Unrounded (I        : Inputs_T;
                        C        : Condition_T;
                        D_PBD    : PBD_Distance_T;
@@ -137,7 +152,18 @@ is
 
    --  3.11.11.6, 3.11.11.7: V_PBD, cm/s, a multiple of 5 km/h rounded
    --  down to the cm/s; 0 without a model of the emergency brake
-   --  (3.13.2.2.1.3: nothing is known to fulfil the inequalities)
+   --  (3.13.2.2.1.3: nothing is known to fulfil the inequalities).
+   --  Restrict builds the profile of the section in Work, a work area of
+   --  the caller whose content it overwrites (the on-board's way: the
+   --  profile, 17 KB, is not built on the stack; EVC_Track_Description.
+   --  Compute_PBD); Restriction, for the tests, in a local one.
+   procedure Restrict (I        : Inputs_T;
+                       D_PBD    : PBD_Distance_T;
+                       Gradient : Gradient_T;
+                       Service  : Boolean;
+                       Work     : in out Profile_T;
+                       V        : out Speed_Cms_T)
+     with Post => V <= Top_Speed;
    function Restriction (I        : Inputs_T;
                          D_PBD    : PBD_Distance_T;
                          Gradient : Gradient_T;

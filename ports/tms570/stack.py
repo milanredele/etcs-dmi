@@ -310,10 +310,40 @@ def main():
     for fn in list(funcs.values()) + runtime_used:
         depth(fn, [])
 
-    # (a) frames
-    print("Frames of the on-board, largest first (bytes, %d subprograms):"
-          % len(funcs))
-    for fn in sorted(funcs.values(), key=lambda f: -f.frame)[:args.top]:
+    # the entry points: the four of EVC_Core and the elaboration
+    rows = []
+    for e in ENTRIES:
+        fns = by_name.get(e)
+        if not fns:
+            fail("entry point %s not found" % e)
+        rows.append((e, fns[0]))
+    elab = [f for f in funcs.values()
+            if f.name.endswith(("___elabs", "___elabb"))]
+    if elab:
+        rows.append(("elaboration (deepest of %d)" % len(elab),
+                     max(elab, key=lambda f: f.depth)))
+    extra = []
+    for e in args.path:
+        fns = by_name.get(e)
+        if not fns:
+            fail("subprogram %s not found" % e)
+        extra.append((e + " (asked)", fns[0]))
+
+    # (a) frames of what the entry points reach (the subprograms only the
+    # tests call are left out)
+    reach = set()
+    todo = [fn for _, fn in rows] + elab
+    while todo:
+        fn = todo.pop()
+        if fn.key in reach:
+            continue
+        reach.add(fn.key)
+        todo.extend(fn.callees)
+    mine = [f for f in funcs.values() if f.key in reach]
+    print("Frames of the on-board, largest first (bytes; %d subprograms "
+          "reached from the entry points, %d others not):"
+          % (len(mine), len(funcs) - len(mine)))
+    for fn in sorted(mine, key=lambda f: (-f.frame, f.name))[:args.top]:
         print("  %7d  %s  %s" % (fn.frame, fn.name, fn.where.split("/")[-1]))
 
     print("\nRuntime reached from the on-board (frame, depth; from the "
@@ -324,22 +354,6 @@ def main():
     # (b) entry points
     worst = 0
     print("\nWorst-case depth from each entry point (bytes):")
-    rows = []
-    for e in ENTRIES:
-        fns = by_name.get(e)
-        if not fns:
-            fail("entry point %s not found" % e)
-        rows.append((e, fns[0]))
-    extra = []
-    for e in args.path:
-        fns = by_name.get(e)
-        if not fns:
-            fail("subprogram %s not found" % e)
-        extra.append((e + " (asked)", fns[0]))
-    elab = [f for f in funcs.values() if f.name.endswith(("___elabs", "___elabb"))]
-    if elab:
-        rows.append(("elaboration (deepest of %d)" % len(elab),
-                     max(elab, key=lambda f: f.depth)))
     for label, fn in rows + extra:
         if (label, fn) in rows:
             worst = max(worst, fn.depth)

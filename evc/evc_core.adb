@@ -760,7 +760,7 @@ is
                                 TIU_Now, EVC_Config.State, Current_Mode,
                                 EVC_Train_Inputs.State, EVC_Mission.State,
                                 EVC_Procedures.State, SDM_Result),
-                     In_Out => (EVC_Stored_Information.State,
+                     In_Out => (SDM_Work, EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
@@ -786,9 +786,12 @@ is
       --  the inputs of 4.8 and the SR distance (phase E4; in Trip, 4.8.4
       --  refuses the MA and the track description, 5.11.2.2 A035); the
       --  virtual limits of the last cycle (5.18.4.2, 5.18.8.3)
+      --  the profile of the work area of the supervision (EVC_SDM.Step
+      --  builds it anew before it reads it) as the work area of the PBD
       EVC_Stored_Information.Evaluate
         (Unsigned_64 (Clock_Ms),
          Mode_Speed,
+         Work           => SDM_Work.Profile,
          Special_Active =>
            (EVC_Supervision_Input.Regenerative =>
               TIU_Now (Regenerative_Brake_Active),

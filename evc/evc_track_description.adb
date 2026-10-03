@@ -488,6 +488,7 @@ is
 
    procedure Compute_PBD (I            : EVC_PBD.Inputs_T;
                           All_Sections : Boolean;
+                          Work         : in out EVC_Profile.Profile_T;
                           Computed     : out Natural)
    is
    begin
@@ -497,16 +498,17 @@ is
            (Computed < K
             and then (for all J in 1 .. K - 1 => PBD_S.List (J).Noted));
          if All_Sections or else not PBD_S.List (K).Noted then
-            PBD_S.List (K).Value :=
-              EVC_PBD.Restriction
-                (I,
-                 D_PBD    => Cm_T'Min (EVC_PBD.PBD_Distance_T'Last,
-                                         Cm_T (PBD_S.List (K).Id)),
-                 Gradient => Gradient_T'Max
-                               (Gradient_T'First,
-                                Gradient_T'Min (Gradient_T'Last,
-                                                PBD_S.List (K).Gradient)),
-                 Service  => PBD_S.List (K).Service);
+            EVC_PBD.Restrict
+              (I,
+               D_PBD    => Cm_T'Min (EVC_PBD.PBD_Distance_T'Last,
+                                       Cm_T (PBD_S.List (K).Id)),
+               Gradient => Gradient_T'Max
+                             (Gradient_T'First,
+                              Gradient_T'Min (Gradient_T'Last,
+                                              PBD_S.List (K).Gradient)),
+               Service  => PBD_S.List (K).Service,
+               Work     => Work,
+               V        => PBD_S.List (K).Value);
             PBD_S.List (K).Noted := True;
             Computed := Computed + 1;
          end if;

@@ -94,6 +94,7 @@ with ETCS_Track_Packets.P141;
 with ETCS_Variables;        use ETCS_Variables;
 with EVC_Distances;         use EVC_Distances;
 with EVC_PBD;
+with EVC_Profile;
 with EVC_Profiles;          use EVC_Profiles;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with EVC_Train_Data;
@@ -254,9 +255,11 @@ is
 
    --  3.11.11.3: V_PBD of the sections not computed yet (every section
    --  with All_Sections: the inputs changed), from the inputs I; Computed
-   --  the number of sections computed
+   --  the number of sections computed. Work: a work area for the
+   --  profile of a section, overwritten (EVC_PBD.Restrict)
    procedure Compute_PBD (I            : EVC_PBD.Inputs_T;
                           All_Sections : Boolean;
+                          Work         : in out EVC_Profile.Profile_T;
                           Computed     : out Natural)
      with Global => (In_Out => State),
           Post => (for all K in 1 .. PBD.Count => PBD.List (K).Noted);
