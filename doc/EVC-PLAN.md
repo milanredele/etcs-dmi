@@ -125,6 +125,37 @@ on wasm32 and on a light runtime, and to be testable headless:
   reduced before the TMS570 port (E8); two checks of the test runners
   verify nothing (`Without_ATO` in the ATO display scenario, `Grows` in
   the feedback scenario).
+- **Stack** (2026-10-03): `ports/tms570/stack.sh` builds the on-board
+  for the TMS570 with `-fstack-usage -fcallgraph-info=su,da` and walks
+  GCC's call graph: the frame of each subprogram plus its deepest
+  callee, from the four entry points of `EVC_Core` and the elaboration,
+  the calls into the runtime measured from the disassembly of
+  `libgnat.a` and `libgcc.a`; it fails on a cycle, an indirect call, a
+  call to nothing, a dynamic frame without a bound in `stack.py`, or a
+  worst case over the budget. Before: `Initialise` 84500 bytes (57 KB
+  of aggregates built in temporaries and copied), `Tick` 55024; after:
+  `Initialise` 1012, `Tick` 26592 (Evaluate of the stored information,
+  Build, Build_Gradients, `EVC_Profiles.Envelope`: the gradient
+  elements and the breakpoints of the envelope), `Handle_Input` 184,
+  `Take_Outputs` 96, no change of behaviour. The budget, the main stack
+  of the target, is 32 KiB: about 20 % for the executive that calls the
+  core, E8's own last chance handler, a compiler update and growth, and
+  one MPU region; the interrupt stacks, the secondary stack (functions
+  returning unconstrained arrays) and the DMI, if it is ported, are
+  measured on their own in E8. The rule: no large object by value. GNAT
+  builds `(others => <>)` in a temporary when a component has no default
+  expression, `(others => (others => <>))` of an array of records always,
+  and an aggregate that reads a parameter or calls a function; a function
+  returns its result on its caller's stack. So every composite component
+  has a default expression and an array of records a named element
+  (`(others => No_X)`), state is filled component by component or
+  through an `out` parameter (`Get_Current`, `Get_Inputs`), a store is
+  read through accessors that return a component (`MA_Present`,
+  `SSP_Count`, `LX_Item`), the snapshot of the cycle is package state of
+  the core passed by reference, the PBD computes in the profile of the
+  supervision's work area (the two never overlap in a cycle), and a
+  part of a step that holds a large local is `No_Inline` (GCC inlines a
+  subprogram called once and keeps its locals in the caller's frame).
 - **SPARK**: `SPARK_Mode (On)` on `evc/` from the first package. What leaves
   SPARK is stated per unit with the reason. The proof runs in the regular
   check (`gnatprove -P etcs_evc.gpr`), not as an afterthought.

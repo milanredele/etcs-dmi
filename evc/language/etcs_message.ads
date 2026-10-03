@@ -83,7 +83,7 @@ is
       Kind      : Message_Kind_T := Unknown;
       Values    : Value_Array := (others => 0);
       Count     : Packet_Count_T := 0;
-      Index     : Index_T;
+      Index     : Index_T := (others => No_Entry);
       --  packets of an unknown NID_PACKET among them
       Unknown   : Packet_Count_T := 0;
       Length    : Natural range 0 .. Max_Bytes := 0;   -- bytes

@@ -23,6 +23,10 @@ is
 
    function MA return MA_T is (Current)
      with Refined_Global => Current;
+   function MA_Present return Boolean is (Current.Present)
+     with Refined_Global => Current;
+   function MA_Sense return Sense_T is (Current.Sense)
+     with Refined_Global => Current;
    function V_Main_Known return Boolean is (Main_Known)
      with Refined_Global => Main_Known;
    function V_Main return Speed_Cms_T is (Main_Speed)
@@ -34,6 +38,13 @@ is
    function Trip_Ordered return Boolean is (Trip)
      with Refined_Global => Trip;
    function Mode_Profiles return Mode_Profile_Array is (Profiles)
+     with Refined_Global => Profiles;
+   function Mode_Profile (I : Positive) return Mode_Profile_T is
+     (Profiles (I))
+     with Refined_Global => Profiles;
+   function SH_Profile return Boolean is
+     (for some I in Profiles'Range =>
+        Profiles (I).Used and then Profiles (I).Mode = 1)
      with Refined_Global => Profiles;
 
    --  The time since Started (0 when the clock is before it)
@@ -66,7 +77,7 @@ is
       Main_Finish := (others => <>);
       Main_Open := True;
       Trip := False;
-      Profiles := (others => (others => <>));
+      Profiles := (others => No_Mode_Profile);
       Mode_In_Use := 3;
    end Clear;
 
@@ -302,7 +313,7 @@ is
 
       Current := New_MA;
       --  3.12.4.3: the mode profile goes with a new MA
-      Profiles := (others => (others => <>));
+      Profiles := (others => No_Mode_Profile);
 
       --  A.3.4.1.3 [1], 3.8.5.1.5: beyond the new SvL, of the
       --  information stored before this message
@@ -354,7 +365,7 @@ is
       if M.Origin = 0 or else Scale > 2 then
          return;
       end if;
-      Profiles := (others => (others => <>));
+      Profiles := (others => No_Mode_Profile);
       Start := Scaled (Natural (P.D_MAMODE), Scale);
       Put (P.M_MAMODE, P.V_MAMODE, P.L_MAMODE, P.L_ACKMAMODE, P.Q_MAMODE);
       for K in 1 .. Natural (P.N_ITER) loop
@@ -673,7 +684,7 @@ is
       Main_Speed := 0;
       Main_Finish := (others => <>);
       Main_Open := True;
-      Profiles := (others => (others => <>));
+      Profiles := (others => No_Mode_Profile);
    end Delete_MA;
 
    --------------------------

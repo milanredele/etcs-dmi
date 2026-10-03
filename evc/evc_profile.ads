@@ -65,10 +65,14 @@ is
       Inhibited  : Inhibitions_T := (others => False);
    end record;
    type Point_Array is array (Point_Index) of Point_T;
+   No_Point : constant Point_T := (others => <>);
 
+   --  (every component has a default expression, the points a named
+   --  element: an aggregate (others => <>) of the type is then built in
+   --  place, not in a temporary on the stack and copied)
    type Profile_T is record
       Count  : Point_Index := 1;
-      Points : Point_Array := (others => (others => <>));
+      Points : Point_Array := (others => No_Point);
    end record;
 
    --  A position of the frame in ahead coordinates

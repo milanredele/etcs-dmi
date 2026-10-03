@@ -26,6 +26,12 @@ is
      with Refined_Global => Traction_S;
    function Big_Metal_Masses return Store_T is (BMM_S)
      with Refined_Global => BMM_S;
+   function BMM_Sense return Sense_T is (BMM_S.Sense)
+     with Refined_Global => BMM_S;
+   function BMM_Count return Natural is (BMM_S.Count)
+     with Refined_Global => BMM_S;
+   function BMM_Item (I : Positive) return Stored_T is (BMM_S.List (I))
+     with Refined_Global => BMM_S;
    function Platforms return Store_T is (Platform_S)
      with Refined_Global => Platform_S;
    function Current_Changes return Store_T is (Current_S)
@@ -60,20 +66,26 @@ is
       if Rest and then Horn then
          Cond_S := Empty_Store;
       elsif Rest or else Horn then
-         --  keep the conditions of the other group
+         --  keep the conditions of the other group, in place: the kept
+         --  ones to the front in their order, the rest of the list back
+         --  to the default element, as a new store holds it (a second
+         --  store, near 7 KB, is not built on the stack)
          declare
-            Kept : Store_T := (Sense => Cond_S.Sense, Count => 0,
-                               List => (others => (others => <>)),
-                               Lost => Cond_S.Lost);
+            N : constant Natural := Cond_S.Count;
+            K : Natural := 0;
          begin
-            for I in 1 .. Cond_S.Count loop
-               pragma Loop_Invariant (Kept.Count < I);
+            for I in 1 .. N loop
+               pragma Loop_Invariant (K < I);
                if (Cond_S.List (I).Value in 0 .. 2) = Rest then
-                  Kept.Count := Kept.Count + 1;
-                  Kept.List (Kept.Count) := Cond_S.List (I);
+                  K := K + 1;
+                  Cond_S.List (K) := Cond_S.List (I);
                end if;
             end loop;
-            Cond_S := Kept;
+            for I in K + 1 .. Max_Stored loop
+               pragma Loop_Invariant (K <= N);
+               Cond_S.List (I) := No_Stored;
+            end loop;
+            Cond_S.Count := K;
          end;
       end if;
    end Reset;

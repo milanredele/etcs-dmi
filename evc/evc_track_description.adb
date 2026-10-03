@@ -35,11 +35,19 @@ is
      with Refined_Global => Adh_S;
    function PBD return Store_T is (PBD_S)
      with Refined_Global => PBD_S;
+   function SSP_Count return Natural is (SSP_S.Count)
+     with Refined_Global => SSP_S;
+   function Gradients_Count return Natural is (Grad_S.Count)
+     with Refined_Global => Grad_S;
+   function TSR_Count return Natural is (TSR_S.Count)
+     with Refined_Global => TSR_S;
    function Default_Gradient_Known return Boolean is (Grad_Default_Known)
      with Refined_Global => Grad_Default_Known;
    function Default_Gradient return Gradient_T is (Grad_Default)
      with Refined_Global => Grad_Default;
    function LX return LX_Array_T is (LX_S)
+     with Refined_Global => LX_S;
+   function LX_Item (I : Positive) return LX_T is (LX_S (I))
      with Refined_Global => LX_S;
    function LX_Sense return Sense_T is (LX_Sense_S)
      with Refined_Global => LX_Sense_S;
@@ -87,9 +95,9 @@ is
       PBD_S := Empty_Store;
       Grad_Default_Known := False;
       Grad_Default := 0;
-      LX_S := (others => (others => <>));
+      LX_S := (others => No_LX);
       LX_Sense_S := Plus;
-      Suit_S := (others => (others => <>));
+      Suit_S := (others => No_Suitability);
       Lost_N := 0;
    end Clear;
 
@@ -480,6 +488,7 @@ is
 
    procedure Compute_PBD (I            : EVC_PBD.Inputs_T;
                           All_Sections : Boolean;
+                          Work         : in out EVC_Profile.Profile_T;
                           Computed     : out Natural)
    is
    begin
@@ -489,16 +498,17 @@ is
            (Computed < K
             and then (for all J in 1 .. K - 1 => PBD_S.List (J).Noted));
          if All_Sections or else not PBD_S.List (K).Noted then
-            PBD_S.List (K).Value :=
-              EVC_PBD.Restriction
-                (I,
-                 D_PBD    => Cm_T'Min (EVC_PBD.PBD_Distance_T'Last,
-                                         Cm_T (PBD_S.List (K).Id)),
-                 Gradient => Gradient_T'Max
-                               (Gradient_T'First,
-                                Gradient_T'Min (Gradient_T'Last,
-                                                PBD_S.List (K).Gradient)),
-                 Service  => PBD_S.List (K).Service);
+            EVC_PBD.Restrict
+              (I,
+               D_PBD    => Cm_T'Min (EVC_PBD.PBD_Distance_T'Last,
+                                       Cm_T (PBD_S.List (K).Id)),
+               Gradient => Gradient_T'Max
+                             (Gradient_T'First,
+                              Gradient_T'Min (Gradient_T'Last,
+                                              PBD_S.List (K).Gradient)),
+               Service  => PBD_S.List (K).Service,
+               Work     => Work,
+               V        => PBD_S.List (K).Value);
             PBD_S.List (K).Noted := True;
             Computed := Computed + 1;
          end if;
@@ -607,7 +617,7 @@ is
          return;
       end if;
       if LX_Sense_S /= M.Sense then
-         LX_S := (others => (others => <>));
+         LX_S := (others => No_LX);
          LX_Sense_S := M.Sense;
       end if;
       --  3.12.5.3: the one of the same identity is replaced
@@ -859,13 +869,13 @@ is
          SSP_S := Empty_Store;
          Grad_S := Empty_Store;
          ASP_S := Empty_Store;
-         LX_S := (others => (others => <>));
+         LX_S := (others => No_LX);
       end if;
       if What.PBD then
          PBD_S := Empty_Store;
       end if;
       if What.Suitability then
-         Suit_S := (others => (others => <>));
+         Suit_S := (others => No_Suitability);
       end if;
       if What.TSR then
          TSR_S := Empty_Store;
@@ -1097,6 +1107,31 @@ is
             Finish => Frame (T, Adh_S.List (I).Finish, Min_Item));
       end loop;
    end Adhesion_Areas;
+
+   --  The estimated front end in rear of the start of the profile St
+   --  (moved here from EVC_Procedures with Before_Profiles: the store is
+   --  read in place, not copied)
+   function Before_Profile (St : Store_T; T : Origin_Table_T;
+                            Est : Dist_T) return Boolean
+   is
+      First : Dist_T := Max_Cm;
+   begin
+      if St.Count = 0 then
+         return False;
+      end if;
+      for I in 1 .. St.Count loop
+         pragma Loop_Invariant (First <= Max_Cm);
+         First := Dist_T'Min
+           (First, A (St.Sense, Frame (T, St.List (I).Start,
+                                       Estimated_Item)));
+      end loop;
+      return A (St.Sense, Est) < First;
+   end Before_Profile;
+
+   function Before_Profiles (T : Origin_Table_T; Est : Dist_T)
+     return Boolean
+   is (Before_Profile (SSP_S, T, Est) or else Before_Profile (Grad_S, T, Est))
+     with Refined_Global => (SSP_S, Grad_S);
 
    function Covered (T : Origin_Table_T; Ahead : Sense_T; From, To : Dist_T)
      return Boolean

@@ -33,7 +33,7 @@ is
 
    type Link_T is record
       Known_Id : Boolean := False;       -- else "unknown", repositioning
-      Id       : Identity_T;
+      Id       : Identity_T := (others => <>);
       D        : Length_T := 0;          -- from the reference, cumulated
       Nominal  : Boolean := True;        -- passed in its nominal direction
       Reaction : Q_LINKREACTION_T := 2;  -- no reaction
@@ -41,13 +41,14 @@ is
    end record;
 
    type Links_T is array (Link_Index_T) of Link_T;
+   No_Link : constant Link_T := (others => <>);
 
    type Linking_T is record
       Stored   : Boolean := False;
-      Ref_Id   : Identity_T;
+      Ref_Id   : Identity_T := (others => <>);
       Sense    : Sense_T := Plus;
       Count    : Link_Count_T := 0;
-      Links    : Links_T;
+      Links    : Links_T := (others => No_Link);
       Expected : Positive range 1 .. Max_Links + 1 := 1;
       Solr     : Link_Count_T := 0;
    end record;

@@ -76,9 +76,9 @@ is
    --  based on two balise groups needs (3.4.2.3.3)
    Max_Recent : constant := 8;
    type Recent_T is record
-      A          : Anchor_T;
+      A          : Anchor_T := (others => <>);
       Prev_Known : Boolean := False;
-      Prev_Id    : Identity_T;
+      Prev_Id    : Identity_T := (others => <>);
       --  the direction reference: from the previous LRBG towards A
       Dref       : Direction_T := Unknown;
       --  3.4.2.3.3.7: reported with different previous LRBGs
@@ -86,6 +86,11 @@ is
    end record;
    subtype Recent_Index_T is Positive range 1 .. Max_Recent;
    type Recent_Array_T is array (Recent_Index_T) of Recent_T;
+   --  (the elements of the cleared lists below: (others => No_X) is
+   --  built in place, (others => (others => <>)) in a temporary on the
+   --  stack)
+   No_Recent : constant Recent_T := (others => <>);
+   No_Anchor : constant Anchor_T := (others => <>);
 
    --  3.6.1.3: the last two unlinked groups passed are ORBGs
    type Unlinked_Array_T is array (1 .. 2) of Anchor_T;
@@ -95,12 +100,13 @@ is
    type Stamps_T is array (Pending_Index_T) of Unsigned_32;
 
    type Events_T is array (1 .. Max_Events) of Event_T;
+   No_Event : constant Event_T := (others => <>);
 
    --  3.6.6: a track kilometre reference
    Max_Geo : constant := 32;
    type Geo_Ref_T is record
       Valid    : Boolean := False;
-      Id       : Identity_T;
+      Id       : Identity_T := (others => <>);
       --  D_POSOFF, along Sense from the location reference of the group
       Offset   : Length_T := 0;
       Sense    : Sense_T := Plus;
@@ -109,13 +115,15 @@ is
       Value    : M_POSITION_T := 0;
       --  the reference group was passed
       Anchored : Boolean := False;
-      Ref      : Anchor_T;
+      Ref      : Anchor_T := (others => <>);
    end record;
    type Geo_Array_T is array (1 .. Max_Geo) of Geo_Ref_T;
+   No_Geo_Ref : constant Geo_Ref_T := (others => <>);
 
    --  3.6.5.1.5 c): locations where to report
    Max_Locations : constant := 31;
    type Locations_T is array (1 .. Max_Locations) of Item_T;
+   No_Item : constant Item_T := (others => <>);
 
    --  The installation: the antenna from the cab A end (Plus) and from
    --  the cab B end (Minus), cm (EVC_Config, Set_Antenna)
@@ -180,6 +188,7 @@ is
    --  The groups taken into account in the last Update and the telegrams
    --  of their passages (phase E3)
    type Taken_Array_T is array (1 .. Max_Taken) of Taken_T;
+   No_Taken : constant Taken_T := (others => <>);
    type Taken_Tels_T is
      array (1 .. Max_Taken_Telegrams) of ETCS_Telegram.Telegram_T;
    Taken_List  : Taken_Array_T;
@@ -688,7 +697,7 @@ is
       if not Valid_Scale (Scale) then
          return;
       end if;
-      Geo_Refs := (others => (others => <>));
+      Geo_Refs := (others => No_Geo_Ref);
       Put (P.Q_NEWCOUNTRY = 1, P.NID_C, P.NID_BG, P.D_POSOFF,
            P.Q_MPOSITION, P.M_POSITION);
       for K in 1 .. Natural (P.N_ITER) loop
@@ -1185,9 +1194,6 @@ is
 
    procedure Clear
    is
-      Empty_Passage : Passage_T;
-      Empty_Links   : EVC_Linking.Linking_T;
-      Empty_T       : ETCS_Telegram.Telegram_T;
    begin
       EVC_Odometry.Clear;
       Antenna_Offset := (Plus  => EVC_Config.Default.Antenna_To_Cab_A,
@@ -1200,20 +1206,20 @@ is
       LRBG_A := (others => <>);
       Prev_A := (others => <>);
       SOLR_A := (others => <>);
-      Recent := (others => (others => <>));
+      Recent := (others => No_Recent);
       Recent_Next := 1;
-      Unlinked := (others => (others => <>));
+      Unlinked := (others => No_Anchor);
       Unlinked_Next := 1;
       Seq_Counter := 0;
-      Links := Empty_Links;
+      Links := (others => <>);
       Accept_Linking := True;
       Check_Linking := True;
-      Passage := Empty_Passage;
+      Passage := (others => <>);
       Passage.Open := False;
-      Pending := (others => Empty_T);
+      Pending := (others => ETCS_Telegram.No_Telegram);
       Pending_Stamp := (others => 0);
       Pending_N := 0;
-      Events := (others => (others => <>));
+      Events := (others => No_Event);
       Event_N := 0;
       Reaction_Flag := False;
       Reaction_Value := 2;
@@ -1221,7 +1227,7 @@ is
       Missed_Flag := False;
       Odo_Reported := 0;
       Cold_Reported := False;
-      Geo_Refs := (others => (others => <>));
+      Geo_Refs := (others => No_Geo_Ref);
       Geo_Current := (others => <>);
       Geo_Value := 0;
       Geo_Valid := False;
@@ -1229,7 +1235,7 @@ is
       T_Cycloc_Ms := 0;
       D_Cycloc := 0;
       M_Loc := 2;
-      Locations := (others => (others => <>));
+      Locations := (others => No_Item);
       Last_Report_Ms := 0;
       Now_Seen := 0;
       Last_Report_Travel := 0;
@@ -1241,9 +1247,9 @@ is
       Mode_Seen := False;
       Train_Length := 0;
       Length_Known := False;
-      Taken_List := (others => (others => <>));
+      Taken_List := (others => No_Taken);
       Taken_N := 0;
-      Taken_Tels := (others => Empty_T);
+      Taken_Tels := (others => ETCS_Telegram.No_Telegram);
       Taken_Tel_N := 0;
       Passage_Ms := 0;
       Previous_Ms := 0;
@@ -1294,7 +1300,7 @@ is
          Cab_In := (if Cab_A_Active then Cab_A else Cab_B);
          if Orient_Known and then New_Orient /= Orient then
             --  3.6.6.4.3: the announced references are deleted
-            Geo_Refs := (others => (others => <>));
+            Geo_Refs := (others => No_Geo_Ref);
          end if;
          Orient := New_Orient;
          Orient_Known := True;
@@ -1460,7 +1466,7 @@ is
       Immediate_Pending := P.M_LOC = 0;
       Last_Report_Ms := Now_Seen;
       Last_Report_Travel := EVC_Odometry.Travelled;
-      Locations := (others => (others => <>));
+      Locations := (others => No_Item);
       for K in 1 .. Natural (P.N_ITER) loop
          pragma Loop_Invariant (D <= Cm_T (K - 1) * 32_767 * 1000);
          D := D + Scaled (Natural (P.D_LOC_List (K).D_LOC), Scale);
@@ -1552,8 +1558,8 @@ is
       LRBG_A := (others => <>);
       Prev_A := (others => <>);
       SOLR_A := (others => <>);
-      Recent := (others => (others => <>));
-      Unlinked := (others => (others => <>));
+      Recent := (others => No_Recent);
+      Unlinked := (others => No_Anchor);
    end Delete_Position;
 
    -------------------------
@@ -1571,9 +1577,8 @@ is
    --------------------
 
    procedure Delete_Linking is
-      Empty_Links : EVC_Linking.Linking_T;
    begin
-      Links := Empty_Links;
+      Links := (others => <>);
    end Delete_Linking;
 
    ----------------
@@ -1583,7 +1588,7 @@ is
    procedure Delete_Geo
    is
    begin
-      Geo_Refs := (others => (others => <>));
+      Geo_Refs := (others => No_Geo_Ref);
       Geo_Current := (others => <>);
       Geo_Value := 0;
       Geo_Valid := False;

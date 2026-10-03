@@ -8,6 +8,10 @@ is
 
    type Table_T is array (Index_T) of Origin_T;
 
+   --  the element of a cleared table: (others => No_Origin) is built in
+   --  place, (others => (others => <>)) in a temporary on the stack
+   No_Origin : constant Origin_T := (others => <>);
+
    Table     : Table_T;
    Refused_N : Natural := 0;
 
@@ -33,7 +37,7 @@ is
 
    procedure Clear is
    begin
-      Table := (others => (others => <>));
+      Table := (others => No_Origin);
       Refused_N := 0;
    end Clear;
 

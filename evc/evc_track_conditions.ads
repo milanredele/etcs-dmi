@@ -107,6 +107,19 @@ is
      with Global => State;
    function Big_Metal_Masses return Store_T
      with Global => State;
+   --  Its sense, count and element I without its copy (the result of a
+   --  function returning a Store_T, near 7 KB, is built on the stack of
+   --  its caller)
+   function BMM_Sense return Sense_T
+     with Global => State,
+          Post => BMM_Sense'Result = Big_Metal_Masses.Sense;
+   function BMM_Count return Natural
+     with Global => State,
+          Post => BMM_Count'Result = Big_Metal_Masses.Count;
+   function BMM_Item (I : Positive) return Stored_T
+     with Global => State,
+          Pre  => I <= Max_Stored,
+          Post => BMM_Item'Result = Big_Metal_Masses.List (I);
 
    --  Added by the procedures of phase E4: the station platforms
    --  (packet 69; Value: M_PLATFORM * 4 + Q_PLATFORM) and the changes of

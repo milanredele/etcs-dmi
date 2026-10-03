@@ -44,7 +44,7 @@ package body EVC_Core
                                    TIU_Value_Now,
                                    TIU_Known_Now,
                                    Brake_Ack_Now,
-                                   Test_Snapshot,
+                                   Snapshot,
                                    Test_Snapshot_Set,
                                    SDM_Work,
                                    SDM_State,
@@ -151,13 +151,14 @@ is
    TIU_Known_Now     : TIU_Signals_T := (others => False);
    Brake_Ack_Now     : Boolean := False;
 
-   --  The snapshot of the tests (Set_Snapshot_For_Test): once set, the
-   --  speed and distance monitoring reads it in place of the snapshot of
-   --  the stored information (EVC_Stored_Information.Current, 3.13.2)
-   --  in every cycle until Initialise
-   No_Snapshot : constant EVC_Supervision_Input.Snapshot_T :=
-     (others => <>);
-   Test_Snapshot     : EVC_Supervision_Input.Snapshot_T := No_Snapshot;
+   --  The snapshot the speed and distance monitoring and the procedures
+   --  read: the snapshot of the tests (Set_Snapshot_For_Test), once set,
+   --  in every cycle until Initialise, else the one of the stored
+   --  information (EVC_Stored_Information, 3.13.2), taken by Take_Snapshot
+   --  where it is read. It is package state and goes by reference to its
+   --  readers: a function returning it would build a copy of over 11 KB
+   --  on the stack of every caller.
+   Snapshot          : EVC_Supervision_Input.Snapshot_T;
    Test_Snapshot_Set : Boolean := False;
 
    --  EVC_SDM's work area and state, its result; the brake commands
@@ -238,7 +239,7 @@ is
 
    procedure Set_Snapshot_For_Test (S : EVC_Supervision_Input.Snapshot_T) is
    begin
-      Test_Snapshot := S;
+      Snapshot := S;
       Test_Snapshot_Set := True;
    end Set_Snapshot_For_Test;
 
@@ -310,7 +311,7 @@ is
       TIU_Value_Now := (others => 0);
       TIU_Known_Now := (others => False);
       Brake_Ack_Now := False;
-      Test_Snapshot := No_Snapshot;
+      Snapshot := (others => <>);
       Test_Snapshot_Set := False;
       SDM_Work := (others => <>);
       SDM_State := (others => <>);
@@ -761,7 +762,7 @@ is
                                 TIU_Now, EVC_Config.State, Current_Mode,
                                 EVC_Train_Inputs.State, EVC_Mission.State,
                                 EVC_Procedures.State, SDM_Result),
-                     In_Out => (EVC_Stored_Information.State,
+                     In_Out => (SDM_Work, EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
@@ -787,9 +788,12 @@ is
       --  the inputs of 4.8 and the SR distance (phase E4; in Trip, 4.8.4
       --  refuses the MA and the track description, 5.11.2.2 A035); the
       --  virtual limits of the last cycle (5.18.4.2, 5.18.8.3)
+      --  the profile of the work area of the supervision (EVC_SDM.Step
+      --  builds it anew before it reads it) as the work area of the PBD
       EVC_Stored_Information.Evaluate
         (Unsigned_64 (Clock_Ms),
          Mode_Speed,
+         Work           => SDM_Work.Profile,
          Special_Active =>
            (EVC_Supervision_Input.Regenerative =>
               TIU_Now (Regenerative_Brake_Active),
@@ -873,18 +877,31 @@ is
               MRDT       => EVC_Bytes.Byte (R.MRDT_Id));
    end To_Speed_State;
 
+   --  The snapshot in use (Snapshot): the stored information's one, taken
+   --  in place, unless the tests set theirs
+   procedure Take_Snapshot
+     with Global => (Input  => (Test_Snapshot_Set,
+                                EVC_Stored_Information.State),
+                     In_Out => Snapshot)
+   is
+   begin
+      if not Test_Snapshot_Set then
+         EVC_Stored_Information.Get_Current (Snapshot);
+      end if;
+   end Take_Snapshot;
+
    --  4. Speed and distance monitoring (3.13, EVC_SDM) and the brake
    --  commands (3.14, EVC_Brake_Commands) on the snapshot the stored
    --  information built at the third step (or the tests' one), with the
    --  inputs of the train interface and the driver's acknowledgement of
    --  the cycle
    procedure Monitor_Speed_And_Distance (Dt_Ms : Natural)
-     with Global => (Input  => (Test_Snapshot, Test_Snapshot_Set, TIU_Now,
+     with Global => (Input  => (Test_Snapshot_Set, TIU_Now,
                                 TIU_Value_Now, TIU_Known_Now, Brake_Ack_Now,
                                 Current_Mode, EVC_Levels.State,
                                 EVC_Position.State,
                                 EVC_Stored_Information.State),
-                     In_Out => (SDM_Work, SDM_State, Brake_State,
+                     In_Out => (Snapshot, SDM_Work, SDM_State, Brake_State,
                                 Brake_Output),
                      Output => (SDM_Result, Speed_State,
                                 Ack_For_Protection))
@@ -935,19 +952,9 @@ is
       --  the acknowledgement of a release goes first to the protections
       --  of 3.14.1.5 when they ask for it (3.14.1.10)
       Ack_For_Protection := Brake_Ack_Now and then Brake_Output.Ack_Required;
-      if Test_Snapshot_Set then
-         Run (Test_Snapshot);
-      else
-         Run (EVC_Stored_Information.Current);
-      end if;
+      Take_Snapshot;
+      Run (Snapshot);
    end Monitor_Speed_And_Distance;
-
-   --  The snapshot the speed and distance monitoring read in the cycle
-   function Snapshot_In_Use return EVC_Supervision_Input.Snapshot_T is
-     (if Test_Snapshot_Set then Test_Snapshot
-      else EVC_Stored_Information.Current)
-     with Global => (Test_Snapshot, Test_Snapshot_Set,
-                     EVC_Stored_Information.State);
 
    --  5. The modes and the levels (phase E4): the level transitions and
    --  the driver's level (EVC_Levels, 5.10), the mission data, the start
@@ -1040,7 +1047,7 @@ is
      with Global => (Input  => (Current_Mode, TIU_Value_Now, TIU_Known_Now,
                                 Odometer_Now, Brake_Ack_Now,
                                 Ack_For_Protection, Clock_Ms,
-                                SDM_Result, Test_Snapshot, Test_Snapshot_Set,
+                                SDM_Result, Test_Snapshot_Set,
                                 EVC_Stored_Information.State,
                                 EVC_Position.State,
                                 EVC_Origins.State,
@@ -1053,12 +1060,14 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_National_Values.State),
                      Output => Proc_Ctx,
-                     In_Out => (EVC_Procedures.State, EVC_Text_Messages.State,
+                     In_Out => (Snapshot,
+                                EVC_Procedures.State, EVC_Text_Messages.State,
                                 EVC_Track_Description.State,
                                 EVC_Mission.State,
                                 Config_Last, Config_Seen))
    is
-      S : constant EVC_Supervision_Input.Snapshot_T := Snapshot_In_Use;
+      --  the snapshot in use, taken by the first statement
+      S : EVC_Supervision_Input.Snapshot_T renames Snapshot;
       --  5.17.2.2 E0: the train configuration changed
       Config : constant EVC_Bytes.Byte :=
         TIU_Value_Now (Train_Configuration);
@@ -1066,6 +1075,7 @@ is
         TIU_Known_Now (Train_Configuration) and then Config_Seen
         and then Config /= Config_Last;
    begin
+      Take_Snapshot;
       if TIU_Known_Now (Train_Configuration) then
          Config_Last := Config;
          Config_Seen := True;
@@ -1312,8 +1322,9 @@ is
      with Global => (Input  => (EVC_Odometry.State,
                                 EVC_National_Values.State,
                                 EVC_Train_Inputs.State,
-                                Proc_Ctx, Test_Snapshot, Test_Snapshot_Set),
-                     In_Out => (EVC_Procedures.State, EVC_Text_Messages.State,
+                                Proc_Ctx, Test_Snapshot_Set),
+                     In_Out => (Snapshot,
+                                EVC_Procedures.State, EVC_Text_Messages.State,
                                 EVC_Levels.State, EVC_Mission.State,
                                 EVC_Train_Data.State,
                                 EVC_Track_Description.State,
@@ -1340,7 +1351,8 @@ is
       --  4.10 (the stop shunting on desk opening, the list of balise
       --  groups for the SH area, the reversing information, the text
       --  messages) and their brakes of 4.12
-      EVC_Procedures.Mode_Changed (From, To, Proc_Ctx, Snapshot_In_Use);
+      Take_Snapshot;
+      EVC_Procedures.Mode_Changed (From, To, Proc_Ctx, Snapshot);
       EVC_Text_Messages.Mode_Changed (From, To);
       EVC_Levels.Mode_Entered (From, To);
       EVC_Mission.Mode_Entered
@@ -1364,15 +1376,15 @@ is
    --  (the trip [18], inhibited by the override, 5.8.3.6), and kept in
    --  the other levels until the level switches to 1 ([67])
    procedure Finish_Procedures
-     with Global => (Input  => (Current_Mode, Proc_Ctx, Test_Snapshot,
-                                Test_Snapshot_Set,
+     with Global => (Input  => (Current_Mode, Proc_Ctx, Test_Snapshot_Set,
                                 EVC_Stored_Information.State,
                                 EVC_Levels.State),
-                     In_Out => (EVC_Procedures.State,
+                     In_Out => (Snapshot, EVC_Procedures.State,
                                 EVC_Movement_Authority.State))
    is
    begin
-      EVC_Procedures.Finish_Cycle (Proc_Ctx, Current_Mode, Snapshot_In_Use);
+      Take_Snapshot;
+      EVC_Procedures.Finish_Cycle (Proc_Ctx, Current_Mode, Snapshot);
       if EVC_Movement_Authority.Trip_Ordered
         and then EVC_Levels.Valid and then EVC_Levels.Level = L1
       then

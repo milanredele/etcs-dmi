@@ -513,7 +513,7 @@ is
    Max_Taken_Telegrams : constant := 2 * Max_Balises;
 
    type Taken_T is record
-      Group    : Anchor_T;
+      Group    : Anchor_T := (others => <>);
       T        : Direction_T := Unknown;
       S        : Sense_T := Plus;
       Origin   : EVC_Origins.Count_T := 0;

@@ -59,12 +59,12 @@ is
                                         Message_Kept, Telegram_Counts,
                                         Message_Counts))
    is
-      Empty_Telegram : ETCS_Telegram.Telegram_T;
-      Empty_Message  : ETCS_Message.Message_T;
    begin
-      Telegram := Empty_Telegram;
+      --  (built in place, not in a local copied: every component of the
+      --  two types has a default expression)
+      Telegram := (others => <>);
       Telegram_Kept := False;
-      Message := Empty_Message;
+      Message := (others => <>);
       Message_Kept := False;
       Telegram_Counts := (others => 0);
       Message_Counts := (others => 0);

@@ -36,6 +36,7 @@ is
       Offset : Bit_Count := 0;   -- its first bit in the string
       Length : Bit_Count := 0;   -- its bits
    end record;
+   No_Entry : constant Entry_T := (others => <>);
 
    type Scan_Result_T is
      (Scanned,       -- a packet: E describes it, R is after it

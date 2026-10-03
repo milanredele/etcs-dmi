@@ -68,13 +68,14 @@ is
    end record;
 
    type Section_T is record
-      Finish  : Location_T;
-      Timer   : Timer_T;
-      Stop    : Location_T;
+      Finish  : Location_T := (others => <>);
+      Timer   : Timer_T := (others => <>);
+      Stop    : Location_T := (others => <>);
       Stopped : Boolean := False;
    end record;
 
    type Section_Array is array (1 .. Max_Sections) of Section_T;
+   No_Section : constant Section_T := (others => <>);
 
    type MA_T is record
       Present          : Boolean := False;
@@ -82,30 +83,30 @@ is
       Msg              : Natural := 0;
       --  the start of the first section, the location reference of the
       --  group (3.8.3.6)
-      Start            : Location_T;
+      Start            : Location_T := (others => <>);
       --  the sections left (a section time-out removes it and those
       --  after it)
       Count            : Natural range 0 .. Max_Sections := 0;
-      Sections         : Section_Array;
+      Sections         : Section_Array := (others => No_Section);
       --  V_EMA: 0, an EOA; else a LOA with this target speed
       Target_Speed     : Speed_Cms_T := 0;
-      LOA_Timer        : Timer_T;
-      End_Timer        : Timer_T;
-      End_Start        : Location_T;
+      LOA_Timer        : Timer_T := (others => <>);
+      End_Timer        : Timer_T := (others => <>);
+      End_Start        : Location_T := (others => <>);
       Has_DP           : Boolean := False;
-      DP               : Location_T;
+      DP               : Location_T := (others => <>);
       V_Release_DP     : Natural range 0 .. 127 := 0;
       Has_OL           : Boolean := False;
-      OL               : Location_T;
-      OL_Timer         : Timer_T;
-      OL_Start         : Location_T;
+      OL               : Location_T := (others => <>);
+      OL_Timer         : Timer_T := (others => <>);
+      OL_Start         : Location_T := (others => <>);
       V_Release_OL     : Natural range 0 .. 127 := 0;
       --  3.8.4.2.2 b): the national release speed applies
       National_Release : Boolean := False;
       --  A.3.4.1.3 [11]: EOA and SvL withdrawn to the train
       Withdrawn        : Boolean := False;
-      Withdrawn_EOA    : Location_T;
-      Withdrawn_SvL    : Location_T;
+      Withdrawn_EOA    : Location_T := (others => <>);
+      Withdrawn_SvL    : Location_T := (others => <>);
    end record;
 
    --  The mode profile (packet 80)
@@ -114,16 +115,18 @@ is
       Used      : Boolean := False;
       Mode      : M_MAMODE_T := 0;     -- 0 OS, 1 SH, 2 LS
       Speed     : V_MAMODE_T := 0;     -- 127: the national value
-      Start     : Location_T;
-      Finish    : Location_T;
+      Start     : Location_T := (others => <>);
+      Finish    : Location_T := (others => <>);
       Open      : Boolean := False;    -- SH: no length (3.12.4.2)
-      Ack_Start : Location_T;          -- L_ACKMAMODE in rear of Start
+      --  L_ACKMAMODE in rear of Start
+      Ack_Start : Location_T := (others => <>);
       --  Q_MAMODE 1: the start is a temporary SvL (3.12.4.7 a)
       SvL_At_Start : Boolean := False;
       Msg       : Natural := 0;
    end record;
    type Mode_Profile_Array is array (1 .. Max_Mode_Profiles)
      of Mode_Profile_T;
+   No_Mode_Profile : constant Mode_Profile_T := (others => <>);
 
    --  What an operation did, and the deletion it asks of the other
    --  stores (A.3.4.1.3: beyond the new SvL [1], beyond the max safe
@@ -138,12 +141,21 @@ is
       LOA_Expired      : Boolean := False;
       Delete           : Boolean := False;
       Delete_X         : Dist_T := 0;
-      Delete_To        : Location_T;
+      Delete_To        : Location_T := (others => <>);
       Delete_Before    : Natural := 0;
    end record;
 
    function MA return MA_T
      with Global => State;
+
+   --  Two components of MA without its copy (MA_T is over 2 KB: a
+   --  function result is built on the caller's stack)
+   function MA_Present return Boolean
+     with Global => State,
+          Post => MA_Present'Result = MA.Present;
+   function MA_Sense return Sense_T
+     with Global => State,
+          Post => MA_Sense'Result = MA.Sense;
 
    --  The signalling related speed restriction (3.11.6), up to its end
    --  (A.3.4.1.3 [1] may end it)
@@ -162,6 +174,18 @@ is
 
    function Mode_Profiles return Mode_Profile_Array
      with Global => State;
+   --  Mode_Profiles (I) without the copy of Mode_Profiles
+   function Mode_Profile (I : Positive) return Mode_Profile_T
+     with Global => State,
+          Pre  => I <= Max_Mode_Profiles,
+          Post => Mode_Profile'Result = Mode_Profiles (I);
+   --  A mode profile of SH (M_MAMODE 1) is stored
+   function SH_Profile return Boolean
+     with Global => State,
+          Post => SH_Profile'Result
+                  = (for some I in 1 .. Max_Mode_Profiles =>
+                       Mode_Profiles (I).Used
+                       and then Mode_Profiles (I).Mode = 1);
 
    --  The effective EOA (or LOA) and SvL locations of X
    function EOA_Location (X : MA_T) return Location_T is

@@ -153,8 +153,8 @@ is
    subtype Value_T is Integer range -30_000 .. 30_000;
 
    type Stored_T is record
-      Start  : Location_T;
-      Finish : Location_T;
+      Start  : Location_T := (others => <>);
+      Finish : Location_T := (others => <>);
       --  no end: the last element of a continuous profile (3.6.3.2.2 d)
       Open   : Boolean := False;
       Value  : Value_T := 0;
@@ -180,13 +180,14 @@ is
    Max_Stored : constant := 96;
 
    type Stored_Array is array (1 .. Max_Stored) of Stored_T;
+   No_Stored : constant Stored_T := (others => <>);
 
    type Store_T is record
       --  the sense of the distances of the store: the train orientation
       --  when its information was received
       Sense : Sense_T := Plus;
       Count : Natural range 0 .. Max_Stored := 0;
-      List  : Stored_Array;
+      List  : Stored_Array := (others => No_Stored);
       --  elements that found no room
       Lost  : Natural := 0;
    end record;
@@ -255,10 +256,11 @@ is
    end record;
 
    type Element_Array is array (1 .. Max_Elements) of Element_T;
+   No_Element : constant Element_T := (others => <>);
 
    type Elements_T is record
       Count : Natural range 0 .. Max_Elements := 0;
-      List  : Element_Array;
+      List  : Element_Array := (others => No_Element);
       --  elements that found no room
       Lost  : Natural := 0;
    end record;
@@ -279,12 +281,13 @@ is
    end record;
 
    type Step_Array is array (1 .. Max_Steps) of Step_T;
+   No_Step : constant Step_T := (others => <>);
 
    --  Step K holds from List (K).Start up to the start of step K + 1,
    --  the last one without end
    type Steps_T is record
       Count : Natural range 0 .. Max_Steps := 0;
-      List  : Step_Array;
+      List  : Step_Array := (others => No_Step);
    end record;
 
    function Step_End (P : Steps_T; K : Positive) return Cm_T is

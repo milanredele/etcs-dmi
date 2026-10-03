@@ -43,7 +43,7 @@ is
    --  A reference balise group
    type Anchor_T is record
       Valid       : Boolean := False;
-      Id          : Identity_T;
+      Id          : Identity_T := (others => <>);
       --  the frame position of its location reference, and the frame
       --  deviations accumulated when it was detected
       X           : Dist_T := 0;
@@ -103,7 +103,7 @@ is
    type Item_T is record
       Valid  : Boolean := False;
       Kind   : Item_Kind_T := Estimated_Item;
-      Ref    : Anchor_T;
+      Ref    : Anchor_T := (others => <>);
       --  distances run along Sense (the train orientation when the
       --  information was received)
       Sense  : Sense_T := Plus;

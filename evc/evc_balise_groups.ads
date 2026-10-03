@@ -71,15 +71,19 @@ is
    subtype Slot_T is Positive range 1 .. Max_Balises;
    type Readings_T is array (Slot_T) of Reading_T;
    type Telegrams_T is array (Slot_T) of ETCS_Telegram.Telegram_T;
+   No_Reading : constant Reading_T := (others => <>);
 
+   --  (every component has a default expression, the arrays a named
+   --  element: (others => <>) of the type is built in place, not in a
+   --  temporary on the stack and copied)
    type Passage_T is record
       Open      : Boolean := False;
-      Id        : Identity_T;
+      Id        : Identity_T := (others => <>);
       N_TOTAL   : N_TOTAL_T := 0;
       Linked    : Boolean := False;   -- Q_LINK
       Count     : Count_T := 0;
-      Readings  : Readings_T;
-      Telegrams : Telegrams_T;
+      Readings  : Readings_T := (others => No_Reading);
+      Telegrams : Telegrams_T := (others => ETCS_Telegram.No_Telegram);
    end record;
 
    --  A balise of this number was read in the passage
@@ -109,7 +113,7 @@ is
 
    type Geometry_T is record
       Has_Reference       : Boolean := False;
-      Reference           : Reading_T;
+      Reference           : Reading_T := (others => <>);
       --  balise 2 stands for the duplicated balise 1 (3.4.2.2.1.1)
       Duplicate_Reference : Boolean := False;
       --  the sense of the nominal direction; Unknown when the group

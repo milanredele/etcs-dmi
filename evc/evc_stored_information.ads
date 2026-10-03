@@ -86,6 +86,7 @@ with EVC_Odometry;
 with EVC_Origins;
 with EVC_PBD;
 with EVC_Ports;
+with EVC_Profile;
 with EVC_Position;
 with EVC_Profiles;           use EVC_Profiles;
 with EVC_Supervision_Input;  use EVC_Supervision_Input;
@@ -178,6 +179,13 @@ is
 
    function Current return Snapshot_T
      with Global => State;
+
+   --  The snapshot into S. The on-board takes it this way, into its own
+   --  storage: the result of Current is built on the stack of its caller
+   --  (over 11 KB), Current is for the contracts and the tests
+   procedure Get_Current (S : out Snapshot_T)
+     with Global => State,
+          Post => S = Current;
 
    --  The sources of the MRSP along Ahead, its steps along Ahead, and its
    --  ceiling (EVC_Profiles)
@@ -296,8 +304,14 @@ is
    --  Phase E4: Virtual_Last, the virtual limits the supervision found
    --  in the last cycle for the indication of the track conditions
    --  (EVC_Track_Conditions, 5.18.4.2, 5.18.8.3)
+   --  Work: a work area for the profile of a section of the speed
+   --  restrictions to ensure a permitted braking distance (EVC_PBD.
+   --  Restrict), its content overwritten; the core lends the profile of
+   --  the work area of the supervision, which EVC_SDM.Step builds anew
+   --  before it reads it (one cycle at a time: the two never overlap)
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
+                       Work           : in out EVC_Profile.Profile_T;
                        Special_Active : EVC_Braking.Brakes_T :=
                          (others => False);
                        Additional     : Boolean := False;

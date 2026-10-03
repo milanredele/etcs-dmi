@@ -47,6 +47,9 @@ is
    use type EVC_PBD.Inputs_T;
 
    type Event_Array is array (1 .. Max_Events) of Event_T;
+   --  the element of a cleared list: (others => No_Event) is built in
+   --  place, (others => (others => <>)) in a temporary on the stack
+   No_Event : constant Event_T := (others => <>);
 
    Snap            : Snapshot_T;
    Sources         : Elements_T;
@@ -90,6 +93,13 @@ is
      with Refined_Global => (Input => Events, Proof_In => Event_N);
    function Current return Snapshot_T is (Snap)
      with Refined_Global => Snap;
+
+   procedure Get_Current (S : out Snapshot_T)
+     with Refined_Global => Snap
+   is
+   begin
+      S := Snap;
+   end Get_Current;
    function MRSP_Sources return Elements_T is (Sources)
      with Refined_Global => Sources;
    function MRSP_Steps return Steps_T is (Steps)
@@ -154,11 +164,11 @@ is
       Msg_Count := 0;
       Last_Orient := Plus;
       Orient_Seen := False;
-      Events := (others => (others => <>));
+      Events := (others => No_Event);
       Event_N := 0;
-      Indicated := (others => (others => <>));
+      Indicated := (others => EVC_DMI_Port.No_Track_Cond);
       Indicated_N := 0;
-      Sent := (others => (others => <>));
+      Sent := (others => EVC_DMI_Port.No_Track_Cond);
       Sent_N := 0;
       Cond_Due := False;
       Plan := (others => <>);
@@ -412,8 +422,13 @@ is
    end Take_Level_Packet;
 
    --  3.18.2: the national values (3), to EVC_National_Values
+   --  (No_Inline, as Take_Speed_Packet and Take_MA_Packet: the packet
+   --  decoded, up to 6 KB, is on the stack only while it is taken, not in
+   --  the frame of Take_Group with the packets of the other kinds)
    procedure Take_National_Packet (R : in out Reader_T; M : Message_T)
-     with Global => (In_Out => (EVC_National_Values.State, Events, Event_N))
+     with No_Inline,
+          Global => (In_Out => (EVC_National_Values.State, Events,
+                                Event_N))
    is
       OK : Boolean;
       X  : ETCS_Track_Packets.P3.Packet_T;
@@ -443,7 +458,8 @@ is
                                 R : in out Reader_T;
                                 M : Message_T;
                                 T : Origin_Table_T)
-     with Global => (In_Out => (EVC_Track_Description.State,
+     with No_Inline,
+          Global => (In_Out => (EVC_Track_Description.State,
                                 Events, Event_N),
                      Input  => EVC_Train_Data.State)
    is
@@ -657,7 +673,8 @@ is
                              Train       : Train_Frame_T;
                              A           : EVC_Acceptance.Context_T;
                              MA_Accepted : in out Boolean)
-     with Global => (In_Out => (EVC_Track_Description.State,
+     with No_Inline,
+          Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 Events, Event_N))
@@ -780,12 +797,16 @@ is
    end Take_Packet;
 
    --  Group G of the position's last Update, as message number Msg_Count
+   --  (No_Inline: GCC inlines a subprogram called once, and the decoded
+   --  packets of the parts below, up to 6 KB, would stay in the frame of
+   --  Evaluate while the snapshot is built and the PBD computed)
    procedure Take_Group (G      : Positive;
                          T      : Origin_Table_T;
                          Train  : Train_Frame_T;
                          Ctx    : Mode_Context_T;
                          Now_Ms : Unsigned_64)
-     with Global => (In_Out => (EVC_Track_Description.State,
+     with No_Inline,
+          Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
@@ -932,42 +953,46 @@ is
       Snap.Adhesion := (Count => 0, Areas => (others => (0, 0)),
                         Driver_Slippery => Driver_Slippery);
       EVC_Track_Description.Adhesion_Areas (T, Ahead, Snap.Adhesion);
-      Snap.Extra := (Config      => Configuration.Supervision,
-                     Train       => (others => <>),
-                     National    =>
-                       (Redadh_Use =>
-                          EVC_National_Values.Current.Redadh_Use),
-                     Trip_Margin => 0,
-                     T_MAR       => 0,
-                     --  4.4.11.1.3 b) (e4/modes)
-                     SR_Distance => Ctx.SR_Distance,
-                     SR_End      => Ctx.SR_End);
+      --  (component by component: an aggregate that reads a parameter
+      --  or calls a function is built in a temporary, 2 KB, and copied)
+      Snap.Extra := (others => <>);
+      Snap.Extra.Config := Configuration.Supervision;
+      Snap.Extra.National.Redadh_Use :=
+        EVC_National_Values.Current.Redadh_Use;
+      --  4.4.11.1.3 b) (e4/modes)
+      Snap.Extra.SR_Distance := Ctx.SR_Distance;
+      Snap.Extra.SR_End := Ctx.SR_End;
    end Build_Train;
 
    --  3.11.11.3: the speed restrictions to ensure a permitted braking
    --  distance received are computed, and all of them again when an
    --  input of the computation changed (the Train Data, the national
    --  values, the status of the special brakes, the driver's slippery
-   --  rail, the antenna of the active cab), before the MRSP
+   --  rail, the antenna of the active cab), before the MRSP (No_Inline:
+   --  its inputs, 7 KB, are not in the frame of Build for the parts after
+   --  it)
    procedure Build_PBD (Train          : Train_Frame_T;
                         Special_Active : EVC_Braking.Brakes_T;
                         Additional     : Boolean;
-                        Configuration  : EVC_Config.Config_T)
-     with Global => (In_Out => (EVC_Track_Description.State,
+                        Configuration  : EVC_Config.Config_T;
+                        Work           : in out EVC_Profile.Profile_T)
+     with No_Inline,
+          Global => (In_Out => (EVC_Track_Description.State,
                                 PBD_Last, PBD_Known, Events, Event_N),
                      Input  => Snap)
    is
-      I       : constant EVC_PBD.Inputs_T :=
-        EVC_PBD.Inputs_Of
-          (Snap, Special_Active, Additional,
-           Natural (Length_T'Min
-                      (EVC_Config.Front_Offset (Configuration,
-                                                Train.Sense),
-                       EVC_PBD.Antenna_T'Last)));
-      Changed : constant Boolean := not PBD_Known or else I /= PBD_Last;
+      I       : EVC_PBD.Inputs_T;
+      Changed : Boolean;
       N       : Natural;
    begin
-      EVC_Track_Description.Compute_PBD (I, Changed, N);
+      EVC_PBD.Get_Inputs
+        (Snap, Special_Active, Additional,
+         Natural (Length_T'Min
+                    (EVC_Config.Front_Offset (Configuration, Train.Sense),
+                     EVC_PBD.Antenna_T'Last)),
+         I);
+      Changed := not PBD_Known or else I /= PBD_Last;
+      EVC_Track_Description.Compute_PBD (I, Changed, Work, N);
       if Changed and then N > 0 then
          Record_Event (Info_PBD, Change_Recalculated, N);
       end if;
@@ -1078,13 +1103,16 @@ is
    --  none is, the segment is not covered (3.13.4.1.3: the supervision
    --  takes the default gradient for TSR, 3.11.12.5, for a target due to
    --  a TSR, else 0); G_Steps the envelope along Ahead, for the planning
+   --  (No_Inline: its elements, near 10 KB, are on the stack only while
+   --  it runs, not in the frame of Build while the PBD is computed)
    procedure Build_Gradients (T             : Origin_Table_T;
                               Ahead         : Sense_T;
                               Default_Known : Boolean;
                               Default_G     : Gradient_T;
                               Gradients     : in out Gradient_Profile_T;
                               G_Steps       : out Steps_T)
-     with Global => (In_Out => Failures,
+     with No_Inline,
+          Global => (In_Out => Failures,
                      Input  => EVC_Track_Description.State),
           Post => Sorted (G_Steps)
                   and then Gradients.Count >= 1
@@ -1170,9 +1198,9 @@ is
                                 EVC_Track_Description.State))
    is
    begin
-      MA_Board := EVC_Movement_Authority.MA.Present
-                  and then EVC_Track_Description.SSP.Count > 0
-                  and then EVC_Track_Description.Gradients.Count > 0;
+      MA_Board := EVC_Movement_Authority.MA_Present
+                  and then EVC_Track_Description.SSP_Count > 0
+                  and then EVC_Track_Description.Gradients_Count > 0;
       Profile_Overlap :=
         Train.Valid
         and then EVC_Movement_Authority.Mode_Profile_Overlap
@@ -1240,7 +1268,7 @@ is
          --  phase E4, 5.16: the level crossing of the temporary EOA
          declare
             X : constant EVC_Track_Description.LX_T :=
-              EVC_Track_Description.LX (LX_I);
+              EVC_Track_Description.LX_Item (LX_I);
          begin
             LX :=
               (Present   => True,
@@ -1274,7 +1302,7 @@ is
                                      Virtual_Last);
       EVC_Track_Conditions.Virtual_Feet (T, Train, Virtual);
       EVC_Track_Conditions.Tunnel_Indication (T, Train, Virtual_Last, Tun);
-      Indicated := (others => (others => <>));
+      Indicated := (others => EVC_DMI_Port.No_Track_Cond);
       Indicated_N := 0;
       for I in 1 .. Ind.Count loop
          exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
@@ -1301,10 +1329,12 @@ is
    begin
       if Train.Valid and then EVC_Track_Description.LX_Sense = Ahead then
          declare
-            L : constant EVC_Track_Description.LX_Array_T :=
-              EVC_Track_Description.LX;
+            --  the level crossings read in place, not copied
+            function L (I : Positive) return EVC_Track_Description.LX_T
+            is (EVC_Track_Description.LX_Item (I))
+              with Pre => I <= EVC_Track_Description.Max_LX;
          begin
-            for I in L'Range loop
+            for I in 1 .. EVC_Track_Description.Max_LX loop
                exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;
                --  not unrolled by the proof (16 iterations, the range of L)
                pragma Loop_Invariant
@@ -1510,7 +1540,9 @@ is
 
    --  6. and 7. of Evaluate: the snapshot, the indications of the track
    --  conditions and the planning, from the stores; the parts above in
-   --  their order
+   --  their order (No_Inline: its locals, the inputs of the PBD and the
+   --  gradient steps among them, are not in the frame of Evaluate while
+   --  the groups are taken)
    procedure Build (T              : Origin_Table_T;
                     Train          : Train_Frame_T;
                     Mode_Speed     : Speed_Cms_T;
@@ -1518,8 +1550,10 @@ is
                     Special_Active : EVC_Braking.Brakes_T;
                     Additional     : Boolean;
                     Ctx            : Mode_Context_T;
-                    Virtual_Last   : Virtual_Limits_T)
-     with Global => (Output => (Sources, Steps, Ceiling, Indicated,
+                    Virtual_Last   : Virtual_Limits_T;
+                    Work           : in out EVC_Profile.Profile_T)
+     with No_Inline,
+          Global => (Output => (Sources, Steps, Ceiling, Indicated,
                                 Indicated_N, Cond_Due, Plan, Plan_Due,
                                 MA_Board, Profile_Overlap, Covered_Flag,
                                 Ext, Tun),
@@ -1551,12 +1585,13 @@ is
                                 < A (Snap.Train.Ahead,
                                      Snap.Gradients.Segments (K + 1).Start))
    is
-      MA_Now   : constant EVC_Movement_Authority.MA_T :=
-        EVC_Movement_Authority.MA;
+      --  (the MA is not copied, EVC_Movement_Authority.MA_Present)
+      MA_Present : constant Boolean := EVC_Movement_Authority.MA_Present;
+      MA_Sense   : constant Sense_T := EVC_Movement_Authority.MA_Sense;
       --  the installation configuration (EVC_Config)
       Configuration : constant EVC_Config.Config_T := EVC_Config.Current;
       Ahead    : constant Sense_T :=
-        (if MA_Now.Present then MA_Now.Sense else Train.Sense);
+        (if MA_Present then MA_Sense else Train.Sense);
       Data     : constant Train_Data_T := EVC_Train_Data.Data;
       NV       : constant National_Values_T :=
         EVC_National_Values.Current.Values;
@@ -1574,7 +1609,7 @@ is
         EVC_Modes.MA_Mode (Mode) or else EVC_Modes."=" (Mode, EVC_Modes.M_SM);
    begin
       Build_Train (T, Train, Ahead, Data, NV, Mode_Speed, Configuration, Ctx);
-      Build_PBD (Train, Special_Active, Additional, Configuration);
+      Build_PBD (Train, Special_Active, Additional, Configuration, Work);
       Build_Speed_Sources (T, Ahead, Data.Length, Mode);
       Build_MRSP (T, Ahead, Data.Length, Data.Max_Speed, Mode, Mode_Speed,
                   Snap.MRSP);
@@ -1600,6 +1635,7 @@ is
 
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
+                       Work           : in out EVC_Profile.Profile_T;
                        Special_Active : EVC_Braking.Brakes_T :=
                          (others => False);
                        Additional     : Boolean := False;
@@ -1617,7 +1653,7 @@ is
       --  1. 3.11.5.10
       if EVC_Position.Orientation_Known then
          if Orient_Seen and then EVC_Position.Orientation /= Last_Orient
-           and then EVC_Track_Description.TSR.Count > 0
+           and then EVC_Track_Description.TSR_Count > 0
          then
             EVC_Track_Description.Delete_TSRs;
             Record_Event (Info_TSR, Change_Orientation, 0);
@@ -1675,7 +1711,7 @@ is
 
       --  6., 7.
       Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional,
-             Context, Virtual_Last);
+             Context, Virtual_Last, Work);
    end Evaluate;
 
 end EVC_Stored_Information;
