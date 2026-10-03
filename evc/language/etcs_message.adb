@@ -13,6 +13,8 @@ is
    begin
       if M.Kind /= Unknown then
          for I in 1 .. Field_Count (M.Kind) loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             if Fields (M.Kind) (I) = Var then
                return M.Values (I);
             end if;
@@ -90,6 +92,7 @@ is
 
       --  the other variables of the message, header included
       for I in 3 .. Field_Count (K) loop
+         pragma Loop_Invariant (Limit (R) = 8 * Data'Length);
          Read (R, Bits (Fields (K) (I)), V);
          M.Values (I) := V;
       end loop;
@@ -99,6 +102,8 @@ is
       end if;
       --  3.16.1.1.1: no spare value
       for I in 1 .. Field_Count (K) loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if not Valid_Code (Fields (K) (I), M.Values (I)) then
             Status := Invalid_Value;
             return;
@@ -235,6 +240,8 @@ is
       Write (W, 8, Unsigned_64 (ETCS_Message_Catalogue.NID_Of (Kind)));
       Write (W, 10, 0);
       for I in 3 .. Field_Count (Kind) loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          Write (W, Bits (Fields (Kind) (I)), Values (I));
       end loop;
       OK := not Failed (W);
