@@ -272,6 +272,46 @@ is
               T_Traction_Cut_Off => C.T_TCO);
    end Terms_Of;
 
+   --  3.13.9.3.5.9, .10: the location of the Permitted speed limit for
+   --  the target speed of an MRSP or LOA target (V_delta0t, T_be_react,
+   --  T_traction_max; T_bs_foot: T_bs_react with the service brake
+   --  command and without its feedback, else Bs2)
+   function P_Target_Of (Work : Work_T;
+                         C    : Ctx_T;
+                         T    : Target_T;
+                         Bs2  : Time_T;
+                         Stop : Dist_T) return Num
+     with Pre  => Stop > -Max_Cm,
+          Post => P_Target_Of'Result in Location_T
+   is
+      Times : constant Times4_T := Times_Of (Work.Model, T);
+   begin
+      return P_At_Target
+        (Work.Model, Work.Profile, EBD_Of (T), T.Speed, T.Location,
+         (if C.Inhibit then 0 else F41 (T.Speed)),
+         Times.Be_React,
+         T_Traction_Max (C, Times),
+         (if C.SB_Avail and then not C.Feedback then Times.Bs_React
+          else Bs2),
+         Stop);
+   end P_Target_Of;
+
+   --  3.13.8.5.2: the GUI curve of target T, its foot at P_Target (the
+   --  location of 3.13.9.3.5.9) for an MRSP or LOA target, at Foot (the
+   --  EOA or the SvL) for the EOA / SvL
+   function GUI_Of (T        : Target_T;
+                    P_Target : Num;
+                    Foot     : Dist_T) return Curve_T is
+     (if T.Kind in MRSP_Target | LOA_Target
+      then (Kind     => GUI,
+            Anchor   => Clamp (P_Target),
+            Anchor_W => Square (T.Speed),
+            Floor_W  => Square (T.Speed),
+            TSR      => T.TSR)
+      else (Kind => GUI, Anchor => Foot, Anchor_W => 0, Floor_W => 0,
+            TSR => T.TSR))
+     with Post => GUI_Of'Result.Floor_W <= GUI_Of'Result.Anchor_W;
+
    --  What Evaluate guarantees of the limits it gives
    function Valid_Limits (L : Limits_T) return Boolean is
      (Ordered (L) and then L.I in Location_T and then L.Curve in Location_T)
@@ -363,26 +403,13 @@ is
         or else (C.SB_Avail and then not C.Feedback
                  and then (Red_L.Bs < Times.Bs or else Red_E.Bs < Times.Bs));
       if T.Kind in MRSP_Target | LOA_Target then
-         R.P_Target :=
-           P_At_Target
-             (Work.Model, Work.Profile, Curve, T.Speed, T.Location,
-              (if C.Inhibit then 0 else F41 (T.Speed)),
-              Times.Be_React,
-              T_Traction_Max (C, Times),
-              (if C.SB_Avail and then not C.Feedback then Times.Bs_React
-               else Serv.Bs2),
-              C.Stop);
-         --  3.13.8.5.2 b): the foot of the GUI is that location
-         GUI_Curve := (Kind     => GUI,
-                       Anchor   => Clamp (R.P_Target),
-                       Anchor_W => Square (T.Speed),
-                       Floor_W  => Square (T.Speed),
-                       TSR      => T.TSR);
+         R.P_Target := P_Target_Of (Work, C, T, Serv.Bs2, C.Stop);
       else
          R.P_Target := T.Location;
-         GUI_Curve := (Kind => GUI, Anchor => T.Location, Anchor_W => 0,
-                       Floor_W => 0, TSR => T.TSR);
       end if;
+      --  3.13.8.5.2 b): for an MRSP or LOA target the foot of the GUI is
+      --  that location
+      GUI_Curve := GUI_Of (T, R.P_Target, T.Location);
       R.L := EBD_Limits (Work.Model, Work.Profile, Curve, T.Speed,
                          T.Location, C.GUI, GUI_Curve, Terms, C.X_Max,
                          C.Stop);
@@ -413,8 +440,15 @@ is
    --  The conditions of Tables 8 to 11 for one target
    ---------------------------------------------------------------------
 
+   --  The triggering conditions of the Overspeed, Warning and
+   --  Intervention statuses and of the commands. Those of the Indication
+   --  status (t0, t3) are not needed: in target speed monitoring the
+   --  Indication status is the one left when none of the others is
+   --  triggered (Table 12; 3.13.10.4.16 to .18: the Normal status is not
+   --  used, the conditions of [1] of Table 16 always give a status;
+   --  Supervision_Status)
    type Flags_T is record
-      Ind, Ovs, Was, SB, EB : Boolean := False;
+      Ovs, Was, SB, EB : Boolean := False;
       --  a revocation condition (r1 or r3) holds for the target
       Rev        : Boolean := False;
       --  3.13.10.4.2: the target is a concerned target, with its P
@@ -445,8 +479,6 @@ is
                   Vt     : constant Speed_T := T.Speed;
                   In_TS  : constant Boolean := Vt < V and then V <= VM;
                begin
-                  F.Ind := In_TS and then L.I < C.X_Max
-                           and then C.X_Max <= L.P;                    -- t3
                   F.Ovs := (In_TS and then C.X_Max > L.P)              -- t4
                            or else (VM < V and then V <= C.M_W
                                     and then C.X_Max <= L.W);          -- t6
@@ -496,8 +528,6 @@ is
                Eq    : constant Boolean := V = Vr;
                In_TS : constant Boolean := Vr < V and then V <= VM;
             begin
-               F.Ind := (Eq and then I_P)                              -- t0
-                        or else (In_TS and then I_P and then not P_P); -- t3
                F.Ovs := (Eq and then P_P)                              -- t1
                         or else (In_TS and then P_P)                   -- t4
                         or else (VM < V and then V <= C.M_W
@@ -803,15 +833,48 @@ is
    --  Perturbation location (3.13.11)
    ---------------------------------------------------------------------
 
+   --  The locations calculated in advance (3.13.11; 3.13.9.3.5.9 for
+   --  the foot of a GUI) are not limited by the train's location
+   Far : constant Dist_T := -Max_Cm + 1;
+
+   --  3.13.11.4, .7 (3.13.9.3.5.10.1: the foot of the GUI may influence
+   --  the perturbation location): the GUI curve P is also taken from
+   --  when the GUI is enabled, of the SvL or the LOA, or (Use_SBD) of
+   --  the EOA; the foot of the GUI of an LOA with T_bs2ind (3.13.11.3 c)
+   function Perturbation_GUI (Work    : Work_T;
+                              C       : Ctx_T;
+                              T       : Target_T;
+                              Use_SBD : Boolean) return Curve_T
+     with Post => Perturbation_GUI'Result.Floor_W
+                    <= Perturbation_GUI'Result.Anchor_W
+   is
+      Times : constant Times4_T := Times_Of (Work.Model, T);
+   begin
+      if Use_SBD then
+         return GUI_Of (T, 0, T.EOA);
+      elsif C.GUI and then T.Kind in MRSP_Target | LOA_Target then
+         return GUI_Of
+           (T,
+            P_Target_Of (Work, C, T, (if C.SB_Avail then Times.Bs else 0),
+                         Far),
+            T.Location);
+      else
+         return GUI_Of (T, 0, T.Location);
+      end if;
+   end Perturbation_GUI;
+
    --  3.13.11.3, .4, .7: the Indication location for the speed of an
    --  MRSP element (zero acceleration, the speed accuracy of SUBSET-041,
    --  no effect of the service brake feedback, T_be not reduced), from
-   --  the EBD of the SvL or LOA or from the SBD of the EOA
-   function Indication_For (Work    : Work_T;
-                            C       : Ctx_T;
-                            T       : Target_T;
-                            V       : Speed_T;
-                            Use_SBD : Boolean) return Num
+   --  the EBD of the SvL or LOA or from the SBD of the EOA, and from
+   --  GUI_Curve when the GUI is enabled
+   function Indication_For (Work      : Work_T;
+                            C         : Ctx_T;
+                            T         : Target_T;
+                            V         : Speed_T;
+                            Use_SBD   : Boolean;
+                            GUI_Curve : Curve_T) return Num
+     with Pre => GUI_Curve.Floor_W <= GUI_Curve.Anchor_W
    is
       Times : constant Times4_T := Times_Of (Work.Model, T);
       Bs    : constant Time_T := (if C.SB_Avail then Times.Bs else 0);
@@ -820,21 +883,17 @@ is
          A_Est1 => 0, A_Est2 => 0, T_Be => Times.Be, T_Bs1 => Bs,
          T_Bs2 => Bs, T_Ind => T_Indication (C, Times.Bs), TCO => C.TCO,
          T_Traction_Cut_Off => C.T_TCO);
-      Far   : constant Dist_T := -Max_Cm + 1;
-      No_GUI : constant Curve_T :=
-        (Kind => GUI, Anchor => T.Location, Anchor_W => 0, Floor_W => 0,
-         TSR => T.TSR);
    begin
       if Use_SBD then
          return EOA_Limits
            (Work.Model, Work.Profile,
             (Kind => SBD, Anchor => T.EOA, Anchor_W => 0, Floor_W => 0,
              TSR => T.TSR),
-            False, No_GUI, Terms, C.X_Est, Far).I;
+            C.GUI, GUI_Curve, Terms, C.X_Est, Far).I;
       else
          return EBD_Limits
            (Work.Model, Work.Profile, EBD_Of (T), T.Speed, T.Location,
-            False, No_GUI, Terms, C.X_Max, Far).I;
+            C.GUI, GUI_Curve, Terms, C.X_Max, Far).I;
       end if;
    end Indication_For;
 
@@ -848,6 +907,8 @@ is
                               X       : out Num)
    is
       LOA        : constant Boolean := T.Kind = LOA_Target;
+      GUI_Curve  : constant Curve_T :=
+        Perturbation_GUI (Work, C, T, Use_SBD);
       Prev_Valid : Boolean := False;
       Prev_I     : Num := 0;
       Prev_B     : Num := 0;
@@ -864,7 +925,7 @@ is
             else
                declare
                   I_N : constant Num :=
-                    Indication_For (Work, C, T, V_N, Use_SBD);
+                    Indication_For (Work, C, T, V_N, Use_SBD, GUI_Curve);
                   A_N : constant Num := Work.MRSP (N).Start;
                   B_N : constant Num :=
                     (if N < Work.Elements then Work.MRSP (N + 1).Start
@@ -898,6 +959,33 @@ is
          Found := True;
       end if;
    end Perturbation_Of;
+
+   --  3.13.11.9: the speed at the start of the MRSP of a curve the
+   --  perturbation location of target T is calculated from is lower
+   --  than the speed of the first MRSP element: the EBD of the SvL or
+   --  the LOA, the SBD of the EOA, their GUI curves when enabled
+   function Below_First_Element (Work : Work_T;
+                                 C    : Ctx_T;
+                                 T    : Target_T) return Boolean
+     with Pre => Work.Elements > 0
+   is
+      X : constant Dist_T := Work.MRSP (1).Start;
+      V : constant Speed_T := Work.MRSP (1).Speed;
+
+      function Below (Curve : Curve_T) return Boolean is
+        (Speed_At (Work.Model, Work.Profile, Curve, X) < V)
+      with Pre => Curve.Floor_W <= Curve.Anchor_W;
+   begin
+      return Below (EBD_Of (T))
+        or else (C.GUI and then Below (Perturbation_GUI (Work, C, T, False)))
+        or else (T.Kind = EOA_Target
+                 and then (Below ((Kind => SBD, Anchor => T.EOA,
+                                   Anchor_W => 0, Floor_W => 0,
+                                   TSR => T.TSR))
+                           or else (C.GUI
+                                    and then Below (Perturbation_GUI
+                                                      (Work, C, T, True)))));
+   end Below_First_Element;
 
    ---------------------------------------------------------------------
    --  Added by the procedures of phase E4
@@ -1001,7 +1089,7 @@ is
 
    --  What the targets give (3.13.10.4.10 to .15, 3.13.10.6.1)
    type Survey_T is record
-      Trig_Ind, Trig_Ovs, Trig_Was, Trig_SB, Trig_EB : Boolean := False;
+      Trig_Ovs, Trig_Was, Trig_SB, Trig_EB : Boolean := False;
       --  a revocation condition holds for every target
       Rev_All     : Boolean := False;
       Passed_I    : Boolean := False;
@@ -1496,7 +1584,6 @@ is
       D1, D2 : Num := 0;
       N_D    : Natural range 0 .. 2 := 0;
    begin
-      Sv.Trig_Ind := Sv.Trig_Ind or else F.Ind;
       Sv.Trig_Ovs := Sv.Trig_Ovs or else F.Ovs;
       Sv.Trig_Was := Sv.Trig_Was or else F.Was;
       Sv.Trig_SB := Sv.Trig_SB or else F.SB;
@@ -1844,7 +1931,10 @@ is
          when TSM =>
             case Status is
                when NoS | IndS =>
-                  --  3.13.10.4.17: the Normal status is not used
+                  --  3.13.10.4.17: the Normal status is not used; with
+                  --  no other condition the Indication status (t0, t3,
+                  --  3.13.10.4.18: the conditions to enter target speed
+                  --  monitoring always give a status, see Flags_T)
                   Status := (if Sv.Trig_SB or else Sv.Trig_EB then IntS
                              elsif Sv.Trig_Was then WaS
                              elsif Sv.Trig_Ovs then OvS
@@ -2174,6 +2264,21 @@ is
    ---------------------------------------------------------------------
    --  The EOA, LOA and SvL passed (3.13.10.2.6 a, 3.13.10.2.7), the
    --  perturbation location (3.13.11)
+   --
+   --  Supervised_Targets gives at most one EOA target (3.13.1.5: the
+   --  closest of the EOA of the MA and the temporary one) and at most
+   --  one LOA target, both when the MA ends with an LOA and a temporary
+   --  EOA is supervised (3.12.4.7, 3.12.5.8). The EOA/LOA passed
+   --  (3.13.10.2.6 a, 3.13.10.2.7) is then the EOA target's: the LOA
+   --  stays a speed target, and the train may pass it towards a
+   --  temporary EOA beyond it (3.12.4.7 c: a temporary SvL at the start
+   --  of a mode profile beyond the LOA; SUBSET-076 3.12.4, the train
+   --  passing the LOA does not trip), while a temporary EOA in rear of
+   --  the LOA is passed first anyway; the LOA's only without an EOA
+   --  target. The MA request is triggered by the first of the locations
+   --  of 3.13.11.8 passed, or at once by 3.13.11.9, of any of the targets
+   --  (3.13.11.1: before the train would have to brake to an EOA/SvL or
+   --  LOA target). The perturbation location given is the nearest one.
    ---------------------------------------------------------------------
 
    procedure Passed_Locations (S              : Snapshot_T;
@@ -2187,24 +2292,33 @@ is
                                MA_Request     : out Boolean)
      with Global => null
    is
-      Passed_E : Boolean := False;
-      Passed_S : Boolean := False;
-      Pert     : Boolean := False;
-      Pert_X   : Num := 0;
-      MA_Req   : Boolean := False;
+      --  an EOA target is supervised; the LOA passed
+      Has_EOA : Boolean := False;
+      LOA_P   : Boolean := False;
    begin
+      EOA_Passed := False;
+      SvL_Passed := False;
+      Perturbation := False;
+      Perturbation_X := 0;
+      MA_Request := False;
       for K in 1 .. Work.Count loop
          declare
             T : constant Target_T := Work.Targets (K);
+            --  the min safe front end (level 2) or antenna (level 1)
+            --  passed its EOA or LOA
+            P : constant Boolean :=
+              (if Inputs.Level_1
+               then C.X_Min - Num (Inputs.Antenna_Offset) > T.EOA
+               else C.X_Min > T.EOA);
          begin
-            if T.Kind in EOA_Target | LOA_Target then
-               Passed_E :=
-                 (if Inputs.Level_1
-                  then C.X_Min - Num (Inputs.Antenna_Offset) > T.EOA
-                  else C.X_Min > T.EOA);
+            if T.Kind = EOA_Target then
+               Has_EOA := True;
+               EOA_Passed := EOA_Passed or else P;
+            elsif T.Kind = LOA_Target then
+               LOA_P := LOA_P or else P;
             end if;
             if T.Kind = EOA_Target then
-               Passed_S := C.X_Max > T.Location;
+               SvL_Passed := SvL_Passed or else C.X_Max > T.Location;
             end if;
             if T.Kind in EOA_Target | LOA_Target
               and then S.Extra.T_MAR > 0
@@ -2222,29 +2336,36 @@ is
                      Found_E := False;
                      X_E := 0;
                   end if;
-                  Pert := Found_S or else Found_E;
-                  Pert_X := (if Found_S then X_S else X_E);
+                  if Found_S then
+                     Perturbation_X :=
+                       (if Perturbation then Min (Perturbation_X, X_S)
+                        else X_S);
+                     Perturbation := True;
+                  end if;
+                  if Found_E then
+                     Perturbation_X :=
+                       (if Perturbation then Min (Perturbation_X, X_E)
+                        else X_E);
+                     Perturbation := True;
+                  end if;
                   --  3.13.11.8
-                  MA_Req :=
-                    (Found_S and then C.X_Max > X_S - Lead)
+                  MA_Request :=
+                    MA_Request
+                    or else (Found_S and then C.X_Max > X_S - Lead)
                     or else (Found_E and then C.X_Est > X_E - Lead);
                   --  3.13.11.9
                   if Work.Elements > 0
-                    and then Speed_At (Work.Model, Work.Profile, EBD_Of (T),
-                                       Work.MRSP (1).Start)
-                             < Work.MRSP (1).Speed
+                    and then Below_First_Element (Work, C, T)
                   then
-                     MA_Req := True;
+                     MA_Request := True;
                   end if;
                end;
             end if;
          end;
       end loop;
-      EOA_Passed := Passed_E;
-      SvL_Passed := Passed_S;
-      Perturbation := Pert;
-      Perturbation_X := Pert_X;
-      MA_Request := MA_Req;
+      if not Has_EOA then
+         EOA_Passed := LOA_P;
+      end if;
    end Passed_Locations;
 
    ---------------------------------------------------------------------

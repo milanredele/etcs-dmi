@@ -873,6 +873,168 @@ package body EVC_Test_Supervision is
              & " m, before the TSM at" & Integer_64'Image (X / 100) & " m");
    end Scenario_SDM_Perturbation;
 
+   --  3.13.1.5, 3.13.8.2.1 b), c): an MA ending with an LOA and a
+   --  temporary EOA beyond it (the start of a mode profile further on,
+   --  3.12.4.7 c) are two targets, the LOA first. 3.13.10.2.6 a),
+   --  3.13.10.2.7: the EOA/LOA passed is then the temporary EOA's, the
+   --  train passing the LOA does not trip (as SUBSET-076 3.12.4, the
+   --  sequences 3120400_07 and _08, have it); 3.13.11.8 with 3.13.11.1
+   --  (the MA request before the train would have to brake to an
+   --  EOA/SvL or LOA target): the MA request location of the LOA, the
+   --  nearer one, is not lost beside the temporary EOA, and the
+   --  perturbation location given is the nearest one
+   procedure Scenario_SDM_LOA_And_Temporary is
+      S : SIn.Snapshot_T;
+      X : Integer_64;
+      V : SIn.Speed_Cms_T;
+
+      --  (the train of the snapshot: Drive updates X on return only)
+      function Past_LOA return Boolean is
+        (Integer_64 (Sup.Train.Est_Front) > 402_000);
+      function Past_Tmp return Boolean is
+        (Integer_64 (Sup.Train.Est_Front) > 502_000);
+      procedure To_LOA is new Drive (Never, Past_LOA);
+      procedure To_Tmp is new Drive (Never, Past_Tmp);
+
+      --  At_X: where the MA request location is passed at 100 km/h (-1:
+      --  not before 4 km), Pert: the perturbation location at the start;
+      --  Tmp: with the temporary EOA at 5 km
+      procedure Request (Tmp  : Boolean;
+                         At_X : out Integer_64;
+                         Pert : out Integer_64) is
+      begin
+         S := Base_Snapshot;
+         Give_MA (S, 4_000, LOA_Kmh => 60.0);
+         if Tmp then
+            S.Temporary := (Present => True, EOA => 500_000,
+                            Has_SvL => True, SvL => 510_000);
+         end if;
+         S.Extra.T_MAR := 10_000;
+         X := 0;
+         V := Cms (100.0);
+         Place (S, X, V);
+         Sup_Start (S);
+         Pert := (if Res.Perturbation then Integer_64 (Res.Perturbation_X)
+                  else -1);
+         At_X := -1;
+         for Step in 1 .. 2_000 loop
+            if Res.MA_Request then
+               At_X := X;
+               exit;
+            end if;
+            exit when X > 400_000;
+            X := X + Integer_64 (V) / 10;
+            Move (X, V);
+            Sup_Cycle;
+         end loop;
+      end Request;
+
+      LOA_At, LOA_Pert, Both_At, Both_Pert : Integer_64;
+   begin
+      S := Base_Snapshot;
+      Give_MA (S, 4_000, LOA_Kmh => 60.0);
+      S.Temporary := (Present => True, EOA => 500_000,
+                      Has_SvL => True, SvL => 510_000);
+      X := 380_000;
+      V := Cms (58.0);
+      Place (S, X, V);
+      Sup_Start (S);
+      Check (not Res.EOA_Passed, "LOA and temporary EOA: not passed at 380 m");
+      To_LOA (X, V, 0, 1_000);
+      Check (not Res.EOA_Passed,
+             "LOA and temporary EOA beyond it: the min safe front end "
+             & "passed the LOA at" & Integer_64'Image (X / 100)
+             & " m, not the EOA/LOA passed (3.13.10.2.6 a, 3.13.10.2.7 "
+             & "with 3.13.1.5, 3.12.4.7 c)");
+      To_Tmp (X, V, 0, 1_000);
+      Check (Res.EOA_Passed,
+             "LOA and temporary EOA beyond it: the min safe front end "
+             & "passed the temporary EOA at" & Integer_64'Image (X / 100)
+             & " m");
+
+      Request (False, LOA_At, LOA_Pert);
+      Request (True, Both_At, Both_Pert);
+      Check (LOA_At > 0 and then LOA_Pert > 0
+             and then Both_At = LOA_At and then Both_Pert = LOA_Pert,
+             "LOA and temporary EOA beyond it: the MA request location of "
+             & "the LOA passed at" & Integer_64'Image (LOA_At / 100)
+             & " m, with the temporary EOA at" & Integer_64'Image
+               (Both_At / 100)
+             & " m; the perturbation location" & Integer_64'Image
+               (LOA_Pert / 100) & " m, with it" & Integer_64'Image
+               (Both_Pert / 100) & " m (3.13.11.8)");
+   end Scenario_SDM_LOA_And_Temporary;
+
+   --  3.13.11.9: in an exceptional situation (a shortened MA) the speed
+   --  of the SBD of the EOA at the start of the MRSP is below the speed
+   --  of its first element, while the EBD of the SvL, further on, is not:
+   --  the MA request location is considered passed. 3.13.11.4, .7: with
+   --  the GUI enabled, P is the nearer of the service brake based P and
+   --  the GUI: the perturbation location comes earlier
+   procedure Scenario_SDM_Perturbation_Curves is
+      use EVC_Fixed;
+      S     : SIn.Snapshot_T;
+      Model : EVC_Braking.Model_T;
+      P     : EVC_Profile.Profile_T;
+      V1    : constant Num := Num (Cms (140.0));
+      EOA_M : Natural := 2_000;
+      Found : Boolean := False;
+      V_EBD, V_SBD : Num := 0;
+      Without, With_GUI : Integer_64;
+   begin
+      --  the farthest EOA (2 km down by 50 m; 700 m of overlap: the
+      --  SBD of this train is the steeper curve) where,
+      --  at the start of the MRSP, the SBD is below 140 km/h and the EBD
+      --  of the SvL is not, 5 km/h apart from it either way
+      S := Base_Snapshot;
+      EVC_Braking.Build (S, (others => True), False, Model);
+      EVC_Profile.Build (S, Model, -50_000, P);
+      while EOA_M > 100 loop
+         V_EBD := EVC_Curves.Speed_At
+           (Model, P, (Kind => EVC_Curves.EBD,
+                       Anchor => EVC_Distances.Metres (EOA_M + 700),
+                       others => <>), 0);
+         V_SBD := EVC_Curves.Speed_At
+           (Model, P, (Kind => EVC_Curves.SBD,
+                       Anchor => EVC_Distances.Metres (EOA_M),
+                       others => <>), 0);
+         if V_SBD + Num (Cms (5.0)) < V1 and then V_EBD > V1 + Num (Cms (5.0))
+         then
+            Found := True;
+            exit;
+         end if;
+         EOA_M := EOA_M - 50;
+      end loop;
+      Give_MA (S, EOA_M, 700);
+      S.Extra.T_MAR := 10_000;
+      Place (S, 0, Cms (100.0));
+      Sup_Start (S);
+      Check (Found and then Res.MA_Request,
+             "3.13.11.9: the EOA at" & Img (EOA_M) & " m, the SBD"
+             & Img_LF (Kmh_Of (V_SBD)) & " km/h and the EBD of the SvL"
+             & Img_LF (Kmh_Of (V_EBD)) & " km/h at the start of the MRSP "
+             & "(140 km/h): the MA request location is passed");
+
+      --  the GUI (as Scenario_SDM_GUI)
+      S := Case_Snapshot (Gamma_Train, Flat);
+      S.MRSP.Segments (1).Speed := Cms (160.0);
+      Give_MA (S, 6_000, 200);
+      S.Extra.T_MAR := 10_000;
+      Place (S, 0, Cms (140.0));
+      S.National.Q_NVGUIPERM := False;
+      Sup_Start (S);
+      Without := (if Res.Perturbation then Integer_64 (Res.Perturbation_X)
+                  else -1);
+      S.National.Q_NVGUIPERM := True;
+      Sup_Start (S);
+      With_GUI := (if Res.Perturbation then Integer_64 (Res.Perturbation_X)
+                   else -1);
+      Check (Without > 0 and then With_GUI > 0 and then With_GUI < Without,
+             "3.13.11.4, .7: the perturbation location with the GUI at"
+             & Integer_64'Image (With_GUI / 100) & " m, without it at"
+             & Integer_64'Image (Without / 100) & " m");
+   end Scenario_SDM_Perturbation_Curves;
+
    --  A.3.10: the service brake feedback reduces and locks T_bs1 and
    --  T_bs2: the service brake comes later; the displayed P never grows
    procedure Scenario_SDM_Feedback is
