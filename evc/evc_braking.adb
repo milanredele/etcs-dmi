@@ -343,6 +343,8 @@ is
          return Default_Kr;
       end if;
       for J in 2 .. Set.Count loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Length > Set.Steps (J).Length then
             K := J;
          end if;
@@ -407,6 +409,8 @@ is
       Lower : Speed_T := 0;
    begin
       for K in 1 .. Emergency.Count loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if K = 1 or else Lower < V_Max then
             Best := Max (Best, Emergency.Steps (K).Value);
          end if;
@@ -478,6 +482,8 @@ is
    is
    begin
       for B in Special_Brake_T loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          Model.Emergency_Brakes (B) :=
            Has (T, B)
            and then (not Status_Counts (Config, B, True) or else Active (B));

@@ -919,6 +919,8 @@ is
    begin
       if MA.Present and then S.Train.Position_Valid then
          for I in P'Range loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             if P (I).Used then
                declare
                   St : constant Dist_T :=
@@ -1507,6 +1509,8 @@ is
          Now_SH : Boolean := False;
       begin
          for I in P'Range loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             if P (I).Used and then P (I).Mode = 1 then
                Now_SH := True;
             end if;
@@ -1578,6 +1582,8 @@ is
       R : Trip_Reason_T := No_Trip;
    begin
       for I in L'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if R = No_Trip and then L (I) in Condition_T
            and then Conds (L (I))
          then

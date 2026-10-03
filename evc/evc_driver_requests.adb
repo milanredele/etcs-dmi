@@ -85,6 +85,8 @@ is
    is
    begin
       for I in 1 .. Now.Text_N loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Now.Texts (I) = Id then
             return True;
          end if;

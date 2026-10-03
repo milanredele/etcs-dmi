@@ -104,7 +104,15 @@ on wasm32 and on a light runtime, and to be testable headless:
   one condition per iteration and branch: a loop invariant on four such
   loops took the braking model from 1205 conditions to 464. New
   subprograms stay under about 100 code lines; a loop over a table gets
-  an invariant. The two regression runners are split by subject
+  an invariant. `gnatprove --info` named 38 more unrolled loops
+  (2026-10-03; a bound up to a count of at most 20 values counts too):
+  with an invariant each, `True` where nothing is needed after the loop,
+  the checks of 16 conditions or more went from 16 to 4 (postconditions
+  over many paths), the conditions from 9363 to 9154 and the processor
+  time of a proof from nothing from 2416 s to 2274-2341 s (the loops held
+  cheap checks; wall time on a machine loaded by other proofs: 387 s
+  against 435-634 s, noise), and `evc/prove.sh` fails above 6 such
+  checks. The two regression runners are split by subject
   (`EVC_Test_<Subject>`, `DMI_Test_<Subject>`): a new scenario goes into
   the package of its subject. Noticed while reading, to be checked
   against their clauses (nothing changed): `Passed_Locations` keeps only

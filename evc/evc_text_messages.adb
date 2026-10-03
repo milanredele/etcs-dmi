@@ -198,6 +198,8 @@ is
       --  acknowledgement and the identifier of one not acknowledged yet
       if M.Report then
          for I in Messages'Range loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             if Messages (I).Used and then Messages (I).Report
               and then Messages (I).Report_Id = M.Report_Id
               and then not Messages (I).Acked
@@ -208,6 +210,8 @@ is
          end loop;
       end if;
       for I in Messages'Range loop
+         --  no free slot before I: an index or 0 after the loop
+         pragma Loop_Invariant (Slot = 0);
          if not Messages (I).Used then
             Slot := I;
             exit;
@@ -218,6 +222,8 @@ is
          --  first one
          Slot := 1;
          for I in Messages'Range loop
+            --  the first one unless one not displayed comes: an index
+            pragma Loop_Invariant (Slot = 1);
             if not Messages (I).Shown then
                Slot := I;
                exit;
@@ -571,6 +577,8 @@ is
    procedure Mode_Changed (From, To : Mode_T) is
    begin
       for I in Messages'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Messages (I).Used then
             --  4.10: deleted (and 4.12: their brake revoked)
             if To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL | M_SN then

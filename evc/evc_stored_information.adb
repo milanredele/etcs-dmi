@@ -1335,6 +1335,8 @@ is
          Cond_Due := True;
       else
          for I in 1 .. Indicated_N loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             if Indicated (I) /= Sent (I) then
                Cond_Due := True;
             end if;

@@ -632,6 +632,8 @@ is
       else
          F.Adapt_Ms := Min (F.Adapt_Ms + Dt, Max_Time);
          for Second in 1 .. 10 loop
+            --  not unrolled by the proof, nothing needed after the loop
+            pragma Loop_Invariant (True);
             exit when F.Adapt_Ms < 1_000;
             F.Adapt_Ms := F.Adapt_Ms - 1_000;
             if P > F.P0 then
@@ -1550,6 +1552,8 @@ is
             Worst : Positive range 1 .. Max_Concerned := 1;
          begin
             for J in 2 .. Max_Concerned loop
+               --  not unrolled by the proof, nothing needed after the loop
+               pragma Loop_Invariant (True);
                if Concerned (J).V_P0 > Concerned (Worst).V_P0 then
                   Worst := J;
                end if;
@@ -1998,6 +2002,8 @@ is
    begin
       --  step 0: the lowest P
       for J in 2 .. Sv.N_Concerned loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Concerned (J).V_P0 < Concerned (Current).V_P0 then
             Current := J;
          end if;

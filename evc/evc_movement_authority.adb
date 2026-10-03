@@ -479,6 +479,8 @@ is
       S : constant Sense_T := Current.Sense;
    begin
       for I in Profiles'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Profiles (I).Used and then Profiles (I).Msg < Before_Msg
            and then A (S, Frame (T, Profiles (I).Start, Estimated_Item))
                     >= A (S, X)
@@ -506,6 +508,8 @@ is
       S : constant Sense_T := Current.Sense;
    begin
       for I in Profiles'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Profiles (I).Used and then not Profiles (I).Open
            and then A (S, Frame (T, Profiles (I).Finish, Min_Item))
                     < Diff (A (S, Rear), Keep)
@@ -536,6 +540,8 @@ is
          Mark (Main_Finish, Marks);
       end if;
       for I in Profiles'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Profiles (I).Used then
             Mark (Profiles (I).Start, Marks);
             Mark (Profiles (I).Finish, Marks);
@@ -611,6 +617,8 @@ is
          return;
       end if;
       for I in Profiles'Range loop
+         --  the profile found so far, an index after the loop
+         pragma Loop_Invariant (K < I);
          if Profiles (I).Used
            and then Natural (Profiles (I).Mode) /= Mode_In_Use
          then
@@ -679,6 +687,8 @@ is
       S : constant Sense_T := Current.Sense;
    begin
       for I in Profiles'Range loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
          if Profiles (I).Used
            and then A (S, Max_Front)
                       >= A (S, Frame (T, Profiles (I).Start, Max_Item))
