@@ -716,7 +716,9 @@ package body EVC_Test_Supervision is
       D0    : Natural;
 
       function Below_78 return Boolean is (Sup.Train.Speed <= Cms (78.0));
-      function Past return Boolean is (X > 310_000);
+      --  (the train of the snapshot: Drive updates X on return only)
+      function Past return Boolean is
+        (Integer_64 (Sup.Train.Est_Front) > 310_000);
       procedure To_TSM is new Drive (Never, In_TSM);
       procedure Slow is new Drive (In_TSM, Below_78);
       procedure Pass is new Drive (Never, Past);
@@ -748,8 +750,9 @@ package body EVC_Test_Supervision is
              "MRSP target: braking at 0.5 m/s² keeps below intervention");
       Pass (X, V, 0, 3_000);
       Check (Res.Monitoring = SDM.CSM and then Res.V_MRSP = EVC_Fixed.Num (Cms (80.0))
-             and then Speed_Frame.V_Perm = 80,
-             "MRSP target: passed by the max safe front end, CSM at 80");
+             and then Speed_Frame.V_Perm = 80 and then X <= 311_000,
+             "MRSP target: passed by the max safe front end, CSM at 80 at"
+             & Integer_64'Image (X / 100) & " m");
    end Scenario_SDM_MRSP_Target;
 
    --  3.13.8.2.1 b), 3.13.9.4.4: the LOA, no release speed; 3.13.10.2.6
@@ -759,7 +762,9 @@ package body EVC_Test_Supervision is
       X : Integer_64 := 0;
       V : SIn.Speed_Cms_T := Cms (120.0);
 
-      function Past return Boolean is (X > 402_000);
+      --  (the train of the snapshot: Drive updates X on return only)
+      function Past return Boolean is
+        (Integer_64 (Sup.Train.Est_Front) > 402_000);
       procedure To_TSM is new Drive (Never, In_TSM);
       procedure Slow is new Drive (In_TSM, Past);
    begin
@@ -772,8 +777,9 @@ package body EVC_Test_Supervision is
              "LOA: TSM to the LOA speed, no release speed (3.13.9.4.4)");
       V := Cms (58.0);
       Slow (X, V, 0, 5_000);
-      Check (Res.EOA_Passed,
-             "LOA: the min safe front end passed the LOA (3.13.10.2.6 a)");
+      Check (Res.EOA_Passed and then X <= 403_000,
+             "LOA: the min safe front end passed the LOA (3.13.10.2.6 a) at"
+             & Integer_64'Image (X / 100) & " m");
    end Scenario_SDM_LOA;
 
    --  3.13.9.4.8: the release speed calculated on-board, against the
