@@ -55,7 +55,7 @@ ETCS on-board (EVC). The on-board is being built in phases, see
 ### 1. Ada 2012 Implementation
 - **Strong Typing**: Use Ada subtypes and ranges extensively ([dmi/display.ads](dmi/display.ads#L34-L52)) to enforce safety at compile-time and runtime.
 - **Naming Convention**: Use `Parent-Child.ads/adb` for packages, translated to `parent-child.ads/adb` file names (e.g., `Display.Area_A` is in [dmi/display-a_area.ads](dmi/display-a_area.ads)).
-- **No Dynamic Allocation**: Avoid `new` or `Unbounded_String`. All data structures must be static or stack-allocated.
+- **No Dynamic Allocation**: Avoid `new` or `Unbounded_String`. All data structures must be static or stack-allocated. In the on-board the compiler enforces this and more: `evc/restrictions.adc` (configuration pragmas of `etcs_evc.gpr`: no allocators, no implicit heap allocation, no exception handlers, no recursion, no tasking or protected types, no finalization, no dispatching, no access to subprograms, no streams, no I/O, no floating point, no unchecked access); `test/check.sh` builds that project too.
 
 ### 2. Graphics and Rendering
 - All coordinates and dimensions are defined in [dmi/display.ads](dmi/display.ads). Refer to this file for any UI-related changes.

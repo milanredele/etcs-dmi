@@ -30,6 +30,8 @@ project Etcs_Evc is
          "-gnatyO", "-gnatyp", "-gnatyr", "-gnatyS", "-gnatyt",
          "-gnatyu", "-gnatyx",
          "-gnatW8");
+      --  what the on-board must not use (evc/restrictions.adc)
+      for Local_Configuration_Pragmas use "evc/restrictions.adc";
    end Compiler;
 
    package Prove is

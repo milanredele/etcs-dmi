@@ -34,6 +34,9 @@ export PATH
 steps=${FUZZ_STEPS:-200000}
 
 gprbuild -s -j0 -p -q -P etcsdmi.gpr
+# the on-board alone, with its own switches: the style checks and the
+# restrictions of evc/restrictions.adc
+gprbuild -s -j0 -p -q -P etcs_evc.gpr
 
 # The checks are independent programs on one core each: they run side by
 # side, every one into its own file, and are reported in this order when

@@ -1,0 +1,24 @@
+--  Configuration pragmas of the on-board (etcs_evc.gpr, package Compiler):
+--  what the code under evc/ must not use, checked by the compiler on
+--  every unit (AGENTS.md: no tasking, no exception propagation, no
+--  dynamic allocation; the runtimes of the TMS570 and of wasm32 are
+--  light ones).
+pragma Restrictions (No_Allocators);
+pragma Restrictions (No_Implicit_Heap_Allocations);
+pragma Restrictions (No_Exception_Handlers);
+pragma Restrictions (No_Recursion);
+pragma Restrictions (No_Tasking);
+pragma Restrictions (No_Protected_Types);
+pragma Restrictions (No_Finalization);
+pragma Restrictions (No_Dispatch);
+pragma Restrictions (No_Access_Subprograms);
+pragma Restrictions (No_Streams);
+pragma Restrictions (No_IO);
+pragma Restrictions (No_Floating_Point);
+pragma Restrictions (No_Delay);
+pragma Restrictions (No_Unchecked_Access);
+pragma Restrictions (No_Unchecked_Deallocation);
+--  Not yet: No_Secondary_Stack. Functions returning an unconstrained
+--  array (Byte_Array: the encoders of the language and of the ports) use
+--  the secondary stack at 247 places; its size on the target is part of
+--  phase E8 (doc/EVC-PLAN.md §2, "Stack").

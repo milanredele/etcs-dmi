@@ -114,17 +114,21 @@ on wasm32 and on a light runtime, and to be testable headless:
   against 435-634 s, noise), and `evc/prove.sh` fails above 6 such
   checks. The two regression runners are split by subject
   (`EVC_Test_<Subject>`, `DMI_Test_<Subject>`): a new scenario goes into
-  the package of its subject. Noticed while reading, to be checked
-  against their clauses (nothing changed): `Passed_Locations` keeps only
-  the last target's result for the EOA or LOA passed and for the MA
-  request (3.13.10.2.6 a, 3.13.11.8, .9), and 3.13.11.9 is tested on the
-  EBD only; `Build_Speed_Sources` tests the sense of an MA that may be
-  absent (3.11.6.2); the direction controller is decoded in two places;
-  the stack frames of `EVC_Core.Initialise` (57 KB) and of the
-  subprograms that copy the snapshot (11 to 17 KB each) are to be
-  reduced before the TMS570 port (E8); two checks of the test runners
-  verify nothing (`Without_ATO` in the ATO display scenario, `Grows` in
-  the feedback scenario).
+  the package of its subject. Of what was noticed while reading, checked against the clauses on
+  2026-10-03: the MA request and the perturbation location over several
+  targets and 3.13.11.9 on every curve were defects and are fixed; the
+  EOA or LOA passed and V_MAIN without an MA were not (the code now says
+  why); the stack is the "Stack" bullet; the two test checks are fixed.
+  Still to be checked against their clauses (nothing changed):
+  `EVC_Text_Messages.Store` gives way by slot order, not by age;
+  `EVC_Position.Set_Report_Parameters` takes the match with the highest
+  index of the ring of recent groups, not the most recent; the temporary
+  EOA of a level crossing is not limited to the MA; the direction
+  controller is decoded in two places; two supervision scenarios
+  (`Scenario_SDM_LOA`, `Scenario_SDM_MRSP_Target`) have a stop condition
+  that is never true. The compiler enforces the embedded constraints of
+  the on-board through `evc/restrictions.adc`; No_Secondary_Stack is not
+  among them yet (247 uses, in the catalogues of the language mostly).
 - **Stack** (2026-10-03): `ports/tms570/stack.sh` builds the on-board
   for the TMS570 with `-fstack-usage -fcallgraph-info=su,da` and walks
   GCC's call graph: the frame of each subprogram plus its deepest
