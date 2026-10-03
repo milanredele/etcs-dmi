@@ -93,6 +93,13 @@ is
      with Refined_Global => (Input => Events, Proof_In => Event_N);
    function Current return Snapshot_T is (Snap)
      with Refined_Global => Snap;
+
+   procedure Get_Current (S : out Snapshot_T)
+     with Refined_Global => Snap
+   is
+   begin
+      S := Snap;
+   end Get_Current;
    function MRSP_Sources return Elements_T is (Sources)
      with Refined_Global => Sources;
    function MRSP_Steps return Steps_T is (Steps)
@@ -783,12 +790,16 @@ is
    end Take_Packet;
 
    --  Group G of the position's last Update, as message number Msg_Count
+   --  (No_Inline: GCC inlines a subprogram called once, and the decoded
+   --  packets of the parts below, up to 6 KB, would stay in the frame of
+   --  Evaluate while the snapshot is built and the PBD computed)
    procedure Take_Group (G      : Positive;
                          T      : Origin_Table_T;
                          Train  : Train_Frame_T;
                          Ctx    : Mode_Context_T;
                          Now_Ms : Unsigned_64)
-     with Global => (In_Out => (EVC_Track_Description.State,
+     with No_Inline,
+          Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
@@ -1081,13 +1092,16 @@ is
    --  none is, the segment is not covered (3.13.4.1.3: the supervision
    --  takes the default gradient for TSR, 3.11.12.5, for a target due to
    --  a TSR, else 0); G_Steps the envelope along Ahead, for the planning
+   --  (No_Inline: its elements, near 10 KB, are on the stack only while
+   --  it runs, not in the frame of Build while the PBD is computed)
    procedure Build_Gradients (T             : Origin_Table_T;
                               Ahead         : Sense_T;
                               Default_Known : Boolean;
                               Default_G     : Gradient_T;
                               Gradients     : in out Gradient_Profile_T;
                               G_Steps       : out Steps_T)
-     with Global => (In_Out => Failures,
+     with No_Inline,
+          Global => (In_Out => Failures,
                      Input  => EVC_Track_Description.State),
           Post => Sorted (G_Steps)
                   and then Gradients.Count >= 1
@@ -1173,9 +1187,9 @@ is
                                 EVC_Track_Description.State))
    is
    begin
-      MA_Board := EVC_Movement_Authority.MA.Present
-                  and then EVC_Track_Description.SSP.Count > 0
-                  and then EVC_Track_Description.Gradients.Count > 0;
+      MA_Board := EVC_Movement_Authority.MA_Present
+                  and then EVC_Track_Description.SSP_Count > 0
+                  and then EVC_Track_Description.Gradients_Count > 0;
       Profile_Overlap :=
         Train.Valid
         and then EVC_Movement_Authority.Mode_Profile_Overlap
@@ -1243,7 +1257,7 @@ is
          --  phase E4, 5.16: the level crossing of the temporary EOA
          declare
             X : constant EVC_Track_Description.LX_T :=
-              EVC_Track_Description.LX (LX_I);
+              EVC_Track_Description.LX_Item (LX_I);
          begin
             LX :=
               (Present   => True,
@@ -1552,12 +1566,13 @@ is
                                 < A (Snap.Train.Ahead,
                                      Snap.Gradients.Segments (K + 1).Start))
    is
-      MA_Now   : constant EVC_Movement_Authority.MA_T :=
-        EVC_Movement_Authority.MA;
+      --  (the MA is not copied, EVC_Movement_Authority.MA_Present)
+      MA_Present : constant Boolean := EVC_Movement_Authority.MA_Present;
+      MA_Sense   : constant Sense_T := EVC_Movement_Authority.MA_Sense;
       --  the installation configuration (EVC_Config)
       Configuration : constant EVC_Config.Config_T := EVC_Config.Current;
       Ahead    : constant Sense_T :=
-        (if MA_Now.Present then MA_Now.Sense else Train.Sense);
+        (if MA_Present then MA_Sense else Train.Sense);
       Data     : constant Train_Data_T := EVC_Train_Data.Data;
       NV       : constant National_Values_T :=
         EVC_National_Values.Current.Values;
@@ -1618,7 +1633,7 @@ is
       --  1. 3.11.5.10
       if EVC_Position.Orientation_Known then
          if Orient_Seen and then EVC_Position.Orientation /= Last_Orient
-           and then EVC_Track_Description.TSR.Count > 0
+           and then EVC_Track_Description.TSR_Count > 0
          then
             EVC_Track_Description.Delete_TSRs;
             Record_Event (Info_TSR, Change_Orientation, 0);

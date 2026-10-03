@@ -64,6 +64,12 @@ is
    type Output_Array is array (1 .. Max_Outputs) of Output_T;
    type Event_Array is array (1 .. Max_Events) of Event_T;
 
+   --  the elements of the cleared lists: (others => No_X) is built in
+   --  place, (others => (others => <>)) in a temporary on the stack
+   No_Message : constant Message_T := (others => <>);
+   No_Output  : constant Output_T := (others => <>);
+   No_Event   : constant Event_T := (others => <>);
+
    Messages : Message_Array;
    Next_Id  : Unsigned_16 := 1;
    Outputs  : Output_Array;
@@ -394,11 +400,11 @@ is
 
    procedure Clear is
    begin
-      Messages := (others => (others => <>));
+      Messages := (others => No_Message);
       Next_Id := 1;
-      Outputs := (others => (others => <>));
+      Outputs := (others => No_Output);
       Output_N := 0;
-      Events := (others => (others => <>));
+      Events := (others => No_Event);
       Event_N := 0;
       Last_Level_Valid := False;
       Last_Level := L0;

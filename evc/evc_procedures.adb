@@ -905,20 +905,21 @@ is
                      In_Out => (Ack_On, Ack_M, Ack_After,
                                 Ack_Since, Ack_V, Events, Event_N))
    is
-      P     : constant EVC_Movement_Authority.Mode_Profile_Array :=
-        EVC_Movement_Authority.Mode_Profiles;
-      MA    : constant EVC_Movement_Authority.MA_T :=
-        EVC_Movement_Authority.MA;
+      --  the mode profiles and the MA are read in place, not copied
+      function P (I : Positive) return EVC_Movement_Authority.Mode_Profile_T
+      is (EVC_Movement_Authority.Mode_Profile (I))
+        with Pre => I <= EVC_Movement_Authority.Max_Mode_Profiles;
       T     : constant Origin_Table_T := Origin_Table;
-      Sn    : constant Sense_T := MA.Sense;
+      Sn    : constant Sense_T := EVC_Movement_Authority.MA_Sense;
       Est   : constant Dist_T := A (Sn, S.Train.Est_Front);
       Mn    : constant Dist_T := A (Sn, S.Train.Min_Safe_Front);
       Mx    : constant Dist_T := A (Sn, S.Train.Max_Safe_Front);
       Best  : Dist_T := -Max_Cm;
       Info  : Profile_Info_T;
    begin
-      if MA.Present and then S.Train.Position_Valid then
-         for I in P'Range loop
+      if EVC_Movement_Authority.MA_Present and then S.Train.Position_Valid
+      then
+         for I in 1 .. EVC_Movement_Authority.Max_Mode_Profiles loop
             if P (I).Used then
                declare
                   St : constant Dist_T :=
@@ -998,24 +999,6 @@ is
    --  4. Trip conditions (5.11, 4.6.3)
    ---------------------------------------------------------------------
 
-   --  [69]: the estimated front end in rear of the start of a profile
-   --  (the SSP or the gradients) stored on-board
-   function Before_Profile (St : Store_T; T : Origin_Table_T;
-                            Est : Dist_T) return Boolean
-   is
-      First : Dist_T := Max_Cm;
-   begin
-      if St.Count = 0 then
-         return False;
-      end if;
-      for I in 1 .. St.Count loop
-         First := Dist_T'Min
-           (First, A (St.Sense, Frame (T, St.List (I).Start,
-                                       Estimated_Item)));
-      end loop;
-      return A (St.Sense, Est) < First;
-   end Before_Profile;
-
    procedure Trip_Step (C : Context_T; S : Snapshot_T; SDM : EVC_SDM.Result_T)
      with Global => (Input  => (EVC_Movement_Authority.State,
                                 EVC_Track_Description.State,
@@ -1087,7 +1070,7 @@ is
       if C.Switched_To_L1 and then EVC_Movement_Authority.Trip_Ordered then
          Trip (67, No_MA_Level_Switch);
       end if;
-      if C.Level_Switched and then not EVC_Movement_Authority.MA.Present
+      if C.Level_Switched and then not EVC_Movement_Authority.MA_Present
       then
          Conds (39) := True;
          if Pending = No_Trip then
@@ -1099,10 +1082,9 @@ is
          declare
             T : constant Origin_Table_T := Origin_Table;
          begin
-            if Before_Profile (EVC_Track_Description.SSP, T,
-                               S.Train.Est_Front)
-              or else Before_Profile (EVC_Track_Description.Gradients, T,
-                                      S.Train.Est_Front)
+            --  [69]: the estimated front end in rear of the start of a
+            --  profile (the SSP or the gradients) stored on-board
+            if EVC_Track_Description.Before_Profiles (T, S.Train.Est_Front)
             then
                Trip (69, No_Track_Description);
             end if;
@@ -1218,15 +1200,17 @@ is
         with Global => (Input => (EVC_Track_Conditions.State,
                                   EVC_Origins.State, BMM_From))
       is
-         St : constant Store_T := EVC_Track_Conditions.Big_Metal_Masses;
+         --  the store of the big metal masses is read in place
+         Sn : constant Sense_T := EVC_Track_Conditions.BMM_Sense;
          T  : constant Origin_Table_T := Origin_Table;
-         F  : constant Dist_T := A (St.Sense, BMM_From);
-         Cur : constant Dist_T := A (St.Sense, Front);
+         F  : constant Dist_T := A (Sn, BMM_From);
+         Cur : constant Dist_T := A (Sn, Front);
       begin
-         for I in 1 .. St.Count loop
+         for I in 1 .. EVC_Track_Conditions.BMM_Count loop
             declare
                X : constant Dist_T :=
-                 A (St.Sense, Frame (T, St.List (I).Start, Estimated_Item));
+                 A (Sn, Frame (T, EVC_Track_Conditions.BMM_Item (I).Start,
+                               Estimated_Item));
             begin
                if X > F and then Diff (X, F) <= BMM_Distance_Cm
                  and then Cur >= X
@@ -1382,7 +1366,7 @@ is
       then
          return;
       end if;
-      Was := EVC_Track_Description.LX (I).Indicated;
+      Was := EVC_Track_Description.LX_Item (I).Indicated;
       if S.LX.Stop then
          if S.Train.Standstill
            and then A (S.Train.Ahead, S.Train.Est_Front)
@@ -1397,7 +1381,7 @@ is
          EVC_Track_Description.Indicate_LX (I);
       end if;
       --  [9]
-      if not Was and then EVC_Track_Description.LX (I).Indicated
+      if not Was and then EVC_Track_Description.LX_Item (I).Indicated
         and then S.MA.Present
       then
          Conds (9) := True;
@@ -1502,15 +1486,9 @@ is
       --  entering SH (a new MA, 3.12.4.3; a shortening), the list of
       --  balise groups for the SH area goes with it
       declare
-         P      : constant EVC_Movement_Authority.Mode_Profile_Array :=
-           EVC_Movement_Authority.Mode_Profiles;
-         Now_SH : Boolean := False;
+         --  (EVC_Movement_Authority.SH_Profile: the profiles not copied)
+         Now_SH : constant Boolean := EVC_Movement_Authority.SH_Profile;
       begin
-         for I in P'Range loop
-            if P (I).Used and then P (I).Mode = 1 then
-               Now_SH := True;
-            end if;
-         end loop;
          if SH_Profile_Seen and then not Now_SH and then C.Mode /= M_SH then
             SH_List_Known := False;
             SH_List_N := 0;

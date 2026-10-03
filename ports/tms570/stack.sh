@@ -16,6 +16,8 @@
 #   ports/tms570/stack.sh                 # build, report, check the budget
 #   STACK_TOP=40 ports/tms570/stack.sh    # the 40 largest frames
 #   STACK_NO_BUILD=1 ports/tms570/stack.sh   # report on the last build
+#   ports/tms570/stack.sh --path evc_sdm__step   # also the deepest path
+#                                                # from a subprogram
 #
 # The budget is the main stack of the target for the on-board's part
 # (doc/EVC-PLAN.md, E8): the measured worst case plus a margin.
@@ -46,4 +48,4 @@ fi
 exec python3 "$ROOT/ports/tms570/stack.py" \
    --objdir "$ROOT/obj/evc/tms570" --rts "$RTS" \
    --objdump "$TOOLCHAIN/bin/arm-eabi-objdump" \
-   --budget "$BUDGET" --top "${STACK_TOP:-20}"
+   --budget "$BUDGET" --top "${STACK_TOP:-20}" "$@"

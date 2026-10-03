@@ -87,10 +87,13 @@ is
    subtype Packet_Index_T is Positive range 1 .. Max_Packets;
    type Index_T is array (Packet_Index_T) of Entry_T;
 
+   --  (every component has a default expression, the index a named
+   --  element: (others => <>) of the type is built in place, not in a
+   --  temporary on the stack and copied)
    type Telegram_T is record
-      Header  : Header_T;
+      Header  : Header_T := (others => <>);
       Count   : Packet_Count_T := 0;
-      Index   : Index_T;
+      Index   : Index_T := (others => No_Entry);
       --  packets of an unknown NID_PACKET among them
       Unknown : Packet_Count_T := 0;
       --  where packet 255 starts
@@ -98,6 +101,7 @@ is
       Bits    : Natural range 0 .. Long_Bits := 0;
       Data    : Byte_Array (1 .. Max_Bytes) := (others => 0);
    end record;
+   No_Telegram : constant Telegram_T := (others => <>);
 
    --  7.5.1.79: X, the three most significant bits
    function Major (Version : M_VERSION_T) return Natural is

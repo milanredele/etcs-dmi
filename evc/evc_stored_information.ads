@@ -179,6 +179,13 @@ is
    function Current return Snapshot_T
      with Global => State;
 
+   --  The snapshot into S. The on-board takes it this way, into its own
+   --  storage: the result of Current is built on the stack of its caller
+   --  (over 11 KB), Current is for the contracts and the tests
+   procedure Get_Current (S : out Snapshot_T)
+     with Global => State,
+          Post => S = Current;
+
    --  The sources of the MRSP along Ahead, its steps along Ahead, and its
    --  ceiling (EVC_Profiles)
    function MRSP_Sources return Elements_T

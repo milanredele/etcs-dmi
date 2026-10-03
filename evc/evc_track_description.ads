@@ -126,6 +126,20 @@ is
    function PBD return Store_T
      with Global => State;
 
+   --  The counts of three stores, without their copy: the result of a
+   --  function above (a Store_T, near 7 KB) is built on the stack of its
+   --  caller, which the on-board avoids (they are for the contracts and
+   --  the tests)
+   function SSP_Count return Natural
+     with Global => State,
+          Post => SSP_Count'Result = SSP.Count;
+   function Gradients_Count return Natural
+     with Global => State,
+          Post => Gradients_Count'Result = Gradients.Count;
+   function TSR_Count return Natural
+     with Global => State,
+          Post => TSR_Count'Result = TSR.Count;
+
    --  3.11.12.5, 3.11.12.6: the default gradient for TSR
    function Default_Gradient_Known return Boolean
      with Global => State;
@@ -137,8 +151,8 @@ is
    type LX_T is record
       Used          : Boolean := False;
       Id            : NID_LX_T := 0;
-      Start         : Location_T;
-      Finish        : Location_T;
+      Start         : Location_T := (others => <>);
+      Finish        : Location_T := (others => <>);
       Protected_LX  : Boolean := True;
       Speed         : Speed_Cms_T := 0;       -- V_LX, not protected
       Stop_Required : Boolean := False;
@@ -155,9 +169,15 @@ is
       Indicated     : Boolean := False;
    end record;
    type LX_Array_T is array (1 .. Max_LX) of LX_T;
+   No_LX : constant LX_T := (others => <>);
 
    function LX return LX_Array_T
      with Global => State;
+   --  LX (I) without the copy of LX
+   function LX_Item (I : Positive) return LX_T
+     with Global => State,
+          Pre  => I <= Max_LX,
+          Post => LX_Item'Result = LX (I);
    function LX_Sense return Sense_T
      with Global => State;
 
@@ -167,13 +187,14 @@ is
    Max_Suitability : constant := 32;
    type Suitability_T is record
       Used     : Boolean := False;
-      At_Loc   : Location_T;
+      At_Loc   : Location_T := (others => <>);
       Kind     : Natural range 0 .. 2 := 0;
       Value    : Natural range 0 .. 65_535 := 0;
       Traction : NID_CTRACTION_T := 0;
       Msg      : Natural := 0;
    end record;
    type Suitability_Array_T is array (1 .. Max_Suitability) of Suitability_T;
+   No_Suitability : constant Suitability_T := (others => <>);
 
    function Suitability return Suitability_Array_T
      with Global => State;
@@ -367,6 +388,13 @@ is
    procedure Adhesion_Areas (T     : Origin_Table_T;
                              Ahead : Sense_T;
                              Areas : in out Adhesion_T)
+     with Global => State;
+
+   --  4.6.3 [69] (EVC_Procedures): the estimated front end Est (a frame
+   --  position) is in rear of the start of the SSP or of the gradient
+   --  profile stored on board
+   function Before_Profiles (T : Origin_Table_T; Est : Dist_T)
+     return Boolean
      with Global => State;
 
    --  3.7.2.3: the SSP and the gradients cover From .. To (frame

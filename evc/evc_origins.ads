@@ -41,9 +41,9 @@ is
 
    type Origin_T is record
       Used : Boolean := False;
-      Est  : Item_T;
-      Min  : Item_T;
-      Max  : Item_T;
+      Est  : Item_T := (others => <>);
+      Min  : Item_T := (others => <>);
+      Max  : Item_T := (others => <>);
    end record;
 
    function Get (I : Index_T) return Origin_T

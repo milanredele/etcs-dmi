@@ -27,7 +27,7 @@ or a frame that is dynamic and not listed in DYNAMIC below with a bound
 argued from the source.
 
 Usage: stack.py --objdir DIR --rts DIR --objdump PATH [--budget BYTES]
-                [--top N] [--entry NAME ...]
+                [--top N] [--path NAME ...]
 """
 
 import argparse
@@ -59,6 +59,7 @@ FRAME = re.compile(r'\\n(\d+) bytes \(([a-z,]+)\)')
 
 
 def fail(msg):
+    sys.stdout.flush()
     print("stack: FAIL: " + msg, file=sys.stderr)
     sys.exit(1)
 
@@ -277,6 +278,9 @@ def main():
     ap.add_argument("--objdump", required=True)
     ap.add_argument("--budget", type=int, default=0)
     ap.add_argument("--top", type=int, default=20)
+    ap.add_argument("--path", action="append", default=[],
+                    help="also print the deepest path from this subprogram "
+                         "(assembler name, e.g. evc_sdm__step)")
     args = ap.parse_args()
 
     funcs, by_name = read_call_graphs(args.objdir)
@@ -326,12 +330,19 @@ def main():
         if not fns:
             fail("entry point %s not found" % e)
         rows.append((e, fns[0]))
+    extra = []
+    for e in args.path:
+        fns = by_name.get(e)
+        if not fns:
+            fail("subprogram %s not found" % e)
+        extra.append((e + " (asked)", fns[0]))
     elab = [f for f in funcs.values() if f.name.endswith(("___elabs", "___elabb"))]
     if elab:
         rows.append(("elaboration (deepest of %d)" % len(elab),
                      max(elab, key=lambda f: f.depth)))
-    for label, fn in rows:
-        worst = max(worst, fn.depth)
+    for label, fn in rows + extra:
+        if (label, fn) in rows:
+            worst = max(worst, fn.depth)
         print("\n  %s: %d" % (label, fn.depth))
         total = 0
         for step in path_of(fn):

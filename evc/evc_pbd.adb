@@ -18,16 +18,17 @@ is
                        Additional : Boolean;
                        Antenna    : Natural) return Inputs_T
    is
-      M : Model_T;
    begin
-      Build (S, Active, Additional, M);
-      return (Model      => M,
-              Slippery   => S.Adhesion.Driver_Slippery,
-              Inhibit    => S.National.Q_NVINHSMICPERM,
-              SB_Avail   => S.Extra.Config.Service_Brake_Command
-                            and then S.National.Q_NVSBTSMPERM,
-              T_Traction => Time_T (S.Train_Data.T_Traction_Cut_Off),
-              Antenna    => Min (Num (Antenna), Antenna_T'Last));
+      --  built in the result (the model is not copied, 7 KB)
+      return I : Inputs_T do
+         Build (S, Active, Additional, I.Model);
+         I.Slippery := S.Adhesion.Driver_Slippery;
+         I.Inhibit := S.National.Q_NVINHSMICPERM;
+         I.SB_Avail := S.Extra.Config.Service_Brake_Command
+                       and then S.National.Q_NVSBTSMPERM;
+         I.T_Traction := Time_T (S.Train_Data.T_Traction_Cut_Off);
+         I.Antenna := Min (Num (Antenna), Antenna_T'Last);
+      end return;
    end Inputs_Of;
 
    ----------------
