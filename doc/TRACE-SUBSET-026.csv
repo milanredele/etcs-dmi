@@ -438,7 +438,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.5.14,3,x,,,,,E3,deferred,E5 (order of the RBC)
 3.11.5.14 1st bullet,3,x,,,,,E3,deferred,E5 (order of the RBC)
 3.11.5.14 2nd bullet,3,x,,,,,E3,deferred,E5 (RBC/RBC handover)
-3.11.6.2,3,x,,,,,E3,partial,EVC_Movement_Authority.Take_V_Main at reception; evc_test Scenario_MA; infill: E7
+3.11.6.2,3,x,,,,,E3,partial,"EVC_Movement_Authority.Take_V_Main at reception; in the MRSP from then on in FS, AD, LS and OS (4.5.2), with or without an MA and whatever the orientation (EVC_Stored_Information.Build_Speed_Sources; in those modes an MA is always on board); evc_test Scenario_MA; infill: E7"
 3.11.6.3,3,x,,,,,E3,done,EVC_Movement_Authority.Take_V_Main (until a new one or A.3.4 deletes it)
 3.11.6.3.1,3,x,,,,,E3,deferred,E5 (level 2 MA)
 3.11.6.4,3,x,x,,,,E3,done,"V_MAIN 0 recorded as a trip order (EVC_Movement_Authority.Trip_Ordered, JRU); the trip 4.6.3 [18] (EVC_Procedures); evc_test_procedures Scenario_Trip_Order"

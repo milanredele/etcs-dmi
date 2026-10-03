@@ -976,14 +976,23 @@ is
    end Build_PBD;
 
    --  The sources of the MRSP (3.13.7): the speed restrictions, the
-   --  signalling related one (3.11.6.2: from its reception on); 4.5.2:
-   --  the SSP, the ASP, the LX and the PBD speed restrictions in the
-   --  modes with an MA, the TSRs also in SR and UN
+   --  signalling related one (3.11.6.2: from its reception on, 3.11.6.3:
+   --  until a new one is received; deleted with the MA, A.3.4, or ended
+   --  at a location by a shortening); 4.5.2: the SSP, the ASP, the LX
+   --  and the PBD speed restrictions in the modes with an MA (and SM),
+   --  the TSRs also in SR and UN, the signalling related one in FS, AD,
+   --  LS and OS. The signalling related speed restriction applies in
+   --  those modes whether an MA is present or not, and whatever the
+   --  orientation of the train: it has no location of its own but its
+   --  end. In those modes an MA is always on board (they are entered
+   --  with one, 4.6.3, and EVC_Movement_Authority.Delete_MA deletes the
+   --  MA and the restriction together on leaving them); a V_MAIN without
+   --  an MA comes from a packet 12 whose MA was rejected (4.8.3 [4],
+   --  4.8.4 [11]) in a mode without an MA, where it does not apply
    procedure Build_Speed_Sources (T        : Origin_Table_T;
                                   Ahead    : Sense_T;
                                   Length   : Length_T;
-                                  Mode     : EVC_Modes.Mode_T;
-                                  MA_Sense : Sense_T)
+                                  Mode     : EVC_Modes.Mode_T)
      with Global => (Output => Sources,
                      Input  => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State))
@@ -998,7 +1007,7 @@ is
          EVC_Track_Description.Speed_Elements
            (T, Ahead, Length, Sources, Only_TSR => True);
       end if;
-      if EVC_Movement_Authority.V_Main_Known and then MA_Sense = Ahead
+      if EVC_Movement_Authority.V_Main_Known
         and then EVC_Modes.MA_Mode (Mode)
       then
          Add (Sources, Axis_Start,
@@ -1564,7 +1573,7 @@ is
    begin
       Build_Train (T, Train, Ahead, Data, NV, Mode_Speed, Configuration, Ctx);
       Build_PBD (Train, Special_Active, Additional, Configuration);
-      Build_Speed_Sources (T, Ahead, Data.Length, Mode, MA_Now.Sense);
+      Build_Speed_Sources (T, Ahead, Data.Length, Mode);
       Build_MRSP (T, Ahead, Data.Length, Data.Max_Speed, Mode, Mode_Speed,
                   Snap.MRSP);
       Build_Gradients (T, Ahead, Default_Known, Default_G, Snap.Gradients,
