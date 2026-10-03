@@ -1442,3 +1442,118 @@ Next: the 371 curve failures need the ERA tool's numbers for the
 workbook train (or the pre-programmed models, E6); recording JRU 38,
 45, 51 and the fields of 20, and a queryable DMI data view, would turn
 13 000 not judged steps into judged ones; E5 unblocks 1214 sequences.
+
+## 13. E5 — Radio, level 2: plan (2026-10-03)
+
+461 clauses: the 180 rows of the phase (3.5: 95, 3.8.2/3.8.5/3.8.6: 32,
+3.10: 14, 3.15.1: 23, 3.16.3: 15, 5.15: 1) and 281 rows the earlier
+phases left for it (5.4 and 5.5: 48, 4.4: 44, 4.8: 37 of which 4.8.5: 13,
+5.10: 28, 3.6.5 and 3.6.2: 27, 5.11: 16, 5.6: 12, 5.21: 9, A.3: 18, the
+rest in 3.11 to 3.14, 5.7 to 5.9, 5.17, 5.19). It is what blocks 1215 of
+the 3190 SUBSET-076 sequences.
+
+What exists: the language of every radio message and packet in both
+directions (E1, `ETCS_Message`), the RTM port as an input (one message
+of chapter 8 per input; `EVC_Received` takes every sender for an RBC),
+the acceptance tables of 4.8 for the balise side, the MA and its stores
+(packet 12; packet 15 and the messages 3 and 33 share them), the
+locations of the MA request and of the perturbation (3.13.11, proved,
+not read by anything), the level table with level 2 "not available".
+
+**The boundary** (decisions below): the on-board ends at the RTM port.
+The port carries application messages of chapter 8 in both directions
+and the events of the safe connection (established, lost, the request to
+set up or release one with the RBC's identity and number); Euroradio
+(SUBSET-037, the safe layer, the keys of SUBSET-038) is the port's other
+side, as the BTM is for the balise air gap.
+
+**Joint, first and small** (`e5/joint`, one agent, before the halves):
+- `EVC_Ports`: RTM as an output too, and the connection events; the
+  framing documented as BTM and TIU are.
+- `EVC_Radio` (specification with contracts, bodies as stubs that keep
+  the build and the proof green): the session table (two sessions, for
+  the handover of 3.15.1), per session its state of 3.5, the RBC's
+  identity, the system version agreed, T_TRAIN, the time stamp of the
+  last message of each direction; `Send (Session, Message)` into an
+  outbox the core drains in `Produce_Outputs`; `Received (Session)` for
+  the consumers; the queries the two halves call on each other.
+- The coverage matrix: the 461 rows assigned to a half (column note),
+  the transition conditions each half owns.
+- The SUBSET-076 runner and `evc_test`: the helper that gives a radio
+  message to the on-board and reads the ones it sends.
+
+**Session and link** (`e5/session`): 3.5 whole (set-up by order of the
+trackside, by the driver at start of mission, at power-up after a level
+2 standstill; the system version exchange of 3.5.3 with messages 32,
+159, 154; maintaining, T_NVCONTACT and its reaction 3.16.3.4; the
+termination, message 156 and 39; the radio network registration and the
+"safe radio connection" indication to the DMI), 3.16.3 (time stamps,
+sequence, the acknowledgement of messages 146, the link supervision),
+the position reports of 3.6.5 (packet 58 parameters, message 136 with
+packet 0 or 1, the events that trigger a report, the previous LRBGs of
+3.6.2.2.2), the acceptance of radio information 4.8 with the transition
+buffer of 4.8.5, the level 2 parts of start and end of mission 5.4 and
+5.5 (the S-states with an RBC: 155, 129 and its acknowledgement 8,
+157, 150; the RBC contact data and the level 2 entry of the DMI), the
+level transitions into and out of level 2 (5.10, 5.15 with the two
+sessions, 3.15.1 the RBC handover: packet 131, the announcement, the
+border, the messages of both RBCs).
+
+**Authority by radio** (`e5/authority`): the MA by radio (messages 3 and
+33 with the shifted location reference, 3.8.5 the update, 3.8.6 the
+co-operative shortening with message 9 and its answers 137/138), the MA
+request 3.8.2 (message 132 and packet 57: T_MAR, T_TIMEOUTRQST, the
+cycle, the reasons Q_MARQSTREASON; the first reader of 3.13.11), the
+emergency messages 3.10 (15, 16, their acknowledgement 147 and the
+revocation 18), the authorisations of the modes by the RBC (4.4 and the
+procedures: SR authorisation 2, the trip recognition 6 and 5.11's
+reports, the shunting request 130 and its answers 27, 28, 5.6; track
+ahead free 34 and 149; the supervised manoeuvre 5.21; the reversing and
+limited supervision parts), train data to the RBC and its changes
+(5.17), the text message reports (message 158), the level 2 column of
+the transition conditions still open ([20], [41], [81] and those marked
+E5).
+
+**Bench and sequences** (`e5/bench`, starts with the joint, integrates
+at the end): `Sim_RBC` in `sim/` (a scripted RBC: session, MA on
+request, handover to a second one, emergency stop on a button of the
+page), the bench line with a level 2 section (the preset that orders
+level 2 at 5000 m today), `onboard.wasm` and the smoke check; the
+SUBSET-076 runner's RBC side (radio stimuli, the `expect RTM` vocabulary,
+the 1215 blocked sequences unblocked step by step, each new failure
+signature triaged).
+
+**Order and size.** The joint is a day's work of one agent and gates the
+rest. The two halves and the bench then run in parallel; `e5/session`
+is the larger half and `e5/authority` depends on it only through the
+`EVC_Radio` specification. Integration merges session, authority, bench,
+then re-records the SUBSET-076 baseline once the differences are
+understood. Rules for the briefs (from the E4 and the 2026-10-02 rounds):
+a turn budget, loops as one command, phases with fresh agents for
+anything over a day, the Ada language server for navigation; every new
+body under 100 code lines with a contract, table loops with an
+invariant, the restrictions and the 32 KiB stack budget, the proof
+margins.
+
+**Done** means: the on-board drives the bench mission through a level 1
+to level 2 transition, receives its MA by radio, hands over to a second
+RBC and stops at an emergency stop; `evc_test` has a scenario per
+procedure; the 461 rows are `done`, or `partial`/`deferred` with a
+reason; the sequences blocked for level 2 are down to those that need
+E6 or E7; proof, fuzzers, stack and whole check green.
+
+**Decisions to confirm before the start:**
+1. Euroradio (SUBSET-037/038) stays outside the on-board, behind the
+   RTM port (recommended: it is a separate specification with its own
+   safety case, and the SUBSET-076 sequences stimulate at the level of
+   application messages).
+2. Two communication sessions (recommended; 3.15.1 allows an on-board
+   with one, with a degraded handover, and the sequences test both).
+3. Train integrity: reported as "no information" unless a TIU input
+   says otherwise; the 4.0.0 text has no level 3, its functions are
+   level 2 with integrity (recommended: the field and the TIU input,
+   no integrity monitoring device).
+4. Radio infill (3.9) stays in E7 (recommended), so level 1 with radio
+   infill units and their 153 remain blocked until then.
+5. The fuzzer gets a radio phase (an RBC that sends anything, at any
+   time) as part of the bench package (recommended).
