@@ -59,6 +59,8 @@ package body S076_Bench is
    Last_Mode, Last_Level_Status, Last_Level : Natural := No_Value;
    Last_Commands : Natural := 0;
    Last_Mon, Last_Sup : Natural := 0;
+   LRBG_Known : Boolean := False;
+   TC_Phase   : array (0 .. 255) of Integer := (others => -1);
 
    Texts   : array (1 .. Max_Events) of Text_Event_T;
    Texts_N : Natural := 0;
@@ -265,6 +267,14 @@ package body S076_Bench is
       elsif P (P'First) = 21 then
          Last_Mon := Natural (P (P'First + 1));
          Last_Sup := Natural (P (P'First + 2));
+      elsif P (P'First) = 10 then
+         --  a new LRBG
+         LRBG_Known := True;
+      elsif P (P'First) = 8 and then P (P'First + 1) = 0 then
+         --  the train position unknown
+         LRBG_Known := False;
+      elsif P (P'First) = 45 then
+         TC_Phase (Natural (P (P'First + 1))) := Natural (P (P'First + 2));
       end if;
    end Observe_JRU;
 
@@ -429,6 +439,8 @@ package body S076_Bench is
       Last_Commands := 0;
       Last_Mon := 0;
       Last_Sup := 0;
+      LRBG_Known := False;
+      TC_Phase := (others => -1);
       New_Window;
    end Reset;
 
@@ -442,6 +454,8 @@ package body S076_Bench is
       Last_Mode := No_Value;
       Last_Level_Status := No_Value;
       Last_Level := No_Value;
+      LRBG_Known := False;
+      TC_Phase := (others => -1);
       Last_Commands := 0;
       Last_Mon := 0;
       Last_Sup := 0;
@@ -716,6 +730,9 @@ package body S076_Bench is
    function JRU_Level return Natural is (Last_Level);
    function JRU_Monitoring return Natural is (Last_Mon);
    function JRU_Sup_Status return Natural is (Last_Sup);
+   function JRU_LRBG_Known return Boolean is (LRBG_Known);
+   function JRU_TC_Phase (TI : Natural) return Integer is
+     (if TI <= 255 then TC_Phase (TI) else -1);
    function Text_Count return Natural is (Texts_N);
    function Text (I : Positive) return Text_Event_T is (Texts (I));
    function SS_Count return Natural is (SSs_N);

@@ -540,7 +540,11 @@ package DMI_Protocol is
    --     (MSG_DESK_INPUT input 2) was held for 2 s and released. The
    --     DMI sends it in every mode; leaving IS is a special operating
    --     procedure outside the DMI (SUBSET-026 4.4.3.1.3).
-   --  21, 22 reserved
+   --  21 Train Data entry requested (arg 0): the driver selected 'Train
+   --     data' in the Main window (DMI Table 33 #3, SUBSET-026 5.4.3.2);
+   --     the DMI opens the window itself, the on-board records the action
+   --     (SUBSET-027 4.2.4.11, M_DRIVERACTIONS 20)
+   --  22 reserved
    Driver_Action_Length : constant := 3;
    --  Action 2, the driver's acknowledgement (DMI 5.4.1), names the one
    --  request it answers. Its payload is Driver_Ack_Length bytes:

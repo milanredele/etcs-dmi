@@ -197,6 +197,11 @@ package body EVC_Test_Modes is
       SS_Ended := (others => 0);
       Last_Brake := 0;
       Last_TIU := 0;
+      JRU_Actions := (others => 0);
+      JRU_Cabs := 0;
+      JRU_Cab_Last := 0;
+      JRU_TCs := (others => 0);
+      JRU_TC_Phase := (others => 0);
       if Cab then
          Signal (Cab_A_Active, True);
       end if;
@@ -277,6 +282,37 @@ package body EVC_Test_Modes is
              "4.6.2: SB -> SR, FS -> UN; nothing leaves IS (4.4.3.1.3); "
              & "NP -> IS before NP -> SB (4.6.1.4)");
    end Scenario_E4_Tables;
+
+   --  SUBSET-027 4.2.4.38 and 4.2.4.11 (EVC_JRU_Records): the cab status
+   --  received from the train interface, recorded at the first input and
+   --  when it changes; the driver's actions no other event records, with
+   --  their M_DRIVERACTIONS (SUBSET-076 5040300: 'Train data' pressed is
+   --  20, the speed information toggled on 27, off 25), and not those
+   --  that have their own event ('Start' is event 41, not 19)
+   procedure Scenario_E5P_JRU_Records is
+   begin
+      Start_E4;
+      Check (JRU_Cabs = 1 and then JRU_Cab_Last = 1,
+             "JRU 38: cab A active recorded once (SUBSET-027 4.2.4.38)");
+      Signal (Cab_A_Active, True);
+      Stand_X (100);
+      Check (JRU_Cabs = 1, "JRU 38: the same status again is not recorded");
+      Send (Action (21));
+      Send (Action (1, 1));
+      Send (Action (1, 0));
+      Send (Action (9, 1));
+      Check (JRU_Actions (20) = 1 and then JRU_Actions (27) = 1
+             and then JRU_Actions (25) = 1 and then JRU_Actions (32) = 1,
+             "JRU 11: Train Data Entry requested (20), show (27) and hide "
+             & "(25) the supervision limits, slippery rail (32)");
+      Send (Action (5));
+      Check (JRU_Actions (19) = 0 and then E4_Seen (41, 5) = 1,
+             "JRU 11: 'Start' keeps its own event 41 (no code 19)");
+      Signal (Cab_A_Active, False);
+      Stand_X (100);
+      Check (JRU_Cabs = 2 and then JRU_Cab_Last = 0,
+             "JRU 38: the cab closed recorded (M_CAB_A_STATUS 0)");
+   end Scenario_E5P_JRU_Records;
 
    --  5.4.3.2 in level 1: S0, S1, S2, S12, S13, S20, S24; 4.6.3 [8]; the
    --  mission (5.4.6.1); SR (4.4.11); FS on the first MA (4.6.3 [32]).

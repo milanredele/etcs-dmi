@@ -111,3 +111,11 @@ S2dde4dd3,onboard,JRU: the driver ID recorded once (event 41 kind 1) where the s
 ~TIU traction-cutoff,curves,the traction cut-off at the location of the sequence (see the supervision family)
 ~track condition,model,a track condition symbol at a location the train reaches with the chart's speed and the runner's confidence interval
 ~speed and distance information,dmi,the speed and distance information the DMI shows in the mode of the step (DMI Table 10, 8.2.2.4)
+# e5prep/jru-dmi: JRU 11, 38, 45, the header's location reference, the DMI data values
+S9a992a66,s076,the toggle of the speed and distance information pressed in FS: DMI 8.2.2.4.4 with Table 15 (OS SR SH) makes A/B insensitive there so no M_DRIVERACTIONS 27 is recorded
+S707f6e73,onboard,a change of traction system to a line not fitted (M_VOLTAGE 0) goes to the train interface as kind 8 change of traction system (M_TRACKCOND_TI 7); 5181000 expects M_TRACKCOND_TI 1 powerless section with main power switch off (SUBSET-034 2.4.1/2.4.2 to check)
+S9644ba72,model,the train runs past the start of the inhibition area before the step (chart) so the phase of the last JRU 45 is already start passed
+S274cb49d,dmi,the train running number entered from the Driver ID window first: after the Train Data validation the DMI goes to Main where 4080420 expects the TRN window to revalidate the value (SUBSET-026 5.4.3.2 S13 and DMI Table 50 to check)
+Sa184249e,onboard,5.4.3.3: the stored position data deleted at the start of mission (after E10 E12 E30 to E32); this on-board keeps its LRBG
+S843421cc,s076,new with the sibling's regeneration of 2026-10-03 (master fails the same way): slippery rail symbol expected after the reach point; not analysed
+S218b5dc0,s076,new with the sibling's regeneration of 2026-10-03 (master fails the same way): no JRU mode record in 3131040_73; not analysed

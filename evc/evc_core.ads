@@ -65,6 +65,7 @@ with EVC_Bytes;
 with EVC_Config;
 with EVC_Distances;
 with EVC_Driver_Requests;
+with EVC_JRU_Records;
 with EVC_Levels;
 with EVC_Mission;
 with EVC_Modes;    use EVC_Modes;
@@ -171,7 +172,8 @@ is
                                 EVC_Levels.State,
                                 EVC_Mission.State,
                                 EVC_Procedures.State,
-                                EVC_Text_Messages.State),
+                                EVC_Text_Messages.State,
+                                EVC_JRU_Records.State),
                      Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -265,7 +267,8 @@ is
                                 EVC_Levels.State,
                                 EVC_Mission.State,
                                 EVC_Procedures.State,
-                                EVC_Text_Messages.State)),
+                                EVC_Text_Messages.State,
+                                EVC_JRU_Records.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

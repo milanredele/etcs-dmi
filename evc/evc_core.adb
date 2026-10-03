@@ -332,6 +332,7 @@ is
       Status_Rev_Sent := False;
       Status_Tunnel_Sent := (others => <>);
       TC_Sent := False;
+      EVC_JRU_Records.Reset;
       Config_Last := 0;
       Config_Seen := False;
       EVC_Received.Clear;
@@ -1924,11 +1925,78 @@ is
       TC_Sent := Info.Count > 0;
    end Send_External_Info;
 
+   --  8j. JRU (SUBSET-027 4.2.4.11, 4.2.4.38, 4.2.4.45, EVC_JRU_Records):
+   --  the driver's actions of the cycle no other event records, the cab
+   --  status received from the train interface when it changed, the
+   --  items of the information for the external functions (5.20) that
+   --  appeared or changed their phase
+   procedure Record_Actions_Cabs_Conditions
+     with Global => (Input  => (Cycle_Count, Clock_Ms, TIU_Now,
+                                TIU_Known_Now,
+                                EVC_Driver_Requests.State,
+                                EVC_Stored_Information.State),
+                     In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue))
+   is
+      use EVC_Driver_Requests;
+      use EVC_JRU_Records;
+      Code    : EVC_Bytes.Byte;
+      Changed : Boolean;
+      TC      : TC_Changes_T;
+   begin
+      for A in Action_T loop
+         pragma Loop_Invariant (True);
+         if Selected (A) then
+            Code := Action_Code (A, Argument (A));
+            if Code /= EVC_JRU_Records.No_Code then
+               EVC_Outbox.Put
+                 (JRU, JRU_Record (JRU_Driver_Action, Code, 0, 0));
+            end if;
+         end if;
+      end loop;
+      for K in Ack_Kind_T loop
+         pragma Loop_Invariant (True);
+         if Acknowledged (K) then
+            Code := Ack_Code (K, Ack_Id (K));
+            if Code /= EVC_JRU_Records.No_Code then
+               EVC_Outbox.Put
+                 (JRU, JRU_Record (JRU_Driver_Action, Code, 0, 0));
+            end if;
+         end if;
+      end loop;
+      for K in Data_Kind_T loop
+         pragma Loop_Invariant (True);
+         if Entered (K)
+           and then Data_Code (K) /= EVC_JRU_Records.No_Code
+         then
+            EVC_Outbox.Put
+              (JRU, JRU_Record (JRU_Driver_Action, Data_Code (K), 0, 0));
+         end if;
+      end loop;
+      Cab_Status (TIU_Now (Cab_A_Active), TIU_Now (Cab_B_Active),
+                  TIU_Known_Now (Cab_A_Active)
+                  or else TIU_Known_Now (Cab_B_Active),
+                  Changed);
+      if Changed then
+         EVC_Outbox.Put
+           (JRU, JRU_Record (JRU_Cab_Status,
+                             (if TIU_Now (Cab_A_Active) then 1 else 0), 1,
+                             (if TIU_Now (Cab_B_Active) then 1 else 0)));
+      end if;
+      Track_Conditions (EVC_Stored_Information.External_Info, TC);
+      for I in 1 .. TC.Count loop
+         pragma Loop_Invariant (True);
+         EVC_Outbox.Put
+           (JRU, JRU_Record (JRU_Track_Conditions, TC.List (I).TI,
+                             TC.List (I).Phase, TC.List (I).Id));
+      end loop;
+   end Record_Actions_Cabs_Conditions;
+
    --  8. Produce the outputs of the cycle, port by port in this order
    --  (the goldens are their byte stream)
    procedure Produce_Outputs
      with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
                                 Standstill, Below_Override, TIU_Now,
+                                TIU_Known_Now,
                                 EVC_National_Values.State,
                                 EVC_Position.State,
                                 SDM_Result, Brake_Output, Speed_State,
@@ -1936,8 +2004,10 @@ is
                                 EVC_Train_Data.State,
                                 EVC_Stored_Information.State,
                                 EVC_Procedures.State,
-                                EVC_Text_Messages.State),
+                                EVC_Text_Messages.State,
+                                EVC_Driver_Requests.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
+                                EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, Overrun_Reported,
@@ -1962,6 +2032,7 @@ is
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);
       Send_External_Info;           -- TIU the information of 5.20
+      Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
    end Produce_Outputs;
 
    ----------

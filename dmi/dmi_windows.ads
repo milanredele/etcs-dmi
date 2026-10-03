@@ -71,8 +71,11 @@ package DMI_Windows is
       Maintain_SH,
       Send_Set_VBC,             -- Arg: the validated VBC set code
       Send_Remove_VBC,          -- Arg: the validated VBC remove code
-      Send_Language);           -- Arg: DMI_Texts.Language_T'Pos of the
+      Send_Language,            -- Arg: DMI_Texts.Language_T'Pos of the
                                 -- language the driver selected
+      Train_Data_Requested);    -- 'Train data' of the Main window pressed
+                                -- (Table 33 #3): the EVC records it
+                                -- (SUBSET-027 4.2.4.11)
 
    procedure Open (ID : Window_ID_T);
    -- The driver pressed [Close]; ignored where [Close] is disabled
