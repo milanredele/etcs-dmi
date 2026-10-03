@@ -68,6 +68,7 @@ start check_catalogue 1 python3 evc/language/check_catalogue.py
 start trace 1 python3 doc/SRS/tools/trace_subset026.py --check
 start efs_frames 1 python3 test/tools/efs_frames.py --check
 start golden_review 1 python3 test/tools/golden_review.py --check-tool
+start subprogram_size 1 python3 test/tools/subprogram_size.py --check
 start evc_efs_test 1 ./obj/evc_efs_test
 start evc_s076_check 1 ./obj/evc_s076_check
 start evc_s076_run 1 ./obj/evc_s076_run
