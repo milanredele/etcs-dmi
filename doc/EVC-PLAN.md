@@ -1565,3 +1565,23 @@ E6 or E7; proof, fuzzers, stack and whole check green.
    infill units and their 153 remain blocked until then.
 5. The fuzzer gets a radio phase (an RBC that sends anything, at any
    time) as part of the bench package (recommended).
+
+**Before E5 (2026-10-03).** Three preparations, merged: the sibling's
+parser fixed (tables continued over a page break, captions with a title,
+tables without rules: 203 unreadable sequences down to 134, of which 125
+have exactly the packet rows of their PDF, so the rest are gaps of
+SUBSET-076 itself, as are the input steps of inserted cases); the JRU
+events 11 (driver's actions without an event of their own), 38 (cab
+status) and 45 (track conditions) in the new `EVC_JRU_Records`, and
+`DMI_Observe` (host only) for the data values a window shows; the five
+findings of the code readings (§2). The runner on that state: 3190
+sequences, 477 passed, 847 failed, 1866 blocked; steps 146747 passed,
+5877 failed, 4649 not judged (16034 before: JRU not modelled 9923 to
+about 1650, DMI internal 3192 to 98). More sequences fail because more
+steps are judged. Open from it: a change of traction system to a line
+not fitted is sent to the train interface as "traction system" where
+5181000 expects "main power switch off" (SUBSET-034 2.4, signature
+S707f6e73); the stored position at start of mission (5.4.3.3,
+Sa184249e); the train running number revalidated after the Train Data
+(5.4.3.2 S13, S274cb49d); the two DMI flow cases of §12 not yet checked
+against the DMI specification; 40 telegrams the extractor refuses.
