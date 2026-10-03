@@ -69,7 +69,6 @@ package body DMI_Test_ATO is
    end Send_ATO_Outside;
 
    procedure Scenario_ATO_Displays is
-      Without_ATO : Natural := 0;
    begin
       ATO_Reset;
       Step;
@@ -90,7 +89,6 @@ package body DMI_Test_ATO is
                 "an unknown selector position shows nothing either");
          Check (not DMI_Buttons.Is_Pressed (DMI_Buttons.BTN_ATO_Engage),
                 "no ATO button without the selector");
-         Without_ATO := 1;
       end;
       Check_Frame ("ato_selector_standby");
 
@@ -174,7 +172,6 @@ package body DMI_Test_ATO is
                 ETA_H => 24);
       Step;
       Check_Frame ("ato_nothing_known_outside");
-      Check (Without_ATO = 1, "the stand-by pictures were compared");
    end Scenario_ATO_Displays;
 
    -- A message that does not match its counts is ignored as a whole

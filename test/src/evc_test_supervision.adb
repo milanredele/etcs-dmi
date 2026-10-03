@@ -912,9 +912,6 @@ package body EVC_Test_Supervision is
       end SB_Location;
 
       Grows : Boolean;
-      pragma Warnings (Off, Grows);  --  set, not read, after the
-      --  third call below, in the original file too -- its size
-      --  alone kept GNAT's flow analysis from reaching this far
       Plain, Reduced, Locked : Integer_64;
    begin
       Give_MA (Base, 5_000, 200);
@@ -923,6 +920,8 @@ package body EVC_Test_Supervision is
       Reduced := SB_Location (True, 460, Grows);
       Check (not Grows, "feedback: the displayed P never grows (A.3.10)");
       Locked := SB_Location (True, 400, Grows);
+      Check (not Grows,
+             "feedback: the displayed P never grows when locked (A.3.10)");
       Check (Plain > 0 and then Reduced > Plain and then Locked > Reduced,
              "feedback: the service brake at" & Integer_64'Image
                (Plain / 100) & " m without feedback," & Integer_64'Image
