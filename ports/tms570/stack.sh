@@ -19,11 +19,17 @@
 #   ports/tms570/stack.sh --path evc_sdm__step   # also the deepest path
 #                                                # from a subprogram
 #
-# The budget is the main stack of the target for the on-board's part
-# (doc/EVC-PLAN.md, E8): the measured worst case plus a margin.
+# The budget is the main stack of the target for the on-board
+# (doc/EVC-PLAN.md §2, "Stack"): 32 KiB, the measured worst case (26592
+# bytes, 2026-10-03, from Tick) and about 20 % for the executive that
+# calls EVC_Core, a last chance handler of E8, a compiler update and the
+# growth of the code; a power of two, so that one MPU region of the
+# Cortex-R5 can guard it. The interrupts (IRQ/FIQ banked stacks) and the
+# secondary stack have their own areas, sized in E8. STACK_BUDGET=0
+# reports without the check.
 set -e
 
-BUDGET=${STACK_BUDGET:-0}
+BUDGET=${STACK_BUDGET:-32768}
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 ETCS_TOOLS=${ETCS_TOOLS:-$HOME/.local/share/etcs-dmi}
