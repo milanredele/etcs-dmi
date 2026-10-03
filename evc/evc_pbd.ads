@@ -86,7 +86,7 @@ is
    --  What the speed restriction depends on besides the section (3.11.11.3:
    --  when one of them changes, the restrictions are computed again)
    type Inputs_T is record
-      Model      : Model_T;
+      Model      : Model_T := (others => <>);
       --  3.13.5.4: slippery rail selected by the driver
       Slippery   : Boolean := False;
       --  3.13.9.3.2.1: Q_NVINHSMICPERM, V_delta0 = 0

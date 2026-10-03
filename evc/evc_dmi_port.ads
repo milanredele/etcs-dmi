@@ -206,6 +206,9 @@ is
    end record;
    type Track_Cond_List_T is array (1 .. Max_Track_Cond)
      of Track_Cond_Entry_T;
+   --  the element of a cleared list: (others => No_Track_Cond) is built
+   --  in place, (others => (others => <>)) in a temporary on the stack
+   No_Track_Cond : constant Track_Cond_Entry_T := (others => <>);
 
    procedure Track_Cond_Frame (Count  : Natural;
                                List   : Track_Cond_List_T;
@@ -244,6 +247,9 @@ is
      of Planning_Speed_T;
    type Planning_Orders_T is array (1 .. Max_Planning_Orders)
      of Planning_Order_T;
+   No_Planning_Gradient : constant Planning_Gradient_T := (others => <>);
+   No_Planning_Speed    : constant Planning_Speed_T := (others => <>);
+   No_Planning_Order    : constant Planning_Order_T := (others => <>);
 
    type Planning_T is record
       MA_Dist         : Unsigned_16 := 0;
@@ -251,11 +257,12 @@ is
       Advice_Dist     : Unsigned_16 := No_Distance;
       Ceiling         : Unsigned_16 := 0;
       Gradient_Count  : Natural range 0 .. Max_Planning_Gradients := 0;
-      Gradients       : Planning_Gradients_T;
+      Gradients       : Planning_Gradients_T :=
+        (others => No_Planning_Gradient);
       Speed_Count     : Natural range 0 .. Max_Planning_Speeds := 0;
-      Speeds          : Planning_Speeds_T;
+      Speeds          : Planning_Speeds_T := (others => No_Planning_Speed);
       Order_Count     : Natural range 0 .. Max_Planning_Orders := 0;
-      Orders          : Planning_Orders_T;
+      Orders          : Planning_Orders_T := (others => No_Planning_Order);
    end record;
 
    function Planning_Length (P : Planning_T) return Natural is

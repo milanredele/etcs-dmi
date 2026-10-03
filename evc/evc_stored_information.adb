@@ -47,6 +47,9 @@ is
    use type EVC_PBD.Inputs_T;
 
    type Event_Array is array (1 .. Max_Events) of Event_T;
+   --  the element of a cleared list: (others => No_Event) is built in
+   --  place, (others => (others => <>)) in a temporary on the stack
+   No_Event : constant Event_T := (others => <>);
 
    Snap            : Snapshot_T;
    Sources         : Elements_T;
@@ -154,11 +157,11 @@ is
       Msg_Count := 0;
       Last_Orient := Plus;
       Orient_Seen := False;
-      Events := (others => (others => <>));
+      Events := (others => No_Event);
       Event_N := 0;
-      Indicated := (others => (others => <>));
+      Indicated := (others => EVC_DMI_Port.No_Track_Cond);
       Indicated_N := 0;
-      Sent := (others => (others => <>));
+      Sent := (others => EVC_DMI_Port.No_Track_Cond);
       Sent_N := 0;
       Cond_Due := False;
       Plan := (others => <>);
@@ -1274,7 +1277,7 @@ is
                                      Virtual_Last);
       EVC_Track_Conditions.Virtual_Feet (T, Train, Virtual);
       EVC_Track_Conditions.Tunnel_Indication (T, Train, Virtual_Last, Tun);
-      Indicated := (others => (others => <>));
+      Indicated := (others => EVC_DMI_Port.No_Track_Cond);
       Indicated_N := 0;
       for I in 1 .. Ind.Count loop
          exit when Indicated_N = EVC_DMI_Port.Max_Track_Cond;

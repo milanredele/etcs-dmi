@@ -54,6 +54,7 @@ is
       Speed    : Speed_T := 0;
       TSR      : Boolean := False;
    end record;
+   No_Target : constant Target_T := (others => <>);
 
    ---------------------------------------------------------------------
    --  Inputs besides the snapshot
@@ -108,7 +109,7 @@ is
       EB_For_SB   : Boolean := False;
       --  3.13.10.4.5: the MRDT, and the number the DMI knows it by
       MRDT_Valid  : Boolean := False;
-      MRDT        : Target_T;
+      MRDT        : Target_T := No_Target;
       MRDT_Id     : Natural range 0 .. 255 := 0;
       --  3.13.10.6.1 Table 16: the list of targets and V_MRSP of the
       --  last cycle, to see their updates
@@ -118,7 +119,7 @@ is
       --  the measured acceleration, mm/s², and the last speed
       V_Prev      : Speed_T := 0;
       A_Est       : Accel_T := 0;
-      Feedback    : Feedback_T;
+      Feedback    : Feedback_T := (others => <>);
       --  3.13.10.4.8.1, A.3.10, A.3.13: the values displayed last, and
       --  whether they may not increase
       Shown_P     : Speed_T := 0;
@@ -218,13 +219,17 @@ is
    end record;
    type Element_Array is array (1 .. Max_Speed_Segments) of Element_T;
 
+   --  (every component has a default expression and the arrays a named
+   --  element: (others => <>) of the type is built in place, not in a
+   --  temporary on the stack and copied)
+   No_Element : constant Element_T := (others => <>);
    type Work_T is record
-      Model    : Model_T;
-      Profile  : Profile_T;
+      Model    : Model_T := (others => <>);
+      Profile  : Profile_T := (others => <>);
       Count    : Target_Count_T := 0;
-      Targets  : Target_Array := (others => <>);
+      Targets  : Target_Array := (others => No_Target);
       Elements : Natural range 0 .. Max_Speed_Segments := 0;
-      MRSP     : Element_Array := (others => <>);
+      MRSP     : Element_Array := (others => No_Element);
    end record;
 
    procedure Step (S       : Snapshot_T;

@@ -41,7 +41,7 @@ is
       A : constant Num :=
         Gradient_Acceleration (Gradient, I.Model.M_Rotating_Up,
                                I.Model.M_Rotating_Down);
-      P : Profile_T := (Count => 1, Points => (others => (others => <>)));
+      P : Profile_T := (Count => 1, Points => (others => No_Point));
    begin
       --  one segment from the rear end of the axis, open ended
       P.Points (1) := (Start          => <>,

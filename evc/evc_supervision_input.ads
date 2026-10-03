@@ -155,7 +155,7 @@ is
       EOA           : Dist_T := 0;   -- end of authority (front end)
       SvL           : Dist_T := 0;   -- supervised location, >= EOA ahead
       LOA_Speed     : Speed_Cms_T := 0;  -- 0: the target is an EOA
-      Release_Speed : Release_Speed_T;
+      Release_Speed : Release_Speed_T := (others => <>);
    end record;
 
    ---------------------------------------------------------------------
@@ -223,6 +223,7 @@ is
       Count : Natural range 0 .. Max_Curve_Steps := 0;
       Steps : Curve_Step_Array := (others => (0, 0));
    end record;
+   No_Decel_Curve : constant Decel_Curve_T := (others => <>);
 
    type Brake_Model_T is (Lambda, Gamma);
 
@@ -239,9 +240,9 @@ is
       Brake_Percentage    : Natural range 0 .. 250 := 0;
       Brake_Position      : Brake_Position_T := Passenger_P;
       --  Gamma (3.13.2.2.7 to 3.13.2.2.9)
-      A_Brake_Emergency   : Decel_Curve_T;
-      A_Brake_Service     : Decel_Curve_T;
-      A_Brake_Normal      : Decel_Curve_T;
+      A_Brake_Emergency   : Decel_Curve_T := (others => <>);
+      A_Brake_Service     : Decel_Curve_T := (others => <>);
+      A_Brake_Normal      : Decel_Curve_T := (others => <>);
       T_Brake_Emergency   : Time_Ms_T := 0;
       T_Brake_Service     : Time_Ms_T := 0;
       --  Special brakes the train has (3.13.2.2.6): their contribution
@@ -307,9 +308,11 @@ is
       A_NVMAXREDADH2   : Decel_Mms2_T := 0;
       A_NVMAXREDADH3   : Decel_Mms2_T := 0;
       Q_NVDRIVER_ADHES : Boolean := False;
-      Kv_Int_Fresh     : Kv_Set_T;   -- freight trains in P, or all trains
-      Kv_Int_Passenger : Kv_Set_T;   -- when Q_NVKVINTSET gives two sets
-      Kr_Int           : Kr_Set_T;
+      Kv_Int_Fresh     : Kv_Set_T := (others => <>);
+      --  (above: freight trains in P, or all trains; below: when
+      --  Q_NVKVINTSET gives two sets)
+      Kv_Int_Passenger : Kv_Set_T := (others => <>);
+      Kr_Int           : Kr_Set_T := (others => <>);
       Kt_Int           : Factor_Milli_T := 1_000;
       --  added by profiles: the second subset of the passenger set of
       --  Kv_int (3.13.2.3.7.11.4 to .6: Kv_Int_Passenger is subset "a",
@@ -317,7 +320,7 @@ is
       --  one subset "b", from A_NVP23), and the two limits. A step of a
       --  Kv_Set_T holds from its Speed up to the next step's (M_NVKVINT
       --  of 7.5.1.75.4), a Kr_Step_T likewise from its Length.
-      Kv_Int_Passenger_B : Kv_Set_T;
+      Kv_Int_Passenger_B : Kv_Set_T := (others => <>);
       A_NVP12          : Decel_Mms2_T := 0;
       A_NVP23          : Decel_Mms2_T := 0;
    end record;
@@ -384,6 +387,7 @@ is
       Foot : Dist_T := 0;
    end record;
    type Virtual_Feet_T is array (1 .. Max_Virtual) of Virtual_Foot_T;
+   No_Virtual_Foot : constant Virtual_Foot_T := (others => <>);
 
    type Virtual_Limit_T is record
       Valid : Boolean := False;
@@ -470,6 +474,7 @@ is
       Build_Up : Time_Ms_T := 0;
    end record;
    type Combination_Times_T is array (Combination_T) of Build_Up_T;
+   No_Build_Up : constant Build_Up_T := (others => <>);
 
    --  A factor per step of a deceleration curve (the steps of
    --  A_brake_emergency, 3.13.2.2.9.1.3 and 3.13.2.2.9.1.5)
@@ -492,12 +497,14 @@ is
       Kwet_Rst                : Factor_Steps_T := (others => 1_000);
       --  3.13.2.2.9.2: Kn+ and Kn-, mm/s² per unit of gradient (the
       --  deceleration Kn * grad / 1000 of 3.13.6.4.3)
-      Kn_Plus                 : Decel_Curve_T;
-      Kn_Minus                : Decel_Curve_T;
+      Kn_Plus                 : Decel_Curve_T := No_Decel_Curve;
+      Kn_Minus                : Decel_Curve_T := No_Decel_Curve;
       --  3.13.2.2.3.1.9 a) and b), 3.13.2.2.3.1.10; an empty set takes
       --  Train_Data_T.A_Brake_Normal
-      Normal_Service_G        : Normal_Service_Set_T;
-      Normal_Service_P        : Normal_Service_Set_T;
+      Normal_Service_G        : Normal_Service_Set_T :=
+        (others => No_Decel_Curve);
+      Normal_Service_P        : Normal_Service_Set_T :=
+        (others => No_Decel_Curve);
       A_SB01                  : Decel_Mms2_T := 0;
       A_SB12                  : Decel_Mms2_T := 0;
       --  3.13.2.2.10.1: the nominal rotating mass, percent of the train
@@ -507,10 +514,14 @@ is
       --  the special brakes in use; when False the single models of
       --  Train_Data_T apply to every combination
       By_Combination          : Boolean := False;
-      A_Emergency_Combination : Combination_Curves_T;
-      A_Service_Combination   : Combination_Curves_T;
-      T_Emergency_Combination : Combination_Times_T;
-      T_Service_Combination   : Combination_Times_T;
+      A_Emergency_Combination : Combination_Curves_T :=
+        (others => No_Decel_Curve);
+      A_Service_Combination   : Combination_Curves_T :=
+        (others => No_Decel_Curve);
+      T_Emergency_Combination : Combination_Times_T :=
+        (others => No_Build_Up);
+      T_Service_Combination   : Combination_Times_T :=
+        (others => No_Build_Up);
    end record;
 
    --  A_NVMAXREDADHn (7.5.0.1 to 7.5.0.3): a deceleration limit, or one
@@ -530,9 +541,9 @@ is
    end record;
 
    type Supervision_Extra_T is record
-      Config         : Onboard_Config_T;
-      Train          : Train_Data_Extra_T;
-      National       : National_Extra_T;
+      Config         : Onboard_Config_T := (others => <>);
+      Train          : Train_Data_Extra_T := (others => <>);
+      National       : National_Extra_T := (others => <>);
       --  3.13.9.4.8.2: the train position confidence interval predicted
       --  at the EOA, 2 * Q_LOCACC of the reference balise group + 10 m +
       --  10 % of its distance to the EOA (with the SM term when beta =
@@ -551,15 +562,19 @@ is
    --  Everything the supervision reads in one cycle
    ---------------------------------------------------------------------
 
+   --  (every component of the snapshot and of its parts has a default
+   --  expression, the arrays of records a named element: an aggregate
+   --  (others => <>) of the type is then built in place, not in a
+   --  temporary on the stack and copied)
    type Snapshot_T is record
-      Train        : Train_State_T;
-      Train_Data   : Train_Data_T;
-      National     : National_Values_T;
-      MRSP         : Speed_Profile_T;
-      Gradients    : Gradient_Profile_T;
-      MA           : Movement_Authority_T;
-      Inhibitions  : Inhibition_Areas_T;
-      Adhesion     : Adhesion_T;
+      Train        : Train_State_T := (others => <>);
+      Train_Data   : Train_Data_T := (others => <>);
+      National     : National_Values_T := (others => <>);
+      MRSP         : Speed_Profile_T := (others => <>);
+      Gradients    : Gradient_Profile_T := (others => <>);
+      MA           : Movement_Authority_T := (others => <>);
+      Inhibitions  : Inhibition_Areas_T := (others => <>);
+      Adhesion     : Adhesion_T := (others => <>);
       --  Mode related ceiling speed (3.11.7), No_Speed_Limit when the
       --  mode has none; the mode machine of E4 sets it
       Mode_Speed   : Speed_Cms_T := No_Speed_Limit;
@@ -567,19 +582,19 @@ is
       --  until E4 the stored information sets it when an MA is present
       Supervise    : Boolean := False;
       --  added by profiles: the temporary EOA and SvL (see above)
-      Temporary    : Temporary_Target_T;
+      Temporary    : Temporary_Target_T := (others => <>);
       --  added by supervision: the train data, national values and
       --  on-board configuration 3.13 and 3.14 read beyond the components
       --  above (Supervision_Extra_T below); the defaults are the A.3.2
       --  values or "not fitted"
-      Extra        : Supervision_Extra_T;
+      Extra        : Supervision_Extra_T := (others => <>);
       --  added by the procedures of phase E4 (e4/procedures): the level
       --  crossing not protected whose start is the temporary EOA and SvL
       --  of Temporary (5.16, LX_Approach_T below)
-      LX           : LX_Approach_T;
+      LX           : LX_Approach_T := (others => <>);
       --  added by the procedures of phase E4: the feet of the virtual SBD
       --  curves of the track conditions (5.18.4.2, 5.18.8.3)
-      Virtual      : Virtual_Feet_T;
+      Virtual      : Virtual_Feet_T := (others => No_Virtual_Foot);
    end record;
 
 end EVC_Supervision_Input;

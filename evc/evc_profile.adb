@@ -78,7 +78,7 @@ is
       end Lowest;
 
    begin
-      P := (Count => 1, Points => (others => (others => <>)));
+      P := (Count => 1, Points => (others => No_Point));
 
       --  the gradient segments in increasing order (the others ignored)
       for K in 1 .. S.Gradients.Count loop

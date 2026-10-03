@@ -200,10 +200,10 @@ is
       Redadh          : Value_T := 0;
       --  3.13.6.2.2.3, 3.13.6.3.2.4: T_be_react / T_be and T_bs_react /
       --  T_bs for targets at zero speed and for the others
-      Emergency_Zero   : Times_T;
-      Emergency_Target : Times_T;
-      Service_Zero     : Times_T;
-      Service_Target   : Times_T;
+      Emergency_Zero   : Times_T := (others => <>);
+      Emergency_Target : Times_T := (others => <>);
+      Service_Zero     : Times_T := (others => <>);
+      Service_Target   : Times_T := (others => <>);
       --  3.13.4.3.2: the rotating mass, percent, for uphill and downhill
       M_Rotating_Up   : Natural range 0 .. 100 := 15;
       M_Rotating_Down : Natural range 0 .. 100 := 2;
