@@ -206,6 +206,7 @@ begin
    Scenario_E4_Odometer_Failure;
    Scenario_E4_Desk_Closed;
    Scenario_E4_Continue_Shunting;
+   Scenario_E5P_JRU_Records;
    Check (Encodes_OK, "E4: every telegram of the track encoded");
    Procedures.Run;
    Touch.Run;

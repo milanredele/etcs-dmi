@@ -724,6 +724,18 @@ package body EVC_Test_Support is
               E4_Seen (Byte_At (I, 1), Byte_At (I, 2)) + 1;
             E4_B3 (Byte_At (I, 1), Byte_At (I, 2)) := Byte_At (I, 3);
             E4_B4 (Byte_At (I, 1), Byte_At (I, 2)) := Byte_At (I, 4);
+         elsif Recs (I).Port = JRU and then Byte_At (I, 1) = 11
+           and then Byte_At (I, 2) <= 63
+         then
+            JRU_Actions (Byte_At (I, 2)) := JRU_Actions (Byte_At (I, 2)) + 1;
+         elsif Recs (I).Port = JRU and then Byte_At (I, 1) = 38 then
+            JRU_Cabs := JRU_Cabs + 1;
+            JRU_Cab_Last := Byte_At (I, 2) + 2 * Byte_At (I, 4);
+         elsif Recs (I).Port = JRU and then Byte_At (I, 1) = 45
+           and then Byte_At (I, 2) <= 15
+         then
+            JRU_TCs (Byte_At (I, 2)) := JRU_TCs (Byte_At (I, 2)) + 1;
+            JRU_TC_Phase (Byte_At (I, 2)) := Byte_At (I, 3);
          elsif Recs (I).Port = DMI and then Rec_Length (I) = 7
            and then Byte_At (I, 1) = 16#0C# and then Byte_At (I, 6) <= 63
            and then Byte_At (I, 7) = 0

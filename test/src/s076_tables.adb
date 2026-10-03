@@ -306,6 +306,11 @@ package body S076_Tables is
          when 35 => return Event (40, 1, Level_T'Pos (L1));
          when 36 => return Event (40, 1, Level_T'Pos (L2));
          when 38 => return Event (40, 1, Level_T'Pos (NTC));
+         --  EVC_JRU_Records: event 11 with the code in byte 2 for the
+         --  actions no other event records
+         when 7 | 8 | 9 | 11 | 12 | 16 | 17 | 20 | 22 .. 27 | 29 .. 33
+            | 39 | 40 =>
+            return Event (11, Code);
          when 49 => return Event (23, 9, 1);
          when 50 => return Event (23, 9, 0);
          when others => return None;
@@ -436,6 +441,9 @@ package body S076_Tables is
          when 25 => return (Event => 41, Sub => 11, B4 => -1, Known => True);
          when 49 => return (Event => 41, Sub => 2, B4 => -1, Known => True);
          when 52 => return (Event => 7, Sub => -1, B4 => -1, Known => True);
+         --  EVC_JRU_Records: the same number
+         when 38 => return (Event => 38, Sub => -1, B4 => -1, Known => True);
+         when 45 => return (Event => 45, Sub => -1, B4 => -1, Known => True);
          when others => return (others => <>);
       end case;
    end Message_Event;
@@ -463,7 +471,7 @@ package body S076_Tables is
         & " DMI_SYMB_STATUS bits" & Symbols'Image & " of 110,"
         & " SYSTEM_STATUS_MESSAGE bits" & Statuses'Image & " of 31,"
         & " whole messages" & Messages'Image
-        & " (plus 3, 4, 11, 12, 20, 21, 23, 43 and ALL by their fields)";
+        & " (plus 3, 4, 11, 12, 20, 21, 23, 38, 43, 45 and ALL by their fields)";
    end Table_Sizes;
 
 end S076_Tables;

@@ -456,6 +456,14 @@ package EVC_Test_Support is
    SS_Ended   : array (0 .. 63) of Natural := (others => 0);
    Last_Brake : Natural := 0;
    Last_TIU   : Natural := 0;
+   --  EVC_JRU_Records: event 11 by M_DRIVERACTIONS, the events 38 and the
+   --  last one's cab A + 2 * cab B, the events 45 by M_TRACKCOND_TI and
+   --  the last one's phase
+   JRU_Actions  : array (0 .. 63) of Natural := (others => 0);
+   JRU_Cabs     : Natural := 0;
+   JRU_Cab_Last : Natural := 0;
+   JRU_TCs      : array (0 .. 15) of Natural := (others => 0);
+   JRU_TC_Phase : array (0 .. 15) of Natural := (others => 0);
 
       procedure Collect_E4;
 

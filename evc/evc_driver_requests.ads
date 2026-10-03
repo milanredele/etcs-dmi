@@ -18,7 +18,7 @@
 --  EVC_Mission and EVC_Levels, the conditions of 4.6.3). It only checks
 --  the shape of what it keeps: a MSG_DRIVER_DATA of a length its kind
 --  does not have is ignored (and counted, Ignored), as is an action code
---  above 20 or an acknowledgement of an unknown kind. The ranges of the
+--  above 21 or an acknowledgement of an unknown kind. The ranges of the
 --  values (A.3.11, 7.5) are checked by the unit that uses them.
 --
 --  The queries named after the actions serve the modes and the levels
@@ -61,7 +61,10 @@ is
       Supervised_Manoeuvre,  -- 17 arg 0 initiate, 1 continue, 2 exit
       BMM_Inhibition,        -- 18 arg 0 inhibit, 1 revoke (5.22)
       Maintain_Shunting,     -- 19 (4.4.20.1.5)
-      Isolate);              -- 20 (4.6.3 [1])
+      Isolate,               -- 20 (4.6.3 [1])
+      Train_Data_Entry);     -- 21 'Train data' selected (5.4.3.2 D2/S3,
+                             --    SUBSET-027 4.2.4.11 "Train Data Entry
+                             --    requested"): recorded, nothing else
 
    --  The kind of an acknowledgement (DMI_Ack.Ack_Kind_T, the arg of
    --  action 2)

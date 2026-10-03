@@ -19,5 +19,6 @@ package EVC_Test_Modes is
       procedure Scenario_E4_Odometer_Failure;
       procedure Scenario_E4_Desk_Closed;
       procedure Scenario_E4_Continue_Shunting;
+      procedure Scenario_E5P_JRU_Records;
 
 end EVC_Test_Modes;

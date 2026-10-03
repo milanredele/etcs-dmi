@@ -1487,7 +1487,9 @@ package body DMI_Windows is
                      To_Default_Window;
                   end if;
                when 2 => Open (W_Driver_ID);
-               when 3 => Open (W_Train_Data);
+               when 3 =>
+                  Queue (Train_Data_Requested);
+                  Open (W_Train_Data);
                when 5 => Open (W_Level);
                when 6 => Open (W_TRN);
                when 7 =>

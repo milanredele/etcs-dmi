@@ -191,6 +191,13 @@ package S076_Bench is
    --  power-up (0 CSM, NoS before any)
    function JRU_Monitoring return Natural;
    function JRU_Sup_Status return Natural;
+   --  an LRBG known: a JRU event 10 since the power-up and no event 8
+   --  "position unknown" after it
+   function JRU_LRBG_Known return Boolean;
+   --  the phase of the last JRU event 45 of M_TRACKCOND_TI TI since the
+   --  power-up (EVC_JRU_Records: 0 start ahead, 1 inside, 2 end passed),
+   --  -1 before any
+   function JRU_TC_Phase (TI : Natural) return Integer;
 
    --  Text and system status events of the window
    type Text_Event_T is record

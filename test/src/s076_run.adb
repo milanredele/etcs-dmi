@@ -16,6 +16,7 @@ with DMI_Conditions;
 with DMI_Core;
 with DMI_Protocol;
 with DMI_System_Status;
+with DMI_Observe;
 with DMI_Windows;             use DMI_Windows;
 with EVC_Core;
 with EVC_Distances;
@@ -1914,6 +1915,33 @@ package body S076_Run is
          return NJ (R_ATO, "ATO symbol");
       elsif Same (Kind, "supervised-manoeuvre-symbol") then
          return NJ (R_Level_2, "SM symbol");
+      elsif Same (Kind, "data-value")
+        and then (Same (Name, "Train-Running-Number")
+                  or else Same (Name, "Driver-ID")
+                  or else Same (Name, "Driver_ID"))
+      then
+         --  DMI 11.3.1.4, 11.3.3.4: the window of the topic shows the
+         --  current value in its input field (empty when unknown), read
+         --  from the window model (DMI_Observe)
+         declare
+            Wid : constant Window_ID_T :=
+              (if Has (Name, "Running") then DMI_Windows.W_TRN
+               else DMI_Windows.W_Driver_ID);
+            Shown_Now : constant Boolean :=
+              DMI_Observe.Entry_Shown (Wid)
+              and then DMI_Observe.Field_Value (Wid)
+                       = DMI_Observe.Stored_Value (Wid);
+         begin
+            if St_W /= Displayed then
+               return NJ (R_DMI_Internal, Kind & " " & W (4));
+            end if;
+            return Check (Shown_Now, "data value " & Name & " shown",
+                          (if DMI_Observe.Entry_Shown (Wid)
+                           then "field '" & DMI_Observe.Field_Value (Wid)
+                                & "', stored '"
+                                & DMI_Observe.Stored_Value (Wid) & "'"
+                           else "window " & Top_Image));
+         end;
       elsif Same (Kind, "data-value") or else Same (Kind, "echo-text")
         or else Same (Kind, "local-time")
       then
@@ -2221,10 +2249,156 @@ package body S076_Run is
       elsif Same (Name, "DRIVER_ID") then
          return Check (Any_Rec (41, 1, -1) = Positive, "JRU driver ID",
                        "no event 41 kind 1");
+      elsif Positive
+        and then (Same (Name, "NID_SOLR") or else Same (Name, "Q_LRBG"))
+        and then Value'Length > 0
+      then
+         --  4.2.3.5: the train position refers to a location reference
+         --  or not; this on-board's is its LRBG (events 8 and 10).
+         --  NID_SOLR 16777215 and Q_LRBG 0: none; another NID_SOLR (a
+         --  name of the sequence), Q_LRBG 1 or 2: one
+         declare
+            Unknown : constant Boolean :=
+              Value = "16777215" or else (Same (Name, "Q_LRBG")
+                                          and then Value = "0");
+         begin
+            if Same (Name, "Q_LRBG") and then Value not in "0" | "1" | "2"
+            then
+               Handled := False;
+               return NJ (R_JRU_Not_Modelled, "ALL." & Name);
+            end if;
+            return Check (B.JRU_LRBG_Known /= Unknown,
+                          "JRU " & Name & "=" & Value,
+                          (if B.JRU_LRBG_Known then "an LRBG"
+                           else "no LRBG"));
+         end;
       end if;
       Handled := False;
       return NJ (R_JRU_Not_Modelled, "ALL." & Name);
    end Header_Field;
+
+   --  The fields of an expectation of message 38 (cab status) or 45
+   --  (track conditions), EVC_JRU_Records: words and their parts joined
+   --  by ';' or '&'. 38: M_CAB_A_STATUS is byte 2 of event 38,
+   --  M_CAB_B_STATUS byte 4. 45: M_TRACKCOND_TI is byte 2 of event 45, the
+   --  distances say the phase of byte 3 (D_MAXSFE_TO_START "not relevant"
+   --  -32768 or below 0: the start passed, any other value: ahead;
+   --  D_MIN*_TO_END below 0: the end passed, above 0: not). A record of the
+   --  window matches, or, for 45, the phase of the last one of its kind
+   --  (the message goes to the train interface every cycle while the item
+   --  is generated, the event only when it changes).
+   function Cab_Or_Condition (Id : Natural; Positive : Boolean)
+     return Judgement_T
+   is
+      B2, B4   : Integer := -1;
+      Phase_Ok : array (0 .. 2) of Boolean := (others => True);
+
+      procedure Field (F : String) is
+         Op : Natural := 0;
+      begin
+         for I in F'Range loop
+            if F (I) in '=' | '<' | '>' then
+               Op := I;
+               exit;
+            end if;
+         end loop;
+         if Op <= F'First or else Op = F'Last then
+            return;
+         end if;
+         declare
+            Name : constant String := F (F'First .. Op - 1);
+            Rel  : constant Character := F (Op);
+            Val  : constant String := F (Op + 1 .. F'Last);
+            Num  : Integer := -1;
+         begin
+            if (for all C of Val => C in '0' .. '9') and then Val'Length <= 3
+            then
+               Num := Integer'Value (Val);
+            end if;
+            if Same (Name, "M_CAB_A_STATUS") and then Rel = '=' and then Num >= 0
+            then
+               B2 := Num;
+            elsif Same (Name, "M_CAB_B_STATUS") and then Rel = '='
+              and then Num >= 0
+            then
+               B4 := Num;
+            elsif Same (Name, "M_TRACKCOND_TI") and then Rel = '='
+              and then Num >= 0
+            then
+               B2 := Num;
+            elsif Same (Name, "D_MAXSFE_TO_START") then
+               if Val = "-32768" or else (Rel = '<' and then Val = "0") then
+                  Phase_Ok (0) := False;
+               else
+                  Phase_Ok (1) := False;
+                  Phase_Ok (2) := False;
+               end if;
+            elsif Starts (Name, "D_MIN") and then Has (Name, "_TO_END")
+              and then Val = "0"
+            then
+               --  "<0" the end passed, ">0" not ("<D2": still ahead, the
+               --  start says the rest)
+               if Rel = '<' then
+                  Phase_Ok (0) := False;
+                  Phase_Ok (1) := False;
+               elsif Rel = '>' then
+                  Phase_Ok (2) := False;
+               end if;
+            elsif not Same (Name, "M_MODE") and then not Same (Name, "M_LEVEL")
+              and then not Same (Name, "NID_SOLR")
+              and then not Same (Name, "D_SOLR")
+              and then not Same (Name, "Q_DSOLR")
+            then
+               Note_Gap (Img (Id) & "." & Name);
+            end if;
+         end;
+      end Field;
+
+      function Matches (R : B.JRU_Record_T) return Boolean is
+        (R.Event = Id
+         and then (B2 < 0 or else R.B2 = B2)
+         and then (B4 < 0 or else R.B4 = B4)
+         and then (Id /= 45 or else (R.B3 <= 2 and then Phase_Ok (R.B3))));
+
+      Found : Boolean := False;
+   begin
+      for K in 5 .. Line.Count loop
+         declare
+            Wd : constant String := W (K);
+            F  : Natural := Wd'First;
+         begin
+            for I in Wd'First .. Wd'Last + 1 loop
+               if I > Wd'Last or else Wd (I) in ';' | '&' then
+                  if I > F then
+                     Field (Wd (F .. I - 1));
+                  end if;
+                  F := I + 1;
+               end if;
+            end loop;
+         end;
+      end loop;
+      for I in 1 .. B.JRU_Count loop
+         Found := Found or else Matches (B.JRU (I));
+      end loop;
+      if not Found and then Positive and then Id = 45 and then B2 >= 0
+        and then B.JRU_TC_Phase (B2) in 0 .. 2
+        and then Phase_Ok (B.JRU_TC_Phase (B2))
+      then
+         Found := True;
+      end if;
+      return Check (Found = Positive,
+                    "JRU" & Img (Id)
+                    & (if B2 >= 0 then (if Id = 38 then " cab A" else " TI")
+                                       & Img (B2) else "")
+                    & (if B4 >= 0 then " cab B" & Img (B4) else "")
+                    & (if Id = 45 and then not (for all P of Phase_Ok => P)
+                       then " phase" & (if Phase_Ok (0) then " 0" else "")
+                            & (if Phase_Ok (1) then " 1" else "")
+                            & (if Phase_Ok (2) then " 2" else "")
+                       else "")
+                    & (if Positive then "" else " not"),
+                    (if Found then "recorded" else "none"));
+   end Cab_Or_Condition;
 
    function JRU_Expect return Judgement_T is
       Positive : constant Boolean := Same (W (3), "record");
@@ -2405,6 +2579,13 @@ package body S076_Run is
                      end;
                   end loop;
                   if Mon_N = 0 and then Sup_N = 0 then
+                     --  the message recorded at all: event 21 records a
+                     --  change of the monitoring or of the status, not of
+                     --  the speeds (V_PERM ...), so only its presence is
+                     --  judged
+                     if Positive and then Any_Rec (21, -1, -1) then
+                        return Pass ("JRU 20 as event 21");
+                     end if;
                      return NJ (R_JRU_Not_Modelled,
                                 "20 without M_SDMTYPE / M_SDMSUPSTAT");
                   end if;
@@ -2445,6 +2626,11 @@ package body S076_Run is
                      return Result;
                   end if;
                end;
+            when 38 | 45 =>
+               Result := Cab_Or_Condition (Id, Positive);
+               if Result.Verdict /= Passed then
+                  return Result;
+               end if;
             when others =>
                declare
                   Map : constant JRU_Map_T := Message_Event (Id);
