@@ -9,6 +9,7 @@ with EVC_Modes;     use EVC_Modes;
 with EVC_Outbox;
 with EVC_Ports;     use EVC_Ports;
 with EVC_Procedures;
+with EVC_Text_Messages;
 with Interfaces;    use Interfaces;
 with Sim_Telegrams;
 
@@ -1423,6 +1424,85 @@ package body EVC_Test_Procedures is
              & "brake)");
    end Scenario_Text_Messages;
 
+   --  More text messages than the on-board keeps (8): 3.12.3 sets no
+   --  number, so what gives way is ours. A message displayed and waiting
+   --  for the driver's acknowledgement stays, with its brake
+   --  (3.12.3.4.7.1); the oldest message not displayed yet gives way
+   --  first, by the order of reception, not by the slot it was put in.
+   procedure Scenario_Text_Message_Room is
+      Waiting : ST.Text_Conditions_T;
+      Far     : ST.Text_Conditions_T;
+      Ack_Id  : Natural := 0;
+
+      function Shown (S : String) return Boolean is
+      begin
+         for I in 1 .. Text_N loop
+            if Texts (I).Text (1 .. Texts (I).Len) = S then
+               return True;
+            end if;
+         end loop;
+         return False;
+      end Shown;
+   begin
+      --  eight to be acknowledged, the service brake after 1 s each
+      Begin_Scenario (M_FS, L1);
+      Waiting.T_S := 1;
+      Waiting.Confirm := 2;
+      for K in 1 .. 8 loop
+         Group (K, 6 * K);
+         Add (ST.Fixed_Text (0, Waiting));
+         Close;
+      end loop;
+      Group (9, 70);
+      Add (ST.Plain_Text ("Ninth", ST.Text_Conditions_T'(others => <>)));
+      Close;
+      Run_Front (62, 10);
+      Check (Text_N = 8 and then SB and then Removed_N = 0,
+             "3.12.3.4.7: eight texts not acknowledged, the service brake");
+      Run_Front (80, 10);
+      Check (Removed_N = 0 and then SB and then not Shown ("Ninth")
+             and then J24 (EVC_Text_Messages.Event_Rejected) = 1,
+             "3.12.3.4.7.1: no room, a text waiting for its acknowledgement "
+             & "stays displayed with its brake; the new one is refused");
+
+      --  one to acknowledge, seven for later: the acknowledged one frees
+      --  slot 1, the next one takes it, and the one after it finds no
+      --  room: the oldest of those not displayed gives way, P2
+      Begin_Scenario (M_FS, L1);
+      Waiting := (Confirm => 1, others => <>);
+      Group (1, 5);
+      Add (ST.Fixed_Text (1, Waiting));
+      Close;
+      for K in 2 .. 8 loop
+         Far.D_M := 90 - 6 * K;
+         Group (K, 6 * K);
+         Add (ST.Plain_Text ('P' & Character'Val (48 + K), Far));
+         Close;
+      end loop;
+      Far.D_M := 90 - 64;
+      Group (9, 64);
+      Add (ST.Plain_Text ("New", Far));
+      Close;
+      Far.D_M := 90 - 70;
+      Group (10, 70);
+      Add (ST.Plain_Text ("Last", Far));
+      Close;
+      Run_Front (58, 10);
+      if Text_N >= 1 then
+         Ack_Id := Texts (1).Id;
+      end if;
+      Ack (2, Ack_Id);
+      Cycle;
+      Check (Text_N = 1 and then Removed_Id (Ack_Id),
+             "3.12.3.4.3.2 a): the acknowledged text removed, its place "
+             & "free");
+      Run_Front (100, 10);
+      Check (Shown ("New") and then Shown ("Last") and then not Shown ("P2")
+             and then Shown ("P3") and then Shown ("P8"),
+             "3.12.3: no room, the oldest text not displayed gives way (P2), "
+             & "not the newest one put in the first slot");
+   end Scenario_Text_Message_Room;
+
    --  5.22 Inhibition of the BTM alarm reaction (SUBSET-076 5220200)
    procedure Scenario_BMM is
    begin
@@ -2298,6 +2378,7 @@ package body EVC_Test_Procedures is
       Scenario_Override;
       Scenario_Reversing;
       Scenario_Text_Messages;
+      Scenario_Text_Message_Room;
       Scenario_BMM;
       Scenario_Mode_Speeds;
       Scenario_Level_Crossing;
