@@ -17,7 +17,6 @@ is
       --  component by component: the aggregate of the whole passage,
       --  which reads the parameters, was built in a temporary (4.6 KB)
       --  and copied
-      P := (others => <>);
       P.Open := True;
       P.Id := Identity (T.Header);
       P.N_TOTAL := T.Header.N_TOTAL;
