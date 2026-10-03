@@ -715,5 +715,46 @@ package body EVC_Test_Position is
              "rear end: the min safe front end minus 200 m");
    end Scenario_Rear_End;
 
+   --  Packet 58 referring to one of the last LRBGs (3.6.2.2.2 c), a
+   --  group passed twice and the ring of the last LRBGs (8) wrapped in
+   --  between: its location D_LOC counts from the last passage of that
+   --  group (3.6.1.3), not from the one kept further down the ring
+   procedure Scenario_Report_Reference is
+      P58 : T58.Packet_T;
+      OK  : Boolean;
+      Fired_At : Integer_64 := 0;
+   begin
+      Start_Track;
+      for K in 0 .. 5 loop
+         Add_Group (Group (11 + K, Integer_64 (100 + 100 * K)));
+      end loop;
+      Add_Group (Group (10, 700));
+      Add_Group (Group (17, 800));
+      Add_Group (Group (10, 900));
+      Add_Group (Group (18, 1000));
+      Run_To (105_000);
+      Check (Pos.LRBG.Id.NID_BG = 18,
+             "report reference: group 18 the LRBG, group 10 passed at 700 m "
+             & "and at 900 m");
+      P58.Q_SCALE := 1;
+      P58.T_CYCLOC := 255;
+      P58.D_CYCLOC := 32_767;
+      P58.M_LOC := 2;
+      P58.N_ITER := 1;
+      P58.D_LOC_List (1) := (D_LOC => 300, Q_LGTLOC => 1);
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Forget;
+      while Train_Cm < 130_000 and then Fired_At = 0 loop
+         Step (1_000);
+         if Pos.Report_Triggers.Location_Passed then
+            Fired_At := Train_Cm;
+         end if;
+      end loop;
+      Check (OK and then Fired_At > 115_000 and then Fired_At <= 120_000,
+             "3.6.2.2.2 c), 3.6.5.1.5 c): the location 300 m from the last "
+             & "passage of group 10 (1200 m), got"
+             & Integer_64'Image (Fired_At));
+   end Scenario_Report_Reference;
+
 
 end EVC_Test_Position;

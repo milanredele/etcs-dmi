@@ -134,6 +134,7 @@ begin
    Scenario_Virtual;
    Scenario_Report_Triggers;
    Scenario_Rear_End;
+   Scenario_Report_Reference;
    Scenario_Relocation;
    Scenario_Repositioning;
    Scenario_Geo_Orientation;

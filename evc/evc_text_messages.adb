@@ -190,6 +190,37 @@ is
    --  Reception
    ---------------------------------------------------------------------
 
+   --  How long ago message Id was received: the identifiers are given in
+   --  the order of reception (1 .. 16#7FFF#, then 1 again; the slots are
+   --  reused, so their order is not that of reception), the older the
+   --  farther behind Next_Id
+   function Age (Id : Unsigned_16) return Natural is
+     ((Natural (Next_Id) + 16#7FFF# - Natural (Id)) mod 16#7FFF#)
+     with Global => Next_Id;
+
+   --  The oldest message that may give way to a new one when no slot is
+   --  free (Shown False: those not displayed yet; True: those displayed
+   --  and not waiting for the driver's acknowledgement), 0 for none
+   function Oldest (Shown : Boolean) return Natural
+     with Global => (Messages, Next_Id),
+          Post => Oldest'Result <= Max_Messages
+   is
+      Slot : Natural range 0 .. Max_Messages := 0;
+   begin
+      for I in Messages'Range loop
+         pragma Loop_Invariant (Slot < I);
+         if Messages (I).Used and then Messages (I).Shown = Shown
+           and then (not Shown or else Messages (I).Confirm = 0
+                     or else Messages (I).Acked)
+           and then (Slot = 0
+                     or else Age (Messages (I).Id) > Age (Messages (Slot).Id))
+         then
+            Slot := I;
+         end if;
+      end loop;
+      return Slot;
+   end Oldest;
+
    --  A message decoded, its common part: Q_SCALE, the location
    --  reference of the group (frame position of its origin T at offset
    --  0) and the sense of its distances
@@ -224,17 +255,20 @@ is
          end if;
       end loop;
       if Slot = 0 then
-         --  no room: the oldest one not displayed gives way, else the
-         --  first one
-         Slot := 1;
-         for I in Messages'Range loop
-            --  the first one unless one not displayed comes: an index
-            pragma Loop_Invariant (Slot = 1);
-            if not Messages (I).Shown then
-               Slot := I;
-               exit;
-            end if;
-         end loop;
+         --  No room. 3.12.3 sets no number of messages to keep, so what
+         --  gives way is ours: the oldest message not displayed yet, else
+         --  the oldest displayed one not waiting for the driver's
+         --  acknowledgement. One waiting for it stays displayed with its
+         --  brake (3.12.3.4.7.1) and its report (3.12.3.5.2): with eight
+         --  of them, the new message is refused.
+         Slot := Oldest (Shown => False);
+         if Slot = 0 then
+            Slot := Oldest (Shown => True);
+         end if;
+         if Slot = 0 then
+            Record_Event (Event_Rejected, M);
+            return;
+         end if;
          Remove (Slot);
       end if;
       M.Used := True;

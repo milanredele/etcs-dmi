@@ -151,6 +151,19 @@ is
    TIU_Known_Now     : TIU_Signals_T := (others => False);
    Brake_Ack_Now     : Boolean := False;
 
+   --  The direction controller of the active desk in the cycle (TIU
+   --  input 6, EVC_Ports: 0 neutral, 1 forward, 2 reverse), unknown until
+   --  its first input; one reading for the supervision (roll away and
+   --  reverse movement protection, 3.14.2, 3.14.3) and the procedures
+   function Controller_Now return EVC_Brake_Commands.Controller_T is
+     (if not TIU_Known_Now (Direction_Controller)
+      then EVC_Brake_Commands.Unknown
+      else (case TIU_Value_Now (Direction_Controller) is
+               when 1      => EVC_Brake_Commands.Forwards,
+               when 2      => EVC_Brake_Commands.Backwards,
+               when others => EVC_Brake_Commands.Neutral))
+     with Global => (TIU_Value_Now, TIU_Known_Now);
+
    --  The snapshot the speed and distance monitoring and the procedures
    --  read: the snapshot of the tests (Set_Snapshot_For_Test), once set,
    --  in every cycle until Initialise, else the one of the stored
@@ -908,12 +921,7 @@ is
    is
       procedure Run (S : EVC_Supervision_Input.Snapshot_T) is
          Controller : constant EVC_Brake_Commands.Controller_T :=
-           (if not TIU_Known_Now (Direction_Controller)
-            then EVC_Brake_Commands.Unknown
-            else (case TIU_Value_Now (Direction_Controller) is
-                     when 1      => EVC_Brake_Commands.Forwards,
-                     when 2      => EVC_Brake_Commands.Backwards,
-                     when others => EVC_Brake_Commands.Neutral));
+           Controller_Now;
          Inputs : constant EVC_SDM.Inputs_T :=
            (Dt_Ms          => Dt_Ms,
             Special_Active =>
@@ -1090,13 +1098,7 @@ is
          Switched_To_L1    => EVC_Levels.Switched_To (L1),
          Desk_Open         => EVC_Train_Inputs.Desk_Open,
          Passive_Shunting  => EVC_Train_Inputs.Passive_Shunting_Permitted,
-         Controller        =>
-           (if not TIU_Known_Now (Direction_Controller)
-            then EVC_Brake_Commands.Unknown
-            else (case TIU_Value_Now (Direction_Controller) is
-                     when 1      => EVC_Brake_Commands.Forwards,
-                     when 2      => EVC_Brake_Commands.Backwards,
-                     when others => EVC_Brake_Commands.Neutral)),
+         Controller        => Controller_Now,
          Train_Data_Valid  => EVC_Train_Data.Valid,
          --  the train running number of the start of mission (5.4.2)
          TRN_Valid         => EVC_Mission.TRN_Status = EVC_Mission.Valid,

@@ -412,7 +412,14 @@ is
    --  passed without the substitution is an EOA passed, the trip of
    --  4.6.3 [12], {9}; E3 dropped it once the estimated front end had
    --  reached the start), not once its supervision is substituted by
-   --  its speed restriction (Released); Index its place in LX
+   --  its speed restriction (Released); Index its place in LX.
+   --  Not limited to the MA, on purpose: the temporary EOA is distinct
+   --  from the EOA of the MA (3.12.2.5) and the supervision takes the
+   --  closer of the two (3.13.1.5, EVC_SDM.Supervised_Targets), so a
+   --  level crossing beyond the EOA waits for an MA that reaches it; one
+   --  beyond an LOA is supervised (3.7.2.2.1: the track description
+   --  beyond an LOA counts for the supervision); an MA shortened keeps
+   --  the level crossings (A.3.4, "Level Crossing information": U)
    procedure LX_Target (T     : Origin_Table_T;
                         Ahead : Sense_T;
                         Front : Dist_T;
