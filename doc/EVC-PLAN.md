@@ -1550,21 +1550,18 @@ procedure; the 461 rows are `done`, or `partial`/`deferred` with a
 reason; the sequences blocked for level 2 are down to those that need
 E6 or E7; proof, fuzzers, stack and whole check green.
 
-**Decisions to confirm before the start:**
+**Decisions (confirmed 2026-10-04):**
 1. Euroradio (SUBSET-037/038) stays outside the on-board, behind the
-   RTM port (recommended: it is a separate specification with its own
-   safety case, and the SUBSET-076 sequences stimulate at the level of
-   application messages).
-2. Two communication sessions (recommended; 3.15.1 allows an on-board
-   with one, with a degraded handover, and the sequences test both).
-3. Train integrity: reported as "no information" unless a TIU input
-   says otherwise; the 4.0.0 text has no level 3, its functions are
-   level 2 with integrity (recommended: the field and the TIU input,
-   no integrity monitoring device).
-4. Radio infill (3.9) stays in E7 (recommended), so level 1 with radio
-   infill units and their 153 remain blocked until then.
+   RTM port.
+2. Two communication sessions are the default; the on-board must also
+   handle the degraded case of one session only (3.15.1: the handover
+   with a single session), selected by configuration and tested like
+   the other.
+3. Train integrity is reported as "no information" unless a TIU input
+   says otherwise; no integrity monitoring device.
+4. Radio infill (3.9) stays in E7.
 5. The fuzzer gets a radio phase (an RBC that sends anything, at any
-   time) as part of the bench package (recommended).
+   time) as part of the bench package.
 
 **Before E5 (2026-10-03).** Three preparations, merged: the sibling's
 parser fixed (tables continued over a page break, captions with a title,
