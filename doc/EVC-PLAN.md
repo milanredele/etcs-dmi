@@ -1594,3 +1594,24 @@ steps in 121 sequences; the report for the maintainers of SUBSET-076
 and the scripts are in the sibling repository (`reports/`,
 `tools/findings/`). The runner now: 487 passed, 887 failed, 1816
 blocked (1236 for level 2, 144 for defects of SUBSET-076).
+
+**Last preparations (2026-10-04).** The four oversize bodies of the
+units E5 edits are split (`EVC_Mission.Evaluate`, `EVC_Driver_Requests.
+Receive`, `EVC_Position.Evaluate` and `Update`; the postcondition of
+`Update`, once the slowest proof, from 4.2 s to 0.1 s). Both projects
+build and the on-board proves without a warning, and `check.sh` and
+`prove.sh` fail on one. What is kept over No Power is in `EVC_Retained`
+(4.10 column NP, 4.11.1.1, .3): the level, the table of priority and
+the train position come back invalid through `EVC_Core.Power_Up` and are
+revalidated by the cold movement information; `Initialise` is a new
+on-board with an empty store; a position still invalid is deleted when
+the start of mission leaves SB (5.4.3.2 S22 to S24). E5 fills the RBC
+contact slot of `Kept_T` and reads `EVC_Position.Status` for the
+position report of the start of mission. Not done: 5.4.3.3 D2 and
+S10/S20 (level and RBC data to invalid), 4.11.1.4, a position that
+refers to unlinked groups only is not kept, and the bench sends no cold
+movement information (signature Sef5e0918). Two of the three runner
+signatures looked at were defects of SUBSET-076 (a telegram with
+Q_LINK = 1 where the step says 0; a step its own comment calls
+incompatible). The runner: 487 passed, 884 failed, 1819 blocked.
+

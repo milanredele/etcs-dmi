@@ -177,7 +177,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.4.2.2,3,x,,,,,E2,done,"EVC_Position.Evaluate, Set_SOLR, Take_Packets; evc_test position_linking, position_linking_errors"
 3.6.4.2.2 a),3,x,,,,,E2,done,"EVC_Position.Evaluate, Set_SOLR, Take_Packets; evc_test position_linking, position_linking_errors"
 3.6.4.2.2 b),3,x,,,,,E2,done,"EVC_Position.Evaluate, Set_SOLR, Take_Packets; evc_test position_linking, position_linking_errors"
-3.6.4.2.2.1,3,x,,,,,E2,deferred,E4 (position stored over No Power)
+3.6.4.2.2.1,3,x,,,,,E2,done,"EVC_Position.Keep / Restore: the LRBG stored over No Power is the reference of the restored, invalid position (EVC_Core.Power_Up)"
 3.6.4.2.2.2,3,x,,,,,E2,partial,linking replaced before the SOLR is set (EVC_Position.Take_Packets); 3.7.3.1 m) and the transition buffers are E6/E4
 3.6.4.2.3,3,x,,,,,E2,done,EVC_Location.Item_T (signed distance along the orientation from its reference); packet 58 locations; evc_test position_linking
 3.6.4.2.4,3,x,,,,,E2,partial,"kinds of location items (EVC_Location.Item_Kind_T); used for linking windows, packet 58 locations and the geographical position; the other rows of Table 2a are E3 to E6"
@@ -1407,10 +1407,10 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.10.1.3 e),4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
 4.10.1.3 Table,4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
 4.10.1.3 Table-footnote [1],4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
-4.11.1.1,4,x,,,,,E4,n/a,"nothing is kept over No Power (EVC_Core.Initialise: every status unknown), so no status is set to ""invalid"" by No Power and none is revalidated by the cold movement detection"
+4.11.1.1,4,x,,,,,E4,partial,"EVC_Retained (the level, the table of priority and the train position kept over No Power as invalid; an RBC contact slot for E5), EVC_Core.Power_Up and Revalidate_Kept: valid again without a cold movement, position and level left invalid and the table deleted with one or without the information; partial: the items of the table kept unchanged (radio network, EOLM, the table not yet applicable) are E5/E7, non-volatile storage on the target is E8"
 4.11.1.1 Table,4,x,,,,,E4,n/a,"nothing is kept over No Power (EVC_Core.Initialise: every status unknown), so no status is set to ""invalid"" by No Power and none is revalidated by the cold movement detection"
-4.11.1.3,4,x,,,,,E4,n/a,"nothing is kept over No Power (EVC_Core.Initialise: every status unknown), so no status is set to ""invalid"" by No Power and none is revalidated by the cold movement detection"
-4.11.1.4,4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
+4.11.1.3,4,x,,,,,E4,partial,"EVC_Retained (the level, the table of priority and the train position kept over No Power as invalid; an RBC contact slot for E5), EVC_Core.Power_Up and Revalidate_Kept: valid again without a cold movement, position and level left invalid and the table deleted with one or without the information; partial: the items of the table kept unchanged (radio network, EOLM, the table not yet applicable) are E5/E7, non-volatile storage on the target is E8"
+4.11.1.4,4,x,,,,,E4,deferred,"an order of SH, PS or SM kept over No Power: not kept yet (EVC_Retained holds level, table of priority and position)"
 4.11.1.4 a),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
 4.11.1.4 b),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
 4.11.1.4 c),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"

@@ -322,8 +322,8 @@ is
    --  Operations
    ---------------------------------------------------------------------
 
-   --  Power-up: nothing known (the position is not kept over No Power
-   --  in E2; the stored information of 4.10 is phase E4)
+   --  A new on-board: nothing known (what is kept over No Power comes
+   --  back through Restore below, EVC_Core.Power_Up)
    procedure Clear
      with Global => (Output => (State, EVC_Odometry.State)),
           Post => Status = Unknown

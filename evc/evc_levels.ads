@@ -58,7 +58,8 @@
 --  and position report parameters and the TAF request deleted on
 --  entering level 1, the inhibition of revocable TSRs from balises in
 --  level 2: E5 stores), 4.11.1.4 (an order of SH, PS or SM kept over No
---  Power: nothing is kept over No Power).
+--  Power: not kept; the level and the table of priority are, see
+--  Restore and Revalidate below and EVC_Retained).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
