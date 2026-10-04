@@ -241,8 +241,10 @@ package body S076_Run is
 
    function Our_Level return Level_Kind_T is
    begin
+      --  a level kept over No Power is "invalid" (4.10 column NP) until
+      --  revalidated: the sequences write it in the level column
       if not B.Powered
-        or else EVC_Core.Level_Status /= EVC_Modes.Valid
+        or else EVC_Core.Level_Status = EVC_Modes.Unknown
       then
          return K_None;
       end if;
@@ -276,7 +278,7 @@ package body S076_Run is
    --  to the step before the next input), of the block before and of
    --  the block after it: the corpus writes a state change in the block
    --  of its cause, or one block early or late. A level column "N/A"
-   --  accepts an unknown level, a mode column "N/A" (a state the
+   --  accepts an unknown or an invalid level, a mode column "N/A" (a state the
    --  sequence does not name: 5120400_01 writes the passive shunting
    --  after the cab is closed so) any mode; in No Power the level is
    --  not judged.
@@ -336,7 +338,11 @@ package body S076_Run is
          return Fail ("mode " & Trim (Seq.Steps (I).Mode_After) & ", got "
                       & Mode_Abbrev (M));
       end if;
-      if Any_Level and then M /= M_NP and then not Levels (Lv) then
+      --  an invalid level is not shown to the driver: "N/A" accepts it
+      if Any_Level and then M /= M_NP and then not Levels (Lv)
+        and then not (Levels (K_None)
+                      and then EVC_Core.Level_Status = EVC_Modes.Invalid)
+      then
          return Fail ("level " & Trim (Seq.Steps (I).Lvl_After) & ", got "
                       & Level_Abbrev (Lv));
       end if;

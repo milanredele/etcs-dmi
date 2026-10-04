@@ -244,9 +244,11 @@ is
    function Estimated_Front return Dist_T
      with Global => (State, EVC_Odometry.State);
    function Doubt_Over return Length_T
-     with Global => (State, EVC_Odometry.State);
+     with Global => (State, EVC_Odometry.State),
+          Post => (if not LRBG.Valid then Doubt_Over'Result = 0);
    function Doubt_Under return Length_T
-     with Global => (State, EVC_Odometry.State);
+     with Global => (State, EVC_Odometry.State),
+          Post => (if not LRBG.Valid then Doubt_Under'Result = 0);
    function Min_Safe_Front return Dist_T
      with Global => (State, EVC_Odometry.State),
           Post => Min_Safe_Front'Result <= Estimated_Front;
@@ -436,6 +438,48 @@ is
                                        OK      : out Boolean)
      with Global => (In_Out => State);
 
+   --  The train position kept over No Power (4.10 column NP "to be
+   --  revalidated", 4.11, 3.6.1.3.3; EVC_Retained holds it). Kept when
+   --  it refers to an LRBG: the LRBG, Away the frame distance from its
+   --  location reference to the train (the frame position minus its X),
+   --  its confidence interval folded into its location accuracy (the
+   --  frame of the odometer restarts at the power-up, its deviations
+   --  with it: the interval is kept, it does not shrink), and the train
+   --  orientation. A position referred to unlinked groups only is not
+   --  kept (it is deleted over No Power).
+   type Kept_Position_T is record
+      Known        : Boolean := False;
+      LRBG         : Anchor_T;
+      Away         : Dist_T := 0;
+      Orient       : Sense_T := Plus;
+      Orient_Known : Boolean := False;
+   end record;
+
+   procedure Keep (K : out Kept_Position_T)
+     with Global => (Input => (State, EVC_Odometry.State)),
+          Post => (if K.Known then K.LRBG.Valid);
+
+   --  At the power-up, after Clear: the kept position becomes the LRBG
+   --  and the SOLR (3.6.4.2.2.1), invalid (3.6.1.3.3), the train at the
+   --  kept distance from it in the new frame
+   procedure Restore (K : Kept_Position_T)
+     with Global => (In_Out => State, Input => EVC_Odometry.State),
+          Post => (if K.Known and then K.LRBG.Valid
+                   then Status = Invalid and then LRBG.Valid
+                        and then LRBG.Id = K.LRBG.Id
+                   else Status = Status'Old and then LRBG = LRBG'Old);
+
+   --  4.11.1.1: no cold movement occurred, the kept position is valid
+   procedure Revalidate
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => (if Status'Old = Invalid then Status = Valid
+                   else Status = Status'Old)
+                  and then LRBG = LRBG'Old
+                  and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
+
    --  Phase E4 (4.10, 4.11): the position becomes invalid, or is deleted
    procedure Invalidate
      with Global => (In_Out => State),
@@ -443,7 +487,9 @@ is
                    else Status = Invalid);
    procedure Delete_Position
      with Global => (In_Out => State),
-          Post => Status = Unknown and then not LRBG.Valid;
+          Post => Status = Unknown and then not LRBG.Valid
+                  and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old;
    --  3.6.6.9 d)
    procedure Delete_Geo
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),

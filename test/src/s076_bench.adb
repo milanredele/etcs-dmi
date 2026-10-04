@@ -21,6 +21,10 @@ package body S076_Bench is
    ---------------------------------------------------------------------
 
    Is_Powered : Boolean := False;
+   --  the on-board was powered since Reset: a power-up after it keeps
+   --  the data of 4.10 column NP (EVC_Core.Power_Up), the first one is
+   --  that of a new on-board (EVC_Core.Initialise)
+   Was_Powered : Boolean := False;
    Clock      : Unsigned_64 := 0;
 
    X_Cm      : Integer_64 := 0;     -- antenna, track position
@@ -421,6 +425,7 @@ package body S076_Bench is
    procedure Reset is
    begin
       Is_Powered := False;
+      Was_Powered := False;
       Clock := 0;
       X_Cm := 0;
       V_Cms := 0;
@@ -446,9 +451,14 @@ package body S076_Bench is
 
    procedure Power_On is
    begin
-      EVC_Core.Initialise;
+      if Was_Powered then
+         EVC_Core.Power_Up;
+      else
+         EVC_Core.Initialise;
+      end if;
       DMI_Core.Initialise;
       Is_Powered := True;
+      Was_Powered := True;
       Pending_Count := 0;
       Now := (others => <>);
       Last_Mode := No_Value;

@@ -79,6 +79,7 @@ with EVC_Location;
 with EVC_Position;
 with EVC_Procedures;
 with EVC_Received;
+with EVC_Retained;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
@@ -153,12 +154,13 @@ is
    --  Operations
    ---------------------------------------------------------------------
 
-   --  Power-up: the on-board starts in No Power (SUBSET-026 4.4.4.1.1)
-   --  and nothing is stored (phase E0 keeps nothing over No Power). The
-   --  installation configuration (Configure) stays, as the installation
-   --  does over a power-up.
+   --  The power-up of a new on-board: it starts in No Power (SUBSET-026
+   --  4.4.4.1.1) and nothing is stored, the store of the data kept over
+   --  No Power (EVC_Retained) is empty. The installation configuration
+   --  (Configure) stays, as the installation does over a power-up.
    procedure Initialise
      with Global => (Output => (State, EVC_Received.Store,
+                                EVC_Retained.State,
                                 EVC_Position.State, EVC_Odometry.State,
                                 EVC_Origins.State,
                                 EVC_Stored_Information.State,
@@ -188,6 +190,39 @@ is
                   and then EVC_Position.Status = EVC_Position.Unknown
                   and then not EVC_Position.LRBG.Valid
                   and then Installed;
+
+   --  The power-up after a No Power period: as Initialise, but the data
+   --  kept over No Power (4.10 column NP, EVC_Retained: the train
+   --  position, the level and the table of priority of the trackside
+   --  supported levels) are restored with the status "invalid"
+   --  (3.6.1.3.3), the kept LRBG the SOLR (3.6.4.2.2.1); the cold
+   --  movement detection read at the first odometer sample then makes
+   --  them valid or leaves them invalid (4.11.1.1, 4.11.1.3). The first
+   --  power-up of an on-board is Initialise.
+   procedure Power_Up
+     with Global => (Output => (State, EVC_Received.Store,
+                                EVC_Odometry.State,
+                                EVC_Origins.State,
+                                EVC_Stored_Information.State,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Train_Data.State,
+                                EVC_Driver_Requests.State,
+                                EVC_Train_Inputs.State,
+                                EVC_Mission.State,
+                                EVC_Procedures.State,
+                                EVC_Text_Messages.State,
+                                EVC_JRU_Records.State,
+                                EVC_Position.State, EVC_Levels.State),
+                     Input  => (EVC_Config.State, EVC_Retained.State),
+                     In_Out => EVC_Outbox.Queue),
+          Post => Mode = M_NP
+                  and then not Failed
+                  and then Cycle = 0
+                  and then Level_Status /= Valid
+                  and then EVC_Position.Status /= EVC_Position.Valid;
 
    ---------------------------------------------------------------------
    --  The installation configuration (EVC_Config): data, not code
@@ -252,7 +287,7 @@ is
    --  One cycle of the on-board, Dt_Ms milliseconds after the previous
    --  one (any value: 0 and the largest are allowed)
    procedure Tick (Dt_Ms : Natural)
-     with Global => (In_Out => (State, EVC_Outbox.Queue,
+     with Global => (In_Out => (State, EVC_Outbox.Queue, EVC_Retained.State,
                                 EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Origins.State,
                                 EVC_Stored_Information.State,

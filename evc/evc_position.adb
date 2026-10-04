@@ -1709,6 +1709,57 @@ is
       OK := True;
    end Assign_Coordinate_System;
 
+   ----------
+   -- Keep --
+   ----------
+
+   procedure Keep (K : out Kept_Position_T)
+   is
+   begin
+      K := (others => <>);
+      if LRBG_A.Valid and then Pos_Status /= Unknown then
+         K.Known := True;
+         K.LRBG := LRBG_A;
+         K.LRBG.Locacc := Length_T'Max (Over_From (LRBG_A),
+                                        Under_From (LRBG_A));
+         K.Away := Diff (EVC_Odometry.Position, LRBG_A.X);
+         K.Orient := Orient;
+         K.Orient_Known := Orient_Known;
+      end if;
+   end Keep;
+
+   -------------
+   -- Restore --
+   -------------
+
+   procedure Restore (K : Kept_Position_T)
+   is
+      A : Anchor_T := K.LRBG;
+   begin
+      if K.Known and then K.LRBG.Valid then
+         A.X := Diff (EVC_Odometry.Position, K.Away);
+         A.Low := EVC_Odometry.Low;
+         A.High := EVC_Odometry.High;
+         LRBG_A := A;
+         SOLR_A := A;
+         Orient := K.Orient;
+         Orient_Known := K.Orient_Known;
+         Pos_Status := Invalid;
+      end if;
+   end Restore;
+
+   ----------------
+   -- Revalidate --
+   ----------------
+
+   procedure Revalidate
+   is
+   begin
+      if Pos_Status = Invalid then
+         Pos_Status := Valid;
+      end if;
+   end Revalidate;
+
    ----------------
    -- Invalidate --
    ----------------

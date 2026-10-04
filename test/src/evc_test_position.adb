@@ -487,6 +487,49 @@ package body EVC_Test_Position is
       Cycle;
       Check (Odo.Cold = Odo.Cold_Not_Available and then JRU_Seen (9) = 0,
              "cold: information not available (3.15.8.3)");
+
+      --  4.10 column NP, 4.11.1.1: the level kept over No Power, invalid
+      --  at the power-up, valid when no cold movement occurred
+      EVC_Core.Initialise;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SB, EVC_Modes.L1);
+      Cycle;
+      EVC_Core.Power_Up;
+      Check (EVC_Core.Level_Status = EVC_Modes.Invalid
+             and then EVC_Core.Level = EVC_Modes.L1,
+             "kept: the level L1, invalid after the power-up (4.10)");
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 100));
+      Cycle;
+      Check (EVC_Core.Level_Status = EVC_Modes.Valid
+             and then EVC_Core.Level = EVC_Modes.L1,
+             "kept: no cold movement, the level valid (4.11.1.1)");
+      EVC_Core.Power_Up;
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 250));
+      Cycle;
+      Check (EVC_Core.Level_Status = EVC_Modes.Invalid,
+             "kept: a cold movement, the level stays invalid (4.11.1.3)");
+      EVC_Core.Initialise;
+      Check (EVC_Core.Level_Status = EVC_Modes.Unknown,
+             "kept: a new on-board keeps nothing");
+
+      --  4.10 column NP, 3.6.1.3.3, 3.6.4.2.2.1: the position kept, the
+      --  LRBG the SOLR, the train where it was, invalid until validated
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Run_To (20_000);
+      declare
+         K : Pos.Kept_Position_T;
+         F : constant EVC_Distances.Dist_T := Pos.Estimated_Front;
+      begin
+         Pos.Keep (K);
+         Pos.Clear;
+         Pos.Restore (K);
+         Check (Pos.Status = Pos.Invalid and then Pos.LRBG.Id.NID_BG = 10
+                and then Pos.SOLR = Pos.LRBG
+                and then Pos.Estimated_Front = F,
+                "kept: the position restored invalid, at the same place");
+         Pos.Revalidate;
+         Check (Pos.Status = Pos.Valid, "kept: the position revalidated");
+      end;
    end Scenario_Cold_Movement;
 
    --  3.6.1.5, 5.12.2.5: the active cab defines the orientation; the
