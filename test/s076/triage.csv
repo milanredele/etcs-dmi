@@ -123,4 +123,4 @@ Se341da87,onboard,a plain text message displayed where the sequence expects none
 Seabc1f7c,onboard,3.12.3: a plain text message (packet 73; Q_TEXTCONFIRM=1 in 3120300_03) expected displayed at its location and not sent to the DMI; first look only
 Sd9c6ae99,E6,Trip expected as the reaction to a linking or balise group message consistency error (3.16.2; 3040400_07); the on-board applies the service brake reaction only
 S27eb0678,E6,Trip expected after a balise group passed with a consistency error (4120100_02); like Sd9c6ae99
-S7fe2b1bf,onboard,the JRU header expects Q_LRBG=0 after an unlinked balise group passed in SR (3070200_02): the on-board takes the group as its LRBG; 3.6.1 / 3.4.2 to check; first look only
+S7fe2b1bf,s076,3070200_02 step 40: the step text and comment say Q_LINK=0 (unlinked; not the LRBG by 3.6.2.2.2 a) and .1) but the telegram BG0d of the PDF carries Q_LINK=1 in both balises (bit 50 of the header); a group not marked as unlinked passed without linking is LRBG compliant (3.6.2.2.2 a) second bullet) so the on-board is right to take it; with Q_LINK=0 it keeps the LRBG unknown (evc_test position first group)

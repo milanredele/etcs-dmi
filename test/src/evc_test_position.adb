@@ -113,6 +113,21 @@ package body EVC_Test_Position is
              and then Pos.Position_Report (M_SB, L1).V_TRAIN = 7,
              "first group: standstill left, 36 km/h reported as 7");
       Check_Golden ("position_first_group");
+
+      --  3.6.2.2.2 a) second bullet, 3.6.2.2.2.1, 3.6.4.2.2 b), 3.6.1.3:
+      --  without linking, a group marked as unlinked becomes the SOLR and
+      --  an ORBG, the position is valid, the LRBG stays "unknown"
+      --  (what SUBSET-076 3070200_02 step 42 means; its telegram is
+      --  marked linked, see test/s076/triage.csv S7fe2b1bf)
+      Start_Track;
+      Add_Group (Group (80, 100));
+      Track (1).Linked := False;
+      Run_To (20_000);
+      Check (Pos.Status = Pos.Valid and then not Pos.LRBG.Valid
+             and then Pos.SOLR.Valid and then Pos.SOLR.Id.NID_BG = 80
+             and then Pos.Unlinked_ORBG (1).Id.NID_BG = 80
+             and then Pos.Position_Report (M_SB, L1).NID_BG = 16383,
+             "unlinked first group: the SOLR, an ORBG, LRBG unknown");
    end Scenario_Position_First_Group;
 
    --  Linked groups with their windows met (3.4.4.4.3, 3.4.4.4.6 a):
