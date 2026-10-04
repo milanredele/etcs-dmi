@@ -15,10 +15,10 @@
 --  Encode fails when a Has_ flag does not match its condition, a
 --  count is above its maximum or the writer is full.
 
-pragma Unevaluated_Use_Of_Old (Allow);
+--  ETCS_Bits, ETCS_Variables and Interfaces are withed and used
+--  by the parent package, which makes them visible here.
 
-with ETCS_Bits;      use ETCS_Bits;
-with ETCS_Variables; use ETCS_Variables;
+pragma Unevaluated_Use_Of_Old (Allow);
 
 package ETCS_Track_Packets.P79
   with SPARK_Mode => On
