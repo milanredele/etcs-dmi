@@ -1669,7 +1669,7 @@ is
                                        Nominal : Boolean;
                                        OK      : out Boolean)
    is
-      Found : Natural := 0;
+      Found : Natural;
       G     : Direction_T;
    begin
       OK := False;
