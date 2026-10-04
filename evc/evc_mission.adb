@@ -207,18 +207,18 @@ is
          Voltages        => F.Voltages);
    end Train_Data_Of;
 
-   --------------
-   -- Evaluate --
-   --------------
-
-   procedure Evaluate (C : Context_T) is
-      M : constant Mode_T := C.Mode;
+   --  4.4.15.1.1.3: the non-leading input lost in NL; 4.4.20.1.5:
+   --  "Continue Shunting on desk closure" in SH; 5.4.3.2.1, A.3.4.1.2
+   --  k): the desk closed during the start of mission; 5.4.3.2 S0: the
+   --  start of mission engaged in SB with a desk open
+   procedure Take_Desk (C : Context_T; M : Mode_T)
+     with Global => (Output => NL_Lost,
+                     In_Out => (NL_Input, Continue_On, Engaged,
+                                Desk_Closed_Now, Driver_S, TRN_S,
+                                Events, Event_N, EVC_Train_Data.State),
+                     Input  => EVC_Driver_Requests.State)
+   is
    begin
-      Event_N := 0;
-      Acked_Now := False;
-      Desk_Closed_Now := False;
-      TD_Now := False;
-
       --  4.4.15.1.1.3: the non-leading input lost while in NL
       NL_Lost := M = M_NL and then NL_Input and then not C.Non_Leading;
       NL_Input := C.Non_Leading;
@@ -251,7 +251,16 @@ is
          Engaged := not Engaged;
          Put_Event (Event_SoM, (if Engaged then 1 else 0), 0);
       end if;
+   end Take_Desk;
 
+   --  4.7.2: the driver ID (DMI 11.3.3) and the train running number
+   --  (A.3.11) entered in a mode where they may be
+   procedure Take_Identity (M : Mode_T)
+     with Global => (In_Out => (Driver_S, Driver_V, TRN_S, TRN_V,
+                                Proposal, Events, Event_N),
+                     Input  => EVC_Driver_Requests.State)
+   is
+   begin
       --  the driver ID (4.7.2: SB, SH, SM, FS, AD, LS, SR, OS, NL, UN,
       --  SN)
       if Entered (EVC_Driver_Requests.Driver_ID) then
@@ -283,7 +292,18 @@ is
             Put_Event (Event_Refused, 1, 0);
          end if;
       end if;
+   end Take_Identity;
 
+   --  4.7.2, DMI Table 33 #3: the Train Data entered at standstill;
+   --  4.4.11.1.5: the SR speed limit and distance entered at standstill
+   --  in SR
+   procedure Take_Data (C : Context_T; M : Mode_T)
+     with Global => (In_Out => (Train_Known, TD_Now, Proposal, SR_V, SR_D,
+                                Events, Event_N, EVC_Train_Data.State),
+                     Input  => (EVC_Driver_Requests.State,
+                                EVC_Odometry.State, EVC_Config.State))
+   is
+   begin
       --  the Train Data (4.7.2: SB, FS, AD, LS, SR, OS, UN, SN), at
       --  standstill (DMI Table 33 #3)
       if Entered (EVC_Driver_Requests.Train_Data) then
@@ -330,7 +350,19 @@ is
             end if;
          end;
       end if;
+   end Take_Data;
 
+   --  5.4.3.2 S20, 5.4.5.3 h), 4.4.14.1.6: 'Start' and the mode it
+   --  proposes; 4.6.3 [8], [58], [60]: the driver's acknowledgement of
+   --  the mode proposed
+   procedure Take_Start (C : Context_T; M : Mode_T)
+     with Global => (In_Out => (Proposal, Proposal_Mode, Acked_Now,
+                                Acked_M, Events, Event_N),
+                     Input  => (Engaged, Driver_S, Train_Known,
+                                EVC_Train_Data.State,
+                                EVC_Driver_Requests.State))
+   is
+   begin
       --  'Start' (5.4.3.2 S20; 5.4.5.3 h: at S10 with valid Train Data,
       --  so a valid train running number, which S13 asks before S20, is
       --  not a condition; 4.4.14.1.6)
@@ -373,6 +405,24 @@ is
          Acked_M := Proposal_Mode;
          Put_Event (Event_Acked, Mode_T'Pos (Proposal_Mode), 0);
       end if;
+   end Take_Start;
+
+   --------------
+   -- Evaluate --
+   --------------
+
+   procedure Evaluate (C : Context_T) is
+      M : constant Mode_T := C.Mode;
+   begin
+      Event_N := 0;
+      Acked_Now := False;
+      Desk_Closed_Now := False;
+      TD_Now := False;
+
+      Take_Desk (C, M);
+      Take_Identity (M);
+      Take_Data (C, M);
+      Take_Start (C, M);
    end Evaluate;
 
    --------------------

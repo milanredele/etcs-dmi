@@ -124,37 +124,175 @@ is
    -- Receive --
    -------------
 
-   procedure Receive (Frame : Byte_Array) is
+   --  A frame ignored (counted)
+   procedure Ignore
+     with Global => (In_Out => Ignored_N)
+   is
+   begin
+      if Ignored_N < Natural'Last then
+         Ignored_N := Ignored_N + 1;
+      end if;
+   end Ignore;
 
-      procedure Ignore
-        with Global => (In_Out => Ignored_N)
-      is
-      begin
-         if Ignored_N < Natural'Last then
-            Ignored_N := Ignored_N + 1;
-         end if;
-      end Ignore;
+   --  A text entry: len u8 and len bytes at Frame (P .. Last)
+   procedure Take_Text (Frame : Byte_Array;
+                        P     : Positive;
+                        Last  : Natural;
+                        T     : out Text_T;
+                        OK    : out Boolean)
+     with Global => null,
+          Pre    => P >= Frame'First and then P <= Last
+                    and then Last = Frame'Last
+   is
+      Len : constant Natural := Natural (Frame (P));
+   begin
+      T := (others => <>);
+      OK := Len <= Max_Text and then Last - P = Len;
+      if OK then
+         T.Length := Len;
+         for I in 1 .. Len loop
+            T.Chars (I) := Frame (P + I);
+         end loop;
+      end if;
+   end Take_Text;
 
-      --  A text entry: len u8 and len bytes at Frame (P .. Last)
-      procedure Take_Text (P    : Positive;
-                           Last : Natural;
-                           T    : out Text_T;
-                           OK   : out Boolean)
-        with Pre => P >= Frame'First and then P <= Last
-                       and then Last = Frame'Last
-      is
-         Len : constant Natural := Natural (Frame (P));
+   --  MSG_DRIVER_ACTION: the body of N bytes at Frame (P ..), an action
+   --  and its argument or an acknowledgement, latched
+   procedure Take_Action (Frame : Byte_Array; P, N : Positive)
+     with Global => (In_Out => Latched),
+          Pre    => Frame'Length in Header_Length + 1 .. Max_Frame
+                    and then P = Frame'First + Header_Length
+                    and then N = Frame'Length - Header_Length,
+          Post   => (if Latched.Selected (Isolate)'Old
+                     then Latched.Selected (Isolate))
+   is
+   begin
+      --  action u8, arg u16; action 2: kind u16, id u16
+      if N = 3 and then Frame (P) <= 21 and then Frame (P) /= 2 then
+         declare
+            A : constant Action_T := Action_T'Val (Frame (P));
+         begin
+            Latched.Selected (A) := True;
+            Latched.Args (A) := Get_U16 (Frame, P + 1);
+         end;
+      elsif N = 5 and then Frame (P) = 2
+        and then Get_U16 (Frame, P + 1) <= 6
+      then
+         declare
+            K : constant Ack_Kind_T :=
+              Ack_Kind_T'Val (Get_U16 (Frame, P + 1));
+         begin
+            Latched.Selected (Acknowledge) := True;
+            Latched.Args (Acknowledge) := Get_U16 (Frame, P + 1);
+            Latched.Acks (K) := True;
+            Latched.Ack_Ids (K) := Get_U16 (Frame, P + 3);
+            if K in Fixed_Text | Plain_Text
+              and then Latched.Text_N < Max_Text_Acks
+            then
+               Latched.Text_N := Latched.Text_N + 1;
+               Latched.Texts (Latched.Text_N) := Get_U16 (Frame, P + 3);
+            end if;
+         end;
+      end if;
+   end Take_Action;
+
+   --  MSG_DRIVER_DATA: the body of N bytes at Frame (P ..), a data entry
+   --  latched if it is well formed, else ignored
+   procedure Take_Data (Frame : Byte_Array; P, N : Positive)
+     with Global => (In_Out => (Latched, Ignored_N)),
+          Pre    => Frame'Length in Header_Length + 1 .. Max_Frame
+                    and then P = Frame'First + Header_Length
+                    and then N = Frame'Length - Header_Length,
+          Post   => (if Latched.Selected (Isolate)'Old
+                     then Latched.Selected (Isolate))
+   is
+   begin
+      if Frame (P) > 10 then
+         Ignore;
+         return;
+      end if;
+      declare
+         K  : constant Data_Kind_T := Data_Kind_T'Val (Frame (P));
+         OK : Boolean := False;
+         T  : Text_T;
       begin
-         T := (others => <>);
-         OK := Len <= Max_Text and then Last - P = Len;
+         case K is
+            when Driver_ID =>
+               if N >= 2 then
+                  Take_Text (Frame, P + 1, Frame'Last, T, OK);
+                  if OK then
+                     Latched.Driver := T;
+                  end if;
+               end if;
+            when Train_Running_Number =>
+               if N >= 2 then
+                  Take_Text (Frame, P + 1, Frame'Last, T, OK);
+                  if OK then
+                     Latched.TRN := T;
+                  end if;
+               end if;
+            when GSMR_Network =>
+               if N >= 2 then
+                  Take_Text (Frame, P + 1, Frame'Last, T, OK);
+                  if OK then
+                     Latched.GSMR := T;
+                  end if;
+               end if;
+            when Train_Data =>
+               OK := N = 13;
+               if OK then
+                  Latched.Train :=
+                    (Length_M         => Get_U16 (Frame, P + 1),
+                     Brake_Percentage => Get_U16 (Frame, P + 3),
+                     Max_Speed_Kmh    => Get_U16 (Frame, P + 5),
+                     Cant_Deficiency  => Frame (P + 7),
+                     Other_Categories => Get_U16 (Frame, P + 8),
+                     Axle_Load        => Frame (P + 10),
+                     Airtight         => Frame (P + 11),
+                     Loading_Gauge    => Frame (P + 12));
+               end if;
+            when SR_Data =>
+               OK := N = 5;
+               if OK then
+                  Latched.SR :=
+                    (Speed_Kmh  => Get_U16 (Frame, P + 1),
+                     Distance_M => Get_U16 (Frame, P + 3));
+               end if;
+            when RBC_Data =>
+               OK := N = 24;
+               if OK then
+                  for I in Bytes_23_T'Range loop
+                     Latched.RBC (I) := Frame (P + I);
+                  end loop;
+               end if;
+            when Radio_Network_Type | One_Radio_System =>
+               OK := N = 2;
+               if OK then
+                  Latched.Bytes (K) := Frame (P + 1);
+               end if;
+            when Set_VBC | Remove_VBC =>
+               OK := N = 5;
+               if OK then
+                  Latched.Codes (K) := Get_U32 (Frame, P + 1);
+               end if;
+            when Language =>
+               OK := N = 3;
+               if OK then
+                  Latched.Bytes (K) := Frame (P + 1);
+                  Latched.Codes (K) :=
+                    Unsigned_32 (Frame (P + 1))
+                    + 256 * Unsigned_32 (Frame (P + 2));
+               end if;
+         end case;
          if OK then
-            T.Length := Len;
-            for I in 1 .. Len loop
-               T.Chars (I) := Frame (P + I);
-            end loop;
+            Latched.Entered (K) := True;
+         else
+            Ignore;
          end if;
-      end Take_Text;
+      end;
+   end Take_Data;
 
+   procedure Receive (Frame : Byte_Array) is
    begin
       if Frame'Length < Header_Length + 1
         or else Frame'Length > Max_Frame
@@ -168,118 +306,9 @@ is
          N : constant Positive := Frame'Length - Header_Length;
       begin
          if Frame (Frame'First) = MSG_DRIVER_ACTION then
-            --  action u8, arg u16; action 2: kind u16, id u16
-            if N = 3 and then Frame (P) <= 21 and then Frame (P) /= 2 then
-               declare
-                  A : constant Action_T := Action_T'Val (Frame (P));
-               begin
-                  Latched.Selected (A) := True;
-                  Latched.Args (A) := Get_U16 (Frame, P + 1);
-               end;
-            elsif N = 5 and then Frame (P) = 2
-              and then Get_U16 (Frame, P + 1) <= 6
-            then
-               declare
-                  K : constant Ack_Kind_T :=
-                    Ack_Kind_T'Val (Get_U16 (Frame, P + 1));
-               begin
-                  Latched.Selected (Acknowledge) := True;
-                  Latched.Args (Acknowledge) := Get_U16 (Frame, P + 1);
-                  Latched.Acks (K) := True;
-                  Latched.Ack_Ids (K) := Get_U16 (Frame, P + 3);
-                  if K in Fixed_Text | Plain_Text
-                    and then Latched.Text_N < Max_Text_Acks
-                  then
-                     Latched.Text_N := Latched.Text_N + 1;
-                     Latched.Texts (Latched.Text_N) := Get_U16 (Frame, P + 3);
-                  end if;
-               end;
-            end if;
-
+            Take_Action (Frame, P, N);
          elsif Frame (Frame'First) = MSG_DRIVER_DATA then
-            if Frame (P) > 10 then
-               Ignore;
-               return;
-            end if;
-            declare
-               K  : constant Data_Kind_T := Data_Kind_T'Val (Frame (P));
-               OK : Boolean := False;
-               T  : Text_T;
-            begin
-               case K is
-                  when Driver_ID =>
-                     if N >= 2 then
-                        Take_Text (P + 1, Frame'Last, T, OK);
-                        if OK then
-                           Latched.Driver := T;
-                        end if;
-                     end if;
-                  when Train_Running_Number =>
-                     if N >= 2 then
-                        Take_Text (P + 1, Frame'Last, T, OK);
-                        if OK then
-                           Latched.TRN := T;
-                        end if;
-                     end if;
-                  when GSMR_Network =>
-                     if N >= 2 then
-                        Take_Text (P + 1, Frame'Last, T, OK);
-                        if OK then
-                           Latched.GSMR := T;
-                        end if;
-                     end if;
-                  when Train_Data =>
-                     OK := N = 13;
-                     if OK then
-                        Latched.Train :=
-                          (Length_M         => Get_U16 (Frame, P + 1),
-                           Brake_Percentage => Get_U16 (Frame, P + 3),
-                           Max_Speed_Kmh    => Get_U16 (Frame, P + 5),
-                           Cant_Deficiency  => Frame (P + 7),
-                           Other_Categories => Get_U16 (Frame, P + 8),
-                           Axle_Load        => Frame (P + 10),
-                           Airtight         => Frame (P + 11),
-                           Loading_Gauge    => Frame (P + 12));
-                     end if;
-                  when SR_Data =>
-                     OK := N = 5;
-                     if OK then
-                        Latched.SR :=
-                          (Speed_Kmh  => Get_U16 (Frame, P + 1),
-                           Distance_M => Get_U16 (Frame, P + 3));
-                     end if;
-                  when RBC_Data =>
-                     OK := N = 24;
-                     if OK then
-                        for I in Bytes_23_T'Range loop
-                           Latched.RBC (I) := Frame (P + I);
-                        end loop;
-                     end if;
-                  when Radio_Network_Type | One_Radio_System =>
-                     OK := N = 2;
-                     if OK then
-                        Latched.Bytes (K) := Frame (P + 1);
-                     end if;
-                  when Set_VBC | Remove_VBC =>
-                     OK := N = 5;
-                     if OK then
-                        Latched.Codes (K) := Get_U32 (Frame, P + 1);
-                     end if;
-                  when Language =>
-                     OK := N = 3;
-                     if OK then
-                        Latched.Bytes (K) := Frame (P + 1);
-                        Latched.Codes (K) :=
-                          Unsigned_32 (Frame (P + 1))
-                          + 256 * Unsigned_32 (Frame (P + 2));
-                     end if;
-               end case;
-               if OK then
-                  Latched.Entered (K) := True;
-               else
-                  Ignore;
-               end if;
-            end;
+            Take_Data (Frame, P, N);
          end if;
       end;
    end Receive;

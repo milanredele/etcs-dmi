@@ -25,7 +25,6 @@ KNOWN = {
     ('evc/evc_build_up.adb', 'T_Be_Reduced'): 153,
     ('evc/evc_track_conditions.adb', 'Evaluate'): 148,
     ('evc/evc_text_messages.adb', 'Evaluate'): 144,
-    ('evc/evc_mission.adb', 'Evaluate'): 134,
     ('evc/evc_track_conditions.adb', 'External'): 131,
     ('evc/evc_driver_requests.adb', 'Receive'): 127,
     ('evc/evc_profile.adb', 'Build'): 126,
