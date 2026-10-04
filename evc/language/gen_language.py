@@ -1185,10 +1185,10 @@ def gen_packet_spec(p):
         "--  Encode fails when a Has_ flag does not match its condition, a",
         "--  count is above its maximum or the writer is full.",
         "",
-        "pragma Unevaluated_Use_Of_Old (Allow);",
+        "--  ETCS_Bits, ETCS_Variables and Interfaces are withed and used",
+        "--  by the parent package, which makes them visible here.",
         "",
-        "with ETCS_Bits;      use ETCS_Bits;",
-        "with ETCS_Variables; use ETCS_Variables;",
+        "pragma Unevaluated_Use_Of_Old (Allow);",
         "",
         "package %s" % p.package,
         "  with SPARK_Mode => On",
@@ -1677,7 +1677,7 @@ def gen_valid(p):
 def gen_packet_body(p):
     L = header("Packet %d, %s: %s, implementation." % (
         p.nid, p.dir_text, p.name))
-    L += ["", "with Interfaces; use Interfaces;", "",
+    L += ["",
           "package body %s" % p.package, "  with SPARK_Mode => On",
           "is", ""]
     empties = [n for n in sorted(p.item_types, key=lambda n: -n.depth)
@@ -1772,11 +1772,7 @@ def gen_packet_body(p):
     else:
         L.append("      OK := not Failed (W);")
     L += ["   end Encode;", "", "end %s;" % p.package, ""]
-    text = "\n".join(L)
-    if text.count("Unsigned_64") == 0:
-        # a header-only packet: the parent reads and writes it all
-        text = text.replace("with Interfaces; use Interfaces;\n\n", "")
-    return text
+    return "\n".join(L)
 
 
 # ---------------------------------------------------------------------

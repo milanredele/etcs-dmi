@@ -81,10 +81,10 @@ begin
       end;
 
       -- transmit the screen
-      Display.Screen.Write (Ada.Streams.Root_Stream_Type'Class (Channel.all)'Access);
+      Display.Screen.Write (Channel);
 
       -- 4. Send pending outbound messages (driver actions, sounds)
-      DMI_Core.Flush_Outbox (Ada.Streams.Root_Stream_Type'Class (Channel.all)'Access);
+      DMI_Core.Flush_Outbox (Channel);
 
       -- 5. Precise frame timing
       Next_Frame := Next_Frame + Frame_Interval;

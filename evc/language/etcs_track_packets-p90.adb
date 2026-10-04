@@ -6,8 +6,6 @@
 --  evc/language/etcs_language.toml. Do not edit: change the TOML and run
 --  python3 evc/language/gen_language.py (--check verifies).
 
-with Interfaces; use Interfaces;
-
 package body ETCS_Track_Packets.P90
   with SPARK_Mode => On
 is

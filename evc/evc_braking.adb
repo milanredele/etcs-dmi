@@ -352,7 +352,6 @@ is
       return Value_T (Set.Steps (K).Factor) * 1_000;
    end Kr_Int;
 
-
    --  3.13.6.2.1.8.1: Kv_int of a passenger train for an A_ebmax between
    --  A_NVP12 and A_NVP23, the factors Fa of the subset a and Fb of the
    --  subset b interpolated linearly, millionths rounded down. A
@@ -446,7 +445,6 @@ is
    function To_Times (B : Build_Up_T) return Times_T is
      (React    => Time_T (B.React),
       Build_Up => Time_T (Integer'Max (B.Build_Up, B.React)));
-
 
    --  3.13.2.2.6.2: whether the status of a special brake counts for
    --  the emergency or the service brake models

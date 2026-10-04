@@ -16,7 +16,6 @@
 
 pragma Ada_2012;
 with Ada.Numerics.Elementary_Functions; use Ada.Numerics.Elementary_Functions;
-with Display;
 with DMI_ATO;
 with DMI_Status;
 with Font;
