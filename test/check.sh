@@ -33,10 +33,40 @@ export PATH
 
 steps=${FUZZ_STEPS:-200000}
 
-gprbuild -s -j0 -p -q -P etcsdmi.gpr
+# Both builds are silent: a warning or style message of the compiler
+# fails the check, with its first lines shown (the clang driver's lines
+# about the macOS deployment version are not ours and are left out). The
+# units named in the messages lose their .ali, so that the next run
+# compiles them again and prints the messages again instead of hiding
+# them behind the incremental build.
+silent_build() {   # silent_build <object dir> <gprbuild arguments...>
+   objdir=$1
+   shift
+   out=$(mktemp "${TMPDIR:-/tmp}/etcs-build.XXXXXX")
+   rc=0
+   gprbuild "$@" > "$out" 2>&1 || rc=$?
+   msgs=$(grep -v -e "^clang: warning: overriding deployment version" \
+             "$out" || true)
+   rm -f "$out"
+   if [ "$rc" -ne 0 ] || [ -n "$msgs" ]; then
+      echo "check.sh: gprbuild $* printed messages (none allowed):"
+      printf '%s\n' "$msgs" | head -n 20
+      printf '%s\n' "$msgs" \
+         | sed -n -E 's/^([A-Za-z0-9_.-]+)\.ad[bs]:[0-9]+:.*/\1/p' \
+         | sort -u | while read -r unit; do
+              rm -f "$objdir/$unit.ali"
+           done
+      exit 1
+   fi
+}
+
+# everything on the host (dmi/, common/, sim/, evc/, ports/, test/src/)
+hostobj=obj
+[ "${ETCS_BUILD:-fast}" = debug ] && hostobj=obj/debug
+silent_build "$hostobj" -s -j0 -p -q -P etcsdmi.gpr
 # the on-board alone, with its own switches: the style checks and the
 # restrictions of evc/restrictions.adc
-gprbuild -s -j0 -p -q -P etcs_evc.gpr
+silent_build obj/evc -s -j0 -p -q -P etcs_evc.gpr
 
 # The checks are independent programs on one core each: they run side by
 # side, every one into its own file, and are reported in this order when

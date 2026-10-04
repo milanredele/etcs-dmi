@@ -41,6 +41,12 @@
 # them: today 4, postconditions over many paths (EVC-PLAN §2); a new one
 # is most likely a loop that needs an invariant. --info lists the loops
 # gnatprove unrolls ("unrolling loop"); the run counts them when given.
+#
+# No warnings: the on-board proves without a warning of gnatprove or of
+# the compiler (a dead statement, an unused variable or initial value,
+# ...). A "warning:" line in the log fails the run; remove the warning at
+# its cause (pragma Warnings (Off) only when the warning is wrong, with
+# the reason next to it).
 
 set -eu
 
@@ -100,6 +106,7 @@ max_wide=${ETCS_PROOF_MAX_WIDE:-6}
 awk -v max_steps="$max_steps" -v max_seconds="$max_seconds" \
     -v max_wide="$max_wide" '
    / info: unrolling loop/ || /^  unrolling loop/ { unrolled++ }
+   /warning:/ { warnings++ }
    / info: .* proved \(/ {
       where = $1
       line = $0
@@ -143,6 +150,11 @@ awk -v max_steps="$max_steps" -v max_seconds="$max_seconds" \
       }
       if (unrolled > 0)
          printf "prove.sh: loops unrolled: %d\n", unrolled
+      if (warnings > 0) {
+         printf "prove.sh: %d warning lines (shown above; none allowed)\n",
+                warnings
+         bad++
+      }
       exit (bad > 0) ? 1 : 0
    }' "$log" || { [ "$status" -ne 0 ] || status=1; }
 exit $status
