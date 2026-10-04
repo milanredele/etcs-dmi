@@ -26,7 +26,6 @@ KNOWN = {
     ('evc/evc_track_conditions.adb', 'Evaluate'): 148,
     ('evc/evc_text_messages.adb', 'Evaluate'): 144,
     ('evc/evc_track_conditions.adb', 'External'): 131,
-    ('evc/evc_driver_requests.adb', 'Receive'): 127,
     ('evc/evc_profile.adb', 'Build'): 126,
     ('evc/evc_position.adb', 'Evaluate'): 124,
     ('evc/evc_profiles.adb', 'Envelope'): 122,
