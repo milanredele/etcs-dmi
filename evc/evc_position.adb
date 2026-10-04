@@ -1,6 +1,8 @@
 --  ETCS on-board (EVC)
 --  The train position, implementation.
 
+pragma Unevaluated_Use_Of_Old (Allow);
+
 with ETCS_Catalogue;
 with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P79;
@@ -917,86 +919,87 @@ is
       end loop;
    end Record_Taken;
 
-   --  The passage is over: accept or reject its group (see the spec)
-   procedure Evaluate (Mode : Mode_T)
-     with Pre => Passage.Open and then Passage.Count >= 1,
-          Post => not Passage.Open
+   --  3.4.4.4.5, 3.4.2.3.2.2: the expected link E was met inside its
+   --  window: the group is taken into account, compliant, the SOLR;
+   --  the linking assigns its orientation when it has none
+   procedure Accept_Link (E          : EVC_Linking.Link_Index_T;
+                          Taken      : out Boolean;
+                          Compliant  : out Boolean;
+                          To_SOLR    : out Boolean;
+                          Link_Index : out EVC_Linking.Link_Count_T;
+                          Locacc     : out Length_T;
+                          Orient_G   : in out Direction_T)
+     with Pre => E <= Links.Count
    is
-      G           : constant Geometry_T := Geometry (Passage);
-      Id          : constant Identity_T := Passage.Id;
-      Taken      : Boolean := False;
-      Compliant   : Boolean := False;
-      To_SOLR     : Boolean := False;
-      Orient_G    : Direction_T := G.Orientation;
-      Link_Index  : EVC_Linking.Link_Count_T := 0;
-      Locacc      : Length_T := Default_Locacc_Cm;
-      --  the direction of the train for the validity of the packets
-      --  (3.6.3.1.3, 3.6.3.1.3.1) and the sense of their distances
-      T           : Direction_T;
-      S           : Sense_T;
-
-      --  The expected link E was met inside its window
-      procedure Accept_Link (E : EVC_Linking.Link_Index_T)
-        with Pre => E <= Links.Count
-      is
-         L : constant EVC_Linking.Link_T := Links.Links (E);
-      begin
-         Taken := True;
-         Compliant := True;
-         To_SOLR := True;
-         Link_Index := E;
-         Locacc := L.Locacc;
-         if Orient_G = Unknown then
-            --  3.4.2.3.2.2: the linking assigns the co-ordinate system
-            Orient_G := To_Direction
-              (if L.Nominal then Links.Sense else Opposite (Links.Sense));
-         end if;
-         Next_Window;
-      end Accept_Link;
-
-      --  The group against the expected link E (known identity)
-      procedure Against (E : EVC_Linking.Link_Index_T)
-        with Pre => E <= Links.Count
-      is
-         L : constant EVC_Linking.Link_T := Links.Links (E);
-      begin
-         case Check_Window (E, G.Reference) is
-            when Inside =>
-               if G.Orientation /= Unknown
-                 and then Same (G.Orientation, Links.Sense) /= L.Nominal
-               then
-                  --  3.4.4.4.7: rejected, and the train tripped
-                  Request_Reaction (0, Cause_Wrong_Direction, E);
-                  Next_Window;
-               else
-                  Accept_Link (E);
-               end if;
-            when Early =>
-               Request_Reaction (L.Reaction, Cause_Early, E);
-               Next_Window;
-            when Late =>
-               Request_Reaction (L.Reaction, Cause_Not_Detected, E);
-               Next_Window;
-         end case;
-      end Against;
-
+      L : constant EVC_Linking.Link_T := Links.Links (E);
    begin
-      Passage.Open := False;
-      if not G.Has_Reference then
-         --  the group cannot be located (the consistency of its message
-         --  is phase E6); its window, if any, runs on
-         return;
+      Taken := True;
+      Compliant := True;
+      To_SOLR := True;
+      Link_Index := E;
+      Locacc := L.Locacc;
+      if Orient_G = Unknown then
+         --  3.4.2.3.2.2: the linking assigns the co-ordinate system
+         Orient_G := To_Direction
+           (if L.Nominal then Links.Sense else Opposite (Links.Sense));
       end if;
+      Next_Window;
+   end Accept_Link;
 
-      if Mode in M_SL | M_PS | M_SH then
-         T := G.Crossing;
-      else
-         T := (if Orient_Known then To_Direction (Orient) else Unknown);
-      end if;
-      S := (if T = Minus then Minus
-            elsif T = Plus then Plus
-            else Orient);
+   --  3.4.4.4.5, 3.4.4.4.7, 3.16.2.3.1: the group G against the expected
+   --  link E (known identity): in its window, early or late
+   procedure Against (E          : EVC_Linking.Link_Index_T;
+                      G          : Geometry_T;
+                      Taken      : in out Boolean;
+                      Compliant  : in out Boolean;
+                      To_SOLR    : in out Boolean;
+                      Link_Index : in out EVC_Linking.Link_Count_T;
+                      Locacc     : in out Length_T;
+                      Orient_G   : in out Direction_T)
+     with Pre => E <= Links.Count
+   is
+      L : constant EVC_Linking.Link_T := Links.Links (E);
+   begin
+      case Check_Window (E, G.Reference) is
+         when Inside =>
+            if G.Orientation /= Unknown
+              and then Same (G.Orientation, Links.Sense) /= L.Nominal
+            then
+               --  3.4.4.4.7: rejected, and the train tripped
+               Request_Reaction (0, Cause_Wrong_Direction, E);
+               Next_Window;
+            else
+               Accept_Link (E, Taken, Compliant, To_SOLR, Link_Index, Locacc,
+                            Orient_G);
+            end if;
+         when Early =>
+            Request_Reaction (L.Reaction, Cause_Early, E);
+            Next_Window;
+         when Late =>
+            Request_Reaction (L.Reaction, Cause_Not_Detected, E);
+            Next_Window;
+      end case;
+   end Against;
 
+   --  3.4.4.4 (the linking), 3.4.4.5.1, 3.6.4.2.2, 3.6.2.2.2 a), 3.6.4.1.3,
+   --  3.16.2.3.1 c): the group Id read with the geometry G in the
+   --  direction T, against the linking information: whether it is taken
+   --  into account, compliant (the new LRBG) and the new SOLR, the link
+   --  that announced it, its location accuracy and its orientation
+   procedure Decide_Linking (Id         : Identity_T;
+                             G          : Geometry_T;
+                             T          : Direction_T;
+                             Taken      : in out Boolean;
+                             Compliant  : in out Boolean;
+                             To_SOLR    : in out Boolean;
+                             Link_Index : in out EVC_Linking.Link_Count_T;
+                             Locacc     : in out Length_T;
+                             Orient_G   : in out Direction_T)
+     with Global => (Input  => (Check_Linking, Passage, SOLR_A),
+                     In_Out => (Links, Events, Event_N, Reaction_Flag,
+                                Reaction_Value, Unexpected_Flag))
+   is
+   begin
       if not Check_Linking or else not EVC_Linking.Checked (Links) then
          --  3.4.4.5.1, 3.6.4.2.2 b), 3.6.2.2.2 a) second bullet
          Taken := True;
@@ -1033,7 +1036,8 @@ is
                then
                   case Check_Window (E, G.Reference) is
                      when Inside =>
-                        Accept_Link (E);
+                        Accept_Link (E, Taken, Compliant, To_SOLR, Link_Index,
+                                     Locacc, Orient_G);
                      when Early =>
                         Request_Reaction (L.Reaction, Cause_Early, E);
                         Next_Window;
@@ -1046,7 +1050,8 @@ is
                   Put_Identity_Event (Unexpected_Group, Id);
                end if;
             elsif L.Id = Id then
-               Against (E);
+               Against (E, G, Taken, Compliant, To_SOLR, Link_Index, Locacc,
+                        Orient_G);
             elsif E < Links.Count
               and then Links.Links (E + 1).Known_Id
               and then Links.Links (E + 1).Id = Id
@@ -1054,7 +1059,8 @@ is
                --  3.16.2.3.1 c), 3.4.4.4.6.1: the next one
                Request_Reaction (L.Reaction, Cause_Other_Group, E);
                Next_Window;
-               Against (E + 1);
+               Against (E + 1, G, Taken, Compliant, To_SOLR, Link_Index,
+                        Locacc, Orient_G);
             elsif EVC_Linking.Find (Links, Id, E + 1) /= 0 then
                --  a group announced later still: c) for the expected one,
                --  and this one is not expected (3.4.4.4.3.2)
@@ -1070,11 +1076,24 @@ is
             end if;
          end;
       end if;
+   end Decide_Linking;
 
-      if not Taken then
-         return;
-      end if;
-
+   --  3.6.4.2.2, 3.6.1.4, 3.6.6.4.2: the group Id taken into account: it
+   --  becomes the SOLR (To_SOLR), the LRBG (Compliant) or one of the
+   --  unlinked groups of 3.6.2.2.2 c), its packets are taken and its
+   --  passage recorded
+   procedure Take_Group (Id         : Identity_T;
+                         G          : Geometry_T;
+                         T          : Direction_T;
+                         S          : Sense_T;
+                         Compliant  : Boolean;
+                         To_SOLR    : Boolean;
+                         Link_Index : EVC_Linking.Link_Count_T;
+                         Locacc     : Length_T;
+                         Orient_G   : Direction_T)
+     with Pre => Passage.Count >= 1
+   is
+   begin
       if Seq_Counter < Natural'Last then
          Seq_Counter := Seq_Counter + 1;
       end if;
@@ -1107,6 +1126,51 @@ is
          Take_Packets (A, T, S);
          Record_Taken (A, T, S);
       end;
+   end Take_Group;
+
+   --  The passage is over: accept or reject its group (see the spec)
+   procedure Evaluate (Mode : Mode_T)
+     with Pre => Passage.Open and then Passage.Count >= 1,
+          Post => not Passage.Open
+   is
+      G           : constant Geometry_T := Geometry (Passage);
+      Id          : constant Identity_T := Passage.Id;
+      Taken      : Boolean := False;
+      Compliant   : Boolean := False;
+      To_SOLR     : Boolean := False;
+      Orient_G    : Direction_T := G.Orientation;
+      Link_Index  : EVC_Linking.Link_Count_T := 0;
+      Locacc      : Length_T := Default_Locacc_Cm;
+      --  the direction of the train for the validity of the packets
+      --  (3.6.3.1.3, 3.6.3.1.3.1) and the sense of their distances
+      T           : Direction_T;
+      S           : Sense_T;
+   begin
+      Passage.Open := False;
+      if not G.Has_Reference then
+         --  the group cannot be located (the consistency of its message
+         --  is phase E6); its window, if any, runs on
+         return;
+      end if;
+
+      if Mode in M_SL | M_PS | M_SH then
+         T := G.Crossing;
+      else
+         T := (if Orient_Known then To_Direction (Orient) else Unknown);
+      end if;
+      S := (if T = Minus then Minus
+            elsif T = Plus then Plus
+            else Orient);
+
+      Decide_Linking (Id, G, T, Taken, Compliant, To_SOLR, Link_Index,
+                      Locacc, Orient_G);
+
+      if not Taken then
+         return;
+      end if;
+
+      Take_Group (Id, G, T, S, Compliant, To_SOLR, Link_Index, Locacc,
+                  Orient_G);
    end Evaluate;
 
    ---------------------------------------------------------------------
@@ -1289,48 +1353,25 @@ is
       end if;
    end Receive_Telegram;
 
-   ------------
-   -- Update --
-   ------------
-
-   procedure Update (Cab_A_Active : Boolean;
-                     Cab_B_Active : Boolean;
-                     Sampled      : Boolean;
-                     Sample       : Odometer_Sample_T;
-                     Mode         : Mode_T;
-                     Level        : Level_T;
-                     Now_Ms       : Unsigned_64)
+   --  3.16.2.2.2 c): the telegrams of the cycle, placed on the
+   --  frame as it was when their balises were passed, open, extend or
+   --  close the passage of their group; a passage closed is evaluated
+   --  (3.4.4.4, 3.6.4.2). The frame, the orientation and the cab do not
+   --  change; with no telegram, neither do the passage and the LRBG.
+   procedure Take_Telegrams (Mode : Mode_T)
+     with Post => Pending_N = 0
+                  and then EVC_Odometry.Low = EVC_Odometry.Low'Old
+                  and then EVC_Odometry.High = EVC_Odometry.High'Old
+                  and then Orient = Orient'Old
+                  and then Orient_Known = Orient_Known'Old
+                  and then Cab_In = Cab_In'Old
+                  and then (if Pending_N'Old = 0
+                            then LRBG_A = LRBG_A'Old
+                                 and then Passage.Open = Passage.Open'Old)
    is
-      New_Orient : Sense_T;
-      Odo_Code   : Unsigned_8;
-      Low_0      : constant Length_T := EVC_Odometry.Low with Ghost;
-      High_0     : constant Length_T := EVC_Odometry.High with Ghost;
+      Low_0  : constant Length_T := EVC_Odometry.Low with Ghost;
+      High_0 : constant Length_T := EVC_Odometry.High with Ghost;
    begin
-      Previous_Ms := Now_Seen;
-      Now_Seen := Now_Ms;
-      Taken_N := 0;
-      Taken_Tel_N := 0;
-      Event_N := 0;
-      Reaction_Flag := False;
-      Reaction_Value := 2;
-      Unexpected_Flag := False;
-      Missed_Flag := False;
-      Triggers := No_Triggers;
-
-      --  1. 3.6.1.5 (SUBSET-034 2.5.1: one input per cab)
-      if Cab_A_Active /= Cab_B_Active then
-         New_Orient := (if Cab_A_Active then Plus else Minus);
-         Cab_In := (if Cab_A_Active then Cab_A else Cab_B);
-         if Orient_Known and then New_Orient /= Orient then
-            --  3.6.6.4.3: the announced references are deleted
-            Geo_Refs := (others => No_Geo_Ref);
-         end if;
-         Orient := New_Orient;
-         Orient_Known := True;
-      else
-         Cab_In := No_Cab;
-      end if;
-
       --  2. the telegrams of the cycle, placed on the frame as it was
       for I in 1 .. Pending_N loop
          pragma Loop_Invariant
@@ -1371,8 +1412,17 @@ is
          end;
       end loop;
       Pending_N := 0;
+   end Take_Telegrams;
 
-      --  3. the odometer
+   --  The odometer sample of the cycle when Sampled, the odometer
+   --  accuracy and a cold movement (3.15.8) recorded when they change;
+   --  the frame deviations only grow (3.6.4.1.2)
+   procedure Take_Odometer (Sampled : Boolean; Sample : Odometer_Sample_T)
+     with Post => EVC_Odometry.Low >= EVC_Odometry.Low'Old
+                  and then EVC_Odometry.High >= EVC_Odometry.High'Old
+   is
+      Odo_Code : Unsigned_8;
+   begin
       if Sampled then
          EVC_Odometry.Apply (Sample);
       end if;
@@ -1393,7 +1443,25 @@ is
          end if;
          Cold_Reported := True;
       end if;
+   end Take_Odometer;
 
+   --  The end of the cycle: 3.16.2.2.2 a), the passage closed when the
+   --  train went on beyond its group; 3.16.2.3.1 b), the windows of the
+   --  expected groups; the geographical position, the report triggers
+   --  (3.6.5.1.4, 3.6.5.1.5) and the position status. The frame, the
+   --  orientation, the cab and the telegrams waiting do not change; with
+   --  no passage open, neither does the LRBG.
+   procedure End_Cycle (Mode : Mode_T; Level : Level_T; Now_Ms : Unsigned_64)
+     with Post => EVC_Odometry.Low = EVC_Odometry.Low'Old
+                  and then EVC_Odometry.High = EVC_Odometry.High'Old
+                  and then Orient = Orient'Old
+                  and then Orient_Known = Orient_Known'Old
+                  and then Cab_In = Cab_In'Old
+                  and then Pending_N = Pending_N'Old
+                  and then (if not Passage.Open'Old
+                            then LRBG_A = LRBG_A'Old)
+   is
+   begin
       --  4. 3.16.2.2.2 a): the train went on beyond the group
       if Passage.Open and then Passage.Count >= 1
         and then Abs_Dist (Diff (EVC_Odometry.Position,
@@ -1416,6 +1484,81 @@ is
          Put_Event (Position_Status, Status_T'Pos (Pos_Status), 0, 0);
          Reported_Status := Pos_Status;
       end if;
+   end End_Cycle;
+
+   --  3.6.1.5 (SUBSET-034 2.5.1: one input per cab): the active cab
+   --  defines the orientation; with none or both, the last one stays.
+   --  3.6.6.4.3: a change of orientation deletes the announced
+   --  geographical references.
+   procedure Take_Cab (Cab_A_Active, Cab_B_Active : Boolean)
+     with Post =>
+            (if Cab_A_Active and then not Cab_B_Active
+             then Orient = Plus and then Orient_Known
+                  and then Cab_In = Cab_A)
+            and then
+            (if Cab_B_Active and then not Cab_A_Active
+             then Orient = Minus and then Orient_Known
+                  and then Cab_In = Cab_B)
+            and then
+            (if Cab_A_Active = Cab_B_Active
+             then Orient = Orient'Old
+                  and then Orient_Known = Orient_Known'Old
+                  and then Cab_In = No_Cab)
+   is
+      New_Orient : Sense_T;
+   begin
+      if Cab_A_Active /= Cab_B_Active then
+         New_Orient := (if Cab_A_Active then Plus else Minus);
+         Cab_In := (if Cab_A_Active then Cab_A else Cab_B);
+         if Orient_Known and then New_Orient /= Orient then
+            --  3.6.6.4.3: the announced references are deleted
+            Geo_Refs := (others => No_Geo_Ref);
+         end if;
+         Orient := New_Orient;
+         Orient_Known := True;
+      else
+         Cab_In := No_Cab;
+      end if;
+   end Take_Cab;
+
+   ------------
+   -- Update --
+   ------------
+
+   procedure Update (Cab_A_Active : Boolean;
+                     Cab_B_Active : Boolean;
+                     Sampled      : Boolean;
+                     Sample       : Odometer_Sample_T;
+                     Mode         : Mode_T;
+                     Level        : Level_T;
+                     Now_Ms       : Unsigned_64)
+   is
+      Low_0      : constant Length_T := EVC_Odometry.Low with Ghost;
+      High_0     : constant Length_T := EVC_Odometry.High with Ghost;
+   begin
+      Previous_Ms := Now_Seen;
+      Now_Seen := Now_Ms;
+      Taken_N := 0;
+      Taken_Tel_N := 0;
+      Event_N := 0;
+      Reaction_Flag := False;
+      Reaction_Value := 2;
+      Unexpected_Flag := False;
+      Missed_Flag := False;
+      Triggers := No_Triggers;
+
+      --  1. the orientation
+      Take_Cab (Cab_A_Active, Cab_B_Active);
+
+      --  2. the telegrams of the cycle
+      Take_Telegrams (Mode);
+
+      --  3. the odometer
+      Take_Odometer (Sampled, Sample);
+
+      --  4. to 6.
+      End_Cycle (Mode, Level, Now_Ms);
+
       --  3.6.4.1.2: the frame deviations only grew in this cycle
       pragma Assert (EVC_Odometry.Low >= Low_0
                      and then EVC_Odometry.High >= High_0);

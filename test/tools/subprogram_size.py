@@ -27,9 +27,7 @@ KNOWN = {
     ('evc/evc_text_messages.adb', 'Evaluate'): 144,
     ('evc/evc_track_conditions.adb', 'External'): 131,
     ('evc/evc_profile.adb', 'Build'): 126,
-    ('evc/evc_position.adb', 'Evaluate'): 124,
     ('evc/evc_profiles.adb', 'Envelope'): 122,
-    ('evc/evc_position.adb', 'Update'): 112,
 }
 
 START = re.compile(r'^(\s*)(?:overriding\s+)?(procedure|function)\s+("?[\w\.]+"?)',
