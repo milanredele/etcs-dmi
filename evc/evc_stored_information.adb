@@ -1628,7 +1628,6 @@ is
                       Default_G, Orders);
    end Build;
 
-
    --------------
    -- Evaluate --
    --------------

@@ -99,35 +99,33 @@ is
       Bs1, Bs2 : Time_T := 0;
    end record;
 
+   --  3.13.9.3.3.4 and .5: T_bs1 of a target with T_bs when the service
+   --  brake feedback is used
+   function Feedback_Bs1 (C : Ctx_T; Bs : Time_T) return Time_T is
+     (if C.Fb_Locked then 0
+      elsif C.Fb_Active then Min (Div_Ceil (Bs * C.Fb_Ratio, 1_000), Bs)
+      else Bs);
+
+   --  A.3.10.4 (T_bs2 not below T_bs2_locked once reduced) and
+   --  3.13.9.3.3.4.1: T_bs1 and T_bs2 from that T_bs1
+   function Feedback_Times (T1 : Time_T) return Service_T is
+     (T1, Max (T1, T_Bs2_Locked));
+
    --  3.13.9.3.3.3 to .5 and A.3.10.4: T_bs1 and T_bs2 of a target with
    --  T_bs and T_bs_reduced; Indication: for the Indication limit
-   --  (3.13.9.3.6.5)
+   --  (3.13.9.3.6.5). Expressions only, no statements: the function is
+   --  inlined for proof with Indication static at most call sites, where
+   --  a branch of an if statement or a local would be reported dead.
    function Service_Times (C          : Ctx_T;
                            Bs         : Time_T;
                            Bs_Reduced : Time_T;
                            Indication : Boolean) return Service_T
    is
-      T1 : Time_T;
-   begin
-      if not C.SB_Avail then
-         return (0, 0);
-      elsif not C.Feedback then
-         --  3.13.9.3.3.3
-         return (Bs_Reduced, Bs_Reduced);
-      elsif Indication then
-         return (Bs, Bs);
-      end if;
-      if C.Fb_Locked then
-         T1 := 0;
-      elsif C.Fb_Active then
-         T1 := Min (Div_Ceil (Bs * C.Fb_Ratio, 1_000), Bs);
-      else
-         T1 := Bs;
-      end if;
-      --  A.3.10.4 (T_bs2 not below T_bs2_locked once reduced) and
-      --  3.13.9.3.3.4.1
-      return (T1, Max (T1, T_Bs2_Locked));
-   end Service_Times;
+     (if not C.SB_Avail then (0, 0)
+      --  3.13.9.3.3.3
+      elsif not C.Feedback then (Bs_Reduced, Bs_Reduced)
+      elsif Indication then (Bs, Bs)
+      else Feedback_Times (Feedback_Bs1 (C, Bs)));
 
    --  3.13.9.3.6.2, .4: T_indication
    function T_Indication (C : Ctx_T; Bs : Time_T) return Time_T is

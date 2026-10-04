@@ -335,7 +335,8 @@ is
                           C : Context_T)
      with Global => (In_Out => (Current, Current_Status, Switched_N,
                                 Pending, Pending_Level, Pending_Since,
-                                Events, Event_N, Applicable)),
+                                Events, Event_N),
+                     Output => Applicable),
           Pre => T.Count >= 1
    is
    begin
