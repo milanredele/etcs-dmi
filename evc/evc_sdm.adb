@@ -113,19 +113,26 @@ is
 
    --  3.13.9.3.3.3 to .5 and A.3.10.4: T_bs1 and T_bs2 of a target with
    --  T_bs and T_bs_reduced; Indication: for the Indication limit
-   --  (3.13.9.3.6.5). Expressions only, no statements: the function is
+   --  (3.13.9.3.6.5). One expression, no if statement: the function is
    --  inlined for proof with Indication static at most call sites, where
-   --  a branch of an if statement or a local would be reported dead.
+   --  a branch of an if statement, or a local assigned on some paths
+   --  only, would be reported dead. Not an expression function, which
+   --  the compiler would inline at every call site of the code too, and
+   --  not a return of the if expression, which gnatprove cannot inline.
    function Service_Times (C          : Ctx_T;
                            Bs         : Time_T;
                            Bs_Reduced : Time_T;
                            Indication : Boolean) return Service_T
    is
-     (if not C.SB_Avail then (0, 0)
-      --  3.13.9.3.3.3
-      elsif not C.Feedback then (Bs_Reduced, Bs_Reduced)
-      elsif Indication then (Bs, Bs)
-      else Feedback_Times (Feedback_Bs1 (C, Bs)));
+      Times : constant Service_T :=
+        (if not C.SB_Avail then (0, 0)
+         --  3.13.9.3.3.3
+         elsif not C.Feedback then (Bs_Reduced, Bs_Reduced)
+         elsif Indication then (Bs, Bs)
+         else Feedback_Times (Feedback_Bs1 (C, Bs)));
+   begin
+      return Times;
+   end Service_Times;
 
    --  3.13.9.3.6.2, .4: T_indication
    function T_Indication (C : Ctx_T; Bs : Time_T) return Time_T is
