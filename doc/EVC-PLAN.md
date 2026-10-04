@@ -1582,3 +1582,15 @@ S707f6e73); the stored position at start of mission (5.4.3.3,
 Sa184249e); the train running number revalidated after the Train Data
 (5.4.3.2 S13, S274cb49d); the two DMI flow cases of §12 not yet checked
 against the DMI specification; 40 telegrams the extractor refuses.
+
+**The unreadable sequences (2026-10-04).** The 134 sequences blocked as
+unreadable were checked against a second, independent reading of their
+PDFs: 60 were a defect of the runner (the plain text packet is 72 up to
+system version 2.1 and 73 from 2.2; "packet 72/73" in a step is an
+alternative), 66 name packets their telegram table does not hold, 5
+lose header rows at a page break of the PDF, 3 have a wrong Length in a
+packet 44 row. Over the whole corpus the same checks find 141 such
+steps in 121 sequences; the report for the maintainers of SUBSET-076
+and the scripts are in the sibling repository (`reports/`,
+`tools/findings/`). The runner now: 487 passed, 887 failed, 1816
+blocked (1236 for level 2, 144 for defects of SUBSET-076).
