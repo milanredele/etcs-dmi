@@ -1298,8 +1298,10 @@ package body S076_Run is
                      --  version 3.0; in those of 2.1 and 2.2 the coding
                      --  of their version (chapter 6, E7)
                      if T.M_Version < 0 then
-                        return NJ (R_Extractor, "telegram " & Tag
-                                   & ": the rows of its header are missing");
+                        --  the PDF loses rows where a table goes over a
+                        --  page break (checked against the pages)
+                        return NJ (R_S076_Defect, "telegram " & Tag
+                                   & ": header rows lost at a page break");
                      end if;
                      if T.Level_3 then
                         return NJ (R_Level_2, "telegram " & Tag
@@ -1402,8 +1404,12 @@ package body S076_Run is
             end;
          end loop;
       end loop;
-      --  the packets the step's text names must be in the telegrams: the
-      --  extractor of the sibling loses a balise's table now and then
+      --  the packets the step's text names must be in the telegrams. A
+      --  text gives alternatives as "packet 72/73": the plain text packet
+      --  is 72 in telegrams of system version 2.1 and earlier, 73 from
+      --  2.2 (6.5.2.3.1.1.2). A packet in no telegram is a defect of
+      --  SUBSET-076: the PDFs were read a second, independent way and
+      --  their telegram tables do not hold it
       declare
          Txt : constant String := Image (St.Text);
          P   : Natural := Ada.Strings.Fixed.Index (Txt, "packet ");
@@ -1412,24 +1418,39 @@ package body S076_Run is
             declare
                N : Natural := 0;
                K : Natural := P + 7;
+               Alt  : Natural := 0;
                Have : Boolean := False;
             begin
                while K <= Txt'Last and then Txt (K) in '0' .. '9' loop
                   N := N * 10 + Character'Pos (Txt (K)) - 48;
                   K := K + 1;
                end loop;
+               Alt := N;
                if K > P + 7 and then N < 255 then
-                  for I in 1 .. Seq.Telegram_Count loop
-                     for J in 1 .. Seq.Telegrams (I).Packet_Count loop
-                        if Seq.Telegrams (I).Step <= St.Number
-                          and then Natural (Seq.Telegrams (I).Packets (J)) = N
-                        then
-                           Have := True;
-                        end if;
+                  loop
+                     for I in 1 .. Seq.Telegram_Count loop
+                        for J in 1 .. Seq.Telegrams (I).Packet_Count loop
+                           if Seq.Telegrams (I).Step <= St.Number
+                             and then
+                               Natural (Seq.Telegrams (I).Packets (J)) = Alt
+                           then
+                              Have := True;
+                           end if;
+                        end loop;
+                     end loop;
+                     --  the next alternative, "/nn"
+                     exit when K >= Txt'Last or else Txt (K) /= '/'
+                       or else Txt (K + 1) not in '0' .. '9';
+                     K := K + 1;
+                     Alt := 0;
+                     while K <= Txt'Last and then Txt (K) in '0' .. '9' loop
+                        Alt := Alt * 10 + Character'Pos (Txt (K)) - 48;
+                        K := K + 1;
                      end loop;
                   end loop;
                   if not Have then
-                     return NJ (R_Extractor, "BTM: packet" & Natural'Image (N)
+                     return NJ (R_S076_Defect,
+                                "BTM: packet" & Natural'Image (N)
                                 & " of the text in no telegram");
                   end if;
                end if;

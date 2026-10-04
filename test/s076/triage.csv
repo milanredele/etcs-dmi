@@ -119,3 +119,8 @@ S274cb49d,dmi,the train running number entered from the Driver ID window first: 
 Sa184249e,onboard,5.4.3.3: the stored position data deleted at the start of mission (after E10 E12 E30 to E32); this on-board keeps its LRBG
 S843421cc,s076,new with the sibling's regeneration of 2026-10-03 (master fails the same way): slippery rail symbol expected after the reach point; not analysed
 S218b5dc0,s076,new with the sibling's regeneration of 2026-10-03 (master fails the same way): no JRU mode record in 3131040_73; not analysed
+Se341da87,onboard,a plain text message displayed where the sequence expects none (unblocked 2026-10-04 by reading "packet 72/73"): in 3160200 and 3040400 the text is the marker of a balise group message that should have been rejected (3.16.2.4; E6); in 3120300 the display conditions of 3.12.3.4 (Q_TEXTDISPLAY=0); first look only
+Seabc1f7c,onboard,3.12.3: a plain text message (packet 73; Q_TEXTCONFIRM=1 in 3120300_03) expected displayed at its location and not sent to the DMI; first look only
+Sd9c6ae99,E6,Trip expected as the reaction to a linking or balise group message consistency error (3.16.2; 3040400_07); the on-board applies the service brake reaction only
+S27eb0678,E6,Trip expected after a balise group passed with a consistency error (4120100_02); like Sd9c6ae99
+S7fe2b1bf,onboard,the JRU header expects Q_LRBG=0 after an unlinked balise group passed in SR (3070200_02): the on-board takes the group as its LRBG; 3.6.1 / 3.4.2 to check; first look only
