@@ -9,10 +9,10 @@
 # the track), dmi (our DMI).
 #
 # on-board gaps still open
-Sbc7dc0b2,onboard,4.11.1.1: the level (and the train position) kept over No Power and made valid by the cold movement detection; this on-board keeps nothing over NP (E4 decision)
-Sc6b7c1bb,onboard,4.11.1.1: the level kept over No Power (see Sbc7dc0b2)
-Sdbd54349,onboard,4.11.1.1: the level kept over No Power (see Sbc7dc0b2)
-S3eba5bcc,onboard,4.11.1.1: the stored level shown after the power-up (see Sbc7dc0b2)
+Sbc7dc0b2,onboard,4.10 column NP / 4.11.1.1: the level and the position kept over No Power (EVC_Retained; EVC_Core.Power_Up restores them invalid; the cold movement detection makes them valid); fixed on fix/e5-path: the sequences now pass the power-up
+Sc6b7c1bb,onboard,4.11.1.1: the level kept over No Power (see Sbc7dc0b2: fixed)
+Sdbd54349,onboard,4.11.1.1: the level kept over No Power (see Sbc7dc0b2: fixed)
+S3eba5bcc,model,4.10 column NP: the sequence starts with a level stored before it began (the level symbol shown at the first power-up); the bench starts a new on-board whose store of the data kept over No Power is empty (EVC_Core.Initialise)
 S40db9a42,onboard,3.12.2.3: route suitability not compared with the Train Data (matrix: deferred)
 S3b91603a,onboard,3.12.2.3: route suitability not compared with the Train Data (matrix: deferred)
 Scb539e7a,onboard,4.4.19.1.4: the LSSMA display (packets 180 and 181) is not implemented (matrix: todo)
@@ -79,7 +79,7 @@ S4c072841,model,a new OS mode profile while in OS: the symbol recorded before th
 Sfcb09815,model,see S4c072841
 Sa429fd0f,model,a level announcement location passed before the step (chart)
 S5ab10d16,model,JRU records of the group read in the window (events 2, 10) while the sequence expects none for a table of priority without change
-Sc7afe42a,model,the level after a cab change: the stored level of 4.11 (see Sbc7dc0b2)
+Sc7afe42a,model,the level after a cab change: the stored level of 4.11 (see S3eba5bcc)
 S3f6059ba,onboard,5.17: the level status after Train Data changed by another source: the level is still shown (the sequence expects it invalid)
 Sfaaa30ed,onboard,5.4.3.2 D2: the driver re-enters the level (the level kept over NP, 4.11)
 S12fb6c82,dmi,after the System version window the DMI shows the Settings window, the sequence the Driver ID window (11.7.2 S1)
@@ -116,11 +116,12 @@ S9a992a66,s076,the toggle of the speed and distance information pressed in FS: D
 S707f6e73,onboard,a change of traction system to a line not fitted (M_VOLTAGE 0) goes to the train interface as kind 8 change of traction system (M_TRACKCOND_TI 7); 5181000 expects M_TRACKCOND_TI 1 powerless section with main power switch off (SUBSET-034 2.4.1/2.4.2 to check)
 S9644ba72,model,the train runs past the start of the inhibition area before the step (chart) so the phase of the last JRU 45 is already start passed
 S274cb49d,dmi,the train running number entered from the Driver ID window first: after the Train Data validation the DMI goes to Main where 4080420 expects the TRN window to revalidate the value (SUBSET-026 5.4.3.2 S13 and DMI Table 50 to check)
-Sa184249e,onboard,5.4.3.3: the stored position data deleted at the start of mission (after E10 E12 E30 to E32); this on-board keeps its LRBG
+Sa184249e,s076,5120200_01 step 90: the deletion of the position after E32 (5.4.3.2 S24 and 5.4.3.3: only a position "still invalid") is expected after a cab change in FS with the position valid; the step comment itself says it is incompatible unless the position was invalid at the start; the on-board deletes an invalid position (EVC_Core.Delete_Invalid_Position)
 S843421cc,s076,new with the sibling's regeneration of 2026-10-03 (master fails the same way): slippery rail symbol expected after the reach point; not analysed
 S218b5dc0,s076,new with the sibling's regeneration of 2026-10-03 (master fails the same way): no JRU mode record in 3131040_73; not analysed
 Se341da87,onboard,a plain text message displayed where the sequence expects none (unblocked 2026-10-04 by reading "packet 72/73"): in 3160200 and 3040400 the text is the marker of a balise group message that should have been rejected (3.16.2.4; E6); in 3120300 the display conditions of 3.12.3.4 (Q_TEXTDISPLAY=0); first look only
 Seabc1f7c,onboard,3.12.3: a plain text message (packet 73; Q_TEXTCONFIRM=1 in 3120300_03) expected displayed at its location and not sent to the DMI; first look only
 Sd9c6ae99,E6,Trip expected as the reaction to a linking or balise group message consistency error (3.16.2; 3040400_07); the on-board applies the service brake reaction only
 S27eb0678,E6,Trip expected after a balise group passed with a consistency error (4120100_02); like Sd9c6ae99
-S7fe2b1bf,onboard,the JRU header expects Q_LRBG=0 after an unlinked balise group passed in SR (3070200_02): the on-board takes the group as its LRBG; 3.6.1 / 3.4.2 to check; first look only
+S7fe2b1bf,s076,3070200_02 step 40: the step text and comment say Q_LINK=0 (unlinked; not the LRBG by 3.6.2.2.2 a) and .1) but the telegram BG0d of the PDF carries Q_LINK=1 in both balises (bit 50 of the header); a group not marked as unlinked passed without linking is LRBG compliant (3.6.2.2.2 a) second bullet) so the on-board is right to take it; with Q_LINK=0 it keeps the LRBG unknown (evc_test position first group)
+Sef5e0918,model,6060505_08: Main expected after the driver ID at the power-up after No Power: the sequence assumes no cold movement; the bench has no cold movement detection (cold 0: information not available) so by 4.11.1.3 the kept level stays invalid and the start of mission asks it (5.4.3.2 D2 S2)

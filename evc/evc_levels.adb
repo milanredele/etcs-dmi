@@ -542,6 +542,26 @@ is
       Kept_Due := False;
    end Delete_Orders;
 
+   procedure Restore (L : Level_T; T : Priority_Table_T) is
+   begin
+      Current := L;
+      Current_Status := Invalid;
+      Applicable := T;
+      Switched_N := False;
+   end Restore;
+
+   procedure Revalidate is
+   begin
+      if Current_Status = Invalid then
+         Current_Status := Valid;
+      end if;
+   end Revalidate;
+
+   procedure Delete_Table is
+   begin
+      Applicable := (others => <>);
+   end Delete_Table;
+
    procedure Set_For_Test (L : Level_T) is
    begin
       Current := L;

@@ -17,6 +17,7 @@ with Interfaces;   use Interfaces;
 package body EVC_Core
   with SPARK_Mode => On,
        Refined_State => (State => (Failed_Flag,
+                                   Kept_Pending,
                                    Current_Mode,
                                    Cycle_Count,
                                    Clock_Ms,
@@ -81,6 +82,9 @@ is
    type Counts_T is array (Port_T) of Natural;
 
    Failed_Flag          : Boolean := False;
+   --  4.11.1.1: data kept over No Power wait for the cold movement
+   --  detection (Power_Up)
+   Kept_Pending         : Boolean := False;
    Current_Mode         : Mode_T := M_NP;
    --  (the level and its status are EVC_Levels', phase E4)
    Cycle_Count          : Cycle_T := 0;
@@ -286,19 +290,19 @@ is
       end if;
    end Count;
 
-   ----------------
-   -- Initialise --
-   ----------------
-
-   procedure Initialise is
+   --  The power-up of Initialise and Power_Up: everything cleared but the
+   --  store of the data kept over No Power
+   procedure Start is
    begin
       Failed_Flag := False;
+      Kept_Pending := False;
       --  SUBSET-026 4.4.4.1.1: the equipment is in No Power until it is
       --  powered; the first cycle takes the transition NP -> SB
       Current_Mode := M_NP;
-      --  5.4.3.2 D2: nothing is stored over No Power, the level is
-      --  "unknown" and the start of mission asks the driver for it
-      --  (EVC_Levels.Clear below)
+      --  a new on-board: nothing is stored, the level is "unknown" and
+      --  the start of mission asks the driver for it (EVC_Levels.Clear
+      --  below, 5.4.3.2 D2); the store of the data kept over No Power is
+      --  empty (Power_Up keeps them)
       Cycle_Count := 0;
       Clock_Ms := 0;
       Reported_Mode := M_NP;
@@ -365,7 +369,37 @@ is
       EVC_Procedures.Clear;
       EVC_Text_Messages.Clear;
       EVC_Outbox.Clear;
+   end Start;
+
+   ----------------
+   -- Initialise --
+   ----------------
+
+   procedure Initialise is
+   begin
+      Start;
+      EVC_Retained.Erase;
    end Initialise;
+
+   --------------
+   -- Power_Up --
+   --------------
+
+   procedure Power_Up is
+      K : EVC_Retained.Kept_T;
+   begin
+      EVC_Retained.Load (K);
+      Start;
+      --  4.10 column NP, 4.11: the kept data, invalid; 3.6.4.2.2.1 the
+      --  SOLR is the kept LRBG
+      if K.Saved then
+         if K.Level_Known then
+            EVC_Levels.Restore (K.Level, K.Table);
+         end if;
+         EVC_Position.Restore (K.Position);
+         Kept_Pending := True;
+      end if;
+   end Power_Up;
 
    ---------------
    -- Configure --
@@ -2037,6 +2071,86 @@ is
       Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
    end Produce_Outputs;
 
+   --  4.11.1.1, 4.11.1.3: the data kept over No Power, once the cold
+   --  movement detection is known after the power-up: no cold movement,
+   --  the train position and the level become valid; a cold movement
+   --  detected or the information not available, the table of priority
+   --  of the trackside supported levels is deleted and the rest stays
+   --  invalid until validated otherwise (the start of mission)
+   procedure Revalidate_Kept
+     with Global => (Input  => EVC_Odometry.State,
+                     In_Out => (Kept_Pending, EVC_Levels.State,
+                                EVC_Position.State)),
+          Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+      use type EVC_Odometry.Cold_T;
+   begin
+      if Kept_Pending
+        and then EVC_Odometry.Cold /= EVC_Odometry.Cold_Unknown
+      then
+         if EVC_Odometry.Cold = EVC_Odometry.No_Cold_Movement then
+            EVC_Levels.Revalidate;
+            EVC_Position.Revalidate;
+         else
+            EVC_Levels.Delete_Table;
+         end if;
+         Kept_Pending := False;
+      end if;
+   end Revalidate_Kept;
+
+   --  5.4.3.2 S22, S23, S24 (after E30, E31, E32), 5.4.5.3 a), f), g)
+   --  and the table of 5.4.3.3: the start of mission leaves Stand By to
+   --  SN, UN, SR (also by override), NL or SH: a position still invalid
+   --  is deleted (an invalid position is one kept over No Power, always
+   --  referred to an LRBG: EVC_Position.Keep)
+   procedure Delete_Invalid_Position (From, To : Mode_T)
+     with Global => (In_Out   => EVC_Position.State,
+                     Proof_In => EVC_Odometry.State),
+          Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then (if EVC_Position.LRBG = EVC_Position.LRBG'Old
+                            then EVC_Position.Doubt_Over
+                                   = EVC_Position.Doubt_Over'Old
+                                 and then EVC_Position.Doubt_Under
+                                   = EVC_Position.Doubt_Under'Old
+                            else not EVC_Position.LRBG.Valid)
+   is
+   begin
+      if From = M_SB
+        and then To in M_SN | M_UN | M_SR | M_NL | M_SH
+        and then EVC_Position.Status = EVC_Position.Invalid
+        and then EVC_Position.LRBG.Valid
+      then
+         EVC_Position.Delete_Position;
+      end if;
+   end Delete_Invalid_Position;
+
+   --  4.10 column NP: what is kept over No Power, as it is at the end of
+   --  each cycle (EVC_Retained)
+   procedure Save_Retained
+     with Global => (Input  => (EVC_Levels.State, EVC_Position.State,
+                                EVC_Odometry.State),
+                     In_Out => EVC_Retained.State)
+   is
+      K : EVC_Retained.Kept_T;
+   begin
+      EVC_Retained.Load (K);
+      K.Saved := True;
+      K.Level_Known := EVC_Levels.Status /= Unknown;
+      K.Level := EVC_Levels.Level;
+      K.Table := EVC_Levels.Table;
+      EVC_Position.Keep (K.Position);
+      EVC_Retained.Save (K);
+   end Save_Retained;
+
    ----------
    -- Tick --
    ----------
@@ -2052,6 +2166,7 @@ is
       Report_Configuration;
       Read_Ports;
       Update_Position;
+      Revalidate_Kept;
       Evaluate_Stored_Information;
       Monitor_Speed_And_Distance (Dt_Ms);
       Evaluate_Modes_And_Levels;
@@ -2067,10 +2182,12 @@ is
          Run_Mode_Machine;
          if Current_Mode /= From then
             Enter_Mode (From, Current_Mode);
+            Delete_Invalid_Position (From, Current_Mode);
          end if;
       end;
       Finish_Procedures;
       Produce_Outputs;
+      Save_Retained;
    end Tick;
 
    ------------------

@@ -113,6 +113,21 @@ package body EVC_Test_Position is
              and then Pos.Position_Report (M_SB, L1).V_TRAIN = 7,
              "first group: standstill left, 36 km/h reported as 7");
       Check_Golden ("position_first_group");
+
+      --  3.6.2.2.2 a) second bullet, 3.6.2.2.2.1, 3.6.4.2.2 b), 3.6.1.3:
+      --  without linking, a group marked as unlinked becomes the SOLR and
+      --  an ORBG, the position is valid, the LRBG stays "unknown"
+      --  (what SUBSET-076 3070200_02 step 42 means; its telegram is
+      --  marked linked, see test/s076/triage.csv S7fe2b1bf)
+      Start_Track;
+      Add_Group (Group (80, 100));
+      Track (1).Linked := False;
+      Run_To (20_000);
+      Check (Pos.Status = Pos.Valid and then not Pos.LRBG.Valid
+             and then Pos.SOLR.Valid and then Pos.SOLR.Id.NID_BG = 80
+             and then Pos.Unlinked_ORBG (1).Id.NID_BG = 80
+             and then Pos.Position_Report (M_SB, L1).NID_BG = 16383,
+             "unlinked first group: the SOLR, an ORBG, LRBG unknown");
    end Scenario_Position_First_Group;
 
    --  Linked groups with their windows met (3.4.4.4.3, 3.4.4.4.6 a):
@@ -472,6 +487,49 @@ package body EVC_Test_Position is
       Cycle;
       Check (Odo.Cold = Odo.Cold_Not_Available and then JRU_Seen (9) = 0,
              "cold: information not available (3.15.8.3)");
+
+      --  4.10 column NP, 4.11.1.1: the level kept over No Power, invalid
+      --  at the power-up, valid when no cold movement occurred
+      EVC_Core.Initialise;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SB, EVC_Modes.L1);
+      Cycle;
+      EVC_Core.Power_Up;
+      Check (EVC_Core.Level_Status = EVC_Modes.Invalid
+             and then EVC_Core.Level = EVC_Modes.L1,
+             "kept: the level L1, invalid after the power-up (4.10)");
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 100));
+      Cycle;
+      Check (EVC_Core.Level_Status = EVC_Modes.Valid
+             and then EVC_Core.Level = EVC_Modes.L1,
+             "kept: no cold movement, the level valid (4.11.1.1)");
+      EVC_Core.Power_Up;
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 250));
+      Cycle;
+      Check (EVC_Core.Level_Status = EVC_Modes.Invalid,
+             "kept: a cold movement, the level stays invalid (4.11.1.3)");
+      EVC_Core.Initialise;
+      Check (EVC_Core.Level_Status = EVC_Modes.Unknown,
+             "kept: a new on-board keeps nothing");
+
+      --  4.10 column NP, 3.6.1.3.3, 3.6.4.2.2.1: the position kept, the
+      --  LRBG the SOLR, the train where it was, invalid until validated
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Run_To (20_000);
+      declare
+         K : Pos.Kept_Position_T;
+         F : constant EVC_Distances.Dist_T := Pos.Estimated_Front;
+      begin
+         Pos.Keep (K);
+         Pos.Clear;
+         Pos.Restore (K);
+         Check (Pos.Status = Pos.Invalid and then Pos.LRBG.Id.NID_BG = 10
+                and then Pos.SOLR = Pos.LRBG
+                and then Pos.Estimated_Front = F,
+                "kept: the position restored invalid, at the same place");
+         Pos.Revalidate;
+         Check (Pos.Status = Pos.Valid, "kept: the position revalidated");
+      end;
    end Scenario_Cold_Movement;
 
    --  3.6.1.5, 5.12.2.5: the active cab defines the orientation; the

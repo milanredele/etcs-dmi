@@ -261,6 +261,28 @@ is
           Post => not Order_Pending and then not Deferred
                   and then Level = Level'Old and then Status = Status'Old;
 
+   --  4.10 (column NP "to be revalidated"), 4.11: at the power-up, after
+   --  Clear, the level and the table of priority kept over No Power
+   --  (EVC_Retained); the level is invalid
+   procedure Restore (L : Level_T; T : Priority_Table_T)
+     with Global => (In_Out => State),
+          Post => Level = L and then Status = Invalid
+                  and then not Switched;
+
+   --  4.11.1.1: no cold movement occurred, the kept level is valid
+   procedure Revalidate
+     with Global => (In_Out => State),
+          Post => Level = Level'Old
+                  and then (if Status'Old = Invalid then Status = Valid
+                            else Status = Status'Old);
+
+   --  4.11.1.1: a cold movement detected, or the information not
+   --  available: the kept table of priority is deleted ("unknown")
+   procedure Delete_Table
+     with Global => (In_Out => State),
+          Post => Level = Level'Old and then Status = Status'Old
+                  and then Table.Count = 0;
+
    --  For EVC_Core.Set_Mode_For_Test (the tests of the hosts): the level
    --  L, valid, without a transition
    procedure Set_For_Test (L : Level_T)
