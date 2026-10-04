@@ -1888,23 +1888,6 @@ package body DMI_Windows is
                               (Set_Area.Height - Symbol.SE_04.Height) / 2));
    end Draw_Driver_ID_Extras;
 
-   procedure Draw_Text_Line (Line : Natural; Text : Wide_String) is
-   begin
-      Draw.Draw_String
-        (Pen_X => Origin.X + 6,
-         Pen_Y => Origin.Y + 50 + Line * 24,
-         The_String => Text,
-         The_Size => 12,
-         The_Color => General_Parameters.GREY);
-   end Draw_Text_Line;
-
-   function Num_Image (N : Natural) return Wide_String is
-      Img : constant Wide_String := Natural'Wide_Image (N);
-   begin
-      return Img (2 .. Img'Last);
-   end Num_Image;
-
-
    procedure Render is
       ID : Window_ID_T;
    begin

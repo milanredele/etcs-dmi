@@ -22,10 +22,10 @@ package body DMI_Planning is
    -- Area D sub-area geometry (6.3.1.4), relative to D
    D2_X : constant := 40;   -- columns D2/D3/D4 start, 25 cells each
    D5_X : constant := 115;  -- gradient, 18 wide
-   D6_X : constant := 133;  -- 14 wide
+   -- D6 (133, 14 wide) and D8 (240, 6 wide) are drawn relative to D7:
+   -- the PL symbols on the D6/D7 boundary, the PASP over D7 and D8
    D7_X : constant := 147;  -- 93 wide
    D7_W : constant := 93;
-   D8_X : constant := 240;  -- 6 wide
    Top_Y    : constant := 15;
    Bottom_Y : constant := 284;
 
@@ -81,7 +81,7 @@ package body DMI_Planning is
       R     : constant Natural := Range_Max (Current_Range);
       D_Lin : constant Float := Float (R) / 40.0;
    begin
-      if Dist_M <= 0 then
+      if Dist_M = 0 then
          return Scale_Zero_Y;
       elsif Float (Dist_M) <= D_Lin then
          return Scale_Zero_Y
