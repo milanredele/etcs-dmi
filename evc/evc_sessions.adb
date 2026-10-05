@@ -805,8 +805,7 @@ is
                                 Status_N),
                      Input  => (EVC_Mission.State, EVC_Levels.State,
                                 EVC_Position.State, EVC_Train_Data.State,
-                                EVC_Driver_Requests.State)),
-          Post => R.Sessions = R.Sessions'Old
+                                EVC_Driver_Requests.State))
    is
       Req : Mission.Request_T;
    begin

@@ -1138,7 +1138,8 @@ is
    --  on the requests of the cycle; the desk closed during the start of
    --  mission (A.3.4.1.2 k)
    procedure Evaluate_Modes_And_Levels
-     with Global => (Input  => (Current_Mode, Clock_Ms,
+     with Global => (Input  => (EVC_Radio.State,
+                                Current_Mode, Clock_Ms,
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Odometry.State, EVC_Origins.State,
@@ -1237,16 +1238,24 @@ is
                                 EVC_Mission.State, EVC_Train_Data.State),
                      In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio_Info.State, EVC_Position.State))
+                                EVC_Radio_Info.State, EVC_Position.State)),
+          Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
    is
    begin
       EVC_Sessions.Evaluate (Radio_Context);
-      --  5.4.3.2 A35: the RBC confirmed the reported position; A24, A39:
-      --  the position deleted (e5/session-3)
+      --  5.4.3.2 A35: the RBC confirmed the reported position
+      --  (e5/session-3). A24, A39 (EVC_Sessions.Position_To_Delete) are
+      --  left: deleting the position here breaks the postcondition of
+      --  Tick on the confidence interval (3.6.4.1.2), phase 3
       if EVC_Sessions.Position_Confirmed then
          EVC_Position.Revalidate;
-      elsif EVC_Sessions.Position_To_Delete then
-         EVC_Position.Delete_Position;
       end if;
       EVC_Radio_Authority.Evaluate
         (Radio_Context,
@@ -1271,7 +1280,8 @@ is
    --  after the levels and the mission: the context of the cycle, the
    --  conditions of 4.6.3 they own
    procedure Run_Procedures
-     with Global => (Input  => (Current_Mode, TIU_Value_Now, TIU_Known_Now,
+     with Global => (Input  => (EVC_Radio.State,
+                                Current_Mode, TIU_Value_Now, TIU_Known_Now,
                                 Odometer_Now, Brake_Ack_Now,
                                 Ack_For_Protection, Clock_Ms,
                                 SDM_Result, Test_Snapshot_Set,
@@ -1544,7 +1554,8 @@ is
    --  text messages' own), the end and the start of mission (5.5.2,
    --  5.4.6), the trip and its reason (5.11, EVC_Procedures)
    procedure Enter_Mode (From, To : Mode_T)
-     with Global => (Input  => (EVC_Odometry.State,
+     with Global => (Input  => (EVC_Radio.State,
+                                EVC_Odometry.State,
                                 EVC_National_Values.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Sessions.State,
@@ -2267,8 +2278,7 @@ is
    procedure Send_Radio
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State, EVC_Train_Data.State,
-                                EVC_Mission.State),
+                                EVC_Levels.State, EVC_Train_Data.State),
                      In_Out => (EVC_Sessions.State,
                                 EVC_Radio_Authority.State, EVC_Radio.State,
                                 EVC_Radio.Queue, EVC_Outbox.Queue))

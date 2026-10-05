@@ -499,7 +499,8 @@ is
       Cat  : constant EVC_Train_Data.Categories_T :=
         EVC_Train_Data.Categories;
       Len  : constant Natural :=
-        Natural (EVC_Train_Data.Data.Length) / 100;
+        (if EVC_Train_Data.Data.Length in 0 .. 409_500
+         then Natural (EVC_Train_Data.Data.Length) / 100 else 4095);
       Kmh  : constant Natural :=
         (Natural (EVC_Train_Data.Data.Max_Speed) * 36 + 500) / 1000;
       P    : ETCS_Train_Packets.P11.Packet_T;
@@ -579,7 +580,9 @@ is
       Reason => "the writer of one message is not used after it");
 
    --  The Train Data are awaiting their acknowledgement (message 8)
-   procedure Await_TD (S : R.Session_T; T : T_TRAIN_T; Now : R.Time_Ms_T)
+   procedure Await_TD (S    : R.Session_T; T : T_TRAIN_T;
+                       Now  : R.Time_Ms_T;
+                       Sent : Boolean)
      with Global => (In_Out => (R.State, N_TD),
                      Output => (TD_Awaited, TD_Stamp, TD_Since, TD_S))
    is
@@ -589,7 +592,9 @@ is
       TD_Since := Now;
       TD_S := S;
       R.Set_Train_Data_Acknowledged (False);
-      Bump (N_TD);
+      if Sent then
+         Bump (N_TD);
+      end if;
    end Await_TD;
 
    --  A33, A34: the SoM position report with Q_STATUS, and packet 11
@@ -619,7 +624,7 @@ is
       if OK then
          Bump (N_Rep);
          if TD then
-            Await_TD (S, T, Ctx.Now_Ms);
+            Await_TD (S, T, Ctx.Now_Ms, Sent => True);
          end if;
       end if;
    end Send_Report;
@@ -641,7 +646,7 @@ is
       Finish_And_Send (W, S, OK);
       --  a message that could not be built is not awaited: tried again
       --  at the next repetition time, as if sent
-      Await_TD (S, T, Ctx.Now_Ms);
+      Await_TD (S, T, Ctx.Now_Ms, Sent => OK);
    end Send_TD;
 
    --  5.5.3.1.3: message 150 with packet 0
@@ -658,7 +663,9 @@ is
       Finish_And_Send (W, S, OK);
       EoM_Awaited := True;
       EoM_Since := Ctx.Now_Ms;
-      Bump (N_EoM);
+      if OK then
+         Bump (N_EoM);
+      end if;
    end Send_EoM;
 
    pragma Warnings

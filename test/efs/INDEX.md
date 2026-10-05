@@ -43,7 +43,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Speed and distance monitoring | speed-and-distance-monitoring.scn | 15 | 22 | 51 / 14 | 49 / 5 | 2 | absent 19, done 7 |
 | Speed restriction to ensure permitted braking distance | speed-restriction-to-ensure-permitted-braking-distance.scn | 5 | 18 | 10 / 7 | 0 / 43 | 0 | absent 4, done 4 |
 | Staff Responsible | staff-responsible.scn | 3 | 6 | 6 / 16 | 0 / 12 | 0 | absent 3, deferred 3, partial 3 |
-| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, deferred 10, done 84, partial 37, todo 4 |
+| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, deferred 10, done 80, partial 41, todo 4 |
 | Static Speed Profile | static-speed-profile.scn | 3 | 9 | 10 / 6 | 15 / 18 | 0 | absent 6, done 9 |
 | Supervision limits | supervision-limits.scn | 22 | 48 | 59 / 12 | 51 / 32 | 8 | absent 19, done 30 |
 | System Version 1 Translations | system-version-1-translations.scn | 30 | 64 | 30 / 34 | 0 / 34 | 0 | absent 41 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, deferred 12, done 20, partial 6 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, deferred 1, done 18, other 6, partial 9 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 95, done 478, n/a 4, other 52, partial 94, todo 41 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 95, done 474, n/a 4, other 52, partial 98, todo 41 |

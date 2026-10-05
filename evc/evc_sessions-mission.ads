@@ -87,8 +87,7 @@ is
    procedure Produce (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State, EVC_Train_Data.State,
-                                EVC_Mission.State));
+                                EVC_Levels.State, EVC_Train_Data.State));
 
    --  A35 (the RBC confirmed the position) and A24 / A39 (to delete it)
    --  in this cycle, for EVC_Core (EVC_Position); cleared by Produce
