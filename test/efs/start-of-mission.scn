@@ -130,7 +130,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.A23
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.A24
 sequence A24 : Delete train position data
 case Setup
-clause E4 partial 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
+clause E4 done 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
 step Setup
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
@@ -250,7 +250,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Delete train position data
-clause E4 partial 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
+clause E4 done 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
 clause - absent Entry 5.4.3.3.16 ; efs Entry 5.4.3.3.16
 step Delete train position data
 sub Sub-step1
@@ -1098,7 +1098,7 @@ expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S10
 expect efs: Kernel.TrainPosition.Position.DataState == DataStateEnum.Valid
 sequence A38 : RBC informs that it rejects the train
 case Setup
-clause E4 partial 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
+clause E4 done 5.4.3.2 A24 ; efs Entry 5.4.3.2.A24
 step Setup
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
@@ -1348,7 +1348,7 @@ efs: Testing.InitializeTerminals()
 sub Sub-step3
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.Established
 case Delete train position data and terminate RBC session
-clause E4 partial 5.4.3.2 A39 ; efs Entry 5.4.3.2.A39
+clause E4 done 5.4.3.2 A39 ; efs Entry 5.4.3.2.A39
 clause - absent Entry 5.4.3.3.17 ; efs Entry 5.4.3.3.17
 step Delete train position data
 sub Sub-step1

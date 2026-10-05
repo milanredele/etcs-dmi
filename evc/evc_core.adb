@@ -1257,20 +1257,25 @@ is
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
-                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
-                  and then EVC_Position.Doubt_Over
-                             = EVC_Position.Doubt_Over'Old
-                  and then EVC_Position.Doubt_Under
-                             = EVC_Position.Doubt_Under'Old
+                  --  A24, A39 delete the position (its LRBG no longer
+                  --  valid): the interval of 3.6.4.1.2 starts again
+                  and then (if EVC_Position.LRBG = EVC_Position.LRBG'Old
+                            then EVC_Position.Doubt_Over
+                                   = EVC_Position.Doubt_Over'Old
+                                 and then EVC_Position.Doubt_Under
+                                   = EVC_Position.Doubt_Under'Old
+                            else not EVC_Position.LRBG.Valid)
    is
    begin
       EVC_Sessions.Evaluate (Radio_Context);
       --  5.4.3.2 A35: the RBC confirmed the reported position
-      --  (e5/session-3). A24, A39 (EVC_Sessions.Position_To_Delete) are
-      --  left: deleting the position here breaks the postcondition of
-      --  Tick on the confidence interval (3.6.4.1.2), phase 3
+      --  (e5/session-3); A24, A39: the RBC's answer (41 with the train
+      --  unknown, 40) deletes it (EVC_Sessions.Mission, decision 5;
+      --  e5/session-4, like Delete_Invalid_Position)
       if EVC_Sessions.Position_Confirmed then
          EVC_Position.Revalidate;
+      elsif EVC_Sessions.Position_To_Delete then
+         EVC_Position.Delete_Position;
       end if;
       EVC_Radio_Authority.Evaluate
         (Radio_Context,

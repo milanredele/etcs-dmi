@@ -13,6 +13,7 @@ with EVC_Core;
 with EVC_Bytes;
 with EVC_Mission;
 with EVC_Modes;
+with EVC_Position;
 with EVC_Procedures;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
@@ -33,6 +34,7 @@ package body EVC_Test_Sessions is
    use type ETCS_Message.Status_T;
    use type ETCS_Message_Catalogue.Message_Kind_T;
    use type EVC_Modes.Mode_T;
+   use type EVC_Position.Status_T;
    use type R.Session_State_T;
    use type R.Session_Ref_T;
    use type R.Session_Info_T;
@@ -668,6 +670,10 @@ package body EVC_Test_Sessions is
       Check (Output_Of (156) > 0 and then Status_Shown (20, 0),
              "SoM L2: the train rejected (A38): the session terminated "
              & "(156) and 'Train is rejected' shown (A40)");
+      --  e5/session-4: the deletion applied by EVC_Core.Evaluate_Radio
+      Check (EVC_Position.Status = EVC_Position.Unknown
+             and then not EVC_Position.LRBG.Valid,
+             "SoM L2: the train rejected, the position deleted (D35, A39)");
    end Scenario_Session_SoM_Failures;
 
    procedure Scenario_Session_EoM is
