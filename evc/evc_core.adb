@@ -1217,7 +1217,6 @@ is
                                 EVC_Stored_Information.State,
                                 EVC_Levels.State, SDM_Result,
                                 EVC_Movement_Authority.State,
-                                EVC_Radio.State,
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State),
                      In_Out => (EVC_Sessions.State,

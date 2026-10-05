@@ -76,8 +76,7 @@ is
      with Global => (In_Out => (State, EVC_Radio_Info.State),
                      Input  => (EVC_Stored_Information.State,
                                 EVC_Levels.State,
-                                EVC_Movement_Authority.State,
-                                EVC_Radio.State)),
+                                EVC_Movement_Authority.State)),
           Post => EVC_Radio_Info.Count = 0;
 
    --  3.8.2: the reasons of the MA request applicable (Q_MARQSTREASON,
