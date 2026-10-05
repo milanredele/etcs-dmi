@@ -87,6 +87,7 @@ with EVC_Position;
 with EVC_Procedures;
 with EVC_Radio;
 with EVC_Radio_Authority;
+with EVC_Radio_Info;
 with EVC_Received;
 with EVC_Retained;
 with EVC_Sessions;
@@ -189,7 +190,8 @@ is
                                 EVC_JRU_Records.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
-                                EVC_Radio_Authority.State),
+                                EVC_Radio_Authority.State,
+                                EVC_Radio_Info.State),
                      Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -232,7 +234,8 @@ is
                                 EVC_Position.State, EVC_Levels.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
-                                EVC_Radio_Authority.State),
+                                EVC_Radio_Authority.State,
+                                EVC_Radio_Info.State),
                      Input  => (EVC_Config.State, EVC_Retained.State),
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -323,7 +326,8 @@ is
                                 EVC_JRU_Records.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
-                                EVC_Radio_Authority.State)),
+                                EVC_Radio_Authority.State,
+                                EVC_Radio_Info.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

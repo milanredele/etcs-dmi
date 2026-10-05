@@ -292,15 +292,13 @@ is
    function Elapsed (Since, Now : Time_Ms_T) return Time_Ms_T is
      (if Now >= Since then Now - Since else 0);
 
-   --  T_TRAIN of the on-board time (10 ms, 7.5.1.152), modulo 2**32
-   function Stamp (Now : Time_Ms_T) return T_TRAIN_T is
-     (T_TRAIN_T ((Now / 10) and 16#FFFF_FFFF#));
-
    --  3.16.3.3.3, 3.16.3.2.3: T is later than Last, the on-board timer
-   --  wrapping around (a difference of less than half the range)
+   --  (EVC_Radio.T_Train_At, modulo 2**32 - 1) wrapping around (a
+   --  difference of less than half the range)
    function Newer (T, Last : T_TRAIN_T) return Boolean is
-     (((Unsigned_64 (T) - Unsigned_64 (Last)) and 16#FFFF_FFFF#)
-        in 1 .. 2**31 - 1);
+     (T /= T_TRAIN_Unknown and then Last /= T_TRAIN_Unknown
+      and then ((Unsigned_64 (T) + (2**32 - 1) - Unsigned_64 (Last))
+                  mod (2**32 - 1)) in 1 .. 2**31 - 1);
 
    --  3.17.2: the X of M_VERSION (its three most significant bits)
    function Compatible (V : M_VERSION_T) return Boolean is
@@ -442,9 +440,9 @@ is
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
    is
-      Kind : constant Message_Kind_T := EVC_Received.Message_Kind;
+      Kind : constant Message_Kind_T := EVC_Received.Last_Kind;
       T    : constant T_TRAIN_T :=
-        T_TRAIN_T (EVC_Received.Message_Value (T_TRAIN) and 16#FFFF_FFFF#);
+        T_TRAIN_T (EVC_Received.Last_Value (T_TRAIN) and 16#FFFF_FFFF#);
       Info : constant R.Session_Info_T := R.Info (S);
    begin
       Count (Messages);
@@ -461,7 +459,7 @@ is
          end if;
          return;
       end if;
-      if EVC_Received.Message_Value (M_ACK) = 1 and then Ack_N < Max_Acks
+      if EVC_Received.Last_Value (M_ACK) = 1 and then Ack_N < Max_Acks
       then
          Ack_N := Ack_N + 1;
          Acks (Ack_N) := (S => S, T => T);
@@ -469,7 +467,7 @@ is
       case Kind is
          when Track_M32 =>
             Take_Version
-              (S, M_VERSION_T (EVC_Received.Message_Value (M_VERSION)
+              (S, M_VERSION_T (EVC_Received.Last_Value (M_VERSION)
                                and 127),
                Now_Ms);
          when Track_M38 =>
@@ -586,13 +584,9 @@ is
    end Apply_Order;
 
    --  3.16.3.4.1: the age of the time stamp T at the on-board time Now
-   --  (0 for a time stamp ahead of the on-board time)
+   --  (the on-board clock of EVC_Radio.Time_Of_Stamp)
    function Age_Ms (T : T_TRAIN_T; Now : Time_Ms_T) return Time_Ms_T is
-      D : constant Unsigned_64 :=
-        (Unsigned_64 (Stamp (Now)) - Unsigned_64 (T)) and 16#FFFF_FFFF#;
-   begin
-      return (if D < 2**31 then D * 10 else 0);
-   end Age_Ms;
+     (Now - EVC_Radio.Time_Of_Stamp (T, Now));
 
    --  3.16.3.4: the supervision of the safe radio connection with the
    --  supervising RBC: the time stamp of the latest message older than
@@ -784,7 +778,7 @@ is
    end Produce_Session;
 
    procedure Produce (Ctx : EVC_Radio.Context_T) is
-      T : constant T_TRAIN_T := Stamp (Ctx.Now_Ms);
+      T : constant T_TRAIN_T := EVC_Radio.T_Train_At (Ctx.Now_Ms);
    begin
       Count (Cycles);
       for S in Session_T loop

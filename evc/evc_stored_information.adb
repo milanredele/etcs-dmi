@@ -6,6 +6,7 @@ with ETCS_Catalogue;
 with ETCS_Packet_Index;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P12;
+with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P46;
@@ -38,7 +39,8 @@ package body EVC_Stored_Information
                                    Cond_Due, Plan, Plan_Due,
                                    Driver_Slippery, PBD_Last, PBD_Known,
                                    MA_Board, Profile_Overlap,
-                                   Covered_Flag, Ext, Tun))
+                                   Covered_Flag, Ext, Tun,
+                                   Radio_MA))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -79,6 +81,8 @@ is
    MA_Board        : Boolean := False;
    Profile_Overlap : Boolean := False;
    Covered_Flag    : Boolean := False;
+   --  phase E5: an MA by radio was accepted in the last Evaluate
+   Radio_MA        : Boolean := False;
    --  5.20: the information for an external function of the last cycle
    Ext             : EVC_Track_Conditions.External_T;
    --  5.18.8: the tunnel stopping area reported
@@ -128,6 +132,7 @@ is
      with Refined_Global => MA_Board;
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
      with Refined_Global => Profile_Overlap;
+   function Radio_MA_Accepted return Boolean is (Radio_MA);
    function Train_Covered return Boolean is (Covered_Flag)
      with Refined_Global => Covered_Flag;
 
@@ -180,6 +185,7 @@ is
       MA_Board := False;
       Profile_Overlap := False;
       Covered_Flag := False;
+      Radio_MA := False;
       Ext := (Count => 0, List => (others => (others => <>)));
       Tun := (others => <>);
    end Clear;
@@ -282,7 +288,10 @@ is
    --  level transition orders first (4.8.1.3, added by e4/modes)
    type Order_Kind_T is
      (K41, K46, K3, K27, K21, K51, K52, K65, K66, K141, K68, K39, K67, K70,
-      K71, K88, K12, K80,
+      K71, K88, K12,
+      --  phase E5: the level 2 MA of a radio message (messages 3, 33)
+      K15,
+      K80,
       --  phase E4: the station platforms, the allowed current
       --  consumption (track conditions, 5.18, 5.20)
       K69, K40,
@@ -308,6 +317,7 @@ is
          when K71  => ETCS_Catalogue.Track_P71,
          when K88  => ETCS_Catalogue.Track_P88,
          when K12  => ETCS_Catalogue.Track_P12,
+         when K15  => ETCS_Catalogue.Track_P15,
          when K80  => ETCS_Catalogue.Track_P80,
          when K69  => ETCS_Catalogue.Track_P69,
          when K40  => ETCS_Catalogue.Track_P40,
@@ -332,7 +342,7 @@ is
          when K70  => EVC_Acceptance.Route_Suitability,
          when K71  => EVC_Acceptance.Adhesion,
          when K88  => EVC_Acceptance.Level_Crossing,
-         when K12 | K80 => EVC_Acceptance.Movement_Authority,
+         when K12 | K15 | K80 => EVC_Acceptance.Movement_Authority,
          when K42  => EVC_Acceptance.Session_Management);
 
    --  The NID_PACKET of a kind (the record of a rejection)
@@ -342,8 +352,8 @@ is
          when K21 => 21, when K51 => 51, when K52 => 52, when K65 => 65,
          when K66 => 66, when K141 => 141, when K68 => 68, when K39 => 39,
          when K67 => 67, when K70 => 70, when K71 => 71, when K88 => 88,
-         when K12 => 12, when K80 => 80, when K69 => 69, when K40 => 40,
-         when K42 => 42);
+         when K12 => 12, when K15 => 15, when K80 => 80, when K69 => 69,
+         when K40 => 40, when K42 => 42);
 
    --  The context of 4.8 of a packet of a group: the mode and the inputs
    --  of the cycle, the level as it is now (an immediate order of the
@@ -389,7 +399,7 @@ is
      with Static_Predicate => Condition_Kind_T in K68 | K39 | K67 | K69
                                                 | K40;
    subtype MA_Kind_T is Order_Kind_T
-     with Static_Predicate => MA_Kind_T in K12 | K80;
+     with Static_Predicate => MA_Kind_T in K12 | K15 | K80;
 
    --  5.10: the level transition order (41) and the conditional level
    --  transition order (46), to EVC_Levels
@@ -669,6 +679,84 @@ is
       end case;
    end Take_Condition_Packet;
 
+   --  3.7.2.3, 3.7.2.3.1: the MA X of the message M, accepted when the
+   --  SSP and the gradients cover it up to its SvL from the estimated
+   --  front end (EVC_Movement_Authority.Accept_MA: 3.8.5.1, the timers),
+   --  with the deletions it asks (Apply)
+   procedure Store_MA (X           : EVC_Movement_Authority.MA_T;
+                       M           : Message_T;
+                       T           : Origin_Table_T;
+                       Train       : Train_Frame_T;
+                       MA_Accepted : in out Boolean)
+     with Global => (In_Out => (EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                Events, Event_N))
+   is
+      O : EVC_Movement_Authority.Outcome_T;
+   begin
+      if X.Present
+        and then Train.Valid
+        and then EVC_Track_Description.Covered
+                   (T, X.Sense, Train.Est_Front,
+                    Frame (T, EVC_Movement_Authority.SvL_Location (X),
+                           Estimated_Item))
+      then
+         EVC_Movement_Authority.Accept_MA (X, T, Train, M.Start_Ms, O);
+         Record_Event (Info_MA, Change_Stored, M.Msg);
+         Apply (T, O);
+         MA_Accepted := True;
+      else
+         Record_Event (Info_MA, Change_Rejected, M.Msg);
+      end if;
+   end Store_MA;
+
+   --  Packet 15 as a packet 12 without signalling related speed
+   --  restriction (the same variables, 7.4.2.4 and 7.4.2.5)
+   function To_P12 (X : ETCS_Track_Packets.P15.Packet_T)
+     return ETCS_Track_Packets.P12.Packet_T
+   is
+      Y : ETCS_Track_Packets.P12.Packet_T;
+   begin
+      Y.Q_DIR := X.Q_DIR;
+      Y.L_PACKET := X.L_PACKET;
+      Y.Q_SCALE := X.Q_SCALE;
+      Y.V_EMA := X.V_EMA;
+      Y.T_EMA := X.T_EMA;
+      Y.N_ITER := X.N_ITER;
+      for I in X.L_SECTION_List'Range loop
+         pragma Loop_Invariant (True);
+         Y.L_SECTION_List (I) :=
+           (L_SECTION             => X.L_SECTION_List (I).L_SECTION,
+            Q_SECTIONTIMER        => X.L_SECTION_List (I).Q_SECTIONTIMER,
+            Has_T_SECTIONTIMER    =>
+              X.L_SECTION_List (I).Has_T_SECTIONTIMER,
+            T_SECTIONTIMER        => X.L_SECTION_List (I).T_SECTIONTIMER,
+            D_SECTIONTIMERSTOPLOC =>
+              X.L_SECTION_List (I).D_SECTIONTIMERSTOPLOC);
+      end loop;
+      Y.L_ENDSECTION := X.L_ENDSECTION;
+      Y.Q_SECTIONTIMER := X.Q_SECTIONTIMER;
+      Y.Has_T_SECTIONTIMER := X.Has_T_SECTIONTIMER;
+      Y.T_SECTIONTIMER := X.T_SECTIONTIMER;
+      Y.D_SECTIONTIMERSTOPLOC := X.D_SECTIONTIMERSTOPLOC;
+      Y.Q_ENDTIMER := X.Q_ENDTIMER;
+      Y.Has_T_ENDTIMER := X.Has_T_ENDTIMER;
+      Y.T_ENDTIMER := X.T_ENDTIMER;
+      Y.D_ENDTIMERSTARTLOC := X.D_ENDTIMERSTARTLOC;
+      Y.Q_DANGERPOINT := X.Q_DANGERPOINT;
+      Y.Has_D_DP := X.Has_D_DP;
+      Y.D_DP := X.D_DP;
+      Y.V_RELEASEDP := X.V_RELEASEDP;
+      Y.Q_OVERLAP := X.Q_OVERLAP;
+      Y.Has_D_STARTOL := X.Has_D_STARTOL;
+      Y.D_STARTOL := X.D_STARTOL;
+      Y.T_OL := X.T_OL;
+      Y.D_OL := X.D_OL;
+      Y.V_RELEASEOL := X.V_RELEASEOL;
+      return Y;
+   end To_P12;
+
    --  3.8, 3.11.6, 3.12.4: the MA with its signalling related speed
    --  restriction (12) and the mode profile of an MA accepted (80), to
    --  EVC_Movement_Authority; the deletions an accepted MA asks (Apply)
@@ -690,9 +778,7 @@ is
       case K is
          when K12 =>
             declare
-               X  : ETCS_Track_Packets.P12.Packet_T;
-               MA : EVC_Movement_Authority.MA_T;
-               O  : EVC_Movement_Authority.Outcome_T;
+               X : ETCS_Track_Packets.P12.Packet_T;
             begin
                ETCS_Track_Packets.P12.Decode (R, X, OK);
                if OK and then EVC_Acceptance.Accepted
@@ -710,25 +796,23 @@ is
                if OK and then EVC_Acceptance.Accepted
                                 (EVC_Acceptance.Movement_Authority, A)
                then
-                  MA := EVC_Movement_Authority.From_Packet (X, M);
-                  if MA.Present
-                    and then Train.Valid
-                    --  3.7.2.3, 3.7.2.3.1
-                    and then EVC_Track_Description.Covered
-                               (T, MA.Sense, Train.Est_Front,
-                                Frame (T,
-                                       EVC_Movement_Authority.SvL_Location
-                                         (MA),
-                                       Estimated_Item))
-                  then
-                     EVC_Movement_Authority.Accept_MA
-                       (MA, T, Train, M.Start_Ms, O);
-                     Record_Event (Info_MA, Change_Stored, M.Msg);
-                     Apply (T, O);
-                     MA_Accepted := True;
-                  else
-                     Record_Event (Info_MA, Change_Rejected, M.Msg);
-                  end if;
+                  Store_MA (EVC_Movement_Authority.From_Packet (X, M), M, T,
+                            Train, MA_Accepted);
+               end if;
+            end;
+         when K15 =>
+            --  3.8.1, 3.8.5.1 (phase E5): the level 2 MA, packet 12
+            --  without V_MAIN (a radio message carries no signalling
+            --  related speed restriction); the timers start at the time
+            --  stamp of the message (M.Start_Ms, 3.8.4.2.1 a, 3.8.4.3.1 a)
+            declare
+               X : ETCS_Track_Packets.P15.Packet_T;
+            begin
+               ETCS_Track_Packets.P15.Decode (R, X, OK);
+               if OK then
+                  Store_MA (EVC_Movement_Authority.From_Packet (To_P12 (X),
+                                                                M),
+                            M, T, Train, MA_Accepted);
                end if;
             end;
          when K80 =>
@@ -745,7 +829,6 @@ is
       end case;
    end Take_MA_Packet;
 
-   --  4.8: the filters, then the packet to its store
    --  3.5.2.6.1 (phase E5): the session management order of packet 42
    --  to the session half (Q_SLEEPSESSION, the sleeping trains, is not
    --  modelled)
@@ -764,6 +847,44 @@ is
       end if;
    end Take_Session_Packet;
 
+   --  The packet of kind K that R reads to its store
+   procedure Dispatch (K           : Order_Kind_T;
+                       R           : in out Reader_T;
+                       M           : Message_T;
+                       T           : Origin_Table_T;
+                       Train       : Train_Frame_T;
+                       A           : EVC_Acceptance.Context_T;
+                       MA_Accepted : in out Boolean;
+                       Ctx         : Mode_Context_T;
+                       Now_Ms      : Unsigned_64)
+     with Global => (In_Out => (EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State, EVC_Sessions.State,
+                                Events, Event_N),
+                     Input  => EVC_Train_Data.State)
+   is
+   begin
+      case K is
+         when K41 | K46 =>
+            Take_Level_Packet (K, R, M, Ctx, Train, Now_Ms);
+         when K3 =>
+            Take_National_Packet (R, M);
+         when K27 | K51 | K52 | K65 | K66 | K88 =>
+            Take_Speed_Packet (K, R, M, T);
+         when K21 | K141 | K70 | K71 =>
+            Take_Description_Packet (K, R, M, T);
+         when K68 | K39 | K67 | K69 | K40 =>
+            Take_Condition_Packet (K, R, M, T);
+         when K12 | K15 | K80 =>
+            Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted);
+         when K42 =>
+            Take_Session_Packet (R);
+      end case;
+   end Dispatch;
+
+   --  4.8: the filters, then the packet to its store
    procedure Take_Packet (K           : Order_Kind_T;
                           J, P        : Positive;
                           M           : Message_T;
@@ -784,7 +905,7 @@ is
           Pre => P <= EVC_Position.Taken_Packet_Count (J)
    is
       pragma Warnings
-        (GNATprove, Off, """R"" is set by ""Take_*"" but not used after*",
+        (GNATprove, Off, """R"" is set by ""*"" but not used after*",
          Reason => "the reader of one packet is not used after it");
       R  : Reader_T;
       A  : constant EVC_Acceptance.Context_T :=
@@ -804,22 +925,7 @@ is
          return;
       end if;
       EVC_Position.Open_Taken_Packet (J, P, R);
-      case K is
-         when K41 | K46 =>
-            Take_Level_Packet (K, R, M, Ctx, Train, Now_Ms);
-         when K3 =>
-            Take_National_Packet (R, M);
-         when K27 | K51 | K52 | K65 | K66 | K88 =>
-            Take_Speed_Packet (K, R, M, T);
-         when K21 | K141 | K70 | K71 =>
-            Take_Description_Packet (K, R, M, T);
-         when K68 | K39 | K67 | K69 | K40 =>
-            Take_Condition_Packet (K, R, M, T);
-         when K12 | K80 =>
-            Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted);
-         when K42 =>
-            Take_Session_Packet (R);
-      end case;
+      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx, Now_Ms);
    end Take_Packet;
 
    --  Group G of the position's last Update, as message number Msg_Count
@@ -891,6 +997,75 @@ is
          end loop;
       end loop;
    end Take_Group;
+
+   --  Phase E5: the radio message I of the cycle (EVC_Radio_Info), as
+   --  message number Msg_Count: its packets valid for the train
+   --  (3.6.3.1.3, the directions of EVC_Position.Radio_Origin) in the
+   --  order of Order_Kind_T, referred to its origin (the LRBG it names,
+   --  3.6.2.2.2 c). The filters of 4.8 for radio information are the
+   --  session half's verdict on the message (EVC_Sessions.Take_Message):
+   --  every packet of a message passed is taken, but an MA after an
+   --  accepted emergency stop (3.10.2.4: Slot.MA_Allowed False) is
+   --  rejected. Radio_MA: an MA of it accepted.
+   procedure Take_Radio (I      : EVC_Radio_Info.Index_T;
+                         T      : Origin_Table_T;
+                         Train  : Train_Frame_T;
+                         Ctx    : Mode_Context_T;
+                         Now_Ms : Unsigned_64)
+     with No_Inline,
+          Global => (In_Out => (EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State,
+                                Events, Event_N, Msg_Count, Radio_MA),
+                     Input  => (EVC_Radio_Info.State, EVC_Train_Data.State)),
+          Pre => I <= EVC_Radio_Info.Count
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Dispatch"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      Sl          : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
+      M           : Message_T;
+      MA_Accepted : Boolean := False;
+      R           : Reader_T;
+      A           : constant EVC_Acceptance.Context_T :=
+        Acceptance (Ctx, True, False);
+   begin
+      if Msg_Count < Natural'Last - 1 then
+         Msg_Count := Msg_Count + 1;
+      end if;
+      M := (Origin   => Sl.Origin,
+            Sense    => Sl.S,
+            Msg      => Msg_Count,
+            Start_Ms => Sl.Start_Ms);
+      if Sl.Origin = 0 then
+         Record_Event (Info_Group, Change_No_Origin, 0);
+      end if;
+      for K in Order_Kind_T loop
+         for P in 1 .. EVC_Radio_Info.Packet_Count (I) loop
+            declare
+               E : constant ETCS_Packet_Index.Entry_T :=
+                 EVC_Radio_Info.Packet_Entry (I, P);
+            begin
+               if E.Kind = Kind_Of (K)
+                 and then EVC_Position.Valid_For (E.Q_DIR, Sl.G, Sl.T)
+               then
+                  if K = K15 and then not Sl.MA_Allowed then
+                     Record_Event (Info_MA, Change_Rejected, M.Msg);
+                  elsif K /= K12 then
+                     EVC_Radio_Info.Open_Packet (I, P, R);
+                     Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,
+                               Now_Ms);
+                  end if;
+               end if;
+            end;
+         end loop;
+      end loop;
+      if MA_Accepted then
+         Radio_MA := True;
+      end if;
+   end Take_Radio;
 
    ---------------------------------------------------------------------
    --  The snapshot
@@ -1690,6 +1865,12 @@ is
       --  2. the groups of the cycle
       for G in 1 .. EVC_Position.Taken_Count loop
          Take_Group (G, T, Train, Context, Now_Ms);
+      end loop;
+      --  phase E5: then the radio messages of the cycle
+      Radio_MA := False;
+      for I in 1 .. EVC_Radio_Info.Count loop
+         pragma Loop_Invariant (True);
+         Take_Radio (I, T, Train, Context, Now_Ms);
       end loop;
 
       --  3. the timers of the MA

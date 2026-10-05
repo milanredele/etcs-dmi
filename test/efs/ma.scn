@@ -167,8 +167,8 @@ expect efs: (LAST X IN Kernel.MA.MA.Sections).Length == 800.0 @ deadline=1
 expect efs: BTM.Infill.InfillReferenceNID(BTM.CurrentBaliseGroup) == Messages.NID_BG.NID_UNKNOWN @ deadline=2
 expect efs: NOT Kernel.Infill.AccepBTMtInfill(BTM.CurrentBaliseGroup) @ deadline=2
 case Replace data beyond balise group in L1 via Balise
-clause E5 todo 3.8.5.1 b) ; efs 3.8.5.1.b
-clause E5 todo 3.8.5.1 ; efs 3.8.5.1.1
+clause E5 deferred 3.8.5.1 b) ; efs 3.8.5.1.b
+clause E5 done 3.8.5.1 ; efs 3.8.5.1.1
 step Setup
 sub Reset MA (+Grad+SSP)
 set gradients 
@@ -202,7 +202,7 @@ expect efs: (LAST X IN Kernel.MA.MA.Sections).Length == 1234.0 @ deadline=1
 expect efs: (LAST X IN Kernel.MA.MA.Sections).Length == 1234.0 @ deadline=1
 expect efs: Before( ExpectedFirst=> FIRST X IN Kernel.MA.MA.Sections | X.Length == 800.0, ExpectedSecond=> FIRST X IN Kernel.MA.MA.Sections | X.Length == 200.0, Collection=> Kernel.MA.MA.Sections ) @ deadline=1
 case New MA section at infill location reference
-clause E5 todo 3.8.5.1.2 ; efs 3.8.5.1.2
+clause E5 deferred 3.8.5.1.2 ; efs 3.8.5.1.2
 step Setup
 sub Initialize test environment
 init 100.0 FS
@@ -480,8 +480,8 @@ expect efs: BTM.LRBG.LRBG().NID_BG == 2120 @ deadline=1 cyclephase=UpdateOUT
 expect efs: Kernel.MA.EOA.EOA().Location == 1555.0 @ deadline=1
 sequence MA reception from trackside
 case Overwrite existing information L1 + Balise
-clause E5 todo 3.8.5.1 a) ; efs 3.8.5.1.a
-clause E5 todo 3.8.5.1 ; efs 3.8.5.1.1
+clause E5 done 3.8.5.1 a) ; efs 3.8.5.1.a
+clause E5 done 3.8.5.1 ; efs 3.8.5.1.1
 step Setup
 sub Initialize test environment
 init 100.0 OS
@@ -656,8 +656,8 @@ expect efs: (COUNT X IN Kernel.MA.MA.Sections) == 3 @ deadline=1
 expect efs: (FIRST X IN Kernel.MA.MA.Sections).Length == 800.0 @ deadline=1
 expect efs: (LAST X IN Kernel.MA.MA.Sections | X != (LAST Y IN Kernel.MA.MA.Sections)).Length == 700.0 @ deadline=1
 case Overwrite existing information L23 + RBC
-clause E5 todo 3.8.5.1 a) ; efs 3.8.5.1.a
-clause E5 todo 3.8.5.1 ; efs 3.8.5.1.1
+clause E5 done 3.8.5.1 a) ; efs 3.8.5.1.a
+clause E5 done 3.8.5.1 ; efs 3.8.5.1.1
 step Setup
 sub Initialize test environment
 init 100.0 OS
@@ -1601,9 +1601,9 @@ expect efs: (FIRST X IN Kernel.MA.MA.Sections).Length == 55.0
 expect efs: Kernel.MA.EOA.EOA().Speed == 25.0
 sequence MA update - MA shortening
 case MA shortening
-clause E5 todo 3.8.5.1.3 ; efs 3.8.5.1.3
-clause E5 todo 3.8.5.2.4 ; efs 3.8.5.2.4
-clause E5 todo 3.8.5.1.4 ; efs 3.8.5.1.4
+clause E5 done 3.8.5.1.3 ; efs 3.8.5.1.3
+clause E5 done 3.8.5.2.4 ; efs 3.8.5.2.4
+clause E5 done 3.8.5.1.4 ; efs 3.8.5.1.4
 step Setup MA with LOA
 sub Initialize test environment
 init 100.0 FS
@@ -1762,7 +1762,7 @@ expect efs: NOT Kernel.HandlingOfAcceptedAndStoredInformation.ShortenedMaReceive
 expect efs: NOT Kernel.HandlingOfAcceptedAndStoredInformation.ShortenedMaReceived @ deadline=1 cyclephase=Processing
 sequence MA update - Repositioning information
 case Update the length of the current section by means of repositioning information
-clause E5 todo 3.8.5.2.4 ; efs 3.8.5.2.4
+clause E5 done 3.8.5.2.4 ; efs 3.8.5.2.4
 clause E5 todo 3.8.5.2.2 ; efs 3.8.5.2.2
 clause - absent 3.8.5.2 ; efs 3.8.5.2
 step Setup

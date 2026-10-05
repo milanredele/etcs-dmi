@@ -72,6 +72,25 @@ package body S076_Bench is
    SSs_N   : Natural := 0;
    Sent_N  : Natural := 0;
 
+   Radio_List : array (1 .. Max_Radio) of Radio_Out_T;
+   Radio_N    : Natural := 0;
+   type Per_Session_I64 is array (1 .. RTM_Max_Sessions) of Integer_64;
+   type Per_Session_U64 is array (1 .. RTM_Max_Sessions) of Unsigned_64;
+   type Per_Session_Nat is array (1 .. RTM_Max_Sessions) of Natural;
+   type By_Nid_T is array (1 .. RTM_Max_Sessions, 0 .. 255) of Integer_64;
+   Last_T    : Per_Session_I64 := (others => -1);
+   Last_Ms   : Per_Session_U64 := (others => 0);
+   Last_Req  : Per_Session_Nat := (others => 0);
+   T_By_Nid  : By_Nid_T := (others => (others => -1));
+
+   procedure Clear_Radio is
+   begin
+      Last_T := (others => -1);
+      Last_Ms := (others => 0);
+      Last_Req := (others => 0);
+      T_By_Nid := (others => (others => -1));
+   end Clear_Radio;
+
    ---------------------------------------------------------------------
    --  Byte helpers
    ---------------------------------------------------------------------
@@ -282,6 +301,50 @@ package body S076_Bench is
       end if;
    end Observe_JRU;
 
+   --  An RTM output (EVC_Ports: RTM_Tag_Message, session, message;
+   --  RTM_Tag_Request, session, request, its bytes)
+   procedure Observe_RTM (P : Byte_Array) is
+      R : Radio_Out_T;
+   begin
+      if P'Length < 3 or else Radio_N = Max_Radio
+        or else P (P'First + 1) not in 1 .. RTM_Max_Sessions
+      then
+         return;
+      end if;
+      R.Session := Natural (P (P'First + 1));
+      R.Is_Request := P (P'First) = RTM_Tag_Request;
+      if P (P'First) = RTM_Tag_Message then
+         R.Code := Natural (P (P'First + 2));
+         R.Length := Natural'Min (P'Length - 2, Max_Radio_Bytes);
+         R.Data (1 .. R.Length) := P (P'First + 2 .. P'First + 1 + R.Length);
+         if P'Length >= 2 + 8 then
+            --  T_TRAIN: bits 18 .. 49 of the message (8.4.4.7.1)
+            declare
+               M : constant Natural := P'First + 2;
+               T : Unsigned_64 := 0;
+            begin
+               for K in 0 .. 5 loop
+                  T := T * 256 + Unsigned_64 (P (M + 2 + K));
+               end loop;
+               --  the 48 bits from bit 16 on: T_TRAIN is bits 2 .. 33
+               T := Shift_Right (T, 14) and 16#FFFF_FFFF#;
+               Last_T (R.Session) := Integer_64 (T);
+               Last_Ms (R.Session) := Clock;
+               T_By_Nid (R.Session, R.Code) := Integer_64 (T);
+            end;
+         end if;
+      elsif R.Is_Request then
+         R.Code := Natural (P (P'First + 2));
+         R.Length := Natural'Min (P'Length - 3, Max_Radio_Bytes);
+         R.Data (1 .. R.Length) := P (P'First + 3 .. P'First + 2 + R.Length);
+         Last_Req (R.Session) := R.Code;
+      else
+         return;
+      end if;
+      Radio_N := Radio_N + 1;
+      Radio_List (Radio_N) := R;
+   end Observe_RTM;
+
    Out_Buf : Byte_Array (1 .. EVC_Outbox.Capacity + 16);
 
    procedure Take_Outputs is
@@ -313,6 +376,8 @@ package body S076_Bench is
                         Observe_TIU (P);
                      when JRU =>
                         Observe_JRU (P);
+                     when RTM =>
+                        Observe_RTM (P);
                      when others =>
                         null;
                   end case;
@@ -400,6 +465,8 @@ package body S076_Bench is
       Win.Reversing := Win.Reversing or else Now.Reversing;
       Win.Adhesion := Win.Adhesion or else Now.Adhesion;
       Win.Radio_Up := Win.Radio_Up or else Now.Radio = 1;
+      Win.Radio_Lost := Win.Radio_Lost or else Now.Radio = 2;
+      Win.TAF := Win.TAF or else Now.TAF;
       for I in Now.TC'Range loop
          Win.TC (I) := Win.TC (I) or else Now.TC (I);
          Win.TIU_TC (I) := Win.TIU_TC (I) or else Now.TIU_TC (I);
@@ -414,6 +481,7 @@ package body S076_Bench is
       Texts_N := 0;
       SSs_N := 0;
       Sent_N := 0;
+      Radio_N := 0;
    end New_Window;
 
    function Window_Cycles return Natural is (Cycles);
@@ -446,6 +514,7 @@ package body S076_Bench is
       Last_Sup := 0;
       LRBG_Known := False;
       TC_Phase := (others => -1);
+      Clear_Radio;
       New_Window;
    end Reset;
 
@@ -469,6 +538,7 @@ package body S076_Bench is
       Last_Commands := 0;
       Last_Mon := 0;
       Last_Sup := 0;
+      Clear_Radio;
       --  the odometer's first sample: the frame starts at the train
       Cycle;
    end Power_On;
@@ -748,5 +818,24 @@ package body S076_Bench is
    function SS_Count return Natural is (SSs_N);
    function SS (I : Positive) return SS_Event_T is (SSs (I));
    function DMI_Sent return Natural is (Sent_N);
+
+   procedure RTM_Input (Payload : Byte_Array) is
+   begin
+      if Is_Powered then
+         EVC_Core.Handle_Input (RTM, Payload);
+      end if;
+   end RTM_Input;
+
+   function Radio_Count return Natural is (Radio_N);
+   function Radio (I : Positive) return Radio_Out_T is (Radio_List (I));
+   function Last_T_Train (Session : Positive) return Integer_64 is
+     (if Session <= RTM_Max_Sessions then Last_T (Session) else -1);
+   function Last_Sent_Ms (Session : Positive) return Unsigned_64 is
+     (if Session <= RTM_Max_Sessions then Last_Ms (Session) else 0);
+   function T_Train_Of (Session : Positive; Nid : Natural) return Integer_64
+   is (if Session <= RTM_Max_Sessions and then Nid <= 255
+       then T_By_Nid (Session, Nid) else -1);
+   function Last_Request (Session : Positive) return Natural is
+     (if Session <= RTM_Max_Sessions then Last_Req (Session) else 0);
 
 end S076_Bench;

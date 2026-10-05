@@ -12,6 +12,7 @@ with EVC_Train;
 with Interfaces;   use Interfaces;
 with Sim_JRU;
 with Sim_Odometer;
+with Sim_RBC;
 with Sim_Telegrams;
 with Sim_Trackside;
 
@@ -99,6 +100,34 @@ package body Sim_Onboard_Env is
    end Handle;
 
    package Link is new DMI_Link (Handle, Capacity => 4096);
+
+   Radio_On : Boolean := False;
+
+   procedure Set_Radio (On : Boolean) is
+   begin
+      Radio_On := On;
+   end Set_Radio;
+
+   function Radio return Boolean is (Radio_On);
+
+   procedure RBC_Emergency_Stop is
+   begin
+      if Radio_On then
+         Sim_RBC.Emergency_Stop;
+      end if;
+   end RBC_Emergency_Stop;
+
+   --  The answers of the RBC for the on-board's next cycle
+   procedure Give_RTM_Inputs is
+      Buffer : EVC_Bytes.Byte_Array (1 .. EVC_Ports.RTM_Input_Max_Length);
+      Last   : Natural;
+   begin
+      for I in 1 .. 64 loop
+         Sim_RBC.Next_Input (Buffer, Last);
+         exit when Last < Buffer'First;
+         EVC_Core.Handle_Input (EVC_Ports.RTM, Buffer (1 .. Last));
+      end loop;
+   end Give_RTM_Inputs;
 
    procedure Receive (Data : Stream_Element_Array) is
    begin
@@ -244,6 +273,10 @@ package body Sim_Onboard_Env is
                   end if;
                when EVC_Ports.Port_T'Pos (EVC_Ports.JRU) =>
                   Sim_JRU.Put (Payload);
+               when EVC_Ports.Port_T'Pos (EVC_Ports.RTM) =>
+                  if Radio_On then
+                     Sim_RBC.Take (Payload);
+                  end if;
                when others =>
                   null;
             end case;
@@ -274,6 +307,7 @@ package body Sim_Onboard_Env is
       EVC_Train.Position_M := Start_Front_M;
       Sim_Vehicle.Reset;
       Sim_JRU.Reset;
+      Sim_RBC.Reset;
       Sim_Odometer.Reset (Antenna_Cm);
       Link.Reset;
       Tx_Filled := 0;
@@ -337,6 +371,10 @@ package body Sim_Onboard_Env is
       end loop;
       EVC_Core.Handle_Input (EVC_Ports.Odometer, Sim_Odometer.Sample);
       Give_TIU_Inputs;
+      if Radio_On then
+         Sim_RBC.Step (Dt_Ms);
+         Give_RTM_Inputs;
+      end if;
 
       --  4. the on-board
       EVC_Core.Tick (Dt_Ms);

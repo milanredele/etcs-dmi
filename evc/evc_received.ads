@@ -37,6 +37,7 @@ is
 
    use type ETCS_Message.Status_T;
    use type ETCS_Telegram.Status_T;
+   use type ETCS_Message.Message_T;
 
    --  Nothing received, nothing counted
    procedure Clear
@@ -86,14 +87,17 @@ is
    function Last_Message return ETCS_Message.Message_T
      with Global => Store;
 
-   --  Phase E5: the kind and a variable of the last message accepted,
-   --  read in place (Last_Message copies about 1.6 KB: doc/EVC-PLAN.md
-   --  §2 "Stack"); Message_Value is ETCS_Message.Value
-   function Message_Kind return ETCS_Message_Catalogue.Message_Kind_T
+   --  Phase E5: the last message accepted read in place (Last_Message
+   --  returns about 1.6 KB by value): its kind, the value of the first
+   --  field Var (ETCS_Message.Value), its copy into M
+   function Last_Kind return ETCS_Message_Catalogue.Message_Kind_T
      with Global => Store;
-   function Message_Value (Var : ETCS_Variables.Variable_T)
+   function Last_Value (Var : ETCS_Variables.Variable_T)
      return Interfaces.Unsigned_64
      with Global => Store;
+   procedure Copy_Message (M : out ETCS_Message.Message_T)
+     with Global => Store,
+          Post => M = Last_Message;
 
    --  A reader on packet I of the last telegram or message accepted
    procedure Open_Telegram_Packet (I : Positive;

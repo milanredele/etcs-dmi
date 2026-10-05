@@ -695,11 +695,13 @@ is
    --  and given, with their session, to the session and link half; the
    --  messages it passes go on to the authority half (phase E5)
    procedure Read_Radio_Messages
-     with Global => (Input  => (Latched_RTM, Cycle_Count, Clock_Ms),
+     with Global => (Input  => (Latched_RTM, Cycle_Count, Clock_Ms,
+                                EVC_Position.State, EVC_Odometry.State),
                      In_Out => (Latched_RTM_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Sessions.State,
                                 EVC_Radio.State,
-                                EVC_Radio_Authority.State))
+                                EVC_Radio_Authority.State,
+                                EVC_Origins.State, EVC_Radio_Info.State))
    is
       use type EVC_Sessions.Verdict_T;
       M_Status : ETCS_Message.Status_T;
@@ -724,7 +726,8 @@ is
                   EVC_Sessions.Take_Message
                     (Slot.Session, Unsigned_64 (Clock_Ms), Verdict);
                   if Verdict = EVC_Sessions.Pass then
-                     EVC_Radio_Authority.Take_Message (Slot.Session);
+                     EVC_Radio_Authority.Take_Message
+                       (Slot.Session, Unsigned_64 (Clock_Ms));
                   end if;
                end if;
             end if;
@@ -738,9 +741,12 @@ is
    --  latch, free now) and given to the authority half as received in
    --  this cycle; at most RTM_Latch_Size in a cycle
    procedure Read_Released_Messages
-     with Global => (In_Out => (Latched_RTM, EVC_Received.Store,
+     with Global => (Input  => (Clock_Ms, EVC_Position.State,
+                                EVC_Odometry.State),
+                     In_Out => (Latched_RTM, EVC_Received.Store,
                                 EVC_Sessions.State,
-                                EVC_Radio_Authority.State))
+                                EVC_Radio_Authority.State,
+                                EVC_Origins.State, EVC_Radio_Info.State))
    is
       M_Status : ETCS_Message.Status_T;
       S        : RTM_Session_T;
@@ -753,7 +759,7 @@ is
          EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
-            EVC_Radio_Authority.Take_Message (S);
+            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
          end if;
       end loop;
    end Read_Released_Messages;
@@ -780,7 +786,8 @@ is
                                 EVC_Driver_Requests.State,
                                 EVC_Levels.State, EVC_Procedures.State,
                                 EVC_Sessions.State, EVC_Radio.State,
-                                EVC_Radio_Authority.State)),
+                                EVC_Radio_Authority.State,
+                                EVC_Origins.State, EVC_Radio_Info.State)),
           Post => EVC_Driver_Requests.Isolation_Selected
                     = EVC_Driver_Requests.Isolation_Latched'Old
                   and then not EVC_Driver_Requests.Isolation_Latched
@@ -926,7 +933,8 @@ is
                                 EVC_Odometry.State, EVC_Train_Data.State,
                                 TIU_Now, EVC_Config.State, Current_Mode,
                                 EVC_Train_Inputs.State, EVC_Mission.State,
-                                EVC_Procedures.State, SDM_Result),
+                                EVC_Procedures.State, SDM_Result,
+                                EVC_Radio_Info.State),
                      In_Out => (SDM_Work, EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
@@ -1210,9 +1218,12 @@ is
    --  requests to make, the conditions of 4.6.3 they own)
    procedure Evaluate_Radio
      with Global => (Input  => (Current_Mode, Clock_Ms,
-                                EVC_National_Values.State),
+                                EVC_National_Values.State,
+                                EVC_Stored_Information.State,
+                                EVC_Levels.State),
                      In_Out => (EVC_Sessions.State, EVC_Radio.State,
-                                EVC_Radio_Authority.State))
+                                EVC_Radio_Authority.State,
+                                EVC_Radio_Info.State))
    is
    begin
       EVC_Sessions.Evaluate (Radio_Context);

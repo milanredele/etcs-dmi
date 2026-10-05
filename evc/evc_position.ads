@@ -438,6 +438,32 @@ is
                                        OK      : out Boolean)
      with Global => (In_Out => State);
 
+   --  Phase E5, 3.6.2.2.2 c), 3.6.4.2.3: the location reference of an
+   --  information received by radio, the balise group Id named in the
+   --  message (NID_LRBG): the LRBG, the SOLR or one of the last LRBGs
+   --  the on-board keeps (the last eight, Max_Recent of the body), its
+   --  last passage. Shifted: message 33 (and the emergency stop 15)
+   --  shifts it by Shift along the nominal direction of the group
+   --  (D_REF, 7.5.1.17), which needs that direction known. The origin of
+   --  the stored information (EVC_Origins) allocated for it, referred
+   --  to the SOLR as Record_Taken does for a group (3.6.4.2.5); 0 when
+   --  Id is none of those groups, a shift has no direction, or the table
+   --  is full. G: the orientation of the group, T: the train
+   --  orientation, as directions on the axis (the packets valid for the
+   --  train are those of Valid_For (Q_DIR, G, T), 3.6.3.1.3); S, the
+   --  sense of the distances: the train orientation.
+   procedure Radio_Origin (Id      : Identity_T;
+                           Shifted : Boolean;
+                           Shift   : Dist_T;
+                           Origin  : out EVC_Origins.Count_T;
+                           G, T    : out Direction_T;
+                           S       : out Sense_T)
+     with Global => (Input  => (State, EVC_Odometry.State),
+                     In_Out => EVC_Origins.State),
+          Post => T = To_Direction (S)
+                  and then (if Origin /= 0
+                            then EVC_Origins.Get (Origin).Used);
+
    --  The train position kept over No Power (4.10 column NP "to be
    --  revalidated", 4.11, 3.6.1.3.3; EVC_Retained holds it). Kept when
    --  it refers to an LRBG: the LRBG, Away the frame distance from its

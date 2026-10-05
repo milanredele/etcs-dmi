@@ -95,10 +95,26 @@ package S076_Sequences is
    end record;
    type Telegrams_T is array (1 .. Max_Telegrams) of Telegram_T;
 
+   --  An RBC message ("message" block): the message to the on-board of
+   --  an input step, or the one an expectation describes. Data: the
+   --  message from its first bit on (NID_MESSAGE), as the var rows give
+   --  it (Has_Bits False when the extractor refused it); T_Train_At: the
+   --  bit of each T_TRAIN var row (the header's, then the time stamp of
+   --  the message answered: 8.4.4, messages 4, 5, 7, 8, 27, 28); the
+   --  NID_PACKET of its var rows (255 left out)
+   Max_Message_Bytes : constant := 160;   -- 1093 bits in the corpus
+   type T_Train_At_T is array (1 .. 4) of Natural;
    type Message_T is record
       Step    : Natural := 0;
       Dist_Cm : Integer_64 := 0;
       NID     : Natural := 0;
+      Has_Bits : Boolean := False;
+      Bits    : Natural := 0;
+      Data    : Byte_Array (1 .. Max_Message_Bytes) := (others => 0);
+      T_Train_At : T_Train_At_T := (others => 0);
+      T_Train_Count : Natural := 0;
+      Packets : Byte_Array (1 .. 24) := (others => 0);
+      Packet_Count : Natural := 0;
    end record;
    type Messages_T is array (1 .. Max_Messages) of Message_T;
 

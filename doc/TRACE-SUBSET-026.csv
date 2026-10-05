@@ -328,8 +328,8 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.4.1.2 b),3,x,,,,,E3,done,EVC_Movement_Authority.End_Section_Over (Target_Speed 0)
 3.8.4.1.3,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_LOA_Timer
 3.8.4.1.4,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_End_Section_Timer
-3.8.4.2.1,3,x,,,,,E3,partial,b) done (level 1); a) is E5 [E5 authority]
-3.8.4.2.1 a),3,x,,,,,E3,deferred,E5 (time stamp of the RBC message) [E5 authority]
+3.8.4.2.1,3,x,,,,,E3,done,"b) level 1 (E3); a) the time stamp of the message (EVC_Radio.Time_Of_Stamp of its T_TRAIN, EVC_Radio_Authority.Take_Message, EVC_Radio_Info.Slot_T.Start_Ms to Accept_MA); evc_test Scenario_Radio_MA [E5 authority]"
+3.8.4.2.1 a),3,x,,,,,E3,done,EVC_Radio_Authority.Take_Message: the on-board time of the T_TRAIN of the message (EVC_Radio.Time_Of_Stamp) starts the section timers (EVC_Movement_Authority.Accept_MA); evc_test Scenario_Radio_MA (a stamp 5 s old) [E5 authority]
 3.8.4.2.1 b),3,x,,,,,E3,done,"EVC_Position.Taken_T.Start_Ms, EVC_Movement_Authority.Accept_MA; evc_test Scenario_Section_Timer"
 3.8.4.2.2,3,x,,,,,E3,partial,"EVC_Movement_Authority.Supervise; evc_test Scenario_Section_Timer; the exception of an MA shortened with A.3.4.1.3 [11] is applied, the conditional emergency stop and the co-operative shortening are E5 [E5 authority]"
 3.8.4.2.2 a),3,x,,,,,E3,done,"EVC_Movement_Authority.Supervise, deletion beyond the new SvL; evc_test Scenario_Section_Timer"
@@ -338,8 +338,8 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.4.2.3,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise; evc_test Scenario_Section_Timer_Stopped
 3.8.4.2.4,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise; evc_test Scenario_Section_Timer_Stopped
 3.8.4.2.5,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA (Stopped when the min safe front end is beyond the stop location)
-3.8.4.3.1,3,x,,,,,E3,partial,b) done (level 1); a) is E5 [E5 authority]
-3.8.4.3.1 a),3,x,,,,,E3,deferred,E5 (time stamp of the RBC message) [E5 authority]
+3.8.4.3.1,3,x,,,,,E3,done,"b) level 1 (E3); a) the time stamp of the message, the same start as the section timers (EVC_Movement_Authority.Accept_MA from EVC_Radio_Info.Slot_T.Start_Ms) [E5 authority]"
+3.8.4.3.1 a),3,x,,,,,E3,done,"the LOA speed timer starts with the section timers at the on-board time of the T_TRAIN of the message (EVC_Radio.Time_Of_Stamp, EVC_Movement_Authority.Accept_MA); the start is checked on the section timer in evc_test Scenario_Radio_MA [E5 authority]"
 3.8.4.3.1 b),3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA (LOA_Timer from Start_Ms); evc_test Scenario_LOA_Timer
 3.8.4.3.2,3,x,,,,,E3,done,"EVC_Movement_Authority.Supervise, deletion beyond the SvL (A.3.4.1.2 n); evc_test Scenario_LOA_Timer"
 3.8.4.4.1,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise (started even when infinite); evc_test Scenario_Overlap_Timer
@@ -361,15 +361,15 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.4.6.5 a),3,x,,,,,E3,deferred,E7 (infill)
 3.8.4.6.5 b),3,x,,,,,E3,deferred,E7 (infill)
 3.8.4.6.5 c),3,x,,,,,E3,deferred,E7 (infill)
-3.8.5.1,3,x,,,,,E5,todo,[E5 authority]
-3.8.5.1 a),3,x,,,,,E5,todo,[E5 authority]
-3.8.5.1 b),3,x,,,,,E5,todo,[E5 authority]
-3.8.5.1.2,3,x,,,,,E5,todo,[E5 authority]
-3.8.5.1.3,3,x,,,,,E5,todo,[E5 authority]
-3.8.5.1.4,3,x,,,,,E5,todo,[E5 authority]
-3.8.5.1.5,3,x,,,,,E5,todo,[E5 authority]
+3.8.5.1,3,x,,,,,E5,done,"EVC_Movement_Authority.Accept_MA replaces the MA (E3), for packet 12 and, phase E5, packet 15 of messages 3 and 33 (EVC_Stored_Information.Take_Radio, EVC_Radio_Info); evc_test Scenario_Radio_MA, Scenario_Radio_MA_Shifted [E5 authority]"
+3.8.5.1 a),3,x,,,,,E5,done,a new MA from a group at a main signal or from the RBC replaces all data of the previous one (EVC_Movement_Authority.Accept_MA); evc_test Scenario_Radio_MA_Shifted (an MA by radio replaced by the next) [E5 authority]
+3.8.5.1 b),3,x,,,,,E5,deferred,E7: infill (decision 4 of doc/EVC-PLAN.md §13) [E5 authority]
+3.8.5.1.2,3,x,,,,,E5,deferred,E7: infill (decision 4 of doc/EVC-PLAN.md §13) [E5 authority]
+3.8.5.1.3,3,x,,,,,E5,done,"EVC_Movement_Authority.Accept_MA (the SvL closer, E3), for the radio MA too; evc_test Scenario_MA_Shortening, Scenario_Radio_MA_Shifted [E5 authority]"
+3.8.5.1.4,3,x,,,,,E5,done,"EVC_Movement_Authority.Accept_MA (an SvL where a LOA was, E3), the same for the radio MA (EVC_Stored_Information.Store_MA) [E5 authority]"
+3.8.5.1.5,3,x,,,,,E5,done,"EVC_Stored_Information: the deletion of a shortened MA (Apply) before the other packets of the message replace theirs: the MA is evaluated after the track description of its message, the deletion applies to the information of earlier messages only (E3); the radio message is evaluated in the same order (Take_Radio) [E5 authority]"
 3.8.5.2.2,3,x,,,,,E5,todo,[E5 authority]
-3.8.5.2.4,3,x,,,,,E5,todo,[E5 authority]
+3.8.5.2.4,3,x,,,,,E5,done,"EVC_Movement_Authority.Accept_MA: a new MA with a LOA is never a shortening (E3, also for the radio MA) [E5 authority]"
 3.8.6.1,3,x,x,,,,E5,todo,[E5 authority]
 3.8.6.1 b),3,x,,,,,E5,todo,[E5 authority]
 3.8.6.1 b) 1st bullet,3,x,,,,,E5,todo,[E5 authority]
