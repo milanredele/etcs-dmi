@@ -45,7 +45,7 @@ silent_build() {   # silent_build <object dir> <gprbuild arguments...>
    out=$(mktemp "${TMPDIR:-/tmp}/etcs-build.XXXXXX")
    rc=0
    gprbuild "$@" > "$out" 2>&1 || rc=$?
-   msgs=$(grep -v -e "^clang: warning: overriding deployment version" \
+   msgs=$(grep -v -e "warning: overriding deployment version" \
              "$out" || true)
    rm -f "$out"
    if [ "$rc" -ne 0 ] || [ -n "$msgs" ]; then
