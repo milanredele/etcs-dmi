@@ -1676,6 +1676,158 @@ procedure EVC_Fuzz is
       EVC_Core.Configure (EVC_Config.Encode (EVC_Config.Default));
    end Config_Phase;
 
+   ---------------------------------------------------------------------
+   --  The radio phase (phase E5, decision 5 of doc/EVC-PLAN.md §13): an
+   --  RBC that sends anything at any time on the RTM port. Each cycle a
+   --  few inputs: a message of a random track to train NID_MESSAGE of
+   --  the catalogue with random field values and packets (now and then
+   --  damaged), tagged for session 1 or 2 (now and then 0, 3 or 255) or
+   --  untagged; a connection event in any order (now and then out of
+   --  range); a truncated message; an oversized input; random bytes.
+   --  Coverage floor (at 5000 steps or more): every track to train
+   --  NID_MESSAGE given in both sessions, every event of EVC_Ports in
+   --  both sessions, and at least one message per 50 given accepted by
+   --  the codec.
+   ---------------------------------------------------------------------
+
+   Radio_Given    : array (MCat.Known_Message_T, 1 .. 2) of Natural :=
+     (others => (others => 0));
+   Radio_Events   : array (RTM_Event_T, 1 .. 2) of Natural :=
+     (others => (others => 0));
+   Radio_Messages, Radio_Accepted, Radio_Cycles : Natural := 0;
+   Radio_Truncated, Radio_Oversized, Radio_Random : Natural := 0;
+
+   procedure Radio_Phase (Runs : Natural) is
+      Out_B  : Byte_Array (1 .. EVC_Outbox.Capacity);
+      O_Last : Natural;
+
+      function Session_Byte return Natural is
+        (if Chance (95) then Pick (1, 2)
+         else (case Pick (1, 3) is when 1 => 0, when 2 => 3,
+                                   when others => 255));
+
+      procedure One_Message is
+         K  : MCat.Known_Message_T;
+         V  : ETCS_Message.Value_Array := (others => 0);
+         OK : Boolean;
+         S  : constant Natural := Session_Byte;
+         With_Tag : constant Boolean := Chance (85);
+      begin
+         loop
+            K := MCat.Known_Message_T'Val
+              (Pick (MCat.Known_Message_T'Pos (MCat.Known_Message_T'First),
+                     MCat.Known_Message_T'Pos (MCat.Known_Message_T'Last)));
+            exit when MCat.Direction_Of (K) = Cat.Track_To_Train;
+         end loop;
+         for I in 3 .. MCat.Field_Count (K) loop
+            V (I) := (if Chance (50) then 0 else Unsigned_64 (Next))
+              and (Shift_Left (1, Natural'Min
+                     (32, ETCS_Variables.Bits (MCat.Fields (K) (I)))) - 1);
+         end loop;
+         ETCS_Bits.Clear (W);
+         ETCS_Message.Write_Fields (W, K, V, OK);
+         Random_Packets (Cat.Track_To_Train, Cat.RBC, Pick (0, 4));
+         ETCS_Message.Finish (W, OK);
+         if not OK then
+            return;
+         end if;
+         Last := 0;
+         if With_Tag then
+            Add (Natural (RTM_Tag_Message));
+            Add (S);
+         end if;
+         declare
+            Data : constant Byte_Array := ETCS_Bits.Data (W);
+         begin
+            for I in Data'Range loop
+               exit when Last = Buffer'Last;
+               Add (Natural (Data (I)));
+            end loop;
+         end;
+         if Chance (10) then
+            Damage ((if With_Tag then 16 else 0) + 18);
+         end if;
+         if Chance (10) and then Last > 3 then
+            --  truncated
+            Last := Pick (1, Last - 1);
+            Radio_Truncated := Radio_Truncated + 1;
+         end if;
+         Radio_Messages := Radio_Messages + 1;
+         if (not With_Tag or else S in 1 .. 2) then
+            Radio_Given (K, (if With_Tag then S else 1)) :=
+              Radio_Given (K, (if With_Tag then S else 1)) + 1;
+         end if;
+         EVC_Core.Handle_Input (RTM, Buffer (1 .. Last));
+      end One_Message;
+
+      procedure One_Event is
+         S : constant Natural := Session_Byte;
+         E : constant Natural :=
+           (if Chance (95) then Pick (1, 6) else Pick (0, 255));
+      begin
+         Last := 0;
+         Add (Natural (RTM_Tag_Event));
+         Add (S);
+         Add (E);
+         if S in 1 .. 2 and then E in 1 .. 6 then
+            Radio_Events (RTM_Event_T'Val (E - 1), S) :=
+              Radio_Events (RTM_Event_T'Val (E - 1), S) + 1;
+         end if;
+         if Chance (5) then
+            Add (Natural (Random_Byte));   -- an event too long
+         end if;
+         EVC_Core.Handle_Input (RTM, Buffer (1 .. Last));
+      end One_Event;
+
+      procedure Odd_Input is
+      begin
+         Last := 0;
+         if Chance (50) then
+            --  oversized: longer than an RTM input may be
+            Radio_Oversized := Radio_Oversized + 1;
+            Add (Natural (RTM_Tag_Message));
+            Add (Session_Byte);
+            Random_Bytes (Pick (RTM_Input_Max_Length - 1, Buffer'Length - 2));
+         else
+            Radio_Random := Radio_Random + 1;
+            Random_Bytes (Pick (0, 40));
+         end if;
+         EVC_Core.Handle_Input (RTM, Buffer (1 .. Last));
+      end Odd_Input;
+
+      Before : Natural;
+   begin
+      for Run in 1 .. Runs loop
+         begin
+            EVC_Core.Initialise;
+            Before := EVC_Received.Message_Count (ETCS_Message.Accepted);
+            for Cycle in 1 .. 200 loop
+               for K in 1 .. Pick (0, 4) loop
+                  case Pick (1, 100) is
+                     when 1 .. 60  => One_Message;
+                     when 61 .. 90 => One_Event;
+                     when others   => Odd_Input;
+                  end case;
+               end loop;
+               EVC_Core.Tick (100);
+               Radio_Cycles := Radio_Cycles + 1;
+               EVC_Core.Take_Outputs (Out_B, O_Last);
+               if not Whole_Records (Out_B (1 .. O_Last)) then
+                  Violation ("radio: not whole records", Run);
+               end if;
+            end loop;
+            Radio_Accepted := Radio_Accepted
+              + (EVC_Received.Message_Count (ETCS_Message.Accepted)
+                 - Before);
+         exception
+            when E : others =>
+               Report ("radio phase", E, Run);
+               Contain_And_Restart (Run);
+         end;
+      end loop;
+      EVC_Core.Initialise;
+   end Radio_Phase;
+
 begin
    if Ada.Command_Line.Argument_Count >= 1 then
       Steps := Natural'Value (Ada.Command_Line.Argument (1));
@@ -1949,6 +2101,60 @@ begin
          end loop;
       end;
    end if;
+   --  E5 (the radio)
+   Radio_Phase (Natural'Max (Steps / 1_000, 1));
+   declare
+      NIDs_Given, NIDs_Both, NIDs : Natural := 0;
+      Events_Both : Natural := 0;
+   begin
+      for K in MCat.Known_Message_T loop
+         if MCat.Direction_Of (K) = Cat.Track_To_Train then
+            NIDs := NIDs + 1;
+            if Radio_Given (K, 1) + Radio_Given (K, 2) > 0 then
+               NIDs_Given := NIDs_Given + 1;
+            end if;
+            if Radio_Given (K, 1) > 0 and then Radio_Given (K, 2) > 0 then
+               NIDs_Both := NIDs_Both + 1;
+            end if;
+         end if;
+      end loop;
+      for E in RTM_Event_T loop
+         if Radio_Events (E, 1) > 0 and then Radio_Events (E, 2) > 0 then
+            Events_Both := Events_Both + 1;
+         end if;
+      end loop;
+      Put_Line ("radio: cycles:" & Natural'Image (Radio_Cycles)
+                & "  messages:" & Natural'Image (Radio_Messages)
+                & " (NID_MESSAGE given" & Natural'Image (NIDs_Given)
+                & " of" & Natural'Image (NIDs) & ", in both sessions"
+                & Natural'Image (NIDs_Both) & ")"
+                & "  accepted by the codec:" & Natural'Image (Radio_Accepted)
+                & "  truncated:" & Natural'Image (Radio_Truncated)
+                & "  oversized:" & Natural'Image (Radio_Oversized)
+                & "  random:" & Natural'Image (Radio_Random)
+                & "  events in both sessions:" & Natural'Image (Events_Both)
+                & " of 6  violations:" & Natural'Image (Violations)
+                & "  raised:" & Natural'Image (Raised));
+      Put ("radio, messages by NID (session 1/2):");
+      for K in MCat.Known_Message_T loop
+         if MCat.Direction_Of (K) = Cat.Track_To_Train then
+            Put (Natural'Image (MCat.NID_Of (K)) & ":"
+                 & Natural'Image (Radio_Given (K, 1)) & "/"
+                 & Natural'Image (Radio_Given (K, 2)));
+         end if;
+      end loop;
+      New_Line;
+      if Steps >= 5_000
+        and then (NIDs_Both < NIDs or else Events_Both < 6
+                  or else Radio_Accepted * 50 < Radio_Messages)
+      then
+         Coverage_Lost := True;
+         Put_Line ("coverage lost: the radio phase (every track to train"
+                   & " NID_MESSAGE and every event in both sessions, one"
+                   & " message in 50 accepted)");
+      end if;
+   end;
+
    Ada.Command_Line.Set_Exit_Status
      (if Raised = 0 and then Violations = 0 and then not Coverage_Lost
       then Ada.Command_Line.Success

@@ -1753,3 +1753,49 @@ radio input yet and is unchanged; its radio side is the bench's.
   format above (events and tagged messages in, outputs read like
   `Radio_Output`), the runner's `expect RTM`, the fuzzer's radio phase
   (decision 5).
+
+### Bench and sequences, first round (e5/bench-1, 2026-10-05)
+
+**The SUBSET-076 runner's radio side** (`test/src/s076_run-radio_input.adb`,
+`s076_run-radio_expect.adb`, `S076_Bench` RTM capture, the message blocks in
+`S076_Sequences`). The RBC of a sequence is a script in session 1:
+`input RTM connect` gives the event "set up" at the step, asked for or not
+(the step before, `expect RTM connect`, judges the request); `disconnect`
+is "released" after a release request or message 156, else "lost";
+`registration` is "registered"; `message N` is the step's message block
+with its time stamps set as an RBC sets them (3.16.3.2.2, 3.16.3.3: the
+last T_TRAIN of the on-board in the session plus the time since, strictly
+increasing; the answered T_TRAIN of messages 4, 5, 7, 8, 27, 28). The
+expectations: a request to set up, release or register (NID_MN) in the
+window; message N decoded with `ETCS_Message` with the packets and fields
+the line names; their negations. Level 2 steps run. The reason "E5" is
+narrowed to: E5-radio (the RBC data dialogues of the DMI when the
+on-board opened them, radio timers without a name, the SM symbol),
+E5-handover (the RTM steps after an RBC transition order: the runner does
+not tell two RBCs apart yet), E7-infill (153, message 37), L3 (absent
+from 4.0.0). The report's "## Radio" section is the work list of the two
+halves: per output of the on-board, the sequences waiting for it. On the
+branch with the stub halves: 498 passed (none of the 487 lost), 2018
+failed, 674 blocked (1819 before); the first failure of 1044 sequences is
+the connection request, then 155, 159, 129, 156, 136, 132 ... (sessions
+1135, 1116, 988, 316, 295, 160).
+
+**Sim_RBC** (`sim/sim_rbc`), behind `Sim_Onboard_Env.Set_Radio` (off by
+default): connection, session (155/32, 159/38), Train Data (129/8), MA
+on request (132/3, packet 15 to the bench line's EOA from the reported
+LRBG), termination (156/39), release, an emergency stop on command (16);
+RBC 2 and `Handover` are the interface only. `EVC_Test_RBC.Scenario_RBC`.
+
+**The fuzzer's radio phase** (`obj/evc_fuzz`, decision 5): messages of
+every track to train NID_MESSAGE with random fields and packets, tagged
+for either session or untagged, damaged or truncated, events in any order,
+oversized and random inputs; floor: every NID and every event in both
+sessions, one message in 50 accepted by the codec.
+
+**Left for the next round of the bench:** the bench page with Sim_RBC on
+the level 2 section of the default line (a selector, the emergency stop
+button, `onboard.wasm`), once the halves send something; the handover in
+the runner (telling the RBCs apart from the identities of packet 131/42
+and the connection requests) and in Sim_RBC; the RBC data dialogues of
+the DMI in the runner; the re-recorded baseline after the integration of
+the halves.
