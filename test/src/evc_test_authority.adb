@@ -13,6 +13,7 @@ with EVC_Distances;
 with EVC_DMI_Port;
 with EVC_Ports;              use EVC_Ports;
 with EVC_Modes;              use EVC_Modes;
+with EVC_Levels;
 with EVC_Procedures;
 with EVC_Radio;
 with EVC_Radio_Authority;
@@ -40,14 +41,43 @@ package body EVC_Test_Authority is
    --  Helpers
    ---------------------------------------------------------------------
 
+   --  The RBC acknowledges (message 8) the Train Data the session half
+   --  sends (129, 3.18.3.4, repeated every 15 s): 4.8.3 [3] rejects the
+   --  authorisations of the RBC before
+   procedure Ack_Train_Data is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      use type ETCS_Message.Status_T;
+   begin
+      for C in 1 .. 160 loop
+         Stand_X (100);
+         for N in 1 .. Radio_Outputs loop
+            Decode_Radio_Message (N, M, St);
+            if St = ETCS_Message.Accepted
+              and then M.Kind = MCat.Train_M129
+            then
+               V (3) := Unsigned_64 (EVC_Radio.T_Train_At
+                                       (Unsigned_64 (EVC_Core.Time_Ms)));
+               V (6) := M.Values (3);
+               Give_Radio_Message (1, Message_Of (MCat.Track_M8, V));
+               Stand_X (100);
+               return;
+            end if;
+         end loop;
+      end loop;
+   end Ack_Train_Data;
+
    --  The session half's part, put through the writers of EVC_Radio: an
-   --  established session 1 with the Supervising RBC (3.5.3.7 d, 3.15.1)
+   --  established session 1 with the Supervising RBC (3.5.3.7 d, 3.15.1),
+   --  the Train Data acknowledged
    procedure Establish is
    begin
       EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
       EVC_Radio.Set_State (1, EVC_Radio.Established);
       EVC_Radio.Set_Version (1, 33);
       EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Ack_Train_Data;
    end Establish;
 
    --  The on-board's T_TRAIN Ago_Ms before now (a time stamp, 3.16.3.1)
@@ -552,9 +582,11 @@ package body EVC_Test_Authority is
              & "in Trip ([45], 4.10)");
       Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 7));
       Stand_X (200);
-      Check (not RA.Unconditional_Stop_Received
-             and then RA.Emergency_Stops = 0,
-             "emergency: the unconditional stop revoked (3.10.3)");
+      Check (RA.Unconditional_Stop_Received
+             and then RA.Emergency_Stops = 1
+             and then RA.Messages_Rejected = 1,
+             "emergency: in TR the revocation is rejected, the stop kept "
+             & "(4.8.4 'Revocation of Emergency Stop', TR: R; 4.10: kept)");
    end Scenario_Emergency_Stops;
 
    ---------------------------------------------------------------------
@@ -874,5 +906,160 @@ package body EVC_Test_Authority is
              and then RA.SH_Request_Failed and then EVC_Core.Mode = M_FS,
              "shunting, level 2: then the request fails (5.6.4.1.2)");
    end Scenario_Shunting_L2;
+
+   ---------------------------------------------------------------------
+   --  Phase 4: the acceptance of radio information (4.8)
+   ---------------------------------------------------------------------
+
+   --  4.8.3 and 4.8.4 for the RBC as the transmission medium, one class
+   --  of each table per check (EVC_Radio_Acceptance)
+   procedure Scenario_Radio_Acceptance is
+      M      : constant T12.Packet_T := MA_Of ((300, 400), 600);
+      R0     : Natural;
+      NID, Q : Integer;
+      Got    : Unsigned_64;
+   begin
+      --  4.8.4 'Unconditional Emergency Stop', SH: R
+      Start_L2;
+      EVC_Core.Set_Mode_For_Test (M_SH, L2);
+      Stand_X (200);
+      R0 := RA.Messages_Rejected;
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M16, 7));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Stand_X (100);
+      Check (EVC_Core.Mode = M_SH and then NID = -1
+             and then not RA.Unconditional_Stop_Received
+             and then RA.Messages_Rejected = R0 + 1,
+             "acceptance: an unconditional stop in SH rejected, no trip, no "
+             & "acknowledgement (4.8.4 'Unconditional Emergency Stop', SH)");
+
+      --  4.8.3 'Unconditional Emergency Stop', level 1: R [2]
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      Add_Group (Group (10, 100));
+      Establish;
+      Run_X (11_000);
+      R0 := RA.Messages_Rejected;
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M16, 7));
+      Stand_X (200);
+      Check (EVC_Core.Mode /= M_TR and then RA.Messages_Rejected = R0 + 1
+             and then RA.Buffered = 0,
+             "acceptance: an unconditional stop in level 1 without a level 2 "
+             & "announcement rejected (4.8.3 'Unconditional Emergency Stop', "
+             & "level 1: R [2])");
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (not SI.Current.MA.Present
+             and then RA.Messages_Rejected = R0 + 2,
+             "acceptance: an MA of the RBC in level 1 rejected (4.8.3 "
+             & "'Movement Authority', From RBC, level 1: R [2])");
+
+      --  4.8.4 'SR Authorisation', FS: R
+      Start_L2;
+      Run_X (11_000);
+      R0 := RA.Messages_Rejected;
+      Give_Radio_Message (1, SR_Message (10, 500));
+      Stand_X (200);
+      Check (not RA.RBC_SR_Given and then RA.Messages_Rejected = R0 + 1,
+             "acceptance: an SR authorisation in FS rejected (4.8.4 'SR "
+             & "Authorisation', FS: R)");
+
+      --  4.8.4 'Request to shorten MA', SR: R, answered
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Stand_X (200);
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((200, 100)), Stamp, Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 138 and then RA.Messages_Rejected = R0 + 2,
+             "acceptance: a request to shorten the MA in SR rejected, "
+             & "answered 138 (4.8.4 'Request to shorten MA', SR: R; "
+             & "3.8.6.1 c)");
+
+      --  4.8.3 [3]: Train Data sent, not acknowledged
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Add_Group (Group (10, 100));
+      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (not SI.Current.MA.Present,
+             "acceptance: an MA before the RBC acknowledged the Train Data "
+             & "sent rejected (4.8.3 [3])");
+      Ack_Train_Data;
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (SI.Current.MA.Present,
+             "acceptance: the Train Data acknowledged, the MA accepted "
+             & "(4.8.3 'Movement Authority', From RBC, level 2: A)");
+   end Scenario_Radio_Acceptance;
+
+   --  Packet 41: an order to level 2 at D_M metres from the group
+   function Order_L2 (D_M : Natural) return TP41.Packet_T is
+      P : TP41.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_LEVELTR := ETCS_Variables.D_LEVELTR_T (D_M);
+      P.M_LEVELTR := ETCS_Variables.M_LEVELTR_Level_2;
+      P.Has_NID_NTC := False;
+      P.L_ACKLEVELTR := 0;
+      P.N_ITER := 0;
+      return P;
+   end Order_L2;
+
+   --  Level 1 in FS, the session established and the Train Data
+   --  acknowledged, the group 10 at 100 m announcing level 2 at 400 m,
+   --  passed
+   procedure Start_L2_Announced is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, Order_L2 (300));
+      Establish;
+      Run_X (15_000);
+   end Start_L2_Announced;
+
+   --  4.8.5: the transition buffer of the authority half
+   procedure Scenario_Transition_Buffer is
+      M : constant T12.Packet_T := MA_Of ((300, 400), 600);
+   begin
+      Start_L2_Announced;
+      Check (EVC_Levels.Announced
+             and then EVC_Levels.Announced_Level = L2,
+             "buffer: level 2 announced at 400 m");
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (RA.Buffered = 1 and then not SI.Current.MA.Present,
+             "buffer: an MA of the RBC in level 1 with level 2 announced is "
+             & "stored, not used (4.8.3 [2], 4.8.5.1)");
+      for I in 1 .. 3 loop
+         Give_Radio_Message (1, MA_Message (10, M, Stamp));
+         Stand_X (100);
+      end loop;
+      Check (RA.Buffered = 3,
+             "buffer: three messages kept, the oldest replaced (4.8.5.1, "
+             & "4.8.5.3)");
+      Run_X (45_000);
+      Check (EVC_Levels.Level = L2 and then RA.Buffered = 0
+             and then SI.Current.MA.Present,
+             "buffer: the level 2 transition performed, the messages "
+             & "released and accepted in level 2: the MA used (4.8.5.5)");
+
+      Start_L2_Announced;
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      EVC_Radio.Set_State (1, EVC_Radio.Idle);
+      Stand_X (200);
+      Check (RA.Buffered = 0,
+             "buffer: the session that gave the messages terminated, the "
+             & "buffer deleted (4.8.5.4 c)");
+   end Scenario_Transition_Buffer;
 
 end EVC_Test_Authority;

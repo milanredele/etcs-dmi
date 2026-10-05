@@ -733,7 +733,14 @@ is
                                       EVC_Bytes.Byte (Slot.Length / 256)));
                   EVC_Sessions.Take_Message
                     (Slot.Session, Unsigned_64 (Clock_Ms), Verdict);
-                  if Verdict = EVC_Sessions.Pass then
+                  --  4.8.3 [2], 4.8.5.1: kept in the transition buffer of
+                  --  the authority half, or taken
+                  if Verdict /= EVC_Sessions.Pass then
+                     null;
+                  elsif EVC_Radio_Authority.To_Buffer then
+                     EVC_Radio_Authority.Store_Message
+                       (Slot.Session, Slot.Data (1 .. Slot.Length));
+                  else
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
                   end if;
@@ -764,6 +771,18 @@ is
          pragma Loop_Invariant (True);
          exit when not EVC_Sessions.Has_Released;
          EVC_Sessions.Take_Released (S, Latched_RTM (1).Data, Last);
+         EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
+                                       M_Status);
+         if M_Status = ETCS_Message.Accepted then
+            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
+         end if;
+      end loop;
+      --  4.8.5.5: the transition buffer of the authority half released
+      --  (the level became 2 in the last cycle), in the order of reception
+      for I in 1 .. EVC_Radio_Authority.Buffer_Size loop
+         pragma Loop_Invariant (True);
+         exit when not EVC_Radio_Authority.Has_Released;
+         EVC_Radio_Authority.Take_Released (S, Latched_RTM (1).Data, Last);
          EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
@@ -1286,7 +1305,13 @@ is
             and then EVC_Driver_Requests.SR_Data.Speed_Kmh in 5 .. 600,
           Override_Active => EVC_Procedures.Override_Active,
           Shunting_Selected => EVC_Driver_Requests.Shunting_Selected,
-          Standstill => EVC_Odometry.Standstill));
+          Standstill => EVC_Odometry.Standstill,
+          Cab_Active => EVC_Train_Inputs.Desk_Open,
+          Train_Data_Valid => EVC_Train_Data.Valid,
+          TRN_Valid => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+          Train_Data_Unacked =>
+            EVC_Sessions.Train_Data_Sent > 0
+            and then not EVC_Radio.Train_Data_Acknowledged));
    end Evaluate_Radio;
 
    --  6b. Phase E5: the mode changed (after the mode machine)

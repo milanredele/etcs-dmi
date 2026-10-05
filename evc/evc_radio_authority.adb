@@ -10,22 +10,23 @@ with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
 with ETCS_Train_Packets.P0;
 with ETCS_Variables;          use ETCS_Variables;
-with EVC_Bytes;
 with EVC_DMI_Port;
-with EVC_Ports;
 with EVC_Distances;           use EVC_Distances;
+with EVC_Radio_Acceptance;
+with EVC_Radio_Authority.Buffer;
 with Interfaces;              use Interfaces;
 
 package body EVC_Radio_Authority
   with SPARK_Mode => On,
-       Refined_State => (State => (Messages, Held, Stop_Received,
+       Refined_State => (State => (Messages, Rejected_N, Held, Stop_Received,
                                    Mode_Changes, Cycles, Radio_MAs,
                                    Params, Reasons, Request_Due,
                                    Request_Sent, Last_Request_Ms,
                                    SR_Authorised, Requests, Start_Reason,
                                    Deleted_Reason, Shortening, Emergency,
                                    SR_Auth, Passed_Listed, Mode_Now,
-                                   Exit_Recognised, SH_Req, Status_Now))
+                                   Exit_Recognised, SH_Req, Status_Now,
+                                   EVC_Radio_Authority.Buffer.State))
 is
 
    use type ETCS_Message_Catalogue.Message_Kind_T;
@@ -36,6 +37,8 @@ is
    type Held_T is array (Condition_T) of Boolean;
 
    Messages      : Natural := 0;
+   --  4.8: the messages rejected since Clear
+   Rejected_N    : Natural := 0;
    Held          : Held_T := (others => False);
    Stop_Received : Boolean := False;
    Mode_Changes  : Natural := 0;
@@ -73,6 +76,8 @@ is
    type Answer_T is (None, Granted, Rejected);
    type Shortening_T is record
       Pending  : Boolean := False;
+      --  4.8 rejected the request
+      Refused  : Boolean := False;
       Answer   : Answer_T := None;
       Session  : EVC_Radio.Session_T := 1;
       Stamp    : T_TRAIN_T := 0;
@@ -205,6 +210,8 @@ is
      with Refined_Global => Held;
    function Unconditional_Stop_Received return Boolean is (Stop_Received)
      with Refined_Global => Stop_Received;
+   function Messages_Rejected return Natural is (Rejected_N);
+
    function Messages_Taken return Natural is (Messages)
      with Refined_Global => Messages;
    function Mode_Changes_Taken return Natural is (Mode_Changes)
@@ -255,6 +262,28 @@ is
    function SH_Request_Stamp return T_TRAIN_T is (SH_Req.Stamp);
    function Status_Entry return Natural is (Status_Now);
 
+   use type EVC_Radio_Acceptance.Verdict_T;
+
+   function To_Buffer return Boolean is
+     (Buffer.Judge (EVC_Received.Last_Kind) = EVC_Radio_Acceptance.Stored);
+
+   procedure Store_Message (S : EVC_Radio.Session_T;
+                            Data : EVC_Bytes.Byte_Array) is
+   begin
+      Buffer.Store (S, Data);
+   end Store_Message;
+
+   function Buffered return Natural is (Buffer.Buffered);
+
+   function Has_Released return Boolean is (Buffer.Has_Released);
+
+   procedure Take_Released (S    : out EVC_Radio.Session_T;
+                            Data : in out EVC_Bytes.Byte_Array;
+                            Last : out Natural) is
+   begin
+      Buffer.Take_Released (S, Data, Last);
+   end Take_Released;
+
    procedure Override_Selected is
    begin
       SR_Auth.Given := False;
@@ -268,7 +297,9 @@ is
 
    procedure Clear is
    begin
+      Buffer.Clear;
       Messages := 0;
+      Rejected_N := 0;
       Held := (others => False);
       Stop_Received := False;
       Mode_Changes := 0;
@@ -586,8 +617,28 @@ is
    is
       Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
         EVC_Received.Last_Kind;
+      C    : EVC_Radio_Acceptance.Context_T := Buffer.Context;
    begin
       Count (Messages);
+      --  4.8: the context of the last cycle, with what this cycle's
+      --  messages changed (the mode, message 6)
+      C.Mode := Mode_Now;
+      C.Trip_Exit_Known := Exit_Recognised;
+      if EVC_Radio_Acceptance.Verdict
+           (EVC_Radio_Acceptance.Info_Of (Kind), C)
+         /= EVC_Radio_Acceptance.Accepted
+      then
+         Count (Rejected_N);
+         --  3.8.6.1 c): the RBC is informed of a request to shorten the
+         --  MA rejected (decision: also when 4.8 rejects it)
+         if Kind = ETCS_Message_Catalogue.Track_M9 then
+            Shortening.Pending := True;
+            Shortening.Refused := True;
+            Shortening.Session := S;
+            Shortening.Stamp := Stamp_Of_Last;
+         end if;
+         return;
+      end if;
       Take_Parameters;
       if Kind = ETCS_Message_Catalogue.Track_M6 then
          --  5.11.2.2 S120, E125: in PT (4.8.4: rejected in other modes)
@@ -754,6 +805,7 @@ is
       if not Shortening.Pending then
          EVC_Radio_Info.Empty;
       elsif Level_2 and then Facts.Proposal_In_Rear
+        and then not Shortening.Refused
         --  3.10.2.4: not while an emergency stop is not revoked
         and then not Any_Stop
       then
@@ -766,6 +818,7 @@ is
          EVC_Radio_Info.Empty;
       end if;
       Shortening.Pending := False;
+      Shortening.Refused := False;
    end Judge_Shortening;
 
    --  4.6.3 [36], 4.4.11.1.3 c): in SR with a list of expected balise
@@ -851,6 +904,19 @@ is
       if Mode_Now /= M_PT then
          Exit_Recognised := False;
       end if;
+      --  4.8: the context of the messages of the next cycle; 4.8.5.4,
+      --  4.8.5.5: the transition buffer deleted or released
+      Buffer.Update
+        ((Mode               => Mode_Now,
+          Level_Valid        => EVC_Levels.Valid,
+          Level              => EVC_Levels.Level,
+          L2_Announced       => EVC_Levels.Announced
+                                and then EVC_Levels.Announced_Level = L2,
+          Train_Data_Unacked => Facts.Train_Data_Unacked,
+          Trip_Exit_Known    => Exit_Recognised,
+          Cab_Active         => Facts.Cab_Active,
+          Train_Data_Valid   => Facts.Train_Data_Valid,
+          TRN_Valid          => Facts.TRN_Valid));
       --  5.11.2.2 S120, D130, S130, S140 b), S150: in PT, "Start" requests
       --  an MA once the exit from TR is recognised and no emergency stop
       --  is pending
