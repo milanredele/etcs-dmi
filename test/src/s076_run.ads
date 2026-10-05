@@ -37,7 +37,17 @@ package S076_Run is
    --  list)
    type Reason_T is
      (R_None,
-      R_Level_2,          -- level 2/3 or the RBC needed (E5)
+      R_Radio,            -- the radio side the runner does not model
+                          -- yet (the RBC data dialogues of the DMI,
+                          -- the radio timers, the SM symbol; E5)
+      R_Handover,         -- an RBC/RBC handover: the steps after the
+                          -- transition order (packet 131) talk to a
+                          -- second RBC, which the runner does not
+                          -- tell apart yet (E5, 3.15.1)
+      R_Radio_Infill,     -- radio infill (3.9, E7): message 37 from an
+                          -- RIU, the radio infill request 153
+      R_Level_3,          -- level 3, absent from 4.0.0 (M_LEVELTR 4 is
+                          -- spare, 7.5.1.67)
       R_Version,          -- system version other than the 4.0 layout
                           -- (chapter 6, E7)
       R_Euroloop,         -- Euroloop (E7)

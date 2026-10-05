@@ -165,7 +165,8 @@ package S076_Bench is
         Bit_Array_T := (others => False);
       Override, Brake_Shown, Brake_Ack, EBC, SBC, TCO,
         Not_EBC, Not_SBC, Not_TCO, Speed_Shown, Planning_Shown,
-        Indication, Gradients, Geo, Reversing, Adhesion, Radio_Up :
+        Indication, Gradients, Geo, Reversing, Adhesion, Radio_Up,
+        Radio_Lost, TAF :
         Boolean := False;
       TC, TIU_TC : Bit_Array_T := (others => False);
    end record;
@@ -218,5 +219,38 @@ package S076_Bench is
 
    --  DMI frames the DMI sent to the on-board in the window
    function DMI_Sent return Natural;
+
+   ---------------------------------------------------------------------
+   --  The radio: the RTM port in the format of EVC_Ports (phase E5)
+   ---------------------------------------------------------------------
+
+   --  An RTM input as the port takes it (a tagged message, an event)
+   procedure RTM_Input (Payload : Byte_Array);
+
+   --  An RTM output of the window: a train to track message of a
+   --  session (Code its NID_MESSAGE, Data the message from its first
+   --  byte) or a request to the radio (Code EVC_Ports.RTM_Request_T'Pos
+   --  + 1, Data the bytes after the code); Length 0 for a payload that
+   --  is neither
+   Max_Radio_Bytes : constant := 256;
+   type Radio_Out_T is record
+      Session    : Natural := 0;
+      Is_Request : Boolean := False;
+      Code       : Natural := 0;
+      Length     : Natural := 0;
+      Data       : Byte_Array (1 .. Max_Radio_Bytes) := (others => 0);
+   end record;
+   Max_Radio : constant := 256;
+   function Radio_Count return Natural;
+   function Radio (I : Positive) return Radio_Out_T;
+
+   --  Since the power-up: the T_TRAIN of the last message the on-board
+   --  sent in Session, and the bench time it was taken (-1 when none);
+   --  the T_TRAIN of the last message of NID_MESSAGE Nid in Session (-1
+   --  when none); the last request of Session (0 none, else the code)
+   function Last_T_Train (Session : Positive) return Integer_64;
+   function Last_Sent_Ms (Session : Positive) return Unsigned_64;
+   function T_Train_Of (Session : Positive; Nid : Natural) return Integer_64;
+   function Last_Request (Session : Positive) return Natural;
 
 end S076_Bench;
