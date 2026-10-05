@@ -12,6 +12,7 @@ with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
 with EVC_Sessions.Mission;
+with EVC_Sessions.Reports;
 with Interfaces;             use Interfaces;
 
 package body EVC_Sessions
@@ -21,7 +22,8 @@ package body EVC_Sessions
                                    Pending, Acks, Ack_N, NV, Ind,
                                    Requesting, Timer_On, Timer_Since,
                                    SB_Shown, Status_List, Status_N,
-                                   EVC_Sessions.Mission.State))
+                                   EVC_Sessions.Mission.State,
+                                   EVC_Sessions.Reports.State))
 is
 
    package R renames EVC_Radio;
@@ -457,6 +459,7 @@ is
       Status_List := (others => (others => <>));
       Status_N := 0;
       Mission.Clear;
+      Reports.Clear;
    end Clear;
 
    --  3.5.3.7 a, 3.5.4.2: the set-up of the safe radio connection of S
@@ -631,6 +634,8 @@ is
                end if;
             end;
          when others =>
+            --  3.6.5.1.5: the position report parameters
+            Reports.Take_Message;
             Verdict := Pass;
       end case;
    end Take_Message;
@@ -845,6 +850,7 @@ is
          end if;
       end;
       Apply_Mission (Ctx);
+      Reports.Evaluate (SoM => Mission.Reporting);
       Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill);
       --  3.16.3.4.4: the driver informed of the service brake ("Communication
       --  error", the DMI's entry 4; its end: 3.14.1.7)
@@ -860,6 +866,7 @@ is
    begin
       Count (Mode_Changes);
       Mission.Mode_Changed (From, To);
+      Reports.Mode_Changed;
    end Mode_Changed;
 
    ---------------------------------------------------------------------
@@ -1004,6 +1011,8 @@ is
       end loop;
       --  157, 129, 150 (after 159 of the cycle)
       Mission.Produce (Ctx);
+      --  136 (3.6.5), after the SoM position report of the cycle
+      Reports.Produce (Ctx);
       --  the system status messages of the cycle were sent (EVC_Core)
       Status_N := 0;
    end Produce;
@@ -1016,5 +1025,9 @@ is
    function Train_Data_Sent return Natural is (Mission.Train_Data_Sent);
    function SoM_Reports_Sent return Natural is (Mission.Reports_Sent);
    function EoM_Sent return Natural is (Mission.EoM_Sent);
+   function Position_Reports_Sent return Natural is
+     (Reports.Reports_Sent);
+   function Report_Parameters_Taken return Natural is
+     (Reports.Parameters_Taken);
 
 end EVC_Sessions;

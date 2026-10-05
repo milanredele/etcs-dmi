@@ -26,8 +26,6 @@ is
    use type R.Session_Ref_T;
    use type R.Session_T;
    use type R.RBC_Id_T;
-   use type EVC_Position.Status_T;
-   use type EVC_Position.Cab_T;
    use type EVC_Mission.Data_Status_T;
 
    --  A.3.1 "Waiting time before radio message repetition" (15 s) and
@@ -89,6 +87,9 @@ is
    function Position_To_Delete return Boolean is (Delete)
      with Refined_Global => Delete;
    function Opening return Boolean is (Step = Opening)
+     with Refined_Global => Step;
+   function Reporting return Boolean is
+     (Step = Step_T'(Opening) or else Step = Report_Due)
      with Refined_Global => Step;
    function Train_Data_Sent return Natural is (N_TD)
      with Refined_Global => N_TD;

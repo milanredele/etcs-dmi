@@ -34,7 +34,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | National and default data | national-and-default-data.scn | 110 | 131 | 21 / 30 | 7 / 179 | 0 | absent 134, done 6, todo 4 |
 | On Sight | on-sight.scn | 3 | 12 | 12 / 17 | 0 / 20 | 0 | absent 2, done 6, partial 1 |
 | Override | override.scn | 23 | 63 | 118 / 153 | 0 / 155 | 0 | absent 2, deferred 1, done 40, partial 16 |
-| Position Reporting to the RBC | position-reporting-to-the-rbc.scn | 28 | 51 | 66 / 169 | 0 / 121 | 0 | absent 12, deferred 17, done 29, partial 5 |
+| Position Reporting to the RBC | position-reporting-to-the-rbc.scn | 28 | 51 | 66 / 169 | 0 / 121 | 0 | absent 12, deferred 6, done 45 |
 | Pre-indication location | pre-indication-location.scn | 2 | 4 | 4 / 3 | 4 / 4 | 0 | absent 2 |
 | Release speed | release-speed.scn | 1 | 2 | 2 / 1 | 0 / 4 | 0 | done 3 |
 | Reversing | reversing.scn | 5 | 13 | 16 / 15 | 0 / 30 | 0 | absent 8, done 8 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, deferred 4, done 23, partial 11 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, deferred 1, done 18, other 6, partial 9 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 64, done 497, n/a 4, other 52, partial 106, todo 41 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 53, done 513, n/a 4, other 52, partial 101, todo 41 |

@@ -356,8 +356,8 @@ efs: Kernel.TrainPosition.Position.DataState <- DataStateEnum.Valid
 efs: BTM.LRBG.PreviousBaliseGroups <- [ BTM.LRBG.PreviousBaliseGroupStruct { BaliseGroup => BTM.LRBG.BaliseGroupStruct { NID_BG=> 9614, BGOrientation => OrientationEnum.Nominal, TrainRunningDirection => OrientationEnum.Nominal, Position => BTM.PositionStruct { OverReadingAmountOdo => 1.0, Position => 1040.0, UnderReadingAmountOdo => 2.0 } }, IsLRBG => True, IsSingle => False },BTM.LRBG.PreviousBaliseGroupStruct { BaliseGroup => BTM.LRBG.BaliseGroupStruct { NID_BG=> 9616, BGOrientation=> OrientationEnum.Nominal, TrainRunningDirection => OrientationEnum.Nominal, Timestamp => Kernel.DateAndTime.Now(), Position=> BTM.PositionStruct{ OverReadingAmountOdo=> 8.0, Position=> 1080.0, UnderReadingAmountOdo=> 11.0} }, IsLRBG => True, IsSingle => False } ]
 set odo.position 1080.0
 case A communication session is successfully established
-clause E2 deferred 3.6.5.1.4 h) ; efs 3.6.5.1.4.h
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4 h) ; efs 3.6.5.1.4.h
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 step One BG - Step1: Setup
 sub Sub-step1
@@ -517,7 +517,7 @@ sub Sub-step1
 efs: Testing.InitializeEURORADIO()
 case A loss of train integrity is detected
 clause E2 deferred 3.6.5.1.4 d) ; efs 3.6.5.1.4.d
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 step One BG - Step1: Setup
 sub Sub-step1
@@ -678,7 +678,7 @@ efs: BTM.LRBG.PreviousBaliseGroups <- [ BTM.LRBG.PreviousBaliseGroupStruct { IsL
 set odo.position 1080.0
 case The driver confirms train integrity
 clause E2 deferred 3.6.5.1.4 c) ; efs 3.6.5.1.4.c
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 step One BG - Step1: Setup
 sub Sub-step1
@@ -841,7 +841,7 @@ efs: BTM.LRBG.PreviousBaliseGroups <- [ BTM.LRBG.PreviousBaliseGroupStruct { IsL
 efs: Testing.InitializeEURORADIO()
 case The level changes
 clause E2 done 3.6.5.1.4 g) ; efs 3.6.5.1.4.g
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 step One BG - Step1: Setup
 sub Sub-step1
@@ -1005,7 +1005,7 @@ set odo.position 1100.0
 efs: Testing.InitializeEURORADIO()
 case The mode changes
 clause E2 done 3.6.5.1.4 b) ; efs 3.6.5.1.4.b
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 step One BG - Step1: Setup
 sub Sub-step1
@@ -1165,7 +1165,7 @@ efs: BTM.LRBG.PreviousBaliseGroups <- [ BTM.LRBG.PreviousBaliseGroupStruct { IsL
 set odo.position 1080.0
 efs: Testing.InitializeEURORADIO()
 case Position report parameters - periodically in time
-clause E2 partial 3.6.5.1.4 ; efs 3.6.5.1.4
+clause E2 done 3.6.5.1.4 ; efs 3.6.5.1.4
 clause - absent 3.6.5.1.5 a) ; efs 3.6.5.1.5.a
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 clause - absent 3.6.5.1.5 ; efs 3.6.5.1.5
@@ -1218,7 +1218,7 @@ expect efs: EURORADIO.Messages.PositionReport.SendReportDueToPositionReportTimeR
 expect efs: NOT Available((LAST message IN EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageOut).SystemVersion2.TRAIN_POSITION_REPORT.POSITION_REPORT.POSITION_REPORT)
 expect efs: EURORADIO.Messages.PositionReport.LastPositionReport.Time >= 1500.0 AND EURORADIO.Messages.PositionReport.LastPositionReport.Time < 1501.0
 case Position report parameters - periodically in space
-clause E2 partial 3.6.5.1.4 ; efs 3.6.5.1.4
+clause E2 done 3.6.5.1.4 ; efs 3.6.5.1.4
 clause - absent 3.6.5.1.5 b) ; efs 3.6.5.1.5.b
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 clause - absent 3.6.5.1.5 ; efs 3.6.5.1.5
@@ -1267,18 +1267,18 @@ expect efs: EURORADIO.Messages.PositionReport.SendReportDueToPositionReportDista
 expect efs: NOT Available((LAST message IN EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageOut).SystemVersion2.TRAIN_POSITION_REPORT.POSITION_REPORT.POSITION_REPORT)
 expect efs: EURORADIO.Messages.PositionReport.LastPositionReport.Position == 1100.0
 case Position report parameters - max safe front end or min safe rear end passes a specified location
-clause E2 partial 3.6.5.1.4 ; efs 3.6.5.1.4
+clause E2 done 3.6.5.1.4 ; efs 3.6.5.1.4
 clause - absent 3.6.5.1.5 c) ; efs 3.6.5.1.5.c
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 clause - absent 3.6.5.1.5 ; efs 3.6.5.1.5
 case Position report parameters - at every passage of an LRBG compliant BG
-clause E2 partial 3.6.5.1.4 ; efs 3.6.5.1.4
+clause E2 done 3.6.5.1.4 ; efs 3.6.5.1.4
 clause - absent 3.6.5.1.5 d) ; efs 3.6.5.1.5.d
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 clause - absent 3.6.5.1.5 ; efs 3.6.5.1.5
 clause - absent 3.6.5.1.5.1 ; efs 3.6.5.1.5.1
 case Position report parameters - immediately
-clause E2 partial 3.6.5.1.4 ; efs 3.6.5.1.4
+clause E2 done 3.6.5.1.4 ; efs 3.6.5.1.4
 clause - absent 3.6.5.1.5 e) ; efs 3.6.5.1.5.e
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 clause - absent 3.6.5.1.5 ; efs 3.6.5.1.5
@@ -1460,7 +1460,7 @@ efs: BTM.LRBG.PreviousBaliseGroups <- [ BTM.LRBG.PreviousBaliseGroupStruct { IsL
 set odo.position 1080.0
 case The train passes a level transition border (from level 2/3 to level 0, 1, NTC) with its min safe rear end
 clause E2 deferred 3.6.5.1.4 f) ; efs 3.6.5.1.4.f
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 sequence Position report events: train passes a RBC/RBC border with its max safe front end
 case Setup
@@ -1597,7 +1597,7 @@ set odo.position 1080.0
 efs: Testing.InitializeEURORADIO()
 case The train passes a RBC/RBC border with its max safe front end
 clause E2 deferred 3.6.5.1.4 k) ; efs 3.6.5.1.4.k
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 sequence Position report events: train passes a RBC/RBC border with its min safe rear end
 case Setup
@@ -1734,7 +1734,7 @@ set odo.position 1080.0
 efs: Testing.InitializeEURORADIO()
 case The train passes a RBC/RBC border with its min safe rear end
 clause E2 deferred 3.6.5.1.4 e) ; efs 3.6.5.1.4.e
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 sequence Position report events: train passes an LRBG compliant BG, if no report parameters
 case Setup
@@ -1871,7 +1871,7 @@ set odo.position 1080.0
 efs: Testing.InitializeEURORADIO()
 case The train passes an LRBG compliant balise group, if no position report parameters are stored on-board
 clause E2 done 3.6.5.1.4 j) ; efs 3.6.5.1.4.j
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 sequence Position report events: train reached standstill
 case Setup
@@ -2008,7 +2008,7 @@ set odo.position 1080.0
 efs: Testing.InitializeEURORADIO()
 case The train reaches standstill
 clause E2 done 3.6.5.1.4 a) ; efs 3.6.5.1.4.a
-clause E2 deferred 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
+clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 step One BG - Step1: Setup
 sub Sub-step1

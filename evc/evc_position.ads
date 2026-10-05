@@ -421,11 +421,33 @@ is
      (P   : ETCS_Track_Packets.P58.Packet_T;
       Ref : Identity_T;
       OK  : out Boolean)
-     with Global => (In_Out => State, Input => EVC_Odometry.State);
+     with Global => (In_Out => State, Input => EVC_Odometry.State),
+          Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Status = Status'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
 
    --  A position report was sent (phase E5): the periods restart
    procedure Report_Sent (Now_Ms : Unsigned_64)
-     with Global => (In_Out => State, Input => EVC_Odometry.State);
+     with Global => (In_Out => State, Input => EVC_Odometry.State),
+          Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Status = Status'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
+
+   --  4.9.1.3 (phase E5): the position report parameters are deleted on
+   --  entering level 1
+   procedure Delete_Report_Parameters
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => not Report_Parameters_Stored
+                  and then LRBG = LRBG'Old
+                  and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Status = Status'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
 
    --  3.4.2.3.3.6: the RBC assigns a co-ordinate system to the single
    --  balise group Id, nominal or reverse against the direction
