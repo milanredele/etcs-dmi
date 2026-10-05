@@ -22,9 +22,12 @@ pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Bits;
 with ETCS_Message;
+with ETCS_Message_Catalogue;
 with ETCS_Telegram;
+with ETCS_Variables;
 with EVC_Bytes;
 with EVC_Ports;
+with Interfaces;
 
 package EVC_Received
   with SPARK_Mode => On,
@@ -81,6 +84,15 @@ is
    function Last_Telegram return ETCS_Telegram.Telegram_T
      with Global => Store;
    function Last_Message return ETCS_Message.Message_T
+     with Global => Store;
+
+   --  Phase E5: the kind and a variable of the last message accepted,
+   --  read in place (Last_Message copies about 1.6 KB: doc/EVC-PLAN.md
+   --  §2 "Stack"); Message_Value is ETCS_Message.Value
+   function Message_Kind return ETCS_Message_Catalogue.Message_Kind_T
+     with Global => Store;
+   function Message_Value (Var : ETCS_Variables.Variable_T)
+     return Interfaces.Unsigned_64
      with Global => Store;
 
    --  A reader on packet I of the last telegram or message accepted

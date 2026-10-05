@@ -32,10 +32,13 @@
 --       of the cycle, EVC_Radio.Send), then the authority's Produce, then
 --       EVC_Radio.Drain.
 
+with ETCS_Variables;
 with EVC_Bytes;
 with EVC_Modes;  use EVC_Modes;
+with EVC_National_Values;
 with EVC_Ports;
 with EVC_Radio;
+with EVC_Received;
 
 package EVC_Sessions
   with SPARK_Mode => On,
@@ -60,10 +63,12 @@ is
                   and then not Has_Released
                   and then (for all C in Condition_T => not Holds (C));
 
-   --  1. A connection event of the RTM port on the session S
-   procedure Take_Event (S     : EVC_Radio.Session_T;
-                         Event : EVC_Ports.RTM_Event_T)
-     with Global => (In_Out => State),
+   --  1. A connection event of the RTM port on the session S, at the
+   --  on-board time Now_Ms
+   procedure Take_Event (S      : EVC_Radio.Session_T;
+                         Event  : EVC_Ports.RTM_Event_T;
+                         Now_Ms : EVC_Radio.Time_Ms_T)
+     with Global => (In_Out => (State, EVC_Radio.State)),
           Post => Has_Released = Has_Released'Old;
 
    --  1. A message received on the session S and accepted by the codec
@@ -71,7 +76,19 @@ is
    --  the messages of the session (3.5: 32, 39, ...), the acceptance of
    --  4.8; Verdict says what becomes of it
    procedure Take_Message (S       : EVC_Radio.Session_T;
+                           Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
+     with Global => (In_Out => (State, EVC_Radio.State),
+                     Input  => EVC_Received.Store),
+          Post => Has_Released = Has_Released'Old;
+
+   --  3. 3.5.2.6.1, 3.5.3.4 b), 3.5.5.1 a): a session management order
+   --  (packet 42) of a balise group accepted (4.8): establish (Q_RBC 1)
+   --  or terminate the session with RBC on the number Radio; applied by
+   --  the next Evaluate (the last order of a cycle wins)
+   procedure Take_Order (Establish : Boolean;
+                         RBC       : EVC_Radio.RBC_Id_T;
+                         Radio     : ETCS_Variables.NID_RADIO_T)
      with Global => (In_Out => State),
           Post => Has_Released = Has_Released'Old;
 
@@ -95,7 +112,8 @@ is
    --  sessions, the link supervision, the reports to send, the
    --  conditions of 4.6.3
    procedure Evaluate (Ctx : EVC_Radio.Context_T)
-     with Global => (In_Out => State);
+     with Global => (In_Out => (State, EVC_Radio.State),
+                     Input  => EVC_National_Values.State);
 
    --  6. The mode changed from From to To (3.5.3.4 c, 3.6.5.1.4, ...)
    procedure Mode_Changed (From, To : Mode_T)
@@ -103,7 +121,7 @@ is
 
    --  8. The messages and requests of the cycle (EVC_Radio.Send)
    procedure Produce (Ctx : EVC_Radio.Context_T)
-     with Global => (In_Out => State);
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue));
 
    --  The condition C holds in this cycle (computed by Evaluate)
    function Holds (C : Condition_T) return Boolean
@@ -112,6 +130,11 @@ is
    --  [41] (T_NVCONTACT is passed) AND (associated reaction is "train
    --  trip"): 3.16.3.4
    function T_NVCONTACT_Trip return Boolean is (Holds (C_41))
+     with Global => State;
+
+   --  3.16.3.4.2 b): the service brake of T_NVCONTACT is commanded
+   --  (released by a new message, 3.14.1.7)
+   function Service_Brake return Boolean
      with Global => State;
 
    --  For the tests: the events and messages taken since Clear

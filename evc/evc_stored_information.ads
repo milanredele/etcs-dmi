@@ -89,6 +89,7 @@ with EVC_Ports;
 with EVC_Profile;
 with EVC_Position;
 with EVC_Profiles;           use EVC_Profiles;
+with EVC_Sessions;
 with EVC_Supervision_Input;  use EVC_Supervision_Input;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
@@ -323,7 +324,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Levels.State),
+                                EVC_Levels.State, EVC_Sessions.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Train_Data.State, EVC_Config.State)),
           Post =>

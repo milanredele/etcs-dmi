@@ -38,6 +38,9 @@ package body EVC_Test_Radio is
    procedure Scenario_Radio_Joint is
       --  16 Unconditional emergency stop (no mandatory packet)
       M16 : constant Byte_Array := Message_Of (MCat.Track_M16);
+      --  the same, one time stamp later (3.16.3.3.3, e5/session)
+      M16_Later : constant Byte_Array :=
+        Message_Of (MCat.Track_M16, (3 => 1, others => 0));
       V   : ETCS_Message.Value_Array := (others => 0);
       M   : ETCS_Message.Message_T;
       S   : ETCS_Message.Status_T;
@@ -53,7 +56,7 @@ package body EVC_Test_Radio is
 
       Give_Radio_Event (1, Connection_Set_Up);
       Input (RTM, M16);                        -- untagged: session 1
-      Give_Radio_Message (1, M16);
+      Give_Radio_Message (1, M16_Later);
       Give_Radio_Message (2, M16);
       Bad := EVC_Core.Rejected (RTM);
       Give_Radio_Event (3, Connection_Lost);   -- no session 3

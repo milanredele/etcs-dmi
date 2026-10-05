@@ -77,7 +77,9 @@ is
       Stop_If_In_SR,          -- 137
       Reversing_Area,         -- 138
       Reversing_Supervision,  -- 139
-      Text_Message);          -- 72, 76 (73, 74 of 7.4.2)
+      Text_Message,           -- 72, 76 (73, 74 of 7.4.2)
+      --  phase E5 (e5/session): from a balise group
+      Session_Management);    -- 42
 
    type Context_T is record
       Mode             : Mode_T := M_SB;
@@ -121,6 +123,9 @@ is
           when Level_Crossing | Stop_If_In_SR =>
              L in L1 | L2 or else C.L1_Announced,
           when Danger_For_SH | Stop_SH_On_Desk => True,
+          --  every level; the exceptions [14] [15] of the table are
+          --  phase 2 of e5/session
+          when Session_Management => True,
           when Reversing_Area | Reversing_Supervision =>
              L = L1 or else C.L1_Announced);
 
@@ -139,7 +144,8 @@ is
              and then
              (case I is
                  when National_Values | Level_Order | Conditional_Order
-                    | Geographical_Position | Text_Message => True,
+                    | Geographical_Position | Text_Message
+                    | Session_Management => True,
                  when Movement_Authority =>
                     C.Train_Data_Valid and then C.TRN_Valid,     -- [4][11]
                  when Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR =>
@@ -147,10 +153,12 @@ is
                  when others => C.Train_Data_Valid),             -- [4]
           when M_PS =>
              I in National_Values | Level_Order | Conditional_Order
-                | Big_Metal_Masses | Stop_SH_On_Desk,            -- [7]
+                | Big_Metal_Masses | Stop_SH_On_Desk
+                | Session_Management,                            -- [7]
           when M_SH =>
              I in National_Values | Level_Order | Conditional_Order
-                | Big_Metal_Masses | Danger_For_SH,              -- [7]
+                | Big_Metal_Masses | Danger_For_SH
+                | Session_Management,                            -- [7]
           when M_SM =>
              I not in Signalling_Speed | Movement_Authority
                     | Route_Suitability | Braking_Distance
@@ -162,22 +170,23 @@ is
              I not in Danger_For_SH | Stop_SH_On_Desk,
           when M_SL =>
              I in National_Values | Level_Order | Conditional_Order
-                | Big_Metal_Masses,
+                | Big_Metal_Masses | Session_Management,
           when M_NL =>
              I in National_Values | Linking | Level_Order
                 | Conditional_Order | Geographical_Position
-                | Track_Conditions | Big_Metal_Masses,
+                | Track_Conditions | Big_Metal_Masses
+                | Session_Management,
           when M_TR =>
              I in National_Values | Level_Order | Conditional_Order
                 | TSR | TSR_Revocation | Default_Gradient
                 | Geographical_Position | Track_Conditions
-                | Big_Metal_Masses | Text_Message,
+                | Big_Metal_Masses | Text_Message | Session_Management,
           --  [1]: every information of these tables is marked [1] in PT,
           --  rejected in level 1 (in level 2 the RBC's, phase E5)
           when M_PT => False,
           when M_RV =>
              I in National_Values | Reversing_Area | Reversing_Supervision
-                | Text_Message);
+                | Text_Message | Session_Management);
 
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));
