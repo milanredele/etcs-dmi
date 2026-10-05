@@ -43,6 +43,22 @@ is
    function Last_Message return ETCS_Message.Message_T is (Message)
      with Refined_Global => Message;
 
+   function Message_Kind return ETCS_Message_Catalogue.Message_Kind_T is
+     (Message.Kind)
+     with Refined_Global => Message;
+   function Message_Value (Var : ETCS_Variables.Variable_T)
+     return Interfaces.Unsigned_64 is (ETCS_Message.Value (Message, Var))
+     with Refined_Global => Message;
+   function Message_Packets return Natural is (Message.Count)
+     with Refined_Global => Message;
+   function Message_Field (I : Positive) return Interfaces.Unsigned_64 is
+     (if I <= ETCS_Message_Catalogue.Max_Fields then Message.Values (I)
+      else 0)
+     with Refined_Global => Message;
+   function Message_Packet_NID (I : Positive) return Natural is
+     (if I <= Message.Count then Natural (Message.Index (I).NID) else 0)
+     with Refined_Global => Message;
+
    procedure Count (Counter : in out Natural) is
    begin
       if Counter < Natural'Last then

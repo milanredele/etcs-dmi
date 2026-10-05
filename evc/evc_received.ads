@@ -22,6 +22,9 @@ pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Bits;
 with ETCS_Message;
+with ETCS_Message_Catalogue;
+with ETCS_Variables;
+with Interfaces;
 with ETCS_Telegram;
 with EVC_Bytes;
 with EVC_Ports;
@@ -81,6 +84,25 @@ is
    function Last_Telegram return ETCS_Telegram.Telegram_T
      with Global => Store;
    function Last_Message return ETCS_Message.Message_T
+     with Global => Store;
+
+   --  Phase E5 (e5/session): the kind, a variable and the packets of the
+   --  last message accepted, read in place (Last_Message copies about
+   --  1.6 KB: doc/EVC-PLAN.md §2 "Stack")
+   function Message_Kind return ETCS_Message_Catalogue.Message_Kind_T
+     with Global => Store;
+   function Message_Value (Var : ETCS_Variables.Variable_T)
+     return Interfaces.Unsigned_64
+     with Global => Store;
+   function Message_Packets return Natural
+     with Global => Store,
+          Post => Message_Packets'Result = Last_Message.Count;
+   --  The variable I of the last message (ETCS_Message_Catalogue.Fields),
+   --  0 beyond them
+   function Message_Field (I : Positive) return Interfaces.Unsigned_64
+     with Global => Store;
+   --  NID_PACKET of packet I of the last message (0 beyond its count)
+   function Message_Packet_NID (I : Positive) return Natural
      with Global => Store;
 
    --  A reader on packet I of the last telegram or message accepted

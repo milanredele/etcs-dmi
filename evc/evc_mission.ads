@@ -5,7 +5,9 @@
 --  running number, Train Data), the acknowledgements of the modes the
 --  start of mission proposes (4.6.3 [8], [58], [60]) and the data of the
 --  mode Staff Responsible (4.4.11: the SR mode speed limit and the SR
---  distance, 4.6.3 [42]).
+--  distance, 4.6.3 [42]). Phase E5: 'Start' in level 2 with the session
+--  with the RBC open proposes nothing (S21: the MA request, event 5 with
+--  2); the RBC parts of the start and end of mission are EVC_Sessions'.
 --
 --  Data statuses (5.4.2.1): unknown, invalid, valid. Nothing is kept
 --  over No Power (EVC_Core: Initialise is a cold start), so every datum
@@ -159,7 +161,8 @@ is
    --  1 driver ID entered (its length), 2 train running number entered,
    --  3 Train Data entered (the length in m / 100, the brake
    --  percentage / 2), 4 an entry refused (the kind of MSG_DRIVER_DATA),
-   --  5 'Start' (1 a mode proposed, 0 refused), 6 a mode proposed
+   --  5 'Start' (1 a mode proposed, 0 refused, 2 S21:
+   --  level 2, the session open), 6 a mode proposed
    --  (EVC_Modes.Mode_T'Pos), 7 acknowledged (the mode), 8 start of
    --  mission engaged (1) or ended (0), 9 mission started (the mode),
    --  10 end of mission (the mode), 11 SR speed and distance entered
@@ -208,6 +211,10 @@ is
       --  the national values of SR (A.3.2, packet 3)
       V_NVSTFF    : Speed_Cms_T := 0;
       D_NVSTFF    : Length_T := Max_Cm;
+      --  phase E5: the session with the RBC is open (EVC_Radio.
+      --  In_Communication): 'Start' in level 2 goes to S21, the MA
+      --  request, instead of proposing Staff Responsible (5.4.5.3 h)
+      Session_Open : Boolean := False;
    end record;
 
    --  Power-up: every datum unknown, no mission
