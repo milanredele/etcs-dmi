@@ -298,6 +298,14 @@ is
 
    --  Phase E5: an MA received by radio (EVC_Radio_Info) was accepted
    --  in the last Evaluate
+   --  Phase E5, 3.10.2.2: the outcome of the conditional emergency stop
+   --  of the radio message I of the cycle (EVC_Radio_Info), as
+   --  Q_EMERGENCYSTOP (7.5.1.107): 0 accepted with a new EOA, 1 accepted
+   --  without, 3 rejected; 4 when the message has none
+   subtype Stop_Outcome_T is Natural range 0 .. 4;
+   function Stop_Outcome (I : EVC_Radio_Info.Index_T) return Stop_Outcome_T
+     with Global => State;
+
    function Radio_MA_Accepted return Boolean
      with Global => State;
 

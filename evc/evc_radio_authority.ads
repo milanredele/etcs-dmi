@@ -99,6 +99,10 @@ is
    function Shortenings_Rejected return Natural
      with Global => State;
 
+   --  3.10: the emergency stops accepted and not revoked
+   function Emergency_Stops return Natural
+     with Global => State;
+
    --  6. The mode changed from From to To
    procedure Mode_Changed (From, To : Mode_T)
      with Global => (In_Out => State);

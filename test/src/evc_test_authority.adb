@@ -433,4 +433,121 @@ package body EVC_Test_Authority is
              "shortening: in level 1, rejected (3.8.6, Level 2 only)");
    end Scenario_Shortening;
 
+   --  Message 15 (NID_EM, a stop D_M metres beyond the group NID_BG,
+   --  both directions), 16 or 18 for NID_EM
+   function Emergency_Message (Kind   : MCat.Known_Message_T;
+                               NID_EM : Natural;
+                               D_M    : Natural := 0) return Byte_Array
+   is
+      W : Writer_T;
+      V : ETCS_Message.Value_Array := (others => 0);
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := 10;
+      V (7) := Unsigned_64 (NID_EM);
+      if Kind = MCat.Track_M15 then
+         V (8) := 1;
+         V (10) := 2;
+         V (11) := Unsigned_64 (D_M);
+      end if;
+      Start_Message (W, Kind, V);
+      return Message_Bytes (W);
+   end Emergency_Message;
+
+   --  The NID_EM and Q_EMERGENCYSTOP of the message 147 among the RTM
+   --  outputs of the last Take; -1 when there is none
+   procedure Stop_Ack (NID, Q : out Integer) is
+      M : ETCS_Message.Message_T;
+      S : ETCS_Message.Status_T;
+      use type ETCS_Message.Status_T;
+   begin
+      NID := -1;
+      Q := -1;
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, S);
+         if S = ETCS_Message.Accepted and then M.Kind = MCat.Train_M147 then
+            NID := Integer (M.Values (5));
+            Q := Integer (M.Values (6));
+            return;
+         end if;
+      end loop;
+   end Stop_Ack;
+
+   --  3.10: the emergency messages at standstill at 200 m with an MA to
+   --  800 m (no danger point, no overlap: the SvL at the EOA)
+   procedure Scenario_Emergency_Stops is
+      M      : constant T12.Packet_T := MA_Of ((300, 400), 600);
+      NID, Q : Integer;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Run_X (20_000);
+      Stand_X (1_000);
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M15, 3, 50));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Check (NID = 3 and then Q = 3 and then RA.Emergency_Stops = 0
+             and then SI.Current.MA.EOA = 80_000,
+             "emergency: a conditional stop behind the min safe front end "
+             & "rejected, acknowledged with Q_EMERGENCYSTOP 3 (3.10.2.2 a, "
+             & "3.10.1.4)");
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M15, 4, 400));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Stand_X (100);
+      Check (NID = 4 and then Q = 0 and then RA.Emergency_Stops = 1
+             and then SI.Current.MA.EOA = 50_000
+             and then SI.Current.MA.SvL = 50_000
+             and then SI.Current.MA.Release_Speed.Kind = SIn.None,
+             "emergency: a conditional stop before the EOA accepted, the new "
+             & "EOA and SvL at it without release speed, Q_EMERGENCYSTOP 0 "
+             & "(3.10.2.2 b 1st bullet)");
+
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (SI.Current.MA.EOA = 50_000 and then RA.Radio_MAs_Accepted = 1,
+             "emergency: a new MA rejected while the stop is not revoked "
+             & "(3.10.2.4)");
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M15, 5, 600));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Check (NID = 5 and then Q = 1 and then RA.Emergency_Stops = 2
+             and then SI.Current.MA.EOA = 50_000,
+             "emergency: a stop beyond the SvL accepted, the EOA unchanged, "
+             & "Q_EMERGENCYSTOP 1; several stops by NID_EM (3.10.2.2 b "
+             & "3rd bullet, 3.10.1.2)");
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 4));
+      Stand_X (200);
+      Check (RA.Emergency_Stops = 1,
+             "emergency: the revocation of NID_EM 4 leaves NID_EM 5 "
+             & "(3.10.3.3)");
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 5));
+      Stand_X (100);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (RA.Emergency_Stops = 0 and then SI.Current.MA.EOA = 80_000,
+             "emergency: every stop revoked, a new MA accepted (3.10.2.4)");
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M16, 7));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Stand_X (100);
+      Check (NID = 7 and then Q = 2 and then EVC_Core.Mode = M_TR
+             and then RA.Unconditional_Stop_Received,
+             "emergency: an unconditional stop trips the train, "
+             & "acknowledged with Q_EMERGENCYSTOP 2 (3.10.2.3, [20]); kept "
+             & "in Trip ([45], 4.10)");
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 7));
+      Stand_X (200);
+      Check (not RA.Unconditional_Stop_Received
+             and then RA.Emergency_Stops = 0,
+             "emergency: the unconditional stop revoked (3.10.3)");
+   end Scenario_Emergency_Stops;
+
 end EVC_Test_Authority;

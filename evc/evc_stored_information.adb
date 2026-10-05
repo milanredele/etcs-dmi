@@ -40,7 +40,7 @@ package body EVC_Stored_Information
                                    MA_Board, Profile_Overlap,
                                    Covered_Flag, Ext, Tun,
                                    Radio_MA, Timer_Deletion, Proposal,
-                                   Proposal_Origin))
+                                   Proposal_Origin, Stop_Q))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -89,6 +89,11 @@ is
    --  its message, kept while the RBC's request is answered
    Proposal        : Movement_Authority_T := (others => <>);
    Proposal_Origin : EVC_Origins.Count_T := 0;
+   --  phase E5, 3.10.2.2: the outcome of the conditional emergency stop
+   --  of each radio message of the cycle (Q_EMERGENCYSTOP, 7.5.1.107: 0
+   --  accepted with a new EOA, 1 accepted without, 3 rejected; 4 none)
+   type Stop_Q_T is array (EVC_Radio_Info.Index_T) of Stop_Outcome_T;
+   Stop_Q          : Stop_Q_T := (others => 4);
    --  phase E5: the track description was deleted by a timer of the MA
    --  in the last Evaluate (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
    Timer_Deletion  : Boolean := False;
@@ -142,6 +147,8 @@ is
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
      with Refined_Global => Profile_Overlap;
    function Radio_MA_Accepted return Boolean is (Radio_MA);
+   function Stop_Outcome (I : EVC_Radio_Info.Index_T) return Stop_Outcome_T
+   is (Stop_Q (I));
    function MA_Timer_Deletion return Boolean is (Timer_Deletion);
    function Train_Covered return Boolean is (Covered_Flag)
      with Refined_Global => Covered_Flag;
@@ -197,6 +204,9 @@ is
       Covered_Flag := False;
       Radio_MA := False;
       Timer_Deletion := False;
+      Proposal := (others => <>);
+      Proposal_Origin := 0;
+      Stop_Q := (others => 4);
       Ext := (Count => 0, List => (others => (others => <>)));
       Tun := (others => <>);
    end Clear;
@@ -1036,6 +1046,40 @@ is
       end loop;
    end Take_Proposal;
 
+   --  3.10.2.2 (phase E5): the conditional emergency stop of the radio
+   --  message I: rejected when the min safe front end has passed its
+   --  stop location (a), also without a position or a known location
+   --  reference; else accepted, the EOA and SvL by the stop location (b,
+   --  EVC_Movement_Authority.Conditional_Stop) and the deletions beyond
+   --  the new SvL (A.3.4.1.2 a)
+   procedure Take_Stop (I     : EVC_Radio_Info.Index_T;
+                        T     : Origin_Table_T;
+                        Train : Train_Frame_T)
+     with Global => (Input  => EVC_Radio_Info.State,
+                     In_Out => (EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                Events, Event_N, Stop_Q)),
+          Pre => I <= EVC_Radio_Info.Count
+   is
+      Sl      : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
+      Stop    : constant Location_T :=
+        (Origin => Sl.Origin, Offset => Sl.Stop_D);
+      Updated : Boolean;
+      O       : EVC_Movement_Authority.Outcome_T;
+   begin
+      if Sl.Origin = 0 or else not Train.Valid
+        or else A (Train.Sense, Train.Min_Front)
+                > A (Train.Sense, Frame (T, Stop, Estimated_Item))
+      then
+         Stop_Q (I) := 3;
+         return;
+      end if;
+      EVC_Movement_Authority.Conditional_Stop (T, Stop, Updated, O);
+      Apply (T, O);
+      Stop_Q (I) := (if Updated then 0 else 1);
+   end Take_Stop;
+
    procedure Take_Radio (I      : EVC_Radio_Info.Index_T;
                          T      : Origin_Table_T;
                          Train  : Train_Frame_T;
@@ -1048,7 +1092,7 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State,
                                 Events, Event_N, Msg_Count, Radio_MA,
-                                Proposal, Proposal_Origin),
+                                Proposal, Proposal_Origin, Stop_Q),
                      Input  => (EVC_Radio_Info.State, EVC_Train_Data.State)),
           Pre => I <= EVC_Radio_Info.Count
    is
@@ -1074,6 +1118,10 @@ is
       end if;
       if Sl.Action = EVC_Radio_Info.Shortening then
          Take_Proposal (I, T, M);
+         return;
+      end if;
+      if Sl.Action = EVC_Radio_Info.Conditional_Stop then
+         Take_Stop (I, T, Train);
          return;
       end if;
       for K in Order_Kind_T loop
@@ -1904,6 +1952,7 @@ is
       Radio_MA := False;
       Proposal := (others => <>);
       Proposal_Origin := 0;
+      Stop_Q := (others => 4);
       for I in 1 .. EVC_Radio_Info.Count loop
          pragma Loop_Invariant (True);
          Take_Radio (I, T, Train, Context, Now_Ms);

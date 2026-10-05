@@ -224,6 +224,51 @@ is
       Outcome.Delete_Before := Before;
    end Delete_Beyond_SvL;
 
+   --  3.10.2.2 b) (phase E5): the stop location Stop of an accepted
+   --  conditional emergency stop. Not beyond the EOA: the new EOA and SvL
+   --  (1st bullet); beyond the EOA, not beyond the SvL: the new SvL, the
+   --  EOA unchanged (2nd); beyond the SvL: nothing (3rd); a LOA: the new
+   --  EOA and SvL at the stop, or at the LOA when beyond it (4th). Always
+   --  without release speed: the EOA and SvL withdrawn (as A.3.4.1.3 [11];
+   --  the timers of the MA no longer run, a decision: the stop ends the
+   --  MA's own ends), and the deletions beyond the new SvL (A.3.4.1.2 a,
+   --  A.3.4.1.3 [1]). Updated: the EOA (or LOA) changed (Q_EMERGENCYSTOP
+   --  0, else 1, 7.5.1.107).
+   procedure Conditional_Stop (T       : Origin_Table_T;
+                               Stop    : Location_T;
+                               Updated : out Boolean;
+                               Outcome : out Outcome_T)
+   is
+      S   : constant Sense_T := Current.Sense;
+      E   : Dist_T := Frame (T, Stop, Estimated_Item);
+      M   : Dist_T := Frame (T, Stop, Max_Item);
+      EOA : constant Dist_T :=
+        Frame (T, EOA_Location (Current), Estimated_Item);
+      SvL : constant Dist_T := Frame (T, SvL_Location (Current), Max_Item);
+   begin
+      Outcome := (others => <>);
+      Updated := False;
+      if not Current.Present then
+         return;
+      end if;
+      if Is_LOA (Current) or else A (S, E) <= A (S, EOA) then
+         Updated := True;
+         if A (S, E) > A (S, EOA) then
+            E := EOA;
+            M := Frame (T, EOA_Location (Current), Max_Item);
+         end if;
+      elsif A (S, M) <= A (S, SvL) then
+         E := EOA;
+      else
+         return;
+      end if;
+      Current.Withdrawn := True;
+      Current.Withdrawn_EOA := (Origin => 0, Offset => E);
+      Current.Withdrawn_SvL := (Origin => 0, Offset => M);
+      Current.Target_Speed := 0;
+      Delete_Beyond_SvL (T, Current, Natural'Last, Outcome);
+   end Conditional_Stop;
+
    --  3.8.4.1.2: the End Section time-out withdraws the EOA to the train
    --  (A.3.4.1.3 [11]) and deletes beyond its max safe front end [10]
    procedure End_Section_Over (Train   : Train_Frame_T;

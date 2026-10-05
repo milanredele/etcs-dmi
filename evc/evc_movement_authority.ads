@@ -251,6 +251,17 @@ is
           Pre => X.Present,
           Post => MA.Present and then Outcome.Accepted;
 
+   --  3.10.2.2 b) (phase E5): the EOA and SvL by the stop location of
+   --  an accepted conditional emergency stop, without release speed;
+   --  Updated: the EOA or LOA changed (Q_EMERGENCYSTOP 0, else 1)
+   procedure Conditional_Stop (T       : Origin_Table_T;
+                               Stop    : Location_T;
+                               Updated : out Boolean;
+                               Outcome : out Outcome_T)
+     with Global => (In_Out => State),
+          Post => MA.Present = MA.Present'Old
+                  and then not Outcome.Accepted;
+
    --  The mode profile of the message of the MA just accepted
    procedure Take_Mode_Profile (P : ETCS_Track_Packets.P80.Packet_T;
                                 M : Message_T)

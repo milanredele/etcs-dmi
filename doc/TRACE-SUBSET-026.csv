@@ -400,20 +400,20 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.9.3.14,3,x,x,,,,E7,deferred,E7
 3.9.3.15,3,x,,,,,E7,deferred,E7
 3.9.3.16,3,x,,,,,E7,deferred,E7
-3.10.1.3.1,3,x,,,,,E5,todo,[E5 authority]
-3.10.1.4,3,x,,,,,E5,todo,[E5 authority]
-3.10.2.2,3,x,x,,,,E5,todo,[E5 authority]
-3.10.2.2 a),3,x,,,,,E5,todo,[E5 authority]
-3.10.2.2 b),3,x,,,,,E5,todo,[E5 authority]
-3.10.2.2 b) 1st bullet,3,x,,,,,E5,todo,[E5 authority]
-3.10.2.2 b) 2nd bullet,3,x,,,,,E5,todo,[E5 authority]
-3.10.2.2 b) 3rd bullet,3,x,,,,,E5,todo,[E5 authority]
-3.10.2.2 b) 4th bullet,3,x,,,,,E5,todo,[E5 authority]
-3.10.2.2 b) last sentence,3,x,,,,,E5,todo,[E5 authority]
-3.10.2.3,3,x,,,,,E5,todo,[E5 authority]
-3.10.2.4,3,x,,,,,E5,todo,[E5 authority]
-3.10.3.2,3,x,,,,,E5,todo,[E5 authority]
-3.10.3.3,3,x,,,,,E5,todo,[E5 authority]
+3.10.1.3.1,3,x,,,,,E5,done,"EVC_Radio_Authority.Take_Emergency: the table of stops by NID_EM, a new message with the same identifier replaces the entry; evc_test Scenario_Emergency_Stops [E5 authority]"
+3.10.1.4,3,x,,,,,E5,done,EVC_Radio_Authority.Acknowledge_Stops: message 147 with NID_EM and Q_EMERGENCYSTOP to the session of the message; evc_test Scenario_Emergency_Stops [E5 authority]
+3.10.2.2,3,x,x,,,,E5,done,"message 15 to EVC_Radio_Info (Conditional_Stop, the stop location from the location reference shifted by D_REF, Q_DIR not valid for the train: rejected, a decision); EVC_Stored_Information.Take_Stop; evc_test Scenario_Emergency_Stops [E5 authority]"
+3.10.2.2 a),3,x,,,,,E5,done,EVC_Stored_Information.Take_Stop: rejected when the min safe front end has passed the stop location (Q_EMERGENCYSTOP 3); evc_test Scenario_Emergency_Stops [E5 authority]
+3.10.2.2 b),3,x,,,,,E5,done,"EVC_Movement_Authority.Conditional_Stop: the EOA and SvL withdrawn to the stop (no release speed; the timers of the MA no longer run, a decision); evc_test Scenario_Emergency_Stops [E5 authority]"
+3.10.2.2 b) 1st bullet,3,x,,,,,E5,done,EVC_Movement_Authority.Conditional_Stop (Q_EMERGENCYSTOP 0); evc_test Scenario_Emergency_Stops [E5 authority]
+3.10.2.2 b) 2nd bullet,3,x,,,,,E5,partial,"EVC_Movement_Authority.Conditional_Stop: the new SvL, the EOA unchanged (Q_EMERGENCYSTOP 1); no scenario (needs an MA with an overlap or danger point) [E5 authority]"
+3.10.2.2 b) 3rd bullet,3,x,,,,,E5,done,EVC_Movement_Authority.Conditional_Stop: nothing changes (Q_EMERGENCYSTOP 1); evc_test Scenario_Emergency_Stops [E5 authority]
+3.10.2.2 b) 4th bullet,3,x,,,,,E5,partial,EVC_Movement_Authority.Conditional_Stop: a LOA becomes an EOA/SvL at the stop or at the LOA (Q_EMERGENCYSTOP 0); no scenario [E5 authority]
+3.10.2.2 b) last sentence,3,x,,,,,E5,done,"the deletions beyond the new SvL (A.3.4.1.2 a, A.3.4.1.3 [1]) through Outcome_T and EVC_Stored_Information.Apply; evc_test Scenario_Emergency_Stops [E5 authority]"
+3.10.2.3,3,x,,,,,E5,done,"message 16: [20] EVC_Radio_Authority.Unconditional_Stop_Accepted in the cycle, the mode machine trips; Q_EMERGENCYSTOP 2; [45] Unconditional_Stop_Received until revoked; kept in TR and PT, deleted by the modes of 4.10 (Mode_Changed); evc_test Scenario_Emergency_Stops [E5 authority]"
+3.10.2.4,3,x,,,,,E5,done,"EVC_Radio_Info.Slot_T.MA_Allowed set by EVC_Radio_Authority while a stop is not revoked, packet 15 rejected by EVC_Stored_Information.Take_Radio; a request to shorten the MA rejected too; evc_test Scenario_Emergency_Stops [E5 authority]"
+3.10.3.2,3,x,,,,,E5,partial,the revocation (message 18) is acknowledged by the general acknowledgement of 3.16.3.5 (M_ACK): the session half [E5 authority]
+3.10.3.3,3,x,,,,,E5,done,EVC_Radio_Authority.Take_Emergency: only the stop of the NID_EM of message 18 is removed; evc_test Scenario_Emergency_Stops [E5 authority]
 3.11.1.1,3,x,,,,,E3,done,the MRSP of EVC_Stored_Information (3.13.7); evc_test Scenario_SSP_Gradients
 3.11.1.2,3,x,,,,,E3,done,the static speed restrictions do not depend on the level (EVC_Track_Description)
 3.11.2.4,3,x,,,,,E3,done,"EVC_Track_Description.Speed_Elements (the train length where Q_FRONT asks); evc_test Scenario_SSP_Gradients, Scenario_TSR"
