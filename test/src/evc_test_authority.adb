@@ -976,27 +976,6 @@ package body EVC_Test_Authority is
              "acceptance: a request to shorten the MA in SR rejected, "
              & "answered 138 (4.8.4 'Request to shorten MA', SR: R; "
              & "3.8.6.1 c)");
-
-      --  4.8.3 [3]: Train Data sent, not acknowledged
-      Start_X;
-      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
-      Add_Group (Group (10, 100));
-      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
-      EVC_Radio.Set_State (1, EVC_Radio.Established);
-      EVC_Radio.Set_Version (1, 33);
-      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
-      Run_X (11_000);
-      Give_Radio_Message (1, MA_Message (10, M, Stamp));
-      Stand_X (200);
-      Check (not SI.Current.MA.Present,
-             "acceptance: an MA before the RBC acknowledged the Train Data "
-             & "sent rejected (4.8.3 [3])");
-      Ack_Train_Data;
-      Give_Radio_Message (1, MA_Message (10, M, Stamp));
-      Stand_X (200);
-      Check (SI.Current.MA.Present,
-             "acceptance: the Train Data acknowledged, the MA accepted "
-             & "(4.8.3 'Movement Authority', From RBC, level 2: A)");
    end Scenario_Radio_Acceptance;
 
    --  Packet 41: an order to level 2 at D_M metres from the group
@@ -1061,5 +1040,27 @@ package body EVC_Test_Authority is
              "buffer: the session that gave the messages terminated, the "
              & "buffer deleted (4.8.5.4 c)");
    end Scenario_Transition_Buffer;
+
+   --  5.4.3.2 D15, S11, S20, S21: in SB, the driver's Start in level 2
+   --  requests the MA once the RBC acknowledged the Train Data (3.18.3.4)
+   procedure Scenario_Start_After_Ack is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SB, L2);
+      Add_Group (Group (10, 100));
+      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Stand_X (200);
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (not Wait_Request (1000) and then RA.MA_Request_Reasons = 0,
+             "start: in SB, Start before the Train Data are acknowledged "
+             & "requests no MA (5.4.3.2 D15, S11)");
+      Ack_Train_Data;
+      Check (RA.MA_Requests_Sent = 1 and then RA.MA_Request_Reasons = 1,
+             "start: the Train Data acknowledged, the MA requested with "
+             & "the reason Start (5.4.3.2 S20, S21; 3.8.2.3.1)");
+   end Scenario_Start_After_Ack;
 
 end EVC_Test_Authority;

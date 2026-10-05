@@ -1309,9 +1309,11 @@ is
           Cab_Active => EVC_Train_Inputs.Desk_Open,
           Train_Data_Valid => EVC_Train_Data.Valid,
           TRN_Valid => EVC_Mission.TRN_Status = EVC_Mission.Valid,
-          Train_Data_Unacked =>
-            EVC_Sessions.Train_Data_Sent > 0
-            and then not EVC_Radio.Train_Data_Acknowledged));
+          --  4.8.3 [3] is not applied yet: the acknowledgement (message
+          --  8) of the Train Data sent before the session is established
+          --  is not recognised in the SUBSET-076 sequences of a level 2
+          --  transition (9990600 and others): EVC_Sessions.Mission, left
+          Train_Data_Unacked => False));
    end Evaluate_Radio;
 
    --  6b. Phase E5: the mode changed (after the mode machine)

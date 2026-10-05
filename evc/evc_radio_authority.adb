@@ -18,7 +18,7 @@ with Interfaces;              use Interfaces;
 
 package body EVC_Radio_Authority
   with SPARK_Mode => On,
-       Refined_State => (State => (Messages, Rejected_N, Held, Stop_Received,
+       Refined_State => (State => (Messages, Rejected_N, TD_Acked, Held, Stop_Received,
                                    Mode_Changes, Cycles, Radio_MAs,
                                    Params, Reasons, Request_Due,
                                    Request_Sent, Last_Request_Ms,
@@ -37,6 +37,9 @@ is
    type Held_T is array (Condition_T) of Boolean;
 
    Messages      : Natural := 0;
+   --  4.8.3 [3]: the RBC acknowledged Train Data in the ongoing session
+   --  of the supervising RBC (EVC_Radio.Train_Data_Acknowledged seen)
+   TD_Acked      : Boolean := False;
    --  4.8: the messages rejected since Clear
    Rejected_N    : Natural := 0;
    Held          : Held_T := (others => False);
@@ -298,6 +301,7 @@ is
    procedure Clear is
    begin
       Buffer.Clear;
+      TD_Acked := False;
       Messages := 0;
       Rejected_N := 0;
       Held := (others => False);
@@ -704,12 +708,20 @@ is
                                MA_Received : Boolean)
      with Global => (Input  => (Params, EVC_Levels.State,
                                 EVC_Movement_Authority.State,
-                                EVC_Stored_Information.State),
+                                EVC_Stored_Information.State,
+                                EVC_Radio.State, TD_Acked, Mode_Now),
                      In_Out => (Reasons, Request_Due, Start_Reason,
                                 Deleted_Reason, SR_Authorised))
    is
       L2     : constant Boolean :=
         EVC_Levels.Valid and then EVC_Levels.Level = EVC_Modes.L2;
+      --  5.4.3.2 D15, S11: "Start" is offered at S20 (in SB), once the
+      --  RBC acknowledged the Train Data (3.18.3.4); before, the driver's
+      --  Start waits for it (decision 8 of e5/session-3). Start in
+      --  another mode (SR, PT) is not the start of mission
+      Acked  : constant Boolean :=
+        Mode_Now /= M_SB
+        or else EVC_Radio.Train_Data_Acknowledged or else TD_Acked;
       Old    : constant Q_MARQSTREASON_T := Reasons;
       Pert   : Boolean;
       Timer  : Boolean;
@@ -746,8 +758,10 @@ is
          Request_Due := False;
          return;
       end if;
-      Reasons := Reason_Bits (Start_Reason, Pert, Timer, Deleted_Reason);
-      Rising := Facts.Start
+      Reasons := Reason_Bits (Start_Reason and then Acked, Pert, Timer,
+                              Deleted_Reason);
+      Rising := (Start_Reason and then Acked
+                 and then (Facts.Start or else Old mod 2 = 0))
         or else (Pert and then Old / 2 mod 2 = 0)
         or else (Timer and then Old / 4 mod 2 = 0)
         or else (Deleted_Reason and then Old / 8 mod 2 = 0);
@@ -904,6 +918,20 @@ is
       if Mode_Now /= M_PT then
          Exit_Recognised := False;
       end if;
+      --  4.8.3 [3]: "not yet acknowledged any train data in the ongoing
+      --  communication session" (Train Data sent again in the session do
+      --  not reject; their changed values are not compared, decision)
+      --  The ongoing session: one established or being established (an
+      --  acknowledgement may come before the session is established, and
+      --  the Train Data are sent again when it is, 3.18.3.4.2)
+      if not (for some X in EVC_Radio.Session_T =>
+                EVC_Radio.Established (X)
+                or else EVC_Radio.Being_Established (X))
+      then
+         TD_Acked := False;
+      elsif EVC_Radio.Train_Data_Acknowledged then
+         TD_Acked := True;
+      end if;
       --  4.8: the context of the messages of the next cycle; 4.8.5.4,
       --  4.8.5.5: the transition buffer deleted or released
       Buffer.Update
@@ -912,7 +940,8 @@ is
           Level              => EVC_Levels.Level,
           L2_Announced       => EVC_Levels.Announced
                                 and then EVC_Levels.Announced_Level = L2,
-          Train_Data_Unacked => Facts.Train_Data_Unacked,
+          Train_Data_Unacked => Facts.Train_Data_Unacked
+                                and then not TD_Acked,
           Trip_Exit_Known    => Exit_Recognised,
           Cab_Active         => Facts.Cab_Active,
           Train_Data_Valid   => Facts.Train_Data_Valid,
@@ -992,13 +1021,9 @@ is
       end if;
    end Mode_Changed;
 
-   --  The identity of the on-board, NID_ENGINE of the train to track
-   --  messages (8.4.4.7.1): not configured yet, 0 (a decision of phase
-   --  E5 phase 1, to be taken from the configuration at integration)
-   Engine_Id : constant := 0;
-
    --  A train to track message of Kind with the variables V (3 ..: its
-   --  T_TRAIN and NID_ENGINE are set here) and packet 0, the position
+   --  T_TRAIN and NID_ENGINE, the ETCS identity of the configuration,
+   --  8.4.4.7.1, are set here) and packet 0, the position
    --  report of EVC_Position (3.6.5.1.2; the session half builds its own
    --  for message 136: to be unified at integration), sent in the
    --  session S; OK False when it could not be built
@@ -1016,7 +1041,7 @@ is
       Values : ETCS_Message.Value_Array := V;
    begin
       Values (3) := Unsigned_64 (EVC_Radio.T_Train_At (Ctx.Now_Ms));
-      Values (4) := Engine_Id;
+      Values (4) := Unsigned_64 (EVC_Radio.Engine_Id);
       ETCS_Bits.Clear (W);
       ETCS_Message.Write_Fields (W, Kind, Values, OK);
       if OK then

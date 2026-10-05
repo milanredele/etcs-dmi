@@ -43,7 +43,7 @@ S40db9a42,onboard,3.12.2.3: route suitability not compared with the Train Data (
 S3b91603a,onboard,3.12.2.3: route suitability not compared with the Train Data (matrix: deferred)
 Scb539e7a,onboard,4.4.19.1.4: the LSSMA display (packets 180 and 181) is not implemented (matrix: todo)
 S6b9f37cf,onboard,4.4.19.1.4: the LSSMA display is not implemented (matrix: todo)
-S2f278aca,onboard,4.8.5: no transition buffer: an MA in the same message as a level order at D_LEVELTR 0 is filtered in the old level and the switch to level 1 trips ([39])
+S2f278aca,onboard,4.8.5: an MA in the same message as a level order at D_LEVELTR 0 is filtered in the old level and the switch to level 1 trips ([39]); an MA of the RBC kept in the transition buffer (4.8.3 [2]) is released one cycle after the transition to level 2 and after the mode machine of that cycle (4.8.5.5 'at the same time' left by e5/authority-4)
 Sa9693d77,onboard,4.8.5: no transition buffer (see S2f278aca)
 Sdf2f3388,onboard,4.8.5: no transition buffer (see S2f278aca)
 S1531c721,E5,3.8.5.2.2: the repositioning information (packet 16) does not update the MA section (matrix: E5 todo); the train trips at the old EOA
@@ -179,7 +179,6 @@ S27eb0678,E6,Trip expected after a balise group passed with a consistency error 
 S7fe2b1bf,s076,3070200_02 step 40: the step text and comment say Q_LINK=0 (unlinked; not the LRBG by 3.6.2.2.2 a) and .1) but the telegram BG0d of the PDF carries Q_LINK=1 in both balises (bit 50 of the header); a group not marked as unlinked passed without linking is LRBG compliant (3.6.2.2.2 a) second bullet) so the on-board is right to take it; with Q_LINK=0 it keeps the LRBG unknown (evc_test position first group)
 Sef5e0918,model,6060505_08: Main expected after the driver ID at the power-up after No Power: the sequence assumes no cold movement; the bench has no cold movement detection (cold 0: information not available) so by 4.11.1.3 the kept level stays invalid and the start of mission asks it (5.4.3.2 D2 S2)
 Sce3c7004,E5,session phase 2 (3.5.6.7): no connection set-up while no mobile terminal is registered to a radio network; the on-board does not model the registration yet and the runner gives a registration in 12 sequences only: the model of both is to be decided together
-S9863bf83,onboard,message 155 with NID_ENGINE 76000 expected: the on-board sends 0 (no ETCS identity in the configuration yet; EVC_Radio_Authority and EVC_Sessions use a constant)
 S54865f32,E5,session: the system status message "Communication error" expected in 9990400_08 and not shown; first look only (3.16.3.4.4 is implemented for the T_NVCONTACT service brake: another condition here)
 S81c940f5,E5,5100300_08: level 2 where the sequence has level 1 after a sleeping input; level transitions to and from level 2 are session phase 2 (5.10, 5.15)
 Scd518a05,model,5060200_01: the second Shunting press comes in the cycle the train stops at 550 m; the on-board is at standstill but the DMI has not received the standstill yet (the runner's driver does not wait for it)

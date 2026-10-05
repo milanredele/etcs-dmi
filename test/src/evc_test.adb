@@ -235,6 +235,7 @@ begin
    Scenario_Shunting_L2;
    Scenario_Radio_Acceptance;
    Scenario_Transition_Buffer;
+   Scenario_Start_After_Ack;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));
