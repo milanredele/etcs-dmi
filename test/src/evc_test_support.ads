@@ -9,6 +9,8 @@
 
 with Ada.Environment_Variables;
 with ETCS_Bits;
+with ETCS_Message;
+with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P141;
 with ETCS_Track_Packets.P21;
@@ -780,5 +782,66 @@ package EVC_Test_Support is
    Mission_Group_M : constant := -12;
 
       procedure Mission_Track (Q_NVEMRRLS : Natural := 1);
+
+   ---------------------------------------------------------------------
+   --  Phase E5 (e5/joint): the RTM port in both directions (EVC_Ports),
+   --  for the scenarios of the two halves of the radio and the bench
+   ---------------------------------------------------------------------
+
+   --  The RTM input of Message (a message of chapter 8) received in the
+   --  session Session (a session out of range makes an input the port
+   --  refuses)
+   function RTM_Tagged (Session : Natural; Message : Byte_Array)
+     return Byte_Array
+   is (Byte_Array'(EVC_Ports.RTM_Tag_Message, Byte (Session)) & Message);
+
+   --  The RTM input of an event of the safe radio connection of Session
+   function RTM_Event_Input (Session : Natural;
+                             Event   : EVC_Ports.RTM_Event_T)
+     return Byte_Array
+   is ((EVC_Ports.RTM_Tag_Event, Byte (Session),
+        Byte (EVC_Ports.RTM_Event_T'Pos (Event) + 1)));
+
+   --  Give the on-board a message received in Session, an event
+      procedure Give_Radio_Message (Session : Natural; Message : Byte_Array);
+      procedure Give_Radio_Event (Session : Natural;
+                                  Event   : EVC_Ports.RTM_Event_T);
+
+   --  A message of Kind with the variables Values (3 .. : T_TRAIN, then
+   --  the others of the message, ETCS_Message.Write_Fields) and no
+   --  packet, as its bytes (ETCS_Message.Finish); for packets, write
+   --  them to W after Start_Message and take Message_Bytes (W)
+      procedure Start_Message (W      : in out Writer_T;
+                               Kind   : ETCS_Message_Catalogue
+                                          .Known_Message_T;
+                               Values : ETCS_Message.Value_Array);
+      function Message_Bytes (W : in out Writer_T) return Byte_Array;
+      function Message_Of (Kind   : ETCS_Message_Catalogue.Known_Message_T;
+                           Values : ETCS_Message.Value_Array :=
+                             (others => 0))
+     return Byte_Array;
+
+   --  An output of the RTM port in the records of the last Take
+   type Radio_Output_T is record
+      Rec     : Natural := 0;       -- the record in Recs, 0: none
+      Request : Boolean := False;   -- a request, else a message
+      Session : Natural := 0;
+      --  the request (EVC_Ports.RTM_Request_T'Pos + 1) or NID_MESSAGE
+      Kind    : Natural := 0;
+   end record;
+
+   --  The RTM outputs of the last Take, and the N-th of them
+      function Radio_Outputs return Natural;
+      function Radio_Output (N : Positive) return Radio_Output_T;
+
+   --  The message of the N-th RTM output parsed as a train to track
+   --  message (ETCS_Message.Parse)
+      procedure Decode_Radio_Message (N      : Positive;
+                                      M      : out ETCS_Message.Message_T;
+                                      Status : out ETCS_Message.Status_T);
+
+   --  Byte K (1 = the first after the request code) of the N-th RTM
+   --  output, a request (EVC_Ports: the fields of a set-up, ...)
+      function Request_Byte (N : Positive; K : Positive) return Natural;
 
 end EVC_Test_Support;

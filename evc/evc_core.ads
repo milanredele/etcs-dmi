@@ -321,9 +321,12 @@ is
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
                                 EVC_JRU_Records.State,
-                                EVC_Radio.State, EVC_Radio.Queue,
+                                EVC_Radio.Queue,
                                 EVC_Sessions.State,
-                                EVC_Radio_Authority.State)),
+                                EVC_Radio_Authority.State),
+                     --  phase E5: In_Out once EVC_Sessions writes the
+                     --  session table
+                     Input  => EVC_Radio.State),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

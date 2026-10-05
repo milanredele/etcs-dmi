@@ -3,6 +3,7 @@ with Ada.Numerics.Long_Elementary_Functions;
 with Ada.Streams.Stream_IO;
 with Ada.Streams;
 with Ada.Text_IO;
+with ETCS_Catalogue;
 with ETCS_Telegram;
 with ETCS_Track_Packets.P16;
 with EVC_Distances;
@@ -1685,5 +1686,98 @@ package body EVC_Test_Support is
       D.T_Traction_Cut_Off := 1_000;
       EVC_Train_Data.Set (D, EVC_Train_Data.Default_Categories);
    end Mission_Track;
+
+   ---------------------------------------------------------------------
+   --  Phase E5: the RTM port
+   ---------------------------------------------------------------------
+
+   procedure Give_Radio_Message (Session : Natural; Message : Byte_Array)
+   is
+   begin
+      Input (RTM, RTM_Tagged (Session, Message));
+   end Give_Radio_Message;
+
+   procedure Give_Radio_Event (Session : Natural;
+                               Event   : EVC_Ports.RTM_Event_T)
+   is
+   begin
+      Input (RTM, RTM_Event_Input (Session, Event));
+   end Give_Radio_Event;
+
+   procedure Start_Message (W      : in out Writer_T;
+                            Kind   : ETCS_Message_Catalogue.Known_Message_T;
+                            Values : ETCS_Message.Value_Array)
+   is
+      OK : Boolean;
+   begin
+      ETCS_Bits.Clear (W);
+      ETCS_Message.Write_Fields (W, Kind, Values, OK);
+      Check (OK, "radio: the fields of the message written");
+   end Start_Message;
+
+   function Message_Bytes (W : in out Writer_T) return Byte_Array is
+      OK : Boolean;
+   begin
+      ETCS_Message.Finish (W, OK);
+      Check (OK, "radio: the message finished");
+      return ETCS_Bits.Data (W);
+   end Message_Bytes;
+
+   function Message_Of (Kind   : ETCS_Message_Catalogue.Known_Message_T;
+                        Values : ETCS_Message.Value_Array :=
+                          (others => 0))
+     return Byte_Array
+   is
+      W : Writer_T;
+   begin
+      Start_Message (W, Kind, Values);
+      return Message_Bytes (W);
+   end Message_Of;
+
+   function Radio_Outputs return Natural is (Count_Port (RTM));
+
+   function Radio_Output (N : Positive) return Radio_Output_T is
+      Seen : Natural := 0;
+   begin
+      for I in 1 .. Rec_Count loop
+         if Recs (I).Port = RTM and then Rec_Length (I) >= 3 then
+            Seen := Seen + 1;
+            if Seen = N then
+               return (Rec     => I,
+                       Request => Byte_At (I, 1)
+                                    = Natural (EVC_Ports.RTM_Tag_Request),
+                       Session => Byte_At (I, 2),
+                       Kind    => Byte_At (I, 3));
+            end if;
+         end if;
+      end loop;
+      return (others => <>);
+   end Radio_Output;
+
+   procedure Decode_Radio_Message (N      : Positive;
+                                   M      : out ETCS_Message.Message_T;
+                                   Status : out ETCS_Message.Status_T)
+   is
+      O : constant Radio_Output_T := Radio_Output (N);
+   begin
+      if O.Rec = 0 or else O.Request then
+         M := (others => <>);
+         Status := ETCS_Message.Unknown_Message;
+         return;
+      end if;
+      ETCS_Message.Parse
+        (Out_Buf (Recs (O.Rec).First + 2 .. Recs (O.Rec).Last),
+         ETCS_Catalogue.Train_To_Track, ETCS_Catalogue.RBC, M, Status);
+   end Decode_Radio_Message;
+
+   function Request_Byte (N : Positive; K : Positive) return Natural is
+      O : constant Radio_Output_T := Radio_Output (N);
+   begin
+      if O.Rec = 0 or else not O.Request or else Rec_Length (O.Rec) < 3 + K
+      then
+         return 16#FFFF#;
+      end if;
+      return Byte_At (O.Rec, 3 + K);
+   end Request_Byte;
 
 end EVC_Test_Support;

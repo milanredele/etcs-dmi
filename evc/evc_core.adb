@@ -2300,11 +2300,11 @@ is
    procedure Save_Retained
      with Global => (Input  => (EVC_Levels.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Radio.State),
-                     In_Out => EVC_Retained.State)
+                     Output => EVC_Retained.State)
    is
+      --  every field is set below (phase E5 the last one, the RBC)
       K : EVC_Retained.Kept_T;
    begin
-      EVC_Retained.Load (K);
       K.Saved := True;
       K.Level_Known := EVC_Levels.Status /= Unknown;
       K.Level := EVC_Levels.Level;

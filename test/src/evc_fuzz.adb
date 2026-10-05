@@ -378,11 +378,31 @@ procedure EVC_Fuzz is
                Random_Bytes (Natural'Min ((Bits + 7) / 8, 1000));
             end;
          when RTM =>
+            --  phase E5: an event of the safe radio connection (a session
+            --  and an event now and then out of their ranges)
+            if Chance (10) then
+               Add (Natural (RTM_Tag_Event));
+               Add (if Chance (90) then Pick (1, RTM_Max_Sessions)
+                    else Pick (0, 255));
+               Add (if Chance (90) then Pick (1, 6) else Pick (0, 255));
+               return;
+            end if;
             if Chance (60) then
-               Message;
-               if Last > 0 then
-                  return;
-               end if;
+               declare
+                  --  phase E5: the message of a session, behind its tag
+                  With_Tag : constant Boolean := Chance (40);
+               begin
+                  if With_Tag then
+                     Add (Natural (RTM_Tag_Message));
+                     Add (if Chance (90) then Pick (1, RTM_Max_Sessions)
+                          else Pick (0, 255));
+                  end if;
+                  Message;
+                  if Last > (if With_Tag then RTM_Tagged_Header else 0) then
+                     return;
+                  end if;
+                  Last := 0;
+               end;
             end if;
             declare
                Length : constant Natural := Pick (RTM_Min_Length, 1023);

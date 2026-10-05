@@ -87,6 +87,7 @@ with EVC_Test_Bench;     use EVC_Test_Bench;
 with EVC_Test_EMRRLS;    use EVC_Test_EMRRLS;
 with EVC_Test_Config;    use EVC_Test_Config;
 with EVC_Test_Modes;     use EVC_Test_Modes;
+with EVC_Test_Radio;     use EVC_Test_Radio;
 with EVC_Test_Procedures;
 with Evc_Test_Touch;
 
@@ -210,6 +211,8 @@ begin
    Check (Encodes_OK, "E4: every telegram of the track encoded");
    Procedures.Run;
    Touch.Run;
+   --  phase E5: the radio
+   Scenario_Radio_Joint;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));
