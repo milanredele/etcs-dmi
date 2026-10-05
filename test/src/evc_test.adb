@@ -218,6 +218,9 @@ begin
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;
+   Scenario_MA_Request;
+   Scenario_Shortening;
+   Scenario_Emergency_Stops;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

@@ -4,6 +4,7 @@
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
+with ETCS_Track_Packets.P57;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_Distances;
@@ -21,6 +22,7 @@ package body EVC_Test_Authority is
    package MCat renames ETCS_Message_Catalogue;
    package SI renames EVC_Stored_Information;
    package T15 renames ETCS_Track_Packets.P15;
+   package T57 renames ETCS_Track_Packets.P57;
    package RA renames EVC_Radio_Authority;
    use type MCat.Message_Kind_T;
    use type EVC_SDM.Status_T;
@@ -89,11 +91,14 @@ package body EVC_Test_Authority is
 
    --  Message 3 (or 33, shifted by Shift_M metres) referring to the
    --  group NID_BG of country 123, with the MA X, an SSP and a gradient
+   --  (Kind 9: the MA alone)
    function MA_Message (NID_BG  : Natural;
                         X       : T12.Packet_T;
                         T_Train : ETCS_Variables.T_TRAIN_T;
                         Shift_M : Integer := 0;
-                        Kind    : MCat.Known_Message_T := MCat.Track_M3)
+                        Kind    : MCat.Known_Message_T := MCat.Track_M3;
+                        With_57 : Boolean := False;
+                        P57     : T57.Packet_T := (others => <>))
      return Byte_Array
    is
       W  : Writer_T;
@@ -112,10 +117,16 @@ package body EVC_Test_Authority is
       Start_Message (W, Kind, V);
       T15.Encode (To_P15 (X), W, OK);
       Check (OK, "authority: packet 15 encoded");
-      T21.Encode (G, W, OK);
-      Check (OK, "authority: packet 21 encoded");
-      T27.Encode (S, W, OK);
-      Check (OK, "authority: packet 27 encoded");
+      if Kind /= MCat.Track_M9 then
+         T21.Encode (G, W, OK);
+         Check (OK, "authority: packet 21 encoded");
+         T27.Encode (S, W, OK);
+         Check (OK, "authority: packet 27 encoded");
+      end if;
+      if With_57 then
+         T57.Encode (P57, W, OK);
+         Check (OK, "authority: packet 57 encoded");
+      end if;
       return Message_Bytes (W);
    end MA_Message;
 
@@ -242,5 +253,301 @@ package body EVC_Test_Authority is
              "authority: message 33 with a negative D_REF, the MA "
              & "replaced and shortened (3.8.5.1, 3.8.5.1.3)");
    end Scenario_Radio_MA_Shifted;
+
+   --  The NID_MESSAGE of the first train to track message among the RTM
+   --  outputs of the last Take whose NID_MESSAGE is 137 or 138, with its
+   --  T_TRAIN_2 (the request's time stamp); 0 when there is none
+   procedure Shortening_Answer (NID : out Natural; Stamp : out Unsigned_64)
+   is
+      M : ETCS_Message.Message_T;
+      S : ETCS_Message.Status_T;
+      use type ETCS_Message.Status_T;
+   begin
+      NID := 0;
+      Stamp := 0;
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, S);
+         if S = ETCS_Message.Accepted
+           and then M.Kind in MCat.Train_M137 | MCat.Train_M138
+         then
+            NID := (if M.Kind = MCat.Train_M137 then 137 else 138);
+            Stamp := M.Values (5);
+            return;
+         end if;
+      end loop;
+   end Shortening_Answer;
+
+   --  Stand until the on-board sends an MA request (at most Max_Ms);
+   --  True when one was sent: the last Take holds it
+   function Wait_Request (Max_Ms : Natural) return Boolean is
+      N : constant Natural := RA.MA_Requests_Sent;
+   begin
+      for I in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         if RA.MA_Requests_Sent > N then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Wait_Request;
+
+   --  Q_MARQSTREASON of the message 132 among the RTM outputs of the
+   --  last Take, -1 when there is none
+   function Request_Reason return Integer is
+      M : ETCS_Message.Message_T;
+      S : ETCS_Message.Status_T;
+      use type ETCS_Message.Status_T;
+   begin
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, S);
+         if S = ETCS_Message.Accepted and then M.Kind = MCat.Train_M132
+         then
+            return Integer (ETCS_Message.Value
+                              (M, ETCS_Variables.Q_MARQSTREASON));
+         end if;
+      end loop;
+      return -1;
+   end Request_Reason;
+
+   --  3.8.2: the MA request (message 132 with its position report) by
+   --  its triggers in level 2 with the session established: the driver's
+   --  Start (3.8.2.3, reason 1), the time before a section timer expires
+   --  with the parameters of packet 57 (3.8.2.2.1 b, reason 4), the
+   --  repetition every T_CYCRQST while a reason holds (3.8.2.1.5), the
+   --  track description deleted by the section time-out (3.8.2.5,
+   --  reason 8, which resets the cycle, 3.8.2.1.6); nothing in level 1
+   procedure Scenario_MA_Request is
+      Timed : T12.Packet_T := MA_Of ((300, 400), 600);
+      P57   : T57.Packet_T;
+   begin
+      --  Start, without parameters: the reason holds until an MA
+      Start_L2;
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (Wait_Request (500) and then Request_Reason = 1
+             and then RA.MA_Request_Reasons = 1,
+             "MA request: 'Start' selected, message 132 with reason 1 "
+             & "(3.8.2.3.1, 3.8.2.1.7)");
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, Timed, Stamp));
+      Stand_X (200);
+      Check (RA.MA_Request_Reasons = 0,
+             "MA request: the reason 'Start' ends with the MA "
+             & "(3.8.2.3.2 a)");
+
+      --  a section timer of 30 s (not the End Section's), T_TIMEOUTRQST
+      --  10 s, T_CYCRQST 4 s
+      Timed.L_SECTION_List (1).Q_SECTIONTIMER := 1;
+      Timed.L_SECTION_List (1).Has_T_SECTIONTIMER := True;
+      Timed.L_SECTION_List (1).T_SECTIONTIMER := 30;
+      Timed.L_SECTION_List (1).D_SECTIONTIMERSTOPLOC := 250;
+      P57.T_MAR := 255;
+      P57.T_TIMEOUTRQST := 10;
+      P57.T_CYCRQST := 4;
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, Timed, Stamp, With_57 => True, P57 => P57));
+      Check (not Wait_Request (19_000),
+             "MA request: none before the time before the section timer");
+      Check (Wait_Request (1_500) and then Request_Reason = 4,
+             "MA request: 10 s before the section time-out, reason 4 "
+             & "(3.8.2.2.1 b, 3.8.2.2.2)");
+      Check (not Wait_Request (3_500) and then Wait_Request (1_000)
+             and then Request_Reason = 4,
+             "MA request: repeated every T_CYCRQST (3.8.2.1.5)");
+      Stand_X (4_500);
+      Check (Wait_Request (2_500) and then Request_Reason = 8,
+             "MA request: the section time-out deleted track description, "
+             & "reason 8 at once (3.8.2.5.1, 3.8.2.1.6)");
+
+      --  level 1: none
+      Start_X;
+      Establish;
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (not Wait_Request (500) and then RA.MA_Request_Reasons = 0,
+             "MA request: only in level 2 (3.8.2.1.1)");
+   end Scenario_MA_Request;
+
+   --  3.8.6: the co-operative shortening of the MA (message 9), at
+   --  standstill at 200 m with an MA to 800 m. A proposed EOA behind the
+   --  front end: the front end is in advance of its Indication limit,
+   --  the request is rejected (138 with the request's time stamp, 8.6.6)
+   --  and the MA stays (3.8.6.1 b). A proposed EOA at 400 m: granted (137,
+   --  8.6.5), the proposed MA replaces the MA. In level 1: rejected
+   --  (3.8.6, Level 2 only).
+   procedure Scenario_Shortening is
+      M     : constant T12.Packet_T := MA_Of ((300, 400), 600);
+      NID   : Natural;
+      T9    : ETCS_Variables.T_TRAIN_T;
+      Got   : Unsigned_64;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Run_X (20_000);
+      Stand_X (2_000);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 80_000,
+             "shortening: the MA to 800 m, the train standing at 200 m");
+
+      T9 := Stamp;
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((20, 30)), T9, Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 138 and then Got = Unsigned_64 (T9)
+             and then RA.Shortenings_Rejected = 1
+             and then RA.Shortenings_Granted = 0,
+             "shortening: a proposed EOA (150 m) behind the front end, in "
+             & "advance of its Indication limit: rejected, message 138 with "
+             & "the request's time stamp (3.8.6.1 b, c; 8.6.6)");
+      Stand_X (500);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 80_000,
+             "shortening: rejected, the MA unchanged (3.8.6.1 b)");
+
+      Stand_X (1_000);
+      T9 := Stamp;
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((200, 100)), T9, Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 137 and then Got = Unsigned_64 (T9)
+             and then RA.Shortenings_Granted = 1,
+             "shortening: a proposed EOA at 400 m, the front end in rear of "
+             & "its Indication limit: granted, message 137 (3.8.6.1 b, c; "
+             & "8.6.5)");
+      Stand_X (200);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 40_000
+             and then RA.Radio_MAs_Accepted = 2,
+             "shortening: granted, the proposed MA is the MA (3.8.6.1 b)");
+
+      --  level 1
+      Start_X;
+      Establish;
+      Add_Group (Group (10, 100));
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((200, 100)), Stamp, Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 138 and then not SI.Current.MA.Present,
+             "shortening: in level 1, rejected (3.8.6, Level 2 only)");
+   end Scenario_Shortening;
+
+   --  Message 15 (NID_EM, a stop D_M metres beyond the group NID_BG,
+   --  both directions), 16 or 18 for NID_EM
+   function Emergency_Message (Kind   : MCat.Known_Message_T;
+                               NID_EM : Natural;
+                               D_M    : Natural := 0) return Byte_Array
+   is
+      W : Writer_T;
+      V : ETCS_Message.Value_Array := (others => 0);
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := 10;
+      V (7) := Unsigned_64 (NID_EM);
+      if Kind = MCat.Track_M15 then
+         V (8) := 1;
+         V (10) := 2;
+         V (11) := Unsigned_64 (D_M);
+      end if;
+      Start_Message (W, Kind, V);
+      return Message_Bytes (W);
+   end Emergency_Message;
+
+   --  The NID_EM and Q_EMERGENCYSTOP of the message 147 among the RTM
+   --  outputs of the last Take; -1 when there is none
+   procedure Stop_Ack (NID, Q : out Integer) is
+      M : ETCS_Message.Message_T;
+      S : ETCS_Message.Status_T;
+      use type ETCS_Message.Status_T;
+   begin
+      NID := -1;
+      Q := -1;
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, S);
+         if S = ETCS_Message.Accepted and then M.Kind = MCat.Train_M147 then
+            NID := Integer (M.Values (5));
+            Q := Integer (M.Values (6));
+            return;
+         end if;
+      end loop;
+   end Stop_Ack;
+
+   --  3.10: the emergency messages at standstill at 200 m with an MA to
+   --  800 m (no danger point, no overlap: the SvL at the EOA)
+   procedure Scenario_Emergency_Stops is
+      M      : constant T12.Packet_T := MA_Of ((300, 400), 600);
+      NID, Q : Integer;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Run_X (20_000);
+      Stand_X (1_000);
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M15, 3, 50));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Check (NID = 3 and then Q = 3 and then RA.Emergency_Stops = 0
+             and then SI.Current.MA.EOA = 80_000,
+             "emergency: a conditional stop behind the min safe front end "
+             & "rejected, acknowledged with Q_EMERGENCYSTOP 3 (3.10.2.2 a, "
+             & "3.10.1.4)");
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M15, 4, 400));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Stand_X (100);
+      Check (NID = 4 and then Q = 0 and then RA.Emergency_Stops = 1
+             and then SI.Current.MA.EOA = 50_000
+             and then SI.Current.MA.SvL = 50_000
+             and then SI.Current.MA.Release_Speed.Kind = SIn.None,
+             "emergency: a conditional stop before the EOA accepted, the new "
+             & "EOA and SvL at it without release speed, Q_EMERGENCYSTOP 0 "
+             & "(3.10.2.2 b 1st bullet)");
+
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (SI.Current.MA.EOA = 50_000 and then RA.Radio_MAs_Accepted = 1,
+             "emergency: a new MA rejected while the stop is not revoked "
+             & "(3.10.2.4)");
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M15, 5, 600));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Check (NID = 5 and then Q = 1 and then RA.Emergency_Stops = 2
+             and then SI.Current.MA.EOA = 50_000,
+             "emergency: a stop beyond the SvL accepted, the EOA unchanged, "
+             & "Q_EMERGENCYSTOP 1; several stops by NID_EM (3.10.2.2 b "
+             & "3rd bullet, 3.10.1.2)");
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 4));
+      Stand_X (200);
+      Check (RA.Emergency_Stops = 1,
+             "emergency: the revocation of NID_EM 4 leaves NID_EM 5 "
+             & "(3.10.3.3)");
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 5));
+      Stand_X (100);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Stand_X (200);
+      Check (RA.Emergency_Stops = 0 and then SI.Current.MA.EOA = 80_000,
+             "emergency: every stop revoked, a new MA accepted (3.10.2.4)");
+
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M16, 7));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Stand_X (100);
+      Check (NID = 7 and then Q = 2 and then EVC_Core.Mode = M_TR
+             and then RA.Unconditional_Stop_Received,
+             "emergency: an unconditional stop trips the train, "
+             & "acknowledged with Q_EMERGENCYSTOP 2 (3.10.2.3, [20]); kept "
+             & "in Trip ([45], 4.10)");
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 7));
+      Stand_X (200);
+      Check (not RA.Unconditional_Stop_Received
+             and then RA.Emergency_Stops = 0,
+             "emergency: the unconditional stop revoked (3.10.3)");
+   end Scenario_Emergency_Stops;
 
 end EVC_Test_Authority;

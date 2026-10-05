@@ -1,8 +1,15 @@
 --  ETCS on-board (EVC)
 --  Phase E5, the authority by radio half (see the specification).
 
+with ETCS_Bits;
+with ETCS_Catalogue;
+with ETCS_Message;
 with ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P57;
+with ETCS_Train_Packets.P0;
 with ETCS_Variables;          use ETCS_Variables;
+with EVC_Bytes;
+with EVC_Ports;
 with EVC_Balise_Groups;
 with EVC_Distances;           use EVC_Distances;
 with Interfaces;              use Interfaces;
@@ -10,10 +17,16 @@ with Interfaces;              use Interfaces;
 package body EVC_Radio_Authority
   with SPARK_Mode => On,
        Refined_State => (State => (Messages, Held, Stop_Received,
-                                   Mode_Changes, Cycles, Radio_MAs))
+                                   Mode_Changes, Cycles, Radio_MAs,
+                                   Params, Reasons, Request_Due,
+                                   Request_Sent, Last_Request_Ms,
+                                   SR_Authorised, Requests, Start_Reason,
+                                   Deleted_Reason, Shortening, Emergency))
 is
 
    use type ETCS_Message_Catalogue.Message_Kind_T;
+   use type ETCS_Catalogue.Packet_Kind_T;
+   use type EVC_Radio_Info.Action_T;
 
    type Held_T is array (Condition_T) of Boolean;
 
@@ -24,6 +37,97 @@ is
    Cycles        : Natural := 0;
    --  the MAs by radio accepted since Clear
    Radio_MAs     : Natural := 0;
+
+   --  3.8.2.1.2, 3.8.2.1.4: the MA request parameters of the RBC (packet
+   --  57), valid until new ones are received
+   type Params_T is record
+      Known         : Boolean := False;
+      T_MAR         : T_MAR_T := T_MAR_No_MA_Request_Triggering;
+      T_TIMEOUTRQST : T_TIMEOUTRQST_T :=
+        T_TIMEOUTRQST_No_MA_Request_Triggering;
+      T_CYCRQST     : T_CYCRQST_T := T_CYCRQST_No_Repetition;
+   end record;
+   Params          : Params_T := (others => <>);
+   --  the reasons applicable (Q_MARQSTREASON bits), a request due in the
+   --  cycle, one sent since Clear and when
+   Reasons         : Q_MARQSTREASON_T := 0;
+   Request_Due     : Boolean := False;
+   Request_Sent    : Boolean := False;
+   Last_Request_Ms : EVC_Radio.Time_Ms_T := 0;
+   --  3.8.2.3.2 b): an SR authorisation (message 2) received
+   SR_Authorised   : Boolean := False;
+   Requests        : Natural := 0;
+   --  the reasons that persist (3.8.2.3.2, 3.8.2.5.2)
+   Start_Reason    : Boolean := False;
+   Deleted_Reason  : Boolean := False;
+
+   --  3.8.6: a request to shorten the MA (message 9) taken in the cycle
+   --  (Pending), the answer owed (137 or 138) with the T_TRAIN of the
+   --  request (8.6.5, 8.6.6) to the session it came from, the answers
+   --  given since Clear
+   type Answer_T is (None, Granted, Rejected);
+   type Shortening_T is record
+      Pending  : Boolean := False;
+      Answer   : Answer_T := None;
+      Session  : EVC_Radio.Session_T := 1;
+      Stamp    : T_TRAIN_T := 0;
+      Granted  : Natural := 0;
+      Rejected : Natural := 0;
+   end record;
+   Shortening : Shortening_T := (others => <>);
+
+   --  3.10: the emergency stops accepted and not revoked, by NID_EM
+   --  (3.10.1.3.1: a new one with the same identifier replaces it); the
+   --  NID_EM of the conditional stop of each radio message of the cycle;
+   --  an unconditional stop accepted in the cycle ([20]); the
+   --  acknowledgements 147 owed (3.10.1.4), with Q_EMERGENCYSTOP
+   type Stop_Kind_T is (No_Stop, Conditional, Unconditional);
+   type Stops_T is array (NID_EM_T) of Stop_Kind_T;
+   type Ack_T is record
+      NID     : NID_EM_T := 0;
+      Q       : Q_EMERGENCYSTOP_T := 0;
+      Session : EVC_Radio.Session_T := 1;
+   end record;
+   type Slot_EM_T is array (EVC_Radio_Info.Index_T) of Ack_T;
+   Max_Acks : constant := 4;
+   type Ack_Array_T is array (1 .. Max_Acks) of Ack_T;
+   type Emergency_T is record
+      Stops      : Stops_T := (others => No_Stop);
+      Slot_EM    : Slot_EM_T := (others => (others => <>));
+      Uncond_New : Boolean := False;
+      Acks       : Ack_Array_T := (others => (others => <>));
+      Acks_N     : Natural range 0 .. Max_Acks := 0;
+      Acks_Lost  : Natural := 0;
+   end record;
+   Emergency : Emergency_T := (others => <>);
+
+   --  3.10.2.4: an emergency stop accepted and not revoked
+   function Any_Stop return Boolean is
+     (for some N in NID_EM_T => Emergency.Stops (N) /= No_Stop)
+     with Global => Emergency;
+
+   --  An acknowledgement 147 owed (dropped, counted, when too many are
+   --  owed in one cycle: an engineering limit)
+   procedure Owe_Ack (A : Ack_T)
+     with Global => (In_Out => Emergency)
+   is
+   begin
+      if Emergency.Acks_N < Max_Acks then
+         Emergency.Acks_N := Emergency.Acks_N + 1;
+         Emergency.Acks (Emergency.Acks_N) := A;
+      elsif Emergency.Acks_Lost < Natural'Last then
+         Emergency.Acks_Lost := Emergency.Acks_Lost + 1;
+      end if;
+   end Owe_Ack;
+
+   --  A.3.1 TCYCRQSTD: the repetition cycle without parameters, ms
+   Default_Cycle_Ms : constant := 60_000;
+
+   --  Q_MARQSTREASON (7.5.1.118.3) of the reasons
+   function Reason_Bits (Start, Perturbation, Timer, Deleted : Boolean)
+     return Q_MARQSTREASON_T
+   is ((if Start then 1 else 0) + (if Perturbation then 2 else 0)
+       + (if Timer then 4 else 0) + (if Deleted then 8 else 0));
 
    procedure Count (N : in out Natural) is
    begin
@@ -44,6 +148,27 @@ is
      with Refined_Global => Cycles;
    function Radio_MAs_Accepted return Natural is (Radio_MAs)
      with Refined_Global => Radio_MAs;
+   function MA_Request_Reasons return Natural is (Natural (Reasons))
+     with Refined_Global => Reasons;
+   function MA_Requests_Sent return Natural is (Requests)
+     with Refined_Global => Requests;
+   function Emergency_Stops return Natural
+     with Refined_Global => Emergency
+   is
+      N : Natural := 0;
+   begin
+      for I in NID_EM_T loop
+         pragma Loop_Invariant (N <= Natural (I));
+         if Emergency.Stops (I) /= No_Stop then
+            N := N + 1;
+         end if;
+      end loop;
+      return N;
+   end Emergency_Stops;
+   function Shortenings_Granted return Natural is (Shortening.Granted)
+     with Refined_Global => Shortening;
+   function Shortenings_Rejected return Natural is (Shortening.Rejected)
+     with Refined_Global => Shortening;
 
    procedure Clear is
    begin
@@ -53,6 +178,17 @@ is
       Mode_Changes := 0;
       Cycles := 0;
       Radio_MAs := 0;
+      Params := (others => <>);
+      Reasons := 0;
+      Request_Due := False;
+      Request_Sent := False;
+      Last_Request_Ms := 0;
+      SR_Authorised := False;
+      Requests := 0;
+      Start_Reason := False;
+      Deleted_Reason := False;
+      Shortening := (others => <>);
+      Emergency := (others => <>);
       EVC_Radio_Info.Clear;
    end Clear;
 
@@ -96,11 +232,14 @@ is
    --  the stores of E3 through EVC_Radio_Info: referred to the LRBG it
    --  names (an LRBG the on-board does not know leaves no origin, and
    --  the stored information rejects the MA), its timers started at
-   --  the time stamp of the message
+   --  the time stamp of the message; Action: how the stored information
+   --  takes it (Shortening: message 9, 3.8.6)
    procedure Take_Stored_Information (Shifted : Boolean;
-                                      Now_Ms  : EVC_Radio.Time_Ms_T)
+                                      Now_Ms  : EVC_Radio.Time_Ms_T;
+                                      Action  : EVC_Radio_Info.Action_T :=
+                                        EVC_Radio_Info.Packets)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State, Emergency),
                      In_Out => (EVC_Origins.State, EVC_Radio_Info.State))
    is
       Sl    : EVC_Radio_Info.Slot_T;
@@ -115,21 +254,116 @@ is
            (LRBG_Of_Last, Shifted, Shift, Sl.Origin, Sl.G, Sl.T, Sl.S);
       end if;
       Sl.Start_Ms := EVC_Radio.Time_Of_Stamp (Stamp_Of_Last, Now_Ms);
+      Sl.Action := Action;
+      --  3.10.2.4: no MA while an emergency stop is not revoked
+      Sl.MA_Allowed := not Any_Stop;
+      --  3.10.2.2: the stop location of message 15 from the shifted
+      --  location reference, for the direction of Q_DIR (one the train
+      --  is not running in leaves no origin: rejected, a decision)
+      if Action = EVC_Radio_Info.Conditional_Stop then
+         Sl.Stop_D := Scaled
+           (Natural (EVC_Received.Last_Value (D_EMERGENCYSTOP) mod 32768),
+            Natural (EVC_Received.Last_Value (Q_SCALE) mod 4) mod 3);
+         if not EVC_Position.Valid_For
+                  (Q_DIR_T (EVC_Received.Last_Value (Q_DIR) mod 4),
+                   Sl.G, Sl.T)
+         then
+            Sl.Origin := 0;
+         end if;
+      end if;
       EVC_Radio_Info.Put_Last (Sl);
    end Take_Stored_Information;
+
+   --  3.8.2.1.2, 3.8.2.1.4: packet 57 of the last message, the new MA
+   --  request parameters (taken whatever its Q_DIR: they concern the
+   --  train, not a direction)
+   procedure Take_Parameters
+     with Global => (Input => EVC_Received.Store, In_Out => Params)
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P57.Packet_T;
+      OK : Boolean;
+   begin
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P57
+         then
+            EVC_Received.Open_Message_Packet (I, R);
+            ETCS_Track_Packets.P57.Decode (R, P, OK);
+            if OK then
+               Params := (Known         => True,
+                          T_MAR         => P.T_MAR,
+                          T_TIMEOUTRQST => P.T_TIMEOUTRQST,
+                          T_CYCRQST     => P.T_CYCRQST);
+            end if;
+         end if;
+      end loop;
+   end Take_Parameters;
+
+   --  3.10: the emergency messages. 15: to EVC_Radio_Info with its stop
+   --  location, judged by the stored information of the cycle (3.10.2.2)
+   --  and acknowledged in Evaluate; 16: accepted, the train tripped by
+   --  [20] (3.10.2.3), acknowledged with Q_EMERGENCYSTOP 2; 18: the stop
+   --  of its NID_EM revoked (3.10.3.3: the others stay), acknowledged by
+   --  the general acknowledgement of 3.16.3.5 (M_ACK, the session half)
+   procedure Take_Emergency (S      : EVC_Radio.Session_T;
+                             Kind   : ETCS_Message_Catalogue.Message_Kind_T;
+                             Now_Ms : EVC_Radio.Time_Ms_T)
+     with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
+                                EVC_Odometry.State),
+                     In_Out => (Emergency, EVC_Origins.State,
+                                EVC_Radio_Info.State))
+   is
+      NID : constant NID_EM_T :=
+        NID_EM_T (EVC_Received.Last_Value (NID_EM) mod 16);
+      N   : constant EVC_Radio_Info.Count_T := EVC_Radio_Info.Count;
+   begin
+      if Kind = ETCS_Message_Catalogue.Track_M15 then
+         Take_Stored_Information
+           (True, Now_Ms, EVC_Radio_Info.Conditional_Stop);
+         if EVC_Radio_Info.Count > N then
+            Emergency.Slot_EM (EVC_Radio_Info.Count) :=
+              (NID => NID, Q => 0, Session => S);
+         end if;
+      elsif Kind = ETCS_Message_Catalogue.Track_M16 then
+         Emergency.Stops (NID) := Unconditional;
+         Emergency.Uncond_New := True;
+         Owe_Ack ((NID => NID, Q => 2, Session => S));
+      else
+         Emergency.Stops (NID) := No_Stop;
+      end if;
+   end Take_Emergency;
 
    procedure Take_Message (S      : EVC_Radio.Session_T;
                            Now_Ms : EVC_Radio.Time_Ms_T)
    is
-      pragma Unreferenced (S);
       Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
         EVC_Received.Last_Kind;
    begin
       Count (Messages);
+      Take_Parameters;
+      if Kind = ETCS_Message_Catalogue.Track_M2 then
+         SR_Authorised := True;
+      end if;
       if Kind = ETCS_Message_Catalogue.Track_M3 then
          Take_Stored_Information (False, Now_Ms);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
          Take_Stored_Information (True, Now_Ms);
+      elsif Kind = ETCS_Message_Catalogue.Track_M9 then
+         --  3.8.6.1 a): the proposed shortened MA, judged in this cycle
+         --  (Evaluate); a second request in the cycle replaces the first
+         Take_Stored_Information (False, Now_Ms, EVC_Radio_Info.Shortening);
+         Shortening.Pending := True;
+         Shortening.Session := S;
+         Shortening.Stamp := Stamp_Of_Last;
+      elsif Kind in ETCS_Message_Catalogue.Track_M15
+                  | ETCS_Message_Catalogue.Track_M16
+                  | ETCS_Message_Catalogue.Track_M18
+      then
+         Take_Emergency (S, Kind, Now_Ms);
       end if;
    end Take_Message;
 
@@ -137,12 +371,160 @@ is
    --  The cycle
    ---------------------------------------------------------------------
 
-   procedure Evaluate (Ctx : EVC_Radio.Context_T) is
-      pragma Unreferenced (Ctx);
+   --  The repetition cycle of the MA requests in ms (3.8.2.1.5): the
+   --  RBC's T_CYCRQST, A.3.1 TCYCRQSTD without parameters; 0: none
+   function Cycle_Ms return EVC_Radio.Time_Ms_T is
+     (if not Params.Known then Default_Cycle_Ms
+      elsif Params.T_CYCRQST = T_CYCRQST_No_Repetition then 0
+      else 1000 * EVC_Radio.Time_Ms_T (Params.T_CYCRQST))
+     with Global => Params;
+
+   --  3.8.2 (level 2 only, 3.8.2.1.1): the reasons applicable in the
+   --  cycle and whether a request is due. MA_Received: an MA was taken
+   --  in the cycle. A reason that becomes applicable sends at once and
+   --  restarts the cycle (3.8.2.1.6); while one is applicable the request
+   --  is repeated every Cycle_Ms (3.8.2.1.5; new parameters apply at
+   --  once, 3.8.2.1.4.1). The track ahead free reason (3.8.2.4) is not
+   --  handled yet.
+   procedure Evaluate_Request (Now_Ms      : EVC_Radio.Time_Ms_T;
+                               Facts       : Facts_T;
+                               MA_Received : Boolean)
+     with Global => (Input  => (Params, EVC_Levels.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Stored_Information.State),
+                     In_Out => (Reasons, Request_Due, Start_Reason,
+                                Deleted_Reason, SR_Authorised))
+   is
+      L2     : constant Boolean :=
+        EVC_Levels.Valid and then EVC_Levels.Level = EVC_Modes.L2;
+      Old    : constant Q_MARQSTREASON_T := Reasons;
+      Pert   : Boolean;
+      Timer  : Boolean;
+      Rising : Boolean;
    begin
-      if EVC_Stored_Information.Radio_MA_Accepted then
+      --  3.8.2.3: from Start until an MA, an SR authorisation or the
+      --  desk closed; 3.8.2.5: from a deletion until an MA
+      if Facts.Start then
+         Start_Reason := True;
+      end if;
+      if MA_Received or else SR_Authorised or else not Facts.Desk_Open then
+         Start_Reason := False;
+      end if;
+      if EVC_Stored_Information.MA_Timer_Deletion then
+         Deleted_Reason := True;
+      end if;
+      if MA_Received then
+         Deleted_Reason := False;
+      end if;
+      SR_Authorised := False;
+      --  3.8.2.2: only with the parameters of the RBC (3.8.2.1.3)
+      Pert := Params.Known
+        and then Params.T_MAR /= T_MAR_No_MA_Request_Triggering
+        and then Facts.MA_Request;
+      Timer := Params.Known
+        and then Params.T_TIMEOUTRQST
+                   /= T_TIMEOUTRQST_No_MA_Request_Triggering
+        and then EVC_Movement_Authority.Timer_Expiring
+                   (Now_Ms, 1000 * Unsigned_64 (Params.T_TIMEOUTRQST));
+      if not L2 then
+         Start_Reason := False;
+         Deleted_Reason := False;
+         Reasons := 0;
+         Request_Due := False;
+         return;
+      end if;
+      Reasons := Reason_Bits (Start_Reason, Pert, Timer, Deleted_Reason);
+      Rising := Facts.Start
+        or else (Pert and then Old / 2 mod 2 = 0)
+        or else (Timer and then Old / 4 mod 2 = 0)
+        or else (Deleted_Reason and then Old / 8 mod 2 = 0);
+      Request_Due := Request_Due or else Rising;
+   end Evaluate_Request;
+
+   --  3.8.6.1 b), c): the request to shorten the MA taken in the cycle,
+   --  judged on the supervision of the cycle: granted when the train
+   --  front end is in rear of the Indication supervision limit of the
+   --  proposed MA (EVC_SDM, Facts.Proposal_In_Rear): its message stays in
+   --  EVC_Radio_Info and the stored information of the next cycle takes
+   --  it as the new MA, with its mode profile and list of balise groups
+   --  for SH area (3.8.6.2: the deletions of A.3.4 of an MA replacing a
+   --  longer one, 3.8.5.1.3); rejected otherwise, and in a level other
+   --  than 2 (3.8.6 "Level 2 only"), when nothing changes. Either way
+   --  the RBC is answered (3.8.6.1 c, Produce). The other messages of
+   --  the cycle were taken by the stored information.
+   --  3.10.2.2, 3.10.1.4: the conditional stops of the cycle as the
+   --  stored information judged them (EVC_Stored_Information.Stop_Outcome:
+   --  accepted with or without a new EOA, or rejected): the accepted
+   --  ones stored, each acknowledged with its Q_EMERGENCYSTOP
+   procedure Collect_Stops
+     with Global => (Input  => (EVC_Radio_Info.State,
+                                EVC_Stored_Information.State),
+                     In_Out => Emergency)
+   is
+   begin
+      for I in 1 .. EVC_Radio_Info.Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Radio_Info.Slot (I).Action = EVC_Radio_Info.Conditional_Stop
+           and then EVC_Stored_Information.Stop_Outcome (I) <= 3
+         then
+            declare
+               A : Ack_T := Emergency.Slot_EM (I);
+            begin
+               A.Q := Q_EMERGENCYSTOP_T
+                        (EVC_Stored_Information.Stop_Outcome (I));
+               if A.Q <= 1 then
+                  Emergency.Stops (A.NID) := Conditional;
+               end if;
+               Owe_Ack (A);
+            end;
+         end if;
+      end loop;
+   end Collect_Stops;
+
+   procedure Judge_Shortening (Facts : Facts_T)
+     with Global => (Input  => (EVC_Levels.State, Emergency),
+                     In_Out => (Shortening, EVC_Radio_Info.State)),
+          Post => EVC_Radio_Info.Count <= 1
+   is
+      Level_2 : constant Boolean :=
+        EVC_Levels.Valid and then EVC_Levels.Level = L2;
+   begin
+      if not Shortening.Pending then
+         EVC_Radio_Info.Empty;
+      elsif Level_2 and then Facts.Proposal_In_Rear
+        --  3.10.2.4: not while an emergency stop is not revoked
+        and then not Any_Stop
+      then
+         Shortening.Answer := Granted;
+         Count (Shortening.Granted);
+         EVC_Radio_Info.Keep_Granted;
+      else
+         Shortening.Answer := Rejected;
+         Count (Shortening.Rejected);
+         EVC_Radio_Info.Empty;
+      end if;
+      Shortening.Pending := False;
+   end Judge_Shortening;
+
+   procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
+      MA_Received : constant Boolean :=
+        EVC_Stored_Information.Radio_MA_Accepted;
+   begin
+      if MA_Received then
          Count (Radio_MAs);
       end if;
+      Evaluate_Request (Ctx.Now_Ms, Facts, MA_Received);
+      --  3.8.2.1.5: the repetition
+      if Reasons /= 0 and then Request_Sent and then Cycle_Ms > 0
+        and then Ctx.Now_Ms - Last_Request_Ms >= Cycle_Ms
+      then
+         Request_Due := True;
+      end if;
+      --  3.13.11.8: T_MAR for the snapshot of the next cycle
+      EVC_Radio_Info.Set_T_MAR
+        (if Params.Known
+           and then Params.T_MAR /= T_MAR_No_MA_Request_Triggering
+         then 1000 * Unsigned_64 (Params.T_MAR) else 0);
       Held := (others => False);
       --  [31] (MA+SSP+gradient are on-board) AND (the train position
       --  confidence interval does not overlap any Mode Profile) AND
@@ -151,20 +533,169 @@ is
                      and then not EVC_Stored_Information.Mode_Profile_Overlap
                      and then EVC_Levels.Valid
                      and then EVC_Levels.Level = L2;
+      --  3.10: the emergency stops; [20] an unconditional stop accepted in
+      --  the cycle (3.10.2.3), [45] one not revoked
+      Collect_Stops;
+      Held (C_20) := Emergency.Uncond_New;
+      Emergency.Uncond_New := False;
+      Stop_Received :=
+        (for some N in NID_EM_T => Emergency.Stops (N) = Unconditional);
       --  the messages of the cycle were taken by the stored information
-      EVC_Radio_Info.Empty;
+      Judge_Shortening (Facts);
    end Evaluate;
 
+   --  4.10 (the rows of the emergency stops): entering NP, SB, PS, SH,
+   --  SR, SL, NL, UN, SN or RV deletes them; SM, FS, AD, LS, OS, TR and
+   --  PT keep them (so [45] holds back the exit from Trip until the
+   --  revocation). The end of a session deletes none: no clause asks it.
    procedure Mode_Changed (From, To : Mode_T) is
-      pragma Unreferenced (From, To);
+      pragma Unreferenced (From);
    begin
       Count (Mode_Changes);
+      if To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL | M_UN
+             | M_SN | M_RV
+      then
+         Emergency.Stops := (others => No_Stop);
+         Stop_Received := False;
+      end if;
    end Mode_Changed;
 
+   --  The identity of the on-board, NID_ENGINE of the train to track
+   --  messages (8.4.4.7.1): not configured yet, 0 (a decision of phase
+   --  E5 phase 1, to be taken from the configuration at integration)
+   Engine_Id : constant := 0;
+
+   --  A train to track message of Kind with the variables V (3 ..: its
+   --  T_TRAIN and NID_ENGINE are set here) and packet 0, the position
+   --  report of EVC_Position (3.6.5.1.2; the session half builds its own
+   --  for message 136: to be unified at integration), sent in the
+   --  session S; OK False when it could not be built
+   procedure Send_With_Report (S      : EVC_Radio.Session_T;
+                               Kind   : ETCS_Message_Catalogue
+                                          .Known_Message_T;
+                               V      : ETCS_Message.Value_Array;
+                               Ctx    : EVC_Radio.Context_T;
+                               OK     : out Boolean)
+     with Global => (In_Out => (EVC_Radio.State, EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State))
+   is
+      W      : ETCS_Bits.Writer (128);
+      Values : ETCS_Message.Value_Array := V;
+   begin
+      Values (3) := Unsigned_64 (EVC_Radio.T_Train_At (Ctx.Now_Ms));
+      Values (4) := Engine_Id;
+      ETCS_Bits.Clear (W);
+      ETCS_Message.Write_Fields (W, Kind, Values, OK);
+      if OK then
+         ETCS_Train_Packets.P0.Encode
+           (EVC_Position.Position_Report (Ctx.Mode, EVC_Levels.Level),
+            W, OK);
+      end if;
+      if OK then
+         ETCS_Message.Finish (W, OK);
+      end if;
+      if OK then
+         declare
+            D : constant EVC_Bytes.Byte_Array := ETCS_Bits.Data (W);
+         begin
+            OK := EVC_Ports.Valid_RTM (D);
+            if OK then
+               EVC_Radio.Send (S, D);
+            end if;
+         end;
+      end if;
+   end Send_With_Report;
+
+   --  3.8.6.1 c): the answer to the request to shorten the MA, 137
+   --  granted or 138 rejected with the time stamp of the request (8.6.5,
+   --  8.6.6), to the session it came from; kept while the outbox has no
+   --  room, dropped when the session is no longer established
+   procedure Answer_Shortening (Ctx : EVC_Radio.Context_T)
+     with Global => (In_Out => (Shortening, EVC_Radio.State,
+                                EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State))
+   is
+      OK : Boolean := True;
+      V  : ETCS_Message.Value_Array := (others => 0);
+   begin
+      if Shortening.Answer /= None
+        and then EVC_Radio.Established (Shortening.Session)
+      then
+         V (5) := Unsigned_64 (Shortening.Stamp);
+         Send_With_Report
+           (Shortening.Session,
+            (if Shortening.Answer = Granted
+             then ETCS_Message_Catalogue.Train_M137
+             else ETCS_Message_Catalogue.Train_M138),
+            V, Ctx, OK);
+      end if;
+      if OK then
+         Shortening.Answer := None;
+      end if;
+   end Answer_Shortening;
+
+   --  3.10.1.4: the acknowledgements 147 owed (8.6.8: NID_EM,
+   --  Q_EMERGENCYSTOP), each to the session of its message; kept while
+   --  the outbox has no room, dropped when the session is no longer
+   --  established
+   procedure Acknowledge_Stops (Ctx : EVC_Radio.Context_T)
+     with Global => (In_Out => (Emergency, EVC_Radio.State,
+                                EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State))
+   is
+      Kept : Ack_Array_T := (others => (others => <>));
+      N    : Natural range 0 .. Max_Acks := 0;
+      OK   : Boolean;
+      V    : ETCS_Message.Value_Array := (others => 0);
+   begin
+      for I in 1 .. Emergency.Acks_N loop
+         pragma Loop_Invariant (N < I);
+         declare
+            A : constant Ack_T := Emergency.Acks (I);
+         begin
+            if EVC_Radio.Established (A.Session) then
+               V (5) := Unsigned_64 (A.NID);
+               V (6) := Unsigned_64 (A.Q);
+               Send_With_Report (A.Session,
+                                 ETCS_Message_Catalogue.Train_M147,
+                                 V, Ctx, OK);
+               if not OK then
+                  N := N + 1;
+                  Kept (N) := A;
+               end if;
+            end if;
+         end;
+      end loop;
+      Emergency.Acks := Kept;
+      Emergency.Acks_N := N;
+   end Acknowledge_Stops;
+
    procedure Produce (Ctx : EVC_Radio.Context_T) is
-      pragma Unreferenced (Ctx);
+      OK : Boolean;
+      V  : ETCS_Message.Value_Array := (others => 0);
    begin
       Count (Cycles);
+      --  3.8.2: message 132 with the reasons (3.8.2.1.7) to the
+      --  Supervising RBC, once the session is established
+      if Request_Due and then Reasons /= 0
+        and then EVC_Radio.In_Communication
+      then
+         V (5) := Unsigned_64 (Reasons);
+         Send_With_Report
+           (EVC_Radio.Session_T (EVC_Radio.Supervising),
+            ETCS_Message_Catalogue.Train_M132, V, Ctx, OK);
+         if OK then
+            Request_Due := False;
+            Request_Sent := True;
+            Last_Request_Ms := Ctx.Now_Ms;
+            Count (Requests);
+         end if;
+      end if;
+      Answer_Shortening (Ctx);
+      Acknowledge_Stops (Ctx);
    end Produce;
 
 end EVC_Radio_Authority;

@@ -21,6 +21,7 @@
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Bits;
+with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Variables;
@@ -95,6 +96,13 @@ is
    function Last_Value (Var : ETCS_Variables.Variable_T)
      return Interfaces.Unsigned_64
      with Global => Store;
+   function Last_Packet_Count return Natural
+     with Global => Store,
+          Post => Last_Packet_Count'Result = Last_Message.Count;
+   function Last_Packet_Kind (I : Positive)
+     return ETCS_Catalogue.Packet_Kind_T
+     with Global => Store,
+          Pre => I <= Last_Packet_Count;
    procedure Copy_Message (M : out ETCS_Message.Message_T)
      with Global => Store,
           Post => M = Last_Message;

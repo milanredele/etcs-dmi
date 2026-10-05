@@ -1799,3 +1799,56 @@ the runner (telling the RBCs apart from the identities of packet 131/42
 and the connection requests) and in Sim_RBC; the RBC data dialogues of
 the DMI in the runner; the re-recorded baseline after the integration of
 the halves.
+
+### Authority by radio, phase 1 (e5/authority-1, e5/authority-2, 2026-10-05)
+
+**Implemented** (`EVC_Radio_Authority`, the leaf `EVC_Radio_Info`, test
+package `EVC_Test_Authority`):
+- The MA by radio, messages 3 and 33 (3.8, 3.6.2.2.2 c): the message goes
+  to `EVC_Radio_Info` with its origin (the LRBG it names,
+  `EVC_Position.Radio_Origin`, shifted by D_REF for 33) and is taken by
+  the stored information of the same cycle like a balise group; the
+  timers start at its time stamp (3.8.4.2.1 a); [31].
+- The MA request, 3.8.2: message 132 with packet 0 and Q_MARQSTREASON
+  (Start, perturbation location of `EVC_SDM.Result_T.MA_Request`, the
+  section or LOA timer within T_TIMEOUTRQST, the track description
+  deleted by an MA timer), the parameters of packet 57, the repetition
+  every T_CYCRQST (A.3.1 TCYCRQSTD without parameters), level 2 only.
+- The co-operative shortening, 3.8.6: message 9 makes a proposed MA that
+  is not stored (`EVC_Stored_Information.Take_Proposal`,
+  `EVC_Movement_Authority.Authority_Of`, `Snapshot.Extra.Proposal`);
+  `EVC_SDM.Step` evaluates it with the curves and the context of the
+  cycle (`Proposal_In_Rear`: one `Eval_T` more on the stack of Step, no
+  copy of the snapshot or the work area); granted: the message is kept
+  (`EVC_Radio_Info.Keep_Granted`) and taken as the MA by the next cycle,
+  137; rejected: nothing changes, 138.
+- The emergency messages, 3.10: 15 judged by the stored information
+  (`Take_Stop`, `EVC_Movement_Authority.Conditional_Stop`, Q_EMERGENCYSTOP
+  0, 1 or 3), 16 ([20], [45]), 18, the table by NID_EM, 147 for 15 and 16,
+  no MA nor shortening while a stop is not revoked (3.10.2.4), the stops
+  deleted by the modes of 4.10.
+
+**Decisions.** The on-board's T_TRAIN is `(Now_Ms / 10) mod (2**32 - 1)`;
+NID_ENGINE is 0 until the configuration carries it; packet 0 of the
+authority's messages is built by `Send_With_Report` from
+`EVC_Position.Position_Report` (to be unified with the session half's);
+a granted shortening takes effect one cycle after the request (the
+message is taken by the stored information of the next cycle);
+the indication limit of a proposed MA is that of the current speed (also
+below the release speed); a request to shorten outside level 2 is
+rejected (138); a message 15 whose Q_DIR is not valid for the train is
+rejected (Q_EMERGENCYSTOP 3); an accepted conditional stop withdraws the
+EOA and SvL (no release speed, the timers of the MA stop); the stops
+survive the end of a session (no clause deletes them); answers and
+acknowledgements owed go to the session of the message and are dropped
+when it is no longer established; 4.8 acceptance is the session half's
+verdict.
+
+**Left:** the trigger "track ahead free up to the level 2 transition
+location" of 3.8.2.4 (packet 90, one request with packet 9); scenarios
+for the perturbation trigger, for the end of the Start reason by the
+desk closed and by an SR authorisation, for 3.10.2.2 b) 2nd and 4th
+bullets; the deletion situations of A.3.4 not yet covered; the mode
+authorisations of the RBC (messages 2, 6, 27, 28, 34, the conditions
+[6], [11], [36], [81]), 5.17 Train Data, 5.21, message 158; the
+acknowledgement of message 18 by M_ACK (session half).

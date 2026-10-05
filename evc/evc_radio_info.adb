@@ -4,7 +4,7 @@
 
 package body EVC_Radio_Info
   with SPARK_Mode => On,
-       Refined_State => (State => (Messages, Slots, N, Refused_N))
+       Refined_State => (State => (Messages, Slots, N, Refused_N, MAR))
 is
 
    type Message_Array_T is array (Index_T) of ETCS_Message.Message_T;
@@ -14,6 +14,17 @@ is
    Slots     : Slot_Array_T := (others => (others => <>));
    N         : Count_T := 0;
    Refused_N : Natural := 0;
+   MAR       : Unsigned_64 range 0 .. Max_T_MAR_Ms := 0;
+
+   function T_MAR_Ms return Unsigned_64 is (MAR)
+     with Refined_Global => MAR;
+
+   procedure Set_T_MAR (Ms : Unsigned_64)
+     with Refined_Global => (Output => MAR)
+   is
+   begin
+      MAR := Ms;
+   end Set_T_MAR;
 
    function Count return Count_T is (N)
      with Refined_Global => N;
@@ -42,9 +53,10 @@ is
    end Open_Packet;
 
    procedure Clear
-     with Refined_Global => (Output => (Messages, Slots, N, Refused_N))
+     with Refined_Global => (Output => (Messages, Slots, N, Refused_N, MAR))
    is
    begin
+      MAR := 0;
       Messages := (others => (others => <>));
       Slots := (others => (others => <>));
       N := 0;
@@ -57,6 +69,25 @@ is
    begin
       N := 0;
    end Empty;
+
+   procedure Keep_Granted
+     with Refined_Global => (In_Out => (Messages, Slots, N))
+   is
+   begin
+      for I in reverse 1 .. N loop
+         pragma Loop_Invariant (N <= Max_Messages);
+         if Slots (I).Action = Shortening then
+            if I /= 1 then
+               Messages (1) := Messages (I);
+            end if;
+            Slots (1) := Slots (I);
+            Slots (1).Action := Packets;
+            N := 1;
+            return;
+         end if;
+      end loop;
+      N := 0;
+   end Keep_Granted;
 
    procedure Put_Last (S : Slot_T)
      with Refined_Global => (In_Out => (Messages, Slots, N, Refused_N),

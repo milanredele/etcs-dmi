@@ -21,6 +21,7 @@
 
 with EVC_Levels;
 with EVC_Modes;  use EVC_Modes;
+with EVC_Movement_Authority;
 with EVC_Odometry;
 with EVC_Origins;
 with EVC_Position;
@@ -61,11 +62,46 @@ is
 
    --  5. The cycle of the half, after EVC_Sessions.Evaluate: the MA
    --  request, the emergency stops, the conditions of 4.6.3
-   procedure Evaluate (Ctx : EVC_Radio.Context_T)
+   --  What the cycle tells the half besides the context (EVC_Core)
+   type Facts_T is record
+      --  3.13.11.8: the location to request an MA passed (EVC_SDM)
+      MA_Request : Boolean := False;
+      --  3.8.2.3.1: the driver selected Start in this cycle
+      Start      : Boolean := False;
+      --  3.8.2.3.2 c): a desk is open
+      Desk_Open  : Boolean := False;
+      --  3.8.6.1 b): the train front end in rear of the Indication
+      --  supervision limit of the shortened MA proposed in the cycle
+      --  (EVC_SDM.Result_T.Proposal_In_Rear)
+      Proposal_In_Rear : Boolean := False;
+   end record;
+
+   procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T)
      with Global => (In_Out => (State, EVC_Radio_Info.State),
                      Input  => (EVC_Stored_Information.State,
-                                EVC_Levels.State)),
-          Post => EVC_Radio_Info.Count = 0;
+                                EVC_Levels.State,
+                                EVC_Movement_Authority.State)),
+          Post => EVC_Radio_Info.Count <= 1;
+
+   --  3.8.2: the reasons of the MA request applicable (Q_MARQSTREASON,
+   --  7.5.1.118.3: bit 0 Start, 1 perturbation, 2 timer, 3 track
+   --  description deleted, 4 track ahead free), as of the last Evaluate,
+   --  and the MA requests sent since Clear
+   function MA_Request_Reasons return Natural
+     with Global => State;
+   function MA_Requests_Sent return Natural
+     with Global => State;
+
+   --  3.8.6: the requests to shorten the MA granted (137) and rejected
+   --  (138) since Clear
+   function Shortenings_Granted return Natural
+     with Global => State;
+   function Shortenings_Rejected return Natural
+     with Global => State;
+
+   --  3.10: the emergency stops accepted and not revoked
+   function Emergency_Stops return Natural
+     with Global => State;
 
    --  6. The mode changed from From to To
    procedure Mode_Changed (From, To : Mode_T)
@@ -74,7 +110,9 @@ is
    --  8. The messages of the cycle (EVC_Radio.Send), after those of
    --  EVC_Sessions
    procedure Produce (Ctx : EVC_Radio.Context_T)
-     with Global => (In_Out => State);
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State));
 
    --  The condition C holds in this cycle (computed by Evaluate)
    function Holds (C : Condition_T) return Boolean

@@ -36,8 +36,9 @@ package body EVC_Test_Radio is
    --  of doc/EVC-PLAN.md §13) is accepted and refuses what is sent on
    --  session 2.
    procedure Scenario_Radio_Joint is
-      --  16 Unconditional emergency stop (no mandatory packet)
-      M16 : constant Byte_Array := Message_Of (MCat.Track_M16);
+      --  message 24 (general): no effect in either half (message 16
+      --  would trip the train, 3.10.2.3)
+      M24 : constant Byte_Array := Message_Of (MCat.Track_M24);
       V   : ETCS_Message.Value_Array := (others => 0);
       M   : ETCS_Message.Message_T;
       S   : ETCS_Message.Status_T;
@@ -52,13 +53,13 @@ package body EVC_Test_Radio is
              "radio: two sessions by default, none established");
 
       Give_Radio_Event (1, Connection_Set_Up);
-      Input (RTM, M16);                        -- untagged: session 1
-      Give_Radio_Message (1, M16);
-      Give_Radio_Message (2, M16);
+      Input (RTM, M24);                        -- untagged: session 1
+      Give_Radio_Message (1, M24);
+      Give_Radio_Message (2, M24);
       Bad := EVC_Core.Rejected (RTM);
       Give_Radio_Event (3, Connection_Lost);   -- no session 3
       Input (RTM, (RTM_Tag_Event, 1, 7));      -- no event 7
-      Give_Radio_Message (0, M16);             -- no session 0
+      Give_Radio_Message (0, M24);             -- no session 0
       Input (RTM, (RTM_Tag_Request, 1, 2));    -- a request is an output
       Check (EVC_Core.Rejected (RTM) = Bad + 4
              and then EVC_Core.Accepted (RTM) = 4
@@ -145,7 +146,7 @@ package body EVC_Test_Radio is
              and then EVC_Core.Configuration.Radio.Sessions = 1,
              "radio: the single-session configuration is accepted");
       EVC_Core.Tick (100);
-      Give_Radio_Message (2, M16);
+      Give_Radio_Message (2, M24);
       EVC_Radio.Send (2, Message_Of (MCat.Train_M156, V));
       EVC_Radio.Request_Set_Up (2, (NID_C => 5, NID_RBC => 300), 1, True);
       EVC_Radio.Send (1, Message_Of (MCat.Train_M156, V));

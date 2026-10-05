@@ -203,6 +203,12 @@ is
       elsif X.Has_DP then X.DP
       else EOA_Location (X));
 
+   --  Phase E5, 3.8.2.2.1 b): a Section timer (not that of the End
+   --  Section, nor the Overlap timer) running and not stopped, or the
+   --  LOA speed timer, whose time-out comes within Lead_Ms of Now_Ms
+   function Timer_Expiring (Now_Ms, Lead_Ms : Unsigned_64) return Boolean
+     with Global => State;
+
    ---------------------------------------------------------------------
    --  Operations
    ---------------------------------------------------------------------
@@ -245,6 +251,17 @@ is
           Pre => X.Present,
           Post => MA.Present and then Outcome.Accepted;
 
+   --  3.10.2.2 b) (phase E5): the EOA and SvL by the stop location of
+   --  an accepted conditional emergency stop, without release speed;
+   --  Updated: the EOA or LOA changed (Q_EMERGENCYSTOP 0, else 1)
+   procedure Conditional_Stop (T       : Origin_Table_T;
+                               Stop    : Location_T;
+                               Updated : out Boolean;
+                               Outcome : out Outcome_T)
+     with Global => (In_Out => State),
+          Post => MA.Present = MA.Present'Old
+                  and then not Outcome.Accepted;
+
    --  The mode profile of the message of the MA just accepted
    procedure Take_Mode_Profile (P : ETCS_Track_Packets.P80.Packet_T;
                                 M : Message_T)
@@ -285,6 +302,17 @@ is
           when 126    => (Kind => Calculated_On_Board, Speed => 0),
           when 0 .. 120 => (Kind => Fixed, Speed => V5_To_Cms (Code)),
           when others => (Kind => Fixed, Speed => V_NVREL));
+
+   --  The MA X as the supervision sees it, frame positions (phase E5:
+   --  also a proposed MA not stored, 3.8.6.1 b)
+   procedure Authority_Of (X       : MA_T;
+                           T       : Origin_Table_T;
+                           V_NVREL : Speed_Cms_T;
+                           R       : out Movement_Authority_T)
+     with Global => null,
+          Post => R.Present = X.Present
+                  and then (if R.Present
+                            then A (X.Sense, R.SvL) >= A (X.Sense, R.EOA));
 
    --  The MA as the supervision sees it, frame positions
    procedure Authority (T       : Origin_Table_T;

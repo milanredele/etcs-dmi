@@ -81,6 +81,35 @@ is
       Mode_In_Use := 3;
    end Clear;
 
+   --  A timer running towards a finite time-out reached within Lead_Ms
+   function Near (X : Timer_T; Now_Ms, Lead_Ms : Unsigned_64) return Boolean
+   is (X.Given and then X.Running and then not X.Infinite
+       and then X.Started <= Now_Ms
+       and then Unsigned_64 (X.Timeout) <= Unsigned_64'Last - Lead_Ms
+       and then Now_Ms - X.Started + Lead_Ms >= Unsigned_64 (X.Timeout));
+
+   function Timer_Expiring (Now_Ms, Lead_Ms : Unsigned_64) return Boolean
+   is
+   begin
+      if not Current.Present or else Current.Withdrawn then
+         return False;
+      end if;
+      if Is_LOA (Current) and then Near (Current.LOA_Timer, Now_Ms, Lead_Ms)
+      then
+         return True;
+      end if;
+      --  the sections before the End Section (the last one)
+      for I in 1 .. Current.Count - 1 loop
+         pragma Loop_Invariant (True);
+         if not Current.Sections (I).Stopped
+           and then Near (Current.Sections (I).Timer, Now_Ms, Lead_Ms)
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Timer_Expiring;
+
    -----------------
    -- From_Packet --
    -----------------
@@ -194,6 +223,51 @@ is
       Outcome.Delete_To := SvL_Location (X);
       Outcome.Delete_Before := Before;
    end Delete_Beyond_SvL;
+
+   --  3.10.2.2 b) (phase E5): the stop location Stop of an accepted
+   --  conditional emergency stop. Not beyond the EOA: the new EOA and SvL
+   --  (1st bullet); beyond the EOA, not beyond the SvL: the new SvL, the
+   --  EOA unchanged (2nd); beyond the SvL: nothing (3rd); a LOA: the new
+   --  EOA and SvL at the stop, or at the LOA when beyond it (4th). Always
+   --  without release speed: the EOA and SvL withdrawn (as A.3.4.1.3 [11];
+   --  the timers of the MA no longer run, a decision: the stop ends the
+   --  MA's own ends), and the deletions beyond the new SvL (A.3.4.1.2 a,
+   --  A.3.4.1.3 [1]). Updated: the EOA (or LOA) changed (Q_EMERGENCYSTOP
+   --  0, else 1, 7.5.1.107).
+   procedure Conditional_Stop (T       : Origin_Table_T;
+                               Stop    : Location_T;
+                               Updated : out Boolean;
+                               Outcome : out Outcome_T)
+   is
+      S   : constant Sense_T := Current.Sense;
+      E   : Dist_T := Frame (T, Stop, Estimated_Item);
+      M   : Dist_T := Frame (T, Stop, Max_Item);
+      EOA : constant Dist_T :=
+        Frame (T, EOA_Location (Current), Estimated_Item);
+      SvL : constant Dist_T := Frame (T, SvL_Location (Current), Max_Item);
+   begin
+      Outcome := (others => <>);
+      Updated := False;
+      if not Current.Present then
+         return;
+      end if;
+      if Is_LOA (Current) or else A (S, E) <= A (S, EOA) then
+         Updated := True;
+         if A (S, E) > A (S, EOA) then
+            E := EOA;
+            M := Frame (T, EOA_Location (Current), Max_Item);
+         end if;
+      elsif A (S, M) <= A (S, SvL) then
+         E := EOA;
+      else
+         return;
+      end if;
+      Current.Withdrawn := True;
+      Current.Withdrawn_EOA := (Origin => 0, Offset => E);
+      Current.Withdrawn_SvL := (Origin => 0, Offset => M);
+      Current.Target_Speed := 0;
+      Delete_Beyond_SvL (T, Current, Natural'Last, Outcome);
+   end Conditional_Stop;
 
    --  3.8.4.1.2: the End Section time-out withdraws the EOA to the train
    --  (A.3.4.1.3 [11]) and deletes beyond its max safe front end [10]
@@ -565,39 +639,48 @@ is
    -- Authority --
    ---------------
 
+   procedure Authority_Of (X       : MA_T;
+                           T       : Origin_Table_T;
+                           V_NVREL : Speed_Cms_T;
+                           R       : out Movement_Authority_T)
+   is
+      S : constant Sense_T := X.Sense;
+   begin
+      R := (Present => False, EOA => 0, SvL => 0, LOA_Speed => 0,
+            Release_Speed => (Kind => None, Speed => 0));
+      if not X.Present then
+         return;
+      end if;
+      R.Present := True;
+      if Is_LOA (X) then
+         --  an EBD target: the "max" item; no SvL, no release speed
+         R.EOA := Frame (T, EOA_Location (X), Max_Item);
+         R.SvL := R.EOA;
+         R.LOA_Speed := X.Target_Speed;
+         return;
+      end if;
+      R.EOA := Frame (T, EOA_Location (X), Estimated_Item);
+      R.SvL := Frame (T, SvL_Location (X), Max_Item);
+      if A (S, R.SvL) < A (S, R.EOA) then
+         R.EOA := R.SvL;
+      end if;
+      if X.Withdrawn then
+         null;  -- A.3.4.1.3 [11]: no release speed
+      elsif X.National_Release then
+         R.Release_Speed := (Kind => Fixed, Speed => V_NVREL);
+      elsif X.Has_OL then
+         R.Release_Speed := Release (X.V_Release_OL, V_NVREL);
+      elsif X.Has_DP then
+         R.Release_Speed := Release (X.V_Release_DP, V_NVREL);
+      end if;
+   end Authority_Of;
+
    procedure Authority (T       : Origin_Table_T;
                         V_NVREL : Speed_Cms_T;
                         R       : out Movement_Authority_T)
    is
-      S : constant Sense_T := Current.Sense;
    begin
-      R := (Present => False, EOA => 0, SvL => 0, LOA_Speed => 0,
-            Release_Speed => (Kind => None, Speed => 0));
-      if not Current.Present then
-         return;
-      end if;
-      R.Present := True;
-      if Is_LOA (Current) then
-         --  an EBD target: the "max" item; no SvL, no release speed
-         R.EOA := Frame (T, EOA_Location (Current), Max_Item);
-         R.SvL := R.EOA;
-         R.LOA_Speed := Current.Target_Speed;
-         return;
-      end if;
-      R.EOA := Frame (T, EOA_Location (Current), Estimated_Item);
-      R.SvL := Frame (T, SvL_Location (Current), Max_Item);
-      if A (S, R.SvL) < A (S, R.EOA) then
-         R.EOA := R.SvL;
-      end if;
-      if Current.Withdrawn then
-         null;  -- A.3.4.1.3 [11]: no release speed
-      elsif Current.National_Release then
-         R.Release_Speed := (Kind => Fixed, Speed => V_NVREL);
-      elsif Current.Has_OL then
-         R.Release_Speed := Release (Current.V_Release_OL, V_NVREL);
-      elsif Current.Has_DP then
-         R.Release_Speed := Release (Current.V_Release_DP, V_NVREL);
-      end if;
+      Authority_Of (Current, T, V_NVREL, R);
    end Authority;
 
    -------------------------
