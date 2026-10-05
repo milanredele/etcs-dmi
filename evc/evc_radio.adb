@@ -5,7 +5,8 @@
 package body EVC_Radio
   with SPARK_Mode => On,
        Refined_State => (State => (Count_Of_Sessions, Table, Supervising_S,
-                                   Accepting_S, Contact_Info, Network_Info),
+                                   Accepting_S, Contact_Info, Network_Info,
+                                   Engine_Value, TD_Acked),
                          Queue => (Data, Used, Refused_Count))
 is
 
@@ -17,6 +18,8 @@ is
    Accepting_S       : Session_Ref_T := No_Session;
    Contact_Info      : RBC_Contact_T := No_Contact;
    Network_Info      : Network_T;
+   Engine_Value      : NID_ENGINE_T := 0;
+   TD_Acked          : Boolean := False;
 
    Data          : EVC_Bytes.Byte_Array (1 .. Queue_Capacity) :=
      (others => 0);
@@ -39,6 +42,10 @@ is
      with Refined_Global => Contact_Info;
    function Network return Network_T is (Network_Info)
      with Refined_Global => Network_Info;
+   function Engine_Id return NID_ENGINE_T is (Engine_Value)
+     with Refined_Global => Engine_Value;
+   function Train_Data_Acknowledged return Boolean is (TD_Acked)
+     with Refined_Global => TD_Acked;
    function Queued return Natural is (Used)
      with Refined_Global => Used;
    function Refused return Natural is (Refused_Count)
@@ -48,9 +55,11 @@ is
    --  EVC_Core
    ---------------------------------------------------------------------
 
-   procedure Clear (N : Session_Count_T) is
+   procedure Clear (N : Session_Count_T; Engine : NID_ENGINE_T := 0) is
    begin
       Count_Of_Sessions := N;
+      Engine_Value := Engine;
+      TD_Acked := False;
       Table := (others => No_Info);
       Supervising_S := No_Session;
       Accepting_S := No_Session;
@@ -109,6 +118,11 @@ is
       Supervising_S := Supervising;
       Accepting_S := Accepting;
    end Set_Roles;
+
+   procedure Set_Train_Data_Acknowledged (Acked : Boolean) is
+   begin
+      TD_Acked := Acked;
+   end Set_Train_Data_Acknowledged;
 
    procedure Set_Contact (C : RBC_Contact_T) is
    begin

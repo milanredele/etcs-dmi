@@ -142,7 +142,7 @@ package body EVC_Test_Radio is
              "radio: a new on-board has no RBC contact");
 
       --  one session only, by configuration
-      EVC_Config.Set_Radio_For_Test ((Sessions => 1));
+      EVC_Config.Set_Radio_For_Test ((Sessions => 1, others => <>));
       EVC_Core.Initialise;
       Check (EVC_Radio.Sessions = 1
              and then EVC_Radio.Usable (1) and then not EVC_Radio.Usable (2)

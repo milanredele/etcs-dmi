@@ -435,7 +435,8 @@ is
      with Global => (In_Out => (State, EVC_Levels.State, EVC_Mission.State),
                      Output => EVC_Train_Data.State,
                      Input  => (EVC_National_Values.State,
-                                EVC_Position.State, EVC_Odometry.State)),
+                                EVC_Position.State, EVC_Odometry.State,
+                                EVC_Radio.State)),
           Pre  => Mode /= M_NP,
           Post => EVC_Core.Mode = Mode and then Failed = Failed'Old
                   and then Cycle = Cycle'Old

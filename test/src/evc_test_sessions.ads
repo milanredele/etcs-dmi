@@ -23,4 +23,9 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_NVCONTACT_Brake;
    procedure Scenario_Session_Indication;
 
+   --  Phase 2 (e5/session-3): 5.4.3.2 in level 2, 3.18.3.4, 5.5.3.1
+   procedure Scenario_Session_SoM_Level_2;
+   procedure Scenario_Session_SoM_Failures;
+   procedure Scenario_Session_EoM;
+
 end EVC_Test_Sessions;

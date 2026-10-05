@@ -172,6 +172,20 @@ is
    function Accepting return Session_Ref_T
      with Global => State;
 
+   --  The ETCS identity of the on-board, NID_ENGINE of the train to
+   --  track messages (8.4.4.7.1; EVC_Config.Radio_Config_T, taken at
+   --  Clear): added by e5/session-3 for both halves
+   function Engine_Id return NID_ENGINE_T
+     with Global => State;
+
+   --  3.18.3.4.1, 5.4.3.2 D15 / S11: the RBC acknowledged (message 8)
+   --  the Train Data the on-board sent last (129) in the session of the
+   --  supervising RBC; False again when Train Data are sent anew or the
+   --  session ends. Written by EVC_Sessions; the authority half's MA
+   --  request at start of mission (S20 / S21) is to wait for it.
+   function Train_Data_Acknowledged return Boolean
+     with Global => State;
+
    function Contact return RBC_Contact_T
      with Global => State;
 
@@ -273,9 +287,11 @@ is
 
    --  The power-up: no session (every one Idle), no role, no contact, no
    --  network, the outbox empty; N sessions (EVC_Config)
-   procedure Clear (N : Session_Count_T)
+   procedure Clear (N : Session_Count_T; Engine : NID_ENGINE_T := 0)
      with Global => (Output => (State, Queue)),
           Post => Sessions = N
+                  and then Engine_Id = Engine
+                  and then not Train_Data_Acknowledged
                   and then (for all S in Session_T => Info (S) = No_Info)
                   and then Supervising = No_Session
                   and then Accepting = No_Session
@@ -360,6 +376,15 @@ is
                   and then EVC_Radio.Accepting = Accepting
                   and then Sessions = Sessions'Old
                   and then Roles_Consistent;
+
+   procedure Set_Train_Data_Acknowledged (Acked : Boolean)
+     with Global => (In_Out => State),
+          Post => Train_Data_Acknowledged = Acked
+                  and then Sessions = Sessions'Old
+                  and then Engine_Id = Engine_Id'Old
+                  and then Supervising = Supervising'Old
+                  and then Accepting = Accepting'Old
+                  and then Contact = Contact'Old;
 
    procedure Set_Contact (C : RBC_Contact_T)
      with Global => (In_Out => State),

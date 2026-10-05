@@ -1019,17 +1019,17 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.3.2.5.1,3,x,,,,,E6,todo,
 3.18.3.3,3,x,,,,,E6,todo,
 3.18.3.3.1,3,x,,,,,E6,todo,
-3.18.3.4,3,x,,,,,E6,todo,
-3.18.3.4 a),3,x,,,,,E6,todo,
-3.18.3.4 b),3,x,,,,,E6,todo,
-3.18.3.4 c),3,x,,,,,E6,todo,
-3.18.3.4 d),3,x,,,,,E6,todo,
-3.18.3.4 e),3,x,,,,,E6,todo,
-3.18.3.4 f),3,x,,,,,E6,todo,
-3.18.3.4 g),3,x,,,,,E6,todo,
-3.18.3.4 h),3,x,,,,,E6,todo,
-3.18.3.4 i),3,x,,,,,E6,todo,
-3.18.3.4.2,3,x,,,,,E6,todo,
+3.18.3.4,3,x,,,,,E6,done,EVC_Sessions.Mission: message 129 with packets 0 and 11 when the supervising session is established with valid Train Data and when the driver validates them in a session [E5 session]
+3.18.3.4 a),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
+3.18.3.4 b),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
+3.18.3.4 c),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
+3.18.3.4 d),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
+3.18.3.4 e),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
+3.18.3.4 f),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
+3.18.3.4 g),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
+3.18.3.4 h),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
+3.18.3.4 i),3,x,,,,,E6,partial,"EVC_Sessions.Mission: N_AXLE 0, not in the installation data yet (decision 6) [E5 session]"
+3.18.3.4.2,3,x,,,,,E6,done,EVC_Sessions.Mission: sent again once the connection is set up again in the session [E5 session]
 3.18.3.5,3,x,,,,,E6,todo,
 3.18.3.5 a),3,x,,,,,E6,todo,
 3.18.3.5 b),3,x,,,,,E6,todo,
@@ -1427,43 +1427,43 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.12.1.2 Table-footnote [2],4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
 5.3.1.3,5,x,,,,,E4,done,"the procedures of 5.4, 5.5 and 5.10 in EVC_Mission and EVC_Levels"
 5.4.1.4,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
-5.4.3.2 A24,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 A24,5,x,,,,,E4,partial,"EVC_Sessions.Mission: the train accepted without a valid position, the position deleted (EVC_Core, EVC_Position.Delete_Position); decision 5; the deletion itself is not done yet (EVC_Sessions.Position_To_Delete is not applied by EVC_Core: the postcondition of Tick on 3.6.4.1.2) [E5 session]"
 5.4.3.2 A29,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A31,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A32,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A33,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A34,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A35,5,x,x,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A39,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A40,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 A31,5,x,,,,,E4,done,"EVC_Sessions.Mission: the session with the RBC of the contact opened, three attempts (A.3.1, EVC_Sessions); MSG_ONBOARD waiting 2 [E5 session]"
+5.4.3.2 A32,5,x,,,,,E4,done,"EVC_Sessions.Mission / EVC_Sessions: after the three attempts or the version check, the driver informed by the indication of 3.5.7 (and 'Trackside not compatible'), S10 [E5 session]"
+5.4.3.2 A33,5,x,,,,,E4,partial,"EVC_Sessions.Mission: message 157 Q_STATUS valid with packet 0, packet 11 when the Train Data are valid; the train running number (packet 5) and the safe consist length (packet 10) not sent [E5 session]"
+5.4.3.2 A34,5,x,,,,,E4,partial,"EVC_Sessions.Mission: message 157 Q_STATUS invalid / unknown with packet 0, packet 11 when valid; packets 5 and 10 not sent [E5 session]"
+5.4.3.2 A35,5,x,x,,,,E4,done,"EVC_Sessions.Mission: message 43, the position revalidated (EVC_Core, EVC_Position.Revalidate) [E5 session]"
+5.4.3.2 A39,5,x,,,,,E4,partial,"EVC_Sessions.Mission: the train rejected, the position deleted unless decision 5; the deletion itself is not done yet (EVC_Sessions.Position_To_Delete is not applied by EVC_Core: the postcondition of Tick on 3.6.4.1.2) [E5 session]"
+5.4.3.2 A40,5,x,,,,,E4,done,"EVC_Sessions.Mission / EVC_Sessions: the session terminated (156), 'Train is rejected' (DMI entry 20), S10 [E5 session]"
 5.4.3.2 A41,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 A42,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 A43,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 D2,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 D3,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
-5.4.3.2 D7,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 D7,5,x,,,,,E4,partial,EVC_Sessions.Mission: stored level 2 with a known contact opens the session (decision 1); the Radio Network type and the registrations are not modelled (3.5.6) [E5 session]
 5.4.3.2 D8,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 D9,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 D10,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 D11,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 D12,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
-5.4.3.2 D15,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 D31,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 D32,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 D34,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 D35,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 D15,5,x,,,,,E4,partial,EVC_Sessions.Mission: EVC_Radio.Train_Data_Acknowledged (message 8) and MSG_ONBOARD rbc bit0; 'Start' itself is not refused before it (the authority half's MA request is to wait for it) [E5 session]
+5.4.3.2 D31,5,x,,,,,E4,done,EVC_Sessions.Mission: the system version agreed: D32 and the contact valid; no session left with the RBC: A32 [E5 session]
+5.4.3.2 D32,5,x,,,,,E4,done,"EVC_Sessions.Mission: Q_STATUS from EVC_Position (status, LRBG) [E5 session]"
+5.4.3.2 D34,5,x,,,,,E4,done,EVC_Sessions.Mission: message 41; decision 5 [E5 session]
+5.4.3.2 D35,5,x,,,,,E4,done,EVC_Sessions.Mission: message 40; decision 5 [E5 session]
 5.4.3.2 S0,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S1,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S2,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
-5.4.3.2 S3,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 S3,5,x,,,,,E4,partial,"EVC_Sessions.Mission: the RBC contact of the driver (MSG_DRIVER_DATA kind 5: entered, 'Contact last RBC', 'Use short number'); the Radio Network type and the GSM-R network ID not [E5 session]"
 5.4.3.2 S4,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 S5,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 S10,5,x,,,,,E4,partial,"NL (E10, [46]), SH ([5] from SB, EVC_Procedures) and the Train Data entry (E11) done; SM is E5 [E5 session]"
-5.4.3.2 S11,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 S11,5,x,,,,,E4,partial,EVC_Sessions.Mission: the Train Data repeated until acknowledged (decision 4); see D15 [E5 session]
 5.4.3.2 S12,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S13,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S20,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
-5.4.3.2 S21,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 S21,5,x,,,,,E4,partial,EVC_Mission: 'Start' in level 2 with a session proposes no mode; the MA request and the answers are EVC_Radio_Authority's [E5 session]
 5.4.3.2 S22,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S23,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S24,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
@@ -1471,7 +1471,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.3.2.1,5,x,,,,,E4,done,"EVC_Mission: the start of mission ends with another mode or the desk closed; evc_test E4_SoM_Level_1, E4_Desk_Closed"
 5.4.3.2.1 1st bullet,5,x,,,,,E4,done,"EVC_Mission: the start of mission ends with another mode or the desk closed; evc_test E4_SoM_Level_1, E4_Desk_Closed"
 5.4.3.2.1 2nd bullet,5,x,,,,,E4,done,"EVC_Mission: the start of mission ends with another mode or the desk closed; evc_test E4_SoM_Level_1, E4_Desk_Closed"
-5.4.3.2.2,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
+5.4.3.2.2,5,x,,,,,E4,done,EVC_Sessions.Mission: the desk closed during the start of mission: the session terminated [E5 session]
 5.4.3.3 Table,5,x,,,,,E4,partial,"EVC_Mission (driver ID, train running number, Train Data), EVC_Levels (level): the statuses of the rows without the RBC; the position and the RBC contact rows are E5 [E5 session]"
 5.4.5.1,5,x,,,,,E4,deferred,E5 (loss of a session) [E5 session]
 5.4.5.3,5,x,,,,,E4,partial,b) c) d) e) f) g) h) done; a) override in SB is level 2's; i) j) k) l) E5/E6 [E5 session]
@@ -1486,21 +1486,21 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.5.3 h) 1st bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 h) 2nd bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 h) 3rd bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
-5.4.5.3 h) 4th bullet,5,x,,,,,E4,deferred,E5 (level 2 with a session) [E5 session]
+5.4.5.3 h) 4th bullet,5,x,,,,,E4,done,"EVC_Mission (Context_T.In_Communication): S21, no Staff Responsible proposed [E5 session]"
 5.4.5.3 h) 5th bullet,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.5.3 i),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22) [E5 session]"
-5.4.5.3 j),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22) [E5 session]"
+5.4.5.3 j),5,x,,,,,E4,partial,EVC_Sessions.Mission: in level 2 at S10 / S20 the RBC contact can be re-entered (S3); the radio network data not [E5 session]
 5.4.5.3 j) 1st bullet,5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22) [E5 session]"
 5.4.5.3 j) 2nd bullet,5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22) [E5 session]"
 5.4.5.3 k),5,x,,,,,E4,deferred,Supervised Manoeuvre is entered by an SM authorisation of the RBC (4.6.3 [81]) with the safe consist length: E5 [E5 session]
 5.4.5.3 l),5,x,,,,,E4,deferred,"E6 (VBC), E5 (radio data), the procedures half (5.22) [E5 session]"
 5.5.3.1.2,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10) [E5 session]"
-5.5.3.1.3,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10) [E5 session]"
-5.5.3.1.4,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10) [E5 session]"
-5.5.3.1.4 step 4,5,x,,,,,E4,deferred,"E5 (End of Mission message, sessions); step 1 is 4.10 (EVC_Core.Enter_Mode), the end of mission is recorded (JRU 41 kind 10) [E5 session]"
-5.5.4.1.1,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
-5.5.4.1.1.1,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
-5.5.4.1.2,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
+5.5.3.1.3,5,x,,,,,E4,done,EVC_Sessions.Mission: message 150 with packet 0 when a session with the RBC is established [E5 session]
+5.5.3.1.4,5,x,,,,,E4,done,"EVC_Sessions.Mission: 150 repeated while the desk is open until the RBC terminates the session (3.5.5, EVC_Sessions) [E5 session]"
+5.5.3.1.4 step 4,5,x,,,,,E4,done,EVC_Sessions: the termination ordered by the RBC (3.5.5) [E5 session]
+5.5.4.1.1,5,x,,,,,E4,done,EVC_Sessions.Mission: 150 repeated every 15 s (A.3.1) [E5 session]
+5.5.4.1.1.1,5,x,,,,,E4,done,EVC_Sessions.Mission: after 3 repetitions without a reply the session terminated [E5 session]
+5.5.4.1.2,5,x,,,,,E4,done,EVC_Sessions.Mission: 150 only in an established session; none is opened for it [E5 session]
 5.6.2.2 A030,5,x,,,,,E4,n/a,"level NTC and the national trip of an STM: National Systems are out of scope (EVC-PLAN §1, PLAN.md)"
 5.6.2.2 A045,5,x,,,,,E4,done,"message 130 with the position report to the Supervising RBC (EVC_Radio_Authority.Evaluate_SH, Produce); without a session the request fails at once (a decision); evc_test Scenario_Shunting_L2 [E5 authority]"
 5.6.2.2 A050,5,x,,,,,E4,done,"SH entered by 4.6.3 [5]; the list of balise groups for the SH area deleted (EVC_Procedures.Mode_Changed; a new list comes with the RBC's authorisation, E5); evc_test_procedures Scenario_Shunting_Driver"

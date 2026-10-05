@@ -259,9 +259,13 @@ is
                      Distance_M => Get_U16 (Frame, P + 3));
                end if;
             when RBC_Data =>
-               OK := N = 24;
+               --  e5/session-3: the kind and 22 bytes (dmi_protocol.ads
+               --  Driver_Data_RBC_Length 23, as the DMI sends it); the
+               --  23rd byte of Bytes_23_T stays 0
+               OK := N = 23;
                if OK then
-                  for I in Bytes_23_T'Range loop
+                  Latched.RBC := (others => 0);
+                  for I in 1 .. 22 loop
                      Latched.RBC (I) := Frame (P + I);
                   end loop;
                end if;

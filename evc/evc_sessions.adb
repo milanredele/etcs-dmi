@@ -11,6 +11,7 @@ with ETCS_Message_Catalogue; use ETCS_Message_Catalogue;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
+with EVC_Sessions.Mission;
 with Interfaces;             use Interfaces;
 
 package body EVC_Sessions
@@ -19,7 +20,8 @@ package body EVC_Sessions
                                    Mode_Changes, Cycles, Links, Order,
                                    Pending, Acks, Ack_N, NV, Ind,
                                    Requesting, Timer_On, Timer_Since,
-                                   SB_Shown, Status_List, Status_N))
+                                   SB_Shown, Status_List, Status_N,
+                                   EVC_Sessions.Mission.State))
 is
 
    package R renames EVC_Radio;
@@ -454,6 +456,7 @@ is
       SB_Shown := False;
       Status_List := (others => (others => <>));
       Status_N := 0;
+      Mission.Clear;
    end Clear;
 
    --  3.5.3.7 a, 3.5.4.2: the set-up of the safe radio connection of S
@@ -617,6 +620,16 @@ is
             Links (S).Ack_Awaited := False;   -- 3.5.3.7.4
          when Track_M39 =>
             null;                             -- no termination going on
+         when Track_M8 | Track_M40 | Track_M41 | Track_M43 =>
+            --  3.18.3.4.1, 5.4.3.2 A35, A23, A38 (EVC_Sessions.Mission)
+            declare
+               Taken : Boolean;
+            begin
+               Mission.Take_Answer (S, Kind, Taken);
+               if not Taken then
+                  Verdict := Pass;
+               end if;
+            end;
          when others =>
             Verdict := Pass;
       end case;
@@ -782,6 +795,35 @@ is
       end if;
    end Supervise_Contact;
 
+   --  The requests of the level 2 start and end of mission and of the
+   --  Train Data (EVC_Sessions.Mission): A31 (the three attempts of
+   --  A.3.1), A40 and 5.5.4.1.1 (the termination), A40 "Train is
+   --  rejected" (DMI entry 20)
+   procedure Apply_Mission (Ctx : EVC_Radio.Context_T)
+     with Global => (In_Out => (Mission.State, Links, Pending, R.State,
+                                Ind, Requesting, Timer_On, Status_List,
+                                Status_N),
+                     Input  => (EVC_Mission.State, EVC_Levels.State,
+                                EVC_Position.State, EVC_Train_Data.State,
+                                EVC_Driver_Requests.State))
+   is
+      Req : Mission.Request_T;
+   begin
+      Mission.Evaluate (Ctx, Req);
+      if Req.Stop and then R.Usable (Req.Session)
+        and then R.Info (Req.Session).State /= R.Idle
+      then
+         Terminate_Session (Req.Session, Ctx.Now_Ms);
+      end if;
+      if Req.Rejected then
+         Show (EVC_DMI_Port.SS_Train_Rejected,
+               Natural (EVC_DMI_Port.SS_Event_Start));
+      end if;
+      if Req.Open then
+         Establish (Req.RBC, Req.Radio, True, Ctx.Now_Ms);
+      end if;
+   end Apply_Mission;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T) is
       N : constant R.Session_Count_T := R.Sessions;
    begin
@@ -802,6 +844,7 @@ is
             Establish (P.RBC, P.Radio, P.Capped, Ctx.Now_Ms);
          end if;
       end;
+      Apply_Mission (Ctx);
       Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill);
       --  3.16.3.4.4: the driver informed of the service brake ("Communication
       --  error", the DMI's entry 4; its end: 3.14.1.7)
@@ -814,9 +857,9 @@ is
    end Evaluate;
 
    procedure Mode_Changed (From, To : Mode_T) is
-      pragma Unreferenced (From, To);
    begin
       Count (Mode_Changes);
+      Mission.Mode_Changed (From, To);
    end Mode_Changed;
 
    ---------------------------------------------------------------------
@@ -826,10 +869,6 @@ is
    --  The session messages are short: a writer of Msg_Size bytes
    Msg_Size : constant := 16;
    subtype Msg_Writer_T is ETCS_Bits.Writer (Msg_Size);
-
-   --  NID_ENGINE (7.5.1.86): the configuration has no ETCS identity of
-   --  the on-board yet (phase E8): 0
-   NID_Engine : constant := 0;
 
    --  The header of a train to track message of Kind (8.4.4.7.1): T,
    --  NID_ENGINE, and V5, the fifth variable (the T_TRAIN acknowledged
@@ -844,7 +883,8 @@ is
    begin
       ETCS_Bits.Clear (W);
       V (3) := Unsigned_64 (T);
-      V (4) := NID_Engine;
+      --  NID_ENGINE (7.5.1.86): the identity of the configuration
+      V (4) := Unsigned_64 (R.Engine_Id);
       V (5) := V5;
       ETCS_Message.Write_Fields (W, Kind, V, OK);
    end Start;
@@ -962,8 +1002,19 @@ is
             Links (S).Send_156 := False;
          end if;
       end loop;
+      --  157, 129, 150 (after 159 of the cycle)
+      Mission.Produce (Ctx);
       --  the system status messages of the cycle were sent (EVC_Core)
       Status_N := 0;
    end Produce;
+
+   function Position_Confirmed return Boolean is
+     (Mission.Position_Confirmed);
+   function Position_To_Delete return Boolean is
+     (Mission.Position_To_Delete);
+   function SoM_Opening return Boolean is (Mission.Opening);
+   function Train_Data_Sent return Natural is (Mission.Train_Data_Sent);
+   function SoM_Reports_Sent return Natural is (Mission.Reports_Sent);
+   function EoM_Sent return Natural is (Mission.EoM_Sent);
 
 end EVC_Sessions;

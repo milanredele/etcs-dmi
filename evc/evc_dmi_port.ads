@@ -155,6 +155,16 @@ is
    Data_Driver_ID_Valid  : constant Bits_T := 1;
    Data_Train_Data_Valid : constant Bits_T := 2;
    Data_TRN_Valid        : constant Bits_T := 8;
+   --  added by e5/session-3: the RBC contact information is valid; RBC
+   --  bit0, the Train Data acknowledged by the RBC; Radio bit7, the
+   --  contact not "unknown"; Session 0 none, 1 being established, 2
+   --  exists; Waiting 2, an answer from the RBC (5.4.3.2 A31)
+   Data_RBC_Valid        : constant Bits_T := 16;
+   RBC_Train_Data_Acked  : constant Bits_T := 1;
+   Radio_Contact_Known   : constant Bits_T := 128;
+   Session_Being_Established : constant Byte := 1;
+   Session_Exists            : constant Byte := 2;
+   Waiting_RBC               : constant Byte := 2;
    --  Bits of Train
    Train_Standstill      : constant Bits_T := 1;
    Train_Below_Override  : constant Bits_T := 2;
@@ -385,6 +395,7 @@ is
    SS_Trackside_Not_Compatible_Trip : constant := 16;  -- [65]
    SS_Train_Data_Changed            : constant := 17;  -- 5.17.2.2 A1
    SS_Train_Data_Changed_Brake      : constant := 18;  -- 5.17.2.2 S2, S4
+   SS_Train_Rejected                : constant := 20;  -- 5.4.3.2 A40
    SS_Unauthorized_Passing          : constant := 21;  -- [12] [16] [18] [43]
    SS_No_MA_Level_Transition        : constant := 22;  -- [39], [67]
    SS_SR_Distance_Exceeded          : constant := 23;  -- [42]

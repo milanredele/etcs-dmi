@@ -137,8 +137,15 @@ is
    subtype Radio_Sessions_T is
      Positive range 1 .. EVC_Ports.RTM_Max_Sessions;
 
+   --  Added by e5/session-3: the ETCS identity of the on-board,
+   --  NID_ENGINE of the train to track messages (7.5.1.86, 8.4.4.7.1),
+   --  24 bits; 0 until a format version of the image carries it (the
+   --  tests and the SUBSET-076 bench set it with Set_Radio_For_Test)
+   subtype Engine_Id_T is Natural range 0 .. 2**24 - 1;
+
    type Radio_Config_T is record
-      Sessions : Radio_Sessions_T := EVC_Ports.RTM_Max_Sessions;
+      Sessions  : Radio_Sessions_T := EVC_Ports.RTM_Max_Sessions;
+      Engine_Id : Engine_Id_T := 0;
    end record;
 
    Default_Radio : constant Radio_Config_T := (others => <>);
