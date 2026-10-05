@@ -548,6 +548,24 @@ is
       end if;
    end Take_P49;
 
+   --  5.6.2.2 A050 in level 2: the list of balise groups for the SH area
+   --  of the RBC's authorisation (message 28) replaces the stored one;
+   --  without one none is kept
+   procedure Take_Radio_SH_List
+     with Global => (Input  => EVC_Radio_Authority.State,
+                     Output => (SH_List_Known, SH_List_N, SH_List))
+   is
+   begin
+      SH_List_Known := EVC_Radio_Authority.SH_List_Given;
+      SH_List_N := 0;
+      SH_List := (others => (others => <>));
+      for I in 1 .. EVC_Radio_Authority.SH_List_Count loop
+         pragma Loop_Invariant (SH_List_N = I - 1);
+         SH_List_N := SH_List_N + 1;
+         SH_List (SH_List_N) := EVC_Radio_Authority.SH_List_Item (I);
+      end loop;
+   end Take_Radio_SH_List;
+
    --  Packet 137, stop if in Staff Responsible (7.4.2.33; 4.6.3 [54],
    --  5.8.3.1.3 a)
    procedure Take_P137 (R : in out Reader_T)
@@ -1598,11 +1616,12 @@ is
    --  (3.12.4); entered by the order of the trackside, the
    --  acknowledgement is asked now (5.7.2.3, 5.9.2.3, 5.19.2.3)
    procedure Enter_Profile_Mode (To : Mode_T; C : Context_T)
-     with Global => (Input  => (Acked_Now, Acked_M, Conds, Profile_Info),
+     with Global => (Input  => (Acked_Now, Acked_M, Conds, Profile_Info,
+                                EVC_Radio_Authority.State),
                      Output => Use_V,
                      In_Out => (Ovr, Ack_On, Ack_M, Ack_After, Ack_Since,
-                                Ack_V, SH_List_Known, SH_List_N, Events,
-                                Event_N))
+                                Ack_V, SH_List_Known, SH_List_N, SH_List,
+                                Events, Event_N))
    is
    begin
       End_Override (9);
@@ -1619,6 +1638,10 @@ is
             --  (level 0 or 1: no new one)
             SH_List_Known := False;
             SH_List_N := 0;
+         elsif EVC_Radio_Authority.Shunting_Granted then
+            --  [6], level 2: deleted or replaced by the list of the
+            --  authorisation (EVC_Radio_Authority, packet 49)
+            Take_Radio_SH_List;
          end if;
       else
          --  [40], [72], [73], [74], [51], [34], [61], [71]: entered

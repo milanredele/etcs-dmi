@@ -1904,3 +1904,60 @@ shortening of 3.16.3.4.5 b) (the authority half's, A.3.4); a time stamp
 increment between two messages of the same cycle (3.16.3.3.2: they carry
 the same T_TRAIN today); informing the RBC of an inconsistent message
 (3.16.3.1.1.2).
+
+### Authority by radio, phase 2 (e5/authority-3, 2026-10-06)
+
+**Implemented** (`EVC_Radio_Authority`, the level 2 part of E4's
+procedures in `EVC_Procedures`, scenarios in `EVC_Test_Authority`):
+- Staff Responsible in level 2 (4.4.11): message 2 gives the SR distance
+  (D_SR, supervised from its reception, 4.4.11.1.3.1 b), which applies
+  while it is the last value received (4.4.11.1.6.4: `EVC_Core.SR_Distance`
+  takes `EVC_Radio_Authority.SR_Distance_Of (EVC_Mission.SR_Distance)` for
+  the snapshot, `SR_End` and [42]; the driver's later entry and
+  "Override" delete it), and the list of expected balise groups of
+  packet 63: [36] (trip reason `SR_Balise_Not_Listed`, DMI entry of "stop
+  if in SR"), the exception of [54] for a listed group
+  (`EVC_Procedures.Context_T.SR_Listed`); message 2 ends the MA request
+  reason Start (3.8.2.3.2 b).
+- Post trip in level 2 (5.11): message 6 taken in PT
+  (`Trip_Exit_Recognised`); before it no MA, track description, SR or SH
+  authorisation is taken (A035, 4.8.4 [1]) and "Start" requests no MA
+  (S120); with an emergency stop pending "Start" waits (D130, S130).
+- Shunting in level 2 (5.6): the driver's selection sends 130 with the
+  position report (A045); 27 and 28 are taken only when they name the
+  last request (4.8.4 [14], `EVC_Received.Last_Field`); 28 is [6] with its
+  packet 49, which `EVC_Procedures` takes on entering SH (A050); 27 and
+  the failure after 3 repetitions every 15 s (5.6.4.1) give the DMI
+  system status 12 / 14 (`Status_Entry`); MSG_ONBOARD waiting 4 and
+  answer (`SH_Waiting`, `SH_Answer`).
+
+**Decisions.** Message 2 carries no speed: the SR speed limit stays the
+national or the driver's. The RBC's SR distance and list survive the
+entry of SR from SB or PT only; any other change of mode deletes them;
+"Override" deletes the distance, not the list ([36] is off while the
+override is active). D_SR "infinite": no SR distance (the national value
+does not come back). Packets 63 and 49 by radio are taken whatever their
+Q_DIR; the first group's country is the LRBG's of the message. Without
+the session of the Supervising RBC a request for shunting fails at once.
+The grant [6] holds in the cycle of the answer only (at standstill).
+Messages 2, 3, 33, 9, 27, 28 are ignored in TR and in PT before message
+6; message 6 outside PT is ignored.
+
+**For the acceptance of 4.8 (session half).** Message 2: SB [2][4][11],
+SR, PT [1][4]; 6: PT only; 27, 28: SB [2][14], SM, FS, AD, LS, SR, OS
+[14], PT [1][14] ([14] can use `SH_Request_Stamp`); 34: SB [2], LS, SR,
+OS, PT [1]; 16: SB [2], SM, FS, AD, LS, SR, OS, UN, SN (not SH, PS, TR,
+PT, RV: today an unconditional stop trips the train in every mode it is
+taken in). [1] is `Trip_Exit_Recognised` with a later time stamp.
+
+**Left:** [11] (a linked group at or beyond the EOA in release speed
+monitoring); the SR proposal in PT level 2 on message 2 (5.11.2.2 S150 a,
+S160: `EVC_Mission`, which can read `EVC_Radio_Authority`); the reports of
+the mode change and their repetitions (5.11.2.2 A030, A115, 5.11.4.1,
+5.6.2.2 A095, 5.6.4.2, 5.6.4.3) and the termination after a failed
+request for shunting (`SH_Request_Failed`): the session half; a scenario
+for the exception of [54] (the radio scenarios' track has no packet 137)
+and for 3.8.2.3.2 c); track ahead free (3.15.5, messages 34 and 149,
+MSG_MODE_LEVEL taf, the trigger of 3.8.2.4 with packet 90); the
+Supervised Manoeuvre of level 2 (5.21, [81]); message 158; the Train Data
+of 5.17.

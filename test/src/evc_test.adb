@@ -229,6 +229,7 @@ begin
    Scenario_Emergency_Stops;
    Scenario_SR_Authorisation;
    Scenario_Trip_L2;
+   Scenario_Shunting_L2;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

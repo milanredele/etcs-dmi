@@ -4,6 +4,7 @@
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
+with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
 with ETCS_Variables;
@@ -27,6 +28,7 @@ package body EVC_Test_Authority is
    package T15 renames ETCS_Track_Packets.P15;
    package T57 renames ETCS_Track_Packets.P57;
    package T63 renames ETCS_Track_Packets.P63;
+   package T49 renames ETCS_Track_Packets.P49;
    package RA renames EVC_Radio_Authority;
    use type MCat.Message_Kind_T;
    use type EVC_SDM.Status_T;
@@ -751,5 +753,126 @@ package body EVC_Test_Authority is
              "post trip, level 2: the stop revoked, 'Start' requests an "
              & "MA (5.11.2.2 E135, S140)");
    end Scenario_Trip_L2;
+
+   --  The driver selects Shunting (MSG_DRIVER_ACTION 7)
+   procedure Select_Shunting is
+   begin
+      Input (DMI, (16#40#, 3, 0, 0, 0, 7, 0, 0));
+   end Select_Shunting;
+
+   --  Stand until the on-board sends a request for shunting (at most
+   --  Max_Ms); True when one was sent
+   function Wait_SH_Request (Max_Ms : Natural) return Boolean is
+      N : constant Natural := RA.SH_Requests_Sent;
+   begin
+      for I in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         if RA.SH_Requests_Sent > N then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Wait_SH_Request;
+
+   --  Message 27 or 28 answering the request of time stamp Req, 28 with
+   --  packet 49 listing the groups List of country 123 when With_49
+   function SH_Answer (Kind    : MCat.Known_Message_T;
+                       Req     : ETCS_Variables.T_TRAIN_T;
+                       With_49 : Boolean := False;
+                       List    : Nat_List := (1 .. 0 => 0))
+     return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      P  : T49.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := 10;
+      V (7) := Unsigned_64 (Req);
+      Start_Message (W, Kind, V);
+      if With_49 then
+         P.N_ITER := ETCS_Variables.N_ITER_T (List'Length);
+         for I in List'Range loop
+            P.Q_NEWCOUNTRY_List (I - List'First + 1).NID_BG :=
+              ETCS_Variables.NID_BG_T (List (I));
+         end loop;
+         T49.Encode (P, W, OK);
+         Check (OK, "authority: packet 49 encoded");
+      end if;
+      return Message_Bytes (W);
+   end SH_Answer;
+
+   --  5.6 in level 2: Shunting selected at standstill sends the request
+   --  for shunting (message 130, A045) and waits (S050, MSG_ONBOARD
+   --  waiting 4); an answer naming another request is not taken (4.8.4
+   --  [14]); "SH refused" (27) ends the wait, the mode stays (A220);
+   --  "SH authorised" (28) is [6]: SH, with the list of balise groups for
+   --  the SH area of packet 49 (A050: a group not in it trips, [52]);
+   --  without an answer the request is sent again every 15 s, 3 times,
+   --  then it fails (5.6.4.1.1, 5.6.4.1.2)
+   procedure Scenario_Shunting_L2 is
+      use type EVC_Procedures.Trip_Reason_T;
+      T : ETCS_Variables.T_TRAIN_T;
+   begin
+      Start_L2;
+      Add_Group (Group (20, 300));
+      Add_Group (Group (30, 500));
+      Run_X (15_000);
+      Stand_X (1_000);
+      Select_Shunting;
+      Check (Wait_SH_Request (1_000) and then RA.SH_Waiting,
+             "shunting, level 2: message 130 sent, waiting for the RBC "
+             & "(5.6.2.2 A045, S050)");
+      T := RA.SH_Request_Stamp;
+      Give_Radio_Message (1, SH_Answer (MCat.Track_M27, ETCS_Variables."+" (T, 1)));
+      Stand_X (200);
+      Check (RA.SH_Waiting,
+             "shunting, level 2: an answer to another request not taken "
+             & "(4.8.4 [14])");
+      Give_Radio_Message (1, SH_Answer (MCat.Track_M27, T));
+      Stand_X (200);
+      Check (not RA.SH_Waiting and then RA.SH_Answer = 0
+             and then EVC_Core.Mode = M_FS,
+             "shunting, level 2: SH refused, the mode stays (5.6.2.2 E215, "
+             & "A220)");
+      Select_Shunting;
+      Check (Wait_SH_Request (1_000),
+             "shunting, level 2: a new request");
+      Give_Radio_Message
+        (1, SH_Answer (MCat.Track_M28, RA.SH_Request_Stamp,
+                       With_49 => True, List => (1 => 20)));
+      Stand_X (300);
+      Check (EVC_Core.Mode = M_SH and then RA.SH_Answer = 1
+             and then not RA.SH_Waiting,
+             "shunting, level 2: SH authorised, SH entered (4.6.3 [6], "
+             & "5.6.2.2 E090, A050)");
+      Run_X (40_000);
+      Check (EVC_Core.Mode = M_SH,
+             "shunting, level 2: the group of the RBC's list passed");
+      Run_X (55_000);
+      Check (EVC_Core.Mode = M_TR
+             and then EVC_Procedures.Trip_Reason
+                        = EVC_Procedures.SH_Balise_Not_Listed,
+             "shunting, level 2: a group not in the list of the RBC, trip "
+             & "(5.6.2.2 A050, 4.6.3 [52])");
+
+      --  no answer
+      Start_L2;
+      Run_X (15_000);
+      Stand_X (1_000);
+      Select_Shunting;
+      Check (Wait_SH_Request (1_000)
+             and then not Wait_SH_Request (14_000)
+             and then Wait_SH_Request (2_000)
+             and then Wait_SH_Request (16_000)
+             and then Wait_SH_Request (16_000),
+             "shunting, level 2: no answer, 130 repeated every 15 s, 3 "
+             & "times (5.6.4.1.1)");
+      Check (not Wait_SH_Request (16_000) and then not RA.SH_Waiting
+             and then RA.SH_Request_Failed and then EVC_Core.Mode = M_FS,
+             "shunting, level 2: then the request fails (5.6.4.1.2)");
+   end Scenario_Shunting_L2;
 
 end EVC_Test_Authority;

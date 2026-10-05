@@ -379,6 +379,8 @@ is
    SS_Entering_FS                   : constant := 6;   -- 4.4.9.1.4
    SS_Entering_OS                   : constant := 7;   -- 4.4.12.1.7
    SS_Runaway_Movement              : constant := 9;   -- 3.14.2.4, 3.14.3.2
+   SS_SH_Refused                    : constant := 12;  -- 5.6.2.2 A220
+   SS_SH_Request_Failed             : constant := 14;  -- 5.6.4.1.2
    SS_Trackside_Not_Compatible      : constant := 15;  -- 3.5.3.7 d)
    SS_Trackside_Not_Compatible_Trip : constant := 16;  -- [65]
    SS_Train_Data_Changed            : constant := 17;  -- 5.17.2.2 A1

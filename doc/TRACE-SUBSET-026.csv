@@ -1502,21 +1502,21 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.5.4.1.1.1,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
 5.5.4.1.2,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
 5.6.2.2 A030,5,x,,,,,E4,n/a,"level NTC and the national trip of an STM: National Systems are out of scope (EVC-PLAN §1, PLAN.md)"
-5.6.2.2 A045,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
+5.6.2.2 A045,5,x,,,,,E4,done,"message 130 with the position report to the Supervising RBC (EVC_Radio_Authority.Evaluate_SH, Produce); without a session the request fails at once (a decision); evc_test Scenario_Shunting_L2 [E5 authority]"
 5.6.2.2 A050,5,x,,,,,E4,done,"SH entered by 4.6.3 [5]; the list of balise groups for the SH area deleted (EVC_Procedures.Mode_Changed; a new list comes with the RBC's authorisation, E5); evc_test_procedures Scenario_Shunting_Driver"
 5.6.2.2 A095,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
 5.6.2.2 A100,5,x,,,,,E4,done,"EVC_Mission.Mode_Entered: SH from FS, AD, LS, OS, SR, SM, SN, UN ends the mission (5.5.2); evc_test_procedures Integration_Shunting"
 5.6.2.2 A115,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
-5.6.2.2 A220,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
-5.6.2.2 D020,5,x,,,,,E4,partial,"levels 0 and 1 go to A050 (4.6.3 [5], EVC_Procedures); level 2 (A045) is E5; level NTC (D030) is out of scope (PLAN.md, National Systems) [E5 authority]"
+5.6.2.2 A220,5,x,,,,,E4,done,"DMI system status 'SH refused' (EVC_DMI_Port.SS_SH_Refused, EVC_Radio_Authority.Status_Entry), MSG_ONBOARD answer 0; evc_test Scenario_Shunting_L2 [E5 authority]"
+5.6.2.2 D020,5,x,,,,,E4,partial,"levels 0 and 1 go to A050 (4.6.3 [5], EVC_Procedures); level 2 to A045 (EVC_Radio_Authority); level NTC (D030) is out of scope (PLAN.md) [E5 authority]"
 5.6.2.2 D030,5,x,,,,,E4,n/a,"level NTC and the national trip of an STM: National Systems are out of scope (EVC-PLAN §1, PLAN.md)"
 5.6.2.2 D040,5,x,,,,,E4,done,EVC_Mission.Mode_Entered (the end of mission only when one is going on); evc_test_procedures Integration_Shunting
-5.6.2.2 D080,5,x,,,,,E4,partial,levels 0 and 1: the procedure ends in SH; level 2 (A095) is E5 [E5 authority]
+5.6.2.2 D080,5,x,,,,,E4,partial,"levels 0 and 1: the procedure ends in SH; level 2: the mode report (A095) and the termination by the RBC (S100, A115) are the session half's [E5 authority]"
 5.6.2.2 E015,5,x,,,,,E4,done,"EVC_Procedure_Requests.Shunting_Request (DMI action 7), 4.6.3 [5] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Driver"
-5.6.2.2 S050,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
+5.6.2.2 S050,5,x,,,,,E4,done,"the wait (MSG_ONBOARD waiting 4, SH_Waiting) for 27 or 28 naming the request (4.8.4 [14]: second T_TRAIN, Take_SH_Answer); 28 is 4.6.3 [6] with its packet 49 (EVC_Procedures.Take_Radio_SH_List on entering SH); evc_test Scenario_Shunting_L2 [E5 authority]"
 5.6.2.2 S100,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
-5.6.4.1.1,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
-5.6.4.1.2,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
+5.6.4.1.1,5,x,,,,,E4,done,"130 sent again every 15 s without an answer, 3 times (A.3.1; EVC_Radio_Authority.Evaluate_SH); evc_test Scenario_Shunting_L2 [E5 authority]"
+5.6.4.1.2,5,x,,,,,E4,partial,after the repetitions the driver is told (SS_SH_Request_Failed) and the request ends (SH_Request_Failed); the termination of the session is the session half's (to read SH_Request_Failed); evc_test Scenario_Shunting_L2 [E5 authority]
 5.6.4.2,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
 5.6.4.3,5,x,,,,,E4,deferred,"E5 (the Shunting request to the RBC and its answer, the session) [E5 authority]"
 5.7.2.3,5,x,,,,,E4,done,"4.6.3 [51] (the max safe front end at the start of the SH mode profile), the acknowledgement asked after the transition (EVC_Procedures.Mode_Changed); evc_test_procedures Scenario_Shunting_Trackside"

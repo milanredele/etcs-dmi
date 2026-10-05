@@ -1263,7 +1263,9 @@ is
             and then Current_Mode = M_SR
             and then EVC_Odometry.Standstill
             and then EVC_Driver_Requests.SR_Data.Speed_Kmh in 5 .. 600,
-          Override_Active => EVC_Procedures.Override_Active));
+          Override_Active => EVC_Procedures.Override_Active,
+          Shunting_Selected => EVC_Driver_Requests.Shunting_Selected,
+          Standstill => EVC_Odometry.Standstill));
    end Evaluate_Radio;
 
    --  6b. Phase E5: the mode changed (after the mode machine)
@@ -1782,7 +1784,8 @@ is
    procedure Send_Procedure_Messages
      with Global => (Input  => (Clock_Ms, EVC_Procedures.State,
                                 EVC_Text_Messages.State,
-                                EVC_Sessions.State),
+                                EVC_Sessions.State,
+                                EVC_Radio_Authority.State),
                      In_Out => EVC_Outbox.Queue)
    is
       Seconds : constant Unsigned_64 := Unsigned_64 (Clock_Ms) / 1000;
@@ -1808,6 +1811,13 @@ is
                                          EVC_Bytes.Byte (E.Event)));
          end;
       end loop;
+      --  and the authority half's (5.6.2.2 A220, 5.6.4.1.2)
+      if EVC_Radio_Authority.Status_Entry in 1 .. 255 then
+         EVC_Outbox.Put
+           (DMI, System_Status_Frame
+                   (EVC_Bytes.Byte (EVC_Radio_Authority.Status_Entry),
+                    EVC_DMI_Port.SS_Event_Start));
+      end if;
       for I in 1 .. EVC_Text_Messages.Output_Count loop
          declare
             O : constant EVC_Text_Messages.Output_T :=
@@ -1965,7 +1975,8 @@ is
                                 EVC_Procedures.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Position.State,
-                                EVC_Mission.State, EVC_Train_Data.State),
+                                EVC_Mission.State, EVC_Train_Data.State,
+                                EVC_Radio_Authority.State),
                      In_Out => EVC_Outbox.Queue)
    is
       Onboard : constant Onboard_T :=
@@ -1988,6 +1999,9 @@ is
          --  established, so the start of mission may begin (phase E4:
          --  the desk is the cab status input, EVC_Mission)
          SoM      => (if EVC_Mission.SoM_Engaged then SoM_Possible else 0),
+         --  phase E5: the request for shunting of level 2 (5.6.2.2 S050)
+         Waiting  => (if EVC_Radio_Authority.SH_Waiting then 4 else 0),
+         Answer   => EVC_Bytes.Byte (EVC_Radio_Authority.SH_Answer),
          others   => 0);
    begin
       EVC_Outbox.Put (DMI, Onboard_Frame (Onboard));

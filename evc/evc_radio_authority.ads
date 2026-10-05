@@ -19,6 +19,7 @@
 --  of the cycle is in EVC_Sessions: each step of this half follows the
 --  same step of the session half.
 
+with ETCS_Variables;
 with EVC_Balise_Groups;
 with EVC_Levels;
 with EVC_Modes;  use EVC_Modes;
@@ -81,12 +82,16 @@ is
       --  4.6.3 [36]: the override is active (EVC_Procedures, as of the
       --  last cycle)
       Override_Active : Boolean := False;
+      --  5.6.2.2 S0, E015: the driver selected Shunting in the cycle; the
+      --  train is at standstill
+      Shunting_Selected : Boolean := False;
+      Standstill        : Boolean := False;
    end record;
 
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T)
      with Global => (In_Out => (State, EVC_Radio_Info.State),
                      Input  => (EVC_Stored_Information.State,
-                                EVC_Position.State,
+                                EVC_Position.State, EVC_Radio.State,
                                 EVC_Levels.State,
                                 EVC_Movement_Authority.State)),
           Post => EVC_Radio_Info.Count <= 1;
@@ -152,6 +157,46 @@ is
    --  (message 6) in the PT mode of the on-board (for 4.8.4 [1] and
    --  the choices of S140)
    function Trip_Exit_Recognised return Boolean
+     with Global => State;
+
+   --  5.6 in level 2: the request for shunting (message 130) waits for
+   --  the answer of the RBC (MSG_ONBOARD waiting 4, dmi_protocol.ads),
+   --  and the answer (1 authorised, 0 refused or no reply)
+   function SH_Waiting return Boolean
+     with Global => State;
+   function SH_Answer return Natural
+     with Global => State,
+          Post => SH_Answer'Result <= 1;
+
+   --  5.6.2.2 S050, A050: the list of balise groups for the SH area of
+   --  the authorisation (message 28, packet 49), for EVC_Procedures when
+   --  SH is entered by [6]; SH_List_Given False: no list
+   Max_SH_List : constant := 32;
+   function SH_List_Given return Boolean
+     with Global => State;
+   function SH_List_Count return Natural
+     with Global => State,
+          Post => SH_List_Count'Result <= Max_SH_List;
+   function SH_List_Item (I : Positive) return EVC_Balise_Groups.Identity_T
+     with Global => State,
+          Pre => I <= SH_List_Count;
+
+   --  The requests for shunting sent since Clear, and T_TRAIN of the last
+   --  one (4.8.4 [14]: an answer names it)
+   function SH_Requests_Sent return Natural
+     with Global => State;
+   function SH_Request_Stamp return ETCS_Variables.T_TRAIN_T
+     with Global => State;
+
+   --  5.6.4.1.2: no reply after the repetitions; the session is to be
+   --  terminated (the session half's), latched until the next request
+   function SH_Request_Failed return Boolean
+     with Global => State;
+
+   --  The DMI system status message of the cycle (EVC_DMI_Port entry
+   --  number, started; 0: none): SH refused (5.6.2.2 A220), SH request
+   --  failed (5.6.4.1.2)
+   function Status_Entry return Natural
      with Global => State;
 
    --  4.4.11.1.6.5: "Override" selected; the SR distance given by the RBC

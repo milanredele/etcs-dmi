@@ -5,11 +5,13 @@ with ETCS_Bits;
 with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
 with ETCS_Train_Packets.P0;
 with ETCS_Variables;          use ETCS_Variables;
 with EVC_Bytes;
+with EVC_DMI_Port;
 with EVC_Ports;
 with EVC_Distances;           use EVC_Distances;
 with Interfaces;              use Interfaces;
@@ -23,7 +25,7 @@ package body EVC_Radio_Authority
                                    SR_Authorised, Requests, Start_Reason,
                                    Deleted_Reason, Shortening, Emergency,
                                    SR_Auth, Passed_Listed, Mode_Now,
-                                   Exit_Recognised))
+                                   Exit_Recognised, SH_Req, Status_Now))
 is
 
    use type ETCS_Message_Catalogue.Message_Kind_T;
@@ -128,6 +130,34 @@ is
    Mode_Now        : Mode_T := M_NP;
    Exit_Recognised : Boolean := False;
 
+   --  5.6 in level 2: the request for shunting (130) and its answer (27,
+   --  28): Pending from the driver's selection to the answer or the
+   --  last time-out, Due when 130 is to be sent, the time and T_TRAIN of
+   --  the last one sent (4.8.4 [14]: the answer names it), the
+   --  repetitions (A.3.1: 3, every 15 s), the grant of the cycle, the
+   --  list of balise groups for the SH area of the grant (packet 49)
+   type SH_List_T is array (1 .. Max_SH_List)
+     of EVC_Balise_Groups.Identity_T;
+   type SH_Request_T is record
+      Pending    : Boolean := False;
+      Due        : Boolean := False;
+      Sent       : Boolean := False;
+      Sent_Ms    : EVC_Radio.Time_Ms_T := 0;
+      Stamp      : T_TRAIN_T := 0;
+      Repeats    : Natural range 0 .. 3 := 0;
+      Granted    : Boolean := False;
+      Answer     : Natural range 0 .. 1 := 0;
+      Failed     : Boolean := False;
+      Count      : Natural := 0;
+      List_Known : Boolean := False;
+      List_N     : Natural range 0 .. Max_SH_List := 0;
+      List       : SH_List_T := (others => (others => <>));
+   end record;
+   SH_Req    : SH_Request_T := (others => <>);
+   SH_Repeat_Ms : constant := 15_000;
+   --  the DMI system status message of the cycle (0: none)
+   Status_Now : Natural := 0;
+
    --  5.11.2.2 A035, S120, 4.8.4 [1]: in TR no MA, track description or
    --  mode authorisation of the RBC is taken; in PT only once the exit
    --  from TR is recognised by the RBC (a time stamp later than message
@@ -214,6 +244,17 @@ is
 
    function Trip_Exit_Recognised return Boolean is (Exit_Recognised);
 
+   function SH_Waiting return Boolean is (SH_Req.Pending);
+   function SH_Answer return Natural is (SH_Req.Answer);
+   function SH_List_Given return Boolean is (SH_Req.List_Known);
+   function SH_List_Count return Natural is (SH_Req.List_N);
+   function SH_List_Item (I : Positive) return EVC_Balise_Groups.Identity_T
+   is (SH_Req.List (I));
+   function SH_Request_Failed return Boolean is (SH_Req.Failed);
+   function SH_Requests_Sent return Natural is (SH_Req.Count);
+   function SH_Request_Stamp return T_TRAIN_T is (SH_Req.Stamp);
+   function Status_Entry return Natural is (Status_Now);
+
    procedure Override_Selected is
    begin
       SR_Auth.Given := False;
@@ -248,6 +289,8 @@ is
       Passed_Listed := False;
       Mode_Now := M_NP;
       Exit_Recognised := False;
+      SH_Req := (others => <>);
+      Status_Now := 0;
       EVC_Radio_Info.Clear;
    end Clear;
 
@@ -436,6 +479,74 @@ is
       end if;
    end Take_SR_Authorisation;
 
+   --  5.6.2.2 S050, A050: packet 49 of message 28, the list of balise
+   --  groups for the SH area (7.4.2.12), its countries as in Take_SR_List
+   procedure Take_SH_List
+     with Global => (Input => EVC_Received.Store, In_Out => SH_Req)
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P49.Packet_T;
+      OK : Boolean;
+      C  : NID_C_T;
+   begin
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P49
+         then
+            EVC_Received.Open_Message_Packet (I, R);
+            ETCS_Track_Packets.P49.Decode (R, P, OK);
+            if OK then
+               C := LRBG_Of_Last.NID_C;
+               SH_Req.List_Known := True;
+               SH_Req.List_N := 0;
+               SH_Req.List := (others => (others => <>));
+               for J in 1 .. Natural'Min (Natural (P.N_ITER), 31) loop
+                  pragma Loop_Invariant (SH_Req.List_N < J);
+                  if P.Q_NEWCOUNTRY_List (J).Has_NID_C then
+                     C := P.Q_NEWCOUNTRY_List (J).NID_C;
+                  end if;
+                  SH_Req.List_N := SH_Req.List_N + 1;
+                  SH_Req.List (SH_Req.List_N) :=
+                    (NID_C  => C,
+                     NID_BG => P.Q_NEWCOUNTRY_List (J).NID_BG);
+               end loop;
+            end if;
+         end if;
+      end loop;
+   end Take_SH_List;
+
+   --  5.6.2.2 S050, E090, E215: message 27 (SH refused) or 28 (SH
+   --  authorised) answering the last request for shunting sent (4.8.4
+   --  [14]: its second T_TRAIN is the time stamp of that request; any
+   --  other answer, or one without a request pending, is not taken).
+   --  28: the grant of the cycle ([6], Evaluate) with its list of balise
+   --  groups for the SH area (none without packet 49); 27: the driver is
+   --  told (A220, DMI system status "SH refused")
+   procedure Take_SH_Answer (Granted : Boolean)
+     with Global => (Input  => EVC_Received.Store,
+                     In_Out => (SH_Req, Status_Now))
+   is
+   begin
+      if SH_Req.Pending and then SH_Req.Sent
+        and then EVC_Received.Last_Field (7) = Unsigned_64 (SH_Req.Stamp)
+      then
+         SH_Req.Pending := False;
+         SH_Req.Due := False;
+         SH_Req.Granted := Granted;
+         SH_Req.Answer := (if Granted then 1 else 0);
+         SH_Req.List_Known := False;
+         SH_Req.List_N := 0;
+         if Granted then
+            Take_SH_List;
+         else
+            Status_Now := EVC_DMI_Port.SS_SH_Refused;
+         end if;
+      end if;
+   end Take_SH_Answer;
+
    --  3.10: the emergency messages. 15: to EVC_Radio_Info with its stop
    --  location, judged by the stored information of the cycle (3.10.2.2)
    --  and acknowledged in Evaluate; 16: accepted, the train tripped by
@@ -484,6 +595,8 @@ is
             Exit_Recognised := True;
          end if;
       elsif Kind in ETCS_Message_Catalogue.Track_M2
+                  | ETCS_Message_Catalogue.Track_M27
+                  | ETCS_Message_Catalogue.Track_M28
                   | ETCS_Message_Catalogue.Track_M3
                   | ETCS_Message_Catalogue.Track_M33
                   | ETCS_Message_Catalogue.Track_M9
@@ -493,6 +606,10 @@ is
       elsif Kind = ETCS_Message_Catalogue.Track_M2 then
          SR_Authorised := True;
          Take_SR_Authorisation;
+      elsif Kind in ETCS_Message_Catalogue.Track_M27
+                  | ETCS_Message_Catalogue.Track_M28
+      then
+         Take_SH_Answer (Kind = ETCS_Message_Catalogue.Track_M28);
       elsif Kind = ETCS_Message_Catalogue.Track_M3 then
          Take_Stored_Information (False, Now_Ms);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
@@ -673,6 +790,55 @@ is
       return False;
    end Group_Not_Listed;
 
+   --  5.6 in level 2: the driver's selection of Shunting at standstill
+   --  in FS, LS, AD, OS, SM, SR, UN, PT (after message 6) or SB (5.6.2.2
+   --  S0, D020, A045) starts the request (message 130, Produce), sent
+   --  once the session of the Supervising RBC is established, at once a
+   --  failure without it (a decision); 5.6.4.1.1: no answer within 15 s,
+   --  sent again, at most 3 times (A.3.1); 5.6.4.1.2: then the driver is
+   --  told ("SH request failed") and the request ends (the termination
+   --  of the session is the session half's: SH_Request_Failed). [6]:
+   --  the grant of the cycle at standstill in level 2
+   procedure Evaluate_SH (Ctx : EVC_Radio.Context_T; Facts : Facts_T;
+                          L2  : Boolean)
+     with Global => (Input  => (Mode_Now, Exit_Recognised,
+                                EVC_Radio.State),
+                     In_Out => (SH_Req, Status_Now, Held))
+   is
+   begin
+      Held (C_6) := SH_Req.Granted and then Facts.Standstill and then L2;
+      SH_Req.Granted := False;
+      if Facts.Shunting_Selected and then L2 and then Facts.Standstill
+        and then not SH_Req.Pending
+        and then Ctx.Mode in M_FS | M_LS | M_AD | M_OS | M_SM | M_SR
+                           | M_UN | M_PT | M_SB
+        and then Authorisation_Allowed
+      then
+         SH_Req.Failed := False;
+         SH_Req.Answer := 0;
+         if EVC_Radio.In_Communication then
+            SH_Req.Pending := True;
+            SH_Req.Due := True;
+            SH_Req.Sent := False;
+            SH_Req.Repeats := 0;
+         else
+            SH_Req.Failed := True;
+            Status_Now := EVC_DMI_Port.SS_SH_Request_Failed;
+         end if;
+      elsif SH_Req.Pending and then SH_Req.Sent and then not SH_Req.Due
+        and then Ctx.Now_Ms - SH_Req.Sent_Ms >= SH_Repeat_Ms
+      then
+         if SH_Req.Repeats < 3 then
+            SH_Req.Repeats := SH_Req.Repeats + 1;
+            SH_Req.Due := True;
+         else
+            SH_Req.Pending := False;
+            SH_Req.Failed := True;
+            Status_Now := EVC_DMI_Port.SS_SH_Request_Failed;
+         end if;
+      end if;
+   end Evaluate_SH;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
       MA_Received : constant Boolean :=
         EVC_Stored_Information.Radio_MA_Accepted;
@@ -709,6 +875,8 @@ is
          Override_Selected;
       end if;
       Held (C_36) := Group_Not_Listed (Ctx, Facts);
+      Evaluate_SH (Ctx, Facts,
+                   EVC_Levels.Valid and then EVC_Levels.Level = L2);
       Passed_Listed := SR_Auth.List_Known
         and then EVC_Position.Taken_Count > 0
         and then (for all G in 1 .. EVC_Position.Taken_Count =>
@@ -894,6 +1062,22 @@ is
       end if;
       Answer_Shortening (Ctx);
       Acknowledge_Stops (Ctx);
+      --  5.6.2.2 A045: message 130 with the position report (8.6.12)
+      if SH_Req.Due and then EVC_Radio.In_Communication then
+         V := (others => 0);
+         Send_With_Report
+           (EVC_Radio.Session_T (EVC_Radio.Supervising),
+            ETCS_Message_Catalogue.Train_M130, V, Ctx, OK);
+         if OK then
+            SH_Req.Due := False;
+            SH_Req.Sent := True;
+            SH_Req.Sent_Ms := Ctx.Now_Ms;
+            SH_Req.Stamp := EVC_Radio.T_Train_At (Ctx.Now_Ms);
+            Count (SH_Req.Count);
+         end if;
+      end if;
+      --  the system status message of the cycle was sent (EVC_Core)
+      Status_Now := 0;
    end Produce;
 
 end EVC_Radio_Authority;
