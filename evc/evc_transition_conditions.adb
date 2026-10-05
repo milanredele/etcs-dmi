@@ -122,9 +122,10 @@ is
        Authority_Condition_T in C_6 | C_11 | C_20 | C_31 | C_36 | C_81;
 
    --  Never true in this on-board:
-   --    not implemented yet: [24], [33], [53], [80] (ATO), [48], [83]
-   --    (E6); [35], [38] (a National System through an STM: NTC is out
-   --    of scope)
+   --    not implemented yet: [24], [33], [48], [53], [80] (AD, the
+   --    ERTMS/ATO on-board); [83] (the safe consist length in front of
+   --    the engine: no radio in it, left out of the halves of E5); [35],
+   --    [38] (a National System through an STM: NTC is out of scope)
    --    absent from 4.0.0: [55], [57], [64]
    subtype Not_Evaluated_T is Condition_Id_T
      with Static_Predicate =>

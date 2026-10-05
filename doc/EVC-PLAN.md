@@ -1615,3 +1615,141 @@ signatures looked at were defects of SUBSET-076 (a telegram with
 Q_LINK = 1 where the step says 0; a step its own comment calls
 incompatible). The runner: 487 passed, 884 failed, 1819 blocked.
 
+
+### Joint: outcome (2026-10-05)
+
+Branch `e5/joint`. The on-board behaves as before: every golden, test
+line, EFS frame and SUBSET-076 outcome unchanged; the stubs count what
+they are given and decide nothing.
+
+**The RTM port** (`EVC_Ports`, end of the package). Inputs: a message of
+chapter 8 without a tag (the format of E1 to E4) is the message of
+session 1; a first byte from `RTM_Tag_First` (16#F0#) on is a tag, which
+no NID_MESSAGE has: `RTM_Tag_Message` (16#F1#), session u8 (1 or 2),
+message: the message received in that session; `RTM_Tag_Event`
+(16#F2#), session, event u8: 1 the safe radio connection set up, 2 lost
+(3.5.4.1), 3 released, 4 set-up failed (3.5.3.7 a), 5 the mobile of the
+session registered to the radio network, 6 its registration failed. The
+events latched between two cycles are taken before the messages.
+Outputs: `RTM_Tag_Message`, session, a train to track message;
+`RTM_Tag_Request` (16#F3#), session, request u8: 1 set up a safe radio
+connection (NID_C u16, NID_RBC u16, NID_RADIO u64 as coded, radio system
+u8 0 GSM-R / 1 FRMCS; 16 bytes), 2 release it (3 bytes), 3 register the
+mobile to the GSM-R network NID_MN u24 (6 bytes). `Valid_RTM` stays the
+shape of a message; `Valid_RTM_Input` is the shape of an input.
+`Max_Payload (RTM)` is 1025. The fuzzer sends tagged messages and events
+(sessions and events now and then out of range).
+
+**Ownership of the state** (`EVC_Radio`, header). `EVC_Radio` holds and
+decides nothing: the session table (per session its state `Idle`,
+`Connecting`, `Initiating`, `Established`, `Connection_Lost`,
+`Terminating` as 3.5 names its steps, the RBC identity and number, the
+system version agreed, T_TRAIN and the on-board time of the last message
+received, T_TRAIN of the last sent), the roles of 3.15.1 (supervising,
+accepting session), the RBC contact information (`RBC_Contact_T`, the
+type of `EVC_Retained.Kept_T.RBC`), the radio network, the outbox.
+`EVC_Sessions` is the only writer of the table, the roles, the contact
+and the network (`Set_State`, `Set_Peer`, `Set_Version`,
+`Note_Received`, `Reset_Session`, `Set_Roles`, `Set_Contact`,
+`Set_Network`); `EVC_Radio_Authority` reads them. Both send
+(`Send (Session, Message)`, `Request_Set_Up`, `Request_Release`,
+`Request_Registration`): the outbox (2048 bytes) never raises, a message
+for a session the on-board does not handle or without room is refused
+and counted (`Refused`); `Send` records the T_TRAIN of what it queued.
+`EVC_Core` clears the unit at each power-up with the sessions of the
+configuration, restores the contact kept over No Power invalid
+(`Restore_Contact`), saves it each cycle (`Save_Retained`) and drains
+the outbox to the RTM port as far as `EVC_Outbox` has room (`Drain`;
+the rest waits, in its order). Queries for both halves are expression
+functions over `Info (S)`: `Usable`, `Established` (also while the
+connection is lost, 3.5.4.1), `Being_Established` (3.5.3.8),
+`In_Session_With`, `In_Communication` (the supervising RBC's session
+established: 4.8 and the mode conditions), `Supervising_RBC`,
+`Handover`, `Supervising_Version_Known`, `Roles_Consistent`. The private
+state of each half stays in its unit (timers, repetitions, the
+transition buffer, the report parameters; the MA request, the emergency
+stops, the acknowledgements owed).
+
+**Configuration.** `EVC_Config.Config_T.Radio.Sessions` (1 or 2, default
+2): like the fixed Train Data, not in the image of format version 1;
+`EVC_Config.Set_Radio_For_Test` selects one session for the tests until
+a format version carries it (for the bench page too: the bench half).
+
+**Entry points and their order in the cycle** (`EVC_Core.Tick`):
+1. ports (`Read_Ports`): `Read_Radio_Events` (each event:
+   `EVC_Sessions.Take_Event (S, Event)`), `Read_Radio_Messages` (each
+   message the codec accepts, after its JRU record:
+   `EVC_Sessions.Take_Message (S, Verdict)`; `Pass` goes on to
+   `EVC_Radio_Authority.Take_Message (S)`, `Ignore` and `Buffered` stop),
+   `Read_Released_Messages` (4.8.5: while `EVC_Sessions.Has_Released`,
+   `Take_Released (S, Data, Last)` gives a message of the transition
+   buffer back; the core parses it again and the authority takes it);
+5a. after the levels and the mission, before the procedures:
+   `Evaluate_Radio` = `EVC_Sessions.Evaluate (Ctx)`, then
+   `EVC_Radio_Authority.Evaluate (Ctx)` (`Ctx`: the mode and the on-board
+   time; the conditions of 4.6.3 are computed here, as EVC_Procedures
+   does);
+6b. after the mode machine, when the mode changed: `Radio_Mode_Changed`
+   = both `Mode_Changed (From, To)`;
+8k. the last outputs: `Send_Radio` = `EVC_Sessions.Produce (Ctx)`, then
+   `EVC_Radio_Authority.Produce (Ctx)`, then `EVC_Radio.Drain`.
+The stubs' Global contracts name only their own state; a half that reads
+or writes more widens its contracts and those of the core steps above
+(the expected merge points: `Read_Ports`, `Read_Radio_Messages`,
+`Evaluate_Radio`, `Send_Radio`, `Produce_Outputs`, `Tick`, whose
+`EVC_Radio.State` is an Input until `EVC_Sessions` writes the table).
+
+**Conditions of 4.6.3** (`EVC_Transition_Conditions.Holds` dispatches):
+session half 1: [41] (`EVC_Sessions.T_NVCONTACT_Trip`); authority half
+6: [6] `Shunting_Granted`, [11] `Group_At_EOA_In_RSM`, [20]
+`Unconditional_Stop_Accepted`, [31] `MA_On_Board_Level_2`, [36]
+`Group_Not_In_SR_List`, [81] `SM_Authorised`, and
+`Unconditional_Stop_Received` in [45]. Not evaluated: [24], [33], [48],
+[53], [80] (AD), [83] (the safe consist length: no radio in it, the
+matrix row says E5; left to the integration), [35], [38] (NTC), [55],
+[57], [64] (absent from 4.0.0).
+
+**The matrix** (doc/TRACE-SUBSET-026.csv, the note ends with the half):
+463 rows: 180 of the phase (session 133, authority 46, joint 1: 3.5.2.4,
+now partial) and 283 earlier rows deferred or partial for E5 (session
+170, authority 112, joint 1: the 4.6.3 table); bench 0. By the longest
+clause prefix, then exceptions:
+
+| half | clause prefixes |
+|---|---|
+| session | 3.4.2, 3.5, 3.6.2, 3.6.5, 3.6.6, 3.12.1, 3.14.1.7, 3.15.1, 3.16.3, 4.8, 4.11.1, 5.4, 5.5, 5.10, 5.15, 8.4.4, 8.5.2, 8.5.3, A.3.1 Table, A.3.11 |
+| authority | 3.7, 3.8, 3.10, 3.11, 3.12.3, 3.13, 4.4, 4.9, 5.6, 5.7, 5.8, 5.9, 5.11, 5.17, 5.19, 5.21, A.3.4, A.3.5 |
+| session (exceptions in 4.4: sessions, reports, handover) | 4.4.6.1.4, 4.4.6.1.10, 4.4.6.1.13, 4.4.7.1.6, 4.4.8.1.3, 4.4.8.1.5, 4.4.15.1.3, 4.4.15.1.4, 4.4.18.1.7, 4.4.20.1.4, 4.4.20.1.12, 4.4.20.1.13 |
+| joint | 3.5.2.4, 4.6.3 Table |
+
+**Tests.** `EVC_Test_Support`: `RTM_Tagged`, `RTM_Event_Input`,
+`Give_Radio_Message`, `Give_Radio_Event`, `Start_Message`,
+`Message_Bytes`, `Message_Of` (ETCS_Message), `Radio_Outputs`,
+`Radio_Output` (session, message or request, NID_MESSAGE or request
+code), `Decode_Radio_Message` (ETCS_Message.Parse, train to track),
+`Request_Byte`. `EVC_Test_Radio.Scenario_Radio_Joint` (22 checks): the
+port and the stubs, the outbox to the port and back, the contact over
+No Power, one session by configuration. The SUBSET-076 runner feeds no
+radio input yet and is unchanged; its radio side is the bench's.
+
+**What each half fills.**
+- Session and link (`EVC_Sessions`): the bodies of `Take_Event`,
+  `Take_Message` (3.16.3 time stamps and order, the session messages 32,
+  39, 41 of 5.4, 4.8 for radio information, the verdict), `Has_Released` /
+  `Take_Released` (4.8.5), `Evaluate` (3.5 states and timers of A.3.1,
+  T_NVCONTACT and [41], 3.5.6 networks, 3.5.7 indication to the DMI,
+  position reports 3.6.5, the level 2 start and end of mission, 5.10 and
+  5.15, the handover and its roles), `Mode_Changed`, `Produce` (155, 159,
+  156, 136, 129, 150, 154, 157 ...); the contact into `EVC_Radio` (and
+  its revalidation, 4.11.1, 5.4.3.3 D2); a format version of the
+  configuration image with the sessions if the bench needs it.
+- Authority (`EVC_Radio_Authority`): `Take_Message` (3, 33, 2, 6, 9, 15,
+  16, 18, 27, 28, 34, 45 ... into the stores of E3 and the procedures),
+  `Evaluate` (the MA request of 3.8.2 and its reasons, the emergency
+  stops, the conditions [6] [11] [20] [31] [36] [81] and the stop of
+  [45]), `Mode_Changed`, `Produce` (132, 137, 138, 147, 149, 130, 158,
+  the Train Data of 5.17).
+- Bench (`sim/`, `test/src/s076_*`): `Sim_RBC` behind the RTM port in the
+  format above (events and tagged messages in, outputs read like
+  `Radio_Output`), the runner's `expect RTM`, the fuzzer's radio phase
+  (decision 5).

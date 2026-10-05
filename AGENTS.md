@@ -27,6 +27,11 @@ ETCS on-board (EVC). The on-board is being built in phases, see
   `DMI_Core` (Initialise / Handle_Input / Tick / Take_Outputs) behind enumerated
   ports (BTM, RTM, odometer, TIU, DMI, ATO, JRU). Its safety kernel is SPARK
   (`SPARK_Mode`), proven with gnatprove: see the plan for what is in the kernel.
+  The radio of phase E5: `EVC_Radio` holds the communication sessions, the RBC
+  contact and the RTM outbox shared by the session and link half
+  (`EVC_Sessions`, the only writer of the session table) and the authority
+  half (`EVC_Radio_Authority`); the RTM port's format is at the end of
+  `EVC_Ports` (doc/EVC-PLAN.md §13 "Joint: outcome").
 - **`common/`** — shared by both: the DMI–EVC protocol
   ([common/dmi_protocol.ads](common/dmi_protocol.ads)) and `DMI_Link`, the
   reassembly of protocol frames from any byte stream.
