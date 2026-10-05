@@ -556,6 +556,11 @@ is
       --  permitted distance to run in Staff Responsible (E4)
       SR_Distance    : Boolean := False;
       SR_End         : Dist_T := 0;
+      --  3.8.6.1 b) (E5): the shortened MA an RBC proposes (message 9),
+      --  not stored: EVC_SDM.Step says whether the train front end is in
+      --  rear of its Indication supervision limit
+      --  (Result_T.Proposal_In_Rear)
+      Proposal       : Movement_Authority_T := (others => <>);
    end record;
 
    ---------------------------------------------------------------------

@@ -1229,7 +1229,8 @@ is
         (Radio_Context,
          (MA_Request => SDM_Result.MA_Request,
           Start      => EVC_Driver_Requests.Start_Selected,
-          Desk_Open  => EVC_Train_Inputs.Desk_Open));
+          Desk_Open  => EVC_Train_Inputs.Desk_Open,
+          Proposal_In_Rear => SDM_Result.Proposal_In_Rear));
    end Evaluate_Radio;
 
    --  6b. Phase E5: the mode changed (after the mode machine)

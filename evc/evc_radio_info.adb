@@ -70,6 +70,25 @@ is
       N := 0;
    end Empty;
 
+   procedure Keep_Granted
+     with Refined_Global => (In_Out => (Messages, Slots, N))
+   is
+   begin
+      for I in reverse 1 .. N loop
+         pragma Loop_Invariant (N <= Max_Messages);
+         if Slots (I).Action = Shortening then
+            if I /= 1 then
+               Messages (1) := Messages (I);
+            end if;
+            Slots (1) := Slots (I);
+            Slots (1).Action := Packets;
+            N := 1;
+            return;
+         end if;
+      end loop;
+      N := 0;
+   end Keep_Granted;
+
    procedure Put_Last (S : Slot_T)
      with Refined_Global => (In_Out => (Messages, Slots, N, Refused_N),
                              Input  => EVC_Received.Store)

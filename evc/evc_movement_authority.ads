@@ -292,6 +292,17 @@ is
           when 0 .. 120 => (Kind => Fixed, Speed => V5_To_Cms (Code)),
           when others => (Kind => Fixed, Speed => V_NVREL));
 
+   --  The MA X as the supervision sees it, frame positions (phase E5:
+   --  also a proposed MA not stored, 3.8.6.1 b)
+   procedure Authority_Of (X       : MA_T;
+                           T       : Origin_Table_T;
+                           V_NVREL : Speed_Cms_T;
+                           R       : out Movement_Authority_T)
+     with Global => null,
+          Post => R.Present = X.Present
+                  and then (if R.Present
+                            then A (X.Sense, R.SvL) >= A (X.Sense, R.EOA));
+
    --  The MA as the supervision sees it, frame positions
    procedure Authority (T       : Origin_Table_T;
                         V_NVREL : Speed_Cms_T;

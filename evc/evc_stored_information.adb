@@ -39,10 +39,12 @@ package body EVC_Stored_Information
                                    Driver_Slippery, PBD_Last, PBD_Known,
                                    MA_Board, Profile_Overlap,
                                    Covered_Flag, Ext, Tun,
-                                   Radio_MA, Timer_Deletion))
+                                   Radio_MA, Timer_Deletion, Proposal,
+                                   Proposal_Origin))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
+   use type EVC_Radio_Info.Action_T;
    use type EVC_Position.Status_T;
    use type EVC_Ports.Movement_T;
    use type EVC_DMI_Port.Track_Cond_Entry_T;
@@ -82,6 +84,11 @@ is
    Covered_Flag    : Boolean := False;
    --  phase E5: an MA by radio was accepted in the last Evaluate
    Radio_MA        : Boolean := False;
+   --  phase E5, 3.8.6.1 b): the shortened MA proposed in the cycle
+   --  (message 9), as the supervision sees it, not stored; the origin of
+   --  its message, kept while the RBC's request is answered
+   Proposal        : Movement_Authority_T := (others => <>);
+   Proposal_Origin : EVC_Origins.Count_T := 0;
    --  phase E5: the track description was deleted by a timer of the MA
    --  in the last Evaluate (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
    Timer_Deletion  : Boolean := False;
@@ -987,6 +994,48 @@ is
    --  every packet of a message passed is taken, but an MA after an
    --  accepted emergency stop (3.10.2.4: Slot.MA_Allowed False) is
    --  rejected. Radio_MA: an MA of it accepted.
+   --  3.8.6.1 b) (phase E5): the proposed shortened MA of the radio
+   --  message I (message 9, packet 15 valid for the train) to Proposal,
+   --  for the supervision of the cycle; nothing of it is stored (its
+   --  packets are taken when the request is granted, 3.8.6.1 b)
+   procedure Take_Proposal (I : EVC_Radio_Info.Index_T;
+                            T : Origin_Table_T;
+                            M : Message_T)
+     with Global => (Input  => EVC_Radio_Info.State,
+                     In_Out => (Proposal, Proposal_Origin)),
+          Pre => I <= EVC_Radio_Info.Count
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      Sl : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
+      R  : Reader_T;
+      X  : ETCS_Track_Packets.P15.Packet_T;
+      OK : Boolean;
+   begin
+      for P in 1 .. EVC_Radio_Info.Packet_Count (I) loop
+         pragma Loop_Invariant (True);
+         declare
+            E : constant ETCS_Packet_Index.Entry_T :=
+              EVC_Radio_Info.Packet_Entry (I, P);
+         begin
+            if E.Kind = ETCS_Catalogue.Track_P15
+              and then EVC_Position.Valid_For (E.Q_DIR, Sl.G, Sl.T)
+              and then Sl.Origin /= 0
+            then
+               EVC_Radio_Info.Open_Packet (I, P, R);
+               ETCS_Track_Packets.P15.Decode (R, X, OK);
+               if OK then
+                  EVC_Movement_Authority.Authority_Of
+                    (EVC_Movement_Authority.From_Packet (To_P12 (X), M),
+                     T, 0, Proposal);
+                  Proposal_Origin := Sl.Origin;
+               end if;
+            end if;
+         end;
+      end loop;
+   end Take_Proposal;
+
    procedure Take_Radio (I      : EVC_Radio_Info.Index_T;
                          T      : Origin_Table_T;
                          Train  : Train_Frame_T;
@@ -998,7 +1047,8 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State,
-                                Events, Event_N, Msg_Count, Radio_MA),
+                                Events, Event_N, Msg_Count, Radio_MA,
+                                Proposal, Proposal_Origin),
                      Input  => (EVC_Radio_Info.State, EVC_Train_Data.State)),
           Pre => I <= EVC_Radio_Info.Count
    is
@@ -1021,6 +1071,10 @@ is
             Start_Ms => Sl.Start_Ms);
       if Sl.Origin = 0 then
          Record_Event (Info_Group, Change_No_Origin, 0);
+      end if;
+      if Sl.Action = EVC_Radio_Info.Shortening then
+         Take_Proposal (I, T, M);
+         return;
       end if;
       for K in Order_Kind_T loop
          for P in 1 .. EVC_Radio_Info.Packet_Count (I) loop
@@ -1848,6 +1902,8 @@ is
       end loop;
       --  phase E5: then the radio messages of the cycle
       Radio_MA := False;
+      Proposal := (others => <>);
+      Proposal_Origin := 0;
       for I in 1 .. EVC_Radio_Info.Count loop
          pragma Loop_Invariant (True);
          Take_Radio (I, T, Train, Context, Now_Ms);
@@ -1890,6 +1946,10 @@ is
       EVC_Movement_Authority.Mark (Marks);
       EVC_Track_Conditions.Mark (Marks);
       EVC_Levels.Mark (Marks);
+      --  phase E5: the origin of a proposed MA, taken once granted
+      if Proposal_Origin /= 0 then
+         Marks (Proposal_Origin) := True;
+      end if;
       if EVC_National_Values.Pending then
          Mark (EVC_National_Values.Pending_At, Marks);
       end if;
@@ -1904,6 +1964,8 @@ is
              Context, Virtual_Last, Work);
       --  3.13.11.8 (phase E5): T_MAR of the MA request parameters
       Snap.Extra.T_MAR := Time_Ms_T (EVC_Radio_Info.T_MAR_Ms);
+      --  3.8.6.1 b) (phase E5): the proposed shortened MA
+      Snap.Extra.Proposal := Proposal;
    end Evaluate;
 
 end EVC_Stored_Information;

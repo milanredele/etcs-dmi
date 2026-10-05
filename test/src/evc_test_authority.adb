@@ -91,6 +91,7 @@ package body EVC_Test_Authority is
 
    --  Message 3 (or 33, shifted by Shift_M metres) referring to the
    --  group NID_BG of country 123, with the MA X, an SSP and a gradient
+   --  (Kind 9: the MA alone)
    function MA_Message (NID_BG  : Natural;
                         X       : T12.Packet_T;
                         T_Train : ETCS_Variables.T_TRAIN_T;
@@ -116,10 +117,12 @@ package body EVC_Test_Authority is
       Start_Message (W, Kind, V);
       T15.Encode (To_P15 (X), W, OK);
       Check (OK, "authority: packet 15 encoded");
-      T21.Encode (G, W, OK);
-      Check (OK, "authority: packet 21 encoded");
-      T27.Encode (S, W, OK);
-      Check (OK, "authority: packet 27 encoded");
+      if Kind /= MCat.Track_M9 then
+         T21.Encode (G, W, OK);
+         Check (OK, "authority: packet 21 encoded");
+         T27.Encode (S, W, OK);
+         Check (OK, "authority: packet 27 encoded");
+      end if;
       if With_57 then
          T57.Encode (P57, W, OK);
          Check (OK, "authority: packet 57 encoded");
@@ -251,6 +254,29 @@ package body EVC_Test_Authority is
              & "replaced and shortened (3.8.5.1, 3.8.5.1.3)");
    end Scenario_Radio_MA_Shifted;
 
+   --  The NID_MESSAGE of the first train to track message among the RTM
+   --  outputs of the last Take whose NID_MESSAGE is 137 or 138, with its
+   --  T_TRAIN_2 (the request's time stamp); 0 when there is none
+   procedure Shortening_Answer (NID : out Natural; Stamp : out Unsigned_64)
+   is
+      M : ETCS_Message.Message_T;
+      S : ETCS_Message.Status_T;
+      use type ETCS_Message.Status_T;
+   begin
+      NID := 0;
+      Stamp := 0;
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, S);
+         if S = ETCS_Message.Accepted
+           and then M.Kind in MCat.Train_M137 | MCat.Train_M138
+         then
+            NID := (if M.Kind = MCat.Train_M137 then 137 else 138);
+            Stamp := M.Values (5);
+            return;
+         end if;
+      end loop;
+   end Shortening_Answer;
+
    --  Stand until the on-board sends an MA request (at most Max_Ms);
    --  True when one was sent: the last Take holds it
    function Wait_Request (Max_Ms : Natural) return Boolean is
@@ -341,5 +367,70 @@ package body EVC_Test_Authority is
       Check (not Wait_Request (500) and then RA.MA_Request_Reasons = 0,
              "MA request: only in level 2 (3.8.2.1.1)");
    end Scenario_MA_Request;
+
+   --  3.8.6: the co-operative shortening of the MA (message 9), at
+   --  standstill at 200 m with an MA to 800 m. A proposed EOA behind the
+   --  front end: the front end is in advance of its Indication limit,
+   --  the request is rejected (138 with the request's time stamp, 8.6.6)
+   --  and the MA stays (3.8.6.1 b). A proposed EOA at 400 m: granted (137,
+   --  8.6.5), the proposed MA replaces the MA. In level 1: rejected
+   --  (3.8.6, Level 2 only).
+   procedure Scenario_Shortening is
+      M     : constant T12.Packet_T := MA_Of ((300, 400), 600);
+      NID   : Natural;
+      T9    : ETCS_Variables.T_TRAIN_T;
+      Got   : Unsigned_64;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Run_X (20_000);
+      Stand_X (2_000);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 80_000,
+             "shortening: the MA to 800 m, the train standing at 200 m");
+
+      T9 := Stamp;
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((20, 30)), T9, Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 138 and then Got = Unsigned_64 (T9)
+             and then RA.Shortenings_Rejected = 1
+             and then RA.Shortenings_Granted = 0,
+             "shortening: a proposed EOA (150 m) behind the front end, in "
+             & "advance of its Indication limit: rejected, message 138 with "
+             & "the request's time stamp (3.8.6.1 b, c; 8.6.6)");
+      Stand_X (500);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 80_000,
+             "shortening: rejected, the MA unchanged (3.8.6.1 b)");
+
+      Stand_X (1_000);
+      T9 := Stamp;
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((200, 100)), T9, Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 137 and then Got = Unsigned_64 (T9)
+             and then RA.Shortenings_Granted = 1,
+             "shortening: a proposed EOA at 400 m, the front end in rear of "
+             & "its Indication limit: granted, message 137 (3.8.6.1 b, c; "
+             & "8.6.5)");
+      Stand_X (200);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 40_000
+             and then RA.Radio_MAs_Accepted = 2,
+             "shortening: granted, the proposed MA is the MA (3.8.6.1 b)");
+
+      --  level 1
+      Start_X;
+      Establish;
+      Add_Group (Group (10, 100));
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((200, 100)), Stamp, Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 138 and then not SI.Current.MA.Present,
+             "shortening: in level 1, rejected (3.8.6, Level 2 only)");
+   end Scenario_Shortening;
 
 end EVC_Test_Authority;

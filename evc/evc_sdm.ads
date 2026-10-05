@@ -179,6 +179,11 @@ is
       Perturbation   : Boolean := False;
       Perturbation_X : Num := 0;
       MA_Request     : Boolean := False;
+      --  3.8.6.1 b) (E5): with a proposed shortened MA in the snapshot
+      --  (Extra.Proposal), the estimated front end is in rear of the
+      --  Indication location of its EOA and the max safe front end in
+      --  rear of that of its SvL (or of its LOA) for the current speed
+      Proposal_In_Rear : Boolean := False;
       --  added by the procedures of phase E4, 5.16 (the temporary EOA
       --  and SvL of the target c) is the start of the level crossing not
       --  protected of Snapshot_T.LX): LX_MRDT, it is the most relevant

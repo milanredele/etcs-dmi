@@ -370,12 +370,12 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.5.1.5,3,x,,,,,E5,done,"EVC_Stored_Information: the deletion of a shortened MA (Apply) before the other packets of the message replace theirs: the MA is evaluated after the track description of its message, the deletion applies to the information of earlier messages only (E3); the radio message is evaluated in the same order (Take_Radio) [E5 authority]"
 3.8.5.2.2,3,x,,,,,E5,todo,[E5 authority]
 3.8.5.2.4,3,x,,,,,E5,done,"EVC_Movement_Authority.Accept_MA: a new MA with a LOA is never a shortening (E3, also for the radio MA) [E5 authority]"
-3.8.6.1,3,x,x,,,,E5,todo,[E5 authority]
-3.8.6.1 b),3,x,,,,,E5,todo,[E5 authority]
-3.8.6.1 b) 1st bullet,3,x,,,,,E5,todo,[E5 authority]
-3.8.6.1 b) 2nd bullet,3,x,,,,,E5,todo,[E5 authority]
-3.8.6.1 c),3,x,,,,,E5,todo,[E5 authority]
-3.8.6.2,3,x,,,,,E5,todo,[E5 authority]
+3.8.6.1,3,x,x,,,,E5,done,"EVC_Radio_Authority.Take_Message (message 9 to EVC_Radio_Info, Action Shortening), Judge_Shortening, Answer_Shortening; evc_test Scenario_Shortening [E5 authority]"
+3.8.6.1 b),3,x,,,,,E5,done,"EVC_Stored_Information.Take_Proposal (the proposed MA as the supervision sees it, Snapshot.Extra.Proposal, not stored); EVC_SDM.Proposal_In_Rear (the Indication locations of the proposed EOA and SvL for the current speed with the curves of the cycle against the estimated and max safe front end); EVC_Radio_Authority.Judge_Shortening; evc_test Scenario_Shortening [E5 authority]"
+3.8.6.1 b) 1st bullet,3,x,,,,,E5,done,"granted: EVC_Radio_Info.Keep_Granted keeps message 9, taken as the MA (with packets 80 and 49) by the stored information of the next cycle; evc_test Scenario_Shortening [E5 authority]"
+3.8.6.1 b) 2nd bullet,3,x,,,,,E5,done,"rejected: the message is dropped, nothing of it stored; evc_test Scenario_Shortening [E5 authority]"
+3.8.6.1 c),3,x,,,,,E5,done,EVC_Radio_Authority.Answer_Shortening: message 137 or 138 with the request's T_TRAIN to its session; evc_test Scenario_Shortening [E5 authority]
+3.8.6.2,3,x,,,,,E5,done,"the granted MA replaces a longer one through EVC_Movement_Authority.Accept_MA: the deletions of situation b, the column of situation f (A.3.4.1.3); evc_test Scenario_Shortening [E5 authority]"
 3.9.1.3,3,x,,,,,E7,deferred,E7
 3.9.2.11,3,x,,,,,E7,deferred,E7
 3.9.3.3,3,x,,,,,E7,deferred,E7

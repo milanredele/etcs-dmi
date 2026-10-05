@@ -16,5 +16,6 @@ package EVC_Test_Authority is
    procedure Scenario_Radio_MA;
    procedure Scenario_Radio_MA_Shifted;
    procedure Scenario_MA_Request;
+   procedure Scenario_Shortening;
 
 end EVC_Test_Authority;

@@ -594,39 +594,48 @@ is
    -- Authority --
    ---------------
 
+   procedure Authority_Of (X       : MA_T;
+                           T       : Origin_Table_T;
+                           V_NVREL : Speed_Cms_T;
+                           R       : out Movement_Authority_T)
+   is
+      S : constant Sense_T := X.Sense;
+   begin
+      R := (Present => False, EOA => 0, SvL => 0, LOA_Speed => 0,
+            Release_Speed => (Kind => None, Speed => 0));
+      if not X.Present then
+         return;
+      end if;
+      R.Present := True;
+      if Is_LOA (X) then
+         --  an EBD target: the "max" item; no SvL, no release speed
+         R.EOA := Frame (T, EOA_Location (X), Max_Item);
+         R.SvL := R.EOA;
+         R.LOA_Speed := X.Target_Speed;
+         return;
+      end if;
+      R.EOA := Frame (T, EOA_Location (X), Estimated_Item);
+      R.SvL := Frame (T, SvL_Location (X), Max_Item);
+      if A (S, R.SvL) < A (S, R.EOA) then
+         R.EOA := R.SvL;
+      end if;
+      if X.Withdrawn then
+         null;  -- A.3.4.1.3 [11]: no release speed
+      elsif X.National_Release then
+         R.Release_Speed := (Kind => Fixed, Speed => V_NVREL);
+      elsif X.Has_OL then
+         R.Release_Speed := Release (X.V_Release_OL, V_NVREL);
+      elsif X.Has_DP then
+         R.Release_Speed := Release (X.V_Release_DP, V_NVREL);
+      end if;
+   end Authority_Of;
+
    procedure Authority (T       : Origin_Table_T;
                         V_NVREL : Speed_Cms_T;
                         R       : out Movement_Authority_T)
    is
-      S : constant Sense_T := Current.Sense;
    begin
-      R := (Present => False, EOA => 0, SvL => 0, LOA_Speed => 0,
-            Release_Speed => (Kind => None, Speed => 0));
-      if not Current.Present then
-         return;
-      end if;
-      R.Present := True;
-      if Is_LOA (Current) then
-         --  an EBD target: the "max" item; no SvL, no release speed
-         R.EOA := Frame (T, EOA_Location (Current), Max_Item);
-         R.SvL := R.EOA;
-         R.LOA_Speed := Current.Target_Speed;
-         return;
-      end if;
-      R.EOA := Frame (T, EOA_Location (Current), Estimated_Item);
-      R.SvL := Frame (T, SvL_Location (Current), Max_Item);
-      if A (S, R.SvL) < A (S, R.EOA) then
-         R.EOA := R.SvL;
-      end if;
-      if Current.Withdrawn then
-         null;  -- A.3.4.1.3 [11]: no release speed
-      elsif Current.National_Release then
-         R.Release_Speed := (Kind => Fixed, Speed => V_NVREL);
-      elsif Current.Has_OL then
-         R.Release_Speed := Release (Current.V_Release_OL, V_NVREL);
-      elsif Current.Has_DP then
-         R.Release_Speed := Release (Current.V_Release_DP, V_NVREL);
-      end if;
+      Authority_Of (Current, T, V_NVREL, R);
    end Authority;
 
    -------------------------

@@ -21,7 +21,7 @@ package body EVC_Radio_Authority
                                    Params, Reasons, Request_Due,
                                    Request_Sent, Last_Request_Ms,
                                    SR_Authorised, Requests, Start_Reason,
-                                   Deleted_Reason))
+                                   Deleted_Reason, Shortening))
 is
 
    use type ETCS_Message_Catalogue.Message_Kind_T;
@@ -60,6 +60,21 @@ is
    Start_Reason    : Boolean := False;
    Deleted_Reason  : Boolean := False;
 
+   --  3.8.6: a request to shorten the MA (message 9) taken in the cycle
+   --  (Pending), the answer owed (137 or 138) with the T_TRAIN of the
+   --  request (8.6.5, 8.6.6) to the session it came from, the answers
+   --  given since Clear
+   type Answer_T is (None, Granted, Rejected);
+   type Shortening_T is record
+      Pending  : Boolean := False;
+      Answer   : Answer_T := None;
+      Session  : EVC_Radio.Session_T := 1;
+      Stamp    : T_TRAIN_T := 0;
+      Granted  : Natural := 0;
+      Rejected : Natural := 0;
+   end record;
+   Shortening : Shortening_T := (others => <>);
+
    --  A.3.1 TCYCRQSTD: the repetition cycle without parameters, ms
    Default_Cycle_Ms : constant := 60_000;
 
@@ -92,6 +107,10 @@ is
      with Refined_Global => Reasons;
    function MA_Requests_Sent return Natural is (Requests)
      with Refined_Global => Requests;
+   function Shortenings_Granted return Natural is (Shortening.Granted)
+     with Refined_Global => Shortening;
+   function Shortenings_Rejected return Natural is (Shortening.Rejected)
+     with Refined_Global => Shortening;
 
    procedure Clear is
    begin
@@ -110,6 +129,7 @@ is
       Requests := 0;
       Start_Reason := False;
       Deleted_Reason := False;
+      Shortening := (others => <>);
       EVC_Radio_Info.Clear;
    end Clear;
 
@@ -153,9 +173,12 @@ is
    --  the stores of E3 through EVC_Radio_Info: referred to the LRBG it
    --  names (an LRBG the on-board does not know leaves no origin, and
    --  the stored information rejects the MA), its timers started at
-   --  the time stamp of the message
+   --  the time stamp of the message; Action: how the stored information
+   --  takes it (Shortening: message 9, 3.8.6)
    procedure Take_Stored_Information (Shifted : Boolean;
-                                      Now_Ms  : EVC_Radio.Time_Ms_T)
+                                      Now_Ms  : EVC_Radio.Time_Ms_T;
+                                      Action  : EVC_Radio_Info.Action_T :=
+                                        EVC_Radio_Info.Packets)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State),
                      In_Out => (EVC_Origins.State, EVC_Radio_Info.State))
@@ -172,6 +195,7 @@ is
            (LRBG_Of_Last, Shifted, Shift, Sl.Origin, Sl.G, Sl.T, Sl.S);
       end if;
       Sl.Start_Ms := EVC_Radio.Time_Of_Stamp (Stamp_Of_Last, Now_Ms);
+      Sl.Action := Action;
       EVC_Radio_Info.Put_Last (Sl);
    end Take_Stored_Information;
 
@@ -207,7 +231,6 @@ is
    procedure Take_Message (S      : EVC_Radio.Session_T;
                            Now_Ms : EVC_Radio.Time_Ms_T)
    is
-      pragma Unreferenced (S);
       Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
         EVC_Received.Last_Kind;
    begin
@@ -220,6 +243,13 @@ is
          Take_Stored_Information (False, Now_Ms);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
          Take_Stored_Information (True, Now_Ms);
+      elsif Kind = ETCS_Message_Catalogue.Track_M9 then
+         --  3.8.6.1 a): the proposed shortened MA, judged in this cycle
+         --  (Evaluate); a second request in the cycle replaces the first
+         Take_Stored_Information (False, Now_Ms, EVC_Radio_Info.Shortening);
+         Shortening.Pending := True;
+         Shortening.Session := S;
+         Shortening.Stamp := Stamp_Of_Last;
       end if;
    end Take_Message;
 
@@ -297,6 +327,39 @@ is
       Request_Due := Request_Due or else Rising;
    end Evaluate_Request;
 
+   --  3.8.6.1 b), c): the request to shorten the MA taken in the cycle,
+   --  judged on the supervision of the cycle: granted when the train
+   --  front end is in rear of the Indication supervision limit of the
+   --  proposed MA (EVC_SDM, Facts.Proposal_In_Rear): its message stays in
+   --  EVC_Radio_Info and the stored information of the next cycle takes
+   --  it as the new MA, with its mode profile and list of balise groups
+   --  for SH area (3.8.6.2: the deletions of A.3.4 of an MA replacing a
+   --  longer one, 3.8.5.1.3); rejected otherwise, and in a level other
+   --  than 2 (3.8.6 "Level 2 only"), when nothing changes. Either way
+   --  the RBC is answered (3.8.6.1 c, Produce). The other messages of
+   --  the cycle were taken by the stored information.
+   procedure Judge_Shortening (Facts : Facts_T)
+     with Global => (Input  => EVC_Levels.State,
+                     In_Out => (Shortening, EVC_Radio_Info.State)),
+          Post => EVC_Radio_Info.Count <= 1
+   is
+      Level_2 : constant Boolean :=
+        EVC_Levels.Valid and then EVC_Levels.Level = L2;
+   begin
+      if not Shortening.Pending then
+         EVC_Radio_Info.Empty;
+      elsif Level_2 and then Facts.Proposal_In_Rear then
+         Shortening.Answer := Granted;
+         Count (Shortening.Granted);
+         EVC_Radio_Info.Keep_Granted;
+      else
+         Shortening.Answer := Rejected;
+         Count (Shortening.Rejected);
+         EVC_Radio_Info.Empty;
+      end if;
+      Shortening.Pending := False;
+   end Judge_Shortening;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
       MA_Received : constant Boolean :=
         EVC_Stored_Information.Radio_MA_Accepted;
@@ -325,7 +388,7 @@ is
                      and then EVC_Levels.Valid
                      and then EVC_Levels.Level = L2;
       --  the messages of the cycle were taken by the stored information
-      EVC_Radio_Info.Empty;
+      Judge_Shortening (Facts);
    end Evaluate;
 
    procedure Mode_Changed (From, To : Mode_T) is
@@ -381,6 +444,35 @@ is
       end if;
    end Send_With_Report;
 
+   --  3.8.6.1 c): the answer to the request to shorten the MA, 137
+   --  granted or 138 rejected with the time stamp of the request (8.6.5,
+   --  8.6.6), to the session it came from; kept while the outbox has no
+   --  room, dropped when the session is no longer established
+   procedure Answer_Shortening (Ctx : EVC_Radio.Context_T)
+     with Global => (In_Out => (Shortening, EVC_Radio.State,
+                                EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State))
+   is
+      OK : Boolean := True;
+      V  : ETCS_Message.Value_Array := (others => 0);
+   begin
+      if Shortening.Answer /= None
+        and then EVC_Radio.Established (Shortening.Session)
+      then
+         V (5) := Unsigned_64 (Shortening.Stamp);
+         Send_With_Report
+           (Shortening.Session,
+            (if Shortening.Answer = Granted
+             then ETCS_Message_Catalogue.Train_M137
+             else ETCS_Message_Catalogue.Train_M138),
+            V, Ctx, OK);
+      end if;
+      if OK then
+         Shortening.Answer := None;
+      end if;
+   end Answer_Shortening;
+
    procedure Produce (Ctx : EVC_Radio.Context_T) is
       OK : Boolean;
       V  : ETCS_Message.Value_Array := (others => 0);
@@ -402,6 +494,7 @@ is
             Count (Requests);
          end if;
       end if;
+      Answer_Shortening (Ctx);
    end Produce;
 
 end EVC_Radio_Authority;

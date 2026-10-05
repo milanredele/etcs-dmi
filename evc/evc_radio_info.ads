@@ -113,6 +113,14 @@ is
      with Global => (In_Out => State),
           Post => Count = 0;
 
+   --  3.8.6.1 b): the cycle's messages taken, the proposed shortened MA
+   --  granted: the last message of it (Action Shortening) stays, alone,
+   --  to be taken as an MA by the stored information of the next cycle
+   procedure Keep_Granted
+     with Global => (In_Out => State),
+          Post => Count <= 1
+                  and then (if Count = 1 then Slot (1).Action = Packets);
+
    --  The last message EVC_Received accepted, copied in place, with how
    --  to take it; refused (counted) when the table is full
    procedure Put_Last (S : Slot_T)
