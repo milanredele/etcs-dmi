@@ -89,7 +89,9 @@ is
             SS_Unauthorized_Passing,
          when Linking_Error | Wrong_Direction => SS_Balise_Read_Error_Trip,
          when SH_Stop_Order | SH_Balise_Not_Listed => SS_SH_Stop_Order,
-         when SR_Stop_Order                 => SS_SR_Stop_Order,
+         --  [36]: the DMI entry of "stop if in SR" (a decision: Table 68
+         --  of the DMI has no entry of its own for it)
+         when SR_Stop_Order | SR_Balise_Not_Listed => SS_SR_Stop_Order,
          when Version_Not_Supported         =>
             SS_Trackside_Not_Compatible_Trip,
          when No_Track_Description          => SS_No_Track_Description,
@@ -115,6 +117,7 @@ is
          when 42       => SR_Distance_Passed,
          when 39 | 67  => No_MA_Level_Switch,
          when 41       => Communication_Lost,
+         when 36       => SR_Balise_Not_Listed,
          when others   => No_Trip);
 
    ---------------------------------------------------------------------
@@ -1056,9 +1059,9 @@ is
       if Now_Flags.SH_Unlisted then
          Trip (52, SH_Balise_Not_Listed);
       end if;
-      --  [54]: "stop if in SR"; a list of balise groups in SR authority
-      --  comes from the RBC (phase E5): none here
-      if Now_Flags.SR_Stop then
+      --  [54]: "stop if in SR", unless the group is in the list of
+      --  expected balise groups in SR of the RBC (4.4.11.1.3 d)
+      if Now_Flags.SR_Stop and then not C.SR_Listed then
          Trip (54, SR_Stop_Order);
       end if;
       --  [65]
@@ -1552,7 +1555,8 @@ is
    --  status message (DMI Table 68); the override ends (5.8.4.1 i); no
    --  request for acknowledgement
    procedure Enter_Trip (From : Mode_T)
-     with Global => (Input  => (Conds, Pending, EVC_Sessions.State),
+     with Global => (Input  => (Conds, Pending, EVC_Sessions.State,
+                                EVC_Radio_Authority.State),
                      Output => Ack_On,
                      In_Out => (Reason, Status_List, Status_N, Ovr, Events,
                                 Event_N))
@@ -1567,7 +1571,11 @@ is
          if R = No_Trip and then L (I) in Condition_T
            and then (Conds (L (I))
                      or else (L (I) = 41
-                              and then EVC_Sessions.T_NVCONTACT_Trip))
+                              and then EVC_Sessions.T_NVCONTACT_Trip)
+                     --  [36] is the authority half's
+                     or else (L (I) = 36
+                              and then EVC_Radio_Authority
+                                         .Group_Not_In_SR_List))
          then
             R := Reason_Of (L (I));
          end if;

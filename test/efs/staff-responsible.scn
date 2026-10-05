@@ -4,7 +4,7 @@
 frame Staff Responsible
 sequence Stop if in SR: train is not tripped
 case Check train is not tripped if Stop if in SR received and the BG is in the list
-clause E4 deferred 4.4.11.1.3 d) ; efs 4.4.11.1.3.d
+clause E4 partial 4.4.11.1.3 d) ; efs 4.4.11.1.3.d
 clause E4 partial 4.4.11.1.3 ; efs 4.4.11.1.3
 step Setup
 sub Initialize test environment
@@ -29,7 +29,7 @@ expect efs: COUNT X IN Kernel.BrakeCommands.EmergencyBrakeCommands == 0 @ kind=c
 expect efs: Kernel.Mode != ModeEnum.TR @ kind=continuous deadline=1
 sequence Stop if in SR: train is tripped
 case Check train is tripped if Stop if in SR received and the BG in not in the list
-clause E4 deferred 4.4.11.1.3 d) ; efs 4.4.11.1.3.d
+clause E4 partial 4.4.11.1.3 d) ; efs 4.4.11.1.3.d
 clause E4 partial 4.4.11.1.3 ; efs 4.4.11.1.3
 clause - absent Entry 4.6.3.55 ; efs Entry 4.6.3.55
 clause - absent Entry 4.6.3.37 ; efs Entry 4.6.3.37
@@ -55,7 +55,7 @@ sub Check mode is TR
 expect efs: COUNT X IN Kernel.BrakeCommands.EmergencyBrakeCommands > 0 @ kind=continuous deadline=1
 expect efs: Kernel.Mode == ModeEnum.TR @ kind=continuous deadline=1
 case Check train is tripped if Stop if in SR received and no list of expected BGs is received
-clause E4 deferred 4.4.11.1.3 d) ; efs 4.4.11.1.3.d
+clause E4 partial 4.4.11.1.3 d) ; efs 4.4.11.1.3.d
 clause E4 partial 4.4.11.1.3 ; efs 4.4.11.1.3
 clause - absent Entry 4.6.3.55 ; efs Entry 4.6.3.55
 step Setup

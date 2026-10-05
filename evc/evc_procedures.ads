@@ -102,6 +102,7 @@ with EVC_Origins;
 with EVC_Position;
 with EVC_Driver_Requests;
 with EVC_SDM;
+with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with EVC_Track_Conditions;
@@ -161,6 +162,10 @@ is
       --  4.6.3 [42], 5.8.4.1 h): the estimated front end passed the end
       --  of the SR distance (EVC_Mission)
       SR_Distance_Passed : Boolean := False;
+      --  4.4.11.1.3 d): the groups passed in the cycle are in the list of
+      --  expected balise groups in SR of the RBC (EVC_Radio_Authority):
+      --  their "stop if in SR" does not trip
+      SR_Listed        : Boolean := False;
       --  the driver acknowledged a mode change in this cycle and the
       --  start of mission did not take it (EVC_Mission: the mode it
       --  proposed)
@@ -203,7 +208,10 @@ is
       No_MA_Level_Switch,    -- [39], [67]
       --  phase E5: T_NVCONTACT passed, reaction train trip (3.16.3.4,
       --  EVC_Sessions)
-      Communication_Lost);   -- [41]
+      Communication_Lost,    -- [41]
+      --  phase E5: a group not in the list of expected balise groups in
+      --  SR of the RBC (4.4.11.1.3 c, EVC_Radio_Authority)
+      SR_Balise_Not_Listed); -- [36]
 
    function Trip_Reason return Trip_Reason_T
      with Global => State;
@@ -390,7 +398,9 @@ is
    --  (EVC_Modes.Conditions) that held in the cycle.
    procedure Mode_Changed (From, To : Mode_T; C : Context_T;
                            S : Snapshot_T)
-     with Global => (In_Out => State, Input => EVC_Sessions.State),
+     with Global => (In_Out => State,
+                     Input  => (EVC_Sessions.State,
+                                EVC_Radio_Authority.State)),
           Post => (if To = M_TR then Brake_Demand.EB);
 
    --  The brake demand and the outputs after the mode machine, in the

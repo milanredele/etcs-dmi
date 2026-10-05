@@ -923,14 +923,27 @@ is
      with Global => (Current_Mode, EVC_Mission.State,
                      EVC_National_Values.State, EVC_Procedures.State);
 
+   --  4.4.11.1.6.4: the SR distance that applies, the last received of
+   --  the RBC's (message 2) and EVC_Mission's (the national value or the
+   --  driver's); [42] its end passed by the estimated front end
+   function SR_Distance return EVC_Odometry.Virtual_T is
+     (EVC_Radio_Authority.SR_Distance_Of (EVC_Mission.SR_Distance))
+     with Global => (EVC_Mission.State, EVC_Radio_Authority.State);
+
+   function SR_Distance_Passed return Boolean is
+     (SR_Distance.Active
+      and then EVC_Odometry.Remaining_Estimated (SR_Distance) < 0)
+     with Global => (EVC_Mission.State, EVC_Radio_Authority.State,
+                     EVC_Odometry.State);
+
    --  4.4.11.1.3 b): the end of the SR distance, a frame position along
    --  the train orientation (the virtual position of 3.6.7)
    function SR_End return EVC_Distances.Dist_T is
      (EVC_Distances.Advance
         (EVC_Position.Front_X, EVC_Position.Orientation,
-         EVC_Odometry.Remaining_Estimated (EVC_Mission.SR_Distance)))
+         EVC_Odometry.Remaining_Estimated (SR_Distance)))
      with Global => (EVC_Position.State, EVC_Odometry.State,
-                     EVC_Mission.State);
+                     EVC_Mission.State, EVC_Radio_Authority.State);
 
    procedure Evaluate_Stored_Information
      with Global => (Input  => (Clock_Ms, Cycle_Count, EVC_Position.State,
@@ -938,7 +951,8 @@ is
                                 TIU_Now, EVC_Config.State, Current_Mode,
                                 EVC_Train_Inputs.State, EVC_Mission.State,
                                 EVC_Procedures.State, SDM_Result,
-                                EVC_Radio_Info.State),
+                                EVC_Radio_Info.State,
+                                EVC_Radio_Authority.State),
                      In_Out => (SDM_Work, EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
@@ -986,7 +1000,7 @@ is
             Cab_Active  => EVC_Train_Inputs.Desk_Open,
             TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
             SR_Distance => Current_Mode = M_SR
-                           and then EVC_Mission.SR_Distance.Active,
+                           and then SR_Distance.Active,
             SR_End      => SR_End),
          Virtual_Last   => SDM_Result.Virtual);
       for I in 1 .. EVC_Stored_Information.Event_Count loop
@@ -1228,7 +1242,9 @@ is
                                 EVC_Levels.State, SDM_Result,
                                 EVC_Movement_Authority.State,
                                 EVC_Driver_Requests.State,
-                                EVC_Train_Inputs.State),
+                                EVC_Train_Inputs.State,
+                                EVC_Position.State,
+                                EVC_Procedures.State),
                      In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State))
@@ -1240,7 +1256,14 @@ is
          (MA_Request => SDM_Result.MA_Request,
           Start      => EVC_Driver_Requests.Start_Selected,
           Desk_Open  => EVC_Train_Inputs.Desk_Open,
-          Proposal_In_Rear => SDM_Result.Proposal_In_Rear));
+          Proposal_In_Rear => SDM_Result.Proposal_In_Rear,
+          --  the driver's SR entry as EVC_Mission takes it (4.4.11.1.5)
+          SR_Entered =>
+            EVC_Driver_Requests.Entered (EVC_Driver_Requests.SR_Data)
+            and then Current_Mode = M_SR
+            and then EVC_Odometry.Standstill
+            and then EVC_Driver_Requests.SR_Data.Speed_Kmh in 5 .. 600,
+          Override_Active => EVC_Procedures.Override_Active));
    end Evaluate_Radio;
 
    --  6b. Phase E5: the mode changed (after the mode machine)
@@ -1273,7 +1296,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_National_Values.State),
                      Output => Proc_Ctx,
-                     In_Out => (Snapshot,
+                     In_Out => (Snapshot, EVC_Radio_Authority.State,
                                 EVC_Procedures.State, EVC_Text_Messages.State,
                                 EVC_Track_Description.State,
                                 EVC_Mission.State,
@@ -1318,7 +1341,8 @@ is
          TD_Change         => Config_Changed,
          TD_Validation     => (Config and TIU_Config_Validation) /= 0,
          TD_Category       => (Config and TIU_Config_Category) /= 0,
-         SR_Distance_Passed => EVC_Mission.SR_Distance_Passed,
+         SR_Distance_Passed => SR_Distance_Passed,
+         SR_Listed         => EVC_Radio_Authority.Groups_Passed_Listed,
          --  the start of mission's proposal comes first (EVC_Mission)
          Mode_Ack          => EVC_Driver_Requests.Mode_Acknowledged
                               and then not EVC_Mission.Ack_Taken,
@@ -1327,6 +1351,9 @@ is
       --  4.4.11.1.6.5, 4.4.11.1.3.1 a): "Override" selected in SR: the SR
       --  speed limit and distance of the driver are deleted, the national
       --  values apply, the distance counted from here (EVC_Mission)
+      if EVC_Procedures.Condition (37) then
+         EVC_Radio_Authority.Override_Selected;
+      end if;
       if Current_Mode = M_SR and then EVC_Procedures.Condition (37) then
          EVC_Mission.Override_In_SR
            ((Mode        => Current_Mode,
@@ -1533,6 +1560,7 @@ is
                                 EVC_National_Values.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Sessions.State,
+                                EVC_Radio_Authority.State,
                                 Proc_Ctx, Test_Snapshot_Set),
                      In_Out => (Snapshot,
                                 EVC_Procedures.State, EVC_Text_Messages.State,

@@ -19,6 +19,7 @@
 --  of the cycle is in EVC_Sessions: each step of this half follows the
 --  same step of the session half.
 
+with EVC_Balise_Groups;
 with EVC_Levels;
 with EVC_Modes;  use EVC_Modes;
 with EVC_Movement_Authority;
@@ -74,11 +75,18 @@ is
       --  supervision limit of the shortened MA proposed in the cycle
       --  (EVC_SDM.Result_T.Proposal_In_Rear)
       Proposal_In_Rear : Boolean := False;
+      --  4.4.11.1.6.4 a): the driver entered the SR speed and distance in
+      --  the cycle (taken by EVC_Mission)
+      SR_Entered : Boolean := False;
+      --  4.6.3 [36]: the override is active (EVC_Procedures, as of the
+      --  last cycle)
+      Override_Active : Boolean := False;
    end record;
 
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T)
      with Global => (In_Out => (State, EVC_Radio_Info.State),
                      Input  => (EVC_Stored_Information.State,
+                                EVC_Position.State,
                                 EVC_Levels.State,
                                 EVC_Movement_Authority.State)),
           Post => EVC_Radio_Info.Count <= 1;
@@ -113,6 +121,44 @@ is
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State));
+
+   --  4.4.11.1.6.2, 4.4.11.1.6.4 b): the SR distance given by the RBC in
+   --  an SR authorisation (message 2), supervised from its reception
+   --  (4.4.11.1.3.1 b); not Active when the national value or the
+   --  driver's applies (RBC_SR_Given False), nor for D_SR "infinite"
+   function RBC_SR_Given return Boolean
+     with Global => State;
+   function RBC_SR_Distance return EVC_Odometry.Virtual_T
+     with Global => State;
+
+   --  The SR distance that applies: the RBC's while it is the last one
+   --  received, else Mission (EVC_Mission's: the national or the driver's)
+   function SR_Distance_Of (Mission : EVC_Odometry.Virtual_T)
+     return EVC_Odometry.Virtual_T
+   is (if RBC_SR_Given then RBC_SR_Distance else Mission)
+     with Global => State;
+
+   --  4.4.11.1.3 c), d): the RBC sent a list of expected balise groups in
+   --  SR (packet 63) and Id is in it
+   function In_SR_List (Id : EVC_Balise_Groups.Identity_T) return Boolean
+     with Global => State;
+
+   --  4.4.11.1.3 d): the groups passed in the cycle are all in that list
+   --  (as of the last Evaluate; for the "stop if in SR" of EVC_Procedures)
+   function Groups_Passed_Listed return Boolean
+     with Global => State;
+
+   --  5.11.2.2 S120, E125: the RBC recognised the exit from TRIP mode
+   --  (message 6) in the PT mode of the on-board (for 4.8.4 [1] and
+   --  the choices of S140)
+   function Trip_Exit_Recognised return Boolean
+     with Global => State;
+
+   --  4.4.11.1.6.5: "Override" selected; the SR distance given by the RBC
+   --  is deleted (EVC_Core, with EVC_Mission.Override_In_SR)
+   procedure Override_Selected
+     with Global => (In_Out => State),
+          Post => not RBC_SR_Given;
 
    --  The condition C holds in this cycle (computed by Evaluate)
    function Holds (C : Condition_T) return Boolean

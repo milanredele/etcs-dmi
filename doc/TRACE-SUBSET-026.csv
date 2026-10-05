@@ -315,7 +315,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.2.3.1,3,x,,,,,E5,done,"EVC_Radio_Authority.Evaluate_Request: Start selected (EVC_Driver_Requests.Start_Selected) in level 2 sends message 132, once the session with the Supervising RBC is established; evc_test Scenario_MA_Request. The acknowledgement of the Train Data by the RBC (5.4) is not waited for: the session half's [E5 authority]"
 3.8.2.3.2,3,x,,,,,E5,done,EVC_Radio_Authority.Evaluate_Request (Start_Reason); evc_test Scenario_MA_Request [E5 authority]
 3.8.2.3.2 a),3,x,,,,,E5,done,an MA accepted by radio (EVC_Stored_Information.Radio_MA_Accepted) ends the reason; evc_test Scenario_MA_Request [E5 authority]
-3.8.2.3.2 b),3,x,,,,,E5,partial,message 2 passed ends the reason (EVC_Radio_Authority.Take_Message); no scenario until the SR authorisation of the next phase [E5 authority]
+3.8.2.3.2 b),3,x,,,,,E5,done,"message 2 taken ends the reason (EVC_Radio_Authority.Take_Message, SR_Authorised); evc_test Scenario_SR_Authorisation [E5 authority]"
 3.8.2.3.2 c),3,x,,,,,E5,partial,no desk open ends the reason (EVC_Train_Inputs.Desk_Open); no scenario yet [E5 authority]
 3.8.2.4.1,3,x,,,,,E5,todo,[E5 authority]
 3.8.2.4.2,3,x,,,,,E5,todo,[E5 authority]
@@ -1212,11 +1212,11 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.10.1.2,4,x,,,,,E4,done,"UN: ceiling min(V_NVUNFIT, V_MAXTRAIN) (EVC_Core.Mode_Speed, EVC_Modes.Train_Speed_Mode) and the TSRs (EVC_Track_Description.Speed_Elements Only_TSR); evc_test E4_SoM_Other_Levels, E4_Level_Transition_0"
 4.4.10.1.3,4,x,,,,,E4,done,"UN: ceiling min(V_NVUNFIT, V_MAXTRAIN) (EVC_Core.Mode_Speed, EVC_Modes.Train_Speed_Mode) and the TSRs (EVC_Track_Description.Speed_Elements Only_TSR); evc_test E4_SoM_Other_Levels, E4_Level_Transition_0"
 4.4.10.1.4,4,x,,,,,E4,done,MSG_SPEED_STATE every cycle
-4.4.11.1.3,4,x,,,,,E4,partial,"a) b) d) e) done ([54], evc_test_procedures Integration_SR_Override_Trip); c) the list of balise groups in SR comes from the RBC (E5) [E5 authority]"
+4.4.11.1.3,4,x,,,,,E4,partial,"a) b) d) e) done ([54], evc_test_procedures Integration_SR_Override_Trip); c) the list of the RBC (EVC_Radio_Authority, [36]); the exception of d) for a listed group (EVC_Procedures, Context_T.SR_Listed) has no scenario: the track of evc_test's radio scenarios carries no packet 137 [E5 authority]"
 4.4.11.1.3 a),4,x,,,,,E4,done,"EVC_Mission.SR_Speed into Mode_Speed; evc_test E4_SoM_Level_1, E4_SR_Distance"
 4.4.11.1.3 b),4,x,,,,,E4,done,"EVC_Mission.SR_Distance (EVC_Odometry virtual position) to Snapshot_T.Extra.SR_Distance / SR_End, supervised by EVC_SDM (E3), 4.6.3 [42] trips; evc_test E4_SR_Distance"
-4.4.11.1.3 c),4,x,,,,,E4,deferred,"c) E5 (list from the RBC); d) ""stop if in SR"" (4.6.3 [54]) with the procedures half [E5 authority]"
-4.4.11.1.3 d),4,x,,,,,E4,deferred,"c) E5 (list from the RBC); d) ""stop if in SR"" (4.6.3 [54]) with the procedures half [E5 authority]"
+4.4.11.1.3 c),4,x,,,,,E4,done,"packet 63 of message 2 (EVC_Radio_Authority.Take_SR_List), 4.6.3 [36] (Group_Not_Listed, trip reason SR_Balise_Not_Listed in EVC_Procedures); evc_test Scenario_SR_Authorisation [E5 authority]"
+4.4.11.1.3 d),4,x,,,,,E4,partial,the exception for a group in the list of the RBC: EVC_Procedures (Context_T.SR_Listed from EVC_Radio_Authority.Groups_Passed_Listed); no scenario yet [E5 authority]
 4.4.11.1.3 e),4,x,,,,,E4,done,EVC_Brake_Commands: unauthorised direction protection in SR against the train orientation
 4.4.11.1.3.1,4,x,,,,,E4,partial,a) b) done; c) Euroloop is E7
 4.4.11.1.3.1 a),4,x,,,,,E4,done,EVC_Mission: the distance from the entry of SR or from the driver's entry (override: the procedures half); evc_test E4_SR_Distance
@@ -1225,14 +1225,14 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.11.1.5,4,x,,,,,E4,done,"EVC_Mission: MSG_DRIVER_DATA kind 3 in SR at standstill, refused otherwise (JRU 41 kind 4); evc_test E4_SR_Distance"
 4.4.11.1.5.1,4,x,,,,,E4,todo,the movement during the entry: the on-board does not know when the driver is in the SR data window
 4.4.11.1.5.2,4,x,,,,,E4,done,"EVC_Mission: 5 .. 600 km/h, 0 .. 65535 m as the DMI sends them (A.3.11)"
-4.4.11.1.6,4,x,,,,,E4,deferred,E5 (MA request in level 2) [E5 authority]
+4.4.11.1.6,4,x,,,,,E4,done,"'Start' in SR, level 2, session open: the MA request reason Start (EVC_Radio_Authority.Evaluate_Request); evc_test Scenario_SR_Authorisation [E5 authority]"
 4.4.11.1.6.2,4,x,,,,,E4,done,"EVC_Mission.Mode_Entered (V_NVSTFF, D_NVSTFF) and Evaluate (the driver's entry); evc_test E4_SR_Distance"
 4.4.11.1.6.3,4,x,,,,,E4,done,"EVC_Mission.Mode_Entered (V_NVSTFF, D_NVSTFF) and Evaluate (the driver's entry); evc_test E4_SR_Distance"
-4.4.11.1.6.4,4,x,,,,,E4,partial,a) done; b) the RBC (E5) [E5 authority]
+4.4.11.1.6.4,4,x,,,,,E4,done,"a) EVC_Mission, b) EVC_Radio_Authority (RBC_SR_Given, the last received applies: EVC_Core.SR_Distance); evc_test Scenario_SR_Authorisation [E5 authority]"
 4.4.11.1.6.4 a),4,x,,,,,E4,done,EVC_Mission: the last entry replaces the distance
-4.4.11.1.6.4 b),4,x,,,,,E4,deferred,E5 (SR distance from the RBC) [E5 authority]
+4.4.11.1.6.4 b),4,x,,,,,E4,done,"message 2 D_SR (EVC_Radio_Authority.Take_SR_Authorisation) supervised from its reception (4.4.11.1.3.1 b), EVC_Core.SR_Distance / SR_End / [42]; the driver's later entry replaces it; evc_test Scenario_SR_Authorisation [E5 authority]"
 4.4.11.1.6.5,4,x,,,,,E4,done,"EVC_Mission.Override_In_SR, called by EVC_Core.Run_Procedures on [37] in SR (the distance counted from the selection, 4.4.11.1.3.1 a); evc_test_procedures Integration_SR_Override_Trip"
-4.4.11.1.6.6,4,x,,,,,E4,deferred,E5 (RBC list) / E7 (Euroloop) [E5 authority]
+4.4.11.1.6.6,4,x,,,,,E4,partial,the RBC's list replaced or deleted by a new message 2 (EVC_Radio_Authority.Take_SR_Authorisation); evc_test Scenario_SR_Authorisation; Euroloop is E7 [E5 authority]
 4.4.11.1.6.7,4,x,,,,,E4,deferred,E5 (RBC list) / E7 (Euroloop) [E5 authority]
 4.4.11.1.7,4,x,,,,,E4,done,MSG_SPEED_STATE every cycle (the DMI shows the permitted speed on request); the override in MSG_MODE_LEVEL (5.8.3.7)
 4.4.11.1.8,4,x,,,,,E4,done,the SR distance is a virtual position of 3.6.7 (EVC_Odometry.Virtual_T)
@@ -1654,18 +1654,18 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.11.2.2 D085,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
 5.11.2.2 D090,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
 5.11.2.2 D110,5,x,,,,,E4,done,level 1: S140; level 2: A115 (E5)
-5.11.2.2 D130,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops) [E5 authority]"
+5.11.2.2 D130,5,x,,,,,E4,done,an emergency stop pending: 'Start' in PT does not request an MA (EVC_Radio_Authority.Evaluate); evc_test Scenario_Trip_L2 [E5 authority]
 5.11.2.2 S010,5,x,,,,,E4,done,"the trip conditions of EVC_Procedures ([12], [16] to [18], [43], [49], [52], [54], [65], [66], [69]; [11], [20], [41] are E5); evc_test_procedures Scenario_Trip_EOA, _Trip_Order, _Linking, _Track_And_Version, _Shunting_Trips, _Override"
 5.11.2.2 S050,5,x,,,,,E4,done,the acknowledgement asked at standstill (EVC_Procedures.Finish_Cycle); evc_test_procedures Scenario_Trip_EOA
 5.11.2.2 S060,5,x,,,,,E4,done,the acknowledgement asked at standstill (EVC_Procedures.Finish_Cycle); evc_test_procedures Scenario_Trip_EOA
-5.11.2.2 S120,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops) [E5 authority]"
-5.11.2.2 S130,5,x,,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops) [E5 authority]"
+5.11.2.2 S120,5,x,,,,,E4,partial,"message 6 taken in PT (EVC_Radio_Authority.Trip_Exit_Recognised): until then no MA, track description or SR authorisation taken and 'Start' requests no MA; evc_test Scenario_Trip_L2; the mode report it waits for (A115, 3.6.5) is the session half's [E5 authority]"
+5.11.2.2 S130,5,x,,,,,E4,done,"'Start' waits for the revocation of every emergency stop (EVC_Radio_Authority.Evaluate, Any_Stop); evc_test Scenario_Trip_L2 [E5 authority]"
 5.11.2.2 S140,5,x,,,,,E4,partial,"a) start in level 1 (EVC_Mission) and d) SH ([5] from PT) and override from PT done; b), c) are E5 [E5 authority]"
 5.11.2.2 S140 a),5,x,,,,,E4,done,"'Start' in PT, level 1, proposes SR (EVC_Mission, 4.4.14.1.6); evc_test_procedures Integration_SR_Override_Trip"
-5.11.2.2 S140 b),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
+5.11.2.2 S140 b),5,x,,,,,E4,partial,"'Start' in PT, level 2, after message 6: the MA request (EVC_Radio_Authority); the SR proposal on the SR authorisation (S150 a, S160) needs EVC_Mission (session half) to read EVC_Radio_Authority; evc_test Scenario_Trip_L2 [E5 authority]"
 5.11.2.2 S140 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
 5.11.2.2 S140 d),5,x,,,,,E4,done,4.6.3 [5] from PT (EVC_Procedures)
-5.11.2.2 S150,5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
+5.11.2.2 S150,5,x,,,,,E4,partial,the MA request (reason Start) sent (EVC_Radio_Authority); a) the SR proposal after message 2 is EVC_Mission's (left); b) c) the MA of the RBC and 4.6.3 [31] (phase 1); evc_test Scenario_Trip_L2 [E5 authority]
 5.11.2.2 S150 a),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
 5.11.2.2 S150 b),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
 5.11.2.2 S150 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"

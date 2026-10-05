@@ -5,11 +5,14 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P57;
+with ETCS_Track_Packets.P63;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_Distances;
+with EVC_DMI_Port;
 with EVC_Ports;              use EVC_Ports;
 with EVC_Modes;              use EVC_Modes;
+with EVC_Procedures;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_SDM;
@@ -23,11 +26,13 @@ package body EVC_Test_Authority is
    package SI renames EVC_Stored_Information;
    package T15 renames ETCS_Track_Packets.P15;
    package T57 renames ETCS_Track_Packets.P57;
+   package T63 renames ETCS_Track_Packets.P63;
    package RA renames EVC_Radio_Authority;
    use type MCat.Message_Kind_T;
    use type EVC_SDM.Status_T;
    use type SIn.Release_Speed_Kind_T;
    use type EVC_Distances.Cm_T;
+   use type Byte_Array;
 
    ---------------------------------------------------------------------
    --  Helpers
@@ -549,5 +554,202 @@ package body EVC_Test_Authority is
              and then RA.Emergency_Stops = 0,
              "emergency: the unconditional stop revoked (3.10.3)");
    end Scenario_Emergency_Stops;
+
+   ---------------------------------------------------------------------
+   --  Phase 2: the authorisations of the modes by the RBC
+   ---------------------------------------------------------------------
+
+   --  Message 2, the SR authorisation, referring to the group NID_BG of
+   --  country 123: D_SR metres (D_SR_Infinite: none), with packet 63
+   --  listing the groups List of country 123 when With_63
+   function SR_Message (NID_BG  : Natural;
+                        D_SR_M  : Natural;
+                        With_63 : Boolean := False;
+                        List    : Nat_List := (1 .. 0 => 0))
+     return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      P  : T63.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      V (7) := 1;
+      V (8) := Unsigned_64 (D_SR_M);
+      Start_Message (W, MCat.Track_M2, V);
+      if With_63 then
+         P.N_ITER := ETCS_Variables.N_ITER_T (List'Length);
+         for I in List'Range loop
+            P.Q_NEWCOUNTRY_List (I - List'First + 1).NID_BG :=
+              ETCS_Variables.NID_BG_T (List (I));
+         end loop;
+         T63.Encode (P, W, OK);
+         Check (OK, "authority: packet 63 encoded");
+      end if;
+      return Message_Bytes (W);
+   end SR_Message;
+
+   --  4.4.11 in level 2: the SR authorisation of the RBC (message 2). Its
+   --  SR distance replaces the national value (4.4.11.1.6.2, .6.4 b),
+   --  supervised from its reception (4.4.11.1.3.1 b): passing its end
+   --  trips the train ([42]); it ends the MA request reason "Start"
+   --  (3.8.2.3.2 b). Its list of expected balise groups (packet 63):
+   --  a group not in it trips the train ([36], 4.4.11.1.3 c); a new
+   --  authorisation without packet 63 deletes the list (4.4.11.1.6.6).
+   --  The driver's entry of the SR distance replaces the RBC's
+   --  (4.4.11.1.6.4 a)
+   procedure Scenario_SR_Authorisation is
+      use type EVC_Procedures.Trip_Reason_T;
+   begin
+      --  the distance, and the reason Start ended
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 300));
+      Add_Group (Group (30, 500));
+      Establish;
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (Wait_Request (500) and then RA.MA_Request_Reasons = 1,
+             "SR authorisation: 'Start' in SR, level 2, an MA request");
+      Give_Radio_Message (1, SR_Message (10, 250));
+      Stand_X (200);
+      Check (RA.RBC_SR_Given and then RA.RBC_SR_Distance.Active
+             and then RA.MA_Request_Reasons = 0,
+             "SR authorisation: message 2 gives the SR distance "
+             & "(4.4.11.1.6.4 b) and ends the reason Start (3.8.2.3.2 b)");
+      Run_X (20_000);
+      Check (EVC_Core.Mode = M_SR,
+             "SR authorisation: in SR short of the RBC's SR distance");
+      Run_X (27_000);
+      Check (EVC_Core.Mode = M_TR
+             and then EVC_Procedures.Trip_Reason
+                        = EVC_Procedures.SR_Distance_Passed,
+             "SR authorisation: the RBC's SR distance passed, train trip "
+             & "(4.4.11.1.3 b, 4.6.3 [42])");
+
+      --  the list: group 20 listed, group 30 not
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 300));
+      Add_Group (Group (30, 500));
+      Establish;
+      Run_X (15_000);
+      Give_Radio_Message
+        (1, SR_Message (10, 32767, With_63 => True, List => (1 => 20)));
+      Stand_X (200);
+      Check (RA.In_SR_List ((123, 20)) and then not RA.In_SR_List ((123, 30)),
+             "SR authorisation: the list of packet 63 stored");
+      Run_X (40_000);
+      Check (EVC_Core.Mode = M_SR and then not RA.RBC_SR_Distance.Active,
+             "SR authorisation: D_SR infinite, the listed group passed "
+             & "(4.4.11.1.3 c)");
+      Run_X (55_000);
+      Check (EVC_Core.Mode = M_TR
+             and then EVC_Procedures.Trip_Reason
+                        = EVC_Procedures.SR_Balise_Not_Listed,
+             "SR authorisation: a group not in the list, train trip "
+             & "(4.6.3 [36])");
+
+      --  a new authorisation without the list: every group may pass; the
+      --  driver's entry replaces the RBC's distance
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 300));
+      Establish;
+      Run_X (15_000);
+      Give_Radio_Message
+        (1, SR_Message (10, 32767, With_63 => True, List => (1 => 20)));
+      Stand_X (200);
+      Give_Radio_Message (1, SR_Message (10, 100));
+      Stand_X (200);
+      Check (RA.RBC_SR_Given and then not RA.In_SR_List ((123, 20)),
+             "SR authorisation: a new one without packet 63 deletes the "
+             & "list (4.4.11.1.6.6)");
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                         Byte_Array'(1 => 3) & U16 (40) & U16 (1000)));
+      Stand_X (200);
+      Check (not RA.RBC_SR_Given,
+             "SR authorisation: the driver's SR distance replaces the "
+             & "RBC's (4.4.11.1.6.4 a)");
+      Run_X (40_000);
+      Check (EVC_Core.Mode = M_SR,
+             "SR authorisation: past the RBC's former distance and group "
+             & "20 in SR");
+   end Scenario_SR_Authorisation;
+
+   --  A message of the RBC with the header fields only (message 6)
+   function Header_Message (Kind : MCat.Known_Message_T) return Byte_Array
+   is
+      W : Writer_T;
+      V : ETCS_Message.Value_Array := (others => 0);
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := 10;
+      Start_Message (W, Kind, V);
+      return Message_Bytes (W);
+   end Header_Message;
+
+   --  5.11 in level 2, Post Trip: until the RBC recognises the exit from
+   --  TR (message 6, S120) the driver's "Start" requests no MA and an MA
+   --  is not taken (A035, 4.8.4 [1]); after it, "Start" sends the MA
+   --  request (S140 b, S150). With an emergency stop pending, "Start"
+   --  waits for its revocation (D130, S130). Message 6 outside PT is
+   --  not taken.
+   procedure Scenario_Trip_L2 is
+      MAs : Natural;
+   begin
+      Start_L2;
+      Run_X (15_000);
+      Give_Radio_Message (1, Header_Message (MCat.Track_M6));
+      Stand_X (200);
+      Check (not RA.Trip_Exit_Recognised,
+             "post trip, level 2: message 6 outside PT not taken");
+      EVC_Core.Set_Mode_For_Test (M_PT, L2);
+      Stand_X (200);
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (not Wait_Request (1_000),
+             "post trip, level 2: no MA request before the exit from TR "
+             & "is recognised (5.11.2.2 S120)");
+      MAs := RA.Radio_MAs_Accepted;
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400), 600),
+                                         Stamp));
+      Stand_X (200);
+      Check (RA.Radio_MAs_Accepted = MAs,
+             "post trip, level 2: no MA before message 6 (5.11.2.2 A035, "
+             & "4.8.4 [1])");
+      Give_Radio_Message (1, Header_Message (MCat.Track_M6));
+      Stand_X (200);
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (RA.Trip_Exit_Recognised and then Wait_Request (1_000)
+             and then Request_Reason = 1,
+             "post trip, level 2: message 6, then 'Start' sends the MA "
+             & "request (5.11.2.2 E125, S140 b, S150)");
+
+      --  an unconditional emergency stop pending
+      Start_L2;
+      Run_X (15_000);
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M16, 3));
+      Stand_X (500);
+      EVC_Core.Set_Mode_For_Test (M_PT, L2);
+      Stand_X (200);
+      Give_Radio_Message (1, Header_Message (MCat.Track_M6));
+      Stand_X (200);
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (RA.Trip_Exit_Recognised and then RA.Emergency_Stops = 1
+             and then not Wait_Request (1_000),
+             "post trip, level 2: an emergency stop pending, no MA "
+             & "request (5.11.2.2 D130, S130)");
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 3));
+      Stand_X (200);
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (RA.Emergency_Stops = 0 and then Wait_Request (1_000),
+             "post trip, level 2: the stop revoked, 'Start' requests an "
+             & "MA (5.11.2.2 E135, S140)");
+   end Scenario_Trip_L2;
 
 end EVC_Test_Authority;

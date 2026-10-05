@@ -6,11 +6,11 @@ with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P57;
+with ETCS_Track_Packets.P63;
 with ETCS_Train_Packets.P0;
 with ETCS_Variables;          use ETCS_Variables;
 with EVC_Bytes;
 with EVC_Ports;
-with EVC_Balise_Groups;
 with EVC_Distances;           use EVC_Distances;
 with Interfaces;              use Interfaces;
 
@@ -21,12 +21,15 @@ package body EVC_Radio_Authority
                                    Params, Reasons, Request_Due,
                                    Request_Sent, Last_Request_Ms,
                                    SR_Authorised, Requests, Start_Reason,
-                                   Deleted_Reason, Shortening, Emergency))
+                                   Deleted_Reason, Shortening, Emergency,
+                                   SR_Auth, Passed_Listed, Mode_Now,
+                                   Exit_Recognised))
 is
 
    use type ETCS_Message_Catalogue.Message_Kind_T;
    use type ETCS_Catalogue.Packet_Kind_T;
    use type EVC_Radio_Info.Action_T;
+   use type EVC_Balise_Groups.Identity_T;
 
    type Held_T is array (Condition_T) of Boolean;
 
@@ -101,6 +104,38 @@ is
    end record;
    Emergency : Emergency_T := (others => <>);
 
+   --  4.4.11: the SR authorisation of the RBC (message 2): its SR
+   --  distance (Given: the RBC's applies; Distance not Active: D_SR
+   --  infinite) and its list of expected balise groups (packet 63;
+   --  List_Known False: no list, every group may be passed)
+   Max_SR_List : constant := 31;
+   type SR_List_T is array (1 .. Max_SR_List)
+     of EVC_Balise_Groups.Identity_T;
+   type SR_Auth_T is record
+      Given      : Boolean := False;
+      Distance   : EVC_Odometry.Virtual_T := (others => <>);
+      List_Known : Boolean := False;
+      List_N     : Natural range 0 .. Max_SR_List := 0;
+      List       : SR_List_T := (others => (others => <>));
+   end record;
+   SR_Auth : SR_Auth_T := (others => <>);
+   --  4.4.11.1.3 d): the groups passed in the cycle are in the list
+   Passed_Listed : Boolean := False;
+
+   --  The mode of the last cycle (EVC_Radio.Context_T.Mode, Evaluate),
+   --  and 5.11.2.2 S120: message 6, "Recognition of exit from TRIP mode",
+   --  received in PT
+   Mode_Now        : Mode_T := M_NP;
+   Exit_Recognised : Boolean := False;
+
+   --  5.11.2.2 A035, S120, 4.8.4 [1]: in TR no MA, track description or
+   --  mode authorisation of the RBC is taken; in PT only once the exit
+   --  from TR is recognised by the RBC (a time stamp later than message
+   --  6: EVC_Sessions' order of the time stamps)
+   function Authorisation_Allowed return Boolean is
+     (Mode_Now /= M_TR and then (Mode_Now /= M_PT or else Exit_Recognised))
+     with Global => (Mode_Now, Exit_Recognised);
+
    --  3.10.2.4: an emergency stop accepted and not revoked
    function Any_Stop return Boolean is
      (for some N in NID_EM_T => Emergency.Stops (N) /= No_Stop)
@@ -165,6 +200,26 @@ is
       end loop;
       return N;
    end Emergency_Stops;
+   function RBC_SR_Given return Boolean is (SR_Auth.Given);
+
+   function RBC_SR_Distance return EVC_Odometry.Virtual_T is
+     (SR_Auth.Distance);
+
+   function In_SR_List (Id : EVC_Balise_Groups.Identity_T) return Boolean
+   is (SR_Auth.List_Known
+       and then (for some I in 1 .. SR_Auth.List_N =>
+                   SR_Auth.List (I) = Id));
+
+   function Groups_Passed_Listed return Boolean is (Passed_Listed);
+
+   function Trip_Exit_Recognised return Boolean is (Exit_Recognised);
+
+   procedure Override_Selected is
+   begin
+      SR_Auth.Given := False;
+      SR_Auth.Distance := (others => <>);
+   end Override_Selected;
+
    function Shortenings_Granted return Natural is (Shortening.Granted)
      with Refined_Global => Shortening;
    function Shortenings_Rejected return Natural is (Shortening.Rejected)
@@ -189,6 +244,10 @@ is
       Deleted_Reason := False;
       Shortening := (others => <>);
       Emergency := (others => <>);
+      SR_Auth := (others => <>);
+      Passed_Listed := False;
+      Mode_Now := M_NP;
+      Exit_Recognised := False;
       EVC_Radio_Info.Clear;
    end Clear;
 
@@ -303,6 +362,80 @@ is
       end loop;
    end Take_Parameters;
 
+   --  4.4.11.1.3 c), 4.4.11.1.6.6: packet 63 of the last message, the
+   --  list of expected balise groups in SR (7.4.2.16), replacing the
+   --  stored one; an empty list lets no group pass. A group's country is
+   --  the one of the item before it, the first the LRBG's of the message
+   --  (Q_NEWCOUNTRY 0). Taken whatever its Q_DIR: the groups are those
+   --  the train may pass (a decision)
+   procedure Take_SR_List
+     with Global => (Input => EVC_Received.Store, In_Out => SR_Auth)
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P63.Packet_T;
+      OK : Boolean;
+      C  : NID_C_T;
+   begin
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P63
+         then
+            EVC_Received.Open_Message_Packet (I, R);
+            ETCS_Track_Packets.P63.Decode (R, P, OK);
+            if OK then
+               C := LRBG_Of_Last.NID_C;
+               SR_Auth.List_Known := True;
+               SR_Auth.List_N := 0;
+               SR_Auth.List := (others => (others => <>));
+               for J in 1 .. Natural'Min (Natural (P.N_ITER), Max_SR_List)
+               loop
+                  pragma Loop_Invariant (SR_Auth.List_N < J);
+                  if P.Q_NEWCOUNTRY_List (J).Has_NID_C then
+                     C := P.Q_NEWCOUNTRY_List (J).NID_C;
+                  end if;
+                  SR_Auth.List_N := SR_Auth.List_N + 1;
+                  SR_Auth.List (SR_Auth.List_N) :=
+                    (NID_C  => C,
+                     NID_BG => P.Q_NEWCOUNTRY_List (J).NID_BG);
+               end loop;
+            end if;
+         end if;
+      end loop;
+   end Take_SR_List;
+
+   --  4.4.11.1.6.2, 4.4.11.1.6.4 b), 4.4.11.1.3.1 b), 4.4.11.1.6.6:
+   --  message 2, the SR authorisation. Its SR distance applies (Given),
+   --  supervised from its reception along the train orientation
+   --  (D_SR_Infinite: no distance); its list of expected balise groups
+   --  replaces the stored one, a message without packet 63 deletes it.
+   --  A spare Q_SCALE: the message is not taken. That it authorises SR
+   --  (3.8.2.3.2 b, the proposal of SR) is SR_Authorised
+   procedure Take_SR_Authorisation
+     with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
+                                EVC_Odometry.State),
+                     In_Out => SR_Auth)
+   is
+      Scale : constant Natural :=
+        Natural (EVC_Received.Last_Value (Q_SCALE) mod 4);
+      D     : constant D_SR_T :=
+        To_D_SR (EVC_Received.Last_Value (D_SR) mod 32768);
+   begin
+      if Scale <= 2 then
+         SR_Auth.Given := True;
+         SR_Auth.Distance := (others => <>);
+         if D /= D_SR_Infinite then
+            SR_Auth.Distance := EVC_Odometry.Start_Virtual
+              (Scaled (Natural (D), Scale), EVC_Position.Orientation);
+         end if;
+         SR_Auth.List_Known := False;
+         SR_Auth.List_N := 0;
+         Take_SR_List;
+      end if;
+   end Take_SR_Authorisation;
+
    --  3.10: the emergency messages. 15: to EVC_Radio_Info with its stop
    --  location, judged by the stored information of the cycle (3.10.2.2)
    --  and acknowledged in Evaluate; 16: accepted, the train tripped by
@@ -345,10 +478,22 @@ is
    begin
       Count (Messages);
       Take_Parameters;
-      if Kind = ETCS_Message_Catalogue.Track_M2 then
+      if Kind = ETCS_Message_Catalogue.Track_M6 then
+         --  5.11.2.2 S120, E125: in PT (4.8.4: rejected in other modes)
+         if Mode_Now = M_PT then
+            Exit_Recognised := True;
+         end if;
+      elsif Kind in ETCS_Message_Catalogue.Track_M2
+                  | ETCS_Message_Catalogue.Track_M3
+                  | ETCS_Message_Catalogue.Track_M33
+                  | ETCS_Message_Catalogue.Track_M9
+        and then not Authorisation_Allowed
+      then
+         null;
+      elsif Kind = ETCS_Message_Catalogue.Track_M2 then
          SR_Authorised := True;
-      end if;
-      if Kind = ETCS_Message_Catalogue.Track_M3 then
+         Take_SR_Authorisation;
+      elsif Kind = ETCS_Message_Catalogue.Track_M3 then
          Take_Stored_Information (False, Now_Ms);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
          Take_Stored_Information (True, Now_Ms);
@@ -506,14 +651,47 @@ is
       Shortening.Pending := False;
    end Judge_Shortening;
 
+   --  4.6.3 [36], 4.4.11.1.3 c): in SR with a list of expected balise
+   --  groups of the RBC, a group passed in the cycle that is not in it,
+   --  the override not active
+   function Group_Not_Listed (Ctx : EVC_Radio.Context_T; Facts : Facts_T)
+     return Boolean
+     with Global => (SR_Auth, EVC_Position.State)
+   is
+   begin
+      if Ctx.Mode /= M_SR or else not SR_Auth.List_Known
+        or else Facts.Override_Active
+      then
+         return False;
+      end if;
+      for G in 1 .. EVC_Position.Taken_Count loop
+         pragma Loop_Invariant (True);
+         if not In_SR_List (EVC_Position.Taken (G).Group.Id) then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Group_Not_Listed;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
       MA_Received : constant Boolean :=
         EVC_Stored_Information.Radio_MA_Accepted;
+      F           : Facts_T := Facts;
    begin
       if MA_Received then
          Count (Radio_MAs);
       end if;
-      Evaluate_Request (Ctx.Now_Ms, Facts, MA_Received);
+      Mode_Now := Ctx.Mode;
+      if Mode_Now /= M_PT then
+         Exit_Recognised := False;
+      end if;
+      --  5.11.2.2 S120, D130, S130, S140 b), S150: in PT, "Start" requests
+      --  an MA once the exit from TR is recognised and no emergency stop
+      --  is pending
+      F.Start := Facts.Start
+                 and then (Ctx.Mode /= M_PT
+                           or else (Exit_Recognised and then not Any_Stop));
+      Evaluate_Request (Ctx.Now_Ms, F, MA_Received);
       --  3.8.2.1.5: the repetition
       if Reasons /= 0 and then Request_Sent and then Cycle_Ms > 0
         and then Ctx.Now_Ms - Last_Request_Ms >= Cycle_Ms
@@ -526,6 +704,15 @@ is
            and then Params.T_MAR /= T_MAR_No_MA_Request_Triggering
          then 1000 * Unsigned_64 (Params.T_MAR) else 0);
       Held := (others => False);
+      --  4.4.11.1.6.4: the driver's entry is now the last value received
+      if Facts.SR_Entered then
+         Override_Selected;
+      end if;
+      Held (C_36) := Group_Not_Listed (Ctx, Facts);
+      Passed_Listed := SR_Auth.List_Known
+        and then EVC_Position.Taken_Count > 0
+        and then (for all G in 1 .. EVC_Position.Taken_Count =>
+                    In_SR_List (EVC_Position.Taken (G).Group.Id));
       --  [31] (MA+SSP+gradient are on-board) AND (the train position
       --  confidence interval does not overlap any Mode Profile) AND
       --  (ERTMS/ETCS level is 2)
@@ -548,10 +735,21 @@ is
    --  SR, SL, NL, UN, SN or RV deletes them; SM, FS, AD, LS, OS, TR and
    --  PT keep them (so [45] holds back the exit from Trip until the
    --  revocation). The end of a session deletes none: no clause asks it.
+   --  4.4.11.1.6.2: SR entered from SB or PT (the SR authorisation of
+   --  5.4, 5.11 acknowledged) keeps the SR distance and the list of the
+   --  RBC; any other change of mode deletes them (4.10: a decision for
+   --  the authorisation received in SB or PT and not used)
    procedure Mode_Changed (From, To : Mode_T) is
-      pragma Unreferenced (From);
    begin
       Count (Mode_Changes);
+      Mode_Now := To;
+      --  5.11.2.2 S120: the recognition is that of the PT entered
+      if To /= M_PT then
+         Exit_Recognised := False;
+      end if;
+      if not (To = M_SR and then From in M_SB | M_PT) then
+         SR_Auth := (others => <>);
+      end if;
       if To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL | M_UN
              | M_SN | M_RV
       then
