@@ -447,6 +447,13 @@ package body S076_Run is
          return Fail ("DMI " & Name & ": " & Window_ID_T'Image (Wid)
                       & " cannot be opened over " & Top_Image);
       end if;
+      --  A button that needs standstill: the train may have stopped in
+      --  this very cycle and the DMI not yet received it; the driver
+      --  looks again for a few cycles while the train is at standstill
+      for I in 1 .. 5 loop
+         exit when DMI_Windows.Button_Enabled (Index) or else B.Speed /= 0;
+         B.Cycle;
+      end loop;
       if not DMI_Windows.Button_Enabled (Index) then
          return Fail ("DMI " & Name & ": the button is disabled");
       end if;

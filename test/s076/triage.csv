@@ -182,4 +182,3 @@ Sce3c7004,E5,session phase 2 (3.5.6.7): no connection set-up while no mobile ter
 S9863bf83,onboard,message 155 with NID_ENGINE 76000 expected: the on-board sends 0 (no ETCS identity in the configuration yet; EVC_Radio_Authority and EVC_Sessions use a constant)
 S54865f32,E5,session: the system status message "Communication error" expected in 9990400_08 and not shown; first look only (3.16.3.4.4 is implemented for the T_NVCONTACT service brake: another condition here)
 S81c940f5,E5,5100300_08: level 2 where the sequence has level 1 after a sleeping input; level transitions to and from level 2 are session phase 2 (5.10, 5.15)
-Scd518a05,model,5060200_01: the second Shunting press comes in the cycle the train stops at 550 m; the on-board is at standstill but the DMI has not received the standstill yet (the runner's driver does not wait for it)
