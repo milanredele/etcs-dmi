@@ -40,7 +40,11 @@ package body S076_Run is
    function Reason_Image (R : Reason_T) return String is
      (case R is
          when R_None             => "none",
-         when R_Level_2          => "level 2/3 or RBC needed (E5)",
+         when R_Radio            =>
+            "radio: not yet modelled by the runner (E5)",
+         when R_Handover         => "RBC handover, a second RBC (E5)",
+         when R_Radio_Infill     => "radio infill (3.9, E7)",
+         when R_Level_3          => "level 3 (absent from 4.0.0)",
          when R_Version          =>
             "system version other than 4.0 layout (chapter 6, E7)",
          when R_Euroloop         => "Euroloop (E7)",
@@ -128,6 +132,10 @@ package body S076_Run is
          Field_Gap := To_Text (S);
       end if;
    end Note_Gap;
+   --  the time stamp of the last message the RBC of the sequence gave
+   --  (S076_Run-Radio_Input), since the last connection set up
+   RBC_Stamp       : Unsigned_64 := 0;
+   RBC_Stamp_Given : Boolean := False;
    Cur            : Natural := 0;       -- the index of the step
    Step_Start_Ms  : Unsigned_64 := 0;   -- the time the last step ended
    Explicit_Speed : Integer := -1;      -- cm/s set by an ODO input
@@ -832,10 +840,23 @@ package body S076_Run is
          Desk_Isolation;
          return Pass ("DMI isolation");
       elsif Has (Item, "RBC") or else Has (Item, "Radio")
-        or else Has (Item, "GSM-R") or else Has (Item, "SM")
-        or else Has (Item, "Track-ahead")
+        or else Has (Item, "GSM-R")
       then
-         return NJ (R_Level_2, "DMI " & Verb & " " & Item);
+         --  the radio data dialogues of the start of mission in level 2
+         --  (5.4.3.2; DMI 11.2.5, 11.3.4, 11.3.5, 11.3.15, 11.3.16): the
+         --  on-board opens them; the runner does not fill them yet, so
+         --  the step is judged only on the window being there
+         if not (Top_Is (W_Radio_Data) or else Top_Is (W_RBC_Data)
+                 or else Top_Is (W_GSMR_Network)
+                 or else Top_Is (W_Radio_Network_Type)
+                 or else Top_Is (W_One_Radio))
+         then
+            return Fail ("DMI radio data dialogue: no radio data window "
+                         & "open, top is " & Top_Image);
+         end if;
+         return NJ (R_Radio, "DMI " & Verb & " " & Item);
+      elsif Has (Item, "SM") or else Has (Item, "Track-ahead") then
+         return NJ (R_Radio, "DMI " & Verb & " " & Item);
       elsif Has (Item, "ATO") then
          return NJ (R_ATO, "DMI " & Verb & " " & Item);
       end if;
@@ -884,9 +905,10 @@ package body S076_Run is
    function Timer_Input (St : Step_T) return Judgement_T is
       Name : constant String := W (4);
       subtype Name_T is String (1 .. 14);
-      Known : constant array (1 .. 5) of Name_T :=
+      Known : constant array (1 .. 8) of Name_T :=
         ("T_SECTIONTIMER", "T_ENDTIMER    ", "T_TEXTDISPLAY ",
-         "T_ACK         ", "T_LSSMA       ");
+         "T_ACK         ", "T_LSSMA       ", "T_NVCONTACT   ",
+         "T_CYCRQST     ", "T_CYCLOC      ");
       function K (I : Positive) return String is
         (Ada.Strings.Fixed.Trim (Known (I), Ada.Strings.Right));
       Found : Boolean;
@@ -901,14 +923,18 @@ package body S076_Run is
             exit;
          end if;
       end loop;
-      if Has (Name, "T_NVCONTACT") or else Has (Name, "T_CYCRQST")
-        or else Has (Name, "T_CYCLOC")
-        or else (Name = "" and then (Has (Image (St.Comment), "radio")
+      --  the radio timers whose value a message gave (T_NVCONTACT of
+      --  packet 3, T_CYCRQST of packet 57, T_CYCLOC of packet 58, in s)
+      --  are run as the others; 255 is "infinite" (7.5.1)
+      if (Chosen = 0 or else Chosen >= 6)
+        and then (Name = "T_CYCRQSTD"
+                  or else Name = "T_TIMEOUTRQST"
+                  or else (Name = "" and then (Has (Image (St.Comment), "radio")
                                      or else Has (Image (St.Comment),
                                                   "registration")
-                                     or else Has (Image (St.Comment), "RBC")))
+                                     or else Has (Image (St.Comment), "RBC"))))
       then
-         return NJ (R_Level_2, "timer " & Name);
+         return NJ (R_Radio, "timer " & Name);
       end if;
       if Chosen = 0 then
          return NJ (R_Runner, "timer " & (if Name = "" then "without a name"
@@ -922,7 +948,10 @@ package body S076_Run is
       declare
          S : constant Natural := Timer_Seconds (K (Chosen), Found);
       begin
-         if not Found or else S >= 1023 then
+         if Chosen >= 6 and then (not Found or else S = 255) then
+            return NJ (R_Radio, "timer " & K (Chosen)
+                       & (if Found then " infinite" else " without a value"));
+         elsif not Found or else S >= 1023 then
             return NJ (R_Runner, "timer " & K (Chosen)
                        & " without a value");
          end if;
@@ -1310,7 +1339,7 @@ package body S076_Run is
                                    & ": header rows lost at a page break");
                      end if;
                      if T.Level_3 then
-                        return NJ (R_Level_2, "telegram " & Tag
+                        return NJ (R_Level_3, "telegram " & Tag
                                    & ": an order to level 3 (M_LEVELTR 4)");
                      end if;
                      if T.Old_Level_Text then
@@ -1483,6 +1512,50 @@ package body S076_Run is
       return Pass ("BTM" & Natural'Image (Found) & " telegrams");
    end BTM_Input;
 
+   ---------------------------------------------------------------------
+   --  The radio (RTM port, phase E5): S076_Run-Radio_Input and
+   --  S076_Run-Radio_Expect
+   ---------------------------------------------------------------------
+
+   --  The session of the RBC of the sequence: 1. A sequence shows a
+   --  second RBC by an RBC transition order (packet 131, 3.15.1.2) in a
+   --  message or a telegram; the RTM steps after the first one are not
+   --  judged (R_Handover) until the runner tells the two RBCs apart.
+   Radio_Session : constant := 1;
+
+   --  The step of the first RBC transition order of the sequence, 0 when
+   --  none
+   function Handover_Step return Natural;
+
+   function Radio_Input (St : Step_T) return Judgement_T is separate;
+   function Radio_Expect (St : Step_T) return Judgement_T is separate;
+
+   function Handover_Step return Natural is
+      First : Natural := 0;
+      procedure Note (Step : Natural) is
+      begin
+         if First = 0 or else Step < First then
+            First := Step;
+         end if;
+      end Note;
+   begin
+      for I in 1 .. Seq.Message_Count loop
+         for K in 1 .. Seq.Messages (I).Packet_Count loop
+            if Seq.Messages (I).Packets (K) = 131 then
+               Note (Seq.Messages (I).Step);
+            end if;
+         end loop;
+      end loop;
+      for I in 1 .. Seq.Telegram_Count loop
+         for K in 1 .. Seq.Telegrams (I).Packet_Count loop
+            if Seq.Telegrams (I).Packets (K) = 131 then
+               Note (Seq.Telegrams (I).Step);
+            end if;
+         end loop;
+      end loop;
+      return First;
+   end Handover_Step;
+
    function Apply_Input (St : Step_T) return Judgement_T is
       Iface : constant String := W (2);
       Kind  : constant String := W (3);
@@ -1538,7 +1611,7 @@ package body S076_Run is
          end if;
          return DMI_Input (St);
       elsif Iface = "RTM" then
-         return NJ (R_Level_2, "RTM " & Kind);
+         return Radio_Input (St);
       elsif Iface = "LTM" then
          return NJ (R_Euroloop, "LTM");
       elsif Iface = "ATO" then
@@ -1840,8 +1913,15 @@ package body S076_Run is
          elsif Same (Name, "Hour-glass") then
             return Shown (St_W, False, S.Has_Onboard and then S.Onboard (7) /= 0,
                           "hour glass (MSG_ONBOARD waiting)");
-         elsif Has (Name, "Safe-radio-connection") then
-            return NJ (R_Level_2, "radio connection symbol");
+         elsif Has (Name, "Safe-radio-connection---Connection-Up") then
+            --  MSG_STATUS radio: 1 up, 2 lost / set-up failed
+            return Shown (St_W, Seen.Radio_Up, S.Radio = 1,
+                          "safe radio connection up (MSG_STATUS radio"
+                          & Img (S.Radio) & ")");
+         elsif Has (Name, "Safe-radio-connection---Connection-Lost") then
+            return Shown (St_W, Seen.Radio_Lost, S.Radio = 2,
+                          "safe radio connection lost (MSG_STATUS radio"
+                          & Img (S.Radio) & ")");
          elsif Same (Name, "Reversing-permitted") then
             return Shown (St_W, Seen.Reversing, S.Reversing, "reversing");
          elsif Same (Name, "Adhesion-factor---slippery-rail") then
@@ -1898,7 +1978,7 @@ package body S076_Run is
          if Same (Name, "Geographical-Position") then
             return Shown (St_W, Seen.Geo, S.Geo_Known, "geographical position");
          elsif Same (Name, "Track-Ahead-Free") then
-            return NJ (R_Level_2, "TAF");
+            return Shown (St_W, Seen.TAF, S.TAF, "track ahead free request");
          end if;
          return NJ (R_Runner, "driver request " & Name);
       elsif Same (Kind, "Geographical-Position") then
@@ -1941,7 +2021,7 @@ package body S076_Run is
       elsif Same (Kind, "ato-symbol") then
          return NJ (R_ATO, "ATO symbol");
       elsif Same (Kind, "supervised-manoeuvre-symbol") then
-         return NJ (R_Level_2, "SM symbol");
+         return NJ (R_Radio, "SM symbol");
       elsif Same (Kind, "data-value")
         and then (Same (Name, "Train-Running-Number")
                   or else Same (Name, "Driver-ID")
@@ -2752,7 +2832,7 @@ package body S076_Run is
       elsif Iface = "TIU" then
          return TIU_Expect;
       elsif Iface = "RTM" then
-         return NJ (R_Level_2, "RTM " & W (3));
+         return Radio_Expect (St);
       elsif Iface = "ATO" then
          return NJ (R_ATO, "ATO " & W (3));
       end if;
@@ -2768,8 +2848,8 @@ package body S076_Run is
       Lb : constant Level_Kind_T := Level_Of (Trim (St.Lvl_Before));
       La : constant Level_Kind_T := Level_Of (Trim (St.Lvl_After));
    begin
-      if Lb in K_L2 | K_L3 or else La in K_L2 | K_L3 then
-         return R_Level_2;
+      if Lb = K_L3 or else La = K_L3 then
+         return R_Level_3;
       elsif Lb = K_NTC or else La = K_NTC
         or else Trim (St.Mode_Before) = "SN" or else Trim (St.Mode_After) = "SN"
       then
@@ -2815,6 +2895,8 @@ package body S076_Run is
       Train_Configuration := 1;
       Explicit_Speed := -1;
       Wait_Used := 0;
+      RBC_Stamp := 0;
+      RBC_Stamp_Given := False;
       Outcome := Seq_Passed;
       Outcome_Step := 0;
       Outcome_Index := 0;

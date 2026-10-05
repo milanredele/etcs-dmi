@@ -299,6 +299,83 @@ package body S076_Main is
    Regressions, Improvements, New_Seqs : Natural := 0;
    Regression_List, Improvement_List : Text_T;
 
+   ---------------------------------------------------------------------
+   --  The radio work list (phase E5): per output of the on-board that an
+   --  "expect RTM" step waits for and does not get (a message by its
+   --  NID_MESSAGE, a request to the radio), the sequences with such a
+   --  step, those whose first failure it is, and the steps
+   ---------------------------------------------------------------------
+
+   Max_Radio_Keys : constant := 64;
+   type Radio_Key_T is record
+      Key : Text_T;
+      Sequences, First, Steps : Natural := 0;
+      In_Sequence : Boolean := False;
+   end record;
+   Radio_Keys  : array (1 .. Max_Radio_Keys) of Radio_Key_T;
+   Radio_Key_N : Natural := 0;
+
+   --  The half of phase E5 that sends it (doc/EVC-PLAN.md §13 "Joint:
+   --  outcome", "What each half fills")
+   function Radio_Half (Key : String) return String is
+     (if Key = "message 132" or else Key = "message 137"
+        or else Key = "message 138" or else Key = "message 147"
+        or else Key = "message 149" or else Key = "message 130"
+        or else Key = "message 131" or else Key = "message 133"
+        or else Key = "message 158"
+      then "authority (EVC_Radio_Authority)"
+      elsif Key = "message 153" then "radio infill (E7)"
+      else "session (EVC_Sessions)");
+
+   procedure Note_Radio_Wait (Index : Positive) is
+      St : Step_T renames Loaded.Steps (Index);
+      L  : Scn_Reader.Line_T (St.Line.N);
+      Sig : constant String := Image (Results (Index).Signature);
+      K  : Natural := 0;
+   begin
+      L.Text := Image (St.Line);
+      Scn_Reader.Split (L);
+      if Scn_Reader.Word (L, 1) /= "expect"
+        or else Scn_Reader.Word (L, 2) /= "RTM"
+        or else not (Ada.Strings.Fixed.Index (Sig, "not sent") > 0
+                     or else Ada.Strings.Fixed.Index (Sig, "not requested")
+                             > 0)
+      then
+         return;
+      end if;
+      declare
+         Key : constant String :=
+           (if Scn_Reader.Word (L, 3) = "message"
+            then "message " & Scn_Reader.Word (L, 4)
+            else Scn_Reader.Word (L, 3));
+      begin
+         for I in 1 .. Radio_Key_N loop
+            if Image (Radio_Keys (I).Key) = Key then
+               K := I;
+            end if;
+         end loop;
+         if K = 0 and then Radio_Key_N < Max_Radio_Keys then
+            Radio_Key_N := Radio_Key_N + 1;
+            K := Radio_Key_N;
+            Radio_Keys (K).Key := To_Text (Key);
+         end if;
+      end;
+      if K > 0 then
+         declare
+            R : Radio_Key_T renames Radio_Keys (K);
+         begin
+            R.Steps := R.Steps + 1;
+            if not R.In_Sequence then
+               R.In_Sequence := True;
+               R.Sequences := R.Sequences + 1;
+            end if;
+            if Outcome = Seq_Failed and then Outcome_Index = Index then
+               R.First := R.First + 1;
+            end if;
+         end;
+      end if;
+   end Note_Radio_Wait;
+
    function Outcome_Word (O : Outcome_T) return String is
      (case O is when Seq_Passed => "passed", when Seq_Failed => "failed",
                 when Seq_Blocked => "blocked");
@@ -306,7 +383,10 @@ package body S076_Main is
    function Reason_Code (R : Reason_T) return String is
      (case R is
          when R_None             => "-",
-         when R_Level_2          => "E5-level2",
+         when R_Radio            => "E5-radio",
+         when R_Handover         => "E5-handover",
+         when R_Radio_Infill     => "E7-infill",
+         when R_Level_3          => "L3",
          when R_Version          => "E7-version",
          when R_Euroloop         => "E7-euroloop",
          when R_E6               => "E6",
@@ -476,6 +556,9 @@ package body S076_Main is
          else
             Add (Total);
             Add (By_SV (SV_Index));
+            for K in 1 .. Radio_Key_N loop
+               Radio_Keys (K).In_Sequence := False;
+            end loop;
             declare
                F : constant String :=
                  (if Loaded.Feature.N >= 7
@@ -510,11 +593,13 @@ package body S076_Main is
                      Reason_Steps (R.Reason) := Reason_Steps (R.Reason) + 1;
                      if R.Reason in R_JRU_Not_Modelled | R_DMI_Internal
                        | R_Runner | R_Not_Modelled | R_Unclassified
+                       | R_Radio | R_Handover | R_Radio_Infill
                      then
                         Count_Detail (R.Reason, Image (R.Signature),
                                       Is_Block => False);
                      end if;
                   elsif R.Verdict = Failed then
+                     Note_Radio_Wait (I);
                      declare
                         K : constant Natural := Find_Sig (Signature (I));
                      begin
@@ -660,6 +745,31 @@ package body S076_Main is
          end loop;
          Put_Line (F, Img (Untriaged) & "  not triaged");
       end;
+      Put_Line (F, "");
+      Put_Line (F, "## Radio: the outputs of the on-board the sequences "
+                & "wait for (sequences, of them first failure, steps, "
+                & "output, the half of E5 that sends it)");
+      for I in 1 .. Radio_Key_N loop
+         for J in I + 1 .. Radio_Key_N loop
+            if Radio_Keys (J).Sequences > Radio_Keys (I).Sequences then
+               declare
+                  T : constant Radio_Key_T := Radio_Keys (I);
+               begin
+                  Radio_Keys (I) := Radio_Keys (J);
+                  Radio_Keys (J) := T;
+               end;
+            end if;
+         end loop;
+      end loop;
+      for I in 1 .. Radio_Key_N loop
+         declare
+            R : Radio_Key_T renames Radio_Keys (I);
+         begin
+            Put_Line (F, Img (R.Sequences) & "  " & Img (R.First) & "  "
+                      & Img (R.Steps) & "  " & Image (R.Key) & "  "
+                      & Radio_Half (Image (R.Key)));
+         end;
+      end loop;
       Put_Line (F, "");
       Put_Line (F, "## Failure signatures (sequences stopped, failed steps, "
                 & "id, signature, triage, examples)");

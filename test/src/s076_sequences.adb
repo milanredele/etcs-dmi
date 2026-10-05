@@ -51,7 +51,7 @@ package body S076_Sequences is
       return (if OK then Integer_64 (R * 100.0) else 0);
    end To_Cm;
 
-   procedure Hex_To_Bytes (Hex : String; T : in out Telegram_T;
+   procedure Hex_To_Bytes (Hex : String; Data : out Byte_Array;
                            OK : out Boolean) is
       function Nibble (C : Character) return Unsigned_8 is
         (case C is
@@ -64,11 +64,11 @@ package body S076_Sequences is
             when others => 16#FF#);
       Bytes : constant Natural := (Hex'Length + 1) / 2;
    begin
-      OK := Hex'Length > 0 and then Bytes <= Max_Bytes;
+      Data := (others => 0);
+      OK := Hex'Length > 0 and then Bytes <= Data'Length;
       if not OK then
          return;
       end if;
-      T.Data := (others => 0);
       for I in 0 .. Bytes - 1 loop
          declare
             Hi : constant Unsigned_8 := Nibble (Hex (Hex'First + 2 * I));
@@ -80,7 +80,7 @@ package body S076_Sequences is
                OK := False;
                return;
             end if;
-            T.Data (1 + I) := Hi * 16 + Lo;
+            Data (Data'First + I) := Hi * 16 + Lo;
          end;
       end loop;
    end Hex_To_Bytes;
@@ -145,6 +145,8 @@ package body S076_Sequences is
    --  index in Telegrams), 2 a message
    Block      : Natural := 0;
    Block_Step : Natural := 0;
+   --  the bit of the next "var" row of a message block
+   Var_Bit    : Natural := 0;
    --  the rows of the labels of the workbook's train
    Length_Row, Brake_Row : Text_T;
 
@@ -238,7 +240,7 @@ package body S076_Sequences is
             end if;
             if Word (L, I) = "bits" and then I + 2 <= L.Count then
                T.Bits := To_Nat (Word (L, I + 1), OK1);
-               Hex_To_Bytes (Word (L, I + 2), T, OK);
+               Hex_To_Bytes (Word (L, I + 2), T.Data, OK);
                T.Has_Bits := OK1 and then OK
                  and then T.Bits in 210 | 830
                  and then (T.Bits + 7) / 8 <= (Word (L, I + 2)'Length + 1) / 2;
@@ -259,17 +261,47 @@ package body S076_Sequences is
          S.Messages (S.Message_Count) := (others => <>);
          S.Messages (S.Message_Count).Step := Block_Step;
          S.Messages (S.Message_Count).Dist_Cm := To_Cm (Word (L, 3), OK);
-         for I in 4 .. L.Count - 1 loop
-            if Word (L, I) = "nid" then
-               S.Messages (S.Message_Count).NID :=
-                 To_Nat (Word (L, I + 1), OK);
-            end if;
-         end loop;
+         declare
+            M : Message_T renames S.Messages (S.Message_Count);
+            OK1 : Boolean;
+         begin
+            for I in 4 .. L.Count - 1 loop
+               if Word (L, I) = "nid" then
+                  M.NID := To_Nat (Word (L, I + 1), OK);
+               elsif Word (L, I) = "bits" and then I + 2 <= L.Count then
+                  M.Bits := To_Nat (Word (L, I + 1), OK1);
+                  Hex_To_Bytes (Word (L, I + 2), M.Data, OK);
+                  M.Has_Bits := OK1 and then OK and then M.Bits > 0
+                    and then (M.Bits + 7) / 8
+                             <= (Word (L, I + 2)'Length + 1) / 2;
+               end if;
+            end loop;
+         end;
+         Var_Bit := 0;
       elsif K = "var" and then Block > 0 and then L.Count >= 4 then
          declare
             Name : constant String := Word (L, 2);
             V    : constant Unsigned_64 := Var_Value (L, OK);
          begin
+            if Block = 2 and then S.Message_Count > 0 then
+               declare
+                  M : Message_T renames S.Messages (S.Message_Count);
+                  OK_W  : Boolean;
+                  Width : constant Natural := To_Nat (Word (L, 3), OK_W);
+               begin
+                  if Name = "T_TRAIN" and then M.T_Train_Count < 4 then
+                     M.T_Train_Count := M.T_Train_Count + 1;
+                     M.T_Train_At (M.T_Train_Count) := Var_Bit;
+                  end if;
+                  if Name = "NID_PACKET" and then V < 255
+                    and then M.Packet_Count < M.Packets'Length
+                  then
+                     M.Packet_Count := M.Packet_Count + 1;
+                     M.Packets (M.Packet_Count) := Unsigned_8 (V mod 256);
+                  end if;
+                  Var_Bit := Var_Bit + Width;
+               end;
+            end if;
             if OK and then Block = 1 and then Name = "M_VERSION"
               and then S.Telegram_Count > 0
             then
