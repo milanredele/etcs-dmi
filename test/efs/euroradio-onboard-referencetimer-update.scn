@@ -4,7 +4,7 @@
 frame EURORADIO Onboard ReferenceTimer Update
 sequence SubSequence1
 case Update at EURORADIO events only
-clause E5 todo 3.16.3.4.1 ; efs 3.16.3.4.1
+clause E5 done 3.16.3.4.1 ; efs 3.16.3.4.1
 clause E5 todo 3.16.3.4.1.1 ; efs 3.16.3.4.1.1
 step Initialize test environment
 sub SubStep1

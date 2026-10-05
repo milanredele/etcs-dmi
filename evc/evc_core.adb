@@ -67,6 +67,7 @@ package body EVC_Core
                                    Proc_Ctx,
                                    Ack_For_Protection,
                                    Status_Rev_Sent, Status_Tunnel_Sent,
+                                   Status_Radio_Sent,
                                    TC_Sent,
                                    Config_Last, Config_Seen))
 is
@@ -232,6 +233,8 @@ is
    Status_Rev_Sent : Boolean := False;
    --  the tunnel stopping area sent last (MSG_STATUS, 5.18.8)
    Status_Tunnel_Sent : EVC_Track_Conditions.Tunnel_T;
+   --  phase E5: the radio byte sent last (3.5.7.1)
+   Status_Radio_Sent : EVC_Bytes.Byte := 0;
    --  5.20: an item of the information for an external function was
    --  sent in the last cycle (the TIU track condition output)
    TC_Sent : Boolean := False;
@@ -367,6 +370,7 @@ is
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
       Status_Tunnel_Sent := (others => <>);
+      Status_Radio_Sent := 0;
       TC_Sent := False;
       EVC_JRU_Records.Reset;
       Config_Last := 0;
@@ -674,15 +678,17 @@ is
    --  1b. Phase E5: the connection events of the RTM port latched since
    --  the last cycle, in their order, to the session and link half
    procedure Read_Radio_Events
-     with Global => (Input  => Latched_Events,
-                     In_Out => (Latched_Event_Count, EVC_Sessions.State))
+     with Global => (Input  => (Latched_Events, Clock_Ms),
+                     In_Out => (Latched_Event_Count, EVC_Sessions.State,
+                                EVC_Radio.State))
    is
    begin
       for I in 1 .. Latched_Event_Count loop
          --  not unrolled by the proof, nothing needed after the loop
          pragma Loop_Invariant (True);
          EVC_Sessions.Take_Event (Latched_Events (I).Session,
-                                  Latched_Events (I).Event);
+                                  Latched_Events (I).Event,
+                                  Unsigned_64 (Clock_Ms));
       end loop;
       Latched_Event_Count := 0;
    end Read_Radio_Events;
@@ -697,6 +703,7 @@ is
                                 EVC_Position.State, EVC_Odometry.State),
                      In_Out => (Latched_RTM_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Sessions.State,
+                                EVC_Radio.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Origins.State, EVC_Radio_Info.State))
    is
@@ -720,7 +727,8 @@ is
                                       Slot.Data (1),
                                       EVC_Bytes.Byte (Slot.Length mod 256),
                                       EVC_Bytes.Byte (Slot.Length / 256)));
-                  EVC_Sessions.Take_Message (Slot.Session, Verdict);
+                  EVC_Sessions.Take_Message
+                    (Slot.Session, Unsigned_64 (Clock_Ms), Verdict);
                   if Verdict = EVC_Sessions.Pass then
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
@@ -781,7 +789,7 @@ is
                                 EVC_Outbox.Queue, EVC_Position.State,
                                 EVC_Driver_Requests.State,
                                 EVC_Levels.State, EVC_Procedures.State,
-                                EVC_Sessions.State,
+                                EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Origins.State, EVC_Radio_Info.State)),
           Post => EVC_Driver_Requests.Isolation_Selected
@@ -937,7 +945,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Levels.State,
+                                EVC_Levels.State, EVC_Sessions.State,
                                 EVC_Outbox.Queue))
    is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
@@ -1214,12 +1222,14 @@ is
    --  requests to make, the conditions of 4.6.3 they own)
    procedure Evaluate_Radio
      with Global => (Input  => (Current_Mode, Clock_Ms,
+                                EVC_National_Values.State,
+                                EVC_Odometry.State,
                                 EVC_Stored_Information.State,
                                 EVC_Levels.State, SDM_Result,
                                 EVC_Movement_Authority.State,
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State),
-                     In_Out => (EVC_Sessions.State,
+                     In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State))
    is
@@ -1522,6 +1532,7 @@ is
      with Global => (Input  => (EVC_Odometry.State,
                                 EVC_National_Values.State,
                                 EVC_Train_Inputs.State,
+                                EVC_Sessions.State,
                                 Proc_Ctx, Test_Snapshot_Set),
                      In_Out => (Snapshot,
                                 EVC_Procedures.State, EVC_Text_Messages.State,
@@ -1742,7 +1753,8 @@ is
    --  minute of the on-board time, or removed)
    procedure Send_Procedure_Messages
      with Global => (Input  => (Clock_Ms, EVC_Procedures.State,
-                                EVC_Text_Messages.State),
+                                EVC_Text_Messages.State,
+                                EVC_Sessions.State),
                      In_Out => EVC_Outbox.Queue)
    is
       Seconds : constant Unsigned_64 := Unsigned_64 (Clock_Ms) / 1000;
@@ -1751,6 +1763,17 @@ is
          declare
             E : constant EVC_Procedures.Status_Event_T :=
               EVC_Procedures.Status_Event (I);
+         begin
+            EVC_Outbox.Put
+              (DMI, System_Status_Frame (EVC_Bytes.Byte (E.Entry_Number),
+                                         EVC_Bytes.Byte (E.Event)));
+         end;
+      end loop;
+      --  phase E5: those of the session half (3.5.3.7 d, 3.16.3.4.4)
+      for I in 1 .. EVC_Sessions.Status_Event_Count loop
+         declare
+            E : constant EVC_Sessions.Status_Event_T :=
+              EVC_Sessions.Status_Event (I);
          begin
             EVC_Outbox.Put
               (DMI, System_Status_Frame (EVC_Bytes.Byte (E.Entry_Number),
@@ -1817,10 +1840,11 @@ is
                                 SDM_Result, EVC_Levels.State,
                                 EVC_Procedures.State,
                                 EVC_Stored_Information.State,
-                                EVC_Position.State),
+                                EVC_Position.State, EVC_Sessions.State),
                      In_Out => (Geo_Sent, Status_Brake_Sent,
                                 Status_TTI_Sent, Status_Rev_Sent,
-                                Status_Tunnel_Sent, EVC_Outbox.Queue))
+                                Status_Tunnel_Sent, Status_Radio_Sent,
+                                EVC_Outbox.Queue))
    is
       --  phase E4: the brakes of the procedures; 3 (DMI 8.2.2.3.4.1)
       --  while only an acknowledgement of a level (5.10.4.2), a mode or
@@ -1832,6 +1856,7 @@ is
          then Brake_Ack
          elsif Brake_Output.EB or else Brake_Output.SB
            or else Current_Mode = M_SF or else D.Trip or else D.Other
+           or else EVC_Sessions.Service_Brake
          then Brake_Applied
          elsif EVC_Levels.Ack_Brake or else D.Ack_Missing
            or else Text_SB or else Text_EB
@@ -1844,8 +1869,12 @@ is
       --  phase E4, 5.18.8: the tunnel stopping area
       Tun   : constant EVC_Track_Conditions.Tunnel_T :=
         EVC_Stored_Information.Tunnel;
+      --  phase E5, 3.5.7.1: the indication of the safe radio connection
+      Radio : constant EVC_Bytes.Byte :=
+        EVC_Sessions.Indication_T'Pos (EVC_Sessions.Indication);
       Changed : constant Boolean :=
         Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent
+        or else Radio /= Status_Radio_Sent
         or else Rev /= Status_Rev_Sent
         or else EVC_Track_Conditions."/=" (Tun, Status_Tunnel_Sent);
    begin
@@ -1855,7 +1884,7 @@ is
                                Unsigned_64 (Clock_Ms) / 1000,
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
-                               Unsigned_32 (Tun.Distance_M)));
+                               Unsigned_32 (Tun.Distance_M), Radio));
          Geo_Sent := True;
       elsif Geo_Sent or else Changed then
          EVC_Outbox.Put
@@ -1863,13 +1892,14 @@ is
                                Unsigned_64 (Clock_Ms) / 1000,
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
-                               Unsigned_32 (Tun.Distance_M)));
+                               Unsigned_32 (Tun.Distance_M), Radio));
          Geo_Sent := False;
       end if;
       Status_Brake_Sent := Brake;
       Status_TTI_Sent := TTI;
       Status_Rev_Sent := Rev;
       Status_Tunnel_Sent := Tun;
+      Status_Radio_Sent := Radio;
    end Send_Status;
 
    --  The train bits of MSG_ONBOARD (dmi_protocol.ads): standstill and
@@ -2198,8 +2228,7 @@ is
                                 EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State),
                      In_Out => (EVC_Sessions.State,
-                                EVC_Radio_Authority.State,
-                                EVC_Radio.State,
+                                EVC_Radio_Authority.State, EVC_Radio.State,
                                 EVC_Radio.Queue, EVC_Outbox.Queue))
    is
    begin
@@ -2225,22 +2254,24 @@ is
                                 EVC_Driver_Requests.State,
                                 EVC_Odometry.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
-                                EVC_Radio.State,
                                 EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, Overrun_Reported,
                                 Entering_Shown, Runaway_Shown,
                                 Status_Rev_Sent, Status_Tunnel_Sent,
-                                TC_Sent, EVC_Sessions.State,
+                                Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio.Queue))
+                                EVC_Radio.State, EVC_Radio.Queue))
    is
       --  phase E4: the brake demands of the procedures and of the text
       --  messages (MSG_STATUS and the TIU output)
       D       : constant EVC_Procedures.Brake_Demand_T :=
         EVC_Procedures.Brake_Demand;
-      Text_SB : constant Boolean := EVC_Text_Messages.Service_Brake;
+      --  phase E5: with the service brake of the supervision of the safe
+      --  radio connection (3.16.3.4.2 b), EVC_Sessions)
+      Text_SB : constant Boolean :=
+        EVC_Text_Messages.Service_Brake or else EVC_Sessions.Service_Brake;
       Text_EB : constant Boolean := EVC_Text_Messages.Emergency_Brake;
    begin
       Record_Mode_Levels_Mission;   -- JRU 1, 40, 41

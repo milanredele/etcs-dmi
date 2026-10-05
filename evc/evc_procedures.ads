@@ -102,6 +102,7 @@ with EVC_Origins;
 with EVC_Position;
 with EVC_Driver_Requests;
 with EVC_SDM;
+with EVC_Sessions;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
@@ -199,7 +200,10 @@ is
       Version_Not_Supported, -- [65]
       No_Track_Description,  -- [69]
       SR_Distance_Passed,    -- [42]
-      No_MA_Level_Switch);   -- [39], [67]
+      No_MA_Level_Switch,    -- [39], [67]
+      --  phase E5: T_NVCONTACT passed, reaction train trip (3.16.3.4,
+      --  EVC_Sessions)
+      Communication_Lost);   -- [41]
 
    function Trip_Reason return Trip_Reason_T
      with Global => State;
@@ -386,7 +390,7 @@ is
    --  (EVC_Modes.Conditions) that held in the cycle.
    procedure Mode_Changed (From, To : Mode_T; C : Context_T;
                            S : Snapshot_T)
-     with Global => (In_Out => State),
+     with Global => (In_Out => State, Input => EVC_Sessions.State),
           Post => (if To = M_TR then Brake_Demand.EB);
 
    --  The brake demand and the outputs after the mode machine, in the

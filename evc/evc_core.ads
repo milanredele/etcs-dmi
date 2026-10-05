@@ -324,13 +324,10 @@ is
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
                                 EVC_JRU_Records.State,
-                                EVC_Radio.Queue,
+                                EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio_Info.State,
-                                --  phase E5: the time stamps of what the
-                                --  halves send (EVC_Radio.Send)
-                                EVC_Radio.State)),
+                                EVC_Radio_Info.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

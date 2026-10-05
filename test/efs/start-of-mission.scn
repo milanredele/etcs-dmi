@@ -7068,7 +7068,7 @@ sub Sets driver Id
 efs: Kernel.DriverId.DataState <- DataStateEnum.Valid
 case First SRC request fails
 clause E5 todo 3.5.3.4 ; efs 3.5.3.4
-clause E5 todo 3.5.3.7 a) ; efs 3.5.3.7.a
+clause E5 partial 3.5.3.7 a) ; efs 3.5.3.7.a
 clause - absent 3.5.3.7.a.1 ; efs 3.5.3.7.a.1
 step SRC request management
 sub Request sent
@@ -7078,7 +7078,7 @@ expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.S
 sub Answers a failure
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.SAConnect.Indication <- EURORADIO.RBCConnection.SafeRadioConnection.SRCIndicationEnum.SA_DISCONNECT_Indication
 case Second SRC request fails
-clause E5 todo 3.5.3.7 a) ; efs 3.5.3.7.a
+clause E5 partial 3.5.3.7 a) ; efs 3.5.3.7.a
 clause - absent 3.5.3.7.a.1 ; efs 3.5.3.7.a.1
 step SRC request management
 sub Request sent
@@ -7088,7 +7088,7 @@ expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.S
 sub Answer a failure
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.SAConnect.Indication <- EURORADIO.RBCConnection.SafeRadioConnection.SRCIndicationEnum.SA_DISCONNECT_Indication
 case Third SRC request fails
-clause E5 todo 3.5.3.7 a) ; efs 3.5.3.7.a
+clause E5 partial 3.5.3.7 a) ; efs 3.5.3.7.a
 clause - absent 3.5.3.7.a.1 ; efs 3.5.3.7.a.1
 step SRC request management
 sub Request sent
