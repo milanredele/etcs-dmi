@@ -733,7 +733,14 @@ is
                                       EVC_Bytes.Byte (Slot.Length / 256)));
                   EVC_Sessions.Take_Message
                     (Slot.Session, Unsigned_64 (Clock_Ms), Verdict);
-                  if Verdict = EVC_Sessions.Pass then
+                  --  4.8.3 [2], 4.8.5.1: kept in the transition buffer of
+                  --  the authority half, or taken
+                  if Verdict /= EVC_Sessions.Pass then
+                     null;
+                  elsif EVC_Radio_Authority.To_Buffer then
+                     EVC_Radio_Authority.Store_Message
+                       (Slot.Session, Slot.Data (1 .. Slot.Length));
+                  else
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
                   end if;
@@ -764,6 +771,18 @@ is
          pragma Loop_Invariant (True);
          exit when not EVC_Sessions.Has_Released;
          EVC_Sessions.Take_Released (S, Latched_RTM (1).Data, Last);
+         EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
+                                       M_Status);
+         if M_Status = ETCS_Message.Accepted then
+            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
+         end if;
+      end loop;
+      --  4.8.5.5: the transition buffer of the authority half released
+      --  (the level became 2 in the last cycle), in the order of reception
+      for I in 1 .. EVC_Radio_Authority.Buffer_Size loop
+         pragma Loop_Invariant (True);
+         exit when not EVC_Radio_Authority.Has_Released;
+         EVC_Radio_Authority.Take_Released (S, Latched_RTM (1).Data, Last);
          EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
@@ -1286,7 +1305,17 @@ is
             and then EVC_Driver_Requests.SR_Data.Speed_Kmh in 5 .. 600,
           Override_Active => EVC_Procedures.Override_Active,
           Shunting_Selected => EVC_Driver_Requests.Shunting_Selected,
-          Standstill => EVC_Odometry.Standstill));
+          Standstill => EVC_Odometry.Standstill,
+          Cab_Active => EVC_Train_Inputs.Desk_Open,
+          Train_Data_Valid => EVC_Train_Data.Valid,
+          TRN_Valid => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+          --  4.8.3 [3] is not applied yet: the acknowledgement (message
+          --  8) of the Train Data sent before the session is established
+          --  is not recognised in the SUBSET-076 sequences of a level 2
+          --  transition (9990600 and others): EVC_Sessions.Mission, left
+          Train_Data_Unacked => False,
+          TAF_Confirmed =>
+            EVC_Driver_Requests.Selected (EVC_Driver_Requests.TAF_Yes)));
    end Evaluate_Radio;
 
    --  6b. Phase E5: the mode changed (after the mode machine)
@@ -1775,7 +1804,8 @@ is
    --  acknowledgement (5.10.4), "override active" (5.8.3.7)
    procedure Send_Mode_Level
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
-                                EVC_Mission.State, EVC_Procedures.State),
+                                EVC_Mission.State, EVC_Procedures.State,
+                                EVC_Radio_Authority.State),
                      In_Out => EVC_Outbox.Queue)
    is
    begin
@@ -1799,7 +1829,8 @@ is
                   then Level_Code (Valid, EVC_Levels.Announced_Level)
                   else No_Code),
                Level_Ann_Ack => EVC_Levels.Ack_Asked,
-               Override      => EVC_Procedures.Override_Indicated));
+               Override      => EVC_Procedures.Override_Indicated,
+               TAF           => EVC_Radio_Authority.TAF_Shown));
       end if;
    end Send_Mode_Level;
 

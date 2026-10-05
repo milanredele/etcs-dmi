@@ -21,5 +21,9 @@ package EVC_Test_Authority is
    procedure Scenario_SR_Authorisation;
    procedure Scenario_Trip_L2;
    procedure Scenario_Shunting_L2;
+   procedure Scenario_Radio_Acceptance;
+   procedure Scenario_Transition_Buffer;
+   procedure Scenario_Start_After_Ack;
+   procedure Scenario_Track_Ahead_Free;
 
 end EVC_Test_Authority;

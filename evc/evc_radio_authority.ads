@@ -21,11 +21,13 @@
 
 with ETCS_Variables;
 with EVC_Balise_Groups;
+with EVC_Bytes;
 with EVC_Levels;
 with EVC_Modes;  use EVC_Modes;
 with EVC_Movement_Authority;
 with EVC_Odometry;
 with EVC_Origins;
+with EVC_Ports;
 with EVC_Position;
 with EVC_Radio;
 with EVC_Radio_Info;
@@ -62,6 +64,41 @@ is
                      Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State));
 
+   --  1. 4.8.3 [2], 4.8.5.1: the last message received (EVC_Received) is
+   --  to be kept in the transition buffer instead of taken (Store_Message)
+   function To_Buffer return Boolean
+     with Global => (State, EVC_Received.Store);
+
+   --  1. 4.8.5.1, 4.8.5.3: the message Data of the session S kept in the
+   --  transition buffer (three messages, the oldest replaced)
+   procedure Store_Message (S : EVC_Radio.Session_T;
+                            Data : EVC_Bytes.Byte_Array)
+     with Global => (In_Out => State),
+          Pre  => EVC_Ports.Valid_RTM (Data);
+
+   --  4.8.5.1: the messages the transition buffer keeps
+   Buffer_Size : constant := 3;
+
+   --  The messages in the transition buffer
+   function Buffered return Natural
+     with Global => State;
+
+   --  1d. 4.8.5.5: the transition buffer is released (the level is 2):
+   --  Take_Released gives its oldest message, with its session, into
+   --  Data (Data'First .. Last); EVC_Core parses it and gives it to
+   --  Take_Message as received in this cycle
+   function Has_Released return Boolean
+     with Global => State;
+   procedure Take_Released (S    : out EVC_Radio.Session_T;
+                            Data : in out EVC_Bytes.Byte_Array;
+                            Last : out Natural)
+     with Global => (In_Out => State),
+          Pre  => Has_Released
+                  and then Data'Length >= EVC_Ports.RTM_Max_Length
+                  and then Data'Last < Positive'Last,
+          Post => Last in Data'Range
+                  and then EVC_Ports.Valid_RTM (Data (Data'First .. Last));
+
    --  5. The cycle of the half, after EVC_Sessions.Evaluate: the MA
    --  request, the emergency stops, the conditions of 4.6.3
    --  What the cycle tells the half besides the context (EVC_Core)
@@ -86,13 +123,22 @@ is
       --  train is at standstill
       Shunting_Selected : Boolean := False;
       Standstill        : Boolean := False;
+      --  4.8.4 [2], [4], [11]: a cab is active, valid Train Data, a valid
+      --  train running number; 4.8.3 [3]: Train Data sent to the RBC and
+      --  not acknowledged (the context of the acceptance of 4.8)
+      Cab_Active         : Boolean := False;
+      Train_Data_Valid   : Boolean := False;
+      TRN_Valid          : Boolean := False;
+      Train_Data_Unacked : Boolean := False;
+      --  3.15.5.3: the driver acknowledged the track ahead free request
+      TAF_Confirmed      : Boolean := False;
    end record;
 
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T)
      with Global => (In_Out => (State, EVC_Radio_Info.State),
                      Input  => (EVC_Stored_Information.State,
                                 EVC_Position.State, EVC_Radio.State,
-                                EVC_Levels.State,
+                                EVC_Levels.State, EVC_Odometry.State,
                                 EVC_Movement_Authority.State)),
           Post => EVC_Radio_Info.Count <= 1;
 
@@ -252,6 +298,19 @@ is
      with Global => State;
 
    --  For the tests: the messages taken since Clear (saturating)
+   --  3.15.5: a track ahead free request of the RBC is stored, shown to
+   --  the driver (MSG_MODE_LEVEL taf), and the answers sent (149)
+   function TAF_Stored return Boolean
+     with Global => State;
+   function TAF_Shown return Boolean
+     with Global => State;
+   function TAF_Granted return Natural
+     with Global => State;
+
+   --  4.8: the messages the tables rejected since Clear
+   function Messages_Rejected return Natural
+     with Global => State;
+
    function Messages_Taken return Natural
      with Global => State;
    --  the mode changes heard and the cycles produced since Clear

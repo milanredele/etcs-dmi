@@ -233,6 +233,10 @@ begin
    Scenario_SR_Authorisation;
    Scenario_Trip_L2;
    Scenario_Shunting_L2;
+   Scenario_Radio_Acceptance;
+   Scenario_Transition_Buffer;
+   Scenario_Start_After_Ack;
+   Scenario_Track_Ahead_Free;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

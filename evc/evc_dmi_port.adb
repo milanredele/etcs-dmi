@@ -15,7 +15,8 @@ is
                               Mode_Ack      : Byte := No_Code;
                               Level_Ann     : Byte := No_Code;
                               Level_Ann_Ack : Boolean := False;
-                              Override      : Boolean := False)
+                              Override      : Boolean := False;
+                              TAF           : Boolean := False)
      return Mode_Level_Frame_T
    is
      (MSG_MODE_LEVEL,
@@ -26,7 +27,7 @@ is
       Level_Ann,                      -- level_ann
       (if Level_Ann_Ack then 1 else 0),  -- level_ann_ack
       (if Override then 1 else 0),    -- override
-      0,                              -- taf
+      (if TAF then 1 else 0),         -- taf
       16#FF#, 16#FF#);                -- lssma: not shown
 
    -------------------
