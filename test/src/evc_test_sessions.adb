@@ -800,6 +800,19 @@ package body EVC_Test_Sessions is
              & "(3.6.5.1.4 j), standstill left and reached are, got"
              & Img (EVC_Sessions.Position_Reports_Sent - N));
 
+      --  4.5.2, "Report Train Position": in Shunting neither standstill
+      --  left or reached nor what the RBC requested is reported
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+      Stand;
+      N := EVC_Sessions.Position_Reports_Sent;
+      Run_X (8_000);
+      Stand_X (2_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_SH
+             and then EVC_Sessions.Position_Reports_Sent = N,
+             "reports: none in Shunting for standstill left and reached "
+             & "(4.5.2 table, rows 3.6.5.1.4 a, i), got"
+             & Img (EVC_Sessions.Position_Reports_Sent - N));
+
       --  3.5.5.1 a): the order to terminate by radio
       Give_Radio_Message (1, Terminate_Order (30));
       Stand;

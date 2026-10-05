@@ -2184,3 +2184,36 @@ shown"); 3.6.5.1.4 c) d) e) k) l) (integrity, RBC/RBC border, errors of
 the train running number and safe consist length in 157; the signatures
 S15dab337 (Start/Main disabled after a second level 2 SoM) and Sb83b2c65
 (136 on SH -> PS) to analyse; 3.5.6, the handover, 4.8.5 as before.
+
+### E5 integration after the third round (2026-10-05)
+
+Merged on master: bench round 2, the acceptance package (e5/authority-4)
+and session phase 3 (e5/session-4). Added while merging:
+
+- **4.5.2, "Report Train Position"** (PDF page 43 of chapter 4; the
+  markdown loses the columns): `EVC_Sessions.Reports` reports an event of
+  3.6.5.1.4 only in the modes of its row (standstill: SB, SM, FS, AD, LS,
+  SR, OS, RV; a mode change: not into PS, not from PS to SH; a level
+  change: SB, FS, AD, LS, SR, OS, SL, NL, TR; a session established and
+  what the RBC requested: not in PS, the latter not in SH either).
+  Sequences 4050200_01 and _03 judge it; `Scenario_Session_Reports` has
+  the Shunting case. Note {5} (SB and SL: only with a session
+  established) holds by construction: a report needs the session.
+- The level change rows of the trackside order and of the driver's
+  request are taken together (the on-board does not tell them apart at
+  that place).
+
+Open after this round, in the order a next round would take them:
+
+1. 4.8.3 [3] is built and switched off (`Train_Data_Unacked => False` in
+   `EVC_Core.Evaluate_Radio`). The reason it was switched off (message 8
+   never matched) is fixed in session phase 3; switching it on needs a
+   run of the sequences.
+2. Level transitions to and from level 2 (5.10, 5.15), with the release
+   of the transition buffer in the cycle of the transition (4.8.5.5).
+3. RBC handover (3.15.1); the runner routes a second RBC already.
+4. Radio network registration (3.5.6) and the radio equipment bits of
+   MSG_ONBOARD (the DMI's Radio data window buttons).
+5. The level 2 line of the bench page (Sim_RBC lacks message 41).
+6. The system version of the RBC (chapter 6, E7): 563 SV21 / SV22
+   sequences stop at "159 not sent".
