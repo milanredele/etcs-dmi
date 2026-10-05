@@ -46,7 +46,8 @@ package body EVC_Test_Sessions is
       P.Q_RBC := ETCS_Variables.Q_RBC_T (Q_RBC);
       P.NID_C := 5;
       P.NID_RBC := ETCS_Variables.NID_RBC_T (NID_RBC);
-      P.NID_RADIO := 77;
+      --  7.5.1.95: BCD digits
+      P.NID_RADIO := 16#0077#;
       TP42.Encode (P, W, OK);
       Finish_Carry (Track_N, 0, W, OK);
    end Order_Group;
@@ -114,7 +115,7 @@ package body EVC_Test_Sessions is
       Run_X (15_000);
       Check (R.Info (1).State = R.Connecting
              and then R.Info (1).RBC = (NID_C => 5, NID_RBC => 300)
-             and then R.Info (1).Radio = 77
+             and then R.Info (1).Radio = 16#0077#
              and then R.Info (2).State = R.Idle
              and then R.Contact.Known and then R.Contact.Valid
              and then R.Contact.RBC.NID_RBC = 300,
