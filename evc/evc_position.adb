@@ -1661,6 +1661,63 @@ is
       Last_Report_Travel := EVC_Odometry.Travelled;
    end Report_Sent;
 
+   ------------------
+   -- Radio_Origin --
+   ------------------
+
+   procedure Radio_Origin (Id      : Identity_T;
+                           Shifted : Boolean;
+                           Shift   : Dist_T;
+                           Origin  : out EVC_Origins.Count_T;
+                           G, T    : out Direction_T;
+                           S       : out Sense_T)
+   is
+      A     : Anchor_T;
+      Found : Natural;
+      D     : Dist_T := 0;
+   begin
+      Origin := 0;
+      S := Orientation;
+      T := To_Direction (S);
+      G := Unknown;
+      if LRBG_A.Valid and then LRBG_A.Id = Id then
+         A := LRBG_A;
+      elsif SOLR_A.Valid and then SOLR_A.Id = Id then
+         A := SOLR_A;
+      else
+         Found := Latest (Id);
+         if Found = 0 then
+            return;
+         end if;
+         A := Recent (Found).A;
+      end if;
+      G := A.Orientation;
+      if Shifted then
+         --  7.5.1.17: D_REF along the nominal direction of the group
+         if A.Orientation = Unknown then
+            return;
+         end if;
+         D := (if A.Orientation = T then Shift else -Shift);
+      end if;
+      EVC_Origins.Allocate (A, S, Origin);
+      if Origin /= 0 then
+         declare
+            O : EVC_Origins.Origin_T := EVC_Origins.Get (Origin);
+         begin
+            O.Est.D := D;
+            O.Min.D := D;
+            O.Max.D := D;
+            if SOLR_A.Valid and then SOLR_A.Id /= A.Id then
+               Relocate_Item (O.Est);
+               Relocate_Item (O.Min);
+               Relocate_Item (O.Max);
+            end if;
+            O.Used := True;
+            EVC_Origins.Put (Origin, O);
+         end;
+      end if;
+   end Radio_Origin;
+
    ------------------------------
    -- Assign_Coordinate_System --
    ------------------------------

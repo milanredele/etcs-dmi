@@ -238,6 +238,26 @@ is
       and then Info (Session_T (Supervising)).Version_Known)
      with Global => State;
 
+   --  Added by e5/authority: the on-board clock of the time stamps
+   --  (3.16.3.1, T_TRAIN 7.5.1.159: 10 ms, modulo 2**32, the value
+   --  "unknown" never given): T_TRAIN of the on-board time Now_Ms
+   function T_Train_At (Now_Ms : Time_Ms_T) return T_TRAIN_T is
+     (T_TRAIN_T ((Now_Ms / 10) mod (2**32 - 1)))
+     with Post => T_Train_At'Result /= T_TRAIN_Unknown;
+
+   --  The on-board time of the time stamp Stamp (T_TRAIN of a track to
+   --  train message: the T_TRAIN of the train to track message it
+   --  answers, 3.16.3.1.2) at the on-board time Now_Ms: the latest
+   --  time at or before Now_Ms with that T_TRAIN; Now_Ms for "unknown"
+   function Time_Of_Stamp (Stamp : T_TRAIN_T; Now_Ms : Time_Ms_T)
+     return Time_Ms_T
+   is (if Stamp = T_TRAIN_Unknown then Now_Ms
+       else Now_Ms - Time_Ms_T'Min
+              (Now_Ms,
+               10 * ((Time_Ms_T (T_Train_At (Now_Ms)) + (2**32 - 1)
+                      - Time_Ms_T (Stamp)) mod (2**32 - 1))))
+     with Post => Time_Of_Stamp'Result <= Now_Ms;
+
    ---------------------------------------------------------------------
    --  The context of a cycle, for the halves (EVC_Core builds it)
    ---------------------------------------------------------------------
