@@ -6,6 +6,7 @@ with Ada.Characters.Handling;
 with Ada.Environment_Variables;
 with Ada.Streams;             use Ada.Streams;
 with Ada.Strings.Fixed;
+with Ada.Strings.Unbounded;   use Ada.Strings.Unbounded;
 with Ada.Text_IO;             use Ada.Text_IO;
 with Interfaces;              use Interfaces;
 with Display;
@@ -14,6 +15,7 @@ with DMI_Ack;
 with DMI_Buttons;
 with DMI_Conditions;
 with DMI_Core;
+with DMI_Data_Entry;
 with DMI_Protocol;
 with DMI_System_Status;
 with DMI_Observe;
@@ -595,6 +597,94 @@ package body S076_Run is
       return K_None;
    end Selected_Level;
 
+   --  The digits that follow Key (and the separators " :=") in Text, or ""
+   function Digits_After (Text, Key : String) return String is
+      Up_Text : constant String := Up (Text);
+      At_Key  : constant Natural :=
+        Ada.Strings.Fixed.Index (Up_Text, Up (Key));
+      P : Natural;
+   begin
+      if At_Key = 0 then
+         return "";
+      end if;
+      P := At_Key + Key'Length;
+      while P <= Text'Last and then Text (P) in ' ' | ':' | '=' loop
+         P := P + 1;
+      end loop;
+      declare
+         First : constant Natural := P;
+      begin
+         while P <= Text'Last and then Text (P) in '0' .. '9' loop
+            P := P + 1;
+         end loop;
+         return Text (First .. P - 1);
+      end;
+   end Digits_After;
+
+   --  The RBC contact information the driver enters, from the comment of
+   --  the step or of the nearest step before it (within ten) that names
+   --  it: "RBC ID = N" / "ETCS ID : N" / "RBCid: N" and "RBC phone number
+   --  = N" / "Phone : N". Nothing is assumed: a value not named stays "".
+   procedure Radio_Values (RBC_Id, Phone : out Unbounded_String) is
+      function Pick (Key1, Key2, Key3 : String; K : Natural) return String is
+         C : constant String := Image (Seq.Steps (K).Comment);
+      begin
+         if Digits_After (C, Key1)'Length > 0 then
+            return Digits_After (C, Key1);
+         elsif Digits_After (C, Key2)'Length > 0 then
+            return Digits_After (C, Key2);
+         elsif Key3'Length > 0 and then Digits_After (C, Key3)'Length > 0 then
+            return Digits_After (C, Key3);
+         end if;
+         return "";
+      end Pick;
+   begin
+      RBC_Id := Null_Unbounded_String;
+      Phone  := Null_Unbounded_String;
+      for K in reverse Natural'Max (1, Cur - 10) .. Cur loop
+         if Length (RBC_Id) = 0 then
+            RBC_Id := To_Unbounded_String
+              (Pick ("RBC ID", "ETCS ID", "RBCID", K));
+         end if;
+         if Length (Phone) = 0 then
+            Phone := To_Unbounded_String
+              (Pick ("phone number", "phone", "", K));
+         end if;
+      end loop;
+   end Radio_Values;
+
+   --  11.3.5 (Table 50 S5-3): the RBC data window; the driver types the
+   --  values the sequence names and ends the entry
+   function RBC_Data_Entry (Verb : String) return Judgement_T is
+      Id, Phone : Unbounded_String;
+   begin
+      if not Top_Is (W_RBC_Data) then
+         return Fail ("DMI RBC data: the window is not open, top is "
+                      & Top_Image);
+      end if;
+      if DMI_Data_Entry.Value (1).Length = 0
+        or else Same (Verb, "enter")
+      then
+         Radio_Values (Id, Phone);
+         if Length (Id) = 0 or else Length (Id) > 8
+           or else Length (Phone) > 16
+         then
+            return NJ (R_Radio, "RBC data: the sequence names no value");
+         end if;
+         Type_Digits (To_String (Id));
+         Enter_Field (1);
+         if Length (Phone) > 0 then
+            Type_Digits (To_String (Phone));
+            Enter_Field (2);
+         end if;
+      end if;
+      Press (167, 440);                       -- entry complete
+      if Top_Is (W_RBC_Data) then
+         return Fail ("DMI RBC data: the entry was not accepted");
+      end if;
+      return Pass ("DMI RBC data entered");
+   end RBC_Data_Entry;
+
    function DMI_Input (St : Step_T) return Judgement_T is
       Verb : constant String := W (3);
       Item : constant String := W (4);
@@ -846,6 +936,17 @@ package body S076_Run is
       elsif Same (Verb, "isolate") then
          Desk_Isolation;
          return Pass ("DMI isolation");
+      elsif Same (Item, "Enter-RBC-data") and then Same (Verb, "press") then
+         return Press_Menu (W_Radio_Data, 3, "Enter RBC data");
+      elsif Same (Item, "Contact-last-RBC") and then Same (Verb, "press") then
+         return Press_Menu (W_Radio_Data, 1, "Contact last RBC");
+      elsif Same (Item, "Use-short-number") and then Same (Verb, "press") then
+         return Press_Menu (W_Radio_Data, 2, "Use short number");
+      elsif Same (Item, "RBC-data")
+        and then (Same (Verb, "enter") or else Same (Verb, "confirm")
+                  or else Same (Verb, "validate"))
+      then
+         return RBC_Data_Entry (Verb);
       elsif Has (Item, "RBC") or else Has (Item, "Radio")
         or else Has (Item, "GSM-R")
       then

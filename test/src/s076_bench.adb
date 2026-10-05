@@ -2,6 +2,7 @@
 --  The test bench of the SUBSET-076 runner, body.
 
 pragma Ada_2012;
+with Ada.Environment_Variables;
 with Ada.Streams;     use Ada.Streams;
 with DMI_Core;
 with DMI_Protocol;
@@ -119,6 +120,9 @@ package body S076_Bench is
    --  Outputs of the on-board
    ---------------------------------------------------------------------
 
+   Radio_Status_Model : constant Boolean :=
+     Ada.Environment_Variables.Exists ("S076_RADIO_STATUS");
+
    procedure To_DMI (Frame : Byte_Array) is
       --  type u8, length u32, payload
       Len : constant Natural := Frame'Length - 5;
@@ -128,6 +132,17 @@ package body S076_Bench is
          P (Stream_Element_Offset (I)) :=
            Stream_Element (Frame (Frame'First + 4 + I));
       end loop;
+      --  A verification aid, off by default (S076_RADIO_STATUS=1): the
+      --  on-board does not report the radio equipment in the MSG_ONBOARD
+      --  radio byte yet (network type GSM-R, installed GSM-R only,
+      --  registered: bits 0 .. 5); with it the runner shows what the
+      --  sequences do once it does. It hides that gap, so it never
+      --  belongs in the baseline.
+      if Radio_Status_Model and then Frame (Frame'First) = 16#0A#
+        and then Len >= 9
+      then
+         P (9) := P (9) or 43;
+      end if;
       DMI_Core.Handle_Message (DMI_Protocol.Msg_Type_T (Frame (Frame'First)),
                                P);
    end To_DMI;
