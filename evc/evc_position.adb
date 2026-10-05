@@ -1661,6 +1661,21 @@ is
       Last_Report_Travel := EVC_Odometry.Travelled;
    end Report_Sent;
 
+   ------------------------------
+   -- Delete_Report_Parameters --
+   ------------------------------
+
+   procedure Delete_Report_Parameters
+   is
+   begin
+      Params_Stored := False;
+      T_Cycloc_Ms := 0;
+      D_Cycloc := 0;
+      M_Loc := 2;
+      Locations := (others => No_Item);
+      Immediate_Pending := False;
+   end Delete_Report_Parameters;
+
    ------------------
    -- Radio_Origin --
    ------------------

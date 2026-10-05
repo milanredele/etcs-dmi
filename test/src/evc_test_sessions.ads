@@ -28,4 +28,7 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_SoM_Failures;
    procedure Scenario_Session_EoM;
 
+   --  Phase 3 (e5/session-4): 3.6.5 the position reports
+   procedure Scenario_Session_Reports;
+
 end EVC_Test_Sessions;

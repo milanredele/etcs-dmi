@@ -91,7 +91,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.4.5,3,x,,,,,E5,todo,[E5 session]
 3.5.4.7,3,x,,,,,E5,done,EVC_Sessions.Take_Version (32 inside a session: 159 again) [E5 session]
 3.5.5.1,3,x,,,,,E5,partial,EVC_Sessions: a) the order of packet 42; b) the conditions of other sections with their procedures [E5 session]
-3.5.5.1 a),3,x,,,,,E5,done,EVC_Sessions.Apply_Order; evc_test session_establish [E5 session]
+3.5.5.1 a),3,x,,,,,E5,done,"EVC_Sessions.Apply_Order; the order of a balise group or of the RBC (packet 42 of message 24: EVC_Sessions.Take_Radio_Order, e5/session-4); evc_test session_establish, Scenario_Session_Reports [E5 session]"
 3.5.5.1 b),3,x,,,,,E5,todo,[E5 session]
 3.5.5.2,3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session, Take_Message (39); evc_test session_establish [E5 session]"
 3.5.5.2 a),3,x,,,,,E5,done,EVC_Sessions.Terminate_Session (156 last in Produce) [E5 session]
@@ -196,7 +196,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.4.2.6 1st bullet,3,x,,,,,E2,done,"taken by E3 profiles: the SSP and the gradients as elements from their ""max"" to their ""min"" items, EVC_Profiles.Envelope keeps the lowest where a relocation made them overlap and sorts the steps (proved postcondition); evc_test Scenario_SSP_Replacement"
 3.6.4.2.6 2nd bullet,3,x,,,,,E2,done,"taken by E3 profiles: the SSP and the gradients as elements from their ""max"" to their ""min"" items, EVC_Profiles.Envelope keeps the lowest where a relocation made them overlap and sorts the steps (proved postcondition); evc_test Scenario_SSP_Replacement"
 3.6.4.2.6 3rd bullet,3,x,,,,,E2,done,"taken by E3 profiles: the SSP and the gradients as elements from their ""max"" to their ""min"" items, EVC_Profiles.Envelope keeps the lowest where a relocation made them overlap and sorts the steps (proved postcondition); evc_test Scenario_SSP_Replacement"
-3.6.5.1.2,3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
+3.6.5.1.2,3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports"
 3.6.5.1.2 a),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.2 b),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.2 c),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
@@ -206,23 +206,23 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.5.1.2 g),3,x,,,,,E2,deferred,"E5 (train integrity, Q_INTEGRITY 0 until then) [E5 session]"
 3.6.5.1.2 h),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
 3.6.5.1.2 i),3,x,,,,,E2,done,"EVC_Position.Position_Report / Position_Report_2 fill packets 0 and 1; evc_test position_first_group, position_single_balise, position_orientation (round trips); sending is E5"
-3.6.5.1.4,3,x,,,,,E2,partial,EVC_Position.Report_Triggers (events of the position); sending is E5 [E5 session]
-3.6.5.1.4 a),3,x,,,,,E2,done,EVC_Position.Report_Triggers; evc_test position_first_group; sending is E5
-3.6.5.1.4 b),3,x,,,,,E2,done,"EVC_Position.Report_Triggers (Mode_Changed, Level_Changed); evc_test Scenario_Report_Triggers; sending is E5"
+3.6.5.1.4,3,x,,,,,E2,done,"EVC_Sessions.Reports: message 136 to the supervising RBC (established, connection up) on the events of the position (EVC_Position.Report_Triggers) and of the radio and modes; c) d) e) k) l) not observable yet (their rows); evc_test Scenario_Session_Reports [E5 session]"
+3.6.5.1.4 a),3,x,,,,,E2,done,EVC_Position.Report_Triggers; evc_test position_first_group; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports
+3.6.5.1.4 b),3,x,,,,,E2,done,"EVC_Position.Report_Triggers (Mode_Changed, Level_Changed); evc_test Scenario_Report_Triggers; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports"
 3.6.5.1.4 c),3,x,,,,,E2,deferred,E5 (train integrity) [E5 session]
 3.6.5.1.4 d),3,x,,,,,E2,deferred,E5 (train integrity) [E5 session]
 3.6.5.1.4 e),3,x,,,,,E2,deferred,"E5 (RBC/RBC border, handover) [E5 session]"
 3.6.5.1.4 f),3,x,,,,,E2,deferred,E4 (level transition border)
-3.6.5.1.4 g),3,x,,,,,E2,done,"EVC_Position.Report_Triggers (Mode_Changed, Level_Changed); evc_test Scenario_Report_Triggers; sending is E5"
-3.6.5.1.4 h),3,x,,,,,E2,deferred,"E5 (communication session, errors of 3.16.4) [E5 session]"
-3.6.5.1.4 i),3,x,,,,,E2,done,EVC_Position.Report_Triggers; evc_test position_first_group; sending is E5
-3.6.5.1.4 j),3,x,,,,,E2,done,EVC_Position.Report_Triggers; evc_test position_first_group; sending is E5
+3.6.5.1.4 g),3,x,,,,,E2,done,"EVC_Position.Report_Triggers (Mode_Changed, Level_Changed); evc_test Scenario_Report_Triggers; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports"
+3.6.5.1.4 h),3,x,,,,,E2,done,"EVC_Sessions.Reports: the supervising session established (the SoM report 157 is that report during the start of mission); evc_test Scenario_Session_Establish, Scenario_Session_Reports [E5 session]"
+3.6.5.1.4 i),3,x,,,,,E2,done,EVC_Position.Report_Triggers; evc_test position_first_group; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports
+3.6.5.1.4 j),3,x,,,,,E2,done,EVC_Position.Report_Triggers; evc_test position_first_group; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports
 3.6.5.1.4 k),3,x,,,,,E2,deferred,"E5 (RBC/RBC border, handover) [E5 session]"
 3.6.5.1.4 l),3,x,,,,,E2,deferred,"E5 (communication session, errors of 3.16.4) [E5 session]"
-3.6.5.1.4.1,3,x,,,,,E2,deferred,E5 (the report assembled after the events) [E5 session]
-3.6.5.1.6,3,x,,,,,E2,partial,the LRBG trigger is raised after the message of the group is taken in the same cycle (Tick order); sending is E5 [E5 session]
+3.6.5.1.4.1,3,x,,,,,E2,done,"EVC_Sessions.Reports: 136 built at the end of the cycle (Send_Radio), after the modes and levels of the cycle [E5 session]"
+3.6.5.1.6,3,x,,,,,E2,done,the LRBG trigger is raised after the message of the group is taken in the same cycle (Tick order); 136 sent at the end of that cycle (EVC_Sessions.Reports) [E5 session]
 3.6.5.1.7,3,x,,,,,E2,done,EVC_Position.Set_Report_Parameters replaces the stored parameters; evc_test Scenario_Report_Triggers
-3.6.5.1.8,3,x,,,,,E2,partial,"Tick order: the position before stored information, monitoring and modes of the same cycle; sending is E5 [E5 session]"
+3.6.5.1.8,3,x,,,,,E2,done,"Tick order: the position before stored information, monitoring and modes of the same cycle; 136 at the end of the cycle (EVC_Sessions.Reports) [E5 session]"
 3.6.5.2.2,3,x,,,,,E2,deferred,"E5 (train integrity reporting: RBC acknowledgement, Train Data of E4, integrity input) [E5 session]"
 3.6.5.2.3,3,x,,,,,E2,deferred,"E5 (train integrity reporting: RBC acknowledgement, Train Data of E4, integrity input) [E5 session]"
 3.6.5.2.3 a),3,x,,,,,E2,deferred,"E5 (train integrity reporting: RBC acknowledgement, Train Data of E4, integrity input) [E5 session]"
@@ -1427,14 +1427,14 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.12.1.2 Table-footnote [2],4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
 5.3.1.3,5,x,,,,,E4,done,"the procedures of 5.4, 5.5 and 5.10 in EVC_Mission and EVC_Levels"
 5.4.1.4,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
-5.4.3.2 A24,5,x,,,,,E4,partial,"EVC_Sessions.Mission: the train accepted without a valid position, the position deleted (EVC_Core, EVC_Position.Delete_Position); decision 5; the deletion itself is not done yet (EVC_Sessions.Position_To_Delete is not applied by EVC_Core: the postcondition of Tick on 3.6.4.1.2) [E5 session]"
+5.4.3.2 A24,5,x,,,,,E4,done,"EVC_Sessions.Mission: the train accepted without a valid position, the position deleted by EVC_Core.Evaluate_Radio (EVC_Position.Delete_Position, e5/session-4); decision 5; evc_test Scenario_Session_SoM_Level_2 [E5 session]"
 5.4.3.2 A29,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 A31,5,x,,,,,E4,done,"EVC_Sessions.Mission: the session with the RBC of the contact opened, three attempts (A.3.1, EVC_Sessions); MSG_ONBOARD waiting 2 [E5 session]"
 5.4.3.2 A32,5,x,,,,,E4,done,"EVC_Sessions.Mission / EVC_Sessions: after the three attempts or the version check, the driver informed by the indication of 3.5.7 (and 'Trackside not compatible'), S10 [E5 session]"
 5.4.3.2 A33,5,x,,,,,E4,partial,"EVC_Sessions.Mission: message 157 Q_STATUS valid with packet 0, packet 11 when the Train Data are valid; the train running number (packet 5) and the safe consist length (packet 10) not sent [E5 session]"
 5.4.3.2 A34,5,x,,,,,E4,partial,"EVC_Sessions.Mission: message 157 Q_STATUS invalid / unknown with packet 0, packet 11 when valid; packets 5 and 10 not sent [E5 session]"
 5.4.3.2 A35,5,x,x,,,,E4,done,"EVC_Sessions.Mission: message 43, the position revalidated (EVC_Core, EVC_Position.Revalidate) [E5 session]"
-5.4.3.2 A39,5,x,,,,,E4,partial,"EVC_Sessions.Mission: the train rejected, the position deleted unless decision 5; the deletion itself is not done yet (EVC_Sessions.Position_To_Delete is not applied by EVC_Core: the postcondition of Tick on 3.6.4.1.2) [E5 session]"
+5.4.3.2 A39,5,x,,,,,E4,done,"EVC_Sessions.Mission: the train rejected, the position deleted unless decision 5, by EVC_Core.Evaluate_Radio (e5/session-4); evc_test Scenario_Session_SoM_Failures [E5 session]"
 5.4.3.2 A40,5,x,,,,,E4,done,"EVC_Sessions.Mission / EVC_Sessions: the session terminated (156), 'Train is rejected' (DMI entry 20), S10 [E5 session]"
 5.4.3.2 A41,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 A42,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"

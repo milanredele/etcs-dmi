@@ -26,8 +26,6 @@ is
    use type R.Session_Ref_T;
    use type R.Session_T;
    use type R.RBC_Id_T;
-   use type EVC_Position.Status_T;
-   use type EVC_Position.Cab_T;
    use type EVC_Mission.Data_Status_T;
 
    --  A.3.1 "Waiting time before radio message repetition" (15 s) and
@@ -89,6 +87,9 @@ is
    function Position_To_Delete return Boolean is (Delete)
      with Refined_Global => Delete;
    function Opening return Boolean is (Step = Opening)
+     with Refined_Global => Step;
+   function Reporting return Boolean is
+     (Step = Step_T'(Opening) or else Step = Report_Due)
      with Refined_Global => Step;
    function Train_Data_Sent return Natural is (N_TD)
      with Refined_Global => N_TD;
@@ -163,9 +164,11 @@ is
       Taken := Kind in Track_M8 | Track_M40 | Track_M41 | Track_M43;
       case Kind is
          when Track_M8 =>
-            --  3.18.3.4.1, decision 3
+            --  3.18.3.4.1, decision 3: the second T_TRAIN, field 6 of
+            --  8.7.4, is the catalogue's seventh value (NID_LRBG is its
+            --  NID_C and NID_BG; e5/session-4, it read NID_BG)
             if TD_Awaited and then S = TD_S
-              and then T_TRAIN_T (EVC_Received.Last_Field (6)
+              and then T_TRAIN_T (EVC_Received.Last_Field (7)
                                   and 16#FFFF_FFFF#) = TD_Stamp
             then
                TD_Awaited := False;
@@ -649,7 +652,9 @@ is
       Await_TD (S, T, Ctx.Now_Ms, Sent => OK);
    end Send_TD;
 
-   --  5.5.3.1.3: message 150 with packet 0
+   --  5.5.3.1.3: message 150 with Q_DESK and packet 0 (8.6.10: Q_DESK
+   --  1 when a desk is open, 7.5.1.102.2, as the cab status of the
+   --  position knows it; e5/session-4)
    procedure Send_EoM (S : R.Session_T; Ctx : R.Context_T; T : T_TRAIN_T)
      with Global => (In_Out => (R.State, R.Queue, N_EoM),
                      Output => (EoM_Awaited, EoM_Since),
@@ -659,7 +664,10 @@ is
       W  : Writer_T;
       OK : Boolean;
    begin
-      Start (W, Train_M150, T, 0, Ctx.Mode, OK);
+      Start (W, Train_M150, T,
+             (if EVC_Position.Active_Cab = EVC_Position.No_Cab then 0
+              else 1),
+             Ctx.Mode, OK);
       Finish_And_Send (W, S, OK);
       EoM_Awaited := True;
       EoM_Since := Ctx.Now_Ms;

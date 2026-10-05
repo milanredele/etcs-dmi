@@ -4,6 +4,7 @@
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P42;
+with ETCS_Track_Packets.P58;
 with ETCS_Variables;
 with DMI_Protocol;
 with EVC_Config;
@@ -12,6 +13,7 @@ with EVC_Core;
 with EVC_Bytes;
 with EVC_Mission;
 with EVC_Modes;
+with EVC_Position;
 with EVC_Procedures;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
@@ -32,6 +34,7 @@ package body EVC_Test_Sessions is
    use type ETCS_Message.Status_T;
    use type ETCS_Message_Catalogue.Message_Kind_T;
    use type EVC_Modes.Mode_T;
+   use type EVC_Position.Status_T;
    use type R.Session_State_T;
    use type R.Session_Ref_T;
    use type R.Session_Info_T;
@@ -119,7 +122,9 @@ package body EVC_Test_Sessions is
       St : ETCS_Message.Status_T;
    begin
       Decode_Radio_Message (N, M, St);
-      Give_Radio_Message (S, Msg (MCat.Track_M8, Now_T, 0, 6, M.Values (3)));
+      --  8.7.4 field 6, the catalogue's seventh value (NID_LRBG is
+      --  NID_C and NID_BG)
+      Give_Radio_Message (S, Msg (MCat.Track_M8, Now_T, 0, 7, M.Values (3)));
       Stand;
    end Ack_Train_Data;
 
@@ -187,7 +192,7 @@ package body EVC_Test_Sessions is
       Give_Radio_Message (1, Msg (MCat.Track_M32, Now_T, 0, 7, 48));
       Stand;
       Decode_Radio_Message (1, M, St);
-      Check (Radio_Outputs = 2 and then Is_Message (1, 159)
+      Check (Radio_Outputs = 3 and then Is_Message (1, 159)
              and then St = ETCS_Message.Accepted and then M.Count = 1
              and then R.Info (1).State = R.Established
              and then R.Info (1).Version = 48
@@ -200,6 +205,11 @@ package body EVC_Test_Sessions is
              and then not R.Train_Data_Acknowledged,
              "session: the session established with valid Train Data: "
              & "message 129 with packets 0 and 11 (3.18.3.4)");
+      Decode_Radio_Message (3, M, St);
+      Check (Is_Message (3, 136) and then St = ETCS_Message.Accepted
+             and then M.Count = 1,
+             "session: the session established, a position report "
+             & "(3.6.5.1.4 h)");
       Ack_Train_Data (2);
       Check (R.Train_Data_Acknowledged and then Radio_Outputs = 0,
              "session: the Train Data acknowledged by message 8 "
@@ -662,6 +672,10 @@ package body EVC_Test_Sessions is
       Check (Output_Of (156) > 0 and then Status_Shown (20, 0),
              "SoM L2: the train rejected (A38): the session terminated "
              & "(156) and 'Train is rejected' shown (A40)");
+      --  e5/session-4: the deletion applied by EVC_Core.Evaluate_Radio
+      Check (EVC_Position.Status = EVC_Position.Unknown
+             and then not EVC_Position.LRBG.Valid,
+             "SoM L2: the train rejected, the position deleted (D35, A39)");
    end Scenario_Session_SoM_Failures;
 
    procedure Scenario_Session_EoM is
@@ -675,10 +689,123 @@ package body EVC_Test_Sessions is
       Establish (1);
       Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
       Stand;
-      Check (EVC_Sessions.EoM_Sent = 1 and then Output_Of (150) > 0,
-             "EoM: the mode SB entered with a session: message 150 "
-             & "(5.5.3.1.3)");
+      declare
+         N  : constant Natural := Output_Of (150);
+         M  : ETCS_Message.Message_T;
+         St : ETCS_Message.Status_T := ETCS_Message.Truncated;
+      begin
+         if N > 0 then
+            Decode_Radio_Message (N, M, St);
+         end if;
+         Check (EVC_Sessions.EoM_Sent = 1 and then N > 0
+                and then St = ETCS_Message.Accepted
+                and then M.Values (5) = 0,
+                "EoM: the mode SB entered with a session: message 150 "
+                & "(5.5.3.1.3), Q_DESK 0 the desk closed (8.6.10, "
+                & "7.5.1.102.2)");
+      end;
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_EoM;
+
+   ---------------------------------------------------------------------
+   --  Phase 3 (e5/session-4): the position reports of 3.6.5
+   ---------------------------------------------------------------------
+
+   --  Message 24 referred to the group NID_BG of country 123 with packet
+   --  58: every T_CYC s, no distance period, M_LOC (7.5.1.69)
+   function Report_Parameters (NID_BG : Natural; T_Cyc : Natural;
+                               M_LOC  : Natural) return Byte_Array
+   is
+      P  : ETCS_Track_Packets.P58.Packet_T;
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      P.Q_DIR := 2;
+      P.Q_SCALE := 1;
+      P.T_CYCLOC := ETCS_Variables.T_CYCLOC_T (T_Cyc);
+      P.D_CYCLOC := 32_767;    -- 7.5.1.18: no distance period
+      P.M_LOC := ETCS_Variables.M_LOC_T (M_LOC);
+      ETCS_Track_Packets.P58.Encode (P, W, OK);
+      Check (OK, "reports: packet 58 encoded");
+      return Message_Bytes (W);
+   end Report_Parameters;
+
+   --  Message 24 referred to the group NID_BG of country 123 with packet
+   --  42: Q_RBC 0, terminate the session (3.5.5.1 a)
+   function Terminate_Order (NID_BG : Natural) return Byte_Array is
+      P  : TP42.Packet_T;
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      P.Q_DIR := 2;
+      P.Q_RBC := 0;
+      P.NID_C := 5;
+      P.NID_RBC := 300;
+      P.NID_RADIO := 16#0077#;
+      TP42.Encode (P, W, OK);
+      Check (OK, "reports: packet 42 encoded");
+      return Message_Bytes (W);
+   end Terminate_Order;
+
+   procedure Scenario_Session_Reports is
+      N : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (20, 300));
+      Add_Group (Group (30, 500));
+      Run_X (15_000);
+      Check (EVC_Sessions.Position_Reports_Sent = 0,
+             "reports: none without a session (3.6.5.1.4 a, i, j)");
+      Establish (1);
+      Check (EVC_Sessions.Position_Reports_Sent = 1,
+             "reports: the session established, one report (3.6.5.1.4 "
+             & "h)");
+      N := EVC_Sessions.Position_Reports_Sent;
+      Run_X (35_000);
+      Stand_X (2_000);
+      Check (EVC_Sessions.Position_Reports_Sent = N + 3,
+             "reports: standstill left, the LRBG passed without "
+             & "parameters, standstill reached (3.6.5.1.4 i, j, a), got"
+             & Img (EVC_Sessions.Position_Reports_Sent - N));
+
+      Give_Radio_Message (1, Report_Parameters (20, 5, 2));
+      Stand;
+      N := EVC_Sessions.Position_Reports_Sent;
+      Stand_X (12_000);
+      Check (EVC_Sessions.Report_Parameters_Taken = 1
+             and then EVC_Sessions.Position_Reports_Sent = N + 2,
+             "reports: packet 58 referred to the LRBG, every 5 s: two "
+             & "reports in 12 s (3.6.5.1.5 a, 3.6.5.1.7)");
+      --  7.5.1.153: T_CYCLOC 255, no time period
+      Give_Radio_Message (1, Report_Parameters (20, 255, 2));
+      Stand;
+      N := EVC_Sessions.Position_Reports_Sent;
+      Run_X (55_000);
+      Stand_X (2_000);
+      Check (EVC_Sessions.Report_Parameters_Taken = 2
+             and then EVC_Sessions.Position_Reports_Sent = N + 2,
+             "reports: new parameters replace the old (3.6.5.1.7); with "
+             & "parameters stored the passage of an LRBG is not reported "
+             & "(3.6.5.1.4 j), standstill left and reached are, got"
+             & Img (EVC_Sessions.Position_Reports_Sent - N));
+
+      --  3.5.5.1 a): the order to terminate by radio
+      Give_Radio_Message (1, Terminate_Order (30));
+      Stand;
+      Check (Output_Of (156) > 0,
+             "reports: packet 42 Q_RBC 0 by radio, the session terminated "
+             & "(3.5.5.1 a): 156");
+   end Scenario_Session_Reports;
 
 end EVC_Test_Sessions;

@@ -224,6 +224,7 @@ begin
    Scenario_Session_SoM_Level_2;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
+   Scenario_Session_Reports;
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;

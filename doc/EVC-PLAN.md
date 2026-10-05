@@ -2136,3 +2136,51 @@ cycle late: 5100400_06 trips at the transition, triage S2f278aca);
 4.8.5.2 and 4.8.5.4 b) (handover); the packets of message 24 and the
 session messages (8, 32, 39 to 43) through the tables; [17] (SM); the
 trigger of 3.8.2.4 (packet 90); message 158; the leftovers of phase 2.
+
+### Session and link, phase 3 (e5/session-4, 2026-10-06)
+
+**Implemented.** The position reports of 3.6.5 (`EVC_Sessions.Reports`,
+a private child like `Mission`): message 136 with packet 0, or 1 when
+`EVC_Position.Report_Kind` says so, to the supervising RBC (session
+established, connection up) on 3.6.5.1.4 a), b), g), h), i), j) and the
+parameters of packet 58 (3.6.5.1.5 a to e, kept by `EVC_Position`),
+taken from the messages passed to the authority, referred to their LRBG
+and applied in `Evaluate`; entering level 1 deletes them (4.9.1.3, the
+parameter part; `EVC_Position.Delete_Report_Parameters`). A24 / A39 of
+5.4.3.2 applied in `EVC_Core.Evaluate_Radio` (its postcondition now has
+the form of `Delete_Invalid_Position`'s; Tick's 3.6.4.1.2 proves). Q_DESK
+in message 150 (8.6.10 of 4.0.0 has it). Packet 42 of message 24 by
+radio (`EVC_Sessions.Take_Radio_Order`: the termination ordered by the
+RBC was never applied, message 24 goes to no store). Message 8 matched
+on its second T_TRAIN read from the catalogue's seventh value (it read
+NID_BG: the Train Data were never acknowledged in the SUBSET-076 runs;
+the test helper had the same error). Scenarios
+`Scenario_Session_Reports` and checks added to `_Establish`,
+`_SoM_Failures`, `_EoM`.
+
+**Decisions.** (1) Mode and level changes are seen in the cycle they
+happen; the report goes at its end (3.6.5.1.4.1). (2) h) is the
+supervising session becoming established; during the level 2 start of
+mission 157 is that report. (3) No report while the connection is lost;
+an event meanwhile is not kept. (4) Packet 58 from any message passed to
+the authority (4.8 is the authority's), referred to the message's LRBG.
+(5) The periods of 3.6.5.1.5 a) b) are not restarted by a report sent
+for another reason. (6) Q_DESK from the cab status of the position. (7)
+Packet 42 of 3 / 33 keeps the way of their stored information; of 24 it
+is taken by the session half (4.8.4 accepts session management in every
+mode with a session).
+
+**Analysed.** S1f552964 (Main window after a stop): the joint of two
+test cases without a driver action, triaged model. S7e250917: fixed
+(Q_DESK). S7d250784: 5070300_02 / _04 expect Q_DESK 0 with a desk open,
+triaged s076. SUBSET-076: 518 -> 530 passed.
+
+**Left.** Level transitions to and from level 2 (5.10, 5.15, step 4 of
+the brief: not started; `EVC_Levels.Available` still L0 / L1 while an
+order whose only level is 2 selects it as the last entry, noted by the
+acceptance agent; 131 sequences "connect not requested", 53 "level L2
+shown"); 3.6.5.1.4 c) d) e) k) l) (integrity, RBC/RBC border, errors of
+3.16.4); the last reported LRBGs of 3.6.2.2.2 c) on the RBC's side;
+the train running number and safe consist length in 157; the signatures
+S15dab337 (Start/Main disabled after a second level 2 SoM) and Sb83b2c65
+(136 on SH -> PS) to analyse; 3.5.6, the handover, 4.8.5 as before.

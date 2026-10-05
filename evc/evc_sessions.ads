@@ -32,10 +32,14 @@
 --       of the cycle, EVC_Radio.Send), then the authority's Produce, then
 --       EVC_Radio.Drain.
 
+pragma Unevaluated_Use_Of_Old (Allow);
+
 with ETCS_Variables;
 with EVC_Bytes;
+with EVC_Distances;
 with EVC_Driver_Requests;
 with EVC_Levels;
+with EVC_Location;
 with EVC_Mission;
 with EVC_Modes;  use EVC_Modes;
 with EVC_National_Values;
@@ -45,6 +49,11 @@ with EVC_Position;
 with EVC_Radio;
 with EVC_Received;
 with EVC_Train_Data;
+use type EVC_Location.Anchor_T;
+use type EVC_Position.Status_T;
+use type EVC_Position.Cab_T;
+use type EVC_Distances.Sense_T;
+use type EVC_Distances.Cm_T;
 
 package EVC_Sessions
   with SPARK_Mode => On,
@@ -118,12 +127,24 @@ is
    --  sessions, the link supervision, the reports to send, the
    --  conditions of 4.6.3
    procedure Evaluate (Ctx : EVC_Radio.Context_T)
-     with Global => (In_Out => (State, EVC_Radio.State),
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Position.State),
                      Input  => (EVC_National_Values.State,
                                 EVC_Odometry.State, EVC_Mission.State,
-                                EVC_Levels.State, EVC_Position.State,
+                                EVC_Levels.State,
                                 EVC_Train_Data.State,
-                                EVC_Driver_Requests.State));
+                                EVC_Driver_Requests.State)),
+          --  phase 3: the position report parameters (3.6.5) change
+          --  nothing of the position itself
+          Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Orientation
+                             = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.Status = EVC_Position.Status'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old;
 
    --  6. The mode changed from From to To (3.5.3.4 c, 3.6.5.1.4, ...)
    procedure Mode_Changed (From, To : Mode_T)
@@ -156,6 +177,13 @@ is
    function SoM_Reports_Sent return Natural
      with Global => State;
    function EoM_Sent return Natural
+     with Global => State;
+
+   --  Phase 3, for the tests: the position reports 136 sent (3.6.5) and
+   --  the position report parameters (packet 58) applied
+   function Position_Reports_Sent return Natural
+     with Global => State;
+   function Report_Parameters_Taken return Natural
      with Global => State;
 
    --  The condition C holds in this cycle (computed by Evaluate)

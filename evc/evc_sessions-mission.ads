@@ -101,6 +101,11 @@ is
    function Opening return Boolean
      with Global => State;
 
+   --  A31 to A33: the session of the start of mission is being opened or
+   --  its SoM position report is due (EVC_Sessions.Reports, 3.6.5.1.4 h)
+   function Reporting return Boolean
+     with Global => State;
+
    --  For the tests: the Train Data sent (129 or 157 with packet 11),
    --  the SoM position reports and the End of Mission messages sent
    function Train_Data_Sent return Natural

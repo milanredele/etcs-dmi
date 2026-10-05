@@ -59,7 +59,8 @@ package body EVC_Test_Authority is
             then
                V (3) := Unsigned_64 (EVC_Radio.T_Train_At
                                        (Unsigned_64 (EVC_Core.Time_Ms)));
-               V (6) := M.Values (3);
+               --  the second T_TRAIN is the seventh value (NID_LRBG is two)
+               V (7) := M.Values (3);
                Give_Radio_Message (1, Message_Of (MCat.Track_M8, V));
                Stand_X (100);
                return;
