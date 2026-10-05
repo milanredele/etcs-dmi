@@ -19,8 +19,15 @@
 --  of the cycle is in EVC_Sessions: each step of this half follows the
 --  same step of the session half.
 
+with EVC_Levels;
 with EVC_Modes;  use EVC_Modes;
+with EVC_Odometry;
+with EVC_Origins;
+with EVC_Position;
 with EVC_Radio;
+with EVC_Radio_Info;
+with EVC_Received;
+with EVC_Stored_Information;
 
 package EVC_Radio_Authority
   with SPARK_Mode => On,
@@ -33,21 +40,32 @@ is
 
    --  The power-up: nothing received, nothing counted
    procedure Clear
-     with Global => (Output => State),
+     with Global => (Output => (State, EVC_Radio_Info.State)),
           Post => Messages_Taken = 0
                   and then not Unconditional_Stop_Received
                   and then (for all C in Condition_T => not Holds (C));
 
    --  1. A message of the session S that EVC_Sessions passed (received
    --  in this cycle, or released from the transition buffer): its bits
-   --  are EVC_Received.Last_Message
-   procedure Take_Message (S : EVC_Radio.Session_T)
-     with Global => (In_Out => State);
+   --  are EVC_Received.Last_Message. Now_Ms: the on-board time.
+   --  Messages 3 and 33 (3.8): their stored information to
+   --  EVC_Radio_Info, referred to the LRBG they name (3.6.2.2.2 c,
+   --  EVC_Position.Radio_Origin), for the stored information of the
+   --  cycle (EVC_Stored_Information.Evaluate).
+   procedure Take_Message (S      : EVC_Radio.Session_T;
+                           Now_Ms : EVC_Radio.Time_Ms_T)
+     with Global => (In_Out => (State, EVC_Origins.State,
+                                EVC_Radio_Info.State),
+                     Input  => (EVC_Received.Store, EVC_Position.State,
+                                EVC_Odometry.State));
 
    --  5. The cycle of the half, after EVC_Sessions.Evaluate: the MA
    --  request, the emergency stops, the conditions of 4.6.3
    procedure Evaluate (Ctx : EVC_Radio.Context_T)
-     with Global => (In_Out => State);
+     with Global => (In_Out => (State, EVC_Radio_Info.State),
+                     Input  => (EVC_Stored_Information.State,
+                                EVC_Levels.State)),
+          Post => EVC_Radio_Info.Count = 0;
 
    --  6. The mode changed from From to To
    procedure Mode_Changed (From, To : Mode_T)
@@ -111,6 +129,9 @@ is
    function Mode_Changes_Taken return Natural
      with Global => State;
    function Cycles_Produced return Natural
+     with Global => State;
+   --  the MAs received by radio and accepted since Clear (saturating)
+   function Radio_MAs_Accepted return Natural
      with Global => State;
 
 end EVC_Radio_Authority;

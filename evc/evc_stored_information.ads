@@ -89,6 +89,7 @@ with EVC_Ports;
 with EVC_Profile;
 with EVC_Position;
 with EVC_Profiles;           use EVC_Profiles;
+with EVC_Radio_Info;
 with EVC_Supervision_Input;  use EVC_Supervision_Input;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
@@ -295,6 +296,11 @@ is
    function Train_Covered return Boolean
      with Global => State;
 
+   --  Phase E5: an MA received by radio (EVC_Radio_Info) was accepted
+   --  in the last Evaluate
+   function Radio_MA_Accepted return Boolean
+     with Global => State;
+
    --  One cycle (see above). Mode_Speed: the mode related speed limit
    --  (No_Speed_Limit until phase E4); Special_Active and Additional:
    --  the status of the special brakes and of the additional brake on
@@ -325,7 +331,8 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Train_Data.State, EVC_Config.State)),
+                                EVC_Train_Data.State, EVC_Config.State,
+                                EVC_Radio_Info.State)),
           Post =>
             --  3.13.7: sorted in the sense Ahead, never above a source
             Current.MRSP.Count = MRSP_Steps.Count

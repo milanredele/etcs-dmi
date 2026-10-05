@@ -27,7 +27,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | LX | lx.scn | 9 | 44 | 40 / 33 | 0 / 126 | 0 | absent 20, done 19 |
 | Level transitions | level-transitions.scn | 10 | 33 | 52 / 36 | 0 / 42 | 0 | absent 8, deferred 8, other 1 |
 | Linking | linking.scn | 12 | 34 | 64 / 23 | 0 / 93 | 0 | absent 19, done 24, partial 1, todo 14 |
-| MA | ma.scn | 18 | 64 | 85 / 84 | 0 / 208 | 0 | absent 34, deferred 2, done 5, todo 12 |
+| MA | ma.scn | 18 | 64 | 85 / 84 | 0 / 208 | 0 | absent 34, deferred 4, done 14, todo 1 |
 | MRSP | mrsp.scn | 10 | 11 | 14 / 7 | 35 / 2 | 0 | absent 18, done 9 |
 | Mode Profile | mode-profile.scn | 14 | 54 | 42 / 30 | 0 / 63 | 0 | absent 5, deferred 1, done 7, other 3 |
 | Movement | movement.scn | 6 | 20 | 17 / 49 | 0 / 45 | 0 | other 12 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, deferred 12, done 20, partial 6 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, deferred 1, done 18, other 6, partial 9 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 135, done 453, n/a 4, other 52, partial 64, todo 56 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 137, done 462, n/a 4, other 52, partial 64, todo 45 |
