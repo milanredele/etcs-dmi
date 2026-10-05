@@ -9,17 +9,22 @@ with DMI_Protocol;
 with EVC_Config;
 with EVC_DMI_Port;
 with EVC_Core;
+with EVC_Bytes;
+with EVC_Mission;
 with EVC_Modes;
 with EVC_Procedures;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
+with EVC_Test_Modes;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
 with Sim_Telegrams;
 
 package body EVC_Test_Sessions is
+
+   use type EVC_Bytes.Byte_Array;
 
    package MCat renames ETCS_Message_Catalogue;
    package R renames EVC_Radio;
@@ -107,6 +112,17 @@ package body EVC_Test_Sessions is
       end if;
    end Establish;
 
+   --  The RBC acknowledges (message 8, 8.7.4) the Train Data of the
+   --  N-th RTM output (129 or 157) on S: its second T_TRAIN is theirs
+   procedure Ack_Train_Data (N : Positive; S : Natural := 1) is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+   begin
+      Decode_Radio_Message (N, M, St);
+      Give_Radio_Message (S, Msg (MCat.Track_M8, Now_T, 0, 6, M.Values (3)));
+      Stand;
+   end Ack_Train_Data;
+
    --  The radio byte of the MSG_STATUS of the last cycle (3.5.7.1: 0 no
    --  connection, 1 up, 2 lost / set-up failed), 16#FF# when none
    function Radio_Byte return Natural is
@@ -171,13 +187,23 @@ package body EVC_Test_Sessions is
       Give_Radio_Message (1, Msg (MCat.Track_M32, Now_T, 0, 7, 48));
       Stand;
       Decode_Radio_Message (1, M, St);
-      Check (Radio_Outputs = 1 and then Is_Message (1, 159)
+      Check (Radio_Outputs = 2 and then Is_Message (1, 159)
              and then St = ETCS_Message.Accepted and then M.Count = 1
              and then R.Info (1).State = R.Established
              and then R.Info (1).Version = 48
              and then R.Supervising = 1 and then R.In_Communication,
              "session: the system version 3.0, established, message 159 "
              & "with packet 2 (3.5.3.7 d), the supervising RBC");
+      Decode_Radio_Message (2, M, St);
+      Check (Is_Message (2, 129) and then St = ETCS_Message.Accepted
+             and then M.Count = 2
+             and then not R.Train_Data_Acknowledged,
+             "session: the session established with valid Train Data: "
+             & "message 129 with packets 0 and 11 (3.18.3.4)");
+      Ack_Train_Data (2);
+      Check (R.Train_Data_Acknowledged and then Radio_Outputs = 0,
+             "session: the Train Data acknowledged by message 8 "
+             & "(3.18.3.4.1)");
 
       --  3.5.3.7.4: no acknowledgement within 15 s: 159 once again
       Sample (0);
@@ -232,7 +258,7 @@ package body EVC_Test_Sessions is
 
    procedure Scenario_Session_Lost_Version is
    begin
-      EVC_Config.Set_Radio_For_Test ((Sessions => 1));
+      EVC_Config.Set_Radio_For_Test ((Sessions => 1, others => <>));
       Start_X;
       Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
       Order_Group (20, 300, Q_RBC => 1, NID_RBC => 301);
@@ -251,8 +277,10 @@ package body EVC_Test_Sessions is
              & "requested (3.5.4.1, 3.5.4.2)");
       Give_Radio_Event (1, Connection_Set_Up);
       Stand;
-      Check (R.Info (1).State = R.Established and then Radio_Outputs = 0,
-             "session: set up again within the session (3.5.4.3)");
+      Check (R.Info (1).State = R.Established and then Radio_Outputs = 1
+             and then Is_Message (1, 129),
+             "session: set up again within the session (3.5.4.3), the "
+             & "Train Data not acknowledged sent again (3.18.3.4.2)");
       Give_Radio_Event (1, Connection_Lost);
       Stand;
       Sample (0);
@@ -464,5 +492,193 @@ package body EVC_Test_Sessions is
              "indication: the requests stopped, no start of mission: "
              & """No Connection"" (3.5.7.4, Table 2 [3])");
    end Scenario_Session_Indication;
+
+   ---------------------------------------------------------------------
+   --  Phase 2 (e5/session-3): the level 2 start and end of mission
+   ---------------------------------------------------------------------
+
+   --  The DMI's frames (dmi_protocol.ads): a driver action, a text entry
+   --  (kind 0 driver ID, 1 train running number), the Train Data of
+   --  Table 40 (kind 2), the RBC data (kind 5: choice, RBC ID u32, the
+   --  phone number's length and 16 digits)
+   function Action (Code : Natural; Arg : Natural := 0) return Byte_Array is
+     (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION,
+             (Byte (Code), Byte (Arg mod 256), Byte (Arg / 256))));
+
+   function Text_Entry (Kind : Natural; Text : String) return Byte_Array is
+      Res : Byte_Array (1 .. 2 + Text'Length);
+   begin
+      Res (1) := Byte (Kind);
+      Res (2) := Byte (Text'Length);
+      for I in Text'Range loop
+         Res (3 + I - Text'First) := Character'Pos (Text (I));
+      end loop;
+      return Frame (EVC_DMI_Port.MSG_DRIVER_DATA, Res);
+   end Text_Entry;
+
+   function Train_Entry return Byte_Array is
+     (Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+             Byte_Array'(1 => 2) & U16 (200) & U16 (135) & U16 (160)
+             & Byte_Array'(1 => 2) & U16 (4) & Byte_Array'(0, 0, 1)));
+
+   function RBC_Entry (Choice : Natural; Id : Unsigned_32; Phone : String)
+     return Byte_Array
+   is
+      Res : Byte_Array (1 .. 23) := (others => 0);
+   begin
+      Res (1) := 5;
+      Res (2) := Byte (Choice);
+      Res (3) := Byte (Id and 255);
+      Res (4) := Byte (Shift_Right (Id, 8) and 255);
+      Res (5) := Byte (Shift_Right (Id, 16) and 255);
+      Res (6) := Byte (Shift_Right (Id, 24));
+      Res (7) := Byte (Phone'Length);
+      for I in Phone'Range loop
+         Res (8 + I - Phone'First) := Character'Pos (Phone (I));
+      end loop;
+      return Frame (EVC_DMI_Port.MSG_DRIVER_DATA, Res);
+   end RBC_Entry;
+
+   procedure Send (Bytes : Byte_Array) is
+   begin
+      Input (DMI, Bytes);
+      Stand;
+   end Send;
+
+   --  The byte K (dmi_protocol.ads order from 1) of the MSG_ONBOARD of the
+   --  last cycle: 6 data, 7 session, 8 rbc, 12 waiting, 14 radio
+   function Onboard_Byte (K : Positive) return Natural is
+     (if Find_DMI (EVC_DMI_Port.MSG_ONBOARD) = 0 then 16#FF#
+      else Byte_At (Find_DMI (EVC_DMI_Port.MSG_ONBOARD), K));
+
+   --  The RTM output that is the message NID (0: none)
+   function Output_Of (NID : Natural) return Natural is
+   begin
+      for N in 1 .. Radio_Outputs loop
+         if Is_Message (N, NID) then
+            return N;
+         end if;
+      end loop;
+      return 0;
+   end Output_Of;
+
+   --  A level 2 start of mission up to the driver's RBC contact (S1, S2,
+   --  S3), one session
+   procedure SoM_To_S3 is
+   begin
+      EVC_Config.Set_Radio_For_Test ((Sessions => 1, Engine_Id => 76_000));
+      EVC_Test_Modes.Start_E4;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
+   end SoM_To_S3;
+
+   procedure Scenario_Session_SoM_Level_2 is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      N  : Natural;
+   begin
+      SoM_To_S3;
+      Check (R.Contact.Known and then R.Contact.Valid
+             and then R.Contact.RBC = (NID_C => 5, NID_RBC => 300)
+             and then R.Contact.Radio = 16#0077_FFFF_FFFF_FFFF#
+             and then R.Info (1).State = R.Connecting
+             and then Is_Request (1, 1)
+             and then Onboard_Byte (12) = 2 and then Onboard_Byte (7) = 1
+             and then Onboard_Byte (6) / 16 mod 2 = 1,
+             "SoM L2: the RBC contact entered by the driver (5.4.3.2 S3) "
+             & "valid (5.4.3.3), the session opened (A31), the DMI waits "
+             & "for the RBC (MSG_ONBOARD waiting 2)");
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M32, Now_T, 0, 7, 48));
+      Stand;
+      N := Output_Of (157);
+      if N > 0 then
+         Decode_Radio_Message (N, M, St);
+      end if;
+      Check (N > 0 and then St = ETCS_Message.Accepted
+             and then M.Values (5) = 2 and then M.Count = 1
+             and then M.Values (4) = 76_000
+             and then Onboard_Byte (12) = 0 and then Onboard_Byte (7) = 2,
+             "SoM L2: the session open (D31, D32), the SoM position report "
+             & "157 'no position referred to an LRBG' (Q_STATUS 2, A34) "
+             & "without Train Data, NID_ENGINE of the configuration");
+      Give_Radio_Message (1, Msg (MCat.Track_M38, Now_T));
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M41, Now_T));
+      Stand;
+      Check (EVC_Sessions.SoM_Reports_Sent = 1,
+             "SoM L2: the train accepted (A23, D34), S10");
+
+      --  S12: the Train Data validated, sent (3.18.3.4), repeated, then
+      --  acknowledged (S11 -> S20)
+      Send (Train_Entry);
+      N := Output_Of (129);
+      Check (N > 0 and then not R.Train_Data_Acknowledged,
+             "SoM L2: the Train Data validated in the session: 129 "
+             & "(3.18.3.4, 5.4.3.2 E16)");
+      Sample (0);
+      EVC_Core.Tick (15_000);
+      Take;
+      N := Output_Of (129);
+      Check (N > 0, "SoM L2: 129 repeated without acknowledgement "
+             & "(A.3.1, decision 4)");
+      Ack_Train_Data (N);
+      Check (R.Train_Data_Acknowledged and then Onboard_Byte (8) mod 2 = 1,
+             "SoM L2: acknowledged by 8 (3.18.3.4.1, D15 / S11, MSG_ONBOARD "
+             & "rbc bit0)");
+      Sample (0);
+      EVC_Core.Tick (15_000);
+      Take;
+      Check (Output_Of (129) = 0, "SoM L2: not repeated once acknowledged");
+
+      --  S20 -> S21: 'Start' with a session open proposes no mode
+      Send (Text_Entry (1, "5678"));
+      Send (Action (5));
+      Check (R.In_Communication and then not EVC_Mission.Proposed,
+             "SoM L2: 'Start' with a session open goes to S21 (5.4.5.3 h): "
+             & "no Staff Responsible proposed");
+   end Scenario_Session_SoM_Level_2;
+
+   procedure Scenario_Session_SoM_Failures is
+   begin
+      --  A31 / D31 / A32: three failed attempts (A.3.1)
+      SoM_To_S3;
+      for I in 1 .. 3 loop
+         Give_Radio_Event (1, Set_Up_Failed);
+         Stand;
+      end loop;
+      Check (R.Info (1).State = R.Idle and then Onboard_Byte (12) = 0
+             and then Radio_Byte = 2,
+             "SoM L2: the session could not be opened after three attempts "
+             & "(A32, A.3.1): the driver informed (3.5.7), S10");
+
+      --  A38, D35, A39, A40: the train rejected
+      SoM_To_S3;
+      Establish (1);
+      Give_Radio_Message (1, Msg (MCat.Track_M40, Now_T));
+      Stand;
+      Check (Output_Of (156) > 0 and then Status_Shown (20, 0),
+             "SoM L2: the train rejected (A38): the session terminated "
+             & "(156) and 'Train is rejected' shown (A40)");
+   end Scenario_Session_SoM_Failures;
+
+   procedure Scenario_Session_EoM is
+   begin
+      --  a mission in level 1 with a session: the desk closed, SB: End
+      --  of Mission (5.5.2.1.1, 5.5.3.1.3), no repetition (desk closed)
+      EVC_Config.Set_Radio_For_Test ((Sessions => 1, Engine_Id => 0));
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Establish (1);
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand;
+      Check (EVC_Sessions.EoM_Sent = 1 and then Output_Of (150) > 0,
+             "EoM: the mode SB entered with a session: message 150 "
+             & "(5.5.3.1.3)");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_EoM;
 
 end EVC_Test_Sessions;

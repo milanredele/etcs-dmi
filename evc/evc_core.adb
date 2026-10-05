@@ -74,6 +74,7 @@ is
 
    use type EVC_Bytes.Byte_Array;
    use type EVC_Mission.Data_Status_T;
+   use type EVC_Radio.Session_Ref_T;
    use type ETCS_Message.Status_T;
    use type ETCS_Telegram.Status_T;
 
@@ -298,7 +299,8 @@ is
           Non_Leading => False,
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => EVC_National_Values.Current.Values.V_NVSTFF,
-          D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF));
+          D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF,
+          In_Communication => EVC_Radio.In_Communication));
    end Set_Mode_For_Test;
 
    procedure Count (Counter : in out Natural) is
@@ -393,7 +395,9 @@ is
       EVC_Text_Messages.Clear;
       --  phase E5: no session, no contact, the sessions of the
       --  installation (EVC_Config: two, or one)
-      EVC_Radio.Clear (EVC_Config.Current.Radio.Sessions);
+      EVC_Radio.Clear
+        (EVC_Config.Current.Radio.Sessions,
+         ETCS_Variables.NID_ENGINE_T (EVC_Config.Current.Radio.Engine_Id));
       EVC_Sessions.Clear;
       EVC_Radio_Authority.Clear;
       EVC_Outbox.Clear;
@@ -1189,7 +1193,8 @@ is
           Non_Leading => EVC_Train_Inputs.Non_Leading_Permitted,
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => NV.V_NVSTFF,
-          D_NVSTFF    => NV.D_NVSTFF));
+          D_NVSTFF    => NV.D_NVSTFF,
+          In_Communication => EVC_Radio.In_Communication));
       --  A.3.4.1.2 k), column k: what entering SB has not deleted
       --  already (the TSRs, the adhesion, the big metal masses, the level
       --  transition orders, the national values not yet applicable); the
@@ -1228,13 +1233,21 @@ is
                                 EVC_Levels.State, SDM_Result,
                                 EVC_Movement_Authority.State,
                                 EVC_Driver_Requests.State,
-                                EVC_Train_Inputs.State),
+                                EVC_Train_Inputs.State,
+                                EVC_Mission.State, EVC_Train_Data.State),
                      In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio_Info.State))
+                                EVC_Radio_Info.State, EVC_Position.State))
    is
    begin
       EVC_Sessions.Evaluate (Radio_Context);
+      --  5.4.3.2 A35: the RBC confirmed the reported position; A24, A39:
+      --  the position deleted (e5/session-3)
+      if EVC_Sessions.Position_Confirmed then
+         EVC_Position.Revalidate;
+      elsif EVC_Sessions.Position_To_Delete then
+         EVC_Position.Delete_Position;
+      end if;
       EVC_Radio_Authority.Evaluate
         (Radio_Context,
          (MA_Request => SDM_Result.MA_Request,
@@ -1246,7 +1259,8 @@ is
    --  6b. Phase E5: the mode changed (after the mode machine)
    procedure Radio_Mode_Changed (From, To : Mode_T)
      with Global => (In_Out => (EVC_Sessions.State,
-                                EVC_Radio_Authority.State))
+                                EVC_Radio_Authority.State),
+                     Input  => (EVC_Mission.State, EVC_Radio.State))
    is
    begin
       EVC_Sessions.Mode_Changed (From, To);
@@ -1337,7 +1351,8 @@ is
              Non_Leading => EVC_Train_Inputs.Non_Leading_Permitted,
              Sense       => EVC_Position.Orientation,
              V_NVSTFF    => EVC_National_Values.Current.Values.V_NVSTFF,
-             D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF));
+             D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF,
+          In_Communication => EVC_Radio.In_Communication));
       end if;
       EVC_Text_Messages.Evaluate
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
@@ -1576,7 +1591,8 @@ is
           Non_Leading => EVC_Train_Inputs.Non_Leading_Permitted,
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => NV.V_NVSTFF,
-          D_NVSTFF    => NV.D_NVSTFF));
+          D_NVSTFF    => NV.D_NVSTFF,
+          In_Communication => EVC_Radio.In_Communication));
       Delete_On_Mode_Entry (To);
       Revoke_Brake_Reasons (From, To);
    end Enter_Mode;
@@ -1928,6 +1944,19 @@ is
           else 0))
      with Global => EVC_National_Values.State;
 
+   --  The session byte of MSG_ONBOARD: a session established with the
+   --  supervising RBC (2), or one being established (1, 3.5.3.8)
+   function Session_Byte return EVC_Bytes.Byte is
+     (if EVC_Radio.Supervising /= EVC_Radio.No_Session
+        and then EVC_Radio.Established
+                   (EVC_Radio.Session_T (EVC_Radio.Supervising))
+      then Session_Exists
+      elsif (for some S in EVC_Radio.Session_T =>
+               EVC_Radio.Being_Established (S))
+      then Session_Being_Established
+      else 0)
+     with Global => EVC_Radio.State;
+
    --  8g. DMI: MSG_ONBOARD (dmi_protocol.ads) every cycle, from what the
    --  on-board knows: the validity of the level, the position and the
    --  data of the start of mission (5.4), the train and national bits;
@@ -1937,7 +1966,8 @@ is
                                 EVC_Procedures.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Position.State,
-                                EVC_Mission.State, EVC_Train_Data.State),
+                                EVC_Mission.State, EVC_Train_Data.State,
+                                EVC_Radio.State, EVC_Sessions.State),
                      In_Out => EVC_Outbox.Queue)
    is
       Onboard : constant Onboard_T :=
@@ -1952,7 +1982,18 @@ is
                               = EVC_Mission.Valid
                          then Data_Train_Data_Valid else 0)
                      or (if EVC_Mission.TRN_Status = EVC_Mission.Valid
-                         then Data_TRN_Valid else 0),
+                         then Data_TRN_Valid else 0)
+                     --  phase E5 (e5/session-3): the RBC contact (5.4.3.3)
+                     or (if EVC_Radio.Contact.Known
+                           and then EVC_Radio.Contact.Valid
+                         then Data_RBC_Valid else 0),
+         Session  => Session_Byte,
+         RBC      => (if EVC_Radio.Train_Data_Acknowledged
+                      then RBC_Train_Data_Acked else 0),
+         Radio    => (if EVC_Radio.Contact.Known then Radio_Contact_Known
+                      else 0),
+         --  5.4.3.2 A31: the session of the start of mission opened
+         Waiting  => (if EVC_Sessions.SoM_Opening then Waiting_RBC else 0),
          Train    => Train_Bits,
          National => National_Bits,
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
@@ -2226,7 +2267,8 @@ is
    procedure Send_Radio
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State),
+                                EVC_Levels.State, EVC_Train_Data.State,
+                                EVC_Mission.State),
                      In_Out => (EVC_Sessions.State,
                                 EVC_Radio_Authority.State, EVC_Radio.State,
                                 EVC_Radio.Queue, EVC_Outbox.Queue))

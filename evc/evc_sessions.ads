@@ -34,12 +34,17 @@
 
 with ETCS_Variables;
 with EVC_Bytes;
+with EVC_Driver_Requests;
+with EVC_Levels;
+with EVC_Mission;
 with EVC_Modes;  use EVC_Modes;
 with EVC_National_Values;
 with EVC_Odometry;
 with EVC_Ports;
+with EVC_Position;
 with EVC_Radio;
 with EVC_Received;
+with EVC_Train_Data;
 
 package EVC_Sessions
   with SPARK_Mode => On,
@@ -80,7 +85,7 @@ is
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
      with Global => (In_Out => (State, EVC_Radio.State),
-                     Input  => EVC_Received.Store),
+                     Input  => (EVC_Received.Store, EVC_Position.State)),
           Post => Has_Released = Has_Released'Old;
 
    --  3. 3.5.2.6.1, 3.5.3.4 b), 3.5.5.1 a): a session management order
@@ -115,15 +120,44 @@ is
    procedure Evaluate (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => (EVC_National_Values.State,
-                                EVC_Odometry.State));
+                                EVC_Odometry.State, EVC_Mission.State,
+                                EVC_Levels.State, EVC_Position.State,
+                                EVC_Train_Data.State,
+                                EVC_Driver_Requests.State));
 
    --  6. The mode changed from From to To (3.5.3.4 c, 3.6.5.1.4, ...)
    procedure Mode_Changed (From, To : Mode_T)
-     with Global => (In_Out => State);
+     with Global => (In_Out => State,
+                     Input  => (EVC_Mission.State, EVC_Radio.State));
 
    --  8. The messages and requests of the cycle (EVC_Radio.Send)
    procedure Produce (Ctx : EVC_Radio.Context_T)
-     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue));
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State, EVC_Train_Data.State,
+                                EVC_Mission.State));
+
+   --  The level 2 start of mission (5.4.3.2, EVC_Sessions.Mission), for
+   --  EVC_Core after Evaluate: A35 the RBC confirmed the position
+   --  (EVC_Position.Revalidate), A24 / A39 the position to delete
+   --  (EVC_Position.Delete_Position); A31 / D31 the session being opened
+   --  (MSG_ONBOARD waiting 2)
+   function Position_Confirmed return Boolean
+     with Global => State;
+   function Position_To_Delete return Boolean
+     with Global => State;
+   function SoM_Opening return Boolean
+     with Global => State;
+
+   --  For the tests: the Train Data sent to the RBC (129, or 157 with
+   --  packet 11), the SoM position reports (157), the End of Mission
+   --  messages (150), since Clear
+   function Train_Data_Sent return Natural
+     with Global => State;
+   function SoM_Reports_Sent return Natural
+     with Global => State;
+   function EoM_Sent return Natural
+     with Global => State;
 
    --  The condition C holds in this cycle (computed by Evaluate)
    function Holds (C : Condition_T) return Boolean

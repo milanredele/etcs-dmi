@@ -9,6 +9,32 @@
 # the track), dmi (our DMI).
 #
 # on-board gaps still open
+S1f552964,E5,"session: the Main window expected after the level 2 start of mission's wait for the RBC (MSG_ONBOARD waiting 2 during A31, e5/session-3); not analysed yet (the DMI shows the default window): phase 3"
+S7e250917,E5,"session: message 150 with Q_DESK expected; 8.6.10 of 4.0.0 has no Q_DESK in 150: to analyse with the system version of the sequence, phase 3"
+S65c3faf6,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Saa959bed,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Saeffd85e,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Sdecbd2e2,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Seef98e05,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Safa2d197,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S0578fc93,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S83cf7ee2,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S17ad648d,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S3e2df66d,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S0c7e8942,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S49bc1c1a,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S5967fccc,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S4a80e57d,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Sc4c3a7a1,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Sa9695ede,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Sc4bf79ea,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S4e8eafa5,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+Sa32fcae0,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S99595702,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
+S442ca1ff,E5,"session: the level transitions into and out of level 2 (5.10, 5.15), reached now that the Train Data are sent (e5/session-3): phase 3"
+S66ffd293,E5,"session: the level transitions into and out of level 2 (5.10, 5.15), reached now that the Train Data are sent (e5/session-3): phase 3"
+S127a1224,E5,"session: the level transitions into and out of level 2 (5.10, 5.15), reached now that the Train Data are sent (e5/session-3): phase 3"
+S446f8b62,E5,"session: the level transitions into and out of level 2 (5.10, 5.15), reached now that the Train Data are sent (e5/session-3): phase 3"
 Sbc7dc0b2,onboard,4.10 column NP / 4.11.1.1: the level and the position kept over No Power (EVC_Retained; EVC_Core.Power_Up restores them invalid; the cold movement detection makes them valid); fixed on fix/e5-path: the sequences now pass the power-up
 Sc6b7c1bb,onboard,4.11.1.1: the level kept over No Power (see Sbc7dc0b2: fixed)
 Sdbd54349,onboard,4.11.1.1: the level kept over No Power (see Sbc7dc0b2: fixed)

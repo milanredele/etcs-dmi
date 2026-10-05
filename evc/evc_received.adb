@@ -45,6 +45,11 @@ is
      (Message.Kind)
      with Refined_Global => Message;
 
+   function Last_Field (I : ETCS_Message_Catalogue.Field_Index_T)
+     return Interfaces.Unsigned_64
+   is (Message.Values (I))
+     with Refined_Global => Message;
+
    function Last_Value (Var : ETCS_Variables.Variable_T)
      return Interfaces.Unsigned_64
    is (ETCS_Message.Value (Message, Var))

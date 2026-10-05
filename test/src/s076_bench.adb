@@ -5,6 +5,7 @@ pragma Ada_2012;
 with Ada.Streams;     use Ada.Streams;
 with DMI_Core;
 with DMI_Protocol;
+with EVC_Config;
 with EVC_Core;
 with EVC_Distances;
 with EVC_Outbox;
@@ -520,6 +521,11 @@ package body S076_Bench is
 
    procedure Power_On is
    begin
+      --  The ETCS identity of the on-board the sequences were recorded
+      --  with (NID_ENGINE 76000 in nearly all of them, e5/session-3)
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => EVC_Config.Current.Radio.Sessions,
+          Engine_Id => 76_000));
       if Was_Powered then
          EVC_Core.Power_Up;
       else

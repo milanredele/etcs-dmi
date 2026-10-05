@@ -372,13 +372,21 @@ is
            and then Train_Known and then EVC_Train_Data.Valid
            and then C.Level_Valid
          then
-            Proposal := True;
-            Proposal_Mode := (case C.Level is
-                                 when L0      => M_UN,   -- S23
-                                 when NTC     => M_SN,   -- S22
-                                 when L1 | L2 => M_SR);  -- S24
-            Put_Event (Event_Start, 1, 0);
-            Put_Event (Event_Proposed, Mode_T'Pos (Proposal_Mode), 0);
+            if C.Level = L2 and then C.In_Communication then
+               --  5.4.5.3 h): level 2 with a session open, S21: the MA
+               --  request (EVC_Radio_Authority), no mode proposed here
+               --  (the SR authorisation or the MA decide, E26 / E27 /
+               --  E29)
+               Put_Event (Event_Start, 1, 0);
+            else
+               Proposal := True;
+               Proposal_Mode := (case C.Level is
+                                    when L0      => M_UN,   -- S23
+                                    when NTC     => M_SN,   -- S22
+                                    when L1 | L2 => M_SR);  -- S24
+               Put_Event (Event_Start, 1, 0);
+               Put_Event (Event_Proposed, Mode_T'Pos (Proposal_Mode), 0);
+            end if;
          elsif M = M_PT and then C.Standstill and then C.Level_Valid
            and then C.Level = L1 and then EVC_Train_Data.Valid
          then

@@ -96,6 +96,11 @@ is
    function Last_Value (Var : ETCS_Variables.Variable_T)
      return Interfaces.Unsigned_64
      with Global => Store;
+   --  The variable I of the last message accepted, as coded (added by
+   --  e5/session-3: the second T_TRAIN of message 8, 8.7.4)
+   function Last_Field (I : ETCS_Message_Catalogue.Field_Index_T)
+     return Interfaces.Unsigned_64
+     with Global => Store;
    function Last_Packet_Count return Natural
      with Global => Store,
           Post => Last_Packet_Count'Result = Last_Message.Count;

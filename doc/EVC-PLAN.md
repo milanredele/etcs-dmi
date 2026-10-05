@@ -1904,3 +1904,63 @@ shortening of 3.16.3.4.5 b) (the authority half's, A.3.4); a time stamp
 increment between two messages of the same cycle (3.16.3.3.2: they carry
 the same T_TRAIN today); informing the RBC of an inconsistent message
 (3.16.3.1.1.2).
+
+### Session and link, phase 2 (e5/session-3, 2026-10-06)
+
+**Implemented** (`EVC_Sessions.Mission`, a private child of
+`EVC_Sessions` whose state is part of the parent's; scenarios
+`Scenario_Session_SoM_Level_2`, `_SoM_Failures`, `_EoM` in
+`EVC_Test_Sessions`). The level 2 start of mission of 5.4.3.2: D2 (the
+contact valid -> invalid, 5.4.3.3), D7 with a known contact, the driver's
+RBC contact of S3 (MSG_DRIVER_DATA kind 5: entered, 'Contact last RBC',
+'Use short number'; also at S10 / S20, 5.4.5.3 j), A31 with the three
+attempts of A.3.1, D31 (the contact valid) / A32, the SoM position
+report 157 with Q_STATUS (D32, A33, A34; packet 11 when the Train Data are
+valid), the answers 43 (A35: `EVC_Position.Revalidate` by `EVC_Core`), 41
+(D34 / A24) and 40 (D35, A39, A40: 156 and "Train is rejected", DMI entry
+20), 5.4.3.2.2; the Train Data to the RBC of 3.18.3.4 (129 with packets 0
+and 11 when the supervising session is established with valid Train Data
+and when the driver validates them, repeated every 15 s until message 8
+acknowledges them, again after a connection set up again, 3.18.3.4.2);
+`EVC_Radio.Train_Data_Acknowledged` (D15 / S11; MSG_ONBOARD rbc bit0); the
+end of mission (5.5.3.1.3, 5.5.3.1.4, 5.5.4.1: 150 with packet 0,
+repeated while the desk is open, the session terminated after the
+repetitions); 'Start' in level 2 with a session proposes no mode (5.4.5.3
+h, S21: the MA request is the authority half's). MSG_ONBOARD now carries
+the session byte, the contact's status (data bit4, radio bit7), the
+acknowledgement (rbc bit0) and waiting 2 during A31. NID_ENGINE:
+`EVC_Config.Radio_Config_T.Engine_Id` (default 0, not in the image of
+format version 1), `EVC_Radio.Engine_Id` for both halves (taken at
+`Clear`); the SUBSET-076 bench sets 76000 (9093 of the corpus's 9271
+NID_ENGINE rows).
+
+**Decisions.** (1) D7 / S4: the radio networks are not modelled (3.5.6
+left): a stored level 2 with a known contact opens the session at D7.
+(2) The Train Data of the start of mission go in 157 (packet 11) when
+valid then; message 8 acknowledges them as it does 129. (3) Message 8
+acknowledges when its second T_TRAIN (8.7.4 field 6) is the T_TRAIN of
+the message that carried them. (4) 129 is repeated every 15 s without a
+limit until acknowledged. (5) D34 / D35 "valid position referred to an
+unlinked balise group": a Valid position that was not reported "valid
+referred to an LRBG" is kept, anything else deleted. (6) N_AXLE 0 and
+M_AIRTIGHT 0 in packet 11 (not in the installation data). (7) 'Use short
+number': the RBC identity of the session is 0 (unknown). (8) 'Start' in
+level 2 with a session is not refused before the Train Data are
+acknowledged (D15): the authority half's MA request is to wait for
+`EVC_Radio.Train_Data_Acknowledged`.
+
+**Found and fixed.** `EVC_Driver_Requests` took the RBC data frame only
+with 24 bytes; the DMI sends 23 (the kind and 22 bytes,
+`Driver_Data_RBC_Length`): no driver's RBC entry ever reached the
+on-board.
+
+**Left for phase 3:** the train running number (packet 5) and the safe
+consist length (packet 10) in 157; the position reports of 3.6.5 (136:
+the events of 3.6.5.1.4, packet 58, at mode and level changes, the last
+reported LRBGs of 3.6.2.2.2 c); S4 and the radio networks (3.5.6, D7 /
+D8 / D9, A29, A41 to A43, S5); the driver's Radio Network type and GSM-R
+network ID; SM at S10 (E34, E35); the acceptance of 4.8 and 4.8.5; the
+handover; level transitions into and out of level 2 (5.10, 5.15); the
+SUBSET-076 runner's filling of the Radio data window (the 51 sequences
+blocked at "E5-radio": the sequences give the driver's entry only in a
+comment, e.g. "The Driver enters: RBC ID = 1").

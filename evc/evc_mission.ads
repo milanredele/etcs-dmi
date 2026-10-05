@@ -208,6 +208,9 @@ is
       --  the national values of SR (A.3.2, packet 3)
       V_NVSTFF    : Speed_Cms_T := 0;
       D_NVSTFF    : Length_T := Max_Cm;
+      --  added by e5/session-3: the session with the supervising RBC is
+      --  established (EVC_Radio.In_Communication; 5.4.5.3 h)
+      In_Communication : Boolean := False;
    end record;
 
    --  Power-up: every datum unknown, no mission
