@@ -1799,3 +1799,55 @@ the runner (telling the RBCs apart from the identities of packet 131/42
 and the connection requests) and in Sim_RBC; the RBC data dialogues of
 the DMI in the runner; the re-recorded baseline after the integration of
 the halves.
+
+### Session and link, phase 1 (e5/session-1, e5/session-2, 2026-10-05)
+
+**Implemented** (`EVC_Sessions`, scenarios in `EVC_Test_Sessions`,
+55 `[E5 session]` rows done or partial). The communication session of
+3.5: the order of packet 42 (a new kind K42 of the stored information,
+dispatched next to K15 on the balise and the radio path, given to
+`Take_Order`, applied by the next `Evaluate`; 3.5.3.13 the last known
+RBC, 3.5.3.15 the short number, the contact stored, 4.10.1.4.2 b), one
+RBC at a time (3.5.3.4.1, 3.5.3.4.2, 3.5.3.5.2) with one or two sessions
+by configuration, the set-up request repeated at once (3.5.3.7 a), 155,
+32 with the version check of 3.17.2 (159 with packet 2, or 154, DMI entry
+15 and the termination), the waits and repetitions of A.3.1 (3.5.3.7.3,
+3.5.3.7.4, 3.5.3.7.4.1, 3.5.5.3.1, 3.5.5.3.2), the connection lost and
+kept for 5 minutes (3.5.4), the termination by 156 / 39 (3.5.5, nothing
+but 39 taken after 156); the time stamps of 3.16.3 (an older T_TRAIN
+ignored, 146 for M_ACK = 1 with the stamp of the message) on the clock of
+`EVC_Radio.T_Train_At`; T_NVCONTACT (3.16.3.4: the trip of [41] with its
+reason `Communication_Lost` in `EVC_Procedures`, DMI entry 5; the service
+brake, DMI entry 4, released by a new message or at standstill, 3.14.1.7;
+60 s later released and set up again, 3.16.3.4.3); the indication of the
+safe radio connection (3.5.7, Table 1 by [2] to [6], the connection status
+timer of 45 s) as the radio byte of MSG_STATUS.
+
+**Decisions.** (1) A message on a session not yet established passes to
+the authority half until the acceptance of 4.8 comes (phase 2). (2) The
+session established first becomes the supervising RBC's (3.15.1 is phase
+2). (3) T_NVCONTACT is supervised in any level while the session of the
+supervising RBC is established, also while its connection is lost. (4) A
+connection lost while terminating ends the session (no 39 can come). (5) A
+"released" event the on-board did not order counts as lost (3.5.4.1).
+(6) NID_ENGINE is 0 until the configuration has an ETCS identity (E8).
+(7) Q_SLEEPSESSION is ignored (no sleeping trains). (8) The indication
+follows the supervising RBC's session, before there is one any session
+(3.5.7.6 by the change of the supervising session; no handover yet).
+(9) The service brake of T_NVCONTACT expiring at standstill is released at
+once and not shown.
+
+**Left for phase 2:** the start and end of mission in level 2 (5.4.3.2,
+5.5: the RBC contact and its validity, the driver's RBC data, the three
+attempts of A.3.1 with Table 2 [1], the SoM position report 157 with the
+RBC's answer, Train Data 129 / 8 and the query "Train Data acknowledged"
+the authority half needs in `EVC_Radio`, 150, D2, S10/S20, level 2 in
+`EVC_Levels`); the acceptance of 4.8 and the transition buffer of 4.8.5;
+the position reports of 3.6.5; the radio networks and registration of
+3.5.6; the radio holes (3.5.4.4, 3.16.3.4.1.3, Table 2 [7]); the
+handover (3.15.1, 3.5.3.5.2.1 with the transition order, 3.5.7.6,
+3.16.3.4.1.2); 3.16.3.4.1.1 (the time of the level transition); the
+shortening of 3.16.3.4.5 b) (the authority half's, A.3.4); a time stamp
+increment between two messages of the same cycle (3.16.3.3.2: they carry
+the same T_TRAIN today); informing the RBC of an inconsistent message
+(3.16.3.1.1.2).
