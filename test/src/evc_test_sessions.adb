@@ -122,7 +122,9 @@ package body EVC_Test_Sessions is
       St : ETCS_Message.Status_T;
    begin
       Decode_Radio_Message (N, M, St);
-      Give_Radio_Message (S, Msg (MCat.Track_M8, Now_T, 0, 6, M.Values (3)));
+      --  8.7.4 field 6, the catalogue's seventh value (NID_LRBG is
+      --  NID_C and NID_BG)
+      Give_Radio_Message (S, Msg (MCat.Track_M8, Now_T, 0, 7, M.Values (3)));
       Stand;
    end Ack_Train_Data;
 

@@ -164,9 +164,11 @@ is
       Taken := Kind in Track_M8 | Track_M40 | Track_M41 | Track_M43;
       case Kind is
          when Track_M8 =>
-            --  3.18.3.4.1, decision 3
+            --  3.18.3.4.1, decision 3: the second T_TRAIN, field 6 of
+            --  8.7.4, is the catalogue's seventh value (NID_LRBG is its
+            --  NID_C and NID_BG; e5/session-4, it read NID_BG)
             if TD_Awaited and then S = TD_S
-              and then T_TRAIN_T (EVC_Received.Last_Field (6)
+              and then T_TRAIN_T (EVC_Received.Last_Field (7)
                                   and 16#FFFF_FFFF#) = TD_Stamp
             then
                TD_Awaited := False;

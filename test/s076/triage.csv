@@ -192,3 +192,6 @@ S863aab40,E5,"session: reached since packet 42 by radio (e5/session-4): level 1 
 Sb83b2c65,E5,"session: 4050200_03, SH to PS with the desk closed: the sequence expects no 136, the on-board reports the mode change (3.6.5.1.4 b, e5/session-4); no clause found that exempts PS; to analyse with the RBC side of the sequence"
 S45db7c89,model,"4040600_02, reached since packet 42 by radio (e5/session-4): the JRU record 38 (cab status) the runner expects is not produced; not analysed (JRU modelling)"
 Sfb725745,E5,"session: 5040300_25, reached since packet 42 by radio (e5/session-4): 'FRMCS network registration failed' (3.5.6, the radio networks): a later package of the session half"
+S55128ce0,E5,"authority: 3040200_04, reached since message 8 acknowledges the Train Data (e5/session-4): after 'Start' in level 2 the SR mode to acknowledge is expected (the RBC's SR authorisation of the sequence); not analysed"
+S41e5392f,E5,"session: 5100400_08, reached since message 8 acknowledges the Train Data (e5/session-4): the announcement of a level transition from level 2 to level 0; level transitions to and from level 2 (5.10) are left for the next phase of the session half"
+S61d2b0d5,E5,"authority: 9990400_49, reached since message 8 acknowledges the Train Data (e5/session-4): a trip (TR) where the sequence has SB at the driver's acknowledgement; not analysed"
