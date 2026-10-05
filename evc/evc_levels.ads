@@ -278,15 +278,6 @@ is
                             else Status = Status'Old);
 
    --  4.11.1.1: a cold movement detected, or the information not
-   --  5.4.3.3 D2 (phase E5, EVC_Sessions): the stored position is not
-   --  valid when the start of mission reaches D2: a valid level becomes
-   --  invalid (to be revalidated by the driver, S2)
-   procedure Invalidate
-     with Global => (In_Out => State),
-          Post => Level = Level'Old
-                  and then (if Status'Old = Valid then Status = Invalid
-                            else Status = Status'Old);
-
    --  available: the kept table of priority is deleted ("unknown")
    procedure Delete_Table
      with Global => (In_Out => State),

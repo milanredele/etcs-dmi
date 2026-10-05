@@ -5,8 +5,7 @@
 package body EVC_Radio
   with SPARK_Mode => On,
        Refined_State => (State => (Count_Of_Sessions, Table, Supervising_S,
-                                   Accepting_S, Contact_Info, Network_Info,
-                                   Start_Due),
+                                   Accepting_S, Contact_Info, Network_Info),
                          Queue => (Data, Used, Refused_Count))
 is
 
@@ -18,7 +17,6 @@ is
    Accepting_S       : Session_Ref_T := No_Session;
    Contact_Info      : RBC_Contact_T := No_Contact;
    Network_Info      : Network_T;
-   Start_Due         : Boolean := False;
 
    Data          : EVC_Bytes.Byte_Array (1 .. Queue_Capacity) :=
      (others => 0);
@@ -41,8 +39,6 @@ is
      with Refined_Global => Contact_Info;
    function Network return Network_T is (Network_Info)
      with Refined_Global => Network_Info;
-   function SoM_Start return Boolean is (Start_Due)
-     with Refined_Global => Start_Due;
    function Queued return Natural is (Used)
      with Refined_Global => Used;
    function Refused return Natural is (Refused_Count)
@@ -60,7 +56,6 @@ is
       Accepting_S := No_Session;
       Contact_Info := No_Contact;
       Network_Info := (Known => False, NID_MN => 0, Registered => False);
-      Start_Due := False;
       Data := (others => 0);
       Used := 0;
       Refused_Count := 0;
@@ -119,11 +114,6 @@ is
    begin
       Contact_Info := C;
    end Set_Contact;
-
-   procedure Set_SoM_Start (On : Boolean) is
-   begin
-      Start_Due := On;
-   end Set_SoM_Start;
 
    procedure Set_Network (N : Network_T) is
    begin

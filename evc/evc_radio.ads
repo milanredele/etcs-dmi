@@ -178,14 +178,6 @@ is
    function Network return Network_T
      with Global => State;
 
-   --  5.4.3.2 S20 / S21 (e5/session): in this cycle the driver selected
-   --  'Start' in level 2 with the session with the RBC open and the
-   --  Train Data acknowledged: the MA request of S21 is due (the
-   --  authority half sends it, 3.8.2). Written by EVC_Sessions.Evaluate,
-   --  read after it.
-   function SoM_Start return Boolean
-     with Global => State;
-
    ---------------------------------------------------------------------
    --  Queries (what each half asks of the other)
    ---------------------------------------------------------------------
@@ -268,7 +260,6 @@ is
                   and then Supervising = No_Session
                   and then Accepting = No_Session
                   and then Contact = No_Contact
-                  and then not SoM_Start
                   and then not Network.Known
                   and then Queued = 0
                   and then Refused = 0;
@@ -353,14 +344,6 @@ is
    procedure Set_Contact (C : RBC_Contact_T)
      with Global => (In_Out => State),
           Post => Contact = C
-                  and then Sessions = Sessions'Old
-                  and then Supervising = Supervising'Old
-                  and then Accepting = Accepting'Old;
-
-   procedure Set_SoM_Start (On : Boolean)
-     with Global => (In_Out => State),
-          Post => SoM_Start = On
-                  and then Contact = Contact'Old
                   and then Sessions = Sessions'Old
                   and then Supervising = Supervising'Old
                   and then Accepting = Accepting'Old;

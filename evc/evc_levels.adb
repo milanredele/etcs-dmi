@@ -580,11 +580,4 @@ is
       end if;
    end Mark;
 
-   procedure Invalidate is
-   begin
-      if Current_Status = Valid then
-         Current_Status := Invalid;
-      end if;
-   end Invalidate;
-
 end EVC_Levels;

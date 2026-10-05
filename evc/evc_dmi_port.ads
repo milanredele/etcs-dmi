@@ -155,10 +155,6 @@ is
    Data_Driver_ID_Valid  : constant Bits_T := 1;
    Data_Train_Data_Valid : constant Bits_T := 2;
    Data_TRN_Valid        : constant Bits_T := 8;
-   --  added by e5/session
-   Data_RBC_Valid        : constant Bits_T := 16;
-   --  Bits of RBC (e5/session)
-   RBC_TD_Acknowledged   : constant Bits_T := 1;
    --  Bits of Train
    Train_Standstill      : constant Bits_T := 1;
    Train_Below_Override  : constant Bits_T := 2;
@@ -339,8 +335,7 @@ is
                           TTI         : Unsigned_16;
                           Reversing   : Boolean := False;
                           Tunnel      : Byte := 0;
-                          Tunnel_Dist : Unsigned_32 := 0;
-                          Radio       : Byte := 0)
+                          Tunnel_Dist : Unsigned_32 := 0)
      return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 
