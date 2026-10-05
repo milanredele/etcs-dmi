@@ -39,7 +39,7 @@ package body EVC_Stored_Information
                                    Driver_Slippery, PBD_Last, PBD_Known,
                                    MA_Board, Profile_Overlap,
                                    Covered_Flag, Ext, Tun,
-                                   Radio_MA))
+                                   Radio_MA, Timer_Deletion))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -82,6 +82,9 @@ is
    Covered_Flag    : Boolean := False;
    --  phase E5: an MA by radio was accepted in the last Evaluate
    Radio_MA        : Boolean := False;
+   --  phase E5: the track description was deleted by a timer of the MA
+   --  in the last Evaluate (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
+   Timer_Deletion  : Boolean := False;
    --  5.20: the information for an external function of the last cycle
    Ext             : EVC_Track_Conditions.External_T;
    --  5.18.8: the tunnel stopping area reported
@@ -132,6 +135,7 @@ is
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
      with Refined_Global => Profile_Overlap;
    function Radio_MA_Accepted return Boolean is (Radio_MA);
+   function MA_Timer_Deletion return Boolean is (Timer_Deletion);
    function Train_Covered return Boolean is (Covered_Flag)
      with Refined_Global => Covered_Flag;
 
@@ -185,6 +189,7 @@ is
       Profile_Overlap := False;
       Covered_Flag := False;
       Radio_MA := False;
+      Timer_Deletion := False;
       Ext := (Count => 0, List => (others => (others => <>)));
       Tun := (others => <>);
    end Clear;
@@ -1851,6 +1856,10 @@ is
       --  3. the timers of the MA
       EVC_Movement_Authority.Supervise (T, Train, Now_Ms, O);
       Apply (T, O);
+      Timer_Deletion := O.Delete
+                        and then (O.Section_Expired /= 0 or else O.End_Expired
+                                  or else O.Overlap_Expired
+                                  or else O.LOA_Expired);
 
       --  4. 3.18.2.3: the national values waiting for their location
       if EVC_National_Values.Pending and then Train.Valid then
@@ -1893,6 +1902,8 @@ is
       --  6., 7.
       Build (T, Train, Mode_Speed, Now_Ms, Special_Active, Additional,
              Context, Virtual_Last, Work);
+      --  3.13.11.8 (phase E5): T_MAR of the MA request parameters
+      Snap.Extra.T_MAR := Time_Ms_T (EVC_Radio_Info.T_MAR_Ms);
    end Evaluate;
 
 end EVC_Stored_Information;

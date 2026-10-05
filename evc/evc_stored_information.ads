@@ -301,6 +301,11 @@ is
    function Radio_MA_Accepted return Boolean
      with Global => State;
 
+   --  Phase E5, 3.8.2.5.1: a timer of the MA deleted track description
+   --  in the last Evaluate (A.3.4.1.2 c, d, e, n)
+   function MA_Timer_Deletion return Boolean
+     with Global => State;
+
    --  One cycle (see above). Mode_Speed: the mode related speed limit
    --  (No_Speed_Limit until phase E4); Special_Active and Additional:
    --  the status of the special brakes and of the additional brake on

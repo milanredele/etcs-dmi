@@ -216,6 +216,7 @@ begin
    Scenario_Radio_Joint;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;
+   Scenario_MA_Request;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

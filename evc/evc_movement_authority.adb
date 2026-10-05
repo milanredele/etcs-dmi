@@ -81,6 +81,35 @@ is
       Mode_In_Use := 3;
    end Clear;
 
+   --  A timer running towards a finite time-out reached within Lead_Ms
+   function Near (X : Timer_T; Now_Ms, Lead_Ms : Unsigned_64) return Boolean
+   is (X.Given and then X.Running and then not X.Infinite
+       and then X.Started <= Now_Ms
+       and then Unsigned_64 (X.Timeout) <= Unsigned_64'Last - Lead_Ms
+       and then Now_Ms - X.Started + Lead_Ms >= Unsigned_64 (X.Timeout));
+
+   function Timer_Expiring (Now_Ms, Lead_Ms : Unsigned_64) return Boolean
+   is
+   begin
+      if not Current.Present or else Current.Withdrawn then
+         return False;
+      end if;
+      if Is_LOA (Current) and then Near (Current.LOA_Timer, Now_Ms, Lead_Ms)
+      then
+         return True;
+      end if;
+      --  the sections before the End Section (the last one)
+      for I in 1 .. Current.Count - 1 loop
+         pragma Loop_Invariant (True);
+         if not Current.Sections (I).Stopped
+           and then Near (Current.Sections (I).Timer, Now_Ms, Lead_Ms)
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Timer_Expiring;
+
    -----------------
    -- From_Packet --
    -----------------

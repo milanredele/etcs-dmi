@@ -1215,14 +1215,22 @@ is
    procedure Evaluate_Radio
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 EVC_Stored_Information.State,
-                                EVC_Levels.State),
+                                EVC_Levels.State, SDM_Result,
+                                EVC_Movement_Authority.State,
+                                EVC_Radio.State,
+                                EVC_Driver_Requests.State,
+                                EVC_Train_Inputs.State),
                      In_Out => (EVC_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State))
    is
    begin
       EVC_Sessions.Evaluate (Radio_Context);
-      EVC_Radio_Authority.Evaluate (Radio_Context);
+      EVC_Radio_Authority.Evaluate
+        (Radio_Context,
+         (MA_Request => SDM_Result.MA_Request,
+          Start      => EVC_Driver_Requests.Start_Selected,
+          Desk_Open  => EVC_Train_Inputs.Desk_Open));
    end Evaluate_Radio;
 
    --  6b. Phase E5: the mode changed (after the mode machine)
@@ -2186,9 +2194,12 @@ is
    --  then of the authority half (EVC_Radio.Send), moved to the RTM port
    --  as far as they fit (EVC_Radio.Drain)
    procedure Send_Radio
-     with Global => (Input  => (Current_Mode, Clock_Ms),
+     with Global => (Input  => (Current_Mode, Clock_Ms,
+                                EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State),
                      In_Out => (EVC_Sessions.State,
                                 EVC_Radio_Authority.State,
+                                EVC_Radio.State,
                                 EVC_Radio.Queue, EVC_Outbox.Queue))
    is
    begin
@@ -2211,8 +2222,10 @@ is
                                 EVC_Stored_Information.State,
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
-                                EVC_Driver_Requests.State),
+                                EVC_Driver_Requests.State,
+                                EVC_Odometry.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
+                                EVC_Radio.State,
                                 EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,

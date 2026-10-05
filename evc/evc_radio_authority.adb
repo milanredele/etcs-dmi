@@ -1,8 +1,15 @@
 --  ETCS on-board (EVC)
 --  Phase E5, the authority by radio half (see the specification).
 
+with ETCS_Bits;
+with ETCS_Catalogue;
+with ETCS_Message;
 with ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P57;
+with ETCS_Train_Packets.P0;
 with ETCS_Variables;          use ETCS_Variables;
+with EVC_Bytes;
+with EVC_Ports;
 with EVC_Balise_Groups;
 with EVC_Distances;           use EVC_Distances;
 with Interfaces;              use Interfaces;
@@ -10,10 +17,15 @@ with Interfaces;              use Interfaces;
 package body EVC_Radio_Authority
   with SPARK_Mode => On,
        Refined_State => (State => (Messages, Held, Stop_Received,
-                                   Mode_Changes, Cycles, Radio_MAs))
+                                   Mode_Changes, Cycles, Radio_MAs,
+                                   Params, Reasons, Request_Due,
+                                   Request_Sent, Last_Request_Ms,
+                                   SR_Authorised, Requests, Start_Reason,
+                                   Deleted_Reason))
 is
 
    use type ETCS_Message_Catalogue.Message_Kind_T;
+   use type ETCS_Catalogue.Packet_Kind_T;
 
    type Held_T is array (Condition_T) of Boolean;
 
@@ -24,6 +36,38 @@ is
    Cycles        : Natural := 0;
    --  the MAs by radio accepted since Clear
    Radio_MAs     : Natural := 0;
+
+   --  3.8.2.1.2, 3.8.2.1.4: the MA request parameters of the RBC (packet
+   --  57), valid until new ones are received
+   type Params_T is record
+      Known         : Boolean := False;
+      T_MAR         : T_MAR_T := T_MAR_No_MA_Request_Triggering;
+      T_TIMEOUTRQST : T_TIMEOUTRQST_T :=
+        T_TIMEOUTRQST_No_MA_Request_Triggering;
+      T_CYCRQST     : T_CYCRQST_T := T_CYCRQST_No_Repetition;
+   end record;
+   Params          : Params_T := (others => <>);
+   --  the reasons applicable (Q_MARQSTREASON bits), a request due in the
+   --  cycle, one sent since Clear and when
+   Reasons         : Q_MARQSTREASON_T := 0;
+   Request_Due     : Boolean := False;
+   Request_Sent    : Boolean := False;
+   Last_Request_Ms : EVC_Radio.Time_Ms_T := 0;
+   --  3.8.2.3.2 b): an SR authorisation (message 2) received
+   SR_Authorised   : Boolean := False;
+   Requests        : Natural := 0;
+   --  the reasons that persist (3.8.2.3.2, 3.8.2.5.2)
+   Start_Reason    : Boolean := False;
+   Deleted_Reason  : Boolean := False;
+
+   --  A.3.1 TCYCRQSTD: the repetition cycle without parameters, ms
+   Default_Cycle_Ms : constant := 60_000;
+
+   --  Q_MARQSTREASON (7.5.1.118.3) of the reasons
+   function Reason_Bits (Start, Perturbation, Timer, Deleted : Boolean)
+     return Q_MARQSTREASON_T
+   is ((if Start then 1 else 0) + (if Perturbation then 2 else 0)
+       + (if Timer then 4 else 0) + (if Deleted then 8 else 0));
 
    procedure Count (N : in out Natural) is
    begin
@@ -44,6 +88,10 @@ is
      with Refined_Global => Cycles;
    function Radio_MAs_Accepted return Natural is (Radio_MAs)
      with Refined_Global => Radio_MAs;
+   function MA_Request_Reasons return Natural is (Natural (Reasons))
+     with Refined_Global => Reasons;
+   function MA_Requests_Sent return Natural is (Requests)
+     with Refined_Global => Requests;
 
    procedure Clear is
    begin
@@ -53,6 +101,15 @@ is
       Mode_Changes := 0;
       Cycles := 0;
       Radio_MAs := 0;
+      Params := (others => <>);
+      Reasons := 0;
+      Request_Due := False;
+      Request_Sent := False;
+      Last_Request_Ms := 0;
+      SR_Authorised := False;
+      Requests := 0;
+      Start_Reason := False;
+      Deleted_Reason := False;
       EVC_Radio_Info.Clear;
    end Clear;
 
@@ -118,6 +175,35 @@ is
       EVC_Radio_Info.Put_Last (Sl);
    end Take_Stored_Information;
 
+   --  3.8.2.1.2, 3.8.2.1.4: packet 57 of the last message, the new MA
+   --  request parameters (taken whatever its Q_DIR: they concern the
+   --  train, not a direction)
+   procedure Take_Parameters
+     with Global => (Input => EVC_Received.Store, In_Out => Params)
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P57.Packet_T;
+      OK : Boolean;
+   begin
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P57
+         then
+            EVC_Received.Open_Message_Packet (I, R);
+            ETCS_Track_Packets.P57.Decode (R, P, OK);
+            if OK then
+               Params := (Known         => True,
+                          T_MAR         => P.T_MAR,
+                          T_TIMEOUTRQST => P.T_TIMEOUTRQST,
+                          T_CYCRQST     => P.T_CYCRQST);
+            end if;
+         end if;
+      end loop;
+   end Take_Parameters;
+
    procedure Take_Message (S      : EVC_Radio.Session_T;
                            Now_Ms : EVC_Radio.Time_Ms_T)
    is
@@ -126,6 +212,10 @@ is
         EVC_Received.Last_Kind;
    begin
       Count (Messages);
+      Take_Parameters;
+      if Kind = ETCS_Message_Catalogue.Track_M2 then
+         SR_Authorised := True;
+      end if;
       if Kind = ETCS_Message_Catalogue.Track_M3 then
          Take_Stored_Information (False, Now_Ms);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
@@ -137,12 +227,95 @@ is
    --  The cycle
    ---------------------------------------------------------------------
 
-   procedure Evaluate (Ctx : EVC_Radio.Context_T) is
-      pragma Unreferenced (Ctx);
+   --  The repetition cycle of the MA requests in ms (3.8.2.1.5): the
+   --  RBC's T_CYCRQST, A.3.1 TCYCRQSTD without parameters; 0: none
+   function Cycle_Ms return EVC_Radio.Time_Ms_T is
+     (if not Params.Known then Default_Cycle_Ms
+      elsif Params.T_CYCRQST = T_CYCRQST_No_Repetition then 0
+      else 1000 * EVC_Radio.Time_Ms_T (Params.T_CYCRQST))
+     with Global => Params;
+
+   --  3.8.2 (level 2 only, 3.8.2.1.1): the reasons applicable in the
+   --  cycle and whether a request is due. MA_Received: an MA was taken
+   --  in the cycle. A reason that becomes applicable sends at once and
+   --  restarts the cycle (3.8.2.1.6); while one is applicable the request
+   --  is repeated every Cycle_Ms (3.8.2.1.5; new parameters apply at
+   --  once, 3.8.2.1.4.1). The track ahead free reason (3.8.2.4) is not
+   --  handled yet.
+   procedure Evaluate_Request (Now_Ms      : EVC_Radio.Time_Ms_T;
+                               Facts       : Facts_T;
+                               MA_Received : Boolean)
+     with Global => (Input  => (Params, EVC_Levels.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Stored_Information.State),
+                     In_Out => (Reasons, Request_Due, Start_Reason,
+                                Deleted_Reason, SR_Authorised))
+   is
+      L2     : constant Boolean :=
+        EVC_Levels.Valid and then EVC_Levels.Level = EVC_Modes.L2;
+      Old    : constant Q_MARQSTREASON_T := Reasons;
+      Pert   : Boolean;
+      Timer  : Boolean;
+      Rising : Boolean;
    begin
-      if EVC_Stored_Information.Radio_MA_Accepted then
+      --  3.8.2.3: from Start until an MA, an SR authorisation or the
+      --  desk closed; 3.8.2.5: from a deletion until an MA
+      if Facts.Start then
+         Start_Reason := True;
+      end if;
+      if MA_Received or else SR_Authorised or else not Facts.Desk_Open then
+         Start_Reason := False;
+      end if;
+      if EVC_Stored_Information.MA_Timer_Deletion then
+         Deleted_Reason := True;
+      end if;
+      if MA_Received then
+         Deleted_Reason := False;
+      end if;
+      SR_Authorised := False;
+      --  3.8.2.2: only with the parameters of the RBC (3.8.2.1.3)
+      Pert := Params.Known
+        and then Params.T_MAR /= T_MAR_No_MA_Request_Triggering
+        and then Facts.MA_Request;
+      Timer := Params.Known
+        and then Params.T_TIMEOUTRQST
+                   /= T_TIMEOUTRQST_No_MA_Request_Triggering
+        and then EVC_Movement_Authority.Timer_Expiring
+                   (Now_Ms, 1000 * Unsigned_64 (Params.T_TIMEOUTRQST));
+      if not L2 then
+         Start_Reason := False;
+         Deleted_Reason := False;
+         Reasons := 0;
+         Request_Due := False;
+         return;
+      end if;
+      Reasons := Reason_Bits (Start_Reason, Pert, Timer, Deleted_Reason);
+      Rising := Facts.Start
+        or else (Pert and then Old / 2 mod 2 = 0)
+        or else (Timer and then Old / 4 mod 2 = 0)
+        or else (Deleted_Reason and then Old / 8 mod 2 = 0);
+      Request_Due := Request_Due or else Rising;
+   end Evaluate_Request;
+
+   procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
+      MA_Received : constant Boolean :=
+        EVC_Stored_Information.Radio_MA_Accepted;
+   begin
+      if MA_Received then
          Count (Radio_MAs);
       end if;
+      Evaluate_Request (Ctx.Now_Ms, Facts, MA_Received);
+      --  3.8.2.1.5: the repetition
+      if Reasons /= 0 and then Request_Sent and then Cycle_Ms > 0
+        and then Ctx.Now_Ms - Last_Request_Ms >= Cycle_Ms
+      then
+         Request_Due := True;
+      end if;
+      --  3.13.11.8: T_MAR for the snapshot of the next cycle
+      EVC_Radio_Info.Set_T_MAR
+        (if Params.Known
+           and then Params.T_MAR /= T_MAR_No_MA_Request_Triggering
+         then 1000 * Unsigned_64 (Params.T_MAR) else 0);
       Held := (others => False);
       --  [31] (MA+SSP+gradient are on-board) AND (the train position
       --  confidence interval does not overlap any Mode Profile) AND
@@ -161,10 +334,74 @@ is
       Count (Mode_Changes);
    end Mode_Changed;
 
+   --  The identity of the on-board, NID_ENGINE of the train to track
+   --  messages (8.4.4.7.1): not configured yet, 0 (a decision of phase
+   --  E5 phase 1, to be taken from the configuration at integration)
+   Engine_Id : constant := 0;
+
+   --  A train to track message of Kind with the variables V (3 ..: its
+   --  T_TRAIN and NID_ENGINE are set here) and packet 0, the position
+   --  report of EVC_Position (3.6.5.1.2; the session half builds its own
+   --  for message 136: to be unified at integration), sent in the
+   --  session S; OK False when it could not be built
+   procedure Send_With_Report (S      : EVC_Radio.Session_T;
+                               Kind   : ETCS_Message_Catalogue
+                                          .Known_Message_T;
+                               V      : ETCS_Message.Value_Array;
+                               Ctx    : EVC_Radio.Context_T;
+                               OK     : out Boolean)
+     with Global => (In_Out => (EVC_Radio.State, EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State))
+   is
+      W      : ETCS_Bits.Writer (128);
+      Values : ETCS_Message.Value_Array := V;
+   begin
+      Values (3) := Unsigned_64 (EVC_Radio.T_Train_At (Ctx.Now_Ms));
+      Values (4) := Engine_Id;
+      ETCS_Bits.Clear (W);
+      ETCS_Message.Write_Fields (W, Kind, Values, OK);
+      if OK then
+         ETCS_Train_Packets.P0.Encode
+           (EVC_Position.Position_Report (Ctx.Mode, EVC_Levels.Level),
+            W, OK);
+      end if;
+      if OK then
+         ETCS_Message.Finish (W, OK);
+      end if;
+      if OK then
+         declare
+            D : constant EVC_Bytes.Byte_Array := ETCS_Bits.Data (W);
+         begin
+            OK := EVC_Ports.Valid_RTM (D);
+            if OK then
+               EVC_Radio.Send (S, D);
+            end if;
+         end;
+      end if;
+   end Send_With_Report;
+
    procedure Produce (Ctx : EVC_Radio.Context_T) is
-      pragma Unreferenced (Ctx);
+      OK : Boolean;
+      V  : ETCS_Message.Value_Array := (others => 0);
    begin
       Count (Cycles);
+      --  3.8.2: message 132 with the reasons (3.8.2.1.7) to the
+      --  Supervising RBC, once the session is established
+      if Request_Due and then Reasons /= 0
+        and then EVC_Radio.In_Communication
+      then
+         V (5) := Unsigned_64 (Reasons);
+         Send_With_Report
+           (EVC_Radio.Session_T (EVC_Radio.Supervising),
+            ETCS_Message_Catalogue.Train_M132, V, Ctx, OK);
+         if OK then
+            Request_Due := False;
+            Request_Sent := True;
+            Last_Request_Ms := Ctx.Now_Ms;
+            Count (Requests);
+         end if;
+      end if;
    end Produce;
 
 end EVC_Radio_Authority;

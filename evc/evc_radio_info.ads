@@ -85,6 +85,20 @@ is
      with Global => State,
           Pre => I <= Count and then P <= Packet_Count (I);
 
+   --  3.13.11.8, 3.8.2.2.1 a): T_MAR of the MA request parameters
+   --  (packet 57) in ms, 0 when none is stored or it asks no request
+   --  (the snapshot's Extra.T_MAR, built by the stored information)
+   Max_T_MAR_Ms : constant := 255_000;
+
+   function T_MAR_Ms return Unsigned_64
+     with Global => State,
+          Post => T_MAR_Ms'Result <= Max_T_MAR_Ms;
+
+   procedure Set_T_MAR (Ms : Unsigned_64)
+     with Global => (In_Out => State),
+          Pre  => Ms <= Max_T_MAR_Ms,
+          Post => T_MAR_Ms = Ms;
+
    --  Messages refused for want of room since Clear (saturating)
    function Refused return Natural
      with Global => State;
@@ -92,7 +106,7 @@ is
    --  Power-up: nothing
    procedure Clear
      with Global => (Output => State),
-          Post => Count = 0 and then Refused = 0;
+          Post => Count = 0 and then Refused = 0 and then T_MAR_Ms = 0;
 
    --  The cycle's messages taken: the table empty
    procedure Empty

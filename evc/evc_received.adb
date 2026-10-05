@@ -1,8 +1,6 @@
 --  ETCS on-board (EVC)
 --  What the on-board received from the track, implementation.
 
-with ETCS_Catalogue;
-
 package body EVC_Received
   with SPARK_Mode => On,
        Refined_State => (Store => (Telegram,
@@ -50,6 +48,14 @@ is
    function Last_Value (Var : ETCS_Variables.Variable_T)
      return Interfaces.Unsigned_64
    is (ETCS_Message.Value (Message, Var))
+     with Refined_Global => Message;
+
+   function Last_Packet_Count return Natural is (Message.Count)
+     with Refined_Global => Message;
+
+   function Last_Packet_Kind (I : Positive)
+     return ETCS_Catalogue.Packet_Kind_T
+   is (Message.Index (I).Kind)
      with Refined_Global => Message;
 
    procedure Copy_Message (M : out ETCS_Message.Message_T)

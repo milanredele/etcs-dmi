@@ -4,6 +4,7 @@
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
+with ETCS_Track_Packets.P57;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_Distances;
@@ -21,6 +22,7 @@ package body EVC_Test_Authority is
    package MCat renames ETCS_Message_Catalogue;
    package SI renames EVC_Stored_Information;
    package T15 renames ETCS_Track_Packets.P15;
+   package T57 renames ETCS_Track_Packets.P57;
    package RA renames EVC_Radio_Authority;
    use type MCat.Message_Kind_T;
    use type EVC_SDM.Status_T;
@@ -93,7 +95,9 @@ package body EVC_Test_Authority is
                         X       : T12.Packet_T;
                         T_Train : ETCS_Variables.T_TRAIN_T;
                         Shift_M : Integer := 0;
-                        Kind    : MCat.Known_Message_T := MCat.Track_M3)
+                        Kind    : MCat.Known_Message_T := MCat.Track_M3;
+                        With_57 : Boolean := False;
+                        P57     : T57.Packet_T := (others => <>))
      return Byte_Array
    is
       W  : Writer_T;
@@ -116,6 +120,10 @@ package body EVC_Test_Authority is
       Check (OK, "authority: packet 21 encoded");
       T27.Encode (S, W, OK);
       Check (OK, "authority: packet 27 encoded");
+      if With_57 then
+         T57.Encode (P57, W, OK);
+         Check (OK, "authority: packet 57 encoded");
+      end if;
       return Message_Bytes (W);
    end MA_Message;
 
@@ -242,5 +250,96 @@ package body EVC_Test_Authority is
              "authority: message 33 with a negative D_REF, the MA "
              & "replaced and shortened (3.8.5.1, 3.8.5.1.3)");
    end Scenario_Radio_MA_Shifted;
+
+   --  Stand until the on-board sends an MA request (at most Max_Ms);
+   --  True when one was sent: the last Take holds it
+   function Wait_Request (Max_Ms : Natural) return Boolean is
+      N : constant Natural := RA.MA_Requests_Sent;
+   begin
+      for I in 1 .. Max_Ms / 100 loop
+         Stand_X (100);
+         if RA.MA_Requests_Sent > N then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Wait_Request;
+
+   --  Q_MARQSTREASON of the message 132 among the RTM outputs of the
+   --  last Take, -1 when there is none
+   function Request_Reason return Integer is
+      M : ETCS_Message.Message_T;
+      S : ETCS_Message.Status_T;
+      use type ETCS_Message.Status_T;
+   begin
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, S);
+         if S = ETCS_Message.Accepted and then M.Kind = MCat.Train_M132
+         then
+            return Integer (ETCS_Message.Value
+                              (M, ETCS_Variables.Q_MARQSTREASON));
+         end if;
+      end loop;
+      return -1;
+   end Request_Reason;
+
+   --  3.8.2: the MA request (message 132 with its position report) by
+   --  its triggers in level 2 with the session established: the driver's
+   --  Start (3.8.2.3, reason 1), the time before a section timer expires
+   --  with the parameters of packet 57 (3.8.2.2.1 b, reason 4), the
+   --  repetition every T_CYCRQST while a reason holds (3.8.2.1.5), the
+   --  track description deleted by the section time-out (3.8.2.5,
+   --  reason 8, which resets the cycle, 3.8.2.1.6); nothing in level 1
+   procedure Scenario_MA_Request is
+      Timed : T12.Packet_T := MA_Of ((300, 400), 600);
+      P57   : T57.Packet_T;
+   begin
+      --  Start, without parameters: the reason holds until an MA
+      Start_L2;
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (Wait_Request (500) and then Request_Reason = 1
+             and then RA.MA_Request_Reasons = 1,
+             "MA request: 'Start' selected, message 132 with reason 1 "
+             & "(3.8.2.3.1, 3.8.2.1.7)");
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, Timed, Stamp));
+      Stand_X (200);
+      Check (RA.MA_Request_Reasons = 0,
+             "MA request: the reason 'Start' ends with the MA "
+             & "(3.8.2.3.2 a)");
+
+      --  a section timer of 30 s (not the End Section's), T_TIMEOUTRQST
+      --  10 s, T_CYCRQST 4 s
+      Timed.L_SECTION_List (1).Q_SECTIONTIMER := 1;
+      Timed.L_SECTION_List (1).Has_T_SECTIONTIMER := True;
+      Timed.L_SECTION_List (1).T_SECTIONTIMER := 30;
+      Timed.L_SECTION_List (1).D_SECTIONTIMERSTOPLOC := 250;
+      P57.T_MAR := 255;
+      P57.T_TIMEOUTRQST := 10;
+      P57.T_CYCRQST := 4;
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, Timed, Stamp, With_57 => True, P57 => P57));
+      Check (not Wait_Request (19_000),
+             "MA request: none before the time before the section timer");
+      Check (Wait_Request (1_500) and then Request_Reason = 4,
+             "MA request: 10 s before the section time-out, reason 4 "
+             & "(3.8.2.2.1 b, 3.8.2.2.2)");
+      Check (not Wait_Request (3_500) and then Wait_Request (1_000)
+             and then Request_Reason = 4,
+             "MA request: repeated every T_CYCRQST (3.8.2.1.5)");
+      Stand_X (4_500);
+      Check (Wait_Request (2_500) and then Request_Reason = 8,
+             "MA request: the section time-out deleted track description, "
+             & "reason 8 at once (3.8.2.5.1, 3.8.2.1.6)");
+
+      --  level 1: none
+      Start_X;
+      Establish;
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (not Wait_Request (500) and then RA.MA_Request_Reasons = 0,
+             "MA request: only in level 2 (3.8.2.1.1)");
+   end Scenario_MA_Request;
 
 end EVC_Test_Authority;

@@ -203,6 +203,12 @@ is
       elsif X.Has_DP then X.DP
       else EOA_Location (X));
 
+   --  Phase E5, 3.8.2.2.1 b): a Section timer (not that of the End
+   --  Section, nor the Overlap timer) running and not stopped, or the
+   --  LOA speed timer, whose time-out comes within Lead_Ms of Now_Ms
+   function Timer_Expiring (Now_Ms, Lead_Ms : Unsigned_64) return Boolean
+     with Global => State;
+
    ---------------------------------------------------------------------
    --  Operations
    ---------------------------------------------------------------------
