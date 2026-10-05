@@ -2022,3 +2022,68 @@ handover; level transitions into and out of level 2 (5.10, 5.15); the
 SUBSET-076 runner's filling of the Radio data window (the 51 sequences
 blocked at "E5-radio": the sequences give the driver's entry only in a
 comment, e.g. "The Driver enters: RBC ID = 1").
+
+### Bench and sequences, second round (e5/bench-2, 2026-10-05)
+
+**Runner, the driver at standstill** (`Press_Menu` in `s076_run.adb`): a
+menu button that is disabled is looked at again for up to five cycles
+while the train is at standstill, because the DMI receives the standstill
+one cycle after the on-board has it. 4 sequences moved (3 more
+passed, one went on to step 90); the triage line Scd518a05 is gone. Summary before
+the round: 518 passed, 1928 failed, 744 blocked; after: 521 / 1925 / 744.
+
+**Runner, the RBC data windows** (`RBC_Data_Entry`, `Radio_Values`):
+`press Enter-RBC-data`, `Contact-last-RBC`, `Use-short-number` press the
+buttons of the Radio data window (Table 37) and `enter` / `confirm` /
+`validate RBC-data` type the RBC ID and phone number into the RBC data
+window by touch (Tables 22, 25) and end the entry. Decision: a value is
+used only when a comment of the step or of the ten steps before it names
+it ("RBC ID = N", "ETCS ID : N", "RBCid: N", "RBC phone number = N",
+"Phone : N"); otherwise the step is blocked ("RBC data: the sequence
+names no value", still E5-radio): 35 sequences. The steps give no value
+at all (88 `enter RBC-data`, no field); nothing was invented. The other
+radio dialogues (GSM-R network ID, Radio network type, Mission with one
+radio system) stay blocked. Finding: the buttons are disabled in the
+DMI because `EVC_Core.Send_Onboard` does not report the radio equipment
+in the MSG_ONBOARD radio byte (bits 0-1 network type, 2-3 installed, 4-5
+registered, 6 one radio: only bit 7 "contact known" is sent), so
+Table 37 #1 to #3 can never be enabled by the on-board. 49 sequences
+moved from blocked to failed at the press (signatures S96bd5570,
+S9ca3aeaf, S36a6b300, triaged `onboard`). `S076_RADIO_STATUS=1` ORs the
+bits of GSM-R only, registered into the frame the runner gives the DMI,
+a verification aid that hides the gap (never in the baseline): with it
+the same 49 go further and most of them stop at the step that names no
+value (35 steps in the report).
+
+**Runner, a second RBC** (`Route` in `s076_run-radio_input.adb`,
+`RBC_Alive`, `RBC_Current`): the sequences identify the RBC by the order
+of events only (no NID_RBC on a step). `connect` goes to the session
+whose request the on-board made and that has no connection; a message
+goes to the session set up last, 39 to the session that sent 156, 24
+with packet 42 and `disconnect` to the session being left; with one
+session alive everything is session 1 as before. The block E5-handover
+is gone (the reason stays in the table, empty). 13 sequences moved from
+blocked to failed (mostly Sa8a3ba1a, connect not requested, and
+S13c9beb3, message 136 not sent; three sequences that failed at the
+latter already now fail one step earlier): the handover of 3.15.1 is not implemented. One new
+signature, Se3765f9b (4080300_13 step 64): a balise group with an RBC
+transition order and packet 42 (Q_RBC=1) makes the on-board send 156 to
+the handing RBC, where the sequence waits for no termination: suspected
+on-board defect (packet 42 of an RBC transition must not end the session
+with the handing RBC, 3.15.1). Summary after the round: 521 passed, 1987
+failed, 682 blocked.
+
+**Left:** the bench page (task 4) was not started. Needs: a third track
+preset or a switch (`onboard_set_radio` export calling
+`Sim_Onboard_Env.Set_Radio`, which exists and is unused), the level 2
+start-of-mission frames (the Text_Entry / Action 11 level 5 / RBC_Entry /
+Train_Entry / Action 5 of `Scenario_Session_SoM_Level_2`, each sent after
+the answer of the one before, not blind at cycles 0 to 5 as the level 1
+frames), `Sim_RBC` answers it lacks (41 "train accepted" to the
+SoM position report 157; 43 is not needed by the on-board's current
+Mission), the page line and one check of `onboard_smoke.js` that the
+level 2 line reaches FS by radio; the default mission and its golden
+must stay unchanged. The RBC data windows of the runner will do more
+once the on-board reports the radio equipment in MSG_ONBOARD; the
+GSM-R network ID / Radio network type dialogues and the values of
+`enter RBC-data` that no sequence names are still blocked.
