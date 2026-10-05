@@ -1017,7 +1017,7 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Levels.State,
+                                EVC_Levels.State, EVC_Sessions.State,
                                 Events, Event_N, Msg_Count, Radio_MA),
                      Input  => (EVC_Radio_Info.State, EVC_Train_Data.State)),
           Pre => I <= EVC_Radio_Info.Count
