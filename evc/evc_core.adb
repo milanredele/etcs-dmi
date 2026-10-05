@@ -1313,7 +1313,9 @@ is
           --  8) of the Train Data sent before the session is established
           --  is not recognised in the SUBSET-076 sequences of a level 2
           --  transition (9990600 and others): EVC_Sessions.Mission, left
-          Train_Data_Unacked => False));
+          Train_Data_Unacked => False,
+          TAF_Confirmed =>
+            EVC_Driver_Requests.Selected (EVC_Driver_Requests.TAF_Yes)));
    end Evaluate_Radio;
 
    --  6b. Phase E5: the mode changed (after the mode machine)
@@ -1802,7 +1804,8 @@ is
    --  acknowledgement (5.10.4), "override active" (5.8.3.7)
    procedure Send_Mode_Level
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
-                                EVC_Mission.State, EVC_Procedures.State),
+                                EVC_Mission.State, EVC_Procedures.State,
+                                EVC_Radio_Authority.State),
                      In_Out => EVC_Outbox.Queue)
    is
    begin
@@ -1826,7 +1829,8 @@ is
                   then Level_Code (Valid, EVC_Levels.Announced_Level)
                   else No_Code),
                Level_Ann_Ack => EVC_Levels.Ack_Asked,
-               Override      => EVC_Procedures.Override_Indicated));
+               Override      => EVC_Procedures.Override_Indicated,
+               TAF           => EVC_Radio_Authority.TAF_Shown));
       end if;
    end Send_Mode_Level;
 

@@ -18,14 +18,15 @@ with Interfaces;              use Interfaces;
 
 package body EVC_Radio_Authority
   with SPARK_Mode => On,
-       Refined_State => (State => (Messages, Rejected_N, TD_Acked, Held, Stop_Received,
+       Refined_State => (State => (Messages, Rejected_N, TD_Acked, Held,
+                                   Stop_Received,
                                    Mode_Changes, Cycles, Radio_MAs,
                                    Params, Reasons, Request_Due,
                                    Request_Sent, Last_Request_Ms,
                                    SR_Authorised, Requests, Start_Reason,
                                    Deleted_Reason, Shortening, Emergency,
                                    SR_Auth, Passed_Listed, Mode_Now,
-                                   Exit_Recognised, SH_Req, Status_Now,
+                                   Exit_Recognised, SH_Req, Status_Now, TAF,
                                    EVC_Radio_Authority.Buffer.State))
 is
 
@@ -166,6 +167,21 @@ is
    --  the DMI system status message of the cycle (0: none)
    Status_Now : Natural := 0;
 
+   --  3.15.5: the track ahead free request of the RBC (message 34): the
+   --  locations where its display begins and ends (from the reception,
+   --  along the orientation), whether it is shown, the answer (149) owed
+   --  to the session of the request
+   type TAF_T is record
+      Stored  : Boolean := False;
+      Begin_V : EVC_Odometry.Virtual_T := (others => <>);
+      End_V   : EVC_Odometry.Virtual_T := (others => <>);
+      Shown   : Boolean := False;
+      Due     : Boolean := False;
+      Session : EVC_Radio.Session_T := 1;
+      Granted : Natural := 0;
+   end record;
+   TAF : TAF_T := (others => <>);
+
    --  5.11.2.2 A035, S120, 4.8.4 [1]: in TR no MA, track description or
    --  mode authorisation of the RBC is taken; in PT only once the exit
    --  from TR is recognised by the RBC (a time stamp later than message
@@ -214,6 +230,10 @@ is
    function Unconditional_Stop_Received return Boolean is (Stop_Received)
      with Refined_Global => Stop_Received;
    function Messages_Rejected return Natural is (Rejected_N);
+
+   function TAF_Shown return Boolean is (TAF.Shown);
+   function TAF_Stored return Boolean is (TAF.Stored);
+   function TAF_Granted return Natural is (TAF.Granted);
 
    function Messages_Taken return Natural is (Messages)
      with Refined_Global => Messages;
@@ -326,6 +346,7 @@ is
       Exit_Recognised := False;
       SH_Req := (others => <>);
       Status_Now := 0;
+      TAF := (others => <>);
       EVC_Radio_Info.Clear;
    end Clear;
 
@@ -616,6 +637,56 @@ is
       end if;
    end Take_Emergency;
 
+   --  3.15.5.2, 3.15.5.6: message 34 referred to the LRBG of the
+   --  on-board (decision: one referred to another group is ignored), the
+   --  display from D_REF + D_TAFDISPLAY to that plus L_TAFDISPLAY ahead of
+   --  the location reference, along the orientation; a new request
+   --  replaces the one stored
+   --  a bound of the distances of a request (1000 km, beyond any
+   --  D_TAFDISPLAY or L_TAFDISPLAY: 32767 x 10 m)
+   TAF_Cap : constant := 100_000_000;
+
+   procedure Take_TAF (S : EVC_Radio.Session_T)
+     with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
+                                EVC_Odometry.State),
+                     In_Out => TAF)
+   is
+      Scale : constant Natural :=
+        Natural (EVC_Received.Last_Value (Q_SCALE) mod 4);
+      LRBG  : constant EVC_Balise_Groups.Identity_T := LRBG_Of_Last;
+      Shift : Dist_T;
+      Valid : Boolean;
+      Front : constant Dist_T := EVC_Position.Estimated_Front;
+      Ahead : Dist_T;
+   begin
+      Shift_Of_Last (Shift, Valid);
+      if Scale > 2 or else not Valid
+        or else not EVC_Position.LRBG.Valid
+        or else EVC_Position.LRBG.Id /= LRBG
+        or else abs Shift > TAF_Cap or else abs Front > TAF_Cap
+      then
+         return;
+      end if;
+      Ahead := Shift + Cm_T'Min
+        (TAF_Cap, Scaled (Natural (EVC_Received.Last_Value (D_TAFDISPLAY)
+                                   mod 32768), Scale));
+      Ahead := (if Ahead > Front then Ahead - Front else 0);
+      TAF := (Stored  => True,
+              Begin_V => EVC_Odometry.Start_Virtual
+                           (Ahead, EVC_Position.Orientation),
+              End_V   => EVC_Odometry.Start_Virtual
+                           (Ahead + Cm_T'Min
+                              (TAF_Cap,
+                               Scaled (Natural (EVC_Received.Last_Value
+                                                  (L_TAFDISPLAY) mod 32768),
+                                       Scale)),
+                            EVC_Position.Orientation),
+              Shown   => False,
+              Due     => False,
+              Session => S,
+              Granted => TAF.Granted);
+   end Take_TAF;
+
    procedure Take_Message (S      : EVC_Radio.Session_T;
                            Now_Ms : EVC_Radio.Time_Ms_T)
    is
@@ -681,6 +752,8 @@ is
                   | ETCS_Message_Catalogue.Track_M18
       then
          Take_Emergency (S, Kind, Now_Ms);
+      elsif Kind = ETCS_Message_Catalogue.Track_M34 then
+         Take_TAF (S);
       end if;
    end Take_Message;
 
@@ -906,6 +979,33 @@ is
       end if;
    end Evaluate_SH;
 
+   --  3.15.5.2 to 3.15.5.4: the request shown from its beginning to its
+   --  end (the estimated front end), the driver's acknowledgement while
+   --  shown ends it with message 149 owed (Produce); passed its end, it
+   --  ends unanswered (3.15.5.5); 4.9.1.3: deleted out of level 2
+   procedure Evaluate_TAF (Facts : Facts_T)
+     with Global => (Input  => (EVC_Levels.State, EVC_Odometry.State),
+                     In_Out => TAF)
+   is
+   begin
+      if not (EVC_Levels.Valid and then EVC_Levels.Level = L2) then
+         TAF.Stored := False;
+      end if;
+      TAF.Shown := TAF.Stored
+        and then EVC_Odometry.Remaining_Estimated (TAF.Begin_V) <= 0
+        and then EVC_Odometry.Remaining_Estimated (TAF.End_V) > 0;
+      if TAF.Stored
+        and then EVC_Odometry.Remaining_Estimated (TAF.End_V) <= 0
+      then
+         TAF.Stored := False;
+      end if;
+      if TAF.Shown and then Facts.TAF_Confirmed then
+         TAF.Due := True;
+         TAF.Stored := False;
+         TAF.Shown := False;
+      end if;
+   end Evaluate_TAF;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T) is
       MA_Received : constant Boolean :=
         EVC_Stored_Information.Radio_MA_Accepted;
@@ -932,6 +1032,7 @@ is
       elsif EVC_Radio.Train_Data_Acknowledged then
          TD_Acked := True;
       end if;
+      Evaluate_TAF (Facts);
       --  4.8: the context of the messages of the next cycle; 4.8.5.4,
       --  4.8.5.5: the transition buffer deleted or released
       Buffer.Update
@@ -1006,6 +1107,11 @@ is
    begin
       Count (Mode_Changes);
       Mode_Now := To;
+      --  4.10 'Track Ahead Free Request': kept entering SR, OS, PT only
+      if To not in M_SR | M_OS | M_PT then
+         TAF.Stored := False;
+         TAF.Shown := False;
+      end if;
       --  5.11.2.2 S120: the recognition is that of the PT entered
       if To /= M_PT then
          Exit_Recognised := False;
@@ -1166,6 +1272,19 @@ is
             SH_Req.Stamp := EVC_Radio.T_Train_At (Ctx.Now_Ms);
             Count (SH_Req.Count);
          end if;
+      end if;
+      --  3.15.5.4: message 149 with the position report (8.6.10) to the
+      --  session of the request
+      if TAF.Due then
+         V := (others => 0);
+         if EVC_Radio.Established (TAF.Session) then
+            Send_With_Report (TAF.Session,
+                              ETCS_Message_Catalogue.Train_M149, V, Ctx, OK);
+            if OK then
+               Count (TAF.Granted);
+            end if;
+         end if;
+         TAF.Due := False;
       end if;
       --  the system status message of the cycle was sent (EVC_Core)
       Status_Now := 0;

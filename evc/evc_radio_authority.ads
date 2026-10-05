@@ -130,13 +130,15 @@ is
       Train_Data_Valid   : Boolean := False;
       TRN_Valid          : Boolean := False;
       Train_Data_Unacked : Boolean := False;
+      --  3.15.5.3: the driver acknowledged the track ahead free request
+      TAF_Confirmed      : Boolean := False;
    end record;
 
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T)
      with Global => (In_Out => (State, EVC_Radio_Info.State),
                      Input  => (EVC_Stored_Information.State,
                                 EVC_Position.State, EVC_Radio.State,
-                                EVC_Levels.State,
+                                EVC_Levels.State, EVC_Odometry.State,
                                 EVC_Movement_Authority.State)),
           Post => EVC_Radio_Info.Count <= 1;
 
@@ -296,6 +298,15 @@ is
      with Global => State;
 
    --  For the tests: the messages taken since Clear (saturating)
+   --  3.15.5: a track ahead free request of the RBC is stored, shown to
+   --  the driver (MSG_MODE_LEVEL taf), and the answers sent (149)
+   function TAF_Stored return Boolean
+     with Global => State;
+   function TAF_Shown return Boolean
+     with Global => State;
+   function TAF_Granted return Natural
+     with Global => State;
+
    --  4.8: the messages the tables rejected since Clear
    function Messages_Rejected return Natural
      with Global => State;

@@ -833,11 +833,11 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.4.5,3,x,,,,,E6,done,"in RV the movement opposite to the orientation is the allowed one (EVC_Brake_Commands), at V_REVERSE (EVC_Procedures.Mode_Speed); evc_test_procedures Scenario_Reversing; E4 with 5.13"
 3.15.4.7,3,x,,,,,E6,done,reversing possible at standstill with the front end in the area (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing; E4 with 5.13
 3.15.4.8,3,x,,,,,E6,done,"the emergency brake beyond the distance (from the end of the area), SS 27, released per 3.14.1.7.1 (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing; E4 with 5.13"
-3.15.5.2,3,x,x,,,,E6,todo,
-3.15.5.2 a),3,x,x,,,,E6,todo,
-3.15.5.2 b),3,x,x,,,,E6,todo,
-3.15.5.4,3,x,,,,,E6,todo,
-3.15.5.6,3,x,,,,,E6,todo,
+3.15.5.2,3,x,x,,,,E6,done,"EVC_Radio_Authority.Take_TAF (message 34 referred to the on-board's LRBG), Evaluate_TAF; evc_test Track_Ahead_Free [E5 authority]"
+3.15.5.2 a),3,x,x,,,,E6,done,"EVC_Radio_Authority.Evaluate_TAF: shown from D_REF + D_TAFDISPLAY (the estimated front end), MSG_MODE_LEVEL taf (EVC_DMI_Port.Mode_Level_Frame); evc_test Track_Ahead_Free [E5 authority]"
+3.15.5.2 b),3,x,x,,,,E6,done,EVC_Radio_Authority.Evaluate_TAF: the display ends L_TAFDISPLAY further; evc_test Track_Ahead_Free [E5 authority]
+3.15.5.4,3,x,,,,,E6,done,"EVC_Radio_Authority.Evaluate_TAF (the driver's TAF_Yes while shown), Produce: message 149 with packet 0; evc_test Track_Ahead_Free [E5 authority]"
+3.15.5.6,3,x,,,,,E6,done,EVC_Radio_Authority.Take_TAF: a new request replaces the stored one; evc_test Track_Ahead_Free [E5 authority]
 3.15.7.2,3,x,,,,,E6,todo,
 3.15.7.4,3,x,,,,,E6,todo,
 3.15.7.5,3,x,,,,,E6,todo,
@@ -1352,7 +1352,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.3.1.1 Table,4,x,,,,,E4,partial,"EVC_Acceptance (balise rows), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; [1] accepted at once (no transition buffer for level 1, see 4.8.5); the RBC rows (From RBC: Yes) of the messages taken by radio (2, 3, 33, 6, 9, 15, 16, 18, 27, 28, 34) in EVC_Radio_Acceptance.First_Filter, EVC_Radio_Authority.Take_Message; evc_test Radio_Acceptance; the packets of message 24 and the session messages are not filtered by the table yet [E5 authority]"
 4.8.3.1.1 Table-footnote [1],4,x,,,,,E4,partial,"accepted at once instead of stored (EVC_Acceptance header: no transition buffer, 4.8.5)"
 4.8.3.1.1 Table-footnote [2],4,x,,,,,E4,done,"EVC_Radio_Acceptance.First_Filter (Stored), the transition buffer of EVC_Radio_Authority.Buffer (4.8.5); evc_test Transition_Buffer [E5 authority]"
-4.8.3.1.1 Table-footnote [3],4,x,,,,,E4,partial,EVC_Radio_Acceptance.First_Filter: rejected while Train Data sent (EVC_Sessions.Train_Data_Sent) are not acknowledged (EVC_Radio.Train_Data_Acknowledged); the second bullet (a changed category) is the same condition here; evc_test Radio_Acceptance [E5 authority]
+4.8.3.1.1 Table-footnote [3],4,x,,,,,E4,partial,EVC_Radio_Acceptance.First_Filter has the exception (Context.Train_Data_Unacked) but EVC_Core does not feed it yet: the acknowledgement (message 8) of Train Data sent before the session is established is not recognised in the SUBSET-076 sequences of a level 2 transition (EVC_Sessions); the MA request of Start in SB waits for the acknowledgement (5.4.3.2 S11) [E5 authority]
 4.8.3.1.1 Table-footnote [4],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.3.1.1 Table-footnote [5],4,x,,,,,E4,done,"3.10.2.4 in EVC_Radio_Authority (MA_Allowed, no shortening while a stop is not revoked); evc_test Emergency_Stops [E5 authority]"
 4.8.3.1.1 Table-footnote [8],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids) [E5 session]"
@@ -1397,7 +1397,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.5.6 b),4,x,,,,,E4,done,EVC_Radio_Authority.Take_Message: the same rules as for new information [E5 authority]
 4.8.5.6 c),4,x,,,,,E4,done,EVC_Stored_Information: the result used [E5 authority]
 4.8.5.7,4,x,,,,,E4,done,a released message 15 is judged by the stored information like a new one (EVC_Stored_Information.Take_Stop) [E5 authority]
-4.9.1.3,4,x,,,,,E4,deferred,"E5 (MA request and position report parameters, TAF request, inhibition of revocable TSRs from balises in level 2) [E5 authority]"
+4.9.1.3,4,x,,,,,E4,partial,the track ahead free request deleted out of level 2 (EVC_Radio_Authority.Evaluate_TAF); the MA request and position report parameters: E5 [E5 authority]
 4.9.1.3.1,4,x,,,,,E4,deferred,"E5 (MA request and position report parameters, TAF request, inhibition of revocable TSRs from balises in level 2) [E5 authority]"
 4.10.1.3,4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"
 4.10.1.3 a),4,x,,,,,E4,done,"EVC_Core.Enter_Mode with the reset entry points of the E3 stores (EVC_Track_Description.Delete, EVC_Movement_Authority.Delete_MA, EVC_Track_Conditions.Reset, EVC_Position.Delete_Linking / Delete_Geo), EVC_Levels.Mode_Entered, EVC_Mission.Mode_Entered; evc_test E4_Level_Transition_0 (UN deletes the MA and the track description)"

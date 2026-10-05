@@ -2022,3 +2022,52 @@ handover; level transitions into and out of level 2 (5.10, 5.15); the
 SUBSET-076 runner's filling of the Radio data window (the 51 sequences
 blocked at "E5-radio": the sequences give the driver's entry only in a
 comment, e.g. "The Driver enters: RBC ID = 1").
+
+### Authority by radio, phase 3: acceptance and leftovers (e5/authority-4, 2026-10-06)
+
+**Implemented** (`EVC_Radio_Acceptance`, the private child
+`EVC_Radio_Authority.Buffer` whose state is part of the authority's,
+scenarios `Radio_Acceptance`, `Transition_Buffer`, `Start_After_Ack`,
+`Track_Ahead_Free` in `EVC_Test_Authority`):
+- 4.8 for the RBC (taken over from the session half): the rows "From
+  RBC: Yes" of 4.8.3 and the RBC rows of 4.8.4 for the messages taken by
+  radio (2, 3, 33, 6, 9, 15, 16, 18, 27, 28, 34) as tables
+  (`First_Filter`, `Third_Filter`, `Verdict`), applied at the start of
+  `EVC_Radio_Authority.Take_Message` with the context of the last
+  cycle (`Buffer.Update` in `Evaluate`; the mode and message 6 of the
+  cycle). Message 16 no longer trips in SB without a cab, PS, SH, SL,
+  NL, TR, PT, RV; 18 is rejected in TR.
+- The transition buffer of 4.8.5 for 4.8.3 [2] (an MA, conditional or
+  unconditional stop in level 0/1 with level 2 announced): `EVC_Core`
+  stores the message (`To_Buffer`, `Store_Message`) instead of giving
+  it; three messages, the oldest replaced; deleted by 4.8.5.4 a), c);
+  released when the level is 2 (`Has_Released`, `Take_Released`, in
+  `Read_Released_Messages` after the session half's).
+- 5.4.3.2 D15 / S11: in SB the driver's Start in level 2 requests the
+  MA once the Train Data are acknowledged.
+- NID_ENGINE of the authority's messages is `EVC_Radio.Engine_Id`.
+- Track ahead free, 3.15.5 (message 34, 149): shown on MSG_MODE_LEVEL
+  taf (`EVC_DMI_Port.Mode_Level_Frame` gained `TAF`), answered by the
+  driver's TAF_Yes, ended at its end, out of level 2 and by the modes of
+  4.10.
+
+**Decisions.** A message rejected by 4.8 is ignored, except a request to
+shorten the MA, answered 138 (3.8.6.1 c). The released messages are
+taken in the cycle after the level transition (the stored information
+of a cycle is evaluated before its levels). [3] of 4.8.3 counts an
+acknowledgement seen in the ongoing session (Train Data sent again do
+not reject). 3.16.3.3.2 is the trackside's: the on-board's messages of
+one cycle may share T_TRAIN. Message 34 is taken only when it refers to
+the on-board's LRBG; its window is placed from the estimated front end
+at reception, Q_DIR not checked. A rejected 34 is not stored. Start in
+SR or PT does not wait for the acknowledgement.
+
+**Left:** 4.8.3 [3] is in the table but not fed (`Train_Data_Unacked
+=> False` in `EVC_Core.Evaluate_Radio`): with it 87 SUBSET-076
+sequences of a level 2 transition regress, as the session half does not
+recognise message 8 acknowledging Train Data sent before the session is
+established (9990600 and others); 4.8.5.5 "at the same time" (one
+cycle late: 5100400_06 trips at the transition, triage S2f278aca);
+4.8.5.2 and 4.8.5.4 b) (handover); the packets of message 24 and the
+session messages (8, 32, 39 to 43) through the tables; [17] (SM); the
+trigger of 3.8.2.4 (packet 90); message 158; the leftovers of phase 2.

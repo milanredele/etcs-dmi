@@ -115,14 +115,15 @@ is
    --  a procedure, 5.7, 5.9, 5.11, 5.13, 5.19), the level announced
    --  (Level_Ann: the code of the level, No_Code none) and whether its
    --  acknowledgement is asked (5.10), "override active" (5.8.3.7); no
-   --  TAF request, no LSSMA (phase E5)
+   --  the track ahead free request shown (3.15.5, phase E5); no LSSMA
    function Mode_Level_Frame (Mode          : Mode_T;
                               Status        : Level_Status_T;
                               Level         : Level_T;
                               Mode_Ack      : Byte := No_Code;
                               Level_Ann     : Byte := No_Code;
                               Level_Ann_Ack : Boolean := False;
-                              Override      : Boolean := False)
+                              Override      : Boolean := False;
+                              TAF           : Boolean := False)
      return Mode_Level_Frame_T
    with Pre => Has_Mode_Code (Mode),
         Post => Mode_Level_Frame'Result (1) = MSG_MODE_LEVEL

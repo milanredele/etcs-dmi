@@ -1063,4 +1063,70 @@ package body EVC_Test_Authority is
              & "the reason Start (5.4.3.2 S20, S21; 3.8.2.3.1)");
    end Scenario_Start_After_Ack;
 
+   --  Message 34 referring to the group 10 of country 123: the display
+   --  from Begin_M to Begin_M + Len_M metres beyond it
+   function TAF_Message (Begin_M, Len_M : Natural) return Byte_Array is
+      V : ETCS_Message.Value_Array := (others => 0);
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := 10;
+      V (7) := 1;
+      V (9) := 1;
+      V (10) := Unsigned_64 (Begin_M);
+      V (11) := Unsigned_64 (Len_M);
+      return Message_Of (MCat.Track_M34, V);
+   end TAF_Message;
+
+   --  The message 149 among the RTM outputs of the last Take
+   function Has_149 return Boolean is
+     (for some N in 1 .. Radio_Outputs =>
+        not Radio_Output (N).Request and then Radio_Output (N).Kind = 149);
+
+   --  3.15.5, messages 34 and 149: the track ahead free request
+   procedure Scenario_Track_Ahead_Free is
+      Sent : Boolean := False;
+   begin
+      Start_L2;
+      Run_X (15_000);
+      Give_Radio_Message (1, TAF_Message (200, 100));
+      Stand_X (200);
+      Check (not RA.TAF_Stored,
+             "TAF: a request in FS rejected (4.8.4 'Track Ahead Free "
+             & "Request', FS: R)");
+
+      EVC_Core.Set_Mode_For_Test (M_SR, L2);
+      Stand_X (200);
+      Give_Radio_Message (1, TAF_Message (200, 100));
+      Stand_X (200);
+      Check (RA.TAF_Stored and then not RA.TAF_Shown,
+             "TAF: the request in SR stored, not shown before its "
+             & "beginning (3.15.5.2 a)");
+      Run_X (32_000);
+      Check (RA.TAF_Shown
+             and then Byte_At (Find_DMI (EVC_DMI_Port.MSG_MODE_LEVEL), 12)
+                      = 1,
+             "TAF: shown to the driver from its beginning (3.15.5.2 a, "
+             & "MSG_MODE_LEVEL taf)");
+      Input (DMI, (16#40#, 3, 0, 0, 0, 0, 0, 0));
+      for I in 1 .. 3 loop
+         Stand_X (100);
+         Sent := Sent or else Has_149;
+      end loop;
+      Check (Sent and then RA.TAF_Granted = 1 and then not RA.TAF_Shown
+             and then not RA.TAF_Stored,
+             "TAF: the driver's acknowledgement ends the display, message "
+             & "149 to the RBC (3.15.5.3, 3.15.5.4)");
+
+      Give_Radio_Message (1, TAF_Message (0, 50));
+      Stand_X (200);
+      Check (RA.TAF_Shown, "TAF: a new request replaces the stored one, "
+             & "shown at once (3.15.5.6)");
+      Run_X (45_000);
+      Check (not RA.TAF_Shown and then not RA.TAF_Stored
+             and then RA.TAF_Granted = 1,
+             "TAF: passed its end unanswered, the request ends without "
+             & "consequence (3.15.5.2 b, 3.15.5.5)");
+   end Scenario_Track_Ahead_Free;
+
 end EVC_Test_Authority;
