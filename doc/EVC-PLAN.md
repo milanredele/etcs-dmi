@@ -1917,8 +1917,9 @@ RBC contact of S3 (MSG_DRIVER_DATA kind 5: entered, 'Contact last RBC',
 attempts of A.3.1, D31 (the contact valid) / A32, the SoM position
 report 157 with Q_STATUS (D32, A33, A34; packet 11 when the Train Data are
 valid), the answers 43 (A35: `EVC_Position.Revalidate` by `EVC_Core`), 41
-(D34 / A24) and 40 (D35, A39, A40: 156 and "Train is rejected", DMI entry
-20), 5.4.3.2.2; the Train Data to the RBC of 3.18.3.4 (129 with packets 0
+(D34) and 40 (D35, A40: 156 and "Train is rejected", DMI entry 20;
+the deletions of A24 / A39 are decided but not applied: they break the
+postcondition of Tick on 3.6.4.1.2, left), 5.4.3.2.2; the Train Data to the RBC of 3.18.3.4 (129 with packets 0
 and 11 when the supervising session is established with valid Train Data
 and when the driver validates them, repeated every 15 s until message 8
 acknowledges them, again after a connection set up again, 3.18.3.4.2);
