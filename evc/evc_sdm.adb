@@ -2380,7 +2380,8 @@ is
    end Passed_Locations;
 
    --  3.8.6.1 b) (phase E5): the train front end against the Indication
-   --  supervision limit of the proposed shortened MA P (frame positions)
+   --  supervision limit of the proposed shortened MA P (frame positions,
+   --  S.Extra.Proposal; False without one)
    --  for the current speed, with the curves of the cycle (Work, C): the
    --  Indication location of its EOA against the estimated front end,
    --  that of its SvL against the max safe front end (as 3.13.10.3.8
@@ -2389,10 +2390,10 @@ is
    --  Eval_T more on the stack of Step.
    function Proposal_In_Rear (S    : Snapshot_T;
                               Work : Work_T;
-                              C    : Ctx_T;
-                              P    : Movement_Authority_T) return Boolean
+                              C    : Ctx_T) return Boolean
      with Pre => C.Stop > -Max_Cm
    is
+      P   : Movement_Authority_T renames S.Extra.Proposal;
       EOA : constant Dist_T := EVC_Profile.Ahead_Of (S, P.EOA);
       SvL : constant Dist_T := Max (EVC_Profile.Ahead_Of (S, P.SvL), EOA);
       T   : constant Target_T :=
@@ -2403,7 +2404,9 @@ is
                Speed => 0, TSR => False));
       R   : Eval_T;
    begin
-      if T.Kind = LOA_Target and then C.V <= T.Speed then
+      if not P.Present then
+         return False;
+      elsif T.Kind = LOA_Target and then C.V <= T.Speed then
          return True;
       end if;
       R := Evaluate (Work, C, T, C.V, False);
@@ -2484,9 +2487,7 @@ is
                      Rel, Cond_2);
       Survey_Targets (Work, C, Rel, Start, State.MRDT_Valid, State.MRDT,
                       Sv, Result.Indication, Result.Indication_D);
-      Result.Proposal_In_Rear :=
-        S.Extra.Proposal.Present
-        and then Proposal_In_Rear (S, Work, C, S.Extra.Proposal);
+      Result.Proposal_In_Rear := Proposal_In_Rear (S, Work, C);
 
       --  phase E4: the virtual SBD curves of the track conditions
       --  (5.18.4.2, 5.18.8.3), the substitution of a level crossing not
