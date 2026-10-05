@@ -6,8 +6,10 @@
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Bits;
+with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Message_Catalogue; use ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P42;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
@@ -30,6 +32,7 @@ is
    use type R.Session_State_T;
    use type R.Session_Ref_T;
    use type R.RBC_Id_T;
+   use type ETCS_Catalogue.Packet_Kind_T;
 
    subtype Session_T is R.Session_T;
    subtype Time_Ms_T is R.Time_Ms_T;
@@ -585,6 +588,39 @@ is
    --  Decision: a message on a session not established passes (whether
    --  the information is accepted is 4.8, phase 2); one on a session the
    --  on-board does not handle is ignored.
+   --  3.5.3.4 a), 3.5.5.1 a): packet 42 of a General message (24) of the
+   --  RBC, an order to establish or terminate a session (e5/session-4:
+   --  message 24 goes to no store of phase E3; 4.8.4 accepts session
+   --  management in the modes in which a session exists). The packet 42
+   --  of messages 3 and 33 goes the way of their stored information.
+   procedure Take_Radio_Order
+     with Global => (In_Out => Order, Input => EVC_Received.Store)
+   is
+      pragma Warnings
+        (GNATprove, Off, """Rd"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      Rd : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P42.Packet_T;
+      OK : Boolean;
+   begin
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P42
+         then
+            EVC_Received.Open_Message_Packet (I, Rd);
+            ETCS_Track_Packets.P42.Decode (Rd, P, OK);
+            if OK and then ETCS_Track_Packets.P42.Valid (P) then
+               --  as Take_Order: the last order of a cycle wins
+               Order := (Present   => True,
+                         Establish => P.Q_RBC = 1,
+                         RBC       => (NID_C   => P.NID_C,
+                                       NID_RBC => P.NID_RBC),
+                         Radio     => P.NID_RADIO);
+            end if;
+         end if;
+      end loop;
+   end Take_Radio_Order;
+
    procedure Take_Message (S       : EVC_Radio.Session_T;
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
@@ -636,6 +672,9 @@ is
          when others =>
             --  3.6.5.1.5: the position report parameters
             Reports.Take_Message;
+            if Kind = Track_M24 then
+               Take_Radio_Order;
+            end if;
             Verdict := Pass;
       end case;
    end Take_Message;

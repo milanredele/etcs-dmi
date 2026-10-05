@@ -91,7 +91,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.4.5,3,x,,,,,E5,todo,[E5 session]
 3.5.4.7,3,x,,,,,E5,done,EVC_Sessions.Take_Version (32 inside a session: 159 again) [E5 session]
 3.5.5.1,3,x,,,,,E5,partial,EVC_Sessions: a) the order of packet 42; b) the conditions of other sections with their procedures [E5 session]
-3.5.5.1 a),3,x,,,,,E5,done,EVC_Sessions.Apply_Order; evc_test session_establish [E5 session]
+3.5.5.1 a),3,x,,,,,E5,done,"EVC_Sessions.Apply_Order; the order of a balise group or of the RBC (packet 42 of message 24: EVC_Sessions.Take_Radio_Order, e5/session-4); evc_test session_establish, Scenario_Session_Reports [E5 session]"
 3.5.5.1 b),3,x,,,,,E5,todo,[E5 session]
 3.5.5.2,3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session, Take_Message (39); evc_test session_establish [E5 session]"
 3.5.5.2 a),3,x,,,,,E5,done,EVC_Sessions.Terminate_Session (156 last in Produce) [E5 session]

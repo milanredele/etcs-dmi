@@ -687,9 +687,21 @@ package body EVC_Test_Sessions is
       Establish (1);
       Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
       Stand;
-      Check (EVC_Sessions.EoM_Sent = 1 and then Output_Of (150) > 0,
-             "EoM: the mode SB entered with a session: message 150 "
-             & "(5.5.3.1.3)");
+      declare
+         N  : constant Natural := Output_Of (150);
+         M  : ETCS_Message.Message_T;
+         St : ETCS_Message.Status_T := ETCS_Message.Truncated;
+      begin
+         if N > 0 then
+            Decode_Radio_Message (N, M, St);
+         end if;
+         Check (EVC_Sessions.EoM_Sent = 1 and then N > 0
+                and then St = ETCS_Message.Accepted
+                and then M.Values (5) = 0,
+                "EoM: the mode SB entered with a session: message 150 "
+                & "(5.5.3.1.3), Q_DESK 0 the desk closed (8.6.10, "
+                & "7.5.1.102.2)");
+      end;
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_EoM;
 
@@ -720,6 +732,28 @@ package body EVC_Test_Sessions is
       Check (OK, "reports: packet 58 encoded");
       return Message_Bytes (W);
    end Report_Parameters;
+
+   --  Message 24 referred to the group NID_BG of country 123 with packet
+   --  42: Q_RBC 0, terminate the session (3.5.5.1 a)
+   function Terminate_Order (NID_BG : Natural) return Byte_Array is
+      P  : TP42.Packet_T;
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      P.Q_DIR := 2;
+      P.Q_RBC := 0;
+      P.NID_C := 5;
+      P.NID_RBC := 300;
+      P.NID_RADIO := 16#0077#;
+      TP42.Encode (P, W, OK);
+      Check (OK, "reports: packet 42 encoded");
+      return Message_Bytes (W);
+   end Terminate_Order;
 
    procedure Scenario_Session_Reports is
       N : Natural;
@@ -763,6 +797,13 @@ package body EVC_Test_Sessions is
              & "parameters stored the passage of an LRBG is not reported "
              & "(3.6.5.1.4 j), standstill left and reached are, got"
              & Img (EVC_Sessions.Position_Reports_Sent - N));
+
+      --  3.5.5.1 a): the order to terminate by radio
+      Give_Radio_Message (1, Terminate_Order (30));
+      Stand;
+      Check (Output_Of (156) > 0,
+             "reports: packet 42 Q_RBC 0 by radio, the session terminated "
+             & "(3.5.5.1 a): 156");
    end Scenario_Session_Reports;
 
 end EVC_Test_Sessions;

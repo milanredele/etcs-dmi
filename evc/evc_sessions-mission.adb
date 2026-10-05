@@ -650,7 +650,9 @@ is
       Await_TD (S, T, Ctx.Now_Ms, Sent => OK);
    end Send_TD;
 
-   --  5.5.3.1.3: message 150 with packet 0
+   --  5.5.3.1.3: message 150 with Q_DESK and packet 0 (8.6.10: Q_DESK
+   --  1 when a desk is open, 7.5.1.102.2, as the cab status of the
+   --  position knows it; e5/session-4)
    procedure Send_EoM (S : R.Session_T; Ctx : R.Context_T; T : T_TRAIN_T)
      with Global => (In_Out => (R.State, R.Queue, N_EoM),
                      Output => (EoM_Awaited, EoM_Since),
@@ -660,7 +662,10 @@ is
       W  : Writer_T;
       OK : Boolean;
    begin
-      Start (W, Train_M150, T, 0, Ctx.Mode, OK);
+      Start (W, Train_M150, T,
+             (if EVC_Position.Active_Cab = EVC_Position.No_Cab then 0
+              else 1),
+             Ctx.Mode, OK);
       Finish_And_Send (W, S, OK);
       EoM_Awaited := True;
       EoM_Since := Ctx.Now_Ms;

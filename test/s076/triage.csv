@@ -9,8 +9,8 @@
 # the track), dmi (our DMI).
 #
 # on-board gaps still open
-S1f552964,E5,"session: the Main window expected after the level 2 start of mission's wait for the RBC (MSG_ONBOARD waiting 2 during A31, e5/session-3); not analysed yet (the DMI shows the default window): phase 3"
-S7e250917,E5,"session: message 150 with Q_DESK expected; 8.6.10 of 4.0.0 has no Q_DESK in 150: to analyse with the system version of the sequence, phase 3"
+S1f552964,model,"the Main window expected when the train has stopped at the start of a new test case (e.g. 3110300_03 step 69 'case 5210200', 3170200_11 step 63): the sequence has no driver action opening it (the step is the joint of two test cases); the on-board opens no window, the DMI shows its default one (analysed e5/session-4; not the wait of A31)"
+S7e250917,E5,"session: message 150 with Q_DESK (8.6.10 of 4.0.0 has it; 7.5.1.102.2: 1 a desk is open): fixed in e5/session-4 (EVC_Sessions.Mission.Send_EoM, the cab status)"
 S65c3faf6,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
 Saa959bed,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
 Saeffd85e,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
@@ -186,3 +186,9 @@ Scd518a05,model,5060200_01: the second Shunting press comes in the cycle the tra
 S83896b5d,E5,"authority: 5190200_04, reached since the position reports (e5/session-4): the JRU record 21 with the Full Supervision symbol (bit 27) at the end of the Limited Supervision profile; not analysed (5.19, the authority half)"
 Sada5ce93,model,"3080200_06, reached since the position reports (e5/session-4): the step 'power off' is judged against the mode in its brackets (FS), which is the mode before the input; the on-board is in NP after it as it must be (4.4.1)"
 S112c80a6,E5,"authority: 5190200_03, reached since the position reports (e5/session-4): Limited Supervision expected at 700 m, the on-board is in FS (the end of the LS mode profile, 5.19); not analysed (the authority half)"
+S7d250784,s076,"5070300_02 / _04: message 150 with Q_DESK=0 expected on entering Shunting with cab A active at 35 km/h; 7.5.1.102.2 gives 1 when a desk is open, as 64 of the 74 SH expectations of the corpus (sv30) have it (e5/session-4)"
+S15dab337,E5,"session: reached since packet 42 by radio (e5/session-4): after the session terminated and a new level 2 start of mission (3040200_04 step 129), Start/Main expected enabled once 8 acknowledged the Train Data, the DMI has it disabled; not analysed (MSG_ONBOARD of the second SoM, 5.4.3.2 S20)"
+S863aab40,E5,"session: reached since packet 42 by radio (e5/session-4): level 1 expected after 'Exit Shunting' where the on-board stays in level 2 (4100103_28); level transitions to and from level 2 (5.10, 5.15) are left for the next phase of the session half"
+Sb83b2c65,E5,"session: 4050200_03, SH to PS with the desk closed: the sequence expects no 136, the on-board reports the mode change (3.6.5.1.4 b, e5/session-4); no clause found that exempts PS; to analyse with the RBC side of the sequence"
+S45db7c89,model,"4040600_02, reached since packet 42 by radio (e5/session-4): the JRU record 38 (cab status) the runner expects is not produced; not analysed (JRU modelling)"
+Sfb725745,E5,"session: 5040300_25, reached since packet 42 by radio (e5/session-4): 'FRMCS network registration failed' (3.5.6, the radio networks): a later package of the session half"
