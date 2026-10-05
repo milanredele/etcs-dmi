@@ -40,7 +40,60 @@ separate (S076_Run)
 function Radio_Input (St : Step_T) return Judgement_T is
    use type B.Byte_Array;
    Kind : constant String := W (3);
-   S    : constant Positive := Radio_Session;
+
+   --  The session this step is for. One RBC: session 1, as always. A
+   --  handover shows a second RBC and the sequence tells the two apart
+   --  only by the order of events (SUBSET-076 gives no RBC identity on
+   --  its steps): a connection is the answer to the request the on-board
+   --  made in a session that has no connection; the termination
+   --  messages (24 with packet 42, and 39 after 156) and a disconnect go
+   --  to the session they belong to; any other message goes to the
+   --  session set up last. With one session alive this is session 1.
+   function Route return Positive is
+      Other : constant Positive := 3 - RBC_Current;
+      Set_Up : constant Natural :=
+        EVC_Ports.RTM_Request_T'Pos (EVC_Ports.Request_Set_Up) + 1;
+      Release : constant Natural :=
+        EVC_Ports.RTM_Request_T'Pos (EVC_Ports.Request_Release) + 1;
+      Both : constant Boolean := RBC_Alive (1) and then RBC_Alive (2);
+      Nid : constant String := W (4);
+      Has_42 : Boolean := False;
+   begin
+      if Same (Kind, "connect") then
+         for Cand in 1 .. 2 loop
+            if not RBC_Alive (Cand) and then B.Last_Request (Cand) = Set_Up
+            then
+               return Cand;
+            end if;
+         end loop;
+         return Radio_Session;
+      elsif Same (Kind, "disconnect") then
+         for Cand in 1 .. 2 loop
+            if RBC_Alive (Cand)
+              and then (B.Last_Request (Cand) = Release
+                        or else B.T_Train_Of (Cand, 156) >= 0)
+            then
+               return Cand;
+            end if;
+         end loop;
+         return (if Both then Other else RBC_Current);
+      elsif not Same (Kind, "message") or else not Both then
+         return RBC_Current;
+      elsif Nid = "39" then
+         return (if B.T_Train_Of (Other, 156) >= 0 then Other
+                 else RBC_Current);
+      end if;
+      for I in 1 .. Seq.Message_Count loop
+         if Seq.Messages (I).Step = St.Number then
+            for K in 1 .. Seq.Messages (I).Packet_Count loop
+               Has_42 := Has_42 or else Seq.Messages (I).Packets (K) = 42;
+            end loop;
+         end if;
+      end loop;
+      return (if Nid = "24" and then Has_42 then Other else RBC_Current);
+   end Route;
+
+   S    : constant Positive := Route;
 
    procedure Event (E : EVC_Ports.RTM_Event_T) is
    begin
@@ -96,13 +149,11 @@ function Radio_Input (St : Step_T) return Judgement_T is
          when 27 | 28 => 130,
          when others  => 0);
 begin
-   if Handover_Step > 0 and then St.Number > Handover_Step then
-      return NJ (R_Handover, "RTM " & Kind & " after the RBC transition"
-                 & " order");
-   end if;
    if Same (Kind, "connect") then
       --  a new connection: a new session, whose time stamps start again
       RBC_Stamp_Given := False;
+      RBC_Alive (S) := True;
+      RBC_Current := S;
       Event (EVC_Ports.Connection_Set_Up);
       return Pass ("RTM connection set up (session" & Natural'Image (S)
                    & ")");
@@ -112,7 +163,15 @@ begin
         or else B.T_Train_Of (S, 156) >= 0
       then
          Event (EVC_Ports.Connection_Released);
+         RBC_Alive (S) := False;
+         if RBC_Alive (3 - S) then
+            RBC_Current := 3 - S;
+         end if;
          return Pass ("RTM connection released");
+      end if;
+      RBC_Alive (S) := False;
+      if RBC_Alive (3 - S) then
+         RBC_Current := 3 - S;
       end if;
       Event (EVC_Ports.Connection_Lost);
       return Pass ("RTM connection lost");

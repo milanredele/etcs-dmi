@@ -185,3 +185,4 @@ S81c940f5,E5,5100300_08: level 2 where the sequence has level 1 after a sleeping
 S96bd5570,onboard,the Radio data window buttons of Table 37 are disabled: EVC_Core.Send_Onboard does not report the radio equipment in the MSG_ONBOARD radio byte (network type bits 0-1, installed 2-3, registered 4-5; only bit 7 "contact known"); S076_RADIO_STATUS=1 models it in the runner to see the next steps
 S9ca3aeaf,onboard,same gap as S96bd5570 ('Use short number' needs GSM-R registered)
 S36a6b300,onboard,same gap as S96bd5570 ('Contact last RBC' needs the radio registered)
+Se3765f9b,onboard,4080300_13: a balise group with an RBC transition order (packet 131) and packet 42 of the accepting RBC (Q_RBC=1): the on-board terminates the session with the handing RBC (156); the handover of 3.15.1 is not implemented (E5)

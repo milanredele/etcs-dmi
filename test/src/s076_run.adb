@@ -138,6 +138,11 @@ package body S076_Run is
    --  (S076_Run-Radio_Input), since the last connection set up
    RBC_Stamp       : Unsigned_64 := 0;
    RBC_Stamp_Given : Boolean := False;
+   --  The two RBC sessions of the sequence (a handover shows the second):
+   --  which have a connection, and the one set up last
+   type Alive_T is array (1 .. 2) of Boolean;
+   RBC_Alive   : Alive_T := (others => False);
+   RBC_Current : Positive range 1 .. 2 := 1;
    Cur            : Natural := 0;       -- the index of the step
    Step_Start_Ms  : Unsigned_64 := 0;   -- the time the last step ended
    Explicit_Speed : Integer := -1;      -- cm/s set by an ODO input
@@ -1627,42 +1632,12 @@ package body S076_Run is
 
    --  The session of the RBC of the sequence: 1. A sequence shows a
    --  second RBC by an RBC transition order (packet 131, 3.15.1.2) in a
-   --  message or a telegram; the RTM steps after the first one are not
-   --  judged (R_Handover) until the runner tells the two RBCs apart.
+   --  message or a telegram; Radio_Input routes its inputs to the second
+   --  session by the order of events (RBC_Alive, RBC_Current).
    Radio_Session : constant := 1;
-
-   --  The step of the first RBC transition order of the sequence, 0 when
-   --  none
-   function Handover_Step return Natural;
 
    function Radio_Input (St : Step_T) return Judgement_T is separate;
    function Radio_Expect (St : Step_T) return Judgement_T is separate;
-
-   function Handover_Step return Natural is
-      First : Natural := 0;
-      procedure Note (Step : Natural) is
-      begin
-         if First = 0 or else Step < First then
-            First := Step;
-         end if;
-      end Note;
-   begin
-      for I in 1 .. Seq.Message_Count loop
-         for K in 1 .. Seq.Messages (I).Packet_Count loop
-            if Seq.Messages (I).Packets (K) = 131 then
-               Note (Seq.Messages (I).Step);
-            end if;
-         end loop;
-      end loop;
-      for I in 1 .. Seq.Telegram_Count loop
-         for K in 1 .. Seq.Telegrams (I).Packet_Count loop
-            if Seq.Telegrams (I).Packets (K) = 131 then
-               Note (Seq.Telegrams (I).Step);
-            end if;
-         end loop;
-      end loop;
-      return First;
-   end Handover_Step;
 
    function Apply_Input (St : Step_T) return Judgement_T is
       Iface : constant String := W (2);
@@ -3005,6 +2980,8 @@ package body S076_Run is
       Wait_Used := 0;
       RBC_Stamp := 0;
       RBC_Stamp_Given := False;
+      RBC_Alive := (others => False);
+      RBC_Current := 1;
       Outcome := Seq_Passed;
       Outcome_Step := 0;
       Outcome_Index := 0;

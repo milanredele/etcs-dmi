@@ -31,6 +31,7 @@ with ETCS_Variables;
 
 separate (S076_Run)
 function Radio_Expect (St : Step_T) return Judgement_T is
+   pragma Unreferenced (St);   -- the expectations are not per session
    use type EVC_Ports.RTM_Request_T;
    use type ETCS_Message.Status_T;
    Kind : constant String := W (3);
@@ -244,10 +245,7 @@ function Radio_Expect (St : Step_T) return Judgement_T is
       return Pass ("RTM message " & Nid);
    end Message;
 begin
-   if Handover_Step > 0 and then St.Number > Handover_Step then
-      return NJ (R_Handover, "RTM " & Kind & " after the RBC transition"
-                 & " order");
-   elsif Same (Base, "connect") then
+   if Same (Base, "connect") then
       return Request (EVC_Ports.Request_Set_Up, "connect");
    elsif Same (Base, "disconnect") then
       return Request (EVC_Ports.Request_Release, "disconnect");
