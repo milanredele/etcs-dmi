@@ -29,6 +29,8 @@ package body EVC_Core
                                    Latched_BTM_Count,
                                    Latched_RTM,
                                    Latched_RTM_Count,
+                                   Latched_Events,
+                                   Latched_Event_Count,
                                    Odometer_Now,
                                    Odometer_Fresh,
                                    Geo_Sent,
@@ -112,16 +114,29 @@ is
    end record;
    type BTM_Slots_T is array (1 .. BTM_Latch_Size) of BTM_Slot_T;
 
+   --  phase E5: a message with its session (1 for a message without a
+   --  tag, EVC_Ports)
    type RTM_Slot_T is record
-      Length : Natural range 0 .. RTM_Max_Length := 0;
-      Data   : EVC_Bytes.Byte_Array (1 .. RTM_Max_Length) := (others => 0);
+      Session : RTM_Session_T := 1;
+      Length  : Natural range 0 .. RTM_Max_Length := 0;
+      Data    : EVC_Bytes.Byte_Array (1 .. RTM_Max_Length) := (others => 0);
    end record;
    type RTM_Slots_T is array (1 .. RTM_Latch_Size) of RTM_Slot_T;
+
+   --  phase E5: the connection events of the RTM port latched since the
+   --  last cycle (as many as messages)
+   type Event_Slot_T is record
+      Session : RTM_Session_T := 1;
+      Event   : RTM_Event_T := Connection_Set_Up;
+   end record;
+   type Event_Slots_T is array (1 .. RTM_Latch_Size) of Event_Slot_T;
 
    Latched_BTM       : BTM_Slots_T;
    Latched_BTM_Count : Natural range 0 .. BTM_Latch_Size := 0;
    Latched_RTM       : RTM_Slots_T;
    Latched_RTM_Count : Natural range 0 .. RTM_Latch_Size := 0;
+   Latched_Events      : Event_Slots_T;
+   Latched_Event_Count : Natural range 0 .. RTM_Latch_Size := 0;
 
    --  The inputs of the current cycle (Read_Ports)
    Odometer_Now  : Odometer_Sample_T := Standstill_Sample;
@@ -311,8 +326,12 @@ is
       Latched_TIU := (others => False);
       Latched_BTM := (others => (Length => 0, Data => (others => 0)));
       Latched_BTM_Count := 0;
-      Latched_RTM := (others => (Length => 0, Data => (others => 0)));
+      Latched_RTM := (others => (Session => 1, Length => 0,
+                                 Data => (others => 0)));
       Latched_RTM_Count := 0;
+      Latched_Events := (others => (Session => 1,
+                                    Event => Connection_Set_Up));
+      Latched_Event_Count := 0;
       Odometer_Now := Standstill_Sample;
       Odometer_Fresh := False;
       Geo_Sent := False;
@@ -368,6 +387,11 @@ is
       --  phase E4: no procedure running, no text message
       EVC_Procedures.Clear;
       EVC_Text_Messages.Clear;
+      --  phase E5: no session, no contact, the sessions of the
+      --  installation (EVC_Config: two, or one)
+      EVC_Radio.Clear (EVC_Config.Current.Radio.Sessions);
+      EVC_Sessions.Clear;
+      EVC_Radio_Authority.Clear;
       EVC_Outbox.Clear;
    end Start;
 
@@ -397,6 +421,8 @@ is
             EVC_Levels.Restore (K.Level, K.Table);
          end if;
          EVC_Position.Restore (K.Position);
+         --  phase E5: the RBC contact information, to be revalidated
+         EVC_Radio.Restore_Contact (K.RBC);
          Kept_Pending := True;
       end if;
    end Power_Up;
@@ -415,6 +441,45 @@ is
       EVC_Position.Set_Antenna (EVC_Config.Current.Antenna_To_Cab_A,
                                 EVC_Config.Current.Antenna_To_Cab_B);
    end Configure;
+
+   --  An RTM input of the documented shape (EVC_Ports): a connection
+   --  event or a message, latched with its session for the next cycle
+   procedure Latch_RTM (Payload : EVC_Bytes.Byte_Array)
+     with Global => (In_Out => (Latched_RTM, Latched_RTM_Count,
+                                Latched_Events, Latched_Event_Count,
+                                Overflow_Count)),
+          Pre => Valid_RTM_Input (Payload)
+   is
+      S : constant RTM_Session_T := RTM_Session (Payload);
+   begin
+      if Valid_RTM_Event (Payload) then
+         if Latched_Event_Count < RTM_Latch_Size then
+            Latched_Event_Count := Latched_Event_Count + 1;
+            Latched_Events (Latched_Event_Count) :=
+              (Session => S, Event => RTM_Event (Payload));
+         else
+            Count (Overflow_Count (RTM));
+         end if;
+      elsif Latched_RTM_Count < RTM_Latch_Size then
+         declare
+            --  the message: after the tag and the session when tagged
+            First : constant Positive :=
+              (if Payload (Payload'First) < RTM_Tag_First then Payload'First
+               else Payload'First + RTM_Tagged_Header);
+            Length : constant Natural := Payload'Last - First + 1;
+         begin
+            pragma Assert
+              (Valid_RTM (Payload (First .. Payload'Last)));
+            Latched_RTM_Count := Latched_RTM_Count + 1;
+            Latched_RTM (Latched_RTM_Count).Session := S;
+            Latched_RTM (Latched_RTM_Count).Length := Length;
+            Latched_RTM (Latched_RTM_Count).Data (1 .. Length) :=
+              Payload (First .. Payload'Last);
+         end;
+      else
+         Count (Overflow_Count (RTM));
+      end if;
+   end Latch_RTM;
 
    ------------------
    -- Handle_Input --
@@ -463,14 +528,7 @@ is
                Count (Overflow_Count (BTM));
             end if;
          when RTM =>
-            if Latched_RTM_Count < RTM_Latch_Size then
-               Latched_RTM_Count := Latched_RTM_Count + 1;
-               Latched_RTM (Latched_RTM_Count).Length := Payload'Length;
-               Latched_RTM (Latched_RTM_Count).Data (1 .. Payload'Length) :=
-                 Payload;
-            else
-               Count (Overflow_Count (RTM));
-            end if;
+            Latch_RTM (Payload);
          when ATO | JRU =>
             --  no input is valid on these ports (EVC_Ports.Valid_Input)
             null;
@@ -613,15 +671,36 @@ is
       Latched_BTM_Count := 0;
    end Read_Telegrams;
 
-   --  1b. The radio messages latched since the last cycle, in the order
+   --  1b. Phase E5: the connection events of the RTM port latched since
+   --  the last cycle, in their order, to the session and link half
+   procedure Read_Radio_Events
+     with Global => (Input  => Latched_Events,
+                     In_Out => (Latched_Event_Count, EVC_Sessions.State))
+   is
+   begin
+      for I in 1 .. Latched_Event_Count loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
+         EVC_Sessions.Take_Event (Latched_Events (I).Session,
+                                  Latched_Events (I).Event);
+      end loop;
+      Latched_Event_Count := 0;
+   end Read_Radio_Events;
+
+   --  1c. The radio messages latched since the last cycle, in the order
    --  the RTM delivered them: parsed (EVC_Received, chapter 8), those
    --  accepted recorded on the JRU port (event 3: NID_MESSAGE, L_MESSAGE)
+   --  and given, with their session, to the session and link half; the
+   --  messages it passes go on to the authority half (phase E5)
    procedure Read_Radio_Messages
      with Global => (Input  => (Latched_RTM, Cycle_Count, Clock_Ms),
                      In_Out => (Latched_RTM_Count, EVC_Received.Store,
-                                EVC_Outbox.Queue))
+                                EVC_Outbox.Queue, EVC_Sessions.State,
+                                EVC_Radio_Authority.State))
    is
+      use type EVC_Sessions.Verdict_T;
       M_Status : ETCS_Message.Status_T;
+      Verdict  : EVC_Sessions.Verdict_T;
    begin
       for I in 1 .. Latched_RTM_Count loop
          --  not unrolled by the proof, nothing needed after the loop
@@ -639,6 +718,10 @@ is
                                       Slot.Data (1),
                                       EVC_Bytes.Byte (Slot.Length mod 256),
                                       EVC_Bytes.Byte (Slot.Length / 256)));
+                  EVC_Sessions.Take_Message (Slot.Session, Verdict);
+                  if Verdict = EVC_Sessions.Pass then
+                     EVC_Radio_Authority.Take_Message (Slot.Session);
+                  end if;
                end if;
             end if;
          end;
@@ -646,15 +729,40 @@ is
       Latched_RTM_Count := 0;
    end Read_Radio_Messages;
 
+   --  1d. Phase E5, 4.8.5: the messages the transition buffer of the
+   --  session half releases, parsed again (in the first slot of the
+   --  latch, free now) and given to the authority half as received in
+   --  this cycle; at most RTM_Latch_Size in a cycle
+   procedure Read_Released_Messages
+     with Global => (In_Out => (Latched_RTM, EVC_Received.Store,
+                                EVC_Sessions.State,
+                                EVC_Radio_Authority.State))
+   is
+      M_Status : ETCS_Message.Status_T;
+      S        : RTM_Session_T;
+      Last     : Natural;
+   begin
+      for I in 1 .. RTM_Latch_Size loop
+         pragma Loop_Invariant (True);
+         exit when not EVC_Sessions.Has_Released;
+         EVC_Sessions.Take_Released (S, Latched_RTM (1).Data, Last);
+         EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
+                                       M_Status);
+         if M_Status = ETCS_Message.Accepted then
+            EVC_Radio_Authority.Take_Message (S);
+         end if;
+      end loop;
+   end Read_Released_Messages;
+
    --  1. Read the ports: take the inputs latched since the last cycle,
    --  parse the telegrams and radio messages (EVC_Received) and record
    --  those accepted on the JRU port; hand the telegrams accepted, with
    --  the stamp of their balise, to the position
    procedure Read_Ports
      with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
-                                Latched_RTM, Cycle_Count, Clock_Ms,
+                                Cycle_Count, Clock_Ms,
                                 EVC_Odometry.State, Latched_TIU_Value,
-                                Latched_TIU_Known),
+                                Latched_TIU_Known, Latched_Events),
                      Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
                                 TIU_Value_Now,
                                 TIU_Known_Now, Brake_Ack_Now,
@@ -662,10 +770,13 @@ is
                      In_Out => (Latched_Odometer_Fresh,
                                 Latched_Brake_Ack,
                                 Latched_BTM_Count,
-                                Latched_RTM_Count, EVC_Received.Store,
+                                Latched_RTM, Latched_RTM_Count,
+                                Latched_Event_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Position.State,
                                 EVC_Driver_Requests.State,
-                                EVC_Levels.State, EVC_Procedures.State)),
+                                EVC_Levels.State, EVC_Procedures.State,
+                                EVC_Sessions.State,
+                                EVC_Radio_Authority.State)),
           Post => EVC_Driver_Requests.Isolation_Selected
                     = EVC_Driver_Requests.Isolation_Latched'Old
                   and then not EVC_Driver_Requests.Isolation_Latched
@@ -697,7 +808,9 @@ is
          Non_Leading      => TIU_Now (Non_Leading_Permitted));
       EVC_Levels.Begin_Cycle;
       Read_Telegrams;
+      Read_Radio_Events;
       Read_Radio_Messages;
+      Read_Released_Messages;
    end Read_Ports;
 
    --  4.8 (phase E4): the context of the filters in the cycle, for the
@@ -1083,6 +1196,34 @@ is
       end if;
    end Evaluate_Modes_And_Levels;
 
+   --  Phase E5: the context of the cycle for the halves of the radio
+   function Radio_Context return EVC_Radio.Context_T is
+     ((Mode => Current_Mode, Now_Ms => Unsigned_64 (Clock_Ms)))
+     with Global => (Current_Mode, Clock_Ms);
+
+   --  5a. Phase E5, after the levels and the mission: the session and
+   --  link half, then the authority half (the sessions, the reports and
+   --  requests to make, the conditions of 4.6.3 they own)
+   procedure Evaluate_Radio
+     with Global => (Input  => (Current_Mode, Clock_Ms),
+                     In_Out => (EVC_Sessions.State,
+                                EVC_Radio_Authority.State))
+   is
+   begin
+      EVC_Sessions.Evaluate (Radio_Context);
+      EVC_Radio_Authority.Evaluate (Radio_Context);
+   end Evaluate_Radio;
+
+   --  6b. Phase E5: the mode changed (after the mode machine)
+   procedure Radio_Mode_Changed (From, To : Mode_T)
+     with Global => (In_Out => (EVC_Sessions.State,
+                                EVC_Radio_Authority.State))
+   is
+   begin
+      EVC_Sessions.Mode_Changed (From, To);
+      EVC_Radio_Authority.Mode_Changed (From, To);
+   end Radio_Mode_Changed;
+
    --  5b. Phase E4, the procedures (EVC_Procedures, EVC_Text_Messages),
    --  after the levels and the mission: the context of the cycle, the
    --  conditions of 4.6.3 they own
@@ -1185,7 +1326,8 @@ is
                      EVC_Levels.State, EVC_Mission.State,
                      EVC_Odometry.State, EVC_Stored_Information.State,
                      EVC_Movement_Authority.State, EVC_Train_Data.State,
-                     EVC_Procedures.State);
+                     EVC_Procedures.State, EVC_Sessions.State,
+                     EVC_Radio_Authority.State);
 
    --  6. Mode machine: of the transitions of 4.6.2 whose condition of
    --  4.6.3 holds (EVC_Modes.Conditions, EVC_Transition_Conditions), the
@@ -1201,7 +1343,9 @@ is
                                 EVC_Stored_Information.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Train_Data.State,
-                                EVC_Procedures.State),
+                                EVC_Procedures.State,
+                                EVC_Sessions.State,
+                                EVC_Radio_Authority.State),
                      In_Out => Current_Mode),
           Post => (Current_Mode = Current_Mode'Old
                    or else Transition_Exists
@@ -2027,6 +2171,21 @@ is
       end loop;
    end Record_Actions_Cabs_Conditions;
 
+   --  8k. RTM (phase E5): the messages and requests of the session half,
+   --  then of the authority half (EVC_Radio.Send), moved to the RTM port
+   --  as far as they fit (EVC_Radio.Drain)
+   procedure Send_Radio
+     with Global => (Input  => (Current_Mode, Clock_Ms),
+                     In_Out => (EVC_Sessions.State,
+                                EVC_Radio_Authority.State,
+                                EVC_Radio.Queue, EVC_Outbox.Queue))
+   is
+   begin
+      EVC_Sessions.Produce (Radio_Context);
+      EVC_Radio_Authority.Produce (Radio_Context);
+      EVC_Radio.Drain;
+   end Send_Radio;
+
    --  8. Produce the outputs of the cycle, port by port in this order
    --  (the goldens are their byte stream)
    procedure Produce_Outputs
@@ -2049,7 +2208,9 @@ is
                                 Supervision_Reported, Overrun_Reported,
                                 Entering_Shown, Runaway_Shown,
                                 Status_Rev_Sent, Status_Tunnel_Sent,
-                                TC_Sent))
+                                TC_Sent, EVC_Sessions.State,
+                                EVC_Radio_Authority.State,
+                                EVC_Radio.Queue))
    is
       --  phase E4: the brake demands of the procedures and of the text
       --  messages (MSG_STATUS and the TIU output)
@@ -2069,6 +2230,7 @@ is
       Send_Supervision (D, Text_SB, Text_EB);
       Send_External_Info;           -- TIU the information of 5.20
       Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
+      Send_Radio;                   -- RTM (phase E5)
    end Produce_Outputs;
 
    --  4.11.1.1, 4.11.1.3: the data kept over No Power, once the cold
@@ -2137,7 +2299,7 @@ is
    --  each cycle (EVC_Retained)
    procedure Save_Retained
      with Global => (Input  => (EVC_Levels.State, EVC_Position.State,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State, EVC_Radio.State),
                      In_Out => EVC_Retained.State)
    is
       K : EVC_Retained.Kept_T;
@@ -2148,6 +2310,8 @@ is
       K.Level := EVC_Levels.Level;
       K.Table := EVC_Levels.Table;
       EVC_Position.Keep (K.Position);
+      --  phase E5: the RBC contact information (EVC_Sessions writes it)
+      K.RBC := EVC_Radio.Contact;
       EVC_Retained.Save (K);
    end Save_Retained;
 
@@ -2175,6 +2339,7 @@ is
       if EVC_Mission.Train_Data_Validated then
          EVC_Procedures.Train_Data_Revalidated;
       end if;
+      Evaluate_Radio;
       Run_Procedures;
       declare
          From : constant Mode_T := Current_Mode;
@@ -2183,6 +2348,7 @@ is
          if Current_Mode /= From then
             Enter_Mode (From, Current_Mode);
             Delete_Invalid_Position (From, Current_Mode);
+            Radio_Mode_Changed (From, Current_Mode);
          end if;
       end;
       Finish_Procedures;

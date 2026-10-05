@@ -53,8 +53,15 @@
 --  demand; the outputs carry the acknowledgements and "override" in
 --  MSG_MODE_LEVEL, the system status messages, the text messages, their
 --  brake commands on the TIU, the information for an external function
---  (the second TIU output) and JRU events 23 and 24. The later phases
---  fill the empty steps.
+--  (the second TIU output) and JRU events 23 and 24. Phase E5, the joint
+--  (e5/joint): the RTM port carries the messages and connection events
+--  of the communication sessions (EVC_Ports, EVC_Radio); the ports step
+--  hands them to the session and link half (EVC_Sessions), which passes
+--  the messages it accepts to the authority half (EVC_Radio_Authority);
+--  both evaluate after the levels and the mission, hear of a mode
+--  change after the mode machine and produce their messages at the end
+--  of the outputs, which EVC_Radio.Drain moves to the RTM port. The
+--  later phases fill the empty steps.
 
 --  The postconditions name the state before the call ('Old) of query
 --  functions behind "and then" and "if": allowed, and evaluated at entry
@@ -78,8 +85,11 @@ with EVC_Ports;    use EVC_Ports;
 with EVC_Location;
 with EVC_Position;
 with EVC_Procedures;
+with EVC_Radio;
+with EVC_Radio_Authority;
 with EVC_Received;
 with EVC_Retained;
+with EVC_Sessions;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
@@ -146,7 +156,8 @@ is
 
    --  Inputs accepted on a port but dropped because the latch of the
    --  cycle was full (BTM: the 8 telegrams of a balise group, RTM: 4
-   --  radio messages), since Initialise (saturating)
+   --  radio messages and 4 connection events), since Initialise
+   --  (saturating)
    function Overflowed (Port : Port_T) return Natural
      with Global => State;
 
@@ -175,7 +186,10 @@ is
                                 EVC_Mission.State,
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
-                                EVC_JRU_Records.State),
+                                EVC_JRU_Records.State,
+                                EVC_Radio.State, EVC_Radio.Queue,
+                                EVC_Sessions.State,
+                                EVC_Radio_Authority.State),
                      Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -215,7 +229,10 @@ is
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
                                 EVC_JRU_Records.State,
-                                EVC_Position.State, EVC_Levels.State),
+                                EVC_Position.State, EVC_Levels.State,
+                                EVC_Radio.State, EVC_Radio.Queue,
+                                EVC_Sessions.State,
+                                EVC_Radio_Authority.State),
                      Input  => (EVC_Config.State, EVC_Retained.State),
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -303,7 +320,10 @@ is
                                 EVC_Mission.State,
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
-                                EVC_JRU_Records.State)),
+                                EVC_JRU_Records.State,
+                                EVC_Radio.State, EVC_Radio.Queue,
+                                EVC_Sessions.State,
+                                EVC_Radio_Authority.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

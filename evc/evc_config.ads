@@ -85,6 +85,7 @@ pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Bytes;             use EVC_Bytes;
 with EVC_Distances;         use EVC_Distances;
+with EVC_Ports;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with Interfaces;            use Interfaces;
 
@@ -125,12 +126,31 @@ is
 
    Default_Fixed_Train : constant Fixed_Train_T := (others => <>);
 
+   --  Added by e5/joint: the radio of the vehicle (3.5.2.4: "at least
+   --  two" communication sessions through GSM-R; decision 2 of
+   --  doc/EVC-PLAN.md §13: two are the default, one the degraded case
+   --  of an on-board that handles a single session, 3.5.3.5.2.1,
+   --  3.15.1.3.2.4). EVC_Radio takes it at the power-up. Not in the
+   --  byte image of format version 1, as Fixed_Train_T: Decoded gives
+   --  the default; the tests select one session with Set_Radio_For_Test
+   --  until a format version brings it.
+   subtype Radio_Sessions_T is
+     Positive range 1 .. EVC_Ports.RTM_Max_Sessions;
+
+   type Radio_Config_T is record
+      Sessions : Radio_Sessions_T := EVC_Ports.RTM_Max_Sessions;
+   end record;
+
+   Default_Radio : constant Radio_Config_T := (others => <>);
+
    type Config_T is record
       Supervision      : Onboard_Config_T;
       Antenna_To_Cab_A : Antenna_Offset_T := 300;
       Antenna_To_Cab_B : Antenna_Offset_T := 1_700;
       --  added by e4/modes (see Fixed_Train_T)
       Train            : Fixed_Train_T;
+      --  added by e5/joint (see Radio_Config_T)
+      Radio            : Radio_Config_T;
    end record;
 
    --  3.13.2.2.6.1 Table 3: the interface I is a possibility for the
@@ -182,7 +202,8 @@ is
          SB_Failure_Decel_Mms2       => 100),
       Antenna_To_Cab_A => 300,
       Antenna_To_Cab_B => 1_700,
-      Train            => Default_Fixed_Train);
+      Train            => Default_Fixed_Train,
+      Radio            => Default_Radio);
 
    ---------------------------------------------------------------------
    --  The byte image
@@ -276,6 +297,22 @@ is
                   and then Loaded = Loaded'Old
                   and then Report_Pending
                   and then Last_Status = Why;
+
+   --  For the tests of the hosts, not for an on-board in service: the
+   --  radio of the configuration in use becomes R (a field the image of
+   --  format version 1 does not carry, Radio_Config_T); everything else
+   --  stays. EVC_Radio takes it at the next power-up of EVC_Core.
+   procedure Set_Radio_For_Test (R : Radio_Config_T)
+     with Global => (In_Out => State),
+          Post => Current.Radio = R
+                  and then Current.Supervision = Current.Supervision'Old
+                  and then Current.Antenna_To_Cab_A
+                             = Current.Antenna_To_Cab_A'Old
+                  and then Current.Antenna_To_Cab_B
+                             = Current.Antenna_To_Cab_B'Old
+                  and then Current.Train = Current.Train'Old
+                  and then Loaded = Loaded'Old
+                  and then Report_Pending = Report_Pending'Old;
 
    --  The report was recorded
    procedure Report_Taken

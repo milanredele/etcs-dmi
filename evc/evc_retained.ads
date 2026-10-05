@@ -9,8 +9,8 @@
 --      the train orientation);
 --    - the ERTMS/ETCS level and the table of priority of the trackside
 --      supported levels, "to be revalidated";
---    - the RBC contact information, "to be revalidated" (RBC_Contact_T:
---      written by the radio of phase E5; this on-board has none yet);
+--    - the RBC contact information, "to be revalidated"
+--      (EVC_Radio.RBC_Contact_T, written by EVC_Sessions, phase E5);
 --  not kept: what 4.10 deletes in NP (Train Data, driver ID, train
 --  running number, the MA and the track description, the RBC/RIU system
 --  version, ...). Not yet kept, with the phase that brings it: EOLM
@@ -30,23 +30,13 @@
 with EVC_Levels;
 with EVC_Modes;    use EVC_Modes;
 with EVC_Position;
+with EVC_Radio;
 
 package EVC_Retained
   with SPARK_Mode => On,
        Abstract_State => State,
        Initializes => State
 is
-
-   --  The RBC contact information (3.5.3.7: NID_C, NID_RBC, NID_RADIO),
-   --  stored by the radio of phase E5
-   type RBC_Contact_T is record
-      Known     : Boolean := False;
-      NID_C     : Natural range 0 .. 1023 := 0;
-      NID_RBC   : Natural range 0 .. 16383 := 0;
-      --  NID_RADIO, the 16 digits of the number as 64 bits
-      Radio_Hi  : Natural range 0 .. 2**31 - 1 := 0;
-      Radio_Lo  : Natural range 0 .. 2**31 - 1 := 0;
-   end record;
 
    type Kept_T is record
       --  something was saved since the store was erased
@@ -55,7 +45,10 @@ is
       Level       : Level_T := L0;
       Table       : EVC_Levels.Priority_Table_T;
       Position    : EVC_Position.Kept_Position_T;
-      RBC         : RBC_Contact_T;
+      --  the RBC contact information (EVC_Radio.RBC_Contact_T: the
+      --  type and its writer, EVC_Sessions, are EVC_Radio's); EVC_Core
+      --  saves EVC_Radio.Contact here and restores it at the power-up
+      RBC         : EVC_Radio.RBC_Contact_T;
    end record;
 
    --  The empty store

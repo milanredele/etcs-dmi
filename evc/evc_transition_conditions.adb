@@ -101,18 +101,35 @@ is
                                | C_67 | C_68 | C_69 | C_70 | C_71 | C_72
                                | C_73 | C_74 | C_75 | C_76 | C_82;
 
+   --  Phase E5 (e5/joint): the radio, level 2. The session and link
+   --  half (EVC_Sessions, computed once per cycle by its Evaluate):
+   --    [41] T_NVCONTACT passed, reaction "train trip" (3.16.3.4)
+   subtype Session_Condition_T is Condition_Id_T
+     with Static_Predicate => Session_Condition_T in C_41;
+
+   --  The authority half (EVC_Radio_Authority, computed once per cycle by
+   --  its Evaluate):
+   --    [6] "Shunting granted by RBC" at standstill, level 2 (5.6)
+   --    [11] in RSM, a linked group at or beyond the EOA, level 2 (5.11)
+   --    [20] an unconditional emergency stop accepted (3.10)
+   --    [31] MA, SSP and gradient on-board, no mode profile, level 2
+   --    [36] a group not in the SR list of the RBC, no override (packet
+   --         63)
+   --    [81] an MA of a Supervised Manoeuvre authorisation (5.21)
+   --  and the unconditional emergency stop of [45] (Level_Holds)
+   subtype Authority_Condition_T is Condition_Id_T
+     with Static_Predicate =>
+       Authority_Condition_T in C_6 | C_11 | C_20 | C_31 | C_36 | C_81;
+
    --  Never true in this on-board:
-   --    level 2, the RBC: phase E5 (EVC_Procedures): [6], [11]; the
-   --    emergency stop of the RBC: [20]; T_NVCONTACT, the RBC: [41]; the
-   --    SM authorisation of the RBC: [81]
-   --    not implemented yet: [24], [31], [33], [35], [36], [38], [48],
-   --    [53], [80], [83]
+   --    not implemented yet: [24], [33], [53], [80] (ATO), [48], [83]
+   --    (E6); [35], [38] (a National System through an STM: NTC is out
+   --    of scope)
    --    absent from 4.0.0: [55], [57], [64]
    subtype Not_Evaluated_T is Condition_Id_T
      with Static_Predicate =>
-       Not_Evaluated_T in C_6 | C_11 | C_20 | C_24 | C_31 | C_33 | C_35
-                         | C_36 | C_38 | C_41 | C_48 | C_53 | C_55 | C_57
-                         | C_64 | C_80 | C_81 | C_83;
+       Not_Evaluated_T in C_24 | C_33 | C_35 | C_38 | C_48 | C_53 | C_55
+                         | C_57 | C_64 | C_80 | C_83;
 
    ---------------------------------------------------------------------
    --  The conditions of the modes and levels half (e4/modes)
@@ -167,9 +184,11 @@ is
          --  the override of EVC_Procedures (5.8)
          when C_44 => EVC_Procedures.Override_Active
                       and then EVC_Levels.Switched_To (L1),
-         --  no unconditional emergency stop before E5; the override of
-         --  EVC_Procedures (5.8)
+         --  the override of EVC_Procedures (5.8), the unconditional
+         --  emergency stop of EVC_Radio_Authority (3.10)
          when C_45 => EVC_Procedures.Override_Active
+                      and then not EVC_Radio_Authority
+                                     .Unconditional_Stop_Received
                       and then EVC_Levels.Switched_To (L2),
          when C_56 => EVC_Levels.Switched_To (NTC),
          when C_77 => EVC_Levels.Switched_To (L0)
@@ -181,7 +200,7 @@ is
                       and then EVC_Train_Data.Valid)
      with Global => (EVC_Levels.State, EVC_Stored_Information.State,
                      EVC_Movement_Authority.State, EVC_Train_Data.State,
-                     EVC_Procedures.State);
+                     EVC_Procedures.State, EVC_Radio_Authority.State);
 
    --  [8], [10], [58], [60]: the start of mission (5.4.3.2) and the MA
    function Mission_Holds (C : Mission_Condition_T) return Boolean is
@@ -202,6 +221,25 @@ is
      with Global => (EVC_Mission.State, EVC_Train_Data.State,
                      EVC_Stored_Information.State, EVC_Levels.State);
 
+   ---------------------------------------------------------------------
+   --  The conditions of the two halves of phase E5
+   ---------------------------------------------------------------------
+
+   function Session_Holds (C : Session_Condition_T) return Boolean is
+     (case C is
+         when C_41 => EVC_Sessions.T_NVCONTACT_Trip)
+     with Global => EVC_Sessions.State;
+
+   function Authority_Holds (C : Authority_Condition_T) return Boolean is
+     (case C is
+         when C_6  => EVC_Radio_Authority.Shunting_Granted,
+         when C_11 => EVC_Radio_Authority.Group_At_EOA_In_RSM,
+         when C_20 => EVC_Radio_Authority.Unconditional_Stop_Accepted,
+         when C_31 => EVC_Radio_Authority.MA_On_Board_Level_2,
+         when C_36 => EVC_Radio_Authority.Group_Not_In_SR_List,
+         when C_81 => EVC_Radio_Authority.SM_Authorised)
+     with Global => EVC_Radio_Authority.State;
+
    -----------
    -- Holds --
    -----------
@@ -217,6 +255,10 @@ is
             return Mission_Holds (C);
          when Procedure_Condition_T =>
             return EVC_Procedures.Condition (C);
+         when Session_Condition_T =>
+            return Session_Holds (C);
+         when Authority_Condition_T =>
+            return Authority_Holds (C);
          when C_4 =>
             --  e4/modes: this code runs: the on-board is powered
             return True;

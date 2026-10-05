@@ -17,6 +17,8 @@ with EVC_Mission;
 with EVC_Movement_Authority;
 with EVC_Odometry;
 with EVC_Procedures;
+with EVC_Radio_Authority;
+with EVC_Sessions;
 with EVC_Stored_Information;
 with EVC_Train_Data;
 with EVC_Train_Inputs;
@@ -502,7 +504,9 @@ is
    --  stored information and the Train Data; the procedures
    --  (e4/procedures) evaluate theirs in EVC_Procedures (Evaluate, once
    --  per cycle before the mode machine; every trip condition is theirs,
-   --  so that the trip has one reason, 4.4.13.1.3). [1], [4] and [29]
+   --  so that the trip has one reason, 4.4.13.1.3); the two halves of
+   --  phase E5 theirs in EVC_Sessions and EVC_Radio_Authority (Evaluate,
+   --  likewise). [1], [4] and [29]
    --  are stated (the transitions out of No Power that EVC_Core.Tick
    --  proves).
    function Holds (C : Condition_Id_T) return Boolean
@@ -514,7 +518,9 @@ is
                                EVC_Stored_Information.State,
                                EVC_Movement_Authority.State,
                                EVC_Train_Data.State,
-                               EVC_Procedures.State)),
+                               EVC_Procedures.State,
+                               EVC_Sessions.State,
+                               EVC_Radio_Authority.State)),
           Post => (if C = C_1
                    then Holds'Result
                           = EVC_Driver_Requests.Isolation_Selected)

@@ -24,11 +24,18 @@
 --     EVC_Received) and hands it with its stamp to the position
 --     (EVC_Position): the stamp places the balise, hence the balise
 --     group, on the odometer frame (SUBSET-026 3.6.4.1.1 a).
---  RTM (in): one radio message of SUBSET-026 chapter 8 as its bytes,
---     most significant bit first: NID_MESSAGE (8 bits), L_MESSAGE (10
---     bits, 7.5.1.48: the length of the message in bytes), ... The
+--  RTM (in and out): the application side of Euroradio (SUBSET-037 and
+--     the safe connection are the other side of the port, as the air gap
+--     is the BTM's). In: one radio message of SUBSET-026 chapter 8 as its
+--     bytes, most significant bit first: NID_MESSAGE (8 bits), L_MESSAGE
+--     (10 bits, 7.5.1.48: the length of the message in bytes), ... The
 --     payload length must equal L_MESSAGE. The core parses it at the next
 --     cycle as a track to train message (ETCS_Message, EVC_Received).
+--     Phase E5 adds the tagged inputs (a first byte from RTM_Tag_First
+--     on, which no NID_MESSAGE of chapter 8 has): the message of a
+--     communication session, and the events of the safe radio
+--     connection; the outputs are the messages the on-board sends and
+--     its requests to the radio. See the end of this package.
 --  Odometer (in, Odometer_Length bytes): one sample of the odometry.
 --     The sensors and their fusion are outside this project
 --     (doc/EVC-PLAN.md §1); the sample carries what SUBSET-026 3.6.4,
@@ -125,17 +132,22 @@ is
    DMI_Max_Length  : constant := EVC_DMI_Port.Max_Frame_Length;
    JRU_Record_Length : constant := 16;
 
+   --  Phase E5: a message of a session behind its tag and session
+   --  (RTM_Tagged_Header bytes, the end of this package)
+   RTM_Tagged_Header    : constant := 2;
+   RTM_Input_Max_Length : constant := RTM_Tagged_Header + RTM_Max_Length;
+
    --  The largest payload of one input or output on each port
    Max_Payload : constant array (Port_T) of Natural :=
      (BTM      => BTM_Max_Length,
-      RTM      => RTM_Max_Length,
+      RTM      => RTM_Input_Max_Length,
       Odometer => Odometer_Length,
       TIU      => TIU_Out_Max_Length,
       DMI      => DMI_Max_Length,
       ATO      => 0,
       JRU      => JRU_Record_Length);
 
-   Largest_Payload : constant := RTM_Max_Length;
+   Largest_Payload : constant := RTM_Input_Max_Length;
 
    ---------------------------------------------------------------------
    --  Shapes
@@ -229,11 +241,88 @@ is
                    when 12 | 13 => True,
                    when others => Payload (Payload'First + 1) <= 1));
 
+   --  Phase E5: the shapes of the RTM port (see the end of this
+   --  package)
+
+   RTM_Max_Sessions : constant := 2;
+   type RTM_Session_T is range 1 .. RTM_Max_Sessions;
+
+   RTM_Tag_First   : constant Byte := 16#F0#;
+   RTM_Tag_Message : constant Byte := 16#F1#;
+   RTM_Tag_Event   : constant Byte := 16#F2#;
+   RTM_Tag_Request : constant Byte := 16#F3#;
+
+   RTM_Event_Length : constant := 3;
+
+   type RTM_Event_T is
+     (Connection_Set_Up,      -- 1
+      Connection_Lost,        -- 2
+      Connection_Released,    -- 3
+      Set_Up_Failed,          -- 4
+      Registered,             -- 5
+      Registration_Failed);   -- 6
+
+   type RTM_Request_T is
+     (Request_Set_Up,         -- 1
+      Request_Release,        -- 2
+      Request_Registration);  -- 3
+
+   RTM_Request_Length : constant array (RTM_Request_T) of Positive :=
+     (Request_Set_Up       => 16,
+      Request_Release      => 3,
+      Request_Registration => 6);
+
+   function Valid_RTM_Session (B : Byte) return Boolean is
+     (B in 1 .. RTM_Max_Sessions);
+
+   --  A tagged message: tag, session, a message of chapter 8
+   function Valid_RTM_Tagged (Payload : Byte_Array) return Boolean is
+     (Payload'Length > RTM_Tagged_Header + RTM_Min_Length - 1
+      and then Payload (Payload'First) = RTM_Tag_Message
+      and then Valid_RTM_Session (Payload (Payload'First + 1))
+      and then Valid_RTM (Payload (Payload'First + RTM_Tagged_Header
+                                   .. Payload'Last)));
+
+   --  An event of the safe radio connection
+   function Valid_RTM_Event (Payload : Byte_Array) return Boolean is
+     (Payload'Length = RTM_Event_Length
+      and then Payload (Payload'First) = RTM_Tag_Event
+      and then Valid_RTM_Session (Payload (Payload'First + 1))
+      and then Payload (Payload'First + 2) in 1 .. RTM_Event_T'Pos
+                                                     (RTM_Event_T'Last) + 1);
+
+   --  An RTM input: a message without a tag, a tagged message or an event
+   function Valid_RTM_Input (Payload : Byte_Array) return Boolean is
+     (Payload'Length >= RTM_Min_Length
+      and then (if Payload (Payload'First) < RTM_Tag_First
+                then Valid_RTM (Payload)
+                else Valid_RTM_Tagged (Payload)
+                     or else Valid_RTM_Event (Payload)));
+
+   --  The session of a valid RTM input (1 for a message without a tag)
+   function RTM_Session (Payload : Byte_Array) return RTM_Session_T is
+     (if Payload (Payload'First) < RTM_Tag_First then 1
+      else RTM_Session_T (Payload (Payload'First + 1)))
+     with Pre => Valid_RTM_Input (Payload);
+
+   --  The event of a valid RTM event input
+   function RTM_Event (Payload : Byte_Array) return RTM_Event_T is
+     (RTM_Event_T'Val (Payload (Payload'First + 2) - 1))
+     with Pre => Valid_RTM_Event (Payload);
+
+   --  The message of a valid RTM input that is not an event
+   function RTM_Message (Payload : Byte_Array) return Byte_Array is
+     (if Payload (Payload'First) < RTM_Tag_First then Payload
+      else Payload (Payload'First + RTM_Tagged_Header .. Payload'Last))
+     with Pre  => Valid_RTM_Input (Payload)
+                  and then not Valid_RTM_Event (Payload),
+          Post => Valid_RTM (RTM_Message'Result);
+
    --  True when Payload has the documented shape of an input on Port
    function Valid_Input (Port : Port_T; Payload : Byte_Array) return Boolean
    is (case Port is
           when BTM      => Valid_BTM_Input (Payload),
-          when RTM      => Valid_RTM (Payload),
+          when RTM      => Valid_RTM_Input (Payload),
           when Odometer => Valid_Odometer (Payload),
           when TIU      => Valid_TIU (Payload),
           when DMI      => EVC_DMI_Port.Valid_Input_Frame (Payload),
@@ -508,5 +597,58 @@ is
    function Is_TIU_TC_Output (Payload : Byte_Array) return Boolean is
      (Payload'Length >= TIU_TC_Header_Length
       and then Payload (Payload'First) = TIU_TC_Tag);
+
+   ---------------------------------------------------------------------
+   --  Added by phase E5 (e5/joint): the RTM port in both directions
+   ---------------------------------------------------------------------
+
+   --  Euroradio (SUBSET-037, SUBSET-038) is outside the on-board
+   --  (doc/EVC-PLAN.md §13, decision 1): the port carries the
+   --  application messages of chapter 8 and the events of the safe radio
+   --  connection, per communication session (3.5; two sessions, for the
+   --  RBC handover of 3.15.1: session 1 and 2, whatever RBC each is
+   --  with; EVC_Radio). A first byte from RTM_Tag_First on is a tag: no
+   --  NID_MESSAGE of chapter 8 is that high (track to train 2 .. 45,
+   --  train to track 129 .. 159).
+   --
+   --  RTM inputs:
+   --    a message without a tag (the format of phases E1 to E4): the
+   --       message of session 1. Its first byte, NID_MESSAGE, is below
+   --       RTM_Tag_First.
+   --    RTM_Tag_Message u8, session u8 (1 .. RTM_Max_Sessions), then one
+   --       message of chapter 8 as above: the message received on that
+   --       session.
+   --    RTM_Tag_Event u8, session u8, event u8 (RTM_Event_T'Pos + 1), 3
+   --       bytes: what the radio tells of the safe radio connection of
+   --       the session (3.5.3.7 a, b, 3.5.4.1, 3.5.4.2, 3.5.5.2 c) or of
+   --       the registration of its mobile to the radio network (3.5.6):
+   --       1 the safe radio connection is set up, 2 it is lost (not
+   --       ordered: 3.5.4.1), 3 it is released (by the trackside, or the
+   --       release the on-board requested is done), 4 setting it up
+   --       failed (3.5.3.7 a: "immediately ... repeated"), 5 the mobile
+   --       of the session is registered to the radio network ordered, 6
+   --       the registration failed.
+   --    The core takes, in each cycle, the events latched since the last
+   --    one before the messages (an event and a message latched between
+   --    the same two cycles: the event first).
+   --
+   --  RTM outputs (records of EVC_Outbox, port RTM):
+   --    RTM_Tag_Message u8, session u8, then one train to track message of
+   --       chapter 8 (NID_MESSAGE, L_MESSAGE, T_TRAIN, ...): to be sent
+   --       on that session.
+   --    RTM_Tag_Request u8, session u8, request u8, then by request:
+   --       1 set up a safe radio connection (3.5.3.7 a): NID_C u16,
+   --         NID_RBC u16, NID_RADIO u64 (as coded in 7.5.1.86, the
+   --         special values of 3.5.3.13 and 3.5.3.15 included), radio
+   --         system u8 (0 GSM-R, 1 FRMCS: 3.5.3.7.1), 16 bytes in all;
+   --       2 release the safe radio connection (3.5.3.7.3, 3.5.3.8,
+   --         3.5.5.2 c), 3 bytes;
+   --       3 register the mobile of the session to the GSM-R radio
+   --         network NID_MN u24 (3.5.6.1, 3.5.6.5), 6 bytes.
+   --    Several outputs of a cycle leave in the order they were queued
+   --    (EVC_Radio.Send and the requests).
+
+   --  (the declarations of the RTM port of phase E5 are with the
+   --  shapes, ahead of Valid_Input)
 
 end EVC_Ports;

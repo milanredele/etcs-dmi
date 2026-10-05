@@ -253,6 +253,11 @@ is
       Last := Why;
    end Refuse;
 
+   procedure Set_Radio_For_Test (R : Radio_Config_T) is
+   begin
+      Cfg.Radio := R;
+   end Set_Radio_For_Test;
+
    procedure Report_Taken is
    begin
       Pending := False;
