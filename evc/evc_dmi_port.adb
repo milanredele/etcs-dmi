@@ -222,13 +222,14 @@ is
                           TTI         : Unsigned_16;
                           Reversing   : Boolean := False;
                           Tunnel      : Byte := 0;
-                          Tunnel_Dist : Unsigned_32 := 0)
+                          Tunnel_Dist : Unsigned_32 := 0;
+                          Radio       : Byte := 0)
      return Status_Frame_T
    is
      (MSG_STATUS,
       Status_Length, 0, 0, 0,         -- length u32
       Brake,                          -- brake
-      0,                              -- radio: no connection
+      Radio,                          -- radio (phase E5)
       0,                              -- adhesion
       0,                              -- bmm
       (if Reversing then 1 else 0),   -- reversing

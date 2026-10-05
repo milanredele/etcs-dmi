@@ -10,13 +10,16 @@ with ETCS_Message;
 with ETCS_Message_Catalogue; use ETCS_Message_Catalogue;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
+with EVC_DMI_Port;
 with Interfaces;             use Interfaces;
 
 package body EVC_Sessions
   with SPARK_Mode => On,
        Refined_State => (State => (Events, Messages, Held_Back, Held,
                                    Mode_Changes, Cycles, Links, Order,
-                                   Pending, Acks, Ack_N, NV))
+                                   Pending, Acks, Ack_N, NV, Ind,
+                                   Requesting, Timer_On, Timer_Since,
+                                   SB_Shown, Status_List, Status_N))
 is
 
    package R renames EVC_Radio;
@@ -51,6 +54,9 @@ is
    --  are phase E7. Compatible: the same X (3.17.2)
    Supported_X     : constant := 3;
    Onboard_Version : constant := 48;
+
+   --  A.3.1: the "connection status" timer (3.5.7.2)
+   Status_Timer_Ms : constant := 45_000;
 
    --  7.5.1.96: NID_RBC "contact last known RBC" (3.5.3.13)
    Last_Known_RBC  : constant := 16_383;
@@ -133,6 +139,20 @@ is
    Ack_N        : Natural range 0 .. Max_Acks := 0;
    NV           : NV_T;
 
+   --  3.5.7: the indication status, whether requests to set up the
+   --  safe radio connection with the relevant RBC are going on, the
+   --  "connection status" timer (3.5.7.2, 3.5.7.3)
+   Ind          : Indication_T := No_Connection;
+   Requesting   : Boolean := False;
+   Timer_On     : Boolean := False;
+   Timer_Since  : Time_Ms_T := 0;
+
+   --  3.16.3.4.4: the service brake of T_NVCONTACT shown to the driver
+   SB_Shown     : Boolean := False;
+   type Status_List_T is array (1 .. Max_Status_Events) of Status_Event_T;
+   Status_List  : Status_List_T := (others => (others => <>));
+   Status_N     : Natural range 0 .. Max_Status_Events := 0;
+
    ---------------------------------------------------------------------
    --  Helpers
    ---------------------------------------------------------------------
@@ -145,6 +165,108 @@ is
          N := N + 1;
       end if;
    end Count;
+
+   --  The elapsed time from Since to Now (0 when the clock went back)
+   function Elapsed (Since, Now : Time_Ms_T) return Time_Ms_T is
+     (if Now >= Since then Now - Since else 0);
+
+   --  A system status message of the DMI catalogue for the cycle
+   procedure Show (Entry_Number : Natural; Event : Natural)
+     with Global => (In_Out => (Status_List, Status_N)),
+          Pre => Entry_Number <= 255 and then Event <= 2
+   is
+   begin
+      if Status_N < Max_Status_Events then
+         Status_N := Status_N + 1;
+         Status_List (Status_N) :=
+           (Entry_Number => Entry_Number, Event => Event);
+      end if;
+   end Show;
+
+   ---------------------------------------------------------------------
+   --  The indication of the safe radio connection (3.5.7, Tables 1, 2)
+   ---------------------------------------------------------------------
+
+   --  3.5.7.5, 3.5.7.6: the session S is the one indicated: the session
+   --  of the supervising RBC; before there is one, any session.
+   --  Decision (phase 1, no handover): the switch of 3.5.7.6 is the
+   --  change of the supervising session.
+   function Relevant (S : Session_T) return Boolean is
+     (R.Supervising = R.No_Session
+      or else R.Supervising = R.Session_Ref_T (S))
+     with Global => R.State;
+
+   --  3.5.7.3: a request to set up the safe radio connection of S sent at
+   --  Now: the first one of a series starts the "connection status" timer
+   procedure Ind_Request (S : Session_T; Now : Time_Ms_T)
+     with Global => (Input  => R.State,
+                     In_Out => (Requesting, Timer_On, Timer_Since))
+   is
+   begin
+      if Relevant (S) and then not Requesting then
+         Requesting := True;
+         Timer_On := True;
+         Timer_Since := Now;
+      end if;
+   end Ind_Request;
+
+   --  Table 2 [4]: the safe radio connection of S is set up
+   procedure Ind_Set_Up (S : Session_T)
+     with Global => (Input  => R.State,
+                     In_Out => (Ind, Requesting, Timer_On))
+   is
+   begin
+      if Relevant (S) then
+         Ind := Connection_Up;
+         Requesting := False;
+         Timer_On := False;
+      end if;
+   end Ind_Set_Up;
+
+   --  3.5.7.4: the requests to set up the safe radio connection of S are
+   --  stopped, not by success, or its connection is over: the timer is
+   --  stopped; Table 2 [1] (Final_SoM: the final attempt of a start of
+   --  mission failed) to "Connection Lost/Set-Up failed", else [3], [5],
+   --  [6] to "No Connection"
+   procedure Ind_Stopped (S : Session_T; Final_SoM : Boolean)
+     with Global => (Input  => R.State,
+                     In_Out => (Ind, Requesting, Timer_On))
+   is
+   begin
+      if Relevant (S) then
+         Requesting := False;
+         Timer_On := False;
+         if Final_SoM then
+            if Ind = No_Connection then
+               Ind := Connection_Lost;
+            end if;
+         else
+            Ind := No_Connection;
+         end if;
+      end if;
+   end Ind_Stopped;
+
+   --  Table 2 [5]: the on-board releases the safe radio connection of S
+   procedure Ind_Released (S : Session_T)
+     with Global => (Input  => R.State, In_Out => Ind)
+   is
+   begin
+      if Relevant (S) and then Ind = Connection_Up then
+         Ind := No_Connection;
+      end if;
+   end Ind_Released;
+
+   --  Table 2 [2]: the "connection status" timer expires
+   procedure Ind_Timer (Now : Time_Ms_T)
+     with Global => (In_Out => (Ind, Timer_On), Input => Timer_Since)
+   is
+   begin
+      if Timer_On and then Elapsed (Timer_Since, Now) >= Status_Timer_Ms
+      then
+         Ind := Connection_Lost;
+         Timer_On := False;
+      end if;
+   end Ind_Timer;
 
    ---------------------------------------------------------------------
    --  The steps of a session (3.5)
@@ -189,14 +311,17 @@ is
 
    --  The session S is over (3.5.5.2 c, 3.5.5.3.2, 3.5.3.8, 3.5.4.2.1):
    --  back to Idle; Release: the release of its safe radio connection is
-   --  requested
-   procedure Close (S : Session_T; Release : Boolean)
-     with Global => (In_Out => (Links, R.State)),
+   --  requested; the indication (3.5.7.4, Table 2: Final_SoM [1], else
+   --  [3], [5], [6])
+   procedure Close (S : Session_T; Release : Boolean;
+                    Final_SoM : Boolean := False)
+     with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
           Post => R.Info (S).State = R.Idle
                   and then R.Sessions = R.Sessions'Old
                   and then R.Roles_Consistent
    is
    begin
+      Ind_Stopped (S, Final_SoM);
       Links (S) := (Release_Due => Release, others => <>);
       if R.Supervising = R.Session_Ref_T (S)
         or else R.Accepting = R.Session_Ref_T (S)
@@ -211,7 +336,7 @@ is
    --  acknowledgement awaited (3.5.5.3.1); being established: aborted
    --  and its safe radio connection released (3.5.3.8)
    procedure Terminate_Session (S : Session_T; Now : Time_Ms_T)
-     with Global => (In_Out => (Links, R.State)),
+     with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
    is
    begin
@@ -235,7 +360,8 @@ is
                         Radio  : NID_RADIO_T;
                         Capped : Boolean;
                         Now    : Time_Ms_T)
-     with Global => (In_Out => (Links, Pending, R.State)),
+     with Global => (In_Out => (Links, Pending, R.State,
+                                Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
    is
       N : constant R.Session_Count_T := R.Sessions;
@@ -279,6 +405,13 @@ is
      with Refined_Global => Held_Back;
    function Holds (C : Condition_T) return Boolean is (Held (C))
      with Refined_Global => Held;
+   function Indication return Indication_T is (Ind)
+     with Refined_Global => Ind;
+   function Status_Event_Count return Natural is (Status_N)
+     with Refined_Global => Status_N;
+   function Status_Event (I : Positive) return Status_Event_T is
+     (Status_List (I))
+     with Refined_Global => (Input => Status_List, Proof_In => Status_N);
    function Events_Taken return Natural is (Events)
      with Refined_Global => Events;
    function Messages_Taken return Natural is (Messages)
@@ -287,10 +420,6 @@ is
      with Refined_Global => Mode_Changes;
    function Cycles_Produced return Natural is (Cycles)
      with Refined_Global => Cycles;
-
-   --  The elapsed time from Since to Now (0 when the clock went back)
-   function Elapsed (Since, Now : Time_Ms_T) return Time_Ms_T is
-     (if Now >= Since then Now - Since else 0);
 
    --  3.16.3.3.3, 3.16.3.2.3: T is later than Last, the on-board timer
    --  (EVC_Radio.T_Train_At, modulo 2**32 - 1) wrapping around (a
@@ -318,6 +447,13 @@ is
       Acks := (others => (S => 1, T => 0));
       Ack_N := 0;
       NV := (others => <>);
+      Ind := No_Connection;
+      Requesting := False;
+      Timer_On := False;
+      Timer_Since := 0;
+      SB_Shown := False;
+      Status_List := (others => (others => <>));
+      Status_N := 0;
    end Clear;
 
    --  3.5.3.7 a, 3.5.4.2: the set-up of the safe radio connection of S
@@ -325,12 +461,12 @@ is
    --  new request at once; in a start of mission, after the last of
    --  Max_Attempts the establishment is given up (3.5.3.7 a)
    procedure Set_Up_Failed (S : Session_T)
-     with Global => (In_Out => (Links, R.State)),
+     with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
    is
    begin
       if Links (S).Capped and then Links (S).Attempts >= Max_Attempts then
-         Close (S, Release => False);
+         Close (S, Release => False, Final_SoM => True);
       else
          if R.Info (S).State = R.Initiating then
             R.Set_State (S, R.Connecting);
@@ -363,10 +499,12 @@ is
                R.Set_State (S, R.Initiating);
                Links (S).Send_155 := True;
                Links (S).Since := Now_Ms;
+               Ind_Set_Up (S);
             elsif St = R.Connection_Lost then
                --  3.5.4.3: set up again within the session
                R.Set_State (S, R.Established);
                Links (S).Request_Due := False;
+               Ind_Set_Up (S);
             end if;
          when EVC_Ports.Connection_Lost | EVC_Ports.Connection_Released =>
             case St is
@@ -400,7 +538,8 @@ is
    --  Decision (phase 1, no handover yet): the session established
    --  becomes the one of the supervising RBC (3.15.1 is phase 2)
    procedure Take_Version (S : Session_T; V : M_VERSION_T; Now : Time_Ms_T)
-     with Global => (In_Out => (Links, R.State)),
+     with Global => (In_Out => (Links, R.State, Ind, Requesting,
+                                Timer_On, Status_List, Status_N)),
           Pre  => R.Usable (S),
           Post => R.Sessions = R.Sessions'Old
    is
@@ -423,8 +562,12 @@ is
             R.Set_Roles (R.Session_Ref_T (S), R.No_Session);
          end if;
       else
+         --  3.5.3.7 d) second bullet: the driver informed (DMI
+         --  "Trackside not compatible", entry 15)
          Terminate_Session (S, Now);
          Links (S).Send_154 := True;
+         Show (EVC_DMI_Port.SS_Trackside_Not_Compatible,
+               Natural (EVC_DMI_Port.SS_Event_Start));
       end if;
    end Take_Version;
 
@@ -497,7 +640,8 @@ is
 
    --  The waits of the session S at the on-board time Now
    procedure Supervise_Session (S : Session_T; Now : Time_Ms_T)
-     with Global => (In_Out => (Links, Pending, R.State)),
+     with Global => (In_Out => (Links, Pending, R.State,
+                                Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
    is
       L     : Link_T renames Links (S);
@@ -552,7 +696,8 @@ is
 
    --  3.5.2.6.1, 3.5.5.1 a): the session management order of the cycle
    procedure Apply_Order (Now : Time_Ms_T)
-     with Global => (In_Out => (Order, Links, Pending, R.State)),
+     with Global => (In_Out => (Order, Links, Pending, R.State,
+                                Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
    is
       N : constant R.Session_Count_T := R.Sessions;
@@ -598,7 +743,7 @@ is
    --  is established, in any level (the RBC sends empty messages,
    --  3.16.3.4.7); not while the connection is lost (the session being
    --  maintained, 3.5.4) the supervision goes on
-   procedure Supervise_Contact (Now : Time_Ms_T)
+   procedure Supervise_Contact (Now : Time_Ms_T; Standstill : Boolean)
      with Global => (In_Out => (NV, Held, Links, R.State),
                      Input  => EVC_National_Values.State),
           Post => R.Sessions = R.Sessions'Old
@@ -621,6 +766,11 @@ is
                 Reconnected => False);
       end if;
       Held (C_41) := NVal.M_NVCONTACT = 0;
+      --  3.14.1.7, 3.16.3.4.5 a): the service brake released at
+      --  standstill (not applied again until a new expiry)
+      if Standstill then
+         NV.SB := False;
+      end if;
       if not NV.Reconnected and then Elapsed (NV.Since, Now) >= Extra_Ms
         and then R.Info (Session_T (Sv)).State = R.Established
       then
@@ -652,7 +802,15 @@ is
             Establish (P.RBC, P.Radio, P.Capped, Ctx.Now_Ms);
          end if;
       end;
-      Supervise_Contact (Ctx.Now_Ms);
+      Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill);
+      --  3.16.3.4.4: the driver informed of the service brake ("Communication
+      --  error", the DMI's entry 4; its end: 3.14.1.7)
+      if NV.SB /= SB_Shown then
+         Show (EVC_DMI_Port.SS_Communication_Error_Brake,
+               (if NV.SB then 0 else 1));
+         SB_Shown := NV.SB;
+      end if;
+      Ind_Timer (Ctx.Now_Ms);
    end Evaluate;
 
    procedure Mode_Changed (From, To : Mode_T) is
@@ -749,19 +907,22 @@ is
      (GNATprove, On, """W"" is set by ""Finish_And_Send"" but not used*");
 
    --  The requests and the session messages of S (156 apart)
-   procedure Produce_Session (S : Session_T; T : T_TRAIN_T)
-     with Global => (In_Out => (Links, R.State, R.Queue))
+   procedure Produce_Session (S : Session_T; T : T_TRAIN_T; Now : Time_Ms_T)
+     with Global => (In_Out => (Links, R.State, R.Queue, Ind,
+                                Requesting, Timer_On, Timer_Since))
    is
       L : Link_T renames Links (S);
    begin
       if L.Release_Due then
          R.Request_Release (S);
          L.Release_Due := False;
+         Ind_Released (S);
       end if;
       if L.Request_Due then
          R.Request_Set_Up (S, R.Info (S).RBC, R.Info (S).Radio, False);
          L.Request_Due := False;
          Count (L.Attempts);
+         Ind_Request (S, Now);
       end if;
       if L.Send_155 then
          Send_Plain (S, Train_M155, T);
@@ -783,7 +944,7 @@ is
       Count (Cycles);
       for S in Session_T loop
          pragma Loop_Invariant (True);
-         Produce_Session (S, T);
+         Produce_Session (S, T, Ctx.Now_Ms);
       end loop;
       --  3.16.3.5: the acknowledgements (not after 156, 3.5.5.3)
       for I in 1 .. Ack_N loop
@@ -801,6 +962,8 @@ is
             Links (S).Send_156 := False;
          end if;
       end loop;
+      --  the system status messages of the cycle were sent (EVC_Core)
+      Status_N := 0;
    end Produce;
 
 end EVC_Sessions;

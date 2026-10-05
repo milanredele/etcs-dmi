@@ -5,9 +5,12 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P42;
 with ETCS_Variables;
+with DMI_Protocol;
 with EVC_Config;
+with EVC_DMI_Port;
 with EVC_Core;
 with EVC_Modes;
+with EVC_Procedures;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Authority;
@@ -103,6 +106,35 @@ package body EVC_Test_Sessions is
          Stand;
       end if;
    end Establish;
+
+   --  The radio byte of the MSG_STATUS of the last cycle (3.5.7.1: 0 no
+   --  connection, 1 up, 2 lost / set-up failed), 16#FF# when none
+   function Radio_Byte return Natural is
+     (if Find_DMI (EVC_DMI_Port.MSG_STATUS) = 0 then 16#FF#
+      else Byte_At (Find_DMI (EVC_DMI_Port.MSG_STATUS), 7));
+
+   --  A MSG_SYSTEM_STATUS of catalogue entry E, event Ev (0 start, 1
+   --  end) in the last cycle
+   function Status_Shown (E, Ev : Natural) return Boolean is
+     (for some I in 1 .. Rec_Count =>
+        Recs (I).Port = DMI and then Rec_Length (I) = 7
+        and then Byte_At (I, 1) = 16#0C#
+        and then Byte_At (I, 6) = E and then Byte_At (I, 7) = Ev);
+
+   --  The catalogue entries the session half reports repeat
+   --  DMI_Protocol (static: the comparison is known at compile time)
+   pragma Warnings (Off, "condition is always*");
+   procedure Check_Catalogue is
+   begin
+      Check (EVC_DMI_Port.SS_Trackside_Not_Compatible
+               = DMI_Protocol.SS_Trackside_Not_Compatible
+             and then EVC_DMI_Port.SS_Communication_Error_Trip
+                        = DMI_Protocol.SS_Communication_Error_Trip
+             and then EVC_DMI_Port.SS_Communication_Error_Brake
+                        = DMI_Protocol.SS_Communication_Error_Brake,
+             "session: the catalogue entries 4, 5, 15 as dmi_protocol.ads");
+   end Check_Catalogue;
+   pragma Warnings (On, "condition is always*");
 
    procedure Scenario_Session_Establish is
       M      : ETCS_Message.Message_T;
@@ -239,6 +271,9 @@ package body EVC_Test_Sessions is
              and then R.Info (1).State = R.Terminating,
              "session: version 2.0 not compatible: 154, then terminated "
              & "(156) (3.5.3.7 d)");
+      Check (Status_Shown (EVC_DMI_Port.SS_Trackside_Not_Compatible, 0),
+             "session: the driver informed: ""Trackside not compatible"" "
+             & "(3.5.3.7 d) second bullet, DMI entry 15)");
       Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
       Stand;
       Check (R.Info (1).State = R.Idle and then Is_Request (1, 2),
@@ -289,6 +324,12 @@ package body EVC_Test_Sessions is
              and then EVC_Core.Mode = EVC_Modes.M_TR,
              "link: no message for more than T_NVCONTACT, reaction train "
              & "trip: TR (3.16.3.4.1, 4.6.3 [41])");
+      Check (EVC_Procedures."=" (EVC_Procedures.Trip_Reason,
+                                 EVC_Procedures.Communication_Lost)
+             and then Status_Shown (EVC_DMI_Port.SS_Communication_Error_Trip,
+                                    0),
+             "link: the driver informed: ""Communication error"", the "
+             & "reason of the trip (3.16.3.4.4, 4.4.13.1.3, DMI entry 5)");
       Sample (0);
       EVC_Core.Tick (60_000);
       Take;
@@ -303,5 +344,125 @@ package body EVC_Test_Sessions is
              and then not EVC_Sessions.T_NVCONTACT_Trip,
              "link: set up again, a new message: supervised again");
    end Scenario_Session_NVCONTACT;
+
+   --  3.16.3.4.2 b): the reaction "apply service brake", its indication
+   --  (3.16.3.4.4) and its release (3.14.1.7, 3.16.3.4.5 a)
+   procedure Scenario_Session_NVCONTACT_Brake is
+      NV     : Sim_Telegrams.T3.Packet_T :=
+        Sim_Telegrams.National_Values (123);
+      Starts : constant Natural :=
+        SS_Seen (EVC_DMI_Port.SS_Communication_Error_Brake);
+      Ended  : Boolean := False;
+   begin
+      Start_X;
+      NV.T_NVCONTACT := 5;    -- s
+      NV.M_NVCONTACT := 1;    -- service brake
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Carry (Track_N, 1, NV);
+      Run_X (15_000);
+      Establish (1);
+      Run_X (30_000, 200);    -- 7.5 s at 72 km/h
+      Check (EVC_Sessions.Service_Brake
+             and then not EVC_Sessions.T_NVCONTACT_Trip
+             and then Last_Brake = Natural (EVC_DMI_Port.Brake_Applied)
+             and then SS_Seen (EVC_DMI_Port.SS_Communication_Error_Brake)
+                        = Starts + 1,
+             "link: T_NVCONTACT passed while running, reaction service "
+             & "brake (3.16.3.4.2 b), the driver informed (3.16.3.4.4, "
+             & "DMI entry 4)");
+      Give_Radio_Message (1, Msg (MCat.Track_M16, Now_T (1)));
+      Stand;
+      Check (not EVC_Sessions.Service_Brake
+             and then Status_Shown
+                        (EVC_DMI_Port.SS_Communication_Error_Brake, 1),
+             "link: a new message releases the service brake (3.14.1.7), "
+             & "its indication ends");
+      Run_X (45_000, 200);
+      Check (EVC_Sessions.Service_Brake,
+             "link: T_NVCONTACT passed again: the service brake");
+      for K in 1 .. 30 loop
+         Stand;
+         Ended := Ended
+           or else Status_Shown (EVC_DMI_Port.SS_Communication_Error_Brake,
+                                 1);
+         exit when not EVC_Sessions.Service_Brake;
+      end loop;
+      Check (not EVC_Sessions.Service_Brake and then Ended
+             and then EVC_Core.Mode /= EVC_Modes.M_TR,
+             "link: released at standstill (3.14.1.7, 3.16.3.4.5 a)");
+   end Scenario_Session_NVCONTACT_Brake;
+
+   --  3.5.7: the indication of the safe radio connection (Tables 1, 2)
+   procedure Scenario_Session_Indication is
+      use type EVC_Sessions.Indication_T;
+   begin
+      Check_Catalogue;
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Order_Group (20, 300, Q_RBC => 0, NID_RBC => 300);
+      Order_Group (30, 500, Q_RBC => 1, NID_RBC => 301);
+      Order_Group (40, 700, Q_RBC => 0, NID_RBC => 301);
+      Run_X (15_000);
+      --  MSG_STATUS is sent when a field changes (EVC_Core.Send_Status)
+      Check (EVC_Sessions.Indication = EVC_Sessions.No_Connection
+             and then Radio_Byte in 0 | 16#FF#,
+             "indication: set-up requested: ""No Connection"" (3.5.7.1)");
+      Give_Radio_Event (1, Set_Up_Failed);
+      Stand;
+      Sample (0);
+      EVC_Core.Tick (45_000);
+      Take;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Lost
+             and then Radio_Byte = 2,
+             "indication: not set up within the connection status timer "
+             & "(45 s, A.3.1): ""Connection Lost/Set-Up failed"" (3.5.7.3, "
+             & "Table 2 [2])");
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Up
+             and then Radio_Byte = 1,
+             "indication: set up: ""Connection Up"" (Table 2 [4])");
+      Give_Radio_Message (1, Msg (MCat.Track_M32, Now_T, 0, 7, 48));
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M38, Now_T));
+      Stand;
+      Give_Radio_Event (1, Connection_Lost);
+      Stand;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Up
+             and then Is_Request (1, 1),
+             "indication: lost, set up again: still ""Connection Up"" "
+             & "while the timer runs (3.5.7.2.1, 3.5.7.3 b)");
+      Sample (0);
+      EVC_Core.Tick (45_000);
+      Take;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Lost
+             and then Radio_Byte = 2,
+             "indication: the timer expires: ""Connection Lost/Set-Up "
+             & "failed"" (Table 2 [2])");
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Up,
+             "indication: set up again: ""Connection Up""");
+      Run_X (35_000);
+      Give_Radio_Message (1, Msg (MCat.Track_M39, Now_T (1)));
+      Stand;
+      Check (EVC_Sessions.Indication = EVC_Sessions.No_Connection
+             and then Radio_Byte = 0,
+             "indication: terminated and released: ""No Connection"" "
+             & "(Table 2 [5])");
+      Run_X (55_000);
+      Sample (0);
+      EVC_Core.Tick (45_000);
+      Take;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Lost
+             and then R.Info (1).State = R.Connecting,
+             "indication: a new session not set up in 45 s: ""Connection "
+             & "Lost/Set-Up failed""");
+      Run_X (75_000);
+      Check (EVC_Sessions.Indication = EVC_Sessions.No_Connection
+             and then R.Info (1).State = R.Idle,
+             "indication: the requests stopped, no start of mission: "
+             & """No Connection"" (3.5.7.4, Table 2 [3])");
+   end Scenario_Session_Indication;
 
 end EVC_Test_Sessions;

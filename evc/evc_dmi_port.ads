@@ -328,14 +328,17 @@ is
    --  (tenths of a second) of the supervision (phase E3); phase E4: the
    --  reversing indication (3.15.4.7) and the tunnel stopping area
    --  (5.18.8: tunnel 0 none / unknown, 1 active, 2 announced; its
-   --  distance, m); the other fields as Status_Frame
+   --  distance, m); phase E5: Radio, the indication of the safe radio
+   --  connection (3.5.7.1: 0 none, 1 up, 2 lost / set-up failed); the
+   --  other fields as Status_Frame
    function Status_Frame (Geo         : Unsigned_32;
                           Seconds     : Unsigned_64;
                           Brake       : Byte;
                           TTI         : Unsigned_16;
                           Reversing   : Boolean := False;
                           Tunnel      : Byte := 0;
-                          Tunnel_Dist : Unsigned_32 := 0)
+                          Tunnel_Dist : Unsigned_32 := 0;
+                          Radio       : Byte := 0)
      return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 
@@ -371,9 +374,12 @@ is
    --  evc_test checks that the numbers are the same)
    SS_Balise_Read_Error_Brake       : constant := 1;   -- 3.16.2.6.1
    SS_Balise_Read_Error_Trip        : constant := 2;   -- [17], [66]
+   SS_Communication_Error_Brake     : constant := 4;   -- 3.16.3.4.4
+   SS_Communication_Error_Trip      : constant := 5;   -- [41]
    SS_Entering_FS                   : constant := 6;   -- 4.4.9.1.4
    SS_Entering_OS                   : constant := 7;   -- 4.4.12.1.7
    SS_Runaway_Movement              : constant := 9;   -- 3.14.2.4, 3.14.3.2
+   SS_Trackside_Not_Compatible      : constant := 15;  -- 3.5.3.7 d)
    SS_Trackside_Not_Compatible_Trip : constant := 16;  -- [65]
    SS_Train_Data_Changed            : constant := 17;  -- 5.17.2.2 A1
    SS_Train_Data_Changed_Brake      : constant := 18;  -- 5.17.2.2 S2, S4

@@ -94,7 +94,9 @@ is
             SS_Trackside_Not_Compatible_Trip,
          when No_Track_Description          => SS_No_Track_Description,
          when SR_Distance_Passed            => SS_SR_Distance_Exceeded,
-         when No_MA_Level_Switch            => SS_No_MA_Level_Transition);
+         when No_MA_Level_Switch            => SS_No_MA_Level_Transition,
+         when Communication_Lost            =>
+            EVC_DMI_Port.SS_Communication_Error_Trip);
 
    --  The reason of the trip of a condition of 4.6.3 (No_Trip for one
    --  that is not a trip condition of this unit)
@@ -112,6 +114,7 @@ is
          when 69       => No_Track_Description,
          when 42       => SR_Distance_Passed,
          when 39 | 67  => No_MA_Level_Switch,
+         when 41       => Communication_Lost,
          when others   => No_Trip);
 
    ---------------------------------------------------------------------
@@ -1549,7 +1552,7 @@ is
    --  status message (DMI Table 68); the override ends (5.8.4.1 i); no
    --  request for acknowledgement
    procedure Enter_Trip (From : Mode_T)
-     with Global => (Input  => (Conds, Pending),
+     with Global => (Input  => (Conds, Pending, EVC_Sessions.State),
                      Output => Ack_On,
                      In_Out => (Reason, Status_List, Status_N, Ovr, Events,
                                 Event_N))
@@ -1560,8 +1563,11 @@ is
       for I in L'Range loop
          --  not unrolled by the proof, nothing needed after the loop
          pragma Loop_Invariant (True);
+         --  phase E5: [41] is the session half's (EVC_Sessions)
          if R = No_Trip and then L (I) in Condition_T
-           and then Conds (L (I))
+           and then (Conds (L (I))
+                     or else (L (I) = 41
+                              and then EVC_Sessions.T_NVCONTACT_Trip))
          then
             R := Reason_Of (L (I));
          end if;

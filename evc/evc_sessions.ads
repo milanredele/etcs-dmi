@@ -36,6 +36,7 @@ with ETCS_Variables;
 with EVC_Bytes;
 with EVC_Modes;  use EVC_Modes;
 with EVC_National_Values;
+with EVC_Odometry;
 with EVC_Ports;
 with EVC_Radio;
 with EVC_Received;
@@ -113,7 +114,8 @@ is
    --  conditions of 4.6.3
    procedure Evaluate (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State),
-                     Input  => EVC_National_Values.State);
+                     Input  => (EVC_National_Values.State,
+                                EVC_Odometry.State));
 
    --  6. The mode changed from From to To (3.5.3.4 c, 3.6.5.1.4, ...)
    procedure Mode_Changed (From, To : Mode_T)
@@ -136,6 +138,29 @@ is
    --  (released by a new message, 3.14.1.7)
    function Service_Brake return Boolean
      with Global => State;
+
+   --  3.5.7.1: the indication status of the safe radio connection with
+   --  the relevant RBC (Table 1; MSG_STATUS radio: 0, 1, 2)
+   type Indication_T is (No_Connection, Connection_Up, Connection_Lost);
+   function Indication return Indication_T
+     with Global => State;
+
+   --  The system status messages of the catalogue of DMI chapter 15
+   --  that started or ended in the cycle (MSG_SYSTEM_STATUS: entry,
+   --  event 0 start, 1 end): 3.5.3.7 d) "Trackside not compatible",
+   --  3.16.3.4.4 "Communication error" (the service brake; the trip is
+   --  the reason of EVC_Procedures). Emptied by Produce.
+   Max_Status_Events : constant := 4;
+   type Status_Event_T is record
+      Entry_Number : Natural range 0 .. 255 := 0;
+      Event        : Natural range 0 .. 2 := 0;
+   end record;
+   function Status_Event_Count return Natural
+     with Global => State,
+          Post => Status_Event_Count'Result <= Max_Status_Events;
+   function Status_Event (I : Positive) return Status_Event_T
+     with Global => State,
+          Pre => I <= Status_Event_Count;
 
    --  For the tests: the events and messages taken since Clear
    --  (saturating)

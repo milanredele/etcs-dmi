@@ -20,5 +20,7 @@ package EVC_Test_Sessions is
    --  3.16.3.4: T_NVCONTACT, its reaction train trip ([41]) and the
    --  release and set-up 60 s later
    procedure Scenario_Session_NVCONTACT;
+   procedure Scenario_Session_NVCONTACT_Brake;
+   procedure Scenario_Session_Indication;
 
 end EVC_Test_Sessions;

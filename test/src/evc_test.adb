@@ -219,6 +219,8 @@ begin
    Scenario_Session_Establish;
    Scenario_Session_Lost_Version;
    Scenario_Session_NVCONTACT;
+   Scenario_Session_NVCONTACT_Brake;
+   Scenario_Session_Indication;
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;

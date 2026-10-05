@@ -39,67 +39,67 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.2.4,3,x,,,,,E5,partial,"the session table of EVC_Radio holds two sessions (one by configuration, EVC_Config.Radio_Config_T); their management is EVC_Sessions' [E5 joint]"
 3.5.3.4,3,x,,,,,E5,todo,[E5 session]
 3.5.3.4 a),3,x,,,,,E5,todo,[E5 session]
-3.5.3.4 b),3,x,,,,,E5,todo,[E5 session]
+3.5.3.4 b),3,x,,,,,E5,done,EVC_Sessions.Take_Order / Apply_Order: packet 42 of a balise group (EVC_Stored_Information K42); in a radio message once the authority half stores it; evc_test session_establish [E5 session]
 3.5.3.4 c),3,x,,,,,E5,todo,[E5 session]
 3.5.3.4 d),3,x,,,,,E5,todo,[E5 session]
 3.5.3.4 e),3,x,,,,,E5,todo,[E5 session]
-3.5.3.4 f),3,x,,,,,E5,todo,[E5 session]
+3.5.3.4 f),3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (Connection_Lost over Keep_Ms: a new session); evc_test session_lost_version [E5 session]
 3.5.3.4 g),3,x,,,,,E5,todo,[E5 session]
 3.5.3.4 h),3,x,,,,,E5,todo,[E5 session]
-3.5.3.4.1,3,x,,,,,E5,todo,[E5 session]
-3.5.3.4.1 1st bullet,3,x,,,,,E5,todo,[E5 session]
-3.5.3.4.1 2nd bullet,3,x,,,,,E5,todo,[E5 session]
-3.5.3.4.2,3,x,,,,,E5,todo,[E5 session]
-3.5.3.5.2,3,x,,,,,E5,todo,[E5 session]
-3.5.3.5.2.1,3,x,,,,,E5,todo,[E5 session]
-3.5.3.7,3,x,x,,,,E5,todo,[E5 session]
-3.5.3.7 a),3,x,,,,,E5,todo,[E5 session]
-3.5.3.7 b),3,x,,,,,E5,todo,[E5 session]
-3.5.3.7 d),3,x,,,,,E5,todo,[E5 session]
-3.5.3.7 d) 1st bullet,3,x,,,,,E5,todo,[E5 session]
-3.5.3.7 d) 2nd bullet,3,x,,,,,E5,todo,[E5 session]
+3.5.3.4.1,3,x,,,,,E5,done,EVC_Sessions.Establish: nothing when one is being or is established with that RBC [E5 session]
+3.5.3.4.1 1st bullet,3,x,,,,,E5,done,EVC_Sessions.Establish [E5 session]
+3.5.3.4.1 2nd bullet,3,x,,,,,E5,done,EVC_Sessions.Establish [E5 session]
+3.5.3.4.2,3,x,,,,,E5,done,EVC_Sessions.Establish (Pending: the new session once the terminating one is over) [E5 session]
+3.5.3.5.2,3,x,,,,,E5,done,EVC_Sessions.Establish terminates the sessions with other RBCs; evc_test session_lost_version [E5 session]
+3.5.3.5.2.1,3,x,,,,,E5,partial,EVC_Sessions.Open (Pending when no session is free; one session by configuration); the transition order of 3.15.1 is phase 2 [E5 session]
+3.5.3.7,3,x,x,,,,E5,partial,"EVC_Sessions (Take_Event, Take_Version, Produce); the start of mission in level 2 is phase 2 [E5 session]"
+3.5.3.7 a),3,x,,,,,E5,partial,EVC_Sessions.Set_Up_Failed: repeated at once until successful; the limit of A.3.1 (Capped) waits for the level 2 start of mission [E5 session]
+3.5.3.7 b),3,x,,,,,E5,done,EVC_Sessions.Take_Event (Connection_Set_Up: message 155); evc_test session_establish [E5 session]
+3.5.3.7 d),3,x,,,,,E5,done,EVC_Sessions.Take_Version (message 32: established); evc_test session_establish [E5 session]
+3.5.3.7 d) 1st bullet,3,x,,,,,E5,done,"EVC_Sessions.Take_Version, Send_159 (packet 2); evc_test session_establish [E5 session]"
+3.5.3.7 d) 2nd bullet,3,x,,,,,E5,done,"EVC_Sessions.Take_Version: 154, DMI entry 15, terminated; evc_test session_lost_version [E5 session]"
 3.5.3.7.1,3,x,,,,,E5,todo,[E5 session]
 3.5.3.7.1 1),3,x,,,,,E5,todo,[E5 session]
 3.5.3.7.1 2),3,x,,,,,E5,todo,[E5 session]
 3.5.3.7.1 3),3,x,,,,,E5,todo,[E5 session]
 3.5.3.7.2,3,x,,,,,E5,todo,[E5 session]
-3.5.3.7.3,3,x,,,,,E5,todo,[E5 session]
-3.5.3.7.4,3,x,,,,,E5,todo,[E5 session]
-3.5.3.7.4.1,3,x,,,,,E5,todo,[E5 session]
-3.5.3.8,3,x,,,,,E5,todo,[E5 session]
+3.5.3.7.3,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (Initiating: released, set up again) [E5 session]"
+3.5.3.7.4,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (159 repeated); evc_test session_establish [E5 session]
+3.5.3.7.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (terminated, established again) [E5 session]"
+3.5.3.8,3,x,,,,,E5,partial,"EVC_Sessions.Terminate_Session (being established: aborted, released); c) and e) done, the other conditions with their procedures [E5 session]"
 3.5.3.8 a),3,x,,,,,E5,todo,[E5 session]
 3.5.3.8 b),3,x,,,,,E5,todo,[E5 session]
-3.5.3.8 c),3,x,,,,,E5,todo,[E5 session]
+3.5.3.8 c),3,x,,,,,E5,done,EVC_Sessions.Apply_Order -> Terminate_Session [E5 session]
 3.5.3.8 d),3,x,,,,,E5,todo,[E5 session]
-3.5.3.8 e),3,x,,,,,E5,todo,[E5 session]
+3.5.3.8 e),3,x,,,,,E5,done,EVC_Sessions.Establish -> Terminate_Session [E5 session]
 3.5.3.8 f),3,x,,,,,E5,todo,[E5 session]
 3.5.3.8 g),3,x,,,,,E5,todo,[E5 session]
 3.5.3.8 h),3,x,,,,,E5,todo,[E5 session]
 3.5.3.8 i),3,x,,,,,E5,todo,[E5 session]
 3.5.3.11,3,x,,,,,E5,todo,[E5 session]
-3.5.3.13,3,x,,,,,E5,todo,[E5 session]
-3.5.3.13.1,3,x,,,,,E5,todo,[E5 session]
-3.5.3.15,3,x,,,,,E5,todo,[E5 session]
-3.5.4.1,3,x,x,,,,E5,todo,[E5 session]
-3.5.4.2,3,x,,,,,E5,todo,[E5 session]
-3.5.4.2.1,3,x,x,,,,E5,todo,[E5 session]
-3.5.4.3,3,x,,,,,E5,todo,[E5 session]
-3.5.4.3 1st bullet,3,x,,,,,E5,todo,[E5 session]
-3.5.4.3 2nd bullet,3,x,,,,,E5,todo,[E5 session]
+3.5.3.13,3,x,,,,,E5,done,EVC_Sessions.Apply_Order (NID_RBC 16383: the stored contact) [E5 session]
+3.5.3.13.1,3,x,,,,,E5,done,EVC_Sessions.Apply_Order (no contact stored: ignored) [E5 session]
+3.5.3.15,3,x,,,,,E5,done,EVC_Sessions.Apply_Order (NID_RADIO passed to the RTM as it is) [E5 session]
+3.5.4.1,3,x,x,,,,E5,done,"EVC_Sessions.Take_Event (an unordered loss or release: Connection_Lost, the session kept); evc_test session_lost_version [E5 session]"
+3.5.4.2,3,x,,,,,E5,done,EVC_Sessions.Take_Event (set up again at once); evc_test session_lost_version [E5 session]
+3.5.4.2.1,3,x,x,,,,E5,done,"EVC_Sessions.Supervise_Session (Keep_Ms, A.3.1); evc_test session_lost_version [E5 session]"
+3.5.4.3,3,x,,,,,E5,partial,"EVC_Sessions.Take_Event, Supervise_Session; the RIU order is phase 2 [E5 session]"
+3.5.4.3 1st bullet,3,x,,,,,E5,done,EVC_Sessions.Take_Event [E5 session]
+3.5.4.3 2nd bullet,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session [E5 session]
 3.5.4.3 3rd bullet,3,x,,,,,E5,todo,[E5 session]
 3.5.4.4,3,x,,,,,E5,todo,[E5 session]
 3.5.4.5,3,x,,,,,E5,todo,[E5 session]
-3.5.4.7,3,x,,,,,E5,todo,[E5 session]
-3.5.5.1,3,x,,,,,E5,todo,[E5 session]
-3.5.5.1 a),3,x,,,,,E5,todo,[E5 session]
+3.5.4.7,3,x,,,,,E5,done,EVC_Sessions.Take_Version (32 inside a session: 159 again) [E5 session]
+3.5.5.1,3,x,,,,,E5,partial,EVC_Sessions: a) the order of packet 42; b) the conditions of other sections with their procedures [E5 session]
+3.5.5.1 a),3,x,,,,,E5,done,EVC_Sessions.Apply_Order; evc_test session_establish [E5 session]
 3.5.5.1 b),3,x,,,,,E5,todo,[E5 session]
-3.5.5.2,3,x,,,,,E5,todo,[E5 session]
-3.5.5.2 a),3,x,,,,,E5,todo,[E5 session]
-3.5.5.2 c),3,x,,,,,E5,todo,[E5 session]
-3.5.5.3,3,x,,,,,E5,todo,[E5 session]
-3.5.5.3.1,3,x,,,,,E5,todo,[E5 session]
-3.5.5.3.2,3,x,,,,,E5,todo,[E5 session]
-3.5.5.6,3,x,,,,,E5,todo,[E5 session]
+3.5.5.2,3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session, Take_Message (39); evc_test session_establish [E5 session]"
+3.5.5.2 a),3,x,,,,,E5,done,EVC_Sessions.Terminate_Session (156 last in Produce) [E5 session]
+3.5.5.2 c),3,x,,,,,E5,done,"EVC_Sessions.Take_Message (39: closed, released) [E5 session]"
+3.5.5.3,3,x,,,,,E5,done,"EVC_Sessions.Produce (nothing after 156, no 146 either) [E5 session]"
+3.5.5.3.1,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (156 repeated) [E5 session]
+3.5.5.3.2,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (then terminated) [E5 session]
+3.5.5.6,3,x,,,,,E5,done,EVC_Sessions.Take_Message (Terminating: only 39) [E5 session]
 3.5.6.1,3,x,,,,,E5,todo,[E5 session]
 3.5.6.1 a),3,x,,,,,E5,todo,[E5 session]
 3.5.6.1 b),3,x,,,,,E5,todo,[E5 session]
@@ -118,15 +118,15 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.6.7 c),3,x,,,,,E5,todo,[E5 session]
 3.5.6.7 d),3,x,,,,,E5,todo,[E5 session]
 3.5.6.8,3,x,,,,,E5,todo,[E5 session]
-3.5.7.1,3,x,,,,,E5,todo,[E5 session]
-3.5.7.2,3,x,,,,,E5,todo,[E5 session]
-3.5.7.3,3,x,,,,,E5,todo,[E5 session]
-3.5.7.3 a),3,x,,,,,E5,todo,[E5 session]
-3.5.7.3 b),3,x,,,,,E5,todo,[E5 session]
-3.5.7.4,3,x,,,,,E5,todo,[E5 session]
-3.5.7.5,3,x,,,,,E5,todo,[E5 session]
-3.5.7.5 Table 1,3,x,,,,,E5,todo,[E5 session]
-3.5.7.5 Table 2,3,x,,,,,E5,todo,[E5 session]
+3.5.7.1,3,x,,,,,E5,done,"EVC_Sessions.Indication, MSG_STATUS radio (EVC_Core.Send_Status); evc_test session_indication [E5 session]"
+3.5.7.2,3,x,,,,,E5,done,"EVC_Sessions (the connection status timer, 45 s, A.3.1) [E5 session]"
+3.5.7.3,3,x,,,,,E5,partial,"EVC_Sessions.Ind_Request: a) done, b) 3.5.4.2 done, 3.5.4.4 (radio holes) phase 2 [E5 session]"
+3.5.7.3 a),3,x,,,,,E5,done,EVC_Sessions.Ind_Request [E5 session]
+3.5.7.3 b),3,x,,,,,E5,partial,EVC_Sessions.Ind_Request (3.5.4.2; 3.5.4.4 phase 2) [E5 session]
+3.5.7.4,3,x,,,,,E5,done,EVC_Sessions.Ind_Stopped; evc_test session_indication [E5 session]
+3.5.7.5,3,x,,,,,E5,partial,"EVC_Sessions (Table 1; [1] waits for the level 2 start of mission, [7] for the radio holes) [E5 session]"
+3.5.7.5 Table 1,3,x,,,,,E5,partial,EVC_Sessions (all transitions; [1] and [7] not reached yet) [E5 session]
+3.5.7.5 Table 2,3,x,,,,,E5,partial,EVC_Sessions ([2] to [6]; [1] and [7] phase 2) [E5 session]
 3.5.7.6,3,x,,,,,E5,todo,[E5 session]
 3.5.7.6 a),3,x,,,,,E5,todo,[E5 session]
 3.5.7.6 b),3,x,,,,,E5,todo,[E5 session]
@@ -780,7 +780,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.14.1.3,3,x,,,,,E3,done,"the trip brake (TIU reason 32) until the trip is acknowledged at standstill ([7], [62], [63], [68], EVC_Procedures); evc_test_procedures Scenario_Trip_EOA"
 3.14.1.5,3,x,,,,,E3,partial,"EVC_Brake_Commands (roll away, unauthorised direction, standstill supervision released at standstill after the acknowledgement, DMI ack kind 5); evc_test SDM_Protections; the train data / SR entry movement reasons are E4; evc_test EMRRLS_Acknowledgement (the roll away brake with the EB of 3.13.10, ack kind 5 as the bench and the DMI send it)"
 3.14.1.6,3,x,,,,,E3,done,"the service brake of a linking reaction apply service brake until standstill (TIU reason 128, {P}); {T} Scenario_Linking"
-3.14.1.7,3,x,,,,,E3,deferred,E5: supervision of the safe radio connection (T_NVCONTACT) [E5 session]
+3.14.1.7,3,x,,,,,E3,done,EVC_Sessions.Supervise_Contact (a new message or standstill releases the service brake of T_NVCONTACT); evc_test session_nvcontact_brake [E5 session]
 3.14.1.7.1,3,x,,,,,E3,done,released when the distance is no longer overpassed or at standstill after the acknowledgement (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing
 3.14.1.7.2,3,x,,,,,E3,done,released at standstill after the acknowledgement (EVC_Procedures.Train_Data_Step); evc_test_procedures Scenario_Train_Data_Change (after SUBSET-076 5170200_01)
 3.14.1.7.3,3,x,,,,,E3,done,"the service brake of a mode not acknowledged released with the acknowledgement (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trackside, Scenario_On_Sight"
@@ -932,19 +932,19 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.7.2.2,3,x,,,,,E6,todo,
 3.16.3.1.1.2,3,x,,,,,E5,todo,[E5 session]
 3.16.3.3.2,3,x,x,,,,E5,todo,[E5 session]
-3.16.3.3.3,3,x,x,,,,E5,todo,[E5 session]
-3.16.3.4.1,3,x,,,,,E5,todo,[E5 session]
+3.16.3.3.3,3,x,x,,,,E5,done,EVC_Sessions.Take_Message (Newer: an older time stamp ignored) [E5 session]
+3.16.3.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Contact (the supervising RBC, any level); evc_test session_nvcontact [E5 session]"
 3.16.3.4.1.1,3,x,,,,,E5,todo,[E5 session]
 3.16.3.4.1.2,3,x,,,,,E5,todo,[E5 session]
 3.16.3.4.1.2.1,3,x,,,,,E5,todo,[E5 session]
 3.16.3.4.1.3,3,x,,,,,E5,todo,[E5 session]
-3.16.3.4.3,3,x,,,,,E5,todo,[E5 session]
-3.16.3.4.4,3,x,,,,,E5,todo,[E5 session]
-3.16.3.4.5,3,x,,,,,E5,todo,[E5 session]
-3.16.3.4.5 a),3,x,,,,,E5,todo,[E5 session]
+3.16.3.4.3,3,x,,,,,E5,done,EVC_Sessions.Supervise_Contact (60 s later released and set up again); evc_test session_nvcontact [E5 session]
+3.16.3.4.4,3,x,,,,,E5,done,"EVC_Sessions (DMI entry 4) and EVC_Procedures (trip reason Communication_Lost, entry 5); evc_test session_nvcontact, _nvcontact_brake [E5 session]"
+3.16.3.4.5,3,x,,,,,E5,partial,a) EVC_Sessions; b) the shortening at standstill is the authority half's (A.3.4) [E5 session]
+3.16.3.4.5 a),3,x,,,,,E5,done,EVC_Sessions.Supervise_Contact; evc_test session_nvcontact_brake [E5 session]
 3.16.3.4.5 b),3,x,,,,,E5,todo,[E5 session]
-3.16.3.5.1,3,x,,,,,E5,todo,[E5 session]
-3.16.3.5.3,3,x,,,,,E5,todo,[E5 session]
+3.16.3.5.1,3,x,,,,,E5,done,"EVC_Sessions.Take_Message, Produce (message 146); golden received_telegram_message [E5 session]"
+3.16.3.5.3,3,x,,,,,E5,done,EVC_Sessions.Produce (146 carries the T_TRAIN of the message) [E5 session]
 3.16.4.1,3,x,,,,,E6,todo,
 3.16.4.3,3,x,,,,,E6,todo,
 3.17.2.1,3,x,,,,,E6,todo,
