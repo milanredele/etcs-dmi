@@ -82,6 +82,15 @@ package Sim_Onboard_Env is
    procedure Set_Non_Leading (On : Boolean);
    procedure Set_Train_Configuration (Value : Sim_Vehicle.Byte);
 
+   --  Phase E5: the scripted RBC (Sim_RBC) behind the RTM port, off by
+   --  default (the bench mission and its golden do not change): when
+   --  on, the on-board's RTM outputs go to Sim_RBC and its answers to
+   --  the RTM port before each cycle; Reset keeps the switch and resets
+   --  the RBC. RBC_Emergency_Stop: message 16 from the RBC (a button)
+   procedure Set_Radio (On : Boolean);
+   function Radio return Boolean;
+   procedure RBC_Emergency_Stop;
+
    --  Bytes from the DMI
    procedure Receive (Data : Stream_Element_Array);
 
