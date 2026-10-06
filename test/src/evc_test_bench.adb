@@ -76,6 +76,7 @@ package body EVC_Test_Bench is
       SR_Cycle, FS_Cycle : Natural := 0;
       Cycles             : Natural := 0;
       Other_Level        : Boolean := False;
+      L2_Cycle           : Natural := 0;
       Acks, Acks_Supervised : Natural := 0;
       Max_Kmh : Natural := 0;
       Last_Mon, Last_Cmd, Last_Brake : Natural := 99;
@@ -132,7 +133,13 @@ package body EVC_Test_Bench is
          if Env.Mode_Code = 2 and then FS_Cycle = 0 then
             FS_Cycle := Cycles;
          end if;
-         if Cycles > 3 and then Env.Level_Code /= 4 then
+         --  level 1 (code 4), then level 2 (5) from the order at 5000 m
+         if Env.Level_Code = 5 and then L2_Cycle = 0 then
+            L2_Cycle := Cycles;
+         end if;
+         if Cycles > 3
+           and then Env.Level_Code /= (if L2_Cycle = 0 then 4 else 5)
+         then
             Other_Level := True;
          end if;
          Env.Take_DMI (Frames, Last);
@@ -239,15 +246,18 @@ package body EVC_Test_Bench is
       --  phase E4: the start of mission in level 1 (5.4.3.2: driver ID,
       --  level, Train Data, train running number, 'Start', SR
       --  acknowledged) before the train moves, FS at the MA of the first
-      --  group (4.6.3 [32]); the order to level 2 at 5000 m keeps level 1
-      --  (5.10.2.4: no radio before E5)
+      --  group (4.6.3 [32]); the order to level 2 at 5000 m switches to
+      --  level 2 (5.10.2.4.1 a, e5/levels), the level 1 MA supervised on
+      --  (5.10.3.1.4: no RBC on this line)
       Check (Acks = 0 and then SR_Cycle = Env.SoM_Steps + 1
              and then FS_Cycle > SR_Cycle and then not Other_Level
+             and then L2_Cycle > FS_Cycle
              and then Env.Mode_Code = 2,
              "bench: SR after the start of mission at cycle"
              & Img (SR_Cycle) & ", FS at cycle" & Img (FS_Cycle)
-             & ", level 1 throughout, no brake to acknowledge (5.4.3.2, "
-             & "4.6.3 [8], [32], 5.10.2.4)");
+             & ", level 1, level 2 from cycle" & Img (L2_Cycle)
+             & ", no brake to acknowledge (5.4.3.2, "
+             & "4.6.3 [8], [32], 5.10.2.4, 5.10.3.1.4)");
       Check (SB_At = Never and then EB_At = Never,
              "bench: the automatic driver keeps below the on-board's "
              & "permitted speed, no intervention under the MA");

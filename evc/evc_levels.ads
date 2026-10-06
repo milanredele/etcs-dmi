@@ -30,10 +30,9 @@
 --  when the transition is evaluated (5.10.2.8, 5.10.2.9); the driver's
 --  choice of a level deletes the order (5.10.1.6.1, 5.10.2.10 b).
 --
---  Available for use (5.10.2.4.1): levels 0 and 1 always; level 2 needs
---  the radio of phase E5 and is not available until then; level NTC
---  needs a National System, which this on-board does not have (STM out
---  of scope, PLAN.md).
+--  Available for use (5.10.2.4.1): levels 0 and 1 always (c); level 2
+--  always (a, e5/levels: see Available); level NTC needs a National
+--  System, which this on-board does not have (STM out of scope, PLAN.md).
 --
 --  Acknowledgement (5.10.4): when entering level 0 from another level
 --  and when entering NTC (the table of 5.10.4.1), not in NL (5.10.4.1.1).
@@ -98,8 +97,14 @@ is
       List  : Priority_List_T;
    end record;
 
-   --  5.10.2.4.1
-   function Available (L : Level_T) return Boolean is (L in L0 | L1);
+   --  5.10.2.4.1. a) Level 2 (e5/levels, decision): the radio equipment
+   --  installed (the FRMCS on-board, GSM-R Mobile Terminals, the stored
+   --  Radio Network type of its four bullets) is configuration this
+   --  on-board does not model (3.5.6 left): it has one radio, taken as
+   --  in working condition, so level 2 is always available, registered
+   --  to a network or not (the last sentence of a). b) NTC: no National
+   --  System. c) Levels 0 and 1: always.
+   function Available (L : Level_T) return Boolean is (L in L0 | L1 | L2);
 
    --  5.10.2.4, 5.10.2.7: the entry of the level the on-board selects
    function Selected (T : Priority_Table_T) return Positive
