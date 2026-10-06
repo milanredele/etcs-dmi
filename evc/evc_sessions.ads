@@ -39,6 +39,7 @@ with EVC_Bytes;
 with EVC_Distances;
 with EVC_Driver_Requests;
 with EVC_Levels;
+with EVC_System_Version;
 with EVC_Location;
 with EVC_Mission;
 with EVC_Modes;  use EVC_Modes;
@@ -127,7 +128,8 @@ is
    --  sessions, the link supervision, the reports to send, the
    --  conditions of 4.6.3
    procedure Evaluate (Ctx : EVC_Radio.Context_T)
-     with Global => (In_Out => (State, EVC_Radio.State, EVC_Position.State),
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Position.State,
+                                EVC_System_Version.State),
                      Input  => (EVC_National_Values.State,
                                 EVC_Odometry.State, EVC_Mission.State,
                                 EVC_Levels.State,

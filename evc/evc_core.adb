@@ -411,6 +411,8 @@ is
    begin
       Start;
       EVC_Retained.Erase;
+      --  3.17.2.9.1: nothing kept, the highest supported version
+      EVC_System_Version.Restore (False, 0);
    end Initialise;
 
    --------------
@@ -422,6 +424,10 @@ is
    begin
       EVC_Retained.Load (K);
       Start;
+      --  3.17.2.9, 3.17.2.9.1: the version operated before No Power, or
+      --  the highest supported one when it is lost
+      EVC_System_Version.Restore (K.Saved and then K.Version_Known,
+                                  K.Operated_X);
       --  4.10 column NP, 4.11: the kept data, invalid; 3.6.4.2.2.1 the
       --  SOLR is the kept LRBG
       if K.Saved then
@@ -666,10 +672,10 @@ is
                elsif T_Status = ETCS_Telegram.Unsupported_Version
                  --  3.17.3.5, 4.6.3 [65]: the X of M_VERSION, the three
                  --  most significant of the seven bits after Q_UPDOWN
-                 --  (the first byte of the telegram), above the 3 of
-                 --  this on-board (SUBSET-026 v4.0.0, system version 3.x)
+                 --  (the first byte of the telegram), above the highest
+                 --  X of the envelope (EVC_System_Version, 6.4.2.1)
                  and then (Slot.Data (BTM_Stamp_Length + 3) and 16#7F#) / 16
-                            > 3
+                            > Unsigned_8 (EVC_System_Version.Highest_X)
                then
                   EVC_Procedures.Note_Version_Not_Supported;
                end if;
@@ -1272,7 +1278,8 @@ is
                                 EVC_Mission.State, EVC_Train_Data.State),
                      In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio_Info.State, EVC_Position.State)),
+                                EVC_Radio_Info.State, EVC_Position.State,
+                                EVC_System_Version.State)),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
@@ -2486,7 +2493,8 @@ is
    --  each cycle (EVC_Retained)
    procedure Save_Retained
      with Global => (Input  => (EVC_Levels.State, EVC_Position.State,
-                                EVC_Odometry.State, EVC_Radio.State),
+                                EVC_Odometry.State, EVC_Radio.State,
+                                EVC_System_Version.State),
                      Output => EVC_Retained.State)
    is
       --  every field is set below (phase E5 the last one, the RBC)
@@ -2499,6 +2507,9 @@ is
       EVC_Position.Keep (K.Position);
       --  phase E5: the RBC contact information (EVC_Sessions writes it)
       K.RBC := EVC_Radio.Contact;
+      --  3.17.2.9: the system version operated
+      K.Version_Known := True;
+      K.Operated_X := EVC_System_Version.Operated;
       EVC_Retained.Save (K);
    end Save_Retained;
 

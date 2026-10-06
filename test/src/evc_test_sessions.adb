@@ -302,12 +302,13 @@ package body EVC_Test_Sessions is
              "session: not set up within 5 minutes: terminated "
              & "(3.5.4.2.1) and a new one established (3.5.3.4 f)");
 
-      --  3.5.3.7 d): no compatible version
-      Establish (1, V => 32);
+      --  3.5.3.7 d): no compatible version (X = 4, above the envelope
+      --  1 .. 3 of 6.4.2, EVC_System_Version)
+      Establish (1, V => 64);
       Check (Radio_Outputs = 2 and then Is_Message (1, 154)
              and then Is_Message (2, 156)
              and then R.Info (1).State = R.Terminating,
-             "session: version 2.0 not compatible: 154, then terminated "
+             "session: version 4.0 not compatible: 154, then terminated "
              & "(156) (3.5.3.7 d)");
       Check (Status_Shown (EVC_DMI_Port.SS_Trackside_Not_Compatible, 0),
              "session: the driver informed: ""Trackside not compatible"" "

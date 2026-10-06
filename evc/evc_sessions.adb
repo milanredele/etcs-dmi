@@ -56,12 +56,6 @@ is
    --  radio connection"
    Extra_Ms     : constant := 60_000;
 
-   --  The system version this on-board supports with an RBC: version 3.0
-   --  of 4.0.0 (M_VERSION 011 0000); the older versions of chapter 6
-   --  are phase E7. Compatible: the same X (3.17.2)
-   Supported_X     : constant := 3;
-   Onboard_Version : constant := 48;
-
    --  A.3.1: the "connection status" timer (3.5.7.2)
    Status_Timer_Ms : constant := 45_000;
 
@@ -436,9 +430,10 @@ is
       and then ((Unsigned_64 (T) + (2**32 - 1) - Unsigned_64 (Last))
                   mod (2**32 - 1)) in 1 .. 2**31 - 1);
 
-   --  3.17.2: the X of M_VERSION (its three most significant bits)
-   function Compatible (V : M_VERSION_T) return Boolean is
-     (Natural (V) / 16 = Supported_X);
+   --  3.5.3.7 d), 3.17.3.7: the RBC's version is compatible when its X
+   --  is in the envelope of the on-board (3.17.2.1, 6.4.2: 1 .. 3)
+   function Compatible (V : M_VERSION_T) return Boolean
+     renames EVC_System_Version.Compatible;
 
    procedure Clear is
    begin
@@ -868,6 +863,26 @@ is
       end if;
    end Apply_Mission;
 
+   --  3.17.2.8 (EVC_System_Version): the RBC's X operated in level 2
+   --  while the session with the supervising RBC is established and its
+   --  version known; else the version last operated stays
+   procedure Follow_Version
+     with Global => (Input  => (R.State, EVC_Levels.State),
+                     In_Out => EVC_System_Version.State)
+   is
+      S : constant R.Session_Ref_T := R.Supervising;
+   begin
+      if S = R.No_Session then
+         EVC_System_Version.Follow (False, False, 0);
+      else
+         EVC_System_Version.Follow
+           (Level_2 => EVC_Levels.Level = L2,
+            Session => R.Info (Session_T (S)).State = R.Established
+                         and then R.Info (Session_T (S)).Version_Known,
+            V       => R.Info (Session_T (S)).Version);
+      end if;
+   end Follow_Version;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T) is
       N : constant R.Session_Count_T := R.Sessions;
    begin
@@ -899,6 +914,7 @@ is
          SB_Shown := NV.SB;
       end if;
       Ind_Timer (Ctx.Now_Ms);
+      Follow_Version;
    end Evaluate;
 
    procedure Mode_Changed (From, To : Mode_T) is
@@ -912,8 +928,9 @@ is
    --  Produce: the messages (8.6) and the requests of the RTM port
    ---------------------------------------------------------------------
 
-   --  The session messages are short: a writer of Msg_Size bytes
-   Msg_Size : constant := 16;
+   --  The session messages are short: a writer of Msg_Size bytes (the
+   --  longest, 159 with the seven versions of the envelope: 149 bits)
+   Msg_Size : constant := 24;
    subtype Msg_Writer_T is ETCS_Bits.Writer (Msg_Size);
 
    --  The header of a train to track message of Kind (8.4.4.7.1): T,
@@ -972,16 +989,26 @@ is
       Finish_And_Send (W, S, OK);
    end Send_Plain;
 
-   --  159 (8.6.17): packet 2, the system version of the on-board
+   --  159 (8.6.17): packet 2 (7.4.3.3), the system versions the on-board
+   --  is able to operate: its envelope (6.4.2.2: 1.0 up to 3.0), the
+   --  highest in M_VERSION and the others, highest first, in the N_ITER
+   --  loop. Decision: every X.Y of the envelope is listed, as the
+   --  SUBSET-076 sequences list them for a 3.x on-board, although
+   --  3.17.2.1.1 operates only the highest Y of each X
    procedure Send_159 (S : Session_T; T : T_TRAIN_T)
      with Global => (In_Out => (R.State, R.Queue))
    is
+      Env : EVC_System_Version.Envelope_T renames EVC_System_Version.Envelope;
       W  : Msg_Writer_T;
       OK : Boolean;
       P  : ETCS_Train_Packets.P2.Packet_T;
    begin
-      P.M_VERSION := Onboard_Version;
-      P.N_ITER := 0;
+      P.M_VERSION := Env (1);
+      P.N_ITER := Env'Length - 1;
+      for K in 2 .. Env'Last loop
+         P.M_VERSION_List (K - 1) := Env (K);
+         pragma Loop_Invariant (True);
+      end loop;
       Start (W, Train_M159, T, 0, OK);
       if OK then
          ETCS_Train_Packets.P2.Encode (P, W, OK);
