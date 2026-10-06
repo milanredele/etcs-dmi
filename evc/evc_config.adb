@@ -19,6 +19,8 @@ is
 
    function Current return Config_T is (Cfg)
      with Refined_Global => Cfg;
+   function Current_Radio return Radio_Config_T is (Cfg.Radio)
+     with Refined_Global => Cfg;
    function Loaded return Boolean is (Is_Loaded)
      with Refined_Global => Is_Loaded;
    function Rejections return Natural is (Refused)

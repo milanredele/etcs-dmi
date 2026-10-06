@@ -440,6 +440,13 @@ is
          EVC_Position.Restore (K.Position);
          --  phase E5: the RBC contact information, to be revalidated
          EVC_Radio.Restore_Contact (K.RBC);
+         --  3.5.6.2 (e5/registration): the network memorized, no mobile
+         --  registered (EVC_Sessions.Network orders the registration)
+         EVC_Radio.Set_Network ((Known      => K.Network.Known,
+                                 NID_MN     => K.Network.NID_MN,
+                                 Registered => False,
+                                 Type_Known => K.Network.Type_Known,
+                                 Net_Type   => K.Network.Net_Type));
          Kept_Pending := True;
       end if;
    end Power_Up;
@@ -2144,8 +2151,11 @@ is
          Session  => Session_Byte,
          RBC      => (if EVC_Radio.Train_Data_Acknowledged
                       then RBC_Train_Data_Acked else 0),
-         Radio    => (if EVC_Radio.Contact.Known then Radio_Contact_Known
-                      else 0),
+         --  e5/registration: bits 0-6 the radio networks (3.5.6)
+         Radio    => Bits_T (EVC_Sessions.Radio_Bits)
+                     or (if EVC_Radio.Contact.Known then Radio_Contact_Known
+                         else 0),
+         Radio_Wait => (if EVC_Sessions.Registration_Awaited then 2 else 0),
          Train    => Train_Bits,
          National => National_Bits,
          --  SUBSET-026 5.4.3.2 S0 (DMI Table 49): the mode is SB, the
@@ -2160,7 +2170,9 @@ is
          --  S21 (DMI Table 50 S7), the answer to the MA request of
          --  'Start' (5.11.2.2 S150 too)
          Waiting  => (if EVC_Radio_Authority.SH_Waiting then 4
-                      elsif EVC_Sessions.SoM_Opening then Waiting_RBC
+                      elsif EVC_Sessions.SoM_Opening
+                      then (if EVC_Sessions.Network_Ready then Waiting_RBC
+                            else Waiting_Registration)
                       elsif EVC_Mission.Waiting_For_RBC then Waiting_Start
                       else 0),
          Answer   => EVC_Bytes.Byte (EVC_Radio_Authority.SH_Answer),
@@ -2572,6 +2584,8 @@ is
       EVC_Position.Keep (K.Position);
       --  phase E5: the RBC contact information (EVC_Sessions writes it)
       K.RBC := EVC_Radio.Contact;
+      --  3.5.6.2 (e5/registration)
+      K.Network := EVC_Radio.Network;
       --  3.17.2.9: the system version operated
       K.Version_Known := True;
       K.Operated_X := EVC_System_Version.Operated;

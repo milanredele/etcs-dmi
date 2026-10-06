@@ -143,9 +143,23 @@ is
    --  tests and the SUBSET-076 bench set it with Set_Radio_For_Test)
    subtype Engine_Id_T is Natural range 0 .. 2**24 - 1;
 
+   --  Added by e5/registration (3.5.6): the radio systems installed
+   --  on-board (3.5.6.7, 5.4.3.2 D7), the Radio Network type
+   --  (Q_NETWORKTYPE 0 FRMCS, 1 FRMCS+GSM-R, 2 GSM-R, 7.5.1.120.1) used
+   --  while none was memorized (3.5.6.4) and the default GSM-R Radio
+   --  Network identity (NID_MN, 7.5.1.91.1: up to six digits, one per
+   --  nibble, left adjusted, F the filler) of 3.5.6.3. Not in the image
+   --  of format version 1: both systems, GSM-R, NID_MN 0 ("000000")
+   type Radio_Systems_T is (FRMCS_Only, GSMR_Only, Both_Systems);
+   type Network_Type_T is (FRMCS, FRMCS_GSMR, GSMR);
+   subtype Network_Id_T is Natural range 0 .. 2**24 - 1;
+
    type Radio_Config_T is record
-      Sessions  : Radio_Sessions_T := EVC_Ports.RTM_Max_Sessions;
-      Engine_Id : Engine_Id_T := 0;
+      Sessions     : Radio_Sessions_T := EVC_Ports.RTM_Max_Sessions;
+      Engine_Id    : Engine_Id_T := 0;
+      Systems      : Radio_Systems_T := Both_Systems;
+      Default_Type : Network_Type_T := GSMR;
+      Default_MN   : Network_Id_T := 0;
    end record;
 
    Default_Radio : constant Radio_Config_T := (others => <>);
@@ -269,6 +283,12 @@ is
    function Current return Config_T
      with Global => State,
           Post => Valid (Current'Result);
+
+   --  e5/registration: the radio part of Current, without copying the
+   --  whole configuration
+   function Current_Radio return Radio_Config_T
+     with Global => State,
+          Post => Current_Radio'Result = Current.Radio;
 
    --  A valid image was loaded since the start (else Current is Default)
    function Loaded return Boolean

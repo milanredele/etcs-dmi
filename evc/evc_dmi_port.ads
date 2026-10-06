@@ -166,6 +166,8 @@ is
    Session_Being_Established : constant Byte := 1;
    Session_Exists            : constant Byte := 2;
    Waiting_RBC               : constant Byte := 2;
+   --  5.4.3.2 S4 (e5/registration): the registration to the network
+   Waiting_Registration      : constant Byte := 1;
    --  Waiting 3, the MA or the SR authorisation after 'Start' (DMI Table
    --  50 S7; SUBSET-026 5.4.3.2 S21)
    Waiting_Start             : constant Byte := 3;
@@ -408,6 +410,8 @@ is
    SS_RV_Distance_Exceeded          : constant := 27;  -- 3.15.4.8
    SS_PT_Distance_Exceeded          : constant := 28;  -- 4.4.14.1.3
    SS_No_Track_Description          : constant := 29;  -- [69]
+   SS_FRMCS_Registration_Failed     : constant := 33;  -- 5.4.3.2 A41
+   SS_GSMR_Registration_Failed      : constant := 34;  -- 5.4.3.2 A29
    SS_NL_No_Longer_Permitted        : constant := 35;  -- 4.4.15.1.1.3
 
    subtype System_Status_Frame_T is

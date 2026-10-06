@@ -101,7 +101,7 @@ package body EVC_Test_Version is
    --  up, then the system version V of the RBC (message 32)
    procedure Open_With (V : Unsigned_64) is
    begin
-      EVC_Config.Set_Radio_For_Test ((Sessions => 1, Engine_Id => 76_000));
+      EVC_Config.Set_Radio_For_Test ((Sessions => 1, Engine_Id => 76_000, others => <>));
       EVC_Test_Modes.Start_E4;
       Send (Text_Entry (0, "1234"));
       Send (Action (11, 5));

@@ -577,12 +577,97 @@ package body EVC_Test_Sessions is
    --  S3), one session
    procedure SoM_To_S3 is
    begin
-      EVC_Config.Set_Radio_For_Test ((Sessions => 1, Engine_Id => 76_000));
+      EVC_Config.Set_Radio_For_Test ((Sessions => 1, Engine_Id => 76_000, others => <>));
       EVC_Test_Modes.Start_E4;
       Send (Text_Entry (0, "1234"));
       Send (Action (11, 5));
       Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
    end SoM_To_S3;
+
+   --  e5/registration: the radio networks (3.5.6) in a level 2 start of
+   --  mission, one session, the mobile answering by hand
+   function Request_Of (Code : Natural) return Boolean is
+     (for some N in 1 .. Radio_Outputs => Is_Request (N, Code));
+
+   procedure Scenario_Session_Registration is
+      use type ETCS_Variables.NID_MN_T;
+      use type EVC_Config.Network_Type_T;
+   begin
+      Auto_Register := False;
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, others => <>));
+      EVC_Test_Modes.Start_E4;
+      Check (R.Network.NID_MN = 0 and then not R.Network.Registered
+             and then R.Network.Net_Type = EVC_Config.GSMR
+             and then Onboard_Byte (14) = 3 + 4 * 3,
+             "registration: at power-up ordered to the default network "
+             & "(3.5.6.1 a, 3.5.6.3), the type the configured default "
+             & "(3.5.6.4); MSG_ONBOARD radio: GSM-R, both systems, none "
+             & "registered");
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
+      Check (R.Info (1).State = R.Connecting and then not Request_Of (1)
+             and then Onboard_Byte (12) = 1,
+             "registration: no mobile registered, no set-up request "
+             & "(3.5.6.7 d); the start of mission waits (5.4.3.2 S4, "
+             & "MSG_ONBOARD waiting 1)");
+      Give_Radio_Event (1, Registration_Failed);
+      Stand;
+      Check (Status_Shown (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0)
+             and then not Request_Of (1),
+             "registration: failed, the driver informed (5.4.3.2 A29 / "
+             & "A42), still no set-up (3.5.6.7)");
+      Give_Radio_Event (1, Registered);
+      Stand;
+      Check (Request_Of (1) and then Onboard_Byte (12) = 2
+             and then Onboard_Byte (14) = 3 + 4 * 3 + 32 + 128,
+             "registration: registered, the order kept is executed "
+             & "(3.5.6.7; 5.4.3.2 S4 E6 -> A31); radio bit5");
+      --  3.5.6.1 b), 3.18.4.3.6.1 b), 3.18.4.3.6.3 b): the driver's
+      --  GSM-R network
+      Send (Text_Entry (4, "262"));
+      Check (R.Info (1).State /= R.Connecting
+             and then R.Contact.Known and then not R.Contact.Valid
+             and then R.Network.NID_MN = 16#262FFF#
+             and then Onboard_Byte (15) = 2,
+             "registration: the driver selects network 262: the session "
+             & "terminated, the contact invalid, radio_wait 2 "
+             & "(3.18.4.3.6.1 b, 3.18.4.3.6.3 b)");
+      for I in 1 .. 30 loop
+         exit when Request_Of (3);
+         Stand;
+      end loop;
+      Check (Request_Of (3),
+             "registration: ordered to 262 once the session is over "
+             & "(3.5.6.1 b, 3.18.4.3.6.2)");
+      Give_Radio_Event (1, Registered);
+      Stand;
+      Check (Onboard_Byte (15) = 0,
+             "registration: done, radio_wait 0");
+      --  3.18.4.3.6, DMI 11.3.15 / 11.3.16: the type and one system
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (6, 2)));
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (7, 1)));
+      Check (R.Network.Net_Type = EVC_Config.FRMCS_GSMR
+             and then Onboard_Byte (14) = 2 + 4 * 3 + 32 + 64 + 128
+             and then EVC_Sessions.Network_Ready,
+             "registration: FRMCS+GSM-R, mission with one radio system: "
+             & "one system registered is enough (3.5.6.7 c)");
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_DATA, (7, 0)));
+      Check (not EVC_Sessions.Network_Ready,
+             "registration: FRMCS+GSM-R with both systems and FRMCS not "
+             & "registered: no set-up (3.5.6.7 b)");
+      --  3.5.6.1 c), 3.5.6.5: the trackside's Radio Network transition
+      --  order (packet 45), the session idle
+      EVC_Sessions.Take_Network_Order (2, 16#123FFF#);
+      Stand;
+      Check (R.Network.Net_Type = EVC_Config.GSMR
+             and then R.Network.NID_MN = 16#123FFF#
+             and then Request_Of (3) and then not R.Network.Registered,
+             "registration: a Radio Network transition order stored and "
+             & "the mobile ordered to it at once (3.5.6.5)");
+      Auto_Register := True;
+   end Scenario_Session_Registration;
 
    procedure Scenario_Session_SoM_Level_2 is
       M  : ETCS_Message.Message_T;
@@ -761,7 +846,7 @@ package body EVC_Test_Sessions is
    begin
       --  a mission in level 1 with a session: the desk closed, SB: End
       --  of Mission (5.5.2.1.1, 5.5.3.1.3), no repetition (desk closed)
-      EVC_Config.Set_Radio_For_Test ((Sessions => 1, Engine_Id => 0));
+      EVC_Config.Set_Radio_For_Test ((Sessions => 1, Engine_Id => 0, others => <>));
       Start_X;
       Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
       Run_X (15_000);

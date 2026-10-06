@@ -64,7 +64,7 @@ is
       Supervising_S := No_Session;
       Accepting_S := No_Session;
       Contact_Info := No_Contact;
-      Network_Info := (Known => False, NID_MN => 0, Registered => False);
+      Network_Info := (others => <>);
       Data := (others => 0);
       Used := 0;
       Refused_Count := 0;

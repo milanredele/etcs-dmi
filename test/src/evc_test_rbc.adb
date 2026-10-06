@@ -150,6 +150,8 @@ package body EVC_Test_RBC is
              & " 3.16.3.3.2)");
 
       --  the round trip: the answers through the on-board's RTM port
+      --  (the port's counts: no answer to the registration of 3.5.6.1 a)
+      Auto_Register := False;
       EVC_Core.Initialise;
       EVC_Core.Tick (100);
       Take;
@@ -198,6 +200,7 @@ package body EVC_Test_RBC is
              "rbc: on the bench, the emergency stop queued (message 16)");
       Sim_Onboard_Env.Set_Radio (False);
       Sim_RBC.Reset;
+      Auto_Register := True;
    end Scenario_RBC;
 
 end EVC_Test_RBC;

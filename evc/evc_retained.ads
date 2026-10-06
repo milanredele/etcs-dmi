@@ -51,6 +51,9 @@ is
       --  type and its writer, EVC_Sessions, are EVC_Radio's); EVC_Core
       --  saves EVC_Radio.Contact here and restores it at the power-up
       RBC         : EVC_Radio.RBC_Contact_T;
+      --  3.5.6.2 (e5/registration): the Radio Network type and GSM-R
+      --  network identity last received (EVC_Radio.Network)
+      Network     : EVC_Radio.Network_T;
       --  3.17.2.9: the X of the system version operated
       Version_Known : Boolean := False;
       Operated_X    : Natural := 0;

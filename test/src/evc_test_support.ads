@@ -821,6 +821,13 @@ package EVC_Test_Support is
                              (others => 0))
      return Byte_Array;
 
+   --  e5/registration: the GSM-R mobiles answer each registration
+   --  request of the on-board (RTM request 3) with "registered"
+   --  (event 5) before the next cycle, as the bench (Sim_RBC) and the
+   --  SUBSET-076 runner do; a scenario of 3.5.6 sets it False to
+   --  answer itself, and back to True
+   Auto_Register : Boolean := True;
+
    --  An output of the RTM port in the records of the last Take
    type Radio_Output_T is record
       Rec     : Natural := 0;       -- the record in Recs, 0: none

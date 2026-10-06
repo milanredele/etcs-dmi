@@ -36,6 +36,7 @@ pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Variables;
 with EVC_Bytes;
+with EVC_Config;
 with EVC_Distances;
 with EVC_Driver_Requests;
 with EVC_Levels;
@@ -134,7 +135,8 @@ is
                                 EVC_Odometry.State, EVC_Mission.State,
                                 EVC_Levels.State,
                                 EVC_Train_Data.State,
-                                EVC_Driver_Requests.State)),
+                                EVC_Driver_Requests.State,
+                                EVC_Config.State)),
           --  phase 3: the position report parameters (3.6.5) change
           --  nothing of the position itself
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -170,6 +172,24 @@ is
      with Global => State;
    function SoM_Opening return Boolean
      with Global => State;
+
+   --  e5/registration (3.5.6, EVC_Sessions.Network), for EVC_Core: the
+   --  registration conditions of 3.5.6.7 hold (5.4.3.2 S4 otherwise:
+   --  MSG_ONBOARD waiting 1); the radio bits 0-6 of MSG_ONBOARD; its
+   --  radio_wait 2, the registration to the network the driver selected
+   function Network_Ready return Boolean
+     with Global => (State, EVC_Radio.State);
+   function Radio_Bits return Natural
+     with Global => (State, EVC_Radio.State),
+          Post => Radio_Bits'Result < 128;
+   function Registration_Awaited return Boolean
+     with Global => State;
+
+   --  3.5.6.1 c), 3.5.6.5: a Radio Network transition order (packet 45)
+   --  of a balise group or of the stored information of an RBC message
+   procedure Take_Network_Order (Q_Type : Natural;
+                                 NID_MN : ETCS_Variables.NID_MN_T)
+     with Global => (In_Out => (State, EVC_Radio.State));
 
    --  For the tests: the Train Data sent to the RBC (129, or 157 with
    --  packet 11), the SoM position reports (157), the End of Mission

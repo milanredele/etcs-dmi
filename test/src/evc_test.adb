@@ -229,6 +229,7 @@ begin
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;
+   Scenario_Session_Registration;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_RBC;

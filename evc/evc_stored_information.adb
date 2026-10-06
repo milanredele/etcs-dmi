@@ -9,6 +9,8 @@ with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P42;
+with ETCS_Track_Packets.P45;
+with EVC_Radio;
 with ETCS_Track_Packets.P46;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
@@ -318,7 +320,7 @@ is
       --  consumption (track conditions, 5.18, 5.20)
       K69, K40,
       --  phase E5: the session management order (3.5.2.6.1, e5/session)
-      K42);
+      K42, K45);
 
    function Kind_Of (K : Order_Kind_T) return ETCS_Catalogue.Packet_Kind_T is
      (case K is
@@ -343,7 +345,8 @@ is
          when K80  => ETCS_Catalogue.Track_P80,
          when K69  => ETCS_Catalogue.Track_P69,
          when K40  => ETCS_Catalogue.Track_P40,
-         when K42  => ETCS_Catalogue.Track_P42);
+         when K42  => ETCS_Catalogue.Track_P42,
+         when K45  => ETCS_Catalogue.Track_P45);
 
    --  4.8: the kind of information of a packet (K12: the MA; its
    --  V_MAIN is the signalling related speed restriction)
@@ -365,7 +368,10 @@ is
          when K71  => EVC_Acceptance.Adhesion,
          when K88  => EVC_Acceptance.Level_Crossing,
          when K12 | K15 | K80 => EVC_Acceptance.Movement_Authority,
-         when K42  => EVC_Acceptance.Session_Management);
+         --  e5/registration: the Radio Network transition order is
+         --  filtered as the session management (4.8.3, 4.8.4: its
+         --  own rows are left to EVC_Acceptance)
+         when K42 | K45 => EVC_Acceptance.Session_Management);
 
    --  The NID_PACKET of a kind (the record of a rejection)
    function NID_Of (K : Order_Kind_T) return Natural is
@@ -375,7 +381,7 @@ is
          when K66 => 66, when K141 => 141, when K68 => 68, when K39 => 39,
          when K67 => 67, when K70 => 70, when K71 => 71, when K88 => 88,
          when K12 => 12, when K15 => 15, when K80 => 80, when K69 => 69,
-         when K40 => 40, when K42 => 42);
+         when K40 => 40, when K42 => 42, when K45 => 45);
 
    --  The context of 4.8 of a packet of a group: the mode and the inputs
    --  of the cycle, the level as it is now (an immediate order of the
@@ -869,6 +875,21 @@ is
       end if;
    end Take_Session_Packet;
 
+   --  3.5.6.1 c), 3.5.6.5 (e5/registration): the Radio Network
+   --  transition order of packet 45 to the session half
+   procedure Take_Network_Packet (R : in out Reader_T)
+     with Global => (In_Out => (EVC_Sessions.State, EVC_Radio.State))
+   is
+      X  : ETCS_Track_Packets.P45.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P45.Decode (R, X, OK);
+      if OK and then ETCS_Track_Packets.P45.Valid (X) then
+         EVC_Sessions.Take_Network_Order
+           (Natural (X.Q_NETWORKTYPE), X.NID_MN);
+      end if;
+   end Take_Network_Packet;
+
    --  The packet of kind K that R reads to its store
    procedure Dispatch (K           : Order_Kind_T;
                        R           : in out Reader_T;
@@ -903,6 +924,8 @@ is
             Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted);
          when K42 =>
             Take_Session_Packet (R);
+         when K45 =>
+            Take_Network_Packet (R);
       end case;
    end Dispatch;
 

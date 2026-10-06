@@ -14,6 +14,7 @@ with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
 with EVC_Sessions.Mission;
+with EVC_Sessions.Network;
 with EVC_Sessions.Reports;
 with Interfaces;             use Interfaces;
 
@@ -25,6 +26,7 @@ package body EVC_Sessions
                                    Requesting, Timer_On, Timer_Since,
                                    SB_Shown, Status_List, Status_N,
                                    EVC_Sessions.Mission.State,
+                                   EVC_Sessions.Network.State,
                                    EVC_Sessions.Reports.State))
 is
 
@@ -457,6 +459,7 @@ is
       Status_List := (others => (others => <>));
       Status_N := 0;
       Mission.Clear;
+      Network.Clear;
       Reports.Clear;
    end Clear;
 
@@ -530,8 +533,12 @@ is
             elsif St = R.Connection_Lost then
                Links (S).Request_Due := True;   -- 3.5.4.3
             end if;
-         when EVC_Ports.Registered | EVC_Ports.Registration_Failed =>
-            null;
+         when EVC_Ports.Registered =>
+            Network.Take_Event (S, Registered => True);
+         when EVC_Ports.Registration_Failed =>
+            --  3.5.6, 5.4.3.2 A29 / A42: the driver informed
+            Network.Take_Event (S, Registered => False);
+            Show (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
       end case;
    end Take_Event;
 
@@ -670,6 +677,7 @@ is
             Reports.Take_Message;
             if Kind = Track_M24 then
                Take_Radio_Order;
+               Network.Take_Radio_Order;
             end if;
             Verdict := Pass;
       end case;
@@ -884,10 +892,50 @@ is
       end if;
    end Follow_Version;
 
+   --  e5/registration: the radio networks of the cycle (3.5.6,
+   --  EVC_Sessions.Network). 3.18.4.3.6.1: the driver's new Radio
+   --  Network type or GSM-R network terminates the sessions and aborts
+   --  the attempts to establish one; 5.4.3.2 A29: the list of networks
+   --  is empty, the driver informed
+   procedure Apply_Network (Now : Time_Ms_T)
+     with Global => (In_Out => (Network.State, R.State, Links, Pending,
+                                Status_List, Status_N, Ind, Requesting,
+                                Timer_On),
+                     Input  => (EVC_Config.State, EVC_Driver_Requests.State))
+   is
+      Stop, Failed : Boolean;
+   begin
+      Network.Evaluate (Stop, Failed);
+      if Failed then
+         Show (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
+      end if;
+      if Stop then
+         Pending := (others => <>);
+         for S in Session_T loop
+            pragma Loop_Invariant (True);
+            if R.Info (S).State /= R.Idle then
+               Terminate_Session (S, Now);
+            end if;
+         end loop;
+      end if;
+   end Apply_Network;
+
+   function Network_Ready return Boolean is (Network.Ready);
+   function Radio_Bits return Natural is (Network.Radio_Bits);
+   function Registration_Awaited return Boolean is
+     (Network.Selection_Awaited);
+
+   procedure Take_Network_Order (Q_Type : Natural;
+                                 NID_MN : ETCS_Variables.NID_MN_T) is
+   begin
+      Network.Take_Order (Q_Type, NID_MN);
+   end Take_Network_Order;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T) is
       N : constant R.Session_Count_T := R.Sessions;
    begin
       Held := (others => False);
+      Apply_Network (Ctx.Now_Ms);
       Apply_Order (Ctx.Now_Ms);
       for S in Session_T loop
          pragma Loop_Invariant (R.Sessions = N);
@@ -1032,7 +1080,9 @@ is
          L.Release_Due := False;
          Ind_Released (S);
       end if;
-      if L.Request_Due then
+      --  3.5.6.7: no request while the registration conditions do not
+      --  hold; it stays due (e5/registration, decision 5)
+      if L.Request_Due and then Network.Ready then
          R.Request_Set_Up (S, R.Info (S).RBC, R.Info (S).Radio, False);
          L.Request_Due := False;
          Count (L.Attempts);
@@ -1056,6 +1106,8 @@ is
       T : constant T_TRAIN_T := EVC_Radio.T_Train_At (Ctx.Now_Ms);
    begin
       Count (Cycles);
+      --  3.5.6: the registrations first
+      Network.Produce;
       for S in Session_T loop
          pragma Loop_Invariant (True);
          Produce_Session (S, T, Ctx.Now_Ms);

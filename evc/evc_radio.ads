@@ -42,6 +42,7 @@
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Bytes;
+with EVC_Config;
 with EVC_Modes;      use EVC_Modes;
 with EVC_Outbox;
 with EVC_Ports;      use EVC_Ports;
@@ -93,11 +94,18 @@ is
 
    --  The GSM-R radio network (3.5.6): the one ordered (from trackside or
    --  the driver, or the default of 3.5.6.3) and whether the mobiles are
-   --  registered to it. Written by EVC_Sessions.
+   --  registered to it. Written by EVC_Sessions. e5/registration: the
+   --  Radio Network type stored (3.5.6.5) with it; Known and Type_Known
+   --  say whether they were received from trackside or the driver (or
+   --  memorized over No Power, 3.5.6.2), else the defaults of the
+   --  configuration apply (3.5.6.3, 3.5.6.4). Registered: at least one
+   --  GSM-R Mobile Terminal is registered to the network NID_MN.
    type Network_T is record
       Known      : Boolean := False;
       NID_MN     : NID_MN_T := 0;
       Registered : Boolean := False;
+      Type_Known : Boolean := False;
+      Net_Type   : EVC_Config.Network_Type_T := EVC_Config.GSMR;
    end record;
 
    ---------------------------------------------------------------------

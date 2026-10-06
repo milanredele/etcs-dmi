@@ -74,8 +74,10 @@ package body EVC_Test_Core is
              "power-up: cycle 1 at 100 ms");
       Take;
       Check (Parsed, "power-up: whole records");
-      Check (Rec_Count = 4, "power-up: four records, got" & Img (Rec_Count));
-      if Rec_Count = 4 then
+      --  e5/registration: and the registration of the two GSM-R mobiles
+      --  (3.5.6.1 a)
+      Check (Rec_Count = 6, "power-up: six records, got" & Img (Rec_Count));
+      if Rec_Count = 6 then
          Check (Recs (1).Port = JRU and then Rec_Length (1) = 16
                 and then Byte_At (1, 1) = 1
                 and then Byte_At (1, 2) = Mode_T'Pos (M_SB)
@@ -85,6 +87,12 @@ package body EVC_Test_Core is
          Check (Recs (2).Port = DMI and then Recs (3).Port = DMI
                 and then Recs (4).Port = DMI,
                 "power-up: then three DMI frames");
+         Check (Recs (5).Port = RTM and then Recs (6).Port = RTM
+                and then Radio_Output (1).Request
+                and then Radio_Output (1).Kind = 3
+                and then Radio_Output (2).Session = 2,
+                "power-up: then the registration of each mobile to the "
+                & "GSM-R network (3.5.6.1 a, 3.5.6.3)");
       end if;
       Check (DMI_Mode_Byte = 1, "power-up: MSG_MODE_LEVEL mode SB (1), got"
              & Img (DMI_Mode_Byte));

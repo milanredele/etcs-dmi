@@ -83,6 +83,13 @@ package body S076_Bench is
    Last_T    : Per_Session_I64 := (others => -1);
    Last_Ms   : Per_Session_U64 := (others => 0);
    Last_Req  : Per_Session_Nat := (others => 0);
+   --  e5/registration: the mobile of a session registers to the
+   --  network it is ordered to in the next cycle (the sequences
+   --  give SA-REGISTRATION.Indication in 12 cases only, "usually
+   --  not specified"; the power-up registration of 3.5.6.1 a is
+   --  silent in all)
+   Registering : array (1 .. RTM_Max_Sessions) of Boolean :=
+     (others => False);
    T_By_Nid  : By_Nid_T := (others => (others => -1));
 
    procedure Clear_Radio is
@@ -90,6 +97,7 @@ package body S076_Bench is
       Last_T := (others => -1);
       Last_Ms := (others => 0);
       Last_Req := (others => 0);
+      Registering := (others => False);
       T_By_Nid := (others => (others => -1));
    end Clear_Radio;
 
@@ -354,6 +362,9 @@ package body S076_Bench is
          R.Length := Natural'Min (P'Length - 3, Max_Radio_Bytes);
          R.Data (1 .. R.Length) := P (P'First + 3 .. P'First + 2 + R.Length);
          Last_Req (R.Session) := R.Code;
+         if R.Code = RTM_Request_T'Pos (Request_Registration) + 1 then
+            Registering (R.Session) := True;
+         end if;
       else
          return;
       end if;
@@ -540,7 +551,7 @@ package body S076_Bench is
       --  with (NID_ENGINE 76000 in nearly all of them, e5/session-3)
       EVC_Config.Set_Radio_For_Test
         ((Sessions => EVC_Config.Current.Radio.Sessions,
-          Engine_Id => 76_000));
+          Engine_Id => 76_000, others => <>));
       if Was_Powered then
          EVC_Core.Power_Up;
       else
@@ -671,6 +682,14 @@ package body S076_Bench is
               (DMI, Pending (I).Data (1 .. Pending (I).Length));
          end loop;
          Pending_Count := 0;
+         for S in Registering'Range loop
+            if Registering (S) then
+               Registering (S) := False;
+               EVC_Core.Handle_Input
+                 (RTM, (RTM_Tag_Event, Byte (S),
+                        Byte (RTM_Event_T'Pos (Registered) + 1)));
+            end if;
+         end loop;
          EVC_Core.Tick (Cycle_Ms);
          Take_Outputs;
          DMI_Core.Tick (Cycle_Ms);

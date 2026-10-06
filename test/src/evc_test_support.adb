@@ -61,6 +61,18 @@ package body EVC_Test_Support is
         Out_Buf (1 .. Count);
       Capture_Last := Capture_Last + Count;
       Parsed := Parse;
+      if Auto_Register then
+         for N in 1 .. Radio_Outputs loop
+            if Radio_Output (N).Request
+              and then Radio_Output (N).Kind
+                       = EVC_Ports.RTM_Request_T'Pos
+                           (EVC_Ports.Request_Registration) + 1
+            then
+               Give_Radio_Event (Radio_Output (N).Session,
+                                 EVC_Ports.Registered);
+            end if;
+         end loop;
+      end if;
    end Take;
    function Digest (Data : Byte_Array) return String is
       Text : String (1 .. Data'Length);

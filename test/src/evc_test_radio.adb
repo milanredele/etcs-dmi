@@ -47,6 +47,8 @@ package body EVC_Test_Radio is
       S   : ETCS_Message.Status_T;
       Bad : Natural;
    begin
+      --  the port's counts: no answer to the registration of 3.5.6.1 a)
+      Auto_Register := False;
       EVC_Core.Initialise;
       EVC_Core.Tick (100);
       Take;
@@ -149,6 +151,8 @@ package body EVC_Test_Radio is
              and then EVC_Core.Configuration.Radio.Sessions = 1,
              "radio: the single-session configuration is accepted");
       EVC_Core.Tick (100);
+      --  the registration request of 3.5.6.1 a) (e5/registration)
+      Take;
       Give_Radio_Message (2, M24);
       EVC_Radio.Send (2, Message_Of (MCat.Train_M156, V));
       EVC_Radio.Request_Set_Up (2, (NID_C => 5, NID_RBC => 300), 1, True);
@@ -163,6 +167,7 @@ package body EVC_Test_Radio is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
       EVC_Core.Initialise;
       Check (EVC_Radio.Sessions = 2, "radio: back to two sessions");
+      Auto_Register := True;
    end Scenario_Radio_Joint;
 
 end EVC_Test_Radio;
