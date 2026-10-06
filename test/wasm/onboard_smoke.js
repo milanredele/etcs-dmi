@@ -246,24 +246,19 @@ check(ex.onboard_group_count() === 6 && ex.onboard_group_at(1) === -12,
         `the level 2 start of mission with Sim_RBC to 'Start' (cycle ${somCycle}), `
         + `the session established (level ${ex.onboard_level()}, session byte `
         + `${ex.onboard_session()}, RBC state ${ex.onboard_rbc_state()})`);
-  if (modes2.has(7)) {
-    // once the on-board proposes SR on the SR authorisation (5.4.3.2 S24)
-    let stopped = false;
-    for (let i = 0; i < 20_000 && !stopped; i++) {
-      cycle2(false);
-      stopped = modes2.has(2) && ex.onboard_speed() === 0;
-    }
-    check(modes2.has(2) && stopped && ex.onboard_position() < 10_000,
-          `the level 2 line reaches FS on the MA by radio and stops before `
-          + `the EOA: stopped at ${ex.onboard_position()} m`);
-  } else {
-    for (let i = 0; i < 600; i++) cycle2(false);
-    console.log('  level 2: the line waits at S21 in SB: the on-board proposes no SR '
-                + 'on the SR authorisation (5.4.3.2 E26 / E27 not implemented)');
-    check(ex.onboard_failed() === 0 && !modes2.has(2) && ex.onboard_speed() === 0,
-          `the level 2 line: no failure, SB at standstill (modes seen: `
-          + `${[...modes2].sort().join(',')})`);
+  // 5.4.3.2 S21 -> S24 (E26): the SR authorisation answering 'Start'
+  // proposes SR, the scripted driver acknowledges it, then FS on the MA
+  // by radio (e5/sr-proposal)
+  let stopped = false;
+  for (let i = 0; i < 20_000 && !stopped; i++) {
+    cycle2(false);
+    stopped = modes2.has(2) && ex.onboard_speed() === 0;
   }
+  check(modes2.has(7) && modes2.has(2) && stopped
+        && ex.onboard_failed() === 0 && ex.onboard_position() < 10_000,
+        `the level 2 line reaches SR on the SR authorisation, then FS on the `
+        + `MA by radio and stops before the EOA: stopped at `
+        + `${ex.onboard_position()} m (modes seen: ${[...modes2].sort().join(',')})`);
   ex.onboard_set_radio(0);
   ex.onboard_reset();
 }

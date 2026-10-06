@@ -189,6 +189,11 @@ is
      with Global => State;
    function RBC_SR_Distance return EVC_Odometry.Virtual_T
      with Global => State;
+   --  5.4.3.2 E26, 5.11.2.2 S150 a): the number of SR authorisations
+   --  (message 2) taken since Clear, saturated; a change while 'Start'
+   --  waits at S21 / S150 is E26 (EVC_Mission)
+   function SR_Authorisations return Natural
+     with Global => State;
 
    --  The SR distance that applies: the RBC's while it is the last one
    --  received, else Mission (EVC_Mission's: the national or the driver's)

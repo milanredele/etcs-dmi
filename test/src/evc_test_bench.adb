@@ -573,7 +573,6 @@ package body EVC_Test_Bench is
       Last_Line : String (1 .. 60) := (others => ' ');
       RSM_Seen  : Boolean := False;
       Stopped   : Boolean := False;
-      Start_Pos : Integer := 0;
       SR_Given  : Boolean := False;
 
       procedure Cycle (Digest : Boolean) is
@@ -627,7 +626,6 @@ package body EVC_Test_Bench is
       Env.Set_Radio (True);
       Env.Reset;
       Env.Set_Desk (0, Auto => True);
-      Start_Pos := Env.Position_M;
       for I in 1 .. L2_Cycles loop
          Cycle (Digest => True);
       end loop;
@@ -655,33 +653,19 @@ package body EVC_Test_Bench is
                 & Img (Sim_RBC.Taken) & " messages taken,"
                 & Img (Sim_RBC.Answered) & " answered,"
                 & Img (Sim_RBC.Errors) & " errors");
-      --  The on-board does not yet propose SR on the SR authorisation
-      --  (5.4.3.2 S21 -> S24, E26 / E27; EVC_Mission leaves it to the
-      --  authority half, which keeps it in SR_Authorised and does not
-      --  read it again): until it does, the line stays in SB at S21.
-      --  Once it does, the scripted driver acknowledges SR (step 7), the
+      --  5.4.3.2 S21 -> S24 (E26, e5/sr-proposal): the SR authorisation
+      --  proposes SR, the scripted driver acknowledges it (step 7), the
       --  train reads the first group, reports its position (136) and
-      --  Sim_RBC gives the MA: then FS and the stop are checked, and the
-      --  golden bench_level2 changes (expected, to be reviewed)
-      if Modes_Seen (7) then
-         Check (Env.SoM_L2_Sent = Env.SoM_L2_Steps
-                and then FS_Cycle > SoM_Cycle and then Modes_Seen (2),
-                "bench level 2: SR acknowledged, FS on the MA by radio "
-                & "(message 3, 3.8, 4.6.3)");
-         Check (Stopped and then Env.Position_M <= EVC_Track.EOA_M
-                and then not Env.Failed and then Sim_RBC.Errors = 0,
-                "bench level 2: the train stops in front of the EOA, no "
-                & "failure, every RTM output read by the RBC");
-      else
-         Put_Line ("  level 2: the line waits at S21 in SB: the on-board "
-                   & "proposes no SR on the SR authorisation "
-                   & "(5.4.3.2 E26 / E27 not implemented)");
-         Check (Modes_Seen (1) and then not Modes_Seen (2)
-                and then Env.Position_M = Start_Pos
-                and then not Env.Failed and then Sim_RBC.Errors = 0,
-                "bench level 2: no other mode than SB, the train at its "
-                & "start, no failure, every RTM output read by the RBC");
-      end if;
+      --  Sim_RBC gives the MA: FS (4.6.3) and the stop
+      Check (Modes_Seen (7) and then Env.SoM_L2_Sent = Env.SoM_L2_Steps
+             and then FS_Cycle > SoM_Cycle and then Modes_Seen (2),
+             "bench level 2: SR proposed on the SR authorisation and "
+             & "acknowledged (5.4.3.2 E26, S24), FS on the MA by radio "
+             & "(message 3, 3.8, 4.6.3)");
+      Check (Stopped and then Env.Position_M <= EVC_Track.EOA_M
+             and then not Env.Failed and then Sim_RBC.Errors = 0,
+             "bench level 2: the train stops in front of the EOA, no "
+             & "failure, every RTM output read by the RBC");
       Env.Set_Radio (False);
       Env.Reset;
    end Scenario_Bench_Level_2;

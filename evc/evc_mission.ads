@@ -120,6 +120,11 @@ is
    --  e4/integration)
    function Ack_Taken return Boolean
      with Global => State;
+   --  5.4.3.2 S21, 5.11.2.2 S150: 'Start' in level 2 sent the MA request
+   --  and waits for the RBC's answer (DMI Table 50 S7: MSG_ONBOARD
+   --  "waiting" 3)
+   function Waiting_For_RBC return Boolean
+     with Global => State;
 
    --  The driver validated Train Data in this cycle (5.4.3.2 S12; the
    --  re-validation of 5.17.2.2 E6, EVC_Procedures)
@@ -211,6 +216,11 @@ is
       --  added by e5/session-3: the session with the supervising RBC is
       --  established (EVC_Radio.In_Communication; 5.4.5.3 h)
       In_Communication : Boolean := False;
+      --  added by e5/sr-proposal: the SR authorisations (message 2) taken
+      --  since the power-up (EVC_Radio_Authority.SR_Authorisations); a
+      --  change while 'Start' waits at S21 / S150 is E26 (5.4.3.2,
+      --  5.11.2.2)
+      SR_Authorisations : Natural := 0;
    end record;
 
    --  Power-up: every datum unknown, no mission

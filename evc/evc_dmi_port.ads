@@ -166,6 +166,9 @@ is
    Session_Being_Established : constant Byte := 1;
    Session_Exists            : constant Byte := 2;
    Waiting_RBC               : constant Byte := 2;
+   --  Waiting 3, the MA or the SR authorisation after 'Start' (DMI Table
+   --  50 S7; SUBSET-026 5.4.3.2 S21)
+   Waiting_Start             : constant Byte := 3;
    --  Bits of Train
    Train_Standstill      : constant Bits_T := 1;
    Train_Below_Override  : constant Bits_T := 2;

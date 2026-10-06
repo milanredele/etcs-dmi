@@ -300,7 +300,9 @@ is
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => EVC_National_Values.Current.Values.V_NVSTFF,
           D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF,
-          In_Communication => EVC_Radio.In_Communication));
+          In_Communication => EVC_Radio.In_Communication,
+          --  read by EVC_Mission.Evaluate only
+          SR_Authorisations => 0));
    end Set_Mode_For_Test;
 
    procedure Count (Counter : in out Natural) is
@@ -1229,7 +1231,7 @@ is
    --  on the requests of the cycle; the desk closed during the start of
    --  mission (A.3.4.1.2 k)
    procedure Evaluate_Modes_And_Levels
-     with Global => (Input  => (EVC_Radio.State,
+     with Global => (Input  => (EVC_Radio.State, EVC_Radio_Authority.State,
                                 Current_Mode, Clock_Ms,
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State,
@@ -1286,7 +1288,8 @@ is
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => NV.V_NVSTFF,
           D_NVSTFF    => NV.D_NVSTFF,
-          In_Communication => EVC_Radio.In_Communication));
+          In_Communication => EVC_Radio.In_Communication,
+          SR_Authorisations => EVC_Radio_Authority.SR_Authorisations));
       --  A.3.4.1.2 k), column k: what entering SB has not deleted
       --  already (the TSRs, the adhesion, the big metal masses, the level
       --  transition orders, the national values not yet applicable); the
@@ -1486,7 +1489,9 @@ is
              Sense       => EVC_Position.Orientation,
              V_NVSTFF    => EVC_National_Values.Current.Values.V_NVSTFF,
              D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF,
-          In_Communication => EVC_Radio.In_Communication));
+          In_Communication => EVC_Radio.In_Communication,
+          --  read by EVC_Mission.Evaluate only
+          SR_Authorisations => 0));
       end if;
       EVC_Text_Messages.Evaluate
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
@@ -1728,7 +1733,9 @@ is
           Sense       => EVC_Position.Orientation,
           V_NVSTFF    => NV.V_NVSTFF,
           D_NVSTFF    => NV.D_NVSTFF,
-          In_Communication => EVC_Radio.In_Communication));
+          In_Communication => EVC_Radio.In_Communication,
+          --  read by EVC_Mission.Evaluate only
+          SR_Authorisations => 0));
       Delete_On_Mode_Entry (To);
       Revoke_Brake_Reasons (From, To);
    end Enter_Mode;
@@ -2149,9 +2156,12 @@ is
          --  phase E5: the request for shunting of level 2 (5.6.2.2 S050)
          --  (one value: the two do not overlap, the request for shunting
          --  needs the session established); else 5.4.3.2 A31, the
-         --  session of the start of mission being opened
+         --  session of the start of mission being opened; else 5.4.3.2
+         --  S21 (DMI Table 50 S7), the answer to the MA request of
+         --  'Start' (5.11.2.2 S150 too)
          Waiting  => (if EVC_Radio_Authority.SH_Waiting then 4
                       elsif EVC_Sessions.SoM_Opening then Waiting_RBC
+                      elsif EVC_Mission.Waiting_For_RBC then Waiting_Start
                       else 0),
          Answer   => EVC_Bytes.Byte (EVC_Radio_Authority.SH_Answer),
          others   => 0);

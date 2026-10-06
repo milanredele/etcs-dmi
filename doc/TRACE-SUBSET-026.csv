@@ -1463,7 +1463,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.3.2 S12,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S13,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S20,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
-5.4.3.2 S21,5,x,,,,,E4,partial,EVC_Mission: 'Start' in level 2 with a session proposes no mode; the MA request and the answers are EVC_Radio_Authority's [E5 session]
+5.4.3.2 S21,5,x,,,,,E4,partial,"EVC_Mission: 'Start' in level 2 with a session waits for the RBC (Waiting_For_RBC, MSG_ONBOARD waiting 3 of DMI Table 50 S7, EVC_Core.Send_Onboard); the MA request is EVC_Radio_Authority's; E26: an SR authorisation (EVC_Radio_Authority.SR_Authorisations changed) goes to S24 (EVC_Mission.Take_RBC_Answer, e5/sr-proposal); E29: the MA allowing FS changes the mode (4.6.3); E27 -> S25, the proposal of OS / LS / SH on such an MA, left; evc_test Scenario_SoM_L2_SR_Proposal, Scenario_Bench_Level_2 [E5 session]"
 5.4.3.2 S22,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S23,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S24,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
@@ -1665,8 +1665,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.11.2.2 S140 b),5,x,,,,,E4,partial,"'Start' in PT, level 2, after message 6: the MA request (EVC_Radio_Authority); the SR proposal on the SR authorisation (S150 a, S160) needs EVC_Mission (session half) to read EVC_Radio_Authority; evc_test Scenario_Trip_L2 [E5 authority]"
 5.11.2.2 S140 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
 5.11.2.2 S140 d),5,x,,,,,E4,done,4.6.3 [5] from PT (EVC_Procedures)
-5.11.2.2 S150,5,x,,,,,E4,partial,the MA request (reason Start) sent (EVC_Radio_Authority); a) the SR proposal after message 2 is EVC_Mission's (left); b) c) the MA of the RBC and 4.6.3 [31] (phase 1); evc_test Scenario_Trip_L2 [E5 authority]
-5.11.2.2 S150 a),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
+5.11.2.2 S150,5,x,,,,,E4,partial,"the MA request (reason Start) sent (EVC_Radio_Authority); a) the SR proposal after message 2 (EVC_Mission.Take_RBC_Answer, e5/sr-proposal); b) the proposal of OS / LS / SH left; c) the MA of the RBC and 4.6.3 [31] (phase 1); evc_test Scenario_Trip_L2 [E5 authority]"
+5.11.2.2 S150 a),5,x,,,,,E4,partial,"EVC_Mission.Take_RBC_Answer: 'Start' in PT level 2 waits, the SR authorisation (message 2, after message 6) proposes SR (S160), e5/sr-proposal; not covered by a scenario of its own (the same code as 5.4.3.2 S21 E26, Scenario_SoM_L2_SR_Proposal) [E5 authority]"
 5.11.2.2 S150 b),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
 5.11.2.2 S150 c),5,x,,,,,E4,deferred,"E5 (level 2: the MA request, Supervised Manoeuvre, the RBC's authorisations) [E5 authority]"
 5.11.2.2 S160,5,x,,,,,E4,done,"the SR acknowledgement, [8] from PT; evc_test_procedures Integration_SR_Override_Trip"

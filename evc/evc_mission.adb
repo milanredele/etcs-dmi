@@ -10,7 +10,8 @@ package body EVC_Mission
                                    Proposal, Proposal_Mode, Acked_Now,
                                    Acked_M, Desk_Closed_Now, SR_V, SR_D,
                                    Continue_On, NL_Lost, NL_Input,
-                                   TD_Now, Events, Event_N))
+                                   TD_Now, RBC_Wait, RBC_Wait_Count,
+                                   Events, Event_N))
 is
 
    type Event_Array is array (1 .. Max_Events) of Event_T;
@@ -36,6 +37,10 @@ is
    NL_Input        : Boolean := False;
    --  Train Data validated in this cycle
    TD_Now          : Boolean := False;
+   --  5.4.3.2 S21, 5.11.2.2 S150: 'Start' in level 2 waits for the RBC,
+   --  with the count of SR authorisations at 'Start' (E26: a change)
+   RBC_Wait        : Boolean := False;
+   RBC_Wait_Count  : Natural := 0;
    Events          : Event_Array;
    Event_N         : Natural range 0 .. Max_Events := 0;
 
@@ -69,6 +74,8 @@ is
      with Refined_Global => (Acked_Now, Acked_M);
    function Ack_Taken return Boolean is (Acked_Now)
      with Refined_Global => Acked_Now;
+   function Waiting_For_RBC return Boolean is (RBC_Wait)
+     with Refined_Global => RBC_Wait;
    function Train_Data_Validated return Boolean is (TD_Now)
      with Refined_Global => TD_Now;
    function Desk_Closed_In_SoM return Boolean is (Desk_Closed_Now)
@@ -125,6 +132,8 @@ is
       NL_Lost := False;
       NL_Input := False;
       TD_Now := False;
+      RBC_Wait := False;
+      RBC_Wait_Count := 0;
       Events := (others => (others => <>));
       Event_N := 0;
    end Clear;
@@ -352,12 +361,46 @@ is
       end if;
    end Take_Data;
 
+   --  5.4.3.2 S21: after 'Start' in level 2 the on-board waits for the
+   --  RBC; E26, an SR authorisation (message 2), goes to S24: SR is
+   --  proposed to the driver as in level 1 (S24, Take_Start), and the
+   --  acknowledgement (E32) gives SR (4.6.3 [8]); E29, an MA allowing FS,
+   --  changes the mode and so ends the wait. 5.11.2.2 S150 a), S160: the
+   --  same in PT. The wait ends when the mode, the level or the desk
+   --  changes (3.8.2.3: the request of Start ends with the desk closed).
+   --  Decision (e5/sr-proposal): a message 2 without a 'Start' waiting
+   --  proposes nothing (5.4.3.2 goes to S24 from S21 only); the
+   --  authority half keeps its SR distance and list (4.4.11.1.6.4) and a
+   --  later 'Start' waits at S21 again
+   procedure Take_RBC_Answer (C : Context_T; M : Mode_T)
+     with Global => (In_Out => (RBC_Wait, Proposal, Proposal_Mode,
+                                Events, Event_N),
+                     Input  => (Engaged, RBC_Wait_Count))
+   is
+   begin
+      if not RBC_Wait then
+         return;
+      end if;
+      if not ((M = M_SB and then Engaged) or else M = M_PT)
+        or else not C.Level_Valid or else C.Level /= L2
+        or else not C.Desk_Open
+      then
+         RBC_Wait := False;
+      elsif C.SR_Authorisations /= RBC_Wait_Count then
+         RBC_Wait := False;
+         Proposal := True;
+         Proposal_Mode := M_SR;
+         Put_Event (Event_Proposed, Mode_T'Pos (M_SR), 0);
+      end if;
+   end Take_RBC_Answer;
+
    --  5.4.3.2 S20, 5.4.5.3 h), 4.4.14.1.6: 'Start' and the mode it
    --  proposes; 4.6.3 [8], [58], [60]: the driver's acknowledgement of
    --  the mode proposed
    procedure Take_Start (C : Context_T; M : Mode_T)
      with Global => (In_Out => (Proposal, Proposal_Mode, Acked_Now,
-                                Acked_M, Events, Event_N),
+                                Acked_M, RBC_Wait, RBC_Wait_Count,
+                                Events, Event_N),
                      Input  => (Engaged, Driver_S, Train_Known,
                                 EVC_Train_Data.State,
                                 EVC_Driver_Requests.State))
@@ -376,7 +419,9 @@ is
                --  5.4.5.3 h): level 2 with a session open, S21: the MA
                --  request (EVC_Radio_Authority), no mode proposed here
                --  (the SR authorisation or the MA decide, E26 / E27 /
-               --  E29)
+               --  E29); the wait for the answer (Take_RBC_Answer)
+               RBC_Wait := True;
+               RBC_Wait_Count := C.SR_Authorisations;
                Put_Event (Event_Start, 1, 0);
             else
                Proposal := True;
@@ -394,6 +439,15 @@ is
             Proposal_Mode := M_SR;
             Put_Event (Event_Start, 1, 0);
             Put_Event (Event_Proposed, Mode_T'Pos (M_SR), 0);
+         elsif M = M_PT and then C.Standstill and then C.Level_Valid
+           and then C.Level = L2 and then C.In_Communication
+           and then EVC_Train_Data.Valid
+         then
+            --  5.11.2.2 S140 b), S150: the MA request is the authority
+            --  half's (after message 6, D130); the wait for the answer
+            RBC_Wait := True;
+            RBC_Wait_Count := C.SR_Authorisations;
+            Put_Event (Event_Start, 1, 0);
          else
             Put_Event (Event_Start, 0, 0);
          end if;
@@ -430,6 +484,7 @@ is
       Take_Desk (C, M);
       Take_Identity (M);
       Take_Data (C, M);
+      Take_RBC_Answer (C, M);
       Take_Start (C, M);
    end Evaluate;
 

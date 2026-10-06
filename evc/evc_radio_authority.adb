@@ -25,7 +25,8 @@ package body EVC_Radio_Authority
                                    Request_Sent, Last_Request_Ms,
                                    SR_Authorised, Requests, Start_Reason,
                                    Deleted_Reason, Shortening, Emergency,
-                                   SR_Auth, Passed_Listed, Mode_Now,
+                                   SR_Auth, SR_Taken, Passed_Listed,
+                                   Mode_Now,
                                    Exit_Recognised, SH_Req, Status_Now, TAF,
                                    EVC_Radio_Authority.Buffer.State))
 is
@@ -130,6 +131,10 @@ is
       List       : SR_List_T := (others => (others => <>));
    end record;
    SR_Auth : SR_Auth_T := (others => <>);
+   --  5.4.3.2 E26, 5.11.2.2 S150 a): the SR authorisations taken since
+   --  Clear (saturated), the edge EVC_Mission waits for at S21 / S150;
+   --  added by e5/sr-proposal
+   SR_Taken : Natural := 0;
    --  4.4.11.1.3 d): the groups passed in the cycle are in the list
    Passed_Listed : Boolean := False;
 
@@ -262,6 +267,8 @@ is
    end Emergency_Stops;
    function RBC_SR_Given return Boolean is (SR_Auth.Given);
 
+   function SR_Authorisations return Natural is (SR_Taken);
+
    function RBC_SR_Distance return EVC_Odometry.Virtual_T is
      (SR_Auth.Distance);
 
@@ -346,6 +353,7 @@ is
       Shortening := (others => <>);
       Emergency := (others => <>);
       SR_Auth := (others => <>);
+      SR_Taken := 0;
       Passed_Listed := False;
       Mode_Now := M_NP;
       Exit_Recognised := False;
@@ -520,7 +528,7 @@ is
    procedure Take_SR_Authorisation
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State),
-                     In_Out => SR_Auth)
+                     In_Out => (SR_Auth, SR_Taken))
    is
       Scale : constant Natural :=
         Natural (EVC_Received.Last_Value (Q_SCALE) mod 4);
@@ -529,6 +537,9 @@ is
    begin
       if Scale <= 2 then
          SR_Auth.Given := True;
+         if SR_Taken < Natural'Last then
+            SR_Taken := SR_Taken + 1;
+         end if;
          SR_Auth.Distance := (others => <>);
          if D /= D_SR_Infinite then
             SR_Auth.Distance := EVC_Odometry.Start_Virtual

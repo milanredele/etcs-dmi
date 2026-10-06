@@ -225,6 +225,7 @@ begin
    Scenario_Session_NVCONTACT_Brake;
    Scenario_Session_Indication;
    Scenario_Session_SoM_Level_2;
+   Scenario_SoM_L2_SR_Proposal;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;

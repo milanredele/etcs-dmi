@@ -652,6 +652,84 @@ package body EVC_Test_Sessions is
              & "no Staff Responsible proposed");
    end Scenario_Session_SoM_Level_2;
 
+   ---------------------------------------------------------------------
+   --  e5/sr-proposal: the RBC's answer to 'Start' in level 2
+   ---------------------------------------------------------------------
+
+   --  Message 2, the SR authorisation, with the LRBG unknown (the
+   --  position of the start of mission) and D_SR D metres
+   function SR_Authorisation (D : Unsigned_64) return Byte_Array is
+      V : ETCS_Message.Value_Array := (others => 0);
+   begin
+      V (3) := Now_T;
+      V (5) := 1023;
+      V (6) := 16_383;
+      V (7) := 1;
+      V (8) := D;
+      return Message_Of (MCat.Track_M2, V);
+   end SR_Authorisation;
+
+   --  5.4.3.2 S21, E26 -> S24, E32: 'Start' in level 2 with the session
+   --  established and the Train Data acknowledged sends the MA request
+   --  and waits (DMI Table 50 S7: MSG_ONBOARD waiting 3); the SR
+   --  authorisation (message 2) is E26: Staff Responsible proposed as in
+   --  level 1 (S24), the driver's acknowledgement (E32) gives SR (4.6.3
+   --  [8]). A message 2 without a 'Start' waiting proposes nothing
+   --  (decision of e5/sr-proposal). E29 (an MA allowing FS) is covered by
+   --  the mode change ending the wait and by Scenario_Bench_Level_2
+   procedure Scenario_SoM_L2_SR_Proposal is
+      N : Natural;
+   begin
+      SoM_To_S3;
+      Establish (1);
+      Give_Radio_Message (1, Msg (MCat.Track_M41, Now_T));
+      Stand;
+      Send (Train_Entry);
+      N := Output_Of (129);
+      if N > 0 then
+         Ack_Train_Data (N);
+      end if;
+      Send (Text_Entry (1, "5678"));
+      Check (N > 0 and then R.Train_Data_Acknowledged
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "SR proposal: the level 2 start of mission at S20");
+
+      --  decision: message 2 before 'Start' proposes nothing
+      Give_Radio_Message (1, SR_Authorisation (500));
+      Stand;
+      Check (not EVC_Mission.Proposed
+             and then not EVC_Mission.Waiting_For_RBC,
+             "SR proposal: an SR authorisation without 'Start' waiting "
+             & "proposes nothing (5.4.3.2: S24 from S21 only)");
+
+      --  S20 -> S21: the MA request, the DMI waits (Table 50 S7)
+      Send (Action (5));
+      Check (EVC_Mission.Waiting_For_RBC and then not EVC_Mission.Proposed
+             and then EVC_Radio_Authority.MA_Request_Reasons mod 2 = 1
+             and then Onboard_Byte (12) = 3,
+             "SR proposal: 'Start' in level 2 sends the MA request and "
+             & "waits (5.4.3.2 S21; MSG_ONBOARD waiting 3, DMI Table 50 S7)");
+
+      --  E26 -> S24: SR proposed, the wait over
+      Give_Radio_Message (1, SR_Authorisation (500));
+      Stand;
+      Check (EVC_Mission.Proposed
+             and then EVC_Mission.Proposed_Mode = EVC_Modes.M_SR
+             and then not EVC_Mission.Waiting_For_RBC
+             and then Onboard_Byte (12) = 0
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "SR proposal: the SR authorisation (message 2, E26) proposes "
+             & "Staff Responsible (5.4.3.2 S24), the DMI waits no more");
+
+      --  E32: the driver's acknowledgement, SR
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_SR and then not EVC_Mission.Proposed
+             and then EVC_Radio_Authority.RBC_SR_Given,
+             "SR proposal: acknowledged (E32), the mission starts in SR "
+             & "(4.6.3 [8]) with the RBC's SR distance (4.4.11.1.6.4 b)");
+   end Scenario_SoM_L2_SR_Proposal;
+
    procedure Scenario_Session_SoM_Failures is
    begin
       --  A31 / D31 / A32: three failed attempts (A.3.1)
