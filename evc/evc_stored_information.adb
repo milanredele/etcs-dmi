@@ -10,7 +10,6 @@ with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P45;
-with EVC_Radio;
 with ETCS_Track_Packets.P46;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
@@ -878,7 +877,7 @@ is
    --  3.5.6.1 c), 3.5.6.5 (e5/registration): the Radio Network
    --  transition order of packet 45 to the session half
    procedure Take_Network_Packet (R : in out Reader_T)
-     with Global => (In_Out => (EVC_Sessions.State, EVC_Radio.State))
+     with Global => (In_Out => EVC_Sessions.State)
    is
       X  : ETCS_Track_Packets.P45.Packet_T;
       OK : Boolean;

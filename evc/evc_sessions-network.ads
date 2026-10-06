@@ -54,14 +54,15 @@ is
      with Global => (In_Out => (State, EVC_Radio.State));
 
    --  3.5.6.1 c), 3.5.6.5: a Radio Network transition order (packet 45:
-   --  Q_NETWORKTYPE, NID_MN when the type is 1 or 2)
+   --  Q_NETWORKTYPE, NID_MN when the type is 1 or 2), applied by the
+   --  next Evaluate (the last one of a cycle wins)
    procedure Take_Order (Q_Type : Natural;
                          NID_MN : ETCS_Variables.NID_MN_T)
-     with Global => (In_Out => (State, EVC_Radio.State));
+     with Global => (In_Out => State);
 
    --  Packet 45 of the radio message just received (EVC_Received)
    procedure Take_Radio_Order
-     with Global => (In_Out => (State, EVC_Radio.State),
+     with Global => (In_Out => State,
                      Input  => EVC_Received.Store);
 
    --  The cycle: the defaults of the configuration and the power-up

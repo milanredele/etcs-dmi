@@ -11,7 +11,7 @@ with Interfaces;   use Interfaces;
 package body EVC_Sessions.Network
   with SPARK_Mode => On,
        Refined_State => (State => (Reg, Due, Started, Systems, One_Radio,
-                                   Awaiting))
+                                   Awaiting, Ordered, Ord_Type, Ord_MN))
 is
 
    package R renames EVC_Radio;
@@ -35,6 +35,10 @@ is
    One_Radio : Boolean := False;
    --  radio_wait 2 (common/dmi_protocol.ads)
    Awaiting  : Boolean := False;
+   --  the Radio Network transition order of the cycle (packet 45)
+   Ordered   : Boolean := False;
+   Ord_Type  : Natural := 0;
+   Ord_MN    : ETCS_Variables.NID_MN_T := 0;
 
    procedure Clear is
    begin
@@ -44,6 +48,9 @@ is
       Systems := EVC_Config.Both_Systems;
       One_Radio := False;
       Awaiting := False;
+      Ordered := False;
+      Ord_Type := 0;
+      Ord_MN := 0;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -111,8 +118,9 @@ is
    --  3.5.6.1 c), 3.5.6.5: the type stored; the GSM-R network ordered
    --  to the mobiles not registered to it (decision 4: Produce waits for
    --  a session not Idle, 3.5.6.6)
-   procedure Take_Order (Q_Type : Natural;
-                         NID_MN : ETCS_Variables.NID_MN_T)
+   procedure Apply_Order (Q_Type : Natural;
+                          NID_MN : ETCS_Variables.NID_MN_T)
+     with Global => (In_Out => (R.State, Due), Input => (Reg, Systems))
    is
       N   : R.Network_T := R.Network;
       New_MN : Boolean;
@@ -129,6 +137,14 @@ is
          Order (All_Of => New_MN);
       end if;
       Publish (N);
+   end Apply_Order;
+
+   procedure Take_Order (Q_Type : Natural;
+                         NID_MN : ETCS_Variables.NID_MN_T) is
+   begin
+      Ordered := True;
+      Ord_Type := Q_Type;
+      Ord_MN := NID_MN;
    end Take_Order;
 
    procedure Take_Radio_Order is
@@ -160,8 +176,8 @@ is
                        OK     : out Boolean)
      with Global => null
    is
-      V : Natural := 0;
-      D : Natural;
+      V : Natural range 0 .. 2 ** 24 - 1 := 0;
+      D : Natural range 0 .. 15;
    begin
       MN := 0;
       OK := T.Length in 1 .. 6;
@@ -169,7 +185,7 @@ is
          return;
       end if;
       for I in 1 .. 6 loop
-         pragma Loop_Invariant (V < 16 ** (I - 1));
+         pragma Loop_Invariant (V < 2 ** 24);
          if I <= T.Length then
             if T.Chars (I) not in Character'Pos ('0') .. Character'Pos ('9')
             then
@@ -180,7 +196,8 @@ is
          else
             D := 15;
          end if;
-         V := V * 16 + D;
+         --  below 16 ** 5 before the sixth digit: the mod changes nothing
+         V := (V mod 2 ** 20) * 16 + D;
       end loop;
       MN := ETCS_Variables.NID_MN_T (V);
    end Parse_MN;
@@ -264,6 +281,10 @@ is
       if not Started then
          Started := True;
          Power_Up;
+      end if;
+      if Ordered then
+         Ordered := False;
+         Apply_Order (Ord_Type, Ord_MN);
       end if;
       Driver_Entries (Stop, Failed);
    end Evaluate;

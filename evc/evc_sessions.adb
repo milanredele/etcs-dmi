@@ -935,7 +935,6 @@ is
       N : constant R.Session_Count_T := R.Sessions;
    begin
       Held := (others => False);
-      Apply_Network (Ctx.Now_Ms);
       Apply_Order (Ctx.Now_Ms);
       for S in Session_T loop
          pragma Loop_Invariant (R.Sessions = N);
@@ -943,6 +942,8 @@ is
             Supervise_Session (S, Ctx.Now_Ms);
          end if;
       end loop;
+      --  e5/registration: the radio networks (3.5.6, 3.18.4.3.6)
+      Apply_Network (Ctx.Now_Ms);
       --  3.5.3.4.2, 3.5.3.5.2.1, 3.5.4.3.1: a session waiting for a free
       --  one, or for the end of the one with the same RBC
       declare
@@ -1071,7 +1072,8 @@ is
    --  The requests and the session messages of S (156 apart)
    procedure Produce_Session (S : Session_T; T : T_TRAIN_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, R.State, R.Queue, Ind,
-                                Requesting, Timer_On, Timer_Since))
+                                Requesting, Timer_On, Timer_Since),
+                     Input  => Network.State)
    is
       L : Link_T renames Links (S);
    begin

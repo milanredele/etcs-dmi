@@ -189,7 +189,7 @@ is
    --  of a balise group or of the stored information of an RBC message
    procedure Take_Network_Order (Q_Type : Natural;
                                  NID_MN : ETCS_Variables.NID_MN_T)
-     with Global => (In_Out => (State, EVC_Radio.State));
+     with Global => (In_Out => State);
 
    --  For the tests: the Train Data sent to the RBC (129, or 157 with
    --  packet 11), the SoM position reports (157), the End of Mission
