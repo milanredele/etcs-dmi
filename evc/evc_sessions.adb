@@ -558,7 +558,8 @@ is
       end if;
       if Compatible (V) then
          Links (S).Send_159 := True;
-         Links (S).Ack_Awaited := True;
+         --  3.5.3.7.4; 6.5.2.2.2: not from an RBC of 1.x or 2.0 .. 2.2
+         Links (S).Ack_Awaited := EVC_System_Version.Session_Acknowledged (V);
          Links (S).Since := Now;
          Links (S).Repeats := 0;
          if R.Supervising = R.No_Session and then R.Accepting = R.No_Session

@@ -54,6 +54,14 @@ is
    function Compatible (V : M_VERSION_T) return Boolean is
      (Major (V) in Lowest_X .. Highest_X);
 
+   --  3.5.3.7 e), 3.5.4.6: the RBC acknowledges the session established
+   --  report (message 38), except an RBC of 1.x or 2.0 .. 2.2, for which
+   --  6.5.2.2.2 (X = 2) and 6.5.1.2 (X = 1) replace 3.5.3.7 e) and
+   --  3.5.4.6 by 6.5.1.2.1.4 / .5 (no acknowledgement): the on-board
+   --  does not await it then (3.5.3.7.4 does not apply)
+   function Session_Acknowledged (V : M_VERSION_T) return Boolean is
+     (Major (V) >= 3 or else (Major (V) = 2 and then Natural (V) mod 16 >= 3));
+
    --  3.17.2.1.1: the Y operated within X
    function Operated_Y (X : Major_T) return Natural is
      (case X is when 1 => 1, when 2 => 3, when 3 => 0);
