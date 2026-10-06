@@ -2217,3 +2217,51 @@ Open after this round, in the order a next round would take them:
 5. The level 2 line of the bench page (Sim_RBC lacks message 41).
 6. The system version of the RBC (chapter 6, E7): 563 SV21 / SV22
    sequences stop at "159 not sent".
+
+### Bench, third round: the level 2 line of the page (e5/bench-3, 2026-10-06)
+
+**Sim_RBC**: the SoM position report 157 is answered with 41 "train
+accepted" (5.4.3.2 S10). Message 32 carried M_VERSION 4.0 (100 0000),
+which the on-board finds incompatible (3.17.2: X 3 only) and answered
+with 156: it is 3.0 now (011 0000, "introduced in SRS 4.0.0",
+7.5.1.79). The MA request with the position unknown is answered with
+the SR authorisation (message 2, D_SR 500 m); the MA (message 3) is
+given with the line's SSP and gradient profile (packets 27, 21 from the
+LRBG, 3.7.3.1; `Sim_Trackside.Put_SSP` / `Put_Gradients`, which also
+write the first group's telegram, byte for byte as before) on a 132
+with an LRBG, or unasked on the first position report 136 that gives
+one.
+
+**The page**: a third "Track" choice, "level 2 by radio", is the
+default track with `Sim_Onboard_Env.Set_Radio (True)` (export
+`onboard_set_radio`): Sim_RBC behind the RTM port and a scripted driver
+that sends the start of mission in level 2 (`SoM_L2_Frame`: the frames
+of `Scenario_Session_SoM_Level_2`, then the acknowledgement of SR), each
+step once the on-board's MSG_ONBOARD / MSG_MODE_LEVEL show the answer to
+the step before (`SoM_L2_Ready`). Decision: frames from the environment,
+not touches on the DMI: the same Ada code feeds the native run and the
+wasm run, so `onboard_smoke.js` compares them byte for byte (golden
+`bench_level2`, `EVC_Test_Bench.Scenario_Bench_Level_2`); and the touch
+route is closed while the on-board does not report its radio equipment
+in MSG_ONBOARD (the Radio data window buttons, bench round 2).
+
+**Finding, on-board**: the line stops at S21 in SB. After 'Start' the
+on-board sends 132, takes the SR authorisation (`RBC_SR_Given`) but
+proposes no SR (5.4.3.2 S21 -> S24, E26 / E27: `EVC_Mission` leaves the
+proposal to the authority half, `SR_Authorised` is never read).
+SUBSET-076 3040200_04 SV30 stops at the same place (step 136,
+S55128ce0, analysed in the triage). With a local change that proposes
+SR there, the line runs through: SR acknowledged, the first group read,
+136, the MA by radio, FS at cycle 65, the stop at 9806 m before the EOA;
+`Scenario_Bench_Level_2` and `onboard_smoke.js` then check FS and the
+stop, and `bench_level2` changes (expected).
+
+**Triage**: S15dab337 and Sb83b2c65 are no longer reached on master
+(notes updated: message 8 matched on its second T_TRAIN; 4.5.2 excludes
+SH -> PS from the report of a mode change).
+
+**Left**: the on-board's S21 -> S24 on message 2 (then re-record
+`bench_level2`); the waiting value 3 of MSG_ONBOARD after 'Start' (the
+on-board shows 0 while it awaits the MA or the SR authorisation, Table
+50 S7); the DMI in the page follows the on-board's answers but its own
+start-up windows are not driven by the scripted frames.
