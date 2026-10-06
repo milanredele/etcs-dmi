@@ -9,5 +9,6 @@ package EVC_Test_Bench is
 
       procedure Scenario_Bench_Onboard;
       procedure Scenario_Odometer_Wrap;
+      procedure Scenario_Bench_Level_2;
 
 end EVC_Test_Bench;

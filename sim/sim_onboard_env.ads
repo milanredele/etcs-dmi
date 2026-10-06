@@ -87,6 +87,10 @@ package Sim_Onboard_Env is
    --  on, the on-board's RTM outputs go to Sim_RBC and its answers to
    --  the RTM port before each cycle; Reset keeps the switch and resets
    --  the RBC. RBC_Emergency_Stop: message 16 from the RBC (a button)
+   --  With the radio on, the driver's start of mission is that of level 2
+   --  (SoM_L2_Frame), scripted here: a scripted driver like the automatic
+   --  one of the desk, so that the page, onboard_smoke.js and evc_test
+   --  give the on-board the same bytes at the same cycles
    procedure Set_Radio (On : Boolean);
    function Radio return Boolean;
    procedure RBC_Emergency_Stop;
@@ -128,6 +132,34 @@ package Sim_Onboard_Env is
    SoM_Steps : constant := 6;
    function SoM_Frame (K : Positive) return Stream_Element_Array
      with Pre => K <= SoM_Steps;
+
+   --  Phase E5: the driver's start of mission in level 2 (5.4.3.2), the
+   --  frames of Scenario_Session_SoM_Level_2 (test/src/
+   --  evc_test_sessions.adb): the driver ID "1234" (S1), level 2 (S2,
+   --  MSG_DRIVER_ACTION 11, the level code 5), the RBC contact entered
+   --  (S3: RBC 1 of Sim_RBC, NID_C of the line, NID_RBC 1, phone "0077"),
+   --  the Train Data (S12) as in level 1, the train running number (S13)
+   --  'Start' (S20) and the acknowledgement of Staff Responsible (S24,
+   --  when the RBC gives an SR authorisation). Step K goes once the on-board answered step K - 1
+   --  in its MSG_ONBOARD (SoM_L2_Ready): the driver ID valid, the level
+   --  valid, the session established and nothing awaited, the Train Data
+   --  acknowledged by the RBC, the train running number valid, SR to
+   --  acknowledge (MSG_MODE_LEVEL mode_ack). With the
+   --  radio on, Step sends them itself (Set_Radio); SoM_L2_Sent counts
+   --  them.
+   SoM_L2_Steps : constant := 7;
+   function SoM_L2_Frame (K : Positive) return Stream_Element_Array
+     with Pre => K <= SoM_L2_Steps;
+   function SoM_L2_Ready (K : Positive) return Boolean
+     with Pre => K <= SoM_L2_Steps;
+   function SoM_L2_Sent return Natural;
+
+   --  MSG_ONBOARD of the last cycle: data, session, rbc, waiting
+   --  (dmi_protocol.ads); 0 before the first one
+   function Onboard_Data return Natural;
+   function Onboard_Session return Natural;
+   function Onboard_RBC return Natural;
+   function Onboard_Waiting return Natural;
 
    ---------------------------------------------------------------------
    --  What the on-board said last (its DMI frames) and the vehicle

@@ -39,6 +39,13 @@ package body Sim_Onboard_Env is
    Shown_V_Cur, Shown_V_Perm, Shown_Monitoring, Shown_Status : Natural := 0;
    Shown_Brake : Natural := 0;
    Detected    : Natural := 0;
+   --  MSG_ONBOARD: data, session, rbc, waiting
+   Shown_Data, Shown_Session, Shown_RBC, Shown_Waiting : Natural := 0;
+   --  MSG_MODE_LEVEL mode_ack: the mode to acknowledge, 16#FF# none
+   Shown_Mode_Ack : Natural := 16#FF#;
+
+   --  The scripted start of mission in level 2: the steps sent
+   L2_Sent : Natural := 0;
 
    Outputs : EVC_Bytes.Byte_Array (1 .. EVC_Outbox.Capacity);
 
@@ -221,8 +228,21 @@ package body Sim_Onboard_Env is
                Shown_Level :=
                  Natural (Frame (Frame'First + Header_Length + 1));
             end if;
+            if Frame'Length >= Header_Length + 3 then
+               Shown_Mode_Ack :=
+                 Natural (Frame (Frame'First + Header_Length + 2));
+            end if;
          when 16#07# =>   -- MSG_STATUS
             Shown_Brake := Natural (Frame (Frame'First + Header_Length));
+         when 16#0A# =>   -- MSG_ONBOARD
+            if Frame'Length >= Header_Length + 7 then
+               Shown_Data := Natural (Frame (Frame'First + Header_Length));
+               Shown_Session :=
+                 Natural (Frame (Frame'First + Header_Length + 1));
+               Shown_RBC := Natural (Frame (Frame'First + Header_Length + 2));
+               Shown_Waiting :=
+                 Natural (Frame (Frame'First + Header_Length + 6));
+            end if;
          when others =>
             null;
       end case;
@@ -322,6 +342,12 @@ package body Sim_Onboard_Env is
       Shown_Status := 0;
       Shown_Brake := 0;
       Detected := 0;
+      Shown_Data := 0;
+      Shown_Session := 0;
+      Shown_RBC := 0;
+      Shown_Waiting := 0;
+      Shown_Mode_Ack := 16#FF#;
+      L2_Sent := 0;
       --  power-up: the cab, the controller, the brake pressure, and the
       --  odometer at standstill
       Sim_Vehicle.Measure;
@@ -381,6 +407,15 @@ package body Sim_Onboard_Env is
 
       --  5. its outputs
       Collect_Outputs;
+
+      --  6. the scripted start of mission in level 2, a step once the
+      --  on-board answered the one before (read at its next cycle)
+      if Radio_On and then L2_Sent < SoM_L2_Steps
+        and then SoM_L2_Ready (L2_Sent + 1)
+      then
+         L2_Sent := L2_Sent + 1;
+         Receive (SoM_L2_Frame (L2_Sent));
+      end if;
    end Step;
 
    procedure Take_DMI (Buffer : out Stream_Element_Array;
@@ -440,6 +475,54 @@ package body Sim_Onboard_Env is
          when 5 => (16#40#, 3, 0, 0, 0, 5, 0, 0),
          --  MSG_DRIVER_ACTION 2, kind 1: the mode acknowledged
          when others => (16#40#, 5, 0, 0, 0, 2, 1, 0, 0, 0));
+
+   function SoM_L2_Frame (K : Positive) return Stream_Element_Array is
+     (case K is
+         --  MSG_DRIVER_ACTION 11, level 2
+         when 2 => (16#40#, 3, 0, 0, 0, 11, 5, 0),
+         --  MSG_DRIVER_DATA kind 5, the RBC contact entered (choice 0):
+         --  NID_C * 2**14 + NID_RBC u32, the phone number "0077"
+         when 3 => (16#41#, 23, 0, 0, 0, 5, 0,
+                    Stream_Element ((EVC_Track.NID_C * 16_384 + 1) mod 256),
+                    Stream_Element ((EVC_Track.NID_C * 16_384 + 1) / 256
+                                    mod 256),
+                    Stream_Element ((EVC_Track.NID_C * 16_384 + 1)
+                                    / 65_536),
+                    0, 4,
+                    Character'Pos ('0'), Character'Pos ('0'),
+                    Character'Pos ('7'), Character'Pos ('7'),
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+         --  the Train Data, the train running number, 'Start' of level 1
+         when 4 => SoM_Frame (3),
+         when 5 => SoM_Frame (4),
+         when 6 => SoM_Frame (5),
+         --  the acknowledgement of Staff Responsible
+         when 7 => SoM_Frame (6),
+         --  the driver ID
+         when others => SoM_Frame (1));
+
+   function SoM_L2_Ready (K : Positive) return Boolean is
+     (case K is
+         when 1 => Shown_Mode /= 255,
+         --  the driver ID valid
+         when 2 => Shown_Data mod 2 = 1,
+         --  the level valid
+         when 3 => Shown_Data / 4 mod 2 = 1,
+         --  the session established, nothing awaited
+         when 4 => Shown_Session >= 2 and then Shown_Waiting = 0,
+         --  the Train Data acknowledged by the RBC
+         when 5 => Shown_RBC mod 2 = 1,
+         --  the train running number valid
+         when 6 => Shown_Data / 8 mod 2 = 1,
+         --  SR to acknowledge (DMI Table 60 code 7): the RBC's SR
+         --  authorisation (message 2, 5.4.3.2 S23 / S24)
+         when others => Shown_Mode_Ack = 7);
+
+   function SoM_L2_Sent return Natural is (L2_Sent);
+   function Onboard_Data return Natural is (Shown_Data);
+   function Onboard_Session return Natural is (Shown_Session);
+   function Onboard_RBC return Natural is (Shown_RBC);
+   function Onboard_Waiting return Natural is (Shown_Waiting);
 
    function Failed return Boolean is (EVC_Core.Failed);
 

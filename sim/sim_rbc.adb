@@ -12,6 +12,7 @@ with ETCS_Variables;         use ETCS_Variables;
 with EVC_Ports;              use EVC_Ports;
 with EVC_Track;
 with Interfaces;             use Interfaces;
+with Sim_Trackside;
 
 package body Sim_RBC is
 
@@ -19,8 +20,10 @@ package body Sim_RBC is
    subtype Byte is EVC_Bytes.Byte;
    subtype Byte_Array is EVC_Bytes.Byte_Array;
 
-   --  M_VERSION of system version 4.0 (7.5.1.79: X in 3 bits, Y in 4)
-   Version_4_0 : constant := 2#100_0000#;
+   --  M_VERSION of system version 3.0, "introduced in SRS 4.0.0"
+   --  (7.5.1.79: X in 3 bits, Y in 4), the version of the on-board
+   --  (EVC_Sessions, 3.17.2: an X other than 3 is incompatible)
+   Version_3_0 : constant := 2#011_0000#;
    Unknown_LRBG : constant := 16#FF_FFFF#;
 
    type RBC_State_T is record
@@ -38,7 +41,14 @@ package body Sim_RBC is
       LRBG      : Unsigned_64 := Unknown_LRBG;
       LRBG_NID_BG : Natural := 0;
       LRBG_Known  : Boolean := False;
+      --  an MA given (message 3) since the session was established
+      MA_Given    : Boolean := False;
    end record;
+
+   --  D_SR of the SR authorisation (message 2) given while the train's
+   --  position is unknown: far enough for the train to read the line's
+   --  first balise group and report its position
+   SR_Distance_M : constant := 500;
 
    RBCs : array (RBC_T) of RBC_State_T;
 
@@ -168,7 +178,7 @@ package body Sim_RBC is
    end Next_Stamp;
 
    --  Packet 15: the EOA at the bench line's EOA from the LRBG, with its
-   --  danger point and a release speed of 25 km/h
+   --  danger point and a release speed of 25 km/h; packets 27 and 21
    procedure Put_MA (R : RBC_State_T; OK : in out Boolean) is
       P : ETCS_Track_Packets.P15.Packet_T;
       LRBG_M : Integer := 0;
@@ -192,6 +202,10 @@ package body Sim_RBC is
       P.V_RELEASEDP := 5;
       ETCS_Track_Packets.P15.Encode (P, W, Done);
       OK := OK and then Done;
+      --  3.7.3.1: the track description to the EOA with the MA (the
+      --  line's SSP and gradient profile from the LRBG)
+      Sim_Trackside.Put_SSP (W, -LRBG_M, OK);
+      Sim_Trackside.Put_Gradients (W, -LRBG_M, OK);
    end Put_MA;
 
    procedure Send (RBC : RBC_T; NID : Natural; Ack_Of : Unsigned_64 := 0) is
@@ -211,9 +225,12 @@ package body Sim_RBC is
       Set (Values, Kind, NID_BG,
            (if R.LRBG_Known then R.LRBG and 16#3FFF# else 16#3FFF#));
       case NID is
-         when 32 => Set (Values, Kind, M_VERSION, Version_4_0);
+         when 32 => Set (Values, Kind, M_VERSION, Version_3_0);
          when 8  => Set (Values, Kind, T_TRAIN, Ack_Of, Nth => 2);
          when 16 => Set (Values, Kind, NID_EM, 1);
+         when 2  =>
+            Set (Values, Kind, Q_SCALE, 1);
+            Set (Values, Kind, D_SR, SR_Distance_M);
          when others => null;
       end case;
       ETCS_Bits.Clear (W);
@@ -366,10 +383,31 @@ package body Sim_RBC is
                R.Train_Data_T := R.Train_T;
                Send (RBC, 8, Ack_Of => R.Train_Data_T);
             when 132 =>
+               --  3.8.2: the MA, referred to the LRBG reported; with
+               --  the position unknown (the start of mission, 5.4.3.2
+               --  S22) the SR authorisation of message 2 (3.8.2, 4.4.11)
+               --  instead, and the MA once a position report gives an
+               --  LRBG (below)
                Note_Position (R);
-               Send (RBC, 3);
-            when 136 | 157 =>
+               if R.LRBG_Known then
+                  R.MA_Given := True;
+                  Send (RBC, 3);
+               else
+                  Send (RBC, 2);
+               end if;
+            when 136 =>
                Note_Position (R);
+               if R.LRBG_Known and then not R.MA_Given then
+                  R.MA_Given := True;
+                  Send (RBC, 3);
+               end if;
+            when 157 =>
+               --  the SoM position report: the train accepted (message
+               --  41, 5.4.3.2 S10 / A23), whatever the position (an
+               --  invalid or unknown one too: the RBC of the bench line
+               --  knows its only train)
+               Note_Position (R);
+               Send (RBC, 41);
             when 156 =>
                R.St := Terminating;
                Send (RBC, 39);

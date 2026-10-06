@@ -10,6 +10,7 @@ with EVC_Track;
 with Sim_JRU;
 with Sim_Odometer;
 with Sim_Onboard_Env;
+with Sim_RBC;
 with Sim_Trackside;
 with Sim_Vehicle;
 
@@ -42,6 +43,23 @@ package body Onboard_Wasm is
       Env.Set_Track_Preset
         (if Preset = 1 then EVC_Track.Features else EVC_Track.Default);
    end Set_Track_Preset;
+
+   procedure Set_Radio (On : Integer_32) is
+   begin
+      Env.Set_Radio (On = 1);
+   end Set_Radio;
+
+   procedure RBC_Emergency_Stop is
+   begin
+      Env.RBC_Emergency_Stop;
+   end RBC_Emergency_Stop;
+
+   function SoM_L2_Sent return Integer_32 is
+     (Integer_32 (Env.SoM_L2_Sent));
+   function Session return Integer_32 is
+     (Integer_32 (Natural'Min (Env.Onboard_Session, 255)));
+   function RBC_State return Integer_32 is
+     (Sim_RBC.State_T'Pos (Sim_RBC.State (1)));
 
    procedure Set_Cab (Cab : Integer_32) is
    begin

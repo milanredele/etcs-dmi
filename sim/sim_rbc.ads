@@ -14,9 +14,10 @@
 --      RBC), else "set-up failed"; a release with "released"; a
 --      registration to the network with "registered";
 --    - the session (3.5.3.7): message 155 answered with 32 (system
---      version 4.0), 159 with 38, 154 ends it; Train Data (129, 5.4,
---      5.17) acknowledged with message 8; the termination (156, 3.5.5)
---      acknowledged with 39;
+--      version 3.0 of SUBSET-026 4.0.0), 159 with 38, 154 ends it; Train Data (129, 5.4,
+--      5.17) acknowledged with message 8; the SoM position report (157,
+--      5.4.3.2 S10) answered with 41 "train accepted"; the termination
+--      (156, 3.5.5) acknowledged with 39;
 --    - an MA on request (132, 3.8.2): message 3 with packet 15, the
 --      end of authority at the bench line's EOA (EVC_Track.EOA_M) with
 --      its danger point and a release speed of 25 km/h, referred to the
