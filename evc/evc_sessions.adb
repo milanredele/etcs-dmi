@@ -953,7 +953,7 @@ is
 
    --  3.15.1.3 (e5/handover): the requests of the handover (decision 1
    --  of EVC_Sessions.Handover: Open only into a free session)
-   procedure Apply_Handover (Now : Time_Ms_T)
+   procedure Apply_Handover (Now : Time_Ms_T; Mode : Mode_T)
      with Global => (In_Out => (Handover.State, Reports.State, Links,
                                 Pending, R.State, Ind, Requesting,
                                 Timer_On, EVC_Position.State),
@@ -972,7 +972,7 @@ is
    is
       Req : Handover.Request_T;
    begin
-      Handover.Evaluate (Now, Req);
+      Handover.Evaluate (Now, Mode, Req);
       if Req.Stop and then R.Usable (Req.Stop_S) then
          Terminate_Session (Req.Stop_S, Now);
       end if;
@@ -1027,7 +1027,7 @@ is
             Establish (P.RBC, P.Radio, P.Capped, Ctx.Now_Ms);
          end if;
       end;
-      Apply_Handover (Ctx.Now_Ms);
+      Apply_Handover (Ctx.Now_Ms, Ctx.Mode);
       Apply_Mission (Ctx);
       Reports.Evaluate (SoM => Mission.Reporting, Mode => Ctx.Mode);
       Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill);
@@ -1214,8 +1214,12 @@ is
          end if;
          for S in Session_T loop
             pragma Loop_Invariant (True);
-            Also (S) := Handover.Also_Reported (S);
-            Forced (S) := Handover.Forced_Report (S);
+            if Handover.Also_Reported (S) then
+               Also (S) := True;
+            end if;
+            if Handover.Forced_Report (S) then
+               Forced (S) := True;
+            end if;
          end loop;
          --  136 (3.6.5), after the SoM position report of the cycle;
          --  3.15.1.3.4, 3.15.1.3.9: to the other RBC of a handover too

@@ -103,8 +103,11 @@ is
       Report    : Boolean := False;
    end record;
 
-   --  5a. the order applied, the roles, the border, the switch
-   procedure Evaluate (Now_Ms : EVC_Radio.Time_Ms_T; Req : out Request_T)
+   --  5a. the order applied, the roles, the border, the switch; Mode:
+   --  4.8.4 [8] (in PS and SH an order at once stores the contact only)
+   procedure Evaluate (Now_Ms : EVC_Radio.Time_Ms_T;
+                       Mode   : Mode_T;
+                       Req    : out Request_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Position.State),
                      Input  => EVC_Odometry.State),
           Post => EVC_Radio.Sessions = EVC_Radio.Sessions'Old

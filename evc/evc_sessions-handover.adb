@@ -236,7 +236,8 @@ is
    --  until one is established (EVC_Sessions.Take_Version), except with
    --  one session, where the Handing Over one goes on until it ends.
    procedure Switch
-     with Global => (In_Out => (Order, Old_S, Old_C, Switch_Next, R.State),
+     with Global => (In_Out => (Order, R.State),
+                     Output => (Old_S, Old_C, Switch_Next),
                      Input  => Single),
           Post => R.Sessions = R.Sessions'Old
    is
@@ -288,7 +289,9 @@ is
       end if;
    end Watch_Rear;
 
-   procedure Evaluate (Now_Ms : EVC_Radio.Time_Ms_T; Req : out Request_T)
+   procedure Evaluate (Now_Ms : EVC_Radio.Time_Ms_T;
+                       Mode   : Mode_T;
+                       Req    : out Request_T)
    is
       T : EVC_Position.Triggers_T;
    begin
@@ -307,6 +310,15 @@ is
             Req.Radio := R.Contact.Radio;
             Single := False;
          end if;
+      end if;
+      --  4.8.4 [8]: in PS and SH only an order at once, for the RBC
+      --  contact (4.10.1.4.2 b)
+      if Order.Fresh and then Mode in M_PS | M_SH then
+         if Order.D = 0 then
+            R.Set_Contact ((Known => True, Valid => True,
+                            RBC   => Order.RBC, Radio => Order.Radio));
+         end if;
+         Order := (others => <>);
       end if;
       Apply_Order (Req);
       Find_Accepting;
