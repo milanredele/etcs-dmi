@@ -12,6 +12,7 @@ with ETCS_Variables;         use ETCS_Variables;
 with EVC_Ports;              use EVC_Ports;
 with EVC_Track;
 with Interfaces;             use Interfaces;
+with Sim_Trackside;
 
 package body Sim_RBC is
 
@@ -177,7 +178,7 @@ package body Sim_RBC is
    end Next_Stamp;
 
    --  Packet 15: the EOA at the bench line's EOA from the LRBG, with its
-   --  danger point and a release speed of 25 km/h
+   --  danger point and a release speed of 25 km/h; packets 27 and 21
    procedure Put_MA (R : RBC_State_T; OK : in out Boolean) is
       P : ETCS_Track_Packets.P15.Packet_T;
       LRBG_M : Integer := 0;
@@ -201,6 +202,10 @@ package body Sim_RBC is
       P.V_RELEASEDP := 5;
       ETCS_Track_Packets.P15.Encode (P, W, Done);
       OK := OK and then Done;
+      --  3.7.3.1: the track description to the EOA with the MA (the
+      --  line's SSP and gradient profile from the LRBG)
+      Sim_Trackside.Put_SSP (W, -LRBG_M, OK);
+      Sim_Trackside.Put_Gradients (W, -LRBG_M, OK);
    end Put_MA;
 
    procedure Send (RBC : RBC_T; NID : Natural; Ack_Of : Unsigned_64 := 0) is

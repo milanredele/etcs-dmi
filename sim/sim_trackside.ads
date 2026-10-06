@@ -40,6 +40,15 @@ package Sim_Trackside is
    --  unchanged; Features is the bench page's alternate "features"
    --  track (EVC_Track.Preset_T).
    procedure Build (Preset : EVC_Track.Preset_T := EVC_Track.Default);
+
+   --  The SSP (packet 27) and the gradient profile (packet 21) of the
+   --  track of the last Build, from a location reference From m in rear of
+   --  the mission start: the first group's, and the track description
+   --  Sim_RBC gives with its MA (3.7.3.1)
+   procedure Put_SSP (W : in out Sim_Telegrams.Writer_T; From : Integer;
+                      OK : in out Boolean);
+   procedure Put_Gradients (W : in out Sim_Telegrams.Writer_T;
+                            From : Integer; OK : in out Boolean);
    function Built_OK return Boolean;
    function Current_Preset return EVC_Track.Preset_T;
 

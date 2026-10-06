@@ -564,6 +564,7 @@ package body EVC_Test_Bench is
       RSM_Seen  : Boolean := False;
       Stopped   : Boolean := False;
       Start_Pos : Integer := 0;
+      SR_Given  : Boolean := False;
 
       procedure Cycle (Digest : Boolean) is
       begin
@@ -583,6 +584,7 @@ package body EVC_Test_Bench is
             SoM_Cycle := Cycles;
          end if;
          RSM_Seen := RSM_Seen or else Env.Monitoring = 2;
+         SR_Given := SR_Given or else EVC_Radio_Authority.RBC_SR_Given;
          if Env.Ack_Requested then
             Env.Receive (Env.Brake_Release_Ack);
          end if;
@@ -620,6 +622,15 @@ package body EVC_Test_Bench is
          Cycle (Digest => True);
       end loop;
       Check_Digest ("bench_level2", GNAT.SHA256.Digest (Ctx));
+      --  the state at the end of the golden's cycles
+      Check (SoM_Cycle > 0 and then Env.Level_Code = 5
+             and then Sim_RBC.State (1) = Sim_RBC.Established
+             and then Env.Onboard_RBC mod 2 = 1
+             and then SR_Given,
+             "bench level 2: the start of mission in level 2 with Sim_RBC "
+             & "to 'Start' (5.4.3.2 S1 to S21: the session of 3.5.3.7, 157 "
+             & "answered by 41, 129 acknowledged by 8), the MA request "
+             & "answered by the SR authorisation (message 2, 4.4.11)");
       for I in 1 .. 6_000 loop
          Cycle (Digest => False);
          if RSM_Seen and then Env.Speed_KMH = 0 then
@@ -634,14 +645,6 @@ package body EVC_Test_Bench is
                 & Img (Sim_RBC.Taken) & " messages taken,"
                 & Img (Sim_RBC.Answered) & " answered,"
                 & Img (Sim_RBC.Errors) & " errors");
-      Check (SoM_Cycle > 0 and then Env.Level_Code = 5
-             and then Sim_RBC.State (1) = Sim_RBC.Established
-             and then Env.Onboard_RBC mod 2 = 1
-             and then EVC_Radio_Authority.RBC_SR_Given,
-             "bench level 2: the start of mission in level 2 with Sim_RBC "
-             & "to 'Start' (5.4.3.2 S1 to S21: the session of 3.5.3.7, 157 "
-             & "answered by 41, 129 acknowledged by 8), the MA request "
-             & "answered by the SR authorisation (message 2, 4.4.11)");
       --  The on-board does not yet propose SR on the SR authorisation
       --  (5.4.3.2 S21 -> S24, E26 / E27; EVC_Mission leaves it to the
       --  authority half, which keeps it in SR_Authorised and does not

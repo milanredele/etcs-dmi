@@ -59,42 +59,79 @@ package body Sim_Trackside is
       end if;
    end Put_Linking;
 
+   --  A profile of segments (their start, m from the mission start, and
+   --  value) from a location reference From m in rear of the mission
+   --  start: the segment in force at the reference at distance 0 (the
+   --  first one when the reference is in rear of them all), the later
+   --  ones by their distance to the one before, then the end mark at
+   --  Profiles_End_M; a segment behind the reference is left out
+   type Segment_T is record
+      Start_M, Value : Integer;
+   end record;
+   type Segment_List is array (Positive range <>) of Segment_T;
+
+   function Profile (Segments : Segment_List; From : Integer)
+     return Profile_List
+   is
+      Ref : constant Integer := -From;
+      K   : Positive := Segments'First;
+   begin
+      for J in Segments'Range loop
+         if J > Segments'First and then Segments (J).Start_M <= Ref then
+            K := J;
+         end if;
+      end loop;
+      declare
+         Res  : Profile_List (1 .. Segments'Last - K + 2);
+         Prev : Integer := Ref;
+      begin
+         Res (1) := (D_M => 0, Value => Segments (K).Value);
+         for J in K + 1 .. Segments'Last loop
+            Res (J - K + 1) :=
+              (D_M   => Natural'Max (0, Segments (J).Start_M - Prev),
+               Value => Segments (J).Value);
+            Prev := Segments (J).Start_M;
+         end loop;
+         Res (Res'Last) :=
+           (D_M => Natural'Max (0, Profiles_End_M - Prev), Value => End_Mark);
+         return Res;
+      end;
+   end Profile;
+
+   procedure Put_SSP (W : in out Writer_T; From : Integer;
+                      OK : in out Boolean)
+   is
+      L : Segment_List (MRSP'Range);
+   begin
+      for I in MRSP'Range loop
+         L (I) := (MRSP (I).Start_M, MRSP (I).Speed);
+      end loop;
+      Put (W, SSP (Profile (L, From)), OK);
+   end Put_SSP;
+
+   procedure Put_Gradients (W : in out Writer_T; From : Integer;
+                            OK : in out Boolean)
+   is
+      L : Segment_List (EVC_Track.Gradients'Range);
+   begin
+      for I in L'Range loop
+         L (I) := (EVC_Track.Gradients (I).Start_M,
+                   EVC_Track.Gradients (I).Value);
+      end loop;
+      Put (W, Sim_Telegrams.Gradients (Profile (L, From)), OK);
+   end Put_Gradients;
+
    --  The packets of the first group: from its location reference (its
    --  balise 0, From m in rear of the mission start)
    procedure Put_Mission (W : in out Writer_T; Pig : Natural; From : Integer;
                           OK : in out Boolean)
    is
-      Speeds : Profile_List (1 .. MRSP'Length + 1);
-      Slopes : Profile_List (1 .. EVC_Track.Gradients'Length + 1);
    begin
       if Pig = 0 then
          Put (W, National_Values (NID_C), OK);
-         for I in MRSP'Range loop
-            Speeds (I - MRSP'First + 1) :=
-              (D_M   => (if I = MRSP'First then 0
-                         elsif I = MRSP'First + 1
-                         then MRSP (I).Start_M + From
-                         else MRSP (I).Start_M - MRSP (I - 1).Start_M),
-               Value => MRSP (I).Speed);
-         end loop;
-         Speeds (Speeds'Last) :=
-           (Profiles_End_M - MRSP (MRSP'Last).Start_M, End_Mark);
-         Put (W, SSP (Speeds), OK);
+         Put_SSP (W, From, OK);
       else
-         for I in EVC_Track.Gradients'Range loop
-            Slopes (I - EVC_Track.Gradients'First + 1) :=
-              (D_M   => (if I = EVC_Track.Gradients'First then 0
-                         elsif I = EVC_Track.Gradients'First + 1
-                         then EVC_Track.Gradients (I).Start_M + From
-                         else EVC_Track.Gradients (I).Start_M
-                              - EVC_Track.Gradients (I - 1).Start_M),
-               Value => EVC_Track.Gradients (I).Value);
-         end loop;
-         Slopes (Slopes'Last) :=
-           (Profiles_End_M
-              - EVC_Track.Gradients (EVC_Track.Gradients'Last).Start_M,
-            End_Mark);
-         Put (W, Sim_Telegrams.Gradients (Slopes), OK);
+         Put_Gradients (W, From, OK);
          Put (W, MA ((1 => EOA_M + From), V_Main_Kmh => MRSP (1).Speed,
                      Release_Kmh => Release_Speed), OK);
       end if;
