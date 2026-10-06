@@ -1049,6 +1049,57 @@ is
       end if;
    end Evaluate_Stored_Information;
 
+   --  3a. 4.8.5.5 "at the same time" (e5/levels): the level became 2 in
+   --  this cycle (by an order of the stored information or at the
+   --  location of an announced one, Evaluate_Modes_And_Levels): the
+   --  transition buffer released at once, its messages judged in level 2
+   --  and taken by the stores before the procedures and the mode machine
+   --  of the cycle (an MA kept for the transition: no trip by [39])
+   procedure Release_Transition_Buffer
+     with Global => (Input  => (Clock_Ms, Current_Mode, EVC_Position.State,
+                                EVC_Odometry.State, EVC_Train_Data.State,
+                                EVC_Train_Inputs.State, EVC_Mission.State,
+                                EVC_Origins.State),
+                     In_Out => (Latched_RTM, EVC_Received.Store,
+                                EVC_Radio_Authority.State,
+                                EVC_Radio_Info.State,
+                                EVC_Stored_Information.State,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State, EVC_Sessions.State))
+   is
+      First    : constant Positive := EVC_Radio_Info.Count + 1;
+      M_Status : ETCS_Message.Status_T;
+      S        : RTM_Session_T;
+      Last     : Natural;
+   begin
+      if not EVC_Levels.Switched_To (L2)
+        or else EVC_Radio_Authority.Buffered = 0
+      then
+         return;
+      end if;
+      EVC_Radio_Authority.Release_At_Transition;
+      for I in 1 .. EVC_Radio_Authority.Buffer_Size loop
+         pragma Loop_Invariant (True);
+         exit when not EVC_Radio_Authority.Has_Released;
+         EVC_Radio_Authority.Take_Released (S, Latched_RTM (1).Data, Last);
+         EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
+                                       M_Status);
+         if M_Status = ETCS_Message.Accepted then
+            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
+         end if;
+      end loop;
+      EVC_Stored_Information.Evaluate_Released
+        (First, Unsigned_64 (Clock_Ms),
+         (Mode        => Current_Mode,
+          Cab_Active  => EVC_Train_Inputs.Desk_Open,
+          TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+          SR_Distance => Current_Mode = M_SR and then SR_Distance.Active,
+          SR_End      => SR_End));
+   end Release_Transition_Buffer;
+
    --  MSG_SPEED_STATE from the result of the speed and distance
    --  monitoring (dmi_protocol.ads: the DMI derives nothing): speeds in
    --  km/h to the nearest, the distance in m rounded down; the dial range
@@ -2521,6 +2572,7 @@ is
       Evaluate_Stored_Information;
       Monitor_Speed_And_Distance (Dt_Ms);
       Evaluate_Modes_And_Levels;
+      Release_Transition_Buffer;
       --  5.17.2.2 E6: the Train Data validated by the driver end the
       --  re-validation the procedures asked
       if EVC_Mission.Train_Data_Validated then

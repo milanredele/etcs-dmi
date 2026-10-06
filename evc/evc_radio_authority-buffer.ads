@@ -56,6 +56,15 @@ is
      with Global => (In_Out => State, Input => EVC_Radio.State),
           Post => Context = C;
 
+   --  4.8.5.5 (e5/levels): the level became 2 in this cycle: the buffer
+   --  released at once, the context of the judgement in level 2
+   procedure Release_At_Transition
+     with Global => (In_Out => State),
+          Post => Buffered = Buffered'Old
+                  and then Has_Released = (Buffered > 0)
+                  and then Context.Level_Valid
+                  and then Context.Level = L2;
+
    --  1. 4.8.5.1, 4.8.5.3: the message Data received on the session S,
    --  judged Stored, kept; the oldest one replaced when the buffer is full
    procedure Store (S : EVC_Radio.Session_T; Data : EVC_Bytes.Byte_Array)

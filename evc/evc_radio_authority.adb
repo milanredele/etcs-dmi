@@ -300,6 +300,11 @@ is
 
    function Has_Released return Boolean is (Buffer.Has_Released);
 
+   procedure Release_At_Transition is
+   begin
+      Buffer.Release_At_Transition;
+   end Release_At_Transition;
+
    procedure Take_Released (S    : out EVC_Radio.Session_T;
                             Data : in out EVC_Bytes.Byte_Array;
                             Last : out Natural) is

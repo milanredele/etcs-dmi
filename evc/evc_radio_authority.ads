@@ -89,6 +89,14 @@ is
    --  Take_Message as received in this cycle
    function Has_Released return Boolean
      with Global => State;
+
+   --  4.8.5.5 "at the same time" (e5/levels): the level became 2 in this
+   --  cycle (EVC_Core, after the levels): the buffer released at once and
+   --  its messages judged in level 2
+   procedure Release_At_Transition
+     with Global => (In_Out => State),
+          Post => Buffered = Buffered'Old
+                  and then Has_Released = (Buffered > 0);
    procedure Take_Released (S    : out EVC_Radio.Session_T;
                             Data : in out EVC_Bytes.Byte_Array;
                             Last : out Natural)

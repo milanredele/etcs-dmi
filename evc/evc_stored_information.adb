@@ -2042,4 +2042,22 @@ is
       Snap.Extra.Proposal := Proposal;
    end Evaluate;
 
+   -----------------------
+   -- Evaluate_Released --
+   -----------------------
+
+   --  4.8.5.5, 4.8.5.6 (e5/levels)
+   procedure Evaluate_Released (First   : Positive;
+                                Now_Ms  : Unsigned_64;
+                                Context : Mode_Context_T)
+   is
+      T     : constant Origin_Table_T := Origin_Table;
+      Train : constant Train_Frame_T := Train_Frame;
+   begin
+      for I in First .. EVC_Radio_Info.Count loop
+         pragma Loop_Invariant (True);
+         Take_Radio (I, T, Train, Context, Now_Ms);
+      end loop;
+   end Evaluate_Released;
+
 end EVC_Stored_Information;

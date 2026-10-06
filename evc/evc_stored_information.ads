@@ -375,4 +375,22 @@ is
                           < A (Current.Train.Ahead,
                                Current.Gradients.Segments (K + 1).Start));
 
+   --  4.8.5.5 "at the same time" (e5/levels): the radio messages put in
+   --  EVC_Radio_Info after Evaluate in this cycle, from the index First
+   --  on (the transition buffer released at the transition to level 2,
+   --  after the levels), taken as Evaluate takes the cycle's radio
+   --  messages, before the procedures and the mode machine of the cycle.
+   --  The snapshot (Current) is not built again: the next cycle's.
+   procedure Evaluate_Released (First   : Positive;
+                                Now_Ms  : Unsigned_64;
+                                Context : Mode_Context_T)
+     with Global => (In_Out => (State, EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State, EVC_Sessions.State),
+                     Input  => (EVC_Origins.State, EVC_Position.State,
+                                EVC_Odometry.State, EVC_Train_Data.State,
+                                EVC_Radio_Info.State));
+
 end EVC_Stored_Information;

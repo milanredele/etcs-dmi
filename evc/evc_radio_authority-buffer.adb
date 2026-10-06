@@ -80,6 +80,16 @@ is
       Releasing := Level_2 and then Count > 0;             -- 4.8.5.5
    end Update;
 
+   procedure Release_At_Transition
+     with Refined_Global => (In_Out => Ctx, Input => Count,
+                             Output => Releasing)
+   is
+   begin
+      Ctx.Level_Valid := True;
+      Ctx.Level := L2;
+      Releasing := Count > 0;
+   end Release_At_Transition;
+
    procedure Store (S : EVC_Radio.Session_T; Data : EVC_Bytes.Byte_Array)
      with Refined_Global => (In_Out => (Slots, Count))
    is
