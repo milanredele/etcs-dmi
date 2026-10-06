@@ -2526,3 +2526,34 @@ of the retained contact by 3.5.3.4 f); the safe consist length in SM
 (3.15.1.3.3); scenarios of their own for 3.15.1.3.1 c) and 3.15.1.3.9;
 packet 31 (FRMCS); S776cef6c (a text message of the Accepting RBC
 released at the switch is not shown).
+
+### E5 integration after the fifth round (2026-10-06)
+
+Merged on master, in this order: e5/sr-proposal (item 1 of the fourth
+round's list), e5/registration (item 3) and e5/handover (item 2). The
+two last met in `EVC_Sessions` (its children `Network` and `Handover`,
+both kept), in `EVC_Stored_Information` (the order kinds K45 and K131,
+both kept) and in the call list of `evc_test`; one scenario left a
+one-session radio configuration behind and restores the default now.
+The SUBSET-076 baseline on the merged tree: 675 passed, 1669 failed,
+846 blocked (656 / 1733 / 801 before the round), 0 regressions, no
+signature untriaged. Green: check.sh (evc_test 11337), the full proof
+(10692 checks, margin 47726 steps, 4 wide checks), the cross build
+(stack 27136 B), the wasm build and both smoke checks.
+
+Reading tools since this round: `test/tools/outline.py` and
+`doc/SRS/tools/clause.py` (AGENTS.md); the three agents of the round
+used them 12 to 15 times each and read no file whole.
+
+Open after this round, in the order a next round would take them:
+
+1. The leftovers of the three packages, listed at the end of their
+   subsections above: E27 / S25 and the OS / LS / SH proposal on an MA
+   with a mode profile (S30e45cf6), the PT level 2 scenario; FRMCS
+   registration from the port, MSG_RADIO_NETWORKS, 5.10.3.15.2 b),
+   3.5.6.8; 3.15.1.3.2.4, the end of mission with both RBCs
+   (3.15.1.3.4.1), the 4.10 deletion of the order, the safe consist
+   length in SM, the text message of the accepting RBC (S776cef6c).
+2. Item 4 of the fourth round's list (the on-board signatures it reached)
+   and the 52 sequences of S55128ce0.
+3. Chapter 6 in E7 (item 5 of the fourth round's list).
