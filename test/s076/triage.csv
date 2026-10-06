@@ -153,6 +153,14 @@ S31584e9f,onboard,JRU: the selection of override (M_DRIVERACTIONS 14) recorded o
 Saf17a2ce,onboard,JRU: the acknowledgement of OS (M_DRIVERACTIONS 0) not recorded when the request was not for OS
 Sc1c4236f,onboard,JRU: a level selected during the start of mission that does not switch (the level already valid) is not recorded
 S2dde4dd3,onboard,JRU: the driver ID recorded once (event 41 kind 1) where the sequence repeats the header field
+# e5/version (2026-10-06): reached once 2.x / 1.x RBCs are compatible (SV21, SV22)
+Se18f3f0a,E7,"3170200_02/_03/_08, 6060500_09, 6060504_01: 159 to an RBC of X = 1 with packet 3 (the on-board telephone numbers) per the X = 1 translation of 3.6.0 chapter 6 (6.6.3.4.5 [U][6]); 4.0.0 keeps it in the X = 1 layouts of 6.5.1 (chapter 6, E7)"
+Sc18cdb2f,E5,"6060304_01 (SV21, SV22 and SV30 alike, so not the version): 132 expected with packet 1 (position report based on two balise groups, 7.4.3.2); the MA request carries packet 0 (authority half, not analysed in e5/version)"
+Sb6e8acf4,E6,"4080438_01 (SV21, SV22; SV30 stops earlier): the train trips at balise group BG666d in SR level 2 where the sequence stays in SR; balise side, not analysed in e5/version (3.16 consistency / linking, E6)"
+Sd4cbc324,E5,"4080421_02 (SV21, SV22; SV30 stops earlier): a trip expected in Shunting in level 2 at 820 m, the on-board stays in SH; not analysed in e5/version (modes / authority half)"
+S908191ec,onboard,"3060500_05 (SV21, SV22; SV30 stops earlier): the driver's train integrity confirmation (the DMI's Train integrity button) disabled in FS level 2; not analysed in e5/version"
+Scd518a05,model,"4080450_01 (SV21, SV22; SV30 stops earlier): 'Shunting' pressed at 33 km/h per the chart in SR level 2; the DMI enables the button at standstill only (the runner's driver does not stop the train for it, as Sc3626e09)"
+S0e2fe215,onboard,"4080445_01 (SV21, SV22; SV30 stops earlier): JRU 45 recorded at 600 m in OS level 1 where the sequence expects none; not analysed in e5/version"
 # families (after the specific lines)
 ~[workbook train],curves,a braking curve sequence (the ERA workbook's train): our supervision limits are placed metres to tens of metres from the ERA tool's for the train of the workbook (freight trains of 750 m, Freight in P), and the chart speed is a drawing; open point of E3 (needs the ERA tool's numbers); pre-programmed braking models are E6
 ~JRU supervision,curves,the supervision status at a location of the sequence: our limits against the ERA tool's (see the workbook family) and the chart speed

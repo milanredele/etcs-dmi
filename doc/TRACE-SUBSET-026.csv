@@ -64,7 +64,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.3.7.1 3),3,x,,,,,E5,todo,[E5 session]
 3.5.3.7.2,3,x,,,,,E5,todo,[E5 session]
 3.5.3.7.3,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (Initiating: released, set up again) [E5 session]"
-3.5.3.7.4,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (159 repeated); evc_test session_establish [E5 session]
+3.5.3.7.4,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (159 repeated); evc_test session_establish [E5 session]; not awaited from an RBC of 1.x or 2.0 .. 2.2 (6.5.2.2.2: EVC_System_Version.Session_Acknowledged); evc_test version_negotiation [E5 version]"
 3.5.3.7.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (terminated, established again) [E5 session]"
 3.5.3.8,3,x,,,,,E5,partial,"EVC_Sessions.Terminate_Session (being established: aborted, released); c) and e) done, the other conditions with their procedures [E5 session]"
 3.5.3.8 a),3,x,,,,,E5,todo,[E5 session]
@@ -947,40 +947,40 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.3.5.3,3,x,,,,,E5,done,EVC_Sessions.Produce (146 carries the T_TRAIN of the message) [E5 session]
 3.16.4.1,3,x,,,,,E6,todo,
 3.16.4.3,3,x,,,,,E6,todo,
-3.17.2.1,3,x,,,,,E6,todo,
-3.17.2.1.1,3,x,,,,,E6,todo,
-3.17.2.2,3,x,,,,,E6,todo,
-3.17.2.3,3,x,,,,,E6,todo,
-3.17.2.5,3,x,,,,,E6,todo,
-3.17.2.6,3,x,,,,,E6,todo,
-3.17.2.7,3,x,,,,,E6,todo,
-3.17.2.8,3,x,,,,,E6,todo,
-3.17.2.8 a),3,x,,,,,E6,todo,
-3.17.2.8 b),3,x,,,,,E6,todo,
-3.17.2.8 c),3,x,,,,,E6,todo,
-3.17.2.8 d),3,x,,,,,E6,todo,
-3.17.2.8 e),3,x,,,,,E6,todo,
-3.17.2.8.1,3,x,,,,,E6,todo,
-3.17.2.8.2,3,x,,,,,E6,todo,
-3.17.2.9,3,x,,,,,E6,todo,
-3.17.2.9.1,3,x,,,,,E6,todo,
+3.17.2.1,3,x,,,,,E6,done,"EVC_System_Version: the envelope X = 1, 2, 3 (6.4.2), Compatible; evc_test version_negotiation [E5 version]"
+3.17.2.1.1,3,x,,,,,E6,done,"EVC_System_Version.Operated_Y / Operated_Version: 1.1, 2.3, 3.0; evc_test version_negotiation [E5 version]"
+3.17.2.2,3,x,,,,,E6,partial,EVC_System_Version.Operated: one X at a time; what depends on it (the layouts of chapter 6) is E7 [E5 version]
+3.17.2.3,3,x,,,,,E6,todo,"looked at: balise / loop / RIU side, E6 / E7 (no telegram layout but 4.0.0 yet) [E5 version]"
+3.17.2.5,3,x,,,,,E6,todo,"looked at: the order of packet 2 from a balise group, E6 / E7 [E5 version]"
+3.17.2.6,3,x,,,,,E6,todo,"looked at: balise side, E6 / E7 [E5 version]"
+3.17.2.7,3,x,,,,,E6,todo,"looked at: balise side, E6 / E7 [E5 version]"
+3.17.2.8,3,x,,,,,E6,partial,"EVC_System_Version.Follow (EVC_Sessions.Evaluate): the RBC X in level 2 with an established session; the balise side (3.17.2.3 .. .7, 3.17.3.3 .. .4) is E6 / E7 [E5 version]"
+3.17.2.8 a),3,x,,,,,E6,done,EVC_System_Version.Follow: the RBC X operated from the cycle the level is 2; evc_test version_negotiation [E5 version]
+3.17.2.8 b),3,x,,,,,E6,done,EVC_System_Version.Follow: at once in level 2 (message 32); evc_test version_negotiation [E5 version]
+3.17.2.8 c),3,x,,,,,E6,partial,"EVC_System_Version.Follow follows the supervising RBC; the accepting one becomes it with the handover (3.15.1, E5 later) [E5 version]"
+3.17.2.8 d),3,x,,,,,E6,partial,EVC_System_Version.Follow: out of level 2 the version last operated stays; the non-RBC control itself is E6 / E7 [E5 version]
+3.17.2.8 e),3,x,,,,,E6,partial,"EVC_System_Version.Follow: no session, the version last operated stays; the border of 3.15.1 is E5 later, the non-RBC control E6 / E7 [E5 version]"
+3.17.2.8.1,3,x,,,,,E6,todo,"looked at: the balise group checked again with the RBC version: one telegram layout (4.0.0) today, E7 with the layouts of chapter 6 [E5 version]"
+3.17.2.8.2,3,x,,,,,E6,todo,"looked at: as 3.17.2.8.1, E7 [E5 version]"
+3.17.2.9,3,x,,,,,E6,done,"EVC_System_Version.Restore, EVC_Retained.Operated_X (EVC_Core.Save_Retained / Power_Up); evc_test version_retained [E5 version]"
+3.17.2.9.1,3,x,,,,,E6,done,"EVC_System_Version.Restore: the store empty or invalid, the highest (3); evc_test version_retained [E5 version]"
 3.17.3.3,3,x,,,,,E6,todo,
 3.17.3.4,3,x,,,,,E6,todo,
 3.17.3.5,3,x,,,,,E6,todo,
 3.17.3.5 a),3,x,,,,,E6,todo,
 3.17.3.5 b),3,x,,,,,E6,todo,
 3.17.3.5 c),3,x,,,,,E6,todo,
-3.17.3.5 d),3,x,,,,,E6,todo,
+3.17.3.5 d),3,x,,,,,E6,partial,EVC_Core.Read_Telegrams compares with EVC_System_Version.Highest_X; the reaction is EVC_Procedures (4.6.3 [65]) [E5 version]
 3.17.3.5 e),3,x,,,,,E6,todo,
 3.17.3.6,3,x,,,,,E6,todo,
 3.17.3.6 a),3,x,,,,,E6,todo,
 3.17.3.6 b),3,x,,,,,E6,todo,
 3.17.3.6 c),3,x,,,,,E6,todo,
-3.17.3.7,3,x,,,,,E6,todo,
-3.17.3.11,3,x,,,,,E6,todo,
+3.17.3.7,3,x,,,,,E6,done,"EVC_Sessions.Take_Version (EVC_System_Version.Compatible) at each message 32, handover included; evc_test version_negotiation [E5 version]"
+3.17.3.11,3,x,,,,,E6,partial,"ETCS_Message passes an unknown packet over (c) and ignores an unknown message (b), for any version; telling a higher Y from a consistency error is 3.16 (E6); a) balise side E6 / E7 [E5 version]"
 3.17.3.11 a),3,x,,,,,E6,todo,
-3.17.3.11 b),3,x,,,,,E6,todo,
-3.17.3.11 c),3,x,,,,,E6,todo,
+3.17.3.11 b),3,x,,,,,E6,partial,"ETCS_Message: Unknown_Message, the message ignored; the consistency reaction for the same Y is 3.16 (E6) [E5 version]"
+3.17.3.11 c),3,x,,,,,E6,partial,ETCS_Message: the unknown packet passed over by L_PACKET and counted; the consistency reaction for the same Y is 3.16 (E6) [E5 version]
 3.18.2.2,3,x,,,,,E6,todo,
 3.18.2.3,3,x,,,,,E6,todo,
 3.18.2.4,3,x,,,,,E6,todo,
@@ -1886,8 +1886,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.22.5.1 c),5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
 5.22.5.2,5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
 5.22.5.2.1,5,x,,,,,E4,done,a BMM track condition (packet 67) starting within the 300 m ahead of the location of the triggering ends the procedure at its start (EVC_Procedures.BMM_Step); evc_test_procedures Scenario_BMM
-6.4.2.1,6,x,,,,,E7,deferred,E7
-6.4.2.2,6,x,,,,,E7,deferred,E7
+6.4.2.1,6,x,,,,,E7,done,EVC_System_Version.Highest_X: 3.0 [E5 version]
+6.4.2.2,6,x,,,,,E7,done,"EVC_System_Version.Envelope: 1.0 up to 3.0, sent in 159 (EVC_Sessions.Send_159) [E5 version]"
 6.6.2.1.1,6,x,,,,,E7,deferred,E7
 6.6.2.1.2,6,x,,,,,E7,deferred,E7
 6.6.2.1.3,6,x,,,,,E7,deferred,E7

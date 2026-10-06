@@ -2217,3 +2217,54 @@ Open after this round, in the order a next round would take them:
 5. The level 2 line of the bench page (Sim_RBC lacks message 41).
 6. The system version of the RBC (chapter 6, E7): 563 SV21 / SV22
    sequences stop at "159 not sent".
+
+### System version, part of chapter 6 (e5/version, 2026-10-06)
+
+Brought into E5 by the owner's decision of 2026-10-06 (563 SV21 / SV22
+sequences stopped at "159 not sent"); the rest of chapter 6 stays E7.
+
+- **`EVC_System_Version`** (new, SPARK): the envelope 1.0 up to 3.0
+  (6.4.2.1, 6.4.2.2: X = 1, 2, 3; within X the highest Y, 1.1, 2.3, 3.0,
+  3.17.2.1.1), `Compatible`, the operated X (3.17.2.2) and whether the RBC
+  governs it. `Follow`, once a cycle from `EVC_Sessions.Evaluate`
+  (3.17.2.8): the RBC's X is operated while the level is 2 and the
+  session with the supervising RBC is established with a known
+  compatible version (a: from the cycle the transition is executed; b:
+  at once in level 2); out of level 2 or without that session (d, e) the
+  version last operated stays, from which the non-RBC control of
+  3.17.2.3 (E6 / E7) would go on; c comes with the handover (the
+  accepting RBC becomes the supervising one). .8.1 / .8.2 (the balise
+  group of the transition checked again with the new version) wait for
+  the layouts of chapter 6 (E7). `Restore`: the X kept over No Power
+  (3.17.2.9, `EVC_Retained.Operated_X`, saved by
+  `EVC_Core.Save_Retained`, restored by `Power_Up`), the highest when the
+  store is empty (3.17.2.9.1, `Initialise`).
+- **`EVC_Sessions`**: `Compatible` is the envelope's (3.5.3.7 d,
+  3.17.3.7); 159 lists the envelope in packet 2, 3.0 then N_ITER 6 (2.3,
+  2.2, 2.1, 2.0, 1.1, 1.0; decision: every X.Y, as the sequences list them
+  for a 3.x on-board); `Msg_Size` 24 bytes. 6.5.2.2.2 (and 6.5.1.2 for
+  X = 1) replace 3.5.3.7 e) / 3.5.4.6 for an RBC of 1.x or 2.0 .. 2.2: no
+  acknowledgement (38) is awaited from it, 3.5.3.7.4 / .4.1 do not apply
+  (`Session_Acknowledged`).
+- **`EVC_Core`**: the balise check of 3.17.3.5 d) compares with
+  `EVC_System_Version.Highest_X`.
+- 3.17.3.11: `ETCS_Message` already passes an unknown packet over and
+  ignores an unknown message for any version; telling a higher Y from a
+  consistency error of the same Y is 3.16 (E6).
+- Scenarios `EVC_Test_Version` (negotiation with 2.1, 1.1, 2.3, 0.0;
+  retention); `Scenario_Session_Lost_Version` uses X = 4 now.
+- SUBSET-076 runner: 537 / 1962 / 691 (passed / failed / blocked) before;
+  575 / 1870 / 745 after the envelope; 630 / 1762 / 798 after 6.5.2.2.2
+  (SV21 161 -> 203, SV22 167 -> 212, SV30 209 -> 215). Six regressions
+  understood (3060700_01, 3070300_03, 5040300_20 in SV21 / SV22 got
+  further only because the session was terminated for the missing
+  acknowledgement; they now stop where their SV30 twins stop).
+
+Left: the remaining SV21 / SV22 first failures are not version
+behaviour of the session half: chart positions of the workbook train
+(Sf99123ce, Sc70786e6), the balise side (2.x telegrams, E6 / E7), the
+X = 1 layouts (Se18f3f0a: 159 with packet 3 to an X = 1 RBC, E7), and
+signatures triaged to the other halves (test/s076/triage.csv, block
+"e5/version"). Proposal for the generator (not implemented): a
+per-version variant of a message's packet list (159 packet 3 for X = 1)
+would move 6 sequences.
