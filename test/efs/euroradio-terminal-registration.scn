@@ -4,10 +4,10 @@
 frame EURORADIO Terminal registration
 sequence No active connection
 case TestCase1
-clause E5 todo 3.5.6.5 ; efs 3.5.6.5
-clause E5 todo 3.5.6.5 a) ; efs 3.5.6.5.a
-clause E5 todo 3.5.6.5 b) ; efs 3.5.6.5.b
-clause E5 todo 3.5.6.5 c) ; efs 3.5.6.5.c
+clause E5 done 3.5.6.5 ; efs 3.5.6.5
+clause E5 done 3.5.6.5 a) ; efs 3.5.6.5.a
+clause E5 done 3.5.6.5 b) ; efs 3.5.6.5.b
+clause E5 done 3.5.6.5 c) ; efs 3.5.6.5.c
 step Initialize test environment
 sub SubStep1
 init 100.0 FS
@@ -150,10 +150,10 @@ expect efs: EURORADIO.Terminal.Terminal1.NetworkId == '123456' @ deadline=1
 expect efs: EURORADIO.Terminal.Terminal2.NetworkId == '123456' @ deadline=1
 sequence One active connection
 case TestCase1
-clause E5 todo 3.5.6.5 ; efs 3.5.6.5
-clause E5 todo 3.5.6.5 a) ; efs 3.5.6.5.a
-clause E5 todo 3.5.6.5 b) ; efs 3.5.6.5.b
-clause E5 todo 3.5.6.5 c) ; efs 3.5.6.5.c
+clause E5 done 3.5.6.5 ; efs 3.5.6.5
+clause E5 done 3.5.6.5 a) ; efs 3.5.6.5.a
+clause E5 done 3.5.6.5 b) ; efs 3.5.6.5.b
+clause E5 done 3.5.6.5 c) ; efs 3.5.6.5.c
 step Initialize test environment
 sub SubStep1
 init 100.0 FS
