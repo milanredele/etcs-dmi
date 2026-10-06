@@ -231,7 +231,7 @@ is
    end Produce;
 
    procedure Request
-     with Refined_Global => (In_Out => Due)
+     with Refined_Global => (Output => Due)
    is
    begin
       Due := True;
