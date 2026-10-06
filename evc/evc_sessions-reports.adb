@@ -218,15 +218,23 @@ is
    end Send_136;
 
    --  3.6.5.1.4 (decision 3): to the supervising RBC, its session
-   --  established and its connection up
-   procedure Produce (Ctx : EVC_Radio.Context_T) is
+   --  established and its connection up; 3.15.1.3.4, 3.15.1.3.9: to the
+   --  other RBC of a handover likewise
+   procedure Produce (Ctx    : EVC_Radio.Context_T;
+                      Also   : Targets_T := No_Targets;
+                      Forced : Targets_T := No_Targets)
+   is
       Sv : constant R.Session_Ref_T := R.Supervising;
    begin
-      if Due and then Sv /= R.No_Session
-        and then R.Info (R.Session_T (Sv)).State = R.Established
-      then
-         Send_136 (R.Session_T (Sv), Ctx);
-      end if;
+      for S in R.Session_T loop
+         pragma Loop_Invariant (True);
+         if ((Due and then (Sv = R.Session_Ref_T (S) or else Also (S)))
+             or else Forced (S))
+           and then R.Info (S).State = R.Established
+         then
+            Send_136 (S, Ctx);
+         end if;
+      end loop;
       Due := False;
    end Produce;
 

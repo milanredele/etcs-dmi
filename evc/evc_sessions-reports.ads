@@ -82,8 +82,16 @@ is
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T)
      with Global => (In_Out => State);
 
-   --  8. The report due, message 136 with packet 0 or 1 (3.6.5.1.2)
-   procedure Produce (Ctx : EVC_Radio.Context_T)
+   --  e5/handover: sessions beyond the supervising RBC's
+   type Targets_T is array (EVC_Radio.Session_T) of Boolean;
+   No_Targets : constant Targets_T := (others => False);
+
+   --  8. The report due, message 136 with packet 0 or 1 (3.6.5.1.2), to
+   --  the supervising RBC and to Also (3.15.1.3.4: both RBCs of a
+   --  handover); to Forced whether due or not (3.15.1.3.9)
+   procedure Produce (Ctx    : EVC_Radio.Context_T;
+                      Also   : Targets_T := No_Targets;
+                      Forced : Targets_T := No_Targets)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State));

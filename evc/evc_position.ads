@@ -184,6 +184,10 @@ is
       Periodic_Distance  : Boolean := False;  -- b)
       Location_Passed    : Boolean := False;  -- c)
       Immediate          : Boolean := False;  -- e)
+      --  3.15.1.3.1 b), c), 5.15.1.4: the RBC/RBC border (Set_Border)
+      --  passed by the max safe front end, by the min safe rear end
+      Border_Front       : Boolean := False;
+      Border_Rear        : Boolean := False;
    end record;
 
    No_Triggers : constant Triggers_T := (others => False);
@@ -412,6 +416,27 @@ is
    --  The train length of the valid Train Data (phase E4), cm
    procedure Set_Train_Length (Length : Length_T)
      with Global => (In_Out => State);
+
+   --  3.15.1.3.1 b), c) (phase E5, the RBC/RBC handover): the border
+   --  of an RBC transition order, D along the orientation from the
+   --  balise group Ref (an anchor the position keeps, as for packet 58).
+   --  Its passage by the max safe front end and by the min safe rear end
+   --  sets Border_Front and Border_Rear of the triggers once each. OK
+   --  False when Ref is none of the anchors.
+   procedure Set_Border (Ref : Identity_T; D : Length_T; OK : out Boolean)
+     with Global => (In_Out => State, Input => EVC_Odometry.State),
+          Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Status = Status'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
+
+   --  The border forgotten (the order deleted or executed)
+   procedure Delete_Border
+     with Global => (In_Out => State),
+          Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Status = Status'Old;
 
    --  Packet 58 (3.6.5.1.5, 3.6.5.1.7), received by radio (phase E5)
    --  referring to the balise group Ref: one of the anchors the position
