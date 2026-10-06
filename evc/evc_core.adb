@@ -1314,11 +1314,11 @@ is
           Cab_Active => EVC_Train_Inputs.Desk_Open,
           Train_Data_Valid => EVC_Train_Data.Valid,
           TRN_Valid => EVC_Mission.TRN_Status = EVC_Mission.Valid,
-          --  4.8.3 [3] is not applied yet: the acknowledgement (message
-          --  8) of the Train Data sent before the session is established
-          --  is not recognised in the SUBSET-076 sequences of a level 2
-          --  transition (9990600 and others): EVC_Sessions.Mission, left
-          Train_Data_Unacked => False,
+          --  4.8.3 [3] (e5/levels): Train Data sent and their
+          --  acknowledgement (message 8) not received yet. Decision: the
+          --  second bullet (values changed) is taken as any Train Data
+          --  sent again: the on-board does not compare the four values
+          Train_Data_Unacked => EVC_Sessions.Train_Data_Awaited,
           TAF_Confirmed =>
             EVC_Driver_Requests.Selected (EVC_Driver_Requests.TAF_Yes)));
    end Evaluate_Radio;

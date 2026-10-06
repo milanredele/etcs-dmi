@@ -97,6 +97,8 @@ is
      with Refined_Global => N_Rep;
    function EoM_Sent return Natural is (N_EoM)
      with Refined_Global => N_EoM;
+   function Train_Data_Awaited return Boolean is (TD_Awaited)
+     with Refined_Global => TD_Awaited;
 
    procedure Bump (N : in out Natural) is
    begin
