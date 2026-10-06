@@ -10,9 +10,11 @@ with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Message_Catalogue; use ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P42;
+with ETCS_Track_Packets.P131;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
+with EVC_Sessions.Handover;
 with EVC_Sessions.Mission;
 with EVC_Sessions.Reports;
 with Interfaces;             use Interfaces;
@@ -24,6 +26,7 @@ package body EVC_Sessions
                                    Pending, Acks, Ack_N, NV, Ind,
                                    Requesting, Timer_On, Timer_Since,
                                    SB_Shown, Status_List, Status_N,
+                                   EVC_Sessions.Handover.State,
                                    EVC_Sessions.Mission.State,
                                    EVC_Sessions.Reports.State))
 is
@@ -324,11 +327,12 @@ is
    begin
       Ind_Stopped (S, Final_SoM);
       Links (S) := (Release_Due => Release, others => <>);
-      if R.Supervising = R.Session_Ref_T (S)
-        or else R.Accepting = R.Session_Ref_T (S)
-        or else not R.Roles_Consistent
+      if not R.Roles_Consistent or else R.Supervising = R.Session_Ref_T (S)
       then
          R.Set_Roles (R.No_Session, R.No_Session);
+      elsif R.Accepting = R.Session_Ref_T (S) then
+         --  3.15.1 (e5/handover): the Handing Over RBC still supervises
+         R.Set_Roles (R.Supervising, R.No_Session);
       end if;
       R.Reset_Session (S);
    end Close;
@@ -390,6 +394,15 @@ is
          Open (RBC, Radio, Capped);
       end if;
    end Establish;
+
+   procedure Take_Transition (RBC   : EVC_Radio.RBC_Id_T;
+                              Radio : ETCS_Variables.NID_RADIO_T;
+                              Ref   : EVC_Balise_Groups.Identity_T;
+                              D     : EVC_Distances.Length_T)
+   is
+   begin
+      Handover.Take_Order (RBC, Radio, Ref, D);
+   end Take_Transition;
 
    procedure Take_Order (Establish : Boolean;
                          RBC       : EVC_Radio.RBC_Id_T;
@@ -458,6 +471,7 @@ is
       Status_N := 0;
       Mission.Clear;
       Reports.Clear;
+      Handover.Clear;
    end Clear;
 
    --  3.5.3.7 a, 3.5.4.2: the set-up of the safe radio connection of S
@@ -617,6 +631,42 @@ is
       end loop;
    end Take_Radio_Order;
 
+   --  3.15.1.3 (e5/handover): packet 131 of a message of the supervising
+   --  RBC, the border referred to the LRBG of the message (8.4.2.1);
+   --  4.8.2.1 c) exception 2: not from the Accepting RBC (the caller)
+   procedure Take_Radio_Transition
+     with Global => (In_Out => Handover.State, Input => EVC_Received.Store)
+   is
+      pragma Warnings
+        (GNATprove, Off, """Rd"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      Rd : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P131.Packet_T;
+      OK : Boolean;
+   begin
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P131
+         then
+            EVC_Received.Open_Message_Packet (I, Rd);
+            ETCS_Track_Packets.P131.Decode (Rd, P, OK);
+            if OK and then ETCS_Track_Packets.P131.Valid (P)
+              and then P.Q_SCALE <= 2
+            then
+               Handover.Take_Order
+                 (RBC   => (NID_C => P.NID_C, NID_RBC => P.NID_RBC),
+                  Radio => P.NID_RADIO,
+                  Ref   => (NID_C  => NID_C_T (EVC_Received.Last_Value
+                                                 (NID_C) mod 1024),
+                            NID_BG => NID_BG_T (EVC_Received.Last_Value
+                                                  (NID_BG) mod 16384)),
+                  D     => EVC_Distances.Scaled (Natural (P.D_RBCTR),
+                                                 Natural (P.Q_SCALE)));
+            end if;
+         end if;
+      end loop;
+   end Take_Radio_Transition;
+
    procedure Take_Message (S       : EVC_Radio.Session_T;
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
@@ -666,10 +716,32 @@ is
                end if;
             end;
          when others =>
+            if Handover.Old = R.Session_Ref_T (S)
+              and then R.Supervising /= R.Session_Ref_T (S)
+            then
+               --  3.15.1.3.5: from the Handing Over RBC after the switch
+               --  only the order to terminate the session
+               if Kind = Track_M24 then
+                  Take_Radio_Order;
+               end if;
+               return;
+            elsif Handover.Held (S) then
+               --  4.8.2.1 c), 3.15.1.3.6, 4.8.5.2: the Accepting RBC's
+               --  to the transition buffer; exception 1: the session
+               --  management at once
+               if Kind = Track_M24 then
+                  Take_Radio_Order;
+               end if;
+               Verdict := Buffered;
+               return;
+            end if;
             --  3.6.5.1.5: the position report parameters
             Reports.Take_Message;
             if Kind = Track_M24 then
                Take_Radio_Order;
+            end if;
+            if R.Supervising = R.Session_Ref_T (S) then
+               Take_Radio_Transition;
             end if;
             Verdict := Pass;
       end case;
@@ -750,7 +822,8 @@ is
    --  3.5.2.6.1, 3.5.5.1 a): the session management order of the cycle
    procedure Apply_Order (Now : Time_Ms_T)
      with Global => (In_Out => (Order, Links, Pending, R.State,
-                                Ind, Requesting, Timer_On)),
+                                Ind, Requesting, Timer_On),
+                     Input  => Handover.State),
           Post => R.Sessions = R.Sessions'Old
    is
       N : constant R.Session_Count_T := R.Sessions;
@@ -765,6 +838,10 @@ is
             Establish (R.Contact.RBC, R.Contact.Radio, Capped => False,
                        Now => Now);
          end if;
+      elsif Order.Establish and then Handover.Ordered (Order.RBC) then
+         --  4.8.3 [14], 3.5.3.5.2.1 (e5/handover): the session with the
+         --  Accepting RBC is the handover's, the others are kept
+         null;
       elsif Order.Establish then
          --  4.10.1.4.2 b): the RBC contact of the order is stored; 3.5.3.15:
          --  NID_RADIO "use the short number" goes to the RTM as it is
@@ -772,11 +849,21 @@ is
                          RBC   => Order.RBC, Radio => Order.Radio));
          Establish (Order.RBC, Order.Radio, Capped => False, Now => Now);
       else
-         Pending := (others => <>);
-         for S in Session_T loop
-            pragma Loop_Invariant (R.Sessions = N);
-            Terminate_Session (S, Now);
-         end loop;
+         --  e5/handover: the session with the RBC of the order when there
+         --  is one (3.15.1.3.5: the Handing Over RBC's), else all
+         declare
+            Named : constant Boolean := R.In_Session_With (Order.RBC);
+         begin
+            if not Named then
+               Pending := (others => <>);
+            end if;
+            for S in Session_T loop
+               pragma Loop_Invariant (R.Sessions = N);
+               if not Named or else R.Info (S).RBC = Order.RBC then
+                  Terminate_Session (S, Now);
+               end if;
+            end loop;
+         end;
       end if;
       Order := (others => <>);
    end Apply_Order;
@@ -864,6 +951,42 @@ is
       end if;
    end Apply_Mission;
 
+   --  3.15.1.3 (e5/handover): the requests of the handover (decision 1
+   --  of EVC_Sessions.Handover: Open only into a free session)
+   procedure Apply_Handover (Now : Time_Ms_T)
+     with Global => (In_Out => (Handover.State, Reports.State, Links,
+                                Pending, R.State, Ind, Requesting,
+                                Timer_On, EVC_Position.State),
+                     Input  => EVC_Odometry.State),
+          Post => R.Sessions = R.Sessions'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Orientation
+                             = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.Status = EVC_Position.Status'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+      Req : Handover.Request_T;
+   begin
+      Handover.Evaluate (Now, Req);
+      if Req.Stop and then R.Usable (Req.Stop_S) then
+         Terminate_Session (Req.Stop_S, Now);
+      end if;
+      if Req.Open then
+         Open (Req.RBC, Req.Radio, Capped => False);
+      end if;
+      if Req.Establish then
+         Establish (Req.RBC, Req.Radio, Capped => False, Now => Now);
+      end if;
+      if Req.Report then
+         Reports.Request;
+      end if;
+   end Apply_Handover;
+
    --  3.17.2.8 (EVC_System_Version): the RBC's X operated in level 2
    --  while the session with the supervising RBC is established and its
    --  version known; else the version last operated stays
@@ -904,6 +1027,7 @@ is
             Establish (P.RBC, P.Radio, P.Capped, Ctx.Now_Ms);
          end if;
       end;
+      Apply_Handover (Ctx.Now_Ms);
       Apply_Mission (Ctx);
       Reports.Evaluate (SoM => Mission.Reporting, Mode => Ctx.Mode);
       Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill);
@@ -1078,8 +1202,26 @@ is
       end loop;
       --  157, 129, 150 (after 159 of the cycle)
       Mission.Produce (Ctx);
-      --  136 (3.6.5), after the SoM position report of the cycle
-      Reports.Produce (Ctx);
+      --  3.15.1.3.3: the Train Data to the Accepting RBC
+      declare
+         TD     : constant R.Session_Ref_T := Handover.Train_Data_To;
+         Also   : Reports.Targets_T := Reports.No_Targets;
+         Forced : Reports.Targets_T := Reports.No_Targets;
+      begin
+         if TD /= R.No_Session and then R.Usable (R.Session_T (TD)) then
+            Mission.Send_Train_Data (R.Session_T (TD), Ctx);
+            Handover.Train_Data_Sent;
+         end if;
+         for S in Session_T loop
+            pragma Loop_Invariant (True);
+            Also (S) := Handover.Also_Reported (S);
+            Forced (S) := Handover.Forced_Report (S);
+         end loop;
+         --  136 (3.6.5), after the SoM position report of the cycle;
+         --  3.15.1.3.4, 3.15.1.3.9: to the other RBC of a handover too
+         Reports.Produce (Ctx, Also, Forced);
+         Handover.Produced;
+      end;
       --  the system status messages of the cycle were sent (EVC_Core)
       Status_N := 0;
    end Produce;

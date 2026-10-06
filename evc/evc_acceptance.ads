@@ -79,7 +79,9 @@ is
       Reversing_Supervision,  -- 139
       Text_Message,           -- 72, 76 (73, 74 of 7.4.2)
       --  phase E5 (e5/session): from a balise group
-      Session_Management);    -- 42
+      Session_Management,     -- 42
+      --  e5/handover: from a balise group
+      RBC_Transition_Order);  -- 131
 
    type Context_T is record
       Mode             : Mode_T := M_SB;
@@ -126,6 +128,8 @@ is
           --  every level; the exceptions [14] [15] of the table are
           --  phase 2 of e5/session
           when Session_Management => True,
+          --  4.8.3: level 2 only ([15], the radio network, not modelled)
+          when RBC_Transition_Order => L = L2,
           when Reversing_Area | Reversing_Supervision =>
              L = L1 or else C.L1_Announced);
 
@@ -154,33 +158,37 @@ is
           when M_PS =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Stop_SH_On_Desk
-                | Session_Management,                            -- [7]
+                | Session_Management | RBC_Transition_Order,     -- [7] [8]
           when M_SH =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Danger_For_SH
-                | Session_Management,                            -- [7]
+                | Session_Management | RBC_Transition_Order,     -- [7] [8]
           when M_SM =>
              I not in Signalling_Speed | Movement_Authority
                     | Route_Suitability | Braking_Distance
                     | Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
                     | Reversing_Area | Reversing_Supervision,
           when M_FS | M_AD | M_LS | M_OS | M_UN | M_SN =>
-             I not in Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR,
+             I not in Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
+             and then not (C.Mode in M_UN | M_SN
+                           and then I = RBC_Transition_Order),
           when M_SR =>
              I not in Danger_For_SH | Stop_SH_On_Desk,
           when M_SL =>
              I in National_Values | Level_Order | Conditional_Order
-                | Big_Metal_Masses | Session_Management,
+                | Big_Metal_Masses | Session_Management
+                | RBC_Transition_Order,
           when M_NL =>
              I in National_Values | Linking | Level_Order
                 | Conditional_Order | Geographical_Position
                 | Track_Conditions | Big_Metal_Masses
-                | Session_Management,
+                | Session_Management | RBC_Transition_Order,
           when M_TR =>
              I in National_Values | Level_Order | Conditional_Order
                 | TSR | TSR_Revocation | Default_Gradient
                 | Geographical_Position | Track_Conditions
-                | Big_Metal_Masses | Text_Message | Session_Management,
+                | Big_Metal_Masses | Text_Message | Session_Management
+                | RBC_Transition_Order,
           --  [1]: every information of these tables is marked [1] in PT,
           --  rejected in level 1 (in level 2 the RBC's, phase E5)
           when M_PT => False,

@@ -6,6 +6,7 @@ package body EVC_Radio_Authority.Buffer
   with SPARK_Mode => On,
        Refined_State => (State => (Ctx, Slots, Count, Releasing))
 is
+   use type EVC_Radio.Session_Ref_T;
 
    subtype Data_T is EVC_Bytes.Byte_Array (1 .. EVC_Ports.RTM_Max_Length);
 
@@ -47,7 +48,9 @@ is
    end Clear;
 
    --  4.8.5.4 c): the messages of a session no longer established go, the
-   --  others keep their order
+   --  others keep their order; 4.8.5.4 b) (e5/handover): also those of a
+   --  session that is neither the Supervising nor the Accepting RBC's
+   --  (the RBC transition order deleted or replaced)
    procedure Drop_Ended
      with Global => (In_Out => (Slots, Count), Input => EVC_Radio.State)
    is
@@ -56,6 +59,11 @@ is
       for I in 1 .. Buffer_Size loop
          pragma Loop_Invariant (Kept < I and then Kept <= Count'Loop_Entry);
          if I <= Count and then EVC_Radio.Established (Slots (I).Session)
+           and then (EVC_Radio.Supervising
+                       = EVC_Radio.Session_Ref_T (Slots (I).Session)
+                     or else EVC_Radio.Accepting
+                       = EVC_Radio.Session_Ref_T (Slots (I).Session)
+                     or else EVC_Radio.Supervising = EVC_Radio.No_Session)
          then
             Kept := Kept + 1;
             Slots (Kept) := Slots (I);
@@ -77,7 +85,10 @@ is
          Count := 0;                                       -- a)
       end if;
       Drop_Ended;                                          -- c)
-      Releasing := Level_2 and then Count > 0;             -- 4.8.5.5
+      --  4.8.5.5; 4.8.5.2 (e5/handover): not while the Accepting RBC
+      --  does not supervise yet
+      Releasing := Level_2 and then Count > 0
+                     and then not EVC_Radio.Handover;
    end Update;
 
    procedure Release_At_Transition

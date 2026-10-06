@@ -744,9 +744,12 @@ is
                     (Slot.Session, Unsigned_64 (Clock_Ms), Verdict);
                   --  4.8.3 [2], 4.8.5.1: kept in the transition buffer of
                   --  the authority half, or taken
-                  if Verdict /= EVC_Sessions.Pass then
+                  if Verdict = EVC_Sessions.Ignore then
                      null;
-                  elsif EVC_Radio_Authority.To_Buffer then
+                  elsif Verdict = EVC_Sessions.Buffered
+                    or else EVC_Radio_Authority.To_Buffer
+                  then
+                     --  e5/handover: also the Accepting RBC's (4.8.5.2)
                      EVC_Radio_Authority.Store_Message
                        (Slot.Session, Slot.Data (1 .. Slot.Length));
                   else

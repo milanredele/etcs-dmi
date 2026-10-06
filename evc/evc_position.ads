@@ -433,10 +433,12 @@ is
 
    --  The border forgotten (the order deleted or executed)
    procedure Delete_Border
-     with Global => (In_Out => State),
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
                   and then Active_Cab = Active_Cab'Old
-                  and then Status = Status'Old;
+                  and then Status = Status'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
 
    --  Packet 58 (3.6.5.1.5, 3.6.5.1.7), received by radio (phase E5)
    --  referring to the balise group Ref: one of the anchors the position

@@ -681,6 +681,15 @@ is
    pragma Warnings
      (GNATprove, On, """W"" is set by ""Finish_And_Send"" but not used*");
 
+   procedure Send_Train_Data (S : EVC_Radio.Session_T;
+                              Ctx : EVC_Radio.Context_T)
+   is
+   begin
+      if EVC_Train_Data.Valid then
+         Send_TD (S, Ctx, R.T_Train_At (Ctx.Now_Ms));
+      end if;
+   end Send_Train_Data;
+
    procedure Produce (Ctx : EVC_Radio.Context_T) is
       T  : constant T_TRAIN_T := R.T_Train_At (Ctx.Now_Ms);
       Sv : constant R.Session_Ref_T := R.Supervising;

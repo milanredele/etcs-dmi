@@ -83,6 +83,14 @@ is
      with Global => (In_Out => State,
                      Input  => (EVC_Mission.State, EVC_Radio.State));
 
+   --  3.15.1.3.3 (e5/handover): the valid Train Data to the session S
+   --  (the Accepting RBC's), their acknowledgement awaited from it
+   procedure Send_Train_Data (S : EVC_Radio.Session_T;
+                              Ctx : EVC_Radio.Context_T)
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State, EVC_Train_Data.State));
+
    --  8. The messages of the cycle: 157, 129, 150
    procedure Produce (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),

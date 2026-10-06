@@ -343,6 +343,8 @@ package body EVC_Test_Support is
                                or else T.Periodic_Distance,
          Location_Passed    => Seen.Location_Passed
                                or else T.Location_Passed,
+         Border_Front       => Seen.Border_Front or else T.Border_Front,
+         Border_Rear        => Seen.Border_Rear or else T.Border_Rear,
          Immediate          => Seen.Immediate or else T.Immediate);
    end Collect;
    procedure Sample (Moving : Integer) is
