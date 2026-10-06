@@ -19,6 +19,8 @@ with GNAT.SHA256;
 with Interfaces;
 with Sim_JRU;
 with Sim_Onboard_Env;
+with Sim_RBC;
+with EVC_Radio_Authority;
 with Sim_Trackside;
 with Sim_Vehicle;
 
@@ -34,6 +36,7 @@ package body EVC_Test_Bench is
    use type EVC_Distances.Direction_T;
    use type EVC_Core.Time_Ms_T;
    use type Pos.Status_T;
+   use type Sim_RBC.State_T;
    use type ETCS_Variables.NID_BG_T;
    use type ETCS_Variables.Q_DIRLRBG_T;
    use type ETCS_Variables.Q_DLRBG_T;
@@ -532,6 +535,143 @@ package body EVC_Test_Bench is
       Check (Pos.LRBG.X = 2_050 and then Odo.Position = 45_000 - 49_950,
              "odometer wrap: the frame through 0 and back");
    end Scenario_Odometer_Wrap;
+
+   ---------------------------------------------------------------------
+   --  Phase E5: the level 2 line of the bench page (the third track
+   --  choice of test/wasm/index.html, onboard_smoke.js): the default
+   --  track with the radio on (Sim_Onboard_Env.Set_Radio), the scripted
+   --  start of mission in level 2 (5.4.3.2: S1, S2, S3, the session of
+   --  3.5.3.7 with Sim_RBC, the SoM position report 157 answered with 41
+   --  (S10), S12 Train Data acknowledged by 8, S13, 'Start' S20 / S21 /
+   --  S22) and the mission on the MA by radio (message 3, packet 15) to
+   --  the stop in front of the EOA. The first L2_Cycles cycles are the
+   --  golden bench_level2, which the wasm build must reproduce.
+   ---------------------------------------------------------------------
+
+   L2_Cycles : constant := 600;
+
+   procedure Scenario_Bench_Level_2 is
+      package Env renames Sim_Onboard_Env;
+
+      Frames : Stream_Element_Array (1 .. 16_384);
+      Last   : Stream_Element_Offset;
+      Ctx    : GNAT.SHA256.Context := GNAT.SHA256.Initial_Context;
+      Trace  : constant Boolean :=
+        Ada.Environment_Variables.Exists ("BENCH_TRACE");
+      Cycles, FS_Cycle, SoM_Cycle : Natural := 0;
+      Modes_Seen : array (0 .. 255) of Boolean := (others => False);
+      Last_Line : String (1 .. 60) := (others => ' ');
+      RSM_Seen  : Boolean := False;
+      Stopped   : Boolean := False;
+      Start_Pos : Integer := 0;
+
+      procedure Cycle (Digest : Boolean) is
+      begin
+         Env.Step (100);
+         Cycles := Cycles + 1;
+         Env.Take_DMI (Frames, Last);
+         if Digest then
+            GNAT.SHA256.Update (Ctx, Frames (Frames'First .. Last));
+         end if;
+         if Env.Mode_Code <= 255 then
+            Modes_Seen (Env.Mode_Code) := True;
+         end if;
+         if Env.Mode_Code = 2 and then FS_Cycle = 0 then
+            FS_Cycle := Cycles;
+         end if;
+         if Env.SoM_L2_Sent >= 6 and then SoM_Cycle = 0 then
+            SoM_Cycle := Cycles;
+         end if;
+         RSM_Seen := RSM_Seen or else Env.Monitoring = 2;
+         if Env.Ack_Requested then
+            Env.Receive (Env.Brake_Release_Ack);
+         end if;
+         if Trace then
+            declare
+               L : constant String :=
+                 " mode" & Img (Env.Mode_Code) & " lvl" & Img (Env.Level_Code)
+                 & " data" & Img (Env.Onboard_Data)
+                 & " ses" & Img (Env.Onboard_Session)
+                 & " rbc" & Img (Env.Onboard_RBC)
+                 & " wait" & Img (Env.Onboard_Waiting)
+                 & " som" & Img (Env.SoM_L2_Sent)
+                 & " vperm" & Img (Env.V_Perm_KMH)
+                 & " srg" & Boolean'Image (EVC_Radio_Authority.RBC_SR_Given)
+                 & " tk" & Img (Sim_RBC.Taken) & "/" & Img (Sim_RBC.Last_NID_Taken);
+               Pad : String (1 .. 60) := (others => ' ');
+            begin
+               Pad (1 .. Natural'Min (60, L'Length)) :=
+                 L (L'First .. L'First + Natural'Min (60, L'Length) - 1);
+               if Pad /= Last_Line then
+                  Put_Line ("  level2 c" & Img (Cycles) & L
+                            & " x" & Integer'Image (Env.Position_M)
+                            & " rbc-last" & Img (Sim_RBC.Last_NID_Taken));
+                  Last_Line := Pad;
+               end if;
+            end;
+         end if;
+      end Cycle;
+   begin
+      Env.Set_Radio (True);
+      Env.Reset;
+      Env.Set_Desk (0, Auto => True);
+      Start_Pos := Env.Position_M;
+      for I in 1 .. L2_Cycles loop
+         Cycle (Digest => True);
+      end loop;
+      Check_Digest ("bench_level2", GNAT.SHA256.Digest (Ctx));
+      for I in 1 .. 6_000 loop
+         Cycle (Digest => False);
+         if RSM_Seen and then Env.Speed_KMH = 0 then
+            Stopped := True;
+            exit;
+         end if;
+      end loop;
+      Put_Line ("  level 2: start of mission sent by cycle" & Img (SoM_Cycle)
+                & ", FS at cycle" & Img (FS_Cycle) & ", stopped at"
+                & Integer'Image (Env.Position_M) & " m (EOA"
+                & Integer'Image (EVC_Track.EOA_M) & " m), RBC: "
+                & Img (Sim_RBC.Taken) & " messages taken,"
+                & Img (Sim_RBC.Answered) & " answered,"
+                & Img (Sim_RBC.Errors) & " errors");
+      Check (SoM_Cycle > 0 and then Env.Level_Code = 5
+             and then Sim_RBC.State (1) = Sim_RBC.Established
+             and then Env.Onboard_RBC mod 2 = 1
+             and then EVC_Radio_Authority.RBC_SR_Given,
+             "bench level 2: the start of mission in level 2 with Sim_RBC "
+             & "to 'Start' (5.4.3.2 S1 to S21: the session of 3.5.3.7, 157 "
+             & "answered by 41, 129 acknowledged by 8), the MA request "
+             & "answered by the SR authorisation (message 2, 4.4.11)");
+      --  The on-board does not yet propose SR on the SR authorisation
+      --  (5.4.3.2 S21 -> S24, E26 / E27; EVC_Mission leaves it to the
+      --  authority half, which keeps it in SR_Authorised and does not
+      --  read it again): until it does, the line stays in SB at S21.
+      --  Once it does, the scripted driver acknowledges SR (step 7), the
+      --  train reads the first group, reports its position (136) and
+      --  Sim_RBC gives the MA: then FS and the stop are checked, and the
+      --  golden bench_level2 changes (expected, to be reviewed)
+      if Modes_Seen (7) then
+         Check (Env.SoM_L2_Sent = Env.SoM_L2_Steps
+                and then FS_Cycle > SoM_Cycle and then Modes_Seen (2),
+                "bench level 2: SR acknowledged, FS on the MA by radio "
+                & "(message 3, 3.8, 4.6.3)");
+         Check (Stopped and then Env.Position_M <= EVC_Track.EOA_M
+                and then not Env.Failed and then Sim_RBC.Errors = 0,
+                "bench level 2: the train stops in front of the EOA, no "
+                & "failure, every RTM output read by the RBC");
+      else
+         Put_Line ("  level 2: the line waits at S21 in SB: the on-board "
+                   & "proposes no SR on the SR authorisation "
+                   & "(5.4.3.2 E26 / E27 not implemented)");
+         Check (Modes_Seen (1) and then not Modes_Seen (2)
+                and then Env.Position_M = Start_Pos
+                and then not Env.Failed and then Sim_RBC.Errors = 0,
+                "bench level 2: no other mode than SB, the train at its "
+                & "start, no failure, every RTM output read by the RBC");
+      end if;
+      Env.Set_Radio (False);
+      Env.Reset;
+   end Scenario_Bench_Level_2;
 
 
 end EVC_Test_Bench;

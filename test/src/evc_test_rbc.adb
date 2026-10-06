@@ -181,17 +181,21 @@ package body EVC_Test_RBC is
       Check (Sim_RBC.Errors = 4 and then Sim_RBC.Pending = 0,
              "rbc: four outputs it cannot read counted, nothing sent");
 
-      --  the bench: off by default; on, the stub on-board sends nothing
+      --  the bench: off by default; on, the scripted start of mission in
+      --  level 2 (Sim_Onboard_Env) sets up the session with RBC 1
       Check (not Sim_Onboard_Env.Radio, "rbc: off on the bench by default");
       Sim_Onboard_Env.Set_Radio (True);
       Sim_Onboard_Env.Reset;
       for K in 1 .. 50 loop
          Sim_Onboard_Env.Step (100);
       end loop;
-      Sim_Onboard_Env.RBC_Emergency_Stop;
-      Check (Sim_RBC.Errors = 0 and then Sim_RBC.Pending = 0,
+      Check (Sim_RBC.Errors = 0
+             and then Sim_RBC.State (1) = Sim_RBC.Established,
              "rbc: on the bench, the on-board's RTM outputs read without"
-             & " error");
+             & " error, the session of the start of mission established");
+      Sim_Onboard_Env.RBC_Emergency_Stop;
+      Check (Sim_RBC.Pending >= 1,
+             "rbc: on the bench, the emergency stop queued (message 16)");
       Sim_Onboard_Env.Set_Radio (False);
       Sim_RBC.Reset;
    end Scenario_RBC;

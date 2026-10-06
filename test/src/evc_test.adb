@@ -188,6 +188,7 @@ begin
 
    Scenario_Bench_Onboard;
    Scenario_Odometer_Wrap;
+   Scenario_Bench_Level_2;
    Scenario_EMRRLS_Ceiling;
    Scenario_EMRRLS_Target;
    Scenario_EMRRLS_EOA_Target;
