@@ -199,3 +199,7 @@ S41e5392f,E5,"session: 5100400_08, reached since message 8 acknowledges the Trai
 S61d2b0d5,E5,"authority: 9990400_49, reached since message 8 acknowledges the Train Data (e5/session-4): a trip (TR) where the sequence has SB at the driver's acknowledgement; not analysed"
 Sc3626e09,model,4080421_03: 'Exit Shunting' pressed while the train runs at 23 km/h per the chart; the DMI enables the button at standstill only (the runner's driver does not stop the train for it)
 S1d2c2503,E5,"authority: 9990500_16, reached since the position reports: the track ahead free request expected removed when a balise group is passed at 1450 m, the on-board keeps showing it (3.15.5, the end of the request: not analysed)"
+S44acb613,onboard,"e5/levels: 4080407_01 now fails at step 90 (was 65): a later message 9 rejected by 4.8 is answered 138 (the authority's decision 'also when 4.8 rejects it'), the sequence expects no answer; [3] is excepted already, the other rejection reasons to analyse"
+Sbfa49d0b,onboard,"e5/levels: 5100300_07 now reaches level 2 (level 2 available) and trips in FS before the RBC's MA at 500 m (to analyse: the level 1 MA in level 2, 5.10.3.1.4, or its end passed)"
+S5d36d452,onboard,"e5/levels: 5100315_01 / _02 now reach step 63: the JRU driver action of a level 2 selection (00100010 / 00100011 / 00100110) not recorded in the window (to analyse with the JRU of E6)"
+S389c6f32,dmi,"e5/levels: 9990400_45 now reaches step 70: the Adhesion button disabled in level 2 (the DMI's settings window: to analyse)"

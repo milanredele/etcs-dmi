@@ -2217,3 +2217,53 @@ Open after this round, in the order a next round would take them:
 5. The level 2 line of the bench page (Sim_RBC lacks message 41).
 6. The system version of the RBC (chapter 6, E7): 563 SV21 / SV22
    sequences stop at "159 not sent".
+
+### Level transitions to and from level 2 (e5/levels, 2026-10-06)
+
+**Implemented.** 4.8.3 [3] switched on: `Train_Data_Unacked` of
+`EVC_Core.Evaluate_Radio` is `EVC_Sessions.Train_Data_Awaited` (Train
+Data sent, message 8 not received yet). Level 2 available for use
+(5.10.2.4.1 a, `EVC_Levels.Available`). The transition buffer released
+in the cycle of the transition (4.8.5.5 "at the same time"):
+`EVC_Core.Release_Transition_Buffer` after `Evaluate_Modes_And_Levels`
+(`EVC_Radio_Authority.Release_At_Transition`, the messages judged in
+level 2, `EVC_Stored_Information.Evaluate_Released` takes them) before
+the procedures and the mode machine; 5100400_06 no longer trips. The
+sessions of the transitions (`EVC_Level_Sessions`, new, first in
+`Evaluate_Radio`): the driver's change to level 2 establishes the
+session with the stored contact (5.10.3.15.2 a, 3.5.3.4 d); out of
+level 2 a position report when the min safe rear end has passed the
+border (5.10.3.3.3, .6.2, .10.3) or the level change reported by the
+session half (5.10.3.15.3), repeated every 15 s at most 3 times, then
+the session terminated (5.10.3.3.5, .6.5, .10.6, .15.4). Appended to the
+session half: `EVC_Sessions.Train_Data_Awaited`,
+`EVC_Sessions.Request_Position_Report` (`Reports.Request`,
+`Mission.Train_Data_Awaited`). Scenarios in `EVC_Test_Levels`
+(`L2_Buffer_Same_Cycle`, `L2_Driver_Change`, `L2_Exit_By_Order`);
+`EVC_Test_Authority` exports `Establish_Session` and `Radio_MA`.
+
+**Decisions.** (1) Level 2 is always available: the radio equipment of
+5.10.2.4.1 a) is configuration not modelled, one radio taken as working,
+registered or not. (2) 4.8.3 [3], second bullet: any Train Data sent
+again count as changed (the four values are not compared). (3) A
+message 9 rejected by [3] is ignored without 138 (4080407_01; the
+authority's decision "138 also when 4.8 rejects" narrowed). (4) The
+driver's change to level 2 connects to the stored RBC contact, known
+and valid; in SB the start of mission does it (5.4.3.2 D7). (5) The
+border of an exit is where the estimated front end was at the
+transition; the min safe rear end has passed it once the odometer ran
+the train length plus the under-reading of the confidence interval.
+(6) "The order to terminate received" is the supervising session no
+longer established. (7) The released messages' snapshot is the next
+cycle's (the supervision of the cycle of the transition uses the old).
+
+**SUBSET-076.** 537 / 1962 / 691 before; 4.8.3 [3]: 537 / 1962 / 691
+(4 improvements); level 2 available: 554 / 1944 / 692; the buffer in
+the cycle: 554 / 1944 / 692 (42 improvements); the sessions: 555 /
+1943 / 692, 0 regressions.
+
+**Left.** 5.10.3.15.2 b) (the driver's Radio data outside the start of
+mission); 5.15.1.4 (handover, 3.15.1); 3.5.6 (the connection set-up
+waits for a registration the runner gives in 12 sequences: most of the
+147 "connect not requested" are radio infill, E7, or this); the level 2
+line of the bench page (sim/, Sim_RBC).

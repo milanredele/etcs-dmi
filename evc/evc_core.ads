@@ -74,6 +74,7 @@ with EVC_Distances;
 with EVC_Driver_Requests;
 with EVC_JRU_Records;
 with EVC_Levels;
+with EVC_Level_Sessions;
 with EVC_Mission;
 with EVC_Modes;    use EVC_Modes;
 with EVC_Movement_Authority;
@@ -190,6 +191,7 @@ is
                                 EVC_JRU_Records.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
+                                EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State),
                      Input  => EVC_Config.State,
@@ -234,6 +236,7 @@ is
                                 EVC_Position.State, EVC_Levels.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
+                                EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State),
                      Input  => (EVC_Config.State, EVC_Retained.State),
@@ -326,6 +329,7 @@ is
                                 EVC_JRU_Records.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
+                                EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State)),
           Post => Failed = Failed'Old

@@ -230,4 +230,11 @@ is
       Due := False;
    end Produce;
 
+   procedure Request
+     with Refined_Global => (Output => Due)
+   is
+   begin
+      Due := True;
+   end Request;
+
 end EVC_Sessions.Reports;

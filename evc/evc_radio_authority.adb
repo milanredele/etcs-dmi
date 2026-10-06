@@ -300,6 +300,11 @@ is
 
    function Has_Released return Boolean is (Buffer.Has_Released);
 
+   procedure Release_At_Transition is
+   begin
+      Buffer.Release_At_Transition;
+   end Release_At_Transition;
+
    procedure Take_Released (S    : out EVC_Radio.Session_T;
                             Data : in out EVC_Bytes.Byte_Array;
                             Last : out Natural) is
@@ -705,8 +710,12 @@ is
       then
          Count (Rejected_N);
          --  3.8.6.1 c): the RBC is informed of a request to shorten the
-         --  MA rejected (decision: also when 4.8 rejects it)
-         if Kind = ETCS_Message_Catalogue.Track_M9 then
+         --  MA rejected (decision: also when 4.8 rejects it, except by
+         --  4.8.3 [3], the Train Data not acknowledged: ignored without
+         --  an answer, as SUBSET-076 4080407_01 judges; e5/levels)
+         if Kind = ETCS_Message_Catalogue.Track_M9
+           and then not C.Train_Data_Unacked
+         then
             Shortening.Pending := True;
             Shortening.Refused := True;
             Shortening.Session := S;

@@ -235,4 +235,16 @@ is
    function Cycles_Produced return Natural
      with Global => State;
 
+   --  e5/levels, 4.8.3 [3]: Train Data sent to the RBC (129, or 157 with
+   --  packet 11) and not acknowledged yet (message 8)
+   function Train_Data_Awaited return Boolean
+     with Global => State;
+
+   --  e5/levels, 5.10.3.3.3, 5.10.3.3.5, 5.10.3.15.4: a position report
+   --  (136) due to the supervising RBC, sent by the next Produce (with a
+   --  session established)
+   procedure Request_Position_Report
+     with Global => (In_Out => State),
+          Post => Has_Released = Has_Released'Old;
+
 end EVC_Sessions;

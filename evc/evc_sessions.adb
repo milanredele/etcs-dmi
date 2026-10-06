@@ -1068,5 +1068,12 @@ is
      (Reports.Reports_Sent);
    function Report_Parameters_Taken return Natural is
      (Reports.Parameters_Taken);
+   function Train_Data_Awaited return Boolean is
+     (Mission.Train_Data_Awaited);
+
+   procedure Request_Position_Report is
+   begin
+      Reports.Request;
+   end Request_Position_Report;
 
 end EVC_Sessions;

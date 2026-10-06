@@ -595,16 +595,18 @@ package body EVC_Test_Modes is
       Add_Group (Group (20, 200));
       Carry (2, 0, Order_41 ((Lv_2, Lv_1), Order_Now));
       Add_Group (Group (30, 300));
-      Carry (3, 0, Order_41 ((Lv_2, Lv_0), 300, Ack_M => 100));
+      Carry (3, 0, Order_41
+               ((ETCS_Variables.M_LEVELTR_Level_NTC_Specified_By, Lv_0),
+                300, Ack_M => 100));
       Run_X (21_000);
-      Check (ML (2) = L1_Code and then ML (1) = FS_Code,
-             "level: of levels 2 and 1 the on-board selects level 1, "
-             & "level 2 is not available without a radio (5.10.2.4, "
-             & "5.10.2.4.1)");
+      Check (ML (2) = L2_Code and then ML (1) = FS_Code,
+             "level: of levels 2 and 1 the on-board selects level 2, "
+             & "available with its radio (5.10.2.4, 5.10.2.4.1 a); the "
+             & "level 1 MA supervised on (5.10.3.1.4)");
       Run_X (31_000);
       Check (ML (4) = L0_Code,
-             "level: of levels 2 and 0 the one available, level 0, "
-             & "announced (5.10.2.4, 5.10.2.6)");
+             "level: of levels NTC and 0 the one available, level 0, "
+             & "announced (5.10.2.4, 5.10.2.4.1 b, 5.10.2.6)");
       Stand_X (100);
       Send (Action (11, L1_Code));
       Check (ML (4) = No_Code and then E4_Seen (40, 3) = 1

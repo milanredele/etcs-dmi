@@ -115,4 +115,9 @@ is
    function EoM_Sent return Natural
      with Global => State;
 
+   --  4.8.3 [3] (e5/levels): Train Data sent to the RBC and their
+   --  acknowledgement (message 8) not received yet
+   function Train_Data_Awaited return Boolean
+     with Global => State;
+
 end EVC_Sessions.Mission;
