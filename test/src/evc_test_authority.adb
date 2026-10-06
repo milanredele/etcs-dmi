@@ -179,6 +179,13 @@ package body EVC_Test_Authority is
       Establish;
    end Start_L2;
 
+   procedure Establish_Session renames Establish;
+
+   function Radio_MA (NID_BG  : Natural;
+                      Lengths : EVC_Test_Support.Nat_List)
+     return EVC_Bytes.Byte_Array is
+     (MA_Message (NID_BG, MA_Of (Lengths), Stamp));
+
    ---------------------------------------------------------------------
    --  Scenarios
    ---------------------------------------------------------------------

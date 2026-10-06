@@ -240,4 +240,11 @@ is
    function Train_Data_Awaited return Boolean
      with Global => State;
 
+   --  e5/levels, 5.10.3.3.3, 5.10.3.3.5, 5.10.3.15.4: a position report
+   --  (136) due to the supervising RBC, sent by the next Produce (with a
+   --  session established)
+   procedure Request_Position_Report
+     with Global => (In_Out => State),
+          Post => Has_Released = Has_Released'Old;
+
 end EVC_Sessions;

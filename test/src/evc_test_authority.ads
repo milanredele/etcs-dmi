@@ -11,6 +11,9 @@
 --  Run by evc_test (test/src/evc_test.adb); shared machinery is in
 --  EVC_Test_Support.
 
+with EVC_Bytes;
+with EVC_Test_Support;
+
 package EVC_Test_Authority is
 
    procedure Scenario_Radio_MA;
@@ -25,5 +28,14 @@ package EVC_Test_Authority is
    procedure Scenario_Transition_Buffer;
    procedure Scenario_Start_After_Ack;
    procedure Scenario_Track_Ahead_Free;
+
+   --  For EVC_Test_Levels (e5/levels): the session 1 with the RBC 123/1
+   --  established through the writers of EVC_Radio, the Train Data
+   --  acknowledged; message 3 referring to the group NID_BG of country
+   --  123 with the MA of Lengths (MA_Of), an SSP and a gradient
+   procedure Establish_Session;
+   function Radio_MA (NID_BG  : Natural;
+                      Lengths : EVC_Test_Support.Nat_List)
+     return EVC_Bytes.Byte_Array;
 
 end EVC_Test_Authority;

@@ -94,4 +94,9 @@ is
    function Parameters_Taken return Natural
      with Global => State;
 
+   --  e5/levels: a report due for another reason (5.10.3.3.3, 5.10.3.3.5,
+   --  5.10.3.15.4: the exit from level 2), sent by the next Produce
+   procedure Request
+     with Global => (In_Out => State);
+
 end EVC_Sessions.Reports;

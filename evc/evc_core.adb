@@ -399,6 +399,7 @@ is
         (EVC_Config.Current.Radio.Sessions,
          ETCS_Variables.NID_ENGINE_T (EVC_Config.Current.Radio.Engine_Id));
       EVC_Sessions.Clear;
+      EVC_Level_Sessions.Clear;
       EVC_Radio_Authority.Clear;
       EVC_Outbox.Clear;
    end Start;
@@ -1058,9 +1059,9 @@ is
    procedure Release_Transition_Buffer
      with Global => (Input  => (Clock_Ms, Current_Mode, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,
-                                EVC_Train_Inputs.State, EVC_Mission.State,
-                                EVC_Origins.State),
+                                EVC_Train_Inputs.State, EVC_Mission.State),
                      In_Out => (Latched_RTM, EVC_Received.Store,
+                                EVC_Origins.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State,
                                 EVC_Stored_Information.State,
@@ -1323,7 +1324,8 @@ is
                                 EVC_Mission.State, EVC_Train_Data.State),
                      In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio_Info.State, EVC_Position.State)),
+                                EVC_Radio_Info.State, EVC_Position.State,
+                                EVC_Level_Sessions.State)),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
@@ -1337,6 +1339,8 @@ is
                             else not EVC_Position.LRBG.Valid)
    is
    begin
+      --  e5/levels: the sessions of the level transitions (5.10.3)
+      EVC_Level_Sessions.Evaluate (Current_Mode, Unsigned_64 (Clock_Ms));
       EVC_Sessions.Evaluate (Radio_Context);
       --  5.4.3.2 A35: the RBC confirmed the reported position
       --  (e5/session-3); A24, A39: the RBC's answer (41 with the train

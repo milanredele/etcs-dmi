@@ -91,6 +91,7 @@ with EVC_Test_Radio;     use EVC_Test_Radio;
 with EVC_Test_Sessions;  use EVC_Test_Sessions;
 with EVC_Test_RBC;       use EVC_Test_RBC;
 with EVC_Test_Authority; use EVC_Test_Authority;
+with EVC_Test_Levels;    use EVC_Test_Levels;
 with EVC_Test_Procedures;
 with Evc_Test_Touch;
 
@@ -238,6 +239,10 @@ begin
    Scenario_Transition_Buffer;
    Scenario_Start_After_Ack;
    Scenario_Track_Ahead_Free;
+   --  e5/levels: the level transitions to and from level 2
+   Scenario_L2_Buffer_Same_Cycle;
+   Scenario_L2_Driver_Change;
+   Scenario_L2_Exit_By_Order;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

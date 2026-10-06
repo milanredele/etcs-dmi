@@ -1071,4 +1071,9 @@ is
    function Train_Data_Awaited return Boolean is
      (Mission.Train_Data_Awaited);
 
+   procedure Request_Position_Report is
+   begin
+      Reports.Request;
+   end Request_Position_Report;
+
 end EVC_Sessions;
