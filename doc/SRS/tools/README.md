@@ -1,5 +1,15 @@
 # Tools for the specifications
 
+## clause.py
+
+[clause.py](clause.py) answers "what does clause N say" without reading a
+chapter: `clause.py 3.6.5.1.4` prints the clause and its subclauses from
+`sections/*.md` with the section file and the PDF page; `--page` appends
+the PDF page(s) rendered by `pdftotext -layout` (poppler), where a table
+keeps its columns, which the markdown loses; `--page 4:43` renders one
+page; `--grep REGEX` lists the matching lines with their clause and page;
+`--dmi` does the same in the DMI specification (ERA_ERTMS_015560).
+
 ## import_subset026.py
 
 [import_subset026.py](import_subset026.py) imports the SUBSET-026 v4.0.0 PDF bundle as
