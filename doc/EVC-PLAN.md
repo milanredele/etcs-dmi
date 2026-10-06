@@ -2410,3 +2410,31 @@ Open after this round, in the order a next round would take them:
    packet 3 to an X = 1 RBC), the non-RBC determination of the operated
    version (3.17.2.3 to .7, 3.17.3.3/.4, then 3.17.2.8.1/.8.2), 1.x
    balise telegrams (`ETCS_Telegram.Supported`).
+
+### SR proposal on message 2 (e5/sr-proposal, 2026-10-06)
+
+**Implemented.** 5.4.3.2 S21 -> S24 (E26): 'Start' in level 2 with the
+session established waits for the RBC (`EVC_Mission.Waiting_For_RBC`,
+set by `Take_Start`); an SR authorisation taken during the wait
+(`EVC_Radio_Authority.SR_Authorisations`, a saturated count of the
+messages 2 taken, read through `Context_T.SR_Authorisations`) proposes SR
+(`EVC_Mission.Take_RBC_Answer`); the driver's acknowledgement gives SR as
+in level 1 (4.6.3 [8]). The same for 'Start' in PT level 2 (5.11.2.2
+S150 a), S160). The wait ends with a change of mode (E29, the MA allowing
+FS), level or desk. MSG_ONBOARD waiting 3 while it lasts (DMI Table 50
+S7; `EVC_DMI_Port.Waiting_Start`). Scenario
+`EVC_Test_Sessions.Scenario_SoM_L2_SR_Proposal`; the bench's level 2 line
+now reaches SR then FS (`bench_level2` re-recorded, the smoke check
+requires it).
+
+**Decisions.** A count rather than the one-cycle `SR_Authorised`: a
+message 2 released from the transition buffer is taken after
+`EVC_Mission.Evaluate` and the flag is cleared in the same cycle. A
+message 2 without a 'Start' waiting proposes nothing (5.4.3.2 goes to
+S24 from S21 only); its SR distance and list stay with the authority
+half and a later 'Start' waits at S21 again.
+
+**Left.** E27 / S25 and 5.11.2.2 S150 b) / S170: the proposal of OS / LS
+/ SH on an MA with a mode profile; a scenario of its own for PT level 2
+(S150 a); golden_review.py does not dump the bench goldens (reviewed
+with BENCH_TRACE=1).
