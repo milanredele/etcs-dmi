@@ -45,6 +45,7 @@ package body EVC_Position
                                    D_Cycloc,
                                    M_Loc,
                                    Locations,
+                                   Border,
                                    Last_Report_Ms,
                                    Now_Seen,
                                    Last_Report_Travel,
@@ -174,6 +175,10 @@ is
    D_Cycloc           : Length_T := 0;      -- 0: not periodically
    M_Loc              : M_LOC_T := 2;
    Locations          : Locations_T;
+   --  3.15.1.3.1 b), c): the RBC/RBC border, for the max safe front end
+   --  (1) and the min safe rear end (2)
+   type Border_T is array (1 .. 2) of Item_T;
+   Border             : Border_T := (others => No_Item);
    Last_Report_Ms     : Unsigned_64 := 0;
    --  the time of the last Update
    Now_Seen           : Unsigned_64 := 0;
@@ -459,6 +464,8 @@ is
          pragma Loop_Invariant (SOLR_A = A);
          Relocate_Item (Locations (I));
       end loop;
+      Relocate_Item (Border (1));
+      Relocate_Item (Border (2));
       --  the origins of the stored information (phase E3) likewise
       for I in EVC_Origins.Index_T loop
          pragma Loop_Invariant (SOLR_A = A);
@@ -1177,6 +1184,42 @@ is
    --  Report triggers (3.6.5.1.4, 3.6.5.1.5)
    ---------------------------------------------------------------------
 
+   --  3.15.1.3.1 b), c), 5.15.1.4: the RBC/RBC border passed by the max
+   --  safe front end (1), by the min safe rear end (2), as the locations
+   --  of packet 58 (Table 2a); each once
+   procedure Evaluate_Border is
+      Low  : constant Length_T := EVC_Odometry.Low;
+      High : constant Length_T := EVC_Odometry.High;
+   begin
+      if Border (1).Valid then
+         declare
+            It  : constant Item_T := Border (1);
+            Est : constant Dist_T := Estimated (It.Ref, It.Sense, Front_X);
+         begin
+            if Max_Safe (Est, EVC_Location.Doubt_Under
+                                (It.Ref, It.Sense, Low, High)) >= It.D
+            then
+               Triggers.Border_Front := True;
+               Border (1).Valid := False;
+            end if;
+         end;
+      end if;
+      if Border (2).Valid and then Length_Known then
+         declare
+            It  : constant Item_T := Border (2);
+            Est : constant Dist_T := Estimated (It.Ref, It.Sense, Front_X);
+         begin
+            if Diff (Min_Safe (Est, EVC_Location.Doubt_Over
+                                      (It.Ref, It.Sense, Low, High)),
+                     Train_Length) >= It.D
+            then
+               Triggers.Border_Rear := True;
+               Border (2).Valid := False;
+            end if;
+         end;
+      end if;
+   end Evaluate_Border;
+
    procedure Evaluate_Triggers (Mode : Mode_T; Level : Level_T)
    is
       Standstill : constant Boolean := EVC_Odometry.Standstill;
@@ -1229,6 +1272,7 @@ is
             end;
          end if;
       end loop;
+      Evaluate_Border;
    end Evaluate_Triggers;
 
    procedure Evaluate_Periods (Now_Ms : Unsigned_64)
@@ -1322,6 +1366,7 @@ is
       T_Cycloc_Ms := 0;
       D_Cycloc := 0;
       M_Loc := 2;
+      Border := (others => No_Item);
       Locations := (others => No_Item);
       Last_Report_Ms := 0;
       Now_Seen := 0;
@@ -1649,6 +1694,48 @@ is
          Relocate_Item (Locations (K));
       end loop;
    end Set_Report_Parameters;
+
+   ----------------
+   -- Set_Border --
+   ----------------
+
+   procedure Set_Border (Ref : Identity_T; D : Length_T; OK : out Boolean)
+   is
+      A : Anchor_T;
+   begin
+      OK := False;
+      if LRBG_A.Valid and then LRBG_A.Id = Ref then
+         A := LRBG_A;
+      elsif SOLR_A.Valid and then SOLR_A.Id = Ref then
+         A := SOLR_A;
+      else
+         declare
+            Found : constant Natural := Latest (Ref);
+         begin
+            if Found = 0 then
+               return;
+            end if;
+            A := Recent (Found).A;
+         end;
+      end if;
+      OK := True;
+      for K in Border'Range loop
+         Border (K) :=
+           (Valid        => True,
+            Kind         => (if K = 1 then Max_Item else Min_Item),
+            Ref          => A,
+            Sense        => Orient,
+            D            => D,
+            Last_C       => False,
+            Last_C_Later => False);
+         Relocate_Item (Border (K));
+      end loop;
+   end Set_Border;
+
+   procedure Delete_Border is
+   begin
+      Border := (others => No_Item);
+   end Delete_Border;
 
    -----------------
    -- Report_Sent --

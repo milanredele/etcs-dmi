@@ -75,6 +75,7 @@
 pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Text_IO;  use Ada.Text_IO;
+with EVC_Test_Handover;
 with EVC_Test_Support;  use EVC_Test_Support;
 with EVC_Test_Core;      use EVC_Test_Core;
 with EVC_Test_Language;  use EVC_Test_Language;
@@ -230,6 +231,8 @@ begin
    Scenario_Session_EoM;
    Scenario_Session_Reports;
    Scenario_Session_Registration;
+   EVC_Test_Handover.Scenario_Handover_Radio;
+   EVC_Test_Handover.Scenario_Handover_Balise;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_RBC;

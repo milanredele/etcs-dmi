@@ -667,6 +667,8 @@ package body EVC_Test_Sessions is
              "registration: a Radio Network transition order stored and "
              & "the mobile ordered to it at once (3.5.6.5)");
       Auto_Register := True;
+      --  the radio configuration of the scenarios after this one
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Session_Registration;
 
    procedure Scenario_Session_SoM_Level_2 is

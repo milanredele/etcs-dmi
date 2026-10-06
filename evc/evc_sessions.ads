@@ -35,6 +35,7 @@
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Variables;
+with EVC_Balise_Groups;
 with EVC_Bytes;
 with EVC_Config;
 with EVC_Distances;
@@ -106,6 +107,17 @@ is
    procedure Take_Order (Establish : Boolean;
                          RBC       : EVC_Radio.RBC_Id_T;
                          Radio     : ETCS_Variables.NID_RADIO_T)
+     with Global => (In_Out => State),
+          Post => Has_Released = Has_Released'Old;
+
+   --  3.15.1.3 (e5/handover): an RBC transition order (packet 131) of a
+   --  balise group accepted (4.8): the Accepting RBC and its number, the
+   --  border D from the group Ref (D 0: at once); applied by the next
+   --  Evaluate
+   procedure Take_Transition (RBC   : EVC_Radio.RBC_Id_T;
+                              Radio : ETCS_Variables.NID_RADIO_T;
+                              Ref   : EVC_Balise_Groups.Identity_T;
+                              D     : EVC_Distances.Length_T)
      with Global => (In_Out => State),
           Post => Has_Released = Has_Released'Old;
 

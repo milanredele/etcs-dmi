@@ -803,29 +803,29 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.14.3.4,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections; the system status message ""Runaway movement"" (SS 9) while the protection commands the brake (3.14.2.4, 3.14.3.2), found by SUBSET-076 4120100_10"
 3.14.3.5,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"
 3.14.3.6,3,x,,,,,E3,deferred,E4: the position ignores the telegrams while EVC_Brake_Commands watches a movement against the authorised direction
-3.15.1.3.1,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.1 a),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.1 b),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.1 c),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2 a),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2 b),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2 c),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2 d),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2 last sentence,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2.2,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2.3,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.2.4,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.3,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.4,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.4.1,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.5,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.6,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.7,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.8,3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.8 a),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.8 b),3,x,,,,,E5,todo,[E5 session]
-3.15.1.3.9,3,x,,,,,E5,todo,[E5 session]
+3.15.1.3.1,3,x,,,,,E5,done,"EVC_Sessions.Handover: the order of packet 131 (balise, supervising RBC), the session opened beside the other, the border to EVC_Position (Set_Border); evc_test Handover_Radio [E5 session]"
+3.15.1.3.1 a),3,x,,,,,E5,done,EVC_Sessions.Handover.Apply_Order -> EVC_Sessions.Open (3.5.3.5.2.1: the other kept); evc_test Handover_Radio [E5 session]
+3.15.1.3.1 b),3,x,,,,,E5,done,"EVC_Position.Set_Border, Border_Front -> Reports.Request (to both RBCs); evc_test Handover_Radio [E5 session]"
+3.15.1.3.1 c),3,x,,,,,E5,partial,"EVC_Position Border_Rear (min safe rear end, train length known) -> a report to both; no scenario of its own [E5 session]"
+3.15.1.3.2,3,x,,,,,E5,partial,"EVC_Sessions.Handover (decision 2): one session (EVC_Config Radio.Sessions 1): the Accepting RBC set up once the Handing Over session is over; a) to d) taken as fulfilled, 3.5.6.6 with the radio network registration; evc_test Handover_Balise [E5 session]"
+3.15.1.3.2 a),3,x,,,,,E5,partial,taken as fulfilled with one session (EVC_Sessions.Handover decision 2) [E5 session]
+3.15.1.3.2 b),3,x,,,,,E5,partial,EVC_Config Radio.Sessions = 1 (EVC_Sessions.Handover decision 2) [E5 session]
+3.15.1.3.2 c),3,x,,,,,E5,partial,taken as fulfilled (no FRMCS session yet; EVC_Sessions.Handover decision 2) [E5 session]
+3.15.1.3.2 d),3,x,,,,,E5,partial,taken as fulfilled (no radio network type yet; EVC_Sessions.Handover decision 2) [E5 session]
+3.15.1.3.2 last sentence,3,x,,,,,E5,partial,EVC_Sessions.Handover.Evaluate: Establish when the Handing Over session is Idle; 3.5.6.6 not applied; evc_test Handover_Balise [E5 session]
+3.15.1.3.2.2,3,x,,,,,E5,done,EVC_Sessions.Handover.Take_Order replaces the stored order; evc_test Handover_Radio [E5 session]
+3.15.1.3.2.3,3,x,,,,,E5,done,"EVC_Sessions.Handover.Apply_Order: the session of the former Accepting RBC terminated, the supervising one kept; evc_test Handover_Radio [E5 session]"
+3.15.1.3.2.4,3,x,,,,,E5,todo,left: a new order while waiting with one session after the border (EVC_Sessions.Handover) [E5 session]
+3.15.1.3.3,3,x,,,,,E5,partial,"EVC_Sessions.Handover.Train_Data_To -> EVC_Sessions.Mission.Send_Train_Data (129, its 8 awaited); the safe consist length in SM not sent; evc_test Handover_Radio [E5 session]"
+3.15.1.3.4,3,x,,,,,E5,done,EVC_Sessions.Handover.Also_Reported -> EVC_Sessions.Reports.Produce (Also); evc_test Handover_Radio [E5 session]
+3.15.1.3.4.1,3,x,,,,,E5,todo,left: the End of Mission (150) goes to the supervising RBC only (EVC_Sessions.Mission) [E5 session]
+3.15.1.3.5,3,x,,,,,E5,done,EVC_Sessions.Handover.Switch (decision 3: the cycle after the border report); EVC_Sessions.Take_Message: from the retained Handing Over session only packet 42; evc_test Handover_Radio [E5 session]
+3.15.1.3.6,3,x,,,,,E5,done,"EVC_Sessions.Take_Message: verdict Buffered for the Accepting RBC (EVC_Sessions.Handover.Held), the 8 and the session management taken at once; EVC_Core -> EVC_Radio_Authority.Store_Message; evc_test Handover_Radio [E5 session]"
+3.15.1.3.7,3,x,,,,,E5,done,"EVC_Sessions.Handover.Switch: EVC_Radio.Set_Contact (Accepting RBC); at once for D_RBCTR 0; evc_test Handover_Radio, evc_test Handover_Balise [E5 session]"
+3.15.1.3.8,3,x,,,,,E5,partial,EVC_Sessions.Handover.Old_Contact retained; not used by 3.5.3.4 f) yet [E5 session]
+3.15.1.3.8 a),3,x,,,,,E5,done,EVC_Sessions.Handover.Evaluate: dropped when the Handing Over session is Idle; evc_test Handover_Radio [E5 session]
+3.15.1.3.8 b),3,x,,,,,E5,partial,EVC_Sessions.Handover.Delete exists; the 4.10 deletion events are not wired to it yet [E5 session]
+3.15.1.3.9,3,x,,,,,E5,partial,"EVC_Sessions.Handover.Watch_Rear: A.3.1 15 s and 3 repetitions (the values of the radio message repetition), then the session terminated; no scenario of its own [E5 session]"
 3.15.4.1.1,3,x,,,,,E6,done,"packets 138 and 139 replace the stored ones (EVC_Procedures.Take_Packet), also in RV (5.13.1.6, .7); E4 with 5.13"
 3.15.4.2.1,3,x,,,,,E6,done,the end of the area received last is the reference of the distance to run (EVC_Procedures); E4 with 5.13
 3.15.4.3,3,x,,,,,E6,done,"packets 138 and 139 replace the stored ones (EVC_Procedures.Take_Packet), also in RV (5.13.1.6, .7); E4 with 5.13"
@@ -957,9 +957,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.17.2.8,3,x,,,,,E6,partial,"EVC_System_Version.Follow (EVC_Sessions.Evaluate): the RBC X in level 2 with an established session; the balise side (3.17.2.3 .. .7, 3.17.3.3 .. .4) is E6 / E7 [E5 version]"
 3.17.2.8 a),3,x,,,,,E6,done,EVC_System_Version.Follow: the RBC X operated from the cycle the level is 2; evc_test version_negotiation [E5 version]
 3.17.2.8 b),3,x,,,,,E6,done,EVC_System_Version.Follow: at once in level 2 (message 32); evc_test version_negotiation [E5 version]
-3.17.2.8 c),3,x,,,,,E6,partial,"EVC_System_Version.Follow follows the supervising RBC; the accepting one becomes it with the handover (3.15.1, E5 later) [E5 version]"
+3.17.2.8 c),3,x,,,,,E6,done,"EVC_Sessions.Follow_Version follows the supervising RBC, the Accepting one from the switch at the border (EVC_Sessions.Handover.Switch) [E5 version]"
 3.17.2.8 d),3,x,,,,,E6,partial,EVC_System_Version.Follow: out of level 2 the version last operated stays; the non-RBC control itself is E6 / E7 [E5 version]
-3.17.2.8 e),3,x,,,,,E6,partial,"EVC_System_Version.Follow: no session, the version last operated stays; the border of 3.15.1 is E5 later, the non-RBC control E6 / E7 [E5 version]"
+3.17.2.8 e),3,x,,,,,E6,partial,"EVC_Sessions.Handover.Switch: no session with the Accepting RBC, no RBC supervises: the version last operated stays (the non-RBC control is E6 / E7) [E5 version]"
 3.17.2.8.1,3,x,,,,,E6,todo,"looked at: the balise group checked again with the RBC version: one telegram layout (4.0.0) today, E7 with the layouts of chapter 6 [E5 version]"
 3.17.2.8.2,3,x,,,,,E6,todo,"looked at: as 3.17.2.8.1, E7 [E5 version]"
 3.17.2.9,3,x,,,,,E6,done,"EVC_System_Version.Restore, EVC_Retained.Operated_X (EVC_Core.Save_Retained / Power_Up); evc_test version_retained [E5 version]"
@@ -1385,11 +1385,11 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.4.2 Table-footnote [13],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half [E5 session]"
 4.8.4.2 Table-footnote [14],4,x,,,,,E4,done,"EVC_Radio_Authority.Take_SH_Answer (the T_TRAIN of the last request, SH_Request_Stamp); evc_test Shunting_L2 [E5 authority]"
 4.8.5.1,4,x,,,,,E4,done,"EVC_Radio_Authority.Buffer (three messages of the RBC stored by 4.8.3 [2], kept as received); evc_test Transition_Buffer; the balise information of [1] is accepted at once (EVC_Acceptance) [E5 authority]"
-4.8.5.2,4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2]) [E5 session]"
+4.8.5.2,4,x,,,,,E4,done,"EVC_Sessions.Handover.Held, EVC_Radio_Authority.Buffer.Update: not released while EVC_Radio.Handover; evc_test Handover_Radio [E5 session]"
 4.8.5.3,4,x,,,,,E4,done,EVC_Radio_Authority.Buffer.Store; evc_test Transition_Buffer [E5 authority]
-4.8.5.4,4,x,,,,,E4,partial,EVC_Radio_Authority.Buffer.Update: a) and c); b) with the RBC handover [E5 authority]
+4.8.5.4,4,x,,,,,E4,done,"EVC_Radio_Authority.Buffer.Update: a), b) (Drop_Ended: neither supervising nor accepting), c) [E5 session]"
 4.8.5.4 a),4,x,,,,,E4,done,EVC_Radio_Authority.Buffer.Update: deleted when no level 2 transition is announced and the level is not 2 [E5 authority]
-4.8.5.4 b),4,x,,,,,E4,deferred,"the transition buffer: information of 4.8.3 [1] is accepted at once here (EVC_Acceptance), the buffer comes with E5 (RBC handover, [2]) [E5 session]"
+4.8.5.4 b),4,x,,,,,E4,done,"EVC_Radio_Authority.Buffer.Drop_Ended: the messages of a session that lost the Accepting role (the order deleted or replaced, EVC_Sessions.Handover) [E5 session]"
 4.8.5.4 c),4,x,,,,,E4,done,EVC_Radio_Authority.Buffer.Update (Drop_Ended); evc_test Transition_Buffer [E5 authority]
 4.8.5.5,4,x,,,,,E4,done,"EVC_Core.Release_Transition_Buffer after the levels, EVC_Radio_Authority.Release_At_Transition (Buffer), EVC_Stored_Information.Evaluate_Released: in the cycle of the transition, before the procedures and the mode machine (e5/levels); EVC_Core.Read_Released_Messages for the rest; evc_test Transition_Buffer, L2_Buffer_Same_Cycle [E5 authority]"
 4.8.5.6,4,x,,,,,E4,done,"the released messages judged in level 2 and taken as new ones (EVC_Radio_Authority.Take_Message), the stores evaluate them in order (EVC_Stored_Information.Evaluate_Released) before the mode machine of the cycle (e5/levels) [E5 authority]"
@@ -1682,7 +1682,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.13.1.3,5,x,,,,,E4,done,MSG_STATUS reversing at standstill with the front end in the area (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing
 5.13.1.4,5,x,,,,,E4,done,the direction controller in reverse (TIU 6) asks the RV acknowledgement (EVC_Procedures); evc_test_procedures Scenario_Reversing
 5.13.1.5,5,x,,,,,E4,done,4.6.3 [59]; evc_test_procedures Scenario_Reversing
-5.15.1.4,5,x,,,,,E5,todo,[E5 session]
+5.15.1.4,5,x,,,,,E5,done,"EVC_Position Border_Front (the max safe front end), whatever the border group; EVC_Sessions.Handover.Switch; evc_test Handover_Radio [E5 session]"
 5.16.1.2,5,x,,,,,E4,done,"the LX speed restriction enters the MRSP from the location of the substitution to the LX end (EVC_Track_Description.Release_LX, Speed_Elements); evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
 5.16.1.3,5,x,,,,,E4,done,"the LX speed restriction enters the MRSP from the location of the substitution to the LX end (EVC_Track_Description.Release_LX, Speed_Elements); evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
 5.16.1.4,5,x,,,,,E4,done,LX01 in MSG_TRACK_COND when the temporary EOA/SvL of the LX is the MRDT (EVC_SDM.Result_T.LX_MRDT) or at the substitution (EVC_Procedures.LX_Step); 4.6.3 [9] then; evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)

@@ -10,6 +10,8 @@ with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P45;
+with ETCS_Track_Packets.P131;
+with EVC_Balise_Groups;
 with ETCS_Track_Packets.P46;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
@@ -319,7 +321,9 @@ is
       --  consumption (track conditions, 5.18, 5.20)
       K69, K40,
       --  phase E5: the session management order (3.5.2.6.1, e5/session)
-      K42, K45);
+      K42, K45,
+      --  e5/handover: the RBC transition order (3.15.1.3)
+      K131);
 
    function Kind_Of (K : Order_Kind_T) return ETCS_Catalogue.Packet_Kind_T is
      (case K is
@@ -345,7 +349,8 @@ is
          when K69  => ETCS_Catalogue.Track_P69,
          when K40  => ETCS_Catalogue.Track_P40,
          when K42  => ETCS_Catalogue.Track_P42,
-         when K45  => ETCS_Catalogue.Track_P45);
+         when K45  => ETCS_Catalogue.Track_P45,
+         when K131 => ETCS_Catalogue.Track_P131);
 
    --  4.8: the kind of information of a packet (K12: the MA; its
    --  V_MAIN is the signalling related speed restriction)
@@ -370,7 +375,8 @@ is
          --  e5/registration: the Radio Network transition order is
          --  filtered as the session management (4.8.3, 4.8.4: its
          --  own rows are left to EVC_Acceptance)
-         when K42 | K45 => EVC_Acceptance.Session_Management);
+         when K42 | K45 => EVC_Acceptance.Session_Management,
+         when K131 => EVC_Acceptance.RBC_Transition_Order);
 
    --  The NID_PACKET of a kind (the record of a rejection)
    function NID_Of (K : Order_Kind_T) return Natural is
@@ -380,7 +386,8 @@ is
          when K66 => 66, when K141 => 141, when K68 => 68, when K39 => 39,
          when K67 => 67, when K70 => 70, when K71 => 71, when K88 => 88,
          when K12 => 12, when K15 => 15, when K80 => 80, when K69 => 69,
-         when K40 => 40, when K42 => 42, when K45 => 45);
+         when K40 => 40, when K42 => 42, when K45 => 45,
+         when K131 => 131);
 
    --  The context of 4.8 of a packet of a group: the mode and the inputs
    --  of the cycle, the level as it is now (an immediate order of the
@@ -889,6 +896,26 @@ is
       end if;
    end Take_Network_Packet;
 
+   --  3.15.1.3 (e5/handover): the RBC transition order to the session
+   --  half, its border referred to the LRBG when the half applies it
+   --  (the group just read; EVC_Sessions.Handover)
+   procedure Take_Transition_Packet (R : in out Reader_T)
+     with Global => (In_Out => EVC_Sessions.State)
+   is
+      X  : ETCS_Track_Packets.P131.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P131.Decode (R, X, OK);
+      if OK and then X.Q_SCALE <= 2 then
+         EVC_Sessions.Take_Transition
+           (RBC   => (NID_C => X.NID_C, NID_RBC => X.NID_RBC),
+            Radio => X.NID_RADIO,
+            Ref   => EVC_Balise_Groups.Unknown_Identity,
+            D     => EVC_Distances.Scaled (Natural (X.D_RBCTR),
+                                           Natural (X.Q_SCALE)));
+      end if;
+   end Take_Transition_Packet;
+
    --  The packet of kind K that R reads to its store
    procedure Dispatch (K           : Order_Kind_T;
                        R           : in out Reader_T;
@@ -925,6 +952,8 @@ is
             Take_Session_Packet (R);
          when K45 =>
             Take_Network_Packet (R);
+         when K131 =>
+            Take_Transition_Packet (R);
       end case;
    end Dispatch;
 

@@ -2476,3 +2476,53 @@ D9 / S5 / A43 as a flow (the driver's entries are taken, the steps not
 sequenced); 5.10.3.15.2 b) (the Radio data window outside the start of
 mission); 3.5.6.8 (RIU, E7); the 4.8 rows of the Radio Network
 transition order in `EVC_Acceptance`.
+
+### RBC handover (e5/handover, 2026-10-06)
+
+**Implemented.** `EVC_Sessions.Handover` (private child, part of
+`EVC_Sessions.State`): the RBC transition order (packet 131 by balise,
+`EVC_Acceptance.RBC_Transition_Order` with the rows of 4.8.3 / 4.8.4,
+[8] in PS / SH; by radio from the supervising RBC only, 4.8.2.1 c)
+exception 2), replaced by a newer one (3.15.1.3.2.2, .2.3); the session
+with the Accepting RBC opened beside the other (3.15.1.3.1 a),
+3.5.3.5.2.1) and given the role; Train Data to it once established
+(3.15.1.3.3, `Mission.Send_Train_Data`); reports to both
+(3.15.1.3.4, `Reports.Produce (Also, Forced)`); the border kept by
+`EVC_Position` (`Set_Border`, triggers `Border_Front` / `Border_Rear`,
+3.15.1.3.1 b) c), 5.15.1.4); the switch (3.15.1.3.5, .7, 3.17.2.8 c):
+roles, contact, the Handing Over session and contact retained
+(3.15.1.3.8 a); from it only packet 42 is taken; 3.15.1.3.9 (15 s, 3
+repetitions of A.3.1); messages of the Accepting RBC before the switch
+to the authority's transition buffer (verdict `Buffered`), held while
+`EVC_Radio.Handover`, dropped when the session loses its role (4.8.5.2,
+4.8.5.4 b); 4.8.3 [14] (Se3765f9b); one session only: 3.15.1.3.2.
+Scenarios `EVC_Test_Handover.Scenario_Handover_Radio`, `_Balise`.
+SUBSET-076: 670 passed, 1710 failed, 810 blocked (was 664 / 1725 / 801),
+0 regressions, 41 improvements; baseline re-recorded.
+
+**Decisions.** The switch in the cycle after the border report; a border
+referred to a group the position does not keep: the order is dropped; a
+balise order refers to the LRBG when applied; without a session with the
+Accepting RBC at the switch no RBC supervises until one is established
+(3.17.2.8 e: the version last operated stays); the second session busy:
+the open waits for a free session (never `Establish`, which would
+terminate the supervising one); a terminate order (packet 42 Q_RBC 0)
+ends only the session with its RBC when there is one.
+
+**Edits outside the child** (for the merge with the registration work):
+`EVC_Sessions` spec (`Take_Transition`, `with EVC_Balise_Groups`), body
+(`Refined_State`, `Clear`, `Close` keeps the supervising role when the
+accepting session closes, `Apply_Order` [14] and terminate by RBC,
+`Take_Radio_Transition`, `Take_Message` filters, `Apply_Handover` in
+`Evaluate`, `Produce`); `EVC_Sessions.Reports.Produce` (parameters);
+`EVC_Sessions.Mission.Send_Train_Data`; `EVC_Position` (border);
+`EVC_Acceptance`, `EVC_Stored_Information` (K131);
+`EVC_Radio_Authority.Buffer` (`Drop_Ended`, `Update`); `EVC_Core.
+Read_Radio_Messages` (`Buffered` to `Store_Message`).
+
+**Left.** 3.15.1.3.2.4; 3.15.1.3.4.1 (End of Mission with both);
+3.15.1.3.8 b) (the 4.10 deletion events to `Handover.Delete`) and the use
+of the retained contact by 3.5.3.4 f); the safe consist length in SM
+(3.15.1.3.3); scenarios of their own for 3.15.1.3.1 c) and 3.15.1.3.9;
+packet 31 (FRMCS); S776cef6c (a text message of the Accepting RBC
+released at the switch is not shown).
