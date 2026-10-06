@@ -2366,3 +2366,47 @@ SH -> PS from the report of a mode change).
 on-board shows 0 while it awaits the MA or the SR authorisation, Table
 50 S7); the DMI in the page follows the on-board's answers but its own
 start-up windows are not driven by the scripted frames.
+
+### E5 integration after the fourth round (2026-10-06)
+
+Merged on master, in this order: e5/levels (level 2 available, the
+sessions of the level transitions, the transition buffer released in
+the cycle of the transition, 4.8.3 [3] on), e5/version (the envelope
+1.0 .. 3.0, the negotiation with packet 2, `EVC_System_Version`, no
+session acknowledgement awaited from 1.x / 2.0 .. 2.2 RBCs) and
+e5/bench-3 (the level 2 line of the page). The two on-board branches met
+only in the Globals of `EVC_Core.Evaluate_Radio` (both kept). The
+SUBSET-076 baseline was re-recorded on the merged tree: 656 passed,
+1733 failed, 801 blocked (levels alone 555, version alone 630: the two
+add up, 0 regressions against either). Green: check.sh (evc_test
+11262), the full proof (10483 checks, margin 47726 steps, 4 wide
+checks), the cross build (stack 27096 B), the wasm build and both
+smoke checks.
+
+Open after this round, in the order a next round would take them:
+
+1. **The SR proposal on message 2** after 'Start' in level 2 (5.4.3.2
+   S21 -> S24, E26 / E27): `EVC_Radio_Authority.SR_Authorised` is set and
+   never read, `EVC_Mission` leaves the proposal to the authority half.
+   Found by the bench's level 2 line, which stops at S21; the same gap is
+   signature S55128ce0. With it the line reaches FS by radio (verified
+   with a local patch, not committed): then `bench_level2` is
+   re-recorded and the smoke check's FS expectation tightened. With it:
+   MSG_ONBOARD "waiting" 3 after 'Start' (DMI Table 50 S7).
+2. RBC handover (3.15.1, 5.15.1.4, 4.8.5.2, 4.8.5.4 b, 3.17.2.8 c);
+   the runner routes a second RBC and `EVC_Radio.Accepting` exists.
+3. Radio network registration (3.5.6; the connection set-up waits for
+   it in 12 sequences) and the radio equipment bits of MSG_ONBOARD (the
+   DMI's Radio data buttons; the page's touch route to the level 2 start
+   of mission needs them); 5.10.3.15.2 b).
+4. The on-board signatures the round reached: S44acb613 (a later 138
+   answer to a message 9 rejected by 4.8), Sbfa49d0b (a trip in level 2
+   FS before the RBC's MA, 5100300_07), S5d36d452 (the JRU record of the
+   level selection), Sd4cbc324 (a trip expected in SH level 2),
+   Sc18cdb2f (132 with packet 1), S908191ec (the Train integrity button
+   in FS level 2), S0e2fe215 (a JRU 45 record in OS level 1).
+5. Chapter 6 left in E7: the X = 1 / X = 2 layouts (a per-version packet
+   list of a message in the generator would move 6 sequences: 159 with
+   packet 3 to an X = 1 RBC), the non-RBC determination of the operated
+   version (3.17.2.3 to .7, 3.17.3.3/.4, then 3.17.2.8.1/.8.2), 1.x
+   balise telegrams (`ETCS_Telegram.Supported`).
