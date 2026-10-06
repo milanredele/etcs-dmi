@@ -211,3 +211,5 @@ S44acb613,onboard,"e5/levels: 4080407_01 now fails at step 90 (was 65): a later 
 Sbfa49d0b,onboard,"e5/levels: 5100300_07 now reaches level 2 (level 2 available) and trips in FS before the RBC's MA at 500 m (to analyse: the level 1 MA in level 2, 5.10.3.1.4, or its end passed)"
 S5d36d452,onboard,"e5/levels: 5100315_01 / _02 now reach step 63: the JRU driver action of a level 2 selection (00100010 / 00100011 / 00100110) not recorded in the window (to analyse with the JRU of E6)"
 S389c6f32,dmi,"e5/levels: 9990400_45 now reaches step 70: the Adhesion button disabled in level 2 (the DMI's settings window: to analyse)"
+S52fbd3cd,E5,"registration (e5/registration): reached in 5040300_03 once the connection waits for the registration; the level 2 symbol expected not shown at that step: to analyse with the level transitions"
+Sf95a7750,E5,"registration (e5/registration): reached in 5040300_16; 157 with Q_STATUSLRBG=10 expected: the SoM position report status after the registration branch of 5.4.3.2, to analyse"

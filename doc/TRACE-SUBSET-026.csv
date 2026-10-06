@@ -100,23 +100,23 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.5.3.1,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (156 repeated) [E5 session]
 3.5.5.3.2,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (then terminated) [E5 session]
 3.5.5.6,3,x,,,,,E5,done,EVC_Sessions.Take_Message (Terminating: only 39) [E5 session]
-3.5.6.1,3,x,,,,,E5,todo,[E5 session]
-3.5.6.1 a),3,x,,,,,E5,todo,[E5 session]
-3.5.6.1 b),3,x,,,,,E5,todo,[E5 session]
-3.5.6.1 c),3,x,,,,,E5,todo,[E5 session]
-3.5.6.2,3,x,,,,,E5,todo,[E5 session]
-3.5.6.3,3,x,,,,,E5,todo,[E5 session]
-3.5.6.4,3,x,,,,,E5,todo,[E5 session]
-3.5.6.5,3,x,,,,,E5,todo,[E5 session]
-3.5.6.5 a),3,x,,,,,E5,todo,[E5 session]
-3.5.6.5 b),3,x,,,,,E5,todo,[E5 session]
-3.5.6.5 c),3,x,,,,,E5,todo,[E5 session]
-3.5.6.6,3,x,,,,,E5,todo,[E5 session]
-3.5.6.7,3,x,,,,,E5,todo,[E5 session]
-3.5.6.7 a),3,x,,,,,E5,todo,[E5 session]
-3.5.6.7 b),3,x,,,,,E5,todo,[E5 session]
-3.5.6.7 c),3,x,,,,,E5,todo,[E5 session]
-3.5.6.7 d),3,x,,,,,E5,todo,[E5 session]
+3.5.6.1,3,x,,,,,E5,done,EVC_Sessions.Network: the registration ordered per session mobile (RTM request 3); evc_test Session_Registration [E5 session]
+3.5.6.1 a),3,x,,,,,E5,done,"EVC_Sessions.Network.Power_Up: at the first cycle, whenever GSM-R is installed (decision 3); evc_test Session_Registration [E5 session]"
+3.5.6.1 b),3,x,,,,,E5,done,"EVC_Sessions.Network.Driver_Entries: the driver's GSM-R network (MSG_DRIVER_DATA kind 4, its NID_MN digits); evc_test Session_Registration [E5 session]"
+3.5.6.1 c),3,x,,,,,E5,done,"EVC_Sessions.Network.Take_Order: packet 45 of a balise group or messages 3 / 33 (EVC_Stored_Information K45, filtered as session management) or message 24; evc_test Session_Registration [E5 session]"
+3.5.6.2,3,x,,,,,E5,done,"EVC_Retained.Kept_T.Network, EVC_Core Save_Retained / Power_Up (EVC_Radio.Network); evc_test Session_Registration [E5 session]"
+3.5.6.3,3,x,,,,,E5,done,EVC_Sessions.Network.Power_Up: EVC_Config.Radio_Config_T.Default_MN; evc_test Session_Registration [E5 session]
+3.5.6.4,3,x,,,,,E5,done,EVC_Sessions.Network.Power_Up: EVC_Config.Radio_Config_T.Default_Type (GSM-R); evc_test Session_Registration [E5 session]
+3.5.6.5,3,x,,,,,E5,done,"EVC_Sessions.Network.Take_Order: the type stored, the mobiles not registered to the ordered network ordered; evc_test Session_Registration [E5 session]"
+3.5.6.5 a),3,x,,,,,E5,done,EVC_Sessions.Network.Order (All_Of when the network changed); evc_test Session_Registration [E5 session]
+3.5.6.5 b),3,x,,,,,E5,done,EVC_Sessions.Network.Produce: a mobile whose session is not Idle waits (decision 4); evc_test Session_Registration [E5 session]
+3.5.6.5 c),3,x,,,,,E5,done,EVC_Sessions.Network.Produce: idem (a set-up in progress is a session not Idle); evc_test Session_Registration [E5 session]
+3.5.6.6,3,x,,,,,E5,done,EVC_Sessions.Network.Produce: the registration kept due until the session is Idle; evc_test Session_Registration [E5 session]
+3.5.6.7,3,x,,,,,E5,partial,"EVC_Sessions.Network.Ready, EVC_Sessions.Produce_Session: no set-up request while it does not hold, the order kept (applied to every order, decision 5); the port reports no FRMCS registration (decision 2); evc_test Session_Registration [E5 session]"
+3.5.6.7 a),3,x,,,,,E5,done,EVC_Sessions.Network.Ready; evc_test Session_Registration [E5 session]
+3.5.6.7 b),3,x,,,,,E5,done,EVC_Sessions.Network.Ready; evc_test Session_Registration [E5 session]
+3.5.6.7 c),3,x,,,,,E5,done,EVC_Sessions.Network.Ready (either system registered); evc_test Session_Registration [E5 session]
+3.5.6.7 d),3,x,,,,,E5,done,EVC_Sessions.Network.Ready; evc_test Session_Registration [E5 session]
 3.5.6.8,3,x,,,,,E5,todo,[E5 session]
 3.5.7.1,3,x,,,,,E5,done,"EVC_Sessions.Indication, MSG_STATUS radio (EVC_Core.Send_Status); evc_test session_indication [E5 session]"
 3.5.7.2,3,x,,,,,E5,done,"EVC_Sessions (the connection status timer, 45 s, A.3.1) [E5 session]"
@@ -1050,14 +1050,14 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.4.3.2,3,x,,,,,E6,todo,
 3.18.4.3.4,3,x,,,,,E6,todo,
 3.18.4.3.5,3,x,,,,,E6,todo,
-3.18.4.3.6,3,x,,,,,E6,todo,
-3.18.4.3.6.1,3,x,,,,,E6,todo,
-3.18.4.3.6.1 a),3,x,,,,,E6,todo,
-3.18.4.3.6.1 b),3,x,,,,,E6,todo,
-3.18.4.3.6.2,3,x,,,,,E6,todo,
-3.18.4.3.6.3,3,x,,,,,E6,todo,
-3.18.4.3.6.3 a),3,x,,,,,E6,todo,
-3.18.4.3.6.3 b),3,x,,,,,E6,todo,
+3.18.4.3.6,3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries: Radio Network type (kind 6) and GSM-R network (kind 4) taken at any time the DMI offers them; evc_test Session_Registration [E5 session]
+3.18.4.3.6.1,3,x,,,,,E6,done,"EVC_Sessions.Apply_Network: the sessions terminated, Pending cleared; evc_test Session_Registration [E5 session]"
+3.18.4.3.6.1 a),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
+3.18.4.3.6.1 b),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
+3.18.4.3.6.2,3,x,,,,,E6,partial,"EVC_Sessions.Network: the port offers no list of networks (empty: A29, decision 6); a network named by the driver is ordered; MSG_RADIO_NETWORKS left; evc_test Session_Registration [E5 session]"
+3.18.4.3.6.3,3,x,,,,,E6,done,EVC_Sessions.Network.Invalidate_Contact; evc_test Session_Registration [E5 session]
+3.18.4.3.6.3 a),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
+3.18.4.3.6.3 b),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
 3.18.4.4.2,3,x,x,,,,E6,todo,
 3.18.4.5.1,3,x,,,,,E6,todo,
 3.18.4.5.2,3,x,,,,,E6,todo,
@@ -1625,9 +1625,9 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.10.3.14.4,5,x,,,,,E4,done,EVC_Levels.Take_Conditional; evc_test E4_Level_Orders
 5.10.3.15.2,5,x,,,,,E4,partial,"EVC_Level_Sessions.Driver_To_L2: a) done, b) (the Radio data outside the start of mission) left; in SB the start of mission (EVC_Sessions.Mission D7); evc_test L2_Driver_Change [E5 session]"
 5.10.3.15.2 a),5,x,,,,,E4,done,EVC_Level_Sessions.Driver_To_L2: the stored contact known and valid; evc_test L2_Driver_Change [E5 session]
-5.10.3.15.2 a) 1st bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (decision: the network taken as registered, 3.5.6 not modelled) [E5 session]"
-5.10.3.15.2 a) 2nd bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (decision: the network taken as registered, 3.5.6 not modelled) [E5 session]"
-5.10.3.15.2 a) 3rd bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (decision: the network taken as registered, 3.5.6 not modelled) [E5 session]"
+5.10.3.15.2 a) 1st bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (the registration of 3.5.6.7 holds the set-up request: EVC_Sessions.Network.Ready, e5/registration) [E5 session]"
+5.10.3.15.2 a) 2nd bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (the registration of 3.5.6.7 holds the set-up request: EVC_Sessions.Network.Ready, e5/registration) [E5 session]"
+5.10.3.15.2 a) 3rd bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (the registration of 3.5.6.7 holds the set-up request: EVC_Sessions.Network.Ready, e5/registration) [E5 session]"
 5.10.3.15.2 b),5,x,,,,,E4,deferred,E5: the driver's Radio data outside the start of mission (left by e5/levels) [E5 session]
 5.10.3.15.3,5,x,x,,,,E4,done,"EVC_Sessions.Reports (the level change), EVC_Level_Sessions (the termination awaited); evc_test L2_Driver_Change [E5 session]"
 5.10.3.15.4,5,x,,,,,E4,done,EVC_Level_Sessions.Await_Order; evc_test L2_Driver_Change [E5 session]

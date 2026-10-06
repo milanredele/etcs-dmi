@@ -2438,3 +2438,41 @@ half and a later 'Start' waits at S21 again.
 / SH on an MA with a mode profile; a scenario of its own for PT level 2
 (S150 a); golden_review.py does not dump the bench goldens (reviewed
 with BENCH_TRACE=1).
+
+### Radio network registration (e5/registration, 2026-10-06)
+
+**Done.** `EVC_Sessions.Network` (private child, part of the parent's
+state): the Radio Network type and GSM-R identity stored are
+`EVC_Radio.Network` (new fields `Type_Known`, `Net_Type`; memorized over
+No Power in `EVC_Retained.Kept_T.Network`, 3.5.6.2), the defaults of
+`EVC_Config.Radio_Config_T` (`Systems` both, `Default_Type` GSM-R,
+`Default_MN` 0; not in the image, 3.5.6.3 / 3.5.6.4), the registration
+of each session's mobile from the port's events 5 / 6, the
+registration ordered at power-up (3.5.6.1 a), on the driver's GSM-R
+network (b) and on packet 45 (c; balise groups and messages 3 / 33 via
+`EVC_Stored_Information` K45, message 24 via the session half), held for
+a session not Idle (3.5.6.5 b / c, 3.5.6.6). 3.5.6.7: the set-up
+request stays due in `Produce_Session` while `Network.Ready` does not
+hold. The driver's Radio Network type (kind 6), GSM-R network (kind 4)
+and "mission with one radio system" (kind 7) with 3.18.4.3.6.1 / .3.
+MSG_ONBOARD: radio bits 0-6, radio_wait 2, waiting 1 during A31 while
+not registered (5.4.3.2 S4). "GSM-R network registration failed"
+(entry 34) on event 6 and on the empty list. The test support and the
+SUBSET-076 bench answer a registration request with event 5 in the
+next cycle (`Auto_Register`; `S076_Bench.Registering`), as `Sim_RBC`.
+
+**Decisions.** (1) A session of the port is one GSM-R mobile. (2) The
+port reports no FRMCS registration: FRMCS counts as not registered. (3)
+The power-up registration whenever GSM-R is installed. (4) A mobile
+counts as registered to its former network until its request is sent.
+(5) 3.5.6.7 is applied to every set-up request (D7 / S4, 5.10.3.15.2 a
+ask the same). (6) The port offers no list of networks: the list is
+empty (S3 E3 -> A29); a network named by the driver is taken as its
+NID_MN digits. Packet 45 is filtered by 4.8 as session management.
+
+**Left.** The FRMCS report in the port; MSG_RADIO_NETWORKS (the list,
+3.18.4.3.6.2); the A.3.1 time of S4 (E7 / E71 / E72 -> A42) and D8 /
+D9 / S5 / A43 as a flow (the driver's entries are taken, the steps not
+sequenced); 5.10.3.15.2 b) (the Radio data window outside the start of
+mission); 3.5.6.8 (RIU, E7); the 4.8 rows of the Radio Network
+transition order in `EVC_Acceptance`.
