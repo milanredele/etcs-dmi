@@ -47,6 +47,25 @@ package Onboard_Wasm is
    procedure Set_Track_Preset (Preset : Integer_32)
      with Export, Convention => C, Link_Name => "onboard_set_track_preset";
 
+   -- Phase E5: the scripted RBC (Sim_RBC) behind the RTM port and the
+   -- scripted start of mission in level 2 (1 on, 0 off, the default:
+   -- Sim_Onboard_Env.Set_Radio); kept across Reset, a host calls it before
+   -- Reset. RBC_Emergency_Stop: message 16 from the RBC (a button)
+   procedure Set_Radio (On : Integer_32)
+     with Export, Convention => C, Link_Name => "onboard_set_radio";
+   procedure RBC_Emergency_Stop
+     with Export, Convention => C, Link_Name => "onboard_rbc_emergency_stop";
+   -- The steps of the scripted level 2 start of mission sent
+   -- (0 .. Sim_Onboard_Env.SoM_L2_Steps), the session byte of the last
+   -- MSG_ONBOARD (0 none, 1 being established, 2 or 3 established) and
+   -- the state of RBC 1 (Sim_RBC.State_T'Pos: 0 idle .. 3 established)
+   function SoM_L2_Sent return Integer_32
+     with Export, Convention => C, Link_Name => "onboard_som_l2_sent";
+   function Session return Integer_32
+     with Export, Convention => C, Link_Name => "onboard_session";
+   function RBC_State return Integer_32
+     with Export, Convention => C, Link_Name => "onboard_rbc_state";
+
    -- The train interface inputs besides the desk (Sim_Vehicle,
    -- SUBSET-034 2.5.1, 2.6.4.2): the cab (0 none, 1 A, 2 B; one desk
    -- open at a time), the direction controller of the active cab (0

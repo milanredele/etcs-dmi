@@ -210,6 +210,64 @@ check(ex.onboard_group_count() === 6 && ex.onboard_group_at(1) === -12,
   ex.onboard_reset();
 }
 
+// --- Phase E5: the level 2 line of the page ("Track: level 2 by radio"):
+// --- the default track with Sim_RBC behind the radio and the scripted
+// --- start of mission in level 2 (Sim_Onboard_Env.Set_Radio). The run of
+// --- evc_test Scenario_Bench_Level_2: its first CYCLES cycles are the
+// --- native golden bench_level2 ----------------------------------------
+{
+  ex.onboard_set_radio(1);
+  ex.onboard_reset();
+  ex.onboard_set_desk(0, 1);
+  const h2 = crypto.createHash('sha256');
+  const modes2 = new Set();
+  let somCycle = 0;
+  const cycle2 = (hashed) => {
+    ex.onboard_step(100);
+    for (const f of frames(transmit(ex))) {
+      if (f[0] === MSG_TRACK_LAYOUT || f[0] === MSG_SIM_STATE) continue;
+      if (hashed) h2.update(f);
+    }
+    if (ex.onboard_ack_requested()) receive(ex, ACK);
+    modes2.add(ex.onboard_mode());
+  };
+  for (let i = 0; i < CYCLES; i++) {
+    cycle2(true);
+    if (!somCycle && ex.onboard_som_l2_sent() >= 6) somCycle = i + 1;
+  }
+  const expected2 = fs.readFileSync(
+    path.join(root, 'test', 'golden', 'evc', 'bench_level2.sha256'), 'utf8').trim();
+  const actual2 = h2.digest('hex');
+  check(actual2 === expected2,
+        `bench_level2, the wasm on-board sends the native bytes on the level 2 line`
+        + (actual2 === expected2 ? '' : `\n  expected ${expected2}\n  actual   ${actual2}`));
+  check(somCycle > 0 && ex.onboard_level() === 5 && ex.onboard_session() >= 2
+        && ex.onboard_rbc_state() === 3,
+        `the level 2 start of mission with Sim_RBC to 'Start' (cycle ${somCycle}), `
+        + `the session established (level ${ex.onboard_level()}, session byte `
+        + `${ex.onboard_session()}, RBC state ${ex.onboard_rbc_state()})`);
+  if (modes2.has(7)) {
+    // once the on-board proposes SR on the SR authorisation (5.4.3.2 S24)
+    let stopped = false;
+    for (let i = 0; i < 20_000 && !stopped; i++) {
+      cycle2(false);
+      stopped = modes2.has(2) && ex.onboard_speed() === 0;
+    }
+    check(modes2.has(2) && stopped && ex.onboard_position() < 10_000,
+          `the level 2 line reaches FS on the MA by radio and stops before `
+          + `the EOA: stopped at ${ex.onboard_position()} m`);
+  } else {
+    for (let i = 0; i < 600; i++) cycle2(false);
+    console.log('  level 2: the line waits at S21 in SB: the on-board proposes no SR '
+                + 'on the SR authorisation (5.4.3.2 E26 / E27 not implemented)');
+    check(ex.onboard_failed() === 0 && !modes2.has(2) && ex.onboard_speed() === 0,
+          `the level 2 line: no failure, SB at standstill (modes seen: `
+          + `${[...modes2].sort().join(',')})`);
+  }
+  ex.onboard_set_radio(0);
+  ex.onboard_reset();
+}
+
 // --- The page itself: the ETCS on-board is the default, phase E4's -----
 // --- acceptance ("EVC_Mock is retired from the default page") ----------
 {

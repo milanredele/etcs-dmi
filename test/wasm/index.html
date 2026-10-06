@@ -270,10 +270,11 @@
             <option value="mock">simulator (mock)</option>
           </select>
         </label>
-        <label title="the ETCS on-board's track (EVC_Track.Preset_T): the default mission (start of mission in level 1, SR, FS at the first balise group, the stop at the end of authority) or a second, independent track exercising the procedures the default mission does not (On Sight, a level transition to level 0 and back, override, a Shunting area, a text message); changing it resets the mission">Track:
+        <label title="the ETCS on-board's track (EVC_Track.Preset_T): the default mission (start of mission in level 1, SR, FS at the first balise group, the stop at the end of authority) or a second, independent track exercising the procedures the default mission does not (On Sight, a level transition to level 0 and back, override, a Shunting area, a text message), or the default track in level 2 (phase E5: the scripted RBC Sim_RBC behind the radio, and a scripted driver doing the start of mission in level 2 on the on-board's answers: driver ID, level 2, the RBC contact, the session, Train Data acknowledged by the RBC, train running number, Start; the RBC answers the MA request with an SR authorisation, the MA follows the first position report); changing it resets the mission">Track:
           <select id="track_preset">
             <option value="0" selected>default mission</option>
             <option value="1">features demo</option>
+            <option value="2">level 2 by radio</option>
           </select>
         </label>
         <label>Auto drive <input type="checkbox" id="auto_drive" checked></label>
@@ -313,6 +314,17 @@
           acknowledgement area. The on-board stays in SB and brakes a
           standing train until then; it shows SR, then FS once the first
           balise group is read.
+        </p>
+        <p class="note">
+          <i>Track: level 2 by radio</i> (phase E5) puts the scripted RBC
+          (Sim_RBC) behind the on-board's radio and a scripted driver in
+          the cab: it sends the frames of the start of mission in level 2
+          straight to the on-board, each once the on-board has answered
+          the one before (the DMI shows those answers; the touch route is
+          closed while the on-board does not report its radio equipment
+          to the DMI). Known gap of the on-board: it does not yet propose
+          SR on the RBC's SR authorisation (SUBSET-026 5.4.3.2 S21 to
+          S24), so this line stays in SB after <i>Start</i>.
         </p>
       </details>
       <fieldset class="row" title="SUBSET-034 2.5.1, 2.6.4.2: the desk and train interface inputs the bench offers besides the throttle/brake slider and Auto drive; every driver action (override, shunting, exit/maintain shunting, BMM inhibition, the tunnel toggle, SR speed and distance, acknowledgements, ...) is already on the DMI's own windows (Main, Override, Special), so only these need a bench control">
@@ -1400,7 +1412,11 @@
           if (onboard) {
             onboardFailed = null;
             onboardModeLevel = null;
-            onboardGuarded(() => onboard.onboard_set_track_preset(val('track_preset')));
+            // the third choice is the default track with the radio on
+            // (Sim_Onboard_Env.Set_Radio: Sim_RBC and the scripted start
+            // of mission in level 2)
+            onboardGuarded(() => onboard.onboard_set_track_preset(val('track_preset') === 1 ? 1 : 0));
+            onboardGuarded(() => onboard.onboard_set_radio(val('track_preset') === 2 ? 1 : 0));
             onboardGuarded(() => onboard.onboard_reset());
             balises = null;
             if (onboardMode()) {
@@ -1575,6 +1591,9 @@
           return count === 0 ? 'no track condition item' : items.join(', ');
         }
 
+        // Sim_RBC.State_T
+        const RBC_STATES = ['idle', 'connected', 'initiating', 'established', 'terminating'];
+
         function showOnboard() {
           const ml = onboardModeLevel;
           const cmd = onboard.onboard_tiu_commands(), why = onboard.onboard_tiu_reasons();
@@ -1587,6 +1606,10 @@
             `, brake pipe ${onboard.onboard_brake_pressure()} kPa, controller ` +
             `${['neutral', 'forwards', 'backwards'][onboard.onboard_controller()] ?? '?'}` +
             (onboard.onboard_ack_requested() ? ' | brake release: acknowledge on the DMI' : '') +
+            (val('track_preset') === 2
+              ? ` | radio: RBC 1 ${RBC_STATES[onboard.onboard_rbc_state()] ?? '?'}, ` +
+                `scripted level 2 start of mission step ${onboard.onboard_som_l2_sent()} of 7`
+              : '') +
             (onboardFailed ? ` | FAILED at ${onboardFailed}: silent, emergency brake` : '');
           $('onboard_tc').textContent = 'track conditions (5.20): ' + describeTC();
           const lines = [];
