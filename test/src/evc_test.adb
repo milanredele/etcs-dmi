@@ -89,6 +89,7 @@ with EVC_Test_Config;    use EVC_Test_Config;
 with EVC_Test_Modes;     use EVC_Test_Modes;
 with EVC_Test_Radio;     use EVC_Test_Radio;
 with EVC_Test_Sessions;  use EVC_Test_Sessions;
+with EVC_Test_Version;   use EVC_Test_Version;
 with EVC_Test_RBC;       use EVC_Test_RBC;
 with EVC_Test_Authority; use EVC_Test_Authority;
 with EVC_Test_Levels;    use EVC_Test_Levels;
@@ -226,6 +227,8 @@ begin
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;
+   Scenario_Version_Negotiation;
+   Scenario_Version_Retained;
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;

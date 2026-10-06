@@ -92,6 +92,7 @@ with EVC_Radio_Info;
 with EVC_Received;
 with EVC_Retained;
 with EVC_Sessions;
+with EVC_System_Version;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
@@ -193,7 +194,8 @@ is
                                 EVC_Sessions.State,
                                 EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio_Info.State),
+                                EVC_Radio_Info.State,
+                                EVC_System_Version.State),
                      Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -238,7 +240,8 @@ is
                                 EVC_Sessions.State,
                                 EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio_Info.State),
+                                EVC_Radio_Info.State,
+                                EVC_System_Version.State),
                      Input  => (EVC_Config.State, EVC_Retained.State),
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -331,7 +334,8 @@ is
                                 EVC_Sessions.State,
                                 EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio_Info.State)),
+                                EVC_Radio_Info.State,
+                                EVC_System_Version.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

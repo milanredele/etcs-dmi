@@ -11,6 +11,8 @@
 --      supported levels, "to be revalidated";
 --    - the RBC contact information, "to be revalidated"
 --      (EVC_Radio.RBC_Contact_T, written by EVC_Sessions, phase E5);
+--    - 3.17.2.9: the system version operated (EVC_System_Version; lost,
+--      the highest supported one, 3.17.2.9.1);
 --  not kept: what 4.10 deletes in NP (Train Data, driver ID, train
 --  running number, the MA and the track description, the RBC/RIU system
 --  version, ...). Not yet kept, with the phase that brings it: EOLM
@@ -49,6 +51,9 @@ is
       --  type and its writer, EVC_Sessions, are EVC_Radio's); EVC_Core
       --  saves EVC_Radio.Contact here and restores it at the power-up
       RBC         : EVC_Radio.RBC_Contact_T;
+      --  3.17.2.9: the X of the system version operated
+      Version_Known : Boolean := False;
+      Operated_X    : Natural := 0;
    end record;
 
    --  The empty store
