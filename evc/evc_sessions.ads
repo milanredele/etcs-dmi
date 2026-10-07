@@ -197,6 +197,18 @@ is
    function Registration_Awaited return Boolean
      with Global => State;
 
+   --  e5/registration-2 (3.18.4.3.6.2, EVC_Sessions.Network), for
+   --  EVC_Core: the list of GSM-R networks (MSG_RADIO_NETWORKS) is due
+   --  in this cycle; its networks
+   function Networks_List_Due return Boolean
+     with Global => State;
+   function Networks_Count return Natural
+     with Global => (State, EVC_Radio.State),
+          Post => Networks_Count'Result <= 2;
+   function Networks_Entry (I : Positive) return ETCS_Variables.NID_MN_T
+     with Global => (State, EVC_Radio.State),
+          Pre => I <= 2;
+
    --  3.5.6.1 c), 3.5.6.5: a Radio Network transition order (packet 45)
    --  of a balise group or of the stored information of an RBC message
    procedure Take_Network_Order (Q_Type : Natural;

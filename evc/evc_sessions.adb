@@ -1047,6 +1047,10 @@ is
    function Radio_Bits return Natural is (Network.Radio_Bits);
    function Registration_Awaited return Boolean is
      (Network.Selection_Awaited);
+   function Networks_List_Due return Boolean is (Network.List_Due);
+   function Networks_Count return Natural is (Network.Offered_Count);
+   function Networks_Entry (I : Positive) return ETCS_Variables.NID_MN_T
+   is (Network.Offered (I));
 
    procedure Take_Network_Order (Q_Type : Natural;
                                  NID_MN : ETCS_Variables.NID_MN_T) is

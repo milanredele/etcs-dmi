@@ -276,4 +276,42 @@ is
       Last := Header_Length + Text_Header_Length + Text'Length;
    end Text_Frame;
 
+   --  MSG_RADIO_NETWORKS: the names of the identities of Ids (1 .. Count)
+   procedure Networks_Frame (Count : Natural;
+                             Ids   : Network_Ids_T;
+                             Frame : out Frame_Buffer_T;
+                             Last  : out Natural)
+   is
+      Top   : constant := Header_Length + 2
+                          + Networks_Max * (1 + Network_Name_Max);
+      --  the next free byte; the names start after the count
+      Pos   : Natural range Header_Length + 2 .. Top := Header_Length + 2;
+      N     : Natural range 0 .. Networks_Max := 0;
+      Len   : Natural range 0 .. Network_Name_Max;
+      Digit : Unsigned_32;
+   begin
+      Frame := (others => 0);
+      for I in 1 .. Count loop
+         pragma Loop_Invariant
+           (N <= I - 1
+            and then Pos <= Header_Length + 2 + N * (1 + Network_Name_Max));
+         Len := 0;
+         for D in reverse 0 .. Network_Name_Max - 1 loop
+            pragma Loop_Invariant (Len <= Network_Name_Max - 1 - D);
+            Digit := Shift_Right (Ids (I), 4 * D) and 16#F#;
+            exit when Digit > 9;
+            Len := Len + 1;
+            Frame (Pos + Len) := Byte (Digit) + Character'Pos ('0');
+         end loop;
+         if Len > 0 then
+            Frame (Pos) := Byte (Len);
+            Pos := Pos + 1 + Len;
+            N := N + 1;
+         end if;
+      end loop;
+      Frame (Header_Length + 1) := Byte (N);
+      Put_Header (Frame, MSG_RADIO_NETWORKS, Pos - 1 - Header_Length);
+      Last := Pos - 1;
+   end Networks_Frame;
+
 end EVC_DMI_Port;

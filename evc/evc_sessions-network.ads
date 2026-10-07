@@ -94,4 +94,18 @@ is
    function Selection_Awaited return Boolean
      with Global => State;
 
+   --  3.18.4.3.6.2 (e5/registration-2): the list of GSM-R networks is
+   --  due in this cycle (MSG_RADIO_NETWORKS); the networks it offers,
+   --  the default network of the configuration and the stored one when
+   --  different (decision 6 of e5/registration: the port offers none),
+   --  each named by at least one digit
+   function List_Due return Boolean
+     with Global => State;
+   function Offered_Count return Natural
+     with Global => (State, EVC_Radio.State),
+          Post => Offered_Count'Result <= 2;
+   function Offered (I : Positive) return ETCS_Variables.NID_MN_T
+     with Global => (State, EVC_Radio.State),
+          Pre => I <= 2;
+
 end EVC_Sessions.Network;

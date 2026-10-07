@@ -452,6 +452,28 @@ is
    is ((MSG_TEXT_REMOVE, Text_Remove_Length, 0, 0, 0,
         Byte (Id and 16#FF#), Byte (Shift_Right (Id, 8))));
 
+   --  MSG_RADIO_NETWORKS (common/dmi_protocol.ads): the list of GSM-R
+   --  networks offered to the driver (SUBSET-026 3.18.4.3.6.2): count
+   --  u8, then per network its name, length u8 and Latin-1 bytes. The
+   --  on-board names a network by its NID_MN (7.5.1.88: six BCD digits,
+   --  16#F# filling the end) written as its digits up to the first
+   --  nibble that is not one; an identity without a digit is left out
+   --  (e5/registration-2)
+   MSG_RADIO_NETWORKS : constant Byte := 16#0D#;
+   Networks_Max       : constant := 2;
+   Network_Name_Max   : constant := 6;
+   type Network_Ids_T is array (1 .. Networks_Max) of Unsigned_32;
+
+   procedure Networks_Frame (Count : Natural;
+                             Ids   : Network_Ids_T;
+                             Frame : out Frame_Buffer_T;
+                             Last  : out Natural)
+     with Pre  => Count <= Networks_Max,
+          Post => Last in Header_Length + 1
+                          .. Header_Length + 1
+                             + Networks_Max * (1 + Network_Name_Max)
+                  and then Frame (1) = MSG_RADIO_NETWORKS;
+
    --  MSG_ONBOARD train bit 4: the "BTM alarm reaction inhibition"
    --  function is active (5.22.4.1)
    Train_BMM_Inhibition : constant Bits_T := 16;

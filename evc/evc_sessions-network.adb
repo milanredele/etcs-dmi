@@ -11,7 +11,8 @@ with Interfaces;   use Interfaces;
 package body EVC_Sessions.Network
   with SPARK_Mode => On,
        Refined_State => (State => (Reg, Due, Started, Systems, One_Radio,
-                                   Awaiting, Ordered, Ord_Type, Ord_MN))
+                                   Awaiting, Ordered, Ord_Type, Ord_MN,
+                                   List_Now, Def_MN))
 is
 
    package R renames EVC_Radio;
@@ -39,6 +40,10 @@ is
    Ordered   : Boolean := False;
    Ord_Type  : Natural := 0;
    Ord_MN    : ETCS_Variables.NID_MN_T := 0;
+   --  3.18.4.3.6.2: the list of networks to send in this cycle
+   --  (MSG_RADIO_NETWORKS), the default network of the configuration
+   List_Now  : Boolean := False;
+   Def_MN    : ETCS_Variables.NID_MN_T := 0;
 
    procedure Clear is
    begin
@@ -51,6 +56,8 @@ is
       Ordered := False;
       Ord_Type := 0;
       Ord_MN := 0;
+      List_Now := False;
+      Def_MN := 0;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -207,13 +214,14 @@ is
    --  memorized, and the registration ordered (decision 3)
    procedure Power_Up
      with Global => (In_Out => (R.State, Due),
-                     Output => Systems,
+                     Output => (Systems, Def_MN),
                      Input  => (Reg, EVC_Config.State))
    is
       C : constant EVC_Config.Radio_Config_T := EVC_Config.Current_Radio;
       N : R.Network_T := R.Network;
    begin
       Systems := C.Systems;
+      Def_MN := ETCS_Variables.NID_MN_T (C.Default_MN);
       if not N.Type_Known then
          N.Net_Type := C.Default_Type;
       end if;
@@ -228,13 +236,15 @@ is
    --  GSM-R network and mission with only one radio system
    procedure Driver_Entries (Stop, Failed : in out Boolean)
      with Global => (In_Out => (R.State, Due, One_Radio, Awaiting),
-                     Input  => (Reg, Systems, DR.State))
+                     Output => List_Now,
+                     Input  => (Reg, Systems, Def_MN, DR.State))
    is
       N  : R.Network_T := R.Network;
       B  : EVC_Bytes.Byte;
       MN : ETCS_Variables.NID_MN_T;
       OK : Boolean;
    begin
+      List_Now := False;
       if DR.Entered (DR.Radio_Network_Type) then
          B := DR.Data_Byte (DR.Radio_Network_Type);
          --  DMI Table 43b: 1 FRMCS, 2 FRMCS+GSM-R, 3 GSM-R
@@ -256,8 +266,10 @@ is
          --  3.18.4.3.6.1 b): the driver elects to modify the network
          Stop := True;
          if DR.GSMR_Network.Length = 0 then
-            --  3.18.4.3.6.2, S3 E3 -> A29 (decision 6: the list empty)
-            Failed := True;
+            --  3.18.4.3.6.2: the list acquired and offered in this
+            --  cycle; S3 E3 -> A29 when it is empty
+            List_Now := True;
+            Failed := Offered_Count = 0;
          else
             Parse_MN (DR.GSMR_Network, MN, OK);
             if OK then
@@ -331,5 +343,26 @@ is
 
    function Selection_Awaited return Boolean is (Awaiting)
      with Refined_Global => Awaiting;
+
+   function List_Due return Boolean is (List_Now)
+     with Refined_Global => List_Now;
+
+   --  a NID_MN names a network when its first BCD digit is one
+   function Named (M : ETCS_Variables.NID_MN_T) return Boolean is
+     (M / 2 ** 20 <= 9);
+
+   function Stored_Offered return Boolean is
+     (R.Network.Known and then R.Network.NID_MN /= Def_MN
+      and then Named (R.Network.NID_MN))
+     with Global => (Def_MN, R.State);
+
+   function Offered_Count return Natural is
+     ((if Named (Def_MN) then 1 else 0)
+      + (if Stored_Offered then 1 else 0))
+     with Refined_Global => (Def_MN, R.State);
+
+   function Offered (I : Positive) return ETCS_Variables.NID_MN_T is
+     (if I = 1 and then Named (Def_MN) then Def_MN else R.Network.NID_MN)
+     with Refined_Global => (Def_MN, R.State);
 
 end EVC_Sessions.Network;
