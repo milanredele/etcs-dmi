@@ -223,9 +223,17 @@ begin
                Stamp := RBC_Stamp + 1;
             end if;
             Stamp := Stamp mod 2**32;
-            Put_Bits (Data, M.T_Train_At (1), 32, Stamp);
-            RBC_Stamp := Stamp;
-            RBC_Stamp_Given := True;
+            if RBC_Stamp_Given and then RBC_Stamp > 0
+              and then Has (Image (St.Comment), "smaller than the time stamp")
+            then
+               --  3160300.1: the step asks for a stamp older than the
+               --  previous message's (3.16.3.3.3); the next keeps rising
+               Put_Bits (Data, M.T_Train_At (1), 32, RBC_Stamp - 1);
+            else
+               Put_Bits (Data, M.T_Train_At (1), 32, Stamp);
+               RBC_Stamp := Stamp;
+               RBC_Stamp_Given := True;
+            end if;
          end if;
          if M.T_Train_Count >= 2 and then Answered (M.NID) > 0
            and then B.T_Train_Of (S, Answered (M.NID)) >= 0

@@ -164,8 +164,9 @@ is
 
    --  6. The mode changed from From to To (3.5.3.4 c, 3.6.5.1.4, ...)
    procedure Mode_Changed (From, To : Mode_T)
-     with Global => (In_Out => State,
-                     Input  => (EVC_Mission.State, EVC_Radio.State));
+     with Global => (In_Out => (State, EVC_Radio.State),
+                     Input  => EVC_Mission.State),
+          Post => EVC_Radio.Sessions = EVC_Radio.Sessions'Old;
 
    --  8. The messages and requests of the cycle (EVC_Radio.Send)
    procedure Produce (Ctx : EVC_Radio.Context_T)
@@ -181,6 +182,10 @@ is
    function Position_Confirmed return Boolean
      with Global => State;
    function Position_To_Delete return Boolean
+     with Global => State;
+   --  3.15.1.3.8: the contact of the Handing Over RBC retained after the
+   --  switch (a test and bench query)
+   function Handing_Over_Retained return Boolean
      with Global => State;
    function SoM_Opening return Boolean
      with Global => State;
