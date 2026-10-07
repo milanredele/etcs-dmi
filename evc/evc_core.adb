@@ -1002,11 +1002,14 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
-                                EVC_Outbox.Queue))
+                                EVC_Outbox.Queue, EVC_Text_Messages.State))
    is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
    begin
+      --  phase E5, 3.12.3: the text messages of the radio messages, while
+      --  the origins of their LRBG are kept
+      EVC_Text_Messages.Take_Radio;
       --  phase E4: the mode profile of the mode in use is no temporary
       --  EOA (3.12.4.7)
       EVC_Movement_Authority.Set_Mode_In_Use
@@ -1079,6 +1082,7 @@ is
                                 EVC_Odometry.State, EVC_Train_Data.State,
                                 EVC_Train_Inputs.State, EVC_Mission.State),
                      In_Out => (Latched_RTM, EVC_Received.Store,
+                                EVC_Text_Messages.State,
                                 EVC_Origins.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State,
@@ -1110,6 +1114,7 @@ is
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
          end if;
       end loop;
+      EVC_Text_Messages.Take_Radio (First);
       EVC_Stored_Information.Evaluate_Released
         (First, Unsigned_64 (Clock_Ms),
          (Mode        => Current_Mode,

@@ -5,6 +5,7 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P131;
+with ETCS_Track_Packets.P74;
 with ETCS_Variables;
 with EVC_Config;
 with EVC_Core;
@@ -13,6 +14,7 @@ with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
+with EVC_Text_Messages;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
 
@@ -237,5 +239,57 @@ package body EVC_Test_Handover is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
       EVC_Core.Initialise;
    end Scenario_Handover_Balise;
+
+   --  Message 24 referred to the group NID_BG with packet 74: a fixed
+   --  text from the group on 1000 m, no other condition
+   function M24_Text (NID_BG : Natural) return Byte_Array is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      ETCS_Track_Packets.P74.Encode
+        ((Q_DIR => 2, Q_SCALE => 1, L_TEXTDISPLAY => 1000,
+          T_TEXTDISPLAY => 1023,
+          M_MODETEXTDISPLAY => 15, M_LEVELTEXTDISPLAY => 4,
+          M_MODETEXTDISPLAY_2 => 15, M_LEVELTEXTDISPLAY_2 => 4,
+          others => <>), W, OK);
+      Check (OK, "handover: packet 74 encoded");
+      return Message_Bytes (W);
+   end M24_Text;
+
+   --  S776cef6c: a text message of the Accepting RBC before the switch
+   procedure Scenario_Handover_Text is
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Check (R.Accepting = 2, "handover text: 400 accepting");
+
+      --  4.8.2.1 c), 3.15.1.3.6: stored until the switch, not shown
+      Give_Radio_Message (2, M24_Text (10));
+      Stand;
+      Check (EVC_Radio_Authority.Buffered = 1
+             and then EVC_Text_Messages.Displayed = 0,
+             "handover text: the fixed text of the Accepting RBC stored, "
+             & "not shown before the switch (4.8.2.1 c, 3.15.1.3.6)");
+
+      --  3.15.1.3.5, 4.8.5.2, 3.12.3: released at the switch and shown
+      Run_X (32_000);
+      Stand;
+      Check (R.Supervising = 2 and then EVC_Radio_Authority.Buffered = 0
+             and then EVC_Text_Messages.Displayed = 1,
+             "handover text: released at the switch, the text of 400 "
+             & "shown (4.8.5.2, 3.12.3)");
+   end Scenario_Handover_Text;
 
 end EVC_Test_Handover;

@@ -233,6 +233,7 @@ begin
    Scenario_Session_Registration;
    EVC_Test_Handover.Scenario_Handover_Radio;
    EVC_Test_Handover.Scenario_Handover_Balise;
+   EVC_Test_Handover.Scenario_Handover_Text;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_RBC;
