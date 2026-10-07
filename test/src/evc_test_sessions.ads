@@ -29,6 +29,9 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_Registration;
    --  e5/sr-proposal: 5.4.3.2 S21, E26 -> S24, E32
    procedure Scenario_SoM_L2_SR_Proposal;
+
+   --  e5/mode-proposal: 5.4.3.2 S21, E27 -> S25, E33
+   procedure Scenario_SoM_L2_Mode_Proposal;
    procedure Scenario_Session_SoM_Failures;
    procedure Scenario_Session_EoM;
 
