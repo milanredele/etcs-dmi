@@ -2700,3 +2700,31 @@ Open after this round, in the order a next round would take them:
    [13] for packet 45, packet 45 by radio in `EVC_Radio_Acceptance`).
 4. Item 2 and 3 of the fifth round's list (the reached signatures, S55128ce0;
    chapter 6 in E7).
+
+### Radio network registration, third round (e5/registration-3, 2026-10-07)
+
+**Done.** Packet 45 by radio: the row "Radio Network transition order"
+of 4.8.3 (from RBC: accepted in every level) and 4.8.4 (NR in NP, SF,
+IS; [2] a cab active in SB; [1] in PT only after message 6) as
+`EVC_Radio_Acceptance.Network_Order`, applied by
+`EVC_Sessions.Network.Take_Radio_Order (Kind, Cab_Active)` to message
+24 of the supervising RBC (the mode from `Network.Mode_Changed`,
+message 6 noted for [1]). 4.8.4 [13]: no message 4 (SM authorisation)
+is taken by this on-board, so neither its packet 45. Scenario
+`EVC_Test_Network.Scenario_Network_Radio_Order`.
+
+**Decisions.** (1) [1] in PT: a message 6 received in PT since PT was
+entered (the order of the time stamps is 3.16.3's, as for the other
+rows). (2) Packet 45 of messages 3 / 33 stays in the path of
+`EVC_Stored_Information` (taken only when its message is accepted: a
+packet 45 of an MA rejected by the mode is lost, which 4.8 would keep;
+the authority half's).
+
+**Left.** 5.10.3.15.2 b) (the Radio data outside the start of mission:
+`EVC_Level_Sessions.Driver_To_L2` would remember the request when the
+contact is not valid, and `EVC_Sessions.Mission`'s RBC data entry, now
+taken only at the start of mission steps Decided / Reported, would
+open the session; the on-board cannot open the window, e5/registration-2
+decision 4); [14] for message 4 with the SM mode. D8 / S5 of 5.4.3.2
+with FRMCS is E7: the port reports no FRMCS registration, so FRMCS
+never counts as registered and S4 watches GSM-R only.
