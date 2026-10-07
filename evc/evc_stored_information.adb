@@ -375,7 +375,9 @@ is
          --  e5/registration: the Radio Network transition order is
          --  filtered as the session management (4.8.3, 4.8.4: its
          --  own rows are left to EVC_Acceptance)
-         when K42 | K45 => EVC_Acceptance.Session_Management,
+         when K42 => EVC_Acceptance.Session_Management,
+         --  4.8.3 / 4.8.4: its own rows (e5/registration-2)
+         when K45 => EVC_Acceptance.Network_Order,
          when K131 => EVC_Acceptance.RBC_Transition_Order);
 
    --  The NID_PACKET of a kind (the record of a rejection)

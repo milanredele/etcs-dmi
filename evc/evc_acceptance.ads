@@ -81,7 +81,9 @@ is
       --  phase E5 (e5/session): from a balise group
       Session_Management,     -- 42
       --  e5/handover: from a balise group
-      RBC_Transition_Order);  -- 131
+      RBC_Transition_Order,   -- 131
+      --  e5/registration-2: from a balise group
+      Network_Order);         -- 45
 
    type Context_T is record
       Mode             : Mode_T := M_SB;
@@ -130,6 +132,8 @@ is
           when Session_Management => True,
           --  4.8.3: level 2 only ([15], the radio network, not modelled)
           when RBC_Transition_Order => L = L2,
+          --  4.8.3: the Radio Network transition order in every level
+          when Network_Order => True,
           when Reversing_Area | Reversing_Supervision =>
              L = L1 or else C.L1_Announced);
 
@@ -149,7 +153,7 @@ is
              (case I is
                  when National_Values | Level_Order | Conditional_Order
                     | Geographical_Position | Text_Message
-                    | Session_Management => True,
+                    | Session_Management | Network_Order => True,
                  when Movement_Authority =>
                     C.Train_Data_Valid and then C.TRN_Valid,     -- [4][11]
                  when Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR =>
@@ -158,11 +162,13 @@ is
           when M_PS =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Stop_SH_On_Desk
-                | Session_Management | RBC_Transition_Order,     -- [7] [8]
+                | Session_Management | RBC_Transition_Order      -- [7] [8]
+                | Network_Order,
           when M_SH =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Danger_For_SH
-                | Session_Management | RBC_Transition_Order,     -- [7] [8]
+                | Session_Management | RBC_Transition_Order      -- [7] [8]
+                | Network_Order,
           when M_SM =>
              I not in Signalling_Speed | Movement_Authority
                     | Route_Suitability | Braking_Distance
@@ -177,24 +183,25 @@ is
           when M_SL =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Session_Management
-                | RBC_Transition_Order,
+                | RBC_Transition_Order | Network_Order,
           when M_NL =>
              I in National_Values | Linking | Level_Order
                 | Conditional_Order | Geographical_Position
                 | Track_Conditions | Big_Metal_Masses
-                | Session_Management | RBC_Transition_Order,
+                | Session_Management | RBC_Transition_Order
+                | Network_Order,
           when M_TR =>
              I in National_Values | Level_Order | Conditional_Order
                 | TSR | TSR_Revocation | Default_Gradient
                 | Geographical_Position | Track_Conditions
                 | Big_Metal_Masses | Text_Message | Session_Management
-                | RBC_Transition_Order,
+                | RBC_Transition_Order | Network_Order,
           --  [1]: every information of these tables is marked [1] in PT,
           --  rejected in level 1 (in level 2 the RBC's, phase E5)
           when M_PT => False,
           when M_RV =>
              I in National_Values | Reversing_Area | Reversing_Supervision
-                | Text_Message | Session_Management);
+                | Text_Message | Session_Management | Network_Order);
 
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));

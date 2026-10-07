@@ -1,4 +1,6 @@
+with EVC_Acceptance;
 with EVC_Config;
+with EVC_Modes;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Radio;
@@ -112,6 +114,19 @@ package body EVC_Test_Network is
       Check (Networks_Are ("262", "123"),
              "network list: the default and the stored network "
              & "(3.18.4.3.6.2, e5/registration-2)");
+      --  4.8.3 / 4.8.4: the Radio Network transition order (packet 45)
+      Check (EVC_Acceptance.Accepted
+               (EVC_Acceptance.Network_Order,
+                (Mode => EVC_Modes.M_SH, Level_Valid => True,
+                 Level => EVC_Modes.L0, others => <>))
+             and then EVC_Acceptance.Accepted
+               (EVC_Acceptance.Network_Order,
+                (Mode => EVC_Modes.M_SB, Cab_Active => True, others => <>))
+             and then not EVC_Acceptance.Accepted
+               (EVC_Acceptance.Network_Order,
+                (Mode => EVC_Modes.M_SB, others => <>)),
+             "packet 45: accepted in every level (4.8.3) and in SH (4.8.4), "
+             & "in SB only with a cab active (4.8.4 [2])");
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_List;
 
