@@ -234,6 +234,7 @@ begin
    Scenario_Session_Registration;
    Scenario_Network_List;
    Scenario_Network_S4_Timeout;
+   Scenario_Network_Radio_Order;
    EVC_Test_Handover.Scenario_Handover_Radio;
    EVC_Test_Handover.Scenario_Handover_Balise;
    EVC_Test_Handover.Scenario_Handover_Text;
