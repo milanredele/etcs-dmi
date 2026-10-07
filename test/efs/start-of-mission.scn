@@ -6649,8 +6649,8 @@ efs: Kernel.Level <- Kernel.LevelData{ Value => LevelDataStruct{ NTC => NID_NTC.
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Request acknowledgement for OS mode
-clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
-clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
+clause E4 done 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
+clause E4 done 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Ack OS
 sub Sub-step1
@@ -6670,8 +6670,8 @@ expect efs: Kernel.Mode == ModeEnum.OS
 expect efs: DMI.MasterDMI().In_AcknOfOSMode.InputInformation.RequestStatus == RequestEnum.Disabled
 expect efs: Kernel.MissionIsOngoing
 case Request acknowledgement for LS mode
-clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
-clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
+clause E4 done 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
+clause E4 done 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Ack LS
 sub SubStep0
@@ -6693,8 +6693,8 @@ expect efs: Kernel.Mode == ModeEnum.LS
 expect efs: DMI.MasterDMI().In_AcknOfLSMode.InputInformation.RequestStatus == RequestEnum.Disabled
 expect efs: Kernel.MissionIsOngoing
 case Request acknowledgement for SH mode
-clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
-clause E4 deferred 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
+clause E4 done 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25.1
+clause E4 done 5.4.3.2 S25 ; efs Entry 5.4.3.2.S25
 clause - absent 5.4.6.2 ; efs 5.4.6.2
 step Ack SH
 sub SubStep0

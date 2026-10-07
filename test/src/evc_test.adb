@@ -228,6 +228,11 @@ begin
    Scenario_Session_Indication;
    Scenario_Session_SoM_Level_2;
    Scenario_SoM_L2_SR_Proposal;
+   Scenario_SoM_L2_Mode_Proposal;
+   Scenario_SoM_L2_Mode_Proposal_SH;
+   Scenario_SoM_L2_MA_Without_Profile;
+   Scenario_PT_L2_SR_Proposal;
+   Scenario_PT_L2_Mode_Proposal;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;

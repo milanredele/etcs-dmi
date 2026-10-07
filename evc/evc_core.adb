@@ -302,7 +302,8 @@ is
           D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF,
           In_Communication => EVC_Radio.In_Communication,
           --  read by EVC_Mission.Evaluate only
-          SR_Authorisations => 0));
+          SR_Authorisations => 0,
+          Profile_Ack => False));
    end Set_Mode_For_Test;
 
    procedure Count (Counter : in out Natural) is
@@ -1251,7 +1252,7 @@ is
                                 EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State,
                                 EVC_Odometry.State, EVC_Origins.State,
-                                EVC_Config.State),
+                                EVC_Config.State, EVC_Procedures.State),
                      In_Out => (EVC_Levels.State, EVC_Mission.State,
                                 EVC_National_Values.State,
                                 EVC_Train_Data.State,
@@ -1304,7 +1305,8 @@ is
           V_NVSTFF    => NV.V_NVSTFF,
           D_NVSTFF    => NV.D_NVSTFF,
           In_Communication => EVC_Radio.In_Communication,
-          SR_Authorisations => EVC_Radio_Authority.SR_Authorisations));
+          SR_Authorisations => EVC_Radio_Authority.SR_Authorisations,
+          Profile_Ack => EVC_Procedures.Ack_Requested));
       --  A.3.4.1.2 k), column k: what entering SB has not deleted
       --  already (the TSRs, the adhesion, the big metal masses, the level
       --  transition orders, the national values not yet applicable); the
@@ -1507,7 +1509,8 @@ is
              D_NVSTFF    => EVC_National_Values.Current.Values.D_NVSTFF,
           In_Communication => EVC_Radio.In_Communication,
           --  read by EVC_Mission.Evaluate only
-          SR_Authorisations => 0));
+          SR_Authorisations => 0,
+          Profile_Ack => False));
       end if;
       EVC_Text_Messages.Evaluate
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
@@ -1751,7 +1754,8 @@ is
           D_NVSTFF    => NV.D_NVSTFF,
           In_Communication => EVC_Radio.In_Communication,
           --  read by EVC_Mission.Evaluate only
-          SR_Authorisations => 0));
+          SR_Authorisations => 0,
+          Profile_Ack => False));
       Delete_On_Mode_Entry (To);
       Revoke_Brake_Reasons (From, To);
    end Enter_Mode;
