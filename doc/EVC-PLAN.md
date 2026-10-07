@@ -2700,3 +2700,36 @@ Open after this round, in the order a next round would take them:
    [13] for packet 45, packet 45 by radio in `EVC_Radio_Acceptance`).
 4. Item 2 and 3 of the fifth round's list (the reached signatures, S55128ce0;
    chapter 6 in E7).
+
+### RBC handover, third round (e5/handover-3, 2026-10-07)
+
+**Implemented.** 4.10 (row "RBC Transition Order") in
+`EVC_Sessions.Mode_Changed`: entering NP, SB, PS, SH, SM, SR, SL, NL,
+UN, TR, SN or RV calls `Handover.Delete`, which now also drops the
+retained contact of the Handing Over RBC (3.15.1.3.8 b). 3.5.3.4 f)
+with 3.15.1.3.8.1: a lost Handing Over session (3.5.4.2.1) is opened
+again with the retained contact beside the supervising one
+(`EVC_Sessions.Evaluate`, `Open`, not `Establish`, which ends the
+others). 3.15.1.3.4.1: message 150 also to the other connected session
+(`EVC_Sessions.Mission`, `EoM_Also`). Query
+`EVC_Sessions.Handing_Over_Retained`. Scenarios
+`EVC_Test_Handover.Scenario_Handover_Deletion`, `_EoM`.
+SUBSET-076: 679 passed, 1665 failed, 846 blocked (unchanged counts),
+0 regressions, 2 improvements (3160300_01 SV22 / SV30 85 -> 87);
+baseline re-recorded.
+
+**Findings and decisions.** S30e45cf6 is not a filter defect: BG2d
+carries packet 131 (border at 2600 m), so RBC2 is the Accepting RBC and
+its MA at 1000 m is buffered by 4.8.2.1 c) / 3.15.1.3.6 (verdict
+`Buffered`): triaged `s076`. Se341da87 was the runner's time stamps
+(always rising); 3.16.3.3.3 was already in `Take_Message`; the runner
+now gives the step asking for a smaller stamp one below the previous
+(`S076_Run.Radio_Input`); next stop S13c9beb3, 3.16.3.1.1.2 (packet 4
+M_ERROR to the RBC), triaged `onboard`. S776cef6c: 3.12.3.4.4, no
+display when the end condition holds at once: on-board right, `s076`.
+The order executed by the switch counts as stored for 4.10 until a
+deletion event; the EoM repetitions and 5.5.4.1.1 follow the
+supervising session only.
+
+**Left.** 3.16.3.1.1.2 (packet 4 in 136, JRU 13); 3.15.1.3.2.4;
+3.15.1.3.3 in SM; scenarios of 3.15.1.3.1 c) and 3.15.1.3.9.
