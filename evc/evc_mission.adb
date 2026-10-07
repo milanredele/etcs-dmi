@@ -386,6 +386,16 @@ is
         or else not C.Desk_Open
       then
          RBC_Wait := False;
+      elsif C.Profile_Ack then
+         --  E27 -> S25 (5.4.3.2), S150 b) -> S170 (5.11.2.2): an MA with
+         --  a mode profile OS / LS / SH at the train's position; the
+         --  proposal is the acknowledgement EVC_Procedures asks
+         --  (Profiles_Step, 5.7.4.1, 5.9.5.1, 5.19.5.1) and E33 / S180
+         --  give the mode by 4.6.3 [15], [50] or the LS condition.
+         --  Open (e5/mode-proposal-2): an MA and a message 2 read in the
+         --  same cycle propose SR, the message 2 being counted before this
+         --  evaluation and the MA accepted after it (EVC_Core.Evaluate_Radio)
+         RBC_Wait := False;
       elsif C.SR_Authorisations /= RBC_Wait_Count then
          RBC_Wait := False;
          Proposal := True;

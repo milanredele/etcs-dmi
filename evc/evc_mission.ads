@@ -221,6 +221,12 @@ is
       --  change while 'Start' waits at S21 / S150 is E26 (5.4.3.2,
       --  5.11.2.2)
       SR_Authorisations : Natural := 0;
+      --  added by e5/mode-proposal-2: the acknowledgement of a mode
+      --  profile at the train's position asked in SB / PT in level 2
+      --  (EVC_Procedures.Ack_Requested, 5.7.4.1, 5.9.5.1, 5.19.5.1): an MA
+      --  with a mode profile while 'Start' waits is E27 (5.4.3.2) / S150
+      --  b) (5.11.2.2)
+      Profile_Ack : Boolean := False;
    end record;
 
    --  Power-up: every datum unknown, no mission

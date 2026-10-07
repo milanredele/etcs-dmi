@@ -874,8 +874,9 @@ package body EVC_Test_Sessions is
       Send (Text_Entry (0, "1234"));
       Send (Action (11, 5));
       Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
+      --  A33: the position reported valid, S10 without an answer of
+      --  the RBC (a message 41, A23, would delete it: D34, A24)
       Establish (1);
-      Give_Radio_Message (1, Msg (MCat.Track_M41, Now_T));
       Stand;
       Send (Train_Entry);
       N := Output_Of (129);
@@ -893,11 +894,8 @@ package body EVC_Test_Sessions is
    --  5.4.3.2 S21, E27 -> S25, E33: 'Start' in level 2, an MA with a
    --  mode profile On Sight at the train's position proposes On Sight;
    --  the driver's acknowledgement gives OS (4.6.3 [15]).
-   --  Work in progress (e5/mode-proposal), not called from evc_test yet:
-   --  the group passed in SB by SoM_L2_At_S20 leaves the position
-   --  Unknown (EVC_Position.Status), so the MA's LRBG is not known; the
-   --  first check fails and the scenario waits for a way to start the
-   --  mission with a valid position (see doc/EVC-PLAN.md §13)
+   --  The proposal is the acknowledgement the procedures ask in SB in
+   --  level 2 (EVC_Procedures.Profiles_Step, 5.7.4.1); it ends the wait
    procedure Scenario_SoM_L2_Mode_Proposal is
    begin
       SoM_L2_At_S20;
@@ -906,8 +904,11 @@ package body EVC_Test_Sessions is
              "mode proposal: 'Start' in level 2 waits (5.4.3.2 S21)");
       Give_Radio_Message (1, MA_With_Profile (10, 0, 0));
       Stand;
-      Check (EVC_Mission.Proposed
-             and then EVC_Mission.Proposed_Mode = EVC_Modes.M_OS
+      --  the request is raised after EVC_Mission.Evaluate in the cycle
+      --  of the MA (EVC_Core.Run_Procedures): the wait ends at the next
+      Stand;
+      Check (EVC_Procedures.Ack_Requested
+             and then EVC_Procedures.Ack_Mode = EVC_Modes.M_OS
              and then not EVC_Mission.Waiting_For_RBC
              and then EVC_Core.Mode = EVC_Modes.M_SB,
              "mode proposal: an MA with an On Sight profile at the train "
@@ -915,10 +916,111 @@ package body EVC_Test_Sessions is
       Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
       Stand;
       Check (EVC_Core.Mode = EVC_Modes.M_OS
-             and then not EVC_Mission.Proposed,
+             and then not EVC_Procedures.Ack_Requested,
              "mode proposal: acknowledged (E33), the mission starts in OS "
              & "(4.6.3 [15])");
    end Scenario_SoM_L2_Mode_Proposal;
+
+   --  5.4.3.2 S21, E27 -> S25, E33 with a Shunting profile (packet 80
+   --  M_MAMODE 1) at the train's position: Shunting proposed, the
+   --  acknowledgement gives SH (4.6.3 [50])
+   procedure Scenario_SoM_L2_Mode_Proposal_SH is
+   begin
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Give_Radio_Message (1, MA_With_Profile (10, 1, 0));
+      Stand;
+      Stand;
+      Check (EVC_Procedures.Ack_Requested
+             and then EVC_Procedures.Ack_Mode = EVC_Modes.M_SH
+             and then not EVC_Mission.Waiting_For_RBC
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "mode proposal: an MA with a Shunting profile at the train "
+             & "(E27) proposes Shunting (5.4.3.2 S25)");
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_SH,
+             "mode proposal: acknowledged (E33), Shunting (4.6.3 [50])");
+   end Scenario_SoM_L2_Mode_Proposal_SH;
+
+   --  5.4.3.2 S21, E29: an MA without a mode profile gives FS, nothing
+   --  proposed
+   procedure Scenario_SoM_L2_MA_Without_Profile is
+   begin
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Give_Radio_Message (1, MA_With_Profile (10, -1, 0));
+      Stand;
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_FS
+             and then not EVC_Procedures.Ack_Requested
+             and then not EVC_Mission.Proposed
+             and then not EVC_Mission.Waiting_For_RBC,
+             "mode proposal: an MA without a mode profile (E29) gives FS, "
+             & "nothing proposed (5.4.3.2 S21)");
+   end Scenario_SoM_L2_MA_Without_Profile;
+
+   --  Up to 5.11.2.2 S150 in level 2: the start of mission of
+   --  SoM_L2_At_S20 to SR (no MA on-board), a trip acknowledged (PT, the test entry of the
+   --  core), the exit from TR recognised by the RBC (message 6, E125),
+   --  then 'Start': the MA request and the wait (S140 b, S150)
+   procedure PT_L2_At_S150 is
+   begin
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Give_Radio_Message (1, SR_Authorisation (500));
+      Stand;
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_PT, EVC_Modes.L2);
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M6, Now_T));
+      Stand;
+      Send (Action (5));
+      Check (EVC_Core.Mode = EVC_Modes.M_PT
+             and then EVC_Mission.Waiting_For_RBC,
+             "PT level 2: 'Start' after message 6 waits for the RBC "
+             & "(5.11.2.2 S150)");
+   end PT_L2_At_S150;
+
+   --  5.11.2.2 S150 a) -> S160: in PT level 2, the SR authorisation
+   --  (message 2) proposes SR, the acknowledgement gives SR (4.6.3 [8])
+   procedure Scenario_PT_L2_SR_Proposal is
+   begin
+      PT_L2_At_S150;
+      Give_Radio_Message (1, SR_Authorisation (500));
+      Stand;
+      Check (EVC_Mission.Proposed
+             and then EVC_Mission.Proposed_Mode = EVC_Modes.M_SR
+             and then not EVC_Mission.Waiting_For_RBC,
+             "PT level 2: message 2 proposes SR (5.11.2.2 S150 a), S160)");
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_SR,
+             "PT level 2: acknowledged, SR (4.6.3 [8])");
+   end Scenario_PT_L2_SR_Proposal;
+
+   --  5.11.2.2 S150 b) -> S170: in PT level 2, an MA with an On Sight
+   --  profile at the train's position proposes On Sight (the request of
+   --  EVC_Procedures.Profiles_Step, 5.7.4.1), the acknowledgement gives OS
+   --  (4.6.3 [15])
+   procedure Scenario_PT_L2_Mode_Proposal is
+   begin
+      PT_L2_At_S150;
+      Give_Radio_Message (1, MA_With_Profile (10, 0, 0));
+      Stand;
+      Stand;
+      Check (EVC_Procedures.Ack_Requested
+             and then EVC_Procedures.Ack_Mode = EVC_Modes.M_OS
+             and then not EVC_Mission.Waiting_For_RBC
+             and then EVC_Core.Mode = EVC_Modes.M_PT,
+             "PT level 2: an MA with an On Sight profile proposes On Sight "
+             & "(5.11.2.2 S150 b), S170)");
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_OS,
+             "PT level 2: acknowledged, OS (4.6.3 [15])");
+   end Scenario_PT_L2_Mode_Proposal;
 
    procedure Scenario_Session_SoM_Failures is
    begin
