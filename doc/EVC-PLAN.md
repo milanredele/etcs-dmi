@@ -2557,3 +2557,33 @@ Open after this round, in the order a next round would take them:
 2. Item 4 of the fourth round's list (the on-board signatures it reached)
    and the 52 sequences of S55128ce0.
 3. Chapter 6 in E7 (item 5 of the fourth round's list).
+
+### Radio network registration, second round (e5/registration-2, 2026-10-07)
+
+**Done.** MSG_RADIO_NETWORKS (3.18.4.3.6.2): in the cycle the driver
+elects to modify the GSM-R network, `EVC_Core.Send_Networks` sends
+`EVC_DMI_Port.Networks_Frame` with the networks of
+`EVC_Sessions.Network.Offered`: the configured default network and the
+stored one when different, each named by its NID_MN digits (entry 34
+only when the list is empty). 5.4.3.2 S4: `Network.Supervise_Wait`
+watches the latest registration order (`Produce`) and, while the start
+of mission waits at S4, after the 40 s of A.3.1 ("Time from the latest
+Radio Network registration order ... considered as failed", page 218)
+shows entry 34 (A42) and ends the wait (MSG_ONBOARD waiting 0, D9 ->
+S10); the driver's new network is A43's restart. 4.8.3 / 4.8.4: packet
+45 on its own rows (`EVC_Acceptance.Network_Order`). Scenarios in the
+new `EVC_Test_Network`.
+
+**Decisions.** (1) The list: the default and the stored network (the
+port offers none). (2) S4 watches GSM-R only (FRMCS never registered,
+e5/registration decision 2): E61 / E62 / E71 / E72 are not watched. (3)
+Outside the start of mission the time is watched silently; a start of
+mission reaching S4 after it fails at once. (4) A42 ends the wait of S4
+and leaves the set-up request due under 3.5.6.7; the DMI's Radio data
+window is the driver's to open again (the on-board cannot open it).
+
+**Left.** 5.10.3.15.2 b) (the Radio data window outside the start of
+mission: the driver's level 2 without the conditions of a); D8 / S5 with
+FRMCS; 4.8.4 [13] of packet 45 (inside a rejected SM authorisation); the
+SUBSET-076 runner not rerun outside `check.sh`; FRMCS report of the
+port and 3.5.6.8 stay in E7.
