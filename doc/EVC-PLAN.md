@@ -2700,3 +2700,34 @@ Open after this round, in the order a next round would take them:
    [13] for packet 45, packet 45 by radio in `EVC_Radio_Acceptance`).
 4. Item 2 and 3 of the fifth round's list (the reached signatures, S55128ce0;
    chapter 6 in E7).
+
+### Mode proposal on an MA with a mode profile, second round (e5/mode-proposal-2, 2026-10-07)
+
+**Implemented.** 5.4.3.2 E27 -> S25 and 5.11.2.2 S150 b) -> S170: while
+'Start' waits for the RBC in SB / PT level 2, the acknowledgement that
+`EVC_Procedures.Profiles_Step` asks for a mode profile at the train
+(5.7.4.1, 5.9.5.1, 5.19.5.1; `EVC_Mission.Context_T.Profile_Ack`, filled
+by `EVC_Core.Evaluate_Modes_And_Levels`) ends the wait
+(`EVC_Mission.Take_RBC_Answer`); that request is the proposal, the
+driver's acknowledgement gives OS / SH / LS by 4.6.3. The request is
+raised after `EVC_Mission.Evaluate`, so the wait ends one cycle after the
+MA. Scenarios in `EVC_Test_Sessions`: `Scenario_SoM_L2_Mode_Proposal`
+(OS, now called), `_SH`, `Scenario_SoM_L2_MA_Without_Profile` (E29: FS,
+nothing proposed), `Scenario_PT_L2_SR_Proposal` (S150 a), S160) and
+`Scenario_PT_L2_Mode_Proposal` (S150 b), S170). Matrix: 5.4.3.2 S25,
+5.11.2.2 S150 a), S150 b), S170 done, S150 partial (c).
+
+**Finding 3 corrected.** The on-board takes a balise group in SB (the
+position is Valid after the group, 4.4.7.1.6); the helper
+`SoM_L2_At_S20` lost it because it gave message 41 after a valid
+position report: per A33 the RBC goes to S10 without an answer, and 41
+(A23) makes the on-board delete the position (D34 / A24). The helper no
+longer sends it; no change in `EVC_Position`.
+
+**Left.** The decision "an MA and a message 2 in the same cycle: the MA"
+is not implemented: message 2 is counted when the ports are read, before
+`EVC_Mission.Evaluate`, and the MA accepted after it in `Evaluate_Radio`,
+so SR is proposed and the profile's request does not come; it needs the
+MA's acceptance before the mission's evaluation or the SR proposal
+withdrawn. LS has no scenario of its own. SUBSET-076: 679 passed, 1665
+failed, 846 blocked, unchanged (0 regressions, 0 improvements).

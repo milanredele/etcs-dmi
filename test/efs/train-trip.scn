@@ -3159,7 +3159,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Request driver acknowledgement
-clause E4 deferred 5.11.2.2 S170 ; efs Entry 5.11.2.2.S170.1
+clause E4 done 5.11.2.2 S170 ; efs Entry 5.11.2.2.S170.1
 step Request driver ackwnowledgement for OS
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S170.RequestDriverAck
@@ -3197,7 +3197,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S170.RequestDriv
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S170.DriverAckRequested
 expect efs: DMI.MasterDMI().In_AcknOfSHMode.InputInformation.RequestStatus == RequestEnum.Request @ deadline=2
 case Mode change to OS/LS/SH
-clause E4 deferred 5.11.2.2 S170 ; efs Entry 5.11.2.2.S170.2
+clause E4 done 5.11.2.2 S170 ; efs Entry 5.11.2.2.S170.2
 step Mode change to OS
 sub Sub-step1
 efs: Testing.SetPTMode(False)
