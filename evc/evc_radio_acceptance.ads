@@ -52,7 +52,10 @@ is
       Stop_Revocation,      -- 18
       SH_Refused,           -- 27
       SH_Authorised,        -- 28
-      TAF_Request);         -- 34
+      TAF_Request,          -- 34
+      --  packet 45 of a message (e5/registration-3; not a message kind,
+      --  so not in Info_Of: EVC_Sessions.Network filters it)
+      Network_Order);
 
    function Info_Of (K : ETCS_Message_Catalogue.Message_Kind_T)
      return Info_T
@@ -92,6 +95,8 @@ is
    --  authorisations; the other levels reject, or store [2]
    function First_Filter (I : Info_T; C : Context_T) return Verdict_T
    is (if I = Other then Accepted
+       --  the row "Radio Network transition order": A in every level
+       elsif I = Network_Order then Accepted
        elsif C.Level_Valid and then C.Level = L2 then
          (if I in Movement_Authority | SR_Authorisation | Shorten_MA
                 | SH_Refused | SH_Authorised | TAF_Request
@@ -152,7 +157,16 @@ is
                  when M_SB => C.Cab_Active,                 -- [2]
                  when M_LS | M_SR | M_OS => True,
                  when M_PT => In_PT (C),
-                 when others => False));
+                 when others => False),
+          --  4.8.4, the row "Radio Network transition order": NR in NP,
+          --  SF, IS; [2] in SB; [1] in PT; [13] (in an SM authorisation,
+          --  message 4: not taken by this on-board)
+          when Network_Order =>
+             (case C.Mode is
+                 when M_NP | M_SF | M_IS => False,
+                 when M_SB => C.Cab_Active,                 -- [2]
+                 when M_PT => In_PT (C),                    -- [1]
+                 when others => True));
 
    --  4.8: both filters; information stored in the transition buffer is
    --  judged again when the level changes (4.8.5.5)

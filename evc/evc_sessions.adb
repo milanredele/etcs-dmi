@@ -746,8 +746,11 @@ is
             Reports.Take_Message;
             if Kind = Track_M24 then
                Take_Radio_Order;
-               Network.Take_Radio_Order;
             end if;
+            --  e5/registration-3: packet 45 filtered by 4.8 (and message
+            --  6 noted for 4.8.4 [1])
+            Network.Take_Radio_Order
+              (Kind, EVC_Position.Active_Cab /= EVC_Position.No_Cab);
             if R.Supervising = R.Session_Ref_T (S) then
                Take_Radio_Transition;
             end if;
@@ -1103,6 +1106,7 @@ is
       Count (Mode_Changes);
       Mission.Mode_Changed (From, To);
       Reports.Mode_Changed (From, To);
+      Network.Mode_Changed (To);
    end Mode_Changed;
 
    ---------------------------------------------------------------------

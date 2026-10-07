@@ -19,4 +19,8 @@ package EVC_Test_Network is
    --  driver's network restarts it
    procedure Scenario_Network_S4_Timeout;
 
+   --  e5/registration-3: packet 45 by radio (message 24) filtered by
+   --  4.8.3 / 4.8.4 (EVC_Radio_Acceptance), 4.8.4 [1], [2], [13]
+   procedure Scenario_Network_Radio_Order;
+
 end EVC_Test_Network;

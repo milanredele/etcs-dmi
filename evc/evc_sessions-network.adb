@@ -6,6 +6,7 @@ with ETCS_Bits;
 with ETCS_Catalogue;
 with ETCS_Track_Packets.P45;
 with EVC_Bytes;
+with EVC_Radio_Acceptance;
 with Interfaces;   use Interfaces;
 
 package body EVC_Sessions.Network
@@ -13,7 +14,7 @@ package body EVC_Sessions.Network
        Refined_State => (State => (Reg, Due, Started, Systems, One_Radio,
                                    Awaiting, Ordered, Ord_Type, Ord_MN,
                                    List_Now, Def_MN, Order_At, Watching,
-                                   Timed_Out))
+                                   Timed_Out, Mode_Now, Exit_Seen))
 is
 
    package R renames EVC_Radio;
@@ -50,6 +51,10 @@ is
    Order_At  : R.Time_Ms_T := 0;
    Watching  : Boolean := False;
    Timed_Out : Boolean := False;
+   --  4.8.4 for packet 45 by radio: the mode, and in PT whether message
+   --  6 was received since PT was entered ([1])
+   Mode_Now  : Mode_T := M_NP;
+   Exit_Seen : Boolean := False;
 
    --  5.4.3.2 S4 E7: SUBSET-026 A.3.1 (page 218), "Time from the latest
    --  Radio Network registration order to a Mobile Terminal after which
@@ -72,6 +77,8 @@ is
       Order_At := 0;
       Watching := False;
       Timed_Out := False;
+      Mode_Now := M_NP;
+      Exit_Seen := False;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -168,14 +175,38 @@ is
       Ord_MN := NID_MN;
    end Take_Order;
 
-   procedure Take_Radio_Order is
+   procedure Take_Radio_Order
+     (Kind       : ETCS_Message_Catalogue.Message_Kind_T;
+      Cab_Active : Boolean)
+   is
+      use type ETCS_Message_Catalogue.Message_Kind_T;
+      use type EVC_Radio_Acceptance.Verdict_T;
       pragma Warnings
         (GNATprove, Off, """Rd"" is set by ""Decode"" but not used after*",
          Reason => "the reader of one packet is not used after it");
       Rd : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
       P  : ETCS_Track_Packets.P45.Packet_T;
       OK : Boolean;
+      C  : constant EVC_Radio_Acceptance.Context_T :=
+        (Mode => Mode_Now, Cab_Active => Cab_Active,
+         Trip_Exit_Known => Exit_Seen, others => <>);
    begin
+      --  4.8.4 [1]: the recognition of the exit from TR, accepted in PT
+      --  only (EVC_Radio_Acceptance, Trip_Exit)
+      if Kind = ETCS_Message_Catalogue.Track_M6 and then Mode_Now = M_PT
+      then
+         Exit_Seen := True;
+      end if;
+      --  packet 45 by radio: message 24 (the messages 3 and 33 carry it
+      --  through EVC_Stored_Information; message 4, the SM authorisation
+      --  of 4.8.4 [13], is not taken by this on-board)
+      if Kind /= ETCS_Message_Catalogue.Track_M24
+        or else EVC_Radio_Acceptance.Verdict
+                  (EVC_Radio_Acceptance.Network_Order, C)
+                /= EVC_Radio_Acceptance.Accepted
+      then
+         return;
+      end if;
       for I in 1 .. EVC_Received.Last_Packet_Count loop
          pragma Loop_Invariant (True);
          if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P45
@@ -188,6 +219,14 @@ is
          end if;
       end loop;
    end Take_Radio_Order;
+
+   procedure Mode_Changed (To : Mode_T) is
+   begin
+      if To /= Mode_Now then
+         Exit_Seen := False;
+      end if;
+      Mode_Now := To;
+   end Mode_Changed;
 
    --  DMI 11.3.4 / Table 49 S3-2-2: the network the driver selected,
    --  its name the NID_MN digits (decision 6: 7.5.1.91.1, one digit per

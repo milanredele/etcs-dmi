@@ -36,6 +36,7 @@
 --      failed"); a network the driver names (six digits at most, the
 --      NID_MN digits) is ordered as entered.
 
+with ETCS_Message_Catalogue;
 with ETCS_Variables;
 with EVC_Config;
 with EVC_Driver_Requests;
@@ -60,10 +61,20 @@ is
                          NID_MN : ETCS_Variables.NID_MN_T)
      with Global => (In_Out => State);
 
-   --  Packet 45 of the radio message just received (EVC_Received)
+   --  The radio message of Kind just received (EVC_Received) from the
+   --  supervising RBC, or the handing over one: its packets 45 when 4.8
+   --  accepts them (4.8.3, 4.8.4, the row "Radio Network transition
+   --  order", EVC_Radio_Acceptance; Cab_Active for [2]); message 6 for
+   --  4.8.4 [1] in PT (e5/registration-3)
    procedure Take_Radio_Order
+     (Kind       : ETCS_Message_Catalogue.Message_Kind_T;
+      Cab_Active : Boolean)
      with Global => (In_Out => State,
                      Input  => EVC_Received.Store);
+
+   --  The mode of the on-board changed to To (the third filter of 4.8)
+   procedure Mode_Changed (To : Mode_T)
+     with Global => (In_Out => State);
 
    --  The cycle: the defaults of the configuration and the power-up
    --  registration (3.5.6.1 a, 3.5.6.3, 3.5.6.4), the driver's radio

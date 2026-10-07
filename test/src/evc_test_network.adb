@@ -1,4 +1,10 @@
+with ETCS_Message;
+with ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P45;
 with EVC_Acceptance;
+with EVC_Radio_Acceptance;
+with EVC_Test_Authority;
+with Interfaces;          use Interfaces;
 with EVC_Config;
 with EVC_Modes;
 with EVC_Core;
@@ -175,5 +181,74 @@ package body EVC_Test_Network is
       Auto_Register := True;
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_S4_Timeout;
+
+   --  Message 24, or K, (T_TRAIN now) with packet 45: GSM-R, network MN
+   function M24_With_45
+     (MN : ETCS_Variables.NID_MN_T;
+      K  : ETCS_Message_Catalogue.Known_Message_T :=
+        ETCS_Message_Catalogue.Track_M24) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      P  : ETCS_Track_Packets.P45.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (EVC_Radio.T_Train_At
+                              (Unsigned_64 (EVC_Core.Time_Ms)));
+      Start_Message (W, K, V);
+      P.Q_DIR := 2;
+      P.Q_NETWORKTYPE := 2;
+      P.Has_NID_MN := True;
+      P.NID_MN := MN;
+      ETCS_Track_Packets.P45.Encode (P, W, OK);
+      Check (OK, "radio order: packet 45 encoded");
+      return Message_Bytes (W);
+   end M24_With_45;
+
+   procedure Scenario_Network_Radio_Order is
+      package RA renames EVC_Radio_Acceptance;
+      use type RA.Verdict_T;
+      function V (M : EVC_Modes.Mode_T; Cab, Exit_TR : Boolean := False;
+                  L : EVC_Modes.Level_T := EVC_Modes.L1) return Boolean
+      is (RA.Verdict (RA.Network_Order,
+                      (Mode => M, Cab_Active => Cab, Level_Valid => True,
+                       Level => L, Trip_Exit_Known => Exit_TR,
+                       others => <>)) = RA.Accepted);
+   begin
+      --  4.8.3 (from RBC: A in every level), 4.8.4 the row of the Radio
+      --  Network transition order
+      Check (V (EVC_Modes.M_SH) and then V (EVC_Modes.M_SM)
+             and then V (EVC_Modes.M_FS, L => EVC_Modes.L0)
+             and then V (EVC_Modes.M_RV) and then V (EVC_Modes.M_SN)
+             and then not V (EVC_Modes.M_NP, True)
+             and then not V (EVC_Modes.M_SF, True)
+             and then not V (EVC_Modes.M_IS, True),
+             "radio order: packet 45 by radio accepted in every level and "
+             & "mode but NP, SF, IS (4.8.3, 4.8.4)");
+      Check (V (EVC_Modes.M_SB, True) and then not V (EVC_Modes.M_SB)
+             and then V (EVC_Modes.M_PT, Exit_TR => True)
+             and then not V (EVC_Modes.M_PT),
+             "radio order: in SB only with a cab active (4.8.4 [2]), in PT "
+             & "only after the recognition of the exit from TR ([1])");
+      --  through the ports: SB, a cab active, the session of the
+      --  supervising RBC established
+      SoM_To_S3;
+      EVC_Test_Authority.Establish_Session;
+      Give_Radio_Message (1, M24_With_45 (16#456FFF#));
+      Stand;
+      Check (R.Network.NID_MN = 16#456FFF#,
+             "radio order: message 24 with packet 45 in SB, a cab active: "
+             & "the network ordered (3.5.6.1 c, 4.8.4 [2])");
+      --  4.8.4 [13]: packet 45 of an SM authorisation (message 4)
+      --  rejected with it; this on-board takes no message 4 (5.21, SM
+      --  mode not implemented): its packet 45 is never taken
+      Give_Radio_Message
+        (1, M24_With_45 (16#789FFF#, ETCS_Message_Catalogue.Track_M4));
+      Stand;
+      Check (R.Network.NID_MN = 16#456FFF#,
+             "radio order: message 4 (SM authorisation) not taken, nor a "
+             & "packet 45 in it (4.8.4 [13])");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Network_Radio_Order;
 
 end EVC_Test_Network;
