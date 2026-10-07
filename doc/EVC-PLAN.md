@@ -2581,3 +2581,42 @@ for message 3).
 3.15.1.3.2.4; 3.15.1.3.4.1; 3.15.1.3.8 b) and 3.5.3.4 f); 3.15.1.3.3 in
 SM; scenarios for 3.15.1.3.1 c) and 3.15.1.3.9; the time stamp check of
 3.16.2.4.1 for radio texts; the baseline re-record.
+
+### Mode proposal on an MA with a mode profile (e5/mode-proposal, 2026-10-07)
+
+**Not implemented; findings for the next agent.** The budget went into
+two findings and the test helpers:
+
+- S30e45cf6 (3150100_03, three sequences) is not the gap of 5.4.3.2
+  E27 / S25: the train is in SR in level 2 and the message 3 of step
+  88 (packet 80 SH from 950 m, the train at 1000 m: SR to SH at once by
+  4.6.3, then the acknowledgement) comes from the second session (RBC2,
+  established at 600 m). It never reaches `EVC_Radio_Authority`
+  (`Messages_Taken`, `Messages_Rejected`, `Radio_MAs_Accepted` and
+  `Buffered` all 0 over the sequence), so `EVC_Sessions.Take_Message`
+  gives it the verdict Ignore (the branch `Handover.Old = S and then
+  Supervising /= S`, or `Handover.Held`): a matter of the handover
+  package (`EVC_Sessions.Handover`), not of `EVC_Mission`.
+- `EVC_Procedures.Profiles_Step` already raises the acknowledgement
+  request in SB and PT in level 2 for a mode profile area the train is
+  in (5.7.4.1, 5.9.5.1, 5.19.5.1: `Ack_On`, `Ack_M`), which the
+  conditions [15], [50] and the LS one read. E27 / S25 may therefore
+  need in `EVC_Mission` only the end of the wait (`Take_RBC_Answer`:
+  `RBC_Wait` cleared when `EVC_Procedures.Ack_Requested` in SB / PT
+  level 2) and the decision on an MA and a message 2 in the same cycle
+  (pick the MA); to be confirmed by the scenario.
+- The scenario `EVC_Test_Sessions.Scenario_SoM_L2_Mode_Proposal` and
+  its helpers `MA_With_Profile` (message 3 with packets 15, 21, 27 and
+  optionally 80) and `SoM_L2_At_S20` are committed but not called from
+  `evc_test`: a group passed with `Run_X` after `Start_E4` in SB leaves
+  `EVC_Position.Status` Unknown, so the MA's LRBG is not known. A start
+  of mission with a valid position is needed first. Probe: the same
+  group passed after `Start_X` (legacy FS) gives Valid, after
+  `Start_E4` (SB) Unknown: the on-board does not take the group in SB
+  (by design or not, to be read in 4.5 / 4.4.7); a power-up with a
+  stored valid position (the cold movement detector of `Start_E4`) or
+  a trip to PT after FS in level 2 (the PT path of 5.11.2.2 S150) are
+  the two ways to a valid position at 'Start'.
+
+**Left.** All of the brief: E27 / S25, 5.11.2.2 S150 b) / S170, the PT
+level 2 scenarios (S150 a and b), the matrix rows, the runner.

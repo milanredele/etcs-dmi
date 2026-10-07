@@ -3,6 +3,7 @@
 
 with ETCS_Message;
 with ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P58;
 with ETCS_Variables;
@@ -816,6 +817,108 @@ package body EVC_Test_Sessions is
              "SR proposal: acknowledged (E32), the mission starts in SR "
              & "(4.6.3 [8]) with the RBC's SR distance (4.4.11.1.6.4 b)");
    end Scenario_SoM_L2_SR_Proposal;
+
+   --  e5/mode-proposal: message 3 referring to the group NID_BG of
+   --  country 123: an MA of 2000 m (packet 15), its gradient and SSP,
+   --  and, when Mode is not negative, a mode profile (packet 80) of
+   --  M_MAMODE Mode (0 OS, 1 SH, 2 LS) from D metres, 500 m long, at
+   --  30 km/h, with an acknowledgement area of 100 m
+   function MA_With_Profile (NID_BG : Natural;
+                             Mode   : Integer;
+                             D      : Natural) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P15.Packet_T;
+      M  : T80.Packet_T;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M3, V);
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.L_ENDSECTION := 2000;
+      ETCS_Track_Packets.P15.Encode (P, W, OK);
+      Check (OK, "mode proposal: packet 15 encoded");
+      T21.Encode (Grad ((1 => (0, 0))), W, OK);
+      T27.Encode (SSP ((1 => (0, 100, False))), W, OK);
+      if Mode >= 0 then
+         M.Q_DIR := 1;
+         M.Q_SCALE := 1;
+         M.D_MAMODE := ETCS_Variables.D_MAMODE_T (D);
+         M.M_MAMODE := ETCS_Variables.M_MAMODE_T (Mode);
+         M.V_MAMODE := 6;
+         M.L_MAMODE := 500;
+         M.L_ACKMAMODE := 100;
+         T80.Encode (M, W, OK);
+         Check (OK, "mode proposal: packet 80 encoded");
+      end if;
+      return Message_Bytes (W);
+   end MA_With_Profile;
+
+   --  e5/mode-proposal: the level 2 start of mission of
+   --  Scenario_SoM_L2_SR_Proposal up to S20 (Train Data acknowledged,
+   --  train running number entered), the train standing at 10 m, past the
+   --  group 10 at 5 m (its position valid, the LRBG known to the RBC)
+   procedure SoM_L2_At_S20 is
+      N : Natural;
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, others => <>));
+      EVC_Test_Modes.Start_E4;
+      Add_Group (Group (10, 20));
+      Run_X (5_000, 100);
+      Stand;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry (0, 5 * 16_384 + 300, "0077"));
+      Establish (1);
+      Give_Radio_Message (1, Msg (MCat.Track_M41, Now_T));
+      Stand;
+      Send (Train_Entry);
+      N := Output_Of (129);
+      if N > 0 then
+         Ack_Train_Data (N);
+      end if;
+      Send (Text_Entry (1, "5678"));
+      Check (EVC_Position."=" (EVC_Position.Status, EVC_Position.Valid),
+             "mode proposal: the position valid in SB");
+      Check (N > 0 and then R.Train_Data_Acknowledged
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "mode proposal: the level 2 start of mission at S20");
+   end SoM_L2_At_S20;
+
+   --  5.4.3.2 S21, E27 -> S25, E33: 'Start' in level 2, an MA with a
+   --  mode profile On Sight at the train's position proposes On Sight;
+   --  the driver's acknowledgement gives OS (4.6.3 [15]).
+   --  Work in progress (e5/mode-proposal), not called from evc_test yet:
+   --  the group passed in SB by SoM_L2_At_S20 leaves the position
+   --  Unknown (EVC_Position.Status), so the MA's LRBG is not known; the
+   --  first check fails and the scenario waits for a way to start the
+   --  mission with a valid position (see doc/EVC-PLAN.md §13)
+   procedure Scenario_SoM_L2_Mode_Proposal is
+   begin
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Check (EVC_Mission.Waiting_For_RBC,
+             "mode proposal: 'Start' in level 2 waits (5.4.3.2 S21)");
+      Give_Radio_Message (1, MA_With_Profile (10, 0, 0));
+      Stand;
+      Check (EVC_Mission.Proposed
+             and then EVC_Mission.Proposed_Mode = EVC_Modes.M_OS
+             and then not EVC_Mission.Waiting_For_RBC
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "mode proposal: an MA with an On Sight profile at the train "
+             & "(E27) proposes On Sight (5.4.3.2 S25)");
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_OS
+             and then not EVC_Mission.Proposed,
+             "mode proposal: acknowledged (E33), the mission starts in OS "
+             & "(4.6.3 [15])");
+   end Scenario_SoM_L2_Mode_Proposal;
 
    procedure Scenario_Session_SoM_Failures is
    begin
