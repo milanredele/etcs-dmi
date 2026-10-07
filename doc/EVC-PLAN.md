@@ -2557,3 +2557,37 @@ Open after this round, in the order a next round would take them:
 2. Item 4 of the fourth round's list (the on-board signatures it reached)
    and the 52 sequences of S55128ce0.
 3. Chapter 6 in E7 (item 5 of the fourth round's list).
+
+### Mode proposal on an MA with a mode profile (e5/mode-proposal, 2026-10-07)
+
+**Not implemented; findings for the next agent.** The budget went into
+two findings and the test helpers:
+
+- S30e45cf6 (3150100_03, three sequences) is not the gap of 5.4.3.2
+  E27 / S25: the train is in SR in level 2 and the message 3 of step
+  88 (packet 80 SH from 950 m, the train at 1000 m: SR to SH at once by
+  4.6.3, then the acknowledgement) comes from the second session (RBC2,
+  established at 600 m). It never reaches `EVC_Radio_Authority`
+  (`Messages_Taken`, `Messages_Rejected`, `Radio_MAs_Accepted` and
+  `Buffered` all 0 over the sequence), so `EVC_Sessions.Take_Message`
+  gives it the verdict Ignore (the branch `Handover.Old = S and then
+  Supervising /= S`, or `Handover.Held`): a matter of the handover
+  package (`EVC_Sessions.Handover`), not of `EVC_Mission`.
+- `EVC_Procedures.Profiles_Step` already raises the acknowledgement
+  request in SB and PT in level 2 for a mode profile area the train is
+  in (5.7.4.1, 5.9.5.1, 5.19.5.1: `Ack_On`, `Ack_M`), which the
+  conditions [15], [50] and the LS one read. E27 / S25 may therefore
+  need in `EVC_Mission` only the end of the wait (`Take_RBC_Answer`:
+  `RBC_Wait` cleared when `EVC_Procedures.Ack_Requested` in SB / PT
+  level 2) and the decision on an MA and a message 2 in the same cycle
+  (pick the MA); to be confirmed by the scenario.
+- The scenario `EVC_Test_Sessions.Scenario_SoM_L2_Mode_Proposal` and
+  its helpers `MA_With_Profile` (message 3 with packets 15, 21, 27 and
+  optionally 80) and `SoM_L2_At_S20` are committed but not called from
+  `evc_test`: a group passed with `Run_X` after `Start_E4` in SB leaves
+  `EVC_Position.Status` Unknown, so the MA's LRBG is not known. A start
+  of mission with a valid position is needed first (find why the group
+  is not taken in SB: `Feed_X`, the cab, the level).
+
+**Left.** All of the brief: E27 / S25, 5.11.2.2 S150 b) / S170, the PT
+level 2 scenarios (S150 a and b), the matrix rows, the runner.
