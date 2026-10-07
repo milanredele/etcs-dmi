@@ -47,6 +47,8 @@ with EVC_Distances;         use EVC_Distances;
 with EVC_Modes;             use EVC_Modes;
 with EVC_Position;
 with EVC_Driver_Requests;
+with EVC_Origins;
+with EVC_Radio_Info;
 with Interfaces;            use Interfaces;
 
 package EVC_Text_Messages
@@ -119,6 +121,14 @@ is
      with Global => (Output => State),
           Post => Output_Count = 0 and then not Service_Brake
                   and then not Emergency_Brake;
+
+   --  Phase E5, 3.12.3: the text messages (packets 73, 74) of the radio
+   --  messages of the cycle (EVC_Radio_Info, called before the authority
+   --  half empties it), referred to the LRBG of their message; stored by
+   --  the next Evaluate; from the message First of the table on
+   procedure Take_Radio (First : Positive := 1)
+     with Global => (In_Out => State,
+                     Input  => (EVC_Radio_Info.State, EVC_Origins.State));
 
    --  One cycle: the messages of the balise groups taken into account
    --  (when Taken: 4.8), the driver's acknowledgements, the start and

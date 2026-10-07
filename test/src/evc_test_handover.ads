@@ -17,4 +17,8 @@ package EVC_Test_Handover is
    --  3.15.1.3.9
    procedure Scenario_Handover_Balise;
 
+   --  S776cef6c, 4.8.2.1 c), 4.8.5.2, 3.12.3: a text message of the
+   --  Accepting RBC before the switch, shown after it
+   procedure Scenario_Handover_Text;
+
 end EVC_Test_Handover;

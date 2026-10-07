@@ -12,7 +12,7 @@ package body EVC_Text_Messages
   with SPARK_Mode => On,
        Refined_State => (State => (Messages, Next_Id, Outputs, Output_N,
                                    Events, Event_N, Last_Level_Valid,
-                                   Last_Level))
+                                   Last_Level, Pending, Pending_N))
 is
 
    No_Mode  : constant := 15;   -- M_MODETEXTDISPLAY: no sub-condition
@@ -79,6 +79,16 @@ is
    --  the level of the last cycle (the end sub-condition "level")
    Last_Level_Valid : Boolean := False;
    Last_Level       : Level_T := L0;
+   --  Phase E5, 3.12.3: the text messages by radio (packets 73 and 74 of
+   --  a message the authority half put to EVC_Radio_Info), decoded by
+   --  Take_Radio in step 3 of the cycle (the table is emptied before the
+   --  procedures run) and stored by the next Evaluate after the groups:
+   --  storing may replace a message, and the outputs of a cycle start in
+   --  Evaluate. An engineering constant; one more in a cycle is dropped
+   Max_Pending : constant := 4;
+   type Pending_Array is array (1 .. Max_Pending) of Message_T;
+   Pending   : Pending_Array;
+   Pending_N : Natural range 0 .. Max_Pending := 0;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -343,6 +353,65 @@ is
       M.Length := N;
    end Put_Text;
 
+   --  3.12.3.1: packet 73 (Plain) or 74, opened in R, into M with its
+   --  conditions referred to the frame position X0 along S; not OK when
+   --  the packet does not decode or carries a spare value
+   procedure Decode (Plain : Boolean;
+                     R     : in out Reader_T;
+                     X0    : Dist_T;
+                     S     : Sense_T;
+                     M     : out Message_T;
+                     OK    : out Boolean)
+     with Global => null
+   is
+   begin
+      M := No_Message;
+      if Plain then
+         declare
+            X : ETCS_Track_Packets.P73.Packet_T;
+         begin
+            ETCS_Track_Packets.P73.Decode (R, X, OK);
+            OK := OK and then X.Q_SCALE <= 2;
+            if OK then
+               Conditions
+                 (M, X0, S, Natural (X.Q_SCALE),
+                  X.Q_TEXTCLASS, X.Q_TEXTDISPLAY,
+                  X.D_TEXTDISPLAY, X.M_MODETEXTDISPLAY,
+                  X.M_LEVELTEXTDISPLAY, X.L_TEXTDISPLAY,
+                  X.T_TEXTDISPLAY, X.M_MODETEXTDISPLAY_2,
+                  X.M_LEVELTEXTDISPLAY_2, X.Q_TEXTCONFIRM,
+                  X.Q_CONFTEXTDISPLAY, X.Q_TEXTREPORT,
+                  X.NID_TEXTMESSAGE);
+               M.Plain := True;
+               M.Length := Natural (X.L_TEXT);
+               for K in 1 .. Natural (X.L_TEXT) loop
+                  M.Text (K) := Byte (X.X_TEXT_List (K));
+               end loop;
+            end if;
+         end;
+      else
+         declare
+            X : ETCS_Track_Packets.P74.Packet_T;
+         begin
+            ETCS_Track_Packets.P74.Decode (R, X, OK);
+            OK := OK and then X.Q_SCALE <= 2 and then X.Q_TEXT <= 1;
+            if OK then
+               Conditions
+                 (M, X0, S, Natural (X.Q_SCALE),
+                  X.Q_TEXTCLASS, X.Q_TEXTDISPLAY,
+                  X.D_TEXTDISPLAY, X.M_MODETEXTDISPLAY,
+                  X.M_LEVELTEXTDISPLAY, X.L_TEXTDISPLAY,
+                  X.T_TEXTDISPLAY, X.M_MODETEXTDISPLAY_2,
+                  X.M_LEVELTEXTDISPLAY_2, X.Q_TEXTCONFIRM,
+                  X.Q_CONFTEXTDISPLAY, X.Q_TEXTREPORT,
+                  X.NID_TEXTMESSAGE);
+               M.Plain := False;
+               Put_Text (M, (if X.Q_TEXT = 0 then LX_Text else Ack_Text));
+            end if;
+         end;
+      end if;
+   end Decode;
+
    --  The location reference of a group taken is the frame position of
    --  its anchor (EVC_Location.Anchor_T.X): the origin of the group in
    --  EVC_Origins is released in the cycle when no store of the stored
@@ -379,52 +448,10 @@ is
                                   (E.Q_DIR, Tk.Group.Orientation, Tk.T)
                      then
                         EVC_Position.Open_Taken_Packet (J, P, R);
-                        if E.Kind = ETCS_Catalogue.Track_P73 then
-                           declare
-                              X : ETCS_Track_Packets.P73.Packet_T;
-                           begin
-                              ETCS_Track_Packets.P73.Decode (R, X, OK);
-                              if OK and then X.Q_SCALE <= 2 then
-                                 Conditions
-                                   (M, X0, Tk.S, Natural (X.Q_SCALE),
-                                    X.Q_TEXTCLASS, X.Q_TEXTDISPLAY,
-                                    X.D_TEXTDISPLAY, X.M_MODETEXTDISPLAY,
-                                    X.M_LEVELTEXTDISPLAY, X.L_TEXTDISPLAY,
-                                    X.T_TEXTDISPLAY, X.M_MODETEXTDISPLAY_2,
-                                    X.M_LEVELTEXTDISPLAY_2, X.Q_TEXTCONFIRM,
-                                    X.Q_CONFTEXTDISPLAY, X.Q_TEXTREPORT,
-                                    X.NID_TEXTMESSAGE);
-                                 M.Plain := True;
-                                 M.Length := Natural (X.L_TEXT);
-                                 for K in 1 .. Natural (X.L_TEXT) loop
-                                    M.Text (K) := Byte (X.X_TEXT_List (K));
-                                 end loop;
-                                 Store (M);
-                              end if;
-                           end;
-                        else
-                           declare
-                              X : ETCS_Track_Packets.P74.Packet_T;
-                           begin
-                              ETCS_Track_Packets.P74.Decode (R, X, OK);
-                              if OK and then X.Q_SCALE <= 2
-                                and then X.Q_TEXT <= 1
-                              then
-                                 Conditions
-                                   (M, X0, Tk.S, Natural (X.Q_SCALE),
-                                    X.Q_TEXTCLASS, X.Q_TEXTDISPLAY,
-                                    X.D_TEXTDISPLAY, X.M_MODETEXTDISPLAY,
-                                    X.M_LEVELTEXTDISPLAY, X.L_TEXTDISPLAY,
-                                    X.T_TEXTDISPLAY, X.M_MODETEXTDISPLAY_2,
-                                    X.M_LEVELTEXTDISPLAY_2, X.Q_TEXTCONFIRM,
-                                    X.Q_CONFTEXTDISPLAY, X.Q_TEXTREPORT,
-                                    X.NID_TEXTMESSAGE);
-                                 M.Plain := False;
-                                 Put_Text (M, (if X.Q_TEXT = 0 then LX_Text
-                                               else Ack_Text));
-                                 Store (M);
-                              end if;
-                           end;
+                        Decode (E.Kind = ETCS_Catalogue.Track_P73, R, X0,
+                                Tk.S, M, OK);
+                        if OK then
+                           Store (M);
                         end if;
                      end if;
                   end;
@@ -433,6 +460,76 @@ is
          end;
       end loop;
    end Take_Groups;
+
+   --  The text messages by radio of Take_Radio (their acceptance judged
+   --  with their message, 4.8), then those of the groups when Taken (4.8)
+   procedure Take_All (Taken : Boolean)
+     with Global => (Input  => (EVC_Position.State, Pending),
+                     In_Out => (Messages, Next_Id, Outputs, Output_N,
+                                Events, Event_N, Pending_N))
+   is
+   begin
+      for I in 1 .. Pending_N loop
+         pragma Loop_Invariant (True);
+         Store (Pending (I));
+      end loop;
+      Pending_N := 0;
+      if Taken then
+         Take_Groups;
+      end if;
+   end Take_All;
+
+   --  Phase E5, 3.12.3, 3.6.2.2.2 c): the packets 73 and 74 of the radio
+   --  messages of the cycle, valid for the train (3.6.3.1.3), referred to
+   --  the estimated position of the LRBG their message names (its origin
+   --  in EVC_Origins; none, the message is not taken: the stored
+   --  information records it), kept until the next Evaluate stores them
+   procedure Take_Radio (First : Positive := 1)
+     with Refined_Global => (Input  => (EVC_Radio_Info.State,
+                                        EVC_Origins.State),
+                             In_Out => (Pending, Pending_N))
+   is
+      use type ETCS_Catalogue.Packet_Kind_T;
+   begin
+      for I in First .. EVC_Radio_Info.Count loop
+         pragma Loop_Invariant (True);
+         declare
+            Sl : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
+         begin
+            if Sl.Origin /= 0 and then EVC_Origins.Get (Sl.Origin).Used then
+               for P in 1 .. EVC_Radio_Info.Packet_Count (I) loop
+                  pragma Loop_Invariant (True);
+                  declare
+                     E  : constant ETCS_Packet_Index.Entry_T :=
+                       EVC_Radio_Info.Packet_Entry (I, P);
+                     pragma Warnings
+                       (GNATprove, Off,
+                        """R"" is set by ""Decode"" but not used after*",
+                        Reason => "the reader of one packet");
+                     R  : Reader_T;
+                     OK : Boolean;
+                     M  : Message_T;
+                  begin
+                     if E.Kind in ETCS_Catalogue.Track_P73
+                                | ETCS_Catalogue.Track_P74
+                       and then EVC_Position.Valid_For (E.Q_DIR, Sl.G, Sl.T)
+                       and then Pending_N < Max_Pending
+                     then
+                        EVC_Radio_Info.Open_Packet (I, P, R);
+                        Decode (E.Kind = ETCS_Catalogue.Track_P73, R,
+                                EVC_Origins.Get (Sl.Origin).Est.Ref.X,
+                                Sl.S, M, OK);
+                        if OK then
+                           Pending_N := Pending_N + 1;
+                           Pending (Pending_N) := M;
+                        end if;
+                     end if;
+                  end;
+               end loop;
+            end if;
+         end;
+      end loop;
+   end Take_Radio;
 
    ---------------------------------------------------------------------
    --  Clear, Evaluate, Mode_Changed
@@ -448,6 +545,8 @@ is
       Event_N := 0;
       Last_Level_Valid := False;
       Last_Level := L0;
+      Pending := (others => No_Message);
+      Pending_N := 0;
    end Clear;
 
    function Flags_Of (M : Message_T) return Byte is
@@ -468,9 +567,7 @@ is
    begin
       Output_N := 0;
       Event_N := 0;
-      if Taken then
-         Take_Groups;
-      end if;
+      Take_All (Taken);
 
       for I in Messages'Range loop
          declare

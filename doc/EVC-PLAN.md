@@ -2557,3 +2557,27 @@ Open after this round, in the order a next round would take them:
 2. Item 4 of the fourth round's list (the on-board signatures it reached)
    and the 52 sequences of S55128ce0.
 3. Chapter 6 in E7 (item 5 of the fourth round's list).
+
+### RBC handover, second round (e5/handover-2, 2026-10-07)
+
+**Implemented.** S776cef6c analysed: the release path was not at fault;
+the text messages by radio were not taken at all. Packets 73 / 74 of
+message 24 now go to the stores through `EVC_Radio_Info` (Take_Message
+of `EVC_Radio_Authority`, referred to the message's LRBG) and from
+there to `EVC_Text_Messages.Take_Radio` (step 3, before the table is
+emptied; stored by the next `Evaluate`), also for a message the
+transition buffer releases. Scenario `EVC_Test_Handover.
+Scenario_Handover_Text` (4.8.2.1 c, 4.8.5.2, 3.12.3). SUBSET-076 sv30:
+3 improvements; 3160300_01 stops 2 steps earlier (Se341da87: an older
+message 24, 3.16.2.4.1, now shows its text); 3150100_08 still fails at
+step 95 (its text ends 50 m after its LRBG, 3.12.3.4.6, before the
+switch at 1000 m: triage note). Baseline not re-recorded.
+
+**Decisions.** A message 24 goes to `EVC_Radio_Info` only when it
+carries packet 73 or 74 (its track description is then taken too, as
+for message 3).
+
+**Left.** All of the "Left" of e5/handover except S776cef6c's cause:
+3.15.1.3.2.4; 3.15.1.3.4.1; 3.15.1.3.8 b) and 3.5.3.4 f); 3.15.1.3.3 in
+SM; scenarios for 3.15.1.3.1 c) and 3.15.1.3.9; the time stamp check of
+3.16.2.4.1 for radio texts; the baseline re-record.
