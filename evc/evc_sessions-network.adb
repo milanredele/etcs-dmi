@@ -12,7 +12,8 @@ package body EVC_Sessions.Network
   with SPARK_Mode => On,
        Refined_State => (State => (Reg, Due, Started, Systems, One_Radio,
                                    Awaiting, Ordered, Ord_Type, Ord_MN,
-                                   List_Now, Def_MN))
+                                   List_Now, Def_MN, Order_At, Watching,
+                                   Timed_Out))
 is
 
    package R renames EVC_Radio;
@@ -44,6 +45,16 @@ is
    --  (MSG_RADIO_NETWORKS), the default network of the configuration
    List_Now  : Boolean := False;
    Def_MN    : ETCS_Variables.NID_MN_T := 0;
+   --  5.4.3.2 S4: the time the latest registration order was sent, its
+   --  outcome watched, the time of E7 elapsed without it
+   Order_At  : R.Time_Ms_T := 0;
+   Watching  : Boolean := False;
+   Timed_Out : Boolean := False;
+
+   --  5.4.3.2 S4 E7: SUBSET-026 A.3.1 (page 218), "Time from the latest
+   --  Radio Network registration order to a Mobile Terminal after which
+   --  the registration is considered as failed": 40 s
+   Registration_Time_Ms : constant := 40_000;
 
    procedure Clear is
    begin
@@ -58,6 +69,9 @@ is
       Ord_MN := 0;
       List_Now := False;
       Def_MN := 0;
+      Order_At := 0;
+      Watching := False;
+      Timed_Out := False;
    end Clear;
 
    --  at least one GSM-R Mobile Terminal registered
@@ -286,7 +300,43 @@ is
       end if;
    end Driver_Entries;
 
-   procedure Evaluate (Stop, Failed : out Boolean) is
+   --  5.4.3.2 S4 (e5/registration-2), Radio Network type GSM-R or
+   --  GSM-R the only system: E6, a mobile registered, ends the watch
+   --  (-> A31); E7, the time of A.3.1 since the latest order elapsed
+   --  without it: A42, the driver informed ("GSM-R network registration
+   --  failed", entry 34), then D9 -> S10 (decision: the on-board ends
+   --  the wait of S4, MSG_ONBOARD waiting 1, and the set-up request
+   --  stays due under 3.5.6.7; the driver's new network is A43's
+   --  restart, the next order watched again). FRMCS is never
+   --  registered (decision 2), E71 / E72 are not watched. S4 is a step
+   --  of the start of mission (In_SoM): outside it the watch goes on
+   --  silently, so that a start of mission reaching S4 after the time
+   --  fails at once (E7 counts from the latest order)
+   procedure Supervise_Wait (Now    : R.Time_Ms_T;
+                             In_SoM : Boolean;
+                             Failed : in out Boolean)
+     with Global => (In_Out => (Watching, Timed_Out),
+                     Input  => (Order_At, Reg))
+   is
+   begin
+      if not Watching then
+         return;
+      end if;
+      if GSMR_Registered then
+         Watching := False;
+      elsif In_SoM and then Now >= Order_At
+        and then Now - Order_At >= Registration_Time_Ms
+      then
+         Watching := False;
+         Timed_Out := True;
+         Failed := True;
+      end if;
+   end Supervise_Wait;
+
+   procedure Evaluate (Now    : EVC_Radio.Time_Ms_T;
+                       In_SoM : Boolean;
+                       Stop, Failed : out Boolean)
+   is
    begin
       Stop := False;
       Failed := False;
@@ -299,16 +349,21 @@ is
          Apply_Order (Ord_Type, Ord_MN);
       end if;
       Driver_Entries (Stop, Failed);
+      Supervise_Wait (Now, In_SoM, Failed);
    end Evaluate;
 
    --  3.5.6.5 b) c), 3.5.6.6: a mobile whose session is not Idle waits
-   procedure Produce is
+   procedure Produce (Now : EVC_Radio.Time_Ms_T) is
       N : constant R.Network_T := R.Network;
    begin
       for S in R.Session_T loop
          pragma Loop_Invariant (True);
          if Due (S) and then R.Info (S).State = R.Idle then
             R.Request_Registration (S, N.NID_MN);
+            --  5.4.3.2 S4: the latest order, watched from now (A43)
+            Order_At := Now;
+            Watching := True;
+            Timed_Out := False;
             Due (S) := False;
             Reg (S) := False;
          end if;
@@ -343,6 +398,9 @@ is
 
    function Selection_Awaited return Boolean is (Awaiting)
      with Refined_Global => Awaiting;
+
+   function Registration_Timed_Out return Boolean is (Timed_Out)
+     with Refined_Global => Timed_Out;
 
    function List_Due return Boolean is (List_Now)
      with Refined_Global => List_Now;

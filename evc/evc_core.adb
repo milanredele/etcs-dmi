@@ -2176,6 +2176,9 @@ is
          Waiting  => (if EVC_Radio_Authority.SH_Waiting then 4
                       elsif EVC_Sessions.SoM_Opening
                       then (if EVC_Sessions.Network_Ready then Waiting_RBC
+                            --  e5/registration-2: 5.4.3.2 S4 E7 -> A42
+                            elsif EVC_Sessions.Registration_Timed_Out
+                            then 0
                             else Waiting_Registration)
                       elsif EVC_Mission.Waiting_For_RBC then Waiting_Start
                       else 0),

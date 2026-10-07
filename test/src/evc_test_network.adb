@@ -1,6 +1,8 @@
 with EVC_Config;
+with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Radio;
+with EVC_Sessions;
 with EVC_Test_Modes;
 with EVC_Test_Support;    use EVC_Test_Support;
 with ETCS_Variables;
@@ -66,6 +68,18 @@ package body EVC_Test_Network is
         and then (B = "" or else Name_At (8 + A'Length, B));
    end Networks_Are;
 
+   --  A MSG_SYSTEM_STATUS of catalogue entry E, event Ev (0 start, 1
+   --  end) in the last cycle
+   function Status_Shown (E, Ev : Natural) return Boolean is
+     (for some I in 1 .. Rec_Count =>
+        Recs (I).Port = DMI and then Rec_Length (I) = 7
+        and then Byte_At (I, 1) = 16#0C#
+        and then Byte_At (I, 6) = E and then Byte_At (I, 7) = Ev);
+
+   --  MSG_ONBOARD waiting (byte 12): 1 registration, 2 the RBC
+   function Waiting return Natural is
+     (DMI_Byte (EVC_DMI_Port.MSG_ONBOARD, 12));
+
    --  A level 2 start of mission up to the driver's RBC contact (S1, S2,
    --  S3), one session, default network 262
    procedure SoM_To_S3 is
@@ -100,5 +114,51 @@ package body EVC_Test_Network is
              & "(3.18.4.3.6.2, e5/registration-2)");
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Network_List;
+
+   procedure Scenario_Network_S4_Timeout is
+      use type EVC_Core.Time_Ms_T;
+      Start : EVC_Core.Time_Ms_T;
+      Shown : Boolean := False;
+   begin
+      Auto_Register := False;
+      SoM_To_S3;
+      Start := EVC_Core.Time_Ms;
+      Check (Waiting = 1,
+             "S4: no mobile registered, the start of mission waits for the "
+             & "registration (5.4.3.2 S4)");
+      while EVC_Core.Time_Ms - Start < 39_000 loop
+         Stand;
+      end loop;
+      Check (Waiting = 1
+             and then not Status_Shown
+                            (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0),
+             "S4: still waiting before the time of A.3.1 (5.4.3.2 S4)");
+      for I in 1 .. 100 loop
+         Stand;
+         Shown := Status_Shown (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
+         exit when Shown;
+      end loop;
+      Check (Shown and then Waiting = 0
+             and then EVC_Core.Time_Ms - Start in 39_000 .. 40_000,
+             "S4 E7 -> A42: 40 s after the order of the power-up (A.3.1) "
+             & "the registration failed, entry 34, the wait ended "
+             & "(D9 -> S10)");
+      --  3.18.4.3.6.1 b): the attempt aborted; the driver's network
+      --  ordered and awaited (radio_wait 2)
+      Send (Text_Entry (4, "262"));
+      Stand;
+      Check (DMI_Byte (EVC_DMI_Port.MSG_ONBOARD, 15) = 2
+             and then not EVC_Sessions.Registration_Timed_Out,
+             "A43: the driver's network orders the registration again "
+             & "(5.4.3.2 S3 / S4, 3.18.4.3.6.2)");
+      Give_Radio_Event (1, Registered);
+      Stand;
+      Send (RBC_Entry);
+      Check (Waiting = 2,
+             "S4 E6 -> A31: registered, the RBC data validated (S3 E5): "
+             & "the session is opened at once");
+      Auto_Register := True;
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Network_S4_Timeout;
 
 end EVC_Test_Network;

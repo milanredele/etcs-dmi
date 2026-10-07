@@ -1024,11 +1024,12 @@ is
      with Global => (In_Out => (Network.State, R.State, Links, Pending,
                                 Status_List, Status_N, Ind, Requesting,
                                 Timer_On),
-                     Input  => (EVC_Config.State, EVC_Driver_Requests.State))
+                     Input  => (EVC_Config.State, EVC_Driver_Requests.State,
+                                Mission.State))
    is
       Stop, Failed : Boolean;
    begin
-      Network.Evaluate (Stop, Failed);
+      Network.Evaluate (Now, Mission.Opening, Stop, Failed);
       if Failed then
          Show (EVC_DMI_Port.SS_GSMR_Registration_Failed, 0);
       end if;
@@ -1048,6 +1049,8 @@ is
    function Registration_Awaited return Boolean is
      (Network.Selection_Awaited);
    function Networks_List_Due return Boolean is (Network.List_Due);
+   function Registration_Timed_Out return Boolean is
+     (Network.Registration_Timed_Out);
    function Networks_Count return Natural is (Network.Offered_Count);
    function Networks_Entry (I : Positive) return ETCS_Variables.NID_MN_T
    is (Network.Offered (I));
@@ -1237,7 +1240,7 @@ is
    begin
       Count (Cycles);
       --  3.5.6: the registrations first
-      Network.Produce;
+      Network.Produce (Ctx.Now_Ms);
       for S in Session_T loop
          pragma Loop_Invariant (True);
          Produce_Session (S, T, Ctx.Now_Ms);

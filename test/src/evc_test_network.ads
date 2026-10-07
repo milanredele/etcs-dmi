@@ -14,4 +14,9 @@ package EVC_Test_Network is
    --  the GSM-R network, the default and the stored network
    procedure Scenario_Network_List;
 
+   --  5.4.3.2 S4: the registration awaited for the time of A.3.1 (E6 /
+   --  E7), A42 "registration failed" and the end of the wait, A43 the
+   --  driver's network restarts it
+   procedure Scenario_Network_S4_Timeout;
+
 end EVC_Test_Network;

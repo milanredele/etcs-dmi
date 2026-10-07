@@ -202,6 +202,9 @@ is
    --  in this cycle; its networks
    function Networks_List_Due return Boolean
      with Global => State;
+   --  5.4.3.2 S4 E7 -> A42: the registration was not achieved in time
+   function Registration_Timed_Out return Boolean
+     with Global => State;
    function Networks_Count return Natural
      with Global => (State, EVC_Radio.State),
           Post => Networks_Count'Result <= 2;
