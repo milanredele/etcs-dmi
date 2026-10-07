@@ -1406,9 +1406,9 @@ is
 
    --  6b. Phase E5: the mode changed (after the mode machine)
    procedure Radio_Mode_Changed (From, To : Mode_T)
-     with Global => (In_Out => (EVC_Sessions.State,
+     with Global => (In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State),
-                     Input  => (EVC_Mission.State, EVC_Radio.State))
+                     Input  => EVC_Mission.State)
    is
    begin
       EVC_Sessions.Mode_Changed (From, To);

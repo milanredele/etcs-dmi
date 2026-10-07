@@ -111,7 +111,11 @@ is
       Forced := False;
    end Produced;
 
-   --  4.10, 4.8.5.4 b): the order and the role of the Accepting RBC go
+   --  4.10, 4.8.5.4 b): the order and the role of the Accepting RBC go;
+   --  3.15.1.3.8 b): the retained contact of the Handing Over RBC too
+   --  (decision: the order executed by the switch counts as stored for
+   --  4.10 until such an event; the Handing Over session, if any, goes
+   --  on under 3.5.4)
    procedure Delete is
       Sv : constant R.Session_Ref_T := R.Supervising;
    begin
@@ -125,6 +129,7 @@ is
       Single := False;
       Switch_Next := False;
       TD_To := R.No_Session;
+      Old_C := R.No_Contact;
    end Delete;
 
    --  The session S, other than the supervising one, set up with the

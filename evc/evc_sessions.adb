@@ -1080,7 +1080,17 @@ is
          P : constant Pending_T := Pending;
       begin
          if P.Active and then not R.In_Session_With (P.RBC) then
-            Establish (P.RBC, P.Radio, P.Capped, Ctx.Now_Ms);
+            if Handover.Old_Contact.Known
+              and then Handover.Old_Contact.RBC = P.RBC
+              and then R.Supervising /= R.No_Session
+            then
+               --  3.5.3.4 f), 3.15.1.3.8.1: the Handing Over RBC's session
+               --  set up again with its retained contact, beside the
+               --  supervising one (not Establish, which ends the others)
+               Open (P.RBC, Handover.Old_Contact.Radio, P.Capped);
+            else
+               Establish (P.RBC, P.Radio, P.Capped, Ctx.Now_Ms);
+            end if;
          end if;
       end;
       Apply_Handover (Ctx.Now_Ms, Ctx.Mode);
@@ -1103,6 +1113,12 @@ is
       Count (Mode_Changes);
       Mission.Mode_Changed (From, To);
       Reports.Mode_Changed (From, To);
+      --  4.10 (the row "RBC Transition Order"), 3.15.1.3.8 b): deleted
+      --  when entering NP, SB, PS, SH, SM, SR, SL, NL, UN, TR, SN, RV;
+      --  kept in FS, AD, LS, OS, PT (SF, IS: not relevant)
+      if To not in M_FS | M_AD | M_LS | M_OS | M_PT | M_SF | M_IS then
+         Handover.Delete;
+      end if;
    end Mode_Changed;
 
    ---------------------------------------------------------------------
@@ -1295,6 +1311,8 @@ is
      (Mission.Position_Confirmed);
    function Position_To_Delete return Boolean is
      (Mission.Position_To_Delete);
+   function Handing_Over_Retained return Boolean is
+     (Handover.Old_Contact.Known);
    function SoM_Opening return Boolean is (Mission.Opening);
    function Train_Data_Sent return Natural is (Mission.Train_Data_Sent);
    function SoM_Reports_Sent return Natural is (Mission.Reports_Sent);

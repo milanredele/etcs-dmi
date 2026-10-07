@@ -292,4 +292,47 @@ package body EVC_Test_Handover is
              & "shown (4.8.5.2, 3.12.3)");
    end Scenario_Handover_Text;
 
+   procedure Scenario_Handover_Deletion is
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Run_X (32_000);
+      Stand;
+      Check (R.Supervising = 2 and then R.Info (1).State = R.Established
+             and then EVC_Sessions.Handing_Over_Retained,
+             "handover deletion: switched, the contact of 300 retained "
+             & "(3.15.1.3.8)");
+
+      --  3.5.3.4 f), 3.15.1.3.8.1: the session with 300 lost and not set
+      --  up again in time: a new one with the retained contact, beside
+      --  the one with the supervising 400
+      Give_Radio_Event (1, Connection_Lost);
+      Stand_X (301_000);
+      Check (R.Info (1).RBC.NID_RBC = 300
+             and then R.Info (1).State /= R.Idle
+             and then R.Supervising = 2
+             and then R.Info (2).State = R.Established,
+             "handover deletion: the Handing Over session set up again with "
+             & "the retained contact, the supervising one kept (3.5.3.4 f)");
+
+      --  4.10: entering OS keeps the order (U), entering SR deletes it,
+      --  with it the retained contact (3.15.1.3.8 b)
+      EVC_Sessions.Mode_Changed (EVC_Modes.M_SR, EVC_Modes.M_OS);
+      Check (EVC_Sessions.Handing_Over_Retained,
+             "handover deletion: kept when entering OS (4.10)");
+      EVC_Sessions.Mode_Changed (EVC_Modes.M_OS, EVC_Modes.M_SR);
+      Check (not EVC_Sessions.Handing_Over_Retained
+             and then R.Supervising = 2,
+             "handover deletion: the retained contact deleted with the "
+             & "order when entering SR (4.10, 3.15.1.3.8 b)");
+   end Scenario_Handover_Deletion;
+
 end EVC_Test_Handover;

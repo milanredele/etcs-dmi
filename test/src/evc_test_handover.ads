@@ -21,4 +21,9 @@ package EVC_Test_Handover is
    --  Accepting RBC before the switch, shown after it
    procedure Scenario_Handover_Text;
 
+   --  3.15.1.3.8 b), 4.10 (the row of the RBC transition order),
+   --  3.5.3.4 f): the retained contact of the Handing Over RBC used to set
+   --  its lost session up again, then deleted by a mode of 4.10
+   procedure Scenario_Handover_Deletion;
+
 end EVC_Test_Handover;
