@@ -2650,3 +2650,53 @@ mission: the driver's level 2 without the conditions of a); D8 / S5 with
 FRMCS; 4.8.4 [13] of packet 45 (inside a rejected SM authorisation); the
 SUBSET-076 runner not rerun outside `check.sh`; FRMCS report of the
 port and 3.5.6.8 stay in E7.
+
+### E5 integration after the sixth round (2026-10-07)
+
+Merged on master: e5/handover-2 (step 1 of six: text messages by radio,
+packets 73 / 74 of message 24, reach `EVC_Text_Messages` from any RBC
+and from the transition buffer; before, the on-board took text messages
+from balise groups only), e5/mode-proposal (findings only: S30e45cf6 is
+a filter of a second session in `EVC_Sessions.Take_Message`, not the
+E27 / S25 gap; a start of mission scenario cannot get a valid position
+in SB; the scenario kept, not called) and e5/registration-2 (steps 1, 2
+and 4 of six: MSG_RADIO_NETWORKS, 5.4.3.2 S4 as a flow with the 40 s of
+A.3.1, packet 45 on its own acceptance rows). SUBSET-076 on the merged
+tree: 679 passed, 1665 failed, 846 blocked (675 / 1669 / 846 before), 0
+regressions against the re-recorded baseline (two sequences of
+3160300_01 fail earlier, Se341da87: the 3.16.2.4.1 time stamp check of
+radio messages is missing, noted in the triage). Green: check.sh
+(evc_test 11354), the full proof (10775 checks, 0 unproved, margin
+47726 steps), the cross build (stack 27136 B), wasm and both smoke
+checks.
+
+The round was a measurement too: three agents of 100 tool calls on the
+trimmed agent types (`opus-trim`, `opus-medium`), 163 to 173 requests,
+14 to 18 minutes, 129k to 153k final context, about 8 to 9 USD each, no
+wait over 5 minutes, no cache rewrite; the first-request prefix 17.4k
+tokens (42k before the trim). The reading tools: outline.py 8 to 16 and
+clause.py 4 to 12 runs per agent, grep still 56 to 65 and `sed -n` 22 to
+28; the LSP tool once in all (the language server is rooted at the main
+checkout, so a worktree file resolves nothing: the common brief says to
+query the main checkout's path). Two harness facts cost tool calls: a
+harness worktree starts at origin/master (71b12f9, stale while nothing
+is pushed; every agent reset to master, which the briefs demanded), and
+the worktree guard refused 7 to 11 commands per agent (sourcing a file,
+`export X=$(...)`, unquoted computed arguments, `git -C`); the common
+brief now gives literal commands. The medium-effort agent did the most
+code of the three at the same cost: no sign that medium is worse for a
+brief that names clauses and subprograms.
+
+Open after this round, in the order a next round would take them:
+
+1. The handover leftovers (five of six steps: 3.15.1.3.2.4, 3.15.1.3.8
+   b) with the 4.10 deletion and 3.5.3.4 f), 3.15.1.3.4.1, 3.15.1.3.3
+   in SM, the scenarios of 3.15.1.3.1 c) and 3.15.1.3.9), S30e45cf6 (the
+   second session's filter) and Se341da87 (3.16.2.4.1), 3150100_08 step
+   95 (3.12.3.4: a text whose end condition holds at the switch).
+2. The mode proposal (5.4.3.2 E27 / S25, 5.11.2.2 S150 b) / S170) after
+   the two findings of its subsection.
+3. The registration leftovers (5.10.3.15.2 b), D8 / S5 with FRMCS, 4.8.4
+   [13] for packet 45, packet 45 by radio in `EVC_Radio_Acceptance`).
+4. Item 2 and 3 of the fifth round's list (the reached signatures, S55128ce0;
+   chapter 6 in E7).
