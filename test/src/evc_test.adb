@@ -238,6 +238,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Balise;
    EVC_Test_Handover.Scenario_Handover_Text;
    EVC_Test_Handover.Scenario_Handover_Deletion;
+   EVC_Test_Handover.Scenario_Handover_EoM;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_RBC;

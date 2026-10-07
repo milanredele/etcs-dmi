@@ -818,7 +818,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.1.3.2.4,3,x,,,,,E5,todo,left: a new order while waiting with one session after the border (EVC_Sessions.Handover) [E5 session]
 3.15.1.3.3,3,x,,,,,E5,partial,"EVC_Sessions.Handover.Train_Data_To -> EVC_Sessions.Mission.Send_Train_Data (129, its 8 awaited); the safe consist length in SM not sent; evc_test Handover_Radio [E5 session]"
 3.15.1.3.4,3,x,,,,,E5,done,EVC_Sessions.Handover.Also_Reported -> EVC_Sessions.Reports.Produce (Also); evc_test Handover_Radio [E5 session]
-3.15.1.3.4.1,3,x,,,,,E5,todo,left: the End of Mission (150) goes to the supervising RBC only (EVC_Sessions.Mission) [E5 session]
+3.15.1.3.4.1,3,x,,,,,E5,done,EVC_Sessions.Mission.Mode_Changed (EoM_Also: the other connected session) -> Produce: 150 to both; the repetitions and 5.5.4.1.1 follow the supervising session; evc_test Handover_EoM [E5 session]
 3.15.1.3.5,3,x,,,,,E5,done,EVC_Sessions.Handover.Switch (decision 3: the cycle after the border report); EVC_Sessions.Take_Message: from the retained Handing Over session only packet 42; evc_test Handover_Radio [E5 session]
 3.15.1.3.6,3,x,,,,,E5,done,"EVC_Sessions.Take_Message: verdict Buffered for the Accepting RBC (EVC_Sessions.Handover.Held), the 8 and the session management taken at once; EVC_Core -> EVC_Radio_Authority.Store_Message; evc_test Handover_Radio [E5 session]"
 3.15.1.3.7,3,x,,,,,E5,done,"EVC_Sessions.Handover.Switch: EVC_Radio.Set_Contact (Accepting RBC); at once for D_RBCTR 0; evc_test Handover_Radio, evc_test Handover_Balise [E5 session]"

@@ -18,7 +18,7 @@ package body EVC_Sessions.Mission
                                    TD_Due, TD_Awaited, TD_Stamp, TD_Since,
                                    TD_S, Was_Up,
                                    EoM_Due, EoM_Awaited, EoM_Since,
-                                   EoM_Repeats, EoM_S,
+                                   EoM_Repeats, EoM_S, EoM_Also,
                                    Confirm, Delete, N_TD, N_Rep, N_EoM))
 is
    package R renames EVC_Radio;
@@ -75,6 +75,10 @@ is
    EoM_Since    : R.Time_Ms_T := 0;
    EoM_Repeats  : Natural range 0 .. Max_Repeats := 0;
    EoM_S        : R.Session_T := 1;
+   --  3.15.1.3.4.1: the other RBC's session, connected at the End of
+   --  Mission; given the same 150 (decision: its repetitions and the end
+   --  of 5.5.4.1.1 follow the supervising session's)
+   EoM_Also     : R.Session_Ref_T := R.No_Session;
 
    Confirm      : Boolean := False;
    Delete       : Boolean := False;
@@ -135,6 +139,7 @@ is
       EoM_Since := 0;
       EoM_Repeats := 0;
       EoM_S := 1;
+      EoM_Also := R.No_Session;
       Confirm := False;
       Delete := False;
       N_TD := 0;
@@ -485,6 +490,14 @@ is
          EoM_S := R.Session_T (Sv);
          EoM_Repeats := 0;
          EoM_Awaited := False;
+         EoM_Also := R.No_Session;
+         --  3.15.1.3.4.1: connected to both RBCs, with both
+         for S in R.Session_T loop
+            pragma Loop_Invariant (True);
+            if R.Session_Ref_T (S) /= Sv and then Up (S) then
+               EoM_Also := R.Session_Ref_T (S);
+            end if;
+         end loop;
       end if;
    end Mode_Changed;
 
@@ -710,6 +723,10 @@ is
          EoM_Due := False;
          if Up (EoM_S) then
             Send_EoM (EoM_S, Ctx, T);
+         end if;
+         if EoM_Also /= R.No_Session and then Up (R.Session_T (EoM_Also))
+         then
+            Send_EoM (R.Session_T (EoM_Also), Ctx, T);
          end if;
       end if;
       Confirm := False;

@@ -26,4 +26,7 @@ package EVC_Test_Handover is
    --  its lost session up again, then deleted by a mode of 4.10
    procedure Scenario_Handover_Deletion;
 
+   --  3.15.1.3.4.1: End of Mission while connected to both RBCs
+   procedure Scenario_Handover_EoM;
+
 end EVC_Test_Handover;

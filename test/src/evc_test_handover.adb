@@ -335,4 +335,29 @@ package body EVC_Test_Handover is
              & "order when entering SR (4.10, 3.15.1.3.8 b)");
    end Scenario_Handover_Deletion;
 
+   procedure Scenario_Handover_EoM is
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Check (R.Supervising = 1 and then R.Accepting = 2,
+             "handover EoM: both sessions established");
+      --  3.15.1.3.4.1, 5.5.3.1.3: the End of Mission (SR to SB) with
+      --  both RBCs; 4.10: the order deleted
+      EVC_Sessions.Mode_Changed (EVC_Modes.M_SR, EVC_Modes.M_SB);
+      Stand;
+      Check (Sent (150, 1) = 1 and then Sent (150, 2) = 1,
+             "handover EoM: message 150 to both RBCs (3.15.1.3.4.1), got"
+             & Img (Sent (150, 1)) & Img (Sent (150, 2)));
+      Check (R.Accepting = R.No_Session,
+             "handover EoM: the order deleted when entering SB (4.10)");
+   end Scenario_Handover_EoM;
+
 end EVC_Test_Handover;
