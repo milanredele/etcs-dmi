@@ -10,6 +10,14 @@
   test/tools/outline.py --refs Position_To_Delete     every use outside its own
                                                       declaration, as file:line
   test/tools/outline.py --refs Evaluate --in evc/     limit the search
+  test/tools/outline.py evc_radio --decl              every other declaration of
+                                                      the unit (types, subtypes,
+                                                      constants, variables, with
+                                                      clauses): lines, first line
+  test/tools/outline.py evc_radio --decl Network_T    that declaration in full
+                                                      (a record to its end record,
+                                                      an enumeration to its ';'),
+                                                      with the comment heading it
 
 A unit is given by file name or by Ada name (evc_sessions, EVC_Sessions,
 EVC_Sessions.Mission); the search roots are evc/, common/, sim/, test/src/.
@@ -126,6 +134,93 @@ def declarations(lines):
     return out
 
 
+DECL = re.compile(r'^(\s*)(?:(type|subtype)\s+("?[\w]+"?)|([\w]+(?:\s*,\s*[\w]+)*)\s*:(?!=)|(with|use)\s+([\w\.]+(?:\s*,\s*[\w\.]+)*)\s*;)', re.I)
+
+
+def other_declarations(lines):
+    """[(indent, kind, name, first, last)] of the declarations that are not
+    subprograms: types and subtypes (a record ends at its `end record;`,
+    anything else at the `;` at depth 0), objects and components
+    (`Name : ...;`), context clauses. Lines inside a subprogram body are
+    left out, so that a local variable does not hide a package one."""
+    inside = []
+    for indent, kind, name, first, last, is_body, expr in declarations(lines):
+        if is_body:
+            inside.append((first, last))
+    out = []
+    i = 0
+    while i < len(lines):
+        if any(a < i <= b for a, b in inside):
+            i += 1
+            continue
+        m = DECL.match(lines[i])
+        if not m or lines[i].strip().startswith('--'):
+            i += 1
+            continue
+        indent = len(m.group(1))
+        if m.group(2):
+            kind, name = m.group(2).lower(), m.group(3).strip('"')
+        elif m.group(4):
+            kind, name = 'object', m.group(4)
+        else:
+            kind, name = m.group(5).lower(), m.group(6)
+        # the end: `end record;` at the same indentation, else the ';' at depth 0
+        last = i
+        depth = 0
+        record = False
+        for k in range(i, min(len(lines), i + 400)):
+            s = re.sub(r'--.*', '', lines[k])
+            s = re.sub(r'"[^"]*"', '""', s)
+            if re.search(r'\bis\b\s*(tagged\s+|limited\s+)*record\b', s) or re.search(r'\bwith\s+record\b', s):
+                record = True
+            if record:
+                if re.match(r'^' + ' ' * indent + r'end\s+record\s*;', lines[k], re.I):
+                    last = k
+                    break
+                continue
+            stop = False
+            for tok in re.finditer(r'\(|\)|;', s):
+                if tok.group(0) == '(':
+                    depth += 1
+                elif tok.group(0) == ')':
+                    depth -= 1
+                elif depth == 0:
+                    last = k
+                    stop = True
+                    break
+            if stop:
+                break
+        out.append((indent, kind, name, i, last))
+        i = last + 1
+    return out
+
+
+def list_decls(path):
+    lines = open(os.path.join(ROOT, path)).readlines()
+    print(f'== {path} ({len(lines)} lines)')
+    for indent, kind, name, first, last in other_declarations(lines):
+        if kind == 'object' and indent > 3:
+            continue      # a record component: shown with its record
+        text = re.sub(r'\s+', ' ', lines[first].strip())[:90]
+        print(f'{" " * (indent // 3)}{first + 1:5d}-{last + 1:<5d} {kind:7s} {text}')
+
+
+def show_decl(path, name):
+    lines = open(os.path.join(ROOT, path)).readlines()
+    found = False
+    for indent, kind, n, first, last in other_declarations(lines):
+        if not any(x.strip().lower() == name.lower() for x in n.split(',')):
+            continue
+        found = True
+        print(f'== {path}:{first + 1}-{last + 1} ({kind})')
+        for l in heading(lines, first):
+            print(l)
+        for k in range(first, last + 1):
+            print(f'{k + 1:5d}  {lines[k].rstrip()}')
+        print()
+    return found
+
+
 def heading(lines, first):
     """The comment block right above a declaration (the clause numbers)."""
     k = first - 1
@@ -212,6 +307,18 @@ def main(argv):
     if not files:
         print(f'outline: no unit {argv[0]} under {", ".join(ROOTS)}', file=sys.stderr)
         return 1
+    if len(argv) > 1 and argv[1] == '--decl':
+        if len(argv) == 2:
+            for f in files:
+                list_decls(f)
+            return 0
+        ok = False
+        for f in files:
+            ok = show_decl(f, argv[2]) or ok
+        if not ok:
+            print(f'outline: no declaration {argv[2]} in {", ".join(files)}', file=sys.stderr)
+            return 1
+        return 0
     if len(argv) > 1:
         ok = False
         for f in files:
