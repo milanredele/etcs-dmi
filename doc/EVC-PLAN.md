@@ -2792,3 +2792,44 @@ so SR is proposed and the profile's request does not come; it needs the
 MA's acceptance before the mission's evaluation or the SR proposal
 withdrawn. LS has no scenario of its own. SUBSET-076: 679 passed, 1665
 failed, 846 blocked, unchanged (0 regressions, 0 improvements).
+
+### E5 integration after the seventh round (2026-10-07)
+
+Merged on master: e5/registration-3 (packet 45 by radio through the 4.8
+filters of `EVC_Radio_Acceptance`, 4.8.4 [13] checked; 5.10.3.15.2 b)
+left), e5/handover-3 (the 4.10 deletion of the RBC transition order and
+the retained contact, 3.5.3.4 f) with 3.15.1.3.8.1, End of Mission to
+both RBCs; the runner's radio stamps corrected, which uncovered
+3.16.3.1.1.2, S13c9beb3) and e5/mode-proposal-2 (5.4.3.2 E27 / S25 and
+5.11.2.2 S150 b) / S170 through the procedures' acknowledgement
+request; the same-cycle MA and message 2 left). Two triage lines moved
+to `s076`: S30e45cf6 (the sequence pairs an MA for the supervising RBC
+with a pending handover, 4.8.2.1 c) and S776cef6c (3.12.3.4.4: no
+display when the end condition holds at once). The merge of handover-3
+on registration-3 met in `EVC_Sessions.Mode_Changed` (both kept).
+SUBSET-076 on the merged tree: 679 passed, 1665 failed, 846 blocked,
+unchanged, 0 regressions. Green: check.sh (evc_test 11441), the full
+proof (10786 checks, 0 unproved, margin 47726 steps), the cross build
+(stack 27136 B), wasm and both smoke checks.
+
+Measured, three agents of 100 tool calls (two `opus-medium`, one
+`opus-trim`), worktrees from local master (`worktree.baseRef`): 142 to
+195 requests, 18 to 21 minutes, 126k to 153k final context, 7 to 11
+USD, no wait over 5 minutes; outline.py 8 to 15 runs (`--decl` 1 to 2),
+clause.py 4 to 9, grep still 43 to 57, `sed -n` 22 to 31; the LSP tool
+not loaded by any; the worktree guard 5 to 7 refusals per agent (down
+from 7 to 11). Two of the six brief premises of the round were wrong and
+corrected by the agents (a runner fault, a test helper fault): a brief
+should state what a trace shows, not what a triage note assumes.
+
+Open after this round, in the order a next round would take them:
+
+1. 3.16.3.1.1.2 (packet 4 in message 136, JRU record 13; S13c9beb3);
+   the same-cycle MA and message 2 after 'Start' (5.4.3.2 E26 / E27);
+   5.10.3.15.2 b) (`EVC_Level_Sessions.Driver_To_L2` remembering the
+   level 2 selection until the RBC data are entered).
+2. The handover remainder: 3.15.1.3.2.4, 3.15.1.3.3 in SM, scenarios of
+   3.15.1.3.1 c) and 3.15.1.3.9; 4.8.4 [14] for message 4 with SM; the
+   authority half's packet 45 inside a rejected message 3 / 33.
+3. Items 2 and 3 of the fifth round's list (the reached signatures,
+   S55128ce0; chapter 6 in E7).
