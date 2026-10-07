@@ -69,14 +69,18 @@ is
    --  registration (3.5.6.1 a, 3.5.6.3, 3.5.6.4), the driver's radio
    --  data (3.18.4.3.6). Stop: terminate the sessions and abort the
    --  attempts (3.18.4.3.6.1); Failed: show "GSM-R network
-   --  registration failed" (5.4.3.2 A29)
-   procedure Evaluate (Stop, Failed : out Boolean)
+   --  registration failed" (5.4.3.2 A29; A42 at the end of the time
+   --  of 5.4.3.2 S4 E7 while the start of mission waits at S4, In_SoM,
+   --  e5/registration-2)
+   procedure Evaluate (Now    : EVC_Radio.Time_Ms_T;
+                       In_SoM : Boolean;
+                       Stop, Failed : out Boolean)
      with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => (EVC_Config.State,
                                 EVC_Driver_Requests.State));
 
    --  The registration requests due (3.5.6.5, 3.5.6.6)
-   procedure Produce
+   procedure Produce (Now : EVC_Radio.Time_Ms_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue));
 
    --  3.5.6.7: the registration conditions hold, a safe radio connection
@@ -93,5 +97,25 @@ is
    --  awaited
    function Selection_Awaited return Boolean
      with Global => State;
+
+   --  3.18.4.3.6.2 (e5/registration-2): the list of GSM-R networks is
+   --  due in this cycle (MSG_RADIO_NETWORKS); the networks it offers,
+   --  the default network of the configuration and the stored one when
+   --  different (decision 6 of e5/registration: the port offers none),
+   --  each named by at least one digit
+   --  5.4.3.2 S4 E7 -> A42 (e5/registration-2): the registration
+   --  ordered last was not achieved within the time of A.3.1; until
+   --  the next order (A43)
+   function Registration_Timed_Out return Boolean
+     with Global => State;
+
+   function List_Due return Boolean
+     with Global => State;
+   function Offered_Count return Natural
+     with Global => (State, EVC_Radio.State),
+          Post => Offered_Count'Result <= 2;
+   function Offered (I : Positive) return ETCS_Variables.NID_MN_T
+     with Global => (State, EVC_Radio.State),
+          Pre => I <= 2;
 
 end EVC_Sessions.Network;

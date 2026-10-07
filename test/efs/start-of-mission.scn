@@ -380,7 +380,7 @@ set nv Q_NVSBTSMPERM 1
 set nv M_NVAVADH 0.0
 end init
 case Inform failure of the Radio Network registration
-clause E4 deferred 5.4.3.2 A29 ; efs Entry 5.4.3.2.A29
+clause E4 done 5.4.3.2 A29 ; efs Entry 5.4.3.2.A29
 step In S3, driver selected to Reenter Network Id
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S3

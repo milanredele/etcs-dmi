@@ -1054,7 +1054,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.4.3.6.1,3,x,,,,,E6,done,"EVC_Sessions.Apply_Network: the sessions terminated, Pending cleared; evc_test Session_Registration [E5 session]"
 3.18.4.3.6.1 a),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
 3.18.4.3.6.1 b),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
-3.18.4.3.6.2,3,x,,,,,E6,partial,"EVC_Sessions.Network: the port offers no list of networks (empty: A29, decision 6); a network named by the driver is ordered; MSG_RADIO_NETWORKS left; evc_test Session_Registration [E5 session]"
+3.18.4.3.6.2,3,x,,,,,E6,done,"EVC_Sessions.Network: the list offered (MSG_RADIO_NETWORKS, EVC_DMI_Port.Networks_Frame, EVC_Core.Send_Networks): the configured default network and the stored one when different (the port offers none, decision 6); the network selected is ordered; evc_test Network_List [E5 session]"
 3.18.4.3.6.3,3,x,,,,,E6,done,EVC_Sessions.Network.Invalidate_Contact; evc_test Session_Registration [E5 session]
 3.18.4.3.6.3 a),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
 3.18.4.3.6.3 b),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
@@ -1349,7 +1349,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.2.1 e),4,x,,,,,E4,done,"the filters see what E1 to E3 kept (system version, consistency, direction, SOLR, the movement against the direction); EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.2.2,4,x,,,,,E4,done,"E2/E3: the consistency reaction inhibition and the VBC (EVC_Position, EVC_Received)"
 4.8.2.3,4,x,,,,,E4,done,"E2/E3: the consistency reaction inhibition and the VBC (EVC_Position, EVC_Received)"
-4.8.3.1.1 Table,4,x,,,,,E4,partial,"EVC_Acceptance (balise rows), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; [1] accepted at once (no transition buffer for level 1, see 4.8.5); the RBC rows (From RBC: Yes) of the messages taken by radio (2, 3, 33, 6, 9, 15, 16, 18, 27, 28, 34) in EVC_Radio_Acceptance.First_Filter, EVC_Radio_Authority.Take_Message; evc_test Radio_Acceptance; the packets of message 24 and the session messages are not filtered by the table yet [E5 authority]"
+4.8.3.1.1 Table,4,x,,,,,E4,partial,"EVC_Acceptance (balise rows), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; [1] accepted at once (no transition buffer for level 1, see 4.8.5); the RBC rows (From RBC: Yes) of the messages taken by radio (2, 3, 33, 6, 9, 15, 16, 18, 27, 28, 34) in EVC_Radio_Acceptance.First_Filter, EVC_Radio_Authority.Take_Message; evc_test Radio_Acceptance; the packets of message 24 and the session messages are not filtered by the table yet [E5 authority]; packet 45 (Radio Network transition order) on its own rows: EVC_Acceptance.Network_Order, evc_test Network_List [E5 session]"
 4.8.3.1.1 Table-footnote [1],4,x,,,,,E4,partial,"accepted at once instead of stored (EVC_Acceptance header: no transition buffer, 4.8.5)"
 4.8.3.1.1 Table-footnote [2],4,x,,,,,E4,done,"EVC_Radio_Acceptance.First_Filter (Stored), the transition buffer of EVC_Radio_Authority.Buffer (4.8.5); evc_test Transition_Buffer [E5 authority]"
 4.8.3.1.1 Table-footnote [3],4,x,,,,,E4,done,"EVC_Radio_Acceptance.First_Filter, fed by EVC_Sessions.Train_Data_Awaited (decision: any Train Data sent again counts as changed); a message 9 rejected by it is not answered (SUBSET-076 4080407_01); e5/levels [E5 authority]"
@@ -1369,7 +1369,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.3.2 Table-footnote [6],4,x,,,,,E4,n/a,STM interface out of scope (PLAN.md)
 4.8.3.2 Table-footnote [7],4,x,,,,,E4,n/a,STM interface out of scope (PLAN.md)
 4.8.4.1.1,4,x,,,,,E4,n/a,"no infill information is taken by this on-board (3.9, E7)"
-4.8.4.2 Table,4,x,,,,,E4,partial,"EVC_Acceptance (balise rows), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; the RBC rows of the messages taken by radio (2, 3, 33, 6, 9, 15, 16, 18, 27, 28, 34) in EVC_Radio_Acceptance.Third_Filter, EVC_Radio_Authority.Take_Message (the context of the last cycle); evc_test Radio_Acceptance; track conditions of packet 68 are one kind; the packets of message 24 and the session messages are not filtered yet [E5 authority]"
+4.8.4.2 Table,4,x,,,,,E4,partial,"EVC_Acceptance (balise rows), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; the RBC rows of the messages taken by radio (2, 3, 33, 6, 9, 15, 16, 18, 27, 28, 34) in EVC_Radio_Acceptance.Third_Filter, EVC_Radio_Authority.Take_Message (the context of the last cycle); evc_test Radio_Acceptance; track conditions of packet 68 are one kind; the packets of message 24 and the session messages are not filtered yet [E5 authority]; packet 45 (Radio Network transition order) on its own rows: EVC_Acceptance.Network_Order, evc_test Network_List [E5 session]"
 4.8.4.2 Table-footnote [1],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.4.2 Table-footnote [2],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.4.2 Table-footnote [3],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half [E5 session]"
@@ -1428,7 +1428,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.3.1.3,5,x,,,,,E4,done,"the procedures of 5.4, 5.5 and 5.10 in EVC_Mission and EVC_Levels"
 5.4.1.4,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
 5.4.3.2 A24,5,x,,,,,E4,done,"EVC_Sessions.Mission: the train accepted without a valid position, the position deleted by EVC_Core.Evaluate_Radio (EVC_Position.Delete_Position, e5/session-4); decision 5; evc_test Scenario_Session_SoM_Level_2 [E5 session]"
-5.4.3.2 A29,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 A29,5,x,,,,,E4,done,EVC_Sessions.Network.Driver_Entries: entry 34 when the list is empty (no default network named) or on event 6; evc_test Session_Registration [E5 session]
 5.4.3.2 A31,5,x,,,,,E4,done,"EVC_Sessions.Mission: the session with the RBC of the contact opened, three attempts (A.3.1, EVC_Sessions); MSG_ONBOARD waiting 2 [E5 session]"
 5.4.3.2 A32,5,x,,,,,E4,done,"EVC_Sessions.Mission / EVC_Sessions: after the three attempts or the version check, the driver informed by the indication of 3.5.7 (and 'Trackside not compatible'), S10 [E5 session]"
 5.4.3.2 A33,5,x,,,,,E4,partial,"EVC_Sessions.Mission: message 157 Q_STATUS valid with packet 0, packet 11 when the Train Data are valid; the train running number (packet 5) and the safe consist length (packet 10) not sent [E5 session]"
@@ -1437,13 +1437,13 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.3.2 A39,5,x,,,,,E4,done,"EVC_Sessions.Mission: the train rejected, the position deleted unless decision 5, by EVC_Core.Evaluate_Radio (e5/session-4); evc_test Scenario_Session_SoM_Failures [E5 session]"
 5.4.3.2 A40,5,x,,,,,E4,done,"EVC_Sessions.Mission / EVC_Sessions: the session terminated (156), 'Train is rejected' (DMI entry 20), S10 [E5 session]"
 5.4.3.2 A41,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A42,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 A43,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 A42,5,x,,,,,E4,done,EVC_Sessions.Network.Supervise_Wait: entry 34 and the wait of S4 ended (MSG_ONBOARD waiting 0); evc_test Network_S4_Timeout [E5 session]
+5.4.3.2 A43,5,x,,,,,E4,partial,EVC_Sessions.Network: the driver's new network orders and watches the registration again; the combined FRMCS / GSM-R report not (decision 2); evc_test Network_S4_Timeout [E5 session]
 5.4.3.2 D2,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 D3,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 D7,5,x,,,,,E4,partial,EVC_Sessions.Mission: stored level 2 with a known contact opens the session (decision 1); the Radio Network type and the registrations are not modelled (3.5.6) [E5 session]
 5.4.3.2 D8,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
-5.4.3.2 D9,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 D9,5,x,,,,,E4,partial,"EVC_Sessions.Network: GSM-R: S10 (the wait ends, decision of e5/registration-2); FRMCS+GSM-R with both systems: S5 not reachable while FRMCS is never registered; evc_test Network_S4_Timeout [E5 session]"
 5.4.3.2 D10,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 D11,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 D12,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
@@ -1456,7 +1456,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.3.2 S1,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S2,5,x,,,,,E4,done,"EVC_Mission (5.4.3.2), EVC_Core.Run_Mode_Machine; evc_test E4_SoM_Level_1, E4_SoM_Other_Levels"
 5.4.3.2 S3,5,x,,,,,E4,partial,"EVC_Sessions.Mission: the RBC contact of the driver (MSG_DRIVER_DATA kind 5: entered, 'Contact last RBC', 'Use short number'); the Radio Network type and the GSM-R network ID not [E5 session]"
-5.4.3.2 S4,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
+5.4.3.2 S4,5,x,,,,,E4,partial,EVC_Sessions.Network.Supervise_Wait: GSM-R E6 / E7 with the 40 s of A.3.1 from the latest order (e5/registration-2); FRMCS never registered (decision 2): E61 / E62 / E71 / E72 not watched; MSG_ONBOARD waiting 1; evc_test Network_S4_Timeout [E5 session]
 5.4.3.2 S5,5,x,,,,,E4,deferred,"E5 (radio, RBC) [E5 session]"
 5.4.3.2 S10,5,x,,,,,E4,partial,"NL (E10, [46]), SH ([5] from SB, EVC_Procedures) and the Train Data entry (E11) done; SM is E5 [E5 session]"
 5.4.3.2 S11,5,x,,,,,E4,partial,EVC_Sessions.Mission: the Train Data repeated until acknowledged (decision 4); see D15 [E5 session]

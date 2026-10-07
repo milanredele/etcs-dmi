@@ -2181,6 +2181,9 @@ is
          Waiting  => (if EVC_Radio_Authority.SH_Waiting then 4
                       elsif EVC_Sessions.SoM_Opening
                       then (if EVC_Sessions.Network_Ready then Waiting_RBC
+                            --  e5/registration-2: 5.4.3.2 S4 E7 -> A42
+                            elsif EVC_Sessions.Registration_Timed_Out
+                            then 0
                             else Waiting_Registration)
                       elsif EVC_Mission.Waiting_For_RBC then Waiting_Start
                       else 0),
@@ -2189,6 +2192,26 @@ is
    begin
       EVC_Outbox.Put (DMI, Onboard_Frame (Onboard));
    end Send_Onboard;
+
+   --  e5/registration-2, SUBSET-026 3.18.4.3.6.2: the list of GSM-R
+   --  networks offered to the driver, in the cycle the driver elected
+   --  to modify the network (DMI MSG_RADIO_NETWORKS)
+   procedure Send_Networks
+     with Global => (Input  => (EVC_Radio.State, EVC_Sessions.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      Frame : Frame_Buffer_T;
+      Last  : Natural;
+   begin
+      if EVC_Sessions.Networks_List_Due then
+         Networks_Frame
+           (EVC_Sessions.Networks_Count,
+            (Unsigned_32 (EVC_Sessions.Networks_Entry (1)),
+             Unsigned_32 (EVC_Sessions.Networks_Entry (2))),
+            Frame, Last);
+         EVC_Outbox.Put (DMI, Frame (1 .. Last));
+      end if;
+   end Send_Networks;
 
    --  The commands of the TIU output (EVC_Ports): phase E3 the speed and
    --  distance monitoring and the protections (3.13, 3.14); phase E4 the
@@ -2506,6 +2529,7 @@ is
       Record_Procedures;            -- JRU 23, 24
       Send_Status (D, Text_SB, Text_EB);  -- DMI MSG_STATUS
       Send_Onboard;                 -- DMI MSG_ONBOARD
+      Send_Networks;                -- DMI MSG_RADIO_NETWORKS
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);
       Send_External_Info;           -- TIU the information of 5.20

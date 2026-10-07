@@ -90,6 +90,7 @@ with EVC_Test_Config;    use EVC_Test_Config;
 with EVC_Test_Modes;     use EVC_Test_Modes;
 with EVC_Test_Radio;     use EVC_Test_Radio;
 with EVC_Test_Sessions;  use EVC_Test_Sessions;
+with EVC_Test_Network;   use EVC_Test_Network;
 with EVC_Test_Version;   use EVC_Test_Version;
 with EVC_Test_RBC;       use EVC_Test_RBC;
 with EVC_Test_Authority; use EVC_Test_Authority;
@@ -231,6 +232,8 @@ begin
    Scenario_Session_EoM;
    Scenario_Session_Reports;
    Scenario_Session_Registration;
+   Scenario_Network_List;
+   Scenario_Network_S4_Timeout;
    EVC_Test_Handover.Scenario_Handover_Radio;
    EVC_Test_Handover.Scenario_Handover_Balise;
    EVC_Test_Handover.Scenario_Handover_Text;
