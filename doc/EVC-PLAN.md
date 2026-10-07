@@ -2586,8 +2586,13 @@ two findings and the test helpers:
   optionally 80) and `SoM_L2_At_S20` are committed but not called from
   `evc_test`: a group passed with `Run_X` after `Start_E4` in SB leaves
   `EVC_Position.Status` Unknown, so the MA's LRBG is not known. A start
-  of mission with a valid position is needed first (find why the group
-  is not taken in SB: `Feed_X`, the cab, the level).
+  of mission with a valid position is needed first. Probe: the same
+  group passed after `Start_X` (legacy FS) gives Valid, after
+  `Start_E4` (SB) Unknown: the on-board does not take the group in SB
+  (by design or not, to be read in 4.5 / 4.4.7); a power-up with a
+  stored valid position (the cold movement detector of `Start_E4`) or
+  a trip to PT after FS in level 2 (the PT path of 5.11.2.2 S150) are
+  the two ways to a valid position at 'Start'.
 
 **Left.** All of the brief: E27 / S25, 5.11.2.2 S150 b) / S170, the PT
 level 2 scenarios (S150 a and b), the matrix rows, the runner.
