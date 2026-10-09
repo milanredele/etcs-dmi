@@ -3013,3 +3013,38 @@ reaches no level event; acceptance of the group to analyse), two at
 S6c605c52 (E6); the new S0ebd65fd (3040200_03 step 137: an MA 33 after
 the level 2 start of mission leaves the on-board in SB, the authority
 half's); the others stop at signatures triaged before.
+
+### Session orders not followed (e5/session-orders, 2026-10-09)
+
+The signature Sa8a3ba1a ("expect RTM connect: not requested", 147
+sequences) is not one cause, and mostly not packet 42. Classified from
+the telegrams before the failing step (one trace per cause):
+
+- 111 sequences, every one of the large families (3090300, 9990500,
+  9990400, 3070300, 3050300_03, 4100103_01 ...): a group with packet 133,
+  Q_RIU = 1, orders a session with an RIU: radio infill (3.9), E7.
+- 4 (4100103_15, 5040300_23 to _25): a packet 45 of type FRMCS+GSM-R
+  (Q_NETWORKTYPE 1) comes first; with both radio systems installed (the
+  default of `EVC_Config.Radio_Config_T`) and the port reporting no FRMCS
+  registration (e5/registration decision 2), 3.5.6.7 b) holds the set-up
+  of the following packet 42 for ever. The on-board follows the clause;
+  the runner's installation is the gap. Installing GSM-R only in
+  `S076_Bench.Power_On` moves the four (to steps 82-100) but regresses
+  3050600_05, which tests exactly 3.5.6.7 b) with both systems and FRMCS
+  not registered. Not committed: the runner needs the systems per
+  feature (both for 3050600, GSM-R only elsewhere), or the port an FRMCS
+  registration report (E7).
+- SUBSET-076 data: 3050300_11 (the 200 m group carries NID_RBC 16383,
+  "last known RBC", with no contact stored: ignored, 3.5.3.13.1; the
+  text says 1515), 4080500_02 (a single balise group without linking,
+  packet 42 with Q_DIR nominal: rejected, 3.6.3.1.4), 4080100_02 (the
+  group's second balise has M_VERSION 0: ignored, 3.17.3.5 a), so no
+  orientation for the nominal packet 42).
+- Not analysed: 9990500_02 (the runner's train still reversing when the
+  group at 180 m comes), 3060500_01, and 17 sequences whose last input is
+  no balise group (3040200, 3060300, 4040600, 4040800, 4080415, 5060200).
+
+Nothing in `EVC_Sessions` or `EVC_Acceptance` was changed: packet 42 is
+accepted in every level (4.8.3, [14] / [15]) and applied by
+`Apply_Order` in level 1 too (3.5.3.4 b). The triage line of the
+signature is rewritten with these causes (category E7, the majority).
