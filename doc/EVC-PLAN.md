@@ -3219,3 +3219,52 @@ of the radio MA of 400 m that announces BG4 only, against 3.4.4.4.2 in
 `EVC_Position.Decide_Linking`; 4080100_06, 4080425_04, 4100103_15,
 5220200_03, 6060504/6060505, 9990500_24); a runner that places a linked
 group at the location its linking gives (s076_bench) would move 4080455.
+
+### E5 integration after the tenth round (2026-10-09)
+
+Merged: e5/untraced (analysis: the 19 sequences without a connection
+request and the nine families without a position report classified;
+3.5.3.4 c) is not implemented for a mode change to report in level 2,
+9 sequences; balise errors are not reported to the RBC; two runner
+gaps; the SV21 packet 72 is the chapter 6 plain text packet; the check
+order 3.16.1.1 before 3.16.3.3.3 decided), e5/runner-locations (the
+runner's reach-point resolves to the stored packet 58 location or the
+RBC border, `EVC_Position.Report_Location_To_Go`; the radio systems
+installed per feature: both for 3050600, GSM-R only elsewhere) and
+e5/level-order-ma (both signatures are sequence data: 4080455 places
+its group outside the linking window, 3040200_03 sends a message 33
+for the other direction; two scenarios). The runner-locations agent
+found the on-board defect of the round: `Set_Train_Length` was called
+by one test only, so no min safe rear end existed in service and no
+rear-end trigger ever fired (3.6.5.1.5 c, 3.15.1.3.1 c). Fixed by the
+coordinator: `EVC_Core.Sync_Train_Length` gives the position the
+length of the valid Train Data every cycle (3.6.1.7, 3.18.3), with the
+preservation the cycle's postcondition needs; the 3150100 family moved
+on to the radio connection indication (Se0240012, S6514d681) and
+5150400_02 to the packet of a rear-end report (Scdc515e8), all three
+triaged `onboard`. SUBSET-076 on the merged tree: 694 passed, 1596
+failed, 900 blocked (692 / 1600 / 898 before), 0 regressions, baseline
+re-recorded. Green: check.sh (evc_test 11558), the full proof (10840
+checks, 0 unproved, margin 47726 steps), the cross build (stack 27120
+B), wasm and both smoke checks.
+
+Measured, three agents (one `opus-trim`, two `opus-medium`): 140 to
+185 requests, 16 to 22 minutes, 114k to 141k final context, 6 to 9
+USD, no wait over 5 minutes, the runner 4 to 13 times each. Two of the
+three packages were analysis with no on-board change; the on-board
+defect of the round came from the runner package's side finding. The
+Ada language server plugin was disabled before the round (three servers
+of 1 GB for one project, no agent use in nine rounds).
+
+Open after this round, in the order a next round would take them:
+
+1. 3.5.3.4 c): a session for a mode change to report in level 2 (9
+   sequences); the radio connection indication of 3.5.7 after a release
+   or a loss (Se0240012, S6514d681); the packet of a rear-end position
+   report (Scdc515e8).
+2. The runner: the radio window kept for a group delivered again at the
+   same place; "optional step, only if in L2"; the train still reversing
+   at 9990500_02; 4080428, 5100400, 5100300 to analyse.
+3. Balise errors reported to the RBC (3.6.5.1.4 l, with E6); the
+   linking of 3070300_12 (3.4.4.4.2); the handover remainder; chapter 6
+   (packet 72 translation, S322852a4) in E7.
