@@ -3077,3 +3077,51 @@ while the step says M_LOC 0, TC bug 1124). SUBSET-076: 685 / 1619 / 886
 before the time stamp check: M_ERROR 3, the sequence expects 4); the
 families 3110500, 3160200, 4080100, 4080428, 4080442, 5100300, 5100400,
 5150400, 3060100 not traced; 3.6.5.1.4 c), d), f).
+
+### E5 integration after the ninth round (2026-10-09)
+
+The round took the runner's three largest stopping signatures. Merged:
+e5/train-data-129 (no on-board change: the on-board sends 129 with 159
+as 3.18.3.4 asks; the runner dropped it when the RBC's message 38 came
+first, now the window keeps the radio messages already sent),
+e5/session-orders (no on-board change: of the 147 sequences without a
+connection request, 111 wait for a session with an RIU ordered by
+packet 133, radio infill, E7; 4 are held by 3.5.6.7 b) because the
+runner installs FRMCS that never registers; 3 are SUBSET-076 data
+defects; 19 to analyse) and e5/reports-136 (the runner's `Radio_Expect`
+judges every message of the window and reads the fields of packets 0,
+1 and 4; the on-board reports a radio message carrying a packet chapter
+7 does not define with M_ERROR 3 and does not use it, 3.16.1.1; the
+3.6.5.1.4 events a, b, e, g, h, i, j, k were found implemented, c, d, f
+left). SUBSET-076 on the merged tree: 692 passed, 1600 failed, 898
+blocked (685 / 1619 / 886 before), 0 regressions, baseline re-recorded.
+Green: check.sh (evc_test 11542), the full proof (10826 checks, 0
+unproved, margin 47726 steps), the cross build (stack 27120 B), wasm and
+both smoke checks.
+
+Measured, three agents (one `opus-trim`, two `opus-medium`): 133 to 191
+requests, 14 to 21 minutes, 103k to 159k final context, 6 to 11 USD, no
+wait over 5 minutes; the runner itself ran 5 to 21 times per agent (the
+traces are the reading of this round); the LSP tool again unused. One
+brief premise was wrong although checked on a trace: the trace showed a
+balise group read and a connection expected, and the brief assumed a
+session order (packet 42) where the group carried packet 133; the check
+of a premise must read the telegram's packets, not only the step's
+verdicts. Two of the three signatures were runner gaps, not on-board
+ones: the runner's judging is now a first suspect for a radio
+expectation.
+
+Open after this round, in the order a next round would take them:
+
+1. Sa03cccdc (6 of 4080455): an immediate level 2 order from a balise
+   group in level 1 with a session, no level event; S0ebd65fd
+   (3040200_03: an MA at standstill after 'Start' in level 2 leaves SB);
+   the order of the error checks when a message is both stale and
+   malformed (3160300_01 SV21).
+2. The runner: the reach-point moved to the location of packets 58 and
+   131 (3150100, 11 sequences); the radio systems installed per feature
+   (3.5.6.7 b with FRMCS); the 19 + 9 untraced sequences of Sa8a3ba1a
+   and S13c9beb3.
+3. The handover remainder (3.15.1.3.2.4, 3.15.1.3.3 in SM, scenarios of
+   3.15.1.3.1 c) and 3.15.1.3.9), 3.6.5.1.4 c) d) f), S322852a4 (chapter
+   6 and Table 50 D5), M_ERROR 5; radio infill (111 sequences) in E7.

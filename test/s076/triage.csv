@@ -75,8 +75,6 @@ Sa8a3ba1a,E7,"expect RTM connect: not requested (e5/session-orders, 147 sequence
 ~expect RTM message: 156 not sent,E5,session: EVC_Sessions not written yet: message 156 Termination of a communication session (3.5.5)
 S13f5df67,model,"129 not sent where expected (e5/train-data-129): the on-board sends 129 in the cycle of 159 (3.18.3.4: following the establishment, 3.5.3.7 d), the sequences expect it before the RBC's 38 (436 cases) or after it (69, e.g. 3040200_01 step 58); the runner kept the window across 38 at the same place since, no sequence stops here any more (the steps left are after an earlier failure)"
 S0ebd65fd,onboard,"3040200_03 SV30 step 137: start of mission in level 2, Train Data acknowledged by 8, 'Start' sends 132, the MA with shifted location reference (33, packets 15 21 27) is received at standstill and the on-board stays SB where FS is expected; the authority half's handling of 33 after the start of mission, not analysed (e5/train-data-129)"
-~expect RTM message: 136 not sent,E5,session: EVC_Sessions not written yet: message 136 Train Position Report (3.6.5)
-~expect RTM message: 129 not sent,E5,session: EVC_Sessions not written yet: message 129 Validated Train Data (5.4, 5.17)
 ~expect RTM message: 157 not sent,E5,session: EVC_Sessions not written yet: message 157 SoM Position Report (5.4)
 ~expect RTM message: 150 not sent,E5,session: EVC_Sessions not written yet: message 150 End of Mission (5.5)
 ~expect RTM message: 146 not sent,E5,session: EVC_Sessions not written yet: message 146 Acknowledgement (3.16.3.5)
