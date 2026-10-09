@@ -235,6 +235,8 @@ is
      with Refined_Global => Passage;
    function Train_Length_Known return Boolean is (Length_Known)
      with Refined_Global => Length_Known;
+   function Length_Of_Train return Length_T is (Train_Length)
+     with Refined_Global => Train_Length;
    function Event_Count return Natural is (Event_N)
      with Refined_Global => Event_N;
    function Event (I : Positive) return Event_T is (Events (I))
@@ -1670,6 +1672,12 @@ is
       Train_Length := Length;
       Length_Known := True;
    end Set_Train_Length;
+
+   procedure Unset_Train_Length
+   is
+   begin
+      Length_Known := False;
+   end Unset_Train_Length;
 
    ---------------------------
    -- Set_Report_Parameters --

@@ -278,6 +278,8 @@ is
           Post => Min_Safe_Rear'Result <= Min_Safe_Front;
    function Train_Length_Known return Boolean
      with Global => State;
+   function Length_Of_Train return Length_T
+     with Global => State;
 
    --  The events of the last cycle
    function Event_Count return Natural
@@ -422,7 +424,23 @@ is
 
    --  The train length of the valid Train Data (phase E4), cm
    procedure Set_Train_Length (Length : Length_T)
-     with Global => (In_Out => State);
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => Train_Length_Known and then Length_Of_Train = Length
+                  and then Active_Cab = Active_Cab'Old
+                  and then Orientation = Orientation'Old
+                  and then LRBG = LRBG'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
+   --  No valid Train Data (3.18.3): the min safe rear end is the min safe
+   --  front end again and the rear end triggers do not fire
+   procedure Unset_Train_Length
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => not Train_Length_Known
+                  and then Active_Cab = Active_Cab'Old
+                  and then Orientation = Orientation'Old
+                  and then LRBG = LRBG'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
 
    --  3.15.1.3.1 b), c) (phase E5, the RBC/RBC handover): the border
    --  of an RBC transition order, D along the orientation from the

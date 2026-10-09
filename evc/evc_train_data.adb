@@ -26,6 +26,9 @@ is
       Current_Categories := Default_Categories;
    end Clear;
 
+   function Length return EVC_Distances.Length_T is (Current.Length)
+     with Refined_Global => Current;
+
    procedure Set (D : Train_Data_T; C : Categories_T) is
    begin
       Is_Valid := True;

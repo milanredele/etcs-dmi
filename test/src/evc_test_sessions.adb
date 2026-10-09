@@ -17,6 +17,8 @@ with EVC_Bytes;
 with EVC_Mission;
 with EVC_Modes;
 with EVC_Position;
+with EVC_Train_Data;
+with EVC_Distances;
 with EVC_Procedures;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
@@ -1377,5 +1379,30 @@ package body EVC_Test_Sessions is
              & "define, packet 4 M_ERROR 3 (3.16.1.1, 3.16.3.1.1.2), got"
              & Img (Count) & Img (Error) & Img (Recorded));
    end Scenario_Session_Error_Report;
+
+   --  3.6.1.7, 3.18.3 (tenth round): the train length of the valid Train
+   --  Data reaches the position once per cycle (EVC_Core
+   --  Sync_Train_Length), so that the min safe rear end and its triggers
+   --  (3.6.5.1.5 c, 3.15.1.3.1 c) exist in service, not only in the tests
+   --  of EVC_Position; a fresh on-board without Train Data knows none
+   procedure Scenario_Train_Length_To_Position is
+      use type EVC_Distances.Cm_T;
+   begin
+      SoM_L2_At_S20;
+      Stand;
+      Check (EVC_Position.Train_Length_Known
+             and then EVC_Position.Length_Of_Train = EVC_Train_Data.Length
+             and then EVC_Train_Data.Length > 0,
+             "train length: the valid Train Data's length known to the "
+             & "position (3.6.1.7)");
+      Check (EVC_Position.Min_Safe_Rear
+               = EVC_Position.Min_Safe_Front - EVC_Train_Data.Length,
+             "train length: the min safe rear end behind the front by it");
+      EVC_Test_Modes.Start_E4;
+      Stand;
+      Check (not EVC_Position.Train_Length_Known,
+             "train length: none without valid Train Data");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Train_Length_To_Position;
 
 end EVC_Test_Sessions;

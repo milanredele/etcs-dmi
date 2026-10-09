@@ -53,5 +53,8 @@ package EVC_Test_Sessions is
    --  e5/error-report: 3.16.3.1.1.2, an inconsistent message reported to
    --  the RBC by packet 4 in message 136
    procedure Scenario_Session_Error_Report;
+   --  3.6.1.7 / 3.18.3: the train length of the valid Train Data known to
+   --  the position (EVC_Core.Sync_Train_Length), unknown again without them
+   procedure Scenario_Train_Length_To_Position;
 
 end EVC_Test_Sessions;

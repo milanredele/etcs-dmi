@@ -1808,6 +1808,37 @@ is
    --  3.11.6.4: a trip order (V_MAIN 0) is used in the cycle in level 1
    --  (the trip [18], inhibited by the override, 5.8.3.6), and kept in
    --  the other levels until the level switches to 1 ([67])
+   --  7c. The train length of the valid Train Data to the position
+   --  (3.6.1.7, 3.18.3): the min safe rear end and its triggers (packet 58
+   --  rear locations, 3.6.5.1.5 c; the RBC/RBC border passed by the rear
+   --  end, 3.15.1.3.1 c) need it; no valid Train Data, no rear end. Once
+   --  per cycle, after everything that sets or invalidates the Train Data
+   --  (the driver's entry in EVC_Mission, a mode entered)
+   procedure Sync_Train_Length
+     with Global => (Input    => EVC_Train_Data.State,
+                     In_Out   => EVC_Position.State,
+                     Proof_In => EVC_Odometry.State),
+          Post   => EVC_Position.Active_Cab = EVC_Position.Active_Cab'Old
+                    and then EVC_Position.Orientation
+                             = EVC_Position.Orientation'Old
+                    and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                    and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                    and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+   begin
+      if EVC_Train_Data.Valid then
+         if not EVC_Position.Train_Length_Known
+           or else EVC_Position.Length_Of_Train /= EVC_Train_Data.Length
+         then
+            EVC_Position.Set_Train_Length (EVC_Train_Data.Length);
+         end if;
+      elsif EVC_Position.Train_Length_Known then
+         EVC_Position.Unset_Train_Length;
+      end if;
+   end Sync_Train_Length;
+
    procedure Finish_Procedures
      with Global => (Input  => (Current_Mode, Proc_Ctx, Test_Snapshot_Set,
                                 EVC_Stored_Information.State,
@@ -2710,6 +2741,7 @@ is
          end if;
       end;
       Finish_Procedures;
+      Sync_Train_Length;
       Produce_Outputs;
       Save_Retained;
    end Tick;

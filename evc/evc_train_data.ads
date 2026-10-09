@@ -17,6 +17,7 @@
 --  a traction cut-off time of 1 s.
 
 with ETCS_Variables;        use ETCS_Variables;
+with EVC_Distances;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 
 package EVC_Train_Data
@@ -62,6 +63,9 @@ is
      with Global => State;
 
    function Data return Train_Data_T
+     with Global => State;
+   --  The train length of the Train Data (L_TRAIN, cm), without the record
+   function Length return EVC_Distances.Length_T
      with Global => State;
 
    function Categories return Categories_T

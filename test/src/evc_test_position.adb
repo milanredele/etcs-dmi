@@ -13,6 +13,7 @@ with EVC_Modes;
 with EVC_Odometry;
 with EVC_Ports;
 with EVC_Position;
+with EVC_Train_Data;
 with Interfaces;
 
 package body EVC_Test_Position is
@@ -764,13 +765,21 @@ package body EVC_Test_Position is
    begin
       Start_Track;
       Add_Group (Group (10, 100));
+      --  the core gives the position the length of the valid Train Data
+      --  once per cycle (EVC_Core.Sync_Train_Length, 3.18.3): none while
+      --  the Train Data are invalid
+      EVC_Train_Data.Invalidate;
       Run_To (50_000);
       Check (not Pos.Train_Length_Known
              and then Pos.Min_Safe_Rear = Pos.Min_Safe_Front,
-             "rear end: no train length");
-      Pos.Set_Train_Length (20_000);
-      Check (Pos.Min_Safe_Rear = Pos.Min_Safe_Front - 20_000,
-             "rear end: the min safe front end minus 200 m");
+             "rear end: no train length without valid Train Data");
+      EVC_Train_Data.Set (EVC_Train_Data.Default,
+                          EVC_Train_Data.Default_Categories);
+      Run_To (51_000);
+      Check (Pos.Train_Length_Known
+             and then Pos.Min_Safe_Rear = Pos.Min_Safe_Front - 20_000,
+             "rear end: the min safe front end minus the 200 m of the "
+             & "Train Data");
    end Scenario_Rear_End;
 
    --  Packet 58 referring to one of the last LRBGs (3.6.2.2.2 c), a
