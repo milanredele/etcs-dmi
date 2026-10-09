@@ -28,6 +28,7 @@
 pragma Ada_2012;
 with Interfaces; use Interfaces;
 with EVC_Bytes;
+with EVC_Config;
 
 package S076_Bench is
 
@@ -47,6 +48,9 @@ package S076_Bench is
    --  The on-board and the DMI are powered up (EVC_Core.Initialise,
    --  DMI_Core.Initialise; nothing is kept over No Power)
    procedure Power_On;
+   --  The radio systems the on-board installs at the next Power_On
+   --  (EVC_Config.Radio_Config_T.Systems); kept over Reset
+   procedure Set_Radio_Systems (Systems : EVC_Config.Radio_Systems_T);
    --  Powered down: no cycle of the on-board until Power_On
    procedure Power_Off;
    function Powered return Boolean;
