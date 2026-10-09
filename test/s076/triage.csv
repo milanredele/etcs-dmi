@@ -64,7 +64,7 @@ S424295a6,E6,3.18.4.6: the adhesion factor selected by the driver (driver action
 S63b7a729,E5,JRU 9 (message from the RBC): level 2 only (the comment says so)
 S9519b1f5,E5,an immediate order to level 2 is taken without the radio (the level is not available: 5.10, E5)
 S5cebf0dd,E5,an order to level 2 (E5)
-Sa03cccdc,E5,an order to level 2 (E5)
+Sa03cccdc,onboard,"an order to level 2 not executed. 4080455_01 SV30 step 78 (the family's six sequences that stop here since e5/train-data-129): in level 1 FS with a session and Train Data acknowledged, an announcement (packet 41, D_LEVELTR 500) taken at 150 m, an MA by radio (message 3) in level 1, then BG3d at 200 m with the immediate order (D_LEVELTR 0, M_LEVELTR 3): no level event is recorded, the on-board stays in level 1; EVC_Levels.Take_Order would switch at once, so the packet does not reach it (the acceptance of BG3d after the MA by radio, 4.8.3 / 3.4.4 linking, to analyse)"
 # E5 radio side of the runner (e5/bench, 2026-10-05): the on-board output a step waits for and does not get; the halves are stubs on this branch. "## Radio" of the report counts the sequences per output
 ~expect RTM connect: not requested,E5,session: EVC_Sessions not written yet: the request to set up a safe radio connection (3.5.3.4; EVC_Radio.Request_Set_Up)
 ~expect RTM registration: not requested,E5,session: EVC_Sessions not written yet: the registration of the mobile to the radio network (3.5.6; EVC_Radio.Request_Registration)
