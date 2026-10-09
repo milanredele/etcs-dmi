@@ -685,9 +685,12 @@ is
    begin
       Count (Messages);
       Verdict := Ignore;
-      if not R.Usable (S)
-        or else (Info.Received and then not Newer (T, Info.Last_Received))
-      then
+      if not R.Usable (S) then
+         return;
+      elsif Info.Received and then not Newer (T, Info.Last_Received) then
+         --  3.16.3.3.3 rejected; 3.16.3.1.1 b), 3.16.3.1.1.2: reported to
+         --  the RBC as a sequence error (7.5.1.64: M_ERROR 4)
+         Reports.Request_Error (S, M_ERROR_Radio_Sequence_Error_Ref);
          return;
       end if;
       R.Note_Received (S, T, Now_Ms);
