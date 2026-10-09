@@ -3125,3 +3125,33 @@ Open after this round, in the order a next round would take them:
 3. The handover remainder (3.15.1.3.2.4, 3.15.1.3.3 in SM, scenarios of
    3.15.1.3.1 c) and 3.15.1.3.9), 3.6.5.1.4 c) d) f), S322852a4 (chapter
    6 and Table 50 D5), M_ERROR 5; radio infill (111 sequences) in E7.
+
+### Level order by balise in level 1 and the MA at standstill (e5/level-order-ma, 2026-10-09)
+
+Both signatures were the sequences' data, not the on-board: no change
+under `evc/`. **Sa03cccdc** in 4080455 (SV30 _01 _02 _05 to _08, step
+78): the linking of BG1d places BG3d, the group with the immediate
+order to level 2, 300 m after BG2d (450 m, Q_LOCACC 10 m), and the
+sequences put it at 200 m (400 m in _05 to _08); the on-board rejects
+the message of a group found outside its expectation window
+(3.4.4.4.3.2). Moved to 450 m in a copy of _01, the order is carried
+out and the sequence runs on to step 80. **S0ebd65fd** (3040200_03
+SV30, step 137): after the change to cab B the train is reverse to its
+LRBG (the sequence's own 129 and 132 report Q_DIRLRBG 0), and the RBC's
+message 33 is for the nominal direction of the LRBG (Q_DIR 1, D_REF
++2050 m): only data valid for the train orientation is taken
+(3.6.3.1.1 a, 3.6.3.1.3), so no MA and SB stays; with Q_DIR 0 in a copy
+the on-board reaches FS at step 137 (5.4.3.2 E29) and runs on to step
+142. Scenarios: `EVC_Test_Levels.Scenario_L2_Order_Linked_Group`,
+`EVC_Test_Authority.Scenario_Radio_MA_Direction` (`MA_Message` takes
+Q_DIR). Matrix: the notes of 3.6.3.1.3 (still partial) and 3.4.4.4.3.2.
+Triage: S0ebd65fd `s076`; Sa03cccdc rewritten, still `onboard` for its
+other, unanalysed families. SUBSET-076: 692 / 1600 / 898 before and
+after, 0 regressions, baseline kept.
+
+Left: the other families of Sa03cccdc (3070300_12/13 step 87: BG11d at
+1600 m with an immediate order to level 2, in level 1 with the linking
+of the radio MA of 400 m that announces BG4 only, against 3.4.4.4.2 in
+`EVC_Position.Decide_Linking`; 4080100_06, 4080425_04, 4100103_15,
+5220200_03, 6060504/6060505, 9990500_24); a runner that places a linked
+group at the location its linking gives (s076_bench) would move 4080455.
