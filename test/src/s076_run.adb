@@ -567,20 +567,135 @@ package body S076_Run is
       B.Cycle;
    end Desk_Isolation;
 
-   --  The level the driver selects: the step's column after, else the
-   --  LEVEL of the PDF's DMI event
-   function Selected_Level (St : Step_T) return Level_Kind_T is
+   --  The level the driver selects. The sequences disagree with
+   --  themselves here: 5040300_17 step 10 has the column after L1, the
+   --  DMI event LEVEL=1 and the comment "The Driver selects L2", and the
+   --  steps that follow settle on L2; 4070201_03 step 10 has the comment
+   --  "selects L0" with the column L1 and the steps that follow L1;
+   --  5040300_21 step 71 has no LEVEL, the column L1 and the comment
+   --  "selects "Level 2"", the steps that follow L2. What holds in every
+   --  shape is the level the following steps settle on: the last known
+   --  column of the four steps after this one first, then the step's own
+   --  column after, the comment's "L2" / "Level 2", the LEVEL of the
+   --  PDF's DMI event, the words of the line
+   function Selected_Level (St : Step_T; Item : String) return Level_Kind_T
+   is
       K : constant Level_Kind_T := Level_Of (Trim (St.Lvl_After));
       D : constant String := DMI_Data (Seq, St.Number);
+      U : constant String := Up (Item);
+      P : constant Natural := Ada.Strings.Fixed.Index (U, "LEVEL-");
+
+      --  the levels the step's item allows: "Level-0/1/NTC" excludes 2,
+      --  "Level-2" names the one level; no list allows every level
+      function Allowed (L : Level_Kind_T) return Boolean is
+         Tag : constant String :=
+           (case L is
+               when K_L0 => "0", when K_L1 => "1", when K_L2 => "2",
+               when K_NTC => "NTC", when others => "");
+      begin
+         if P = 0 or else Tag = "" then
+            return True;
+         end if;
+         declare
+            List : constant String := U (P + 6 .. U'Last);
+            Last : Natural;
+         begin
+            for I in List'Range loop
+               Last := I + Tag'Length - 1;
+               if Last <= List'Last and then List (I .. Last) = Tag
+                 and then (I = List'First or else List (I - 1) = '/')
+                 and then (Last = List'Last or else List (Last + 1) = '/')
+               then
+                  return True;
+               end if;
+            end loop;
+            return False;
+         end;
+      end Allowed;
+
+      --  the one level the item names, when it names only one
+      function Named_Alone return Level_Kind_T is
+      begin
+         if P = 0 or else Ada.Strings.Fixed.Index (U (P .. U'Last), "/") > 0
+         then
+            return K_None;
+         end if;
+         for L in K_L0 .. K_L2 loop
+            if Allowed (L) then
+               return L;
+            end if;
+         end loop;
+         return K_None;
+      end Named_Alone;
+
+      --  the level the next four steps settle on (their last known column)
+      function Settled_Level return Level_Kind_T is
+         Found : Level_Kind_T := K_None;
+      begin
+         for I in Cur + 1 .. Natural'Min (Cur + 4, Seq.Step_Count) loop
+            declare
+               L : constant Level_Kind_T :=
+                 Level_Of (Trim (Seq.Steps (I).Lvl_After));
+            begin
+               if L /= K_None then
+                  Found := L;
+               end if;
+            end;
+         end loop;
+         return Found;
+      end Settled_Level;
+
+      --  the last "L<d>" or "Level <d>" of the comment, a word on its own
+      function From_Comment return Level_Kind_T is
+         C     : constant String := Up (Image (St.Comment));
+         Found : Level_Kind_T := K_None;
+      begin
+         for I in C'Range loop
+            if C (I) = 'L'
+              and then (I = C'First or else C (I - 1) not in 'A' .. 'Z')
+            then
+               declare
+                  J : Natural := I + 1;
+               begin
+                  if J + 3 <= C'Last and then C (J .. J + 3) = "EVEL" then
+                     J := J + 4;
+                  end if;
+                  while J <= C'Last and then C (J) = ' ' loop
+                     J := J + 1;
+                  end loop;
+                  if J <= C'Last
+                    and then (J = C'Last or else C (J + 1) not in '0' .. '9')
+                  then
+                     case C (J) is
+                        when '0' => Found := K_L0;
+                        when '1' => Found := K_L1;
+                        when '2' => Found := K_L2;
+                        when others => null;
+                     end case;
+                  end if;
+               end;
+            end if;
+         end loop;
+         return Found;
+      end From_Comment;
    begin
-      if K /= K_None then
+      if Named_Alone /= K_None then
+         return Named_Alone;
+      end if;
+      if Settled_Level /= K_None and then Allowed (Settled_Level) then
+         return Settled_Level;
+      end if;
+      if K /= K_None and then Allowed (K) then
          return K;
       end if;
-      if Has (D, "LEVEL=0") then
+      if From_Comment /= K_None and then Allowed (From_Comment) then
+         return From_Comment;
+      end if;
+      if Has (D, "LEVEL=0") and then Allowed (K_L0) then
          return K_L0;
-      elsif Has (D, "LEVEL=1") then
+      elsif Has (D, "LEVEL=1") and then Allowed (K_L1) then
          return K_L1;
-      elsif Has (D, "LEVEL=2") then
+      elsif Has (D, "LEVEL=2") and then Allowed (K_L2) then
          return K_L2;
       end if;
       for I in 4 .. Line.Count loop
@@ -734,7 +849,7 @@ package body S076_Run is
       elsif Same (Verb, "select") and then Has (Item, "Level")
       then
          declare
-            K : constant Level_Kind_T := Selected_Level (St);
+            K : constant Level_Kind_T := Selected_Level (St, Item);
          begin
             if K = K_None then
                return NJ (R_Runner, "DMI select level: which level");

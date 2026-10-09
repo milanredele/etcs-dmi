@@ -28,8 +28,8 @@ package S076_Sequences is
    Max_DMI       : constant := 48;
    Max_Points    : constant := 128;
    Max_Timers    : constant := 64;
-   Max_Text      : constant := 160;
-   Max_Line      : constant := 256;
+   Max_Text      : constant := 400;
+   Max_Line      : constant := 512;
    Max_Bytes     : constant := 104;  -- an 830 bit telegram
 
    --  A short text (a word, a line), bounded
