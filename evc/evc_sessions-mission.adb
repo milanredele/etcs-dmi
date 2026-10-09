@@ -261,6 +261,21 @@ is
       end case;
    end Driver_Contact;
 
+   procedure Take_Radio_Data (Found : out Boolean;
+                              RBC   : out EVC_Radio.RBC_Id_T;
+                              Radio : out ETCS_Variables.NID_RADIO_T)
+   is
+      C       : R.RBC_Contact_T;
+      Entered : Boolean;
+   begin
+      Driver_Contact (Found, Entered, C);
+      if Found and then Entered then
+         R.Set_Contact (C);
+      end if;
+      RBC := C.RBC;
+      Radio := C.Radio;
+   end Take_Radio_Data;
+
    --  A31: the session with RBC opened, three attempts (A.3.1)
    procedure Open_SoM (RBC   : R.RBC_Id_T;
                        Radio : NID_RADIO_T;

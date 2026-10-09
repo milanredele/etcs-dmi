@@ -406,6 +406,14 @@ is
       Handover.Take_Order (RBC, Radio, Ref, D);
    end Take_Transition;
 
+   procedure Take_Radio_Data (Found : out Boolean;
+                              RBC   : out EVC_Radio.RBC_Id_T;
+                              Radio : out ETCS_Variables.NID_RADIO_T)
+   is
+   begin
+      Mission.Take_Radio_Data (Found, RBC, Radio);
+   end Take_Radio_Data;
+
    procedure Take_Order (Establish : Boolean;
                          RBC       : EVC_Radio.RBC_Id_T;
                          Radio     : ETCS_Variables.NID_RADIO_T)

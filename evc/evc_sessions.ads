@@ -121,6 +121,16 @@ is
      with Global => (In_Out => State),
           Post => Has_Released = Has_Released'Old;
 
+   --  5.10.3.15.2 b) (e5/level2-radio-data, for EVC_Level_Sessions):
+   --  the driver's Radio data entered outside the start of mission,
+   --  read by EVC_Sessions.Mission as at 5.4.3.2 S3 (Found: usable; a
+   --  contact entered is stored, valid)
+   procedure Take_Radio_Data (Found : out Boolean;
+                              RBC   : out EVC_Radio.RBC_Id_T;
+                              Radio : out ETCS_Variables.NID_RADIO_T)
+     with Global => (In_Out => EVC_Radio.State,
+                     Input  => EVC_Driver_Requests.State);
+
    --  1b. The transition buffer (4.8.5) has a message to release
    function Has_Released return Boolean
      with Global => State;

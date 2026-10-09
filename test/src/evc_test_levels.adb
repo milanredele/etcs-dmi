@@ -167,4 +167,123 @@ package body EVC_Test_Levels is
              & "repetition (5.10.3.3.4, 5.10.3.3.5)");
    end Scenario_L2_Exit_By_Order;
 
+   ---------------------------------------------------------------------
+   --  5.10.3.15.2 b): the driver's level 2 without the conditions of a),
+   --  the session once the driver has entered the Radio data
+   ---------------------------------------------------------------------
+
+   use type LS.Await_T;
+   use type ETCS_Variables.NID_RBC_T;
+
+   --  MSG_DRIVER_DATA kind 5 (DMI Table 50 S5-1): choice 0 'Enter RBC
+   --  data' (RBC 123 / 1, number 0077) or 1 'Contact last RBC'
+   function RBC_Data (Choice : Byte) return Byte_Array is
+      Res : Byte_Array (1 .. 23) := (others => 0);
+      Id  : constant := 123 * 16_384 + 1;
+   begin
+      Res (1 .. 6) := (5, Choice, Byte (Id mod 256),
+                       Byte (Id / 256 mod 256), Byte (Id / 65_536), 0);
+      Res (7 .. 11) := (4, Character'Pos ('0'), Character'Pos ('0'),
+                        Character'Pos ('7'), Character'Pos ('7'));
+      return Frame (EVC_DMI_Port.MSG_DRIVER_DATA, Res);
+   end RBC_Data;
+
+   --  A set-up request on the RTM port within N cycles
+   function Set_Up_Sent (N : Positive) return Boolean is
+   begin
+      for I in 1 .. N loop
+         Stand;
+         for J in 1 .. Radio_Outputs loop
+            if Radio_Output (J).Request
+              and then Radio_Output (J).Kind
+                       = RTM_Request_T'Pos (Request_Set_Up) + 1
+            then
+               return True;
+            end if;
+         end loop;
+      end loop;
+      return False;
+   end Set_Up_Sent;
+
+   procedure Scenario_L2_Radio_Data_No_Contact is
+      C : EVC_Radio.RBC_Contact_T;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      Driver_Level (L2_Code);
+      Stand_X (100);
+      Check (EVC_Levels.Level = L2
+             and then LS.Radio_Data_Awaited = LS.No_Contact
+             and then LS.Sessions_Ordered = 0
+             and then EVC_Radio.Info (1).State = EVC_Radio.Idle,
+             "levels: level 2 selected without RBC contact: no session, "
+             & "the Radio data awaited (5.10.3.15.2 b)");
+      Input (DMI, RBC_Data (0));
+      Stand_X (100);
+      C := EVC_Radio.Contact;
+      Check (LS.Sessions_Ordered = 1
+             and then LS.Radio_Data_Awaited = LS.Nothing
+             and then C.Valid and then C.RBC.NID_RBC = 1
+             and then EVC_Radio.Info (1).State /= EVC_Radio.Idle,
+             "levels: the driver's RBC data entered: the contact stored, "
+             & "the session established (5.10.3.15.2 b)");
+   end Scenario_L2_Radio_Data_No_Contact;
+
+   procedure Scenario_L2_Radio_Data_No_Registration is
+   begin
+      Auto_Register := False;
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      EVC_Radio.Set_Contact
+        ((Known => True, Valid => True,
+          RBC   => (NID_C => 123, NID_RBC => 1), Radio => 0));
+      Stand_X (100);
+      Driver_Level (L2_Code);
+      Stand_X (100);
+      Check (LS.Radio_Data_Awaited = LS.No_Registration
+             and then LS.Sessions_Ordered = 0,
+             "levels: level 2 selected with a valid contact but no mobile "
+             & "registered: the Radio data awaited (5.10.3.15.2 a, b)");
+      Input (DMI, RBC_Data (1));
+      Stand_X (100);
+      Check (LS.Sessions_Ordered = 1
+             and then not EVC_Sessions.Network_Ready
+             and then not Set_Up_Sent (20),
+             "levels: 'Contact last RBC' selected: the session ordered, "
+             & "its set-up waits for the registration (5.10.3.15.2 b, "
+             & "3.5.6.7)");
+      Give_Radio_Event (1, Registered);
+      Check (Set_Up_Sent (20),
+             "levels: registered: the set-up requested (3.5.6.7)");
+      Auto_Register := True;
+   end Scenario_L2_Radio_Data_No_Registration;
+
+   procedure Scenario_L2_Radio_Data_Into_TR is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Stand_X (100);
+      Driver_Level (L2_Code);
+      Stand_X (100);
+      Check (EVC_Core.Mode = M_TR
+             and then LS.Radio_Data_Awaited = LS.No_Contact,
+             "levels: level 0 to 2 by the driver into TR: the Radio data "
+             & "awaited (5.10.3.15.2 b)");
+      Input (DMI, RBC_Data (0));
+      Stand_X (100);
+      Check (LS.Sessions_Ordered = 0
+             and then LS.Radio_Data_Awaited = LS.No_Contact,
+             "levels: in TR the Radio data are not taken (5.10.3.15.2 b, "
+             & "the note: the request only in PT)");
+      EVC_Core.Set_Mode_For_Test (M_PT, L2);
+      Stand_X (100);
+      Input (DMI, RBC_Data (0));
+      Stand_X (100);
+      Check (EVC_Core.Mode = M_PT and then LS.Sessions_Ordered = 1
+             and then EVC_Radio.Info (1).State /= EVC_Radio.Idle,
+             "levels: in PT the driver's Radio data open the session "
+             & "(5.10.3.15.2 b and its note)");
+   end Scenario_L2_Radio_Data_Into_TR;
+
 end EVC_Test_Levels;
