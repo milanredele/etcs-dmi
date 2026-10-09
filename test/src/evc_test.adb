@@ -254,6 +254,7 @@ begin
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;
+   Scenario_Radio_MA_Direction;
    Scenario_MA_Request;
    Scenario_Shortening;
    Scenario_Emergency_Stops;
@@ -268,6 +269,7 @@ begin
    Scenario_L2_Buffer_Same_Cycle;
    Scenario_L2_Driver_Change;
    Scenario_L2_Exit_By_Order;
+   Scenario_L2_Order_Linked_Group;
    Scenario_L2_Radio_Data_No_Contact;
    Scenario_L2_Radio_Data_No_Registration;
    Scenario_L2_Radio_Data_Into_TR;
