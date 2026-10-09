@@ -6,7 +6,6 @@ with Ada.Environment_Variables;
 with Ada.Streams;     use Ada.Streams;
 with DMI_Core;
 with DMI_Protocol;
-with EVC_Config;
 with EVC_Core;
 with EVC_Distances;
 with EVC_Outbox;
@@ -27,6 +26,7 @@ package body S076_Bench is
    --  the data of 4.10 column NP (EVC_Core.Power_Up), the first one is
    --  that of a new on-board (EVC_Core.Initialise)
    Was_Powered : Boolean := False;
+   Radio_Systems : EVC_Config.Radio_Systems_T := EVC_Config.Both_Systems;
    Clock      : Unsigned_64 := 0;
 
    X_Cm      : Integer_64 := 0;     -- antenna, track position
@@ -547,13 +547,18 @@ package body S076_Bench is
       New_Window;
    end Reset;
 
+   procedure Set_Radio_Systems (Systems : EVC_Config.Radio_Systems_T) is
+   begin
+      Radio_Systems := Systems;
+   end Set_Radio_Systems;
+
    procedure Power_On is
    begin
       --  The ETCS identity of the on-board the sequences were recorded
       --  with (NID_ENGINE 76000 in nearly all of them, e5/session-3)
       EVC_Config.Set_Radio_For_Test
         ((Sessions => EVC_Config.Current.Radio.Sessions,
-          Engine_Id => 76_000, others => <>));
+          Engine_Id => 76_000, Systems => Radio_Systems, others => <>));
       if Was_Powered then
          EVC_Core.Power_Up;
       else

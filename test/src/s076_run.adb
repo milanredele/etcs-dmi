@@ -27,6 +27,7 @@ with EVC_Ports;
 with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
 with S076_Bench;
+with EVC_Config;
 with S076_Tables;             use S076_Tables;
 with Scn_Reader;              use Scn_Reader;
 with Supplementary_Driving_Info;
@@ -3088,6 +3089,18 @@ package body S076_Run is
       end Block;
    begin
       B.Reset;
+      --  The radio systems installed (3.5.6.7, 5.4.3.2 D7): the sequences
+      --  of feature 3050600 test 3.5.6 with both systems installed (in
+      --  3050600_05 3.5.6.7 b holds the set-up while FRMCS is not
+      --  registered); every other sequence was recorded with an on-board
+      --  that sets up its sessions after a packet 45 of type FRMCS+GSM-R,
+      --  which is GSM-R only here, as the port reports no FRMCS
+      --  registration (e5/registration decision 2).
+      if Image (Seq.Feature) = "3050600" then
+         B.Set_Radio_Systems (EVC_Config.Both_Systems);
+      else
+         B.Set_Radio_Systems (EVC_Config.GSMR_Only);
+      end if;
       Step_Start_Ms := 0;
       Hold_Speed := False;
       Train_Configuration := 1;
