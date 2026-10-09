@@ -211,14 +211,14 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.5.1.4 b),3,x,,,,,E2,done,"EVC_Position.Report_Triggers (Mode_Changed, Level_Changed); evc_test Scenario_Report_Triggers; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports"
 3.6.5.1.4 c),3,x,,,,,E2,deferred,E5 (train integrity) [E5 session]
 3.6.5.1.4 d),3,x,,,,,E2,deferred,E5 (train integrity) [E5 session]
-3.6.5.1.4 e),3,x,,,,,E2,deferred,"E5 (RBC/RBC border, handover) [E5 session]"
+3.6.5.1.4 e),3,x,,,,,E2,partial,"EVC_Position Border_Rear -> EVC_Sessions.Handover Req.Report (to both RBCs); no scenario of its own (as 3.15.1.3.1 c) [E5 session]"
 3.6.5.1.4 f),3,x,,,,,E2,deferred,E4 (level transition border)
 3.6.5.1.4 g),3,x,,,,,E2,done,"EVC_Position.Report_Triggers (Mode_Changed, Level_Changed); evc_test Scenario_Report_Triggers; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports"
 3.6.5.1.4 h),3,x,,,,,E2,done,"EVC_Sessions.Reports: the supervising session established (the SoM report 157 is that report during the start of mission); evc_test Scenario_Session_Establish, Scenario_Session_Reports [E5 session]"
 3.6.5.1.4 i),3,x,,,,,E2,done,EVC_Position.Report_Triggers; evc_test position_first_group; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports
 3.6.5.1.4 j),3,x,,,,,E2,done,EVC_Position.Report_Triggers; evc_test position_first_group; sent by EVC_Sessions.Reports (136); evc_test Scenario_Session_Reports
-3.6.5.1.4 k),3,x,,,,,E2,deferred,"E5 (RBC/RBC border, handover) [E5 session]"
-3.6.5.1.4 l),3,x,,,,,E2,deferred,"E5 (communication session, errors of 3.16.4) [E5 session]"
+3.6.5.1.4 k),3,x,,,,,E2,done,"EVC_Position Border_Front -> EVC_Sessions.Handover Req.Report (to both RBCs); evc_test Scenario_Handover_Radio [E5 session]"
+3.6.5.1.4 l),3,x,,,,,E2,partial,"EVC_Sessions.Reports.Request_Error: radio message errors (3.16.3.1.1.2, M_ERROR 3 and 4; a packet chapter 7 does not define, EVC_Core.Read_Radio_Messages); evc_test Scenario_Session_Error_Report; balise group and odometer errors of 3.16.4.2 with E6 [E5 session]"
 3.6.5.1.4.1,3,x,,,,,E2,done,"EVC_Sessions.Reports: 136 built at the end of the cycle (Send_Radio), after the modes and levels of the cycle [E5 session]"
 3.6.5.1.6,3,x,,,,,E2,done,the LRBG trigger is raised after the message of the group is taken in the same cycle (Tick order); 136 sent at the end of that cycle (EVC_Sessions.Reports) [E5 session]
 3.6.5.1.7,3,x,,,,,E2,done,EVC_Position.Set_Report_Parameters replaces the stored parameters; evc_test Scenario_Report_Triggers

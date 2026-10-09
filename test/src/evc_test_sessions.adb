@@ -1356,6 +1356,26 @@ package body EVC_Test_Sessions is
              "error report: a message refused by the codec, packet 4 "
              & "M_ERROR 3 (3.16.1.1, 3.16.3.1.1, 7.5.1.64) and JRU record "
              & "13, got" & Img (Count) & Img (Error) & Img (Recorded));
+      --  e5/reports-136, 3.16.1.1: a packet chapter 7 does not define
+      --  (NID_PACKET 155, which the codec skips by its L_PACKET) makes the
+      --  message not compliant: M_ERROR 3 (SUBSET-076 7040200_03 step 65)
+      declare
+         W : Writer_T;
+         V : ETCS_Message.Value_Array := (others => 0);
+      begin
+         V (3) := T + 20;
+         Start_Message (W, MCat.Track_M24, V);
+         ETCS_Bits.Write (W, 8, 155);   -- NID_PACKET
+         ETCS_Bits.Write (W, 2, 0);     -- Q_DIR
+         ETCS_Bits.Write (W, 13, 31);   -- L_PACKET
+         ETCS_Bits.Write (W, 8, 0);
+         Give_Radio_Message (1, Message_Bytes (W));
+      end;
+      Step;
+      Check (Count = 5 and then Error = 3 and then Recorded = 5,
+             "error report: a message with a packet chapter 7 does not "
+             & "define, packet 4 M_ERROR 3 (3.16.1.1, 3.16.3.1.1.2), got"
+             & Img (Count) & Img (Error) & Img (Recorded));
    end Scenario_Session_Error_Report;
 
 end EVC_Test_Sessions;

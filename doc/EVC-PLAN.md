@@ -2990,3 +2990,32 @@ data window, the RBC data and the session set-up (5040300_17 to step
 level 2 is selected with a valid contact and the DMI's Table 50 D5
 goes to the Main window: an item for E7 or the DMI. Three stale triage
 lines of the radio data buttons were removed.
+
+### Position reports by event, and the runner's radio expectations (e5/reports-136, 2026-10-09)
+
+**Implemented.** `S076_Run.Radio_Expect` judges every message of the
+kind in the window (the first that meets the expectation passes) and
+reads FIELD=value from packets 0, 1 and 4 (`Packet_Field`: M_ERROR,
+V_TRAIN, M_LEVEL, M_MODE), else from the message's own variables:
+3160300_01 SV22 / SV30 pass step 87. 3.16.1.1 / 3.16.3.1.1.2: a radio
+message with a packet that chapter 7 does not define (the codec skips it
+by L_PACKET, `EVC_Received.Last_Unknown_Packets`) is reported with
+M_ERROR 3 and not used (`EVC_Core.Read_Radio_Messages`); 7040200_03
+passes in all three versions. Scenario: `Scenario_Session_Error_Report`
+gained the case. 3.6.5.1.4: a), b), g), h), i), j) were already there;
+k) and e) are sent by the handover (`Border_Front` / `Border_Rear` ->
+`Req.Report`, rows done / partial); l) partial (radio errors); c), d)
+(train integrity) and f) still deferred.
+
+**Analysed (S13c9beb3).** 3060500_03: s076 (a joined case refers to an
+LRBG BG6 the sequence never passes). 3150100: runner model (an ODO
+reach-point goes to the step's nominal position, not to the location of
+packet 58 or LRBG + D_RBCTR). 9990400_24: s076 (the bits carry M_LOC 2
+while the step says M_LOC 0, TC bug 1124). SUBSET-076: 685 / 1619 / 886
+-> 688 / 1614 / 888.
+
+**Left.** The runner's reach-point to the location of packets 58 / 131
+(3150100, 11 sequences); 3160300_01 SV21 (its packet 72 counted unknown
+before the time stamp check: M_ERROR 3, the sequence expects 4); the
+families 3110500, 3160200, 4080100, 4080428, 4080442, 5100300, 5100400,
+5150400, 3060100 not traced; 3.6.5.1.4 c), d), f).

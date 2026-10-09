@@ -1596,7 +1596,7 @@ efs: Kernel.TrainPosition.Position.DataState <- DataStateEnum.Valid
 set odo.position 1080.0
 efs: Testing.InitializeEURORADIO()
 case The train passes a RBC/RBC border with its max safe front end
-clause E2 deferred 3.6.5.1.4 k) ; efs 3.6.5.1.4.k
+clause E2 done 3.6.5.1.4 k) ; efs 3.6.5.1.4.k
 clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 sequence Position report events: train passes a RBC/RBC border with its min safe rear end
@@ -1733,7 +1733,7 @@ efs: BTM.LRBG.PreviousBaliseGroups <- [ BTM.LRBG.PreviousBaliseGroupStruct { IsL
 set odo.position 1080.0
 efs: Testing.InitializeEURORADIO()
 case The train passes a RBC/RBC border with its min safe rear end
-clause E2 deferred 3.6.5.1.4 e) ; efs 3.6.5.1.4.e
+clause E2 partial 3.6.5.1.4 e) ; efs 3.6.5.1.4.e
 clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 sequence Position report events: train passes an LRBG compliant BG, if no report parameters

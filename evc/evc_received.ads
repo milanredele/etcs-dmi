@@ -104,6 +104,10 @@ is
    function Last_Packet_Count return Natural
      with Global => Store,
           Post => Last_Packet_Count'Result = Last_Message.Count;
+   --  e5/reports-136: the packets of the last message whose NID_PACKET
+   --  chapter 7 does not define (the codec skips them by L_PACKET)
+   function Last_Unknown_Packets return Natural
+     with Global => Store;
    function Last_Packet_Kind (I : Positive)
      return ETCS_Catalogue.Packet_Kind_T
      with Global => Store,
