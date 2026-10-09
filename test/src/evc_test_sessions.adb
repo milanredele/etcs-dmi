@@ -1233,7 +1233,7 @@ package body EVC_Test_Sessions is
    end Error_Reports;
 
    procedure Scenario_Session_Error_Report is
-      Count, Error : Natural := 0;
+      Count, Error, Recorded : Natural := 0;
       T : Unsigned_64;
 
       --  Two cycles, the error reports of each added up
@@ -1244,6 +1244,7 @@ package body EVC_Test_Sessions is
             Stand;
             Error_Reports (0, C, E);
             Count := Count + C;
+            Recorded := Recorded + JRU_Count (13);
             if C > 0 then
                Error := E;
             end if;
@@ -1275,6 +1276,22 @@ package body EVC_Test_Sessions is
              "error report: once per inconsistent message, two in one "
              & "cycle reported in two messages (3.16.3.1.1.2), got"
              & Img (Count));
+      Check (Recorded = 3,
+             "error report: each recorded as JRU record 13, got"
+             & Img (Recorded));
+      --  3.16.1.1, 3.16.3.1.1 c): a message the codec refuses (an unknown
+      --  NID_MESSAGE), M_ERROR 3
+      declare
+         M : Byte_Array := Msg (MCat.Track_M24, T + 10);
+      begin
+         M (M'First) := 255;
+         Give_Radio_Message (1, M);
+      end;
+      Step;
+      Check (Count = 4 and then Error = 3 and then Recorded = 4,
+             "error report: a message refused by the codec, packet 4 "
+             & "M_ERROR 3 (3.16.1.1, 3.16.3.1.1, 7.5.1.64) and JRU record "
+             & "13, got" & Img (Count) & Img (Error) & Img (Recorded));
    end Scenario_Session_Error_Report;
 
 end EVC_Test_Sessions;

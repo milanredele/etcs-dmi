@@ -27,6 +27,7 @@ package body EVC_Sessions
                                    Pending, Acks, Ack_N, NV, Ind,
                                    Requesting, Timer_On, Timer_Since,
                                    SB_Shown, Status_List, Status_N,
+                                   Noted, Noted_Code,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Mission.State,
                                    EVC_Sessions.Network.State,
@@ -158,6 +159,10 @@ is
    type Status_List_T is array (1 .. Max_Status_Events) of Status_Event_T;
    Status_List  : Status_List_T := (others => (others => <>));
    Status_N     : Natural range 0 .. Max_Status_Events := 0;
+   --  e5/error-report: the last message taken was inconsistent, its
+   --  M_ERROR (Error_Noted, for JRU record 13)
+   Noted        : Boolean := False;
+   Noted_Code   : M_ERROR_T := 0;
 
    ---------------------------------------------------------------------
    --  Helpers
@@ -417,6 +422,11 @@ is
 
    function Service_Brake return Boolean is (NV.SB)
      with Refined_Global => NV;
+   function Error_Noted return Boolean is (Noted)
+     with Refined_Global => Noted;
+   function Error_Noted_Code return M_ERROR_T is (Noted_Code)
+     with Refined_Global => Noted_Code;
+
    function Has_Released return Boolean is (Held_Back > 0)
      with Refined_Global => Held_Back;
    function Holds (C : Condition_T) return Boolean is (Held (C))
@@ -471,6 +481,8 @@ is
       SB_Shown := False;
       Status_List := (others => (others => <>));
       Status_N := 0;
+      Noted := False;
+      Noted_Code := 0;
       Mission.Clear;
       Network.Clear;
       Reports.Clear;
@@ -674,6 +686,20 @@ is
       end loop;
    end Take_Radio_Transition;
 
+   --  3.16.3.1.1 a) is the Euroradio port's (a message it refuses never
+   --  reaches the on-board); c) and 3.16.1.1: a message the codec refuses
+   --  on a usable session, M_ERROR 3 (7.5.1.64); on a session not usable
+   --  (not set up, terminated) there is no RBC to inform
+   procedure Take_Inconsistent (S : EVC_Radio.Session_T) is
+   begin
+      Noted := False;
+      if R.Usable (S) then
+         Reports.Request_Error (S, M_ERROR_Radio_Message_Consistency_Error);
+         Noted := True;
+         Noted_Code := M_ERROR_Radio_Message_Consistency_Error;
+      end if;
+   end Take_Inconsistent;
+
    procedure Take_Message (S       : EVC_Radio.Session_T;
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
@@ -685,12 +711,15 @@ is
    begin
       Count (Messages);
       Verdict := Ignore;
+      Noted := False;
       if not R.Usable (S) then
          return;
       elsif Info.Received and then not Newer (T, Info.Last_Received) then
          --  3.16.3.3.3 rejected; 3.16.3.1.1 b), 3.16.3.1.1.2: reported to
          --  the RBC as a sequence error (7.5.1.64: M_ERROR 4)
          Reports.Request_Error (S, M_ERROR_Radio_Sequence_Error_Ref);
+         Noted := True;
+         Noted_Code := M_ERROR_Radio_Sequence_Error_Ref;
          return;
       end if;
       R.Note_Received (S, T, Now_Ms);

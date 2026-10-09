@@ -714,6 +714,22 @@ is
       Latched_Event_Count := 0;
    end Read_Radio_Events;
 
+   --  e5/error-report: JRU record 13 (EVC_JRU_Records) for a radio
+   --  message found inconsistent and reported (3.16.3.1.1.2)
+   procedure Record_Radio_Error
+     with Global => (Input  => (EVC_Sessions.State, Cycle_Count, Clock_Ms),
+                     In_Out => EVC_Outbox.Queue)
+   is
+   begin
+      if EVC_Sessions.Error_Noted then
+         EVC_Outbox.Put
+           (JRU, JRU_Record (EVC_JRU_Records.JRU_Radio_Error,
+                             EVC_Bytes.Byte
+                               (EVC_Sessions.Error_Noted_Code),
+                             0, 0));
+      end if;
+   end Record_Radio_Error;
+
    --  1c. The radio messages latched since the last cycle, in the order
    --  the RTM delivered them: parsed (EVC_Received, chapter 8), those
    --  accepted recorded on the JRU port (event 3: NID_MESSAGE, L_MESSAGE)
@@ -750,6 +766,7 @@ is
                                       EVC_Bytes.Byte (Slot.Length / 256)));
                   EVC_Sessions.Take_Message
                     (Slot.Session, Unsigned_64 (Clock_Ms), Verdict);
+                  Record_Radio_Error;
                   --  4.8.3 [2], 4.8.5.1: kept in the transition buffer of
                   --  the authority half, or taken
                   if Verdict = EVC_Sessions.Ignore then
@@ -764,6 +781,10 @@ is
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
                   end if;
+               else
+                  --  e5/error-report: 3.16.3.1.1 c), 3.16.3.1.1.2
+                  EVC_Sessions.Take_Inconsistent (Slot.Session);
+                  Record_Radio_Error;
                end if;
             end if;
          end;
