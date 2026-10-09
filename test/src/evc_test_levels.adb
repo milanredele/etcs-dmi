@@ -168,6 +168,40 @@ package body EVC_Test_Levels is
    end Scenario_L2_Exit_By_Order;
 
    ---------------------------------------------------------------------
+   --  5.10.3.1, 3.4.4.4.3.2: the immediate order to level 2 of a linked
+   --  group is carried out only when the group is found in its
+   --  expectation window; found 200 m before it, its message is rejected
+   --  and the level stays. SUBSET-076 4080455 (Sa03cccdc): BG3d,
+   --  announced by the linking of BG1d 300 m after BG2d (450 m, Q_LOCACC
+   --  10 m), is placed at 200 m (400 m in _05 to _08)
+   ---------------------------------------------------------------------
+
+   procedure Scenario_L2_Order_Linked_Group is
+      type Places_T is array (1 .. 2) of Integer_64;
+      Places : constant Places_T := (200, 400);
+   begin
+      for Found_M of Places loop
+         Start_X;
+         EVC_Core.Set_Mode_For_Test (M_FS, L1);
+         Add_Group (With_Links (Group (10, 100), Link_To ((1 => 300),
+                                                          (1 => 20))));
+         Add_Group (Group (20, Found_M));
+         Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_2, -1));
+         Run_X ((Found_M + 50) * 100);
+         if Found_M = 200 then
+            Check (EVC_Levels.Level = L1,
+                   "levels: the immediate order of a linked group found "
+                   & "before its expectation window: rejected, the level "
+                   & "stays (3.4.4.4.3.2)");
+         else
+            Check (EVC_Levels.Level = L2,
+                   "levels: the same group found in its window: the "
+                   & "order carried out at once (3.4.4.4.6 a), 5.10.3.1)");
+         end if;
+      end loop;
+   end Scenario_L2_Order_Linked_Group;
+
+   ---------------------------------------------------------------------
    --  5.10.3.15.2 b): the driver's level 2 without the conditions of a),
    --  the session once the driver has entered the Radio data
    ---------------------------------------------------------------------

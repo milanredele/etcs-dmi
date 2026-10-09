@@ -11,6 +11,7 @@ package EVC_Test_Levels is
    procedure Scenario_L2_Buffer_Same_Cycle;
    procedure Scenario_L2_Driver_Change;
    procedure Scenario_L2_Exit_By_Order;
+   procedure Scenario_L2_Order_Linked_Group;
    --  e5/level2-radio-data: 5.10.3.15.2 b) and its note
    procedure Scenario_L2_Radio_Data_No_Contact;
    procedure Scenario_L2_Radio_Data_No_Registration;
