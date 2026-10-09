@@ -304,27 +304,37 @@
       <details class="row">
         <summary>How to drive it</summary>
         <p class="note">
-          Start of mission: in the <i>Driver ID</i> window enter an id and
-          touch <i>&#10003;</i> (or press <i>Settings</i> &gt; <i>Train
-          running number</i> first); pick <i>Level 1</i> and accept it;
-          in <i>Main</i> press <i>Train data</i>, fill the two windows,
-          <i>Train data entry complete?</i> &gt; <i>Yes</i>, confirm in
-          the validation window, enter a train running number; back in
-          <i>Main</i> press <i>Start</i>; accept the mode proposed in the
-          acknowledgement area. The on-board stays in SB and brakes a
-          standing train until then; it shows SR, then FS once the first
-          balise group is read.
+          Start of mission in level 1 (the default track): in the
+          <i>Driver ID</i> window enter an id and touch the data field
+          (&#10003;); in the <i>Level</i> window choose <i>Level 1</i> and
+          touch its data field; in <i>Main</i> press <i>Train data</i>
+          (enabled once the on-board has confirmed the id and the level),
+          fill the two pages (category, length, brake percentage, max
+          speed; axle load, airtight, gauge), answer <i>Train data entry
+          complete?</i> with <i>Yes</i>, confirm the validation window,
+          enter the train running number; back in <i>Main</i> press
+          <i>Start</i>. The on-board proposes Staff Responsible: the MO10
+          symbol appears in area C1 (left of the speed dial) with a
+          flashing frame, and it is a delay-type button (DMI 5.3.2.6.6):
+          <b>press and hold it for two seconds</b>; a short tap does
+          nothing. The on-board stays in SB and brakes a standing train
+          until then; it shows SR, then FS once the first balise group
+          is read. The same sequence is the native test
+          <code>Evc_Test_Touch</code>.
         </p>
         <p class="note">
           <i>Track: level 2 by radio</i> (phase E5) puts the scripted RBC
           (Sim_RBC) behind the on-board's radio and a scripted driver in
           the cab: it sends the frames of the start of mission in level 2
           straight to the on-board, each once the on-board has answered
-          the one before (the DMI shows those answers; the touch route is
-          closed while the on-board does not report its radio equipment
-          to the DMI). Known gap of the on-board: it does not yet propose
-          SR on the RBC's SR authorisation (SUBSET-026 5.4.3.2 S21 to
-          S24), so this line stays in SB after <i>Start</i>.
+          the one before (the DMI shows those answers); the RBC answers
+          the MA request with an SR authorisation, the on-board proposes
+          SR, the scripted driver acknowledges it, and the MA by radio
+          gives FS. Nothing is left for a human to accept on this line.
+          The touch route of the level 2 start of mission (the Radio data
+          window of DMI Table 50 S3 after <i>Level 2</i>) is not open yet:
+          the window does not appear, which the SUBSET-076 runner records
+          as signature S322852a4.
         </p>
       </details>
       <fieldset class="row" title="SUBSET-034 2.5.1, 2.6.4.2: the desk and train interface inputs the bench offers besides the throttle/brake slider and Auto drive; every driver action (override, shunting, exit/maintain shunting, BMM inhibition, the tunnel toggle, SR speed and distance, acknowledgements, ...) is already on the DMI's own windows (Main, Override, Special), so only these need a bench control">
