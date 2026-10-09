@@ -3125,3 +3125,31 @@ Open after this round, in the order a next round would take them:
 3. The handover remainder (3.15.1.3.2.4, 3.15.1.3.3 in SM, scenarios of
    3.15.1.3.1 c) and 3.15.1.3.9), 3.6.5.1.4 c) d) f), S322852a4 (chapter
    6 and Table 50 D5), M_ERROR 5; radio infill (111 sequences) in E7.
+
+### Runner: locations of packets 58 / 131 and the radio systems per feature (e5/runner-locations, 2026-10-09)
+
+**Radio systems.** `S076_Bench.Set_Radio_Systems`, chosen per sequence in
+`S076_Run` before the first power-up: both systems for feature 3050600
+(3.5.6 tests; 3050600_05 holds the set-up by 3.5.6.7 b while FRMCS is not
+registered), GSM-R only elsewhere (the port reports no FRMCS registration,
+e5/registration decision 2). 4100103_15, 5040300_23 to _25 moved on.
+
+**Reach-point.** A reach-point of the max safe front end or the min safe
+rear end whose comment names packet 58 (Q_LGTLOC, D_LOC) or the RBC/RBC
+border (D_RBCTR, "RBC transition") runs the train until the on-board's
+nearest stored location of that kind is passed, through a new read-only
+query `EVC_Position.Report_Location_To_Go (Front)` (Global `State`,
+`EVC_Odometry.State`; proved); else the step's nominal position. Moved:
+3150100_01 SV21/22 (90 -> 102), _02 (77 -> 80), _07 (73 -> 76),
+4080428_01 (78 -> 119), 4080500_03 SV21 (94 -> 99).
+
+**Finding (on-board, not changed here).** `EVC_Position.Set_Train_Length`
+is called only by evc_test: `Length_Known` stays False in service, so no
+min safe rear end location of packet 58 (3.6.5.1.5 c) and no rear border
+passage (3.15.1.3.1 c) ever triggers a report: 3150100_02 step 80, _07
+step 76. The train length of the validated Train Data should reach it.
+
+SUBSET-076: 692 / 1600 / 898 -> 692 / 1598 / 900, 16 improvements, 0
+regressions. **Left.** The train length above; 3150100_01 SV30 step 90
+(location passed, no 136 while the sessions cycle 159 / 129 / 156);
+3150100_05 SV21/22 step 103; 4080428_01 step 119.
