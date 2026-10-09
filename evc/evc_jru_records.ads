@@ -6,6 +6,9 @@
 --        actions no other event of the on-board records (Action_Code,
 --        Ack_Code; the start, the levels, the mode acknowledgements,
 --        override, maintain shunting, isolation and BMM have their own);
+--     13 radio error (e5/error-report): byte 2 M_ERROR (SUBSET-026
+--        7.5.1.64), recorded when a radio message is found inconsistent
+--        and reported to the RBC (3.16.3.1.1.2, EVC_Sessions.Error_Noted);
 --     38 cab status (4.2.4.38): byte 2 M_CAB_A_STATUS, byte 3 Q_CAB_B (1:
 --        this on-board has two cabs, EVC_Ports TIU inputs 1 and 2), byte
 --        4 M_CAB_B_STATUS; recorded when the status received from the
@@ -33,6 +36,7 @@ package EVC_JRU_Records
 is
 
    JRU_Driver_Action    : constant := 11;
+   JRU_Radio_Error      : constant := 13;
    JRU_Cab_Status       : constant := 38;
    JRU_Track_Conditions : constant := 45;
 

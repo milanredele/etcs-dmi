@@ -6,6 +6,8 @@ with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P58;
+with ETCS_Train_Packets.P4;
+with ETCS_Bits;
 with ETCS_Variables;
 with DMI_Protocol;
 with EVC_Config;
@@ -43,6 +45,7 @@ package body EVC_Test_Sessions is
    use type ETCS_Variables.NID_RBC_T;
    use type ETCS_Variables.NID_RADIO_T;
    use type ETCS_Variables.M_VERSION_T;
+   use type ETCS_Variables.NID_PACKET_T;
 
    --  A group NID at At_M metres with a session management order
    --  (packet 42): Q_RBC 1 establish, 0 terminate, with RBC NID_RBC
@@ -238,12 +241,14 @@ package body EVC_Test_Sessions is
       Stand;
       Decode_Radio_Message (1, M, St);
       Check (EVC_Radio_Authority.Messages_Taken = Taken + 1
-             and then Radio_Outputs = 1 and then Is_Message (1, 146)
+             and then Radio_Outputs = 2 and then Is_Message (1, 146)
+             and then Is_Message (2, 136)
              and then St = ETCS_Message.Accepted
              and then M.Values (5) = Now_T (5) - 10,
              "session: a message not newer than the last is ignored "
              & "(3.16.3.3.3), the one taken acknowledged by 146 with its "
-             & "time stamp (3.16.3.5)");
+             & "time stamp (3.16.3.5), the rejection reported by 136 "
+             & "(3.16.3.1.1.2)");
 
       --  3.5.5: terminated by order of a balise group
       Run_X (35_000);
@@ -1255,5 +1260,102 @@ package body EVC_Test_Sessions is
              "reports: packet 42 Q_RBC 0 by radio, the session terminated "
              & "(3.5.5.1 a): 156");
    end Scenario_Session_Reports;
+
+   --  The RTM outputs after From that are message 136 on session 1 with
+   --  packet 4: their count, the M_ERROR of the last
+   procedure Error_Reports (From  : Natural;
+                            Count : out Natural;
+                            Error : out Natural)
+   is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      P  : ETCS_Train_Packets.P4.Packet_T;
+      OK : Boolean;
+   begin
+      Count := 0;
+      Error := 999;
+      for N in From + 1 .. Radio_Outputs loop
+         if Is_Message (N, 136) then
+            Decode_Radio_Message (N, M, St);
+            for I in 1 .. M.Count loop
+               if St = ETCS_Message.Accepted and then M.Index (I).NID = 4
+               then
+                  declare
+                     Rd : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
+                  begin
+                     ETCS_Message.Open_Packet (M, I, Rd);
+                     ETCS_Train_Packets.P4.Decode (Rd, P, OK);
+                     if OK then
+                        Count := Count + 1;
+                        Error := Natural (P.M_ERROR);
+                     end if;
+                  end;
+               end if;
+            end loop;
+         end if;
+      end loop;
+   end Error_Reports;
+
+   procedure Scenario_Session_Error_Report is
+      Count, Error, Recorded : Natural := 0;
+      T : Unsigned_64;
+
+      --  Two cycles, the error reports of each added up
+      procedure Step is
+         C, E : Natural;
+      begin
+         for K in 1 .. 2 loop
+            Stand;
+            Error_Reports (0, C, E);
+            Count := Count + C;
+            Recorded := Recorded + JRU_Count (13);
+            if C > 0 then
+               Error := E;
+            end if;
+         end loop;
+      end Step;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Establish (1);
+      T := Now_T (100);
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T));
+      Step;
+      Check (Count = 0,
+             "error report: none for a consistent message 24, got"
+             & Img (Count));
+      --  3.16.3.3.3: a stamp not above the last one, the message rejected
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T));
+      Step;
+      Check (Count = 1 and then Error = 4,
+             "error report: the stamp not above the last (3.16.3.3.3), "
+             & "one 136 with packet 4 M_ERROR 4 (3.16.3.1.1 b, "
+             & "3.16.3.1.1.2, 7.4.3.4, 7.5.1.64), got" & Img (Count)
+             & Img (Error));
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T - 1));
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T - 2));
+      Step;
+      Check (Count = 3 and then Error = 4,
+             "error report: once per inconsistent message, two in one "
+             & "cycle reported in two messages (3.16.3.1.1.2), got"
+             & Img (Count));
+      Check (Recorded = 3,
+             "error report: each recorded as JRU record 13, got"
+             & Img (Recorded));
+      --  3.16.1.1, 3.16.3.1.1 c): a message the codec refuses (an unknown
+      --  NID_MESSAGE), M_ERROR 3
+      declare
+         M : Byte_Array := Msg (MCat.Track_M24, T + 10);
+      begin
+         M (M'First) := 255;
+         Give_Radio_Message (1, M);
+      end;
+      Step;
+      Check (Count = 4 and then Error = 3 and then Recorded = 4,
+             "error report: a message refused by the codec, packet 4 "
+             & "M_ERROR 3 (3.16.1.1, 3.16.3.1.1, 7.5.1.64) and JRU record "
+             & "13, got" & Img (Count) & Img (Error) & Img (Recorded));
+   end Scenario_Session_Error_Report;
 
 end EVC_Test_Sessions;

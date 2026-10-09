@@ -135,6 +135,21 @@ is
    function Has_Released return Boolean
      with Global => State;
 
+   --  1c. e5/error-report: a radio message received on S and refused by
+   --  the codec (3.16.1.1, 3.16.3.1.1 c: 8.4.4.2.1), reported to the RBC
+   --  like the one of Take_Message refused by its time stamp
+   procedure Take_Inconsistent (S : EVC_Radio.Session_T)
+     with Global => (In_Out => State, Input => EVC_Radio.State),
+          Post => Has_Released = Has_Released'Old;
+
+   --  1d. The message of the last Take_Message or Take_Inconsistent was
+   --  inconsistent (3.16.3.1.1) and reported: JRU record 13 with its
+   --  M_ERROR (7.5.1.64)
+   function Error_Noted return Boolean
+     with Global => State;
+   function Error_Noted_Code return ETCS_Variables.M_ERROR_T
+     with Global => State;
+
    --  1b. The next message released from the transition buffer, into
    --  Data (Data'First .. Last), with its session
    procedure Take_Released (S    : out EVC_Radio.Session_T;

@@ -2893,3 +2893,34 @@ regressions, 0 improvements). Unit proofs of `EVC_Mission` and
 `EVC_Core`: 0 unproved.
 
 **Left.** Nothing of this package.
+
+### Inconsistent radio messages reported (e5/error-report, 2026-10-09)
+
+**Implemented.** 3.16.3.1.1.2 for the radio cases: a message refused by
+its time stamp (3.16.3.3.3, `EVC_Sessions.Take_Message`) gives M_ERROR 4
+(3.16.3.1.1 b), a message the codec refuses on a usable session
+(3.16.3.1.1 c, 3.16.1.1; `EVC_Sessions.Take_Inconsistent`, called by
+`EVC_Core.Read_Radio_Messages`) M_ERROR 3; `EVC_Sessions.Reports.
+Request_Error` queues it per session and `Produce` sends a 136 with
+packet 0/1 and packet 4 to that RBC in the next cycle, one per message
+(3.16.4.1: waiting while the session is not established). JRU record 13
+with M_ERROR in byte 2 (`EVC_JRU_Records.JRU_Radio_Error`,
+`EVC_Core.Record_Radio_Error`, from `EVC_Sessions.Error_Noted`).
+Scenario `EVC_Test_Sessions.Scenario_Session_Error_Report`. Golden
+`valid_inputs`: two JRU 13 records added (M_ERROR 3, radio input the
+codec refuses), as intended.
+
+**Decisions.** 3.16.3.1.1 a) is the Euroradio port's. One packet 4 per
+message, at most 8 pending per session, the code of the last kept.
+M_ERROR 5 (3.16.3.4, after the link is re-established) not sent.
+
+**Runner.** SUBSET-076 sv30 unchanged (230 passed, 615 failed, 299
+blocked, 0 regressions): 3160300_01 still stops at step 87 although the
+136 with packet 4 M_ERROR 4 goes out; `S076_Run.Radio_Expect` judges the
+first 136 of the window only and FIELD=value against the message's own
+variables. S13c9beb3 triaged `model`.
+
+**Left.** The runner's packet fields in `Radio_Expect`; M_ERROR 5; the
+balise group errors of 3.16.4.2 (0, 1, 2, 7, 8: 3.16.2, E6) and the
+odometer ones (9, 10), which can call `Reports.Request_Error` through a
+public `EVC_Sessions` entry.

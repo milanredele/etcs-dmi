@@ -42,6 +42,7 @@ with EVC_Modes;
 with EVC_Odometry;
 with EVC_Position;
 with EVC_Received;
+with ETCS_Variables;
 
 private package EVC_Sessions.Reports
   with SPARK_Mode => On,
@@ -105,6 +106,13 @@ is
    --  e5/levels: a report due for another reason (5.10.3.3.3, 5.10.3.3.5,
    --  5.10.3.15.4: the exit from level 2), sent by the next Produce
    procedure Request
+     with Global => (In_Out => State);
+
+   --  e5/error-report: 3.16.3.1.1.2, 3.16.4.1: an inconsistent message
+   --  received on S, reported to that RBC by packet 4 with Error
+   --  (7.5.1.64) in the message 136 of the next Produce
+   procedure Request_Error (S     : EVC_Radio.Session_T;
+                            Error : ETCS_Variables.M_ERROR_T)
      with Global => (In_Out => State);
 
 end EVC_Sessions.Reports;

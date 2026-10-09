@@ -9,6 +9,7 @@ with ETCS_Message_Catalogue; use ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P58;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P1;
+with ETCS_Train_Packets.P4;
 with EVC_Balise_Groups;
 with EVC_Bytes;
 with EVC_Ports;
@@ -19,7 +20,8 @@ package body EVC_Sessions.Reports
   with SPARK_Mode => On,
        Refined_State => (State => (P58, P58_Ref, P58_Held, Due,
                                    Was_Up, Last_Level,
-                                   Level_Seen, N_Sent, N_Params))
+                                   Level_Seen, N_Sent, N_Params,
+                                   Error_Due, Error_Code))
 is
    package R renames EVC_Radio;
    use type R.Session_Ref_T;
@@ -41,6 +43,14 @@ is
    Level_Seen : Boolean := False;
    N_Sent     : Natural := 0;
    N_Params   : Natural := 0;
+   --  e5/error-report: per session, the inconsistent messages still to
+   --  report (3.16.3.1.1.2), one message 136 each, one per cycle, and
+   --  the M_ERROR of the last (decisions: one packet 4 per message, the
+   --  codes of the ones before the last not kept, at most 8 pending)
+   Max_Errors : constant := 8;
+   type Error_Count_T is range 0 .. Max_Errors;
+   Error_Due  : array (R.Session_T) of Error_Count_T := (others => 0);
+   Error_Code : array (R.Session_T) of M_ERROR_T := (others => 0);
 
    function Reports_Sent return Natural is (N_Sent)
      with Refined_Global => N_Sent;
@@ -65,6 +75,8 @@ is
       Level_Seen := False;
       N_Sent := 0;
       N_Params := 0;
+      Error_Due := (others => 0);
+      Error_Code := (others => 0);
    end Clear;
 
    --  3.6.5.1.5, 3.6.5.1.7 (decision 4): the last packet 58 of the
@@ -175,7 +187,11 @@ is
    --  single group without co-ordinate system (3.6.5.1.2 i, 3.4.2.3.3)
    subtype Writer_T is ETCS_Bits.Writer (64);
 
-   procedure Send_136 (S : R.Session_T; Ctx : R.Context_T)
+   --  e5/error-report: with packet 4 (7.4.3.4) when Error, M_ERROR Code
+   procedure Send_136 (S     : R.Session_T;
+                       Ctx   : R.Context_T;
+                       Error : Boolean;
+                       Code  : M_ERROR_T)
      with Global => (In_Out => (R.State, R.Queue, N_Sent),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State))
@@ -202,6 +218,10 @@ is
                W, OK);
          end if;
       end if;
+      if OK and then Error then
+         ETCS_Train_Packets.P4.Encode ((M_ERROR => Code, others => <>),
+                                       W, OK);
+      end if;
       if OK then
          ETCS_Message.Finish (W, OK);
       end if;
@@ -219,7 +239,9 @@ is
 
    --  3.6.5.1.4 (decision 3): to the supervising RBC, its session
    --  established and its connection up; 3.15.1.3.4, 3.15.1.3.9: to the
-   --  other RBC of a handover likewise
+   --  other RBC of a handover likewise; 3.16.3.1.1.2, 3.16.4.1: to a
+   --  session with an inconsistent message to report, packet 4 added, as
+   --  soon as the session is established (the report waits otherwise)
    procedure Produce (Ctx    : EVC_Radio.Context_T;
                       Also   : Targets_T := No_Targets;
                       Forced : Targets_T := No_Targets)
@@ -229,10 +251,13 @@ is
       for S in R.Session_T loop
          pragma Loop_Invariant (True);
          if ((Due and then (Sv = R.Session_Ref_T (S) or else Also (S)))
-             or else Forced (S))
+             or else Forced (S) or else Error_Due (S) > 0)
            and then R.Info (S).State = R.Established
          then
-            Send_136 (S, Ctx);
+            Send_136 (S, Ctx, Error_Due (S) > 0, Error_Code (S));
+            if Error_Due (S) > 0 then
+               Error_Due (S) := Error_Due (S) - 1;
+            end if;
          end if;
       end loop;
       Due := False;
@@ -244,5 +269,16 @@ is
    begin
       Due := True;
    end Request;
+
+   procedure Request_Error (S     : EVC_Radio.Session_T;
+                            Error : ETCS_Variables.M_ERROR_T)
+     with Refined_Global => (In_Out => (Error_Due, Error_Code))
+   is
+   begin
+      if Error_Due (S) < Max_Errors then
+         Error_Due (S) := Error_Due (S) + 1;
+      end if;
+      Error_Code (S) := Error;
+   end Request_Error;
 
 end EVC_Sessions.Reports;
