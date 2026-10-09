@@ -500,7 +500,7 @@ package body S076_Bench is
       end loop;
    end Fold;
 
-   procedure New_Window is
+   procedure New_Window (Keep_Radio : Boolean := False) is
    begin
       Win := (others => <>);
       Cycles := 0;
@@ -508,7 +508,9 @@ package body S076_Bench is
       Texts_N := 0;
       SSs_N := 0;
       Sent_N := 0;
-      Radio_N := 0;
+      if not Keep_Radio or else Radio_N > Max_Radio / 2 then
+         Radio_N := 0;
+      end if;
    end New_Window;
 
    function Window_Cycles return Natural is (Cycles);
