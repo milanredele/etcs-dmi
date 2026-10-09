@@ -3125,3 +3125,39 @@ Open after this round, in the order a next round would take them:
 3. The handover remainder (3.15.1.3.2.4, 3.15.1.3.3 in SM, scenarios of
    3.15.1.3.1 c) and 3.15.1.3.9), 3.6.5.1.4 c) d) f), S322852a4 (chapter
    6 and Table 50 D5), M_ERROR 5; radio infill (111 sequences) in E7.
+
+### The untraced sequences of the ninth round (e5/untraced, 2026-10-09)
+
+Analysis only, one trace per family; no behaviour changed.
+
+**Sa8a3ba1a (8 sequences, 24 with the versions).** Onboard: 4040800_03,
+4080415_01, 5060200_03, Exit Shunting to SB in level 2 is a mode change
+to report, so a session is due (3.5.3.4 c), with the contact of a packet
+42 read in SH (4.8.4 [3]); 3.5.3.4 c) is not implemented
+(`EVC_Sessions.Mode_Changed` opens no session); 4040600_01, the
+informative 4.4.6.1.6 (a fault in SL reported to an RBC). Runner:
+3060500_01, a joined case re-delivers BG1d at the same place and the new
+observation window drops the connection request of the first delivery
+(keep the radio list for a balise input at the place of the step before,
+in `S076_Run`, the runner package's file); 9990500_02, the train still
+reversing. SUBSET-076: 3040200_01 (a joined case without the entry of
+the RBC data), 3060300_02 (Use_FT references not expanded).
+
+**S13c9beb3 (9 families).** Runner: 4080100_03, 5150400_02 (the rear end
+at the RBC transition border, the reach-point of 3150100), 4080442_01 (an
+optional step "only if in L2" judged in level 1). Onboard: 3060100_01,
+3160200_15 (balise errors M_ERROR 0 / 2 not reported to the RBC,
+3.6.5.1.4 l), 3110500_03 (the handover's 136 to both RBCs). To analyse:
+4080428_01, 5100400_06, 5100300_09.
+
+**3160300_01 SV21.** Its packet 72 is the plain text packet of system
+version 2 (73 in 4.0.0, 7.4.2.23; translated by chapter 6, 6.6.5.2.3):
+the codec is right for chapter 7, chapter 6 is not modelled. Decision,
+written at `EVC_Core.Read_Radio_Messages`: the general criteria of
+3.16.1.1 are checked before the time stamp of 3.16.3.1.1 b), one report
+(M_ERROR 3).
+
+**Left.** 3.5.3.4 c) (a session for a mode change to report in level 2,
+9 sequences); the balise errors to the RBC (3.6.5.1.4 l); the runner's
+window for a re-delivered group and its optional-step reading; the three
+families to analyse.

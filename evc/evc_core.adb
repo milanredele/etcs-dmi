@@ -771,7 +771,15 @@ is
                then
                   --  e5/reports-136: 3.16.1.1, 3.16.3.1.1.2: a packet
                   --  chapter 7 does not define makes the message not
-                  --  compliant: reported (M_ERROR 3), not used
+                  --  compliant: reported (M_ERROR 3), not used.
+                  --  e5/untraced, decision on the order of the checks of
+                  --  3.16.3.1.1: the general criteria of 3.16.1.1 come
+                  --  first, before the time stamp check b) of
+                  --  EVC_Sessions.Take_Message: a message both stale and
+                  --  with an undefined packet is reported once, M_ERROR 3.
+                  --  (3160300_01 SV21 expects 4 because its packet 72 is
+                  --  defined in system version 2 by chapter 6, 6.6.5.2.3,
+                  --  which this on-board does not translate)
                   EVC_Sessions.Take_Inconsistent (Slot.Session);
                   Record_Radio_Error;
                elsif M_Status = ETCS_Message.Accepted then
