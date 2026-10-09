@@ -311,6 +311,13 @@ is
      with Global => State;
    function Report_Parameters_Stored return Boolean
      with Global => State;
+   --  Read only, for the test runners (the SUBSET-076 reach-point): the
+   --  distance, cm, the max safe front end (Front) or the min safe rear
+   --  end (not Front) still has to run to the nearest location of
+   --  packet 58 (3.6.5.1.5 c) or RBC/RBC border (3.15.1.3.1 b, c) of
+   --  that kind not passed yet; Max_Cm when there is none
+   function Report_Location_To_Go (Front : Boolean) return Length_T
+     with Global => (State, EVC_Odometry.State);
 
    --  The content of the position report (3.6.5.1.2): packet 0, and
    --  packet 1 for Report_P1. Q_INTEGRITY is "no train integrity

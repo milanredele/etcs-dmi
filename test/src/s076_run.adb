@@ -23,6 +23,7 @@ with DMI_Windows;             use DMI_Windows;
 with EVC_Core;
 with EVC_Distances;
 with EVC_Odometry;
+with EVC_Position;
 with EVC_Ports;
 with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
@@ -1270,6 +1271,47 @@ package body S076_Run is
       return False;
    end Brake_Expected;
 
+   --  A reach-point of the max safe front end or the min safe rear end
+   --  whose comment names the location of packet 58 (Q_LGTLOC, D_LOC)
+   --  or the RBC/RBC border of packet 131 (D_RBCTR, "RBC transition"),
+   --  on a train moving forward with such a location stored on-board:
+   --  the step's distance is nominal (3150100_01: the location is at
+   --  1400 m, the step says 800 m), the location is the on-board's
+   function Stored_Location (St : Step_T) return Boolean is
+      C : constant String := Image (St.Comment);
+      Front : constant Boolean := Same (W (4), "max-safe-front-end");
+   begin
+      return (Front or else Same (W (4), "min-safe-rear-end"))
+        and then (Has (C, "Q_LGTLOC") or else Has (C, "D_LOC")
+                  or else Has (C, "D_RBCTR")
+                  or else Has (C, "RBC transition"))
+        and then B.Direction >= 0
+        and then Integer_64 (EVC_Position.Report_Location_To_Go (Front))
+                   < EVC_Distances.Max_Cm;
+   end Stored_Location;
+
+   --  The train runs until the on-board's nearest location of that kind
+   --  is passed (EVC_Position.Report_Location_To_Go: none left, or 0);
+   --  the doubts grow with the move: a few rounds
+   function Reach_Stored_Location (Front : Boolean) return Judgement_T is
+      Go : Integer_64 :=
+        Integer_64 (EVC_Position.Report_Location_To_Go (Front));
+      --  the antenna where the first location is reached; a location
+      --  found well beyond it after a round is the next one (packet 58
+      --  repeats its locations), not this one
+      Target : Integer_64 := B.Position + Go;
+   begin
+      for Round in 1 .. 4 loop
+         exit when Go = 0 or else Go >= EVC_Distances.Max_Cm
+           or else B.Position + Go > Target + 100;
+         Target := B.Position + Go;
+         Move_To (Target + 1);
+         Go := Integer_64 (EVC_Position.Report_Location_To_Go (Front));
+      end loop;
+      return Pass ("ODO " & W (4) & " at the stored location, antenna at"
+                   & Img (Integer (B.Position)));
+   end Reach_Stored_Location;
+
    function ODO_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
    begin
@@ -1280,6 +1322,10 @@ package body S076_Run is
          begin
             if not Ok then
                return NJ (R_Runner, "ODO reach-point " & W (4));
+            end if;
+            if Stored_Location (St) then
+               return Reach_Stored_Location (Same (W (4),
+                                                   "max-safe-front-end"));
             end if;
             --  the doubts grow with the move: a few rounds
             for Round in 1 .. 4 loop

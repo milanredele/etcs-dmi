@@ -1184,6 +1184,44 @@ is
    --  Report triggers (3.6.5.1.4, 3.6.5.1.5)
    ---------------------------------------------------------------------
 
+   --  3.6.5.1.5 c), 3.15.1.3.1 b), c): what Evaluate_Triggers and
+   --  Evaluate_Border compare, as a distance still to run
+   function Report_Location_To_Go (Front : Boolean) return Length_T is
+      Low  : constant Length_T := EVC_Odometry.Low;
+      High : constant Length_T := EVC_Odometry.High;
+      Best : Length_T := Max_Cm;
+
+      function To_Go (It : Item_T) return Length_T is
+        (if Front then
+            Clamp_Length
+              (Diff (It.D, Max_Safe (Estimated (It.Ref, It.Sense, Front_X),
+                                     EVC_Location.Doubt_Under
+                                       (It.Ref, It.Sense, Low, High))))
+         else
+            Clamp_Length
+              (Diff (It.D, Diff (Min_Safe
+                                   (Estimated (It.Ref, It.Sense, Front_X),
+                                    EVC_Location.Doubt_Over
+                                      (It.Ref, It.Sense, Low, High)),
+                                 Train_Length))));
+   begin
+      for I in Locations'Range loop
+         pragma Loop_Invariant (True);
+         if Locations (I).Valid
+           and then (Locations (I).Kind = Max_Item) = Front
+           and then (Front or else Length_Known)
+         then
+            Best := Length_T'Min (Best, To_Go (Locations (I)));
+         end if;
+      end loop;
+      if Front and then Border (1).Valid then
+         Best := Length_T'Min (Best, To_Go (Border (1)));
+      elsif not Front and then Border (2).Valid and then Length_Known then
+         Best := Length_T'Min (Best, To_Go (Border (2)));
+      end if;
+      return Best;
+   end Report_Location_To_Go;
+
    --  3.15.1.3.1 b), c), 5.15.1.4: the RBC/RBC border passed by the max
    --  safe front end (1), by the min safe rear end (2), as the locations
    --  of packet 58 (Table 2a); each once
