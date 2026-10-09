@@ -2924,3 +2924,46 @@ variables. S13c9beb3 triaged `model`.
 balise group errors of 3.16.4.2 (0, 1, 2, 7, 8: 3.16.2, E6) and the
 odometer ones (9, 10), which can call `Reports.Request_Error` through a
 public `EVC_Sessions` entry.
+
+### E5 integration after the eighth round (2026-10-09)
+
+Merged on master: e5/level2-radio-data (5.10.3.15.2 b) and its TR / PT
+note: the driver's level 2 without a valid contact or a registered
+mobile waits for the Radio data, `EVC_Level_Sessions.Radio_Data_Awaited`,
+the data taken outside the start of mission by
+`EVC_Sessions.Take_Radio_Data`; no new MSG_ONBOARD bit, the DMI shows
+the request from the contact and registration bits), e5/same-cycle (a
+message 2 and an MA with a mode profile in one cycle after 'Start': the
+MA wins, the SR proposal withdrawn in the next cycle; the LS proposal
+scenario, 4.6.3 [70]) and e5/error-report (3.16.3.1.1.2: an inconsistent
+radio message is reported to its RBC with packet 4 in a message 136,
+M_ERROR 4 for the time stamp of 3.16.3.3.3 and 3 for a message the
+codec refuses, at most 8 pending per session, sent once the session is
+established; JRU record 13; the golden `valid_inputs` gained two such
+records, reviewed). SUBSET-076 on the merged tree: 679 passed, 1665
+failed, 846 blocked, unchanged; 3160300_01 stays at step 87 because
+`S076_Run.Radio_Expect` judges only the first message of a window and
+reads no packet field (S13c9beb3 retriaged `model`). Green: check.sh
+(evc_test 11577), the full proof (10824 checks, 0 unproved, margin 47726
+steps), the cross build (stack 27136 B), wasm and both smoke checks.
+
+Measured, three agents (two `opus-medium`, one `opus-trim`), the briefs'
+premises checked on the trace before launch: 116 to 173 requests, 13 to
+19 minutes, 106k to 127k final context, 5 to 9 USD, no wait over 5
+minutes, the guard 1 to 2 refusals per agent (down from 5 to 7 with the
+literal environment lines); every brief premise held and every package
+finished its steps. The Edit tool: the trim agent used it 15 times, the
+two medium agents kept to Bash heredocs because of the auto-mode rule.
+
+Open after this round, in the order a next round would take them:
+
+1. The runner's `Radio_Expect`: any message of the window, a packet's
+   fields (M_ERROR); then 3160300_01 passes step 87. M_ERROR 5
+   (3.16.3.4). The balise group and odometer error reports (3.16.4.2)
+   with E6.
+2. The handover remainder: 3.15.1.3.2.4, 3.15.1.3.3 in SM, scenarios of
+   3.15.1.3.1 c) and 3.15.1.3.9; 4.8.4 [14] with SM; the authority half's
+   packet 45 inside a rejected message 3 / 33.
+3. The DMI's MO05 exception of Table 50 D5 (the Radio data window after
+   a switch to TR); items 2 and 3 of the fifth round's list (the reached
+   signatures, S55128ce0; chapter 6 in E7).
