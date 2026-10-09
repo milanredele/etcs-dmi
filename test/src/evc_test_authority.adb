@@ -129,22 +129,27 @@ package body EVC_Test_Authority is
 
    --  Message 3 (or 33, shifted by Shift_M metres) referring to the
    --  group NID_BG of country 123, with the MA X, an SSP and a gradient
-   --  (Kind 9: the MA alone)
+   --  (Kind 9: the MA alone), the three packets valid for Q_DIR
    function MA_Message (NID_BG  : Natural;
                         X       : T12.Packet_T;
                         T_Train : ETCS_Variables.T_TRAIN_T;
                         Shift_M : Integer := 0;
                         Kind    : MCat.Known_Message_T := MCat.Track_M3;
                         With_57 : Boolean := False;
-                        P57     : T57.Packet_T := (others => <>))
+                        P57     : T57.Packet_T := (others => <>);
+                        Q_DIR   : ETCS_Variables.Q_DIR_T := 1)
      return Byte_Array
    is
       W  : Writer_T;
       V  : ETCS_Message.Value_Array := (others => 0);
       OK : Boolean;
-      S  : constant T27.Packet_T := SSP ((1 => (0, 100, False)));
-      G  : constant T21.Packet_T := Grad ((1 => (0, 0)));
+      S  : T27.Packet_T := SSP ((1 => (0, 100, False)));
+      G  : T21.Packet_T := Grad ((1 => (0, 0)));
+      A  : T15.Packet_T := To_P15 (X);
    begin
+      S.Q_DIR := Q_DIR;
+      G.Q_DIR := Q_DIR;
+      A.Q_DIR := Q_DIR;
       V (3) := Unsigned_64 (T_Train);
       V (5) := 123;
       V (6) := Unsigned_64 (NID_BG);
@@ -153,7 +158,7 @@ package body EVC_Test_Authority is
          V (8) := ETCS_Variables.Code (ETCS_Variables.D_REF_T (Shift_M));
       end if;
       Start_Message (W, Kind, V);
-      T15.Encode (To_P15 (X), W, OK);
+      T15.Encode (A, W, OK);
       Check (OK, "authority: packet 15 encoded");
       if Kind /= MCat.Track_M9 then
          T21.Encode (G, W, OK);
@@ -298,6 +303,32 @@ package body EVC_Test_Authority is
              "authority: message 33 with a negative D_REF, the MA "
              & "replaced and shortened (3.8.5.1, 3.8.5.1.3)");
    end Scenario_Radio_MA_Shifted;
+
+   --  3.6.3.1.1 a), 3.6.3.1.3: the direction of radio data refers to the
+   --  LRBG orientation, and only data valid for the train orientation is
+   --  taken: message 33 whose packets are valid for the reverse
+   --  direction of the LRBG (the train runs in its nominal direction)
+   --  gives no MA; valid for both directions it does. SUBSET-076
+   --  3040200_03 (S0ebd65fd): after a change of cab the train is reverse
+   --  to its LRBG and the RBC's message 33 is for the nominal direction
+   procedure Scenario_Radio_MA_Direction is
+      M : constant T12.Packet_T := MA_Of ((300, 400), 600);
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, M, Stamp, 5, MCat.Track_M33, Q_DIR => 0));
+      Run_X (12_000);
+      Check (not SI.Current.MA.Present and then RA.Radio_MAs_Accepted = 0,
+             "authority: message 33 for the reverse direction of the LRBG, "
+             & "the train nominal: no MA (3.6.3.1.3)");
+      Give_Radio_Message
+        (1, MA_Message (10, M, Stamp, 5, MCat.Track_M33, Q_DIR => 2));
+      Run_X (13_000);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 80_500,
+             "authority: message 33 for both directions of the LRBG, the "
+             & "MA taken (3.6.3.1.2 a), 3.6.3.1.3)");
+   end Scenario_Radio_MA_Direction;
 
    --  The NID_MESSAGE of the first train to track message among the RTM
    --  outputs of the last Take whose NID_MESSAGE is 137 or 138, with its

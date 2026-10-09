@@ -253,6 +253,7 @@ begin
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;
+   Scenario_Radio_MA_Direction;
    Scenario_MA_Request;
    Scenario_Shortening;
    Scenario_Emergency_Stops;
