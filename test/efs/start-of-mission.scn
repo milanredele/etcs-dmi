@@ -5944,8 +5944,8 @@ sub SubStep3
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.Established
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.ConnectionState <- EURORADIO.RBCConnection.SafeRadioConnection.SafeRadioConnectionStruct.ConnectionStateSM.Established
 case Send MA request and receive SR
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.1
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.1
 step Send MA
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S21
@@ -5958,8 +5958,8 @@ taint ma
 efs: Kernel.MA.MA <- EMPTY
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S24
 case Send MA request and receive MA allowing OS
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
 step Setup
 sub SubStep1
 efs: Kernel.Modes.StaffResponsible.DeleteSRAuthorisation()
@@ -5977,8 +5977,8 @@ efs: Kernel.MA.ModeProfile.Profile <- [ Kernel.MA.ModeProfile.ModeProfileStruct 
 efs: Kernel.Level.Value.Value <- LevelEnum.L2
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S25
 case Send MA request and receive MA allowing LS
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
 step Send MA
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S21
@@ -5992,8 +5992,8 @@ taint ma
 efs: Kernel.MA.ModeProfile.Profile <- [ Kernel.MA.ModeProfile.ModeProfileStruct { AcknLength => 0.0, Location => 0.0, Length => 1000.0, Mode => ModeEnum.ModeProfile.LS, Speed => 40.0, SupervisionQualifier => Messages.Q_MAMODE.as_both_the_EOA_and_SvL__instead_of_the_EOA_and_SvL_given_by_the_MA } ]
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S25
 case Send MA request and receive MA allowing SH
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.2
 step Send MA
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S21
@@ -6007,8 +6007,8 @@ taint ma
 efs: Kernel.MA.ModeProfile.Profile <- [ Kernel.MA.ModeProfile.ModeProfileStruct { AcknLength => 0.0, Location => 0.0, Length => 1000.0, Mode => ModeEnum.ModeProfile.SH, Speed => 40.0, SupervisionQualifier => Messages.Q_MAMODE.as_both_the_EOA_and_SvL__instead_of_the_EOA_and_SvL_given_by_the_MA } ]
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S25
 case Send MA request and receive MA allowing FS
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
-clause E4 partial 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.3
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21
+clause E4 done 5.4.3.2 S21 ; efs Entry 5.4.3.2.S21.3
 clause - absent 5.4.6.1 ; efs 5.4.6.1
 step Send MA
 sub Sub-step1

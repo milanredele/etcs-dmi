@@ -303,7 +303,8 @@ is
           In_Communication => EVC_Radio.In_Communication,
           --  read by EVC_Mission.Evaluate only
           SR_Authorisations => 0,
-          Profile_Ack => False));
+          Profile_Ack => False,
+          Radio_MAs => 0));
    end Set_Mode_For_Test;
 
    procedure Count (Counter : in out Natural) is
@@ -1306,7 +1307,8 @@ is
           D_NVSTFF    => NV.D_NVSTFF,
           In_Communication => EVC_Radio.In_Communication,
           SR_Authorisations => EVC_Radio_Authority.SR_Authorisations,
-          Profile_Ack => EVC_Procedures.Ack_Requested));
+          Profile_Ack => EVC_Procedures.Ack_Requested,
+          Radio_MAs => EVC_Radio_Authority.Radio_MAs_Accepted));
       --  A.3.4.1.2 k), column k: what entering SB has not deleted
       --  already (the TSRs, the adhesion, the big metal masses, the level
       --  transition orders, the national values not yet applicable); the
@@ -1510,7 +1512,8 @@ is
           In_Communication => EVC_Radio.In_Communication,
           --  read by EVC_Mission.Evaluate only
           SR_Authorisations => 0,
-          Profile_Ack => False));
+          Profile_Ack => False,
+          Radio_MAs => 0));
       end if;
       EVC_Text_Messages.Evaluate
         (Current_Mode, EVC_Levels.Valid, EVC_Levels.Level,
@@ -1755,7 +1758,8 @@ is
           In_Communication => EVC_Radio.In_Communication,
           --  read by EVC_Mission.Evaluate only
           SR_Authorisations => 0,
-          Profile_Ack => False));
+          Profile_Ack => False,
+          Radio_MAs => 0));
       Delete_On_Mode_Entry (To);
       Revoke_Brake_Reasons (From, To);
    end Enter_Mode;

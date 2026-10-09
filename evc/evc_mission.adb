@@ -11,6 +11,7 @@ package body EVC_Mission
                                    Acked_M, Desk_Closed_Now, SR_V, SR_D,
                                    Continue_On, NL_Lost, NL_Input,
                                    TD_Now, RBC_Wait, RBC_Wait_Count,
+                                   SR_After_Wait, SR_After_Wait_MAs,
                                    Events, Event_N))
 is
 
@@ -41,6 +42,10 @@ is
    --  with the count of SR authorisations at 'Start' (E26: a change)
    RBC_Wait        : Boolean := False;
    RBC_Wait_Count  : Natural := 0;
+   --  5.4.3.2 E26 / E27: SR proposed by Take_RBC_Answer in the last
+   --  cycle, with the count of radio MAs at that proposal (e5/same-cycle)
+   SR_After_Wait     : Boolean := False;
+   SR_After_Wait_MAs : Natural := 0;
    Events          : Event_Array;
    Event_N         : Natural range 0 .. Max_Events := 0;
 
@@ -134,6 +139,8 @@ is
       TD_Now := False;
       RBC_Wait := False;
       RBC_Wait_Count := 0;
+      SR_After_Wait := False;
+      SR_After_Wait_MAs := 0;
       Events := (others => (others => <>));
       Event_N := 0;
    end Clear;
@@ -374,10 +381,29 @@ is
    --  later 'Start' waits at S21 again
    procedure Take_RBC_Answer (C : Context_T; M : Mode_T)
      with Global => (In_Out => (RBC_Wait, Proposal, Proposal_Mode,
+                                SR_After_Wait, SR_After_Wait_MAs,
                                 Events, Event_N),
                      Input  => (Engaged, RBC_Wait_Count))
    is
    begin
+      --  Decision (e5/same-cycle), 5.4.3.2 E26 / E27: a message 2 and an
+      --  MA with a mode profile taken in the same cycle: the MA wins (E26
+      --  and E27 are alternatives from S21; the MA received supersedes the
+      --  SR authorisation). The message 2 is counted when the ports are
+      --  read and proposes SR below in that cycle, the MA is accepted after
+      --  this evaluation (EVC_Core.Evaluate_Radio) and its acknowledgement
+      --  request comes in the next cycle: then the SR proposal, not yet
+      --  acknowledged, is withdrawn as an expired one is (Take_Start), and
+      --  the mode profile's proposal stands (S25)
+      if SR_After_Wait then
+         SR_After_Wait := False;
+         if Proposal and then Proposal_Mode = M_SR
+           and then ((M = M_SB and then Engaged) or else M = M_PT)
+           and then C.Profile_Ack and then C.Radio_MAs /= SR_After_Wait_MAs
+         then
+            Proposal := False;
+         end if;
+      end if;
       if not RBC_Wait then
          return;
       end if;
@@ -392,14 +418,14 @@ is
          --  proposal is the acknowledgement EVC_Procedures asks
          --  (Profiles_Step, 5.7.4.1, 5.9.5.1, 5.19.5.1) and E33 / S180
          --  give the mode by 4.6.3 [15], [50] or the LS condition.
-         --  Open (e5/mode-proposal-2): an MA and a message 2 read in the
-         --  same cycle propose SR, the message 2 being counted before this
-         --  evaluation and the MA accepted after it (EVC_Core.Evaluate_Radio)
+         --  The MA and a message 2 of the same cycle: the decision above
          RBC_Wait := False;
       elsif C.SR_Authorisations /= RBC_Wait_Count then
          RBC_Wait := False;
          Proposal := True;
          Proposal_Mode := M_SR;
+         SR_After_Wait := True;
+         SR_After_Wait_MAs := C.Radio_MAs;
          Put_Event (Event_Proposed, Mode_T'Pos (M_SR), 0);
       end if;
    end Take_RBC_Answer;
