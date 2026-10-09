@@ -745,11 +745,15 @@ package body EVC_Test_Sessions is
    ---------------------------------------------------------------------
 
    --  Message 2, the SR authorisation, with the LRBG unknown (the
-   --  position of the start of mission) and D_SR D metres
-   function SR_Authorisation (D : Unsigned_64) return Byte_Array is
+   --  position of the start of mission) and D_SR D metres; T_TRAIN
+   --  Earlier units of 10 ms before now (e5/same-cycle: a message 2 and a
+   --  message 3 of one cycle need increasing stamps, 3.16.3.3.3)
+   function SR_Authorisation (D       : Unsigned_64;
+                              Earlier : Unsigned_64 := 0) return Byte_Array
+   is
       V : ETCS_Message.Value_Array := (others => 0);
    begin
-      V (3) := Now_T;
+      V (3) := Now_T (2**32 - Earlier);
       V (5) := 1023;
       V (6) := 16_383;
       V (7) := 1;
@@ -920,6 +924,42 @@ package body EVC_Test_Sessions is
              "mode proposal: acknowledged (E33), the mission starts in OS "
              & "(4.6.3 [15])");
    end Scenario_SoM_L2_Mode_Proposal;
+
+   --  5.4.3.2 S21, E26 / E27 (decision of e5/same-cycle): 'Start' in
+   --  level 2, then a message 2 and an MA with an On Sight profile at the
+   --  train delivered in one cycle. The message 2 proposes SR in that
+   --  cycle; the MA's acknowledgement request comes in the next and
+   --  withdraws the SR proposal: On Sight is proposed (S25), not SR
+   procedure Scenario_SoM_L2_Same_Cycle is
+   begin
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Check (EVC_Mission.Waiting_For_RBC,
+             "same cycle: 'Start' in level 2 waits (5.4.3.2 S21)");
+      Give_Radio_Message (1, SR_Authorisation (500, Earlier => 1));
+      Give_Radio_Message (1, MA_With_Profile (10, 0, 0));
+      Stand;
+      Check (EVC_Mission.Proposed
+             and then EVC_Mission.Proposed_Mode = EVC_Modes.M_SR
+             and then EVC_Radio_Authority.Radio_MAs_Accepted = 1,
+             "same cycle: the message 2 proposes SR in its cycle, the MA "
+             & "accepted after the mission's evaluation (E26 before E27)");
+      Stand;
+      Check (EVC_Procedures.Ack_Requested
+             and then EVC_Procedures.Ack_Mode = EVC_Modes.M_OS
+             and then not EVC_Mission.Proposed
+             and then not EVC_Mission.Waiting_For_RBC
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "same cycle: a message 2 and an MA with an On Sight profile "
+             & "in one cycle propose On Sight, not SR (5.4.3.2 E27 / S25)");
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_OS
+             and then not EVC_Procedures.Ack_Requested
+             and then not EVC_Mission.Proposed,
+             "same cycle: acknowledged, the mission starts in OS "
+             & "(4.6.3 [15])");
+   end Scenario_SoM_L2_Same_Cycle;
 
    --  5.4.3.2 S21, E27 -> S25, E33 with a Shunting profile (packet 80
    --  M_MAMODE 1) at the train's position: Shunting proposed, the

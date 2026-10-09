@@ -227,6 +227,10 @@ is
       --  with a mode profile while 'Start' waits is E27 (5.4.3.2) / S150
       --  b) (5.11.2.2)
       Profile_Ack : Boolean := False;
+      --  added by e5/same-cycle: the MAs by radio accepted since the
+      --  power-up (EVC_Radio_Authority.Radio_MAs_Accepted); a change after
+      --  an SR proposal of E26 is the MA of the message 2's cycle (5.4.3.2)
+      Radio_MAs   : Natural := 0;
    end record;
 
    --  Power-up: every datum unknown, no mission
