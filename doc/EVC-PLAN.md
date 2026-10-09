@@ -2833,3 +2833,37 @@ Open after this round, in the order a next round would take them:
    authority half's packet 45 inside a rejected message 3 / 33.
 3. Items 2 and 3 of the fifth round's list (the reached signatures,
    S55128ce0; chapter 6 in E7).
+
+### Level 2 selected without the conditions for a session (e5/level2-radio-data, 2026-10-09)
+
+**Done.** 5.10.3.15.2 b) and its note in `EVC_Level_Sessions`:
+`Driver_To_L2` gives the session order of a) only with a valid contact
+and `EVC_Sessions.Network_Ready` (3.5.6.7); otherwise the selection is
+remembered (`Radio_Data_Awaited`: `No_Contact` or `No_Registration`)
+and `Take_Radio_Data` turns the driver's RBC data (MSG_DRIVER_DATA kind
+5) into the order: they are read by `EVC_Sessions.Mission.Take_Radio_Data`
+(the S3 decoding of 5.4.3.2, `Driver_Contact`; a contact entered is
+stored by `EVC_Radio.Set_Contact`, still the only writer), reached
+through the new `EVC_Sessions.Take_Radio_Data`; the set-up then waits
+for the registration (3.5.6.7). Scenarios in `EVC_Test_Levels`:
+`L2_Radio_Data_No_Contact`, `L2_Radio_Data_No_Registration`,
+`L2_Radio_Data_Into_TR`.
+
+**Decisions.** (1) The request to the driver is the DMI's own (DMI
+Table 50 S4 -> D5 -> S5-1 from the contact and registration bits of
+MSG_ONBOARD); the protocol has no bit for it and every "waiting" value
+disables the window the driver must use, so nothing new is sent. (2)
+The selection is forgotten when level 2 is left, once the session of
+the supervising RBC is established, and in SB (the start of mission's,
+5.4.3.2 D7), SL, PS, SF, IS and NP. (3) The note: in TR the driver's
+data are not taken (the DMI cannot offer the window there), in PT they
+are; the selection is kept through TR. (4) a) now also requires the
+registration: a valid contact without it awaits the driver's Radio data
+too (b), instead of an order held by 3.5.6.7.
+
+**SUBSET-076.** 679 / 1665 / 846 before and after, 0 regressions.
+
+**Left.** The DMI's MO05 exception of Table 50 D5 (the Radio data window
+once MO05 is acknowledged after a switch to TR; `dmi_windows.adb` says
+it is not modelled); FRMCS in a) (the port reports no FRMCS
+registration).
