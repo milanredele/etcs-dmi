@@ -14,10 +14,13 @@
 --                                             a train to track message
 --                                             (ETCS_Message.Parse) with
 --                                             each packet named ("0/1":
---                                             either) and each field of
---                                             the message named with a
---                                             value (decimal, or a bit
---                                             pattern of 0, 1 and x)
+--                                             either) and each field
+--                                             named with a value (decimal,
+--                                             or a bit pattern of 0, 1 and
+--                                             x): a field of packet 0, 1
+--                                             or 4 (Packet_Field), else
+--                                             the message's own; any
+--                                             message N of the window
 --  expect RTM no-message N                    no message N
 --
 --  The radio infill request (153) is E7 (3.9); SA-PERMISSION is not in
@@ -25,8 +28,12 @@
 --  missing only, so that the report counts the sequences waiting for
 --  each message of the on-board.
 
+with ETCS_Bits;
 with ETCS_Catalogue;
 with ETCS_Message;
+with ETCS_Train_Packets.P0;
+with ETCS_Train_Packets.P1;
+with ETCS_Train_Packets.P4;
 with ETCS_Variables;
 
 separate (S076_Run)
@@ -130,26 +137,73 @@ function Radio_Expect (St : Step_T) return Judgement_T is
       return True;
    end Matches;
 
-   function Message (Nid : String) return Judgement_T is
-      Found  : Natural := 0;
+   --  A field of a packet of M by name: the position report (0, 1) and
+   --  the error report (4) of the train to track messages, the packets
+   --  the sequences name with a field (M_ERROR, V_TRAIN, M_LEVEL);
+   --  Found False for another field or packet
+   procedure Packet_Field (M     : ETCS_Message.Message_T;
+                           Name  : String;
+                           Got   : out Unsigned_64;
+                           Found : out Boolean)
+   is
+      P0 : ETCS_Train_Packets.P0.Packet_T;
+      P1 : ETCS_Train_Packets.P1.Packet_T;
+      P4 : ETCS_Train_Packets.P4.Packet_T;
+      OK : Boolean;
+      procedure Take (V : Unsigned_64) is
+      begin
+         Got := V;
+         Found := True;
+      end Take;
+   begin
+      Got := 0;
+      Found := False;
+      for I in 1 .. M.Count loop
+         declare
+            Rd : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
+         begin
+            ETCS_Message.Open_Packet (M, I, Rd);
+            case M.Index (I).NID is
+               when 0 =>
+                  ETCS_Train_Packets.P0.Decode (Rd, P0, OK);
+                  if not OK then
+                     null;
+                  elsif Same (Name, "V_TRAIN") then
+                     Take (Unsigned_64 (P0.V_TRAIN));
+                  elsif Same (Name, "M_LEVEL") then
+                     Take (Unsigned_64 (P0.M_LEVEL));
+                  elsif Same (Name, "M_MODE") then
+                     Take (Unsigned_64 (P0.M_MODE));
+                  end if;
+               when 1 =>
+                  ETCS_Train_Packets.P1.Decode (Rd, P1, OK);
+                  if not OK then
+                     null;
+                  elsif Same (Name, "V_TRAIN") then
+                     Take (Unsigned_64 (P1.V_TRAIN));
+                  elsif Same (Name, "M_LEVEL") then
+                     Take (Unsigned_64 (P1.M_LEVEL));
+                  elsif Same (Name, "M_MODE") then
+                     Take (Unsigned_64 (P1.M_MODE));
+                  end if;
+               when 4 =>
+                  ETCS_Train_Packets.P4.Decode (Rd, P4, OK);
+                  if OK and then Same (Name, "M_ERROR") then
+                     Take (Unsigned_64 (P4.M_ERROR));
+                  end if;
+               when others =>
+                  null;
+            end case;
+         end;
+         exit when Found;
+      end loop;
+   end Packet_Field;
+
+   --  The expectation against output Found of the window, message Nid
+   function One (Nid : String; Found : Positive) return Judgement_T is
       M      : ETCS_Message.Message_T;
       Status : ETCS_Message.Status_T;
    begin
-      if Nid = "153" then
-         return NJ (R_Radio_Infill, "RTM message 153 (radio infill request)");
-      end if;
-      for I in 1 .. B.Radio_Count loop
-         if not B.Radio (I).Is_Request and then Img (B.Radio (I).Code) = Nid
-         then
-            Found := I;
-            exit;
-         end if;
-      end loop;
-      if Neg then
-         return Check (Found = 0, "RTM no message " & Nid, "sent");
-      elsif Found = 0 then
-         return Fail (Nid & " not sent");
-      end if;
       declare
          D : constant B.Radio_Out_T := B.Radio (Found);
       begin
@@ -223,9 +277,15 @@ function Radio_Expect (St : Step_T) return Judgement_T is
                   end loop;
                   if Known then
                      declare
-                        Got : constant Unsigned_64 :=
-                          ETCS_Message.Value (M, Var);
+                        Got : Unsigned_64;
+                        In_Packet : Boolean;
                      begin
+                        --  a packet's field, else the message's own
+                        Packet_Field (M, Wd (Wd'First .. Eq - 1),
+                                      Got, In_Packet);
+                        if not In_Packet then
+                           Got := ETCS_Message.Value (M, Var);
+                        end if;
                         if not Matches (Got, Wd (Eq + 1 .. Wd'Last), Judged)
                         then
                            return Fail (Nid & ": "
@@ -243,6 +303,42 @@ function Radio_Expect (St : Step_T) return Judgement_T is
          end loop;
       end;
       return Pass ("RTM message " & Nid);
+   end One;
+
+   --  Every message Nid of the window is a candidate: the first that
+   --  meets the expectation passes it, else the first one's failure
+   --  (a 136 by its period may come before the one of the event)
+   function Message (Nid : String) return Judgement_T is
+      First : Judgement_T;
+      Seen  : Boolean := False;
+   begin
+      if Nid = "153" then
+         return NJ (R_Radio_Infill, "RTM message 153 (radio infill request)");
+      end if;
+      for I in 1 .. B.Radio_Count loop
+         if not B.Radio (I).Is_Request and then Img (B.Radio (I).Code) = Nid
+         then
+            if Neg then
+               return Check (False, "RTM no message " & Nid, "sent");
+            end if;
+            declare
+               J : constant Judgement_T := One (Nid, I);
+            begin
+               if J.Verdict = Passed then
+                  return J;
+               elsif not Seen then
+                  First := J;
+                  Seen := True;
+               end if;
+            end;
+         end if;
+      end loop;
+      if Neg then
+         return Check (True, "RTM no message " & Nid, "sent");
+      elsif not Seen then
+         return Fail (Nid & " not sent");
+      end if;
+      return First;
    end Message;
 begin
    if Same (Base, "connect") then

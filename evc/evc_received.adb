@@ -57,6 +57,8 @@ is
 
    function Last_Packet_Count return Natural is (Message.Count)
      with Refined_Global => Message;
+   function Last_Unknown_Packets return Natural is (Message.Unknown)
+     with Refined_Global => Message;
 
    function Last_Packet_Kind (I : Positive)
      return ETCS_Catalogue.Packet_Kind_T

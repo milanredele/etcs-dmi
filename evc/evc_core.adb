@@ -765,6 +765,16 @@ is
                                       Slot.Data (1),
                                       EVC_Bytes.Byte (Slot.Length mod 256),
                                       EVC_Bytes.Byte (Slot.Length / 256)));
+               end if;
+               if M_Status = ETCS_Message.Accepted
+                 and then EVC_Received.Last_Unknown_Packets > 0
+               then
+                  --  e5/reports-136: 3.16.1.1, 3.16.3.1.1.2: a packet
+                  --  chapter 7 does not define makes the message not
+                  --  compliant: reported (M_ERROR 3), not used
+                  EVC_Sessions.Take_Inconsistent (Slot.Session);
+                  Record_Radio_Error;
+               elsif M_Status = ETCS_Message.Accepted then
                   EVC_Sessions.Take_Message
                     (Slot.Session, Unsigned_64 (Clock_Ms), Verdict);
                   Record_Radio_Error;
