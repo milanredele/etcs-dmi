@@ -42,6 +42,8 @@ package EVC_Test_Sessions is
    --  e5/same-cycle: 5.4.3.2 E26 / E27, a message 2 and an MA with a mode
    --  profile in the same cycle (the MA wins)
    procedure Scenario_SoM_L2_Same_Cycle;
+   --  e5/same-cycle: 5.4.3.2 E27 / S25 with Limited Supervision
+   procedure Scenario_SoM_L2_Mode_Proposal_LS;
    procedure Scenario_Session_SoM_Failures;
    procedure Scenario_Session_EoM;
 

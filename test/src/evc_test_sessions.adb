@@ -961,6 +961,30 @@ package body EVC_Test_Sessions is
              & "(4.6.3 [15])");
    end Scenario_SoM_L2_Same_Cycle;
 
+   --  5.4.3.2 S21, E27 -> S25, E33 with a Limited Supervision profile
+   --  (packet 80 M_MAMODE 2) at the train's position: Limited Supervision
+   --  proposed, the acknowledgement gives LS (4.6.3 [70])
+   procedure Scenario_SoM_L2_Mode_Proposal_LS is
+   begin
+      SoM_L2_At_S20;
+      Send (Action (5));
+      Give_Radio_Message (1, MA_With_Profile (10, 2, 0));
+      Stand;
+      Stand;
+      Check (EVC_Procedures.Ack_Requested
+             and then EVC_Procedures.Ack_Mode = EVC_Modes.M_LS
+             and then not EVC_Mission.Waiting_For_RBC
+             and then not EVC_Mission.Proposed
+             and then EVC_Core.Mode = EVC_Modes.M_SB,
+             "mode proposal: an MA with a Limited Supervision profile at "
+             & "the train (E27) proposes Limited Supervision (5.4.3.2 S25)");
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (2, 1, 0, 0, 0)));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_LS,
+             "mode proposal: acknowledged (E33), Limited Supervision "
+             & "(4.6.3 [70])");
+   end Scenario_SoM_L2_Mode_Proposal_LS;
+
    --  5.4.3.2 S21, E27 -> S25, E33 with a Shunting profile (packet 80
    --  M_MAMODE 1) at the train's position: Shunting proposed, the
    --  acknowledgement gives SH (4.6.3 [50])
