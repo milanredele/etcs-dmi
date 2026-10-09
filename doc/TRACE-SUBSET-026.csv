@@ -1623,12 +1623,12 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.10.3.14.2,5,x,,,,,E4,done,EVC_Levels.Take_Conditional; evc_test E4_Level_Orders
 5.10.3.14.3,5,x,,,,,E4,done,EVC_Levels.Take_Conditional; evc_test E4_Level_Orders
 5.10.3.14.4,5,x,,,,,E4,done,EVC_Levels.Take_Conditional; evc_test E4_Level_Orders
-5.10.3.15.2,5,x,,,,,E4,partial,"EVC_Level_Sessions.Driver_To_L2: a) done, b) (the Radio data outside the start of mission) left; in SB the start of mission (EVC_Sessions.Mission D7); evc_test L2_Driver_Change [E5 session]"
-5.10.3.15.2 a),5,x,,,,,E4,done,EVC_Level_Sessions.Driver_To_L2: the stored contact known and valid; evc_test L2_Driver_Change [E5 session]
-5.10.3.15.2 a) 1st bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (the registration of 3.5.6.7 holds the set-up request: EVC_Sessions.Network.Ready, e5/registration) [E5 session]"
-5.10.3.15.2 a) 2nd bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (the registration of 3.5.6.7 holds the set-up request: EVC_Sessions.Network.Ready, e5/registration) [E5 session]"
-5.10.3.15.2 a) 3rd bullet,5,x,,,,,E4,done,"EVC_Level_Sessions (the registration of 3.5.6.7 holds the set-up request: EVC_Sessions.Network.Ready, e5/registration) [E5 session]"
-5.10.3.15.2 b),5,x,,,,,E4,deferred,E5: the driver's Radio data outside the start of mission (left by e5/levels) [E5 session]
+5.10.3.15.2,5,x,,,,,E4,done,"EVC_Level_Sessions.Driver_To_L2 (a) and Take_Radio_Data (b, e5/level2-radio-data); in SB the start of mission (EVC_Sessions.Mission D7); evc_test L2_Driver_Change, L2_Radio_Data_No_Contact, L2_Radio_Data_No_Registration, L2_Radio_Data_Into_TR [E5 session]"
+5.10.3.15.2 a),5,x,,,,,E4,done,"EVC_Level_Sessions.Driver_To_L2: the stored contact known and valid and EVC_Sessions.Network_Ready (3.5.6.7, GSM-R only); evc_test L2_Driver_Change, L2_Radio_Data_No_Registration [E5 session]"
+5.10.3.15.2 a) 1st bullet,5,x,,,,,E4,done,"EVC_Level_Sessions.Driver_To_L2: EVC_Sessions.Network_Ready (3.5.6.7; the port reports no FRMCS registration, e5/registration decision 2) [E5 session]"
+5.10.3.15.2 a) 2nd bullet,5,x,,,,,E4,done,"EVC_Level_Sessions.Driver_To_L2: EVC_Sessions.Network_Ready (3.5.6.7; the port reports no FRMCS registration, e5/registration decision 2) [E5 session]"
+5.10.3.15.2 a) 3rd bullet,5,x,,,,,E4,done,"EVC_Level_Sessions.Driver_To_L2: EVC_Sessions.Network_Ready (3.5.6.7; the port reports no FRMCS registration, e5/registration decision 2) [E5 session]"
+5.10.3.15.2 b),5,x,,,,,E4,done,"EVC_Level_Sessions.Take_Radio_Data: the selection remembered (Radio_Data_Awaited: no contact / no registration) until the driver's RBC data (EVC_Sessions.Take_Radio_Data, read by EVC_Sessions.Mission as at 5.4.3.2 S3) order the session, its set-up held by 3.5.6.7; forgotten out of level 2, the session established, in SB / SL / PS / SF / IS / NP; the request shown by the DMI (Table 50 D5 -> S5-1); the note: not taken in TR, taken in PT (the DMI's MO05 exception of D5 not modelled); evc_test L2_Radio_Data_No_Contact, L2_Radio_Data_No_Registration, L2_Radio_Data_Into_TR [E5 session]"
 5.10.3.15.3,5,x,x,,,,E4,done,"EVC_Sessions.Reports (the level change), EVC_Level_Sessions (the termination awaited); evc_test L2_Driver_Change [E5 session]"
 5.10.3.15.4,5,x,,,,,E4,done,EVC_Level_Sessions.Await_Order; evc_test L2_Driver_Change [E5 session]
 5.10.4.1,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"

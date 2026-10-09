@@ -78,6 +78,16 @@ is
                                 EVC_Position.State, EVC_Train_Data.State,
                                 EVC_Driver_Requests.State));
 
+   --  5.10.3.15.2 b) (e5/level2-radio-data): the driver's Radio data
+   --  entered outside the start of mission (MSG_DRIVER_DATA kind 5),
+   --  read as at S3 of 5.4.3.2: Found when usable, the contact to call
+   --  in RBC / Radio; a contact entered (choice 0) is stored, valid
+   procedure Take_Radio_Data (Found : out Boolean;
+                              RBC   : out EVC_Radio.RBC_Id_T;
+                              Radio : out ETCS_Variables.NID_RADIO_T)
+     with Global => (In_Out => EVC_Radio.State,
+                     Input  => EVC_Driver_Requests.State);
+
    --  6. 5.5.2: the end of mission by the mode entered
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T)
      with Global => (In_Out => State,

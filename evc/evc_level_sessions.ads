@@ -13,8 +13,17 @@
 --    - by the driver (5.10.3.15.2, 3.5.3.4 d): the session established
 --      immediately when a valid RBC contact is stored (a); decision: in
 --      SB the start of mission does it (EVC_Sessions.Mission, 5.4.3.2
---      D7), elsewhere this unit. b) (the driver's Radio data outside the
---      start of mission) is left.
+--      D7), elsewhere this unit. b) (e5/level2-radio-data): without a
+--      valid contact or the registration (3.5.6.7) the selection is
+--      remembered (Radio_Data_Awaited) until the driver's RBC data
+--      (MSG_DRIVER_DATA kind 5, read by EVC_Sessions.Mission as at
+--      5.4.3.2 S3) give the session order. Decision: the request to the
+--      driver is the DMI's own (DMI Table 50 S4 -> D5 -> S5-1 from the
+--      contact and registration bits of MSG_ONBOARD); the protocol has
+--      no bit for it and no "waiting" value fits (each one disables the
+--      window the driver must use), so none is sent. The note of b):
+--      in TR the data are not taken, in PT they are (the DMI's MO05
+--      exception of D5 is not modelled by the DMI).
 --
 --  Out of level 2 (5.10.3.3.3 .. .5, 5.10.3.6.2, .6.5, 5.10.3.10.3,
 --  .10.6 by trackside; 5.10.3.15.3, .15.4 by the driver): a position
@@ -33,6 +42,7 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
+with EVC_Driver_Requests;
 with EVC_Levels;
 with EVC_Modes;     use EVC_Modes;
 with EVC_Odometry;
@@ -57,6 +67,14 @@ is
    function Exit_Phase return Exit_Phase_T
      with Global => State;
 
+   --  5.10.3.15.2 b) (e5/level2-radio-data): the driver changed the
+   --  level to 2 without the conditions of a): the session awaits the
+   --  driver's Radio data, for want of a valid RBC contact or of the
+   --  registration (3.5.6.7, EVC_Sessions.Network_Ready)
+   type Await_T is (Nothing, No_Contact, No_Registration);
+   function Radio_Data_Awaited return Await_T
+     with Global => State;
+
    --  For the tests: the sessions ordered (driver's level 2), the
    --  position reports requested and the sessions terminated by the
    --  exit procedure, since Clear (saturating)
@@ -70,14 +88,15 @@ is
    --  Power-up: no exit procedure, the level as unknown
    procedure Clear
      with Global => (Output => State),
-          Post => Exit_Phase = None;
+          Post => Exit_Phase = None and then Radio_Data_Awaited = Nothing;
 
    --  The cycle, after the levels (EVC_Core.Evaluate_Modes_And_Levels)
    --  and before the session half (EVC_Sessions.Evaluate applies the
    --  orders given here in the same cycle)
    procedure Evaluate (Mode : Mode_T; Now_Ms : Unsigned_64)
-     with Global => (In_Out => (State, EVC_Sessions.State),
-                     Input  => (EVC_Levels.State, EVC_Radio.State,
+     with Global => (In_Out => (State, EVC_Sessions.State,
+                                EVC_Radio.State),
+                     Input  => (EVC_Levels.State, EVC_Driver_Requests.State,
                                 EVC_Odometry.State, EVC_Position.State,
                                 EVC_Train_Data.State)),
           Post => EVC_Sessions.Has_Released = EVC_Sessions.Has_Released'Old;

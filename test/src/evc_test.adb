@@ -264,6 +264,9 @@ begin
    Scenario_L2_Buffer_Same_Cycle;
    Scenario_L2_Driver_Change;
    Scenario_L2_Exit_By_Order;
+   Scenario_L2_Radio_Data_No_Contact;
+   Scenario_L2_Radio_Data_No_Registration;
+   Scenario_L2_Radio_Data_Into_TR;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

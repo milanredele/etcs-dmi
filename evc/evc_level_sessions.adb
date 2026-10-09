@@ -2,13 +2,14 @@
 --  Phase E5 (e5/levels): the sessions of the level transitions to and
 --  from level 2 (5.10.3); see the spec.
 
+with ETCS_Variables;
 with EVC_Distances; use EVC_Distances;
 
 package body EVC_Level_Sessions
   with SPARK_Mode => On,
        Refined_State => (State => (Was_L2, Phase, Start_Odo, Since,
                                    Repeats, N_Ordered, N_Requested,
-                                   N_Terminated))
+                                   N_Terminated, Awaited))
 is
    package R renames EVC_Radio;
    use type R.Session_Ref_T;
@@ -22,9 +23,12 @@ is
    N_Ordered    : Natural := 0;
    N_Requested  : Natural := 0;
    N_Terminated : Natural := 0;
+   Awaited      : Await_T := Nothing;
 
    function Exit_Phase return Exit_Phase_T is (Phase)
      with Refined_Global => Phase;
+   function Radio_Data_Awaited return Await_T is (Awaited)
+     with Refined_Global => Awaited;
    function Sessions_Ordered return Natural is (N_Ordered)
      with Refined_Global => N_Ordered;
    function Reports_Requested return Natural is (N_Requested)
@@ -42,10 +46,11 @@ is
    procedure Clear
      with Refined_Global => (Output => (Was_L2, Phase, Start_Odo, Since,
                                         Repeats, N_Ordered, N_Requested,
-                                        N_Terminated))
+                                        N_Terminated, Awaited))
    is
    begin
       Was_L2 := False;
+      Awaited := Nothing;
       Phase := None;
       Start_Odo := 0;
       Since := 0;
@@ -128,27 +133,79 @@ is
       end if;
    end Await_Order;
 
-   --  5.10.3.15.2 a), 3.5.3.4 d): the driver changed the level to 2
+   --  5.10.3.15.2 a), 3.5.3.4 d): the driver changed the level to 2;
+   --  b) the Radio data awaited when a) does not hold: no valid RBC
+   --  contact, or not registered to the stored network type (3.5.6.7,
+   --  EVC_Sessions.Network_Ready: the conditions of a) as 3.5.6.7 reads
+   --  them, GSM-R only, e5/registration decision 2)
    procedure Driver_To_L2 (Mode : Mode_T)
      with Global => (In_Out => (EVC_Sessions.State, N_Ordered),
+                     Output => Awaited,
                      Input  => R.State),
           Post => EVC_Sessions.Has_Released = EVC_Sessions.Has_Released'Old
    is
       C : constant R.RBC_Contact_T := R.Contact;
    begin
-      --  decision: in SB the start of mission opens it (5.4.3.2 D7)
-      if Mode /= M_SB and then C.Known and then C.Valid then
+      Awaited := Nothing;
+      if Mode = M_SB then
+         --  decision: in SB the start of mission opens it (5.4.3.2 D7)
+         null;
+      elsif not (C.Known and then C.Valid) then
+         Awaited := No_Contact;
+      elsif not EVC_Sessions.Network_Ready then
+         Awaited := No_Registration;
+      else
          EVC_Sessions.Take_Order (Establish => True, RBC => C.RBC,
                                   Radio => C.Radio);
          Bump (N_Ordered);
       end if;
    end Driver_To_L2;
 
+   --  5.10.3.15.2 b): while the Radio data are awaited, the driver's
+   --  RBC data (DMI Table 50 S5-1, the same window as 5.4.3.2 S3) give
+   --  the session order; its set-up waits for the registration in the
+   --  session half (3.5.6.7). Decisions: the selection is forgotten
+   --  when level 2 is left, once the session of the supervising RBC is
+   --  established, and in SB (the start of mission's, 5.4.3.2 D7), SL,
+   --  PS, SF, IS and NP (no session of this train's own); the note of
+   --  b): in TR the data are not taken (the DMI offers the Radio data
+   --  window from PT on, Table 50 D5 exception), the selection is kept
+   procedure Take_Radio_Data (Mode : Mode_T; In_L2 : Boolean)
+     with Global => (In_Out => (Awaited, N_Ordered, EVC_Sessions.State,
+                                R.State),
+                     Input  => EVC_Driver_Requests.State),
+          Post => EVC_Sessions.Has_Released = EVC_Sessions.Has_Released'Old
+   is
+      Found : Boolean;
+      RBC   : R.RBC_Id_T;
+      Radio : ETCS_Variables.NID_RADIO_T;
+   begin
+      if Awaited = Nothing then
+         return;
+      elsif not In_L2 or else Supervised
+        or else Mode in M_SB | M_SL | M_PS | M_SF | M_IS | M_NP
+      then
+         Awaited := Nothing;
+      elsif Mode /= M_TR
+        and then EVC_Driver_Requests.Entered (EVC_Driver_Requests.RBC_Data)
+      then
+         EVC_Sessions.Take_Radio_Data (Found, RBC, Radio);
+         if Found then
+            EVC_Sessions.Take_Order (Establish => True, RBC => RBC,
+                                     Radio => Radio);
+            Bump (N_Ordered);
+            Awaited := Nothing;
+         end if;
+      end if;
+   end Take_Radio_Data;
+
    procedure Evaluate (Mode : Mode_T; Now_Ms : Unsigned_64)
      with Refined_Global => (In_Out => (Was_L2, Phase, Start_Odo, Since,
                                         Repeats, N_Ordered, N_Requested,
-                                        N_Terminated, EVC_Sessions.State),
-                             Input  => (EVC_Levels.State, R.State,
+                                        N_Terminated, Awaited,
+                                        EVC_Sessions.State, R.State),
+                             Input  => (EVC_Levels.State,
+                                        EVC_Driver_Requests.State,
                                         EVC_Odometry.State,
                                         EVC_Position.State,
                                         EVC_Train_Data.State))
@@ -172,6 +229,7 @@ is
             Start_Odo := EVC_Odometry.Position;
          end if;
       end if;
+      Take_Radio_Data (Mode, In_L2);
       Was_L2 := In_L2;
       case Phase is
          when None =>
