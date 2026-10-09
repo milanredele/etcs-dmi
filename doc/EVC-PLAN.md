@@ -2967,3 +2967,26 @@ Open after this round, in the order a next round would take them:
 3. The DMI's MO05 exception of Table 50 D5 (the Radio data window after
    a switch to TR); items 2 and 3 of the fifth round's list (the reached
    signatures, S55128ce0; chapter 6 in E7).
+
+### Bench page and the runner's level rule (2026-10-09)
+
+The bench page's "How to drive it" text was rewritten from
+`Evc_Test_Touch`: the SR acknowledgement after 'Start' is a delay-type
+button (DMI 5.3.2.6.6), pressed and held for two seconds in area C1,
+which the old text did not say; the level 2 paragraph described the
+gap closed by e5/sr-proposal. Checking the level 2 touch route found
+the runner selecting level 1 where a sequence meant level 2: the
+sequences disagree with themselves (the step's column, the DMI event's
+LEVEL, the comment's note and the steps that follow), and the reader
+cut the comments at 256 characters before the author's note.
+`S076_Run.Selected_Level` now takes the level the next four steps
+settle on, within the item's list ("Level-0/1/NTC"), then the column,
+the comment, the LEVEL field. 685 passed, 1619 failed, 886 blocked
+(679 / 1665 / 846 before), 40 improvements, 5 regressions understood
+(the whole comment reveals a set speed input and a known packet 80
+defect). The start of mission by touch in level 2 now passes the Radio
+data window, the RBC data and the session set-up (5040300_17 to step
+39); S322852a4 keeps 37 sequences, mostly chapter 6 families where
+level 2 is selected with a valid contact and the DMI's Table 50 D5
+goes to the Main window: an item for E7 or the DMI. Three stale triage
+lines of the radio data buttons were removed.
