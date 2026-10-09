@@ -2833,3 +2833,29 @@ Open after this round, in the order a next round would take them:
    authority half's packet 45 inside a rejected message 3 / 33.
 3. Items 2 and 3 of the fifth round's list (the reached signatures,
    S55128ce0; chapter 6 in E7).
+
+### Same-cycle MA and message 2 (e5/same-cycle, 2026-10-09)
+
+**Implemented.** 5.4.3.2 E26 / E27 in one cycle after 'Start' in level 2
+(and S150 a) / b) of 5.11.2.2 in PT): the MA wins. The cycle order is
+kept: the message 2 still proposes SR in its cycle
+(`EVC_Mission.Take_RBC_Answer`), which remembers the count of radio MAs
+(`Context_T.Radio_MAs`, from `EVC_Radio_Authority.Radio_MAs_Accepted`;
+the one field added in `EVC_Core.Evaluate_Modes_And_Levels` and the
+three other context aggregates). In the next cycle, when that count has
+changed and the procedures ask the acknowledgement of a mode profile
+(`Profile_Ack`), the SR proposal, still unacknowledged, is withdrawn as
+an expired one is, and the mode profile's proposal stands (S25).
+Scenarios in `EVC_Test_Sessions`: `Scenario_SoM_L2_Same_Cycle` (OS) and
+`Scenario_SoM_L2_Mode_Proposal_LS` (LS by 4.6.3 [70]). Matrix: 5.4.3.2
+S21 done, S25 note.
+
+**Note.** Two radio messages of one cycle need increasing T_TRAIN
+(3.16.3.3.3: a stamp equal to the preceding one is inconsistent); the
+test helper `SR_Authorisation` takes an `Earlier` stamp offset for it.
+
+SUBSET-076: 679 passed, 1665 failed, 846 blocked, unchanged (0
+regressions, 0 improvements). Unit proofs of `EVC_Mission` and
+`EVC_Core`: 0 unproved.
+
+**Left.** Nothing of this package.
