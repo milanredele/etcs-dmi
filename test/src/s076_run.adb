@@ -3152,7 +3152,15 @@ package body S076_Run is
                if St.IO = Input
                  and then not (W (2) = "BTM" and then Line.Count < 4)
                then
-                  B.New_Window;
+                  --  an RBC's message at the place of the step before
+                  --  keeps the radio messages sent before it listed:
+                  --  129 / 136 / 157 after 159 come before or after the
+                  --  RBC's 38 depending on the sequence (3040200_01
+                  --  after it, most before it)
+                  B.New_Window
+                    (Keep_Radio => W (2) = "RTM" and then W (3) = "message"
+                       and then I > 1
+                       and then Seq.Steps (I - 1).Dist_Cm = St.Dist_Cm);
                   Wait_Used := 0;
                end if;
                --  move to the step's distance, unless the input moves

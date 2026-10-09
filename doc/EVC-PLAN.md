@@ -2990,3 +2990,26 @@ data window, the RBC data and the session set-up (5040300_17 to step
 level 2 is selected with a valid contact and the DMI's Table 50 D5
 goes to the Main window: an item for E7 or the DMI. Three stale triage
 lines of the radio data buttons were removed.
+
+### Train Data to the RBC (e5/train-data-129, 2026-10-09)
+
+S13f5df67 ("129 not sent", 43 SV30 sequences) was the runner's, not the
+on-board's: the on-board sends 129 in the cycle of 159, as 3.18.3.4
+asks ("following the successful establishment", which 3.5.3.7 d places
+at the system version), and a debug listing of the windows of
+3040200_01 showed 159, 129 and 136 together at step 53. The sequences
+record the RBC's 38 before or after the 129 (436 cases before, 69
+after, sometimes both in one family): the input 38 opened a new window
+and dropped the 129. `S076_Bench.New_Window (Keep_Radio)` keeps the
+radio outputs listed when the input is an RTM message at the distance
+of the step before (without the distance condition an earlier 147 of
+4080405_01 and 136 of 3180400_01 matched first). No change under
+`evc/`, no matrix row. 685 / 1619 / 886 -> 689 passed, 1605 failed,
+896 blocked, 48 improvements, 0 regressions; all 43 moved on.
+
+Left: 4080455 (six of eight now stop at Sa03cccdc, step 78: the
+immediate order to level 2 of BG3d after an MA by radio in level 1
+reaches no level event; acceptance of the group to analyse), two at
+S6c605c52 (E6); the new S0ebd65fd (3040200_03 step 137: an MA 33 after
+the level 2 start of mission leaves the on-board in SB, the authority
+half's); the others stop at signatures triaged before.

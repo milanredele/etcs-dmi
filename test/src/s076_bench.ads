@@ -114,8 +114,11 @@ package S076_Bench is
    --  Observations
    ---------------------------------------------------------------------
 
-   --  A new observation window: the flags and lists below restart
-   procedure New_Window;
+   --  A new observation window: the flags and lists below restart;
+   --  with Keep_Radio the radio messages sent stay listed (an RBC's
+   --  message given while the on-board's answers to the one before are
+   --  still expected: the sequences record either order)
+   procedure New_Window (Keep_Radio : Boolean := False);
    function Window_Cycles return Natural;
 
    No_Value : constant := 16#FF#;
