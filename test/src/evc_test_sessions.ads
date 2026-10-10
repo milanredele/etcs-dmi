@@ -49,6 +49,7 @@ package EVC_Test_Sessions is
 
    --  Phase 3 (e5/session-4): 3.6.5 the position reports
    procedure Scenario_Session_Reports;
+   procedure Scenario_Report_Packet;
 
    --  e5/error-report: 3.16.3.1.1.2, an inconsistent message reported to
    --  the RBC by packet 4 in message 136

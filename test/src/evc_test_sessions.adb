@@ -1298,6 +1298,73 @@ package body EVC_Test_Sessions is
       end loop;
    end Error_Reports;
 
+   --  Runs to To_Cm a cycle at a time; of the last 136 sent on the way:
+   --  the NID of its first packet (0 or 1; 999 without one) and, for
+   --  packet 1, its NID_PRVLRBG's NID_BG
+   procedure Run_Reports (To_Cm : Integer_64;
+                          First : out Natural;
+                          Prev  : out Natural)
+   is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      P  : R1.Packet_T;
+      OK : Boolean;
+   begin
+      First := 999;
+      Prev := 999;
+      while Train_Cm < To_Cm loop
+         Run_X (Integer_64'Min (Train_Cm + 1000, To_Cm));
+         for N in 1 .. Radio_Outputs loop
+            if Is_Message (N, 136) then
+               Decode_Radio_Message (N, M, St);
+               if St = ETCS_Message.Accepted and then M.Count >= 1 then
+                  First := Natural (M.Index (1).NID);
+                  Prev := 999;
+                  if First = 1 then
+                     declare
+                        Rd : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
+                     begin
+                        ETCS_Message.Open_Packet (M, 1, Rd);
+                        R1.Decode (Rd, P, OK);
+                        Prev := (if OK then Natural (P.NID_BG_PRVLRBG)
+                                 else 999);
+                     end;
+                  end if;
+               end if;
+            end if;
+         end loop;
+      end loop;
+   end Run_Reports;
+
+   --  e5/report-packet: the packet of a 136 after a single balise group.
+   --  3.4.2.3.2.2, 3.4.4.4: a linked single group gets its orientation
+   --  from the linking, the report is packet 0; 3.4.2.3.3.1, .2: an
+   --  unlinked one, the previous LRBG known, packet 1 with that previous
+   --  LRBG (the case of SUBSET-076 5150400_02 step 71, BG2d)
+   procedure Scenario_Report_Packet is
+      First, Prev : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (With_Links (Group (20, 300),
+                             Link_To ((1 => 200), (1 => 30))));
+      Add_Group (Group (30, 500, 1));
+      Add_Group (Group (40, 700, 1));
+      Run_X (15_000);
+      Establish (1);
+      Run_X (40_000);
+      Run_Reports (55_000, First, Prev);
+      Check (Natural (EVC_Position.LRBG.Id.NID_BG) = 30 and then First = 0,
+             "report packet: a linked single group, packet 0 "
+             & "(3.4.2.3.2.2, 3.4.4.4), got" & Img (First));
+      Run_Reports (75_000, First, Prev);
+      Check (Natural (EVC_Position.LRBG.Id.NID_BG) = 40 and then First = 1
+             and then Prev = 30,
+             "report packet: an unlinked single group, packet 1 with the "
+             & "previous LRBG (3.4.2.3.3.1, 3.4.2.3.3.2), got"
+             & Img (First) & Img (Prev));
+   end Scenario_Report_Packet;
+
    procedure Scenario_Session_Error_Report is
       Count, Error, Recorded : Natural := 0;
       T : Unsigned_64;
