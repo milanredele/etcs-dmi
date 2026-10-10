@@ -25,6 +25,7 @@ with EVC_Distances;
 with EVC_Odometry;
 with EVC_Position;
 with EVC_Ports;
+with EVC_Radio;
 with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
 with S076_Bench;
@@ -280,6 +281,17 @@ package body S076_Run is
                  when L0 => K_L0, when NTC => K_NTC,
                  when L1 => K_L1, when L2 => K_L2);
    end Our_Level;
+
+   --  A step whose comment restricts it to level 2 ("Only if in L2",
+   --  "only in L2", 44 sequences of sv30, e.g. 4080442_01 step 51: a 136
+   --  in level 1 On Sight) is the sequence's other alternative when the
+   --  step's level columns or the on-board's level are not 2
+   function Only_In_L2_Elsewhere (St : Step_T) return Boolean is
+     ((Has (Image (St.Comment), "only if in L2")
+       or else Has (Image (St.Comment), "only in L2"))
+      and then (Trim (St.Lvl_After) /= "L2"
+                or else Trim (St.Lvl_Before) /= "L2"
+                or else Our_Level /= K_L2));
 
    function Mode_Abbrev (M : Mode_T) return String is
      (case M is
@@ -791,6 +803,37 @@ package body S076_Run is
    function RBC_Data_Entry (Verb : String) return Judgement_T is
       Id, Phone : Unbounded_String;
    begin
+      --  Table 49 S3-1 -> S3-3 / Table 50 S5-1 -> S5-3: the driver who
+      --  is to confirm the RBC data presses 'Enter RBC data' on the
+      --  Radio data window. From the Main window (Table 50 S1 -> S5-1)
+      --  too: 4040800_05 selects level 2 from the Main window after Exit
+      --  Shunting with a contact stored in SH (4.8.4 [3]); the on-board
+      --  reports it valid and the radio registered, so the DMI follows
+      --  Table 50 D5 to S8, while the sequence shows the RBC data window
+      --  (steps 58 / 59, as Table 49 S2 -> S3 would); its rows 5 to 9
+      --  are not in the extract
+      if not Top_Is (W_RBC_Data) and then not Top_Is (W_Radio_Data)
+        and then (Top_Is (W_Main) or else not DMI_Windows.Is_Open)
+      then
+         declare
+            J : constant Judgement_T :=
+              Press_Menu (W_Main, 10, "Radio data");
+         begin
+            if J.Verdict = Failed then
+               return J;
+            end if;
+         end;
+      end if;
+      if Top_Is (W_Radio_Data) then
+         declare
+            J : constant Judgement_T :=
+              Press_Menu (W_Radio_Data, 3, "Enter RBC data");
+         begin
+            if J.Verdict = Failed then
+               return J;
+            end if;
+         end;
+      end if;
       if not Top_Is (W_RBC_Data) then
          return Fail ("DMI RBC data: the window is not open, top is "
                       & Top_Image);
@@ -799,6 +842,35 @@ package body S076_Run is
         or else Same (Verb, "enter")
       then
          Radio_Values (Id, Phone);
+         if Length (Id) = 0 and then Same (Verb, "confirm")
+           and then EVC_Radio.Contact.Known
+         then
+            --  11.7.1.4: the window proposes the stored contact (the
+            --  driver confirms it; 4040800_05 step 58: "equal to the
+            --  variable of packet 42"). The protocol does not carry the
+            --  stored contact to the DMI, so the driver types it: the
+            --  RBC ID as NID_C * 2**14 + NID_RBC, the phone number the
+            --  BCD digits of NID_RADIO before the F padding (the form
+            --  the on-board reads, EVC_Sessions.Mission.Driver_Contact)
+            declare
+               C : constant EVC_Radio.RBC_Contact_T := EVC_Radio.Contact;
+               R : Unsigned_64 := Unsigned_64 (C.Radio);
+               P : String (1 .. 16);
+               N : Natural := 0;
+            begin
+               Id := To_Unbounded_String
+                 (Img (Natural (C.RBC.NID_C) * 2**14
+                       + Natural (C.RBC.NID_RBC)));
+               for K in reverse 1 .. 16 loop
+                  P (K) := Character'Val (48 + Natural (R mod 16));
+                  R := R / 16;
+               end loop;
+               while N < 16 and then P (N + 1) in '0' .. '9' loop
+                  N := N + 1;
+               end loop;
+               Phone := To_Unbounded_String (P (1 .. N));
+            end;
+         end if;
          if Length (Id) = 0 or else Length (Id) > 8
            or else Length (Phone) > 16
          then
@@ -3099,6 +3171,53 @@ package body S076_Run is
    --  The sequence
    ---------------------------------------------------------------------
 
+   --  Step I delivers again, at the same place, a balise group an
+   --  earlier step delivered (the joined case of 3060500_01, BG1d at
+   --  50 m in steps 39 and 43): the radio messages and requests made at
+   --  the first delivery stay listed (step 49 expects the connect
+   --  request of step 39)
+   function Redelivered (I : Positive) return Boolean is
+      St : Step_T renames Seq.Steps (I);
+      L  : constant String := Image (St.Line);
+   begin
+      if St.IO /= Input or else not Starts (L, "input BTM balise-group ")
+      then
+         return False;
+      end if;
+      for K in reverse 1 .. I - 1 loop
+         if Seq.Steps (K).IO = Input
+           and then Seq.Steps (K).Dist_Cm = St.Dist_Cm
+           and then Image (Seq.Steps (K).Line) = L
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Redelivered;
+
+   --  Step I is the driver's acknowledgement of what a balise group
+   --  input brought (the steps between are expectations only): the
+   --  radio messages sent at the group stay listed. 5100400_06: BG4d at
+   --  1200 m gives level 2 and On Sight (step 93), the on-board reports
+   --  its position there (3.6.5.1.4 b and g), the sequence lists that
+   --  136 after the acknowledgement at 1215 m (steps 101, 103): it
+   --  lists the outputs of one event in an order the on-board does not
+   --  keep
+   function Ack_After_Group (I : Positive) return Boolean is
+   begin
+      if not Starts (Image (Seq.Steps (I).Line), "input DMI acknowledge ")
+      then
+         return False;
+      end if;
+      for K in reverse 1 .. I - 1 loop
+         if Seq.Steps (K).IO = Input then
+            return Starts (Image (Seq.Steps (K).Line),
+                           "input BTM balise-group ");
+         end if;
+      end loop;
+      return False;
+   end Ack_After_Group;
+
    --  A step out of the scope of this phase: level 2 / 3, NTC
    function Scope (St : Step_T) return Reason_T is
       Lb : constant Level_Kind_T := Level_Of (Trim (St.Lvl_Before));
@@ -3254,10 +3373,32 @@ package body S076_Run is
                   --  RBC's 38 depending on the sequence (3040200_01
                   --  after it, most before it)
                   B.New_Window
-                    (Keep_Radio => W (2) = "RTM" and then W (3) = "message"
-                       and then I > 1
-                       and then Seq.Steps (I - 1).Dist_Cm = St.Dist_Cm);
+                    (Keep_Radio =>
+                       (W (2) = "RTM" and then W (3) = "message"
+                        and then I > 1
+                        and then Seq.Steps (I - 1).Dist_Cm = St.Dist_Cm)
+                       or else Redelivered (I)
+                       or else Ack_After_Group (I));
                   Wait_Used := 0;
+               end if;
+               --  an input placed ahead of a train that goes backwards
+               --  (more than 5 m) is met going forward again: the train
+               --  returned (9990500_02: reversed at 160 m, back to
+               --  130 m, then BG2d at 180 m); only an input that places
+               --  the train (a balise group, an ODO step), not one that
+               --  happens where the train stands (9990500_27 step 47, a
+               --  timer at the place of a reach-point of the max safe
+               --  front end)
+               if St.IO = Input and then B.Direction < 0
+                 and then St.Dist_Cm > B.Position + 500
+                 and then ((W (2) = "BTM" and then Line.Count >= 4)
+                           or else (W (2) = "ODO"
+                                    and then not Same (W (3),
+                                                 "direction-reversed")
+                                    and then not Same (W (3),
+                                                 "start-moving")))
+               then
+                  B.Set_Direction (1);
                end if;
                --  move to the step's distance, unless the input moves
                --  the train itself
@@ -3325,7 +3466,8 @@ package body S076_Run is
                      if J.Verdict = Failed
                        and then (Starts (Image (St.Comment), "Optional step")
                                  or else Starts (Image (St.Comment),
-                                           "Implementation dependent"))
+                                           "Implementation dependent")
+                                 or else Only_In_L2_Elsewhere (St))
                      then
                         Record_Result (I, NJ (R_Optional, Image (J.Sig)));
                      elsif J.Verdict = Failed then

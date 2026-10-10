@@ -3443,3 +3443,41 @@ baseline re-recorded.
 this on-board yet, row stays partial); 3.15.1.3.2.3 has its scenario in
 `Handover_Radio` already. For the runner: 3150100_01 drives 586 m at 12
 km/h (170 s) to the packet 58 location of step 88, past both 159 waits.
+### Runner, third round (e5/runner-3, 2026-10-10)
+
+Five rules in `S076_Run` (test/src/s076_run.adb), no change in `evc/` or
+`dmi/`:
+
+- An expectation whose comment restricts it to level 2 ("Only if in L2",
+  "only in L2", 44 sequences of sv30) is not judged (optional) when its
+  level columns or the on-board's level are not 2 (4080442_01 step 51).
+- A balise group delivered again at the place of an earlier delivery of
+  the same group keeps the radio messages listed (`Keep_Radio`;
+  3060500_01, BG1d at 50 m in steps 39 and 43, step 49 the connect
+  request of step 39).
+- A balise group or ODO input more than 5 m ahead of a train going
+  backwards turns the train forward first (9990500_02, BG2d at 180 m
+  after the reversal); not for other inputs (9990500_27 step 47, a
+  timer at the place of a max safe front end reach-point).
+- A driver's acknowledgement right after a balise group input keeps the
+  radio messages of the group listed (5100400_06: the 136 of the level
+  and mode change at BG4d, 3.6.5.1.4 b / g, sent at 1200 m and listed
+  after the OS acknowledgement at 1215 m). 5100300_09 step 61 (a 136 of
+  the group at 850 m expected after a min safe rear end reach-point at
+  the same place) has the same cause but another shape: not covered.
+- "confirm RBC-data" reaches the RBC data window through the Radio data
+  window ('Enter RBC data', also from the Main window) and confirms the
+  stored contact, typed from the on-board's contact since the protocol
+  does not carry it to the DMI (11.7.1.4). 4040800_05: the level after
+  Exit Shunting is valid, so 5.4.3.2 D2 / D3 end at S10, the level 2
+  selected from the Main window follows Table 50 S4 -> D5, and with the
+  contact stored in SH (4.8.4 [3]) valid and the radio registered D5
+  goes to S8: the DMI is right; the sequence shows the RBC data window
+  (its case rows 5 to 9 are not in the extract). Open: the DMI cannot
+  propose the stored contact (no protocol field).
+
+SUBSET-076: 700 / 1590 / 900 before, 706 passed, 1584 failed, 900
+blocked after, 0 regressions, baseline re-recorded. New signature
+Sd577e7be (5100400_06 step 106, the joined case's end of the OS area
+behind the train), triaged `model`. Not done: item 6 (S1f552964, the
+Main window expected at the start of a joined case).
