@@ -17,7 +17,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Computation of the safe deceleration | computation-of-the-safe-deceleration.scn | 19 | 44 | 91 / 1 | 187 / 10 | 21 | absent 23, done 18, partial 2 |
 | Conversion model | conversion-model.scn | 7 | 33 | 70 / 0 | 87 / 46 | 0 | absent 10, done 35 |
 | Date and time | date-and-time.scn | 1 | 2 | 1 / 2 | 0 / 1 | 0 | - |
-| EURORADIO Communication session | euroradio-communication-session.scn | 3 | 10 | 3 / 13 | 0 / 13 | 0 | todo 3 |
+| EURORADIO Communication session | euroradio-communication-session.scn | 3 | 10 | 3 / 13 | 0 / 13 | 0 | done 3 |
 | EURORADIO Onboard ReferenceTimer Update | euroradio-onboard-referencetimer-update.scn | 1 | 3 | 2 / 11 | 0 / 9 | 0 | done 1, todo 1 |
 | EURORADIO Terminal registration | euroradio-terminal-registration.scn | 2 | 10 | 8 / 12 | 0 / 24 | 0 | done 8 |
 | Gradient | gradient.scn | 7 | 28 | 46 / 15 | 0 / 51 | 0 | absent 8, done 14 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, deferred 2, done 25, partial 11 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, deferred 1, done 18, other 6, partial 9 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 34, done 553, n/a 4, other 52, partial 90, todo 31 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 34, done 556, n/a 4, other 52, partial 90, todo 28 |

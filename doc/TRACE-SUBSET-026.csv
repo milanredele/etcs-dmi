@@ -40,7 +40,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.3.4,3,x,,,,,E5,partial,"f) for the Handing Over session after the switch: EVC_Sessions.Evaluate opens it again with the retained contact (3.15.1.3.8.1), evc_test Handover_Deletion; other bullets in their subclauses [E5 session]"
 3.5.3.4 a),3,x,,,,,E5,todo,[E5 session]
 3.5.3.4 b),3,x,,,,,E5,done,EVC_Sessions.Take_Order / Apply_Order: packet 42 of a balise group (EVC_Stored_Information K42); in a radio message once the authority half stores it; evc_test session_establish [E5 session]
-3.5.3.4 c),3,x,,,,,E5,todo,[E5 session]
+3.5.3.4 c),3,x,,,,,E5,done,"EVC_Sessions.Mode_Changed / Mode_Session_Order: a change reported by 4.5.2 (Reports.Mode_Reported), no End of Mission (Mission.Ends_Mission) and not out of SB, in level 2 with a valid stored contact and no session up or being set up: the session ordered through Apply_Order (3.5.3.4.1, 3.5.3.4.2 by Establish); the contact of a packet 42 read in SH or PS stored only (4.8.4 [3]); evc_test session_mode_change [E5 session]"
 3.5.3.4 d),3,x,,,,,E5,todo,[E5 session]
 3.5.3.4 e),3,x,,,,,E5,todo,[E5 session]
 3.5.3.4 f),3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (Connection_Lost over Keep_Ms: a new session); evc_test session_lost_version [E5 session]
@@ -1372,7 +1372,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.4.2 Table,4,x,,,,,E4,partial,"EVC_Acceptance (balise rows), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; the RBC rows of the messages taken by radio (2, 3, 33, 6, 9, 15, 16, 18, 27, 28, 34) in EVC_Radio_Acceptance.Third_Filter, EVC_Radio_Authority.Take_Message (the context of the last cycle); evc_test Radio_Acceptance; track conditions of packet 68 are one kind; the packets of message 24 and the session messages are not filtered yet [E5 authority]; packet 45 (Radio Network transition order) on its own rows: EVC_Acceptance.Network_Order, evc_test Network_List [E5 session]; packet 45 by radio (message 24): the row "Radio Network transition order" in EVC_Radio_Acceptance (Network_Order), EVC_Sessions.Network.Take_Radio_Order; evc_test Network_Radio_Order (e5/registration-3)"
 4.8.4.2 Table-footnote [1],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.4.2 Table-footnote [2],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
-4.8.4.2 Table-footnote [3],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half [E5 session]"
+4.8.4.2 Table-footnote [3],4,x,,,,,E4,done,"EVC_Sessions.Apply_Order: in SH and PS the order to establish a session stores the RBC contact without the session (e5/mode-change-session); evc_test session_mode_change [E5 session]"
 4.8.4.2 Table-footnote [4],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.4.2 Table-footnote [5],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half [E5 session]"
 4.8.4.2 Table-footnote [6],4,x,,,,,E4,deferred,"E5 (RBC: SM authorisations, sessions, time stamps, LSSMA) or the procedures half [E5 session]"
