@@ -3282,3 +3282,24 @@ do this. `EVC_Test_Sessions.Scenario_Report_Packet` checks the 136 itself:
 a linked single group gives packet 0, an unlinked one packet 1 with the
 previous LRBG. Matrix: the note of 3.4.2.3.3.1 (the sending, was "E5").
 SUBSET-076 unchanged: 694 passed, 1596 failed, 900 blocked.
+
+### Session for a mode change to report (e5/mode-change-session, 2026-10-10)
+
+3.5.3.4 c): `EVC_Sessions.Mode_Changed` notes a change that 4.5.2
+reports (`Reports.Mode_Reported`, the rule of `Reports.Mode_Changed`)
+and that is no End of Mission (`Mission.Ends_Mission`, 5.5.2); the next
+`Evaluate` (`Mode_Session_Order`) orders the session through the order
+path, as d) does, in level 2 with a valid stored contact. 4.8.4 [3]:
+`Apply_Order` in SH and PS stores the contact of an order to establish
+without the session (it opened one before). Decisions: a change out of
+SB is not c) (the start of mission's a and g); nothing is ordered while
+a session is established or being established with any RBC (3.5.3.4.1;
+a handover's sessions are left to it; 3.5.3.4.2 through `Establish`'s
+pending session); a trackside order of the cycle wins; without a valid
+contact nothing is requested and the report stays due in `Reports`.
+Scenario `Scenario_Session_Mode_Change`; matrix 3.5.3.4 c) and 4.8.4.2
+footnote [3] done. SUBSET-076: 694 / 1596 / 900 before, 700 / 1590 /
+900 after, 0 regressions, 15 improvements (4040800_03, 5060200_03 pass
+in the three versions; 4080415_01, 4040800_05, 4080428_01 move on),
+baseline re-recorded; new signatures S0dd91d8e (S3 skipped for a
+contact valid from SH?) and S635191ad triaged `onboard`, to analyse.

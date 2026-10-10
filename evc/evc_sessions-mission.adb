@@ -484,20 +484,20 @@ is
 
    --  5.5.2.1, 5.5.2.3: the modes entered that end a mission (from PT:
    --  when a mission was going on, EVC_Mission.Mission)
+   function Ends_Mission (From, To : EVC_Modes.Mode_T) return Boolean is
+     ((To = M_SB
+       and then (From in M_FS | M_AD | M_LS | M_OS | M_SM | M_UN | M_NL
+                       | M_SR | M_RV | M_SN
+                 or else (From = M_PT and then EVC_Mission.Mission)))
+      or else
+      (To = M_SH
+       and then (From in M_FS | M_AD | M_LS | M_OS | M_SR | M_SM | M_SN
+                       | M_UN
+                 or else (From = M_PT and then EVC_Mission.Mission))));
+
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T) is
-      Sv         : constant R.Session_Ref_T := R.Supervising;
-      PT_Mission : constant Boolean :=
-        From = M_PT and then EVC_Mission.Mission;
-      EoM        : constant Boolean :=
-        (To = M_SB
-         and then (From in M_FS | M_AD | M_LS | M_OS | M_SM | M_UN | M_NL
-                         | M_SR | M_RV | M_SN
-                   or else PT_Mission))
-        or else
-        (To = M_SH
-         and then (From in M_FS | M_AD | M_LS | M_OS | M_SR | M_SM | M_SN
-                         | M_UN
-                   or else PT_Mission));
+      Sv  : constant R.Session_Ref_T := R.Supervising;
+      EoM : constant Boolean := Ends_Mission (From, To);
    begin
       if EoM and then Sv /= R.No_Session and then Up (R.Session_T (Sv))
       then

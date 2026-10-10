@@ -1472,4 +1472,49 @@ package body EVC_Test_Sessions is
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Train_Length_To_Position;
 
+   --  3.5.3.4 c), 4.5.2, 4.8.4 [3] (e5/mode-change-session): in level 2,
+   --  Shunting, a group's packet 42 stores the RBC contact without a
+   --  session; Exit Shunting to SB is a mode change to report: the
+   --  session is set up, then the position report goes. Without a
+   --  contact nothing is requested.
+   procedure Scenario_Session_Mode_Change is
+      N : Natural;
+   begin
+      for With_Contact in reverse Boolean loop
+         Start_X;
+         if With_Contact then
+            Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+         else
+            Add_Group (Group (10, 100));
+         end if;
+         EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+         Run_X (15_000);
+         Stand_X (2_000);
+         Check (EVC_Core.Mode = EVC_Modes.M_SH
+                and then R.Info (1).State = R.Idle
+                and then R.Contact.Known = With_Contact,
+                "mode change session: in SH the packet 42 stores the "
+                & "contact, no session (4.8.4 [3]), contact "
+                & Boolean'Image (With_Contact) & " "
+                & EVC_Modes.Mode_T'Image (EVC_Core.Mode) & " "
+                & R.Session_State_T'Image (R.Info (1).State) & " "
+                & Boolean'Image (R.Contact.Known));
+         N := EVC_Sessions.Position_Reports_Sent;
+         Send (Action (8));
+         Stand;
+         Check (EVC_Core.Mode = EVC_Modes.M_SB
+                and then (R.Info (1).State = R.Connecting) = With_Contact,
+                "mode change session: Exit Shunting to SB in level 2 "
+                & "(4.5.2: reported), the set-up requested with a stored "
+                & "contact only (3.5.3.4 c), contact "
+                & Boolean'Image (With_Contact));
+         if With_Contact then
+            Establish (1);
+            Check (EVC_Sessions.Position_Reports_Sent > N,
+                   "mode change session: the session established, the "
+                   & "position report sent (3.6.5.1.4 b, h)");
+         end if;
+      end loop;
+   end Scenario_Session_Mode_Change;
+
 end EVC_Test_Sessions;

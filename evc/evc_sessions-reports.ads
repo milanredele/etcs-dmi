@@ -83,6 +83,13 @@ is
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T)
      with Global => (In_Out => State);
 
+   --  4.5.2: the change From -> To is reported (Mode_Changed's rule)
+   function Mode_Reported (From, To : EVC_Modes.Mode_T) return Boolean is
+     (To not in EVC_Modes.M_NP | EVC_Modes.M_PS | EVC_Modes.M_SF
+              | EVC_Modes.M_IS
+      and then not (From = EVC_Modes.M_PS and then To = EVC_Modes.M_SH))
+     with Global => null;
+
    --  e5/handover: sessions beyond the supervising RBC's
    type Targets_T is array (EVC_Radio.Session_T) of Boolean;
    No_Targets : constant Targets_T := (others => False);

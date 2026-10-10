@@ -4,7 +4,7 @@
 frame EURORADIO Communication session
 sequence SubSequence1
 case Establish a communication session to report mode change
-clause E5 todo 3.5.3.4 c) ; efs 3.5.3.4.c
+clause E5 done 3.5.3.4 c) ; efs 3.5.3.4.c
 step Initialize test environment
 sub SubStep1
 init 100.0 SR
@@ -136,7 +136,7 @@ expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SessionManagementData
 expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.ContactData.Id.Id == EURORADIO.RBCConnection.Contact.LastKnownRBC.Id.Id @ deadline=2
 expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.ContactData.Id.Country == EURORADIO.RBCConnection.Contact.LastKnownRBC.Id.Country @ deadline=2
 case Establish a communication session to report mode change. Special case exiting SL
-clause E5 todo 3.5.3.4 c) ; efs 3.5.3.4.c
+clause E5 done 3.5.3.4 c) ; efs 3.5.3.4.c
 step Initialize test environment
 sub SubStep1
 init 200.0 SL
@@ -268,7 +268,7 @@ expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SessionManagementData
 expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.ContactData.Id.Id == EURORADIO.RBCConnection.Contact.LastKnownRBC.Id.Id @ deadline=2
 expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().SafeRadioConnection.ContactData.Id.Country == EURORADIO.RBCConnection.Contact.LastKnownRBC.Id.Country @ deadline=2
 case Establish a communication session to report mode change. Including terminal registration
-clause E5 todo 3.5.3.4 c) ; efs 3.5.3.4.c
+clause E5 done 3.5.3.4 c) ; efs 3.5.3.4.c
 step Initialize test environment
 sub SubStep1
 init 300.0 SR
