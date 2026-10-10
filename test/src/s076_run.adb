@@ -3114,6 +3114,27 @@ package body S076_Run is
       return R_None;
    end Scope;
 
+   --  e5/handover-4: the test cases of 3.15.1.3.2, the exception for an
+   --  on-board that handles one GSM-R session at a time (no connect at
+   --  the order, the Accepting RBC's after the Handing Over session is
+   --  over). This one handles two (EVC_Config Radio_Sessions, decision 2
+   --  of E5): 3.15.1.3.1 a) applies, the cases are not applicable. The
+   --  sequence, the case of feature 3150100 (its scn "case" line) and
+   --  its first step, the same in the three system versions.
+   type Single_Case_T is record
+      Sequence : String (1 .. 10);
+      Case_No  : Positive;
+      First    : Positive;
+   end record;
+   Single_Session_Cases : constant array (1 .. 5) of Single_Case_T :=
+     (("3150100_02", 3, 76), ("3150100_02", 4, 112),
+      ("3150100_02", 7, 148), ("3150100_07", 10, 70),
+      ("3150100_07", 11, 125));
+
+   function Single_Session_Case (St : Step_T) return Boolean is
+     (for some C of Single_Session_Cases =>
+        Has (Image (Seq.Name), C.Sequence) and then St.Number = C.First);
+
    procedure Run_Loaded (Verbose : Boolean) is
       Blocked : Boolean := False;
       First_Fail : Natural := 0;
@@ -3200,6 +3221,11 @@ package body S076_Run is
                Results (I).Verdict := Not_Run;
             elsif not St.Well_Formed then
                Record_Result (I, NJ (R_Extractor, "step line"));
+            elsif Single_Session_Case (St) then
+               J := NJ (R_Optional, "not applicable: 3.15.1.3.2, a "
+                        & "single-session on-board");
+               Record_Result (I, J);
+               Block (I, J);
             elsif Scope (St) /= R_None then
                J := NJ (Scope (St), "level " & Trim (St.Lvl_After)
                         & " mode " & Trim (St.Mode_After));
