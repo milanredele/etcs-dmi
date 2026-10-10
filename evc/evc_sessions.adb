@@ -27,7 +27,7 @@ package body EVC_Sessions
                                    Pending, Acks, Ack_N, NV, Ind,
                                    Requesting, Timer_On, Timer_Since,
                                    SB_Shown, Status_List, Status_N,
-                                   Noted, Noted_Code,
+                                   Noted, Noted_Code, Mode_Session,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Mission.State,
                                    EVC_Sessions.Network.State,
@@ -142,6 +142,10 @@ is
    Links        : Links_T := (others => (others => <>));
    Order        : Order_T;
    Pending      : Pending_T;
+
+   --  3.5.3.4 c) (e5/mode-change-session): a mode change to report was
+   --  taken, its session decided by the next Evaluate (Mode_Session_Order)
+   Mode_Session : Boolean := False;
    Acks         : Acks_T := (others => (S => 1, T => 0));
    Ack_N        : Natural range 0 .. Max_Acks := 0;
    NV           : NV_T;
@@ -478,6 +482,7 @@ is
       Cycles := 0;
       Links := (others => (others => <>));
       Order := (others => <>);
+      Mode_Session := False;
       Pending := (others => <>);
       Acks := (others => (S => 1, T => 0));
       Ack_N := 0;
@@ -871,6 +876,34 @@ is
    end Supervise_Session;
 
    --  3.5.2.6.1, 3.5.5.1 a): the session management order of the cycle
+   --  3.5.3.4 c), 3.5.3.4.1, 3.5.3.4.2 (e5/mode-change-session): the mode
+   --  change to report of the last cycle, in level 2 with a valid stored
+   --  contact, opens the session through the order path, as d) does
+   --  (EVC_Level_Sessions.Driver_To_L2). Decisions: no session is
+   --  ordered while one is established or being established with any
+   --  RBC (3.5.3.4.1 for the contact's RBC; another RBC's session, a
+   --  handover's, is left to its procedure); a trackside order of the
+   --  cycle wins; with no valid contact nothing is opened (the report
+   --  stays due in Reports until a session carries it)
+   procedure Mode_Session_Order
+     with Global => (In_Out => (Mode_Session, Order),
+                     Input  => (R.State, EVC_Levels.State))
+   is
+      C : constant R.RBC_Contact_T := R.Contact;
+   begin
+      if Mode_Session
+        and then EVC_Levels.Level = L2
+        and then C.Known and then C.Valid
+        and then not Order.Present
+        and then not (for some S in Session_T =>
+                        R.Established (S) or else R.Being_Established (S))
+      then
+         Order := (Present => True, Establish => True,
+                   RBC     => C.RBC, Radio   => C.Radio);
+      end if;
+      Mode_Session := False;
+   end Mode_Session_Order;
+
    procedure Apply_Order (Now : Time_Ms_T)
      with Global => (In_Out => (Order, Links, Pending, R.State,
                                 Ind, Requesting, Timer_On),
@@ -1108,6 +1141,7 @@ is
       N : constant R.Session_Count_T := R.Sessions;
    begin
       Held := (others => False);
+      Mode_Session_Order;
       Apply_Order (Ctx.Now_Ms);
       for S in Session_T loop
          pragma Loop_Invariant (R.Sessions = N);
@@ -1157,6 +1191,16 @@ is
       Mission.Mode_Changed (From, To);
       Reports.Mode_Changed (From, To);
       Network.Mode_Changed (To);
+      --  3.5.3.4 c): a change reported (4.5.2) that is no End of Mission
+      --  (5.5.2) and not out of SB (decision: the start of mission's
+      --  exits from SB are a) and g)); the level and the contact are
+      --  looked at by the next Evaluate (Mode_Session_Order)
+      if Reports.Mode_Reported (From, To)
+        and then not Mission.Ends_Mission (From, To)
+        and then From /= M_SB
+      then
+         Mode_Session := True;
+      end if;
       --  4.10 (the row "RBC Transition Order"), 3.15.1.3.8 b): deleted
       --  when entering NP, SB, PS, SH, SM, SR, SL, NL, UN, TR, SN, RV;
       --  kept in FS, AD, LS, OS, PT (SF, IS: not relevant)

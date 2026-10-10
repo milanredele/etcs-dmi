@@ -175,10 +175,7 @@ is
    --  3.6.5.1.4 b)
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T) is
    begin
-      if To not in EVC_Modes.M_NP | EVC_Modes.M_PS | EVC_Modes.M_SF
-                 | EVC_Modes.M_IS
-        and then not (From = EVC_Modes.M_PS and then To = EVC_Modes.M_SH)
-      then
+      if Mode_Reported (From, To) then
          Due := True;
       end if;
    end Mode_Changed;

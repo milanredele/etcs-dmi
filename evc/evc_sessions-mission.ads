@@ -88,6 +88,11 @@ is
      with Global => (In_Out => EVC_Radio.State,
                      Input  => EVC_Driver_Requests.State);
 
+   --  5.5.2.1, 5.5.2.3: the change From -> To ends a mission (also what
+   --  3.5.3.4 c) leaves out, e5/mode-change-session)
+   function Ends_Mission (From, To : EVC_Modes.Mode_T) return Boolean
+     with Global => EVC_Mission.State;
+
    --  6. 5.5.2: the end of mission by the mode entered
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T)
      with Global => (In_Out => State,
