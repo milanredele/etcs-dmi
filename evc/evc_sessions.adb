@@ -904,7 +904,7 @@ is
       Mode_Session := False;
    end Mode_Session_Order;
 
-   procedure Apply_Order (Now : Time_Ms_T)
+   procedure Apply_Order (Now : Time_Ms_T; Mode : Mode_T)
      with Global => (In_Out => (Order, Links, Pending, R.State,
                                 Ind, Requesting, Timer_On),
                      Input  => Handover.State),
@@ -922,6 +922,12 @@ is
             Establish (R.Contact.RBC, R.Contact.Radio, Capped => False,
                        Now => Now);
          end if;
+      elsif Order.Establish and then Mode in M_SH | M_PS then
+         --  4.8.4 [3] (e5/mode-change-session): in SH and PS the RBC
+         --  contact of an order to establish is stored, no session (a
+         --  later mode change to report opens it, 3.5.3.4 c)
+         R.Set_Contact ((Known => True, Valid => True,
+                         RBC   => Order.RBC, Radio => Order.Radio));
       elsif Order.Establish and then Handover.Ordered (Order.RBC) then
          --  4.8.3 [14], 3.5.3.5.2.1 (e5/handover): the session with the
          --  Accepting RBC is the handover's, the others are kept
@@ -1142,7 +1148,7 @@ is
    begin
       Held := (others => False);
       Mode_Session_Order;
-      Apply_Order (Ctx.Now_Ms);
+      Apply_Order (Ctx.Now_Ms, Ctx.Mode);
       for S in Session_T loop
          pragma Loop_Invariant (R.Sessions = N);
          if R.Usable (S) then

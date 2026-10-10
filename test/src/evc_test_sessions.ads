@@ -56,5 +56,7 @@ package EVC_Test_Sessions is
    --  3.6.1.7 / 3.18.3: the train length of the valid Train Data known to
    --  the position (EVC_Core.Sync_Train_Length), unknown again without them
    procedure Scenario_Train_Length_To_Position;
+   --  3.5.3.4 c): a session for a mode change to report in level 2
+   procedure Scenario_Session_Mode_Change;
 
 end EVC_Test_Sessions;

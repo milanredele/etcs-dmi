@@ -235,6 +235,7 @@ begin
    Scenario_PT_L2_Mode_Proposal;
    Scenario_SoM_L2_Same_Cycle;
    Scenario_Train_Length_To_Position;
+   Scenario_Session_Mode_Change;
    Scenario_SoM_L2_Mode_Proposal_LS;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
