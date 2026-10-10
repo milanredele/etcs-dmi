@@ -3372,3 +3372,13 @@ Open after this round, in the order a next round would take them:
    same place; "optional step, only if in L2"; 9990500_02; 4080428,
    5100400, 5100300; balise errors reported to the RBC (3.6.5.1.4 l,
    E6); chapter 6 (packet 72, S322852a4) in E7.
+
+**Burndown chart** (2026-10-10): `test/tools/burndown.py` draws the state of
+this plan from the repository's history: the clauses of the coverage
+matrix left per phase (todo + partial) and the SUBSET-076 sequences
+passed / failed / blocked at every first-parent commit that changed
+them, with the phase outcomes and the E5 rounds read from the headings
+of this file. The page `test/tools/burndown.html` is published as a
+private artifact and republished after every integration, with the data
+file `obj/burndown/burndown.json` next to it. At this round: 422 clauses
+left in all phases, 227 in E1 to E5; 700 of 3190 sequences passed.

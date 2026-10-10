@@ -1,0 +1,315 @@
+<title>EVC Plan Burndown</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; a summary strip, two chart panels, the phase table, the rounds. */
+:root {
+  --bg: #f1f4f8;        /* cool off-white */
+  --panel: #ffffff;
+  --fg: #172331;
+  --muted: #5d6b7a;
+  --line: #d5dde6;
+  --grid: #e6ebf1;
+  --accent: #c46a00;    /* the DMI's orange, darkened for paper */
+  --good: #2f8a55;
+  --bad: #bf0002;       /* the DMI's red */
+  --hold: #8b96a2;
+  --e1: #4a78b5; --e2: #3b96a4; --e3: #6a8aa4; --e4: #8a74b8; --e5: #c46a00; --e6: #8c98a4; --e7: #b4bcc4;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #031122; --panel: #0a1a33; --fg: #c3c3c3; --muted: #969696; --line: #33394d; --grid: #1c2740;
+    --accent: #ea9100; --good: #5fb37a; --bad: #e0504f; --hold: #6f7a86;
+    --e1: #6b9bd6; --e2: #5ab6c2; --e3: #88a6bd; --e4: #a893d6; --e5: #ea9100; --e6: #7d8894; --e7: #58626e;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #031122; --panel: #0a1a33; --fg: #c3c3c3; --muted: #969696; --line: #33394d; --grid: #1c2740;
+  --accent: #ea9100; --good: #5fb37a; --bad: #e0504f; --hold: #6f7a86;
+  --e1: #6b9bd6; --e2: #5ab6c2; --e3: #88a6bd; --e4: #a893d6; --e5: #ea9100; --e6: #7d8894; --e7: #58626e;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px 48px; padding-inline: 16px; display: grid; gap: 22px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 18px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 30px; letter-spacing: 0.01em; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 500; font-size: 20px; margin: 0; }
+.stamp { color: var(--muted); font-family: var(--mono); font-size: 13px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px 10px; min-width: 0; }
+.tile .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.tile .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 500; line-height: 1.15; margin-top: 4px; }
+.tile .v small { font-size: 14px; color: var(--muted); font-weight: 400; }
+.tile .d { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.panel { background: var(--panel); border: 1px solid var(--line); padding: 14px 16px 12px; min-width: 0; display: grid; gap: 10px; }
+.panel .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.panel p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 70ch; }
+.chart { position: relative; height: 340px; }
+@media (max-width: 520px) { .chart { height: 280px; } h1 { font-size: 26px; } }
+canvas { max-width: 100%; }
+.seg { display: inline-flex; border: 1px solid var(--line); }
+.seg button { font: inherit; font-size: 13px; padding: 4px 10px; background: transparent; color: var(--muted); border: 0; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { color: var(--fg); background: var(--grid); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+th:first-child, td:first-child, th.l, td.l { text-align: left; }
+td.num { font-family: var(--mono); }
+td.left { font-family: var(--mono); font-weight: 500; }
+.sw { display: inline-block; width: 10px; height: 10px; vertical-align: -1px; margin-right: 7px; }
+.chip { display: inline-block; font-size: 11.5px; padding: 1px 8px; border: 1px solid var(--line); color: var(--muted); border-radius: 2px; letter-spacing: 0.02em; }
+.chip.now { border-color: var(--accent); color: var(--accent); }
+.chip.ok { border-color: var(--good); color: var(--good); }
+.rounds { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 16px; font-size: 14px; }
+.rounds div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dotted var(--line); padding: 3px 0; }
+.rounds .d { color: var(--muted); font-family: var(--mono); font-size: 13px; }
+.rounds .n { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.note { color: var(--muted); font-size: 13px; max-width: 78ch; }
+.note code { font-family: var(--mono); font-size: 12.5px; background: var(--grid); padding: 1px 5px; }
+#error { display: none; border: 1px solid var(--bad); padding: 12px 14px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>EVC Plan Burndown</h1>
+    <div class="stamp" id="stamp">loading burndown.json</div>
+  </header>
+
+  <div id="error"></div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section class="panel">
+    <div class="head">
+      <h2>Clauses left, by phase of the plan</h2>
+      <div class="seg" role="group" aria-label="Phases shown">
+        <button type="button" id="bAll" aria-pressed="true">All phases</button>
+        <button type="button" id="bL2" aria-pressed="false">Level 2 goal, E1 to E5</button>
+      </div>
+    </div>
+    <p>Rows of the coverage matrix with status <b>todo</b> or <b>partial</b>, counted on the phase column; done, n/a and deferred rows are not work. One point per commit of the master line that changed the matrix. Vertical marks are the plan's phase outcomes and the E5 integration rounds.</p>
+    <div class="chart"><canvas id="cClauses" role="img" aria-label="Clauses left over time, stacked by phase"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <div class="head">
+      <h2>SUBSET-076 sequences</h2>
+    </div>
+    <p>The runner's baseline at each re-recording: sequences <b>passed</b>, <b>failed</b> at a step and <b>blocked</b> at a step by a reason the runner does not judge yet. The work left is failed plus blocked; a part of it waits for E6 and E7. The jumps of 2026-10-03 and 2026-10-05 are the regenerated corpus and the radio side of the runner, not the on-board.</p>
+    <div class="chart"><canvas id="cSeq" role="img" aria-label="SUBSET-076 sequences passed, failed and blocked over time"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <div class="head"><h2>Phases today</h2></div>
+    <div class="scroll">
+      <table id="phases">
+        <thead><tr><th class="l">Phase</th><th class="l">State</th><th>Todo</th><th>Partial</th><th>Left</th><th>Done</th><th>Deferred</th><th>n/a</th><th>Rows</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p>A phase is closed when every clause it lists is done, n/a or deferred with a reason. E0 and E8 have no clause rows: the foundation and the Hercules port are judged by their outcome sections.</p>
+  </section>
+
+  <section class="panel">
+    <div class="head"><h2>E5 integration rounds</h2></div>
+    <div class="rounds" id="rounds"></div>
+  </section>
+
+  <div class="note">Regenerated from the repository with <code>python3 test/tools/burndown.py</code> (data from <code>doc/TRACE-SUBSET-026.csv</code>, <code>test/s076/baseline.csv</code> and the headings of <code>doc/EVC-PLAN.md</code> along the first-parent history of master), then republished after every integration.</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const DAY = 86400;
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  const PHASE_NAMES = { E1: 'Language', E2: 'Position', E3: 'Supervision', E4: 'Modes and procedures, level 1',
+    E5: 'Radio, level 2', E6: 'Special functions and data', E7: 'Compatibility' };
+
+  function fail(msg) {
+    const e = document.getElementById('error');
+    e.style.display = 'block';
+    e.textContent = msg;
+    document.getElementById('stamp').textContent = 'no data';
+  }
+
+  function left(m, phases) {
+    return phases.reduce((s, p) => s + m[p].todo + m[p].partial, 0);
+  }
+
+  // Vertical marks for the plan's dates, drawn on both charts.
+  function markerPlugin(markers, t0) {
+    return {
+      id: 'markers',
+      afterDatasetsDraw(chart) {
+        const { ctx, chartArea: a, scales: { x } } = chart;
+        ctx.save();
+        ctx.font = '11px ' + css('--mono');
+        ctx.textAlign = 'center';
+        let lastPx = -1e9, row = 0;
+        for (const mk of markers) {
+          const day = (Date.parse(mk.date + 'T12:00:00Z') / 1000 - t0) / DAY;
+          if (day < x.min || day > x.max) continue;
+          const px = x.getPixelForValue(day);
+          const isPhase = mk.kind === 'phase';
+          ctx.strokeStyle = isPhase ? css('--fg') : css('--muted');
+          ctx.globalAlpha = isPhase ? 0.55 : 0.4;
+          ctx.setLineDash(isPhase ? [] : [3, 4]);
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(px, a.top + 14); ctx.lineTo(px, a.bottom); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = isPhase ? css('--fg') : css('--muted');
+          const label = isPhase ? mk.label.replace(' closed', '') : mk.label.replace('round ', 'r');
+          row = px - lastPx < 26 ? row + 1 : 0;   // dates that share a day stack their labels
+          lastPx = px;
+          ctx.fillText(label, px, a.top + 10 + row * 12);
+        }
+        ctx.restore();
+      }
+    };
+  }
+
+  function baseOptions(t0, yTitle, stackedMax) {
+    const fg = css('--fg'), muted = css('--muted'), grid = css('--grid');
+    return {
+      animation: false, responsive: true, maintainAspectRatio: false, parsing: false,
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      layout: { padding: { top: 6 } },
+      scales: {
+        x: { type: 'linear', grid: { color: grid }, ticks: { color: muted, font: { family: css('--mono'), size: 11 }, maxRotation: 0,
+          callback: (v) => Number.isInteger(v) ? fmt(new Date((t0 + v * DAY) * 1000)).slice(5) : '' , stepSize: 1 },
+          title: { display: true, text: '2026', color: muted } },
+        y: { stacked: true, beginAtZero: true, suggestedMax: stackedMax, grid: { color: grid },
+          ticks: { color: muted, font: { family: css('--mono'), size: 11 } },
+          title: { display: true, text: yTitle, color: muted } }
+      },
+      plugins: {
+        legend: { labels: { color: fg, boxWidth: 12, boxHeight: 12, font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            title: (items) => { const p = items[0].raw.p; return p.date + '  ' + p.sha; },
+            afterTitle: (items) => items[0].raw.p.subject.length > 90 ? items[0].raw.p.subject.slice(0, 88) + '…' : items[0].raw.p.subject,
+            label: (it) => ' ' + it.dataset.label + ': ' + it.raw.y
+          }
+        }
+      },
+      elements: { point: { radius: 0, hitRadius: 6 }, line: { borderWidth: 1.2, tension: 0 } }
+    };
+  }
+
+  function build(data) {
+    const pts = data.points.filter((p) => p.matrix);
+    const t0 = pts[0].time;
+    const day = (p) => (p.time - t0) / DAY;
+    const phases = data.phases;
+    const last = pts[pts.length - 1];
+    const seqPts = data.points.filter((p) => p.s076);
+    const lastSeq = seqPts[seqPts.length - 1];
+    document.getElementById('stamp').textContent = 'master ' + data.head + ' · ' + data.generated_at.slice(0, 16).replace('T', ' ');
+
+    // --- summary tiles -------------------------------------------------
+    const l2 = ['E1', 'E2', 'E3', 'E4', 'E5'];
+    const totalLeft = left(last.matrix, phases);
+    const l2Left = left(last.matrix, l2);
+    const rounds = data.markers.filter((m) => m.kind === 'round');
+    const week = pts.filter((p) => last.time - p.time <= 7 * DAY);
+    const first = week[0];
+    const dLeft = left(first.matrix, l2) - l2Left;
+    const span = Math.max(1, (last.time - first.time) / DAY);
+    const perDay = dLeft / span;
+    let eta = 'no pace yet';
+    if (perDay > 0) eta = 'about ' + fmt(new Date((last.time + (l2Left / perDay) * DAY) * 1000));
+    const seqWeek = seqPts.filter((p) => lastSeq.time - p.time <= 7 * DAY);
+    const seqGain = lastSeq.s076.passed - seqWeek[0].s076.passed;
+
+    const tiles = [
+      ['Clauses left, all phases', totalLeft, '', 'todo + partial of 2398 on-board clauses'],
+      ['Clauses left for level 2', l2Left, '', 'phases E1 to E5; what E5 has to clear'],
+      ['Sequences passed', lastSeq.s076.passed, ' <small>of ' + lastSeq.s076.total + '</small>', (lastSeq.s076.failed) + ' failed, ' + lastSeq.s076.blocked + ' blocked'],
+      ['Pace, last 7 days', (dLeft >= 0 ? '−' : '+') + Math.abs(dLeft), ' <small>clauses</small>', 'E1 to E5 clear ' + eta + ' at this pace'],
+      ['Rounds merged', rounds.length, '', seqGain >= 0 ? '+' + seqGain + ' sequences passed in 7 days' : seqGain + ' sequences passed in 7 days']
+    ];
+    document.getElementById('tiles').innerHTML = tiles.map(([k, v, u, d]) =>
+      '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + u + '</div><div class="d">' + d + '</div></div>').join('');
+
+    // --- clauses chart ---------------------------------------------------
+    const colour = (p) => css('--' + p.toLowerCase());
+    const maxAll = Math.max(...pts.map((p) => left(p.matrix, phases)));
+    const datasets = phases.map((ph) => ({
+      label: ph + ' ' + PHASE_NAMES[ph], phase: ph,
+      data: pts.map((p) => ({ x: day(p), y: p.matrix[ph].todo + p.matrix[ph].partial, p })),
+      borderColor: colour(ph), backgroundColor: colour(ph) + 'aa', fill: 'stack',
+      stepped: 'before'
+    }));
+    const optC = baseOptions(t0, 'clauses todo + partial', undefined);
+    optC.scales.x.min = 0; optC.scales.x.max = Math.ceil(day(last)) + 0.5;
+    const cC = new Chart(document.getElementById('cClauses'), {
+      type: 'line', data: { datasets }, options: optC, plugins: [markerPlugin(data.markers, t0)]
+    });
+    const bAll = document.getElementById('bAll'), bL2 = document.getElementById('bL2');
+    function showAll(all) {
+      cC.data.datasets.forEach((ds, i) => cC.setDatasetVisibility(i, all || l2.includes(ds.phase)));
+      cC.update();
+      bAll.setAttribute('aria-pressed', String(all)); bL2.setAttribute('aria-pressed', String(!all));
+      try { localStorage.setItem('burndown.phases', all ? 'all' : 'l2'); } catch (e) { /* no storage */ }
+    }
+    bAll.addEventListener('click', () => showAll(true));
+    bL2.addEventListener('click', () => showAll(false));
+    try { if (localStorage.getItem('burndown.phases') === 'l2') showAll(false); } catch (e) { /* no storage */ }
+
+    // --- sequences chart -------------------------------------------------
+    const seqSets = [
+      ['passed', 'passed', css('--good')], ['failed', 'failed at a step', css('--bad')], ['blocked', 'blocked, not judged yet', css('--hold')]
+    ].map(([k, label, c]) => ({
+      label, data: seqPts.map((p) => ({ x: day(p), y: p.s076[k], p })),
+      borderColor: c, backgroundColor: c + '99', fill: 'stack', stepped: 'before'
+    }));
+    const optS = baseOptions(t0, 'sequences', lastSeq.s076.total);
+    optS.scales.x.min = Math.floor(day(seqPts[0])) - 0.5; optS.scales.x.max = Math.ceil(day(last)) + 0.5;
+    new Chart(document.getElementById('cSeq'), {
+      type: 'line', data: { datasets: seqSets }, options: optS,
+      plugins: [markerPlugin(data.markers.filter((m) => m.kind === 'round'), t0)]
+    });
+
+    // --- phase table -----------------------------------------------------
+    const closed = new Set(data.markers.filter((m) => m.kind === 'phase').map((m) => m.label.slice(0, 2)));
+    const lastClosed = phases.filter((p) => closed.has(p)).pop();
+    const current = phases[phases.indexOf(lastClosed) + 1];
+    const tb = document.querySelector('#phases tbody');
+    tb.innerHTML = phases.map((ph) => {
+      const m = last.matrix[ph];
+      const lf = m.todo + m.partial;
+      const rows = Object.values(m).reduce((a, b) => a + b, 0);
+      let chip;
+      if (closed.has(ph)) chip = lf === 0 ? '<span class="chip ok">closed</span>' : '<span class="chip ok">closed</span> <span class="chip">' + lf + ' reopened</span>';
+      else if (ph === current) chip = '<span class="chip now">in progress</span>';
+      else chip = '<span class="chip">not started</span>';
+      return '<tr><td class="l"><span class="sw" style="background:' + colour(ph) + '"></span>' + ph + ' ' + PHASE_NAMES[ph] + '</td><td class="l">' + chip +
+        '</td><td class="num">' + m.todo + '</td><td class="num">' + m.partial + '</td><td class="left">' + lf + '</td><td class="num">' + m.done +
+        '</td><td class="num">' + m.deferred + '</td><td class="num">' + m['n/a'] + '</td><td class="num">' + rows + '</td></tr>';
+    }).join('');
+
+    // --- rounds ----------------------------------------------------------
+    const passedOn = (date) => {
+      const upTo = seqPts.filter((p) => p.date <= date);
+      return upTo.length ? upTo[upTo.length - 1].s076.passed : '';
+    };
+    document.getElementById('rounds').innerHTML = rounds.map((r) =>
+      '<div><span>' + r.label + ' <span class="d">' + r.date + '</span></span><span class="n">' + passedOn(r.date) + ' passed</span></div>').join('');
+  }
+
+  fetch('burndown.json', { cache: 'no-store' })
+    .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then((d) => { if (typeof Chart === 'undefined') throw new Error('the chart library did not load'); build(d); })
+    .catch((e) => fail('The burndown data could not be loaded (' + e.message + '). Run python3 test/tools/burndown.py and publish obj/burndown/burndown.json next to this page.'));
+})();
+</script>
