@@ -33,4 +33,12 @@ package EVC_Test_Handover is
    --  the Accepting RBC is not set up: lost, released (Table 1)
    procedure Scenario_Handover_Indication;
 
+   --  3.5.3.4.1, 3.5.3.4.2 b), 3.15.1.3.7: an order naming the RBC in
+   --  session: no second session; set up again after its termination
+   procedure Scenario_Handover_Same_RBC;
+
+   --  3.5.3.7.4.1 with 3.15.1.3.1 a): the Accepting RBC's session set up
+   --  again without its 38, the supervising one kept (3150100_01)
+   procedure Scenario_Handover_Ack_Missing;
+
 end EVC_Test_Handover;

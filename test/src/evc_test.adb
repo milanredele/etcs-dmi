@@ -252,6 +252,8 @@ begin
    EVC_Test_Handover.Scenario_Handover_Deletion;
    EVC_Test_Handover.Scenario_Handover_EoM;
    EVC_Test_Handover.Scenario_Handover_Indication;
+   EVC_Test_Handover.Scenario_Handover_Same_RBC;
+   EVC_Test_Handover.Scenario_Handover_Ack_Missing;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_RBC;

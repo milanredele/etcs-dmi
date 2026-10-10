@@ -420,4 +420,69 @@ package body EVC_Test_Handover is
              & "(Table 2 [4])");
    end Scenario_Handover_Indication;
 
+   --  3150100_02: the order to execute at once names the RBC in session
+   procedure Scenario_Handover_Same_RBC is
+      Values : ETCS_Message.Value_Array := (others => 0);
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 0, 300));
+      Stand;
+      Check (R.Info (2).State = R.Idle and then R.Supervising = 1
+             and then R.Info (1).State = R.Established
+             and then R.Contact.RBC.NID_RBC = 300,
+             "same RBC: no second session with the RBC in session "
+             & "(3.5.3.4.1), it goes on supervising (3.15.1.3.7)");
+      Give_Radio_Message (1, M24 (10, False, 0, 300));
+      Stand;
+      Check (Sent (156, 1) = 1, "same RBC: terminated by order (3.5.5.1)");
+      Values (3) := Now_T;
+      Give_Radio_Message (1, Message_Of (MCat.Track_M39, Values));
+      Stand;
+      Stand;
+      Check ((for some S in R.Session_T =>
+                R.Info (S).State = R.Connecting
+                and then R.Info (S).RBC.NID_RBC = 300),
+             "same RBC: terminated and released, the session set up again "
+             & "with it (3.5.3.4.2 b)");
+   end Scenario_Handover_Same_RBC;
+
+   procedure Scenario_Handover_Ack_Missing is
+      Values : ETCS_Message.Value_Array := (others => 0);
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Give_Radio_Event (2, Connection_Set_Up);
+      Stand;
+      Values (3) := Now_T;
+      Values (7) := 48;
+      Give_Radio_Message (2, Message_Of (MCat.Track_M32, Values));
+      Stand;
+      Check (R.Info (2).State = R.Established,
+             "ack missing: the Accepting RBC's session, 38 awaited");
+      for I in 1 .. 40 loop
+         Sample (0);
+         EVC_Core.Tick (3_000);
+         Take;
+      end loop;
+      Check (R.Info (1).State = R.Established and then R.Supervising = 1
+             and then (for some S in R.Session_T =>
+                         R.Info (S).State = R.Connecting
+                         and then R.Info (S).RBC.NID_RBC = 400),
+             "ack missing: no 38, the Accepting RBC's session set up again "
+             & "(3.5.3.7.4.1) beside the supervising one (3.15.1.3.1 a)");
+   end Scenario_Handover_Ack_Missing;
+
 end EVC_Test_Handover;

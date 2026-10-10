@@ -227,6 +227,15 @@ is
                Req.Open := True;
                Req.RBC := Order.RBC;
                Req.Radio := Order.Radio;
+            elsif Sv /= R.No_Session
+              and then R.Info (R.Session_T (Sv)).RBC = Order.RBC
+            then
+               --  decision 5: the Accepting RBC is the supervising
+               --  one: no second session (3.5.3.4.1); the session goes
+               --  on supervising and, once terminated and released, is
+               --  set up again with the (same) contact (3.5.3.4.2 for
+               --  b), 3.15.1.3.7 a no-op), as with one session
+               Single := True;
             end if;
          else
             Single := True;
