@@ -608,8 +608,10 @@ is
    --  the level and the mode of the on-board) and its consistency is
    --  checked (3.4.4.2.1.1 b, the modes of 4.5.2 Figure 1); both until
    --  EVC_Core sets them, as in phase E2. The settings apply from the
-   --  next Update.
-   procedure Set_Linking_Context (Accept_Info, Check : Boolean)
+   --  next Update. Added by e5/reports-by-event-2: Accept_P79, packet 79
+   --  of a balise group accepted (4.8.4.2, e.g. rejected in SH).
+   procedure Set_Linking_Context (Accept_Info, Check : Boolean;
+                                  Accept_P79 : Boolean := True)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old

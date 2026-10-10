@@ -3382,3 +3382,32 @@ of this file. The page `test/tools/burndown.html` is published as a
 private artifact and republished after every integration, with the data
 file `obj/burndown/burndown.json` next to it. At this round: 422 clauses
 left in all phases, 227 in E1 to E5; 700 of 3190 sequences passed.
+
+### Position reports by event, second round (e5/reports-by-event-2, 2026-10-10)
+
+**Implemented.** 4.8.4.2 (row "Geographical Position", column SH: R):
+packet 79 of a balise group is taken only when the acceptance table
+accepts it in the on-board's level and mode
+(`EVC_Position.Set_Linking_Context`, new parameter `Accept_P79`, set by
+`EVC_Core` from `EVC_Acceptance.Accepted (Geographical_Position, ...)`);
+scenario `Scenario_Geo_Rejected_In_SH` (`EVC_Test_Position`).
+4080415_01 moves from step 231 to 295 in all three versions (S635191ad
+gone).
+
+**Analysed, no on-board change.** 5100300_09 step 61: the on-board is
+in level 1 (the driver selected L1, the sequence's columns say L1), so
+3.6.5.1.4 f) and 5.10.3.3.3 / .6.2 / .10.3, transitions from level 2,
+do not apply; the 136 of the level change L1 -> L0 (3.6.5.1.4 g) is
+sent at 850 m in the window of step 56. 5100400_06 step 103: the 136 of
+the level change into level 2 and the mode change to OS (3.6.5.1.4 b, g)
+is sent at 1200 m in the window of step 93 (BG4d), before the OS
+acknowledgement. Both are windows of the runner (Keep_Radio), triaged
+`model` in S13c9beb3. SUBSET-076: 700 / 1590 / 900 before and after,
+3 improvements, baseline re-recorded.
+
+**Left.** Packet 79 by radio is not taken at all (Sf5f9f637, 4080415_01
+step 295: message 24 in level 1 with level 2 announced, 3.6.6, 4.8.3,
+the transition buffer); 4080407_01 stops at step 90 (S44acb613, a 138
+not expected); 5100400_06 after the runner's window: step 106 (FS at
+the min safe front end) not traced; the rest of 5100300 (_02 Sc1c4236f,
+_07 Sbfa49d0b, _08 S81c940f5) re-traced, unchanged.

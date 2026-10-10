@@ -11,6 +11,7 @@ package EVC_Test_Position is
       procedure Scenario_Linking_Errors;
       procedure Scenario_Single_Balise;
       procedure Scenario_Geo;
+      procedure Scenario_Geo_Rejected_In_SH;
       procedure Scenario_Odometer_Accuracy;
       procedure Scenario_Cold_Movement;
       procedure Scenario_Orientation;

@@ -415,6 +415,29 @@ package body EVC_Test_Position is
       Check_Golden ("position_geo");
    end Scenario_Geo;
 
+   --  4.8.4.2, row "Geographical Position", column SH: packet 79 of a
+   --  balise group read in Shunting is rejected, not stored (4080415_01
+   --  step 171; the DMI's symbol not shown after it)
+   procedure Scenario_Geo_Rejected_In_SH is
+      G : T79.Packet_T;
+   begin
+      Start_Track;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+      G.Q_DIR := 1;
+      G.Q_SCALE := 1;
+      G.NID_BG := 10;
+      G.D_POSOFF := 0;
+      G.Q_MPOSITION := 1;
+      G.M_POSITION := 42_000;
+      Add_Group (Group (10, 100));
+      Track (1).Has_Geo := True;
+      Track (1).Geo := G;
+      Run_To (20_000);
+      Check (EVC_Core.Mode = EVC_Modes.M_SH
+             and then Pos.LRBG.Id.NID_BG = 10 and then not Pos.Geo_Known,
+             "geo: packet 79 of a group read in SH is rejected (4.8.4.2)");
+   end Scenario_Geo_Rejected_In_SH;
+
    --  3.6.8, A.3.1: odometer accuracy impaired, safety threshold
    procedure Scenario_Odometer_Accuracy is
       Impaired_At : Integer_64 := 0;
