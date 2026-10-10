@@ -485,4 +485,38 @@ package body EVC_Test_Handover is
              & "(3.5.3.7.4.1) beside the supervising one (3.15.1.3.1 a)");
    end Scenario_Handover_Ack_Missing;
 
+   procedure Scenario_Handover_Rear_Repeat is
+      N : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Run_X (32_000);
+      Run_X (60_000);
+      Stand;
+      Check (R.Supervising = 2 and then R.Info (1).State = R.Established,
+             "rear repeat: the min safe rear end past the border, the "
+             & "Handing Over session kept (3.15.1.3.1 c)");
+      N := EVC_Sessions.Position_Reports_Sent;
+      for I in 1 .. 70 loop
+         Sample (0);
+         EVC_Core.Tick (1_000);
+         Take;
+      end loop;
+      Check (EVC_Sessions.Position_Reports_Sent >= N + 3
+             and then R.Info (1).State in R.Terminating | R.Idle
+             and then R.Info (2).State = R.Established,
+             "rear repeat: no order to terminate: the report every 15 s, "
+             & "3 times, then the Handing Over session terminated "
+             & "(3.15.1.3.9, A.3.1); got" & Img (EVC_Sessions.Position_Reports_Sent - N) & " "
+             & R.Session_State_T'Image (R.Info (1).State));
+   end Scenario_Handover_Rear_Repeat;
+
 end EVC_Test_Handover;

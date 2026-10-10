@@ -41,4 +41,8 @@ package EVC_Test_Handover is
    --  again without its 38, the supervising one kept (3150100_01)
    procedure Scenario_Handover_Ack_Missing;
 
+   --  3.15.1.3.1 c), 3.15.1.3.9: the min safe rear end past the border
+   --  reported, the report repeated, then the session terminated
+   procedure Scenario_Handover_Rear_Repeat;
+
 end EVC_Test_Handover;
