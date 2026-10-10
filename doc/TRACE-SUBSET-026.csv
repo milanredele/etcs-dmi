@@ -46,10 +46,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.3.4 f),3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (Connection_Lost over Keep_Ms: a new session); evc_test session_lost_version [E5 session]
 3.5.3.4 g),3,x,,,,,E5,todo,[E5 session]
 3.5.3.4 h),3,x,,,,,E5,todo,[E5 session]
-3.5.3.4.1,3,x,,,,,E5,done,EVC_Sessions.Establish: nothing when one is being or is established with that RBC [E5 session]
+3.5.3.4.1,3,x,,,,,E5,done,EVC_Sessions.Establish: nothing when one is being or is established with that RBC; an RBC transition order naming the supervising RBC opens no second session (EVC_Sessions.Handover.Apply_Order decision 5); evc_test Handover_Same_RBC [E5 session]
 3.5.3.4.1 1st bullet,3,x,,,,,E5,done,EVC_Sessions.Establish [E5 session]
 3.5.3.4.1 2nd bullet,3,x,,,,,E5,done,EVC_Sessions.Establish [E5 session]
-3.5.3.4.2,3,x,,,,,E5,done,EVC_Sessions.Establish (Pending: the new session once the terminating one is over) [E5 session]
+3.5.3.4.2,3,x,,,,,E5,done,EVC_Sessions.Establish (Pending: the new session once the terminating one is over); after such an order the session is set up again once terminated (Handover Single); evc_test Handover_Same_RBC [E5 session]
 3.5.3.5.2,3,x,,,,,E5,done,EVC_Sessions.Establish terminates the sessions with other RBCs; evc_test session_lost_version [E5 session]
 3.5.3.5.2.1,3,x,,,,,E5,partial,EVC_Sessions.Open (Pending when no session is free; one session by configuration); the transition order of 3.15.1 is phase 2 [E5 session]
 3.5.3.7,3,x,x,,,,E5,partial,"EVC_Sessions (Take_Event, Take_Version, Produce); the start of mission in level 2 is phase 2 [E5 session]"
@@ -65,7 +65,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.3.7.2,3,x,,,,,E5,todo,[E5 session]
 3.5.3.7.3,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (Initiating: released, set up again) [E5 session]"
 3.5.3.7.4,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (159 repeated); evc_test session_establish [E5 session]; not awaited from an RBC of 1.x or 2.0 .. 2.2 (6.5.2.2.2: EVC_System_Version.Session_Acknowledged); evc_test version_negotiation [E5 version]"
-3.5.3.7.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (terminated, established again) [E5 session]"
+3.5.3.7.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (terminated, established again); during a handover the Accepting RBC's session is set up again beside the supervising one (EVC_Sessions.Evaluate, Open); evc_test Handover_Ack_Missing [E5 session]"
 3.5.3.8,3,x,,,,,E5,partial,"EVC_Sessions.Terminate_Session (being established: aborted, released); c) and e) done, the other conditions with their procedures [E5 session]"
 3.5.3.8 a),3,x,,,,,E5,todo,[E5 session]
 3.5.3.8 b),3,x,,,,,E5,todo,[E5 session]
@@ -806,16 +806,16 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.1.3.1,3,x,,,,,E5,done,"EVC_Sessions.Handover: the order of packet 131 (balise, supervising RBC), the session opened beside the other, the border to EVC_Position (Set_Border); evc_test Handover_Radio [E5 session]"
 3.15.1.3.1 a),3,x,,,,,E5,done,EVC_Sessions.Handover.Apply_Order -> EVC_Sessions.Open (3.5.3.5.2.1: the other kept); evc_test Handover_Radio [E5 session]
 3.15.1.3.1 b),3,x,,,,,E5,done,"EVC_Position.Set_Border, Border_Front -> Reports.Request (to both RBCs); evc_test Handover_Radio [E5 session]"
-3.15.1.3.1 c),3,x,,,,,E5,partial,"EVC_Position Border_Rear (min safe rear end, train length known) -> a report to both; no scenario of its own [E5 session]"
-3.15.1.3.2,3,x,,,,,E5,partial,"EVC_Sessions.Handover (decision 2): one session (EVC_Config Radio.Sessions 1): the Accepting RBC set up once the Handing Over session is over; a) to d) taken as fulfilled, 3.5.6.6 with the radio network registration; evc_test Handover_Balise [E5 session]"
-3.15.1.3.2 a),3,x,,,,,E5,partial,taken as fulfilled with one session (EVC_Sessions.Handover decision 2) [E5 session]
-3.15.1.3.2 b),3,x,,,,,E5,partial,EVC_Config Radio.Sessions = 1 (EVC_Sessions.Handover decision 2) [E5 session]
-3.15.1.3.2 c),3,x,,,,,E5,partial,taken as fulfilled (no FRMCS session yet; EVC_Sessions.Handover decision 2) [E5 session]
-3.15.1.3.2 d),3,x,,,,,E5,partial,taken as fulfilled (no radio network type yet; EVC_Sessions.Handover decision 2) [E5 session]
-3.15.1.3.2 last sentence,3,x,,,,,E5,partial,EVC_Sessions.Handover.Evaluate: Establish when the Handing Over session is Idle; 3.5.6.6 not applied; evc_test Handover_Balise [E5 session]
+3.15.1.3.1 c),3,x,,,,,E5,done,"EVC_Position Border_Rear (min safe rear end, train length known) -> a report to both; evc_test Handover_Rear_Repeat [E5 session]"
+3.15.1.3.2,3,x,,,,,E5,n/a,"n/a: this on-board handles two sessions (EVC_Config Radio_Sessions 2, E5 decision 2), so 3.15.1.3.1 a) applies; the one-session configuration of tests keeps the wait (EVC_Sessions.Handover Single); the runner blocks the cases 3150100 3, 4, 7, 10, 11 (S076_Run.Single_Session_Cases) [E5 session]"
+3.15.1.3.2 a),3,x,,,,,E5,n/a,"n/a: this on-board handles two sessions (EVC_Config Radio_Sessions 2, E5 decision 2), so 3.15.1.3.1 a) applies; the one-session configuration of tests keeps the wait (EVC_Sessions.Handover Single); the runner blocks the cases 3150100 3, 4, 7, 10, 11 (S076_Run.Single_Session_Cases) [E5 session]"
+3.15.1.3.2 b),3,x,,,,,E5,n/a,"n/a: this on-board handles two sessions (EVC_Config Radio_Sessions 2, E5 decision 2), so 3.15.1.3.1 a) applies; the one-session configuration of tests keeps the wait (EVC_Sessions.Handover Single); the runner blocks the cases 3150100 3, 4, 7, 10, 11 (S076_Run.Single_Session_Cases) [E5 session]"
+3.15.1.3.2 c),3,x,,,,,E5,n/a,"n/a: this on-board handles two sessions (EVC_Config Radio_Sessions 2, E5 decision 2), so 3.15.1.3.1 a) applies; the one-session configuration of tests keeps the wait (EVC_Sessions.Handover Single); the runner blocks the cases 3150100 3, 4, 7, 10, 11 (S076_Run.Single_Session_Cases) [E5 session]"
+3.15.1.3.2 d),3,x,,,,,E5,n/a,"n/a: this on-board handles two sessions (EVC_Config Radio_Sessions 2, E5 decision 2), so 3.15.1.3.1 a) applies; the one-session configuration of tests keeps the wait (EVC_Sessions.Handover Single); the runner blocks the cases 3150100 3, 4, 7, 10, 11 (S076_Run.Single_Session_Cases) [E5 session]"
+3.15.1.3.2 last sentence,3,x,,,,,E5,n/a,"n/a: this on-board handles two sessions (EVC_Config Radio_Sessions 2, E5 decision 2), so 3.15.1.3.1 a) applies; the one-session configuration of tests keeps the wait (EVC_Sessions.Handover Single); the runner blocks the cases 3150100 3, 4, 7, 10, 11 (S076_Run.Single_Session_Cases) [E5 session]"
 3.15.1.3.2.2,3,x,,,,,E5,done,EVC_Sessions.Handover.Take_Order replaces the stored order; evc_test Handover_Radio [E5 session]
 3.15.1.3.2.3,3,x,,,,,E5,done,"EVC_Sessions.Handover.Apply_Order: the session of the former Accepting RBC terminated, the supervising one kept; evc_test Handover_Radio [E5 session]"
-3.15.1.3.2.4,3,x,,,,,E5,todo,left: a new order while waiting with one session after the border (EVC_Sessions.Handover) [E5 session]
+3.15.1.3.2.4,3,x,,,,,E5,n/a,"n/a: this on-board handles two sessions (EVC_Config Radio_Sessions 2, E5 decision 2), so 3.15.1.3.1 a) applies; the one-session configuration of tests keeps the wait (EVC_Sessions.Handover Single); the runner blocks the cases 3150100 3, 4, 7, 10, 11 (S076_Run.Single_Session_Cases) [E5 session]"
 3.15.1.3.3,3,x,,,,,E5,partial,"EVC_Sessions.Handover.Train_Data_To -> EVC_Sessions.Mission.Send_Train_Data (129, its 8 awaited); the safe consist length in SM not sent; evc_test Handover_Radio [E5 session]"
 3.15.1.3.4,3,x,,,,,E5,done,EVC_Sessions.Handover.Also_Reported -> EVC_Sessions.Reports.Produce (Also); evc_test Handover_Radio [E5 session]
 3.15.1.3.4.1,3,x,,,,,E5,done,EVC_Sessions.Mission.Mode_Changed (EoM_Also: the other connected session) -> Produce: 150 to both; the repetitions and 5.5.4.1.1 follow the supervising session; evc_test Handover_EoM [E5 session]
@@ -825,7 +825,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.1.3.8,3,x,,,,,E5,done,EVC_Sessions.Handover.Old_Contact retained; used by 3.5.3.4 f) (EVC_Sessions.Evaluate: the lost Handing Over session opened again beside the supervising one); evc_test Handover_Deletion [E5 session]
 3.15.1.3.8 a),3,x,,,,,E5,done,EVC_Sessions.Handover.Evaluate: dropped when the Handing Over session is Idle; evc_test Handover_Radio [E5 session]
 3.15.1.3.8 b),3,x,,,,,E5,done,EVC_Sessions.Mode_Changed -> Handover.Delete on the modes of the 4.10 row (the retained contact deleted too); evc_test Handover_Deletion [E5 session]
-3.15.1.3.9,3,x,,,,,E5,partial,"EVC_Sessions.Handover.Watch_Rear: A.3.1 15 s and 3 repetitions (the values of the radio message repetition), then the session terminated; no scenario of its own [E5 session]"
+3.15.1.3.9,3,x,,,,,E5,done,"EVC_Sessions.Handover.Watch_Rear: A.3.1 15 s and 3 repetitions (the values of the radio message repetition), then the session terminated; evc_test Handover_Rear_Repeat [E5 session]"
 3.15.4.1.1,3,x,,,,,E6,done,"packets 138 and 139 replace the stored ones (EVC_Procedures.Take_Packet), also in RV (5.13.1.6, .7); E4 with 5.13"
 3.15.4.2.1,3,x,,,,,E6,done,the end of the area received last is the reference of the distance to run (EVC_Procedures); E4 with 5.13
 3.15.4.3,3,x,,,,,E6,done,"packets 138 and 139 replace the stored ones (EVC_Procedures.Take_Packet), also in RV (5.13.1.6, .7); E4 with 5.13"

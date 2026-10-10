@@ -3411,3 +3411,35 @@ the transition buffer); 4080407_01 stops at step 90 (S44acb613, a 138
 not expected); 5100400_06 after the runner's window: step 106 (FS at
 the min safe front end) not traced; the rest of 5100300 (_02 Sc1c4236f,
 _07 Sbfa49d0b, _08 S81c940f5) re-traced, unchanged.
+### RBC handover, fourth round (e5/handover-4, 2026-10-10)
+
+**Findings.** Premise 1 did not hold: the order of 3150100_02 step 67
+(message 67 of the scn) names RBC 1616 at 900 m, not the RBC in
+session; the D_RBCTR 0 / 1515 block is another one. 3150100_02 (cases
+3, 4, 7) and _07 (cases 10, 11) all test 3.15.1.3.2, the exception for a
+single-session on-board (connect only after the Handing Over session
+ends). 3150100_01 step 90: no session was up at the location: 30 s
+after the Accepting RBC's 159 without its 38, 3.5.3.7.4.1 terminated it
+and set it up again through `Establish`, which ended the supervising
+session too.
+
+**Implemented.** `EVC_Sessions.Evaluate`: a pending session of the
+Accepting RBC of the stored order is opened beside the supervising one
+(3.5.3.7.4.1 with 3.15.1.3.1 a). `EVC_Sessions.Handover.Apply_Order`,
+decision 5: an order whose Accepting RBC is the supervising RBC opens no
+second session (3.5.3.4.1); that session goes on supervising and is set
+up again once terminated and released (3.5.3.4.2 b), as with one
+session (`Single`). Scenarios `EVC_Test_Handover.
+Scenario_Handover_Same_RBC`, `_Ack_Missing`, `_Rear_Repeat` (3.15.1.3.1
+c), 3.15.1.3.9). Matrix: 3.15.1.3.2 with a) to d), the last sentence and
+.2.4 n/a (two sessions); 3.15.1.3.1 c) and .9 done. The runner blocks
+the five cases from their first step (`S076_Run.Single_Session_Cases`,
+reason optional, "not applicable: 3.15.1.3.2"). SUBSET-076: 700 / 1590
+/ 900 before, 700 / 1584 / 906 after; 6 expected regressions (_02, _07
+blocked, three versions), 3150100_01 SV30 90 -> 102 (S776cef6c);
+baseline re-recorded.
+
+**Left.** 3.15.1.3.3 in SM (the safe consist length: no SM mode in
+this on-board yet, row stays partial); 3.15.1.3.2.3 has its scenario in
+`Handover_Radio` already. For the runner: 3150100_01 drives 586 m at 12
+km/h (170 s) to the packet 58 location of step 88, past both 159 waits.

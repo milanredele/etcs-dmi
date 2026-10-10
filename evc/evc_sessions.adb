@@ -1192,6 +1192,12 @@ is
                --  set up again with its retained contact, beside the
                --  supervising one (not Establish, which ends the others)
                Open (P.RBC, Handover.Old_Contact.Radio, P.Capped);
+            elsif Handover.Ordered (P.RBC)
+              and then R.Supervising /= R.No_Session
+            then
+               --  3.5.3.7.4.1 with 3.15.1.3.1 a): the Accepting RBC's
+               --  session set up again beside the supervising one
+               Open (P.RBC, P.Radio, P.Capped);
             else
                Establish (P.RBC, P.Radio, P.Capped, Ctx.Now_Ms);
             end if;
