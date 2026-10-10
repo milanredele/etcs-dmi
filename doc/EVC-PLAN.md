@@ -3327,3 +3327,48 @@ system versions each), 0 regressions. Left: both sequences now stop at
 an RTM connect expected only after the Handing Over session ends (the
 on-board opens the Accepting session at the order, Sa8a3ba1a, the
 handover remainder); [1] and [7] of Table 2; 3.5.7.7 (RIU, E7).
+
+### E5 integration after the eleventh round (2026-10-10)
+
+Merged: e5/report-packet (no on-board change: a position report after
+an unlinked single balise group uses packet 1, 3.4.2.3.3.1 / .2; the
+sequence expects packet 0: s076; scenario for both the linked and the
+unlinked case), e5/mode-change-session (3.5.3.4 c): in level 2 a mode
+change that the 4.5.2 table reports opens the session with the stored
+contact, with 3.5.3.4.1 / .2; a packet 42 order read in SH or PS only
+stores the contact, 4.8.4 [3]; 15 sequences moved, 4040800_03 and
+5060200_03 pass) and e5/connection-indication (the indication of 3.5.7
+kept per session, 3.5.7.6, the one shown following the supervising
+RBC's session at a handover and the session that is over; the A.3.1
+connection status timer of 45 s respected by the runner's wait for the
+"Connection Lost" symbol). The merges met in `EVC_Sessions`'
+`Refined_State` (both kept) and twice in the triage file, where the
+merge took an older line for Scdc515e8 and lost a note of Sa8a3ba1a,
+both restored by hand: the triage file is edited by every agent of a
+round and its conflicts need reading, not a rule. SUBSET-076 on the
+merged tree: 700 passed, 1590 failed, 900 blocked (694 / 1596 / 900
+before), 0 regressions, baseline re-recorded. Green: check.sh (evc_test
+11606), the full proof (10851 checks, 0 unproved, margin 47726 steps),
+the cross build (stack 27120 B), wasm and both smoke checks.
+
+Measured, three agents (one `opus-trim`, two `opus-medium`): 91 to 140
+requests, 8 to 12 minutes, 83k to 126k final context, 3.5 to 7 USD, no
+wait over 5 minutes, the runner 2 to 14 times each; all three premises
+held, read with the packets and the clauses before the briefs. The
+round's cheapest package (8 minutes) was the one that ended in a triage
+with a scenario documenting the behaviour.
+
+Open after this round, in the order a next round would take them:
+
+1. The handover: the Accepting RBC's session is opened when the order
+   arrives, the sequences 3150100_02 / _07 expect its connection only
+   after the Handing Over session ends (steps 92 / 97; 3.15.1.3.1 a) to
+   read again against 3.5.3.4.1 / .2); the remainder of 3.15.1.3
+   (.2.4, .3 in SM, scenarios of .1 c) and .9).
+2. S0dd91d8e (the DMI stays on the Main window after level 2 at S2 with
+   a contact stored in SH) and S635191ad (the geographical position
+   shown where hidden is expected); Table 2 [1] and [7] of 3.5.7.
+3. The runner: the radio window kept for a group delivered again at the
+   same place; "optional step, only if in L2"; 9990500_02; 4080428,
+   5100400, 5100300; balise errors reported to the RBC (3.6.5.1.4 l,
+   E6); chapter 6 (packet 72, S322852a4) in E7.
