@@ -3268,3 +3268,17 @@ Open after this round, in the order a next round would take them:
 3. Balise errors reported to the RBC (3.6.5.1.4 l, with E6); the
    linking of 3070300_12 (3.4.4.4.2); the handover remainder; chapter 6
    (packet 72 translation, S322852a4) in E7.
+
+### The packet of a position report after a single balise group (e5/report-packet, 2026-10-10)
+
+Scdc515e8 (5150400_02 step 71, three system versions) is the sequence's
+data, triaged `s076`: BG2d is a single balise group (N_TOTAL 1) and the
+sequence holds no linking (no packet 5, no MA), so the on-board cannot
+evaluate its orientation and reports on two groups, packet 1 with BG1d as
+the previous LRBG (3.4.2.3.3.1, 3.4.2.3.3.2; only a previous linking
+assigns a co-ordinate system to a single balise, 3.4.2.3.2.2). No change
+in `evc/`: `EVC_Position.Report_Kind` and `EVC_Sessions.Reports` already
+do this. `EVC_Test_Sessions.Scenario_Report_Packet` checks the 136 itself:
+a linked single group gives packet 0, an unlinked one packet 1 with the
+previous LRBG. Matrix: the note of 3.4.2.3.3.1 (the sending, was "E5").
+SUBSET-076 unchanged: 694 passed, 1596 failed, 900 blocked.

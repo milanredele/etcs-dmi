@@ -239,6 +239,7 @@ begin
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
    Scenario_Session_Reports;
+   Scenario_Report_Packet;
    Scenario_Session_Error_Report;
    Scenario_Session_Registration;
    Scenario_Network_List;

@@ -3,7 +3,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 1.7.1.5,1,x,x,,,,-,n/a,general rule on the whole implementation; the matrix itself tracks it
 3.4.2.2.1.1,3,x,x,,,,E2,done,EVC_Balise_Groups.Geometry (balise 2 as location reference); evc_test position_single_balise
 3.4.2.3.2.2,3,x,x,,,,E2,done,EVC_Position.Evaluate (orientation of a single group from Q_LINKORIENTATION); evc_test position_single_balise
-3.4.2.3.3.1,3,x,,,,,E2,done,"EVC_Position.Report_Kind P1, Position_Report_2; evc_test position_single_balise (sending: E5)"
+3.4.2.3.3.1,3,x,,,,,E2,done,"EVC_Position.Report_Kind P1, Position_Report_2; evc_test position_single_balise; the 136 with packet 1 sent by EVC_Sessions.Reports, evc_test Scenario_Report_Packet"
 3.4.2.3.3.2,3,x,,,,,E2,done,EVC_Position.Position_Report_2 (direction reference prev -> LRBG); evc_test position_single_balise
 3.4.2.3.3.3,3,x,,,,,E2,done,"EVC_Position.Position_Report_2, previous LRBG and directions unknown; evc_test position_single_balise"
 3.4.2.3.3.4,3,x,,,,,E2,done,EVC_Position.Set_LRBG (crossing against the LRBG crossing); evc_test position_single_balise
