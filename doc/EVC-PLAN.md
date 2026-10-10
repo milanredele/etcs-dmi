@@ -3303,3 +3303,27 @@ footnote [3] done. SUBSET-076: 694 / 1596 / 900 before, 700 / 1590 /
 in the three versions; 4080415_01, 4040800_05, 4080428_01 move on),
 baseline re-recorded; new signatures S0dd91d8e (S3 skipped for a
 contact valid from SH?) and S635191ad triaged `onboard`, to analyse.
+
+### Safe radio connection indication (e5/connection-indication, 2026-10-10)
+
+The indication of 3.5.7 is kept per session (3.5.7.6.1: a transition
+table and a connection status timer per RBC): `EVC_Sessions` holds the
+status, the requests and the timer of each session, and `Shown`, the
+session the driver sees (`Indication`, MSG_STATUS radio byte).
+`Ind_Timer`, every cycle, runs the timers (Table 2 [2]) and moves
+`Shown` to the supervising RBC's session once it is established (3.5.7.6
+a) or once the one shown is over (3.5.7.6 b); without a supervising RBC
+the one shown stays until it is over, then the first session in use.
+Both gaps were one cause: at the border the Accepting RBC became the
+supervising one before its session was set up, and the single
+indication followed that session only, so the Handing Over RBC's
+release (3150100_02) and loss (3150100_07) changed nothing. The runner
+waits 46 s for the Connection Lost symbol (A.3.1: 45 s; the sequence
+repeats the connect "until t0+45", the window was 4 s;
+`S076_Run.Wait_Limit`). Scenario `EVC_Test_Handover.
+Scenario_Handover_Indication`. SUBSET-076: 694 / 1596 / 900 before and
+after, 6 improvements (3150100_02 to step 92, _07 to step 97, three
+system versions each), 0 regressions. Left: both sequences now stop at
+an RTM connect expected only after the Handing Over session ends (the
+on-board opens the Accepting session at the order, Sa8a3ba1a, the
+handover remainder); [1] and [7] of Table 2; 3.5.7.7 (RIU, E7).

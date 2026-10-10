@@ -360,4 +360,64 @@ package body EVC_Test_Handover is
              "handover EoM: the order deleted when entering SB (4.10)");
    end Scenario_Handover_EoM;
 
+   --  3.5.7.5, 3.5.7.6, 3.5.7.6.1: the indication of the safe radio
+   --  connection during a handover whose Accepting RBC is not set up yet
+   --  (3150100_02, _07): a status per session, the Handing Over one shown
+   --  until the Accepting one is established or the Handing Over one is
+   --  over
+   procedure Scenario_Handover_Indication is
+      use type EVC_Sessions.Indication_T;
+      Values : ETCS_Message.Value_Array := (others => 0);
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Run_X (25_000);
+      Run_X (32_000);
+      Stand;
+      Check (R.Info (2).State = R.Connecting and then R.Supervising = 2
+             and then EVC_Sessions.Indication = EVC_Sessions.Connection_Up,
+             "indication: the border passed, the Accepting RBC not set up: "
+             & "the Handing Over RBC's ""Connection Up"" (3.5.7.6 a)");
+
+      --  S6514d681: lost, set up again; 45 s later "Connection Lost"
+      Give_Radio_Event (1, Connection_Lost);
+      Stand;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Up,
+             "indication: the Handing Over RBC's connection lost, set up "
+             & "again: ""Connection Up"" while its timer runs (3.5.7.3 b)");
+      Sample (0);
+      EVC_Core.Tick (45_000);
+      Take;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Lost,
+             "indication: its timer expires: ""Connection Lost/Set-Up "
+             & "failed"" (Table 2 [2], 3.5.7.6.1)");
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Up,
+             "indication: set up again: ""Connection Up"" (Table 2 [4])");
+
+      --  Se0240012: terminated, released: the Accepting RBC's status
+      Give_Radio_Message (1, M24 (20, False, 0, 300));
+      Stand;
+      Values (3) := Now_T;
+      Give_Radio_Message (1, Message_Of (MCat.Track_M39, Values));
+      Stand;
+      Check (R.Info (1).State = R.Idle
+             and then EVC_Sessions.Indication = EVC_Sessions.Connection_Lost,
+             "indication: the Handing Over RBC's connection released: the "
+             & "Accepting RBC's status, its timer expired, no more "
+             & """Connection Up"" (Table 2 [5], 3.5.7.6 b)");
+      Establish (2);
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Up,
+             "indication: the Accepting RBC set up: ""Connection Up"" "
+             & "(Table 2 [4])");
+   end Scenario_Handover_Indication;
+
 end EVC_Test_Handover;
