@@ -3270,6 +3270,25 @@ package body S076_Run is
                        or else Redelivered (I));
                   Wait_Used := 0;
                end if;
+               --  an input placed ahead of a train that goes backwards
+               --  (more than 5 m) is met going forward again: the train
+               --  returned (9990500_02: reversed at 160 m, back to
+               --  130 m, then BG2d at 180 m); only an input that places
+               --  the train (a balise group, an ODO step), not one that
+               --  happens where the train stands (9990500_27 step 47, a
+               --  timer at the place of a reach-point of the max safe
+               --  front end)
+               if St.IO = Input and then B.Direction < 0
+                 and then St.Dist_Cm > B.Position + 500
+                 and then ((W (2) = "BTM" and then Line.Count >= 4)
+                           or else (W (2) = "ODO"
+                                    and then not Same (W (3),
+                                                 "direction-reversed")
+                                    and then not Same (W (3),
+                                                 "start-moving")))
+               then
+                  B.Set_Direction (1);
+               end if;
                --  move to the step's distance, unless the input moves
                --  the train itself
                if not (St.IO = Input
