@@ -3481,3 +3481,62 @@ blocked after, 0 regressions, baseline re-recorded. New signature
 Sd577e7be (5100400_06 step 106, the joined case's end of the OS area
 behind the train), triaged `model`. Not done: item 6 (S1f552964, the
 Main window expected at the start of a joined case).
+
+### E5 integration after the twelfth round (2026-10-10)
+
+Merged: e5/reports-by-event-2 (4.8.4.2: the packet 79 of a balise group
+read in SH is rejected like the table says, `EVC_Position.Set_Linking_
+Context (Accept_P79)` from `EVC_Acceptance`; 5100300_09 and 5100400_06
+analysed: their 136 is sent at the level change, the step expects it in a
+later window), e5/handover-4 (the Accepting RBC's session set up again
+after a missing 38, 3.5.3.7.4.1, without ending the supervising one;
+an order naming the supervising RBC opens no second session, 3.5.3.4.1
+/ .2; 3.15.1.3.2 n/a for this two-session on-board and its test cases
+blocked as not applicable, `S076_Run.Single_Session_Cases`; scenarios
+for 3.15.1.3.1 c) and .9) and e5/runner-3 ("only if in L2" steps
+optional outside level 2; `Keep_Radio` for a re-delivered group and for
+a DMI acknowledgement right after a group; a reversing train turns
+forward for an input ahead; the RBC data confirmed through the Radio
+data window, Table 50 S4 / D5 / S8, with the stored contact typed).
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11646
+checks), the full proof 10853 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27120 B (margin 5648), wasm and both smokes 0
+failures. SUBSET-076: 700 / 1590 / 900 before, 706 / 1578 / 906 after
+(the 6 blocked are the not-applicable cases of 3150100_02 and _07),
+0 regressions, 0 untriaged. Triage conflicts: the lines of Sa8a3ba1a and
+S13c9beb3 were rewritten in different parts by two agents each and
+merged by part by hand.
+
+Measurements (requests, duration, final context, cost at the rates used
+before): handover-4 238 / 19 min / 190k / 16.0; reports-by-event-2 142
+/ 14 min / 116k / 6.6; runner-3 190 / 19 min / 131k / 8.9. The handover
+agent made the most requests of any round so far for a brief of 110
+tool calls: a third of its turns carried no tool call.
+
+Lessons: of the eight premises in the three briefs, three did not
+hold. The `var` blocks after the steps of a scn file are not in the
+order of the steps (the "same RBC" order of 3150100_02 was another
+message; the runner's reading, `S076_Sequences`, maps them: ask it, not
+the file order); a sequence's level column is to be read before a
+clause is chosen (5100300_09 is level 1); and a 136 "not sent" at a step
+after other expectations of the same event is first a window question.
+The runner's windows now have four keep-rules; a fifth shape is open.
+
+Open:
+1. Packet 79 by radio is not taken at all (Sf5f9f637, 4080415_01 step
+   295: 3.6.6, 4.8.3 with the transition buffer in level 1 with level 2
+   announced); 4080407_01 S44acb613 (a 138 sent where none is
+   expected); 4080428_01 not traced.
+2. Runner windows: 5100300_09 step 61 (a reach-point at the place of the
+   group that triggered the 136); Sd577e7be (5100400_06 step 106, the
+   joined case's OS area end behind the train); S1f552964 (the Main
+   window expected at the start of a joined case, 25 sequences:
+   undecided); 3150100_01 next stop step 102 (S776cef6c, s076), and its
+   170 s drive at 12 km/h to the packet 58 location, after which the 38
+   of step 94 comes after both 159 waits.
+3. The DMI protocol has no field for the stored RBC contact, so the RBC
+   data window cannot propose the stored values (DMI 11.7.1.4): a
+   protocol item for the DMI side.
+4. 3.15.1.3.3 in SM (no SM mode yet); balise errors reported to the RBC
+   (3.6.5.1.4 l, E6); chapter 6 (packet 72, S322852a4) in E7.
