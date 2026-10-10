@@ -65,6 +65,7 @@ package body EVC_Position
                                    Previous_Ms,
                                    Antenna_Offset,
                                    Accept_Linking,
+                                   Accept_Geo,
                                    Check_Linking))
 is
 
@@ -139,6 +140,9 @@ is
    --  (4.8), the linking consistency is checked (3.4.4.2.1.1 b)
    Accept_Linking     : Boolean := True;
    Check_Linking      : Boolean := True;
+   --  Added by e5/reports-by-event-2: packet 79 of a balise group is
+   --  accepted (4.8.4.2, e.g. rejected in SH)
+   Accept_Geo         : Boolean := True;
 
    Orient             : Sense_T := Plus;
    Orient_Known       : Boolean := False;
@@ -855,7 +859,9 @@ is
                            end if;
                         end if;
                      end;
-                  elsif E.Kind = ETCS_Catalogue.Track_P79 then
+                  elsif E.Kind = ETCS_Catalogue.Track_P79
+                    and then Accept_Geo
+                  then
                      declare
                         P : ETCS_Track_Packets.P79.Packet_T;
                      begin
@@ -1384,6 +1390,7 @@ is
       Seq_Counter := 0;
       Links := (others => <>);
       Accept_Linking := True;
+      Accept_Geo := True;
       Check_Linking := True;
       Passage := (others => <>);
       Passage.Open := False;
@@ -1996,9 +2003,11 @@ is
    -- Set_Linking_Context --
    -------------------------
 
-   procedure Set_Linking_Context (Accept_Info, Check : Boolean) is
+   procedure Set_Linking_Context (Accept_Info, Check : Boolean;
+                                  Accept_P79 : Boolean := True) is
    begin
       Accept_Linking := Accept_Info;
+      Accept_Geo := Accept_P79;
       Check_Linking := Check;
    end Set_Linking_Context;
 

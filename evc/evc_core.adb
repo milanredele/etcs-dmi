@@ -959,7 +959,11 @@ is
       EVC_Position.Set_Linking_Context
         (Accept_Info => EVC_Acceptance.Accepted
                           (EVC_Acceptance.Linking, Acceptance_Context),
-         Check       => Linking_Check_Mode (Current_Mode));
+         Check       => Linking_Check_Mode (Current_Mode),
+         --  4.8.4.2: packet 79 of a balise group in the mode's column
+         Accept_P79  => EVC_Acceptance.Accepted
+                          (EVC_Acceptance.Geographical_Position,
+                           Acceptance_Context));
       EVC_Position.Update
         (Cab_A_Active => TIU_Now (Cab_A_Active),
          Cab_B_Active => TIU_Now (Cab_B_Active),
