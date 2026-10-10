@@ -3110,6 +3110,30 @@ package body S076_Run is
    --  The sequence
    ---------------------------------------------------------------------
 
+   --  Step I delivers again, at the same place, a balise group an
+   --  earlier step delivered (the joined case of 3060500_01, BG1d at
+   --  50 m in steps 39 and 43): the radio messages and requests made at
+   --  the first delivery stay listed (step 49 expects the connect
+   --  request of step 39)
+   function Redelivered (I : Positive) return Boolean is
+      St : Step_T renames Seq.Steps (I);
+      L  : constant String := Image (St.Line);
+   begin
+      if St.IO /= Input or else not Starts (L, "input BTM balise-group ")
+      then
+         return False;
+      end if;
+      for K in reverse 1 .. I - 1 loop
+         if Seq.Steps (K).IO = Input
+           and then Seq.Steps (K).Dist_Cm = St.Dist_Cm
+           and then Image (Seq.Steps (K).Line) = L
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Redelivered;
+
    --  A step out of the scope of this phase: level 2 / 3, NTC
    function Scope (St : Step_T) return Reason_T is
       Lb : constant Level_Kind_T := Level_Of (Trim (St.Lvl_Before));
@@ -3239,9 +3263,11 @@ package body S076_Run is
                   --  RBC's 38 depending on the sequence (3040200_01
                   --  after it, most before it)
                   B.New_Window
-                    (Keep_Radio => W (2) = "RTM" and then W (3) = "message"
-                       and then I > 1
-                       and then Seq.Steps (I - 1).Dist_Cm = St.Dist_Cm);
+                    (Keep_Radio =>
+                       (W (2) = "RTM" and then W (3) = "message"
+                        and then I > 1
+                        and then Seq.Steps (I - 1).Dist_Cm = St.Dist_Cm)
+                       or else Redelivered (I));
                   Wait_Used := 0;
                end if;
                --  move to the step's distance, unless the input moves
