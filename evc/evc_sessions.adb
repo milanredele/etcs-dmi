@@ -26,7 +26,7 @@ package body EVC_Sessions
                                    Mode_Changes, Cycles, Links, Order,
                                    Pending, Acks, Ack_N, NV, Ind,
                                    Requesting, Timer_On, Timer_Since,
-                                   SB_Shown, Status_List, Status_N,
+                                   Shown, SB_Shown, Status_List, Status_N,
                                    Noted, Noted_Code,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Mission.State,
@@ -146,13 +146,19 @@ is
    Ack_N        : Natural range 0 .. Max_Acks := 0;
    NV           : NV_T;
 
-   --  3.5.7: the indication status, whether requests to set up the
-   --  safe radio connection with the relevant RBC are going on, the
-   --  "connection status" timer (3.5.7.2, 3.5.7.3)
-   Ind          : Indication_T := No_Connection;
-   Requesting   : Boolean := False;
-   Timer_On     : Boolean := False;
-   Timer_Since  : Time_Ms_T := 0;
+   --  3.5.7: per session (3.5.7.6.1: a transition table and a timer for
+   --  each RBC), the indication status, whether requests to set up the
+   --  safe radio connection are going on, the "connection status" timer
+   --  (3.5.7.2, 3.5.7.3); Shown: the session whose status the driver sees
+   --  (3.5.7.5, 3.5.7.6, Follow_Indicated)
+   type Ind_Table_T is array (Session_T) of Indication_T;
+   type Flag_Table_T is array (Session_T) of Boolean;
+   type Time_Table_T is array (Session_T) of Time_Ms_T;
+   Ind          : Ind_Table_T := (others => No_Connection);
+   Requesting   : Flag_Table_T := (others => False);
+   Timer_On     : Flag_Table_T := (others => False);
+   Timer_Since  : Time_Table_T := (others => 0);
+   Shown        : Session_T := Session_T'First;
 
    --  3.16.3.4.4: the service brake of T_NVCONTACT shown to the driver
    SB_Shown     : Boolean := False;
@@ -198,40 +204,27 @@ is
    --  The indication of the safe radio connection (3.5.7, Tables 1, 2)
    ---------------------------------------------------------------------
 
-   --  3.5.7.5, 3.5.7.6: the session S is the one indicated: the session
-   --  of the supervising RBC; before there is one, any session.
-   --  Decision (phase 1, no handover): the switch of 3.5.7.6 is the
-   --  change of the supervising session.
-   function Relevant (S : Session_T) return Boolean is
-     (R.Supervising = R.No_Session
-      or else R.Supervising = R.Session_Ref_T (S))
-     with Global => R.State;
-
    --  3.5.7.3: a request to set up the safe radio connection of S sent at
-   --  Now: the first one of a series starts the "connection status" timer
+   --  Now: the first one of a series starts its "connection status" timer
    procedure Ind_Request (S : Session_T; Now : Time_Ms_T)
-     with Global => (Input  => R.State,
-                     In_Out => (Requesting, Timer_On, Timer_Since))
+     with Global => (In_Out => (Requesting, Timer_On, Timer_Since))
    is
    begin
-      if Relevant (S) and then not Requesting then
-         Requesting := True;
-         Timer_On := True;
-         Timer_Since := Now;
+      if not Requesting (S) then
+         Requesting (S) := True;
+         Timer_On (S) := True;
+         Timer_Since (S) := Now;
       end if;
    end Ind_Request;
 
    --  Table 2 [4]: the safe radio connection of S is set up
    procedure Ind_Set_Up (S : Session_T)
-     with Global => (Input  => R.State,
-                     In_Out => (Ind, Requesting, Timer_On))
+     with Global => (In_Out => (Ind, Requesting, Timer_On))
    is
    begin
-      if Relevant (S) then
-         Ind := Connection_Up;
-         Requesting := False;
-         Timer_On := False;
-      end if;
+      Ind (S) := Connection_Up;
+      Requesting (S) := False;
+      Timer_On (S) := False;
    end Ind_Set_Up;
 
    --  3.5.7.4: the requests to set up the safe radio connection of S are
@@ -240,42 +233,69 @@ is
    --  mission failed) to "Connection Lost/Set-Up failed", else [3], [5],
    --  [6] to "No Connection"
    procedure Ind_Stopped (S : Session_T; Final_SoM : Boolean)
-     with Global => (Input  => R.State,
-                     In_Out => (Ind, Requesting, Timer_On))
+     with Global => (In_Out => (Ind, Requesting, Timer_On))
    is
    begin
-      if Relevant (S) then
-         Requesting := False;
-         Timer_On := False;
-         if Final_SoM then
-            if Ind = No_Connection then
-               Ind := Connection_Lost;
-            end if;
-         else
-            Ind := No_Connection;
+      Requesting (S) := False;
+      Timer_On (S) := False;
+      if Final_SoM then
+         if Ind (S) = No_Connection then
+            Ind (S) := Connection_Lost;
          end if;
+      else
+         Ind (S) := No_Connection;
       end if;
    end Ind_Stopped;
 
    --  Table 2 [5]: the on-board releases the safe radio connection of S
    procedure Ind_Released (S : Session_T)
-     with Global => (Input  => R.State, In_Out => Ind)
+     with Global => (In_Out => Ind)
    is
    begin
-      if Relevant (S) and then Ind = Connection_Up then
-         Ind := No_Connection;
+      if Ind (S) = Connection_Up then
+         Ind (S) := No_Connection;
       end if;
    end Ind_Released;
 
-   --  Table 2 [2]: the "connection status" timer expires
+   --  Table 2 [2]: the "connection status" timer of a session expires;
+   --  then the session indicated (3.5.7.5, 3.5.7.6). Decisions: the
+   --  supervising RBC's session is indicated once it is established
+   --  (3.5.7.6 a: the Accepting RBC supervises when it gets the position
+   --  reports) or the one indicated before is over (3.5.7.6 b: its safe
+   --  radio connection released, the train past the border, where the
+   --  Handing Over RBC terminates it); without a supervising RBC, the
+   --  session indicated stays until it is over, then the first one in use
    procedure Ind_Timer (Now : Time_Ms_T)
-     with Global => (In_Out => (Ind, Timer_On), Input => Timer_Since)
+     with Global => (Input  => (Timer_Since, R.State),
+                     In_Out => (Ind, Timer_On, Shown))
    is
+      Sv : constant R.Session_Ref_T := R.Supervising;
    begin
-      if Timer_On and then Elapsed (Timer_Since, Now) >= Status_Timer_Ms
-      then
-         Ind := Connection_Lost;
-         Timer_On := False;
+      for S in Session_T loop
+         pragma Loop_Invariant (True);
+         if Timer_On (S)
+           and then Elapsed (Timer_Since (S), Now) >= Status_Timer_Ms
+         then
+            Ind (S) := Connection_Lost;
+            Timer_On (S) := False;
+         end if;
+      end loop;
+      if Sv /= R.No_Session then
+         if R.Session_Ref_T (Shown) /= Sv
+           and then (R.Info (Session_T (Sv)).State
+                       in R.Established | R.Connection_Lost | R.Terminating
+                     or else R.Info (Shown).State = R.Idle)
+         then
+            Shown := Session_T (Sv);
+         end if;
+      elsif R.Info (Shown).State = R.Idle then
+         for S in Session_T loop
+            pragma Loop_Invariant (True);
+            if R.Info (S).State /= R.Idle then
+               Shown := S;
+               exit;
+            end if;
+         end loop;
       end if;
    end Ind_Timer;
 
@@ -439,8 +459,8 @@ is
      with Refined_Global => Held_Back;
    function Holds (C : Condition_T) return Boolean is (Held (C))
      with Refined_Global => Held;
-   function Indication return Indication_T is (Ind)
-     with Refined_Global => Ind;
+   function Indication return Indication_T is (Ind (Shown))
+     with Refined_Global => (Ind, Shown);
    function Status_Event_Count return Natural is (Status_N)
      with Refined_Global => Status_N;
    function Status_Event (I : Positive) return Status_Event_T is
@@ -482,10 +502,11 @@ is
       Acks := (others => (S => 1, T => 0));
       Ack_N := 0;
       NV := (others => <>);
-      Ind := No_Connection;
-      Requesting := False;
-      Timer_On := False;
-      Timer_Since := 0;
+      Ind := (others => No_Connection);
+      Requesting := (others => False);
+      Timer_On := (others => False);
+      Timer_Since := (others => 0);
+      Shown := Session_T'First;
       SB_Shown := False;
       Status_List := (others => (others => <>));
       Status_N := 0;

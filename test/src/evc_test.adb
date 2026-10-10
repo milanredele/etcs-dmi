@@ -249,6 +249,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Text;
    EVC_Test_Handover.Scenario_Handover_Deletion;
    EVC_Test_Handover.Scenario_Handover_EoM;
+   EVC_Test_Handover.Scenario_Handover_Indication;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_RBC;

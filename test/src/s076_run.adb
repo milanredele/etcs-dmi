@@ -120,6 +120,17 @@ package body S076_Run is
 
    function W (K : Positive) return String is (Word (Line, K));
 
+   --  The cycles an expectation may wait for. SUBSET-026 3.5.7.2, Table 2
+   --  [2], A.3.1: "Connection Lost/Set-Up failed" shows when the 45 s
+   --  "connection status" timer expires; the sequences let that time pass
+   --  in a step "repeated until t=t0+45" (3150100_07 step 79), so the
+   --  symbol's expectation waits for the timer (46 s)
+   function Wait_Limit return Natural is
+     (if Same (W (3), "status-symbol") and then Same (W (4), "displayed")
+        and then Has (W (5), "Connection-Lost")
+      then 46_000 / B.Cycle_Ms
+      else Wait_Cycles);
+
    ---------------------------------------------------------------------
    --  The state of the replay
    ---------------------------------------------------------------------
@@ -3267,7 +3278,7 @@ package body S076_Run is
                   end;
                else
                   J := Expect (St);
-                  while J.Verdict = Failed and then Wait_Used < Wait_Cycles
+                  while J.Verdict = Failed and then Wait_Used < Wait_Limit
                   loop
                      Wait_Cycle;
                      Wait_Used := Wait_Used + 1;
@@ -3276,7 +3287,7 @@ package body S076_Run is
                   declare
                      C : Judgement_T := Columns (I);
                   begin
-                     while C.Verdict = Failed and then Wait_Used < Wait_Cycles
+                     while C.Verdict = Failed and then Wait_Used < Wait_Limit
                      loop
                         Wait_Cycle;
                         Wait_Used := Wait_Used + 1;
