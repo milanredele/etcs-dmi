@@ -281,6 +281,17 @@ package body S076_Run is
                  when L1 => K_L1, when L2 => K_L2);
    end Our_Level;
 
+   --  A step whose comment restricts it to level 2 ("Only if in L2",
+   --  "only in L2", 44 sequences of sv30, e.g. 4080442_01 step 51: a 136
+   --  in level 1 On Sight) is the sequence's other alternative when the
+   --  step's level columns or the on-board's level are not 2
+   function Only_In_L2_Elsewhere (St : Step_T) return Boolean is
+     ((Has (Image (St.Comment), "only if in L2")
+       or else Has (Image (St.Comment), "only in L2"))
+      and then (Trim (St.Lvl_After) /= "L2"
+                or else Trim (St.Lvl_Before) /= "L2"
+                or else Our_Level /= K_L2));
+
    function Mode_Abbrev (M : Mode_T) return String is
      (case M is
          when M_FS => "FS", when M_AD => "AD", when M_LS => "LS",
@@ -3299,7 +3310,8 @@ package body S076_Run is
                      if J.Verdict = Failed
                        and then (Starts (Image (St.Comment), "Optional step")
                                  or else Starts (Image (St.Comment),
-                                           "Implementation dependent"))
+                                           "Implementation dependent")
+                                 or else Only_In_L2_Elsewhere (St))
                      then
                         Record_Result (I, NJ (R_Optional, Image (J.Sig)));
                      elsif J.Verdict = Failed then
