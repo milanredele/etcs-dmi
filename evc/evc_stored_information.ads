@@ -80,6 +80,7 @@ with EVC_DMI_Port;
 with EVC_Distances;          use EVC_Distances;
 with EVC_Levels;
 with EVC_Modes;
+with EVC_LS_Display;
 with EVC_Movement_Authority;
 with EVC_National_Values;
 with EVC_Odometry;
@@ -343,7 +344,8 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Levels.State, EVC_Sessions.State),
+                                EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Train_Data.State, EVC_Config.State,
                                 EVC_Radio_Info.State)),
@@ -388,7 +390,8 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Levels.State, EVC_Sessions.State),
+                                EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State),
                      Input  => (EVC_Origins.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,
                                 EVC_Radio_Info.State));

@@ -397,6 +397,8 @@ is
       --  phase E4: no procedure running, no text message
       EVC_Procedures.Clear;
       EVC_Text_Messages.Clear;
+      --  4.4.19.1.4: no marker, no order, no LSSMA shown
+      EVC_LS_Display.Clear;
       --  phase E5: no session, no contact, the sessions of the
       --  installation (EVC_Config: two, or one)
       EVC_Radio.Clear
@@ -1057,7 +1059,8 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
-                                EVC_Outbox.Queue, EVC_Text_Messages.State))
+                                EVC_Outbox.Queue, EVC_Text_Messages.State,
+                                EVC_LS_Display.State))
    is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
@@ -1138,6 +1141,7 @@ is
                                 EVC_Train_Inputs.State, EVC_Mission.State),
                      In_Out => (Latched_RTM, EVC_Received.Store,
                                 EVC_Text_Messages.State,
+                                EVC_LS_Display.State,
                                 EVC_Origins.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State,
@@ -2015,7 +2019,8 @@ is
    procedure Send_Mode_Level
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
                                 EVC_Mission.State, EVC_Procedures.State,
-                                EVC_Radio_Authority.State),
+                                EVC_Radio_Authority.State,
+                                EVC_LS_Display.State),
                      In_Out => EVC_Outbox.Queue)
    is
    begin
@@ -2040,7 +2045,9 @@ is
                   else No_Code),
                Level_Ann_Ack => EVC_Levels.Ack_Asked,
                Override      => EVC_Procedures.Override_Indicated,
-               TAF           => EVC_Radio_Authority.TAF_Shown));
+               TAF           => EVC_Radio_Authority.TAF_Shown,
+               --  4.4.19.1.4
+               LSSMA         => EVC_LS_Display.LSSMA_Kmh));
       end if;
    end Send_Mode_Level;
 
@@ -2619,6 +2626,7 @@ is
                                 EVC_Stored_Information.State,
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
+                                EVC_LS_Display.State,
                                 EVC_Driver_Requests.State,
                                 EVC_Odometry.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
@@ -2781,10 +2789,14 @@ is
             Enter_Mode (From, Current_Mode);
             Delete_Invalid_Position (From, Current_Mode);
             Radio_Mode_Changed (From, Current_Mode);
+            --  4.4.19.1.4.6, 4.10
+            EVC_LS_Display.Mode_Changed (From, Current_Mode);
          end if;
       end;
       Finish_Procedures;
       Sync_Train_Length;
+      --  4.4.19.1.4: the LSSMA of the cycle's snapshot in its mode
+      EVC_LS_Display.Step (Snapshot, Current_Mode, Unsigned_64 (Clock_Ms));
       Produce_Outputs;
       Save_Retained;
    end Tick;

@@ -83,7 +83,11 @@ is
       --  e5/handover: from a balise group
       RBC_Transition_Order,   -- 131
       --  e5/registration-2: from a balise group
-      Network_Order);         -- 45
+      Network_Order,          -- 45
+      --  e4/ls-display, 4.4.19.1.4 (the toggle off order of packet 180
+      --  is narrowed to LS by EVC_Stored_Information, 4.8.4)
+      Generic_LS_Marker,      -- 181
+      LSSMA_Toggle);          -- 180
 
    type Context_T is record
       Mode             : Mode_T := M_SB;
@@ -134,6 +138,10 @@ is
           when RBC_Transition_Order => L = L2,
           --  4.8.3: the Radio Network transition order in every level
           when Network_Order => True,
+          --  4.8.3 (e4/ls-display): the marker in every level, the
+          --  toggle orders from balises in level 1 ([1])
+          when Generic_LS_Marker => True,
+          when LSSMA_Toggle => L = L1 or else C.L1_Announced,
           when Reversing_Area | Reversing_Supervision =>
              L = L1 or else C.L1_Announced);
 
@@ -153,27 +161,30 @@ is
              (case I is
                  when National_Values | Level_Order | Conditional_Order
                     | Geographical_Position | Text_Message
-                    | Session_Management | Network_Order => True,
+                    | Session_Management | Network_Order
+                    | Generic_LS_Marker => True,
                  when Movement_Authority =>
                     C.Train_Data_Valid and then C.TRN_Valid,     -- [4][11]
-                 when Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR =>
+                 when Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
+                    | LSSMA_Toggle =>
                     False,
                  when others => C.Train_Data_Valid),             -- [4]
           when M_PS =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Stop_SH_On_Desk
                 | Session_Management | RBC_Transition_Order      -- [7] [8]
-                | Network_Order,
+                | Network_Order | Generic_LS_Marker,
           when M_SH =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Danger_For_SH
                 | Session_Management | RBC_Transition_Order      -- [7] [8]
-                | Network_Order,
+                | Network_Order | Generic_LS_Marker,
           when M_SM =>
              I not in Signalling_Speed | Movement_Authority
                     | Route_Suitability | Braking_Distance
                     | Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
-                    | Reversing_Area | Reversing_Supervision,
+                    | Reversing_Area | Reversing_Supervision
+                    | LSSMA_Toggle,
           when M_FS | M_AD | M_LS | M_OS | M_UN | M_SN =>
              I not in Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
              and then not (C.Mode in M_UN | M_SN
@@ -183,25 +194,28 @@ is
           when M_SL =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Session_Management
-                | RBC_Transition_Order | Network_Order,
+                | RBC_Transition_Order | Network_Order
+                | Generic_LS_Marker,
           when M_NL =>
              I in National_Values | Linking | Level_Order
                 | Conditional_Order | Geographical_Position
                 | Track_Conditions | Big_Metal_Masses
                 | Session_Management | RBC_Transition_Order
-                | Network_Order,
+                | Network_Order | Generic_LS_Marker,
           when M_TR =>
              I in National_Values | Level_Order | Conditional_Order
                 | TSR | TSR_Revocation | Default_Gradient
                 | Geographical_Position | Track_Conditions
                 | Big_Metal_Masses | Text_Message | Session_Management
-                | RBC_Transition_Order | Network_Order,
+                | RBC_Transition_Order | Network_Order
+                | Generic_LS_Marker,
           --  [1]: every information of these tables is marked [1] in PT,
           --  rejected in level 1 (in level 2 the RBC's, phase E5)
           when M_PT => False,
           when M_RV =>
              I in National_Values | Reversing_Area | Reversing_Supervision
-                | Text_Message | Session_Management | Network_Order);
+                | Text_Message | Session_Management | Network_Order
+                | Generic_LS_Marker);
 
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));
