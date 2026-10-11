@@ -807,6 +807,14 @@ is
    --  3.8, 3.11.6, 3.12.4: the MA with its signalling related speed
    --  restriction (12) and the mode profile of an MA accepted (80), to
    --  EVC_Movement_Authority; the deletions an accepted MA asks (Apply)
+   --  7.4.2.18: the mode profile X has a Limited Supervision section
+   function Has_LS_Section (X : ETCS_Track_Packets.P80.Packet_T)
+     return Boolean
+   is (X.M_MAMODE = ETCS_Variables.M_MAMODE_Limited_Supervision
+       or else (for some I in 1 .. Natural (X.N_ITER) =>
+                  X.D_MAMODE_List (I).M_MAMODE
+                             = ETCS_Variables.M_MAMODE_Limited_Supervision));
+
    procedure Take_MA_Packet (K           : MA_Kind_T;
                              R           : in out Reader_T;
                              M           : Message_T;
@@ -818,6 +826,7 @@ is
           Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_LS_Display.State,
                                 Events, Event_N))
    is
       OK : Boolean;
@@ -871,6 +880,15 @@ is
                if OK and then MA_Accepted then
                   EVC_Movement_Authority.Take_Mode_Profile (X, M);
                   Record_Event (Info_Mode_Profile, Change_Stored, M.Msg);
+                  --  4.4.19.1.4.8 (B090): a Limited Supervision mode
+                  --  profile deletes the generic LS function marker; a
+                  --  packet 181 of the same group is taken after the
+                  --  profile (Order_Kind_T) and stores it again, so the
+                  --  marker goes only when the group has none. Decision:
+                  --  "received" is the profile taken with its MA (3.7.1.1)
+                  if Has_LS_Section (X) then
+                     EVC_LS_Display.Delete_Marker;
+                  end if;
                end if;
             end;
       end case;

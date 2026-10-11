@@ -4,7 +4,9 @@ with EVC_Modes;             use EVC_Modes;
 with EVC_LS_Display;        use EVC_LS_Display;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with ETCS_Track_Packets.P41;
+with ETCS_Track_Packets.P80;
 with ETCS_Track_Packets.P180;
+with ETCS_Track_Packets.P181;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_Levels;
@@ -177,5 +179,62 @@ package body EVC_Test_LS is
       Check (Toggled_On and then not Order_Pending,
              "4.4.19.1.4.3: toggled on at the transition + T_LSSMA");
    end Scenario_LS_Order_Buffered;
+
+   --  Packet 80: a Limited Supervision section from 200 m, 300 m long
+   function LS_Profile return ETCS_Track_Packets.P80.Packet_T is
+      P : ETCS_Track_Packets.P80.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_MAMODE := 200;
+      P.M_MAMODE := ETCS_Variables.M_MAMODE_Limited_Supervision;
+      P.V_MAMODE := 8;
+      P.L_MAMODE := 300;
+      P.L_ACKMAMODE := 100;
+      P.Q_MAMODE := 0;
+      P.N_ITER := 0;
+      return P;
+   end LS_Profile;
+
+   --  Packet 181 in the group G
+   procedure Carry_181 (G : Positive; K : Natural) is
+      P  : ETCS_Track_Packets.P181.Packet_T;
+      W  : Writer_T;
+      OK : Boolean;
+   begin
+      P.Q_DIR := 1;
+      ETCS_Track_Packets.P181.Encode (P, W, OK);
+      Finish_Carry (G, K, W, OK);
+   end Carry_181;
+
+   --  Level 1 in FS; the group 10 at 100 m gives an MA with an LS mode
+   --  profile, the group 20 at 600 m the same with packet 181
+   procedure Scenario_LS_Marker_Deleted is
+      procedure MA_Group (NID : Natural; At_M : Integer_64) is
+      begin
+         Add_Group (Group (NID, At_M));
+         Carry (Track_N, 0, MA_Of ((1500, 200)));
+         Carry (Track_N, 0, LS_Profile);
+         Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
+         Carry (Track_N, 1, SSP ((1 => (0, 100, False),
+                                  2 => (2500, End_Mark, False))));
+      end MA_Group;
+   begin
+      EVC_LS_Display.Clear;
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      MA_Group (10, 100);
+      MA_Group (20, 600);
+      Carry_181 (Track_N, 1);
+      Take_Marker;
+      Run_X (15_000);
+      Check (not Marker_Stored,
+             "4.4.19.1.4.8: the marker deleted by an LS mode profile "
+             & "received without it");
+      Take_Marker;
+      Run_X (65_000);
+      Check (Marker_Stored,
+             "4.4.19.1.4.8: kept with packet 181 in the same group");
+   end Scenario_LS_Marker_Deleted;
 
 end EVC_Test_LS;
