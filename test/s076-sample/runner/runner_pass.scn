@@ -62,3 +62,15 @@ expect DMI mode-symbol displayed Staff-Responsible
 step 19 19 0.00 L1 SR O TIU L1 SR
   text: no brake at standstill in SR
 expect TIU emergency-brake not-commanded
+# The braking curve results of a workbook (README of the sibling
+# repository, "The .scn format"): invented values, read by
+# S076_Sequences (VERBOSE=1 prints them); "Unknown-limit" and the
+# column "Other-(m)" are skipped by the reader.
+workbook runner_pass.xlsm
+  curves Curves Gamma train
+  limit Initial-speed 40 km/h
+  limit Permitted 210.50 m
+  limit Unknown-limit 1.00 m
+  curve-columns Speed-(km/h) EBD-(m) Other-(m) Permitted-(m)
+  curve 30 50.00 1.00 150.00
+  curve 40 90.00 2.00 210.50
