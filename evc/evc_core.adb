@@ -1179,6 +1179,34 @@ is
           SR_End      => SR_End));
    end Release_Transition_Buffer;
 
+   --  4e. Phase E5 (e5/radio-geo-buffer), 3.6.6.4.1, 4.8.3, 4.8.4.2,
+   --  4.8.5: the packets 79 of the radio messages of the cycle (and of
+   --  those the transition buffer released) to the position, judged in
+   --  the level and mode after the transitions of the cycle (4.8.5.5: a
+   --  packet kept for the level 2 transition is used at the transition)
+   procedure Take_Radio_Geo
+     with Global => (Input  => (Current_Mode, EVC_Levels.State,
+                                EVC_Train_Inputs.State, EVC_Train_Data.State,
+                                EVC_Mission.State, EVC_Radio_Info.State),
+                     Proof_In => EVC_Odometry.State,
+                     In_Out => EVC_Position.State),
+          Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+   begin
+      EVC_Position.Take_Radio_Geo
+        (EVC_Acceptance.Radio_Geo_Verdict
+           (Acceptance_Context,
+            L2_Announced => EVC_Levels.Announced
+                            and then EVC_Levels.Announced_Level = L2));
+   end Take_Radio_Geo;
+
    --  MSG_SPEED_STATE from the result of the speed and distance
    --  monitoring (dmi_protocol.ads: the DMI derives nothing): speeds in
    --  km/h to the nearest, the distance in m rounded down; the dial range
@@ -2737,6 +2765,7 @@ is
       Monitor_Speed_And_Distance (Dt_Ms);
       Evaluate_Modes_And_Levels;
       Release_Transition_Buffer;
+      Take_Radio_Geo;
       --  5.17.2.2 E6: the Train Data validated by the driver end the
       --  re-validation the procedures asked
       if EVC_Mission.Train_Data_Validated then

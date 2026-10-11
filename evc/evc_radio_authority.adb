@@ -777,13 +777,15 @@ is
       elsif Kind = ETCS_Message_Catalogue.Track_M24
         and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
                     EVC_Received.Last_Packet_Kind (I)
-                      in ETCS_Catalogue.Track_P73 | ETCS_Catalogue.Track_P74)
+                      in ETCS_Catalogue.Track_P73 | ETCS_Catalogue.Track_P74
+                         | ETCS_Catalogue.Track_P79)
       then
          --  3.12.3, 3.6.2.2.2 c): a general message with a text message,
          --  to the stores through EVC_Radio_Info referred to its LRBG (the
          --  text messages take packets 73 and 74 from there,
          --  EVC_Text_Messages.Take_Radio; the stored information its
-         --  track description, as of message 3)
+         --  track description, as of message 3); e5/radio-geo-buffer: or
+         --  a geographical position (packet 79, EVC_Position.Take_Radio_Geo)
          Take_Stored_Information (False, Now_Ms);
       end if;
    end Take_Message;

@@ -66,6 +66,9 @@ package body EVC_Position
                                    Antenna_Offset,
                                    Accept_Linking,
                                    Accept_Geo,
+                                   Geo_Kept,
+                                   Geo_Kept_Valid,
+                                   Geo_Kept_Sense,
                                    Check_Linking))
 is
 
@@ -174,6 +177,11 @@ is
    Geo_Current        : Geo_Ref_T;
    Geo_Value          : Natural := 0;
    Geo_Valid          : Boolean := False;
+   --  e5/radio-geo-buffer, 4.8.3 [2], 4.8.5: the packet 79 of a radio
+   --  message kept for the level 2 transition
+   Geo_Kept           : ETCS_Track_Packets.P79.Packet_T;
+   Geo_Kept_Valid     : Boolean := False;
+   Geo_Kept_Sense     : Sense_T := Plus;
    Params_Stored      : Boolean := False;
    T_Cycloc_Ms        : Unsigned_64 := 0;   -- 0: not periodically
    D_Cycloc           : Length_T := 0;      -- 0: not periodically
@@ -802,6 +810,89 @@ is
       end if;
    end Update_Geo;
 
+   --  3.6.6.4.1: the reference groups of a packet 79 received by radio
+   --  that the on-board knows (the LRBG, the last groups passed) are
+   --  anchored at once, the others when they are passed (Anchor_Geo of
+   --  the passage)
+   procedure Anchor_Known_Geo
+   is
+      Found : Natural;
+   begin
+      for I in Geo_Refs'Range loop
+         pragma Loop_Invariant (True);
+         if Geo_Refs (I).Valid and then not Geo_Refs (I).Anchored then
+            if LRBG_A.Valid and then LRBG_A.Id = Geo_Refs (I).Id then
+               Anchor_Geo (LRBG_A);
+            else
+               Found := Latest (Geo_Refs (I).Id);
+               if Found /= 0 then
+                  Anchor_Geo (Recent (Found).A);
+               end if;
+            end if;
+         end if;
+      end loop;
+   end Anchor_Known_Geo;
+
+   --  3.6.6.3, 3.6.6.4.1: a packet 79 received by radio, its distances
+   --  along S (the train orientation at reception); decision: the
+   --  country of a reference without Q_NEWCOUNTRY is the LRBG's, and
+   --  without an LRBG the packet is not taken
+   procedure Take_Radio_Packet (P : ETCS_Track_Packets.P79.Packet_T;
+                                S : Sense_T)
+   is
+   begin
+      if LRBG_A.Valid then
+         Take_Geo (P, LRBG_A, S);
+         Anchor_Known_Geo;
+      end if;
+   end Take_Radio_Packet;
+
+   --  3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5.3 to 4.8.5.5
+   procedure Take_Radio_Geo (Verdict : EVC_Acceptance.Radio_Verdict_T)
+   is
+      use type EVC_Acceptance.Radio_Verdict_T;
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P79.Packet_T;
+      OK : Boolean;
+   begin
+      if Verdict = EVC_Acceptance.Radio_Rejected then
+         Geo_Kept_Valid := False;                         -- 4.8.5.4 a)
+         return;
+      end if;
+      if Verdict = EVC_Acceptance.Radio_Accepted and then Geo_Kept_Valid
+      then
+         Take_Radio_Packet (Geo_Kept, Geo_Kept_Sense);    -- 4.8.5.5
+         Geo_Kept_Valid := False;
+      end if;
+      for I in 1 .. EVC_Radio_Info.Count loop
+         pragma Loop_Invariant (True);
+         for J in 1 .. EVC_Radio_Info.Packet_Count (I) loop
+            pragma Loop_Invariant (True);
+            declare
+               Sl : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
+               E  : constant ETCS_Packet_Index.Entry_T :=
+                 EVC_Radio_Info.Packet_Entry (I, J);
+            begin
+               if E.Kind = ETCS_Catalogue.Track_P79 and then Sl.Origin /= 0
+                 and then Valid_For (E.Q_DIR, Sl.G, Sl.T)
+               then
+                  EVC_Radio_Info.Open_Packet (I, J, R);
+                  ETCS_Track_Packets.P79.Decode (R, P, OK);
+                  if not OK then
+                     null;
+                  elsif Verdict = EVC_Acceptance.Radio_Accepted then
+                     Take_Radio_Packet (P, Sl.S);
+                  else
+                     Geo_Kept := P;                       -- 4.8.5.3
+                     Geo_Kept_Sense := Sl.S;
+                     Geo_Kept_Valid := True;
+                  end if;
+               end if;
+            end;
+         end loop;
+      end loop;
+   end Take_Radio_Geo;
+
    ---------------------------------------------------------------------
    --  End of a passage
    ---------------------------------------------------------------------
@@ -1409,6 +1500,9 @@ is
       Geo_Current := (others => <>);
       Geo_Value := 0;
       Geo_Valid := False;
+      Geo_Kept := (others => <>);
+      Geo_Kept_Valid := False;
+      Geo_Kept_Sense := Plus;
       Params_Stored := False;
       T_Cycloc_Ms := 0;
       D_Cycloc := 0;

@@ -38,5 +38,9 @@ package EVC_Test_Authority is
    function Radio_MA (NID_BG  : Natural;
                       Lengths : EVC_Test_Support.Nat_List)
      return EVC_Bytes.Byte_Array;
+   --  For EVC_Test_Position (e5/radio-geo-buffer): level 1 in FS, the
+   --  session established and the Train Data acknowledged, the group 10
+   --  at 100 m announcing level 2 at 400 m, passed
+   procedure Start_L2_Announced;
 
 end EVC_Test_Authority;
