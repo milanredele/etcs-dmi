@@ -152,8 +152,8 @@ package S076_Sequences is
    --  the distance of each curve from the target, m; the rows between
    --  two sampled ones are linear (Curve_Distance). No_Value where the
    --  sheet has none. Names and columns not listed here are skipped.
-   Max_Curve_Sets : constant := 2;     -- the "a" and "b" workbooks
-   Max_Curve_Rows : constant := 400;
+   Max_Curve_Sets : constant := 10;    -- 9 workbooks in a sequence
+   Max_Curve_Rows : constant := 340;   -- 330 rows in a set
    No_Value       : constant Long_Float := -1.0E12;
    type Limit_Name_T is
      (Initial_Speed, Perturbation, Indication, Permitted, Warning, SBI,

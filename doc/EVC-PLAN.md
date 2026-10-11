@@ -3860,3 +3860,61 @@ of the touched units before the chain.
 
 Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`,
 37 open after this round).
+
+### Braking curve results imported from the SUBSET-076 workbooks (s076/curves-import, 2026-10-11)
+
+The ERA braking curves tool attached to the workbook sequences carries
+its results: the sibling repository (branch `curves-import`) now
+writes, after a workbook's `cell`/`track` lines, a `curves <sheet>`
+block: one `limit <name> <value> <unit>` line per value of the tool's
+table 3 (initial speed, the locations of Perturbation, Indication,
+Permitted, Warning, SBI, EBI and StartRSM at that speed, release speed;
+metres counted from the target), a `curve-columns` header and the
+`curve` lines (speed, then EBD, SBD, EBI, SBI1, SBI2, SBI, Warning,
+Permitted, Indication, GUI-EOA, EBI for release speed; `-` empty),
+sampled at whole km/h where a distance moved by more than 1 m, plus the
+rows where a column starts or stops (at most 330 rows, linear between
+them to centimetres). The sheet still holding the tool's own example
+(a fixed fingerprint per tool version) is left out; 1037 of the 1049
+workbooks have results (589 Gamma, 448 Lambda), 760 sequences gain 36
+to 1483 lines (median 110), every other file is byte-identical. The
+contract is in the sibling's README ("The .scn format").
+
+`S076_Sequences` reads it into `Loaded.Curves` (10 sets of 340 rows,
+static; limits by `Limit_Name_T`, curves by `Curve_Column_T`, columns
+taken by their header, unknown names and columns skipped),
+`Curve_Distance` interpolates, `VERBOSE=1 obj/evc_s076_run <one>`
+prints the sets (`Put_Curves`). The runner's judging is unchanged (0
+regressions); B101 is its use, B100 the Gamma trains it cannot model.
+
+How the runner should use it for `~[workbook train]` and `~JRU
+supervision`: the step's workbook is named in its comment ("According
+to ..._06b"); the step's location is where the train passes the named
+limit at its speed. First the target: our `tgt0@d` at that location
+against the workbook's distance of that limit at our speed (a large
+difference is a target or MA placement defect, not a curve one); then
+the curves: our `perm=` / `sbi` speeds at distance d against the
+workbook's location of the same speed. Three examples (SV30; ours from
+the trace line, the workbook's by `Curve_Distance`):
+
+- 3130234_06 step 64, x 1250 m, 06b, Permitted passed at 74 km/h: ours
+  d = 147 m (perm 0, intervention), the workbook's Permitted at 74 km/h
+  422.5 m: our target 275 m nearer, a target defect, not a curve one;
+  at step 63 (d 369 m) our perm 60 / sbi 74 km/h against 06b's 281.9 /
+  315.5 m (ours 87 / 54 m further out).
+- 3131040_15 step 58, x 1383 m, Permitted left at 52 km/h: ours d 262
+  m, the workbook's Permitted at 52 km/h 224.3 m (target +38 m); our
+  perm 51 / sbi 63 km/h at 262 m against 217.5 / 235.2 m (ours 44.5 /
+  26.8 m further out); the failure itself is the emergency brake of
+  step 55 kept to standstill where the sequence expects the service
+  brake released below Permitted.
+- 3130235_01 step 60, x 915 m, Permitted passed at 55 km/h: ours d 410
+  m, the workbook's 335.2 m (target +75 m); our perm 41 / sbi 48 km/h at
+  410 m against 213.2 / 217.5 m (about 195 m further out). The sheet has
+  no SBD column here and its EBD reaches 0 km/h 3.4 m behind the
+  target: the tool's target is supervised on the EBD (an SvL-like
+  target), our d is to our target 0 (ma 432 m): the reference points
+  must be matched before a difference is read as a curve defect.
+
+The three are Gamma trains (B100): part of every difference is the
+train model. Open: B016 (stays open), B100, B101.
