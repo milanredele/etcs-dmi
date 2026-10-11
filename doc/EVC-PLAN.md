@@ -3775,3 +3775,38 @@ B019 done, B018 updated.
 `EVC_Supervision_Input` (one component), `EVC_Radio_Info`,
 `EVC_Stored_Information` (one line in the snapshot build),
 evc_fuzz, evc_test_supervision.
+### Balise side of the transition buffer (e5/balise-buffer, 2026-10-11)
+
+**Implemented** (B002, B060): 4.8.3 [1] for balise groups.
+`EVC_Acceptance.Level_Stores` / `Stored` is the first filter's third
+verdict (levels 0, NTC and 2 with level 1 announced, the rows and
+columns carrying [1]; Adhesion and Level Crossing not in level 2, the
+TSR rows, packet 79 and the texts only in NTC). `Take_Packet` keeps the
+packets so judged, bit for bit, in the private child
+`EVC_Stored_Information.Balise_Buffer` (one set per group, three sets,
+the oldest replaced, 4.8.5.3; 1 KB and 32 packets per set, package
+state); deleted at the start of `Evaluate` when level 1 is no longer
+announced (4.8.5.4 a); released by `EVC_Core.Release_Transition_Buffer`
+when `EVC_Levels.Switched_To (L1)` (`Release_Balise_Buffer`,
+`Take_Balise_Set`: each set judged like a new group in level 1, in the
+order received, 4.8.5.5, 4.8.5.6), then the facts of 4.6.3 [25] built
+again so that UN or SR goes to FS in the cycle of the transition.
+Scenarios `L1_Balise_Buffer`, `L1_Balise_Buffer_Deleted`,
+`L1_Balise_Buffer_From_L0` in `EVC_Test_Levels`. B060: the packet 79
+kept for level 2 is rejected, so deleted, when no session is
+established (`Radio_Geo_Verdict (Session_Up)`, 4.8.5.4 c).
+
+**Decisions.** `Level_Accepts` / `Accepted` still accept the [1] cases:
+the units that take a packet themselves keep no buffer and take it at
+once as before (linking, packet 5, in `EVC_Position`; reversing, 138 /
+139, in `EVC_Procedures`): B070. "Stop if in SR mode" has no [1] (R R A
+A): no longer accepted in level 0 with level 1 announced. The third
+filter is applied at the release, not at the storing. B060 by "no
+session established" rather than by the session of the message
+(`EVC_Radio_Info` keeps no session per message; before the transition
+the on-board talks to one RBC). The LSSMA hook of 4.4.19.1.4.2 c)
+(e4/ls-display): a released balise packet goes only through
+`Take_Balise_Set`; packet 180 needs a kind there and in `Level_Stores`
+(its row carries [1] in levels 0 and 2).
+
+**Left.** B070.

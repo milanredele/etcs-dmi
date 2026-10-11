@@ -279,6 +279,9 @@ begin
    Scenario_Track_Ahead_Free;
    --  e5/levels: the level transitions to and from level 2
    Scenario_L2_Buffer_Same_Cycle;
+   Scenario_L1_Balise_Buffer;
+   Scenario_L1_Balise_Buffer_Deleted;
+   Scenario_L1_Balise_Buffer_From_L0;
    Scenario_L2_Driver_Change;
    Scenario_L2_Exit_By_Order;
    Scenario_L2_Order_Linked_Group;

@@ -12,13 +12,17 @@
 --  each kind is accepted when both filters accept it in the Context of
 --  that moment. The exceptions of the tables:
 --    4.8.3 [1] "stored on-board if an order to switch to level 1 at a
---      further location has been received": the transition buffer of
---      4.8.5 is not kept; such information is accepted at once
---      (Context.L1_Announced). The modes of the levels where it applies
---      (0, NTC: UN, SN, SR; 2 is phase E5) do not use the information
---      of level 1 (4.5.2, EVC_Modes), and the transition to level 1
---      makes it used (4.6.3 [25]): a partial 4.8.5, its note in the
---      matrix.
+--      further location has been received" (e5/balise-buffer): Stored
+--      (Level_Stores) is the third verdict of the first filter, in
+--      levels 0, NTC and 2 with Context.L1_Announced, by the rows and
+--      columns that carry [1]. EVC_Stored_Information keeps the packets
+--      so judged in the transition buffer of 4.8.5 (its child
+--      Balise_Buffer) and judges them again at the transition to level
+--      1. Level_Accepts and Accepted still accept these cases: the
+--      units that take a [1] packet themselves and keep no buffer take
+--      it at once, as before (the linking, packet 5, in EVC_Position;
+--      the reversing packets 138 and 139 in EVC_Procedures; backlog
+--      B070); the stores ask Stored first.
 --    4.8.3 [2] (level 2 at a further location): RBC information, E5.
 --    4.8.3 [4] the SSP and gradient cover the MA: 3.7.2.3 in
 --      EVC_Stored_Information.
@@ -128,8 +132,10 @@ is
           when TSR | TSR_Revocation | Default_Gradient
              | Geographical_Position | Text_Message =>
              L /= NTC or else C.L1_Announced,
-          when Level_Crossing | Stop_If_In_SR =>
+          when Level_Crossing =>
              L in L1 | L2 or else C.L1_Announced,
+          --  R R A A: no exception [1] (e5/balise-buffer)
+          when Stop_If_In_SR => L in L1 | L2,
           when Danger_For_SH | Stop_SH_On_Desk => True,
           --  every level; the exceptions [14] [15] of the table are
           --  phase 2 of e5/session
@@ -220,6 +226,33 @@ is
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));
 
+   --  e5/balise-buffer: 4.8.3 [1] "stored onboard if an order to switch
+   --  to level 1 at a further location has been received", in the level
+   --  L (0, NTC or 2), by the rows and columns that carry it (Adhesion
+   --  and Level Crossing not in level 2: R and A there; TSR, its
+   --  revocation, the default gradient, packet 79 and the texts only in
+   --  NTC). Every case is one Level_Accepts accepts (the exception taken
+   --  at once by the units that keep no buffer, see the header).
+   function Level_Stores (I : Info_T; L : Level_T; C : Context_T)
+     return Boolean
+   is (C.L1_Announced and then L /= L1
+       and then
+       (case I is
+           when Linking | Signalling_Speed | Movement_Authority
+              | Gradient_Profile | International_SSP | Axle_Load_Profile
+              | Route_Suitability | Track_Conditions | Braking_Distance
+              | Reversing_Area | Reversing_Supervision => True,
+           when Adhesion | Level_Crossing => L /= L2,
+           when TSR | TSR_Revocation | Default_Gradient
+              | Geographical_Position | Text_Message => L = NTC,
+           when others => False));
+
+   --  4.8.3, 4.8.5.1: the first filter's third verdict, "stored in the
+   --  transition buffer" (the third filter applies when the set is
+   --  released, 4.8.5.6 b)
+   function Stored (I : Info_T; C : Context_T) return Boolean is
+     (C.Level_Valid and then Level_Stores (I, C.Level, C));
+
    --  Phase E5 (e5/radio-geo-buffer): the packet 79 of a radio message.
    --  4.8.3, the row "Geographical Position, From RBC: Yes": A in level
    --  2; R [2] in levels 0, NTC and 1, stored (4.8.5) when an order to
@@ -229,9 +262,17 @@ is
    --  the recognition of the exit from TR) rejected, as for a group.
    type Radio_Verdict_T is (Radio_Rejected, Radio_Accepted, Radio_Stored);
 
-   function Radio_Geo_Verdict (C : Context_T; L2_Announced : Boolean)
+   --  e5/balise-buffer (B060), 4.8.5.4 c): without an established
+   --  session (Session_Up False) rejected, so that the packet kept for
+   --  the transition is deleted with the session that gave it (decision:
+   --  the on-board keeps one packet 79, from the only RBC it talks to
+   --  before the transition; no message arrives without a session)
+   function Radio_Geo_Verdict (C            : Context_T;
+                               L2_Announced : Boolean;
+                               Session_Up   : Boolean := True)
      return Radio_Verdict_T
-   is (if C.Level_Valid and then C.Level = L2 then
+   is (if not Session_Up then Radio_Rejected
+       elsif C.Level_Valid and then C.Level = L2 then
          (if Third_Filter (Geographical_Position, C) then Radio_Accepted
           else Radio_Rejected)
        elsif L2_Announced then Radio_Stored

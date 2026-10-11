@@ -1156,7 +1156,22 @@ is
       M_Status : ETCS_Message.Status_T;
       S        : RTM_Session_T;
       Last     : Natural;
+      Ctx      : constant EVC_Stored_Information.Mode_Context_T :=
+        (Mode        => Current_Mode,
+         Cab_Active  => EVC_Train_Inputs.Desk_Open,
+         TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+         SR_Distance => Current_Mode = M_SR and then SR_Distance.Active,
+         SR_End      => SR_End);
    begin
+      --  e5/balise-buffer, 4.8.5.5: the sets of balise groups kept for
+      --  the transition to level 1 (4.8.3 [1]), released and taken in
+      --  the cycle of the transition as the radio ones in level 2
+      if EVC_Levels.Switched_To (L1)
+        and then EVC_Stored_Information.Balise_Buffered > 0
+      then
+         EVC_Stored_Information.Release_Balise_Buffer
+           (Unsigned_64 (Clock_Ms), Ctx);
+      end if;
       if not EVC_Levels.Switched_To (L2)
         or else EVC_Radio_Authority.Buffered = 0
       then
@@ -1175,12 +1190,7 @@ is
       end loop;
       EVC_Text_Messages.Take_Radio (First);
       EVC_Stored_Information.Evaluate_Released
-        (First, Unsigned_64 (Clock_Ms),
-         (Mode        => Current_Mode,
-          Cab_Active  => EVC_Train_Inputs.Desk_Open,
-          TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
-          SR_Distance => Current_Mode = M_SR and then SR_Distance.Active,
-          SR_End      => SR_End));
+        (First, Unsigned_64 (Clock_Ms), Ctx);
    end Release_Transition_Buffer;
 
    --  4e. Phase E5 (e5/radio-geo-buffer), 3.6.6.4.1, 4.8.3, 4.8.4.2,
@@ -1191,7 +1201,8 @@ is
    procedure Take_Radio_Geo
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
                                 EVC_Train_Inputs.State, EVC_Train_Data.State,
-                                EVC_Mission.State, EVC_Radio_Info.State),
+                                EVC_Mission.State, EVC_Radio_Info.State,
+                                EVC_Radio.State),
                      Proof_In => EVC_Odometry.State,
                      In_Out => EVC_Position.State),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
@@ -1208,7 +1219,10 @@ is
         (EVC_Acceptance.Radio_Geo_Verdict
            (Acceptance_Context,
             L2_Announced => EVC_Levels.Announced
-                            and then EVC_Levels.Announced_Level = L2));
+                            and then EVC_Levels.Announced_Level = L2,
+            --  4.8.5.4 c) (e5/balise-buffer, B060)
+            Session_Up   => (for some S in EVC_Radio.Session_T =>
+                               EVC_Radio.Established (S))));
    end Take_Radio_Geo;
 
    --  MSG_SPEED_STATE from the result of the speed and distance

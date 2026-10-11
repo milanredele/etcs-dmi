@@ -33,6 +33,7 @@ with ETCS_Track_Packets.P141;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_Acceptance;
 with EVC_Location;           use EVC_Location;
+with EVC_Stored_Information.Balise_Buffer;
 
 package body EVC_Stored_Information
   with SPARK_Mode => On,
@@ -45,7 +46,8 @@ package body EVC_Stored_Information
                                    MA_Board, Profile_Overlap,
                                    Covered_Flag, Ext, Tun,
                                    Radio_MA, Timer_Deletion, Proposal,
-                                   Proposal_Origin, Stop_Q))
+                                   Proposal_Origin, Stop_Q,
+                                   Balise_Buffer.State))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -214,6 +216,7 @@ is
       Stop_Q := (others => 4);
       Ext := (Count => 0, List => (others => (others => <>)));
       Tun := (others => <>);
+      Balise_Buffer.Clear;
    end Clear;
 
    function External_Info return EVC_Track_Conditions.External_T is (Ext)
@@ -1021,14 +1024,15 @@ is
                           Ctx         : Mode_Context_T;
                           Linked      : Boolean;
                           Has_41      : Boolean;
-                          Now_Ms      : Unsigned_64)
+                          Now_Ms      : Unsigned_64;
+                          Set_Open    : in out Boolean)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N),
+                                Events, Event_N, Balise_Buffer.State),
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => P <= EVC_Position.Taken_Packet_Count (J)
    is
@@ -1039,6 +1043,23 @@ is
       A  : constant EVC_Acceptance.Context_T :=
         Acceptance (Ctx, Linked, Has_41);
    begin
+      --  4.8.3 [1], 4.8.5.1 (e5/balise-buffer): level 1 information in
+      --  level 0 or 2 with level 1 announced, kept in the group's set of
+      --  the transition buffer (the speed of a packet 12 with its MA)
+      if EVC_Acceptance.Stored (Info_Of (K), A) then
+         if not Set_Open then
+            Balise_Buffer.New_Set ((Origin   => M.Origin,
+                                    Sense    => M.Sense,
+                                    Start_Ms => M.Start_Ms,
+                                    Linked   => Linked,
+                                    Has_41   => Has_41,
+                                    Count    => 0));
+            Set_Open := True;
+         end if;
+         EVC_Position.Open_Taken_Packet (J, P, R);
+         Balise_Buffer.Add_Packet (Kind_Of (K), R);
+         return;
+      end if;
       --  4.8: the first and the third filter (the signalling related
       --  speed restriction of a packet 12 apart from its MA; the mode
       --  profile with its MA)
@@ -1072,7 +1093,8 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N, Msg_Count),
+                                Events, Event_N, Msg_Count,
+                                Balise_Buffer.State),
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => G <= EVC_Position.Taken_Count
    is
@@ -1080,6 +1102,8 @@ is
       M           : Message_T;
       Reverted    : Boolean;
       MA_Accepted : Boolean := False;
+      --  4.8.5.1: the group's set of the transition buffer is opened
+      Set_Open    : Boolean := False;
       --  4.8.3 [11]: a level transition order in the message
       Has_41      : Boolean := False;
    begin
@@ -1119,13 +1143,69 @@ is
                                (E.Q_DIR, Tk.Group.Orientation, Tk.T)
                   then
                      Take_Packet (K, J, P, M, T, Train, MA_Accepted, Ctx,
-                                  Tk.Group.Linked, Has_41, Now_Ms);
+                                  Tk.Group.Linked, Has_41, Now_Ms,
+                                  Set_Open);
                   end if;
                end;
             end loop;
          end loop;
       end loop;
    end Take_Group;
+
+   --  4.8.5.6 b) (e5/balise-buffer): the set S of the balise transition
+   --  buffer judged like a new group message in the level now, its
+   --  packets taken in the order of Take_Group. The only path of a
+   --  released balise packet: the hook of 4.4.19.1.4.2 c) (the LSSMA
+   --  toggle order, packet 180, stored here starts its timer at the
+   --  transition) is a branch of this loop for its kind
+   procedure Take_Balise_Set (S      : Positive;
+                              T      : Origin_Table_T;
+                              Train  : Train_Frame_T;
+                              Ctx    : Mode_Context_T;
+                              Now_Ms : Unsigned_64)
+     with Global => (In_Out => (EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State, EVC_Sessions.State,
+                                Events, Event_N, Msg_Count),
+                     Input  => (EVC_Train_Data.State, Balise_Buffer.State)),
+          Pre => S <= Balise_Buffer.Count
+   is
+      I           : constant Balise_Buffer.Set_Info_T :=
+        Balise_Buffer.Info (S);
+      A           : constant EVC_Acceptance.Context_T :=
+        Acceptance (Ctx, I.Linked, I.Has_41);
+      M           : Message_T;
+      R           : Reader_T;
+      MA_Accepted : Boolean := False;
+   begin
+      if Msg_Count < Natural'Last - 1 then
+         Msg_Count := Msg_Count + 1;
+      end if;
+      M := (Origin   => I.Origin,
+            Sense    => I.Sense,
+            Msg      => Msg_Count,
+            Start_Ms => I.Start_Ms);
+      for K in Order_Kind_T loop
+         pragma Loop_Invariant (True);
+         for P in 1 .. I.Count loop
+            pragma Loop_Invariant (True);
+            if Balise_Buffer.Kind (S, P) = Kind_Of (K) then
+               if EVC_Acceptance.Accepted (Info_Of (K), A)
+                 or else (K = K12
+                          and then EVC_Acceptance.Accepted
+                                     (EVC_Acceptance.Signalling_Speed, A))
+               then
+                  Balise_Buffer.Open (S, P, R);
+                  Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx, Now_Ms);
+               elsif K /= K80 then
+                  Record_Event (Info_Group, Change_Filtered, NID_Of (K));
+               end if;
+            end if;
+         end loop;
+      end loop;
+   end Take_Balise_Set;
 
    --  Phase E5: the radio message I of the cycle (EVC_Radio_Info), as
    --  message number Msg_Count: its packets valid for the train
@@ -2077,7 +2157,13 @@ is
          Orient_Seen := True;
       end if;
 
-      --  2. the groups of the cycle
+      --  2. the groups of the cycle; 4.8.5.4 a) (e5/balise-buffer): the
+      --  balise transition buffer deleted when level 1 is no longer
+      --  announced (the order deleted or replaced by one to another
+      --  level; at the transition the buffer was released before)
+      if not EVC_Levels.L1_Announced then
+         Balise_Buffer.Delete_All;
+      end if;
       for G in 1 .. EVC_Position.Taken_Count loop
          Take_Group (G, T, Train, Context, Now_Ms);
       end loop;
@@ -2128,6 +2214,14 @@ is
       EVC_Movement_Authority.Mark (Marks);
       EVC_Track_Conditions.Mark (Marks);
       EVC_Levels.Mark (Marks);
+      --  e5/balise-buffer: the origins of the sets of the transition
+      --  buffer
+      for S in 1 .. Balise_Buffer.Count loop
+         pragma Loop_Invariant (True);
+         if Balise_Buffer.Info (S).Origin /= 0 then
+            Marks (Balise_Buffer.Info (S).Origin) := True;
+         end if;
+      end loop;
       --  phase E5: the origin of a proposed MA, taken once granted
       if Proposal_Origin /= 0 then
          Marks (Proposal_Origin) := True;
@@ -2168,5 +2262,43 @@ is
          Take_Radio (I, T, Train, Context, Now_Ms);
       end loop;
    end Evaluate_Released;
+
+   function Balise_Buffered return Natural is (Balise_Buffer.Count)
+     with Refined_Global => Balise_Buffer.State;
+
+   ---------------------------
+   -- Release_Balise_Buffer --
+   ---------------------------
+
+   --  4.8.5.5, 4.8.5.6 (e5/balise-buffer)
+   procedure Release_Balise_Buffer (Now_Ms  : Unsigned_64;
+                                    Context : Mode_Context_T)
+     with Refined_Global =>
+            (In_Out => (EVC_Track_Description.State,
+                        EVC_Movement_Authority.State,
+                        EVC_Track_Conditions.State,
+                        EVC_National_Values.State,
+                        EVC_Levels.State, EVC_Sessions.State,
+                        Events, Event_N, Msg_Count, Balise_Buffer.State),
+             Output => (MA_Board, Profile_Overlap, Covered_Flag),
+             Input  => (EVC_Origins.State, EVC_Position.State,
+                        EVC_Odometry.State, EVC_Train_Data.State))
+   is
+      T     : constant Origin_Table_T := Origin_Table;
+      Train : constant Train_Frame_T := Train_Frame;
+   begin
+      for S in 1 .. Balise_Buffer.Count loop
+         pragma Loop_Invariant (True);
+         Take_Balise_Set (S, T, Train, Context, Now_Ms);
+      end loop;
+      Balise_Buffer.Delete_All;
+      --  4.6.3 [25] (UN to FS at the switch to level 1 with an MA, SSP
+      --  and gradient on board) is judged in this cycle, after the
+      --  release: its facts again from the stores now
+      Build_Mode_Conditions
+        (T, Train,
+         (if EVC_Movement_Authority.MA_Present
+          then EVC_Movement_Authority.MA_Sense else Train.Sense));
+   end Release_Balise_Buffer;
 
 end EVC_Stored_Information;

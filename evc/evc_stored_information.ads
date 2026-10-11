@@ -396,4 +396,26 @@ is
                                 EVC_Odometry.State, EVC_Train_Data.State,
                                 EVC_Radio_Info.State));
 
+   --  e5/balise-buffer: the sets of the balise transition buffer (4.8.3
+   --  [1], 4.8.5.1: level 1 information of groups read in level 0 or 2
+   --  with level 1 announced), deleted by Evaluate when level 1 is no
+   --  longer announced (4.8.5.4 a)
+   function Balise_Buffered return Natural
+     with Global => State;
+
+   --  4.8.5.5, 4.8.5.6 at the transition to level 1: the sets released
+   --  and judged in the order received, each like a new group in the
+   --  new level, the stores updated in that order; the buffer emptied.
+   --  As Evaluate_Released, the snapshot is the next cycle's.
+   procedure Release_Balise_Buffer (Now_Ms  : Unsigned_64;
+                                    Context : Mode_Context_T)
+     with Global => (In_Out => (State, EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                EVC_National_Values.State,
+                                EVC_Levels.State, EVC_Sessions.State),
+                     Input  => (EVC_Origins.State, EVC_Position.State,
+                                EVC_Odometry.State, EVC_Train_Data.State)),
+          Post => Balise_Buffered = 0;
+
 end EVC_Stored_Information;

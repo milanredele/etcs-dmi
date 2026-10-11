@@ -13,6 +13,7 @@ with EVC_Ports;              use EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
+with EVC_Stored_Information;
 with EVC_Test_Authority;
 with EVC_Test_Support;       use EVC_Test_Support;
 with Interfaces;             use Interfaces;
@@ -21,6 +22,7 @@ package body EVC_Test_Levels is
 
    package LS renames EVC_Level_Sessions;
    package RA renames EVC_Radio_Authority;
+   package SI renames EVC_Stored_Information;
    use type EVC_Radio.Session_State_T;
    use type LS.Exit_Phase_T;
 
@@ -91,6 +93,111 @@ package body EVC_Test_Levels is
              & "released and its MA taken, no trip by [39] (4.8.5.5 'at "
              & "the same time', 5.10.3.1.4, 4.6.3 [39])");
    end Scenario_L2_Buffer_Same_Cycle;
+
+   ---------------------------------------------------------------------
+   --  e5/balise-buffer: 4.8.3 [1], 4.8.5, 5.10.1.7, 5.10.1.8. Level 2 in
+   --  FS with the RBC's MA (EOA 1100 m); the group 10 at 100 m announces
+   --  level 1 at 600 m; the group 20 at 300 m gives level 1 information
+   --  (an MA to 2000 m, its gradient and SSP). Order_2 > 0: the group 30
+   --  at 350 m replaces the announcement by one to level 0 at Order_2 m
+   ---------------------------------------------------------------------
+
+   procedure Start_L1_Announced_In_L2 (Order_2 : Natural) is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L2);
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, 500));
+      Add_Group (Group (20, 300));
+      Carry (Track_N, 0, MA_Of ((1500, 200)));
+      Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
+      Carry (Track_N, 1, SSP ((1 => (0, 100, False),
+                               2 => (2500, End_Mark, False))));
+      if Order_2 > 0 then
+         Add_Group (Group (30, 350));
+         Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_0,
+                                   Order_2));
+      end if;
+      EVC_Test_Authority.Establish_Session;
+      Run_X (15_000);
+      Give_Radio_Message (1, EVC_Test_Authority.Radio_MA (10, (600, 400)));
+      Stand_X (100);
+   end Start_L1_Announced_In_L2;
+
+   procedure Scenario_L1_Balise_Buffer is
+      EOA_RBC     : Integer_64;
+      Seen        : Boolean := False;
+      Switched_OK : Boolean := False;
+   begin
+      Start_L1_Announced_In_L2 (0);
+      EOA_RBC := Integer_64 (SI.Current.MA.EOA);
+      Run_X (40_000);
+      Check (EVC_Levels.L1_Announced and then SI.Balise_Buffered = 1
+             and then SI.Current.MA.Present
+             and then abs (Integer_64 (SI.Current.MA.EOA) - EOA_RBC) < 1_000
+             and then EOA_RBC = 110_000,
+             "levels: in level 2 with level 1 announced the MA, gradient "
+             & "and SSP of a group kept in the transition buffer, not used "
+             & "(4.8.3 [1], 4.8.5.1, 5.10.1.7)");
+      for X in 401 .. 650 loop
+         Run_X (Integer_64 (X) * 100, 100);
+         if not Seen and then EVC_Levels.Level = L1 then
+            Seen := True;
+            Switched_OK := SI.Balise_Buffered = 0
+                           and then EVC_Core.Mode = M_FS;
+         end if;
+      end loop;
+      Check (Seen and then Switched_OK,
+             "levels: in the cycle of the transition to level 1 the balise "
+             & "buffer released, no trip (4.8.5.5 'at the same time')");
+      Check (SI.Current.MA.Present
+             and then Integer_64 (SI.Current.MA.EOA) = 200_000,
+             "levels: after the transition the MA of the group supervised "
+             & "(4.8.5.6 a, b; 5.10.1.7)");
+   end Scenario_L1_Balise_Buffer;
+
+   --  SUBSET-076 5100100: level 0 in UN, the group 10 at 50 m announces
+   --  level 1 at 250 m, the group 20 at 100 m gives an MA, the group 30
+   --  at 150 m orders level 1 now: FS in the cycle after (4.6.3)
+   procedure Scenario_L1_Balise_Buffer_From_L0 is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Add_Group (Group (10, 50));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, 250));
+      Add_Group (Group (20, 100));
+      Carry (Track_N, 0, MA_Of ((1500, 200)));
+      Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
+      Carry (Track_N, 1, SSP ((1 => (0, 100, False),
+                               2 => (2500, End_Mark, False))));
+      Add_Group (Group (30, 150));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, -1));
+      Run_X (12_000);
+      Check (SI.Balise_Buffered = 1 and then not SI.Current.MA.Present,
+             "levels: level 0, level 1 announced: the group's MA kept "
+             & "(4.8.3 [1])");
+      Run_X (20_000);
+      Check (EVC_Levels.Level = L1 and then SI.Current.MA.Present
+             and then EVC_Core.Mode = M_FS,
+             "levels: the immediate order to level 1: the kept MA used, "
+             & "FS in the cycle (4.8.5.5, 4.6.3 [25])");
+   end Scenario_L1_Balise_Buffer_From_L0;
+
+   procedure Scenario_L1_Balise_Buffer_Deleted is
+   begin
+      Start_L1_Announced_In_L2 (3000);
+      Run_X (33_000);
+      Check (SI.Balise_Buffered = 1,
+             "levels: the group's level 1 information kept (4.8.5.1)");
+      Run_X (40_000);
+      Check (not EVC_Levels.L1_Announced and then SI.Balise_Buffered = 0,
+             "levels: the announcement replaced by an order to level 0, "
+             & "the transition buffer deleted (4.8.5.4 a)");
+      Run_X (70_000);
+      Check (EVC_Levels.Level = L2
+             and then abs (Integer_64 (SI.Current.MA.EOA) - 110_000) < 1_000,
+             "levels: past the old border, level 2 and the RBC's MA kept");
+   end Scenario_L1_Balise_Buffer_Deleted;
 
    ---------------------------------------------------------------------
    --  5.10.3.15: the driver's change of level to 2 and back
