@@ -3810,3 +3810,53 @@ the on-board talks to one RBC). The LSSMA hook of 4.4.19.1.4.2 c)
 (its row carries [1] in levels 0 and 2).
 
 **Left.** B070.
+
+### E5 integration after the fourteenth round (2026-10-11)
+
+Merged: e4/ls-display (the Limited Supervision display, 4.4.19.1.4:
+`EVC_LS_Display` with the toggle order of packet 180, its delay timer
+and the LSSMA of a) and b), the marker of packet 181, the value sent in
+MSG_MODE_LEVEL, not MSG_SPEED_STATE as the brief said; 15 of 17 rows
+done, B090 to B093 left), e5/authority-5 (the MA request at the
+perturbation location, 3.8.2.2.1 a / 3.13.11.8: `EVC_SDM.Perturbation_Of`
+skipped the MRSP elements behind the min safe front end, and MA request
+parameters with T_MAR 0 were read as none, now `MAR_Known`, 3.8.2.1.3;
+S256f4faf 15 -> 3 sequences, the rest 3.8.2.4, B081; S1531c721 triaged
+by family: 3080500_03 is in-fill by balise, E7, the brief's packet 16
+premise was wrong; B080 for the untraced families) and e5/balise-buffer
+(the balise side of the transition buffer: `EVC_Acceptance.Level_Stores`
+as the first filter's third verdict for 4.8.3 [1], the private child
+`EVC_Stored_Information.Balise_Buffer` with three sets of 1 KB, deleted
+by 4.8.5.4 a), released at the switch to level 1 through
+`Release_Transition_Buffer` and judged like new groups, 4.6.3 [25]
+rebuilt in the cycle of the transition; the kept packet 79 deleted when
+no session is established, B060; B070 for the units that take a packet
+themselves). The merge needed one contract: `EVC_LS_Display.State` in
+the Global of the balise release path (a released packet 180 reaches
+the LS display, the hook of 4.4.19.1.4.2 c), B091).
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11725
+checks), the full proof 11047 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27144 B (margin 5624), wasm and both smokes 0
+failures. SUBSET-076: 706 / 1575 / 909 before, 724 / 1551 / 915 after,
+0 regressions, 0 untriaged. Matrix: 385 -> 366 clauses left in all
+phases, 190 -> 173 in E1 to E5; E4 todo 20 -> 4.
+
+Measurements (requests, of them without a tool call, duration, final
+context, cost): balise-buffer 281 / 88 / 25 min / 254k / 25.3;
+authority-5 181 / 60 / 22 min / 164k / 13.2; ls-display 237 / 78 / 20
+min / 190k / 16.4. The two agents that went over their budget did so on
+regressions they found themselves (the balise buffer's 15 at the
+transition cycle) and on the worktree guard (9 refusals).
+
+Lessons: two premises wrong again, both about data the brief read from
+a trace or a triage note rather than from the source (the LSSMA field's
+message, the packet of 3080500_03): the rule of round 13 holds for
+protocol fields and sequence contents too (read `dmi_protocol.ads`, the
+scn's `var` blocks through the runner's mapping). Three branches on the
+same two units merge cleanly in git and fail in the proof: a flow
+contract union is part of every such merge, checked by the unit proofs
+of the touched units before the chain.
+
+Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`,
+37 open after this round).
