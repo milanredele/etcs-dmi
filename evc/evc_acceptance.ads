@@ -75,6 +75,8 @@ is
       Big_Metal_Masses,       -- 67
       Braking_Distance,       -- 52
       Level_Crossing,         -- 88
+      --  e5/trips-fs: 3.8.5.2.2
+      Repositioning,          -- 16
       --  the procedures (e4/integration)
       Danger_For_SH,          -- 132
       Stop_SH_On_Desk,        -- 135
@@ -134,6 +136,8 @@ is
              L /= NTC or else C.L1_Announced,
           when Level_Crossing =>
              L in L1 | L2 or else C.L1_Announced,
+          --  R R A R, no exception (e5/trips-fs)
+          when Repositioning => L = L1,
           --  R R A A: no exception [1] (e5/balise-buffer)
           when Stop_If_In_SR => L in L1 | L2,
           when Danger_For_SH | Stop_SH_On_Desk => True,
@@ -172,7 +176,7 @@ is
                  when Movement_Authority =>
                     C.Train_Data_Valid and then C.TRN_Valid,     -- [4][11]
                  when Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
-                    | LSSMA_Toggle =>
+                    | LSSMA_Toggle | Repositioning =>
                     False,
                  when others => C.Train_Data_Valid),             -- [4]
           when M_PS =>
@@ -190,13 +194,14 @@ is
                     | Route_Suitability | Braking_Distance
                     | Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
                     | Reversing_Area | Reversing_Supervision
-                    | LSSMA_Toggle,
+                    | LSSMA_Toggle | Repositioning,
           when M_FS | M_AD | M_LS | M_OS | M_UN | M_SN =>
              I not in Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
              and then not (C.Mode in M_UN | M_SN
-                           and then I = RBC_Transition_Order),
+                           and then I in RBC_Transition_Order
+                                       | Repositioning),
           when M_SR =>
-             I not in Danger_For_SH | Stop_SH_On_Desk,
+             I not in Danger_For_SH | Stop_SH_On_Desk | Repositioning,
           when M_SL =>
              I in National_Values | Level_Order | Conditional_Order
                 | Big_Metal_Masses | Session_Management

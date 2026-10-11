@@ -986,7 +986,10 @@ is
    --  information, referred to the SOLR (3.6.4.2.5: information of a
    --  group that is not the SOLR is relocated when it is evaluated), and
    --  the telegrams of its passage
-   procedure Record_Taken (A : Anchor_T; T : Direction_T; S : Sense_T)
+   procedure Record_Taken (A             : Anchor_T;
+                           T             : Direction_T;
+                           S             : Sense_T;
+                           Repositioning : Boolean)
      with Pre => Passage.Count >= 1,
           Post => SOLR_A = SOLR_A'Old and then LRBG_A = LRBG_A'Old
    is
@@ -1016,7 +1019,8 @@ is
          Origin   => I,
          First    => Taken_Tel_N + 1,
          Count    => Passage.Count,
-         Start_Ms => Passage_Ms);
+         Start_Ms => Passage_Ms,
+         Repositioning => Repositioning);
       for K in 1 .. Passage.Count loop
          pragma Loop_Invariant (Taken_Tel_N + Passage.Count - K + 1
                                 <= Max_Taken_Telegrams);
@@ -1215,6 +1219,11 @@ is
             Crossing    => G.Crossing,
             Linked      => Passage.Linked,
             Seq         => Seq_Counter);
+         --  3.8.5.2.2: the link met announced an unknown group (read
+         --  before the group's own linking replaces the table)
+         Repositioning : constant Boolean :=
+           Link_Index in 1 .. Links.Count
+           and then not Links.Links (Link_Index).Known_Id;
       begin
          if To_SOLR then
             Set_SOLR (A, Link_Index);
@@ -1230,7 +1239,7 @@ is
          --  3.6.6.4.2: a geographical reference group detected
          Anchor_Geo (A);
          Take_Packets (A, T, S);
-         Record_Taken (A, T, S);
+         Record_Taken (A, T, S, Repositioning);
       end;
    end Take_Group;
 

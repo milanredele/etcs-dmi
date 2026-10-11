@@ -3894,3 +3894,27 @@ blocked after, 0 regressions, baseline re-recorded; new signature
 Sded37509 (4080100_04 step 124, the LSSMA removed after BG3d) triaged
 `onboard` for the LS display. Not done: item 6 (the `~JRU supervision`
 windows).
+### Trips where Full Supervision is expected (e5/trips-fs, 2026-10-11)
+
+**Implemented.** 3.8.5.2.2, the MA section updated by repositioning
+information (packet 16), was not implemented: 3040400_10 kept the EOA of
+the group in rear and tripped at 864 m. `EVC_Movement_Authority.Reposition`
+sets the end of the section the estimated front end is in (L_SECTION from
+the group) and moves what lies beyond it (following sections, end timer
+start, danger point, overlap); `EVC_Position.Taken_T.Repositioning` marks
+a group met against a link with an unknown identity (3.4.4.4.2.1);
+packet 16 is the order kind K16 of `EVC_Stored_Information`, after the MA,
+accepted as `EVC_Acceptance.Repositioning` (4.8.3 R R A R, 4.8.4 A in
+FS/AD/LS/OS). Scenario evc_test `Scenario_MA_Repositioning`.
+
+**Decisions.** 3.8.5.2.4: a repositioning that shortens deletes nothing.
+"Only if" of 3.8.5.2.2 read literally: 4080432_01 links its packet 16
+group by identity and expects the update; triaged s076.
+
+**Runner.** 724 / 1551 / 915 before and after, 0 regressions, 3
+improvements (3040400_10 in three versions, 49 -> 54, now 3.16.2.4.9,
+E6). 9990500_09 is an extraction defect (message 3 truncated);
+5160000_01 (B130), 3040400_08, 6060504_07 and B081 left.
+
+**Edits outside the MA units:** `EVC_Acceptance` (one literal, four
+lines), `EVC_Stored_Information` (K16), `EVC_Position` (one field).
