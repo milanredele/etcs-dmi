@@ -3258,6 +3258,35 @@ package body S076_Run is
       return False;
    end Ack_After_Group;
 
+   --  Step I is a reach-point at the nominal place of the balise group
+   --  input right before it (the steps between are expectations only):
+   --  the radio messages sent at the group stay listed. 5100300_09: BG2d
+   --  at 850 m orders level 0 (step 56), the on-board reports it there
+   --  (136, 3.6.5.1.4 g); the sequence lists that 136 at step 61, after
+   --  the min safe rear end reach-point of step 60 at the same 850 m
+   --  (B003). Only when the step after it expects a radio message: an
+   --  absence after the reach-point judges the reach-point's own window
+   --  (4050200_04 step 88: no 136 after the reach-point at 650 m, the
+   --  place of BG3d, step 82)
+   function Reach_Point_At_Group (I : Positive) return Boolean is
+   begin
+      if not Starts (Image (Seq.Steps (I).Line), "input ODO reach-point ")
+        or else I = Seq.Step_Count
+        or else not Starts (Image (Seq.Steps (I + 1).Line),
+                            "expect RTM message ")
+      then
+         return False;
+      end if;
+      for K in reverse 1 .. I - 1 loop
+         if Seq.Steps (K).IO = Input then
+            return Starts (Image (Seq.Steps (K).Line),
+                           "input BTM balise-group ")
+              and then Seq.Steps (K).Dist_Cm = Seq.Steps (I).Dist_Cm;
+         end if;
+      end loop;
+      return False;
+   end Reach_Point_At_Group;
+
    --  A step out of the scope of this phase: level 2 / 3, NTC
    function Scope (St : Step_T) return Reason_T is
       Lb : constant Level_Kind_T := Level_Of (Trim (St.Lvl_Before));
@@ -3419,7 +3448,8 @@ package body S076_Run is
                         and then I > 1
                         and then Seq.Steps (I - 1).Dist_Cm = St.Dist_Cm)
                        or else Redelivered (I)
-                       or else Ack_After_Group (I));
+                       or else Ack_After_Group (I)
+                       or else Reach_Point_At_Group (I));
                   Wait_Used := 0;
                end if;
                --  an input placed ahead of a train that goes backwards
