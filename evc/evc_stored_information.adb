@@ -45,7 +45,7 @@ package body EVC_Stored_Information
                                    MA_Board, Profile_Overlap,
                                    Covered_Flag, Ext, Tun,
                                    Radio_MA, Timer_Deletion, Proposal,
-                                   Proposal_Origin, Stop_Q, From_Buffer,
+                                   Proposal_Origin, Stop_Q,
                                    Balise_Buffer.State))
 is
 
@@ -107,11 +107,6 @@ is
    Ext             : EVC_Track_Conditions.External_T;
    --  5.18.8: the tunnel stopping area reported
    Tun             : EVC_Track_Conditions.Tunnel_T;
-   --  e5/balise-buffer, 4.8.5.5: the packets being dispatched come from
-   --  the balise transition buffer released at the transition to level
-   --  1 (the hook of 4.4.19.1.4.2 c: the LSSMA toggle order stored there
-   --  starts its timer at the transition)
-   From_Buffer     : Boolean := False;
 
    ---------------------------------------------------------------------
    --  Queries
@@ -220,7 +215,6 @@ is
       Stop_Q := (others => 4);
       Ext := (Count => 0, List => (others => (others => <>)));
       Tun := (others => <>);
-      From_Buffer := False;
       Balise_Buffer.Clear;
    end Clear;
 
@@ -1106,7 +1100,10 @@ is
 
    --  4.8.5.6 b) (e5/balise-buffer): the set S of the balise transition
    --  buffer judged like a new group message in the level now, its
-   --  packets taken in the order of Take_Group
+   --  packets taken in the order of Take_Group. The only path of a
+   --  released balise packet: the hook of 4.4.19.1.4.2 c) (the LSSMA
+   --  toggle order, packet 180, stored here starts its timer at the
+   --  transition) is a branch of this loop for its kind
    procedure Take_Balise_Set (S      : Positive;
                               T      : Origin_Table_T;
                               Train  : Train_Frame_T;
@@ -2227,20 +2224,25 @@ is
                         EVC_National_Values.State,
                         EVC_Levels.State, EVC_Sessions.State,
                         Events, Event_N, Msg_Count, Balise_Buffer.State),
-             Output => From_Buffer,
+             Output => (MA_Board, Profile_Overlap, Covered_Flag),
              Input  => (EVC_Origins.State, EVC_Position.State,
                         EVC_Odometry.State, EVC_Train_Data.State))
    is
       T     : constant Origin_Table_T := Origin_Table;
       Train : constant Train_Frame_T := Train_Frame;
    begin
-      From_Buffer := True;
       for S in 1 .. Balise_Buffer.Count loop
          pragma Loop_Invariant (True);
          Take_Balise_Set (S, T, Train, Context, Now_Ms);
       end loop;
-      From_Buffer := False;
       Balise_Buffer.Delete_All;
+      --  4.6.3 [25] (UN to FS at the switch to level 1 with an MA, SSP
+      --  and gradient on board) is judged in this cycle, after the
+      --  release: its facts again from the stores now
+      Build_Mode_Conditions
+        (T, Train,
+         (if EVC_Movement_Authority.MA_Present
+          then EVC_Movement_Authority.MA_Sense else Train.Sense));
    end Release_Balise_Buffer;
 
 end EVC_Stored_Information;

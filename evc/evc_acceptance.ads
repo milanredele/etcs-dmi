@@ -248,9 +248,17 @@ is
    --  the recognition of the exit from TR) rejected, as for a group.
    type Radio_Verdict_T is (Radio_Rejected, Radio_Accepted, Radio_Stored);
 
-   function Radio_Geo_Verdict (C : Context_T; L2_Announced : Boolean)
+   --  e5/balise-buffer (B060), 4.8.5.4 c): without an established
+   --  session (Session_Up False) rejected, so that the packet kept for
+   --  the transition is deleted with the session that gave it (decision:
+   --  the on-board keeps one packet 79, from the only RBC it talks to
+   --  before the transition; no message arrives without a session)
+   function Radio_Geo_Verdict (C            : Context_T;
+                               L2_Announced : Boolean;
+                               Session_Up   : Boolean := True)
      return Radio_Verdict_T
-   is (if C.Level_Valid and then C.Level = L2 then
+   is (if not Session_Up then Radio_Rejected
+       elsif C.Level_Valid and then C.Level = L2 then
          (if Third_Filter (Geographical_Position, C) then Radio_Accepted
           else Radio_Rejected)
        elsif L2_Announced then Radio_Stored

@@ -156,6 +156,33 @@ package body EVC_Test_Levels is
              & "(4.8.5.6 a, b; 5.10.1.7)");
    end Scenario_L1_Balise_Buffer;
 
+   --  SUBSET-076 5100100: level 0 in UN, the group 10 at 50 m announces
+   --  level 1 at 250 m, the group 20 at 100 m gives an MA, the group 30
+   --  at 150 m orders level 1 now: FS in the cycle after (4.6.3)
+   procedure Scenario_L1_Balise_Buffer_From_L0 is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Add_Group (Group (10, 50));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, 250));
+      Add_Group (Group (20, 100));
+      Carry (Track_N, 0, MA_Of ((1500, 200)));
+      Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
+      Carry (Track_N, 1, SSP ((1 => (0, 100, False),
+                               2 => (2500, End_Mark, False))));
+      Add_Group (Group (30, 150));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, -1));
+      Run_X (12_000);
+      Check (SI.Balise_Buffered = 1 and then not SI.Current.MA.Present,
+             "levels: level 0, level 1 announced: the group's MA kept "
+             & "(4.8.3 [1])");
+      Run_X (20_000);
+      Check (EVC_Levels.Level = L1 and then SI.Current.MA.Present
+             and then EVC_Core.Mode = M_FS,
+             "levels: the immediate order to level 1: the kept MA used, "
+             & "FS in the cycle (4.8.5.5, 4.6.3 [25])");
+   end Scenario_L1_Balise_Buffer_From_L0;
+
    procedure Scenario_L1_Balise_Buffer_Deleted is
    begin
       Start_L1_Announced_In_L2 (3000);

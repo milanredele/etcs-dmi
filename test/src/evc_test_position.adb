@@ -489,6 +489,10 @@ package body EVC_Test_Position is
              and then A.Radio_Geo_Verdict (C, True) = A.Radio_Stored,
              "radio geo: level 1, rejected; stored with level 2 announced "
              & "(4.8.3 [2])");
+      Check (A.Radio_Geo_Verdict (C, True, Session_Up => False)
+               = A.Radio_Rejected,
+             "radio geo: no session established: rejected, the packet kept "
+             & "for the transition deleted (4.8.5.4 c, B060)");
       C.Level := EVC_Modes.L2;
       Check (A.Radio_Geo_Verdict (C, False) = A.Radio_Accepted,
              "radio geo: level 2 FS, accepted");

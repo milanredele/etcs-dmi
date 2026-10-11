@@ -1197,7 +1197,8 @@ is
    procedure Take_Radio_Geo
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
                                 EVC_Train_Inputs.State, EVC_Train_Data.State,
-                                EVC_Mission.State, EVC_Radio_Info.State),
+                                EVC_Mission.State, EVC_Radio_Info.State,
+                                EVC_Radio.State),
                      Proof_In => EVC_Odometry.State,
                      In_Out => EVC_Position.State),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
@@ -1214,7 +1215,10 @@ is
         (EVC_Acceptance.Radio_Geo_Verdict
            (Acceptance_Context,
             L2_Announced => EVC_Levels.Announced
-                            and then EVC_Levels.Announced_Level = L2));
+                            and then EVC_Levels.Announced_Level = L2,
+            --  4.8.5.4 c) (e5/balise-buffer, B060)
+            Session_Up   => (for some S in EVC_Radio.Session_T =>
+                               EVC_Radio.Established (S))));
    end Take_Radio_Geo;
 
    --  MSG_SPEED_STATE from the result of the speed and distance
