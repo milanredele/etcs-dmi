@@ -148,6 +148,7 @@ begin
    Scenario_Report_Reference;
    Scenario_Relocation;
    Scenario_Repositioning;
+   Scenario_MA_Repositioning;
    Scenario_Geo_Orientation;
    Check (Encodes_OK, "E2: every telegram of the track encoded");
    Scenario_E3_Protocol;

@@ -694,6 +694,9 @@ is
       First    : Positive range 1 .. Max_Taken_Telegrams + 1 := 1;
       Count    : Natural range 0 .. Max_Balises := 0;
       Start_Ms : Unsigned_64 := 0;
+      --  3.8.5.2.2: the group met a link announcing an unknown group
+      --  with repositioning (e5/trips-fs)
+      Repositioning : Boolean := False;
    end record;
 
    function Taken_Count return Natural

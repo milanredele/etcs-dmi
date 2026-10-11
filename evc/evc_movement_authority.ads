@@ -262,6 +262,18 @@ is
           Post => MA.Present = MA.Present'Old
                   and then not Outcome.Accepted;
 
+   --  3.8.5.2.2 (e5/trips-fs): the repositioning information of a group
+   --  that linking announced as unknown with repositioning: the section
+   --  in which the train front end (Front, estimated, in the frame) is
+   --  ends at Finish; what lies beyond its end (the following sections,
+   --  the end timer's start, the danger point, the overlap) moves with
+   --  it. 3.8.5.2.4: not a shortening (nothing deleted)
+   procedure Reposition (T      : Origin_Table_T;
+                         Front  : Dist_T;
+                         Finish : Location_T)
+     with Global => (In_Out => State),
+          Post => MA.Present = MA.Present'Old;
+
    --  The mode profile of the message of the MA just accepted
    procedure Take_Mode_Profile (P : ETCS_Track_Packets.P80.Packet_T;
                                 M : Message_T)

@@ -7,6 +7,7 @@ with ETCS_Packet_Index;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P15;
+with ETCS_Track_Packets.P16;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P45;
@@ -321,6 +322,9 @@ is
       --  phase E5: the level 2 MA of a radio message (messages 3, 33)
       K15,
       K80,
+      --  e5/trips-fs: the repositioning information (3.8.5.2.2), after
+      --  the MA it updates
+      K16,
       --  phase E4: the station platforms, the allowed current
       --  consumption (track conditions, 5.18, 5.20)
       K69, K40,
@@ -350,6 +354,7 @@ is
          when K70  => ETCS_Catalogue.Track_P70,
          when K71  => ETCS_Catalogue.Track_P71,
          when K88  => ETCS_Catalogue.Track_P88,
+         when K16  => ETCS_Catalogue.Track_P16,
          when K12  => ETCS_Catalogue.Track_P12,
          when K15  => ETCS_Catalogue.Track_P15,
          when K80  => ETCS_Catalogue.Track_P80,
@@ -381,6 +386,7 @@ is
          when K71  => EVC_Acceptance.Adhesion,
          when K88  => EVC_Acceptance.Level_Crossing,
          when K12 | K15 | K80 => EVC_Acceptance.Movement_Authority,
+         when K16 => EVC_Acceptance.Repositioning,
          --  e5/registration: the Radio Network transition order is
          --  filtered as the session management (4.8.3, 4.8.4: its
          --  own rows are left to EVC_Acceptance)
@@ -398,7 +404,8 @@ is
          when K21 => 21, when K51 => 51, when K52 => 52, when K65 => 65,
          when K66 => 66, when K141 => 141, when K68 => 68, when K39 => 39,
          when K67 => 67, when K70 => 70, when K71 => 71, when K88 => 88,
-         when K12 => 12, when K15 => 15, when K80 => 80, when K69 => 69,
+         when K12 => 12, when K15 => 15, when K80 => 80, when K16 => 16,
+         when K69 => 69,
          when K40 => 40, when K42 => 42, when K45 => 45,
          when K131 => 131, when K180 => 180, when K181 => 181);
 
@@ -446,7 +453,7 @@ is
      with Static_Predicate => Condition_Kind_T in K68 | K39 | K67 | K69
                                                 | K40;
    subtype MA_Kind_T is Order_Kind_T
-     with Static_Predicate => MA_Kind_T in K12 | K15 | K80;
+     with Static_Predicate => MA_Kind_T in K12 | K15 | K80 | K16;
 
    --  5.10: the level transition order (41) and the conditional level
    --  transition order (46), to EVC_Levels
@@ -873,6 +880,23 @@ is
                   Record_Event (Info_Mode_Profile, Change_Stored, M.Msg);
                end if;
             end;
+         when K16 =>
+            --  3.8.5.2.2 (e5/trips-fs): L_SECTION from the group's
+            --  location reference (Take_Group passes the packet only at
+            --  the group that linking announced as unknown)
+            declare
+               X : ETCS_Track_Packets.P16.Packet_T;
+            begin
+               ETCS_Track_Packets.P16.Decode (R, X, OK);
+               if OK and then Train.Valid
+                 and then Valid_Scale (Natural (X.Q_SCALE))
+               then
+                  EVC_Movement_Authority.Reposition
+                    (T, Train.Est_Front,
+                     At_Offset (M, Scaled (Natural (X.L_SECTION),
+                                           Natural (X.Q_SCALE))));
+               end if;
+            end;
       end case;
    end Take_MA_Packet;
 
@@ -1001,7 +1025,7 @@ is
             Take_Description_Packet (K, R, M, T);
          when K68 | K39 | K67 | K69 | K40 =>
             Take_Condition_Packet (K, R, M, T);
-         when K12 | K15 | K80 =>
+         when K12 | K15 | K80 | K16 =>
             Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted);
          when K42 =>
             Take_Session_Packet (R);
@@ -1141,6 +1165,8 @@ is
                   if E.Kind = Kind_Of (K)
                     and then EVC_Position.Valid_For
                                (E.Q_DIR, Tk.Group.Orientation, Tk.T)
+                    --  3.8.5.2.2: only at the group linking announced
+                    and then (K /= K16 or else Tk.Repositioning)
                   then
                      Take_Packet (K, J, P, M, T, Train, MA_Accepted, Ctx,
                                   Tk.Group.Linked, Has_41, Now_Ms,

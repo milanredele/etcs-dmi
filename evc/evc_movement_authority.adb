@@ -269,6 +269,50 @@ is
       Delete_Beyond_SvL (T, Current, Natural'Last, Outcome);
    end Conditional_Stop;
 
+   --  3.8.5.2.2 (see the spec). The section is the first whose end lies
+   --  ahead of Front; a withdrawn MA (an emergency stop) keeps its stop.
+   --  A location beyond that end keeps its distance to it: it is moved
+   --  by the change of the end, in the frame, on its own origin.
+   procedure Reposition (T      : Origin_Table_T;
+                         Front  : Dist_T;
+                         Finish : Location_T)
+   is
+      S     : constant Sense_T := Current.Sense;
+      I     : Natural := 0;
+      Shift : Dist_T;
+
+      function Moved_By (L : Location_T) return Location_T is
+        (At_Frame (T, L.Origin, Sum (Frame (T, L, Estimated_Item), Shift)));
+   begin
+      if not Current.Present or else Current.Withdrawn then
+         return;
+      end if;
+      for J in 1 .. Current.Count loop
+         pragma Loop_Invariant (I = 0);
+         if A (S, Frame (T, Current.Sections (J).Finish, Estimated_Item))
+              > A (S, Front)
+         then
+            I := J;
+            exit;
+         end if;
+      end loop;
+      if I = 0 then
+         return;
+      end if;
+      Shift := Diff (Frame (T, Finish, Estimated_Item),
+                     Frame (T, Current.Sections (I).Finish, Estimated_Item));
+      Current.Sections (I).Finish := Finish;
+      for J in I + 1 .. Current.Count loop
+         pragma Loop_Invariant (Current.Present);
+         Current.Sections (J).Finish := Moved_By (Current.Sections (J).Finish);
+         Current.Sections (J).Stop := Moved_By (Current.Sections (J).Stop);
+      end loop;
+      Current.End_Start := Moved_By (Current.End_Start);
+      Current.DP := Moved_By (Current.DP);
+      Current.OL := Moved_By (Current.OL);
+      Current.OL_Start := Moved_By (Current.OL_Start);
+   end Reposition;
+
    --  3.8.4.1.2: the End Section time-out withdraws the EOA to the train
    --  (A.3.4.1.3 [11]) and deletes beyond its max safe front end [10]
    procedure End_Section_Over (Train   : Train_Frame_T;

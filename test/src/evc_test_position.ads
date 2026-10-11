@@ -20,6 +20,7 @@ package EVC_Test_Position is
       procedure Scenario_Report_Triggers;
       procedure Scenario_Relocation;
       procedure Scenario_Repositioning;
+      procedure Scenario_MA_Repositioning;
       procedure Scenario_Geo_Orientation;
       procedure Scenario_Rear_End;
       procedure Scenario_Report_Reference;

@@ -3,6 +3,7 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P5;
+with ETCS_Track_Packets.P16;
 with ETCS_Track_Packets.P79;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P1;
@@ -20,6 +21,7 @@ with EVC_Modes;
 with EVC_Odometry;
 with EVC_Ports;
 with EVC_Position;
+with EVC_Stored_Information;
 with EVC_Train_Data;
 with Interfaces;
 
@@ -852,6 +854,54 @@ package body EVC_Test_Position is
       Check (Pos.LRBG.Id.NID_BG = 10 and then JRU_Seen (5) = 1,
              "repositioning: a single balise group is rejected (a)");
    end Scenario_Repositioning;
+
+   --  3.8.5.2.2, 3.8.5.2.4 (e5/trips-fs, SUBSET-076 3040400_10): the
+   --  repositioning information of the group announced as unknown sets
+   --  the end of the section the train is in; elsewhere it is ignored
+   procedure Scenario_MA_Repositioning is
+      procedure Track_With (Reposition : Boolean; Unknown : Boolean) is
+         L : T5.Packet_T :=
+           Link_To ((1 => 500), (1 => (if Unknown then 16383 else 55)));
+      begin
+         L.D_LINK := 500;
+         Start_X;
+         Add_Group (With_Links (Group (10, 100), L));
+         Add_Group (Group (55, 400));
+         if Reposition then
+            declare
+               W  : Writer_T;
+               OK : Boolean;
+               P  : ETCS_Track_Packets.P16.Packet_T;
+            begin
+               P.Q_DIR := 2;
+               P.Q_SCALE := 1;
+               P.L_SECTION := 100;
+               ETCS_Track_Packets.P16.Encode (P, W, OK);
+               Check (OK, "MA repositioning: packet 16 encoded");
+               Carry_Writer (2, 0, W);
+            end;
+         end if;
+         Carry (1, 0, SSP ((1 => (0, 100, True))));
+         Carry (1, 0, Grad ((1 => (0, 0))));
+         Carry (1, 1, MA_Of ((1 => 350)));
+      end Track_With;
+   begin
+      Track_With (Reposition => True, Unknown => True);
+      Run_X (30_000);
+      Check (EVC_Stored_Information.Current.MA.Present
+             and then EVC_Stored_Information.Current.MA.EOA = 45_000,
+             "MA repositioning: the EOA of the group in rear (3.8.5.2.2)");
+      Run_X (44_000);
+      Check (EVC_Stored_Information.Current.MA.Present
+             and then EVC_Stored_Information.Current.MA.EOA = 50_000,
+             "MA repositioning: the end section ends 100 m after the "
+             & "announced group (3.8.5.2.2)");
+      Track_With (Reposition => True, Unknown => False);
+      Run_X (44_000);
+      Check (EVC_Stored_Information.Current.MA.EOA = 45_000,
+             "MA repositioning: ignored at a group linked by its identity "
+             & "(3.8.5.2.2)");
+   end Scenario_MA_Repositioning;
 
    --  3.6.6.4.3: announced references deleted on a change of orientation
    procedure Scenario_Geo_Orientation is
