@@ -21,6 +21,10 @@ package EVC_Test_Handover is
    --  Accepting RBC before the switch, shown after it
    procedure Scenario_Handover_Text;
 
+   --  e4/ls-display-2 (B092), 4.8.2.1 c) exception 2: the LSSMA display
+   --  toggle order of the Accepting RBC rejected, also when released
+   procedure Scenario_Handover_LSSMA;
+
    --  3.15.1.3.8 b), 4.10 (the row of the RBC transition order),
    --  3.5.3.4 f): the retained contact of the Handing Over RBC used to set
    --  its lost session up again, then deleted by a mode of 4.10

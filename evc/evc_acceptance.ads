@@ -247,6 +247,10 @@ is
               | Gradient_Profile | International_SSP | Axle_Load_Profile
               | Route_Suitability | Track_Conditions | Braking_Distance
               | Reversing_Area | Reversing_Supervision => True,
+           --  e4/ls-display-2 (B091): the LSSMA toggle on order, R [1] in
+           --  levels 0, NTC and 2 (the off order, R there, is kept with it
+           --  as one packet 180 and rejected at the release)
+           when LSSMA_Toggle => True,
            when Adhesion | Level_Crossing => L /= L2,
            when TSR | TSR_Revocation | Default_Gradient
               | Geographical_Position | Text_Message => L = NTC,

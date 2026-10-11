@@ -814,17 +814,27 @@ is
    --  3.8, 3.11.6, 3.12.4: the MA with its signalling related speed
    --  restriction (12) and the mode profile of an MA accepted (80), to
    --  EVC_Movement_Authority; the deletions an accepted MA asks (Apply)
+   --  7.4.2.18: the mode profile X has a Limited Supervision section
+   function Has_LS_Section (X : ETCS_Track_Packets.P80.Packet_T)
+     return Boolean
+   is (X.M_MAMODE = ETCS_Variables.M_MAMODE_Limited_Supervision
+       or else (for some I in 1 .. Natural (X.N_ITER) =>
+                  X.D_MAMODE_List (I).M_MAMODE
+                             = ETCS_Variables.M_MAMODE_Limited_Supervision));
+
    procedure Take_MA_Packet (K           : MA_Kind_T;
                              R           : in out Reader_T;
                              M           : Message_T;
                              T           : Origin_Table_T;
                              Train       : Train_Frame_T;
                              A           : EVC_Acceptance.Context_T;
-                             MA_Accepted : in out Boolean)
+                             MA_Accepted : in out Boolean;
+                             From_Balise : Boolean)
      with No_Inline,
           Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
+                                EVC_LS_Display.State,
                                 Events, Event_N))
    is
       OK : Boolean;
@@ -878,6 +888,16 @@ is
                if OK and then MA_Accepted then
                   EVC_Movement_Authority.Take_Mode_Profile (X, M);
                   Record_Event (Info_Mode_Profile, Change_Stored, M.Msg);
+                  --  4.4.19.1.4.8 (B090): a Limited Supervision mode
+                  --  profile deletes the generic LS function marker; a
+                  --  packet 181 of the same group is taken after the
+                  --  profile (Order_Kind_T) and stores it again, so the
+                  --  marker goes only when the group has none. Decision:
+                  --  "received" is the profile taken with its MA (3.7.1.1)
+                  --  (balise group messages only)
+                  if From_Balise and then Has_LS_Section (X) then
+                     EVC_LS_Display.Delete_Marker;
+                  end if;
                end if;
             end;
          when K16 =>
@@ -955,17 +975,22 @@ is
 
    --  e4/ls-display, 4.4.19.1.4.2 to 4.4.19.1.4.5: the LSSMA display
    --  toggle order of packet 180 to EVC_LS_Display, its delay timer
-   --  started at M.Start_Ms (a: the time stamp of the radio message, b:
-   --  the passage of the first balise of the group); 4.8.4: the toggle
+   --  started at Start_Ms (a: the time stamp of the radio message, b:
+   --  the passage of the first balise of the group, c: the level
+   --  transition when Released from the transition buffer, B091; a
+   --  toggle off order is R, not R [1], outside level 1 in 4.8.3: one
+   --  released is rejected, decision: the buffer keeps packet 180
+   --  whole, its qualifier read here); 4.8.4: the toggle
    --  off order in LS only, the toggle on order in the modes of its row
    --  (its exceptions [9] [10], the train inside the LS area of a mode
    --  profile of the same message, are not modelled: accepted);
    --  7.4.2.37.4: packet 181 stores the generic LS function marker
-   procedure Take_LS_Packet (K      : Order_Kind_T;
-                             R      : in out Reader_T;
-                             M      : Message_T;
-                             A      : EVC_Acceptance.Context_T;
-                             Now_Ms : Unsigned_64)
+   procedure Take_LS_Packet (K        : Order_Kind_T;
+                             R        : in out Reader_T;
+                             Start_Ms : Unsigned_64;
+                             Released : Boolean;
+                             A        : EVC_Acceptance.Context_T;
+                             Now_Ms   : Unsigned_64)
      with Global => (In_Out => (EVC_LS_Display.State, Events, Event_N)),
           Pre => K in K180 | K181
    is
@@ -982,7 +1007,8 @@ is
       end if;
       if not EVC_Acceptance.Third_Filter (EVC_Acceptance.LSSMA_Toggle, A)
         or else (X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_Off
-                 and then EVC_Modes."/=" (A.Mode, EVC_Modes.M_LS))
+                 and then (Released
+                           or else EVC_Modes."/=" (A.Mode, EVC_Modes.M_LS)))
       then
          Record_Event (Info_Group, Change_Filtered, 180);
          return;
@@ -990,7 +1016,7 @@ is
       EVC_LS_Display.Take_Order
         (On       => X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_On,
          Delay_S  => (if X.Has_T_LSSMA then Natural (X.T_LSSMA) else 0),
-         Start_Ms => M.Start_Ms,
+         Start_Ms => Start_Ms,
          Now_Ms   => Now_Ms);
    end Take_LS_Packet;
 
@@ -1003,7 +1029,8 @@ is
                        A           : EVC_Acceptance.Context_T;
                        MA_Accepted : in out Boolean;
                        Ctx         : Mode_Context_T;
-                       Now_Ms      : Unsigned_64)
+                       Now_Ms      : Unsigned_64;
+                       From_Balise : Boolean := True)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
@@ -1026,7 +1053,8 @@ is
          when K68 | K39 | K67 | K69 | K40 =>
             Take_Condition_Packet (K, R, M, T);
          when K12 | K15 | K80 | K16 =>
-            Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted);
+            Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted,
+                            From_Balise);
          when K42 =>
             Take_Session_Packet (R);
          when K45 =>
@@ -1034,7 +1062,7 @@ is
          when K131 =>
             Take_Transition_Packet (R);
          when K180 | K181 =>
-            Take_LS_Packet (K, R, M, A, Now_Ms);
+            Take_LS_Packet (K, R, M.Start_Ms, False, A, Now_Ms);
       end case;
    end Dispatch;
 
@@ -1083,6 +1111,13 @@ is
          EVC_Position.Open_Taken_Packet (J, P, R);
          Balise_Buffer.Add_Packet (Kind_Of (K), R);
          return;
+      end if;
+      --  4.4.19.1.4.8 (B090): the marker of a group whose mode profile
+      --  went to the transition buffer goes there too (and is taken now,
+      --  4.8.3 "A"), so that the profile released does not delete it
+      if K = K181 and then Set_Open then
+         EVC_Position.Open_Taken_Packet (J, P, R);
+         Balise_Buffer.Add_Packet (Kind_Of (K), R);
       end if;
       --  4.8: the first and the third filter (the signalling related
       --  speed restriction of a packet 12 apart from its MA; the mode
@@ -1225,7 +1260,13 @@ is
                                      (EVC_Acceptance.Signalling_Speed, A))
                then
                   Balise_Buffer.Open (S, P, R);
-                  Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx, Now_Ms);
+                  if K = K180 then
+                     --  4.4.19.1.4.2 c) (B091): the timer from the release
+                     Take_LS_Packet (K, R, Now_Ms, True, A, Now_Ms);
+                  else
+                     Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,
+                               Now_Ms);
+                  end if;
                elsif K /= K80 then
                   Record_Event (Info_Group, Change_Filtered, NID_Of (K));
                end if;
@@ -1375,10 +1416,13 @@ is
                then
                   if K = K15 and then not Sl.MA_Allowed then
                      Record_Event (Info_MA, Change_Rejected, M.Msg);
+                  elsif K = K180 and then Sl.From_Accepting then
+                     --  4.8.2.1 c) exception 2 (B092)
+                     Record_Event (Info_Group, Change_Filtered, 180);
                   elsif K /= K12 then
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,
-                               Now_Ms);
+                               Now_Ms, From_Balise => False);
                   end if;
                end if;
             end;

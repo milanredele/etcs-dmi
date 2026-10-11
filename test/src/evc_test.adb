@@ -222,6 +222,8 @@ begin
    Scenario_E4_Continue_Shunting;
    Scenario_E5P_JRU_Records;
    EVC_Test_LS.Scenario_LS_Display;
+   EVC_Test_LS.Scenario_LS_Order_Buffered;
+   EVC_Test_LS.Scenario_LS_Marker_Deleted;
    Check (Encodes_OK, "E4: every telegram of the track encoded");
    Procedures.Run;
    Touch.Run;
@@ -256,6 +258,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Radio;
    EVC_Test_Handover.Scenario_Handover_Balise;
    EVC_Test_Handover.Scenario_Handover_Text;
+   EVC_Test_Handover.Scenario_Handover_LSSMA;
    EVC_Test_Handover.Scenario_Handover_Deletion;
    EVC_Test_Handover.Scenario_Handover_EoM;
    EVC_Test_Handover.Scenario_Handover_Indication;

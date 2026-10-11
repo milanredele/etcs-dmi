@@ -807,7 +807,8 @@ is
                   then
                      --  e5/handover: also the Accepting RBC's (4.8.5.2)
                      EVC_Radio_Authority.Store_Message
-                       (Slot.Session, Slot.Data (1 .. Slot.Length));
+                       (Slot.Session, Slot.Data (1 .. Slot.Length),
+                        Accepting => Verdict = EVC_Sessions.Buffered);
                   else
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
@@ -835,9 +836,10 @@ is
                                 EVC_Radio_Authority.State,
                                 EVC_Origins.State, EVC_Radio_Info.State))
    is
-      M_Status : ETCS_Message.Status_T;
-      S        : RTM_Session_T;
-      Last     : Natural;
+      M_Status  : ETCS_Message.Status_T;
+      S         : RTM_Session_T;
+      Last      : Natural;
+      Accepting : Boolean;
    begin
       for I in 1 .. RTM_Latch_Size loop
          pragma Loop_Invariant (True);
@@ -854,11 +856,14 @@ is
       for I in 1 .. EVC_Radio_Authority.Buffer_Size loop
          pragma Loop_Invariant (True);
          exit when not EVC_Radio_Authority.Has_Released;
+         Accepting := EVC_Radio_Authority.Released_Accepting;
          EVC_Radio_Authority.Take_Released (S, Latched_RTM (1).Data, Last);
          EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
-            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
+            --  4.8.2.1 c) exception 2: the Accepting RBC's
+            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
+                                              Accepting);
          end if;
       end loop;
    end Read_Released_Messages;
@@ -1153,9 +1158,10 @@ is
                                 EVC_Levels.State, EVC_Sessions.State))
    is
       First    : constant Positive := EVC_Radio_Info.Count + 1;
-      M_Status : ETCS_Message.Status_T;
-      S        : RTM_Session_T;
-      Last     : Natural;
+      M_Status  : ETCS_Message.Status_T;
+      S         : RTM_Session_T;
+      Last      : Natural;
+      Accepting : Boolean;
       Ctx      : constant EVC_Stored_Information.Mode_Context_T :=
         (Mode        => Current_Mode,
          Cab_Active  => EVC_Train_Inputs.Desk_Open,
@@ -1181,11 +1187,14 @@ is
       for I in 1 .. EVC_Radio_Authority.Buffer_Size loop
          pragma Loop_Invariant (True);
          exit when not EVC_Radio_Authority.Has_Released;
+         Accepting := EVC_Radio_Authority.Released_Accepting;
          EVC_Radio_Authority.Take_Released (S, Latched_RTM (1).Data, Last);
          EVC_Received.Receive_Message (Latched_RTM (1).Data (1 .. Last),
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
-            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
+            --  4.8.2.1 c) exception 2: the Accepting RBC's
+            EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
+                                              Accepting);
          end if;
       end loop;
       EVC_Text_Messages.Take_Radio (First);

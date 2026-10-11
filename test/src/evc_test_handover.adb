@@ -6,9 +6,11 @@ with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P131;
 with ETCS_Track_Packets.P74;
+with ETCS_Track_Packets.P180;
 with ETCS_Variables;
 with EVC_Config;
 with EVC_Core;
+with EVC_LS_Display;
 with EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
@@ -260,6 +262,56 @@ package body EVC_Test_Handover is
       Check (OK, "handover: packet 74 encoded");
       return Message_Bytes (W);
    end M24_Text;
+
+   --  Message 24 referred to the group NID_BG with packet 180: the LSSMA
+   --  display toggle on at once
+   function M24_LSSMA (NID_BG : Natural) return Byte_Array is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      ETCS_Track_Packets.P180.Encode
+        ((Q_DIR => 2, Q_LSSMA => 1, Has_T_LSSMA => True, T_LSSMA => 0,
+          others => <>), W, OK);
+      Check (OK, "handover: packet 180 encoded");
+      return Message_Bytes (W);
+   end M24_LSSMA;
+
+   procedure Scenario_Handover_LSSMA is
+   begin
+      EVC_LS_Display.Clear;
+      Start_X;
+      Order_Group (10, 100);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      Give_Radio_Message (2, M24_LSSMA (10));
+      Stand;
+      Check (EVC_Radio_Authority.Buffered = 1
+             and then not EVC_LS_Display.Toggled_On,
+             "handover LSSMA: the toggle order of the Accepting RBC held "
+             & "(4.8.2.1 c)");
+      Run_X (32_000);
+      Stand;
+      Check (R.Supervising = 2 and then EVC_Radio_Authority.Buffered = 0
+             and then not EVC_LS_Display.Toggled_On
+             and then not EVC_LS_Display.Order_Pending,
+             "handover LSSMA: released at the switch and rejected "
+             & "(4.8.2.1 c exception 2)");
+      --  the same order from the supervising RBC is taken
+      Give_Radio_Message (2, M24_LSSMA (10));
+      Stand;
+      Check (EVC_LS_Display.Toggled_On,
+             "handover LSSMA: taken from the supervising RBC");
+   end Scenario_Handover_LSSMA;
 
    --  S776cef6c: a text message of the Accepting RBC before the switch
    procedure Scenario_Handover_Text is

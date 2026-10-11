@@ -60,6 +60,10 @@ is
       --  Conditional_Stop: the stop location, from the location
       --  reference along S (3.10.2.2)
       Stop_D     : Dist_T := 0;
+      --  4.8.2.1 c) exception 2 (e4/ls-display-2): a message of the
+      --  Accepting RBC released from the handover buffer; its LSSMA
+      --  display toggle order is rejected
+      From_Accepting : Boolean := False;
    end record;
 
    function Count return Count_T

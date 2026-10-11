@@ -14,6 +14,8 @@ is
       Session : EVC_Radio.Session_T := 1;
       Length  : Natural range 0 .. EVC_Ports.RTM_Max_Length := 0;
       Data    : Data_T := (others => 0);
+      --  4.8.2.1 c): held from the Accepting RBC (EVC_Sessions)
+      Accepting : Boolean := False;
    end record;
 
    --  the oldest first
@@ -101,7 +103,11 @@ is
       Releasing := Count > 0;
    end Release_At_Transition;
 
-   procedure Store (S : EVC_Radio.Session_T; Data : EVC_Bytes.Byte_Array)
+   function Oldest_Accepting return Boolean is (Slots (1).Accepting);
+
+   procedure Store (S         : EVC_Radio.Session_T;
+                    Data      : EVC_Bytes.Byte_Array;
+                    Accepting : Boolean := False)
      with Refined_Global => (In_Out => (Slots, Count))
    is
    begin
@@ -114,7 +120,8 @@ is
          Count := Buffer_Size - 1;
       end if;
       Count := Count + 1;
-      Slots (Count) := (Session => S, Length => Data'Length, Data => <>);
+      Slots (Count) := (Session => S, Length => Data'Length, Data => <>,
+                        Accepting => Accepting);
       Slots (Count).Data (1 .. Data'Length) := Data;
    end Store;
 
