@@ -4,7 +4,8 @@
 
 package body EVC_Radio_Info
   with SPARK_Mode => On,
-       Refined_State => (State => (Messages, Slots, N, Refused_N, MAR))
+       Refined_State => (State => (Messages, Slots, N, Refused_N, MAR,
+                              MAR_K))
 is
 
    type Message_Array_T is array (Index_T) of ETCS_Message.Message_T;
@@ -15,6 +16,7 @@ is
    N         : Count_T := 0;
    Refused_N : Natural := 0;
    MAR       : Unsigned_64 range 0 .. Max_T_MAR_Ms := 0;
+   MAR_K     : Boolean := False;
 
    function T_MAR_Ms return Unsigned_64 is (MAR)
      with Refined_Global => MAR;
@@ -25,6 +27,16 @@ is
    begin
       MAR := Ms;
    end Set_T_MAR;
+
+   function MAR_Known return Boolean is (MAR_K)
+     with Refined_Global => MAR_K;
+
+   procedure Set_MAR_Known (Known : Boolean)
+     with Refined_Global => (Output => MAR_K)
+   is
+   begin
+      MAR_K := Known;
+   end Set_MAR_Known;
 
    function Count return Count_T is (N)
      with Refined_Global => N;
@@ -53,10 +65,12 @@ is
    end Open_Packet;
 
    procedure Clear
-     with Refined_Global => (Output => (Messages, Slots, N, Refused_N, MAR))
+     with Refined_Global => (Output => (Messages, Slots, N, Refused_N, MAR,
+                                         MAR_K))
    is
    begin
       MAR := 0;
+      MAR_K := False;
       Messages := (others => (others => <>));
       Slots := (others => (others => <>));
       N := 0;

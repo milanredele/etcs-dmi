@@ -2091,6 +2091,7 @@ is
              Context, Virtual_Last, Work);
       --  3.13.11.8 (phase E5): T_MAR of the MA request parameters
       Snap.Extra.T_MAR := Time_Ms_T (EVC_Radio_Info.T_MAR_Ms);
+      Snap.Extra.MAR_Known := EVC_Radio_Info.MAR_Known;
       --  3.8.6.1 b) (phase E5): the proposed shortened MA
       Snap.Extra.Proposal := Proposal;
    end Evaluate;

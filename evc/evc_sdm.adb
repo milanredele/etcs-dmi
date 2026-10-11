@@ -925,18 +925,23 @@ is
       for N in 1 .. Work.Elements loop
          declare
             V_N  : constant Speed_T := Work.MRSP (N).Speed;
+            B_N  : constant Num :=
+              (if N < Work.Elements then Work.MRSP (N + 1).Start
+               else Max_Cm + Max_Forward);
          begin
-            if LOA and then V_N < T.Speed then
-               --  3.13.11.7.1 a), b)
+            if (LOA and then V_N < T.Speed) or else B_N <= C.X_Min then
+               --  3.13.11.7.1 a), b); an element wholly in rear of the
+               --  min safe front end is not part of the MRSP ahead of the
+               --  train (3.13.11.9 "the start location of the MRSP";
+               --  decision: the min safe front end, the earlier request)
                Prev_Valid := False;
             else
                declare
                   I_N : constant Num :=
                     Indication_For (Work, C, T, V_N, Use_SBD, GUI_Curve);
+                  --  the element holding the train keeps its start: its
+                  --  location passed stays passed (3.8.2.2.3)
                   A_N : constant Num := Work.MRSP (N).Start;
-                  B_N : constant Num :=
-                    (if N < Work.Elements then Work.MRSP (N + 1).Start
-                     else Max_Cm + Max_Forward);
                begin
                   --  3.13.11.6 with the element before
                   if Prev_Valid and then Prev_I > Prev_B and then I_N < Prev_B
@@ -967,6 +972,23 @@ is
       end if;
    end Perturbation_Of;
 
+   --  3.13.11.9: the MRSP element holding X (the first one when X is in
+   --  rear of every element; the elements are in ascending order)
+   function Element_At (Work : Work_T; X : Num) return Positive
+     with Pre  => Work.Elements > 0,
+          Post => Element_At'Result <= Work.Elements
+   is
+      K : Positive := 1;
+   begin
+      for N in 2 .. Work.Elements loop
+         pragma Loop_Invariant (K < N);
+         if Work.MRSP (N).Start <= X then
+            K := N;
+         end if;
+      end loop;
+      return K;
+   end Element_At;
+
    --  3.13.11.9: the speed at the start of the MRSP of a curve the
    --  perturbation location of target T is calculated from is lower
    --  than the speed of the first MRSP element: the EBD of the SvL or
@@ -976,8 +998,11 @@ is
                                  T    : Target_T) return Boolean
      with Pre => Work.Elements > 0
    is
-      X : constant Dist_T := Work.MRSP (1).Start;
-      V : constant Speed_T := Work.MRSP (1).Speed;
+      --  the start of the MRSP: the min safe front end, in the element
+      --  holding it (as in Perturbation_Of)
+      K : constant Positive := Element_At (Work, C.X_Min);
+      X : constant Dist_T := Max (Work.MRSP (K).Start, C.X_Min);
+      V : constant Speed_T := Work.MRSP (K).Speed;
 
       function Below (Curve : Curve_T) return Boolean is
         (Speed_At (Work.Model, Work.Profile, Curve, X) < V)
@@ -2332,7 +2357,7 @@ is
                SvL_Passed := SvL_Passed or else C.X_Max > T.Location;
             end if;
             if T.Kind in EOA_Target | LOA_Target
-              and then S.Extra.T_MAR > 0
+              and then S.Extra.MAR_Known
             then
                declare
                   Found_S, Found_E : Boolean;

@@ -99,6 +99,15 @@ is
           Pre  => Ms <= Max_T_MAR_Ms,
           Post => T_MAR_Ms = Ms;
 
+   --  3.8.2.1.3: MA request parameters are stored that ask for the
+   --  request of 3.8.2.2.1 a) (T_MAR = 0 s is a value, not "none")
+   function MAR_Known return Boolean
+     with Global => State;
+
+   procedure Set_MAR_Known (Known : Boolean)
+     with Global => (In_Out => State),
+          Post => MAR_Known = Known;
+
    --  Messages refused for want of room since Clear (saturating)
    function Refused return Natural
      with Global => State;
@@ -106,7 +115,8 @@ is
    --  Power-up: nothing
    procedure Clear
      with Global => (Output => State),
-          Post => Count = 0 and then Refused = 0 and then T_MAR_Ms = 0;
+          Post => Count = 0 and then Refused = 0 and then T_MAR_Ms = 0
+                  and then not MAR_Known;
 
    --  The cycle's messages taken: the table empty
    procedure Empty

@@ -908,6 +908,7 @@ procedure EVC_Fuzz is
       S.National.Kv_Int_Passenger_B := Random_Kv;
       S.Extra.Trip_Margin := Pick_Cm (0, 10_000);
       S.Extra.T_MAR := (if Chance (30) then Pick (0, 60_000) else 0);
+      S.Extra.MAR_Known := S.Extra.T_MAR > 0 or else Chance (10);
       S.Extra.SR_Distance := Chance (10);
       S.Extra.SR_End := X + Pick_Cm (-10_000, 500_000);
       Snapshot := S;
