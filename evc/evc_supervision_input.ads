@@ -550,8 +550,11 @@ is
       --  1); the on-board takes the larger of it and the current one
       Trip_Margin    : Length_T := 0;
       --  3.13.11.8: T_MAR of the MA request parameters (packet 57, E5);
-      --  0 when none is stored
+      --  0 when none is stored; MAR_Known: one is stored that asks for
+      --  requests (T_MAR = 0 s is a value, 3.8.2.1.3: no request
+      --  without it)
       T_MAR          : Time_Ms_T := 0;
+      MAR_Known      : Boolean := False;
       --  3.13.2.3.6.1 b), 3.13.8.2.1 d): the end of the maximum
       --  permitted distance to run in Staff Responsible (E4)
       SR_Distance    : Boolean := False;

@@ -857,6 +857,7 @@ package body EVC_Test_Supervision is
    begin
       Give_MA (S, 5_000, 100);
       S.Extra.T_MAR := 10_000;
+      S.Extra.MAR_Known := True;
       Place (S, X, V);
       Sup_Start (S);
       Check (Res.Perturbation and then Res.Perturbation_X < 500_000
@@ -878,6 +879,55 @@ package body EVC_Test_Supervision is
              & Integer_64'Image (Requested_At / 100)
              & " m, before the TSM at" & Integer_64'Image (X / 100) & " m");
    end Scenario_SDM_Perturbation;
+
+   --  3.13.11.5, 3.13.11.9, 3.8.2.2.1 a), 3.8.2.1.3 (SUBSET-076
+   --  3080200, 3131100): an MRSP element wholly in rear of the train (a
+   --  high speed whose Indication location lies far behind) is not part
+   --  of the MRSP ahead: no perturbation location behind the train, no
+   --  request at once; T_MAR = 0 s is a value (the request when the
+   --  train reaches the perturbation location), and without parameters
+   --  that ask for it there is none
+   procedure Scenario_SDM_Perturbation_Behind is
+      S  : SIn.Snapshot_T := Base_Snapshot;
+      X  : Integer_64 := 50_000;
+      V  : constant SIn.Speed_Cms_T := Cms (40.0);
+      Requested_At : Integer_64 := -1;
+   begin
+      Give_MA (S, 1_000, 100);
+      S.MRSP := (Count => 2,
+                 Segments => (1 => (-1_000_000, Cms (200.0)),
+                              2 => (0, Cms (40.0)),
+                              others => (0, SIn.No_Speed_Limit)),
+                 others   => <>);
+      S.Extra.T_MAR := 0;
+      S.Extra.MAR_Known := False;
+      Place (S, X, V);
+      Sup_Start (S);
+      Check (not Res.MA_Request,
+             "perturbation: no MA request without parameters asking for "
+             & "it (3.8.2.1.3)");
+      S.Extra.MAR_Known := True;
+      Place (S, X, V);
+      Sup_Start (S);
+      Check (Res.Perturbation and then Res.Perturbation_X > 50_000
+             and then not Res.MA_Request,
+             "perturbation: the location ahead of the train at"
+             & Integer_64'Image (Integer_64 (Res.Perturbation_X) / 100)
+             & " m, not from the element in rear (3.13.11.5, 3.13.11.9)");
+      for Step in 1 .. 1_000 loop
+         exit when Requested_At > 0 or else X >= 100_000;
+         X := X + Integer_64 (V) / 10;
+         Move (X, V);
+         Sup_Cycle;
+         if Res.MA_Request then
+            Requested_At := X;
+         end if;
+      end loop;
+      Check (Requested_At > 50_000 and then Requested_At < 100_000,
+             "perturbation: with T_MAR = 0 s the MA request at"
+             & Integer_64'Image (Requested_At / 100)
+             & " m, before the EOA (3.13.11.8, 3.8.2.2.1 a)");
+   end Scenario_SDM_Perturbation_Behind;
 
    --  3.13.1.5, 3.13.8.2.1 b), c): an MA ending with an LOA and a
    --  temporary EOA beyond it (the start of a mode profile further on,
@@ -916,6 +966,7 @@ package body EVC_Test_Supervision is
                             Has_SvL => True, SvL => 510_000);
          end if;
          S.Extra.T_MAR := 10_000;
+         S.Extra.MAR_Known := True;
          X := 0;
          V := Cms (100.0);
          Place (S, X, V);
@@ -1013,6 +1064,7 @@ package body EVC_Test_Supervision is
       end loop;
       Give_MA (S, EOA_M, 700);
       S.Extra.T_MAR := 10_000;
+      S.Extra.MAR_Known := True;
       Place (S, 0, Cms (100.0));
       Sup_Start (S);
       Check (Found and then Res.MA_Request,
@@ -1026,6 +1078,7 @@ package body EVC_Test_Supervision is
       S.MRSP.Segments (1).Speed := Cms (160.0);
       Give_MA (S, 6_000, 200);
       S.Extra.T_MAR := 10_000;
+      S.Extra.MAR_Known := True;
       Place (S, 0, Cms (140.0));
       S.National.Q_NVGUIPERM := False;
       Sup_Start (S);

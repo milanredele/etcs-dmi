@@ -3739,3 +3739,39 @@ has reached the time-out displays; km/h rounded down. evc_test
 c) partial (B091), 4.4.19.1.4.8 todo (B090). SUBSET-076: 0 regressions,
 24 improvements; Scb539e7a gone, four new signatures triaged (B092: the
 Accepting RBC's toggle order, 4.8.2.1 c exception 2). Left: B090 to B093.
+### Authority by radio, fifth round (e5/authority-5, 2026-10-11)
+
+**Implemented.** The MA request at the perturbation location
+(3.8.2.2.1 a, 3.13.11.8) had two causes, both outside the authority
+half: (1) `EVC_SDM.Perturbation_Of` took every MRSP element from the
+first, so an element wholly in rear of the train (a high speed whose
+Indication location lies kilometres behind) gave a perturbation
+location behind the train, passed at once, and the reason rose at the
+first MA and never again (3080200_04: -3064 m); (2) T_MAR = 0 s was
+taken as "no parameters" (`Extra.T_MAR > 0`), so 3131100 never
+requested. Now an element whose end is at or in rear of the min safe
+front end is skipped, `Below_First_Element` (3.13.11.9) compares at
+the train in the element holding it (`Element_At`), and
+`Supervision_Extra_T.MAR_Known` / `EVC_Radio_Info.MAR_Known` say that
+parameters asking for requests are stored (3.8.2.1.3). Scenario:
+evc_test `Scenario_SDM_Perturbation_Behind` (fails without the fix).
+
+**Decisions.** The MRSP of 3.13.11 starts at the min safe front end
+(3.13.11.9 "the start location of the MRSP"; the earliest request);
+the element holding the train keeps its own start, so a location
+passed stays passed (3.8.2.2.3; clipping it lost the repetition of
+3080200_06).
+
+**Runner.** 706 / 1575 / 909 before, 718 / 1560 / 912 after, 0
+regressions, 21 improvements (3080200_04, _05, 3131100_04, _06, _08,
+_09, _10 in three versions). S256f4faf 15 -> 3: 3080200_08 is the
+reason of 3.8.2.4 (track ahead free up to the level 2 transition, not
+implemented, B081). S1531c721: the brief's premise for 3080500_03 was
+wrong (no packet 16; BG3d carries in-fill, packet 136 for BG4d: E7);
+triage rewritten by family, the other families not traced (B080).
+B019 done, B018 updated.
+
+**Edits outside the authority units:** `EVC_SDM`,
+`EVC_Supervision_Input` (one component), `EVC_Radio_Info`,
+`EVC_Stored_Information` (one line in the snapshot build),
+evc_fuzz, evc_test_supervision.

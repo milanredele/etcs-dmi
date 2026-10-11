@@ -16,6 +16,7 @@ package EVC_Test_Supervision is
       procedure Scenario_SDM_LOA;
       procedure Scenario_SDM_Calculated_Release;
       procedure Scenario_SDM_Perturbation;
+      procedure Scenario_SDM_Perturbation_Behind;
       procedure Scenario_SDM_LOA_And_Temporary;
       procedure Scenario_SDM_Perturbation_Curves;
       procedure Scenario_SDM_Feedback;

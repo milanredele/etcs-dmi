@@ -1101,6 +1101,10 @@ is
         (if Params.Known
            and then Params.T_MAR /= T_MAR_No_MA_Request_Triggering
          then 1000 * Unsigned_64 (Params.T_MAR) else 0);
+      --  3.8.2.1.3: T_MAR = 0 s asks for the request too
+      EVC_Radio_Info.Set_MAR_Known
+        (Params.Known
+         and then Params.T_MAR /= T_MAR_No_MA_Request_Triggering);
       Held := (others => False);
       --  4.4.11.1.6.4: the driver's entry is now the last value received
       if Facts.SR_Entered then
