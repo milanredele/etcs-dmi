@@ -3540,3 +3540,13 @@ Open:
    protocol item for the DMI side.
 4. 3.15.1.3.3 in SM (no SM mode yet); balise errors reported to the RBC
    (3.6.5.1.4 l, E6); chapter 6 (packet 72, S322852a4) in E7.
+
+**Backlog** (2026-10-11): `doc/BACKLOG.csv`, checked by
+`test/tools/backlog.py --check` in the whole check, holds the open items
+that are neither a clause of the coverage matrix nor a failure signature
+of the triage (runner gaps, protocol items, decisions pending, tooling,
+harness). It replaces the "Open" lists of the integration subsections,
+which were re-written by hand every round; the burndown counts it. The
+first 25 items are the open items of rounds 4 to 12 and the level 1 gaps
+E2 to E4 left behind (the bookkeeping of round 13 re-reads their rows).
+

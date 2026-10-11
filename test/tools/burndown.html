@@ -113,7 +113,7 @@ td.left { font-family: var(--mono); font-weight: 500; }
         <tbody></tbody>
       </table>
     </div>
-    <p>A phase is closed when every clause it lists is done, n/a or deferred with a reason. E0 and E8 have no clause rows: the foundation and the Hercules port are judged by their outcome sections.</p>
+    <p>A phase is closed when every clause it lists is done, n/a or deferred with a reason; "left" counts the rows a closed phase handed to a later one (tagged for it, or set back to partial as that work started). E0 and E8 have no clause rows: the foundation and the Hercules port are judged by their outcome sections.</p>
   </section>
 
   <section class="panel">
@@ -236,7 +236,8 @@ td.left { font-family: var(--mono); font-weight: 500; }
       ['Clauses left for level 2', l2Left, '', 'phases E1 to E5; what E5 has to clear'],
       ['Sequences passed', lastSeq.s076.passed, ' <small>of ' + lastSeq.s076.total + '</small>', (lastSeq.s076.failed) + ' failed, ' + lastSeq.s076.blocked + ' blocked'],
       ['Pace, last 7 days', (dLeft >= 0 ? '−' : '+') + Math.abs(dLeft), ' <small>clauses</small>', 'E1 to E5 clear ' + eta + ' at this pace'],
-      ['Rounds merged', rounds.length, '', seqGain >= 0 ? '+' + seqGain + ' sequences passed in 7 days' : seqGain + ' sequences passed in 7 days']
+      ['Rounds merged', rounds.length, '', seqGain >= 0 ? '+' + seqGain + ' sequences passed in 7 days' : seqGain + ' sequences passed in 7 days'],
+      ['Backlog open', last.backlog ? last.backlog.open : 0, last.backlog ? ' <small>of ' + (last.backlog.open + last.backlog.done + last.backlog.dropped) + '</small>' : '', 'items that are no clause and no signature']
     ];
     document.getElementById('tiles').innerHTML = tiles.map(([k, v, u, d]) =>
       '<div class="tile"><div class="k">' + k + '</div><div class="v">' + v + u + '</div><div class="d">' + d + '</div></div>').join('');
@@ -290,7 +291,7 @@ td.left { font-family: var(--mono); font-weight: 500; }
       const lf = m.todo + m.partial;
       const rows = Object.values(m).reduce((a, b) => a + b, 0);
       let chip;
-      if (closed.has(ph)) chip = lf === 0 ? '<span class="chip ok">closed</span>' : '<span class="chip ok">closed</span> <span class="chip">' + lf + ' reopened</span>';
+      if (closed.has(ph)) chip = lf === 0 ? '<span class="chip ok">closed</span>' : '<span class="chip ok">closed</span> <span class="chip">' + lf + ' left</span>';
       else if (ph === current) chip = '<span class="chip now">in progress</span>';
       else chip = '<span class="chip">not started</span>';
       return '<tr><td class="l"><span class="sw" style="background:' + colour(ph) + '"></span>' + ph + ' ' + PHASE_NAMES[ph] + '</td><td class="l">' + chip +

@@ -8,7 +8,8 @@ either file:
   clauses by status (todo, partial, done, n/a, deferred); the work left of
   a phase is todo + partial;
 * the SUBSET-076 runner's baseline test/s076/baseline.csv: sequences
-  passed, failed, blocked; the work left is failed + blocked.
+  passed, failed, blocked; the work left is failed + blocked;
+* the backlog doc/BACKLOG.csv: items open, done, dropped.
 
 The markers are read from the plan's headings: a phase outcome
 ("## N. Ex — ...: outcome (date)") and an E5 integration ("### E5
@@ -33,6 +34,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MATRIX = 'doc/TRACE-SUBSET-026.csv'
 BASELINE = 'test/s076/baseline.csv'
+BACKLOG = 'doc/BACKLOG.csv'
 PLAN = 'doc/EVC-PLAN.md'
 PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'burndown.html')
 
@@ -82,6 +84,14 @@ def baseline_counts(text):
     return counts
 
 
+def backlog_counts(text):
+    counts = {'open': 0, 'done': 0, 'dropped': 0}
+    for row in csv.reader(io.StringIO(text)):
+        if len(row) == 5 and not row[0].startswith('#') and row[2] in counts:
+            counts[row[2]] += 1
+    return counts
+
+
 def markers(plan_text):
     out = []
     for line in plan_text.splitlines():
@@ -105,9 +115,9 @@ def main():
     a = ap.parse_args()
 
     log = git('log', '--first-parent', '--reverse', '--format=%H %ct %ad %s',
-              '--date=short', a.rev, '--', MATRIX, BASELINE)
+              '--date=short', a.rev, '--', MATRIX, BASELINE, BACKLOG)
     points = []
-    last_matrix = last_baseline = None
+    last_matrix = last_baseline = last_backlog = None
     for line in log.splitlines():
         sha, ts, date, subject = line.split(' ', 3)
         mtext = show(sha, MATRIX)
@@ -116,9 +126,12 @@ def main():
             last_matrix = matrix_counts(mtext)
         if btext is not None:
             last_baseline = baseline_counts(btext)
+        ktext = show(sha, BACKLOG)
+        if ktext is not None:
+            last_backlog = backlog_counts(ktext)
         points.append({'sha': sha[:7], 'time': int(ts), 'date': date,
                        'subject': subject, 'matrix': last_matrix,
-                       's076': last_baseline})
+                       's076': last_baseline, 'backlog': last_backlog})
 
     plan = show(a.rev, PLAN) or ''
     data = {'generated_at': git('log', '-1', '--format=%cI', a.rev).strip(),
