@@ -28,7 +28,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.4.4.4.6,3,x,,,,,E2,done,"EVC_Position.Next_Window, Evaluate, Supervise_Windows; evc_test position_linking, position_linking_errors"
 3.4.4.4.6 a),3,x,,,,,E2,done,"EVC_Position.Next_Window, Evaluate, Supervise_Windows; evc_test position_linking, position_linking_errors"
 3.4.4.4.6 b),3,x,,,,,E2,done,"EVC_Position.Next_Window, Evaluate, Supervise_Windows; evc_test position_linking, position_linking_errors"
-3.4.4.4.6 c),3,x,,,,,E2,partial,the window stops on a linking error (EVC_Position.Next_Window); the balise group message consistency of 3.16.2.4.1 is E6
+3.4.4.4.6 c),3,x,,,,,E2,deferred,"a) b) done (EVC_Position.Next_Window, the window stops on a linking error); c) the balise group message consistency of 3.16.2.4.1 [E6 balise consistency]"
 3.4.4.4.6.1,3,x,,,,,E2,done,EVC_Position.Evaluate (the next announced group checked against its own window); evc_test position_linking_errors
 3.4.4.4.7,3,x,,,,,E2,done,"EVC_Position.Evaluate rejects and requests a train trip (Linking_Reaction 0, JRU 4); the trip 4.6.3 [17] (EVC_Procedures); evc_test position_linking_errors, evc_test_procedures Scenario_Linking"
 3.4.4.5.1,3,x,,,,,E2,done,EVC_Position.Evaluate (linking not checked: every group taken); evc_test position_first_group
@@ -134,7 +134,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.1.4,3,x,,,,,E2,done,EVC_Position.Evaluate (Status Valid when an LRBG or ORBG is passed); evc_test position_first_group
 3.6.1.5,3,x,,,,,E2,done,"EVC_Position.Update (orientation from the cab status, proven: Update and EVC_Core.Tick postconditions); evc_test position_orientation"
 3.6.1.5.1,3,x,,,,,E2,deferred,E4 (Supervised Manoeuvre)
-3.6.1.6,3,x,,,,,E2,partial,EVC_Position.Estimated_Front / SOLR_Estimated_Front exposed; its use for supervision is E3
+3.6.1.6,3,x,,,,,E2,done,"EVC_Position.Estimated_Front: the reference of the location based information of the stores (EVC_Track_Conditions, EVC_Text_Messages, EVC_Procedures, the SR distance of EVC_Mission); evc_test Scenario_Track_Conditions, E4_SR_Distance"
 3.6.1.7,3,x,,,,,E2,done,EVC_Position.Min_Safe_Rear with Set_Train_Length (proven <= Min_Safe_Front); evc_test Scenario_Rear_End; the train length of valid Train Data is E4
 3.6.1.7 1st bullet,3,x,,,,,E2,deferred,"E4 (safe consist length from the train interface, SUBSET-034 2.6.2)"
 3.6.1.7 2nd bullet,3,x,,,,,E2,deferred,"E4 (safe consist length from the train interface, SUBSET-034 2.6.2)"
@@ -143,12 +143,12 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.2.2.2 a) 1st bullet,3,x,,,,,E2,done,"EVC_Position.Evaluate (LRBG compliant: linked and announced when checked, not unlinked when not checked); evc_test position_linking, position_linking_errors"
 3.6.2.2.2 a) 2nd bullet,3,x,,,,,E2,done,"EVC_Position.Evaluate (LRBG compliant: linked and announced when checked, not unlinked when not checked); evc_test position_linking, position_linking_errors"
 3.6.2.2.2 c),3,x,,,,,E2,partial,"EVC_Position keeps the last 8 LRBGs with their anchors (Set_Report_Parameters and Assign_Coordinate_System look them up by the last passage of the group, Latest: the ring wraps and a group passed again is in it twice; evc_test Scenario_Report_Reference); evaluating RBC messages against them is E5 [E5 session]"
-3.6.2.2.2.1,3,x,,,,,E2,partial,"EVC_Position.Position_Report: LRBG ""unknown"" without LRBG (evc_test position_first_group); position deleted at SoM is E4 (Delete_Position)"
+3.6.2.2.2.1,3,x,,,,,E2,done,"EVC_Position.Position_Report: LRBG ""unknown"" without LRBG or with only unlinked groups (evc_test position_first_group); the position deleted at SoM by EVC_Position.Delete_Position (EVC_Core.Evaluate_Radio, evc_test Scenario_Session_SoM_Level_2)"
 3.6.2.2.2.3,3,x,,,,,E2,deferred,E5 (RBC messages with LRBG unknown) [E5 session]
-3.6.3.1.3,3,x,,,,,E2,partial,"EVC_Position.Valid_For, applied to packets 5 and 79; the packets of E3 to E6 use it in turn; radio data against the LRBG orientation (EVC_Position.Radio_Origin): evc_test Scenario_Radio_MA_Direction (message 33 for the reverse direction gives no MA, e5/level-order-ma)"
-3.6.3.1.3.1,3,x,,,,,E2,partial,"EVC_Position.Evaluate uses the crossing direction in SL, PS and SH (for packets 5 and 79); the modes are entered in E4"
+3.6.3.1.3,3,x,,,,,E2,done,"EVC_Position.Valid_For: the balise packets of every store (EVC_Position.Evaluate, EVC_Stored_Information, EVC_Text_Messages, EVC_Procedures); radio data against the LRBG orientation (EVC_Position.Radio_Origin); evc_test Scenario_Orientation, Scenario_Radio_MA_Direction"
+3.6.3.1.3.1,3,x,,,,,E2,partial,"EVC_Position.Evaluate uses the crossing direction in SL, PS and SH (the modes of E4 exist); missing: a scenario reading a group in SH against the train orientation [B032]"
 3.6.3.1.3.2,3,x,,,,,E2,deferred,E4 (Supervised Manoeuvre authorisation)
-3.6.3.1.4,3,x,,,,,E2,partial,"EVC_Position.Valid_For (only ""both directions"" without orientation), packets 5 and 79; the evaluation of 4.8 is E4"
+3.6.3.1.4,3,x,,,,,E2,done,"EVC_Position.Valid_For: only ""both directions"" without orientation, for every store of balise data (EVC_Stored_Information, EVC_Text_Messages, EVC_Procedures) before the evaluation of 4.8 (EVC_Acceptance); evc_test Scenario_Orientation"
 3.6.3.1.4.1,3,x,,,,,E2,n/a,National System (STM) out of scope (doc/EVC-PLAN.md §1)
 3.6.3.2.2,3,x,x,,,,E2,deferred,"E3 (continuous profiles: SSP, gradient)"
 3.6.3.2.2 a),3,x,x,,,,E2,deferred,"E3 (continuous profiles: SSP, gradient)"
@@ -156,10 +156,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.3.2.2 c),3,x,x,,,,E2,deferred,"E3 (continuous profiles: SSP, gradient)"
 3.6.3.2.2 d),3,x,x,,,,E2,deferred,"E3 (continuous profiles: SSP, gradient)"
 3.6.3.2.2 e),3,x,x,,,,E2,deferred,"E3 (continuous profiles: SSP, gradient)"
-3.6.3.2.3,3,x,x,,,,E2,partial,incremental distances of the location data of E2 (linking: EVC_Linking.From_Packet; packet 58: Set_Report_Parameters); the location data of E3 to E6 later
-3.6.3.2.3 a),3,x,x,,,,E2,partial,incremental distances of the location data of E2 (linking: EVC_Linking.From_Packet; packet 58: Set_Report_Parameters); the location data of E3 to E6 later
-3.6.3.2.3 b),3,x,x,,,,E2,partial,incremental distances of the location data of E2 (linking: EVC_Linking.From_Packet; packet 58: Set_Report_Parameters); the location data of E3 to E6 later
-3.6.3.2.3 c),3,x,x,,,,E2,partial,incremental distances of the location data of E2 (linking: EVC_Linking.From_Packet; packet 58: Set_Report_Parameters); the location data of E3 to E6 later
+3.6.3.2.3,3,x,x,,,,E2,done,"incremental distances read by every store of location data (linking: EVC_Linking.From_Packet; packet 58: Set_Report_Parameters; SSP, gradient, TSR, track conditions, MA sections: EVC_Track_Description, EVC_Track_Conditions, EVC_Movement_Authority); evc_test Scenario_Relocation, Scenario_SSP_Gradients, Scenario_Track_Conditions, Scenario_MA"
+3.6.3.2.3 a),3,x,x,,,,E2,done,"incremental distances read by every store of location data (linking: EVC_Linking.From_Packet; packet 58: Set_Report_Parameters; SSP, gradient, TSR, track conditions, MA sections: EVC_Track_Description, EVC_Track_Conditions, EVC_Movement_Authority); evc_test Scenario_Relocation, Scenario_SSP_Gradients, Scenario_Track_Conditions, Scenario_MA"
+3.6.3.2.3 b),3,x,x,,,,E2,done,"incremental distances read by every store of location data (linking: EVC_Linking.From_Packet; packet 58: Set_Report_Parameters; SSP, gradient, TSR, track conditions, MA sections: EVC_Track_Description, EVC_Track_Conditions, EVC_Movement_Authority); evc_test Scenario_Relocation, Scenario_SSP_Gradients, Scenario_Track_Conditions, Scenario_MA"
+3.6.3.2.3 c),3,x,x,,,,E2,done,"incremental distances read by every store of location data (linking: EVC_Linking.From_Packet; packet 58: Set_Report_Parameters; SSP, gradient, TSR, track conditions, MA sections: EVC_Track_Description, EVC_Track_Conditions, EVC_Movement_Authority); evc_test Scenario_Relocation, Scenario_SSP_Gradients, Scenario_Track_Conditions, Scenario_MA"
 3.6.3.2.4,3,x,x,,,,E2,deferred,"E3 (non-continuous profiles: TSR, axle load, track conditions)"
 3.6.3.2.4 a),3,x,x,,,,E2,deferred,"E3 (non-continuous profiles: TSR, axle load, track conditions)"
 3.6.3.2.4 b),3,x,x,,,,E2,deferred,"E3 (non-continuous profiles: TSR, axle load, track conditions)"
@@ -173,15 +173,15 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.4.1.5,3,x,,,,,E2,done,"EVC_Location.Doubt_Over/Doubt_Under, EVC_Position.Min/Max_Safe_Front (proven min <= est <= max; never shrinking against the same LRBG, EVC_Core.Tick); evc_test position_first_group, position_linking"
 3.6.4.1.5 a),3,x,,,,,E2,done,"EVC_Location.Doubt_Over/Doubt_Under, EVC_Position.Min/Max_Safe_Front (proven min <= est <= max; never shrinking against the same LRBG, EVC_Core.Tick); evc_test position_first_group, position_linking"
 3.6.4.1.5 b),3,x,,,,,E2,done,"EVC_Location.Doubt_Over/Doubt_Under, EVC_Position.Min/Max_Safe_Front (proven min <= est <= max; never shrinking against the same LRBG, EVC_Core.Tick); evc_test position_first_group, position_linking"
-3.6.4.1.5 last sentence,3,x,,,,,E2,partial,gamma = 0; the consist lengths in SB without Train Data and in SM are E4/E6
+3.6.4.1.5 last sentence,3,x,,,,,E2,partial,"gamma = 0 always (EVC_Position.Min_Safe_Front / Max_Safe_Front); missing: gamma = 1 in SB without valid Train Data with the safe consist length, and for Supervised Manoeuvre (no SM mode yet) [B031]"
 3.6.4.2.2,3,x,,,,,E2,done,"EVC_Position.Evaluate, Set_SOLR, Take_Packets; evc_test position_linking, position_linking_errors"
 3.6.4.2.2 a),3,x,,,,,E2,done,"EVC_Position.Evaluate, Set_SOLR, Take_Packets; evc_test position_linking, position_linking_errors"
 3.6.4.2.2 b),3,x,,,,,E2,done,"EVC_Position.Evaluate, Set_SOLR, Take_Packets; evc_test position_linking, position_linking_errors"
 3.6.4.2.2.1,3,x,,,,,E2,done,"EVC_Position.Keep / Restore: the LRBG stored over No Power is the reference of the restored, invalid position (EVC_Core.Power_Up)"
-3.6.4.2.2.2,3,x,,,,,E2,partial,linking replaced before the SOLR is set (EVC_Position.Take_Packets); 3.7.3.1 m) and the transition buffers are E6/E4
+3.6.4.2.2.2,3,x,,,,,E2,done,"EVC_Position.Take_Packets replaces the linking before the SOLR is set, also for linking released from the transition buffer (EVC_Levels); evc_test Scenario_Relocation, Scenario_Transition_Buffer; 3.7.3.1 m) has its own row"
 3.6.4.2.3,3,x,,,,,E2,done,EVC_Location.Item_T (signed distance along the orientation from its reference); packet 58 locations; evc_test position_linking
-3.6.4.2.4,3,x,,,,,E2,partial,"kinds of location items (EVC_Location.Item_Kind_T); used for linking windows, packet 58 locations and the geographical position; the other rows of Table 2a are E3 to E6"
-3.6.4.2.4 Table 2a,3,x,,,,,E2,partial,"kinds of location items (EVC_Location.Item_Kind_T); used for linking windows, packet 58 locations and the geographical position; the other rows of Table 2a are E3 to E6"
+3.6.4.2.4,3,x,,,,,E2,done,"the min / estimated / max location items of EVC_Location.Item_Kind_T applied by every store of location data (EVC_Movement_Authority, EVC_Track_Description, EVC_Track_Conditions, EVC_Profiles, EVC_Stored_Information, EVC_Procedures, EVC_Levels); evc_test Scenario_Relocation, Scenario_MA, Scenario_Track_Conditions; the rows of the clauses the table cites carry their own status (infill: E7)"
+3.6.4.2.4 Table 2a,3,x,,,,,E2,done,"the min / estimated / max location items of EVC_Location.Item_Kind_T applied by every store of location data (EVC_Movement_Authority, EVC_Track_Description, EVC_Track_Conditions, EVC_Profiles, EVC_Stored_Information, EVC_Procedures, EVC_Levels); evc_test Scenario_Relocation, Scenario_MA, Scenario_Track_Conditions; the rows of the clauses the table cites carry their own status (infill: E7)"
 3.6.4.2.5,3,x,,,,,E2,done,"EVC_Location.Relocate, EVC_Position.Relocate_Item (linking distance); evc_test position_linking (location passed at 890 m)"
 3.6.4.2.5 a),3,x,,,,,E2,done,"EVC_Location.Relocate, EVC_Position.Relocate_Item (linking distance); evc_test position_linking (location passed at 890 m)"
 3.6.4.2.5 b),3,x,,,,,E2,done,"EVC_Location.Relocate; evc_test Scenario_Relocation (""max"" items of packet 58; the ""estimated"" and ""min"" kinds by the same code)"
@@ -250,14 +250,14 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.6.9 c),3,x,,,,,E2,done,EVC_Position.Update_Geo; evc_test position_geo
 3.6.6.9 d),3,x,,,,,E2,done,"EVC_Position.Delete_Geo, called on entering NP, PS, SH, SL, SN, RV (4.10, EVC_Core.Enter_Mode); evc_test position_geo"
 3.6.6.9.1,3,x,,,,,E2,done,EVC_Position.Update_Geo (a reference no longer applicable is dropped); evc_test position_geo
-3.6.7.1,3,x,,,,,E2,partial,EVC_Odometry.Virtual_T service; the supervisions using it are E3 and E4
-3.6.7.1 a),3,x,,,,,E2,partial,"EVC_Odometry.Virtual_T; roll away, reverse movement and standstill supervision are E3"
-3.6.7.1 b),3,x,,,,,E2,partial,"EVC_Odometry.Virtual_T; Post Trip, override, SR distance are E4"
-3.6.7.1 c),3,x,,,,,E2,partial,"EVC_Odometry.Virtual_T; Post Trip, override, SR distance are E4"
-3.6.7.1 d),3,x,,,,,E2,partial,EVC_Odometry.Virtual_T; BTM alarm handling is E6
+3.6.7.1,3,x,,,,,E2,deferred,EVC_Odometry.Virtual_T: a) b) c) e) f) g) done (see their rows); d) the BTM alarm distance of 3.15.7.2 [E6 BTM alarm]
+3.6.7.1 a),3,x,,,,,E2,done,"EVC_Odometry.Virtual_T in EVC_Brake_Commands.Protect (roll away, unauthorised direction, standstill: D_NVROLL); evc_test SDM_Protections"
+3.6.7.1 b),3,x,,,,,E2,done,EVC_Odometry.Virtual_T: D_NVPOTRP in Post Trip (EVC_Procedures.Post_Trip_Step); evc_test_procedures Trip_EOA
+3.6.7.1 c),3,x,,,,,E2,done,EVC_Odometry.Virtual_T: the trip suppression distance of the override (EVC_Procedures.Override_Step); evc_test_procedures Scenario_Override
+3.6.7.1 d),3,x,,,,,E2,deferred,EVC_Odometry.Virtual_T exists; the BTM alarm handling of 3.15.7.2 and 5.22.5.1 a) [E6 BTM alarm]
 3.6.7.1 e),3,x,,,,,E2,done,"the odometer port reports the distance moved in No Power, EVC_Odometry applies the 2 m (Cold_Allowance_Cm); evc_test Scenario_Cold_Movement"
-3.6.7.1 f),3,x,,,,,E2,partial,"EVC_Odometry.Virtual_T; Post Trip, override, SR distance are E4"
-3.6.7.1 g),3,x,,,,,E2,partial,"EVC_Odometry.Virtual_T; Post Trip, override, SR distance are E4"
+3.6.7.1 f),3,x,,,,,E2,done,EVC_Odometry.Virtual_T: the former EOA/LOA as a zero distance in SB and PT without a valid position (EVC_Procedures.Override_Step); evc_test_procedures Scenario_Override
+3.6.7.1 g),3,x,,,,,E2,done,"EVC_Odometry.Virtual_T: the SR distance (EVC_Mission, EVC_Radio_Authority for message 2); evc_test E4_SR_Distance, Scenario_SR_Authorisation"
 3.6.7.2,3,x,,,,,E2,done,"EVC_Odometry.Start_Virtual, Away, Remaining_Estimated/Max_Safe/Min_Safe (proven order), Set_Distance; evc_test Scenario_Virtual"
 3.6.7.3,3,x,,,,,E2,done,"EVC_Odometry.Start_Virtual, Away, Remaining_Estimated/Max_Safe/Min_Safe (proven order), Set_Distance; evc_test Scenario_Virtual"
 3.6.7.3 a),3,x,,,,,E2,done,"EVC_Odometry.Start_Virtual, Away, Remaining_Estimated/Max_Safe/Min_Safe (proven order), Set_Distance; evc_test Scenario_Virtual"
@@ -268,9 +268,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.8.2,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.6.8.3,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.6.8.4,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
-3.6.8.5,3,x,,,,,E2,partial,"EVC_Odometry.Impaired, JRU event 7 (evc_test Scenario_Odometer_Accuracy); informing the driver is E4"
+3.6.8.5,3,x,,,,,E2,partial,"EVC_Odometry.Impaired, JRU event 7 (evc_test Scenario_Odometer_Accuracy); missing: the driver is not informed (the DMI has the system status text ""Odometer impaired"", the on-board never sends it) [B030]"
 3.6.8.6,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
-3.6.8.6.2,3,x,,,,,E2,partial,"EVC_Odometry.Impaired, JRU event 7 (evc_test Scenario_Odometer_Accuracy); informing the driver is E4"
+3.6.8.6.2,3,x,,,,,E2,partial,"EVC_Odometry.Impaired, JRU event 7 (evc_test Scenario_Odometer_Accuracy); missing: the driver is not informed (the DMI has the system status text ""Odometer impaired"", the on-board never sends it) [B030]"
 3.6.8.7,3,x,,,,,E2,done,"EVC_Odometry.Safety_Exceeded, latched, JRU event 7; System Failure by 4.6.3 [84] (evc_test E4_Odometer_Failure)"
 3.6.8.8,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.7.2.3,3,x,,,,,E3,done,EVC_Stored_Information.Take_Packet (EVC_Track_Description.Covered from the estimated front end to the SvL); evc_test Scenario_MA
@@ -844,7 +844,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.7.6,3,x,,,,,E6,todo,
 3.15.8.1,3,x,,,,,E2,done,"odometer port (cold, cold_distance), EVC_Odometry.Cold, JRU event 9; evc_test Scenario_Cold_Movement"
 3.15.8.1.1,3,x,,,,,E2,done,"odometer port (cold, cold_distance), EVC_Odometry.Cold, JRU event 9; evc_test Scenario_Cold_Movement"
-3.15.8.2,3,x,,,,,E2,partial,EVC_Odometry.Cold read at power-up (evc_test Scenario_Cold_Movement); updating the stored information (4.11) is E4
+3.15.8.2,3,x,,,,,E2,done,"EVC_Odometry.Cold read at power-up; EVC_Core.Power_Up and Revalidate_Kept validate the kept level and position without a cold movement, leave them invalid with one (4.11); evc_test Scenario_Cold_Movement"
 3.15.9.2,3,x,,,,,E6,todo,
 3.15.9.3,3,x,,,,,E6,todo,
 3.15.9.3 a),3,x,,,,,E6,todo,
