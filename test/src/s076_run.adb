@@ -1217,6 +1217,45 @@ package body S076_Run is
       end if;
    end Run_Timer;
 
+   --  "N seconds", "N second", "N sec", "N s" or "Ns" in a text (the
+   --  first one), -1 without
+   function Text_Seconds (T : String) return Integer is
+      I : Natural := T'First;
+   begin
+      while I <= T'Last loop
+         if T (I) in '0' .. '9'
+           and then (I = T'First or else T (I - 1) not in '0' .. '9')
+         then
+            declare
+               J : Natural := I;
+               N : Natural := 0;
+            begin
+               while J <= T'Last and then T (J) in '0' .. '9' loop
+                  if N < 100_000 then
+                     N := N * 10
+                       + (Character'Pos (T (J)) - Character'Pos ('0'));
+                  end if;
+                  J := J + 1;
+               end loop;
+               if J <= T'Last and then T (J) = ' ' then
+                  J := J + 1;
+               end if;
+               if J <= T'Last and then (T (J) = 's' or else T (J) = 'S')
+                 and then (J = T'Last
+                           or else T (J + 1) not in 'a' .. 'z' | 'A' .. 'Z'
+                           or else Starts (T (J .. T'Last), "sec"))
+               then
+                  return N;
+               end if;
+               I := J;
+            end;
+         else
+            I := I + 1;
+         end if;
+      end loop;
+      return -1;
+   end Text_Seconds;
+
    function Timer_Input (St : Step_T) return Judgement_T is
       Name : constant String := W (4);
       subtype Name_T is String (1 .. 14);
@@ -1238,6 +1277,17 @@ package body S076_Run is
             exit;
          end if;
       end loop;
+      --  A timer without a name whose comment gives its duration runs
+      --  that long (3080200_04 step 72: "The train stops before the EOA
+      --  and 255 seconds have passed since the MA request was sent")
+      if Name = "" and then Chosen = 0
+        and then Text_Seconds (Image (St.Comment)) >= 0
+      then
+         Run_Timer (Text_Seconds (Image (St.Comment)));
+         return Pass ("timer of"
+                      & Integer'Image (Text_Seconds (Image (St.Comment)))
+                      & " s elapsed (the comment's)");
+      end if;
       --  the radio timers whose value a message gave (T_NVCONTACT of
       --  packet 3, T_CYCRQST of packet 57, T_CYCLOC of packet 58, in s)
       --  are run as the others; 255 is "infinite" (7.5.1)
