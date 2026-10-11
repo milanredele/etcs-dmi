@@ -4045,7 +4045,9 @@ checks), the full proof 11071 checks, 0 unproved (margin 47726 steps),
 cross build and stack 27128 B (margin 5640), wasm and both smokes 0
 failures. SUBSET-076: 724 / 1551 / 915 before, 753 / 1522 / 915 after
 (6 of the improvements only appear with the branches combined), 0
-regressions, 0 untriaged. Matrix: 366 -> 363 clauses left in all phases.
+regressions, 0 untriaged. Matrix: 366 clauses left in all phases before
+and after (three rows done, two deferred rows of 4.8.2.1 c) and 4.8.4.2
+back to partial as their work started).
 The sibling repository: master 4f43136 (the import), 760 sequence files
 changed, every other file byte-identical.
 
