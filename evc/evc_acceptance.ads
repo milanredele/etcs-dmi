@@ -12,13 +12,17 @@
 --  each kind is accepted when both filters accept it in the Context of
 --  that moment. The exceptions of the tables:
 --    4.8.3 [1] "stored on-board if an order to switch to level 1 at a
---      further location has been received": the transition buffer of
---      4.8.5 is not kept; such information is accepted at once
---      (Context.L1_Announced). The modes of the levels where it applies
---      (0, NTC: UN, SN, SR; 2 is phase E5) do not use the information
---      of level 1 (4.5.2, EVC_Modes), and the transition to level 1
---      makes it used (4.6.3 [25]): a partial 4.8.5, its note in the
---      matrix.
+--      further location has been received" (e5/balise-buffer): Stored
+--      (Level_Stores) is the third verdict of the first filter, in
+--      levels 0, NTC and 2 with Context.L1_Announced, by the rows and
+--      columns that carry [1]. EVC_Stored_Information keeps the packets
+--      so judged in the transition buffer of 4.8.5 (its child
+--      Balise_Buffer) and judges them again at the transition to level
+--      1. Level_Accepts and Accepted still accept these cases: the
+--      units that take a [1] packet themselves and keep no buffer take
+--      it at once, as before (the linking, packet 5, in EVC_Position;
+--      the reversing packets 138 and 139 in EVC_Procedures; backlog
+--      B070); the stores ask Stored first.
 --    4.8.3 [2] (level 2 at a further location): RBC information, E5.
 --    4.8.3 [4] the SSP and gradient cover the MA: 3.7.2.3 in
 --      EVC_Stored_Information.
