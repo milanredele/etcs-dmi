@@ -1763,7 +1763,7 @@ expect efs: NOT Kernel.HandlingOfAcceptedAndStoredInformation.ShortenedMaReceive
 sequence MA update - Repositioning information
 case Update the length of the current section by means of repositioning information
 clause E5 done 3.8.5.2.4 ; efs 3.8.5.2.4
-clause E5 todo 3.8.5.2.2 ; efs 3.8.5.2.2
+clause E5 done 3.8.5.2.2 ; efs 3.8.5.2.2
 clause - absent 3.8.5.2 ; efs 3.8.5.2
 step Setup
 sub Initialize test environment
