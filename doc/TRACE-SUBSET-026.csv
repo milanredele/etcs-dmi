@@ -1284,7 +1284,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.19.1.4.2,4,x,,,,,E4,done,"EVC_LS_Display.Take_Order starts the delay timer; evc_test LS_Display"
 4.4.19.1.4.2 a),4,x,,,,,E4,done,"EVC_LS_Display: at the time stamp of the radio message (EVC_Radio_Info slot Start_Ms; message 24 with packet 180 routed by EVC_Radio_Authority); evc_test LS_Display"
 4.4.19.1.4.2 b),4,x,,,,,E4,done,"EVC_LS_Display: at the passage of the first balise of the group (Taken Start_Ms); evc_test LS_Display"
-4.4.19.1.4.2 c),4,x,,,,,E4,partial,"EVC_LS_Display: an order released from the level transition buffer starts its timer at its time stamp, not at the transition [B091]"
+4.4.19.1.4.2 c),4,x,,,,,E4,done,"EVC_Stored_Information.Take_Balise_Set: a toggle on order of packet 180 kept in the level transition buffer (EVC_Acceptance.Level_Stores, 4.8.3 [1]) starts its timer at the release; a toggle off order released is rejected (R, not R [1]); evc_test LS_Order_Buffered"
 4.4.19.1.4.3,4,x,,,,,E4,done,"EVC_LS_Display.Step: shown when the timer reaches the time-out (decision: reached counts); evc_test LS_Display"
 4.4.19.1.4.4,4,x,,,,,E4,done,"EVC_LS_Display.Take_Order deletes a pending order; evc_test LS_Display"
 4.4.19.1.4.5,4,x,,,,,E4,done,"EVC_LS_Display.Take_Order; evc_test LS_Display"

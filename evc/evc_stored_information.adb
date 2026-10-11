@@ -931,17 +931,22 @@ is
 
    --  e4/ls-display, 4.4.19.1.4.2 to 4.4.19.1.4.5: the LSSMA display
    --  toggle order of packet 180 to EVC_LS_Display, its delay timer
-   --  started at M.Start_Ms (a: the time stamp of the radio message, b:
-   --  the passage of the first balise of the group); 4.8.4: the toggle
+   --  started at Start_Ms (a: the time stamp of the radio message, b:
+   --  the passage of the first balise of the group, c: the level
+   --  transition when Released from the transition buffer, B091; a
+   --  toggle off order is R, not R [1], outside level 1 in 4.8.3: one
+   --  released is rejected, decision: the buffer keeps packet 180
+   --  whole, its qualifier read here); 4.8.4: the toggle
    --  off order in LS only, the toggle on order in the modes of its row
    --  (its exceptions [9] [10], the train inside the LS area of a mode
    --  profile of the same message, are not modelled: accepted);
    --  7.4.2.37.4: packet 181 stores the generic LS function marker
-   procedure Take_LS_Packet (K      : Order_Kind_T;
-                             R      : in out Reader_T;
-                             M      : Message_T;
-                             A      : EVC_Acceptance.Context_T;
-                             Now_Ms : Unsigned_64)
+   procedure Take_LS_Packet (K        : Order_Kind_T;
+                             R        : in out Reader_T;
+                             Start_Ms : Unsigned_64;
+                             Released : Boolean;
+                             A        : EVC_Acceptance.Context_T;
+                             Now_Ms   : Unsigned_64)
      with Global => (In_Out => (EVC_LS_Display.State, Events, Event_N)),
           Pre => K in K180 | K181
    is
@@ -958,7 +963,8 @@ is
       end if;
       if not EVC_Acceptance.Third_Filter (EVC_Acceptance.LSSMA_Toggle, A)
         or else (X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_Off
-                 and then EVC_Modes."/=" (A.Mode, EVC_Modes.M_LS))
+                 and then (Released
+                           or else EVC_Modes."/=" (A.Mode, EVC_Modes.M_LS)))
       then
          Record_Event (Info_Group, Change_Filtered, 180);
          return;
@@ -966,7 +972,7 @@ is
       EVC_LS_Display.Take_Order
         (On       => X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_On,
          Delay_S  => (if X.Has_T_LSSMA then Natural (X.T_LSSMA) else 0),
-         Start_Ms => M.Start_Ms,
+         Start_Ms => Start_Ms,
          Now_Ms   => Now_Ms);
    end Take_LS_Packet;
 
@@ -1010,7 +1016,7 @@ is
          when K131 =>
             Take_Transition_Packet (R);
          when K180 | K181 =>
-            Take_LS_Packet (K, R, M, A, Now_Ms);
+            Take_LS_Packet (K, R, M.Start_Ms, False, A, Now_Ms);
       end case;
    end Dispatch;
 
@@ -1199,7 +1205,13 @@ is
                                      (EVC_Acceptance.Signalling_Speed, A))
                then
                   Balise_Buffer.Open (S, P, R);
-                  Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx, Now_Ms);
+                  if K = K180 then
+                     --  4.4.19.1.4.2 c) (B091): the timer from the release
+                     Take_LS_Packet (K, R, Now_Ms, True, A, Now_Ms);
+                  else
+                     Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,
+                               Now_Ms);
+                  end if;
                elsif K /= K80 then
                   Record_Event (Info_Group, Change_Filtered, NID_Of (K));
                end if;
