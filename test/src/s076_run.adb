@@ -2151,11 +2151,27 @@ package body S076_Run is
       return True;
    end Window_Of;
 
-   function DMI_Window (St_W : State_Word_T; Name : String)
+   function DMI_Window (St : Step_T; St_W : State_Word_T; Name : String)
      return Judgement_T
    is
       Wid : Window_ID_T;
    begin
+      --  B005: the Main window expected as the first step of a joined
+      --  test case (row 1 after earlier steps), the train at standstill
+      --  (3110300_03 step 69, "case 5210200 1": "The Main window is
+      --  displayed", "the On-Board equipment waits for the driver
+      --  action", then a button of the Main window). Nothing opens the
+      --  Main window by itself there (DMI 10.x: the driver presses
+      --  "Main" in area F): the joint of the two cases leaves out the
+      --  driver's action, which the runner performs
+      if Same (Name, "Main") and then St_W = Displayed
+        and then St.Row = 1 and then St.Number > 1 and then B.Speed = 0
+        and then not Top_Is (W_Main)
+      then
+         if Open_Window (W_Main) then
+            B.Cycle;
+         end if;
+      end if;
       if Same (Name, "Default") then
          return Shown (St_W, not DMI_Windows.Is_Open,
                        not DMI_Windows.Is_Open, "default window (top "
@@ -2343,7 +2359,7 @@ package body S076_Run is
                           "speed and distance information on the DMI");
          end;
       elsif Same (Kind, "window") then
-         return DMI_Window (St_W, Name);
+         return DMI_Window (St, St_W, Name);
       elsif Same (Kind, "button") then
          return DMI_Button (St_W, Name);
       elsif Same (Kind, "isolation-indicated") then

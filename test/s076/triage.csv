@@ -9,7 +9,7 @@
 # the track), dmi (our DMI).
 #
 # on-board gaps still open
-S1f552964,model,"the Main window expected when the train has stopped at the start of a new test case (e.g. 3110300_03 step 69 'case 5210200', 3170200_11 step 63): the sequence has no driver action opening it (the step is the joint of two test cases); the on-board opens no window, the DMI shows its default one (analysed e5/session-4; not the wait of A31)"
+S1f552964,model,"e5/runner-4 (B005), decision (a): the Main window expected as the first row of a joined test case at standstill (3110300_03 step 69 'case 5210200 1', 3170200_11 step 63, 4080300_18 step 68: 'waits for the driver action', the next step a button of the Main window) is the driver's action the joint leaves out; the runner opens the Main window (area F) and judges; 22 of 25 move on to the supervised manoeuvre (blocked E5-radio). Left (4080445_05 step 67, 4100103_48 step 68, 5210200_03 step 69): the train still runs at the explicit speed of the case before (33 km/h, 37 to 40 m past the case's place), no standstill, the rule does not apply"
 S7e250917,E5,"session: message 150 with Q_DESK (8.6.10 of 4.0.0 has it; 7.5.1.102.2: 1 a desk is open): fixed in e5/session-4 (EVC_Sessions.Mission.Send_EoM, the cab status)"
 S65c3faf6,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
 Saa959bed,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
