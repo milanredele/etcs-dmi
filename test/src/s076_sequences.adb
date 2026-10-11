@@ -2,6 +2,7 @@
 --  A SUBSET-076 test sequence in memory, body.
 
 pragma Ada_2012;
+with Ada.Text_IO;
 with Scn_Reader; use Scn_Reader;
 
 package body S076_Sequences is
@@ -138,6 +139,73 @@ package body S076_Sequences is
       return V;
    end Var_Value;
 
+   --  A "limit" name or a "curve-columns" header without its '-'
+   --  ("EBI-(m)" of the Gamma sheet and "EBI(m)" of the Lambda sheet)
+   function Squeeze (S : String) return String is
+      R : String (1 .. S'Length);
+      N : Natural := 0;
+   begin
+      for C of S loop
+         if C /= '-' then
+            N := N + 1;
+            R (N) := C;
+         end if;
+      end loop;
+      return R (1 .. N);
+   end Squeeze;
+
+   function Limit_Key (N : Limit_Name_T) return String is
+     (case N is
+         when Initial_Speed => "Initialspeed",
+         when Perturbation  => "Perturbation",
+         when Indication    => "Indication",
+         when Permitted     => "Permitted",
+         when Warning       => "Warning",
+         when SBI           => "SBI",
+         when EBI           => "EBI",
+         when Start_RSM     => "StartRSM",
+         when Release_Speed => "Releasespeed");
+
+   function Column_Key (C : Curve_Column_T) return String is
+     (case C is
+         when EBD         => "EBD(m)",
+         when SBD         => "SBD(m)",
+         when EBI         => "EBI(m)",
+         when SBI1        => "SBI1(m)",
+         when SBI2        => "SBI2(m)",
+         when SBI         => "SBI(m)",
+         when Warning     => "Warning(m)",
+         when Permitted   => "Permitted(m)",
+         when Indication  => "Indication(m)",
+         when GUI_EOA     => "GUIEOA(m)",
+         when EBI_Release => "EBIforreleasespeed(m)");
+
+   --  The column of a "curve-columns" header, -1 when not taken
+   function Column_Of (Header : String) return Integer is
+      H : constant String := Squeeze (Header);
+   begin
+      for C in Curve_Column_T loop
+         if H = Column_Key (C) then
+            return Curve_Column_T'Pos (C);
+         end if;
+      end loop;
+      return -1;
+   end Column_Of;
+
+   --  A value of a "limit" or "curve" line; "-" (none) is No_Value
+   function Curve_Value (W : String) return Long_Float is
+   begin
+      if W = "-" then
+         return No_Value;
+      end if;
+      Scn_Reader.Valid := True;
+      declare
+         V : constant Real := To_Real (W);
+      begin
+         return (if Scn_Reader.Valid then Long_Float (V) else No_Value);
+      end;
+   end Curve_Value;
+
    ---------------------------------------------------------------------
 
    Cur : access Sequence_T := Loaded'Access;
@@ -149,6 +217,61 @@ package body S076_Sequences is
    Var_Bit    : Natural := 0;
    --  the rows of the labels of the workbook's train
    Length_Row, Brake_Row : Text_T;
+   --  the workbook of the lines read, its open "curves" block (0 none)
+   --  and the column of each word of its "curve" lines (-1 not taken)
+   Workbook_Name : Text_T;
+   Curve_Set     : Natural := 0;
+   Max_Curve_Words : constant := 32;
+   Curve_Map : array (1 .. Max_Curve_Words) of Integer := (others => -1);
+
+   --  A "curves", "limit", "curve-columns" or "curve" line of a workbook
+   procedure On_Curve_Line (S : in out Sequence_T; L : Line_T) is
+      K : constant String := Word (L, 1);
+   begin
+      if K = "curves" then
+         Curve_Set := 0;
+         if S.Curve_Count < Max_Curve_Sets then
+            S.Curve_Count := S.Curve_Count + 1;
+            Curve_Set := S.Curve_Count;
+            S.Curves (Curve_Set).Workbook := Workbook_Name;
+            S.Curves (Curve_Set).Sheet := To_Text (Rest (L, 2));
+            S.Curves (Curve_Set).Limits := (others => No_Value);
+            S.Curves (Curve_Set).Row_Count := 0;
+            Curve_Map := (others => -1);
+         end if;
+      elsif Curve_Set = 0 or else L.Count < 2 then
+         null;
+      elsif K = "limit" and then L.Count >= 3 then
+         for N in Limit_Name_T loop
+            if Squeeze (Word (L, 2)) = Limit_Key (N) then
+               S.Curves (Curve_Set).Limits (N) := Curve_Value (Word (L, 3));
+            end if;
+         end loop;
+      elsif K = "curve-columns" then
+         --  word 2 names the speed, the distances from word 3 on
+         for I in 3 .. Integer'Min (L.Count, Max_Curve_Words) loop
+            Curve_Map (I) := Column_Of (Word (L, I));
+         end loop;
+      elsif K = "curve" then
+         declare
+            C : Curve_Set_T renames S.Curves (Curve_Set);
+            V : constant Long_Float := Curve_Value (Word (L, 2));
+         begin
+            if V /= No_Value and then C.Row_Count < Max_Curve_Rows then
+               C.Row_Count := C.Row_Count + 1;
+               C.Rows (C.Row_Count) :=
+                 (Speed_Kmh => V, D => (others => No_Value));
+               for I in 3 .. Integer'Min (L.Count, Max_Curve_Words) loop
+                  if Curve_Map (I) >= 0 then
+                     C.Rows (C.Row_Count).D
+                       (Curve_Column_T'Val (Curve_Map (I))) :=
+                       Curve_Value (Word (L, I));
+                  end if;
+               end loop;
+            end if;
+         end;
+      end if;
+   end On_Curve_Line;
 
    procedure On_Line (L : Line_T; Line_No : Positive) is
       S : Sequence_T renames Cur.all;
@@ -381,6 +504,12 @@ package body S076_Sequences is
          end;
       elsif K = "workbook" then
          S.Workbook := True;
+         Workbook_Name := To_Text (Rest (L, 2));
+         Curve_Set := 0;
+      elsif K = "curves" or else K = "limit" or else K = "curve-columns"
+        or else K = "curve"
+      then
+         On_Curve_Line (S, L);
       elsif K = "cell" and then L.Count >= 4 and then Word (L, 2) = "Train"
         and then Word (L, 3)'Length > 8
         and then Word (L, 3) (Word (L, 3)'First .. Word (L, 3)'First + 6)
@@ -459,6 +588,9 @@ package body S076_Sequences is
       Loaded.WB_Length := 0;
       Loaded.WB_Lambda := 0;
       Loaded.WB_Brake_Position := 0;
+      Loaded.Curve_Count := 0;
+      Workbook_Name := (others => <>);
+      Curve_Set := 0;
       Length_Row := (others => <>);
       Brake_Row := (others => <>);
       Cur := Loaded'Access;
@@ -501,5 +633,78 @@ package body S076_Sequences is
       end loop;
       return S.Chart (S.Chart_Count).V_Kmh;
    end Chart_Speed;
+
+   function Curve_Distance
+     (C : Curve_Set_T; Column : Curve_Column_T; V_Kmh : Long_Float)
+      return Long_Float
+   is
+   begin
+      for I in 1 .. C.Row_Count loop
+         declare
+            A : Curve_Row_T renames C.Rows (I);
+         begin
+            if V_Kmh = A.Speed_Kmh then
+               return A.D (Column);
+            elsif I < C.Row_Count
+              and then V_Kmh > A.Speed_Kmh
+              and then V_Kmh < C.Rows (I + 1).Speed_Kmh
+            then
+               declare
+                  B : Curve_Row_T renames C.Rows (I + 1);
+               begin
+                  if A.D (Column) = No_Value or else B.D (Column) = No_Value
+                  then
+                     return No_Value;
+                  end if;
+                  return A.D (Column)
+                    + (B.D (Column) - A.D (Column))
+                      * (V_Kmh - A.Speed_Kmh) / (B.Speed_Kmh - A.Speed_Kmh);
+               end;
+            end if;
+         end;
+      end loop;
+      return No_Value;
+   end Curve_Distance;
+
+   procedure Put_Curves (S : Sequence_T) is
+      function Img (X : Long_Float) return String is
+         Cm : constant Long_Long_Integer :=
+           Long_Long_Integer (Long_Float'Rounding (abs X * 100.0));
+         Frac : constant String :=
+           Long_Long_Integer'Image (100 + Cm mod 100);
+         Whole : constant String := Long_Long_Integer'Image (Cm / 100);
+      begin
+         if X = No_Value then
+            return "-";
+         end if;
+         return (if X < 0.0 and then Cm > 0 then "-" else "")
+           & Whole (Whole'First + 1 .. Whole'Last) & "."
+           & Frac (Frac'Last - 1 .. Frac'Last);
+      end Img;
+   begin
+      for I in 1 .. S.Curve_Count loop
+         declare
+            C : Curve_Set_T renames S.Curves (I);
+            V : constant Long_Float := C.Limits (Initial_Speed);
+         begin
+            Ada.Text_IO.Put_Line
+              ("curves" & Natural'Image (I) & ": " & Image (C.Workbook)
+               & ", " & Image (C.Sheet) & "," & Natural'Image (C.Row_Count)
+               & " rows");
+            Ada.Text_IO.Put ("  limits:");
+            for N in Limit_Name_T loop
+               Ada.Text_IO.Put (" " & Limit_Name_T'Image (N) & "="
+                                & Img (C.Limits (N)));
+            end loop;
+            Ada.Text_IO.New_Line;
+            Ada.Text_IO.Put ("  at " & Img (V) & " km/h:");
+            for Col in Curve_Column_T loop
+               Ada.Text_IO.Put (" " & Curve_Column_T'Image (Col) & "="
+                                & Img (Curve_Distance (C, Col, V)));
+            end loop;
+            Ada.Text_IO.New_Line;
+         end;
+      end loop;
+   end Put_Curves;
 
 end S076_Sequences;

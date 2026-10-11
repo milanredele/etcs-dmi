@@ -143,6 +143,40 @@ package S076_Sequences is
    end record;
    type Points_T is array (1 .. Max_Points) of Point_T;
 
+   --  The braking curve results of the ERA braking curves tool filled by
+   --  the test authors (a workbook's "curves <sheet>" block: "limit",
+   --  "curve-columns" and "curve" lines, README of the sequences, "The
+   --  .scn format"). Limits: the tool's table 3, the locations of the
+   --  supervision limits at the initial speed, in metres counted from
+   --  the target (the speeds in km/h). Curves: per sampled speed (km/h),
+   --  the distance of each curve from the target, m; the rows between
+   --  two sampled ones are linear (Curve_Distance). No_Value where the
+   --  sheet has none. Names and columns not listed here are skipped.
+   Max_Curve_Sets : constant := 2;     -- the "a" and "b" workbooks
+   Max_Curve_Rows : constant := 400;
+   No_Value       : constant Long_Float := -1.0E12;
+   type Limit_Name_T is
+     (Initial_Speed, Perturbation, Indication, Permitted, Warning, SBI,
+      EBI, Start_RSM, Release_Speed);
+   type Curve_Column_T is
+     (EBD, SBD, EBI, SBI1, SBI2, SBI, Warning, Permitted, Indication,
+      GUI_EOA, EBI_Release);
+   type Limits_T is array (Limit_Name_T) of Long_Float;
+   type Distances_T is array (Curve_Column_T) of Long_Float;
+   type Curve_Row_T is record
+      Speed_Kmh : Long_Float := 0.0;
+      D         : Distances_T := (others => No_Value);
+   end record;
+   type Curve_Rows_T is array (1 .. Max_Curve_Rows) of Curve_Row_T;
+   type Curve_Set_T is record
+      Workbook  : Text_T;          -- the .xlsm file name
+      Sheet     : Text_T;          -- "Curves Gamma train", ...
+      Limits    : Limits_T := (others => No_Value);
+      Rows      : Curve_Rows_T;
+      Row_Count : Natural := 0;
+   end record;
+   type Curve_Sets_T is array (1 .. Max_Curve_Sets) of Curve_Set_T;
+
    type Sequence_T is record
       Name      : Text_T;
       SV        : Natural := 0;     -- 21, 22, 30
@@ -169,6 +203,9 @@ package S076_Sequences is
       --  its brake position (Train (main), "Current brake position:"):
       --  0 not given, 1 passenger in P, 2 freight in P, 3 freight in G
       WB_Brake_Position : Natural := 0;
+      --  its braking curve results, in the order of the workbooks
+      Curves      : Curve_Sets_T;
+      Curve_Count : Natural := 0;
    end record;
 
    --  The sequence read last (Read): too big for a stack, one at a time
@@ -183,5 +220,17 @@ package S076_Sequences is
 
    --  The speed of the chart at X_M metres, km/h; -1.0 without a chart
    function Chart_Speed (S : Sequence_T; X_M : Long_Float) return Long_Float;
+
+   --  The distance from the target of Column of C at V_Kmh, m, linear
+   --  between the two sampled rows around it; No_Value outside the rows
+   --  or where either row has no value
+   function Curve_Distance
+     (C : Curve_Set_T; Column : Curve_Column_T; V_Kmh : Long_Float)
+      return Long_Float;
+
+   --  Print the braking curve results of S (VERBOSE=1 of one sequence):
+   --  per set its workbook, sheet, rows, limits, and the curves at its
+   --  initial speed
+   procedure Put_Curves (S : Sequence_T);
 
 end S076_Sequences;

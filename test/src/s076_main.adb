@@ -871,6 +871,9 @@ begin
             return;
          end if;
          Read (Path, Ok);
+         if Verbose then
+            Put_Curves (Loaded);
+         end if;
          Run_Loaded (Verbose);
          Put_Line (Image (Loaded.Name) & ": "
                    & Outcome_Word (Outcome)
