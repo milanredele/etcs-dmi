@@ -3677,3 +3677,44 @@ telegrams per group) in a buffer of three sets owned by
 `Level_Accepts` returning a third verdict "stored" for [1]. B060: the
 kept packet 79 is not deleted when the session that gave it ends
 (4.8.5.4 c).
+
+### E5 integration after the thirteenth round (2026-10-11)
+
+Merged: e5/bookkeeping (the 82 rows of E2 to E4 left open re-read: 21
+done, 33 partial and 20 todo with a backlog id each, 7 deferred to E6 /
+E7, 1 n/a; E2 partial 30 -> 10, E3 17 -> 11; nine gaps as backlog items
+B030 to B038), e5/jru-radio (JRU record 9 for every radio message the
+port delivers, before the codec, 3.16.3.1.1.2: a refused message is
+received too and then gets its JRU 13; the runner judges a record 9 the
+sequence lists before its message after that input; S63b7a729 35 -> 9
+sequences, the rest s076 extractor and B050) and e5/radio-geo-buffer
+(packet 79 by radio taken by `EVC_Position` through `EVC_Radio_Info`,
+3.6.6.4.1, judged by 4.8.3 with the kept packet of 4.8.5 while level 2
+is announced and by the mode column of 4.8.4.2; B001 closed; B002 not
+started: its premise was wrong, the balise footnote [2] exists only in
+the NTC column, the real case is [1], level 1 information read with
+level 1 announced, shape proposed in the subsection).
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11686
+checks), the full proof 10884 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27120 B (margin 5648), wasm and both smokes 0
+failures. SUBSET-076: 706 / 1578 / 906 before, 706 / 1575 / 909 after,
+0 regressions, 0 untriaged. Matrix: 413 -> 385 clauses left in all
+phases, 218 -> 190 in E1 to E5 (the bookkeeping, mostly).
+
+Measurements (requests, of them without a tool call, duration, final
+context, cost): bookkeeping 134 / 51 / 10 min / 120k / 6.6; jru-radio
+186 / 62 / 15 min / 139k / 9.9; radio-geo-buffer 186 / 65 / 21 min /
+172k / 12.3. A third of every agent's turns carries no tool call
+(B021).
+
+Lessons: two of the round's premises were wrong again, both from
+reading too little before writing (the JRU record was already written
+at reception, only for accepted messages; footnote [2] of 4.8.3 does
+not apply to the balise rows outside NTC): a brief's premise about
+existing code is to be checked with `outline.py` on the subprogram,
+not inferred from a trace. The bookkeeping of a closed phase is cheap
+(one agent, 10 minutes) and should follow every phase closure.
+
+Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`);
+the "Open" lists of the subsections above are superseded by it.
