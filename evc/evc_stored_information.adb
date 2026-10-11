@@ -1168,6 +1168,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count),
                      Input  => (EVC_Train_Data.State, Balise_Buffer.State)),
           Pre => S <= Balise_Buffer.Count
@@ -2279,6 +2280,7 @@ is
                         EVC_Track_Conditions.State,
                         EVC_National_Values.State,
                         EVC_Levels.State, EVC_Sessions.State,
+                        EVC_LS_Display.State,
                         Events, Event_N, Msg_Count, Balise_Buffer.State),
              Output => (MA_Board, Profile_Overlap, Covered_Flag),
              Input  => (EVC_Origins.State, EVC_Position.State,

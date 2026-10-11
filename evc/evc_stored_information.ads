@@ -413,7 +413,8 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Levels.State, EVC_Sessions.State),
+                                EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State),
                      Input  => (EVC_Origins.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State)),
           Post => Balise_Buffered = 0;
