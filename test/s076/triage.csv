@@ -46,7 +46,8 @@ S6b9f37cf,onboard,4.4.19.1.4: the LSSMA display is not implemented (matrix: todo
 S2f278aca,onboard,4.8.5: an MA in the same message as a level order at D_LEVELTR 0 is filtered in the old level and the switch to level 1 trips ([39]); an MA of the RBC kept in the transition buffer (4.8.3 [2]) is released one cycle after the transition to level 2 and after the mode machine of that cycle (4.8.5.5 'at the same time' left by e5/authority-4)
 Sa9693d77,onboard,4.8.5: no transition buffer (see S2f278aca)
 Sdf2f3388,onboard,4.8.5: no transition buffer (see S2f278aca)
-S1531c721,E5,3.8.5.2.2: the repositioning information (packet 16) does not update the MA section (matrix: E5 todo); the train trips at the old EOA
+S1531c721,E7,"multi-cause by family (e5/authority-5): 3080500_03 step 50: not packet 16 but in-fill by balise: BG3d carries packet 136 (in-fill location reference for BG4d) with the MA, gradient, SSP and linking of BG4d, the on-board does not take in-fill (3.8.5.1 b, 3.9: E7) and trips at the MA of its own reading; 3040400_10, 4080432_01 (trip at 864 / 762 m, ma0 after BG2d / BG1d at 150 m), 5160000_01 (LX, EB reason 128, the MA present), 9990500_09 (L1 to L2 at 1250 m, old EOA 982 m passed), 3040400_08, 6060504_07: not traced yet (B080)"
+S256f4faf,onboard,"3080200_08 step 76 (SV21, SV22, SV30; e5/authority-5): the reason 'track ahead free up to the level 2 transition location' (Q_MARQSTREASON 10000 with packet 9, 3.8.2.4) in L1 SR after BG48d announces level 2: not implemented by the request of EVC_Radio_Authority (B081); the perturbation families 3080200_04/_05, 3131100 fixed (EVC_SDM.Perturbation_Of, T_MAR = 0 s)"
 S1621d3a3,onboard,JRU 52 (odometer accuracy) expected at the first interval after SH/UN/...: the accuracy monitoring of 3.6.8 is not restarted on leaving those modes
 S56315725,onboard,3.15.4.8: "RV distance exceeded" not shown at the reversing distance
 S27b17752,onboard,3.6.8.5: "Odometer impaired" not shown
