@@ -3860,3 +3860,37 @@ of the touched units before the chain.
 
 Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`,
 37 open after this round).
+
+### Runner, fourth round (e5/runner-4, 2026-10-11)
+
+Three rules in `S076_Run`, no change in `evc/`, `dmi/` or
+`S076_Bench`:
+
+- The Main window expected as the first row of a joined test case,
+  at standstill, is opened by the runner (area F, `Open_Window`): the
+  driver's action the joint of two cases leaves out (B005, decision a;
+  3110300_03 step 69 "case 5210200 1", "waits for the driver action",
+  then a button of the Main window). 22 of 25 move on to the supervised
+  manoeuvre (blocked E5-radio); 3 (4080445_05, 4100103_48, 5210200_03)
+  run on at the speed of the case before, the rule does not apply.
+- A reach-point at the place of the balise group input before it keeps
+  the group's radio messages when the next step expects one
+  (`Reach_Point_At_Group`, B003; 5100300_09 step 61, the 136 of the
+  L1 -> L0 change at BG2d). An absence after such a reach-point keeps
+  its own window (4050200_04 step 88, a regression of the wider form).
+- A timer input without a name runs the duration its comment gives,
+  "N seconds" / "N s" (`Text_Seconds`, B110; 3080200_04 step 72, "255
+  seconds have passed since the MA request"; 84 of 147 in sv30).
+
+Decisions without code: B004 (Sd577e7be) is `s076`: the sequence's
+packet 80 (message 3, LRBG BG2d at 400 m, D_MAMODE 500, L_MAMODE 790)
+ends the OS area at 1690 m, the joined case's 1190 m is another
+geography. B006: the reach-point drive of 3150100_01 already follows
+the sequence's chart (4.5 to 14.7 km/h between 800 and 1000 m); step 94
+passes on master, the three versions stop at step 102.
+
+SUBSET-076: 724 / 1551 / 915 before, 741 passed, 1534 failed, 915
+blocked after, 0 regressions, baseline re-recorded; new signature
+Sded37509 (4080100_04 step 124, the LSSMA removed after BG3d) triaged
+`onboard` for the LS display. Not done: item 6 (the `~JRU supervision`
+windows).
