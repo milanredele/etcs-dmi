@@ -1217,6 +1217,45 @@ package body S076_Run is
       end if;
    end Run_Timer;
 
+   --  "N seconds", "N second", "N sec", "N s" or "Ns" in a text (the
+   --  first one), -1 without
+   function Text_Seconds (T : String) return Integer is
+      I : Natural := T'First;
+   begin
+      while I <= T'Last loop
+         if T (I) in '0' .. '9'
+           and then (I = T'First or else T (I - 1) not in '0' .. '9')
+         then
+            declare
+               J : Natural := I;
+               N : Natural := 0;
+            begin
+               while J <= T'Last and then T (J) in '0' .. '9' loop
+                  if N < 100_000 then
+                     N := N * 10
+                       + (Character'Pos (T (J)) - Character'Pos ('0'));
+                  end if;
+                  J := J + 1;
+               end loop;
+               if J <= T'Last and then T (J) = ' ' then
+                  J := J + 1;
+               end if;
+               if J <= T'Last and then (T (J) = 's' or else T (J) = 'S')
+                 and then (J = T'Last
+                           or else T (J + 1) not in 'a' .. 'z' | 'A' .. 'Z'
+                           or else Starts (T (J .. T'Last), "sec"))
+               then
+                  return N;
+               end if;
+               I := J;
+            end;
+         else
+            I := I + 1;
+         end if;
+      end loop;
+      return -1;
+   end Text_Seconds;
+
    function Timer_Input (St : Step_T) return Judgement_T is
       Name : constant String := W (4);
       subtype Name_T is String (1 .. 14);
@@ -1238,6 +1277,17 @@ package body S076_Run is
             exit;
          end if;
       end loop;
+      --  A timer without a name whose comment gives its duration runs
+      --  that long (3080200_04 step 72: "The train stops before the EOA
+      --  and 255 seconds have passed since the MA request was sent")
+      if Name = "" and then Chosen = 0
+        and then Text_Seconds (Image (St.Comment)) >= 0
+      then
+         Run_Timer (Text_Seconds (Image (St.Comment)));
+         return Pass ("timer of"
+                      & Integer'Image (Text_Seconds (Image (St.Comment)))
+                      & " s elapsed (the comment's)");
+      end if;
       --  the radio timers whose value a message gave (T_NVCONTACT of
       --  packet 3, T_CYCRQST of packet 57, T_CYCLOC of packet 58, in s)
       --  are run as the others; 255 is "infinite" (7.5.1)
@@ -2151,11 +2201,27 @@ package body S076_Run is
       return True;
    end Window_Of;
 
-   function DMI_Window (St_W : State_Word_T; Name : String)
+   function DMI_Window (St : Step_T; St_W : State_Word_T; Name : String)
      return Judgement_T
    is
       Wid : Window_ID_T;
    begin
+      --  B005: the Main window expected as the first step of a joined
+      --  test case (row 1 after earlier steps), the train at standstill
+      --  (3110300_03 step 69, "case 5210200 1": "The Main window is
+      --  displayed", "the On-Board equipment waits for the driver
+      --  action", then a button of the Main window). Nothing opens the
+      --  Main window by itself there (DMI 10.x: the driver presses
+      --  "Main" in area F): the joint of the two cases leaves out the
+      --  driver's action, which the runner performs
+      if Same (Name, "Main") and then St_W = Displayed
+        and then St.Row = 1 and then St.Number > 1 and then B.Speed = 0
+        and then not Top_Is (W_Main)
+      then
+         if Open_Window (W_Main) then
+            B.Cycle;
+         end if;
+      end if;
       if Same (Name, "Default") then
          return Shown (St_W, not DMI_Windows.Is_Open,
                        not DMI_Windows.Is_Open, "default window (top "
@@ -2343,7 +2409,7 @@ package body S076_Run is
                           "speed and distance information on the DMI");
          end;
       elsif Same (Kind, "window") then
-         return DMI_Window (St_W, Name);
+         return DMI_Window (St, St_W, Name);
       elsif Same (Kind, "button") then
          return DMI_Button (St_W, Name);
       elsif Same (Kind, "isolation-indicated") then
@@ -3242,6 +3308,35 @@ package body S076_Run is
       return False;
    end Ack_After_Group;
 
+   --  Step I is a reach-point at the nominal place of the balise group
+   --  input right before it (the steps between are expectations only):
+   --  the radio messages sent at the group stay listed. 5100300_09: BG2d
+   --  at 850 m orders level 0 (step 56), the on-board reports it there
+   --  (136, 3.6.5.1.4 g); the sequence lists that 136 at step 61, after
+   --  the min safe rear end reach-point of step 60 at the same 850 m
+   --  (B003). Only when the step after it expects a radio message: an
+   --  absence after the reach-point judges the reach-point's own window
+   --  (4050200_04 step 88: no 136 after the reach-point at 650 m, the
+   --  place of BG3d, step 82)
+   function Reach_Point_At_Group (I : Positive) return Boolean is
+   begin
+      if not Starts (Image (Seq.Steps (I).Line), "input ODO reach-point ")
+        or else I = Seq.Step_Count
+        or else not Starts (Image (Seq.Steps (I + 1).Line),
+                            "expect RTM message ")
+      then
+         return False;
+      end if;
+      for K in reverse 1 .. I - 1 loop
+         if Seq.Steps (K).IO = Input then
+            return Starts (Image (Seq.Steps (K).Line),
+                           "input BTM balise-group ")
+              and then Seq.Steps (K).Dist_Cm = Seq.Steps (I).Dist_Cm;
+         end if;
+      end loop;
+      return False;
+   end Reach_Point_At_Group;
+
    --  A step out of the scope of this phase: level 2 / 3, NTC
    function Scope (St : Step_T) return Reason_T is
       Lb : constant Level_Kind_T := Level_Of (Trim (St.Lvl_Before));
@@ -3403,7 +3498,8 @@ package body S076_Run is
                         and then I > 1
                         and then Seq.Steps (I - 1).Dist_Cm = St.Dist_Cm)
                        or else Redelivered (I)
-                       or else Ack_After_Group (I));
+                       or else Ack_After_Group (I)
+                       or else Reach_Point_At_Group (I));
                   Wait_Used := 0;
                end if;
                --  an input placed ahead of a train that goes backwards
