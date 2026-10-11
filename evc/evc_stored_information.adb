@@ -821,7 +821,8 @@ is
                              T           : Origin_Table_T;
                              Train       : Train_Frame_T;
                              A           : EVC_Acceptance.Context_T;
-                             MA_Accepted : in out Boolean)
+                             MA_Accepted : in out Boolean;
+                             From_Balise : Boolean)
      with No_Inline,
           Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
@@ -886,7 +887,8 @@ is
                   --  profile (Order_Kind_T) and stores it again, so the
                   --  marker goes only when the group has none. Decision:
                   --  "received" is the profile taken with its MA (3.7.1.1)
-                  if Has_LS_Section (X) then
+                  --  (balise group messages only)
+                  if From_Balise and then Has_LS_Section (X) then
                      EVC_LS_Display.Delete_Marker;
                   end if;
                end if;
@@ -1003,7 +1005,8 @@ is
                        A           : EVC_Acceptance.Context_T;
                        MA_Accepted : in out Boolean;
                        Ctx         : Mode_Context_T;
-                       Now_Ms      : Unsigned_64)
+                       Now_Ms      : Unsigned_64;
+                       From_Balise : Boolean := True)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
@@ -1026,7 +1029,8 @@ is
          when K68 | K39 | K67 | K69 | K40 =>
             Take_Condition_Packet (K, R, M, T);
          when K12 | K15 | K80 =>
-            Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted);
+            Take_MA_Packet (K, R, M, T, Train, A, MA_Accepted,
+                            From_Balise);
          when K42 =>
             Take_Session_Packet (R);
          when K45 =>
@@ -1083,6 +1087,13 @@ is
          EVC_Position.Open_Taken_Packet (J, P, R);
          Balise_Buffer.Add_Packet (Kind_Of (K), R);
          return;
+      end if;
+      --  4.4.19.1.4.8 (B090): the marker of a group whose mode profile
+      --  went to the transition buffer goes there too (and is taken now,
+      --  4.8.3 "A"), so that the profile released does not delete it
+      if K = K181 and then Set_Open then
+         EVC_Position.Open_Taken_Packet (J, P, R);
+         Balise_Buffer.Add_Packet (Kind_Of (K), R);
       end if;
       --  4.8: the first and the third filter (the signalling related
       --  speed restriction of a packet 12 apart from its MA; the mode
@@ -1385,7 +1396,7 @@ is
                   elsif K /= K12 then
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,
-                               Now_Ms);
+                               Now_Ms, From_Balise => False);
                   end if;
                end if;
             end;

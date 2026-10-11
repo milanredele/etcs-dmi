@@ -3860,3 +3860,40 @@ of the touched units before the chain.
 
 Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`,
 37 open after this round).
+
+### Limited Supervision display, second round (e4/ls-display-2, 2026-10-11)
+
+**Implemented.** B091, 4.4.19.1.4.2 c): `EVC_Acceptance.Level_Stores`
+keeps packet 180 in levels 0, NTC and 2 with level 1 announced (4.8.3
+[1]); `Take_Balise_Set` takes it through `Take_LS_Packet` with the
+release time as the start of its timer. B090, 4.4.19.1.4.8:
+`Take_MA_Packet` deletes the generic LS function marker when the mode
+profile taken has an LS section; a packet 181 of the same group is taken
+after the profile and stores it again. B092, 4.8.2.1 c) exception 2:
+the authority buffer marks a message held from the Accepting RBC
+(`Store_Message (Accepting)`), `EVC_Core` passes
+`Released_Accepting` to `Take_Message`, the radio slot carries
+`From_Accepting` and `Take_Radio` rejects its packet 180. Scenarios:
+evc_test `LS_Order_Buffered`, `LS_Marker_Deleted`, `Handover_LSSMA`.
+
+**Decisions.** The buffer keeps packet 180 whole; a released toggle off
+order (R, not R [1], outside level 1) is rejected at the release. The
+marker is deleted by a profile taken with its MA ("received", 3.7.1.1).
+Only a balise group message deletes the marker (a radio mode profile
+does not: the first run regressed 4080300_10 on it); a packet 181 of a
+group whose profile goes to the transition buffer goes there too, so the
+released profile does not delete it (4080300_08, which counts T_LSSMA
+from the transition). A.3.4: the toggle on order is deleted only in situation k (the desk
+closed in the start of mission, SB), where 4.10 has deleted it already:
+nothing to add. The radio side of 4.4.19.1.4.2 c) does not arise:
+message 24 is not kept by the radio transition buffer (B120).
+
+**Left.** B093 (4.8.4.2 [9] [10]: the condition on the LS area of a mode
+profile of the same message), B120, B121 (messages 9 and 18 of the
+Accepting RBC). Item 5 of the brief not started: S60f37765, S9f4f23d2,
+S18160388 and the families 4080300_10, 4080300_17, 4100103_22,
+9990400_47 not traced. 4080100_04 stops at step 122 (136 at the rear
+end, S13c9beb3, model) before step 124 of B092.
+SUBSET-076: 724 / 1551 / 915 before, 733 / 1542 / 915 after, 0
+regressions, 12 improvements; Sded37509 (4080100_04 step 124, found by
+e5/runner-4) triaged as fixed by B092.

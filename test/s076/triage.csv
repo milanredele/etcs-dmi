@@ -225,3 +225,4 @@ S60f37765,onboard,"e4/ls-display: the LSSMA shown where the sequence expects it 
 Sb3cbbec4,onboard,"e4/ls-display: a toggle off order from the Accepting RBC taken after the handover, to be rejected by 4.8.2.1 c) exception 2 (B092; 4080100_04 step 124)"
 S9f4f23d2,onboard,"e4/ls-display: reached once the LSSMA steps pass; JRU M_MODE after the LS steps, to analyse"
 S18160388,onboard,"e4/ls-display: reached once the LSSMA steps pass; JRU 21 mode symbol status after the LS steps, to analyse"
+Sded37509,onboard,"4080100_04 step 124 (e5/runner-4): the LSSMA removed after BG3d where the sequence expects it kept: the toggle off order of step 110 came from the Accepting RBC, was held by the handover and taken at the switch; fixed on e4/ls-display-2 (B092, 4.8.2.1 c exception 2: EVC_Radio_Authority.Released_Accepting, Take_Radio rejects packet 180; evc_test Handover_LSSMA); not re-traced on that branch (the sequence stops at step 122 there, before the runner fix)"
