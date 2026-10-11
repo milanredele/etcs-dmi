@@ -257,6 +257,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Radio;
    EVC_Test_Handover.Scenario_Handover_Balise;
    EVC_Test_Handover.Scenario_Handover_Text;
+   EVC_Test_Handover.Scenario_Handover_LSSMA;
    EVC_Test_Handover.Scenario_Handover_Deletion;
    EVC_Test_Handover.Scenario_Handover_EoM;
    EVC_Test_Handover.Scenario_Handover_Indication;

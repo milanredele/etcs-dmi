@@ -1379,6 +1379,9 @@ is
                then
                   if K = K15 and then not Sl.MA_Allowed then
                      Record_Event (Info_MA, Change_Rejected, M.Msg);
+                  elsif K = K180 and then Sl.From_Accepting then
+                     --  4.8.2.1 c) exception 2 (B092)
+                     Record_Event (Info_Group, Change_Filtered, 180);
                   elsif K /= K12 then
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,

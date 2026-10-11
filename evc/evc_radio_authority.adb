@@ -297,15 +297,18 @@ is
    function To_Buffer return Boolean is
      (Buffer.Judge (EVC_Received.Last_Kind) = EVC_Radio_Acceptance.Stored);
 
-   procedure Store_Message (S : EVC_Radio.Session_T;
-                            Data : EVC_Bytes.Byte_Array) is
+   procedure Store_Message (S         : EVC_Radio.Session_T;
+                            Data      : EVC_Bytes.Byte_Array;
+                            Accepting : Boolean := False) is
    begin
-      Buffer.Store (S, Data);
+      Buffer.Store (S, Data, Accepting);
    end Store_Message;
 
    function Buffered return Natural is (Buffer.Buffered);
 
    function Has_Released return Boolean is (Buffer.Has_Released);
+
+   function Released_Accepting return Boolean is (Buffer.Oldest_Accepting);
 
    procedure Release_At_Transition is
    begin
@@ -408,7 +411,8 @@ is
    procedure Take_Stored_Information (Shifted : Boolean;
                                       Now_Ms  : EVC_Radio.Time_Ms_T;
                                       Action  : EVC_Radio_Info.Action_T :=
-                                        EVC_Radio_Info.Packets)
+                                        EVC_Radio_Info.Packets;
+                                      Accepting : Boolean := False)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State, Emergency),
                      In_Out => (EVC_Origins.State, EVC_Radio_Info.State))
@@ -426,6 +430,7 @@ is
       end if;
       Sl.Start_Ms := EVC_Radio.Time_Of_Stamp (Stamp_Of_Last, Now_Ms);
       Sl.Action := Action;
+      Sl.From_Accepting := Accepting;
       --  3.10.2.4: no MA while an emergency stop is not revoked
       Sl.MA_Allowed := not Any_Stop;
       --  3.10.2.2: the stop location of message 15 from the shifted
@@ -703,8 +708,9 @@ is
               Granted => TAF.Granted);
    end Take_TAF;
 
-   procedure Take_Message (S      : EVC_Radio.Session_T;
-                           Now_Ms : EVC_Radio.Time_Ms_T)
+   procedure Take_Message (S         : EVC_Radio.Session_T;
+                           Now_Ms    : EVC_Radio.Time_Ms_T;
+                           Accepting : Boolean := False)
    is
       Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
         EVC_Received.Last_Kind;
@@ -788,8 +794,9 @@ is
          --  track description, as of message 3); e5/radio-geo-buffer: or
          --  a geographical position (packet 79, EVC_Position.Take_Radio_Geo);
          --  e4/ls-display: or an LSSMA display toggle order (packet 180,
-         --  4.4.19.1.4.2 a, EVC_LS_Display through the stored information)
-         Take_Stored_Information (False, Now_Ms);
+         --  4.4.19.1.4.2 a, EVC_LS_Display through the stored information;
+         --  rejected from the Accepting RBC, 4.8.2.1 c exception 2)
+         Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       end if;
    end Take_Message;
 
