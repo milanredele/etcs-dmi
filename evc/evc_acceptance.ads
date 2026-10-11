@@ -124,8 +124,10 @@ is
           when TSR | TSR_Revocation | Default_Gradient
              | Geographical_Position | Text_Message =>
              L /= NTC or else C.L1_Announced,
-          when Level_Crossing | Stop_If_In_SR =>
+          when Level_Crossing =>
              L in L1 | L2 or else C.L1_Announced,
+          --  R R A A: no exception [1] (e5/balise-buffer)
+          when Stop_If_In_SR => L in L1 | L2,
           when Danger_For_SH | Stop_SH_On_Desk => True,
           --  every level; the exceptions [14] [15] of the table are
           --  phase 2 of e5/session
@@ -205,6 +207,33 @@ is
 
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));
+
+   --  e5/balise-buffer: 4.8.3 [1] "stored onboard if an order to switch
+   --  to level 1 at a further location has been received", in the level
+   --  L (0, NTC or 2), by the rows and columns that carry it (Adhesion
+   --  and Level Crossing not in level 2: R and A there; TSR, its
+   --  revocation, the default gradient, packet 79 and the texts only in
+   --  NTC). Every case is one Level_Accepts accepts (the exception taken
+   --  at once by the units that keep no buffer, see the header).
+   function Level_Stores (I : Info_T; L : Level_T; C : Context_T)
+     return Boolean
+   is (C.L1_Announced and then L /= L1
+       and then
+       (case I is
+           when Linking | Signalling_Speed | Movement_Authority
+              | Gradient_Profile | International_SSP | Axle_Load_Profile
+              | Route_Suitability | Track_Conditions | Braking_Distance
+              | Reversing_Area | Reversing_Supervision => True,
+           when Adhesion | Level_Crossing => L /= L2,
+           when TSR | TSR_Revocation | Default_Gradient
+              | Geographical_Position | Text_Message => L = NTC,
+           when others => False));
+
+   --  4.8.3, 4.8.5.1: the first filter's third verdict, "stored in the
+   --  transition buffer" (the third filter applies when the set is
+   --  released, 4.8.5.6 b)
+   function Stored (I : Info_T; C : Context_T) return Boolean is
+     (C.Level_Valid and then Level_Stores (I, C.Level, C));
 
    --  Phase E5 (e5/radio-geo-buffer): the packet 79 of a radio message.
    --  4.8.3, the row "Geographical Position, From RBC: Yes": A in level

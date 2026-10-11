@@ -1152,7 +1152,22 @@ is
       M_Status : ETCS_Message.Status_T;
       S        : RTM_Session_T;
       Last     : Natural;
+      Ctx      : constant EVC_Stored_Information.Mode_Context_T :=
+        (Mode        => Current_Mode,
+         Cab_Active  => EVC_Train_Inputs.Desk_Open,
+         TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+         SR_Distance => Current_Mode = M_SR and then SR_Distance.Active,
+         SR_End      => SR_End);
    begin
+      --  e5/balise-buffer, 4.8.5.5: the sets of balise groups kept for
+      --  the transition to level 1 (4.8.3 [1]), released and taken in
+      --  the cycle of the transition as the radio ones in level 2
+      if EVC_Levels.Switched_To (L1)
+        and then EVC_Stored_Information.Balise_Buffered > 0
+      then
+         EVC_Stored_Information.Release_Balise_Buffer
+           (Unsigned_64 (Clock_Ms), Ctx);
+      end if;
       if not EVC_Levels.Switched_To (L2)
         or else EVC_Radio_Authority.Buffered = 0
       then
@@ -1171,12 +1186,7 @@ is
       end loop;
       EVC_Text_Messages.Take_Radio (First);
       EVC_Stored_Information.Evaluate_Released
-        (First, Unsigned_64 (Clock_Ms),
-         (Mode        => Current_Mode,
-          Cab_Active  => EVC_Train_Inputs.Desk_Open,
-          TRN_Valid   => EVC_Mission.TRN_Status = EVC_Mission.Valid,
-          SR_Distance => Current_Mode = M_SR and then SR_Distance.Active,
-          SR_End      => SR_End));
+        (First, Unsigned_64 (Clock_Ms), Ctx);
    end Release_Transition_Buffer;
 
    --  4e. Phase E5 (e5/radio-geo-buffer), 3.6.6.4.1, 4.8.3, 4.8.4.2,
