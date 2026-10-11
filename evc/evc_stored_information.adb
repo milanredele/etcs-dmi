@@ -10,6 +10,7 @@ with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P45;
+with ETCS_Track_Packets.P180;
 with ETCS_Track_Packets.P131;
 with EVC_Balise_Groups;
 with ETCS_Track_Packets.P46;
@@ -323,7 +324,10 @@ is
       --  phase E5: the session management order (3.5.2.6.1, e5/session)
       K42, K45,
       --  e5/handover: the RBC transition order (3.15.1.3)
-      K131);
+      K131,
+      --  e4/ls-display: the LSSMA display toggle order and the generic LS
+      --  function marker (4.4.19.1.4), after the mode profile
+      K180, K181);
 
    function Kind_Of (K : Order_Kind_T) return ETCS_Catalogue.Packet_Kind_T is
      (case K is
@@ -350,7 +354,9 @@ is
          when K40  => ETCS_Catalogue.Track_P40,
          when K42  => ETCS_Catalogue.Track_P42,
          when K45  => ETCS_Catalogue.Track_P45,
-         when K131 => ETCS_Catalogue.Track_P131);
+         when K131 => ETCS_Catalogue.Track_P131,
+         when K180 => ETCS_Catalogue.Track_P180,
+         when K181 => ETCS_Catalogue.Track_P181);
 
    --  4.8: the kind of information of a packet (K12: the MA; its
    --  V_MAIN is the signalling related speed restriction)
@@ -378,7 +384,9 @@ is
          when K42 => EVC_Acceptance.Session_Management,
          --  4.8.3 / 4.8.4: its own rows (e5/registration-2)
          when K45 => EVC_Acceptance.Network_Order,
-         when K131 => EVC_Acceptance.RBC_Transition_Order);
+         when K131 => EVC_Acceptance.RBC_Transition_Order,
+         when K180 => EVC_Acceptance.LSSMA_Toggle,
+         when K181 => EVC_Acceptance.Generic_LS_Marker);
 
    --  The NID_PACKET of a kind (the record of a rejection)
    function NID_Of (K : Order_Kind_T) return Natural is
@@ -389,7 +397,7 @@ is
          when K67 => 67, when K70 => 70, when K71 => 71, when K88 => 88,
          when K12 => 12, when K15 => 15, when K80 => 80, when K69 => 69,
          when K40 => 40, when K42 => 42, when K45 => 45,
-         when K131 => 131);
+         when K131 => 131, when K180 => 180, when K181 => 181);
 
    --  The context of 4.8 of a packet of a group: the mode and the inputs
    --  of the cycle, the level as it is now (an immediate order of the
@@ -918,6 +926,47 @@ is
       end if;
    end Take_Transition_Packet;
 
+   --  e4/ls-display, 4.4.19.1.4.2 to 4.4.19.1.4.5: the LSSMA display
+   --  toggle order of packet 180 to EVC_LS_Display, its delay timer
+   --  started at M.Start_Ms (a: the time stamp of the radio message, b:
+   --  the passage of the first balise of the group); 4.8.4: the toggle
+   --  off order in LS only, the toggle on order in the modes of its row
+   --  (its exceptions [9] [10], the train inside the LS area of a mode
+   --  profile of the same message, are not modelled: accepted);
+   --  7.4.2.37.4: packet 181 stores the generic LS function marker
+   procedure Take_LS_Packet (K      : Order_Kind_T;
+                             R      : in out Reader_T;
+                             M      : Message_T;
+                             A      : EVC_Acceptance.Context_T;
+                             Now_Ms : Unsigned_64)
+     with Global => (In_Out => (EVC_LS_Display.State, Events, Event_N)),
+          Pre => K in K180 | K181
+   is
+      X  : ETCS_Track_Packets.P180.Packet_T;
+      OK : Boolean;
+   begin
+      if K = K181 then
+         EVC_LS_Display.Take_Marker;
+         return;
+      end if;
+      ETCS_Track_Packets.P180.Decode (R, X, OK);
+      if not OK or else not ETCS_Track_Packets.P180.Valid (X) then
+         return;
+      end if;
+      if not EVC_Acceptance.Third_Filter (EVC_Acceptance.LSSMA_Toggle, A)
+        or else (X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_Off
+                 and then EVC_Modes."/=" (A.Mode, EVC_Modes.M_LS))
+      then
+         Record_Event (Info_Group, Change_Filtered, 180);
+         return;
+      end if;
+      EVC_LS_Display.Take_Order
+        (On       => X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_On,
+         Delay_S  => (if X.Has_T_LSSMA then Natural (X.T_LSSMA) else 0),
+         Start_Ms => M.Start_Ms,
+         Now_Ms   => Now_Ms);
+   end Take_LS_Packet;
+
    --  The packet of kind K that R reads to its store
    procedure Dispatch (K           : Order_Kind_T;
                        R           : in out Reader_T;
@@ -933,6 +982,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State,
                                 Events, Event_N),
                      Input  => EVC_Train_Data.State)
    is
@@ -956,6 +1006,8 @@ is
             Take_Network_Packet (R);
          when K131 =>
             Take_Transition_Packet (R);
+         when K180 | K181 =>
+            Take_LS_Packet (K, R, M, A, Now_Ms);
       end case;
    end Dispatch;
 
@@ -975,6 +1027,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State,
                                 Events, Event_N),
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => P <= EVC_Position.Taken_Packet_Count (J)
@@ -1018,6 +1071,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count),
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => G <= EVC_Position.Taken_Count
@@ -1169,6 +1223,7 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
+                                EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count, Radio_MA,
                                 Proposal, Proposal_Origin, Stop_Q),
                      Input  => (EVC_Radio_Info.State, EVC_Train_Data.State)),

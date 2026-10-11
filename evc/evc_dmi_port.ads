@@ -115,7 +115,8 @@ is
    --  a procedure, 5.7, 5.9, 5.11, 5.13, 5.19), the level announced
    --  (Level_Ann: the code of the level, No_Code none) and whether its
    --  acknowledgement is asked (5.10), "override active" (5.8.3.7); no
-   --  the track ahead free request shown (3.15.5, phase E5); no LSSMA
+   --  the track ahead free request shown (3.15.5, phase E5); the LSSMA
+   --  in km/h, 16#FFFF# not shown (4.4.19.1.4, EVC_LS_Display)
    function Mode_Level_Frame (Mode          : Mode_T;
                               Status        : Level_Status_T;
                               Level         : Level_T;
@@ -123,7 +124,8 @@ is
                               Level_Ann     : Byte := No_Code;
                               Level_Ann_Ack : Boolean := False;
                               Override      : Boolean := False;
-                              TAF           : Boolean := False)
+                              TAF           : Boolean := False;
+                              LSSMA         : Unsigned_16 := 16#FFFF#)
      return Mode_Level_Frame_T
    with Pre => Has_Mode_Code (Mode),
         Post => Mode_Level_Frame'Result (1) = MSG_MODE_LEVEL

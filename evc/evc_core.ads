@@ -97,6 +97,7 @@ with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Supervision_Input;
 with EVC_Text_Messages;
+with EVC_LS_Display;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
@@ -189,6 +190,7 @@ is
                                 EVC_Mission.State,
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
+                                EVC_LS_Display.State,
                                 EVC_JRU_Records.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
@@ -234,6 +236,7 @@ is
                                 EVC_Mission.State,
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
+                                EVC_LS_Display.State,
                                 EVC_JRU_Records.State,
                                 EVC_Position.State, EVC_Levels.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
@@ -329,6 +332,7 @@ is
                                 EVC_Mission.State,
                                 EVC_Procedures.State,
                                 EVC_Text_Messages.State,
+                                EVC_LS_Display.State,
                                 EVC_JRU_Records.State,
                                 EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.State,
