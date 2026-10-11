@@ -3550,3 +3550,48 @@ which were re-written by hand every round; the burndown counts it. The
 first 25 items are the open items of rounds 4 to 12 and the level 1 gaps
 E2 to E4 left behind (the bookkeeping of round 13 re-reads their rows).
 
+
+### Bookkeeping of the rows left open by E2 to E4 (e5/bookkeeping, 2026-10-11)
+
+The 82 rows of phases E2 to E4 with status todo or partial and no `[E5 ...]`
+tag (backlog item B025) were re-read against the code their notes name,
+the scenarios and the clause. Outcome per phase (done / partial / todo /
+deferred / n/a):
+
+| Phase | Rows | Done | Partial | Todo | Deferred | n/a |
+|---|---|---|---|---|---|---|
+| E2 | 24 | 17 | 4 | 0 | 3 (E6) | 0 |
+| E3 | 11 | 3 | 5 | 0 | 3 (E6, E7) | 0 |
+| E4 | 47 | 1 | 24 | 20 | 1 (E7) | 1 |
+
+Every row left partial or todo names its backlog item (`[B0nn]`); a
+deferred row carries the tag `[E6 ...]` or `[E7 ...]`. Statuses per
+phase, from `trace_subset026.py --check`, before and after: E2 done 114
+/ partial 30 / deferred 39 / n/a 1, then 131 / 10 / 42 / 1; E3 done 445
+/ partial 17 / deferred 35, then 448 / 11 / 38; E4 done 544 / partial
+93 / todo 20 / deferred 93 / n/a 16, then 545 / 90 / 20 / 94 / 17 (the
+other partial rows of E4 are E5's, tagged). No code changed, no
+scenario added.
+
+Genuine gaps found (new backlog items): B030 the driver not informed of
+an impaired odometer (3.6.8.5, 3.6.8.6.2); B031 gamma = 1 of 3.6.4.1.5
+(SB without Train Data, Supervised Manoeuvre); B032 no scenario of the
+crossing direction in SL / PS / SH (3.6.3.1.3.1); B033 the linking in
+rear of the new reference group not kept (3.7.3.1 m); B034 the route
+unsuitability's temporary EOA (3.12.2.4, 3.13.1.5); B035 the brake of a
+movement during the Train Data entry (3.14.1.5, 3.14.1.7.6); B036 the
+columns of A.3.4.1.3 other than k not re-read since E3; B037 no
+scenario of A.3.5.2's examples; B038 the balise information of a new
+level accepted at once instead of buffered (4.8.3 [1], 4.8.5.1,
+5.10.1.7). The rows already covered by B013 (Limited Supervision
+display, 17 rows and the 3 of 4.7.2.1), B014 (4.12.1, 10 rows with 3.14.1.11) and B015 (the
+small level 1 gaps, 6 rows plus 3.14.1.5) keep them.
+
+Stale deferrals outside the 82 (not changed, status deferred): 3.12.2.4
+and 3.14.1.7.6 defer to "E4", 3.14.3.6 to "E4" too; 4.11.1.1 and
+4.11.1.3 (partial, `[E5 session]`): the RBC contact and the radio
+network are kept over No Power since the E5 registration rounds
+(`EVC_Retained.RBC`, `.Network`), so what is left is the EOLM (E7) and
+the non-volatile store of the target (E8): partial stays right only
+until the table's remaining item ("not yet applicable" level table) is
+checked, then deferred `[E7 ...]`.
