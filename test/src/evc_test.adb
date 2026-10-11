@@ -137,6 +137,7 @@ begin
    Scenario_Single_Balise;
    Scenario_Geo;
    Scenario_Geo_Rejected_In_SH;
+   Scenario_Geo_By_Radio;
    Scenario_Odometer_Accuracy;
    Scenario_Cold_Movement;
    Scenario_Orientation;

@@ -1,11 +1,18 @@
 with EVC_Test_Support;  use EVC_Test_Support;
+with ETCS_Message;
+with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P5;
 with ETCS_Track_Packets.P79;
 with ETCS_Train_Packets.P0;
 with ETCS_Train_Packets.P1;
 with ETCS_Variables;
+with EVC_Acceptance;
 with EVC_Core;
+with EVC_DMI_Port;
+with EVC_Levels;
+with EVC_Radio;
+with EVC_Test_Authority;
 with EVC_Distances;
 with EVC_Linking;
 with EVC_Location;
@@ -437,6 +444,89 @@ package body EVC_Test_Position is
              and then Pos.LRBG.Id.NID_BG = 10 and then not Pos.Geo_Known,
              "geo: packet 79 of a group read in SH is rejected (4.8.4.2)");
    end Scenario_Geo_Rejected_In_SH;
+
+   --  Message 24 (T_TRAIN now, LRBG 123/10) with a packet 79 naming the
+   --  group Ref of country 123 at M_POSITION M, counting up
+   function M24_With_79 (Ref : Natural; M : Natural) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      P  : T79.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Interfaces.Unsigned_64
+        (EVC_Radio.T_Train_At (Interfaces.Unsigned_64 (EVC_Core.Time_Ms)));
+      V (5) := 123;
+      V (6) := 10;
+      Start_Message (W, ETCS_Message_Catalogue.Track_M24, V);
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.Q_NEWCOUNTRY := 1;
+      P.Has_NID_C := True;
+      P.NID_C := 123;
+      P.NID_BG := ETCS_Variables.NID_BG_T (Ref);
+      P.D_POSOFF := 0;
+      P.Q_MPOSITION := 1;
+      P.M_POSITION := ETCS_Variables.M_POSITION_T (M);
+      T79.Encode (P, W, OK);
+      Check (OK, "radio geo: packet 79 encoded");
+      return Message_Bytes (W);
+   end M24_With_79;
+
+   --  3.6.6.4.1, 4.8.3 (the row "Geographical Position, From RBC: Yes":
+   --  R [2] in level 1, A in level 2), 4.8.4.2 (R in SH), 4.8.5.5: a
+   --  packet 79 by radio in level 1 with level 2 announced is kept and
+   --  used at the transition (SUBSET-076 4080415_01 steps 287 to 295);
+   --  in level 2 it is taken at once, its reference group anchored when
+   --  passed; in SH it is rejected
+   procedure Scenario_Geo_By_Radio is
+      package A renames EVC_Acceptance;
+      use type A.Radio_Verdict_T;
+      C : A.Context_T := (Mode => EVC_Modes.M_FS, Level_Valid => True,
+                          Level => EVC_Modes.L1, others => <>);
+   begin
+      Check (A.Radio_Geo_Verdict (C, False) = A.Radio_Rejected
+             and then A.Radio_Geo_Verdict (C, True) = A.Radio_Stored,
+             "radio geo: level 1, rejected; stored with level 2 announced "
+             & "(4.8.3 [2])");
+      C.Level := EVC_Modes.L2;
+      Check (A.Radio_Geo_Verdict (C, False) = A.Radio_Accepted,
+             "radio geo: level 2 FS, accepted");
+      C.Mode := EVC_Modes.M_SH;
+      Check (A.Radio_Geo_Verdict (C, False) = A.Radio_Rejected,
+             "radio geo: level 2 SH, rejected (4.8.4.2)");
+
+      EVC_Test_Authority.Start_L2_Announced;
+      Give_Radio_Message (1, M24_With_79 (10, 42_000));
+      Stand_X (200);
+      Check (not Pos.Geo_Known and then Geo_Seen = EVC_DMI_Port.Geo_Unknown,
+             "radio geo: kept in level 1 with level 2 announced, not used "
+             & "(4.8.3 [2], 4.8.5.1)");
+      Run_X (45_000);
+      Check (EVC_Levels.Level = EVC_Modes.L2 and then Pos.Geo_Known
+             and then Pos.Geo_Metres in 42_300 .. 42_400
+             and then Geo_Seen = Interfaces.Unsigned_32 (Pos.Geo_Metres),
+             "radio geo: used at the level 2 transition, shown (4.8.5.5, "
+             & "3.6.6.4.1: the LRBG as reference), got"
+             & Natural'Image (Pos.Geo_Metres));
+      --  in level 2: a reference group ahead, anchored when passed
+      Add_Group (Group (11, 600));
+      Give_Radio_Message (1, M24_With_79 (11, 50_000));
+      Stand_X (200);
+      Check (Pos.Geo_Metres in 42_300 .. 42_400,
+             "radio geo: a reference ahead not applicable yet (3.6.6.4.2)");
+      Run_X (65_000);
+      Check (Pos.Geo_Metres in 50_000 .. 50_100,
+             "radio geo: the group ahead passed, its reference applies, got"
+             & Natural'Image (Pos.Geo_Metres));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+      Stand_X (200);
+      Pos.Delete_Geo;
+      Give_Radio_Message (1, M24_With_79 (11, 60_000));
+      Stand_X (200);
+      Check (not Pos.Geo_Known,
+             "radio geo: rejected in SH (4.8.4.2)");
+   end Scenario_Geo_By_Radio;
 
    --  3.6.8, A.3.1: odometer accuracy impaired, safety threshold
    procedure Scenario_Odometer_Accuracy is

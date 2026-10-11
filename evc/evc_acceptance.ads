@@ -206,4 +206,21 @@ is
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));
 
+   --  Phase E5 (e5/radio-geo-buffer): the packet 79 of a radio message.
+   --  4.8.3, the row "Geographical Position, From RBC: Yes": A in level
+   --  2; R [2] in levels 0, NTC and 1, stored (4.8.5) when an order to
+   --  switch to level 2 at a further location has been received
+   --  (L2_Announced). 4.8.4.2: the mode column of the row, the same for
+   --  both origins (Third_Filter); decision: in PT ([1], level 2 after
+   --  the recognition of the exit from TR) rejected, as for a group.
+   type Radio_Verdict_T is (Radio_Rejected, Radio_Accepted, Radio_Stored);
+
+   function Radio_Geo_Verdict (C : Context_T; L2_Announced : Boolean)
+     return Radio_Verdict_T
+   is (if C.Level_Valid and then C.Level = L2 then
+         (if Third_Filter (Geographical_Position, C) then Radio_Accepted
+          else Radio_Rejected)
+       elsif L2_Announced then Radio_Stored
+       else Radio_Rejected);
+
 end EVC_Acceptance;

@@ -96,6 +96,7 @@
 pragma Unevaluated_Use_Of_Old (Allow);
 
 with EVC_Balise_Groups; use EVC_Balise_Groups;
+with EVC_Acceptance;
 with EVC_Config;
 with EVC_Distances;     use EVC_Distances;
 with EVC_Linking;
@@ -103,6 +104,7 @@ with EVC_Location;      use EVC_Location;
 with EVC_Modes;         use EVC_Modes;
 with EVC_Odometry;
 with EVC_Origins;
+with EVC_Radio_Info;
 with EVC_Ports;         use EVC_Ports;
 with ETCS_Bits;
 with ETCS_Packet_Index;
@@ -613,6 +615,30 @@ is
    procedure Set_Linking_Context (Accept_Info, Check : Boolean;
                                   Accept_P79 : Boolean := True)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => Status = Status'Old and then LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old
+                  and then Active_Cab = Active_Cab'Old;
+
+   --  Phase E5 (e5/radio-geo-buffer), 3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5:
+   --  the packets 79 of the radio messages of the cycle (EVC_Radio_Info,
+   --  those whose LRBG was known at reception) in the verdict of the
+   --  tables (EVC_Acceptance.Radio_Geo_Verdict). Accepted: taken in the
+   --  order of reception, after the one kept for the transition; their
+   --  reference groups anchored when they are the LRBG or a group of
+   --  the last ones, the others when passed. Stored (4.8.3 [2]): the
+   --  last one kept for the level 2 transition (one is enough: a packet
+   --  79 replaces the references not yet applicable, 3.6.6.3, so the
+   --  sequential re-evaluation of 4.8.5.5 leaves the last). Rejected:
+   --  nothing taken, the one kept deleted (4.8.5.4 a: the announcement
+   --  is gone; or released in a mode that rejects it).
+   procedure Take_Radio_Geo (Verdict : EVC_Acceptance.Radio_Verdict_T)
+     with Global => (In_Out   => State,
+                     Input    => EVC_Radio_Info.State,
+                     Proof_In => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
