@@ -4011,3 +4011,57 @@ the trace line, the workbook's by `Curve_Distance`):
 
 The three are Gamma trains (B100): part of every difference is the
 train model. Open: B016 (stays open), B100, B101.
+
+### E5 integration after the fifteenth round (2026-10-11)
+
+Merged: e5/runner-4 (the Main window opened by the driver at a joined
+test case's first step at standstill, S1f552964 22 of 25 moved on; a
+reach-point at the group's place keeps its radio messages for a
+positive expectation; an unnamed timer runs the seconds its comment
+gives, 147 steps of sv30; Sd577e7be s076; B006 was already so), e5/
+trips-fs (3.8.5.2.2, MA repositioning by packet 16 after a link with an
+unknown identity: `EVC_Movement_Authority.Reposition`, the real defect
+behind 3040400_10 where the triage had named another family; 4080432_01
+s076 by the "only if", 9990500_09 an extraction defect; B130 for the
+level crossing trip), e4/ls-display-2 (the toggle order released from
+the balise buffer starts its timer at the release, 4.4.19.1.4.2 c); the
+marker deleted by a balise mode profile with an LS section, .8; a
+message held from the Accepting RBC marked through the authority buffer
+and its toggle order rejected, 4.8.2.1 c) exception 2; B093 partly,
+B120, B121) and s076/curves-import (the ERA workbooks' result sheets in
+the sibling as `curves` blocks: `limit` lines of table 3, `curve-columns`
+and sampled `curve` lines, the tool's own example sheet recognised and
+dropped, 1037 of 1049 workbooks, 760 sequences; `S076_Sequences` reads
+them, `Curve_Distance` interpolates; three worked examples show target
+placement differences of 38 to 275 m before any curve difference, and
+that the runner enters every train with the lambda model while 589
+workbooks are Gamma trains, B100; the judging is B101). Four merges in
+one round: the two on `EVC_Acceptance` / `EVC_Stored_Information` met
+in one `case` arm (K16 from the trips, `From_Balise` from the LS
+display), resolved by hand and unit-proved before the chain.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11762
+checks), the full proof 11071 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27128 B (margin 5640), wasm and both smokes 0
+failures. SUBSET-076: 724 / 1551 / 915 before, 753 / 1522 / 915 after
+(6 of the improvements only appear with the branches combined), 0
+regressions, 0 untriaged. Matrix: 366 -> 363 clauses left in all phases.
+The sibling repository: master 4f43136 (the import), 760 sequence files
+changed, every other file byte-identical.
+
+Measurements (requests, of them without a tool call, duration, final
+context, cost): curves-import 216 / 81 / 28 min / 166k / 13.0; runner-4
+143 / 50 / 20 min / 108k / 6.0; ls-display-2 230 / 76 / 25 min / 168k /
+13.2; trips-fs 242 / 93 / 23 min / 183k / 15.7. The "no text-only
+turns" instruction of the round brief changed nothing: a third of the
+turns still carry no tool call (B021).
+
+Lessons: three premises wrong (B006 already done, 4080432_01 not the
+same shape, the "empty" result sheet holding the tool's example), two
+of them from a stale triage note or an earlier report taken as current:
+before a brief, re-run the trace on master, not the note. The runner's
+own sequences, read by an agent without a Claude worktree in the
+sibling repository, worked: the guard is not needed there.
+
+Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`,
+35 open after this round).
