@@ -3718,3 +3718,24 @@ not inferred from a trace. The bookkeeping of a closed phase is cheap
 
 Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`);
 the "Open" lists of the subsections above are superseded by it.
+
+### Limited Supervision display, LSSMA (e4/ls-display, 2026-10-11)
+
+Implemented: `EVC_LS_Display` (4.4.19.1.4 to 4.4.19.1.4.7): the generic
+LS function marker (packet 181), the toggle orders of packet 180 with
+their delay timer (started at the radio time stamp, a, or the first
+balise, b), the display state (4.4.19.1.4.3 to .6, 4.10 on a mode
+change) and the LSSMA (the lowest MRSP element between the min safe
+front end and the EOA/LOA, and the target speed there), sent in
+MSG_MODE_LEVEL in km/h in LS only (`EVC_Core.Send_Mode_Level`, the step
+after the mode machine in `Tick`). Packets 180 / 181 are taken by
+`EVC_Stored_Information` (kinds K180, K181, after the mode profile) with
+their 4.8.3 / 4.8.4 rows in `EVC_Acceptance` (`Generic_LS_Marker`,
+`LSSMA_Toggle`; the toggle off order narrowed to LS); message 24 with
+packet 180 goes to `EVC_Radio_Info`. Decisions: the target speed at an
+EOA is 0 and the release speed is not part of the LSSMA; a timer that
+has reached the time-out displays; km/h rounded down. evc_test
+`EVC_Test_LS.Scenario_LS_Display`. Matrix: 15 of 17 rows done, 4.4.19.1.4.2
+c) partial (B091), 4.4.19.1.4.8 todo (B090). SUBSET-076: 0 regressions,
+24 improvements; Scb539e7a gone, four new signatures triaged (B092: the
+Accepting RBC's toggle order, 4.8.2.1 c exception 2). Left: B090 to B093.

@@ -88,6 +88,7 @@ with EVC_Test_Bench;     use EVC_Test_Bench;
 with EVC_Test_EMRRLS;    use EVC_Test_EMRRLS;
 with EVC_Test_Config;    use EVC_Test_Config;
 with EVC_Test_Modes;     use EVC_Test_Modes;
+with EVC_Test_LS;
 with EVC_Test_Radio;     use EVC_Test_Radio;
 with EVC_Test_Sessions;  use EVC_Test_Sessions;
 with EVC_Test_Network;   use EVC_Test_Network;
@@ -218,6 +219,7 @@ begin
    Scenario_E4_Desk_Closed;
    Scenario_E4_Continue_Shunting;
    Scenario_E5P_JRU_Records;
+   EVC_Test_LS.Scenario_LS_Display;
    Check (Encodes_OK, "E4: every telegram of the track encoded");
    Procedures.Run;
    Touch.Run;
