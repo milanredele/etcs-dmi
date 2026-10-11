@@ -243,6 +243,7 @@ begin
    Scenario_Session_Reports;
    Scenario_Report_Packet;
    Scenario_Session_Error_Report;
+   Scenario_Session_JRU_Received;
    Scenario_Session_Registration;
    Scenario_Network_List;
    Scenario_Network_S4_Timeout;

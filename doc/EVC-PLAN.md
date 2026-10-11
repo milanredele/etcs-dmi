@@ -3595,3 +3595,40 @@ network are kept over No Power since the E5 registration rounds
 the non-volatile store of the target (E8): partial stays right only
 until the table's remaining item ("not yet applicable" level table) is
 checked, then deferred `[E7 ...]`.
+### Juridical record of a received radio message (e5/jru-radio, 2026-10-11)
+
+**Implemented.** SUBSET-027 record 9 (message from the RBC, the JRU
+port's event 3: NID_MESSAGE, L_MESSAGE) is written at reception in
+`EVC_Core.Read_Radio_Messages`, once per message the RTM port delivers,
+before the codec and whatever the message's later use. Before, it was
+written at reception too, but only for the messages the codec accepted:
+the 35 sequences of S63b7a729 had messages the codec refuses (packet 70
+with M_LINEAXLELOADCAT 0, a spare value; 254) or wrong lengths, not
+unused messages as first thought. Scenario
+`EVC_Test_Sessions.Scenario_Session_JRU_Received`. Golden `valid_inputs`:
+two JRU 3 records added (the refused messages), as intended.
+
+**Decision.** "Received" is what the Euroradio delivers (3.16.3.1.1.2
+speaks of an inconsistent message "received"): a message refused by the
+codec (3.16.1.1, an unknown NID_MESSAGE such as 254) or later by the
+time stamp check (3.16.3.3.3) is recorded too, its refusal by the JRU 13
+of e5/error-report after it. A frame whose L_MESSAGE disagrees with its
+length never leaves the RTM port (`EVC_Ports.Valid_RTM_Input`): not
+recorded, and not reported either (3.16.3.1.1 c, 8.4.4.2.1; B050,
+8040400_01 step 66).
+
+**Runner.** An `expect JRU record 9` after an output step and directly
+before an `input RTM message` is judged after that input
+(`S076_Run.Step_Order`; 3150100_09 / _11 step 71); "Only if L2" is a
+level 2 only comment too (6060302_04, 6060303_01). Record 10 is listed
+before its `expect RTM message` 625 times in sv30, but is not judged
+(B051). SUBSET-076: 706 / 1578 / 906 before, 706 / 1575 / 909 after,
+0 regressions, 30 improvements; S63b7a729 35 -> 9 sequences (8040400_01
+B050; 8040100_01, 9990400_28, 6060400_07 extractor: bits and L_MESSAGE
+disagree; 9990200_13 a record 9 meant as 10). 4080100_01 did not change
+level at the message 24: the "L2" was the state after the runner's wait;
+it stops at step 96 now. 3120200_05 (step 72, S49bc1c1a, not this
+package's signature): "Route unsuitable - axle load category" not
+shown; the comparison of route suitability with the Train Data and its
+reaction (3.12.2.3, 3.12.2.4) are deferred in the matrix (rows of E3,
+noted E4), not E5: left for the matrix owner.

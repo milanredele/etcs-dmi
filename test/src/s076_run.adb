@@ -284,10 +284,12 @@ package body S076_Run is
 
    --  A step whose comment restricts it to level 2 ("Only if in L2",
    --  "only in L2", 44 sequences of sv30, e.g. 4080442_01 step 51: a 136
-   --  in level 1 On Sight) is the sequence's other alternative when the
+   --  in level 1 On Sight; "Only if L2", 6060302_04 step 42, a JRU 9 in
+   --  level 1) is the sequence's other alternative when the
    --  step's level columns or the on-board's level are not 2
    function Only_In_L2_Elsewhere (St : Step_T) return Boolean is
      ((Has (Image (St.Comment), "only if in L2")
+       or else Has (Image (St.Comment), "only if L2")
        or else Has (Image (St.Comment), "only in L2"))
       and then (Trim (St.Lvl_After) /= "L2"
                 or else Trim (St.Lvl_Before) /= "L2"
@@ -3195,6 +3197,28 @@ package body S076_Run is
       return False;
    end Redelivered;
 
+   --  e5/jru-radio: an "expect JRU record 9" (message from the RBC)
+   --  directly followed by an "input RTM message" and not itself after an
+   --  input is the record of that message, listed before it (3150100_09
+   --  and _11 step 71, 9990200_13 step 71): the pair is one event, the
+   --  record judged after the input
+   function JRU_Before_Message (I : Positive) return Boolean is
+     (I < Seq.Step_Count
+      and then I > 1
+      and then Seq.Steps (I).IO = Output
+      and then Seq.Steps (I - 1).IO = Output
+      and then Seq.Steps (I + 1).IO = Input
+      and then Starts (Image (Seq.Steps (I).Line) & " ",
+                       "expect JRU record 9 ")
+      and then Starts (Image (Seq.Steps (I + 1).Line),
+                       "input RTM message "));
+
+   --  The order the steps are run in: as listed, but for the pairs above
+   function Step_Order (K : Positive) return Positive is
+     (if JRU_Before_Message (K) then K + 1
+      elsif K > 1 and then JRU_Before_Message (K - 1) then K - 1
+      else K);
+
    --  Step I is the driver's acknowledgement of what a balise group
    --  input brought (the steps between are expectations only): the
    --  radio messages sent at the group stay listed. 5100400_06: BG4d at
@@ -3330,12 +3354,13 @@ package body S076_Run is
          end if;
       end loop;
 
-      for I in 1 .. Seq.Step_Count loop
-         Cur := I;
+      for K in 1 .. Seq.Step_Count loop
          declare
+            I  : constant Positive := Step_Order (K);
             St : Step_T renames Seq.Steps (I);
             J  : Judgement_T;
          begin
+            Cur := I;
             if Blocked then
                Results (I).Verdict := Not_Run;
             elsif not St.Well_Formed then
