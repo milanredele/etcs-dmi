@@ -1079,12 +1079,12 @@ A.3.1 Table,3,x,,,,,E3,partial,"the values of the stored information (300 m in r
 A.3.2,3,x,,,x,,E6,todo,
 A.3.2 Table,3,x,,,,,E6,todo,
 A.3.3.2,3,x,,,,,E4,done,"the filters of 4.8 after the checks of E1 to E3 (EVC_Received, EVC_Position)"
-A.3.4.1.3,3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
-A.3.4.1.3 a),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
-A.3.4.1.3 b),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
-A.3.4.1.3 c),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
-A.3.4.1.3 d),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission; evc_test E4_Desk_Closed; the columns a-d, f, n and e, g-j, l, m, o as E3 left them (3.7.3.3)"
-A.3.4.1.3 Table,3,x,,,,,E4,partial,"column k done (EVC_Core, EVC_Mission, EVC_National_Values.Delete_Pending); the other columns as E3 left them (3.7.3.3)"
+A.3.4.1.3,3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission, EVC_National_Values.Delete_Pending; evc_test E4_Desk_Closed; missing: the other columns not re-read against the stores since E3 (3.7.3.3 names b c d e n applied, a f by radio) [B036]"
+A.3.4.1.3 a),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission, EVC_National_Values.Delete_Pending; evc_test E4_Desk_Closed; missing: the other columns not re-read against the stores since E3 (3.7.3.3 names b c d e n applied, a f by radio) [B036]"
+A.3.4.1.3 b),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission, EVC_National_Values.Delete_Pending; evc_test E4_Desk_Closed; missing: the other columns not re-read against the stores since E3 (3.7.3.3 names b c d e n applied, a f by radio) [B036]"
+A.3.4.1.3 c),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission, EVC_National_Values.Delete_Pending; evc_test E4_Desk_Closed; missing: the other columns not re-read against the stores since E3 (3.7.3.3 names b c d e n applied, a f by radio) [B036]"
+A.3.4.1.3 d),3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission, EVC_National_Values.Delete_Pending; evc_test E4_Desk_Closed; missing: the other columns not re-read against the stores since E3 (3.7.3.3 names b c d e n applied, a f by radio) [B036]"
+A.3.4.1.3 Table,3,x,,,,,E4,partial,"column k (the desk closed in the start of mission) done: EVC_Core.Evaluate_Modes_And_Levels, EVC_Mission, EVC_National_Values.Delete_Pending; evc_test E4_Desk_Closed; missing: the other columns not re-read against the stores since E3 (3.7.3.3 names b c d e n applied, a f by radio) [B036]"
 A.3.4.1.3 Table-footnote [1],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half [E5 authority]"
 A.3.4.1.3 Table-footnote [7],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half [E5 authority]"
 A.3.4.1.3 Table-footnote [8],3,x,,,,,E4,partial,"the E3 situations (EVC_Movement_Authority, EVC_Stored_Information.Apply); a) f) are E5, g) to m) and o) with the reactions of the procedures half [E5 authority]"
@@ -1104,7 +1104,7 @@ A.3.5.1 7th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA t
 A.3.5.1 9th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover) [E5 authority]"
 A.3.5.1 11th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover) [E5 authority]"
 A.3.5.1 12th bullet,3,x,,,,,E4,partial,"the actions of E3 (track conditions, MA timers) and of the procedures half (texts, mode profiles, TAF, LX); E5 (radio infill, handover) [E5 authority]"
-A.3.5.2,3,x,,,,,E4,partial,"the telegrams of a cycle are taken before the supervision of the cycle (EVC_Core: Read_Ports, Update_Position, stored information, then monitoring)"
+A.3.5.2,3,x,,,,,E4,partial,"the telegrams of a cycle are taken before the supervision of the cycle (EVC_Core: Read_Ports, Update_Position, stored information, then monitoring); missing: a scenario of its two examples (an EOA crossed as the extending group is read; Stop if in SR during override) [B037]"
 A.3.6.1.1,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
 A.3.6.2.1,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
 A.3.6.2.1 1st bullet,3,x,,,,,E4,done,E3: what lies more than 300 m behind the min safe rear end is deleted (EVC_Stored_Information step 5)
@@ -1199,7 +1199,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.8.1.1 c),4,x,,,,,E4,done,"packet 132 accepted in SH (4.8.4), [49]; evc_test_procedures Shunting_Trips"
 4.4.8.1.2,4,x,,,,,E4,done,"[5], [50], [51], [23] read no Train Data; 4.10: the Train Data to be revalidated in SH (EVC_Mission); evc_test_procedures Integration_Shunting"
 4.4.8.1.3,4,x,,,,,E4,partial,"the train position runs in the mode (EVC_Position); the engine's front and rear end: the train length is not given to the position yet (EVC_Position.Set_Train_Length, with the position reports of E5) [E5 session]"
-4.4.8.1.4,4,x,,,,,E4,todo,"no TIU output ""ready for remote shunting"" (SUBSET-034) yet"
+4.4.8.1.4,4,x,,,,,E4,todo,"no TIU output ""ready for remote shunting"" (SUBSET-034) yet [B015]"
 4.4.8.1.5,4,x,,,,,E4,done,"EVC_Levels: the announcements rejected, the immediate and conditional orders kept in SH, PS and SM and evaluated once another mode is entered (4.8.4 [7]); evc_test_procedures Integration_Shunting_Levels"
 4.4.8.1.5.2,4,x,,,,,E4,deferred,"the RBC (communication session, handover): E5 [E5 session]"
 4.4.8.1.5.3,4,x,,,,,E4,deferred,"the RBC (communication session, handover): E5 [E5 session]"
@@ -1218,12 +1218,12 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.11.1.3 c),4,x,,,,,E4,done,"packet 63 of message 2 (EVC_Radio_Authority.Take_SR_List), 4.6.3 [36] (Group_Not_Listed, trip reason SR_Balise_Not_Listed in EVC_Procedures); evc_test Scenario_SR_Authorisation [E5 authority]"
 4.4.11.1.3 d),4,x,,,,,E4,partial,the exception for a group in the list of the RBC: EVC_Procedures (Context_T.SR_Listed from EVC_Radio_Authority.Groups_Passed_Listed); no scenario yet [E5 authority]
 4.4.11.1.3 e),4,x,,,,,E4,done,EVC_Brake_Commands: unauthorised direction protection in SR against the train orientation
-4.4.11.1.3.1,4,x,,,,,E4,partial,a) b) done; c) Euroloop is E7
+4.4.11.1.3.1,4,x,,,,,E4,deferred,"a) b) done (EVC_Mission, EVC_Radio_Authority; evc_test E4_SR_Distance, Scenario_SR_Authorisation); c) [E7 Euroloop]"
 4.4.11.1.3.1 a),4,x,,,,,E4,done,EVC_Mission: the distance from the entry of SR or from the driver's entry (override: the procedures half); evc_test E4_SR_Distance
 4.4.11.1.3.1 b),4,x,,,,,E4,done,EVC_Mission: the distance from the entry of SR or from the driver's entry (override: the procedures half); evc_test E4_SR_Distance
 4.4.11.1.3.1 c),4,x,x,,,,E4,deferred,E7 (Euroloop)
 4.4.11.1.5,4,x,,,,,E4,done,"EVC_Mission: MSG_DRIVER_DATA kind 3 in SR at standstill, refused otherwise (JRU 41 kind 4); evc_test E4_SR_Distance"
-4.4.11.1.5.1,4,x,,,,,E4,todo,the movement during the entry: the on-board does not know when the driver is in the SR data window
+4.4.11.1.5.1,4,x,,,,,E4,todo,the movement during the entry: the on-board does not know when the driver is in the SR data window [B015]
 4.4.11.1.5.2,4,x,,,,,E4,done,"EVC_Mission: 5 .. 600 km/h, 0 .. 65535 m as the DMI sends them (A.3.11)"
 4.4.11.1.6,4,x,,,,,E4,done,"'Start' in SR, level 2, session open: the MA request reason Start (EVC_Radio_Authority.Evaluate_Request); evc_test Scenario_SR_Authorisation [E5 authority]"
 4.4.11.1.6.2,4,x,,,,,E4,done,"EVC_Mission.Mode_Entered (V_NVSTFF, D_NVSTFF) and Evaluate (the driver's entry); evc_test E4_SR_Distance"
@@ -1245,7 +1245,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.13.1.2,4,x,,,,,E4,done,"EVC_Procedures.Brake_Demand: the emergency brake while in TR, TIU reason bit 7 (trip); evc_test_procedures Trip_EOA, Integration_SR_Override_Trip"
 4.4.13.1.3,4,x,,,,,E4,done,"one trip entry: the reason is the first condition of the transition taken (EVC_Procedures.Mode_Changed), MSG_SYSTEM_STATUS 2, 16, 21 to 25, 29; evc_test_procedures Trip_*, Integration_SR_Override_Trip, Integration_Override_Level"
 4.4.13.1.4,4,x,,,,,E4,done,EVC_Procedures.Finish_Cycle asks it at standstill (MSG_MODE_LEVEL mode_ack TR); evc_test_procedures Trip_EOA
-4.4.13.1.6,4,x,,,,,E4,partial,no transition out of TR on the desk closure (EVC_Modes.Conditions); the driver's actions are not refused while the desk is closed (the DMI of a closed desk sends none)
+4.4.13.1.6,4,x,,,,,E4,partial,missing: the transition out of TR on the desk closure (EVC_Modes.Conditions); the driver's actions are not refused while the desk is closed (the DMI of a closed desk sends none) [B015]
 4.4.14.1.1,4,x,,,,,E4,done,"[7], [62], [63], [68] on the acknowledgement at standstill; evc_test_procedures Trip_EOA, Integration_SR_Override_Trip"
 4.4.14.1.2,4,x,,,,,E4,done,the emergency brake of the trip released in PT (EVC_Procedures.Finish_Cycle); evc_test_procedures Trip_EOA
 4.4.14.1.2.1,4,x,,,,,E4,done,the trip reason ends when PT is left (EVC_Procedures.Mode_Changed); evc_test_procedures Trip_EOA
@@ -1269,7 +1269,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.18.1.3 a),4,x,,,,,E4,done,the reversing speed as the ceiling (3.11.7.1.2); evc_test_procedures Reversing
 4.4.18.1.3 b),4,x,,,,,E4,done,"the distance to run from the end of the area (3.15.4.2.1), the emergency brake; evc_test_procedures Reversing"
 4.4.18.1.4,4,x,,,,,E4,done,EVC_Procedures.Reversing_Step; evc_test_procedures Reversing
-4.4.18.1.5,4,x,,,,,E4,partial,MSG_SPEED_STATE every cycle; the remaining distance to run in reverse is not sent to the DMI
+4.4.18.1.5,4,x,,,,,E4,partial,MSG_SPEED_STATE every cycle; missing: the remaining distance to run in reverse is not sent to the DMI [B015]
 4.4.18.1.6,4,x,,,,,E4,done,"EVC_SDM.Inputs_T.EB_Instead_Of_SB in RV (EVC_Core): the SBI commands the emergency brake, revoked as the service brake (3.13.10.2.4); evc_test_procedures Reversing"
 4.4.18.1.7,4,x,,,,,E4,deferred,the position reports are E5 [E5 session]
 4.4.18.1.8,4,x,,,,,E4,done,"EVC_Brake_Commands: the reverse movement allowed in RV, the forward one protected; evc_test_procedures Reversing"
@@ -1278,23 +1278,23 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.18.1.12,4,x,,,,,E4,done,"the telegram is refused (ETCS_Telegram, 3.17.3.5); [65] is no transition from RV, nothing is indicated"
 4.4.19.1.2,4,x,,,,,E4,done,"[70], [72], [74] from the mode profile (EVC_Procedures); evc_test_procedures Limited_Supervision"
 4.4.19.1.3,4,x,,,,,E4,done,the MRSP with its curves in LS (EVC_Modes.TSR_Mode); evc_test_procedures Limited_Supervision
-4.4.19.1.4,4,x,,,,,E4,partial,"MSG_SPEED_STATE every cycle; the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.2,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.2 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.2 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.2 c),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.3,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.4,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.5,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.5 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.5 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.6,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.7,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.7 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.7 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
-4.4.19.1.4.8,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented"
+4.4.19.1.4,4,x,,,,,E4,partial,"MSG_SPEED_STATE every cycle; missing: the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.2,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.2 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.2 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.2 c),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.3,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.4,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.5,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.5 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.5 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.6,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.7,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.7 a),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.7 b),4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
+4.4.19.1.4.8,4,x,,,,,E4,todo,"the LSSMA display (packets 180 and 181, the generic LS function marker) is not implemented [B013]"
 4.4.20.1.2,4,x,,,,,E4,done,"PS has no MSG_MODE_LEVEL (the DMI has no PS); a desk opened leaves PS ([22], [23])"
 4.4.20.1.3,4,x,,,,,E4,done,"no supervision in PS (EVC_Modes, no mode speed: EVC_Procedures.Mode_Speed)"
 4.4.20.1.4,4,x,,,,,E4,partial,"the train position runs in the mode (EVC_Position); the engine's front and rear end: the train length is not given to the position yet (EVC_Position.Set_Train_Length, with the position reports of E5) [E5 session]"
@@ -1332,9 +1332,9 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.6.2 Table,4,x,,,,,E4,done,"EVC_Modes.Transitions and Conditions; EVC_Core.Run_Mode_Machine takes the transition of the highest priority whose condition holds (proved: only transitions of the table, nothing leaves IS, NP -> IS before SB); evc_test E4_Tables"
 4.6.3 Table,4,x,,,,,E4,partial,"EVC_Transition_Conditions: every condition of levels 0 and 1 (e4/modes and e4/procedures, integrated: one mode machine, every trip condition in EVC_Procedures); not implemented: level 2 and the RBC ([6], [11], [20], [31], [36], [41], [81]; [45] needs level 2: E5), AD ([24], [33], [48], [53], [80]), the safe consist length ([83], E5), the National System ([35], [38]); [13] is the host's (EVC_Core.Enter_Failure); the conditions of level 2 dispatched to the halves (EVC_Sessions [41], EVC_Radio_Authority [6] [11] [20] [31] [36] [81] and the stop of [45]) [E5 joint]"
 4.6.3 Table-footnote {9},4,x,,,,,E4,done,"the temporary EOA is a target of EVC_SDM (EOA_Passed: [12], [16]) and the former EOA of the override takes the temporary one (5.8.1.9); evc_test_procedures Level_Crossing"
-4.7.2.1.1,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
-4.7.2.1.2,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
-4.7.2.1.4 Table,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels); the outputs of the procedures (override, LSSMA, texts, trip reasons) are e4/procedures'"
+4.7.2.1.1,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels), the outputs of the procedures (override, texts, trip reasons: EVC_Procedures, evc_test_procedures); missing: the LSSMA display [B013]"
+4.7.2.1.2,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels), the outputs of the procedures (override, texts, trip reasons: EVC_Procedures, evc_test_procedures); missing: the LSSMA display [B013]"
+4.7.2.1.4 Table,4,x,,,,,E4,partial,"MSG_MODE_LEVEL (mode, level, the mode and the level transition to acknowledge), MSG_ONBOARD (data, train, som), the driver's inputs taken in the modes of the table (EVC_Mission, EVC_Levels), the outputs of the procedures (override, texts, trip reasons: EVC_Procedures, evc_test_procedures); missing: the LSSMA display [B013]"
 4.8.1.3,4,x,,,,,E4,done,"EVC_Stored_Information: packets 41 and 46 first, an immediate order switches the level before the rest of the message is filtered (EVC_Levels.Take_Order); evc_test E4_Level_Transition_0"
 4.8.1.3.1,4,x,,,,,E4,done,"EVC_Stored_Information: packets 41 and 46 first, an immediate order switches the level before the rest of the message is filtered (EVC_Levels.Take_Order); evc_test E4_Level_Transition_0"
 4.8.1.3.1 1),4,x,,,,,E4,done,"EVC_Stored_Information: packets 41 and 46 first, an immediate order switches the level before the rest of the message is filtered (EVC_Levels.Take_Order); evc_test E4_Level_Transition_0"
@@ -1350,7 +1350,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.2.2,4,x,,,,,E4,done,"E2/E3: the consistency reaction inhibition and the VBC (EVC_Position, EVC_Received)"
 4.8.2.3,4,x,,,,,E4,done,"E2/E3: the consistency reaction inhibition and the VBC (EVC_Position, EVC_Received)"
 4.8.3.1.1 Table,4,x,,,,,E4,partial,"EVC_Acceptance (balise rows), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance; [1] accepted at once (no transition buffer for level 1, see 4.8.5); the RBC rows (From RBC: Yes) of the messages taken by radio (2, 3, 33, 6, 9, 15, 16, 18, 27, 28, 34) in EVC_Radio_Acceptance.First_Filter, EVC_Radio_Authority.Take_Message; evc_test Radio_Acceptance; the packets of message 24 and the session messages are not filtered by the table yet [E5 authority]; packet 45 (Radio Network transition order) on its own rows: EVC_Acceptance.Network_Order, evc_test Network_List [E5 session]; packet 45 by radio (message 24): the row "Radio Network transition order" in EVC_Radio_Acceptance (Network_Order), EVC_Sessions.Network.Take_Radio_Order; evc_test Network_Radio_Order (e5/registration-3)"
-4.8.3.1.1 Table-footnote [1],4,x,,,,,E4,partial,"accepted at once instead of stored (EVC_Acceptance header: no transition buffer, 4.8.5)"
+4.8.3.1.1 Table-footnote [1],4,x,,,,,E4,partial,"the information of a new level by radio is stored in the transition buffer (EVC_Radio_Authority.Buffer, evc_test Transition_Buffer); missing: the balise information of the new level is accepted at once and used before the transition (EVC_Acceptance) [B038]"
 4.8.3.1.1 Table-footnote [2],4,x,,,,,E4,done,"EVC_Radio_Acceptance.First_Filter (Stored), the transition buffer of EVC_Radio_Authority.Buffer (4.8.5); evc_test Transition_Buffer [E5 authority]"
 4.8.3.1.1 Table-footnote [3],4,x,,,,,E4,done,"EVC_Radio_Acceptance.First_Filter, fed by EVC_Sessions.Train_Data_Awaited (decision: any Train Data sent again counts as changed); a message 9 rejected by it is not answered (SUBSET-076 4080407_01); e5/levels [E5 authority]"
 4.8.3.1.1 Table-footnote [4],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
@@ -1416,15 +1416,15 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.11.1.4 c),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
 4.11.1.4 d),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
 4.11.1.4 e),4,x,,,,,E4,n/a,"nothing is kept over No Power (no order of SH, PS or SM survives it)"
-4.12.1.2,4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
-4.12.1.2 a),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
-4.12.1.2 b),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
-4.12.1.2 c),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
-4.12.1.2 d),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
-4.12.1.2 e),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
-4.12.1.2 Table,4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
-4.12.1.2 Table-footnote [1],4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
-4.12.1.2 Table-footnote [2],4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons); the reasons of the procedures half (trip, text, mode acknowledgements, PT, RV, 5.17) with it"
+4.12.1.2,4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
+4.12.1.2 a),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
+4.12.1.2 b),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
+4.12.1.2 c),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
+4.12.1.2 d),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
+4.12.1.2 e),4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
+4.12.1.2 Table,4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
+4.12.1.2 Table-footnote [1],4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
+4.12.1.2 Table-footnote [2],4,x,,,,,E4,partial,"EVC_Core.Enter_Mode (the speed and distance monitoring, roll away, unauthorised direction, standstill supervision), EVC_Levels.Mode_Entered (the level acknowledgement reasons), the procedures half its own reasons (trip, text, mode acknowledgements, PT, RV, 5.17); missing: what each mode entry does with each brake reason, checked reason by reason against the table [B014]"
 5.3.1.3,5,x,,,,,E4,done,"the procedures of 5.4, 5.5 and 5.10 in EVC_Mission and EVC_Levels"
 5.4.1.4,5,x,,,,,E4,deferred,E5 (sessions) [E5 session]
 5.4.3.2 A24,5,x,,,,,E4,done,"EVC_Sessions.Mission: the train accepted without a valid position, the position deleted by EVC_Core.Evaluate_Radio (EVC_Position.Delete_Position, e5/session-4); decision 5; evc_test Scenario_Session_SoM_Level_2 [E5 session]"
@@ -1583,8 +1583,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.10.1.5,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
 5.10.1.6,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
 5.10.1.6.1,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
-5.10.1.7,5,x,,,,,E4,partial,"the information of the new level is accepted at once (4.8.3 [1], no transition buffer: EVC_Acceptance); rejected once the level is left (the first filter)"
-5.10.1.8,5,x,,,,,E4,partial,"the information of the new level is accepted at once (4.8.3 [1], no transition buffer: EVC_Acceptance); rejected once the level is left (the first filter)"
+5.10.1.7,5,x,,,,,E4,partial,"the information of a new level by radio is stored in the transition buffer (EVC_Radio_Authority.Buffer, evc_test Transition_Buffer); missing: the balise information of the new level is accepted at once and used before the transition (EVC_Acceptance) [B038]"
+5.10.1.8,5,x,,,,,E4,done,"the information of the level left rejected once the transition is performed (the first filter: EVC_Acceptance, EVC_Radio_Acceptance.First_Filter); evc_test E4_Acceptance, Transition_Buffer"
 5.10.2.4,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
 5.10.2.4.1,5,x,,,,,E4,done,"EVC_Levels; evc_test E4_Level_Transition_0, E4_Level_Orders"
 5.10.2.4.1 a),5,x,,,,,E4,done,"EVC_Levels.Available: level 2 always available, the radio equipment of the bullets is configuration not modelled (decision, e5/levels); evc_test E4_Level_Orders [E5 session]"
@@ -1648,7 +1648,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.11.2.2 A115,5,x,x,,,,E4,deferred,"E5 (the mode report to the RBC, its acknowledgement, the emergency stops) [E5 authority]"
 5.11.2.2 A140,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
 5.11.2.2 A145,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
-5.11.2.2 A150,5,x,,,,,E4,partial,4.6.3 [63] evaluated (EVC_Procedures); level NTC and SN are out of scope (National Systems)
+5.11.2.2 A150,5,x,,,,,E4,n/a,"A150 is the change to SN in level NTC: level NTC and mode SN are out of scope (STM / National Systems, §1); the other branches of D090 are done (EVC_Procedures)"
 5.11.2.2 D020,5,x,,,,,E4,done,level 1: A035; level 2: A030 (E5); levels 0 and NTC: S050
 5.11.2.2 D80,5,x,,,,,E4,done,"4.6.3 [7] to PT, the trip brake revoked; evc_test_procedures Scenario_Trip_EOA, Scenario_Linking"
 5.11.2.2 D085,5,x,,,,,E4,done,"4.6.3 [62], [68] (EVC_Procedures); evc_test_procedures Scenario_Shunting_Trips"
@@ -1876,8 +1876,8 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.21.4.1,5,x,,,,,E4,deferred,"E5 (the Supervised Manoeuvre request to the RBC and its authorisation, 4.6.3 [81]); the exit [82] is done (EVC_Procedure_Requests action 17 arg 2) [E5 authority]"
 5.22.2.1,5,x,,,,,E4,done,"EVC_Procedure_Requests.BMM_Inhibition (DMI action 18 arg 0) at standstill in level 1 or 2, SB, SH or SR (EVC_Procedures.BMM_Step); evc_test_procedures Scenario_BMM"
 5.22.2.2,5,x,,,,,E4,done,"EVC_Procedure_Requests.BMM_Inhibition (DMI action 18 arg 0) at standstill in level 1 or 2, SB, SH or SR (EVC_Procedures.BMM_Step); evc_test_procedures Scenario_BMM"
-5.22.3.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented
-5.22.3.1.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented
+5.22.3.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented [B015]
+5.22.3.1.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented [B015]
 5.22.4.1,5,x,,,,,E4,done,"MSG_ONBOARD train bit 4 (EVC_Procedures.BMM_Inhibited), JRU 23 kind 9; evc_test_procedures Scenario_BMM"
 5.22.4.2,5,x,,,,,E4,n/a,"the BTM port carries no transmission alarm (SUBSET-036 is outside the project, EVC-PLAN §1): there is no reaction to inhibit"
 5.22.5.1,5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"

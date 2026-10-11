@@ -908,7 +908,7 @@ end init
 sub SubStep2
 efs: Testing.SetTRMode(False)
 case Mode change to SN
-clause E4 partial 5.11.2.2 A150 ; efs Entry 5.11.2.2.A150
+clause E4 n/a 5.11.2.2 A150 ; efs Entry 5.11.2.2.A150
 step Mode change to SN
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A150
