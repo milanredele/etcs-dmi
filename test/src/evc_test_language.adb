@@ -1391,7 +1391,9 @@ package body EVC_Test_Language is
              and then EVC_Received.Message_Count (Msg.Invalid_Value) = 1
              and then EVC_Received.Last_Message.Kind = MCat.Track_M24
              and then EVC_Received.Last_Message.Count = 1
-             and then JRU_Event (2) = 0 and then JRU_Event (3) = 0,
+             --  e5/jru-radio: a message is recorded at reception, the
+             --  refused ones too (3.16.3.1.1.2), a telegram is not
+             and then JRU_Event (2) = 0 and then JRU_Event (3) /= 0,
              "received: V_TSR spare in a telegram and in a message,"
              & " message 37 from the RBC session: counted, not kept");
 

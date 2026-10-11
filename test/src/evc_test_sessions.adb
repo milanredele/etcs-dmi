@@ -1447,6 +1447,66 @@ package body EVC_Test_Sessions is
              & Img (Count) & Img (Error) & Img (Recorded));
    end Scenario_Session_Error_Report;
 
+   --  e5/jru-radio, SUBSET-027 record 9 (the on-board's JRU event 3):
+   --  every message received (3.16.3.1.1.2) recorded once, at reception,
+   --  used or not, consistent or not (SUBSET-076 4080436_01 step 70)
+   procedure Scenario_Session_JRU_Received is
+      Received, Refused : Natural := 0;
+      T : Unsigned_64;
+
+      --  Two cycles, the records of each added up
+      procedure Step is
+      begin
+         Received := 0;
+         Refused := 0;
+         for K in 1 .. 2 loop
+            Stand;
+            Received := Received + JRU_Count (3);
+            Refused := Refused + JRU_Count (13);
+         end loop;
+      end Step;
+
+      procedure Expect (Text : String; R, E : Natural) is
+      begin
+         Check (Received = R and then Refused = E,
+                "JRU message from the RBC: " & Text & ", record 9 (event 3)"
+                & " and 13 expected" & Img (R) & Img (E) & ", got"
+                & Img (Received) & Img (Refused));
+      end Expect;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Establish (1);
+      T := Now_T (100);
+      --  message 24 without M_ACK: received, not used by any consumer
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T));
+      Step;
+      Expect ("a message 24 without effect", 1, 0);
+      --  message 24 with M_ACK, taken and answered by 146: no second record
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T + 10, Ack => 1));
+      Step;
+      Expect ("a message 24 taken by a consumer", 1, 0);
+      --  3.16.3.3.3: the stamp not above the last, refused after reception
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T));
+      Step;
+      Expect ("a message refused by its time stamp", 1, 1);
+      --  3.16.1.1: a NID_MESSAGE the codec refuses (like 254)
+      declare
+         M : Byte_Array := Msg (MCat.Track_M24, T + 20);
+      begin
+         M (M'First) := 254;
+         Give_Radio_Message (1, M);
+      end;
+      Step;
+      Expect ("an unknown message (254)", 1, 1);
+      --  two messages in one cycle: two records
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T + 30));
+      Give_Radio_Message (1, Msg (MCat.Track_M24, T + 40));
+      Step;
+      Expect ("two messages", 2, 0);
+   end Scenario_Session_JRU_Received;
+
    --  3.6.1.7, 3.18.3 (tenth round): the train length of the valid Train
    --  Data reaches the position once per cycle (EVC_Core
    --  Sync_Train_Length), so that the min safe rear end and its triggers

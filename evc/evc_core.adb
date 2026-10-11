@@ -732,8 +732,8 @@ is
    end Record_Radio_Error;
 
    --  1c. The radio messages latched since the last cycle, in the order
-   --  the RTM delivered them: parsed (EVC_Received, chapter 8), those
-   --  accepted recorded on the JRU port (event 3: NID_MESSAGE, L_MESSAGE)
+   --  the RTM delivered them: recorded on the JRU port (event 3:
+   --  NID_MESSAGE, L_MESSAGE), parsed (EVC_Received, chapter 8)
    --  and given, with their session, to the session and link half; the
    --  messages it passes go on to the authority half (phase E5)
    procedure Read_Radio_Messages
@@ -756,16 +756,26 @@ is
             Slot : RTM_Slot_T renames Latched_RTM (I);
          begin
             if Valid_RTM (Slot.Data (1 .. Slot.Length)) then
+               --  e5/jru-radio: the message from the RBC (SUBSET-027 record
+               --  9) recorded at reception, whatever its later use: one
+               --  record per message the RTM port delivers with a
+               --  consistent L_MESSAGE (7.5.1.48). Decision: "received"
+               --  is what the Euroradio delivers (3.16.3.1.1.2 speaks of
+               --  an inconsistent message "received"), so a message the
+               --  codec refuses (3.16.1.1, 3.16.3.1.1 c; a spare value, an
+               --  unknown NID_MESSAGE such as 254), one with an undefined
+               --  packet and one the time stamp check refuses later
+               --  (3.16.3.3.3) are recorded too, the refusal by a JRU 13
+               --  with M_ERROR after it (e5/error-report). A frame whose
+               --  length disagrees with L_MESSAGE is not recorded.
+               --  NID_MESSAGE, L_MESSAGE (u16)
+               EVC_Outbox.Put
+                 (JRU, JRU_Record (JRU_Message,
+                                   Slot.Data (1),
+                                   EVC_Bytes.Byte (Slot.Length mod 256),
+                                   EVC_Bytes.Byte (Slot.Length / 256)));
                EVC_Received.Receive_Message
                  (Slot.Data (1 .. Slot.Length), M_Status);
-               if M_Status = ETCS_Message.Accepted then
-                  --  NID_MESSAGE, L_MESSAGE (u16)
-                  EVC_Outbox.Put
-                    (JRU, JRU_Record (JRU_Message,
-                                      Slot.Data (1),
-                                      EVC_Bytes.Byte (Slot.Length mod 256),
-                                      EVC_Bytes.Byte (Slot.Length / 256)));
-               end if;
                if M_Status = ETCS_Message.Accepted
                  and then EVC_Received.Last_Unknown_Packets > 0
                then
