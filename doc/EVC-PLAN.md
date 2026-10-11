@@ -3550,3 +3550,49 @@ which were re-written by hand every round; the burndown counts it. The
 first 25 items are the open items of rounds 4 to 12 and the level 1 gaps
 E2 to E4 left behind (the bookkeeping of round 13 re-reads their rows).
 
+
+### Geographical position by radio and the balise transition buffer (e5/radio-geo-buffer, 2026-10-11)
+
+**Implemented** (B001): the packet 79 of a radio message (3.6.6.4.1).
+Message 24 with packet 79 goes to `EVC_Radio_Info` like a text message
+(`EVC_Radio_Authority.Take_Message`); `EVC_Core.Take_Radio_Geo`, after
+`Release_Transition_Buffer`, gives the cycle's radio messages to
+`EVC_Position.Take_Radio_Geo` with the verdict of
+`EVC_Acceptance.Radio_Geo_Verdict` (4.8.3, the row "Geographical
+Position, From RBC: Yes": A in level 2, R [2] elsewhere; 4.8.4.2, the
+mode column shared with the balise row). Accepted: `Take_Geo` with the
+LRBG, the references naming the LRBG or one of the last groups anchored
+at once, the others when passed. Stored (level 1 with level 2
+announced): the last packet kept in `EVC_Position` and used at the
+transition (4.8.5.5). Rejected: the kept one deleted (4.8.5.4 a).
+Scenario `Geo_By_Radio` in `EVC_Test_Position`.
+
+**Decisions.** One packet kept, not three sets: a packet 79 replaces
+the references not yet applicable (3.6.6.3), so the sequential
+re-evaluation of 4.8.5.5 leaves the last one; only the packet is kept,
+the other packets of its message 24 are taken at once (4.8.5.2.1: the
+"set of information" is the part of the message stored). A packet whose
+message names an LRBG the on-board does not know is not taken; the
+default country of its references is the LRBG's. In PT, rejected (as for
+a group). Judged in the level and mode after the transitions of the
+cycle.
+
+**SUBSET-076**: 706 / 1578 / 906 before and after; 0 regressions, 6
+improvements (4080415_01 295 -> 297 in the three versions, Sadfc7768
+triaged `model`: the TRN window of the joined case before is still open;
+9990400_29 68 -> 86).
+
+**Left.** B002, the balise side of the transition buffer, not started
+(budget). Its premise is to be corrected first: the balise rows of
+4.8.3 carry [2] only in the column NTC (out of scope), so with level 2
+announced in level 1 no balise information is stored; the case is [1],
+level 1 information (packets 12, 21, 27, 5, 68...) read in level 0 or 2
+with level 1 announced, accepted at once today (`EVC_Acceptance`
+header, `Level_Accepts` with `C.L1_Announced`). Shape proposed: keep the
+group's packets judged [1] (not the whole passage: up to about 1 KB of
+telegrams per group) in a buffer of three sets owned by
+`EVC_Stored_Information`, deleted by 4.8.5.4 a), and evaluated by
+`Evaluate_Released`'s path when `EVC_Levels.Switched_To (L1)`, with
+`Level_Accepts` returning a third verdict "stored" for [1]. B060: the
+kept packet 79 is not deleted when the session that gave it ends
+(4.8.5.4 c).

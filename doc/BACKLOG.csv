@@ -26,3 +26,4 @@ B022,onboard,open,round 11,"3.5.7 Table 2 [1] and [7] (the connection indication
 B023,dmi,open,round 8,"The MO05 exception of DMI Table 50 D5: the Radio data window after a switch to Trip"
 B024,onboard,open,round 8,"3.16.3.4 M_ERROR 5 (T_NVCONTACT reaction report); the error reports of 3.16.4.2 (E6)"
 B025,onboard,open,round 13,"Stale matrix notes of E2 to E4: about 50 partial rows whose note defers to a phase since closed or to E6 / E7 in prose; the bookkeeping package of round 13 re-reads them"
+B060,onboard,open,round 13,"The packet 79 by radio kept for the level 2 transition (EVC_Position.Take_Radio_Geo, 4.8.3 [2]) is not deleted when the session of the RBC that gave it is terminated (4.8.5.4 c); the radio buffer does it (EVC_Radio_Authority.Buffer, Drop_Ended)"
