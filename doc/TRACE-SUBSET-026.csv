@@ -274,7 +274,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.8.7,3,x,,,,,E2,done,"EVC_Odometry.Safety_Exceeded, latched, JRU event 7; System Failure by 4.6.3 [84] (evc_test E4_Odometer_Failure)"
 3.6.8.8,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.7.2.3,3,x,,,,,E3,done,EVC_Stored_Information.Take_Packet (EVC_Track_Description.Covered from the estimated front end to the SvL); evc_test Scenario_MA
-3.7.3.1,3,x,,,,,E3,partial,"the stores of EVC_Track_Description, EVC_Track_Conditions (Cut_Beyond of EVC_Profiles); d) k) m) n) o) p): see their rows"
+3.7.3.1,3,x,,,,,E3,partial,"the stores of EVC_Track_Description, EVC_Track_Conditions (Cut_Beyond of EVC_Profiles); d) k) m) n) o) p): see their rows; k) is E6, n) E7; missing: m) the linking in rear of the new reference group is not kept [B033]"
 3.7.3.1 a),3,x,,,,,E3,done,EVC_Track_Description.Take_SSP; evc_test Scenario_SSP_Replacement
 3.7.3.1 b),3,x,,,,,E3,done,EVC_Track_Description.Take_Gradients; evc_test Scenario_MA_Shortening
 3.7.3.1 c),3,x,,,,,E3,done,"EVC_Track_Description.Take_ASP (Cut_Beyond from the first element, as a)); evc_test Scenario_Other_Profiles"
@@ -287,7 +287,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.7.3.1 j),3,x,,,,,E3,done,EVC_Track_Description.Take_Suitability (per type); evc_test Scenario_Other_Profiles
 3.7.3.1 k),3,x,,,,,E3,deferred,"E6 (reversing area, packet 138, 3.15.4)"
 3.7.3.1 l),3,x,,,,,E3,done,EVC_Track_Description.Take_Adhesion; evc_test Scenario_Other_Profiles
-3.7.3.1 m),3,x,,,,,E3,partial,EVC_Position (E2) replaces all the stored linking with the new one; keeping the part in rear of its reference group is E6
+3.7.3.1 m),3,x,,,,,E3,partial,EVC_Position replaces all the stored linking with the new one; missing: the part in rear of the reference group of the new linking is not kept [B033]
 3.7.3.1 n),3,x,,,,,E3,deferred,E7 (infill)
 3.7.3.1 o),3,x,,,,,E3,done,"packets 69 and 40 stored (EVC_Track_Conditions.Take_Platforms, Take_Current), for 5.20; evc_test_procedures Scenario_External_Track_Conditions"
 3.7.3.1 p),3,x,,,,,E3,done,"packets 69 and 40 stored (EVC_Track_Conditions.Take_Platforms, Take_Current), for 5.20; evc_test_procedures Scenario_External_Track_Conditions"
@@ -438,7 +438,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.5.14,3,x,,,,,E3,deferred,E5 (order of the RBC) [E5 authority]
 3.11.5.14 1st bullet,3,x,,,,,E3,deferred,E5 (order of the RBC) [E5 authority]
 3.11.5.14 2nd bullet,3,x,,,,,E3,deferred,E5 (RBC/RBC handover) [E5 authority]
-3.11.6.2,3,x,,,,,E3,partial,"EVC_Movement_Authority.Take_V_Main at reception; in the MRSP from then on in FS, AD, LS and OS (4.5.2), with or without an MA and whatever the orientation (EVC_Stored_Information.Build_Speed_Sources; in those modes an MA is always on board); evc_test Scenario_MA; infill: E7"
+3.11.6.2,3,x,,,,,E3,deferred,"EVC_Movement_Authority.Take_V_Main at reception; in the MRSP from then on in FS, AD, LS and OS (4.5.2), with or without an MA and whatever the orientation (EVC_Stored_Information.Build_Speed_Sources); evc_test Scenario_MA; the infill part [E7 infill]"
 3.11.6.3,3,x,,,,,E3,done,EVC_Movement_Authority.Take_V_Main (until a new one or A.3.4 deletes it)
 3.11.6.3.1,3,x,,,,,E3,deferred,E5 (level 2 MA) [E5 authority]
 3.11.6.4,3,x,x,,,,E3,done,"V_MAIN 0 recorded as a trip order (EVC_Movement_Authority.Trip_Ordered, JRU); the trip 4.6.3 [18] (EVC_Procedures); evc_test_procedures Scenario_Trip_Order"
@@ -467,7 +467,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.11.11.11,3,x,,,,,E3,done,"no restriction until packet 52 (the store PBD empty at Clear), outside its sections and beyond D_TRACKINIT; evc_test Scenario_PBD"
 3.11.12.6,3,x,,,,,E3,done,EVC_Track_Description.Take_Default_Gradient; evc_test Scenario_Other_Profiles
 3.12.1.2.1,3,x,,,,,E3,done,"EVC_Track_Conditions.Evaluate, Inhibitions; evc_test Scenario_Track_Conditions"
-3.12.1.2.1.2,3,x,,,,,E3,partial,"the big metal masses are stored (EVC_Track_Conditions); their evaluation against the antenna is used by 3.15.7, E6"
+3.12.1.2.1.2,3,x,,,,,E3,deferred,the big metal masses are stored (EVC_Track_Conditions); their evaluation against the max / min safe antenna position belongs to 3.15.7 [E6 big metal mass]
 3.12.1.2.1.3,3,x,,,,,E3,done,EVC_Track_Conditions.Evaluate (powerless section: min safe front end); evc_test Scenario_Track_Conditions
 3.12.1.2.1.4,3,x,,,,,E3,done,"sound horn (EVC_Track_Conditions.Evaluate, E3); the tunnel stopping area against the estimated front end (Tunnel_Indication, E4)"
 3.12.1.2.1.5,3,x,,,,,E3,partial,the estimated front end stands for the engine (EVC_Track_Conditions.Evaluate); the radio supervision is E5 [E5 session]
@@ -513,7 +513,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.4.7 c),3,x,,,,,E3,done,"EVC_Movement_Authority.Mode_Profile_Target (the SvL at the start with an LOA in rear of it), supervised (EVC_SDM, 3.13.1.5); evc_test SDM_Seams"
 3.12.5.3,3,x,,,,,E3,done,EVC_Track_Description.Take_LX; evc_test Scenario_Other_Profiles
 3.12.5.8,3,x,,,,,E3,done,"EVC_Track_Description.LX_Target to Snapshot_T.Temporary, supervised by EVC_SDM as the closest EOA and SvL, no release speed (3.13.1.5), until the substitution of 5.16 or the min safe front end past the LX end; not limited to the MA (3.12.2.5, 3.13.1.5: the closer of the two; 3.7.2.2.1: beyond an LOA it counts; A.3.4: kept when the MA is shortened); evc_test Other_Profiles, SDM_Seams, evc_test_procedures Scenario_Level_Crossing (after SUBSET-076 5160000_01)"
-3.13.1.5,3,x,,,,,E3,partial,"EVC_SDM: the EOA and the SvL are the closest of those of the MA and of Snapshot_T.Temporary (LX 3.12.5.8, mode profile 3.12.4.7), a temporary SvL with no release speed, an LOA kept beside a temporary EOA as a speed target (the EOA/LOA passed is the temporary EOA's, 3.12.4.7 c; the MA request location of either counts: EVC_SDM.Passed_Locations); evc_test SDM_Seams, SDM_LOA_And_Temporary, Other_Profiles; the temporary EOA of a route unsuitability (3.12.2.4) is E4"
+3.13.1.5,3,x,,,,,E3,partial,"EVC_SDM: the EOA and the SvL are the closest of those of the MA and of Snapshot_T.Temporary (LX 3.12.5.8, mode profile 3.12.4.7), an LOA kept beside a temporary EOA (EVC_SDM.Passed_Locations); evc_test SDM_Seams, SDM_LOA_And_Temporary, Other_Profiles; missing: the temporary EOA of a route unsuitability (3.12.2.4), not implemented [B034]"
 3.13.2.2.1.3,3,x,,,,,E3,done,"EVC_Braking.Build, Conversion_Applicable; evc_test SDM_Precision (lambda and gamma trains)"
 3.13.2.2.2.1,3,x,,,,,E3,done,"T_Traction_Cut_Off of the train data, EVC_Limits.T_Traction (3.13.9.3.2.3); evc_test SDM_Precision"
 3.13.2.2.3.1.1,3,x,,,,,E3,done,"EVC_Braking.Steps_T and Lookup (step K from the previous upper speed, the last open ended), used for the emergency, service and normal service models; evc_test SDM_Precision"
@@ -545,7 +545,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.2.2.7.3,3,x,,,,,E3,done,"EVC_SDM.Update_Feedback: the brake pipe or, converted (A.3.10.3), the brake cylinder pressure (TIU input 12); evc_test SDM_Feedback"
 3.13.2.2.8.1,3,x,,,,,E3,done,"Onboard_Config_T.Traction_Cut_Off; EVC_Limits.T_Traction, EVC_SDM (TCO only if implemented); evc_test SDM_Approach; configured as data (EVC_Config); evc_test Config_Behaviour"
 3.13.2.2.9.1.1,3,x,,,,,E3,done,"EVC_Braking.Build: Kdry_rst / Kwet_rst for braking models, none for the conversion model"
-3.13.2.2.9.1.2,3,x,,,,,E3,partial,"one set of Kdry_rst / Kwet_rst (Train_Data_Extra_T) serves every combination model, applied step by step; a set per combination is not in the train data yet (E6 train data)"
+3.13.2.2.9.1.2,3,x,,,,,E3,deferred,"one set of Kdry_rst / Kwet_rst (Train_Data_Extra_T) serves every combination model, applied step by step; a set per combination needs the train data of E6 [E6 train data]"
 3.13.2.2.9.1.3,3,x,,,,,E3,done,"Train_Data_Extra_T.Kdry_Rst (by M_NVEBCL) and Kwet_Rst, per step of A_brake_emergency; EVC_Braking.Build; evc_test SDM_Precision (gamma train)"
 3.13.2.2.9.1.5,3,x,,,,,E3,done,"Train_Data_Extra_T.Kdry_Rst (by M_NVEBCL) and Kwet_Rst, per step of A_brake_emergency; EVC_Braking.Build; evc_test SDM_Precision (gamma train)"
 3.13.2.2.9.2.1,3,x,,,,,E3,done,"Train_Data_Extra_T.Kn_Plus / Kn_Minus (step functions, up to 8 steps, the last open ended); EVC_Curves.Deceleration (GUI); evc_test SDM_Precision (GUI of the gamma train)"
@@ -778,7 +778,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.11.9,3,x,,,,,E3,done,"EVC_SDM.Below_First_Element (the EBD of the SvL or the LOA, the SBD of the EOA and, when enabled, their GUI curves at the MRSP start below the first element: the MA request location passed); evc_test SDM_Perturbation_Curves; with T_MAR, E5"
 3.14.1.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Step (the service brake alone, the train not decelerating T_bs + 2 s after: the emergency brake, released with the service brake command; TIU reason bit 1); the time and the deceleration configured as data (EVC_Config); evc_test Config_Behaviour"
 3.14.1.3,3,x,,,,,E3,done,"the trip brake (TIU reason 32) until the trip is acknowledged at standstill ([7], [62], [63], [68], EVC_Procedures); evc_test_procedures Scenario_Trip_EOA"
-3.14.1.5,3,x,,,,,E3,partial,"EVC_Brake_Commands (roll away, unauthorised direction, standstill supervision released at standstill after the acknowledgement, DMI ack kind 5); evc_test SDM_Protections; the train data / SR entry movement reasons are E4; evc_test EMRRLS_Acknowledgement (the roll away brake with the EB of 3.13.10, ack kind 5 as the bench and the DMI send it)"
+3.14.1.5,3,x,,,,,E3,partial,"EVC_Brake_Commands (roll away, unauthorised direction, standstill supervision released at standstill after the acknowledgement, DMI ack kind 5); evc_test SDM_Protections, EMRRLS_Acknowledgement; missing: the reasons of a movement while modifying / revalidating Train Data [B035] and while entering the SR speed / distance [B015]"
 3.14.1.6,3,x,,,,,E3,done,"the service brake of a linking reaction apply service brake until standstill (TIU reason 128, {P}); {T} Scenario_Linking"
 3.14.1.7,3,x,,,,,E3,done,EVC_Sessions.Supervise_Contact (a new message or standstill releases the service brake of T_NVCONTACT); evc_test session_nvcontact_brake [E5 session]
 3.14.1.7.1,3,x,,,,,E3,done,released when the distance is no longer overpassed or at standstill after the acknowledgement (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing
@@ -787,10 +787,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.14.1.7.4,3,x,,,,,E3,done,"released at standstill after the acknowledgement, again for any further reverse movement (EVC_Procedures.Post_Trip_Step); evc_test_procedures Scenario_Trip_EOA"
 3.14.1.7.5,3,x,,,,,E3,done,released with the acknowledgement of the text (EVC_Text_Messages); evc_test_procedures Scenario_Text_Messages
 3.14.1.7.6,3,x,,,,,E3,deferred,"E4: the brake reasons of the procedures (train data change 5.17, mode / level acknowledgements, Post Trip reversing, text acknowledgement, consist length)"
-3.14.1.8,3,x,,,,,E3,partial,"EVC_Brake_Commands keeps each reason of this phase until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons and acknowledgements of E4 join them there"
+3.14.1.8,3,x,,,,,E3,done,"EVC_Brake_Commands keeps each reason of 3.13 / 3.14 until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons of the procedures (trip, post trip, text acknowledgement, train data change) are kept by EVC_Procedures until their own release, the brake command is their union (EVC_Core); evc_test EMRRLS_Acknowledgement (the EB of 3.13.10 and the roll away brake together: the EB stays until both are released), evc_test_procedures Scenario_Trip_EOA"
 3.14.1.9,3,x,,,,,E3,done,"EVC_Brake_Commands.Commands_T.Ack_Required only at standstill (MSG_STATUS brake 2); evc_test SDM_Protections (an acknowledgement before standstill does nothing); evc_test EMRRLS_Acknowledgement (with the EB of 3.13.10 revoked at the stop or before, Q_NVEMRRLS 0 and 1); the EB of 3.13.10 alone asks none (3.14.1.4, DMI 8.2.2.3.6): evc_test EMRRLS_*"
-3.14.1.10,3,x,,,,,E3,partial,"EVC_Brake_Commands keeps each reason of this phase until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons and acknowledgements of E4 join them there; evc_test EMRRLS_Acknowledgement (the EB of 3.13.10 and the roll away brake together: the EB stays until both are released)"
-3.14.1.11,3,x,,,,,E3,partial,EVC_Core.Enter_Mode and EVC_Levels.Mode_Entered revoke the reasons of 4.12 of this half; the procedures' reasons with them
+3.14.1.10,3,x,,,,,E3,done,"EVC_Brake_Commands keeps each reason of 3.13 / 3.14 until its release condition, one acknowledgement for the reasons of 3.14.1.5 (3.14.1.10.1); the reasons of the procedures (trip, post trip, text acknowledgement, train data change) are kept by EVC_Procedures until their own release, the brake command is their union (EVC_Core); evc_test EMRRLS_Acknowledgement (the EB of 3.13.10 and the roll away brake together: the EB stays until both are released), evc_test_procedures Scenario_Trip_EOA"
+3.14.1.11,3,x,,,,,E3,partial,"EVC_Core.Enter_Mode and EVC_Levels.Mode_Entered revoke the reasons of 4.12 of this half, the procedures their own; missing: the brake handling at mode entry of 4.12.1, reason by reason [B014]"
 3.14.1.11.1,3,x,,,,,E3,deferred,E4: the brake reasons on a mode change (4.12)
 3.14.1.11.2,3,x,,,,,E3,deferred,E4: the brake reasons on a mode change (4.12)
 3.14.2.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
@@ -798,7 +798,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.14.2.4,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
 3.14.2.6,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections; the system status message ""Runaway movement"" (SS 9) while the protection commands the brake (3.14.2.4, 3.14.3.2), found by SUBSET-076 4120100_10"
 3.14.2.7,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (the direction controller of TIU input 6, neutral forbids both, D_NVROLL from the detection with the growth of the confidence interval, re-initialised); evc_test SDM_Protections"
-3.14.3.1,3,x,,,,,E3,partial,"EVC_Brake_Commands: the direction of the MA, and in SR the train orientation (4.4.11.1.3 e); PT and RV are the procedures half's"
+3.14.3.1,3,x,,,,,E3,done,"EVC_Brake_Commands: the direction of the MA, and in SR the train orientation (4.4.11.1.3 e); PT: reversing within D_NVPOTRP (EVC_Procedures.Post_Trip_Step), RV: EVC_Procedures; evc_test SDM_Protections, evc_test_procedures Scenario_Trip_EOA, Scenario_Reversing"
 3.14.3.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"
 3.14.3.4,3,x,,,,,E3,done,"MSG_STATUS brake indication (1, 2 at standstill), TIU output reasons bits 2 and 3, JRU event 20; evc_test SDM_Protections; the system status message ""Runaway movement"" (SS 9) while the protection commands the brake (3.14.2.4, 3.14.3.2), found by SUBSET-076 4120100_10"
 3.14.3.5,3,x,,,,,E3,done,"EVC_Brake_Commands.Protect (movement against the MA beyond D_NVROLL, re-initialised); evc_test SDM_Protections"

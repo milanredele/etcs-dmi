@@ -5,7 +5,7 @@ frame Undesirable movements supervision
 sequence Reverse movement protection
 case Full reverse protection sequence
 clause E3 partial 3.14.1.5 ; efs 3.14.1.5
-clause E3 partial 3.14.3.1 ; efs 3.14.3.1
+clause E3 done 3.14.3.1 ; efs 3.14.3.1
 clause E3 done 3.14.3.2 ; efs 3.14.3.2
 clause E3 done 3.14.3.5 ; efs 3.14.3.5
 clause E3 deferred 3.14.3.6 ; efs 3.14.3.6
@@ -837,7 +837,7 @@ case Full Standstill supervision sequence
 clause - absent 3.14.4.1 ; efs 3.14.4.1
 clause - absent 3.14.4.2 ; efs 3.14.4.2
 clause - absent 3.14.4.5 ; efs 3.14.4.5
-clause E3 partial 3.14.1.8 ; efs 3.14.1.8
+clause E3 done 3.14.1.8 ; efs 3.14.1.8
 clause E3 partial 3.14.1.5 ; efs 3.14.1.5
 clause - absent 3.14.1 ; efs 3.14.1
 clause - other 1.1.30.2 ; Design choices
@@ -1006,7 +1006,7 @@ case Full Standstill supervision sequence
 clause - absent 3.14.4.1 ; efs 3.14.4.1
 clause - absent 3.14.4.2 ; efs 3.14.4.2
 clause - absent 3.14.4.5 ; efs 3.14.4.5
-clause E3 partial 3.14.1.8 ; efs 3.14.1.8
+clause E3 done 3.14.1.8 ; efs 3.14.1.8
 clause E3 partial 3.14.1.5 ; efs 3.14.1.5
 clause - absent 3.14.1 ; efs 3.14.1
 clause - other 1.1.30.2 ; Design choices

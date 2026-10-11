@@ -918,7 +918,7 @@ set train.kdry 7 1 0:0.1 1:0.24 2:0.32 3:0.47 4:0.58 5:0.74 6:0.92
 set train.kdry 7 2 0:0.07 1:0.12 2:0.19 3:0.28 4:0.37 5:0.58 6:0.64
 set train.kdry 7 4 0:0.02 1:0.07 2:0.12 3:0.15 4:0.22 5:0.37 6:0.42
 case Check Kdry_rst values
-clause E3 partial 3.13.2.2.9.1.2 ; efs 3.13.2.2.9.1.2
+clause E3 deferred 3.13.2.2.9.1.2 ; efs 3.13.2.2.9.1.2
 clause E3 done 3.13.2.2.9.1.3 ; efs 3.13.2.2.9.1.3
 clause E3 done 3.13.6.2.1.7 ; efs 3.13.6.2.1.7
 clause - absent 3.13.6.2.1.2 f) ; efs 3.13.6.2.1.2.f
@@ -1452,7 +1452,7 @@ set train.kwet 6 0:0.07 1:0.12 2:0.2 3:0.4 4:0.47 5:0.55 6:0.71
 set train.kwet 3 0:0.1 1:0.18 2:0.24 3:0.33 4:0.4 5:0.5 6:0.81
 set train.kwet 7 0:0.21 1:0.32 2:0.4 3:0.48 4:0.62 5:0.74 6:0.85
 case Check Kwet_rst values
-clause E3 partial 3.13.2.2.9.1.2 ; efs 3.13.2.2.9.1.2
+clause E3 deferred 3.13.2.2.9.1.2 ; efs 3.13.2.2.9.1.2
 clause E3 done 3.13.2.2.9.1.5 ; efs 3.13.2.2.9.1.5
 clause - absent 3.13.6.2.1.2 f) ; efs 3.13.6.2.1.2.f
 step Check Kwet_rst information
