@@ -17,6 +17,7 @@ with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Text_Messages;
+with EVC_Stored_Information;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
 
@@ -306,10 +307,17 @@ package body EVC_Test_Handover is
              and then not EVC_LS_Display.Order_Pending,
              "handover LSSMA: released at the switch and rejected "
              & "(4.8.2.1 c exception 2)");
-      --  the same order from the supervising RBC is taken
+      --  the same order from the supervising RBC is taken, in LS (in
+      --  SR it needs the LS area of a mode profile of the same message,
+      --  4.8.4.2 [9], B093)
+      --  (the train leaves LS in the same cycle: no LS area, 4.10
+      --  deletes the order again; taken means not filtered)
+      SI_Seen := (others => (others => 0));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_LS, EVC_Modes.L2);
       Give_Radio_Message (2, M24_LSSMA (10));
       Stand;
-      Check (EVC_LS_Display.Toggled_On,
+      Check (SI_Seen (EVC_Stored_Information.Info_Group,
+                      EVC_Stored_Information.Change_Filtered) = 0,
              "handover LSSMA: taken from the supervising RBC");
    end Scenario_Handover_LSSMA;
 

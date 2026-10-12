@@ -134,6 +134,24 @@ package body EVC_Test_LS is
       Finish_Carry (G, K, W, OK);
    end Carry_180;
 
+   --  Packet 80: a Limited Supervision section from D m, 300 m long
+   function LS_Profile (D : Natural := 200)
+     return ETCS_Track_Packets.P80.Packet_T
+   is
+      P : ETCS_Track_Packets.P80.Packet_T;
+   begin
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_MAMODE := ETCS_Variables.D_MAMODE_T (D);
+      P.M_MAMODE := ETCS_Variables.M_MAMODE_Limited_Supervision;
+      P.V_MAMODE := 8;
+      P.L_MAMODE := 300;
+      P.L_ACKMAMODE := 100;
+      P.Q_MAMODE := 0;
+      P.N_ITER := 0;
+      return P;
+   end LS_Profile;
+
    --  Level 2 in FS with the RBC's MA (EOA 1100 m); the group 10 at
    --  100 m announces level 1 at 600 m; the group 20 at 300 m gives an
    --  MA to 2000 m and a toggle on order with a time-out of 5 s. The
@@ -152,6 +170,9 @@ package body EVC_Test_LS is
       Carry (Track_N, 0, L1_Order (500));
       Add_Group (Group (20, 300));
       Carry (Track_N, 0, MA_Of ((1500, 200)));
+      --  4.8.4.2 [9] (B093): in FS the order needs the LS area of a mode
+      --  profile of the same message around the train (500 to 800 m)
+      Carry (Track_N, 0, LS_Profile);
       Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
       Carry (Track_N, 1, SSP ((1 => (0, 100, False),
                                2 => (2500, End_Mark, False))));
@@ -179,22 +200,6 @@ package body EVC_Test_LS is
       Check (Toggled_On and then not Order_Pending,
              "4.4.19.1.4.3: toggled on at the transition + T_LSSMA");
    end Scenario_LS_Order_Buffered;
-
-   --  Packet 80: a Limited Supervision section from 200 m, 300 m long
-   function LS_Profile return ETCS_Track_Packets.P80.Packet_T is
-      P : ETCS_Track_Packets.P80.Packet_T;
-   begin
-      P.Q_DIR := 1;
-      P.Q_SCALE := 1;
-      P.D_MAMODE := 200;
-      P.M_MAMODE := ETCS_Variables.M_MAMODE_Limited_Supervision;
-      P.V_MAMODE := 8;
-      P.L_MAMODE := 300;
-      P.L_ACKMAMODE := 100;
-      P.Q_MAMODE := 0;
-      P.N_ITER := 0;
-      return P;
-   end LS_Profile;
 
    --  Packet 181 in the group G
    procedure Carry_181 (G : Positive; K : Natural) is
@@ -236,5 +241,45 @@ package body EVC_Test_LS is
       Check (Marker_Stored,
              "4.4.19.1.4.8: kept with packet 181 in the same group");
    end Scenario_LS_Marker_Deleted;
+
+   --  4.8.4.2 [9] (B093): level 1 in FS; the toggle on order of packet
+   --  180 in a group with an MA and no mode profile (group 10 at 100 m),
+   --  with an LS area ahead of the train's confidence interval (group 20
+   --  at 300 m, the area from 500 m), with an LS area around the train
+   --  (group 30 at 600 m, the area from 600 m)
+   procedure Scenario_LS_Order_Area is
+      procedure Order_Group (NID : Natural; At_M : Integer_64;
+                             Profile : Boolean; D : Natural) is
+      begin
+         Add_Group (Group (NID, At_M));
+         Carry (Track_N, 0, MA_Of ((1500, 200)));
+         if Profile then
+            Carry (Track_N, 0, LS_Profile (D));
+         end if;
+         Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
+         Carry (Track_N, 1, SSP ((1 => (0, 100, False),
+                                  2 => (2500, End_Mark, False))));
+         Carry_180 (Track_N, 1, On => True, Delay_S => 30);
+      end Order_Group;
+   begin
+      EVC_LS_Display.Clear;
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      Order_Group (10, 100, False, 0);
+      Order_Group (20, 300, True, 200);
+      Order_Group (30, 600, True, 0);
+      Run_X (15_000);
+      Check (not Order_Pending and then not Toggled_On,
+             "4.8.4.2 [9]: in FS the toggle on order without a mode "
+             & "profile in its message rejected");
+      Run_X (35_000);
+      Check (not Order_Pending and then not Toggled_On,
+             "4.8.4.2 [9]: rejected, the LS area of its message not "
+             & "overlapped by the confidence interval");
+      Run_X (65_000);
+      Check (Order_Pending or else Toggled_On,
+             "4.8.4.2 [9]: taken, the train inside the LS area of a mode "
+             & "profile of its message, the furthest it overlaps");
+   end Scenario_LS_Order_Area;
 
 end EVC_Test_LS;
