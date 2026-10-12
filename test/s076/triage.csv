@@ -246,3 +246,5 @@ S0826aec1,onboard,"3131030_12 step 48 (e5/runner-cycle, B224): our Indication la
 S5c408600,onboard,"3131040_14 step 59 (e5/runner-cycle, B224): no Permitted status change of ours by 30 to 100 m past the workbook's location; passed before by the speed dip's swing of A_est2 (B195 the other way round); see B140"
 S6ad3b115,onboard,"3131060_08 step 65 (e5/runner-cycle, B224): our Indication 30 to 100 m nearer, driven on; passed before by the speed dip's swing of A_est2 (B195 the other way round); see B140"
 Se004259f,onboard,"3131060_16 SV21/SV22 step 51 (e5/runner-cycle, B224): our Warning 10 to 30 m nearer; passed before by the speed dip's swing of A_est2; see B140"
+S61f30c39,onboard,"e5/bench-braking (B262): 3110300_01 (3 SV) now runs to step 154 (was 52), where the sequence expects L2 still when BG11d with the immediate packet 41 is read and ours is in L1 already at 5359 m: our earlier transition to L1 not yet analysed (B301)"
+Sa90fd42a,model,"e5/bench-braking (B262): 3130235_01 (3 SV) now runs to step 73 (was blocked at 62): the Adhesion window expected after the driver's request at standstill, not opened by the runner's DMI actions (B302)"
