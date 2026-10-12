@@ -393,6 +393,7 @@ package body S076_Bench is
       end if;
       Radio_N := Radio_N + 1;
       Radio_List (Radio_N) := R;
+      Radio_List (Radio_N).At_Ms := Clock;
    end Observe_RTM;
 
    Out_Buf : Byte_Array (1 .. EVC_Outbox.Capacity + 16);
@@ -523,8 +524,13 @@ package body S076_Bench is
       end loop;
    end Fold;
 
+   Win_Ms : Unsigned_64 := 0;
+
+   function Window_Ms return Unsigned_64 is (Win_Ms);
+
    procedure New_Window (Keep_Radio : Boolean := False) is
    begin
+      Win_Ms := Clock;
       Win := (others => <>);
       Cycles := 0;
       JRU_N := 0;

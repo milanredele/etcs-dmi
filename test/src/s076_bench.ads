@@ -172,6 +172,9 @@ package S076_Bench is
    --  message given while the on-board's answers to the one before are
    --  still expected: the sequences record either order)
    procedure New_Window (Keep_Radio : Boolean := False);
+   --  B270: the time the window was opened (Keep_Radio keeps the radio
+   --  outputs of before it listed, sent before this time)
+   function Window_Ms return Unsigned_64;
    function Window_Cycles return Natural;
 
    No_Value : constant := 16#FF#;
@@ -327,6 +330,8 @@ package S076_Bench is
       Code       : Natural := 0;
       Length     : Natural := 0;
       Data       : Byte_Array (1 .. Max_Radio_Bytes) := (others => 0);
+      --  B270: the bench's time it was sent, ms
+      At_Ms      : Unsigned_64 := 0;
    end record;
    Max_Radio : constant := 256;
    function Radio_Count return Natural;
