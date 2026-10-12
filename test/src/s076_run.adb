@@ -3773,11 +3773,16 @@ package body S076_Run is
                          return Long_Float
    is
       Ratio : constant Long_Float := 1.0 - 0.826 / 0.8935;
-      E  : constant Long_Float := Curve_Distance (C, EBD, V_Kmh);
+      --  B231: the EBD is entered at V_bec, not at the speed (3.13.9.3.2.10
+      --  with A_est 0: V_est + V_delta0, V_delta0 = V_ura of SUBSET-041
+      --  5.3.1.2, the bench's odometer stating it for a workbook train)
+      V_Bec : constant Long_Float :=
+        V_Kmh + Long_Float'Max (2.0, (640.0 + 0.36 * V_Kmh) / 470.0);
+      E  : constant Long_Float := Curve_Distance (C, EBD, V_Bec);
       E0 : constant Long_Float :=
         (if V_Target_Kmh <= 0.0 then 0.0
          else Curve_Distance (C, EBD, V_Target_Kmh));
-      V  : constant Long_Float := V_Kmh / 3.6;
+      V  : constant Long_Float := V_Bec / 3.6;
       Vt : constant Long_Float := Long_Float'Max (V_Target_Kmh, 0.0) / 3.6;
    begin
       if E /= No_Value and then E0 /= No_Value and then E > E0 then
