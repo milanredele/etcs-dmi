@@ -5561,3 +5561,45 @@ regressions, 6 improvements (5040300_05 passes in 3 SV; 9990400_08 runs
 past the T_NVCONTACT steps, new signature S15472ab5 triaged E5, B340).
 Edits outside the units: none in `EVC_Core`; `EVC_Test_Levels` (two
 scenarios).
+
+### The margin per limit, the twelve regressions of B224 (e5/runner-margin, 2026-10-12)
+
+B300: the 10 m of lambda dependence that the EBD and A_basic left are
+T_bs_reduced. A.3.12 reduces the T_bs of an EOA along a ramp whose speed
+loss depends on A_SB, the SBD's own deceleration at min (lambda, 135):
+3131040_04 at 60 km/h (freight P, 750 m, T_bs 23.775 s) has
+T_bs_reduced 23.000 s at 100 against 22.194 s at 109, 13.4 m, and the
+SBD distance 168.1 against 155.4 m, 12.7 m: 26.1 m, the probe's 26 (P)
+to 27 m (SBI); the tool's SBD at 100 is the workbook's SBD column
+(168.15 m). `S076_Run.Tool_Margin` per limit: where the SBD of an EOA
+decides (the workbook's SBI1 at the speed at or beyond its SBI2) the
+SBD distance and V times the T_bs_reduced difference of
+`S076_Bench.Sbd_Terms` (the conversion model's service brake, A.3.9's
+times, `EVC_Build_Up.T_Bs_Reduced`), the Indication also by
+T_indication; an EBD-based SBI2, W, P and I by the EBD difference at
+V_bec and V times the T_bs_reduced difference of the speed target
+(3130237_07, P at 60 km/h: 10.5 + 8.0 m, the probe 18); the EBI by the
+EBD alone. Checked against the probe within 2 m on 3131040_04,
+3130237_07, 3131060_08 and 3131060_16. Left: a gradient, and T_be_reduced's
+A_EB, in the margin (B370).
+
+B303: of B224's twelve SV30 regressions, 3130232_17 and _18 pass again
+in the three versions. The intermediate bench of round 21 passed them by
+an artefact (the EB at the start of the reverse movement left the train
+braked without a ramp, at standstill at 494 m); the runner drove their
+Reversing backwards at the forward chart's 40 to 60 km/h, where the
+sequences' `speedprofile-reverse` chart says 13 km/h. That chart is read
+now (`S076_Sequences.Chart_Speed_Reverse`, taken by `S076_Run.Chart_Kmh`
+while the train moves backwards: edits outside this package's
+subprograms). 3131040_59 and 4040800_01 are chart findings of B160's
+family (a chart at 102.5 km/h for a ceiling of 100, Shunting at 33 under
+30: Overspeed below the SBI, no brake to act on), triaged. The five Gamma
+ones (3131040_03, _05, _21, _23, _82) are blocked by the reason Gamma
+(B100, E6), not failed. 3131060_08 is blocked by placement now (the
+margin); 3131030_12 and 3131040_14 stay curve differences (B140).
+
+SUBSET-076: 830 / 1272 / 1088 before, 836 / 1261 / 1093 after; 14
+improvements (3131040_04 and 3131060_08 in three versions, 3131060_16 in
+SV21 and SV22 to placement; 3130232_17 and _18 pass in three), 0
+regressions, no new signature. Backlog: B300, B303, B261, B231 done;
+B370 opened.

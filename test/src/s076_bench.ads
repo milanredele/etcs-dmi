@@ -119,7 +119,23 @@ package S076_Bench is
    --  P, 3 freight in G (the workbook's)
    function Ebd_Distance (Lambda, Position, Length_M : Natural;
                           From_Kmh, To_Kmh : Long_Float) return Long_Float;
-   --  B262: the speed a brake does not take the train below (cm/s,
+
+   --  B300: the service brake terms of a target at V_Kmh on a flat track:
+   --  the distance (m) the SBD of the conversion model takes from V_Kmh
+   --  down to To_Kmh (A.3.7.1: A_basic for min (Lambda, 135), no
+   --  correction factor) and T_bs_reduced (s) of the target (A.3.12 with
+   --  A_SB and A_expected_max of that SBD between To_Kmh and V_Kmh, T_bs
+   --  and T_bs_react of A.3.9, at zero target speed for To_Kmh 0, which
+   --  is the EOA's: EVC_Build_Up.T_Bs_Reduced). The SBI1 of an EOA lies
+   --  D_Sbd + V * T_Bs from it (3.13.9.3.3.1), the SBI2 of an EBD based
+   --  target V * T_Bs before its EBI (3.13.9.3.3.2)
+   type Sbd_Terms_T is record
+      D_Sbd : Long_Float := 0.0;
+      T_Bs  : Long_Float := 0.0;
+   end record;
+   function Sbd_Terms (Lambda, Position, Length_M : Natural;
+                       V_Kmh, To_Kmh : Long_Float) return Sbd_Terms_T;
+   --  B262:the speed a brake does not take the train below (cm/s,
    --  at most the speed asked for): while the runner drives the train to
    --  a location the sequence says it reaches, a crawl (the sequences'
    --  trains brake more gently than the conversion model and still move

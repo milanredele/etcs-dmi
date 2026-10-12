@@ -264,6 +264,10 @@ package S076_Sequences is
       Timer_Count : Natural := 0;
       Chart     : Points_T;
       Chart_Count : Natural := 0;
+      --  B303: the chart of a reverse movement ("speedprofile-reverse",
+      --  its points by increasing location, the speed without its sign)
+      Rev       : Points_T;
+      Rev_Count : Natural := 0;
       Truncated : Boolean := False;
       --  a "workbook" line: the braking curves are those of the ERA
       --  braking curve workbook's train (not the Train Data entered)
@@ -301,6 +305,9 @@ package S076_Sequences is
 
    --  The speed of the chart at X_M metres, km/h; -1.0 without a chart
    function Chart_Speed (S : Sequence_T; X_M : Long_Float) return Long_Float;
+   --  B303: the same of the reverse movement's chart, -1.0 without one
+   function Chart_Speed_Reverse (S : Sequence_T; X_M : Long_Float)
+     return Long_Float;
 
    --  The distance from the target of Column of C at V_Kmh, m, linear
    --  between the two sampled rows around it; No_Value outside the rows
