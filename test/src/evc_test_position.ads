@@ -26,5 +26,6 @@ package EVC_Test_Position is
       procedure Scenario_Geo_Orientation;
       procedure Scenario_Rear_End;
       procedure Scenario_Report_Reference;
+      procedure Scenario_Unauthorised_Direction_Groups;
 
 end EVC_Test_Position;

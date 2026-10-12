@@ -148,6 +148,7 @@ begin
    Scenario_Report_Triggers;
    Scenario_Rear_End;
    Scenario_Report_Reference;
+   Scenario_Unauthorised_Direction_Groups;
    Scenario_Relocation;
    Scenario_Repositioning;
    Scenario_MA_Repositioning;
@@ -304,6 +305,7 @@ begin
    Scenario_L2_Radio_Data_No_Contact;
    Scenario_L2_Radio_Data_No_Registration;
    Scenario_L2_Radio_Data_Into_TR;
+   Scenario_SR_Order_Single_Group;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));

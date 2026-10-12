@@ -18,12 +18,14 @@ with EVC_Distances;
 with EVC_Linking;
 with EVC_Location;
 with EVC_Modes;
+with EVC_National_Values;
 with EVC_Odometry;
 with EVC_Ports;
 with EVC_Position;
 with EVC_Stored_Information;
 with EVC_Train_Data;
 with Interfaces;
+with Sim_Telegrams;
 
 package body EVC_Test_Position is
 
@@ -1113,6 +1115,40 @@ package body EVC_Test_Position is
              & "passage of group 10 (1200 m), got"
              & Integer_64'Image (Fired_At));
    end Scenario_Report_Reference;
+
+   --  3.14.3.6 (e4/gates-levels, B221): FS level 1 with the MA of the
+   --  group 10 at 100 m; from 300 m the train moves backwards (the
+   --  unauthorised direction protection watches, then brakes, 3.14.3.2)
+   --  over the group 20 at 200 m (laid after the train passed there),
+   --  whose packet 3 valid in both directions (Q_DIR 2, D_VALIDNV 0:
+   --  now) would replace the national values without the gate: ignored,
+   --  the group still locates the train
+   procedure Scenario_Unauthorised_Direction_Groups is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_FS, EVC_Modes.L1);
+      Add_Group (Group (10, 100));
+      Carry (1, 0, SSP ((1 => (0, 100, True))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 1, MA_Of ((1 => 900)));
+      Run_X (30_000);
+      Add_Group (Group (20, 200));
+      Carry (2, 1, Sim_Telegrams.National_Values (123));
+      Check (EVC_Stored_Information.Current.MA.Present
+             and then not EVC_National_Values.Current.From_Trackside,
+             "unauthorised direction: FS with the MA of group 10, the "
+             & "national values at their defaults");
+      Run_X (19_000, 500);
+      Check (Natural (Pos.LRBG.Id.NID_BG) = 20
+             and then EVC_Core.Mode = EVC_Modes.M_FS,
+             "unauthorised direction: the group 20 read backwards locates "
+             & "the train (3.6)");
+      Check (not EVC_National_Values.Current.From_Trackside
+             and then not EVC_National_Values.Pending,
+             "unauthorised direction: the information of a group read "
+             & "during a movement opposite to the authorised direction is "
+             & "ignored: its national values not taken (3.14.3.6, B221)");
+   end Scenario_Unauthorised_Direction_Groups;
 
 
 end EVC_Test_Position;

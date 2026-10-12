@@ -54,5 +54,5 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Track conditions | track-conditions.scn | 1 | 13 | 14 / 3 | 0 / 18 | 0 | absent 3, done 2 |
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, deferred 2, done 25, n/a 1, partial 10 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
-| Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 21, other 6, partial 6, todo 1 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 35, done 560, n/a 5, other 52, partial 83, todo 29 |
+| Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 22, other 6, partial 6 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 35, done 561, n/a 5, other 52, partial 83, todo 28 |

@@ -507,4 +507,37 @@ package body EVC_Test_Levels is
              & "(5.10.3.15.2 b and its note)");
    end Scenario_L2_Radio_Data_Into_TR;
 
+   --  3.6.3.1.4 and its note 3.6.3.1.4.2, 3.4.2.3.2 (e4/gates-levels,
+   --  B240): in SR, level 1, no linking, a single balise group has no
+   --  co-ordinate system: its order to level 2 at its own location
+   --  (D_LEVELTR 0) valid for the nominal direction only is rejected;
+   --  the same order valid for both directions is carried out (5.10.1),
+   --  the mode stays SR. SUBSET-076 9990500_24 (BG11d) and 5220200_03
+   --  (BG1d, the second balise of two missing) expect the nominal one
+   --  carried out
+   procedure Scenario_SR_Order_Single_Group is
+      procedure Pass (Q_DIR : ETCS_Variables.Q_DIR_T; Expect : Level_T;
+                      What : String) is
+         O : ETCS_Track_Packets.P41.Packet_T :=
+           Order (ETCS_Variables.M_LEVELTR_Level_2, 0);
+      begin
+         Start_X;
+         EVC_Core.Set_Mode_For_Test (M_SR, L1);
+         Stand_X (100);
+         Add_Group (Group (1, 50, Balises => 1));
+         O.Q_DIR := Q_DIR;
+         Carry (Track_N, 0, O);
+         Run_X (10_000);
+         Check (EVC_Levels.Level = Expect and then EVC_Core.Mode = M_SR,
+                "levels: in SR an order to level 2 by a single balise "
+                & "group without co-ordinate system, " & What);
+      end Pass;
+   begin
+      Pass (1, L1, "valid for the nominal direction only: rejected "
+            & "(3.6.3.1.4, 3.6.3.1.4.2, B240)");
+      Pass (2, L2, "valid for both directions: carried out (3.6.3.1.4, "
+            & "5.10.1)");
+   end Scenario_SR_Order_Single_Group;
+
+
 end EVC_Test_Levels;
