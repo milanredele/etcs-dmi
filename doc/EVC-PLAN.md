@@ -5506,3 +5506,52 @@ unchecked, by design (they explain a branch); the 15 numbers that exist
 in no SUBSET-026 section are other documents' or typos, to be looked at
 when their subprogram is next touched.
 
+
+### The release speed and status-by-name steps, the Adhesion window, the proposed RBC contact (e5/runner-release, 2026-10-12)
+
+Premises checked at the source: the baseline names signature ids, not
+`~[workbook train]` (52 first failures, 16 SV30, matched by the triage
+text); of the five release speed sequences of B140, 3131050_19 and
+3131060_01 passed already.
+
+B140: `S076_Run.Location_Judgement`. A status, brake or JRU record step
+of a braking curve sequence whose own window missed it is judged over
+its location: the JRU records since the train left the location before
+(`Sync_Location_Records` copies each step's window; `Rec_Count` / `Rec`
+switch the record judging to them) and, for a TIU command, the bench's
+changes since then. The steps of one location describe one instant.
+That is how 3131050_14 now passes in all three versions: the emergency
+brake at the level transition came in the window of step 46, and step
+60 expected its record. It also took 3131050_05 and _06 on to their
+release speed step. A release speed step (JRU 20 M_SDMTYPE 2) that the
+location does not show gets its own signature, naming the origin of the
+release speed: fixed by the workbook (Track!Release_speed_fixed), or
+calculated on board (V_RELEASEDP 126, `Sequence_T.Release_OB`). The
+trace gives ours (`EVC_SDM.Result_T.V_Release`, the monitoring). In
+3131050_20 ours is 24 km/h against the comment's 23, but we are still in
+CSM 20 m past the sequence's RSM start. The location where we change to
+RSM is not among the bench's changes (B360). 3131050_18 is the speed
+chart: 29 km/h at 1063 m, where the step needs more than the release
+speed of 40. Triage `~[release speed` (16 first failures, 4
+signatures). The other status-by-name first failures are speed or
+on-board differences, not the window: the SR distance is not supervised
+as a target in 3131020_03 to _05, and the chart is above the limit in
+3130232_16, _18, 3130700_02, 3131020_01 and 3131040_76.
+
+RBC contact: `RBC_Data_Entry` confirms the contact that the window
+proposes (DMI 11.7.1.4) when the step names those values or none. It
+types them otherwise. The decision: a step that names no value takes
+the proposal. In SV30, 9 entries are confirmed as shown and 7 typed; no
+outcome changed. The 56 blocks "the sequence names no value" remain,
+because no contact is stored there.
+
+B302: the rows that ask for the Adhesion window (2 and 3 of the case)
+are absent from the extract of 3130235_01. `DMI_Window` performs the
+request through the Special window (DMI 11.3.11) when the window is
+expected at standstill after missing rows. 3130235_01 now runs from step
+73 to 76 in three versions: ST02 "slippery rail" is not shown after the
+driver's choice (B361).
+
+SUBSET-076: 830 / 1272 / 1088 before, 833 / 1269 / 1088 after, 0
+regressions, 12 improvements, untriaged 0. Backlog: B302 done, B140
+updated, B360 and B361 opened.

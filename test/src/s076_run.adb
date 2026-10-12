@@ -2319,6 +2319,24 @@ package body S076_Run is
             B.Cycle;
          end if;
       end if;
+      --  B302: the Adhesion window expected at standstill after rows of
+      --  its test case the extract lacks (3130235_01 step 73, row 4
+      --  after row 1: the driver's request through the Special window,
+      --  DMI 11.3.11, is not in the sequence): the runner performs it
+      if Same (Name, "Adhesion") and then St_W = Displayed
+        and then Cur > 1 and then St.Row > 2
+        and then Seq.Steps (Cur - 1).Row < St.Row - 1
+        and then B.Speed = 0 and then not Top_Is (W_Adhesion)
+      then
+         declare
+            J : constant Judgement_T :=
+              Press_Menu (W_Special, 1, "Adhesion");
+         begin
+            if J.Verdict = Passed then
+               B.Cycle;
+            end if;
+         end;
+      end if;
       if Same (Name, "Default") then
          return Shown (St_W, not DMI_Windows.Is_Open,
                        not DMI_Windows.Is_Open, "default window (top "
