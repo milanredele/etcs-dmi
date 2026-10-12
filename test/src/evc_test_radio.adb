@@ -139,6 +139,22 @@ package body EVC_Test_Radio is
              and then EVC_Radio.Contact.RBC = (NID_C => 7, NID_RBC => 42)
              and then EVC_Radio.Contact.Radio = 99,
              "radio: the RBC contact kept over No Power, to be revalidated");
+      --  4.11.1.1 table, RBC contact information (e5/onboard-misc, B272):
+      --  no cold movement occurred (1 m, 3.15.8.1.1), the contact valid;
+      --  4.11.1.3: a cold movement, it stays invalid
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 100));
+      Cycle;
+      Check (EVC_Radio.Contact.Known and then EVC_Radio.Contact.Valid
+             and then EVC_Radio.Contact.RBC = (NID_C => 7, NID_RBC => 42)
+             and then EVC_Radio.Contact.Radio = 99,
+             "radio: no cold movement, the kept RBC contact valid "
+             & "(4.11.1.1)");
+      EVC_Core.Power_Up;
+      Input (Odometer, Odometer_Payload (0, 0, 0, 0, 0, 0, 0, 1, 250));
+      Cycle;
+      Check (EVC_Radio.Contact.Known and then not EVC_Radio.Contact.Valid,
+             "radio: a cold movement, the kept RBC contact stays invalid "
+             & "(4.11.1.3)");
       EVC_Core.Initialise;
       Check (not EVC_Radio.Contact.Known,
              "radio: a new on-board has no RBC contact");

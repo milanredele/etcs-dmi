@@ -180,6 +180,7 @@ begin
    Scenario_SDM_Status_Order;
    Scenario_SDM_Protections;
    Scenario_SDM_MRSP_Target;
+   Scenario_SDM_EB_Revocation_TSM;
    Scenario_SDM_LOA;
    Scenario_SDM_Calculated_Release;
    Scenario_SDM_Perturbation;
@@ -242,6 +243,7 @@ begin
    Scenario_Session_NVCONTACT;
    Scenario_Session_NVCONTACT_Brake;
    Scenario_Session_Indication;
+   Scenario_Session_Radio_Hole;
    Scenario_Session_SoM_Level_2;
    Scenario_SoM_L2_SR_Proposal;
    Scenario_SoM_L2_Mode_Proposal;
