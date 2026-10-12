@@ -225,6 +225,7 @@ begin
    EVC_Test_LS.Scenario_LS_Order_Buffered;
    EVC_Test_LS.Scenario_LS_Marker_Deleted;
    EVC_Test_LS.Scenario_LS_Order_Area;
+   EVC_Test_LS.Scenario_LS_Radio_Held;
    Check (Encodes_OK, "E4: every telegram of the track encoded");
    Procedures.Run;
    Touch.Run;

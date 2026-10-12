@@ -3,12 +3,15 @@ with EVC_Test_Support;      use EVC_Test_Support;
 with EVC_Modes;             use EVC_Modes;
 with EVC_LS_Display;        use EVC_LS_Display;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
+with ETCS_Message;
+with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P80;
 with ETCS_Track_Packets.P180;
 with ETCS_Track_Packets.P181;
 with ETCS_Variables;
 with EVC_Core;
+with EVC_Ports;
 with EVC_Levels;
 with EVC_Test_Authority;
 
@@ -281,5 +284,77 @@ package body EVC_Test_LS is
              "4.8.4.2 [9]: taken, the train inside the LS area of a mode "
              & "profile of its message, the furthest it overlaps");
    end Scenario_LS_Order_Area;
+
+   --  Message 24 referred to the group NID_BG with packet 180: the LSSMA
+   --  display toggle on after Delay_S
+   function M24_LSSMA (NID_BG : Natural; Delay_S : Natural)
+     return EVC_Ports.Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := (Unsigned_64 (EVC_Core.Time_Ms) / 10) mod 2**32;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, ETCS_Message_Catalogue.Track_M24, V);
+      ETCS_Track_Packets.P180.Encode
+        ((Q_DIR => 2, Q_LSSMA => 1, Has_T_LSSMA => True,
+          T_LSSMA => ETCS_Variables.T_LSSMA_T (Delay_S), others => <>),
+         W, OK);
+      Check (OK, "LS radio: packet 180 encoded");
+      return Message_Bytes (W);
+   end M24_LSSMA;
+
+   --  4.8.3 [2] (B120): level 1 in LS, the group 10 at 100 m gives an MA
+   --  with an LS area from 100 m to 400 m and announces level 2 at 300
+   --  m; the RBC's toggle on order (T_LSSMA 5 s) at 250 m is kept for the
+   --  transition and taken there, its timer started at the transition
+   --  (4.4.19.1.4.2 c); an order before, in level 1 without the
+   --  announcement, is rejected
+   procedure Scenario_LS_Radio_Held is
+      P : ETCS_Track_Packets.P41.Packet_T := L1_Order (200);
+      Held_Before, At_Switch, Seen : Boolean := False;
+   begin
+      P.M_LEVELTR := ETCS_Variables.M_LEVELTR_Level_2;
+      EVC_LS_Display.Clear;
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_LS, L1);
+      EVC_Test_Authority.Establish_Session;
+      Give_Radio_Message (1, M24_LSSMA (10, 5));
+      Stand_X (100);
+      Check (not Order_Held and then not Order_Pending,
+             "4.8.3: the RBC's toggle on order in level 1 without an order "
+             & "to switch to level 2 rejected");
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, P);
+      Carry (Track_N, 0, MA_Of ((1500, 200)));
+      Carry (Track_N, 0, LS_Profile (0));
+      Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
+      Carry (Track_N, 1, SSP ((1 => (0, 100, False),
+                               2 => (2500, End_Mark, False))));
+      Run_X (25_000);
+      Give_Radio_Message (1, M24_LSSMA (10, 5));
+      Stand_X (8_000);
+      Held_Before := Order_Held and then not Order_Pending
+                     and then not Toggled_On;
+      Check (Held_Before and then EVC_Levels.Level = L1,
+             "4.8.3 [2]: the RBC's toggle on order kept for the level 2 "
+             & "transition, its timer not running");
+      for X in 251 .. 350 loop
+         Run_X (Integer_64 (X) * 100, 100);
+         if not Seen and then EVC_Levels.Level = L2 then
+            Seen := True;
+            At_Switch := not Order_Held and then Order_Pending
+                         and then not Toggled_On;
+         end if;
+      end loop;
+      Check (Seen and then At_Switch,
+             "4.8.5.5, 4.4.19.1.4.2 c: taken at the transition, its timer "
+             & "started there");
+      Stand_X (5_000);
+      Check (Toggled_On and then EVC_Core.Mode = M_LS,
+             "4.4.19.1.4.3: toggled on at the transition + T_LSSMA");
+   end Scenario_LS_Radio_Held;
 
 end EVC_Test_LS;

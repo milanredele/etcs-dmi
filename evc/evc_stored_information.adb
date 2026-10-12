@@ -1084,6 +1084,29 @@ is
          Now_Ms   => Now_Ms);
    end Take_LS_Packet;
 
+   --  e4/ls-display-3 (B120), 4.8.3, the rows "LSSMA display toggle on /
+   --  off order, From RBC: Yes": in levels 0, NTC and 1 the toggle on
+   --  order is R [2], kept for the transition when level 2 is announced
+   --  (EVC_LS_Display.Hold_Order; judged in the mode of the transition,
+   --  EVC_Core.Release_LS_Held), the toggle off order is R
+   procedure Hold_LS_Packet (R : in out Reader_T; L2_Announced : Boolean)
+     with Global => (In_Out => (EVC_LS_Display.State, Events, Event_N))
+   is
+      X  : ETCS_Track_Packets.P180.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P180.Decode (R, X, OK);
+      if OK and then ETCS_Track_Packets.P180.Valid (X)
+        and then X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_On
+        and then L2_Announced
+      then
+         EVC_LS_Display.Hold_Order
+           (if X.Has_T_LSSMA then Natural (X.T_LSSMA) else 0);
+      else
+         Record_Event (Info_Group, Change_Filtered, 180);
+      end if;
+   end Hold_LS_Packet;
+
    --  The packet of kind K that R reads to its store
    procedure Dispatch (K           : Order_Kind_T;
                        R           : in out Reader_T;
@@ -1485,6 +1508,18 @@ is
                   elsif K = K180 and then Sl.From_Accepting then
                      --  4.8.2.1 c) exception 2 (B092)
                      Record_Event (Info_Group, Change_Filtered, 180);
+                  elsif K = K180
+                    and then not (A.Level_Valid
+                                  and then EVC_Modes."=" (A.Level,
+                                                          EVC_Modes.L2))
+                  then
+                     --  4.8.3 [2] (B120)
+                     EVC_Radio_Info.Open_Packet (I, P, R);
+                     Hold_LS_Packet
+                       (R, L2_Announced =>
+                             EVC_Levels.Announced
+                             and then EVC_Modes."=" (EVC_Levels.Announced_Level,
+                                                     EVC_Modes.L2));
                   elsif K /= K12 then
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,

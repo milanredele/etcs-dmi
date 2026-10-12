@@ -4,7 +4,7 @@ package body EVC_LS_Display
   with SPARK_Mode => On,
        Refined_State => (State => (Marker, Pending, Pending_Start,
                                    Pending_Delay, On, Immediate,
-                                   Shown_Kmh))
+                                   Shown_Kmh, Held, Held_Delay))
 is
 
    use EVC_Supervision_Input;
@@ -18,6 +18,9 @@ is
    --  4.4.19.1.4.6: an order of this cycle displayed the LSSMA at once
    Immediate     : Boolean := False;
    Shown_Kmh     : Unsigned_16 := No_LSSMA;
+   --  4.8.3 [2] (B120): a toggle on order of the RBC held for level 2
+   Held          : Boolean := False;
+   Held_Delay    : Delay_S_T := 0;
 
    function Marker_Stored return Boolean is (Marker)
      with Refined_Global => Marker;
@@ -27,13 +30,17 @@ is
      with Refined_Global => On;
    function LSSMA_Kmh return Unsigned_16 is (Shown_Kmh)
      with Refined_Global => Shown_Kmh;
+   function Order_Held return Boolean is (Held)
+     with Refined_Global => Held;
 
    procedure Clear
      with Refined_Global => (Output => (Marker, Pending, Pending_Start,
                                         Pending_Delay, On, Immediate,
-                                        Shown_Kmh))
+                                        Shown_Kmh, Held, Held_Delay))
    is
    begin
+      Held := False;
+      Held_Delay := 0;
       Marker := False;
       Pending := False;
       Pending_Start := 0;
@@ -50,6 +57,27 @@ is
    begin
       Marker := True;
    end Take_Marker;
+
+   --  4.8.3 [2] (B120)
+   procedure Hold_Order (Delay_S : Delay_S_T)
+     with Refined_Global => (Output => (Held, Held_Delay))
+   is
+   begin
+      Held := True;
+      Held_Delay := Delay_S;
+   end Hold_Order;
+
+   --  4.8.5.4, 4.8.5.5, 4.4.19.1.4.2 c) (B120)
+   procedure Release_Held (Take : Boolean; Now_Ms : Unsigned_64) is
+   begin
+      if Held and then Take then
+         Take_Order (On       => True,
+                     Delay_S  => Held_Delay,
+                     Start_Ms => Now_Ms,
+                     Now_Ms   => Now_Ms);
+      end if;
+      Held := False;
+   end Release_Held;
 
    --  4.4.19.1.4.8
    procedure Delete_Marker

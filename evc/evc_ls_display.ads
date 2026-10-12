@@ -93,6 +93,27 @@ is
                      Toggled_On = Elapsed (Start_Ms, Now_Ms, Delay_S)
                      and then Order_Pending = not Toggled_On);
 
+   --  e4/ls-display-3 (B120), 4.8.3 [2]: a toggle on order of the RBC
+   --  (packet 180 of message 24) received in level 0, NTC or 1 with an
+   --  order to switch to level 2 at a further location, kept until the
+   --  transition (decision: the packet alone, with its T_LSSMA, as the
+   --  packet 79 of e5/radio-geo-buffer; the other packets of the message
+   --  have their own rows)
+   function Order_Held return Boolean
+     with Global => State;
+
+   procedure Hold_Order (Delay_S : Delay_S_T)
+     with Global => (In_Out => State),
+          Post => Order_Held;
+
+   --  4.8.5.5, 4.4.19.1.4.2 c): at the transition to level 2 the held
+   --  order taken when Take, its timer started at Now_Ms; 4.8.5.4: else
+   --  deleted (level 2 no longer announced, the session lost, or the
+   --  order rejected at the transition)
+   procedure Release_Held (Take : Boolean; Now_Ms : Unsigned_64)
+     with Global => (In_Out => State),
+          Post => not Order_Held;
+
    --  4.4.19.1.4.6: entering LS toggles the display off, unless an order
    --  received in this cycle displayed it immediately; 4.10: a transition
    --  to another mode than LS and PT deletes the toggle on order

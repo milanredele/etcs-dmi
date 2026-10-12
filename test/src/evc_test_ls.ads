@@ -16,4 +16,8 @@ package EVC_Test_LS is
    --  LS only inside the LS area of a mode profile of the same message
    procedure Scenario_LS_Order_Area;
 
+   --  e4/ls-display-3 (B120), 4.8.3 [2]: the RBC's toggle on order kept
+   --  for the transition to level 2
+   procedure Scenario_LS_Radio_Held;
+
 end EVC_Test_LS;
