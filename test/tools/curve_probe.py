@@ -24,7 +24,7 @@ same (vura=f41) unless `--vura 0` (the runner's bench: V_max = V_est).
 `--with "kv=0:0.96 kt=1.0"` gives keys of evc_curve_probe by hand (they
 win over the workbook's).
 
-`--breadth` runs every sequence given and prints, per limit, the median
+`--breadth` runs every curves block of every sequence given and prints, per limit, the median
 and the extremes of ours minus the workbook over all their rows (with
 the margin taken off: `--raw` keeps it), nearer negative; `--lines FILE`
 writes the per-sequence lines there. A Gamma sheet is refused with its
@@ -58,7 +58,11 @@ def read(path):
     for line in open(path, encoding="utf-8"):
         s = line.strip()
         w = s.split()
-        if s.startswith("cell "):
+        if s.startswith("workbook "):
+            # B192: a file can hold several workbooks (3131030_24a, _24b):
+            # each curves block takes the cells of its own
+            cells, grad = {}, None
+        elif s.startswith("cell "):
             key, _, val = s[5:].partition(" ")
             m = re.match(r"(.*![A-Z]+[0-9]+)$", key)
             if not m:   # sheet names hold spaces: split at the cell ref
@@ -68,7 +72,8 @@ def read(path):
         elif s.startswith("track G(") and "compensated" not in s:
             grad = [p.split(":") for p in w[2:]]
         elif s.startswith("curves "):
-            sets.append({"sheet": s[7:], "limits": {}, "rows": [], "cols": None})
+            sets.append({"sheet": s[7:], "limits": {}, "rows": [], "cols": None,
+                         "cells": cells, "grad": grad})
         elif s.startswith("curve-columns") and sets:
             sets[-1]["cols"] = w[1:]
         elif s.startswith("curve ") and sets:
@@ -92,7 +97,8 @@ def national(fields):
     f = dict(fields)
     args = ["ebcl=%d" % f.get("M_NVEBCL", 9),
             "inhsmic=%d" % f.get("Q_NVINHSMICPERM", 0),
-            "gui=%d" % f.get("Q_NVGUIPERM", 0)]
+            "gui=%d" % f.get("Q_NVGUIPERM", 0),
+            "sbtsm=%d" % f.get("Q_NVSBTSMPERM", 1)]
     if not f.get("Q_NVKINT", 0):
         # A.3.2: the default integrated correction factors
         return args + ["kv=0:0.7", "kr=0:0.9", "kt=1.1"]
@@ -128,14 +134,26 @@ def setup(path, set_no=1, nv=1, vura="f41"):
     cs = sets[set_no - 1]
     if "gamma" in cs["sheet"].lower():
         raise Refused("Gamma sheet: the Gamma train is B100, not probed")
-    c = lambda k, d=None: cells.get(k, d)
+    c = lambda k, d=None: cs["cells"].get(k, d)
+    grad = cs["grad"]
     if float(c("Train (main)!D22", "0") or 0) != 0:
         raise Refused("the workbook's train accelerates (A_est %s m/s2): the probe runs at a constant speed"
                       % c("Train (main)!D22"))
     pos = c("Train (main)!D23", "")
     pos = "pp" if pos.startswith("Passenger") else "fg" if pos.endswith("G") else "fp"
     target_speed = float(c("Track!B2", "0") or 0)
-    args = ["lambda=" + c("Brake parameters (lambda)!F2", "100"),
+    cols = cs["cols"] or []
+    sbd = [i for i, col in enumerate(cols) if col.startswith(("SBD", "SBI1"))]
+    if target_speed == 0 and sbd and not any(
+            r[i] is not None for r in cs["rows"] for i in sbd if i < len(r)):
+        # B192: the tool's target type LoA/MRSP at 0 km/h, not EoA/SvL:
+        # no SBD nor SBI1 (vba-sv30-tool 3790), the EBD anchored at
+        # dV_ebi(0) (EBD 0 m at 7.5 km/h), T_bs never reduced (3684:
+        # LoA_MRSP and V_t2bs >= 0), no release speed (3752)
+        raise Refused("the workbook's target is the tool's LoA/MRSP at 0 km/h,"
+                      " not the EOA of the sequence (B192: T_bs not reduced,"
+                      " no SBI1, no release speed)")
+    args = ["lambda="+ c("Brake parameters (lambda)!F2", "100"),
             "length=" + c("Train (main)!D18", "400"),
             "pos=" + pos, "tco=" + c("Train (main)!D4", "0"),
             "target=" + c("Track!B3", "2000"), "ci=0"]
@@ -156,7 +174,6 @@ def setup(path, set_no=1, nv=1, vura="f41"):
     args += WITH   # --with: the probe's keys given by hand win
     initial = int(float(c("Track!B4", "0") or 0))
     args.append("ceiling=%d" % initial)
-    cols = cs["cols"] or []
     idx = {}
     for lim in LIMITS:
         for i, col in enumerate(cols):
@@ -229,10 +246,12 @@ def show(path, set_no, nv, vura):
 def breadth(paths, nv, vura, raw, lines_file):
     per = {lim: [] for lim in LIMITS}
     out = open(lines_file, "w") if lines_file else None
-    for p in paths:
-        name = os.path.basename(p)[:-4]
+    for p, set_no in [(p, k) for p in paths
+                      for k in range(1, max(1, len(read(p)[2])) + 1)]:
+        # every curves block of the file (B192), the second as name/2
+        name = os.path.basename(p)[:-4] + ("/%d" % set_no if set_no > 1 else "")
         try:
-            _, _, table = compare(p, 1, nv, vura)
+            _, _, table = compare(p, set_no, nv, vura)
         except Refused as e:
             print("# %s: refused, %s" % (name, e), file=sys.stderr)
             continue

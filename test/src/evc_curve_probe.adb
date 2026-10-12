@@ -16,7 +16,7 @@
 --    grad=0:0,1000:-5 (start m : gradient per mille, positive uphill)
 --    kv=0:0.96,100:0.9 (km/h : factor, freight / all trains)
 --    kvp=... (passenger set, same form) kr=0:1.0,250:0.9 (m : factor)
---    kt=1.0 ebcl=9 inhsmic=0|1 gui=0|1
+--    kt=1.0 ebcl=9 inhsmic=0|1 gui=0|1 sbtsm=0|1
 --    ci=0 (m: the confidence interval, max safe front end = estimated
 --      front end + ci, min safe front end = estimated front end - ci)
 --    vura=0|f41|<km/h> (V_max - V_est the odometer reports: f41 the
@@ -165,6 +165,8 @@ procedure EVC_Curve_Probe is
          NV.M_NVEBCL := Integer'Value (Value);
       elsif Key = "inhsmic" then
          NV.Q_NVINHSMICPERM := Value = "1";
+      elsif Key = "sbtsm" then
+         NV.Q_NVSBTSMPERM := Value = "1";
       elsif Key = "gui" then
          NV.Q_NVGUIPERM := Value = "1";
       elsif Key = "ci" then
