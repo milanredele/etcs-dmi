@@ -69,7 +69,11 @@ package body EVC_Position
                                    Geo_Kept,
                                    Geo_Kept_Valid,
                                    Geo_Kept_Sense,
-                                   Check_Linking))
+                                   Check_Linking,
+                                   Defer_Ordered,
+                                   Held,
+                                   Held_A,
+                                   Held_Link))
 is
 
    use type ETCS_Catalogue.Packet_Kind_T;
@@ -146,6 +150,13 @@ is
    --  Added by e5/reports-by-event-2: packet 79 of a balise group is
    --  accepted (4.8.4.2, e.g. rejected in SH)
    Accept_Geo         : Boolean := True;
+   --  Added by e5/acceptance-gates (B212), 4.8.3 [1]: the linking of a
+   --  group with its own packet 41 is held for EVC_Core's second verdict
+   --  (Take_Held_Linking): the group Held_A, its linking Held_Link
+   Defer_Ordered      : Boolean := False;
+   Held               : Boolean := False;
+   Held_A             : Anchor_T := (others => <>);
+   Held_Link          : EVC_Linking.Linking_T;
 
    Orient             : Sense_T := Plus;
    Orient_Known       : Boolean := False;
@@ -916,14 +927,40 @@ is
       return False;
    end Has_Repositioning;
 
+   --  The linking New_L of the group A taken: 3.4.4.4.5.1, the first
+   --  window whose end is not reached; the group is the reference of
+   --  the linking and the SOLR (3.6.4.2.2 a); 3.7.3.1 m): the stored
+   --  linking in rear of A kept
+   procedure Commit_Linking (A : Anchor_T; New_L : EVC_Linking.Linking_T)
+   is
+   begin
+      EVC_Linking.Replace (Links, New_L);
+      Set_SOLR (A, 0);
+      for Step in 1 .. EVC_Linking.Max_Links loop
+         exit when not EVC_Linking.Checked (Links)
+           or else not Window_Passed (Links.Expected, Margin => False);
+         Next_Window;
+      end loop;
+   end Commit_Linking;
+
    --  The packets 5 and 79 of the accepted group A valid for T; the
    --  sense of their distances is S. The last valid one of each counts.
+   --  e5/acceptance-gates (B212), 4.8.3 [1]: with Defer_Ordered, the
+   --  linking of a group that carries a packet 41 valid for T is held
+   --  (Take_Held_Linking): its order is evaluated by the stores after
+   --  this Update, and an order to level 1 at a further location makes
+   --  the linking "stored" in the balise transition buffer instead.
+   --  Decision: the position waits for that evaluation (a second
+   --  verdict in the same cycle) rather than reading packet 41 itself,
+   --  so that the order, its level priorities and its location are
+   --  judged in one place (EVC_Levels through the stores)
    procedure Take_Packets (A : Anchor_T; T : Direction_T; S : Sense_T)
    is
-      R     : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
-      OK    : Boolean;
-      New_L : EVC_Linking.Linking_T;
-      Found : Boolean := False;
+      R      : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      OK     : Boolean;
+      New_L  : EVC_Linking.Linking_T;
+      Found  : Boolean := False;
+      Has_41 : Boolean := False;
    begin
       for I in 1 .. Passage.Count loop
          for J in 1 .. Passage.Telegrams (I).Count loop
@@ -932,6 +969,9 @@ is
                  Passage.Telegrams (I).Index (J);
             begin
                if Valid_For (E.Q_DIR, A.Orientation, T) then
+                  if E.Kind = ETCS_Catalogue.Track_P41 then
+                     Has_41 := True;
+                  end if;
                   if E.Kind = ETCS_Catalogue.Track_P5
                     and then Accept_Linking
                   then
@@ -968,18 +1008,12 @@ is
             end;
          end loop;
       end loop;
-      if Found then
-         --  3.4.4.4.5.1: the first window whose end is not reached; the
-         --  group is the reference of the linking and the SOLR
-         --  (3.6.4.2.2 a)
-         --  3.7.3.1 m): the stored linking in rear of A kept
-         EVC_Linking.Replace (Links, New_L);
-         Set_SOLR (A, 0);
-         for Step in 1 .. EVC_Linking.Max_Links loop
-            exit when not EVC_Linking.Checked (Links)
-              or else not Window_Passed (Links.Expected, Margin => False);
-            Next_Window;
-         end loop;
+      if Found and then Defer_Ordered and then Has_41 then
+         Held := True;
+         Held_A := A;
+         Held_Link := New_L;
+      elsif Found then
+         Commit_Linking (A, New_L);
       end if;
    end Take_Packets;
 
@@ -1493,6 +1527,10 @@ is
       Accept_Linking := True;
       Accept_Geo := True;
       Check_Linking := True;
+      Defer_Ordered := False;
+      Held := False;
+      Held_A := No_Anchor;
+      Held_Link := (others => <>);
       Passage := (others => <>);
       Passage.Open := False;
       Pending := (others => ETCS_Telegram.No_Telegram);
@@ -1736,6 +1774,7 @@ is
       Now_Seen := Now_Ms;
       Taken_N := 0;
       Taken_Tel_N := 0;
+      Held := False;
       Event_N := 0;
       Reaction_Flag := False;
       Reaction_Value := 2;
@@ -2108,12 +2147,28 @@ is
    -------------------------
 
    procedure Set_Linking_Context (Accept_Info, Check : Boolean;
-                                  Accept_P79 : Boolean := True) is
+                                  Accept_P79 : Boolean := True;
+                                  Defer_On_Order : Boolean := False) is
    begin
       Accept_Linking := Accept_Info;
       Accept_Geo := Accept_P79;
+      Defer_Ordered := Defer_On_Order;
       Check_Linking := Check;
    end Set_Linking_Context;
+
+   -----------------------
+   -- Take_Held_Linking --
+   -----------------------
+
+   procedure Take_Held_Linking (Accept_Info : Boolean) is
+   begin
+      if Held then
+         Held := False;
+         if Accept_Info then
+            Commit_Linking (Held_A, Held_Link);
+         end if;
+      end if;
+   end Take_Held_Linking;
 
    ---------------------------
    -- Take_Released_Linking --

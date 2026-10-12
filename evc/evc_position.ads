@@ -612,8 +612,13 @@ is
    --  EVC_Core sets them, as in phase E2. The settings apply from the
    --  next Update. Added by e5/reports-by-event-2: Accept_P79, packet 79
    --  of a balise group accepted (4.8.4.2, e.g. rejected in SH).
+   --  Added by e5/acceptance-gates (B212), 4.8.3 [1]: Defer_On_Order,
+   --  the linking of a group that carries a level transition order
+   --  (packet 41) is held, not taken, until EVC_Core judges it again
+   --  after the stores evaluated that order (Take_Held_Linking).
    procedure Set_Linking_Context (Accept_Info, Check : Boolean;
-                                  Accept_P79 : Boolean := True)
+                                  Accept_P79 : Boolean := True;
+                                  Defer_On_Order : Boolean := False)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
@@ -622,6 +627,22 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
+
+   --  e5/acceptance-gates (B212), 4.8.3 [1]: the linking held by the
+   --  cycle's Update (a group with its own level transition order read
+   --  with Defer_On_Order) is taken now when Accept_Info (EVC_Core: the
+   --  verdict of 4.8 once the stores evaluated the group's order: not
+   --  kept in the balise transition buffer), else dropped. Update drops
+   --  a linking still held from the cycle before.
+   procedure Take_Held_Linking (Accept_Info : Boolean)
+     with Global => (In_Out => (State, EVC_Origins.State),
+                     Input  => EVC_Odometry.State),
+          Post => Status = Status'Old and then LRBG = LRBG'Old
+                  and then Orientation = Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
 
    --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: the linking (packet 5
    --  in R) of the group Group, its distances along S, read in level 0

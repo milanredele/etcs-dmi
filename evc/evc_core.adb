@@ -954,6 +954,23 @@ is
      with Global => (Current_Mode, EVC_Levels.State, EVC_Train_Inputs.State,
                      EVC_Train_Data.State, EVC_Mission.State);
 
+   --  e5/acceptance-gates (B212), 4.8.3 [1]: the context of a group
+   --  whose own packet 41 orders level 1 at a further location
+   function Ordered_Context return EVC_Acceptance.Context_T is
+     ((Mode             => Current_Mode,
+       Level_Valid      => EVC_Levels.Valid,
+       Level            => EVC_Levels.Level,
+       Cab_Active       => EVC_Train_Inputs.Desk_Open,
+       Train_Data_Valid => EVC_Train_Data.Valid,
+       TRN_Valid        => EVC_Mission.TRN_Status = EVC_Mission.Valid,
+       L1_Announced     => True,
+       L2_Announced     => False,
+       Order_In_Message => True,
+       Order_Pending    => True,
+       Unlinked_Group   => False))
+     with Global => (Current_Mode, EVC_Levels.State, EVC_Train_Inputs.State,
+                     EVC_Train_Data.State, EVC_Mission.State);
+
    --  2. Update the position (EVC_Position): the cab status, the
    --  telegrams of the cycle, the odometer sample; its events go to the
    --  JRU. E0's standstill and override speed come from the sample.
@@ -995,7 +1012,13 @@ is
          --  4.8.4.2: packet 79 of a balise group in the mode's column
          Accept_P79  => EVC_Acceptance.Accepted
                           (EVC_Acceptance.Geographical_Position,
-                           Acceptance_Context));
+                           Acceptance_Context),
+         --  e5/acceptance-gates (B212), 4.8.3 [1]: a group's own order
+         --  to level 1 at a further location would make its linking
+         --  stored: held until the stores evaluated the order
+         --  (Take_Held_Linking)
+         Defer_On_Order => EVC_Acceptance.Stored
+                             (EVC_Acceptance.Linking, Ordered_Context));
       EVC_Position.Update
         (Cab_A_Active => TIU_Now (Cab_A_Active),
          Cab_B_Active => TIU_Now (Cab_B_Active),
@@ -1148,6 +1171,35 @@ is
          end if;
       end if;
    end Evaluate_Stored_Information;
+
+   --  e5/acceptance-gates (B212), 4.8.3 [1]: the linking held by
+   --  Update_Position (its group carries its own level transition order)
+   --  judged again now that the stores evaluated that order: taken when
+   --  accepted and not kept in the balise transition buffer (the
+   --  verdict Keep_Unit_Packets gave it), else dropped
+   procedure Take_Held_Linking
+     with Global => (Input  => (Current_Mode, EVC_Levels.State,
+                                EVC_Train_Inputs.State, EVC_Train_Data.State,
+                                EVC_Mission.State, EVC_Odometry.State),
+                     In_Out => (EVC_Position.State, EVC_Origins.State)),
+          Post => EVC_Position.Orientation
+                    = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+   begin
+      EVC_Position.Take_Held_Linking
+        (Accept_Info => EVC_Acceptance.Accepted
+                          (EVC_Acceptance.Linking, Acceptance_Context)
+                        and then not EVC_Acceptance.Stored
+                                       (EVC_Acceptance.Linking,
+                                        Acceptance_Context));
+   end Take_Held_Linking;
 
    --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: at the transition to
    --  level 1, the packets of the balise transition buffer the units take
@@ -2942,6 +2994,7 @@ is
       Update_Position;
       Revalidate_Kept;
       Evaluate_Stored_Information;
+      Take_Held_Linking;
       Monitor_Speed_And_Distance (Dt_Ms);
       Evaluate_Modes_And_Levels;
       Release_Transition_Buffer;

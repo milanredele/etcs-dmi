@@ -231,6 +231,38 @@ package body EVC_Test_Levels is
              & "reversing area taken (4.8.5.5)");
    end Scenario_L1_Balise_Buffer_Units;
 
+   --  e5/acceptance-gates (B212), 4.8.3 [1]: the group 20 at 100 m
+   --  carries its own order to level 1 at 150 m further and a linking:
+   --  the order is evaluated first, the linking kept in the transition
+   --  buffer with the group's set, not taken by EVC_Position at the
+   --  passage; taken once, at the immediate order of the group 30
+   procedure Scenario_L1_Order_Own_Group_Linking is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Add_Group (With_Links (Group (20, 100),
+                             Link_To ((50, 1000), (30, 40))));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, 150));
+      Carry (Track_N, 0, MA_Of ((1500, 200)));
+      Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
+      Carry (Track_N, 1, SSP ((1 => (0, 100, False),
+                               2 => (2500, End_Mark, False))));
+      Add_Group (Group (30, 150));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, -1));
+      Run_X (12_000);
+      Check (EVC_Levels.L1_Announced and then SI.Balise_Buffered = 1
+             and then not EVC_Position.Linking.Stored,
+             "levels: a linking in the group carrying the order to level 1 "
+             & "at a further location kept in the buffer, not taken at "
+             & "the passage (4.8.3 [1], B212)");
+      Run_X (20_000);
+      Check (EVC_Levels.Level = L1 and then EVC_Core.Mode = M_FS
+             and then EVC_Position.Linking.Stored
+             and then Natural (EVC_Position.Linking.Ref_Id.NID_BG) = 20,
+             "levels: at the transition to level 1 the group's own "
+             & "linking taken (4.8.5.5, B212)");
+   end Scenario_L1_Order_Own_Group_Linking;
+
    procedure Scenario_L1_Balise_Buffer_Deleted is
    begin
       Start_L1_Announced_In_L2 (3000);
