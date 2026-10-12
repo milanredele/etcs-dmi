@@ -26,6 +26,13 @@
 --      12 km/h at 500 km/h)
 --    ceiling=<km/h> (the MRSP, default the highest speed + 20)
 --    speeds=50,55,60
+--    drive=<m> (B195: instead of the bisection, a continuous run at the
+--      highest speed from <m> before the target, the state carried
+--      from cycle to cycle; one line per change: distance, status,
+--      V_Perm, V_SBI, target speed @ distance / 10, monitoring, SB, EB)
+--    dip=<m>:<km/h> (with drive: the speed of the one cycle where the
+--      train passes <m>, as the SUBSET-076 runner's last cycle before a
+--      location reports it)
 --  Output: one line per speed: the distances (m) from the max safe
 --  front end to the target of I, P, W, SBI, EBI, the same from the
 --  estimated front end, and V_Perm / V_SBI displayed (km/h) with the
@@ -59,6 +66,9 @@ procedure EVC_Curve_Probe is
    Ceiling  : Integer := -1;
    Speeds   : String (1 .. 400) := (others => ' ');
    Speeds_L : Natural := 0;
+   Drive_M  : Integer := -1;      -- drive=<m>: a continuous run from there
+   Dip_M    : Integer := -1;      -- dip=<m>:<km/h>: one cycle's speed
+   Dip_V    : Natural := 0;
 
    function To_LF (S : String) return Long_Float is
      (Long_Float'Value
@@ -147,6 +157,15 @@ procedure EVC_Curve_Probe is
          TD.T_Traction_Cut_Off := Milli (Value);
       elsif Key = "target" then
          Target_M := Integer'Value (Value);
+      elsif Key = "drive" then
+         Drive_M := Integer'Value (Value);
+      elsif Key = "dip" then
+         declare
+            Colon : constant Natural := Ada.Strings.Fixed.Index (Value, ":");
+         begin
+            Dip_M := Integer'Value (Value (Value'First .. Colon - 1));
+            Dip_V := Cms (To_LF (Value (Colon + 1 .. Value'Last)));
+         end;
       elsif Key = "loa" then
          LOA_Kmh := Integer'Value (Value);
       elsif Key = "svl" then
@@ -281,6 +300,58 @@ procedure EVC_Curve_Probe is
       Put_Line (Line (2 .. Last));
    end Probe;
 
+   --  drive=<m>: the train at the highest speed from D metres before the
+   --  target, moved on every 100 ms cycle at that speed (the state
+   --  carried from cycle to cycle, as in a run), one line per change
+   --  of the status or the shown speeds: D (max safe front end to the
+   --  target, m), the status, V_Perm, V_SBI, the target speed and
+   --  distance shown, the SB and EB commands
+   procedure Drive (V_Kmh : Integer) is
+      S   : SIn.Snapshot_T := Base;
+      V   : constant SIn.Speed_Cms_T := Cms (Long_Float (V_Kmh));
+      Vu  : constant Integer :=
+        (if Vura < 0 then Integer (EVC_Limits.F41 (EVC_Fixed.Speed_T (V)))
+         else Vura);
+      At_Cm : Integer_64 := Target_Cm - Integer_64 (Drive_M) * 100 - CI_Cm;
+      Last  : String (1 .. 60) := (others => ' ');
+   begin
+      Place (S, At_Cm, V, CI_Cm);
+      S.Train.Speed_Max := Natural'Min (V + Vu, SIn.Speed_Cms_T'Last);
+      Sup_Start (S);
+      while At_Cm < Target_Cm loop
+         At_Cm := At_Cm + Integer_64 (V) / 10;
+         Place (Sup, At_Cm, V, CI_Cm);
+         Sup.Train.Speed_Max := S.Train.Speed_Max;
+         if Dip_M >= 0 and then Target_Cm - At_Cm - CI_Cm <= Integer_64 (Dip_M) * 100
+         then
+            --  the speed of one cycle only, the position moving on (the
+            --  runner's last cycle before a location, B195)
+            Sup.Train.Speed := Dip_V;
+            Sup.Train.Speed_Max := Dip_V;
+            Dip_M := -1;
+         end if;
+         Sup_Cycle;
+         declare
+            Now : String (1 .. 60) := (others => ' ');
+            T   : constant String :=
+              Img (Natural'Min (Speed_Frame.Status, 9)) & " "
+              & Img (Speed_Frame.V_Perm) & " " & Img (Speed_Frame.V_SBI)
+              & " t" & Img (Speed_Frame.V_Target) & "@"
+              & Img (Speed_Frame.D_Target / 10) & " m" & Img (Speed_Frame.Monitoring)
+              & (if Cmd.SB then " SB" else "")
+              & (if Cmd.EB then " EB" else "");
+         begin
+            Now (1 .. T'Length) := T;
+            if Now /= Last then
+               Put_Line (Img (Integer ((Target_Cm - At_Cm - CI_Cm) / 100))
+                         & " " & T);
+               Last := Now;
+            end if;
+         end;
+         exit when Cmd.EB;
+      end loop;
+   end Drive;
+
    Top : Integer := 0;
 begin
    Base.Train_Data.Max_Speed := Cms (200.0);
@@ -324,6 +395,10 @@ begin
         (if LOA_Kmh < 0 and then Rel_Kmh > 0.0
          then (Kind => SIn.Fixed, Speed => Cms (Rel_Kmh))
          else (Kind => SIn.None, Speed => 0)));
+   if Drive_M >= 0 then
+      Drive (Top);
+      return;
+   end if;
    Put_Line ("# V_kmh  I P W SBI EBI (max safe front end to the target, m)"
              & " | the same from the estimated front end"
              & " | V_Perm V_SBI shown on P (km/h)");
