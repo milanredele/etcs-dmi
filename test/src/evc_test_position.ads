@@ -9,6 +9,7 @@ package EVC_Test_Position is
       procedure Scenario_Position_First_Group;
       procedure Scenario_Linking;
       procedure Scenario_Linking_Errors;
+      procedure Scenario_Linking_Replacement;
       procedure Scenario_Single_Balise;
       procedure Scenario_Geo;
       procedure Scenario_Geo_Rejected_In_SH;

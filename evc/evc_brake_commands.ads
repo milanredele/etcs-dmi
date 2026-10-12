@@ -44,7 +44,8 @@ is
       Service_Brake_Failed,    -- 3.14.1.2
       Roll_Away,               -- 3.14.2, released per 3.14.1.5
       Direction,               -- 3.14.3, released per 3.14.1.5
-      Standstill_Supervision); -- 4.4.7.1.5, released per 3.14.1.5
+      Standstill_Supervision,  -- 4.4.7.1.5, released per 3.14.1.5
+      Data_Entry_Movement);    -- 3.18.3.3.1, released per 3.14.1.5
    type Reasons_T is array (Reason_T) of Boolean;
 
    --  SUBSET-034 2.5.2: the direction controller of the active desk
@@ -68,6 +69,10 @@ is
       --  3.14.1.2: how long the service brake alone has been commanded
       SB_Ms       : Time_T := 0;
       SB_Failed   : Boolean := False;
+      --  3.18.3.3.1: a movement while the driver modifies or revalidates
+      --  the Train Data commanded the brake, until standstill and
+      --  acknowledgement (3.14.1.5)
+      Data_Entry  : Boolean := False;
    end record;
 
    type Inputs_T is record
@@ -82,6 +87,9 @@ is
       --  the expected brake build up time of the service brake, T_bs
       --  (EVC_Braking)
       T_Bs       : Time_T := 0;
+      --  3.18.3.3.1: the driver is modifying or revalidating the Train
+      --  Data after the start of mission (EVC_Mission)
+      Modifying_Data : Boolean := False;
    end record;
 
    type Commands_T is record
@@ -125,6 +133,9 @@ is
        and then (if State.Standstill.Braking'Old
                    and then not State.Standstill.Braking
                  then S.Train.Standstill and then Inputs.Ack)
+       and then (if State.Data_Entry'Old and then not State.Data_Entry
+                 then S.Train.Standstill and then Inputs.Ack)
+       and then (if State.Data_Entry then Output.EB)
        and then (if State.Roll_Away.Braking or else State.Direction.Braking
                    or else State.Standstill.Braking
                  then Output.EB);

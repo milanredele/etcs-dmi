@@ -10,7 +10,8 @@ package body EVC_Mission
                                    Proposal, Proposal_Mode, Acked_Now,
                                    Acked_M, Desk_Closed_Now, SR_V, SR_D,
                                    Continue_On, NL_Lost, NL_Input,
-                                   TD_Now, RBC_Wait, RBC_Wait_Count,
+                                   TD_Now, TD_Entry, RBC_Wait,
+                                   RBC_Wait_Count,
                                    SR_After_Wait, SR_After_Wait_MAs,
                                    Events, Event_N))
 is
@@ -42,6 +43,8 @@ is
    --  with the count of SR authorisations at 'Start' (E26: a change)
    RBC_Wait        : Boolean := False;
    RBC_Wait_Count  : Natural := 0;
+   --  3.18.3.3.1: the driver is modifying or revalidating the Train Data
+   TD_Entry        : Boolean := False;
    --  5.4.3.2 E26 / E27: SR proposed by Take_RBC_Answer in the last
    --  cycle, with the count of radio MAs at that proposal (e5/same-cycle)
    SR_After_Wait     : Boolean := False;
@@ -83,6 +86,8 @@ is
      with Refined_Global => RBC_Wait;
    function Train_Data_Validated return Boolean is (TD_Now)
      with Refined_Global => TD_Now;
+   function Modifying_Train_Data return Boolean is (TD_Entry)
+     with Refined_Global => TD_Entry;
    function Desk_Closed_In_SoM return Boolean is (Desk_Closed_Now)
      with Refined_Global => Desk_Closed_Now;
    function SR_Speed return Speed_Cms_T is (SR_V)
@@ -137,6 +142,7 @@ is
       NL_Lost := False;
       NL_Input := False;
       TD_Now := False;
+      TD_Entry := False;
       RBC_Wait := False;
       RBC_Wait_Count := 0;
       SR_After_Wait := False;
@@ -509,6 +515,31 @@ is
    -- Evaluate --
    --------------
 
+   --  3.18.3.3.1: the Train Data entry after the start of mission, in the
+   --  modes of 4.7.2 other than SB (in SB the standstill supervision of
+   --  4.4.7.1.5 applies). Decision: the DMI does not report a Train Data
+   --  window left without data; the entry ends then at the next button
+   --  of the Main window reported, the end of the mission or a mode
+   --  without the entry, so that a movement after a window left by its
+   --  close button brakes the train (the safe side; B220)
+   procedure Take_Data_Entry (M : Mode_T)
+     with Global => (In_Out => TD_Entry,
+                     Input  => (Mission_On, EVC_Driver_Requests.State))
+   is
+      Entry_Mode : constant Boolean :=
+        Mission_On
+        and then M in M_FS | M_AD | M_LS | M_SR | M_OS | M_UN | M_SN;
+   begin
+      if not Entry_Mode
+        or else Entered (EVC_Driver_Requests.Train_Data)
+        or else Selected (EVC_Driver_Requests.Main_Window_Button)
+      then
+         TD_Entry := False;
+      elsif Selected (EVC_Driver_Requests.Train_Data_Entry) then
+         TD_Entry := True;
+      end if;
+   end Take_Data_Entry;
+
    procedure Evaluate (C : Context_T) is
       M : constant Mode_T := C.Mode;
    begin
@@ -520,6 +551,7 @@ is
       Take_Desk (C, M);
       Take_Identity (M);
       Take_Data (C, M);
+      Take_Data_Entry (M);
       Take_RBC_Answer (C, M);
       Take_Start (C, M);
    end Evaluate;

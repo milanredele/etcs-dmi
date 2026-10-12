@@ -63,6 +63,7 @@ package body EVC_Core
                                    Overrun_Reported,
                                    Entering_Shown,
                                    Runaway_Shown,
+                                   Odometer_Shown,
                                    --  the procedures (phase E4)
                                    Proc_Ctx,
                                    Ack_For_Protection,
@@ -220,6 +221,9 @@ is
    --  3.14.2.6, 3.14.3.4, 4.4.7.1.5.4: "Runaway movement" shown (the DMI's
    --  catalogue entry 9) while a protection commands the brake
    Runaway_Shown        : Boolean := False;
+   --  3.6.8.5, 3.6.8.6.2: "Odometer impaired" shown (the DMI's catalogue
+   --  entry 36) while the odometer performance is impaired
+   Odometer_Shown       : Boolean := False;
 
    ---------------------------------------------------------------------
    --  The procedures (phase E4, e4/procedures)
@@ -372,6 +376,7 @@ is
       Overrun_Reported := 0;
       Entering_Shown := 0;
       Runaway_Shown := False;
+      Odometer_Shown := False;
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
@@ -1329,7 +1334,7 @@ is
      with Global => (Input  => (Test_Snapshot_Set, TIU_Now,
                                 TIU_Value_Now, TIU_Known_Now, Brake_Ack_Now,
                                 Current_Mode, EVC_Levels.State,
-                                EVC_Position.State,
+                                EVC_Position.State, EVC_Mission.State,
                                 EVC_Stored_Information.State),
                      In_Out => (Snapshot, SDM_Work, SDM_State, Brake_State,
                                 Brake_Output),
@@ -1369,7 +1374,8 @@ is
              Ack        => Brake_Ack_Now,
              Dt_Ms      => Dt_Ms,
              A_Est      => SDM_State.A_Est,
-             T_Bs       => SDM_Work.Model.Service_Target.Build_Up),
+             T_Bs       => SDM_Work.Model.Service_Target.Build_Up,
+             Modifying_Data => EVC_Mission.Modifying_Train_Data),
             Brake_State, Brake_Output);
          Speed_State := To_Speed_State (S, SDM_Result);
       end Run;
@@ -1834,6 +1840,11 @@ is
       then
          Brake_State.Standstill := (others => <>);
       end if;
+      --  the brake of a movement while the driver modifies the Train Data
+      --  (3.18.3.3.1) in NP, SB, SH (4.12.1.2) and IS
+      if To in M_NP | M_SB | M_SH | M_IS then
+         Brake_State.Data_Entry := False;
+      end if;
    end Revoke_Brake_Reasons;
 
    --  7. What entering the mode To from From means (phase E4): the data
@@ -2006,13 +2017,13 @@ is
    --  protections of 3.14 (MSG_SYSTEM_STATUS): 4.4.15.1.1.3 the
    --  non-leading operation no longer permitted, 4.4.9.1.4 "Entering FS",
    --  4.4.12.1.7 "Entering OS"; 3.14.2.6, 3.14.3.4, 4.4.7.1.5.4 "Runaway
-   --  movement"
+   --  movement"; 3.6.8.5, 3.6.8.6.2 "Odometer impaired"
    procedure Show_Mode_Indications
      with Global => (Input  => (Current_Mode, Brake_Output,
-                                EVC_Mission.State,
+                                EVC_Mission.State, EVC_Odometry.State,
                                 EVC_Stored_Information.State),
                      In_Out => (Entering_Shown, Runaway_Shown,
-                                EVC_Outbox.Queue))
+                                Odometer_Shown, EVC_Outbox.Queue))
    is
    begin
       --  4.4.15.1.1.3: the driver is informed that the non-leading
@@ -2061,6 +2072,26 @@ is
                                   then SS_Event_Start else SS_Event_End)));
          Runaway_Shown := Brake_Output.Protection;
       end if;
+      --  3.6.8.5: the driver is informed when the odometer performance
+      --  becomes impaired, and as long as it is (3.6.8.6.2); the entry
+      --  ends when EVC_Odometry ends the impairment (3.6.8.6, the
+      --  catalogue's "end = 3.6.8.6"). 4.5.2 Table: the check of the
+      --  odometer accuracy thresholds is a function of SM, FS, AD, LS, SR
+      --  and OS only (SUBSET-076 4050200_10 and _11: not shown in UN and
+      --  SB)
+      declare
+         Show : constant Boolean :=
+           EVC_Odometry.Impaired
+           and then Current_Mode in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS;
+      begin
+         if Show /= Odometer_Shown then
+            EVC_Outbox.Put (DMI, System_Status_Frame
+                                   (SS_Odometer_Impaired,
+                                    (if Show
+                                     then SS_Event_Start else SS_Event_End)));
+            Odometer_Shown := Show;
+         end if;
+      end;
    end Show_Mode_Indications;
 
    --  8c. DMI: the mode and the level (MSG_MODE_LEVEL; 4.4.2.1: a clear
@@ -2436,7 +2467,10 @@ is
             or (if D.Trip then TIU_Reason_Trip else 0)
             or (if D.Ack_Missing or else Text_SB or else Text_EB
                 then TIU_Reason_Ack_Missing else 0)
-            or (if D.Other then TIU_Reason_Procedure else 0))
+            or (if D.Other
+                   or else Brake_Output.Reasons
+                             (EVC_Brake_Commands.Data_Entry_Movement)
+                then TIU_Reason_Procedure else 0))
      with Global => (Current_Mode, Brake_Output, EVC_Levels.State);
 
    --  8h. The speed and distance monitoring and the brake commands
@@ -2689,6 +2723,7 @@ is
                                 TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, Overrun_Reported,
                                 Entering_Shown, Runaway_Shown,
+                                Odometer_Shown,
                                 Status_Rev_Sent, Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
                                 EVC_Radio_Authority.State,

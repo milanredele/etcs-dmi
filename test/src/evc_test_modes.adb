@@ -5,6 +5,8 @@ with ETCS_Variables;
 with EVC_Bytes;
 with EVC_Core;
 with EVC_DMI_Port;
+with EVC_Brake_Commands;
+with EVC_Mission;
 with EVC_Modes;
 with EVC_Ports;
 with EVC_Stored_Information;
@@ -384,6 +386,46 @@ package body EVC_Test_Modes is
              "FS: 'Entering FS' ends once SSP and gradient are known for "
              & "the whole length of the train, 200 m (4.4.9.1.4)");
    end Scenario_E4_SoM_Level_1;
+
+   --  3.18.3.3.1, 3.14.1.5: after the start of mission (UN, level 0) the
+   --  driver selects 'Train data' (DMI action 21); a movement while the
+   --  Train Data are modified commands the emergency brake, released at
+   --  standstill after the acknowledgement (DMI kind 5); the entered
+   --  Train Data end the modification, a movement then brakes nothing
+   procedure Scenario_Train_Data_Movement is
+   begin
+      Mission (L0_Code);
+      Send (Action (21));
+      Check (EVC_Core.Mode = EVC_Modes.M_UN
+             and then EVC_Mission.Modifying_Train_Data
+             and then not Cmd.EB,
+             "Train Data movement: 'Train data' selected in UN, the "
+             & "modification watched (3.18.3.3.1)");
+      Run_X (Train_Cm + 300, 100);
+      Check (Cmd.EB
+             and then Cmd.Reasons (EVC_Brake_Commands.Data_Entry_Movement),
+             "Train Data movement: a movement commands the brake "
+             & "(3.18.3.3.1)");
+      Input (DMI, Ack_Of (5));
+      Run_X (Train_Cm + 100, 100);
+      Check (Cmd.EB, "Train Data movement: no release while moving "
+             & "(3.14.1.5)");
+      Stand_X (300);
+      Check (Cmd.EB and then Cmd.Ack_Required,
+             "Train Data movement: at standstill the acknowledgement is "
+             & "asked (3.14.1.9)");
+      Send (Ack_Of (5));
+      Check (not Cmd.EB
+             and then not Cmd.Reasons
+                            (EVC_Brake_Commands.Data_Entry_Movement),
+             "Train Data movement: released at standstill after the "
+             & "acknowledgement (3.14.1.5)");
+      Send (Train_Entry (200, 135, 160));
+      Run_X (Train_Cm + 300, 100);
+      Check (not EVC_Mission.Modifying_Train_Data and then not Cmd.EB,
+             "Train Data movement: the entered Train Data end the "
+             & "modification, a movement brakes nothing");
+   end Scenario_Train_Data_Movement;
 
    --  5.4.3.2 S22, S23, 5.4.5.3 h (level 2 without a session): the mode
    --  proposed after 'Start' in levels 0, NTC and 2; UN (4.4.10), SN

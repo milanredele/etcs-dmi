@@ -415,6 +415,7 @@ is
    SS_FRMCS_Registration_Failed     : constant := 33;  -- 5.4.3.2 A41
    SS_GSMR_Registration_Failed      : constant := 34;  -- 5.4.3.2 A29
    SS_NL_No_Longer_Permitted        : constant := 35;  -- 4.4.15.1.1.3
+   SS_Odometer_Impaired             : constant := 36;  -- 3.6.8.5
 
    subtype System_Status_Frame_T is
      Byte_Array (1 .. Header_Length + System_Status_Length);

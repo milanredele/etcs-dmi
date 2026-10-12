@@ -156,6 +156,16 @@ is
    function NL_No_Longer_Permitted return Boolean
      with Global => State;
 
+   --  3.18.3.3.1: after the start of mission, the driver is modifying or
+   --  revalidating the Train Data: from the selection of 'Train data' in
+   --  the Main window (DMI driver action 21) until the Train Data are
+   --  entered, a button of the Main window is selected (action 16), the
+   --  mission ends or a mode in which the entry is not possible is
+   --  entered (4.7.2). A train movement meanwhile commands the brake
+   --  (EVC_Brake_Commands, released per 3.14.1.5)
+   function Modifying_Train_Data return Boolean
+     with Global => State;
+
    ---------------------------------------------------------------------
    --  Juridical recording (EVC_Ports, event 41: the mission): kind
    --  (byte 2), two bytes

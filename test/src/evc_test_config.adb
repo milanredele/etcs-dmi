@@ -622,7 +622,8 @@ package body EVC_Test_Config is
                          Ack        => False,
                          Dt_Ms      => 100,
                          A_Est      => A_Est,
-                         T_Bs       => 3_000),
+                         T_Bs       => 3_000,
+                         Modifying_Data => False),
                         State, Out_C);
                if State.SB_Failed then
                   return Ms * 100;
