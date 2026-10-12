@@ -11,6 +11,8 @@ package EVC_Test_Modes is
       procedure Scenario_E4_SoM_Level_1;
       procedure Scenario_E4_SoM_Other_Levels;
       procedure Scenario_Train_Data_Movement;
+      procedure Scenario_Train_Data_Left;
+      procedure Scenario_SR_Data_Movement;
       procedure Scenario_E4_SR_Distance;
       procedure Scenario_E4_Level_Transition_0;
       procedure Scenario_E4_Level_Ack_Again;

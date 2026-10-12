@@ -943,9 +943,29 @@ package body DMI_Windows is
       and then (not Sequence_Active
                 or else (Depth > 1 and then Stack (Depth) /= W_One_Radio)));
 
-   procedure Close_Top is
+   -- B220, SUBSET-026 3.18.3.3.1 and 4.4.11.1.5.1: the on-board watches
+   -- a train movement while the driver enters the Train Data or the SR
+   -- speed / distance; it learns that the window was left without the
+   -- data (driver actions 22 and 24). ID was just taken off the stack:
+   -- the Train data window and its validation window count as one.
+   procedure Note_Entry_Left (ID : Window_ID_T) is
    begin
-      if Close_Enabled then
+      if ID in W_Train_Data | W_Train_Data_Validation
+        and then (Depth = 0
+                  or else Stack (Depth) not in W_Train_Data
+                                             | W_Train_Data_Validation)
+      then
+         Queue (Train_Data_Left);
+      elsif ID = W_SR_Data then
+         Queue (SR_Data_Left);
+      end if;
+   end Note_Entry_Left;
+
+   procedure Close_Top is
+      Left : Window_ID_T;
+   begin
+      if Close_Enabled and then Depth > 0 then
+         Left := Stack (Depth);
          -- 10.6.1.3 e: [Close] of a VBC validation window stops the Set /
          -- Remove VBC entry / validation process; Table 54 proposes the
          -- previous value only while the process goes on (S6-1 / S7-1
@@ -957,6 +977,7 @@ package body DMI_Windows is
             DMI_VBC.Clear;
          end if;
          Pop;
+         Note_Entry_Left (Left);
       end if;
    end Close_Top;
 
@@ -1067,7 +1088,12 @@ package body DMI_Windows is
       -- 11.7.1.9: the values of the input fields are dropped with the
       -- window; the validation window goes with its train data window
       while Depth > 0 and then Is_Entry_Window (Stack (Depth)) loop
-         Pop;
+         declare
+            Left : constant Window_ID_T := Stack (Depth);
+         begin
+            Pop;
+            Note_Entry_Left (Left);
+         end;
       end loop;
    end Stop_Entry;
 
@@ -1539,7 +1565,10 @@ package body DMI_Windows is
          when W_Special =>
             case Index is
                when 1 => Open (W_Adhesion);
-               when 2 => Open (W_SR_Data);
+               when 2 =>
+                  -- 4.4.11.1.5.1: the on-board watches the entry (B015)
+                  Queue (SR_Data_Requested);
+                  Open (W_SR_Data);
                when 3 => Queue (Train_Integrity); Pop;
                when 4 =>
                   -- Table 53 S1: ST07 is presented / removed (the EVC

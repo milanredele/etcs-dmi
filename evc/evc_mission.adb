@@ -10,7 +10,7 @@ package body EVC_Mission
                                    Proposal, Proposal_Mode, Acked_Now,
                                    Acked_M, Desk_Closed_Now, SR_V, SR_D,
                                    Continue_On, NL_Lost, NL_Input,
-                                   TD_Now, TD_Entry, RBC_Wait,
+                                   TD_Now, TD_Entry, SR_Entry, RBC_Wait,
                                    RBC_Wait_Count,
                                    SR_After_Wait, SR_After_Wait_MAs,
                                    Events, Event_N))
@@ -45,6 +45,8 @@ is
    RBC_Wait_Count  : Natural := 0;
    --  3.18.3.3.1: the driver is modifying or revalidating the Train Data
    TD_Entry        : Boolean := False;
+   --  4.4.11.1.5.1: the driver is entering the SR speed / distance limits
+   SR_Entry        : Boolean := False;
    --  5.4.3.2 E26 / E27: SR proposed by Take_RBC_Answer in the last
    --  cycle, with the count of radio MAs at that proposal (e5/same-cycle)
    SR_After_Wait     : Boolean := False;
@@ -88,6 +90,8 @@ is
      with Refined_Global => TD_Now;
    function Modifying_Train_Data return Boolean is (TD_Entry)
      with Refined_Global => TD_Entry;
+   function Entering_SR_Data return Boolean is (SR_Entry)
+     with Refined_Global => SR_Entry;
    function Desk_Closed_In_SoM return Boolean is (Desk_Closed_Now)
      with Refined_Global => Desk_Closed_Now;
    function SR_Speed return Speed_Cms_T is (SR_V)
@@ -143,6 +147,7 @@ is
       NL_Input := False;
       TD_Now := False;
       TD_Entry := False;
+      SR_Entry := False;
       RBC_Wait := False;
       RBC_Wait_Count := 0;
       SR_After_Wait := False;
@@ -517,13 +522,17 @@ is
 
    --  3.18.3.3.1: the Train Data entry after the start of mission, in the
    --  modes of 4.7.2 other than SB (in SB the standstill supervision of
-   --  4.4.7.1.5 applies). Decision: the DMI does not report a Train Data
-   --  window left without data; the entry ends then at the next button
-   --  of the Main window reported, the end of the mission or a mode
-   --  without the entry, so that a movement after a window left by its
-   --  close button brakes the train (the safe side; B220)
+   --  4.4.7.1.5 applies). B220: the entry ends when the DMI reports the
+   --  Train data window left without the data (action 22), and still at
+   --  the next button of the Main window reported, the end of the
+   --  mission or a mode without the entry.
+   --  4.4.11.1.5.1, 4.4.11.1.5: the SR speed / distance entry, in SR,
+   --  from the window opened (action 23) until the data are entered, the
+   --  window is left (action 24) or SR is left. Decision: the entry is
+   --  watched whatever the speed (the DMI offers the window only at
+   --  standstill, DMI Table 34 #2)
    procedure Take_Data_Entry (M : Mode_T)
-     with Global => (In_Out => TD_Entry,
+     with Global => (In_Out => (TD_Entry, SR_Entry),
                      Input  => (Mission_On, EVC_Driver_Requests.State))
    is
       Entry_Mode : constant Boolean :=
@@ -533,10 +542,19 @@ is
       if not Entry_Mode
         or else Entered (EVC_Driver_Requests.Train_Data)
         or else Selected (EVC_Driver_Requests.Main_Window_Button)
+        or else Selected (EVC_Driver_Requests.Train_Data_Left)
       then
          TD_Entry := False;
       elsif Selected (EVC_Driver_Requests.Train_Data_Entry) then
          TD_Entry := True;
+      end if;
+      if M /= M_SR
+        or else Entered (EVC_Driver_Requests.SR_Data)
+        or else Selected (EVC_Driver_Requests.SR_Data_Left)
+      then
+         SR_Entry := False;
+      elsif Selected (EVC_Driver_Requests.SR_Data_Entry) then
+         SR_Entry := True;
       end if;
    end Take_Data_Entry;
 

@@ -217,6 +217,8 @@ begin
    Scenario_E4_SoM_Level_1;
    Scenario_E4_SoM_Other_Levels;
    Scenario_Train_Data_Movement;
+   Scenario_Train_Data_Left;
+   Scenario_SR_Data_Movement;
    Scenario_E4_SR_Distance;
    Scenario_E4_Level_Transition_0;
    Scenario_E4_Level_Ack_Again;

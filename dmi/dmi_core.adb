@@ -58,6 +58,9 @@ package body DMI_Core is
    ACTION_TUNNEL_TOGGLE : constant Unsigned_8 := 3;
    ACTION_GEO_TOGGLE    : constant Unsigned_8 := 4;
    ACTION_TRAIN_DATA_ENTRY : constant Unsigned_8 := 21;
+   ACTION_TRAIN_DATA_LEFT  : constant Unsigned_8 := 22;
+   ACTION_SR_DATA_ENTRY    : constant Unsigned_8 := 23;
+   ACTION_SR_DATA_LEFT     : constant Unsigned_8 := 24;
    ACTION_ATO_ENGAGE    : constant Unsigned_8 := 13;
    ACTION_ATO_SKIP      : constant Unsigned_8 := 14;
    -- a button of the Main window ended a system status message
@@ -532,6 +535,12 @@ package body DMI_Core is
                Send_Language_Msg (Arg);
             when Train_Data_Requested =>
                Queue_Driver_Action (ACTION_TRAIN_DATA_ENTRY);
+            when Train_Data_Left =>
+               Queue_Driver_Action (ACTION_TRAIN_DATA_LEFT);
+            when SR_Data_Requested =>
+               Queue_Driver_Action (ACTION_SR_DATA_ENTRY);
+            when SR_Data_Left =>
+               Queue_Driver_Action (ACTION_SR_DATA_LEFT);
          end case;
       end loop;
    end Drain_Window_Actions;

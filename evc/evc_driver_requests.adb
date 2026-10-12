@@ -168,7 +168,9 @@ is
    is
    begin
       --  action u8, arg u16; action 2: kind u16, id u16
-      if N = 3 and then Frame (P) <= 21 and then Frame (P) /= 2 then
+      if N = 3 and then Frame (P) <= Action_T'Pos (Action_T'Last)
+        and then Frame (P) /= 2
+      then
          declare
             A : constant Action_T := Action_T'Val (Frame (P));
          begin

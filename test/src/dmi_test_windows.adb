@@ -633,6 +633,16 @@ package body DMI_Test_Windows is
       Onboard (Session => 2, RBC => 16#09#, Data => Data_All or 16#20#);
       Check (Enabled (3),
              "Table 35 #3: Train integrity with the RBC's ack and the length");
+      -- B015, SUBSET-026 4.4.11.1.5.1: the on-board watches the SR speed /
+      -- distance entry from the window opened (action 23) to the window
+      -- left without the data (action 24)
+      Drain_Outbox;
+      Win_Menu (2);
+      Check (Top_Is (DMI_Windows.W_SR_Data), "the SR speed / distance window");
+      Expect_Action (23, 0, "Table 35 #2: the SR entry requested (action 23)");
+      Win_Close;
+      Expect_Action (24, 0, "[Close]: the SR entry left (action 24)");
+      Check (Top_Is (DMI_Windows.W_Special), "back to the Special window");
       Send_Mode_Level (Mode => 2, Level => 4); -- FS
       Onboard;
       Check (not Enabled (2), "Table 35 #2: no SR speed / distance outside SR");
@@ -677,6 +687,15 @@ package body DMI_Test_Windows is
       Onboard (Train => Running);              -- the train starts moving
       Check (Top_Is (DMI_Windows.W_Main),
              "Table 48: the validation gives way to the Main window");
+      Expect_Action (22, 0, "B220, 11.7.1.7: the entry stopped is reported "
+                     & "as left (action 22)");
+      -- B220, SUBSET-026 3.18.3.3.1: [Close] of the Train data window
+      Onboard;
+      Press (410, 140);                        -- Train data
+      Win_Close;
+      Check (Top_Is (DMI_Windows.W_Main), "[Close]: back to the Main window");
+      Expect_Action (22, 0, "B220: the Train data window left without the "
+                     & "data (action 22)");
       Drain_Outbox;
    end Scenario_Enabling_Conditions;
 
