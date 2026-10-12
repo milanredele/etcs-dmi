@@ -503,11 +503,7 @@ is
       Ind := (Count => 0, List => (others => (others => <>)));
       Orders := (Count => 0, List => (others => (others => <>)));
       Hole_S := Overlaps_Radio_Hole (T, Train);
-      if not Train.Valid then
-         return;
-      end if;
-
-      if Cond_S.Sense = Train.Sense then
+      if Train.Valid and then Cond_S.Sense = Train.Sense then
          for I in 1 .. Cond_S.Count loop
             pragma Loop_Invariant (Cond_S.Count = Cond_S.Count'Loop_Entry);
             declare
@@ -610,7 +606,7 @@ is
          end loop;
       end if;
 
-      if Traction_S.Sense = Train.Sense then
+      if Train.Valid and then Traction_S.Sense = Train.Sense then
          for I in 1 .. Traction_S.Count loop
             pragma Loop_Invariant
               (Traction_S.Count = Traction_S.Count'Loop_Entry);
