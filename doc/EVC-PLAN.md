@@ -4301,3 +4301,40 @@ A.3.12 inputs (A_EB, A_SB, A_expected_max, the CR1344 T_traction) with
 the probe turned into a tool fed by a sequence's cells (B174). The
 runner's B016 work is the three method fixes; the SV21/SV22 workbooks
 are no reference for the limit locations of a 4.0.0 on-board.
+
+### SV30 workbooks as the reference of their twins (s076/curves-twin, 2026-10-12)
+
+The importer side of B170, in the sibling `../etcs-subset076` (branch
+`curves-twin`): a `curves` block of an SV21 or SV22 sequence is replaced
+by the same sheet's block of its SV30 twin (same feature and sequence
+number; a sequence with workbooks `a`, `b`, ... matched workbook by
+workbook), with the line `curves-from <SV30 sequence name>` right after
+`curves <sheet>`, where the EBD rows are identical. Rule, on the sampled
+rows the importer emits: the same first and last speed with an EBD value
+and, at every speed sampled in both blocks, the same EBD within 0.05 m
+(both empty the same, one empty not). The speed range condition keeps
+out the twins with the same EBD over another initial speed (3131040_13,
+_14, _64, _67, _68, _81, _90, 3131030_18, 3131060_02c: their table 3 is
+for another speed). Elsewhere the file keeps its own block, without the
+line.
+
+| per system version (SV21 and SV22 alike), blocks | Lambda | Gamma |
+|---|---|---|
+| replaced by the SV30 twin | 136 | 168 |
+| kept: EBD rows differ (or another EBD speed range) | 12 | 18 |
+| kept: the twin workbook has no block | 0 | 10 |
+| kept: the twin has the other sheet | 0 | 1 |
+
+(The plan's 105 of 112 Lambda counted twins with another grouping; the
+numbers here are blocks, one per sheet and workbook.) 450 SV21/SV22
+files change in their curves blocks only; every SV30 file, `index.csv`
+and `testcases.csv` are byte-identical; the importer's `--check` passes;
+the README's format section has the rule and the counts, `REPORT.md` the
+counts. Against the regenerated sibling, `obj/evc_s076_check` of master
+reports 0 failures; `obj/evc_s076_run` of master reads the replaced
+blocks as the file's own (the unknown `curves-from` line skipped, e.g.
+3130237_07 SV21: "curves 1: ..._SV21.xlsm, Curves Lambda train, 75
+rows", the SV30 rows): 753 passed, 1429 failed, 1008 blocked, 0
+regressions, 2 improvements (3131040_38 SV21 and SV22, failed at 53 ->
+failed at 59, S280f8372). The runner side (the `From_Twin`
+flag, a reason of its own for the blocks kept) is e5/curves-method's.
