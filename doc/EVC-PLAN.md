@@ -4557,3 +4557,56 @@ limit), B192 by family (the release speed monitoring start with SvL at
 the EOA, the EOA without SvL or release speed, the several-set
 workbooks), then the Gamma model with E6. Open items: doc/BACKLOG.csv
 (32 open after this round).
+
+### Lambda workbooks by family (e5/curves-families, 2026-10-12)
+
+The 39 Lambda SV30 workbooks of B192 traced with `curve_probe.py`; no
+defect of the on-board. Ours minus the workbook minus the B175 margin,
+the worst row of the file, m:
+
+| family | sequences | outcome | before | after |
+|---|---|---|---|---|
+| EOA, SvL = EOA, release speed | 3131040_20 to _42 (9) | the tool's target type LoA/MRSP at 0 km/h, not EoA/SvL | −107 (I) | refused |
+| EOA without SvL or release | 3131040_44/46/48, 3130235_02/04 | the same | −97 | refused |
+| | 3131020_02/04 | probe: Q_NVSBTSMPERM 0 of packet 3 not fed | +140 | ≤ 2 |
+| | 3131030_24, 3131040_98 | probe: the cells of the file's last workbook | | ≤ 2 |
+| | 3130234_07 | correction factors (family 4) | +139 | ≤ 2 with 0.96 / 1.0 |
+| | 3131060_14 | high-speed residual | +3.7 | +3.7 |
+| several sets, gradients, targets | 3130233_02, 3131050_08, 3131060_02, 3131100_02/04/07 | probe: the cells of the file's last workbook | −649 to +948 | ≤ 2 (3130233_02 set 3: 2.5) |
+| | 3130810_02 | probe: the reduced adhesion area not fed | −74 | +10 at 45–60 km/h, B201 |
+| | 3130237_05 sets 2, 3 | an EB model of 0.41 / 0.64 m/s² from a control that is no cell | −121 / +110 | B201 |
+| | 3130237_06, 3131040_10 | correction factors (family 4) | −50 / +948 | ≤ 2 / +3.5 |
+| | 3131040_12 | high-speed residual | +3.5 | +3.5 |
+| other correction factors | 3130237_04 (set 2), _12, _13, _15, _17, 3131050_05 (sets 7–9), _06, _22, _24 | Kv_int 0.96, Kr_int 1.0 / 0.9, Kt_int 1.0 where the packets give 0.7 / 0.9 / 1.1 | +92 to +627 | ≤ 2 with them |
+
+**The EOA workbooks with SvL = EOA** have no SBD and no SBI1 column, the
+EBD reaches 0 m at 7.5 km/h (dV_ebi(0) above an LoA of 0 km/h) and
+(SBI2 − EBI) / V is 23.775 s at every speed, the full T_bs of a freight
+P train of 750 m: the workbook was made with the target type
+"LoA/MRSP", target speed 0. The tool then never reduces T_bs
+(vba-sv30-tool line 3684: `LoA_MRSP And V_t2bs >= V_target`, true for
+V_target 0), computes no SBI1 (3790, only `EoA_SvL`) and no release
+speed (3752). The sequence sends packet 12 with Q_DANGERPOINT 0 and
+Q_OVERLAP 0: an EOA whose SvL is the EOA, for which A.3.12.4.5 reduces
+T_bs below V_t2bs = 0 (ours: up to 52 m nearer below 65 km/h, the same
+above) and 3.13.9.4 supervises the release speed. Our reading is the
+tool's own for an EoA/SvL (3131040_04, SvL +450 m, within 1.4 m). The
+probe refuses these workbooks now; the runner's judging is B200.
+
+**Other correction factors** (12 files, 21 blocks): with
+`--with "kv=0:0.96 kr=0:1.00,250:0.90 kt=1.00"` every row is within
+2 m (3131040_10: 3.5 m at 180 km/h); the sequences send packet 3 with
+Q_NVKINT 0 or none (A.3.2: 0.7, 0.9, 1.1). A SUBSET-076 inconsistency,
+B200.
+
+**The probe's gaps**, fixed: a file with several workbooks
+(3131030_24a, _24b) gave the first curves block the cells and gradient
+of the last; `--breadth` probed the first block only (now every block,
+`name/2`); Q_NVSBTSMPERM (key `sbtsm`) and the workbook's reduced
+adhesion area with its A_max (keys `adhesion`, `redadh`) were not fed.
+
+After: 101 of 129 curves blocks of 99 files within 2 m in every row
+(5280 of 6371 rows); 15 refused as LoA/MRSP workbooks, 7 Gamma, 4
+accelerating. Left (B201): 3130237_05 sets 2 and 3, 3130810_02 at 45 to
+60 km/h, 2 to 3.7 m further out at 160 to 185 km/h in four files. The
+on-board is unchanged: no unit proof, no runner baseline change.
