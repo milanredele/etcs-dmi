@@ -26,6 +26,7 @@ with EVC_Odometry;
 with EVC_Position;
 with EVC_Ports;
 with EVC_Radio;
+with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
 with EVC_National_Values;
@@ -855,6 +856,31 @@ package body S076_Run is
    --  values the sequence names and ends the entry
    function RBC_Data_Entry (Verb : String) return Judgement_T is
       Id, Phone : Unbounded_String;
+      Typed     : Boolean := False;
+
+      --  the K-th value the window shows (digits)
+      function Proposed (K : DMI_Data_Entry.Field_Index_T) return String is
+         S : String (1 .. DMI_Data_Entry.Value (K).Length);
+      begin
+         for N in S'Range loop
+            S (N) := Character'Val
+              (Wide_Character'Pos (DMI_Data_Entry.Value (K).Text (N)) mod 256);
+         end loop;
+         return S;
+      end Proposed;
+
+      --  11.7.1.4: the window proposes the stored contact (MSG_RBC_CONTACT)
+      --  and the step names those values, or none: the driver confirms
+      --  them without typing (decision: a step that names no value takes
+      --  the proposal, any valid contact being what it asks for)
+      function Proposed_Named return Boolean is
+         I, P : Unbounded_String;
+      begin
+         Radio_Values (I, P);
+         return (Length (I) > 0 and then To_String (I) = Proposed (1)
+                 and then To_String (P) = Proposed (2))
+           or else Length (I) = 0;
+      end Proposed_Named;
    begin
       --  Table 49 S3-1 -> S3-3 / Table 50 S5-1 -> S5-3: the driver who
       --  is to confirm the RBC data presses 'Enter RBC data' on the
@@ -892,16 +918,17 @@ package body S076_Run is
                       & Top_Image);
       end if;
       if DMI_Data_Entry.Value (1).Length = 0
-        or else Same (Verb, "enter")
+        or else (Same (Verb, "enter") and then not Proposed_Named)
       then
+         Typed := True;
          Radio_Values (Id, Phone);
          if Length (Id) = 0 and then Same (Verb, "confirm")
            and then EVC_Radio.Contact.Known
          then
             --  11.7.1.4: the window proposes the stored contact (the
             --  driver confirms it; 4040800_05 step 58: "equal to the
-            --  variable of packet 42"). The protocol does not carry the
-            --  stored contact to the DMI, so the driver types it: the
+            --  variable of packet 42"). The window shows nothing, so
+            --  the driver types the stored contact the on-board has: the
             --  RBC ID as NID_C * 2**14 + NID_RBC, the phone number the
             --  BCD digits of NID_RADIO before the F padding (the form
             --  the on-board reads, EVC_Sessions.Mission.Driver_Contact)
@@ -940,7 +967,8 @@ package body S076_Run is
       if Top_Is (W_RBC_Data) then
          return Fail ("DMI RBC data: the entry was not accepted");
       end if;
-      return Pass ("DMI RBC data entered");
+      return Pass ("DMI RBC data "
+                   & (if Typed then "entered" else "confirmed as shown"));
    end RBC_Data_Entry;
 
    function DMI_Input (St : Step_T) return Judgement_T is
@@ -2297,6 +2325,24 @@ package body S076_Run is
             B.Cycle;
          end if;
       end if;
+      --  B302: the Adhesion window expected at standstill after rows of
+      --  its test case the extract lacks (3130235_01 step 73, row 4
+      --  after row 1: the driver's request through the Special window,
+      --  DMI 11.3.11, is not in the sequence): the runner performs it
+      if Same (Name, "Adhesion") and then St_W = Displayed
+        and then Cur > 1 and then St.Row > 2
+        and then Seq.Steps (Cur - 1).Row < St.Row - 1
+        and then B.Speed = 0 and then not Top_Is (W_Adhesion)
+      then
+         declare
+            J : constant Judgement_T :=
+              Press_Menu (W_Special, 1, "Adhesion");
+         begin
+            if J.Verdict = Passed then
+               B.Cycle;
+            end if;
+         end;
+      end if;
       if Same (Name, "Default") then
          return Shown (St_W, not DMI_Windows.Is_Open,
                        not DMI_Windows.Is_Open, "default window (top "
@@ -2576,6 +2622,42 @@ package body S076_Run is
    --  JRU
    ---------------------------------------------------------------------
 
+   --  The JRU records since the train left the location before: the
+   --  windows of the steps at this location, copied at the end of each
+   --  step and when judged (Sync_Location_Records). A status or brake
+   --  command a step of a braking curve sequence names without a limit
+   --  is judged over them when its own window missed it (B140,
+   --  Location_Judgement): the on-board's change came at this location
+   --  in the window of an earlier step
+   Max_Loc_Records : constant := 2048;
+   type Loc_Records_T is array (1 .. Max_Loc_Records) of B.JRU_Record_T;
+   Loc_Records    : Loc_Records_T;
+   Loc_Count      : Natural := 0;
+   Loc_Window     : Unsigned_64 := Unsigned_64'Last;
+   Loc_Copied     : Natural := 0;
+   Location_Scope : Boolean := False;
+
+   procedure Sync_Location_Records is
+   begin
+      if B.Window_Ms /= Loc_Window then
+         Loc_Window := B.Window_Ms;
+         Loc_Copied := 0;
+      end if;
+      for I in Loc_Copied + 1 .. B.JRU_Count loop
+         if Loc_Count < Max_Loc_Records then
+            Loc_Count := Loc_Count + 1;
+            Loc_Records (Loc_Count) := B.JRU (I);
+         end if;
+      end loop;
+      Loc_Copied := Natural'Max (Loc_Copied, B.JRU_Count);
+   end Sync_Location_Records;
+
+   --  The records judged: the step's window, or the location's
+   function Rec_Count return Natural is
+     (if Location_Scope then Loc_Count else B.JRU_Count);
+   function Rec (I : Positive) return B.JRU_Record_T is
+     (if Location_Scope then Loc_Records (I) else B.JRU (I));
+
    function Rec_Matches (R : B.JRU_Record_T; Event : Natural;
                          Sub, B3 : Integer) return Boolean is
      (R.Event = Event and then (Sub < 0 or else R.B2 = Sub)
@@ -2583,8 +2665,8 @@ package body S076_Run is
 
    function Any_Rec (Event : Natural; Sub, B3 : Integer) return Boolean is
    begin
-      for I in 1 .. B.JRU_Count loop
-         if Rec_Matches (B.JRU (I), Event, Sub, B3) then
+      for I in 1 .. Rec_Count loop
+         if Rec_Matches (Rec (I), Event, Sub, B3) then
             return True;
          end if;
       end loop;
@@ -2626,9 +2708,9 @@ package body S076_Run is
          when Mode_Acked =>
             return (Any_Rec (41, 7, M) or else Any_Rec (23, 5, M)) = Positive;
          when Brake_Change =>
-            for I in 1 .. B.JRU_Count loop
+            for I in 1 .. Rec_Count loop
                declare
-                  R : constant B.JRU_Record_T := B.JRU (I);
+                  R : constant B.JRU_Record_T := Rec (I);
                begin
                   if R.Event = 20
                     and then (R.B2 / 2**F.Bit) mod 2 = F.Value
@@ -2640,9 +2722,9 @@ package body S076_Run is
             end loop;
             return not Positive;
          when Brakes_Shown =>
-            for I in 1 .. B.JRU_Count loop
+            for I in 1 .. Rec_Count loop
                declare
-                  R : constant B.JRU_Record_T := B.JRU (I);
+                  R : constant B.JRU_Record_T := Rec (I);
                begin
                   if R.Event = 20
                     and then ((R.B2 mod 4) /= 0) = (F.Value = 1)
@@ -3022,9 +3104,9 @@ package body S076_Run is
                   end loop;
                   if Val < 0 then
                      return Check
-                       ((for some I in 1 .. B.JRU_Count => B.JRU (I).Event = 20
-                          and then (B.JRU (I).B2 / 2**Bit) mod 2
-                                   /= (B.JRU (I).Prev / 2**Bit) mod 2)
+                       ((for some I in 1 .. Rec_Count => Rec (I).Event = 20
+                          and then (Rec (I).B2 / 2**Bit) mod 2
+                                   /= (Rec (I).Prev / 2**Bit) mod 2)
                         = Positive, "JRU" & Id_S, "brake commands");
                   end if;
                   return Check (Holds ((Kind => Brake_Change, Bit => Bit,
@@ -3217,9 +3299,9 @@ package body S076_Run is
                   if not Map.Known then
                      return NJ (R_JRU_Not_Modelled, Img (Id));
                   end if;
-                  for I in 1 .. B.JRU_Count loop
-                     if Rec_Matches (B.JRU (I), Map.Event, Map.Sub, -1)
-                       and then (Map.B4 < 0 or else B.JRU (I).B4 = Map.B4)
+                  for I in 1 .. Rec_Count loop
+                     if Rec_Matches (Rec (I), Map.Event, Map.Sub, -1)
+                       and then (Map.B4 < 0 or else Rec (I).B4 = Map.B4)
                      then
                         Found := True;
                      end if;
@@ -3644,6 +3726,10 @@ package body S076_Run is
       if St.Dist_Cm /= Loc_Cm then
          Loc_Cm := St.Dist_Cm;
          Loc_Since := Step_Start_Ms;
+         --  the records of before the end of the last step belong to
+         --  the location before; this step's own follow
+         Loc_Count := 0;
+         Sync_Location_Records;
       end if;
       if Ref.Valid and then Ref.Dist_Cm = St.Dist_Cm then
          return;
@@ -3727,6 +3813,109 @@ package body S076_Run is
       end loop;
       return 0;
    end Change_Of;
+
+   --  A JRU message 20 step that expects release speed monitoring
+   --  (M_SDMTYPE 2)
+   function Release_Step return Boolean is
+     (for some K in 5 .. Line.Count =>
+        Starts (Up (W (K)), "M_SDMTYPE=") and then Has (W (K), "2"));
+
+   --  A release speed step its location's records do not show (B140):
+   --  the step names the start of release speed monitoring or its
+   --  status without a limit of the workbook's columns, so the curves do
+   --  not judge it; the signature names the release speed's origin of
+   --  the workbook (fixed by Track!E2, or calculated on board,
+   --  3.13.9.4.6) and the trace ours (EVC_SDM.Result_T.V_Release). The
+   --  location of our change to release speed monitoring is not in the
+   --  bench's changes (they keep the status, not the monitoring)
+   function Release_Judgement (J : Judgement_T; Verbose : Boolean)
+                               return Judgement_T
+   is
+      R      : constant EVC_SDM.Result_T := EVC_Core.Supervision;
+      --  the set named last or the only one, else the sets' common
+      --  choice (Unknown when they differ or none is read); the
+      --  sequence's own V_RELEASEDP 126 says calculated on board
+      Choice : S076_Sequences.Choice_T :=
+        (if Unnamed_Set > 0 then Seq.Curves (Unnamed_Set).Cells.Release
+         elsif Seq.Curve_Count > 0 then Seq.Curves (1).Cells.Release
+         else S076_Sequences.Unknown);
+   begin
+      if Unnamed_Set = 0 then
+         for S in 1 .. Seq.Curve_Count loop
+            if Seq.Curves (S).Cells.Release /= Choice then
+               Choice := S076_Sequences.Unknown;
+            end if;
+         end loop;
+      end if;
+      declare
+         Origin : constant String :=
+           (if Choice = S076_Sequences.First and then not Seq.Release_OB
+            then "fixed"
+            elsif Choice = S076_Sequences.Second or else Seq.Release_OB
+            then "calculated on board"
+            else "of no single workbook choice");
+      begin
+         if Verbose then
+            Put_Line ("      release speed: the workbook's " & Origin
+                      & "; ours " & Img (Integer (Long_Float (R.V_Release)
+                                                  * 0.036))
+                      & " km/h, monitoring "
+                      & EVC_SDM.Monitoring_T'Image (R.Monitoring) & " at "
+                      & Img (Integer (B.Position / 100)) & " m");
+         end if;
+         return Fail (Image (J.Sig) & " [release speed " & Origin & "]");
+      end;
+   end Release_Judgement;
+
+   --  A failed status, brake or traction cut-off step of a braking curve
+   --  sequence whose location names no limit (B140): judged over the
+   --  location (the records and the supervision changes since the train
+   --  left the location before), the on-board's own change of that
+   --  status or command having come in the window of an earlier step at
+   --  the same location; still failed: the tag of its triage line. The
+   --  same for any JRU record such a sequence expects (the DMI symbols
+   --  of the status, Tag empty): the steps of one location describe one
+   --  instant
+   function Location_Judgement (St : Step_T; J : Judgement_T;
+                                Verbose : Boolean;
+                                Tag : String := " [workbook train]")
+                                return Judgement_T
+   is
+      use type B.Change_Kind_T;
+      K : B.Change_Kind_T := B.EB_On;
+      R : Judgement_T;
+   begin
+      Sync_Location_Records;
+      if W (2) = "TIU" then
+         if not Same (W (4), "commanded") then
+            return Fail (Image (J.Sig) & Tag);
+         end if;
+         K := (if Same (W (3), "service-brake") then B.SB_On
+               elsif Same (W (3), "traction-cutoff") then B.TCO_On
+               else B.EB_On);
+         for I in 1 .. B.Change_Count loop
+            if B.Change (I).Kind = K
+              and then Unsigned_64 (B.Change (I).Time_Ms) >= Loc_Since
+            then
+               return Pass (Image (J.Sig) & " in its window; at this "
+                            & "location at "
+                            & Img (Integer (B.Change (I).Track_Cm / 100))
+                            & " m");
+            end if;
+         end loop;
+         return Fail (Image (J.Sig) & Tag);
+      end if;
+      Location_Scope := True;
+      R := Expect (St);
+      Location_Scope := False;
+      if R.Verdict = Passed then
+         return Pass (Image (J.Sig) & " in its window; at this location");
+      end if;
+      if Tag'Length > 0 and then Release_Step then
+         return Release_Judgement (J, Verbose);
+      end if;
+      return Fail (Image (J.Sig) & Tag);
+   end Location_Judgement;
 
    --  The named end's distance to the target of a change, m: to the EOA
    --  of an EOA target, else to the target location (Curve_Judgement)
@@ -4470,6 +4659,9 @@ package body S076_Run is
       Last_Named := 0;
       Loc_Cm := Integer_64'First;
       Loc_Since := 0;
+      Loc_Count := 0;
+      Loc_Window := Unsigned_64'Last;
+      Loc_Copied := 0;
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);
       end loop;
@@ -4646,7 +4838,11 @@ package body S076_Run is
                      --  a curve step of a workbook sequence whose
                      --  location names no limit (or no set): the tag of
                      --  its triage line
-                     J := Fail (Image (J.Sig) & " [workbook train]");
+                     J := Location_Judgement (St, J, Verbose);
+                  elsif J.Verdict = Failed and then Seq.Workbook
+                    and then W (2) = "JRU"
+                  then
+                     J := Location_Judgement (St, J, Verbose, Tag => "");
                   end if;
                   declare
                      C : Judgement_T := Columns (I);
@@ -4684,6 +4880,7 @@ package body S076_Run is
                   end;
                end if;
             end if;
+            Sync_Location_Records;
             Step_Start_Ms := B.Time_Ms;
             if Verbose and then Debug and then B.Powered then
                Put_Line ("      brakes: EB "

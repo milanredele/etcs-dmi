@@ -282,6 +282,9 @@ package S076_Sequences is
       --  km/h; 126 and 127 left out), the first Max_P3
       Release_DP : K_Steps_T;
       Release_DP_Count : Natural := 0;
+      --  B140: a V_RELEASEDP 126 given (the release speed calculated on
+      --  board, 3.13.9.4.6)
+      Release_OB : Boolean := False;
       --  B200: its packets 3
       P3       : Factor_Sets_T;
       P3_Count : Natural := 0;
