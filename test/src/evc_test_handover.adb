@@ -622,9 +622,10 @@ package body EVC_Test_Handover is
       Stand;
       Check (EVC_Radio_Authority.Buffered = 0
              and then EVC_Radio_Authority.Messages_Rejected = R0 + 1
-             and then Sent (138, 2) = 1,
+             and then Sent (138, 2) = 0,
              "handover exception 2: the Accepting RBC's request to shorten "
-             & "the MA rejected and answered 138 (4.8.2.1 c, 3.8.6.1 c)");
+             & "the MA rejected, not answered (4.8.2.1 c; 3.8.6.1 c): the "
+             & "decision of b) only, B011)");
       Give_Radio_Message (2, M9_Or_18 (MCat.Track_M18, 10));
       Stand;
       Check (EVC_Radio_Authority.Buffered = 0

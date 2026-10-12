@@ -44,6 +44,19 @@ is
       N := 0;
    end Clear;
 
+   ---------------
+   -- Set_Group --
+   ---------------
+
+   procedure Set_Group (Id : EVC_Balise_Groups.Identity_T)
+     with Refined_Global => (In_Out => Sets, Input => N)
+   is
+   begin
+      if N >= 1 then
+         Sets (N).Info.Group := Id;
+      end if;
+   end Set_Group;
+
    ----------------
    -- Delete_All --
    ----------------

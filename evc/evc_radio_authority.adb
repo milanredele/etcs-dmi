@@ -311,10 +311,9 @@ is
       Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
         EVC_Received.Last_Kind;
    begin
-      --  4.8.2.1 c) exception 2 (B121): rejected, not held. Decision: at
-      --  the reception, so that a request to shorten the MA is answered
-      --  138 to the Accepting RBC at once (3.8.6.1 c), as any request
-      --  4.8 rejects (Take_Message), not at a switch that may not come.
+      --  4.8.2.1 c) exception 2 (B121): rejected, not held, at the
+      --  reception; a request to shorten the MA so rejected is not
+      --  answered (3.8.6.1 c, B011: Judge_Shortening).
       --  The RBC transition order and the LSSMA toggle order of the
       --  exception are packets: rejected at the release (Take_Radio)
       if Accepting
@@ -758,13 +757,9 @@ is
          /= EVC_Radio_Acceptance.Accepted
       then
          Count (Rejected_N);
-         --  3.8.6.1 c): the RBC is informed of a request to shorten the
-         --  MA rejected (decision: also when 4.8 rejects it, except by
-         --  4.8.3 [3], the Train Data not acknowledged: ignored without
-         --  an answer, as SUBSET-076 4080407_01 judges; e5/levels)
-         if Kind = ETCS_Message_Catalogue.Track_M9
-           and then not C.Train_Data_Unacked
-         then
+         --  3.8.6.1 c) (B011): a request 4.8 rejects is not answered
+         --  (Judge_Shortening); counted as refused
+         if Kind = ETCS_Message_Catalogue.Track_M9 then
             Shortening.Pending := True;
             Shortening.Refused := True;
             Shortening.Session := S;
@@ -985,11 +980,21 @@ is
    begin
       if not Shortening.Pending then
          EVC_Radio_Info.Empty;
-      elsif Level_2 and then Facts.Proposal_In_Rear
-        and then not Shortening.Refused
+      elsif Shortening.Refused or else not Level_2
         --  3.10.2.4: not while an emergency stop is not revoked
-        and then not Any_Stop
+        or else Any_Stop
       then
+         --  e5/onboard-gaps (B011), 3.8.6.1 c): the RBC is informed of
+         --  the decision of b), the train front end against the
+         --  indication limit of the proposal. Decision: a request
+         --  rejected before it (4.8, 4.8.2.1 c) exception 2, 3.10.2.4)
+         --  is no request the on-board decides on: ignored, no answer
+         --  (SUBSET-076 4080407_01 steps 90, 111, 136; 4080421_01 and
+         --  _03, which expect 138 for a rejection in SH, are triaged)
+         Shortening.Answer := None;
+         Count (Shortening.Rejected);
+         EVC_Radio_Info.Empty;
+      elsif Facts.Proposal_In_Rear then
          Shortening.Answer := Granted;
          Count (Shortening.Granted);
          EVC_Radio_Info.Keep_Granted;

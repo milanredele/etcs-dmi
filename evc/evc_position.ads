@@ -623,6 +623,24 @@ is
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
 
+   --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: the linking (packet 5
+   --  in R) of the group Group, its distances along S, read in level 0
+   --  or 2 with level 1 announced, kept in the balise transition buffer
+   --  and released at the transition to level 1 (EVC_Core): it replaces
+   --  the stored linking (the RBC's) now, not before. Decision: taken
+   --  only when the SOLR is its group or a group it announces (the
+   --  reference of the windows, 3.4.4.4.5.1); the windows already passed
+   --  are not supervised (as at the passage of the group).
+   procedure Take_Released_Linking (R     : in out ETCS_Bits.Reader;
+                                    Group : Identity_T;
+                                    S     : Sense_T)
+     with Global => (In_Out => State, Input => EVC_Odometry.State),
+          Post => Status = Status'Old and then LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Active_Cab = Active_Cab'Old;
+
    --  Phase E5 (e5/radio-geo-buffer), 3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5:
    --  the packets 79 of the radio messages of the cycle (EVC_Radio_Info,
    --  those whose LRBG was known at reception) in the verdict of the

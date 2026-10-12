@@ -13,6 +13,7 @@
 
 with ETCS_Bits;
 with ETCS_Catalogue;
+with EVC_Balise_Groups;
 with EVC_Origins;
 
 private package EVC_Stored_Information.Balise_Buffer
@@ -37,6 +38,9 @@ is
       Linked   : Boolean := False;
       Has_41   : Boolean := False;
       Count    : Natural range 0 .. Max_Set_Packets := 0;
+      --  e5/onboard-gaps (B070): the group, the reference of a linking
+      --  (packet 5) kept in the set
+      Group    : EVC_Balise_Groups.Identity_T := (others => <>);
    end record;
 
    function Count return Natural
@@ -72,6 +76,11 @@ is
    --  appended to the last set (nothing when it does not fit)
    procedure Add_Packet (K : ETCS_Catalogue.Packet_Kind_T;
                          R : in out ETCS_Bits.Reader)
+     with Global => (In_Out => State),
+          Post => Count = Count'Old;
+
+   --  e5/onboard-gaps (B070): the group of the last set
+   procedure Set_Group (Id : EVC_Balise_Groups.Identity_T)
      with Global => (In_Out => State),
           Post => Count = Count'Old;
 

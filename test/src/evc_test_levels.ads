@@ -13,6 +13,7 @@ package EVC_Test_Levels is
    procedure Scenario_L1_Balise_Buffer;
    procedure Scenario_L1_Balise_Buffer_Deleted;
    procedure Scenario_L1_Balise_Buffer_From_L0;
+   procedure Scenario_L1_Balise_Buffer_Units;
    procedure Scenario_L2_Driver_Change;
    procedure Scenario_L2_Exit_By_Order;
    procedure Scenario_L2_Order_Linked_Group;

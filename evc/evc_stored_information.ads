@@ -74,6 +74,8 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
+with ETCS_Bits;
+with ETCS_Catalogue;
 with EVC_Balise_Groups;
 with EVC_Braking;
 with EVC_Config;
@@ -412,6 +414,34 @@ is
    --  longer announced (4.8.5.4 a)
    function Balise_Buffered return Natural
      with Global => State;
+
+   --  e5/onboard-gaps (B070): the sets read by EVC_Core at the transition
+   --  to level 1, before Release_Balise_Buffer, for the packets the units
+   --  take themselves (5 by EVC_Position, 138 and 139 by EVC_Procedures):
+   --  the packets of set S, the kind of its packet P, the group, the
+   --  sense of its distances and the estimated frame position of its
+   --  location reference now; Open_Balise_Packet gives the packet in R
+   function Balise_Set_Packets (S : Positive) return Natural
+     with Global => State,
+          Pre => S <= Balise_Buffered;
+   function Balise_Set_Kind (S, P : Positive)
+     return ETCS_Catalogue.Packet_Kind_T
+     with Global => State,
+          Pre => S <= Balise_Buffered and then P <= Balise_Set_Packets (S);
+   function Balise_Set_Group (S : Positive)
+     return EVC_Balise_Groups.Identity_T
+     with Global => State,
+          Pre => S <= Balise_Buffered;
+   function Balise_Set_Sense (S : Positive) return Sense_T
+     with Global => State,
+          Pre => S <= Balise_Buffered;
+   function Balise_Set_X (S : Positive) return Dist_T
+     with Global => (State, EVC_Origins.State),
+          Pre => S <= Balise_Buffered;
+   procedure Open_Balise_Packet (S, P : Positive;
+                                 R    : in out ETCS_Bits.Reader)
+     with Global => State,
+          Pre => S <= Balise_Buffered and then P <= Balise_Set_Packets (S);
 
    --  4.8.5.5, 4.8.5.6 at the transition to level 1: the sets released
    --  and judged in the order received, each like a new group in the

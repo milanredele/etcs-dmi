@@ -4557,3 +4557,45 @@ limit), B192 by family (the release speed monitoring start with SvL at
 the EOA, the EOA without SvL or release speed, the several-set
 workbooks), then the Gamma model with E6. Open items: doc/BACKLOG.csv
 (32 open after this round).
+
+### Level transition buffer for the units' own packets, message 138, level symbols (e5/onboard-gaps, 2026-10-12)
+
+**Implemented.** B070, 4.8.3 [1] for the packets a unit takes itself:
+the linking (packet 5, `EVC_Position`) and the reversing area and
+supervision (138, 139, `EVC_Procedures`) of a group read in level 0 or
+2 with level 1 announced are kept in the group's set of the balise
+transition buffer (`EVC_Stored_Information.Keep_Unit_Packets`, the set
+now carries the group identity), not taken at once (`EVC_Core.Update_Position`
+and `EVC_Procedures.Take_Packets`: accepted and not `Stored`), handed
+over at the transition to level 1 by `EVC_Core.Release_Unit_Packets`
+(through the stores' `Balise_Set_*` accessors, before
+`Release_Balise_Buffer` deletes the sets) to
+`EVC_Position.Take_Released_Linking` (it replaces the RBC's linking
+then, not before) and `EVC_Procedures.Take_Released`; deleted with the
+stores' packets (4.8.5.4 a). Scenario `L1_Balise_Buffer_Units`
+(`EVC_Test_Levels`). B011, 3.8.6.1 c): the RBC is informed of the
+decision of b) only (137, or 138 for a front end beyond the indication
+limit of the proposal); a message 9 rejected before it (4.8, 4.8.2.1 c)
+exception 2, 3.10.2.4) is not answered (`Judge_Shortening`).
+
+**Decisions.** The released linking is taken only when the SOLR is its
+group or a group it announces (the reference of its windows); the
+windows passed are skipped as at a passage. B011 reverses the decision
+"138 also when 4.8 rejects" (e5/levels, e5/accepting-rbc): 4080407_01
+expects no answer in four rejections ([3], 3.10.2.4, coverage, SR);
+4080421_01 / _03 expect 138 for a message 9 rejected in SH, against the
+same row of 4.8.4 (R in SH and SR); they already failed there and stay.
+Three scenarios of `EVC_Test_Authority` / `_Handover` changed with it.
+
+**SUBSET-076.** 753 / 1416 / 1021 before and after; 4080407_01 SV21,
+SV22, SV30 90 -> 113 (Sa9695ede), 0 regressions. S44acb613 carried by
+no sequence; Sb83b2c65 is reached again (4080428_01 step 134, B211).
+
+**Left.** B210 (the proposal's own SSP and gradient not covering it),
+B211, B212 (a linking in the group carrying the level 1 order itself is
+taken at once: `EVC_Position.Update` runs before the order is
+evaluated), B017 (Sa03cccdc, the level symbol families: not reached).
+Edits outside the brief's units: `EVC_Stored_Information` (and its
+child `Balise_Buffer`), `EVC_Core` (`Release_Unit_Packets`, the linking
+context of `Update_Position`, the Global of `Release_Transition_Buffer`).
+`EVC_Position`: only the new `Take_Released_Linking` (spec and body).

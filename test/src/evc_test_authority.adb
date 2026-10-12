@@ -554,8 +554,9 @@ package body EVC_Test_Authority is
         (1, MA_Message (10, MA_Of ((200, 100)), Stamp, Kind => MCat.Track_M9));
       Stand_X (100);
       Shortening_Answer (NID, Got);
-      Check (NID = 138 and then not SI.Current.MA.Present,
-             "shortening: in level 1, rejected (3.8.6, Level 2 only)");
+      Check (NID = 0 and then not SI.Current.MA.Present,
+             "shortening: in level 1, rejected without an answer (3.8.6, "
+             & "Level 2 only; 3.8.6.1 c): the decision of b) only, B011)");
    end Scenario_Shortening;
 
    --  Message 15 (NID_EM, a stop D_M metres beyond the group NID_BG,
@@ -1060,10 +1061,10 @@ package body EVC_Test_Authority is
         (1, MA_Message (10, MA_Of ((200, 100)), Stamp, Kind => MCat.Track_M9));
       Stand_X (100);
       Shortening_Answer (NID, Got);
-      Check (NID = 138 and then RA.Messages_Rejected = R0 + 2,
+      Check (NID = 0 and then RA.Messages_Rejected = R0 + 2,
              "acceptance: a request to shorten the MA in SR rejected, "
-             & "answered 138 (4.8.4 'Request to shorten MA', SR: R; "
-             & "3.8.6.1 c)");
+             & "not answered (4.8.4 'Request to shorten MA', SR: R; "
+             & "3.8.6.1 c): the decision of b) only, B011)");
    end Scenario_Radio_Acceptance;
 
    --  Packet 41: an order to level 2 at D_M metres from the group
