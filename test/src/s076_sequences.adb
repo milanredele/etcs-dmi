@@ -695,7 +695,8 @@ package body S076_Sequences is
             Ada.Text_IO.Put_Line
               ("curves" & Natural'Image (I) & ": " & Image (C.Workbook)
                & ", " & Image (C.Sheet) & "," & Natural'Image (C.Row_Count)
-               & " rows");
+               & " rows"
+               & (if C.From_Twin then ", from " & Image (C.Twin) else ""));
             Ada.Text_IO.Put ("  limits:");
             for N in Limit_Name_T loop
                Ada.Text_IO.Put (" " & Limit_Name_T'Image (N) & "="
