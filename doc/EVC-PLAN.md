@@ -4998,3 +4998,38 @@ the sibling's extraction of the correction factors sheet (B230). Two
 patches wait with the briefs: B221's gate (needs a scenario that shows
 it) and B224's shorter last cycle (needs the 83 regressions understood).
 Open items: doc/BACKLOG.csv (36 open after this round).
+
+### The unauthorised-direction gate, the order from a single group, the national values, level symbols (e4/gates-levels, 2026-10-12)
+
+**B221, 3.14.3.6** (done): the patch of e5/acceptance-gates applied
+unchanged: while `EVC_Brake_Commands` watches or brakes for a movement
+opposite to the authorised direction (the state of the cycle before),
+`EVC_Core.Update_Position` passes `Ignore_Info` to
+`EVC_Position.Set_Linking_Context`; `Take_Group` still locates the train
+with the group but neither takes its packets (5, 79) nor records them in
+`Taken` for the stores. The scenario that tells it on from off
+(`Scenario_Unauthorised_Direction_Groups`, `EVC_Test_Position`): FS
+level 1, the train backs from 300 m over a group at 200 m laid after it
+passed there, with a packet 3 valid in both directions: with the gate
+the national values stay at their defaults, without it they are taken.
+Matrix 3.14.3.6 todo -> done.
+
+**B240** (not ours): the group of 9990500_24 is a single balise group,
+that of 5220200_03 a group of two read with one balise; neither has a
+co-ordinate system in SR without linking, so the order valid for the
+nominal direction only is rejected (3.6.3.1.4, note 3.6.3.1.4.2). The
+earlier "copy with Q_DIR both" had not changed the telegram bits; with
+Q_DIR 10 in the bits 9990500_24 runs on to step 58.
+`Scenario_SR_Order_Single_Group` (`EVC_Test_Levels`). B017: 3070300_12/13
+alike (BG11d, single, not in the linking); 4080425_04, 4080100_06 (SV21),
+4100103_15 (SV21, SV22) not traced.
+
+**B232** (not ours): the packet 3 of 3131040_32 and _56 is for country
+64 in groups of country 352, applied and dropped at the next group
+(3.18.2.5, 3.18.2.10); the workbooks use it: B280 for the runner. _52 is
+another failure (the SR Indication). **B250**: not reproduced; the new
+scenario runs before `Scenario_MA_Repositioning` as the order check.
+
+**SUBSET-076**: 751 / 1330 / 1109 before and after, 0 regressions.
+Edits in `EVC_Core`: `Update_Position` (the `Ignore_Info` argument and
+`Brake_State` in its Global) only. Outside the units: none.
