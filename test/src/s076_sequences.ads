@@ -176,11 +176,38 @@ package S076_Sequences is
       --  the name of that SV30 sequence
       From_Twin : Boolean := False;
       Twin      : Text_T;
+      --  B200: the target speed of its workbook (Track!B2, km/h;
+      --  No_Value when not given) and whether that workbook's gradient
+      --  profile is flat (every Track!J value 0)
+      Target_Kmh : Long_Float := No_Value;
+      Flat       : Boolean := True;
       Limits    : Limits_T := (others => No_Value);
       Rows      : Curve_Rows_T;
       Row_Count : Natural := 0;
    end record;
    type Curve_Sets_T is array (1 .. Max_Curve_Sets) of Curve_Set_T;
+
+   --  B200: the integrated correction factors of the sequence's packets
+   --  3 (the first Max_P3, in file order), at the resolutions of 7.5.1:
+   --  Kv_int of set 0 by speed step (V_NVKVINT, km/h), Kr_int by train
+   --  length step (L_NVKRINT, m), Kt_int; Given is Q_NVKINT 1, else the
+   --  packet means the defaults of A.3.2
+   Max_K_Steps : constant := 8;
+   Max_P3      : constant := 6;
+   type K_Step_T is record
+      From : Natural := 0;           -- km/h for Kv_int, m for Kr_int
+      K    : Long_Float := 0.0;
+   end record;
+   type K_Steps_T is array (1 .. Max_K_Steps) of K_Step_T;
+   type Factors_T is record
+      Given    : Boolean := False;
+      Kv       : K_Steps_T;
+      Kv_Count : Natural := 0;
+      Kr       : K_Steps_T;
+      Kr_Count : Natural := 0;
+      Kt       : Long_Float := 1.1;
+   end record;
+   type Factor_Sets_T is array (1 .. Max_P3) of Factors_T;
 
    type Sequence_T is record
       Name      : Text_T;
@@ -205,6 +232,12 @@ package S076_Sequences is
       --  its train: the length (Train (main)!D18, m) and the brake
       --  percentage (Brake parameters (lambda)!F2); 0 when not given
       WB_Length, WB_Lambda : Natural := 0;
+      --  the emergency brake percentage the tool computed its EBD with
+      --  (Brake parameters (lambda)!F3; 100 in every workbook)
+      WB_Lambda_EB : Natural := 0;
+      --  B200: its packets 3
+      P3       : Factor_Sets_T;
+      P3_Count : Natural := 0;
       --  its brake position (Train (main), "Current brake position:"):
       --  0 not given, 1 passenger in P, 2 freight in P, 3 freight in G
       WB_Brake_Position : Natural := 0;

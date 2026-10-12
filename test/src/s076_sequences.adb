@@ -223,6 +223,62 @@ package body S076_Sequences is
    Curve_Set     : Natural := 0;
    Max_Curve_Words : constant := 32;
    Curve_Map : array (1 .. Max_Curve_Words) of Integer := (others => -1);
+   --  B200: the target speed and the flatness of the open workbook
+   --  (its cells come before its "curves" blocks)
+   WB_Target : Long_Float := No_Value;
+   WB_Flat   : Boolean := True;
+   --  B200: in a packet 3 (its rows), and the speed (km/h) or length (m)
+   --  step of the factor row that follows; Natural'Last skips the rows
+   --  of the passenger set
+   In_P3  : Boolean := False;
+   K_From : Natural := 0;
+
+   --  B200: a "var" row of a telegram or message: the integrated
+   --  correction factors of its packets 3 (7.5.1 resolutions: M_NVKVINT
+   --  0.02, M_NVKRINT and M_NVKTINT 0.05, V_NVKVINT 5 km/h, L_NVKRINT
+   --  25 m)
+   procedure On_Packet_3 (S : in out Sequence_T; Name : String;
+                          V : Unsigned_64)
+   is
+      N : constant Natural := Natural (V mod 2 ** 16);
+   begin
+      if Name = "NID_PACKET" then
+         In_P3 := V = 3 and then S.P3_Count < Max_P3;
+         if In_P3 then
+            S.P3_Count := S.P3_Count + 1;
+            S.P3 (S.P3_Count) := (others => <>);
+            K_From := 0;
+         end if;
+         return;
+      elsif not In_P3 then
+         return;
+      end if;
+      declare
+         F : Factors_T renames S.P3 (S.P3_Count);
+      begin
+         if Name = "Q_NVKINT" then
+            F.Given := V = 1;
+         elsif Name = "Q_NVKVINTSET" then
+            K_From := (if V = 0 then 0 else Natural'Last);
+         elsif Name = "V_NVKVINT" and then K_From /= Natural'Last then
+            K_From := N * 5;
+         elsif Name = "M_NVKVINT" and then K_From /= Natural'Last
+           and then F.Kv_Count < Max_K_Steps
+         then
+            F.Kv_Count := F.Kv_Count + 1;
+            F.Kv (F.Kv_Count) := (K_From, Long_Float (N) * 0.02);
+         elsif Name = "L_NVKRINT" then
+            K_From := N * 25;
+         elsif Name = "M_NVKRINT" and then F.Kr_Count < Max_K_Steps then
+            --  the first factor counts from 0 m
+            F.Kr_Count := F.Kr_Count + 1;
+            F.Kr (F.Kr_Count) :=
+              ((if F.Kr_Count = 1 then 0 else K_From), Long_Float (N) * 0.05);
+         elsif Name = "M_NVKTINT" then
+            F.Kt := Long_Float (N) * 0.05;
+         end if;
+      end;
+   end On_Packet_3;
 
    --  A "curves", "limit", "curve-columns" or "curve" line of a workbook
    procedure On_Curve_Line (S : in out Sequence_T; L : Line_T) is
@@ -239,6 +295,8 @@ package body S076_Sequences is
             S.Curves (Curve_Set).Row_Count := 0;
             S.Curves (Curve_Set).From_Twin := False;
             S.Curves (Curve_Set).Twin := (others => <>);
+            S.Curves (Curve_Set).Target_Kmh := WB_Target;
+            S.Curves (Curve_Set).Flat := WB_Flat;
             Curve_Map := (others => -1);
          end if;
       elsif Curve_Set = 0 or else L.Count < 2 then
@@ -430,6 +488,9 @@ package body S076_Sequences is
                   Var_Bit := Var_Bit + Width;
                end;
             end if;
+            if OK then
+               On_Packet_3 (S, Name, V);
+            end if;
             if OK and then Block = 1 and then Name = "M_VERSION"
               and then S.Telegram_Count > 0
             then
@@ -511,6 +572,8 @@ package body S076_Sequences is
          S.Workbook := True;
          Workbook_Name := To_Text (Rest (L, 2));
          Curve_Set := 0;
+         WB_Target := No_Value;
+         WB_Flat := True;
       elsif K = "curves" or else K = "curves-from" or else K = "limit"
         or else K = "curve-columns" or else K = "curve"
       then
@@ -542,13 +605,24 @@ package body S076_Sequences is
                   elsif Text = "Freight in G" then 3 else 0);
             end if;
          end;
-      elsif K = "cell" and then L.Count >= 4 then
+      elsif K = "cell" and then L.Count >= 3 then
          declare
             OK1 : Boolean;
             V   : constant Natural := To_Nat (Word (L, L.Count), OK1);
          begin
             if OK1 and then Word (L, L.Count - 1) = "(lambda)!F2" then
                S.WB_Lambda := V;
+            elsif OK1 and then Word (L, L.Count - 1) = "(lambda)!F3" then
+               S.WB_Lambda_EB := V;
+            elsif L.Count = 3 and then Word (L, 2) = "Track!B2" then
+               WB_Target := Curve_Value (Word (L, 3));
+            elsif L.Count = 3 and then Word (L, 2)'Length > 7
+              and then Word (L, 2) (Word (L, 2)'First .. Word (L, 2)'First + 6)
+                       = "Track!J"
+              and then Curve_Value (Word (L, 3)) not in No_Value | 0.0
+            then
+               --  a gradient value of the profile other than 0
+               WB_Flat := False;
             end if;
          end;
       elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "speedprofile"
@@ -594,6 +668,11 @@ package body S076_Sequences is
       Loaded.WB_Lambda := 0;
       Loaded.WB_Brake_Position := 0;
       Loaded.Curve_Count := 0;
+      Loaded.WB_Lambda_EB := 0;
+      Loaded.P3_Count := 0;
+      In_P3 := False;
+      WB_Target := No_Value;
+      WB_Flat := True;
       Workbook_Name := (others => <>);
       Curve_Set := 0;
       Length_Row := (others => <>);
