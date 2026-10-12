@@ -74,11 +74,14 @@ is
 
    --  1. 4.8.5.1, 4.8.5.3: the message Data of the session S kept in the
    --  transition buffer (three messages, the oldest replaced); Accepting:
-   --  held from the Accepting RBC (4.8.2.1 c), 4.8.5.2)
+   --  held from the Accepting RBC (4.8.2.1 c), 4.8.5.2), except the
+   --  request to shorten the MA (9) and the revocation of an emergency
+   --  stop (18), rejected at once (exception 2; Data is the message
+   --  EVC_Received holds last)
    procedure Store_Message (S         : EVC_Radio.Session_T;
                             Data      : EVC_Bytes.Byte_Array;
                             Accepting : Boolean := False)
-     with Global => (In_Out => State),
+     with Global => (In_Out => State, Input => EVC_Received.Store),
           Pre  => EVC_Ports.Valid_RTM (Data);
 
    --  4.8.5.1: the messages the transition buffer keeps

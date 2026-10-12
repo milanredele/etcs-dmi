@@ -299,8 +299,31 @@ is
 
    procedure Store_Message (S         : EVC_Radio.Session_T;
                             Data      : EVC_Bytes.Byte_Array;
-                            Accepting : Boolean := False) is
+                            Accepting : Boolean := False)
+   is
+      Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
+        EVC_Received.Last_Kind;
    begin
+      --  4.8.2.1 c) exception 2 (B121): rejected, not held. Decision: at
+      --  the reception, so that a request to shorten the MA is answered
+      --  138 to the Accepting RBC at once (3.8.6.1 c), as any request
+      --  4.8 rejects (Take_Message), not at a switch that may not come.
+      --  The RBC transition order and the LSSMA toggle order of the
+      --  exception are packets: rejected at the release (Take_Radio)
+      if Accepting
+        and then Kind in ETCS_Message_Catalogue.Track_M9
+                       | ETCS_Message_Catalogue.Track_M18
+      then
+         Count (Rejected_N);
+         if Kind = ETCS_Message_Catalogue.Track_M9 then
+            Shortening.Pending := True;
+            Shortening.Refused := True;
+            Shortening.Session := S;
+            Shortening.Stamp :=
+              T_TRAIN_T (EVC_Received.Last_Value (T_TRAIN) mod 2**32);
+         end if;
+         return;
+      end if;
       Buffer.Store (S, Data, Accepting);
    end Store_Message;
 
@@ -763,9 +786,11 @@ is
       then
          Take_SH_Answer (Kind = ETCS_Message_Catalogue.Track_M28);
       elsif Kind = ETCS_Message_Catalogue.Track_M3 then
-         Take_Stored_Information (False, Now_Ms);
+         --  4.8.2.1 c) exception 2 (B121): the RBC transition order of
+         --  the Accepting RBC's message rejected by Take_Radio
+         Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
-         Take_Stored_Information (True, Now_Ms);
+         Take_Stored_Information (True, Now_Ms, Accepting => Accepting);
       elsif Kind = ETCS_Message_Catalogue.Track_M9 then
          --  3.8.6.1 a): the proposed shortened MA, judged in this cycle
          --  (Evaluate); a second request in the cycle replaces the first

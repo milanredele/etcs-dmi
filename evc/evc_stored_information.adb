@@ -1505,9 +1505,10 @@ is
                then
                   if K = K15 and then not Sl.MA_Allowed then
                      Record_Event (Info_MA, Change_Rejected, M.Msg);
-                  elsif K = K180 and then Sl.From_Accepting then
-                     --  4.8.2.1 c) exception 2 (B092)
-                     Record_Event (Info_Group, Change_Filtered, 180);
+                  elsif K in K131 | K180 and then Sl.From_Accepting then
+                     --  4.8.2.1 c) exception 2 (B092; the RBC
+                     --  transition order, B121)
+                     Record_Event (Info_Group, Change_Filtered, NID_Of (K));
                   elsif K = K180
                     and then not (A.Level_Valid
                                   and then EVC_Modes."=" (A.Level,
