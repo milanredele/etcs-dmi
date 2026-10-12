@@ -255,6 +255,10 @@ package body S076_Sequences is
          S.Release_DP (S.Release_DP_Count) := (N * 5, 0.0);
          return;
       end if;
+      if Name = "V_RELEASEDP" and then N = 126 then
+         S.Release_OB := True;
+         return;
+      end if;
       if Name = "NID_PACKET" then
          In_P3 := V = 3 and then S.P3_Count < Max_P3;
          if In_P3 then
@@ -799,6 +803,7 @@ package body S076_Sequences is
       Loaded.WB_Lambda_EB := 0;
       Loaded.P3_Count := 0;
       Loaded.Release_DP_Count := 0;
+      Loaded.Release_OB := False;
       In_P3 := False;
       WB_Target := No_Value;
       WB_Flat := True;

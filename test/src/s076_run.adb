@@ -26,6 +26,7 @@ with EVC_Odometry;
 with EVC_Position;
 with EVC_Ports;
 with EVC_Radio;
+with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
 with EVC_National_Values;
@@ -3762,6 +3763,59 @@ package body S076_Run is
       return 0;
    end Change_Of;
 
+   --  A JRU message 20 step that expects release speed monitoring
+   --  (M_SDMTYPE 2)
+   function Release_Step return Boolean is
+     (for some K in 5 .. Line.Count =>
+        Starts (Up (W (K)), "M_SDMTYPE=") and then Has (W (K), "2"));
+
+   --  A release speed step its location's records do not show (B140):
+   --  the step names the start of release speed monitoring or its
+   --  status without a limit of the workbook's columns, so the curves do
+   --  not judge it; the signature names the release speed's origin of
+   --  the workbook (fixed by Track!E2, or calculated on board,
+   --  3.13.9.4.6) and the trace ours (EVC_SDM.Result_T.V_Release). The
+   --  location of our change to release speed monitoring is not in the
+   --  bench's changes (they keep the status, not the monitoring)
+   function Release_Judgement (J : Judgement_T; Verbose : Boolean)
+                               return Judgement_T
+   is
+      R      : constant EVC_SDM.Result_T := EVC_Core.Supervision;
+      --  the set named last or the only one, else the sets' common
+      --  choice (Unknown when they differ or none is read); the
+      --  sequence's own V_RELEASEDP 126 says calculated on board
+      Choice : S076_Sequences.Choice_T :=
+        (if Unnamed_Set > 0 then Seq.Curves (Unnamed_Set).Cells.Release
+         elsif Seq.Curve_Count > 0 then Seq.Curves (1).Cells.Release
+         else S076_Sequences.Unknown);
+   begin
+      if Unnamed_Set = 0 then
+         for S in 1 .. Seq.Curve_Count loop
+            if Seq.Curves (S).Cells.Release /= Choice then
+               Choice := S076_Sequences.Unknown;
+            end if;
+         end loop;
+      end if;
+      declare
+         Origin : constant String :=
+           (if Choice = S076_Sequences.First and then not Seq.Release_OB
+            then "fixed"
+            elsif Choice = S076_Sequences.Second or else Seq.Release_OB
+            then "calculated on board"
+            else "of no single workbook choice");
+      begin
+         if Verbose then
+            Put_Line ("      release speed: the workbook's " & Origin
+                      & "; ours " & Img (Integer (Long_Float (R.V_Release)
+                                                  * 0.036))
+                      & " km/h, monitoring "
+                      & EVC_SDM.Monitoring_T'Image (R.Monitoring) & " at "
+                      & Img (Integer (B.Position / 100)) & " m");
+         end if;
+         return Fail (Image (J.Sig) & " [release speed " & Origin & "]");
+      end;
+   end Release_Judgement;
+
    --  A failed status, brake or traction cut-off step of a braking curve
    --  sequence whose location names no limit (B140): judged over the
    --  location (the records and the supervision changes since the train
@@ -3772,6 +3826,7 @@ package body S076_Run is
    --  of the status, Tag empty): the steps of one location describe one
    --  instant
    function Location_Judgement (St : Step_T; J : Judgement_T;
+                                Verbose : Boolean;
                                 Tag : String := " [workbook train]")
                                 return Judgement_T
    is
@@ -3804,6 +3859,9 @@ package body S076_Run is
       Location_Scope := False;
       if R.Verdict = Passed then
          return Pass (Image (J.Sig) & " in its window; at this location");
+      end if;
+      if Tag'Length > 0 and then Release_Step then
+         return Release_Judgement (J, Verbose);
       end if;
       return Fail (Image (J.Sig) & Tag);
    end Location_Judgement;
@@ -4695,11 +4753,11 @@ package body S076_Run is
                      --  a curve step of a workbook sequence whose
                      --  location names no limit (or no set): the tag of
                      --  its triage line
-                     J := Location_Judgement (St, J);
+                     J := Location_Judgement (St, J, Verbose);
                   elsif J.Verdict = Failed and then Seq.Workbook
                     and then W (2) = "JRU"
                   then
-                     J := Location_Judgement (St, J, Tag => "");
+                     J := Location_Judgement (St, J, Verbose, Tag => "");
                   end if;
                   declare
                      C : Judgement_T := Columns (I);
