@@ -9,6 +9,7 @@ with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
 with ETCS_Train_Packets.P0;
+with ETCS_Train_Packets.P9;
 with ETCS_Variables;          use ETCS_Variables;
 with EVC_DMI_Port;
 with EVC_Distances;           use EVC_Distances;
@@ -23,6 +24,7 @@ package body EVC_Radio_Authority
                                    Mode_Changes, Cycles, Radio_MAs,
                                    Params, Reasons, Request_Due,
                                    Request_Sent, Last_Request_Ms,
+                                   TAF_Request, TAF_Group,
                                    SR_Authorised, Requests, Start_Reason,
                                    Deleted_Reason, Shortening, Emergency,
                                    SR_Auth, SR_Taken, Passed_Listed,
@@ -67,6 +69,11 @@ is
    Request_Due     : Boolean := False;
    Request_Sent    : Boolean := False;
    Last_Request_Ms : EVC_Radio.Time_Ms_T := 0;
+   --  3.8.2.4 (e5/accepting-rbc): the one request for the reason "track
+   --  ahead free up to the level 2 transition location" still to be
+   --  sent (3.8.2.4.3), with the group the information named (3.8.2.4.2)
+   TAF_Request     : Boolean := False;
+   TAF_Group       : EVC_Balise_Groups.Identity_T := (others => <>);
    --  3.8.2.3.2 b): an SR authorisation (message 2) received
    SR_Authorised   : Boolean := False;
    Requests        : Natural := 0;
@@ -371,6 +378,8 @@ is
       Reasons := 0;
       Request_Due := False;
       Request_Sent := False;
+      TAF_Request := False;
+      TAF_Group := (others => <>);
       Last_Request_Ms := 0;
       SR_Authorised := False;
       Requests := 0;
@@ -842,8 +851,8 @@ is
    --  in the cycle. A reason that becomes applicable sends at once and
    --  restarts the cycle (3.8.2.1.6); while one is applicable the request
    --  is repeated every Cycle_Ms (3.8.2.1.5; new parameters apply at
-   --  once, 3.8.2.1.4.1). The track ahead free reason (3.8.2.4) is not
-   --  handled yet.
+   --  once, 3.8.2.1.4.1). The track ahead free reason (3.8.2.4, 3.8.2.1.1
+   --  e) in every level: one request (3.8.2.4.3)
    procedure Evaluate_Request (Now_Ms      : EVC_Radio.Time_Ms_T;
                                Facts       : Facts_T;
                                MA_Received : Boolean)
@@ -852,7 +861,8 @@ is
                                 EVC_Stored_Information.State,
                                 EVC_Radio.State, TD_Acked, Mode_Now),
                      In_Out => (Reasons, Request_Due, Start_Reason,
-                                Deleted_Reason, SR_Authorised))
+                                Deleted_Reason, SR_Authorised, TAF_Request,
+                                TAF_Group))
    is
       L2     : constant Boolean :=
         EVC_Levels.Valid and then EVC_Levels.Level = EVC_Modes.L2;
@@ -892,20 +902,36 @@ is
                    /= T_TIMEOUTRQST_No_MA_Request_Triggering
         and then EVC_Movement_Authority.Timer_Expiring
                    (Now_Ms, 1000 * Unsigned_64 (Params.T_TIMEOUTRQST));
+      --  3.8.2.4.1: the information received from a balise group (4.8.3:
+      --  in level 0, 1 or NTC with level 2 announced) with a session
+      --  established; decision: a request not sent before the session is
+      --  lost is dropped (3.8.2.4.3, one request upon the reception)
+      if EVC_Stored_Information.TAF_L2_Received
+        and then EVC_Levels.Announced
+        and then EVC_Levels.Announced_Level = EVC_Modes.L2
+        and then EVC_Radio.In_Communication
+      then
+         TAF_Request := True;
+         TAF_Group := EVC_Stored_Information.TAF_L2_Location;
+      elsif not EVC_Radio.In_Communication then
+         TAF_Request := False;
+      end if;
       if not L2 then
          Start_Reason := False;
          Deleted_Reason := False;
-         Reasons := 0;
-         Request_Due := False;
+         Reasons := (if TAF_Request then 16 else 0);
+         Request_Due := TAF_Request;
          return;
       end if;
       Reasons := Reason_Bits (Start_Reason and then Acked, Pert, Timer,
-                              Deleted_Reason);
+                              Deleted_Reason)
+                 + (if TAF_Request then 16 else 0);
       Rising := (Start_Reason and then Acked
                  and then (Facts.Start or else Old mod 2 = 0))
         or else (Pert and then Old / 2 mod 2 = 0)
         or else (Timer and then Old / 4 mod 2 = 0)
-        or else (Deleted_Reason and then Old / 8 mod 2 = 0);
+        or else (Deleted_Reason and then Old / 8 mod 2 = 0)
+        or else (TAF_Request and then Old / 16 mod 2 = 0);
       Request_Due := Request_Due or else Rising;
    end Evaluate_Request;
 
@@ -1204,13 +1230,17 @@ is
    --  8.4.4.7.1, are set here) and packet 0, the position
    --  report of EVC_Position (3.6.5.1.2; the session half builds its own
    --  for message 136: to be unified at integration), sent in the
-   --  session S; OK False when it could not be built
+   --  session S; OK False when it could not be built. LTR: packet 9 after
+   --  packet 0, the level 2 transition location group (3.8.2.4.2)
    procedure Send_With_Report (S      : EVC_Radio.Session_T;
                                Kind   : ETCS_Message_Catalogue
                                           .Known_Message_T;
                                V      : ETCS_Message.Value_Array;
                                Ctx    : EVC_Radio.Context_T;
-                               OK     : out Boolean)
+                               OK     : out Boolean;
+                               LTR    : Boolean := False;
+                               Group  : EVC_Balise_Groups.Identity_T :=
+                                 (others => <>))
      with Global => (In_Out => (EVC_Radio.State, EVC_Radio.Queue),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State))
@@ -1225,6 +1255,11 @@ is
       if OK then
          ETCS_Train_Packets.P0.Encode
            (EVC_Position.Position_Report (Ctx.Mode, EVC_Levels.Level),
+            W, OK);
+      end if;
+      if OK and then LTR then
+         ETCS_Train_Packets.P9.Encode
+           ((NID_C => Group.NID_C, NID_BG => Group.NID_BG, others => <>),
             W, OK);
       end if;
       if OK then
@@ -1319,10 +1354,15 @@ is
         and then EVC_Radio.In_Communication
       then
          V (5) := Unsigned_64 (Reasons);
+         --  3.8.2.4.2: with the level 2 transition location group
          Send_With_Report
            (EVC_Radio.Session_T (EVC_Radio.Supervising),
-            ETCS_Message_Catalogue.Train_M132, V, Ctx, OK);
+            ETCS_Message_Catalogue.Train_M132, V, Ctx, OK,
+            LTR   => TAF_Request and then Reasons / 16 mod 2 = 1,
+            Group => TAF_Group);
          if OK then
+            --  3.8.2.4.3: one request for this reason
+            TAF_Request := False;
             Request_Due := False;
             Request_Sent := True;
             Last_Request_Ms := Ctx.Now_Ms;

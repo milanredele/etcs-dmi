@@ -93,7 +93,10 @@ is
       --  e4/ls-display, 4.4.19.1.4 (the toggle off order of packet 180
       --  is narrowed to LS by EVC_Stored_Information, 4.8.4)
       Generic_LS_Marker,      -- 181
-      LSSMA_Toggle);          -- 180
+      LSSMA_Toggle,           -- 180
+      --  e5/accepting-rbc, 3.8.2.4: track ahead free up to the level 2
+      --  transition location
+      Track_Ahead_Free_L2);   -- 90
 
    type Context_T is record
       Mode             : Mode_T := M_SB;
@@ -106,6 +109,8 @@ is
       --  4.8.3 [1]: an order to switch to level 1 at a further location
       --  was received and is not executed yet
       L1_Announced     : Boolean := False;
+      --  4.8.3 [9]: a level 2 transition order is stored on board
+      L2_Announced     : Boolean := False;
       --  4.8.3 [11]: a level transition order is in the same message;
       --  a previous order announced a transition still to be executed
       Order_In_Message : Boolean := False;
@@ -153,7 +158,9 @@ is
           when Generic_LS_Marker => True,
           when LSSMA_Toggle => L = L1 or else C.L1_Announced,
           when Reversing_Area | Reversing_Supervision =>
-             L = L1 or else C.L1_Announced);
+             L = L1 or else C.L1_Announced,
+          --  4.8.3: A [9] A [9] A [9] R
+          when Track_Ahead_Free_L2 => L /= L2 and then C.L2_Announced);
 
    --  4.8.3 for the on-board: in its level when valid, else in every
    --  level
@@ -172,7 +179,7 @@ is
                  when National_Values | Level_Order | Conditional_Order
                     | Geographical_Position | Text_Message
                     | Session_Management | Network_Order
-                    | Generic_LS_Marker => True,
+                    | Generic_LS_Marker | Track_Ahead_Free_L2 => True,
                  when Movement_Authority =>
                     C.Train_Data_Valid and then C.TRN_Valid,     -- [4][11]
                  when Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
@@ -194,7 +201,7 @@ is
                     | Route_Suitability | Braking_Distance
                     | Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
                     | Reversing_Area | Reversing_Supervision
-                    | LSSMA_Toggle | Repositioning,
+                    | LSSMA_Toggle | Repositioning | Track_Ahead_Free_L2,
           when M_FS | M_AD | M_LS | M_OS | M_UN | M_SN =>
              I not in Danger_For_SH | Stop_SH_On_Desk | Stop_If_In_SR
              and then not (C.Mode in M_UN | M_SN
@@ -219,10 +226,12 @@ is
                 | Geographical_Position | Track_Conditions
                 | Big_Metal_Masses | Text_Message | Session_Management
                 | RBC_Transition_Order | Network_Order
-                | Generic_LS_Marker,
+                | Generic_LS_Marker | Track_Ahead_Free_L2,
           --  [1]: every information of these tables is marked [1] in PT,
-          --  rejected in level 1 (in level 2 the RBC's, phase E5)
-          when M_PT => False,
+          --  rejected in level 1 (in level 2 the RBC's, phase E5), but
+          --  the track ahead free up to the level 2 transition location
+          --  ("A", e5/accepting-rbc)
+          when M_PT => I = Track_Ahead_Free_L2,
           when M_RV =>
              I in National_Values | Reversing_Area | Reversing_Supervision
                 | Text_Message | Session_Management | Network_Order

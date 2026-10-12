@@ -13,7 +13,6 @@ with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P45;
 with ETCS_Track_Packets.P180;
 with ETCS_Track_Packets.P131;
-with EVC_Balise_Groups;
 with ETCS_Track_Packets.P46;
 with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
@@ -30,6 +29,7 @@ with ETCS_Track_Packets.P70;
 with ETCS_Track_Packets.P71;
 with ETCS_Track_Packets.P80;
 with ETCS_Track_Packets.P88;
+with ETCS_Track_Packets.P90;
 with ETCS_Track_Packets.P141;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_Acceptance;
@@ -48,6 +48,7 @@ package body EVC_Stored_Information
                                    Covered_Flag, Ext, Tun,
                                    Radio_MA, Timer_Deletion, Proposal,
                                    Proposal_Origin, Stop_Q,
+                                   Group_Country, TAF_L2_New, TAF_L2_Loc,
                                    Balise_Buffer.State))
 is
 
@@ -105,6 +106,13 @@ is
    --  phase E5: the track description was deleted by a timer of the MA
    --  in the last Evaluate (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
    Timer_Deletion  : Boolean := False;
+   --  e5/accepting-rbc, 3.8.2.4: the information "track ahead free up
+   --  to the level 2 transition location" accepted in the last Evaluate
+   --  and the group it names (3.8.2.4.2); the country of the group
+   --  being taken (Q_NEWCOUNTRY 0)
+   TAF_L2_New      : Boolean := False;
+   TAF_L2_Loc      : EVC_Balise_Groups.Identity_T := (others => <>);
+   Group_Country   : NID_C_T := 0;
    --  5.20: the information for an external function of the last cycle
    Ext             : EVC_Track_Conditions.External_T;
    --  5.18.8: the tunnel stopping area reported
@@ -158,6 +166,9 @@ is
    function Stop_Outcome (I : EVC_Radio_Info.Index_T) return Stop_Outcome_T
    is (Stop_Q (I));
    function MA_Timer_Deletion return Boolean is (Timer_Deletion);
+   function TAF_L2_Received return Boolean is (TAF_L2_New);
+   function TAF_L2_Location return EVC_Balise_Groups.Identity_T is
+     (TAF_L2_Loc);
    function Train_Covered return Boolean is (Covered_Flag)
      with Refined_Global => Covered_Flag;
 
@@ -212,6 +223,9 @@ is
       Covered_Flag := False;
       Radio_MA := False;
       Timer_Deletion := False;
+      TAF_L2_New := False;
+      TAF_L2_Loc := (others => <>);
+      Group_Country := 0;
       Proposal := (others => <>);
       Proposal_Origin := 0;
       Stop_Q := (others => 4);
@@ -334,7 +348,10 @@ is
       K131,
       --  e4/ls-display: the LSSMA display toggle order and the generic LS
       --  function marker (4.4.19.1.4), after the mode profile
-      K180, K181);
+      K180, K181,
+      --  e5/accepting-rbc: track ahead free up to the level 2 transition
+      --  location (3.8.2.4), after the level transition order (4.8.3 [9])
+      K90);
 
    function Kind_Of (K : Order_Kind_T) return ETCS_Catalogue.Packet_Kind_T is
      (case K is
@@ -364,7 +381,8 @@ is
          when K45  => ETCS_Catalogue.Track_P45,
          when K131 => ETCS_Catalogue.Track_P131,
          when K180 => ETCS_Catalogue.Track_P180,
-         when K181 => ETCS_Catalogue.Track_P181);
+         when K181 => ETCS_Catalogue.Track_P181,
+         when K90  => ETCS_Catalogue.Track_P90);
 
    --  4.8: the kind of information of a packet (K12: the MA; its
    --  V_MAIN is the signalling related speed restriction)
@@ -395,7 +413,8 @@ is
          when K45 => EVC_Acceptance.Network_Order,
          when K131 => EVC_Acceptance.RBC_Transition_Order,
          when K180 => EVC_Acceptance.LSSMA_Toggle,
-         when K181 => EVC_Acceptance.Generic_LS_Marker);
+         when K181 => EVC_Acceptance.Generic_LS_Marker,
+         when K90  => EVC_Acceptance.Track_Ahead_Free_L2);
 
    --  The NID_PACKET of a kind (the record of a rejection)
    function NID_Of (K : Order_Kind_T) return Natural is
@@ -407,7 +426,8 @@ is
          when K12 => 12, when K15 => 15, when K80 => 80, when K16 => 16,
          when K69 => 69,
          when K40 => 40, when K42 => 42, when K45 => 45,
-         when K131 => 131, when K180 => 180, when K181 => 181);
+         when K131 => 131, when K180 => 180, when K181 => 181,
+         when K90 => 90);
 
    --  The context of 4.8 of a packet of a group: the mode and the inputs
    --  of the cycle, the level as it is now (an immediate order of the
@@ -424,6 +444,10 @@ is
           Train_Data_Valid => EVC_Train_Data.Valid,
           TRN_Valid        => Ctx.TRN_Valid,
           L1_Announced     => EVC_Levels.L1_Announced,
+          L2_Announced     => EVC_Levels.Announced
+                              and then EVC_Modes."="
+                                         (EVC_Levels.Announced_Level,
+                                          EVC_Modes.L2),
           Order_In_Message => Order_In_Message,
           Order_Pending    => EVC_Levels.Order_Pending,
           Unlinked_Group   => not Linked))
@@ -973,6 +997,25 @@ is
       end if;
    end Take_Transition_Packet;
 
+   --  3.8.2.4 (e5/accepting-rbc): track ahead free up to the level 2
+   --  transition location, for the MA request of EVC_Radio_Authority;
+   --  the group's own country when Q_NEWCOUNTRY is 0 (7.4.2.21)
+   procedure Take_TAF_Packet (R : in out Reader_T)
+     with Global => (In_Out => (TAF_L2_New, TAF_L2_Loc),
+                     Input  => Group_Country)
+   is
+      X  : ETCS_Track_Packets.P90.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P90.Decode (R, X, OK);
+      if OK and then ETCS_Track_Packets.P90.Valid (X) then
+         TAF_L2_New := True;
+         TAF_L2_Loc := (NID_C  => (if X.Has_NID_C then X.NID_C
+                                   else Group_Country),
+                        NID_BG => X.NID_BG);
+      end if;
+   end Take_TAF_Packet;
+
    --  4.8.4.2 [9], [10] (B093): the train position confidence interval
    --  overlaps the LS area of a mode profile of message Msg, and that
    --  area is the furthest the interval overlaps within the profile
@@ -1124,8 +1167,8 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N),
-                     Input  => EVC_Train_Data.State)
+                                Events, Event_N, TAF_L2_New, TAF_L2_Loc),
+                     Input  => (EVC_Train_Data.State, Group_Country))
    is
    begin
       case K is
@@ -1151,6 +1194,11 @@ is
          when K180 | K181 =>
             Take_LS_Packet (K, R, M, T, Train, M.Start_Ms, False, A,
                             Now_Ms);
+         when K90 =>
+            --  a balise group's packet (7.4.2.21: not in a radio message)
+            if From_Balise then
+               Take_TAF_Packet (R);
+            end if;
       end case;
    end Dispatch;
 
@@ -1172,8 +1220,10 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N, Balise_Buffer.State),
-                     Input  => (EVC_Position.State, EVC_Train_Data.State)),
+                                Events, Event_N, Balise_Buffer.State,
+                                TAF_L2_New, TAF_L2_Loc),
+                     Input  => (EVC_Position.State, EVC_Train_Data.State,
+                                Group_Country)),
           Pre => P <= EVC_Position.Taken_Packet_Count (J)
    is
       pragma Warnings
@@ -1241,7 +1291,9 @@ is
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count,
-                                Balise_Buffer.State),
+                                Balise_Buffer.State, TAF_L2_New,
+                                TAF_L2_Loc),
+                     Output => Group_Country,
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => G <= EVC_Position.Taken_Count
    is
@@ -1270,6 +1322,7 @@ is
             Sense    => Tk.S,
             Msg      => Msg_Count,
             Start_Ms => Tk.Start_Ms);
+      Group_Country := Tk.Group.Id.NID_C;
       --  3.18.2.4, 3.18.2.10
       EVC_National_Values.Check_Country (Tk.Group.Id.NID_C, Reverted);
       if Reverted then
@@ -1318,8 +1371,10 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
-                                Events, Event_N, Msg_Count),
-                     Input  => (EVC_Train_Data.State, Balise_Buffer.State)),
+                                Events, Event_N, Msg_Count,
+                                TAF_L2_New, TAF_L2_Loc),
+                     Input  => (EVC_Train_Data.State, Balise_Buffer.State,
+                                Group_Country)),
           Pre => S <= Balise_Buffer.Count
    is
       I           : constant Balise_Buffer.Set_Info_T :=
@@ -1462,8 +1517,10 @@ is
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count, Radio_MA,
-                                Proposal, Proposal_Origin, Stop_Q),
-                     Input  => (EVC_Radio_Info.State, EVC_Train_Data.State)),
+                                Proposal, Proposal_Origin, Stop_Q,
+                                TAF_L2_New, TAF_L2_Loc),
+                     Input  => (EVC_Radio_Info.State, EVC_Train_Data.State,
+                                Group_Country)),
           Pre => I <= EVC_Radio_Info.Count
    is
       pragma Warnings
@@ -2318,6 +2375,7 @@ is
       Marks : Origin_Marks_T := (others => False);
    begin
       Event_N := 0;
+      TAF_L2_New := False;
 
       --  1. 3.11.5.10
       if EVC_Position.Orientation_Known then
@@ -2454,10 +2512,12 @@ is
                         EVC_National_Values.State,
                         EVC_Levels.State, EVC_Sessions.State,
                         EVC_LS_Display.State,
-                        Events, Event_N, Msg_Count, Balise_Buffer.State),
+                        Events, Event_N, Msg_Count, Balise_Buffer.State,
+                        TAF_L2_New, TAF_L2_Loc),
              Output => (MA_Board, Profile_Overlap, Covered_Flag),
              Input  => (EVC_Origins.State, EVC_Position.State,
-                        EVC_Odometry.State, EVC_Train_Data.State))
+                        EVC_Odometry.State, EVC_Train_Data.State,
+                        Group_Country))
    is
       T     : constant Origin_Table_T := Origin_Table;
       Train : constant Train_Frame_T := Train_Frame;

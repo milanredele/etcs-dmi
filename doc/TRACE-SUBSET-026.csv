@@ -317,9 +317,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.2.3.2 a),3,x,,,,,E5,done,an MA accepted by radio (EVC_Stored_Information.Radio_MA_Accepted) ends the reason; evc_test Scenario_MA_Request [E5 authority]
 3.8.2.3.2 b),3,x,,,,,E5,done,"message 2 taken ends the reason (EVC_Radio_Authority.Take_Message, SR_Authorised); evc_test Scenario_SR_Authorisation [E5 authority]"
 3.8.2.3.2 c),3,x,,,,,E5,partial,no desk open ends the reason (EVC_Train_Inputs.Desk_Open); no scenario yet [E5 authority]
-3.8.2.4.1,3,x,,,,,E5,todo,[E5 authority]
-3.8.2.4.2,3,x,,,,,E5,todo,[E5 authority]
-3.8.2.4.3,3,x,,,,,E5,todo,[E5 authority]
+3.8.2.4.1,3,x,,,,,E5,done,"packet 90 taken from a balise group (EVC_Stored_Information.Take_TAF_Packet, K90; 4.8.3 A [9] in levels 0, NTC, 1 with a level 2 transition order stored, R in level 2; 4.8.4 by EVC_Acceptance.Track_Ahead_Free_L2); EVC_Radio_Authority.Evaluate_Request: with level 2 announced and the session established, message 132 with reason 16 in any level (3.8.2.1.1 e); evc_test Scenario_TAF_Up_To_L2 [E5 authority]"
+3.8.2.4.2,3,x,,,,,E5,done,"message 132 carries packet 9 (NID_C, NID_BG of packet 90; the country of the group when Q_NEWCOUNTRY 0) after packet 0 (EVC_Radio_Authority.Send_With_Report, LTR); evc_test Scenario_TAF_Up_To_L2 [E5 authority]"
+3.8.2.4.3,3,x,,,,,E5,done,"one request per reception (EVC_Radio_Authority.TAF_Request, cleared when sent; the reason is not repeated by 3.8.2.1.5); decision: dropped when the session is lost before it is sent; evc_test Scenario_TAF_Up_To_L2 [E5 authority]"
 3.8.2.5.1,3,x,,,,,E5,partial,"the deletions by the timers of the MA, A.3.4.1.2 c) d) e) n) (EVC_Stored_Information.MA_Timer_Deletion); g) h) i) j) l) m) o) not reported yet; evc_test Scenario_MA_Request (c) [E5 authority]"
 3.8.2.5.2,3,x,,,,,E5,done,EVC_Radio_Authority.Evaluate_Request (Deleted_Reason) until an MA by radio is accepted; evc_test Scenario_MA_Request [E5 authority]
 3.8.4.1.1,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise; evc_test Scenario_End_Section_Timer
