@@ -4557,3 +4557,49 @@ limit), B192 by family (the release speed monitoring start with SvL at
 the EOA, the EOA without SvL or release speed, the several-set
 workbooks), then the Gamma model with E6. Open items: doc/BACKLOG.csv
 (32 open after this round).
+
+### The bench's speed accuracy and driving on (e5/curves-bench, 2026-10-12)
+
+B191: `S076_Bench.Sample` states v_min = v_est − f41 and v_max = v_est +
+f41 (SUBSET-041 5.3.1.2, the bench's own copy of the formula) while the
+sequence has a `workbook` line (`Set_Speed_Accuracy`, set per sequence
+by `S076_Run`); the other sequences keep the exact speed (decision:
+3110500_01 and 3131040_59, without a workbook, place an Indication and
+an Overspeed step on it), and `S076_EXACT_SPEED=1` restores it for all.
+The 28 m of 3130237_07 do not show in the runner: its P step is passed
+by an Intervention where the probe's P lies, the Overspeed status
+skipped (B195, present with the exact speed too; for EVC_SDM).
+
+B176: `S076_Run.Drive_On` runs the train on, for real (the sequence has
+failed at the step), at its speed until our change of the limit's kind
+or 10 m past the workbook's location, at most the workbook's distance
+plus 10 m, then judges as before; ", driven on" and a band in the
+signature, the metres in the trace; without a target of ours shown
+after the drive, "no target of ours shown" (B193). None of the 13
+agrees after the drive (table).
+
+SUBSET-076: 753 / 1416 / 1021 before, 745 / 1423 / 1022 after; 24
+regressions (8 per system version), understood and re-recorded: Gamma
+3131040_07, _17, _89 (E6; passed by chance without V_ura), 3131040_10
+and _98 (B192 families, several sets and an EOA without SvL),
+3131040_76 (the SB of B195, 54 m before the workbook's W, now judged at
+its step), 3130237_01 (a trip after the EB, the bench keeps the chart's
+70 km/h), 3130235_02 (placement one step earlier). Improved: 3131040_14
+SV30 passes, 3130234_07 and 3131060_08 SV21/SV22 pass, 3131040_58 runs
+to step 69. Untriaged 0.
+
+| Lambda SV30 (24) | cause | limit | metres (ours − workbook) |
+|---|---|---|---|
+| 3130237_07, 3131040_20, _22, _86, 3130235_02 | placement (agree) | P | −8, 0, −8, −9, −27 (margin 27) |
+| 3131040_02, _38, _50 | ours further out | I | +317, +188, +342 |
+| 3131040_26, _76 | ours further out (the SB of B195) | W | +87 at 81 km/h, +54 at 38 km/h |
+| 3131040_58 | ours nearer | P | −25 at 82 km/h (margin 12) |
+| 3130237_13, 3131040_62 | passed without our change | P, W | −218 at 135 km/h, −181 at 97 km/h |
+| 3131040_04 | passed +10 m without Overspeed (driven 133 m) | P | −10, no margin known (B194) |
+| 3131040_32 | our target further than the sequence's (driven to the cap) | W | +487 |
+| 3131040_42, _52, _54, _56 | no target of ours (SR; FS with the EOA 7.7 km ahead) | I, EBI | B193 |
+| 3131040_06, _16, _34, 3131060_14 | our speed outside the workbook rows | I, P | 81 to 88, 200 km/h |
+| 3131040_97 | at a standstill | P | - |
+
+Next: B195 (the Overspeed status skipped in target speed monitoring),
+the Indication of an EOA target (+188 to +342 m), B193, B194.
