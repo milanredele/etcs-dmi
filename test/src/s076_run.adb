@@ -850,6 +850,31 @@ package body S076_Run is
    --  values the sequence names and ends the entry
    function RBC_Data_Entry (Verb : String) return Judgement_T is
       Id, Phone : Unbounded_String;
+      Typed     : Boolean := False;
+
+      --  the K-th value the window shows (digits)
+      function Proposed (K : DMI_Data_Entry.Field_Index_T) return String is
+         S : String (1 .. DMI_Data_Entry.Value (K).Length);
+      begin
+         for N in S'Range loop
+            S (N) := Character'Val
+              (Wide_Character'Pos (DMI_Data_Entry.Value (K).Text (N)) mod 256);
+         end loop;
+         return S;
+      end Proposed;
+
+      --  11.7.1.4: the window proposes the stored contact (MSG_RBC_CONTACT)
+      --  and the step names those values, or none: the driver confirms
+      --  them without typing (decision: a step that names no value takes
+      --  the proposal, any valid contact being what it asks for)
+      function Proposed_Named return Boolean is
+         I, P : Unbounded_String;
+      begin
+         Radio_Values (I, P);
+         return (Length (I) > 0 and then To_String (I) = Proposed (1)
+                 and then To_String (P) = Proposed (2))
+           or else Length (I) = 0;
+      end Proposed_Named;
    begin
       --  Table 49 S3-1 -> S3-3 / Table 50 S5-1 -> S5-3: the driver who
       --  is to confirm the RBC data presses 'Enter RBC data' on the
@@ -887,16 +912,17 @@ package body S076_Run is
                       & Top_Image);
       end if;
       if DMI_Data_Entry.Value (1).Length = 0
-        or else Same (Verb, "enter")
+        or else (Same (Verb, "enter") and then not Proposed_Named)
       then
+         Typed := True;
          Radio_Values (Id, Phone);
          if Length (Id) = 0 and then Same (Verb, "confirm")
            and then EVC_Radio.Contact.Known
          then
             --  11.7.1.4: the window proposes the stored contact (the
             --  driver confirms it; 4040800_05 step 58: "equal to the
-            --  variable of packet 42"). The protocol does not carry the
-            --  stored contact to the DMI, so the driver types it: the
+            --  variable of packet 42"). The window shows nothing, so
+            --  the driver types the stored contact the on-board has: the
             --  RBC ID as NID_C * 2**14 + NID_RBC, the phone number the
             --  BCD digits of NID_RADIO before the F padding (the form
             --  the on-board reads, EVC_Sessions.Mission.Driver_Contact)
@@ -935,7 +961,8 @@ package body S076_Run is
       if Top_Is (W_RBC_Data) then
          return Fail ("DMI RBC data: the entry was not accepted");
       end if;
-      return Pass ("DMI RBC data entered");
+      return Pass ("DMI RBC data "
+                   & (if Typed then "entered" else "confirmed as shown"));
    end RBC_Data_Entry;
 
    function DMI_Input (St : Step_T) return Judgement_T is
