@@ -173,7 +173,7 @@ is
    --  5. The cycle of the half (after the levels and the mission): the
    --  sessions, the link supervision, the reports to send, the
    --  conditions of 4.6.3
-   --  @req 3.5.3.4, 3.5.3.7.4.1, 3.15.1.3.8, 3.17.2.8
+   --  @req 3.5.3.4, 3.5.3.4 e), 3.5.3.7.4.1, 3.15.1.3.8, 3.17.2.8
    procedure Evaluate (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Position.State,
                                 EVC_System_Version.State),
@@ -197,7 +197,7 @@ is
                              = EVC_Position.Doubt_Under'Old;
 
    --  6. The mode changed from From to To (3.5.3.4 c, 3.6.5.1.4, ...)
-   --  @req 3.5.3.4 c), 3.15.1.3.8 b), 4.10.1.3 Table
+   --  @req 3.5.3.4 c), 3.5.3.4 g), 3.5.3.8 b), 3.15.1.3.8 b), 4.10.1.3 Table
    procedure Mode_Changed (From, To : Mode_T)
      with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => EVC_Mission.State),
@@ -340,5 +340,15 @@ is
    procedure Request_Position_Report
      with Global => (In_Out => State),
           Post => Has_Released = Has_Released'Old;
+
+   --  3.5.3.8 d): the min safe rear end has passed a level transition
+   --  border out of level 2 (EVC_Level_Sessions): the establishment of
+   --  every session being established aborted, its safe radio
+   --  connection released
+   --  @req 3.5.3.8 d)
+   procedure Abort_Establishment
+     with Global => (In_Out => (State, EVC_Radio.State)),
+          Post => Has_Released = Has_Released'Old
+                  and then EVC_Radio.Sessions = EVC_Radio.Sessions'Old;
 
 end EVC_Sessions;

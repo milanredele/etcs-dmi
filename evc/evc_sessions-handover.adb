@@ -349,6 +349,7 @@ is
             Switch_Next := True;
          end if;
       end if;
+      Req.Rear_Passed := T.Border_Rear;
       if T.Border_Rear and then Old_S /= R.No_Session then
          --  3.15.1.3.1 c)
          Req.Report := True;

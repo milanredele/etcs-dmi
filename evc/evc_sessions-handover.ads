@@ -105,6 +105,8 @@ is
       Stop_S    : EVC_Radio.Session_T := 1;
       --  3.15.1.3.1 b), c): a position report to the RBCs
       Report    : Boolean := False;
+      --  3.5.3.8 f): the min safe rear end has passed the RBC/RBC border
+      Rear_Passed : Boolean := False;
    end record;
 
    --  5a. the order applied, the roles, the border, the switch; Mode:

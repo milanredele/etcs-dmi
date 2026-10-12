@@ -173,7 +173,12 @@ is
    --  PS, SF, IS and NP (no session of this train's own); the note of
    --  b): in TR the data are not taken (the DMI offers the Radio data
    --  window from PT on, Table 50 D5 exception), the selection is kept
-   --  @req 5.10.3.15.2 b)
+   --  3.5.3.4 h): outside the start of mission (not in SB) in level 2,
+   --  the RBC contact the driver selects in the Radio data window
+   --  establishes the session the same way, awaited or not (with the
+   --  same RBC as a session established or being established: none,
+   --  3.5.3.4.1; with another: that one terminated, Establish)
+   --  @req 5.10.3.15.2 b), 3.5.3.4 h)
    procedure Take_Radio_Data (Mode : Mode_T; In_L2 : Boolean)
      with Global => (In_Out => (Awaited, N_Ordered, EVC_Sessions.State,
                                 R.State),
@@ -184,13 +189,13 @@ is
       RBC   : R.RBC_Id_T;
       Radio : ETCS_Variables.NID_RADIO_T;
    begin
-      if Awaited = Nothing then
-         return;
-      elsif not In_L2 or else Supervised
-        or else Mode in M_SB | M_SL | M_PS | M_SF | M_IS | M_NP
+      if Awaited /= Nothing
+        and then (not In_L2 or else Supervised
+                  or else Mode in M_SB | M_SL | M_PS | M_SF | M_IS | M_NP)
       then
          Awaited := Nothing;
-      elsif Mode /= M_TR
+      elsif In_L2
+        and then Mode not in M_SB | M_SL | M_PS | M_SF | M_IS | M_NP | M_TR
         and then EVC_Driver_Requests.Entered (EVC_Driver_Requests.RBC_Data)
       then
          EVC_Sessions.Take_Radio_Data (Found, RBC, Radio);
@@ -222,12 +227,14 @@ is
          if not Was_L2 and then EVC_Levels.Switched and then By_Driver then
             Driver_To_L2 (Mode);
          end if;
-      elsif Was_L2 and then EVC_Levels.Switched and then Supervised then
+      elsif Was_L2 and then EVC_Levels.Switched then
          Repeats := 0;
          if By_Driver then
             --  5.10.3.15.3: the level change reported (3.6.5.1.4)
-            Phase := Awaiting_Order;
-            Since := Now_Ms;
+            if Supervised then
+               Phase := Awaiting_Order;
+               Since := Now_Ms;
+            end if;
          else
             Phase := Border_Ahead;
             Start_Odo := EVC_Odometry.Position;
@@ -239,12 +246,17 @@ is
          when None =>
             null;
          when Border_Ahead =>
-            if not Supervised then
-               Phase := None;
-            elsif Border_Passed then
-               Request_Report;
-               Phase := Awaiting_Order;
-               Since := Now_Ms;
+            if Border_Passed then
+               --  3.5.3.8 d): a session being established is aborted;
+               --  the supervising one reports the border
+               EVC_Sessions.Abort_Establishment;
+               if Supervised then
+                  Request_Report;
+                  Phase := Awaiting_Order;
+                  Since := Now_Ms;
+               else
+                  Phase := None;
+               end if;
             end if;
          when Awaiting_Order =>
             Await_Order (Now_Ms);

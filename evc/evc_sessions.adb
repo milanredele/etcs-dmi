@@ -140,8 +140,9 @@ is
    Order        : Order_T;
    Pending      : Pending_T;
 
-   --  3.5.3.4 c): a mode change to report was
-   --  taken, its session decided by the next Evaluate (Mode_Session_Order)
+   --  3.5.3.4 c), e), g): a mode change to report, the engine out of
+   --  an announced radio hole or a start of mission completed was taken,
+   --  its session decided by the next Evaluate (Mode_Session_Order)
    Mode_Session : Boolean := False;
    Acks         : Acks_T := (others => (S => 1, T => 0));
    Ack_N        : Natural range 0 .. Max_Acks := 0;
@@ -386,6 +387,29 @@ is
             null;
       end case;
    end Terminate_Session;
+
+   --  3.5.3.8: abort the establishment of every session being
+   --  established (from the first set-up request to the system version,
+   --  R.Being_Established), but those with a role when Keep_Roles, and
+   --  release its safe radio connection (Close: the indication to "No
+   --  Connection", Table 2 [3])
+   procedure Abort_Being_Established (Keep_Roles : Boolean)
+     with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
+          Post => R.Sessions = R.Sessions'Old
+   is
+      N : constant R.Session_Count_T := R.Sessions;
+   begin
+      for S in Session_T loop
+         pragma Loop_Invariant (R.Sessions = N);
+         if R.Usable (S) and then R.Being_Established (S)
+           and then not (Keep_Roles
+                         and then (R.Supervising = R.Session_Ref_T (S)
+                                   or else R.Accepting = R.Session_Ref_T (S)))
+         then
+            Close (S, Release => True);
+         end if;
+      end loop;
+   end Abort_Being_Established;
 
    --  3.5.3.4, 3.5.3.4.1, 3.5.3.4.2, 3.5.3.5.2: establish a session with
    --  RBC. Nothing when one is being established or established with it
@@ -1079,7 +1103,11 @@ is
    end Apply_Mission;
 
    --  3.15.1.3: the requests of the handover (decision 1
-   --  of EVC_Sessions.Handover: Open only into a free session)
+   --  of EVC_Sessions.Handover: Open only into a free session); 3.5.3.8
+   --  f): the min safe rear end past the RBC/RBC border aborts a session
+   --  being established. Decision: not the one with the supervising or
+   --  the accepting role (the RBC the train runs under after the border)
+   --  @req 3.5.3.8 f)
    procedure Apply_Handover (Now : Time_Ms_T; Mode : Mode_T)
      with Global => (In_Out => (Handover.State, Reports.State, Links,
                                 Pending, R.State, Ind, Requesting,
@@ -1111,6 +1139,9 @@ is
       end if;
       if Req.Report then
          Reports.Request;
+      end if;
+      if Req.Rear_Passed then
+         Abort_Being_Established (Keep_Roles => True);
       end if;
    end Apply_Handover;
 
@@ -1185,18 +1216,23 @@ is
    --  3.5.4.4: the engine reaching an announced
    --  radio hole stops the attempts in progress, Table 2 [3] / [6] (the
    --  requests stopped for another reason than the set-up: "No
-   --  Connection", the timer of 3.5.7.4 stopped). Decision: a request
-   --  already with Euroradio is not withdrawn; its result is taken (a
-   --  set-up kept; a failure makes the request due again, sent once the
-   --  engine has left the hole, Produce_Session)
-   --  @req 3.5.4.4
+   --  Connection", the timer of 3.5.7.4 stopped); 3.5.3.8 g): a session
+   --  being established is aborted and its safe radio connection
+   --  released (Close), established again by 3.5.3.4 e) once the engine
+   --  has left the hole. A connection lost by an established session
+   --  goes on as 3.5.4.4 says (set up again once out of the hole)
+   --  @req 3.5.4.4, 3.5.3.8 g)
    procedure Stop_Attempts
-     with Global => (In_Out => (Ind, Requesting, Timer_On))
+     with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
+          Post => R.Sessions = R.Sessions'Old
    is
+      N : constant R.Session_Count_T := R.Sessions;
    begin
       for S in Session_T loop
-         pragma Loop_Invariant (True);
-         if Requesting (S) then
+         pragma Loop_Invariant (R.Sessions = N);
+         if R.Usable (S) and then R.Being_Established (S) then
+            Close (S, Release => True);
+         elsif Requesting (S) then
             Ind_Stopped (S, Final_SoM => False);
          end if;
       end loop;
@@ -1208,6 +1244,11 @@ is
       Held := (others => False);
       if Ctx.Radio_Hole and then not In_Hole then
          Stop_Attempts;
+      elsif In_Hole and then not Ctx.Radio_Hole then
+         --  3.5.3.4 e): the engine has left the announced radio hole; in
+         --  level 2 the session with the stored contact (Mode_Session_Order:
+         --  none when one is established or being established, 3.5.3.4.1)
+         Mode_Session := True;
       end if;
       In_Hole := Ctx.Radio_Hole;
       Mode_Session_Order;
@@ -1275,6 +1316,19 @@ is
         and then From /= M_SB
       then
          Mode_Session := True;
+      end if;
+      --  3.5.3.4 g): a start of mission completed (SB left for a mode of
+      --  a mission); in level 2 with no session established or being
+      --  established (decision: whatever happened to the session during
+      --  the start of mission) the session with the stored valid contact
+      if From = M_SB
+        and then To in M_FS | M_LS | M_OS | M_SR | M_SH | M_NL | M_UN | M_SN
+      then
+         Mode_Session := True;
+      end if;
+      --  3.5.3.8 b): End of Mission aborts a session being established
+      if Mission.Ends_Mission (From, To) then
+         Abort_Being_Established (Keep_Roles => False);
       end if;
       --  4.10 (the row "RBC Transition Order"), 3.15.1.3.8 b): deleted
       --  when entering NP, SB, PS, SH, SM, SR, SL, NL, UN, TR, SN, RV;
@@ -1494,5 +1548,10 @@ is
    begin
       Reports.Request;
    end Request_Position_Report;
+
+   procedure Abort_Establishment is
+   begin
+      Abort_Being_Established (Keep_Roles => False);
+   end Abort_Establishment;
 
 end EVC_Sessions;

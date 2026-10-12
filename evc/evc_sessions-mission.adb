@@ -320,6 +320,7 @@ is
       end if;
    end Judge_Opening;
 
+   --  @req 3.5.3.4 a), 3.5.3.8 a)
    procedure Evaluate_SoM (Ctx : R.Context_T; Req : in out Request_T)
      with Global => (In_Out => (Step, SoM_RBC, SoM_S, Report_Valid,
                                 Reject_Due, R.State),
@@ -333,13 +334,26 @@ is
       Sv      : constant R.Session_Ref_T := R.Supervising;
    begin
       if Ctx.Mode /= M_SB or else not EVC_Mission.SoM_Engaged then
-         --  5.4.3.2.2: the desk closed during the start of mission
+         --  5.4.3.2.2: the desk closed during the start of mission;
+         --  3.5.3.8 a): the session of the start of mission being
+         --  established is aborted (Terminate_Session releases it)
          if Step /= Idle and then Ctx.Mode = M_SB
            and then EVC_Position.Active_Cab = EVC_Position.No_Cab
-           and then Sv /= R.No_Session
          then
-            Req.Stop := True;
-            Req.Session := R.Session_T (Sv);
+            if Sv /= R.No_Session then
+               Req.Stop := True;
+               Req.Session := R.Session_T (Sv);
+            else
+               for S in R.Session_T loop
+                  pragma Loop_Invariant (True);
+                  if R.Usable (S) and then R.Being_Established (S)
+                    and then R.Info (S).RBC = SoM_RBC
+                  then
+                     Req.Stop := True;
+                     Req.Session := S;
+                  end if;
+               end loop;
+            end if;
          end if;
          Step := Idle;
          Reject_Due := False;
