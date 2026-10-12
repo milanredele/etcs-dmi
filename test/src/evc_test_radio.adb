@@ -20,6 +20,7 @@ package body EVC_Test_Radio is
    package MCat renames ETCS_Message_Catalogue;
    use type ETCS_Message.Status_T;
    use type ETCS_Message_Catalogue.Message_Kind_T;
+   use type ETCS_Variables.M_ERROR_T;
    use type ETCS_Variables.NID_RADIO_T;
    use type ETCS_Variables.T_TRAIN_T;
    use type EVC_Modes.Mode_T;
@@ -185,5 +186,53 @@ package body EVC_Test_Radio is
       Check (EVC_Radio.Sessions = 2, "radio: back to two sessions");
       Auto_Register := True;
    end Scenario_Radio_Joint;
+
+   --  8.4.4.2.1: the receiver checks the length against L_MESSAGE; a
+   --  message that fails is inconsistent (3.16.3.1.1 c) and the trackside
+   --  is informed (3.16.3.1.1.2, M_ERROR 3, 7.5.1.64). The port takes the
+   --  frame (EVC_Ports.Valid_RTM_Frame); EVC_Core records it as received
+   --  (JRU event 3, SUBSET-027 record 9) and its refusal (JRU event 13),
+   --  and gives it to no consumer (SUBSET-076 8040400_01 step 65: message
+   --  24 with L_MESSAGE 1023)
+   procedure Scenario_Radio_Length_Check is
+      M24  : constant Byte_Array := Message_Of (MCat.Track_M24);
+      Long : Byte_Array (1 .. M24'Length + 1) := (others => 0);
+      Accepted, Taken : Natural;
+   begin
+      EVC_Core.Initialise;
+      EVC_Core.Tick (100);
+      Take;
+      Give_Radio_Event (1, Connection_Set_Up);
+      EVC_Core.Tick (100);
+      Take;
+      Accepted := EVC_Core.Accepted (RTM);
+      Taken := EVC_Sessions.Messages_Taken;
+      --  one byte more than its L_MESSAGE says
+      Long (1 .. M24'Length) := M24;
+      Check (not Valid_RTM (Long) and then Valid_RTM_Frame (Long),
+             "length check: the frame's L_MESSAGE disagrees with it");
+      Give_Radio_Message (1, Long);
+      Check (EVC_Core.Accepted (RTM) = Accepted + 1,
+             "length check: the port takes the frame (8.4.4.2.1 is the "
+             & "on-board's check)");
+      EVC_Core.Tick (100);
+      Take;
+      Check (JRU_Count (3) = 1 and then JRU_Count (13) = 1
+             and then EVC_Sessions.Error_Noted
+             and then EVC_Sessions.Error_Noted_Code = 3,
+             "length check: recorded as received (record 9) and as "
+             & "refused with M_ERROR 3 (3.16.3.1.1 c, 3.16.3.1.1.2), got"
+             & Img (JRU_Count (3)) & Img (JRU_Count (13)));
+      Check (EVC_Sessions.Messages_Taken = Taken
+             and then EVC_Radio_Authority.Messages_Taken = 0,
+             "length check: the message given to no consumer");
+      --  the same message with its own length: taken
+      Give_Radio_Message (1, M24);
+      EVC_Core.Tick (100);
+      Take;
+      Check (JRU_Count (3) = 1 and then JRU_Count (13) = 0
+             and then EVC_Sessions.Messages_Taken = Taken + 1,
+             "length check: a consistent message 24 is taken");
+   end Scenario_Radio_Length_Check;
 
 end EVC_Test_Radio;

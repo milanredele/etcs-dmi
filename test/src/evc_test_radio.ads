@@ -10,4 +10,8 @@ package EVC_Test_Radio is
 
    procedure Scenario_Radio_Joint;
 
+   --  8.4.4.2.1, 3.16.3.1.1 c): a message whose L_MESSAGE disagrees with
+   --  its length reaches the on-board, recorded and reported inconsistent
+   procedure Scenario_Radio_Length_Check;
+
 end EVC_Test_Radio;

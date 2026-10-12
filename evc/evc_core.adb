@@ -480,7 +480,7 @@ is
             Length : constant Natural := Payload'Last - First + 1;
          begin
             pragma Assert
-              (Valid_RTM (Payload (First .. Payload'Last)));
+              (Valid_RTM_Frame (Payload (First .. Payload'Last)));
             Latched_RTM_Count := Latched_RTM_Count + 1;
             Latched_RTM (Latched_RTM_Count).Session := S;
             Latched_RTM (Latched_RTM_Count).Length := Length;
@@ -748,8 +748,8 @@ is
                --  unknown NID_MESSAGE such as 254), one with an undefined
                --  packet and one the time stamp check refuses later
                --  (3.16.3.3.3) are recorded too, the refusal by a JRU 13
-               --  with M_ERROR after it. A frame whose
-               --  length disagrees with L_MESSAGE is not recorded.
+               --  with M_ERROR after it; so is a frame whose length
+               --  disagrees with L_MESSAGE (below).
                --  NID_MESSAGE, L_MESSAGE (u16)
                EVC_Outbox.Put
                  (JRU, JRU_Record (JRU_Message,
@@ -798,6 +798,18 @@ is
                   EVC_Sessions.Take_Inconsistent (Slot.Session);
                   Record_Radio_Error;
                end if;
+            else
+               --  8.4.4.2.1, 3.16.3.1.1 c): the length received differs
+               --  from L_MESSAGE. Recorded as received (record 9: its
+               --  NID_MESSAGE and the length received, not L_MESSAGE),
+               --  not parsed, reported inconsistent (M_ERROR 3)
+               EVC_Outbox.Put
+                 (JRU, JRU_Record (JRU_Message,
+                                   Slot.Data (1),
+                                   EVC_Bytes.Byte (Slot.Length mod 256),
+                                   EVC_Bytes.Byte (Slot.Length / 256)));
+               EVC_Sessions.Take_Inconsistent (Slot.Session);
+               Record_Radio_Error;
             end if;
          end;
       end loop;

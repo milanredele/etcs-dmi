@@ -28,9 +28,12 @@
 --     the safe connection are the other side of the port, as the air gap
 --     is the BTM's). In: one radio message of SUBSET-026 chapter 8 as its
 --     bytes, most significant bit first: NID_MESSAGE (8 bits), L_MESSAGE
---     (10 bits, 7.5.1.48: the length of the message in bytes), ... The
---     payload length must equal L_MESSAGE. The core parses it at the next
---     cycle as a track to train message (ETCS_Message, EVC_Received).
+--     (10 bits, 7.5.1.48: the length of the message in bytes), ..., 3 to
+--     1023 bytes, the payload length equal to L_MESSAGE. The core parses
+--     it at the next cycle as a track to train message (ETCS_Message,
+--     EVC_Received). The message of a tagged input (below) may disagree
+--     with its L_MESSAGE: the core records it and reports it inconsistent
+--     (8.4.4.2.1), the port does not refuse it.
 --     Phase E5 adds the tagged inputs (a first byte from RTM_Tag_First
 --     on, which no NID_MESSAGE of chapter 8 has): the message of a
 --     communication session, and the events of the safe radio
@@ -194,10 +197,18 @@ is
      (EVC_Bytes.Get_U32 (Payload, Payload'First))
      with Pre => Payload'Length > BTM_Stamp_Length;
 
+   --  The message frame of a tagged input: NID_MESSAGE, L_MESSAGE and
+   --  the rest, 3 .. 1023 bytes. Its L_MESSAGE is not the port's to
+   --  check: a session's message whose length disagrees reaches the
+   --  on-board, which records and reports it (8.4.4.2.1, 3.16.3.1.1 c).
+   --  A message without a tag keeps its contract (Valid_RTM)
+   function Valid_RTM_Frame (Payload : Byte_Array) return Boolean is
+     (Payload'Length in RTM_Min_Length .. RTM_Max_Length);
+
    --  SUBSET-026 7.5.1.48: L_MESSAGE, bits 8 .. 17 of the message, is
    --  its length in bytes
    function Valid_RTM (Payload : Byte_Array) return Boolean is
-     (Payload'Length in RTM_Min_Length .. RTM_Max_Length
+     (Valid_RTM_Frame (Payload)
       and then Natural (Payload (Payload'First + 1)) * 4
                  + Natural (Payload (Payload'First + 2)) / 64
                = Payload'Length);
@@ -290,8 +301,8 @@ is
      (Payload'Length > RTM_Tagged_Header + RTM_Min_Length - 1
       and then Payload (Payload'First) = RTM_Tag_Message
       and then Valid_RTM_Session (Payload (Payload'First + 1))
-      and then Valid_RTM (Payload (Payload'First + RTM_Tagged_Header
-                                   .. Payload'Last)));
+      and then Valid_RTM_Frame (Payload (Payload'First + RTM_Tagged_Header
+                                         .. Payload'Last)));
 
    --  An event of the safe radio connection
    function Valid_RTM_Event (Payload : Byte_Array) return Boolean is
@@ -327,7 +338,7 @@ is
       else Payload (Payload'First + RTM_Tagged_Header .. Payload'Last))
      with Pre  => Valid_RTM_Input (Payload)
                   and then not Valid_RTM_Event (Payload),
-          Post => Valid_RTM (RTM_Message'Result);
+          Post => Valid_RTM_Frame (RTM_Message'Result);
 
    --  True when Payload has the documented shape of an input on Port
    function Valid_Input (Port : Port_T; Payload : Byte_Array) return Boolean
