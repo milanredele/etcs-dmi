@@ -556,6 +556,33 @@ package body DMI_Test_Settings is
       Choose_Level (2);
       Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
              "Table 50 D5: without valid RBC contact information -> S5-1");
+      -- B023, Table 50 D5 exception: the on-board switches to TR after
+      -- the level entry: the default window with MO05 first, S5-1 once
+      -- MO05 is acknowledged
+      Send_Mode_Level (Mode => 11, Level => 5, Mode_Ack => 11); -- TR
+      Step;
+      Check (not DMI_Windows.Is_Open,
+             "Table 50 D5, exception: TR -> the default window with MO05");
+      Drain_Outbox;
+      Press (190, 340);                         -- C1: MO05
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 D5, exception: MO05 acknowledged -> S5-1");
+      Send_Mode_Level (Mode => 13, Level => 5); -- PT
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 D5, exception: S5-1 stays in PT");
+      Win_Default;
+      -- without the level entry a switch to TR leaves the windows alone
+      Send_Mode_Level (Mode => 1, Level => 5);
+      Step;
+      DMI_Windows.Open (DMI_Windows.W_Main);
+      DMI_Windows.Open (DMI_Windows.W_Radio_Data);
+      Send_Mode_Level (Mode => 11, Level => 5, Mode_Ack => 11);
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 D5, exception: only after the level entry");
+      Send_Mode_Level (Mode => 1, Level => 5);
+      Step;
       Win_Default;
       Drain_Outbox;
    end Scenario_Win_Radio_Data;

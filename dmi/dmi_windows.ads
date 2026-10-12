@@ -84,6 +84,14 @@ package DMI_Windows is
                                 -- without the data
 
    procedure Open (ID : Window_ID_T);
+
+   -- Table 50 D5, exception (B023): after a level entry that led to the
+   -- Radio data window (S5-1), a switch to TR presents the default window
+   -- with MO05 first and S5-1 once MO05 is acknowledged. DMI_Core calls
+   -- Mode_Changed on every change of the mode (Trip: the new mode is TR)
+   -- and Trip_Acknowledged when the driver acknowledges MO05.
+   procedure Mode_Changed (Trip : Boolean);
+   procedure Trip_Acknowledged;
    -- The driver pressed [Close]; ignored where [Close] is disabled
    procedure Close_Top;
    procedure Close_All;

@@ -82,6 +82,13 @@ package body DMI_Windows is
    -- Mission with one radio system window
    D9_Pending : Boolean := False;
 
+   -- Table 50 D5, exception (B023): the level entry led to S5-1 (Trip
+   -- armed); if the on-board then switches to TR while the Radio data
+   -- window is still in the stack, the default window is presented
+   -- with MO05 (Trip awaits the acknowledgement) and S5-1 follows it
+   Trip_Armed : Boolean := False;
+   Trip_Await : Boolean := False;
+
    -- 11.3.5.4: the RBC data window on display has the 'RBC phone
    -- number' input field (decided when the window opens)
    RBC_Phone_Shown : Boolean := False;
@@ -908,6 +915,7 @@ package body DMI_Windows is
       Waiting_Window := False;
       List_Requested := False;
       Registration_Requested := False;
+      Trip_Armed := False;
       DMI_Train_Data.End_Process;
    end To_Default_Window;
 
@@ -981,8 +989,37 @@ package body DMI_Windows is
       end if;
    end Close_Top;
 
+   procedure Mode_Changed (Trip : Boolean) is
+      In_Stack : Boolean := False;
+   begin
+      for I in 1 .. Depth loop
+         In_Stack := In_Stack or else Stack (I) = W_Radio_Data;
+      end loop;
+      if not Trip then
+         -- the acknowledgement of MO05 can no longer come
+         Trip_Await := False;
+      elsif Trip_Armed and then In_Stack then
+         -- Table 50 D5, exception: the default window with MO05 first
+         To_Default_Window;
+         Trip_Await := True;
+      else
+         Trip_Armed := False;
+      end if;
+   end Mode_Changed;
+
+   procedure Trip_Acknowledged is
+   begin
+      if Trip_Await then
+         -- Table 50 D5, exception: MO05 acknowledged -> S5-1
+         Trip_Await := False;
+         Open (W_Main);
+         Open (W_Radio_Data);
+      end if;
+   end Trip_Acknowledged;
+
    procedure Close_All is
    begin
+      Trip_Await := False;
       To_Default_Window;
       D9_Pending := False;
       Action_Count := 0;
@@ -1283,9 +1320,10 @@ package body DMI_Windows is
                then
                   -- Table 50 S4 -> D5: level 2 without valid RBC contact
                   -- information or without the registration -> S5-1.
-                  -- Not modelled: the exception of D5 for a switch to
-                  -- TR (MO05 first), which the DMI cannot foresee.
+                  -- The exception of D5 for a switch to TR (MO05 first)
+                  -- is armed here and taken by Mode_Changed (B023).
                   Open (W_Radio_Data);
+                  Trip_Armed := True;
                end if;
                -- Table 50 S4 otherwise: back to S1, the Main window;
                -- with level 2 D5 -> S8, the Main window the EVC shows

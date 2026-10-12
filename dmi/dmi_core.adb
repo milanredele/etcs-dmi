@@ -808,6 +808,8 @@ package body DMI_Core is
          -- 15.1.1.2: the system status messages that the new mode does
          -- not display end
          DMI_System_Status.Mode_Changed (SDI.Mode);
+         -- Table 50 D5, exception: TR after a level entry (B023)
+         DMI_Windows.Mode_Changed (Trip => SDI.Mode = SDI.M_TR);
       end if;
 
       if Valid_Level (Level_Raw) then
@@ -1854,6 +1856,9 @@ package body DMI_Core is
                      Catalogue : constant Boolean :=
                        Is_Text and then DMI_System_Status.Owns (Text_ID);
                      Number : Natural := 0;
+                     Trip_Ack : constant Boolean :=
+                       DMI_Ack."=" (Kind, DMI_Ack.Mode_Change)
+                       and then SDI."=" (DMI_Ack.Current_Mode, SDI.M_TR);
                   begin
                      if Is_Text then
                         -- 8.2.3.4.8 c: this message, not another one
@@ -1871,6 +1876,10 @@ package body DMI_Core is
                         (if Catalogue then 16#8000# + Number mod 16#8000#
                          else Text_ID));
                      DMI_Ack.Acknowledge_Current;
+                     -- Table 50 D5, exception: MO05 acknowledged (B023)
+                     if Trip_Ack then
+                        DMI_Windows.Trip_Acknowledged;
+                     end if;
                   end;
                end if;
 
