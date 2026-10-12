@@ -2,6 +2,10 @@
 # runner_pass.scn, then an expectation that is wrong on purpose (Full
 # Supervision where the on-board is in Staff Responsible): the runner
 # reports it failed at step 18, and the baseline records that it does.
+# Step 20, after the first failure, is a braking curve step (B101) that
+# fails on purpose: the emergency brake where the train passed the
+# Permitted limit of a Lambda workbook, with no target shown in SR: the
+# runner judges it "curve target: PERMITTED limit, no target shown".
 sequence runner_fail
 meta version 4.0.0 ; sv 30 ; feature 9000002
 step 1 1 0.00 N/A NP I SIM N/A NP
@@ -61,3 +65,16 @@ expect DMI mode-symbol displayed Full-Supervision
 step 19 19 0.00 L1 SR O TIU L1 SR
   text: no brake at standstill in SR
 expect TIU emergency-brake not-commanded
+step 20 20 0.00 L1 SR O TIU L1 SR
+  text: wrong on purpose: the emergency brake at a supervision limit
+  comment: The train has passed with its estimated front end the location of the Permitted Speed supervision limit (runner_fail.xlsm)
+expect TIU emergency-brake commanded
+# Invented braking curve results of a Lambda workbook (README of the
+# sibling repository, "The .scn format")
+workbook runner_fail.xlsm
+  curves Curves Lambda train
+  limit Initial-speed 40 km/h
+  limit Permitted 210.50 m
+  curve-columns Speed-(km/h) Permitted-(m) SBI-(m)
+  curve 0 0.00 10.00
+  curve 40 210.50 250.00

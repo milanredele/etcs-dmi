@@ -64,6 +64,7 @@ package body S076_Run is
          when R_S076_Defect      => "a defect of SUBSET-076 (known list)",
          when R_Optional         =>
             "optional or implementation dependent step not taken",
+         when R_Gamma            => "Gamma train braking model (E6)",
          when R_Runner           => "runner not implemented for this kind");
 
    ---------------------------------------------------------------------
@@ -3373,6 +3374,313 @@ package body S076_Run is
      (for some C of Single_Session_Cases =>
         Has (Image (Seq.Name), C.Sequence) and then St.Number = C.First);
 
+   ---------------------------------------------------------------------
+   --  The braking curve steps judged with the ERA workbook's results
+   --  (B101, e5/curves-judge). A step whose comment says the train has
+   --  passed (or reached) a supervision limit with one of its ends sets
+   --  the reference of its location: the workbook (the set named in
+   --  that comment or an earlier one, else the only set), the limit,
+   --  and our state there (the named end's distance to our target, the
+   --  speed, the permitted and SBI speeds shown). The first step of a
+   --  location sets it, a step at another location clears it. A failed
+   --  supervision status, brake command or traction cut-off expectation
+   --  at a location with a reference is judged by it (Curve_Judgement);
+   --  one that passed stays passed (decision: the curves explain a
+   --  failure, they do not overrule a status that matched).
+   ---------------------------------------------------------------------
+
+   type Curve_Ref_T is record
+      Valid     : Boolean := False;
+      Set       : Natural := 0;
+      Column    : Curve_Column_T := Permitted;
+      Dist_Cm   : Integer_64 := 0;
+      --  our target shown (MSG_SPEED_STATE, target or release speed
+      --  monitoring)
+      Shown     : Boolean := False;
+      --  the named end's and the estimated front end's distance to our
+      --  target (EOA or SvL: 3.13.10.4.7 does not apply), m
+      D_Ref, D_Est : Long_Float := 0.0;
+      V_Kmh     : Long_Float := 0.0;
+      Perm, SBI : Natural := 0;
+      --  the larger side of the confidence interval of our position, m
+      Odo       : Long_Float := 0.0;
+   end record;
+   Ref        : Curve_Ref_T;
+   Last_Named : Natural := 0;
+
+   --  Tolerances (decided here, PLAN §13 "Runner judges with the ERA
+   --  curves"): the target agrees within 10 m plus the confidence
+   --  interval of the position (the sequence's location of an end and
+   --  ours differ by it); a curve agrees when our location of the speed
+   --  shown (rounded to the km/h, so the workbook's band of +-0.5 km/h)
+   --  is at most 10 m further from the target (conservative: rounding
+   --  and the conversion model's steps) or at most 2 m nearer
+   --  (permissive: the sampling of the workbook's rows)
+   Target_Tol  : constant Long_Float := 10.0;
+   Curve_Out   : constant Long_Float := 10.0;
+   Curve_In    : constant Long_Float := 2.0;
+
+   --  The set whose workbook Text names ("According to Subset-076-6-
+   --  3_3130234_06b_v400": white space dropped, matched on "3130234_06b"
+   --  followed by "_v"), 0 when none
+   function Named_Set (Text : String) return Natural is
+      T : String (1 .. Text'Length);
+      N : Natural := 0;
+   begin
+      for C of Text loop
+         if C /= ' ' then
+            N := N + 1;
+            T (N) := C;
+         end if;
+      end loop;
+      for S in 1 .. Seq.Curve_Count loop
+         declare
+            Wb : constant String := Image (Seq.Curves (S).Workbook);
+            P  : constant Natural := Ada.Strings.Fixed.Index (Wb, "6-3_");
+            Q  : constant Natural := Ada.Strings.Fixed.Index (Wb, "_v4");
+         begin
+            if P > 0 and then Q > P + 4
+              and then Ada.Strings.Fixed.Index
+                (T (1 .. N), Wb (P + 4 .. Q - 1) & "_v") > 0
+            then
+               return S;
+            end if;
+         end;
+      end loop;
+      return 0;
+   end Named_Set;
+
+   --  The limit a comment says the train passed or reached: the first
+   --  limit word after the first of "PASSED", "REACH", "LEFT", "LEAVES",
+   --  "OVERPASS", "PASSES"; the release speed, the
+   --  start of release speed monitoring, the perturbation location, an
+   --  EOA or SvL first: none (no curve column judged)
+   procedure Limit_Of (Text : String; Col : out Curve_Column_T;
+                       Found : out Boolean)
+   is
+      U    : constant String := Up (Text);
+      P    : Natural := Ada.Strings.Fixed.Index (U, "PASSED");
+      Best : Natural := Natural'Last;
+      Kind : Curve_Column_T := EBI_Release;
+
+      procedure Try (Word : String; C : Curve_Column_T) is
+         K : constant Natural := Ada.Strings.Fixed.Index (U, Word, P);
+      begin
+         if K > 0 and then K < Best then
+            Best := K;
+            Kind := C;
+         end if;
+      end Try;
+
+      --  the first of "PASSED" and the other verbs
+      procedure Verb (Word : String) is
+         K : constant Natural := Ada.Strings.Fixed.Index (U, Word);
+      begin
+         if K > 0 and then (P = 0 or else K < P) then
+            P := K;
+         end if;
+      end Verb;
+   begin
+      Col := Permitted;
+      Found := False;
+      Verb ("REACH");
+      Verb (" LEFT ");
+      Verb (" LEAVES ");
+      Verb ("OVERPASS");
+      Verb (" PASSES ");
+      if P = 0 then
+         return;
+      end if;
+      Try ("INDICATION", Indication);
+      Try ("PERMITTED", Permitted);
+      Try ("WARNING", Warning);
+      Try ("SBI", SBI);
+      Try ("EBI", EBI);
+      Try ("RSM", EBI_Release);
+      Try ("RELEASE SPEED", EBI_Release);
+      Try ("PERTURBATION", EBI_Release);
+      Try ("EOA", EBI_Release);
+      Try ("SVL", EBI_Release);
+      Found := Best /= Natural'Last and then Kind /= EBI_Release;
+      Col := Kind;
+   end Limit_Of;
+
+   --  The end of the train a step places at its location, relative to
+   --  the antenna, cm: the point of a reach-point input, else the first
+   --  end its comment names (estimated front end when none)
+   function End_Offset (Text : String) return Integer_64 is
+      U  : constant String := Up (Text);
+      Ok : Boolean;
+      P  : Integer_64;
+      Best : Natural := Natural'Last;
+      Kind : String (1 .. 3) := "EST";
+
+      procedure Try (Word, K : String) is
+         I : constant Natural := Ada.Strings.Fixed.Index (U, Word);
+      begin
+         if I > 0 and then I < Best then
+            Best := I;
+            Kind := K;
+         end if;
+      end Try;
+   begin
+      if W (2) = "ODO" and then Same (W (3), "reach-point") then
+         P := Point_Offset (W (4), Ok);
+         if Ok then
+            return P;
+         end if;
+      end if;
+      Try ("ESTIMATED", "EST");
+      Try ("MAX SAFE", "MAX");
+      Try ("MAXIMUM SAFE", "MAX");
+      Try ("MIN SAFE", "MIN");
+      Try ("MINIMUM SAFE", "MIN");
+      return (if Kind = "MAX" then B.Front_Offset + B.Doubt_Over
+              elsif Kind = "MIN" then B.Front_Offset - B.Doubt_Under
+              else B.Front_Offset);
+   end End_Offset;
+
+   --  Set or clear the reference at step I (above)
+   procedure Note_Curve_Ref (I : Positive) is
+      St    : Step_T renames Seq.Steps (I);
+      C     : constant String := Image (St.Comment);
+      N     : constant Natural := Named_Set (C);
+      S     : constant B.State_T := B.State;
+      Col   : Curve_Column_T;
+      Found : Boolean;
+   begin
+      if N > 0 then
+         Last_Named := N;
+      end if;
+      if Ref.Valid and then Ref.Dist_Cm = St.Dist_Cm then
+         return;
+      end if;
+      Ref.Valid := False;
+      if Seq.Curve_Count = 0 then
+         return;
+      end if;
+      Limit_Of (C, Col, Found);
+      if not Found then
+         return;
+      end if;
+      Ref :=
+        (Valid   => True,
+         Set     => (if Last_Named > 0 then Last_Named
+                     elsif Seq.Curve_Count = 1 then 1 else 0),
+         Column  => Col,
+         Dist_Cm => St.Dist_Cm,
+         Shown   => S.Has_Speed and then S.Monitoring in 1 .. 2,
+         D_Est   => Long_Float (S.D_Target),
+         D_Ref   => Long_Float (S.D_Target)
+                    + Long_Float (B.Front_Offset - End_Offset (C)) / 100.0,
+         V_Kmh   => Long_Float (B.Speed) * 0.036,
+         Perm    => S.V_Perm,
+         SBI     => S.V_SBI,
+         Odo     => Long_Float (Integer_64'Max (B.Doubt_Over,
+                                                   B.Doubt_Under)) / 100.0);
+      Ref.Valid := Ref.Set > 0;
+   end Note_Curve_Ref;
+
+   --  A failed expectation the braking curves decide: the supervision
+   --  status (JRU message 20), the brake and traction cut-off commands
+   --  (JRU 3 / 4 / 43, TIU)
+   function Curve_Kind (Sig : String) return Boolean is
+     (Has (Sig, "JRU supervision") or else Has (Sig, "JRU3 state")
+      or else Has (Sig, "JRU4 state") or else Has (Sig, "JRU43 state")
+      or else (W (2) = "TIU"
+               and then (Same (W (3), "service-brake")
+                         or else Same (W (3), "emergency-brake")
+                         or else Same (W (3), "traction-cutoff"))));
+
+   --  A difference in metres as a band of the signature (the metres
+   --  themselves are in the trace)
+   function Band (M : Long_Float) return String is
+     (if M < 10.0 then "under 10 m" elsif M < 30.0 then "10 to 30 m"
+      elsif M < 100.0 then "30 to 100 m"
+      elsif M < 300.0 then "100 to 300 m" else "over 300 m");
+
+   function Metres (M : Long_Float) return String is
+     ((if M < 0.0 then "-" else "+") & Img (Integer (abs M)) & " m");
+
+   --  How far our location of Column at the speed shown V lies outside
+   --  the workbook's band of V +- 0.5 km/h, m: positive further from the
+   --  target, negative nearer, 0 inside; Ok False without a value
+   procedure Curve_Diff (Column : Curve_Column_T; V : Natural;
+                         Diff : out Long_Float; Ok : out Boolean)
+   is
+      C  : Curve_Set_T renames Seq.Curves (Ref.Set);
+      Lo : constant Long_Float :=
+        Curve_Distance (C, Column, Long_Float (V) - 0.5);
+      Hi : constant Long_Float :=
+        Curve_Distance (C, Column, Long_Float (V) + 0.5);
+   begin
+      Diff := 0.0;
+      Ok := V > 0 and then Lo /= No_Value and then Hi /= No_Value;
+      if Ok and then Ref.D_Est > Long_Float'Max (Lo, Hi) then
+         Diff := Ref.D_Est - Long_Float'Max (Lo, Hi);
+      elsif Ok and then Ref.D_Est < Long_Float'Min (Lo, Hi) then
+         Diff := Ref.D_Est - Long_Float'Min (Lo, Hi);
+      end if;
+   end Curve_Diff;
+
+   --  The judgement of a failed curve expectation J at a reference: the
+   --  target first (the named end's distance to our target against the
+   --  workbook's distance of the named limit at our speed), then the
+   --  permitted and SBI curves at our distance; a Gamma train's step is
+   --  not judged (B100)
+   function Curve_Judgement (J : Judgement_T; Verbose : Boolean)
+                             return Judgement_T
+   is
+      C     : Curve_Set_T renames Seq.Curves (Ref.Set);
+      Gamma : constant Boolean := Has (Image (C.Sheet), "Gamma");
+      Limit : constant String := Curve_Column_T'Image (Ref.Column);
+      Wb    : constant Long_Float :=
+        Curve_Distance (C, Ref.Column, Ref.V_Kmh);
+      DT    : constant Long_Float := Ref.D_Ref - Wb;
+      DP, DS : Long_Float;
+      OP, OS : Boolean;
+      Res   : Judgement_T;
+   begin
+      Curve_Diff (Permitted, Ref.Perm, DP, OP);
+      Curve_Diff (SBI, Ref.SBI, DS, OS);
+      if Verbose then
+         Put_Line ("      curves: set" & Natural'Image (Ref.Set) & " "
+                   & Image (C.Sheet) & ", " & Limit & " at "
+                   & Img (Integer (Ref.V_Kmh)) & " km/h: workbook "
+                   & Img (Integer (Wb)) & " m, ours "
+                   & Img (Integer (Ref.D_Ref)) & " m (target "
+                   & Metres (DT) & ", tolerance "
+                   & Img (Integer (Target_Tol + Ref.Odo)) & " m); perm"
+                   & Natural'Image (Ref.Perm) & " "
+                   & (if OP then Metres (DP) else "-") & ", sbi"
+                   & Natural'Image (Ref.SBI) & " "
+                   & (if OS then Metres (DS) else "-"));
+      end if;
+      if not Ref.Shown or else Wb = No_Value then
+         Res := Fail ("curve target: " & Limit & " limit, "
+                      & (if Ref.Shown then "no workbook value at our speed"
+                         else "no target shown"));
+      elsif abs DT > Target_Tol + Ref.Odo then
+         Res := Fail ("curve target: " & Limit & " limit, our target "
+                      & (if DT < 0.0 then "nearer" else "further")
+                      & " by " & Band (abs DT));
+      elsif OP and then (DP > Curve_Out or else DP < -Curve_In) then
+         Res := Fail ("curve PERMITTED: ours "
+                      & (if DP > 0.0 then "further out" else "nearer")
+                      & " by " & Band (abs DP));
+      elsif OS and then (DS > Curve_Out or else DS < -Curve_In) then
+         Res := Fail ("curve SBI: ours "
+                      & (if DS > 0.0 then "further out" else "nearer")
+                      & " by " & Band (abs DS));
+      else
+         Res := Pass (Image (J.Sig) & ", within the workbook's curves");
+      end if;
+      if Gamma then
+         return NJ (R_Gamma, Image (Res.Sig));
+      end if;
+      return Res;
+   end Curve_Judgement;
+
    procedure Run_Loaded (Verbose : Boolean) is
       Blocked : Boolean := False;
       First_Fail : Natural := 0;
@@ -3432,6 +3740,8 @@ package body S076_Run is
       Block_Reason := R_None;
       Block_Detail := (others => <>);
       Blocked_Too := False;
+      Ref := (others => <>);
+      Last_Named := 0;
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);
       end loop;
@@ -3554,6 +3864,7 @@ package body S076_Run is
                         for K in 1 .. Settle_Cycles loop
                            Wait_Cycle;
                         end loop;
+                        Note_Curve_Ref (I);
                         C := Columns (I);
                         if J.Verdict = Failed then
                            Record_Result (I, J);
@@ -3565,6 +3876,7 @@ package body S076_Run is
                      end if;
                   end;
                else
+                  Note_Curve_Ref (I);
                   J := Expect (St);
                   while J.Verdict = Failed and then Wait_Used < Wait_Limit
                   loop
@@ -3572,6 +3884,18 @@ package body S076_Run is
                      Wait_Used := Wait_Used + 1;
                      J := Expect (St);
                   end loop;
+                  if J.Verdict = Failed and then Ref.Valid
+                    and then Curve_Kind (Image (J.Sig))
+                  then
+                     J := Curve_Judgement (J, Verbose);
+                  elsif J.Verdict = Failed and then Seq.Workbook
+                    and then Curve_Kind (Image (J.Sig))
+                  then
+                     --  a curve step of a workbook sequence whose
+                     --  location names no limit (or no set): the tag of
+                     --  its triage line
+                     J := Fail (Image (J.Sig) & " [workbook train]");
+                  end if;
                   declare
                      C : Judgement_T := Columns (I);
                   begin
@@ -3591,6 +3915,11 @@ package body S076_Run is
                                  or else Only_In_L2_Elsewhere (St))
                      then
                         Record_Result (I, NJ (R_Optional, Image (J.Sig)));
+                     elsif J.Reason = R_Gamma then
+                        --  B100: the steps after it run with another
+                        --  train than the sequence's
+                        Record_Result (I, J);
+                        Block (I, J);
                      elsif J.Verdict = Failed then
                         Record_Result (I, J);
                      elsif C.Verdict = Failed then

@@ -162,7 +162,15 @@ S908191ec,onboard,"3060500_05 (SV21, SV22; SV30 stops earlier): the driver's tra
 Scd518a05,model,"4080450_01 (SV21, SV22; SV30 stops earlier): 'Shunting' pressed at 33 km/h per the chart in SR level 2; the DMI enables the button at standstill only (the runner's driver does not stop the train for it, as Sc3626e09)"
 S0e2fe215,onboard,"4080445_01 (SV21, SV22; SV30 stops earlier): JRU 45 recorded at 600 m in OS level 1 where the sequence expects none; not analysed in e5/version"
 # families (after the specific lines)
-~[workbook train],curves,a braking curve sequence (the ERA workbook's train): our supervision limits are placed metres to tens of metres from the ERA tool's for the train of the workbook (freight trains of 750 m, Freight in P), and the chart speed is a drawing; open point of E3 (needs the ERA tool's numbers); pre-programmed braking models are E6
+~no target shown,curves,braking curve step (e5/curves-judge): the sequence's location is a limit of a target but our DMI shows no target there (ceiling speed monitoring or no MA yet): the MA or the runner's position before it; not analysed by family yet (B016)
+~no workbook value at our speed,model,braking curve step (e5/curves-judge): our speed at the step lies outside the workbook's sampled rows or the named column is empty there: the runner's chart speed against the workbook's (B016)
+~curve target,onboard,braking curve step (e5/curves-judge): the named end's distance to our target (EOA/SvL) at the step's location differs from the workbook's distance of the named limit at our speed by more than 10 m plus the confidence interval: a target placement difference, to be fixed before the curves (B016)
+~curve PERMITTED,onboard,braking curve step (e5/curves-judge): target within tolerance, our permitted speed's location outside the workbook's band (10 m further out or 2 m nearer allowed) (B016)
+~curve SBI,onboard,braking curve step (e5/curves-judge): target within tolerance, our SBI speed's location outside the workbook's band (10 m further out or 2 m nearer allowed) (B016)
+S5fab4e40,onboard,a balise group of a braking curve sequence (3131040 family) gives OS where SR is expected; was under the [workbook train] family until e5/curves-judge, not analysed (B140)
+Scefec287,onboard,JRU message 25 as event 41 not recorded in a braking curve sequence; was under the [workbook train] family until e5/curves-judge, not analysed (B140)
+Sb12d0fcd,onboard,a level announcement shown where the braking curve sequence expects none; was under the [workbook train] family until e5/curves-judge, not analysed (B140)
+~[workbook train],curves,a supervision status / brake / traction cut-off step of a braking curve sequence that the curve judging of e5/curves-judge cannot reach: no comment at the step's location says which limit the train passed (passed/reached/left/overpasses ... Indication/Permitted/Warning/SBI/EBI), or it names the release speed / RSM / perturbation, or several workbooks and none named (B140)
 ~JRU supervision,curves,the supervision status at a location of the sequence: our limits against the ERA tool's (see the workbook family) and the chart speed
 ~JRU3 state,curves,the emergency brake command at the location of the sequence (see the supervision family)
 ~JRU4 state,curves,the service brake command at the location of the sequence (see the supervision family)
