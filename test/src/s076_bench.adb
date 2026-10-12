@@ -575,9 +575,9 @@ package body S076_Bench is
          V_Est    => Natural (R.V_Est),
          Shown    => R.Monitoring /= EVC_SDM.CSM or else R.CSM_Target,
          V_Target => Natural (R.V_Target),
-         EOA_Kind => R.Target_EOA /= R.Target_X,
-         D_Loc    => Integer_64 (R.Target_X - R.X_Est),
-         D_EOA    => Integer_64 (R.Target_EOA - R.X_Est),
+         EOA_Kind => R.Shown_At.Target_EOA /= R.Shown_At.Target_X,
+         D_Loc    => Integer_64 (R.Shown_At.Target_X - R.Shown_At.X_Est),
+         D_EOA    => Integer_64 (R.Shown_At.Target_EOA - R.Shown_At.X_Est),
          Over     => Doubt_Over);
    end Current;
 

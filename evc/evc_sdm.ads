@@ -138,6 +138,19 @@ is
 
    No_TTI : constant := 16#FFFF#;
 
+   --  The location of the target shown (ahead coordinates, cm; 0 when
+   --  none): Target_X the MRSP element start, the LOA, the SvL or the SR
+   --  end (D_Target of an MRSP or LOA target counts to the reference
+   --  location of 3.13.9.3.5.9 instead), Target_EOA the EOA of an EOA
+   --  target (else Target_X); X_Est the estimated front end in the same
+   --  coordinates (they follow the sense of the MA, which no other output
+   --  names)
+   type Shown_At_T is record
+      Target_X   : Num := 0;
+      Target_EOA : Num := 0;
+      X_Est      : Num := 0;
+   end record;
+
    type Result_T is record
       --  the monitoring runs (a ceiling speed is known)
       Active         : Boolean := False;
@@ -160,16 +173,8 @@ is
       Release_Exists : Boolean := False;
       Release_Shown  : Boolean := False;
       D_Target       : Num := 0;
-      --  the location of the target shown (ahead coordinates, cm; 0 when
-      --  none): Target_X the MRSP element start, the LOA, the SvL or the
-      --  SR end (D_Target of an MRSP or LOA target counts to the
-      --  reference location of 3.13.9.3.5.9 instead), Target_EOA the EOA
-      --  of an EOA target (else Target_X); X_Est the estimated front end
-      --  in the same coordinates (they follow the sense of the MA, which
-      --  no other output names); for the test tools
-      Target_X       : Num := 0;
-      Target_EOA     : Num := 0;
-      X_Est          : Num := 0;
+      --  where the target shown is, for the test tools (Shown_At_T)
+      Shown_At       : Shown_At_T;
       --  3.13.10.3.9: target information in ceiling speed monitoring
       CSM_Target     : Boolean := False;
       MRDT_Id        : Natural range 0 .. 255 := 0;
