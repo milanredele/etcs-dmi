@@ -318,7 +318,8 @@ is
      with Global => State;
 
    --  Phase E5, 3.8.2.5.1: a timer of the MA deleted track description
-   --  in the last Evaluate (A.3.4.1.2 c, d, e, n)
+   --  in the last Evaluate (A.3.4.1.2 c, d, e, n), or the service brake of
+   --  the safe radio connection at standstill (i, 3.16.3.4.5 b)
    --  @req 3.8.2.5.1
    function MA_Timer_Deletion return Boolean
      with Global => State;

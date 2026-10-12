@@ -324,6 +324,22 @@ is
       Outcome.Delete_Before := Natural'Last;
    end End_Section_Over;
 
+   procedure Shorten_To_Train (Train   : Train_Frame_T;
+                               Outcome : out Outcome_T)
+   is
+   begin
+      Outcome := (others => <>);
+      if Current.Present then
+         End_Section_Over (Train, Outcome);
+         --  no end section expired: the event is not recorded as one
+         Outcome.End_Expired := False;
+      end if;
+      Outcome.Delete := True;
+      Outcome.Delete_X := Train.Max_Front;
+      Outcome.Delete_To := (Origin => 0, Offset => Train.Max_Front);
+      Outcome.Delete_Before := Natural'Last;
+   end Shorten_To_Train;
+
    --  3.8.4.4.2: the Overlap time-out deletes the overlap and its
    --  release speed; a LOA becomes an EOA
    --  @req 3.8.4.4.2, 3.8.4.4.2 c)

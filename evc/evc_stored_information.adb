@@ -44,7 +44,8 @@ package body EVC_Stored_Information
                                    Driver_Slippery, PBD_Last, PBD_Known,
                                    MA_Board, Profile_Overlap,
                                    Covered_Flag, Ext, Tun,
-                                   Radio_MA, Timer_Deletion, Proposal,
+                                   Radio_MA, Timer_Deletion,
+                                   Contact_Braking, Proposal,
                                    Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
                                    Balise_Buffer.State))
@@ -105,8 +106,12 @@ is
    type Stop_Q_T is array (EVC_Radio_Info.Index_T) of Stop_Outcome_T;
    Stop_Q          : Stop_Q_T := (others => 4);
    --  phase E5: the track description was deleted by a timer of the MA
-   --  in the last Evaluate (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
+   --  or by the contact supervision (A.3.4.1.2 i) in the last Evaluate
+   --  (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
    Timer_Deletion  : Boolean := False;
+   --  the service brake of T_NVCONTACT (EVC_Sessions.Service_Brake) seen
+   --  commanded in an earlier Evaluate, the train not yet at standstill
+   Contact_Braking : Boolean := False;
    --  3.8.2.4: the information "track ahead free up
    --  to the level 2 transition location" accepted in the last Evaluate
    --  and the group it names (3.8.2.4.2); the country of the group
@@ -220,6 +225,7 @@ is
       Covered_Flag := False;
       Radio_MA := False;
       Timer_Deletion := False;
+      Contact_Braking := False;
       TAF_L2_New := False;
       TAF_L2_Loc := (others => <>);
       Group_Country := 0;
@@ -2456,6 +2462,36 @@ is
                       Default_G, Orders);
    end Build;
 
+   --  3.16.3.4.5 b): the service brake of the supervision of the safe
+   --  radio connection initiated and no new message until standstill:
+   --  the location based information shortened to the current position
+   --  (A.3.4.1.2 i), and a deletion of A.3.4 that asks for an MA
+   --  (3.8.2.5.1, MA_Timer_Deletion). Decision: the service brake seen
+   --  commanded in an earlier cycle and the train at standstill now; a
+   --  service brake ended while moving was released by a new message
+   --  (3.14.1.7), one never seen (the train at standstill already when
+   --  T_NVCONTACT passes) shortens nothing
+   --  @req 3.16.3.4.5 b), 3.8.2.5.1
+   procedure Contact_Shortening (T     : Origin_Table_T;
+                                 Train : Train_Frame_T)
+     with Global => (Input  => (EVC_Sessions.State, EVC_Odometry.State),
+                     In_Out => (Contact_Braking, Timer_Deletion,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                Events, Event_N))
+   is
+      O : EVC_Movement_Authority.Outcome_T;
+   begin
+      if Contact_Braking and then EVC_Odometry.Standstill then
+         EVC_Movement_Authority.Shorten_To_Train (Train, O);
+         Apply (T, O);
+         Timer_Deletion := True;
+      end if;
+      Contact_Braking := EVC_Sessions.Service_Brake
+                         and then not EVC_Odometry.Standstill;
+   end Contact_Shortening;
+
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
                        Work           : in out EVC_Profile.Profile_T;
@@ -2514,6 +2550,7 @@ is
                         and then (O.Section_Expired /= 0 or else O.End_Expired
                                   or else O.Overlap_Expired
                                   or else O.LOA_Expired);
+      Contact_Shortening (T, Train);
 
       --  4. 3.18.2.3: the national values waiting for their location
       if EVC_National_Values.Pending and then Train.Valid then

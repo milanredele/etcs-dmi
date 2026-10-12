@@ -5603,3 +5603,29 @@ improvements (3131040_04 and 3131060_08 in three versions, 3131060_16 in
 SV21 and SV22 to placement; 3130232_17 and _18 pass in three), 0
 regressions, no new signature. Backlog: B300, B303, B261, B231 done;
 B370 opened.
+
+### The authority rows left, the message length check, the early level transition (e5/authority-rows, 2026-10-12)
+
+B050: the RTM port is extended, not redefined: a tagged input (the
+session's message) takes a message frame of 3 to 1023 bytes whatever
+its L_MESSAGE (`EVC_Ports.Valid_RTM_Frame`); the untagged form of E1
+keeps its contract (the malformed golden is unchanged).
+`EVC_Core.Read_Radio_Messages` records such a frame as received (JRU
+9, its length as received) and reports it inconsistent (8.4.4.2.1,
+3.16.3.1.1 c: `EVC_Sessions.Take_Inconsistent`, M_ERROR 3, JRU 13);
+`Scenario_Radio_Length_Check`. 8040400_01 passes in SV30; SV21 and
+SV22 stop at step 68 without the 136 (B350). 3.8.2.5.1: i) done, the
+shortening of 3.16.3.4.5 b) (`EVC_Movement_Authority.Shorten_To_Train`,
+`EVC_Stored_Information.Contact_Shortening`, decision: the service brake
+of T_NVCONTACT seen commanded in an earlier cycle, then standstill;
+`Scenario_Contact_Shortening`); g) h) j) l) m) cannot happen until E6
+brings their reactions, o) needs SM (B008). B301: no defect; ours is L2
+up to BG11d and enters L1 on its immediate packet 41 (5.10.2); the
+after-state column of 3110300_01 step 154 contradicts its step 156
+(M_LEVEL=2): triaged `s076`. Rows: 3.8.2.3.2 c), 3.10.2.2 b) 2nd and
+4th bullets (`Scenario_Conditional_Stop_Ends`, with a danger point and
+with a LOA), 3.10.3.2 (146 for message 18 with M_ACK), 3.5.2.4,
+3.16.3.4.5 and b), 3.16.3.1.1.2 done; 3.15.1.3.3 stays partial (no SM).
+SUBSET-076: 830 / 1272 / 1088 before, 834 / 1268 / 1088 after, 17
+improvements, 0 regressions. Edits outside the package's units: none
+(`EVC_Core`: `Latch_RTM`'s assertion and `Read_Radio_Messages`).

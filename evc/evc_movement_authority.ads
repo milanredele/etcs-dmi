@@ -307,6 +307,16 @@ is
      with Global => (In_Out => State),
           Post => MA.Present = MA.Present'Old;
 
+   --  3.16.3.4.5 b): the location based information shortened to the
+   --  current position, A.3.4.1.2 i) (the column of e): the EOA and the
+   --  SvL at the estimated and max safe front ends without release speed
+   --  [11], the other stores deleted beyond the max safe front end [10]
+   --  @req 3.16.3.4.5 b)
+   procedure Shorten_To_Train (Train   : Train_Frame_T;
+                               Outcome : out Outcome_T)
+     with Global => (In_Out => State),
+          Post => MA.Present = MA.Present'Old and then Outcome.Delete;
+
    --  A.3.4.1.3 [1], [10]: the mode profile and the signalling related
    --  speed restriction beyond the frame position X (the location To)
    procedure Delete_Beyond (T          : Origin_Table_T;

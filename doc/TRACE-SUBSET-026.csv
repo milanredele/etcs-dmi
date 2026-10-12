@@ -36,7 +36,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.4.5.1.6,3,x,,,,,E2,deferred,E7 (Euroloop)
 3.4.5.2.1,3,x,,,,,E2,deferred,E7 (Euroloop)
 3.4.5.2.2,3,x,,,,,E2,deferred,E7 (Euroloop)
-3.5.2.4,3,x,,,,,E5,partial,"the session table of EVC_Radio holds two sessions (one by configuration, EVC_Config.Radio_Config_T); their management is EVC_Sessions' [E5 joint]"
+3.5.2.4,3,x,,,,,E5,done,"the session table of EVC_Radio holds two sessions (two by default, one by configuration, EVC_Config.Radio_Config_T); their management is EVC_Sessions', two established at once in a handover (EVC_Sessions.Handover); evc_test Scenario_Radio_Joint, Handover_Radio [E5 joint]"
 3.5.3.4,3,x,,,,,E5,done,"every bullet in its subclause (a) to h)); f) for the Handing Over session after the switch: EVC_Sessions.Evaluate opens it again with the retained contact (3.15.1.3.8.1), evc_test Handover_Deletion [E5 session]"
 3.5.3.4 a),3,x,,,,,E5,done,"EVC_Sessions.Mission.Evaluate_SoM (D2 in level 2 with a known contact, S3: Open_SoM); evc_test Scenario_Session_SoM_Level_2 [E5 session]"
 3.5.3.4 b),3,x,,,,,E5,done,EVC_Sessions.Take_Order / Apply_Order: packet 42 of a balise group (EVC_Stored_Information K42); in a radio message once the authority half stores it; evc_test session_establish [E5 session]
@@ -316,11 +316,11 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.8.2.3.2,3,x,,,,,E5,done,EVC_Radio_Authority.Evaluate_Request (Start_Reason); evc_test Scenario_MA_Request [E5 authority]
 3.8.2.3.2 a),3,x,,,,,E5,done,an MA accepted by radio (EVC_Stored_Information.Radio_MA_Accepted) ends the reason; evc_test Scenario_MA_Request [E5 authority]
 3.8.2.3.2 b),3,x,,,,,E5,done,"message 2 taken ends the reason (EVC_Radio_Authority.Take_Message, SR_Authorised); evc_test Scenario_SR_Authorisation [E5 authority]"
-3.8.2.3.2 c),3,x,,,,,E5,partial,no desk open ends the reason (EVC_Train_Inputs.Desk_Open); no scenario yet [E5 authority]
+3.8.2.3.2 c),3,x,,,,,E5,done,no desk open ends the reason (EVC_Train_Inputs.Desk_Open); evc_test Scenario_MA_Request [E5 authority]
 3.8.2.4.1,3,x,,,,,E5,done,"packet 90 taken from a balise group (EVC_Stored_Information.Take_TAF_Packet, K90; 4.8.3 A [9] in levels 0, NTC, 1 with a level 2 transition order stored, R in level 2; 4.8.4 by EVC_Acceptance.Track_Ahead_Free_L2); EVC_Radio_Authority.Evaluate_Request: with level 2 announced and the session established, message 132 with reason 16 in any level (3.8.2.1.1 e); evc_test Scenario_TAF_Up_To_L2 [E5 authority]"
 3.8.2.4.2,3,x,,,,,E5,done,"message 132 carries packet 9 (NID_C, NID_BG of packet 90; the country of the group when Q_NEWCOUNTRY 0) after packet 0 (EVC_Radio_Authority.Send_With_Report, LTR); evc_test Scenario_TAF_Up_To_L2 [E5 authority]"
 3.8.2.4.3,3,x,,,,,E5,done,"one request per reception (EVC_Radio_Authority.TAF_Request, cleared when sent; the reason is not repeated by 3.8.2.1.5); decision: dropped when the session is lost before it is sent; evc_test Scenario_TAF_Up_To_L2 [E5 authority]"
-3.8.2.5.1,3,x,,,,,E5,partial,"the deletions by the timers of the MA, A.3.4.1.2 c) d) e) n) (EVC_Stored_Information.MA_Timer_Deletion); g) h) i) j) l) m) o) not reported yet; evc_test Scenario_MA_Request (c) [E5 authority]"
+3.8.2.5.1,3,x,,,,,E5,partial,"the deletions by the timers of the MA, A.3.4.1.2 c) d) e) n) (EVC_Stored_Information.MA_Timer_Deletion), and i) the service brake of T_NVCONTACT at standstill (EVC_Stored_Information.Contact_Shortening); evc_test Scenario_MA_Request (c), Scenario_Contact_Shortening (i); g) h) l) m) (3.16.2.4.4.2, 3.16.2.5.2, 3.16.2.6.2, 3.16.2.7) and j) (3.18.3.7) cannot happen yet: this on-board deletes nothing in those situations until E6 brings their reactions; o) needs Supervised Manoeuvre, absent (B008) [E5 authority]"
 3.8.2.5.2,3,x,,,,,E5,done,EVC_Radio_Authority.Evaluate_Request (Deleted_Reason) until an MA by radio is accepted; evc_test Scenario_MA_Request [E5 authority]
 3.8.4.1.1,3,x,,,,,E3,done,EVC_Movement_Authority.Supervise; evc_test Scenario_End_Section_Timer
 3.8.4.1.2,3,x,,,,,E3,done,EVC_Movement_Authority.End_Section_Over; evc_test Scenario_End_Section_Timer
@@ -406,13 +406,13 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.10.2.2 a),3,x,,,,,E5,done,EVC_Stored_Information.Take_Stop: rejected when the min safe front end has passed the stop location (Q_EMERGENCYSTOP 3); evc_test Scenario_Emergency_Stops [E5 authority]
 3.10.2.2 b),3,x,,,,,E5,done,"EVC_Movement_Authority.Conditional_Stop: the EOA and SvL withdrawn to the stop (no release speed; the timers of the MA no longer run, a decision); evc_test Scenario_Emergency_Stops [E5 authority]"
 3.10.2.2 b) 1st bullet,3,x,,,,,E5,done,EVC_Movement_Authority.Conditional_Stop (Q_EMERGENCYSTOP 0); evc_test Scenario_Emergency_Stops [E5 authority]
-3.10.2.2 b) 2nd bullet,3,x,,,,,E5,partial,"EVC_Movement_Authority.Conditional_Stop: the new SvL, the EOA unchanged (Q_EMERGENCYSTOP 1); no scenario (needs an MA with an overlap or danger point) [E5 authority]"
+3.10.2.2 b) 2nd bullet,3,x,,,,,E5,done,"EVC_Movement_Authority.Conditional_Stop: the new SvL, the EOA unchanged (Q_EMERGENCYSTOP 1); evc_test Scenario_Conditional_Stop_Ends (a danger point) [E5 authority]"
 3.10.2.2 b) 3rd bullet,3,x,,,,,E5,done,EVC_Movement_Authority.Conditional_Stop: nothing changes (Q_EMERGENCYSTOP 1); evc_test Scenario_Emergency_Stops [E5 authority]
-3.10.2.2 b) 4th bullet,3,x,,,,,E5,partial,EVC_Movement_Authority.Conditional_Stop: a LOA becomes an EOA/SvL at the stop or at the LOA (Q_EMERGENCYSTOP 0); no scenario [E5 authority]
+3.10.2.2 b) 4th bullet,3,x,,,,,E5,done,"EVC_Movement_Authority.Conditional_Stop: a LOA becomes an EOA/SvL at the stop or at the LOA (Q_EMERGENCYSTOP 0); evc_test Scenario_Conditional_Stop_Ends [E5 authority]"
 3.10.2.2 b) last sentence,3,x,,,,,E5,done,"the deletions beyond the new SvL (A.3.4.1.2 a, A.3.4.1.3 [1]) through Outcome_T and EVC_Stored_Information.Apply; evc_test Scenario_Emergency_Stops [E5 authority]"
 3.10.2.3,3,x,,,,,E5,done,"message 16: [20] EVC_Radio_Authority.Unconditional_Stop_Accepted in the cycle, the mode machine trips; Q_EMERGENCYSTOP 2; [45] Unconditional_Stop_Received until revoked; kept in TR and PT, deleted by the modes of 4.10 (Mode_Changed); evc_test Scenario_Emergency_Stops [E5 authority]"
 3.10.2.4,3,x,,,,,E5,done,"EVC_Radio_Info.Slot_T.MA_Allowed set by EVC_Radio_Authority while a stop is not revoked, packet 15 rejected by EVC_Stored_Information.Take_Radio; a request to shorten the MA rejected too; evc_test Scenario_Emergency_Stops [E5 authority]"
-3.10.3.2,3,x,,,,,E5,partial,the revocation (message 18) is acknowledged by the general acknowledgement of 3.16.3.5 (M_ACK): the session half [E5 authority]
+3.10.3.2,3,x,,,,,E5,done,"the revocation (message 18) is acknowledged by the general acknowledgement of 3.16.3.5 (M_ACK): the session half, EVC_Sessions.Take_Message for every message with M_ACK 1 (message 146); evc_test Scenario_Conditional_Stop_Ends [E5 authority]"
 3.10.3.3,3,x,,,,,E5,done,EVC_Radio_Authority.Take_Emergency: only the stop of the NID_EM of message 18 is removed; evc_test Scenario_Emergency_Stops [E5 authority]
 3.11.1.1,3,x,,,,,E3,done,the MRSP of EVC_Stored_Information (3.13.7); evc_test Scenario_SSP_Gradients
 3.11.1.2,3,x,,,,,E3,done,the static speed restrictions do not depend on the level (EVC_Track_Description)
@@ -816,7 +816,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.1.3.2.2,3,x,,,,,E5,done,EVC_Sessions.Handover.Take_Order replaces the stored order; evc_test Handover_Radio [E5 session]
 3.15.1.3.2.3,3,x,,,,,E5,done,"EVC_Sessions.Handover.Apply_Order: the session of the former Accepting RBC terminated, the supervising one kept; evc_test Handover_Radio [E5 session]"
 3.15.1.3.2.4,3,x,,,,,E5,n/a,"n/a: this on-board handles two sessions (EVC_Config Radio_Sessions 2, E5 decision 2), so 3.15.1.3.1 a) applies; the one-session configuration of tests keeps the wait (EVC_Sessions.Handover Single); the runner blocks the cases 3150100 3, 4, 7, 10, 11 (S076_Run.Single_Session_Cases) [E5 session]"
-3.15.1.3.3,3,x,,,,,E5,partial,"EVC_Sessions.Handover.Train_Data_To -> EVC_Sessions.Mission.Send_Train_Data (129, its 8 awaited); the safe consist length in SM not sent; evc_test Handover_Radio [E5 session]"
+3.15.1.3.3,3,x,,,,,E5,partial,"EVC_Sessions.Handover.Train_Data_To -> EVC_Sessions.Mission.Send_Train_Data (129, its 8 awaited); the safe consist length in SM not sent: this on-board has no Supervised Manoeuvre mode (B008); evc_test Handover_Radio [E5 session]"
 3.15.1.3.4,3,x,,,,,E5,done,EVC_Sessions.Handover.Also_Reported -> EVC_Sessions.Reports.Produce (Also); evc_test Handover_Radio [E5 session]
 3.15.1.3.4.1,3,x,,,,,E5,done,EVC_Sessions.Mission.Mode_Changed (EoM_Also: the other connected session) -> Produce: 150 to both; the repetitions and 5.5.4.1.1 follow the supervising session; evc_test Handover_EoM [E5 session]
 3.15.1.3.5,3,x,,,,,E5,done,EVC_Sessions.Handover.Switch (decision 3: the cycle after the border report); EVC_Sessions.Take_Message: from the retained Handing Over session only packet 42; evc_test Handover_Radio [E5 session]
@@ -930,7 +930,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.7.2.1 a),3,x,,,,,E6,todo,
 3.16.2.7.2.1 b),3,x,,,,,E6,todo,
 3.16.2.7.2.2,3,x,,,,,E6,todo,
-3.16.3.1.1.2,3,x,,,,,E5,partial,"[E5 session] EVC_Sessions.Take_Message (b: time stamp, M_ERROR 4) and Take_Inconsistent (c and 3.16.1.1: refused by the codec, M_ERROR 3; a) is the Euroradio port's), EVC_Sessions.Reports.Request_Error: packet 4 in the next 136 to that RBC, one per message; JRU record 13 (EVC_JRU_Records, EVC_Core.Record_Radio_Error); evc_test Scenario_Session_Error_Report [e5/jru-radio] every message received recorded at reception (JRU record 9, EVC_Core.Read_Radio_Messages, Scenario_Session_JRU_Received), the refused ones too; left: c) for a message whose L_MESSAGE disagrees with its frame, dropped by the RTM port (EVC_Ports.Valid_RTM_Input), neither recorded nor reported (B050)"
+3.16.3.1.1.2,3,x,,,,,E5,done,"[E5 session] EVC_Sessions.Take_Message (b: time stamp, M_ERROR 4) and Take_Inconsistent (c and 3.16.1.1: refused by the codec, M_ERROR 3; a) is the Euroradio port's), EVC_Sessions.Reports.Request_Error: packet 4 in the next 136 to that RBC, one per message; JRU record 13 (EVC_JRU_Records, EVC_Core.Record_Radio_Error); evc_test Scenario_Session_Error_Report [e5/jru-radio] every message received recorded at reception (JRU record 9, EVC_Core.Read_Radio_Messages, Scenario_Session_JRU_Received), the refused ones too; c) for a message whose L_MESSAGE disagrees with its frame (8.4.4.2.1): the RTM port takes a tagged frame of any length (EVC_Ports.Valid_RTM_Frame), EVC_Core.Read_Radio_Messages records it (record 9) and reports it (M_ERROR 3), evc_test Scenario_Radio_Length_Check"
 3.16.3.3.2,3,x,x,,,,E5,todo,[E5 session]
 3.16.3.3.3,3,x,x,,,,E5,done,EVC_Sessions.Take_Message (Newer: an older time stamp ignored) [E5 session]
 3.16.3.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Contact (the supervising RBC, any level); evc_test session_nvcontact [E5 session]"
@@ -940,9 +940,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.3.4.1.3,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Contact (stopped while In_Hole) and EVC_Sessions.Evaluate (Ref_Ms the time the engine left the hole, until a message); evc_test Scenario_Session_Hole_Contact [E5 session]"
 3.16.3.4.3,3,x,,,,,E5,done,EVC_Sessions.Supervise_Contact (60 s later released and set up again); evc_test session_nvcontact [E5 session]
 3.16.3.4.4,3,x,,,,,E5,done,"EVC_Sessions (DMI entry 4) and EVC_Procedures (trip reason Communication_Lost, entry 5); evc_test session_nvcontact, _nvcontact_brake [E5 session]"
-3.16.3.4.5,3,x,,,,,E5,partial,a) EVC_Sessions; b) the shortening at standstill is the authority half's (A.3.4) [E5 session]
+3.16.3.4.5,3,x,,,,,E5,done,"a) EVC_Sessions; b) the shortening at standstill is the authority half's (A.3.4): EVC_Stored_Information.Contact_Shortening [E5 session]"
 3.16.3.4.5 a),3,x,,,,,E5,done,EVC_Sessions.Supervise_Contact; evc_test session_nvcontact_brake [E5 session]
-3.16.3.4.5 b),3,x,,,,,E5,todo,[E5 session]
+3.16.3.4.5 b),3,x,,,,,E5,done,"EVC_Stored_Information.Contact_Shortening, EVC_Movement_Authority.Shorten_To_Train: the service brake of T_NVCONTACT seen commanded, then standstill without a new message: the EOA and SvL at the train, the other stores deleted beyond its max safe front end (A.3.4.1.2 i, [10] [11]); evc_test Scenario_Contact_Shortening [E5 session]"
 3.16.3.5.1,3,x,,,,,E5,done,"EVC_Sessions.Take_Message, Produce (message 146); golden received_telegram_message [E5 session]"
 3.16.3.5.3,3,x,,,,,E5,done,EVC_Sessions.Produce (146 carries the T_TRAIN of the message) [E5 session]
 3.16.4.1,3,x,,,,,E6,partial,"[E5 session] radio message errors: reported once the session is established (EVC_Sessions.Reports.Produce), evc_test Scenario_Session_Error_Report; balise group and odometer errors (E6) left"
