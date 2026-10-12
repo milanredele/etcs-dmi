@@ -114,6 +114,18 @@ is
          S        => S,
          Ack      => Inputs.Ack);
 
+      --  3.18.3.3.1: a train movement detected while the driver modifies
+      --  or revalidates the Train Data commands the brake (the emergency
+      --  brake, like the protections released per 3.14.1.5); released at
+      --  standstill after the acknowledgement
+      if State.Data_Entry then
+         if T.Standstill and then Inputs.Ack then
+            State.Data_Entry := False;
+         end if;
+      elsif Inputs.Modifying_Data and then Moving then
+         State.Data_Entry := True;
+      end if;
+
       --  3.14.1.2: the service brake alone, not applied: the emergency
       --  brake (released with the service brake command). The train must
       --  decelerate by SB_Failure_Decel_Mms2 once SB_Failure_Time_Ms
@@ -141,16 +153,19 @@ is
          Service_Brake_Failed   => State.SB_Failed,
          Roll_Away              => State.Roll_Away.Braking,
          Direction              => State.Direction.Braking,
-         Standstill_Supervision => State.Standstill.Braking);
+         Standstill_Supervision => State.Standstill.Braking,
+         Data_Entry_Movement    => State.Data_Entry);
       Output.Protection :=
         State.Roll_Away.Braking or else State.Direction.Braking
         or else State.Standstill.Braking;
-      Output.EB := SDM.EB or else State.SB_Failed or else Output.Protection;
+      Output.EB := SDM.EB or else State.SB_Failed or else Output.Protection
+                   or else State.Data_Entry;
       Output.SB := SDM.SB;
       Output.TCO := SDM.TCO;
       --  3.14.1.9, 3.14.1.10.1: one acknowledgement for the reasons of
       --  3.14.1.5, asked at standstill
-      Output.Ack_Required := Output.Protection and then T.Standstill;
+      Output.Ack_Required :=
+        (Output.Protection or else State.Data_Entry) and then T.Standstill;
    end Step;
 
 end EVC_Brake_Commands;

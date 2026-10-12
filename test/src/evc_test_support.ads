@@ -321,6 +321,10 @@ package EVC_Test_Support is
    Seen      : Pos.Triggers_T := Pos.No_Triggers;
    Geo_Seen  : Unsigned_32 := EVC_DMI_Port.Geo_Unknown;
    Geo_Count : Natural := 0;
+   --  The system status entry "Odometer impaired" (36): the frames seen
+   --  and the event of the last (0 start, 1 end)
+   Odo_SS_Count : Natural := 0;
+   Odo_SS_Event : Natural := 0;
 
       procedure Forget;
 

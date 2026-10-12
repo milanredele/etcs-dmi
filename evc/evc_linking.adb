@@ -99,4 +99,38 @@ is
       L.Stored := True;
    end From_Packet;
 
+   -------------
+   -- Replace --
+   -------------
+
+   procedure Replace (Store : in out Linking_T; New_L : Linking_T)
+   is
+      K    : Link_Count_T := 0;
+      Base : Length_T;
+      Fits : Boolean;
+   begin
+      if New_L.Stored and then New_L.Count >= 1
+        and then Store.Stored and then Store.Sense = New_L.Sense
+        and then Store.Ref_Id /= New_L.Ref_Id
+      then
+         K := Find (Store, New_L.Ref_Id, 1);
+      end if;
+      Fits := K /= 0 and then K + New_L.Count <= Max_Links;
+      if not Fits then
+         Store := New_L;
+         return;
+      end if;
+      Base := Store.Links (K).D;
+      for J in 1 .. New_L.Count loop
+         pragma Loop_Invariant (K + New_L.Count <= Max_Links);
+         Store.Links (K + J) := New_L.Links (J);
+         Store.Links (K + J).D :=
+           (if New_L.Links (J).D <= Max_Cm - Base
+            then Base + New_L.Links (J).D else Max_Cm);
+      end loop;
+      Store.Count := K + New_L.Count;
+      Store.Solr := K;
+      Store.Expected := K + 1;
+   end Replace;
+
 end EVC_Linking;

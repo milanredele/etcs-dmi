@@ -972,7 +972,8 @@ is
          --  3.4.4.4.5.1: the first window whose end is not reached; the
          --  group is the reference of the linking and the SOLR
          --  (3.6.4.2.2 a)
-         Links := New_L;
+         --  3.7.3.1 m): the stored linking in rear of A kept
+         EVC_Linking.Replace (Links, New_L);
          Set_SOLR (A, 0);
          for Step in 1 .. EVC_Linking.Max_Links loop
             exit when not EVC_Linking.Checked (Links)

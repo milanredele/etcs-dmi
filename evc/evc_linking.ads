@@ -94,4 +94,20 @@ is
                               and then L.Expected = 1
                               and then L.Ref_Id = Sender);
 
+   --  3.7.3.1 m): new linking received as non-infill information
+   --  replaces the stored linking from the reference group of the new
+   --  linking on; the stored part in rear of that group is kept. When the
+   --  new reference group is a link K of the stored chain (same sense),
+   --  the result is the stored reference and links 1 .. K followed by the
+   --  new links, their distances counted from the stored reference, and
+   --  link K the SOLR with the first new link expected; otherwise (no
+   --  part in rear: the group is the stored reference, not in the chain,
+   --  the other sense, no linking stored) the new linking alone.
+   --  Decision: when the joined chain does not fit (Max_Links, the bound
+   --  of one packet) the new linking alone too: the part in rear only
+   --  serves the relocation of information referred to the groups behind
+   --  (3.6.4.2.5), the new part is the one the train needs ahead.
+   procedure Replace (Store : in out Linking_T; New_L : Linking_T)
+     with Post => (if New_L.Stored then Store.Stored);
+
 end EVC_Linking;

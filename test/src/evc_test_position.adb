@@ -306,6 +306,71 @@ package body EVC_Test_Position is
       Check_Golden ("position_linking_errors");
    end Scenario_Linking_Errors;
 
+   --  3.7.3.1 m): new linking replaces the stored linking from its
+   --  reference group on; the part in rear of that group is kept
+   procedure Scenario_Linking_Replacement is
+      P58      : T58.Packet_T;
+      OK       : Boolean;
+      Fired_At : Integer_64 := 0;
+   begin
+      P58.Q_SCALE := 1;
+      P58.T_CYCLOC := 255;
+      P58.D_CYCLOC := 32_767;
+      P58.M_LOC := 2;
+      P58.N_ITER := 1;
+      P58.D_LOC_List (1) := (D_LOC => 800, Q_LGTLOC => 1);
+      --  the first group links the second, the second the third and the
+      --  fourth: the chain from the first group is kept up to the second
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((1 => 500),
+                                                       (1 => 20))));
+      Add_Group (With_Links (Group (20, 600), Link_To ((400, 300),
+                                                       (30, 40))));
+      Add_Group (Group (30, 1000, 3));
+      Add_Group (Group (40, 1300));
+      Run_To (15_000);
+      Pos.Set_Report_Parameters (P58, (123, 10), OK);
+      Run_To (65_000);
+      Check (OK and then Pos.Linking.Stored
+             and then Pos.Linking.Ref_Id.NID_BG = 10
+             and then Pos.Linking.Count = 3
+             and then Pos.Linking.Links (1).Id.NID_BG = 20
+             and then Pos.Linking.Links (2).Id.NID_BG = 30
+             and then Pos.Linking.Links (3).D = 120_000
+             and then Pos.Linking.Solr = 1
+             and then Pos.Linking.Expected = 2,
+             "linking replacement: the new linking from the second group, "
+             & "the first group in rear kept (3.7.3.1 m)");
+      while Train_Cm < 95_000 and then Fired_At = 0 loop
+         Step (1_000);
+         if Pos.Report_Triggers.Location_Passed then
+            Fired_At := Train_Cm;
+         end if;
+      end loop;
+      Check (Fired_At = 89_000,
+             "linking replacement: a location from the first group still "
+             & "relocated by the linking distance, got"
+             & Integer_64'Image (Fired_At));
+      Run_To (140_000);
+      Check (Pos.LRBG.Id.NID_BG = 40 and then JRU_Seen (4) = 0
+             and then JRU_Seen (5) = 0 and then JRU_Seen (6) = 0,
+             "linking replacement: the groups of the new linking found");
+      --  a group outside the stored chain: the new linking alone
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((1 => 500),
+                                                       (1 => 20))));
+      Add_Group (Group (20, 600));
+      Add_Group (With_Links (Group (50, 1500), Link_To ((1 => 300),
+                                                        (1 => 60))));
+      Run_To (160_000);
+      Check (Pos.Linking.Stored and then Pos.Linking.Ref_Id.NID_BG = 50
+             and then Pos.Linking.Count = 1
+             and then Pos.Linking.Solr = 0
+             and then Pos.Linking.Expected = 1,
+             "linking replacement: no stored part in rear, the new "
+             & "linking alone (3.7.3.1 m)");
+   end Scenario_Linking_Replacement;
+
    --  Single balise groups: orientation from linking (3.4.2.3.2.2), the
    --  report based on two groups (3.4.2.3.3.1 to .4), the assignment by
    --  the RBC (3.4.2.3.3.6, .8); duplicated balises (3.4.2.2.1.1,
@@ -553,7 +618,13 @@ package body EVC_Test_Position is
       Check (JRU_Seen (7) = 1 and then JRU_Last (7, 2) = 1
              and then not Odo.Safety_Exceeded,
              "odometer: JRU impaired");
+      Check (Odo_SS_Count = 1 and then Odo_SS_Event = 0,
+             "odometer: the driver informed, Odometer impaired shown "
+             & "(3.6.8.5, the DMI's entry 36)");
       Run_To (500_000);
+      Check (Odo_SS_Count = 1,
+             "odometer: Odometer impaired shown once while impaired "
+             & "(3.6.8.6.2)");
       Bound_Per_Mille := 10;
       while Nominal_At = 0 and then Train_Cm < 2_000_000 loop
          Step (1_000);
@@ -567,6 +638,9 @@ package body EVC_Test_Position is
              & "(3.6.8.6), got" & Integer_64'Image (Nominal_At));
       Check (JRU_Seen (7) = 2 and then JRU_Last (7, 2) = 0,
              "odometer: JRU nominal");
+      Check (Odo_SS_Count = 2 and then Odo_SS_Event = 1,
+             "odometer: Odometer impaired ended with the impairment "
+             & "(3.6.8.6)");
 
       Start_Track;
       Bound_Per_Mille := 350;

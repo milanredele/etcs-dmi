@@ -697,6 +697,8 @@ package body EVC_Test_Procedures is
                         = EVC_DMI_Port.SS_No_Track_Description
              and then SS_NL_No_Longer_Permitted
                         = EVC_DMI_Port.SS_NL_No_Longer_Permitted
+             and then SS_Odometer_Impaired
+                        = EVC_DMI_Port.SS_Odometer_Impaired
              and then Unsigned_8 (MSG_MODE_LEVEL)
                         = EVC_DMI_Port.MSG_MODE_LEVEL,
              "E4 integration: the system status entries of EVC_DMI_Port "

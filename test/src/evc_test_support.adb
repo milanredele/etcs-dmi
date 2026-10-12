@@ -310,6 +310,8 @@ package body EVC_Test_Support is
       Seen := Pos.No_Triggers;
       Geo_Count := 0;
       Geo_Seen := EVC_DMI_Port.Geo_Unknown;
+      Odo_SS_Count := 0;
+      Odo_SS_Event := 0;
    end Forget;
    procedure Collect is
       T : constant Pos.Triggers_T := Pos.Report_Triggers;
@@ -320,6 +322,13 @@ package body EVC_Test_Support is
             for B in 2 .. 4 loop
                JRU_Last (Byte_At (I, 1), B) := Byte_At (I, B);
             end loop;
+         elsif Recs (I).Port = DMI
+           and then Byte_At (I, 1) = Natural (EVC_DMI_Port.MSG_SYSTEM_STATUS)
+           and then Rec_Length (I) = 7
+           and then Byte_At (I, 6) = EVC_DMI_Port.SS_Odometer_Impaired
+         then
+            Odo_SS_Count := Odo_SS_Count + 1;
+            Odo_SS_Event := Byte_At (I, 7);
          elsif Recs (I).Port = DMI and then Rec_Length (I) = 28
            and then Byte_At (I, 1) = Natural (EVC_DMI_Port.MSG_STATUS)
          then

@@ -4656,3 +4656,30 @@ to step 69. Untriaged 0.
 
 Next: B195 (the Overspeed status skipped in target speed monitoring),
 the Indication of an EOA target (+188 to +342 m), B193, B194.
+
+### E4 closure, second round (e4/closure-2, 2026-10-12)
+
+**B030** (3.6.8.5, 3.6.8.6.2 done): "Odometer impaired" (DMI entry 36)
+started and ended with `EVC_Odometry.Impaired` in
+`EVC_Core.Show_Mode_Indications`, in the modes of the check of odometer
+accuracy thresholds only (4.5.2 Table: SM, FS, AD, LS, SR, OS; SUBSET-076
+4050200_10 and _11 expect it hidden in UN and SB). The check itself still
+runs in every mode (B222). **B033** (3.7.3.1 done): `EVC_Linking.Replace`,
+called from `EVC_Position.Take_Packets` in place of the plain assignment,
+keeps the stored chain up to the new reference group when that group is a
+link of it (same sense); the joined chain beyond `Max_Links` falls back to
+the new linking alone (decision). **B035** (3.14.1.5 stays partial for
+the SR data entry, B015): reason `Data_Entry_Movement` of
+`EVC_Brake_Commands` (3.18.3.3.1), from `EVC_Mission.Modifying_Train_Data`
+(DMI action 21 after the start of mission, in FS AD LS SR OS UN SN, until
+the Train Data are entered, action 16, the end of mission or another
+mode); emergency brake released at standstill after the acknowledgement,
+revoked in NP SB SH (4.12.1.2) and IS; TIU reason "procedure". The DMI
+does not report a Train Data window left by its close button (B220,
+protocol: the brake then comes on the next movement, the safe side).
+**B039**: 3.14.1.7.6 is the safe consist length of Supervised Manoeuvre,
+deferred with 4.4.21.1.12 `[E5 authority]`; 3.14.3.6 todo (B221: gate the
+balise information during an unauthorised direction movement in
+`EVC_Core`); 3.12.2.4 todo (B034 open; the rows of 3.12.2.3 still defer
+to "E4" as well). Scenarios: `Scenario_Odometer_Accuracy` (3 checks),
+`Scenario_Linking_Replacement`, `Scenario_Train_Data_Movement`.

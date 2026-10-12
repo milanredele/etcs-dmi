@@ -135,6 +135,7 @@ begin
    Scenario_Position_First_Group;
    Scenario_Linking;
    Scenario_Linking_Errors;
+   Scenario_Linking_Replacement;
    Scenario_Single_Balise;
    Scenario_Geo;
    Scenario_Geo_Rejected_In_SH;
@@ -212,6 +213,7 @@ begin
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;
    Scenario_E4_SoM_Other_Levels;
+   Scenario_Train_Data_Movement;
    Scenario_E4_SR_Distance;
    Scenario_E4_Level_Transition_0;
    Scenario_E4_Level_Ack_Again;
