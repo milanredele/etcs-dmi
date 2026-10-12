@@ -24,6 +24,7 @@ with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Sessions;
+with EVC_Track_Conditions;
 with EVC_Test_Modes;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
@@ -511,6 +512,71 @@ package body EVC_Test_Sessions is
              "indication: the requests stopped, no start of mission: "
              & """No Connection"" (3.5.7.4, Table 2 [3])");
    end Scenario_Session_Indication;
+
+   --  3.5.4.4, 3.5.7.5 Table 2 [7], 3.12.1.2.1.5 (e5/onboard-misc, B271):
+   --  the connection lost while the engine overlaps an announced radio
+   --  hole: "No Connection" and no attempt to set it up again before the
+   --  engine has left the hole, then the attempts as in 3.5.4.2
+   procedure Scenario_Session_Radio_Hole is
+      use type EVC_Sessions.Indication_T;
+      C   : T68.Packet_T;
+      Any : Boolean := False;
+
+      function Requested return Boolean is
+        (for some N in 1 .. Radio_Outputs => Is_Request (N, 1));
+
+      --  Steps of 10 m, Any: a set-up request on the way
+      procedure Go (Steps : Natural) is
+      begin
+         Any := False;
+         for I in 1 .. Steps loop
+            Step_X (1000);
+            Any := Any or else Requested;
+         end loop;
+      end Go;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      --  the group at 200 m announces a radio hole from 300 m to 500 m
+      Add_Group (Group (20, 200));
+      C.Q_DIR := 2;
+      C.Q_SCALE := 1;
+      C.Q_TRACKINIT := 0;
+      C.Has_D_TRACKCOND := True;
+      C.D_TRACKCOND := 100;
+      C.L_TRACKCOND := 200;
+      C.M_TRACKCOND := 4;
+      Carry (Track_N, 0, C);
+      Run_X (15_000);
+      Establish (1);
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Up
+             and then not EVC_Track_Conditions.Engine_In_Radio_Hole,
+             "radio hole: the session set up before the hole");
+      Run_X (35_000);
+      Check (EVC_Track_Conditions.Engine_In_Radio_Hole
+             and then EVC_Sessions.Indication = EVC_Sessions.Connection_Up,
+             "radio hole: the engine overlaps the announced radio hole "
+             & "(3.12.1.2.1.5), the connection still up");
+      Give_Radio_Event (1, Connection_Lost);
+      Stand;
+      Check (EVC_Sessions.Indication = EVC_Sessions.No_Connection
+             and then R.Info (1).State = R.Connection_Lost
+             and then not Requested,
+             "radio hole: the connection lost in it: ""No Connection"" "
+             & "(Table 2 [7]), no attempt to set it up again (3.5.4.4)");
+      Go (14);
+      Check (not Any and then EVC_Track_Conditions.Engine_In_Radio_Hole,
+             "radio hole: no attempt while the engine overlaps it");
+      Go (4);
+      Check (Any and then not EVC_Track_Conditions.Engine_In_Radio_Hole,
+             "radio hole: set up again once the engine has left it "
+             & "(3.5.4.4)");
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Check (EVC_Sessions.Indication = EVC_Sessions.Connection_Up
+             and then R.Info (1).State = R.Established,
+             "radio hole: the connection up again (Table 2 [4])");
+   end Scenario_Session_Radio_Hole;
 
    ---------------------------------------------------------------------
    --  Phase 2 (e5/session-3): the level 2 start and end of mission

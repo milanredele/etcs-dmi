@@ -1621,8 +1621,9 @@ is
 
    --  Phase E5: the context of the cycle for the halves of the radio
    function Radio_Context return EVC_Radio.Context_T is
-     ((Mode => Current_Mode, Now_Ms => Unsigned_64 (Clock_Ms)))
-     with Global => (Current_Mode, Clock_Ms);
+     ((Mode       => Current_Mode, Now_Ms => Unsigned_64 (Clock_Ms),
+       Radio_Hole => EVC_Track_Conditions.Engine_In_Radio_Hole))
+     with Global => (Current_Mode, Clock_Ms, EVC_Track_Conditions.State);
 
    --  5a. Phase E5, after the levels and the mission: the session and
    --  link half, then the authority half (the sessions, the reports and
@@ -1638,7 +1639,8 @@ is
                                 EVC_Train_Inputs.State,
                                 EVC_Procedures.State,
                                 EVC_Mission.State, EVC_Train_Data.State,
-                                EVC_Config.State),
+                                EVC_Config.State,
+                                EVC_Track_Conditions.State),
                      In_Out => (EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State, EVC_Position.State,
@@ -2844,7 +2846,8 @@ is
    procedure Send_Radio
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State, EVC_Train_Data.State),
+                                EVC_Levels.State, EVC_Train_Data.State,
+                                EVC_Track_Conditions.State),
                      In_Out => (EVC_Sessions.State,
                                 EVC_Radio_Authority.State, EVC_Radio.State,
                                 EVC_Radio.Queue, EVC_Outbox.Queue))
@@ -2871,7 +2874,8 @@ is
                                 EVC_Text_Messages.State,
                                 EVC_LS_Display.State,
                                 EVC_Driver_Requests.State,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State,
+                                EVC_Track_Conditions.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
                                 EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
@@ -2914,11 +2918,12 @@ is
    --  the train position and the level become valid; a cold movement
    --  detected or the information not available, the table of priority
    --  of the trackside supported levels is deleted and the rest stays
-   --  invalid until validated otherwise (the start of mission)
+   --  invalid until validated otherwise (the start of mission);
+   --  e5/onboard-misc (B272): no cold movement, the RBC contact too
    procedure Revalidate_Kept
      with Global => (Input  => EVC_Odometry.State,
                      In_Out => (Kept_Pending, EVC_Levels.State,
-                                EVC_Position.State)),
+                                EVC_Position.State, EVC_Radio.State)),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
@@ -2936,6 +2941,7 @@ is
          if EVC_Odometry.Cold = EVC_Odometry.No_Cold_Movement then
             EVC_Levels.Revalidate;
             EVC_Position.Revalidate;
+            EVC_Radio.Revalidate_Contact;
          else
             EVC_Levels.Delete_Table;
          end if;

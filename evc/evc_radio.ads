@@ -287,6 +287,9 @@ is
    type Context_T is record
       Mode   : Mode_T := M_NP;
       Now_Ms : Time_Ms_T := 0;
+      --  3.5.4.4, 3.5.7.5 Table 2 [7] (e5/onboard-misc): the engine
+      --  overlaps an announced radio hole (EVC_Track_Conditions)
+      Radio_Hole : Boolean := False;
    end record;
 
    ---------------------------------------------------------------------
@@ -316,6 +319,18 @@ is
                   and then Contact.RBC = C.RBC
                   and then Contact.Radio = C.Radio
                   and then not Contact.Valid
+                  and then Sessions = Sessions'Old
+                  and then Supervising = Supervising'Old
+                  and then Accepting = Accepting'Old;
+
+   --  4.11.1.1 table, RBC contact information (e5/onboard-misc, B272): no
+   --  cold movement occurred, the contact kept over No Power is valid
+   procedure Revalidate_Contact
+     with Global => (In_Out => State),
+          Post => Contact.Known = Contact.Known'Old
+                  and then Contact.RBC = Contact.RBC'Old
+                  and then Contact.Radio = Contact.Radio'Old
+                  and then Contact.Valid = Contact.Known
                   and then Sessions = Sessions'Old
                   and then Supervising = Supervising'Old
                   and then Accepting = Accepting'Old;

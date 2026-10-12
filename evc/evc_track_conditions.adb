@@ -7,7 +7,7 @@ with EVC_Location;   use EVC_Location;
 package body EVC_Track_Conditions
   with SPARK_Mode => On,
        Refined_State => (State => (Cond_S, Traction_S, BMM_S, Serial,
-                                   Platform_S, Current_S))
+                                   Platform_S, Current_S, Hole_S))
 is
 
    Cond_S     : Store_T := Empty_Store;
@@ -19,6 +19,8 @@ is
    --  phase E4: packets 69 and 40
    Platform_S : Store_T := Empty_Store;
    Current_S  : Store_T := Empty_Store;
+   --  e5/onboard-misc: Overlaps_Radio_Hole at the last Evaluate
+   Hole_S     : Boolean := False;
 
    function Conditions return Store_T is (Cond_S)
      with Refined_Global => Cond_S;
@@ -37,6 +39,24 @@ is
    function Current_Changes return Store_T is (Current_S)
      with Refined_Global => Current_S;
 
+   --  3.5.4.4, 3.12.1.2.1.5: the estimated front end in [start, end) of a
+   --  radio hole, in the store's sense (the train's, else nothing known)
+   function Overlaps_Radio_Hole (T : Origin_Table_T; Train : Train_Frame_T)
+     return Boolean
+   is (Train.Valid and then Cond_S.Sense = Train.Sense
+       and then (for some I in 1 .. Cond_S.Count =>
+                   Cond_S.List (I).Value = 4
+                   and then A (Cond_S.Sense, Train.Est_Front)
+                     >= A (Cond_S.Sense,
+                           Frame (T, Cond_S.List (I).Start, Estimated_Item))
+                   and then A (Cond_S.Sense, Train.Est_Front)
+                     < A (Cond_S.Sense,
+                          Frame (T, Cond_S.List (I).Finish, Estimated_Item))))
+     with Refined_Global => Cond_S;
+
+   function Engine_In_Radio_Hole return Boolean is (Hole_S)
+     with Refined_Global => Hole_S;
+
    procedure Clear is
    begin
       Cond_S := Empty_Store;
@@ -45,6 +65,7 @@ is
       Serial := 1;
       Platform_S := Empty_Store;
       Current_S := Empty_Store;
+      Hole_S := False;
    end Clear;
 
    -----------
@@ -481,6 +502,7 @@ is
    begin
       Ind := (Count => 0, List => (others => (others => <>)));
       Orders := (Count => 0, List => (others => (others => <>)));
+      Hole_S := Overlaps_Radio_Hole (T, Train);
       if not Train.Valid then
          return;
       end if;

@@ -76,6 +76,11 @@ is
       Contact_Info.Valid := False;
    end Restore_Contact;
 
+   procedure Revalidate_Contact is
+   begin
+      Contact_Info.Valid := Contact_Info.Known;
+   end Revalidate_Contact;
+
    ---------------------------------------------------------------------
    --  EVC_Sessions
    ---------------------------------------------------------------------

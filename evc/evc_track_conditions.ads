@@ -129,6 +129,23 @@ is
    function Current_Changes return Store_T
      with Global => State;
 
+   --  3.5.4.4, 3.5.7.5 Table 2 [7], 3.12.1.2.1.5 (e5/onboard-misc, B271):
+   --  the engine overlaps an announced radio hole (M_TRACKCOND 4), its
+   --  start and end at their estimated locations. Decision: the engine's
+   --  front and rear ends are both taken as the estimated front end, as
+   --  in Evaluate (the on-board knows no engine length; 3.12.1.2.1.5.1:
+   --  the radio antennas are on the engine)
+   function Overlaps_Radio_Hole (T : Origin_Table_T; Train : Train_Frame_T)
+     return Boolean
+     with Global => State,
+          Post => (if Overlaps_Radio_Hole'Result
+                   then Train.Valid and then Conditions.Count > 0);
+
+   --  Overlaps_Radio_Hole at the last Evaluate (the train of that cycle),
+   --  for the session half (EVC_Sessions through EVC_Radio.Context_T)
+   function Engine_In_Radio_Hole return Boolean
+     with Global => State;
+
    procedure Clear
      with Global => (Output => State),
           Post => Conditions.Count = 0 and then Traction_Changes.Count = 0

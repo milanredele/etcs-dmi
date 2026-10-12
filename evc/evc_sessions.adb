@@ -28,6 +28,7 @@ package body EVC_Sessions
                                    Requesting, Timer_On, Timer_Since,
                                    Shown, SB_Shown, Status_List, Status_N,
                                    Noted, Noted_Code, Mode_Session,
+                                   In_Hole,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Mission.State,
                                    EVC_Sessions.Network.State,
@@ -163,6 +164,9 @@ is
    Timer_On     : Flag_Table_T := (others => False);
    Timer_Since  : Time_Table_T := (others => 0);
    Shown        : Session_T := Session_T'First;
+   --  3.5.4.4 (e5/onboard-misc, B271): the engine overlaps an announced
+   --  radio hole (EVC_Radio.Context_T.Radio_Hole of the last Evaluate)
+   In_Hole      : Boolean := False;
 
    --  3.16.3.4.4: the service brake of T_NVCONTACT shown to the driver
    SB_Shown     : Boolean := False;
@@ -512,6 +516,7 @@ is
       Timer_On := (others => False);
       Timer_Since := (others => 0);
       Shown := Session_T'First;
+      In_Hole := False;
       SB_Shown := False;
       Status_List := (others => (others => <>));
       Status_N := 0;
@@ -580,6 +585,11 @@ is
                   R.Set_State (S, R.Connection_Lost);
                   Links (S).Since := Now_Ms;
                   Links (S).Request_Due := True;
+                  --  Table 2 [7]: lost in a radio hole, "No Connection"
+                  --  (no attempt before its end, 3.5.4.4)
+                  if In_Hole then
+                     Ind_Stopped (S, Final_SoM => False);
+                  end if;
                when R.Initiating =>
                   Set_Up_Failed (S);
                when R.Terminating =>
@@ -1164,10 +1174,33 @@ is
       Network.Take_Order (Q_Type, NID_MN);
    end Take_Network_Order;
 
+   --  3.5.4.4 (e5/onboard-misc, B271): the engine reaching an announced
+   --  radio hole stops the attempts in progress, Table 2 [3] / [6] (the
+   --  requests stopped for another reason than the set-up: "No
+   --  Connection", the timer of 3.5.7.4 stopped). Decision: a request
+   --  already with Euroradio is not withdrawn; its result is taken (a
+   --  set-up kept; a failure makes the request due again, sent once the
+   --  engine has left the hole, Produce_Session)
+   procedure Stop_Attempts
+     with Global => (In_Out => (Ind, Requesting, Timer_On))
+   is
+   begin
+      for S in Session_T loop
+         pragma Loop_Invariant (True);
+         if Requesting (S) then
+            Ind_Stopped (S, Final_SoM => False);
+         end if;
+      end loop;
+   end Stop_Attempts;
+
    procedure Evaluate (Ctx : EVC_Radio.Context_T) is
       N : constant R.Session_Count_T := R.Sessions;
    begin
       Held := (others => False);
+      if Ctx.Radio_Hole and then not In_Hole then
+         Stop_Attempts;
+      end if;
+      In_Hole := Ctx.Radio_Hole;
       Mode_Session_Order;
       Apply_Order (Ctx.Now_Ms, Ctx.Mode);
       for S in Session_T loop
@@ -1341,7 +1374,7 @@ is
    procedure Produce_Session (S : Session_T; T : T_TRAIN_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, R.State, R.Queue, Ind,
                                 Requesting, Timer_On, Timer_Since),
-                     Input  => Network.State)
+                     Input  => (Network.State, In_Hole))
    is
       L : Link_T renames Links (S);
    begin
@@ -1351,8 +1384,10 @@ is
          Ind_Released (S);
       end if;
       --  3.5.6.7: no request while the registration conditions do not
-      --  hold; it stays due (e5/registration, decision 5)
-      if L.Request_Due and then Network.Ready then
+      --  hold; it stays due (e5/registration, decision 5); 3.5.4.4: nor
+      --  while the engine overlaps an announced radio hole, set up again
+      --  once it has left it
+      if L.Request_Due and then Network.Ready and then not In_Hole then
          R.Request_Set_Up (S, R.Info (S).RBC, R.Info (S).Radio, False);
          L.Request_Due := False;
          Count (L.Attempts);
