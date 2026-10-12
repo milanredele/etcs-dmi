@@ -2115,6 +2115,44 @@ is
       Check_Linking := Check;
    end Set_Linking_Context;
 
+   ---------------------------
+   -- Take_Released_Linking --
+   ---------------------------
+
+   procedure Take_Released_Linking (R     : in out ETCS_Bits.Reader;
+                                    Group : Identity_T;
+                                    S     : Sense_T)
+   is
+      P  : ETCS_Track_Packets.P5.Packet_T;
+      L  : EVC_Linking.Linking_T;
+      OK : Boolean;
+      K  : EVC_Linking.Link_Count_T := 0;
+   begin
+      ETCS_Track_Packets.P5.Decode (R, P, OK);
+      if not OK then
+         return;
+      end if;
+      EVC_Linking.From_Packet (P, Group, S, L, OK);
+      if not OK or else not SOLR_A.Valid then
+         return;
+      end if;
+      if SOLR_A.Id /= Group then
+         K := EVC_Linking.Find (L, SOLR_A.Id, 1);
+         if K = 0 then
+            return;
+         end if;
+      end if;
+      Links := L;
+      Links.Solr := K;
+      Links.Expected := K + 1;
+      for Step in 1 .. EVC_Linking.Max_Links loop
+         pragma Loop_Invariant (True);
+         exit when not EVC_Linking.Checked (Links)
+           or else not Window_Passed (Links.Expected, Margin => False);
+         Next_Window;
+      end loop;
+   end Take_Released_Linking;
+
    --------------------
    -- Delete_Linking --
    --------------------

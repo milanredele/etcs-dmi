@@ -2,6 +2,8 @@
 --  Phase E5 (e5/levels): see the spec.
 
 with ETCS_Track_Packets.P41;
+with ETCS_Track_Packets.P138;
+with ETCS_Track_Packets.P139;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_DMI_Port;
@@ -9,6 +11,8 @@ with EVC_Level_Sessions;
 with EVC_Levels;
 with EVC_Modes;              use EVC_Modes;
 with EVC_Movement_Authority;
+with EVC_Position;
+with EVC_Procedures;
 with EVC_Ports;              use EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Authority;
@@ -17,6 +21,7 @@ with EVC_Stored_Information;
 with EVC_Test_Authority;
 with EVC_Test_Support;       use EVC_Test_Support;
 with Interfaces;             use Interfaces;
+with Sim_Telegrams;
 
 package body EVC_Test_Levels is
 
@@ -182,6 +187,49 @@ package body EVC_Test_Levels is
              "levels: the immediate order to level 1: the kept MA used, "
              & "FS in the cycle (4.8.5.5, 4.6.3 [25])");
    end Scenario_L1_Balise_Buffer_From_L0;
+
+   --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: the packets the units
+   --  take themselves, read in level 0 with level 1 announced: the
+   --  linking (packet 5, EVC_Position) and the reversing area and
+   --  supervision (138, 139, EVC_Procedures) of the group 20 kept with
+   --  its MA, taken at the immediate order of the group 30, not before
+   procedure Scenario_L1_Balise_Buffer_Units is
+      W5, W9 : Writer_T;
+      OK     : Boolean;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Add_Group (Group (10, 50));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, 250));
+      Add_Group (With_Links (Group (20, 100),
+                             Link_To ((50, 1000), (30, 40))));
+      Carry (Track_N, 0, MA_Of ((1500, 200)));
+      Carry (Track_N, 1, Grad ((1 => (0, 0), 2 => (2500, End_Mark))));
+      Carry (Track_N, 1, SSP ((1 => (0, 100, False),
+                               2 => (2500, End_Mark, False))));
+      ETCS_Track_Packets.P138.Encode
+        (Sim_Telegrams.Reversing_Area (D_M => 100, L_M => 200), W5, OK);
+      Finish_Carry (Track_N, 1, W5, OK);
+      ETCS_Track_Packets.P139.Encode
+        (Sim_Telegrams.Reversing_Supervision (D_M => 150, Kmh => 15), W9,
+         OK);
+      Finish_Carry (Track_N, 1, W9, OK);
+      Add_Group (Group (30, 150));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, -1));
+      Run_X (12_000);
+      Check (SI.Balise_Buffered = 1
+             and then not EVC_Procedures.Reversing_Area_Known
+             and then not EVC_Position.Linking.Stored,
+             "levels: level 0, level 1 announced: the group's linking and "
+             & "reversing area kept, not taken (4.8.3 [1])");
+      Run_X (20_000);
+      Check (EVC_Levels.Level = L1 and then EVC_Core.Mode = M_FS
+             and then EVC_Procedures.Reversing_Area_Known
+             and then EVC_Position.Linking.Stored
+             and then Natural (EVC_Position.Linking.Ref_Id.NID_BG) = 20,
+             "levels: at the transition to level 1 the kept linking and "
+             & "reversing area taken (4.8.5.5)");
+   end Scenario_L1_Balise_Buffer_Units;
 
    procedure Scenario_L1_Balise_Buffer_Deleted is
    begin

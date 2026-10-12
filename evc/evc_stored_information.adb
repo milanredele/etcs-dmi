@@ -1,8 +1,6 @@
 --  ETCS on-board (EVC)
 --  The stored information of the on-board, implementation.
 
-with ETCS_Bits;
-with ETCS_Catalogue;
 with ETCS_Packet_Index;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P12;
@@ -1243,7 +1241,9 @@ is
                                     Start_Ms => M.Start_Ms,
                                     Linked   => Linked,
                                     Has_41   => Has_41,
-                                    Count    => 0));
+                                    Count    => 0,
+                                    --  set by Keep_Unit_Packets
+                                    Group    => (others => <>)));
             Set_Open := True;
          end if;
          EVC_Position.Open_Taken_Packet (J, P, R);
@@ -1273,6 +1273,75 @@ is
       EVC_Position.Open_Taken_Packet (J, P, R);
       Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx, Now_Ms);
    end Take_Packet;
+
+   --  e5/onboard-gaps (B070), 4.8.3 [1]: the packets a unit takes itself
+   --  (the linking, packet 5, by EVC_Position; the reversing area and
+   --  supervision, 138 and 139, by EVC_Procedures) of the group Tk read
+   --  in level 0 or 2 with level 1 announced, kept in the group's set like
+   --  the stores' packets. Decision: the units do not take them then
+   --  (EVC_Core gives them the same verdict, EVC_Acceptance.Stored); at
+   --  the transition EVC_Core hands them over (Balise_Set_* below) before
+   --  Release_Balise_Buffer deletes the sets; Evaluate deletes them with
+   --  the stores' ones when level 1 is no longer announced (4.8.5.4 a)
+   procedure Keep_Unit_Packets (Tk       : EVC_Position.Taken_T;
+                                M        : Message_T;
+                                Ctx      : Mode_Context_T;
+                                Has_41   : Boolean;
+                                Open     : Boolean)
+     with Global => (In_Out => Balise_Buffer.State,
+                     Input  => (EVC_Position.State, EVC_Levels.State,
+                                EVC_Train_Data.State))
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""*"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R : Reader_T;
+      A : constant EVC_Acceptance.Context_T :=
+        Acceptance (Ctx, Tk.Group.Linked, Has_41);
+      I : EVC_Acceptance.Info_T;
+      --  the group's set, opened by Take_Packet or here
+      Set_Open : Boolean := Open;
+   begin
+      for J in Tk.First .. Tk.First + Tk.Count - 1 loop
+         pragma Loop_Invariant (True);
+         for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
+            pragma Loop_Invariant (True);
+            declare
+               E : constant ETCS_Packet_Index.Entry_T :=
+                 EVC_Position.Taken_Entry (J, P);
+            begin
+               I := (if E.Kind = ETCS_Catalogue.Track_P5
+                     then EVC_Acceptance.Linking
+                     elsif E.Kind = ETCS_Catalogue.Track_P138
+                     then EVC_Acceptance.Reversing_Area
+                     else EVC_Acceptance.Reversing_Supervision);
+               if E.Kind in ETCS_Catalogue.Track_P5
+                          | ETCS_Catalogue.Track_P138
+                          | ETCS_Catalogue.Track_P139
+                 and then EVC_Position.Valid_For
+                            (E.Q_DIR, Tk.Group.Orientation, Tk.T)
+                 and then EVC_Acceptance.Stored (I, A)
+               then
+                  if not Set_Open then
+                     Balise_Buffer.New_Set ((Origin   => M.Origin,
+                                             Sense    => M.Sense,
+                                             Start_Ms => M.Start_Ms,
+                                             Linked   => Tk.Group.Linked,
+                                             Has_41   => Has_41,
+                                             Count    => 0,
+                                             Group    => Tk.Group.Id));
+                     Set_Open := True;
+                  end if;
+                  EVC_Position.Open_Taken_Packet (J, P, R);
+                  Balise_Buffer.Add_Packet (E.Kind, R);
+               end if;
+            end;
+         end loop;
+      end loop;
+      if Set_Open then
+         Balise_Buffer.Set_Group (Tk.Group.Id);
+      end if;
+   end Keep_Unit_Packets;
 
    --  Group G of the position's last Update, as message number Msg_Count
    --  (No_Inline: GCC inlines a subprogram called once, and the decoded
@@ -1352,6 +1421,7 @@ is
             end loop;
          end loop;
       end loop;
+      Keep_Unit_Packets (Tk, M, Ctx, Has_41, Set_Open);
    end Take_Group;
 
    --  4.8.5.6 b) (e5/balise-buffer): the set S of the balise transition
@@ -2497,6 +2567,40 @@ is
 
    function Balise_Buffered return Natural is (Balise_Buffer.Count)
      with Refined_Global => Balise_Buffer.State;
+
+   function Balise_Set_Packets (S : Positive) return Natural is
+     (Balise_Buffer.Info (S).Count)
+     with Refined_Global => Balise_Buffer.State;
+
+   function Balise_Set_Kind (S, P : Positive)
+     return ETCS_Catalogue.Packet_Kind_T
+   is (Balise_Buffer.Kind (S, P))
+     with Refined_Global => Balise_Buffer.State;
+
+   function Balise_Set_Group (S : Positive)
+     return EVC_Balise_Groups.Identity_T
+   is (Balise_Buffer.Info (S).Group)
+     with Refined_Global => Balise_Buffer.State;
+
+   function Balise_Set_Sense (S : Positive) return Sense_T is
+     (Balise_Buffer.Info (S).Sense)
+     with Refined_Global => Balise_Buffer.State;
+
+   --  the origin's estimated position (its offset 0), the frame
+   --  position 0 when the origin is no longer known
+   function Balise_Set_X (S : Positive) return Dist_T is
+     (Frame (Origin_Table,
+             (Origin => Balise_Buffer.Info (S).Origin, Offset => 0),
+             Estimated_Item))
+     with Refined_Global => (Balise_Buffer.State, EVC_Origins.State);
+
+   procedure Open_Balise_Packet (S, P : Positive;
+                                 R    : in out ETCS_Bits.Reader)
+     with Refined_Global => Balise_Buffer.State
+   is
+   begin
+      Balise_Buffer.Open (S, P, R);
+   end Open_Balise_Packet;
 
    ---------------------------
    -- Release_Balise_Buffer --

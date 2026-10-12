@@ -4,8 +4,6 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
-with ETCS_Bits;
-with ETCS_Catalogue;
 with ETCS_Packet_Index;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P49;
@@ -298,6 +296,8 @@ is
      with Refined_Global => (Ovr, Ctx);
    function Reversing_Possible return Boolean is (Rev_Possible)
      with Refined_Global => Rev_Possible;
+   function Reversing_Area_Known return Boolean is (Rev.Area)
+     with Refined_Global => Rev;
    function Train_Data_Revalidation return Boolean is (TD_Revalidate)
      with Refined_Global => TD_Revalidate;
    function BMM_Inhibited return Boolean is (BMM_On)
@@ -473,13 +473,6 @@ is
           when ETCS_Catalogue.Track_P12  => EVC_Acceptance.Signalling_Speed,
           when others => EVC_Acceptance.Movement_Authority);
 
-   --  A distance of the group message of the group taken Tk, from its
-   --  location reference along its sense, as a frame position (from the
-   --  anchor of the group: its origin of EVC_Origins may be released in
-   --  the cycle when no store refers to it)
-   function At_D (Tk : EVC_Position.Taken_T; D : Length_T) return Dist_T is
-     (Advance (Tk.Group.X, Tk.S, D));
-
    --  Packet 132, danger for Shunting information (7.4.2.28; 4.4.8.1.1
    --  c): Q_ASPECT "stop if in SH"
    procedure Take_P132 (R : in out Reader_T)
@@ -595,8 +588,11 @@ is
    end Take_P12;
 
    --  Packet 138, the reversing area information (7.4.2.34; 3.15.4.1.1:
-   --  a new area replaces the stored one), from the group taken Tk
-   procedure Take_P138 (R : in out Reader_T; Tk : EVC_Position.Taken_T)
+   --  a new area replaces the stored one), from a group whose location
+   --  reference is at At_X, its distances along S
+   procedure Take_P138 (R    : in out ETCS_Bits.Reader;
+                        At_X : Dist_T;
+                        S    : Sense_T)
      with Global => (In_Out => (Rev, Events, Event_N))
    is
       X  : ETCS_Track_Packets.P138.Packet_T;
@@ -612,9 +608,9 @@ is
               Scaled (Natural (X.L_REVERSEAREA), Natural (X.Q_SCALE));
          begin
             Rev.Area := True;
-            Rev.Sense := Tk.S;
-            Rev.Start := At_D (Tk, S0);
-            Rev.Finish := At_D (Tk, Add (S0, L));
+            Rev.Sense := S;
+            Rev.Start := Advance (At_X, S, S0);
+            Rev.Finish := Advance (At_X, S, Add (S0, L));
             Record_Event (Event_Reversing, 1, 0);
          end;
       end if;
@@ -622,7 +618,7 @@ is
 
    --  Packet 139, the reversing supervision information (7.4.2.35;
    --  3.15.4.3: replaces the distance and the speed)
-   procedure Take_P139 (R : in out Reader_T)
+   procedure Take_P139 (R : in out ETCS_Bits.Reader)
      with Global => (In_Out => (Rev, Events, Event_N))
    is
       X  : ETCS_Track_Packets.P139.Packet_T;
@@ -668,11 +664,30 @@ is
       elsif Kind = ETCS_Catalogue.Track_P12 then
          Take_P12 (R);
       elsif Kind = ETCS_Catalogue.Track_P138 then
-         Take_P138 (R, Tk);
+         Take_P138 (R, Tk.Group.X, Tk.S);
       elsif Kind = ETCS_Catalogue.Track_P139 then
          Take_P139 (R);
       end if;
    end Take_Packet;
+
+   -------------------
+   -- Take_Released --
+   -------------------
+
+   procedure Take_Released (Kind : ETCS_Catalogue.Packet_Kind_T;
+                            R    : in out ETCS_Bits.Reader;
+                            X    : Dist_T;
+                            S    : Sense_T)
+     with Refined_Global => (In_Out => (Rev, Events, Event_N))
+   is
+      use type ETCS_Catalogue.Packet_Kind_T;
+   begin
+      if Kind = ETCS_Catalogue.Track_P138 then
+         Take_P138 (R, X, S);
+      elsif Kind = ETCS_Catalogue.Track_P139 then
+         Take_P139 (R);
+      end if;
+   end Take_Released;
 
    procedure Take_Packets (C : Context_T)
      with Global => (Input  => EVC_Position.State,
@@ -717,6 +732,12 @@ is
                        --  4.8 (EVC_Acceptance)
                        and then EVC_Acceptance.Accepted
                                   (Info_Of (E.Kind), C.Filters)
+                       --  4.8.3 [1] (B070): kept in the balise
+                       --  transition buffer instead (EVC_Stored_
+                       --  Information.Keep_Unit_Packets), taken at the
+                       --  transition (Take_Released)
+                       and then not EVC_Acceptance.Stored
+                                      (Info_Of (E.Kind), C.Filters)
                      then
                         Take_Packet (E.Kind, J, P, Tk);
                      end if;

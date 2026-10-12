@@ -3,6 +3,8 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
+with ETCS_Bits;
+with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Telegram;
 with ETCS_Variables;
@@ -982,7 +984,13 @@ is
       --  of 4.5.2 (3.4.4.2.1.1 b)
       EVC_Position.Set_Linking_Context
         (Accept_Info => EVC_Acceptance.Accepted
-                          (EVC_Acceptance.Linking, Acceptance_Context),
+                          (EVC_Acceptance.Linking, Acceptance_Context)
+                        --  4.8.3 [1] (B070): kept in the balise
+                        --  transition buffer instead, taken at the
+                        --  transition (Release_Unit_Packets)
+                        and then not EVC_Acceptance.Stored
+                                       (EVC_Acceptance.Linking,
+                                        Acceptance_Context),
          Check       => Linking_Check_Mode (Current_Mode),
          --  4.8.4.2: packet 79 of a balise group in the mode's column
          Accept_P79  => EVC_Acceptance.Accepted
@@ -1141,6 +1149,70 @@ is
       end if;
    end Evaluate_Stored_Information;
 
+   --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: at the transition to
+   --  level 1, the packets of the balise transition buffer the units take
+   --  themselves, before the stores' release deletes the sets: the
+   --  linking to EVC_Position (it replaces the RBC's now), the reversing
+   --  packets 138, 139 to EVC_Procedures, in the order received
+   procedure Release_Unit_Packets
+     with Global => (Input  => (EVC_Stored_Information.State,
+                                EVC_Origins.State, EVC_Odometry.State),
+                     In_Out => (EVC_Position.State, EVC_Procedures.State)),
+          Post => EVC_Position.Orientation
+                    = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by * but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      K : ETCS_Catalogue.Packet_Kind_T;
+      O0 : constant EVC_Distances.Sense_T := EVC_Position.Orientation;
+      C0 : constant EVC_Position.Cab_T := EVC_Position.Active_Cab;
+      L0 : constant EVC_Location.Anchor_T := EVC_Position.LRBG;
+      DO0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Over;
+      DU0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Under;
+      use type ETCS_Catalogue.Packet_Kind_T;
+   begin
+      for S in 1 .. EVC_Stored_Information.Balise_Buffered loop
+         pragma Loop_Invariant
+           (EVC_Position.Orientation = O0
+            and then EVC_Position.Active_Cab = C0
+            and then EVC_Position.LRBG = L0
+            and then EVC_Position.Doubt_Over = DO0
+            and then EVC_Position.Doubt_Under = DU0);
+         for P in 1 .. EVC_Stored_Information.Balise_Set_Packets (S) loop
+            pragma Loop_Invariant
+              (EVC_Position.Orientation = O0
+               and then EVC_Position.Active_Cab = C0
+               and then EVC_Position.LRBG = L0
+               and then EVC_Position.Doubt_Over = DO0
+               and then EVC_Position.Doubt_Under = DU0);
+            K := EVC_Stored_Information.Balise_Set_Kind (S, P);
+            if K in ETCS_Catalogue.Track_P5 | ETCS_Catalogue.Track_P138
+                  | ETCS_Catalogue.Track_P139
+            then
+               EVC_Stored_Information.Open_Balise_Packet (S, P, R);
+               if K = ETCS_Catalogue.Track_P5 then
+                  EVC_Position.Take_Released_Linking
+                    (R, EVC_Stored_Information.Balise_Set_Group (S),
+                     EVC_Stored_Information.Balise_Set_Sense (S));
+               else
+                  EVC_Procedures.Take_Released
+                    (K, R, EVC_Stored_Information.Balise_Set_X (S),
+                     EVC_Stored_Information.Balise_Set_Sense (S));
+               end if;
+            end if;
+         end loop;
+      end loop;
+   end Release_Unit_Packets;
+
    --  3a. 4.8.5.5 "at the same time" (e5/levels): the level became 2 in
    --  this cycle (by an order of the stored information or at the
    --  location of an announced one, Evaluate_Modes_And_Levels): the
@@ -1148,10 +1220,11 @@ is
    --  and taken by the stores before the procedures and the mode machine
    --  of the cycle (an MA kept for the transition: no trip by [39])
    procedure Release_Transition_Buffer
-     with Global => (Input  => (Clock_Ms, Current_Mode, EVC_Position.State,
+     with Global => (Input  => (Clock_Ms, Current_Mode,
                                 EVC_Odometry.State, EVC_Train_Data.State,
                                 EVC_Train_Inputs.State, EVC_Mission.State),
                      In_Out => (Latched_RTM, EVC_Received.Store,
+                                EVC_Position.State, EVC_Procedures.State,
                                 EVC_Text_Messages.State,
                                 EVC_LS_Display.State,
                                 EVC_Origins.State,
@@ -1162,7 +1235,16 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Levels.State, EVC_Sessions.State))
+                                EVC_Levels.State, EVC_Sessions.State)),
+          Post => EVC_Position.Orientation
+                    = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
    is
       First    : constant Positive := EVC_Radio_Info.Count + 1;
       M_Status  : ETCS_Message.Status_T;
@@ -1182,6 +1264,7 @@ is
       if EVC_Levels.Switched_To (L1)
         and then EVC_Stored_Information.Balise_Buffered > 0
       then
+         Release_Unit_Packets;
          EVC_Stored_Information.Release_Balise_Buffer
            (Unsigned_64 (Clock_Ms), Ctx);
       end if;

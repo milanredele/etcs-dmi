@@ -93,6 +93,8 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
+with ETCS_Bits;
+with ETCS_Catalogue;
 with EVC_Acceptance;
 with EVC_Brake_Commands;
 with EVC_Distances;         use EVC_Distances;
@@ -246,6 +248,10 @@ is
 
    --  3.15.4.7: reversing is permitted (MSG_STATUS reversing)
    function Reversing_Possible return Boolean
+     with Global => State;
+
+   --  e5/onboard-gaps: a reversing area (packet 138) is stored
+   function Reversing_Area_Known return Boolean
      with Global => State;
 
    --  5.22.4.1: the inhibition of the BTM alarm reaction is active
@@ -408,5 +414,17 @@ is
    procedure Finish_Cycle (C : Context_T; Mode : Mode_T; S : Snapshot_T)
      with Global => (In_Out => State),
           Post => (if Mode = M_TR then Brake_Demand.EB);
+
+   --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: a packet 138 or 139
+   --  (Kind; any other kind is ignored) of a balise group read in level
+   --  0 or 2 with level 1 announced, kept in the balise transition buffer
+   --  and released at the transition to level 1 (EVC_Core): taken as at
+   --  the passage of its group, whose location reference is now at the
+   --  estimated frame position X, its distances along S
+   procedure Take_Released (Kind : ETCS_Catalogue.Packet_Kind_T;
+                            R    : in out ETCS_Bits.Reader;
+                            X    : Dist_T;
+                            S    : Sense_T)
+     with Global => (In_Out => State);
 
 end EVC_Procedures;
