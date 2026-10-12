@@ -4067,3 +4067,20 @@ sibling repository, worked: the guard is not needed there.
 
 Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`,
 35 open after this round).
+
+**Correction of the measurements of rounds 12 to 15** (2026-10-12). The
+"requests" of those subsections counted the assistant records of the
+transcripts, and one API response is recorded as several lines (a
+thinking block, then the tool call, the same message id and the same
+usage on each). Counted by message id every request but four of 1438
+carried a tool call: there were no "turns without a tool call", B021 is
+dropped, and the costs were inflated by the repeated usage. The true
+figures (requests, cost): round 12 handover-4 130 / 8.6, reports-by-
+event-2 83 / 3.8, runner-3 98 / 4.4; round 13 bookkeeping 77 / 3.7,
+jru-radio 100 / 5.1, radio-geo-buffer 106 / 6.9; round 14 balise-buffer
+143 / 12.4, authority-5 100 / 6.5, ls-display 128 / 8.5; round 15
+curves-import 115 / 6.8, runner-4 84 / 3.5, ls-display-2 136 / 7.7,
+trips-fs 138 / 9.0. The budgets of 100 to 120 tool calls were met or
+exceeded by 10 to 20 percent, as the agents' own counts said. From here
+the measurements count distinct message ids and take the usage once per
+id.
