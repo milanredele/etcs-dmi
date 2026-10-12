@@ -4998,3 +4998,31 @@ the sibling's extraction of the correction factors sheet (B230). Two
 patches wait with the briefs: B221's gate (needs a scenario that shows
 it) and B224's shorter last cycle (needs the 83 regressions understood).
 Open items: doc/BACKLOG.csv (36 open after this round).
+
+### The workbooks' integrated correction factors as cells (s076/factors-sheet, 2026-10-12)
+
+B230, in the sibling repository (branch factors-sheet, 8c1864b): stage 1
+exports the sheet "Integrated correction factors" of every workbook as
+`cell` lines with the values in force (the cached results: half of its
+step tables are formulas). Layout, the same in all 1049 workbooks: Kv_int
+of freight trains A5:B14 (speed, factor; two rows per step), the
+conventional passenger sets a (D3: deceleration <= A_NVP12) D5:E14, the
+interpolated set D18:E27 (empty unless A_NVP12 < deceleration < A_NVP23:
+only 3130237_05c SV30, 0.778), b (D29) D31:E40, Kr_int A32:B41, A_NVP12
+D44, A_NVP23 F44, Kt_int D47 (1.1 in 601 workbooks, 1 in 448); labels
+included, 113 cells a workbook. Q_NVKINT is not on the sheet. The ActiveX
+controls of the dumped sheets are readable (the persisted Value of each
+option button in xl/activeX/*.bin) and exported as `cell <sheet>!<control
+name> 0|1` after the sheet's cells: the train type (Freight_G, Freight_P,
+Passenger_P), Gamma / Lambda, the target type (Track!EoA_SvL / LoA_MRSP:
+LoA_MRSP in 354 workbooks), levels, release speed choice, the Q_NV
+permissions, EBCL, the conversion model; scroll bars are not read.
+118548 sheet cells and 47979 control values added; 772 sequence files
+change by added `cell` lines only (checked by script), testcases/,
+index.csv and testcases.csv byte-identical, `--check` green.
+
+The runner of master ignores the new lines: evc_s076_check 0 failures,
+evc_s076_run 751 / 1330 / 1109, 0 regressions, 0 improvements against
+the baseline. Left for the runner: B290 (R_Factors from the sheet,
+Kt_int compared), B291 (R_Tool_Target and the train type from the
+controls).
