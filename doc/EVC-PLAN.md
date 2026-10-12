@@ -4301,3 +4301,78 @@ A.3.12 inputs (A_EB, A_SB, A_expected_max, the CR1344 T_traction) with
 the probe turned into a tool fed by a sequence's cells (B174). The
 runner's B016 work is the three method fixes; the SV21/SV22 workbooks
 are no reference for the limit locations of a 4.0.0 on-board.
+
+### The curve probe and the residual (e5/curve-probe, 2026-10-12)
+
+The probe of the previous subsection is a tool now (B174):
+`obj/evc_curve_probe` (test/src, key=value arguments: train, target
+EOA / SvL / release or LOA, gradient, Kv_int / Kr_int / Kt_int,
+M_NVEBCL, Q_NVINHSMICPERM, Q_NVGUIPERM, confidence interval, the
+odometer's V_ura, speeds) bisects on `EVC_Core` where the status of
+MSG_SPEED_STATE reaches Indication, Overspeed, Warning, Intervention and
+where the EB comes, from the max safe and the estimated front end, with
+V_Perm / V_SBI shown on the Permitted limit. `test/tools/curve_probe.py
+<sequence> [set]` feeds it from the workbook's cells, the `track G(‰)`
+line and the packet 3 of the sequence and prints ours against the curve
+rows with the B175 margin (ours at λ F2 minus ours at the tool's F3)
+apart; `--vura 0` is the runner's exact odometer, `--nv 0` the packet 3
+that fits, `--with` keys by hand, `--breadth` the table below. Gamma
+sheets and accelerating workbook trains (D22, 3 SV30 files) are refused.
+
+**The 29 m is the speed measurement inaccuracy.** With Q_NVINHSMICPERM
+0 the ERA tool takes V_delta0 = SUBSET-041's V_ura at V_est (its
+Subset_sci control, `S41_speed_inacc`, vba-sv30-tool line 3601; the
+empty D8 cell): 2.66 km/h at 61 km/h. The on-board takes V_ura from the
+odometer (V_max − V_est, 3.13.9.3.2.1); the runner's bench reports
+V_max = V_est. With V_max = V_est + f41 the probe gives, for 3130237_07
+SV30 at 61 km/h, λ 100: I 1197 / P 833 / W 799 / SBI 765 / EBI 394 m,
+the workbook 1197.4 / 833.0 / 799.1 / 765.2 / 394.4; at λ 109 every
+limit is the B175 margin nearer (18 to 38 m by speed) and nothing else:
+the rest is within 1 m from 35 to 80 km/h, the Indication included
+(T_indication with T_bs_reduced agrees). Kt_int, A_EB / A_safe_max /
+A_SB / A_expected_max and CR1344's T_traction need no change. Not a
+defect of the on-board; the runner's bench should report the f41
+accuracy while the workbook train runs (B191).
+
+**A defect found on the way: the start of the release speed
+monitoring.** 3131040_04 SV30 (EOA, SvL +450 m, release 30 km/h): I, P,
+W, SBI within 1.4 m, but the EB 236 m before the EOA against the
+workbook's 182.6 (its StartRSM). `EVC_SDM.RSM_Start` took the full T_bs
+for SBI1 (V_release) and the full T_be / T_bs for SBI2; 3.13.9.4.7
+applies "the same formulas", so T_bs1 = T_bs2 = T_bs_reduced
+(3.13.9.3.3.3) and T_be reduced (A.3.12), at V_release with the zero
+acceleration and f41 of .6 a), b). Fixed with `Reduced_Of` / `Terms_Of`
+in advance: 175 m (0.6 m after the margin); 3131050_20 set 3
+(calculated release 39.4 km/h) 327 → 267 m against 280.8 (0.8 m).
+Scenario SDM_RSM_Start_Reduced, matrix rows 3.13.9.4.6/.7, B190. The
+runner: 3131060_18 SV30 passes; 3131050_20 SV21/SV22/SV30, 3131060_10
+SV21/SV22 and 3131060_18 SV21/SV22 now enter the RSM later than their
+step locations (SV21/SV22: no A.3.12 in their tool, B170; 3131050_20
+SV30: its step location, B173), triaged curves; baseline re-recorded:
+750 passed, 1433 failed, 1007 blocked.
+
+**Breadth** (`curve_probe.py --breadth --nv 0` over the 116 SV30
+files with a Lambda curves block, first set; 107 probed, 2 Gamma and 3
+accelerating refused, 4 without a comparable row; ours minus the workbook minus the B175 margin, m,
+nearer negative; per-row lines in obj/curve_probe_lines.txt):
+
+| limit | rows | median | nearest | furthest |
+|---|---|---|---|---|
+| I | 1202 | −0.5 | −565.8 (3131100_02, 90) | +741.5 (3130233_02, 50) |
+| P | 1103 | −0.4 | −609.0 (3130237_05, 80) | +671.6 (3130233_02, 50) |
+| W | 1199 | −0.4 | −501.2 (3131100_02, 90) | +626.4 (3130237_13, 160) |
+| SBI | 1169 | −0.4 | −501.2 (3131100_02, 90) | +626.3 (3130237_13, 160) |
+| EBI | 1120 | −0.2 | −648.9 (3131100_04, 90) | +948.0 (3131040_10, 190) |
+
+68 of the 107 sequences agree in every row within 2 m (3774 of 5793
+rows). With `--vura 0` (the runner's odometer) the medians are −5.5 to
+−7.9 m. The 39 others, by family, not traced yet (B192): the workbook
+computed with other integrated correction factors than the sequence's
+packets 3 (3130237_15: Kv 0.96 / Kt 1.0 fits to 1 m, the packets give
+0.7 / 1.1; likely 3130237_12/13/17, 3131050_06/22/24, 3131040_26); an
+EOA with SvL = EOA and a release speed (3131040_20 to _42, nine files:
+the RSM start ours further by up to 107 m); an EOA without SvL or
+release speed (3130234_07, 3130235_02/04, 3131020_02/04, 3131030_24,
+3131040_44/46/48/98, 3131060_14); several sets, gradients or targets
+(3130233_02, 3130810_02, 3131050_08, 3131060_02, 3131100_02/04/07,
+3130237_05/06, 3131040_10/12).
