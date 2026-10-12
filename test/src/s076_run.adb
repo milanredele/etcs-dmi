@@ -2570,6 +2570,42 @@ package body S076_Run is
    --  JRU
    ---------------------------------------------------------------------
 
+   --  The JRU records since the train left the location before: the
+   --  windows of the steps at this location, copied at the end of each
+   --  step and when judged (Sync_Location_Records). A status or brake
+   --  command a step of a braking curve sequence names without a limit
+   --  is judged over them when its own window missed it (B140,
+   --  Location_Judgement): the on-board's change came at this location
+   --  in the window of an earlier step
+   Max_Loc_Records : constant := 2048;
+   type Loc_Records_T is array (1 .. Max_Loc_Records) of B.JRU_Record_T;
+   Loc_Records    : Loc_Records_T;
+   Loc_Count      : Natural := 0;
+   Loc_Window     : Unsigned_64 := Unsigned_64'Last;
+   Loc_Copied     : Natural := 0;
+   Location_Scope : Boolean := False;
+
+   procedure Sync_Location_Records is
+   begin
+      if B.Window_Ms /= Loc_Window then
+         Loc_Window := B.Window_Ms;
+         Loc_Copied := 0;
+      end if;
+      for I in Loc_Copied + 1 .. B.JRU_Count loop
+         if Loc_Count < Max_Loc_Records then
+            Loc_Count := Loc_Count + 1;
+            Loc_Records (Loc_Count) := B.JRU (I);
+         end if;
+      end loop;
+      Loc_Copied := Natural'Max (Loc_Copied, B.JRU_Count);
+   end Sync_Location_Records;
+
+   --  The records judged: the step's window, or the location's
+   function Rec_Count return Natural is
+     (if Location_Scope then Loc_Count else B.JRU_Count);
+   function Rec (I : Positive) return B.JRU_Record_T is
+     (if Location_Scope then Loc_Records (I) else B.JRU (I));
+
    function Rec_Matches (R : B.JRU_Record_T; Event : Natural;
                          Sub, B3 : Integer) return Boolean is
      (R.Event = Event and then (Sub < 0 or else R.B2 = Sub)
@@ -2577,8 +2613,8 @@ package body S076_Run is
 
    function Any_Rec (Event : Natural; Sub, B3 : Integer) return Boolean is
    begin
-      for I in 1 .. B.JRU_Count loop
-         if Rec_Matches (B.JRU (I), Event, Sub, B3) then
+      for I in 1 .. Rec_Count loop
+         if Rec_Matches (Rec (I), Event, Sub, B3) then
             return True;
          end if;
       end loop;
@@ -2620,9 +2656,9 @@ package body S076_Run is
          when Mode_Acked =>
             return (Any_Rec (41, 7, M) or else Any_Rec (23, 5, M)) = Positive;
          when Brake_Change =>
-            for I in 1 .. B.JRU_Count loop
+            for I in 1 .. Rec_Count loop
                declare
-                  R : constant B.JRU_Record_T := B.JRU (I);
+                  R : constant B.JRU_Record_T := Rec (I);
                begin
                   if R.Event = 20
                     and then (R.B2 / 2**F.Bit) mod 2 = F.Value
@@ -2634,9 +2670,9 @@ package body S076_Run is
             end loop;
             return not Positive;
          when Brakes_Shown =>
-            for I in 1 .. B.JRU_Count loop
+            for I in 1 .. Rec_Count loop
                declare
-                  R : constant B.JRU_Record_T := B.JRU (I);
+                  R : constant B.JRU_Record_T := Rec (I);
                begin
                   if R.Event = 20
                     and then ((R.B2 mod 4) /= 0) = (F.Value = 1)
@@ -3016,9 +3052,9 @@ package body S076_Run is
                   end loop;
                   if Val < 0 then
                      return Check
-                       ((for some I in 1 .. B.JRU_Count => B.JRU (I).Event = 20
-                          and then (B.JRU (I).B2 / 2**Bit) mod 2
-                                   /= (B.JRU (I).Prev / 2**Bit) mod 2)
+                       ((for some I in 1 .. Rec_Count => Rec (I).Event = 20
+                          and then (Rec (I).B2 / 2**Bit) mod 2
+                                   /= (Rec (I).Prev / 2**Bit) mod 2)
                         = Positive, "JRU" & Id_S, "brake commands");
                   end if;
                   return Check (Holds ((Kind => Brake_Change, Bit => Bit,
@@ -3211,9 +3247,9 @@ package body S076_Run is
                   if not Map.Known then
                      return NJ (R_JRU_Not_Modelled, Img (Id));
                   end if;
-                  for I in 1 .. B.JRU_Count loop
-                     if Rec_Matches (B.JRU (I), Map.Event, Map.Sub, -1)
-                       and then (Map.B4 < 0 or else B.JRU (I).B4 = Map.B4)
+                  for I in 1 .. Rec_Count loop
+                     if Rec_Matches (Rec (I), Map.Event, Map.Sub, -1)
+                       and then (Map.B4 < 0 or else Rec (I).B4 = Map.B4)
                      then
                         Found := True;
                      end if;
@@ -3638,6 +3674,10 @@ package body S076_Run is
       if St.Dist_Cm /= Loc_Cm then
          Loc_Cm := St.Dist_Cm;
          Loc_Since := Step_Start_Ms;
+         --  the records of before the end of the last step belong to
+         --  the location before; this step's own follow
+         Loc_Count := 0;
+         Sync_Location_Records;
       end if;
       if Ref.Valid and then Ref.Dist_Cm = St.Dist_Cm then
          return;
@@ -3721,6 +3761,52 @@ package body S076_Run is
       end loop;
       return 0;
    end Change_Of;
+
+   --  A failed status, brake or traction cut-off step of a braking curve
+   --  sequence whose location names no limit (B140): judged over the
+   --  location (the records and the supervision changes since the train
+   --  left the location before), the on-board's own change of that
+   --  status or command having come in the window of an earlier step at
+   --  the same location; still failed: the tag of its triage line. The
+   --  same for any JRU record such a sequence expects (the DMI symbols
+   --  of the status, Tag empty): the steps of one location describe one
+   --  instant
+   function Location_Judgement (St : Step_T; J : Judgement_T;
+                                Tag : String := " [workbook train]")
+                                return Judgement_T
+   is
+      use type B.Change_Kind_T;
+      K : B.Change_Kind_T := B.EB_On;
+      R : Judgement_T;
+   begin
+      Sync_Location_Records;
+      if W (2) = "TIU" then
+         if not Same (W (4), "commanded") then
+            return Fail (Image (J.Sig) & Tag);
+         end if;
+         K := (if Same (W (3), "service-brake") then B.SB_On
+               elsif Same (W (3), "traction-cutoff") then B.TCO_On
+               else B.EB_On);
+         for I in 1 .. B.Change_Count loop
+            if B.Change (I).Kind = K
+              and then Unsigned_64 (B.Change (I).Time_Ms) >= Loc_Since
+            then
+               return Pass (Image (J.Sig) & " in its window; at this "
+                            & "location at "
+                            & Img (Integer (B.Change (I).Track_Cm / 100))
+                            & " m");
+            end if;
+         end loop;
+         return Fail (Image (J.Sig) & Tag);
+      end if;
+      Location_Scope := True;
+      R := Expect (St);
+      Location_Scope := False;
+      if R.Verdict = Passed then
+         return Pass (Image (J.Sig) & " in its window; at this location");
+      end if;
+      return Fail (Image (J.Sig) & Tag);
+   end Location_Judgement;
 
    --  The named end's distance to the target of a change, m: to the EOA
    --  of an EOA target, else to the target location (Curve_Judgement)
@@ -4430,6 +4516,9 @@ package body S076_Run is
       Last_Named := 0;
       Loc_Cm := Integer_64'First;
       Loc_Since := 0;
+      Loc_Count := 0;
+      Loc_Window := Unsigned_64'Last;
+      Loc_Copied := 0;
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);
       end loop;
@@ -4606,7 +4695,11 @@ package body S076_Run is
                      --  a curve step of a workbook sequence whose
                      --  location names no limit (or no set): the tag of
                      --  its triage line
-                     J := Fail (Image (J.Sig) & " [workbook train]");
+                     J := Location_Judgement (St, J);
+                  elsif J.Verdict = Failed and then Seq.Workbook
+                    and then W (2) = "JRU"
+                  then
+                     J := Location_Judgement (St, J, Tag => "");
                   end if;
                   declare
                      C : Judgement_T := Columns (I);
@@ -4644,6 +4737,7 @@ package body S076_Run is
                   end;
                end if;
             end if;
+            Sync_Location_Records;
             Step_Start_Ms := B.Time_Ms;
             if Verbose and then Debug and then B.Powered then
                Put_Line ("      brakes: EB "
