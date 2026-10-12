@@ -593,6 +593,50 @@ package body EVC_Test_Supervision is
              "release: the distance to the EOA shown");
    end Scenario_SDM_Release;
 
+   --  3.13.9.4.6, 3.13.9.4.7 with 3.13.9.3.3.3 and A.3.12: the start of
+   --  the release speed monitoring is the SBI1 of the EOA at the release
+   --  speed with "the same formulas", so with T_bs_reduced at V_release
+   --  (zero acceleration, f41 (V_release)). The case of SUBSET-076
+   --  3131040_04 SV30: freight P, 750 m, lambda 109, EOA with the SvL
+   --  450 m beyond and a release speed of 30 km/h, Kv_int 0.96, Kr_int
+   --  0.9, Kt_int 1.0, T_traction_cut_off 0.5 s, flat; its workbook (the
+   --  ERA tool, lambda_o 100) starts the RSM 182.6 m before the EOA, at
+   --  lambda 109 175 m; with the full T_bs (23.8 s) it was 236 m (B190)
+   procedure Scenario_SDM_RSM_Start_Reduced is
+      S   : SIn.Snapshot_T := Base_Snapshot;
+      EOA : constant Integer_64 := 500_000;
+
+      function EB_At (Before_M : Integer_64) return Boolean is
+         T : SIn.Snapshot_T := S;
+      begin
+         Place (T, EOA - Before_M * 100, Cms (60.0), Doubt => 0);
+         Sup_Start (T);
+         Sup_Cycle;
+         Sup_Cycle;
+         return Cmd.EB and then Res.Monitoring = SDM.RSM;
+      end EB_At;
+   begin
+      S.Train_Data.Length := 75_000;
+      S.Train_Data.Brake_Percentage := 109;
+      S.Train_Data.Brake_Position := SIn.Freight_P;
+      S.Train_Data.Max_Speed := Cms (200.0);
+      S.Train_Data.T_Traction_Cut_Off := 500;
+      S.National.Kt_Int := 1_000;
+      S.National.Kv_Int_Fresh :=
+        (Count => 1, Steps => (1 => (0, 960), others => (0, 1_000)));
+      S.National.Kr_Int :=
+        (Count => 2, Steps => (1 => (0, 1_000), 2 => (25_000, 900),
+                               others => (0, 1_000)));
+      S.MRSP.Segments (1) := (Start => 0, Speed => Cms (80.0));
+      Give_MA (S, Natural (EOA / 100), 450, SIn.Fixed, Cms (30.0));
+      Check (not EB_At (180),
+             "RSM start reduced: no EB 180 m before the EOA at 60 km/h "
+             & "(3.13.9.4.7: T_bs1 = T_bs_reduced at V_release)");
+      Check (EB_At (171),
+             "RSM start reduced: release speed monitoring and the EB "
+             & "171 m before the EOA (the workbook: 182.6 m at lambda 100)");
+   end Scenario_SDM_RSM_Start_Reduced;
+
    --  3.14.2, 3.14.3, 4.4.7.1.5: the protections, released at standstill
    --  after the acknowledgement (3.14.1.5, 3.14.1.9)
    procedure Scenario_SDM_Protections is
