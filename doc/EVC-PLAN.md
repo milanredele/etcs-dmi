@@ -4998,3 +4998,48 @@ the sibling's extraction of the correction factors sheet (B230). Two
 patches wait with the briefs: B221's gate (needs a scenario that shows
 it) and B224's shorter last cycle (needs the 83 regressions understood).
 Open items: doc/BACKLOG.csv (36 open after this round).
+
+### Runner: the last cycle, the margin at V_bec, the warning speed, the unreached steps (e5/runner-cycle, 2026-10-12)
+
+B224: the trial's 83 regressions came back unchanged with a full-length
+last cycle at the speed moving only the distance left, so the shorter
+cycle (timing) was not their cause: the dip was. By family (27 SV30): a
+brake released or a Shunting acknowledgement shown at the dip's low
+speed where the train otherwise stays above the permitted speed
+(5070300_01, 4050200_08, 4100103_17, _28, 3111200_01, 3131040_61, _71,
+_88, _90, ...); a JRU 20 record re-recorded in the step's window by the
+dip, or a limit moved out by the swing of A_est2 (the Gamma blocks of
+3130232_17, 3131040_03, _05, _21, _23, _82, the Indication of 3131030_12,
+3131040_14, 3131060_08: B195 the other way round); a chart above the
+limit (3131040_59 102 under 100, 4040800_01 Shunting 33 under 30,
+3130232_18 Reversing 60 under 30). Rule (`S076_Bench.Cycle
+(Distance_Cm)`, `Move_To`, `S076_Run.Drive_To`): the last cycle keeps
+its length and the train's speed and moves the distance left; under a
+brake command the leftover speed of before stays, the bench having no
+braking model (B262). That takes the first family back: 36 regressions
+remain (12 per system version), the second and third families,
+understood and re-recorded.
+
+B226: a speed above the warning speed (an ODO speed step naming it, or a
+reach-point whose comment says the train overpasses the warning speed)
+is the middle of the warning speed and the SBI shown, held. 3131040_02
+passes step 61 and stops at 62 (V_TRAIN<<V_STEP>, runner gap).
+3131040_76 still fails at 54: its speed step 37 to 45 km/h comes in one
+cycle and swings A_est2 like B195 (a ramp at a physical acceleration
+saturates A_est2's 0.4 m/s2 as well).
+
+B231: the margin takes the EBD at V_bec = V + V_ura (3.13.9.3.2.10 with
+A_est 0; the brief's dV_ebi is no part of V_bec): +1 m (3131040_04: 16 m
+against ours 27 m nearer, the probe's margin 26 m). V_bec does not
+explain the probe's margin; B261 names the candidates (the SBD of an
+EOA's limits, Kv_int by A_ebmax).
+
+B140: 67 first failures under ~[workbook train] (21 SV30): 16 a status
+by name only (among them the Indication expected back after an emergency
+brake below the permitted speed with Q_NVEMRRLS 1, B260), 5 the release
+speed; the method not extended.
+
+SUBSET-076: 751 / 1330 / 1109 before, 756 / 1331 / 1103 after; 36
+regressions understood, 47 improvements (3130237_07, 3131040_22, _86
+pass in all three versions); untriaged 0. Backlog: B224, B226 done; B231,
+B140 updated; B260 to B262 opened.
