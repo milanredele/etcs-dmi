@@ -288,9 +288,11 @@ begin
    Scenario_Radio_MA_Direction;
    Scenario_MA_Request;
    Scenario_MA_Request_Perturbation;
+   Scenario_Contact_Shortening;
    Scenario_Shortening;
    Scenario_Shortening_Cover;
    Scenario_Emergency_Stops;
+   Scenario_Conditional_Stop_Ends;
    Scenario_SR_Authorisation;
    Scenario_Trip_L2;
    Scenario_Shunting_L2;

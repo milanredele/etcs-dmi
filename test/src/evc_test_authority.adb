@@ -23,7 +23,10 @@ with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_SDM;
 with EVC_Stored_Information;
+with EVC_Movement_Authority;
+with EVC_Sessions;
 with EVC_Test_Support;       use EVC_Test_Support;
+with Sim_Telegrams;
 with Interfaces;             use Interfaces;
 
 package body EVC_Test_Authority is
@@ -398,6 +401,44 @@ package body EVC_Test_Authority is
       return -1;
    end Request_Reason;
 
+   --  3.16.3.4.5 b): T_NVCONTACT passes while the train runs, its reaction
+   --  the service brake (M_NVCONTACT 1, 3.16.3.4.2 b); no new message
+   --  until standstill: the MA withdrawn to the train (A.3.4.1.2 i, [11]),
+   --  and the deletion of A.3.4 is a reason for an MA request (3.8.2.5.1,
+   --  reason 8, Q_MARQSTREASON 7.5.1.106)
+   procedure Scenario_Contact_Shortening is
+      NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+      P57 : T57.Packet_T;
+   begin
+      NV.T_NVCONTACT := 10;   -- s
+      NV.M_NVCONTACT := 1;    -- the service brake
+      P57.T_MAR := 255;
+      P57.T_TIMEOUTRQST := 1023;
+      P57.T_CYCRQST := 4;
+      Start_L2;
+      Carry (Track_N, 1, NV);
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((300, 400), 600), Stamp,
+                        With_57 => True, P57 => P57));
+      Stand_X (200);
+      Check (EVC_Movement_Authority.MA.Present
+             and then not EVC_Movement_Authority.MA.Withdrawn
+             and then not EVC_Sessions.Service_Brake,
+             "contact: an MA by radio, the connection supervised");
+      --  14 s at 10 m/s without a message
+      Run_X (25_000, Step_Cm => 100);
+      Check (EVC_Sessions.Service_Brake
+             and then not EVC_Movement_Authority.MA.Withdrawn,
+             "contact: T_NVCONTACT passed while running, the service brake "
+             & "(3.16.3.4.2 b), the MA kept until standstill");
+      Check (Wait_Request (2_000) and then Request_Reason = 8
+             and then EVC_Movement_Authority.MA.Withdrawn,
+             "contact: at standstill without a new message the MA "
+             & "shortened to the train (3.16.3.4.5 b, A.3.4.1.2 i) and "
+             & "requested with reason 8 (3.8.2.5.1)");
+   end Scenario_Contact_Shortening;
+
    --  3.8.2: the MA request (message 132 with its position report) by
    --  its triggers in level 2 with the session established: the driver's
    --  Start (3.8.2.3, reason 1), the time before a section timer expires
@@ -448,6 +489,20 @@ package body EVC_Test_Authority is
       Check (Wait_Request (2_500) and then Request_Reason = 8,
              "MA request: the section time-out deleted track description, "
              & "reason 8 at once (3.8.2.5.1, 3.8.2.1.6)");
+
+      --  3.8.2.3.2 c): the reason "Start" ends when the desk is closed
+      Start_L2;
+      Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
+      Check (Wait_Request (500) and then RA.MA_Request_Reasons = 1,
+             "MA request: 'Start' selected again, reason 1");
+      for C in TIU_Signal_T range Cab_A_Active .. Cab_B_Active loop
+         Input (TIU, (Byte (TIU_Signal_T'Pos (C) + 1), 0));
+      end loop;
+      Stand_X (200);
+      Check (RA.MA_Request_Reasons = 0
+             and then not Wait_Request (5_000),
+             "MA request: the reason 'Start' ends when the desk is closed, "
+             & "no request after (3.8.2.3.2 c)");
 
       --  level 1: none
       Start_X;
@@ -618,12 +673,14 @@ package body EVC_Test_Authority is
    --  both directions), 16 or 18 for NID_EM
    function Emergency_Message (Kind   : MCat.Known_Message_T;
                                NID_EM : Natural;
-                               D_M    : Natural := 0) return Byte_Array
+                               D_M    : Natural := 0;
+                               Ack    : Natural := 0) return Byte_Array
    is
       W : Writer_T;
       V : ETCS_Message.Value_Array := (others => 0);
    begin
       V (3) := Unsigned_64 (Stamp);
+      V (4) := Unsigned_64 (Ack);
       V (5) := 123;
       V (6) := 10;
       V (7) := Unsigned_64 (NID_EM);
@@ -732,6 +789,90 @@ package body EVC_Test_Authority is
              "emergency: in TR the revocation is rejected, the stop kept "
              & "(4.8.4 'Revocation of Emergency Stop', TR: R; 4.10: kept)");
    end Scenario_Emergency_Stops;
+
+   --  3.10.2.2 b), with the group at 100 m, the MA to 800 m, the train at
+   --  standstill at 200 m: 2nd bullet, a danger point 100 m beyond the EOA
+   --  (the SvL at 900 m) and the stop at 850 m: the new SvL at the stop
+   --  without release speed, the EOA unchanged (Q_EMERGENCYSTOP 1,
+   --  7.5.1.107); 4th bullet, the MA ending at a LOA (V_EMA 40 km/h) and
+   --  the stop at 850 m: an EOA and SvL at the LOA, no release speed, the
+   --  EOA changed (Q_EMERGENCYSTOP 0)
+   procedure Scenario_Conditional_Stop_Ends is
+      DP     : T12.Packet_T := MA_Of ((300, 400), 600);
+      LOA    : T12.Packet_T := MA_Of ((300, 400), 600);
+      NID, Q : Integer;
+   begin
+      DP.Q_DANGERPOINT := 1;
+      DP.Has_D_DP := True;
+      DP.D_DP := 100;
+      DP.V_RELEASEDP := 2;
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, DP, Stamp));
+      Run_X (20_000);
+      Stand_X (1_000);
+      Check (SI.Current.MA.EOA = 80_000 and then SI.Current.MA.SvL = 90_000,
+             "conditional stop: the MA to 800 m, the danger point at 900 m");
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M15, 3, 750));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Stand_X (100);
+      Check (NID = 3 and then Q = 1 and then RA.Emergency_Stops = 1
+             and then SI.Current.MA.EOA = 80_000
+             and then SI.Current.MA.SvL = 85_000
+             and then SI.Current.MA.Release_Speed.Kind = SIn.None,
+             "conditional stop: beyond the EOA, not beyond the SvL: the new "
+             & "SvL at it without release speed, the EOA unchanged, "
+             & "Q_EMERGENCYSTOP 1 (3.10.2.2 b 2nd bullet), got EOA"
+             & Img (Natural (SI.Current.MA.EOA)) & " SvL"
+             & Img (Natural (SI.Current.MA.SvL)) & " Q" & Img (Q));
+
+      LOA.V_EMA := 8;
+      LOA.T_EMA := 1023;
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, LOA, Stamp));
+      Run_X (20_000);
+      Stand_X (1_000);
+      Check (SI.Current.MA.EOA = 80_000 and then SI.Current.MA.LOA_Speed > 0,
+             "conditional stop: an MA to a LOA at 800 m");
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M15, 4, 750));
+      Stand_X (100);
+      Stop_Ack (NID, Q);
+      Stand_X (100);
+      Check (NID = 4 and then Q = 0 and then RA.Emergency_Stops = 1
+             and then SI.Current.MA.EOA = 80_000
+             and then SI.Current.MA.SvL = 80_000
+             and then SI.Current.MA.LOA_Speed = 0
+             and then SI.Current.MA.Release_Speed.Kind = SIn.None,
+             "conditional stop: beyond the LOA: an EOA and SvL at the LOA "
+             & "without release speed, Q_EMERGENCYSTOP 0 (3.10.2.2 b 4th "
+             & "bullet), got EOA" & Img (Natural (SI.Current.MA.EOA))
+             & " SvL" & Img (Natural (SI.Current.MA.SvL)) & " Q" & Img (Q));
+
+      --  3.10.3.2: the revocation asking for an acknowledgement (M_ACK)
+      --  acknowledged by the general procedure of 3.16.3.5: message 146
+      Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 4, Ack => 1));
+      declare
+         M     : ETCS_Message.Message_T;
+         St    : ETCS_Message.Status_T;
+         Acked : Boolean := False;
+         use type ETCS_Message.Status_T;
+      begin
+         for K in 1 .. 3 loop
+            Stand_X (100);
+            for N in 1 .. Radio_Outputs loop
+               Decode_Radio_Message (N, M, St);
+               Acked := Acked or else (St = ETCS_Message.Accepted
+                                       and then M.Kind = MCat.Train_M146);
+            end loop;
+         end loop;
+         Check (Acked and then RA.Emergency_Stops = 0,
+                "conditional stop: the revocation (message 18 with M_ACK) "
+                & "taken and acknowledged by message 146 (3.10.3.2, "
+                & "3.16.3.5.1)");
+      end;
+   end Scenario_Conditional_Stop_Ends;
 
    ---------------------------------------------------------------------
    --  Phase 2: the authorisations of the modes by the RBC

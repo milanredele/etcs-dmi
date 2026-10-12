@@ -21,9 +21,16 @@ package EVC_Test_Authority is
    procedure Scenario_Radio_MA_Direction;
    procedure Scenario_MA_Request;
    procedure Scenario_MA_Request_Perturbation;
+   --  3.16.3.4.5 b), 3.8.2.5.1: the service brake of T_NVCONTACT and no
+   --  new message until standstill shorten the MA to the train, and the
+   --  deletion asks for an MA
+   procedure Scenario_Contact_Shortening;
    procedure Scenario_Shortening;
    procedure Scenario_Shortening_Cover;
    procedure Scenario_Emergency_Stops;
+   --  3.10.2.2 b) 2nd and 4th bullets: a conditional stop between the EOA
+   --  and an SvL further (a danger point), and one beyond a LOA
+   procedure Scenario_Conditional_Stop_Ends;
    procedure Scenario_SR_Authorisation;
    procedure Scenario_Trip_L2;
    procedure Scenario_Shunting_L2;
