@@ -1287,7 +1287,7 @@ is
                                 M        : Message_T;
                                 Ctx      : Mode_Context_T;
                                 Has_41   : Boolean;
-                                Set_Open : in out Boolean)
+                                Open     : Boolean)
      with Global => (In_Out => Balise_Buffer.State,
                      Input  => (EVC_Position.State, EVC_Levels.State,
                                 EVC_Train_Data.State))
@@ -1299,6 +1299,8 @@ is
       A : constant EVC_Acceptance.Context_T :=
         Acceptance (Ctx, Tk.Group.Linked, Has_41);
       I : EVC_Acceptance.Info_T;
+      --  the group's set, opened by Take_Packet or here
+      Set_Open : Boolean := Open;
    begin
       for J in Tk.First .. Tk.First + Tk.Count - 1 loop
          pragma Loop_Invariant (True);

@@ -639,7 +639,9 @@ is
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
-                  and then Active_Cab = Active_Cab'Old;
+                  and then Active_Cab = Active_Cab'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
 
    --  Phase E5 (e5/radio-geo-buffer), 3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5:
    --  the packets 79 of the radio messages of the cycle (EVC_Radio_Info,

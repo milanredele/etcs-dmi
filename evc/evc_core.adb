@@ -1152,19 +1152,43 @@ is
    procedure Release_Unit_Packets
      with Global => (Input  => (EVC_Stored_Information.State,
                                 EVC_Origins.State, EVC_Odometry.State),
-                     In_Out => (EVC_Position.State, EVC_Procedures.State))
+                     In_Out => (EVC_Position.State, EVC_Procedures.State)),
+          Post => EVC_Position.Orientation
+                    = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
    is
       pragma Warnings
         (GNATprove, Off, """R"" is set by * but not used after*",
          Reason => "the reader of one packet is not used after it");
       R : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
       K : ETCS_Catalogue.Packet_Kind_T;
+      O0 : constant EVC_Distances.Sense_T := EVC_Position.Orientation;
+      C0 : constant EVC_Position.Cab_T := EVC_Position.Active_Cab;
+      L0 : constant EVC_Location.Anchor_T := EVC_Position.LRBG;
+      DO0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Over;
+      DU0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Under;
       use type ETCS_Catalogue.Packet_Kind_T;
    begin
       for S in 1 .. EVC_Stored_Information.Balise_Buffered loop
-         pragma Loop_Invariant (True);
+         pragma Loop_Invariant
+           (EVC_Position.Orientation = O0
+            and then EVC_Position.Active_Cab = C0
+            and then EVC_Position.LRBG = L0
+            and then EVC_Position.Doubt_Over = DO0
+            and then EVC_Position.Doubt_Under = DU0);
          for P in 1 .. EVC_Stored_Information.Balise_Set_Packets (S) loop
-            pragma Loop_Invariant (True);
+            pragma Loop_Invariant
+              (EVC_Position.Orientation = O0
+               and then EVC_Position.Active_Cab = C0
+               and then EVC_Position.LRBG = L0
+               and then EVC_Position.Doubt_Over = DO0
+               and then EVC_Position.Doubt_Under = DU0);
             K := EVC_Stored_Information.Balise_Set_Kind (S, P);
             if K in ETCS_Catalogue.Track_P5 | ETCS_Catalogue.Track_P138
                   | ETCS_Catalogue.Track_P139
@@ -1206,7 +1230,16 @@ is
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
-                                EVC_Levels.State, EVC_Sessions.State))
+                                EVC_Levels.State, EVC_Sessions.State)),
+          Post => EVC_Position.Orientation
+                    = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
    is
       First    : constant Positive := EVC_Radio_Info.Count + 1;
       M_Status  : ETCS_Message.Status_T;
