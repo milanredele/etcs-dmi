@@ -165,6 +165,23 @@ procedure EVC_Curve_Probe is
          NV.M_NVEBCL := Integer'Value (Value);
       elsif Key = "inhsmic" then
          NV.Q_NVINHSMICPERM := Value = "1";
+      elsif Key = "adhesion" then
+         --  one reduced adhesion area from:to (m, B192)
+         declare
+            A, B : Long_Float;
+            From : Positive := Value'First;
+         begin
+            Next_Pair (Value, From, A, B);
+            Base.Adhesion.Count := 1;
+            Base.Adhesion.Areas (1) :=
+              (Start  => EVC_Distances.Cm_T ((A + Long_Float (Shift_M)) * 100.0),
+               Finish => EVC_Distances.Cm_T ((B + Long_Float (Shift_M)) * 100.0));
+         end;
+      elsif Key = "redadh" then
+         --  A_NVMAXREDADH1 .. 3 alike, m/s2
+         NV.A_NVMAXREDADH1 := Milli (Value);
+         NV.A_NVMAXREDADH2 := Milli (Value);
+         NV.A_NVMAXREDADH3 := Milli (Value);
       elsif Key = "sbtsm" then
          NV.Q_NVSBTSMPERM := Value = "1";
       elsif Key = "gui" then

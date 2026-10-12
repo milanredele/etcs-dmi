@@ -53,7 +53,7 @@ class Refused(Exception):
 
 
 def read(path):
-    cells, grad, sets, packets = {}, None, [], []
+    cells, grad, sets, packets, adh = {}, None, [], [], None
     cur_packet = None
     for line in open(path, encoding="utf-8"):
         s = line.strip()
@@ -61,7 +61,7 @@ def read(path):
         if s.startswith("workbook "):
             # B192: a file can hold several workbooks (3131030_24a, _24b):
             # each curves block takes the cells of its own
-            cells, grad = {}, None
+            cells, grad, adh = {}, None, None
         elif s.startswith("cell "):
             key, _, val = s[5:].partition(" ")
             m = re.match(r"(.*![A-Z]+[0-9]+)$", key)
@@ -69,11 +69,17 @@ def read(path):
                 m2 = re.match(r"(.*?![A-Z]+[0-9]+) (.*)$", s[5:])
                 key, val = (m2.group(1), m2.group(2)) if m2 else (key, val)
             cells[key] = val
+        elif s.startswith("track Max. Acceleration under reduced adhesion"):
+            # B192: one reduced adhesion area, its A_max (the tool's
+            # A_NVMAXREDADH of the train)
+            pts = [p.split(":") for p in w if ":" in p]
+            if len(pts) >= 2 and pts[0][1] != "end":
+                adh = (pts[0][0], pts[1][0], pts[0][1])
         elif s.startswith("track G(") and "compensated" not in s:
             grad = [p.split(":") for p in w[2:]]
         elif s.startswith("curves "):
             sets.append({"sheet": s[7:], "limits": {}, "rows": [], "cols": None,
-                         "cells": cells, "grad": grad})
+                         "cells": cells, "grad": grad, "adh": adh})
         elif s.startswith("curve-columns") and sets:
             sets[-1]["cols"] = w[1:]
         elif s.startswith("curve ") and sets:
@@ -167,6 +173,8 @@ def setup(path, set_no=1, nv=1, vura="f41"):
         args += ["svl=" + c("Track!E1", "0"), "release=" + release]
     if grad:
         args.append("grad=" + ",".join("%s:%s" % (a, b) for a, b in grad if b != "end"))
+    if cs["adh"]:
+        args += ["adhesion=%s:%s" % cs["adh"][:2], "redadh=" + cs["adh"][2]]
     if packets:
         args += national(packets[min(nv, len(packets)) - 1])
     inhibit = "inhsmic=1" in args
