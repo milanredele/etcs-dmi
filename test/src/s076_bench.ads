@@ -106,6 +106,10 @@ package S076_Bench is
    procedure DMI_Frame (Frame : Byte_Array);
    --  The odometer's stated accuracy per mille from now on
    procedure Set_Accuracy (Per_Mille : Natural);
+   --  The odometer states the speed accuracy of SUBSET-041 5.3.1.2
+   --  (V_max = V_est + f41, V_min = V_est - f41) from now on, or the
+   --  exact speed (V_max = V_min = V_est), as after Reset (B191)
+   procedure Set_Speed_Accuracy (On : Boolean);
    --  The odometer states Extra_Cm more over- and under-reading at its
    --  next sample (a degraded measurement)
    procedure Odometer_Error (Extra_Cm : Natural);

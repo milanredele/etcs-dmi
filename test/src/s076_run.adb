@@ -143,6 +143,10 @@ package body S076_Run is
    ---------------------------------------------------------------------
 
    Debug : constant Boolean := Ada.Environment_Variables.Exists ("DEBUG");
+   --  S076_EXACT_SPEED=1: the bench's odometer states the exact speed
+   --  for every sequence (the runner before B191; the probe's --vura 0)
+   Exact_Speed : constant Boolean :=
+     Ada.Environment_Variables.Exists ("S076_EXACT_SPEED");
 
    --  the SUBSET-027 fields of a JRU expectation this JRU port does not
    --  carry: the step is judged on the others, these are listed
@@ -3813,6 +3817,15 @@ package body S076_Run is
       end Block;
    begin
       B.Reset;
+      --  B191: a sequence that runs the ERA workbook's train (its
+      --  "workbook" line) is checked against limits the ERA tool computed
+      --  with Q_NVINHSMICPERM 0 and the speed accuracy of SUBSET-041
+      --  5.3.1.2 (V_delta0 = f41 (V_est), 3.13.9.3.2.1): the bench's
+      --  odometer states that accuracy for these sequences. The others
+      --  keep the exact speed they were recorded against (decision: two
+      --  sequences without a workbook, 3110500_01 and 3131040_59, place
+      --  an Indication and an Overspeed step on the exact speed)
+      B.Set_Speed_Accuracy (Seq.Workbook and then not Exact_Speed);
       --  The radio systems installed (3.5.6.7, 5.4.3.2 D7): the sequences
       --  of feature 3050600 test 3.5.6 with both systems installed (in
       --  3050600_05 3.5.6.7 b holds the set-up while FRMCS is not
