@@ -166,6 +166,36 @@ package S076_Bench is
 
    function State return State_T;
 
+   --  The changes of the on-board's supervision (EVC_Core.Supervision)
+   --  cycle by cycle since Reset, the last Max_Changes kept (B172): the
+   --  status entered (Indication, Overspeed, Warning, Intervention) and
+   --  the service brake, emergency brake and traction cut-off commands
+   --  set. The distances count from the on-board's own estimated front
+   --  end to the target shown in the cycle (EVC_SDM.Result_T.Target_X,
+   --  Target_EOA and X_Est are all in the on-board's ahead coordinates,
+   --  so no conversion to the bench's track coordinate is needed; the
+   --  max safe front end is Doubt_Over ahead of the estimated one)
+   type Change_Kind_T is
+     (To_Indication, To_Overspeed, To_Warning, To_Intervention,
+      SB_On, EB_On, TCO_On);
+   type Change_T is record
+      Kind      : Change_Kind_T := To_Indication;
+      Time_Ms   : Natural := 0;
+      Track_Cm  : Integer_64 := 0;  -- the antenna, track coordinate
+      V_Est     : Natural := 0;     -- cm/s
+      Shown     : Boolean := False; -- a target shown
+      V_Target  : Natural := 0;     -- cm/s
+      EOA_Kind  : Boolean := False; -- the target shown is an EOA target
+      D_Loc     : Integer_64 := 0;  -- Target_X - X_Est, cm
+      D_EOA     : Integer_64 := 0;  -- Target_EOA - X_Est, cm
+      Over      : Integer_64 := 0;  -- Doubt_Over, cm
+   end record;
+   Max_Changes : constant := 32;
+   function Change_Count return Natural;  -- at most Max_Changes
+   --  the I-th latest change (1 the latest)
+   function Change (I : Positive) return Change_T
+     with Pre => I <= Change_Count;
+
    --  The flags of the window: a value was shown in at least one cycle
    type Seen_T is record
       Mode, Mode_Ack, Level, Level_Ann, Level_Ann_Ack :

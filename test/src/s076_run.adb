@@ -65,6 +65,11 @@ package body S076_Run is
          when R_Optional         =>
             "optional or implementation dependent step not taken",
          when R_Gamma            => "Gamma train braking model (E6)",
+         when R_Old_Tool         =>
+            "workbook from the ERA tool without A.3.12 (SV21/SV22, no SV30"
+            & " twin)",
+         when R_Placement        =>
+            "the sequence's location is off its own workbook",
          when R_Runner           => "runner not implemented for this kind");
 
    ---------------------------------------------------------------------

@@ -11,6 +11,7 @@ with EVC_Distances;
 with EVC_Outbox;
 with EVC_Ports;       use EVC_Ports;
 with EVC_Position;
+with EVC_SDM;
 
 package body S076_Bench is
 
@@ -65,6 +66,14 @@ package body S076_Bench is
    Last_Mode, Last_Level_Status, Last_Level : Natural := No_Value;
    Last_Commands : Natural := 0;
    Last_Mon, Last_Sup : Natural := 0;
+
+   --  The ring of the supervision changes (Change_T), the commands and
+   --  status of the last cycle
+   Changes      : array (1 .. Max_Changes) of Change_T;
+   Change_Head  : Natural := 0;   -- the latest
+   Changes_Kept : Natural := 0;
+   Prev_Status  : EVC_SDM.Status_T := EVC_SDM.NoS;
+   Prev_SB, Prev_EB, Prev_TCO : Boolean := False;
    LRBG_Known : Boolean := False;
    TC_Phase   : array (0 .. 255) of Integer := (others => -1);
 
@@ -543,9 +552,61 @@ package body S076_Bench is
       Last_Sup := 0;
       LRBG_Known := False;
       TC_Phase := (others => -1);
+      Change_Head := 0;
+      Changes_Kept := 0;
+      Prev_Status := EVC_SDM.NoS;
+      Prev_SB := False;
+      Prev_EB := False;
+      Prev_TCO := False;
       Clear_Radio;
       New_Window;
    end Reset;
+
+   --  The changes of this cycle's supervision into the ring (B172)
+   procedure Note_Changes is
+      use type EVC_SDM.Status_T;
+      use type EVC_SDM.Monitoring_T;
+      use type EVC_Distances.Cm_T;
+      R : constant EVC_SDM.Result_T := EVC_Core.Supervision;
+
+      procedure Add (K : Change_Kind_T) is
+      begin
+         Change_Head := Change_Head mod Max_Changes + 1;
+         Changes_Kept := Natural'Min (Changes_Kept + 1, Max_Changes);
+         Changes (Change_Head) :=
+           (Kind     => K,
+            Time_Ms  => Natural (Clock mod 2**31),
+            Track_Cm => X_Cm,
+            V_Est    => Natural (R.V_Est),
+            Shown    => R.Monitoring /= EVC_SDM.CSM or else R.CSM_Target,
+            V_Target => Natural (R.V_Target),
+            EOA_Kind => R.Target_EOA /= R.Target_X,
+            D_Loc    => Integer_64 (R.Target_X - R.X_Est),
+            D_EOA    => Integer_64 (R.Target_EOA - R.X_Est),
+            Over     => Doubt_Over);
+      end Add;
+   begin
+      if R.Status /= Prev_Status and then R.Status /= EVC_SDM.NoS then
+         Add (Change_Kind_T'Val (EVC_SDM.Status_T'Pos (R.Status) - 1));
+      end if;
+      if R.SB and then not Prev_SB then
+         Add (SB_On);
+      end if;
+      if R.EB and then not Prev_EB then
+         Add (EB_On);
+      end if;
+      if R.TCO and then not Prev_TCO then
+         Add (TCO_On);
+      end if;
+      Prev_Status := R.Status;
+      Prev_SB := R.SB;
+      Prev_EB := R.EB;
+      Prev_TCO := R.TCO;
+   end Note_Changes;
+
+   function Change_Count return Natural is (Changes_Kept);
+   function Change (I : Positive) return Change_T is
+     (Changes ((Change_Head - I + Max_Changes) mod Max_Changes + 1));
 
    procedure Set_Radio_Systems (Systems : EVC_Config.Radio_Systems_T) is
    begin
@@ -701,6 +762,7 @@ package body S076_Bench is
          Take_Outputs;
          DMI_Core.Tick (Cycle_Ms);
          Take_DMI;
+         Note_Changes;
       end if;
       Fold;
    end Cycle;
