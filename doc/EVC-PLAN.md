@@ -4784,3 +4784,33 @@ what the runner still fails on the curve sequences is B195 (ours), the
 Indication of an EOA target 190 to 340 m further out (3131040_02, _38,
 _50; ours), and runner or data items (B193, B194, B200, B201). Open
 items: doc/BACKLOG.csv (35 open after this round).
+
+### Acceptance gates: the order's own group, the unauthorised direction; the second report; the proposal's coverage (e5/acceptance-gates, 2026-10-12)
+
+**Implemented.** B212, 4.8.3 [1]: a linking read in the group that itself
+carries the order to level 1 at a further location is no longer taken at
+the passage. `EVC_Core.Update_Position` passes `Defer_On_Order` to
+`EVC_Position.Set_Linking_Context` (the verdict `Stored` of 4.8 with level
+1 announced, `Ordered_Context`); `EVC_Position.Take_Packets` holds the
+linking of a group with a packet 41 valid for its direction; the new
+`EVC_Core.Take_Held_Linking`, called in `Tick` right after
+`Evaluate_Stored_Information`, judges it again once the stores evaluated
+the order (accepted and not stored: taken through
+`EVC_Position.Take_Held_Linking`, the old `Take_Packets` tail now
+`Commit_Linking`; else dropped, the stores' `Keep_Unit_Packets` having
+kept it). Scenario `L1_Order_Own_Group_Linking` (`EVC_Test_Levels`).
+
+**Decision.** The position waits for the stores' evaluation (a second
+verdict in the same cycle) rather than reading packet 41 itself: the
+order, its level priorities and its location are judged in one place.
+
+**SUBSET-076.** 742 / 1426 / 1022 before and after, 0 regressions.
+
+**Left.** B221 (3.14.3.6): the gate was written (an `Ignore_Info`
+setting of `EVC_Position` skipping `Take_Packets` and `Record_Taken`, fed
+by `Brake_State.Direction`), but no scenario discriminated it within the
+budget, so it was not committed (B221 says why). B211 analysed, not fixed
+(the trigger of the second 136 to trace). B210 not started. Found B250
+(an evc_test isolation defect). Edits outside the units of the package:
+none; in `EVC_Core`: `Update_Position` (the new argument), the new
+`Ordered_Context` and `Take_Held_Linking`, one call in `Tick`.
