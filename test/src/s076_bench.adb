@@ -11,6 +11,8 @@ with EVC_Core;
 with EVC_Distances;
 with EVC_DMI_Port;
 with EVC_Modes;
+with EVC_National_Values;
+with EVC_Supervision_Input;
 with EVC_Fixed;
 with EVC_Outbox;
 with EVC_Ports;       use EVC_Ports;
@@ -946,6 +948,49 @@ package body S076_Bench is
          Is_Braked := V_Cms < Demand_Cms;
       end if;
    end Brake_Cycle;
+
+   function Ebd_Distance (Lambda, Position, Length_M : Natural;
+                          From_Kmh, To_Kmh : Long_Float) return Long_Float
+   is
+      use EVC_Braking;
+      use EVC_Supervision_Input;
+      E   : constant Steps_T :=
+        Basic_Deceleration (if Lambda in 10 .. Lambda_T'Last then Lambda
+                            else 100);
+      P   : constant Brake_Position_T :=
+        (case Position is
+            when 2 => Freight_P, when 3 => Freight_G,
+            when others => Passenger_P);
+      NV  : constant National_Values_T := EVC_National_Values.Current.Values;
+      Kv  : constant Steps_T := Kv_Int (NV, P, A_Ebmax (E, 5_556));
+      Kr  : constant Long_Float :=
+        Long_Float (Kr_Int (NV.Kr_Int,
+                            EVC_Fixed.Num
+                              (Natural'Min (Length_M, 1_500) * 100)))
+        / 1.0E6;
+      Top : constant Long_Float := Long_Float'Min (From_Kmh, 2_000.0) / 3.6;
+      V   : Long_Float := Long_Float'Max (To_Kmh, 0.0) / 3.6;
+      D   : Long_Float := 0.0;
+   begin
+      --  in steps of 0.05 m/s, the deceleration at the middle of each
+      while V < Top loop
+         declare
+            Dv  : constant Long_Float := Long_Float'Min (0.05, Top - V);
+            Mid : constant Long_Float := V + Dv / 2.0;
+            Cms : constant EVC_Fixed.Num :=
+              EVC_Fixed.Num (Long_Float'Min (Mid * 100.0, 60_000.0));
+            A   : constant Long_Float :=
+              Long_Float (Value_At (E, Cms)) * 1.0E-5
+              * Long_Float (Value_At (Kv, Cms)) / 1.0E6 * Kr;
+         begin
+            if A > 0.0 then
+               D := D + Mid * Dv / A;
+            end if;
+            V := V + Dv;
+         end;
+      end loop;
+      return D;
+   end Ebd_Distance;
 
    procedure Set_Direction (Dir : Integer) is
    begin

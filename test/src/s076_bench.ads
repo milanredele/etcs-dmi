@@ -109,6 +109,16 @@ package S076_Bench is
    --  True while the train is below the speed asked for because of a
    --  brake (braked, or regaining its speed)
    function Braked return Boolean;
+
+   --  B261: the distance (m) the EBD of the conversion model (A.3.7:
+   --  A_basic for the brake percentage Lambda, 10 .. 250, else 100) takes
+   --  from From_Kmh down to To_Kmh on a flat track, with the integrated
+   --  correction factors in force (EVC_National_Values: Kv_int by
+   --  A_ebmax for a maximum speed of 200 km/h, 3.13.6.2.1.8, Kr_int for
+   --  Length_M, 3.13.2.3.7.12); Position 1 passenger in P, 2 freight in
+   --  P, 3 freight in G (the workbook's)
+   function Ebd_Distance (Lambda, Position, Length_M : Natural;
+                          From_Kmh, To_Kmh : Long_Float) return Long_Float;
    --  B262: the speed a brake does not take the train below (cm/s,
    --  at most the speed asked for): while the runner drives the train to
    --  a location the sequence says it reaches, a crawl (the sequences'
