@@ -12,4 +12,12 @@ package EVC_Test_LS is
    --  mode profile without packet 181 in the same group
    procedure Scenario_LS_Marker_Deleted;
 
+   --  e4/ls-display-3 (B093), 4.8.4.2 [9]: the toggle on order outside
+   --  LS only inside the LS area of a mode profile of the same message
+   procedure Scenario_LS_Order_Area;
+
+   --  e4/ls-display-3 (B120), 4.8.3 [2]: the RBC's toggle on order kept
+   --  for the transition to level 2
+   procedure Scenario_LS_Radio_Held;
+
 end EVC_Test_LS;

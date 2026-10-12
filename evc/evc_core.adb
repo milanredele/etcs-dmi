@@ -1234,6 +1234,35 @@ is
                                EVC_Radio.Established (S))));
    end Take_Radio_Geo;
 
+   --  3b. e4/ls-display-3 (B120), 4.8.3 [2], 4.8.5: the LSSMA display
+   --  toggle on order of the RBC held for level 2 (EVC_LS_Display.
+   --  Hold_Order) released at the transition (4.8.5.5) and judged in the
+   --  mode of the cycle: taken in LS (its timer from the transition,
+   --  4.4.19.1.4.2 c), rejected in the other modes (4.8.4.2 [9] [10]:
+   --  message 24 carries no mode profile); deleted when level 2 is no
+   --  longer announced or no session is established (4.8.5.4 a, c)
+   procedure Release_LS_Held
+     with Global => (Input  => (Clock_Ms, Current_Mode, EVC_Levels.State,
+                                EVC_Radio.State),
+                     In_Out => EVC_LS_Display.State)
+   is
+   begin
+      if not EVC_LS_Display.Order_Held then
+         return;
+      end if;
+      if EVC_Levels.Switched_To (L2) then
+         EVC_LS_Display.Release_Held (Take   => Current_Mode = M_LS,
+                                      Now_Ms => Unsigned_64 (Clock_Ms));
+      elsif not (EVC_Levels.Announced
+                 and then EVC_Levels.Announced_Level = L2)
+        or else not (for some S in EVC_Radio.Session_T =>
+                       EVC_Radio.Established (S))
+      then
+         EVC_LS_Display.Release_Held (Take   => False,
+                                      Now_Ms => Unsigned_64 (Clock_Ms));
+      end if;
+   end Release_LS_Held;
+
    --  MSG_SPEED_STATE from the result of the speed and distance
    --  monitoring (dmi_protocol.ads: the DMI derives nothing): speeds in
    --  km/h to the nearest, the distance in m rounded down; the dial range
@@ -2796,6 +2825,7 @@ is
       Monitor_Speed_And_Distance (Dt_Ms);
       Evaluate_Modes_And_Levels;
       Release_Transition_Buffer;
+      Release_LS_Held;
       Take_Radio_Geo;
       --  5.17.2.2 E6: the Train Data validated by the driver end the
       --  re-validation the procedures asked

@@ -973,6 +973,60 @@ is
       end if;
    end Take_Transition_Packet;
 
+   --  4.8.4.2 [9], [10] (B093): the train position confidence interval
+   --  overlaps the LS area of a mode profile of message Msg, and that
+   --  area is the furthest the interval overlaps within the profile
+   --  (the areas against the interval as in 3.12.4.5 / 3.12.4.6: the
+   --  start against the max safe front end, the end against the min
+   --  safe front end); with Not_In_OS_Ack ([10]), the estimated front
+   --  end is not inside an OS acknowledgement area of the profile
+   function LS_Area_Furthest (T             : Origin_Table_T;
+                              Train         : Train_Frame_T;
+                              Msg           : Natural;
+                              Not_In_OS_Ack : Boolean) return Boolean
+     with Global => (Input => EVC_Movement_Authority.State)
+   is
+      S    : constant Sense_T := EVC_Movement_Authority.MA_Sense;
+      Mn   : constant Dist_T := A (S, Train.Min_Front);
+      Mx   : constant Dist_T := A (S, Train.Max_Front);
+      Est  : constant Dist_T := A (S, Train.Est_Front);
+      Best : Dist_T := -Max_Cm;
+      LS   : Boolean := False;
+   begin
+      if not Train.Valid then
+         return False;
+      end if;
+      for I in 1 .. EVC_Movement_Authority.Max_Mode_Profiles loop
+         --  not unrolled by the proof, nothing needed after the loop
+         pragma Loop_Invariant (True);
+         declare
+            P  : constant EVC_Movement_Authority.Mode_Profile_T :=
+              EVC_Movement_Authority.Mode_Profile (I);
+            St : constant Dist_T := A (S, Frame (T, P.Start, Max_Item));
+         begin
+            if P.Used and then P.Msg = Msg then
+               if Mx >= St
+                 and then (P.Open
+                           or else Mn < A (S, Frame (T, P.Finish,
+                                                     Min_Item)))
+                 and then St > Best
+               then
+                  Best := St;
+                  LS := P.Mode = 2;
+               end if;
+               if Not_In_OS_Ack and then P.Mode = 0
+                 and then Est > A (S, Frame (T, P.Ack_Start,
+                                             Estimated_Item))
+                 and then Est < A (S, Frame (T, P.Start, Estimated_Item))
+               then
+                  return False;
+               end if;
+            end if;
+         end;
+      end loop;
+      return LS;
+   end LS_Area_Furthest;
+
    --  e4/ls-display, 4.4.19.1.4.2 to 4.4.19.1.4.5: the LSSMA display
    --  toggle order of packet 180 to EVC_LS_Display, its delay timer
    --  started at Start_Ms (a: the time stamp of the radio message, b:
@@ -982,16 +1036,20 @@ is
    --  released is rejected, decision: the buffer keeps packet 180
    --  whole, its qualifier read here); 4.8.4: the toggle
    --  off order in LS only, the toggle on order in the modes of its row
-   --  (its exceptions [9] [10], the train inside the LS area of a mode
-   --  profile of the same message, are not modelled: accepted);
+   --  (outside LS with its exceptions [9] [10], B093: LS_Area_Furthest
+   --  over the mode profiles of the same message M, taken before it);
    --  7.4.2.37.4: packet 181 stores the generic LS function marker
    procedure Take_LS_Packet (K        : Order_Kind_T;
                              R        : in out Reader_T;
+                             M        : Message_T;
+                             T        : Origin_Table_T;
+                             Train    : Train_Frame_T;
                              Start_Ms : Unsigned_64;
                              Released : Boolean;
                              A        : EVC_Acceptance.Context_T;
                              Now_Ms   : Unsigned_64)
-     with Global => (In_Out => (EVC_LS_Display.State, Events, Event_N)),
+     with Global => (Input  => EVC_Movement_Authority.State,
+                     In_Out => (EVC_LS_Display.State, Events, Event_N)),
           Pre => K in K180 | K181
    is
       X  : ETCS_Track_Packets.P180.Packet_T;
@@ -1009,6 +1067,12 @@ is
         or else (X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_Off
                  and then (Released
                            or else EVC_Modes."/=" (A.Mode, EVC_Modes.M_LS)))
+        or else (X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_On
+                 and then EVC_Modes."/=" (A.Mode, EVC_Modes.M_LS)
+                 and then not LS_Area_Furthest
+                                (T, Train, M.Msg,
+                                 Not_In_OS_Ack => EVC_Modes."="
+                                                    (A.Mode, EVC_Modes.M_OS)))
       then
          Record_Event (Info_Group, Change_Filtered, 180);
          return;
@@ -1019,6 +1083,29 @@ is
          Start_Ms => Start_Ms,
          Now_Ms   => Now_Ms);
    end Take_LS_Packet;
+
+   --  e4/ls-display-3 (B120), 4.8.3, the rows "LSSMA display toggle on /
+   --  off order, From RBC: Yes": in levels 0, NTC and 1 the toggle on
+   --  order is R [2], kept for the transition when level 2 is announced
+   --  (EVC_LS_Display.Hold_Order; judged in the mode of the transition,
+   --  EVC_Core.Release_LS_Held), the toggle off order is R
+   procedure Hold_LS_Packet (R : in out Reader_T; L2_Announced : Boolean)
+     with Global => (In_Out => (EVC_LS_Display.State, Events, Event_N))
+   is
+      X  : ETCS_Track_Packets.P180.Packet_T;
+      OK : Boolean;
+   begin
+      ETCS_Track_Packets.P180.Decode (R, X, OK);
+      if OK and then ETCS_Track_Packets.P180.Valid (X)
+        and then X.Q_LSSMA = ETCS_Variables.Q_LSSMA_Toggle_On
+        and then L2_Announced
+      then
+         EVC_LS_Display.Hold_Order
+           (if X.Has_T_LSSMA then Natural (X.T_LSSMA) else 0);
+      else
+         Record_Event (Info_Group, Change_Filtered, 180);
+      end if;
+   end Hold_LS_Packet;
 
    --  The packet of kind K that R reads to its store
    procedure Dispatch (K           : Order_Kind_T;
@@ -1062,7 +1149,8 @@ is
          when K131 =>
             Take_Transition_Packet (R);
          when K180 | K181 =>
-            Take_LS_Packet (K, R, M.Start_Ms, False, A, Now_Ms);
+            Take_LS_Packet (K, R, M, T, Train, M.Start_Ms, False, A,
+                            Now_Ms);
       end case;
    end Dispatch;
 
@@ -1262,7 +1350,8 @@ is
                   Balise_Buffer.Open (S, P, R);
                   if K = K180 then
                      --  4.4.19.1.4.2 c) (B091): the timer from the release
-                     Take_LS_Packet (K, R, Now_Ms, True, A, Now_Ms);
+                     Take_LS_Packet (K, R, M, T, Train, Now_Ms, True, A,
+                                     Now_Ms);
                   else
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,
                                Now_Ms);
@@ -1419,6 +1508,19 @@ is
                   elsif K = K180 and then Sl.From_Accepting then
                      --  4.8.2.1 c) exception 2 (B092)
                      Record_Event (Info_Group, Change_Filtered, 180);
+                  elsif K = K180
+                    and then not (A.Level_Valid
+                                  and then EVC_Modes."=" (A.Level,
+                                                          EVC_Modes.L2))
+                  then
+                     --  4.8.3 [2] (B120)
+                     EVC_Radio_Info.Open_Packet (I, P, R);
+                     Hold_LS_Packet
+                       (R, L2_Announced =>
+                             EVC_Levels.Announced
+                             and then EVC_Modes."="
+                                        (EVC_Levels.Announced_Level,
+                                         EVC_Modes.L2));
                   elsif K /= K12 then
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,
