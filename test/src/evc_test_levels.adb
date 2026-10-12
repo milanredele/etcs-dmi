@@ -354,6 +354,32 @@ package body EVC_Test_Levels is
              & "repetition (5.10.3.3.4, 5.10.3.3.5)");
    end Scenario_L2_Exit_By_Order;
 
+   --  3.5.3.8 d): the order to level 1 executed while a session is being
+   --  established; the min safe rear end past the border aborts it and
+   --  releases its safe radio connection
+   procedure Scenario_L2_Exit_Aborts_Establishment is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L2);
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, -1));
+      EVC_Sessions.Take_Order
+        (Establish => True, RBC => (NID_C => 123, NID_RBC => 1),
+         Radio     => 0);
+      Run_X (11_000);
+      Check (EVC_Levels.Level = L1 and then LS.Exit_Phase = LS.Border_Ahead
+             and then EVC_Radio.Being_Established (1),
+             "levels: the order to level 1 executed, a session being "
+             & "established, the min safe rear end not past the border");
+      Run_X (40_000);
+      Check (LS.Exit_Phase = LS.None
+             and then EVC_Radio.Info (1).State = EVC_Radio.Idle
+             and then LS.Reports_Requested = 0,
+             "levels: the min safe rear end past the border out of level 2: "
+             & "the establishment aborted, its connection released "
+             & "(3.5.3.8 d)");
+   end Scenario_L2_Exit_Aborts_Establishment;
+
    ---------------------------------------------------------------------
    --  5.10.3.1, 3.4.4.4.3.2: the immediate order to level 2 of a linked
    --  group is carried out only when the group is found in its

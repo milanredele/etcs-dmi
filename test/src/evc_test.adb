@@ -256,6 +256,12 @@ begin
    Scenario_SoM_L2_Same_Cycle;
    Scenario_Train_Length_To_Position;
    Scenario_Session_Mode_Change;
+   Scenario_Session_Abort_Desk;
+   Scenario_Session_Abort_EoM;
+   Scenario_Session_Short_Number;
+   Scenario_Session_SoM_Completed;
+   Scenario_Session_Hole_Rows;
+   Scenario_Session_Driver_Contact;
    Scenario_SoM_L2_Mode_Proposal_LS;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
@@ -307,6 +313,7 @@ begin
    Scenario_L1_Order_Own_Group_Linking;
    Scenario_L2_Driver_Change;
    Scenario_L2_Exit_By_Order;
+   Scenario_L2_Exit_Aborts_Establishment;
    Scenario_L2_Order_Linked_Group;
    Scenario_L2_Radio_Data_No_Contact;
    Scenario_L2_Radio_Data_No_Registration;

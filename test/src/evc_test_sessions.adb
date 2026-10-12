@@ -26,6 +26,7 @@ with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Track_Conditions;
 with EVC_Test_Modes;
+with EVC_Test_Authority;
 with EVC_Test_Support;    use EVC_Test_Support;
 with Interfaces;          use Interfaces;
 with Sim_Telegrams;
@@ -1655,5 +1656,178 @@ package body EVC_Test_Sessions is
          end if;
       end loop;
    end Scenario_Session_Mode_Change;
+
+   --  The release of the safe radio connection of S requested in the
+   --  last cycle
+   function Released (S : Natural := 1) return Boolean is
+     (for some N in 1 .. Radio_Outputs => Is_Request (N, 2, S));
+
+   --  3.5.3.8 a): the driver closes the desk during a level 2 start of
+   --  mission while its session is being established: the establishment
+   --  aborted, the safe radio connection released
+   procedure Scenario_Session_Abort_Desk is
+   begin
+      SoM_To_S3;
+      Check (R.Being_Established (1),
+             "abort desk: the session of the start of mission being "
+             & "established");
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand;
+      Check (R.Info (1).State = R.Idle and then Released,
+             "abort desk: the desk closed during the start of mission: "
+             & "the establishment aborted, the connection released "
+             & "(3.5.3.8 a)");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_Abort_Desk;
+
+   --  3.5.3.8 b): End of Mission (the desk closed in level 1) while a
+   --  session ordered by a balise group is being established
+   procedure Scenario_Session_Abort_EoM is
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 0, others => <>));
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Check (R.Being_Established (1),
+             "abort EoM: the session ordered by the group being "
+             & "established");
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Cab_A_Active) + 1), 0));
+      Stand;
+      Check (R.Info (1).State = R.Idle and then Released
+             and then EVC_Sessions.EoM_Sent = 0,
+             "abort EoM: End of Mission: the establishment aborted, the "
+             & "connection released, no 150 (3.5.3.8 b)");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_Abort_EoM;
+
+   --  3.5.3.11: the driver selects the EIRENE short number in a level 2
+   --  start of mission: the stored RBC ID and phone number not used
+   procedure Scenario_Session_Short_Number is
+      Stored : constant R.RBC_Contact_T :=
+        (Known => True, Valid => True,
+         RBC   => (NID_C => 5, NID_RBC => 300),
+         Radio => 16#0077_FFFF_FFFF_FFFF#);
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, others => <>));
+      EVC_Test_Modes.Start_E4;
+      R.Set_Contact (Stored);
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 5));
+      Send (RBC_Entry (2, 0, ""));
+      Check (R.Being_Established (1)
+             and then R.Info (1).RBC = R.No_RBC
+             and then R.Info (1).Radio = ETCS_Variables.NID_RADIO_T'Last
+             and then R.Contact.RBC = Stored.RBC,
+             "short number: the session set up with the EIRENE short "
+             & "number, not the stored RBC ID and number, which stay "
+             & "(3.5.3.11)");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_Short_Number;
+
+   --  3.5.3.4 g): a level 2 start of mission during which no session
+   --  could be established (three failed attempts) completed: the mode
+   --  change out of SB (EVC_Sessions.Mode_Changed, as EVC_Core calls it)
+   --  establishes the session with the stored contact
+   procedure Scenario_Session_SoM_Completed is
+   begin
+      SoM_To_S3;
+      for I in 1 .. 3 loop
+         Give_Radio_Event (1, Set_Up_Failed);
+         Stand;
+      end loop;
+      Check (R.Info (1).State = R.Idle and then R.Contact.Valid,
+             "SoM completed: no session after three attempts, the "
+             & "entered contact valid");
+      EVC_Sessions.Mode_Changed (EVC_Modes.M_SB, EVC_Modes.M_SR);
+      Stand;
+      Check (R.Being_Established (1)
+             and then R.Info (1).RBC = (NID_C => 5, NID_RBC => 300),
+             "SoM completed: the start of mission completed in level 2 "
+             & "without a session: the session established (3.5.3.4 g)");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_SoM_Completed;
+
+   --  3.5.3.8 g), 3.5.3.4 e): a session ordered by a balise group is
+   --  being established when the engine reaches an announced
+   --  radio hole: aborted, its connection released; established again
+   --  once the engine has left the hole
+   procedure Scenario_Session_Hole_Rows is
+      C       : T68.Packet_T;
+      Any_Rel : Boolean := False;
+      Any_Req : Boolean := False;
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 0, others => <>));
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (20, 200));
+      C.Q_DIR := 2;
+      C.Q_SCALE := 1;
+      C.Q_TRACKINIT := 0;
+      C.Has_D_TRACKCOND := True;
+      C.D_TRACKCOND := 100;
+      C.L_TRACKCOND := 200;
+      C.M_TRACKCOND := 4;
+      Carry (Track_N, 0, C);
+      Run_X (15_000);
+      Check (R.Being_Established (1)
+             and then not EVC_Track_Conditions.Engine_In_Radio_Hole,
+             "hole rows: the session ordered at 100 m being established "
+             & "before the hole");
+      for I in 1 .. 30 loop
+         Step_X (1000);
+         Any_Rel := Any_Rel or else Released;
+         exit when EVC_Track_Conditions.Engine_In_Radio_Hole;
+      end loop;
+      Check (EVC_Track_Conditions.Engine_In_Radio_Hole
+             and then R.Info (1).State = R.Idle and then Any_Rel,
+             "hole rows: the engine front end at the start of the radio "
+             & "hole: the establishment aborted, the connection released "
+             & "(3.5.3.8 g)");
+      --  the run goes on in level 2 (3.5.3.4 e is a level 2 condition;
+      --  the group's packet 68 is read in level 1)
+      EVC_Core.Set_Mode_For_Test (EVC_Core.Mode, EVC_Modes.L2);
+      for I in 1 .. 40 loop
+         Step_X (1000);
+         Any_Req := Any_Req
+           or else (for some N in 1 .. Radio_Outputs => Is_Request (N, 1));
+         exit when not EVC_Track_Conditions.Engine_In_Radio_Hole;
+      end loop;
+      Check (not EVC_Track_Conditions.Engine_In_Radio_Hole
+             and then Any_Req and then R.Being_Established (1),
+             "hole rows: the engine has left the radio hole: the session "
+             & "established again in level 2 (3.5.3.4 e)");
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_Hole_Rows;
+
+   --  3.5.3.4 h): in level 2 outside the start of mission the driver
+   --  selects another RBC's contact in the Radio data window: the
+   --  session with it established (the one with the former RBC
+   --  terminated, 3.5.3.5.2); the same RBC again: no second session
+   --  (3.5.3.4.1)
+   procedure Scenario_Session_Driver_Contact is
+      Other : constant R.RBC_Id_T := (NID_C => 5, NID_RBC => 301);
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_FS, EVC_Modes.L2);
+      EVC_Test_Authority.Establish_Session;
+      Send (RBC_Entry (0, 5 * 16_384 + 301, "0078"));
+      Check (R.In_Session_With (Other)
+             and then (for some S in R.Session_T =>
+                         R.Being_Established (S)
+                         and then R.Info (S).RBC = Other)
+             and then R.Info (1).State = R.Terminating,
+             "driver contact: the RBC contact selected in level 2 outside "
+             & "the start of mission: the session with it being "
+             & "established, the former one terminated (3.5.3.4 h)");
+      Send (RBC_Entry (0, 5 * 16_384 + 301, "0078"));
+      Check ((for all S in R.Session_T =>
+                (if R.Info (S).RBC = Other
+                 then R.Info (S).State /= R.Idle)),
+             "driver contact: the same contact again: no second session "
+             & "(3.5.3.4.1)");
+   end Scenario_Session_Driver_Contact;
 
 end EVC_Test_Sessions;

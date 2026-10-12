@@ -65,4 +65,12 @@ package EVC_Test_Sessions is
    --  3.5.3.4 c): a session for a mode change to report in level 2
    procedure Scenario_Session_Mode_Change;
 
+   --  e5/session-rows: 3.5.3.4 e) g) h), 3.5.3.8 a) b) g), 3.5.3.11
+   procedure Scenario_Session_Abort_Desk;
+   procedure Scenario_Session_Abort_EoM;
+   procedure Scenario_Session_Short_Number;
+   procedure Scenario_Session_SoM_Completed;
+   procedure Scenario_Session_Hole_Rows;
+   procedure Scenario_Session_Driver_Contact;
+
 end EVC_Test_Sessions;
