@@ -4784,3 +4784,41 @@ what the runner still fails on the curve sequences is B195 (ours), the
 Indication of an EOA target 190 to 340 m further out (3131040_02, _38,
 _50; ours), and runner or data items (B193, B194, B200, B201). Open
 items: doc/BACKLOG.csv (35 open after this round).
+
+### Runner: the workbooks that are no reference, the margin, the unreached steps (e5/curves-runner-2, 2026-10-12)
+
+B200: `S076_Run.No_Reference` says why the curve steps of a set are not
+judged, for a step naming its limit and now also for one naming none
+(the set named last or the only one): Gamma (B100), old tool (B170),
+and two new reasons, both SUBSET-076 inconsistencies. `R_Tool_Target`:
+the tool's target type LoA/MRSP at 0 km/h for an EOA, recognised from
+the block as the probe does (Track!B2 0, no SBD or SBI1 value, the EBD
+0 m above 0 km/h): exactly the 15 SV30 files of B200. `R_Factors`: the
+workbook's Kv_int x Kr_int is none the sequence gives. Decision: the
+workbook's factors are not in the sequence file (the sheet "Integrated
+correction factors" is not extracted, B230), so the runner reads the
+product from the EBD's deceleration on a flat profile (20 to 50 km/h,
+over AD_0 of Brake parameters (lambda)!F3) and compares it, within
+0.03, with the set in force on the on-board, every packet 3 of the file
+(`S076_Sequences` reads them, bounded, static) and the A.3.2 defaults
+without one; Kt_int is not compared. 3130237_06 is judged (the workbook
+has its first packet's factors; the defaults of BG3d are in force).
+
+B194: without an EBD value at the speed the margin is the conversion
+model's EBD distance at the tool's percentage times 1 - AD_0(100) /
+AD_0(109); the drive on goes past the workbook's location by the margin
+and a location passed within it agrees. 3131040_04 still fails: our
+Overspeed 27 m nearer than its workbook against a margin of 15 m (the
+613 m of B194 was the end of the drive); the probe's margin is larger
+(V_bec, B231).
+
+B193: _42 is blocked by `R_Tool_Target`; _52, _54, _56 (and _32) are
+workbooks of their first packet 3 while the on-board holds the defaults
+at the step: right after BG0d of another country in _54, unexplained in
+_56 (B232, on-board).
+
+SUBSET-076: 742 / 1426 / 1022 before, 742 / 1339 / 1109 after, 0
+regressions; 87 failed -> blocked (64 Gamma, 15 tool target, 6 factors,
+2 old tool), 7 placement -> tool target. B224 (the last cycle at the
+speed) was tried: the B195 cases pass, but 83 regressions: reverted.
+B140 not reached.
