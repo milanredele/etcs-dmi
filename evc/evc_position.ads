@@ -616,9 +616,15 @@ is
    --  the linking of a group that carries a level transition order
    --  (packet 41) is held, not taken, until EVC_Core judges it again
    --  after the stores evaluated that order (Take_Held_Linking).
+   --  Ignore_Info (e5/acceptance-gates, B221), 3.14.3.6: the information
+   --  of the groups read is ignored (a movement opposite to the
+   --  authorised direction): the group still locates the train (3.6),
+   --  its packets are neither taken here (5, 79) nor recorded for the
+   --  units (not in Taken).
    procedure Set_Linking_Context (Accept_Info, Check : Boolean;
                                   Accept_P79 : Boolean := True;
-                                  Defer_On_Order : Boolean := False)
+                                  Defer_On_Order : Boolean := False;
+                                  Ignore_Info : Boolean := False)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old

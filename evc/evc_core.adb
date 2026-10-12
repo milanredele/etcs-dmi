@@ -979,7 +979,7 @@ is
                                 EVC_National_Values.State, Current_Mode,
                                 EVC_Levels.State, Cycle_Count, Clock_Ms,
                                 EVC_Train_Inputs.State, EVC_Mission.State,
-                                EVC_Train_Data.State),
+                                EVC_Train_Data.State, Brake_State),
                      Output => (Standstill, Below_Override),
                      In_Out => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Origins.State, EVC_Outbox.Queue)),
@@ -1018,7 +1018,15 @@ is
          --  stored: held until the stores evaluated the order
          --  (Take_Held_Linking)
          Defer_On_Order => EVC_Acceptance.Stored
-                             (EVC_Acceptance.Linking, Ordered_Context));
+                             (EVC_Acceptance.Linking, Ordered_Context),
+         --  e5/acceptance-gates (B221), 3.14.3.6: the information of the
+         --  groups read during a movement opposite to the authorised
+         --  direction is ignored. Decision: that movement is the one the
+         --  unauthorised direction protection watches or brakes for
+         --  (3.14.3.2, EVC_Brake_Commands, from the cycle before: a group
+         --  read in the cycle the movement is first detected still counts)
+         Ignore_Info    => Brake_State.Direction.Watching
+                           or else Brake_State.Direction.Braking);
       EVC_Position.Update
         (Cab_A_Active => TIU_Now (Cab_A_Active),
          Cab_B_Active => TIU_Now (Cab_B_Active),

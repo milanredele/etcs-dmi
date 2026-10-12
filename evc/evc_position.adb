@@ -71,6 +71,7 @@ package body EVC_Position
                                    Geo_Kept_Sense,
                                    Check_Linking,
                                    Defer_Ordered,
+                                   Ignore_Groups,
                                    Held,
                                    Held_A,
                                    Held_Link))
@@ -154,6 +155,9 @@ is
    --  group with its own packet 41 is held for EVC_Core's second verdict
    --  (Take_Held_Linking): the group Held_A, its linking Held_Link
    Defer_Ordered      : Boolean := False;
+   --  e5/acceptance-gates (B221), 3.14.3.6: the information of the
+   --  groups read is ignored
+   Ignore_Groups      : Boolean := False;
    Held               : Boolean := False;
    Held_A             : Anchor_T := (others => <>);
    Held_Link          : EVC_Linking.Linking_T;
@@ -1273,8 +1277,12 @@ is
          Pos_Status := Valid;
          --  3.6.6.4.2: a geographical reference group detected
          Anchor_Geo (A);
-         Take_Packets (A, T, S);
-         Record_Taken (A, T, S, Repositioning);
+         --  3.14.3.6 (e5/acceptance-gates, B221): the group locates the
+         --  train, its information is ignored
+         if not Ignore_Groups then
+            Take_Packets (A, T, S);
+            Record_Taken (A, T, S, Repositioning);
+         end if;
       end;
    end Take_Group;
 
@@ -1528,6 +1536,7 @@ is
       Accept_Geo := True;
       Check_Linking := True;
       Defer_Ordered := False;
+      Ignore_Groups := False;
       Held := False;
       Held_A := No_Anchor;
       Held_Link := (others => <>);
@@ -2150,11 +2159,13 @@ is
 
    procedure Set_Linking_Context (Accept_Info, Check : Boolean;
                                   Accept_P79 : Boolean := True;
-                                  Defer_On_Order : Boolean := False) is
+                                  Defer_On_Order : Boolean := False;
+                                  Ignore_Info : Boolean := False) is
    begin
       Accept_Linking := Accept_Info;
       Accept_Geo := Accept_P79;
       Defer_Ordered := Defer_On_Order;
+      Ignore_Groups := Ignore_Info;
       Check_Linking := Check;
    end Set_Linking_Context;
 
