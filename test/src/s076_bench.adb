@@ -36,6 +36,8 @@ package body S076_Bench is
    Odo_Over  : Integer_64 := 0;
    Odo_Under : Integer_64 := 0;
    Acc       : Integer_64 := Accuracy_Per_Mille;
+   --  B191: the speed's confidence interval of SUBSET-041 5.3.1.2
+   Speed_Acc : Boolean := False;
 
    Max_Balises : constant := 64;
    type Balise_T is record
@@ -539,6 +541,7 @@ package body S076_Bench is
       Odo_Over := 0;
       Odo_Under := 0;
       Acc := Accuracy_Per_Mille;
+      Speed_Acc := False;
       for B of Balises loop
          B.Used := False;
       end loop;
@@ -669,15 +672,30 @@ package body S076_Bench is
 
    function Time_Ms return Unsigned_64 is (Clock);
 
+   --  SUBSET-041 5.3.1.2: the speed accuracy, 2 km/h up to 30 km/h,
+   --  then linearly up to 12 km/h at 500 km/h, cm/s rounded up:
+   --  (640 + 0.36 V) / 470 km/h = (64 000 + 36 V) / 1692 cm/s. The
+   --  bench's own copy of the formula (EVC_Limits.F41 is the
+   --  on-board's): the odometer states it, the on-board takes V_ura
+   --  from it (SUBSET-026 3.13.9.3.2.1)
+   function F41 (V : Natural) return Natural is
+     ((Natural'Max (64_000 + 36 * V, 94_000) + 1_691) / 1_692);
+
+   --  The odometer frame of EVC_Ports: d_est, over, under, then v_est,
+   --  v_min, v_max (B191: the interval of F41 while Speed_Acc, the
+   --  exact speed otherwise; the three speeds 0 at standstill)
    procedure Sample is
       Movement : constant EVC_Bytes.Byte :=
         (if V_Cms = 0 then 0 elsif Dir > 0 then 1 else 2);
       V : constant Natural := Natural'Min (V_Cms, 65_535);
+      D : constant Natural := (if Speed_Acc and V > 0 then F41 (V) else 0);
+      V_Min : constant Natural := (if V > D then V - D else 0);
+      V_Max : constant Natural := Natural'Min (V + D, 65_535);
    begin
       EVC_Core.Handle_Input
         (Odometer,
          U32 (X_Cm) & U32 (Odo_Over) & U32 (Odo_Under)
-         & U16 (V) & U16 (V) & U16 (V)
+         & U16 (V) & U16 (V_Min) & U16 (V_Max)
          & Byte_Array'(Movement, 0) & U16 (0));
    end Sample;
 
@@ -889,6 +907,11 @@ package body S076_Bench is
    begin
       Acc := Integer_64 (Per_Mille);
    end Set_Accuracy;
+
+   procedure Set_Speed_Accuracy (On : Boolean) is
+   begin
+      Speed_Acc := On;
+   end Set_Speed_Accuracy;
 
    procedure Odometer_Error (Extra_Cm : Natural) is
    begin
