@@ -244,11 +244,19 @@ package body S076_Run is
             Full : constant Integer_64 := Integer_64 (V) * B.Cycle_Ms / 1000;
          begin
             exit when Left <= 0;
-            B.Set_Speed
-              (if Left < Full
-               then Natural (Integer_64'Max (1, Left * 1000 / B.Cycle_Ms))
-               else V);
-            B.Cycle;
+            if Left < Full and then not (B.State.SBC or else B.State.EBC) then
+               --  B224: the last cycle at the speed, moving the train by
+               --  the distance left; under a brake command at the
+               --  distance left per cycle as before (S076_Bench.Move_To)
+               B.Set_Speed (V);
+               B.Cycle (Left);
+            else
+               B.Set_Speed
+                 (if Left < Full
+                  then Natural (Integer_64'Max (1, Left * 1000 / B.Cycle_Ms))
+                  else V);
+               B.Cycle;
+            end if;
          end;
       end loop;
    end Drive_To;
@@ -1480,6 +1488,20 @@ package body S076_Run is
                return Reach_Stored_Location (Same (W (4),
                                                    "max-safe-front-end"));
             end if;
+            --  B226: a location the train reaches above the warning speed
+            --  (the comment says so; the charts are drawings and may run
+            --  above the SBI there): between the warning speed and the SBI
+            --  shown, held
+            declare
+               S : constant B.State_T := B.State;
+            begin
+               if Has (Image (St.Comment), "overpasses the warning speed")
+                 and then S.Has_Speed and then S.V_SBI > S.V_Wsl
+               then
+                  Explicit_Speed :=
+                    Kmh_To_Cms (Long_Float (S.V_Wsl + S.V_SBI) / 2.0);
+               end if;
+            end;
             --  the doubts grow with the move: a few rounds
             for Round in 1 .. 4 loop
                Move_To (St.Dist_Cm - Off);
@@ -1556,8 +1578,18 @@ package body S076_Run is
                Kmh := (S.V_Perm) + 8;
             elsif Has (E, "SBI") then
                Kmh := (if Below then S.V_SBI - 1 else S.V_SBI + 1);
+            elsif Has (E, "warning") and then not Below then
+               --  B226: above the warning speed and below the SBI, the
+               --  middle of the two values shown (each rounded to the
+               --  km/h): one above the warning limit expects the Warning
+               --  status, not the Intervention
+               Explicit_Speed :=
+                 Kmh_To_Cms (Long_Float (S.V_Wsl + S.V_SBI) / 2.0);
+               B.Set_Speed (Explicit_Speed);
+               return Pass ("ODO speed between warning" & S.V_Wsl'Image
+                            & " and SBI" & S.V_SBI'Image & " km/h");
             elsif Has (E, "warning") then
-               Kmh := (if Below then S.V_Wsl - 1 else S.V_Wsl + 1);
+               Kmh := S.V_Wsl - 1;
             elsif National_Limit (E) >= 0 then
                --  a national speed value (A.3.2, or the sequence's packet
                --  3): above or below it by 5 km/h

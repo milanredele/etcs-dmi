@@ -61,6 +61,13 @@ package S076_Bench is
    --  speed
    procedure Run (Ms : Natural);
    procedure Cycle;
+   --  B224: one cycle at the train's speed that moves the train by
+   --  Distance_Cm (the last cycle before a location: the speed kept, not
+   --  the distance left reported as the speed for one cycle, a dip that
+   --  swings the on-board's acceleration estimate and with it every limit
+   --  by A_est2 over T_berem, 3.13.9.3.2.9; the cycle keeps its length:
+   --  a shorter one shifts the on-board's timing)
+   procedure Cycle (Distance_Cm : Integer_64);
    function Time_Ms return Unsigned_64;
 
    ---------------------------------------------------------------------
