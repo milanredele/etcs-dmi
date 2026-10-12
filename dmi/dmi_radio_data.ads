@@ -52,7 +52,9 @@ package DMI_Radio_Data is
    GSMR_Network : Name_T;
 
    --  11.3.5: RBC ID (0 .. 16 777 214, SUBSET-026 A.3.11) and RBC phone
-   --  number (16 digits of NID_RADIO, 7.5.1.95) as entered
+   --  number (16 digits of NID_RADIO, 7.5.1.95) as entered on this DMI
+   --  or, since B007, as the on-board stores them (MSG_RBC_CONTACT, the
+   --  last of the two wins), proposed by the RBC data window (11.7.1.4)
    RBC_ID       : DMI_Driver_Data.Text_Value_T;
    RBC_Phone    : DMI_Driver_Data.Text_Value_T;
    RBC_Entered  : Boolean := False;
@@ -64,7 +66,8 @@ package DMI_Radio_Data is
    --  The choice the driver made last on this DMI. Only after 'Entered'
    --  are RBC_ID and RBC_Phone what the on-board stores (the Data view
    --  window, Table 45 items 13 and 14); after the two others the
-   --  on-board uses contact information the DMI does not know.
+   --  on-board uses contact information the DMI does not know until
+   --  MSG_RBC_CONTACT tells it (which sets 'Entered' again).
    Last_Choice : RBC_Choice_T := Entered;
 
    procedure Reset;

@@ -391,6 +391,33 @@ package body DMI_Test_Settings is
              & " data' loses its conditions");
       Radio (Win_Radio_GSMR);
 
+      -- B007, 11.7.1.4: the RBC contact the on-board stores
+      -- (MSG_RBC_CONTACT) is proposed: RBC ID 82220, phone 0077
+      Send_Raw (16#10#, (1, 16#2C#, 16#41#, 16#01#, 0, 4,
+                         48, 48, 55, 55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+      Win_Menu (3);
+      Check (Win_Value (1) = "82220" and then Win_Value (2) = "0077",
+             "11.7.1.4: the RBC contact stored on-board is proposed "
+             & "(MSG_RBC_CONTACT, B007)");
+      Radio (Win_Radio_GSMR, Data => Win_Data_All and 16#0E#);
+      Radio (Win_Radio_GSMR);
+      -- a phone byte that is not a digit drops the message as a whole
+      Send_Raw (16#10#, (1, 16#2C#, 16#41#, 16#01#, 0, 4,
+                         48, 48, 65, 55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+      -- nothing stored on-board: nothing proposed
+      Send_Raw (16#10#, (1 .. 22 => 0));
+      Win_Menu (3);
+      Check (Win_Value (1) = "" and then Win_Value (2) = "",
+             "11.7.1.4: a malformed MSG_RBC_CONTACT is dropped, no contact "
+             & "stored proposes nothing (B007)");
+      Radio (Win_Radio_GSMR, Data => Win_Data_All and 16#0E#);
+      Radio (Win_Radio_GSMR);
+      -- the contact entered above, stored again (the steps below propose
+      -- it)
+      Send_Raw (16#10#, (1, 16#87#, 16#D6#, 16#12#, 0, 16,
+                         48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+                         48, 49, 50, 51, 52, 53));
+
       -- 11.3.5.4: no phone number field with FRMCS alone
       Radio (Win_FRMCS or Win_Only_FRMCS or Win_FRMCS_Reg or Win_Known);
       Win_Menu (3);

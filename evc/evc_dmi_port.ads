@@ -477,6 +477,25 @@ is
                              + Networks_Max * (1 + Network_Name_Max)
                   and then Frame (1) = MSG_RADIO_NETWORKS;
 
+   --  MSG_RBC_CONTACT (common/dmi_protocol.ads, B007): the RBC contact
+   --  information stored on-board, so that the DMI's RBC data window
+   --  proposes it (DMI 11.7.1.4): known u8, rbc_id u32 (NID_C above the
+   --  14 bits of NID_RBC, DMI 11.3.5.3.1), phone_len u8, 16 bytes of
+   --  the digits of NID_RADIO (7.5.1.95: BCD digits from the most
+   --  significant nibble, the first nibble that is not a digit ends
+   --  them; all F, the short number, gives none)
+   MSG_RBC_CONTACT    : constant Byte := 16#10#;
+   RBC_Contact_Length : constant := 22;
+   subtype RBC_Contact_Frame_T is
+     Byte_Array (1 .. Header_Length + RBC_Contact_Length);
+
+   procedure RBC_Contact_Frame (Known  : Boolean;
+                                RBC_Id : Unsigned_32;
+                                Radio  : Unsigned_64;
+                                Frame  : out RBC_Contact_Frame_T)
+     with Pre  => RBC_Id <= 16_777_214,
+          Post => Frame (1) = MSG_RBC_CONTACT;
+
    --  MSG_ONBOARD train bit 4: the "BTM alarm reaction inhibition"
    --  function is active (5.22.4.1)
    Train_BMM_Inhibition : constant Bits_T := 16;

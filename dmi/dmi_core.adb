@@ -1588,6 +1588,60 @@ package body DMI_Core is
       end case;
    end Apply_Desk_Input;
 
+   --  MSG_RBC_CONTACT (B007): the RBC contact information stored
+   --  on-board becomes the values the RBC data window proposes (DMI
+   --  11.7.1.4) and the Data view shows (Table 45 items 13, 14). The
+   --  whole message is checked first (dmi_protocol.ads): an id above
+   --  16 777 214, a phone_len above 16 or a phone byte that is not a
+   --  digit drop it. Nothing stored: no value is proposed.
+   procedure Apply_RBC_Contact (Payload : Stream_Element_Array) is
+      use DMI_Radio_Data;
+      Offset : Stream_Element_Offset := Payload'First;
+      Known  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Id     : constant Unsigned_32 := Get_U32 (Payload, Offset);
+      Len    : constant Natural := Natural (Get_U8 (Payload, Offset));
+      Digits_Text : Wide_String (1 .. 8);
+      Value  : Unsigned_32 := Id;
+      Count  : Natural := 0;
+   begin
+      if Known > 1 or else Id > 16_777_214 or else Len > RBC_Phone_Max then
+         return;
+      end if;
+      for I in 1 .. Len loop
+         if Payload (Offset + Stream_Element_Offset (I - 1))
+           not in 48 .. 57
+         then
+            return;
+         end if;
+      end loop;
+      if Known = 0 then
+         RBC_ID := (others => <>);
+         RBC_Phone := (others => <>);
+         RBC_Entered := False;
+         return;
+      end if;
+      --  the RBC ID in decimal, 1 .. 8 digits
+      loop
+         Count := Count + 1;
+         Digits_Text (Digits_Text'Last - Count + 1) :=
+           Wide_Character'Val (48 + Natural (Value mod 10));
+         Value := Value / 10;
+         exit when Value = 0 or else Count = Digits_Text'Length;
+      end loop;
+      RBC_ID := (others => <>);
+      RBC_ID.Length := Count;
+      RBC_ID.Text (1 .. Count) :=
+        Digits_Text (Digits_Text'Last - Count + 1 .. Digits_Text'Last);
+      RBC_Phone := (others => <>);
+      RBC_Phone.Length := Len;
+      for I in 1 .. Len loop
+         RBC_Phone.Text (I) := Wide_Character'Val
+           (Natural (Payload (Offset + Stream_Element_Offset (I - 1))));
+      end loop;
+      RBC_Entered := True;
+      Last_Choice := Entered;
+   end Apply_RBC_Contact;
+
    procedure Handle_Message (The_Type : Msg_Type_T;
                              Payload  : Stream_Element_Array) is
    begin
@@ -1599,7 +1653,7 @@ package body DMI_Core is
                    | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
                    | MSG_PLANNING | MSG_ONBOARD | MSG_ATO
                    | MSG_SYSTEM_STATUS | MSG_RADIO_NETWORKS
-                   | MSG_SYSTEM_VERSION | MSG_VBC_LIST
+                   | MSG_SYSTEM_VERSION | MSG_VBC_LIST | MSG_RBC_CONTACT
       then
          Note_EVC_Message;
       end if;
@@ -1661,6 +1715,10 @@ package body DMI_Core is
             end if;
          when MSG_VBC_LIST =>
             Apply_VBC_List (Payload);
+         when MSG_RBC_CONTACT =>
+            if Payload'Length = RBC_Contact_Length then
+               Apply_RBC_Contact (Payload);
+            end if;
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
                Update_Buttons; -- make sure hit testing sees current state

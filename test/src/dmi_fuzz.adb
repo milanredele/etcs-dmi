@@ -96,11 +96,11 @@ procedure DMI_Fuzz is
    -- In-domain generators, one per message (see dmi_protocol.ads)
    ---------------------------------------------------------------------
 
-   EVC_Types : constant array (1 .. 13) of Msg_Type_T :=
+   EVC_Types : constant array (1 .. 14) of Msg_Type_T :=
      (MSG_SPEED_STATE, MSG_MODE_LEVEL, MSG_TEXT, MSG_TEXT_REMOVE,
       MSG_TRACK_COND, MSG_PLANNING, MSG_STATUS, MSG_ONBOARD, MSG_ATO,
       MSG_SYSTEM_STATUS, MSG_RADIO_NETWORKS, MSG_SYSTEM_VERSION,
-      MSG_VBC_LIST);
+      MSG_VBC_LIST, MSG_RBC_CONTACT);
 
    procedure Build_In_Domain (The_Type : Msg_Type_T) is
    begin
@@ -313,6 +313,23 @@ procedure DMI_Fuzz is
                Last := Last - 1;
             elsif Chance (5) then
                U8 (Pick (0, 255));
+            end if;
+         end;
+      elsif The_Type = MSG_RBC_CONTACT then
+         --  known 0 .. 2, an id up to one beyond A.3.11, a phone length
+         --  up to one beyond 16 and its bytes, now and then not a digit
+         declare
+            Len : constant Natural := Pick (0, RBC_Phone_Max + 1);
+         begin
+            U8 (Pick (0, 2));
+            U32 (Unsigned_32 (Pick (0, 16_777_215)));
+            U8 (Len);
+            for I in 1 .. RBC_Phone_Max loop
+               U8 (if I > Len then 0
+                   elsif Chance (5) then Pick (0, 255) else Pick (48, 57));
+            end loop;
+            if Chance (5) and then Last > 0 then
+               Last := Last - 1;
             end if;
          end;
       end if;

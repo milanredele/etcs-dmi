@@ -315,4 +315,39 @@ is
       Last := Pos - 1;
    end Networks_Frame;
 
+   --  B007, DMI 11.7.1.4: the stored RBC contact; nothing stored, every
+   --  field 0
+   procedure RBC_Contact_Frame (Known  : Boolean;
+                                RBC_Id : Unsigned_32;
+                                Radio  : Unsigned_64;
+                                Frame  : out RBC_Contact_Frame_T)
+   is
+      Count  : Natural := 0;
+      Digit  : Unsigned_64;
+      Ending : Boolean := False;
+   begin
+      Frame := (1      => MSG_RBC_CONTACT,
+                2      => RBC_Contact_Length,
+                others => 0);
+      if Known then
+         Frame (6) := 1;
+         Frame (7) := Byte (RBC_Id and 16#FF#);
+         Frame (8) := Byte (Shift_Right (RBC_Id, 8) and 16#FF#);
+         Frame (9) := Byte (Shift_Right (RBC_Id, 16) and 16#FF#);
+         for I in 1 .. 16 loop
+            pragma Loop_Invariant
+              (Count < I and then Frame (1) = MSG_RBC_CONTACT);
+            Digit := Shift_Right (Radio, 4 * (16 - I)) and 16#F#;
+            if Digit > 9 then
+               Ending := True;
+            end if;
+            if not Ending then
+               Count := Count + 1;
+               Frame (11 + Count) := Byte (48 + Digit);
+            end if;
+         end loop;
+         Frame (11) := Byte (Count);
+      end if;
+   end RBC_Contact_Frame;
+
 end EVC_DMI_Port;

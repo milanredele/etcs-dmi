@@ -260,6 +260,7 @@ begin
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;
+   Scenario_RBC_Contact_To_DMI;
    Scenario_Network_List;
    Scenario_Network_S4_Timeout;
    Scenario_Network_Radio_Order;

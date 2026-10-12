@@ -71,7 +71,7 @@ package body EVC_Core
                                    Ack_For_Protection,
                                    Status_Rev_Sent, Status_Tunnel_Sent,
                                    Status_Radio_Sent,
-                                   TC_Sent,
+                                   TC_Sent, Contact_Sent,
                                    Config_Last, Config_Seen))
 is
 
@@ -245,6 +245,9 @@ is
    --  5.20: an item of the information for an external function was
    --  sent in the last cycle (the TIU track condition output)
    TC_Sent : Boolean := False;
+   --  B007: the stored RBC contact sent last to the DMI (MSG_RBC_CONTACT;
+   --  none before the first contact is stored)
+   Contact_Sent : EVC_Radio.RBC_Contact_T := EVC_Radio.No_Contact;
    --  5.17: the train configuration of the train interface seen last
    --  (EVC_Ports, TIU input 13), whether one was seen since power-up
    Config_Last : EVC_Bytes.Byte := 0;
@@ -385,6 +388,7 @@ is
       Status_Tunnel_Sent := (others => <>);
       Status_Radio_Sent := 0;
       TC_Sent := False;
+      Contact_Sent := EVC_Radio.No_Contact;
       EVC_JRU_Records.Reset;
       Config_Last := 0;
       Config_Seen := False;
@@ -2580,6 +2584,40 @@ is
       end if;
    end Send_Networks;
 
+   --  B007, DMI 11.7.1.4: the RBC contact stored on-board (3.18.4.3,
+   --  EVC_Radio.Contact), sent to the DMI when it changes (from none
+   --  stored at the power-up), so that the RBC data window proposes it
+   --  (the DMI opens the window itself: the on-board does not learn
+   --  when). Its status
+   --  goes with MSG_ONBOARD; a change of the status alone is not sent.
+   --  Decision: NID_C 1023 with NID_RBC 16383 ("contact last known RBC",
+   --  7.5.1.96) is no RBC ID the window can show (16 777 215, above
+   --  A.3.11): sent as no contact stored
+   procedure Send_RBC_Contact
+     with Global => (Input  => EVC_Radio.State,
+                     In_Out => (Contact_Sent, EVC_Outbox.Queue))
+   is
+      use type EVC_Radio.RBC_Id_T;
+      use type ETCS_Variables.NID_RADIO_T;
+      C     : constant EVC_Radio.RBC_Contact_T := EVC_Radio.Contact;
+      Id    : constant Unsigned_32 :=
+        Unsigned_32 (C.RBC.NID_C) * 2**14 + Unsigned_32 (C.RBC.NID_RBC);
+      Frame : RBC_Contact_Frame_T;
+   begin
+      if C.Known /= Contact_Sent.Known
+        or else C.RBC /= Contact_Sent.RBC
+        or else C.Radio /= Contact_Sent.Radio
+      then
+         RBC_Contact_Frame (Known  => C.Known and then Id <= 16_777_214,
+                            RBC_Id =>
+                              (if Id <= 16_777_214 then Id else 0),
+                            Radio  => Unsigned_64 (C.Radio),
+                            Frame  => Frame);
+         EVC_Outbox.Put (DMI, Frame);
+         Contact_Sent := C;
+      end if;
+   end Send_RBC_Contact;
+
    --  The commands of the TIU output (EVC_Ports): phase E3 the speed and
    --  distance monitoring and the protections (3.13, 3.14); phase E4 the
    --  service brake of 5.10.4.2 (the levels), in SF the emergency brake,
@@ -2881,6 +2919,7 @@ is
                                 Odometer_Shown,
                                 Status_Rev_Sent, Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
+                                Contact_Sent,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio.State, EVC_Radio.Queue))
    is
@@ -2902,6 +2941,7 @@ is
       Send_Status (D, Text_SB, Text_EB);  -- DMI MSG_STATUS
       Send_Onboard;                 -- DMI MSG_ONBOARD
       Send_Networks;                -- DMI MSG_RADIO_NETWORKS
+      Send_RBC_Contact;             -- DMI MSG_RBC_CONTACT
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);
       Send_External_Info;           -- TIU the information of 5.20
