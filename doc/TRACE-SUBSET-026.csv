@@ -693,8 +693,8 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.9.4.9,3,x,,,,,E3,done,"EVC_SDM.Step (the release speed limited by the MRSP between the presumed RSM start less the confidence interval and the trip location, the start re-evaluated); evc_test SDM_Calculated_Release"
 3.13.10.2.1,3,x,,,,,E3,done,"MSG_SPEED_STATE v_cur is the snapshot's estimated speed, the one EVC_SDM supervises"
 3.13.10.2.2,3,x,,,,,E3,done,"EVC_SDM.State_T (TCO, SB, EB, EB_For_SB held until revoked); contract of EVC_SDM.Step; evc_test SDM_Ceiling; Q_NVEMRRLS 0 and 1 from packet 3: every command held each cycle until its revocation (evc_test EMRRLS_Ceiling, EMRRLS_Target, EMRRLS_EOA_Target, EMRRLS_Release)"
-3.13.10.2.3,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling"
-3.13.10.2.4,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling"
+3.13.10.2.3,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling; evc_test SDM_EB_Revocation_TSM"
+3.13.10.2.4,3,x,,,,,E3,done,"EVC_SDM.Step (EB_For_SB: no interface, or Q_NVSBTSMPERM in TSM; revoked as the service brake); evc_test SDM_Ceiling; evc_test SDM_EB_Revocation_TSM"
 3.13.10.2.5,3,x,,,,,E3,done,EVC_SDM.Step (Intervention left only without a brake command; proven: Intervention implies a command); evc_test SDM_Ceiling
 3.13.10.2.6,3,x,,,,,E3,partial,"a) done (the trip 4.6.3 [12], [16], EVC_Procedures); b) the balise group beyond the EOA in RSM is level 2 (4.6.3 [11], E5) [E5 authority]"
 3.13.10.2.6 a),3,x,,,,,E3,done,"EVC_SDM.Result_T.EOA_Passed (the EOA target's, else the LOA's: beside a temporary EOA the LOA is passed without a trip, 3.12.4.7 c, SUBSET-076 3.12.4; JRU event 22); the trip 4.6.3 [12], [16] (EVC_Procedures); evc_test SDM_LOA, SDM_LOA_And_Temporary, evc_test_procedures Scenario_Trip_EOA"
@@ -730,7 +730,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.10.4.9,3,x,,,,,E3,done,EVC_SDM (SB_Avail: Service_Brake_Command and Q_NVSBTSMPERM)
 3.13.10.4.9 a),3,x,,,,,E3,done,EVC_SDM (SB_Avail: Service_Brake_Command and Q_NVSBTSMPERM)
 3.13.10.4.9 b),3,x,,,,,E3,done,EVC_SDM (SB_Avail: Service_Brake_Command and Q_NVSBTSMPERM)
-3.13.10.4.10,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
+3.13.10.4.10,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz; evc_test SDM_EB_Revocation_TSM"
 3.13.10.4.10.1,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
 3.13.10.4.10.1 Table 8,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"
 3.13.10.4.10.1 Table 9,3,x,,,,,E3,done,"EVC_SDM.Flags_Of (t0 .. t15, r1, r3 per target, the release speed of the tables, the SR end as SvL), triggered for one target, revoked for all; evc_test SDM_Approach, SDM_MRSP_Target, SDM_SR; evc_fuzz"

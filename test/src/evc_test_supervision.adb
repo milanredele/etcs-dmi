@@ -897,6 +897,82 @@ package body EVC_Test_Supervision is
              & Integer_64'Image (X / 100) & " m");
    end Scenario_SDM_MRSP_Target;
 
+   --  3.13.10.2.3, 3.13.10.2.4, 3.13.10.4.10 (Tables 8 to 10, r1 r3 r0),
+   --  7.5.1.123: in target speed monitoring with Q_NVSBTSMPERM = 0 the SBI
+   --  commands the emergency brake instead of the service brake, revoked
+   --  as the service brake once the train is under the permitted speed,
+   --  whatever Q_NVEMRRLS; an emergency brake of the EBI is revoked under
+   --  the permitted speed only with Q_NVEMRRLS = 1, else at standstill
+   --  (SUBSET-076 3131020_01 steps 57 to 66, B260)
+   procedure Scenario_SDM_EB_Revocation_TSM is
+      procedure Run (EMRRLS : Boolean) is
+         S   : SIn.Snapshot_T := Base_Snapshot;
+         X   : Integer_64 := 0;
+         V   : SIn.Speed_Cms_T := Cms (135.0);
+         Tag : constant String :=
+           "TSM EB revocation (Q_NVEMRRLS" & (if EMRRLS then " 1" else " 0")
+           & "): ";
+         Trig : Boolean := False;
+         procedure To_TSM is new Drive (Never, In_TSM);
+         procedure Up (Above_SBI_Kmh : LF) is
+         begin
+            X := X + 100;
+            Move (X, SIn.Speed_Cms_T (Integer (Res.V_SBI))
+                  + Cms (Above_SBI_Kmh));
+            Sup_Cycle;
+         end Up;
+         procedure Down is
+         begin
+            X := X + 100;
+            Move (X, SIn.Speed_Cms_T (Integer (Res.V_Perm)) - Cms (2.0));
+            Sup_Cycle;
+         end Down;
+      begin
+         S.MRSP := (Count => 2,
+                    Segments => (1 => (0, Cms (140.0)),
+                                 2 => (300_000, Cms (80.0)),
+                                 others => (0, SIn.No_Speed_Limit)),
+                    others   => <>);
+         S.National.Q_NVSBTSMPERM := False;
+         S.National.Q_NVEMRRLS := EMRRLS;
+         Place (S, X, V);
+         Sup_Start (S);
+         To_TSM (X, V, 0, 3_000);
+         Check (Res.Monitoring = SDM.TSM and then not Cmd.EB,
+                Tag & "TSM, no command");
+         --  above the SBI, under the EBI (Table 9: the SBI)
+         Up (0.5);
+         Trig := Res.EB_Triggered;
+         Check (Res.Status = SDM.IntS and then Cmd.EB and then not Cmd.SB
+                and then not Trig,
+                Tag & "over the SBI the emergency brake instead of the "
+                & "service brake (3.13.10.2.3), no EBI");
+         Down;
+         Check (Res.Monitoring = SDM.TSM and then not Cmd.EB
+                and then Res.Status /= SDM.IntS,
+                Tag & "under the permitted speed it is revoked as the "
+                & "service brake (3.13.10.2.4, Table 10 r3)");
+         --  above the EBI
+         Up (20.0);
+         Check (Res.Status = SDM.IntS and then Cmd.EB and then Res.EB_Triggered,
+                Tag & "over the EBI the emergency brake");
+         Down;
+         Check (Cmd.EB = not EMRRLS
+                and then (Res.Status = SDM.IntS) = not EMRRLS,
+                Tag & (if EMRRLS
+                       then "revoked under the permitted speed (r3)"
+                       else "kept under the permitted speed (r3)"));
+         X := X + 100;
+         Move (X, 0);
+         Sup_Cycle;
+         Check (not Cmd.EB and then Res.Status /= SDM.IntS,
+                Tag & "revoked at standstill (r0)");
+      end Run;
+   begin
+      Run (False);
+      Run (True);
+   end Scenario_SDM_EB_Revocation_TSM;
+
    --  3.13.8.2.1 b), 3.13.9.4.4: the LOA, no release speed; 3.13.10.2.6
    --  a): the overrun of the LOA
    procedure Scenario_SDM_LOA is

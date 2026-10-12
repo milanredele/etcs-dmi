@@ -180,6 +180,7 @@ begin
    Scenario_SDM_Status_Order;
    Scenario_SDM_Protections;
    Scenario_SDM_MRSP_Target;
+   Scenario_SDM_EB_Revocation_TSM;
    Scenario_SDM_LOA;
    Scenario_SDM_Calculated_Release;
    Scenario_SDM_Perturbation;
