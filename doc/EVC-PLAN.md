@@ -5506,3 +5506,58 @@ unchecked, by design (they explain a branch); the 15 numbers that exist
 in no SUBSET-026 section are other documents' or typos, to be looked at
 when their subprogram is next touched.
 
+
+### The session rows left (e5/session-rows, 2026-10-12)
+
+Premises checked at the source first: 3.5.3.4 a) (`Mission.Evaluate_SoM`,
+D2 / S3), d) (`EVC_Level_Sessions.Driver_To_L2`), 3.5.3.8 i)
+(`EVC_Sessions.Apply_Network`), 3.5.3.11 (`Mission.Driver_Contact`,
+choice 2) and 3.5.7.3 b) / 3.5.7.5 [7] (the radio holes of
+e5/onboard-misc) were done; their rows closed with notes and tags.
+
+**Done.** 3.5.3.4 e) (the engine out of the hole: `Mode_Session`, then
+`Mode_Session_Order` in level 2 with the stored valid contact), g) (SB
+left for a mode of a mission, `Mode_Changed`), h) (`EVC_Level_Sessions.
+Take_Radio_Data`: in level 2 outside SB the driver's RBC data order the
+session, awaited or not). 3.5.3.8 a) (the desk closed: the session of the
+start of mission being established is stopped, not only the supervising
+one), b) (`Mode_Changed`: End of Mission), d) (`EVC_Sessions.
+Abort_Establishment` from `EVC_Level_Sessions.Evaluate` when the min safe
+rear end passes the border, the exit phase now kept without a supervised
+session), f) (`Handover` request `Rear_Passed`, `Apply_Handover`), g)
+(`Stop_Attempts` closes and releases a session being established; the
+onboard-misc decision "a request already with Euroradio is not withdrawn"
+is replaced by 3.5.3.8's release). 3.16.3.4.1.1 and .1.3 (`Ref_On`,
+`Ref_Ms`: the switch to level 2 with no session, the engine out of a
+hole; no supervision in a hole). Scenarios `Scenario_Session_Abort_Desk`,
+`_Abort_EoM`, `_Short_Number`, `_SoM_Completed`, `_Hole_Rows`,
+`_Driver_Contact`, `_Hole_Contact` (EVC_Test_Sessions),
+`Scenario_L2_Exit_Aborts_Establishment`, `_L2_Switch_Contact`
+(EVC_Test_Levels).
+
+**n/a / deferred.** 3.5.3.7.1 1) to 3), 3.5.3.7.2: n/a, FRMCS is not
+modelled (both radio systems never installed). 3.5.3.8 h), 3.5.4.3 3rd
+bullet, 3.5.6.8, 3.5.7.7: deferred, RIU (E7).
+
+**Decisions.** (1) g): the session of a completed start of mission is
+ordered whenever none is established or being established in level 2,
+whatever happened to it during the start of mission (also after "Train
+is rejected"). (2) f): the sessions with the supervising or accepting
+role are kept at the rear border. (3) 3.16.3.4.1.1: after the switch to
+level 2 the connection is supervised without a session too, while in
+level 2; the reference is forgotten when level 2 is left with no session
+established. (4) The reference ends with any message accepted
+(`Take_Message`, after `Note_Received`).
+
+**Left.** 3.16.3.3.2 (B341: every message of a cycle carries the same
+T_TRAIN; the fix belongs in `EVC_Radio.Send` with both halves reading
+the stamp back); 3.16.3.4.1.2 partial and .2.1 (no scenario; the changed
+Handing Over RBC), 3.5.3.8 f) without a scenario (B342); 3.16.3.4.5 b)
+(the shortening at standstill is the authority half's); 3.5.4.5; 3.5.5.1
+b); 3.5.2.4, 3.5.3.5.2.1, 3.5.3.7 / a), 3.5.4.3, 3.5.5.1 as they were.
+
+**SUBSET-076**: 830 / 1272 / 1088 before, 833 / 1268 / 1089 after, 0
+regressions, 6 improvements (5040300_05 passes in 3 SV; 9990400_08 runs
+past the T_NVCONTACT steps, new signature S15472ab5 triaged E5, B340).
+Edits outside the units: none in `EVC_Core`; `EVC_Test_Levels` (two
+scenarios).

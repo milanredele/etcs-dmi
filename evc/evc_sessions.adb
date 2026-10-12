@@ -1200,7 +1200,7 @@ is
    --  Network type or GSM-R network terminates the sessions and aborts
    --  the attempts to establish one; 5.4.3.2 A29: the list of networks
    --  is empty, the driver informed
-   --  @req 3.18.4.3.6.1
+   --  @req 3.18.4.3.6.1, 3.5.3.8 i)
    procedure Apply_Network (Now : Time_Ms_T)
      with Global => (In_Out => (Network.State, R.State, Links, Pending,
                                 Status_List, Status_N, Ind, Requesting,

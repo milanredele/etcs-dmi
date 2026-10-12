@@ -399,7 +399,7 @@ expect efs: DMI.MasterDMI(). Out_RadioNetworkRegistrationFailed.OutputInformatio
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S10
 sequence A31 : Open communication with RBC
 case Setup
-clause E5 todo 3.5.3.4 a) ; efs 3.5.3.4.a
+clause E5 done 3.5.3.4 a) ; efs 3.5.3.4.a
 step Setup
 sub Sub-step1
 init 100.0 SB
@@ -7067,7 +7067,7 @@ efs: EURORADIO.RBCConnection.Contact.LastKnownRBC.DataState <- Default.DataState
 sub Sets driver Id
 efs: Kernel.DriverId.DataState <- DataStateEnum.Valid
 case First SRC request fails
-clause E5 partial 3.5.3.4 ; efs 3.5.3.4
+clause E5 done 3.5.3.4 ; efs 3.5.3.4
 clause E5 partial 3.5.3.7 a) ; efs 3.5.3.7.a
 clause - absent 3.5.3.7.a.1 ; efs 3.5.3.7.a.1
 step SRC request management
@@ -7232,8 +7232,8 @@ efs: EURORADIO.RBCConnection.Contact.LastKnownRBC.DataState <- Default.DataState
 sub Sets driver Id
 efs: Kernel.DriverId.DataState <- DataStateEnum.Valid
 case SRC request management
-clause E5 partial 3.5.3.4 ; efs 3.5.3.4
-clause E5 todo 3.5.3.4 a) ; efs 3.5.3.4.a
+clause E5 done 3.5.3.4 ; efs 3.5.3.4
+clause E5 done 3.5.3.4 a) ; efs 3.5.3.4.a
 step SRC request management
 sub Request sent
 expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession in [EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.Establishing.WaitForSetUp] @ deadline=10

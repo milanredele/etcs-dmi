@@ -141,6 +141,7 @@ is
    --  them, GSM-R only; decision 2 of e5/registration in the plan)
    --  @req 5.10.3.15.2, 5.10.3.15.2 a), 5.10.3.15.2 a) 1st bullet
    --  @req 5.10.3.15.2 a) 2nd bullet, 5.10.3.15.2 a) 3rd bullet
+   --  @req 3.5.3.4 d)
    procedure Driver_To_L2 (Mode : Mode_T)
      with Global => (In_Out => (EVC_Sessions.State, N_Ordered),
                      Output => Awaited,

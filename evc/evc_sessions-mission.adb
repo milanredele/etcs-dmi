@@ -211,6 +211,7 @@ is
    --  (NID_RADIO all F, 3.5.3.11: the stored RBC ID and number not
    --  used; decision: the RBC identity is unknown, 0). Found: usable;
    --  Entered: choice 0 (5.4.3.3 "Following S3": the contact valid)
+   --  @req 3.5.3.11
    procedure Driver_Contact (Found, Entered : out Boolean;
                              C              : out R.RBC_Contact_T)
      with Global => (Input => (EVC_Driver_Requests.State, R.State))

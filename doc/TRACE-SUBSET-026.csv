@@ -37,15 +37,15 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.4.5.2.1,3,x,,,,,E2,deferred,E7 (Euroloop)
 3.4.5.2.2,3,x,,,,,E2,deferred,E7 (Euroloop)
 3.5.2.4,3,x,,,,,E5,partial,"the session table of EVC_Radio holds two sessions (one by configuration, EVC_Config.Radio_Config_T); their management is EVC_Sessions' [E5 joint]"
-3.5.3.4,3,x,,,,,E5,partial,"f) for the Handing Over session after the switch: EVC_Sessions.Evaluate opens it again with the retained contact (3.15.1.3.8.1), evc_test Handover_Deletion; other bullets in their subclauses [E5 session]"
-3.5.3.4 a),3,x,,,,,E5,todo,[E5 session]
+3.5.3.4,3,x,,,,,E5,done,"every bullet in its subclause (a) to h)); f) for the Handing Over session after the switch: EVC_Sessions.Evaluate opens it again with the retained contact (3.15.1.3.8.1), evc_test Handover_Deletion [E5 session]"
+3.5.3.4 a),3,x,,,,,E5,done,"EVC_Sessions.Mission.Evaluate_SoM (D2 in level 2 with a known contact, S3: Open_SoM); evc_test Scenario_Session_SoM_Level_2 [E5 session]"
 3.5.3.4 b),3,x,,,,,E5,done,EVC_Sessions.Take_Order / Apply_Order: packet 42 of a balise group (EVC_Stored_Information K42); in a radio message once the authority half stores it; evc_test session_establish [E5 session]
 3.5.3.4 c),3,x,,,,,E5,done,"EVC_Sessions.Mode_Changed / Mode_Session_Order: a change reported by 4.5.2 (Reports.Mode_Reported), no End of Mission (Mission.Ends_Mission) and not out of SB, in level 2 with a valid stored contact and no session up or being set up: the session ordered through Apply_Order (3.5.3.4.1, 3.5.3.4.2 by Establish); the contact of a packet 42 read in SH or PS stored only (4.8.4 [3]); evc_test session_mode_change [E5 session]"
-3.5.3.4 d),3,x,,,,,E5,todo,[E5 session]
-3.5.3.4 e),3,x,,,,,E5,todo,[E5 session]
+3.5.3.4 d),3,x,,,,,E5,done,EVC_Level_Sessions.Driver_To_L2 (5.10.3.15.2 a); evc_test Scenario_L2_Driver_Change [E5 session]
+3.5.3.4 e),3,x,,,,,E5,done,"EVC_Sessions.Evaluate: the engine out of the announced radio hole sets Mode_Session, Mode_Session_Order then orders the session with the stored valid contact in level 2 (none while one is established or being established); evc_test Scenario_Session_Hole_Rows [E5 session]"
 3.5.3.4 f),3,x,,,,,E5,done,EVC_Sessions.Supervise_Session (Connection_Lost over Keep_Ms: a new session); evc_test session_lost_version [E5 session]
-3.5.3.4 g),3,x,,,,,E5,todo,[E5 session]
-3.5.3.4 h),3,x,,,,,E5,todo,[E5 session]
+3.5.3.4 g),3,x,,,,,E5,done,"EVC_Sessions.Mode_Changed: SB left for a mode of a mission sets Mode_Session (decision: in level 2 with no session established or being established, whatever happened during the start of mission); evc_test Scenario_Session_SoM_Completed [E5 session]"
+3.5.3.4 h),3,x,,,,,E5,done,"EVC_Level_Sessions.Take_Radio_Data: in level 2 outside SB (not in SL, PS, SF, IS, NP, TR) the driver's RBC data order the session, awaited or not; evc_test Scenario_Session_Driver_Contact [E5 session]"
 3.5.3.4.1,3,x,,,,,E5,done,EVC_Sessions.Establish: nothing when one is being or is established with that RBC; an RBC transition order naming the supervising RBC opens no second session (EVC_Sessions.Handover.Apply_Order decision 5); evc_test Handover_Same_RBC [E5 session]
 3.5.3.4.1 1st bullet,3,x,,,,,E5,done,EVC_Sessions.Establish [E5 session]
 3.5.3.4.1 2nd bullet,3,x,,,,,E5,done,EVC_Sessions.Establish [E5 session]
@@ -58,25 +58,25 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.3.7 d),3,x,,,,,E5,done,EVC_Sessions.Take_Version (message 32: established); evc_test session_establish [E5 session]
 3.5.3.7 d) 1st bullet,3,x,,,,,E5,done,"EVC_Sessions.Take_Version, Send_159 (packet 2); evc_test session_establish [E5 session]"
 3.5.3.7 d) 2nd bullet,3,x,,,,,E5,done,"EVC_Sessions.Take_Version: 154, DMI entry 15, terminated; evc_test session_lost_version [E5 session]"
-3.5.3.7.1,3,x,,,,,E5,todo,[E5 session]
-3.5.3.7.1 1),3,x,,,,,E5,todo,[E5 session]
-3.5.3.7.1 2),3,x,,,,,E5,todo,[E5 session]
-3.5.3.7.1 3),3,x,,,,,E5,todo,[E5 session]
-3.5.3.7.2,3,x,,,,,E5,todo,[E5 session]
+3.5.3.7.1,3,x,,,,,E5,n/a,"FRMCS is not modelled (plan section 1: Euroradio, safety layer and FRMCS out; decision 2 of e5/registration: the port reports no FRMCS registration): both radio systems are never installed, every set-up request is GSM-R (EVC_Radio.Request_Set_Up with FRMCS False) [E5 session]"
+3.5.3.7.1 1),3,x,,,,,E5,n/a,"FRMCS is not modelled (plan section 1: Euroradio, safety layer and FRMCS out; decision 2 of e5/registration: the port reports no FRMCS registration): both radio systems are never installed, every set-up request is GSM-R (EVC_Radio.Request_Set_Up with FRMCS False) [E5 session]"
+3.5.3.7.1 2),3,x,,,,,E5,n/a,"FRMCS is not modelled (plan section 1: Euroradio, safety layer and FRMCS out; decision 2 of e5/registration: the port reports no FRMCS registration): both radio systems are never installed, every set-up request is GSM-R (EVC_Radio.Request_Set_Up with FRMCS False) [E5 session]"
+3.5.3.7.1 3),3,x,,,,,E5,n/a,"FRMCS is not modelled (plan section 1: Euroradio, safety layer and FRMCS out; decision 2 of e5/registration: the port reports no FRMCS registration): both radio systems are never installed, every set-up request is GSM-R (EVC_Radio.Request_Set_Up with FRMCS False) [E5 session]"
+3.5.3.7.2,3,x,,,,,E5,n/a,"FRMCS is not modelled (plan section 1: Euroradio, safety layer and FRMCS out; decision 2 of e5/registration: the port reports no FRMCS registration): both radio systems are never installed, every set-up request is GSM-R (EVC_Radio.Request_Set_Up with FRMCS False) [E5 session]"
 3.5.3.7.3,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (Initiating: released, set up again) [E5 session]"
 3.5.3.7.4,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (159 repeated); evc_test session_establish [E5 session]; not awaited from an RBC of 1.x or 2.0 .. 2.2 (6.5.2.2.2: EVC_System_Version.Session_Acknowledged); evc_test version_negotiation [E5 version]"
 3.5.3.7.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Session (terminated, established again); during a handover the Accepting RBC's session is set up again beside the supervising one (EVC_Sessions.Evaluate, Open); evc_test Handover_Ack_Missing [E5 session]"
-3.5.3.8,3,x,,,,,E5,partial,"EVC_Sessions.Terminate_Session (being established: aborted, released); c) and e) done, the other conditions with their procedures [E5 session]"
-3.5.3.8 a),3,x,,,,,E5,todo,[E5 session]
-3.5.3.8 b),3,x,,,,,E5,todo,[E5 session]
+3.5.3.8,3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session and EVC_Sessions.Abort_Establishment (being established: aborted, released); every condition in its subclause, h) with the RIU in E7 [E5 session]"
+3.5.3.8 a),3,x,,,,,E5,done,EVC_Sessions.Mission.Evaluate_SoM: the desk closed during the start of mission stops the supervising session or the one of the start of mission being established; evc_test Scenario_Session_Abort_Desk [E5 session]
+3.5.3.8 b),3,x,,,,,E5,done,EVC_Sessions.Mode_Changed (Mission.Ends_Mission: Abort_Being_Established); evc_test Scenario_Session_Abort_EoM [E5 session]
 3.5.3.8 c),3,x,,,,,E5,done,EVC_Sessions.Apply_Order -> Terminate_Session [E5 session]
-3.5.3.8 d),3,x,,,,,E5,todo,[E5 session]
+3.5.3.8 d),3,x,,,,,E5,done,"EVC_Level_Sessions.Evaluate (the min safe rear end past the border out of level 2, Border_Passed, with or without a supervised session) calls EVC_Sessions.Abort_Establishment; evc_test Scenario_L2_Exit_Aborts_Establishment [E5 session]"
 3.5.3.8 e),3,x,,,,,E5,done,EVC_Sessions.Establish -> Terminate_Session [E5 session]
-3.5.3.8 f),3,x,,,,,E5,todo,[E5 session]
-3.5.3.8 g),3,x,,,,,E5,todo,[E5 session]
-3.5.3.8 h),3,x,,,,,E5,todo,[E5 session]
-3.5.3.8 i),3,x,,,,,E5,todo,[E5 session]
-3.5.3.11,3,x,,,,,E5,todo,[E5 session]
+3.5.3.8 f),3,x,,,,,E5,partial,EVC_Sessions.Handover.Evaluate (Rear_Passed: the rear border trigger of EVC_Position) and EVC_Sessions.Apply_Handover (Abort_Being_Established; decision: not the sessions with the supervising or accepting role); no scenario of its own yet [E5 session]
+3.5.3.8 g),3,x,,,,,E5,done,"EVC_Sessions.Stop_Attempts (the engine reaching the hole: a session being established closed and released, set up again by 3.5.3.4 e); evc_test Scenario_Session_Hole_Rows [E5 session]"
+3.5.3.8 h),3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
+3.5.3.8 i),3,x,,,,,E5,done,EVC_Sessions.Apply_Network (3.18.4.3.6.1: Terminate_Session aborts a session being established); evc_test Scenario_Session_Registration [E5 session]
+3.5.3.11,3,x,,,,,E5,done,"EVC_Sessions.Mission.Driver_Contact (choice 2: NID_RADIO all F, the RBC unknown; the stored contact neither used nor overwritten); evc_test Scenario_Session_Short_Number [E5 session]"
 3.5.3.13,3,x,,,,,E5,done,EVC_Sessions.Apply_Order (NID_RBC 16383: the stored contact) [E5 session]
 3.5.3.13.1,3,x,,,,,E5,done,EVC_Sessions.Apply_Order (no contact stored: ignored) [E5 session]
 3.5.3.15,3,x,,,,,E5,done,EVC_Sessions.Apply_Order (NID_RADIO passed to the RTM as it is) [E5 session]
@@ -86,7 +86,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.4.3,3,x,,,,,E5,partial,"EVC_Sessions.Take_Event, Supervise_Session; the RIU order is phase 2 [E5 session]"
 3.5.4.3 1st bullet,3,x,,,,,E5,done,EVC_Sessions.Take_Event [E5 session]
 3.5.4.3 2nd bullet,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session [E5 session]
-3.5.4.3 3rd bullet,3,x,,,,,E5,todo,[E5 session]
+3.5.4.3 3rd bullet,3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
 3.5.4.4,3,x,,,,,E5,done,"EVC_Sessions.Stop_Attempts, Take_Event, Produce_Session (In_Hole from EVC_Radio.Context_T.Radio_Hole, EVC_Track_Conditions.Engine_In_Radio_Hole): no request while the engine overlaps an announced radio hole, the requests stopped on entering it (a request already with Euroradio not withdrawn, decision), set up again once it has left it; evc_test Session_Radio_Hole [E5 session]"
 3.5.4.5,3,x,,,,,E5,todo,[E5 session]
 3.5.4.7,3,x,,,,,E5,done,EVC_Sessions.Take_Version (32 inside a session: 159 again) [E5 session]
@@ -117,20 +117,20 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.6.7 b),3,x,,,,,E5,done,EVC_Sessions.Network.Ready; evc_test Session_Registration [E5 session]
 3.5.6.7 c),3,x,,,,,E5,done,EVC_Sessions.Network.Ready (either system registered); evc_test Session_Registration [E5 session]
 3.5.6.7 d),3,x,,,,,E5,done,EVC_Sessions.Network.Ready; evc_test Session_Registration [E5 session]
-3.5.6.8,3,x,,,,,E5,todo,[E5 session]
+3.5.6.8,3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
 3.5.7.1,3,x,,,,,E5,done,"EVC_Sessions.Indication, MSG_STATUS radio (EVC_Core.Send_Status); evc_test session_indication [E5 session]"
 3.5.7.2,3,x,,,,,E5,done,"EVC_Sessions (the connection status timer, 45 s, A.3.1) [E5 session]"
-3.5.7.3,3,x,,,,,E5,partial,"EVC_Sessions.Ind_Request: a) done, b) 3.5.4.2 done, 3.5.4.4 (radio holes) phase 2 [E5 session]"
+3.5.7.3,3,x,,,,,E5,done,"EVC_Sessions.Ind_Request: a) done, b) 3.5.4.2 and 3.5.4.4 (radio holes: Produce_Session) [E5 session]"
 3.5.7.3 a),3,x,,,,,E5,done,EVC_Sessions.Ind_Request [E5 session]
-3.5.7.3 b),3,x,,,,,E5,partial,EVC_Sessions.Ind_Request (3.5.4.2; 3.5.4.4 phase 2) [E5 session]
+3.5.7.3 b),3,x,,,,,E5,done,"EVC_Sessions.Ind_Request (3.5.4.2; 3.5.4.4: no request while in the hole, Produce_Session); evc_test Scenario_Session_Radio_Hole [E5 session]"
 3.5.7.4,3,x,,,,,E5,done,EVC_Sessions.Ind_Stopped; evc_test session_indication [E5 session]
 3.5.7.5,3,x,,,,,E5,done,"EVC_Sessions (Table 1 per session, 3.5.7.6.1: Ind, Requesting, Timer_On per session; [1] Scenario_Session_SoM_Failures, [7] the connection lost in a radio hole: Take_Event, Scenario_Session_Radio_Hole); evc_test handover_indication [E5 session]"
-3.5.7.5 Table 1,3,x,,,,,E5,partial,"EVC_Sessions (all transitions; [1] reached in a start of mission, Scenario_Session_SoM_Failures; [7] not yet, B271) [E5 session]"
-3.5.7.5 Table 2,3,x,,,,,E5,partial,"EVC_Sessions ([1]: Ind_Stopped Final_SoM from Set_Up_Failed after the last attempt of a start of mission, evc_test Scenario_Session_SoM_Failures; [2] to [6]; [7] left: the radio holes, B271) [E5 session]"
+3.5.7.5 Table 1,3,x,,,,,E5,done,"EVC_Sessions (all transitions; [1] reached in a start of mission, evc_test Scenario_Session_SoM_Failures; [7] the connection lost in a radio hole, evc_test Scenario_Session_Radio_Hole) [E5 session]"
+3.5.7.5 Table 2,3,x,,,,,E5,done,"EVC_Sessions ([1]: Ind_Stopped Final_SoM from Set_Up_Failed after the last attempt of a start of mission, evc_test Scenario_Session_SoM_Failures; [2] to [6]; [7]: the connection lost in a radio hole, Take_Event, evc_test Scenario_Session_Radio_Hole) [E5 session]"
 3.5.7.6,3,x,,,,,E5,done,"EVC_Sessions.Ind_Timer (the session indicated: the supervising RBC's once established, or when the one shown is over); evc_test handover_indication [E5 session]"
 3.5.7.6 a),3,x,,,,,E5,done,"EVC_Sessions.Ind_Timer: the Accepting RBC supervising (3.15.1.3.5) and its session established; evc_test handover_indication [E5 session]"
 3.5.7.6 b),3,x,,,,,E5,done,"EVC_Sessions.Ind_Timer: the session shown over (released at its termination, ordered at the rear end, 3.15.1.3.5); evc_test handover_indication [E5 session]"
-3.5.7.7,3,x,,,,,E5,todo,[E5 session]
+3.5.7.7,3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
 3.6.1.4,3,x,,,,,E2,done,EVC_Position.Evaluate (Status Valid when an LRBG or ORBG is passed); evc_test position_first_group
 3.6.1.5,3,x,,,,,E2,done,"EVC_Position.Update (orientation from the cab status, proven: Update and EVC_Core.Tick postconditions); evc_test position_orientation"
 3.6.1.5.1,3,x,,,,,E2,deferred,E4 (Supervised Manoeuvre)
@@ -934,10 +934,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.3.3.2,3,x,x,,,,E5,todo,[E5 session]
 3.16.3.3.3,3,x,x,,,,E5,done,EVC_Sessions.Take_Message (Newer: an older time stamp ignored) [E5 session]
 3.16.3.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Contact (the supervising RBC, any level); evc_test session_nvcontact [E5 session]"
-3.16.3.4.1.1,3,x,,,,,E5,todo,[E5 session]
-3.16.3.4.1.2,3,x,,,,,E5,todo,[E5 session]
+3.16.3.4.1.1,3,x,,,,,E5,done,"EVC_Sessions.Evaluate (Ref_On, Ref_Ms at the switch to level 2 with no session established, until a message) and EVC_Sessions.Supervise_Contact (decision: supervised without a session while in level 2); evc_test Scenario_L2_Switch_Contact [E5 session]"
+3.16.3.4.1.2,3,x,,,,,E5,partial,"EVC_Sessions.Supervise_Contact supervises the session with the supervising role: the Handing Over RBC until the switch (EVC_Sessions.Handover.Switch), the Accepting RBC after it; no scenario of its own yet [E5 session]"
 3.16.3.4.1.2.1,3,x,,,,,E5,todo,[E5 session]
-3.16.3.4.1.3,3,x,,,,,E5,todo,[E5 session]
+3.16.3.4.1.3,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Contact (stopped while In_Hole) and EVC_Sessions.Evaluate (Ref_Ms the time the engine left the hole, until a message); evc_test Scenario_Session_Hole_Contact [E5 session]"
 3.16.3.4.3,3,x,,,,,E5,done,EVC_Sessions.Supervise_Contact (60 s later released and set up again); evc_test session_nvcontact [E5 session]
 3.16.3.4.4,3,x,,,,,E5,done,"EVC_Sessions (DMI entry 4) and EVC_Procedures (trip reason Communication_Lost, entry 5); evc_test session_nvcontact, _nvcontact_brake [E5 session]"
 3.16.3.4.5,3,x,,,,,E5,partial,a) EVC_Sessions; b) the shortening at standstill is the authority half's (A.3.4) [E5 session]
