@@ -4228,3 +4228,76 @@ sequences' MAs, 3.8.4, 3.13.1), then the curves (3.13.8, 3.13.9), with
 the Lambda sequences as the judge and the Gamma ones waiting for E6.
 
 Open items: doc/BACKLOG.csv (31 open after this round).
+
+### Lambda model: where the difference is (2026-10-12)
+
+The 71 Lambda sequences that stop on a curve signature were taken
+apart by hand (3130234, 3130237, 3131040, 3131060; 24 SV21, 24 SV22,
+23 SV30) with the runner's `curves:` lines, the workbooks' own rows and
+VBA (the inner zips of the sibling, `olevba`), and a probe on
+`EVC_Test_Support` that drives a train at a constant speed to a target
+and bisects the locations where our supervision status changes (kept
+with the briefs, `e5/curve-probe`). The differences are five, in order
+of size; none of them is a defect of the on-board's curves so far.
+
+1. **The SV21 and SV22 workbooks were filled with an ERA tool without
+   the brake build up time reduction (A.3.12).** Their VBA has no
+   `t_be_reduced`; their rows are the plain limits of 3.13.9.3 with
+   T_be and T_bs full (3130237_07, freight P 750 m, λ 109: T_be 15.9 s,
+   T_bs2 28.5 s, T_indication 26.8 s at every speed). The SV30
+   workbooks come from the tool with A.3.12 and CR1344 (223 of 223 in
+   the curve families checked): T_bs2 21.7 s and T_indication 21.4 s at
+   60 km/h in the same sequence. A 4.0.0 on-board applies the reduction
+   (3.13.9.3.2.6, 3.13.9.3.3.3), so against an SV21/SV22 workbook our
+   limits sit nearer the target by the reduction itself:
+
+   | 3130237_07, LOA 30 km/h, max safe front end to the LOA | I | P | W | SBI |
+   |---|---|---|---|---|
+   | SV21 workbook at 60 km/h | 1373 | 926 | 892 | 859 |
+   | ours at 60 km/h (probe) | 1113 | 763 | 730 | 697 |
+   | SV30 workbook at 61 km/h | 1197 | 833 | 799 | 765 |
+   | ours at 61 km/h (probe) | 1144 | 786 | 752 | 718 |
+   | ours at 61 km/h with λ 100 | 1169 | 804 | 770 | 737 |
+
+   The EOA case (3131040_04, SvL +450 m, release 30 km/h) against its
+   SV21 workbook: ours 40 m nearer at 60 km/h (P 591 against 631, SBI
+   524 against 564, estimated front end), the T_bs reduction of an SBD
+   target. B170.
+2. **The tool's emergency brake percentage is 100 while the train's is
+   109, in every workbook of the corpus** (`Brake parameters (lambda)`
+   F2 109, F3 100 from a control; A.3.7.1 says λo = λ). Its EBD is the
+   conversion model at λ 100 (0.714 m/s² with Kv_int 0.96 and Kr_int
+   0.9, the national values of the sequences); the runner enters F2.
+   18 m at 61 km/h. Decision B175.
+3. **The runner's target check for an LOA or MRSP target reads the
+   wrong distance.** `D_Target` of MSG_SPEED_STATE for such a target is
+   the reference location of 3.13.9.3.5.9 (the Permitted limit for the
+   target speed, with the reduced build up times), 73 m before the LOA
+   of 3130237_07; the workbook's distances are to the target. B171.
+4. **The runner's Permitted and SBI checks compare the displayed speed
+   with the limit column.** The displayed V_Perm follows 3.13.9.3.5.7
+   with the time terms at V_est (39 km/h at 836 m before the LOA at 60
+   km/h, as the formula gives), the column is the limit location for
+   V_est = V_P (55 km/h there); the two agree only at the limit. The
+   "ours further out by 200 to 400 m" signatures are this, not a curve
+   difference. B172.
+5. **The sequences' step locations do not follow from their attached
+   workbooks.** 3131040_04 passes the Permitted limit 818 m before the
+   EOA in the sequence, 631 m in its workbook at the stated 60 km/h;
+   3130237_07 814 m against 926 m, its two comments give the LOA 100 m
+   apart; the SV30 files keep the SV21 step locations with recomputed
+   workbooks. The sign and size of the "target" family scatter by
+   sequence (−475 to +269 m) for this reason. B173.
+
+Also seen: the `brakes`/`jru` lines of a DEBUG trace belong to the
+step's search window, not to its location (the SB of 3130237_07 step 58
+came 300 m later); the on-board's EBD of an LOA is anchored at V_target
++ dV_ebi like the tool's (3.13.8.3.1); T_bs of a freight P train of 750
+m is 23.775 s × kto (A.3.9.2 with L ≤ 900 m), the same in both.
+
+What remains for the on-board: 47 m (λ 109) or 29 m (λ 100) nearer than
+the SV30 workbook at 61 km/h in P, SBI and I, to be traced in the
+A.3.12 inputs (A_EB, A_SB, A_expected_max, the CR1344 T_traction) with
+the probe turned into a tool fed by a sequence's cells (B174). The
+runner's B016 work is the three method fixes; the SV21/SV22 workbooks
+are no reference for the limit locations of a 4.0.0 on-board.
