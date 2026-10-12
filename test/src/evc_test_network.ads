@@ -12,6 +12,7 @@ package EVC_Test_Network is
 
    --  3.18.4.3.6.2: MSG_RADIO_NETWORKS when the driver elects to modify
    --  the GSM-R network, the default and the stored network
+   procedure Scenario_RBC_Contact_To_DMI;
    procedure Scenario_Network_List;
 
    --  5.4.3.2 S4: the registration awaited for the time of A.3.1 (E6 /

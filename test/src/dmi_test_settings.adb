@@ -391,6 +391,33 @@ package body DMI_Test_Settings is
              & " data' loses its conditions");
       Radio (Win_Radio_GSMR);
 
+      -- B007, 11.7.1.4: the RBC contact the on-board stores
+      -- (MSG_RBC_CONTACT) is proposed: RBC ID 82220, phone 0077
+      Send_Raw (16#10#, (1, 16#2C#, 16#41#, 16#01#, 0, 4,
+                         48, 48, 55, 55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+      Win_Menu (3);
+      Check (Win_Value (1) = "82220" and then Win_Value (2) = "0077",
+             "11.7.1.4: the RBC contact stored on-board is proposed "
+             & "(MSG_RBC_CONTACT, B007)");
+      Radio (Win_Radio_GSMR, Data => Win_Data_All and 16#0E#);
+      Radio (Win_Radio_GSMR);
+      -- a phone byte that is not a digit drops the message as a whole
+      Send_Raw (16#10#, (1, 16#2C#, 16#41#, 16#01#, 0, 4,
+                         48, 48, 65, 55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
+      -- nothing stored on-board: nothing proposed
+      Send_Raw (16#10#, (1 .. 22 => 0));
+      Win_Menu (3);
+      Check (Win_Value (1) = "" and then Win_Value (2) = "",
+             "11.7.1.4: a malformed MSG_RBC_CONTACT is dropped, no contact "
+             & "stored proposes nothing (B007)");
+      Radio (Win_Radio_GSMR, Data => Win_Data_All and 16#0E#);
+      Radio (Win_Radio_GSMR);
+      -- the contact entered above, stored again (the steps below propose
+      -- it)
+      Send_Raw (16#10#, (1, 16#87#, 16#D6#, 16#12#, 0, 16,
+                         48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+                         48, 49, 50, 51, 52, 53));
+
       -- 11.3.5.4: no phone number field with FRMCS alone
       Radio (Win_FRMCS or Win_Only_FRMCS or Win_FRMCS_Reg or Win_Known);
       Win_Menu (3);
@@ -529,6 +556,33 @@ package body DMI_Test_Settings is
       Choose_Level (2);
       Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
              "Table 50 D5: without valid RBC contact information -> S5-1");
+      -- B023, Table 50 D5 exception: the on-board switches to TR after
+      -- the level entry: the default window with MO05 first, S5-1 once
+      -- MO05 is acknowledged
+      Send_Mode_Level (Mode => 11, Level => 5, Mode_Ack => 11); -- TR
+      Step;
+      Check (not DMI_Windows.Is_Open,
+             "Table 50 D5, exception: TR -> the default window with MO05");
+      Drain_Outbox;
+      Press (190, 340);                         -- C1: MO05
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 D5, exception: MO05 acknowledged -> S5-1");
+      Send_Mode_Level (Mode => 13, Level => 5); -- PT
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 D5, exception: S5-1 stays in PT");
+      Win_Default;
+      -- without the level entry a switch to TR leaves the windows alone
+      Send_Mode_Level (Mode => 1, Level => 5);
+      Step;
+      DMI_Windows.Open (DMI_Windows.W_Main);
+      DMI_Windows.Open (DMI_Windows.W_Radio_Data);
+      Send_Mode_Level (Mode => 11, Level => 5, Mode_Ack => 11);
+      Step;
+      Check (Win_Top_Is (DMI_Windows.W_Radio_Data),
+             "Table 50 D5, exception: only after the level entry");
+      Send_Mode_Level (Mode => 1, Level => 5);
+      Step;
       Win_Default;
       Drain_Outbox;
    end Scenario_Win_Radio_Data;

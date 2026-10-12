@@ -101,6 +101,43 @@ package body EVC_Test_Network is
       Send (RBC_Entry);
    end SoM_To_S3;
 
+   --  B007, DMI 11.7.1.4: the RBC contact stored on-board goes to the
+   --  DMI (MSG_RBC_CONTACT) when it changes, so that the RBC data window
+   --  proposes it: RBC ID 5 * 16384 + 300 (NID_C above the 14 bits of
+   --  NID_RBC, DMI 11.3.5.3.1), phone 0077 (NID_RADIO, 7.5.1.95)
+   procedure Scenario_RBC_Contact_To_DMI is
+      Id : constant := 5 * 16_384 + 300;
+   begin
+      EVC_Config.Set_Radio_For_Test
+        ((Sessions => 1, Engine_Id => 76_000, Default_MN => 16#262FFF#,
+          others => <>));
+      EVC_Test_Modes.Start_E4;
+      Send (Text_Entry (0, "1234"));
+      Check (Find_DMI (EVC_DMI_Port.MSG_RBC_CONTACT) = 0,
+             "RBC contact to the DMI: nothing sent while none is stored "
+             & "(B007)");
+      Send (Action (11, 5));
+      Send (RBC_Entry);
+      Check (DMI_Byte (EVC_DMI_Port.MSG_RBC_CONTACT, 6) = 1
+             and then DMI_Byte (EVC_DMI_Port.MSG_RBC_CONTACT, 7) = Id mod 256
+             and then DMI_Byte (EVC_DMI_Port.MSG_RBC_CONTACT, 8)
+                        = Id / 256 mod 256
+             and then DMI_Byte (EVC_DMI_Port.MSG_RBC_CONTACT, 9) = Id / 65_536
+             and then DMI_Byte (EVC_DMI_Port.MSG_RBC_CONTACT, 11) = 4
+             and then DMI_Byte (EVC_DMI_Port.MSG_RBC_CONTACT, 12)
+                        = Character'Pos ('0')
+             and then DMI_Byte (EVC_DMI_Port.MSG_RBC_CONTACT, 15)
+                        = Character'Pos ('7')
+             and then DMI_Byte (EVC_DMI_Port.MSG_RBC_CONTACT, 16) = 0,
+             "RBC contact to the DMI: the contact the driver entered is "
+             & "sent as stored, RBC ID and the phone digits (DMI 11.7.1.4, "
+             & "B007)");
+      Stand;
+      Check (Find_DMI (EVC_DMI_Port.MSG_RBC_CONTACT) = 0,
+             "RBC contact to the DMI: sent once, not again while it does "
+             & "not change (B007)");
+   end Scenario_RBC_Contact_To_DMI;
+
    procedure Scenario_Network_List is
    begin
       SoM_To_S3;

@@ -58,6 +58,9 @@ package body DMI_Core is
    ACTION_TUNNEL_TOGGLE : constant Unsigned_8 := 3;
    ACTION_GEO_TOGGLE    : constant Unsigned_8 := 4;
    ACTION_TRAIN_DATA_ENTRY : constant Unsigned_8 := 21;
+   ACTION_TRAIN_DATA_LEFT  : constant Unsigned_8 := 22;
+   ACTION_SR_DATA_ENTRY    : constant Unsigned_8 := 23;
+   ACTION_SR_DATA_LEFT     : constant Unsigned_8 := 24;
    ACTION_ATO_ENGAGE    : constant Unsigned_8 := 13;
    ACTION_ATO_SKIP      : constant Unsigned_8 := 14;
    -- a button of the Main window ended a system status message
@@ -532,6 +535,12 @@ package body DMI_Core is
                Send_Language_Msg (Arg);
             when Train_Data_Requested =>
                Queue_Driver_Action (ACTION_TRAIN_DATA_ENTRY);
+            when Train_Data_Left =>
+               Queue_Driver_Action (ACTION_TRAIN_DATA_LEFT);
+            when SR_Data_Requested =>
+               Queue_Driver_Action (ACTION_SR_DATA_ENTRY);
+            when SR_Data_Left =>
+               Queue_Driver_Action (ACTION_SR_DATA_LEFT);
          end case;
       end loop;
    end Drain_Window_Actions;
@@ -799,6 +808,8 @@ package body DMI_Core is
          -- 15.1.1.2: the system status messages that the new mode does
          -- not display end
          DMI_System_Status.Mode_Changed (SDI.Mode);
+         -- Table 50 D5, exception: TR after a level entry (B023)
+         DMI_Windows.Mode_Changed (Trip => SDI.Mode = SDI.M_TR);
       end if;
 
       if Valid_Level (Level_Raw) then
@@ -1588,6 +1599,60 @@ package body DMI_Core is
       end case;
    end Apply_Desk_Input;
 
+   --  MSG_RBC_CONTACT (B007): the RBC contact information stored
+   --  on-board becomes the values the RBC data window proposes (DMI
+   --  11.7.1.4) and the Data view shows (Table 45 items 13, 14). The
+   --  whole message is checked first (dmi_protocol.ads): an id above
+   --  16 777 214, a phone_len above 16 or a phone byte that is not a
+   --  digit drop it. Nothing stored: no value is proposed.
+   procedure Apply_RBC_Contact (Payload : Stream_Element_Array) is
+      use DMI_Radio_Data;
+      Offset : Stream_Element_Offset := Payload'First;
+      Known  : constant Unsigned_8 := Get_U8 (Payload, Offset);
+      Id     : constant Unsigned_32 := Get_U32 (Payload, Offset);
+      Len    : constant Natural := Natural (Get_U8 (Payload, Offset));
+      Digits_Text : Wide_String (1 .. 8);
+      Value  : Unsigned_32 := Id;
+      Count  : Natural := 0;
+   begin
+      if Known > 1 or else Id > 16_777_214 or else Len > RBC_Phone_Max then
+         return;
+      end if;
+      for I in 1 .. Len loop
+         if Payload (Offset + Stream_Element_Offset (I - 1))
+           not in 48 .. 57
+         then
+            return;
+         end if;
+      end loop;
+      if Known = 0 then
+         RBC_ID := (others => <>);
+         RBC_Phone := (others => <>);
+         RBC_Entered := False;
+         return;
+      end if;
+      --  the RBC ID in decimal, 1 .. 8 digits
+      loop
+         Count := Count + 1;
+         Digits_Text (Digits_Text'Last - Count + 1) :=
+           Wide_Character'Val (48 + Natural (Value mod 10));
+         Value := Value / 10;
+         exit when Value = 0 or else Count = Digits_Text'Length;
+      end loop;
+      RBC_ID := (others => <>);
+      RBC_ID.Length := Count;
+      RBC_ID.Text (1 .. Count) :=
+        Digits_Text (Digits_Text'Last - Count + 1 .. Digits_Text'Last);
+      RBC_Phone := (others => <>);
+      RBC_Phone.Length := Len;
+      for I in 1 .. Len loop
+         RBC_Phone.Text (I) := Wide_Character'Val
+           (Natural (Payload (Offset + Stream_Element_Offset (I - 1))));
+      end loop;
+      RBC_Entered := True;
+      Last_Choice := Entered;
+   end Apply_RBC_Contact;
+
    procedure Handle_Message (The_Type : Msg_Type_T;
                              Payload  : Stream_Element_Array) is
    begin
@@ -1599,7 +1664,7 @@ package body DMI_Core is
                    | MSG_TEXT_REMOVE | MSG_TRACK_COND | MSG_STATUS
                    | MSG_PLANNING | MSG_ONBOARD | MSG_ATO
                    | MSG_SYSTEM_STATUS | MSG_RADIO_NETWORKS
-                   | MSG_SYSTEM_VERSION | MSG_VBC_LIST
+                   | MSG_SYSTEM_VERSION | MSG_VBC_LIST | MSG_RBC_CONTACT
       then
          Note_EVC_Message;
       end if;
@@ -1661,6 +1726,10 @@ package body DMI_Core is
             end if;
          when MSG_VBC_LIST =>
             Apply_VBC_List (Payload);
+         when MSG_RBC_CONTACT =>
+            if Payload'Length = RBC_Contact_Length then
+               Apply_RBC_Contact (Payload);
+            end if;
          when MSG_POINTER =>
             if Payload'Length = Pointer_Length then
                Update_Buttons; -- make sure hit testing sees current state
@@ -1787,6 +1856,9 @@ package body DMI_Core is
                      Catalogue : constant Boolean :=
                        Is_Text and then DMI_System_Status.Owns (Text_ID);
                      Number : Natural := 0;
+                     Trip_Ack : constant Boolean :=
+                       DMI_Ack."=" (Kind, DMI_Ack.Mode_Change)
+                       and then SDI."=" (DMI_Ack.Current_Mode, SDI.M_TR);
                   begin
                      if Is_Text then
                         -- 8.2.3.4.8 c: this message, not another one
@@ -1804,6 +1876,10 @@ package body DMI_Core is
                         (if Catalogue then 16#8000# + Number mod 16#8000#
                          else Text_ID));
                      DMI_Ack.Acknowledge_Current;
+                     -- Table 50 D5, exception: MO05 acknowledged (B023)
+                     if Trip_Ack then
+                        DMI_Windows.Trip_Acknowledged;
+                     end if;
                   end;
                end if;
 

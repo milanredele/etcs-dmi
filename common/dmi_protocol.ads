@@ -9,7 +9,7 @@
 --
 --  Message directions:
 --     EVC -> DMI : SPEED_STATE, MODE_LEVEL, ONBOARD, ATO, SYSTEM_STATUS,
---                  RADIO_NETWORKS, SYSTEM_VERSION, VBC_LIST
+--                  RADIO_NETWORKS, SYSTEM_VERSION, VBC_LIST, RBC_CONTACT
 --     UI  -> DMI : POINTER, DESK_INPUT
 --     DMI -> EVC : DRIVER_ACTION
 --     DMI -> UI  : FRAME, SOUND, SETTINGS
@@ -255,6 +255,28 @@ package DMI_Protocol is
    Radio_Network_Name_Max  : constant := 18;
    Radio_Networks_Max_Length : constant :=
      1 + Radio_Networks_Max * (1 + Radio_Network_Name_Max);
+
+   MSG_RBC_CONTACT : constant Msg_Type_T := 16#10#;
+   --  The RBC contact information stored on-board (SUBSET-026 3.18.4.3,
+   --  5.4.3.2 D7; written by the driver, by the trackside, 3.5.3.7, or
+   --  memorized over No Power, 4.10), so that the RBC data window
+   --  proposes the stored values (DMI 11.7.1.4, 11.3.5). The EVC sends
+   --  it when the stored contact changes (the first cycle included);
+   --  its status ("valid", "invalid", "unknown") travels in
+   --  MSG_ONBOARD (data bit4, radio bit7), not here:
+   --    known u8: 1 a contact is stored, 0 none (the fields below are 0
+   --      and the DMI proposes no value),
+   --    rbc_id u32: the RBC ID as the window shows it, NID_C above the
+   --      14 bits of NID_RBC (DMI 11.3.5.3.1), 0 .. 16 777 214,
+   --    phone_len u8: 0 .. RBC_Phone_Max, the digits of NID_RADIO
+   --      (7.5.1.95) up to the first nibble that is not a digit; 0 for
+   --      "use the short number stored onboard" (all F),
+   --    phone 16 bytes: those digits as '0' .. '9', left adjusted,
+   --      padded with 0 bytes.
+   --  Fixed length RBC_Contact_Length; a message of any other length,
+   --  an id above the range, a phone_len above 16 or a byte of the
+   --  phone that is not a digit drops the message as a whole.
+   RBC_Contact_Length : constant := 22;
 
    MSG_ATO : constant Msg_Type_T := 16#0B#;
    --  The information of the ERTMS/ATO on-board (DMI 8.5) as the EVC
@@ -544,7 +566,19 @@ package DMI_Protocol is
    --     data' in the Main window (DMI Table 33 #3, SUBSET-026 5.4.3.2);
    --     the DMI opens the window itself, the on-board records the action
    --     (SUBSET-027 4.2.4.11, M_DRIVERACTIONS 20)
-   --  22 reserved
+   --  22 Train Data entry left (arg 0): the driver closed the Train
+   --     data window or the Train data validation window with [Close],
+   --     or the DMI stopped the entry (11.7.1.7, 11.7.1.9), without the
+   --     Train Data having been sent; the entry of SUBSET-026 3.18.3.3.1
+   --     that action 21 began has ended (no SUBSET-027 record),
+   --  23 SR speed / distance entry requested (arg 0): the driver
+   --     selected 'SR speed / distance' in the Special window (DMI Table
+   --     34 #2) and the DMI opened the SR speed / distance window; the
+   --     entry of SUBSET-026 4.4.11.1.5.1 begins,
+   --  24 SR speed / distance entry left (arg 0): that window closed with
+   --     [Close] or stopped by the DMI without MSG_DRIVER_DATA kind 3;
+   --     the entry of 4.4.11.1.5.1 has ended
+   --  25 reserved
    Driver_Action_Length : constant := 3;
    --  Action 2, the driver's acknowledgement (DMI 5.4.1), names the one
    --  request it answers. Its payload is Driver_Ack_Length bytes:

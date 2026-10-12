@@ -218,6 +218,8 @@ begin
    Scenario_E4_SoM_Level_1;
    Scenario_E4_SoM_Other_Levels;
    Scenario_Train_Data_Movement;
+   Scenario_Train_Data_Left;
+   Scenario_SR_Data_Movement;
    Scenario_E4_SR_Distance;
    Scenario_E4_Level_Transition_0;
    Scenario_E4_Level_Ack_Again;
@@ -262,6 +264,7 @@ begin
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;
+   Scenario_RBC_Contact_To_DMI;
    Scenario_Network_List;
    Scenario_Network_S4_Timeout;
    Scenario_Network_Radio_Order;

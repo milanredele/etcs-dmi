@@ -433,6 +433,57 @@ package body EVC_Test_Modes is
              & "modification, a movement brakes nothing");
    end Scenario_Train_Data_Movement;
 
+   --  3.18.3.3.1, B220: the Train data window left without the data (DMI
+   --  driver action 22) ends the modification: a movement then brakes
+   --  nothing
+   procedure Scenario_Train_Data_Left is
+   begin
+      Mission (L0_Code);
+      Send (Action (21));
+      Check (EVC_Mission.Modifying_Train_Data,
+             "Train Data left: 'Train data' selected, the modification "
+             & "watched (3.18.3.3.1)");
+      Send (Action (22));
+      Check (not EVC_Mission.Modifying_Train_Data,
+             "Train Data left: the window left without the data ends the "
+             & "modification (3.18.3.3.1, action 22, B220)");
+      Run_X (Train_Cm + 300, 100);
+      Check (not Cmd.EB
+             and then not Cmd.Reasons
+                            (EVC_Brake_Commands.Data_Entry_Movement),
+             "Train Data left: a movement after the window was left brakes "
+             & "nothing (3.18.3.3.1)");
+   end Scenario_Train_Data_Left;
+
+   --  4.4.11.1.5.1, 4.4.11.1.5: a movement while the driver enters the SR
+   --  speed / distance limits (DMI driver action 23 the window opened,
+   --  24 left without the data) commands the brake
+   procedure Scenario_SR_Data_Movement is
+   begin
+      Mission (L1_Code);
+      Check (ML (1) = SR_Code, "SR data movement: the mission starts in SR");
+      Send (Action (23));
+      Check (EVC_Mission.Entering_SR_Data,
+             "SR data movement: the SR speed / distance window opened, the "
+             & "entry watched (4.4.11.1.5.1)");
+      Send (Action (24));
+      Check (not EVC_Mission.Entering_SR_Data,
+             "SR data movement: the window left without the data ends the "
+             & "entry (4.4.11.1.5.1)");
+      Send (Action (23));
+      Run_X (Train_Cm + 300, 100);
+      Check (Cmd.EB
+             and then Cmd.Reasons (EVC_Brake_Commands.Data_Entry_Movement),
+             "SR data movement: a movement during the entry commands the "
+             & "brake (4.4.11.1.5.1)");
+      Stand_X (300);
+      Send (Ack_Of (5));
+      Send (SR_Entry (40, 500));
+      Check (not EVC_Mission.Entering_SR_Data and then not Cmd.EB,
+             "SR data movement: released at standstill after the "
+             & "acknowledgement (3.14.1.5), the entered data end the entry");
+   end Scenario_SR_Data_Movement;
+
    --  5.4.3.2 S22, S23, 5.4.5.3 h (level 2 without a session): the mode
    --  proposed after 'Start' in levels 0, NTC and 2; UN (4.4.10), SN
    --  (4.4.17); 4.6.3 [58], [60]

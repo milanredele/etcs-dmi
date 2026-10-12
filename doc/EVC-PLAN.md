@@ -5285,3 +5285,49 @@ improvements, no new signature. Edits in `EVC_Core`: `Radio_Context`,
 `Revalidate_Kept`, the Globals of `Evaluate_Radio`, `Send_Radio`,
 `Produce_Outputs` (`EVC_Track_Conditions.State` as input). Outside the
 units: none.
+
+### Protocol: the stored RBC contact, the abandoned entry, the Radio data window after Trip (e4/protocol-items, 2026-10-12)
+
+**Protocol** (common/dmi_protocol.ads, still "v2": the protocol has no
+version field; a message or action is added, never redefined).
+MSG_RBC_CONTACT 0x10, EVC -> DMI, 22 bytes: known u8, rbc_id u32 (NID_C
+above the 14 bits of NID_RBC, DMI 11.3.5.3.1), phone_len u8, 16 digit
+bytes of NID_RADIO up to its first nibble that is not a digit. Driver
+actions 22 (Train data window, or its validation window, left without
+the data: [Close] or the stop of 11.7.1.7 / 11.7.1.9), 23 (SR speed /
+distance window opened from the Special window), 24 (that window left).
+Both fuzzers know the new message.
+
+**B007** (DMI 11.7.1.4): `EVC_Core.Send_RBC_Contact` (after
+`Send_Networks` in `Produce_Outputs`, state `Contact_Sent`) sends the
+frame of `EVC_DMI_Port.RBC_Contact_Frame` when `EVC_Radio.Contact`
+changes (identity, number or known; not its status, which MSG_ONBOARD
+carries); `DMI_Core.Apply_RBC_Contact` makes it the values the RBC data
+window proposes and the Data view shows. Decisions: sent on a change
+only, none at the power-up while nothing is stored (the on-board does not
+learn when the DMI opens the window); NID_C 1023 with NID_RBC 16383 is
+sent as no contact; the short number (all F) gives no phone digits. The
+runner (test/src/s076_*) can stop typing the contact. **B220**
+(3.18.3.3.1) and the 4.4.11.1.5.1 part of **B015**:
+`EVC_Driver_Requests` decodes 22 to 24; `EVC_Mission.Take_Data_Entry`
+ends the Train Data entry on 22 and watches the SR entry in SR
+(`Entering_SR_Data`, from 23 to 24, the SR data entered or SR left);
+`EVC_Core` passes either to `EVC_Brake_Commands` as `Modifying_Data`.
+**B023** (DMI Table 50 D5, exception): a level entry that led to S5-1
+arms it; a switch to TR while the Radio data window is in the stack
+presents the default window with MO05 and S5-1 follows its
+acknowledgement (`DMI_Windows.Mode_Changed`, `Trip_Acknowledged`).
+Scenarios: `Scenario_RBC_Contact_To_DMI` (`EVC_Test_Network`),
+`Scenario_Train_Data_Left`, `Scenario_SR_Data_Movement`
+(`EVC_Test_Modes`), checks in `DMI_Test_Settings`
+(`Scenario_Win_Radio_Data`) and `DMI_Test_Windows`
+(`Scenario_Enabling_Conditions`). Matrix: 4.4.11.1.5.1 and 3.14.1.5
+done. Golden bench_level2 re-recorded (the new frame alone: with the
+call disabled the old digest matched and the 600 cycles' state trace was
+identical). Edits outside the brief's units: `EVC_Driver_Requests`,
+`EVC_JRU_Records` (the new actions have no SUBSET-027 code), test/wasm/fuzz.js.
+SUBSET-076: 759 / 1328 / 1103 before and after, 0 regressions, 3
+improvements: 4120100_05 SV21, SV22, SV30 failed at step 47 -> 130 (the
+movement in the SR speed / distance window brakes now, 4.4.11.1.5.1; the
+next failure is the known S8a01e477, the JRU record of the emergency
+brake revoked); no sequence moved by the new message or action 22.

@@ -73,11 +73,25 @@ package DMI_Windows is
       Send_Remove_VBC,          -- Arg: the validated VBC remove code
       Send_Language,            -- Arg: DMI_Texts.Language_T'Pos of the
                                 -- language the driver selected
-      Train_Data_Requested);    -- 'Train data' of the Main window pressed
+      Train_Data_Requested,     -- 'Train data' of the Main window pressed
                                 -- (Table 33 #3): the EVC records it
                                 -- (SUBSET-027 4.2.4.11)
+      Train_Data_Left,          -- the Train data window (or its validation
+                                -- window) left without the data (B220)
+      SR_Data_Requested,        -- 'SR speed / distance' of the Special
+                                -- window pressed (Table 34 #2)
+      SR_Data_Left);            -- the SR speed / distance window left
+                                -- without the data
 
    procedure Open (ID : Window_ID_T);
+
+   -- Table 50 D5, exception (B023): after a level entry that led to the
+   -- Radio data window (S5-1), a switch to TR presents the default window
+   -- with MO05 first and S5-1 once MO05 is acknowledged. DMI_Core calls
+   -- Mode_Changed on every change of the mode (Trip: the new mode is TR)
+   -- and Trip_Acknowledged when the driver acknowledges MO05.
+   procedure Mode_Changed (Trip : Boolean);
+   procedure Trip_Acknowledged;
    -- The driver pressed [Close]; ignored where [Close] is disabled
    procedure Close_Top;
    procedure Close_All;

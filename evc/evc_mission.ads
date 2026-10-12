@@ -159,11 +159,20 @@ is
    --  3.18.3.3.1: after the start of mission, the driver is modifying or
    --  revalidating the Train Data: from the selection of 'Train data' in
    --  the Main window (DMI driver action 21) until the Train Data are
-   --  entered, a button of the Main window is selected (action 16), the
-   --  mission ends or a mode in which the entry is not possible is
-   --  entered (4.7.2). A train movement meanwhile commands the brake
+   --  entered, the window is left without them (action 22, B220), a
+   --  button of the Main window is selected (action 16), the mission
+   --  ends or a mode in which the entry is not possible is entered
+   --  (4.7.2). A train movement meanwhile commands the brake
    --  (EVC_Brake_Commands, released per 3.14.1.5)
    function Modifying_Train_Data return Boolean
+     with Global => State;
+
+   --  4.4.11.1.5.1: the driver is entering the SR speed / distance limits
+   --  in SR: from the window opened (DMI driver action 23) until the data
+   --  are entered (MSG_DRIVER_DATA kind 3), the window is left (action
+   --  24) or SR is left. A train movement meanwhile commands the brake
+   --  (EVC_Brake_Commands, as for 3.18.3.3.1)
+   function Entering_SR_Data return Boolean
      with Global => State;
 
    ---------------------------------------------------------------------

@@ -44,7 +44,8 @@ is
          --  E5/E6)
          when Acknowledge | Start | Override | Level | ATO_Engage
             | Skip_Stopping_Point | ATO_Selector | Main_Window_Button
-            | BMM_Inhibition | Maintain_Shunting | Isolate =>
+            | BMM_Inhibition | Maintain_Shunting | Isolate
+            | Train_Data_Left | SR_Data_Entry | SR_Data_Left =>
             return No_Code;
       end case;
    end Action_Code;

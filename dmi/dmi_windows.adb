@@ -82,6 +82,13 @@ package body DMI_Windows is
    -- Mission with one radio system window
    D9_Pending : Boolean := False;
 
+   -- Table 50 D5, exception (B023): the level entry led to S5-1 (Trip
+   -- armed); if the on-board then switches to TR while the Radio data
+   -- window is still in the stack, the default window is presented
+   -- with MO05 (Trip awaits the acknowledgement) and S5-1 follows it
+   Trip_Armed : Boolean := False;
+   Trip_Await : Boolean := False;
+
    -- 11.3.5.4: the RBC data window on display has the 'RBC phone
    -- number' input field (decided when the window opens)
    RBC_Phone_Shown : Boolean := False;
@@ -908,6 +915,7 @@ package body DMI_Windows is
       Waiting_Window := False;
       List_Requested := False;
       Registration_Requested := False;
+      Trip_Armed := False;
       DMI_Train_Data.End_Process;
    end To_Default_Window;
 
@@ -943,9 +951,29 @@ package body DMI_Windows is
       and then (not Sequence_Active
                 or else (Depth > 1 and then Stack (Depth) /= W_One_Radio)));
 
-   procedure Close_Top is
+   -- B220, SUBSET-026 3.18.3.3.1 and 4.4.11.1.5.1: the on-board watches
+   -- a train movement while the driver enters the Train Data or the SR
+   -- speed / distance; it learns that the window was left without the
+   -- data (driver actions 22 and 24). ID was just taken off the stack:
+   -- the Train data window and its validation window count as one.
+   procedure Note_Entry_Left (ID : Window_ID_T) is
    begin
-      if Close_Enabled then
+      if ID in W_Train_Data | W_Train_Data_Validation
+        and then (Depth = 0
+                  or else Stack (Depth) not in W_Train_Data
+                                             | W_Train_Data_Validation)
+      then
+         Queue (Train_Data_Left);
+      elsif ID = W_SR_Data then
+         Queue (SR_Data_Left);
+      end if;
+   end Note_Entry_Left;
+
+   procedure Close_Top is
+      Left : Window_ID_T;
+   begin
+      if Close_Enabled and then Depth > 0 then
+         Left := Stack (Depth);
          -- 10.6.1.3 e: [Close] of a VBC validation window stops the Set /
          -- Remove VBC entry / validation process; Table 54 proposes the
          -- previous value only while the process goes on (S6-1 / S7-1
@@ -957,11 +985,41 @@ package body DMI_Windows is
             DMI_VBC.Clear;
          end if;
          Pop;
+         Note_Entry_Left (Left);
       end if;
    end Close_Top;
 
+   procedure Mode_Changed (Trip : Boolean) is
+      In_Stack : Boolean := False;
+   begin
+      for I in 1 .. Depth loop
+         In_Stack := In_Stack or else Stack (I) = W_Radio_Data;
+      end loop;
+      if not Trip then
+         -- the acknowledgement of MO05 can no longer come
+         Trip_Await := False;
+      elsif Trip_Armed and then In_Stack then
+         -- Table 50 D5, exception: the default window with MO05 first
+         To_Default_Window;
+         Trip_Await := True;
+      else
+         Trip_Armed := False;
+      end if;
+   end Mode_Changed;
+
+   procedure Trip_Acknowledged is
+   begin
+      if Trip_Await then
+         -- Table 50 D5, exception: MO05 acknowledged -> S5-1
+         Trip_Await := False;
+         Open (W_Main);
+         Open (W_Radio_Data);
+      end if;
+   end Trip_Acknowledged;
+
    procedure Close_All is
    begin
+      Trip_Await := False;
       To_Default_Window;
       D9_Pending := False;
       Action_Count := 0;
@@ -1067,7 +1125,12 @@ package body DMI_Windows is
       -- 11.7.1.9: the values of the input fields are dropped with the
       -- window; the validation window goes with its train data window
       while Depth > 0 and then Is_Entry_Window (Stack (Depth)) loop
-         Pop;
+         declare
+            Left : constant Window_ID_T := Stack (Depth);
+         begin
+            Pop;
+            Note_Entry_Left (Left);
+         end;
       end loop;
    end Stop_Entry;
 
@@ -1257,9 +1320,10 @@ package body DMI_Windows is
                then
                   -- Table 50 S4 -> D5: level 2 without valid RBC contact
                   -- information or without the registration -> S5-1.
-                  -- Not modelled: the exception of D5 for a switch to
-                  -- TR (MO05 first), which the DMI cannot foresee.
+                  -- The exception of D5 for a switch to TR (MO05 first)
+                  -- is armed here and taken by Mode_Changed (B023).
                   Open (W_Radio_Data);
+                  Trip_Armed := True;
                end if;
                -- Table 50 S4 otherwise: back to S1, the Main window;
                -- with level 2 D5 -> S8, the Main window the EVC shows
@@ -1539,7 +1603,10 @@ package body DMI_Windows is
          when W_Special =>
             case Index is
                when 1 => Open (W_Adhesion);
-               when 2 => Open (W_SR_Data);
+               when 2 =>
+                  -- 4.4.11.1.5.1: the on-board watches the entry (B015)
+                  Queue (SR_Data_Requested);
+                  Open (W_SR_Data);
                when 3 => Queue (Train_Integrity); Pop;
                when 4 =>
                   -- Table 53 S1: ST07 is presented / removed (the EVC

@@ -778,7 +778,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.13.11.9,3,x,,,,,E3,done,"EVC_SDM.Below_First_Element (the EBD of the SvL or the LOA, the SBD of the EOA and, when enabled, their GUI curves at the MRSP start below the first element: the MA request location passed); evc_test SDM_Perturbation_Curves; with T_MAR, E5; e5/authority-5: an MRSP element wholly in rear of the min safe front end is not part of the MRSP (3.13.11.9 'the start location of the MRSP'), evc_test SDM_Perturbation_Behind"
 3.14.1.2,3,x,,,,,E3,done,"EVC_Brake_Commands.Step (the service brake alone, the train not decelerating T_bs + 2 s after: the emergency brake, released with the service brake command; TIU reason bit 1); the time and the deceleration configured as data (EVC_Config); evc_test Config_Behaviour"
 3.14.1.3,3,x,,,,,E3,done,"the trip brake (TIU reason 32) until the trip is acknowledged at standstill ([7], [62], [63], [68], EVC_Procedures); evc_test_procedures Scenario_Trip_EOA"
-3.14.1.5,3,x,,,,,E3,partial,"EVC_Brake_Commands (roll away, unauthorised direction, standstill supervision, and the movement while the driver modifies or revalidates the Train Data after the start of mission, reason Data_Entry_Movement of 3.18.3.3.1 from EVC_Mission.Modifying_Train_Data: released at standstill after the acknowledgement, DMI ack kind 5); evc_test SDM_Protections, EMRRLS_Acknowledgement, Train_Data_Movement; missing: the movement while entering the SR speed / distance (the DMI does not report the opening of the SR data window) [B015]"
+3.14.1.5,3,x,,,,,E3,done,"EVC_Brake_Commands (roll away, unauthorised direction, standstill supervision, and the movement while the driver modifies or revalidates the Train Data after the start of mission, reason Data_Entry_Movement of 3.18.3.3.1 from EVC_Mission.Modifying_Train_Data, and of 4.4.11.1.5.1 from EVC_Mission.Entering_SR_Data: released at standstill after the acknowledgement, DMI ack kind 5); evc_test SDM_Protections, EMRRLS_Acknowledgement, Train_Data_Movement, SR_Data_Movement [B015]"
 3.14.1.6,3,x,,,,,E3,done,"the service brake of a linking reaction apply service brake until standstill (TIU reason 128, {P}); {T} Scenario_Linking"
 3.14.1.7,3,x,,,,,E3,done,EVC_Sessions.Supervise_Contact (a new message or standstill releases the service brake of T_NVCONTACT); evc_test session_nvcontact_brake [E5 session]
 3.14.1.7.1,3,x,,,,,E3,done,released when the distance is no longer overpassed or at standstill after the acknowledgement (EVC_Procedures.Reversing_Step); evc_test_procedures Scenario_Reversing
@@ -1018,7 +1018,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.3.2.5,3,x,,,,,E6,todo,
 3.18.3.2.5.1,3,x,,,,,E6,todo,
 3.18.3.3,3,x,,,,,E6,todo,
-3.18.3.3.1,3,x,,,,,E6,done,"EVC_Brake_Commands reason Data_Entry_Movement from EVC_Mission.Modifying_Train_Data (B035); the DMI text Runaway movement (entry 9, started by 3.18.3.3.1 in the DMI specification's system status messages) while it is commanded, EVC_Core.Show_Mode_Indications (evc_test Scenario_Train_Data_Movement) [B035, B223]"
+3.18.3.3.1,3,x,,,,,E6,done,"EVC_Brake_Commands reason Data_Entry_Movement from EVC_Mission.Modifying_Train_Data (B035), ended when the DMI reports the window left without the data (driver action 22, B220, evc_test Scenario_Train_Data_Left); the DMI text Runaway movement (entry 9, started by 3.18.3.3.1 in the DMI specification's system status messages) while it is commanded, EVC_Core.Show_Mode_Indications (evc_test Scenario_Train_Data_Movement) [B035, B223]"
 3.18.3.4,3,x,,,,,E6,done,EVC_Sessions.Mission: message 129 with packets 0 and 11 when the supervising session is established with valid Train Data and when the driver validates them in a session [E5 session]
 3.18.3.4 a),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
 3.18.3.4 b),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
@@ -1223,7 +1223,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.11.1.3.1 b),4,x,,,,,E4,done,EVC_Mission: the distance from the entry of SR or from the driver's entry (override: the procedures half); evc_test E4_SR_Distance
 4.4.11.1.3.1 c),4,x,x,,,,E4,deferred,E7 (Euroloop)
 4.4.11.1.5,4,x,,,,,E4,done,"EVC_Mission: MSG_DRIVER_DATA kind 3 in SR at standstill, refused otherwise (JRU 41 kind 4); evc_test E4_SR_Distance"
-4.4.11.1.5.1,4,x,,,,,E4,todo,the movement during the entry: the on-board does not know when the driver is in the SR data window [B015]
+4.4.11.1.5.1,4,x,,,,,E4,done,"EVC_Mission.Entering_SR_Data from the DMI's driver actions 23 (SR speed / distance window opened) to 24 (left) or the data entered, in SR; EVC_Core passes it to EVC_Brake_Commands (reason Data_Entry_Movement); evc_test Scenario_SR_Data_Movement [B015, e4/protocol-items]"
 4.4.11.1.5.2,4,x,,,,,E4,done,"EVC_Mission: 5 .. 600 km/h, 0 .. 65535 m as the DMI sends them (A.3.11)"
 4.4.11.1.6,4,x,,,,,E4,done,"'Start' in SR, level 2, session open: the MA request reason Start (EVC_Radio_Authority.Evaluate_Request); evc_test Scenario_SR_Authorisation [E5 authority]"
 4.4.11.1.6.2,4,x,,,,,E4,done,"EVC_Mission.Mode_Entered (V_NVSTFF, D_NVSTFF) and Evaluate (the driver's entry); evc_test E4_SR_Distance"
