@@ -5195,3 +5195,53 @@ agents did, and the rule "check at the source first" earns its place in
 every brief; a bench without a braking model passes and fails sequences
 by accident (B262 is the next runner item of weight). Open items:
 doc/BACKLOG.csv (34 open after this round).
+
+### The emergency brake revocation, radio holes, the kept RBC contact, level symbols (e5/onboard-misc, 2026-10-12)
+
+**B260** (not ours, the premise wrong): the packet 3 in force in
+3130234_08 and 3131020_01 carries Q_NVEMRRLS 0 (the scn's `var
+Q_NVEMRRLS 1 0` is width 1, value 0); 3131020_01 sets Q_NVSBTSMPERM 0,
+so its emergency brake of step 57 is the SBI's in place of the service
+brake (3.13.10.2.3), revoked as the service brake under the permitted
+speed (3.13.10.2.4, Table 10 r3), which `EVC_SDM` does
+(`Scenario_SDM_EB_Revocation_TSM`: the EB for the SB revoked whatever
+Q_NVEMRRLS, the EBI's EB under the permitted speed with 1, at standstill
+with 0). Ours brakes by the EBI earlier (717 m at 79 km/h, 1005 m at 73
+km/h) because its curves are lower than the ERA tool's there: the
+curves family (B140, B261); the EB is then kept to standstill as Table
+10 says.
+
+**B271, 3.5.4.4, Table 2 [7], 3.12.1.2.1.5** (done):
+`EVC_Track_Conditions.Overlaps_Radio_Hole` (an expression function over
+the stored conditions, M_TRACKCOND 4, the estimated front end for the
+engine's both ends: no engine length is known), stored at `Evaluate` and
+read as `Engine_In_Radio_Hole` by `EVC_Core.Radio_Context` into
+`EVC_Radio.Context_T.Radio_Hole`. `EVC_Sessions`: no set-up request
+while the engine overlaps the hole (`Produce_Session`), the requests
+stopped on entering it (`Stop_Attempts`, Table 2 [3] / [6]; decision: a
+request already with Euroradio is not withdrawn, its result is taken),
+a connection lost there goes to No Connection ([7]), set up again once
+the engine has left it; the defined time of 3.5.4.2.1 still runs. The
+session half sees the hole of the cycle before (`Take_Event` runs
+before `Evaluate`). `Scenario_Session_Radio_Hole`.
+
+**B272, 4.11.1.1** (RBC contact row done; 4.11.1.1 and .3 stay partial
+for EOLM, E7, and the non-volatile store, E8): no cold movement
+(`EVC_Odometry.Cold`, 3.15.8) makes the kept contact valid
+(`EVC_Radio.Revalidate_Contact` from `EVC_Core.Revalidate_Kept`); a
+cold movement or no information leaves it invalid (4.11.1.3); the start
+of mission still invalidates it at D2 with an invalid position or level
+(5.4.3.3). Checks added to `Scenario_Radio_Joint`.
+
+**B017** (left open): 4080425_04 is the runner's (step 65 at 350 m is
+case 5100100's "Level X is already displayed", the level before the
+transition at 400 m, judged against the step's L2 column; step 67 at
+400 m passes); 4080100_06 SV21: message 24 with packet 41 and a packet
+72 in the 2.x layout is not taken (another system version, E7);
+4100103_15 SV21/SV22 not traced.
+
+**SUBSET-076**: 759 / 1328 / 1103 before and after, 0 regressions, 0
+improvements, no new signature. Edits in `EVC_Core`: `Radio_Context`,
+`Revalidate_Kept`, the Globals of `Evaluate_Radio`, `Send_Radio`,
+`Produce_Outputs` (`EVC_Track_Conditions.State` as input). Outside the
+units: none.
