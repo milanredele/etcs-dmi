@@ -1518,8 +1518,9 @@ is
                      Hold_LS_Packet
                        (R, L2_Announced =>
                              EVC_Levels.Announced
-                             and then EVC_Modes."=" (EVC_Levels.Announced_Level,
-                                                     EVC_Modes.L2));
+                             and then EVC_Modes."="
+                                        (EVC_Levels.Announced_Level,
+                                         EVC_Modes.L2));
                   elsif K /= K12 then
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx,

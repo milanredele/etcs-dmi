@@ -4067,3 +4067,30 @@ sibling repository, worked: the guard is not needed there.
 
 Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`,
 35 open after this round).
+### Limited Supervision display, third round (e4/ls-display-3, 2026-10-12)
+
+**Signatures.** S9f4f23d2 (4080300_17 step 88): model; packet 80 puts
+the LS area at 450-670 m and the OS area at 720-1020 m (D_MAMODE
+incremental, 3.6.3.2.4 a), the sequence wants the max safe front end in
+the OS area at 650 m (a confidence interval over 70 m), the bench gives
+30 m + 1 %: the train leaves the LS area into no area and goes to FS.
+S18160388 (4100103_22 step 125) and S828969ca (4080300_10 step 110):
+s076, a symbol status bit of another symbol (Bit36 is LS, Bit27 NL).
+S60f37765 removed. 4080100_04 passes; 9990400_47 stops at step 73
+(S5436c26d, balise consistency, E6).
+
+**Implemented.** B093, 4.8.4.2 [9] [10]:
+`EVC_Stored_Information.LS_Area_Furthest` in `Take_LS_Packet`, over
+the mode profiles of the same message (`Msg`). B120, 4.8.3 [2]: the
+RBC's toggle on order outside level 2 held in `EVC_LS_Display`
+(`Hold_Order`, the packet alone, decision), released by
+`EVC_Core.Release_LS_Held` at the switch to level 2 and taken in LS
+with its timer from the transition (outside LS rejected: message 24
+carries no mode profile, [9]), deleted with the announcement or the
+session (4.8.5.4). Scenarios: evc_test `LS_Order_Area`,
+`LS_Radio_Held`; `LS_Order_Buffered` carries an LS profile now,
+`Handover_LSSMA` takes its last order in LS.
+
+**Left.** B121 (messages 9 and 18 of the Accepting RBC) not started
+(budget); the OS acknowledgement part of [10] has no scenario of its
+own.
