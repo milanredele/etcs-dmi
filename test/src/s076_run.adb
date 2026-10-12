@@ -3793,12 +3793,16 @@ package body S076_Run is
    --  factors in force), not a ratio of AD_0 (16 against the probe's 26
    --  m at 60 km/h for 3131040_04). B231: the EBD is entered at V_bec,
    --  not at the speed (3.13.9.3.2.10 with A_est 0: V_est + V_delta0,
-   --  V_delta0 = V_ura of SUBSET-041 5.3.1.2). Decision: the margin
-   --  also where the SBD decides (the brief's premise of none there is
-   --  contradicted by 3131040_04: its P at 60 km/h is SBD-based, 618 m,
-   --  and the probe's full margin leaves a rest of 1 m, so the tool's
-   --  service brake ran at 100 too); the model's EBD difference is 16 m
-   --  there, the SBD's 13 m, the probe's 26 m: B300
+   --  V_delta0 = V_ura of SUBSET-041 5.3.1.2). B300: per limit. Where
+   --  the SBD of an EOA decides (the workbook's SBI1 at the speed at or
+   --  beyond its SBI2: 3131040_04's P at 60 km/h, 618 m against 352), the
+   --  tool's service brake ran at 100 too (A.3.7.1: min (lambda, 135)),
+   --  and the limits of the column, SBI1 = d_SBD + V * T_bs1 and W and P
+   --  at fixed times from it (3.13.9.3.3.1, .4.1, .5.1), move by the SBD
+   --  distance and by T_bs_reduced, whose ramp of A.3.12 depends on A_SB
+   --  (S076_Bench.Sbd_Terms), the Indication by T_indication = max (0.8
+   --  T_bs_reduced, 5 s) + T_driver as well (3.13.9.3.6.2): 13 m of the
+   --  SBD and 14 m of T_bs at 60 km/h there, the probe's 26 to 27 m
    function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
                          return Long_Float
    is
@@ -3807,17 +3811,47 @@ package body S076_Run is
       Vt    : constant Long_Float := Long_Float'Max (V_Target_Kmh, 0.0);
       Tool  : constant Natural :=
         (if Seq.WB_Lambda_EB in 10 .. 250 then Seq.WB_Lambda_EB else 100);
-      --  the block's columns are not read since B261 (the margin is the
-      --  model's); the parameter stays for the two callers
-      pragma Unreferenced (C);
+      S1    : constant Long_Float := Curve_Distance (C, SBI1, V_Kmh);
+      S2    : constant Long_Float := Curve_Distance (C, SBI2, V_Kmh);
+      On_Sbd : constant Boolean :=
+        Ref.Column in SBD | SBI1 | SBI | Warning | Permitted | Indication
+        and then S1 /= No_Value
+        and then (S2 = No_Value or else S1 >= S2);
+      Service : Long_Float := 0.0;
    begin
+      if On_Sbd or else Ref.Column in SBI2 | SBI | Warning | Permitted
+                                      | Indication
+      then
+         declare
+            To : constant Long_Float := (if On_Sbd then 0.0 else Vt);
+            Vm : constant Long_Float := V_Kmh / 3.6;
+            Ts : constant B.Sbd_Terms_T :=
+              B.Sbd_Terms (Tool, Seq.WB_Brake_Position, Train_Length_M,
+                           V_Kmh, To);
+            Tr : constant B.Sbd_Terms_T :=
+              B.Sbd_Terms (Brake_Percentage, Seq.WB_Brake_Position,
+                           Train_Length_M, V_Kmh, To);
+            T  : constant Long_Float :=
+              (if Ref.Column = SBD then 0.0 else Ts.T_Bs - Tr.T_Bs)
+              + (if Ref.Column = Indication
+                 then Long_Float'Max (0.8 * Ts.T_Bs, 5.0)
+                      - Long_Float'Max (0.8 * Tr.T_Bs, 5.0)
+                 else 0.0);
+         begin
+            Service := Vm * T + (if On_Sbd then Ts.D_Sbd - Tr.D_Sbd else 0.0);
+         end;
+         if On_Sbd then
+            return Long_Float'Max (0.0, Service);
+         end if;
+      end if;
       if V_Bec <= Vt then
-         return 0.0;
+         return Long_Float'Max (0.0, Service);
       end if;
       return Long_Float'Max
         (0.0,
-         B.Ebd_Distance (Tool, Seq.WB_Brake_Position, Train_Length_M,
-                         V_Bec, Vt)
+         Service
+         + B.Ebd_Distance (Tool, Seq.WB_Brake_Position, Train_Length_M,
+                           V_Bec, Vt)
          - B.Ebd_Distance (Brake_Percentage, Seq.WB_Brake_Position,
                            Train_Length_M, V_Bec, Vt));
    end Tool_Margin;

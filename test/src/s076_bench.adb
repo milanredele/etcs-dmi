@@ -7,6 +7,7 @@ with Ada.Streams;     use Ada.Streams;
 with DMI_Core;
 with DMI_Protocol;
 with EVC_Braking;
+with EVC_Build_Up;
 with EVC_Core;
 with EVC_Distances;
 with EVC_DMI_Port;
@@ -991,6 +992,67 @@ package body S076_Bench is
       end loop;
       return D;
    end Ebd_Distance;
+
+   function Sbd_Terms (Lambda, Position, Length_M : Natural;
+                       V_Kmh, To_Kmh : Long_Float) return Sbd_Terms_T
+   is
+      use EVC_Braking;
+      use EVC_Supervision_Input;
+      use type EVC_Fixed.Num;
+      L   : constant Natural := (if Lambda in 10 .. 250 then Lambda else 100);
+      E   : constant Steps_T := Basic_Deceleration (Natural'Min (L, 135));
+      Top : constant Long_Float :=
+        Long_Float'Min (Long_Float'Max (V_Kmh, 0.0), 500.0) / 3.6;
+      Low : constant Long_Float :=
+        Long_Float'Min (Long_Float'Max (To_Kmh, 0.0) / 3.6, Top);
+      P   : constant Brake_Position_T :=
+        (case Position is
+            when 2 => Freight_P, when 3 => Freight_G,
+            when others => Passenger_P);
+      T   : constant Times_T :=
+        Conversion_Service
+          (P, EVC_Fixed.Num (Natural'Min (Length_M, 1_500) * 100),
+           Zero_Speed => Low = 0.0);
+      V   : Long_Float := Low;
+      D   : Long_Float := 0.0;
+      A_Lo, A_Hi : EVC_Fixed.Num :=
+        Value_At (E, EVC_Fixed.Num (Low * 100.0));
+   begin
+      --  in steps of 0.05 m/s, the deceleration at the middle of each;
+      --  the extremes at the sampled speeds and at V_Kmh
+      while V < Top loop
+         declare
+            Dv  : constant Long_Float := Long_Float'Min (0.05, Top - V);
+            Mid : constant Long_Float := V + Dv / 2.0;
+            A   : constant EVC_Fixed.Num :=
+              Value_At (E, EVC_Fixed.Num (Mid * 100.0));
+         begin
+            A_Lo := EVC_Fixed.Min (A_Lo, A);
+            A_Hi := EVC_Fixed.Max (A_Hi, A);
+            if A > 0 then
+               D := D + Mid * Dv / (Long_Float (A) * 1.0E-5);
+            end if;
+            V := V + Dv;
+         end;
+      end loop;
+      A_Lo := EVC_Fixed.Min (A_Lo, Value_At (E, EVC_Fixed.Num (Top * 100.0)));
+      A_Hi := EVC_Fixed.Max (A_Hi, Value_At (E, EVC_Fixed.Num (Top * 100.0)));
+      declare
+         I : constant EVC_Build_Up.Input_T :=
+           (Kind           => (if Low = 0.0 then EVC_Build_Up.EOA_Target
+                               else EVC_Build_Up.Speed_Target),
+            V_Est          => EVC_Fixed.Num (Top * 100.0),
+            V_Target       => EVC_Fixed.Num (Low * 100.0),
+            T_Bs_React     => T.React,
+            T_Bs           => T.Build_Up,
+            A_SB           => A_Lo,
+            A_Expected_Max => A_Hi,
+            others         => <>);
+      begin
+         return (D_Sbd => D,
+                 T_Bs  => Long_Float (EVC_Build_Up.T_Bs_Reduced (I)) / 1000.0);
+      end;
+   end Sbd_Terms;
 
    procedure Set_Direction (Dir : Integer) is
    begin
