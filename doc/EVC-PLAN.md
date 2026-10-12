@@ -5381,3 +5381,64 @@ twelve turned (B303: 3131040_59 has no brake to act on, Overspeed at
 102 under 100 below the SBI; the Gamma ones are the A_est2 swing).
 New signatures triaged: S61f30c39 (B301), Sa90fd42a (B302). Backlog:
 B262, B270 done; B261 updated; B300 to B303 opened.
+
+### E5 integration after the twenty-first round (2026-10-12)
+
+Merged: e5/runner-cells (the runner reads the workbooks' Integrated
+correction factors sheet and the tool's controls: `R_Factors` compares
+the set the train type selects with the national values in force
+exactly, Kt_int included, B290; `R_Tool_Target` and `R_Gamma` from the
+controls, B291; a fixed release speed of the workbook against the
+telegram's V_RELEASEDP as an S076 defect, B225, 3131040_32 found too;
+the other country's packet 3 named, B280; 3131040_38 and _50 pass; a
+template finding for E6: the 195 passenger Gamma workbooks at the
+defaults carry a set a of 0.9 between 25 and 30 km/h that is the tool's,
+not A.3.2's), e5/onboard-misc (radio holes in the session half: no
+set-up and the attempts stopped while the engine overlaps an announced
+hole, a connection lost there to No Connection, 3.5.4.4, Table 2 [7],
+`EVC_Track_Conditions.Overlaps_Radio_Hole`, B271; the kept RBC contact
+made valid without cold movement, 4.11.1.1, `EVC_Radio.Revalidate_Contact`,
+B272; B260 had no defect: the `var` line gives the width before the
+value, so `Q_NVEMRRLS 1 0` is 0, and the EB triggered instead of the SB
+is revoked under the permitted speed already, a scenario added; B017:
+4080425_04 is a runner column, 4080100_06 another system version),
+e4/protocol-items (`MSG_RBC_CONTACT` 0x10 carries the stored RBC contact
+to the DMI, which proposes it in the RBC data window, DMI 11.7.1.4,
+B007; driver actions 22 to 24 for the Train Data or SR data window left
+without data and the SR window opened, the entries ended and the SR data
+movement braked, 3.18.3.3.1, 4.4.11.1.5.1, B220, part of B015, 3.14.1.5
+done; the MO05 exception of Table 50 D5, B023; the bench_level2 golden
+re-recorded for the added frame, checked by trace) and e5/bench-braking
+(the bench decelerates under a brake command at the conversion model's
+A_basic for the entered brake percentage and ramps back at 0.3 m/s²,
+B262, the stand-in of B224 removed; 122 improvements against 24
+understood regressions: Gamma trains now braked at lambda 109, a lab
+brake disabled without the comment, a chart above a Shunting limit; the
+no-message window ignores outputs sent before it opened, B270,
+4080428_01 passes step 134; the margin from `EVC_Braking` at the two
+percentages, B261 partly: the P of 3131040_04 is SBD-based and 10 m of
+lambda dependence are unexplained, B300; B301 to B303).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the baseline's two conflicting blocks taken from the bench
+branch and the merged run then re-recorded (18 improvements of the
+union over either branch, 0 regressions).
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11920
+checks, dmi_test 2168), the full proof 11280 checks, 0 unproved (margin
+47726 steps), cross build and stack 27064 B (margin 5704), wasm and
+both smokes 0 failures. SUBSET-076: 759 / 1328 / 1103 before, 830 /
+1272 / 1088 after, 0 regressions, 0 untriaged. Matrix: 356 -> 351
+clauses left in all phases.
+
+Measurements (requests by message id, duration, final context, cost):
+bench-braking 138 / 37 min / 233k / 10.8; runner-cells 81 / 19 min /
+158k / 5.0; onboard-misc 150 / 24 min / 213k / 11.1; protocol-items 151
+/ 25 min / 218k / 11.7. Two over their budgets (onboard-misc and
+protocol-items by about 20 calls each), their "Done" lists complete.
+
+Lessons: the bench's physics decides sequences by the dozen (the
+braking model alone moved 146); a `var` line of the sequences reads
+width then value (B260's premise); the protocol has no version field,
+so a new message or action is added, never redefined. Open items:
+doc/BACKLOG.csv (26 open after this round).
