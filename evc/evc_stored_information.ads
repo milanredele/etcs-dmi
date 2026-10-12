@@ -265,7 +265,7 @@ is
    function PBD_Inputs return EVC_PBD.Inputs_T
      with Global => State;
 
-   --  the mode of the on-board (4.5.2, 4.8) and what
+   --  The mode of the on-board (4.5.2, 4.8) and what
    --  the conditions of 4.6.3 read of the stored information
 
    --  What the cycle tells the stored information besides the time: the

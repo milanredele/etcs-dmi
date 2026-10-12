@@ -598,7 +598,7 @@ is
      (Payload'Length >= TIU_TC_Header_Length
       and then Payload (Payload'First) = TIU_TC_Tag);
 
-   --  the RTM port in both directions
+   --  The RTM port in both directions
 
    --  Euroradio (SUBSET-037, SUBSET-038) is outside the on-board
    --  (doc/EVC-PLAN.md §13, decision 1): the port carries the

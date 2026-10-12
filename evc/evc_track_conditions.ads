@@ -307,8 +307,8 @@ is
                                 Tunnel : out Tunnel_T)
      with Global => State;
 
-   --  the information for an
-   --  external function (3.12.1.5 b, 5.20, SUBSET-034)
+   --  The information for an external function (3.12.1.5 b, 5.20,
+   --  SUBSET-034)
 
    --  The kinds of information, SUBSET-034: 1 powerless section with
    --  pantograph to be lowered (2.4.2), 2 powerless section with main

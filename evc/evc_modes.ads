@@ -107,7 +107,7 @@ is
    function Transition_Exists (From, To : Mode_T) return Boolean is
      (Transitions (From, To) /= No_Transition);
 
-   --  the conditions of each transition, and what the
+   --  The conditions of each transition, and what the
    --  modes mean for the functions of the on-board (4.5.2, 4.10)
 
    --  4.6.2 Figure 2: the conditions of 4.6.3 that allow the transition

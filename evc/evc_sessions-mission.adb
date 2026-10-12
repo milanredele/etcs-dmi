@@ -33,7 +33,7 @@ is
    Repeat_Ms   : constant := 15_000;
    Max_Repeats : constant := 3;
 
-   --  Q_STATUS (7.5.1.110.1): 0 invalid, 1 valid, 2 unknown
+   --  Q_STATUS (7.5.1.134): 0 invalid, 1 valid, 2 unknown
    Q_Invalid : constant := 0;
    Q_Valid   : constant := 1;
    Q_Unknown : constant := 2;
@@ -510,7 +510,7 @@ is
 
    subtype Writer_T is ETCS_Bits.Writer (128);
 
-   --  Packet 11 (7.4.2.3.4) from the Train Data (3.18.3.4 a to i):
+   --  Packet 11 (7.4.3.5) from the Train Data (3.18.3.4 a to i):
    --  L_TRAIN in m, V_MAXTRAIN in 5 km/h steps (the speed rounded to the
    --  km/h first), the traction systems of the bits of Voltages (bit k:
    --  M_VOLTAGE k, NID_CTRACTION 0), no National System; decision 6

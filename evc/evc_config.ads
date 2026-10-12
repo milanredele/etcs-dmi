@@ -119,7 +119,7 @@ is
       Has_Eddy_Current      : Boolean := False;
       Has_Magnetic_Shoe     : Boolean := False;
       Has_Electro_Pneumatic : Boolean := False;
-      --  the traction cut-off time (3.13.2.2.8.2), ms
+      --  the traction cut-off time (3.13.2.2.2.1), ms
       T_Traction_Cut_Off    : Time_Ms_T := 1_000;
       --  the traction systems accepted by the engine (M_VOLTAGE bits,
       --  3.18.3.2 i): bit 1 AC 25 kV 50 Hz

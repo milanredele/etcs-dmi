@@ -28,7 +28,7 @@
 --  (3.13.2.2.3.1.3 and .4), Count = 0 is no model; a Kv_Set_T and a
 --  Kr_Set_T as packet 3 gives them: step K from its Speed (Length) K,
 --  exclusive, to the next one, inclusive, the first from 0 and the last
---  open ended (3.13.2.3.7.11, .12, 7.5.1.175 V_NVKVINT), and an empty
+--  open ended (3.13.2.3.7.11, .12, 7.5.1.161.1 V_NVKVINT), and an empty
 --  set is the default of A.3.2 (Kv_int 0.7, Kr_int 0.9); Q_NVEMRRLS
 --  True is the
 --  value 1 of 7.5.1.123 (revoke the emergency brake when the Permitted
