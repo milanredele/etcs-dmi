@@ -4495,3 +4495,65 @@ release speed (3130234_07, 3130235_02/04, 3131020_02/04, 3131030_24,
 3131040_44/46/48/98, 3131060_14); several sets, gradients or targets
 (3130233_02, 3130810_02, 3131050_08, 3131060_02, 3131100_02/04/07,
 3130237_05/06, 3131040_10/12).
+
+### E5 integration after the seventeenth round (2026-10-12)
+
+Merged: e5/curves-method (the runner judges a curve step at its own
+supervision status change, the first of the limit's kind since the
+previous location, against the workbook column at the speed of that
+change; the target location from the on-board through
+`EVC_SDM.Result_T.Shown_At`, B171; the author's placement blocked as
+`R_Placement` when our change agrees with the workbook, B173; an
+SV21/SV22 block without a twin blocked as `R_Old_Tool`, B170; the
+lambda margin of B175 from the workbook's EBD column; the
+displayed-speed comparison dropped, B172; B176 for the steps our limit
+has not reached), s076/curves-twin (the sibling's importer writes the
+SV30 twin's block into an SV21/SV22 file where the EBD rows are
+identical in range and values, with a `curves-from` line: 608 blocks,
+450 files; sibling master 4d40260), e5/curve-probe (`obj/evc_curve_probe`
+and `test/tools/curve_probe.py`, B174; the 29 m residual is the
+SUBSET-041 speed accuracy the workbook applies and the bench's odometer
+does not report, B191; the start of the release speed monitoring now
+uses the reduced build up times, 3.13.9.4.6, .7, B190; 68 of 107 Lambda
+SV30 workbooks agree with the on-board within 2 m in every row, the 39
+outside by family in B192, one of them a SUBSET-076 inconsistency: a
+workbook computed with other correction factors than its own packet 3)
+and e5/accepting-rbc (messages 9 and 18 of the Accepting RBC rejected at
+reception with 138 answered to message 9, 4.8.2.1 c) exception 2, B121;
+packet 90 taken as K90, the track ahead free MA request reason 16 in any
+level with level 2 announced and packet 9 in message 132, 3.8.2.4.1 to
+.3, B081; the runner reads Q_MARQSTREASON as a bit pattern; 3080200_08
+passes in the three system versions).
+
+Merge by hand: the B170 line (both agents appended to it: combined), the
+plan subsections (all appended at the end), the baseline (the runner
+branch's lines kept, the merged run then matched them exactly), the
+backlog ids by id with the done state winning.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11825
+checks), the full proof 11140 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27128 B (margin 5640), wasm and both smokes 0
+failures. SUBSET-076: 753 / 1429 / 1008 before, 753 / 1416 / 1021 after
+(blocked: Gamma 93, placement 12, old tool 2), 0 regressions, 0
+untriaged. Matrix: 363 -> 359 clauses left in all phases (4.8.2.1 c)
+done, 3.8.2.4.1 to .3 done).
+
+Measurements (requests by message id, duration, final context, cost):
+curves-method 118 / 22 min / 185k / 7.8; curves-twin 46 / 7 min / 83k /
+1.8; curve-probe 131 / 23 min / 216k / 10.1; accepting-rbc 152 / 22 min
+/ 209k / 11.1 (over its budget of 120 calls by 48; its "Done" list was
+complete).
+
+Lessons: a backlog line can describe the defect rather than the
+requirement (B121 said "held and taken at the switch instead of
+rejected" and the brief copied it; the clause says rejected; the agent
+checked the clause first and implemented it); a probe that reproduces
+the reference to the metre is worth more than a tolerance (the 29 m fell
+to the odometer's V_ura in one afternoon, and a real defect of the
+release speed monitoring came out with it).
+
+Next for the curves: B191 (the bench's V_ura), B176 (driving on to our
+limit), B192 by family (the release speed monitoring start with SvL at
+the EOA, the EOA without SvL or release speed, the several-set
+workbooks), then the Gamma model with E6. Open items: doc/BACKLOG.csv
+(32 open after this round).
