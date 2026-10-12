@@ -15,6 +15,7 @@ package EVC_Test_Position is
       procedure Scenario_Geo_Rejected_In_SH;
       procedure Scenario_Geo_By_Radio;
       procedure Scenario_Odometer_Accuracy;
+      procedure Scenario_Odometer_Check_By_Mode;
       procedure Scenario_Cold_Movement;
       procedure Scenario_Orientation;
       procedure Scenario_Virtual;

@@ -2147,14 +2147,25 @@ is
       --  roll away, the unauthorised direction movement or the standstill
       --  protection commands the brake ("Runaway movement", the DMI's
       --  entry 9, Table 68: 3.14.2.4, 3.14.3.2), until its revocation
-      --  (3.14.1.5)
-      if Brake_Output.Protection /= Runaway_Shown then
-         EVC_Outbox.Put (DMI, System_Status_Frame
-                                (SS_Runaway_Movement,
-                                 (if Brake_Output.Protection
-                                  then SS_Event_Start else SS_Event_End)));
-         Runaway_Shown := Brake_Output.Protection;
-      end if;
+      --  (3.14.1.5); the brake of a movement while the driver modifies
+      --  or revalidates the Train Data too (3.18.3.3.1: the DMI
+      --  specification's table of the system status messages starts
+      --  entry 9 by 3.18.3.3.1 as well, ended by 3.14.1.5; B223)
+      declare
+         Runaway : constant Boolean :=
+           Brake_Output.Protection
+           or else Brake_Output.Reasons
+                     (EVC_Brake_Commands.Data_Entry_Movement);
+      begin
+         if Runaway /= Runaway_Shown then
+            EVC_Outbox.Put (DMI, System_Status_Frame
+                                   (SS_Runaway_Movement,
+                                    (if Runaway
+                                     then SS_Event_Start
+                                     else SS_Event_End)));
+            Runaway_Shown := Runaway;
+         end if;
+      end;
       --  3.6.8.5: the driver is informed when the odometer performance
       --  becomes impaired, and as long as it is (3.6.8.6.2); the entry
       --  ends when EVC_Odometry ends the impairment (3.6.8.6, the
@@ -2165,7 +2176,7 @@ is
       declare
          Show : constant Boolean :=
            EVC_Odometry.Impaired
-           and then Current_Mode in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS;
+           and then Odometer_Check_Mode (Current_Mode);
       begin
          if Show /= Odometer_Shown then
             EVC_Outbox.Put (DMI, System_Status_Frame

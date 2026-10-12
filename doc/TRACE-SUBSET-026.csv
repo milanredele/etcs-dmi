@@ -268,10 +268,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.6.8.2,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.6.8.3,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.6.8.4,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
-3.6.8.5,3,x,,,,,E2,done,"EVC_Odometry.Impaired, JRU event 7; the driver informed by the system status text ""Odometer impaired"" (DMI catalogue entry 36), started and ended with Impaired in EVC_Core.Show_Mode_Indications, in the modes of the check of 4.5.2 (SM, FS, AD, LS, SR, OS; the check itself in every mode: B222) (evc_test Scenario_Odometer_Accuracy) [B030]"
+3.6.8.5,3,x,,,,,E2,done,"EVC_Odometry.Impaired, JRU event 7; the driver informed by the system status text ""Odometer impaired"" (DMI catalogue entry 36), started and ended with Impaired in EVC_Core.Show_Mode_Indications, in the modes of the check of 4.5.2 (SM, FS, AD, LS, SR, OS); the check at the intervals and its reactions in those modes only (EVC_Odometry.Set_Check from EVC_Position.Update by EVC_Modes.Odometer_Check_Mode; the impairment not considered out of them, the accumulation of 3.6.8.2 going on in every mode) (evc_test Scenario_Odometer_Accuracy, Scenario_Odometer_Check_By_Mode) [B030, B222]"
 3.6.8.6,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
-3.6.8.6.2,3,x,,,,,E2,done,"EVC_Odometry.Impaired, JRU event 7; the driver informed by the system status text ""Odometer impaired"" (DMI catalogue entry 36), started and ended with Impaired in EVC_Core.Show_Mode_Indications, in the modes of the check of 4.5.2 (SM, FS, AD, LS, SR, OS; the check itself in every mode: B222) (evc_test Scenario_Odometer_Accuracy) [B030]"
-3.6.8.7,3,x,,,,,E2,done,"EVC_Odometry.Safety_Exceeded, latched, JRU event 7; System Failure by 4.6.3 [84] (evc_test E4_Odometer_Failure)"
+3.6.8.6.2,3,x,,,,,E2,done,"EVC_Odometry.Impaired, JRU event 7; the driver informed by the system status text ""Odometer impaired"" (DMI catalogue entry 36), started and ended with Impaired in EVC_Core.Show_Mode_Indications, in the modes of the check of 4.5.2 (SM, FS, AD, LS, SR, OS); the check at the intervals and its reactions in those modes only (EVC_Odometry.Set_Check from EVC_Position.Update by EVC_Modes.Odometer_Check_Mode; the impairment not considered out of them, the accumulation of 3.6.8.2 going on in every mode) (evc_test Scenario_Odometer_Accuracy, Scenario_Odometer_Check_By_Mode) [B030, B222]"
+3.6.8.7,3,x,,,,,E2,done,"EVC_Odometry.Safety_Exceeded, latched, JRU event 7; System Failure by 4.6.3 [84] (evc_test E4_Odometer_Failure); checked in the modes of 4.5.2 only (EVC_Odometry.Set_Check, evc_test Scenario_Odometer_Check_By_Mode) [B222]"
 3.6.8.8,3,x,,,,,E2,done,"EVC_Odometry.Monitor, Close_Interval (A.3.1 values); evc_test Scenario_Odometer_Accuracy"
 3.7.2.3,3,x,,,,,E3,done,EVC_Stored_Information.Take_Packet (EVC_Track_Description.Covered from the estimated front end to the SvL); evc_test Scenario_MA
 3.7.3.1,3,x,,,,,E3,done,"the stores of EVC_Track_Description, EVC_Track_Conditions (Cut_Beyond of EVC_Profiles); d) k) m) n) o) p): see their rows; k) is E6, n) E7; m) EVC_Linking.Replace from EVC_Position.Take_Packets: the stored linking in rear of the new reference group kept (evc_test Scenario_Linking_Replacement) [B033]"
@@ -1018,7 +1018,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.3.2.5,3,x,,,,,E6,todo,
 3.18.3.2.5.1,3,x,,,,,E6,todo,
 3.18.3.3,3,x,,,,,E6,todo,
-3.18.3.3.1,3,x,,,,,E6,todo,
+3.18.3.3.1,3,x,,,,,E6,done,"EVC_Brake_Commands reason Data_Entry_Movement from EVC_Mission.Modifying_Train_Data (B035); the DMI text Runaway movement (entry 9, started by 3.18.3.3.1 in the DMI specification's system status messages) while it is commanded, EVC_Core.Show_Mode_Indications (evc_test Scenario_Train_Data_Movement) [B035, B223]"
 3.18.3.4,3,x,,,,,E6,done,EVC_Sessions.Mission: message 129 with packets 0 and 11 when the supervising session is established with valid Train Data and when the driver validates them in a session [E5 session]
 3.18.3.4 a),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
 3.18.3.4 b),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"

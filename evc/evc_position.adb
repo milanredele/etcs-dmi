@@ -1749,7 +1749,9 @@ is
       --  2. the telegrams of the cycle
       Take_Telegrams (Mode);
 
-      --  3. the odometer
+      --  3. the odometer; its accuracy check in the modes of its row of
+      --  the 4.5.2 Table only (3.6.8.5 to 3.6.8.7, B222)
+      EVC_Odometry.Set_Check (Odometer_Check_Mode (Mode));
       Take_Odometer (Sampled, Sample);
 
       --  4. to 6.

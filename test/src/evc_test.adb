@@ -141,6 +141,7 @@ begin
    Scenario_Geo_Rejected_In_SH;
    Scenario_Geo_By_Radio;
    Scenario_Odometer_Accuracy;
+   Scenario_Odometer_Check_By_Mode;
    Scenario_Cold_Movement;
    Scenario_Orientation;
    Scenario_Virtual;
