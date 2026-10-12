@@ -5136,3 +5136,62 @@ SUBSET-076: the baseline of master 752 / 1331 / 1110, the run after
 system versions), 0 regressions. Edits outside the package's units:
 `EVC_Core.Evaluate_Radio`'s facts aggregate (one line,
 `Proposal_Covered`).
+
+### E5 integration after the twentieth round (2026-10-12)
+
+Merged: s076/factors-sheet (the sibling exports every workbook's
+"Integrated correction factors" sheet as cells, the cached values of
+its step tables, and the tool's ActiveX control values, among them the
+train type, Gamma/Lambda and the target type EoA_SvL / LoA_MRSP, 1049
+workbooks, 772 files changed by added cell lines only; B230 done, B290
+and B291 for the runner to read them; sibling master 8c1864b),
+e4/gates-levels (3.14.3.6: the information of balise groups read while
+the unauthorised direction is watched or braked is ignored, B221, with
+a scenario that tells the gate on from off by a packet 3 of both
+directions; B240 and B232 are SUBSET-076 data: single groups in SR
+without linking whose order is valid for the nominal direction only,
+3.6.3.1.4, and a packet 3 of another country dropped at the next group,
+3.18.2, B280 for the runner; B250 not reproduced, `Initialise` writes
+every state; B017: two more families are the B240 case, three left),
+e5/runner-cycle (the last cycle before a location keeps its length and
+the train's speed and moves only the distance left, B224: the one-cycle
+speed dip had been masking failures as well as causing them, 36
+sequences that passed by it regress, 47 improve, all understood; under
+a brake command the old low speed stands in for the bench's missing
+braking model, B262; the warning speed between the warning and the SBI
+shown, B226; the margin at V_bec, B231 left with two candidate causes,
+B261; B140 counted: 67 first failures, 16 a status named only, 5 the
+release speed, B260 on-board: after an emergency brake with Q_NVEMRRLS 1
+ours stays in Intervention below the permitted speed) and
+e5/radio-items (a proposed shortened MA not covered by the stored SSP
+and gradients up to its SvL is not taken and not answered, 3.7.2.3,
+3.8.6.1 c), B210, the brief wrong twice: message 9 carries no packet 21
+or 27, 8.4.4.4.1, and the sequence expects no answer; packet 58 rejected
+in PS, SH, SL and TR, 4.8.4, found on the way of B211, which is a runner
+window, B270; Table 2 [1] checked explicitly, [7] needs radio holes,
+B271; 4.11.1.1 and .3 stay partial with what is left named, B272;
+4080407_01 passes in all three system versions).
+
+Merge by hand: the backlog three-way by id (`briefs/merge_backlog.py`),
+the plan subsections appended, the baselines auto-merged and matched by
+the run.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11885
+checks), the full proof 11242 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27136 B (margin 5632), wasm and both smokes 0
+failures. SUBSET-076: 751 / 1330 / 1109 before, 759 / 1328 / 1103 after,
+0 regressions against the merged baseline, 0 untriaged. Matrix: 357 ->
+356 clauses left in all phases.
+
+Measurements (requests by message id, duration, final context, cost):
+runner-cycle 101 / 23 min / 170k / 6.0; radio-items 162 / 26 min / 209k
+/ 11.3 (over its budget of 130 by 32); gates-levels 122 / 20 min / 158k
+/ 7.1; factors-sheet 59 / 15 min / 110k / 2.9.
+
+Lessons: four briefs of this round carried a premise the agent had to
+correct at the source (packets of message 9, the second report's
+trigger, dV_ebi in V_bec, the shorter cycle's timing as the cause): the
+agents did, and the rule "check at the source first" earns its place in
+every brief; a bench without a braking model passes and fails sequences
+by accident (B262 is the next runner item of weight). Open items:
+doc/BACKLOG.csv (34 open after this round).
