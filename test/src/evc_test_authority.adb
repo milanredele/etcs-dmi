@@ -444,6 +444,51 @@ package body EVC_Test_Authority is
              "MA request: only in level 2 (3.8.2.1.1)");
    end Scenario_MA_Request;
 
+   --  3.8.2.2.3: once the train front passed the location of 3.8.2.2.1
+   --  a) (T_MAR before the perturbation location, the EOA here), the
+   --  reason "Time before reaching the perturbation location reached"
+   --  (2) stays applicable, at standstill too, with its repetition
+   --  every T_CYCRQST (3.8.2.1.5), until the criterion is not fulfilled
+   --  anymore: a new MA that extends the EOA ends it
+   procedure Scenario_MA_Request_Perturbation is
+      P57 : T57.Packet_T;
+      X   : Integer_64 := 11_000;
+      Got : Boolean := False;
+   begin
+      P57.T_MAR := 2;
+      P57.T_TIMEOUTRQST :=
+        ETCS_Variables.T_TIMEOUTRQST_No_MA_Request_Triggering;
+      P57.T_CYCRQST := 3;
+      Start_L2;
+      Run_X (X);
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((1 => 2500)), Stamp,
+                        With_57 => True, P57 => P57));
+      Stand_X (200);
+      Check (RA.MA_Request_Reasons = 0,
+             "MA request (perturbation): none far from the EOA");
+      while X < 240_000 and then not Got loop
+         X := X + 1_000;
+         Run_X (X, 200);
+         Got := RA.MA_Request_Reasons / 2 mod 2 = 1;
+      end loop;
+      Check (Got and then Wait_Request (3_500)
+             and then Request_Reason / 2 mod 2 = 1,
+             "MA request (perturbation): the location T_MAR before the "
+             & "EOA passed, reason 2 (3.8.2.2.1 a), 3.8.2.2.2)");
+      Check (Wait_Request (3_500) and then Request_Reason / 2 mod 2 = 1
+             and then RA.MA_Request_Reasons / 2 mod 2 = 1,
+             "MA request (perturbation): the reason remains applicable "
+             & "at standstill and is repeated (3.8.2.2.3, 3.8.2.1.5)");
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((1 => 8000)), Stamp,
+                        With_57 => True, P57 => P57));
+      Stand_X (200);
+      Check (RA.MA_Request_Reasons = 0 and then not Wait_Request (3_500),
+             "MA request (perturbation): a new MA moving the EOA away "
+             & "ends the reason (3.8.2.2.3)");
+   end Scenario_MA_Request_Perturbation;
+
    --  3.8.6: the co-operative shortening of the MA (message 9), at
    --  standstill at 200 m with an MA to 800 m. A proposed EOA behind the
    --  front end: the front end is in advance of its Indication limit,
