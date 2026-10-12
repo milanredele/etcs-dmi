@@ -753,6 +753,24 @@ package body S076_Sequences is
                WB_Flat := False;
             end if;
          end;
+      elsif K = "chart" and then L.Count >= 2
+        and then Word (L, 2) = "speedprofile-reverse"
+        and then S.Rev_Count = 0
+      then
+         for I in reverse 3 .. L.Count loop
+            exit when S.Rev_Count = Max_Points;
+            Scn_Reader.Valid := True;
+            declare
+               W : constant String := Word (L, I);
+               X : constant Real := To_Real (Field (W, 1, ":"));
+               V : constant Real := To_Real (Field (W, 2, ":"));
+            begin
+               if Scn_Reader.Valid then
+                  S.Rev_Count := S.Rev_Count + 1;
+                  S.Rev (S.Rev_Count) := (X, abs V);
+               end if;
+            end;
+         end loop;
       elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "speedprofile"
         and then S.Chart_Count = 0
       then
@@ -790,6 +808,7 @@ package body S076_Sequences is
       Loaded.DMI_Count := 0;
       Loaded.Timer_Count := 0;
       Loaded.Chart_Count := 0;
+      Loaded.Rev_Count := 0;
       Loaded.Truncated := False;
       Loaded.Workbook := False;
       Loaded.WB_Length := 0;
@@ -822,19 +841,21 @@ package body S076_Sequences is
       return "";
    end DMI_Data;
 
-   function Chart_Speed (S : Sequence_T; X_M : Long_Float) return Long_Float
+   --  The speed of a chart (N points, increasing locations) at X_M
+   function Interpolate (C : Points_T; N : Natural; X_M : Long_Float)
+     return Long_Float
    is
    begin
-      if S.Chart_Count = 0 then
+      if N = 0 then
          return -1.0;
       end if;
-      if X_M <= S.Chart (1).X_M then
-         return S.Chart (1).V_Kmh;
+      if X_M <= C (1).X_M then
+         return C (1).V_Kmh;
       end if;
-      for I in 2 .. S.Chart_Count loop
+      for I in 2 .. N loop
          declare
-            A : Point_T renames S.Chart (I - 1);
-            B : Point_T renames S.Chart (I);
+            A : Point_T renames C (I - 1);
+            B : Point_T renames C (I);
          begin
             if X_M <= B.X_M then
                if B.X_M - A.X_M < 0.001 then
@@ -845,8 +866,15 @@ package body S076_Sequences is
             end if;
          end;
       end loop;
-      return S.Chart (S.Chart_Count).V_Kmh;
-   end Chart_Speed;
+      return C (N).V_Kmh;
+   end Interpolate;
+
+   function Chart_Speed (S : Sequence_T; X_M : Long_Float) return Long_Float
+   is (Interpolate (S.Chart, S.Chart_Count, X_M));
+
+   function Chart_Speed_Reverse (S : Sequence_T; X_M : Long_Float)
+     return Long_Float
+   is (Interpolate (S.Rev, S.Rev_Count, X_M));
 
    function Curve_Distance
      (C : Curve_Set_T; Column : Curve_Column_T; V_Kmh : Long_Float)

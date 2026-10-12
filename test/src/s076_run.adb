@@ -184,9 +184,15 @@ package body S076_Run is
    function Kmh_To_Cms (Kmh : Long_Float) return Natural is
      (Natural (Long_Float'Max (0.0, Kmh) * 100_000.0 / 3600.0));
 
-   --  the chart's speed at the train, km/h, -1 without a chart
+   --  the chart's speed at the train, km/h, -1 without a chart; while
+   --  the train moves backwards the reverse movement's chart where the
+   --  sequence has one (B303: 3130232_17 and _18 ran their Reversing
+   --  backwards at the forward chart's 40 to 60 km/h, the reverse one
+   --  says 13 km/h)
    function Chart_Kmh return Long_Float is
-     (Chart_Speed (Seq, Long_Float (B.Position) / 100.0));
+     (if B.Direction < 0 and then Seq.Rev_Count > 0
+      then Chart_Speed_Reverse (Seq, Long_Float (B.Position) / 100.0)
+      else Chart_Speed (Seq, Long_Float (B.Position) / 100.0));
 
    --  The speed charts are the reference of the speed (the driver of
    --  a sequence runs above a limit on purpose where the chart does); a
