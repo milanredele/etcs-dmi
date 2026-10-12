@@ -3714,10 +3714,18 @@ package body S076_Run is
    --  recognises it from the block: target speed 0 (Track!B2), no SBD
    --  nor SBI1 value in any row (the tool computes them for an EoA/SvL
    --  only), the EBD reaching 0 m at a speed above 0 (dV_ebi above an
-   --  LoA of 0 km/h)
+   --  LoA of 0 km/h). B291: the workbook's own option button decides
+   --  where it is given (Track!LoA_MRSP selected, the target speed 0 of
+   --  Track!B2: an EOA computed as an LoA; LoA_MRSP with a target speed
+   --  above 0 is a real LoA or MRSP target and judged); the block's
+   --  shape only without the buttons
    function Tool_Target (C : Curve_Set_T) return Boolean is
       Service, Ebd_0 : Boolean := False;
    begin
+      if C.Cells.Target /= S076_Sequences.Unknown then
+         return C.Cells.Target = S076_Sequences.Second
+           and then C.Target_Kmh = 0.0;
+      end if;
       for I in 1 .. C.Row_Count loop
          Service := Service or else C.Rows (I).D (SBD) /= No_Value
            or else C.Rows (I).D (SBI1) /= No_Value;
@@ -3878,19 +3886,219 @@ package body S076_Run is
       return False;
    end Known_Kv_Kr;
 
+   --  B290: the first difference between the workbook's integrated
+   --  correction factors in use (its sheet "Integrated correction
+   --  factors", the set its train type selects) and those in force on
+   --  the on-board at the step (EVC_National_Values.Current: the
+   --  sequence's packet 3 as delivered so far, or the A.3.2 defaults),
+   --  "" when none. Exact (to the 0.001 of the on-board's milli
+   --  factors). Decisions: Kv_int is compared at every km/h + 0.5 from
+   --  0 to the set's highest speed (off the 5 km/h steps of V_NVKVINT),
+   --  Kr_int at the workbook train's length less 0.25 m (off the 25 m
+   --  steps), Kt_int as is. For a conventional passenger train in P
+   --  (3.13.6.2.1.8.1) both sides take their subset at the workbook
+   --  train's A_ebmax, read as AD_0 of the conversion model at the
+   --  tool's emergency brake percentage (Brake parameters (lambda)!F3;
+   --  the deceleration below V_lim is the maximum): a when at most
+   --  A_NVP12, b when at least A_NVP23, else interpolated (the sheet's
+   --  own interpolated set when it has one); the on-board without a
+   --  passenger set uses its one set for every train (A.3.2)
+   function Sheet_Difference (C : Curve_Set_T) return String is
+      NV : constant EVC_Supervision_Input.National_Values_T :=
+        EVC_National_Values.Current.Values;
+      W  : Sheet_T renames C.Cells;
+      L_EB : constant Long_Float :=
+        Long_Float (if Seq.WB_Lambda_EB in 10 .. 250 then Seq.WB_Lambda_EB
+                    else 100);
+      A_Eb : constant Long_Float := 0.0075 * L_EB + 0.076;
+      Passenger : constant Boolean := W.Train_Type = Passenger_P;
+      P12 : constant Long_Float := Long_Float (NV.A_NVP12) / 1000.0;
+      P23 : constant Long_Float := Long_Float (NV.A_NVP23) / 1000.0;
+      V_Max : Long_Float := 0.0;
+      function Step (S : EVC_Supervision_Input.Kv_Set_T; V : Long_Float)
+                     return Long_Float
+      is
+         K : Long_Float := 1.0;
+      begin
+         for I in 1 .. S.Count loop
+            if Long_Float (S.Steps (I).Speed) * 0.036 <= V then
+               K := Long_Float (S.Steps (I).Factor) / 1000.0;
+            end if;
+         end loop;
+         return K;
+      end Step;
+      function Ours (V : Long_Float) return Long_Float is
+        (if not Passenger or else NV.Kv_Int_Passenger.Count = 0
+         then Step (NV.Kv_Int_Fresh, V)
+         elsif A_Eb <= P12 then Step (NV.Kv_Int_Passenger, V)
+         elsif A_Eb >= P23 then Step (NV.Kv_Int_Passenger_B, V)
+         else Step (NV.Kv_Int_Passenger, V)
+              + (A_Eb - P12) / (P23 - P12)
+                * (Step (NV.Kv_Int_Passenger_B, V)
+                   - Step (NV.Kv_Int_Passenger, V)));
+      function Theirs (V : Long_Float) return Long_Float is
+        (if not Passenger then Sheet_Factor (W.Tables (Kv_Freight), V)
+         elsif W.Tables (Kv_Interpolated) (1).K /= No_Value
+         then Sheet_Factor (W.Tables (Kv_Interpolated), V)
+         elsif W.A_NVP12 = No_Value or else A_Eb <= W.A_NVP12
+         then Sheet_Factor (W.Tables (Kv_A), V)
+         else Sheet_Factor (W.Tables (Kv_B), V));
+      function Fix (X : Long_Float) return String is
+        (Img (Integer (X * 1000.0)) & "/1000");
+      Kr_Ours : Natural := 1_000;
+      L : constant Long_Float := Long_Float (Seq.WB_Length) - 0.25;
+   begin
+      if W.Kt_Int /= No_Value
+        and then abs (W.Kt_Int * 1000.0 - Long_Float (NV.Kt_Int)) > 0.5
+      then
+         return "Kt_int " & Fix (W.Kt_Int) & " against "
+           & Img (Natural (NV.Kt_Int)) & "/1000";
+      end if;
+      for I in 1 .. NV.Kr_Int.Count loop
+         if Long_Float (NV.Kr_Int.Steps (I).Length) <= L * 100.0 then
+            Kr_Ours := Natural (NV.Kr_Int.Steps (I).Factor);
+         end if;
+      end loop;
+      if Sheet_Factor (W.Tables (Kr), L) /= No_Value
+        and then abs (Sheet_Factor (W.Tables (Kr), L) * 1000.0
+                      - Long_Float (Kr_Ours)) > 0.5
+      then
+         return "Kr_int " & Fix (Sheet_Factor (W.Tables (Kr), L))
+           & " against " & Img (Kr_Ours) & "/1000 at " & Img (Seq.WB_Length)
+           & " m";
+      end if;
+      for I in 1 .. C.Row_Count loop
+         V_Max := Long_Float'Max (V_Max, C.Rows (I).Speed_Kmh);
+      end loop;
+      for N in 0 .. Integer (V_Max) loop
+         declare
+            V : constant Long_Float := Long_Float (N) + 0.5;
+            T : constant Long_Float := Theirs (V);
+         begin
+            if T /= No_Value and then abs (T - Ours (V)) > 0.0005 then
+               return "Kv_int " & Fix (T) & " against " & Fix (Ours (V))
+                 & " at " & Img (N) & " km/h"
+                 & (if Passenger then " (passenger)" else "");
+            end if;
+         end;
+      end loop;
+      return "";
+   end Sheet_Difference;
+
+   --  B225: the workbook computed with a fixed release speed (Track!
+   --  Release_speed_fixed, Track!E2) that no V_RELEASEDP of the
+   --  sequence gives: 3131040_37, _38, _50 send V_RELEASEDP 30 (150
+   --  km/h) where their workbooks have 30 km/h (V_RELEASEDP 6, as
+   --  3131040_04): the on-board limits the 150 km/h to the MRSP
+   --  (3.13.9.4.9) and supervises the release speed from far before the
+   --  EOA where the workbook's train is in target speed monitoring.
+   --  Decision: a defect of SUBSET-076 (R_S076_Defect), recognised from
+   --  the cells rather than listed by name, so a twin is caught alike
+   function Release_Defect (C : Curve_Set_T) return Boolean is
+   begin
+      if C.Cells.Release /= S076_Sequences.First
+        or else C.Cells.Release_Kmh = No_Value
+        or else Seq.Release_DP_Count = 0
+      then
+         return False;
+      end if;
+      for I in 1 .. Seq.Release_DP_Count loop
+         if abs (Long_Float (Seq.Release_DP (I).From) - C.Cells.Release_Kmh)
+           < 0.5
+         then
+            return False;
+         end if;
+      end loop;
+      return True;
+   end Release_Defect;
+
+   --  B280: the packet 3 of the sequence whose factors are the
+   --  workbook's sheet and whose country is not that of the telegram
+   --  carrying it (0 none): 3131040_32 and _56 send in BG1d (country
+   --  352) a packet 3 for country 64, which the on-board takes at once
+   --  and drops at the next group of 352 (3.18.2.8.1, 3.18.2.5,
+   --  3.18.2.10; B232); their workbooks were computed with it
+   function Other_Country (C : Curve_Set_T) return Natural is
+      L : constant Long_Float := Long_Float (Seq.WB_Length) - 0.25;
+      function Same (A, B : Long_Float) return Boolean is
+        (A /= No_Value and then abs (A - B) < 0.0005);
+   begin
+      for I in 1 .. Seq.P3_Count loop
+         declare
+            F : S076_Sequences.Factors_T renames Seq.P3 (I);
+            Kv_P : Long_Float := 1.0;
+            Kr_P : Long_Float := 1.0;
+            OK : Boolean := F.Given and then F.Country /= F.Group_Country
+              and then F.Group_Country /= 0
+              and then Same (C.Cells.Kt_Int, F.Kt);
+         begin
+            for J in 1 .. F.Kr_Count loop
+               if Long_Float (F.Kr (J).From) <= L then
+                  Kr_P := F.Kr (J).K;
+               end if;
+            end loop;
+            OK := OK and then Same (Sheet_Factor (C.Cells.Tables (Kr), L), Kr_P);
+            for V in 0 .. 200 loop
+               for J in 1 .. F.Kv_Count loop
+                  if Long_Float (F.Kv (J).From) <= Long_Float (V) + 0.5 then
+                     Kv_P := F.Kv (J).K;
+                  end if;
+               end loop;
+               OK := OK and then Same
+                 (Sheet_Factor (C.Cells.Tables (Kv_Freight),
+                                Long_Float (V) + 0.5), Kv_P);
+            end loop;
+            if OK then
+               return F.Country;
+            end if;
+         end;
+      end loop;
+      return 0;
+   end Other_Country;
+
+   function No_Reference (C : Curve_Set_T) return Reason_T;
+
+   --  The detail of why set C is no reference, before the step's own
+   --  text: the release speeds (B225), the country (B280); "" else
+   function Reference_Note (C : Curve_Set_T) return String is
+      R : constant Reason_T := No_Reference (C);
+   begin
+      if R = R_S076_Defect then
+         return "the MA's V_RELEASEDP "
+           & Img (Seq.Release_DP (1).From) & " km/h, the workbook's fixed"
+           & " release speed " & Img (Integer (C.Cells.Release_Kmh))
+           & " km/h: ";
+      elsif R = R_Factors and then Other_Country (C) /= 0 then
+         return "the workbook's national values are the packet 3 for"
+           & " country " & Img (Other_Country (C)) & ", dropped at the next"
+           & " group of another country (3.18.2.5): ";
+      end if;
+      return "";
+   end Reference_Note;
+
    --  B200: why the curve steps of set C are not judged: a Gamma train
    --  (B100), an SV21 / SV22 workbook of the old tool (B170), the tool's
    --  LoA/MRSP target, other correction factors (Known_Kv_Kr; Kt_int is
-   --  not readable from the EBD and not compared); R_None
+   --  not readable from the EBD and not compared); R_None. B290, B291:
+   --  the workbook's own option buttons (Train (main)!Gamma) and factor
+   --  sheet (Sheet_Difference, Kt_int included) where it has them, the
+   --  sheet's name and the EBD's deceleration only without
    function No_Reference (C : Curve_Set_T) return Reason_T is
       K, V1 : Long_Float;
    begin
-      if Has (Image (C.Sheet), "Gamma") then
+      if (if C.Cells.Gamma = S076_Sequences.Unknown
+          then Has (Image (C.Sheet), "Gamma")
+          else C.Cells.Gamma = First)
+      then
          return R_Gamma;
       elsif Seq.SV in 21 | 22 and then not C.From_Twin then
          return R_Old_Tool;
       elsif Tool_Target (C) then
          return R_Tool_Target;
+      elsif Release_Defect (C) then
+         return R_S076_Defect;
+      elsif C.Cells.Present then
+         return (if Sheet_Difference (C) = "" then R_None else R_Factors);
       end if;
       Workbook_Kv_Kr (C, K, V1);
       if K > 0.0 and then not Known_Kv_Kr (K, V1)
@@ -3910,6 +4118,14 @@ package body S076_Run is
                   (Img (Integer (X * 1000.0) mod 1000), 3, '0'));
       K, V1 : Long_Float;
    begin
+      if C.Cells.Present then
+         Put_Line ("      curves: the workbook's factor sheet against the"
+                   & " national values in force: "
+                   & Sheet_Difference (C)
+                   & (if EVC_National_Values.Current.From_Trackside
+                      then " (from the track)" else " (the defaults)"));
+         return;
+      end if;
       Workbook_Kv_Kr (C, K, V1);
       Put_Line ("      curves: Kv_int x Kr_int of the workbook " & Fix (K)
                 & " (its EBD from " & Img (Integer (V1)) & " to "
@@ -4108,7 +4324,7 @@ package body S076_Run is
          if Verbose and then No_Reference (C) = R_Factors then
             Put_Factors (C);
          end if;
-         return NJ (No_Reference (C), Image (Res.Sig));
+         return NJ (No_Reference (C), Reference_Note (C) & Image (Res.Sig));
       end if;
       return Res;
    end Curve_Judgement;
@@ -4350,7 +4566,8 @@ package body S076_Run is
                      --  that is no reference (the set named last, or
                      --  the only one): not judged like a named one
                      J := NJ (No_Reference (Seq.Curves (Unnamed_Set)),
-                              Image (J.Sig) & " (no limit named)");
+                              Reference_Note (Seq.Curves (Unnamed_Set))
+                              & Image (J.Sig) & " (no limit named)");
                      if Verbose and then J.Reason = R_Factors then
                         Put_Factors (Seq.Curves (Unnamed_Set));
                      end if;

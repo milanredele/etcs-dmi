@@ -168,6 +168,39 @@ package S076_Sequences is
       D         : Distances_T := (others => No_Value);
    end record;
    type Curve_Rows_T is array (1 .. Max_Curve_Rows) of Curve_Row_T;
+
+   --  B290, B291: the workbook's sheet "Integrated correction factors"
+   --  (the values in force the workbook cached; README of the sequences,
+   --  "The .scn format") and its tool's option buttons. A step table
+   --  holds ten rows of (speed km/h or length m, factor), No_Value where
+   --  the sheet has none; two rows a step (from, to), so the factor at X
+   --  is that of the first row whose X is at least X, else of the last
+   --  given (Sheet_Factor)
+   type Sheet_Row_T is record
+      X, K : Long_Float := No_Value;
+   end record;
+   type Sheet_Table_T is array (1 .. 10) of Sheet_Row_T;
+   type Sheet_Tables_T is (Kv_Freight, Kv_A, Kv_Interpolated, Kv_B, Kr);
+   type Sheet_Set_T is array (Sheet_Tables_T) of Sheet_Table_T;
+   --  a pair of option buttons: Unknown when neither is given
+   type Choice_T is (Unknown, First, Second);
+   type Train_Type_T is (Unknown, Freight_G, Freight_P, Passenger_P);
+   type Sheet_T is record
+      Present    : Boolean := False;   -- any cell of the sheet
+      Tables     : Sheet_Set_T;
+      A_NVP12, A_NVP23, Kt_Int : Long_Float := No_Value;
+      Train_Type : Train_Type_T := Unknown;   -- Train (main)
+      Gamma      : Choice_T := Unknown;       -- First Gamma, Second Lambda
+      Target     : Choice_T := Unknown;       -- First EoA_SvL, Second LoA_MRSP
+      Release    : Choice_T := Unknown;       -- First fixed, Second OB
+      --  B225: the fixed release speed of Track!E2, km/h
+      Release_Kmh : Long_Float := No_Value;
+   end record;
+
+   --  The factor of the step table T at X (No_Value when T is empty)
+   function Sheet_Factor (T : Sheet_Table_T; X : Long_Float)
+                          return Long_Float;
+
    type Curve_Set_T is record
       Workbook  : Text_T;          -- the .xlsm file name
       Sheet     : Text_T;          -- "Curves Gamma train", ...
@@ -181,6 +214,8 @@ package S076_Sequences is
       --  profile is flat (every Track!J value 0)
       Target_Kmh : Long_Float := No_Value;
       Flat       : Boolean := True;
+      --  B290, B291: its workbook's factor sheet and option buttons
+      Cells      : Sheet_T;
       Limits    : Limits_T := (others => No_Value);
       Rows      : Curve_Rows_T;
       Row_Count : Natural := 0;
@@ -206,6 +241,10 @@ package S076_Sequences is
       Kr       : K_Steps_T;
       Kr_Count : Natural := 0;
       Kt       : Long_Float := 1.1;
+      --  B280: the packet's own country (its first NID_C) and that of
+      --  the balise telegram carrying it (the header's NID_C; 0 for a
+      --  message)
+      Country, Group_Country : Natural := 0;
    end record;
    type Factor_Sets_T is array (1 .. Max_P3) of Factors_T;
 
@@ -235,6 +274,10 @@ package S076_Sequences is
       --  the emergency brake percentage the tool computed its EBD with
       --  (Brake parameters (lambda)!F3; 100 in every workbook)
       WB_Lambda_EB : Natural := 0;
+      --  B225: the V_RELEASEDP of its packets 12 and 15 (7.5.1.157, 5
+      --  km/h; 126 and 127 left out), the first Max_P3
+      Release_DP : K_Steps_T;
+      Release_DP_Count : Natural := 0;
       --  B200: its packets 3
       P3       : Factor_Sets_T;
       P3_Count : Natural := 0;
