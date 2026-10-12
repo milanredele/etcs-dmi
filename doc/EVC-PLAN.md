@@ -4067,3 +4067,24 @@ sibling repository, worked: the guard is not needed there.
 
 Open items: doc/BACKLOG.csv (`python3 test/tools/backlog.py --open`,
 35 open after this round).
+### Trips where Full Supervision is expected, second round (e5/trips-fs-2, 2026-10-12)
+
+**Traced, none ours.** 5160000_01 step 54 (B130): the speed chart runs
+the train at 70.6 km/h from 800 m (the chart's zero is drawn at -1.2,
+MRSP 70 as 70.6), above V_LX 70 km/h, so 5.16.3.2 never substitutes
+the LX start and the train passes its temporary EOA: `EVC_SDM.
+Procedure_Targets` and `EVC_Procedures.LX_Step` are right; triaged
+model. Snapping chart speeds within 1 km/h of a multiple of 5 km/h was
+tried and reverted (31 improvements, 17 regressions in the braking
+curve families): B160. 3040400_08 step 87 and 6060504_07 step 67: the
+joined case needs an MA beyond the level 2 transition (1250 m) or
+beyond 7650 m that the file does not give (no message 3; 3040400_08
+has only the conditional emergency stop 15): extractor, as 9990500_09.
+B080 and B130 closed.
+
+**Implemented.** Scenario `Scenario_MA_Request_Perturbation`
+(3.8.2.2.3: reason 2 held at standstill and repeated, ended by an MA
+moving the EOA away); row 3.8.2.2.3 done. No on-board code changed.
+
+**Left.** B081 (3.8.2.4, packet 90: the design is in its backlog
+text), B011, B160. Runner 753 / 1522 / 915 before and after.
