@@ -3631,29 +3631,6 @@ package body S076_Run is
    function Metres (M : Long_Float) return String is
      ((if M < 0.0 then "-" else "+") & Img (Integer (abs M)) & " m");
 
-   --  A.3.7.1: the emergency brake percentage is the train's (lambda_o =
-   --  lambda, 109 for every workbook's train), while the ERA tool that
-   --  filled the workbooks computes its EBD with 100 (Brake parameters
-   --  (lambda)!F3; B175): its EBD distances are longer by the ratio of
-   --  the decelerations of the conversion model, AD_0 (109) / AD_0 (100)
-   --  = 0.8935 / 0.826, so our limits may sit nearer the target by
-   --    (EBD (V) - EBD (V_target)) * (1 - 0.826 / 0.8935)
-   --  from the workbook's own EBD column (18 m at 61 km/h for
-   --  3130237_07); 0 without the column
-   function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
-                         return Long_Float
-   is
-      E  : constant Long_Float := Curve_Distance (C, EBD, V_Kmh);
-      E0 : constant Long_Float :=
-        (if V_Target_Kmh <= 0.0 then 0.0
-         else Curve_Distance (C, EBD, V_Target_Kmh));
-   begin
-      if E = No_Value or else E0 = No_Value or else E <= E0 then
-         return 0.0;
-      end if;
-      return (E - E0) * (1.0 - 0.826 / 0.8935);
-   end Tool_Margin;
-
    --  The first change of the on-board's supervision (S076_Bench) of
    --  the kind a limit is passed with: Indication, Permitted (to
    --  Overspeed), Warning, SBI (the service brake command), EBI (the
@@ -3745,6 +3722,39 @@ package body S076_Run is
       end loop;
       return Long_Float (Kv) * Long_Float (Kr) / 1.0E6;
    end Seq_Kv_Kr;
+
+   --  A.3.7.1: the emergency brake percentage is the train's (lambda_o =
+   --  lambda, 109 for every workbook's train), while the ERA tool that
+   --  filled the workbooks computes its EBD with 100 (Brake parameters
+   --  (lambda)!F3; B175): its EBD distances are longer by the ratio of
+   --  the decelerations of the conversion model, AD_0 (109) / AD_0 (100)
+   --  = 0.8935 / 0.826, so our limits may sit nearer the target by
+   --    (EBD (V) - EBD (V_target)) * (1 - 0.826 / 0.8935)
+   --  from the workbook's own EBD column (18 m at 61 km/h for
+   --  3130237_07). B194: where that column has no value at the speed (an
+   --  EBD of the SvL that starts near the target, 3131040_04), the EBD
+   --  distance of the conversion model at the tool's percentage instead,
+   --  (V^2 - V_target^2) / (2 Kv_int Kr_int AD_0 (100)), Kv_int Kr_int
+   --  those in force (Seq_Kv_Kr; in the ratio they cancel, here they
+   --  scale the distance): 15 m at 60 km/h for 3131040_04
+   function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
+                         return Long_Float
+   is
+      Ratio : constant Long_Float := 1.0 - 0.826 / 0.8935;
+      E  : constant Long_Float := Curve_Distance (C, EBD, V_Kmh);
+      E0 : constant Long_Float :=
+        (if V_Target_Kmh <= 0.0 then 0.0
+         else Curve_Distance (C, EBD, V_Target_Kmh));
+      V  : constant Long_Float := V_Kmh / 3.6;
+      Vt : constant Long_Float := Long_Float'Max (V_Target_Kmh, 0.0) / 3.6;
+   begin
+      if E /= No_Value and then E0 /= No_Value and then E > E0 then
+         return (E - E0) * Ratio;
+      elsif V <= Vt then
+         return 0.0;
+      end if;
+      return (V ** 2 - Vt ** 2) / (2.0 * Seq_Kv_Kr (V_Kmh) * 0.826) * Ratio;
+   end Tool_Margin;
 
    --  B200 (b): the workbook's integrated correction factors are not in
    --  the sequence file (their sheet, "Integrated correction factors",
@@ -3917,7 +3927,10 @@ package body S076_Run is
       for I in 1 .. 200_000 loop
          exit when Change_Of (Ref.Column) > 0
            or else (B.Current.Shown
-                    and then Our_Distance (B.Current) < Wb - Drive_On_Limit)
+                    and then Our_Distance (B.Current)
+                             < Wb - Drive_On_Limit
+                               - Tool_Margin (C, V, Long_Float
+                                   (B.Current.V_Target) * 0.036))
            or else abs (B.Position - From) > Max_Cm
            or else B.Speed = 0;
          B.Cycle;
@@ -4013,6 +4026,14 @@ package body S076_Run is
       elsif not Ch.Shown or else (N = 0 and then Wb = No_Value) then
          Res := Fail ("curve " & Limit & ": no status change of that kind"
                       & " seen");
+      elsif N = 0 and then Wb /= No_Value and then Diff <= 0.0
+        and then Diff >= -(Curve_In + Mg)
+      then
+         --  B194: the workbook's location passed by less than the
+         --  tool's margin without our change: ours agrees
+         Res := NJ (R_Placement, "curve " & Limit & ": the sequence's"
+                    & " location is off its own workbook by "
+                    & Img (Integer (abs (Seq_D - Wb))) & " m");
       elsif N = 0 then
          --  our limit not passed yet: the workbook's location of it not
          --  reached either (ours may agree: the sequence's location is
