@@ -134,6 +134,9 @@ is
       --  supervision limit of the shortened MA proposed in the cycle
       --  (EVC_SDM.Result_T.Proposal_In_Rear)
       Proposal_In_Rear : Boolean := False;
+      --  3.7.2.3 (e5/radio-items, B210): the SSP and gradients cover the
+      --  proposal (EVC_Stored_Information.Proposal_Covered)
+      Proposal_Covered : Boolean := True;
       --  4.4.11.1.6.4 a): the driver entered the SR speed and distance in
       --  the cycle (taken by EVC_Mission)
       SR_Entered : Boolean := False;

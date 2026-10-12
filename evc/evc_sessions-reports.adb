@@ -132,6 +132,16 @@ is
      (M not in EVC_Modes.M_NP | EVC_Modes.M_PS | EVC_Modes.M_SH
              | EVC_Modes.M_SF | EVC_Modes.M_IS);
 
+   --  4.8.4, "Position Report parameters" (e5/radio-items, B211): the
+   --  modes that accept them from the RBC (rejected in PS, SH, SL and
+   --  TR; NP, SF and IS not relevant). The notes [1], [2], [13] of the
+   --  row concern the message's filters of 4.8.2 and 4.8.3, applied
+   --  before (EVC_Radio_Acceptance)
+   function Parameters_Accepted (M : Mode_T) return Boolean is
+     (M not in EVC_Modes.M_NP | EVC_Modes.M_PS | EVC_Modes.M_SH
+             | EVC_Modes.M_SL | EVC_Modes.M_TR | EVC_Modes.M_SF
+             | EVC_Modes.M_IS);
+
    --  3.6.5.1.4, 3.6.5.1.5, 4.9.1.3
    procedure Evaluate (SoM : Boolean; Mode : EVC_Modes.Mode_T) is
       T     : constant EVC_Position.Triggers_T :=
@@ -146,13 +156,16 @@ is
       then
          EVC_Position.Delete_Report_Parameters;
       end if;
-      if P58_Held then
+      --  4.8.4 (B211): taken in the mode of the cycle that received them
+      --  (SUBSET-076 4080428_01: given in SH, not applied in the SB of
+      --  the next session, step 134)
+      if P58_Held and then Parameters_Accepted (Mode) then
          EVC_Position.Set_Report_Parameters (P58, P58_Ref, OK);
          if OK then
             Bump (N_Params);
          end if;
-         P58_Held := False;
       end if;
+      P58_Held := False;
       --  a), g), h), i), j); 3.6.5.1.5 a) to e)
       if ((T.Standstill_Reached or else T.Standstill_Left)
           and then Standstill_Reported (Mode))

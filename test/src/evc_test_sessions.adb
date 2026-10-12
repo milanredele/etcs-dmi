@@ -1105,6 +1105,10 @@ package body EVC_Test_Sessions is
              and then Radio_Byte = 2,
              "SoM L2: the session could not be opened after three attempts "
              & "(A32, A.3.1): the driver informed (3.5.7), S10");
+      Check (EVC_Sessions."=" (EVC_Sessions.Indication, EVC_Sessions.Connection_Lost),
+             "SoM L2: the final attempt to set up the safe radio "
+             & "connection failed in a start of mission: ""Connection "
+             & "Lost/Set-Up failed"" (3.5.7.5, Table 2 [1])");
 
       --  A38, D35, A39, A40: the train rejected
       SoM_To_S3;
@@ -1254,6 +1258,15 @@ package body EVC_Test_Sessions is
              "reports: none in Shunting for standstill left and reached "
              & "(4.5.2 table, rows 3.6.5.1.4 a, i), got"
              & Img (EVC_Sessions.Position_Reports_Sent - N));
+
+      --  4.8.4, "Position Report parameters" (e5/radio-items, B211):
+      --  rejected in SH (SUBSET-076 4080428_01 step 99)
+      N := EVC_Sessions.Report_Parameters_Taken;
+      Give_Radio_Message (1, Report_Parameters (20, 5, 2));
+      Stand;
+      Check (EVC_Sessions.Report_Parameters_Taken = N,
+             "reports: packet 58 received in Shunting is rejected (4.8.4, "
+             & "Position Report parameters: R in SH)");
 
       --  3.5.5.1 a): the order to terminate by radio
       Give_Radio_Message (1, Terminate_Order (30));

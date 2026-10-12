@@ -5106,3 +5106,33 @@ SUBSET-076: 751 / 1330 / 1109 before, 756 / 1331 / 1103 after; 36
 regressions understood, 47 improvements (3130237_07, 3131040_22, _86
 pass in all three versions); untriaged 0. Backlog: B224, B226 done; B231,
 B140 updated; B260 to B262 opened.
+
+### The proposal's coverage, the second report, the connection indication (e5/radio-items, 2026-10-12)
+
+B210: the brief's premise was wrong, message 9 carries no packets 21
+or 27 (8.4.4.4.1: 49 and 80 only). The proposed shortened MA is an MA:
+3.7.2.3 does not accept it unless the SSP and gradients stored cover it
+from the estimated front end to its SvL (`EVC_Stored_Information.
+Take_Proposal`, `Proposal_Covered`); then there is no decision of
+3.8.6.1 b) and no answer (`EVC_Radio_Authority.Judge_Shortening`, the
+fact `Proposal_Covered` given by `EVC_Core`): SUBSET-076 4080407_01
+expects neither 137 nor 138 (its message 3 had replaced the SSP with
+one ending before the proposed LOA). Scenario `EVC_Test_Authority.
+Scenario_Shortening_Cover`. B211: neither candidate trigger fires;
+counted in the trace, the on-board sends one 136 (129.2 s) and none
+after message 38 up to 133.5 s: the runner's no-message window of step
+134 takes the 136 of step 129 (B270, Sb83b2c65 triaged model). Found
+on the way: packet 58 given in SH (step 99, "the complete message is
+rejected") was taken; 4.8.4 rejects the position report parameters in
+PS, SH, SL and TR (`EVC_Sessions.Reports.Parameters_Accepted`,
+Scenario_Session_Reports). B022: Table 2 [1] was already reached
+(`Set_Up_Failed` after the last attempt of a start of mission), now
+checked; [7] and 3.5.4.4 need the radio holes in the session half
+(B271). B040: 4.11.1.1 and 4.11.1.3 stay partial, the matrix names
+what is left: the RBC contact made valid by "no cold movement" (B272;
+ours waits for the driver), EOLM (E7), the non-volatile store (E8).
+SUBSET-076: the baseline of master 752 / 1331 / 1110, the run after
+754 / 1327 / 1109; 3 improvements (4080407_01 passes in three
+system versions), 0 regressions. Edits outside the package's units:
+`EVC_Core.Evaluate_Radio`'s facts aggregate (one line,
+`Proposal_Covered`).

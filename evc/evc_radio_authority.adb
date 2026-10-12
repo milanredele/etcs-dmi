@@ -983,6 +983,10 @@ is
       elsif Shortening.Refused or else not Level_2
         --  3.10.2.4: not while an emergency stop is not revoked
         or else Any_Stop
+        --  3.7.2.3 (B210): an MA its SSP and gradients do not cover is
+        --  not accepted: no decision of 3.8.6.1 b) either (SUBSET-076
+        --  4080407_01 steps 111, 113: neither 137 nor 138)
+        or else not Facts.Proposal_Covered
       then
          --  e5/onboard-gaps (B011), 3.8.6.1 c): the RBC is informed of
          --  the decision of b), the train front end against the
