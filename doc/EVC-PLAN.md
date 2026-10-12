@@ -4311,8 +4311,8 @@ kind (Indication, Overspeed, Warning, SBI by the SB command, EBI by the
 EB command; else a higher status, the limit passed at the latest
 there) since the train left the location before: `S076_Bench` keeps
 the last 32 changes, cycle by cycle, with the speed, the target speed
-and the distances of `EVC_SDM.Result_T.Target_X`, `Target_EOA`, `X_Est`
-(new, ahead coordinates; B171: D_Target of an LOA or MRSP target counts
+and the distances of `EVC_SDM.Result_T.Shown_At` (`Target_X`,
+`Target_EOA`, `X_Est`: new, ahead coordinates; B171: D_Target of an LOA or MRSP target counts
 to the reference location of 3.13.9.3.5.9). The named end's distance to
 the target (to the EOA of an EOA target) against the workbook's column
 at our speed there: 10 m further out, 2 m nearer plus the margin of the
