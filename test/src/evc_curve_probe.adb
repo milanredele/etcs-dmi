@@ -16,7 +16,9 @@
 --    grad=0:0,1000:-5 (start m : gradient per mille, positive uphill)
 --    kv=0:0.96,100:0.9 (km/h : factor, freight / all trains)
 --    kvp=... (passenger set, same form) kr=0:1.0,250:0.9 (m : factor)
---    kt=1.0 ebcl=9 inhsmic=0|1 gui=0|1
+--    kt=1.0 ebcl=9 inhsmic=0|1 gui=0|1 sbtsm=0|1
+--    adhesion=1400:2350 (m: one reduced adhesion area) redadh=0.7
+--      (m/s2: A_NVMAXREDADH1 .. 3 alike)
 --    ci=0 (m: the confidence interval, max safe front end = estimated
 --      front end + ci, min safe front end = estimated front end - ci)
 --    vura=0|f41|<km/h> (V_max - V_est the odometer reports: f41 the
@@ -165,6 +167,25 @@ procedure EVC_Curve_Probe is
          NV.M_NVEBCL := Integer'Value (Value);
       elsif Key = "inhsmic" then
          NV.Q_NVINHSMICPERM := Value = "1";
+      elsif Key = "adhesion" then
+         --  one reduced adhesion area from:to (m, B192)
+         declare
+            A, B : Long_Float;
+            From : Positive := Value'First;
+         begin
+            Next_Pair (Value, From, A, B);
+            Base.Adhesion.Count := 1;
+            Base.Adhesion.Areas (1) :=
+              (Start  => EVC_Distances.Cm_T ((A + Long_Float (Shift_M)) * 100.0),
+               Finish => EVC_Distances.Cm_T ((B + Long_Float (Shift_M)) * 100.0));
+         end;
+      elsif Key = "redadh" then
+         --  A_NVMAXREDADH1 .. 3 alike, m/s2
+         NV.A_NVMAXREDADH1 := Milli (Value);
+         NV.A_NVMAXREDADH2 := Milli (Value);
+         NV.A_NVMAXREDADH3 := Milli (Value);
+      elsif Key = "sbtsm" then
+         NV.Q_NVSBTSMPERM := Value = "1";
       elsif Key = "gui" then
          NV.Q_NVGUIPERM := Value = "1";
       elsif Key = "ci" then
