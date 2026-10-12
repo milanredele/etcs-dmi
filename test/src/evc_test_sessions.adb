@@ -1830,4 +1830,56 @@ package body EVC_Test_Sessions is
              & "(3.5.3.4.1)");
    end Scenario_Session_Driver_Contact;
 
+
+   --  3.16.3.4.1.3: T_NVCONTACT 10 s, train trip as its reaction;
+   --  no supervision while the engine overlaps an announced radio hole;
+   --  after it, until a new message, the time the engine left the hole
+   --  is the reference
+   procedure Scenario_Session_Hole_Contact is
+      NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+      C  : T68.Packet_T;
+   begin
+      Start_X;
+      NV.T_NVCONTACT := 10;   -- s
+      NV.M_NVCONTACT := 0;    -- train trip
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Carry (Track_N, 1, NV);
+      Add_Group (Group (20, 200));
+      C.Q_DIR := 2;
+      C.Q_SCALE := 1;
+      C.Q_TRACKINIT := 0;
+      C.Has_D_TRACKCOND := True;
+      C.D_TRACKCOND := 100;
+      C.L_TRACKCOND := 200;
+      C.M_TRACKCOND := 4;
+      Carry (Track_N, 0, C);
+      Run_X (15_000);
+      Establish (1);
+      Run_X (35_000);
+      Sample (0);
+      EVC_Core.Tick (11_000);
+      Take;
+      Check (EVC_Track_Conditions.Engine_In_Radio_Hole
+             and then not EVC_Sessions.T_NVCONTACT_Trip,
+             "hole contact: no message for more than T_NVCONTACT while the "
+             & "engine overlaps the radio hole: no reaction (3.16.3.4.1.3)");
+      for I in 1 .. 40 loop
+         Step_X (1000);
+         exit when not EVC_Track_Conditions.Engine_In_Radio_Hole;
+      end loop;
+      Check (not EVC_Track_Conditions.Engine_In_Radio_Hole
+             and then not EVC_Sessions.T_NVCONTACT_Trip,
+             "hole contact: out of the hole, the latest message older than "
+             & "T_NVCONTACT: no reaction, the time of leaving the hole is "
+             & "the reference (3.16.3.4.1.3)");
+      Sample (0);
+      EVC_Core.Tick (11_000);
+      Take;
+      Check (EVC_Sessions.T_NVCONTACT_Trip,
+             "hole contact: T_NVCONTACT after leaving the hole without a "
+             & "message: the trip (3.16.3.4.1.3, 3.16.3.4.2 a)");
+      Give_Radio_Message (1, Msg (MCat.Track_M24, Now_T (1)));
+      Stand;
+   end Scenario_Session_Hole_Contact;
+
 end EVC_Test_Sessions;

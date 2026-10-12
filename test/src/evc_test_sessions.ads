@@ -72,5 +72,7 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_SoM_Completed;
    procedure Scenario_Session_Hole_Rows;
    procedure Scenario_Session_Driver_Contact;
+   --  3.16.3.4.1.3
+   procedure Scenario_Session_Hole_Contact;
 
 end EVC_Test_Sessions;

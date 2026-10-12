@@ -28,7 +28,7 @@ package body EVC_Sessions
                                    Requesting, Timer_On, Timer_Since,
                                    Shown, SB_Shown, Status_List, Status_N,
                                    Noted, Noted_Code, Mode_Session,
-                                   In_Hole,
+                                   In_Hole, Ref_On, Ref_Ms,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Mission.State,
                                    EVC_Sessions.Network.State,
@@ -164,6 +164,14 @@ is
    --  3.5.4.4: the engine overlaps an announced
    --  radio hole (EVC_Radio.Context_T.Radio_Hole of the last Evaluate)
    In_Hole      : Boolean := False;
+
+   --  3.16.3.4.1.1, 3.16.3.4.1.3: until a new message is received, the
+   --  supervision of the safe radio connection compares the on-board
+   --  time with Ref_Ms (the switch to level 2 with no session
+   --  established, the engine out of an announced radio hole) instead of
+   --  the time stamp of the latest message
+   Ref_On       : Boolean := False;
+   Ref_Ms       : Time_Ms_T := 0;
 
    --  3.16.3.4.4: the service brake of T_NVCONTACT shown to the driver
    SB_Shown     : Boolean := False;
@@ -528,6 +536,8 @@ is
       Links := (others => (others => <>));
       Order := (others => <>);
       Mode_Session := False;
+      Ref_On := False;
+      Ref_Ms := 0;
       Pending := (others => <>);
       Acks := (others => (S => 1, T => 0));
       Ack_N := 0;
@@ -792,6 +802,7 @@ is
          return;
       end if;
       R.Note_Received (S, T, Now_Ms);
+      Ref_On := False;
       if Info.State = R.Terminating then
          if Kind = Track_M39 then
             Close (S, Release => True);       -- 3.5.5.2 c
@@ -1032,22 +1043,39 @@ is
    --  Decision: supervised whenever the session of the supervising RBC
    --  is established, in any level (the RBC sends empty messages,
    --  3.16.3.4.7); not while the connection is lost (the session being
-   --  maintained, 3.5.4) the supervision goes on
+   --  maintained, 3.5.4) the supervision goes on. 3.16.3.4.1.2: the
+   --  latest message of the supervising session, the Handing Over RBC's
+   --  until the switch (3.15.1.3.5), the Accepting RBC's after it.
+   --  3.16.3.4.1.3: stopped while the engine overlaps an announced radio
+   --  hole; 3.16.3.4.1.1, .1.3: Ref_Ms in place of the time stamp until
+   --  a new message (decision: after the switch to level 2 supervised
+   --  with no session too, while in level 2)
    --  @req 3.14.1.7, 3.16.3.4.1, 3.16.3.4.3, 3.16.3.4.5 a)
-   procedure Supervise_Contact (Now : Time_Ms_T; Standstill : Boolean)
+   --  @req 3.16.3.4.1.1, 3.16.3.4.1.2, 3.16.3.4.1.3
+   procedure Supervise_Contact (Now        : Time_Ms_T;
+                                Standstill : Boolean;
+                                In_L2      : Boolean)
      with Global => (In_Out => (NV, Held, Links, R.State),
-                     Input  => EVC_National_Values.State),
+                     Input  => (EVC_National_Values.State, In_Hole,
+                                Ref_On, Ref_Ms)),
           Post => R.Sessions = R.Sessions'Old
    is
       Sv   : constant R.Session_Ref_T := R.Supervising;
       NVal : constant EVC_National_Values.Set_T :=
         EVC_National_Values.Current;
+      Up   : constant Boolean :=
+        Sv /= R.No_Session and then R.Established (Session_T (Sv));
    begin
-      if Sv = R.No_Session
-        or else not R.Established (Session_T (Sv))
-        or else not R.Info (Session_T (Sv)).Received
-        or else Age_Ms (R.Info (Session_T (Sv)).Last_Received, Now)
-                  <= Unsigned_64 (NVal.T_NVCONTACT)
+      if In_Hole
+        or else (if Ref_On
+                 then not (Up or else In_L2)
+                      or else Elapsed (Ref_Ms, Now)
+                                <= Unsigned_64 (NVal.T_NVCONTACT)
+                 else not Up
+                      or else not R.Info (Session_T (Sv)).Received
+                      or else Age_Ms (R.Info (Session_T (Sv)).Last_Received,
+                                      Now)
+                                <= Unsigned_64 (NVal.T_NVCONTACT))
       then
          NV := (others => <>);
          return;
@@ -1063,6 +1091,7 @@ is
          NV.SB := False;
       end if;
       if not NV.Reconnected and then Elapsed (NV.Since, Now) >= Extra_Ms
+        and then Up
         and then R.Info (Session_T (Sv)).State = R.Established
       then
          R.Set_State (Session_T (Sv), R.Connection_Lost);
@@ -1239,7 +1268,9 @@ is
    end Stop_Attempts;
 
    procedure Evaluate (Ctx : EVC_Radio.Context_T) is
-      N : constant R.Session_Count_T := R.Sessions;
+      N     : constant R.Session_Count_T := R.Sessions;
+      In_L2 : constant Boolean :=
+        EVC_Levels.Valid and then EVC_Levels.Level = L2;
    begin
       Held := (others => False);
       if Ctx.Radio_Hole and then not In_Hole then
@@ -1247,8 +1278,24 @@ is
       elsif In_Hole and then not Ctx.Radio_Hole then
          --  3.5.3.4 e): the engine has left the announced radio hole; in
          --  level 2 the session with the stored contact (Mode_Session_Order:
-         --  none when one is established or being established, 3.5.3.4.1)
+         --  none when one is established or being established, 3.5.3.4.1);
+         --  3.16.3.4.1.3: the time it left the hole is the reference
          Mode_Session := True;
+         Ref_On := True;
+         Ref_Ms := Ctx.Now_Ms;
+      end if;
+      --  3.16.3.4.1.1: switched to level 2 with no session established;
+      --  decision: the reference of a switch is forgotten when level 2 is
+      --  left with no session established
+      if In_L2 and then EVC_Levels.Switched
+        and then not (for some S in Session_T => R.Established (S))
+      then
+         Ref_On := True;
+         Ref_Ms := Ctx.Now_Ms;
+      elsif not In_L2 and then not (for some S in Session_T =>
+                                       R.Established (S))
+      then
+         Ref_On := False;
       end if;
       In_Hole := Ctx.Radio_Hole;
       Mode_Session_Order;
@@ -1289,7 +1336,7 @@ is
       Apply_Handover (Ctx.Now_Ms, Ctx.Mode);
       Apply_Mission (Ctx);
       Reports.Evaluate (SoM => Mission.Reporting, Mode => Ctx.Mode);
-      Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill);
+      Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill, In_L2);
       --  3.16.3.4.4: the driver informed of the service brake ("Communication
       --  error", the DMI's entry 4; its end: 3.14.1.7)
       if NV.SB /= SB_Shown then

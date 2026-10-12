@@ -262,6 +262,7 @@ begin
    Scenario_Session_SoM_Completed;
    Scenario_Session_Hole_Rows;
    Scenario_Session_Driver_Contact;
+   Scenario_Session_Hole_Contact;
    Scenario_SoM_L2_Mode_Proposal_LS;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
@@ -314,6 +315,7 @@ begin
    Scenario_L2_Driver_Change;
    Scenario_L2_Exit_By_Order;
    Scenario_L2_Exit_Aborts_Establishment;
+   Scenario_L2_Switch_Contact;
    Scenario_L2_Order_Linked_Group;
    Scenario_L2_Radio_Data_No_Contact;
    Scenario_L2_Radio_Data_No_Registration;

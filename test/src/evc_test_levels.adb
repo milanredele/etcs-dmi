@@ -380,6 +380,33 @@ package body EVC_Test_Levels is
              & "(3.5.3.8 d)");
    end Scenario_L2_Exit_Aborts_Establishment;
 
+   --  3.16.3.4.1.1: switched to level 2 with no session established
+   --  (no RBC contact: the Radio data awaited): the supervision of the
+   --  safe radio connection compares with the time of the switch,
+   --  T_NVCONTACT 10 s with train trip as its reaction
+   procedure Scenario_L2_Switch_Contact is
+      NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      NV.T_NVCONTACT := 10;   -- s
+      NV.M_NVCONTACT := 0;    -- train trip
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, NV);
+      Run_X (11_000);
+      Driver_Level (L2_Code);
+      Stand_X (100);
+      Check (EVC_Levels.Level = L2 and then EVC_Radio.Info (1).State
+               = EVC_Radio.Idle
+             and then not EVC_Sessions.T_NVCONTACT_Trip,
+             "levels: switched to level 2 without a session, T_NVCONTACT "
+             & "not passed since the switch");
+      Stand_X (10_500);
+      Check (EVC_Sessions.T_NVCONTACT_Trip,
+             "levels: T_NVCONTACT passed since the switch to level 2 "
+             & "without a message: the reaction (3.16.3.4.1.1)");
+   end Scenario_L2_Switch_Contact;
+
    ---------------------------------------------------------------------
    --  5.10.3.1, 3.4.4.4.3.2: the immediate order to level 2 of a linked
    --  group is carried out only when the group is found in its
