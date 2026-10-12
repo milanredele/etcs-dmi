@@ -17,6 +17,8 @@
 --    kv=0:0.96,100:0.9 (km/h : factor, freight / all trains)
 --    kvp=... (passenger set, same form) kr=0:1.0,250:0.9 (m : factor)
 --    kt=1.0 ebcl=9 inhsmic=0|1 gui=0|1 sbtsm=0|1
+--    adhesion=1400:2350 (m: one reduced adhesion area) redadh=0.7
+--      (m/s2: A_NVMAXREDADH1 .. 3 alike)
 --    ci=0 (m: the confidence interval, max safe front end = estimated
 --      front end + ci, min safe front end = estimated front end - ci)
 --    vura=0|f41|<km/h> (V_max - V_est the odometer reports: f41 the
