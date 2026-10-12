@@ -74,6 +74,7 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
+with EVC_Balise_Groups;
 with EVC_Braking;
 with EVC_Config;
 with EVC_DMI_Port;
@@ -314,6 +315,15 @@ is
    --  Phase E5, 3.8.2.5.1: a timer of the MA deleted track description
    --  in the last Evaluate (A.3.4.1.2 c, d, e, n)
    function MA_Timer_Deletion return Boolean
+     with Global => State;
+
+   --  e5/accepting-rbc, 3.8.2.4.1: the information "track ahead free up
+   --  to the level 2 transition location" (packet 90) was accepted from
+   --  a balise group in the last Evaluate; 3.8.2.4.2: the identity of
+   --  the level 2 transition location group it gives
+   function TAF_L2_Received return Boolean
+     with Global => State;
+   function TAF_L2_Location return EVC_Balise_Groups.Identity_T
      with Global => State;
 
    --  One cycle (see above). Mode_Speed: the mode related speed limit

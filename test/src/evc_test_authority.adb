@@ -7,6 +7,10 @@ with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
+with ETCS_Track_Packets.P90;
+with ETCS_Train_Packets.P9;
+with ETCS_Bits;
+with ETCS_Catalogue;
 with ETCS_Variables;
 with EVC_Core;
 with EVC_Distances;
@@ -1146,6 +1150,82 @@ package body EVC_Test_Authority is
              "start: the Train Data acknowledged, the MA requested with "
              & "the reason Start (5.4.3.2 S20, S21; 3.8.2.3.1)");
    end Scenario_Start_After_Ack;
+
+   --  NID_BG of the packet 9 of the message 132 among the RTM outputs of
+   --  the last Take; -1 when there is none
+   function Request_LTR return Integer is
+      M  : ETCS_Message.Message_T;
+      S  : ETCS_Message.Status_T;
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Train_Packets.P9.Packet_T;
+      OK : Boolean;
+      use type ETCS_Message.Status_T;
+      use type ETCS_Catalogue.Packet_Kind_T;
+   begin
+      for N in 1 .. Radio_Outputs loop
+         Decode_Radio_Message (N, M, S);
+         if S = ETCS_Message.Accepted and then M.Kind = MCat.Train_M132
+         then
+            for I in 1 .. M.Count loop
+               if M.Index (I).Kind = ETCS_Catalogue.Train_P9 then
+                  ETCS_Message.Open_Packet (M, I, R);
+                  ETCS_Train_Packets.P9.Decode (R, P, OK);
+                  return (if OK then Integer (P.NID_BG) else -2);
+               end if;
+            end loop;
+         end if;
+      end loop;
+      return -1;
+   end Request_LTR;
+
+   --  Level 1 in FS, the session established, a group 10 at 100 m (with
+   --  the order to level 2 at 400 m when Announce), then a group 11 at
+   --  200 m with packet 90 naming the group 44 of country 123
+   procedure Start_TAF (Announce : Boolean) is
+      W  : Writer_T;
+      OK : Boolean;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      Add_Group (Group (10, 100));
+      if Announce then
+         Carry (Track_N, 0, Order_L2 (300));
+      end if;
+      Add_Group (Group (11, 200));
+      ETCS_Track_Packets.P90.Encode
+        ((Q_DIR => 1, Q_NEWCOUNTRY => 1, Has_NID_C => True, NID_C => 123,
+          NID_BG => 44, others => <>), W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+      Establish;
+      Run_X (15_000);
+   end Start_TAF;
+
+   procedure Scenario_TAF_Up_To_L2 is
+      Got : Boolean := False;
+   begin
+      Start_TAF (Announce => True);
+      Check (RA.MA_Request_Reasons = 0,
+             "track ahead free: no request before the group");
+      for I in 1 .. 20 loop
+         Step_X (1000);
+         if RA.MA_Requests_Sent > 0 then
+            Got := True;
+            exit;
+         end if;
+      end loop;
+      Check (Got and then Request_Reason = 16 and then Request_LTR = 44,
+             "track ahead free: message 132 with reason 16 and packet 9 of "
+             & "the group 44 in level 1 (3.8.2.4.1, 3.8.2.4.2, 3.8.2.1.1 e)");
+      Check (not Wait_Request (5_000) and then RA.MA_Requests_Sent = 1
+             and then RA.MA_Request_Reasons = 0,
+             "track ahead free: one request only (3.8.2.4.3)");
+      --  4.8.3 [9]: without a level 2 transition order rejected
+      Start_TAF (Announce => False);
+      Run_X (25_000);
+      Check (not Wait_Request (2_000) and then RA.MA_Requests_Sent = 0,
+             "track ahead free: rejected without level 2 announced "
+             & "(4.8.3 [9])");
+   end Scenario_TAF_Up_To_L2;
 
    --  Message 34 referring to the group 10 of country 123: the display
    --  from Begin_M to Begin_M + Len_M metres beyond it

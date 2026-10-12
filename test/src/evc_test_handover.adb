@@ -5,6 +5,7 @@ with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P131;
+with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P74;
 with ETCS_Track_Packets.P180;
 with ETCS_Variables;
@@ -28,6 +29,7 @@ package body EVC_Test_Handover is
    use type R.Session_State_T;
    use type R.Session_Ref_T;
    use type ETCS_Variables.NID_RBC_T;
+   use type MCat.Message_Kind_T;
 
    function Now_T return Unsigned_64 is
      ((Unsigned_64 (EVC_Core.Time_Ms) / 10) mod 2**32);
@@ -578,5 +580,64 @@ package body EVC_Test_Handover is
              & "(3.15.1.3.9, A.3.1); got" & Img (EVC_Sessions.Position_Reports_Sent - N) & " "
              & R.Session_State_T'Image (R.Info (1).State));
    end Scenario_Handover_Rear_Repeat;
+
+   --  Message 9 (a request to shorten the MA to the group NID_BG) or 18
+   --  (the revocation of the emergency stop 3), from country 123
+   function M9_Or_18 (Kind : MCat.Known_Message_T; NID_BG : Natural)
+     return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean := True;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      if Kind = MCat.Track_M18 then
+         V (7) := 3;
+      end if;
+      Start_Message (W, Kind, V);
+      if Kind = MCat.Track_M9 then
+         ETCS_Track_Packets.P15.Encode
+           ((Q_DIR => 2, L_ENDSECTION => 50, others => <>), W, OK);
+      end if;
+      Check (OK, "handover: message 9 encoded");
+      return Message_Bytes (W);
+   end M9_Or_18;
+
+   procedure Scenario_Handover_Exception_2 is
+      R0 : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      Establish (2);
+      R0 := EVC_Radio_Authority.Messages_Rejected;
+      Give_Radio_Message (2, M9_Or_18 (MCat.Track_M9, 10));
+      Stand;
+      Check (EVC_Radio_Authority.Buffered = 0
+             and then EVC_Radio_Authority.Messages_Rejected = R0 + 1
+             and then Sent (138, 2) = 1,
+             "handover exception 2: the Accepting RBC's request to shorten "
+             & "the MA rejected and answered 138 (4.8.2.1 c, 3.8.6.1 c)");
+      Give_Radio_Message (2, M9_Or_18 (MCat.Track_M18, 10));
+      Stand;
+      Check (EVC_Radio_Authority.Buffered = 0
+             and then EVC_Radio_Authority.Messages_Rejected = R0 + 2,
+             "handover exception 2: the Accepting RBC's revocation of an "
+             & "emergency stop rejected (4.8.2.1 c)");
+      Run_X (32_000);
+      Stand;
+      Check (R.Supervising = 2 and then EVC_Radio_Authority.Buffered = 0
+             and then EVC_Radio_Authority.Messages_Rejected = R0 + 2
+             and then EVC_Radio_Authority.Shortenings_Granted = 0,
+             "handover exception 2: nothing of them taken at the switch "
+             & "(4.8.2.1 c)");
+   end Scenario_Handover_Exception_2;
 
 end EVC_Test_Handover;

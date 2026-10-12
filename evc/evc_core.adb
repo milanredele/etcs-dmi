@@ -939,6 +939,8 @@ is
        Train_Data_Valid => EVC_Train_Data.Valid,
        TRN_Valid        => EVC_Mission.TRN_Status = EVC_Mission.Valid,
        L1_Announced     => EVC_Levels.L1_Announced,
+       L2_Announced     => EVC_Levels.Announced
+                           and then EVC_Levels.Announced_Level = L2,
        Order_In_Message => False,
        Order_Pending    => EVC_Levels.Order_Pending,
        Unlinked_Group   => False))

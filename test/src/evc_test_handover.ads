@@ -49,4 +49,9 @@ package EVC_Test_Handover is
    --  reported, the report repeated, then the session terminated
    procedure Scenario_Handover_Rear_Repeat;
 
+   --  B121, 4.8.2.1 c) exception 2: the request to shorten the MA, the
+   --  revocation of an emergency stop of the Accepting RBC are rejected,
+   --  not taken at the switch
+   procedure Scenario_Handover_Exception_2;
+
 end EVC_Test_Handover;

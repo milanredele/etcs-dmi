@@ -267,6 +267,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Same_RBC;
    EVC_Test_Handover.Scenario_Handover_Ack_Missing;
    EVC_Test_Handover.Scenario_Handover_Rear_Repeat;
+   EVC_Test_Handover.Scenario_Handover_Exception_2;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_RBC;
@@ -283,6 +284,7 @@ begin
    Scenario_Radio_Acceptance;
    Scenario_Transition_Buffer;
    Scenario_Start_After_Ack;
+   Scenario_TAF_Up_To_L2;
    Scenario_Track_Ahead_Free;
    --  e5/levels: the level transitions to and from level 2
    Scenario_L2_Buffer_Same_Cycle;
