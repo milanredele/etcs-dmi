@@ -232,37 +232,64 @@ package body S076_Run is
    --  of the chart where it is), at least 10 km/h until it reaches To_Cm,
    --  cycle by
    --  cycle; the last cycle ends at To_Cm. At most an hour.
+   --  B262: an explicit speed (an ODO speed step) is the train's at once
+   --  when the sequence sets it, whatever the brake (the steps that
+   --  provoke a brake on purpose); then the braking model acts on it
+   Forced_Speed : Integer := -1;
+
+   procedure Force_Explicit is
+   begin
+      if Explicit_Speed >= 0 and then Explicit_Speed /= Forced_Speed then
+         B.Force_Speed (Explicit_Speed);
+      end if;
+      Forced_Speed := Explicit_Speed;
+   end Force_Explicit;
+
+   --  B262: the speed asked for is the chart's; the train's is that of
+   --  the bench's braking model (lower under a brake command, regaining
+   --  the chart's once released); held at standstill by a brake for 10 s
+   --  the train stops trying (a trip: the sequence's location is not
+   --  reached)
    procedure Drive_To (To_Cm : Integer_64) is
-      Dir : constant Integer := (if To_Cm >= B.Position then 1 else -1);
+      Dir  : constant Integer := (if To_Cm >= B.Position then 1 else -1);
+      Held : Natural := 0;
    begin
       B.Set_Direction (Dir);
       for I in 1 .. 36_000 loop
+         Force_Explicit;
+         B.Set_Speed (Transit_Cms);
          declare
             Left : constant Integer_64 :=
               (To_Cm - B.Position) * Integer_64 (Dir);
-            V    : constant Positive := Transit_Cms;
-            Full : constant Integer_64 := Integer_64 (V) * B.Cycle_Ms / 1000;
+            Full : constant Integer_64 :=
+              Integer_64 (B.Speed) * B.Cycle_Ms / 1000;
          begin
+            if Held >= 10_000 then
+               B.Set_Stopped_Target (To_Cm);
+               exit;
+            end if;
             exit when Left <= 0;
-            if Left < Full and then not (B.State.SBC or else B.State.EBC) then
+            if Left < Full then
                --  B224: the last cycle at the speed, moving the train by
-               --  the distance left; under a brake command at the
-               --  distance left per cycle as before (S076_Bench.Move_To)
-               B.Set_Speed (V);
+               --  the distance left
                B.Cycle (Left);
             else
-               B.Set_Speed
-                 (if Left < Full
-                  then Natural (Integer_64'Max (1, Left * 1000 / B.Cycle_Ms))
-                  else V);
                B.Cycle;
             end if;
+            Held := (if B.Speed = 0 then Held + B.Cycle_Ms else 0);
          end;
       end loop;
    end Drive_To;
 
+   --  B262: a train a brake held at standstill on its way to To_Cm stays
+   --  where it stopped for the steps at that location (the sequence's
+   --  train is at standstill there: its brake stopped it further on)
    procedure Move_To (To_Cm : Integer_64) is
    begin
+      if B.Stopped_Target = To_Cm then
+         return;
+      end if;
+      B.Set_Stopped_Target (B.No_Stop);
       if (B.Direction > 0 and then To_Cm > B.Position + 50)
         or else (B.Direction < 0 and then To_Cm < B.Position - 50)
       then
@@ -281,6 +308,7 @@ package body S076_Run is
 
    procedure Wait_Cycle is
    begin
+      Force_Explicit;
       if Explicit_Speed < 0 and then B.Speed > 0 and then not Hold_Speed then
          Arrive;
       end if;
@@ -4154,6 +4182,14 @@ package body S076_Run is
       --  sequences without a workbook, 3110500_01 and 3131040_59, place
       --  an Indication and an Overspeed step on the exact speed)
       B.Set_Speed_Accuracy (Seq.Workbook and then not Exact_Speed);
+      --  B262: the bench brakes at the conversion model's decelerations
+      --  for the brake percentage entered (the workbook's, else 109)
+      B.Set_Brake_Percentage (Brake_Percentage);
+      for I in 1 .. Seq.Step_Count loop
+         if Has (Image (Seq.Steps (I).Comment), "SB must be disabled") then
+            B.Set_Service_Brake (False);
+         end if;
+      end loop;
       --  The radio systems installed (3.5.6.7, 5.4.3.2 D7): the sequences
       --  of feature 3050600 test 3.5.6 with both systems installed (in
       --  3050600_05 3.5.6.7 b holds the set-up while FRMCS is not

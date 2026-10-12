@@ -6,8 +6,12 @@ with Ada.Environment_Variables;
 with Ada.Streams;     use Ada.Streams;
 with DMI_Core;
 with DMI_Protocol;
+with EVC_Braking;
 with EVC_Core;
 with EVC_Distances;
+with EVC_DMI_Port;
+with EVC_Modes;
+with EVC_Fixed;
 with EVC_Outbox;
 with EVC_Ports;       use EVC_Ports;
 with EVC_Position;
@@ -38,6 +42,14 @@ package body S076_Bench is
    Acc       : Integer_64 := Accuracy_Per_Mille;
    --  B191: the speed's confidence interval of SUBSET-041 5.3.1.2
    Speed_Acc : Boolean := False;
+   --  B262: the speed asked for (Set_Speed), the braking model's
+   --  percentage (0: none), and whether the train is below the speed
+   --  asked for because of a brake
+   Demand_Cms : Natural := 0;
+   Lambda     : Natural := 0;
+   Is_Braked  : Boolean := False;
+   Service_On     : Boolean := True;
+   Stop_Target : Integer_64 := No_Stop;
 
    Max_Balises : constant := 64;
    type Balise_T is record
@@ -537,6 +549,11 @@ package body S076_Bench is
       Clock := 0;
       X_Cm := 0;
       V_Cms := 0;
+      Demand_Cms := 0;
+      Lambda := 0;
+      Is_Braked := False;
+      Service_On := True;
+      Stop_Target := No_Stop;
       Dir := 1;
       Odo_Over := 0;
       Odo_Under := 0;
@@ -716,6 +733,8 @@ package body S076_Bench is
       Cycle (Integer_64 (V_Cms) * Cycle_Ms / 1000);
    end Cycle;
 
+   procedure Brake_Cycle;
+
    procedure Cycle (Distance_Cm : Integer_64) is
       Old_X : constant Integer_64 := X_Cm;
       Step  : constant Integer_64 := Distance_Cm * Integer_64 (Dir);
@@ -794,6 +813,7 @@ package body S076_Bench is
          DMI_Core.Tick (Cycle_Ms);
          Take_DMI;
          Note_Changes;
+         Brake_Cycle;
       end if;
       Fold;
    end Cycle;
@@ -813,10 +833,96 @@ package body S076_Bench is
    function Speed return Natural is (V_Cms);
    function Direction return Integer is (Dir);
 
+   --  B262: see the spec. A lower speed asked for is taken at once
+   --  (the driver's own braking is not modelled) and ends the ramp
    procedure Set_Speed (Cms : Natural) is
    begin
-      V_Cms := Cms;
+      Demand_Cms := Cms;
+      if Cms <= V_Cms then
+         V_Cms := Cms;
+         Is_Braked := False;
+      elsif Lambda > 0 and then Is_Powered
+        and then (Now.EBC or else (Now.SBC and then Service_On))
+        and then Now.Mode /= Natural (EVC_DMI_Port.Mode_Code (EVC_Modes.M_TR))
+      then
+         --  no speed gained under a brake command
+         Is_Braked := True;
+      elsif not Is_Braked then
+         V_Cms := Cms;
+      end if;
    end Set_Speed;
+
+   function Braked return Boolean is (Is_Braked);
+
+   procedure Force_Speed (Cms : Natural) is
+   begin
+      V_Cms := Cms;
+      Demand_Cms := Cms;
+      Is_Braked := False;
+   end Force_Speed;
+
+   procedure Set_Stopped_Target (To_Cm : Integer_64) is
+   begin
+      Stop_Target := To_Cm;
+   end Set_Stopped_Target;
+
+   function Stopped_Target return Integer_64 is (Stop_Target);
+
+   --  B262: the decelerations of the conversion model (A.3.7), cached
+   --  per percentage: the emergency brake at Lambda, the service brake
+   --  at min (Lambda, 135) (A.3.7.1)
+   EB_Decel, SB_Decel : EVC_Braking.Steps_T := EVC_Braking.No_Steps;
+
+   procedure Set_Service_Brake (On : Boolean) is
+   begin
+      Service_On := On;
+   end Set_Service_Brake;
+
+   procedure Set_Brake_Percentage (Lambda : Natural) is
+   begin
+      S076_Bench.Lambda :=
+        (if Lambda in 10 .. EVC_Braking.Lambda_T'Last then Lambda else 0);
+      if S076_Bench.Lambda > 0 then
+         EB_Decel := EVC_Braking.Basic_Deceleration (S076_Bench.Lambda);
+         SB_Decel := EVC_Braking.Basic_Deceleration
+           (Natural'Min (S076_Bench.Lambda, 135));
+      end if;
+   end Set_Brake_Percentage;
+
+   --  B262: one cycle of the braking model, after the on-board's outputs
+   --  of the cycle: under a brake command the speed falls by the
+   --  deceleration at the speed (Decel_Unit, 10 um/s2: a cycle of 100 ms
+   --  takes Value / 10 000 cm/s, rounded) down to standstill; released,
+   --  it regains the speed asked for at Regain_Mms2
+   procedure Brake_Cycle is
+      Per_Cycle : constant Natural := Regain_Mms2 * Cycle_Ms / 10_000;
+   begin
+      if Lambda = 0 then
+         return;
+      elsif Now.Mode = Natural (EVC_DMI_Port.Mode_Code (EVC_Modes.M_TR))
+      then
+         --  decision: in Trip the train follows the speed asked for (the
+         --  chart's stop is the sequence's own train braking, more gently
+         --  than the conversion model of lambda 109: 5170200_01 expects
+         --  the train still moving 20 m after the trip, 4080300_03 at
+         --  standstill 175 m after it at 52 km/h, 0.6 m/s2)
+         Is_Braked := False;
+      elsif Now.EBC or else (Now.SBC and then Service_On) then
+         declare
+            D : constant Natural :=
+              (Natural (EVC_Braking.Value_At
+                 ((if Now.EBC then EB_Decel else SB_Decel),
+                  EVC_Fixed.Num (Natural'Min (V_Cms, EVC_Fixed.Max_Speed))))
+               * Cycle_Ms / 100 + 5_000) / 10_000;
+         begin
+            V_Cms := (if V_Cms > D then V_Cms - D else 0);
+            Is_Braked := V_Cms < Demand_Cms or else Is_Braked;
+         end;
+      elsif Is_Braked then
+         V_Cms := Natural'Min (Demand_Cms, V_Cms + Per_Cycle);
+         Is_Braked := V_Cms < Demand_Cms;
+      end if;
+   end Brake_Cycle;
 
    procedure Set_Direction (Dir : Integer) is
    begin
@@ -826,35 +932,31 @@ package body S076_Bench is
    procedure Move_To (To_Cm : Integer_64; Cms : Positive;
                       Max_Ms : Natural := 3_600_000) is
       Elapsed : Natural := 0;
+      Held : Natural := 0;  -- ms at standstill under a brake command
    begin
-      V_Cms := Cms;
+      Set_Speed (Cms);
       if To_Cm = X_Cm then
          return;
       end if;
       Dir := (if To_Cm > X_Cm then 1 else -1);
       while (if Dir > 0 then X_Cm < To_Cm else X_Cm > To_Cm)
-        and then Elapsed < Max_Ms
+        and then Elapsed < Max_Ms and then Held < 10_000
       loop
          declare
             Left : constant Integer_64 := abs (To_Cm - X_Cm);
-            Full : constant Integer_64 := Integer_64 (Cms) * Cycle_Ms / 1000;
+            Full : constant Integer_64 :=
+              Integer_64 (V_Cms) * Cycle_Ms / 1000;
          begin
             --  the last cycle ends at the target, at the speed (B224);
-            --  under a brake command at the distance left per cycle (the
-            --  train slows: the bench has no braking model, and a train
-            --  held above the permitted speed never sees its brake
-            --  released)
-            if Left < Full and then (Now.SBC or else Now.EBC) then
-               V_Cms := Natural (Integer_64'Max (1, Left * 1000 / Cycle_Ms));
-               Cycle;
-            elsif Left < Full then
+            --  the train's speed is that of the braking model (B262)
+            if Left < Full then
                Cycle (Left);
             else
                Cycle;
             end if;
-            V_Cms := Cms;
+            Set_Speed (Cms);
             Elapsed := Elapsed + Cycle_Ms;
-            exit when Full = 0;
+            Held := (if V_Cms = 0 then Held + Cycle_Ms else 0);
          end;
       end loop;
    end Move_To;
