@@ -4725,3 +4725,62 @@ Edits outside the brief's units: `EVC_Stored_Information` (and its
 child `Balise_Buffer`), `EVC_Core` (`Release_Unit_Packets`, the linking
 context of `Update_Position`, the Global of `Release_Transition_Buffer`).
 `EVC_Position`: only the new `Take_Released_Linking` (spec and body).
+
+### E5 integration after the eighteenth round (2026-10-12)
+
+Merged: e5/curves-families (the 39 Lambda workbooks outside 2 m traced
+with the probe, none a defect of our curves: 15 made with the tool's
+"LoA/MRSP" target at 0 km/h instead of "EoA/SvL", so without a release
+speed monitoring, 21 blocks computed with other integrated correction
+factors than their own packet 3, both SUBSET-076 inconsistencies for the
+runner to block or judge, B200; two probe defects fixed, the adhesion
+inputs added; 101 of 129 blocks agree within 2 m in every row; the
+remainder B201), e5/curves-bench (the bench reports the SUBSET-041 speed
+accuracy while a workbook sequence runs, B191, `S076_EXACT_SPEED=1`
+restores the exact speed; a curve step our limit has not reached drives
+on at the step's speed until our change, B176; 24 understood regressions
+re-recorded: Gamma passes by chance, B192 families, B195; found B195:
+the on-board goes from Indication to Intervention without the Overspeed
+status in 3130237_07 and five others, the displayed Permitted speed
+dropping 28 km/h in one cycle), e5/onboard-gaps (packets 5, 138 and 139
+read with level 1 announced kept in the balise transition buffer and
+released at the transition, 4.8.3 [1], B070; a message 9 rejected before
+the decision of 3.8.6.1 b) gets no 137/138, B011, reversing the decision
+of e5/levels and e5/accepting-rbc; 4080407_01 moves from step 90 to 113;
+B210 to B212; B017 not started) and e4/closure-2 (the Odometer impaired
+text in the modes of Table 4.5.2, 3.6.8.5, B030; new linking keeps the
+stored chain in rear of its reference group, 3.7.3.1 m), B033; the brake
+reason of a movement while the driver modifies Train Data, 3.14.1.5,
+B035; the three rows deferred to E4 given their outcome, B039:
+3.14.1.7.6 is the safe consist length and goes with E5 authority,
+3.14.3.6 todo as B221, 3.12.2.4 todo as B034; 4050200_11 regressed
+knowingly, the odometer check should run only in the Table 4.5.2 modes,
+B222).
+
+Merge by hand: the backlog ids by id with the done state winning; the
+B016 line's two appended tails combined (a common-prefix join cut the
+shared words "Round 18 (e5/curves-": restored in a commit of its own;
+join by sentence next time); the plan subsections appended; the
+baseline auto-merged and matched by the run.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11840
+checks), the full proof 11221 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27136 B (margin 5632), wasm and both smokes 0
+failures. SUBSET-076: 753 / 1416 / 1021 before, 742 / 1426 / 1022 after
+(the speed accuracy took three Gamma passes by chance and the B192
+families; 4050200_11 by B222), 0 regressions against the merged
+baseline, 0 untriaged. Matrix: 359 -> 358 clauses left in all phases
+(E3 has two todo rows again, 3.12.2.4 and 3.14.3.6, honestly).
+
+Measurements (requests by message id, duration, final context, cost):
+curves-bench 101 / 23 min / 171k / 6.1; curves-families 104 / 21 min /
+189k / 6.9; onboard-gaps 160 / 33 min / 206k / 11.5 (over its budget of
+130 by 15, two proof fixes in `EVC_Core`); closure-2 136 / 24 min /
+187k / 9.2 (over 120 by 5).
+
+The curves after this round: the on-board's limits reproduce the ERA
+tool's to the metre wherever the workbook's inputs are the sequence's;
+what the runner still fails on the curve sequences is B195 (ours), the
+Indication of an EOA target 190 to 340 m further out (3131040_02, _38,
+_50; ours), and runner or data items (B193, B194, B200, B201). Open
+items: doc/BACKLOG.csv (35 open after this round).
