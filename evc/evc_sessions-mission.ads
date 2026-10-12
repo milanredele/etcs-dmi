@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half, phase 2 (e5/session-3): the
+--  Phase E5, the session and link half, phase 2: the
 --  level 2 parts of the start of mission (5.4.3.2: the RBC contact and
 --  its status of 5.4.3.3, A31 the session opened, D31 / A32, the SoM
 --  position report of D32 / A33 / A34 and the RBC's answers A35, D34 /
@@ -41,6 +41,14 @@ with EVC_Position;
 with EVC_Received;
 with EVC_Train_Data;
 
+--  @req 3.18.3.4, 3.18.3.4 a), 3.18.3.4 b), 3.18.3.4 c), 3.18.3.4 d)
+--  @req 3.18.3.4 e), 3.18.3.4 f), 3.18.3.4 g), 3.18.3.4 h), 3.18.3.4 i)
+--  @req 3.18.3.4.2, 5.4.3.2 A24, 5.4.3.2 A31, 5.4.3.2 A32, 5.4.3.2 A33
+--  @req 5.4.3.2 A34, 5.4.3.2 A35, 5.4.3.2 A39, 5.4.3.2 A40, 5.4.3.2 D7
+--  @req 5.4.3.2 D15, 5.4.3.2 D31, 5.4.3.2 D32, 5.4.3.2 D34, 5.4.3.2 D35
+--  @req 5.4.3.2 S3, 5.4.3.2 S11, 5.4.3.2.2, 5.4.5.3 j), 5.5.3.1.3, 5.5.3.1.4
+--  @req 5.5.4.1.1, 5.5.4.1.1.1, 5.5.4.1.2, 5.10.3.1.3, 5.10.3.2.2, 5.10.3.7.2
+--  @req 5.10.3.15.2, 5.10.3.15.2 b)
 private package EVC_Sessions.Mission
   with SPARK_Mode => On,
        Abstract_State => (State with Part_Of => EVC_Sessions.State)
@@ -78,7 +86,7 @@ is
                                 EVC_Position.State, EVC_Train_Data.State,
                                 EVC_Driver_Requests.State));
 
-   --  5.10.3.15.2 b) (e5/level2-radio-data): the driver's Radio data
+   --  5.10.3.15.2 b): the driver's Radio data
    --  entered outside the start of mission (MSG_DRIVER_DATA kind 5),
    --  read as at S3 of 5.4.3.2: Found when usable, the contact to call
    --  in RBC / Radio; a contact entered (choice 0) is stored, valid
@@ -89,17 +97,19 @@ is
                      Input  => EVC_Driver_Requests.State);
 
    --  5.5.2.1, 5.5.2.3: the change From -> To ends a mission (also what
-   --  3.5.3.4 c) leaves out, e5/mode-change-session)
+   --  3.5.3.4 c) leaves out)
    function Ends_Mission (From, To : EVC_Modes.Mode_T) return Boolean
      with Global => EVC_Mission.State;
 
    --  6. 5.5.2: the end of mission by the mode entered
+   --  @req 3.15.1.3.4.1
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T)
      with Global => (In_Out => State,
                      Input  => (EVC_Mission.State, EVC_Radio.State));
 
-   --  3.15.1.3.3 (e5/handover): the valid Train Data to the session S
+   --  3.15.1.3.3: the valid Train Data to the session S
    --  (the Accepting RBC's), their acknowledgement awaited from it
+   --  @req 3.15.1.3.3
    procedure Send_Train_Data (S : EVC_Radio.Session_T;
                               Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
@@ -138,7 +148,7 @@ is
    function EoM_Sent return Natural
      with Global => State;
 
-   --  4.8.3 [3] (e5/levels): Train Data sent to the RBC and their
+   --  4.8.3 [3]: Train Data sent to the RBC and their
    --  acknowledgement (message 8) not received yet
    function Train_Data_Awaited return Boolean
      with Global => State;

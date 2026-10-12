@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half, phase 3 (e5/session-4): the
+--  Phase E5, the session and link half, phase 3: the
 --  position reports of 3.6.5 (message 136, 8.6.6), sent to the
 --  supervising RBC on the events of 3.6.5.1.4 and as the position report
 --  parameters of packet 58 ask (3.6.5.1.5, 3.6.5.1.7), and the deletion
@@ -44,6 +44,9 @@ with EVC_Position;
 with EVC_Received;
 with ETCS_Variables;
 
+--  @req 3.4.2.3.3.1, 3.6.5.1.2, 3.6.5.1.4, 3.6.5.1.4 a), 3.6.5.1.4 b)
+--  @req 3.6.5.1.4 g), 3.6.5.1.4 h), 3.6.5.1.4 i), 3.6.5.1.4 j), 3.6.5.1.4.1
+--  @req 3.6.5.1.6, 3.6.5.1.8, 5.10.3.1.5, 5.10.3.2.5, 5.10.3.7.5, 5.10.3.15.3
 private package EVC_Sessions.Reports
   with SPARK_Mode => On,
        Abstract_State => (State with Part_Of => EVC_Sessions.State)
@@ -90,13 +93,14 @@ is
       and then not (From = EVC_Modes.M_PS and then To = EVC_Modes.M_SH))
      with Global => null;
 
-   --  e5/handover: sessions beyond the supervising RBC's
+   --  sessions beyond the supervising RBC's
    type Targets_T is array (EVC_Radio.Session_T) of Boolean;
    No_Targets : constant Targets_T := (others => False);
 
    --  8. The report due, message 136 with packet 0 or 1 (3.6.5.1.2), to
    --  the supervising RBC and to Also (3.15.1.3.4: both RBCs of a
    --  handover); to Forced whether due or not (3.15.1.3.9)
+   --  @req 3.15.1.3.4, 3.16.4.1
    procedure Produce (Ctx    : EVC_Radio.Context_T;
                       Also   : Targets_T := No_Targets;
                       Forced : Targets_T := No_Targets)
@@ -110,14 +114,15 @@ is
    function Parameters_Taken return Natural
      with Global => State;
 
-   --  e5/levels: a report due for another reason (5.10.3.3.3, 5.10.3.3.5,
+   --  a report due for another reason (5.10.3.3.3, 5.10.3.3.5,
    --  5.10.3.15.4: the exit from level 2), sent by the next Produce
    procedure Request
      with Global => (In_Out => State);
 
-   --  e5/error-report: 3.16.3.1.1.2, 3.16.4.1: an inconsistent message
+   --  3.16.3.1.1.2, 3.16.4.1: an inconsistent message
    --  received on S, reported to that RBC by packet 4 with Error
    --  (7.5.1.64) in the message 136 of the next Produce
+   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2
    procedure Request_Error (S     : EVC_Radio.Session_T;
                             Error : ETCS_Variables.M_ERROR_T)
      with Global => (In_Out => State);

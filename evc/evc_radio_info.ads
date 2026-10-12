@@ -29,6 +29,7 @@ with EVC_Origins;
 with EVC_Received;
 with Interfaces;        use Interfaces;
 
+--  @req 3.6.6.4.1, 3.8.5.1, 3.8.6.1, 3.10.2.2, 4.4.19.1.4.2 a)
 package EVC_Radio_Info
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -48,6 +49,7 @@ is
    type Action_T is (Packets, Conditional_Stop, Shortening);
 
    --  How a message is to be taken
+   --  @req 3.8.4.2.1, 3.8.4.3.1, 3.10.2.4
    type Slot_T is record
       Action     : Action_T := Packets;
       Origin     : EVC_Origins.Count_T := 0;
@@ -60,7 +62,7 @@ is
       --  Conditional_Stop: the stop location, from the location
       --  reference along S (3.10.2.2)
       Stop_D     : Dist_T := 0;
-      --  4.8.2.1 c) exception 2 (e4/ls-display-2): a message of the
+      --  4.8.2.1 c) exception 2: a message of the
       --  Accepting RBC released from the handover buffer; its LSSMA
       --  display toggle order is rejected
       From_Accepting : Boolean := False;
@@ -94,6 +96,7 @@ is
    --  (the snapshot's Extra.T_MAR, built by the stored information)
    Max_T_MAR_Ms : constant := 255_000;
 
+   --  @req 3.8.2.2.2
    function T_MAR_Ms return Unsigned_64
      with Global => State,
           Post => T_MAR_Ms'Result <= Max_T_MAR_Ms;
@@ -130,6 +133,7 @@ is
    --  3.8.6.1 b): the cycle's messages taken, the proposed shortened MA
    --  granted: the last message of it (Action Shortening) stays, alone,
    --  to be taken as an MA by the stored information of the next cycle
+   --  @req 3.8.6.1 b) 1st bullet
    procedure Keep_Granted
      with Global => (In_Out => State),
           Post => Count <= 1

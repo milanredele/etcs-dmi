@@ -51,6 +51,12 @@ with EVC_Profiles;          use EVC_Profiles;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with Interfaces;            use Interfaces;
 
+--  @req 3.6.3.2.3, 3.6.3.2.3 a), 3.6.3.2.3 b), 3.6.3.2.3 c), 3.6.4.2.4
+--  @req 3.6.4.2.4 Table 2a, A.3.4.1.3 Table-footnote [1]
+--  @req A.3.4.1.3 Table-footnote [7], A.3.4.1.3 Table-footnote [8]
+--  @req A.3.4.1.3 Table-footnote [9], A.3.4.1.3 Table-footnote [10]
+--  @req A.3.4.1.3 Table-footnote [11], A.3.4.1.3 Table-footnote [12]
+--  @req A.3.4.1.3 Table-footnote [13]
 package EVC_Movement_Authority
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -132,6 +138,7 @@ is
    --  stores (A.3.4.1.3: beyond the new SvL [1], beyond the max safe
    --  front end [10]), for the information of messages before
    --  Delete_Before
+   --  @req 3.7.3.3
    type Outcome_T is record
       Accepted         : Boolean := False;
       Shortened        : Boolean := False;
@@ -169,12 +176,14 @@ is
      with Global => State;
    --  3.11.6.4: a V_MAIN 0, a train trip order, was received (phase E4
    --  trips); cleared by Clear_Trip_Order
+   --  @req 3.11.6.4
    function Trip_Ordered return Boolean
      with Global => State;
 
    function Mode_Profiles return Mode_Profile_Array
      with Global => State;
    --  Mode_Profiles (I) without the copy of Mode_Profiles
+   --  @req 4.8.4.2 Table-footnote [9]
    function Mode_Profile (I : Positive) return Mode_Profile_T
      with Global => State,
           Pre  => I <= Max_Mode_Profiles,
@@ -196,6 +205,7 @@ is
    function Is_LOA (X : MA_T) return Boolean is
      (not X.Withdrawn and then X.Target_Speed > 0);
 
+   --  @req 3.8.4.5.1
    function SvL_Location (X : MA_T) return Location_T is
      (if X.Withdrawn then X.Withdrawn_SvL
       elsif Is_LOA (X) then EOA_Location (X)
@@ -206,12 +216,11 @@ is
    --  Phase E5, 3.8.2.2.1 b): a Section timer (not that of the End
    --  Section, nor the Overlap timer) running and not stopped, or the
    --  LOA speed timer, whose time-out comes within Lead_Ms of Now_Ms
+   --  @req 3.8.2.2.2, 3.8.2.2.4
    function Timer_Expiring (Now_Ms, Lead_Ms : Unsigned_64) return Boolean
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    procedure Clear
      with Global => (Output => State),
@@ -225,6 +234,7 @@ is
 
    --  3.11.6.2, 3.11.6.3: the V_MAIN of a packet 12, taken as soon as it
    --  is received; 0 is a trip order (3.11.6.4), not a speed limit
+   --  @req 3.11.6.3
    procedure Take_V_Main (P : ETCS_Track_Packets.P12.Packet_T)
      with Global => (In_Out => State);
 
@@ -242,6 +252,10 @@ is
    --  keeps running with the new time-out if it ran (3.8.4.1.4,
    --  3.8.4.4.5), else is over at once (3.8.4.1.3, 3.8.4.4.4).
    --  Passage_Ms: the passage over the first balise of the group.
+   --  @req 3.8.4.1.3, 3.8.4.1.4, 3.8.4.2.1 a), 3.8.4.2.1 b), 3.8.4.2.5
+   --  @req 3.8.4.3.1, 3.8.4.3.1 a), 3.8.4.3.1 b), 3.8.4.4.4, 3.8.4.4.5
+   --  @req 3.8.5.1, 3.8.5.1 a), 3.8.5.1.3, 3.8.5.1.4, 3.8.5.2.4, 3.8.6.2
+   --  @req 3.12.4.3
    procedure Accept_MA (X          : MA_T;
                         T          : Origin_Table_T;
                         Train      : Train_Frame_T;
@@ -254,6 +268,8 @@ is
    --  3.10.2.2 b) (phase E5): the EOA and SvL by the stop location of
    --  an accepted conditional emergency stop, without release speed;
    --  Updated: the EOA or LOA changed (Q_EMERGENCYSTOP 0, else 1)
+   --  @req 3.10.2.2 b), 3.10.2.2 b) 1st bullet, 3.10.2.2 b) 2nd bullet
+   --  @req 3.10.2.2 b) 3rd bullet, 3.10.2.2 b) 4th bullet
    procedure Conditional_Stop (T       : Origin_Table_T;
                                Stop    : Location_T;
                                Updated : out Boolean;
@@ -262,12 +278,13 @@ is
           Post => MA.Present = MA.Present'Old
                   and then not Outcome.Accepted;
 
-   --  3.8.5.2.2 (e5/trips-fs): the repositioning information of a group
+   --  3.8.5.2.2: the repositioning information of a group
    --  that linking announced as unknown with repositioning: the section
    --  in which the train front end (Front, estimated, in the frame) is
    --  ends at Finish; what lies beyond its end (the following sections,
    --  the end timer's start, the danger point, the overlap) moves with
    --  it. 3.8.5.2.4: not a shortening (nothing deleted)
+   --  @req 3.8.5.2.2
    procedure Reposition (T      : Origin_Table_T;
                          Front  : Dist_T;
                          Finish : Location_T)
@@ -275,11 +292,14 @@ is
           Post => MA.Present = MA.Present'Old;
 
    --  The mode profile of the message of the MA just accepted
+   --  @req 3.12.4.2
    procedure Take_Mode_Profile (P : ETCS_Track_Packets.P80.Packet_T;
                                 M : Message_T)
      with Global => (In_Out => State);
 
    --  One cycle of the timers (3.8.4.1 to 3.8.4.4) and their effects
+   --  @req 3.8.4.1.1, 3.8.4.2.2, 3.8.4.2.2 a), 3.8.4.2.2 c), 3.8.4.2.3
+   --  @req 3.8.4.2.4, 3.8.4.3.2, 3.8.4.4.1, 3.8.4.4.3
    procedure Supervise (T       : Origin_Table_T;
                         Train   : Train_Frame_T;
                         Now_Ms  : Unsigned_64;
@@ -303,9 +323,7 @@ is
    procedure Mark (Marks : in out Origin_Marks_T)
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  For the snapshot
-   ---------------------------------------------------------------------
 
    --  The release speed of a V_RELEASEDP or V_RELEASEOL code
    function Release (Code : Natural; V_NVREL : Speed_Cms_T)
@@ -327,6 +345,7 @@ is
                             then A (X.Sense, R.SvL) >= A (X.Sense, R.EOA));
 
    --  The MA as the supervision sees it, frame positions
+   --  @req 3.8.4.5.2
    procedure Authority (T       : Origin_Table_T;
                         V_NVREL : Speed_Cms_T;
                         R       : out Movement_Authority_T)
@@ -335,14 +354,13 @@ is
                   and then (if R.Present
                             then A (MA.Sense, R.SvL) >= A (MA.Sense, R.EOA));
 
-   ---------------------------------------------------------------------
-   --  Added by e4/modes
-   ---------------------------------------------------------------------
-
    --  4.10: entering a mode that deletes the MA, the mode profile and
    --  the signalling related speed restriction (the same modes for the
    --  three); a trip order received (V_MAIN 0) is not stored information
    --  (4.10.1.4.2 x) and stays
+   --  @req 4.10.1.3, 4.10.1.3 a), 4.10.1.3 b), 4.10.1.3 c), 4.10.1.3 d)
+   --  @req 4.10.1.3 e), 4.10.1.3 Table, 4.10.1.3 Table-footnote [1]
+   --  @req 5.11.2.2 A035
    procedure Delete_MA
      with Global => (In_Out => State),
           Post => not MA.Present and then not V_Main_Known
@@ -356,7 +374,7 @@ is
                                   Max_Front : Dist_T) return Boolean
      with Global => State;
 
-   --  Added by the procedures of phase E4: the mode the on-board is in,
+   --  the mode the on-board is in,
    --  as an M_MAMODE (0 On Sight, 1 Shunting, 2 Limited Supervision; 3
    --  another mode), which EVC_Core sets before the stored information
    --  is evaluated. 3.12.4.7: the beginning of a mode profile is a
@@ -372,6 +390,7 @@ is
    --  profile that the estimated front end Front has not reached, of a
    --  mode other than the one in use (Set_Mode_In_Use), and the
    --  temporary SvL of the cases a) to c)
+   --  @req 3.12.4.7, 3.12.4.7 a), 3.12.4.7 b), 3.12.4.7 c)
    procedure Mode_Profile_Target (T       : Origin_Table_T;
                                   Front   : Dist_T;
                                   Found   : out Boolean;

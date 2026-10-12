@@ -31,9 +31,7 @@ package body EVC_SDM
   with SPARK_Mode => On
 is
 
-   ---------------------------------------------------------------------
    --  The context of a cycle
-   ---------------------------------------------------------------------
 
    --  Locations of limits and distances between them
    subtype Loc_T is Num range -8 * Max_Cm .. 8 * Max_Cm;
@@ -84,6 +82,8 @@ is
       Be_React, Be, Bs_React, Bs : Time_T := 0;
    end record;
 
+   --  @req 3.13.3.4.1.1, 3.13.3.4.2.1, 3.13.3.4.3.1, 3.13.3.4.4.1
+   --  @req 3.13.3.4.4.1 a), 3.13.3.4.4.1 b), 3.13.3.4.4.1 c)
    function Times_Of (M : Model_T; T : Target_T) return Times4_T is
      (if T.Speed = 0
       then (Be_React => M.Emergency_Zero.React,
@@ -119,6 +119,7 @@ is
    --  only, would be reported dead. Not an expression function, which
    --  the compiler would inline at every call site of the code too, and
    --  not a return of the if expression, which gnatprove cannot inline.
+   --  @req 3.13.9.3.3.3, 3.13.9.3.3.4, 3.13.9.3.3.4.1, 3.13.9.3.3.5
    function Service_Times (C          : Ctx_T;
                            Bs         : Time_T;
                            Bs_Reduced : Time_T;
@@ -135,11 +136,13 @@ is
    end Service_Times;
 
    --  3.13.9.3.6.2, .4: T_indication
+   --  @req 3.13.9.3.6.1, 3.13.9.3.6.2, 3.13.9.3.6.4
    function T_Indication (C : Ctx_T; Bs : Time_T) return Time_T is
      (if C.Feedback then 5_000 + T_Driver
       else Min (Max (Div_Ceil (8 * Bs, 10), 5_000) + T_Driver, Max_Time));
 
    --  3.13.8.3.1 to .3: the EBD of a target
+   --  @req 3.13.8.3.1, 3.13.8.3.2, 3.13.8.3.3
    function EBD_Of (T : Target_T) return Curve_T is
      (case T.Kind is
          when MRSP_Target | LOA_Target =>
@@ -165,9 +168,7 @@ is
                            + (if C.SB_Avail then Times.Bs_React else 0)), 0)
       else C.T_TCO);
 
-   ---------------------------------------------------------------------
    --  The reduced brake build up times of a target (A.3.12)
-   ---------------------------------------------------------------------
 
    type Reduced_T is record
       Be : Time_T := 0;   -- T_be_reduced
@@ -176,6 +177,8 @@ is
 
    --  For the EBD part of a target (the SvL of an EOA target), or with
    --  EOA_Part for its EOA, at the speed V
+   --  @req 3.13.6.2.2.4, 3.13.6.3.2.5, A.3.12.2.2, A.3.12.2.3, A.3.12.2.4
+   --  @req A.3.12.2.5
    function Reduced_Of (Work       : Work_T;
                         C          : Ctx_T;
                         T          : Target_T;
@@ -238,9 +241,7 @@ is
                      else EVC_Build_Up.T_Bs_Reduced (Input)));
    end Reduced_Of;
 
-   ---------------------------------------------------------------------
    --  The limits of a target at a speed
-   ---------------------------------------------------------------------
 
    type Eval_T is record
       L        : Limits_T;   -- the EBD based limits (the SvL of an EOA)
@@ -253,6 +254,7 @@ is
    --  V_Delta0 and the accelerations: the ones of the train, or those of
    --  a location calculated in advance (zero acceleration, the speed
    --  accuracy of SUBSET-041 at V)
+   --  @req 3.13.9.3.2.1
    function Terms_Of (C          : Ctx_T;
                       V          : Speed_T;
                       Times      : Times4_T;
@@ -372,6 +374,7 @@ is
       end if;
    end Feedback_Indication;
 
+   --  @req 3.13.8.5.2, 3.13.8.5.2 a), 3.13.8.5.2 b), 3.13.9.3.6.5
    function Evaluate (Work       : Work_T;
                       C          : Ctx_T;
                       T          : Target_T;
@@ -441,9 +444,7 @@ is
       return R;
    end Evaluate;
 
-   ---------------------------------------------------------------------
    --  The conditions of Tables 8 to 11 for one target
-   ---------------------------------------------------------------------
 
    --  The triggering conditions of the Overspeed, Warning and
    --  Intervention statuses and of the commands. Those of the Indication
@@ -465,6 +466,9 @@ is
       Passed_I_B : Boolean := False;
    end record;
 
+   --  @req 3.13.10.4.10, 3.13.10.4.10.1, 3.13.10.4.10.1 Table 8
+   --  @req 3.13.10.4.10.1 Table 9, 3.13.10.4.10.1 Table 10
+   --  @req 3.13.10.4.10.1 Table 11, 3.13.10.4.13, 3.13.10.4.13.1, 3.13.10.4.14
    function Flags_Of (C       : Ctx_T;
                       T       : Target_T;
                       R       : Eval_T;
@@ -564,9 +568,7 @@ is
       return F;
    end Flags_Of;
 
-   ---------------------------------------------------------------------
    --  The targets
-   ---------------------------------------------------------------------
 
    function Same (A, B : Target_T) return Boolean is
      (A.Kind = B.Kind and then A.Location = B.Location
@@ -580,12 +582,12 @@ is
       + (T.EOA mod 1_000_000_007) * 7
       + T.Speed);
 
-   ---------------------------------------------------------------------
    --  The service brake feedback (A.3.10)
-   ---------------------------------------------------------------------
 
    --  Returns, besides the state, whether the displayed values are to be
    --  locked (A.3.10.4: the feedback reduced T_bs1)
+   --  @req 3.13.2.2.7.2, 3.13.2.2.7.3, A.3.10.2, A.3.10.2 a), A.3.10.2 b)
+   --  @req A.3.10.3, A.3.10.4
    procedure Update_Feedback (F            : in out Feedback_T;
                               S            : Snapshot_T;
                               Inputs       : Inputs_T;
@@ -681,9 +683,7 @@ is
       F.Ratio_Prev := Ratio;
    end Update_Feedback;
 
-   ---------------------------------------------------------------------
    --  Release speed (3.13.9.4)
-   ---------------------------------------------------------------------
 
    --  3.13.9.4.8: the EBD based targets the calculated release speed
    --  looks at: the SvL and the targets between the trip location of the
@@ -751,6 +751,7 @@ is
 
    --  3.13.9.4.8: the most restrictive of the release speeds of the SvL
    --  and of the targets between the trip location and the SvL
+   --  @req 3.13.9.4.8, 3.13.9.4.8.1, 3.13.9.4.8.2
    function Calculated_Release (Work  : Work_T;
                                 C     : Ctx_T;
                                 Alpha : Boolean) return Speed_T
@@ -775,7 +776,7 @@ is
    --  targets between the trip location and the SvL. "The same formulas"
    --  (.7) are those of 3.13.9.3 with their build up times: T_bs1, T_bs2
    --  and T_be reduced (3.13.9.3.2.6, 3.13.9.3.3.3, A.3.12) at V_r, with
-   --  the zero acceleration and V_delta0rs of .6 a), b) (B190)
+   --  the zero acceleration and V_delta0rs of .6 a), b)
    type RSM_Start_T is record
       SBI1     : Loc_T := 0;
       SBI2     : Loc_T := 0;
@@ -783,6 +784,7 @@ is
       From_SBD : Boolean := True;
    end record;
 
+   --  @req 3.13.9.4.6, 3.13.9.4.6 a), 3.13.9.4.6 b), 3.13.9.4.7
    function RSM_Start (Work : Work_T; C : Ctx_T; EOA_T : Target_T;
                        V_R  : Speed_T) return RSM_Start_T
      with Pre => C.Stop > -Max_Cm
@@ -841,9 +843,7 @@ is
       return R;
    end RSM_Start;
 
-   ---------------------------------------------------------------------
    --  Perturbation location (3.13.11)
-   ---------------------------------------------------------------------
 
    --  The locations calculated in advance (3.13.11; 3.13.9.3.5.9 for
    --  the foot of a GUI) are not limited by the train's location
@@ -911,6 +911,10 @@ is
 
    --  3.13.11.5, .6, .7.1: the perturbation location of the SvL, the EOA
    --  (Use_SBD) or the LOA
+   --  @req 3.8.2.2.3, 3.13.11.2, 3.13.11.3, 3.13.11.3 a), 3.13.11.3 b)
+   --  @req 3.13.11.3 c), 3.13.11.4, 3.13.11.5, 3.13.11.6, 3.13.11.7
+   --  @req 3.13.11.7.1, 3.13.11.7.1 a), 3.13.11.7.1 b), 3.13.11.7.1.1
+   --  @req 3.13.11.7.1.2
    procedure Perturbation_Of (Work    : Work_T;
                               C       : Ctx_T;
                               T       : Target_T;
@@ -998,6 +1002,7 @@ is
    --  perturbation location of target T is calculated from is lower
    --  than the speed of the first MRSP element: the EBD of the SvL or
    --  the LOA, the SBD of the EOA, their GUI curves when enabled
+   --  @req 3.13.11.9
    function Below_First_Element (Work : Work_T;
                                  C    : Ctx_T;
                                  T    : Target_T) return Boolean
@@ -1024,9 +1029,7 @@ is
                                                       (Work, C, T, True)))));
    end Below_First_Element;
 
-   ---------------------------------------------------------------------
    --  Added by the procedures of phase E4
-   ---------------------------------------------------------------------
 
    --  5.18.4.2, 5.18.8.3: for each foot of S.Virtual, the SBI (SBI1) and
    --  the Permitted limit of an SBD curve with that foot, at the
@@ -1096,7 +1099,6 @@ is
       end if;
    end Procedure_Targets;
 
-   ---------------------------------------------------------------------
    --  Step and its stages
    --
    --  Step runs the stages below in their order. Each stage reads and
@@ -1106,7 +1108,6 @@ is
    --  after them and the postcondition of Step need; a stage that has
    --  nothing to carry has Global => null, a contract all the same, so
    --  that gnatprove proves it alone instead of inlining it in Step.
-   ---------------------------------------------------------------------
 
    subtype Target_Index_T is Positive range 1 .. Max_Targets;
    subtype Element_Count_T is Natural range 0 .. Max_Speed_Segments;
@@ -1169,9 +1170,7 @@ is
      (A.SB = B.SB and then A.EB = B.EB and then A.EB_For_SB = B.EB_For_SB)
    with Ghost;
 
-   ---------------------------------------------------------------------
    --  No ceiling speed: nothing is supervised
-   ---------------------------------------------------------------------
 
    procedure Deactivate (State : in out State_T)
      with Post => not State.SB and then not State.EB
@@ -1197,11 +1196,9 @@ is
       State.Target_Count := 0;
    end Deactivate;
 
-   ---------------------------------------------------------------------
    --  The train: its locations in ahead coordinates, its speed, and the
    --  measured acceleration (filtered, 1 s), with A_est1 and A_est2 of
    --  3.13.9.3.2.8, .9
-   ---------------------------------------------------------------------
 
    procedure Observe_Train (S      : Snapshot_T;
                             Inputs : Inputs_T;
@@ -1251,9 +1248,7 @@ is
       C.A2 := Min (Max (A_Est, 0), 400);
    end Observe_Train;
 
-   ---------------------------------------------------------------------
    --  The MRSP and V_MRSP (3.13.7.2)
-   ---------------------------------------------------------------------
 
    --  The MRSP in ahead coordinates (Work_T) from the elements of the
    --  snapshot and the mode related speed, and V_MRSP, the lowest speed
@@ -1306,9 +1301,7 @@ is
       end;
    end Ceiling_Speed;
 
-   ---------------------------------------------------------------------
    --  The supervised targets (3.13.8.2)
-   ---------------------------------------------------------------------
 
    --  Work.Targets: a) the MRSP elements, b) the LOA, c) the EOA with the
    --  SvL, d) the end of the SR distance. EOA_Index: the EOA target (0:
@@ -1433,13 +1426,11 @@ is
       return Signature;
    end Signature_Of;
 
-   ---------------------------------------------------------------------
    --  The context of the targets: the service brake command available
    --  (3.13.10.4.9), the guidance curves (3.13.8.5.2), the compensation
    --  of the speed inaccuracy (3.13.9.3.2.1), the conversion model
    --  (A.3.12.1.4), the traction cut-off (A.3.12.2.7, .8) and the service
    --  brake feedback (A.3.10) with the locks of the displayed values
-   ---------------------------------------------------------------------
 
    procedure Configure (S      : Snapshot_T;
                         Inputs : Inputs_T;
@@ -1481,9 +1472,7 @@ is
       end;
    end Configure;
 
-   ---------------------------------------------------------------------
    --  The release speed (3.13.9.4)
-   ---------------------------------------------------------------------
 
    --  The release speed of the EOA target, given (3.13.9.4.3) or
    --  calculated on-board (3.13.9.4.8), not above the MRSP before the
@@ -1565,9 +1554,7 @@ is
                                    and then C.X_Max > Start.Start));
    end Release_Speed;
 
-   ---------------------------------------------------------------------
    --  Every target (3.13.10.4.10 to .15, 3.13.10.3.8, 3.13.10.4.3, .4)
-   ---------------------------------------------------------------------
 
    --  3.13.10.4.2: target K joins the concerned targets; the list full,
    --  the one with the highest P gives way
@@ -1722,9 +1709,7 @@ is
       Indication_D := (if Sv.Ind_Found then Max (Sv.Ind_D, 0) else 0);
    end Survey_Targets;
 
-   ---------------------------------------------------------------------
    --  The type of monitoring (3.13.10.6, Table 16)
-   ---------------------------------------------------------------------
 
    --  With 3.13.10.6.3, .4 (the commands of target speed monitoring that
    --  stop with it) and the initial values of A.3.10.4 on a change
@@ -1814,9 +1799,7 @@ is
       State.Monitoring := Mon;
    end Monitoring_Type;
 
-   ---------------------------------------------------------------------
    --  The commands (Tables 5, 6, 8 to 11, 13, 14; 3.13.10.2.3, .4)
-   ---------------------------------------------------------------------
 
    --  TCO, SB, EB, EB_For_SB: the commands in force (State_T);
    --  EB_Triggered: an emergency brake triggering condition holds; Brake:
@@ -1920,9 +1903,7 @@ is
       Brake := SB or else EB or else EB_For_SB;
    end Set_Commands;
 
-   ---------------------------------------------------------------------
    --  The supervision status (Tables 7, 12, 15)
-   ---------------------------------------------------------------------
 
    --  Last: the status of the last cycle, then the new one (State_T);
    --  no Intervention status without a brake command (see the header)
@@ -2017,10 +1998,8 @@ is
       V_MRSP := C.V_MRSP;
    end Supervision_Status;
 
-   ---------------------------------------------------------------------
    --  The most relevant displayed target (3.13.10.4.2, .5; RSM: the
    --  EOA; 3.13.10.3.9)
-   ---------------------------------------------------------------------
 
    --  3.13.10.4.2: among the concerned targets, step 0: the one of the
    --  lowest P; steps 1 to n: a masked target of a lower speed, as long
@@ -2135,9 +2114,7 @@ is
       end if;
    end Most_Relevant_Target;
 
-   ---------------------------------------------------------------------
    --  What the driver is shown (3.13.10.3 to 3.13.10.5)
-   ---------------------------------------------------------------------
 
    --  V_Perm, V_SBI: the Permitted and SBI speeds of the type of
    --  monitoring (3.13.10.3.1, .2, 3.13.10.4.3, .4, 3.13.10.5.1 to .3);
@@ -2308,7 +2285,6 @@ is
       State.Active_Display := Mon /= CSM;
    end Show_Driver;
 
-   ---------------------------------------------------------------------
    --  The EOA, LOA and SvL passed (3.13.10.2.6 a, 3.13.10.2.7), the
    --  perturbation location (3.13.11)
    --
@@ -2326,8 +2302,8 @@ is
    --  of 3.13.11.8 passed, or at once by 3.13.11.9, of any of the targets
    --  (3.13.11.1: before the train would have to brake to an EOA/SvL or
    --  LOA target). The perturbation location given is the nearest one.
-   ---------------------------------------------------------------------
 
+   --  @req 3.13.1.5
    procedure Passed_Locations (S              : Snapshot_T;
                                Inputs         : Inputs_T;
                                Work           : Work_T;
@@ -2450,9 +2426,7 @@ is
              and then (T.Kind = LOA_Target or else R.E.I - C.X_Est > 0);
    end Proposal_In_Rear;
 
-   ---------------------------------------------------------------------
    --  Step
-   ---------------------------------------------------------------------
 
    procedure Step (S       : Snapshot_T;
                    Inputs  : Inputs_T;

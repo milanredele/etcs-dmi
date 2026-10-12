@@ -89,6 +89,8 @@ with EVC_Ports;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with Interfaces;            use Interfaces;
 
+--  @req 3.13.2.2.6.1, 3.13.2.2.6.4, 3.13.2.2.7.1, 3.13.2.2.7.2, 3.13.2.2.8.1
+--  @req 3.14.1.2, A.3.10.3
 package EVC_Config
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -98,7 +100,7 @@ is
    --  The balise antenna from an end of the engine, cm
    subtype Antenna_Offset_T is Length_T range 0 .. 100_000;
 
-   --  Added by e4/modes: the fixed Train Data of the vehicle, the part
+   --  the fixed Train Data of the vehicle, the part
    --  of the Train Data of 3.18.3.2 that the driver does not enter (DMI
    --  Table 40 has length, brake percentage, maximum speed, categories,
    --  axle load, airtight and loading gauge), installation data
@@ -126,7 +128,7 @@ is
 
    Default_Fixed_Train : constant Fixed_Train_T := (others => <>);
 
-   --  Added by e5/joint: the radio of the vehicle (3.5.2.4: "at least
+   --  the radio of the vehicle (3.5.2.4: "at least
    --  two" communication sessions through GSM-R; decision 2 of
    --  doc/EVC-PLAN.md §13: two are the default, one the degraded case
    --  of an on-board that handles a single session, 3.5.3.5.2.1,
@@ -137,13 +139,13 @@ is
    subtype Radio_Sessions_T is
      Positive range 1 .. EVC_Ports.RTM_Max_Sessions;
 
-   --  Added by e5/session-3: the ETCS identity of the on-board,
+   --  the ETCS identity of the on-board,
    --  NID_ENGINE of the train to track messages (7.5.1.86, 8.4.4.7.1),
    --  24 bits; 0 until a format version of the image carries it (the
    --  tests and the SUBSET-076 bench set it with Set_Radio_For_Test)
    subtype Engine_Id_T is Natural range 0 .. 2**24 - 1;
 
-   --  Added by e5/registration (3.5.6): the radio systems installed
+   --  the radio systems installed
    --  on-board (3.5.6.7, 5.4.3.2 D7), the Radio Network type
    --  (Q_NETWORKTYPE 0 FRMCS, 1 FRMCS+GSM-R, 2 GSM-R, 7.5.1.120.1) used
    --  while none was memorized (3.5.6.4) and the default GSM-R Radio
@@ -154,6 +156,7 @@ is
    type Network_Type_T is (FRMCS, FRMCS_GSMR, GSMR);
    subtype Network_Id_T is Natural range 0 .. 2**24 - 1;
 
+   --  @req 3.5.2.4, 3.5.6.3, 3.5.6.4
    type Radio_Config_T is record
       Sessions     : Radio_Sessions_T := EVC_Ports.RTM_Max_Sessions;
       Engine_Id    : Engine_Id_T := 0;
@@ -168,9 +171,9 @@ is
       Supervision      : Onboard_Config_T;
       Antenna_To_Cab_A : Antenna_Offset_T := 300;
       Antenna_To_Cab_B : Antenna_Offset_T := 1_700;
-      --  added by e4/modes (see Fixed_Train_T)
+      --  (see Fixed_Train_T)
       Train            : Fixed_Train_T;
-      --  added by e5/joint (see Radio_Config_T)
+      --  (see Radio_Config_T)
       Radio            : Radio_Config_T;
    end record;
 
@@ -187,6 +190,7 @@ is
    --  (the decoder checks every field of an image against them before
    --  it builds one), and every special brake has an interface Table 3
    --  allows
+   --  @req 3.13.2.2.6.1 Table 3
    function Valid (C : Config_T) return Boolean is
      (for all B in Special_Brake_T =>
         Table_3 (B, C.Supervision.Special_Brakes (B)));
@@ -226,9 +230,7 @@ is
       Train            => Default_Fixed_Train,
       Radio            => Default_Radio);
 
-   ---------------------------------------------------------------------
    --  The byte image
-   ---------------------------------------------------------------------
 
    Format_Version : constant := 1;
    Image_Length   : constant := 36;
@@ -276,15 +278,13 @@ is
    --  when C is valid)
    function Encode (C : Config_T) return Image_T;
 
-   ---------------------------------------------------------------------
    --  The configuration in use
-   ---------------------------------------------------------------------
 
    function Current return Config_T
      with Global => State,
           Post => Valid (Current'Result);
 
-   --  e5/registration: the radio part of Current, without copying the
+   --  the radio part of Current, without copying the
    --  whole configuration
    function Current_Radio return Radio_Config_T
      with Global => State,

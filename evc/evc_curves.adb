@@ -7,10 +7,6 @@ package body EVC_Curves
   with SPARK_Mode => On
 is
 
-   ------------------
-   -- Deceleration --
-   ------------------
-
    function Deceleration (M      : Model_T;
                           P      : Profile_T;
                           Kind   : Kind_T;
@@ -95,10 +91,6 @@ is
    function Segment_End (P : Profile_T; Seg : Point_Index) return Num is
      (if Seg < P.Count then P.Points (Seg + 1).Start else Max_Cm)
      with Pre => Seg <= P.Count;
-
-   ---------------
-   -- Walk_Back --
-   ---------------
 
    --  Follow the curve rearwards from (X, W) until X reaches X_Goal or W
    --  reaches W_Goal. Done is False when the iterations ran out first.
@@ -191,10 +183,6 @@ is
          end;
       end loop;
    end Walk_Back;
-
-   ------------------
-   -- Walk_Forward --
-   ------------------
 
    --  Follow the curve forwards from (X, W) until X reaches X_Goal or W
    --  falls to W_Goal
@@ -293,10 +281,6 @@ is
       end loop;
    end Walk_Forward;
 
-   --------------
-   -- Speed_At --
-   --------------
-
    function Speed_At (M : Model_T;
                       P : Profile_T;
                       C : Curve_T;
@@ -316,10 +300,6 @@ is
                  else Speed_Of (C.Floor_W));
       end if;
    end Speed_At;
-
-   -----------------
-   -- Location_Of --
-   -----------------
 
    function Location_Of (M    : Model_T;
                          P    : Profile_T;
@@ -345,10 +325,6 @@ is
                  else C.Anchor);
       end if;
    end Location_Of;
-
-   --------------
-   -- Extremes --
-   --------------
 
    function Extremes (M            : Model_T;
                       P            : Profile_T;

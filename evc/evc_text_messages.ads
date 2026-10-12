@@ -51,6 +51,11 @@ with EVC_Origins;
 with EVC_Radio_Info;
 with Interfaces;            use Interfaces;
 
+--  @req 3.6.1.6, 3.6.3.1.3, 3.6.3.1.4, 3.12.3.1.10, 3.12.3.3.1, 3.12.3.4.3.1
+--  @req 3.12.3.4.3.1.1, 3.12.3.4.3.1.2, 3.12.3.4.3.1.3, 3.12.3.4.3.1.4
+--  @req 3.12.3.4.3.2, 3.12.3.4.3.2 a), 3.12.3.4.3.2 b), 3.12.3.4.4, 3.12.3.4.5
+--  @req 3.12.3.4.6, 3.12.3.4.7, 3.12.3.4.7.1, 3.12.3.4.7.2, 3.12.3.5.3
+--  @req 3.14.1.7.5
 package EVC_Text_Messages
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -113,9 +118,7 @@ is
    Event_Rejected     : constant := 4;
    Event_Brake        : constant := 5;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    procedure Clear
      with Global => (Output => State),

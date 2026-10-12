@@ -32,7 +32,7 @@
 --  monitoring and the brake command handling on that snapshot (EVC_SDM,
 --  EVC_Brake_Commands: MSG_SPEED_STATE every cycle, the brake and the
 --  time to Indication in MSG_STATUS, the TIU output, JRU events 20 to
---  22). Phase E4, modes and levels (e4/modes): the driver's requests of
+--  22). Phase E4, modes and levels: the driver's requests of
 --  the DMI port (EVC_Driver_Requests) and the inputs of the train
 --  interface (EVC_Train_Inputs) are taken with the ports; the stored
 --  information filters what it receives by level and mode (4.8) and
@@ -45,16 +45,15 @@
 --  the outputs show the mode, the level, the announcement and the
 --  acknowledgements (4.7, MSG_MODE_LEVEL, MSG_ONBOARD) and record the
 --  events of the levels and the mission (JRU events 40 and 41). Phase
---  E4, the procedures (e4/procedures, integrated with the modes in
---  e4/integration): after the levels and the mission, the procedures of
+--  E4, the procedures: after the levels and the mission, the procedures of
 --  chapter 5 (EVC_Procedures, the text messages of EVC_Text_Messages)
 --  evaluate the conditions of 4.6.3 they own; after the mode machine
 --  they do what entering the mode means for them and give their brake
 --  demand; the outputs carry the acknowledgements and "override" in
 --  MSG_MODE_LEVEL, the system status messages, the text messages, their
 --  brake commands on the TIU, the information for an external function
---  (the second TIU output) and JRU events 23 and 24. Phase E5, the joint
---  (e5/joint): the RTM port carries the messages and connection events
+--  (the second TIU output) and JRU events 23 and 24. Phase E5, the joint:
+--  the RTM port carries the messages and connection events
 --  of the communication sessions (EVC_Ports, EVC_Radio); the ports step
 --  hands them to the session and link half (EVC_Sessions), which passes
 --  the messages it accepts to the authority half (EVC_Radio_Authority);
@@ -111,6 +110,9 @@ use type EVC_Location.Anchor_T;
 use type EVC_Position.Cab_T;
 use type EVC_Position.Status_T;
 
+--  @req 3.5.6.2, 3.12.1.5 a), 3.14.1.8, 3.14.1.10, 3.15.1.3.6, A.3.5.2
+--  @req 4.4.9.1.4, 4.4.11.1.5.1, 4.4.12.1.7, 4.4.18.1.6, 4.5.1.4, 5.4.3.2 A35
+--  @req 5.11.2.2 A035
 package EVC_Core
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -120,9 +122,7 @@ is
    type Cycle_T is mod 2**32;    -- wraps after 13 years at 10 Hz
    type Time_Ms_T is mod 2**64;  -- on-board time, ms since Initialise
 
-   ---------------------------------------------------------------------
    --  State, for the contracts, the tests and the hosts
-   ---------------------------------------------------------------------
 
    function Mode return Mode_T
      with Global => State;
@@ -165,14 +165,13 @@ is
    function Overflowed (Port : Port_T) return Natural
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    --  The power-up of a new on-board: it starts in No Power (SUBSET-026
    --  4.4.4.1.1) and nothing is stored, the store of the data kept over
    --  No Power (EVC_Retained) is empty. The installation configuration
    --  (Configure) stays, as the installation does over a power-up.
+   --  @req 4.4.4.1.2
    procedure Initialise
      with Global => (Output => (State, EVC_Received.Store,
                                 EVC_Retained.State,
@@ -221,6 +220,7 @@ is
    --  movement detection read at the first odometer sample then makes
    --  them valid or leaves them invalid (4.11.1.1, 4.11.1.3). The first
    --  power-up of an on-board is Initialise.
+   --  @req 3.6.4.2.2.1, 3.15.8.2, 4.11.1.1, 4.11.1.3
    procedure Power_Up
      with Global => (Output => (State, EVC_Received.Store,
                                 EVC_Odometry.State,
@@ -253,9 +253,7 @@ is
                   and then Level_Status /= Valid
                   and then EVC_Position.Status /= EVC_Position.Valid;
 
-   ---------------------------------------------------------------------
    --  The installation configuration (EVC_Config): data, not code
-   ---------------------------------------------------------------------
 
    --  A valid image was loaded (else the configuration is
    --  EVC_Config.Default)
@@ -285,6 +283,7 @@ is
    --  an invalid or refused one is counted (EVC_Config.Rejections) and
    --  leaves the previous configuration. Either is recorded on the JRU
    --  at the next cycle (EVC_Ports, event 33).
+   --  @req 3.13.2.2.6.1
    procedure Configure (Bytes : EVC_Bytes.Byte_Array)
      with Global => (Input  => State,
                      In_Out => (EVC_Config.State, EVC_Position.State)),
@@ -315,6 +314,7 @@ is
 
    --  One cycle of the on-board, Dt_Ms milliseconds after the previous
    --  one (any value: 0 and the largest are allowed)
+   --  @req 3.6.1.5, 3.6.4.1.5, 3.6.4.1.5 a), 3.6.4.1.5 b), 4.4.19.1.4.6
    procedure Tick (Dt_Ms : Natural)
      with Global => (In_Out => (State, EVC_Outbox.Queue, EVC_Retained.State,
                                 EVC_Received.Store, EVC_Position.State,
@@ -409,6 +409,7 @@ is
    --  interface, which is fail-safe, applies the emergency brake. The
    --  mode becomes System Failure where 4.6.2 has that transition
    --  (condition [13], 4.4.5.1.1).
+   --  @req 4.4.5.1.1, 4.6.3 Table
    procedure Enter_Failure
      with Global => (In_Out => (State, EVC_Outbox.Queue)),
           Post => Failed
@@ -416,9 +417,7 @@ is
                   and then (if Transition_Exists (Mode'Old, M_SF)
                             then Mode = M_SF else Mode = Mode'Old);
 
-   ---------------------------------------------------------------------
-   --  Speed and distance monitoring (phase E3, e3/supervision)
-   ---------------------------------------------------------------------
+   --  Speed and distance monitoring
 
    --  For the tests of the hosts (evc_test, evc_fuzz), not for an
    --  on-board in service: from the next cycle on and until Initialise,

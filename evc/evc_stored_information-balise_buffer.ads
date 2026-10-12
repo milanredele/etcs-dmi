@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5 (e5/balise-buffer): the balise side of the transition buffer
+--  the balise side of the transition buffer
 --  of 4.8.5. The packets of a balise group judged "stored" by 4.8.3 [1]
 --  (level 1 information read in level 0 or 2 with a transition to level
 --  1 announced, EVC_Acceptance.Stored) are kept here, one set per group
@@ -16,6 +16,8 @@ with ETCS_Catalogue;
 with EVC_Balise_Groups;
 with EVC_Origins;
 
+--  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [1], 4.8.5.1, 4.8.5.4 a)
+--  @req 4.8.5.5, 5.10.1.7
 private package EVC_Stored_Information.Balise_Buffer
   with SPARK_Mode => On,
        Abstract_State => (State with Part_Of => EVC_Stored_Information.State),
@@ -38,7 +40,7 @@ is
       Linked   : Boolean := False;
       Has_41   : Boolean := False;
       Count    : Natural range 0 .. Max_Set_Packets := 0;
-      --  e5/onboard-gaps (B070): the group, the reference of a linking
+      --  the group, the reference of a linking
       --  (packet 5) kept in the set
       Group    : EVC_Balise_Groups.Identity_T := (others => <>);
    end record;
@@ -67,6 +69,7 @@ is
 
    --  4.8.5.1, 4.8.5.3: a new, empty set for a group, the oldest set
    --  deleted when three are kept
+   --  @req 4.8.5.3
    procedure New_Set (I : Set_Info_T)
      with Global => (In_Out => State),
           Pre => I.Count = 0,
@@ -79,7 +82,7 @@ is
      with Global => (In_Out => State),
           Post => Count = Count'Old;
 
-   --  e5/onboard-gaps (B070): the group of the last set
+   --  the group of the last set
    procedure Set_Group (Id : EVC_Balise_Groups.Identity_T)
      with Global => (In_Out => State),
           Post => Count = Count'Old;

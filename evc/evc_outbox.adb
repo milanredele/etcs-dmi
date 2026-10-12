@@ -16,10 +16,6 @@ is
    function Dropped return Natural is (Dropped_Count)
      with Refined_Global => Dropped_Count;
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear
      with Refined_Global => (Output => (Count, Dropped_Count))
    is
@@ -27,10 +23,6 @@ is
       Count := 0;
       Dropped_Count := 0;
    end Clear;
-
-   ---------
-   -- Put --
-   ---------
 
    procedure Put (Port : Port_T; Payload : Byte_Array)
      with Refined_Global => (In_Out => (Data, Count, Dropped_Count))
@@ -52,10 +44,6 @@ is
         Payload;
       Count := Count + Record_Header + Length;
    end Put;
-
-   ----------
-   -- Take --
-   ----------
 
    procedure Take (Buffer : out Byte_Array; Last : out Natural)
      with Refined_Global => (In_Out => (Data, Count))

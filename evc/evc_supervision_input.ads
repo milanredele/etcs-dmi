@@ -22,7 +22,7 @@
 --  Snapshot_T (the train data, national values and configuration 3.13
 --  and 3.14 need beyond the first version of this interface).
 --
---  Conventions the supervision reads into the types (e3/supervision):
+--  Conventions the supervision reads into the types:
 --  a Decel_Curve_T of Count steps gives Decel (K) for Speed (K - 1) <
 --  V <= Speed (K), the first step from 0 and the last one open ended
 --  (3.13.2.2.3.1.3 and .4), Count = 0 is no model; a Kv_Set_T and a
@@ -38,7 +38,7 @@
 --  least one step (a set not received keeps the default of A.3.2), so
 --  the passenger set applies to a train in "Passenger train in P".
 --
---  Added at the integration of the two halves (e3/integrate): the TSR
+--  Added at the integration of the two halves: the TSR
 --  flags of the MRSP, the coverage of the gradient profile and the
 --  default gradient for TSR (3.13.4.1.3), the powerless sections
 --  (3.13.2.3.4.1), and how the stored information fills Extra: the
@@ -56,9 +56,7 @@ package EVC_Supervision_Input
   with SPARK_Mode => On, Pure
 is
 
-   ---------------------------------------------------------------------
    --  Physical quantities
-   ---------------------------------------------------------------------
 
    --  cm/s; 600 km/h is 16_667. V_ variables of 7.5 are km/h in 5 km/h
    --  steps and convert exactly.
@@ -78,10 +76,8 @@ is
    --  of 3.13.6 are given to 0.01 or better; 1000 = 1.00)
    subtype Factor_Milli_T is Natural range 0 .. 2_000;
 
-   ---------------------------------------------------------------------
    --  Profiles along the track: piecewise constant from a start
    --  position, in the sense Ahead, the last segment open ended
-   ---------------------------------------------------------------------
 
    Max_Speed_Segments    : constant := 256;
    Max_Gradient_Segments : constant := 128;
@@ -136,12 +132,10 @@ is
       Default_TSR     : Gradient_T := 0;
    end record;
 
-   ---------------------------------------------------------------------
    --  The movement authority as the supervision sees it (3.8.3, 3.8.4,
    --  3.13.8.1): EOA and SvL positions in the frame, LOA speed, release
    --  speed. Section and overlap timers are handled by the stored
    --  information, which moves EOA / SvL when they elapse.
-   ---------------------------------------------------------------------
 
    type Release_Speed_Kind_T is (None, Fixed, Calculated_On_Board);
 
@@ -158,10 +152,8 @@ is
       Release_Speed : Release_Speed_T := (others => <>);
    end record;
 
-   ---------------------------------------------------------------------
    --  Track conditions that change the braking (3.13.5, 3.12.1,
    --  packet 68) and the adhesion (3.13.5, packet 71, the driver)
-   ---------------------------------------------------------------------
 
    --  Powerless_Section, added at the integration of the two halves:
    --  a powerless section (M_TRACKCOND 3 and 9, 3.13.2.3.4.1), where a
@@ -205,10 +197,9 @@ is
       Driver_Slippery : Boolean := False;
    end record;
 
-   ---------------------------------------------------------------------
    --  Train data for the braking model (3.13.2.2, 3.18.3)
-   ---------------------------------------------------------------------
 
+   --  @req 3.13.2.2.3.1.2
    Max_Curve_Steps : constant := 8;
 
    --  A deceleration as a step function of the speed: below Speed (k)
@@ -229,6 +220,7 @@ is
 
    --  Lambda: brake percentage and brake position (3.13.3); Gamma:
    --  the deceleration curves and build-up times (3.13.2.2.7 ff.)
+   --  @req 3.13.2.2.4.1, 3.13.2.2.4.1 a), 3.13.2.2.4.1 b), 3.13.2.2.4.1 c)
    type Brake_Position_T is
      (Passenger_P, Freight_P, Freight_G);
 
@@ -255,11 +247,9 @@ is
       T_Traction_Cut_Off  : Time_Ms_T := 0;
    end record;
 
-   ---------------------------------------------------------------------
    --  National values used by the supervision (packet 3, defaults of
    --  A.3.2). The stored information keeps the whole packet; this is
    --  the part the supervision reads.
-   ---------------------------------------------------------------------
 
    Max_Kv_Steps : constant := 8;
 
@@ -325,9 +315,7 @@ is
       A_NVP23          : Decel_Mms2_T := 0;
    end record;
 
-   ---------------------------------------------------------------------
    --  The train as the position of phase E2 gives it (3.6.1, 3.6.4)
-   ---------------------------------------------------------------------
 
    type Train_State_T is record
       Position_Valid   : Boolean := False;
@@ -342,13 +330,11 @@ is
       Moving_Backwards : Boolean := False;
    end record;
 
-   ---------------------------------------------------------------------
    --  Added by profiles: the temporary EOA and SvL (3.12.2.5), distinct
    --  from those of the MA, with no release speed: the start of a mode
    --  profile (3.12.4.7) and of a level crossing not protected
    --  (3.12.5.8); the nearest of them. Has_SvL False: no temporary SvL
    --  (3.12.4.7.1), the SvL of the MA holds. SvL >= EOA ahead.
-   ---------------------------------------------------------------------
 
    type Temporary_Target_T is record
       Present : Boolean := False;
@@ -357,8 +343,7 @@ is
       SvL     : Dist_T := 0;
    end record;
 
-   ---------------------------------------------------------------------
-   --  Added by the procedures of phase E4 (e4/procedures): the level
+   --  the level
    --  crossing not protected whose start is the temporary EOA and SvL of
    --  the snapshot (Temporary), for its procedure (5.16): Index, its
    --  place in the store of the stored information
@@ -366,10 +351,8 @@ is
    --  it is required (Q_STOPLX); Stop_From, the start of the stopping
    --  area (3.12.5.7, the estimated item of the LX start less L_STOPLX).
    --  Present False: the temporary EOA is not an LX.
-   ---------------------------------------------------------------------
 
-   ---------------------------------------------------------------------
-   --  Added by the procedures of phase E4 (e4/procedures): the feet of
+   --  the feet of
    --  virtual SBD curves (frame positions) that the supervision
    --  evaluates at the estimated speed for the indication of the track
    --  conditions (5.18.4.2: the SBI limits SBID and SBIG of a non
@@ -378,7 +361,6 @@ is
    --  and what the supervision found for them (Virtual_Limits_T, frame
    --  positions of the SBI and the Permitted limit, Valid False when
    --  nothing was supervised)
-   ---------------------------------------------------------------------
 
    Max_Virtual : constant := 6;
    type Virtual_Foot_T is record
@@ -406,13 +388,11 @@ is
       Stop_From : Dist_T := 0;
    end record;
 
-   ---------------------------------------------------------------------
-   --  Added by supervision (e3/supervision): what 3.13 and 3.14 read
+   --  Added by supervision: what 3.13 and 3.14 read
    --  beyond the types above. The stored information fills them from
    --  the train data, the national values and the configuration of the
    --  on-board; their defaults are the values of A.3.2 or "not fitted",
    --  so a snapshot that leaves them alone is valid.
-   ---------------------------------------------------------------------
 
    --  3.13.2.2.6 (SUBSET-034 2.3.6): the special brakes
    type Special_Brake_T is
@@ -448,7 +428,7 @@ is
       --  depends on the voltage of the catenary, so a powerless section
       --  inhibits it
       Regenerative_Needs_Catenary : Boolean := True;
-      --  3.14.1.2 (added with the configuration, e3/config): the service
+      --  3.14.1.2 (with the configuration): the service
       --  brake failed when, SB_Failure_Time_Ms beyond its build up time
       --  T_bs after the command, the train does not decelerate by at
       --  least SB_Failure_Decel_Mms2 (3.14.1.1 leaves the detection to
@@ -566,9 +546,7 @@ is
       Proposal       : Movement_Authority_T := (others => <>);
    end record;
 
-   ---------------------------------------------------------------------
    --  Everything the supervision reads in one cycle
-   ---------------------------------------------------------------------
 
    --  (every component of the snapshot and of its parts has a default
    --  expression, the arrays of records a named element: an aggregate
@@ -596,11 +574,11 @@ is
       --  above (Supervision_Extra_T below); the defaults are the A.3.2
       --  values or "not fitted"
       Extra        : Supervision_Extra_T := (others => <>);
-      --  added by the procedures of phase E4 (e4/procedures): the level
+      --  the level
       --  crossing not protected whose start is the temporary EOA and SvL
       --  of Temporary (5.16, LX_Approach_T below)
       LX           : LX_Approach_T := (others => <>);
-      --  added by the procedures of phase E4: the feet of the virtual SBD
+      --  the feet of the virtual SBD
       --  curves of the track conditions (5.18.4.2, 5.18.8.3)
       Virtual      : Virtual_Feet_T := (others => No_Virtual_Foot);
    end record;

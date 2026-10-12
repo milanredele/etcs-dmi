@@ -54,9 +54,7 @@ is
    Events         : Event_Array;
    Event_N        : Natural range 0 .. Max_Events := 0;
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Selected (T : Priority_Table_T) return Positive is
    begin
@@ -114,9 +112,7 @@ is
       end if;
    end Put_Event;
 
-   ---------------------------------------------------------------------
    --  Clear, Begin_Cycle
-   ---------------------------------------------------------------------
 
    procedure Clear is
    begin
@@ -141,9 +137,7 @@ is
       Event_N := 0;
    end Begin_Cycle;
 
-   ---------------------------------------------------------------------
    --  Tables
-   ---------------------------------------------------------------------
 
    function Level_Of (M : M_LEVELTR_T) return Level_T is
      (case M is
@@ -207,9 +201,7 @@ is
       return T;
    end Table_Of;
 
-   ---------------------------------------------------------------------
    --  The transition
-   ---------------------------------------------------------------------
 
    --  The acknowledgement of a transition to To in the mode M (5.10.4.1,
    --  5.10.4.1.1)
@@ -265,10 +257,6 @@ is
               C.Now_Ms);
       Applicable := T;
    end Immediate;
-
-   ----------------
-   -- Take_Order --
-   ----------------
 
    procedure Take_Order (P : ETCS_Track_Packets.P41.Packet_T;
                          M : Message_T;
@@ -327,10 +315,6 @@ is
       end;
    end Take_Order;
 
-   ----------------------
-   -- Take_Conditional --
-   ----------------------
-
    procedure Conditional (T : Priority_Table_T; Cause : Natural;
                           C : Context_T)
      with Global => (In_Out => (Current, Current_Status, Switched_N,
@@ -364,10 +348,6 @@ is
          Conditional (T, 3, C);
       end if;
    end Take_Conditional;
-
-   --------------
-   -- Evaluate --
-   --------------
 
    --  X along S has reached or passed the location item L
    function Passed (T : Origin_Table_T; S : Sense_T; X : Dist_T;
@@ -478,10 +458,6 @@ is
       end if;
    end Evaluate;
 
-   ------------------
-   -- Mode_Entered --
-   ------------------
-
    procedure Mode_Entered (From, To : Mode_T) is
       pragma Unreferenced (From);
    begin
@@ -528,10 +504,6 @@ is
       end if;
    end Mode_Entered;
 
-   -------------------
-   -- Delete_Orders --
-   -------------------
-
    procedure Delete_Orders is
    begin
       if Order.Stored then
@@ -567,10 +539,6 @@ is
       Current := L;
       Current_Status := Valid;
    end Set_For_Test;
-
-   ----------
-   -- Mark --
-   ----------
 
    procedure Mark (Marks : in out Origin_Marks_T) is
    begin

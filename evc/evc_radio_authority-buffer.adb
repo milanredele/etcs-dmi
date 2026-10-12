@@ -50,9 +50,10 @@ is
    end Clear;
 
    --  4.8.5.4 c): the messages of a session no longer established go, the
-   --  others keep their order; 4.8.5.4 b) (e5/handover): also those of a
+   --  others keep their order; 4.8.5.4 b): also those of a
    --  session that is neither the Supervising nor the Accepting RBC's
    --  (the RBC transition order deleted or replaced)
+   --  @req 4.8.5.4 b)
    procedure Drop_Ended
      with Global => (In_Out => (Slots, Count), Input => EVC_Radio.State)
    is
@@ -87,7 +88,7 @@ is
          Count := 0;                                       -- a)
       end if;
       Drop_Ended;                                          -- c)
-      --  4.8.5.5; 4.8.5.2 (e5/handover): not while the Accepting RBC
+      --  4.8.5.5; 4.8.5.2: not while the Accepting RBC
       --  does not supervise yet
       Releasing := Level_2 and then Count > 0
                      and then not EVC_Radio.Handover;

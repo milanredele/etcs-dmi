@@ -30,13 +30,14 @@ with EVC_Distances; use EVC_Distances;
 with EVC_Fixed;     use EVC_Fixed;
 with EVC_Profile;   use EVC_Profile;
 
+--  @req 3.13.2.2.3.2.2, 3.13.2.2.12.1, 3.13.9.3.4.1, 3.13.9.3.5.1
+--  @req 3.13.9.3.5.4, 3.13.9.3.5.5, 3.13.9.3.5.6, 3.13.9.3.5.7, 3.13.9.3.5.8
+--  @req 3.13.9.3.6.1, 3.13.9.3.6.2, 3.13.9.3.6.4, A.3.1 Table
 package EVC_Limits
   with SPARK_Mode => On
 is
 
-   ---------------------------------------------------------------------
    --  Fixed values (A.3.1) and SUBSET-041
-   ---------------------------------------------------------------------
 
    T_Warning : constant := 2_000;   -- ms, T_warning
    T_Driver  : constant := 4_000;   -- ms, T_driver
@@ -50,16 +51,16 @@ is
 
    --  3.13.9.2.3, .5, .6: dV_warning, dV_sbi, dV_ebi at the speed V,
    --  cm/s rounded down; dV_warning <= dV_sbi <= dV_ebi
+   --  @req 3.13.9.2.3, 3.13.9.2.5, 3.13.9.2.6
    function Margin (Kind : Margin_Kind_T; V : Speed_T) return Speed_T
      with Post => Margin'Result <= 420;
 
    --  SUBSET-041 5.3.1.2: the accuracy of the speed, cm/s rounded up
+   --  @req 3.11.11.4 7th bullet
    function F41 (V : Speed_T) return Speed_T
      with Post => F41'Result in 56 .. 1_400;
 
-   ---------------------------------------------------------------------
    --  Braking to target limits
-   ---------------------------------------------------------------------
 
    --  What the limits of 3.13.9.3 depend on besides the curves
    type Terms_T is record
@@ -76,6 +77,7 @@ is
    end record;
 
    --  3.13.9.3.2.3: T_traction for a given T_bs2
+   --  @req 3.13.2.2.2.1, 3.13.2.2.8.1
    function T_Traction (Terms : Terms_T; T_Bs2 : Time_T) return Time_T is
      (if Terms.TCO
       then Max (Terms.T_Traction_Cut_Off - (T_Warning + T_Bs2), 0)
@@ -129,6 +131,9 @@ is
    --  when enabled, the speed terms, the location of the max safe front
    --  end (for the displayed speeds) and Stop (a location of a limit
    --  behind Stop may be given as behind Stop only)
+   --  @req 3.13.2.2.3.1.5, 3.13.9.3.2.2, 3.13.9.3.2.2 a), 3.13.9.3.2.2 b)
+   --  @req 3.13.9.3.2.3, 3.13.9.3.2.3 a), 3.13.9.3.2.3 b), 3.13.9.3.2.6
+   --  @req 3.13.9.3.2.8, 3.13.9.3.2.9, 3.13.9.3.2.10, 3.13.9.3.2.12
    function EBD_Limits (M        : Model_T;
                         P        : Profile_T;
                         EBD      : Curve_T;
@@ -148,6 +153,7 @@ is
 
    --  3.13.9.3.3.1, .4.1, .5.1, .5.4, .6.1 for the EOA: the SBD, the GUI
    --  when enabled, the terms and the estimated front end
+   --  @req 3.13.8.4.1, 3.13.9.3.3.1, 3.13.9.3.3.2, 3.13.9.3.3.7, 3.13.9.3.3.8
    function EOA_Limits (M        : Model_T;
                         P        : Profile_T;
                         SBD      : Curve_T;
@@ -166,6 +172,8 @@ is
    --  3.13.9.3.5.9, .10: the location of the Permitted speed limit for
    --  the target speed of an MRSP or LOA target, with T_be_react /
    --  T_traction_max / T_bs_foot as there
+   --  @req 3.13.9.3.5.9, 3.13.9.3.5.9 a), 3.13.9.3.5.9 b), 3.13.9.3.5.9 c)
+   --  @req 3.13.9.3.5.9 d), 3.13.9.3.5.9 e), 3.13.9.3.5.10
    function P_At_Target (M          : Model_T;
                          P          : Profile_T;
                          EBD        : Curve_T;

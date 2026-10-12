@@ -52,10 +52,6 @@ is
      (Div_Floor (A * T, 1_000))
      with Pre => T in 0 .. 240_000;
 
-   ------------------
-   -- T_Be_Reduced --
-   ------------------
-
    function T_Be_Reduced (I : Input_T) return Time_T is
    begin
       --  A.3.12.1.4, .5, and the bounds of the evaluation
@@ -235,10 +231,6 @@ is
          end;
       end;
    end T_Be_Reduced;
-
-   ------------------
-   -- T_Bs_Reduced --
-   ------------------
 
    function T_Bs_Reduced (I : Input_T) return Time_T is
    begin

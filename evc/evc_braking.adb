@@ -6,9 +6,7 @@ package body EVC_Braking
   with SPARK_Mode => On
 is
 
-   ---------------------------------------------------------------------
    --  Step functions
-   ---------------------------------------------------------------------
 
    function Lookup (S : Steps_T; W : Square_T; Rising : Boolean)
      return Lookup_T
@@ -102,6 +100,7 @@ is
 
    --  A deceleration curve of the train data (upper bounds, 3.13.2.2.3.1),
    --  mm/s² to Decel_Unit
+   --  @req 3.13.2.2.3.1.2
    function From_Curve (C : Decel_Curve_T) return Steps_T
      with Post => From_Curve'Result.Count = C.Count
    is
@@ -117,6 +116,7 @@ is
 
    --  Kv_int from a set of packet 3 (lower bounds, 3.13.2.3.7.11), in
    --  millionths
+   --  @req 3.13.2.3.7.13
    function From_Kv (Set : Kv_Set_T) return Steps_T
      with Post => From_Kv'Result.Count = Set.Count
    is
@@ -132,9 +132,7 @@ is
       return R;
    end From_Kv;
 
-   ---------------------------------------------------------------------
    --  Conversion model
-   ---------------------------------------------------------------------
 
    --  3.13.3.2.1 a): V <= 200 km/h, i.e. V * 36 <= 200 * 1000 (cm/s)
    function Conversion_Applicable (T : Train_Data_T) return Boolean is
@@ -326,9 +324,7 @@ is
                            else With_Kto (Basic, Position)));
    end Conversion_Service;
 
-   ---------------------------------------------------------------------
    --  Correction factors
-   ---------------------------------------------------------------------
 
    --  A.3.2: the defaults of Kv_int and Kr_int, millionths
    Default_Kv : constant Value_T := 700_000;
@@ -433,9 +429,7 @@ is
        then From_Kv (NV.Kv_Int_Fresh)
        else Constant_Steps (Default_Kv));
 
-   ---------------------------------------------------------------------
    --  Build
-   ---------------------------------------------------------------------
 
    function Index (Regenerative, Eddy, Magnetic, Ep : Boolean)
      return Combination_T

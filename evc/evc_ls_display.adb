@@ -18,7 +18,7 @@ is
    --  4.4.19.1.4.6: an order of this cycle displayed the LSSMA at once
    Immediate     : Boolean := False;
    Shown_Kmh     : Unsigned_16 := No_LSSMA;
-   --  4.8.3 [2] (B120): a toggle on order of the RBC held for level 2
+   --  4.8.3 [2]: a toggle on order of the RBC held for level 2
    Held          : Boolean := False;
    Held_Delay    : Delay_S_T := 0;
 
@@ -58,7 +58,7 @@ is
       Marker := True;
    end Take_Marker;
 
-   --  4.8.3 [2] (B120)
+   --  4.8.3 [2]
    procedure Hold_Order (Delay_S : Delay_S_T)
      with Refined_Global => (Output => (Held, Held_Delay))
    is
@@ -67,7 +67,7 @@ is
       Held_Delay := Delay_S;
    end Hold_Order;
 
-   --  4.8.5.4, 4.8.5.5, 4.4.19.1.4.2 c) (B120)
+   --  4.8.5.4, 4.8.5.5, 4.4.19.1.4.2 c)
    procedure Release_Held (Take : Boolean; Now_Ms : Unsigned_64) is
    begin
       if Held and then Take then

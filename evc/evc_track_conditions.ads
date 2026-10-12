@@ -85,6 +85,11 @@ with EVC_Profiles;          use EVC_Profiles;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with Interfaces;            use Interfaces;
 
+--  @req 3.6.1.6, 3.6.3.2.3, 3.6.3.2.3 a), 3.6.3.2.3 b), 3.6.3.2.3 c)
+--  @req 3.6.4.2.4, 3.6.4.2.4 Table 2a, 3.7.3.1, 3.12.1.6, A.3.1 Table
+--  @req 5.18.4.2, 5.18.4.2 a), 5.18.4.2 b), 5.18.4.2 c), 5.18.8.3, 5.18.8.3 a)
+--  @req 5.18.8.3 b), 5.18.8.4, 5.18.8.5, 5.18.8.5 1st bullet
+--  @req 5.18.8.5 2nd bullet
 package EVC_Track_Conditions
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -121,7 +126,7 @@ is
           Pre  => I <= Max_Stored,
           Post => BMM_Item'Result = Big_Metal_Masses.List (I);
 
-   --  Added by the procedures of phase E4: the station platforms
+   --  the station platforms
    --  (packet 69; Value: M_PLATFORM * 4 + Q_PLATFORM) and the changes of
    --  allowed current consumption (packet 40; Value: M_CURRENT, at Start)
    function Platforms return Store_T
@@ -129,7 +134,7 @@ is
    function Current_Changes return Store_T
      with Global => State;
 
-   --  3.5.4.4, 3.5.7.5 Table 2 [7], 3.12.1.2.1.5 (e5/onboard-misc, B271):
+   --  3.5.4.4, 3.5.7.5 Table 2 [7], 3.12.1.2.1.5:
    --  the engine overlaps an announced radio hole (M_TRACKCOND 4), its
    --  start and end at their estimated locations. Decision: the engine's
    --  front and rear ends are both taken as the estimated front end, as
@@ -143,6 +148,7 @@ is
 
    --  Overlaps_Radio_Hole at the last Evaluate (the train of that cycle),
    --  for the session half (EVC_Sessions through EVC_Radio.Context_T)
+   --  @req 3.5.4.4
    function Engine_In_Radio_Hole return Boolean
      with Global => State;
 
@@ -153,24 +159,28 @@ is
                   and then Platforms.Count = 0
                   and then Current_Changes.Count = 0;
 
+   --  @req 3.7.3.1 g), 3.7.3.2 c)
    procedure Take_Conditions (P : ETCS_Track_Packets.P68.Packet_T;
                               M : Message_T;
                               T : Origin_Table_T)
      with Global => (In_Out => State);
 
+   --  @req 3.7.3.1 e)
    procedure Take_Traction (P : ETCS_Track_Packets.P39.Packet_T;
                             M : Message_T)
      with Global => (In_Out => State);
 
+   --  @req 3.7.3.1 f)
    procedure Take_Big_Metal_Masses (P : ETCS_Track_Packets.P67.Packet_T;
                                     M : Message_T;
                                     T : Origin_Table_T)
      with Global => (In_Out => State);
 
-   --  Added by the procedures of phase E4: packet 69 (3.7.3.1 o, from
+   --  packet 69 (3.7.3.1 o, from
    --  the start of its first element; 3.7.3.2 e, Q_TRACKINIT 1, the
    --  initial state from D_TRACKINIT) and packet 40 (3.7.3.1 p, all the
    --  stored ones)
+   --  @req 3.7.3.1 o), 3.7.3.1 p), 3.7.3.2, 3.7.3.2 e)
    procedure Take_Platforms (P : ETCS_Track_Packets.P69.Packet_T;
                              M : Message_T;
                              T : Origin_Table_T)
@@ -194,13 +204,15 @@ is
    procedure Mark (Marks : in out Origin_Marks_T)
      with Global => State;
 
-   --  Added by e4/modes, 4.10: entering a mode resets (to the initial
+   --  4.10: entering a mode resets (to the initial
    --  states: nothing stored) the track conditions of its rows: Rest,
    --  every track condition but the sound horn, the non stopping and the
    --  tunnel stopping areas (M_TRACKCOND 0 to 2) and the big metal
    --  masses, with the changes of traction system, the station platforms
-   --  and the changes of allowed current consumption (e4/procedures);
+   --  and the changes of allowed current consumption;
    --  Horn, those three; BMM, the big metal masses
+   --  @req 4.10.1.3, 4.10.1.3 a), 4.10.1.3 b), 4.10.1.3 c), 4.10.1.3 d)
+   --  @req 4.10.1.3 e), 4.10.1.3 Table, 4.10.1.3 Table-footnote [1]
    procedure Reset (Rest, Horn, BMM : Boolean)
      with Global => (In_Out => State),
           Post => (if BMM then Big_Metal_Masses.Count = 0)
@@ -210,9 +222,7 @@ is
                   and then (if Rest and then Horn
                             then Conditions.Count = 0);
 
-   ---------------------------------------------------------------------
    --  Indication and braking
-   ---------------------------------------------------------------------
 
    --  One symbol in B3 to B5: the number of the condition, the symbol
    --  (TC01 .. TC37 as 1 .. 37, the LX as 38: MSG_TRACK_COND)
@@ -244,6 +254,28 @@ is
    --  end passes the end of a condition (for the 5 s of A.3.1)
    --  Phase E4: Last, the virtual limits the supervision found in the
    --  last cycle (5.18.4.2)
+   --  @req 3.12.1.2.1, 3.12.1.2.1.3, 3.12.1.2.1.4, 3.12.1.2.1.5, 3.12.1.5
+   --  @req 3.12.1.5 a), 5.18.2.2, 5.18.2.2.1, 5.18.2.2.2
+   --  @req 5.18.2.2.2 1st bullet, 5.18.2.2.2 2nd bullet, 5.18.2.3
+   --  @req 5.18.2.3 1st bullet, 5.18.2.3 2nd bullet, 5.18.2.5
+   --  @req 5.18.2.5 1st bullet, 5.18.2.5 2nd bullet, 5.18.2.5.1
+   --  @req 5.18.2.5.1 1st bullet, 5.18.2.5.1 2nd bullet, 5.18.2.6, 5.18.3.2
+   --  @req 5.18.3.2.1, 5.18.3.2.2, 5.18.3.2.2 1st bullet
+   --  @req 5.18.3.2.2 2nd bullet, 5.18.3.3, 5.18.3.3 1st bullet
+   --  @req 5.18.3.3 2nd bullet, 5.18.3.4, 5.18.3.4 1st bullet
+   --  @req 5.18.3.4 2nd bullet, 5.18.3.4.1, 5.18.3.4.1 1st bullet
+   --  @req 5.18.3.4.1 2nd bullet, 5.18.3.5, 5.18.4.3, 5.18.4.4
+   --  @req 5.18.4.4 1st bullet, 5.18.4.4 2nd bullet, 5.18.5.2, 5.18.5.3
+   --  @req 5.18.6.2, 5.18.6.2.1, 5.18.6.2.2, 5.18.6.2.2 1st bullet
+   --  @req 5.18.6.2.2 2nd bullet, 5.18.6.3, 5.18.6.3 1st bullet
+   --  @req 5.18.6.3 2nd bullet, 5.18.6.4, 5.18.6.4 1st bullet
+   --  @req 5.18.6.4 2nd bullet, 5.18.6.4.1, 5.18.6.4.1 1st bullet
+   --  @req 5.18.6.4.1 2nd bullet, 5.18.6.5, 5.18.7.3, 5.18.7.3.1
+   --  @req 5.18.7.3.1 1st bullet, 5.18.7.3.1 2nd bullet, 5.18.7.3.2, 5.18.7.4
+   --  @req 5.18.7.4 1st bullet, 5.18.7.4 2nd bullet, 5.18.7.5, 5.18.9.2
+   --  @req 5.18.9.2.1, 5.18.9.3, 5.18.10.2, 5.18.10.3, 5.18.10.4
+   --  @req 5.18.10.4 1st bullet, 5.18.10.4 2nd bullet, 5.18.10.5
+   --  @req 5.18.10.5 1st bullet, 5.18.10.5 2nd bullet, 5.18.10.6
    procedure Evaluate (T      : Origin_Table_T;
                        Train  : Train_Frame_T;
                        Now_Ms : Unsigned_64;
@@ -252,7 +284,7 @@ is
                        Last   : Virtual_Limits_T := (others => <>))
      with Global => (In_Out => State);
 
-   --  Added by the procedures of phase E4: the feet of the virtual SBD
+   --  the feet of the virtual SBD
    --  curves for the next supervision (see the header)
    procedure Virtual_Feet (T     : Origin_Table_T;
                            Train : Train_Frame_T;
@@ -267,16 +299,16 @@ is
       Distance_M : Natural range 0 .. 99_999 := 0;
    end record;
 
+   --  @req 5.18.8.3, 5.18.8.3 a), 5.18.8.3 b), 5.18.8.4, 5.18.8.5
+   --  @req 5.18.8.5 1st bullet, 5.18.8.5 2nd bullet
    procedure Tunnel_Indication (T      : Origin_Table_T;
                                 Train  : Train_Frame_T;
                                 Last   : Virtual_Limits_T;
                                 Tunnel : out Tunnel_T)
      with Global => State;
 
-   ---------------------------------------------------------------------
-   --  Added by the procedures of phase E4: the information for an
+   --  the information for an
    --  external function (3.12.1.5 b, 5.20, SUBSET-034)
-   ---------------------------------------------------------------------
 
    --  The kinds of information, SUBSET-034: 1 powerless section with
    --  pantograph to be lowered (2.4.2), 2 powerless section with main
@@ -325,6 +357,19 @@ is
    end record;
 
    --  5.20.2 to 5.20.6: the items generated now, the nearest first
+   --  @req 3.12.1.5, 3.12.1.5 b), 5.20.1.2, 5.20.2.2, 5.20.2.3
+   --  @req 5.20.2.3 1st bullet, 5.20.2.3 2nd bullet, 5.20.2.4, 5.20.2.5
+   --  @req 5.20.2.8, 5.20.3.2, 5.20.3.3, 5.20.3.3 1st bullet
+   --  @req 5.20.3.3 2nd bullet, 5.20.3.4, 5.20.3.5, 5.20.3.8, 5.20.4.2
+   --  @req 5.20.4.3, 5.20.4.3 1st bullet, 5.20.4.3 2nd bullet, 5.20.4.4
+   --  @req 5.20.4.5, 5.20.4.7, 5.20.5.3, 5.20.5.4, 5.20.5.4 1st bullet
+   --  @req 5.20.5.4 2nd bullet, 5.20.5.5, 5.20.5.6, 5.20.5.8, 5.20.6.2
+   --  @req 5.20.6.3, 5.20.6.3 1st bullet, 5.20.6.3 2nd bullet, 5.20.6.4
+   --  @req 5.20.6.6, 5.20.7.2, 5.20.7.3, 5.20.7.4, 5.20.7.4 1st bullet
+   --  @req 5.20.7.4 2nd bullet, 5.20.7.5, 5.20.7.7, 5.20.8.2, 5.20.8.3
+   --  @req 5.20.8.4, 5.20.8.4 1st bullet, 5.20.8.4 2nd bullet
+   --  @req 5.20.8.4 3rd bullet, 5.20.8.4 4th bullet, 5.20.8.5, 5.20.8.6
+   --  @req 5.20.8.9
    procedure External (T     : Origin_Table_T;
                        Train : Train_Frame_T;
                        Info  : out External_T)
@@ -332,6 +377,7 @@ is
 
    --  3.13.2.3.4: the areas of lost braking along Ahead, frame
    --  positions, the end moved by the train Length
+   --  @req 3.13.2.3.4.1
    procedure Inhibitions (T      : Origin_Table_T;
                           Ahead  : Sense_T;
                           Length : Length_T;

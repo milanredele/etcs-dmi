@@ -5,10 +5,6 @@ package body EVC_Linking
   with SPARK_Mode => On
 is
 
-   ----------
-   -- Find --
-   ----------
-
    function Find (L : Linking_T; Id : Identity_T; From : Positive)
      return Link_Count_T
    is
@@ -20,10 +16,6 @@ is
       end loop;
       return 0;
    end Find;
-
-   -----------------
-   -- From_Packet --
-   -----------------
 
    procedure From_Packet (P      : ETCS_Track_Packets.P5.Packet_T;
                           Sender : Identity_T;
@@ -98,10 +90,6 @@ is
       L.Count := 1 + Natural (P.N_ITER);
       L.Stored := True;
    end From_Packet;
-
-   -------------
-   -- Replace --
-   -------------
 
    procedure Replace (Store : in out Linking_T; New_L : Linking_T)
    is

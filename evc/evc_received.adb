@@ -79,10 +79,6 @@ is
       end if;
    end Count;
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear
      with Refined_Global => (Output => (Telegram, Telegram_Kept, Message,
                                         Message_Kept, Telegram_Counts,
@@ -98,10 +94,6 @@ is
       Telegram_Counts := (others => 0);
       Message_Counts := (others => 0);
    end Clear;
-
-   ----------------------
-   -- Receive_Telegram --
-   ----------------------
 
    procedure Receive_Telegram (Payload : EVC_Bytes.Byte_Array;
                                Status  : out ETCS_Telegram.Status_T)
@@ -121,10 +113,6 @@ is
          Telegram_Kept := True;
       end if;
    end Receive_Telegram;
-
-   ---------------------
-   -- Receive_Message --
-   ---------------------
 
    procedure Receive_Message (Payload : EVC_Bytes.Byte_Array;
                               Status  : out ETCS_Message.Status_T)
@@ -146,10 +134,6 @@ is
       end if;
    end Receive_Message;
 
-   --------------------------
-   -- Open_Telegram_Packet --
-   --------------------------
-
    procedure Open_Telegram_Packet (I : Positive;
                                    R : in out ETCS_Bits.Reader)
      with Refined_Global => Telegram
@@ -157,10 +141,6 @@ is
    begin
       ETCS_Telegram.Open_Packet (Telegram, I, R);
    end Open_Telegram_Packet;
-
-   -------------------------
-   -- Open_Message_Packet --
-   -------------------------
 
    procedure Open_Message_Packet (I : Positive;
                                   R : in out ETCS_Bits.Reader)

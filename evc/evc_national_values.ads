@@ -43,6 +43,7 @@ with EVC_Distances;         use EVC_Distances;
 with EVC_Profiles;          use EVC_Profiles;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 
+--  @req A.3.5.1, A.3.5.1 1st bullet, A.3.5.1 2nd bullet
 package EVC_National_Values
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -155,8 +156,10 @@ is
      with Global => (In_Out => State),
           Post => not Pending;
 
-   --  Added by e4/modes, A.3.4.1.3 column k (the desk closed during the
+   --  A.3.4.1.3 column k (the desk closed during the
    --  start of mission): the set not yet applicable is deleted
+   --  @req A.3.4.1.3, A.3.4.1.3 a), A.3.4.1.3 b), A.3.4.1.3 c), A.3.4.1.3 d)
+   --  @req A.3.4.1.3 Table
    procedure Delete_Pending
      with Global => (In_Out => State),
           Post => not Pending and then Current = Current'Old;

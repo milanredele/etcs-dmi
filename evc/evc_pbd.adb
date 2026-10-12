@@ -9,10 +9,6 @@ package body EVC_PBD
   with SPARK_Mode => On
 is
 
-   ----------------
-   -- Get_Inputs --
-   ----------------
-
    procedure Get_Inputs (S          : Snapshot_T;
                          Active     : Brakes_T;
                          Additional : Boolean;
@@ -29,10 +25,6 @@ is
       I.Antenna := Min (Num (Antenna), Antenna_T'Last);
    end Get_Inputs;
 
-   ---------------
-   -- Inputs_Of --
-   ---------------
-
    function Inputs_Of (S          : Snapshot_T;
                        Active     : Brakes_T;
                        Additional : Boolean;
@@ -43,10 +35,6 @@ is
       Get_Inputs (S, Active, Additional, Antenna, I);
       return I;
    end Inputs_Of;
-
-   ---------------------
-   -- Section_Profile --
-   ---------------------
 
    procedure Section_Profile (I        : Inputs_T;
                               Gradient : Gradient_T;
@@ -67,10 +55,6 @@ is
                        Reduced        => I.Slippery,
                        Inhibited      => (others => False));
    end Section_Profile;
-
-   -----------
-   -- Holds --
-   -----------
 
    function Holds (I        : Inputs_T;
                    P        : Profile_T;
@@ -122,10 +106,6 @@ is
       end case;
    end Holds;
 
-   ------------------
-   -- Unrounded_On --
-   ------------------
-
    function Unrounded_On (I        : Inputs_T;
                           P        : Profile_T;
                           C        : Condition_T;
@@ -157,10 +137,6 @@ is
       return Lo;
    end Unrounded_On;
 
-   ---------------
-   -- Unrounded --
-   ---------------
-
    function Unrounded (I        : Inputs_T;
                        C        : Condition_T;
                        D_PBD    : PBD_Distance_T;
@@ -171,10 +147,6 @@ is
       Section_Profile (I, Gradient, P);
       return Unrounded_On (I, P, C, D_PBD);
    end Unrounded;
-
-   --------------
-   -- Restrict --
-   --------------
 
    procedure Restrict (I        : Inputs_T;
                        D_PBD    : PBD_Distance_T;
@@ -203,10 +175,6 @@ is
       K := Cms_To_Kmh_Floor (U) / 5;
       V := Speed_Cms_T (K * 1_250 / 9);
    end Restrict;
-
-   -----------------
-   -- Restriction --
-   -----------------
 
    function Restriction (I        : Inputs_T;
                          D_PBD    : PBD_Distance_T;

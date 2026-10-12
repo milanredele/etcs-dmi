@@ -44,9 +44,7 @@ is
    subtype Session_T is R.Session_T;
    subtype Time_Ms_T is R.Time_Ms_T;
 
-   ---------------------------------------------------------------------
    --  Fixed values (A.3.1) and the system version (3.17, 7.5.1.79)
-   ---------------------------------------------------------------------
 
    --  "The number of times to try to establish a safe radio connection"
    Max_Attempts : constant := 3;
@@ -69,9 +67,7 @@ is
    --  7.5.1.96: NID_RBC "contact last known RBC" (3.5.3.13)
    Last_Known_RBC  : constant := 16_383;
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    --  What this half keeps of a session (the table is EVC_Radio's)
    type Link_T is record
@@ -144,7 +140,7 @@ is
    Order        : Order_T;
    Pending      : Pending_T;
 
-   --  3.5.3.4 c) (e5/mode-change-session): a mode change to report was
+   --  3.5.3.4 c): a mode change to report was
    --  taken, its session decided by the next Evaluate (Mode_Session_Order)
    Mode_Session : Boolean := False;
    Acks         : Acks_T := (others => (S => 1, T => 0));
@@ -164,7 +160,7 @@ is
    Timer_On     : Flag_Table_T := (others => False);
    Timer_Since  : Time_Table_T := (others => 0);
    Shown        : Session_T := Session_T'First;
-   --  3.5.4.4 (e5/onboard-misc, B271): the engine overlaps an announced
+   --  3.5.4.4: the engine overlaps an announced
    --  radio hole (EVC_Radio.Context_T.Radio_Hole of the last Evaluate)
    In_Hole      : Boolean := False;
 
@@ -173,14 +169,12 @@ is
    type Status_List_T is array (1 .. Max_Status_Events) of Status_Event_T;
    Status_List  : Status_List_T := (others => (others => <>));
    Status_N     : Natural range 0 .. Max_Status_Events := 0;
-   --  e5/error-report: the last message taken was inconsistent, its
+   --  the last message taken was inconsistent, its
    --  M_ERROR (Error_Noted, for JRU record 13)
    Noted        : Boolean := False;
    Noted_Code   : M_ERROR_T := 0;
 
-   ---------------------------------------------------------------------
    --  Helpers
-   ---------------------------------------------------------------------
 
    procedure Count (N : in out Natural)
      with Post => (if N'Old < Natural'Last then N = N'Old + 1 else N = N'Old)
@@ -208,12 +202,11 @@ is
       end if;
    end Show;
 
-   ---------------------------------------------------------------------
    --  The indication of the safe radio connection (3.5.7, Tables 1, 2)
-   ---------------------------------------------------------------------
 
    --  3.5.7.3: a request to set up the safe radio connection of S sent at
    --  Now: the first one of a series starts its "connection status" timer
+   --  @req 3.5.7.3, 3.5.7.3 a), 3.5.7.3 b)
    procedure Ind_Request (S : Session_T; Now : Time_Ms_T)
      with Global => (In_Out => (Requesting, Timer_On, Timer_Since))
    is
@@ -240,6 +233,7 @@ is
    --  stopped; Table 2 [1] (Final_SoM: the final attempt of a start of
    --  mission failed) to "Connection Lost/Set-Up failed", else [3], [5],
    --  [6] to "No Connection"
+   --  @req 3.5.7.4
    procedure Ind_Stopped (S : Session_T; Final_SoM : Boolean)
      with Global => (In_Out => (Ind, Requesting, Timer_On))
    is
@@ -273,6 +267,7 @@ is
    --  radio connection released, the train past the border, where the
    --  Handing Over RBC terminates it); without a supervising RBC, the
    --  session indicated stays until it is over, then the first one in use
+   --  @req 3.5.7.6, 3.5.7.6 a), 3.5.7.6 b)
    procedure Ind_Timer (Now : Time_Ms_T)
      with Global => (Input  => (Timer_Since, R.State),
                      In_Out => (Ind, Timer_On, Shown))
@@ -307,13 +302,12 @@ is
       end if;
    end Ind_Timer;
 
-   ---------------------------------------------------------------------
    --  The steps of a session (3.5)
-   ---------------------------------------------------------------------
 
    --  3.5.3.7 a: set up a session with RBC on the number Radio in the
    --  first session the on-board handles that is free; none free: it
    --  waits until one is (Pending, 3.5.3.4.2, 3.5.3.5.2.1)
+   --  @req 3.5.3.5.2.1, 3.15.1.3.1 a)
    procedure Open (RBC    : R.RBC_Id_T;
                    Radio  : NID_RADIO_T;
                    Capped : Boolean)
@@ -366,7 +360,7 @@ is
       then
          R.Set_Roles (R.No_Session, R.No_Session);
       elsif R.Accepting = R.Session_Ref_T (S) then
-         --  3.15.1 (e5/handover): the Handing Over RBC still supervises
+         --  3.15.1: the Handing Over RBC still supervises
          R.Set_Roles (R.Supervising, R.No_Session);
       end if;
       R.Reset_Session (S);
@@ -375,6 +369,7 @@ is
    --  3.5.5.2 a: terminate the session S. Established: message 156, its
    --  acknowledgement awaited (3.5.5.3.1); being established: aborted
    --  and its safe radio connection released (3.5.3.8)
+   --  @req 3.5.3.8, 3.5.5.2, 3.5.5.2 a)
    procedure Terminate_Session (S : Session_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
@@ -396,6 +391,8 @@ is
    --  RBC. Nothing when one is being established or established with it
    --  (156 not sent); the sessions with other RBCs are terminated; with
    --  a session with it terminating, the new one once it is over
+   --  @req 3.5.3.4.1, 3.5.3.4.1 1st bullet, 3.5.3.4.1 2nd bullet, 3.5.3.4.2
+   --  @req 3.5.3.5.2, 3.5.3.8 e)
    procedure Establish (RBC    : R.RBC_Id_T;
                         Radio  : NID_RADIO_T;
                         Capped : Boolean;
@@ -532,6 +529,7 @@ is
    --  failed (or the connection went down before the system version): a
    --  new request at once; in a start of mission, after the last of
    --  Max_Attempts the establishment is given up (3.5.3.7 a)
+   --  @req 3.5.3.7 a)
    procedure Set_Up_Failed (S : Session_T)
      with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
@@ -618,6 +616,8 @@ is
    --  awaited; none: 154, the driver informed and the session terminated.
    --  Decision (phase 1, no handover yet): the session established
    --  becomes the one of the supervising RBC (3.15.1 is phase 2)
+   --  @req 3.5.3.7 d), 3.5.3.7 d) 1st bullet, 3.5.3.7 d) 2nd bullet, 3.5.4.7
+   --  @req 3.17.3.7
    procedure Take_Version (S : Session_T; V : M_VERSION_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, R.State, Ind, Requesting,
                                 Timer_On, Status_List, Status_N)),
@@ -662,10 +662,11 @@ is
    --  the information is accepted is 4.8, phase 2); one on a session the
    --  on-board does not handle is ignored.
    --  3.5.3.4 a), 3.5.5.1 a): packet 42 of a General message (24) of the
-   --  RBC, an order to establish or terminate a session (e5/session-4:
+   --  RBC, an order to establish or terminate a session (a
    --  message 24 goes to no store of phase E3; 4.8.4 accepts session
    --  management in the modes in which a session exists). The packet 42
    --  of messages 3 and 33 goes the way of their stored information.
+   --  @req 3.5.5.1 a)
    procedure Take_Radio_Order
      with Global => (In_Out => Order, Input => EVC_Received.Store)
    is
@@ -694,7 +695,7 @@ is
       end loop;
    end Take_Radio_Order;
 
-   --  3.15.1.3 (e5/handover): packet 131 of a message of the supervising
+   --  3.15.1.3: packet 131 of a message of the supervising
    --  RBC, the border referred to the LRBG of the message (8.4.2.1);
    --  4.8.2.1 c) exception 2: not from the Accepting RBC (the caller)
    procedure Take_Radio_Transition
@@ -823,7 +824,7 @@ is
             if Kind = Track_M24 then
                Take_Radio_Order;
             end if;
-            --  e5/registration-3: packet 45 filtered by 4.8 (and message
+            --  packet 45 filtered by 4.8 (and message
             --  6 noted for 4.8.4 [1])
             Network.Take_Radio_Order
               (Kind, EVC_Position.Active_Cab /= EVC_Position.No_Cab);
@@ -851,6 +852,8 @@ is
    end Take_Released;
 
    --  The waits of the session S at the on-board time Now
+   --  @req 3.5.3.4 f), 3.5.3.7.3, 3.5.3.7.4, 3.5.3.7.4.1, 3.5.4.2.1
+   --  @req 3.5.4.3 2nd bullet, 3.5.5.3.1, 3.5.5.3.2
    procedure Supervise_Session (S : Session_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, Pending, R.State,
                                 Ind, Requesting, Timer_On)),
@@ -907,7 +910,7 @@ is
    end Supervise_Session;
 
    --  3.5.2.6.1, 3.5.5.1 a): the session management order of the cycle
-   --  3.5.3.4 c), 3.5.3.4.1, 3.5.3.4.2 (e5/mode-change-session): the mode
+   --  3.5.3.4 c), 3.5.3.4.1, 3.5.3.4.2: the mode
    --  change to report of the last cycle, in level 2 with a valid stored
    --  contact, opens the session through the order path, as d) does
    --  (EVC_Level_Sessions.Driver_To_L2). Decisions: no session is
@@ -935,6 +938,8 @@ is
       Mode_Session := False;
    end Mode_Session_Order;
 
+   --  @req 3.5.3.8 c), 3.5.3.13, 3.5.3.13.1, 3.5.3.15, 3.5.5.1 a)
+   --  @req 4.8.4.2 Table-footnote [3]
    procedure Apply_Order (Now : Time_Ms_T; Mode : Mode_T)
      with Global => (In_Out => (Order, Links, Pending, R.State,
                                 Ind, Requesting, Timer_On),
@@ -954,13 +959,13 @@ is
                        Now => Now);
          end if;
       elsif Order.Establish and then Mode in M_SH | M_PS then
-         --  4.8.4 [3] (e5/mode-change-session): in SH and PS the RBC
+         --  4.8.4 [3]: in SH and PS the RBC
          --  contact of an order to establish is stored, no session (a
          --  later mode change to report opens it, 3.5.3.4 c)
          R.Set_Contact ((Known => True, Valid => True,
                          RBC   => Order.RBC, Radio => Order.Radio));
       elsif Order.Establish and then Handover.Ordered (Order.RBC) then
-         --  4.8.3 [14], 3.5.3.5.2.1 (e5/handover): the session with the
+         --  4.8.3 [14], 3.5.3.5.2.1: the session with the
          --  Accepting RBC is the handover's, the others are kept
          null;
       elsif Order.Establish then
@@ -970,7 +975,7 @@ is
                          RBC   => Order.RBC, Radio => Order.Radio));
          Establish (Order.RBC, Order.Radio, Capped => False, Now => Now);
       else
-         --  e5/handover: the session with the RBC of the order when there
+         --  the session with the RBC of the order when there
          --  is one (3.15.1.3.5: the Handing Over RBC's), else all
          declare
             Named : constant Boolean := R.In_Session_With (Order.RBC);
@@ -1004,6 +1009,7 @@ is
    --  is established, in any level (the RBC sends empty messages,
    --  3.16.3.4.7); not while the connection is lost (the session being
    --  maintained, 3.5.4) the supervision goes on
+   --  @req 3.14.1.7, 3.16.3.4.1, 3.16.3.4.3, 3.16.3.4.5 a)
    procedure Supervise_Contact (Now : Time_Ms_T; Standstill : Boolean)
      with Global => (In_Out => (NV, Held, Links, R.State),
                      Input  => EVC_National_Values.State),
@@ -1072,7 +1078,7 @@ is
       end if;
    end Apply_Mission;
 
-   --  3.15.1.3 (e5/handover): the requests of the handover (decision 1
+   --  3.15.1.3: the requests of the handover (decision 1
    --  of EVC_Sessions.Handover: Open only into a free session)
    procedure Apply_Handover (Now : Time_Ms_T; Mode : Mode_T)
      with Global => (In_Out => (Handover.State, Reports.State, Links,
@@ -1111,6 +1117,7 @@ is
    --  3.17.2.8 (EVC_System_Version): the RBC's X operated in level 2
    --  while the session with the supervising RBC is established and its
    --  version known; else the version last operated stays
+   --  @req 3.17.2.8 c)
    procedure Follow_Version
      with Global => (Input  => (R.State, EVC_Levels.State),
                      In_Out => EVC_System_Version.State)
@@ -1128,11 +1135,12 @@ is
       end if;
    end Follow_Version;
 
-   --  e5/registration: the radio networks of the cycle (3.5.6,
+   --  the radio networks of the cycle (3.5.6,
    --  EVC_Sessions.Network). 3.18.4.3.6.1: the driver's new Radio
    --  Network type or GSM-R network terminates the sessions and aborts
    --  the attempts to establish one; 5.4.3.2 A29: the list of networks
    --  is empty, the driver informed
+   --  @req 3.18.4.3.6.1
    procedure Apply_Network (Now : Time_Ms_T)
      with Global => (In_Out => (Network.State, R.State, Links, Pending,
                                 Status_List, Status_N, Ind, Requesting,
@@ -1174,13 +1182,14 @@ is
       Network.Take_Order (Q_Type, NID_MN);
    end Take_Network_Order;
 
-   --  3.5.4.4 (e5/onboard-misc, B271): the engine reaching an announced
+   --  3.5.4.4: the engine reaching an announced
    --  radio hole stops the attempts in progress, Table 2 [3] / [6] (the
    --  requests stopped for another reason than the set-up: "No
    --  Connection", the timer of 3.5.7.4 stopped). Decision: a request
    --  already with Euroradio is not withdrawn; its result is taken (a
    --  set-up kept; a failure makes the request due again, sent once the
    --  engine has left the hole, Produce_Session)
+   --  @req 3.5.4.4
    procedure Stop_Attempts
      with Global => (In_Out => (Ind, Requesting, Timer_On))
    is
@@ -1209,7 +1218,7 @@ is
             Supervise_Session (S, Ctx.Now_Ms);
          end if;
       end loop;
-      --  e5/registration: the radio networks (3.5.6, 3.18.4.3.6)
+      --  the radio networks (3.5.6, 3.18.4.3.6)
       Apply_Network (Ctx.Now_Ms);
       --  3.5.3.4.2, 3.5.3.5.2.1, 3.5.4.3.1: a session waiting for a free
       --  one, or for the end of the one with the same RBC
@@ -1275,9 +1284,7 @@ is
       end if;
    end Mode_Changed;
 
-   ---------------------------------------------------------------------
    --  Produce: the messages (8.6) and the requests of the RTM port
-   ---------------------------------------------------------------------
 
    --  The session messages are short: a writer of Msg_Size bytes (the
    --  longest, 159 with the seven versions of the envelope: 149 bits)
@@ -1346,6 +1353,7 @@ is
    --  loop. Decision: every X.Y of the envelope is listed, as the
    --  SUBSET-076 sequences list them for a 3.x on-board, although
    --  3.17.2.1.1 operates only the highest Y of each X
+   --  @req 6.4.2.2
    procedure Send_159 (S : Session_T; T : T_TRAIN_T)
      with Global => (In_Out => (R.State, R.Queue))
    is
@@ -1371,6 +1379,7 @@ is
      (GNATprove, On, """W"" is set by ""Finish_And_Send"" but not used*");
 
    --  The requests and the session messages of S (156 apart)
+   --  @req 3.5.6.7
    procedure Produce_Session (S : Session_T; T : T_TRAIN_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, R.State, R.Queue, Ind,
                                 Requesting, Timer_On, Timer_Since),
@@ -1384,8 +1393,9 @@ is
          Ind_Released (S);
       end if;
       --  3.5.6.7: no request while the registration conditions do not
-      --  hold; it stays due (e5/registration, decision 5); 3.5.4.4: nor
-      --  while the engine overlaps an announced radio hole, set up again
+      --  hold; it stays due (decision 5 of e5/registration in the plan);
+      --  3.5.4.4: nor while the engine overlaps an announced radio hole,
+      --  set up again
       --  once it has left it
       if L.Request_Due and then Network.Ready and then not In_Hole then
          R.Request_Set_Up (S, R.Info (S).RBC, R.Info (S).Radio, False);

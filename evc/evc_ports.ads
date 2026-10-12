@@ -107,6 +107,18 @@ with EVC_Bytes;
 with EVC_DMI_Port;
 with Interfaces; use Interfaces;
 
+--  @req 3.12.1.5 b), 5.17.2.2 A1, 5.17.2.2 D0, 5.17.2.2 D1, 5.17.2.2 D2
+--  @req 5.17.2.2 D3, 5.17.2.2 D7, 5.17.2.2 D9, 5.17.2.2 S0, 5.20.1.2, 5.20.2.2
+--  @req 5.20.2.3, 5.20.2.3 1st bullet, 5.20.2.3 2nd bullet, 5.20.2.4, 5.20.2.5
+--  @req 5.20.2.8, 5.20.3.2, 5.20.3.3, 5.20.3.3 1st bullet, 5.20.3.3 2nd bullet
+--  @req 5.20.3.4, 5.20.3.5, 5.20.3.8, 5.20.4.2, 5.20.4.3, 5.20.4.3 1st bullet
+--  @req 5.20.4.3 2nd bullet, 5.20.4.4, 5.20.4.5, 5.20.4.7, 5.20.5.3, 5.20.5.4
+--  @req 5.20.5.4 1st bullet, 5.20.5.4 2nd bullet, 5.20.5.5, 5.20.5.6, 5.20.5.8
+--  @req 5.20.6.2, 5.20.6.3, 5.20.6.3 1st bullet, 5.20.6.3 2nd bullet, 5.20.6.4
+--  @req 5.20.6.6, 5.20.7.2, 5.20.7.3, 5.20.7.4, 5.20.7.4 1st bullet
+--  @req 5.20.7.4 2nd bullet, 5.20.7.5, 5.20.7.7, 5.20.8.2, 5.20.8.3, 5.20.8.4
+--  @req 5.20.8.4 1st bullet, 5.20.8.4 2nd bullet, 5.20.8.4 3rd bullet
+--  @req 5.20.8.4 4th bullet, 5.20.8.5, 5.20.8.6, 5.20.8.9
 package EVC_Ports
   with SPARK_Mode => On, Pure
 is
@@ -149,9 +161,7 @@ is
 
    Largest_Payload : constant := RTM_Input_Max_Length;
 
-   ---------------------------------------------------------------------
    --  Shapes
-   ---------------------------------------------------------------------
 
    --  SUBSET-036: a telegram of n_bits user bits, 210 or 830, in
    --  (n_bits + 7) / 8 bytes behind its count (the telegram part of a
@@ -292,6 +302,7 @@ is
                                                      (RTM_Event_T'Last) + 1);
 
    --  An RTM input: a message without a tag, a tagged message or an event
+   --  @req 3.16.3.1.1.2
    function Valid_RTM_Input (Payload : Byte_Array) return Boolean is
      (Payload'Length >= RTM_Min_Length
       and then (if Payload (Payload'First) < RTM_Tag_First
@@ -329,9 +340,7 @@ is
           --  no input is defined on these ports (see above)
           when ATO | JRU => False);
 
-   ---------------------------------------------------------------------
    --  Decoded inputs
-   ---------------------------------------------------------------------
 
    --  One odometer sample. The counters are kept as they came, the
    --  on-board takes their differences (EVC_Odometry).
@@ -393,7 +402,6 @@ is
       Value  => Payload (Payload'First + 1) = 1)
      with Pre => Valid_TIU (Payload);
 
-   ---------------------------------------------------------------------
    --  JRU, phase E3 (profiles): event 32, a change of the stored
    --  information (EVC_Stored_Information). Byte 2 the information: 1
    --  national values, 2 SSP, 3 gradients, 4 axle load speed profile,
@@ -415,13 +423,10 @@ is
    --  the speed restrictions to ensure a permitted braking distance
    --  computed again, an input changed (3.11.11.3; byte 4: the number of
    --  sections).
-   ---------------------------------------------------------------------
 
    JRU_Stored_Information : constant := 32;
 
-   ---------------------------------------------------------------------
    --  Added by supervision (phase E3, SUBSET-026 3.13 and 3.14)
-   ---------------------------------------------------------------------
 
    --  TIU inputs 6 to 12 (SUBSET-034):
    --     6 the direction controller of the active desk (2.5.2): value 0
@@ -505,9 +510,7 @@ is
    JRU_Supervision    : constant := 21;
    JRU_Overrun        : constant := 22;
 
-   ---------------------------------------------------------------------
-   --  Added with the installation configuration (e3/config)
-   ---------------------------------------------------------------------
+   --  Added with the installation configuration
 
    --  JRU event 33, the installation configuration (EVC_Config), recorded
    --  at the first cycle after EVC_Core.Configure: u8 1 the image was
@@ -520,10 +523,7 @@ is
    --  255.
    JRU_Configuration : constant := 33;
 
-   ---------------------------------------------------------------------
-   --  Added by phase E4 (modes and levels, e4/modes; procedures,
-   --  e4/procedures)
-   ---------------------------------------------------------------------
+   --  Modes and levels, procedures
 
    --  JRU event 40, the levels (EVC_Levels: the kinds of byte 2 and the
    --  bytes 3 and 4 are listed there): a level switched, an order stored
@@ -598,9 +598,7 @@ is
      (Payload'Length >= TIU_TC_Header_Length
       and then Payload (Payload'First) = TIU_TC_Tag);
 
-   ---------------------------------------------------------------------
-   --  Added by phase E5 (e5/joint): the RTM port in both directions
-   ---------------------------------------------------------------------
+   --  the RTM port in both directions
 
    --  Euroradio (SUBSET-037, SUBSET-038) is outside the on-board
    --  (doc/EVC-PLAN.md §13, decision 1): the port carries the

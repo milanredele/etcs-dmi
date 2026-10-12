@@ -45,9 +45,7 @@ is
    Now       : Requests_T := None;
    Ignored_N : Natural := 0;
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Selected (A : Action_T) return Boolean is (Now.Selected (A))
      with Refined_Global => Now;
@@ -99,10 +97,6 @@ is
    function Ignored return Natural is (Ignored_N)
      with Refined_Global => Ignored_N;
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear is
    begin
       Latched := None;
@@ -110,19 +104,11 @@ is
       Ignored_N := 0;
    end Clear;
 
-   ----------
-   -- Take --
-   ----------
-
    procedure Take is
    begin
       Now := Latched;
       Latched := None;
    end Take;
-
-   -------------
-   -- Receive --
-   -------------
 
    --  A frame ignored (counted)
    procedure Ignore
@@ -261,7 +247,7 @@ is
                      Distance_M => Get_U16 (Frame, P + 3));
                end if;
             when RBC_Data =>
-               --  e5/session-3: the kind and 22 bytes (dmi_protocol.ads
+               --  the kind and 22 bytes (dmi_protocol.ads
                --  Driver_Data_RBC_Length 23, as the DMI sends it); the
                --  23rd byte of Bytes_23_T stays 0
                OK := N = 23;

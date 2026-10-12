@@ -30,6 +30,7 @@ with EVC_Bytes;
 with EVC_Ports;
 with Interfaces;
 
+--  @req A.3.3.2, 4.8.2.2, 4.8.2.3
 package EVC_Received
   with SPARK_Mode => On,
        Abstract_State => Store,
@@ -104,7 +105,7 @@ is
    function Last_Packet_Count return Natural
      with Global => Store,
           Post => Last_Packet_Count'Result = Last_Message.Count;
-   --  e5/reports-136: the packets of the last message whose NID_PACKET
+   --  the packets of the last message whose NID_PACKET
    --  chapter 7 does not define (the codec skips them by L_PACKET)
    function Last_Unknown_Packets return Natural
      with Global => Store;

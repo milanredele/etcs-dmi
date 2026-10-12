@@ -76,9 +76,7 @@ is
      (Frame (Frame'First + Header_Length))
      with Pre => Valid_Input_Frame (Frame) and then Is_Driver_Action (Frame);
 
-   ---------------------------------------------------------------------
    --  Outputs
-   ---------------------------------------------------------------------
 
    --  The code of a mode on the wire: its position in DMI 13.3 Table 60
    --  (dmi/supplementary_driving_info.ads). Passive Shunting has none:
@@ -117,6 +115,7 @@ is
    --  acknowledgement is asked (5.10), "override active" (5.8.3.7); no
    --  the track ahead free request shown (3.15.5, phase E5); the LSSMA
    --  in km/h, 16#FFFF# not shown (4.4.19.1.4, EVC_LS_Display)
+   --  @req 3.15.5.2 a)
    function Mode_Level_Frame (Mode          : Mode_T;
                               Status        : Level_Status_T;
                               Level         : Level_T;
@@ -154,11 +153,10 @@ is
    --  Bits of Data
    Data_Level_Valid    : constant Bits_T := 4;
    Data_Position_Valid : constant Bits_T := 32;  -- valid, referred to an LRBG
-   --  added by e4/modes
    Data_Driver_ID_Valid  : constant Bits_T := 1;
    Data_Train_Data_Valid : constant Bits_T := 2;
    Data_TRN_Valid        : constant Bits_T := 8;
-   --  added by e5/session-3: the RBC contact information is valid; RBC
+   --  the RBC contact information is valid; RBC
    --  bit0, the Train Data acknowledged by the RBC; Radio bit7, the
    --  contact not "unknown"; Session 0 none, 1 being established, 2
    --  exists; Waiting 2, an answer from the RBC (5.4.3.2 A31)
@@ -168,7 +166,7 @@ is
    Session_Being_Established : constant Byte := 1;
    Session_Exists            : constant Byte := 2;
    Waiting_RBC               : constant Byte := 2;
-   --  5.4.3.2 S4 (e5/registration): the registration to the network
+   --  5.4.3.2 S4: the registration to the network
    Waiting_Registration      : constant Byte := 1;
    --  Waiting 3, the MA or the SR authorisation after 'Start' (DMI Table
    --  50 S7; SUBSET-026 5.4.3.2 S21)
@@ -206,9 +204,7 @@ is
      return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 
-   ---------------------------------------------------------------------
    --  Phase E3 (profiles): the planning and the track conditions
-   ---------------------------------------------------------------------
 
    MSG_TRACK_COND : constant Byte := 16#05#;
    MSG_PLANNING   : constant Byte := 16#06#;
@@ -293,11 +289,9 @@ is
      with Post => Last = Header_Length + Planning_Length (P)
                   and then Frame (1) = MSG_PLANNING;
 
-   ---------------------------------------------------------------------
    --  Added by supervision (phase E3): MSG_SPEED_STATE, the fields of
    --  MSG_STATUS of the speed and distance monitoring and of the brake
    --  command handling, the driver's acknowledgement of a brake release
-   ---------------------------------------------------------------------
 
    MSG_SPEED_STATE    : constant Byte := 16#01#;
    Speed_State_Length : constant := 21;
@@ -372,11 +366,9 @@ is
       and then Get_U16 (Frame, Frame'First + Header_Length + 1)
                  = Ack_Brake_Release);
 
-   ---------------------------------------------------------------------
-   --  Phase E4 (e4/modes, e4/procedures): MSG_SYSTEM_STATUS, the text
+   --  MSG_SYSTEM_STATUS, the text
    --  messages (MSG_TEXT, MSG_TEXT_REMOVE), the BTM alarm reaction
    --  inhibition in MSG_ONBOARD
-   ---------------------------------------------------------------------
 
    --  MSG_SYSTEM_STATUS (dmi_protocol.ads), an event of a system status
    --  message of the catalogue of the DMI's chapter 15: entry u8 (the
@@ -397,6 +389,7 @@ is
    SS_Entering_FS                   : constant := 6;   -- 4.4.9.1.4
    SS_Entering_OS                   : constant := 7;   -- 4.4.12.1.7
    SS_Runaway_Movement              : constant := 9;   -- 3.14.2.4, 3.14.3.2
+   --  @req 5.6.2.2 A220
    SS_SH_Refused                    : constant := 12;  -- 5.6.2.2 A220
    SS_SH_Request_Failed             : constant := 14;  -- 5.6.4.1.2
    SS_Trackside_Not_Compatible      : constant := 15;  -- 3.5.3.7 d)
@@ -461,12 +454,12 @@ is
    --  on-board names a network by its NID_MN (7.5.1.88: six BCD digits,
    --  16#F# filling the end) written as its digits up to the first
    --  nibble that is not one; an identity without a digit is left out
-   --  (e5/registration-2)
    MSG_RADIO_NETWORKS : constant Byte := 16#0D#;
    Networks_Max       : constant := 2;
    Network_Name_Max   : constant := 6;
    type Network_Ids_T is array (1 .. Networks_Max) of Unsigned_32;
 
+   --  @req 3.18.4.3.6.2
    procedure Networks_Frame (Count : Natural;
                              Ids   : Network_Ids_T;
                              Frame : out Frame_Buffer_T;
@@ -477,7 +470,7 @@ is
                              + Networks_Max * (1 + Network_Name_Max)
                   and then Frame (1) = MSG_RADIO_NETWORKS;
 
-   --  MSG_RBC_CONTACT (common/dmi_protocol.ads, B007): the RBC contact
+   --  MSG_RBC_CONTACT (common/dmi_protocol.ads): the RBC contact
    --  information stored on-board, so that the DMI's RBC data window
    --  proposes it (DMI 11.7.1.4): known u8, rbc_id u32 (NID_C above the
    --  14 bits of NID_RBC, DMI 11.3.5.3.1), phone_len u8, 16 bytes of

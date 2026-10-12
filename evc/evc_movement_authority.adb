@@ -65,10 +65,6 @@ is
        Started  => 0))
      with Pre => T <= 1_023;
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear is
    begin
       Current := (others => <>);
@@ -109,10 +105,6 @@ is
       end loop;
       return False;
    end Timer_Expiring;
-
-   -----------------
-   -- From_Packet --
-   -----------------
 
    function From_Packet (P : ETCS_Track_Packets.P12.Packet_T;
                          M : Message_T) return MA_T
@@ -188,10 +180,6 @@ is
       end if;
       return X;
    end From_Packet;
-
-   -----------------
-   -- Take_V_Main --
-   -----------------
 
    procedure Take_V_Main (P : ETCS_Track_Packets.P12.Packet_T) is
    begin
@@ -315,6 +303,7 @@ is
 
    --  3.8.4.1.2: the End Section time-out withdraws the EOA to the train
    --  (A.3.4.1.3 [11]) and deletes beyond its max safe front end [10]
+   --  @req 3.8.4.1.2, 3.8.4.1.2 b)
    procedure End_Section_Over (Train   : Train_Frame_T;
                                Outcome : in out Outcome_T)
      with Global => (In_Out => Current),
@@ -337,6 +326,7 @@ is
 
    --  3.8.4.4.2: the Overlap time-out deletes the overlap and its
    --  release speed; a LOA becomes an EOA
+   --  @req 3.8.4.4.2, 3.8.4.4.2 c)
    procedure Overlap_Over (T       : Origin_Table_T;
                            Outcome : in out Outcome_T)
      with Global => (In_Out => Current),
@@ -350,10 +340,6 @@ is
       Outcome.Overlap_Expired := True;
       Delete_Beyond_SvL (T, Current, Natural'Last, Outcome);
    end Overlap_Over;
-
-   ---------------
-   -- Accept_MA --
-   ---------------
 
    procedure Accept_MA (X          : MA_T;
                         T          : Origin_Table_T;
@@ -445,10 +431,6 @@ is
       end if;
    end Accept_MA;
 
-   -----------------------
-   -- Take_Mode_Profile --
-   -----------------------
-
    procedure Take_Mode_Profile (P : ETCS_Track_Packets.P80.Packet_T;
                                 M : Message_T)
    is
@@ -498,10 +480,6 @@ is
          end;
       end loop;
    end Take_Mode_Profile;
-
-   ---------------
-   -- Supervise --
-   ---------------
 
    procedure Supervise (T       : Origin_Table_T;
                         Train   : Train_Frame_T;
@@ -596,10 +574,6 @@ is
       end if;
    end Supervise;
 
-   -------------------
-   -- Delete_Beyond --
-   -------------------
-
    procedure Delete_Beyond (T          : Origin_Table_T;
                             X          : Dist_T;
                             To         : Location_T;
@@ -627,10 +601,6 @@ is
       end if;
    end Delete_Beyond;
 
-   -------------------
-   -- Delete_Behind --
-   -------------------
-
    procedure Delete_Behind (T : Origin_Table_T; Rear : Dist_T;
                             Keep : Length_T)
    is
@@ -647,10 +617,6 @@ is
          end if;
       end loop;
    end Delete_Behind;
-
-   ----------
-   -- Mark --
-   ----------
 
    procedure Mark (Marks : in out Origin_Marks_T) is
    begin
@@ -678,10 +644,6 @@ is
          end if;
       end loop;
    end Mark;
-
-   ---------------
-   -- Authority --
-   ---------------
 
    procedure Authority_Of (X       : MA_T;
                            T       : Origin_Table_T;
@@ -726,10 +688,6 @@ is
    begin
       Authority_Of (Current, T, V_NVREL, R);
    end Authority;
-
-   -------------------------
-   -- Mode_Profile_Target --
-   -------------------------
 
    procedure Set_Mode_In_Use (Code : Natural) is
    begin
@@ -800,10 +758,6 @@ is
       end if;
    end Mode_Profile_Target;
 
-   ---------------
-   -- Delete_MA --
-   ---------------
-
    procedure Delete_MA is
    begin
       Current := (others => <>);
@@ -813,10 +767,6 @@ is
       Main_Open := True;
       Profiles := (others => No_Mode_Profile);
    end Delete_MA;
-
-   --------------------------
-   -- Mode_Profile_Overlap --
-   --------------------------
 
    function Mode_Profile_Overlap (T         : Origin_Table_T;
                                   Min_Front : Dist_T;

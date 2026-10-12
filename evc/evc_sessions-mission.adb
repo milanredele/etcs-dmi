@@ -38,9 +38,7 @@ is
    Q_Valid   : constant := 1;
    Q_Unknown : constant := 2;
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    --  The steps of the start of mission this half follows: Idle (no
    --  start of mission, or D2 not reached), Decided (D2 passed: S2, S3,
@@ -147,9 +145,7 @@ is
       N_EoM := 0;
    end Clear;
 
-   ---------------------------------------------------------------------
    --  1. The answers of the RBC
-   ---------------------------------------------------------------------
 
    --  D34, D35: the position is kept when it is valid and was not
    --  reported "valid referred to an LRBG" (decision 5), else deleted
@@ -173,7 +169,7 @@ is
          when Track_M8 =>
             --  3.18.3.4.1, decision 3: the second T_TRAIN, field 6 of
             --  8.7.4, is the catalogue's seventh value (NID_LRBG is its
-            --  NID_C and NID_BG; e5/session-4, it read NID_BG)
+            --  NID_C and NID_BG; before, it read NID_BG)
             if TD_Awaited and then S = TD_S
               and then T_TRAIN_T (EVC_Received.Last_Field (7)
                                   and 16#FFFF_FFFF#) = TD_Stamp
@@ -205,9 +201,7 @@ is
       end case;
    end Take_Answer;
 
-   ---------------------------------------------------------------------
    --  5. The start of mission (5.4.3.2)
-   ---------------------------------------------------------------------
 
    --  S3: the RBC contact information the driver gave (DMI 11.3.5,
    --  MSG_DRIVER_DATA kind 5 of dmi_protocol.ads): choice 0 entered (the
@@ -395,9 +389,7 @@ is
       end if;
    end Evaluate_SoM;
 
-   ---------------------------------------------------------------------
    --  5. The Train Data to the RBC (3.18.3.4)
-   ---------------------------------------------------------------------
 
    --  Sent when the supervising session is established with valid Train
    --  Data (not while the start of mission sends its report, decision
@@ -442,9 +434,7 @@ is
       Was_Up := True;
    end Evaluate_TD;
 
-   ---------------------------------------------------------------------
    --  5. The end of mission (5.5.3.1.3, 5.5.3.1.4, 5.5.4.1.1)
-   ---------------------------------------------------------------------
 
    procedure Evaluate_EoM (Ctx : R.Context_T; Req : in out Request_T)
      with Global => (In_Out => (EoM_Awaited, EoM_Due, EoM_Repeats),
@@ -516,9 +506,7 @@ is
       end if;
    end Mode_Changed;
 
-   ---------------------------------------------------------------------
    --  8. The messages (8.6.1 129, 8.6.10 150, 8.6.15 157)
-   ---------------------------------------------------------------------
 
    subtype Writer_T is ETCS_Bits.Writer (128);
 
@@ -684,7 +672,7 @@ is
 
    --  5.5.3.1.3: message 150 with Q_DESK and packet 0 (8.6.10: Q_DESK
    --  1 when a desk is open, 7.5.1.102.2, as the cab status of the
-   --  position knows it; e5/session-4)
+   --  position knows it)
    procedure Send_EoM (S : R.Session_T; Ctx : R.Context_T; T : T_TRAIN_T)
      with Global => (In_Out => (R.State, R.Queue, N_EoM),
                      Output => (EoM_Awaited, EoM_Since),

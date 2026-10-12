@@ -69,9 +69,10 @@ is
    Request_Due     : Boolean := False;
    Request_Sent    : Boolean := False;
    Last_Request_Ms : EVC_Radio.Time_Ms_T := 0;
-   --  3.8.2.4 (e5/accepting-rbc): the one request for the reason "track
+   --  3.8.2.4: the one request for the reason "track
    --  ahead free up to the level 2 transition location" still to be
    --  sent (3.8.2.4.3), with the group the information named (3.8.2.4.2)
+   --  @req 3.8.2.4.3
    TAF_Request     : Boolean := False;
    TAF_Group       : EVC_Balise_Groups.Identity_T := (others => <>);
    --  3.8.2.3.2 b): an SR authorisation (message 2) received
@@ -140,7 +141,6 @@ is
    SR_Auth : SR_Auth_T := (others => <>);
    --  5.4.3.2 E26, 5.11.2.2 S150 a): the SR authorisations taken since
    --  Clear (saturated), the edge EVC_Mission waits for at S21 / S150;
-   --  added by e5/sr-proposal
    SR_Taken : Natural := 0;
    --  4.4.11.1.3 d): the groups passed in the cycle are in the list
    Passed_Listed : Boolean := False;
@@ -311,9 +311,9 @@ is
       Kind : constant ETCS_Message_Catalogue.Message_Kind_T :=
         EVC_Received.Last_Kind;
    begin
-      --  4.8.2.1 c) exception 2 (B121): rejected, not held, at the
+      --  4.8.2.1 c) exception 2: rejected, not held, at the
       --  reception; a request to shorten the MA so rejected is not
-      --  answered (3.8.6.1 c, B011: Judge_Shortening).
+      --  answered (3.8.6.1 c: Judge_Shortening).
       --  The RBC transition order and the LSSMA toggle order of the
       --  exception are packets: rejected at the release (Take_Radio)
       if Accepting
@@ -397,9 +397,7 @@ is
       EVC_Radio_Info.Clear;
    end Clear;
 
-   ---------------------------------------------------------------------
    --  The messages received
-   ---------------------------------------------------------------------
 
    --  The fields of the header of the last message received (8.4.4.6.1)
    function LRBG_Of_Last return EVC_Balise_Groups.Identity_T is
@@ -484,6 +482,7 @@ is
    --  3.8.2.1.2, 3.8.2.1.4: packet 57 of the last message, the new MA
    --  request parameters (taken whatever its Q_DIR: they concern the
    --  train, not a direction)
+   --  @req 3.8.2.1.4
    procedure Take_Parameters
      with Global => (Input => EVC_Received.Store, In_Out => Params)
    is
@@ -516,6 +515,7 @@ is
    --  the one of the item before it, the first the LRBG's of the message
    --  (Q_NEWCOUNTRY 0). Taken whatever its Q_DIR: the groups are those
    --  the train may pass (a decision)
+   --  @req 4.4.11.1.3 c)
    procedure Take_SR_List
      with Global => (Input => EVC_Received.Store, In_Out => SR_Auth)
    is
@@ -561,6 +561,7 @@ is
    --  replaces the stored one, a message without packet 63 deletes it.
    --  A spare Q_SCALE: the message is not taken. That it authorises SR
    --  (3.8.2.3.2 b, the proposal of SR) is SR_Authorised
+   --  @req 4.4.11.1.6.4 b), 4.4.11.1.6.6
    procedure Take_SR_Authorisation
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State),
@@ -633,6 +634,7 @@ is
    --  28: the grant of the cycle ([6], Evaluate) with its list of balise
    --  groups for the SH area (none without packet 49); 27: the driver is
    --  told (A220, DMI system status "SH refused")
+   --  @req 4.8.4.2 Table-footnote [14]
    procedure Take_SH_Answer (Granted : Boolean)
      with Global => (Input  => EVC_Received.Store,
                      In_Out => (SH_Req, Status_Now))
@@ -661,6 +663,7 @@ is
    --  [20] (3.10.2.3), acknowledged with Q_EMERGENCYSTOP 2; 18: the stop
    --  of its NID_EM revoked (3.10.3.3: the others stay), acknowledged by
    --  the general acknowledgement of 3.16.3.5 (M_ACK, the session half)
+   --  @req 3.10.1.3.1, 3.10.3.3
    procedure Take_Emergency (S      : EVC_Radio.Session_T;
                              Kind   : ETCS_Message_Catalogue.Message_Kind_T;
                              Now_Ms : EVC_Radio.Time_Ms_T)
@@ -698,6 +701,7 @@ is
    --  D_TAFDISPLAY or L_TAFDISPLAY: 32767 x 10 m)
    TAF_Cap : constant := 100_000_000;
 
+   --  @req 3.15.5.2, 3.15.5.6
    procedure Take_TAF (S : EVC_Radio.Session_T)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State),
@@ -757,7 +761,7 @@ is
          /= EVC_Radio_Acceptance.Accepted
       then
          Count (Rejected_N);
-         --  3.8.6.1 c) (B011): a request 4.8 rejects is not answered
+         --  3.8.6.1 c): a request 4.8 rejects is not answered
          --  (Judge_Shortening); counted as refused
          if Kind = ETCS_Message_Catalogue.Track_M9 then
             Shortening.Pending := True;
@@ -790,7 +794,7 @@ is
       then
          Take_SH_Answer (Kind = ETCS_Message_Catalogue.Track_M28);
       elsif Kind = ETCS_Message_Catalogue.Track_M3 then
-         --  4.8.2.1 c) exception 2 (B121): the RBC transition order of
+         --  4.8.2.1 c) exception 2: the RBC transition order of
          --  the Accepting RBC's message rejected by Take_Radio
          Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
@@ -820,18 +824,16 @@ is
          --  to the stores through EVC_Radio_Info referred to its LRBG (the
          --  text messages take packets 73 and 74 from there,
          --  EVC_Text_Messages.Take_Radio; the stored information its
-         --  track description, as of message 3); e5/radio-geo-buffer: or
+         --  track description, as of message 3); or
          --  a geographical position (packet 79, EVC_Position.Take_Radio_Geo);
-         --  e4/ls-display: or an LSSMA display toggle order (packet 180,
+         --  or an LSSMA display toggle order (packet 180,
          --  4.4.19.1.4.2 a, EVC_LS_Display through the stored information;
          --  rejected from the Accepting RBC, 4.8.2.1 c exception 2)
          Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       end if;
    end Take_Message;
 
-   ---------------------------------------------------------------------
    --  The cycle
-   ---------------------------------------------------------------------
 
    --  The repetition cycle of the MA requests in ms (3.8.2.1.5): the
    --  RBC's T_CYCRQST, A.3.1 TCYCRQSTD without parameters; 0: none
@@ -848,6 +850,8 @@ is
    --  is repeated every Cycle_Ms (3.8.2.1.5; new parameters apply at
    --  once, 3.8.2.1.4.1). The track ahead free reason (3.8.2.4, 3.8.2.1.1
    --  e) in every level: one request (3.8.2.4.3)
+   --  @req 3.8.2.1.6, 3.8.2.2.3, 3.8.2.3.1, 3.8.2.3.2, 3.8.2.4.1, 3.8.2.5.2
+   --  @req 4.4.11.1.6
    procedure Evaluate_Request (Now_Ms      : EVC_Radio.Time_Ms_T;
                                Facts       : Facts_T;
                                MA_Received : Boolean)
@@ -863,7 +867,7 @@ is
         EVC_Levels.Valid and then EVC_Levels.Level = EVC_Modes.L2;
       --  5.4.3.2 D15, S11: "Start" is offered at S20 (in SB), once the
       --  RBC acknowledged the Train Data (3.18.3.4); before, the driver's
-      --  Start waits for it (decision 8 of e5/session-3). Start in
+      --  Start waits for it (decision 8 of e5/session-3 in the plan). Start in
       --  another mode (SR, PT) is not the start of mission
       Acked  : constant Boolean :=
         Mode_Now /= M_SB
@@ -970,6 +974,7 @@ is
       end loop;
    end Collect_Stops;
 
+   --  @req 3.7.2.3, 3.8.6.1 b)
    procedure Judge_Shortening (Facts : Facts_T)
      with Global => (Input  => (EVC_Levels.State, Emergency),
                      In_Out => (Shortening, EVC_Radio_Info.State)),
@@ -983,12 +988,12 @@ is
       elsif Shortening.Refused or else not Level_2
         --  3.10.2.4: not while an emergency stop is not revoked
         or else Any_Stop
-        --  3.7.2.3 (B210): an MA its SSP and gradients do not cover is
+        --  3.7.2.3: an MA its SSP and gradients do not cover is
         --  not accepted: no decision of 3.8.6.1 b) either (SUBSET-076
         --  4080407_01 steps 111, 113: neither 137 nor 138)
         or else not Facts.Proposal_Covered
       then
-         --  e5/onboard-gaps (B011), 3.8.6.1 c): the RBC is informed of
+         --  3.8.6.1 c): the RBC is informed of
          --  the decision of b), the train front end against the
          --  indication limit of the proposal. Decision: a request
          --  rejected before it (4.8, 4.8.2.1 c) exception 2, 3.10.2.4)
@@ -1042,6 +1047,7 @@ is
    --  told ("SH request failed") and the request ends (the termination
    --  of the session is the session half's: SH_Request_Failed). [6]:
    --  the grant of the cycle at standstill in level 2
+   --  @req 5.6.2.2 A045, 5.6.4.1.1
    procedure Evaluate_SH (Ctx : EVC_Radio.Context_T; Facts : Facts_T;
                           L2  : Boolean)
      with Global => (Input  => (Mode_Now, Exit_Recognised,
@@ -1086,6 +1092,7 @@ is
    --  end (the estimated front end), the driver's acknowledgement while
    --  shown ends it with message 149 owed (Produce); passed its end, it
    --  ends unanswered (3.15.5.5); 4.9.1.3: deleted out of level 2
+   --  @req 3.15.5.2 a), 3.15.5.2 b), 3.15.5.4, 4.9.1.3
    procedure Evaluate_TAF (Facts : Facts_T)
      with Global => (Input  => (EVC_Levels.State, EVC_Odometry.State),
                      In_Out => TAF)
@@ -1241,6 +1248,7 @@ is
    --  for message 136: to be unified at integration), sent in the
    --  session S; OK False when it could not be built. LTR: packet 9 after
    --  packet 0, the level 2 transition location group (3.8.2.4.2)
+   --  @req 3.8.2.4.2
    procedure Send_With_Report (S      : EVC_Radio.Session_T;
                                Kind   : ETCS_Message_Catalogue
                                           .Known_Message_T;
@@ -1290,6 +1298,7 @@ is
    --  granted or 138 rejected with the time stamp of the request (8.6.5,
    --  8.6.6), to the session it came from; kept while the outbox has no
    --  room, dropped when the session is no longer established
+   --  @req 3.8.6.1 c)
    procedure Answer_Shortening (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (Shortening, EVC_Radio.State,
                                 EVC_Radio.Queue),
@@ -1319,6 +1328,7 @@ is
    --  Q_EMERGENCYSTOP), each to the session of its message; kept while
    --  the outbox has no room, dropped when the session is no longer
    --  established
+   --  @req 3.10.1.4
    procedure Acknowledge_Stops (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (Emergency, EVC_Radio.State,
                                 EVC_Radio.Queue),

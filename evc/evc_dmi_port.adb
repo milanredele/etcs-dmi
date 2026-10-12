@@ -5,10 +5,6 @@ package body EVC_DMI_Port
   with SPARK_Mode => On
 is
 
-   ----------------------
-   -- Mode_Level_Frame --
-   ----------------------
-
    function Mode_Level_Frame (Mode          : Mode_T;
                               Status        : Level_Status_T;
                               Level         : Level_T;
@@ -31,10 +27,6 @@ is
       (if TAF then 1 else 0),         -- taf
       Byte (LSSMA and 16#FF#), Byte (Shift_Right (LSSMA, 8)));  -- lssma
 
-   -------------------
-   -- Onboard_Frame --
-   -------------------
-
    function Onboard_Frame (Onboard : Onboard_T) return Onboard_Frame_T is
      (MSG_ONBOARD,
       Onboard_Length, 0, 0, 0,        -- length u32
@@ -49,10 +41,6 @@ is
       Onboard.Radio,
       Onboard.Radio_Wait,
       Onboard.Answer);
-
-   ------------------
-   -- Status_Frame --
-   ------------------
 
    function Status_Frame (Geo : Unsigned_32; Seconds : Unsigned_64)
      return Status_Frame_T
@@ -78,9 +66,7 @@ is
       Byte (Seconds / 60 mod 60),     -- minute
       Byte (Seconds mod 60));         -- second
 
-   ---------------------------------------------------------------------
    --  Phase E3 (profiles)
-   ---------------------------------------------------------------------
 
    --  A u16 at Frame (I .. I + 1), little endian
    procedure Put_U16 (Frame : in out Frame_Buffer_T;
@@ -109,10 +95,6 @@ is
       Frame (5) := 0;
    end Put_Header;
 
-   ----------------------
-   -- Track_Cond_Frame --
-   ----------------------
-
    procedure Track_Cond_Frame (Count  : Natural;
                                List   : Track_Cond_List_T;
                                Frame  : out Frame_Buffer_T;
@@ -129,10 +111,6 @@ is
       end loop;
       Last := Header_Length + 1 + 2 * Count;
    end Track_Cond_Frame;
-
-   --------------------
-   -- Planning_Frame --
-   --------------------
 
    procedure Planning_Frame (P     : Planning_T;
                              Frame : out Frame_Buffer_T;
@@ -182,13 +160,7 @@ is
       Last := Header_Length + Planning_Length (P);
    end Planning_Frame;
 
-   ---------------------------------------------------------------------
    --  Phase E3 (supervision)
-   ---------------------------------------------------------------------
-
-   -----------------------
-   -- Speed_State_Frame --
-   -----------------------
 
    function Speed_State_Frame (S : Speed_State_T) return Speed_State_Frame_T
    is
@@ -210,13 +182,7 @@ is
       S.Status,
       S.MRDT);
 
-   ---------------------------------------------------------------------
    --  Phase E3 (supervision), phase E4 (the procedures)
-   ---------------------------------------------------------------------
-
-   ------------------
-   -- Status_Frame --
-   ------------------
 
    function Status_Frame (Geo         : Unsigned_32;
                           Seconds     : Unsigned_64;
@@ -315,7 +281,7 @@ is
       Last := Pos - 1;
    end Networks_Frame;
 
-   --  B007, DMI 11.7.1.4: the stored RBC contact; nothing stored, every
+   --  DMI 11.7.1.4: the stored RBC contact; nothing stored, every
    --  field 0
    procedure RBC_Contact_Frame (Known  : Boolean;
                                 RBC_Id : Unsigned_32;

@@ -85,6 +85,7 @@ is
 
    --  What the speed restriction depends on besides the section (3.11.11.3:
    --  when one of them changes, the restrictions are computed again)
+   --  @req 3.11.11.3
    type Inputs_T is record
       Model      : Model_T := (others => <>);
       --  3.13.5.4: slippery rail selected by the driver
@@ -111,6 +112,7 @@ is
                          Additional : Boolean;
                          Antenna    : Natural;
                          I          : out Inputs_T);
+   --  @req 3.11.11.4, 3.11.11.4 10th bullet
    function Inputs_Of (S          : Snapshot_T;
                        Active     : Brakes_T;
                        Additional : Boolean;
@@ -119,6 +121,7 @@ is
    --  The profile of a section into P: its gradient everywhere,
    --  compensated for the rotating mass, no reduced adhesion but the
    --  driver's, no inhibition
+   --  @req 3.11.11.4 1st bullet, 3.11.11.4 2nd bullet, 3.11.11.4 3rd bullet
    procedure Section_Profile (I        : Inputs_T;
                               Gradient : Gradient_T;
                               P        : out Profile_T)
@@ -129,6 +132,9 @@ is
    type Condition_T is (Emergency, Service_EBD, Service_SBD);
 
    --  The condition C holds for the speed V in the integers (see above)
+   --  @req 3.11.11.4 4th bullet, 3.11.11.4 5th bullet, 3.11.11.4 6th bullet
+   --  @req 3.11.11.4 7th bullet, 3.11.11.4 8th bullet, 3.11.11.4 9th bullet
+   --  @req 3.11.11.6, 3.11.11.8, 3.11.11.9
    function Holds (I        : Inputs_T;
                    P        : Profile_T;
                    C        : Condition_T;
@@ -164,6 +170,7 @@ is
                        Work     : in out Profile_T;
                        V        : out Speed_Cms_T)
      with Post => V <= Top_Speed;
+   --  @req 3.11.11.7
    function Restriction (I        : Inputs_T;
                          D_PBD    : PBD_Distance_T;
                          Gradient : Gradient_T;

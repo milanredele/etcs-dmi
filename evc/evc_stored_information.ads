@@ -23,7 +23,7 @@
 --    4. national values waiting for their location (3.18.2.3);
 --    5. what lies more than 300 m in rear of the min safe rear end
 --       (A.3.1), and the origins nothing refers to any more;
---  Added by e4/modes: the filters of 4.8 (EVC_Acceptance) in the mode of
+--  the filters of 4.8 (EVC_Acceptance) in the mode of
 --  the Context and the level of EVC_Levels, before an information of a
 --  group is taken; the level transition orders (41, 46) first
 --  (4.8.1.3: the rest of the message is evaluated with them, an
@@ -101,15 +101,20 @@ with EVC_Track_Description;
 with EVC_Train_Data;
 with Interfaces;             use Interfaces;
 
+--  @req 3.5.3.4 b), 3.5.6.1 c), 3.6.3.1.3, 3.6.3.1.4, 3.6.4.2.4
+--  @req 3.6.4.2.4 Table 2a, 3.8.5.1.5, 3.11.1.1, 3.11.11.3, 3.13.2.2.13.1
+--  @req 3.13.2.3.2.1, 3.13.2.3.3.1, 3.13.4.1.3 a), A.3.6.1.1, A.3.6.2.1
+--  @req A.3.6.2.1 1st bullet, A.3.6.2.1 2nd bullet, A.3.6.2.1 3rd bullet
+--  @req A.3.6.2.1 4th bullet, A.3.6.2.1 5th bullet, 4.4.6.1.3, 4.4.19.1.4
+--  @req 4.8.1.3, 4.8.1.3.1, 4.8.1.3.1 1), 4.8.1.3.1 2), 4.8.5.6 a), 4.8.5.6 c)
+--  @req 5.16.1.5
 package EVC_Stored_Information
   with SPARK_Mode => On,
        Abstract_State => State,
        Initializes => State
 is
 
-   ---------------------------------------------------------------------
    --  Juridical recording (EVC_Ports: event 32, stored information)
-   ---------------------------------------------------------------------
 
    JRU_Event : constant := EVC_Ports.JRU_Stored_Information;
 
@@ -151,7 +156,7 @@ is
    Change_Trip       : constant := 11;  -- V_MAIN 0, trip order
    --  a group whose information could not be kept (no origin)
    Change_No_Origin  : constant := 12;
-   --  added by e4/modes: an information rejected by the filters of 4.8
+   --  an information rejected by the filters of 4.8
    --  (byte 2 Info_Group, byte 4 its NID_PACKET)
    Change_Filtered   : constant := 15;
    --  the TSRs deleted with the orientation (3.11.5.10)
@@ -175,9 +180,7 @@ is
      with Global => State,
           Pre => I <= Event_Count;
 
-   ---------------------------------------------------------------------
    --  The snapshot and what it was built from
-   ---------------------------------------------------------------------
 
    --  The configuration of this on-board (3.13.2.2.6 to 3.13.2.2.8,
    --  Snapshot_T.Extra.Config) is the installation's, data loaded by
@@ -210,9 +213,7 @@ is
    function Messages return Natural
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  For the DMI
-   ---------------------------------------------------------------------
 
    --  The indications of the track conditions changed in the cycle:
    --  MSG_TRACK_COND is due (never before the first one)
@@ -230,9 +231,7 @@ is
    function Planning return EVC_DMI_Port.Planning_T
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    --  Power-up: nothing stored (the Train Data: the default train)
    procedure Clear
@@ -250,9 +249,7 @@ is
    procedure Set_Driver_Slippery (Slippery : Boolean)
      with Global => (In_Out => State);
 
-   ---------------------------------------------------------------------
-   --  Added by the procedures of phase E4 (e4/procedures)
-   ---------------------------------------------------------------------
+   --  Added by the procedures of phase E4
 
    --  5.20: the information for an external function of the last
    --  cycle (EVC_Track_Conditions.External), for the train interface
@@ -268,10 +265,8 @@ is
    function PBD_Inputs return EVC_PBD.Inputs_T
      with Global => State;
 
-   ---------------------------------------------------------------------
-   --  Added by e4/modes: the mode of the on-board (4.5.2, 4.8) and what
+   --  the mode of the on-board (4.5.2, 4.8) and what
    --  the conditions of 4.6.3 read of the stored information
-   ---------------------------------------------------------------------
 
    --  What the cycle tells the stored information besides the time: the
    --  mode (the functions of 4.5.2 Figure 1, EVC_Modes; the filter of
@@ -298,6 +293,7 @@ is
    --  4.4.9.1.4: the SSP and the gradients cover the whole length of the
    --  train (from the min safe rear end to the estimated front end, the
    --  Train Data's length), as of the last Evaluate
+   --  @req 4.4.9.1.4, 4.4.12.1.7
    function Train_Covered return Boolean
      with Global => State;
 
@@ -311,10 +307,11 @@ is
    function Stop_Outcome (I : EVC_Radio_Info.Index_T) return Stop_Outcome_T
      with Global => State;
 
+   --  @req 3.8.2.3.2 a)
    function Radio_MA_Accepted return Boolean
      with Global => State;
 
-   --  e5/radio-items (B210), 3.7.2.3, 3.7.3.1 a) b): the SSP and the
+   --  3.7.2.3, 3.7.3.1 a) b): the SSP and the
    --  gradients cover the shortened MA proposed in the last Evaluate
    --  (message 9) up to its SvL; False: the proposal was not taken
    function Proposal_Covered return Boolean
@@ -322,10 +319,11 @@ is
 
    --  Phase E5, 3.8.2.5.1: a timer of the MA deleted track description
    --  in the last Evaluate (A.3.4.1.2 c, d, e, n)
+   --  @req 3.8.2.5.1
    function MA_Timer_Deletion return Boolean
      with Global => State;
 
-   --  e5/accepting-rbc, 3.8.2.4.1: the information "track ahead free up
+   --  3.8.2.4.1: the information "track ahead free up
    --  to the level 2 transition location" (packet 90) was accepted from
    --  a balise group in the last Evaluate; 3.8.2.4.2: the identity of
    --  the level 2 transition location group it gives
@@ -348,6 +346,7 @@ is
    --  Restrict), its content overwritten; the core lends the profile of
    --  the work area of the supervision, which EVC_SDM.Step builds anew
    --  before it reads it (one cycle at a time: the two never overlap)
+   --  @req 3.11.5.10, 3.13.7.2, 4.8.5.4 a)
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
                        Work           : in out EVC_Profile.Profile_T;
@@ -395,12 +394,13 @@ is
                           < A (Current.Train.Ahead,
                                Current.Gradients.Segments (K + 1).Start));
 
-   --  4.8.5.5 "at the same time" (e5/levels): the radio messages put in
+   --  4.8.5.5 "at the same time": the radio messages put in
    --  EVC_Radio_Info after Evaluate in this cycle, from the index First
    --  on (the transition buffer released at the transition to level 2,
    --  after the levels), taken as Evaluate takes the cycle's radio
    --  messages, before the procedures and the mode machine of the cycle.
    --  The snapshot (Current) is not built again: the next cycle's.
+   --  @req 4.8.5.5, 4.8.5.6
    procedure Evaluate_Released (First   : Positive;
                                 Now_Ms  : Unsigned_64;
                                 Context : Mode_Context_T)
@@ -414,14 +414,14 @@ is
                                 EVC_Odometry.State, EVC_Train_Data.State,
                                 EVC_Radio_Info.State));
 
-   --  e5/balise-buffer: the sets of the balise transition buffer (4.8.3
+   --  the sets of the balise transition buffer (4.8.3
    --  [1], 4.8.5.1: level 1 information of groups read in level 0 or 2
    --  with level 1 announced), deleted by Evaluate when level 1 is no
    --  longer announced (4.8.5.4 a)
    function Balise_Buffered return Natural
      with Global => State;
 
-   --  e5/onboard-gaps (B070): the sets read by EVC_Core at the transition
+   --  the sets read by EVC_Core at the transition
    --  to level 1, before Release_Balise_Buffer, for the packets the units
    --  take themselves (5 by EVC_Position, 138 and 139 by EVC_Procedures):
    --  the packets of set S, the kind of its packet P, the group, the

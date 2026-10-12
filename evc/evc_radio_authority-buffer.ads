@@ -11,14 +11,14 @@ with EVC_Ports;
 with EVC_Radio;
 with EVC_Radio_Acceptance; use EVC_Radio_Acceptance;
 
+--  @req 4.8.3.1.1 Table-footnote [1], 4.8.3.1.1 Table-footnote [2], 4.8.5.1
+--  @req 5.10.1.7
 private package EVC_Radio_Authority.Buffer
   with SPARK_Mode => On,
        Abstract_State => (State with Part_Of => EVC_Radio_Authority.State)
 is
 
-   ---------------------------------------------------------------------
    --  The state: the context of the last cycle, the transition buffer
-   ---------------------------------------------------------------------
 
    --  4.8.5.1: three sets of information (messages)
    Buffer_Size : constant := EVC_Radio_Authority.Buffer_Size;
@@ -52,11 +52,12 @@ is
    --  not 2, a message of a session no longer established deleted;
    --  4.8.5.5: the level is 2, the buffer released (in the order of
    --  reception, EVC_Core.Read_Released_Messages of the next cycle)
+   --  @req 4.8.5.2, 4.8.5.4, 4.8.5.4 a), 4.8.5.4 c)
    procedure Update (C : Context_T)
      with Global => (In_Out => State, Input => EVC_Radio.State),
           Post => Context = C;
 
-   --  4.8.5.5 (e5/levels): the level became 2 in this cycle: the buffer
+   --  4.8.5.5: the level became 2 in this cycle: the buffer
    --  released at once, the context of the judgement in level 2
    procedure Release_At_Transition
      with Global => (In_Out => State),
@@ -68,6 +69,7 @@ is
    --  1. 4.8.5.1, 4.8.5.3: the message Data received on the session S,
    --  judged Stored, kept; the oldest one replaced when the buffer is full
    --  Accepting: held from the Accepting RBC (4.8.2.1 c), 4.8.5.2)
+   --  @req 4.8.5.3
    procedure Store (S         : EVC_Radio.Session_T;
                     Data      : EVC_Bytes.Byte_Array;
                     Accepting : Boolean := False)

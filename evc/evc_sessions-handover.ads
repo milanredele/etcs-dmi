@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5 (e5/handover): the RBC/RBC handover of 3.15.1.3 and 5.15.1,
+--  the RBC/RBC handover of 3.15.1.3 and 5.15.1,
 --  the on-board's half. The RBC transition order (packet 131, by balise
 --  or by the supervising RBC) is kept here; the session with the
 --  Accepting RBC is opened beside the Handing Over one (3.15.1.3.1 a),
@@ -43,6 +43,7 @@ with EVC_Distances;
 with EVC_Odometry;
 with EVC_Position;
 
+--  @req 3.6.5.1.4 e), 3.6.5.1.4 k), 3.15.1.3.1, 4.8.5.4 b)
 private package EVC_Sessions.Handover
   with SPARK_Mode => On,
        Abstract_State => (State with Part_Of => EVC_Sessions.State)
@@ -54,6 +55,7 @@ is
    --  3.15.1.3.1, 3.15.1.3.2.2: an RBC transition order: the Accepting
    --  RBC and its number, the border D from the group Ref (D 0: at once,
    --  3.15.1.3.7)
+   --  @req 3.15.1.3.2.2
    procedure Take_Order (RBC   : EVC_Radio.RBC_Id_T;
                          Radio : NID_RADIO_T;
                          Ref   : EVC_Balise_Groups.Identity_T;
@@ -80,11 +82,13 @@ is
      with Global => State;
 
    --  3.15.1.3.8: the contact of the Handing Over RBC retained
+   --  @req 3.15.1.3.8
    function Old_Contact return EVC_Radio.RBC_Contact_T
      with Global => State;
 
    --  4.8.2.1 c), 3.15.1.3.6: a message on S is the Accepting RBC's
    --  while the Handing Over RBC supervises
+   --  @req 3.15.1.3.6, 4.8.2.1 c), 4.8.5.2
    function Held (S : EVC_Radio.Session_T) return Boolean
      with Global => (State, EVC_Radio.State);
 
@@ -105,6 +109,7 @@ is
 
    --  5a. the order applied, the roles, the border, the switch; Mode:
    --  4.8.4 [8] (in PS and SH an order at once stores the contact only)
+   --  @req 3.15.1.3.8 a)
    procedure Evaluate (Now_Ms : EVC_Radio.Time_Ms_T;
                        Mode   : Mode_T;
                        Req    : out Request_T)
@@ -124,6 +129,7 @@ is
 
    --  3.15.1.3.4: the sessions that get the position reports beside the
    --  supervising one; 3.15.1.3.9: a report to the Handing Over RBC
+   --  @req 3.15.1.3.4
    function Also_Reported (S : EVC_Radio.Session_T) return Boolean
      with Global => (State, EVC_Radio.State);
    function Forced_Report (S : EVC_Radio.Session_T) return Boolean
@@ -131,6 +137,7 @@ is
 
    --  3.15.1.3.3: the session that is to get the Train Data (none: 0),
    --  and that it got them
+   --  @req 3.15.1.3.3
    function Train_Data_To return EVC_Radio.Session_Ref_T
      with Global => State;
    procedure Train_Data_Sent

@@ -43,6 +43,7 @@ is
    type Links_T is array (Link_Index_T) of Link_T;
    No_Link : constant Link_T := (others => <>);
 
+   --  @req 3.4.4.4.5
    type Linking_T is record
       Stored   : Boolean := False;
       Ref_Id   : Identity_T := (others => <>);
@@ -84,6 +85,8 @@ is
    --  The chain of packet P, sent by a group of country NID_C, running
    --  along Sense. OK is False when the packet cannot be used (Q_SCALE
    --  or Q_LINKREACTION spare).
+   --  @req 3.6.3.2.3, 3.6.3.2.3 a), 3.6.3.2.3 b), 3.6.3.2.3 c), 3.6.3.2.6
+   --  @req 3.6.3.2.6 a), 3.6.3.2.6 b), 3.6.3.2.6 c)
    procedure From_Packet (P      : ETCS_Track_Packets.P5.Packet_T;
                           Sender : Identity_T;
                           Sense  : Sense_T;
@@ -107,6 +110,7 @@ is
    --  of one packet) the new linking alone too: the part in rear only
    --  serves the relocation of information referred to the groups behind
    --  (3.6.4.2.5), the new part is the one the train needs ahead.
+   --  @req 3.7.3.1
    procedure Replace (Store : in out Linking_T; New_L : Linking_T)
      with Post => (if New_L.Stored then Store.Stored);
 

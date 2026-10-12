@@ -90,9 +90,7 @@ is
    Pending   : Pending_Array;
    Pending_N : Natural range 0 .. Max_Pending := 0;
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Output_Count return Natural is (Output_N)
      with Refined_Global => Output_N;
@@ -128,9 +126,7 @@ is
    function Event (I : Positive) return Event_T is (Events (I))
      with Refined_Global => (Input => Events, Proof_In => Event_N);
 
-   ---------------------------------------------------------------------
    --  Helpers
-   ---------------------------------------------------------------------
 
    procedure Record_Event (Kind : Natural; M : Message_T)
      with Global => (In_Out => (Events, Event_N))
@@ -196,9 +192,7 @@ is
       Messages (I) := (others => <>);
    end Remove;
 
-   ---------------------------------------------------------------------
    --  Reception
-   ---------------------------------------------------------------------
 
    --  How long ago message Id was received: the identifiers are given in
    --  the order of reception (1 .. 16#7FFF#, then 1 again; the slots are
@@ -531,9 +525,7 @@ is
       end loop;
    end Take_Radio;
 
-   ---------------------------------------------------------------------
    --  Clear, Evaluate, Mode_Changed
-   ---------------------------------------------------------------------
 
    procedure Clear is
    begin

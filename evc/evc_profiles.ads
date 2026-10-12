@@ -41,13 +41,12 @@ with EVC_Location;  use EVC_Location;
 with EVC_Origins;
 with Interfaces;    use Interfaces;
 
+--  @req 3.6.4.2.4, 3.6.4.2.4 Table 2a, 3.7.3.1
 package EVC_Profiles
   with SPARK_Mode => On
 is
 
-   ---------------------------------------------------------------------
    --  Locations
-   ---------------------------------------------------------------------
 
    type Location_T is record
       Origin : EVC_Origins.Count_T := 0;
@@ -94,10 +93,8 @@ is
        then (Origin => 0, Offset => Advance (L.Offset, S, D))
        else (Origin => L.Origin, Offset => Sum (L.Offset, D)));
 
-   ---------------------------------------------------------------------
    --  The train in the frame (EVC_Position against the SOLR, which
    --  every stored location is referred to)
-   ---------------------------------------------------------------------
 
    type Train_Frame_T is record
       --  the position is valid and referred to a SOLR
@@ -144,10 +141,8 @@ is
    --  X along S: the coordinate that grows in the sense S
    function A (S : Sense_T; X : Dist_T) return Dist_T renames Along;
 
-   ---------------------------------------------------------------------
    --  Stored elements: what a store keeps of a group message, with the
    --  message it came with (the order of evaluation, 3.8.5.1.5)
-   ---------------------------------------------------------------------
 
    --  Speeds (cm/s) and gradients (per mille) both fit
    subtype Value_T is Integer range -30_000 .. 30_000;
@@ -240,9 +235,7 @@ is
 
    procedure Mark (L : Location_T; Marks : in out Origin_Marks_T);
 
-   ---------------------------------------------------------------------
    --  Elements and envelopes
-   ---------------------------------------------------------------------
 
    --  The rear end of the axis: the first step starts there
    Axis_Start : constant Dist_T := -Max_Cm;
@@ -331,6 +324,8 @@ is
    --  Ceiling; at most Capacity steps
    --  An element below the Floor, which no caller gives (speeds are not
    --  negative, gradients not below -255), is first raised to it.
+   --  @req 3.6.4.2.6, 3.6.4.2.6 1st bullet, 3.6.4.2.6 2nd bullet
+   --  @req 3.6.4.2.6 3rd bullet, 3.7.3.1.1, 3.11.5.4
    procedure Envelope (E        : in out Elements_T;
                        Default  : Value_T;
                        Floor    : Value_T;

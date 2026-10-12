@@ -124,6 +124,7 @@ is
       Last_X              : Dist_T := 0;
    end record;
 
+   --  @req 3.4.2.2.1.1, 3.4.2.4.1
    function Geometry (P : Passage_T) return Geometry_T
      with Pre => P.Count >= 1;
 

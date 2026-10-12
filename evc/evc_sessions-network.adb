@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5 (e5/registration): the radio networks of 3.5.6 (the
+--  the radio networks of 3.5.6 (the
 --  specification says which clauses and decisions).
 
 with ETCS_Bits;
@@ -105,6 +105,7 @@ is
 
    --  3.5.6.1, 3.5.6.5 a): order the registration of each mobile the
    --  on-board handles (All_Of) or of those not registered
+   --  @req 3.5.6.5 a)
    procedure Order (All_Of : Boolean)
      with Global => (In_Out => Due, Input => (Reg, Systems, R.State))
    is
@@ -122,6 +123,7 @@ is
 
    --  3.18.4.3.6.3, 5.4.3.2 S3: the RBC contact, if not "unknown", is
    --  set to "invalid"
+   --  @req 3.18.4.3.6.3
    procedure Invalidate_Contact
      with Global => (In_Out => R.State)
    is
@@ -265,6 +267,7 @@ is
    --  3.5.6.1 a), 3.5.6.3, 3.5.6.4: at the first cycle after the
    --  power-up, the defaults of the configuration where nothing was
    --  memorized, and the registration ordered (decision 3)
+   --  @req 3.5.6.1 a), 3.5.6.3, 3.5.6.4
    procedure Power_Up
      with Global => (In_Out => (R.State, Due),
                      Output => (Systems, Def_MN),
@@ -287,6 +290,8 @@ is
 
    --  3.18.4.3.6, 5.4.3.2 S3 / S5: the driver's Radio Network type,
    --  GSM-R network and mission with only one radio system
+   --  @req 3.5.6.1 b), 3.18.4.3.6, 3.18.4.3.6.1 a), 3.18.4.3.6.1 b)
+   --  @req 3.18.4.3.6.3 a), 3.18.4.3.6.3 b), 5.4.3.2 A29
    procedure Driver_Entries (Stop, Failed : in out Boolean)
      with Global => (In_Out => (R.State, Due, One_Radio, Awaiting),
                      Output => List_Now,
@@ -339,7 +344,7 @@ is
       end if;
    end Driver_Entries;
 
-   --  5.4.3.2 S4 (e5/registration-2), Radio Network type GSM-R or
+   --  5.4.3.2 S4, Radio Network type GSM-R or
    --  GSM-R the only system: E6, a mobile registered, ends the watch
    --  (-> A31); E7, the time of A.3.1 since the latest order elapsed
    --  without it: A42, the driver informed ("GSM-R network registration
@@ -351,6 +356,7 @@ is
    --  of the start of mission (In_SoM): outside it the watch goes on
    --  silently, so that a start of mission reaching S4 after the time
    --  fails at once (E7 counts from the latest order)
+   --  @req 5.4.3.2 A42, 5.4.3.2 S4
    procedure Supervise_Wait (Now    : R.Time_Ms_T;
                              In_SoM : Boolean;
                              Failed : in out Boolean)

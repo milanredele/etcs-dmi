@@ -20,9 +20,7 @@ is
    function Pending_At return Location_T is (Waiting_At)
      with Refined_Global => Waiting_At;
 
-   ---------------------------------------------------------------------
    --  Conversions
-   ---------------------------------------------------------------------
 
    --  A speed of 5 km/h steps (the spare codes above 120 as 120)
    function Speed (Code : Natural) return Speed_Cms_T is
@@ -62,10 +60,6 @@ is
          when 0 .. 4 => Metres (25 * Natural (Code)),
          when 5      => Metres (150),
          when others => Metres (100 * (Natural (Code) - 4)));
-
-   -----------------
-   -- From_Packet --
-   -----------------
 
    function From_Packet (P : ETCS_Track_Packets.P3.Packet_T) return Set_T
    is
@@ -215,10 +209,6 @@ is
       return S;
    end From_Packet;
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear is
    begin
       In_Use := Default_Set;
@@ -226,10 +216,6 @@ is
       Has_Waiting := False;
       Waiting_At := (others => <>);
    end Clear;
-
-   -------------
-   -- Receive --
-   -------------
 
    procedure Receive (P           : ETCS_Track_Packets.P3.Packet_T;
                       Immediate   : Boolean;
@@ -248,10 +234,6 @@ is
       end if;
    end Receive;
 
-   -------------------
-   -- Apply_Pending --
-   -------------------
-
    procedure Apply_Pending is
    begin
       if Has_Waiting then
@@ -260,18 +242,10 @@ is
       Has_Waiting := False;
    end Apply_Pending;
 
-   --------------------
-   -- Delete_Pending --
-   --------------------
-
    procedure Delete_Pending is
    begin
       Has_Waiting := False;
    end Delete_Pending;
-
-   -------------------
-   -- Check_Country --
-   -------------------
 
    procedure Check_Country (NID_C : NID_C_T; Reverted : out Boolean) is
    begin

@@ -5,10 +5,6 @@ package body EVC_Balise_Groups
   with SPARK_Mode => On
 is
 
-   -----------
-   -- Start --
-   -----------
-
    procedure Start (P : out Passage_T;
                     T : ETCS_Telegram.Telegram_T;
                     R : Reading_T)
@@ -31,10 +27,6 @@ is
       end loop;
    end Start;
 
-   ---------
-   -- Add --
-   ---------
-
    procedure Add (P : in out Passage_T;
                   T : ETCS_Telegram.Telegram_T;
                   R : Reading_T)
@@ -44,10 +36,6 @@ is
       P.Readings (P.Count) := R;
       P.Telegrams (P.Count) := T;
    end Add;
-
-   --------------
-   -- Geometry --
-   --------------
 
    function Geometry (P : Passage_T) return Geometry_T is
       G      : Geometry_T;

@@ -43,13 +43,14 @@ with EVC_Supervision_Input; use EVC_Supervision_Input;
 
 use type EVC_Distances.Cm_T;
 
+--  @req 3.13.2.2.4.1, 3.13.2.2.4.1 a), 3.13.2.2.4.1 b), 3.13.2.2.4.1 c)
+--  @req 3.13.2.2.11.1, 3.13.2.2.12.1, 3.13.2.3.4.1, 3.13.5.1, 3.13.6.4.3
+--  @req 3.13.6.4.4, A.3.1 Table, A.3.9.6
 package EVC_Braking
   with SPARK_Mode => On
 is
 
-   ---------------------------------------------------------------------
    --  Step functions of the speed (3.13.2.2.3.1.3, Figure 30)
-   ---------------------------------------------------------------------
 
    Max_Steps : constant := 16;
 
@@ -71,6 +72,7 @@ is
    end record;
    type Step_Array is array (1 .. Max_Steps) of Step_T;
    subtype Step_Count_T is Natural range 0 .. Max_Steps;
+   --  @req 3.13.2.2.3.1.1, 3.13.2.2.3.1.4, 3.13.2.2.3.1.6
    type Steps_T is record
       Count : Step_Count_T := 0;
       Steps : Step_Array := (others => (0, 0));
@@ -106,11 +108,10 @@ is
    function Value_At (S : Steps_T; V : Speed_T) return Value_T is
      (Lookup (S, V * V, False).Value);
 
-   ---------------------------------------------------------------------
    --  The conversion model (3.13.3, A.3.7 to A.3.9)
-   ---------------------------------------------------------------------
 
    --  3.13.3.2.1: the validity limits of the conversion models
+   --  @req 3.13.3.2.1, 3.13.3.2.1 a), 3.13.3.2.1 b), 3.13.3.2.1 c), 3.13.3.2.2
    function Conversion_Applicable (T : Train_Data_T) return Boolean;
 
    subtype Lambda_T is Natural range 0 .. 250;
@@ -118,12 +119,15 @@ is
    --  A.3.7: A_basic (V) for the brake percentage Lambda_O (A.3.7.1: the
    --  percentage itself for the emergency brake, at most 135 for the
    --  service brake)
+   --  @req 3.13.3.3.1.1, 3.13.3.3.2.1, 3.13.3.3.3.1, A.3.7.1, A.3.7.2, A.3.7.3
+   --  @req A.3.7.4, A.3.7.5, A.3.7.6, A.3.7.6 Table
    function Basic_Deceleration (Lambda_O : Lambda_T) return Steps_T;
 
    --  V_lim of A.3.7.3, cm/s rounded down (the exact value lies below
    --  the next integer)
    function V_Lim (Lambda_O : Lambda_T) return Speed_T;
 
+   --  @req 3.13.2.2.3.2.2
    type Times_T is record
       React    : Time_T := 0;   -- T_brake_react
       Build_Up : Time_T := 0;   -- T_brake_build_up, the equivalent one
@@ -132,18 +136,20 @@ is
    --  A.3.8, A.3.9: the emergency and service brake times of the
    --  conversion model for a train of Length cm, for targets at zero
    --  speed (T_brake_*_cm0) or not (T_brake_*_cmt)
+   --  @req 3.13.3.4.1.1, 3.13.3.4.2.1, 3.13.3.4.3.1, 3.13.3.4.4.1
+   --  @req 3.13.3.4.4.1 a), 3.13.3.4.4.1 b), 3.13.3.4.4.1 c), A.3.8.1, A.3.8.2
+   --  @req A.3.8.3, A.3.8.4, A.3.8.5, A.3.8.6
    function Conversion_Emergency (Position  : Brake_Position_T;
                                   Length    : Num;
                                   Zero_Speed : Boolean) return Times_T
      with Pre => Length in 0 .. 150_000;
+   --  @req A.3.9.1, A.3.9.2, A.3.9.3, A.3.9.4, A.3.9.5, A.3.9.8
    function Conversion_Service (Position  : Brake_Position_T;
                                 Length    : Num;
                                 Zero_Speed : Boolean) return Times_T
      with Pre => Length in 0 .. 150_000;
 
-   ---------------------------------------------------------------------
    --  Correction factors of the conversion model (3.13.2.3.7, 3.13.6.2.1)
-   ---------------------------------------------------------------------
 
    --  3.13.2.3.7.12: Kr_int (Length) of a set as packet 3 gives it (a
    --  step holds above its Length, the first from 0), in millionths; the
@@ -163,13 +169,12 @@ is
                     Position : Brake_Position_T;
                     A_Ebmax  : Value_T) return Steps_T;
 
-   ---------------------------------------------------------------------
    --  The model
-   ---------------------------------------------------------------------
 
    type Curve_Set_T is array (Brake_Combination_T) of Steps_T;
    type Brakes_T is array (Special_Brake_T) of Boolean;
 
+   --  @req 3.13.2.2.3.2.5
    type Model_T is record
       --  a model of the emergency brake exists (3.13.2.2.1.3): the
       --  conversion model applies or braking models were given
@@ -212,6 +217,15 @@ is
    --  Active: the status of the special brakes on the train interface
    --  (SUBSET-034 2.3.6); Additional: the additional brake status
    --  (2.3.7)
+   --  @req 3.13.2.2.1.3, 3.13.2.2.3.1.7, 3.13.2.2.3.1.9, 3.13.2.2.3.1.9 a)
+   --  @req 3.13.2.2.3.1.9 b), 3.13.2.2.3.1.10, 3.13.2.2.3.2.8, 3.13.2.2.6.1
+   --  @req 3.13.2.2.6.1 Table 3, 3.13.2.2.6.2, 3.13.2.2.6.2 Table 4
+   --  @req 3.13.2.2.6.3, 3.13.2.2.6.4, 3.13.2.2.6.6, 3.13.2.2.9.1.1
+   --  @req 3.13.2.2.9.1.3, 3.13.2.2.9.1.5, 3.13.2.2.10.1, 3.13.5.2
+   --  @req 3.13.6.2.1.1, 3.13.6.2.1.3, 3.13.6.2.1.4, 3.13.6.2.1.6
+   --  @req 3.13.6.2.1.6 a), 3.13.6.2.1.6 b), 3.13.6.2.1.7, 3.13.6.2.1.8
+   --  @req 3.13.6.2.1.8.1, 3.13.6.2.1.8.2, 3.13.6.2.2.1, 3.13.6.2.2.3
+   --  @req 3.13.6.3.2.4
    procedure Build (S          : Snapshot_T;
                     Active     : Brakes_T;
                     Additional : Boolean;
@@ -224,6 +238,7 @@ is
    --  emergency brake (3 bits) or to the service brake (2 bits) where
    --  the inhibitions of Inhibited are in force (3.13.5.1, 3.13.6.2.1.5,
    --  3.13.6.3.1.4)
+   --  @req 3.13.6.2.1.5
    function Emergency_Combination (M : Model_T; Inhibited : Inhibitions_T)
      return Brake_Combination_T
    is ((if M.Emergency_Brakes (Regenerative)

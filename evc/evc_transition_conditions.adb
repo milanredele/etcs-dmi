@@ -1,7 +1,7 @@
 --  ETCS on-board (EVC)
 --  Phase E4: every condition answers False until the unit that owns it
 --  implements it (doc/EVC-PLAN.md §10). The conditions are grouped by
---  their owner: the modes and levels half ("e4/modes": EVC_Driver_Requests
+--  their owner: the modes and levels half (EVC_Driver_Requests
 --  and EVC_Train_Inputs, EVC_Levels, EVC_Mission and the stored
 --  information, EVC_Odometry), the procedures half (EVC_Procedures, which
 --  computes its conditions once per cycle, EVC_Procedures.Evaluate, and
@@ -17,11 +17,9 @@ package body EVC_Transition_Conditions
   with SPARK_Mode => On
 is
 
-   ---------------------------------------------------------------------
    --  The groups of conditions (4.6.3)
-   ---------------------------------------------------------------------
 
-   --  e4/modes: the driver's requests (EVC_Driver_Requests) and the
+   --  the driver's requests (EVC_Driver_Requests) and the
    --  inputs of the train interface (EVC_Train_Inputs, SUBSET-034): the
    --  isolation (4.4.3), the desks, sleeping (4.4.16), passive shunting
    --  (4.4.20), non leading (4.4.15)
@@ -30,7 +28,7 @@ is
        Train_Interface_Condition_T in C_1 | C_2 | C_3 | C_14 | C_26 | C_27
                                      | C_46 | C_47;
 
-   --  e4/modes: the level and its transitions (EVC_Levels, 5.10), with
+   --  the level and its transitions (EVC_Levels, 5.10), with
    --  the MA of the stored information and the Train Data where the
    --  condition names them, the override of EVC_Procedures (5.8) for
    --  [44] and [45]
@@ -39,7 +37,7 @@ is
        Level_Condition_T in C_21 | C_25 | C_32 | C_44 | C_45 | C_56 | C_77
                            | C_78 | C_79;
 
-   --  e4/modes: the start of mission (EVC_Mission, 5.4.3.2: the modes
+   --  the start of mission (EVC_Mission, 5.4.3.2: the modes
    --  proposed to the driver and acknowledged) and the level 1 MA with
    --  valid Train Data ([10])
    subtype Mission_Condition_T is Condition_Id_T
@@ -63,9 +61,9 @@ is
    --    [30] the desks closed, passive shunting not permitted
    --    [34] an On Sight area at a level transition (5.9.4)
    --    [37] "override" selected (5.8.2.1)
-   --    [39] e4/modes; the trip is EVC_Procedures' (its reason)
+   --    [39] the trip is EVC_Procedures' (its reason)
    --    [40] an On Sight area overlapped, the furthest (5.9)
-   --    [42] e4/modes (the SR distance of EVC_Mission); the trip is
+   --    [42] (the SR distance of EVC_Mission); the trip is
    --         EVC_Procedures' (its reason, the override)
    --    [43] the former EOA passed without override (5.8)
    --    [49] "stop if in shunting", no override (4.4.8.1.1 c)
@@ -79,7 +77,7 @@ is
    --    [63] the trip acknowledged, standstill, level NTC, Train Data
    --    [65] a telegram of a system version not supported, level 1, 2
    --    [66] a linked group passed in the unexpected direction
-   --    [67] e4/modes; the trip is EVC_Procedures' (its reason, the
+   --    [67] the trip is EVC_Procedures' (its reason, the
    --         override)
    --    [68] the trip acknowledged, standstill, level 0/NTC, no data
    --    [69] the estimated front end in rear of the SSP or gradient
@@ -101,7 +99,7 @@ is
                                | C_67 | C_68 | C_69 | C_70 | C_71 | C_72
                                | C_73 | C_74 | C_75 | C_76 | C_82;
 
-   --  Phase E5 (e5/joint): the radio, level 2. The session and link
+   --  the radio, level 2. The session and link
    --  half (EVC_Sessions, computed once per cycle by its Evaluate):
    --    [41] T_NVCONTACT passed, reaction "train trip" (3.16.3.4)
    subtype Session_Condition_T is Condition_Id_T
@@ -132,9 +130,7 @@ is
        Not_Evaluated_T in C_24 | C_33 | C_35 | C_38 | C_48 | C_53 | C_55
                          | C_57 | C_64 | C_80 | C_83;
 
-   ---------------------------------------------------------------------
-   --  The conditions of the modes and levels half (e4/modes)
-   ---------------------------------------------------------------------
+   --  The conditions of the modes and levels half
 
    --  [1], [2], [3], [14], [26], [27], [46], [47]: the driver's requests
    --  and the train interface (4.4.3, 4.4.15, 4.4.16, 4.4.20)
@@ -155,7 +151,7 @@ is
           when C_26 => not EVC_Train_Inputs.Desk_Open
                        and then EVC_Mission.Continue_Shunting
                        and then EVC_Train_Inputs.Passive_Shunting_Permitted,
-          --  e4/procedures: 4.4.20.1.6 (EVC_Mission, as [26])
+          --  4.4.20.1.6 (EVC_Mission, as [26])
           when C_27 => not EVC_Train_Inputs.Desk_Open
                        and then not EVC_Mission.Continue_Shunting,
           when C_46 => EVC_Driver_Requests.Non_Leading_Selected
@@ -222,9 +218,7 @@ is
      with Global => (EVC_Mission.State, EVC_Train_Data.State,
                      EVC_Stored_Information.State, EVC_Levels.State);
 
-   ---------------------------------------------------------------------
    --  The conditions of the two halves of phase E5
-   ---------------------------------------------------------------------
 
    function Session_Holds (C : Session_Condition_T) return Boolean is
      (case C is
@@ -240,10 +234,6 @@ is
          when C_36 => EVC_Radio_Authority.Group_Not_In_SR_List,
          when C_81 => EVC_Radio_Authority.SM_Authorised)
      with Global => EVC_Radio_Authority.State;
-
-   -----------
-   -- Holds --
-   -----------
 
    function Holds (C : Condition_Id_T) return Boolean is
    begin
@@ -261,17 +251,17 @@ is
          when Authority_Condition_T =>
             return Authority_Holds (C);
          when C_4 =>
-            --  e4/modes: this code runs: the on-board is powered
+            --  this code runs: the on-board is powered
             return True;
          when C_13 =>
-            --  e4/modes: the faults are the host's: EVC_Core.Enter_Failure
+            --  the faults are the host's: EVC_Core.Enter_Failure
             --  takes SF, the cycle does not run after it
             return False;
          when C_29 =>
-            --  e4/modes: this code runs: the on-board is powered
+            --  this code runs: the on-board is powered
             return False;
          when C_84 =>
-            --  e4/modes: 3.6.8.4, EVC_Odometry
+            --  3.6.8.4, EVC_Odometry
             return EVC_Odometry.Safety_Exceeded;
          when Not_Evaluated_T =>
             return False;

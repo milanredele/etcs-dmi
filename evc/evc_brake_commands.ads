@@ -34,6 +34,10 @@ with EVC_Modes;             use EVC_Modes;
 with EVC_SDM;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 
+--  @req 3.14.1.5, 3.14.1.8, 3.14.1.10, 3.14.3.1, 3.14.3.6, 3.15.4.5
+--  @req 3.18.3.3.1, 4.4.7.1.5, 4.4.7.1.5.1, 4.4.7.1.5.3, 4.4.11.1.3 e)
+--  @req 4.4.11.1.5.1, 4.4.14.1.3.1, 4.4.18.1.8, 4.5.2.1, 4.5.2.2 Table
+--  @req 4.5.2.2 Table-footnote {2}, 4.5.2.2 Table-footnote {4}
 package EVC_Brake_Commands
   with SPARK_Mode => On
 is
@@ -92,6 +96,7 @@ is
       Modifying_Data : Boolean := False;
    end record;
 
+   --  @req 3.14.1.9
    type Commands_T is record
       EB, SB, TCO  : Boolean := False;
       Reasons      : Reasons_T := (others => False);
@@ -109,6 +114,7 @@ is
    function Direction_Mode (M : Mode_T) return Boolean is
      (M in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS | M_PT | M_RV);
 
+   --  @req 3.14.1.2
    procedure Step (S      : Snapshot_T;
                    SDM    : EVC_SDM.Result_T;
                    Inputs : Inputs_T;

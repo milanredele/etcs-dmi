@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5 (e5/levels): the communication sessions of the level
+--  the communication sessions of the level
 --  transitions to and from level 2, SUBSET-026 5.10.3.
 --
 --  Into level 2:
@@ -13,7 +13,7 @@
 --    - by the driver (5.10.3.15.2, 3.5.3.4 d): the session established
 --      immediately when a valid RBC contact is stored (a); decision: in
 --      SB the start of mission does it (EVC_Sessions.Mission, 5.4.3.2
---      D7), elsewhere this unit. b) (e5/level2-radio-data): without a
+--      D7), elsewhere this unit. b): without a
 --      valid contact or the registration (3.5.6.7) the selection is
 --      remembered (Radio_Data_Awaited) until the driver's RBC data
 --      (MSG_DRIVER_DATA kind 5, read by EVC_Sessions.Mission as at
@@ -52,6 +52,8 @@ with EVC_Sessions;
 with EVC_Train_Data;
 with Interfaces;    use Interfaces;
 
+--  @req 5.10.3.3.3, 5.10.3.3.5, 5.10.3.6.2, 5.10.3.6.5, 5.10.3.10.3
+--  @req 5.10.3.10.6, 5.10.3.15.3
 package EVC_Level_Sessions
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -67,7 +69,7 @@ is
    function Exit_Phase return Exit_Phase_T
      with Global => State;
 
-   --  5.10.3.15.2 b) (e5/level2-radio-data): the driver changed the
+   --  5.10.3.15.2 b): the driver changed the
    --  level to 2 without the conditions of a): the session awaits the
    --  driver's Radio data, for want of a valid RBC contact or of the
    --  registration (3.5.6.7, EVC_Sessions.Network_Ready)

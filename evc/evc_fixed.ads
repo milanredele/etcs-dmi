@@ -45,9 +45,7 @@ is
    function Min (A, B : Num) return Num is (if A < B then A else B);
    function Max (A, B : Num) return Num is (if A > B then A else B);
 
-   ---------------------------------------------------------------------
    --  Rounded divisions
-   ---------------------------------------------------------------------
 
    --  A / B rounded towards minus infinity
    function Div_Floor (A, B : Num) return Num is
@@ -63,9 +61,7 @@ is
           Post => (if A >= 0 then Div_Ceil'Result in 0 .. A
                    else Div_Ceil'Result in A .. 0);
 
-   ---------------------------------------------------------------------
    --  Square roots
-   ---------------------------------------------------------------------
 
    --  The integer square root, rounded down
    function Sqrt_Floor (X : Num) return Num
@@ -82,9 +78,7 @@ is
 
    function Square (V : Speed_T) return Square_T is (V * V);
 
-   ---------------------------------------------------------------------
    --  Kinematics
-   ---------------------------------------------------------------------
 
    --  The distance, cm, run at V cm/s during T ms, rounded up
    function Travel_Ceil (V : Speed_T; T : Time_T) return Num is
@@ -98,9 +92,7 @@ is
    function Gain_Ceil (A : Decel_T; T : Time_T) return Num is
      (Div_Ceil (A * T, 10_000));
 
-   ---------------------------------------------------------------------
    --  Units of the ERTMS/ETCS language and of the DMI
-   ---------------------------------------------------------------------
 
    --  K tenths of km/h in cm/s (1 km/h = 250 / 9 cm/s), rounded down
    function Kmh10_To_Cms (K : Num) return Num is

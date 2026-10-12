@@ -26,9 +26,7 @@ is
    Used          : Natural range 0 .. Queue_Capacity := 0;
    Refused_Count : Natural := 0;
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Sessions return Session_Count_T is (Count_Of_Sessions)
      with Refined_Global => Count_Of_Sessions;
@@ -51,9 +49,7 @@ is
    function Refused return Natural is (Refused_Count)
      with Refined_Global => Refused_Count;
 
-   ---------------------------------------------------------------------
    --  EVC_Core
-   ---------------------------------------------------------------------
 
    procedure Clear (N : Session_Count_T; Engine : NID_ENGINE_T := 0) is
    begin
@@ -81,9 +77,7 @@ is
       Contact_Info.Valid := Contact_Info.Known;
    end Revalidate_Contact;
 
-   ---------------------------------------------------------------------
    --  EVC_Sessions
-   ---------------------------------------------------------------------
 
    procedure Set_State (S : Session_T; To : Session_State_T) is
    begin
@@ -139,9 +133,7 @@ is
       Network_Info := N;
    end Set_Network;
 
-   ---------------------------------------------------------------------
    --  The outbox
-   ---------------------------------------------------------------------
 
    procedure Count_Refusal
      with Global => (In_Out => Refused_Count)

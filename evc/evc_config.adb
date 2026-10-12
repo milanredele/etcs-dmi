@@ -30,9 +30,7 @@ is
    function Last_Status return Status_T is (Last)
      with Refined_Global => Last;
 
-   ---------------------------------------------------------------------
    --  The image
-   ---------------------------------------------------------------------
 
    Magic : constant Byte_Array (1 .. 4) :=
      (16#45#, 16#56#, 16#43#, 16#46#);   -- "EVCF"
@@ -222,9 +220,7 @@ is
       return Image;
    end Encode;
 
-   ---------------------------------------------------------------------
    --  The configuration in use
-   ---------------------------------------------------------------------
 
    procedure Count_Refusal
      with Global => (In_Out => Refused)

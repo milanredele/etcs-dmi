@@ -6,10 +6,6 @@ package body EVC_Fixed
   with SPARK_Mode => On
 is
 
-   ----------------
-   -- Sqrt_Floor --
-   ----------------
-
    --  Bisection on [Lo, Hi) with Lo² <= X < Hi²: 32 halvings at most
    function Sqrt_Floor (X : Num) return Num is
       Lo  : Num := 0;

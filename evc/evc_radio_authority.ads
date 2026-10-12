@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the authority by radio half (e5/authority; doc/EVC-PLAN.md
+--  Phase E5, the authority by radio half (doc/EVC-PLAN.md
 --  §13): the MA by radio (messages 3 and 33, 3.8.5 the update, 3.8.6
 --  the co-operative shortening with message 9 and 137/138), the MA
 --  request of 3.8.2 (message 132, packet 57, Q_MARQSTREASON), the
@@ -11,7 +11,7 @@
 --  of 5.21), the Train Data to the RBC and its changes (5.17), the
 --  text message acknowledgements (message 158).
 --
---  The joint (e5/joint) gave the entry points EVC_Core calls with
+--  The joint gave the entry points EVC_Core calls with
 --  bodies that do nothing but count; the half fills them, adds its
 --  private state, and widens the Global contracts (and those of the core
 --  steps that call them). It reads the session table of EVC_Radio and
@@ -34,6 +34,9 @@ with EVC_Radio_Info;
 with EVC_Received;
 with EVC_Stored_Information;
 
+--  @req 3.6.7.1 g), 3.10.2.4, 3.13.11.8, 4.4.11.1.3, 4.4.11.1.6.4
+--  @req 4.4.19.1.4.2 a), 4.6.3 Table, 4.8.3.1.1 Table-footnote [5]
+--  @req 5.4.3.2 S21, 5.6.2.2 D020, 5.11.2.2 S140 b), 5.11.2.2 S150
 package EVC_Radio_Authority
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -59,6 +62,8 @@ is
    --  cycle (EVC_Stored_Information.Evaluate).
    --  Accepting: the message is the Accepting RBC's, released from the
    --  handover buffer of EVC_Sessions (4.8.2.1 c) exception 2)
+   --  @req 3.8.2.3.2 b), 3.8.4.2.1, 3.8.4.2.1 a), 3.8.6.1, 4.8.3.1.1 Table
+   --  @req 4.8.4.2 Table, 4.8.5.6, 4.8.5.6 b)
    procedure Take_Message (S         : EVC_Radio.Session_T;
                            Now_Ms    : EVC_Radio.Time_Ms_T;
                            Accepting : Boolean := False)
@@ -78,6 +83,7 @@ is
    --  request to shorten the MA (9) and the revocation of an emergency
    --  stop (18), rejected at once (exception 2; Data is the message
    --  EVC_Received holds last)
+   --  @req 3.15.1.3.6, 4.8.2.1 c)
    procedure Store_Message (S         : EVC_Radio.Session_T;
                             Data      : EVC_Bytes.Byte_Array;
                             Accepting : Boolean := False)
@@ -98,14 +104,16 @@ is
    function Has_Released return Boolean
      with Global => State;
 
-   --  4.8.2.1 c) exception 2 (e4/ls-display-2): the message Take_Released
+   --  4.8.2.1 c) exception 2: the message Take_Released
    --  gives next was held from the Accepting RBC
+   --  @req 4.8.2.1 c)
    function Released_Accepting return Boolean
      with Global => State;
 
-   --  4.8.5.5 "at the same time" (e5/levels): the level became 2 in this
+   --  4.8.5.5 "at the same time": the level became 2 in this
    --  cycle (EVC_Core, after the levels): the buffer released at once and
    --  its messages judged in level 2
+   --  @req 4.8.5.5
    procedure Release_At_Transition
      with Global => (In_Out => State),
           Post => Buffered = Buffered'Old
@@ -134,7 +142,7 @@ is
       --  supervision limit of the shortened MA proposed in the cycle
       --  (EVC_SDM.Result_T.Proposal_In_Rear)
       Proposal_In_Rear : Boolean := False;
-      --  3.7.2.3 (e5/radio-items, B210): the SSP and gradients cover the
+      --  3.7.2.3: the SSP and gradients cover the
       --  proposal (EVC_Stored_Information.Proposal_Covered)
       Proposal_Covered : Boolean := True;
       --  4.4.11.1.6.4 a): the driver entered the SR speed and distance in
@@ -158,6 +166,7 @@ is
       TAF_Confirmed      : Boolean := False;
    end record;
 
+   --  @req 3.8.2.1.5, 5.11.2.2 D130, 5.11.2.2 S130
    procedure Evaluate (Ctx : EVC_Radio.Context_T; Facts : Facts_T)
      with Global => (In_Out => (State, EVC_Radio_Info.State),
                      Input  => (EVC_Stored_Information.State,
@@ -208,6 +217,7 @@ is
    --  5.4.3.2 E26, 5.11.2.2 S150 a): the number of SR authorisations
    --  (message 2) taken since Clear, saturated; a change while 'Start'
    --  waits at S21 / S150 is E26 (EVC_Mission)
+   --  @req 5.4.3.2 S21
    function SR_Authorisations return Natural
      with Global => State;
 
@@ -225,12 +235,14 @@ is
 
    --  4.4.11.1.3 d): the groups passed in the cycle are all in that list
    --  (as of the last Evaluate; for the "stop if in SR" of EVC_Procedures)
+   --  @req 4.4.11.1.3 d)
    function Groups_Passed_Listed return Boolean
      with Global => State;
 
    --  5.11.2.2 S120, E125: the RBC recognised the exit from TRIP mode
    --  (message 6) in the PT mode of the on-board (for 4.8.4 [1] and
    --  the choices of S140)
+   --  @req 5.11.2.2 S120
    function Trip_Exit_Recognised return Boolean
      with Global => State;
 
@@ -271,6 +283,7 @@ is
    --  The DMI system status message of the cycle (EVC_DMI_Port entry
    --  number, started; 0: none): SH refused (5.6.2.2 A220), SH request
    --  failed (5.6.4.1.2)
+   --  @req 5.6.2.2 A220
    function Status_Entry return Natural
      with Global => State;
 
@@ -299,6 +312,7 @@ is
 
    --  [20] (unconditional emergency stop message is accepted): 3.10,
    --  message 16
+   --  @req 3.10.2.3
    function Unconditional_Stop_Accepted return Boolean is (Holds (C_20))
      with Global => State;
 

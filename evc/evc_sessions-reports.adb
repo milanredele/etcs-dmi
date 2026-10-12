@@ -43,7 +43,7 @@ is
    Level_Seen : Boolean := False;
    N_Sent     : Natural := 0;
    N_Params   : Natural := 0;
-   --  e5/error-report: per session, the inconsistent messages still to
+   --  per session, the inconsistent messages still to
    --  report (3.16.3.1.1.2), one message 136 each, one per cycle, and
    --  the M_ERROR of the last (decisions: one packet 4 per message, the
    --  codes of the ones before the last not kept, at most 8 pending)
@@ -132,7 +132,7 @@ is
      (M not in EVC_Modes.M_NP | EVC_Modes.M_PS | EVC_Modes.M_SH
              | EVC_Modes.M_SF | EVC_Modes.M_IS);
 
-   --  4.8.4, "Position Report parameters" (e5/radio-items, B211): the
+   --  4.8.4, "Position Report parameters": the
    --  modes that accept them from the RBC (rejected in PS, SH, SL and
    --  TR; NP, SF and IS not relevant). The notes [1], [2], [13] of the
    --  row concern the message's filters of 4.8.2 and 4.8.3, applied
@@ -156,7 +156,7 @@ is
       then
          EVC_Position.Delete_Report_Parameters;
       end if;
-      --  4.8.4 (B211): taken in the mode of the cycle that received them
+      --  4.8.4: taken in the mode of the cycle that received them
       --  (SUBSET-076 4080428_01: given in SH, not applied in the SB of
       --  the next session, step 134)
       if P58_Held and then Parameters_Accepted (Mode) then
@@ -197,7 +197,7 @@ is
    --  single group without co-ordinate system (3.6.5.1.2 i, 3.4.2.3.3)
    subtype Writer_T is ETCS_Bits.Writer (64);
 
-   --  e5/error-report: with packet 4 (7.4.3.4) when Error, M_ERROR Code
+   --  with packet 4 (7.4.3.4) when Error, M_ERROR Code
    procedure Send_136 (S     : R.Session_T;
                        Ctx   : R.Context_T;
                        Error : Boolean;

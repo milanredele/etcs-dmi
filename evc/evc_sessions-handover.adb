@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5 (e5/handover): the RBC/RBC handover of 3.15.1.3 (see the
+--  the RBC/RBC handover of 3.15.1.3 (see the
 --  specification).
 
 pragma Unevaluated_Use_Of_Old (Allow);
@@ -164,6 +164,7 @@ is
    --  3.15.1.3.1 a), 3.15.1.3.2, 3.15.1.3.2.3: a new order applied: the
    --  border to the position, the session of another Accepting RBC
    --  terminated, the session with the new one asked for
+   --  @req 3.5.3.4.1, 3.15.1.3.1 a), 3.15.1.3.2.3
    procedure Apply_Order (Req : in out Request_T)
      with Global => (In_Out => (Order, Opened, Single, Switch_Next, TD_To,
                                 R.State, EVC_Position.State),
@@ -249,6 +250,7 @@ is
    --  the Accepting RBC (one session, or not set up) no RBC supervises
    --  until one is established (EVC_Sessions.Take_Version), except with
    --  one session, where the Handing Over one goes on until it ends.
+   --  @req 3.15.1.3.5, 3.15.1.3.7, 3.17.2.8 c), 3.17.2.8 e), 5.15.1.4
    procedure Switch
      with Global => (In_Out => (Order, R.State),
                      Output => (Old_S, Old_C, Switch_Next),
@@ -276,6 +278,7 @@ is
    --  3.15.1.3.9: after the min safe rear end report, the report again
    --  every Wait_Ms without the order to terminate, Max_Repeats times;
    --  then the session terminated
+   --  @req 3.15.1.3.9
    procedure Watch_Rear (Now : R.Time_Ms_T; Req : in out Request_T)
      with Global => (In_Out => (Rear_Watch, Rear_Since, Rear_Repeats,
                                 Forced),

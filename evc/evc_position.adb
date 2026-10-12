@@ -80,9 +80,7 @@ is
    use type ETCS_Catalogue.Packet_Kind_T;
    use type EVC_Odometry.Cold_T;
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    --  3.6.2.2.2 c): the LRBGs last passed, with what the position report
    --  based on two balise groups needs (3.4.2.3.3)
@@ -144,18 +142,18 @@ is
      (Plus  => EVC_Config.Default.Antenna_To_Cab_A,
       Minus => EVC_Config.Default.Antenna_To_Cab_B);
 
-   --  Added by e4/modes (Set_Linking_Context): packet 5 is accepted
+   --  packet 5 is accepted
    --  (4.8), the linking consistency is checked (3.4.4.2.1.1 b)
    Accept_Linking     : Boolean := True;
    Check_Linking      : Boolean := True;
-   --  Added by e5/reports-by-event-2: packet 79 of a balise group is
+   --  packet 79 of a balise group is
    --  accepted (4.8.4.2, e.g. rejected in SH)
    Accept_Geo         : Boolean := True;
-   --  Added by e5/acceptance-gates (B212), 4.8.3 [1]: the linking of a
+   --  4.8.3 [1]: the linking of a
    --  group with its own packet 41 is held for EVC_Core's second verdict
    --  (Take_Held_Linking): the group Held_A, its linking Held_Link
    Defer_Ordered      : Boolean := False;
-   --  e5/acceptance-gates (B221), 3.14.3.6: the information of the
+   --  3.14.3.6: the information of the
    --  groups read is ignored
    Ignore_Groups      : Boolean := False;
    Held               : Boolean := False;
@@ -192,7 +190,7 @@ is
    Geo_Current        : Geo_Ref_T;
    Geo_Value          : Natural := 0;
    Geo_Valid          : Boolean := False;
-   --  e5/radio-geo-buffer, 4.8.3 [2], 4.8.5: the packet 79 of a radio
+   --  4.8.3 [2], 4.8.5: the packet 79 of a radio
    --  message kept for the level 2 transition
    Geo_Kept           : ETCS_Track_Packets.P79.Packet_T;
    Geo_Kept_Valid     : Boolean := False;
@@ -234,9 +232,7 @@ is
    Passage_Ms  : Unsigned_64 := 0;
    Previous_Ms : Unsigned_64 := 0;
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Status return Status_T is (Pos_Status)
      with Refined_Global => Pos_Status;
@@ -374,10 +370,6 @@ is
                              >= EVC_Location.Doubt_Under
                                   (A, S, Low_1, High_1);
 
-   -----------------------
-   -- Lemma_Doubts_Grow --
-   -----------------------
-
    procedure Lemma_Doubts_Grow (A : Anchor_T; S : Sense_T;
                                 Low_1, High_1, Low_2, High_2 : Length_T)
    is
@@ -390,9 +382,7 @@ is
                      >= Front_Growth (A, S, Low_1, High_1));
    end Lemma_Doubts_Grow;
 
-   ---------------------------------------------------------------------
    --  Events
-   ---------------------------------------------------------------------
 
    procedure Put_Event (Kind : Event_Kind_T; B2, B3, B4 : Unsigned_8)
    is
@@ -425,9 +415,7 @@ is
                  Unsigned_8 (Natural'Min (Index, 255)));
    end Request_Reaction;
 
-   ---------------------------------------------------------------------
    --  Relocation
-   ---------------------------------------------------------------------
 
    --  The linking distance from the group Id to link K of the chain,
    --  when both are in it and no repositioning lies between them
@@ -463,6 +451,7 @@ is
    end Link_Distance;
 
    --  3.6.4.2.5: an item to the SOLR
+   --  @req 3.6.4.2.5, 3.6.4.2.5 a)
    procedure Relocate_Item (Item : in out Item_T)
    is
       Known : Boolean;
@@ -511,9 +500,7 @@ is
       end loop;
    end Set_SOLR;
 
-   ---------------------------------------------------------------------
    --  LRBG
-   ---------------------------------------------------------------------
 
    --  The entry of the ring of the last passage of group Id, 0 for none.
    --  A group passed again after another one (the train came back, or
@@ -540,6 +527,7 @@ is
 
    --  3.6.2.2.2 a): A, LRBG compliant, was passed. After it the LRBG is
    --  the group just passed.
+   --  @req 3.4.2.3.3.4, 3.4.2.3.3.5, 3.4.2.3.3.7, 3.6.2.2.2
    procedure Set_LRBG (A : Anchor_T)
      with Pre => A.Valid,
           Post => LRBG_A.Valid
@@ -602,14 +590,13 @@ is
       end if;
    end Set_LRBG;
 
-   ---------------------------------------------------------------------
    --  Linking windows
-   ---------------------------------------------------------------------
 
    type Window_Result_T is (Inside, Early, Late);
 
    --  The first and last possible locations of link E, against the SOLR
    --  along the linking (3.4.4.4.3.1, 3.4.4.4.4)
+   --  @req 3.4.4.4.4
    function Window_First (E : EVC_Linking.Link_Index_T) return Dist_T
    is (if Links.Links (E).Known_Id
        then Diff (Links.Links (E).D
@@ -638,6 +625,7 @@ is
       Max := Max_Safe (Est, EVC_Location.Doubt_Under (SOLR_A, S, Low, High));
    end Antenna;
 
+   --  @req 3.4.4.4.3, 3.4.4.4.3 1st bullet, 3.4.4.4.3 2nd bullet
    function Check_Window (E : EVC_Linking.Link_Index_T; R : Reading_T)
      return Window_Result_T
      with Pre => E <= Links.Count
@@ -667,6 +655,7 @@ is
      with Pre => E <= Links.Count;
 
    --  3.4.4.4.6: stop supervising the window of the expected group
+   --  @req 3.4.4.4.6, 3.4.4.4.6 a), 3.4.4.4.6 b)
    procedure Next_Window
      with Post => Links.Count = Links.Count'Old
                   and then Links.Stored = Links.Stored'Old
@@ -698,11 +687,10 @@ is
       end loop;
    end Supervise_Windows;
 
-   ---------------------------------------------------------------------
    --  Geographical position (3.6.6)
-   ---------------------------------------------------------------------
 
    --  3.6.6.7: a reference group without co-ordinate system is ignored
+   --  @req 3.6.6.4.2, 3.6.6.7
    procedure Anchor_Geo (A : Anchor_T)
    is
    begin
@@ -722,6 +710,7 @@ is
 
    --  Packet 79 from the group A (3.6.6.3: it replaces the references
    --  not yet applicable; 3.6.6.4 b, c)
+   --  @req 3.6.6.3
    procedure Take_Geo (P : ETCS_Track_Packets.P79.Packet_T;
                        A : Anchor_T;
                        S : Sense_T)
@@ -776,6 +765,7 @@ is
 
    --  The geographical position against the reference G, m (negative
    --  below the track kilometre 0)
+   --  @req 3.6.6.5
    function Geo_Of (G : Geo_Ref_T) return Cm_T
    is
       Km_X   : constant Dist_T := Advance (G.Ref.X, G.Sense, G.Offset);
@@ -791,6 +781,7 @@ is
 
    --  3.6.6.4.2, 3.6.6.9: the references that become applicable, the
    --  calculation from the applicable one
+   --  @req 3.6.6.9, 3.6.6.9 a), 3.6.6.9 b), 3.6.6.9 c), 3.6.6.9.1
    procedure Update_Geo
    is
       V : Cm_T;
@@ -908,9 +899,7 @@ is
       end loop;
    end Take_Radio_Geo;
 
-   ---------------------------------------------------------------------
    --  End of a passage
-   ---------------------------------------------------------------------
 
    --  The group has packet 16 (repositioning) valid for T
    function Has_Repositioning (G, T : Direction_T) return Boolean
@@ -949,7 +938,7 @@ is
 
    --  The packets 5 and 79 of the accepted group A valid for T; the
    --  sense of their distances is S. The last valid one of each counts.
-   --  e5/acceptance-gates (B212), 4.8.3 [1]: with Defer_Ordered, the
+   --  4.8.3 [1]: with Defer_Ordered, the
    --  linking of a group that carries a packet 41 valid for T is held
    --  (Take_Held_Linking): its order is evaluated by the stores after
    --  this Update, and an order to level 1 at a further location makes
@@ -958,6 +947,7 @@ is
    --  verdict in the same cycle) rather than reading packet 41 itself,
    --  so that the order, its level priorities and its location are
    --  judged in one place (EVC_Levels through the stores)
+   --  @req 3.4.4.4.5.1, 3.6.4.2.2.2, 3.7.3.1
    procedure Take_Packets (A : Anchor_T; T : Direction_T; S : Sense_T)
    is
       R      : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
@@ -1277,7 +1267,7 @@ is
          Pos_Status := Valid;
          --  3.6.6.4.2: a geographical reference group detected
          Anchor_Geo (A);
-         --  3.14.3.6 (e5/acceptance-gates, B221): the group locates the
+         --  3.14.3.6: the group locates the
          --  train, its information is ignored
          if not Ignore_Groups then
             Take_Packets (A, T, S);
@@ -1287,6 +1277,11 @@ is
    end Take_Group;
 
    --  The passage is over: accept or reject its group (see the spec)
+   --  @req 3.4.2.3.2.2, 3.4.4.4.2, 3.4.4.4.2.1, 3.4.4.4.2.1 a), 3.4.4.4.2.1 b)
+   --  @req 3.4.4.4.2.1 c), 3.4.4.4.2.2, 3.4.4.4.3.2, 3.4.4.4.6.1, 3.4.4.4.7
+   --  @req 3.4.4.5.1, 3.6.1.4, 3.6.2.2.2 a), 3.6.2.2.2 a) 1st bullet
+   --  @req 3.6.2.2.2 a) 2nd bullet, 3.6.3.1.3, 3.6.3.1.3.1, 3.6.4.1.3
+   --  @req 3.6.4.2.2, 3.6.4.2.2 a), 3.6.4.2.2 b)
    procedure Evaluate (Mode : Mode_T)
      with Pre => Passage.Open and then Passage.Count >= 1,
           Post => not Passage.Open
@@ -1331,9 +1326,7 @@ is
                   Orient_G);
    end Evaluate;
 
-   ---------------------------------------------------------------------
    --  Report triggers (3.6.5.1.4, 3.6.5.1.5)
-   ---------------------------------------------------------------------
 
    --  3.6.5.1.5 c), 3.15.1.3.1 b), c): what Evaluate_Triggers and
    --  Evaluate_Border compare, as a distance still to run
@@ -1482,9 +1475,7 @@ is
       end if;
    end Evaluate_Periods;
 
-   ---------------------------------------------------------------------
    --  For the stored information
-   ---------------------------------------------------------------------
 
    function Taken_Count return Natural is (Taken_N)
      with Refined_Global => Taken_N;
@@ -1508,9 +1499,7 @@ is
       ETCS_Telegram.Open_Packet (Taken_Tels (J), P, R);
    end Open_Taken_Packet;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    procedure Clear
    is
@@ -1764,10 +1753,6 @@ is
       end if;
    end Take_Cab;
 
-   ------------
-   -- Update --
-   ------------
-
    procedure Update (Cab_A_Active : Boolean;
                      Cab_B_Active : Boolean;
                      Sampled      : Boolean;
@@ -1798,7 +1783,7 @@ is
       Take_Telegrams (Mode);
 
       --  3. the odometer; its accuracy check in the modes of its row of
-      --  the 4.5.2 Table only (3.6.8.5 to 3.6.8.7, B222)
+      --  the 4.5.2 Table only (3.6.8.5 to 3.6.8.7)
       EVC_Odometry.Set_Check (Odometer_Check_Mode (Mode));
       Take_Odometer (Sampled, Sample);
 
@@ -1813,19 +1798,11 @@ is
          EVC_Odometry.Low, EVC_Odometry.High);
    end Update;
 
-   -----------------
-   -- Set_Antenna --
-   -----------------
-
    procedure Set_Antenna (To_Cab_A, To_Cab_B : EVC_Config.Antenna_Offset_T)
    is
    begin
       Antenna_Offset := (Plus => To_Cab_A, Minus => To_Cab_B);
    end Set_Antenna;
-
-   ----------------------
-   -- Set_Train_Length --
-   ----------------------
 
    procedure Set_Train_Length (Length : Length_T)
    is
@@ -1839,10 +1816,6 @@ is
    begin
       Length_Known := False;
    end Unset_Train_Length;
-
-   ---------------------------
-   -- Set_Report_Parameters --
-   ---------------------------
 
    procedure Set_Report_Parameters
      (P   : ETCS_Track_Packets.P58.Packet_T;
@@ -1902,10 +1875,6 @@ is
       end loop;
    end Set_Report_Parameters;
 
-   ----------------
-   -- Set_Border --
-   ----------------
-
    procedure Set_Border (Ref : Identity_T; D : Length_T; OK : out Boolean)
    is
       A : Anchor_T;
@@ -1944,20 +1913,12 @@ is
       Border := (others => No_Item);
    end Delete_Border;
 
-   -----------------
-   -- Report_Sent --
-   -----------------
-
    procedure Report_Sent (Now_Ms : Unsigned_64)
    is
    begin
       Last_Report_Ms := Now_Ms;
       Last_Report_Travel := EVC_Odometry.Travelled;
    end Report_Sent;
-
-   ------------------------------
-   -- Delete_Report_Parameters --
-   ------------------------------
 
    procedure Delete_Report_Parameters
    is
@@ -1969,10 +1930,6 @@ is
       Locations := (others => No_Item);
       Immediate_Pending := False;
    end Delete_Report_Parameters;
-
-   ------------------
-   -- Radio_Origin --
-   ------------------
 
    procedure Radio_Origin (Id      : Identity_T;
                            Shifted : Boolean;
@@ -2027,10 +1984,6 @@ is
       end if;
    end Radio_Origin;
 
-   ------------------------------
-   -- Assign_Coordinate_System --
-   ------------------------------
-
    procedure Assign_Coordinate_System (Id      : Identity_T;
                                        Nominal : Boolean;
                                        OK      : out Boolean)
@@ -2075,10 +2028,6 @@ is
       OK := True;
    end Assign_Coordinate_System;
 
-   ----------
-   -- Keep --
-   ----------
-
    procedure Keep (K : out Kept_Position_T)
    is
    begin
@@ -2093,10 +2042,6 @@ is
          K.Orient_Known := Orient_Known;
       end if;
    end Keep;
-
-   -------------
-   -- Restore --
-   -------------
 
    procedure Restore (K : Kept_Position_T)
    is
@@ -2114,10 +2059,6 @@ is
       end if;
    end Restore;
 
-   ----------------
-   -- Revalidate --
-   ----------------
-
    procedure Revalidate
    is
    begin
@@ -2126,10 +2067,6 @@ is
       end if;
    end Revalidate;
 
-   ----------------
-   -- Invalidate --
-   ----------------
-
    procedure Invalidate
    is
    begin
@@ -2137,10 +2074,6 @@ is
          Pos_Status := Invalid;
       end if;
    end Invalidate;
-
-   ---------------------
-   -- Delete_Position --
-   ---------------------
 
    procedure Delete_Position
    is
@@ -2152,10 +2085,6 @@ is
       Recent := (others => No_Recent);
       Unlinked := (others => No_Anchor);
    end Delete_Position;
-
-   -------------------------
-   -- Set_Linking_Context --
-   -------------------------
 
    procedure Set_Linking_Context (Accept_Info, Check : Boolean;
                                   Accept_P79 : Boolean := True;
@@ -2169,10 +2098,6 @@ is
       Check_Linking := Check;
    end Set_Linking_Context;
 
-   -----------------------
-   -- Take_Held_Linking --
-   -----------------------
-
    procedure Take_Held_Linking (Accept_Info : Boolean) is
    begin
       if Held then
@@ -2182,10 +2107,6 @@ is
          end if;
       end if;
    end Take_Held_Linking;
-
-   ---------------------------
-   -- Take_Released_Linking --
-   ---------------------------
 
    procedure Take_Released_Linking (R     : in out ETCS_Bits.Reader;
                                     Group : Identity_T;
@@ -2221,18 +2142,10 @@ is
       end loop;
    end Take_Released_Linking;
 
-   --------------------
-   -- Delete_Linking --
-   --------------------
-
    procedure Delete_Linking is
    begin
       Links := (others => <>);
    end Delete_Linking;
-
-   ----------------
-   -- Delete_Geo --
-   ----------------
 
    procedure Delete_Geo
    is
@@ -2243,9 +2156,7 @@ is
       Geo_Valid := False;
    end Delete_Geo;
 
-   ---------------------------------------------------------------------
    --  Position report (3.6.5.1.2)
-   ---------------------------------------------------------------------
 
    --  The resolution (Q_SCALE) at which the three distances fit, and a
    --  distance at it: rounded down for the estimated distance, up for

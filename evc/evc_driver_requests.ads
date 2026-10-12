@@ -33,6 +33,7 @@
 with EVC_Bytes;  use EVC_Bytes;
 with Interfaces; use Interfaces;
 
+--  @req 5.18.8.2, 5.22.2.1, 5.22.2.2
 package EVC_Driver_Requests
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -129,9 +130,7 @@ is
 
    type Bytes_23_T is array (1 .. 23) of Byte;
 
-   ---------------------------------------------------------------------
    --  The requests of the cycle (taken at the last Take)
-   ---------------------------------------------------------------------
 
    --  The driver selected the action A
    function Selected (A : Action_T) return Boolean
@@ -183,6 +182,7 @@ is
    --  Named after the DMI actions
    function Isolation_Selected return Boolean is (Selected (Isolate))
      with Global => State;
+   --  @req 3.8.2.3.1
    function Start_Selected return Boolean is (Selected (Start))
      with Global => State;
    function Non_Leading_Selected return Boolean is (Selected (Non_Leading))
@@ -205,8 +205,10 @@ is
      (Selected (Maintain_Shunting))
      with Global => State;
    --  the procedures (5.6, 5.8, 5.21, 5.22, 5.18.8)
+   --  @req 5.8.2.3
    function Override_Selected return Boolean is (Selected (Override))
      with Global => State;
+   --  @req 5.6.2.2 E015
    function Shunting_Selected return Boolean is (Selected (Shunting))
      with Global => State;
    function Exit_Shunting_Selected return Boolean is
@@ -240,9 +242,7 @@ is
    function Text_Acknowledged (Id : Unsigned_16) return Boolean
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    --  Power-up: nothing latched, nothing taken
    procedure Clear

@@ -19,7 +19,7 @@ is
    --  phase E4: packets 69 and 40
    Platform_S : Store_T := Empty_Store;
    Current_S  : Store_T := Empty_Store;
-   --  e5/onboard-misc: Overlaps_Radio_Hole at the last Evaluate
+   --  Overlaps_Radio_Hole at the last Evaluate
    Hole_S     : Boolean := False;
 
    function Conditions return Store_T is (Cond_S)
@@ -68,10 +68,6 @@ is
       Hole_S := False;
    end Clear;
 
-   -----------
-   -- Reset --
-   -----------
-
    procedure Reset (Rest, Horn, BMM : Boolean) is
    begin
       if BMM then
@@ -80,7 +76,7 @@ is
       if Rest then
          Traction_S := Empty_Store;
          --  the station platforms and the changes of allowed current
-         --  consumption (5.18, 5.20; e4/integration)
+         --  consumption (5.18, 5.20)
          Platform_S := Empty_Store;
          Current_S := Empty_Store;
       end if;
@@ -130,10 +126,6 @@ is
    begin
       Serial := (if Serial = 127 then 1 else Serial + 1);
    end Step_Serial;
-
-   ---------------------
-   -- Take_Conditions --
-   ---------------------
 
    procedure Take_Conditions (P : ETCS_Track_Packets.P68.Packet_T;
                               M : Message_T;
@@ -185,10 +177,6 @@ is
       end loop;
    end Take_Conditions;
 
-   -------------------
-   -- Take_Traction --
-   -------------------
-
    procedure Take_Traction (P : ETCS_Track_Packets.P39.Packet_T;
                             M : Message_T)
    is
@@ -213,10 +201,6 @@ is
                Msg      => M.Msg,
                others   => <>));
    end Take_Traction;
-
-   ---------------------------
-   -- Take_Big_Metal_Masses --
-   ---------------------------
 
    procedure Take_Big_Metal_Masses (P : ETCS_Track_Packets.P67.Packet_T;
                                     M : Message_T;
@@ -252,10 +236,6 @@ is
          Put (Natural (P.D_TRACKCOND_List (K).L_TRACKCOND));
       end loop;
    end Take_Big_Metal_Masses;
-
-   --------------------
-   -- Take_Platforms --
-   --------------------
 
    procedure Take_Platforms (P : ETCS_Track_Packets.P69.Packet_T;
                              M : Message_T;
@@ -309,10 +289,6 @@ is
       end loop;
    end Take_Platforms;
 
-   ------------------
-   -- Take_Current --
-   ------------------
-
    procedure Take_Current (P : ETCS_Track_Packets.P40.Packet_T;
                            M : Message_T)
    is
@@ -335,10 +311,6 @@ is
                Msg      => M.Msg,
                others   => <>));
    end Take_Current;
-
-   -------------------
-   -- Delete_Beyond --
-   -------------------
 
    procedure Delete_Beyond (T          : Origin_Table_T;
                             X          : Dist_T;
@@ -373,9 +345,7 @@ is
       Mark (Current_S, Marks);
    end Mark;
 
-   ---------------------------------------------------------------------
    --  Indication
-   ---------------------------------------------------------------------
 
    --  The symbols: announcement, active, after the end (0: none), and
    --  the planning orders at the start and at the end (0: none), for a
@@ -643,10 +613,6 @@ is
       end if;
    end Evaluate;
 
-   ------------------
-   -- Virtual_Feet --
-   ------------------
-
    procedure Virtual_Feet (T     : Origin_Table_T;
                            Train : Train_Frame_T;
                            Feet  : out Virtual_Feet_T)
@@ -697,10 +663,6 @@ is
       end loop;
    end Virtual_Feet;
 
-   -----------------------
-   -- Tunnel_Indication --
-   -----------------------
-
    procedure Tunnel_Indication (T      : Origin_Table_T;
                                 Train  : Train_Frame_T;
                                 Last   : Virtual_Limits_T;
@@ -747,10 +709,6 @@ is
          end;
       end loop;
    end Tunnel_Indication;
-
-   --------------
-   -- External --
-   --------------
 
    procedure External (T     : Origin_Table_T;
                        Train : Train_Frame_T;
@@ -911,10 +869,6 @@ is
          end loop;
       end if;
    end External;
-
-   -----------------
-   -- Inhibitions --
-   -----------------
 
    procedure Inhibitions (T      : Origin_Table_T;
                           Ahead  : Sense_T;

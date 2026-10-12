@@ -62,6 +62,7 @@ with EVC_Distances; use EVC_Distances;
 with EVC_Ports;     use EVC_Ports;
 with Interfaces;    use Interfaces;
 
+--  @req 3.6.7.1 e), 4.4.11.1.3 b)
 package EVC_Odometry
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -88,9 +89,7 @@ is
       Cold_Movement,
       Cold_Not_Available);  -- 3.15.8.3
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    --  A sample was applied since Clear
    function Known return Boolean
@@ -136,8 +135,10 @@ is
      with Global => State;
 
    --  3.6.8
+   --  @req 3.6.8.5, 3.6.8.6.2
    function Impaired return Boolean
      with Global => State;
+   --  @req 3.6.8.7, 4.4.5.1.1
    function Safety_Exceeded return Boolean
      with Global => State;
    --  The accumulated over- and under-reading of the last Total_Cm,
@@ -148,12 +149,11 @@ is
      with Global => State;
 
    --  3.15.8
+   --  @req 3.15.8.1, 3.15.8.1.1, 3.15.8.2
    function Cold return Cold_T
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    --  Power-up: nothing measured
    procedure Clear
@@ -193,6 +193,7 @@ is
    --  the total distance, which go on in every mode (3.6.8.1, 3.6.8.2;
    --  SUBSET-076 4050200_10). The safety threshold once exceeded stays
    --  (the mode is SF then).
+   --  @req 3.6.8.5, 3.6.8.6.2, 3.6.8.7
    procedure Set_Check (Active : Boolean)
      with Global => (In_Out => State),
           Post => (if not Active and then not Safety_Exceeded
@@ -212,10 +213,10 @@ is
                   and then Window_Under = Window_Under'Old
                   and then Cold = Cold'Old;
 
-   ---------------------------------------------------------------------
    --  3.6.7: distances not referred to balise groups
-   ---------------------------------------------------------------------
 
+   --  @req 3.6.7.1 a), 3.6.7.1 b), 3.6.7.1 c), 3.6.7.1 f), 3.6.7.1 g)
+   --  @req 4.4.11.1.8
    type Virtual_T is record
       Active   : Boolean := False;
       --  the supervised distance and its sense (for 3.6.7.3, the train
@@ -230,6 +231,8 @@ is
 
    --  Start (or re-start, 3.6.7.5) the supervision of Distance from
    --  here, along Sense
+   --  @req 3.6.7.2, 3.6.7.3, 3.6.7.3 a), 3.6.7.3 b), 3.6.7.3 c), 3.6.7.4
+   --  @req 3.6.7.5
    function Start_Virtual (Distance : Length_T; Sense : Sense_T)
      return Virtual_T
      with Global => State,

@@ -23,6 +23,7 @@ with EVC_Stored_Information;
 with EVC_Train_Data;
 with EVC_Train_Inputs;
 
+--  @req 4.4.6.1.2, 4.4.6.1.5, 4.4.6.1.7, 4.4.6.1.8, 4.4.9.1.1, 4.6.3 Table
 package EVC_Transition_Conditions
   with SPARK_Mode => On
 is
@@ -499,10 +500,10 @@ is
    C_84 : constant Condition_Id_T := 84;
 
    --  True when the condition holds in the current cycle. The modes
-   --  and levels (e4/modes) read the driver's requests, the inputs of
+   --  and levels read the driver's requests, the inputs of
    --  the train interface, the level, the mission data, the odometer, the
    --  stored information and the Train Data; the procedures
-   --  (e4/procedures) evaluate theirs in EVC_Procedures (Evaluate, once
+   --  evaluate theirs in EVC_Procedures (Evaluate, once
    --  per cycle before the mode machine; every trip condition is theirs,
    --  so that the trip has one reason, 4.4.13.1.3); the two halves of
    --  phase E5 theirs in EVC_Sessions and EVC_Radio_Authority (Evaluate,

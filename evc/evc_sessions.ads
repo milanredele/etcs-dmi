@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half (e5/session; doc/EVC-PLAN.md
+--  Phase E5, the session and link half (doc/EVC-PLAN.md
 --  §13): the communication sessions of 3.5 (set-up, the system version
 --  of 3.5.3 and 3.17, maintaining, termination, the radio networks of
 --  3.5.6, the safe radio connection indication of 3.5.7), the time
@@ -9,7 +9,7 @@
 --  start and end of mission (5.4, 5.5), the level transitions into and
 --  out of level 2 (5.10, 5.15) and the RBC handover (3.15.1).
 --
---  The joint (e5/joint) gave the entry points EVC_Core calls, in the
+--  The joint gave the entry points EVC_Core calls, in the
 --  order of the cycle, with bodies that do nothing but count: the half
 --  fills the bodies, adds its private state and widens the Global
 --  contracts (and those of the core steps that call them: Read_Radio,
@@ -58,6 +58,9 @@ use type EVC_Position.Cab_T;
 use type EVC_Distances.Sense_T;
 use type EVC_Distances.Cm_T;
 
+--  @req 3.5.2.4, 3.5.3.7, 3.5.5.1, 3.5.7.2, 3.5.7.5, 3.5.7.5 Table 1
+--  @req 3.5.7.5 Table 2, 3.12.1.2.1.5, 3.16.3.4.4, 3.16.3.4.5, 4.6.3 Table
+--  @req 5.4.3.2 A31, 5.4.3.2 A32, 5.4.3.2 A40, 5.5.3.1.4, 5.5.3.1.4 step 4
 package EVC_Sessions
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -83,6 +86,7 @@ is
 
    --  1. A connection event of the RTM port on the session S, at the
    --  on-board time Now_Ms
+   --  @req 3.5.3.7 b), 3.5.4.1, 3.5.4.2, 3.5.4.3, 3.5.4.3 1st bullet
    procedure Take_Event (S      : EVC_Radio.Session_T;
                          Event  : EVC_Ports.RTM_Event_T;
                          Now_Ms : EVC_Radio.Time_Ms_T)
@@ -93,6 +97,8 @@ is
    --  (EVC_Received.Last_Message): its time stamp and sequence (3.16.3),
    --  the messages of the session (3.5: 32, 39, ...), the acceptance of
    --  4.8; Verdict says what becomes of it
+   --  @req 3.5.5.2 c), 3.5.5.6, 3.15.1.3.5, 3.15.1.3.6, 3.16.3.1.1.2
+   --  @req 3.16.3.3.3, 3.16.3.5.1
    procedure Take_Message (S       : EVC_Radio.Session_T;
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)
@@ -104,13 +110,14 @@ is
    --  (packet 42) of a balise group accepted (4.8): establish (Q_RBC 1)
    --  or terminate the session with RBC on the number Radio; applied by
    --  the next Evaluate (the last order of a cycle wins)
+   --  @req 3.5.3.4 b)
    procedure Take_Order (Establish : Boolean;
                          RBC       : EVC_Radio.RBC_Id_T;
                          Radio     : ETCS_Variables.NID_RADIO_T)
      with Global => (In_Out => State),
           Post => Has_Released = Has_Released'Old;
 
-   --  3.15.1.3 (e5/handover): an RBC transition order (packet 131) of a
+   --  3.15.1.3: an RBC transition order (packet 131) of a
    --  balise group accepted (4.8): the Accepting RBC and its number, the
    --  border D from the group Ref (D 0: at once); applied by the next
    --  Evaluate
@@ -121,10 +128,11 @@ is
      with Global => (In_Out => State),
           Post => Has_Released = Has_Released'Old;
 
-   --  5.10.3.15.2 b) (e5/level2-radio-data, for EVC_Level_Sessions):
+   --  5.10.3.15.2 b) (for EVC_Level_Sessions):
    --  the driver's Radio data entered outside the start of mission,
    --  read by EVC_Sessions.Mission as at 5.4.3.2 S3 (Found: usable; a
    --  contact entered is stored, valid)
+   --  @req 5.10.3.15.2 b)
    procedure Take_Radio_Data (Found : out Boolean;
                               RBC   : out EVC_Radio.RBC_Id_T;
                               Radio : out ETCS_Variables.NID_RADIO_T)
@@ -135,7 +143,7 @@ is
    function Has_Released return Boolean
      with Global => State;
 
-   --  1c. e5/error-report: a radio message received on S and refused by
+   --  1c. a radio message received on S and refused by
    --  the codec (3.16.1.1, 3.16.3.1.1 c: 8.4.4.2.1), reported to the RBC
    --  like the one of Take_Message refused by its time stamp
    procedure Take_Inconsistent (S : EVC_Radio.Session_T)
@@ -165,6 +173,7 @@ is
    --  5. The cycle of the half (after the levels and the mission): the
    --  sessions, the link supervision, the reports to send, the
    --  conditions of 4.6.3
+   --  @req 3.5.3.4, 3.5.3.7.4.1, 3.15.1.3.8, 3.17.2.8
    procedure Evaluate (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Position.State,
                                 EVC_System_Version.State),
@@ -188,12 +197,14 @@ is
                              = EVC_Position.Doubt_Under'Old;
 
    --  6. The mode changed from From to To (3.5.3.4 c, 3.6.5.1.4, ...)
+   --  @req 3.5.3.4 c), 3.15.1.3.8 b), 4.10.1.3 Table
    procedure Mode_Changed (From, To : Mode_T)
      with Global => (In_Out => (State, EVC_Radio.State),
                      Input  => EVC_Mission.State),
           Post => EVC_Radio.Sessions = EVC_Radio.Sessions'Old;
 
    --  8. The messages and requests of the cycle (EVC_Radio.Send)
+   --  @req 3.5.5.3, 3.16.3.5.3
    procedure Produce (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
@@ -215,10 +226,12 @@ is
    function SoM_Opening return Boolean
      with Global => State;
 
-   --  e5/registration (3.5.6, EVC_Sessions.Network), for EVC_Core: the
+   --  (3.5.6, EVC_Sessions.Network), for EVC_Core: the
    --  registration conditions of 3.5.6.7 hold (5.4.3.2 S4 otherwise:
    --  MSG_ONBOARD waiting 1); the radio bits 0-6 of MSG_ONBOARD; its
    --  radio_wait 2, the registration to the network the driver selected
+   --  @req 5.10.3.15.2 a), 5.10.3.15.2 a) 1st bullet
+   --  @req 5.10.3.15.2 a) 2nd bullet, 5.10.3.15.2 a) 3rd bullet
    function Network_Ready return Boolean
      with Global => (State, EVC_Radio.State);
    function Radio_Bits return Natural
@@ -227,7 +240,7 @@ is
    function Registration_Awaited return Boolean
      with Global => State;
 
-   --  e5/registration-2 (3.18.4.3.6.2, EVC_Sessions.Network), for
+   --  (3.18.4.3.6.2, EVC_Sessions.Network), for
    --  EVC_Core: the list of GSM-R networks (MSG_RADIO_NETWORKS) is due
    --  in this cycle; its networks
    function Networks_List_Due return Boolean
@@ -282,6 +295,7 @@ is
    --  3.5.7.1: the indication status of the safe radio connection with
    --  the relevant RBC (Table 1; MSG_STATUS radio: 0, 1, 2)
    type Indication_T is (No_Connection, Connection_Up, Connection_Lost);
+   --  @req 3.5.7.1
    function Indication return Indication_T
      with Global => State;
 
@@ -314,12 +328,13 @@ is
    function Cycles_Produced return Natural
      with Global => State;
 
-   --  e5/levels, 4.8.3 [3]: Train Data sent to the RBC (129, or 157 with
+   --  4.8.3 [3]: Train Data sent to the RBC (129, or 157 with
    --  packet 11) and not acknowledged yet (message 8)
+   --  @req 4.8.3.1.1 Table-footnote [3]
    function Train_Data_Awaited return Boolean
      with Global => State;
 
-   --  e5/levels, 5.10.3.3.3, 5.10.3.3.5, 5.10.3.15.4: a position report
+   --  5.10.3.3.3, 5.10.3.3.5, 5.10.3.15.4: a position report
    --  (136) due to the supervising RBC, sent by the next Produce (with a
    --  session established)
    procedure Request_Position_Report

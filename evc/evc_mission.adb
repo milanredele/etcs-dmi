@@ -48,15 +48,13 @@ is
    --  4.4.11.1.5.1: the driver is entering the SR speed / distance limits
    SR_Entry        : Boolean := False;
    --  5.4.3.2 E26 / E27: SR proposed by Take_RBC_Answer in the last
-   --  cycle, with the count of radio MAs at that proposal (e5/same-cycle)
+   --  cycle, with the count of radio MAs at that proposal
    SR_After_Wait     : Boolean := False;
    SR_After_Wait_MAs : Natural := 0;
    Events          : Event_Array;
    Event_N         : Natural range 0 .. Max_Events := 0;
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Driver_ID_Status return Data_Status_T is (Driver_S)
      with Refined_Global => Driver_S;
@@ -122,10 +120,6 @@ is
       end if;
    end Put_Event;
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear is
    begin
       Driver_S := Unknown;
@@ -156,9 +150,7 @@ is
       Event_N := 0;
    end Clear;
 
-   ---------------------------------------------------------------------
    --  The entries
-   ---------------------------------------------------------------------
 
    --  DMI 11.3.3: a driver ID of 1 to 16 printable characters
    function Valid_Driver_ID (T : Text_T) return Boolean is
@@ -386,10 +378,12 @@ is
    --  changes the mode and so ends the wait. 5.11.2.2 S150 a), S160: the
    --  same in PT. The wait ends when the mode, the level or the desk
    --  changes (3.8.2.3: the request of Start ends with the desk closed).
-   --  Decision (e5/sr-proposal): a message 2 without a 'Start' waiting
+   --  Decision: a message 2 without a 'Start' waiting
    --  proposes nothing (5.4.3.2 goes to S24 from S21 only); the
    --  authority half keeps its SR distance and list (4.4.11.1.6.4) and a
    --  later 'Start' waits at S21 again
+   --  @req 5.4.3.2 S21, 5.4.3.2 S25, 5.11.2.2 S150, 5.11.2.2 S150 a)
+   --  @req 5.11.2.2 S150 b), 5.11.2.2 S170
    procedure Take_RBC_Answer (C : Context_T; M : Mode_T)
      with Global => (In_Out => (RBC_Wait, Proposal, Proposal_Mode,
                                 SR_After_Wait, SR_After_Wait_MAs,
@@ -397,7 +391,7 @@ is
                      Input  => (Engaged, RBC_Wait_Count))
    is
    begin
-      --  Decision (e5/same-cycle), 5.4.3.2 E26 / E27: a message 2 and an
+      --  Decision, 5.4.3.2 E26 / E27: a message 2 and an
       --  MA with a mode profile taken in the same cycle: the MA wins (E26
       --  and E27 are alternatives from S21; the MA received supersedes the
       --  SR authorisation). The message 2 is counted when the ports are
@@ -516,13 +510,9 @@ is
       end if;
    end Take_Start;
 
-   --------------
-   -- Evaluate --
-   --------------
-
    --  3.18.3.3.1: the Train Data entry after the start of mission, in the
    --  modes of 4.7.2 other than SB (in SB the standstill supervision of
-   --  4.4.7.1.5 applies). B220: the entry ends when the DMI reports the
+   --  4.4.7.1.5 applies). The entry ends when the DMI reports the
    --  Train data window left without the data (action 22), and still at
    --  the next button of the Main window reported, the end of the
    --  mission or a mode without the entry.
@@ -574,10 +564,6 @@ is
       Take_Start (C, M);
    end Evaluate;
 
-   --------------------
-   -- Override_In_SR --
-   --------------------
-
    procedure Override_In_SR (C : Context_T) is
    begin
       SR_V := C.V_NVSTFF;
@@ -591,10 +577,6 @@ is
                  Natural (Length_T'Min (C.D_NVSTFF / 10_000, 255)));
    end Override_In_SR;
 
-   ------------------
-   -- Set_For_Test --
-   ------------------
-
    procedure Set_For_Test (M : Mode_T; C : Context_T) is
    begin
       if M = M_SR then
@@ -606,10 +588,6 @@ is
          end if;
       end if;
    end Set_For_Test;
-
-   ------------------
-   -- Mode_Entered --
-   ------------------
 
    procedure Mode_Entered (From, To : Mode_T; C : Context_T) is
    begin

@@ -115,6 +115,11 @@ with ETCS_Train_Packets.P1;
 with ETCS_Variables;    use ETCS_Variables;
 with Interfaces;        use Interfaces;
 
+--  @req 3.6.2.2.2 c), 3.6.5.1.4 e), 3.6.5.1.4 k), 3.7.3.1 m), 3.15.1.3.1
+--  @req 3.15.1.3.1 c), A.3.3.2, 4.4.6.1.4, 4.4.7.1.6, 4.4.7.1.6 a)
+--  @req 4.4.7.1.6 b), 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4, 4.8.2.2, 4.8.2.3
+--  @req 4.8.3.1.1 Table-footnote [1], 4.8.3.1.1 Table-footnote [2]
+--  @req 5.4.3.2 D32, 5.12.2.5, 5.12.4.3, 5.15.1.4
 package EVC_Position
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -147,9 +152,7 @@ is
    --  The cab status inputs of the cycle: one cab active, or not
    type Cab_T is (No_Cab, Cab_A, Cab_B);
 
-   ---------------------------------------------------------------------
    --  Events of a cycle
-   ---------------------------------------------------------------------
 
    --  JRU event code: Event_Kind_T'Pos + 4 (EVC_Ports)
    type Event_Kind_T is
@@ -196,9 +199,7 @@ is
 
    type Report_Kind_T is (Report_P0, Report_P1);
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    function Status return Status_T
      with Global => State;
@@ -238,6 +239,7 @@ is
 
    --  The distance from the end of the engine the orientation points to,
    --  to the antenna (the installation, Set_Antenna)
+   --  @req 3.11.11.4 8th bullet
    function Front_Offset (S : Sense_T) return EVC_Config.Antenna_Offset_T
      with Global => State;
 
@@ -247,6 +249,7 @@ is
 
    --  Against the LRBG, along the orientation (0 without LRBG): the
    --  estimated front end (3.6.1.3), the confidence interval (3.6.4.1.5)
+   --  @req 3.6.1.6
    function Estimated_Front return Dist_T
      with Global => (State, EVC_Odometry.State);
    function Doubt_Over return Length_T
@@ -255,6 +258,7 @@ is
    function Doubt_Under return Length_T
      with Global => (State, EVC_Odometry.State),
           Post => (if not LRBG.Valid then Doubt_Under'Result = 0);
+   --  @req 3.6.4.1.5, 3.6.4.1.5 a), 3.6.4.1.5 b), 3.6.4.1.5 last sentence
    function Min_Safe_Front return Dist_T
      with Global => (State, EVC_Odometry.State),
           Post => Min_Safe_Front'Result <= Estimated_Front;
@@ -275,6 +279,7 @@ is
    --  3.6.1.7: the min safe rear end against the LRBG, with the train
    --  length of the valid Train Data (Set_Train_Length); the min safe
    --  front end while no length is known
+   --  @req 3.6.1.7
    function Min_Safe_Rear return Dist_T
      with Global => (State, EVC_Odometry.State),
           Post => Min_Safe_Rear'Result <= Min_Safe_Front;
@@ -305,12 +310,16 @@ is
    --  3.6.6: the geographical position of the estimated front end, m
    function Geo_Known return Boolean
      with Global => State;
+   --  @req 3.6.6.2
    function Geo_Metres return Natural
      with Global => State;
 
    --  3.6.5
+   --  @req 3.6.5.1.4, 3.6.5.1.4 a), 3.6.5.1.4 b), 3.6.5.1.4 g), 3.6.5.1.4 i)
+   --  @req 3.6.5.1.4 j)
    function Report_Triggers return Triggers_T
      with Global => State;
+   --  @req 3.4.2.3.3.1
    function Report_Kind return Report_Kind_T
      with Global => State;
    function Report_Parameters_Stored return Boolean
@@ -326,16 +335,18 @@ is
    --  The content of the position report (3.6.5.1.2): packet 0, and
    --  packet 1 for Report_P1. Q_INTEGRITY is "no train integrity
    --  information" (3.6.5.2, phase E5).
+   --  @req 3.6.2.2.2.1, 3.6.5.1.2, 3.6.5.1.2 a), 3.6.5.1.2 b), 3.6.5.1.2 c)
+   --  @req 3.6.5.1.2 d), 3.6.5.1.2 e), 3.6.5.1.2 f), 3.6.5.1.2 h)
+   --  @req 3.6.5.1.2 i), 3.8.2.1.7
    function Position_Report (Mode : Mode_T; Level : Level_T)
      return ETCS_Train_Packets.P0.Packet_T
      with Global => (State, EVC_Odometry.State);
+   --  @req 3.4.2.3.3.2, 3.4.2.3.3.3
    function Position_Report_2 (Mode : Mode_T; Level : Level_T)
      return ETCS_Train_Packets.P1.Packet_T
      with Global => (State, EVC_Odometry.State);
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    --  A new on-board: nothing known (what is kept over No Power comes
    --  back through Restore below, EVC_Core.Power_Up)
@@ -388,6 +399,7 @@ is
 
    --  One cycle (see above). Sample is the odometer sample of the cycle
    --  when Sampled (the same sample may come again: it changes nothing).
+   --  @req 3.6.1.5, 3.6.6.4.3, 3.6.8.5, 3.6.8.6.2
    procedure Update (Cab_A_Active : Boolean;
                      Cab_B_Active : Boolean;
                      Sampled      : Boolean;
@@ -425,6 +437,7 @@ is
             and then Pending_Count = 0;
 
    --  The train length of the valid Train Data (phase E4), cm
+   --  @req 4.4.6.1.4, 4.4.8.1.3, 4.4.20.1.4
    procedure Set_Train_Length (Length : Length_T)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Train_Length_Known and then Length_Of_Train = Length
@@ -450,6 +463,7 @@ is
    --  Its passage by the max safe front end and by the min safe rear end
    --  sets Border_Front and Border_Rear of the triggers once each. OK
    --  False when Ref is none of the anchors.
+   --  @req 3.15.1.3.1 b)
    procedure Set_Border (Ref : Identity_T; D : Length_T; OK : out Boolean)
      with Global => (In_Out => State, Input => EVC_Odometry.State),
           Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
@@ -471,6 +485,7 @@ is
    --  referring to the balise group Ref: one of the anchors the position
    --  keeps (LRBG, SOLR, the LRBGs of 3.6.2.2.2 c). OK False when Ref is
    --  none of them or the packet cannot be used.
+   --  @req 3.6.5.1.7
    procedure Set_Report_Parameters
      (P   : ETCS_Track_Packets.P58.Packet_T;
       Ref : Identity_T;
@@ -509,6 +524,7 @@ is
    --  (from the previous LRBG towards Id, 3.4.2.3.3.2). Refused (OK
    --  False) when Id was reported with different previous LRBGs
    --  (3.4.2.3.3.7, 3.4.2.3.3.8) or has no direction reference.
+   --  @req 3.4.2.3.3.6, 3.4.2.3.3.8
    procedure Assign_Coordinate_System (Id      : Identity_T;
                                        Nominal : Boolean;
                                        OK      : out Boolean)
@@ -528,6 +544,7 @@ is
    --  orientation, as directions on the axis (the packets valid for the
    --  train are those of Valid_For (Q_DIR, G, T), 3.6.3.1.3); S, the
    --  sense of the distances: the train orientation.
+   --  @req 3.6.3.1.3
    procedure Radio_Origin (Id      : Identity_T;
                            Shifted : Boolean;
                            Shift   : Dist_T;
@@ -557,6 +574,7 @@ is
       Orient_Known : Boolean := False;
    end record;
 
+   --  @req 3.6.4.2.2.1
    procedure Keep (K : out Kept_Position_T)
      with Global => (Input => (State, EVC_Odometry.State)),
           Post => (if K.Known then K.LRBG.Valid);
@@ -572,6 +590,7 @@ is
                    else Status = Status'Old and then LRBG = LRBG'Old);
 
    --  4.11.1.1: no cold movement occurred, the kept position is valid
+   --  @req 5.4.3.2 A35
    procedure Revalidate
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => (if Status'Old = Invalid then Status = Valid
@@ -587,16 +606,18 @@ is
      with Global => (In_Out => State),
           Post => (if Status'Old = Unknown then Status = Unknown
                    else Status = Invalid);
+   --  @req 3.6.2.2.2.1, 5.4.3.2 A24
    procedure Delete_Position
      with Global => (In_Out => State),
           Post => Status = Unknown and then not LRBG.Valid
                   and then Orientation = Orientation'Old
                   and then Active_Cab = Active_Cab'Old;
    --  3.6.6.9 d)
+   --  @req 3.6.6.9 d)
    procedure Delete_Geo
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => not Geo_Known
-                  --  added by e4/modes: nothing else changes (EVC_Core,
+                  --  nothing else changes (EVC_Core,
                   --  the data of 4.10)
                   and then Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
@@ -606,21 +627,23 @@ is
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
 
-   --  Added by e4/modes: the linking of packet 5 is accepted (4.8, in
+   --  the linking of packet 5 is accepted (4.8, in
    --  the level and the mode of the on-board) and its consistency is
    --  checked (3.4.4.2.1.1 b, the modes of 4.5.2 Figure 1); both until
    --  EVC_Core sets them, as in phase E2. The settings apply from the
-   --  next Update. Added by e5/reports-by-event-2: Accept_P79, packet 79
+   --  next Update. Accept_P79, packet 79
    --  of a balise group accepted (4.8.4.2, e.g. rejected in SH).
-   --  Added by e5/acceptance-gates (B212), 4.8.3 [1]: Defer_On_Order,
+   --  4.8.3 [1]: Defer_On_Order,
    --  the linking of a group that carries a level transition order
    --  (packet 41) is held, not taken, until EVC_Core judges it again
    --  after the stores evaluated that order (Take_Held_Linking).
-   --  Ignore_Info (e5/acceptance-gates, B221), 3.14.3.6: the information
+   --  Ignore_Info, 3.14.3.6: the information
    --  of the groups read is ignored (a movement opposite to the
    --  authorised direction): the group still locates the train (3.6),
    --  its packets are neither taken here (5, 79) nor recorded for the
    --  units (not in Taken).
+   --  @req 3.14.3.6, 4.5.2.1, 4.5.2.2 Table, 4.5.2.2 Table-footnote {2}
+   --  @req 4.5.2.2 Table-footnote {4}, 4.8.4.2 Table
    procedure Set_Linking_Context (Accept_Info, Check : Boolean;
                                   Accept_P79 : Boolean := True;
                                   Defer_On_Order : Boolean := False;
@@ -634,7 +657,7 @@ is
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
 
-   --  e5/acceptance-gates (B212), 4.8.3 [1]: the linking held by the
+   --  4.8.3 [1]: the linking held by the
    --  cycle's Update (a group with its own level transition order read
    --  with Defer_On_Order) is taken now when Accept_Info (EVC_Core: the
    --  verdict of 4.8 once the stores evaluated the group's order: not
@@ -650,7 +673,7 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: the linking (packet 5
+   --  4.8.3 [1], 4.8.5.5: the linking (packet 5
    --  in R) of the group Group, its distances along S, read in level 0
    --  or 2 with level 1 announced, kept in the balise transition buffer
    --  and released at the transition to level 1 (EVC_Core): it replaces
@@ -658,6 +681,7 @@ is
    --  only when the SOLR is its group or a group it announces (the
    --  reference of the windows, 3.4.4.4.5.1); the windows already passed
    --  are not supervised (as at the passage of the group).
+   --  @req 4.8.3.1.1 Table
    procedure Take_Released_Linking (R     : in out ETCS_Bits.Reader;
                                     Group : Identity_T;
                                     S     : Sense_T)
@@ -670,7 +694,7 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
 
-   --  Phase E5 (e5/radio-geo-buffer), 3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5:
+   --  Phase E5, 3.6.6.4.1, 4.8.3, 4.8.4.2, 4.8.5:
    --  the packets 79 of the radio messages of the cycle (EVC_Radio_Info,
    --  those whose LRBG was known at reception) in the verdict of the
    --  tables (EVC_Acceptance.Radio_Geo_Verdict). Accepted: taken in the
@@ -682,6 +706,7 @@ is
    --  sequential re-evaluation of 4.8.5.5 leaves the last). Rejected:
    --  nothing taken, the one kept deleted (4.8.5.4 a: the announcement
    --  is gone; or released in a mode that rejects it).
+   --  @req 3.6.6.4.1, 4.8.4.2 Table
    procedure Take_Radio_Geo (Verdict : EVC_Acceptance.Radio_Verdict_T)
      with Global => (In_Out   => State,
                      Input    => EVC_Radio_Info.State,
@@ -694,6 +719,8 @@ is
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
    --  4.10: entering a mode deletes the linking
+   --  @req 4.10.1.3, 4.10.1.3 a), 4.10.1.3 b), 4.10.1.3 c), 4.10.1.3 d)
+   --  @req 4.10.1.3 e), 4.10.1.3 Table, 4.10.1.3 Table-footnote [1]
    procedure Delete_Linking
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
@@ -704,15 +731,14 @@ is
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
 
-   ---------------------------------------------------------------------
    --  For the stored information (phase E3)
-   ---------------------------------------------------------------------
 
    --  3.6.3.1: information with this Q_DIR from a group of orientation
    --  G is valid for a train whose direction (orientation, or crossing
    --  direction in SL, PS and SH) is T: nominal when both point the
    --  same way. When one is not known only "both directions" is taken
    --  (3.6.3.1.4).
+   --  @req 3.6.3.1.3, 3.6.3.1.4
    function Valid_For (Q_DIR : Q_DIR_T; G, T : Direction_T) return Boolean
    is (case Q_DIR is
           when 2 => True,
@@ -733,6 +759,7 @@ is
    Max_Taken           : constant := Max_Pending + 1;
    Max_Taken_Telegrams : constant := 2 * Max_Balises;
 
+   --  @req 3.8.4.2.1 b), 3.8.5.2.2
    type Taken_T is record
       Group    : Anchor_T := (others => <>);
       T        : Direction_T := Unknown;
@@ -742,7 +769,7 @@ is
       Count    : Natural range 0 .. Max_Balises := 0;
       Start_Ms : Unsigned_64 := 0;
       --  3.8.5.2.2: the group met a link announcing an unknown group
-      --  with repositioning (e5/trips-fs)
+      --  with repositioning
       Repositioning : Boolean := False;
    end record;
 

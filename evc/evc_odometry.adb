@@ -116,10 +116,6 @@ is
       else Signed (Reading))
      with Refined_Global => (Known_Flag, X, Raw);
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear
      with Refined_Global => (Output => (Known_Flag, Raw, X, Low_Acc,
                                         High_Acc, Over_Acc, Under_Acc,
@@ -158,9 +154,7 @@ is
       Check_Active := True;
    end Clear;
 
-   ---------------------------------------------------------------------
    --  3.6.8
-   ---------------------------------------------------------------------
 
    --  The end of an interval: keep it in the ring, sum the ring, check
    --  the thresholds
@@ -225,10 +219,6 @@ is
       end if;
    end Close_Interval;
 
-   ---------------
-   -- Set_Check --
-   ---------------
-
    procedure Set_Check (Active : Boolean) is
    begin
       Check_Active := Active;
@@ -243,6 +233,7 @@ is
    --  Move cm travelled with the growths Grow_Over and Grow_Under of the
    --  amounts: cut at the ends of the intervals, each part of the
    --  movement taking its share of the growths
+   --  @req 3.6.8.2, 3.6.8.3, 3.6.8.4, 3.6.8.6, 3.6.8.8
    procedure Monitor (Move, Grow_Over, Grow_Under : Length_T)
      with Global => (In_Out => (Ring, Ring_Next, Ring_Filled,
                                 Current_Travel, Current_Over,
@@ -285,10 +276,6 @@ is
       Current_Over := Add (Current_Over, G_Over);
       Current_Under := Add (Current_Under, G_Und);
    end Monitor;
-
-   -----------
-   -- Apply --
-   -----------
 
    procedure Apply (Sample : Odometer_Sample_T)
      with Refined_Global => (Output => Last,
@@ -374,9 +361,7 @@ is
       end case;
    end Apply;
 
-   ---------------------------------------------------------------------
    --  3.6.7
-   ---------------------------------------------------------------------
 
    function Start_Virtual (Distance : Length_T; Sense : Sense_T)
      return Virtual_T

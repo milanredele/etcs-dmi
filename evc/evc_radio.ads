@@ -8,7 +8,7 @@
 --  This unit decides nothing; it holds the state and its queries.
 --
 --  Ownership of the state (who writes what):
---    - EVC_Sessions (the session and link half, e5/session) is the only
+--    - EVC_Sessions (the session and link half) is the only
 --      writer of the session table (Set_State, Set_Peer, Set_Version,
 --      Note_Received, Reset_Session), of the roles (Set_Roles), of the
 --      RBC contact information (Set_Contact) and of the radio network
@@ -16,7 +16,7 @@
 --      3.16.3 (the time stamps and the link supervision), 3.15.1 (which
 --      session supervises and which accepts) and the acceptance of radio
 --      information (4.8, the transition buffer 4.8.5).
---    - EVC_Radio_Authority (the authority half, e5/authority) reads the
+--    - EVC_Radio_Authority (the authority half) reads the
 --      table through the queries and sends (Send).
 --    - Both halves send their messages through Send and the requests
 --      through Request_*; Send records the T_TRAIN of what it queued as
@@ -49,6 +49,7 @@ with EVC_Ports;      use EVC_Ports;
 with ETCS_Variables; use ETCS_Variables;
 with Interfaces;     use Interfaces;
 
+--  @req 3.5.2.4
 package EVC_Radio
   with SPARK_Mode => On,
        Abstract_State => (State, Queue),
@@ -65,9 +66,7 @@ is
 
    subtype Time_Ms_T is Unsigned_64;   -- on-board time (EVC_Core.Time_Ms)
 
-   ---------------------------------------------------------------------
    --  Identities
-   ---------------------------------------------------------------------
 
    --  An RBC (NID_C, NID_RBC of chapter 7)
    type RBC_Id_T is record
@@ -94,7 +93,7 @@ is
 
    --  The GSM-R radio network (3.5.6): the one ordered (from trackside or
    --  the driver, or the default of 3.5.6.3) and whether the mobiles are
-   --  registered to it. Written by EVC_Sessions. e5/registration: the
+   --  registered to it. Written by EVC_Sessions. The
    --  Radio Network type stored (3.5.6.5) with it; Known and Type_Known
    --  say whether they were received from trackside or the driver (or
    --  memorized over No Power, 3.5.6.2), else the defaults of the
@@ -108,9 +107,7 @@ is
       Net_Type   : EVC_Config.Network_Type_T := EVC_Config.GSMR;
    end record;
 
-   ---------------------------------------------------------------------
    --  The session table
-   ---------------------------------------------------------------------
 
    --  The state of a communication session, as 3.5 names its steps
    type Session_State_T is
@@ -182,7 +179,7 @@ is
 
    --  The ETCS identity of the on-board, NID_ENGINE of the train to
    --  track messages (8.4.4.7.1; EVC_Config.Radio_Config_T, taken at
-   --  Clear): added by e5/session-3 for both halves
+   --  Clear): for both halves
    function Engine_Id return NID_ENGINE_T
      with Global => State;
 
@@ -191,18 +188,18 @@ is
    --  supervising RBC; False again when Train Data are sent anew or the
    --  session ends. Written by EVC_Sessions; the authority half's MA
    --  request at start of mission (S20 / S21) is to wait for it.
+   --  @req 5.4.3.2 D15
    function Train_Data_Acknowledged return Boolean
      with Global => State;
 
    function Contact return RBC_Contact_T
      with Global => State;
 
+   --  @req 3.5.6.2
    function Network return Network_T
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Queries (what each half asks of the other)
-   ---------------------------------------------------------------------
 
    --  The on-board handles the session S (Sessions)
    function Usable (S : Session_T) return Boolean is
@@ -250,6 +247,7 @@ is
      with Global => State;
 
    --  3.15.1: a handover is under way (an Accepting RBC is known)
+   --  @req 4.8.5.2
    function Handover return Boolean is
      (Accepting /= No_Session)
      with Global => State;
@@ -260,7 +258,7 @@ is
       and then Info (Session_T (Supervising)).Version_Known)
      with Global => State;
 
-   --  Added by e5/authority: the on-board clock of the time stamps
+   --  the on-board clock of the time stamps
    --  (3.16.3.1, T_TRAIN 7.5.1.159: 10 ms, modulo 2**32, the value
    --  "unknown" never given): T_TRAIN of the on-board time Now_Ms
    function T_Train_At (Now_Ms : Time_Ms_T) return T_TRAIN_T is
@@ -271,6 +269,7 @@ is
    --  train message: the T_TRAIN of the train to track message it
    --  answers, 3.16.3.1.2) at the on-board time Now_Ms: the latest
    --  time at or before Now_Ms with that T_TRAIN; Now_Ms for "unknown"
+   --  @req 3.8.4.2.1, 3.8.4.2.1 a), 3.8.4.3.1 a)
    function Time_Of_Stamp (Stamp : T_TRAIN_T; Now_Ms : Time_Ms_T)
      return Time_Ms_T
    is (if Stamp = T_TRAIN_Unknown then Now_Ms
@@ -280,21 +279,18 @@ is
                       - Time_Ms_T (Stamp)) mod (2**32 - 1))))
      with Post => Time_Of_Stamp'Result <= Now_Ms;
 
-   ---------------------------------------------------------------------
    --  The context of a cycle, for the halves (EVC_Core builds it)
-   ---------------------------------------------------------------------
 
+   --  @req 3.5.4.4
    type Context_T is record
       Mode   : Mode_T := M_NP;
       Now_Ms : Time_Ms_T := 0;
-      --  3.5.4.4, 3.5.7.5 Table 2 [7] (e5/onboard-misc): the engine
+      --  3.5.4.4, 3.5.7.5 Table 2 [7]: the engine
       --  overlaps an announced radio hole (EVC_Track_Conditions)
       Radio_Hole : Boolean := False;
    end record;
 
-   ---------------------------------------------------------------------
    --  Operations of EVC_Core
-   ---------------------------------------------------------------------
 
    --  The power-up: no session (every one Idle), no role, no contact, no
    --  network, the outbox empty; N sessions (EVC_Config)
@@ -323,8 +319,9 @@ is
                   and then Supervising = Supervising'Old
                   and then Accepting = Accepting'Old;
 
-   --  4.11.1.1 table, RBC contact information (e5/onboard-misc, B272): no
+   --  4.11.1.1 table, RBC contact information: no
    --  cold movement occurred, the contact kept over No Power is valid
+   --  @req 4.11.1.1, 4.11.1.3
    procedure Revalidate_Contact
      with Global => (In_Out => State),
           Post => Contact.Known = Contact.Known'Old
@@ -335,9 +332,7 @@ is
                   and then Supervising = Supervising'Old
                   and then Accepting = Accepting'Old;
 
-   ---------------------------------------------------------------------
    --  Operations of EVC_Sessions (the only writer of the table)
-   ---------------------------------------------------------------------
 
    procedure Set_State (S : Session_T; To : Session_State_T)
      with Global => (In_Out => State),
@@ -409,6 +404,7 @@ is
                   and then Accepting = Accepting'Old
                   and then Contact = Contact'Old;
 
+   --  @req 3.15.1.3.7
    procedure Set_Contact (C : RBC_Contact_T)
      with Global => (In_Out => State),
           Post => Contact = C
@@ -423,9 +419,7 @@ is
                   and then Supervising = Supervising'Old
                   and then Accepting = Accepting'Old;
 
-   ---------------------------------------------------------------------
    --  The outbox (both halves): what leaves on the RTM port
-   ---------------------------------------------------------------------
 
    --  Bytes of static storage for the outputs waiting for the RTM port
    --  (records: length u16, then the output of EVC_Ports); a train to

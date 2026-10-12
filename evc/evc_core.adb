@@ -81,9 +81,7 @@ is
    use type ETCS_Message.Status_T;
    use type ETCS_Telegram.Status_T;
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    type TIU_Signals_T is array (TIU_Signal_T) of Boolean;
    type Counts_T is array (Port_T) of Natural;
@@ -160,9 +158,7 @@ is
    Rejected_Count : Counts_T := (others => 0);
    Overflow_Count : Counts_T := (others => 0);
 
-   ---------------------------------------------------------------------
-   --  Speed and distance monitoring (phase E3, e3/supervision)
-   ---------------------------------------------------------------------
+   --  Speed and distance monitoring
 
    --  The value bytes of the TIU inputs (the direction controller, the
    --  brake pressure) and which signals were ever received, latched and
@@ -227,9 +223,7 @@ is
    --  entry 36) while the odometer performance is impaired
    Odometer_Shown       : Boolean := False;
 
-   ---------------------------------------------------------------------
-   --  The procedures (phase E4, e4/procedures)
-   ---------------------------------------------------------------------
+   --  The procedures
 
    --  The context of the procedures in the cycle (Run_Procedures)
    Proc_Ctx : EVC_Procedures.Context_T;
@@ -245,7 +239,7 @@ is
    --  5.20: an item of the information for an external function was
    --  sent in the last cycle (the TIU track condition output)
    TC_Sent : Boolean := False;
-   --  B007: the stored RBC contact sent last to the DMI (MSG_RBC_CONTACT;
+   --  the stored RBC contact sent last to the DMI (MSG_RBC_CONTACT;
    --  none before the first contact is stored)
    Contact_Sent : EVC_Radio.RBC_Contact_T := EVC_Radio.No_Contact;
    --  5.17: the train configuration of the train interface seen last
@@ -253,9 +247,7 @@ is
    Config_Last : EVC_Bytes.Byte := 0;
    Config_Seen : Boolean := False;
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Mode return Mode_T is (Current_Mode);
    function Level_Status return Level_Status_T is (EVC_Levels.Status);
@@ -278,19 +270,11 @@ is
    function Brake_Commands return EVC_Brake_Commands.Commands_T is
      (Brake_Output);
 
-   ---------------------------
-   -- Set_Snapshot_For_Test --
-   ---------------------------
-
    procedure Set_Snapshot_For_Test (S : EVC_Supervision_Input.Snapshot_T) is
    begin
       Snapshot := S;
       Test_Snapshot_Set := True;
    end Set_Snapshot_For_Test;
-
-   -----------------------
-   -- Set_Mode_For_Test --
-   -----------------------
 
    procedure Set_Mode_For_Test (Mode : Mode_T; Level : Level_T) is
    begin
@@ -421,10 +405,6 @@ is
       EVC_Outbox.Clear;
    end Start;
 
-   ----------------
-   -- Initialise --
-   ----------------
-
    procedure Initialise is
    begin
       Start;
@@ -432,10 +412,6 @@ is
       --  3.17.2.9.1: nothing kept, the highest supported version
       EVC_System_Version.Restore (False, 0);
    end Initialise;
-
-   --------------
-   -- Power_Up --
-   --------------
 
    procedure Power_Up is
       K : EVC_Retained.Kept_T;
@@ -455,7 +431,7 @@ is
          EVC_Position.Restore (K.Position);
          --  phase E5: the RBC contact information, to be revalidated
          EVC_Radio.Restore_Contact (K.RBC);
-         --  3.5.6.2 (e5/registration): the network memorized, no mobile
+         --  3.5.6.2: the network memorized, no mobile
          --  registered (EVC_Sessions.Network orders the registration)
          EVC_Radio.Set_Network ((Known      => K.Network.Known,
                                  NID_MN     => K.Network.NID_MN,
@@ -465,10 +441,6 @@ is
          Kept_Pending := True;
       end if;
    end Power_Up;
-
-   ---------------
-   -- Configure --
-   ---------------
 
    procedure Configure (Bytes : EVC_Bytes.Byte_Array) is
    begin
@@ -520,10 +492,6 @@ is
       end if;
    end Latch_RTM;
 
-   ------------------
-   -- Handle_Input --
-   ------------------
-
    procedure Handle_Input (Port : Port_T; Payload : EVC_Bytes.Byte_Array) is
    begin
       if Failed_Flag then
@@ -574,9 +542,7 @@ is
       end case;
    end Handle_Input;
 
-   ---------------------------------------------------------------------
    --  The steps of one cycle (doc/EVC-PLAN.md §2), in their order
-   ---------------------------------------------------------------------
 
    --  A record for the juridical recording (EVC_Ports): Event, three
    --  bytes that depend on it, the cycle and the on-board time
@@ -635,6 +601,7 @@ is
    --  Update: the reference and the confidence interval do not change
    --  here); 3.17.3.5, 4.6.3 [65]: a telegram of a system version not
    --  supported noted for the procedures
+   --  @req 3.17.3.5 d)
    procedure Read_Telegrams
      with Global => (Input  => (Latched_BTM, Cycle_Count, Clock_Ms,
                                 EVC_Odometry.State),
@@ -728,8 +695,9 @@ is
       Latched_Event_Count := 0;
    end Read_Radio_Events;
 
-   --  e5/error-report: JRU record 13 (EVC_JRU_Records) for a radio
+   --  JRU record 13 (EVC_JRU_Records) for a radio
    --  message found inconsistent and reported (3.16.3.1.1.2)
+   --  @req 3.16.3.1.1.2
    procedure Record_Radio_Error
      with Global => (Input  => (EVC_Sessions.State, Cycle_Count, Clock_Ms),
                      In_Out => EVC_Outbox.Queue)
@@ -749,6 +717,7 @@ is
    --  NID_MESSAGE, L_MESSAGE), parsed (EVC_Received, chapter 8)
    --  and given, with their session, to the session and link half; the
    --  messages it passes go on to the authority half (phase E5)
+   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2
    procedure Read_Radio_Messages
      with Global => (Input  => (Latched_RTM, Cycle_Count, Clock_Ms,
                                 EVC_Position.State, EVC_Odometry.State),
@@ -769,7 +738,7 @@ is
             Slot : RTM_Slot_T renames Latched_RTM (I);
          begin
             if Valid_RTM (Slot.Data (1 .. Slot.Length)) then
-               --  e5/jru-radio: the message from the RBC (SUBSET-027 record
+               --  the message from the RBC (SUBSET-027 record
                --  9) recorded at reception, whatever its later use: one
                --  record per message the RTM port delivers with a
                --  consistent L_MESSAGE (7.5.1.48). Decision: "received"
@@ -779,7 +748,7 @@ is
                --  unknown NID_MESSAGE such as 254), one with an undefined
                --  packet and one the time stamp check refuses later
                --  (3.16.3.3.3) are recorded too, the refusal by a JRU 13
-               --  with M_ERROR after it (e5/error-report). A frame whose
+               --  with M_ERROR after it. A frame whose
                --  length disagrees with L_MESSAGE is not recorded.
                --  NID_MESSAGE, L_MESSAGE (u16)
                EVC_Outbox.Put
@@ -792,10 +761,10 @@ is
                if M_Status = ETCS_Message.Accepted
                  and then EVC_Received.Last_Unknown_Packets > 0
                then
-                  --  e5/reports-136: 3.16.1.1, 3.16.3.1.1.2: a packet
+                  --  3.16.1.1, 3.16.3.1.1.2: a packet
                   --  chapter 7 does not define makes the message not
                   --  compliant: reported (M_ERROR 3), not used.
-                  --  e5/untraced, decision on the order of the checks of
+                  --  decision on the order of the checks of
                   --  3.16.3.1.1: the general criteria of 3.16.1.1 come
                   --  first, before the time stamp check b) of
                   --  EVC_Sessions.Take_Message: a message both stale and
@@ -816,7 +785,7 @@ is
                   elsif Verdict = EVC_Sessions.Buffered
                     or else EVC_Radio_Authority.To_Buffer
                   then
-                     --  e5/handover: also the Accepting RBC's (4.8.5.2)
+                     --  also the Accepting RBC's (4.8.5.2)
                      EVC_Radio_Authority.Store_Message
                        (Slot.Session, Slot.Data (1 .. Slot.Length),
                         Accepting => Verdict = EVC_Sessions.Buffered);
@@ -825,7 +794,7 @@ is
                        (Slot.Session, Unsigned_64 (Clock_Ms));
                   end if;
                else
-                  --  e5/error-report: 3.16.3.1.1 c), 3.16.3.1.1.2
+                  --  3.16.3.1.1 c), 3.16.3.1.1.2
                   EVC_Sessions.Take_Inconsistent (Slot.Session);
                   Record_Radio_Error;
                end if;
@@ -839,6 +808,7 @@ is
    --  session half releases, parsed again (in the first slot of the
    --  latch, free now) and given to the authority half as received in
    --  this cycle; at most RTM_Latch_Size in a cycle
+   --  @req 4.8.5.5, 4.8.5.6 a)
    procedure Read_Released_Messages
      with Global => (Input  => (Clock_Ms, EVC_Position.State,
                                 EVC_Odometry.State),
@@ -958,7 +928,7 @@ is
      with Global => (Current_Mode, EVC_Levels.State, EVC_Train_Inputs.State,
                      EVC_Train_Data.State, EVC_Mission.State);
 
-   --  e5/acceptance-gates (B212), 4.8.3 [1]: the context of a group
+   --  4.8.3 [1]: the context of a group
    --  whose own packet 41 orders level 1 at a further location
    function Ordered_Context return EVC_Acceptance.Context_T is
      ((Mode             => Current_Mode,
@@ -978,6 +948,7 @@ is
    --  2. Update the position (EVC_Position): the cab status, the
    --  telegrams of the cycle, the odometer sample; its events go to the
    --  JRU. E0's standstill and override speed come from the sample.
+   --  @req 3.14.3.6, 4.8.3.1.1 Table-footnote [1]
    procedure Update_Position
      with Global => (Input  => (Odometer_Now, Odometer_Fresh, TIU_Now,
                                 EVC_National_Values.State, Current_Mode,
@@ -1006,7 +977,7 @@ is
       EVC_Position.Set_Linking_Context
         (Accept_Info => EVC_Acceptance.Accepted
                           (EVC_Acceptance.Linking, Acceptance_Context)
-                        --  4.8.3 [1] (B070): kept in the balise
+                        --  4.8.3 [1]: kept in the balise
                         --  transition buffer instead, taken at the
                         --  transition (Release_Unit_Packets)
                         and then not EVC_Acceptance.Stored
@@ -1017,13 +988,13 @@ is
          Accept_P79  => EVC_Acceptance.Accepted
                           (EVC_Acceptance.Geographical_Position,
                            Acceptance_Context),
-         --  e5/acceptance-gates (B212), 4.8.3 [1]: a group's own order
+         --  4.8.3 [1]: a group's own order
          --  to level 1 at a further location would make its linking
          --  stored: held until the stores evaluated the order
          --  (Take_Held_Linking)
          Defer_On_Order => EVC_Acceptance.Stored
                              (EVC_Acceptance.Linking, Ordered_Context),
-         --  e5/acceptance-gates (B221), 3.14.3.6: the information of the
+         --  3.14.3.6: the information of the
          --  groups read during a movement opposite to the authorised
          --  direction is ignored. Decision: that movement is the one the
          --  unauthorised direction protection watches or brakes for
@@ -1070,6 +1041,7 @@ is
    --  supervision information in RV (3.11.7.1.2), in SR the SR mode speed
    --  limit of EVC_Mission (the driver's or V_NVSTFF), under the override
    --  speed while the override is active
+   --  @req 4.4.10.1.2, 4.4.10.1.3
    function Mode_Speed return EVC_Supervision_Input.Speed_Cms_T is
      (EVC_Procedures.Mode_Speed
         (Current_Mode, EVC_National_Values.Current.Values,
@@ -1080,6 +1052,7 @@ is
    --  4.4.11.1.6.4: the SR distance that applies, the last received of
    --  the RBC's (message 2) and EVC_Mission's (the national value or the
    --  driver's); [42] its end passed by the estimated front end
+   --  @req 4.4.11.1.6.4, 4.4.11.1.6.4 b)
    function SR_Distance return EVC_Odometry.Virtual_T is
      (EVC_Radio_Authority.SR_Distance_Of (EVC_Mission.SR_Distance))
      with Global => (EVC_Mission.State, EVC_Radio_Authority.State);
@@ -1184,11 +1157,12 @@ is
       end if;
    end Evaluate_Stored_Information;
 
-   --  e5/acceptance-gates (B212), 4.8.3 [1]: the linking held by
+   --  4.8.3 [1]: the linking held by
    --  Update_Position (its group carries its own level transition order)
    --  judged again now that the stores evaluated that order: taken when
    --  accepted and not kept in the balise transition buffer (the
    --  verdict Keep_Unit_Packets gave it), else dropped
+   --  @req 4.8.3.1.1 Table-footnote [1]
    procedure Take_Held_Linking
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
                                 EVC_Train_Inputs.State, EVC_Train_Data.State,
@@ -1213,11 +1187,12 @@ is
                                         Acceptance_Context));
    end Take_Held_Linking;
 
-   --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: at the transition to
+   --  4.8.3 [1], 4.8.5.5: at the transition to
    --  level 1, the packets of the balise transition buffer the units take
    --  themselves, before the stores' release deletes the sets: the
    --  linking to EVC_Position (it replaces the RBC's now), the reversing
    --  packets 138, 139 to EVC_Procedures, in the order received
+   --  @req 4.8.3.1.1 Table-footnote [1]
    procedure Release_Unit_Packets
      with Global => (Input  => (EVC_Stored_Information.State,
                                 EVC_Origins.State, EVC_Odometry.State),
@@ -1277,12 +1252,13 @@ is
       end loop;
    end Release_Unit_Packets;
 
-   --  3a. 4.8.5.5 "at the same time" (e5/levels): the level became 2 in
+   --  3a. 4.8.5.5 "at the same time": the level became 2 in
    --  this cycle (by an order of the stored information or at the
    --  location of an announced one, Evaluate_Modes_And_Levels): the
    --  transition buffer released at once, its messages judged in level 2
    --  and taken by the stores before the procedures and the mode machine
    --  of the cycle (an MA kept for the transition: no trip by [39])
+   --  @req 4.8.3.1.1 Table-footnote [1], 4.8.5.5
    procedure Release_Transition_Buffer
      with Global => (Input  => (Clock_Ms, Current_Mode,
                                 EVC_Odometry.State, EVC_Train_Data.State,
@@ -1322,7 +1298,7 @@ is
          SR_Distance => Current_Mode = M_SR and then SR_Distance.Active,
          SR_End      => SR_End);
    begin
-      --  e5/balise-buffer, 4.8.5.5: the sets of balise groups kept for
+      --  4.8.5.5: the sets of balise groups kept for
       --  the transition to level 1 (4.8.3 [1]), released and taken in
       --  the cycle of the transition as the radio ones in level 2
       if EVC_Levels.Switched_To (L1)
@@ -1356,11 +1332,12 @@ is
         (First, Unsigned_64 (Clock_Ms), Ctx);
    end Release_Transition_Buffer;
 
-   --  4e. Phase E5 (e5/radio-geo-buffer), 3.6.6.4.1, 4.8.3, 4.8.4.2,
+   --  4e. Phase E5, 3.6.6.4.1, 4.8.3, 4.8.4.2,
    --  4.8.5: the packets 79 of the radio messages of the cycle (and of
    --  those the transition buffer released) to the position, judged in
    --  the level and mode after the transitions of the cycle (4.8.5.5: a
    --  packet kept for the level 2 transition is used at the transition)
+   --  @req 3.6.6.4.1
    procedure Take_Radio_Geo
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
                                 EVC_Train_Inputs.State, EVC_Train_Data.State,
@@ -1383,18 +1360,19 @@ is
            (Acceptance_Context,
             L2_Announced => EVC_Levels.Announced
                             and then EVC_Levels.Announced_Level = L2,
-            --  4.8.5.4 c) (e5/balise-buffer, B060)
+            --  4.8.5.4 c)
             Session_Up   => (for some S in EVC_Radio.Session_T =>
                                EVC_Radio.Established (S))));
    end Take_Radio_Geo;
 
-   --  3b. e4/ls-display-3 (B120), 4.8.3 [2], 4.8.5: the LSSMA display
+   --  3b. 4.8.3 [2], 4.8.5: the LSSMA display
    --  toggle on order of the RBC held for level 2 (EVC_LS_Display.
    --  Hold_Order) released at the transition (4.8.5.5) and judged in the
    --  mode of the cycle: taken in LS (its timer from the transition,
    --  4.4.19.1.4.2 c), rejected in the other modes (4.8.4.2 [9] [10]:
    --  message 24 carries no mode profile); deleted when level 2 is no
    --  longer announced or no session is established (4.8.5.4 a, c)
+   --  @req 4.4.19.1.4.2 c), 4.8.3.1.1 Table-footnote [2]
    procedure Release_LS_Held
      with Global => (Input  => (Clock_Ms, Current_Mode, EVC_Levels.State,
                                 EVC_Radio.State),
@@ -1540,6 +1518,8 @@ is
    --  of mission and the mode proposed to the driver (EVC_Mission, 5.4),
    --  on the requests of the cycle; the desk closed during the start of
    --  mission (A.3.4.1.2 k)
+   --  @req A.3.4.1.3, A.3.4.1.3 a), A.3.4.1.3 b), A.3.4.1.3 c), A.3.4.1.3 d)
+   --  @req A.3.4.1.3 Table
    procedure Evaluate_Modes_And_Levels
      with Global => (Input  => (EVC_Radio.State, EVC_Radio_Authority.State,
                                 Current_Mode, Clock_Ms,
@@ -1633,6 +1613,7 @@ is
    --  5a. Phase E5, after the levels and the mission: the session and
    --  link half, then the authority half (the sessions, the reports and
    --  requests to make, the conditions of 4.6.3 they own)
+   --  @req 3.6.2.2.2.1, 5.4.3.2 A24, 5.4.3.2 A39
    procedure Evaluate_Radio
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 EVC_National_Values.State,
@@ -1664,13 +1645,13 @@ is
                             else not EVC_Position.LRBG.Valid)
    is
    begin
-      --  e5/levels: the sessions of the level transitions (5.10.3)
+      --  the sessions of the level transitions (5.10.3)
       EVC_Level_Sessions.Evaluate (Current_Mode, Unsigned_64 (Clock_Ms));
       EVC_Sessions.Evaluate (Radio_Context);
       --  5.4.3.2 A35: the RBC confirmed the reported position
-      --  (e5/session-3); A24, A39: the RBC's answer (41 with the train
+      --  A24, A39: the RBC's answer (41 with the train
       --  unknown, 40) deletes it (EVC_Sessions.Mission, decision 5;
-      --  e5/session-4, like Delete_Invalid_Position)
+      --  like Delete_Invalid_Position)
       if EVC_Sessions.Position_Confirmed then
          EVC_Position.Revalidate;
       elsif EVC_Sessions.Position_To_Delete then
@@ -1695,7 +1676,7 @@ is
           Cab_Active => EVC_Train_Inputs.Desk_Open,
           Train_Data_Valid => EVC_Train_Data.Valid,
           TRN_Valid => EVC_Mission.TRN_Status = EVC_Mission.Valid,
-          --  4.8.3 [3] (e5/levels): Train Data sent and their
+          --  4.8.3 [3]: Train Data sent and their
           --  acknowledgement (message 8) not received yet. Decision: the
           --  second bullet (values changed) is taken as any Train Data
           --  sent again: the on-board does not compare the four values
@@ -1718,6 +1699,7 @@ is
    --  5b. Phase E4, the procedures (EVC_Procedures, EVC_Text_Messages),
    --  after the levels and the mission: the context of the cycle, the
    --  conditions of 4.6.3 they own
+   --  @req 4.4.11.1.6.5
    procedure Run_Procedures
      with Global => (Input  => (EVC_Radio.State,
                                 Current_Mode, TIU_Value_Now, TIU_Known_Now,
@@ -1836,6 +1818,12 @@ is
    --  which 4.6.1.5 says cannot hold together, the first in the order of
    --  Mode_T). The transition to NP is not looked at: while this code
    --  runs the on-board is powered and [29] does not hold.
+   --  @req 4.6.2 Table, 5.4.3.2 D2, 5.4.3.2 D3, 5.4.3.2 D10, 5.4.3.2 D12
+   --  @req 5.4.3.2 S0, 5.4.3.2 S1, 5.4.3.2 S2, 5.4.3.2 S12, 5.4.3.2 S13
+   --  @req 5.4.3.2 S20, 5.4.3.2 S22, 5.4.3.2 S23, 5.4.3.2 S24, 5.4.5.3 b)
+   --  @req 5.4.5.3 c), 5.4.5.3 d), 5.4.5.3 e), 5.4.5.3 f), 5.4.5.3 h)
+   --  @req 5.4.5.3 h) 1st bullet, 5.4.5.3 h) 2nd bullet, 5.4.5.3 h) 3rd bullet
+   --  @req 5.4.5.3 h) 5th bullet
    procedure Run_Mode_Machine
      with Global => (Input  => (EVC_Driver_Requests.State,
                                 EVC_Train_Inputs.State,
@@ -2005,6 +1993,12 @@ is
    --  protections; the levels' own, EVC_Levels; the procedures' and the
    --  text messages' own), the end and the start of mission (5.5.2,
    --  5.4.6), the trip and its reason (5.11, EVC_Procedures)
+   --  @req 3.6.6.9 d), 3.14.1.11, 4.3.1.6, 4.10.1.3, 4.10.1.3 a), 4.10.1.3 b)
+   --  @req 4.10.1.3 c), 4.10.1.3 d), 4.10.1.3 e), 4.10.1.3 Table
+   --  @req 4.10.1.3 Table-footnote [1], 4.12.1.2, 4.12.1.2 a), 4.12.1.2 b)
+   --  @req 4.12.1.2 c), 4.12.1.2 d), 4.12.1.2 e), 4.12.1.2 Table
+   --  @req 4.12.1.2 Table-footnote [1], 4.12.1.2 Table-footnote [2]
+   --  @req 5.4.5.3 g)
    procedure Enter_Mode (From, To : Mode_T)
      with Global => (Input  => (EVC_Radio.State,
                                 EVC_Odometry.State,
@@ -2123,11 +2117,9 @@ is
    JRU_Levels  : constant := EVC_Ports.JRU_Levels;
    JRU_Mission : constant := EVC_Ports.JRU_Mission;
 
-   ---------------------------------------------------------------------
    --  8. The outputs of the cycle (Produce_Outputs), in the order they
    --  are sent: the order of the records within a cycle is part of the
    --  goldens
-   ---------------------------------------------------------------------
 
    --  8a. JRU: the mode changed since the last report (event 1); the
    --  events of the levels (5.10, event 40) and of the mission (5.4,
@@ -2169,6 +2161,7 @@ is
    --  non-leading operation no longer permitted, 4.4.9.1.4 "Entering FS",
    --  4.4.12.1.7 "Entering OS"; 3.14.2.6, 3.14.3.4, 4.4.7.1.5.4 "Runaway
    --  movement"; 3.6.8.5, 3.6.8.6.2 "Odometer impaired"
+   --  @req 3.6.8.5, 3.6.8.6.2, 3.18.3.3.1
    procedure Show_Mode_Indications
      with Global => (Input  => (Current_Mode, Brake_Output,
                                 EVC_Mission.State, EVC_Odometry.State,
@@ -2218,7 +2211,7 @@ is
       --  (3.14.1.5); the brake of a movement while the driver modifies
       --  or revalidates the Train Data too (3.18.3.3.1: the DMI
       --  specification's table of the system status messages starts
-      --  entry 9 by 3.18.3.3.1 as well, ended by 3.14.1.5; B223)
+      --  entry 9 by 3.18.3.3.1 as well, ended by 3.14.1.5)
       declare
          Runaway : constant Boolean :=
            Brake_Output.Protection
@@ -2263,6 +2256,7 @@ is
    --  start of mission's first, which takes the driver's acknowledgement
    --  first), the level transition announced (5.10.1.3) and its
    --  acknowledgement (5.10.4), "override active" (5.8.3.7)
+   --  @req 4.4.19.1.4
    procedure Send_Mode_Level
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
                                 EVC_Mission.State, EVC_Procedures.State,
@@ -2393,6 +2387,7 @@ is
    --  change; phase E4: the reversing possible (5.13), the tunnel
    --  stopping area (5.18.8). D, Text_SB, Text_EB: the brake demands of
    --  the procedures and of the text messages (phase E4)
+   --  @req 3.5.7.1
    procedure Send_Status (D                : EVC_Procedures.Brake_Demand_T;
                           Text_SB, Text_EB : Boolean)
      with Global => (Input  => (Current_Mode, Clock_Ms, Brake_Output,
@@ -2504,6 +2499,7 @@ is
    --  on-board knows: the validity of the level, the position and the
    --  data of the start of mission (5.4), the train and national bits;
    --  the fields of the later phases are 0, "nothing known"
+   --  @req 5.4.3.2 S21
    procedure Send_Onboard
      with Global => (Input  => (Standstill, Below_Override, TIU_Now,
                                 EVC_Procedures.State,
@@ -2527,14 +2523,14 @@ is
                          then Data_Train_Data_Valid else 0)
                      or (if EVC_Mission.TRN_Status = EVC_Mission.Valid
                          then Data_TRN_Valid else 0)
-                     --  phase E5 (e5/session-3): the RBC contact (5.4.3.3)
+                     --  the RBC contact (5.4.3.3)
                      or (if EVC_Radio.Contact.Known
                            and then EVC_Radio.Contact.Valid
                          then Data_RBC_Valid else 0),
          Session  => Session_Byte,
          RBC      => (if EVC_Radio.Train_Data_Acknowledged
                       then RBC_Train_Data_Acked else 0),
-         --  e5/registration: bits 0-6 the radio networks (3.5.6)
+         --  bits 0-6 the radio networks (3.5.6)
          Radio    => Bits_T (EVC_Sessions.Radio_Bits)
                      or (if EVC_Radio.Contact.Known then Radio_Contact_Known
                          else 0),
@@ -2555,7 +2551,7 @@ is
          Waiting  => (if EVC_Radio_Authority.SH_Waiting then 4
                       elsif EVC_Sessions.SoM_Opening
                       then (if EVC_Sessions.Network_Ready then Waiting_RBC
-                            --  e5/registration-2: 5.4.3.2 S4 E7 -> A42
+                            --  5.4.3.2 S4 E7 -> A42
                             elsif EVC_Sessions.Registration_Timed_Out
                             then 0
                             else Waiting_Registration)
@@ -2567,9 +2563,10 @@ is
       EVC_Outbox.Put (DMI, Onboard_Frame (Onboard));
    end Send_Onboard;
 
-   --  e5/registration-2, SUBSET-026 3.18.4.3.6.2: the list of GSM-R
+   --  SUBSET-026 3.18.4.3.6.2: the list of GSM-R
    --  networks offered to the driver, in the cycle the driver elected
    --  to modify the network (DMI MSG_RADIO_NETWORKS)
+   --  @req 3.18.4.3.6.2
    procedure Send_Networks
      with Global => (Input  => (EVC_Radio.State, EVC_Sessions.State),
                      In_Out => EVC_Outbox.Queue)
@@ -2587,7 +2584,7 @@ is
       end if;
    end Send_Networks;
 
-   --  B007, DMI 11.7.1.4: the RBC contact stored on-board (3.18.4.3,
+   --  DMI 11.7.1.4: the RBC contact stored on-board (3.18.4.3,
    --  EVC_Radio.Contact), sent to the DMI when it changes (from none
    --  stored at the power-up), so that the RBC data window proposes it
    --  (the DMI opens the window itself: the on-board does not learn
@@ -2899,6 +2896,7 @@ is
 
    --  8. Produce the outputs of the cycle, port by port in this order
    --  (the goldens are their byte stream)
+   --  @req 3.6.6.1, 4.4.2.1, 4.4.5.1.2
    procedure Produce_Outputs
      with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
                                 Standstill, Below_Override, TIU_Now,
@@ -2960,7 +2958,7 @@ is
    --  detected or the information not available, the table of priority
    --  of the trackside supported levels is deleted and the rest stays
    --  invalid until validated otherwise (the start of mission);
-   --  e5/onboard-misc (B272): no cold movement, the RBC contact too
+   --  no cold movement, the RBC contact too
    procedure Revalidate_Kept
      with Global => (Input  => EVC_Odometry.State,
                      In_Out => (Kept_Pending, EVC_Levels.State,
@@ -3020,6 +3018,7 @@ is
 
    --  4.10 column NP: what is kept over No Power, as it is at the end of
    --  each cycle (EVC_Retained)
+   --  @req 3.17.2.9
    procedure Save_Retained
      with Global => (Input  => (EVC_Levels.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Radio.State,
@@ -3036,17 +3035,13 @@ is
       EVC_Position.Keep (K.Position);
       --  phase E5: the RBC contact information (EVC_Sessions writes it)
       K.RBC := EVC_Radio.Contact;
-      --  3.5.6.2 (e5/registration)
+      --  3.5.6.2
       K.Network := EVC_Radio.Network;
       --  3.17.2.9: the system version operated
       K.Version_Known := True;
       K.Operated_X := EVC_System_Version.Operated;
       EVC_Retained.Save (K);
    end Save_Retained;
-
-   ----------
-   -- Tick --
-   ----------
 
    procedure Tick (Dt_Ms : Natural) is
    begin
@@ -3094,10 +3089,6 @@ is
       Save_Retained;
    end Tick;
 
-   ------------------
-   -- Take_Outputs --
-   ------------------
-
    procedure Take_Outputs (Buffer : out EVC_Bytes.Byte_Array;
                            Last   : out Natural)
    is
@@ -3109,10 +3100,6 @@ is
          EVC_Outbox.Take (Buffer, Last);
       end if;
    end Take_Outputs;
-
-   -------------------
-   -- Enter_Failure --
-   -------------------
 
    procedure Enter_Failure is
    begin

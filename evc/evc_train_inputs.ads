@@ -10,6 +10,7 @@
 --  "desk open" in SUBSET-026. A desk is open when a cab is active;
 --  every desk is closed when none is.
 
+--  @req 4.4.6.1.2, 4.4.6.1.5, 4.4.6.1.7, 4.4.6.1.8, 4.4.15.1.1.2
 package EVC_Train_Inputs
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -23,6 +24,7 @@ is
 
    --  4.6.3 [2], [22], [23]: a desk is open; [14], [26] to [30]: the
    --  desks are closed
+   --  @req 3.8.2.3.2 c)
    function Desk_Open return Boolean is (Cab_A_Active or else Cab_B_Active)
      with Global => State;
 

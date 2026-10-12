@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5, the session and link half (e5/registration): the radio
+--  Phase E5, the session and link half: the radio
 --  networks of 3.5.6 and the radio data the driver enters (3.18.4.3.6,
 --  5.4.3.2 S3 / S5, DMI 11.3.15, 11.3.16).
 --
@@ -42,6 +42,7 @@ with EVC_Config;
 with EVC_Driver_Requests;
 with EVC_Received;
 
+--  @req 3.5.6.1, 3.18.4.3.6.2, 5.4.3.2 A43, 5.4.3.2 D9
 private package EVC_Sessions.Network
   with SPARK_Mode => On,
        Abstract_State => (State with Part_Of => EVC_Sessions.State)
@@ -57,6 +58,7 @@ is
    --  3.5.6.1 c), 3.5.6.5: a Radio Network transition order (packet 45:
    --  Q_NETWORKTYPE, NID_MN when the type is 1 or 2), applied by the
    --  next Evaluate (the last one of a cycle wins)
+   --  @req 3.5.6.1 c), 3.5.6.5
    procedure Take_Order (Q_Type : Natural;
                          NID_MN : ETCS_Variables.NID_MN_T)
      with Global => (In_Out => State);
@@ -65,7 +67,8 @@ is
    --  supervising RBC, or the handing over one: its packets 45 when 4.8
    --  accepts them (4.8.3, 4.8.4, the row "Radio Network transition
    --  order", EVC_Radio_Acceptance; Cab_Active for [2]); message 6 for
-   --  4.8.4 [1] in PT (e5/registration-3)
+   --  4.8.4 [1] in PT
+   --  @req 4.8.4.2 Table-footnote [13]
    procedure Take_Radio_Order
      (Kind       : ETCS_Message_Catalogue.Message_Kind_T;
       Cab_Active : Boolean)
@@ -81,8 +84,7 @@ is
    --  data (3.18.4.3.6). Stop: terminate the sessions and abort the
    --  attempts (3.18.4.3.6.1); Failed: show "GSM-R network
    --  registration failed" (5.4.3.2 A29; A42 at the end of the time
-   --  of 5.4.3.2 S4 E7 while the start of mission waits at S4, In_SoM,
-   --  e5/registration-2)
+   --  of 5.4.3.2 S4 E7 while the start of mission waits at S4, In_SoM)
    procedure Evaluate (Now    : EVC_Radio.Time_Ms_T;
                        In_SoM : Boolean;
                        Stop, Failed : out Boolean)
@@ -91,11 +93,13 @@ is
                                 EVC_Driver_Requests.State));
 
    --  The registration requests due (3.5.6.5, 3.5.6.6)
+   --  @req 3.5.6.5 b), 3.5.6.5 c), 3.5.6.6
    procedure Produce (Now : EVC_Radio.Time_Ms_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue));
 
    --  3.5.6.7: the registration conditions hold, a safe radio connection
    --  may be requested
+   --  @req 3.5.6.7, 3.5.6.7 a), 3.5.6.7 b), 3.5.6.7 c), 3.5.6.7 d)
    function Ready return Boolean
      with Global => (State, EVC_Radio.State);
 
@@ -109,12 +113,12 @@ is
    function Selection_Awaited return Boolean
      with Global => State;
 
-   --  3.18.4.3.6.2 (e5/registration-2): the list of GSM-R networks is
+   --  3.18.4.3.6.2: the list of GSM-R networks is
    --  due in this cycle (MSG_RADIO_NETWORKS); the networks it offers,
    --  the default network of the configuration and the stored one when
-   --  different (decision 6 of e5/registration: the port offers none),
-   --  each named by at least one digit
-   --  5.4.3.2 S4 E7 -> A42 (e5/registration-2): the registration
+   --  different (decision 6 of e5/registration in the plan: the port
+   --  offers none), each named by at least one digit
+   --  5.4.3.2 S4 E7 -> A42: the registration
    --  ordered last was not achieved within the time of A.3.1; until
    --  the next order (A43)
    function Registration_Timed_Out return Boolean

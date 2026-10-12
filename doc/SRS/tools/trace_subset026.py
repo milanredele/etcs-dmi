@@ -32,7 +32,22 @@ per clause classified as an on-board requirement:
 
 Status and note are kept by hand: a rerun keeps them for every clause that
 is still there (keyed by clause) and reports the clauses that appeared or
-disappeared. The rows are sorted by the numeric value of the clause
+disappeared. --check also ties the matrix to the sources both ways:
+
+- every unit, subprogram, type or object a note names (EVC_X.Y, also
+  ETCS_, DMI_, S076_ and Sim_ names, and "evc_test <scenario>") must
+  exist under evc/, common/, sim/ or test/src/ (a scenario as the
+  procedure Scenario_<name> or a golden or dump name), so that a rename
+  or a deletion in the code breaks the check and not the trace;
+- the sources carry requirement tags, comment lines "--  @req 3.5.3.4 a),
+  3.5.3.4.1" directly above a declaration (or above the package itself
+  for the unit as a whole; several such lines in a row continue the
+  list). Every clause of a tag must be a row of the matrix (the number
+  alone covers the rows with its qualifiers, "3.5.3.4" the rows
+  "3.5.3.4 a)" and "3.5.3.4 b)"), that row must be done or partial, and
+  its note must name the unit that carries the tag. The tags are the
+  verified link from the code to the matrix; a clause number elsewhere
+  in a comment explains a branch and is not checked. The rows are sorted by the numeric value of the clause
 components, so the file diffs cleanly.
 
 Sources. The normal run reads the markdown of chapter 9
@@ -73,6 +88,9 @@ SRS = HERE.parent / "SUBSET-026_v400"
 MD = SRS / "sections" / "09_classification_of_clauses.md"
 PDF = SRS / "SUBSET-026-9_v400.pdf"
 CSV = HERE.parents[1] / "TRACE-SUBSET-026.csv"
+ROOT = HERE.parents[2]
+SOURCE_DIRS = ("evc", "evc/language", "common", "sim", "test/src")
+TAG_DIRS = ("evc",)
 
 # Phase of doc/EVC-PLAN.md section 3 for a clause number prefix. The
 # longest matching prefix wins; a clause no prefix matches gets "-".
@@ -515,6 +533,133 @@ def summary(rows, out=sys.stdout):
                 file=out)
 
 
+# --------------------------------------------------------------------------
+# The sources: the names a note may use, and the @req tags
+
+ADA_NAME = r"[A-Za-z][A-Za-z0-9_]*"
+UNIT_REF = re.compile(r"\b((?:EVC|ETCS|DMI|S076|Sim)_" + ADA_NAME
+                      + r"(?:\." + ADA_NAME + r")*)")
+TEST_REF = re.compile(r"\bevc_test\s+(" + ADA_NAME + r")")
+REQ_TAG = re.compile(r"^\s*--\s*@req\s+(.*?)\s*$")
+PACKAGE = re.compile(r"^\s*(?:private\s+)?package(?:\s+body)?\s+(" + ADA_NAME
+                     + r"(?:\." + ADA_NAME + r")*)", re.M)
+DECL = re.compile(r"^\s*(?:overriding\s+)?(?:procedure|function|type|"
+                  r"subtype|package(?:\s+body)?)\s+(" + ADA_NAME + r")|"
+                  r"^\s*(" + ADA_NAME + r")\s*(?:,\s*" + ADA_NAME
+                  + r"\s*)*:(?!=)")
+
+
+def strip_comments(text):
+    return re.sub(r"--[^\n]*", "", text)
+
+
+def read_sources():
+    """units: lower-case package name -> the lower-case names declared
+    in it (subprograms, types, objects, enumeration literals, children);
+    tests: the lower-case subprogram names of test/src, and its string
+    literals as they are."""
+    units, tests, strings = {}, set(), set()
+    for d in SOURCE_DIRS:
+        for f in sorted((ROOT / d).glob("*.ad[sb]")):
+            raw = f.read_text(errors="replace")
+            text = strip_comments(raw)
+            m = PACKAGE.search(text)
+            if not m:
+                continue
+            names = units.setdefault(m.group(1).lower(), set())
+            for a, b in re.findall(DECL.pattern, text, re.M):
+                names.add((a or b).lower())
+            for e in re.finditer(r"\btype\s+" + ADA_NAME + r"\s+is\s*\(",
+                                 text):
+                depth, k = 1, e.end()
+                while k < len(text) and depth:
+                    depth += {"(": 1, ")": -1}.get(text[k], 0)
+                    k += 1
+                names.update(x.lower() for x in
+                             re.findall(ADA_NAME, text[e.end():k]))
+            if d == "test/src":
+                tests.update(x.lower() for x in re.findall(
+                    r"\b(?:procedure|function)\s+(" + ADA_NAME + ")", text))
+                strings.update(re.findall(r'"([^"\n]*)"', raw))
+    for name in list(units):
+        parent, _, child = name.rpartition(".")
+        if parent:
+            units.setdefault(parent, set()).add(child)
+    return units, tests, strings
+
+
+def check_notes(existing, units, tests, strings):
+    """Every name a note uses exists in the sources."""
+    errors = []
+    for n, r in enumerate(existing, 2):
+        note = r.get("note") or ""
+        for m in UNIT_REF.finditer(note):
+            parts = m.group(1).lower().split(".")
+            unit = None
+            for k in range(len(parts), 0, -1):
+                if ".".join(parts[:k]) in units:
+                    unit, rest = ".".join(parts[:k]), parts[k:]
+                    break
+            if unit is None:
+                errors.append(f"line {n}: {r['clause']}: note names "
+                              f"{m.group(1)}, no such unit")
+            elif rest and rest[0] not in units[unit]:
+                errors.append(f"line {n}: {r['clause']}: note names "
+                              f"{m.group(1)}, not declared in the unit")
+        for m in TEST_REF.finditer(note):
+            name = m.group(1)
+            if (name.lower() not in tests
+                    and "scenario_" + name.lower() not in tests
+                    and name not in strings):
+                errors.append(f"line {n}: {r['clause']}: note names evc_test "
+                              f"{name}, no such scenario, golden or dump")
+    return errors
+
+
+def read_req_tags():
+    """(file, line, unit, clauses) per @req line of the tagged sources."""
+    tags = []
+    for d in TAG_DIRS:
+        for f in sorted((ROOT / d).glob("*.ad[sb]")):
+            lines = f.read_text(errors="replace").split("\n")
+            text = strip_comments("\n".join(lines))
+            m = PACKAGE.search(text)
+            unit = m.group(1) if m else f.stem
+            for k, line in enumerate(lines, 1):
+                t = REQ_TAG.match(line)
+                if t:
+                    clauses = [c.strip() for c in t.group(1).split(",")
+                               if c.strip()]
+                    tags.append((f.relative_to(ROOT), k, unit, clauses))
+    return tags
+
+
+def check_req_tags(existing, tags):
+    """Every tagged clause is an on-board row, done or partial, whose
+    note names the tagged unit."""
+    errors = []
+    by_clause = {r["clause"]: r for r in existing}
+    by_number = {}
+    for r in existing:
+        by_number.setdefault(NUMBER.match(r["clause"]).group(0), []).append(r)
+    for f, k, unit, clauses in tags:
+        where = f"{f}:{k}"
+        for c in clauses:
+            rows = [by_clause[c]] if c in by_clause else by_number.get(c, [])
+            if not rows:
+                errors.append(f"{where}: @req {c}: not an on-board clause of "
+                              f"the matrix")
+                continue
+            for r in rows:
+                if r["status"] not in ("done", "partial"):
+                    errors.append(f"{where}: @req {c}: the matrix says "
+                                  f"{r['status']} for {r['clause']}")
+                elif unit.lower() not in (r["note"] or "").lower():
+                    errors.append(f"{where}: @req {c}: the note of "
+                                  f"{r['clause']} does not name {unit}")
+    return errors
+
+
 def check(rows, existing):
     errors = []
     if existing is None:
@@ -610,6 +755,13 @@ def main():
 
     if args.check:
         errors = check(rows, existing)
+        if existing:
+            units, tests, strings = read_sources()
+            errors += check_notes(existing, units, tests, strings)
+            tags = read_req_tags()
+            errors += check_req_tags(existing, tags)
+            print(f"{sum(len(t[3]) for t in tags)} @req clauses on "
+                  f"{len(tags)} lines of {len({t[0] for t in tags})} files")
         summary(existing or [])
         for e in errors:
             print("error: " + e)

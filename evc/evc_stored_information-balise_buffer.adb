@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5 (e5/balise-buffer): see the spec.
+--  see the spec.
 
 package body EVC_Stored_Information.Balise_Buffer
   with SPARK_Mode => On,
@@ -44,10 +44,6 @@ is
       N := 0;
    end Clear;
 
-   ---------------
-   -- Set_Group --
-   ---------------
-
    procedure Set_Group (Id : EVC_Balise_Groups.Identity_T)
      with Refined_Global => (In_Out => Sets, Input => N)
    is
@@ -57,10 +53,6 @@ is
       end if;
    end Set_Group;
 
-   ----------------
-   -- Delete_All --
-   ----------------
-
    --  4.8.5.4
    procedure Delete_All
      with Refined_Global => (Output => N)
@@ -68,10 +60,6 @@ is
    begin
       N := 0;
    end Delete_All;
-
-   -------------
-   -- New_Set --
-   -------------
 
    --  4.8.5.1, 4.8.5.3
    procedure New_Set (I : Set_Info_T)
@@ -89,10 +77,6 @@ is
       Sets (N).Info := I;
       Sets (N).Used := 0;
    end New_Set;
-
-   ----------------
-   -- Add_Packet --
-   ----------------
 
    procedure Add_Packet (K : ETCS_Catalogue.Packet_Kind_T;
                          R : in out ETCS_Bits.Reader)
@@ -123,10 +107,6 @@ is
          Sets (N).Info.Count := P;
       end;
    end Add_Packet;
-
-   ----------
-   -- Open --
-   ----------
 
    procedure Open (S, P : Positive; R : in out ETCS_Bits.Reader)
      with Refined_Global => (Input => Sets, Proof_In => N)

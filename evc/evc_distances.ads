@@ -47,9 +47,7 @@ is
    function Abs_Dist (X : Dist_T) return Length_T is
      (if X < 0 then -X else X);
 
-   ---------------------------------------------------------------------
    --  Senses on the odometer axis
-   ---------------------------------------------------------------------
 
    type Sense_T is (Plus, Minus);
 
@@ -79,9 +77,7 @@ is
    function Advance (X : Dist_T; S : Sense_T; D : Dist_T) return Dist_T is
      (Sum (X, Along (S, D)));
 
-   ---------------------------------------------------------------------
    --  Distances of the ERTMS/ETCS language
-   ---------------------------------------------------------------------
 
    --  7.5.1.131 Q_SCALE: the resolution of the distances of a packet;
    --  3 is spare

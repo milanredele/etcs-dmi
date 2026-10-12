@@ -1,5 +1,5 @@
 --  ETCS on-board (EVC)
---  Phase E5 (e5/levels): the sessions of the level transitions to and
+--  the sessions of the level transitions to and
 --  from level 2 (5.10.3); see the spec.
 
 with ETCS_Variables;
@@ -107,6 +107,7 @@ is
 
    --  5.10.3.3.5, 5.10.3.6.5, 5.10.3.10.6, 5.10.3.15.4: the repetitions,
    --  then the termination by the on-board
+   --  @req 5.10.3.15.4
    procedure Await_Order (Now_Ms : Unsigned_64)
      with Global => (In_Out => (Phase, Since, Repeats, N_Requested,
                                 N_Terminated, EVC_Sessions.State),
@@ -137,7 +138,9 @@ is
    --  b) the Radio data awaited when a) does not hold: no valid RBC
    --  contact, or not registered to the stored network type (3.5.6.7,
    --  EVC_Sessions.Network_Ready: the conditions of a) as 3.5.6.7 reads
-   --  them, GSM-R only, e5/registration decision 2)
+   --  them, GSM-R only; decision 2 of e5/registration in the plan)
+   --  @req 5.10.3.15.2, 5.10.3.15.2 a), 5.10.3.15.2 a) 1st bullet
+   --  @req 5.10.3.15.2 a) 2nd bullet, 5.10.3.15.2 a) 3rd bullet
    procedure Driver_To_L2 (Mode : Mode_T)
      with Global => (In_Out => (EVC_Sessions.State, N_Ordered),
                      Output => Awaited,
@@ -170,6 +173,7 @@ is
    --  PS, SF, IS and NP (no session of this train's own); the note of
    --  b): in TR the data are not taken (the DMI offers the Radio data
    --  window from PT on, Table 50 D5 exception), the selection is kept
+   --  @req 5.10.3.15.2 b)
    procedure Take_Radio_Data (Mode : Mode_T; In_L2 : Boolean)
      with Global => (In_Out => (Awaited, N_Ordered, EVC_Sessions.State,
                                 R.State),

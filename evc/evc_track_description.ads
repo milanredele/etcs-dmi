@@ -99,6 +99,8 @@ with EVC_Profiles;          use EVC_Profiles;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with EVC_Train_Data;
 
+--  @req 3.6.3.2.3, 3.6.3.2.3 a), 3.6.3.2.3 b), 3.6.3.2.3 c), 3.6.4.2.4
+--  @req 3.6.4.2.4 Table 2a, 3.7.3.1, 3.11.1.2, 3.12.2.10, A.3.1 Table
 package EVC_Track_Description
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -159,7 +161,7 @@ is
       Stop_Required : Boolean := False;
       Stop_Length   : Length_T := 0;          -- L_STOPLX
       Msg           : Natural := 0;
-      --  added by the procedures of phase E4 (5.16): the supervision of
+      --  the supervision of
       --  its start as temporary EOA and SvL substituted by its speed
       --  restriction, from Released_From (a frame position: 5.16.2.1 the
       --  estimated front end, 5.16.3.2 the location of the Permitted
@@ -204,9 +206,7 @@ is
    function Lost return Natural
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Reception: packets of a group message M (M.Origin /= 0)
-   ---------------------------------------------------------------------
 
    procedure Clear
      with Global => (Output => State),
@@ -223,6 +223,7 @@ is
    end record;
    type Diff_Array is array (1 .. 31) of Diff_T;
 
+   --  @req 3.11.3.2.3
    function Train_Speed (V_STATIC : V_STATIC_T;
                          N        : Natural;
                          Diffs    : Diff_Array;
@@ -230,17 +231,20 @@ is
      return Speed_Cms_T
      with Pre => N <= 31;
 
+   --  @req 3.7.3.1 a)
    procedure Take_SSP (P : ETCS_Track_Packets.P27.Packet_T;
                        M : Message_T;
                        T : Origin_Table_T;
                        C : EVC_Train_Data.Categories_T)
      with Global => (In_Out => State);
 
+   --  @req 3.7.3.1 b)
    procedure Take_Gradients (P : ETCS_Track_Packets.P21.Packet_T;
                              M : Message_T;
                              T : Origin_Table_T)
      with Global => (In_Out => State);
 
+   --  @req 3.7.3.1 c), 3.7.3.2 b), 3.11.4.3
    procedure Take_ASP (P    : ETCS_Track_Packets.P51.Packet_T;
                        M    : Message_T;
                        T    : Origin_Table_T;
@@ -248,6 +252,8 @@ is
      with Global => (In_Out => State);
 
    --  3.11.11.2, 3.7.3.1 d), 3.7.3.2 a)
+   --  @req 3.7.3.1 d), 3.7.3.2 a), 7.4.2.13.1, 7.5.1.19.1, 7.5.1.19.2
+   --  @req 7.5.1.37.1, 7.5.1.49.1, 7.5.1.126.1
    procedure Take_PBD (P : ETCS_Track_Packets.P52.Packet_T;
                        M : Message_T;
                        T : Origin_Table_T)
@@ -257,6 +263,7 @@ is
    --  with All_Sections: the inputs changed), from the inputs I; Computed
    --  the number of sections computed. Work: a work area for the
    --  profile of a section, overwritten (EVC_PBD.Restrict)
+   --  @req 3.11.11.3
    procedure Compute_PBD (I            : EVC_PBD.Inputs_T;
                           All_Sections : Boolean;
                           Work         : in out EVC_Profile.Profile_T;
@@ -264,6 +271,7 @@ is
      with Global => (In_Out => State),
           Post => (for all K in 1 .. PBD.Count => PBD.List (K).Noted);
 
+   --  @req 3.11.5.7, 3.11.5.9
    procedure Take_TSR (P : ETCS_Track_Packets.P65.Packet_T;
                        M : Message_T;
                        T : Origin_Table_T)
@@ -272,33 +280,36 @@ is
    --  3.11.5.5, 3.11.5.8: the TSRs of the identity go, at once and
    --  without delay for the train length; a non revocable one (NID_TSR
    --  255) stays
+   --  @req 3.11.5.5, 3.11.5.8
    procedure Revoke_TSR (P       : ETCS_Track_Packets.P66.Packet_T;
                          Revoked : out Natural)
      with Global => (In_Out => State),
           Post => TSR.Count = TSR.Count'Old - Revoked;
 
+   --  @req 3.11.12.6
    procedure Take_Default_Gradient (P : ETCS_Track_Packets.P141.Packet_T)
      with Global => (In_Out => State),
           Post => Default_Gradient_Known;
 
+   --  @req 3.12.5.3
    procedure Take_LX (P : ETCS_Track_Packets.P88.Packet_T;
                       M : Message_T;
                       T : Origin_Table_T)
      with Global => (In_Out => State);
 
+   --  @req 3.7.3.1 l)
    procedure Take_Adhesion (P : ETCS_Track_Packets.P71.Packet_T;
                             M : Message_T;
                             T : Origin_Table_T)
      with Global => (In_Out => State);
 
+   --  @req 3.7.3.1 h), 3.7.3.1 i), 3.7.3.1 j), 3.7.3.2 d)
    procedure Take_Suitability (P : ETCS_Track_Packets.P70.Packet_T;
                                M : Message_T;
                                T : Origin_Table_T)
      with Global => (In_Out => State);
 
-   ---------------------------------------------------------------------
    --  Deletion
-   ---------------------------------------------------------------------
 
    --  A.3.4.1.3 [1] and [10]: the gradients, the SSP, the ASP, the PBD
    --  information and the route suitability data of the messages before
@@ -324,7 +335,7 @@ is
    procedure Mark (Marks : in out Origin_Marks_T)
      with Global => State;
 
-   --  Added by e4/modes: what entering a mode deletes (4.10), each kind
+   --  what entering a mode deletes (4.10), each kind
    --  with the modes of its row: the SSP, the ASP, the gradients and the
    --  level crossings (Track); the speed restrictions to ensure a
    --  permitted braking distance; the route suitability data; the TSRs
@@ -338,6 +349,9 @@ is
       Adhesion    : Boolean := False;
    end record;
 
+   --  @req 4.10.1.3, 4.10.1.3 a), 4.10.1.3 b), 4.10.1.3 c), 4.10.1.3 d)
+   --  @req 4.10.1.3 e), 4.10.1.3 Table, 4.10.1.3 Table-footnote [1]
+   --  @req 5.11.2.2 A035
    procedure Delete (What : Deletion_T)
      with Global => (In_Out => State),
           Post => (if What.Track then SSP.Count = 0
@@ -348,9 +362,7 @@ is
                                                Default_Gradient_Known)
                   and then (if What.PBD then PBD.Count = 0);
 
-   ---------------------------------------------------------------------
    --  For the snapshot
-   ---------------------------------------------------------------------
 
    --  The speed restrictions (SSP, ASP, TSR, LX not protected, PBD SR:
    --  3.11.2 a, b, c, i, k) as elements along Ahead, their end moved by
@@ -358,8 +370,9 @@ is
    --  the PBD SR by the front end only, Table 2a), with the gaps a
    --  relocation leaves between two SSP elements filled with the lower
    --  one (see the header)
-   --  (added by e4/modes) Only_TSR: the TSRs alone, for the modes in
+   --  Only_TSR: the TSRs alone, for the modes in
    --  which the other restrictions are not in the MRSP (4.5.2: SR, UN)
+   --  @req 3.11.2.4, 3.13.7.2, 4.4.10.1.2, 4.4.10.1.3
    procedure Speed_Elements (T        : Origin_Table_T;
                              Ahead    : Sense_T;
                              Length   : Length_T;
@@ -382,6 +395,7 @@ is
    --  The gradient profile as elements along Ahead (signed per mille),
    --  with the gaps a relocation leaves between two of them filled with
    --  the lower one (see the header)
+   --  @req 3.13.4.1.3, 3.13.4.1.3 b)
    procedure Gradient_Elements (T     : Origin_Table_T;
                                 Ahead : Sense_T;
                                 E     : in out Elements_T)
@@ -402,6 +416,7 @@ is
 
    --  3.7.2.3: the SSP and the gradients cover From .. To (frame
    --  positions along Ahead)
+   --  @req 3.7.2.3
    function Covered (T : Origin_Table_T; Ahead : Sense_T; From, To : Dist_T)
      return Boolean
      with Global => State;
@@ -420,6 +435,7 @@ is
    --  beyond an LOA is supervised (3.7.2.2.1: the track description
    --  beyond an LOA counts for the supervision); an MA shortened keeps
    --  the level crossings (A.3.4, "Level Crossing information": U)
+   --  @req 3.12.5.8
    procedure LX_Target (T     : Origin_Table_T;
                         Ahead : Sense_T;
                         Front : Dist_T;
@@ -430,12 +446,13 @@ is
      with Global => State,
           Post => Index <= Max_LX and then (if Found then Index >= 1);
 
-   --  Added by the procedures of phase E4 (5.16): the level crossing I
+   --  the level crossing I
    --  is released (5.16.2.1, 5.16.3.2: its speed restriction from From,
    --  a frame position, instead of its start as temporary EOA and SvL),
    --  and the driver is informed of its status (5.16.1.4 b); Indicate_LX
    --  the driver is informed (5.16.1.4 a). Nothing when I is not a level
    --  crossing not protected.
+   --  @req 5.16.1.2, 5.16.1.3
    procedure Release_LX (I : Positive; From : Dist_T)
      with Global => (In_Out => State),
           Pre => I <= Max_LX;

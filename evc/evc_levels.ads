@@ -31,7 +31,7 @@
 --  choice of a level deletes the order (5.10.1.6.1, 5.10.2.10 b).
 --
 --  Available for use (5.10.2.4.1): levels 0 and 1 always (c); level 2
---  always (a, e5/levels: see Available); level NTC needs a National
+--  always (a: see Available); level NTC needs a National
 --  System, which this on-board does not have (STM out of scope, PLAN.md).
 --
 --  Acknowledgement (5.10.4): when entering level 0 from another level
@@ -69,15 +69,21 @@ with EVC_Modes;     use EVC_Modes;
 with EVC_Profiles;  use EVC_Profiles;
 with Interfaces;    use Interfaces;
 
+--  @req 3.6.4.2.2.2, 3.6.4.2.4, 3.6.4.2.4 Table 2a, A.3.5.1
+--  @req A.3.5.1 1st bullet, A.3.5.1 2nd bullet, 4.4.8.1.5, 4.4.20.1.11
+--  @req 4.4.21.1.11, 4.7.2.1.1, 4.7.2.1.2, 4.7.2.1.4 Table, 5.3.1.3
+--  @req 5.4.3.3 Table, 5.10.1.3, 5.10.1.5, 5.10.1.6, 5.10.1.6.1, 5.10.2.4
+--  @req 5.10.2.4.1, 5.10.2.5, 5.10.2.6, 5.10.2.7, 5.10.2.8, 5.10.2.9
+--  @req 5.10.2.9 a), 5.10.2.9 b), 5.10.2.10, 5.10.2.10 a), 5.10.2.10 b)
+--  @req 5.10.4.1, 5.10.4.1 a), 5.10.4.1 b), 5.10.4.1.1, 5.10.4.1.2, 5.10.4.1.3
+--  @req 5.10.4.1.4, 5.10.4.2
 package EVC_Levels
   with SPARK_Mode => On,
        Abstract_State => State,
        Initializes => State
 is
 
-   ---------------------------------------------------------------------
    --  Tables of priority (5.10.2)
-   ---------------------------------------------------------------------
 
    --  A level of a table, and for NTC the National System (NID_NTC)
    type Priority_Entry_T is record
@@ -97,13 +103,17 @@ is
       List  : Priority_List_T;
    end record;
 
-   --  5.10.2.4.1. a) Level 2 (e5/levels, decision): the radio equipment
-   --  installed (the FRMCS on-board, GSM-R Mobile Terminals, the stored
+   --  5.10.2.4.1. a) Level 2 (a decision of e5/levels in the plan): the
+   --  radio equipment installed (the FRMCS on-board, GSM-R Mobile
+   --  Terminals, the stored
    --  Radio Network type of its four bullets) is configuration this
    --  on-board does not model (3.5.6 left): it has one radio, taken as
    --  in working condition, so level 2 is always available, registered
    --  to a network or not (the last sentence of a). b) NTC: no National
    --  System. c) Levels 0 and 1: always.
+   --  @req 5.10.2.4.1 a), 5.10.2.4.1 a) 1st bullet, 5.10.2.4.1 a) 2nd bullet
+   --  @req 5.10.2.4.1 a) 3rd bullet, 5.10.2.4.1 a) 4th bullet
+   --  @req 5.10.2.4.1 a) last sentence, 5.10.2.4.1 b), 5.10.2.4.1 c)
    function Available (L : Level_T) return Boolean is (L in L0 | L1 | L2);
 
    --  5.10.2.4, 5.10.2.7: the entry of the level the on-board selects
@@ -115,15 +125,14 @@ is
      (for some I in 1 .. T.Count => T.List (I).Level = L);
 
    --  5.10.4.1: the table of the acknowledgements
+   --  @req 5.10.4.4, 5.10.4.4 Table
    function Ack_Needed (From, To : Level_T) return Boolean is
      ((To = L0 and then From /= L0) or else To = NTC);
 
    --  A.3.1: the driver acknowledgement time of the level transitions
    T_ACK_Ms : constant := 5_000;
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    function Level return Level_T
      with Global => State;
@@ -136,6 +145,7 @@ is
    --  its status changed (4.6.3 "the ERTMS/ETCS level switches to")
    function Switched return Boolean
      with Global => State;
+   --  @req 5.9.4.2, 5.19.4.2
    function Switched_To (L : Level_T) return Boolean is
      (Switched and then Level = L)
      with Global => State;
@@ -171,10 +181,8 @@ is
    function Table return Priority_Table_T
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Juridical recording (EVC_Ports, event 40: levels): kind (byte 2),
    --  two bytes (bytes 3 and 4)
-   ---------------------------------------------------------------------
 
    --  1 level switched (Level_T'Pos, the cause: 0 the driver, 1 an
    --    immediate order, 2 the transition location of an announcement,
@@ -202,9 +210,7 @@ is
      with Global => State,
           Pre => I <= Event_Count;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    --  What a cycle of the on-board knows when the levels evaluate
    type Context_T is record
@@ -233,12 +239,14 @@ is
 
    --  Packet 41 of the group message M (accepted by 4.8), in the context
    --  C; an immediate order is carried out at once
+   --  @req 4.8.1.3, 4.8.1.3.1, 4.8.1.3.1 1), 4.8.1.3.1 2)
    procedure Take_Order (P : ETCS_Track_Packets.P41.Packet_T;
                          M : Message_T;
                          C : Context_T)
      with Global => (In_Out => State);
 
    --  Packet 46 (accepted by 4.8)
+   --  @req 5.10.3.14.1, 5.10.3.14.2, 5.10.3.14.3, 5.10.3.14.4
    procedure Take_Conditional (P : ETCS_Track_Packets.P46.Packet_T;
                                C : Context_T)
      with Global => (In_Out => State);
@@ -256,6 +264,11 @@ is
      with Global => (In_Out => State);
 
    --  The mode machine took the transition From -> To (4.10, 4.12)
+   --  @req 3.14.1.11, 4.10.1.3, 4.10.1.3 a), 4.10.1.3 b), 4.10.1.3 c)
+   --  @req 4.10.1.3 d), 4.10.1.3 e), 4.10.1.3 Table
+   --  @req 4.10.1.3 Table-footnote [1], 4.12.1.2, 4.12.1.2 a), 4.12.1.2 b)
+   --  @req 4.12.1.2 c), 4.12.1.2 d), 4.12.1.2 e), 4.12.1.2 Table
+   --  @req 4.12.1.2 Table-footnote [1], 4.12.1.2 Table-footnote [2]
    procedure Mode_Entered (From, To : Mode_T)
      with Global => (In_Out => State),
           Post => Level = Level'Old and then Status = Status'Old;

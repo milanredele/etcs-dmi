@@ -24,10 +24,6 @@ is
      (First => Min (Ahead_Of (S, A), Ahead_Of (S, B)),
       Last  => Max (Ahead_Of (S, A), Ahead_Of (S, B)));
 
-   -----------
-   -- Build --
-   -----------
-
    procedure Build (S     : Snapshot_T;
                     Model : Model_T;
                     Rear  : Dist_T;
@@ -203,10 +199,6 @@ is
          end;
       end loop;
    end Build;
-
-   ----------------
-   -- Segment_Of --
-   ----------------
 
    function Segment_Of (P : Profile_T; X : Num) return Point_Index is
    begin

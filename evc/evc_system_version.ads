@@ -33,6 +33,7 @@
 
 with ETCS_Variables; use ETCS_Variables;
 
+--  @req 3.17.2.1
 package EVC_System_Version
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -44,6 +45,7 @@ is
    --  3.17.2.1, 6.4.2: the X of the envelope
    subtype Major_T is Natural range 1 .. 3;
    Lowest_X  : constant Major_T := 1;
+   --  @req 3.17.3.5 d), 6.4.2.1
    Highest_X : constant Major_T := 3;
 
    --  7.5.1.79: X, the three most significant bits of M_VERSION
@@ -51,6 +53,7 @@ is
 
    --  3.5.3.7 d), 3.17.3.7: a version of the trackside is compatible
    --  when its X is in the envelope
+   --  @req 3.17.3.7
    function Compatible (V : M_VERSION_T) return Boolean is
      (Major (V) in Lowest_X .. Highest_X);
 
@@ -59,10 +62,12 @@ is
    --  6.5.2.2.2 (X = 2) and 6.5.1.2 (X = 1) replace 3.5.3.7 e) and
    --  3.5.4.6 by 6.5.1.2.1.4 / .5 (no acknowledgement): the on-board
    --  does not await it then (3.5.3.7.4 does not apply)
+   --  @req 3.5.3.7.4
    function Session_Acknowledged (V : M_VERSION_T) return Boolean is
      (Major (V) >= 3 or else (Major (V) = 2 and then Natural (V) mod 16 >= 3));
 
    --  3.17.2.1.1: the Y operated within X
+   --  @req 3.17.2.1.1
    function Operated_Y (X : Major_T) return Natural is
      (case X is when 1 => 1, when 2 => 3, when 3 => 0);
 
@@ -74,9 +79,11 @@ is
    --  the highest first, then N_ITER more (6.4.2.2: 1.0 up to 3.0)
    Envelope_Count : constant := 7;
    type Envelope_T is array (1 .. Envelope_Count) of M_VERSION_T;
+   --  @req 6.4.2.2
    Envelope : constant Envelope_T := (48, 35, 34, 33, 32, 17, 16);
 
    --  3.17.2.2: the X operated now
+   --  @req 3.17.2.2
    function Operated return Major_T
      with Global => State;
 
@@ -92,6 +99,7 @@ is
 
    --  3.17.2.9, 3.17.2.9.1: the power-up, with the kept X (Known) or
    --  without it (the highest)
+   --  @req 3.17.2.9, 3.17.2.9.1
    procedure Restore (Known : Boolean; X : Natural)
      with Global => (Output => State),
           Post => not By_RBC
@@ -101,6 +109,7 @@ is
    --  3.17.2.8, once a cycle: Level_2 the level operated, Session a
    --  communication session established with the supervising RBC, whose
    --  version V is known
+   --  @req 3.17.2.8, 3.17.2.8 a), 3.17.2.8 b), 3.17.2.8 d)
    procedure Follow (Level_2 : Boolean; Session : Boolean; V : M_VERSION_T)
      with Global => (In_Out => State),
           Post => By_RBC = (Level_2 and then Session and then Compatible (V))

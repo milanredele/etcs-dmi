@@ -76,6 +76,19 @@ with EVC_Supervision_Input; use EVC_Supervision_Input;
 with EVC_Train_Data;
 with Interfaces;            use Interfaces;
 
+--  @req 3.6.1.6, 3.6.7.1 g), 3.11.3.3.2, 3.11.7.1, 3.11.7.1.3, A.3.4.1.3
+--  @req A.3.4.1.3 a), A.3.4.1.3 b), A.3.4.1.3 c), A.3.4.1.3 d)
+--  @req A.3.4.1.3 Table, A.3.11 Table, 4.4.7.1.4, 4.4.8.1.2, 4.4.11.1.3.1 a)
+--  @req 4.4.11.1.3.1 b), 4.4.11.1.5, 4.4.11.1.5.2, 4.4.11.1.6.4
+--  @req 4.4.11.1.6.4 a), 4.7.2.1.1, 4.7.2.1.2, 4.7.2.1.4 Table, 5.3.1.3
+--  @req 5.4.3.2 D2, 5.4.3.2 D3, 5.4.3.2 D10, 5.4.3.2 D12, 5.4.3.2 S0
+--  @req 5.4.3.2 S1, 5.4.3.2 S2, 5.4.3.2 S12, 5.4.3.2 S13, 5.4.3.2 S20
+--  @req 5.4.3.2 S21, 5.4.3.2 S22, 5.4.3.2 S23, 5.4.3.2 S24, 5.4.3.2.1
+--  @req 5.4.3.2.1 1st bullet, 5.4.3.2.1 2nd bullet, 5.4.3.3 Table, 5.4.5.3 b)
+--  @req 5.4.5.3 c), 5.4.5.3 d), 5.4.5.3 e), 5.4.5.3 f), 5.4.5.3 h)
+--  @req 5.4.5.3 h) 1st bullet, 5.4.5.3 h) 2nd bullet, 5.4.5.3 h) 3rd bullet
+--  @req 5.4.5.3 h) 4th bullet, 5.4.5.3 h) 5th bullet, 5.8.2.1 c), 5.8.4.1 h)
+--  @req 5.11.2.2 S140, 5.11.2.2 S140 a), 5.11.2.2 S140 b)
 package EVC_Mission
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -116,8 +129,7 @@ is
    function Acknowledged (M : Mode_T) return Boolean
      with Global => State;
    --  The driver's acknowledgement of a mode change of the cycle was the
-   --  start of mission's (the procedures do not take it,
-   --  e4/integration)
+   --  start of mission's (the procedures do not take it)
    function Ack_Taken return Boolean
      with Global => State;
    --  5.4.3.2 S21, 5.11.2.2 S150: 'Start' in level 2 sent the MA request
@@ -128,6 +140,7 @@ is
 
    --  The driver validated Train Data in this cycle (5.4.3.2 S12; the
    --  re-validation of 5.17.2.2 E6, EVC_Procedures)
+   --  @req 5.17.2.2 S6
    function Train_Data_Validated return Boolean
      with Global => State;
 
@@ -137,8 +150,10 @@ is
      with Global => State;
 
    --  Staff Responsible: the SR mode speed limit, the SR distance
+   --  @req 4.4.11.1.3 a)
    function SR_Speed return Speed_Cms_T
      with Global => State;
+   --  @req 4.4.11.1.3 b)
    function SR_Distance return EVC_Odometry.Virtual_T
      with Global => State;
    --  [42]: the estimated front end passed the end of the SR distance
@@ -148,22 +163,25 @@ is
    --  4.4.20.1.5 to 4.4.20.1.7: the function "Continue Shunting on desk
    --  closure", enabled by the driver in SH (MSG_DRIVER_ACTION 19), active
    --  until SH is left (4.6.3 [26], [27])
+   --  @req 4.4.20.1.5
    function Continue_Shunting return Boolean
      with Global => State;
 
    --  4.4.15.1.1.3: in NL, the non-leading input became "Non-leading not
    --  permitted" in this cycle (the driver is informed, EVC_Core)
+   --  @req 4.4.15.1.1.3
    function NL_No_Longer_Permitted return Boolean
      with Global => State;
 
    --  3.18.3.3.1: after the start of mission, the driver is modifying or
    --  revalidating the Train Data: from the selection of 'Train data' in
    --  the Main window (DMI driver action 21) until the Train Data are
-   --  entered, the window is left without them (action 22, B220), a
+   --  entered, the window is left without them (action 22), a
    --  button of the Main window is selected (action 16), the mission
    --  ends or a mode in which the entry is not possible is entered
    --  (4.7.2). A train movement meanwhile commands the brake
    --  (EVC_Brake_Commands, released per 3.14.1.5)
+   --  @req 3.14.1.5, 3.18.3.3.1
    function Modifying_Train_Data return Boolean
      with Global => State;
 
@@ -172,13 +190,12 @@ is
    --  are entered (MSG_DRIVER_DATA kind 3), the window is left (action
    --  24) or SR is left. A train movement meanwhile commands the brake
    --  (EVC_Brake_Commands, as for 3.18.3.3.1)
+   --  @req 3.14.1.5, 4.4.11.1.5.1
    function Entering_SR_Data return Boolean
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Juridical recording (EVC_Ports, event 41: the mission): kind
    --  (byte 2), two bytes
-   ---------------------------------------------------------------------
 
    --  1 driver ID entered (its length), 2 train running number entered,
    --  3 Train Data entered (the length in m / 100, the brake
@@ -215,9 +232,7 @@ is
      with Global => State,
           Pre => I <= Event_Count;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    type Context_T is record
       Mode        : Mode_T := M_SB;
@@ -232,21 +247,21 @@ is
       --  the national values of SR (A.3.2, packet 3)
       V_NVSTFF    : Speed_Cms_T := 0;
       D_NVSTFF    : Length_T := Max_Cm;
-      --  added by e5/session-3: the session with the supervising RBC is
+      --  the session with the supervising RBC is
       --  established (EVC_Radio.In_Communication; 5.4.5.3 h)
       In_Communication : Boolean := False;
-      --  added by e5/sr-proposal: the SR authorisations (message 2) taken
+      --  the SR authorisations (message 2) taken
       --  since the power-up (EVC_Radio_Authority.SR_Authorisations); a
       --  change while 'Start' waits at S21 / S150 is E26 (5.4.3.2,
       --  5.11.2.2)
       SR_Authorisations : Natural := 0;
-      --  added by e5/mode-proposal-2: the acknowledgement of a mode
+      --  the acknowledgement of a mode
       --  profile at the train's position asked in SB / PT in level 2
       --  (EVC_Procedures.Ack_Requested, 5.7.4.1, 5.9.5.1, 5.19.5.1): an MA
       --  with a mode profile while 'Start' waits is E27 (5.4.3.2) / S150
       --  b) (5.11.2.2)
       Profile_Ack : Boolean := False;
-      --  added by e5/same-cycle: the MAs by radio accepted since the
+      --  the MAs by radio accepted since the
       --  power-up (EVC_Radio_Authority.Radio_MAs_Accepted); a change after
       --  an SR proposal of E26 is the MA of the message 2's cycle (5.4.3.2)
       Radio_MAs   : Natural := 0;
@@ -272,6 +287,7 @@ is
    --  mode speed limit and the SR distance the driver entered are
    --  deleted, the national values of C apply, the SR distance counted
    --  from now (event 11 with the national values)
+   --  @req 4.4.11.1.6.5
    procedure Override_In_SR (C : Context_T)
      with Global => (In_Out => State, Input => EVC_Odometry.State);
 
@@ -284,6 +300,9 @@ is
 
    --  The mode machine took the transition From -> To (4.10, 5.4.6,
    --  5.5.2, 4.4.11)
+   --  @req 4.4.11.1.6.2, 4.4.11.1.6.3, 4.4.20.1.7, 4.10.1.3, 4.10.1.3 a)
+   --  @req 4.10.1.3 b), 4.10.1.3 c), 4.10.1.3 d), 4.10.1.3 e), 4.10.1.3 Table
+   --  @req 4.10.1.3 Table-footnote [1], 5.6.2.2 A100, 5.6.2.2 D040
    procedure Mode_Entered (From, To : Mode_T; C : Context_T)
      with Global => (In_Out => (State, EVC_Train_Data.State),
                      Input  => EVC_Odometry.State),

@@ -81,10 +81,6 @@ is
       end if;
    end Count_Lost;
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear is
    begin
       SSP_S := Empty_Store;
@@ -117,10 +113,6 @@ is
    function D (Code : Natural; Scale : Natural) return Dist_T is
      (Scaled (Code, Scale))
      with Pre => Code <= 32_767 and then Scale <= 2;
-
-   -----------------
-   -- Train_Speed --
-   -----------------
 
    function Train_Speed (V_STATIC : V_STATIC_T;
                          N        : Natural;
@@ -179,10 +171,6 @@ is
          return Speed_Cms_T'Min (CD, Other_V);
       end if;
    end Train_Speed;
-
-   --------------
-   -- Take_SSP --
-   --------------
 
    procedure Take_SSP (P : ETCS_Track_Packets.P27.Packet_T;
                        M : Message_T;
@@ -271,10 +259,6 @@ is
       end if;
    end Take_SSP;
 
-   --------------------
-   -- Take_Gradients --
-   --------------------
-
    procedure Take_Gradients (P : ETCS_Track_Packets.P21.Packet_T;
                              M : Message_T;
                              T : Origin_Table_T)
@@ -331,10 +315,6 @@ is
                           others       => <>));
       end if;
    end Take_Gradients;
-
-   --------------
-   -- Take_ASP --
-   --------------
 
    procedure Take_ASP (P    : ETCS_Track_Packets.P51.Packet_T;
                        M    : Message_T;
@@ -414,10 +394,6 @@ is
       end loop;
    end Take_ASP;
 
-   --------------
-   -- Take_PBD --
-   --------------
-
    procedure Take_PBD (P : ETCS_Track_Packets.P52.Packet_T;
                        M : Message_T;
                        T : Origin_Table_T)
@@ -482,10 +458,6 @@ is
       end loop;
    end Take_PBD;
 
-   -----------------
-   -- Compute_PBD --
-   -----------------
-
    procedure Compute_PBD (I            : EVC_PBD.Inputs_T;
                           All_Sections : Boolean;
                           Work         : in out EVC_Profile.Profile_T;
@@ -514,10 +486,6 @@ is
          end if;
       end loop;
    end Compute_PBD;
-
-   --------------
-   -- Take_TSR --
-   --------------
 
    procedure Take_TSR (P : ETCS_Track_Packets.P65.Packet_T;
                        M : Message_T;
@@ -559,10 +527,6 @@ is
                others       => <>));
    end Take_TSR;
 
-   ----------------
-   -- Revoke_TSR --
-   ----------------
-
    procedure Revoke_TSR (P       : ETCS_Track_Packets.P66.Packet_T;
                          Revoked : out Natural)
    is
@@ -587,10 +551,6 @@ is
       end loop;
    end Revoke_TSR;
 
-   ---------------------------
-   -- Take_Default_Gradient --
-   ---------------------------
-
    procedure Take_Default_Gradient (P : ETCS_Track_Packets.P141.Packet_T)
    is
    begin
@@ -599,10 +559,6 @@ is
          else -Gradient_T (P.G_TSR));
       Grad_Default_Known := True;
    end Take_Default_Gradient;
-
-   -------------
-   -- Take_LX --
-   -------------
 
    procedure Take_LX (P : ETCS_Track_Packets.P88.Packet_T;
                       M : Message_T;
@@ -661,10 +617,6 @@ is
          Indicated     => False);
    end Take_LX;
 
-   -------------------
-   -- Take_Adhesion --
-   -------------------
-
    procedure Take_Adhesion (P : ETCS_Track_Packets.P71.Packet_T;
                             M : Message_T;
                             T : Origin_Table_T)
@@ -694,10 +646,6 @@ is
                   others       => <>));
       end if;
    end Take_Adhesion;
-
-   ----------------------
-   -- Take_Suitability --
-   ----------------------
 
    procedure Take_Suitability (P : ETCS_Track_Packets.P70.Packet_T;
                                M : Message_T;
@@ -793,10 +741,6 @@ is
       end loop;
    end Take_Suitability;
 
-   -------------------
-   -- Delete_Beyond --
-   -------------------
-
    procedure Delete_Beyond (T          : Origin_Table_T;
                             X          : Dist_T;
                             To         : Location_T;
@@ -817,10 +761,6 @@ is
          end if;
       end loop;
    end Delete_Beyond;
-
-   -------------------
-   -- Delete_Behind --
-   -------------------
 
    procedure Delete_Behind (T : Origin_Table_T; Rear : Dist_T) is
    begin
@@ -850,18 +790,10 @@ is
       end loop;
    end Delete_Behind;
 
-   -----------------
-   -- Delete_TSRs --
-   -----------------
-
    procedure Delete_TSRs is
    begin
       TSR_S.Count := 0;
    end Delete_TSRs;
-
-   ------------
-   -- Delete --
-   ------------
 
    procedure Delete (What : Deletion_T) is
    begin
@@ -887,10 +819,6 @@ is
       end if;
    end Delete;
 
-   ----------
-   -- Mark --
-   ----------
-
    procedure Mark (Marks : in out Origin_Marks_T) is
    begin
       Mark (SSP_S, Marks);
@@ -914,9 +842,7 @@ is
       end loop;
    end Mark;
 
-   ---------------------------------------------------------------------
    --  For the snapshot
-   ---------------------------------------------------------------------
 
    --  Element X of a store of the sense Ahead as an element along Ahead:
    --  from its "max" start to its "min" end, plus the train length when
@@ -1189,10 +1115,6 @@ is
       end if;
    end LX_Target;
 
-   ----------------
-   -- Release_LX --
-   ----------------
-
    procedure Release_LX (I : Positive; From : Dist_T) is
    begin
       if LX_S (I).Used and then not LX_S (I).Protected_LX then
@@ -1201,10 +1123,6 @@ is
          LX_S (I).Indicated := True;
       end if;
    end Release_LX;
-
-   -----------------
-   -- Indicate_LX --
-   -----------------
 
    procedure Indicate_LX (I : Positive) is
    begin

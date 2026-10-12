@@ -29,6 +29,15 @@ with EVC_Fixed;             use EVC_Fixed;
 with EVC_Profile;           use EVC_Profile;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 
+--  @req 3.12.4.7, 3.12.4.7 a), 3.12.4.7 b), 3.12.4.7 c), 3.12.5.8, 3.13.1.5
+--  @req 3.13.2.2.7.1, 3.13.2.2.8.1, 3.13.2.3.2.1, 3.13.2.3.6.1
+--  @req 3.13.2.3.6.1 a), 3.13.2.3.6.1 b), 3.13.9.2.7, 3.13.9.3.5.11
+--  @req 3.13.9.3.5.12, 3.13.10.2.1, 3.13.10.4.9, 3.13.10.4.9 a)
+--  @req 3.13.10.4.9 b), A.3.1 Table, 4.4.11.1.3 b), 4.5.2.1, 4.5.2.2 Table
+--  @req 4.5.2.2 Table-footnote {2}, 4.5.2.2 Table-footnote {4}
+--  @req 4.6.3 Table-footnote {9}, 5.18.4.2, 5.18.4.2 a), 5.18.4.2 b)
+--  @req 5.18.4.2 c), 5.18.8.3, 5.18.8.3 a), 5.18.8.3 b), 5.18.8.4, 5.18.8.5
+--  @req 5.18.8.5 1st bullet, 5.18.8.5 2nd bullet
 package EVC_SDM
   with SPARK_Mode => On
 is
@@ -47,6 +56,7 @@ is
    --  those of the MA and the temporary ones (Snapshot_T.Temporary);
    --  TSR: an MRSP target due to a TSR (3.13.4.1.3 a, the MRSP's TSR
    --  flag), whose curves take the default gradient for TSR
+   --  @req 3.13.2.3.3.1
    type Target_T is record
       Kind     : Target_Kind_T := MRSP_Target;
       Location : Dist_T := 0;
@@ -56,10 +66,9 @@ is
    end record;
    No_Target : constant Target_T := (others => <>);
 
-   ---------------------------------------------------------------------
    --  Inputs besides the snapshot
-   ---------------------------------------------------------------------
 
+   --  @req 4.4.18.1.6
    type Inputs_T is record
       Dt_Ms          : Natural := 0;
       --  SUBSET-034 2.3.6, 2.3.7: the status of the special brakes
@@ -78,9 +87,7 @@ is
       EB_Instead_Of_SB : Boolean := False;
    end record;
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    --  A.3.10: the service brake feedback
    type Feedback_T is record
@@ -97,6 +104,7 @@ is
       Ratio_Prev   : Factor_T := 1_000;
    end record;
 
+   --  @req 3.13.10.2.2
    type State_T is record
       Active      : Boolean := False;   -- the monitoring ran last cycle
       Monitoring  : Monitoring_T := CSM;
@@ -132,9 +140,7 @@ is
       Active_Display : Boolean := False;
    end record;
 
-   ---------------------------------------------------------------------
    --  Result
-   ---------------------------------------------------------------------
 
    No_TTI : constant := 16#FFFF#;
 
@@ -151,6 +157,8 @@ is
       X_Est      : Num := 0;
    end record;
 
+   --  @req 3.8.2.2.2, 3.8.2.2.3, 3.13.10.2.6 a), 3.13.10.2.7, 3.13.11.8
+   --  @req 5.16.1.4, 5.16.1.4 a), 5.16.1.4 b), 5.16.3.1, 5.16.3.2
    type Result_T is record
       --  the monitoring runs (a ceiling speed is known)
       Active         : Boolean := False;
@@ -198,6 +206,7 @@ is
       --  (Extra.Proposal), the estimated front end is in rear of the
       --  Indication location of its EOA and the max safe front end in
       --  rear of that of its SvL (or of its LOA) for the current speed
+      --  @req 3.8.6.1 b)
       Proposal_In_Rear : Boolean := False;
       --  added by the procedures of phase E4, 5.16 (the temporary EOA
       --  and SvL of the target c) is the start of the level crossing not
@@ -211,17 +220,15 @@ is
       LX_MRDT        : Boolean := False;
       LX_Release     : Boolean := False;
       LX_From        : Dist_T := 0;
-      --  added by the procedures of phase E4 (5.18.4.2, 5.18.8.3): for
+      --  5.18.4.2, 5.18.8.3: for
       --  each foot of Snapshot_T.Virtual, the locations of the SBI (SBI1)
       --  and of the Permitted limit without the GUI of an SBD curve with
       --  that foot, at the estimated speed (frame positions)
       Virtual        : Virtual_Limits_T;
    end record;
 
-   ---------------------------------------------------------------------
    --  The work area of a cycle, rebuilt by every Step (the core keeps it
    --  in static memory, not on the stack)
-   ---------------------------------------------------------------------
 
    --  the MRSP elements, the LOA, the EOA (and a temporary EOA beside
    --  an LOA, 3.13.1.5), the end of the SR distance
@@ -252,6 +259,21 @@ is
       MRSP     : Element_Array := (others => No_Element);
    end record;
 
+   --  @req 3.13.8.2.1, 3.13.8.2.1 a), 3.13.8.2.1 b), 3.13.8.2.1 c)
+   --  @req 3.13.8.2.1 d), 3.13.8.2.2, 3.13.8.2.3, 3.13.9.4.4, 3.13.9.4.9
+   --  @req 3.13.10.2.2, 3.13.10.2.3, 3.13.10.2.4, 3.13.10.2.5, 3.13.10.3.1
+   --  @req 3.13.10.3.2, 3.13.10.3.3, 3.13.10.3.3 Table 5, 3.13.10.3.3 Table 6
+   --  @req 3.13.10.3.4, 3.13.10.3.4 Table 7, 3.13.10.3.5, 3.13.10.3.6
+   --  @req 3.13.10.3.8, 3.13.10.3.8.1, 3.13.10.3.8.2, 3.13.10.3.9
+   --  @req 3.13.10.3.9.1, 3.13.10.3.10, 3.13.10.3.10.1, 3.13.10.4.2
+   --  @req 3.13.10.4.3, 3.13.10.4.4, 3.13.10.4.5, 3.13.10.4.6, 3.13.10.4.7
+   --  @req 3.13.10.4.8, 3.13.10.4.8.1, 3.13.10.4.15, 3.13.10.4.15 Table 12
+   --  @req 3.13.10.4.16, 3.13.10.4.17, 3.13.10.5.1, 3.13.10.5.2, 3.13.10.5.3
+   --  @req 3.13.10.5.3.1, 3.13.10.5.4, 3.13.10.5.4 Table 13
+   --  @req 3.13.10.5.4 Table 14, 3.13.10.5.5, 3.13.10.5.5 Table 15
+   --  @req 3.13.10.5.6, 3.13.10.5.7, 3.13.10.6.1, 3.13.10.6.1 Table 16
+   --  @req 3.13.10.6.2, 3.13.10.6.3, 3.13.10.6.4, 3.13.10.6.5, A.3.13.2
+   --  @req 7.5.1.123
    procedure Step (S       : Snapshot_T;
                    Inputs  : Inputs_T;
                    Work    : in out Work_T;

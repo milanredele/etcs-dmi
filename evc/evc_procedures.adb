@@ -37,9 +37,7 @@ package body EVC_Procedures
                     TD_Moving_Due, SH_Profile_Seen))
 is
 
-   ---------------------------------------------------------------------
    --  Constants
-   ---------------------------------------------------------------------
 
    --  A.3.1: the driver acknowledgement time of the level and mode
    --  transitions (T_ACK)
@@ -118,9 +116,7 @@ is
          when 36       => SR_Balise_Not_Listed,
          when others   => No_Trip);
 
-   ---------------------------------------------------------------------
    --  State
-   ---------------------------------------------------------------------
 
    type Conds_T is array (Condition_T) of Boolean;
    Conds : Conds_T := (others => False);
@@ -144,6 +140,7 @@ is
    Ovr_Selected_Now : Boolean := False;
    --  5.8.4.2: the trips of the cycle see the override as it was before
    --  the information of the balise groups ended it
+   --  @req 5.8.4.2
    Ovr_For_Trips    : Boolean := False;
    --  5.8.4.1 h): the override was selected in SR, its SR distance
    --  supervised before overriding
@@ -276,9 +273,7 @@ is
    Event_N : Natural range 0 .. Max_Events := 0;
    Events  : Event_List_T := (others => (others => <>));
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Condition (C : Condition_T) return Boolean is (Conds (C))
      with Refined_Global => Conds;
@@ -348,9 +343,7 @@ is
       return Base;
    end Mode_Speed;
 
-   ---------------------------------------------------------------------
    --  Records
-   ---------------------------------------------------------------------
 
    procedure Record_Event (Kind, B3, B4 : Natural)
      with Global => (In_Out => (Events, Event_N))
@@ -377,9 +370,7 @@ is
       end if;
    end Status;
 
-   ---------------------------------------------------------------------
    --  Clear
-   ---------------------------------------------------------------------
 
    procedure Clear is
    begin
@@ -453,9 +444,7 @@ is
       end if;
    end Train_Data_Revalidated;
 
-   ---------------------------------------------------------------------
    --  1. The packets of the balise groups of the cycle
-   ---------------------------------------------------------------------
 
    subtype Reader_T is ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
 
@@ -544,6 +533,7 @@ is
    --  5.6.2.2 A050 in level 2: the list of balise groups for the SH area
    --  of the RBC's authorisation (message 28) replaces the stored one;
    --  without one none is kept
+   --  @req 5.6.2.2 S050
    procedure Take_Radio_SH_List
      with Global => (Input  => EVC_Radio_Authority.State,
                      Output => (SH_List_Known, SH_List_N, SH_List))
@@ -638,6 +628,7 @@ is
 
    --  Packet P of the telegram J of the group taken Tk, of kind Kind (one
    --  of the packets of this unit): decoded and taken
+   --  @req 3.15.4.1.1, 3.15.4.3
    procedure Take_Packet (Kind : ETCS_Catalogue.Packet_Kind_T;
                           J, P : Positive;
                           Tk   : EVC_Position.Taken_T)
@@ -670,10 +661,6 @@ is
       end if;
    end Take_Packet;
 
-   -------------------
-   -- Take_Released --
-   -------------------
-
    procedure Take_Released (Kind : ETCS_Catalogue.Packet_Kind_T;
                             R    : in out ETCS_Bits.Reader;
                             X    : Dist_T;
@@ -689,6 +676,7 @@ is
       end if;
    end Take_Released;
 
+   --  @req 4.8.3.1.1 Table-footnote [1]
    procedure Take_Packets (C : Context_T)
      with Global => (Input  => EVC_Position.State,
                      In_Out => (Now_Flags, Stop_On_Desk, SH_List_Known,
@@ -732,7 +720,7 @@ is
                        --  4.8 (EVC_Acceptance)
                        and then EVC_Acceptance.Accepted
                                   (Info_Of (E.Kind), C.Filters)
-                       --  4.8.3 [1] (B070): kept in the balise
+                       --  4.8.3 [1]: kept in the balise
                        --  transition buffer instead (EVC_Stored_
                        --  Information.Keep_Unit_Packets), taken at the
                        --  transition (Take_Released)
@@ -774,11 +762,10 @@ is
       end loop;
    end Linking_Events;
 
-   ---------------------------------------------------------------------
    --  2. Override (5.8)
-   ---------------------------------------------------------------------
 
    --  5.8.2.1: the driver may select "Override"
+   --  @req 5.4.5.3 a), 5.8.2.1, 5.8.2.1 a), 5.8.2.1 b)
    function Override_Allowed (C : Context_T; NV : National_Values_T)
      return Boolean
    is (C.Speed_Max <= NV.V_NVALLOWOVTRP
@@ -807,6 +794,8 @@ is
        > A (Former_S, Former_X))
      with Global => (Former_S, Former_X);
 
+   --  @req 3.6.7.1 c), 3.6.7.1 f), 5.8.1.9, 5.8.3.1.1, 5.8.3.9, 5.8.4.1 a)
+   --  @req 5.8.4.1 b), 5.8.4.1 c), 5.8.4.1 d), 5.8.4.1 e), 5.8.4.1 h)
    procedure Override_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (Orientation_Now, EVC_Driver_Requests.State,
                                 Now_Flags),
@@ -914,9 +903,7 @@ is
       end if;
    end Override_Step;
 
-   ---------------------------------------------------------------------
    --  3. The mode profile against the train position (3.12.4)
-   ---------------------------------------------------------------------
 
    --  The mode of 4.3.2 an M_MAMODE asks
    function Mode_Of (M : M_MAMODE_T) return Mode_T is
@@ -943,6 +930,10 @@ is
          when M_SH   => Current in M_FS | M_AD | M_LS | M_OS,
          when others => False);
 
+   --  @req 3.12.4.4, 5.4.3.2 S25, 5.7.3.2, 5.7.3.2 a), 5.7.3.2 b), 5.7.4.1
+   --  @req 5.7.4.2, 5.9.1.1, 5.9.2.1, 5.9.3.2, 5.9.3.2 a), 5.9.3.2 b)
+   --  @req 5.9.3.2 c), 5.9.5.1, 5.9.5.2, 5.11.2.2 S150 b), 5.11.2.2 S170
+   --  @req 5.19.5.1, 5.19.5.2
    procedure Profiles_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (EVC_Movement_Authority.State,
                                 EVC_Origins.State),
@@ -1042,9 +1033,7 @@ is
       Profile_Info := Info;
    end Profiles_Step;
 
-   ---------------------------------------------------------------------
    --  4. Trip conditions (5.11, 4.6.3)
-   ---------------------------------------------------------------------
 
    procedure Trip_Step (C : Context_T; S : Snapshot_T; SDM : EVC_SDM.Result_T)
      with Global => (Input  => (EVC_Movement_Authority.State,
@@ -1139,10 +1128,9 @@ is
       end if;
    end Trip_Step;
 
-   ---------------------------------------------------------------------
    --  5. Post trip, reversing, BTM alarm reaction inhibition
-   ---------------------------------------------------------------------
 
+   --  @req 3.6.7.1 b), 3.14.1.7.4, 3.14.3.1, 4.4.14.1.3, 4.4.14.1.3.2
    procedure Post_Trip_Step (C : Context_T; S : Snapshot_T)
      with Global => (In_Out => (PT_Over, PT_SB, Status_List, Status_N,
                                 Events, Event_N),
@@ -1173,6 +1161,7 @@ is
       end if;
    end Post_Trip_Step;
 
+   --  @req 3.14.1.7.1, 3.15.4.4, 3.15.4.7, 3.15.4.8, 4.4.18.1.4, 5.13.1.3
    procedure Reversing_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (Rev, Orientation_Now),
                      In_Out => (Rev_Possible, RV_Over, RV_EB, Ack_On, Ack_M,
@@ -1233,6 +1222,8 @@ is
       end if;
    end Reversing_Step;
 
+   --  @req 5.22.2.1, 5.22.2.2, 5.22.5.1, 5.22.5.1 a), 5.22.5.1 b), 5.22.5.1 c)
+   --  @req 5.22.5.2, 5.22.5.2.1
    procedure BMM_Step (C : Context_T; S : Snapshot_T)
      with Global => (Input  => (EVC_Driver_Requests.State,
                                 EVC_Track_Conditions.State,
@@ -1291,9 +1282,7 @@ is
       end if;
    end BMM_Step;
 
-   ---------------------------------------------------------------------
    --  Changing Train Data from sources different from the driver (5.17)
-   ---------------------------------------------------------------------
 
    --  S6: the driver requested to re-enter or re-validate the data
    procedure TD_Request_Revalidation
@@ -1305,6 +1294,8 @@ is
       Record_Event (Event_Train_Data, 5, 0);
    end TD_Request_Revalidation;
 
+   --  @req 3.14.1.7.2, 5.17.2.2 A1, 5.17.2.2 D0, 5.17.2.2 D1, 5.17.2.2 D2
+   --  @req 5.17.2.2 D3, 5.17.2.2 D7, 5.17.2.2 D9, 5.17.2.2 S0
    procedure Train_Data_Step (C : Context_T; S : Snapshot_T)
      with Global => (In_Out => (TD_Step, TD_Then_Revalidate, TD_Revalidate,
                                 TD_Moving_Due, Status_List, Status_N,
@@ -1391,9 +1382,7 @@ is
       end if;
    end Train_Data_Step;
 
-   ---------------------------------------------------------------------
    --  6. Passing a level crossing not protected (5.16)
-   ---------------------------------------------------------------------
 
    --  The level crossing of the temporary EOA and SvL (Snapshot_T.LX):
    --  the substitution of its start by its speed restriction (5.16.2.1
@@ -1402,6 +1391,7 @@ is
    --  for V_LX, which EVC_SDM finds), the driver informed (5.16.1.4: the
    --  temporary EOA or SvL the most relevant displayed target, or the
    --  substitution) and 4.6.3 [9] when the indication starts
+   --  @req 5.16.1.4, 5.16.1.4 a), 5.16.1.4 b), 5.16.2.1
    procedure LX_Step (C : Context_T; S : Snapshot_T; SDM : EVC_SDM.Result_T)
      with Global => (In_Out => (EVC_Track_Description.State, Conds))
    is
@@ -1435,9 +1425,7 @@ is
       end if;
    end LX_Step;
 
-   ---------------------------------------------------------------------
    --  Evaluate
-   ---------------------------------------------------------------------
 
    --  6. The conditions of 4.6.3 of this half that the steps of the
    --  cycle do not set themselves ([9] LX_Step, the trips Trip_Step):
@@ -1584,9 +1572,7 @@ is
       Version_Seen := False;
    end Evaluate;
 
-   ---------------------------------------------------------------------
    --  Mode_Changed
-   ---------------------------------------------------------------------
 
    --  TR entered from From (5.11.2.2 A025): the trip and its reason
    --  (4.4.13.1.3): the first condition of the transition taken that
@@ -1827,9 +1813,7 @@ is
       end if;
    end Mode_Changed;
 
-   ---------------------------------------------------------------------
    --  Finish_Cycle
-   ---------------------------------------------------------------------
 
    procedure Finish_Cycle (C : Context_T; Mode : Mode_T; S : Snapshot_T) is
    begin

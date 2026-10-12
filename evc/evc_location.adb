@@ -5,10 +5,6 @@ package body EVC_Location
   with SPARK_Mode => On
 is
 
-   --------------
-   -- Relocate --
-   --------------
-
    procedure Relocate (Item   : in out Item_T;
                        To     : Anchor_T;
                        Linked : Boolean;

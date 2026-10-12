@@ -6,10 +6,6 @@ package body EVC_Profiles
   with SPARK_Mode => On
 is
 
-   ------------------
-   -- Origin_Table --
-   ------------------
-
    function Origin_Table return Origin_Table_T is
       T : Origin_Table_T := (others => (others => <>));
    begin
@@ -30,10 +26,6 @@ is
       return T;
    end Origin_Table;
 
-   ------------
-   -- Append --
-   ------------
-
    procedure Append (St : in out Store_T; E : Stored_T) is
    begin
       if St.Count = Max_Stored then
@@ -46,10 +38,6 @@ is
       St.List (St.Count) := E;
    end Append;
 
-   ------------
-   -- Remove --
-   ------------
-
    procedure Remove (St : in out Store_T; I : Positive) is
    begin
       for K in I .. St.Count - 1 loop
@@ -57,10 +45,6 @@ is
       end loop;
       St.Count := St.Count - 1;
    end Remove;
-
-   ----------------
-   -- Cut_Beyond --
-   ----------------
 
    procedure Cut_Beyond (St         : in out Store_T;
                          T          : Origin_Table_T;
@@ -95,10 +79,6 @@ is
       end loop;
    end Cut_Beyond;
 
-   ----------------
-   -- Cut_Behind --
-   ----------------
-
    procedure Cut_Behind (St   : in out Store_T;
                          T    : Origin_Table_T;
                          Rear : Dist_T;
@@ -122,10 +102,6 @@ is
          end if;
       end loop;
    end Cut_Behind;
-
-   ------------
-   -- Covers --
-   ------------
 
    function Covers (St : Store_T; T : Origin_Table_T; From, To : Dist_T)
      return Boolean
@@ -160,10 +136,6 @@ is
       return Reach >= Goal;
    end Covers;
 
-   ----------
-   -- Mark --
-   ----------
-
    procedure Mark (L : Location_T; Marks : in out Origin_Marks_T) is
    begin
       if L.Origin /= 0 then
@@ -178,10 +150,6 @@ is
          Mark (St.List (I).Finish, Marks);
       end loop;
    end Mark;
-
-   ---------
-   -- Add --
-   ---------
 
    procedure Add (E : in out Elements_T;
                   Start, Finish : Dist_T;
@@ -201,10 +169,6 @@ is
       E.List (E.Count) := (Start => Start, Finish => Finish, Value => Value);
    end Add;
 
-   --------------
-   -- Value_At --
-   --------------
-
    function Value_At (P : Steps_T; X : Dist_T) return Value_T is
       V : Value_T := P.List (1).Value;
    begin
@@ -214,10 +178,6 @@ is
       end loop;
       return V;
    end Value_At;
-
-   ------------
-   -- Lowest --
-   ------------
 
    function Lowest (P : Steps_T; From, To : Dist_T) return Value_T is
       V : Value_T := Value_At (P, From);
@@ -229,10 +189,6 @@ is
       end loop;
       return V;
    end Lowest;
-
-   --------------
-   -- Envelope --
-   --------------
 
    procedure Envelope (E        : in out Elements_T;
                        Default  : Value_T;

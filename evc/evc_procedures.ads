@@ -1,6 +1,6 @@
 --  ETCS on-board (EVC)
 --  The procedures of SUBSET-026 chapter 5 that phase E4 implements in its
---  second half (doc/EVC-PLAN.md §10, branch e4/procedures): shunting
+--  second half (doc/EVC-PLAN.md §10): shunting
 --  initiated by the driver and ordered by the trackside (5.6, 5.7) with
 --  Passive Shunting, override (5.8, the override function related speed
 --  restriction of 3.11.10), On Sight (5.9), train trip and post trip
@@ -65,7 +65,7 @@
 --  the reference balise group: a choice, the relocation moves a location
 --  by less than the confidence interval it already had.
 --
---  The joint with the modes and the levels (e4/integration). The
+--  The joint with the modes and the levels. The
 --  context comes from their units: the level and whether it switched to
 --  1 or 2 in the cycle (EVC_Levels: [34], [61], [71], and the trips [39],
 --  [67]), the desk and the passive shunting input (EVC_Train_Inputs),
@@ -111,15 +111,25 @@ with EVC_Track_Conditions;
 with EVC_Track_Description;
 with Interfaces;            use Interfaces;
 
+--  @req 3.4.4.4.7, 3.6.1.6, 3.6.3.1.3, 3.6.3.1.4, 3.6.4.2.4
+--  @req 3.6.4.2.4 Table 2a, 3.11.6.4, 3.13.10.2.6, 3.13.10.2.6 a), 3.13.10.2.7
+--  @req 3.14.1.3, 3.14.1.7.3, 3.14.1.8, 3.14.1.10, 3.14.3.1, 3.15.4.2.1
+--  @req 3.16.3.4.4, 3.17.3.5 d), 4.4.11.1.3, 4.4.11.1.3 c), 4.4.11.1.3 d)
+--  @req 4.4.12.1.2, 4.4.19.1.2, 4.6.3 Table, 4.7.2.1.1, 4.7.2.1.2
+--  @req 4.7.2.1.4 Table, 5.4.3.2 S10, 5.4.5.3 g), 5.6.2.2 D020, 5.6.2.2 E015
+--  @req 5.7.3.3, 5.8.3.1 b), 5.8.3.6, 5.9.2.2, 5.9.2.7, 5.9.3.4, 5.9.3.6
+--  @req 5.9.3.7, 5.9.6.1.1, 5.11.2.2 A140, 5.11.2.2 A145, 5.11.2.2 D085
+--  @req 5.11.2.2 D090, 5.11.2.2 S010, 5.11.2.2 S140 d), 5.11.4.2, 5.13.1.4
+--  @req 5.19.1.2, 5.19.2.1, 5.19.2.2, 5.19.2.3, 5.19.2.7, 5.19.3.2
+--  @req 5.19.3.2 a), 5.19.3.2 b), 5.19.3.2 c), 5.19.3.4, 5.19.3.6, 5.19.3.7
+--  @req 5.19.6.1.1
 package EVC_Procedures
   with SPARK_Mode => On,
        Abstract_State => State,
        Initializes => State
 is
 
-   ---------------------------------------------------------------------
    --  The context of a cycle
-   ---------------------------------------------------------------------
 
    type Context_T is record
       Mode             : Mode_T := M_SB;
@@ -177,9 +187,7 @@ is
       Filters          : EVC_Acceptance.Context_T;
    end record;
 
-   ---------------------------------------------------------------------
    --  The conditions of 4.6.3 this half computes
-   ---------------------------------------------------------------------
 
    subtype Condition_T is Positive range 1 .. 84;
 
@@ -188,9 +196,7 @@ is
    function Condition (C : Condition_T) return Boolean
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Train trip (5.11)
-   ---------------------------------------------------------------------
 
    --  The reason of the train trip (4.4.13.1.3), with the condition of
    --  4.6.3 it comes from
@@ -218,16 +224,12 @@ is
    function Trip_Reason return Trip_Reason_T
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Override (5.8)
-   ---------------------------------------------------------------------
 
    function Override_Active return Boolean
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  What the DMI is told
-   ---------------------------------------------------------------------
 
    --  A request for the acknowledgement of a mode is displayed (On
    --  Sight, Shunting, Limited Supervision, Reversing, Trip)
@@ -237,12 +239,14 @@ is
      with Global => State;
 
    --  5.8.3.7: the status "override active"
+   --  @req 5.8.3.7, 5.8.3.7.2
    function Override_Indicated return Boolean
      with Global => State;
 
    --  5.17.2.2 S6: the driver is requested to re-enter or re-validate
    --  the Train Data (the Train Data entry of EVC_Mission; E6, the data
    --  validated, ends the request: Train_Data_Revalidated)
+   --  @req 5.17.2.2 S6
    function Train_Data_Revalidation return Boolean
      with Global => State;
 
@@ -250,12 +254,13 @@ is
    function Reversing_Possible return Boolean
      with Global => State;
 
-   --  e5/onboard-gaps: a reversing area (packet 138) is stored
+   --  a reversing area (packet 138) is stored
    function Reversing_Area_Known return Boolean
      with Global => State;
 
    --  5.22.4.1: the inhibition of the BTM alarm reaction is active
    --  (MSG_ONBOARD train bit 4)
+   --  @req 5.22.4.1
    function BMM_Inhibited return Boolean
      with Global => State;
 
@@ -274,9 +279,7 @@ is
      with Global => State,
           Pre => I <= Status_Event_Count;
 
-   ---------------------------------------------------------------------
    --  What the train interface is told
-   ---------------------------------------------------------------------
 
    --  The brake commands of the procedures, with their reasons
    type Brake_Demand_T is record
@@ -296,14 +299,13 @@ is
       Ack_Required    : Boolean := False;
    end record;
 
+   --  @req 4.4.13.1.2
    function Brake_Demand return Brake_Demand_T
      with Global => State,
           Post => (if Brake_Demand'Result.Trip
                    then Brake_Demand'Result.EB);
 
-   ---------------------------------------------------------------------
    --  The mode related speed restrictions (3.11.7, 3.11.10)
-   ---------------------------------------------------------------------
 
    --  The ceiling of the MRSP of the mode M: the national value of the
    --  mode, or the speed the trackside gave (3.11.7.1.1: the mode
@@ -313,14 +315,14 @@ is
    --  function is active (3.11.10.1, only in levels 0, 1 and 2: 5.8.3.6);
    --  No_Speed_Limit for a mode without one. The one source of
    --  Snapshot_T.Mode_Speed (EVC_Core).
+   --  @req 3.11.7.1, 3.11.7.1.1, 3.11.10.1, 3.15.4.5, 4.4.8.1.1, 4.4.8.1.1 a)
+   --  @req 4.4.18.1.3, 4.4.20.1.3, 5.8.3.6
    function Mode_Speed (M        : Mode_T;
                         NV       : National_Values_T;
                         SR_Speed : Speed_Cms_T) return Speed_Cms_T
      with Global => State;
 
-   ---------------------------------------------------------------------
    --  Juridical recording (EVC_Ports: event 23, procedures)
-   ---------------------------------------------------------------------
 
    Max_Events : constant := 8;
    type Event_T is record
@@ -361,9 +363,7 @@ is
    Event_PT_Distance    : constant := 10;
    Event_Train_Data     : constant := 11;
 
-   ---------------------------------------------------------------------
    --  Operations
-   ---------------------------------------------------------------------
 
    --  Power-up: no procedure running, nothing stored
    procedure Clear
@@ -381,6 +381,7 @@ is
    --  5.17.2.2 E6: the Train Data were validated by the driver while
    --  the re-validation was requested (EVC_Core calls it when
    --  EVC_Mission took the driver's Train Data entry); A7 follows
+   --  @req 5.17.2.2 S6
    procedure Train_Data_Revalidated
      with Global => (In_Out => State),
           Post => not Train_Data_Revalidation;
@@ -402,6 +403,8 @@ is
    --  (From /= To), the context of the cycle (EVC_Core.Enter_Mode). The
    --  reason of a trip is the first condition of 4.6.2 for From -> TR
    --  (EVC_Modes.Conditions) that held in the cycle.
+   --  @req 4.4.13.1.3, 4.4.14.1.2.1, 5.6.2.2 A050, 5.7.2.3, 5.7.3.6
+   --  @req 5.8.4.1 i), 5.9.2.3, 5.17.2.2 D4, 5.17.2.2 S1
    procedure Mode_Changed (From, To : Mode_T; C : Context_T;
                            S : Snapshot_T)
      with Global => (In_Out => State,
@@ -411,16 +414,19 @@ is
 
    --  The brake demand and the outputs after the mode machine, in the
    --  mode of the end of the cycle
+   --  @req 4.4.13.1.4, 4.4.14.1.2, 5.7.2.4, 5.7.3.7, 5.11.2.2 S050
+   --  @req 5.11.2.2 S060
    procedure Finish_Cycle (C : Context_T; Mode : Mode_T; S : Snapshot_T)
      with Global => (In_Out => State),
           Post => (if Mode = M_TR then Brake_Demand.EB);
 
-   --  e5/onboard-gaps (B070), 4.8.3 [1], 4.8.5.5: a packet 138 or 139
+   --  4.8.3 [1], 4.8.5.5: a packet 138 or 139
    --  (Kind; any other kind is ignored) of a balise group read in level
    --  0 or 2 with level 1 announced, kept in the balise transition buffer
    --  and released at the transition to level 1 (EVC_Core): taken as at
    --  the passage of its group, whose location reference is now at the
    --  estimated frame position X, its distances along S
+   --  @req 4.8.3.1.1 Table
    procedure Take_Released (Kind : ETCS_Catalogue.Packet_Kind_T;
                             R    : in out ETCS_Bits.Reader;
                             X    : Dist_T;

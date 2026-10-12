@@ -41,6 +41,7 @@ package EVC_Location
 is
 
    --  A reference balise group
+   --  @req 3.6.4.1.4
    type Anchor_T is record
       Valid       : Boolean := False;
       Id          : Identity_T := (others => <>);
@@ -72,6 +73,7 @@ is
 
    --  3.6.4.1.5 a) and b) (gamma = 0), as distances from the estimated
    --  position
+   --  @req 3.6.4.1.5, 3.6.4.1.5 a), 3.6.4.1.5 b)
    function Doubt_Over (A : Anchor_T; S : Sense_T; Low, High : Length_T)
      return Length_T
    is (Add (A.Locacc, Rear_Growth (A, S, Low, High)));
@@ -94,12 +96,12 @@ is
      (Sum (Est, Under))
      with Post => Max_Safe'Result >= Est;
 
-   ---------------------------------------------------------------------
    --  Location items
-   ---------------------------------------------------------------------
 
+   --  @req 3.6.4.2.4, 3.6.4.2.4 Table 2a
    type Item_Kind_T is (Estimated_Item, Min_Item, Max_Item);
 
+   --  @req 3.6.4.2.3
    type Item_T is record
       Valid  : Boolean := False;
       Kind   : Item_Kind_T := Estimated_Item;
@@ -117,6 +119,10 @@ is
    --  3.6.4.2.5: refer Item to To (the SOLR). Linked says whether the
    --  linking distance Link from the item's reference to To is known;
    --  Low, High are the frame deviations now.
+   --  @req 3.6.4.2.5, 3.6.4.2.5 a), 3.6.4.2.5 b), 3.6.4.2.5 b) 1st bullet
+   --  @req 3.6.4.2.5 b) 2nd bullet, 3.6.4.2.5 b) 3rd bullet, 3.6.4.2.5 c)
+   --  @req 3.6.4.2.5 c) 1st bullet, 3.6.4.2.5 c) 2nd bullet
+   --  @req 3.6.4.2.5 c) 3rd bullet
    procedure Relocate (Item   : in out Item_T;
                        To     : Anchor_T;
                        Linked : Boolean;

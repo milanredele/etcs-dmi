@@ -10,6 +10,8 @@
 --  The modes carry the prefix M_ as in the DMI (Supplementary_Driving_
 --  Info): IS, the abbreviation of Isolation, is a reserved word.
 
+--  @req 4.4.15.1.2, 4.4.20.1.3, 4.5.2.1, 4.5.2.2 Table
+--  @req 4.5.2.2 Table-footnote {2}, 4.5.2.2 Table-footnote {4}
 package EVC_Modes
   with SPARK_Mode => On, Pure
 is
@@ -55,6 +57,7 @@ is
    --  element (From, To) is the priority of the transition from From to
    --  To. The conditions are in 4.6.3; EVC_Core evaluates those of the
    --  current phase.
+   --  @req 4.3.1.6, 4.4.14.1.4, 4.6.2 Table
    Transitions : constant Transition_Table_T :=
      (M_NP => (M_SB => 2, M_IS => 1, others => 0),
       M_SB => (M_NP => 2, M_SH => 7, M_SM => 8, M_FS => 7, M_LS => 7,
@@ -104,10 +107,8 @@ is
    function Transition_Exists (From, To : Mode_T) return Boolean is
      (Transitions (From, To) /= No_Transition);
 
-   ---------------------------------------------------------------------
-   --  Added by e4/modes: the conditions of each transition, and what the
+   --  the conditions of each transition, and what the
    --  modes mean for the functions of the on-board (4.5.2, 4.10)
-   ---------------------------------------------------------------------
 
    --  4.6.2 Figure 2: the conditions of 4.6.3 that allow the transition
    --  from From to To ("16, 17, 18" means "16 or 17 or 18", 4.6.1.6), as
@@ -121,6 +122,7 @@ is
    No_Conditions : constant Condition_List_T := (others => 0);
    type Condition_Table_T is array (Mode_T, Mode_T) of Condition_List_T;
 
+   --  @req 4.4.13.1.6
    Conditions : constant Condition_Table_T :=
      (M_NP => (M_SB => (4, others => 0),
                M_IS => (1, others => 0),
@@ -307,6 +309,7 @@ is
    --    crossing not protected are monitored; the signalling related
    --    speed restriction and the speed restriction to ensure a
    --    permitted braking distance are in the MRSP
+   --  @req 4.4.9.1.5, 4.4.9.1.6
    function MA_Mode (M : Mode_T) return Boolean is
      (M in M_FS | M_AD | M_LS | M_OS);
    --  - the SSP, the ASP and the LX speed restriction are in the MRSP
@@ -316,15 +319,18 @@ is
    --  - the TSRs are in the MRSP, the gradient is used, the MRSP is
    --    monitored with its braking curves (SH and RV: ceiling speed
    --    monitoring only, {4}; SN: the National System, out of scope)
+   --  @req 4.4.6.1.3, 4.4.12.1.3, 4.4.19.1.3
    function TSR_Mode (M : Mode_T) return Boolean is
      (M in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS | M_UN);
    --  - the train related speed restriction (the maximum train speed)
+   --  @req 4.4.10.1.2, 4.4.10.1.3
    function Train_Speed_Mode (M : Mode_T) return Boolean is
      (M in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS | M_UN | M_RV);
    --  - the check of the linking consistency (3.4.4.2.1.1 b) and of the
    --    odometer accuracy thresholds (3.6.8.5 to 3.6.8.7)
    function Linking_Check_Mode (M : Mode_T) return Boolean is
      (M in M_SM | M_FS | M_AD | M_LS | M_OS);
+   --  @req 3.6.8.5, 3.6.8.6.2
    function Odometer_Check_Mode (M : Mode_T) return Boolean is
      (M in M_SM | M_FS | M_AD | M_LS | M_SR | M_OS);
 

@@ -34,12 +34,14 @@ with EVC_Modes;    use EVC_Modes;
 with EVC_Position;
 with EVC_Radio;
 
+--  @req 4.11.1.1, 4.11.1.3
 package EVC_Retained
   with SPARK_Mode => On,
        Abstract_State => State,
        Initializes => State
 is
 
+   --  @req 3.5.6.2
    type Kept_T is record
       --  something was saved since the store was erased
       Saved       : Boolean := False;
@@ -51,11 +53,12 @@ is
       --  type and its writer, EVC_Sessions, are EVC_Radio's); EVC_Core
       --  saves EVC_Radio.Contact here and restores it at the power-up
       RBC         : EVC_Radio.RBC_Contact_T;
-      --  3.5.6.2 (e5/registration): the Radio Network type and GSM-R
+      --  3.5.6.2: the Radio Network type and GSM-R
       --  network identity last received (EVC_Radio.Network)
       Network     : EVC_Radio.Network_T;
       --  3.17.2.9: the X of the system version operated
       Version_Known : Boolean := False;
+      --  @req 3.17.2.9
       Operated_X    : Natural := 0;
    end record;
 

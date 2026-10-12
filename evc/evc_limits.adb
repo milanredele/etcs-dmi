@@ -5,10 +5,6 @@ package body EVC_Limits
   with SPARK_Mode => On
 is
 
-   ------------
-   -- Margin --
-   ------------
-
    --  A.3.1, tenths of km/h: dV_min, dV_max, V_min, V_max
    type Margin_Values_T is record
       D_Min, D_Max, V_Min, V_Max : Num;
@@ -38,18 +34,10 @@ is
       end if;
    end Margin;
 
-   ---------
-   -- F41 --
-   ---------
-
    --  2 km/h below 30 km/h, then linearly up to 12 km/h at 500 km/h:
    --  (640 + 0.36 V) / 470 km/h = (64 000 + 36 V) / 1692 cm/s
    function F41 (V : Speed_T) return Speed_T is
      (Div_Ceil (Max (64_000 + 36 * V, 94_000), 1_692));
-
-   ---------
-   -- Bec --
-   ---------
 
    function Bec (Terms : Terms_T; V_Target : Speed_T) return Bec_T is
       V      : constant Speed_T := Terms.V;
@@ -83,10 +71,6 @@ is
                                + (2 * (V0 + Vd1) + Vd2) * T_Rem, 2_000),
                      Distance_Bound));
    end Bec;
-
-   ----------------
-   -- EBD_Limits --
-   ----------------
 
    function EBD_Limits (M        : Model_T;
                         P        : Profile_T;
@@ -153,10 +137,6 @@ is
       return L;
    end EBD_Limits;
 
-   ----------------
-   -- EOA_Limits --
-   ----------------
-
    function EOA_Limits (M        : Model_T;
                         P        : Profile_T;
                         SBD      : Curve_T;
@@ -202,10 +182,6 @@ is
       end;
       return L;
    end EOA_Limits;
-
-   -----------------
-   -- P_At_Target --
-   -----------------
 
    function P_At_Target (M          : Model_T;
                          P          : Profile_T;

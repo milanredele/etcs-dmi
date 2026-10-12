@@ -3,7 +3,7 @@
 --  stored information and the supervision use them.
 --
 --  Phase E3 had no data entry: the store held a documented default
---  train, valid from power-up. Phase E4 (e4/modes) fills it from the DMI
+--  train, valid from power-up. Phase E4 fills it from the DMI
 --  (the Train Data entry of the Start of Mission, 5.4, EVC_Mission)
 --  through Set and Invalidate, and starts invalid (4.10); E6 adds the
 --  data view and the other sources (5.17 is the procedures half's).
@@ -20,6 +20,8 @@ with ETCS_Variables;        use ETCS_Variables;
 with EVC_Distances;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 
+--  @req 3.18.3.4 a), 3.18.3.4 b), 3.18.3.4 c), 3.18.3.4 d), 3.18.3.4 e)
+--  @req 3.18.3.4 f), 3.18.3.4 g), 3.18.3.4 h)
 package EVC_Train_Data
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -28,6 +30,7 @@ is
 
    --  The train categories of 3.11.3.3 and the route suitability data of
    --  3.12.2.3 (the parts of the Train Data the stored information uses)
+   --  @req 3.11.3.3.2
    type Categories_T is record
       --  the one "Cant Deficiency" train category (3.11.3.3.2)
       Cant_Deficiency : NC_CDTRAIN_T := 2;
@@ -72,7 +75,7 @@ is
      with Global => State;
 
    --  Power-up: no valid Train Data (4.10: deleted in No Power; phase
-   --  E4, e4/modes: the driver enters them in the start of mission,
+   --  E4: the driver enters them in the start of mission,
    --  EVC_Mission). Data keeps the default train as the values of the
    --  invalid set, which nothing supervises (EVC_Stored_Information:
    --  Supervise needs valid Train Data).

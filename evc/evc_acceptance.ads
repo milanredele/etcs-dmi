@@ -12,7 +12,7 @@
 --  each kind is accepted when both filters accept it in the Context of
 --  that moment. The exceptions of the tables:
 --    4.8.3 [1] "stored on-board if an order to switch to level 1 at a
---      further location has been received" (e5/balise-buffer): Stored
+--      further location has been received": Stored
 --      (Level_Stores) is the third verdict of the first filter, in
 --      levels 0, NTC and 2 with Context.L1_Announced, by the rows and
 --      columns that carry [1]. EVC_Stored_Information keeps the packets
@@ -21,8 +21,8 @@
 --      1. Level_Accepts and Accepted still accept these cases: the
 --      units that take a [1] packet themselves and keep no buffer take
 --      it at once, as before (the linking, packet 5, in EVC_Position;
---      the reversing packets 138 and 139 in EVC_Procedures; backlog
---      B070); the stores ask Stored first.
+--      the reversing packets 138 and 139 in EVC_Procedures); the
+--      stores ask Stored first.
 --    4.8.3 [2] (level 2 at a further location): RBC information, E5.
 --    4.8.3 [4] the SSP and gradient cover the MA: 3.7.2.3 in
 --      EVC_Stored_Information.
@@ -38,7 +38,7 @@
 --    4.8.4 [13], [14]: SM authorisations, E5.
 --  A level that is not valid (unknown, or invalid: 5.4.3.2 D2) is no
 --  level of the tables: only what every level accepts is accepted.
---  The procedures (EVC_Procedures, EVC_Text_Messages, e4/integration)
+--  The procedures (EVC_Procedures, EVC_Text_Messages)
 --  filter the information they take with the same tables: the rows
 --  "Danger for SH information", "Stop Shunting on desk opening", "Stop
 --  if in SR mode", "Reversing Area Information", "Reversing Supervision
@@ -49,6 +49,13 @@
 
 with EVC_Modes; use EVC_Modes;
 
+--  @req 3.6.3.1.4, 3.8.2.4.1, 3.8.5.2.2, 4.3.1.6, 4.4.17.1.2, 4.8.2.1
+--  @req 4.8.2.1 a), 4.8.2.1 b), 4.8.2.1 d), 4.8.2.1 e), 4.8.3.1.1 Table
+--  @req 4.8.3.1.1 Table-footnote [4], 4.8.3.1.1 Table-footnote [11]
+--  @req 4.8.3.1.1 Table-footnote [16], 4.8.4.2 Table
+--  @req 4.8.4.2 Table-footnote [1], 4.8.4.2 Table-footnote [2]
+--  @req 4.8.4.2 Table-footnote [4], 4.8.4.2 Table-footnote [7]
+--  @req 4.8.4.2 Table-footnote [11], 5.10.1.8
 package EVC_Acceptance
   with SPARK_Mode => On, Pure
 is
@@ -75,26 +82,26 @@ is
       Big_Metal_Masses,       -- 67
       Braking_Distance,       -- 52
       Level_Crossing,         -- 88
-      --  e5/trips-fs: 3.8.5.2.2
+      --  3.8.5.2.2
       Repositioning,          -- 16
-      --  the procedures (e4/integration)
+      --  the procedures
       Danger_For_SH,          -- 132
       Stop_SH_On_Desk,        -- 135
       Stop_If_In_SR,          -- 137
       Reversing_Area,         -- 138
       Reversing_Supervision,  -- 139
       Text_Message,           -- 72, 76 (73, 74 of 7.4.2)
-      --  phase E5 (e5/session): from a balise group
+      --  from a balise group
       Session_Management,     -- 42
-      --  e5/handover: from a balise group
+      --  from a balise group
       RBC_Transition_Order,   -- 131
-      --  e5/registration-2: from a balise group
+      --  from a balise group
       Network_Order,          -- 45
-      --  e4/ls-display, 4.4.19.1.4 (the toggle off order of packet 180
+      --  4.4.19.1.4 (the toggle off order of packet 180
       --  is narrowed to LS by EVC_Stored_Information, 4.8.4)
       Generic_LS_Marker,      -- 181
       LSSMA_Toggle,           -- 180
-      --  e5/accepting-rbc, 3.8.2.4: track ahead free up to the level 2
+      --  3.8.2.4: track ahead free up to the level 2
       --  transition location
       Track_Ahead_Free_L2);   -- 90
 
@@ -141,19 +148,18 @@ is
              L /= NTC or else C.L1_Announced,
           when Level_Crossing =>
              L in L1 | L2 or else C.L1_Announced,
-          --  R R A R, no exception (e5/trips-fs)
+          --  R R A R, no exception
           when Repositioning => L = L1,
-          --  R R A A: no exception [1] (e5/balise-buffer)
+          --  R R A A: no exception [1]
           when Stop_If_In_SR => L in L1 | L2,
           when Danger_For_SH | Stop_SH_On_Desk => True,
           --  every level; the exceptions [14] [15] of the table are
-          --  phase 2 of e5/session
           when Session_Management => True,
           --  4.8.3: level 2 only ([15], the radio network, not modelled)
           when RBC_Transition_Order => L = L2,
           --  4.8.3: the Radio Network transition order in every level
           when Network_Order => True,
-          --  4.8.3 (e4/ls-display): the marker in every level, the
+          --  4.8.3: the marker in every level, the
           --  toggle orders from balises in level 1 ([1])
           when Generic_LS_Marker => True,
           when LSSMA_Toggle => L = L1 or else C.L1_Announced,
@@ -230,7 +236,7 @@ is
           --  [1]: every information of these tables is marked [1] in PT,
           --  rejected in level 1 (in level 2 the RBC's, phase E5), but
           --  the track ahead free up to the level 2 transition location
-          --  ("A", e5/accepting-rbc)
+          --  ("A")
           when M_PT => I = Track_Ahead_Free_L2,
           when M_RV =>
              I in National_Values | Reversing_Area | Reversing_Supervision
@@ -240,13 +246,14 @@ is
    function Accepted (I : Info_T; C : Context_T) return Boolean is
      (First_Filter (I, C) and then Third_Filter (I, C));
 
-   --  e5/balise-buffer: 4.8.3 [1] "stored onboard if an order to switch
+   --  4.8.3 [1] "stored onboard if an order to switch
    --  to level 1 at a further location has been received", in the level
    --  L (0, NTC or 2), by the rows and columns that carry it (Adhesion
    --  and Level Crossing not in level 2: R and A there; TSR, its
    --  revocation, the default gradient, packet 79 and the texts only in
    --  NTC). Every case is one Level_Accepts accepts (the exception taken
    --  at once by the units that keep no buffer, see the header).
+   --  @req 4.4.19.1.4.2 c), 4.8.3.1.1 Table-footnote [1]
    function Level_Stores (I : Info_T; L : Level_T; C : Context_T)
      return Boolean
    is (C.L1_Announced and then L /= L1
@@ -256,7 +263,7 @@ is
               | Gradient_Profile | International_SSP | Axle_Load_Profile
               | Route_Suitability | Track_Conditions | Braking_Distance
               | Reversing_Area | Reversing_Supervision => True,
-           --  e4/ls-display-2 (B091): the LSSMA toggle on order, R [1] in
+           --  the LSSMA toggle on order, R [1] in
            --  levels 0, NTC and 2 (the off order, R there, is kept with it
            --  as one packet 180 and rejected at the release)
            when LSSMA_Toggle => True,
@@ -268,10 +275,11 @@ is
    --  4.8.3, 4.8.5.1: the first filter's third verdict, "stored in the
    --  transition buffer" (the third filter applies when the set is
    --  released, 4.8.5.6 b)
+   --  @req 4.8.3.1.1 Table, 4.8.5.1, 5.10.1.7
    function Stored (I : Info_T; C : Context_T) return Boolean is
      (C.Level_Valid and then Level_Stores (I, C.Level, C));
 
-   --  Phase E5 (e5/radio-geo-buffer): the packet 79 of a radio message.
+   --  the packet 79 of a radio message.
    --  4.8.3, the row "Geographical Position, From RBC: Yes": A in level
    --  2; R [2] in levels 0, NTC and 1, stored (4.8.5) when an order to
    --  switch to level 2 at a further location has been received
@@ -280,11 +288,12 @@ is
    --  the recognition of the exit from TR) rejected, as for a group.
    type Radio_Verdict_T is (Radio_Rejected, Radio_Accepted, Radio_Stored);
 
-   --  e5/balise-buffer (B060), 4.8.5.4 c): without an established
+   --  4.8.5.4 c): without an established
    --  session (Session_Up False) rejected, so that the packet kept for
    --  the transition is deleted with the session that gave it (decision:
    --  the on-board keeps one packet 79, from the only RBC it talks to
    --  before the transition; no message arrives without a session)
+   --  @req 4.8.3.1.1 Table-footnote [2], 4.8.4.2 Table
    function Radio_Geo_Verdict (C            : Context_T;
                                L2_Announced : Boolean;
                                Session_Up   : Boolean := True)

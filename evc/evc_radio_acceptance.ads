@@ -33,6 +33,7 @@
 with ETCS_Message_Catalogue;
 with EVC_Modes; use EVC_Modes;
 
+--  @req 4.8.3.1.1 Table, 4.8.4.2 Table
 package EVC_Radio_Acceptance
   with SPARK_Mode => On
 is
@@ -53,7 +54,7 @@ is
       SH_Refused,           -- 27
       SH_Authorised,        -- 28
       TAF_Request,          -- 34
-      --  packet 45 of a message (e5/registration-3; not a message kind,
+      --  packet 45 of a message (not a message kind,
       --  so not in Info_Of: EVC_Sessions.Network filters it)
       Network_Order);
 
@@ -93,6 +94,8 @@ is
 
    --  4.8.3, the rows "From RBC: Yes": level 2 accepts, with [3] for the
    --  authorisations; the other levels reject, or store [2]
+   --  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [2]
+   --  @req 4.8.3.1.1 Table-footnote [3], 5.10.1.8
    function First_Filter (I : Info_T; C : Context_T) return Verdict_T
    is (if I = Other then Accepted
        --  the row "Radio Network transition order": A in every level
@@ -113,6 +116,7 @@ is
      (C.Trip_Exit_Known);
 
    --  4.8.4, the third filter in the mode of C
+   --  @req 4.8.4.2 Table
    function Third_Filter (I : Info_T; C : Context_T) return Boolean
    is (case I is
           when Other => True,

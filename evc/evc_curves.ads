@@ -45,12 +45,15 @@ with EVC_Distances; use EVC_Distances;
 with EVC_Fixed;     use EVC_Fixed;
 with EVC_Profile;   use EVC_Profile;
 
+--  @req 3.11.11.4 2nd bullet, 3.11.11.4 3rd bullet, 3.13.8.1.2, 3.13.8.1.3
+--  @req 3.13.8.3.1
 package EVC_Curves
   with SPARK_Mode => On
 is
 
    type Kind_T is (EBD, SBD, GUI);
 
+   --  @req 3.13.4.1.2
    type Curve_T is record
       Kind     : Kind_T := EBD;
       Anchor   : Dist_T := 0;
@@ -75,6 +78,9 @@ is
       W_Hi : Num;
    end record;
 
+   --  @req 3.13.2.2.9.2.1, 3.13.2.2.9.2.2, 3.13.2.2.9.2.4, 3.13.2.2.9.2.5
+   --  @req 3.13.2.2.9.2.6, 3.13.6.2.1.1, 3.13.6.2.1.3, 3.13.6.2.1.4
+   --  @req 3.13.6.2.1.5, 3.13.6.3.1.3, 3.13.6.3.1.4, 3.13.6.4.3, 3.13.6.4.4
    function Deceleration (M      : Model_T;
                           P      : Profile_T;
                           Kind   : Kind_T;
@@ -133,6 +139,7 @@ is
       A_Expected_Max : Num := 0;
    end record;
 
+   --  @req A.3.12.2.2, A.3.12.2.3, A.3.12.2.4, A.3.12.2.5
    function Extremes (M            : Model_T;
                       P            : Profile_T;
                       TSR          : Boolean;

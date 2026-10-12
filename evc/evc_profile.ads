@@ -43,6 +43,8 @@ with EVC_Distances;         use EVC_Distances;
 with EVC_Fixed;             use EVC_Fixed;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 
+--  @req 3.13.2.2.11.1, 3.13.2.3.3.1, 3.13.2.3.4.1, 3.13.2.3.5.1, 3.13.4.1.2
+--  @req 3.13.4.1.3
 package EVC_Profile
   with SPARK_Mode => On
 is
@@ -59,6 +61,7 @@ is
       Start      : Dist_T := -Max_Cm;
       Gradient   : Gradient_T := 0;
       A_Gradient : Gradient_Accel_T := 0;
+      --  @req 3.13.4.1.3 a)
       Gradient_TSR   : Gradient_T := 0;
       A_Gradient_TSR : Gradient_Accel_T := 0;
       Reduced    : Boolean := False;
@@ -81,6 +84,9 @@ is
 
    --  3.13.4.3.2: A_gradient for Grad, 1e-5 m/s², rounded down (g =
    --  9.81 m/s²)
+   --  @req 3.11.11.4 1st bullet, 3.13.2.2.10.1, 3.13.4.3.1, 3.13.4.3.2
+   --  @req 3.13.4.3.2 a), 3.13.4.3.2 a) 1st bullet, 3.13.4.3.2 a) 2nd bullet
+   --  @req 3.13.4.3.2 b), 3.13.4.3.2 b) 1st bullet, 3.13.4.3.2 b) 2nd bullet
    function Gradient_Acceleration (Grad       : Gradient_T;
                                    Up, Down   : Natural) return Num
    is (Max (Min (Div_Floor (981_000 * Num (Grad),
@@ -91,6 +97,8 @@ is
           Post => Gradient_Acceleration'Result in -300_000 .. 300_000;
 
    --  Rear: the min safe rear end of the train, ahead coordinates
+   --  @req 3.13.4.1.1, 3.13.4.1.1 a), 3.13.4.1.1 b), 3.13.4.1.3 b), 3.13.4.2.1
+   --  @req 3.13.5.1, 3.13.5.3, 3.13.5.4, 3.13.5.5
    procedure Build (S     : Snapshot_T;
                     Model : Model_T;
                     Rear  : Dist_T;

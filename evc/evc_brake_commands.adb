@@ -10,6 +10,8 @@ is
    --  away more than D_NVROLL; release at standstill and after the
    --  acknowledgement (3.14.1.5) and start again (3.14.2.7, 3.14.3.5,
    --  4.4.7.1.5.3)
+   --  @req 3.6.7.1 a), 3.14.2.2, 3.14.2.3, 3.14.2.4, 3.14.2.7, 3.14.3.2
+   --  @req 3.14.3.5
    procedure Protect (P        : in out Protection_T;
                       Active   : Boolean;
                       Unwanted : Boolean;
@@ -53,10 +55,6 @@ is
          end;
       end if;
    end Protect;
-
-   ----------
-   -- Step --
-   ----------
 
    procedure Step (S      : Snapshot_T;
                    SDM    : EVC_SDM.Result_T;

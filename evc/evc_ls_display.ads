@@ -1,6 +1,6 @@
 --  The display of the Lowest Supervised Speed within the Movement
 --  Authority in Limited Supervision (SUBSET-026 4.4.19.1.4 to
---  4.4.19.1.4.8, phase E4, e4/ls-display): the generic LS function
+--  4.4.19.1.4.8, phase E4): the generic LS function
 --  marker (packet 181, 7.4.2.37.4), the toggle orders (packet 180,
 --  7.4.2.37.3) with their delay timer, whether the LSSMA is shown and its
 --  value, for MSG_MODE_LEVEL (EVC_DMI_Port).
@@ -24,6 +24,8 @@ with Interfaces;            use Interfaces;
 with EVC_Modes;             use EVC_Modes;
 with EVC_Supervision_Input;
 
+--  @req 4.4.19.1.4, 4.4.19.1.4.2 a), 4.4.19.1.4.2 b)
+--  @req 4.8.3.1.1 Table-footnote [2]
 package EVC_LS_Display
   with SPARK_Mode => On,
        Abstract_State => State,
@@ -66,6 +68,7 @@ is
 
    --  4.4.19.1.4.8: a Limited Supervision mode profile received without
    --  the marker in the same balise group message deletes it
+   --  @req 4.4.19.1.4.8
    procedure Delete_Marker
      with Global => (In_Out => State),
           Post => not Marker_Stored;
@@ -82,6 +85,8 @@ is
    --  Start_Ms (a: the time stamp of the radio message; b: the passage of
    --  the first balise of the group; c: the level transition of the
    --  transition buffer), received at Now_Ms
+   --  @req 4.4.19.1.4.2, 4.4.19.1.4.4, 4.4.19.1.4.5, 4.4.19.1.4.5 a)
+   --  @req 4.4.19.1.4.5 b)
    procedure Take_Order (On       : Boolean;
                          Delay_S  : Delay_S_T;
                          Start_Ms : Unsigned_64;
@@ -93,11 +98,11 @@ is
                      Toggled_On = Elapsed (Start_Ms, Now_Ms, Delay_S)
                      and then Order_Pending = not Toggled_On);
 
-   --  e4/ls-display-3 (B120), 4.8.3 [2]: a toggle on order of the RBC
+   --  4.8.3 [2]: a toggle on order of the RBC
    --  (packet 180 of message 24) received in level 0, NTC or 1 with an
    --  order to switch to level 2 at a further location, kept until the
    --  transition (decision: the packet alone, with its T_LSSMA, as the
-   --  packet 79 of e5/radio-geo-buffer; the other packets of the message
+   --  packet 79; the other packets of the message
    --  have their own rows)
    function Order_Held return Boolean
      with Global => State;
@@ -110,6 +115,7 @@ is
    --  order taken when Take, its timer started at Now_Ms; 4.8.5.4: else
    --  deleted (level 2 no longer announced, the session lost, or the
    --  order rejected at the transition)
+   --  @req 4.4.19.1.4.2 c)
    procedure Release_Held (Take : Boolean; Now_Ms : Unsigned_64)
      with Global => (In_Out => State),
           Post => not Order_Held;
@@ -117,6 +123,7 @@ is
    --  4.4.19.1.4.6: entering LS toggles the display off, unless an order
    --  received in this cycle displayed it immediately; 4.10: a transition
    --  to another mode than LS and PT deletes the toggle on order
+   --  @req 4.4.19.1.4.6
    procedure Mode_Changed (From, To : Mode_T)
      with Global => (In_Out => State),
           Post => (if To not in M_LS | M_PT
@@ -125,12 +132,14 @@ is
    --  4.4.19.1.4 a) and b), 4.4.19.1.4.1: the LSSMA of S in cm/s, the
    --  lowest of the MRSP elements between the min safe front end and the
    --  EOA / LOA and of the target speed there
+   --  @req 4.4.19.1.4 a), 4.4.19.1.4 b)
    function LSSMA (S : EVC_Supervision_Input.Snapshot_T)
      return EVC_Supervision_Input.Speed_Cms_T;
 
    --  Once per cycle, after the supervision and the mode: 4.4.19.1.4.3
    --  the delay timer, then whether the LSSMA is shown in Mode (with the
    --  marker: toggled on; without, 4.4.19.1.4.7) and its value
+   --  @req 4.4.19.1.4.3, 4.4.19.1.4.7, 4.4.19.1.4.7 a), 4.4.19.1.4.7 b)
    procedure Step (S      : EVC_Supervision_Input.Snapshot_T;
                    Mode   : Mode_T;
                    Now_Ms : Unsigned_64)

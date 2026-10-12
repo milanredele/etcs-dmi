@@ -254,6 +254,16 @@ A phase is closed when every clause it lists is `done`, `n/a` or `deferred`
 with a reason, and `evc_test`, `evc_fuzz`, `dmi_test`, `dmi_fuzz`,
 gnatprove and the wasm smoke check are green.
 
+Since 2026-10-12 the check ties the matrix to the sources both ways
+(§13 "Comments and traceability"): every unit, subprogram, type or
+scenario a note names must exist (a rename breaks the check, not the
+trace), and the sources carry `@req` tags, comment lines
+`--  @req 3.5.3.4 a), 3.5.3.4.1` directly above the declaration that
+implements those clauses (above the package for the unit as a whole),
+each of which must be a row of the matrix, done or partial, whose note
+names the unit. A new implementation therefore edits the row and the
+tag together; AGENTS.md "Comments and traceability" has the rules.
+
 ## 5. E0 — Foundation: outcome (2026-09-27)
 
 Four parallel branches on top of the repository split, merged into
@@ -5442,3 +5452,57 @@ braking model alone moved 146); a `var` line of the sequences reads
 width then value (B260's premise); the protocol has no version field,
 so a new message or action is added, never redefined. Open items:
 doc/BACKLOG.csv (26 open after this round).
+
+### Comments and traceability (2026-10-12)
+
+An analysis of the comments of `evc/` (105 files, 42,937 lines) before
+the change: 9,702 comment lines, a quarter of the non-blank lines and a
+third of the bytes (568 KB against 1,176 KB of code, about 150k against
+335k tokens). By kind of the bytes: plain prose 58%, clause references
+28%, history (branch names, backlog ids, "Added by", "Phase En") 7%, GNAT
+box separators and rule lines 7%. The impact on the agents' context is
+small because they do not read units whole: over 184 transcripts the
+sources were read through `sed -n` 1,775 times (median window 31 lines),
+`outline.py` 807 times, `grep` 1,747 times and whole only 28 times; a
+quarter of a 31-line window is comment, a few thousand tokens per run
+against a 17k-token prompt prefix per call. The clause numbers in the
+comments were not the traceability either: the agents searched the
+sources by clause number 53 times against 5,993 by identifier (they read
+the specification through `clause.py`), 684 of the 1,824 done or partial
+rows were cited nowhere in the sources, nothing verified the numbers (15
+exist in no SUBSET-026 section), and nothing verified the matrix notes'
+names against the code.
+
+Done, with one-off scripts kept in the coordinator's scratchpad:
+
+- Dropped from `evc/`: the 166 subprogram name boxes and the 183 titled
+  section rules (the title line stays, 744 rule lines go), 261 branch
+  names, 101 "Added by" / "Phase En (branch)" prefixes and 65 backlog ids
+  (all closed); 1,382 lines less, 299 comment lines rewritten (a branch
+  name that points to a numbered decision of a plan subsection stays as
+  "decision N of e5/x in the plan").
+- `@req` tags derived from the matrix: for every done or partial row
+  whose note names `EVC_Unit.Name`, the clause goes on a tag line above
+  that declaration (the spec first, else the body); a note naming the
+  unit alone, or an enumeration literal, tags the package. 2,006 clause
+  tags on 681 lines in 67 files, 34 KB. Net: 9,467 comment lines, 558 KB
+  (32.2% of the bytes).
+- `trace_subset026.py --check` resolves every `EVC_X.Y` (also `ETCS_`,
+  `DMI_`, `S076_`, `Sim_`) and `evc_test <scenario>` of the notes against
+  `evc/`, `evc/language/`, `common/`, `sim/` and `test/src/`, and checks
+  the tags (an on-board row, done or partial, its note naming the unit).
+  The first run found 22 stale references: `EVC_Procedure_Requests` (now
+  `EVC_Driver_Requests`, 14 rows), `EVC_PBD.Profile_Of` (now
+  `Section_Profile`), a deletion procedure of the E4 work in progress
+  that the mode entry of `EVC_Core` replaced, and three prose mentions of
+  `evc_test`; fixed in the notes.
+- The rules in AGENTS.md "Comments and traceability" and in the common
+  brief of the agents: the heading, the decision and the quoted
+  specification text stay; a tag and its matrix row are written
+  together; no boxes, branch names, round numbers or closed backlog ids.
+
+Not done: the free-form clause numbers inside bodies (2,523 lines) stay
+unchecked, by design (they explain a branch); the 15 numbers that exist
+in no SUBSET-026 section are other documents' or typos, to be looked at
+when their subprogram is next touched.
+

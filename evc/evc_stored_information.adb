@@ -85,7 +85,7 @@ is
    --  restrictions to ensure a permitted braking distance
    PBD_Last        : EVC_PBD.Inputs_T;
    PBD_Known       : Boolean := False;
-   --  added by e4/modes: the facts of 4.6.3 of the last Evaluate
+   --  the facts of 4.6.3 of the last Evaluate
    MA_Board        : Boolean := False;
    Profile_Overlap : Boolean := False;
    Covered_Flag    : Boolean := False;
@@ -96,7 +96,7 @@ is
    --  its message, kept while the RBC's request is answered
    Proposal        : Movement_Authority_T := (others => <>);
    Proposal_Origin : EVC_Origins.Count_T := 0;
-   --  e5/radio-items (B210), 3.7.2.3: the profiles cover the proposal of
+   --  3.7.2.3: the profiles cover the proposal of
    --  the cycle (True when there is none)
    Proposal_Cover  : Boolean := True;
    --  phase E5, 3.10.2.2: the outcome of the conditional emergency stop
@@ -107,7 +107,7 @@ is
    --  phase E5: the track description was deleted by a timer of the MA
    --  in the last Evaluate (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
    Timer_Deletion  : Boolean := False;
-   --  e5/accepting-rbc, 3.8.2.4: the information "track ahead free up
+   --  3.8.2.4: the information "track ahead free up
    --  to the level 2 transition location" accepted in the last Evaluate
    --  and the group it names (3.8.2.4.2); the country of the group
    --  being taken (Q_NEWCOUNTRY 0)
@@ -119,9 +119,7 @@ is
    --  5.18.8: the tunnel stopping area reported
    Tun             : EVC_Track_Conditions.Tunnel_T;
 
-   ---------------------------------------------------------------------
    --  Queries
-   ---------------------------------------------------------------------
 
    function Event_Count return Natural is (Event_N)
      with Refined_Global => Event_N;
@@ -187,10 +185,6 @@ is
       end if;
    end Record_Event;
 
-   -----------
-   -- Clear --
-   -----------
-
    procedure Clear is
    begin
       EVC_Origins.Clear;
@@ -248,9 +242,7 @@ is
       Driver_Slippery := Slippery;
    end Set_Driver_Slippery;
 
-   ---------------------------------------------------------------------
    --  The train in the frame
-   ---------------------------------------------------------------------
 
    function Train_Frame return Train_Frame_T
      with Global => (EVC_Position.State, EVC_Odometry.State,
@@ -285,10 +277,13 @@ is
       return R;
    end Train_Frame;
 
-   ---------------------------------------------------------------------
    --  The deletions an MA operation asks for
-   ---------------------------------------------------------------------
 
+   --  @req 3.7.3.3, 3.10.2.2 b) last sentence, A.3.4.1.3 Table-footnote [1]
+   --  @req A.3.4.1.3 Table-footnote [7], A.3.4.1.3 Table-footnote [8]
+   --  @req A.3.4.1.3 Table-footnote [9], A.3.4.1.3 Table-footnote [10]
+   --  @req A.3.4.1.3 Table-footnote [11], A.3.4.1.3 Table-footnote [12]
+   --  @req A.3.4.1.3 Table-footnote [13]
    procedure Apply (T : Origin_Table_T;
                     O : EVC_Movement_Authority.Outcome_T)
      with Global => (In_Out => (EVC_Track_Description.State,
@@ -326,34 +321,32 @@ is
       end if;
    end Apply;
 
-   ---------------------------------------------------------------------
    --  The packets of a group message
-   ---------------------------------------------------------------------
 
    subtype Reader_T is ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
 
    --  The order in which the packets of a message are evaluated: the
-   --  level transition orders first (4.8.1.3, added by e4/modes)
+   --  level transition orders first (4.8.1.3)
    type Order_Kind_T is
      (K41, K46, K3, K27, K21, K51, K52, K65, K66, K141, K68, K39, K67, K70,
       K71, K88, K12,
       --  phase E5: the level 2 MA of a radio message (messages 3, 33)
       K15,
       K80,
-      --  e5/trips-fs: the repositioning information (3.8.5.2.2), after
+      --  the repositioning information (3.8.5.2.2), after
       --  the MA it updates
       K16,
       --  phase E4: the station platforms, the allowed current
       --  consumption (track conditions, 5.18, 5.20)
       K69, K40,
-      --  phase E5: the session management order (3.5.2.6.1, e5/session)
+      --  phase E5: the session management order (3.5.2.6.1)
       K42, K45,
-      --  e5/handover: the RBC transition order (3.15.1.3)
+      --  the RBC transition order (3.15.1.3)
       K131,
-      --  e4/ls-display: the LSSMA display toggle order and the generic LS
+      --  the LSSMA display toggle order and the generic LS
       --  function marker (4.4.19.1.4), after the mode profile
       K180, K181,
-      --  e5/accepting-rbc: track ahead free up to the level 2 transition
+      --  track ahead free up to the level 2 transition
       --  location (3.8.2.4), after the level transition order (4.8.3 [9])
       K90);
 
@@ -409,11 +402,11 @@ is
          when K88  => EVC_Acceptance.Level_Crossing,
          when K12 | K15 | K80 => EVC_Acceptance.Movement_Authority,
          when K16 => EVC_Acceptance.Repositioning,
-         --  e5/registration: the Radio Network transition order is
+         --  the Radio Network transition order is
          --  filtered as the session management (4.8.3, 4.8.4: its
          --  own rows are left to EVC_Acceptance)
          when K42 => EVC_Acceptance.Session_Management,
-         --  4.8.3 / 4.8.4: its own rows (e5/registration-2)
+         --  4.8.3 / 4.8.4: its own rows
          when K45 => EVC_Acceptance.Network_Order,
          when K131 => EVC_Acceptance.RBC_Transition_Order,
          when K180 => EVC_Acceptance.LSSMA_Toggle,
@@ -765,6 +758,7 @@ is
    --  SSP and the gradients cover it up to its SvL from the estimated
    --  front end (EVC_Movement_Authority.Accept_MA: 3.8.5.1, the timers),
    --  with the deletions it asks (Apply)
+   --  @req 3.8.5.1.4
    procedure Store_MA (X           : EVC_Movement_Authority.MA_T;
                        M           : Message_T;
                        T           : Origin_Table_T;
@@ -850,6 +844,7 @@ is
                   X.D_MAMODE_List (I).M_MAMODE
                              = ETCS_Variables.M_MAMODE_Limited_Supervision));
 
+   --  @req 4.4.19.1.4.8
    procedure Take_MA_Packet (K           : MA_Kind_T;
                              R           : in out Reader_T;
                              M           : Message_T;
@@ -916,7 +911,7 @@ is
                if OK and then MA_Accepted then
                   EVC_Movement_Authority.Take_Mode_Profile (X, M);
                   Record_Event (Info_Mode_Profile, Change_Stored, M.Msg);
-                  --  4.4.19.1.4.8 (B090): a Limited Supervision mode
+                  --  4.4.19.1.4.8: a Limited Supervision mode
                   --  profile deletes the generic LS function marker; a
                   --  packet 181 of the same group is taken after the
                   --  profile (Order_Kind_T) and stores it again, so the
@@ -929,7 +924,7 @@ is
                end if;
             end;
          when K16 =>
-            --  3.8.5.2.2 (e5/trips-fs): L_SECTION from the group's
+            --  3.8.5.2.2: L_SECTION from the group's
             --  location reference (Take_Group passes the packet only at
             --  the group that linking announced as unknown)
             declare
@@ -966,7 +961,7 @@ is
       end if;
    end Take_Session_Packet;
 
-   --  3.5.6.1 c), 3.5.6.5 (e5/registration): the Radio Network
+   --  3.5.6.1 c), 3.5.6.5: the Radio Network
    --  transition order of packet 45 to the session half
    procedure Take_Network_Packet (R : in out Reader_T)
      with Global => (In_Out => EVC_Sessions.State)
@@ -981,7 +976,7 @@ is
       end if;
    end Take_Network_Packet;
 
-   --  3.15.1.3 (e5/handover): the RBC transition order to the session
+   --  3.15.1.3: the RBC transition order to the session
    --  half, its border referred to the LRBG when the half applies it
    --  (the group just read; EVC_Sessions.Handover)
    procedure Take_Transition_Packet (R : in out Reader_T)
@@ -1001,9 +996,10 @@ is
       end if;
    end Take_Transition_Packet;
 
-   --  3.8.2.4 (e5/accepting-rbc): track ahead free up to the level 2
+   --  3.8.2.4: track ahead free up to the level 2
    --  transition location, for the MA request of EVC_Radio_Authority;
    --  the group's own country when Q_NEWCOUNTRY is 0 (7.4.2.21)
+   --  @req 3.8.2.4.1
    procedure Take_TAF_Packet (R : in out Reader_T)
      with Global => (In_Out => (TAF_L2_New, TAF_L2_Loc),
                      Input  => Group_Country)
@@ -1020,13 +1016,14 @@ is
       end if;
    end Take_TAF_Packet;
 
-   --  4.8.4.2 [9], [10] (B093): the train position confidence interval
+   --  4.8.4.2 [9], [10]: the train position confidence interval
    --  overlaps the LS area of a mode profile of message Msg, and that
    --  area is the furthest the interval overlaps within the profile
    --  (the areas against the interval as in 3.12.4.5 / 3.12.4.6: the
    --  start against the max safe front end, the end against the min
    --  safe front end); with Not_In_OS_Ack ([10]), the estimated front
    --  end is not inside an OS acknowledgement area of the profile
+   --  @req 4.8.4.2 Table-footnote [9], 4.8.4.2 Table-footnote [10]
    function LS_Area_Furthest (T             : Origin_Table_T;
                               Train         : Train_Frame_T;
                               Msg           : Natural;
@@ -1074,16 +1071,16 @@ is
       return LS;
    end LS_Area_Furthest;
 
-   --  e4/ls-display, 4.4.19.1.4.2 to 4.4.19.1.4.5: the LSSMA display
+   --  4.4.19.1.4.2 to 4.4.19.1.4.5: the LSSMA display
    --  toggle order of packet 180 to EVC_LS_Display, its delay timer
    --  started at Start_Ms (a: the time stamp of the radio message, b:
    --  the passage of the first balise of the group, c: the level
-   --  transition when Released from the transition buffer, B091; a
+   --  transition when Released from the transition buffer, ; a
    --  toggle off order is R, not R [1], outside level 1 in 4.8.3: one
    --  released is rejected, decision: the buffer keeps packet 180
    --  whole, its qualifier read here); 4.8.4: the toggle
    --  off order in LS only, the toggle on order in the modes of its row
-   --  (outside LS with its exceptions [9] [10], B093: LS_Area_Furthest
+   --  (outside LS with its exceptions [9] [10]: LS_Area_Furthest
    --  over the mode profiles of the same message M, taken before it);
    --  7.4.2.37.4: packet 181 stores the generic LS function marker
    procedure Take_LS_Packet (K        : Order_Kind_T;
@@ -1131,11 +1128,12 @@ is
          Now_Ms   => Now_Ms);
    end Take_LS_Packet;
 
-   --  e4/ls-display-3 (B120), 4.8.3, the rows "LSSMA display toggle on /
+   --  4.8.3, the rows "LSSMA display toggle on /
    --  off order, From RBC: Yes": in levels 0, NTC and 1 the toggle on
    --  order is R [2], kept for the transition when level 2 is announced
    --  (EVC_LS_Display.Hold_Order; judged in the mode of the transition,
    --  EVC_Core.Release_LS_Held), the toggle off order is R
+   --  @req 4.8.3.1.1 Table-footnote [2]
    procedure Hold_LS_Packet (R : in out Reader_T; L2_Announced : Boolean)
      with Global => (In_Out => (EVC_LS_Display.State, Events, Event_N))
    is
@@ -1207,6 +1205,12 @@ is
    end Dispatch;
 
    --  4.8: the filters, then the packet to its store
+   --  @req 3.7.2.3, 4.8.2.1, 4.8.2.1 a), 4.8.2.1 b), 4.8.2.1 d), 4.8.2.1 e)
+   --  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [4]
+   --  @req 4.8.3.1.1 Table-footnote [11], 4.8.3.1.1 Table-footnote [16]
+   --  @req 4.8.4.2 Table, 4.8.4.2 Table-footnote [1]
+   --  @req 4.8.4.2 Table-footnote [2], 4.8.4.2 Table-footnote [4]
+   --  @req 4.8.4.2 Table-footnote [7], 4.8.4.2 Table-footnote [11]
    procedure Take_Packet (K           : Order_Kind_T;
                           J, P        : Positive;
                           M           : Message_T;
@@ -1237,7 +1241,7 @@ is
       A  : constant EVC_Acceptance.Context_T :=
         Acceptance (Ctx, Linked, Has_41);
    begin
-      --  4.8.3 [1], 4.8.5.1 (e5/balise-buffer): level 1 information in
+      --  4.8.3 [1], 4.8.5.1: level 1 information in
       --  level 0 or 2 with level 1 announced, kept in the group's set of
       --  the transition buffer (the speed of a packet 12 with its MA)
       if EVC_Acceptance.Stored (Info_Of (K), A) then
@@ -1256,7 +1260,7 @@ is
          Balise_Buffer.Add_Packet (Kind_Of (K), R);
          return;
       end if;
-      --  4.4.19.1.4.8 (B090): the marker of a group whose mode profile
+      --  4.4.19.1.4.8: the marker of a group whose mode profile
       --  went to the transition buffer goes there too (and is taken now,
       --  4.8.3 "A"), so that the profile released does not delete it
       if K = K181 and then Set_Open then
@@ -1280,7 +1284,7 @@ is
       Dispatch (K, R, M, T, Train, A, MA_Accepted, Ctx, Now_Ms);
    end Take_Packet;
 
-   --  e5/onboard-gaps (B070), 4.8.3 [1]: the packets a unit takes itself
+   --  4.8.3 [1]: the packets a unit takes itself
    --  (the linking, packet 5, by EVC_Position; the reversing area and
    --  supervision, 138 and 139, by EVC_Procedures) of the group Tk read
    --  in level 0 or 2 with level 1 announced, kept in the group's set like
@@ -1430,12 +1434,13 @@ is
       Keep_Unit_Packets (Tk, M, Ctx, Has_41, Set_Open);
    end Take_Group;
 
-   --  4.8.5.6 b) (e5/balise-buffer): the set S of the balise transition
+   --  4.8.5.6 b): the set S of the balise transition
    --  buffer judged like a new group message in the level now, its
    --  packets taken in the order of Take_Group. The only path of a
    --  released balise packet: the hook of 4.4.19.1.4.2 c) (the LSSMA
    --  toggle order, packet 180, stored here starts its timer at the
    --  transition) is a branch of this loop for its kind
+   --  @req 4.4.19.1.4.2 c), 4.8.5.6
    procedure Take_Balise_Set (S      : Positive;
                               T      : Origin_Table_T;
                               Train  : Train_Frame_T;
@@ -1480,7 +1485,7 @@ is
                then
                   Balise_Buffer.Open (S, P, R);
                   if K = K180 then
-                     --  4.4.19.1.4.2 c) (B091): the timer from the release
+                     --  4.4.19.1.4.2 c): the timer from the release
                      Take_LS_Packet (K, R, M, T, Train, Now_Ms, True, A,
                                      Now_Ms);
                   else
@@ -1508,6 +1513,7 @@ is
    --  message I (message 9, packet 15 valid for the train) to Proposal,
    --  for the supervision of the cycle; nothing of it is stored (its
    --  packets are taken when the request is granted, 3.8.6.1 b)
+   --  @req 3.7.2.3, 3.8.6.1 b)
    procedure Take_Proposal (I     : EVC_Radio_Info.Index_T;
                             T     : Origin_Table_T;
                             M     : Message_T;
@@ -1542,7 +1548,7 @@ is
                     (EVC_Movement_Authority.From_Packet (To_P12 (X), M),
                      T, 0, Proposal);
                   Proposal_Origin := Sl.Origin;
-                  --  3.7.2.3, 3.7.2.3.1 (e5/radio-items, B210): the
+                  --  3.7.2.3, 3.7.2.3.1: the
                   --  proposal is an MA: not accepted unless the SSP and
                   --  gradients cover it from the estimated front end to
                   --  its SvL; message 9 brings neither (8.4.4.4.1: only
@@ -1569,6 +1575,7 @@ is
    --  reference; else accepted, the EOA and SvL by the stop location (b,
    --  EVC_Movement_Authority.Conditional_Stop) and the deletions beyond
    --  the new SvL (A.3.4.1.2 a)
+   --  @req 3.10.2.2, 3.10.2.2 a), 4.8.5.7
    procedure Take_Stop (I     : EVC_Radio_Info.Index_T;
                         T     : Origin_Table_T;
                         Train : Train_Frame_T)
@@ -1597,6 +1604,7 @@ is
       Stop_Q (I) := (if Updated then 0 else 1);
    end Take_Stop;
 
+   --  @req 3.8.5.1, 3.10.2.4, 4.8.2.1 c)
    procedure Take_Radio (I      : EVC_Radio_Info.Index_T;
                          T      : Origin_Table_T;
                          Train  : Train_Frame_T;
@@ -1656,15 +1664,15 @@ is
                   if K = K15 and then not Sl.MA_Allowed then
                      Record_Event (Info_MA, Change_Rejected, M.Msg);
                   elsif K in K131 | K180 and then Sl.From_Accepting then
-                     --  4.8.2.1 c) exception 2 (B092; the RBC
-                     --  transition order, B121)
+                     --  4.8.2.1 c) exception 2 (the RBC
+                     --  transition order)
                      Record_Event (Info_Group, Change_Filtered, NID_Of (K));
                   elsif K = K180
                     and then not (A.Level_Valid
                                   and then EVC_Modes."=" (A.Level,
                                                           EVC_Modes.L2))
                   then
-                     --  4.8.3 [2] (B120)
+                     --  4.8.3 [2]
                      EVC_Radio_Info.Open_Packet (I, P, R);
                      Hold_LS_Packet
                        (R, L2_Announced =>
@@ -1686,9 +1694,7 @@ is
       end if;
    end Take_Radio;
 
-   ---------------------------------------------------------------------
    --  The snapshot
-   ---------------------------------------------------------------------
 
    --  km/h, rounded, from cm/s
    function Kmh (Cms : Natural) return Natural is
@@ -1779,7 +1785,7 @@ is
       Snap.Extra.Config := Configuration.Supervision;
       Snap.Extra.National.Redadh_Use :=
         EVC_National_Values.Current.Redadh_Use;
-      --  4.4.11.1.3 b) (e4/modes)
+      --  4.4.11.1.3 b)
       Snap.Extra.SR_Distance := Ctx.SR_Distance;
       Snap.Extra.SR_End := Ctx.SR_End;
    end Build_Train;
@@ -1977,7 +1983,7 @@ is
    --  The MA (3.8.4; 4.5.2: monitored in the modes with an MA), the
    --  areas of lost braking (3.13.2.3.4), and Supervise (4.5.2: the
    --  MRSP is supervised with its curves in the modes of TSR_Mode, with
-   --  valid Train Data, e4/modes)
+   --  valid Train Data)
    procedure Build_MA (T           : Origin_Table_T;
                        Ahead       : Sense_T;
                        V_NVREL     : Speed_Cms_T;
@@ -2363,6 +2369,8 @@ is
    --  their order (No_Inline: its locals, the inputs of the PBD and the
    --  gradient steps among them, are not in the frame of Evaluate while
    --  the groups are taken)
+   --  @req 3.7.3.1.2, 3.11.8.1, 4.5.2.1, 4.5.2.2 Table
+   --  @req 4.5.2.2 Table-footnote {2}, 4.5.2.2 Table-footnote {4}
    procedure Build (T              : Origin_Table_T;
                     Train          : Train_Frame_T;
                     Mode_Speed     : Speed_Cms_T;
@@ -2423,7 +2431,7 @@ is
          else 0);
       Orders   : EVC_Track_Conditions.Orders_T;
       MA_R     : Movement_Authority_T;
-      --  4.5.2 Figure 1 (EVC_Modes, added by e4/modes)
+      --  4.5.2 Figure 1 (EVC_Modes)
       Mode     : constant EVC_Modes.Mode_T := Ctx.Mode;
       With_MA  : constant Boolean :=
         EVC_Modes.MA_Mode (Mode) or else EVC_Modes."=" (Mode, EVC_Modes.M_SM);
@@ -2447,10 +2455,6 @@ is
       Build_Planning (Train, Ahead, Snap.Supervise, MA_R, G_Steps,
                       Default_G, Orders);
    end Build;
-
-   --------------
-   -- Evaluate --
-   --------------
 
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
@@ -2482,7 +2486,7 @@ is
          Orient_Seen := True;
       end if;
 
-      --  2. the groups of the cycle; 4.8.5.4 a) (e5/balise-buffer): the
+      --  2. the groups of the cycle; 4.8.5.4 a): the
       --  balise transition buffer deleted when level 1 is no longer
       --  announced (the order deleted or replaced by one to another
       --  level; at the transition the buffer was released before)
@@ -2540,7 +2544,7 @@ is
       EVC_Movement_Authority.Mark (Marks);
       EVC_Track_Conditions.Mark (Marks);
       EVC_Levels.Mark (Marks);
-      --  e5/balise-buffer: the origins of the sets of the transition
+      --  the origins of the sets of the transition
       --  buffer
       for S in 1 .. Balise_Buffer.Count loop
          pragma Loop_Invariant (True);
@@ -2571,11 +2575,7 @@ is
       Snap.Extra.Proposal := Proposal;
    end Evaluate;
 
-   -----------------------
-   -- Evaluate_Released --
-   -----------------------
-
-   --  4.8.5.5, 4.8.5.6 (e5/levels)
+   --  4.8.5.5, 4.8.5.6
    procedure Evaluate_Released (First   : Positive;
                                 Now_Ms  : Unsigned_64;
                                 Context : Mode_Context_T)
@@ -2626,11 +2626,7 @@ is
       Balise_Buffer.Open (S, P, R);
    end Open_Balise_Packet;
 
-   ---------------------------
-   -- Release_Balise_Buffer --
-   ---------------------------
-
-   --  4.8.5.5, 4.8.5.6 (e5/balise-buffer)
+   --  4.8.5.5, 4.8.5.6
    procedure Release_Balise_Buffer (Now_Ms  : Unsigned_64;
                                     Context : Mode_Context_T)
      with Refined_Global =>

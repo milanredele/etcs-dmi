@@ -30,6 +30,11 @@ with EVC_Fixed; use EVC_Fixed;
 
 use type EVC_Distances.Cm_T;
 
+--  @req 3.13.2.2.3.2.2, A.3.1 Table, A.3.12.1.4, A.3.12.1.5, A.3.12.2.1
+--  @req A.3.12.2.6, A.3.12.2.7, A.3.12.2.8, A.3.12.3.1, A.3.12.3.2, A.3.12.3.3
+--  @req A.3.12.3.4, A.3.12.3.5, A.3.12.4.1, A.3.12.4.2, A.3.12.4.3, A.3.12.4.4
+--  @req A.3.12.4.5, A.3.12.4.6, A.3.12.5.1, A.3.12.5.2, A.3.12.6.1, A.3.12.6.2
+--  @req A.3.12.7.1, A.3.12.7.2, A.3.12.8.1
 package EVC_Build_Up
   with SPARK_Mode => On
 is
@@ -64,6 +69,7 @@ is
    end record;
 
    --  A.3.12: T_be_reduced; T_be for the EOA (it has no EBD)
+   --  @req 3.13.6.2.2.4
    function T_Be_Reduced (I : Input_T) return Time_T
      with Post => (if I.T_Be_React <= I.T_Be
                    then T_Be_Reduced'Result in I.T_Be_React .. I.T_Be
@@ -71,6 +77,7 @@ is
 
    --  A.3.12: T_bs_reduced (3.13.6.3.2.5: the caller takes T_bs when the
    --  service brake feedback is available for use)
+   --  @req 3.13.6.3.2.5
    function T_Bs_Reduced (I : Input_T) return Time_T
      with Post => (if I.T_Bs_React <= I.T_Bs
                    then T_Bs_Reduced'Result in I.T_Bs_React .. I.T_Bs
