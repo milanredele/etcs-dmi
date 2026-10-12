@@ -1255,6 +1255,15 @@ package body EVC_Test_Sessions is
              & "(4.5.2 table, rows 3.6.5.1.4 a, i), got"
              & Img (EVC_Sessions.Position_Reports_Sent - N));
 
+      --  4.8.4, "Position Report parameters" (e5/radio-items, B211):
+      --  rejected in SH (SUBSET-076 4080428_01 step 99)
+      N := EVC_Sessions.Report_Parameters_Taken;
+      Give_Radio_Message (1, Report_Parameters (20, 5, 2));
+      Stand;
+      Check (EVC_Sessions.Report_Parameters_Taken = N,
+             "reports: packet 58 received in Shunting is rejected (4.8.4, "
+             & "Position Report parameters: R in SH)");
+
       --  3.5.5.1 a): the order to terminate by radio
       Give_Radio_Message (1, Terminate_Order (30));
       Stand;
