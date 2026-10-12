@@ -1105,6 +1105,10 @@ package body EVC_Test_Sessions is
              and then Radio_Byte = 2,
              "SoM L2: the session could not be opened after three attempts "
              & "(A32, A.3.1): the driver informed (3.5.7), S10");
+      Check (EVC_Sessions."=" (EVC_Sessions.Indication, EVC_Sessions.Connection_Lost),
+             "SoM L2: the final attempt to set up the safe radio "
+             & "connection failed in a start of mission: ""Connection "
+             & "Lost/Set-Up failed"" (3.5.7.5, Table 2 [1])");
 
       --  A38, D35, A39, A40: the train rejected
       SoM_To_S3;
