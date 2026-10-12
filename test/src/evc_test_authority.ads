@@ -22,6 +22,7 @@ package EVC_Test_Authority is
    procedure Scenario_MA_Request;
    procedure Scenario_MA_Request_Perturbation;
    procedure Scenario_Shortening;
+   procedure Scenario_Shortening_Cover;
    procedure Scenario_Emergency_Stops;
    procedure Scenario_SR_Authorisation;
    procedure Scenario_Trip_L2;

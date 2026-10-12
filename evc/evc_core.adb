@@ -1667,6 +1667,7 @@ is
           Start      => EVC_Driver_Requests.Start_Selected,
           Desk_Open  => EVC_Train_Inputs.Desk_Open,
           Proposal_In_Rear => SDM_Result.Proposal_In_Rear,
+          Proposal_Covered => EVC_Stored_Information.Proposal_Covered,
           --  the driver's SR entry as EVC_Mission takes it (4.4.11.1.5)
           SR_Entered =>
             EVC_Driver_Requests.Entered (EVC_Driver_Requests.SR_Data)

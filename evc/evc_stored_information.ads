@@ -314,6 +314,12 @@ is
    function Radio_MA_Accepted return Boolean
      with Global => State;
 
+   --  e5/radio-items (B210), 3.7.2.3, 3.7.3.1 a) b): the SSP and the
+   --  gradients cover the shortened MA proposed in the last Evaluate
+   --  (message 9) up to its SvL; False: the proposal was not taken
+   function Proposal_Covered return Boolean
+     with Global => State;
+
    --  Phase E5, 3.8.2.5.1: a timer of the MA deleted track description
    --  in the last Evaluate (A.3.4.1.2 c, d, e, n)
    function MA_Timer_Deletion return Boolean

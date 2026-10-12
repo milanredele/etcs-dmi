@@ -45,7 +45,7 @@ package body EVC_Stored_Information
                                    MA_Board, Profile_Overlap,
                                    Covered_Flag, Ext, Tun,
                                    Radio_MA, Timer_Deletion, Proposal,
-                                   Proposal_Origin, Stop_Q,
+                                   Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
                                    Balise_Buffer.State))
 is
@@ -96,6 +96,9 @@ is
    --  its message, kept while the RBC's request is answered
    Proposal        : Movement_Authority_T := (others => <>);
    Proposal_Origin : EVC_Origins.Count_T := 0;
+   --  e5/radio-items (B210), 3.7.2.3: the profiles cover the proposal of
+   --  the cycle (True when there is none)
+   Proposal_Cover  : Boolean := True;
    --  phase E5, 3.10.2.2: the outcome of the conditional emergency stop
    --  of each radio message of the cycle (Q_EMERGENCYSTOP, 7.5.1.107: 0
    --  accepted with a new EOA, 1 accepted without, 3 rejected; 4 none)
@@ -161,6 +164,8 @@ is
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
      with Refined_Global => Profile_Overlap;
    function Radio_MA_Accepted return Boolean is (Radio_MA);
+   function Proposal_Covered return Boolean is (Proposal_Cover)
+     with Refined_Global => Proposal_Cover;
    function Stop_Outcome (I : EVC_Radio_Info.Index_T) return Stop_Outcome_T
    is (Stop_Q (I));
    function MA_Timer_Deletion return Boolean is (Timer_Deletion);
@@ -226,6 +231,7 @@ is
       Group_Country := 0;
       Proposal := (others => <>);
       Proposal_Origin := 0;
+      Proposal_Cover := True;
       Stop_Q := (others => 4);
       Ext := (Count => 0, List => (others => (others => <>)));
       Tun := (others => <>);
@@ -1502,11 +1508,13 @@ is
    --  message I (message 9, packet 15 valid for the train) to Proposal,
    --  for the supervision of the cycle; nothing of it is stored (its
    --  packets are taken when the request is granted, 3.8.6.1 b)
-   procedure Take_Proposal (I : EVC_Radio_Info.Index_T;
-                            T : Origin_Table_T;
-                            M : Message_T)
-     with Global => (Input  => EVC_Radio_Info.State,
-                     In_Out => (Proposal, Proposal_Origin)),
+   procedure Take_Proposal (I     : EVC_Radio_Info.Index_T;
+                            T     : Origin_Table_T;
+                            M     : Message_T;
+                            Train : Train_Frame_T)
+     with Global => (Input  => (EVC_Radio_Info.State,
+                                EVC_Track_Description.State),
+                     In_Out => (Proposal, Proposal_Origin, Proposal_Cover)),
           Pre => I <= EVC_Radio_Info.Count
    is
       pragma Warnings
@@ -1534,6 +1542,21 @@ is
                     (EVC_Movement_Authority.From_Packet (To_P12 (X), M),
                      T, 0, Proposal);
                   Proposal_Origin := Sl.Origin;
+                  --  3.7.2.3, 3.7.2.3.1 (e5/radio-items, B210): the
+                  --  proposal is an MA: not accepted unless the SSP and
+                  --  gradients cover it from the estimated front end to
+                  --  its SvL; message 9 brings neither (8.4.4.4.1: only
+                  --  packets 49, 80), so the stored ones decide. Not
+                  --  covered: not taken, and no decision of 3.8.6.1 b)
+                  --  (EVC_Radio_Authority.Judge_Shortening; SUBSET-076
+                  --  4080407_01 step 109: the stored SSP ends before the
+                  --  proposed LOA)
+                  Proposal_Cover := Proposal.Present and then Train.Valid
+                    and then EVC_Track_Description.Covered
+                               (T, Sl.S, Train.Est_Front, Proposal.SvL);
+                  if not Proposal_Cover then
+                     Proposal := (others => <>);
+                  end if;
                end if;
             end if;
          end;
@@ -1587,8 +1610,8 @@ is
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count, Radio_MA,
-                                Proposal, Proposal_Origin, Stop_Q,
-                                TAF_L2_New, TAF_L2_Loc),
+                                Proposal, Proposal_Origin, Proposal_Cover,
+                                Stop_Q, TAF_L2_New, TAF_L2_Loc),
                      Input  => (EVC_Radio_Info.State, EVC_Train_Data.State,
                                 Group_Country)),
           Pre => I <= EVC_Radio_Info.Count
@@ -1614,7 +1637,7 @@ is
          Record_Event (Info_Group, Change_No_Origin, 0);
       end if;
       if Sl.Action = EVC_Radio_Info.Shortening then
-         Take_Proposal (I, T, M);
+         Take_Proposal (I, T, M, Train);
          return;
       end if;
       if Sl.Action = EVC_Radio_Info.Conditional_Stop then
@@ -2473,6 +2496,7 @@ is
       Radio_MA := False;
       Proposal := (others => <>);
       Proposal_Origin := 0;
+      Proposal_Cover := True;
       Stop_Q := (others => 4);
       for I in 1 .. EVC_Radio_Info.Count loop
          pragma Loop_Invariant (True);

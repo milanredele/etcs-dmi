@@ -141,7 +141,8 @@ package body EVC_Test_Authority is
                         Kind    : MCat.Known_Message_T := MCat.Track_M3;
                         With_57 : Boolean := False;
                         P57     : T57.Packet_T := (others => <>);
-                        Q_DIR   : ETCS_Variables.Q_DIR_T := 1)
+                        Q_DIR   : ETCS_Variables.Q_DIR_T := 1;
+                        Profiles_To : Natural := 0)
      return Byte_Array
    is
       W  : Writer_T;
@@ -164,6 +165,14 @@ package body EVC_Test_Authority is
       Start_Message (W, Kind, V);
       T15.Encode (A, W, OK);
       Check (OK, "authority: packet 15 encoded");
+      if Profiles_To > 0 then
+         --  B210: the SSP and gradients of the message end at
+         --  Profiles_To (m) from the LRBG
+         G := Grad ((1 => (0, 0), 2 => (Profiles_To, End_Mark)));
+         S := SSP ((1 => (0, 100, False), 2 => (Profiles_To, End_Mark, False)));
+         G.Q_DIR := Q_DIR;
+         S.Q_DIR := Q_DIR;
+      end if;
       if Kind /= MCat.Track_M9 then
          T21.Encode (G, W, OK);
          Check (OK, "authority: packet 21 encoded");
@@ -558,6 +567,52 @@ package body EVC_Test_Authority is
              "shortening: in level 1, rejected without an answer (3.8.6, "
              & "Level 2 only; 3.8.6.1 c): the decision of b) only, B011)");
    end Scenario_Shortening;
+
+   --  3.7.2.3, 3.7.3.1 a) b), 3.8.6.1 (e5/radio-items, B210): an MA to
+   --  800 m, then a message 3 whose SSP and gradients end at 350 m (they
+   --  replace the stored ones from their start, 3.7.3.1; its own MA, not
+   --  covered, is rejected, 3.7.2.3). A message 9 (no packets 21, 27 in
+   --  it, 8.4.4.4.1) proposing an EOA at 400 m: not covered, not
+   --  accepted, so no decision of 3.8.6.1 b): neither 137 nor 138, the MA
+   --  unchanged (SUBSET-076 4080407_01 steps 109 to 115). A proposal to
+   --  340 m, covered: granted.
+   procedure Scenario_Shortening_Cover is
+      M     : constant T12.Packet_T := MA_Of ((300, 400), 600);
+      NID   : Natural;
+      Got   : Unsigned_64;
+   begin
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message (1, MA_Message (10, M, Stamp));
+      Run_X (20_000);
+      Stand_X (2_000);
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((300, 500)), Stamp, Profiles_To => 250));
+      Stand_X (500);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 80_000,
+             "shortening cover: an MA its own SSP and gradients (to 350 m) "
+             & "do not cover is rejected, the MA to 800 m stays (3.7.2.3)");
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((200, 100)), Stamp,
+                        Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 0 and then RA.Shortenings_Granted = 0,
+             "shortening cover: the stored SSP and gradients end at 350 m, "
+             & "before the proposal's SvL (400 m): not covered, no answer "
+             & "(3.7.2.3, 3.7.3.1 a, b; 3.8.6.1 c)");
+      Stand_X (500);
+      Check (SI.Current.MA.Present and then SI.Current.MA.EOA = 80_000,
+             "shortening cover: not covered, the MA unchanged (3.7.2.3)");
+      Give_Radio_Message
+        (1, MA_Message (10, MA_Of ((200, 40)), Stamp,
+                        Kind => MCat.Track_M9));
+      Stand_X (100);
+      Shortening_Answer (NID, Got);
+      Check (NID = 137 and then RA.Shortenings_Granted = 1,
+             "shortening cover: a proposal to 340 m, covered by the stored "
+             & "profiles: granted, 137 (3.7.2.3, 3.8.6.1 b)");
+   end Scenario_Shortening_Cover;
 
    --  Message 15 (NID_EM, a stop D_M metres beyond the group NID_BG,
    --  both directions), 16 or 18 for NID_EM

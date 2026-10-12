@@ -282,6 +282,7 @@ begin
    Scenario_MA_Request;
    Scenario_MA_Request_Perturbation;
    Scenario_Shortening;
+   Scenario_Shortening_Cover;
    Scenario_Emergency_Stops;
    Scenario_SR_Authorisation;
    Scenario_Trip_L2;
