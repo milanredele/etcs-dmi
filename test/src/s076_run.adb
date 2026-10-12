@@ -232,33 +232,51 @@ package body S076_Run is
    --  of the chart where it is), at least 10 km/h until it reaches To_Cm,
    --  cycle by
    --  cycle; the last cycle ends at To_Cm. At most an hour.
+   --  B262: an explicit speed (an ODO speed step) is the train's at once
+   --  when the sequence sets it, whatever the brake (the steps that
+   --  provoke a brake on purpose); then the braking model acts on it
+   Forced_Speed : Integer := -1;
+
+   procedure Force_Explicit is
+   begin
+      if Explicit_Speed >= 0 and then Explicit_Speed /= Forced_Speed then
+         B.Force_Speed (Explicit_Speed);
+      end if;
+      Forced_Speed := Explicit_Speed;
+   end Force_Explicit;
+
+   --  B262: the speed asked for is the chart's; the train's is that of
+   --  the bench's braking model (lower under a brake command, regaining
+   --  the chart's once released); held at standstill by a brake for 10 s
+   --  the train stops trying (a trip: the sequence's location is not
+   --  reached)
    procedure Drive_To (To_Cm : Integer_64) is
-      Dir : constant Integer := (if To_Cm >= B.Position then 1 else -1);
+      Dir  : constant Integer := (if To_Cm >= B.Position then 1 else -1);
+      Held : Natural := 0;
    begin
       B.Set_Direction (Dir);
+      B.Set_Brake_Floor (Kmh_To_Cms (10.0));
       for I in 1 .. 36_000 loop
+         Force_Explicit;
+         B.Set_Speed (Transit_Cms);
          declare
             Left : constant Integer_64 :=
               (To_Cm - B.Position) * Integer_64 (Dir);
-            V    : constant Positive := Transit_Cms;
-            Full : constant Integer_64 := Integer_64 (V) * B.Cycle_Ms / 1000;
+            Full : constant Integer_64 :=
+              Integer_64 (B.Speed) * B.Cycle_Ms / 1000;
          begin
-            exit when Left <= 0;
-            if Left < Full and then not (B.State.SBC or else B.State.EBC) then
+            exit when Left <= 0 or else Held >= 10_000;
+            if Left < Full then
                --  B224: the last cycle at the speed, moving the train by
-               --  the distance left; under a brake command at the
-               --  distance left per cycle as before (S076_Bench.Move_To)
-               B.Set_Speed (V);
+               --  the distance left
                B.Cycle (Left);
             else
-               B.Set_Speed
-                 (if Left < Full
-                  then Natural (Integer_64'Max (1, Left * 1000 / B.Cycle_Ms))
-                  else V);
                B.Cycle;
             end if;
+            Held := (if B.Speed = 0 then Held + B.Cycle_Ms else 0);
          end;
       end loop;
+      B.Set_Brake_Floor (0);
    end Drive_To;
 
    procedure Move_To (To_Cm : Integer_64) is
@@ -281,6 +299,7 @@ package body S076_Run is
 
    procedure Wait_Cycle is
    begin
+      Force_Explicit;
       if Explicit_Speed < 0 and then B.Speed > 0 and then not Hold_Speed then
          Arrive;
       end if;
@@ -3766,39 +3785,41 @@ package body S076_Run is
    --  A.3.7.1: the emergency brake percentage is the train's (lambda_o =
    --  lambda, 109 for every workbook's train), while the ERA tool that
    --  filled the workbooks computes its EBD with 100 (Brake parameters
-   --  (lambda)!F3; B175): its EBD distances are longer by the ratio of
-   --  the decelerations of the conversion model, AD_0 (109) / AD_0 (100)
-   --  = 0.8935 / 0.826, so our limits may sit nearer the target by
-   --    (EBD (V) - EBD (V_target)) * (1 - 0.826 / 0.8935)
-   --  from the workbook's own EBD column (18 m at 61 km/h for
-   --  3130237_07). B194: where that column has no value at the speed (an
-   --  EBD of the SvL that starts near the target, 3131040_04), the EBD
-   --  distance of the conversion model at the tool's percentage instead,
-   --  (V^2 - V_target^2) / (2 Kv_int Kr_int AD_0 (100)), Kv_int Kr_int
-   --  those in force (Seq_Kv_Kr; in the ratio they cancel, here they
-   --  scale the distance): 15 m at 60 km/h for 3131040_04
+   --  (lambda)!F3; B175): its EBD distances are longer, so our limits
+   --  from the EBD may sit nearer the target by the difference of the
+   --  two EBD distances from V_bec down to the target speed. B261: both
+   --  from the conversion model of the bench (S076_Bench.Ebd_Distance:
+   --  A_basic of each percentage, Kv_int by A_ebmax of each, Kr_int, the
+   --  factors in force), not a ratio of AD_0 (16 against the probe's 26
+   --  m at 60 km/h for 3131040_04). B231: the EBD is entered at V_bec,
+   --  not at the speed (3.13.9.3.2.10 with A_est 0: V_est + V_delta0,
+   --  V_delta0 = V_ura of SUBSET-041 5.3.1.2). Decision: the margin
+   --  also where the SBD decides (the brief's premise of none there is
+   --  contradicted by 3131040_04: its P at 60 km/h is SBD-based, 618 m,
+   --  and the probe's full margin leaves a rest of 1 m, so the tool's
+   --  service brake ran at 100 too); the model's EBD difference is 16 m
+   --  there, the SBD's 13 m, the probe's 26 m: B300
    function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
                          return Long_Float
    is
-      Ratio : constant Long_Float := 1.0 - 0.826 / 0.8935;
-      --  B231: the EBD is entered at V_bec, not at the speed (3.13.9.3.2.10
-      --  with A_est 0: V_est + V_delta0, V_delta0 = V_ura of SUBSET-041
-      --  5.3.1.2, the bench's odometer stating it for a workbook train)
       V_Bec : constant Long_Float :=
         V_Kmh + Long_Float'Max (2.0, (640.0 + 0.36 * V_Kmh) / 470.0);
-      E  : constant Long_Float := Curve_Distance (C, EBD, V_Bec);
-      E0 : constant Long_Float :=
-        (if V_Target_Kmh <= 0.0 then 0.0
-         else Curve_Distance (C, EBD, V_Target_Kmh));
-      V  : constant Long_Float := V_Bec / 3.6;
-      Vt : constant Long_Float := Long_Float'Max (V_Target_Kmh, 0.0) / 3.6;
+      Vt    : constant Long_Float := Long_Float'Max (V_Target_Kmh, 0.0);
+      Tool  : constant Natural :=
+        (if Seq.WB_Lambda_EB in 10 .. 250 then Seq.WB_Lambda_EB else 100);
+      --  the block's columns are not read since B261 (the margin is the
+      --  model's); the parameter stays for the two callers
+      pragma Unreferenced (C);
    begin
-      if E /= No_Value and then E0 /= No_Value and then E > E0 then
-         return (E - E0) * Ratio;
-      elsif V <= Vt then
+      if V_Bec <= Vt then
          return 0.0;
       end if;
-      return (V ** 2 - Vt ** 2) / (2.0 * Seq_Kv_Kr (V_Kmh) * 0.826) * Ratio;
+      return Long_Float'Max
+        (0.0,
+         B.Ebd_Distance (Tool, Seq.WB_Brake_Position, Train_Length_M,
+                         V_Bec, Vt)
+         - B.Ebd_Distance (Brake_Percentage, Seq.WB_Brake_Position,
+                           Train_Length_M, V_Bec, Vt));
    end Tool_Margin;
 
    --  B200 (b): the workbook's integrated correction factors are not in
@@ -4370,6 +4391,14 @@ package body S076_Run is
       --  sequences without a workbook, 3110500_01 and 3131040_59, place
       --  an Indication and an Overspeed step on the exact speed)
       B.Set_Speed_Accuracy (Seq.Workbook and then not Exact_Speed);
+      --  B262: the bench brakes at the conversion model's decelerations
+      --  for the brake percentage entered (the workbook's, else 109)
+      B.Set_Brake_Percentage (Brake_Percentage);
+      for I in 1 .. Seq.Step_Count loop
+         if Has (Image (Seq.Steps (I).Comment), "SB must be disabled") then
+            B.Set_Service_Brake (False);
+         end if;
+      end loop;
       --  The radio systems installed (3.5.6.7, 5.4.3.2 D7): the sequences
       --  of feature 3050600 test 3.5.6 with both systems installed (in
       --  3050600_05 3.5.6.7 b holds the set-up while FRMCS is not

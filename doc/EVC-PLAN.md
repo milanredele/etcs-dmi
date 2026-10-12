@@ -5331,3 +5331,53 @@ improvements: 4120100_05 SV21, SV22, SV30 failed at step 47 -> 130 (the
 movement in the SR speed / distance window brakes now, 4.4.11.1.5.1; the
 next failure is the known S8a01e477, the JRU record of the emergency
 brake revoked); no sequence moved by the new message or action 22.
+
+### The bench brakes: a braking model, the step window, the margin from the model (e5/bench-braking, 2026-10-12)
+
+B262: `S076_Bench` brakes after each cycle while the on-board commands
+it, at A_basic of the conversion model (A.3.7, `EVC_Braking.
+Basic_Deceleration` at the speed) for the brake percentage entered
+(the workbook's, else 109): the emergency brake at lambda, the service
+brake at min (lambda, 135) (A.3.7.1), down to standstill; once
+released the train regains the speed asked for at 0.3 m/s2 (a ramp,
+under A_est2's 0.4). Decisions: the speed asked for settles at the next
+cycle (the last asked for counts: a handler that restores an old speed
+before the chart's no longer lowers the train under a brake); an ODO
+speed step is forced whatever the brake (the steps that provoke the SBI
+or EBI on purpose), the model acts on it afterwards; in Trip the chart's
+stop rules (the sequences' trains stop more gently than lambda 109:
+5170200_01 still moving 20 m after the trip, 4080300_03 0.6 m/s2); a
+crawl of 10 km/h while the runner drives to a location (4120100_03 reads
+a group 2 m on under the runaway EB); the service brake off where the
+sequence says "SB must be disabled in LABORATORY" (8 sequences). The
+B224 stand-in is gone.
+
+B270: a no-message expectation ignores the radio outputs sent before its
+window opened (`Window_Ms`, `Radio_Out_T.At_Ms`); 4080428_01 passes step
+134 in the three versions and stops at 168 (a 136 after a rejected
+packet 58, as triaged before). No other sequence moved by it.
+
+B261 (left as B300): `Tool_Margin` is the difference of the EBD
+distances of the conversion model (`S076_Bench.Ebd_Distance`: A_basic,
+Kv_int by A_ebmax, Kr_int in force) at the tool's and the train's
+percentage from V_bec: 16 m at 60 km/h for 3131040_04, as the ratio
+gave. The brief's premise (no margin where the SBD decides) is
+contradicted at the source: that P is SBD-based (618 m; the SvL's EBD
+from 60 km/h gives 192 m) and the probe's full margin of 26 m leaves a
+rest of 1 m, so the tool ran its service brake at 100 as well; the SBD
+difference of A_basic alone is 13 m. The remaining lambda dependence of
+our limits is not found yet.
+
+SUBSET-076: 759 / 1328 / 1103 before, 821 / 1293 / 1076 after; 122
+improvements, 24 regressions (8 per version), understood: Gamma blocks
+(3131040_11, _17, _35, 4100103_17: the SB now slows a Gamma train with
+lambda 109's deceleration, the status change of the step falls before
+or after its window), 3131040_36 (tool-target), 3131040_18 (the
+sequence's train keeps 80 km/h under the SB to reach the EBI, the lab's
+SB disabled without saying so), 5070300_01 (the chart at 70 km/h under
+a Shunting limit of 30: the SB slows the train, the acknowledgement
+comes later), 3131040_54 (SR, no target of ours, B193). None of B224's
+twelve turned (B303: 3131040_59 has no brake to act on, Overspeed at
+102 under 100 below the SBI; the Gamma ones are the A_est2 swing).
+New signatures triaged: S61f30c39 (B301), Sa90fd42a (B302). Backlog:
+B262, B270 done; B261 updated; B300 to B303 opened.

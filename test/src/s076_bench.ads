@@ -78,13 +78,61 @@ package S076_Bench is
    function Speed return Natural;            -- cm/s
    --  +1 towards growing distances (cab A ahead), -1 the other way
    function Direction return Integer;
+   --  B262: the speed the driver asks for. A lower one, or any while the
+   --  train is not braked and not regaining its speed after a brake, is
+   --  the train's speed at once (a step); a higher one while the
+   --  on-board commands a brake, or while the train regains its speed
+   --  after one, is where the ramp of the braking model ends
    procedure Set_Speed (Cms : Natural);
    procedure Set_Direction (Dir : Integer);
+
+   --  B262, the braking model: after each cycle, while the on-board
+   --  commands the emergency (service) brake the train decelerates at
+   --  the emergency (service) deceleration of the conversion model of
+   --  SUBSET-026 A.3.7 for the brake percentage Lambda (A.3.7.1: the
+   --  service brake at min (Lambda, 135)), down to standstill; once the
+   --  brake is released it accelerates back to the speed asked for at
+   --  Regain_Mms2 (a ramp: a step swings the on-board's acceleration
+   --  estimate, B195). Lambda 0: no braking model (the train keeps its
+   --  speed under a brake command, as the bench did before B262)
+   procedure Set_Brake_Percentage (Lambda : Natural);
+   --  B262: without the service brake (a sequence whose comment says the
+   --  SB must be disabled in the laboratory, to reach the EBI), the
+   --  braking model acts under the emergency brake only
+   procedure Set_Service_Brake (On : Boolean);
+   --  B262: a speed the sequence imposes (an ODO speed step: the steps
+   --  that provoke a brake on purpose put the train above the SBI or the
+   --  EBI) is the train's at once, whatever the brake; the braking model
+   --  acts on it from the next cycle
+   procedure Force_Speed (Cms : Natural);
+   Regain_Mms2 : constant := 300;
+   --  True while the train is below the speed asked for because of a
+   --  brake (braked, or regaining its speed)
+   function Braked return Boolean;
+
+   --  B261: the distance (m) the EBD of the conversion model (A.3.7:
+   --  A_basic for the brake percentage Lambda, 10 .. 250, else 100) takes
+   --  from From_Kmh down to To_Kmh on a flat track, with the integrated
+   --  correction factors in force (EVC_National_Values: Kv_int by
+   --  A_ebmax for a maximum speed of 200 km/h, 3.13.6.2.1.8, Kr_int for
+   --  Length_M, 3.13.2.3.7.12); Position 1 passenger in P, 2 freight in
+   --  P, 3 freight in G (the workbook's)
+   function Ebd_Distance (Lambda, Position, Length_M : Natural;
+                          From_Kmh, To_Kmh : Long_Float) return Long_Float;
+   --  B262: the speed a brake does not take the train below (cm/s,
+   --  at most the speed asked for): while the runner drives the train to
+   --  a location the sequence says it reaches, a crawl (the sequences'
+   --  trains brake more gently than the conversion model and still move
+   --  where ours would have stopped: 4120100_03 reads a group 2 m on
+   --  under the runaway EB); 0 otherwise. Reset sets 0
+   procedure Set_Brake_Floor (Cms : Natural);
 
    --  Move to the track position To_Cm (cm) at Cms (at least 1 cm/s),
    --  in whole cycles; stops at the cycle that reaches it. Max_Ms bounds
    --  the time (a target the train cannot reach in that time is not
-   --  reached). The speed after is Cms.
+   --  reached). The speed after is Cms, the braking model applying
+   --  (Set_Speed); a train held at standstill by a brake for 10 s stops
+   --  trying.
    procedure Move_To (To_Cm : Integer_64; Cms : Positive;
                       Max_Ms : Natural := 3_600_000);
 
@@ -134,6 +182,9 @@ package S076_Bench is
    --  message given while the on-board's answers to the one before are
    --  still expected: the sequences record either order)
    procedure New_Window (Keep_Radio : Boolean := False);
+   --  B270: the time the window was opened (Keep_Radio keeps the radio
+   --  outputs of before it listed, sent before this time)
+   function Window_Ms return Unsigned_64;
    function Window_Cycles return Natural;
 
    No_Value : constant := 16#FF#;
@@ -289,6 +340,8 @@ package S076_Bench is
       Code       : Natural := 0;
       Length     : Natural := 0;
       Data       : Byte_Array (1 .. Max_Radio_Bytes) := (others => 0);
+      --  B270: the bench's time it was sent, ms
+      At_Ms      : Unsigned_64 := 0;
    end record;
    Max_Radio : constant := 256;
    function Radio_Count return Natural;
