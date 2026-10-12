@@ -4784,3 +4784,49 @@ what the runner still fails on the curve sequences is B195 (ours), the
 Indication of an EOA target 190 to 340 m further out (3131040_02, _38,
 _50; ours), and runner or data items (B193, B194, B200, B201). Open
 items: doc/BACKLOG.csv (35 open after this round).
+
+### The Overspeed status and the Indication of an EOA (e5/curves-sdm, 2026-10-12)
+
+**B195 is the runner's last cycle, not our curves.** Traced cycle by
+cycle (3130237_07 SV30, a temporary print in the bench, not kept): at
+1512 m the bench reports 4.7 m/s for one cycle, the train at 16.9 m/s
+before and after: `S076_Run.Drive_To` (and `S076_Bench.Move_To`) end
+on the location by running the last cycle at the distance left per
+cycle. The on-board's measured acceleration (`EVC_SDM.Observe_Train`,
+a 1 s filter of the speed's derivative, clamped at ±60 m/s²) goes to
+−6 m/s², then rebounds to +0.6 m/s² when the speed returns; A_est2 =
+0.4 m/s² over T_berem (about 20 s for this freight train) adds 8 m/s to
+V_bec (3.13.9.3.2.9, .10), so every limit of the LOA moves out by the
+same: the shown P drops 62 → 35 km/h, the train is past the SBI at once
+(Intervention, SB), and the pawl of A.3.13 keeps the shown values down
+while the build up time stays reduced. The reaction follows the
+clauses for an acceleration measured at 0.6 m/s²; the input is not
+physical (12 m/s² both ways). Decision: no change of the estimator;
+the runner keeps the speed (B224). The probe reproduces it:
+`obj/evc_curve_probe ... drive=900 dip=818:17` (new keys: `drive=<m>`
+a continuous run with the state carried, one line per change;
+`dip=<m>:<km/h>` one cycle's speed); without the dip the statuses come
+one at a time at 1172 / 814 / 780 / 746 m (the bisection's I / P / W /
+SBI within 1 m). Scenario `SDM_Status_Order` (3.13.10.4.10.1: I, P, W,
+SBI of an LOA in order at 61 km/h, the shown P meeting the train's speed
+at P; the dip's Intervention). A trial with the speed held in that
+cycle (overshooting the location): 3130237_07, 3131040_22, _86 pass,
+_20 and _76 move on; 3131040_26 is the same and a LoA/MRSP workbook
+(B200).
+
+**The Indication of an EOA (+188 to +342 m)** is no curve difference
+either. 3131040_38 and _50 send V_RELEASEDP 30, 150 km/h, where their
+workbook (Track!E2) has 30 km/h (3131040_04 sends 6; 3131040_37 the
+same defect): limited to the MRSP of 80 km/h (3.13.9.4.9) the release
+speed monitoring starts 1111 m before the EOA at 50 km/h, where the
+workbook's train is in target speed monitoring (B225). 3131040_02 runs
+at 86.6 km/h, above the ceiling's SBI (the runner's speed for
+"overpasses the warning speed"), and is judged on the workbook row at
+65 km/h; the sequence itself states the Indication 1427 m before the
+EOA, ours is 1427 m (B226). The probe agrees with the workbooks of _02
+and _50 within 1.4 m after the B175 margin.
+
+Triage: Sc980dfa5 (_02, _50) model, Scc92cf5f (_38) s076, S39f273d3
+(_26, _76) model, specific lines before the families. The on-board is
+unchanged: no unit proof, no baseline change. Backlog: B195 done,
+B224 to B226 opened, B016 updated.

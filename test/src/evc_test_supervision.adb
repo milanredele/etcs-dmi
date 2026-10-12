@@ -637,6 +637,104 @@ package body EVC_Test_Supervision is
              & "171 m before the EOA (the workbook: 182.6 m at lambda 100)");
    end Scenario_SDM_RSM_Start_Reduced;
 
+   --  3.13.10.4.10.1, Tables 9 and 11: a train at a constant speed
+   --  towards an LOA passes the Indication, Permitted, Warning and SBI
+   --  limits one at a time, so its status goes Indication, Overspeed,
+   --  Warning, Intervention in this order, each where the limit for its
+   --  speed lies; the shown permitted speed meets the train's speed at
+   --  the Permitted limit. The case of SUBSET-076 3130237_07 SV30 (B195):
+   --  freight P, 750 m, lambda 109, LOA 30 km/h, Kv_int 0.96, Kr_int
+   --  1.0 / 0.9, Kt_int 1.0, T_traction_cut_off 0.5 s, flat, MRSP 80,
+   --  61 km/h with the SUBSET-041 speed accuracy (the workbook at lambda
+   --  100: P 827, W 799, SBI 765 m; at 109 the B175 margin nearer). The
+   --  Overspeed status skipped in the runner came from one cycle at a
+   --  reported 17 km/h (the runner's last cycle before a location): the
+   --  measured acceleration rebounds to +0.6 m/s2 and A_est2 = 0.4 m/s2
+   --  over T_berem lifts V_bec by 8 m/s (3.13.9.3.2.8 to .10), so every
+   --  limit moves out by the same; checked here as the on-board's
+   --  reaction to such a measurement
+   procedure Scenario_SDM_Status_Order is
+      S      : SIn.Snapshot_T := Base_Snapshot;
+      LOA    : constant Integer_64 := 500_000;
+      V      : constant SIn.Speed_Cms_T := Cms (61.0);
+      V_Max  : constant SIn.Speed_Cms_T :=
+        V + Natural (EVC_Limits.F41 (EVC_Fixed.Speed_T (V)));
+      First  : array (1 .. 4) of Integer_64 := (others => -1);
+      P_At_P : Natural := 0;
+      Last   : Natural := 0;
+      Order  : Boolean := True;
+
+      --  The train from 1300 m before the LOA, 100 ms cycles; Dip_At
+      --  (m before the LOA, 0: none) the one cycle reported at 17 km/h
+      procedure Drive (Dip_At : Integer_64) is
+         X   : Integer_64 := LOA - 130_000;
+         Dip : Boolean := Dip_At > 0;
+      begin
+         Place (S, X, V, Doubt => 0);
+         S.Train.Speed_Max := V_Max;
+         Sup_Start (S);
+         while X < LOA - 70_000 loop
+            X := X + Integer_64 (V) / 10;
+            Place (Sup, X, V, Doubt => 0);
+            Sup.Train.Speed_Max := V_Max;
+            if Dip and then LOA - X <= Dip_At * 100 then
+               Sup.Train.Speed := Cms (17.0);
+               Sup.Train.Speed_Max := Cms (17.0);
+               Dip := False;
+            end if;
+            Sup_Cycle;
+            declare
+               St : constant Natural := Natural'Min (Speed_Frame.Status, 4);
+            begin
+               if St > Last then
+                  Order := Order and then St = Last + 1;
+                  First (St) := (LOA - X) / 100;
+                  if St = 2 then
+                     P_At_P := Speed_Frame.V_Perm;
+                  end if;
+                  Last := St;
+               end if;
+            end;
+         end loop;
+      end Drive;
+   begin
+      S.Train_Data.Length := 75_000;
+      S.Train_Data.Brake_Percentage := 109;
+      S.Train_Data.Brake_Position := SIn.Freight_P;
+      S.Train_Data.Max_Speed := Cms (200.0);
+      S.Train_Data.T_Traction_Cut_Off := 500;
+      S.National.Kt_Int := 1_000;
+      S.National.Kv_Int_Fresh :=
+        (Count => 1, Steps => (1 => (0, 960), others => (0, 1_000)));
+      S.National.Kr_Int :=
+        (Count => 2, Steps => (1 => (0, 1_000), 2 => (25_000, 900),
+                               others => (0, 1_000)));
+      S.MRSP.Segments (1) := (Start => 0, Speed => Cms (80.0));
+      Give_MA (S, Natural (LOA / 100), LOA_Kmh => 30.0);
+      Drive (0);
+      Check (Order and then Last = 4,
+             "status order: Indication, Overspeed, Warning, Intervention "
+             & "one at a time at a constant speed (3.13.10.4.10.1)");
+      Check (First (1) in 1_168 .. 1_175 and then First (2) in 811 .. 817
+             and then First (3) in 777 .. 783
+             and then First (4) in 743 .. 749,
+             "status order: I, P, W, SBI of the LOA at 61 km/h 1172, 814, "
+             & "780, 746 m (the workbook at lambda 100: P 827, W 799, "
+             & "SBI 765 m)");
+      Check (P_At_P in 60 .. 61,
+             "status order: the shown permitted speed meets the train's "
+             & "61 km/h at the Permitted limit");
+      First := (others => -1);
+      Last := 0;
+      Order := True;
+      Drive (820);
+      Check (not Order and then First (4) in 810 .. 820
+             and then First (2) = -1,
+             "status order: one cycle measured at 17 km/h at 820 m: the "
+             & "rebound of the measured acceleration (A_est2 0.4 m/s2, "
+             & "3.13.9.3.2.9) moves every limit out, Intervention next");
+   end Scenario_SDM_Status_Order;
+
    --  3.14.2, 3.14.3, 4.4.7.1.5: the protections, released at standstill
    --  after the acknowledgement (3.14.1.5, 3.14.1.9)
    procedure Scenario_SDM_Protections is
