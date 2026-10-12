@@ -3701,7 +3701,7 @@ package body S076_Run is
       Limit : constant String := Curve_Column_T'Image (Ref.Column);
       N     : constant Natural := Change_Of (Ref.Column);
       Ch    : constant B.Change_T :=
-        (if N > 0 then B.Change (N) else (others => <>));
+        (if N > 0 then B.Change (N) else B.Current);
       V     : constant Long_Float := Long_Float (Ch.V_Est) * 0.036;
       D_Est : constant Long_Float :=
         Long_Float (if Ch.EOA_Kind then Ch.D_EOA else Ch.D_Loc) / 100.0;
@@ -3718,10 +3718,11 @@ package body S076_Run is
         + D_Est;
       Res   : Judgement_T;
    begin
-      if Verbose and then N > 0 then
+      if Verbose and then (N > 0 or else Ch.Shown) then
          Put_Line ("      curves: set" & Natural'Image (Ref.Set) & " "
                    & Image (C.Sheet) & ", " & Limit & " by "
-                   & B.Change_Kind_T'Image (Ch.Kind) & " at "
+                   & (if N > 0 then B.Change_Kind_T'Image (Ch.Kind)
+                      else "no change, now") & " at "
                    & Img (Integer (Ch.Track_Cm / 100)) & " m, "
                    & Img (Integer (V)) & " km/h: ours "
                    & Img (Integer (Ours)) & " m, workbook "
@@ -3748,9 +3749,17 @@ package body S076_Run is
                       & " m from the estimated front end");
          end loop;
       end if;
-      if N = 0 or else not Ch.Shown then
+      if not Ch.Shown or else (N = 0 and then Wb = No_Value) then
          Res := Fail ("curve " & Limit & ": no status change of that kind"
                       & " seen");
+      elsif N = 0 then
+         --  our limit not passed yet: the workbook's location of it not
+         --  reached either (ours may agree: the sequence's location is
+         --  off), or passed (ours nearer by at least the difference)
+         Res := Fail ("curve " & Limit & ": no status change of that kind"
+                      & " seen, the workbook's location "
+                      & (if Diff > 0.0 then "not reached"
+                         else "passed by " & Band (-Diff)));
       elsif Wb = No_Value then
          Res := Fail ("curve " & Limit & ": no workbook value at our speed");
       elsif Diff > Curve_Out then

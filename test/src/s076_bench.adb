@@ -562,28 +562,37 @@ package body S076_Bench is
       New_Window;
    end Reset;
 
-   --  The changes of this cycle's supervision into the ring (B172)
-   procedure Note_Changes is
-      use type EVC_SDM.Status_T;
+   --  The quantities of a change in this cycle (Change_T)
+   function Current return Change_T is
       use type EVC_SDM.Monitoring_T;
       use type EVC_Distances.Cm_T;
       R : constant EVC_SDM.Result_T := EVC_Core.Supervision;
+   begin
+      return
+        (Kind     => To_Indication,
+         Time_Ms  => Natural (Clock mod 2**31),
+         Track_Cm => X_Cm,
+         V_Est    => Natural (R.V_Est),
+         Shown    => R.Monitoring /= EVC_SDM.CSM or else R.CSM_Target,
+         V_Target => Natural (R.V_Target),
+         EOA_Kind => R.Target_EOA /= R.Target_X,
+         D_Loc    => Integer_64 (R.Target_X - R.X_Est),
+         D_EOA    => Integer_64 (R.Target_EOA - R.X_Est),
+         Over     => Doubt_Over);
+   end Current;
+
+   --  The changes of this cycle's supervision into the ring (B172)
+   procedure Note_Changes is
+      use type EVC_SDM.Status_T;
+      R : constant EVC_SDM.Result_T := EVC_Core.Supervision;
 
       procedure Add (K : Change_Kind_T) is
+         C : Change_T := Current;
       begin
+         C.Kind := K;
          Change_Head := Change_Head mod Max_Changes + 1;
          Changes_Kept := Natural'Min (Changes_Kept + 1, Max_Changes);
-         Changes (Change_Head) :=
-           (Kind     => K,
-            Time_Ms  => Natural (Clock mod 2**31),
-            Track_Cm => X_Cm,
-            V_Est    => Natural (R.V_Est),
-            Shown    => R.Monitoring /= EVC_SDM.CSM or else R.CSM_Target,
-            V_Target => Natural (R.V_Target),
-            EOA_Kind => R.Target_EOA /= R.Target_X,
-            D_Loc    => Integer_64 (R.Target_X - R.X_Est),
-            D_EOA    => Integer_64 (R.Target_EOA - R.X_Est),
-            Over     => Doubt_Over);
+         Changes (Change_Head) := C;
       end Add;
    begin
       if R.Status /= Prev_Status and then R.Status /= EVC_SDM.NoS then

@@ -195,6 +195,8 @@ package S076_Bench is
    --  the I-th latest change (1 the latest)
    function Change (I : Positive) return Change_T
      with Pre => I <= Change_Count;
+   --  the same quantities in the last cycle (Kind meaningless)
+   function Current return Change_T;
 
    --  The flags of the window: a value was shown in at least one cycle
    type Seen_T is record

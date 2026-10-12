@@ -4301,3 +4301,50 @@ A.3.12 inputs (A_EB, A_SB, A_expected_max, the CR1344 T_traction) with
 the probe turned into a tool fed by a sequence's cells (B174). The
 runner's B016 work is the three method fixes; the SV21/SV22 workbooks
 are no reference for the limit locations of a 4.0.0 on-board.
+
+### Runner judges at its own status changes (e5/curves-method, 2026-10-12)
+
+`S076_Run.Curve_Judgement` (B172, B173): a failed supervision status,
+brake or traction cut-off step at a location whose comment names a
+limit is judged on the first change of our supervision of the limit's
+kind (Indication, Overspeed, Warning, SBI by the SB command, EBI by the
+EB command; else a higher status, the limit passed at the latest
+there) since the train left the location before: `S076_Bench` keeps
+the last 32 changes, cycle by cycle, with the speed, the target speed
+and the distances of `EVC_SDM.Result_T.Target_X`, `Target_EOA`, `X_Est`
+(new, ahead coordinates; B171: D_Target of an LOA or MRSP target counts
+to the reference location of 3.13.9.3.5.9). The named end's distance to
+the target (to the EOA of an EOA target) against the workbook's column
+at our speed there: 10 m further out, 2 m nearer plus the margin of the
+tool's emergency brake (λ 100 against the train's 109, A.3.7.1, B175:
+`(EBD(V) - EBD(V_target)) * (1 - 0.826 / 0.8935)` from the workbook's
+EBD column, 11 m at 61 km/h for 3130237_07; the probe's 18 m includes
+the time terms). Within: blocked, `R_Placement` ("the sequence's
+location is off its own workbook by N m"); beyond: `onboard` by band;
+no change: "no status change of that kind seen" (`model`, B176), split
+by whether the named end has passed the workbook's location (then
+`onboard`). A Lambda step of an SV21/SV22 sequence without a
+`curves-from` line blocks, `R_Old_Tool` (B170); a Gamma one `R_Gamma`.
+The displayed-speed comparison and its signatures are gone.
+
+SUBSET-076 with the sibling at 4d40260 (twins copied): 753 / 1429 /
+1008 before, 753 / 1415 / 1022 after; blocked by Gamma 93 sequences
+(121 steps), old tool 2 (4), placement 12 (12). One regression,
+understood: 3131040_38 SV30 now fails at step 53, our Indication 188 m
+further out than its workbook (the old method compared the sequence's
+location and passed it).
+
+| Lambda SV30 | cause | limit | metres (ours − workbook) |
+|---|---|---|---|
+| 3130237_07, 3131040_20, _22, _86 | placement (agree) | P | −8, 0, −8, −9; the sequence 20 to 28 m off |
+| 3131040_58 | ours nearer | P | −66 at 82 km/h (margin 12) |
+| 3131040_14, 3130237_13 | P passed without our change | P | −97 at 71 km/h; −218 at 135 km/h (SB since 1857 m) |
+| 3131040_62 | Warning passed without our change | W | 100 to 300 |
+| 3131040_02, _38, _50 | ours further out | I | +317, +188, +264 |
+| 3131040_26 | ours further out | W | +87 at 81 km/h |
+| 3131040_04, _16, _32, _34, _42 (SR), _52, _54, _56, _97, 3131060_14 | no change at the sequence's location | P, I, W, EBI | 04: workbook's location not reached (+123) |
+| 3131040_06 | no workbook value at our speed | I | - |
+
+For B016 the order: the Indication of an EOA target (three
+sequences, 190 to 320 m further out), then the P nearer / passed
+cases (three), then B176 (drive on to our limit) for the rest.
