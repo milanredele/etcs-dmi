@@ -4105,3 +4105,55 @@ moving the EOA away); row 3.8.2.2.3 done. No on-board code changed.
 
 **Left.** B081 (3.8.2.4, packet 90: the design is in its backlog
 text), B011, B160. Runner 753 / 1522 / 915 before and after.
+### Runner judges with the ERA curves (e5/curves-judge, 2026-10-12)
+
+`S076_Run` (B101): a step whose comment says the train passed (reached,
+left, overpasses) a limit with one of its ends sets the reference of
+its location: the workbook (named in that comment or an earlier one,
+else the only set), the limit (Indication, Permitted, Warning, SBI,
+EBI; release speed, RSM, perturbation, EOA and SvL not judged), the
+named end's distance to our target (D_Target of MSG_SPEED_STATE, from
+the estimated front end for an EOA/SvL), the speed, the permitted and
+SBI speeds shown. A failed supervision status (JRU 20), brake or
+traction cut-off step (JRU 3/4/43, TIU) at that location is judged:
+target first (workbook distance of the limit at our speed, tolerance
+10 m plus the larger side of the confidence interval), then the
+permitted and SBI curves (our distance against the workbook's band of
+the shown speed +-0.5 km/h; 10 m further out allowed, conservative,
+2 m nearer, the sampling). A step whose check passed stays passed (the
+curves explain a failure, they do not overrule a matched status). A
+Gamma sheet's step is not judged and blocks ("Gamma train braking model
+(E6)", `R_Gamma`, B100). Signatures name the cause and a band of
+metres; the metres are in the trace (`curves:` line).
+
+SUBSET-076: 753 / 1522 / 915 before, 753 / 1429 / 1008 after, 0
+regressions, 94 improvements (failed to blocked by Gamma at the same
+step, or a later stop). Gamma: 93 sequences blocked, 121 steps. Lambda:
+71 sequences stop on a curve signature (198 steps). Unreached (no limit
+named at the location; `~[workbook train]`, B140): 129 sequences, 554
+steps.
+
+| family | train | target difference | limit | difference |
+|---|---|---|---|---|
+| curve target nearer | Lambda | 10 to over 300 m (20 seq.) | Permitted | - |
+| curve target further | Lambda | 100 to 300 m (5 seq.) | Permitted | - |
+| curve target | Lambda | 30 to 300 m nearer/further (8 seq.) | Indication, Warning | - |
+| no target shown | Lambda | none shown (17 seq.) | Indication, Warning, EBI | - |
+| no workbook value | Lambda | our speed outside the rows (10 seq.) | Permitted, Indication | - |
+| curve PERMITTED | Lambda | within | Permitted | over 300 m further out (5 seq.) |
+| curve target | Gamma | 10 to 300 m nearer, 30 to 100 m further (35 seq.) | Permitted, SBI, Warning | - |
+| no target shown | Gamma | none shown (27 seq.) | Permitted, Indication, Warning | - |
+| curve PERMITTED / SBI | Gamma | within | Permitted, SBI | 30 to 300 m further out (9 seq.) |
+
+The three examples re-measured: 3130234_06 step 66 (06b, Permitted at
+74 km/h) workbook 423 m, ours 141 m: target -282 m (tolerance 30 m);
+3131040_15 step 60, Permitted at 52 km/h, 225 m against 262 m: +37 m
+(26 m), perm 51 +41 m, sbi 63 +23 m; 3130235_01 step 62, Permitted at
+55 km/h, 336 m against 408 m: +72 m (31 m), perm 43 +196 m, sbi 50
++192 m. All three Gamma: blocked. For B016 the order holds: the target
+placement first (most Lambda stops), then the permitted curve.
+Fixture: runner_fail step 20 fails on purpose ("curve target: PERMITTED
+limit, no target shown", a Lambda sheet in SR); runner_pass step 20 is a
+curve step whose check holds (stays passed). A within-tolerance pass
+needs an MA, which the hand-written fixture has not. Open: B016, B100,
+B140.

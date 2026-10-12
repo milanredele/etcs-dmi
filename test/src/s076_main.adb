@@ -121,8 +121,7 @@ package body S076_Main is
       Scn_Reader.Split (L);
       return Scn_Reader.Word (L, 1) & " " & Scn_Reader.Word (L, 2) & " "
         & Scn_Reader.Word (L, 3) & ": "
-        & Image (Results (Index).Signature)
-        & (if Loaded.Workbook then " [workbook train]" else "");
+        & Image (Results (Index).Signature);
    end Signature;
 
    ---------------------------------------------------------------------
@@ -399,6 +398,7 @@ package body S076_Main is
          when R_Extractor        => "extractor",
          when R_S076_Defect      => "S076-defect",
          when R_Optional         => "optional",
+         when R_Gamma            => "Gamma",
          when R_Runner           => "runner");
 
    procedure Read_Baseline is

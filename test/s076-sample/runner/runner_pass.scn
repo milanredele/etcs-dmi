@@ -62,6 +62,10 @@ expect DMI mode-symbol displayed Staff-Responsible
 step 19 19 0.00 L1 SR O TIU L1 SR
   text: no brake at standstill in SR
 expect TIU emergency-brake not-commanded
+step 20 20 0.00 L1 SR O TIU L1 SR
+  text: no brake where the train passed a supervision limit
+  comment: The train has passed with its max safe front end the location of the Permitted Speed supervision limit: a braking curve step (B101) whose expectation holds stays passed, the Gamma workbook below is not consulted
+expect TIU emergency-brake not-commanded
 # The braking curve results of a workbook (README of the sibling
 # repository, "The .scn format"): invented values, read by
 # S076_Sequences (VERBOSE=1 prints them); "Unknown-limit" and the

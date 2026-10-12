@@ -67,6 +67,10 @@ package S076_Run is
                           -- not take (its comment says so)
       R_S076_Defect,      -- a defect of SUBSET-076 against SUBSET-026
                           -- 4.0.0 (the Known list of S076_Run)
+      R_Gamma,            -- a braking curve step whose ERA workbook's
+                          -- train is a Gamma train: the runner enters
+                          -- every train with the lambda model, the
+                          -- pre-programmed braking model is E6 (B100)
       R_Runner);          -- runner not implemented for this kind
 
    function Reason_Image (R : Reason_T) return String;
