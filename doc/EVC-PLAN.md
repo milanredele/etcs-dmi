@@ -4784,3 +4784,38 @@ what the runner still fails on the curve sequences is B195 (ours), the
 Indication of an EOA target 190 to 340 m further out (3131040_02, _38,
 _50; ours), and runner or data items (B193, B194, B200, B201). Open
 items: doc/BACKLOG.csv (35 open after this round).
+
+### Odometer check by mode, the Train Data brake text, level symbols (e4/odometer-levels, 2026-10-12)
+
+**B222** (3.6.8.5, 3.6.8.7, 4.5.2 Table): the check of the odometer
+accuracy thresholds and its reactions (impaired, System Failure, the JRU
+record) run in SM, FS, AD, LS, SR and OS only: `EVC_Odometry.Set_Check`,
+called by `EVC_Position.Update` each cycle with
+`EVC_Modes.Odometer_Check_Mode`; `Close_Interval` checks only while
+active; out of those modes the impairment is not considered (4.5.2.1;
+a safety threshold once exceeded stays, the mode is SF). **Decision**:
+the window continues, it does not restart: the accumulation of 3.6.8.1
+and 3.6.8.2 is not in the table's row, and the first check after the
+entry (at the end of the interval open then, at most 100 m) judges the
+amounts of the total distance (SUBSET-076 4050200_10: impaired in FS
+at the first interval after UN; 4050200_11, SR after SB, passes as
+well). **B223** (3.18.3.3.1): the DMI specification's table of system
+status messages starts "Runaway movement" (entry 9) by 3.18.3.3.1 too,
+ended by 3.14.1.5: `EVC_Core.Show_Mode_Indications` shows it while the
+reason `Data_Entry_Movement` is commanded. Scenarios:
+`Scenario_Odometer_Check_By_Mode` (`EVC_Test_Position`),
+`Scenario_Train_Data_Movement` extended (`EVC_Test_Modes`). Matrix:
+3.18.3.3.1 todo -> done; 3.6.8.5, 3.6.8.6.2, 3.6.8.7 notes.
+
+**B017** traced in part: the families expect Level 2 after an immediate
+order to level 2 by balise that the on-board does not carry out (the
+backlog's "level unchanged" was the symptom). 6060504/6060505 are s076
+data like 4080455 (the linking announces NID_BG 2 where BG1 carries the
+order, 3.4.4.4.3.2); 5220200_03 and 9990500_24 (a single balise group in
+SR, level 1) are B240, cause not found; 3070300_12/13, 4080425_04,
+4080100_06, 4100103_15 not traced.
+
+**SUBSET-076**: 742 / 1426 / 1022 before, 751 / 1417 / 1022 after
+(4050200_10, _11, 4120100_03 pass in SV21, SV22, SV30), 0 regressions.
+Edits outside the units: `EVC_Position.Update` (the call of
+`Set_Check`, one statement); `EVC_Core.Show_Mode_Indications` only.
