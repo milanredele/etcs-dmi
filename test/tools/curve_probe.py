@@ -7,7 +7,8 @@
 Reads the workbook of the sequence (the cells of `Train (main)`, `Track`,
 `Brake parameters (lambda)`, the `track G(...)` gradient line, the
 `curves` block number `set`, 1 by default) and the national values of
-its packet 3 (the first one of the file, `--nv N` the N-th), runs
+its packet 3 (the first one of the file, `--nv N` the N-th, `--nv 0`
+the one that fits the workbook best), runs
 obj/evc_curve_probe at the speeds of the curve rows (every 5 km/h and the
 initial speed) and prints, per speed and limit (Indication, Permitted,
 Warning, SBI, EBI; metres from the max safe front end to the target):
@@ -20,12 +21,17 @@ The workbook's train has the speed accuracy of SUBSET-041 when the
 compensation is not inhibited (Q_NVINHSMICPERM 0: the tool's Subset_sci,
 V_delta0 = S41_speed_inacc(V_est)); the probe's odometer reports the
 same (vura=f41) unless `--vura 0` (the runner's bench: V_max = V_est).
+`--with "kv=0:0.96 kt=1.0"` gives keys of evc_curve_probe by hand (they
+win over the workbook's).
 
 `--breadth` runs every sequence given and prints, per limit, the median
 and the extremes of ours minus the workbook over all their rows (with
 the margin taken off: `--raw` keeps it), nearer negative; `--lines FILE`
 writes the per-sequence lines there. A Gamma sheet is refused with its
-reason (the Gamma judging is B100).
+reason (the Gamma judging is B100), so is a workbook whose train
+accelerates (Train (main)!D22: the probe runs at a constant speed); the
+rows under the release speed of an EOA are not compared (our status
+there is the release speed monitoring's).
 """
 import os
 import re
@@ -37,6 +43,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 PROBE = os.path.join(ROOT, "obj", "evc_curve_probe")
 LIMITS = ["I", "P", "W", "SBI", "EBI"]
 COLUMNS = {"I": "Indication", "P": "Permitted", "W": "Warning", "SBI": "SBI-", "EBI": "EBI"}
+
+
+WITH = []
 
 
 class Refused(Exception):
@@ -120,6 +129,9 @@ def setup(path, set_no=1, nv=1, vura="f41"):
     if "gamma" in cs["sheet"].lower():
         raise Refused("Gamma sheet: the Gamma train is B100, not probed")
     c = lambda k, d=None: cells.get(k, d)
+    if float(c("Train (main)!D22", "0") or 0) != 0:
+        raise Refused("the workbook's train accelerates (A_est %s m/s2): the probe runs at a constant speed"
+                      % c("Train (main)!D22"))
     pos = c("Train (main)!D23", "")
     pos = "pp" if pos.startswith("Passenger") else "fg" if pos.endswith("G") else "fp"
     target_speed = float(c("Track!B2", "0") or 0)
@@ -127,6 +139,7 @@ def setup(path, set_no=1, nv=1, vura="f41"):
             "length=" + c("Train (main)!D18", "400"),
             "pos=" + pos, "tco=" + c("Train (main)!D4", "0"),
             "target=" + c("Track!B3", "2000"), "ci=0"]
+    release = "0"
     if target_speed > 0:
         args.append("loa=%d" % target_speed)
     else:
@@ -140,6 +153,7 @@ def setup(path, set_no=1, nv=1, vura="f41"):
         args += national(packets[min(nv, len(packets)) - 1])
     inhibit = "inhsmic=1" in args
     args.append("vura=" + ("0" if inhibit else vura))
+    args += WITH   # --with: the probe's keys given by hand win
     initial = int(float(c("Track!B4", "0") or 0))
     args.append("ceiling=%d" % initial)
     cols = cs["cols"] or []
@@ -150,7 +164,10 @@ def setup(path, set_no=1, nv=1, vura="f41"):
                 idx[lim] = i
                 break
     rows = {int(r[0]): r for r in cs["rows"] if r and r[0] is not None and r[0] == int(r[0])}
-    speeds = sorted(v for v in rows if v > 0 and (v % 5 == 0 or v == initial)
+    # under the release speed of an EOA our status is that of the release
+    # speed monitoring, not the workbook's curves: not compared
+    floor = float(release) if target_speed == 0 else 0.0
+    speeds = sorted(v for v in rows if v > floor and (v % 5 == 0 or v == initial)
                     and v <= initial and rows[v][idx.get("P", 0)] is not None)
     return args, rows, idx, speeds, c("Brake parameters (lambda)!F3", "100"), cs["sheet"]
 
@@ -168,6 +185,22 @@ def run_probe(args, speeds):
 
 
 def compare(path, set_no=1, nv=1, vura="f41"):
+    """nv 0: every packet 3 of the file in turn, the one whose rows sit
+    nearest the workbook's (the median of the rest) kept: the workbook
+    does not carry its national values"""
+    if nv == 0:
+        best, seen = None, set()
+        for n in range(1, max(1, len(read(path)[3])) + 1):
+            args = setup(path, set_no, n, vura)[0]
+            if tuple(args) in seen:
+                continue
+            seen.add(tuple(args))
+            res = compare(path, set_no, n, vura)
+            rest = [abs(d - m) for _, _, _, _, d, m in res[2]]
+            score = statistics.median(rest) if rest else 1e9
+            if best is None or score < best[0]:
+                best = (score, res)
+        return best[1]
     args, rows, idx, speeds, lambda_eb, sheet = setup(path, set_no, nv, vura)
     ours = run_probe(args, speeds)
     eb = run_probe([a for a in args if not a.startswith("lambda=")]
@@ -225,7 +258,7 @@ def breadth(paths, nv, vura, raw, lines_file):
 
 def main():
     argv = sys.argv[1:]
-    opts = {"--nv": "1", "--vura": "f41", "--lines": None}
+    opts = {"--nv": "1", "--vura": "f41", "--lines": None, "--with": ""}
     pos, raw, mode = [], False, "show"
     i = 0
     while i < len(argv):
@@ -241,6 +274,7 @@ def main():
         else:
             pos.append(a)
         i += 1
+    WITH.extend(opts["--with"].split())
     if not pos:
         print(__doc__)
         return 2
