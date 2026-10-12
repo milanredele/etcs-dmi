@@ -184,6 +184,34 @@ is
                             else Cold /= Cold_Unknown)
                   and then Movement = Sample.Movement;
 
+   --  4.5.2 Table: the check of the odometer accuracy thresholds
+   --  (3.6.8.5 to 3.6.8.7) is a function of SM, FS, AD, LS, SR and OS
+   --  only; Active tells whether the mode of the cycle is one of them.
+   --  Out of them the impairment is not considered (4.5.2.1) and the
+   --  check starts afresh on the next entry: its first check, at the
+   --  end of the current interval, judges the accumulated amounts of
+   --  the total distance, which go on in every mode (3.6.8.1, 3.6.8.2;
+   --  SUBSET-076 4050200_10). The safety threshold once exceeded stays
+   --  (the mode is SF then).
+   procedure Set_Check (Active : Boolean)
+     with Global => (In_Out => State),
+          Post => (if not Active and then not Safety_Exceeded
+                   then not Impaired)
+                  and then Safety_Exceeded = Safety_Exceeded'Old
+                  and then Known = Known'Old
+                  and then Position = Position'Old
+                  and then Low = Low'Old and then High = High'Old
+                  and then Over = Over'Old and then Under = Under'Old
+                  and then Travelled = Travelled'Old
+                  and then Speed = Speed'Old
+                  and then Speed_Max = Speed_Max'Old
+                  and then Movement = Movement'Old
+                  and then Last_Direction = Last_Direction'Old
+                  and then Anomalies = Anomalies'Old
+                  and then Window_Over = Window_Over'Old
+                  and then Window_Under = Window_Under'Old
+                  and then Cold = Cold'Old;
+
    ---------------------------------------------------------------------
    --  3.6.7: distances not referred to balise groups
    ---------------------------------------------------------------------

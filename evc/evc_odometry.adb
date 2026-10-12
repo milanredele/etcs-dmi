@@ -25,7 +25,8 @@ package body EVC_Odometry
                                    Safety_Flag,
                                    Sum_Over,
                                    Sum_Under,
-                                   Cold_Status))
+                                   Cold_Status,
+                                   Check_Active))
 is
 
    subtype Interval_Travel_T is Length_T range 0 .. Interval_Cm - 1;
@@ -63,6 +64,8 @@ is
    Sum_Over       : Length_T := 0;
    Sum_Under      : Length_T := 0;
    Cold_Status    : Cold_T := Cold_Unknown;
+   --  4.5.2 Table: the check of the thresholds is active (Set_Check)
+   Check_Active   : Boolean := True;
 
    function Known return Boolean is (Known_Flag)
      with Refined_Global => Known_Flag;
@@ -126,7 +129,7 @@ is
                                         Current_Over, Current_Under,
                                         Good_Distance, Impaired_Flag,
                                         Safety_Flag, Sum_Over, Sum_Under,
-                                        Cold_Status))
+                                        Cold_Status, Check_Active))
    is
    begin
       Known_Flag := False;
@@ -152,6 +155,7 @@ is
       Sum_Over := 0;
       Sum_Under := 0;
       Cold_Status := Cold_Unknown;
+      Check_Active := True;
    end Clear;
 
    ---------------------------------------------------------------------
@@ -164,7 +168,8 @@ is
      with Global => (In_Out => (Ring, Ring_Next, Ring_Filled,
                                 Current_Over, Current_Under,
                                 Good_Distance, Impaired_Flag, Safety_Flag),
-                     Output => (Sum_Over, Sum_Under)),
+                     Output => (Sum_Over, Sum_Under),
+                     Input  => Check_Active),
           Post => (if Safety_Flag'Old then Safety_Flag)
                   and then Current_Over = 0 and then Current_Under = 0
    is
@@ -187,6 +192,13 @@ is
       Sum_Under := S_Under;
       Window := Cm_T (Ring_Filled) * Interval_Cm;
 
+      --  4.5.2 Table: the check at the fixed intervals (3.6.8.3) and its
+      --  reactions (3.6.8.5 to 3.6.8.7) in the modes of its row only;
+      --  the accumulation over the total distance (3.6.8.1, 3.6.8.2)
+      --  goes on in every mode
+      if not Check_Active then
+         return;
+      end if;
       if S_Over > Safety_Cm or else S_Under > Safety_Cm then
          --  3.6.8.7
          Safety_Flag := True;
@@ -213,6 +225,21 @@ is
       end if;
    end Close_Interval;
 
+   ---------------
+   -- Set_Check --
+   ---------------
+
+   procedure Set_Check (Active : Boolean) is
+   begin
+      Check_Active := Active;
+      if not Active then
+         --  4.5.2.1: the requirements of 3.6.8.5 to 3.6.8.7 do not
+         --  apply in this mode
+         Impaired_Flag := Impaired_Flag and Safety_Flag;
+         Good_Distance := 0;
+      end if;
+   end Set_Check;
+
    --  Move cm travelled with the growths Grow_Over and Grow_Under of the
    --  amounts: cut at the ends of the intervals, each part of the
    --  movement taking its share of the growths
@@ -221,7 +248,8 @@ is
                                 Current_Travel, Current_Over,
                                 Current_Under, Good_Distance,
                                 Impaired_Flag, Safety_Flag,
-                                Sum_Over, Sum_Under)),
+                                Sum_Over, Sum_Under),
+                     Input  => Check_Active),
           Post => (if Safety_Flag'Old then Safety_Flag)
    is
       M      : Length_T := Move;
@@ -272,7 +300,8 @@ is
                                         Current_Over, Current_Under,
                                         Good_Distance, Impaired_Flag,
                                         Safety_Flag, Sum_Over, Sum_Under,
-                                        Cold_Status))
+                                        Cold_Status),
+                             Input  => Check_Active)
    is
       Delta_X : Dist_T;
       D_Over  : Dist_T;

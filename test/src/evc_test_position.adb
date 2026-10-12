@@ -652,6 +652,56 @@ package body EVC_Test_Position is
       Check (Odo.Safety_Exceeded, "odometer: safety threshold latched");
    end Scenario_Odometer_Accuracy;
 
+   --  4.5.2 Table, 3.6.8.5, 3.6.8.7 (B222): the check of the odometer
+   --  accuracy thresholds runs in SM, FS, AD, LS, SR and OS only; the
+   --  accumulation goes on in every mode, and the first check after the
+   --  entry into FS judges it (SUBSET-076 4050200_10)
+   procedure Scenario_Odometer_Check_By_Mode is
+      Impaired_At : Integer_64 := 0;
+   begin
+      Start_Track;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Bound_Per_Mille := 60;
+      Run_To (500_000);
+      Check (not Odo.Impaired and then JRU_Seen (7) = 0
+             and then Odo_SS_Count = 0,
+             "odometer by mode: no check in UN (4.5.2), 300 m over 5000 m "
+             & "neither impaired nor recorded nor shown");
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      while Impaired_At = 0 and then Train_Cm < 520_000 loop
+         Step (1_000);
+         if Odo.Impaired then
+            Impaired_At := Train_Cm;
+         end if;
+      end loop;
+      Check (Impaired_At in 500_001 .. 510_000
+             and then JRU_Seen (7) = 1 and then JRU_Last (7, 2) = 1
+             and then Odo_SS_Count = 1 and then Odo_SS_Event = 0,
+             "odometer by mode: impaired at the first check in FS "
+             & "(3.6.8.5), recorded and shown, got"
+             & Integer_64'Image (Impaired_At));
+      EVC_Core.Set_Mode_For_Test (M_SB, L1);
+      Step (1_000);
+      Check (not Odo.Impaired and then JRU_Last (7, 2) = 0
+             and then Odo_SS_Count = 2 and then Odo_SS_Event = 1,
+             "odometer by mode: the impairment not considered in SB "
+             & "(4.5.2.1), the text removed");
+
+      Start_Track;
+      EVC_Core.Set_Mode_For_Test (M_SH, L1);
+      Bound_Per_Mille := 350;
+      Run_To (500_000);
+      Check (not Odo.Safety_Exceeded and then not Odo.Impaired,
+             "odometer by mode: 35 % in SH, no safety reaction (3.6.8.7 "
+             & "inactive in SH)");
+      EVC_Core.Set_Mode_For_Test (M_OS, L1);
+      --  the end of the interval open at the entry
+      Run_To (510_000);
+      Check (Odo.Safety_Exceeded and then JRU_Last (7, 2) = 2,
+             "odometer by mode: the safety threshold at the first check "
+             & "in OS (3.6.8.7)");
+   end Scenario_Odometer_Check_By_Mode;
+
    --  3.15.8: cold movement at power-up
    procedure Scenario_Cold_Movement is
    begin

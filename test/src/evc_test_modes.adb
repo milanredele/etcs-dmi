@@ -406,6 +406,9 @@ package body EVC_Test_Modes is
              and then Cmd.Reasons (EVC_Brake_Commands.Data_Entry_Movement),
              "Train Data movement: a movement commands the brake "
              & "(3.18.3.3.1)");
+      Check (SS_Seen (9) = 1 and then SS_Ended (9) = 0,
+             "Train Data movement: 'Runaway movement' shown (3.18.3.3.1, "
+             & "DMI system status messages: entry 9 started by 3.18.3.3.1)");
       Input (DMI, Ack_Of (5));
       Run_X (Train_Cm + 100, 100);
       Check (Cmd.EB, "Train Data movement: no release while moving "
@@ -420,6 +423,9 @@ package body EVC_Test_Modes is
                             (EVC_Brake_Commands.Data_Entry_Movement),
              "Train Data movement: released at standstill after the "
              & "acknowledgement (3.14.1.5)");
+      Check (SS_Ended (9) = 1,
+             "Train Data movement: 'Runaway movement' ended with the "
+             & "release (3.14.1.5)");
       Send (Train_Entry (200, 135, 160));
       Run_X (Train_Cm + 300, 100);
       Check (not EVC_Mission.Modifying_Train_Data and then not Cmd.EB,
