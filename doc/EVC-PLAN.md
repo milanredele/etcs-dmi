@@ -4301,3 +4301,38 @@ A.3.12 inputs (A_EB, A_SB, A_expected_max, the CR1344 T_traction) with
 the probe turned into a tool fed by a sequence's cells (B174). The
 runner's B016 work is the three method fixes; the SV21/SV22 workbooks
 are no reference for the limit locations of a 4.0.0 on-board.
+
+### Accepting RBC messages 9 and 18, track ahead free request (e5/accepting-rbc, 2026-10-12)
+
+**Implemented.** B121, 4.8.2.1 c) exception 2: the request to shorten
+the MA (9) and the revocation of an emergency stop (18) of the
+Accepting RBC are rejected at the reception by
+`EVC_Radio_Authority.Store_Message`, not held; a packet 131 of a
+released message 3 / 33 of the Accepting RBC is rejected by
+`EVC_Stored_Information.Take_Radio` (the session half already ignores
+its radio packet 131, `Take_Radio_Transition`). B081, 3.8.2.4: packet
+90 taken from a balise group (`K90`, `Take_TAF_Packet`; acceptance
+`EVC_Acceptance.Track_Ahead_Free_L2`: 4.8.3 A [9] in levels 0, NTC and
+1 with a level 2 transition order stored, a new `Context_T.L2_Announced`;
+the 4.8.4 row, A in PT too); `Evaluate_Request` gives the reason 16 in
+any level with level 2 announced and a session established, once
+(`TAF_Request`, 3.8.2.4.3); message 132 carries packet 9 after packet
+0 (`Send_With_Report`, `LTR`). Scenarios: evc_test
+`Handover_Exception_2`, `TAF_Up_To_L2`.
+
+**Decisions.** The brief read B121 as "held and taken at the switch";
+4.8.2.1 c) says they "shall be rejected": rejected. At the reception,
+not at the release, so that message 9 is answered 138 to the Accepting
+RBC at once (3.8.6.1 c, as any request 4.8 rejects). A track ahead
+free request not sent before the session is lost is dropped; packet
+90 in a radio message is ignored (7.4.2.21, a balise packet). Shared
+places: `EVC_Core.Acceptance_Context` fills `L2_Announced`; the runner's
+`S076_Run.Radio_Expect.Matches` reads Q_MARQSTREASON as bits (it read
+10000 as a decimal).
+
+**Sequences.** 3080200_08 passes in SV21, SV22, SV30. Before 754 / 1430
+/ 1009, after 756 / 1426 / 1008 (the run, with the sibling's
+`curves-from` blocks of the same day changing six SV21/SV22 signatures
+of the 3130237, 3131040, 3131060 families: not re-recorded here). Left
+under S256f4faf: 3131100_04 step 86 and _07 step 74, the perturbation
+location request at 60 km/h (3.8.2.2.1 a), not traced.
