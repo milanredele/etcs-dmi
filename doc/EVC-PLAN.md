@@ -4184,3 +4184,47 @@ session (4.8.5.4). Scenarios: evc_test `LS_Order_Area`,
 **Left.** B121 (messages 9 and 18 of the Accepting RBC) not started
 (budget); the OS acknowledgement part of [10] has no scenario of its
 own.
+
+### E5 integration after the sixteenth round (2026-10-12)
+
+Merged: e5/trips-fs-2 (none of the three families ours: 5160000_01 a
+runner model gap, the drawn chart speed 70.6 km/h above V_LX 70 where
+5.16.3.2 compares exactly, B160; 3040400_08 and 6060504_07 extraction
+defects, no message 3 in the file; a scenario for 3.8.2.2.3; B080 and
+B130 closed, B081 designed), e5/curves-judge (B101: a failed status or
+brake step whose comment names the limit the train passes is judged
+against the ERA results, the target placement first with a tolerance of
+10 m plus the confidence interval, then the Permitted and SBI curves
+within 10 m further out / 2 m nearer at the shown speed ± 0.5 km/h;
+Gamma sheets not judged, `R_Gamma`, 93 sequences blocked; 71 Lambda
+sequences stop on a curve signature by cause: the target nearer or
+further about 33, no target shown 17, our speed outside the rows 10,
+the Permitted curve over 300 m further out 5; no Lambda step within
+tolerance yet; 129 sequences name no limit, B140) and e4/ls-display-3
+(the toggle on order outside LS only with the train in the LS area of a
+mode profile of the same message, 4.8.4.2 [9] [10]; the RBC's order
+held for the level 2 transition, 4.8.3 [2], released in LS with the
+timer at the transition; S9f4f23d2 model, the bench's confidence
+interval too small for the sequence's OS area; S18160388 and S828969ca
+s076, the symbol bits of the sequences; B121 left).
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11795
+checks), the full proof 11091 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27128 B (margin 5640), wasm and both smokes 0
+failures. SUBSET-076: 753 / 1522 / 915 before, 753 / 1429 / 1008 after
+(the 93 Gamma sequences moved from failed to blocked), 0 regressions, 0
+untriaged. Matrix: 366 -> 363 clauses left in all phases.
+
+Measurements (requests by message id, duration, final context, cost):
+curves-judge 106 / 19 min / 174k / 6.5; ls-display-3 139 / 22 min /
+186k / 8.4; trips-fs-2 91 / 13 min / 127k / 4.3.
+
+What the curves say for B016, the on-board side: of the three worked
+examples the target sits 282 m nearer (3130234_06), 37 m and 72 m
+further (3131040_15, 3130235_01) than the workbook's, before any curve
+difference; the Permitted curve runs 41 to 196 m further out. The order
+of work is the target placement (the EOA / SvL and the LOA of the
+sequences' MAs, 3.8.4, 3.13.1), then the curves (3.13.8, 3.13.9), with
+the Lambda sequences as the judge and the Gamma ones waiting for E6.
+
+Open items: doc/BACKLOG.csv (31 open after this round).
