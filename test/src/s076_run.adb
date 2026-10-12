@@ -3680,6 +3680,68 @@ package body S076_Run is
       return 0;
    end Change_Of;
 
+   --  The named end's distance to the target of a change, m: to the EOA
+   --  of an EOA target, else to the target location (Curve_Judgement)
+   function Our_Distance (Ch : B.Change_T) return Long_Float is
+     (Long_Float (if Ch.EOA_Kind then Ch.D_EOA else Ch.D_Loc) / 100.0
+      - (if Ref.End_Max then Long_Float (Ch.Over) / 100.0 else 0.0));
+
+   --  B176: how far the train was driven on past the sequence's
+   --  location to our change of the limit's kind (cm, 0 when not)
+   Driven_Cm : Integer_64 := 0;
+   Drive_On_Limit : constant Long_Float := 10.0;  -- m past the workbook's
+
+   --  B176: a curve step whose limit our supervision has not reached
+   --  at the sequence's location (no change of the limit's kind since
+   --  the location before, Change_Of): the train runs on at its speed,
+   --  cycle by cycle, until our change of that kind comes or the named
+   --  end is Drive_On_Limit past the workbook's location of the limit
+   --  at that speed (a target shown; without one, the on-board in
+   --  ceiling speed monitoring, it runs on until one is), or the
+   --  workbook's distance of the limit plus Drive_On_Limit (the
+   --  sequence's target passed), or the train stands. The sequence has
+   --  failed at this step anyway (its later steps count after the
+   --  first failure), so the drive is real, on the runner's only state,
+   --  not on a copy (decision). Not for a Gamma sheet or an SV21 / SV22
+   --  workbook of the old tool: those are not judged
+   procedure Drive_On (Verbose : Boolean) is
+      C     : Curve_Set_T renames Seq.Curves (Ref.Set);
+      From  : constant Integer_64 := B.Position;
+      V     : constant Long_Float := Long_Float (B.Speed) * 0.036;
+      Wb    : constant Long_Float := Curve_Distance (C, Ref.Column, V);
+      --  at most the workbook's distance of the limit (plus the 10 m):
+      --  the target itself is passed by then
+      Max_Cm : constant Integer_64 :=
+        (if Wb = No_Value then 0
+         else Integer_64 ((Wb + Drive_On_Limit) * 100.0));
+   begin
+      Driven_Cm := 0;
+      if Change_Of (Ref.Column) > 0 or else B.Speed = 0
+        or else Wb = No_Value
+        or else Has (Image (C.Sheet), "Gamma")
+        or else (Seq.SV in 21 | 22 and then not C.From_Twin)
+      then
+         return;
+      end if;
+      for I in 1 .. 200_000 loop
+         exit when Change_Of (Ref.Column) > 0
+           or else (B.Current.Shown
+                    and then Our_Distance (B.Current) < Wb - Drive_On_Limit)
+           or else abs (B.Position - From) > Max_Cm
+           or else B.Speed = 0;
+         B.Cycle;
+      end loop;
+      Driven_Cm := abs (B.Position - From);
+      if Verbose then
+         Put_Line ("      curves: driven on"
+                   & Integer_64'Image (Driven_Cm / 100) & " m at "
+                   & Img (Integer (V)) & " km/h to "
+                   & Img (Integer (B.Position / 100)) & " m"
+                   & (if Change_Of (Ref.Column) > 0 then ", our change"
+                      else ", no change of the kind"));
+      end if;
+   end Drive_On;
+
    --  The judgement of a failed curve expectation at a reference
    --  (B172, B173): not at the sequence's location but where our status
    --  changed (Change_Of): the named end's distance to our target there
@@ -3709,8 +3771,7 @@ package body S076_Run is
       V     : constant Long_Float := Long_Float (Ch.V_Est) * 0.036;
       D_Est : constant Long_Float :=
         Long_Float (if Ch.EOA_Kind then Ch.D_EOA else Ch.D_Loc) / 100.0;
-      Ours  : constant Long_Float :=
-        D_Est - (if Ref.End_Max then Long_Float (Ch.Over) / 100.0 else 0.0);
+      Ours  : constant Long_Float := Our_Distance (Ch);
       Wb    : constant Long_Float := Curve_Distance (C, Ref.Column, V);
       Diff  : constant Long_Float := Ours - Wb;
       Mg    : constant Long_Float :=
@@ -3753,7 +3814,12 @@ package body S076_Run is
                       & " m from the estimated front end");
          end loop;
       end if;
-      if not Ch.Shown or else (N = 0 and then Wb = No_Value) then
+      if not Ch.Shown and then Driven_Cm > 0 then
+         --  B176: driven on to the workbook's distance of the limit
+         --  without a target of ours shown (ceiling speed monitoring)
+         Res := Fail ("curve " & Limit & ": no status change of that kind"
+                      & " seen, no target of ours shown");
+      elsif not Ch.Shown or else (N = 0 and then Wb = No_Value) then
          Res := Fail ("curve " & Limit & ": no status change of that kind"
                       & " seen");
       elsif N = 0 then
@@ -3776,6 +3842,18 @@ package body S076_Run is
          Res := NJ (R_Placement, "curve " & Limit & ": the sequence's"
                     & " location is off its own workbook by "
                     & Img (Integer (abs (Seq_D - Wb))) & " m");
+      end if;
+      --  B176: the signature says the train was driven on (a band,
+      --  the metres are in the trace)
+      if Driven_Cm > 0 then
+         declare
+            Text : constant String :=
+              Image (Res.Sig) & ", driven on "
+              & Band (Long_Float (Driven_Cm) / 100.0);
+         begin
+            Res := (if Res.Verdict = Failed then Fail (Text)
+                    else NJ (Res.Reason, Text));
+         end;
       end if;
       if Gamma then
          return NJ (R_Gamma, Image (Res.Sig));
@@ -4002,6 +4080,7 @@ package body S076_Run is
                   if J.Verdict = Failed and then Ref.Valid
                     and then Curve_Kind (Image (J.Sig))
                   then
+                     Drive_On (Verbose);
                      J := Curve_Judgement (Verbose);
                   elsif J.Verdict = Failed and then Seq.Workbook
                     and then Curve_Kind (Image (J.Sig))
