@@ -11,7 +11,8 @@
 --    lambda=109 length=750 pos=pp|fp|fg vmax=200 tco=0.5 (s)
 --    target=2300 (m from the origin of the gradient profile)
 --    loa=30 (km/h: a target speed at the target; else an EOA)
---    svl=450 (m beyond the EOA) release=30 (km/h, EOA only)
+--    svl=450 (m beyond the EOA) release=30 (km/h, EOA only; a release
+--      speed calculated on-board is given here as its value)
 --    grad=0:0,1000:-5 (start m : gradient per mille, positive uphill)
 --    kv=0:0.96,100:0.9 (km/h : factor, freight / all trains)
 --    kvp=... (passenger set, same form) kr=0:1.0,250:0.9 (m : factor)
@@ -50,7 +51,7 @@ procedure EVC_Curve_Probe is
    Target_M : Integer := 2_000;
    LOA_Kmh  : Integer := -1;
    SvL_M    : Integer := 0;
-   Rel_Kmh  : Integer := 0;
+   Rel_Kmh  : Long_Float := 0.0;
    CI_Cm    : Integer_64 := 0;
    Vura     : Integer := 0;        -- cm/s; -1: SUBSET-041
    Ceiling  : Integer := -1;
@@ -149,7 +150,7 @@ procedure EVC_Curve_Probe is
       elsif Key = "svl" then
          SvL_M := Integer'Value (Value);
       elsif Key = "release" then
-         Rel_Kmh := Integer'Value (Value);
+         Rel_Kmh := To_LF (Value);
       elsif Key = "grad" then
          Set_Gradient (Value);
       elsif Key = "kv" then
@@ -299,8 +300,8 @@ begin
       SvL           => EVC_Distances.Cm_T (Target_Cm + Integer_64 (SvL_M) * 100),
       LOA_Speed     => (if LOA_Kmh >= 0 then Cms (Long_Float (LOA_Kmh)) else 0),
       Release_Speed =>
-        (if LOA_Kmh < 0 and then Rel_Kmh > 0
-         then (Kind => SIn.Fixed, Speed => Cms (Long_Float (Rel_Kmh)))
+        (if LOA_Kmh < 0 and then Rel_Kmh > 0.0
+         then (Kind => SIn.Fixed, Speed => Cms (Rel_Kmh))
          else (Kind => SIn.None, Speed => 0)));
    Put_Line ("# V_kmh  I P W SBI EBI (max safe front end to the target, m)"
              & " | the same from the estimated front end"

@@ -772,7 +772,10 @@ is
    --  3.13.9.4.6, .7: the start location of the release speed monitoring
    --  for the release speed V_r: SBI1 (V_r) of the EOA, and the most
    --  restrictive SBI2 (V_r) of the SvL and, calculated on-board, of the
-   --  targets between the trip location and the SvL
+   --  targets between the trip location and the SvL. "The same formulas"
+   --  (.7) are those of 3.13.9.3 with their build up times: T_bs1, T_bs2
+   --  and T_be reduced (3.13.9.3.2.6, 3.13.9.3.3.3, A.3.12) at V_r, with
+   --  the zero acceleration and V_delta0rs of .6 a), b) (B190)
    type RSM_Start_T is record
       SBI1     : Loc_T := 0;
       SBI2     : Loc_T := 0;
@@ -788,8 +791,11 @@ is
       Vd0   : constant Speed_T := (if C.Inhibit then 0 else F41 (V_R));
       V1    : constant Speed_T := Min (V_R + Vd0, Max_Speed);
       Times : constant Times4_T := Times_Of (Work.Model, EOA_T);
+      Red   : constant Reduced_T :=
+        Reduced_Of (Work, C, EOA_T, V_R, In_Advance => True,
+                    EOA_Part => True);
       Serv  : constant Service_T :=
-        Service_Times (C, Times.Bs, Times.Bs, False);
+        Service_Times (C, Times.Bs, Red.Bs, False);
       EOA_SBD : constant Curve_T :=
         (Kind => SBD, Anchor => EOA_T.EOA, Anchor_W => 0, Floor_W => 0,
          TSR => False);
@@ -804,21 +810,20 @@ is
          begin
             if T.Kind = EOA_Target or else Between (C, T) then
                declare
-                  Tt    : constant Times4_T := Times_Of (Work.Model, T);
-                  St    : constant Service_T :=
-                    Service_Times (C, Tt.Bs, Tt.Bs, False);
                   Terms : constant Terms_T :=
-                    (V => V_R, V_Delta0 => Vd0, A_Est1 => 0, A_Est2 => 0,
-                     T_Be => Tt.Be, T_Bs1 => St.Bs1, T_Bs2 => St.Bs2,
-                     T_Ind => 0, TCO => C.TCO,
-                     T_Traction_Cut_Off => C.T_TCO);
-                  T_Tr  : constant Time_T := T_Traction (Terms, St.Bs2);
-                  T_Rem : constant Time_T := Max (Tt.Be - T_Tr, 0);
+                    Terms_Of (C, V_R, Times_Of (Work.Model, T),
+                              Reduced_Of (Work, C, T, V_R,
+                                          In_Advance => True,
+                                          EOA_Part   => False),
+                              Indication => False, In_Advance => True);
+                  T_Tr  : constant Time_T :=
+                    T_Traction (Terms, Terms.T_Bs2);
+                  T_Rem : constant Time_T := Max (Terms.T_Be - T_Tr, 0);
                   SBI2  : constant Num :=
                     Location_Of (Work.Model, Work.Profile, EBD_Of (T), V1,
                                  C.Stop)
                     - Travel_Ceil (V1, Min (T_Rem + T_Tr, Max_Time))
-                    - Travel_Ceil (V_R, St.Bs2);
+                    - Travel_Ceil (V_R, Min (Terms.T_Bs2, Max_Time));
                begin
                   MR := Min (MR, SBI2);
                end;

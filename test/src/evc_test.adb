@@ -173,6 +173,7 @@ begin
    Scenario_SDM_Ceiling;
    Scenario_SDM_Approach;
    Scenario_SDM_Release;
+   Scenario_SDM_RSM_Start_Reduced;
    Scenario_SDM_Protections;
    Scenario_SDM_MRSP_Target;
    Scenario_SDM_LOA;
