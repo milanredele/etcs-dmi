@@ -171,6 +171,11 @@ package S076_Sequences is
    type Curve_Set_T is record
       Workbook  : Text_T;          -- the .xlsm file name
       Sheet     : Text_T;          -- "Curves Gamma train", ...
+      --  the block is the copy of the SV30 twin's (a "curves-from <name>"
+      --  line right after "curves <sheet>"; plan section 13 round 17):
+      --  the name of that SV30 sequence
+      From_Twin : Boolean := False;
+      Twin      : Text_T;
       Limits    : Limits_T := (others => No_Value);
       Rows      : Curve_Rows_T;
       Row_Count : Natural := 0;

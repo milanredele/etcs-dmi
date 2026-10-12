@@ -69,9 +69,11 @@ expect TIU emergency-brake not-commanded
 # The braking curve results of a workbook (README of the sibling
 # repository, "The .scn format"): invented values, read by
 # S076_Sequences (VERBOSE=1 prints them); "Unknown-limit" and the
-# column "Other-(m)" are skipped by the reader.
+# column "Other-(m)" are skipped by the reader; "curves-from" says the
+# block is the copy of an SV30 twin's (read as From_Twin).
 workbook runner_pass.xlsm
   curves Curves Gamma train
+  curves-from runner_twin
   limit Initial-speed 40 km/h
   limit Permitted 210.50 m
   limit Unknown-limit 1.00 m

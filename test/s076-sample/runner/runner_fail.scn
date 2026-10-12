@@ -5,7 +5,8 @@
 # Step 20, after the first failure, is a braking curve step (B101) that
 # fails on purpose: the emergency brake where the train passed the
 # Permitted limit of a Lambda workbook, with no target shown in SR: the
-# runner judges it "curve target: PERMITTED limit, no target shown".
+# runner judges it "curve PERMITTED: no status change of that kind
+# seen" (e5/curves-method: no change of our supervision with a target).
 sequence runner_fail
 meta version 4.0.0 ; sv 30 ; feature 9000002
 step 1 1 0.00 N/A NP I SIM N/A NP

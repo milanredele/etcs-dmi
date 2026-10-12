@@ -71,6 +71,13 @@ package S076_Run is
                           -- train is a Gamma train: the runner enters
                           -- every train with the lambda model, the
                           -- pre-programmed braking model is E6 (B100)
+      R_Old_Tool,         -- a Lambda curve step of an SV21 / SV22
+                          -- sequence whose workbook is its own, filled by
+                          -- the ERA tool without the build up time
+                          -- reduction of A.3.12 (B170)
+      R_Placement,        -- a curve step whose location is off its own
+                          -- workbook while our status changed where the
+                          -- workbook says (B173)
       R_Runner);          -- runner not implemented for this kind
 
    function Reason_Image (R : Reason_T) return String;

@@ -237,10 +237,15 @@ package body S076_Sequences is
             S.Curves (Curve_Set).Sheet := To_Text (Rest (L, 2));
             S.Curves (Curve_Set).Limits := (others => No_Value);
             S.Curves (Curve_Set).Row_Count := 0;
+            S.Curves (Curve_Set).From_Twin := False;
+            S.Curves (Curve_Set).Twin := (others => <>);
             Curve_Map := (others => -1);
          end if;
       elsif Curve_Set = 0 or else L.Count < 2 then
          null;
+      elsif K = "curves-from" then
+         S.Curves (Curve_Set).From_Twin := True;
+         S.Curves (Curve_Set).Twin := To_Text (Rest (L, 2));
       elsif K = "limit" and then L.Count >= 3 then
          for N in Limit_Name_T loop
             if Squeeze (Word (L, 2)) = Limit_Key (N) then
@@ -506,8 +511,8 @@ package body S076_Sequences is
          S.Workbook := True;
          Workbook_Name := To_Text (Rest (L, 2));
          Curve_Set := 0;
-      elsif K = "curves" or else K = "limit" or else K = "curve-columns"
-        or else K = "curve"
+      elsif K = "curves" or else K = "curves-from" or else K = "limit"
+        or else K = "curve-columns" or else K = "curve"
       then
          On_Curve_Line (S, L);
       elsif K = "cell" and then L.Count >= 4 and then Word (L, 2) = "Train"
@@ -690,7 +695,8 @@ package body S076_Sequences is
             Ada.Text_IO.Put_Line
               ("curves" & Natural'Image (I) & ": " & Image (C.Workbook)
                & ", " & Image (C.Sheet) & "," & Natural'Image (C.Row_Count)
-               & " rows");
+               & " rows"
+               & (if C.From_Twin then ", from " & Image (C.Twin) else ""));
             Ada.Text_IO.Put ("  limits:");
             for N in Limit_Name_T loop
                Ada.Text_IO.Put (" " & Limit_Name_T'Image (N) & "="

@@ -2149,6 +2149,7 @@ is
                            V_Perm        : out Num;
                            V_SBI         : out Num;
                            D             : in out Num;
+                           Where         : in out Shown_At_T;
                            CSM_Target    : in out Boolean;
                            TTI           : in out TTI_T;
                            Release_Shown : in out Boolean;
@@ -2219,6 +2220,9 @@ is
                          - C.X_Max, 0);
          end case;
          V_Target := T_Shown.Speed;
+         Where.Target_X := T_Shown.Location;
+         Where.Target_EOA := (if T_Shown.Kind = EOA_Target then T_Shown.EOA
+                              else T_Shown.Location);
       end if;
    end Shown_Target;
 
@@ -2237,6 +2241,7 @@ is
                           V_Warning     : out Speed_T;
                           V_SBI         : out Speed_T;
                           D_Target      : out Num;
+                          Where         : in out Shown_At_T;
                           V_Target      : in out Speed_T;
                           Release_Shown : in out Boolean;
                           CSM_Target    : in out Boolean;
@@ -2250,8 +2255,9 @@ is
       D     : Num := 0;
    begin
       Shown_Target (S, Work, C, Mon, Sv, EOA_Index, State.MRDT_Valid,
-                    State.MRDT, V_P, V_S, D, CSM_Target, TTI,
+                    State.MRDT, V_P, V_S, D, Where, CSM_Target, TTI,
                     Release_Shown, V_Target);
+      Where.X_Est := C.X_Est;
 
       --  3.13.10.4.8.1, A.3.13: while a build up time is reduced the
       --  displayed P and SBI do not increase (the pawl; released with a
@@ -2538,8 +2544,8 @@ is
                             State.MRDT_Valid, State.MRDT_Id, MRDT_Changed);
       Show_Driver (S, Work, C, Mon, Sv, EOA_Index, MRDT_Changed, State,
                    Result.V_Perm, Result.V_Warning, Result.V_SBI,
-                   Result.D_Target, Result.V_Target, Result.Release_Shown,
-                   Result.CSM_Target, Result.TTI);
+                   Result.D_Target, Result.Shown_At, Result.V_Target,
+                   Result.Release_Shown, Result.CSM_Target, Result.TTI);
 
       --  phase E4, 5.16.1.4 a): the EOA target of the level crossing is
       --  the most relevant displayed target

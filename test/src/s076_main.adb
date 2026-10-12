@@ -399,6 +399,8 @@ package body S076_Main is
          when R_S076_Defect      => "S076-defect",
          when R_Optional         => "optional",
          when R_Gamma            => "Gamma",
+         when R_Old_Tool         => "old-tool",
+         when R_Placement        => "placement",
          when R_Runner           => "runner");
 
    procedure Read_Baseline is
