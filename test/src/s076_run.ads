@@ -78,6 +78,14 @@ package S076_Run is
       R_Placement,        -- a curve step whose location is off its own
                           -- workbook while our status changed where the
                           -- workbook says (B173)
+      R_Tool_Target,      -- a curve step whose workbook was computed with
+                          -- the ERA tool's target type LoA/MRSP at 0 km/h
+                          -- for the sequence's EOA (no SBI1, no T_bs
+                          -- reduction, no release speed; B200)
+      R_Factors,          -- a curve step whose workbook was computed with
+                          -- other integrated correction factors than the
+                          -- sequence's packet 3 or the A.3.2 defaults
+                          -- (B200)
       R_Runner);          -- runner not implemented for this kind
 
    function Reason_Image (R : Reason_T) return String;

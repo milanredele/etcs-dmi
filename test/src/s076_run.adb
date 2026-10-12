@@ -28,6 +28,8 @@ with EVC_Ports;
 with EVC_Radio;
 with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
+with EVC_National_Values;
+with EVC_Supervision_Input;
 with S076_Bench;
 with EVC_Config;
 with S076_Tables;             use S076_Tables;
@@ -70,6 +72,12 @@ package body S076_Run is
             & " twin)",
          when R_Placement        =>
             "the sequence's location is off its own workbook",
+         when R_Tool_Target      =>
+            "workbook with the tool's LoA/MRSP target for an EOA"
+            & " (SUBSET-076)",
+         when R_Factors          =>
+            "workbook computed with other correction factors than the"
+            & " sequence's (SUBSET-076)",
          when R_Runner           => "runner not implemented for this kind");
 
    ---------------------------------------------------------------------
@@ -3559,6 +3567,12 @@ package body S076_Run is
         and then M < Natural'Min (At_Of ("MIN SAFE"), At_Of ("MINIMUM SAFE"));
    end Max_End_Named;
 
+   --  The set of a curve step whose comment names no limit: the set
+   --  named last, or the only one; 0 when not known
+   function Unnamed_Set return Natural is
+     (if Last_Named in 1 .. Seq.Curve_Count then Last_Named
+      elsif Seq.Curve_Count = 1 then 1 else 0);
+
    --  Set or clear the reference at step I (above)
    procedure Note_Curve_Ref (I : Positive) is
       St    : Step_T renames Seq.Steps (I);
@@ -3617,29 +3631,6 @@ package body S076_Run is
    function Metres (M : Long_Float) return String is
      ((if M < 0.0 then "-" else "+") & Img (Integer (abs M)) & " m");
 
-   --  A.3.7.1: the emergency brake percentage is the train's (lambda_o =
-   --  lambda, 109 for every workbook's train), while the ERA tool that
-   --  filled the workbooks computes its EBD with 100 (Brake parameters
-   --  (lambda)!F3; B175): its EBD distances are longer by the ratio of
-   --  the decelerations of the conversion model, AD_0 (109) / AD_0 (100)
-   --  = 0.8935 / 0.826, so our limits may sit nearer the target by
-   --    (EBD (V) - EBD (V_target)) * (1 - 0.826 / 0.8935)
-   --  from the workbook's own EBD column (18 m at 61 km/h for
-   --  3130237_07); 0 without the column
-   function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
-                         return Long_Float
-   is
-      E  : constant Long_Float := Curve_Distance (C, EBD, V_Kmh);
-      E0 : constant Long_Float :=
-        (if V_Target_Kmh <= 0.0 then 0.0
-         else Curve_Distance (C, EBD, V_Target_Kmh));
-   begin
-      if E = No_Value or else E0 = No_Value or else E <= E0 then
-         return 0.0;
-      end if;
-      return (E - E0) * (1.0 - 0.826 / 0.8935);
-   end Tool_Margin;
-
    --  The first change of the on-board's supervision (S076_Bench) of
    --  the kind a limit is passed with: Indication, Permitted (to
    --  Overspeed), Warning, SBI (the service brake command), EBI (the
@@ -3686,6 +3677,216 @@ package body S076_Run is
      (Long_Float (if Ch.EOA_Kind then Ch.D_EOA else Ch.D_Loc) / 100.0
       - (if Ref.End_Max then Long_Float (Ch.Over) / 100.0 else 0.0));
 
+   --  B200 (a): the workbook was computed with the ERA tool's target
+   --  type LoA/MRSP at 0 km/h, not EoA/SvL, as test/tools/curve_probe.py
+   --  recognises it from the block: target speed 0 (Track!B2), no SBD
+   --  nor SBI1 value in any row (the tool computes them for an EoA/SvL
+   --  only), the EBD reaching 0 m at a speed above 0 (dV_ebi above an
+   --  LoA of 0 km/h)
+   function Tool_Target (C : Curve_Set_T) return Boolean is
+      Service, Ebd_0 : Boolean := False;
+   begin
+      for I in 1 .. C.Row_Count loop
+         Service := Service or else C.Rows (I).D (SBD) /= No_Value
+           or else C.Rows (I).D (SBI1) /= No_Value;
+         Ebd_0 := Ebd_0 or else (C.Rows (I).Speed_Kmh >= 1.0
+                                 and then C.Rows (I).D (EBD) /= No_Value
+                                 and then abs C.Rows (I).D (EBD) <= 0.5);
+      end loop;
+      return C.Target_Kmh = 0.0 and then not Service and then Ebd_0;
+   end Tool_Target;
+
+   --  B200 (b): the product Kv_int x Kr_int the on-board uses at V_Kmh
+   --  for the workbook train's length: the integrated correction factors
+   --  in force (EVC_National_Values.Current), i.e. the sequence's packet
+   --  3 as delivered so far, or the defaults of A.3.2 (0.7, 0.9) without
+   --  one (decision: not the packet 3 of the file, since a sequence may
+   --  carry several, 3130237_06 the defaults in BG3d after its own in
+   --  BG1d). Kv_int of the set for freight trains, or for all trains
+   function Seq_Kv_Kr (V_Kmh : Long_Float) return Long_Float is
+      NV : constant EVC_Supervision_Input.National_Values_T :=
+        EVC_National_Values.Current.Values;
+      Kv : Natural := 1_000;
+      Kr : Natural := 1_000;
+   begin
+      for I in 1 .. NV.Kv_Int_Fresh.Count loop
+         if Long_Float (NV.Kv_Int_Fresh.Steps (I).Speed) * 0.036 <= V_Kmh
+         then
+            Kv := Natural (NV.Kv_Int_Fresh.Steps (I).Factor);
+         end if;
+      end loop;
+      for I in 1 .. NV.Kr_Int.Count loop
+         if Natural (NV.Kr_Int.Steps (I).Length) <= Seq.WB_Length * 100 then
+            Kr := Natural (NV.Kr_Int.Steps (I).Factor);
+         end if;
+      end loop;
+      return Long_Float (Kv) * Long_Float (Kr) / 1.0E6;
+   end Seq_Kv_Kr;
+
+   --  A.3.7.1: the emergency brake percentage is the train's (lambda_o =
+   --  lambda, 109 for every workbook's train), while the ERA tool that
+   --  filled the workbooks computes its EBD with 100 (Brake parameters
+   --  (lambda)!F3; B175): its EBD distances are longer by the ratio of
+   --  the decelerations of the conversion model, AD_0 (109) / AD_0 (100)
+   --  = 0.8935 / 0.826, so our limits may sit nearer the target by
+   --    (EBD (V) - EBD (V_target)) * (1 - 0.826 / 0.8935)
+   --  from the workbook's own EBD column (18 m at 61 km/h for
+   --  3130237_07). B194: where that column has no value at the speed (an
+   --  EBD of the SvL that starts near the target, 3131040_04), the EBD
+   --  distance of the conversion model at the tool's percentage instead,
+   --  (V^2 - V_target^2) / (2 Kv_int Kr_int AD_0 (100)), Kv_int Kr_int
+   --  those in force (Seq_Kv_Kr; in the ratio they cancel, here they
+   --  scale the distance): 15 m at 60 km/h for 3131040_04
+   function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
+                         return Long_Float
+   is
+      Ratio : constant Long_Float := 1.0 - 0.826 / 0.8935;
+      E  : constant Long_Float := Curve_Distance (C, EBD, V_Kmh);
+      E0 : constant Long_Float :=
+        (if V_Target_Kmh <= 0.0 then 0.0
+         else Curve_Distance (C, EBD, V_Target_Kmh));
+      V  : constant Long_Float := V_Kmh / 3.6;
+      Vt : constant Long_Float := Long_Float'Max (V_Target_Kmh, 0.0) / 3.6;
+   begin
+      if E /= No_Value and then E0 /= No_Value and then E > E0 then
+         return (E - E0) * Ratio;
+      elsif V <= Vt then
+         return 0.0;
+      end if;
+      return (V ** 2 - Vt ** 2) / (2.0 * Seq_Kv_Kr (V_Kmh) * 0.826) * Ratio;
+   end Tool_Margin;
+
+   --  B200 (b): the workbook's integrated correction factors are not in
+   --  the sequence file (their sheet, "Integrated correction factors",
+   --  is not extracted: B230), so the workbook's Kv_int x Kr_int is read
+   --  from its EBD instead: on a flat profile, between V1 and V1 + 30
+   --  km/h (both below V_lim of the conversion model, A.3.3: AD_0
+   --  constant) the EBD's deceleration is Kv_int x Kr_int x AD_0, with
+   --  AD_0 = 0.0075 lambda + 0.076 at the tool's emergency brake
+   --  percentage (Brake parameters (lambda)!F3). 0.0 when not readable
+   --  (a gradient, no two rows, Kv_int changing in the range)
+   procedure Workbook_Kv_Kr (C : Curve_Set_T; K, V1 : out Long_Float) is
+      L_EB : constant Long_Float :=
+        Long_Float (if Seq.WB_Lambda_EB in 10 .. 250 then Seq.WB_Lambda_EB
+                    else 100);
+      AD_0 : constant Long_Float := 0.0075 * L_EB + 0.076;
+   begin
+      K := 0.0;
+      V1 := 0.0;
+      if not C.Flat then
+         return;
+      end if;
+      for N in 1 .. 3 loop
+         declare
+            Lo : constant Long_Float := 20.0 * Long_Float (N);
+            D1 : constant Long_Float := Curve_Distance (C, EBD, Lo);
+            D2 : constant Long_Float := Curve_Distance (C, EBD, Lo + 30.0);
+         begin
+            if D1 /= No_Value and then D2 /= No_Value and then D2 > D1 + 1.0
+              and then Seq_Kv_Kr (Lo) = Seq_Kv_Kr (Lo + 30.0)
+            then
+               K := (((Lo + 30.0) / 3.6) ** 2 - (Lo / 3.6) ** 2)
+                 / (2.0 * (D2 - D1)) / AD_0;
+               V1 := Lo;
+               return;
+            end if;
+         end;
+      end loop;
+   end Workbook_Kv_Kr;
+
+   --  B200: Kv_int x Kr_int of the packet 3 F at V_Kmh for the workbook
+   --  train's length; the defaults of A.3.2 when F gives none
+   function Packet_Kv_Kr (F : S076_Sequences.Factors_T; V_Kmh : Long_Float)
+                          return Long_Float
+   is
+      Kv : Long_Float := 0.7;
+      Kr : Long_Float := 0.9;
+   begin
+      if F.Given then
+         Kv := 1.0;
+         Kr := 1.0;
+         for I in 1 .. F.Kv_Count loop
+            if Long_Float (F.Kv (I).From) <= V_Kmh then
+               Kv := F.Kv (I).K;
+            end if;
+         end loop;
+         for I in 1 .. F.Kr_Count loop
+            if F.Kr (I).From <= Seq.WB_Length then
+               Kr := F.Kr (I).K;
+            end if;
+         end loop;
+      end if;
+      return Kv * Kr;
+   end Packet_Kv_Kr;
+
+   --  B200: the workbook's product K is one the sequence gives (within
+   --  0.03; the products in use are 0.63, 0.81, 0.864, 0.96): the one in
+   --  force on the on-board, the one of any of its packets 3, or the
+   --  defaults when it has none (decision: a workbook made with the
+   --  factors of a packet the on-board no longer holds at the step is
+   --  judged, the difference is the sequence's location or ours)
+   function Known_Kv_Kr (K, V_Kmh : Long_Float) return Boolean is
+      function Near (X : Long_Float) return Boolean is (abs (K - X) <= 0.03);
+   begin
+      if Near (Seq_Kv_Kr (V_Kmh))
+        or else (Seq.P3_Count = 0 and then Near (0.63))
+      then
+         return True;
+      end if;
+      for I in 1 .. Seq.P3_Count loop
+         if Near (Packet_Kv_Kr (Seq.P3 (I), V_Kmh)) then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Known_Kv_Kr;
+
+   --  B200: why the curve steps of set C are not judged: a Gamma train
+   --  (B100), an SV21 / SV22 workbook of the old tool (B170), the tool's
+   --  LoA/MRSP target, other correction factors (Known_Kv_Kr; Kt_int is
+   --  not readable from the EBD and not compared); R_None
+   function No_Reference (C : Curve_Set_T) return Reason_T is
+      K, V1 : Long_Float;
+   begin
+      if Has (Image (C.Sheet), "Gamma") then
+         return R_Gamma;
+      elsif Seq.SV in 21 | 22 and then not C.From_Twin then
+         return R_Old_Tool;
+      elsif Tool_Target (C) then
+         return R_Tool_Target;
+      end if;
+      Workbook_Kv_Kr (C, K, V1);
+      if K > 0.0 and then not Known_Kv_Kr (K, V1)
+        and then not (Seq.WB_Brake_Position = 1
+                      and then EVC_National_Values.Current.Values
+                                 .Kv_Int_Passenger.Count > 0)
+      then
+         return R_Factors;
+      end if;
+      return R_None;
+   end No_Reference;
+
+   --  B200: the trace of the two sets of correction factors
+   procedure Put_Factors (C : Curve_Set_T) is
+      function Fix (X : Long_Float) return String is
+        ("0." & Ada.Strings.Fixed.Tail
+                  (Img (Integer (X * 1000.0) mod 1000), 3, '0'));
+      K, V1 : Long_Float;
+   begin
+      Workbook_Kv_Kr (C, K, V1);
+      Put_Line ("      curves: Kv_int x Kr_int of the workbook " & Fix (K)
+                & " (its EBD from " & Img (Integer (V1)) & " to "
+                & Img (Integer (V1 + 30.0)) & " km/h), of the sequence "
+                & Fix (Seq_Kv_Kr (V1)) & " (in force, train of"
+                & Natural'Image (Seq.WB_Length) & " m, Kt_int"
+                & Natural'Image (Natural (EVC_National_Values.Current.Values
+                                           .Kt_Int)) & "/1000"
+                & (if EVC_National_Values.Pending then ", a set pending"
+                   else "")
+                & (if EVC_National_Values.Current.From_Trackside
+                   then ", from the track)" else ", the defaults)"));
+   end Put_Factors;
+
    --  B176: how far the train was driven on past the sequence's
    --  location to our change of the limit's kind (cm, 0 when not)
    Driven_Cm : Integer_64 := 0;
@@ -3703,7 +3904,8 @@ package body S076_Run is
    --  failed at this step anyway (its later steps count after the
    --  first failure), so the drive is real, on the runner's only state,
    --  not on a copy (decision). Not for a Gamma sheet or an SV21 / SV22
-   --  workbook of the old tool: those are not judged
+   --  workbook of the old tool, nor the workbooks of B200: those are not
+   --  judged (No_Reference)
    procedure Drive_On (Verbose : Boolean) is
       C     : Curve_Set_T renames Seq.Curves (Ref.Set);
       From  : constant Integer_64 := B.Position;
@@ -3718,15 +3920,17 @@ package body S076_Run is
       Driven_Cm := 0;
       if Change_Of (Ref.Column) > 0 or else B.Speed = 0
         or else Wb = No_Value
-        or else Has (Image (C.Sheet), "Gamma")
-        or else (Seq.SV in 21 | 22 and then not C.From_Twin)
+        or else No_Reference (C) /= R_None
       then
          return;
       end if;
       for I in 1 .. 200_000 loop
          exit when Change_Of (Ref.Column) > 0
            or else (B.Current.Shown
-                    and then Our_Distance (B.Current) < Wb - Drive_On_Limit)
+                    and then Our_Distance (B.Current)
+                             < Wb - Drive_On_Limit
+                               - Tool_Margin (C, V, Long_Float
+                                   (B.Current.V_Target) * 0.036))
            or else abs (B.Position - From) > Max_Cm
            or else B.Speed = 0;
          B.Cycle;
@@ -3750,7 +3954,8 @@ package body S076_Run is
    --  the author's (blocked, R_Placement); else ours is nearer or
    --  further out. A Gamma train's step is not judged (B100), nor a
    --  Lambda step of an SV21 / SV22 sequence whose workbook is its own
-   --  (the ERA tool without A.3.12, B170)
+   --  (the ERA tool without A.3.12, B170), nor one of a workbook that is
+   --  no reference for the sequence (B200, No_Reference)
    --
    --  The distances count to the EOA of an EOA target (the workbook's
    --  origin, its SvL columns included), else to the target location.
@@ -3763,7 +3968,6 @@ package body S076_Run is
    function Curve_Judgement (Verbose : Boolean) return Judgement_T
    is
       C     : Curve_Set_T renames Seq.Curves (Ref.Set);
-      Gamma : constant Boolean := Has (Image (C.Sheet), "Gamma");
       Limit : constant String := Curve_Column_T'Image (Ref.Column);
       N     : constant Natural := Change_Of (Ref.Column);
       Ch    : constant B.Change_T :=
@@ -3822,6 +4026,14 @@ package body S076_Run is
       elsif not Ch.Shown or else (N = 0 and then Wb = No_Value) then
          Res := Fail ("curve " & Limit & ": no status change of that kind"
                       & " seen");
+      elsif N = 0 and then Wb /= No_Value and then Diff <= 0.0
+        and then Diff >= -(Curve_In + Mg)
+      then
+         --  B194: the workbook's location passed by less than the
+         --  tool's margin without our change: ours agrees
+         Res := NJ (R_Placement, "curve " & Limit & ": the sequence's"
+                    & " location is off its own workbook by "
+                    & Img (Integer (abs (Seq_D - Wb))) & " m");
       elsif N = 0 then
          --  our limit not passed yet: the workbook's location of it not
          --  reached either (ours may agree: the sequence's location is
@@ -3855,10 +4067,11 @@ package body S076_Run is
                     else NJ (Res.Reason, Text));
          end;
       end if;
-      if Gamma then
-         return NJ (R_Gamma, Image (Res.Sig));
-      elsif Seq.SV in 21 | 22 and then not C.From_Twin then
-         return NJ (R_Old_Tool, Image (Res.Sig));
+      if No_Reference (C) /= R_None then
+         if Verbose and then No_Reference (C) = R_Factors then
+            Put_Factors (C);
+         end if;
+         return NJ (No_Reference (C), Image (Res.Sig));
       end if;
       return Res;
    end Curve_Judgement;
@@ -3937,6 +4150,14 @@ package body S076_Run is
       Loc_Since := 0;
       for I in 1 .. Seq.Step_Count loop
          Results (I) := (others => <>);
+      end loop;
+      --  B200: the sets that are no reference, in the trace (those
+      --  of other correction factors are known at their steps only)
+      for I in 1 .. (if Verbose then Seq.Curve_Count else 0) loop
+         if No_Reference (Seq.Curves (I)) not in R_None | R_Factors then
+            Put_Line ("curves: set" & Natural'Image (I) & " is no reference: "
+                      & Reason_Image (No_Reference (Seq.Curves (I))));
+         end if;
       end loop;
       --  a sequence that starts with the on-board in a mode other than No
       --  Power starts powered (its first step is not "powered up")
@@ -4084,6 +4305,20 @@ package body S076_Run is
                      J := Curve_Judgement (Verbose);
                   elsif J.Verdict = Failed and then Seq.Workbook
                     and then Curve_Kind (Image (J.Sig))
+                    and then Unnamed_Set > 0
+                    and then No_Reference (Seq.Curves (Unnamed_Set))
+                             /= R_None
+                  then
+                     --  B200: a curve step naming no limit, of a set
+                     --  that is no reference (the set named last, or
+                     --  the only one): not judged like a named one
+                     J := NJ (No_Reference (Seq.Curves (Unnamed_Set)),
+                              Image (J.Sig) & " (no limit named)");
+                     if Verbose and then J.Reason = R_Factors then
+                        Put_Factors (Seq.Curves (Unnamed_Set));
+                     end if;
+                  elsif J.Verdict = Failed and then Seq.Workbook
+                    and then Curve_Kind (Image (J.Sig))
                   then
                      --  a curve step of a workbook sequence whose
                      --  location names no limit (or no set): the tag of
@@ -4110,6 +4345,7 @@ package body S076_Run is
                      then
                         Record_Result (I, NJ (R_Optional, Image (J.Sig)));
                      elsif J.Reason in R_Gamma | R_Old_Tool | R_Placement
+                       | R_Tool_Target | R_Factors
                      then
                         --  B100: the steps after it run with another
                         --  train than the sequence's
