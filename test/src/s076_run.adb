@@ -255,6 +255,7 @@ package body S076_Run is
       Held : Natural := 0;
    begin
       B.Set_Direction (Dir);
+      B.Set_Brake_Floor (Kmh_To_Cms (10.0));
       for I in 1 .. 36_000 loop
          Force_Explicit;
          B.Set_Speed (Transit_Cms);
@@ -264,11 +265,7 @@ package body S076_Run is
             Full : constant Integer_64 :=
               Integer_64 (B.Speed) * B.Cycle_Ms / 1000;
          begin
-            if Held >= 10_000 then
-               B.Set_Stopped_Target (To_Cm);
-               exit;
-            end if;
-            exit when Left <= 0;
+            exit when Left <= 0 or else Held >= 10_000;
             if Left < Full then
                --  B224: the last cycle at the speed, moving the train by
                --  the distance left
@@ -279,17 +276,11 @@ package body S076_Run is
             Held := (if B.Speed = 0 then Held + B.Cycle_Ms else 0);
          end;
       end loop;
+      B.Set_Brake_Floor (0);
    end Drive_To;
 
-   --  B262: a train a brake held at standstill on its way to To_Cm stays
-   --  where it stopped for the steps at that location (the sequence's
-   --  train is at standstill there: its brake stopped it further on)
    procedure Move_To (To_Cm : Integer_64) is
    begin
-      if B.Stopped_Target = To_Cm then
-         return;
-      end if;
-      B.Set_Stopped_Target (B.No_Stop);
       if (B.Direction > 0 and then To_Cm > B.Position + 50)
         or else (B.Direction < 0 and then To_Cm < B.Position - 50)
       then

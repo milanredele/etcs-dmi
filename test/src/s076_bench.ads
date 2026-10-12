@@ -109,12 +109,13 @@ package S076_Bench is
    --  True while the train is below the speed asked for because of a
    --  brake (braked, or regaining its speed)
    function Braked return Boolean;
-   --  B262: the location the runner was driving the train to when a
-   --  brake held it at standstill (a trip short of the sequence's
-   --  standstill point); No_Stop when none. Reset clears it
-   No_Stop : constant Integer_64 := Integer_64'First;
-   procedure Set_Stopped_Target (To_Cm : Integer_64);
-   function Stopped_Target return Integer_64;
+   --  B262: the speed a brake does not take the train below (cm/s,
+   --  at most the speed asked for): while the runner drives the train to
+   --  a location the sequence says it reaches, a crawl (the sequences'
+   --  trains brake more gently than the conversion model and still move
+   --  where ours would have stopped: 4120100_03 reads a group 2 m on
+   --  under the runaway EB); 0 otherwise. Reset sets 0
+   procedure Set_Brake_Floor (Cms : Natural);
 
    --  Move to the track position To_Cm (cm) at Cms (at least 1 cm/s),
    --  in whole cycles; stops at the cycle that reaches it. Max_Ms bounds

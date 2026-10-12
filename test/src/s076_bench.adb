@@ -49,7 +49,7 @@ package body S076_Bench is
    Lambda     : Natural := 0;
    Is_Braked  : Boolean := False;
    Service_On     : Boolean := True;
-   Stop_Target : Integer_64 := No_Stop;
+   Floor_Cms  : Natural := 0;
 
    Max_Balises : constant := 64;
    type Balise_T is record
@@ -553,7 +553,7 @@ package body S076_Bench is
       Lambda := 0;
       Is_Braked := False;
       Service_On := True;
-      Stop_Target := No_Stop;
+      Floor_Cms := 0;
       Dir := 1;
       Odo_Over := 0;
       Odo_Under := 0;
@@ -728,8 +728,11 @@ package body S076_Bench is
       B.Immediate := False;
    end Deliver;
 
+   procedure Settle;
+
    procedure Cycle is
    begin
+      Settle;
       Cycle (Integer_64 (V_Cms) * Cycle_Ms / 1000);
    end Cycle;
 
@@ -740,6 +743,7 @@ package body S076_Bench is
       Step  : constant Integer_64 := Distance_Cm * Integer_64 (Dir);
       New_X : constant Integer_64 := X_Cm + Step;
    begin
+      Settle;
       Clock := Clock + Cycle_Ms;
       --  the balises placed behind the antenna, in their order
       loop
@@ -830,26 +834,40 @@ package body S076_Bench is
    ---------------------------------------------------------------------
 
    function Position return Integer_64 is (X_Cm);
-   function Speed return Natural is (V_Cms);
+   --  B262: the on-board commands a brake the model applies (the
+   --  service brake unless disabled; none in Trip, see Brake_Cycle)
+   function Braking return Boolean is
+     (Lambda > 0 and then Is_Powered
+      and then (Now.EBC or else (Now.SBC and then Service_On))
+      and then Now.Mode /= Natural (EVC_DMI_Port.Mode_Code (EVC_Modes.M_TR)));
+
+   --  B262: the speed of the next cycle, from the train's (V_Cms, after
+   --  the last cycle) and the speed asked for (Set_Speed: the last one
+   --  asked for before the cycle counts): a lower one at once (the
+   --  driver's own braking is not modelled), a higher one at once
+   --  unless a brake is commanded (then no speed is gained but the
+   --  crawl, Set_Brake_Floor) or the train regains its speed after one
+   function Settled return Natural is
+     (if Demand_Cms <= V_Cms then Demand_Cms
+      elsif Braking
+      then Natural'Max (V_Cms, Natural'Min (Floor_Cms, Demand_Cms))
+      elsif Is_Braked then V_Cms
+      else Demand_Cms);
+
+   procedure Settle is
+      V : constant Natural := Settled;
+   begin
+      Is_Braked := V < Demand_Cms and then (Is_Braked or else Braking);
+      V_Cms := V;
+   end Settle;
+
+   function Speed return Natural is (Settled);
    function Direction return Integer is (Dir);
 
-   --  B262: see the spec. A lower speed asked for is taken at once
-   --  (the driver's own braking is not modelled) and ends the ramp
+   --  B262: see Settled
    procedure Set_Speed (Cms : Natural) is
    begin
       Demand_Cms := Cms;
-      if Cms <= V_Cms then
-         V_Cms := Cms;
-         Is_Braked := False;
-      elsif Lambda > 0 and then Is_Powered
-        and then (Now.EBC or else (Now.SBC and then Service_On))
-        and then Now.Mode /= Natural (EVC_DMI_Port.Mode_Code (EVC_Modes.M_TR))
-      then
-         --  no speed gained under a brake command
-         Is_Braked := True;
-      elsif not Is_Braked then
-         V_Cms := Cms;
-      end if;
    end Set_Speed;
 
    function Braked return Boolean is (Is_Braked);
@@ -861,12 +879,10 @@ package body S076_Bench is
       Is_Braked := False;
    end Force_Speed;
 
-   procedure Set_Stopped_Target (To_Cm : Integer_64) is
+   procedure Set_Brake_Floor (Cms : Natural) is
    begin
-      Stop_Target := To_Cm;
-   end Set_Stopped_Target;
-
-   function Stopped_Target return Integer_64 is (Stop_Target);
+      Floor_Cms := Cms;
+   end Set_Brake_Floor;
 
    --  B262: the decelerations of the conversion model (A.3.7), cached
    --  per percentage: the emergency brake at Lambda, the service brake
@@ -915,7 +931,8 @@ package body S076_Bench is
                   EVC_Fixed.Num (Natural'Min (V_Cms, EVC_Fixed.Max_Speed))))
                * Cycle_Ms / 100 + 5_000) / 10_000;
          begin
-            V_Cms := (if V_Cms > D then V_Cms - D else 0);
+            V_Cms := Natural'Max ((if V_Cms > D then V_Cms - D else 0),
+                                  Natural'Min (Floor_Cms, Demand_Cms));
             Is_Braked := V_Cms < Demand_Cms or else Is_Braked;
          end;
       elsif Is_Braked then
@@ -945,7 +962,7 @@ package body S076_Bench is
          declare
             Left : constant Integer_64 := abs (To_Cm - X_Cm);
             Full : constant Integer_64 :=
-              Integer_64 (V_Cms) * Cycle_Ms / 1000;
+              Integer_64 (Settled) * Cycle_Ms / 1000;
          begin
             --  the last cycle ends at the target, at the speed (B224);
             --  the train's speed is that of the braking model (B262)
