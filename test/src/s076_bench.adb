@@ -712,9 +712,13 @@ package body S076_Bench is
    end Deliver;
 
    procedure Cycle is
+   begin
+      Cycle (Integer_64 (V_Cms) * Cycle_Ms / 1000);
+   end Cycle;
+
+   procedure Cycle (Distance_Cm : Integer_64) is
       Old_X : constant Integer_64 := X_Cm;
-      Step  : constant Integer_64 :=
-        Integer_64 (V_Cms) * Cycle_Ms / 1000 * Integer_64 (Dir);
+      Step  : constant Integer_64 := Distance_Cm * Integer_64 (Dir);
       New_X : constant Integer_64 := X_Cm + Step;
    begin
       Clock := Clock + Cycle_Ms;
@@ -835,11 +839,19 @@ package body S076_Bench is
             Left : constant Integer_64 := abs (To_Cm - X_Cm);
             Full : constant Integer_64 := Integer_64 (Cms) * Cycle_Ms / 1000;
          begin
-            --  the last cycle ends at the target
-            if Left < Full then
+            --  the last cycle ends at the target, at the speed (B224);
+            --  under a brake command at the distance left per cycle (the
+            --  train slows: the bench has no braking model, and a train
+            --  held above the permitted speed never sees its brake
+            --  released)
+            if Left < Full and then (Now.SBC or else Now.EBC) then
                V_Cms := Natural (Integer_64'Max (1, Left * 1000 / Cycle_Ms));
+               Cycle;
+            elsif Left < Full then
+               Cycle (Left);
+            else
+               Cycle;
             end if;
-            Cycle;
             V_Cms := Cms;
             Elapsed := Elapsed + Cycle_Ms;
             exit when Full = 0;

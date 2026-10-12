@@ -244,11 +244,19 @@ package body S076_Run is
             Full : constant Integer_64 := Integer_64 (V) * B.Cycle_Ms / 1000;
          begin
             exit when Left <= 0;
-            B.Set_Speed
-              (if Left < Full
-               then Natural (Integer_64'Max (1, Left * 1000 / B.Cycle_Ms))
-               else V);
-            B.Cycle;
+            if Left < Full and then not (B.State.SBC or else B.State.EBC) then
+               --  B224: the last cycle at the speed, moving the train by
+               --  the distance left; under a brake command at the
+               --  distance left per cycle as before (S076_Bench.Move_To)
+               B.Set_Speed (V);
+               B.Cycle (Left);
+            else
+               B.Set_Speed
+                 (if Left < Full
+                  then Natural (Integer_64'Max (1, Left * 1000 / B.Cycle_Ms))
+                  else V);
+               B.Cycle;
+            end if;
          end;
       end loop;
    end Drive_To;
@@ -1480,6 +1488,20 @@ package body S076_Run is
                return Reach_Stored_Location (Same (W (4),
                                                    "max-safe-front-end"));
             end if;
+            --  B226: a location the train reaches above the warning speed
+            --  (the comment says so; the charts are drawings and may run
+            --  above the SBI there): between the warning speed and the SBI
+            --  shown, held
+            declare
+               S : constant B.State_T := B.State;
+            begin
+               if Has (Image (St.Comment), "overpasses the warning speed")
+                 and then S.Has_Speed and then S.V_SBI > S.V_Wsl
+               then
+                  Explicit_Speed :=
+                    Kmh_To_Cms (Long_Float (S.V_Wsl + S.V_SBI) / 2.0);
+               end if;
+            end;
             --  the doubts grow with the move: a few rounds
             for Round in 1 .. 4 loop
                Move_To (St.Dist_Cm - Off);
@@ -1556,8 +1578,18 @@ package body S076_Run is
                Kmh := (S.V_Perm) + 8;
             elsif Has (E, "SBI") then
                Kmh := (if Below then S.V_SBI - 1 else S.V_SBI + 1);
+            elsif Has (E, "warning") and then not Below then
+               --  B226: above the warning speed and below the SBI, the
+               --  middle of the two values shown (each rounded to the
+               --  km/h): one above the warning limit expects the Warning
+               --  status, not the Intervention
+               Explicit_Speed :=
+                 Kmh_To_Cms (Long_Float (S.V_Wsl + S.V_SBI) / 2.0);
+               B.Set_Speed (Explicit_Speed);
+               return Pass ("ODO speed between warning" & S.V_Wsl'Image
+                            & " and SBI" & S.V_SBI'Image & " km/h");
             elsif Has (E, "warning") then
-               Kmh := (if Below then S.V_Wsl - 1 else S.V_Wsl + 1);
+               Kmh := S.V_Wsl - 1;
             elsif National_Limit (E) >= 0 then
                --  a national speed value (A.3.2, or the sequence's packet
                --  3): above or below it by 5 km/h
@@ -3741,11 +3773,16 @@ package body S076_Run is
                          return Long_Float
    is
       Ratio : constant Long_Float := 1.0 - 0.826 / 0.8935;
-      E  : constant Long_Float := Curve_Distance (C, EBD, V_Kmh);
+      --  B231: the EBD is entered at V_bec, not at the speed (3.13.9.3.2.10
+      --  with A_est 0: V_est + V_delta0, V_delta0 = V_ura of SUBSET-041
+      --  5.3.1.2, the bench's odometer stating it for a workbook train)
+      V_Bec : constant Long_Float :=
+        V_Kmh + Long_Float'Max (2.0, (640.0 + 0.36 * V_Kmh) / 470.0);
+      E  : constant Long_Float := Curve_Distance (C, EBD, V_Bec);
       E0 : constant Long_Float :=
         (if V_Target_Kmh <= 0.0 then 0.0
          else Curve_Distance (C, EBD, V_Target_Kmh));
-      V  : constant Long_Float := V_Kmh / 3.6;
+      V  : constant Long_Float := V_Bec / 3.6;
       Vt : constant Long_Float := Long_Float'Max (V_Target_Kmh, 0.0) / 3.6;
    begin
       if E /= No_Value and then E0 /= No_Value and then E > E0 then
