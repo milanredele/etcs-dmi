@@ -5678,3 +5678,66 @@ driver's choice (B361).
 SUBSET-076: 830 / 1272 / 1088 before, 833 / 1269 / 1088 after, 0
 regressions, 12 improvements, untriaged 0. Backlog: B302 done, B140
 updated, B360 and B361 opened.
+
+### E5 integration after the twenty-second round (2026-10-12)
+
+Merged: e5/session-rows (the session rows left in 3.5.3 and 3.16.3: the
+sessions of 3.5.3.4 e) g) h), the aborts of an establishment in progress
+of 3.5.3.8 a) b) d) f) g) with `EVC_Sessions.Abort_Establishment`, the
+reference of the connection supervision after the switch to level 2
+with no session and after a radio hole, 3.16.3.4.1.1 and .1.3; a), d),
+i) and 3.5.3.11 were done already and got their scenarios and tags;
+3.5.3.7.1 and .7.2 n/a (FRMCS), the RIU rows deferred to E7; B340 to
+B342: every message of a cycle carries the same T_TRAIN, 3.16.3.3.2),
+e5/runner-margin (the tool margin per limit: the SBD-based P and SBI of
+an EOA from the SBD of the conversion model with T_bs_reduced at the two
+lambdas, `S076_Bench.Sbd_Terms`; the 10 m of B300 are T_bs_reduced,
+3131040_04 within 1 m of the probe, B300, B303, B261, B231 done; the
+reverse movement chart read and driven, 3130232_17 and _18 pass again;
+3131040_59 and 4040800_01 chart findings of B160's family; the Gamma
+blocks to E6; B370), e5/authority-rows (a radio message whose L_MESSAGE
+disagrees with its bytes reaches the on-board through the tagged RTM
+frame, `EVC_Ports.Valid_RTM_Frame`, and is refused there with JRU record 9
+and M_ERROR 3, B050, 8040400_01 passes in SV30, B350 for the other
+versions; the shortening to the train at standstill after the
+T_NVCONTACT brake, 3.16.3.4.5 b), A.3.4 i) with the MA request,
+`EVC_Movement_Authority.Shorten_To_Train`; B301 was no defect of ours:
+the sequence expects level 2 at step 154 and level 1 at 156 from the
+same packet 41, triaged s076; 3.8.2.3.2 c), 3.10.2.2 b), 3.10.3.2,
+3.5.2.4 closed; B351) and e5/runner-release (a failed status, brake or
+JRU step of a braking curve sequence judged over its whole location,
+`S076_Run.Location_Judgement`, the release speed steps signed by where
+the release speed comes from; 3131050_14 passes, B360 the start of RSM;
+the runner confirms the RBC contact the DMI proposes; the Adhesion
+window opened through the Special window when the extract lacks the
+request rows, B302 done, 3130235_01 to step 76, B361).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the matrix row by row against the merge base (a row changed on
+one side wins: 3.5.2.4 from the authority branch, 3.5.3.4 from the
+session branch); the baselines merged by git and the union re-run with 0
+regressions after each merge.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11994
+checks, dmi_test 2168), the full proof 11304 checks, 0 unproved (margin
+47726 steps), cross build and stack (margin 5704 B), wasm and both
+smokes 0 failures. SUBSET-076: 830 / 1272 / 1088 before, 846 / 1250 /
+1094 after, 0 regressions, 0 untriaged. Matrix: 351 -> 315 clauses left
+in all phases (E5: 50 -> 14, of which 5 n/a and 4 deferred this round).
+
+Measurements (requests by message id, duration, final context, cost):
+session-rows 109 / 21 min / 210k / 8.5; authority-rows 140 / 24 min /
+187k / 9.0; runner-release 115 / 25 min / 185k / 7.7; runner-margin 106
+/ 22 min / 168k / 6.6. One over its budget (authority-rows by about 10
+calls), every "Done" list complete.
+
+Lessons: two brief premises wrong again (B301 named our transition
+early, the sequence contradicts itself; the baseline holds signature
+ids, not triage texts); the first round under the `@req` rule: every
+closed row came with its tag and the matrix check caught the one left
+out (3.10.3.2's tag belongs on a unit the agent was told not to edit,
+B351); a unit shared by two agents is best split by subprogram in the
+round brief, which held, except the reverse chart that the margin agent
+needed in the release agent's reader (named, merged without conflict).
+Open items: doc/BACKLOG.csv (27 open after this round).
+
