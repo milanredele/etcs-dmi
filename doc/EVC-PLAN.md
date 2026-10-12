@@ -4933,3 +4933,68 @@ regressions; 87 failed -> blocked (64 Gamma, 15 tool target, 6 factors,
 2 old tool), 7 placement -> tool target. B224 (the last cycle at the
 speed) was tried: the B195 cases pass, but 83 regressions: reverted.
 B140 not reached.
+
+### E5 integration after the nineteenth round (2026-10-12)
+
+Merged: e5/curves-sdm (neither on-board curve finding is ours: the
+Overspeed status is skipped because the runner's last cycle before a
+location runs at the leftover distance per cycle, a one-cycle speed dip
+that swings the acceleration estimator and moves every limit out by
+A_est2 over T_berem, 3.13.9.3.2.9, B195 done, B224 runner; the Indication
+of an EOA 190 to 340 m further out is V_RELEASEDP 30 = 150 km/h in the
+telegrams of 3131040_37, _38 and _50 against 30 km/h in their workbooks,
+B225, and a chart speed above the ceiling's SBI in 3131040_02, B226; the
+probe gained `drive=` and `dip=`; scenario SDM_Status_Order drives the
+four statuses in order and reproduces the dip), e5/curves-runner-2 (the
+workbooks that are no reference blocked by rules read from the block:
+`R_Tool_Target`, target speed 0 with no SBD or SBI1 and the EBD at 0 m
+above 0 km/h, and `R_Factors`, the workbook's Kv x Kr read from its EBD
+deceleration against the sequence's packets 3 and the A.3.2 defaults,
+B200; the steps naming no limit blocked with their set; the margin
+without an EBD value from the conversion model, B194, 3131040_04 left as
+B231; B193 traced, B232 for the national values at their defaults in
+3131040_56; the brief's premise wrong: the workbook's factors are not in
+the sequence files, B230 for the sibling; B224 tried and reverted after
+83 regressions against 50 improvements, the patch kept with the briefs;
+B140 not reached), e4/odometer-levels (the odometer accuracy check only
+in the modes of the 4.5.2 Table, the distance window continuing on entry,
+3.6.8.5 to 3.6.8.7, B222, 4050200_10 and _11 pass; Runaway movement
+shown while the Train Data brake is commanded, 3.18.3.3.1, B223,
+4120100_03 passes; B017 in part: 6060504/5 are linking data of
+SUBSET-076 like 4080455, 5220200_03 and 9990500_24 an order by a single
+group in SR not carried out, B240, five families left) and
+e5/acceptance-gates (a linking read in the very group that orders level 1
+at a further location is held until the stores have evaluated the order
+and then kept in the buffer only, 4.8.3 [1], B212; B221 written as a
+gate in `EVC_Position` but no scenario could tell it on from off, the
+patch kept with the briefs; B211 analysed, two candidate triggers; B210
+not started; B250 harness: state surviving `EVC_Core.Initialise` in a
+position scenario).
+
+Merge by hand: the backlog three-way by id with a tool
+(`briefs/merge_backlog.py`: one side changed wins, both changed the done
+state wins and the other's tail is joined at a sentence boundary); the
+plan subsections appended; the baselines auto-merged and matched by the
+run.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 11853
+checks), the full proof 11237 checks, 0 unproved (margin 47726 steps),
+cross build and stack 27136 B (margin 5632), wasm and both smokes 0
+failures. SUBSET-076: 742 / 1426 / 1022 before, 751 / 1330 / 1109 after
+(blocked by reason: Gamma 160, tool target 22, factors 6, placement 6,
+old tool 4), 0 regressions, 0 untriaged. Matrix: 358 -> 357 clauses
+left in all phases.
+
+Measurements (requests by message id, duration, final context, cost):
+curves-sdm 108 / 20 min / 169k / 6.7; curves-runner-2 114 / 28 min /
+200k / 7.9; odometer-levels 103 / 20 min / 165k / 6.5; acceptance-gates
+112 / 23 min / 176k / 7.3. All four inside their budgets.
+
+The curves after this round: no on-board item is left on the Lambda
+sequences but B232 (the national values at their defaults in one
+sequence); the rest is the runner's last cycle (B224), the margin at
+V_bec (B231), the data defects (B225, B226, the two blocked kinds) and
+the sibling's extraction of the correction factors sheet (B230). Two
+patches wait with the briefs: B221's gate (needs a scenario that shows
+it) and B224's shorter last cycle (needs the 83 regressions understood).
+Open items: doc/BACKLOG.csv (36 open after this round).
