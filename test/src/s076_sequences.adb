@@ -2,6 +2,7 @@
 --  A SUBSET-076 test sequence in memory, body.
 
 pragma Ada_2012;
+with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Scn_Reader; use Scn_Reader;
 
@@ -227,11 +228,16 @@ package body S076_Sequences is
    --  (its cells come before its "curves" blocks)
    WB_Target : Long_Float := No_Value;
    WB_Flat   : Boolean := True;
+   --  B290, B291: the factor sheet and option buttons of the open
+   --  workbook
+   WB_Cells  : Sheet_T;
    --  B200: in a packet 3 (its rows), and the speed (km/h) or length (m)
    --  step of the factor row that follows; Natural'Last skips the rows
    --  of the passenger set
    In_P3  : Boolean := False;
    K_From : Natural := 0;
+   --  B280: the NID_C of the header of the telegram read last
+   Group_Country : Natural := 0;
 
    --  B200: a "var" row of a telegram or message: the integrated
    --  correction factors of its packets 3 (7.5.1 resolutions: M_NVKVINT
@@ -242,16 +248,34 @@ package body S076_Sequences is
    is
       N : constant Natural := Natural (V mod 2 ** 16);
    begin
+      if Name = "V_RELEASEDP" and then N < 126
+        and then S.Release_DP_Count < Max_K_Steps
+      then
+         S.Release_DP_Count := S.Release_DP_Count + 1;
+         S.Release_DP (S.Release_DP_Count) := (N * 5, 0.0);
+         return;
+      end if;
       if Name = "NID_PACKET" then
          In_P3 := V = 3 and then S.P3_Count < Max_P3;
          if In_P3 then
             S.P3_Count := S.P3_Count + 1;
             S.P3 (S.P3_Count) := (others => <>);
+            S.P3 (S.P3_Count).Group_Country :=
+              (if Block = 1 then Group_Country else 0);
             K_From := 0;
          end if;
          return;
+      elsif Name = "NID_C" and then Block = 1 and then S.Telegram_Count > 0
+        and then S.Telegrams (S.Telegram_Count).Packet_Count = 0
+      then
+         --  the telegram header's NID_C, before its first packet
+         Group_Country := N;
+         return;
       elsif not In_P3 then
          return;
+      end if;
+      if Name = "NID_C" and then S.P3 (S.P3_Count).Country = 0 then
+         S.P3 (S.P3_Count).Country := N;
       end if;
       declare
          F : Factors_T renames S.P3 (S.P3_Count);
@@ -297,6 +321,7 @@ package body S076_Sequences is
             S.Curves (Curve_Set).Twin := (others => <>);
             S.Curves (Curve_Set).Target_Kmh := WB_Target;
             S.Curves (Curve_Set).Flat := WB_Flat;
+            S.Curves (Curve_Set).Cells := WB_Cells;
             Curve_Map := (others => -1);
          end if;
       elsif Curve_Set = 0 or else L.Count < 2 then
@@ -335,6 +360,93 @@ package body S076_Sequences is
          end;
       end if;
    end On_Curve_Line;
+
+   --  B290: a cell of the sheet "Integrated correction factors" (Ref
+   --  "factors!B5"): the step tables (freight A5:B14, passenger sets a /
+   --  interpolated / b D5:E14, D18:E27, D31:E40, Kr_int A32:B41) and
+   --  A_NVP12 D44, A_NVP23 F44, Kt_int D47; labels are skipped
+   procedure On_Factor_Cell (Ref, Value : String) is
+      P   : constant Natural := Ada.Strings.Fixed.Index (Ref, "!");
+      OK1 : Boolean := False;
+      Row : Natural := 0;
+      Col : Character := ' ';
+      V   : constant Long_Float := Curve_Value (Value);
+   begin
+      if P = 0 or else P + 2 > Ref'Last
+        or else Ref (Ref'First .. P) /= "factors!"
+      then
+         return;
+      end if;
+      WB_Cells.Present := True;
+      Col := Ref (P + 1);
+      Row := To_Nat (Ref (P + 2 .. Ref'Last), OK1);
+      if not OK1 or else V = No_Value then
+         return;
+      end if;
+      declare
+         procedure Put (T : Sheet_Tables_T; First : Natural; Is_X : Boolean)
+         is
+         begin
+            if Row in First .. First + 9 then
+               if Is_X then
+                  WB_Cells.Tables (T) (Row - First + 1).X := V;
+               else
+                  WB_Cells.Tables (T) (Row - First + 1).K := V;
+               end if;
+            end if;
+         end Put;
+      begin
+         case Col is
+            when 'A' | 'B' =>
+               Put (Kv_Freight, 5, Col = 'A');
+               Put (Kr, 32, Col = 'A');
+            when 'D' | 'E' =>
+               Put (Kv_A, 5, Col = 'D');
+               Put (Kv_Interpolated, 18, Col = 'D');
+               Put (Kv_B, 31, Col = 'D');
+               if Col = 'D' and then Row = 44 then
+                  WB_Cells.A_NVP12 := V;
+               elsif Col = 'D' and then Row = 47 then
+                  WB_Cells.Kt_Int := V;
+               end if;
+            when 'F' =>
+               if Row = 44 then
+                  WB_Cells.A_NVP23 := V;
+               end if;
+            when others =>
+               null;
+         end case;
+      end;
+   end On_Factor_Cell;
+
+   --  B290, B291: an option button of the tool, "<sheet>!<name>" (the
+   --  Train (main) sheet's with "Train " before); True when taken
+   function On_Control (Name : String; Set : Boolean) return Boolean is
+      C : Sheet_T renames WB_Cells;
+   begin
+      if Name = "Train (main)!Freight_G" then
+         C.Train_Type := (if Set then Freight_G else C.Train_Type);
+      elsif Name = "Train (main)!Freight_P" then
+         C.Train_Type := (if Set then Freight_P else C.Train_Type);
+      elsif Name = "Train (main)!Passenger_P" then
+         C.Train_Type := (if Set then Passenger_P else C.Train_Type);
+      elsif Name = "Train (main)!Gamma" then
+         C.Gamma := (if Set then First else C.Gamma);
+      elsif Name = "Train (main)!Lambda" then
+         C.Gamma := (if Set then Second else C.Gamma);
+      elsif Name = "Track!EoA_SvL" then
+         C.Target := (if Set then First else C.Target);
+      elsif Name = "Track!LoA_MRSP" then
+         C.Target := (if Set then Second else C.Target);
+      elsif Name = "Track!Release_speed_fixed" then
+         C.Release := (if Set then First else C.Release);
+      elsif Name = "Track!Release_speed_OB" then
+         C.Release := (if Set then Second else C.Release);
+      else
+         return False;
+      end if;
+      return True;
+   end On_Control;
 
    procedure On_Line (L : Line_T; Line_No : Positive) is
       S : Sequence_T renames Cur.all;
@@ -574,6 +686,20 @@ package body S076_Sequences is
          Curve_Set := 0;
          WB_Target := No_Value;
          WB_Flat := True;
+         WB_Cells := (others => <>);
+      elsif K = "cell" and then L.Count = 5 and then Word (L, 2) = "Integrated"
+        and then Word (L, 3) = "correction"
+      then
+         On_Factor_Cell (Word (L, 4), Word (L, 5));
+      elsif K = "cell" and then L.Count = 3 and then Word (L, 3) in "0" | "1"
+        and then On_Control (Word (L, 2), Word (L, 3) = "1")
+      then
+         null;
+      elsif K = "cell" and then L.Count = 4 and then Word (L, 2) = "Train"
+        and then Word (L, 4) in "0" | "1"
+        and then On_Control ("Train " & Word (L, 3), Word (L, 4) = "1")
+      then
+         null;
       elsif K = "curves" or else K = "curves-from" or else K = "limit"
         or else K = "curve-columns" or else K = "curve"
       then
@@ -616,6 +742,8 @@ package body S076_Sequences is
                S.WB_Lambda_EB := V;
             elsif L.Count = 3 and then Word (L, 2) = "Track!B2" then
                WB_Target := Curve_Value (Word (L, 3));
+            elsif L.Count = 3 and then Word (L, 2) = "Track!E2" then
+               WB_Cells.Release_Kmh := Curve_Value (Word (L, 3));
             elsif L.Count = 3 and then Word (L, 2)'Length > 7
               and then Word (L, 2) (Word (L, 2)'First .. Word (L, 2)'First + 6)
                        = "Track!J"
@@ -670,9 +798,11 @@ package body S076_Sequences is
       Loaded.Curve_Count := 0;
       Loaded.WB_Lambda_EB := 0;
       Loaded.P3_Count := 0;
+      Loaded.Release_DP_Count := 0;
       In_P3 := False;
       WB_Target := No_Value;
       WB_Flat := True;
+      WB_Cells := (others => <>);
       Workbook_Name := (others => <>);
       Curve_Set := 0;
       Length_Row := (others => <>);
@@ -749,6 +879,22 @@ package body S076_Sequences is
       end loop;
       return No_Value;
    end Curve_Distance;
+
+   function Sheet_Factor (T : Sheet_Table_T; X : Long_Float)
+                          return Long_Float
+   is
+      Last : Long_Float := No_Value;
+   begin
+      for I in T'Range loop
+         if T (I).X /= No_Value and then T (I).K /= No_Value then
+            if T (I).X >= X then
+               return T (I).K;
+            end if;
+            Last := T (I).K;
+         end if;
+      end loop;
+      return Last;
+   end Sheet_Factor;
 
    procedure Put_Curves (S : Sequence_T) is
       function Img (X : Long_Float) return String is

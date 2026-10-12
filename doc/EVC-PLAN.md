@@ -5195,3 +5195,43 @@ agents did, and the rule "check at the source first" earns its place in
 every brief; a bench without a braking model passes and fails sequences
 by accident (B262 is the next runner item of weight). Open items:
 doc/BACKLOG.csv (34 open after this round).
+
+### Runner: the factor sheet and the controls (e5/runner-cells, 2026-10-12)
+
+B290: `S076_Sequences` keeps, per curve set, its workbook's sheet
+"Integrated correction factors" (`Sheet_T`: the freight Kv_int steps
+A5:B14, the passenger sets a / interpolated / b D5:E40, Kr_int A32:B41,
+A_NVP12 D44, A_NVP23 F44, Kt_int D47) and the option buttons
+(`Train (main)!Freight_G / Freight_P / Passenger_P`, `Gamma / Lambda`,
+`Track!EoA_SvL / LoA_MRSP`, `Release_speed_fixed / _OB`, with Track!E2).
+`S076_Run.Sheet_Difference` compares the set the train type selects
+with the national values in force on the on-board at the step, exactly
+(to 0.001): Kv_int at every km/h + 0.5 up to the set's top speed,
+Kr_int at the train's length less 0.25 m, Kt_int; for a passenger train
+both sides take subset a, b or the interpolation at A_ebmax = AD_0 at
+the tool's emergency brake percentage. The EBD rule stays as the
+fallback without a sheet: no workbook lacks it. Found at the source:
+the 195 passenger workbooks of the A.3.2 defaults carry a set a of 0.9
+between 25 and 30 km/h (the tool's template, not A.3.2): all Gamma.
+
+B291: `R_Tool_Target` from Track!LoA_MRSP with target speed 0
+(Track!B2): SV30 has 26 such workbooks (15 Lambda, the B200 list; 11
+Gamma), 84 LoA_MRSP workbooks with a target speed above 0 (real LoA or
+MRSP targets, judged) and 6 without B2 (Gamma); the same 19 sequences
+are blocked. `R_Gamma` from the Gamma button (agrees with the sheet's
+name everywhere). The release speed choice is recorded for B140.
+
+B225, B280: `Release_Defect` (a fixed release speed no V_RELEASEDP of
+the sequence gives, an S076 defect read from the cells, not a list):
+3131040_38, _50 and a fourth, _32 (V_RELEASEDP 40 for 40 km/h); _37 is
+Gamma first. `Other_Country` names in the not-judged text the packet 3
+of another country than its group's (_56, country 64, 3.18.2.5).
+
+SUBSET-076: 759 / 1328 / 1103 before, 765 / 1310 / 1115 after, 0
+regressions, 18 improvements (SV21/22/30 each): _38, _50 failed ->
+passed; _52, _54, _56 failed -> blocked factors (Kt_int 1.0 of the
+workbook against 1.1 in force; _52 the BG2d defaults at its step, which
+the old rule's "any packet 3 of the file" accepted); _32 failed ->
+blocked by the runner at step 65. Blocked by factors 3 -> 12, tool
+target 19 -> 19, Gamma 160 -> 160, S076 defect 186 -> 186. No new
+signature.
