@@ -378,6 +378,11 @@ package body S076_Tables is
          --  ST01: a brake commanded by the on-board, or none
          when 38 => return (Kind => Brakes_Shown,
                             Value => (if On then 1 else 0), others => <>);
+         --  ST02 adhesion, ST03 / ST04 the safe radio connection up /
+         --  lost, ST05 the hour glass, ST06 reversing permitted
+         when 39 .. 43 => return (Kind => Symbol_Shown, Bit => Bit,
+                                  Value => (if On then 1 else 0),
+                                  others => <>);
          --  ST07: BMM reaction inhibition
          when 88 => return Event (23, 9, (if On then 1 else 0));
          when others => return None;

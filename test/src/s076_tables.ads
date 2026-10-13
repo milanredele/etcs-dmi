@@ -88,9 +88,14 @@ package S076_Tables is
       Ack_Not_Asked,    -- the acknowledgement of level Level is not asked:
                         -- given (event 40 kind 5) or never asked in the
                         -- window (no event 40 kind 4)
-      Announced);       -- the transition to level Level announced without
+      Announced,        -- the transition to level Level announced without
                         -- an acknowledgement asked: stored (event 40 kind
                         -- 2) or acknowledged (kind 5) in the window
+      Symbol_Shown);    -- the DMI status symbol of DMI_SYMB_STATUS bit
+                        -- Bit (ST02 to ST06, 39 to 43) shown (Value 1) or
+                        -- removed (Value 0): the on-board's JRU port has
+                        -- no event for the DMI's symbols, the bench's DMI
+                        -- state of the window is the same evidence
 
    type Fact_T is record
       Kind   : Fact_Kind_T := No_Fact;

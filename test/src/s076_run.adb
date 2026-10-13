@@ -2755,6 +2755,28 @@ package body S076_Run is
                end if;
             end loop;
             return not Positive;
+         when Symbol_Shown =>
+            --  judged as the DMI step of the symbol (DMI_Expect): shown
+            --  in the window or at its end; a record with the bit cleared
+            --  is the symbol removed by the end
+            declare
+               S    : constant B.State_T := B.State;
+               Seen : constant B.Seen_T := B.Seen;
+               In_W, Now : Boolean;
+            begin
+               case F.Bit is
+                  when 39 => In_W := Seen.Adhesion; Now := S.Adhesion;
+                  when 40 => In_W := Seen.Radio_Up; Now := S.Radio = 1;
+                  when 41 => In_W := Seen.Radio_Lost; Now := S.Radio = 2;
+                  when 42 => Now := S.Has_Onboard and then S.Onboard (7) /= 0;
+                     In_W := Now;
+                  when others => In_W := Seen.Reversing; Now := S.Reversing;
+               end case;
+               if F.Value = 1 then
+                  return (In_W or else Now) = Positive;
+               end if;
+               return (if Positive then not Now else Now or else not In_W);
+            end;
       end case;
    end Holds;
 
