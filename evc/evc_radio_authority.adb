@@ -1400,7 +1400,12 @@ is
             SH_Req.Due := False;
             SH_Req.Sent := True;
             SH_Req.Sent_Ms := Ctx.Now_Ms;
-            SH_Req.Stamp := EVC_Radio.T_Train_At (Ctx.Now_Ms);
+            --  3.16.3.3.2: the stamp EVC_Radio.Send gave the message
+            SH_Req.Stamp :=
+              (if EVC_Radio."=" (EVC_Radio.Supervising, EVC_Radio.No_Session)
+               then EVC_Radio.T_Train_At (Ctx.Now_Ms)
+               else EVC_Radio.Info
+                 (EVC_Radio.Session_T (EVC_Radio.Supervising)).Last_Sent);
             Count (SH_Req.Count);
          end if;
       end if;

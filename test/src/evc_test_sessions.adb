@@ -1882,4 +1882,49 @@ package body EVC_Test_Sessions is
       Stand;
    end Scenario_Session_Hole_Contact;
 
+   --  3.16.3.3.2: two messages of one cycle, the acknowledgement 146 of
+   --  a message 24 with M_ACK and the Train Data 129, carry different
+   --  time stamps; the acknowledgement 8 of the 129 is matched on the
+   --  stamp it was sent with
+   procedure Scenario_Session_Stamp_Increment is
+      M   : ETCS_Message.Message_T;
+      St  : ETCS_Message.Status_T;
+      N9  : Natural;
+      N6  : Natural;
+      T9  : Unsigned_64 := 0;
+      T6  : Unsigned_64 := 0;
+   begin
+      SoM_To_S3;
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M32, Now_T, 0, 7, 48));
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M38, Now_T));
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M41, Now_T));
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M24, Now_T, 1));
+      Send (Train_Entry);
+      N9 := Output_Of (129);
+      N6 := Output_Of (146);
+      if N9 > 0 then
+         Decode_Radio_Message (N9, M, St);
+         T9 := M.Values (3);
+      end if;
+      if N6 > 0 then
+         Decode_Radio_Message (N6, M, St);
+         T6 := M.Values (3);
+      end if;
+      Check (N9 > 0 and then N6 > 0 and then T9 /= T6
+             and then (T9 = T6 + 1 or else T6 = T9 + 1)
+             and then Unsigned_64 (R.Info (1).Last_Sent)
+                      = Unsigned_64'Max (T9, T6),
+             "stamps: 146 and 129 of one cycle one unit apart, the "
+             & "second above the first (3.16.3.3.2)");
+      Ack_Train_Data (N9);
+      Check (R.Train_Data_Acknowledged,
+             "stamps: the 8 with the stamp the 129 was sent with "
+             & "acknowledges it (3.16.3.3.2, 3.18.3.4.1)");
+   end Scenario_Session_Stamp_Increment;
+
 end EVC_Test_Sessions;

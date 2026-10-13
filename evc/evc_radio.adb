@@ -175,8 +175,45 @@ is
       return T_TRAIN_T (Shift_Right (V, 6) and 16#FFFF_FFFF#);
    end T_Train_Of;
 
+   --  3.16.3.3.2: the stamp of the next message of S stamped Stamp:
+   --  Stamp when it is above the last one sent in S (by less than half
+   --  the clock of T_Train_At, modulo 2**32 - 1), else one unit above
+   --  that one (a second message of the same cycle)
+   function Next_Stamp (S : Session_T; Stamp : T_TRAIN_T) return T_TRAIN_T
+   is (if not Table (S).Sent or else Stamp = T_TRAIN_Unknown
+          or else (Unsigned_64 (Stamp) + (2**32 - 1)
+                   - Unsigned_64 (Table (S).Last_Sent) mod (2**32 - 1))
+                  mod (2**32 - 1) in 1 .. (2**32 - 1) / 2
+       then Stamp
+       else T_TRAIN_T ((Unsigned_64 (Table (S).Last_Sent) + 1)
+                       mod (2**32 - 1)))
+     with Global => Table;
+
+   --  T_TRAIN, bits 18 to 49 of the message that starts at First in the
+   --  queue (bytes First + 2 to First + 6 hold its bits 16 to 55), set
+   --  to Stamp
+   procedure Put_T_Train (First : Positive; Stamp : T_TRAIN_T)
+     with Global => (In_Out => Data),
+          Pre => First <= Queue_Capacity - 6
+   is
+      Mask : constant Unsigned_64 := Shift_Left (16#FFFF_FFFF#, 6);
+      V    : Unsigned_64 := 0;
+   begin
+      for I in 2 .. 6 loop
+         pragma Loop_Invariant (V < 2**(8 * (I - 2)));
+         V := V * 256 + Unsigned_64 (Data (First + I));
+      end loop;
+      V := (V and not Mask) or Shift_Left (Unsigned_64 (Stamp), 6);
+      for I in 2 .. 6 loop
+         pragma Loop_Invariant (True);
+         Data (First + I) :=
+           EVC_Bytes.Byte (Shift_Right (V, 8 * (6 - I)) and 16#FF#);
+      end loop;
+   end Put_T_Train;
+
    procedure Send (S : Session_T; Message : EVC_Bytes.Byte_Array) is
       Length : constant Positive := RTM_Tagged_Header + Message'Length;
+      Stamp  : constant T_TRAIN_T := Next_Stamp (S, T_Train_Of (Message));
    begin
       if not Usable (S) or else not Room (Length) then
          Count_Refusal;
@@ -187,9 +224,12 @@ is
       Data (Used + Queue_Header + 2) := EVC_Bytes.Byte (S);
       Data (Used + Queue_Header + RTM_Tagged_Header + 1
             .. Used + Queue_Header + Length) := Message;
+      if Message'Length >= 7 and then Stamp /= T_Train_Of (Message) then
+         Put_T_Train (Used + Queue_Header + RTM_Tagged_Header + 1, Stamp);
+      end if;
       Used := Used + Queue_Header + Length;
       Table (S).Sent := True;
-      Table (S).Last_Sent := T_Train_Of (Message);
+      Table (S).Last_Sent := Stamp;
    end Send;
 
    --  Queue a request of Length bytes, its fixed part filled in, the
