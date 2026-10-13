@@ -2219,6 +2219,7 @@ is
                           EOA_Index     : Target_Count_T;
                           MRDT_Changed  : Boolean;
                           State         : in out State_T;
+                          Start         : RSM_Start_T;
                           V_Perm        : out Speed_T;
                           V_Warning     : out Speed_T;
                           V_SBI         : out Speed_T;
@@ -2240,6 +2241,11 @@ is
                     State.MRDT, V_P, V_S, D, Where, CSM_Target, TTI,
                     Release_Shown, V_Target);
       Where.X_Est := C.X_Est;
+      --  3.13.9.4.6, .7: where the release speed monitoring starts
+      if C.Has_Release and then C.Release > 0 then
+         Where.RSM_Start := Start.Start;
+         Where.RSM_Max_Safe := not Start.From_SBD;
+      end if;
 
       --  3.13.10.4.8.1, A.3.13: while a build up time is reduced the
       --  displayed P and SBI do not increase (the pawl; released with a
@@ -2522,14 +2528,9 @@ is
       Most_Relevant_Target (Work, C, Mon, Sv, EOA_Index, State.MRDT,
                             State.MRDT_Valid, State.MRDT_Id, MRDT_Changed);
       Show_Driver (S, Work, C, Mon, Sv, EOA_Index, MRDT_Changed, State,
-                   Result.V_Perm, Result.V_Warning, Result.V_SBI,
+                   Start, Result.V_Perm, Result.V_Warning, Result.V_SBI,
                    Result.D_Target, Result.Shown_At, Result.V_Target,
                    Result.Release_Shown, Result.CSM_Target, Result.TTI);
-      --  3.13.9.4.6, .7: where the release speed monitoring starts
-      if Rel > 0 then
-         Result.Shown_At.RSM_Start := Start.Start;
-         Result.Shown_At.RSM_Max_Safe := not Start.From_SBD;
-      end if;
 
       --  phase E4, 5.16.1.4 a): the EOA target of the level crossing is
       --  the most relevant displayed target
