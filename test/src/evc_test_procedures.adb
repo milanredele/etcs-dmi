@@ -2014,7 +2014,18 @@ package body EVC_Test_Procedures is
       Run_Front (205, 25);
       Check (Override_Byte = 0 and then Mode_Byte = Code_SR,
              "E4 integration, 5.8.4.1 b): override ends after D_NVOVTRP");
-      --  the national values with an SR distance of 150 m (D_NVSTFF)
+      --  4.4.11.1.5: the driver's SR speed and distance at standstill
+      Stand;
+      Input (DMI, Frame (16#41#, (3, 35, 0, 100, 0)));
+      Cycle;
+      Cycle;
+      Check (V_Perm = 35 and then J41 (11) = 2,
+             "E4 integration, 4.4.11.1.5, 4.4.11.1.3.1 b): the SR speed "
+             & "and distance entered");
+      --  the national values with an SR distance of 150 m (D_NVSTFF),
+      --  taken while the driver's distance applies (4.4.11.1.6.4 a): a
+      --  national distance would count from where Override was
+      --  activated, 4.4.11.1.3.1 a)
       declare
          NV : ST.T3.Packet_T := ST.National_Values (123);
       begin
@@ -2024,14 +2035,10 @@ package body EVC_Test_Procedures is
          Close;
       end;
       Run_Front (Front_M + 20, 20);
-      --  4.4.11.1.5: the driver's SR speed and distance at standstill
+      Check (Mode_Byte = Code_SR,
+             "E4 integration, 4.4.11.1.6.4 a): the driver's SR distance "
+             & "stays over new national values (no trip)");
       Stand;
-      Input (DMI, Frame (16#41#, (3, 35, 0, 100, 0)));
-      Cycle;
-      Cycle;
-      Check (V_Perm = 35 and then J41 (11) = 2,
-             "E4 integration, 4.4.11.1.5, 4.4.11.1.3.1 b): the SR speed "
-             & "and distance entered");
       Driver (6);
       Cycle;
       Check (Override_Byte = 1 and then J23 (2) = 2 and then J41 (11) = 3,

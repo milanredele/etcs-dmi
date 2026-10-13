@@ -69,7 +69,8 @@ package body EVC_Core
                                    --  the procedures (phase E4)
                                    Proc_Ctx,
                                    Ack_For_Protection,
-                                   Status_Rev_Sent, Status_Tunnel_Sent,
+                                   Status_Rev_Sent, Status_Slip_Sent,
+                                   Status_Tunnel_Sent,
                                    Status_Radio_Sent,
                                    TC_Sent, Contact_Sent,
                                    Config_Last, Config_Seen))
@@ -232,6 +233,8 @@ is
    Ack_For_Protection : Boolean := False;
    --  the reversing indication sent last (MSG_STATUS)
    Status_Rev_Sent : Boolean := False;
+   --  the driver's "slippery rail" sent last (MSG_STATUS, 3.18.4.6.2.3)
+   Status_Slip_Sent : Boolean := False;
    --  the tunnel stopping area sent last (MSG_STATUS, 5.18.8)
    Status_Tunnel_Sent : EVC_Track_Conditions.Tunnel_T;
    --  phase E5: the radio byte sent last (3.5.7.1)
@@ -369,6 +372,7 @@ is
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
+      Status_Slip_Sent := False;
       Status_Tunnel_Sent := (others => <>);
       Status_Radio_Sent := 0;
       TC_Sent := False;
@@ -1091,7 +1095,8 @@ is
                                 EVC_Train_Inputs.State, EVC_Mission.State,
                                 EVC_Procedures.State, SDM_Result,
                                 EVC_Radio_Info.State,
-                                EVC_Radio_Authority.State),
+                                EVC_Radio_Authority.State,
+                                EVC_Driver_Requests.State),
                      In_Out => (SDM_Work, EVC_Stored_Information.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
@@ -1108,6 +1113,8 @@ is
       --  phase E5, 3.12.3: the text messages of the radio messages, while
       --  the origins of their LRBG are kept
       EVC_Text_Messages.Take_Radio;
+      --  3.18.4.6.2.1: the driver's adhesion choice
+      EVC_Stored_Information.Take_Driver_Adhesion;
       --  phase E4: the mode profile of the mode in use is no temporary
       --  EOA (3.12.4.7)
       EVC_Movement_Authority.Set_Mode_In_Use
@@ -2409,6 +2416,7 @@ is
                                 EVC_Position.State, EVC_Sessions.State),
                      In_Out => (Geo_Sent, Status_Brake_Sent,
                                 Status_TTI_Sent, Status_Rev_Sent,
+                                Status_Slip_Sent,
                                 Status_Tunnel_Sent, Status_Radio_Sent,
                                 EVC_Outbox.Queue))
    is
@@ -2438,10 +2446,13 @@ is
       --  phase E5, 3.5.7.1: the indication of the safe radio connection
       Radio : constant EVC_Bytes.Byte :=
         EVC_Sessions.Indication_T'Pos (EVC_Sessions.Indication);
+      --  3.18.4.6.2.3: the driver's "slippery rail" (the DMI's ST02)
+      Slip  : constant Boolean :=
+        EVC_Stored_Information.Driver_Slippery_Rail;
       Changed : constant Boolean :=
         Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent
         or else Radio /= Status_Radio_Sent
-        or else Rev /= Status_Rev_Sent
+        or else Rev /= Status_Rev_Sent or else Slip /= Status_Slip_Sent
         or else EVC_Track_Conditions."/=" (Tun, Status_Tunnel_Sent);
    begin
       if EVC_Position.Geo_Known then
@@ -2450,7 +2461,8 @@ is
                                Unsigned_64 (Clock_Ms) / 1000,
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
-                               Unsigned_32 (Tun.Distance_M), Radio));
+                               Unsigned_32 (Tun.Distance_M), Radio,
+                               Slip));
          Geo_Sent := True;
       elsif Geo_Sent or else Changed then
          EVC_Outbox.Put
@@ -2458,12 +2470,14 @@ is
                                Unsigned_64 (Clock_Ms) / 1000,
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
-                               Unsigned_32 (Tun.Distance_M), Radio));
+                               Unsigned_32 (Tun.Distance_M), Radio,
+                               Slip));
          Geo_Sent := False;
       end if;
       Status_Brake_Sent := Brake;
       Status_TTI_Sent := TTI;
       Status_Rev_Sent := Rev;
+      Status_Slip_Sent := Slip;
       Status_Tunnel_Sent := Tun;
       Status_Radio_Sent := Radio;
    end Send_Status;
@@ -2932,7 +2946,8 @@ is
                                 Supervision_Reported, Overrun_Reported,
                                 Entering_Shown, Runaway_Shown,
                                 Odometer_Shown,
-                                Status_Rev_Sent, Status_Tunnel_Sent,
+                                Status_Rev_Sent, Status_Slip_Sent,
+                                Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
                                 Contact_Sent,
                                 EVC_Radio_Authority.State,

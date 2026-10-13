@@ -9,6 +9,7 @@ package body EVC_Mission
                                    Train_Known, Engaged, Mission_On,
                                    Proposal, Proposal_Mode, Acked_Now,
                                    Acked_M, Desk_Closed_Now, SR_V, SR_D,
+                                   SR_Origin, SR_Driver, SR_Nat_D,
                                    Continue_On, NL_Lost, NL_Input,
                                    TD_Now, TD_Entry, SR_Entry, RBC_Wait,
                                    RBC_Wait_Count,
@@ -33,6 +34,12 @@ is
    Desk_Closed_Now : Boolean := False;
    SR_V            : Speed_Cms_T := 0;
    SR_D            : EVC_Odometry.Virtual_T;
+   --  where SR was entered or Override activated (4.4.11.1.3.1 a), the
+   --  SR values entered by the driver apply (4.4.11.1.6.3, .6.4 a), the
+   --  national D_NVSTFF the SR distance was last taken from
+   SR_Origin       : EVC_Odometry.Virtual_T;
+   SR_Driver       : Boolean := False;
+   SR_Nat_D        : Length_T := Max_Cm;
    Continue_On     : Boolean := False;
    --  4.4.15.1.1.3: the input lost in this cycle, the input of the last
    NL_Lost         : Boolean := False;
@@ -136,6 +143,9 @@ is
       Desk_Closed_Now := False;
       SR_V := 0;
       SR_D := (others => <>);
+      SR_Origin := (others => <>);
+      SR_Driver := False;
+      SR_Nat_D := Max_Cm;
       Continue_On := False;
       NL_Lost := False;
       NL_Input := False;
@@ -313,12 +323,60 @@ is
       end if;
    end Take_Identity;
 
+   --  The national SR values when SR is entered or Override activated:
+   --  the SR distance supervised from here (4.4.11.1.3.1 a)
+   --  @req 4.4.11.1.6.2
+   procedure Start_National_SR (C : Context_T)
+     with Global => (Output => (SR_V, SR_D, SR_Origin, SR_Driver,
+                                SR_Nat_D),
+                     Input  => EVC_Odometry.State)
+   is
+   begin
+      SR_V := C.V_NVSTFF;
+      SR_Origin := EVC_Odometry.Start_Virtual (C.D_NVSTFF, C.Sense);
+      SR_Driver := False;
+      SR_Nat_D := C.D_NVSTFF;
+      if C.D_NVSTFF < Max_Cm then
+         SR_D := SR_Origin;
+      else
+         SR_D := (others => <>);
+      end if;
+   end Start_National_SR;
+
+   --  While in SR on the national values, new national values in force
+   --  (packet 3 taken in SR) apply at once: the SR speed limit, and the
+   --  end of the SR distance counted from where SR was entered or
+   --  Override activated (4.4.11.1.3.1 a); the values entered by the
+   --  driver stay (4.4.11.1.6.3, 4.4.11.1.6.4 a), and the RBC's distance
+   --  takes precedence in EVC_Radio_Authority.SR_Distance_Of
+   --  @req 4.4.11.1.3.1 a)
+   procedure Take_National_SR (C : Context_T; M : Mode_T)
+     with Global => (In_Out => (SR_V, SR_D, SR_Nat_D),
+                     Input  => (SR_Origin, SR_Driver))
+   is
+   begin
+      if M = M_SR and then not SR_Driver then
+         SR_V := C.V_NVSTFF;
+         if C.D_NVSTFF /= SR_Nat_D then
+            SR_Nat_D := C.D_NVSTFF;
+            if C.D_NVSTFF < Max_Cm then
+               SR_D := SR_Origin;
+               SR_D.Active := True;
+               SR_D.Distance := C.D_NVSTFF;
+            else
+               SR_D := (others => <>);
+            end if;
+         end if;
+      end if;
+   end Take_National_SR;
+
    --  4.7.2, DMI Table 33 #3: the Train Data entered at standstill;
    --  4.4.11.1.5: the SR speed limit and distance entered at standstill
    --  in SR
    procedure Take_Data (C : Context_T; M : Mode_T)
      with Global => (In_Out => (Train_Known, TD_Now, Proposal, SR_V, SR_D,
-                                Events, Event_N, EVC_Train_Data.State),
+                                SR_Driver, Events, Event_N,
+                                EVC_Train_Data.State),
                      Input  => (EVC_Driver_Requests.State,
                                 EVC_Odometry.State, EVC_Config.State))
    is
@@ -362,6 +420,7 @@ is
                --  4.4.11.1.3.1 b): from the entry
                SR_D := EVC_Odometry.Start_Virtual
                  (Length_T (E.Distance_M) * 100, C.Sense);
+               SR_Driver := True;
                Put_Event (Event_SR_Data, Natural (E.Speed_Kmh) / 5,
                           Natural'Min (Natural (E.Distance_M) / 100, 255));
             else
@@ -559,6 +618,7 @@ is
       Take_Desk (C, M);
       Take_Identity (M);
       Take_Data (C, M);
+      Take_National_SR (C, M);
       Take_Data_Entry (M);
       Take_RBC_Answer (C, M);
       Take_Start (C, M);
@@ -566,12 +626,7 @@ is
 
    procedure Override_In_SR (C : Context_T) is
    begin
-      SR_V := C.V_NVSTFF;
-      if C.D_NVSTFF < Max_Cm then
-         SR_D := EVC_Odometry.Start_Virtual (C.D_NVSTFF, C.Sense);
-      else
-         SR_D := (others => <>);
-      end if;
+      Start_National_SR (C);
       Put_Event (Event_SR_Data,
                  Natural (C.V_NVSTFF) * 36 / 1000 / 5,
                  Natural (Length_T'Min (C.D_NVSTFF / 10_000, 255)));
@@ -580,12 +635,7 @@ is
    procedure Set_For_Test (M : Mode_T; C : Context_T) is
    begin
       if M = M_SR then
-         SR_V := C.V_NVSTFF;
-         if C.D_NVSTFF < Max_Cm then
-            SR_D := EVC_Odometry.Start_Virtual (C.D_NVSTFF, C.Sense);
-         else
-            SR_D := (others => <>);
-         end if;
+         Start_National_SR (C);
       end if;
    end Set_For_Test;
 
@@ -649,12 +699,7 @@ is
       --  distance from there (4.4.11.1.3.1 a); 4.10: deleted on leaving
       --  SR but in PT
       if To = M_SR then
-         SR_V := C.V_NVSTFF;
-         if C.D_NVSTFF < Max_Cm then
-            SR_D := EVC_Odometry.Start_Virtual (C.D_NVSTFF, C.Sense);
-         else
-            SR_D := (others => <>);
-         end if;
+         Start_National_SR (C);
       elsif To /= M_PT then
          SR_V := 0;
          SR_D := (others => <>);

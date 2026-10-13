@@ -341,8 +341,9 @@ is
    --  reversing indication (3.15.4.7) and the tunnel stopping area
    --  (5.18.8: tunnel 0 none / unknown, 1 active, 2 announced; its
    --  distance, m); phase E5: Radio, the indication of the safe radio
-   --  connection (3.5.7.1: 0 none, 1 up, 2 lost / set-up failed); the
-   --  other fields as Status_Frame
+   --  connection (3.5.7.1: 0 none, 1 up, 2 lost / set-up failed);
+   --  Slippery, the adhesion factor "slippery rail" selected by the driver
+   --  (3.18.4.6.2.3, the DMI's ST02); the other fields as Status_Frame
    function Status_Frame (Geo         : Unsigned_32;
                           Seconds     : Unsigned_64;
                           Brake       : Byte;
@@ -350,7 +351,8 @@ is
                           Reversing   : Boolean := False;
                           Tunnel      : Byte := 0;
                           Tunnel_Dist : Unsigned_32 := 0;
-                          Radio       : Byte := 0)
+                          Radio       : Byte := 0;
+                          Slippery    : Boolean := False)
      return Status_Frame_T
      with Post => Status_Frame'Result (1) = MSG_STATUS;
 

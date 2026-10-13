@@ -80,6 +80,7 @@ with EVC_Balise_Groups;
 with EVC_Braking;
 with EVC_Config;
 with EVC_DMI_Port;
+with EVC_Driver_Requests;
 with EVC_Distances;          use EVC_Distances;
 with EVC_Levels;
 with EVC_Modes;
@@ -248,6 +249,22 @@ is
    --  The driver's "slippery rail" (3.18.4.6, phase E4)
    procedure Set_Driver_Slippery (Slippery : Boolean)
      with Global => (In_Out => State);
+
+   --  The driver's adhesion choice of the cycle (DMI action 9, 0 non
+   --  slippery, 1 slippery rail) taken when the national value
+   --  Q_NVDRIVER_ADHES permits it; reset to non slippery when it does not
+   --  (3.18.4.6.2.1, 3.18.4.6.3)
+   --  @req 3.18.4.6.2, 3.18.4.6.2.1, 3.18.4.6.3
+   procedure Take_Driver_Adhesion
+     with Global => (In_Out => State,
+                     Input  => (EVC_Driver_Requests.State,
+                                EVC_National_Values.State));
+
+   --  3.18.4.6.2.3: the adhesion factor selected by the driver is
+   --  "slippery rail" (the driver is informed, MSG_STATUS)
+   --  @req 3.18.4.6.2.3
+   function Driver_Slippery_Rail return Boolean
+     with Global => State;
 
    --  Added by the procedures of phase E4
 

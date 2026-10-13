@@ -150,11 +150,18 @@ is
    --  location of 3.13.9.3.5.9 instead), Target_EOA the EOA of an EOA
    --  target (else Target_X); X_Est the estimated front end in the same
    --  coordinates (they follow the sense of the MA, which no other output
-   --  names)
+   --  names); RSM_Start the start location of the release speed
+   --  monitoring for the release speed in force (Result_T.V_Release) when
+   --  one is supervised (else 0), to be passed by the estimated front end
+   --  (the SBI1 of the EOA) or, RSM_Max_Safe, by the max safe front end
+   --  (the SBI2 of the SvL or of a target in rear of it)
+   --  @req 3.13.9.4.6, 3.13.9.4.7
    type Shown_At_T is record
-      Target_X   : Num := 0;
-      Target_EOA : Num := 0;
-      X_Est      : Num := 0;
+      Target_X     : Num := 0;
+      Target_EOA   : Num := 0;
+      X_Est        : Num := 0;
+      RSM_Start    : Num := 0;
+      RSM_Max_Safe : Boolean := False;
    end record;
 
    --  @req 3.8.2.2.2, 3.8.2.2.3, 3.13.10.2.6 a), 3.13.10.2.7, 3.13.11.8

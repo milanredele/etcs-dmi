@@ -635,6 +635,23 @@ package body EVC_Test_Supervision is
       Check (EB_At (171),
              "RSM start reduced: release speed monitoring and the EB "
              & "171 m before the EOA (the workbook: 182.6 m at lambda 100)");
+      --  the start of the release speed monitoring in the result, in the
+      --  coordinates of the estimated front end, the train 200 m before
+      --  the EOA (estimated front end, no doubt)
+      declare
+         Unused : constant Boolean := EB_At (200);
+         Before : constant Integer_64 :=
+           Integer_64 (Res.Shown_At.X_Est) + 20_000
+           - Integer_64 (Res.Shown_At.RSM_Start);
+      begin
+         Check (not Unused and then Natural (Res.V_Release) = Cms (30.0)
+                and then not Res.Shown_At.RSM_Max_Safe
+                and then Before in 17_100 .. 18_000,
+                "RSM start reduced: the result names the start of the "
+                & "release speed monitoring for 30 km/h, the SBI1 of the "
+                & "EOA, at" & Integer_64'Image (Before)
+                & " cm before the EOA (3.13.9.4.6, 3.13.9.4.7)");
+      end;
    end Scenario_SDM_RSM_Start_Reduced;
 
    --  3.13.10.4.10.1, Tables 9 and 11: a train at a constant speed
