@@ -4,7 +4,7 @@
 frame Adhesion factors
 sequence Adhesion factors
 case Setup & Receive adhesion factors
-clause E6 todo 3.18.4.6.2 ; efs 3.18.4.6.2.2
+clause E6 done 3.18.4.6.2 ; efs 3.18.4.6.2.2
 step Setup
 sub Sub-step1
 init 100.0 FS
@@ -152,8 +152,8 @@ expect efs: Kernel.TrackDescription.AdhesionFactors.AdhFactorLength ( FIRST X IN
 expect efs: Kernel.TrackDescription.AdhesionFactors.AdhFactorLength ( LAST X IN Kernel.TrackDescription.AdhesionFactors.AdhFactors ) == 520.0
 case Receive new adhesion factors
 clause E3 done 3.7.3.1 l) ; efs 3.7.3.1.l
-clause E6 todo 3.18.4.6.2 ; efs 3.18.4.6.2
-clause E6 todo 3.18.4.6.2 ; efs 3.18.4.6.2.2
+clause E6 done 3.18.4.6.2 ; efs 3.18.4.6.2
+clause E6 done 3.18.4.6.2 ; efs 3.18.4.6.2.2
 clause - absent 3.18.4.6.1 ; efs 3.18.4.6.1
 step Receive new adhesion factors
 sub Sub-step1
@@ -172,7 +172,7 @@ expect efs: (LAST X IN Kernel.TrackDescription.AdhesionFactors.AdhFactors).Value
 expect efs: (LAST X IN Kernel.TrackDescription.AdhesionFactors.AdhFactors).Location == 3700.0
 case Check selection of slippery rail by the driver
 clause E6 todo 3.18.4.6.4 ; efs 3.18.4.6.4
-clause E6 todo 3.18.4.6.2.1 ; efs 3.18.4.6.2.1
+clause E6 done 3.18.4.6.2.1 ; efs 3.18.4.6.2.1
 step Default value
 sub Sub-step1
 expect efs: Kernel.TrackDescription.AdhesionFactors.SlipperyRailSelectedByDriver == False

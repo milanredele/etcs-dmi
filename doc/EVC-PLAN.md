@@ -5741,3 +5741,59 @@ round brief, which held, except the reverse chart that the margin agent
 needed in the release agent's reader (named, merged without conflict).
 Open items: doc/BACKLOG.csv (27 open after this round).
 
+
+### The SR distance as a target, the driver's slippery rail, the RSM start exposed, the route unsuitability (e5/sr-target, 2026-10-13)
+
+Premise checked at the source, and wrong: the end of the SR distance was
+already a target of `EVC_SDM` (3.13.8.2.1 d), 3.13.8.3.3, scenario
+SDM_SR). In 3131020_03 to _05 the on-board had no SR distance at all.
+SR was entered with D_NVSTFF infinite, and the national values of a
+group passed in SR were not applied. The sequences apply them at once.
+Their MRSP charts show the new V_NVSTFF from the group (also in
+4080410_01 and 3131040_43). Their comments place the end of the SR
+distance at the new D_NVSTFF from the SoM (3131020_03: 1150 m, _04: SvL
+at 1333 m). Decision: while the SR values are the national ones,
+national values in force taken in SR apply at once (4.4.11.1.6.3 and
+.6.4 read as "else the national values"). The SR speed limit changes,
+and the end of the SR distance counts from where SR was entered or
+Override activated (4.4.11.1.3.1 a)). The driver's values stay, and the
+RBC's distance still wins in `EVC_Radio_Authority.SR_Distance_Of`. This
+is in `EVC_Mission.Start_National_SR` / `Take_National_SR`, with scenario
+SR_National_Distance. The E4 integration scenario of
+`EVC_Test_Procedures` now takes its national packet after the driver's
+entry: taken before it, the packet would have placed the end 150 m from
+the override, behind the train.
+
+B361: the driver's adhesion choice was recorded in the JRU but never
+applied. `EVC_Stored_Information.Take_Driver_Adhesion` now applies it
+under Q_NVDRIVER_ADHES and resets it when the national values withdraw
+the permission (3.18.4.6.2.1). `Driver_Slippery_Rail` goes into the
+adhesion byte of MSG_STATUS (`EVC_DMI_Port.Status_Frame`,
+`EVC_Core.Send_Status`). The DMI already showed ST02 from that byte. The
+scenario is Driver_Adhesion, and 3130235_01 passes.
+
+B360, the on-board half: `EVC_SDM.Shown_At_T.RSM_Start` (ahead
+coordinates, like X_Est) and `RSM_Max_Safe` (the start compared with the
+max safe front end, the SBI2) for the release speed in force
+(`V_Release`). They are reachable through `EVC_Core.Supervision`, and
+SDM_RSM_Start_Reduced checks them. The runner's use is a later round.
+
+B034: scope only. Packet 70 is stored, but the comparison of 3.12.2.3
+with the Train Data is not made, so it comes first (backlog updated).
+
+EVC_Core edits: the call of `Take_Driver_Adhesion` in
+`Evaluate_Stored_Information` (its Global gains
+`EVC_Driver_Requests.State`), and `Status_Slip_Sent` in `Send_Status`
+and the refined state.
+
+Next failures named: 3131020_03 step 57 expects Indication and the
+emergency brake revoked while running with Q_NVEMRRLS 0 (B391); _04 step
+70 drives faster than the comment's 60 km/h at 850 m, so the EB comes
+earlier (curves triage); _05 step 53 expects the EB where
+Q_NVSBTSMPERM 1 permits the service brake. 3131040_43 counts the
+national distance from its reception, against the 3131020 family
+(Sddb8ef0b, s076). 4080410_01 now fails at step 104: the bench is
+faster after the national 80 km/h and passes the SBI of a 50 km/h
+target at the override (B390). 3131040_39 and _40 are blocked three
+steps earlier by their own reasons (Gamma, tool target), because the SR
+end is now a target.
