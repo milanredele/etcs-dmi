@@ -3281,6 +3281,45 @@ package body S076_Run is
                   end;
                end loop;
                return NJ (R_JRU_Not_Modelled, Img (Id) & " without bits");
+            when 13 =>
+               --  radio error (4.2.4.13): event 13, byte 2 M_ERROR
+               declare
+                  Wd : constant String := (if Line.Count > 4 then W (5) else "");
+                  E  : Integer := -1;
+               begin
+                  if Starts (Wd, "M_ERROR=") then
+                     E := Natural'Value (Wd (Wd'First + 8 .. Wd'Last));
+                  end if;
+                  --  the on-board records the errors it reports: radio
+                  --  message consistency (3) and sequence (4), not the
+                  --  safe radio connection error (5) of 3.16.3.4
+                  if E >= 0 and then E not in 3 | 4 then
+                     return NJ (R_JRU_Not_Modelled, "13.M_ERROR=" & Img (E));
+                  end if;
+                  return Check (Any_Rec (13, E, -1) = Positive,
+                                "JRU13 radio error"
+                                & (if E >= 0 then " M_ERROR" & Img (E) else "")
+                                & (if Positive then "" else " not"),
+                                "event 13");
+               end;
+            when 44 =>
+               --  the LSSMA displayed (4.2.4.44): the on-board's JRU port
+               --  has no event for it, the bench's DMI state is the
+               --  evidence, judged as the DMI step of the LSSMA; V_LSSMA
+               --  is symbolic in the sequences
+               declare
+                  Shown_Now : constant Boolean := B.State.LSSMA /= 16#FFFF#;
+               begin
+                  --  no record: no change of the LSSMA displayed, which the
+                  --  bench does not follow (4080100_04 step 113)
+                  if not Positive then
+                     return NJ (R_JRU_Not_Modelled, "44 not recorded");
+                  end if;
+                  return Check (Shown_Now = Positive,
+                                "JRU44 LSSMA shown"
+                                & (if Positive then "" else " not"),
+                                (if Shown_Now then "shown" else "not shown"));
+               end;
             when 12 =>
                if Line.Count > 4 then
                   return NJ (R_JRU_Not_Modelled, "12.M_ERROR");
@@ -3390,6 +3429,15 @@ package body S076_Run is
                   Map : constant JRU_Map_T := Message_Event (Id);
                   Found : Boolean := False;
                begin
+                  --  the records of a later phase (SUBSET-027 4.2.4.5, .7,
+                  --  .8, .26): radio infill and Euroloop (E7), NTC
+                  if Id in 5 | 8 then
+                     return NJ (R_Radio_Infill, "JRU " & Img (Id));
+                  elsif Id = 7 then
+                     return NJ (R_Euroloop, "JRU 7");
+                  elsif Id = 26 then
+                     return NJ (R_NTC, "JRU 26");
+                  end if;
                   if not Map.Known then
                      return NJ (R_JRU_Not_Modelled, Img (Id));
                   end if;
