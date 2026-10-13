@@ -189,11 +189,17 @@ package body S076_Run is
    --  the train moves backwards the reverse movement's chart where the
    --  sequence has one (B303: 3130232_17 and _18 ran their Reversing
    --  backwards at the forward chart's 40 to 60 km/h, the reverse one
-   --  says 13 km/h)
+   --  says 13 km/h); B160: the speed of the language for the chart's
+   --  drawing (S076_Sequences.Calibrated; the reverse chart is drawn
+   --  below the same zero, its speed without its sign)
    function Chart_Kmh return Long_Float is
      (if B.Direction < 0 and then Seq.Rev_Count > 0
-      then Chart_Speed_Reverse (Seq, Long_Float (B.Position) / 100.0)
-      else Chart_Speed (Seq, Long_Float (B.Position) / 100.0));
+      then Calibrated
+        (Seq, Chart_Speed_Reverse (Seq, Long_Float (B.Position) / 100.0)
+              + 2.0 * Seq.Chart_Zero)
+      elsif Seq.Chart_Count = 0 then -1.0
+      else Calibrated
+        (Seq, Chart_Speed (Seq, Long_Float (B.Position) / 100.0)));
 
    --  The speed charts are the reference of the speed (the driver of
    --  a sequence runs above a limit on purpose where the chart does); a

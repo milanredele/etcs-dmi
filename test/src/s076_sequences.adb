@@ -2,6 +2,7 @@
 --  A SUBSET-076 test sequence in memory, body.
 
 pragma Ada_2012;
+with Ada.Environment_Variables;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Scn_Reader; use Scn_Reader;
@@ -452,6 +453,121 @@ package body S076_Sequences is
       return True;
    end On_Control;
 
+   --  B160: the families of the drawings (see Calibrated): the zero
+   --  drawn and the middle of the scales that fit every chart of the
+   --  family in the SV30 corpus
+   type Family_T is record
+      Zero, Scale : Long_Float;
+   end record;
+   Families : constant array (1 .. 8) of Family_T :=
+     ((-1.9, 0.9585), (-1.8, 0.9675), (0.3, 1.078), (-0.6, 0.986),
+      (0.9, 1.0065), (0.5, 1.0815), (0.4, 1.0805), (-1.2, 0.9755));
+
+   function Family_Scale (Zero : Long_Float) return Long_Float is
+   begin
+      for F of Families loop
+         if abs (F.Zero - Zero) < 0.05 then
+            return F.Scale;
+         end if;
+      end loop;
+      return 0.0;
+   end Family_Scale;
+
+   --  the distance of D km/h scaled by K to the nearest multiple of 5
+   function Off_Grid (D, K : Long_Float) return Long_Float is
+     (abs (D * K - 5.0 * Long_Float'Rounding (D * K / 5.0)));
+
+   --  B160: the "mrsp" chart line: the zero and the plateaus, then the
+   --  scale of Calibrated
+   procedure On_Mrsp_Chart (S : in out Sequence_T; L : Line_T) is
+      Max_Plateaus : constant := 16;
+      P : array (1 .. Max_Plateaus) of Long_Float := (others => 0.0);
+      N, Count : Natural := 0;
+      Zero, Prev_X, Prev_V : Long_Float := 0.0;
+      Lo, Hi : array (1 .. 8) of Long_Float := (others => 0.0);
+      NI, Chosen : Natural := 0;
+      K : Long_Float;
+   begin
+      for I in 3 .. L.Count loop
+         Scn_Reader.Valid := True;
+         declare
+            W : constant String := Word (L, I);
+            X : constant Real := To_Real (Field (W, 1, ":"));
+            V : constant Real := To_Real (Field (W, 2, ":"));
+         begin
+            if Scn_Reader.Valid then
+               Count := Count + 1;
+               if Count = 1 then
+                  Zero := V;
+               elsif X > Prev_X and then abs (V - Prev_V) < 0.001
+                 and then V - Zero > 3.0 and then N < Max_Plateaus
+                 and then (for all J in 1 .. N =>
+                             abs (P (J) - (V - Zero)) > 0.001)
+               then
+                  N := N + 1;
+                  P (N) := V - Zero;
+               end if;
+               Prev_X := X;
+               Prev_V := V;
+            end if;
+         end;
+      end loop;
+      --  S076_RAW_CHART=1: the charts as drawn (for comparison)
+      if Count = 0 or else Ada.Environment_Variables.Exists ("S076_RAW_CHART")
+      then
+         return;
+      end if;
+      for I in 0 .. 400 loop
+         K := 0.90 + Long_Float (I) * 0.0005;
+         if N > 0 and then (for all J in 1 .. N => Off_Grid (P (J), K) <= 0.5)
+         then
+            if NI > 0 and then Hi (NI) >= K - 0.0006 then
+               Hi (NI) := K;
+            elsif NI < Lo'Last then
+               NI := NI + 1;
+               Lo (NI) := K;
+               Hi (NI) := K;
+            end if;
+         end if;
+      end loop;
+      for I in 1 .. NI loop
+         if Family_Scale (Zero) in Lo (I) - 0.0005 .. Hi (I) + 0.0005
+           or else NI = 1
+         then
+            Chosen := I;
+         end if;
+      end loop;
+      if Chosen = 0 and then NI > 0 then
+         Chosen := 1;
+         for I in 2 .. NI loop
+            if abs (1.0 - (Lo (I) + Hi (I)) / 2.0)
+              < abs (1.0 - (Lo (Chosen) + Hi (Chosen)) / 2.0)
+            then
+               Chosen := I;
+            end if;
+         end loop;
+      end if;
+      if Chosen > 0 then
+         declare
+            K0 : constant Long_Float := (Lo (Chosen) + Hi (Chosen)) / 2.0;
+            Num, Den : Long_Float := 0.0;
+         begin
+            for J in 1 .. N loop
+               Num := Num + 5.0 * Long_Float'Rounding (P (J) * K0 / 5.0) * P (J);
+               Den := Den + P (J) * P (J);
+            end loop;
+            K := Long_Float'Min (Hi (Chosen),
+                                 Long_Float'Max (Lo (Chosen), Num / Den));
+         end;
+      elsif Family_Scale (Zero) > 0.0 then
+         K := Family_Scale (Zero);
+      else
+         return;
+      end if;
+      S.Chart_Zero := Zero;
+      S.Chart_Scale := K;
+   end On_Mrsp_Chart;
+
    procedure On_Line (L : Line_T; Line_No : Positive) is
       S : Sequence_T renames Cur.all;
       K : constant String := Word (L, 1);
@@ -775,6 +891,9 @@ package body S076_Sequences is
                end if;
             end;
          end loop;
+      elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "mrsp"
+      then
+         On_Mrsp_Chart (S, L);
       elsif K = "chart" and then L.Count >= 2 and then Word (L, 2) = "speedprofile"
         and then S.Chart_Count = 0
       then
@@ -813,6 +932,8 @@ package body S076_Sequences is
       Loaded.Timer_Count := 0;
       Loaded.Chart_Count := 0;
       Loaded.Rev_Count := 0;
+      Loaded.Chart_Zero := 0.0;
+      Loaded.Chart_Scale := 1.0;
       Loaded.Truncated := False;
       Loaded.Workbook := False;
       Loaded.WB_Length := 0;

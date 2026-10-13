@@ -268,6 +268,10 @@ package S076_Sequences is
       --  its points by increasing location, the speed without its sign)
       Rev       : Points_T;
       Rev_Count : Natural := 0;
+      --  B160: the axis of its charts (see Calibrated): the speed drawn
+      --  for standstill and the scale; 0 and 1 when not calibrated
+      Chart_Zero  : Long_Float := 0.0;
+      Chart_Scale : Long_Float := 1.0;
       Truncated : Boolean := False;
       --  a "workbook" line: the braking curves are those of the ERA
       --  braking curve workbook's train (not the Train Data entered)
@@ -311,6 +315,28 @@ package S076_Sequences is
    --  B303: the same of the reverse movement's chart, -1.0 without one
    function Chart_Speed_Reverse (S : Sequence_T; X_M : Long_Float)
      return Long_Float;
+
+   --  B160: the speed of the language for a speed V_Kmh read from a
+   --  chart of S (forward or reverse, without its sign), km/h, at least
+   --  0. The charts are drawings: their axis is offset (standstill is
+   --  drawn at -2.0 to +4.0 km/h, the first point of the "mrsp" chart)
+   --  and scaled (0.95 to 1.09). The plateaus of the "mrsp" chart are
+   --  speeds of the language (multiples of 5 km/h: V_STATIC, V_MAIN, the
+   --  national values), so the scale is the one that puts every plateau
+   --  higher than 3 km/h above the zero within 0.5 km/h of a multiple of
+   --  5 km/h, searched from 0.90 to 1.10 by 0.0005; within the
+   --  interval of the scales that fit, the least squares fit of the
+   --  plateaus to their multiples of 5. Where more than one interval
+   --  fits (too few plateaus: 39.6 and 80.9 fit 40 and 80, or 45 and
+   --  90) the one holding the scale of the chart's family (the drawings
+   --  of the corpus fall into families by their zero, each with one
+   --  scale: zero -1.9, 415 sequences of SV30, 0.954 to 0.963; -1.8,
+   --  221, 0.962 to 0.973; 0.3, 174, 1.065 to 1.091; and five smaller
+   --  ones), else the one nearest 1; where none fits, the family's
+   --  scale, else the chart is taken as drawn
+   function Calibrated (S : Sequence_T; V_Kmh : Long_Float)
+     return Long_Float
+   is (Long_Float'Max (0.0, (V_Kmh - S.Chart_Zero) * S.Chart_Scale));
 
    --  The distance from the target of Column of C at V_Kmh, m, linear
    --  between the two sampled rows around it; No_Value outside the rows
