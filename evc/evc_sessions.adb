@@ -1065,17 +1065,25 @@ is
         EVC_National_Values.Current;
       Up   : constant Boolean :=
         Sv /= R.No_Session and then R.Established (Session_T (Sv));
+      Gone : constant Boolean :=
+        (if Ref_On then not (Up or else In_L2)
+         else not Up or else not R.Info (Session_T (Sv)).Received);
+      Young : constant Boolean :=
+        (if Gone then False
+         elsif Ref_On
+         then Elapsed (Ref_Ms, Now) <= Unsigned_64 (NVal.T_NVCONTACT)
+         else Age_Ms (R.Info (Session_T (Sv)).Last_Received, Now)
+                <= Unsigned_64 (NVal.T_NVCONTACT));
+      --  a message received since the expiry
+      Fresh : constant Boolean :=
+        not Gone and then not Ref_On
+        and then R.Info (Session_T (Sv)).Received_Ms > NV.Since;
    begin
-      if In_Hole
-        or else (if Ref_On
-                 then not (Up or else In_L2)
-                      or else Elapsed (Ref_Ms, Now)
-                                <= Unsigned_64 (NVal.T_NVCONTACT)
-                 else not Up
-                      or else not R.Info (Session_T (Sv)).Received
-                      or else Age_Ms (R.Info (Session_T (Sv)).Last_Received,
-                                      Now)
-                                <= Unsigned_64 (NVal.T_NVCONTACT))
+      --  3.16.3.4.5: a reaction once triggered ends with a new message
+      --  or at standstill, not when other national values lengthen
+      --  T_NVCONTACT (decision: such values keep it)
+      if In_Hole or else Gone
+        or else (Young and then (not NV.Expired or else Fresh))
       then
          NV := (others => <>);
          return;

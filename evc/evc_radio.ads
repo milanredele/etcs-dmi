@@ -265,6 +265,19 @@ is
      (T_TRAIN_T ((Now_Ms / 10) mod (2**32 - 1)))
      with Post => T_Train_At'Result /= T_TRAIN_Unknown;
 
+   --  The age of the time stamp Stamp at the on-board time Now_Ms, in
+   --  units of T_TRAIN (modulo the clock); 0 for a stamp up to half the
+   --  clock ahead of it: a stamp Send raised above the clock in the cycle
+   --  it was sent (3.16.3.3.2) and answered in that cycle is not old
+   function Stamp_Age (Stamp : T_TRAIN_T; Now_Ms : Time_Ms_T)
+     return Time_Ms_T
+   is ((if (Time_Ms_T (T_Train_At (Now_Ms)) + (2**32 - 1)
+            - Time_Ms_T (Stamp)) mod (2**32 - 1) > (2**32 - 1) / 2
+        then 0
+        else (Time_Ms_T (T_Train_At (Now_Ms)) + (2**32 - 1)
+              - Time_Ms_T (Stamp)) mod (2**32 - 1)))
+     with Post => Stamp_Age'Result <= (2**32 - 1) / 2;
+
    --  The on-board time of the time stamp Stamp (T_TRAIN of a track to
    --  train message: the T_TRAIN of the train to track message it
    --  answers, 3.16.3.1.2) at the on-board time Now_Ms: the latest
@@ -274,9 +287,7 @@ is
      return Time_Ms_T
    is (if Stamp = T_TRAIN_Unknown then Now_Ms
        else Now_Ms - Time_Ms_T'Min
-              (Now_Ms,
-               10 * ((Time_Ms_T (T_Train_At (Now_Ms)) + (2**32 - 1)
-                      - Time_Ms_T (Stamp)) mod (2**32 - 1))))
+              (Now_Ms, 10 * Stamp_Age (Stamp, Now_Ms)))
      with Post => Time_Of_Stamp'Result <= Now_Ms;
 
    --  The context of a cycle, for the halves (EVC_Core builds it)
@@ -446,8 +457,12 @@ is
    --  ETCS_Message) to be sent in the session S. Never fails: when S is
    --  not Usable or the outbox has no room, the message is refused and
    --  counted (Refused). Queued, its T_TRAIN is the last one sent in S
-   --  (3.16.3). Send does not look at the state of the session: what
-   --  may be sent when (3.5.4.5, 3.5.5.3) is the halves'.
+   --  (3.16.3), raised to one unit above the one sent before in S when
+   --  it is not above it (3.16.3.3.2: two messages of one cycle); the
+   --  halves read the stamp of what they sent from Info (S).Last_Sent.
+   --  Send does not look at the state of the session: what may be sent
+   --  when (3.5.4.5, 3.5.5.3) is the halves'.
+   --  @req 3.16.3.3.2
    procedure Send (S : Session_T; Message : EVC_Bytes.Byte_Array)
      with Global => (In_Out => (State, Queue)),
           Pre  => Valid_RTM (Message),

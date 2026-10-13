@@ -624,7 +624,9 @@ is
    is
    begin
       TD_Awaited := True;
-      TD_Stamp := T;
+      --  3.16.3.3.2: the stamp EVC_Radio.Send gave the message
+      TD_Stamp := (if Sent and then R.Info (S).Sent then R.Info (S).Last_Sent
+                   else T);
       TD_Since := Now;
       TD_S := S;
       R.Set_Train_Data_Acknowledged (False);

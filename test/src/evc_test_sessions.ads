@@ -74,5 +74,9 @@ package EVC_Test_Sessions is
    procedure Scenario_Session_Driver_Contact;
    --  3.16.3.4.1.3
    procedure Scenario_Session_Hole_Contact;
+   --  3.16.3.3.2
+   procedure Scenario_Session_Stamp_Increment;
+   --  3.16.3.4.5 a)
+   procedure Scenario_Session_NVCONTACT_Values;
 
 end EVC_Test_Sessions;

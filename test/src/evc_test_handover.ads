@@ -53,5 +53,9 @@ package EVC_Test_Handover is
    --  revocation of an emergency stop of the Accepting RBC are rejected,
    --  not taken at the switch
    procedure Scenario_Handover_Exception_2;
+   --  3.16.3.4.1.2
+   procedure Scenario_Handover_Contact;
+   --  3.5.3.8 f)
+   procedure Scenario_Handover_Rear_Border;
 
 end EVC_Test_Handover;

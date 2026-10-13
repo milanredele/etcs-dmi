@@ -20,6 +20,7 @@ with EVC_Sessions;
 with EVC_Text_Messages;
 with EVC_Stored_Information;
 with EVC_Test_Support;    use EVC_Test_Support;
+with Sim_Telegrams;
 with Interfaces;          use Interfaces;
 
 package body EVC_Test_Handover is
@@ -640,5 +641,104 @@ package body EVC_Test_Handover is
              "handover exception 2: nothing of them taken at the switch "
              & "(4.8.2.1 c)");
    end Scenario_Handover_Exception_2;
+
+   --  A message 24 without packets from the RBC of session S
+   procedure Give_Plain (S : Natural) is
+      V : ETCS_Message.Value_Array := (others => 0);
+   begin
+      V (3) := Now_T;
+      Give_Radio_Message (S, Message_Of (MCat.Track_M24, V));
+      Stand;
+   end Give_Plain;
+
+   --  Ms of time at standstill
+   procedure Wait (Ms : Integer) is
+   begin
+      Sample (0);
+      EVC_Core.Tick (Ms);
+      Take;
+   end Wait;
+
+   --  In level 2 with T_NVCONTACT 10 s and the reaction train trip, the
+   --  session with the Handing Over RBC 300 established, the order to
+   --  hand over to 400 at 300 m taken, the session with 400 established
+   --  when Accepting
+   procedure Setup_Contact (Accepting : Boolean) is
+      NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+   begin
+      NV.T_NVCONTACT := 10;
+      NV.M_NVCONTACT := 0;
+      Start_X;
+      Order_Group (10, 100);
+      Carry (Track_N, 1, NV);
+      Add_Group (Group (20, 300));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand;
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24 (10, True, 200, 400));
+      Stand;
+      if Accepting then
+         Establish (2);
+      end if;
+   end Setup_Contact;
+
+   procedure Scenario_Handover_Contact is
+   begin
+      --  before the switch: the Handing Over RBC's latest message
+      Setup_Contact (Accepting => True);
+      Give_Plain (1);
+      Wait (6_000);
+      Give_Plain (2);
+      Check (R.Supervising = 1 and then R.Accepting = 2
+             and then not EVC_Sessions.T_NVCONTACT_Trip,
+             "handover contact: 6 s after a message of 300, 400 accepting");
+      Wait (5_000);
+      Check (EVC_Sessions.T_NVCONTACT_Trip,
+             "handover contact: 11 s after the Handing Over RBC's latest "
+             & "message T_NVCONTACT has passed, the Accepting RBC's of 5 s "
+             & "ago does not count (3.16.3.4.1.2)");
+
+      --  after the switch: the Accepting RBC's latest message
+      Setup_Contact (Accepting => True);
+      Give_Plain (1);
+      Give_Plain (2);
+      Run_X (32_000);
+      Give_Plain (2);
+      Check (R.Supervising = 2 and then not EVC_Sessions.T_NVCONTACT_Trip,
+             "handover contact: the border passed, 400 supervises");
+      Wait (6_000);
+      Give_Plain (1);
+      Check (not EVC_Sessions.T_NVCONTACT_Trip,
+             "handover contact: 6 s after the message of 400");
+      Wait (5_000);
+      Check (EVC_Sessions.T_NVCONTACT_Trip,
+             "handover contact: after the switch the Accepting RBC's "
+             & "latest message is compared, 11 s old (3.16.3.4.1.2)");
+   end Scenario_Handover_Contact;
+
+   procedure Scenario_Handover_Rear_Border is
+      N : Natural;
+   begin
+      Setup_Contact (Accepting => False);
+      Give_Radio_Event (2, Connection_Set_Up);
+      Stand;
+      Check (R.Being_Established (2) and then R.Info (2).RBC.NID_RBC = 400,
+             "handover rear: the session with 400 being established");
+      Run_X (32_000);
+      Check (R.Being_Established (2),
+             "handover rear: the border passed by the front, the session "
+             & "with 400 still being established");
+      N := EVC_Sessions.Position_Reports_Sent;
+      Run_X (60_000);
+      Stand;
+      Check (R.Supervising = 2 and then R.Being_Established (2)
+             and then EVC_Sessions.Position_Reports_Sent > N,
+             "handover rear: the min safe rear end past the border, "
+             & "reported to 300 (3.15.1.3.1 c): the "
+             & "session with 400 being established, supervising since the "
+             & "switch, kept (3.5.3.8 f, decision: not the sessions with "
+             & "the supervising or accepting role)");
+   end Scenario_Handover_Rear_Border;
 
 end EVC_Test_Handover;
