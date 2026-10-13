@@ -5947,3 +5947,69 @@ Chart families: S4ad45e1a 3 -> 0, S1fd323b5 4 -> 1, S749b2957 9 -> 12,
 S7b03e0c6 9 -> 12, S69f1f87e 14 -> 17 (sequences that run further and
 stop at a later chart step). Backlog: B160 done, B370 updated, B410 to
 B412 opened.
+
+### E5 integration after the twenty-third round (2026-10-13)
+
+Merged: e5/runner-jru10 (`expect JRU record 10` judged from the bench's
+RTM capture, the same sent message satisfying the RTM expectation before
+it, B051: 5505 steps judged and no sequence outcome changed; record 21's
+symbol bits ST02 to ST06, record 13 for M_ERROR 3 and 4, record 44 from
+the DMI state; records 5, 7, 8 and 26 under their phase's reason; the
+steps not judged 13347 -> 6294; the premise was wrong twice: 494 files,
+not 1143, and record 10 follows its RTM expectation; B400 to B409),
+e5/session-close (a time stamp increment between consecutive messages,
+`EVC_Radio.Send` raising a stamp not above the last one and both halves
+reading the stamp back, 3.16.3.3.2, B341; the handover's contact
+supervision and the rear border scenarios, B342, 3.16.3.4.1.2.1 n/a
+with two sessions; the tag of 3.10.3.2, B351; the T_NVCONTACT reaction
+no longer ended by national values that lengthen it, 3.16.3.4.5 a,
+found by B340; B350 is the sequence's data; B380), e5/sr-target (the
+brief's premise was wrong: the SR distance was a target already; the
+cause of 3131020_03 to _05 is that national values received in SR were
+never applied: they apply at once while the SR values are the national
+ones, 4.4.11.1.3.1 a, 4.4.11.1.6.2, `EVC_Mission.Take_National_SR`; the
+driver's slippery rail applied when Q_NVDRIVER_ADHES permits and shown
+as ST02 through MSG_STATUS, 3.18.4.6, B361, 3130235_01 passes;
+`EVC_SDM.Shown_At_T` carries the RSM start, B360's on-board half; B034
+scoped: the comparison of 3.12.2.3 comes first; B390, B391) and
+e5/runner-chart (the speed charts calibrated per sequence from their
+MRSP line, zero and scale by family, `S076_Sequences.Calibrated`, B160
+done, the 17 sequences of the snapping trial unchanged; the workbook's
+gradient profile read into the tool margin, B370 partial; the chart
+after a brake was not the chart: B411 the EB kept after SR to FS, B412
+the PBD speed; B410 the override refused on V_max against
+V_NVALLOWOVTRP).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the triage and the baseline by signature or sequence id with
+the branch's version of a line it changed; the union of the four showed
+6 regressions and 6 improvements against the merged baselines, all
+understood (3131060_07 the B410 family at the calibrated 58 km/h,
+triaged onboard; 5110400_01 blocked nine steps earlier by its Gamma
+reason now that the SR values apply at once), re-recorded. Decision on
+B409 at integration: an unknown NID_MESSAGE is ignored and recorded, not
+a message consistency error (the conformance test's own comment,
+3.17.3.11); to do next round.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12075
+checks, dmi_test 2168), the full proof 11343 checks, 0 unproved (margin
+47726 steps), cross build and stack (margin 5696 B), wasm and both
+smokes 0 failures. SUBSET-076: 846 / 1250 / 1094 before, 863 / 1239 /
+1088 after, steps not judged 13347 -> 6260, 0 regressions, 0 untriaged.
+Matrix: 315 -> 307 clauses left in all phases (E5: 14 -> 10).
+
+Measurements (requests by message id, duration, final context, cost):
+session-close 131 / 24 min / 210k / 9.8; sr-target 148 / 26 min / 234k
+/ 11.3; runner-jru10 100 / 23 min / 150k / 5.3; runner-chart 131 / 28
+min / 189k / 9.4. Two over their budgets (sr-target by about 18 calls,
+runner-chart by 2), every "Done" list complete.
+
+Lessons: three brief premises wrong (the SR distance target existed;
+record 10 follows its message and 494 files hold it; the chart after a
+brake was the on-board), each caught at the source; a count from a
+grep in the coordinator's survey (1143 files) was the count of all
+files, not of the matches: check the command, not only the number; a
+backlog line edited by hand at integration needs the quoting of its
+commas, the check caught it. Open items: doc/BACKLOG.csv (35 open after
+this round).
+
