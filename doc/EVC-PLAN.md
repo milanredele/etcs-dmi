@@ -5741,3 +5741,57 @@ round brief, which held, except the reverse chart that the margin agent
 needed in the release agent's reader (named, merged without conflict).
 Open items: doc/BACKLOG.csv (27 open after this round).
 
+
+### The messages to the RBC as juridical records (e5/runner-jru10, 2026-10-13)
+
+Premises checked at the source: 494 of the 1144 sv30 sequences expect
+JRU record 10, 3310 times (3207 bare, the others with NID_MESSAGE,
+M_VERSION, NID_ENGINE or NID_PACKET). The record follows its
+`expect RTM message` (3300 of 3310), it does not precede it: B051's
+"625 pairs" are the records between two RTM expectations, which belong
+to the one before. So no reordering in `Step_Order` was needed. The
+on-board's JRU port has no event for a sent message.
+
+B051: `S076_Run.JRU_Sent` judges record 10 from the bench's RTM capture
+of the step's window. The message is the one the line names, else the
+one of the RTM expectation directly before (`no-message` included). It
+is judged by `Radio_Expect` without that step's packets, with the
+record's own fields, so one message satisfies both. NID_PACKET counts as
+a packet. A record 10 that names a message from the RBC (4100103_28 step
+94: NID_MESSAGE 3) is a SUBSET-076 defect. A record of no named message
+passes on any message sent. Result: 5505 steps judged, no outcome
+changed. The 532 new failures all come after the first failure of their
+sequence.
+
+The other records, by count of steps not judged over the three versions
+(13347 before the round, 6294 after):
+
+- Judged now from what the on-board or the bench shows:
+  - record 21 bits 39 to 43 (ST02 to ST06, 1506 steps), from the DMI
+    state the DMI step of the same symbol reads
+    (`S076_Tables.Symbol_Shown`);
+  - record 13 with M_ERROR 3 or 4 (event 13);
+  - record 44 when expected (the LSSMA displayed).
+- Under the reason of their phase: records 5 and 8 (radio infill, 727),
+  7 (Euroloop) and 26 (NTC).
+- Not written by the on-board (kind onboard):
+  - 20 for a change of a speed or distance (690, B400);
+  - 13 with M_ERROR 5 (14, B401);
+  - 51 (114, B402);
+  - 39 (71, B403);
+  - 24 and 48 (55 and 15, B404);
+  - 30, 31 and 32 (50, 15 and 31, B405).
+- Not read by the runner yet (kind runner):
+  - record 21's other bits and record 23 (707 and 686, B406);
+  - the header fields of ALL, NID_LRBG first (368, B407);
+  - 11, 12.M_ERROR and an absent 44 (150, B408).
+
+Judging record 13 revealed one finding. In 8040400_01, step 64 expects
+no radio error after the unknown message 254. Ours records one and
+reports it, by the decision of e5/jru-radio (3.16.1.1.1). The sequence
+fails at step 64 in all three versions (SV30 passed before). This is
+triaged onboard (Se89b51af) and left open for the session owner (B409).
+
+SUBSET-076: 846 / 1250 / 1094 before, 845 / 1251 / 1094 after. The
+baseline was re-recorded with that one understood regression; 0
+untriaged. Backlog: B051 done, B400 to B409 opened.
