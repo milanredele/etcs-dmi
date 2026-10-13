@@ -72,7 +72,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.3.8 c),3,x,,,,,E5,done,EVC_Sessions.Apply_Order -> Terminate_Session [E5 session]
 3.5.3.8 d),3,x,,,,,E5,done,"EVC_Level_Sessions.Evaluate (the min safe rear end past the border out of level 2, Border_Passed, with or without a supervised session) calls EVC_Sessions.Abort_Establishment; evc_test Scenario_L2_Exit_Aborts_Establishment [E5 session]"
 3.5.3.8 e),3,x,,,,,E5,done,EVC_Sessions.Establish -> Terminate_Session [E5 session]
-3.5.3.8 f),3,x,,,,,E5,partial,EVC_Sessions.Handover.Evaluate (Rear_Passed: the rear border trigger of EVC_Position) and EVC_Sessions.Apply_Handover (Abort_Being_Established; decision: not the sessions with the supervising or accepting role); no scenario of its own yet [E5 session]
+3.5.3.8 f),3,x,,,,,E5,done,"EVC_Sessions.Handover.Evaluate (Rear_Passed: the rear border trigger of EVC_Position) and EVC_Sessions.Apply_Handover (Abort_Being_Established; decision: not the sessions with the supervising or accepting role: the session with the Accepting RBC takes its role from its set-up request, EVC_Sessions.Handover.Find_Accepting, and is kept); evc_test Scenario_Handover_Rear_Border [E5 session]"
 3.5.3.8 g),3,x,,,,,E5,done,"EVC_Sessions.Stop_Attempts (the engine reaching the hole: a session being established closed and released, set up again by 3.5.3.4 e); evc_test Scenario_Session_Hole_Rows [E5 session]"
 3.5.3.8 h),3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
 3.5.3.8 i),3,x,,,,,E5,done,EVC_Sessions.Apply_Network (3.18.4.3.6.1: Terminate_Session aborts a session being established); evc_test Scenario_Session_Registration [E5 session]
@@ -935,8 +935,8 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.3.3.3,3,x,x,,,,E5,done,EVC_Sessions.Take_Message (Newer: an older time stamp ignored) [E5 session]
 3.16.3.4.1,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Contact (the supervising RBC, any level); evc_test session_nvcontact [E5 session]"
 3.16.3.4.1.1,3,x,,,,,E5,done,"EVC_Sessions.Evaluate (Ref_On, Ref_Ms at the switch to level 2 with no session established, until a message) and EVC_Sessions.Supervise_Contact (decision: supervised without a session while in level 2); evc_test Scenario_L2_Switch_Contact [E5 session]"
-3.16.3.4.1.2,3,x,,,,,E5,partial,"EVC_Sessions.Supervise_Contact supervises the session with the supervising role: the Handing Over RBC until the switch (EVC_Sessions.Handover.Switch), the Accepting RBC after it; no scenario of its own yet [E5 session]"
-3.16.3.4.1.2.1,3,x,,,,,E5,todo,[E5 session]
+3.16.3.4.1.2,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Contact supervises the session with the supervising role: the Handing Over RBC until the switch (EVC_Sessions.Handover.Switch), the Accepting RBC after it; evc_test Scenario_Handover_Contact [E5 session]"
+3.16.3.4.1.2.1,3,x,,,,,E5,n/a,"n/a: an announcement never changes the Handing Over RBC in this on-board: it handles two sessions (EVC_Config Radio_Sessions 2), 3.15.1.3.2 and 3.15.1.3.2.4 are n/a, and a new order keeps the supervising RBC as the Handing Over one (3.15.1.3.2.3, EVC_Sessions.Handover.Apply_Order) [E5 session]"
 3.16.3.4.1.3,3,x,,,,,E5,done,"EVC_Sessions.Supervise_Contact (stopped while In_Hole) and EVC_Sessions.Evaluate (Ref_Ms the time the engine left the hole, until a message); evc_test Scenario_Session_Hole_Contact [E5 session]"
 3.16.3.4.3,3,x,,,,,E5,done,EVC_Sessions.Supervise_Contact (60 s later released and set up again); evc_test session_nvcontact [E5 session]
 3.16.3.4.4,3,x,,,,,E5,done,"EVC_Sessions (DMI entry 4) and EVC_Procedures (trip reason Communication_Lost, entry 5); evc_test session_nvcontact, _nvcontact_brake [E5 session]"

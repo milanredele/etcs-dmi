@@ -98,7 +98,7 @@ is
    --  the messages of the session (3.5: 32, 39, ...), the acceptance of
    --  4.8; Verdict says what becomes of it
    --  @req 3.5.5.2 c), 3.5.5.6, 3.15.1.3.5, 3.15.1.3.6, 3.16.3.1.1.2
-   --  @req 3.16.3.3.3, 3.16.3.5.1
+   --  @req 3.10.3.2, 3.16.3.3.3, 3.16.3.5.1
    procedure Take_Message (S       : EVC_Radio.Session_T;
                            Now_Ms  : EVC_Radio.Time_Ms_T;
                            Verdict : out Verdict_T)

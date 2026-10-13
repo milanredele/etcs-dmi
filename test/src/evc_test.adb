@@ -288,6 +288,8 @@ begin
    EVC_Test_Handover.Scenario_Handover_Ack_Missing;
    EVC_Test_Handover.Scenario_Handover_Rear_Repeat;
    EVC_Test_Handover.Scenario_Handover_Exception_2;
+   EVC_Test_Handover.Scenario_Handover_Contact;
+   EVC_Test_Handover.Scenario_Handover_Rear_Border;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
    Scenario_RBC;
