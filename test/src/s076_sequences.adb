@@ -229,6 +229,7 @@ package body S076_Sequences is
    --  (its cells come before its "curves" blocks)
    WB_Target : Long_Float := No_Value;
    WB_Flat   : Boolean := True;
+   WB_Grades : Grades_T;
    --  B290, B291: the factor sheet and option buttons of the open
    --  workbook
    WB_Cells  : Sheet_T;
@@ -326,6 +327,7 @@ package body S076_Sequences is
             S.Curves (Curve_Set).Twin := (others => <>);
             S.Curves (Curve_Set).Target_Kmh := WB_Target;
             S.Curves (Curve_Set).Flat := WB_Flat;
+            S.Curves (Curve_Set).Grades := WB_Grades;
             S.Curves (Curve_Set).Cells := WB_Cells;
             Curve_Map := (others => -1);
          end if;
@@ -806,6 +808,7 @@ package body S076_Sequences is
          Curve_Set := 0;
          WB_Target := No_Value;
          WB_Flat := True;
+         WB_Grades := (others => <>);
          WB_Cells := (others => <>);
       elsif K = "cell" and then L.Count = 5 and then Word (L, 2) = "Integrated"
         and then Word (L, 3) = "correction"
@@ -864,6 +867,39 @@ package body S076_Sequences is
                WB_Target := Curve_Value (Word (L, 3));
             elsif L.Count = 3 and then Word (L, 2) = "Track!E2" then
                WB_Cells.Release_Kmh := Curve_Value (Word (L, 3));
+            elsif L.Count = 3 and then Word (L, 2) = "Track!B3"
+              and then Curve_Value (Word (L, 3)) /= No_Value
+            then
+               WB_Grades.Target_M := Curve_Value (Word (L, 3));
+            elsif L.Count = 3 and then Word (L, 2)'Length > 7
+              and then Word (L, 2) (Word (L, 2)'First .. Word (L, 2)'First + 6)
+                       in "Track!I" | "Track!J"
+              and then Word (L, 2) (Word (L, 2)'First + 7 .. Word (L, 2)'Last)
+                       not in "1" | "2"
+              and then Curve_Value (Word (L, 3)) /= No_Value
+            then
+               --  B370: the gradient profile's boundaries and gradients,
+               --  in the order of the rows
+               declare
+                  G : Grades_T renames WB_Grades;
+                  X : constant Long_Float := Curve_Value (Word (L, 3));
+               begin
+                  if Word (L, 2) (Word (L, 2)'First + 6) = 'I' then
+                     if G.Bound_Count < Max_Grades then
+                        G.Bound_Count := G.Bound_Count + 1;
+                        G.Bounds (G.Bound_Count) := X;
+                     end if;
+                  elsif G.Grade_Count < Max_Grades then
+                     G.Grade_Count := G.Grade_Count + 1;
+                     G.Permil (G.Grade_Count) := X;
+                  end if;
+               end;
+               if Word (L, 2) (Word (L, 2)'First + 6) = 'J'
+                 and then Curve_Value (Word (L, 3)) /= 0.0
+               then
+                  --  a gradient value of the profile other than 0
+                  WB_Flat := False;
+               end if;
             elsif L.Count = 3 and then Word (L, 2)'Length > 7
               and then Word (L, 2) (Word (L, 2)'First .. Word (L, 2)'First + 6)
                        = "Track!J"
@@ -947,6 +983,7 @@ package body S076_Sequences is
       In_P3 := False;
       WB_Target := No_Value;
       WB_Flat := True;
+      WB_Grades := (others => <>);
       WB_Cells := (others => <>);
       Workbook_Name := (others => <>);
       Curve_Set := 0;

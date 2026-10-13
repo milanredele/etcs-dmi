@@ -107,7 +107,7 @@ S7b03e0c6,model,a group outside the SH list read while the train is beyond the s
 Safc57294,model,3.6.8: the runner's odometer degradation reaches the safety threshold at another distance than the sequence's (implementation dependent step)
 S6fbcb091,model,a mode profile at a further location taken at once: the train runs past the start of the profile before the step (chart)
 S2976e4ba,model,the speed of "start moving" after a stop (chart): the protection is not reached
-Se041b7f8,model,the train's speed after an EB (the chart keeps it running)
+Se041b7f8,model,"the train's speed after an EB (the chart keeps it running) e5/runner-chart: not the chart: the SR ceiling EB kept after the switch to FS under the FS MRSP, the sequence expects it revoked at the mode change (B411)"
 S6cedaecc,model,the mode profile's acknowledgement removed by the train passing its location (chart and distances)
 S5ea84fdd,model,see S6cedaecc
 S651d8d0e,model,see S6cedaecc
@@ -142,7 +142,7 @@ S256875a4,dmi,the speed and distance information in SR / OS / SH after the drive
 S4a8f271f,dmi,the Level button disabled (DMI Table 33 #5) in the state of the step
 S9d052087,dmi,the Train data button disabled (DMI Table 33 #3) in the state of the step
 S607331e5,dmi,the Start button disabled (DMI Table 33 #1) in the state of the step
-S560e94da,dmi,the EOA button disabled (DMI Table 34) at the speed of the step (see S122decbf)
+S560e94da,dmi,"the EOA button disabled (DMI Table 34) at the speed of the step (see S122decbf) e5/runner-chart: 3131060_08 step 60 (3 SV) at the calibrated chart's 58 km/h, the speed the sequence names, under V_NVALLOWOVTRP 60: refused as V_max is compared (5.8.2.1 a), B410)"
 S362493f1,model,the level selected where the sequence's columns keep N/A
 S26bf650c,s076,power off in IS: the sequence keeps IS after the power off, the on-board is in No Power
 S363c8035,model,the Driver ID window of the Start Up: the sequence starts without the cab activation the start of mission needs
@@ -238,7 +238,7 @@ Sadfc7768,model,"e5/radio-geo-buffer: 4080415_01 step 297 (the driver presses th
 Sb3cbbec4,onboard,"e4/ls-display: a toggle off order from the Accepting RBC taken after the handover, to be rejected by 4.8.2.1 c) exception 2 (B092; 4080100_04 step 124)"
 S9f4f23d2,model,"e4/ls-display-3, traced 4080300_17 step 88: packet 80 of message 3 at 650 m gives LS from LRBG BG2d (400 m) + 50 for 220 m and OS + 270 (incremental, 3.6.3.2.4 a, 7.5.1.14) for 300 m, so 450-670 and 720-1020; the comment wants the max safe front end inside the OS area at 650 m, a confidence interval over 70 m; the bench gives 30 m (Q_LOCACC) + 1 % odometry, so the min safe front end leaves the LS area with no area overlapped and the on-board goes to FS (conditions [72] to [76] as specified)"
 S18160388,s076,"e4/ls-display-3, traced 4100103_22 step 125: the Acknowledge LS symbol is shown in FS (step 124 passes), the sequence expects DMI_SYMB_STATUS Bit36, the LS mode symbol (45 of 48 uses of Bit36 in sv30 go with the LS symbol, Bit37 54 times with Acknowledge LS)"
-S793ccb34,onboard,"3.6.8, 4.5.2 Table: Odometer impaired shown in SR where the sequence expects the monitoring restarted on leaving SB/UN (the check runs in every mode, B222; with S1621d3a3) Fixed by e4/odometer-levels (B222); 4050200_11 passes."
+S793ccb34,onboard,"3.6.8, 4.5.2 Table: Odometer impaired shown in SR where the sequence expects the monitoring restarted on leaving SB/UN (the check runs in every mode, B222; with S1621d3a3) Fixed by e4/odometer-levels (B222); 4050200_11 passes. e5/runner-chart: 4050200_11 step 88 again (3 SV): the calibrated chart brings the train to 5300 m where the raw one stopped 1 m short; our periodic check's location is implementation dependent (step 87's comment)"
 Sf3514166,onboard,"3.18.3.3.1 (B035): the brake of a movement during the Train Data entry is not shown as Runaway movement, which the sequence expects (DMI Table 68 entry 9 to re-read; B223) Fixed by e4/odometer-levels (B223): Runaway movement while the brake of 3.18.3.3.1 is commanded; 4120100_03 passes."
 S1fd323b5,model,"3131040_59 step 52 (e5/runner-cycle, B224): the chart runs at 102 km/h under a ceiling of 100, the sequence expects the Indication status, ours Overspeed; passed before by the last cycle's speed dip (46 km/h for one cycle); the charts are drawings (B262). B303, a chart finding of B160's family: the speed chart runs at 102.5 km/h from 400 to 530 m and the MRSP chart is drawn at 102.5 as well for a ceiling of 100 (the drawing's offset), while step 45 says V_TRAIN just a little bit below V_MRSP; at 102 km/h ours is Overspeed (perm 100, SBI 105 not reached, no brake command), so the braking model has nothing to act on"
 S4ad45e1a,model,"4040800_01 step 95 (e5/runner-cycle, B224): Shunting at 33 km/h under 30, the sequence expects the Normal status, ours Overspeed; passed before by the last cycle's speed dip (B262); B303: a chart above the limit like 3131040_59 (B160's family), below the SBI, no brake to act on"

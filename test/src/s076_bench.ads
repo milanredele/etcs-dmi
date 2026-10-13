@@ -29,6 +29,7 @@ pragma Ada_2012;
 with Interfaces; use Interfaces;
 with EVC_Bytes;
 with EVC_Config;
+with S076_Sequences;
 
 package S076_Bench is
 
@@ -117,8 +118,15 @@ package S076_Bench is
    --  A_ebmax for a maximum speed of 200 km/h, 3.13.6.2.1.8, Kr_int for
    --  Length_M, 3.13.2.3.7.12); Position 1 passenger in P, 2 freight in
    --  P, 3 freight in G (the workbook's)
+   --  B370: on the workbook's gradient profile Grades (flat when it has
+   --  no boundary): the deceleration of each speed step with the
+   --  acceleration of the lowest gradient under the train at its distance
+   --  from the target (3.13.4.2, 3.13.4.3 with the rotating masses of
+   --  A.3.1, 15 % uphill and 2 % downhill)
    function Ebd_Distance (Lambda, Position, Length_M : Natural;
-                          From_Kmh, To_Kmh : Long_Float) return Long_Float;
+                          From_Kmh, To_Kmh : Long_Float;
+                          Grades : S076_Sequences.Grades_T := (others => <>))
+                          return Long_Float;
 
    --  B300: the service brake terms of a target at V_Kmh on a flat track:
    --  the distance (m) the SBD of the conversion model takes from V_Kmh
@@ -133,8 +141,18 @@ package S076_Bench is
       D_Sbd : Long_Float := 0.0;
       T_Bs  : Long_Float := 0.0;
    end record;
+   --  B370: Grades as for Ebd_Distance, in the SBD and in the
+   --  decelerations of T_bs_reduced
    function Sbd_Terms (Lambda, Position, Length_M : Natural;
-                       V_Kmh, To_Kmh : Long_Float) return Sbd_Terms_T;
+                       V_Kmh, To_Kmh : Long_Float;
+                       Grades : S076_Sequences.Grades_T := (others => <>))
+                       return Sbd_Terms_T;
+   --  B370: the acceleration due to the gradient (m/s2, negative
+   --  downhill) of a train of Length_M whose front is Before_M before the
+   --  target of the profile Grades; 0 without a profile
+   function Grade_Acceleration (Grades : S076_Sequences.Grades_T;
+                                Before_M : Long_Float; Length_M : Natural)
+                                return Long_Float;
    --  B262:the speed a brake does not take the train below (cm/s,
    --  at most the speed asked for): while the runner drives the train to
    --  a location the sequence says it reaches, a crawl (the sequences'

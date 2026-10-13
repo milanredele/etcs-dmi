@@ -201,6 +201,20 @@ package S076_Sequences is
    function Sheet_Factor (T : Sheet_Table_T; X : Long_Float)
                           return Long_Float;
 
+   --  B370: a workbook's gradient profile (Track!I, J from row 3: the
+   --  boundaries from the origin, m, and the gradient of each segment
+   --  from its boundary to the next, permille, positive uphill) and the
+   --  distance from the origin to the target (Track!B3, m)
+   Max_Grades : constant := 8;
+   type Grade_Values_T is array (1 .. Max_Grades) of Long_Float;
+   type Grades_T is record
+      Bounds      : Grade_Values_T := (others => 0.0);
+      Bound_Count : Natural := 0;
+      Permil      : Grade_Values_T := (others => 0.0);
+      Grade_Count : Natural := 0;
+      Target_M    : Long_Float := 0.0;
+   end record;
+
    type Curve_Set_T is record
       Workbook  : Text_T;          -- the .xlsm file name
       Sheet     : Text_T;          -- "Curves Gamma train", ...
@@ -214,6 +228,7 @@ package S076_Sequences is
       --  profile is flat (every Track!J value 0)
       Target_Kmh : Long_Float := No_Value;
       Flat       : Boolean := True;
+      Grades     : Grades_T;
       --  B290, B291: its workbook's factor sheet and option buttons
       Cells      : Sheet_T;
       Limits    : Limits_T := (others => No_Value);

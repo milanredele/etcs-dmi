@@ -4028,10 +4028,10 @@ package body S076_Run is
             Vm : constant Long_Float := V_Kmh / 3.6;
             Ts : constant B.Sbd_Terms_T :=
               B.Sbd_Terms (Tool, Seq.WB_Brake_Position, Train_Length_M,
-                           V_Kmh, To);
+                           V_Kmh, To, C.Grades);
             Tr : constant B.Sbd_Terms_T :=
               B.Sbd_Terms (Brake_Percentage, Seq.WB_Brake_Position,
-                           Train_Length_M, V_Kmh, To);
+                           Train_Length_M, V_Kmh, To, C.Grades);
             T  : constant Long_Float :=
               (if Ref.Column = SBD then 0.0 else Ts.T_Bs - Tr.T_Bs)
               + (if Ref.Column = Indication
@@ -4052,9 +4052,9 @@ package body S076_Run is
         (0.0,
          Service
          + B.Ebd_Distance (Tool, Seq.WB_Brake_Position, Train_Length_M,
-                           V_Bec, Vt)
+                           V_Bec, Vt, C.Grades)
          - B.Ebd_Distance (Brake_Percentage, Seq.WB_Brake_Position,
-                           Train_Length_M, V_Bec, Vt));
+                           Train_Length_M, V_Bec, Vt, C.Grades));
    end Tool_Margin;
 
    --  B200 (b): the workbook's integrated correction factors are not in

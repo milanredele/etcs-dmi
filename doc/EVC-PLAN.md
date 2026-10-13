@@ -5741,3 +5741,50 @@ round brief, which held, except the reverse chart that the margin agent
 needed in the release agent's reader (named, merged without conflict).
 Open items: doc/BACKLOG.csv (27 open after this round).
 
+
+### The speed chart's axis, the chart after a brake, the margin on a gradient (e5/runner-chart, 2026-10-13)
+
+B160: every sequence has a `chart mrsp` line besides its `speedprofile`,
+drawn on the same axis: its first point is the zero as drawn (-2.0 to
++4.0 km/h) and its plateaus are speeds of the language. The scale is the
+one that puts every plateau within 0.5 km/h of a multiple of 5 km/h
+(searched from 0.90 to 1.10 by 0.0005, least squares inside the interval
+that fits); the drawings fall into families by their zero, each with one
+scale over the whole SV30 corpus (-1.9: 0.954 to 0.963, 415 sequences;
+-1.8: 0.962 to 0.973, 221; 0.3: 1.065 to 1.091, 174; five smaller), and
+the family decides where two intervals fit (39.6 and 80.9 fit 40 and 80
+or 45 and 90). `S076_Sequences.Calibrated`, applied in
+`S076_Run.Chart_Kmh` to the forward and the reverse chart;
+`S076_RAW_CHART=1` keeps the drawing. Unlike the snapping trial it moves
+every speed by the fit only: none of the 17 braking curve sequences of
+that trial regressed. 5160000_01 now runs at 70.0 at V_LX 70, 3131040_59
+at 100.0 under 100 (and 102 where its chart rises to 104.6: still
+S1fd323b5), 3131060_08 at 58 km/h, the speed its comment names.
+
+The chart after a brake: the brief's premise does not hold at the
+source. Se041b7f8 (4120100_01, 3 SV) keeps the SR ceiling EB after the
+switch to FS at 25 km/h under the FS MRSP of 50: on-board (B411).
+3130700_02 step 51: the calibrated chart runs at exactly the sequence's
+V5 = 12 km/h, our PBD speed is 10 (B412). The bench's speed model was
+left as it is.
+
+B370: the workbook's gradient profile is read (`S076_Sequences.Grades_T`,
+Track!B3, I, J) and taken by `S076_Bench.Sbd_Terms` and `Ebd_Distance`
+(`Grade_Acceleration`: the lowest gradient under the train, 3.13.4.2,
+the rotating masses of A.3.1, 3.13.4.3), passed by `Tool_Margin`. Every
+workbook with a gradient is a Gamma one or not a reference, so no step
+uses it yet and the comparison with the probe is open (B370 stays open,
+T_be_reduced too). B201: not re-checked (budget).
+
+SUBSET-076: 846 / 1250 / 1094 before, 852 / 1247 / 1091 after; 52
+improvements, 18 regressions (6 per version), understood and
+re-recorded: 3131040_07, _71, _75 Gamma blocks (E6; passed by the
+drawing's speed); 3131050_19 (release speed step 55, the train at 25
+km/h instead of 24.1 reaches the release speed 15 a cycle late:
+speed-sensitive, curves family); 3131060_08 (B410: V_max against
+V_NVALLOWOVTRP); 4050200_11 (step 88: the train reaches 5300 m where the
+drawing stopped it 1 m short, our periodic odometer check shows there).
+Chart families: S4ad45e1a 3 -> 0, S1fd323b5 4 -> 1, S749b2957 9 -> 12,
+S7b03e0c6 9 -> 12, S69f1f87e 14 -> 17 (sequences that run further and
+stop at a later chart step). Backlog: B160 done, B370 updated, B410 to
+B412 opened.
