@@ -3060,7 +3060,77 @@ package body S076_Run is
                     (if Found then "recorded" else "none"));
    end Cab_Or_Condition;
 
-   function JRU_Expect return Judgement_T is
+   --  JRU record 10, a message to the RBC (SUBSET-027 4.2.4.10): the
+   --  on-board's JRU port has no event for it, the bench's RTM capture of
+   --  the step's window is the same evidence. The message is the one the
+   --  line names (NID_MESSAGE), else the one of the "expect RTM message"
+   --  step directly before, which the record follows in the sequences
+   --  (3300 of 3310 in sv30): judged as that expectation without its
+   --  packets, with the record's own fields (M_VERSION, NID_ENGINE), so
+   --  the same message satisfies both. A record of no named message
+   --  passes on any message sent in the window.
+   function JRU_Sent (St : Step_T; Positive : Boolean) return Judgement_T is
+      Nid    : Unbounded_String;
+      Fields, Packets : Unbounded_String;
+      Index  : Natural := 0;
+      J      : Judgement_T;
+   begin
+      for K in 5 .. Line.Count loop
+         if Starts (W (K), "NID_MESSAGE=") then
+            Nid := To_Unbounded_String (W (K) (W (K)'First + 12 .. W (K)'Last));
+         elsif Starts (W (K), "NID_PACKET=") then
+            Packets := To_Unbounded_String
+              (" packets " & W (K) (W (K)'First + 11 .. W (K)'Last));
+         else
+            Append (Fields, " " & W (K));
+         end if;
+      end loop;
+      for K in 1 .. Seq.Step_Count loop
+         if Seq.Steps (K).Line_No = St.Line_No then
+            Index := K;
+         end if;
+      end loop;
+      if Length (Nid) = 0 and then Index > 1
+        and then Seq.Steps (Index - 1).IO = Output
+      then
+         Load_Line (Seq.Steps (Index - 1).Line);
+         if Line.Count >= 4 and then W (2) = "RTM"
+           and then (W (3) = "message" or else W (3) = "no-message")
+         then
+            Nid := To_Unbounded_String (W (4));
+         end if;
+      end if;
+      --  a message from the RBC (track to train, NID_MESSAGE below 128)
+      --  named in a record of a message to it: 4100103_28 step 94 lists
+      --  the record of the 3 just received as 10; the record of a
+      --  received message is 9 (4.2.4.9)
+      if Length (Nid) in 1 .. 3
+        and then (for all C of To_String (Nid) => C in '0' .. '9')
+        and then Natural'Value (To_String (Nid)) < 128
+      then
+         Load_Line (St.Line);
+         return NJ (R_S076_Defect, "JRU 10 of a message from the RBC");
+      end if;
+      if Length (Nid) = 0 then
+         Load_Line (St.Line);
+         if Length (Fields) > 0 then
+            return NJ (R_JRU_Not_Modelled, "10 without NID_MESSAGE");
+         end if;
+         return Check ((for some I in 1 .. B.Radio_Count =>
+                          not B.Radio (I).Is_Request) = Positive,
+                       "JRU10 any message to the RBC"
+                       & (if Positive then "" else " not"), "the window");
+      end if;
+      Load_Line (To_Text ("expect RTM " & (if Positive then "" else "no-")
+                          & "message " & To_String (Nid)
+                          & To_String (Packets) & To_String (Fields)));
+      J := Radio_Expect (St);
+      Load_Line (St.Line);
+      J.Sig := To_Text ("JRU10 " & Image (J.Sig));
+      return J;
+   end JRU_Sent;
+
+   function JRU_Expect (St : Step_T) return Judgement_T is
       Positive : constant Boolean := Same (W (3), "record");
       Id_S     : constant String := W (4);
       Id       : Natural := 0;
@@ -3085,6 +3155,8 @@ package body S076_Run is
       --  the message itself, when it is not ALL
       if Id > 0 then
          case Id is
+            when 10 =>
+               return JRU_Sent (St, Positive);
             when 3 | 4 | 43 =>
                declare
                   Bit : constant Natural :=
@@ -3379,7 +3451,7 @@ package body S076_Run is
       Iface : constant String := W (2);
    begin
       if Iface = "JRU" then
-         return JRU_Expect;
+         return JRU_Expect (St);
       elsif Iface = "DMI" then
          return DMI_Expect (St);
       elsif Iface = "TIU" then
