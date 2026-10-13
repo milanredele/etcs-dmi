@@ -950,8 +950,36 @@ package body S076_Bench is
       end if;
    end Brake_Cycle;
 
+   function Grade_Acceleration (Grades : S076_Sequences.Grades_T;
+                                Before_M : Long_Float; Length_M : Natural)
+                                return Long_Float
+   is
+      Front : constant Long_Float := Grades.Target_M - Before_M;
+      Rear  : constant Long_Float := Front - Long_Float (Length_M);
+      Low   : Long_Float := Long_Float'Last;
+   begin
+      for I in 1 .. Natural'Min (Grades.Grade_Count, Grades.Bound_Count) loop
+         declare
+            From : constant Long_Float := Grades.Bounds (I);
+            To   : constant Long_Float :=
+              (if I < Grades.Bound_Count then Grades.Bounds (I + 1)
+               else Long_Float'Last);
+         begin
+            if From <= Front and then To >= Rear then
+               Low := Long_Float'Min (Low, Grades.Permil (I));
+            end if;
+         end;
+      end loop;
+      if Low = Long_Float'Last then
+         return 0.0;
+      end if;
+      return 9.81 * Low / (1000.0 + (if Low > 0.0 then 150.0 else 20.0));
+   end Grade_Acceleration;
+
    function Ebd_Distance (Lambda, Position, Length_M : Natural;
-                          From_Kmh, To_Kmh : Long_Float) return Long_Float
+                          From_Kmh, To_Kmh : Long_Float;
+                          Grades : S076_Sequences.Grades_T := (others => <>))
+                          return Long_Float
    is
       use EVC_Braking;
       use EVC_Supervision_Input;
@@ -982,7 +1010,8 @@ package body S076_Bench is
               EVC_Fixed.Num (Long_Float'Min (Mid * 100.0, 60_000.0));
             A   : constant Long_Float :=
               Long_Float (Value_At (E, Cms)) * 1.0E-5
-              * Long_Float (Value_At (Kv, Cms)) / 1.0E6 * Kr;
+              * Long_Float (Value_At (Kv, Cms)) / 1.0E6 * Kr
+              + Grade_Acceleration (Grades, D, Length_M);
          begin
             if A > 0.0 then
                D := D + Mid * Dv / A;
@@ -994,7 +1023,9 @@ package body S076_Bench is
    end Ebd_Distance;
 
    function Sbd_Terms (Lambda, Position, Length_M : Natural;
-                       V_Kmh, To_Kmh : Long_Float) return Sbd_Terms_T
+                       V_Kmh, To_Kmh : Long_Float;
+                       Grades : S076_Sequences.Grades_T := (others => <>))
+                       return Sbd_Terms_T
    is
       use EVC_Braking;
       use EVC_Supervision_Input;
@@ -1025,7 +1056,9 @@ package body S076_Bench is
             Dv  : constant Long_Float := Long_Float'Min (0.05, Top - V);
             Mid : constant Long_Float := V + Dv / 2.0;
             A   : constant EVC_Fixed.Num :=
-              Value_At (E, EVC_Fixed.Num (Mid * 100.0));
+              Value_At (E, EVC_Fixed.Num (Mid * 100.0))
+              + EVC_Fixed.Num
+                  (Grade_Acceleration (Grades, D, Length_M) * 1.0E5);
          begin
             A_Lo := EVC_Fixed.Min (A_Lo, A);
             A_Hi := EVC_Fixed.Max (A_Hi, A);

@@ -189,11 +189,17 @@ package body S076_Run is
    --  the train moves backwards the reverse movement's chart where the
    --  sequence has one (B303: 3130232_17 and _18 ran their Reversing
    --  backwards at the forward chart's 40 to 60 km/h, the reverse one
-   --  says 13 km/h)
+   --  says 13 km/h); B160: the speed of the language for the chart's
+   --  drawing (S076_Sequences.Calibrated; the reverse chart is drawn
+   --  below the same zero, its speed without its sign)
    function Chart_Kmh return Long_Float is
      (if B.Direction < 0 and then Seq.Rev_Count > 0
-      then Chart_Speed_Reverse (Seq, Long_Float (B.Position) / 100.0)
-      else Chart_Speed (Seq, Long_Float (B.Position) / 100.0));
+      then Calibrated
+        (Seq, Chart_Speed_Reverse (Seq, Long_Float (B.Position) / 100.0)
+              + 2.0 * Seq.Chart_Zero)
+      elsif Seq.Chart_Count = 0 then -1.0
+      else Calibrated
+        (Seq, Chart_Speed (Seq, Long_Float (B.Position) / 100.0)));
 
    --  The speed charts are the reference of the speed (the driver of
    --  a sequence runs above a limit on purpose where the chart does); a
@@ -4164,10 +4170,10 @@ package body S076_Run is
             Vm : constant Long_Float := V_Kmh / 3.6;
             Ts : constant B.Sbd_Terms_T :=
               B.Sbd_Terms (Tool, Seq.WB_Brake_Position, Train_Length_M,
-                           V_Kmh, To);
+                           V_Kmh, To, C.Grades);
             Tr : constant B.Sbd_Terms_T :=
               B.Sbd_Terms (Brake_Percentage, Seq.WB_Brake_Position,
-                           Train_Length_M, V_Kmh, To);
+                           Train_Length_M, V_Kmh, To, C.Grades);
             T  : constant Long_Float :=
               (if Ref.Column = SBD then 0.0 else Ts.T_Bs - Tr.T_Bs)
               + (if Ref.Column = Indication
@@ -4188,9 +4194,9 @@ package body S076_Run is
         (0.0,
          Service
          + B.Ebd_Distance (Tool, Seq.WB_Brake_Position, Train_Length_M,
-                           V_Bec, Vt)
+                           V_Bec, Vt, C.Grades)
          - B.Ebd_Distance (Brake_Percentage, Seq.WB_Brake_Position,
-                           Train_Length_M, V_Bec, Vt));
+                           Train_Length_M, V_Bec, Vt, C.Grades));
    end Tool_Margin;
 
    --  B200 (b): the workbook's integrated correction factors are not in
