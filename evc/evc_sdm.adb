@@ -2525,6 +2525,11 @@ is
                    Result.V_Perm, Result.V_Warning, Result.V_SBI,
                    Result.D_Target, Result.Shown_At, Result.V_Target,
                    Result.Release_Shown, Result.CSM_Target, Result.TTI);
+      --  3.13.9.4.6, .7: where the release speed monitoring starts
+      if Rel > 0 then
+         Result.Shown_At.RSM_Start := Start.Start;
+         Result.Shown_At.RSM_Max_Safe := not Start.From_SBD;
+      end if;
 
       --  phase E4, 5.16.1.4 a): the EOA target of the level crossing is
       --  the most relevant displayed target

@@ -248,6 +248,24 @@ is
       Driver_Slippery := Slippery;
    end Set_Driver_Slippery;
 
+   procedure Take_Driver_Adhesion
+     with Refined_Global => (In_Out => Driver_Slippery,
+                             Input  => (EVC_Driver_Requests.State,
+                                        EVC_National_Values.State))
+   is
+   begin
+      if not EVC_National_Values.Q_NVDRIVER_ADHES then
+         Driver_Slippery := False;
+      elsif EVC_Driver_Requests.Selected (EVC_Driver_Requests.Adhesion)
+      then
+         Driver_Slippery :=
+           EVC_Driver_Requests.Argument (EVC_Driver_Requests.Adhesion) = 1;
+      end if;
+   end Take_Driver_Adhesion;
+
+   function Driver_Slippery_Rail return Boolean is (Driver_Slippery)
+     with Refined_Global => Driver_Slippery;
+
    --  The train in the frame
 
    function Train_Frame return Train_Frame_T

@@ -1065,10 +1065,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.4.5.4,3,x,,,,,E6,todo,
 3.18.4.5.4.1,3,x,,,,,E6,todo,
 3.18.4.5.5,3,x,,,,,E6,todo,
-3.18.4.6.2,3,x,,,,,E6,todo,
-3.18.4.6.2.1,3,x,x,,,,E6,todo,
-3.18.4.6.2.3,3,x,,,,,E6,todo,
-3.18.4.6.3,3,x,x,,,,E6,todo,
+3.18.4.6.2,3,x,,,,,E6,done,"EVC_Stored_Information.Take_Driver_Adhesion (the driver's choice taken in any cycle, also running; trackside: packet 71); evc_test Driver_Adhesion"
+3.18.4.6.2.1,3,x,x,,,,E6,done,"EVC_Stored_Information.Take_Driver_Adhesion (permitted by Q_NVDRIVER_ADHES, reset to non slippery when the national values in force no longer permit it; the profiles of packet 71 kept); evc_test Driver_Adhesion"
+3.18.4.6.2.3,3,x,,,,,E6,done,"EVC_Stored_Information.Driver_Slippery_Rail in MSG_STATUS (EVC_DMI_Port.Status_Frame Slippery, EVC_Core.Send_Status), the DMI's ST02; evc_test Driver_Adhesion"
+3.18.4.6.3,3,x,x,,,,E6,done,"EVC_Stored_Information.Take_Driver_Adhesion: slippery / non slippery (DMI action 9 argument 1 / 0); evc_test Driver_Adhesion"
 3.18.4.6.4,3,x,,,,,E6,todo,
 3.18.5.1,3,x,,,,,E6,todo,
 3.18.5.2,3,x,,,,,E6,todo,

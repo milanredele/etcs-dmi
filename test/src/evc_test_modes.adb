@@ -603,6 +603,51 @@ package body EVC_Test_Modes is
              & Integer_64'Image (TR_At) & " cm (4.6.3 [42])");
    end Scenario_SR_National_Distance;
 
+   --  3.18.4.6.2.1, 3.18.4.6.3: the driver's adhesion choice (DMI action
+   --  9) taken when the national value Q_NVDRIVER_ADHES permits it, reset
+   --  to non slippery when new national values no longer permit it;
+   --  3.18.4.6.2.3: the driver informed (MSG_STATUS adhesion, ST02)
+   procedure Scenario_Driver_Adhesion is
+      NV : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+      F  : constant EVC_DMI_Port.Status_Frame_T :=
+        EVC_DMI_Port.Status_Frame (0, 0, 0, 0, Slippery => True);
+   begin
+      Check (F (8) = 1 and then EVC_DMI_Port.Status_Frame (0, 0, 0, 0) (8)
+                                = 0,
+             "adhesion: MSG_STATUS carries the driver's slippery rail "
+             & "(3.18.4.6.2.3)");
+      Mission (L1_Code);
+      Stand_X (100);
+      Send (Action (9, 1));
+      Check (not EVC_Stored_Information.Driver_Slippery_Rail,
+             "adhesion: slippery rail refused while Q_NVDRIVER_ADHES is 0 "
+             & "(3.18.4.6.2.1)");
+      NV.Q_NVDRIVER_ADHES := 1;
+      Add_Group (Group (10, 50));
+      Carry (1, 0, NV);
+      Speed_Cms := 500;
+      while Train_Cm < 6_000 loop
+         Step_X (500);
+      end loop;
+      Send (Action (9, 1));
+      Check (EVC_Stored_Information.Driver_Slippery_Rail,
+             "adhesion: slippery rail selected by the driver, permitted by "
+             & "Q_NVDRIVER_ADHES 1, also while running (3.18.4.6.2)");
+      Send (Action (9, 0));
+      Check (not EVC_Stored_Information.Driver_Slippery_Rail,
+             "adhesion: non slippery rail selected (3.18.4.6.3)");
+      Send (Action (9, 1));
+      NV.Q_NVDRIVER_ADHES := 0;
+      Add_Group (Group (20, 100));
+      Carry (2, 0, NV);
+      while Train_Cm < 11_000 loop
+         Step_X (500);
+      end loop;
+      Check (not EVC_Stored_Information.Driver_Slippery_Rail,
+             "adhesion: national values that no longer permit the driver's "
+             & "choice reset it to non slippery rail (3.18.4.6.2.1)");
+   end Scenario_Driver_Adhesion;
+
    --  5.10: an announcement to level 0 with its acknowledgement area
    --  (5.10.1.3, 5.10.4.1 a), the transition at the location (5.10.1.5)
    --  with FS -> UN (4.6.3 [21]) and its deletions (4.10), the service
