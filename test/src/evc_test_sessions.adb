@@ -15,6 +15,7 @@ with EVC_DMI_Port;
 with EVC_Core;
 with EVC_Bytes;
 with EVC_Mission;
+with EVC_National_Values;
 with EVC_Modes;
 with EVC_Position;
 with EVC_Train_Data;
@@ -1926,5 +1927,39 @@ package body EVC_Test_Sessions is
              "stamps: the 8 with the stamp the 129 was sent with "
              & "acknowledges it (3.16.3.3.2, 3.18.3.4.1)");
    end Scenario_Session_Stamp_Increment;
+
+   --  3.16.3.4.5 a), 3.14.1.7: the service brake of T_NVCONTACT stays
+   --  when national values with a longer T_NVCONTACT are taken while it
+   --  is applied; a new message releases it
+   procedure Scenario_Session_NVCONTACT_Values is
+      NV  : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+      NV2 : Sim_Telegrams.T3.Packet_T := Sim_Telegrams.National_Values (123);
+   begin
+      Start_X;
+      NV.T_NVCONTACT := 5;    -- s
+      NV.M_NVCONTACT := 1;    -- service brake
+      NV2.T_NVCONTACT := 60;
+      NV2.M_NVCONTACT := 1;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Carry (Track_N, 1, NV);
+      Add_Group (Group (11, 320));
+      Carry (Track_N, 1, NV2);
+      Run_X (15_000);
+      Establish (1);
+      Run_X (30_000, 200);
+      Check (EVC_Sessions.Service_Brake,
+             "link values: T_NVCONTACT 5 s passed, the service brake");
+      Run_X (34_000, 200);
+      Check (EVC_National_Values.Current.T_NVCONTACT = 60_000,
+             "link values: T_NVCONTACT 60 s taken at 320 m");
+      Check (EVC_Sessions.Service_Brake,
+             "link values: T_NVCONTACT 60 s taken at 320 m, the service "
+             & "brake kept until standstill or a new message (3.16.3.4.5 "
+             & "a, 3.14.1.7)");
+      Give_Radio_Message (1, Msg (MCat.Track_M24, Now_T (1)));
+      Stand;
+      Check (not EVC_Sessions.Service_Brake,
+             "link values: a new message releases it (3.14.1.7)");
+   end Scenario_Session_NVCONTACT_Values;
 
 end EVC_Test_Sessions;

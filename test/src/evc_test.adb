@@ -265,6 +265,7 @@ begin
    Scenario_Session_Driver_Contact;
    Scenario_Session_Hole_Contact;
    Scenario_Session_Stamp_Increment;
+   Scenario_Session_NVCONTACT_Values;
    Scenario_SoM_L2_Mode_Proposal_LS;
    Scenario_Session_SoM_Failures;
    Scenario_Session_EoM;
