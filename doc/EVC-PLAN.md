@@ -5741,3 +5741,53 @@ round brief, which held, except the reverse chart that the margin agent
 needed in the release agent's reader (named, merged without conflict).
 Open items: doc/BACKLOG.csv (27 open after this round).
 
+
+
+### Closing the session half (e5/session-close, 2026-10-13)
+
+**Done.** B341, 3.16.3.3.2: `EVC_Radio.Send` raises a stamp that is not
+above the last one sent in its session to one unit above it, so two
+messages of one cycle carry different stamps. The halves match an
+acknowledgement on the stamp they read back from `EVC_Radio.Info
+(S).Last_Sent`: `Mission.Await_TD` for message 8, and the 130 of
+`EVC_Radio_Authority` for 27 / 28 (the one edit in the authority half).
+`EVC_Radio.Stamp_Age` makes `Time_Of_Stamp` treat a stamp ahead of the
+clock as now. Scenario: `Scenario_Session_Stamp_Increment`. B342:
+`Scenario_Handover_Contact` closes 3.16.3.4.1.2 (the Handing Over RBC's
+latest message before the switch, the Accepting RBC's after it), and
+`Scenario_Handover_Rear_Border` closes 3.5.3.8 f) under decision (2) of
+e5/session-rows. 3.16.3.4.1.2.1 is n/a: with two sessions, a new order
+keeps the supervising RBC as the Handing Over one (3.15.1.3.2.3), and
+3.15.1.3.2 and .2.4 are n/a, so an announcement never changes the
+Handing Over RBC. B351: the 3.10.3.2 tag is now on
+`EVC_Sessions.Take_Message`.
+
+B340: Bit38 is ST01, the brake intervention symbol. Fixing it exposed a
+defect of ours. In 9990400_08 the national values of BG999d lengthened
+T_NVCONTACT, and `Supervise_Contact` then released the service brake at
+300 m while the train was still moving. Decision: once triggered, the
+reaction ends only with a new message or at standstill (3.16.3.4.5 a,
+3.14.1.7); `Scenario_Session_NVCONTACT_Values`. Step 62 still fails, on
+the runner's judging of a symbol that is still shown (B380, S15472ab5
+triaged `model`). B350 is not a defect of ours. The message 32 of
+8040400_01 gives M_VERSION 3.15 in all three versions, so the on-board
+awaits the 38. The SV21 and SV22 variants leave the 38 out, so the
+on-board terminates the session (3.5.3.7.4.1) and has none left for the
+136 of step 68. Triaged `s076` in the note of S13c9beb3.
+
+**Left.** The rows with stale notes were not reviewed against the code
+(the budget ran out):
+- 3.5.3.5.2.1, 3.5.3.7, 3.5.4.3, 3.5.5.1 and b), 3.5.6.7.
+- 3.5.3.7 a): `Capped => True` is passed nowhere, so the limit of A.3.1
+  is not applied yet.
+- 3.5.4.5: nothing in the code names it; `EVC_Radio.Send` leaves it to
+  the halves.
+
+The E5 rows left after this branch, by reason:
+- Session half, todo or partial: 3.5.3.5.2.1, 3.5.3.7, 3.5.3.7 a),
+  3.5.4.3, 3.5.4.5, 3.5.5.1, 3.5.5.1 b), 3.5.6.7.
+- Partial, waiting for SM (B008) or E6: 3.8.2.5.1 and 3.15.1.3.3.
+
+**SUBSET-076**: 846 / 1250 / 1094 before and after, 0 regressions.
+**Edits outside the package's units**: `EVC_Radio_Authority` (the stamp
+of the 130); `EVC_Test_Handover` (two scenarios).
