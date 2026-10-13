@@ -221,6 +221,7 @@ begin
    Scenario_Train_Data_Left;
    Scenario_SR_Data_Movement;
    Scenario_E4_SR_Distance;
+   Scenario_SR_National_Distance;
    Scenario_E4_Level_Transition_0;
    Scenario_E4_Level_Ack_Again;
    Scenario_E4_Level_Orders;

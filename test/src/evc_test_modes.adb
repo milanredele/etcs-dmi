@@ -562,6 +562,47 @@ package body EVC_Test_Modes is
              & "(4.4.11.1.5: only at standstill)");
    end Scenario_E4_SR_Distance;
 
+   --  4.4.11.1.3.1 a): the national SR distance is supervised from where
+   --  SR was entered; national values taken in SR (packet 3) give its end
+   --  from there (4.4.11.1.6.2 at the entry), a target of the supervision
+   --  with zero speed (3.13.8.2.1 d), 3.13.8.3.3, 3.13.10.4.13.1) before
+   --  the trip at it (4.6.3 [42])
+   procedure Scenario_SR_National_Distance is
+      NV       : Sim_Telegrams.T3.Packet_T :=
+        Sim_Telegrams.National_Values (123);
+      TR_At    : Integer_64 := -1;
+      TSM_Seen : Boolean := False;
+      EB_In_SR : Boolean := False;
+   begin
+      Mission (L1_Code);
+      Stand_X (100);
+      Check (ML (1) = SR_Code and then not EVC_Mission.SR_Distance.Active
+             and then not In_TSM,
+             "SR national: D_NVSTFF infinite at the entry of SR, no SR "
+             & "distance, ceiling speed monitoring (4.4.11.1.6.2)");
+      NV.D_NVSTFF := 400;
+      Add_Group (Group (10, 100));
+      Carry (1, 0, NV);
+      Speed_Cms := 500;
+      while Train_Cm < 60_000 and then TR_At < 0 loop
+         Step_X (500);
+         if ML (1) = SR_Code then
+            TSM_Seen := TSM_Seen or else In_TSM;
+            EB_In_SR := EB_In_SR or else Cmd.EB;
+         elsif ML (1) = TR_Code then
+            TR_At := Train_Cm;
+         end if;
+      end loop;
+      Check (TSM_Seen and then EB_In_SR,
+             "SR national: the end of the SR distance a target, target "
+             & "speed monitoring and its intervention before it "
+             & "(3.13.8.2.1 d), 3.13.8.3.3, 3.13.10.4.13.1)");
+      Check (TR_At > 40_000 and then TR_At <= 41_000,
+             "SR national: D_NVSTFF 400 m taken at 100 m counts from the "
+             & "entry of SR (4.4.11.1.3.1 a): the trip at"
+             & Integer_64'Image (TR_At) & " cm (4.6.3 [42])");
+   end Scenario_SR_National_Distance;
+
    --  5.10: an announcement to level 0 with its acknowledgement area
    --  (5.10.1.3, 5.10.4.1 a), the transition at the location (5.10.1.5)
    --  with FS -> UN (4.6.3 [21]) and its deletions (4.10), the service
