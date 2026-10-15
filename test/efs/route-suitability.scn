@@ -4,10 +4,10 @@
 frame Route suitability
 sequence Check for unsuitabilities
 case Check that unsuitability flags for each data type
-clause E3 deferred 3.12.2.3 ; efs 3.12.2.3
-clause E3 deferred 3.12.2.3 a) ; efs 3.12.2.3.a
-clause E3 deferred 3.12.2.3 b) ; efs 3.12.2.3.b
-clause E3 deferred 3.12.2.3 c) ; efs 3.12.2.3.c
+clause E3 done 3.12.2.3 ; efs 3.12.2.3
+clause E3 done 3.12.2.3 a) ; efs 3.12.2.3.a
+clause E3 done 3.12.2.3 b) ; efs 3.12.2.3.b
+clause E3 done 3.12.2.3 c) ; efs 3.12.2.3.c
 step Initialize train data
 sub SubStep 1 - Initialize test environment
 init 100.0 FS
@@ -169,7 +169,7 @@ expect efs: ( LAST X IN Kernel.TrackDescription.RouteSuitability.RouteSuitabilit
 expect efs: ( COUNT X IN Kernel.TrackDescription.RouteSuitability.RouteSuitabilityProfile.Items) == 3 @ deadline=1
 sequence EOA and SvL when there is unsuitability
 case Unsuitability for upcoming track
-clause E3 todo 3.12.2.4 ; efs 3.12.2.4
+clause E3 done 3.12.2.4 ; efs 3.12.2.4
 step Initialize train data
 sub SubStep 1 - Initialize test environment
 init 100.0 SR
@@ -622,8 +622,8 @@ sub Sub-step 2 - Check that inconsistencies are correctly identified
 expect efs: ( FORALL X IN Kernel.TrackDescription.RouteSuitability.RouteSuitabilityProfile.Items | Kernel.TrackDescription.RouteSuitability.IsUnsuitable ( anItem=> X ) == Boolean.False ) @ deadline=1
 sequence Routes are correctly flagged for axle load categories
 case Check that route suitability is correctly identified for axle load categories
-clause E3 deferred 3.12.2.3 ; efs 3.12.2.3
-clause E3 deferred 3.12.2.3 c) ; efs 3.12.2.3.c
+clause E3 done 3.12.2.3 ; efs 3.12.2.3
+clause E3 done 3.12.2.3 c) ; efs 3.12.2.3.c
 step Initialize train data
 sub SubStep 1 - Initialize test environment
 init 100.0 OS
@@ -769,8 +769,8 @@ sub Sub-step 2 - Expectations
 expect efs: Kernel.TrackDescription.RouteSuitability.IsUnsuitable ( LAST X IN Kernel.TrackDescription.RouteSuitability.RouteSuitabilityProfile.Items) == Boolean.True @ deadline=1
 sequence Routes are correctly flagged for loading gauges
 case Check that route suitability is correctly identified for loading gauges
-clause E3 deferred 3.12.2.3 a) ; efs 3.12.2.3.a
-clause E3 deferred 3.12.2.3 ; efs 3.12.2.3
+clause E3 done 3.12.2.3 a) ; efs 3.12.2.3.a
+clause E3 done 3.12.2.3 ; efs 3.12.2.3
 step Initialize train data
 sub SubStep 1 - Intitialize test environment
 init 100.0 OS
@@ -914,7 +914,7 @@ expect efs: Kernel.TrackDescription.RouteSuitability.IsUnsuitable ( anItem => LA
 sequence Routes are correctly flagged for traction systems
 case Check that route suitability is correctly identified for traction systems
 clause - absent 3.12.2.2 ; efs 3.12.2.2
-clause E3 deferred 3.12.2.3 ; efs 3.12.2.3
+clause E3 done 3.12.2.3 ; efs 3.12.2.3
 step Initialize train data
 sub SubStep 1 - Initialize test environment
 init 100.0 OS

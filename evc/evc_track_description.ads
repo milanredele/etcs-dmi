@@ -202,6 +202,62 @@ is
    function Suitability return Suitability_Array_T
      with Global => State;
 
+   --  bit K of V, K below 16 (false for a K beyond)
+   type Bit_Values_T is array (0 .. 15) of Positive;
+   Bit_Value : constant Bit_Values_T :=
+     (1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192,
+      16384, 32768);
+   function Bit (V : Natural; K : Natural) return Boolean
+   is (K <= 15 and then (V / Bit_Value (K)) mod 2 = 1);
+
+   --  3.12.2.3: the route suitability data S is not met by the Train
+   --  Data C: a) the train's loading gauge (M_LOADINGGAUGE 1 .. 4, bit
+   --  0 .. 3 of M_LINEGAUGE; 0, a train fitting none of the profiles,
+   --  is in no list), c) its axle load category (bit M_AXLELOADCAT of
+   --  M_LINEAXLELOADCAT), b) the traction system (M_VOLTAGE) not among
+   --  those the engine accepts (bit M_VOLTAGE of Voltages); 3.12.2.3.1:
+   --  bit 0 of Voltages, an engine able to run on a line not fitted with
+   --  any traction system, is never unsuitable for the traction system.
+   --  Decision: NID_CTRACTION is not compared, the traction systems of
+   --  the Train Data have none (the configuration gives M_VOLTAGE only)
+   --  @req 3.12.2.3, 3.12.2.3 a), 3.12.2.3 b), 3.12.2.3 c), 3.12.2.3.1
+   function Unsuitable (S : Suitability_T;
+                        C : EVC_Train_Data.Categories_T) return Boolean
+   is (S.Used
+       and then
+         (case S.Kind is
+             when 0 =>
+               not (C.Loading_Gauge in 1 .. 4
+                    and then Bit (S.Value, Natural (C.Loading_Gauge) - 1)),
+             when 1 =>
+               not Bit (S.Value, Natural (C.Axle_Load)),
+             when others =>
+               not Bit (C.Voltages, 0)
+               and then not Bit (C.Voltages, S.Value)));
+
+   --  3.12.2.4: an unsuitability of Kind (Q_SUITABILITY) exists among
+   --  the route suitability data stored, for the system status message
+   --  of each (the driver informed about all unsuitabilities)
+   --  @req 3.12.2.4
+   function Unsuitable_Kind (Kind : Natural;
+                             C    : EVC_Train_Data.Categories_T)
+                             return Boolean
+     with Global => State;
+
+   --  3.12.2.4: the closest location of an unsuitability, both the
+   --  temporary EOA and SvL with no release speed (Found False when
+   --  none); kept until the min safe rear end Rear has passed it, so
+   --  that its passage by the min safe front end is an EOA passed (the
+   --  trip of 4.6.3 [12], [16])
+   --  @req 3.12.2.4
+   procedure Suitability_Target (T     : Origin_Table_T;
+                                 Ahead : Sense_T;
+                                 Rear  : Dist_T;
+                                 C     : EVC_Train_Data.Categories_T;
+                                 Found : out Boolean;
+                                 EOA   : out Dist_T)
+     with Global => State;
+
    --  Information that found no room in its store, since Clear
    function Lost return Natural
      with Global => State;

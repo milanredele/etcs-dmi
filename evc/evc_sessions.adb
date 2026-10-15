@@ -495,6 +495,15 @@ is
 
    function Service_Brake return Boolean is (NV.SB)
      with Refined_Global => NV;
+
+   procedure Revoke_Contact_Brake (To : Mode_T)
+     with Refined_Global => (In_Out => NV)
+   is
+   begin
+      if To in M_NP | M_SB | M_SH | M_SR | M_UN | M_TR | M_SN then
+         NV.SB := False;
+      end if;
+   end Revoke_Contact_Brake;
    function Error_Noted return Boolean is (Noted)
      with Refined_Global => Noted;
    function Contact_Error return Boolean is (Contact_Tripped);

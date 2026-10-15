@@ -1044,6 +1044,94 @@ package body EVC_Test_Profiles is
              & "suitability, track conditions (3.7.3.2 b, c, d)");
    end Scenario_Other_Profiles;
 
+   --  3.12.2.3, 3.12.2.3.1, 3.12.2.4, 3.13.1.5: the route suitability
+   --  data compared with the Train Data; the closest unsuitable
+   --  location the temporary EOA and SvL; a change of the Train Data
+   --  compared again
+   procedure Scenario_Route_Suitability is
+      RS   : T70.Packet_T;
+      Cat  : EVC_Train_Data.Categories_T := EVC_Train_Data.Categories;
+      Keep : constant EVC_Train_Data.Categories_T := Cat;
+      Data : constant SIn.Train_Data_T := EVC_Train_Data.Data;
+   begin
+      Start_X;
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 200));
+      Add_Group (Group (30, 300));
+      --  c) the train's axle load category A, the line C4 only, 300 m
+      --  from the group; a) the loading gauge G1 accepted, 200 m on
+      RS.Q_DIR := 1;
+      RS.Q_SCALE := 1;
+      RS.Has_D_SUITABILITY := True;
+      RS.D_SUITABILITY := 300;
+      RS.Q_SUITABILITY := 1;
+      RS.Has_M_LINEAXLELOADCAT := True;
+      RS.M_LINEAXLELOADCAT := 16#0040#;
+      RS.N_ITER := 1;
+      RS.D_SUITABILITY_List (1).D_SUITABILITY := 200;
+      RS.D_SUITABILITY_List (1).Q_SUITABILITY := 0;
+      RS.D_SUITABILITY_List (1).Has_M_LINEGAUGE := True;
+      RS.D_SUITABILITY_List (1).M_LINEGAUGE := 16#03#;
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 0, RS);
+      Carry (1, 1, MA_Of ((1 => 900)));
+      Run_X (15_000);
+      Check (TD.Unsuitable_Kind (1, Cat)
+             and then not TD.Unsuitable_Kind (0, Cat)
+             and then not TD.Unsuitable_Kind (2, Cat),
+             "3.12.2.3 c): the axle load category not in the list, a): "
+             & "the loading gauge in it");
+      Check (SI.Current.Temporary.Present
+             and then SI.Current.Temporary.EOA = 40_000
+             and then SI.Current.Temporary.Has_SvL
+             and then SI.Current.Temporary.SvL = 40_000,
+             "3.12.2.4: the unsuitable location both temporary EOA and "
+             & "SvL (3.13.1.5: the closer than the EOA)");
+      --  a change of the Train Data: C4 now, the location suitable
+      Cat.Axle_Load := 6;
+      EVC_Train_Data.Set (Data, Cat);
+      Run_X (16_000);
+      Check (not TD.Unsuitable_Kind (1, Cat)
+             and then not SI.Current.Temporary.Present,
+             "3.12.2.3: compared with the Train Data stored, again at "
+             & "their change");
+      --  a) the gauge GA only: G1 unsuitable at 600 m, the closest
+      Cat.Loading_Gauge := 1;
+      RS.N_ITER := 0;
+      RS.D_SUITABILITY := 400;
+      RS.Q_SUITABILITY := 0;
+      RS.Has_M_LINEAXLELOADCAT := False;
+      RS.Has_M_LINEGAUGE := True;
+      RS.M_LINEGAUGE := 16#02#;
+      Carry (2, 0, RS);
+      Run_X (25_000);
+      Check (TD.Unsuitable_Kind (0, Cat)
+             and then SI.Current.Temporary.Present
+             and then SI.Current.Temporary.EOA = 60_000,
+             "3.12.2.3 a): the train's loading gauge not accepted");
+      --  b) DC 3 kV where the engine accepts AC 25 kV only; 3.12.2.3.1:
+      --  never unsuitable for an engine running without traction system
+      RS.Q_SUITABILITY := 2;
+      RS.Has_M_LINEGAUGE := False;
+      RS.Has_M_VOLTAGE := True;
+      RS.M_VOLTAGE := 3;
+      RS.Has_NID_CTRACTION := True;
+      RS.NID_CTRACTION := 15;
+      Carry (3, 0, RS);
+      Run_X (31_000);
+      Check (TD.Unsuitable_Kind (2, Cat),
+             "3.12.2.3 b): the traction system not accepted by the engine");
+      Cat.Voltages := 3;
+      Check (not TD.Unsuitable_Kind (2, Cat),
+             "3.12.2.3.1: an engine able to run on a line not fitted with "
+             & "any traction system: never unsuitable");
+      Cat.Voltages := 2**3;
+      Check (not TD.Unsuitable_Kind (2, Cat),
+             "3.12.2.3 b): the traction system accepted by the engine");
+      EVC_Train_Data.Set (Data, Keep);
+   end Scenario_Route_Suitability;
+
    --  A.3.1: the information 300 m in rear of the min safe rear end is
    --  deleted, and its origin released
    procedure Scenario_Rear_Deletion is

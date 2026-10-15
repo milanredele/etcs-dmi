@@ -407,6 +407,9 @@ is
    SS_RV_Distance_Exceeded          : constant := 27;  -- 3.15.4.8
    SS_PT_Distance_Exceeded          : constant := 28;  -- 4.4.14.1.3
    SS_No_Track_Description          : constant := 29;  -- [69]
+   SS_Route_Unsuitable_Gauge        : constant := 30;  -- 3.12.2.3 a)
+   SS_Route_Unsuitable_Traction     : constant := 31;  -- 3.12.2.3 b)
+   SS_Route_Unsuitable_Axle_Load    : constant := 32;  -- 3.12.2.3 c)
    SS_FRMCS_Registration_Failed     : constant := 33;  -- 5.4.3.2 A41
    SS_GSMR_Registration_Failed      : constant := 34;  -- 5.4.3.2 A29
    SS_NL_No_Longer_Permitted        : constant := 35;  -- 4.4.15.1.1.3
