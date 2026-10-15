@@ -259,6 +259,8 @@ begin
    Scenario_SoM_L2_Same_Cycle;
    Scenario_Train_Length_To_Position;
    Scenario_Session_Mode_Change;
+   Scenario_Session_Mode_Change_Capped;
+   Scenario_Session_Lost_Send;
    Scenario_Session_Abort_Desk;
    Scenario_Session_Abort_EoM;
    Scenario_Session_Short_Number;

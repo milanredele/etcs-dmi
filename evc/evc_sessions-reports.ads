@@ -99,8 +99,10 @@ is
 
    --  8. The report due, message 136 with packet 0 or 1 (3.6.5.1.2), to
    --  the supervising RBC and to Also (3.15.1.3.4: both RBCs of a
-   --  handover); to Forced whether due or not (3.15.1.3.9)
-   --  @req 3.15.1.3.4, 3.16.4.1
+   --  handover); to Forced whether due or not (3.15.1.3.9). A report due
+   --  while the safe radio connection is lost is considered as sent
+   --  (3.5.4.5): not given to the port, not kept for the reconnection
+   --  @req 3.15.1.3.4, 3.16.4.1, 3.5.4.5
    procedure Produce (Ctx    : EVC_Radio.Context_T;
                       Also   : Targets_T := No_Targets;
                       Forced : Targets_T := No_Targets)

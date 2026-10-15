@@ -64,6 +64,8 @@ package EVC_Test_Sessions is
    procedure Scenario_Train_Length_To_Position;
    --  3.5.3.4 c): a session for a mode change to report in level 2
    procedure Scenario_Session_Mode_Change;
+   procedure Scenario_Session_Mode_Change_Capped;
+   procedure Scenario_Session_Lost_Send;
 
    --  e5/session-rows: 3.5.3.4 e) g) h), 3.5.3.8 a) b) g), 3.5.3.11
    procedure Scenario_Session_Abort_Desk;
