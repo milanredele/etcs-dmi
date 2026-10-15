@@ -380,9 +380,11 @@ package body S076_Tables is
                             Value => (if On then 1 else 0), others => <>);
          --  ST02 adhesion, ST03 / ST04 the safe radio connection up /
          --  lost, ST05 the hour glass, ST06 reversing permitted
-         when 39 .. 43 => return (Kind => Symbol_Shown, Bit => Bit,
-                                  Value => (if On then 1 else 0),
-                                  others => <>);
+         --  ST02 to ST06; TC01 to TC37; DR02 track ahead free; LX01 the
+         --  level crossing; LS01 with the LSSMA (DMI 8.2.1.7.4)
+         when 39 .. 43 | 44 .. 80 | 82 | 86 | 87 =>
+            return (Kind => Symbol_Shown, Bit => Bit,
+                    Value => (if On then 1 else 0), others => <>);
          --  ST07: BMM reaction inhibition
          when 88 => return Event (23, 9, (if On then 1 else 0));
          when others => return None;
@@ -408,7 +410,33 @@ package body S076_Tables is
    end Trips;
 
    function System_Status_Fact (Bit : Natural; On : Boolean) return Fact_T is
+      --  the DMI's entries of the message (SS_Entries)
+      function Shown (Entries : Numbers_T) return Fact_T is
+        ((Kind => SS_Shown, Value => (if On then 1 else 0),
+          B3_List => Entries, others => <>));
    begin
+      --  the messages no event of ours records, from the DMI state
+      case Bit is
+         when 2  => return Shown (N1 (3));       -- Trackside malfunction
+         when 3  => return Shown (N2 (4, 5));    -- Communication error
+         when 4  => return Shown (N1 (6));       -- Entering FS
+         when 5  => return Shown (N1 (7));       -- Entering OS
+         when 6  => return Shown (N1 (9));       -- Runaway movement
+         when 7  => return Shown (N2 (12, 13));  -- SH refused
+         when 8  => return Shown (N1 (14));      -- SH request failed
+         when 11 => return Shown (N1 (20));      -- Train is rejected
+         when 17 => return Shown (N1 (26));      -- Emergency stop
+         when 20 => return Shown (N1 (32));      -- Route unsuitable: axle
+         when 21 => return Shown (N1 (30));      -- loading gauge
+         when 22 => return Shown (N1 (31));      -- traction system
+         when 23 => return Shown (N1 (34));      -- GSM-R registration
+         when 24 => return Shown (N1 (33));      -- FRMCS registration
+         when 28 => return Shown (N1 (10));      -- SM refused
+         when 29 => return Shown (N1 (11));      -- SM request failed
+         when 30 => return Shown (N1 (8));       -- Entering SM
+         when 31 => return Shown (N1 (19));      -- Safe consist length
+         when others => null;
+      end case;
       if not On then
          return None;
       end if;
