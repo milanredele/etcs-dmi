@@ -2784,8 +2784,43 @@ package body S076_Run is
                   when 41 => In_W := Seen.Radio_Lost; Now := S.Radio = 2;
                   when 42 => Now := S.Has_Onboard and then S.Onboard (7) /= 0;
                      In_W := Now;
-                  when others => In_W := Seen.Reversing; Now := S.Reversing;
+                  when 43 => In_W := Seen.Reversing; Now := S.Reversing;
+                  --  TCnn, LX01 as the track condition kind 38
+                  when 44 .. 80 | 86 =>
+                     declare
+                        K : constant Natural :=
+                          (if F.Bit = 86 then 38 else F.Bit - 43);
+                     begin
+                        In_W := Seen.TC (K); Now := S.TC (K);
+                     end;
+                  when 82 => In_W := Seen.TAF; Now := S.TAF;
+                  --  LS01 stands with the LSSMA shown (DMI 8.2.1.7.4)
+                  when others => Now := S.LSSMA /= 16#FFFF#; In_W := Now;
                end case;
+               if F.Value = 1 then
+                  return (In_W or else Now) = Positive;
+               end if;
+               return (if Positive then not Now else Now or else not In_W);
+            end;
+         when SS_Shown =>
+            --  judged as the DMI step of the message (SS_Message): put in
+            --  the window or active at its end; Value 0 removed by then
+            declare
+               In_W, Now : Boolean := False;
+            begin
+               for I in 1 .. F.B3_List.Count loop
+                  for E in 1 .. B.SS_Count loop
+                     if B.SS (E).Entry_Number = F.B3_List.List (I)
+                       and then B.SS (E).Event = 0
+                     then
+                        In_W := True;
+                     end if;
+                  end loop;
+                  if F.B3_List.List (I) in 1 .. 38 then
+                     Now := Now or else DMI_System_Status.Active
+                       (DMI_System_Status.Entry_T (F.B3_List.List (I)));
+                  end if;
+               end loop;
                if F.Value = 1 then
                   return (In_W or else Now) = Positive;
                end if;
@@ -2838,6 +2873,70 @@ package body S076_Run is
    type Bits_Fn is access function (Bit : Natural; On : Boolean)
      return Fact_T;
 
+   --  The track condition kinds of A (TC numbers, 38 LX01) as text
+   function Kinds_Image (A : B.Bit_Array_T) return String is
+      R : String (1 .. 4 * 38) := (others => ' ');
+      N : Natural := 0;
+   begin
+      for K in 1 .. 38 loop
+         if A (K) then
+            declare
+               I : constant String := Natural'Image (K);
+            begin
+               R (N + 1 .. N + I'Length) := I;
+               N := N + I'Length;
+            end;
+         end if;
+      end loop;
+      return (if N = 0 then " none" else R (1 .. N));
+   end Kinds_Image;
+
+   --  The grey and yellow symbols of one track condition (DMI 8.2.3.5:
+   --  grey for an automatic execution by the train, yellow when the
+   --  driver acts): the other one of TC number K, 0 when none
+   function TC_Twin (K : Natural) return Natural is
+     (case K is
+         when 2 | 4 | 6 | 8 | 13 | 15 | 17 => K + 1,
+         when 3 | 5 | 7 | 9 | 14 | 16 | 18 => K - 1,
+         when 19 | 20 => K + 2,
+         when 21 | 22 => K - 2,
+         when others => 0);
+
+   --  A record 21 field "<BitNN=1...>" naming a track condition symbol
+   --  whose twin (TC_Twin) the DMI shows in the window or now: the
+   --  sequence's train executes it in the other way than the bench's
+   --  A record 21 field naming a track condition symbol (bits 44 to 80,
+   --  86): its failure says which kinds the DMI shows
+   function Names_TC (S : String) return Boolean is
+     (for some I in S'First .. S'Last - 5 =>
+        S (I .. I + 2) = "Bit" and then S (I + 3) in '0' .. '9'
+        and then S (I + 4) in '0' .. '9' and then S (I + 5) = '='
+        and then ((Character'Pos (S (I + 3)) - 48) * 10
+                  + Character'Pos (S (I + 4)) - 48) in 44 .. 80 | 86);
+
+   function Twin_Shown (S : String) return Boolean is
+   begin
+      for I in S'First .. S'Last - 5 loop
+         if S (I .. I + 2) = "Bit" and then S (I + 3) in '0' .. '9'
+           and then S (I + 4) in '0' .. '9' and then S (I + 5) = '='
+         then
+            declare
+               Bit : constant Natural :=
+                 (Character'Pos (S (I + 3)) - 48) * 10
+                 + Character'Pos (S (I + 4)) - 48;
+               T   : constant Natural :=
+                 (if Bit in 44 .. 80 then TC_Twin (Bit - 43) else 0);
+            begin
+               if T > 0 and then (B.State.TC (T) or else B.Seen.TC (T))
+               then
+                  return True;
+               end if;
+            end;
+         end if;
+      end loop;
+      return False;
+   end Twin_Shown;
+
    function Bit_Set (S : String; Fn : Bits_Fn; Positive : Boolean;
                      Message : String) return Judgement_T is
       Inner : constant String :=
@@ -2873,6 +2972,14 @@ package body S076_Run is
                   declare
                      Fact : constant Fact_T := Fn (Bit, V_S = "1");
                   begin
+                     --  the spare bits of DMI_SYMB_STATUS (4.2.4.21: 05,
+                     --  11, 13) set: a defect of the sequence
+                     if Message = "21" and then Bit in 5 | 11 | 13
+                       and then V_S = "1"
+                     then
+                        return NJ (R_S076_Defect, "JRU 21 spare bit"
+                                   & Bit_S & " set");
+                     end if;
                      if Fact.Kind = No_Fact then
                         return NJ (R_JRU_Not_Modelled,
                                    Message & "/Bit" & Bit_S & "=" & V_S);
@@ -2892,7 +2999,11 @@ package body S076_Run is
                     "JRU " & Message & " " & S
                     & (if Positive then "" else " not") & " recorded",
                     "JRU mode" & Img (B.JRU_Mode) & " level"
-                    & Img (B.JRU_Level));
+                    & Img (B.JRU_Level)
+                    & (if Message = "21" and then Names_TC (S)
+                       then "; TC now" & Kinds_Image (B.State.TC)
+                            & ", window" & Kinds_Image (B.Seen.TC)
+                       else ""));
    end Bit_Set;
 
    --  The header fields every record carries (4.2.2.2): the mode, the
@@ -3166,7 +3277,7 @@ package body S076_Run is
       return J;
    end JRU_Sent;
 
-   function JRU_Expect (St : Step_T) return Judgement_T is
+   function JRU_Window_Expect (St : Step_T) return Judgement_T is
       Positive : constant Boolean := Same (W (3), "record");
       Id_S     : constant String := W (4);
       Id       : Natural := 0;
@@ -3286,11 +3397,38 @@ package body S076_Run is
                      Eq : constant Natural := Ada.Strings.Fixed.Index (Wd, "=");
                   begin
                      if Eq > 0 then
-                        return Bit_Set
-                          (Wd (Eq + 1 .. Wd'Last),
-                           (if Id = 21 then Symbol_Fact'Access
-                            else System_Status_Fact'Access),
-                           Positive, Img (Id));
+                        declare
+                           C : constant String := Image (St.Comment);
+                           R : constant Judgement_T := Bit_Set
+                             (Wd (Eq + 1 .. Wd'Last),
+                              (if Id = 21 then Symbol_Fact'Access
+                               else System_Status_Fact'Access),
+                              Positive, Img (Id));
+                        begin
+                           --  one of two alternatives (a track condition
+                           --  symbol grey for an automatic execution,
+                           --  yellow when the driver acts, DMI 8.2.3.5;
+                           --  "only if the displayed symbol changes"):
+                           --  the other one is ours
+                           if R.Verdict = Failed and then Id = 21
+                             and then Positive
+                             and then Twin_Shown (Wd (Eq + 1 .. Wd'Last))
+                           then
+                              return NJ (R_Optional, Image (R.Sig)
+                                         & " (the other execution of "
+                                         & "DMI 8.2.3.5 shown)");
+                           end if;
+                           if R.Verdict = Failed
+                             and then (Starts (Up (C), "ONLY IF")
+                                       or else Has (Up (C), "ONLY IF THE "
+                                                    & "DISPLAYED SYMBOL")
+                                       or else Has (Up (C), "(AUTOMATIC "
+                                                    & "EXECUTION)"))
+                           then
+                              return NJ (R_Optional, Image (R.Sig));
+                           end if;
+                           return R;
+                        end;
                      end if;
                   end;
                end loop;
@@ -3529,6 +3667,26 @@ package body S076_Run is
          return NJ (R_JRU_Not_Modelled, Image (Field_Gap));
       end if;
       return Result;
+   end JRU_Window_Expect;
+
+   --  A JRU record step judged over its window, else over its location
+   --  (the records since the train left the location before,
+   --  Sync_Location_Records): the steps of one location describe one
+   --  instant, and the record of a step whose window an earlier step at
+   --  the same location used up (waiting for its own record or symbol)
+   --  came in that step's window
+   function JRU_Expect (St : Step_T) return Judgement_T is
+      J : constant Judgement_T := JRU_Window_Expect (St);
+      L : Judgement_T;
+   begin
+      if J.Verdict /= Failed or else Location_Scope then
+         return J;
+      end if;
+      Sync_Location_Records;
+      Location_Scope := True;
+      L := JRU_Window_Expect (St);
+      Location_Scope := False;
+      return (if L.Verdict = Passed then L else J);
    end JRU_Expect;
 
    function Expect (St : Step_T) return Judgement_T is
