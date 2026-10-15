@@ -6261,3 +6261,64 @@ regressions, 5 improvements (SV30 3170200_01, _02, _06, _07, _09);
 baseline re-recorded; S8902de51 s076, S65dae40b E7. Edits outside the
 units: `EVC_Position.Taken_Version`, the Global of
 `EVC_Core.Evaluate_Stored_Information`, `EVC_Test_Support.Version`.
+
+### The records judged in part, the new records' fields, the train after a revoked brake (e5/runner-records, 2026-10-15)
+
+Premises checked at the source: the runner judged records 24, 30, 31,
+32, 39 and 51 by number only (`S076_Tables.Message_Event`; a numeric
+field noted as a gap); the sequences give M_REMOTE_SHUNTING_STATE (158
+steps in SV30), Q_RBCENTRY (66), M_DIRECTION_CONTROLLER (34, in bits as
+SUBSET-027 4.2.4.39 writes it), M_SLEEPING (21), M_NON_LEADING (14),
+M_PASSIVE_SHUNTING (5). The brief's `--decl Known` of S076_Run does not
+exist: the runner's S076-defect blocks are recognised by rule, the
+`Known` table is the check's.
+
+**Fields.** `S076_Tables.Record_Field` names the byte of the event of
+`EVC_JRU_Records` that carries a field (NID_RBC wide in bytes 3 and 4),
+`Field_Value` reads it in decimal or bits; `JRU_Window_Expect` passes a
+record only on a record of the event whose given numbers are its own
+("recorded with other values" else). Q_RBCENTRY 2 for RBC data entered
+on an on-board with GSM-R only is the coding before 4.0.0 (3 in
+4.2.4.24): a SUBSET-076 defect when ours recorded 3. Record 13 with
+M_ERROR 5 is judged (event 13, `EVC_Sessions.Contact_Error`).
+
+**B408.** Record 11 without M_DRIVERACTIONS passes on any driver action
+an event of ours records in the window (else not judged); M_DRIVERACTION
+and M_DRIVER, misspelt in a few sequences, are read; an action without
+an event of ours is not judged by its reason: 37 is spare in 4.0.0
+(SUBSET-076 defect), 43 to 48 ATO, the others (FRMCS 51 to 55,
+scrolling) JRU. Record 12 with M_ERROR 0 (linking consistency, 3.16.2.3)
+is judged on the position's events 4 to 6; 1, 2, 7 and 8 have no event
+(B481). Record 44 absent: the bench notes a change of the LSSMA value
+shown in the window (`S076_Bench.Seen_T.LSSMA_Changed`; the end of the
+display is no record, 4080300_17 step 178).
+
+**B421.** `S076_Run.Defect_Steps` blocks a step by sequence and step as
+S076-defect (3130700_02 step 51, the tool's unrounded V_PBD 12 against
+3.11.11.6's 10), not by its signature, which 3130232_18 shares.
+
+**B420.** The chart decides: 4120100_01's speed profile falls from 54.2
+km/h at 525 m to 0.5 at 655 m, the desk opened there at standstill. The
+explicit speed of the ODO step that provoked the emergency brake (58
+km/h) stayed the speed asked for after the brake was revoked on the
+desk's closure (4.12.1.2, B411), and the train regained it. Decision: an
+explicit speed that a brake lowered and then released is spent
+(`S076_Bench.Forced_Spent`, until the next forced speed), the train
+follows the chart again (`S076_Run.Drive_To`). 4120100_01 passes (SV22,
+SV30; SV21 runs on to its E7 block at step 145), 3131040_78 passes too.
+
+**B443** not done: the comments name the automatic execution of a track
+condition in 15 sv30 sequences ("(automatic execution)", already
+optional; "executed automatically"), so a per-step rule is possible; a
+train with automatic execution is not modelled.
+
+SUBSET-076: 870 / 1263 / 1057 before, 875 / 1257 / 1058 after; steps not
+judged 4787 -> 4692 (JRU not modelled 1425 -> 1309, SUBSET-076 defect
+294 -> 315); 9 improvements; 3 regressions understood: 9990200_04 step
+70 (3 SV), record 13 M_ERROR 5 now judged, expects the T_NVCONTACT
+reaction of a packet 3 for country 64 sent in groups of country 352,
+not in force (3.18.2.5, the B280 case): triaged s076 (S55180337). New
+signatures after a first failure: record 51 with other values
+(Sa6e2a661), record 44 absent with a changed LSSMA (S11888609, B480).
+Baseline re-recorded, 0 untriaged. Backlog: B408, B420, B421 done; B480,
+B481 opened; B443 left open.

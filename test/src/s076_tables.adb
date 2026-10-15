@@ -487,6 +487,51 @@ package body S076_Tables is
       end case;
    end Message_Event;
 
+   function Record_Field (NID_Message_JRU : Natural; Name : String)
+     return Field_Map_T
+   is
+      function Named (S : String) return Boolean is (Name = S);
+   begin
+      case NID_Message_JRU is
+         when 30 | 31 | 32 | 51 =>
+            if Named ("M_SLEEPING") or else Named ("M_PASSIVE_SHUNTING")
+              or else Named ("M_NON_LEADING")
+              or else Named ("M_REMOTE_SHUNTING_STATE")
+            then
+               return (Byte => 2, others => False);
+            end if;
+         when 39 =>
+            if Named ("M_DIRECTION_CONTROLLER") then
+               return (Byte => 2, Wide => False, Binary => True);
+            end if;
+         when 24 =>
+            if Named ("Q_RBCENTRY") then
+               return (Byte => 2, others => False);
+            elsif Named ("NID_RBC") then
+               return (Byte => 3, Wide => True, Binary => False);
+            end if;
+         when others =>
+            null;
+      end case;
+      return (others => <>);
+   end Record_Field;
+
+   function Field_Value (S : String; Binary : Boolean) return Integer is
+      Base : constant Natural := (if Binary then 2 else 10);
+      V : Natural := 0;
+   begin
+      if S'Length = 0 or else S'Length > 9 then
+         return -1;
+      end if;
+      for C of S loop
+         if C not in '0' .. '9' or else Character'Pos (C) - 48 >= Base then
+            return -1;
+         end if;
+         V := V * Base + Character'Pos (C) - 48;
+      end loop;
+      return V;
+   end Field_Value;
+
    function Table_Sizes return String is
       Actions, Symbols, Statuses, Messages : Natural := 0;
    begin

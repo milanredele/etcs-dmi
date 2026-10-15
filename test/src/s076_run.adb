@@ -272,6 +272,13 @@ package body S076_Run is
       B.Set_Brake_Floor (Kmh_To_Cms (10.0));
       for I in 1 .. 36_000 loop
          Force_Explicit;
+         --  an explicit speed a brake has lowered and released is spent:
+         --  the chart's speed again (4120100_01: the EB revoked on the
+         --  desk's closure, the chart's stop at 655 m)
+         if B.Forced_Spent and then Explicit_Speed >= 0 then
+            Explicit_Speed := -1;
+            Forced_Speed := -1;
+         end if;
          B.Set_Speed (Transit_Cms);
          declare
             Left : constant Integer_64 :=
@@ -3395,8 +3402,10 @@ package body S076_Run is
                      Ok : Boolean;
                      Any : Boolean := False;
                   begin
-                     if Eq > 0 and then Same (Wd (Wd'First .. Eq - 1),
-                                              "M_DRIVERACTIONS")
+                     --  M_DRIVERACTION and M_DRIVER: misspelt in a few
+                     --  sequences
+                     if Eq > 0 and then Starts (Wd (Wd'First .. Eq - 1),
+                                                "M_DRIVER")
                      then
                         Alternatives (Wd (Eq + 1 .. Wd'Last), 2, V, N, Ok);
                         if not Ok then
@@ -3406,8 +3415,14 @@ package body S076_Run is
                            declare
                               F : constant Fact_T := Driver_Action_Fact (V (I));
                            begin
+                              --  no event of ours: 37 is spare in SUBSET-027
+                              --  4.0.0 (4.2.4.11), 43 to 48 the ATO's, the
+                              --  others (scrolling, FRMCS) not recorded
                               if F.Kind = No_Fact then
-                                 return NJ (R_JRU_Not_Modelled,
+                                 return NJ ((case V (I) is
+                                               when 37 => R_S076_Defect,
+                                               when 43 .. 48 => R_ATO,
+                                               when others => R_JRU_Not_Modelled),
                                             "11/M_DRIVERACTIONS=" & Img (V (I)));
                               end if;
                               Any := Any or else Holds (F, Positive);
@@ -3439,6 +3454,15 @@ package body S076_Run is
                      end if;
                   end;
                end loop;
+               --  without M_DRIVERACTIONS: any action of the window that
+               --  an event of ours records
+               if Positive
+                 and then (for some C in 0 .. 63 =>
+                             Driver_Action_Fact (C).Kind /= No_Fact
+                             and then Holds (Driver_Action_Fact (C), True))
+               then
+                  return Pass ("JRU driver action (any)");
+               end if;
                return NJ (R_JRU_Not_Modelled, "11 without M_DRIVERACTIONS");
             when 21 | 23 =>
                for K in 5 .. Line.Count loop
@@ -3492,10 +3516,11 @@ package body S076_Run is
                   if Starts (Wd, "M_ERROR=") then
                      E := Natural'Value (Wd (Wd'First + 8 .. Wd'Last));
                   end if;
-                  --  the on-board records the errors it reports: radio
-                  --  message consistency (3) and sequence (4), not the
-                  --  safe radio connection error (5) of 3.16.3.4
-                  if E >= 0 and then E not in 3 | 4 then
+                  --  the on-board records the errors it reports, radio
+                  --  message consistency (3) and sequence (4), and the
+                  --  safe radio connection error (5) of the T_NVCONTACT
+                  --  reaction (3.16.3.4.1, EVC_Sessions.Contact_Error)
+                  if E >= 0 and then E not in 3 .. 5 then
                      return NJ (R_JRU_Not_Modelled, "13.M_ERROR=" & Img (E));
                   end if;
                   return Check (Any_Rec (13, E, -1) = Positive,
@@ -3515,7 +3540,9 @@ package body S076_Run is
                   --  no record: no change of the LSSMA displayed, which the
                   --  bench does not follow (4080100_04 step 113)
                   if not Positive then
-                     return NJ (R_JRU_Not_Modelled, "44 not recorded");
+                     return Check (not B.Seen.LSSMA_Changed,
+                                   "JRU44 not: the LSSMA shown unchanged",
+                                   "changed in the window");
                   end if;
                   return Check (Shown_Now = Positive,
                                 "JRU44 LSSMA shown"
@@ -3524,7 +3551,18 @@ package body S076_Run is
                end;
             when 12 =>
                if Line.Count > 4 then
-                  return NJ (R_JRU_Not_Modelled, "12.M_ERROR");
+                  --  M_ERROR 0, the linking consistency error of 3.16.2.3,
+                  --  is the position's events 4 to 6 (EVC_Ports: linking
+                  --  reaction, unexpected and missed group); the others
+                  --  (1, 2 message consistency, 7, 8 double linking and
+                  --  repositioning) have no event of ours
+                  for K in 5 .. Line.Count loop
+                     if Starts (W (K), "M_ERROR=")
+                       and then not Starts (W (K), "M_ERROR=0")
+                     then
+                        return NJ (R_JRU_Not_Modelled, "12." & W (K));
+                     end if;
+                  end loop;
                end if;
                return Check ((Any_Rec (4, -1, -1) or else Any_Rec (5, -1, -1)
                               or else Any_Rec (6, -1, -1)) = Positive,
@@ -3629,7 +3667,39 @@ package body S076_Run is
             when others =>
                declare
                   Map : constant JRU_Map_T := Message_Event (Id);
-                  Found : Boolean := False;
+                  Found, Found_Event : Boolean := False;
+
+                  --  the record's own fields its event carries
+                  --  (Record_Field): every number given is the record's
+                  function Fields_Match (R : B.JRU_Record_T) return Boolean is
+                  begin
+                     for K in 5 .. Line.Count loop
+                        declare
+                           Wd : constant String := W (K);
+                           Eq : constant Natural :=
+                             Ada.Strings.Fixed.Index (Wd, "=");
+                           F : constant Field_Map_T :=
+                             (if Eq > Wd'First and then Eq < Wd'Last
+                              then Record_Field (Id, Wd (Wd'First .. Eq - 1))
+                              else (others => <>));
+                           V : constant Integer :=
+                             (if F.Byte = 0 then -1
+                              else Field_Value (Wd (Eq + 1 .. Wd'Last),
+                                                F.Binary));
+                           Got : constant Natural :=
+                             (case F.Byte is
+                                when 2 => R.B2,
+                                when 3 => (if F.Wide then R.B3 * 256 + R.B4
+                                           else R.B3),
+                                when others => R.B4);
+                        begin
+                           if V >= 0 and then V /= Got then
+                              return False;
+                           end if;
+                        end;
+                     end loop;
+                     return True;
+                  end Fields_Match;
                begin
                   --  the records of a later phase (SUBSET-027 4.2.4.5, .7,
                   --  .8, .26): radio infill and Euroloop (E7), NTC
@@ -3647,7 +3717,8 @@ package body S076_Run is
                      if Rec_Matches (Rec (I), Map.Event, Map.Sub, -1)
                        and then (Map.B4 < 0 or else Rec (I).B4 = Map.B4)
                      then
-                        Found := True;
+                        Found_Event := True;
+                        Found := Found or else Fields_Match (Rec (I));
                      end if;
                   end loop;
                   --  the Train Data are also recorded when they changed
@@ -3656,10 +3727,24 @@ package body S076_Run is
                   if Id = 2 and then Any_Rec (23, 11, 6) then
                      Found := True;
                   end if;
+                  --  Q_RBCENTRY 2 for RBC data entered on an on-board with
+                  --  GSM-R only: 3 in SUBSET-027 4.0.0 (4.2.4.24), 2 the
+                  --  coding of the versions before FRMCS
+                  if not Found and then Positive and then Id = 24
+                    and then (for some K in 5 .. Line.Count =>
+                                W (K) = "Q_RBCENTRY=2")
+                    and then Any_Rec (124, 3, -1)
+                  then
+                     return NJ (R_S076_Defect, "JRU 24 Q_RBCENTRY 2, the "
+                                & "coding before 4.0.0 (ours 3, GSM-R)");
+                  end if;
                   Result := Check (Found = Positive,
                                    "JRU" & Id_S & " as event" & Img (Map.Event)
                                    & (if Positive then "" else " not"),
-                                   (if Found then "recorded" else "none"));
+                                   (if Found then "recorded"
+                                    elsif Found_Event
+                                    then "recorded with other values"
+                                    else "none"));
                   if Result.Verdict /= Passed then
                      return Result;
                   end if;
@@ -3676,6 +3761,7 @@ package body S076_Run is
                         if not Same (Name, "M_MODE")
                           and then not Same (Name, "M_LEVEL")
                           and then not Same (Name, "DRIVER_ID")
+                          and then Record_Field (Id, Name).Byte = 0
                           and then not (Eq > 0 and then Eq < Wd'Last
                                         and then Wd (Eq + 1) not in '0' .. '9')
                         then
@@ -3893,6 +3979,23 @@ package body S076_Run is
    function Single_Session_Case (St : Step_T) return Boolean is
      (for some C of Single_Session_Cases =>
         Has (Image (Seq.Name), C.Sequence) and then St.Number = C.First);
+
+   --  The steps of a sequence that are a defect of SUBSET-076, by
+   --  sequence and step (the same in the three system versions), the
+   --  sequence blocked there: 3130700_02 step 51, the train at the
+   --  chart's 12 km/h "below V5" for D_PBD 105 m, the ERA tool's
+   --  unrounded V_PBD, which 3.11.11.6 rounds down to the next lower
+   --  multiple of 5 km/h (10, EVC_PBD)
+   type Defect_Step_T is record
+      Sequence : String (1 .. 10);
+      Step     : Positive;
+   end record;
+   Defect_Steps : constant array (1 .. 1) of Defect_Step_T :=
+     (1 => ("3130700_02", 51));
+
+   function Defect_Step (St : Step_T) return Boolean is
+     (for some C of Defect_Steps =>
+        Has (Image (Seq.Name), C.Sequence) and then St.Number = C.Step);
 
    ---------------------------------------------------------------------
    --  The braking curve steps judged with the ERA workbook's results
@@ -5170,6 +5273,11 @@ package body S076_Run is
             elsif Single_Session_Case (St) then
                J := NJ (R_Optional, "not applicable: 3.15.1.3.2, a "
                         & "single-session on-board");
+               Record_Result (I, J);
+               Block (I, J);
+            elsif Defect_Step (St) then
+               J := NJ (R_S076_Defect, "the tool's unrounded V_PBD "
+                        & "(3.11.11.6 rounds it down to 5 km/h)");
                Record_Result (I, J);
                Block (I, J);
             elsif Scope (St) /= R_None then

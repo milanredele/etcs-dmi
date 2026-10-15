@@ -136,6 +136,22 @@ package S076_Tables is
    end record;
    function Message_Event (NID_Message_JRU : Natural) return JRU_Map_T;
 
+   --  A field of the record NID_Message_JRU (SUBSET-027 4.2.4) that the
+   --  event of Message_Event carries (EVC_JRU_Records): its byte (2 to
+   --  4, 0 not carried), Wide for a 16 bit value in bytes 3 and 4 (high,
+   --  low), Binary when the sequences write it in bits ("01")
+   type Field_Map_T is record
+      Byte   : Natural := 0;
+      Wide   : Boolean := False;
+      Binary : Boolean := False;
+   end record;
+   function Record_Field (NID_Message_JRU : Natural; Name : String)
+     return Field_Map_T;
+
+   --  The value of a field as the sequences write it, in decimal or in
+   --  bits; -1 when it is no number (a symbolic value: "<V5>")
+   function Field_Value (S : String; Binary : Boolean) return Integer;
+
    --  The size of the tables, for the report
    function Table_Sizes return String;
 

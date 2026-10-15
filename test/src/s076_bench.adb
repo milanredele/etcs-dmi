@@ -51,6 +51,7 @@ package body S076_Bench is
    Demand_Cms : Natural := 0;
    Lambda     : Natural := 0;
    Is_Braked  : Boolean := False;
+   Spent      : Boolean := False;   -- Forced_Spent
    Service_On     : Boolean := True;
    Floor_Cms  : Natural := 0;
 
@@ -199,6 +200,13 @@ package body S076_Bench is
                Now.Level_Ann_Ack := P (B + 4) /= 0;
                Now.Override := P (B + 5) /= 0;
                Now.TAF := P (B + 6) /= 0;
+               --  a value of the LSSMA shown that changed: the JRU record
+               --  44 (none when the display stops, 4080300_17 step 178)
+               if Get16 (P, B + 7) /= Now.LSSMA
+                 and then Get16 (P, B + 7) /= 16#FFFF#
+               then
+                  Win.LSSMA_Changed := True;
+               end if;
                Now.LSSMA := Get16 (P, B + 7);
             end if;
          when 16#0A# =>   -- MSG_ONBOARD
@@ -572,6 +580,7 @@ package body S076_Bench is
       Demand_Cms := 0;
       Lambda := 0;
       Is_Braked := False;
+      Spent := False;
       Service_On := True;
       Floor_Cms := 0;
       Dir := 1;
@@ -896,11 +905,14 @@ package body S076_Bench is
 
    function Braked return Boolean is (Is_Braked);
 
+   function Forced_Spent return Boolean is (Spent);
+
    procedure Force_Speed (Cms : Natural) is
    begin
       V_Cms := Cms;
       Demand_Cms := Cms;
       Is_Braked := False;
+      Spent := False;
    end Force_Speed;
 
    procedure Set_Brake_Floor (Cms : Natural) is
@@ -960,6 +972,7 @@ package body S076_Bench is
             Is_Braked := V_Cms < Demand_Cms or else Is_Braked;
          end;
       elsif Is_Braked then
+         Spent := True;
          V_Cms := Natural'Min (Demand_Cms, V_Cms + Per_Cycle);
          Is_Braked := V_Cms < Demand_Cms;
       end if;
