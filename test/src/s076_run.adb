@@ -2728,6 +2728,14 @@ package body S076_Run is
             end loop;
             return not Positive;
          when Brakes_Shown =>
+            --  the symbol still shown (MSG_STATUS brake, ST01) passes a
+            --  step that expects it, as a standing request does for
+            --  Mode_Proposed: its record was made when it came (B380)
+            if Positive and then F.Value = 1
+              and then (B.State.Brake /= 0 or else B.Seen.Brake_Shown)
+            then
+               return True;
+            end if;
             for I in 1 .. Rec_Count loop
                declare
                   R : constant B.JRU_Record_T := Rec (I);
