@@ -110,6 +110,11 @@ package S076_Bench is
    --  True while the train is below the speed asked for because of a
    --  brake (braked, or regaining its speed)
    function Braked return Boolean;
+   --  True once a brake that lowered the train under the speed forced
+   --  last (Force_Speed) was released: that speed was the sequence's
+   --  provocation of the brake, spent by it (the chart's speed applies
+   --  again); False again at the next Force_Speed
+   function Forced_Spent return Boolean;
 
    --  B261: the distance (m) the EBD of the conversion model (A.3.7:
    --  A_basic for the brake percentage Lambda, 10 .. 250, else 100) takes
@@ -301,7 +306,7 @@ package S076_Bench is
       Override, Brake_Shown, Brake_Ack, EBC, SBC, TCO,
         Not_EBC, Not_SBC, Not_TCO, Speed_Shown, Planning_Shown,
         Indication, Gradients, Geo, Reversing, Adhesion, Radio_Up,
-        Radio_Lost, TAF :
+        Radio_Lost, TAF, LSSMA_Changed :
         Boolean := False;
       TC, TIU_TC : Bit_Array_T := (others => False);
    end record;
