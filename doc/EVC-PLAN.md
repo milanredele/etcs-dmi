@@ -6013,3 +6013,58 @@ backlog line edited by hand at integration needs the quoting of its
 commas, the check caught it. Open items: doc/BACKLOG.csv (35 open after
 this round).
 
+
+### The start of release speed monitoring, the standing symbols, the record bits (e5/runner-rsm, 2026-10-15)
+
+Premises checked at the source: the release speed family is 3131050_05,
+_06, _18, _19, _20 and 3131060_10, _18 (the latter two SV21 / SV22),
+five signatures; the workbooks carry the tool's own start of release
+speed monitoring (`limit StartRSM`, m from the EOA, with its release
+speed), read already into `Limits (Start_RSM)` but not used; the
+sequences number DMI_SYMB_STATUS as SUBSET-027 4.0 does (TC01 = bit
+44), and their track condition steps come as alternatives, grey for an
+automatic execution and yellow when the driver acts (DMI 8.2.3.5).
+
+B360: `S076_Run.Release_Judgement` judges a release speed step at our
+own start (`EVC_SDM.Shown_At_T.RSM_Start` through `EVC_Core.Supervision`,
+by the estimated front end, or the max safe one with `RSM_Max_Safe`).
+The reference is the workbook's StartRSM for our release speed (within
+1 km/h, `Release_Set`), less the tool margin (`Tool_Margin`, declared
+ahead of its body), else the step's location. When our start is ahead
+and at most 10 m past it, the train runs on until we monitor the release
+speed and the step is judged again over its location, as `Drive_On`
+does for a curve step. No change kind in the bench's ring was needed.
+3131060_10 SV21 / SV22 pass the step (ours 275 m from the EOA, the
+workbook's 287.6, the comment's 339). The others are named per sequence
+in the triage of `~[release speed`: no release speed supervised (_05,
+_06: the level 1 MA of BG2d at the transition to level 2 is not ours,
+B441); our start 48 m past (_20: the SBI1 of the EOA, where the sequence
+has the SBI2 of a target between the trip location and the SvL, B442);
+and the speed chart (_18, 3131060_18) or the status (_19).
+
+B380: `Holds (Brakes_Shown)` passes a set Bit38 on the symbol still
+shown (MSG_STATUS brake) or shown in the window, as `Mode_Proposed` does
+for a standing request; 9990400_08 passes (SV22, SV30).
+
+B406: record 21's TC01 to TC37, DR02, LX01 and LS01 (with the LSSMA)
+and every bit of record 23 (by its system status messages, `SS_Shown`)
+are judged from the bench's DMI state. A failed track condition bit
+whose twin of the other execution is ours (`Twin_Shown`), or a step
+whose comment says "Only if" or "(automatic execution)", is the other
+alternative: optional. Decision: the bench's train is one where the
+driver acts (B443). The spare bits 05, 11 and 13 set are a SUBSET-076
+defect. A failed JRU step is judged again over its location
+(`JRU_Expect` around `JRU_Window_Expect`): an earlier step at the same
+location that waited for its own symbol used up the window of the
+record. Tables: DMI_SYMB_STATUS bits 41 -> 81 of 110,
+SYSTEM_STATUS_MESSAGE 13 -> 31 of 31. Not judged still: record 23
+without bits (352 steps), the LE bits cleared, DR03 to DR05. B408 was
+not reached.
+
+SUBSET-076: 863 / 1239 / 1088 before, 875 / 1229 / 1086 after; steps
+not judged 6260 -> 5407 (JRU not modelled 2965 -> 2048, optional 222 ->
+255, SUBSET-076 defect 260 -> 294); 14 improvements, 3 regressions
+understood: 3131050_13 step 53 (3 SV), now judged, expects Entering FS
+removed at the level transition at 200 m, which ours keeps
+(S010e5048, onboard, B440). Baseline re-recorded, 0 untriaged.
+Backlog: B360, B380, B406 done, B440 to B443 opened.
