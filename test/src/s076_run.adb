@@ -3894,20 +3894,21 @@ package body S076_Run is
      (for some C of Single_Session_Cases =>
         Has (Image (Seq.Name), C.Sequence) and then St.Number = C.First);
 
-   --  Known defects of SUBSET-076 in the linking data: the step that
-   --  expects the passed group taken as the LRBG where the sequence's
-   --  own linking (packet 5 of the LRBG, 3.4.4.2) places that group
-   --  elsewhere than its track does, or names another group there. The
-   --  on-board rejects the group (found outside its expectation window,
-   --  3.4.4.4.3.2; linked and not in the linking information,
-   --  3.4.4.4.2) and keeps its LRBG; the steps after run on another
-   --  position reference than the sequence's. The step, the same in the
-   --  three system versions, blocks the sequence.
+   --  Known defects of SUBSET-076 found at a step, each with the clause
+   --  it contradicts; the step, the same in the three system versions,
+   --  blocks the sequence. The linking data: the step that expects the
+   --  passed group taken as the LRBG (or the input of the group where no
+   --  step judges it) where the sequence's own linking (packet 5 of the
+   --  LRBG, 3.4.4.2) places that group elsewhere than its track does, or
+   --  names another group there. The on-board rejects the group (found
+   --  outside its expectation window, 3.4.4.4.3.2; linked and not in the
+   --  linking information, 3.4.4.4.2) and keeps its LRBG, so the steps
+   --  after run on another position reference than the sequence's.
    type Linking_Case_T is record
       Sequence : String (1 .. 10);
       Step     : Positive;
    end record;
-   Linking_Data_Cases : constant array (1 .. 8) of Linking_Case_T :=
+   Linking_Data_Cases : constant array (1 .. 10) of Linking_Case_T :=
      (("3131040_13", 56),
       ("3131040_27", 55),
       ("3131040_31", 55),
@@ -3915,27 +3916,40 @@ package body S076_Run is
       ("3080500_03", 49),
       ("3131040_20", 56),
       ("3131040_38", 56),
-      ("3131040_50", 56));
+      ("3131040_50", 56),
+      ("3130234_10", 50),
+      ("3131040_78", 56));
 
-   --  what the linking data of case I say against the track
+   --  what the data of case I say against the track or the clause
    function Linking_Why (I : Positive) return String is
      (case I is
          when 1 =>
-           "BG1d links BG2 at 350 m, BG3 at 550; BG2d at 50, BG3d at 250",
+           "linking: BG1d links BG2 at 350 m, BG3 at 550; BG2d at 50,"
+           & " BG3d at 250 (3.4.4.4.3.2)",
          when 2 =>
-           "BG1d links BG2 at 800 m, BG3 at 1600; BG2d 750, BG3d 950",
+           "linking: BG1d links BG2 at 800 m, BG3 at 1600; BG2d 750, BG3d"
+           & " 950 (3.4.4.4.3.2)",
          when 3 =>
-           "BG1d links BG2 at 500 m, BG3 at 800; BG2d 100, BG3d 400",
+           "linking: BG1d links BG2 at 500 m, BG3 at 800; BG2d 100, BG3d"
+           & " 400 (3.4.4.4.3.2)",
          when 4 =>
-           "BG1d links NID_BG 2 at 700 m; the track has BG3d there",
+           "linking: BG1d links NID_BG 2 at 700 m; the track has BG3d"
+           & " there (3.4.4.4.2)",
          when 5 =>
-           "BG3d's linking (BG5 at 1170 m) leaves out BG4d at 1200",
+           "linking: BG3d's linking (BG5 at 1170 m) leaves out BG4d at"
+           & " 1200 (3.4.4.4.2)",
          when 6 =>
-           "BG2d links NID_BG 2 at 1150 m; the track has BG3d there",
-         when 7 =>
-           "BG1d links NID_BG 2 at 705 m; the track has BG3d there",
+           "linking: BG2d links NID_BG 2 at 1150 m; the track has BG3d"
+           & " there (3.4.4.4.2)",
+         when 7 | 8 =>
+           "linking: BG1d links NID_BG 2 at 705 m; the track has BG3d"
+           & " there (3.4.4.4.2)",
+         when 9 =>
+           "linking: BG1d links BG2 at 250 m; BG2d at 300, its MA"
+           & " rejected (3.4.4.4.3.2)",
          when others =>
-           "BG1d links NID_BG 2 at 705 m; the track has BG3d there");
+           "the text: V_TRAIN > V_EMA, the comment and the Indication"
+           & " expected: below V_EMA (3.13.10.4.15)");
 
    function Linking_Data_Case (St : Step_T) return Natural is
    begin
@@ -5228,9 +5242,8 @@ package body S076_Run is
                Record_Result (I, J);
                Block (I, J);
             elsif Linking_Data_Case (St) > 0 then
-               J := NJ (R_S076_Defect, "linking data: "
-                        & Linking_Why (Linking_Data_Case (St))
-                        & " (3.4.4.4.2, 3.4.4.4.3.2)");
+               J := NJ (R_S076_Defect, "data: "
+                        & Linking_Why (Linking_Data_Case (St)));
                Record_Result (I, J);
                Block (I, J);
             elsif Scope (St) /= R_None then
