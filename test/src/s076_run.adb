@@ -3894,6 +3894,61 @@ package body S076_Run is
      (for some C of Single_Session_Cases =>
         Has (Image (Seq.Name), C.Sequence) and then St.Number = C.First);
 
+   --  Known defects of SUBSET-076 in the linking data: the step that
+   --  expects the passed group taken as the LRBG where the sequence's
+   --  own linking (packet 5 of the LRBG, 3.4.4.2) places that group
+   --  elsewhere than its track does, or names another group there. The
+   --  on-board rejects the group (found outside its expectation window,
+   --  3.4.4.4.3.2; linked and not in the linking information,
+   --  3.4.4.4.2) and keeps its LRBG; the steps after run on another
+   --  position reference than the sequence's. The step, the same in the
+   --  three system versions, blocks the sequence.
+   type Linking_Case_T is record
+      Sequence : String (1 .. 10);
+      Step     : Positive;
+   end record;
+   Linking_Data_Cases : constant array (1 .. 8) of Linking_Case_T :=
+     (("3131040_13", 56),
+      ("3131040_27", 55),
+      ("3131040_31", 55),
+      ("3131040_37", 52),
+      ("3080500_03", 49),
+      ("3131040_20", 56),
+      ("3131040_38", 56),
+      ("3131040_50", 56));
+
+   --  what the linking data of case I say against the track
+   function Linking_Why (I : Positive) return String is
+     (case I is
+         when 1 =>
+           "BG1d links BG2 at 350 m, BG3 at 550; BG2d at 50, BG3d at 250",
+         when 2 =>
+           "BG1d links BG2 at 800 m, BG3 at 1600; BG2d 750, BG3d 950",
+         when 3 =>
+           "BG1d links BG2 at 500 m, BG3 at 800; BG2d 100, BG3d 400",
+         when 4 =>
+           "BG1d links NID_BG 2 at 700 m; the track has BG3d there",
+         when 5 =>
+           "BG3d's linking (BG5 at 1170 m) leaves out BG4d at 1200",
+         when 6 =>
+           "BG2d links NID_BG 2 at 1150 m; the track has BG3d there",
+         when 7 =>
+           "BG1d links NID_BG 2 at 705 m; the track has BG3d there",
+         when others =>
+           "BG1d links NID_BG 2 at 705 m; the track has BG3d there");
+
+   function Linking_Data_Case (St : Step_T) return Natural is
+   begin
+      for I in Linking_Data_Cases'Range loop
+         if Has (Image (Seq.Name), Linking_Data_Cases (I).Sequence)
+           and then St.Number = Linking_Data_Cases (I).Step
+         then
+            return I;
+         end if;
+      end loop;
+      return 0;
+   end Linking_Data_Case;
+
    ---------------------------------------------------------------------
    --  The braking curve steps judged with the ERA workbook's results
    --  (B101, e5/curves-judge). A step whose comment says the train has
@@ -5170,6 +5225,12 @@ package body S076_Run is
             elsif Single_Session_Case (St) then
                J := NJ (R_Optional, "not applicable: 3.15.1.3.2, a "
                         & "single-session on-board");
+               Record_Result (I, J);
+               Block (I, J);
+            elsif Linking_Data_Case (St) > 0 then
+               J := NJ (R_S076_Defect, "linking data: "
+                        & Linking_Why (Linking_Data_Case (St))
+                        & " (3.4.4.4.2, 3.4.4.4.3.2)");
                Record_Result (I, J);
                Block (I, J);
             elsif Scope (St) /= R_None then
