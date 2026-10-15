@@ -1184,6 +1184,7 @@ is
       State.SB := False;
       State.EB := False;
       State.EB_For_SB := False;
+      State.Reevaluate := False;
       State.MRDT_Valid := False;
       State.Lock_P := False;
       State.Lock_SBI := False;
@@ -1803,7 +1804,15 @@ is
 
    --  TCO, SB, EB, EB_For_SB: the commands in force (State_T);
    --  EB_Triggered: an emergency brake triggering condition holds; Brake:
-   --  a brake command is in force
+   --  a brake command is in force. Reevaluate (cleared): the first supervision
+   --  after entering a mode whose speed and distance monitoring reason is to
+   --  be re-evaluated (4.12.1.2 c, Table 4.12 "TBR"): decision, the emergency
+   --  brake is revoked on its revocation condition of the entered mode's data
+   --  (Tables 6 r1, 10 / 11 r1 r3) whatever Q_NVEMRRLS, and kept where a
+   --  triggering condition of the entered mode still holds; Q_NVEMRRLS
+   --  restricts the release of a command triggered in the mode (3.13.2.3.7.2),
+   --  not of one whose reason the mode change revoked
+   --  @req 4.12.1.2 c)
    procedure Set_Commands (S            : Snapshot_T;
                            Inputs       : Inputs_T;
                            C            : Ctx_T;
@@ -1812,9 +1821,10 @@ is
                            TCO          : in out Boolean;
                            SB           : in out Boolean;
                            EB           : in out Boolean;
+                           Brake        : out Boolean;
                            EB_For_SB    : in out Boolean;
                            EB_Triggered : in out Boolean;
-                           Brake        : out Boolean)
+                           Reevaluate   : in out Boolean)
      with Pre  => (if Sv.Rev_All then C.V <= C.V_MRSP)
                   and then not EB_Triggered,
           Post => (if EB'Old and then not EB
@@ -1832,7 +1842,7 @@ is
             if C.V <= C.V_MRSP then
                SB := False;
                EB_For_SB := False;
-               if NV.Q_NVEMRRLS then
+               if NV.Q_NVEMRRLS or else Reevaluate then
                   EB := False;
                end if;
             end if;
@@ -1861,7 +1871,7 @@ is
                TCO := False;
                SB := False;
                EB_For_SB := False;
-               if NV.Q_NVEMRRLS then
+               if NV.Q_NVEMRRLS or else Reevaluate then
                   EB := False;
                end if;
             end if;
@@ -1901,6 +1911,7 @@ is
             TCO := False;
       end case;
       Brake := SB or else EB or else EB_For_SB;
+      Reevaluate := False;
    end Set_Commands;
 
    --  The supervision status (Tables 7, 12, 15)
@@ -2477,8 +2488,7 @@ is
          Clamp (C.X_Min - Min (Num (S.Train_Data.Length), Max_Cm)),
          Work.Profile);
 
-      Ceiling_Speed (S, C.X_Min, C.X_Max, Work.Elements, Work.MRSP,
-                     C.V_MRSP);
+      Ceiling_Speed (S, C.X_Min, C.X_Max, Work.Elements, Work.MRSP, C.V_MRSP);
       if not ((S.Supervise and then Work.Elements > 0)
               or else S.Mode_Speed < No_Speed_Limit)
       then
@@ -2519,7 +2529,8 @@ is
 
       Monitoring_Type (C, Sv, Cond_2, Signature, Work.Count, State, Mon);
       Set_Commands (S, Inputs, C, Mon, Sv, State.TCO, State.SB, State.EB,
-                    State.EB_For_SB, Result.EB_Triggered, Brake);
+                    Brake, State.EB_For_SB, Result.EB_Triggered,
+                    State.Reevaluate);
       pragma Assert (if EB_In and then not State.EB
                      then C.Standstill
                           or else (Mon /= RSM and then C.V <= C.V_MRSP));

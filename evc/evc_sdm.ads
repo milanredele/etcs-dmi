@@ -115,6 +115,10 @@ is
       SB          : Boolean := False;
       EB          : Boolean := False;
       EB_For_SB   : Boolean := False;
+      --  4.12.1.2 c): a mode was entered in which the speed and distance
+      --  monitoring reason of the brake commands is to be re-evaluated on
+      --  the data of that mode (set by the mode change, taken by Step)
+      Reevaluate  : Boolean := False;
       --  3.13.10.4.5: the MRDT, and the number the DMI knows it by
       MRDT_Valid  : Boolean := False;
       MRDT        : Target_T := No_Target;

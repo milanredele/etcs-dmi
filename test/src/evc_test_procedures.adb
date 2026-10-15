@@ -465,12 +465,17 @@ package body EVC_Test_Procedures is
    function U16 (V : Natural) return Byte_Array is
      (Byte (V mod 256), Byte (V / 256 mod 256));
 
+   --  The upper bound of the speed above the estimated one by this much
+   --  (cm/s): the odometer's accuracy
+   V_Max_Extra : Natural := 0;
+
    procedure Sample is
       V : constant Natural := Natural'Min (abs V_Cms, 65_535);
    begin
       Input (Odometer,
              U32 (X_Cm) & U32 (Over) & U32 (Under)
-             & U16 (V) & U16 (V) & U16 (V)
+             & U16 (V) & U16 (V)
+             & U16 (Natural'Min (V + V_Max_Extra, 65_535))
              & Byte_Array'(Byte (if V_Cms > 0 then 1
                                  elsif V_Cms < 0 then 2 else 0), 0)
              & U16 (0));
@@ -1283,6 +1288,31 @@ package body EVC_Test_Procedures is
       Cycle;
       Check (Mode_Byte = Code_FS and then Override_Byte = 0,
              "5.8.2.1 a): no override above V_NVALLOWOVTRP");
+
+      --  5.8.2.1 a), 3.13.10.2.1: the train speed is the estimated one;
+      --  at V_est 15 km/h under V_NVALLOWOVTRP 20 km/h, an upper bound
+      --  V_max of 22 km/h does not refuse the override (SUBSET-076
+      --  3131060_08 step 60: 58 km/h under 60)
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 600);
+      Close;
+      declare
+         NV : ST.T3.Packet_T := ST.National_Values (123);
+      begin
+         NV.V_NVALLOWOVTRP := 4;
+         Group (30, 60);
+         Add (NV);
+         Close;
+      end;
+      Run_Front (80, 15);
+      V_Max_Extra := 200;
+      Cycle;
+      Driver (6);
+      Cycle;
+      V_Max_Extra := 0;
+      Check (Override_Byte = 1,
+             "5.8.2.1 a): the override allowed at V_est under "
+             & "V_NVALLOWOVTRP, V_max above it");
 
       --  d), and [54] without it
       Begin_Scenario (M_SR, L1);
@@ -2372,6 +2402,34 @@ package body EVC_Test_Procedures is
              & "b)");
    end Scenario_Integration_Shunting_Levels;
 
+   --  4.12.1.2 c), 3.14.1.11: the speed and distance monitoring reason
+   --  of a brake command is re-evaluated on entering FS from SR. The
+   --  emergency brake of the SR ceiling (40 km/h, its EBI exceeded at
+   --  50) is kept under the SR ceiling with Q_NVEMRRLS 0 (Table 6 r0
+   --  only); entering FS at 25 km/h under the FS MRSP of 100 revokes it
+   --  while running; entering FS above the FS EBI keeps it (SUBSET-076
+   --  4120100_01 step 60)
+   procedure Scenario_Brake_Reevaluated is
+   begin
+      for Fast in Boolean loop
+         Begin_Scenario (M_SR, L1);
+         Run_Front (Front_M + 50, 50);
+         Check (EB, "4.12: the SR ceiling's EBI exceeded, the emergency "
+                & "brake");
+         Run_Front (Front_M + 20, (if Fast then 120 else 25));
+         Check (EB, "4.12: under the SR ceiling, Q_NVEMRRLS 0: kept");
+         Line_Group (EOA_M => 1_500, Kmh => 100, At_M => Front_M + 10);
+         Close;
+         Run_Front (Front_M + 30, (if Fast then 120 else 25));
+         Check (Mode_Byte = Code_FS and then EB = Fast,
+                "4.12.1.2 c): FS entered at"
+                & (if Fast then " 120 km/h over the FS EBI, the emergency "
+                   & "brake kept"
+                   else " 25 km/h under the FS MRSP, the emergency brake "
+                   & "revoked while running"));
+      end loop;
+   end Scenario_Brake_Reevaluated;
+
    procedure Run is
    begin
       Scenario_Protocol;
@@ -2390,6 +2448,7 @@ package body EVC_Test_Procedures is
       Scenario_Text_Message_Room;
       Scenario_BMM;
       Scenario_Mode_Speeds;
+      Scenario_Brake_Reevaluated;
       Scenario_Level_Crossing;
       Scenario_External_Track_Conditions;
       Scenario_Train_Data_Change;

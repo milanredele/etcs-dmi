@@ -721,7 +721,7 @@ is
    --  NID_MESSAGE, L_MESSAGE), parsed (EVC_Received, chapter 8)
    --  and given, with their session, to the session and link half; the
    --  messages it passes go on to the authority half (phase E5)
-   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2
+   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.17.3.11
    procedure Read_Radio_Messages
      with Global => (Input  => (Latched_RTM, Cycle_Count, Clock_Ms,
                                 EVC_Position.State, EVC_Odometry.State),
@@ -797,6 +797,15 @@ is
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
                   end if;
+               elsif M_Status = ETCS_Message.Unknown_Message then
+                  --  3.17.3.11 b): an unknown NID_MESSAGE is not a message
+                  --  data consistency error; recorded above (record 9),
+                  --  its content ignored, nothing reported. Decision: for
+                  --  an RBC of any version, since this on-board cannot
+                  --  tell a message of a higher Y from a spare value of
+                  --  its own (the conformance test's reading); a spare
+                  --  value of a known message stays an error (3.16.1.1.1)
+                  null;
                else
                   --  3.16.3.1.1 c), 3.16.3.1.1.2
                   EVC_Sessions.Take_Inconsistent (Slot.Session);
@@ -964,7 +973,7 @@ is
    --  2. Update the position (EVC_Position): the cab status, the
    --  telegrams of the cycle, the odometer sample; its events go to the
    --  JRU. E0's standstill and override speed come from the sample.
-   --  @req 3.14.3.6, 4.8.3.1.1 Table-footnote [1]
+   --  @req 3.14.3.6, 4.8.3.1.1 Table-footnote [1], 5.8.2.1 a)
    procedure Update_Position
      with Global => (Input  => (Odometer_Now, Odometer_Fresh, TIU_Now,
                                 EVC_National_Values.State, Current_Mode,
@@ -1037,8 +1046,11 @@ is
          end;
       end loop;
       Standstill := Odometer_Now.V_Max = 0;
+      --  5.8.2.1 a): "the train speed" is the estimated speed, the one
+      --  shown to the driver and used for the speed monitoring
+      --  (3.13.10.2.1), not its upper bound V_max
       Below_Override :=
-        Natural (Odometer_Now.V_Max) <= EVC_National_Values.V_NVALLOWOVTRP;
+        Natural (Odometer_Now.V_Est) <= EVC_National_Values.V_NVALLOWOVTRP;
    end Update_Position;
 
    --  3. Evaluate the stored information (EVC_Stored_Information, phase
@@ -1771,9 +1783,9 @@ is
          Train_Data_Valid  => EVC_Train_Data.Valid,
          --  the train running number of the start of mission (5.4.2)
          TRN_Valid         => EVC_Mission.TRN_Status = EVC_Mission.Valid,
-         Speed_Max         =>
+         Speed_Est         =>
            EVC_Supervision_Input.Speed_Cms_T
-             (Natural'Min (Natural (Odometer_Now.V_Max),
+             (Natural'Min (Natural (Odometer_Now.V_Est),
                            EVC_Supervision_Input.Speed_Cms_T'Last)),
          Antenna_Offset    =>
            EVC_Position.Front_Offset (EVC_Position.Orientation),
@@ -1979,6 +1991,8 @@ is
          SDM_State.SB := False;
          SDM_State.EB := False;
          SDM_State.EB_For_SB := False;
+      elsif To /= From then
+         SDM_State.Reevaluate := True;
       end if;
       --  4.12: Roll Away Protection revoked in NP, SB, TR, SN; the
       --  Unauthorised Direction Movement Protection in NP, SB, SH, UN, TR,
