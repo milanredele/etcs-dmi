@@ -6231,3 +6231,49 @@ failures, so the passed / failed / blocked line alone misleads: read the
 steps not judged with it. Open items: doc/BACKLOG.csv (30 open after
 this round).
 
+
+### Route suitability, the brake reasons at a mode entry, the start of release speed monitoring (e5/route-brakes, 2026-10-15)
+
+B034: the route suitability data are compared with the Train Data each
+cycle, so again at a change of the Train Data (3.12.2.3 a to c; 3.12.2.3.1
+from bit 0 of the configuration's Voltages; NID_CTRACTION not compared,
+the Train Data has none: decision), `EVC_Track_Description.Unsuitable`;
+the closest unsuitable location not passed by the min safe rear end is a
+temporary EOA and SvL with no release speed (3.12.2.4, 3.13.1.5),
+`Suitability_Target`, taken by `EVC_Stored_Information.Build_Temporary`
+when closer than the mode profile's and the level crossing's (its
+passage by the min safe front end is the trip of [12], [16]); the system
+status messages 30 to 32 per kind, `EVC_Core.Show_Route_Unsuitable`. A
+message 24 with packet 70 now reaches the stores
+(`EVC_Radio_Authority.Take_Message`; the other packets of message 24,
+B474). Scenario `Route_Suitability` (evc_test_profiles). 3120200_01 and
+_04 pass (3 SV), _05 runs to its trip and fails at step 82 on M_LEVEL 7
+(S0e7148b0, s076); 9990400_28 needs the train's D2 (S49bc1c1a, model,
+B471); 3120200_06 regresses from passed to step 45, understood: its
+engine runs on lines without traction system, the bench's configuration
+does not (Sb480a8fc, model, B472); 4100103_43 moves 47 -> 65 (S82794294,
+B473).
+
+B014: every brake reason the on-board has was checked against the table
+of 4.12.1.2 cell by cell; the one difference, the T_NVCONTACT service
+brake kept on entering NP, SB, SH, SR, UN, TR, SN, is revoked by
+`EVC_Sessions.Revoke_Contact_Brake` from `EVC_Core.Revoke_Brake_Reasons`
+(checks in `Scenario_Session_NVCONTACT_Brake`). a) to e) and [1] done;
+4.12.1.2, its Table and [2] partial for the reasons not modelled (B470)
+and SM (E6).
+
+B442, the sequence's data: 3.13.9.4.6 names the SBI2 of targets between
+the trip location and the SvL without D41 (that is 3.13.9.4.8's, for the
+release speed value); the only such target of 3131050_20, the 15 km/h
+step at 2050 m, has its SBI2 beyond the EOA, so the SBI1 of the EOA
+rules, as `EVC_SDM.RSM_Start` does and as the comment's last sentence
+says; its 176 m before the EOA is not the workbook's own SBI at 23 km/h
+(about 124 m, `curve_probe.py`, ours inside the B175 margin).
+
+SUBSET-076: 870 / 1263 / 1057 before, 873 / 1257 / 1060 after, 14
+improvements, 3 regressions understood (3120200_06, 3 SV), baseline
+re-recorded. EVC_Core edits: `Revoke_Brake_Reasons`, `Show_Route_Unsuitable`
+and its call, `Unsuitable_Shown` in the state, `Produce_Outputs`' Global.
+Outside the package: `EVC_Stored_Information.Build_Temporary`,
+`EVC_Radio_Authority.Take_Message`, `EVC_Sessions.Revoke_Contact_Brake`,
+the catalogue check of evc_test_procedures.

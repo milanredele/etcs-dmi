@@ -1986,7 +1986,7 @@ is
    --  unauthorised direction movement and the standstill protections
    --  (3.14.2, 3.14.3)
    procedure Revoke_Brake_Reasons (From, To : Mode_T)
-     with Global => (In_Out => (Brake_State, SDM_State))
+     with Global => (In_Out => (Brake_State, SDM_State, EVC_Sessions.State))
    is
    begin
       --  4.12: Speed & Distance monitoring revoked in NP, SB, TR (to be
@@ -2023,6 +2023,9 @@ is
       if To in M_NP | M_SB | M_SH | M_IS then
          Brake_State.Data_Entry := False;
       end if;
+      --  the service brake of T_NVCONTACT revoked in NP, SB, SH, SR, UN,
+      --  TR, SN (4.12.1.2 Table)
+      EVC_Sessions.Revoke_Contact_Brake (To);
    end Revoke_Brake_Reasons;
 
    --  7. What entering the mode To from From means (phase E4): the data

@@ -297,6 +297,17 @@ is
    function Service_Brake return Boolean
      with Global => State;
 
+   --  4.12.1.2 Table, "Check safe radio connection (T_NVCONTACT)": the
+   --  service brake of the expiry revoked on entering NP, SB, SH, SR,
+   --  UN, TR or SN (maintained in FS, LS and OS; not applied again until
+   --  a new expiry)
+   --  @req 4.12.1.2 a), 4.12.1.2 b)
+   procedure Revoke_Contact_Brake (To : Mode_T)
+     with Global => (In_Out => State),
+          Post   => (if To in M_NP | M_SB | M_SH | M_SR | M_UN | M_TR
+                               | M_SN
+                     then not Service_Brake);
+
    --  3.5.7.1: the indication status of the safe radio connection with
    --  the relevant RBC (Table 1; MSG_STATUS radio: 0, 1, 2)
    type Indication_T is (No_Connection, Connection_Up, Connection_Lost);

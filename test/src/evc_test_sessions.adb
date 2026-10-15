@@ -424,6 +424,13 @@ package body EVC_Test_Sessions is
              "link: T_NVCONTACT passed while running, reaction service "
              & "brake (3.16.3.4.2 b), the driver informed (3.16.3.4.4, "
              & "DMI entry 4)");
+      --  4.12.1.2 Table, "Check safe radio connection (T_NVCONTACT)"
+      EVC_Sessions.Revoke_Contact_Brake (EVC_Modes.M_FS);
+      Check (EVC_Sessions.Service_Brake,
+             "4.12.1.2 b): the T_NVCONTACT brake maintained entering FS");
+      EVC_Sessions.Revoke_Contact_Brake (EVC_Modes.M_UN);
+      Check (not EVC_Sessions.Service_Brake,
+             "4.12.1.2 a): the T_NVCONTACT brake revoked entering UN");
       Give_Radio_Message (1, Msg (MCat.Track_M24, Now_T (1)));
       Stand;
       Check (not EVC_Sessions.Service_Brake

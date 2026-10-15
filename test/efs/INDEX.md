@@ -38,7 +38,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Pre-indication location | pre-indication-location.scn | 2 | 4 | 4 / 3 | 4 / 4 | 0 | absent 2 |
 | Release speed | release-speed.scn | 1 | 2 | 2 / 1 | 0 / 4 | 0 | done 3 |
 | Reversing | reversing.scn | 5 | 13 | 16 / 15 | 0 / 30 | 0 | absent 8, done 8 |
-| Route suitability | route-suitability.scn | 7 | 23 | 36 / 47 | 0 / 50 | 0 | absent 3, deferred 9, todo 1 |
+| Route suitability | route-suitability.scn | 7 | 23 | 36 / 47 | 0 / 50 | 0 | absent 3, done 10 |
 | Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | deferred 6, done 43, n/a 3, partial 12 |
 | Speed and distance monitoring | speed-and-distance-monitoring.scn | 15 | 22 | 51 / 14 | 49 / 5 | 2 | absent 19, done 7 |
 | Speed restriction to ensure permitted braking distance | speed-restriction-to-ensure-permitted-braking-distance.scn | 5 | 18 | 10 / 7 | 0 / 43 | 0 | absent 4, done 4 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, deferred 2, done 25, n/a 1, partial 10 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 28, other 6 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 35, done 579, n/a 5, other 52, partial 72, todo 21 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 26, done 589, n/a 5, other 52, partial 72, todo 20 |
