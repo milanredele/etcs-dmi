@@ -76,6 +76,7 @@ pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Bits;
 with ETCS_Catalogue;
+with EVC_System_Version;
 with EVC_Balise_Groups;
 with EVC_Braking;
 with EVC_Config;
@@ -380,7 +381,8 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
-                                EVC_LS_Display.State),
+                                EVC_LS_Display.State,
+                                EVC_System_Version.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Train_Data.State, EVC_Config.State,
                                 EVC_Radio_Info.State)),

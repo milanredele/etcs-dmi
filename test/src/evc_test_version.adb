@@ -4,11 +4,13 @@
 with ETCS_Bits;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
+with ETCS_Track_Packets.P2;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;
 with EVC_Config;
 with EVC_Core;
 with EVC_DMI_Port;
+with EVC_Modes;           use EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
 with EVC_System_Version;
@@ -203,5 +205,78 @@ package body EVC_Test_Version is
              "version: the store lost: the highest supported version, "
              & "3 (3.17.2.9.1)");
    end Scenario_Version_Retained;
+
+   --  A balise group NID at At_M metres whose telegrams carry M_VERSION
+   --  Tel, with a system version order (packet 2) to Order when Ordered
+   procedure Add_Version_Group (NID : Natural; At_M : Integer_64;
+                                Tel : ETCS_Variables.M_VERSION_T;
+                                Ordered : Boolean := False;
+                                Order : ETCS_Variables.M_VERSION_T := 0)
+   is
+      P  : ETCS_Track_Packets.P2.Packet_T;
+      W  : Writer_T;
+      OK : Boolean;
+   begin
+      Add_Group (Group (NID, At_M));
+      Version (Track_N) := Tel;
+      if Ordered then
+         P.Q_DIR := 2;
+         P.L_PACKET := 0;
+         P.M_VERSION := Order;
+         ETCS_Track_Packets.P2.Encode (P, W, OK);
+         Finish_Carry (Track_N, 0, W, OK);
+      end if;
+   end Add_Version_Group;
+
+   --  3.17.2.3, 3.17.2.5, 3.17.2.7, 3.17.2.8 d): the operated version
+   --  in relation to the balise groups, in level 1
+   procedure Scenario_Version_Balise_Groups is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      Add_Version_Group (1, 50, 16#21#);
+      Add_Version_Group (2, 150, 16#30#, True, 16#21#);
+      Add_Version_Group (3, 250, 16#21#, True, 16#10#);
+      Add_Version_Group (4, 350, 16#21#);
+      Add_Version_Group (5, 450, 16#30#);
+      Run_X (10_000);
+      Check (SV.Operated = 3,
+             "version: a group of 2.1 does not lower the operated 3.0 "
+             & "(3.17.2.3: only a higher X)");
+      Run_X (20_000);
+      Check (SV.Operated = 2,
+             "version: the order of packet 2 to 2.1 in a group of 3.0 "
+             & "executed at once (3.17.2.5)");
+      Run_X (30_000);
+      Check (SV.Operated = 1,
+             "version: the order to 1.0 in a group of 2.1 executed, "
+             & "lower than the group's X (3.17.2.5, 3.17.2.5.1)");
+      Run_X (40_000);
+      Check (SV.Operated = 2,
+             "version: after the order, a group of 2.1 raises the operated "
+             & "X to 2 (3.17.2.3 applies again, 3.17.2.5)");
+      Run_X (50_000);
+      Check (SV.Operated = 3,
+             "version: a group of 3.0 raises it to 3 (3.17.2.3)");
+      SV.Take_Balise_Group (3, True, 16#40#, False);
+      Check (SV.Operated = 3,
+             "version: an order to an X outside the envelope leaves the "
+             & "operated version unchanged (3.17.2.7)");
+      SV.Take_Balise_Group (1, False, 0, True);
+      Check (SV.Operated = 1,
+             "version: at a country mismatch the group's X is operated, "
+             & "even lower (3.17.2.6)");
+      SV.Follow (True, True, 16#22#);
+      SV.Take_Balise_Group (3, True, 16#10#, False);
+      Check (SV.Operated = 2,
+             "version: while the RBC's X governs, neither the groups nor "
+             & "their orders change it (3.17.2.8)");
+      SV.Follow (False, False, 16#22#);
+      SV.Take_Balise_Group (3, False, 0, False);
+      Check (SV.Operated = 3,
+             "version: out of level 2 the control by the groups applies "
+             & "again (3.17.2.8 d)");
+   end Scenario_Version_Balise_Groups;
 
 end EVC_Test_Version;

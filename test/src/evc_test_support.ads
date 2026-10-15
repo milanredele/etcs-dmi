@@ -401,6 +401,9 @@ package EVC_Test_Support is
    Extras  : array (1 .. Max_Groups, 0 .. 1) of Extra_T;
    Country : array (1 .. Max_Groups) of ETCS_Variables.NID_C_T :=
      (others => 123);
+   --  The M_VERSION of the telegrams of group G (3.17.2.3)
+   Version : array (1 .. Max_Groups) of ETCS_Variables.M_VERSION_T :=
+     (others => 48);
 
    --  The bits of W appended to Extras (G, K); a telegram holds 772 bits
    --  of packets (830 less the header and packet 255)

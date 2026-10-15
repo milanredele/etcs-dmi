@@ -299,6 +299,7 @@ begin
    EVC_Test_Handover.Scenario_Handover_Rear_Border;
    Scenario_Version_Negotiation;
    Scenario_Version_Retained;
+   Scenario_Version_Balise_Groups;
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;

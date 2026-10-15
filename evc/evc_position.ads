@@ -787,6 +787,10 @@ is
    function Taken_Entry (J, P : Positive) return ETCS_Packet_Index.Entry_T
      with Global => State,
           Pre => P <= Taken_Packet_Count (J);
+   --  The M_VERSION of taken telegram J (0 for no such telegram), for
+   --  the operated system version (3.17.2.3)
+   function Taken_Version (J : Positive) return M_VERSION_T
+     with Global => State;
    --  A reader on packet P of taken telegram J
    procedure Open_Taken_Packet (J, P : Positive;
                                 R    : in out ETCS_Bits.Reader)

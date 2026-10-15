@@ -1117,7 +1117,8 @@ is
                                 EVC_National_Values.State,
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_Outbox.Queue, EVC_Text_Messages.State,
-                                EVC_LS_Display.State))
+                                EVC_LS_Display.State,
+                                EVC_System_Version.State))
    is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;

@@ -950,15 +950,15 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.17.2.1,3,x,,,,,E6,done,"EVC_System_Version: the envelope X = 1, 2, 3 (6.4.2), Compatible; evc_test version_negotiation [E5 version]"
 3.17.2.1.1,3,x,,,,,E6,done,"EVC_System_Version.Operated_Y / Operated_Version: 1.1, 2.3, 3.0; evc_test version_negotiation [E5 version]"
 3.17.2.2,3,x,,,,,E6,partial,EVC_System_Version.Operated: one X at a time; what depends on it (the layouts of chapter 6) is E7 [E5 version]
-3.17.2.3,3,x,,,,,E6,todo,"looked at: balise / loop / RIU side, E6 / E7 (no telegram layout but 4.0.0 yet) [E5 version]"
-3.17.2.5,3,x,,,,,E6,todo,"looked at: the order of packet 2 from a balise group, E6 / E7 [E5 version]"
-3.17.2.6,3,x,,,,,E6,todo,"looked at: balise side, E6 / E7 [E5 version]"
-3.17.2.7,3,x,,,,,E6,todo,"looked at: balise side, E6 / E7 [E5 version]"
-3.17.2.8,3,x,,,,,E6,partial,"EVC_System_Version.Follow (EVC_Sessions.Evaluate): the RBC X in level 2 with an established session; the balise side (3.17.2.3 .. .7, 3.17.3.3 .. .4) is E6 / E7 [E5 version]"
+3.17.2.3,3,x,,,,,E6,partial,"EVC_System_Version.Take_Balise_Group from EVC_Stored_Information.Take_Version: the highest X of the telegrams of a balise group message taken into account, operated when higher; loops and RIU (Euroloop, E7) not modelled; evc_test version_balise_groups [E5 version]"
+3.17.2.5,3,x,,,,,E6,done,"EVC_Stored_Information.Take_Version: the first packet 2 of the group valid for the direction of the train; EVC_System_Version.Take_Balise_Group executes it whatever the X of the group, then 3.17.2.3 applies again; evc_test version_balise_groups [E5 version]"
+3.17.2.6,3,x,,,,,E6,partial,"EVC_Stored_Information.Take_Version: the country mismatch of EVC_National_Values.Check_Country, then EVC_System_Version.Take_Balise_Group operates the X of the group even when lower; national values of the group applicable immediately are taken after the check (not considered for it); loops E7; evc_test version_balise_groups [E5 version]"
+3.17.2.7,3,x,,,,,E6,done,"EVC_System_Version.Take_Balise_Group: an X outside the envelope, of the telegrams or of the order, leaves the operated version unchanged; evc_test version_balise_groups [E5 version]"
+3.17.2.8,3,x,,,,,E6,done,"EVC_System_Version.Follow (EVC_Sessions.Evaluate): the RBC X in level 2 with an established session; while it governs EVC_System_Version.Take_Balise_Group changes nothing; evc_test version_negotiation, version_balise_groups [E5 version]"
 3.17.2.8 a),3,x,,,,,E6,done,EVC_System_Version.Follow: the RBC X operated from the cycle the level is 2; evc_test version_negotiation [E5 version]
 3.17.2.8 b),3,x,,,,,E6,done,EVC_System_Version.Follow: at once in level 2 (message 32); evc_test version_negotiation [E5 version]
 3.17.2.8 c),3,x,,,,,E6,done,"EVC_Sessions.Follow_Version follows the supervising RBC, the Accepting one from the switch at the border (EVC_Sessions.Handover.Switch) [E5 version]"
-3.17.2.8 d),3,x,,,,,E6,partial,EVC_System_Version.Follow: out of level 2 the version last operated stays; the non-RBC control itself is E6 / E7 [E5 version]
+3.17.2.8 d),3,x,,,,,E6,done,"EVC_System_Version.Follow: out of level 2 the version last operated stays, and EVC_System_Version.Take_Balise_Group applies the groups and their orders again; evc_test version_balise_groups [E5 version]"
 3.17.2.8 e),3,x,,,,,E6,partial,"EVC_Sessions.Handover.Switch: no session with the Accepting RBC, no RBC supervises: the version last operated stays (the non-RBC control is E6 / E7) [E5 version]"
 3.17.2.8.1,3,x,,,,,E6,todo,"looked at: the balise group checked again with the RBC version: one telegram layout (4.0.0) today, E7 with the layouts of chapter 6 [E5 version]"
 3.17.2.8.2,3,x,,,,,E6,todo,"looked at: as 3.17.2.8.1, E7 [E5 version]"

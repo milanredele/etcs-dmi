@@ -106,6 +106,32 @@ is
                   and then Operated
                     = (if Known and then X in Major_T then X else Highest_X);
 
+   --  3.17.2.3, 3.17.2.5, 3.17.2.6, 3.17.2.7: a balise group message
+   --  taken into account, Group_X the highest X of its telegrams; Ordered
+   --  when it holds a system version order (packet 2) for the direction
+   --  of the train, of version Order; Mismatch the country of the group
+   --  not that of the national values in use (3.17.2.6). The order is
+   --  executed whatever the group's X; without an order, the group's X
+   --  when higher than the operated one (3.17.2.3) or at a mismatch
+   --  (3.17.2.6); an X outside the envelope leaves it unchanged
+   --  (3.17.2.7). While the RBC governs (3.17.2.8) nothing changes.
+   --  @req 3.17.2.3, 3.17.2.5, 3.17.2.6, 3.17.2.7
+   procedure Take_Balise_Group (Group_X  : Natural;
+                                Ordered  : Boolean;
+                                Order    : M_VERSION_T;
+                                Mismatch : Boolean)
+     with Global => (In_Out => State),
+          Post => By_RBC = By_RBC'Old
+                  and then Operated
+                    = (if By_RBC then Operated'Old
+                       elsif Ordered then
+                         (if Major (Order) in Major_T then Major (Order)
+                          else Operated'Old)
+                       elsif Group_X in Major_T
+                         and then (Mismatch or else Group_X > Operated'Old)
+                       then Group_X
+                       else Operated'Old);
+
    --  3.17.2.8, once a cycle: Level_2 the level operated, Session a
    --  communication session established with the supervising RBC, whose
    --  version V is known

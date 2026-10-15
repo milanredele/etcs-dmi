@@ -1491,6 +1491,10 @@ is
    is (Taken_Tels (J).Index (P))
      with Refined_Global => (Input => Taken_Tels, Proof_In => Taken_Tel_N);
 
+   function Taken_Version (J : Positive) return M_VERSION_T is
+     (if J <= Taken_Tel_N then Taken_Tels (J).Header.M_VERSION else 0)
+     with Refined_Global => (Taken_Tels, Taken_Tel_N);
+
    procedure Open_Taken_Packet (J, P : Positive;
                                 R    : in out ETCS_Bits.Reader)
      with Refined_Global => (Input => Taken_Tels, Proof_In => Taken_Tel_N)

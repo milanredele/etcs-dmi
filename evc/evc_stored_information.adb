@@ -2,6 +2,7 @@
 --  The stored information of the on-board, implementation.
 
 with ETCS_Packet_Index;
+with ETCS_Track_Packets.P2;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P15;
@@ -1377,6 +1378,53 @@ is
       end if;
    end Keep_Unit_Packets;
 
+   --  The operated system version after the balise group message Tk
+   --  (3.17.2.3, 3.17.2.5, 3.17.2.6): the highest X of its telegrams and
+   --  the first system version order (packet 2) valid for the direction
+   --  of the train; Mismatch the country check of 3.17.2.6 (the group's
+   --  NID_C not among those of the national values in use)
+   --  @req 3.17.2.3, 3.17.2.5, 3.17.2.6
+   procedure Take_Version (Tk : EVC_Position.Taken_T; Mismatch : Boolean)
+     with Global => (In_Out => EVC_System_Version.State,
+                     Input  => EVC_Position.State)
+   is
+      Group_X : Natural := 0;
+      Ordered : Boolean := False;
+      Order   : M_VERSION_T := 0;
+   begin
+      for J in Tk.First .. Tk.First + Tk.Count - 1 loop
+         pragma Loop_Invariant (True);
+         Group_X := Natural'Max
+           (Group_X,
+            EVC_System_Version.Major (EVC_Position.Taken_Version (J)));
+         for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
+            pragma Loop_Invariant (True);
+            declare
+               E : constant ETCS_Packet_Index.Entry_T :=
+                 EVC_Position.Taken_Entry (J, P);
+               R : Reader_T;
+               X : ETCS_Track_Packets.P2.Packet_T;
+               OK : Boolean;
+            begin
+               if not Ordered
+                 and then E.Kind = ETCS_Catalogue.Track_P2
+                 and then EVC_Position.Valid_For
+                            (E.Q_DIR, Tk.Group.Orientation, Tk.T)
+               then
+                  EVC_Position.Open_Taken_Packet (J, P, R);
+                  ETCS_Track_Packets.P2.Decode (R, X, OK);
+                  if OK and then ETCS_Track_Packets.P2.Valid (X) then
+                     Ordered := True;
+                     Order := X.M_VERSION;
+                  end if;
+               end if;
+            end;
+         end loop;
+      end loop;
+      EVC_System_Version.Take_Balise_Group
+        (Group_X, Ordered, Order, Mismatch);
+   end Take_Version;
+
    --  Group G of the position's last Update, as message number Msg_Count
    --  (No_Inline: GCC inlines a subprogram called once, and the decoded
    --  packets of the parts below, up to 6 KB, would stay in the frame of
@@ -1395,7 +1443,7 @@ is
                                 EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count,
                                 Balise_Buffer.State, TAF_L2_New,
-                                TAF_L2_Loc),
+                                TAF_L2_Loc, EVC_System_Version.State),
                      Output => Group_Country,
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => G <= EVC_Position.Taken_Count
@@ -1431,6 +1479,7 @@ is
       if Reverted then
          Record_Event (Info_National_Values, Change_Defaults, 0);
       end if;
+      Take_Version (Tk, Reverted);
       if Tk.Origin = 0 then
          Record_Event (Info_Group, Change_No_Origin, 0);
       end if;

@@ -16,4 +16,7 @@ package EVC_Test_Version is
    --  lost, the highest supported one
    procedure Scenario_Version_Retained;
 
+   --  3.17.2.3, 3.17.2.5, 3.17.2.6, 3.17.2.7, 3.17.2.8 d): the operated
+   --  version in relation to the balise groups, their orders (packet 2)
+   procedure Scenario_Version_Balise_Groups;
 end EVC_Test_Version;
