@@ -374,6 +374,10 @@ package body EVC_Test_Sessions is
              and then EVC_Core.Mode = EVC_Modes.M_TR,
              "link: no message for more than T_NVCONTACT, reaction train "
              & "trip: TR (3.16.3.4.1, 4.6.3 [41])");
+      Collect;
+      Check (JRU_Last (13, 2) = 5,
+             "link: the reaction recorded, JRU record 13 with M_ERROR 5, "
+             & "safe radio connection error (SUBSET-027 4.2.4.13)");
       Check (EVC_Procedures."=" (EVC_Procedures.Trip_Reason,
                                  EVC_Procedures.Communication_Lost)
              and then Status_Shown (EVC_DMI_Port.SS_Communication_Error_Trip,

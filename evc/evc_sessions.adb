@@ -28,7 +28,7 @@ package body EVC_Sessions
                                    Requesting, Timer_On, Timer_Since,
                                    Shown, SB_Shown, Status_List, Status_N,
                                    Noted, Noted_Code, Mode_Session,
-                                   Mode_Capped,
+                                   Mode_Capped, Contact_Tripped,
                                    In_Hole, Ref_On, Ref_Ms,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Mission.State,
@@ -150,6 +150,8 @@ is
    --  3.5.3.7 a: the session of Mode_Session is for 3.5.3.4 c) alone, its
    --  set-up requests repeated a defined number of times (A.3.1)
    Mode_Capped  : Boolean := False;
+   --  3.16.3.4: the reaction of T_NVCONTACT triggered in this cycle
+   Contact_Tripped : Boolean := False;
    Acks         : Acks_T := (others => (S => 1, T => 0));
    Ack_N        : Natural range 0 .. Max_Acks := 0;
    NV           : NV_T;
@@ -495,6 +497,8 @@ is
      with Refined_Global => NV;
    function Error_Noted return Boolean is (Noted)
      with Refined_Global => Noted;
+   function Contact_Error return Boolean is (Contact_Tripped);
+
    function Error_Noted_Code return M_ERROR_T is (Noted_Code)
      with Refined_Global => Noted_Code;
 
@@ -543,6 +547,7 @@ is
       Order := (others => <>);
       Mode_Session := False;
       Mode_Capped := False;
+      Contact_Tripped := False;
       Ref_On := False;
       Ref_Ms := 0;
       Pending := (others => <>);
@@ -1070,6 +1075,7 @@ is
                                 Standstill : Boolean;
                                 In_L2      : Boolean)
      with Global => (In_Out => (NV, Held, Links, R.State),
+                     Output => Contact_Tripped,
                      Input  => (EVC_National_Values.State, In_Hole,
                                 Ref_On, Ref_Ms)),
           Post => R.Sessions = R.Sessions'Old
@@ -1093,6 +1099,7 @@ is
         not Gone and then not Ref_On
         and then R.Info (Session_T (Sv)).Received_Ms > NV.Since;
    begin
+      Contact_Tripped := False;
       --  3.16.3.4.5: a reaction once triggered ends with a new message
       --  or at standstill, not when other national values lengthen
       --  T_NVCONTACT (decision: such values keep it)
@@ -1105,6 +1112,7 @@ is
       if not NV.Expired then
          NV := (Expired => True, Since => Now, SB => NVal.M_NVCONTACT = 1,
                 Reconnected => False);
+         Contact_Tripped := True;
       end if;
       Held (C_41) := NVal.M_NVCONTACT = 0;
       --  3.14.1.7, 3.16.3.4.5 a): the service brake released at

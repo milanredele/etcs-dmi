@@ -6013,3 +6013,32 @@ backlog line edited by hand at integration needs the quoting of its
 commas, the check caught it. Open items: doc/BACKLOG.csv (35 open after
 this round).
 
+
+### The session rows left, the juridical records the on-board did not write (e5/session-jru, 2026-10-15)
+
+**Rows.** Premise wrong in part: `Capped` was passed already, by the
+level 2 start of mission (`Apply_Mission`); what lacked the limit of
+A.3.1 (3 times) was the session of a mode change to report, 3.5.3.4 c).
+`Mode_Capped` carries it through `Mode_Session_Order` and `Order_T` to
+`Establish`; given up, the indication is Table 2 [1] only while the
+start of mission opens the session, else [3] (`Set_Up_Failed`). 3.5.4.5:
+decision 3 of the position reports already treats a report due during
+the loss as sent (not given to the port, not kept); the other messages
+go to the port while `EVC_Radio.Established` holds. 3.5.3.5.2.1, 3.5.3.7,
+3.5.4.3 (its RIU bullet deferred to E7 by its own row), 3.5.5.1, 3.5.5.1
+b) (the conditions of the other sections, each through
+`Terminate_Session`) and 3.5.6.7 were done by their subrows. Scenarios
+`Scenario_Session_Mode_Change_Capped`, `Scenario_Session_Lost_Send`.
+E5 left: 3.8.2.5.1 and 3.15.1.3.3 (E6, SM).
+
+**Records.** `EVC_JRU_Records.Inputs` and `EVC_Core.Record_Inputs_Radio_Data`:
+30, 31, 39 and 132 (record 32; 32 is the stored information's event) when
+the TIU input is first known and when it changes; 51 while in SH
+(4.4.8.1.4); 124 (record 24: Q_RBCENTRY, NID_RBC; NID_C and NID_RADIO do
+not fit, B431) and 48 at the driver's entry; 13 with M_ERROR 5 when the
+T_NVCONTACT reaction triggers (`EVC_Sessions.Contact_Error`). The runner
+maps them in `S076_Tables.Message_Event` (fields not compared yet).
+`Scenario_JRU_Inputs`. B400 not implemented: decision left (one record
+per cycle under a curve otherwise). Steps not judged 6260 -> 5909;
+regressions 4100103_30 (3 SV), record 31 expected at a repeated input of
+the same value (Sc4547107, B430).

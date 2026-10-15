@@ -7,7 +7,7 @@ package body EVC_JRU_Records
   with SPARK_Mode => On,
        Refined_State => (State => (Cab_A_Recorded, Cab_B_Recorded,
                                    Cab_Recorded,
-                                   Last_TC))
+                                   Last_TC, Last_Inputs))
 is
 
    use EVC_Driver_Requests;
@@ -17,6 +17,10 @@ is
    Cab_Recorded   : Boolean := False;
    Last_TC        : TC_Changes_T :=
      (Count => 0, List => (others => (others => 0)));
+   --  The inputs last recorded (remote shunting: not permitted)
+   Power_Up_Inputs : constant Input_Values_T :=
+     (Remote_Shunting => 0, others => No_Value);
+   Last_Inputs : Input_Values_T := Power_Up_Inputs;
 
    function Action_Code (A   : Action_T;
                          Arg : Unsigned_16) return Byte is
@@ -76,7 +80,61 @@ is
       Cab_B_Recorded := False;
       Cab_Recorded := False;
       Last_TC := (Count => 0, List => (others => (others => 0)));
+      Last_Inputs := Power_Up_Inputs;
    end Reset;
+
+   function Input_Event (I : Input_T) return Byte is
+     (case I is
+         when Sleeping         => 30,
+         when Passive_Shunting => 31,
+         when Non_Leading      => 132,
+         when Direction        => 39,
+         when Remote_Shunting  => 51);
+
+   function Direction_Code (TIU_Value : Natural) return Input_Value_T is
+     (case TIU_Value is
+         when 1      => 2,
+         when 2      => 1,
+         when others => 0);
+
+   procedure Inputs (Now : Input_Values_T; Changes : out Input_Changes_T)
+   is
+   begin
+      Changes := (others => False);
+      for I in Input_T loop
+         pragma Loop_Invariant
+           (for all J in Input_T =>
+              (if Changes (J) then J < I and then Now (J) /= No_Value));
+         if Now (I) /= No_Value and then Now (I) /= Last_Inputs (I) then
+            Changes (I) := True;
+            Last_Inputs (I) := Now (I);
+         end if;
+      end loop;
+   end Inputs;
+
+   function RBC_Entry_Code (Choice : Byte) return Byte is
+     (case Choice is
+         when 0      => 3,
+         when 1      => 0,
+         when 2      => 1,
+         when others => No_Code);
+
+   function MN_Code (T : EVC_Driver_Requests.Text_T) return MN_Bytes_T is
+      Code : MN_Bytes_T := (others => 16#FF#);
+      D    : Byte;
+   begin
+      for I in 1 .. 6 loop
+         pragma Loop_Invariant (True);
+         D := (if I <= T.Length and then T.Chars (I) in 48 .. 57
+               then T.Chars (I) - 48 else 16#F#);
+         if I mod 2 = 1 then
+            Code ((I + 1) / 2) := Shift_Left (D, 4) or 16#F#;
+         else
+            Code (I / 2) := (Code (I / 2) and 16#F0#) or D;
+         end if;
+      end loop;
+      return Code;
+   end MN_Code;
 
    procedure Cab_Status (Cab_A, Cab_B, Received : Boolean;
                          Changed : out Boolean) is

@@ -314,9 +314,9 @@ package EVC_Test_Support is
 
    --  What the runs saw: JRU records by event, the last bytes of each,
    --  the report triggers, the last geographical position on the DMI
-   type JRU_Seen_T is array (0 .. 15) of Natural;
+   type JRU_Seen_T is array (0 .. 255) of Natural;
    JRU_Seen  : JRU_Seen_T := (others => 0);
-   type JRU_Bytes_T is array (0 .. 15, 2 .. 4) of Natural;
+   type JRU_Bytes_T is array (0 .. 255, 2 .. 4) of Natural;
    JRU_Last  : JRU_Bytes_T := (others => (others => 0));
    Seen      : Pos.Triggers_T := Pos.No_Triggers;
    Geo_Seen  : Unsigned_32 := EVC_DMI_Port.Geo_Unknown;

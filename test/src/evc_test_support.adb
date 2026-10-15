@@ -317,7 +317,7 @@ package body EVC_Test_Support is
       T : constant Pos.Triggers_T := Pos.Report_Triggers;
    begin
       for I in 1 .. Rec_Count loop
-         if Recs (I).Port = JRU and then Byte_At (I, 1) <= 15 then
+         if Recs (I).Port = JRU and then Byte_At (I, 1) <= 255 then
             JRU_Seen (Byte_At (I, 1)) := JRU_Seen (Byte_At (I, 1)) + 1;
             for B in 2 .. 4 loop
                JRU_Last (Byte_At (I, 1), B) := Byte_At (I, B);
