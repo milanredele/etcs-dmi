@@ -6404,3 +6404,62 @@ and its call, `Unsuitable_Shown` in the state, `Produce_Outputs`' Global.
 Outside the package: `EVC_Stored_Information.Build_Temporary`,
 `EVC_Radio_Authority.Take_Message`, `EVC_Sessions.Revoke_Contact_Brake`,
 the catalogue check of evc_test_procedures.
+
+### E5 integration after the twenty-fifth round (2026-10-15)
+
+Merged: e5/version-levels (the version order of packet 2 and the
+operated system version from the balise groups, 3.17.2.5 to 3.17.2.8 d),
+`EVC_System_Version.Take_Balise_Group`, B450; the brief's claim was only
+half right: a lower X cannot lower the operated one, the order can; a
+message whose immediate order changes the level is judged first in the
+old level, 4.8.1.3.1, `EVC_Stored_Information.Message_Acceptance`,
+B441: 3131050_05 and _06 supervise the release speed now; B440 analysed
+in part; B017 left), e5/runner-records (the fields of JRU records 24,
+30, 31, 32, 39, 51 and 13 with M_ERROR 5 compared; records 11, 12 and an
+absent 44 judged, B408; 3130700_02 step 51 blocked by sequence and
+step, `S076_Run.Defect_Steps`, B421; an explicit speed spent once a
+brake lowered and released it, B420; B480, B481), e5/runner-families
+(the "found early" and "another group" families are linking data of
+SUBSET-076, 3.4.4.4.3.2 and 3.4.4.4.2, blocked with the clause in
+`S076_Run.Linking_Data_Cases`, B451; the `~[workbook train]` triage
+rewritten by cause, B140; T_be_reduced in the margin, not validated,
+B370; 3131060_14's residual is in the EBD, B201; B490) and
+e5/route-brakes (route suitability compared with the Train Data every
+cycle, the system status messages 30 to 32, the temporary EOA and SvL at
+the closest unsuitable location, 3.12.2.3 to 3.13.1.5, B034, a message
+24 with packet 70 alone now reaching the stores; the brake reasons
+checked cell by cell against the 4.12.1.2 table, the T_NVCONTACT brake
+revoked on the entered modes the table says, B014, with B470 for the
+reasons not modelled; B442 is the sequence's data; B471 to B474).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the triage and the baseline by id; one source conflict, the
+two runner agents each adding a block table at the same place of the
+step loop, both kept, and the merge's own mistake caught by the union's
+run: the first branch's block call had fallen outside its `elsif`, so
+3130700_02 ran past its blocked step (restored before the commit).
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12129
+checks, dmi_test 2168), the full proof 11437 checks, 0 unproved (margin
+47726 steps), cross build and stack (margin 5632 B), wasm and both
+smokes 0 failures. SUBSET-076: 870 / 1263 / 1057 before, 875 / 1220 /
+1095 after (the blocks up by 38: the linking data cases and the PBD
+block), steps not judged 4787 -> 4689, 0 regressions, 0 untriaged.
+Matrix: 299 -> 287 clauses left in all phases.
+
+Measurements (requests by message id, duration, final context, cost):
+version-levels 123 / 24 min / 185k / 7.8; route-brakes 176 / 36 min /
+226k / 13.1; runner-records 122 / 25 min / 212k / 8.5; runner-families
+139 / 33 min / 207k / 9.9. One well over its budget (route-brakes by
+about 45 calls, the three items each a package of its own), every
+"Done" list complete.
+
+Lessons: three brief premises wrong or half right (the lowering of the
+operated version; the runner's `Known` table is the check's, the runner
+had none; a message 24 with packet 70 alone never reached the stores),
+each caught at the source; a merge that keeps both sides of a source
+conflict must re-read the common tail of the hunk (a call that belonged
+to both branches stayed with one); three items of that size are two
+too many for one brief. Open items: doc/BACKLOG.csv (29 open after this
+round).
+
