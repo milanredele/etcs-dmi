@@ -6013,3 +6013,49 @@ backlog line edited by hand at integration needs the quoting of its
 commas, the check caught it. Open items: doc/BACKLOG.csv (35 open after
 this round).
 
+
+### The on-board findings of the runner (e5/onboard-findings, 2026-10-15)
+
+B409: an unknown NID_MESSAGE is recorded (JRU 9) and ignored, not a
+message data consistency error: no JRU 13, no report (3.17.3.11 b, the
+decision of the twenty-third integration), for an RBC of any version
+since the on-board cannot tell a higher Y from a spare value of its own;
+a spare value of a known message stays an error (3.16.1.1.1).
+`EVC_Core.Read_Radio_Messages`; `EVC_Test_Radio.Scenario_Radio_Unknown_Message`,
+and the two scenarios of `EVC_Test_Sessions` that expected the old
+reaction now refuse by a spare Q_DIR. 8040400_01 passes in SV30.
+
+B410: "the train speed" of 5.8.2.1 a) is the estimated speed, the speed
+of the speed monitoring and of the driver's indication (3.13.10.2.1),
+not its upper bound: `EVC_Core.Update_Position` (`Below_Override`, the
+DMI's button) and `EVC_Procedures.Override_Allowed`
+(`Context_T.Speed_Est`, given by `EVC_Core.Run_Procedures`). 3131060_08
+passes, 3131060_07 runs to its Gamma block at step 65.
+
+B411: 4.12.1.2's table gives "TBR" for the speed and distance
+monitoring reason when entering FS (and SH, SM, LS, SR, OS, UN, SN): the
+reason is re-evaluated on the entered mode's data (4.12.1.2 c,
+3.14.1.11.2). Decision: on the first supervision after such an entry
+the emergency brake is revoked on its revocation condition of the new
+mode (Tables 6 r1, 10 / 11 r1 r3) whatever Q_NVEMRRLS, and kept where a
+triggering condition of the new mode holds (no release for one cycle);
+Q_NVEMRRLS restricts the release of a command triggered in the mode.
+`EVC_SDM.State_T.Reevaluate`, set by `EVC_Core.Revoke_Brake_Reasons`,
+taken by `EVC_SDM.Set_Commands`; scenario
+`Scenario_Brake_Reevaluated` (evc_test_procedures). 4120100_01 moves from
+step 60 to step 93 (B420: the bench keeps 25 km/h after the revoked
+brake).
+
+B412 refuted: 3.11.11.6 rounds the PBD speed down to the next lower
+multiple of 5 km/h; the sequence's V5 = 12 km/h is the tool's unrounded
+value, ours 10 (`EVC_PBD`) is the rounded one: a SUBSET-076 defect, its
+blocking in the runner is B421.
+
+B391: the expectation of 3131020_03 step 57 holds only for an
+emergency brake commanded by the SBI instead of the service brake,
+revoked as the service brake (3.13.10.2.4); ours is triggered by the EBI
+(the chart runs at 85 km/h where our TSM EBI is under it at 507 m, the
+tool's SBI only decreasing from 540 m), kept under Q_NVEMRRLS 0 to
+standstill (Table 11 r0, r3), and the status stays Intervention while a
+brake command is applied (3.13.10.2.5). No on-board change: the
+difference is the target curve's location (curves family).
