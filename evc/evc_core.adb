@@ -2916,6 +2916,68 @@ is
       end loop;
    end Record_Actions_Cabs_Conditions;
 
+   --  8j. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .48, .51,
+   --  EVC_JRU_Records): the sleeping, passive shunting and non leading
+   --  inputs and the direction controller of the train interface and the
+   --  state permitting remote shunting (SH, SUBSET-026 4.4.8.1.4) when
+   --  they change; the RBC contact and the GSM-R network the driver
+   --  entered; record 13 with M_ERROR 5, safe radio connection error,
+   --  when the reaction to the expiry of T_NVCONTACT is triggered
+   --  (SUBSET-026 3.16.3.4)
+   procedure Record_Inputs_Radio_Data
+     with Global => (Input  => (Cycle_Count, Clock_Ms, Current_Mode,
+                                TIU_Now, TIU_Known_Now, TIU_Value_Now,
+                                EVC_Driver_Requests.State,
+                                EVC_Sessions.State),
+                     In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue))
+   is
+      use EVC_Driver_Requests;
+      use EVC_JRU_Records;
+      function Flag (S : TIU_Signal_T) return Input_Value_T is
+        (if not TIU_Known_Now (S) then No_Value
+         elsif TIU_Now (S) then 1 else 0)
+        with Global => (TIU_Now, TIU_Known_Now);
+      Now : constant Input_Values_T :=
+        (Sleeping         => Flag (Sleeping_Requested),
+         Passive_Shunting => Flag (Passive_Shunting_Permitted),
+         Non_Leading      => Flag (Non_Leading_Permitted),
+         Direction        =>
+           (if TIU_Known_Now (Direction_Controller)
+            then Direction_Code (Natural (TIU_Value_Now
+                                            (Direction_Controller)))
+            else No_Value),
+         Remote_Shunting  => (if Current_Mode = M_SH then 1 else 0));
+      Changes : Input_Changes_T;
+      RBC     : constant Bytes_23_T := EVC_Driver_Requests.RBC_Data;
+      Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));
+      MN      : MN_Bytes_T;
+   begin
+      Inputs (Now, Changes);
+      for I in Input_T loop
+         pragma Loop_Invariant (True);
+         if Changes (I) then
+            EVC_Outbox.Put
+              (JRU, JRU_Record (Input_Event (I),
+                                EVC_Bytes.Byte (Now (I)), 0, 0));
+         end if;
+      end loop;
+      if Entered (EVC_Driver_Requests.RBC_Data)
+        and then Q /= EVC_JRU_Records.No_Code
+      then
+         EVC_Outbox.Put
+           (JRU, JRU_Record (124, Q,
+                             (if Q = 3 then RBC (3) and 16#3F# else 0),
+                             (if Q = 3 then RBC (2) else 0)));
+      end if;
+      if Entered (GSMR_Network) then
+         MN := MN_Code (EVC_Driver_Requests.GSMR_Network);
+         EVC_Outbox.Put (JRU, JRU_Record (48, MN (1), MN (2), MN (3)));
+      end if;
+      if EVC_Sessions.Contact_Error then
+         EVC_Outbox.Put (JRU, JRU_Record (JRU_Radio_Error, 5, 0, 0));
+      end if;
+   end Record_Inputs_Radio_Data;
+
    --  8k. RTM (phase E5): the messages and requests of the session half,
    --  then of the authority half (EVC_Radio.Send), moved to the RTM port
    --  as far as they fit (EVC_Radio.Drain)
@@ -2940,7 +3002,7 @@ is
    procedure Produce_Outputs
      with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
                                 Standstill, Below_Override, TIU_Now,
-                                TIU_Known_Now,
+                                TIU_Known_Now, TIU_Value_Now,
                                 EVC_National_Values.State,
                                 EVC_Position.State,
                                 SDM_Result, Brake_Output, Speed_State,
@@ -2990,6 +3052,7 @@ is
       Send_Supervision (D, Text_SB, Text_EB);
       Send_External_Info;           -- TIU the information of 5.20
       Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
+      Record_Inputs_Radio_Data;     -- JRU 30, 31, 39, 48, 51, 124, 132
       Send_Radio;                   -- RTM (phase E5)
    end Produce_Outputs;
 

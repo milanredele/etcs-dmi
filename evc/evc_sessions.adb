@@ -28,6 +28,7 @@ package body EVC_Sessions
                                    Requesting, Timer_On, Timer_Since,
                                    Shown, SB_Shown, Status_List, Status_N,
                                    Noted, Noted_Code, Mode_Session,
+                                   Mode_Capped, Contact_Tripped,
                                    In_Hole, Ref_On, Ref_Ms,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Mission.State,
@@ -100,6 +101,8 @@ is
       Establish : Boolean := False;
       RBC       : R.RBC_Id_T := R.No_RBC;
       Radio     : NID_RADIO_T := 0;
+      --  3.5.3.7 a: the set-up requests of a session for 3.5.3.4 c)
+      Capped    : Boolean := False;
    end record;
 
    --  A session to establish once a session is free (3.5.3.4.2,
@@ -144,6 +147,11 @@ is
    --  an announced radio hole or a start of mission completed was taken,
    --  its session decided by the next Evaluate (Mode_Session_Order)
    Mode_Session : Boolean := False;
+   --  3.5.3.7 a: the session of Mode_Session is for 3.5.3.4 c) alone, its
+   --  set-up requests repeated a defined number of times (A.3.1)
+   Mode_Capped  : Boolean := False;
+   --  3.16.3.4: the reaction of T_NVCONTACT triggered in this cycle
+   Contact_Tripped : Boolean := False;
    Acks         : Acks_T := (others => (S => 1, T => 0));
    Ack_N        : Natural range 0 .. Max_Acks := 0;
    NV           : NV_T;
@@ -378,7 +386,7 @@ is
    --  3.5.5.2 a: terminate the session S. Established: message 156, its
    --  acknowledgement awaited (3.5.5.3.1); being established: aborted
    --  and its safe radio connection released (3.5.3.8)
-   --  @req 3.5.3.8, 3.5.5.2, 3.5.5.2 a)
+   --  @req 3.5.3.8, 3.5.5.2, 3.5.5.2 a), 3.5.5.1 b)
    procedure Terminate_Session (S : Session_T; Now : Time_Ms_T)
      with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
           Post => R.Sessions = R.Sessions'Old
@@ -482,13 +490,15 @@ is
    is
    begin
       Order := (Present => True, Establish => Establish,
-                RBC     => RBC,  Radio     => Radio);
+                RBC     => RBC,  Radio     => Radio, Capped => False);
    end Take_Order;
 
    function Service_Brake return Boolean is (NV.SB)
      with Refined_Global => NV;
    function Error_Noted return Boolean is (Noted)
      with Refined_Global => Noted;
+   function Contact_Error return Boolean is (Contact_Tripped);
+
    function Error_Noted_Code return M_ERROR_T is (Noted_Code)
      with Refined_Global => Noted_Code;
 
@@ -536,6 +546,8 @@ is
       Links := (others => (others => <>));
       Order := (others => <>);
       Mode_Session := False;
+      Mode_Capped := False;
+      Contact_Tripped := False;
       Ref_On := False;
       Ref_Ms := 0;
       Pending := (others => <>);
@@ -562,15 +574,18 @@ is
    --  3.5.3.7 a, 3.5.4.2: the set-up of the safe radio connection of S
    --  failed (or the connection went down before the system version): a
    --  new request at once; in a start of mission, after the last of
-   --  Max_Attempts the establishment is given up (3.5.3.7 a)
+   --  Max_Attempts the establishment is given up (3.5.3.7 a), as for the
+   --  session of a mode change to report (3.5.3.4 c); the indication is
+   --  Table 2 [1] while the start of mission opens it, else [3]
    --  @req 3.5.3.7 a)
    procedure Set_Up_Failed (S : Session_T)
-     with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On)),
+     with Global => (In_Out => (Links, R.State, Ind, Requesting, Timer_On),
+                     Input  => Mission.State),
           Post => R.Sessions = R.Sessions'Old
    is
    begin
       if Links (S).Capped and then Links (S).Attempts >= Max_Attempts then
-         Close (S, Release => False, Final_SoM => True);
+         Close (S, Release => False, Final_SoM => Mission.Opening);
       else
          if R.Info (S).State = R.Initiating then
             R.Set_State (S, R.Connecting);
@@ -723,7 +738,8 @@ is
                          Establish => P.Q_RBC = 1,
                          RBC       => (NID_C   => P.NID_C,
                                        NID_RBC => P.NID_RBC),
-                         Radio     => P.NID_RADIO);
+                         Radio     => P.NID_RADIO,
+                         Capped    => False);
             end if;
          end if;
       end loop;
@@ -955,7 +971,7 @@ is
    --  cycle wins; with no valid contact nothing is opened (the report
    --  stays due in Reports until a session carries it)
    procedure Mode_Session_Order
-     with Global => (In_Out => (Mode_Session, Order),
+     with Global => (In_Out => (Mode_Session, Mode_Capped, Order),
                      Input  => (R.State, EVC_Levels.State))
    is
       C : constant R.RBC_Contact_T := R.Contact;
@@ -968,9 +984,11 @@ is
                         R.Established (S) or else R.Being_Established (S))
       then
          Order := (Present => True, Establish => True,
-                   RBC     => C.RBC, Radio   => C.Radio);
+                   RBC     => C.RBC, Radio   => C.Radio,
+                   Capped  => Mode_Capped);
       end if;
       Mode_Session := False;
+      Mode_Capped := False;
    end Mode_Session_Order;
 
    --  @req 3.5.3.8 c), 3.5.3.13, 3.5.3.13.1, 3.5.3.15, 3.5.5.1 a)
@@ -990,8 +1008,8 @@ is
          --  3.5.3.13: the stored contact, the number of the order
          --  ignored; none stored: the order ignored (3.5.3.13.1)
          if R.Contact.Known then
-            Establish (R.Contact.RBC, R.Contact.Radio, Capped => False,
-                       Now => Now);
+            Establish (R.Contact.RBC, R.Contact.Radio,
+                       Capped => Order.Capped, Now => Now);
          end if;
       elsif Order.Establish and then Mode in M_SH | M_PS then
          --  4.8.4 [3]: in SH and PS the RBC
@@ -1008,7 +1026,8 @@ is
          --  NID_RADIO "use the short number" goes to the RTM as it is
          R.Set_Contact ((Known => True, Valid => True,
                          RBC   => Order.RBC, Radio => Order.Radio));
-         Establish (Order.RBC, Order.Radio, Capped => False, Now => Now);
+         Establish (Order.RBC, Order.Radio, Capped => Order.Capped,
+                    Now => Now);
       else
          --  the session with the RBC of the order when there
          --  is one (3.15.1.3.5: the Handing Over RBC's), else all
@@ -1056,6 +1075,7 @@ is
                                 Standstill : Boolean;
                                 In_L2      : Boolean)
      with Global => (In_Out => (NV, Held, Links, R.State),
+                     Output => Contact_Tripped,
                      Input  => (EVC_National_Values.State, In_Hole,
                                 Ref_On, Ref_Ms)),
           Post => R.Sessions = R.Sessions'Old
@@ -1079,6 +1099,7 @@ is
         not Gone and then not Ref_On
         and then R.Info (Session_T (Sv)).Received_Ms > NV.Since;
    begin
+      Contact_Tripped := False;
       --  3.16.3.4.5: a reaction once triggered ends with a new message
       --  or at standstill, not when other national values lengthen
       --  T_NVCONTACT (decision: such values keep it)
@@ -1091,6 +1112,7 @@ is
       if not NV.Expired then
          NV := (Expired => True, Since => Now, SB => NVal.M_NVCONTACT = 1,
                 Reconnected => False);
+         Contact_Tripped := True;
       end if;
       Held (C_41) := NVal.M_NVCONTACT = 0;
       --  3.14.1.7, 3.16.3.4.5 a): the service brake released at
@@ -1289,6 +1311,7 @@ is
          --  none when one is established or being established, 3.5.3.4.1);
          --  3.16.3.4.1.3: the time it left the hole is the reference
          Mode_Session := True;
+         Mode_Capped := False;
          Ref_On := True;
          Ref_Ms := Ctx.Now_Ms;
       end if;
@@ -1370,6 +1393,7 @@ is
         and then not Mission.Ends_Mission (From, To)
         and then From /= M_SB
       then
+         Mode_Capped := not Mode_Session or else Mode_Capped;
          Mode_Session := True;
       end if;
       --  3.5.3.4 g): a start of mission completed (SB left for a mode of
@@ -1380,6 +1404,7 @@ is
         and then To in M_FS | M_LS | M_OS | M_SR | M_SH | M_NL | M_UN | M_SN
       then
          Mode_Session := True;
+         Mode_Capped := False;
       end if;
       --  3.5.3.8 b): End of Mission aborts a session being established
       if Mission.Ends_Mission (From, To) then

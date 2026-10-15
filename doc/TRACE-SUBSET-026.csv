@@ -51,9 +51,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.3.4.1 2nd bullet,3,x,,,,,E5,done,EVC_Sessions.Establish [E5 session]
 3.5.3.4.2,3,x,,,,,E5,done,EVC_Sessions.Establish (Pending: the new session once the terminating one is over); after such an order the session is set up again once terminated (Handover Single); evc_test Handover_Same_RBC [E5 session]
 3.5.3.5.2,3,x,,,,,E5,done,EVC_Sessions.Establish terminates the sessions with other RBCs; evc_test session_lost_version [E5 session]
-3.5.3.5.2.1,3,x,,,,,E5,partial,EVC_Sessions.Open (Pending when no session is free; one session by configuration); the transition order of 3.15.1 is phase 2 [E5 session]
-3.5.3.7,3,x,x,,,,E5,partial,"EVC_Sessions (Take_Event, Take_Version, Produce); the start of mission in level 2 is phase 2 [E5 session]"
-3.5.3.7 a),3,x,,,,,E5,partial,EVC_Sessions.Set_Up_Failed: repeated at once until successful; the limit of A.3.1 (Capped) waits for the level 2 start of mission [E5 session]
+3.5.3.5.2.1,3,x,,,,,E5,done,"EVC_Sessions.Apply_Order (the order of a transition order for the Accepting RBC is the handover's: the supervising session kept, Handover.Ordered), EVC_Sessions.Open; the exception of one GSM-R session is n/a (two sessions, 3.15.1.3.2.4 n/a); evc_test Handover_Radio, Session_Lost_Version [E5 session]"
+3.5.3.7,3,x,x,,,,E5,done,"EVC_Sessions (Take_Event, Take_Version, Supervise_Session, Produce_Session); a) to e) by their rows, the level 2 start of mission in EVC_Sessions.Mission; evc_test session_establish, Session_SoM_Level_2 [E5 session]"
+3.5.3.7 a),3,x,,,,,E5,done,"EVC_Sessions.Set_Up_Failed: repeated at once after a failed set-up; Capped (the start of mission, EVC_Sessions.Apply_Mission, and a mode change to report, 3.5.3.4 c, EVC_Sessions.Mode_Session_Order): given up after the third attempt (A.3.1), else until successful; evc_test Session_SoM_Failures, Session_Mode_Change_Capped [E5 session]"
 3.5.3.7 b),3,x,,,,,E5,done,EVC_Sessions.Take_Event (Connection_Set_Up: message 155); evc_test session_establish [E5 session]
 3.5.3.7 d),3,x,,,,,E5,done,EVC_Sessions.Take_Version (message 32: established); evc_test session_establish [E5 session]
 3.5.3.7 d) 1st bullet,3,x,,,,,E5,done,"EVC_Sessions.Take_Version, Send_159 (packet 2); evc_test session_establish [E5 session]"
@@ -83,16 +83,16 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.4.1,3,x,x,,,,E5,done,"EVC_Sessions.Take_Event (an unordered loss or release: Connection_Lost, the session kept); evc_test session_lost_version [E5 session]"
 3.5.4.2,3,x,,,,,E5,done,EVC_Sessions.Take_Event (set up again at once); evc_test session_lost_version [E5 session]
 3.5.4.2.1,3,x,x,,,,E5,done,"EVC_Sessions.Supervise_Session (Keep_Ms, A.3.1); evc_test session_lost_version [E5 session]"
-3.5.4.3,3,x,,,,,E5,partial,"EVC_Sessions.Take_Event, Supervise_Session; the RIU order is phase 2 [E5 session]"
+3.5.4.3,3,x,,,,,E5,done,"EVC_Sessions.Take_Event, Supervise_Session (the 1st and 2nd bullets by their rows; the 3rd, the RIU order, is radio infill: deferred to E7 by its row); evc_test Session_Lost_Version [E5 session]"
 3.5.4.3 1st bullet,3,x,,,,,E5,done,EVC_Sessions.Take_Event [E5 session]
 3.5.4.3 2nd bullet,3,x,,,,,E5,done,EVC_Sessions.Supervise_Session [E5 session]
 3.5.4.3 3rd bullet,3,x,,,,,E5,deferred,RIU (radio infill) is phase E7 [E5 session]
 3.5.4.4,3,x,,,,,E5,done,"EVC_Sessions.Stop_Attempts, Take_Event, Produce_Session (In_Hole from EVC_Radio.Context_T.Radio_Hole, EVC_Track_Conditions.Engine_In_Radio_Hole): no request while the engine overlaps an announced radio hole, the requests stopped on entering it (a request already with Euroradio not withdrawn, decision), set up again once it has left it; evc_test Session_Radio_Hole [E5 session]"
-3.5.4.5,3,x,,,,,E5,todo,[E5 session]
+3.5.4.5,3,x,,,,,E5,done,"EVC_Sessions.Reports.Produce: a report due while the connection is lost is considered as sent, neither given to the port nor kept (decision 3 of the position reports); the other messages are given to the RTM port while the session is established (EVC_Radio.Established includes Connection_Lost), none is held back; evc_test Session_Lost_Send [E5 session]"
 3.5.4.7,3,x,,,,,E5,done,EVC_Sessions.Take_Version (32 inside a session: 159 again) [E5 session]
-3.5.5.1,3,x,,,,,E5,partial,EVC_Sessions: a) the order of packet 42; b) the conditions of other sections with their procedures [E5 session]
+3.5.5.1,3,x,,,,,E5,done,"EVC_Sessions: a) the order of packet 42; b) the conditions of other sections with their procedures, by their rows [E5 session]"
 3.5.5.1 a),3,x,,,,,E5,done,"EVC_Sessions.Apply_Order; the order of a balise group or of the RBC (packet 42 of message 24: EVC_Sessions.Take_Radio_Order, e5/session-4); evc_test session_establish, Scenario_Session_Reports [E5 session]"
-3.5.5.1 b),3,x,,,,,E5,todo,[E5 session]
+3.5.5.1 b),3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session, called for the conditions of the other sections: the level transition without its order (5.10.3.15.4, EVC_Level_Sessions.Await_Order), the end of mission and the desk closed (5.5.4.1.1, 5.4.3.2.2, EVC_Sessions.Apply_Mission), no compatible version (3.5.3.7 d, EVC_Sessions.Take_Version), the acknowledgement not received (3.5.3.7.4.1, EVC_Sessions.Supervise_Session), the handover (3.15.1.3.6, EVC_Sessions.Apply_Handover), the network change (3.18.4.3.6.1, EVC_Sessions.Apply_Network); evc_test Session_EoM, Session_Lost_Version [E5 session]"
 3.5.5.2,3,x,,,,,E5,done,"EVC_Sessions.Terminate_Session, Take_Message (39); evc_test session_establish [E5 session]"
 3.5.5.2 a),3,x,,,,,E5,done,EVC_Sessions.Terminate_Session (156 last in Produce) [E5 session]
 3.5.5.2 c),3,x,,,,,E5,done,"EVC_Sessions.Take_Message (39: closed, released) [E5 session]"
@@ -112,7 +112,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.5.6.5 b),3,x,,,,,E5,done,EVC_Sessions.Network.Produce: a mobile whose session is not Idle waits (decision 4); evc_test Session_Registration [E5 session]
 3.5.6.5 c),3,x,,,,,E5,done,EVC_Sessions.Network.Produce: idem (a set-up in progress is a session not Idle); evc_test Session_Registration [E5 session]
 3.5.6.6,3,x,,,,,E5,done,EVC_Sessions.Network.Produce: the registration kept due until the session is Idle; evc_test Session_Registration [E5 session]
-3.5.6.7,3,x,,,,,E5,partial,"EVC_Sessions.Network.Ready, EVC_Sessions.Produce_Session: no set-up request while it does not hold, the order kept (applied to every order, decision 5); the port reports no FRMCS registration (decision 2); evc_test Session_Registration [E5 session]"
+3.5.6.7,3,x,,,,,E5,done,"EVC_Sessions.Network.Ready, EVC_Sessions.Produce_Session: no set-up request while it does not hold, the order kept (applied to every order, decision 5); a) to d) by their rows; the port reports no FRMCS registration (decision 2); evc_test Session_Registration [E5 session]"
 3.5.6.7 a),3,x,,,,,E5,done,EVC_Sessions.Network.Ready; evc_test Session_Registration [E5 session]
 3.5.6.7 b),3,x,,,,,E5,done,EVC_Sessions.Network.Ready; evc_test Session_Registration [E5 session]
 3.5.6.7 c),3,x,,,,,E5,done,EVC_Sessions.Network.Ready (either system registered); evc_test Session_Registration [E5 session]

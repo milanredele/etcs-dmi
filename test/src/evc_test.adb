@@ -232,6 +232,7 @@ begin
    Scenario_E4_Desk_Closed;
    Scenario_E4_Continue_Shunting;
    Scenario_E5P_JRU_Records;
+   Scenario_JRU_Inputs;
    EVC_Test_LS.Scenario_LS_Display;
    EVC_Test_LS.Scenario_LS_Order_Buffered;
    EVC_Test_LS.Scenario_LS_Marker_Deleted;
@@ -260,6 +261,8 @@ begin
    Scenario_SoM_L2_Same_Cycle;
    Scenario_Train_Length_To_Position;
    Scenario_Session_Mode_Change;
+   Scenario_Session_Mode_Change_Capped;
+   Scenario_Session_Lost_Send;
    Scenario_Session_Abort_Desk;
    Scenario_Session_Abort_EoM;
    Scenario_Session_Short_Number;

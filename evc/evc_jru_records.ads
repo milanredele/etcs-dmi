@@ -20,7 +20,23 @@
 --        -32768, and its end not; 2 its end passed), byte 4 its id;
 --        recorded when an item of the information for the external
 --        functions of 5.20 (the second TIU output) appears or changes its
---        phase.
+--        phase;
+--     30, 31, 39 the sleeping input (4.2.4.30: byte 2 M_SLEEPING), the
+--        passive shunting input (.31: M_PASSIVE_SHUNTING), the direction
+--        controller (.39: M_DIRECTION_CONTROLLER, Direction_Code), and
+--     132 the non leading input (4.2.4.32: byte 2 M_NON_LEADING; 32 is
+--        the stored information's event), recorded when the input from
+--        the train interface (SUBSET-034 2.2.1 to 2.2.3, 2.5.2) is first
+--        known and when it changes (Inputs);
+--     51 remote shunting state (4.2.4.51): byte 2 M_REMOTE_SHUNTING_STATE,
+--        1 while the mode is Shunting (the information "ready for remote
+--        shunting" of SUBSET-026 4.4.8.1.4), recorded when it changes;
+--     124 RBC contact information entered by the driver (4.2.4.24; 24 is
+--        the text messages' event): byte 2 Q_RBCENTRY (RBC_Entry_Code),
+--        bytes 3 and 4 NID_RBC (high, low) when entered; NID_C and
+--        NID_RADIO do not fit the record;
+--     48 GSM-R network entered by the driver (4.2.4.48): bytes 2 to 4
+--        NID_MN (MN_Code).
 --
 --  The package says what to record; EVC_Core stamps and puts the records.
 
@@ -93,5 +109,48 @@ is
    procedure Track_Conditions (Info    : EVC_Track_Conditions.External_T;
                                Changes : out TC_Changes_T)
      with Global => (In_Out => State);
+
+   --  The inputs and states recorded when they change (SUBSET-027
+   --  4.2.4.30, .31, .32, .39, .51)
+   type Input_T is (Sleeping, Passive_Shunting, Non_Leading, Direction,
+                    Remote_Shunting);
+   --  Their values in SUBSET-027's coding, No_Value while not known
+   No_Value : constant := -1;
+   subtype Input_Value_T is Integer range No_Value .. 3;
+   type Input_Values_T is array (Input_T) of Input_Value_T;
+   type Input_Changes_T is array (Input_T) of Boolean;
+
+   --  The event of an input (the header: 132 for record 32)
+   function Input_Event (I : Input_T) return Byte
+     with Global => null;
+
+   --  M_DIRECTION_CONTROLLER of the TIU direction controller input
+   --  (EVC_Ports: 0 neutral, 1 forward, 2 reverse): 0 neutral, 1
+   --  backward, 2 forward
+   function Direction_Code (TIU_Value : Natural) return Input_Value_T
+     with Global => null,
+          Post => Direction_Code'Result in 0 .. 2;
+
+   --  The inputs of the cycle: Changes (I) when Now (I) is known and
+   --  differs from the last one recorded (the first one known included;
+   --  remote shunting is recorded as not permitted at the power-up)
+   procedure Inputs (Now : Input_Values_T; Changes : out Input_Changes_T)
+     with Global => (In_Out => State),
+          Post => (for all I in Input_T =>
+                     (if Changes (I) then Now (I) /= No_Value));
+
+   --  The radio data entered by the driver (SUBSET-027 4.2.4.24, .48):
+   --  Q_RBCENTRY of the choice of MSG_DRIVER_DATA kind 5 (0 entered: 3,
+   --  the RBC data with GSM-R, the only radio of this on-board; 1
+   --  'Contact last RBC': 0; 2 'Use short number': 1), No_Code otherwise
+   function RBC_Entry_Code (Choice : Byte) return Byte
+     with Global => null;
+
+   --  NID_MN of the GSM-R network the driver entered (7.5.1.91): the
+   --  first six characters as BCD digits, left adjusted, F where there
+   --  is no digit, in three bytes
+   type MN_Bytes_T is array (1 .. 3) of Byte;
+   function MN_Code (T : EVC_Driver_Requests.Text_T) return MN_Bytes_T
+     with Global => null;
 
 end EVC_JRU_Records;

@@ -477,6 +477,12 @@ package body S076_Tables is
          --  EVC_JRU_Records: the same number
          when 38 => return (Event => 38, Sub => -1, B4 => -1, Known => True);
          when 45 => return (Event => 45, Sub => -1, B4 => -1, Known => True);
+         when 30 | 31 | 39 | 48 | 51 =>
+            return (Event => NID_Message_JRU, Sub => -1, B4 => -1,
+                    Known => True);
+         --  EVC_JRU_Records: 100 above where the number is another event
+         when 24 => return (Event => 124, Sub => -1, B4 => -1, Known => True);
+         when 32 => return (Event => 132, Sub => -1, B4 => -1, Known => True);
          when others => return (others => <>);
       end case;
    end Message_Event;

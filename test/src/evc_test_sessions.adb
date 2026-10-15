@@ -374,6 +374,10 @@ package body EVC_Test_Sessions is
              and then EVC_Core.Mode = EVC_Modes.M_TR,
              "link: no message for more than T_NVCONTACT, reaction train "
              & "trip: TR (3.16.3.4.1, 4.6.3 [41])");
+      Collect;
+      Check (JRU_Last (13, 2) = 5,
+             "link: the reaction recorded, JRU record 13 with M_ERROR 5, "
+             & "safe radio connection error (SUBSET-027 4.2.4.13)");
       Check (EVC_Procedures."=" (EVC_Procedures.Trip_Reason,
                                  EVC_Procedures.Communication_Lost)
              and then Status_Shown (EVC_DMI_Port.SS_Communication_Error_Trip,
@@ -1676,6 +1680,69 @@ package body EVC_Test_Sessions is
          end if;
       end loop;
    end Scenario_Session_Mode_Change;
+
+   --  3.5.3.7 a): the session of a mode change to report (3.5.3.4 c) is
+   --  given up after the third failed set-up of its safe radio connection
+   --  (A.3.1), no start of mission ongoing: "No Connection" (3.5.7.5
+   --  Table 2 [3], not [1])
+   procedure Scenario_Session_Mode_Change_Capped is
+      use type EVC_Sessions.Indication_T;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L2);
+      Run_X (15_000);
+      Stand_X (2_000);
+      Send (Action (8));
+      Stand;
+      for I in 1 .. 2 loop
+         Give_Radio_Event (1, Set_Up_Failed);
+         Stand;
+      end loop;
+      Check (R.Info (1).State = R.Connecting,
+             "mode change capped: after two failed set-ups of the safe "
+             & "radio connection a third requested (3.5.3.7 a)");
+      Give_Radio_Event (1, Set_Up_Failed);
+      Stand;
+      Check (R.Info (1).State = R.Idle
+             and then EVC_Sessions.Indication = EVC_Sessions.No_Connection,
+             "mode change capped: the session of 3.5.3.4 c) given up after "
+             & "the third failed set-up (3.5.3.7 a, A.3.1), No Connection "
+             & "(Table 2 [3]) "
+             & R.Session_State_T'Image (R.Info (1).State));
+   end Scenario_Session_Mode_Change_Capped;
+
+   --  3.5.4.5: a message to send while the safe radio connection is lost
+   --  is considered as sent: the position report requested then is
+   --  neither given to the RTM port nor kept for the reconnection
+   procedure Scenario_Session_Lost_Send is
+      N : Natural;
+   begin
+      EVC_Config.Set_Radio_For_Test ((Sessions => 1, others => <>));
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Event (1, Connection_Lost);
+      Stand;
+      N := EVC_Sessions.Position_Reports_Sent;
+      EVC_Sessions.Request_Position_Report;
+      Stand;
+      Check (R.Info (1).State = R.Connection_Lost
+             and then EVC_Sessions.Position_Reports_Sent = N
+             and then not (for some I in 1 .. Radio_Outputs =>
+                             Is_Message (I, 136)),
+             "lost send: the position report due while the safe radio "
+             & "connection is lost is not given to the port (3.5.4.5)");
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Check (R.Info (1).State = R.Established
+             and then EVC_Sessions.Position_Reports_Sent = N,
+             "lost send: considered as sent, it is not sent after the "
+             & "connection is set up again (3.5.4.5) "
+             & Natural'Image (EVC_Sessions.Position_Reports_Sent - N));
+      EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
+   end Scenario_Session_Lost_Send;
 
    --  The release of the safe radio connection of S requested in the
    --  last cycle

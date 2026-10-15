@@ -157,6 +157,11 @@ is
      with Global => State;
    function Error_Noted_Code return ETCS_Variables.M_ERROR_T
      with Global => State;
+   --  3.16.3.4: the reaction to the expiry of T_NVCONTACT was triggered
+   --  by the last Evaluate (SUBSET-027 4.2.4.13: M_ERROR 5, safe radio
+   --  connection error, recorded by EVC_Core)
+   function Contact_Error return Boolean
+     with Global => State;
 
    --  1b. The next message released from the transition buffer, into
    --  Data (Data'First .. Last), with its session

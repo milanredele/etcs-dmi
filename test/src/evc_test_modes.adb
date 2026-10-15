@@ -316,6 +316,63 @@ package body EVC_Test_Modes is
              "JRU 38: the cab closed recorded (M_CAB_A_STATUS 0)");
    end Scenario_E5P_JRU_Records;
 
+   --  SUBSET-027 4.2.4.30, .31, .32, .39, .51, .24, .48 (EVC_JRU_Records):
+   --  the sleeping, passive shunting and non leading inputs and the
+   --  direction controller recorded when first known and when they
+   --  change (non leading as event 132), the state permitting remote
+   --  shunting on entering and leaving SH, the RBC contact and the GSM-R
+   --  network the driver entered (RBC contact as event 124)
+   procedure Scenario_JRU_Inputs is
+      N : Natural;
+   begin
+      Start_E4;
+      N := JRU_Seen (30);
+      Signal (Sleeping_Requested, True);
+      Stand_X (100);
+      Check (JRU_Seen (30) = N + 1 and then JRU_Last (30, 2) = 1,
+             "JRU 30: M_SLEEPING 1 recorded (SUBSET-027 4.2.4.30)");
+      Signal (Sleeping_Requested, True);
+      Stand_X (100);
+      Check (JRU_Seen (30) = N + 1,
+             "JRU 30: the same input again is not recorded");
+      Signal (Passive_Shunting_Permitted, False);
+      Signal (Non_Leading_Permitted, True);
+      Stand_X (100);
+      Check (JRU_Last (31, 2) = 0 and then JRU_Last (132, 2) = 1,
+             "JRU 31, 32 (event 132): M_PASSIVE_SHUNTING 0, M_NON_LEADING "
+             & "1 recorded (4.2.4.31, 4.2.4.32)");
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Direction_Controller) + 1), 1));
+      Stand_X (100);
+      Check (JRU_Last (39, 2) = 2,
+             "JRU 39: the controller forward, M_DIRECTION_CONTROLLER 10 "
+             & "(4.2.4.39)");
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Direction_Controller) + 1), 2));
+      Stand_X (100);
+      Check (JRU_Last (39, 2) = 1,
+             "JRU 39: reverse, M_DIRECTION_CONTROLLER 01");
+      N := JRU_Seen (51);
+      EVC_Core.Set_Mode_For_Test (M_SH, EVC_Core.Level);
+      Stand_X (100);
+      Check (JRU_Seen (51) = N + 1 and then JRU_Last (51, 2) = 1,
+             "JRU 51: in SH M_REMOTE_SHUNTING_STATE 1 (4.2.4.51, "
+             & "SUBSET-026 4.4.8.1.4)");
+      EVC_Core.Set_Mode_For_Test (M_SB, EVC_Core.Level);
+      Stand_X (100);
+      Check (JRU_Seen (51) = N + 2 and then JRU_Last (51, 2) = 0,
+             "JRU 51: SH left, M_REMOTE_SHUNTING_STATE 0");
+      Send (Frame (EVC_DMI_Port.MSG_DRIVER_DATA,
+                   (5, 0, 16#2C#, 16#41#, 0, 0, 2, 16#31#, 16#32#,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)));
+      Check (JRU_Last (124, 2) = 3 and then JRU_Last (124, 3) = 1
+             and then JRU_Last (124, 4) = 16#2C#,
+             "JRU 24 (event 124): Q_RBCENTRY 3, NID_RBC 300 (4.2.4.24) "
+             & Integer'Image (JRU_Last (124, 2)));
+      Send (Text_Entry (4, "1234"));
+      Check (JRU_Last (48, 2) = 16#12# and then JRU_Last (48, 3) = 16#34#
+             and then JRU_Last (48, 4) = 16#FF#,
+             "JRU 48: NID_MN 1234 left adjusted, F filled (4.2.4.48)");
+   end Scenario_JRU_Inputs;
+
    --  5.4.3.2 in level 1: S0, S1, S2, S12, S13, S20, S24; 4.6.3 [8]; the
    --  mission (5.4.6.1); SR (4.4.11); FS on the first MA (4.6.3 [32]).
    --  The steps in the order of SUBSET-076 5040300_01 (SV30): cab A,
