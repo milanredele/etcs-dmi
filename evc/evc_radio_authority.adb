@@ -816,7 +816,8 @@ is
       elsif Kind = ETCS_Message_Catalogue.Track_M24
         and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
                     EVC_Received.Last_Packet_Kind (I)
-                      in ETCS_Catalogue.Track_P73 | ETCS_Catalogue.Track_P74
+                      in ETCS_Catalogue.Track_P70 | ETCS_Catalogue.Track_P73
+                         | ETCS_Catalogue.Track_P74
                          | ETCS_Catalogue.Track_P79
                          | ETCS_Catalogue.Track_P180)
       then
@@ -826,6 +827,8 @@ is
          --  EVC_Text_Messages.Take_Radio; the stored information its
          --  track description, as of message 3); or
          --  a geographical position (packet 79, EVC_Position.Take_Radio_Geo);
+         --  or route suitability data (packet 70, 3.12.2.2: location
+         --  data from any trackside, the track description's);
          --  or an LSSMA display toggle order (packet 180,
          --  4.4.19.1.4.2 a, EVC_LS_Display through the stored information;
          --  rejected from the Accepting RBC, 4.8.2.1 c exception 2)

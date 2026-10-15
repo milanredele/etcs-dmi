@@ -2084,8 +2084,10 @@ is
    end Build_Trip_Margin;
 
    --  The temporary EOA and SvL: the nearest (3.12.2.5) of the mode
-   --  profile's (3.12.4) and the level crossing's (3.12.5.8); phase E4,
-   --  5.16: the level crossing of the temporary EOA
+   --  profile's (3.12.4), the level crossing's (3.12.5.8) and the route
+   --  unsuitability's (3.12.2.4); phase E4, 5.16: the level crossing of
+   --  the temporary EOA
+   --  @req 3.12.2.4, 3.13.1.5
    procedure Build_Temporary (T         : Origin_Table_T;
                               Train     : Train_Frame_T;
                               Ahead     : Sense_T;
@@ -2093,9 +2095,11 @@ is
                               Temporary : out Temporary_Target_T;
                               LX        : out LX_Approach_T)
      with Global => (Input => (EVC_Movement_Authority.State,
-                               EVC_Track_Description.State))
+                               EVC_Track_Description.State,
+                               EVC_Train_Data.State))
    is
-      F1, F2   : Boolean;
+      F1, F2, F3 : Boolean;
+      E3       : Dist_T;
       E1, E2   : Dist_T;
       S1, S2   : Dist_T;
       Has_SvL  : Boolean;
@@ -2129,6 +2133,18 @@ is
                  Advance (Frame (T, X.Start, Estimated_Item),
                           Opposite (Ahead), X.Stop_Length));
          end;
+      end if;
+      --  3.12.2.4: the closest unsuitable location, when closer (the
+      --  level crossing's approach of 5.16 then does not apply)
+      EVC_Track_Description.Suitability_Target
+        (T, Ahead, Train.Min_Rear, EVC_Train_Data.Categories, F3, E3);
+      if With_MA and then F3
+        and then (not Temporary.Present
+                  or else A (Ahead, E3) < A (Ahead, Temporary.EOA))
+      then
+         Temporary := (Present => True, EOA => E3,
+                       Has_SvL => True, SvL => E3);
+         LX := (others => <>);
       end if;
    end Build_Temporary;
 

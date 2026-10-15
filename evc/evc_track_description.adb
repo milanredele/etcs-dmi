@@ -1115,6 +1115,57 @@ is
       end if;
    end LX_Target;
 
+   --  3.12.2.4: an unsuitability of Kind among the stored data
+   function Unsuitable_Kind (Kind : Natural;
+                             C    : EVC_Train_Data.Categories_T)
+                             return Boolean
+     with Refined_Global => Suit_S
+   is
+   begin
+      for I in Suit_S'Range loop
+         pragma Loop_Invariant (True);
+         if Suit_S (I).Used and then Suit_S (I).Kind = Kind
+           and then Unsuitable (Suit_S (I), C)
+         then
+            return True;
+         end if;
+      end loop;
+      return False;
+   end Unsuitable_Kind;
+
+   --  3.12.2.4: the closest unsuitable location not yet passed by the
+   --  min safe rear end, the temporary EOA and SvL
+   procedure Suitability_Target (T     : Origin_Table_T;
+                                 Ahead : Sense_T;
+                                 Rear  : Dist_T;
+                                 C     : EVC_Train_Data.Categories_T;
+                                 Found : out Boolean;
+                                 EOA   : out Dist_T)
+     with Refined_Global => Suit_S
+   is
+      Best : Dist_T := Max_Cm;
+   begin
+      Found := False;
+      EOA := 0;
+      for I in Suit_S'Range loop
+         pragma Loop_Invariant (True);
+         if Unsuitable (Suit_S (I), C) then
+            declare
+               E : constant Dist_T :=
+                 Frame (T, Suit_S (I).At_Loc, Estimated_Item);
+            begin
+               if A (Ahead, E) >= A (Ahead, Rear)
+                 and then A (Ahead, E) < Best
+               then
+                  Best := A (Ahead, E);
+                  Found := True;
+                  EOA := E;
+               end if;
+            end;
+         end if;
+      end loop;
+   end Suitability_Target;
+
    procedure Release_LX (I : Positive; From : Dist_T) is
    begin
       if LX_S (I).Used and then not LX_S (I).Protected_LX then

@@ -700,6 +700,12 @@ package body EVC_Test_Procedures is
                         = EVC_DMI_Port.SS_PT_Distance_Exceeded
              and then SS_No_Track_Description
                         = EVC_DMI_Port.SS_No_Track_Description
+             and then SS_Route_Unsuitable_Gauge
+                        = EVC_DMI_Port.SS_Route_Unsuitable_Gauge
+             and then SS_Route_Unsuitable_Traction
+                        = EVC_DMI_Port.SS_Route_Unsuitable_Traction
+             and then SS_Route_Unsuitable_Axle_Load
+                        = EVC_DMI_Port.SS_Route_Unsuitable_Axle_Load
              and then SS_NL_No_Longer_Permitted
                         = EVC_DMI_Port.SS_NL_No_Longer_Permitted
              and then SS_Odometer_Impaired

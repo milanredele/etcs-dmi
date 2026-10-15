@@ -66,6 +66,7 @@ package body EVC_Core
                                    Entering_Shown,
                                    Runaway_Shown,
                                    Odometer_Shown,
+                                   Unsuitable_Shown,
                                    --  the procedures (phase E4)
                                    Proc_Ctx,
                                    Ack_For_Protection,
@@ -223,6 +224,10 @@ is
    --  3.6.8.5, 3.6.8.6.2: "Odometer impaired" shown (the DMI's catalogue
    --  entry 36) while the odometer performance is impaired
    Odometer_Shown       : Boolean := False;
+   --  3.12.2.4: "Route unsuitable" shown, per Q_SUITABILITY (the DMI's
+   --  catalogue entries 30 loading gauge, 32 axle load, 31 traction)
+   type Unsuitable_Shown_T is array (0 .. 2) of Boolean;
+   Unsuitable_Shown     : Unsuitable_Shown_T := (others => False);
 
    --  The procedures
 
@@ -369,6 +374,7 @@ is
       Entering_Shown := 0;
       Runaway_Shown := False;
       Odometer_Shown := False;
+      Unsuitable_Shown := (others => False);
       Proc_Ctx := (others => <>);
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
@@ -2282,6 +2288,38 @@ is
       end;
    end Show_Mode_Indications;
 
+   --  8b'. DMI: 3.12.2.4, the driver informed about every unsuitability
+   --  of the route suitability data stored (the system status messages
+   --  "Route unsuitable", 3.12.2.3 a) to c)), until its data are deleted
+   --  @req 3.12.2.4
+   procedure Show_Route_Unsuitable
+     with Global => (Input  => (EVC_Track_Description.State,
+                                EVC_Train_Data.State),
+                     In_Out => (Unsuitable_Shown, EVC_Outbox.Queue))
+   is
+      Entry_Of : constant array (0 .. 2) of EVC_Bytes.Byte :=
+        (SS_Route_Unsuitable_Gauge, SS_Route_Unsuitable_Axle_Load,
+         SS_Route_Unsuitable_Traction);
+   begin
+      for K in Unsuitable_Shown'Range loop
+         pragma Loop_Invariant (True);
+         declare
+            Show : constant Boolean :=
+              EVC_Track_Description.Unsuitable_Kind
+                (K, EVC_Train_Data.Categories);
+         begin
+            if Show /= Unsuitable_Shown (K) then
+               EVC_Outbox.Put (DMI, System_Status_Frame
+                                      (Entry_Of (K),
+                                       (if Show
+                                        then SS_Event_Start
+                                        else SS_Event_End)));
+               Unsuitable_Shown (K) := Show;
+            end if;
+         end;
+      end loop;
+   end Show_Route_Unsuitable;
+
    --  8c. DMI: the mode and the level (MSG_MODE_LEVEL; 4.4.2.1: a clear
    --  indication of the mode when the desk is open); 4.7.2: the
    --  acknowledgement of a mode proposed (the start of mission, 5.4.3.2
@@ -3014,14 +3052,15 @@ is
                                 EVC_LS_Display.State,
                                 EVC_Driver_Requests.State,
                                 EVC_Odometry.State,
-                                EVC_Track_Conditions.State),
+                                EVC_Track_Conditions.State,
+                                EVC_Track_Description.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
                                 EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
                                 Supervision_Reported, Overrun_Reported,
                                 Entering_Shown, Runaway_Shown,
-                                Odometer_Shown,
+                                Odometer_Shown, Unsuitable_Shown,
                                 Status_Rev_Sent, Status_Slip_Sent,
                                 Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
@@ -3041,6 +3080,7 @@ is
    begin
       Record_Mode_Levels_Mission;   -- JRU 1, 40, 41
       Show_Mode_Indications;        -- DMI MSG_SYSTEM_STATUS
+      Show_Route_Unsuitable;        -- DMI MSG_SYSTEM_STATUS
       Send_Mode_Level;              -- DMI MSG_MODE_LEVEL
       Send_Procedure_Messages;      -- DMI MSG_SYSTEM_STATUS, MSG_TEXT
       Record_Procedures;            -- JRU 23, 24

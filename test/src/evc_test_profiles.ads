@@ -22,6 +22,7 @@ package EVC_Test_Profiles is
       procedure Scenario_National_Values;
       procedure Scenario_Track_Conditions;
       procedure Scenario_Other_Profiles;
+      procedure Scenario_Route_Suitability;
       procedure Scenario_Rear_Deletion;
       procedure Scenario_Snapshot_Seams;
 

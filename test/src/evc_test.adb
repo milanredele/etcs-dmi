@@ -169,6 +169,7 @@ begin
    Scenario_National_Values;
    Scenario_Track_Conditions;
    Scenario_Other_Profiles;
+   Scenario_Route_Suitability;
    Scenario_Rear_Deletion;
    Scenario_Snapshot_Seams;
    Check (Encodes_OK, "E3: every telegram of the track encoded");
