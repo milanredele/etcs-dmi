@@ -3997,6 +3997,75 @@ package body S076_Run is
      (for some C of Defect_Steps =>
         Has (Image (Seq.Name), C.Sequence) and then St.Number = C.Step);
 
+   --  Known defects of SUBSET-076 found at a step, each with the clause
+   --  it contradicts; the step, the same in the three system versions,
+   --  blocks the sequence. The linking data: the step that expects the
+   --  passed group taken as the LRBG (or the input of the group where no
+   --  step judges it) where the sequence's own linking (packet 5 of the
+   --  LRBG, 3.4.4.2) places that group elsewhere than its track does, or
+   --  names another group there. The on-board rejects the group (found
+   --  outside its expectation window, 3.4.4.4.3.2; linked and not in the
+   --  linking information, 3.4.4.4.2) and keeps its LRBG, so the steps
+   --  after run on another position reference than the sequence's.
+   type Linking_Case_T is record
+      Sequence : String (1 .. 10);
+      Step     : Positive;
+   end record;
+   Linking_Data_Cases : constant array (1 .. 10) of Linking_Case_T :=
+     (("3131040_13", 56),
+      ("3131040_27", 55),
+      ("3131040_31", 55),
+      ("3131040_37", 52),
+      ("3080500_03", 49),
+      ("3131040_20", 56),
+      ("3131040_38", 56),
+      ("3131040_50", 56),
+      ("3130234_10", 50),
+      ("3131040_78", 56));
+
+   --  what the data of case I say against the track or the clause
+   function Linking_Why (I : Positive) return String is
+     (case I is
+         when 1 =>
+           "linking: BG1d links BG2 at 350 m, BG3 at 550; BG2d at 50,"
+           & " BG3d at 250 (3.4.4.4.3.2)",
+         when 2 =>
+           "linking: BG1d links BG2 at 800 m, BG3 at 1600; BG2d 750, BG3d"
+           & " 950 (3.4.4.4.3.2)",
+         when 3 =>
+           "linking: BG1d links BG2 at 500 m, BG3 at 800; BG2d 100, BG3d"
+           & " 400 (3.4.4.4.3.2)",
+         when 4 =>
+           "linking: BG1d links NID_BG 2 at 700 m; the track has BG3d"
+           & " there (3.4.4.4.2)",
+         when 5 =>
+           "linking: BG3d's linking (BG5 at 1170 m) leaves out BG4d at"
+           & " 1200 (3.4.4.4.2)",
+         when 6 =>
+           "linking: BG2d links NID_BG 2 at 1150 m; the track has BG3d"
+           & " there (3.4.4.4.2)",
+         when 7 | 8 =>
+           "linking: BG1d links NID_BG 2 at 705 m; the track has BG3d"
+           & " there (3.4.4.4.2)",
+         when 9 =>
+           "linking: BG1d links BG2 at 250 m; BG2d at 300, its MA"
+           & " rejected (3.4.4.4.3.2)",
+         when others =>
+           "the text: V_TRAIN > V_EMA, the comment and the Indication"
+           & " expected: below V_EMA (3.13.10.4.15)");
+
+   function Linking_Data_Case (St : Step_T) return Natural is
+   begin
+      for I in Linking_Data_Cases'Range loop
+         if Has (Image (Seq.Name), Linking_Data_Cases (I).Sequence)
+           and then St.Number = Linking_Data_Cases (I).Step
+         then
+            return I;
+         end if;
+      end loop;
+      return 0;
+   end Linking_Data_Case;
+
    ---------------------------------------------------------------------
    --  The braking curve steps judged with the ERA workbook's results
    --  (B101, e5/curves-judge). A step whose comment says the train has
@@ -4569,7 +4638,9 @@ package body S076_Run is
    --  distance and by T_bs_reduced, whose ramp of A.3.12 depends on A_SB
    --  (S076_Bench.Sbd_Terms), the Indication by T_indication = max (0.8
    --  T_bs_reduced, 5 s) + T_driver as well (3.13.9.3.6.2): 13 m of the
-   --  SBD and 14 m of T_bs at 60 km/h there, the probe's 26 to 27 m
+   --  SBD and 14 m of T_bs at 60 km/h there, the probe's 26 to 27 m.
+   --  The EBD-based limits also move by V_bec times the difference of
+   --  T_be_reduced, whose ramp depends on A_EB (A.3.12, 3.13.9.3.2.6)
    function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
                          return Long_Float
    is
@@ -4618,9 +4689,10 @@ package body S076_Run is
         (0.0,
          Service
          + B.Ebd_Distance (Tool, Seq.WB_Brake_Position, Train_Length_M,
-                           V_Bec, Vt, C.Grades)
+                           V_Bec, Vt, C.Grades, With_Bec => True)
          - B.Ebd_Distance (Brake_Percentage, Seq.WB_Brake_Position,
-                           Train_Length_M, V_Bec, Vt, C.Grades));
+                           Train_Length_M, V_Bec, Vt, C.Grades,
+                           With_Bec => True));
    end Tool_Margin;
 
    --  B200 (b): the workbook's integrated correction factors are not in
@@ -5278,6 +5350,11 @@ package body S076_Run is
             elsif Defect_Step (St) then
                J := NJ (R_S076_Defect, "the tool's unrounded V_PBD "
                         & "(3.11.11.6 rounds it down to 5 km/h)");
+               Record_Result (I, J);
+               Block (I, J);
+            elsif Linking_Data_Case (St) > 0 then
+               J := NJ (R_S076_Defect, "data: "
+                        & Linking_Why (Linking_Data_Case (St)));
                Record_Result (I, J);
                Block (I, J);
             elsif Scope (St) /= R_None then

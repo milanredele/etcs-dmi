@@ -1006,11 +1006,13 @@ package body S076_Bench is
 
    function Ebd_Distance (Lambda, Position, Length_M : Natural;
                           From_Kmh, To_Kmh : Long_Float;
-                          Grades : S076_Sequences.Grades_T := (others => <>))
+                          Grades : S076_Sequences.Grades_T := (others => <>);
+                          With_Bec : Boolean := False)
                           return Long_Float
    is
       use EVC_Braking;
       use EVC_Supervision_Input;
+      use type EVC_Fixed.Num;
       E   : constant Steps_T :=
         Basic_Deceleration (if Lambda in 10 .. Lambda_T'Last then Lambda
                             else 100);
@@ -1028,6 +1030,9 @@ package body S076_Bench is
       Top : constant Long_Float := Long_Float'Min (From_Kmh, 2_000.0) / 3.6;
       V   : Long_Float := Long_Float'Max (To_Kmh, 0.0) / 3.6;
       D   : Long_Float := 0.0;
+      --  A.3.12.2.2, .3: the least brake deceleration and the greatest
+      --  one with the gradient on the way, m/s2
+      A_EB, A_Safe_Max : Long_Float := -1.0;
    begin
       --  in steps of 0.05 m/s, the deceleration at the middle of each
       while V < Top loop
@@ -1036,18 +1041,48 @@ package body S076_Bench is
             Mid : constant Long_Float := V + Dv / 2.0;
             Cms : constant EVC_Fixed.Num :=
               EVC_Fixed.Num (Long_Float'Min (Mid * 100.0, 60_000.0));
-            A   : constant Long_Float :=
+            A_B : constant Long_Float :=
               Long_Float (Value_At (E, Cms)) * 1.0E-5
-              * Long_Float (Value_At (Kv, Cms)) / 1.0E6 * Kr
-              + Grade_Acceleration (Grades, D, Length_M);
+              * Long_Float (Value_At (Kv, Cms)) / 1.0E6 * Kr;
+            A   : constant Long_Float :=
+              A_B + Grade_Acceleration (Grades, D, Length_M);
          begin
+            A_EB := (if A_EB < 0.0 then A_B else Long_Float'Min (A_EB, A_B));
+            A_Safe_Max := Long_Float'Max (A_Safe_Max, A);
             if A > 0.0 then
                D := D + Mid * Dv / A;
             end if;
             V := V + Dv;
          end;
       end loop;
-      return D;
+      if not With_Bec or else A_EB <= 0.0 then
+         return D;
+      end if;
+      declare
+         Low : constant Long_Float := Long_Float'Max (To_Kmh, 0.0) / 3.6;
+         T   : constant Times_T :=
+           Conversion_Emergency
+             (P, EVC_Fixed.Num (Natural'Min (Length_M, 1_500) * 100),
+              Zero_Speed => Low = 0.0);
+         --  3.13.6.2.2.3: T_be = Kt_int * T_brake_emergency
+         function Kt (X : EVC_Fixed.Num) return EVC_Fixed.Num is
+           (EVC_Fixed.Min
+              (EVC_Fixed.Div_Ceil (X * EVC_Fixed.Num (NV.Kt_Int), 1_000),
+               EVC_Fixed.Max_Time));
+         I : constant EVC_Build_Up.Input_T :=
+           (Kind       => (if Low = 0.0 then EVC_Build_Up.Zero_Target
+                           else EVC_Build_Up.Speed_Target),
+            V_Est      => EVC_Fixed.Num (Top * 100.0),
+            V_Target   => EVC_Fixed.Num (Low * 100.0),
+            T_Be_React => Kt (T.React),
+            T_Be       => Kt (T.Build_Up),
+            A_EB       => EVC_Fixed.Num (A_EB * 1.0E5),
+            A_Safe_Max => EVC_Fixed.Num (Long_Float'Max (A_Safe_Max, 0.0)
+                                         * 1.0E5),
+            others     => <>);
+      begin
+         return D + Top * Long_Float (EVC_Build_Up.T_Be_Reduced (I)) / 1000.0;
+      end;
    end Ebd_Distance;
 
    function Sbd_Terms (Lambda, Position, Length_M : Natural;
