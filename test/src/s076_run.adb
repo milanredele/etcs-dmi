@@ -3967,18 +3967,52 @@ package body S076_Run is
    function Release_Step return Boolean is
      (for some K in 5 .. Line.Count =>
         Starts (Up (W (K)), "M_SDMTYPE=") and then Has (W (K), "2"));
+   --  A release speed step its location's records do not show (B140,
+   --  B360): the step names the start of release speed monitoring or
+   --  its status without a limit of the workbook's columns, so the
+   --  curves do not judge it. It is judged at our own start of release
+   --  speed monitoring (EVC_SDM.Shown_At_T.RSM_Start, 3.13.9.4.6, .7: the
+   --  location where the estimated front end, or with RSM_Max_Safe the
+   --  max safe front end, enters release speed monitoring), as a curve
+   --  step is judged at our status change (Drive_On): when that start is
+   --  ahead and at most Release_Past past the step's location, the train
+   --  runs on at its speed until the on-board monitors the release speed
+   --  and the step is judged again over its location. The sequence's
+   --  location is its start (the step before has the train reach it).
+   --  Still failed: the signature names the release speed's origin of
+   --  the workbook (fixed by Track!E2, or calculated on board) and why
+   --  (no release speed supervised, our start past the location, or the
+   --  record itself); the trace gives ours
+   Release_Past : constant Integer_64 := 1_000;  -- cm, as Drive_On_Limit
 
-   --  A release speed step its location's records do not show (B140):
-   --  the step names the start of release speed monitoring or its
-   --  status without a limit of the workbook's columns, so the curves do
-   --  not judge it; the signature names the release speed's origin of
-   --  the workbook (fixed by Track!E2, or calculated on board,
-   --  3.13.9.4.6) and the trace ours (EVC_SDM.Result_T.V_Release). The
-   --  location of our change to release speed monitoring is not in the
-   --  bench's changes (they keep the status, not the monitoring)
-   function Release_Judgement (J : Judgement_T; Verbose : Boolean)
-                               return Judgement_T
+   --  declared here for Release_Judgement; the body is with the curves
+   function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
+                         return Long_Float;
+
+   --  The workbook whose start of release speed monitoring is for the
+   --  release speed V_Kmh (within 1 km/h): the set named last when it
+   --  is, else the first such set; 0 when none
+   function Release_Set (V_Kmh : Long_Float) return Natural is
+      function For_V (S : Positive) return Boolean is
+        (Seq.Curves (S).Limits (S076_Sequences.Start_RSM) /= No_Value
+         and then abs (Seq.Curves (S).Limits (S076_Sequences.Release_Speed)
+                       - V_Kmh) <= 1.0);
+   begin
+      if Unnamed_Set > 0 and then For_V (Unnamed_Set) then
+         return Unnamed_Set;
+      end if;
+      for S in 1 .. Seq.Curve_Count loop
+         if For_V (S) then
+            return S;
+         end if;
+      end loop;
+      return 0;
+   end Release_Set;
+
+   function Release_Judgement (St : Step_T; J : Judgement_T;
+                               Verbose : Boolean) return Judgement_T
    is
+      use type EVC_SDM.Monitoring_T;
       R      : constant EVC_SDM.Result_T := EVC_Core.Supervision;
       --  the set named last or the only one, else the sets' common
       --  choice (Unknown when they differ or none is read); the
@@ -3987,6 +4021,30 @@ package body S076_Run is
         (if Unnamed_Set > 0 then Seq.Curves (Unnamed_Set).Cells.Release
          elsif Seq.Curve_Count > 0 then Seq.Curves (1).Cells.Release
          else S076_Sequences.Unknown);
+      Dir    : constant Integer_64 := Integer_64 (B.Direction);
+      From   : constant Integer_64 := B.Position;
+      --  our start in track coordinates, and how far past the step's
+      --  location it is (cm, along the train's movement)
+      Ahead  : constant Integer_64 :=
+        Integer_64 (R.Shown_At.RSM_Start) - Integer_64 (R.Shown_At.X_Est);
+      --  the reference: the workbook's start for our release speed (m
+      --  from the EOA, less the tool margin), else the step's location
+      V_Ours : constant Long_Float := Long_Float (R.V_Release) * 0.036;
+      Set    : constant Natural := Release_Set (V_Ours);
+      Wb     : constant Long_Float :=
+        (if Set = 0 then No_Value
+         else Seq.Curves (Set).Limits (S076_Sequences.Start_RSM)
+              - Tool_Margin (Seq.Curves (Set), V_Ours, 0.0));
+      Past   : constant Integer_64 :=
+        (if Wb /= No_Value
+         then Integer_64 (Wb * 100.0)
+              - (Integer_64 (B.State.Plan_MA) * 100 - Ahead)
+         else Dir * (From + Dir * Ahead - St.Dist_Cm));
+      Ours   : constant Boolean :=
+        R.Monitoring /= EVC_SDM.RSM and then Integer_64 (R.Shown_At.RSM_Start) /= 0
+        and then Ahead > 0;
+      Driven : Integer_64 := 0;
+      Again  : Judgement_T;
    begin
       if Unnamed_Set = 0 then
          for S in 1 .. Seq.Curve_Count loop
@@ -3995,6 +4053,16 @@ package body S076_Run is
             end if;
          end loop;
       end if;
+      if Ours and then Past <= Release_Past and then B.Speed > 0 then
+         for I in 1 .. 200_000 loop
+            exit when EVC_Core.Supervision.Monitoring = EVC_SDM.RSM
+              or else B.Speed = 0
+              or else abs (B.Position - From) > Ahead + B.Current.Over
+                                                + Release_Past;
+            B.Cycle;
+         end loop;
+         Driven := abs (B.Position - From);
+      end if;
       declare
          Origin : constant String :=
            (if Choice = S076_Sequences.First and then not Seq.Release_OB
@@ -4002,6 +4070,15 @@ package body S076_Run is
             elsif Choice = S076_Sequences.Second or else Seq.Release_OB
             then "calculated on board"
             else "of no single workbook choice");
+         Now    : constant EVC_SDM.Result_T := EVC_Core.Supervision;
+         Why    : constant String :=
+           (if R.Monitoring /= EVC_SDM.RSM and then not Ours
+            then ", no release speed supervised"
+            elsif Ours and then Past > Release_Past
+            then ", our start of release speed monitoring past the location"
+            elsif Now.Monitoring /= EVC_SDM.RSM
+            then ", no release speed monitoring at our start"
+            else "");
       begin
          if Verbose then
             Put_Line ("      release speed: the workbook's " & Origin
@@ -4009,9 +4086,37 @@ package body S076_Run is
                                                   * 0.036))
                       & " km/h, monitoring "
                       & EVC_SDM.Monitoring_T'Image (R.Monitoring) & " at "
-                      & Img (Integer (B.Position / 100)) & " m");
+                      & Img (Integer (From / 100)) & " m; our start"
+                      & Integer_64'Image (Ahead / 100) & " m ahead ("
+                      & (if R.Shown_At.RSM_Max_Safe then "max safe"
+                         else "estimated") & " front end),"
+                      & Integer_64'Image (Past / 100)
+                      & " m past the "
+                      & (if Wb /= No_Value
+                         then "workbook's (set" & Natural'Image (Set)
+                              & ", with its margin)"
+                         else "location")
+                      & "; driven"
+                      & Integer_64'Image (Driven / 100) & " m to "
+                      & EVC_SDM.Monitoring_T'Image (Now.Monitoring));
          end if;
-         return Fail (Image (J.Sig) & " [release speed " & Origin & "]");
+         if Driven > 0 and then Why'Length = 0 then
+            Sync_Location_Records;
+            Location_Scope := True;
+            Again := Expect (St);
+            Location_Scope := False;
+            if Again.Verdict = Passed then
+               return Pass (Image (Again.Sig) & " at our start of release "
+                            & "speed monitoring,"
+                            & Integer_64'Image (Past / 100) & " m past the "
+                            & (if Wb /= No_Value then "workbook's"
+                               else "location"));
+            end if;
+            return Fail (Image (Again.Sig) & " [release speed " & Origin
+                         & ", at our start]");
+         end if;
+         return Fail (Image (J.Sig) & " [release speed " & Origin & Why
+                      & "]");
       end;
    end Release_Judgement;
 
@@ -4060,7 +4165,7 @@ package body S076_Run is
          return Pass (Image (J.Sig) & " in its window; at this location");
       end if;
       if Tag'Length > 0 and then Release_Step then
-         return Release_Judgement (J, Verbose);
+         return Release_Judgement (St, J, Verbose);
       end if;
       return Fail (Image (J.Sig) & Tag);
    end Location_Judgement;
