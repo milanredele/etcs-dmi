@@ -6231,3 +6231,39 @@ failures, so the passed / failed / blocked line alone misleads: read the
 steps not judged with it. Open items: doc/BACKLOG.csv (30 open after
 this round).
 
+
+### The LRBG families, the curve families, the margin's last terms (e5/runner-families, 2026-10-15)
+
+B451, every sequence traced: the data in all of them. A linked group
+found outside the expectation window that the LRBG's linking gives
+(3.4.4.4.3.2: 3131040_13, BG1d links BG2 at 350 m and BG3 at 550, the
+track has them at 50 and 250; _27; _31; 3130234_10, BG2d at 300 where
+BG1d links it at 250, its MA rejected), or a linked group the linking
+does not name (3.4.4.4.2: 3131040_20, _37, _38, _50; 3080500_03, whose
+BG3d linking leaves out BG4d). The bench places each group at its
+step's location, as the telegram lines do. `S076_Run.Linking_Data_Cases`
+(sequence, step, the reason with its clause) blocks them as S076-defect
+at the step that expects the group taken as the LRBG; it also holds
+3131040_78 (the step text says the speed rises above V_EMA, its comment
+and the Indication expected say below, 3.13.10.4.15).
+
+B140: the ~[workbook train] triage line rewritten by cause, 24 first
+failures left (chart 3130232_16, 3131020_01, _04; on-board analysed
+3131020_03; s076 3130700_02 B421 and 3131030_12 SV21/22, an
+L_ENDSECTION 94 m longer than the SV30 twin's; undecided 3131020_05;
+model 3131040_76 and 3130234_08, the runner's speed held after a speed
+decrease input where the chart rises again, B490). B140 stays open.
+
+B370: T_be_reduced in (`S076_Bench.Ebd_Distance` With_Bec, taken by
+`Tool_Margin`): 0 for 3130237_07's 62 to 30 km/h, up to 8 m for a
+freight train with a small speed drop. Against `evc_curve_probe` at
+loa=40 the bench's EBI is 65 m beyond the on-board's, so the term is not
+validated: open. B201: 3131060_14 re-probed, unchanged (+3.7 m at 180
+km/h in every limit, the EBD itself); the rest not re-probed.
+
+SUBSET-076: 870 / 1263 / 1057 before, 870 / 1233 / 1087 after; 24
+improvements (failed -> blocked at the same step), 6 regressions
+understood (3130234_10 and 3131040_78 blocked at the defect's step,
+before their failure), re-recorded; no new signature. Edit outside the
+package's subprograms: the call of `Linking_Data_Case` in the step loop
+of `S076_Run`, next to `Single_Session_Case`.
