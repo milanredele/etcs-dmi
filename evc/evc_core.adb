@@ -2988,7 +2988,7 @@ is
    procedure Produce_Outputs
      with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
                                 Standstill, Below_Override, TIU_Now,
-                                TIU_Known_Now,
+                                TIU_Known_Now, TIU_Value_Now,
                                 EVC_National_Values.State,
                                 EVC_Position.State,
                                 SDM_Result, Brake_Output, Speed_State,
