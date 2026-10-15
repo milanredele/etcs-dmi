@@ -6231,3 +6231,33 @@ failures, so the passed / failed / blocked line alone misleads: read the
 steps not judged with it. Open items: doc/BACKLOG.csv (30 open after
 this round).
 
+### The operated system version, the level transition's MA and indication, the level symbol families (e5/version-levels, 2026-10-15)
+
+**B450** (3.17.2.3, .5, .6, .7, .8, .8 d): `EVC_System_Version.Take_Balise_Group`,
+called for every balise group message taken into account by
+`EVC_Stored_Information.Take_Version` (the highest X of its telegrams,
+`EVC_Position.Taken_Version`; the first packet 2 valid for the direction;
+the country mismatch of `EVC_National_Values.Check_Country`): the order is
+executed whatever the group's X, else the group's X when higher (or at a
+mismatch, even lower), an X outside the envelope ignored, nothing while
+the RBC governs; out of level 2 the groups apply again. Left: loops and
+RIU (E7), 3.17.2.8.1 / .8.2 (the group of the transition judged again,
+E7), the national values of the group itself at the mismatch.
+`evc_test` `Scenario_Version_Balise_Groups`.
+
+**B441** (4.8.1.3.1): ours. The information of a message whose immediate
+or conditional order changed the level is judged first in the level
+before the order with the new level announced; what that accepts stays
+(`EVC_Stored_Information.Message_Acceptance`). Decision: what step 1
+rejects without [1] or [2] is judged in the new level too.
+`Scenario_L2_Order_With_L1_MA`.
+
+**B440** analysed in part (BG1d's profiles start at the group, the rear
+is behind it: the question is whether the profiles from before the
+transition are kept), **B017** not continued (budget).
+
+**SUBSET-076**: 870 / 1263 / 1057 before, 870 / 1259 / 1061 after, 0
+regressions, 5 improvements (SV30 3170200_01, _02, _06, _07, _09);
+baseline re-recorded; S8902de51 s076, S65dae40b E7. Edits outside the
+units: `EVC_Position.Taken_Version`, the Global of
+`EVC_Core.Evaluate_Stored_Information`, `EVC_Test_Support.Version`.
