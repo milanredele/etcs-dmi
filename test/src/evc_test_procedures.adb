@@ -2402,6 +2402,34 @@ package body EVC_Test_Procedures is
              & "b)");
    end Scenario_Integration_Shunting_Levels;
 
+   --  4.12.1.2 c), 3.14.1.11: the speed and distance monitoring reason
+   --  of a brake command is re-evaluated on entering FS from SR. The
+   --  emergency brake of the SR ceiling (40 km/h, its EBI exceeded at
+   --  50) is kept under the SR ceiling with Q_NVEMRRLS 0 (Table 6 r0
+   --  only); entering FS at 25 km/h under the FS MRSP of 100 revokes it
+   --  while running; entering FS above the FS EBI keeps it (SUBSET-076
+   --  4120100_01 step 60)
+   procedure Scenario_Brake_Reevaluated is
+   begin
+      for Fast in Boolean loop
+         Begin_Scenario (M_SR, L1);
+         Run_Front (Front_M + 50, 50);
+         Check (EB, "4.12: the SR ceiling's EBI exceeded, the emergency "
+                & "brake");
+         Run_Front (Front_M + 20, (if Fast then 120 else 25));
+         Check (EB, "4.12: under the SR ceiling, Q_NVEMRRLS 0: kept");
+         Line_Group (EOA_M => 1_500, Kmh => 100, At_M => Front_M + 10);
+         Close;
+         Run_Front (Front_M + 30, (if Fast then 120 else 25));
+         Check (Mode_Byte = Code_FS and then EB = Fast,
+                "4.12.1.2 c): FS entered at"
+                & (if Fast then " 120 km/h over the FS EBI, the emergency "
+                   & "brake kept"
+                   else " 25 km/h under the FS MRSP, the emergency brake "
+                   & "revoked while running"));
+      end loop;
+   end Scenario_Brake_Reevaluated;
+
    procedure Run is
    begin
       Scenario_Protocol;
@@ -2420,6 +2448,7 @@ package body EVC_Test_Procedures is
       Scenario_Text_Message_Room;
       Scenario_BMM;
       Scenario_Mode_Speeds;
+      Scenario_Brake_Reevaluated;
       Scenario_Level_Crossing;
       Scenario_External_Track_Conditions;
       Scenario_Train_Data_Change;

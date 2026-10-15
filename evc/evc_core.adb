@@ -1991,6 +1991,8 @@ is
          SDM_State.SB := False;
          SDM_State.EB := False;
          SDM_State.EB_For_SB := False;
+      elsif To /= From then
+         SDM_State.Reevaluate := True;
       end if;
       --  4.12: Roll Away Protection revoked in NP, SB, TR, SN; the
       --  Unauthorised Direction Movement Protection in NP, SB, SH, UN, TR,
