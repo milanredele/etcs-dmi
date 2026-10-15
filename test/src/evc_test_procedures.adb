@@ -465,12 +465,17 @@ package body EVC_Test_Procedures is
    function U16 (V : Natural) return Byte_Array is
      (Byte (V mod 256), Byte (V / 256 mod 256));
 
+   --  The upper bound of the speed above the estimated one by this much
+   --  (cm/s): the odometer's accuracy
+   V_Max_Extra : Natural := 0;
+
    procedure Sample is
       V : constant Natural := Natural'Min (abs V_Cms, 65_535);
    begin
       Input (Odometer,
              U32 (X_Cm) & U32 (Over) & U32 (Under)
-             & U16 (V) & U16 (V) & U16 (V)
+             & U16 (V) & U16 (V)
+             & U16 (Natural'Min (V + V_Max_Extra, 65_535))
              & Byte_Array'(Byte (if V_Cms > 0 then 1
                                  elsif V_Cms < 0 then 2 else 0), 0)
              & U16 (0));
@@ -1283,6 +1288,31 @@ package body EVC_Test_Procedures is
       Cycle;
       Check (Mode_Byte = Code_FS and then Override_Byte = 0,
              "5.8.2.1 a): no override above V_NVALLOWOVTRP");
+
+      --  5.8.2.1 a), 3.13.10.2.1: the train speed is the estimated one;
+      --  at V_est 15 km/h under V_NVALLOWOVTRP 20 km/h, an upper bound
+      --  V_max of 22 km/h does not refuse the override (SUBSET-076
+      --  3131060_08 step 60: 58 km/h under 60)
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 600);
+      Close;
+      declare
+         NV : ST.T3.Packet_T := ST.National_Values (123);
+      begin
+         NV.V_NVALLOWOVTRP := 4;
+         Group (30, 60);
+         Add (NV);
+         Close;
+      end;
+      Run_Front (80, 15);
+      V_Max_Extra := 200;
+      Cycle;
+      Driver (6);
+      Cycle;
+      V_Max_Extra := 0;
+      Check (Override_Byte = 1,
+             "5.8.2.1 a): the override allowed at V_est under "
+             & "V_NVALLOWOVTRP, V_max above it");
 
       --  d), and [54] without it
       Begin_Scenario (M_SR, L1);

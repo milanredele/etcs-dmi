@@ -151,9 +151,10 @@ is
       --  number is valid (5.8.2.1 c)
       Train_Data_Valid : Boolean := True;
       TRN_Valid        : Boolean := True;
-      --  the speed the override is compared with (5.8.2.1 a): the upper
-      --  bound of the odometer's speed
-      Speed_Max        : Speed_Cms_T := 0;
+      --  the speed the override is compared with (5.8.2.1 a): the
+      --  estimated speed, the train speed of the speed monitoring and of
+      --  the driver's indication (3.13.10.2.1)
+      Speed_Est        : Speed_Cms_T := 0;
       --  the balise antenna from the front end of the engine, cm (the
       --  min safe antenna position of [12] and [43])
       Antenna_Offset   : Length_T := 0;

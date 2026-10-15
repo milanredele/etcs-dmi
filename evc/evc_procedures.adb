@@ -768,7 +768,7 @@ is
    --  @req 5.4.5.3 a), 5.8.2.1, 5.8.2.1 a), 5.8.2.1 b)
    function Override_Allowed (C : Context_T; NV : National_Values_T)
      return Boolean
-   is (C.Speed_Max <= NV.V_NVALLOWOVTRP
+   is (C.Speed_Est <= NV.V_NVALLOWOVTRP
        and then (C.Mode in M_FS | M_AD | M_LS | M_OS | M_SR | M_SH | M_UN
                          | M_PT | M_SN
                  or else (C.Mode = M_SB and then C.Level_Valid

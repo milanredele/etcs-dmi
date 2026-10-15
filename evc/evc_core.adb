@@ -973,7 +973,7 @@ is
    --  2. Update the position (EVC_Position): the cab status, the
    --  telegrams of the cycle, the odometer sample; its events go to the
    --  JRU. E0's standstill and override speed come from the sample.
-   --  @req 3.14.3.6, 4.8.3.1.1 Table-footnote [1]
+   --  @req 3.14.3.6, 4.8.3.1.1 Table-footnote [1], 5.8.2.1 a)
    procedure Update_Position
      with Global => (Input  => (Odometer_Now, Odometer_Fresh, TIU_Now,
                                 EVC_National_Values.State, Current_Mode,
@@ -1046,8 +1046,11 @@ is
          end;
       end loop;
       Standstill := Odometer_Now.V_Max = 0;
+      --  5.8.2.1 a): "the train speed" is the estimated speed, the one
+      --  shown to the driver and used for the speed monitoring
+      --  (3.13.10.2.1), not its upper bound V_max
       Below_Override :=
-        Natural (Odometer_Now.V_Max) <= EVC_National_Values.V_NVALLOWOVTRP;
+        Natural (Odometer_Now.V_Est) <= EVC_National_Values.V_NVALLOWOVTRP;
    end Update_Position;
 
    --  3. Evaluate the stored information (EVC_Stored_Information, phase
@@ -1780,9 +1783,9 @@ is
          Train_Data_Valid  => EVC_Train_Data.Valid,
          --  the train running number of the start of mission (5.4.2)
          TRN_Valid         => EVC_Mission.TRN_Status = EVC_Mission.Valid,
-         Speed_Max         =>
+         Speed_Est         =>
            EVC_Supervision_Input.Speed_Cms_T
-             (Natural'Min (Natural (Odometer_Now.V_Max),
+             (Natural'Min (Natural (Odometer_Now.V_Est),
                            EVC_Supervision_Input.Speed_Cms_T'Last)),
          Antenna_Offset    =>
            EVC_Position.Front_Offset (EVC_Position.Orientation),
