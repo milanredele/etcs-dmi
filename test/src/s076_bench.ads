@@ -123,9 +123,15 @@ package S076_Bench is
    --  acceleration of the lowest gradient under the train at its distance
    --  from the target (3.13.4.2, 3.13.4.3 with the rotating masses of
    --  A.3.1, 15 % uphill and 2 % downhill)
+   --  With_Bec: plus the distance run at From_Kmh (V_bec) during
+   --  T_be_reduced (3.13.9.3.2.6, 3.13.9.3.2.10 with A_est 0 and the
+   --  traction time inside T_be_react), whose ramp of A.3.12 depends on
+   --  A_EB, the least EBD deceleration from To_Kmh to From_Kmh, and so
+   --  on Lambda (A.3.12.2.2, .3)
    function Ebd_Distance (Lambda, Position, Length_M : Natural;
                           From_Kmh, To_Kmh : Long_Float;
-                          Grades : S076_Sequences.Grades_T := (others => <>))
+                          Grades : S076_Sequences.Grades_T := (others => <>);
+                          With_Bec : Boolean := False)
                           return Long_Float;
 
    --  B300: the service brake terms of a target at V_Kmh on a flat track:

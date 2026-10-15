@@ -4535,7 +4535,9 @@ package body S076_Run is
    --  distance and by T_bs_reduced, whose ramp of A.3.12 depends on A_SB
    --  (S076_Bench.Sbd_Terms), the Indication by T_indication = max (0.8
    --  T_bs_reduced, 5 s) + T_driver as well (3.13.9.3.6.2): 13 m of the
-   --  SBD and 14 m of T_bs at 60 km/h there, the probe's 26 to 27 m
+   --  SBD and 14 m of T_bs at 60 km/h there, the probe's 26 to 27 m.
+   --  The EBD-based limits also move by V_bec times the difference of
+   --  T_be_reduced, whose ramp depends on A_EB (A.3.12, 3.13.9.3.2.6)
    function Tool_Margin (C : Curve_Set_T; V_Kmh, V_Target_Kmh : Long_Float)
                          return Long_Float
    is
@@ -4584,9 +4586,10 @@ package body S076_Run is
         (0.0,
          Service
          + B.Ebd_Distance (Tool, Seq.WB_Brake_Position, Train_Length_M,
-                           V_Bec, Vt, C.Grades)
+                           V_Bec, Vt, C.Grades, With_Bec => True)
          - B.Ebd_Distance (Brake_Percentage, Seq.WB_Brake_Position,
-                           Train_Length_M, V_Bec, Vt, C.Grades));
+                           Train_Length_M, V_Bec, Vt, C.Grades,
+                           With_Bec => True));
    end Tool_Margin;
 
    --  B200 (b): the workbook's integrated correction factors are not in
