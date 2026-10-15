@@ -6171,3 +6171,63 @@ maps them in `S076_Tables.Message_Event` (fields not compared yet).
 per cycle under a curve otherwise). Steps not judged 6260 -> 5909;
 regressions 4100103_30 (3 SV), record 31 expected at a repeated input of
 the same value (Sc4547107, B430).
+
+### E5 integration after the twenty-fourth round (2026-10-15)
+
+Merged: e5/runner-curves (B390 is the sequence's data: the 50 km/h
+target of 4080410_01 is the TSR of BG2d on the default 50 permille
+downhill that SR keeps, 4.10, while the sequence expects a level track;
+the JRU header fields NID_LRBG, M_VERSION and V_TRAIN judged, B407, 306
+-> 37 steps, with 47 failures that were blocked before: B450 the
+on-board operating 3.0 where level 1 groups carry M_VERSION 2.1,
+3.17.2.3; B451 linking data of the sequences; B140 re-counted),
+e5/onboard-findings (an unknown NID_MESSAGE recorded and ignored, no
+report, 3.17.3.11 b, B409; the override allowed on V_est, 5.8.2.1 a,
+B410, `EVC_Procedures.Override_Allowed` too, 3131060_08 passes; the
+speed and distance monitoring brake re-evaluated at a mode change,
+4.12.1.2, `EVC_SDM.State_T.Reevaluate`, B411; B412 refuted, 3.11.11.6
+rounds the PBD speed down to 5 km/h, the tool's 12 is an S076 defect,
+B421; B391 analysed, our brake comes from the EBI), e5/runner-rsm (the
+release speed steps judged at our own start of release speed monitoring
+against the workbook's StartRSM less the margin, B360, with B441 and
+B442 for the two families left; a brake symbol still shown passes,
+B380; the bits of records 21 and 23 judged from the bench's DMI state,
+B406, 81 of 110 and 31 of 31; B440 "Entering FS" kept at the level
+transition) and e5/session-jru (the eight E5 session rows closed, the
+A.3.1 limit on the mode change session, 3.5.4.5 as a report not kept
+while the connection is lost; E5 has 159 done and 2 partial waiting for
+E6 and SM; JRU records 24, 30, 31, 32, 39, 48, 51 and 13 with M_ERROR 5
+written, B401 to B405, events 124 and 132 for the taken numbers; B400
+left with the rate question; B430, B431).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the triage by signature id; the union of the four merged with
+0 regressions after each merge (the two runner branches fast-forwarded
+or merged without a baseline conflict). The chain was run twice: the
+first run was lost with the machine's suspend (the scratchpad's script
+gone), the second is the one below.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12110
+checks, dmi_test 2168), the full proof 11392 checks, 0 unproved (margin
+47726 steps), cross build and stack (margin 5648 B), wasm and both
+smokes 0 failures. SUBSET-076: 863 / 1239 / 1088 before, 870 / 1263 /
+1057 after (the failures up by 24 are blocked sequences whose header
+fields are judged now and fail), steps not judged 6260 -> 4787, 0
+regressions, 0 untriaged. Matrix: 307 -> 299 clauses left in all phases
+(E5: 10 -> 2).
+
+Measurements (requests by message id, duration, final context, cost):
+onboard-findings 150 / 28 min / 185k / 9.5; session-jru 161 / 34 min /
+209k / 11.9; runner-rsm 129 / 33 min / 205k / 9.2; runner-curves 116 /
+26 min / 172k / 7.2. Two over their budgets (session-jru by about 12
+calls, onboard-findings by 20), every "Done" list complete.
+
+Lessons: two brief premises wrong (the `Capped` limit was passed by the
+start of mission already, the mode change session lacked it; the runner
+did not judge the new records by number, the table needed them), both
+caught at the source; a decision taken at integration (B409) was carried
+out next round as written; judging more of a sequence turns blocks into
+failures, so the passed / failed / blocked line alone misleads: read the
+steps not judged with it. Open items: doc/BACKLOG.csv (30 open after
+this round).
+
