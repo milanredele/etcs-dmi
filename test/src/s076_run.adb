@@ -31,6 +31,7 @@ with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
 with EVC_National_Values;
 with EVC_Supervision_Input;
+with EVC_System_Version;
 with S076_Bench;
 with EVC_Config;
 with S076_Tables;             use S076_Tables;
@@ -2937,6 +2938,55 @@ package body S076_Run is
       elsif Same (Name, "DRIVER_ID") then
          return Check (Any_Rec (41, 1, -1) = Positive, "JRU driver ID",
                        "no event 41 kind 1");
+      elsif Positive and then Same (Name, "NID_LRBG")
+        and then (Same (Value, "<IDofthepassedBG>")
+                  or else Same (Value, "<equaltotheidentityofthepreviousBG>")
+                  or else Same (Value, "<changed>")
+                  or else Same (Value, "<differentfrombalisemessage>")
+                  or else Same (Value, "<unchanged>"))
+      then
+         --  4.2.3.5: the LRBG of the on-board's last event 10 against
+         --  the balise group of its last accepted telegram (event 2): the
+         --  passed group taken as the LRBG, or not
+         declare
+            Taken : constant Boolean :=
+              B.JRU_LRBG_Known and then B.JRU_LRBG_Id = B.JRU_Last_BG_Id;
+            Want  : constant Boolean :=
+              not (Same (Value, "<differentfrombalisemessage>")
+                   or else Same (Value, "<unchanged>"));
+         begin
+            return Check (Taken = Want, "JRU NID_LRBG=" & Value,
+                          (if not B.JRU_LRBG_Known then "no LRBG"
+                           elsif Taken then "the passed group"
+                           elsif Any_Rec (4, -1, EVC_Position.Cause_Other_Group)
+                           then "another, linking reaction: another group"
+                           elsif Any_Rec (4, -1, -1)
+                           then "another, linking reaction: other cause"
+                           else "another"));
+         end;
+      elsif Positive and then Same (Name, "M_VERSION")
+        and then Value'Length = 7
+        and then (for all C of Value => C in '0' | '1')
+      then
+         --  4.2.3.9: the operated system version (EVC_System_Version,
+         --  read like EVC_Core.Supervision): X in the first three bits
+         --  judged; Y is the highest of X in the envelope (3.17.2.1.1:
+         --  2.3, 6.4.2.2), where the sequences name 2.2
+         declare
+            X : constant Natural := Natural'Value
+              ("2#" & Value (Value'First .. Value'First + 2) & "#");
+            Ours : constant Natural :=
+              Natural (EVC_System_Version.Operated_Version);
+         begin
+            return Check (Ours / 16 = X, "JRU M_VERSION=" & Value,
+                          "version" & Img (Ours / 16) & "."
+                          & Img (Ours mod 16));
+         end;
+      elsif Positive and then Same (Name, "V_TRAIN") and then Value = "0"
+      then
+         --  4.2.3.6: the train speed shown by the on-board
+         return Check (B.State.Has_Speed and then B.State.V_Cur = 0,
+                       "JRU V_TRAIN=0", "speed" & Img (B.State.V_Cur));
       elsif Positive
         and then (Same (Name, "NID_SOLR") or else Same (Name, "Q_LRBG"))
         and then Value'Length > 0

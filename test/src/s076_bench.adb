@@ -92,6 +92,9 @@ package body S076_Bench is
    Prev_Status  : EVC_SDM.Status_T := EVC_SDM.NoS;
    Prev_SB, Prev_EB, Prev_TCO : Boolean := False;
    LRBG_Known : Boolean := False;
+   --  the identity (u24 of the JRU events 2 and 10) of the LRBG and of
+   --  the last balise group whose telegram was accepted, No_Value before
+   LRBG_Id, Last_BG_Id : Natural := No_Value;
    TC_Phase   : array (0 .. 255) of Integer := (others => -1);
 
    Texts   : array (1 .. Max_Events) of Text_Event_T;
@@ -316,6 +319,11 @@ package body S076_Bench is
       end if;
    end Observe_TIU;
 
+   --  the u24 of bytes 2 to 4 of a JRU event
+   function Identity (P : Byte_Array) return Natural is
+     (Natural (P (P'First + 1)) * 65536 + Natural (P (P'First + 2)) * 256
+      + Natural (P (P'First + 3)));
+
    procedure Observe_JRU (P : Byte_Array) is
    begin
       if P'Length < 4 then
@@ -343,6 +351,9 @@ package body S076_Bench is
       elsif P (P'First) = 10 then
          --  a new LRBG
          LRBG_Known := True;
+         LRBG_Id := Identity (P);
+      elsif P (P'First) = 2 then
+         Last_BG_Id := Identity (P);
       elsif P (P'First) = 8 and then P (P'First + 1) = 0 then
          --  the train position unknown
          LRBG_Known := False;
@@ -580,6 +591,8 @@ package body S076_Bench is
       Last_Mon := 0;
       Last_Sup := 0;
       LRBG_Known := False;
+      LRBG_Id := No_Value;
+      Last_BG_Id := No_Value;
       TC_Phase := (others => -1);
       Change_Head := 0;
       Changes_Kept := 0;
@@ -672,6 +685,8 @@ package body S076_Bench is
       Last_Level_Status := No_Value;
       Last_Level := No_Value;
       LRBG_Known := False;
+      LRBG_Id := No_Value;
+      Last_BG_Id := No_Value;
       TC_Phase := (others => -1);
       Last_Commands := 0;
       Last_Mon := 0;
@@ -1229,6 +1244,8 @@ package body S076_Bench is
    function JRU_Monitoring return Natural is (Last_Mon);
    function JRU_Sup_Status return Natural is (Last_Sup);
    function JRU_LRBG_Known return Boolean is (LRBG_Known);
+   function JRU_LRBG_Id return Natural is (LRBG_Id);
+   function JRU_Last_BG_Id return Natural is (Last_BG_Id);
    function JRU_TC_Phase (TI : Natural) return Integer is
      (if TI <= 255 then TC_Phase (TI) else -1);
    function Text_Count return Natural is (Texts_N);

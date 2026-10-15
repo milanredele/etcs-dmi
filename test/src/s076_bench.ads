@@ -330,6 +330,11 @@ package S076_Bench is
    --  an LRBG known: a JRU event 10 since the power-up and no event 8
    --  "position unknown" after it
    function JRU_LRBG_Known return Boolean;
+   --  the identity of the LRBG of the last JRU event 10 and of the balise
+   --  group of the last event 2 (a telegram accepted), NID_C * 2**14 +
+   --  NID_BG, No_Value before any
+   function JRU_LRBG_Id return Natural;
+   function JRU_Last_BG_Id return Natural;
    --  the phase of the last JRU event 45 of M_TRACKCOND_TI TI since the
    --  power-up (EVC_JRU_Records: 0 start ahead, 1 inside, 2 end passed),
    --  -1 before any

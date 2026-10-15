@@ -6013,3 +6013,32 @@ backlog line edited by hand at integration needs the quoting of its
 commas, the check caught it. Open items: doc/BACKLOG.csv (35 open after
 this round).
 
+### The SR target of 4080410_01, the header fields, the curve families after the calibration (e5/runner-curves, 2026-10-15)
+
+B390, checked at the source: the 50 km/h target of 4080410_01 is the TSR
+of BG2d (packet 65, 600 m from 500 m) with its packet 141 (50 permille
+downhill). A TSR is a source of the MRSP in SR (4.5.2, row TSR); entering
+SR deletes the gradient profile and keeps the default gradient for TSR
+(4.10), so the TSR's curve runs on 50 permille downhill (3.13.4.1.3 a)).
+The sequence's Indication at 730 m at 60 km/h fits a level track (the
+gradient profile kept in SR): data (s076), the on-board unchanged.
+
+B407: `S076_Run.Header_Field` judges NID_LRBG (the passed group taken as
+the LRBG or not, from the JRU events 10 and 2: `S076_Bench.JRU_LRBG_Id`,
+`JRU_Last_BG_Id`), M_VERSION by its X (`EVC_System_Version`, read like
+`EVC_Core.Supervision`; Y is 2.3 within X 2, where the sequences name
+2.2) and V_TRAIN=0. NID_LRBG given as a group's name, D_SOLR, D_LRBG,
+Q_LRBG 1/2 and the doubts stay not judged under `ALL.<field>`. Header
+steps not judged 306 -> 37. Findings: B450 (the operated X stays 3 where
+the balise groups carry 2.1, S8902de51 / S65dae40b, onboard); B451 (a
+linking reaction keeps the old LRBG: the linking packet names the group
+before, S4df9e175, s076; found early, Sa4e19acc, s076, partly analysed).
+
+B140 re-counted from the report (30 first failures, 10 SV30), causes
+from their rounds' notes; B201 and B370 not continued (budget).
+
+SUBSET-076: 863 / 1239 / 1088 before, 854 / 1280 / 1056 after; 47
+regressions, all from the header fields (B450, B451), re-recorded; not
+judged 6260 -> 5994. Edit outside the package: the `with
+EVC_System_Version` of test/src/s076_run.adb.
+
