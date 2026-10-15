@@ -475,6 +475,54 @@ is
           Unlinked_Group   => not Linked))
      with Global => (EVC_Levels.State, EVC_Train_Data.State);
 
+   --  4.8.1.3.1: the level before the level transition orders of the
+   --  message were taken (Take_Group)
+   type Prior_T is record
+      Valid : Boolean := False;
+      Level : EVC_Modes.Level_T := EVC_Modes.L0;
+   end record;
+
+   --  4.8.1.3.1: the context of information I of a message whose
+   --  immediate or conditional order changed the level from Prior. Step
+   --  1: it is judged in the level before the order, as if the order
+   --  were for a further location (the new level announced); what that
+   --  accepts is accepted and not judged again. Step 2: the rest is
+   --  judged in the new level, as the transition buffer released at once
+   --  would judge it. Decision: what step 1 rejects without a [1] or [2]
+   --  exception is judged in the new level too (on the side of the
+   --  information the trackside meant for the new level).
+   --  @req 4.8.1.3.1, 4.8.1.3.1 1), 4.8.1.3.1 2)
+   function Message_Acceptance (I                : EVC_Acceptance.Info_T;
+                                Ctx              : Mode_Context_T;
+                                Linked           : Boolean;
+                                Order_In_Message : Boolean;
+                                Prior            : Prior_T)
+     return EVC_Acceptance.Context_T
+     with Global => (EVC_Levels.State, EVC_Train_Data.State)
+   is
+      Now : constant EVC_Acceptance.Context_T :=
+        Acceptance (Ctx, Linked, Order_In_Message);
+      Before : EVC_Acceptance.Context_T := Now;
+   begin
+      if Prior.Valid = Now.Level_Valid
+        and then EVC_Modes."=" (Prior.Level, Now.Level)
+      then
+         return Now;
+      end if;
+      Before.Level_Valid := Prior.Valid;
+      Before.Level := Prior.Level;
+      Before.L1_Announced :=
+        Now.Level_Valid and then EVC_Modes."=" (Now.Level, EVC_Modes.L1);
+      Before.L2_Announced :=
+        Now.Level_Valid and then EVC_Modes."=" (Now.Level, EVC_Modes.L2);
+      if EVC_Acceptance.Accepted (I, Before)
+        and then not EVC_Acceptance.Stored (I, Before)
+      then
+         return Before;
+      end if;
+      return Now;
+   end Message_Acceptance;
+
    --  The context of the levels of a packet 41 or 46
    function Levels_Context (Ctx    : Mode_Context_T;
                             Train  : Train_Frame_T;
@@ -1246,7 +1294,8 @@ is
                           Linked      : Boolean;
                           Has_41      : Boolean;
                           Now_Ms      : Unsigned_64;
-                          Set_Open    : in out Boolean)
+                          Set_Open    : in out Boolean;
+                          Prior       : Prior_T)
      with Global => (In_Out => (EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Track_Conditions.State,
@@ -1264,7 +1313,7 @@ is
          Reason => "the reader of one packet is not used after it");
       R  : Reader_T;
       A  : constant EVC_Acceptance.Context_T :=
-        Acceptance (Ctx, Linked, Has_41);
+        Message_Acceptance (Info_Of (K), Ctx, Linked, Has_41, Prior);
    begin
       --  4.8.3 [1], 4.8.5.1: level 1 information in
       --  level 0 or 2 with level 1 announced, kept in the group's set of
@@ -1456,6 +1505,9 @@ is
       Set_Open    : Boolean := False;
       --  4.8.3 [11]: a level transition order in the message
       Has_41      : Boolean := False;
+      --  4.8.1.3.1: the level before the orders of the message
+      Prior       : constant Prior_T :=
+        (Valid => EVC_Levels.Valid, Level => EVC_Levels.Level);
    begin
       for J in Tk.First .. Tk.First + Tk.Count - 1 loop
          for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
@@ -1498,7 +1550,7 @@ is
                   then
                      Take_Packet (K, J, P, M, T, Train, MA_Accepted, Ctx,
                                   Tk.Group.Linked, Has_41, Now_Ms,
-                                  Set_Open);
+                                  Set_Open, Prior);
                   end if;
                end;
             end loop;

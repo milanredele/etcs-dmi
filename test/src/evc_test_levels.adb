@@ -593,4 +593,28 @@ package body EVC_Test_Levels is
    end Scenario_SR_Order_Single_Group;
 
 
+   --  4.8.1.3.1 1) and 2): in level 1 a group carries a level 1 MA
+   --  (packet 12 with its gradient and SSP) and an immediate order to
+   --  level 2: the MA is judged first in level 1, where it is accepted
+   --  (4.8.3, A [4]), and is not judged again in level 2 (where it would
+   --  be R [1]); the on-board is in level 2 with that MA. SUBSET-076
+   --  3131050_05 and _06 (BG2d at 200 m)
+   procedure Scenario_L2_Order_With_L1_MA is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      Add_Group (Group (1, 50));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_2, -1));
+      Carry (Track_N, 0, MA_Of ((1 => 500), 80));
+      Carry (Track_N, 0, Grad (((0, 0), (600, End_Mark))));
+      Carry (Track_N, 0, SSP (((0, 80, False), (600, End_Mark, False))));
+      Run_X (10_000);
+      Check (EVC_Levels.Level = L2 and then SI.Current.MA.Present
+             and then abs (Integer_64 (SI.Current.MA.EOA) - 55_000) < 1_000,
+             "levels: the level 1 MA of the group of an immediate order to "
+             & "level 2 judged in level 1 first and kept (4.8.1.3.1 1), "
+             & "2), 4.8.3 A [4])");
+   end Scenario_L2_Order_With_L1_MA;
+
 end EVC_Test_Levels;
