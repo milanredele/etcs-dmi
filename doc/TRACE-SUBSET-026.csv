@@ -977,9 +977,9 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.17.3.6 b),3,x,,,,,E6,todo,
 3.17.3.6 c),3,x,,,,,E6,todo,
 3.17.3.7,3,x,,,,,E6,done,"EVC_Sessions.Take_Version (EVC_System_Version.Compatible) at each message 32, handover included; evc_test version_negotiation [E5 version]"
-3.17.3.11,3,x,,,,,E6,partial,"ETCS_Message passes an unknown packet over (c) and ignores an unknown message (b), for any version; telling a higher Y from a consistency error is 3.16 (E6); a) balise side E6 / E7 [E5 version]"
+3.17.3.11,3,x,,,,,E6,partial,"ETCS_Message passes an unknown packet over (c) and ignores an unknown message (b), for any version; EVC_Core.Read_Radio_Messages does not report it (b); telling a higher Y from a consistency error is 3.16 (E6); a) balise side E6 / E7 [E5 version]"
 3.17.3.11 a),3,x,,,,,E6,todo,
-3.17.3.11 b),3,x,,,,,E6,partial,"ETCS_Message: Unknown_Message, the message ignored; the consistency reaction for the same Y is 3.16 (E6) [E5 version]"
+3.17.3.11 b),3,x,,,,,E6,partial,"ETCS_Message: Unknown_Message, the message ignored; EVC_Core.Read_Radio_Messages records it (JRU 9) and reports nothing, no JRU 13, for an RBC of any version; a spare value of a known message stays an error (3.16.1.1.1); the consistency reaction for the same Y is 3.16 (E6) [E5 version]"
 3.17.3.11 c),3,x,,,,,E6,partial,ETCS_Message: the unknown packet passed over by L_PACKET and counted; the consistency reaction for the same Y is 3.16 (E6) [E5 version]
 3.18.2.2,3,x,,,,,E6,todo,
 3.18.2.3,3,x,,,,,E6,todo,

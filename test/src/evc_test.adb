@@ -243,6 +243,7 @@ begin
    --  phase E5: the radio
    Scenario_Radio_Joint;
    Scenario_Radio_Length_Check;
+   Scenario_Radio_Unknown_Message;
    Scenario_Session_Establish;
    Scenario_Session_Lost_Version;
    Scenario_Session_NVCONTACT;

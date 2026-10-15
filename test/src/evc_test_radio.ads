@@ -14,4 +14,8 @@ package EVC_Test_Radio is
    --  its length reaches the on-board, recorded and reported inconsistent
    procedure Scenario_Radio_Length_Check;
 
+   --  3.17.3.11 b), 3.16.1.1.1: an unknown NID_MESSAGE is recorded and
+   --  ignored, a spare value of a known message reported inconsistent
+   procedure Scenario_Radio_Unknown_Message;
+
 end EVC_Test_Radio;

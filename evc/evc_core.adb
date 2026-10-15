@@ -721,7 +721,7 @@ is
    --  NID_MESSAGE, L_MESSAGE), parsed (EVC_Received, chapter 8)
    --  and given, with their session, to the session and link half; the
    --  messages it passes go on to the authority half (phase E5)
-   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2
+   --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.17.3.11
    procedure Read_Radio_Messages
      with Global => (Input  => (Latched_RTM, Cycle_Count, Clock_Ms,
                                 EVC_Position.State, EVC_Odometry.State),
@@ -797,6 +797,15 @@ is
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
                   end if;
+               elsif M_Status = ETCS_Message.Unknown_Message then
+                  --  3.17.3.11 b): an unknown NID_MESSAGE is not a message
+                  --  data consistency error; recorded above (record 9),
+                  --  its content ignored, nothing reported. Decision: for
+                  --  an RBC of any version, since this on-board cannot
+                  --  tell a message of a higher Y from a spare value of
+                  --  its own (the conformance test's reading); a spare
+                  --  value of a known message stays an error (3.16.1.1.1)
+                  null;
                else
                   --  3.16.3.1.1 c), 3.16.3.1.1.2
                   EVC_Sessions.Take_Inconsistent (Slot.Session);

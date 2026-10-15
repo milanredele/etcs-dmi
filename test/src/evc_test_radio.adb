@@ -1,6 +1,7 @@
 --  ETCS on-board (EVC)
 --  Phase E5, the radio (see the specification).
 
+with ETCS_Bits;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Variables;
@@ -234,5 +235,53 @@ package body EVC_Test_Radio is
              and then EVC_Sessions.Messages_Taken = Taken + 1,
              "length check: a consistent message 24 is taken");
    end Scenario_Radio_Length_Check;
+
+   --  3.17.3.11 b): an unknown radio message is not a message data
+   --  consistency error: recorded as received (SUBSET-027 record 9),
+   --  its content ignored, no JRU 13 and no report (SUBSET-076 8040400_01
+   --  step 64, NID_MESSAGE 254). 3.16.1.1.1: a spare value in a known
+   --  message is one: reported with M_ERROR 3 and recorded as refused
+   procedure Scenario_Radio_Unknown_Message is
+      Unknown : Byte_Array := Message_Of (MCat.Track_M24);
+      Taken   : Natural;
+   begin
+      EVC_Core.Initialise;
+      EVC_Core.Tick (100);
+      Take;
+      Give_Radio_Event (1, Connection_Set_Up);
+      EVC_Core.Tick (100);
+      Take;
+      Taken := EVC_Sessions.Messages_Taken;
+      Unknown (Unknown'First) := 254;
+      Give_Radio_Message (1, Unknown);
+      EVC_Core.Tick (100);
+      Take;
+      Check (JRU_Count (3) = 1 and then JRU_Count (13) = 0
+             and then not EVC_Sessions.Error_Noted,
+             "unknown message: recorded as received (record 9), no "
+             & "radio error and no report (3.17.3.11 b), got"
+             & Img (JRU_Count (3)) & Img (JRU_Count (13)));
+      Check (EVC_Sessions.Messages_Taken = Taken
+             and then EVC_Radio_Authority.Messages_Taken = 0,
+             "unknown message: its content ignored");
+      declare
+         W : Writer_T;
+      begin
+         Start_Message (W, MCat.Track_M24, (others => 0));
+         ETCS_Bits.Write (W, 8, 200);   -- NID_PACKET
+         ETCS_Bits.Write (W, 2, 3);     -- Q_DIR spare
+         ETCS_Bits.Write (W, 13, 40);   -- L_PACKET
+         ETCS_Bits.Fill (W, 17, One => True);
+         Give_Radio_Message (1, Message_Bytes (W));
+      end;
+      EVC_Core.Tick (100);
+      Take;
+      Check (JRU_Count (3) = 1 and then JRU_Count (13) = 1
+             and then EVC_Sessions.Error_Noted
+             and then EVC_Sessions.Error_Noted_Code = 3,
+             "spare value: recorded and reported with M_ERROR 3 "
+             & "(3.16.1.1.1, 3.16.3.1.1.2), got"
+             & Img (JRU_Count (3)) & Img (JRU_Count (13)));
+   end Scenario_Radio_Unknown_Message;
 
 end EVC_Test_Radio;

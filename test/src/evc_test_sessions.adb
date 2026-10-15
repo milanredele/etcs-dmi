@@ -1493,13 +1493,31 @@ package body EVC_Test_Sessions is
       Check (Recorded = 3,
              "error report: each recorded as JRU record 13, got"
              & Img (Recorded));
-      --  3.16.1.1, 3.16.3.1.1 c): a message the codec refuses (an unknown
-      --  NID_MESSAGE), M_ERROR 3
+      --  3.17.3.11 b): an unknown NID_MESSAGE is no consistency error,
+      --  nothing reported
       declare
-         M : Byte_Array := Msg (MCat.Track_M24, T + 10);
+         M : Byte_Array := Msg (MCat.Track_M24, T + 5);
       begin
          M (M'First) := 255;
          Give_Radio_Message (1, M);
+      end;
+      Step;
+      Check (Count = 3 and then Recorded = 3,
+             "error report: none for an unknown NID_MESSAGE (3.17.3.11 b), "
+             & "got" & Img (Count) & Img (Recorded));
+      --  3.16.1.1.1, 3.16.3.1.1 c): a message the codec refuses (a spare
+      --  value, Q_DIR 3 in a packet), M_ERROR 3
+      declare
+         W : Writer_T;
+         V : ETCS_Message.Value_Array := (others => 0);
+      begin
+         V (3) := T + 10;
+         Start_Message (W, MCat.Track_M24, V);
+         ETCS_Bits.Write (W, 8, 200);   -- NID_PACKET
+         ETCS_Bits.Write (W, 2, 3);     -- Q_DIR spare
+         ETCS_Bits.Write (W, 13, 40);   -- L_PACKET
+         ETCS_Bits.Fill (W, 17, One => True);
+         Give_Radio_Message (1, Message_Bytes (W));
       end;
       Step;
       Check (Count = 4 and then Error = 3 and then Recorded = 4,
@@ -1572,7 +1590,8 @@ package body EVC_Test_Sessions is
       Give_Radio_Message (1, Msg (MCat.Track_M24, T));
       Step;
       Expect ("a message refused by its time stamp", 1, 1);
-      --  3.16.1.1: a NID_MESSAGE the codec refuses (like 254)
+      --  3.17.3.11 b): an unknown NID_MESSAGE (254) recorded, not
+      --  reported (SUBSET-076 8040400_01 step 64)
       declare
          M : Byte_Array := Msg (MCat.Track_M24, T + 20);
       begin
@@ -1580,7 +1599,7 @@ package body EVC_Test_Sessions is
          Give_Radio_Message (1, M);
       end;
       Step;
-      Expect ("an unknown message (254)", 1, 1);
+      Expect ("an unknown message (254)", 1, 0);
       --  two messages in one cycle: two records
       Give_Radio_Message (1, Msg (MCat.Track_M24, T + 30));
       Give_Radio_Message (1, Msg (MCat.Track_M24, T + 40));
