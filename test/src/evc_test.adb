@@ -176,6 +176,7 @@ begin
    Scenario_SDM_Precision;
    Scenario_SDM_Ceiling;
    Scenario_SDM_Approach;
+   Scenario_SDM_JRU_Every_Change;
    Scenario_SDM_Release;
    Scenario_SDM_RSM_Start_Reduced;
    Scenario_SDM_Status_Order;

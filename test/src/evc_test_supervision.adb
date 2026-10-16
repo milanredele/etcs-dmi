@@ -530,6 +530,51 @@ package body EVC_Test_Supervision is
              "approach: MSG_SPEED_STATE target speed 0 in TSM");
    end Scenario_SDM_Approach;
 
+   --  SUBSET-027 4.2.3 and 4.2.4.20 (EVC_Core.Send_Supervision): record 20
+   --  (event 21) whenever the information displayed to the driver
+   --  changes, at most one a cycle: at constant speed towards an EOA the
+   --  permitted speed or the distance to the target falls every cycle in
+   --  target speed monitoring, and every such cycle has its record
+   procedure Scenario_SDM_JRU_Every_Change is
+      S       : SIn.Snapshot_T := Base_Snapshot;
+      X       : Integer_64 := 0;
+      V       : constant SIn.Speed_Cms_T := Cms (120.0);
+      F, P    : Speed_Fields;
+      Changed, Recorded, Wrong, More : Natural := 0;
+   begin
+      Give_MA (S, 2_000, 200);
+      Place (S, X, V);
+      Sup_Start (S);
+      P := Speed_Frame;
+      for Step in 1 .. 600 loop
+         X := X + Integer_64 (V) / 10;
+         Move (X, V);
+         Sup_Cycle;
+         exit when Cmd.SB or else Cmd.EB;
+         F := Speed_Frame;
+         if Res.Monitoring = SDM.TSM then
+            if F.V_Perm /= P.V_Perm or else F.D_Target /= P.D_Target then
+               Changed := Changed + 1;
+               if JRU_Count (EVC_Ports.JRU_Supervision) = 1 then
+                  Recorded := Recorded + 1;
+               else
+                  Wrong := Wrong + 1;
+               end if;
+            end if;
+         end if;
+         if JRU_Count (EVC_Ports.JRU_Supervision) > 1 then
+            More := More + 1;
+         end if;
+         P := F;
+      end loop;
+      Check (Changed >= 20 and then Recorded = Changed and then Wrong = 0
+             and then More = 0,
+             "JRU 21 (record 20): a record at each of the" & Changed'Image
+             & " cycles in TSM whose V_PERM or D_TARGET changed, at most "
+             & "one a cycle (SUBSET-027 4.2.3, 4.2.4.20);" & Recorded'Image
+             & Wrong'Image & More'Image);
+   end Scenario_SDM_JRU_Every_Change;
+
    --  3.13.9.4, 3.13.10.5: release speed monitoring with a release speed
    --  of 40 km/h: entered at the RSM start, the release speed shown,
    --  Intervention above it (Table 13), revoked at standstill only
