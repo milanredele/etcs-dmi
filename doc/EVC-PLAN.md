@@ -6653,3 +6653,29 @@ brief starts from the regression, not from the fix. Both runner agents
 and the JRU agent met on record 20 without a conflict because the brief
 named the record's fields on both sides. Open items: doc/BACKLOG.csv (41
 open after this round).
+
+### The trips and MA requests found behind stale triage (e5/trips-ma, 2026-10-16)
+
+Four on-board items of the re-trace, each checked at the source first.
+B520 done: the trip of the unconditional emergency stop (4.6.3 [20]) has
+the reason `Emergency_Stop` (`EVC_Procedures.Enter_Trip`, from
+`EVC_Radio_Authority.Unconditional_Stop_Accepted`) and shows the system
+status message "Emergency stop" (DMI 15.1.1.5, `EVC_DMI_Port.SS_Emergency_Stop`
+26; appended last to `Trip_Reason_T`, so the earlier positions of the
+records keep their values). B525 done: the cause was not [43] but the
+level crossing of message 24 never reaching the stores (packet 88 was not
+in the list of `EVC_Radio_Authority.Take_Message`, part of B474), so no
+temporary EOA became the former EOA of 5.8.1.9; packet 88 is passed now,
+rejected while the Train Data are not acknowledged (4.8.3 [3]: without
+it 4080300_07 regressed at step 75; decision: a message 24 whose other
+packets are taken carries it along). B521 done: `EVC_Movement_Authority.Timer_Expiring`
+counts the End Section's own Section timer (3.8.2.2.1 b excludes the End
+Section timer T_ENDTIMER only). B526 dropped: the 132 found was sent in
+level 2 before the transition; the runner's negative window starts too
+early (B561). Scenarios: `Scenario_Emergency_Stops` (the reason),
+`Scenario_LX_By_Radio` (4.8.3 [3], 3.12.5.8, 5.8.1.9, [43]),
+`Scenario_MA_Request` (the End Section's timer). Left: B560 (the runner's
+timer step T_SECTIONTIMER - T_TIMEOUTRQST, 3080200_01 family), B561, B562
+(3100200_01 step 116: PT to FS where OS is awaited), and the two new
+signatures S79f8dcc0, S88430f53 not analysed. SUBSET-076: 904 / 1205 /
+1081 before, 910 / 1195 / 1085 after, 0 regressions, 24 improvements.
