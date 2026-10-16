@@ -1632,6 +1632,21 @@ package body EVC_Test_Procedures is
              "5.16: the second level crossing passed at V_LX, its "
              & "indication ended");
 
+      --  the LX information arrives with the train beyond its start
+      --  (SUBSET-076 3130700_07: D_LX 0 from the group just passed)
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 0, 300, Guarded => False, Kmh => 70));
+      Close;
+      Run_Front (500, 60);
+      Check (Mode_Byte = Code_FS and then not EB and then not SB
+             and then V_Perm = 70,
+             "5.16.3.2: the train already beyond the LX start at or below "
+             & "V_LX, the LX speed restriction in the MRSP at once: its "
+             & "start neither passed as EOA (4.6.3 [12]) nor braked to");
+
       --  too fast at that location: its start stays the EOA
       Begin_Scenario (M_FS, L1);
       Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
