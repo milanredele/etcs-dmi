@@ -1056,6 +1056,20 @@ package body S076_Run is
                end if;
             end;
          end if;
+         --  the Level window proposes no level when the level is not
+         --  valid (after a power-up): the driver selects the level the
+         --  steps settle on before confirming, as a select step does
+         if Same (Item, "Level") then
+            declare
+               K : constant Level_Kind_T := Selected_Level (St, Item);
+            begin
+               if K /= K_None then
+                  Key (case K is
+                          when K_L1 => 1, when K_L2 => 2, when K_L0 => 4,
+                          when others => 5);
+               end if;
+            end;
+         end if;
          Enter_Single;
          return Pass ("DMI " & Item & " confirmed");
       elsif Same (Verb, "select") and then Has (Item, "Level")
@@ -4087,6 +4101,49 @@ package body S076_Run is
      (for some C of Single_Session_Cases =>
         Has (Image (Seq.Name), C.Sequence) and then St.Number = C.First);
 
+   --  A step conditional on the initial mode of its test case ("only if
+   --  initial mode is SB mode", "Only if initial mode isn't SM"), the
+   --  initial mode the mode before of the case's first row (the nearest
+   --  step at or before it with row 1: 3110500_02 step 70, case 3110500
+   --  10 begins in FS at step 67): the step is not taken when the
+   --  case's initial mode is another
+   function Initial_Mode_Excludes (I : Positive) return Boolean is
+      C     : constant String := Up (Image (Seq.Steps (I).Comment));
+      Tag   : constant String := "ONLY IF INITIAL MODE ";
+      P     : constant Natural := Ada.Strings.Fixed.Index (C, Tag);
+      First : Positive := I;
+   begin
+      if P = 0 then
+         return False;
+      end if;
+      while First > 1 and then Seq.Steps (First).Row /= 1 loop
+         First := First - 1;
+      end loop;
+      declare
+         Mode : constant String := Up (Trim (Seq.Steps (First).Mode_Before));
+         Rest : constant String := C (P + Tag'Length .. C'Last);
+         Neg  : constant Boolean :=
+           Starts (Rest, "ISN'T ") or else Starts (Rest, "IS NOT ");
+         From : constant Natural :=
+           (if Starts (Rest, "ISN'T ") then Rest'First + 6
+            elsif Starts (Rest, "IS NOT ") then Rest'First + 7
+            elsif Starts (Rest, "IS ") then Rest'First + 3 else 0);
+         Last : Natural := From;
+      begin
+         if From = 0 then
+            return False;
+         end if;
+         while Last + 1 <= Rest'Last and then Rest (Last + 1) in 'A' .. 'Z'
+         loop
+            Last := Last + 1;
+         end loop;
+         if Last > Rest'Last or else Rest (From) not in 'A' .. 'Z' then
+            return False;
+         end if;
+         return (Rest (From .. Last) = Mode) = Neg;
+      end;
+   end Initial_Mode_Excludes;
+
    --  The steps of a sequence that are a defect of SUBSET-076, by
    --  sequence and step (the same in the three system versions), the
    --  sequence blocked there: 3130700_02 step 51, the train at the
@@ -5471,6 +5528,9 @@ package body S076_Run is
                         & " mode " & Trim (St.Mode_After));
                Record_Result (I, J);
                Block (I, J);
+            elsif Initial_Mode_Excludes (I) then
+               Record_Result
+                 (I, NJ (R_Optional, "conditional on another initial mode"));
             elsif St.Line.N = 0 then
                J := NJ (R_Unclassified, "step text");
                Record_Result (I, J);
@@ -5617,12 +5677,16 @@ package body S076_Run is
                         C := Columns (I);
                      end loop;
                      --  an optional or implementation dependent step
-                     --  (its comment says so) that fails is the other
-                     --  alternative: not judged
+                     --  (its comment says so), or one of a choice made at
+                     --  the sequence's start ("only if USE_FT... has been
+                     --  chosen"), that fails is the other alternative: not
+                     --  judged
                      if J.Verdict = Failed
                        and then (Starts (Image (St.Comment), "Optional step")
                                  or else Starts (Image (St.Comment),
                                            "Implementation dependent")
+                                 or else Has (Image (St.Comment),
+                                              "only if USE_FT")
                                  or else Only_In_L2_Elsewhere (St))
                      then
                         Record_Result (I, NJ (R_Optional, Image (J.Sig)));
