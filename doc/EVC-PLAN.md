@@ -6463,3 +6463,41 @@ to both branches stayed with one); three items of that size are two
 too many for one brief. Open items: doc/BACKLOG.csv (29 open after this
 round).
 
+
+### The driver actions the JRU misses, record 20 at every change, the records of the TIU inputs (e5/jru-actions, 2026-10-16)
+
+**M_DRIVERACTIONS.** Re-traced on master, four of the five signatures
+are the sequences' data: S31584e9f (case 5080300 4 joined from its step
+8, the driver never presses Override EoA: the PDF goes from step 40 to
+49), Saf17a2ce (no acknowledgement of OS before step 54, the PDF goes
+from 51 to 54), S81316df3 (1 "Ack of Shunting mode" expected for a
+press of Shunting, SUBSET-027 4.2.4.11 gives 11, which 57 steps of the
+corpus expect), S2dde4dd3 (the sequence starts at step 9, no driver ID
+entered). Sc1c4236f is the runner's: it confirms the Level window with
+Enter while the DMI proposes no level (not valid after the power-up), so
+nothing is sent (B500). On the way, `EVC_Levels.Evaluate` records the
+driver's selection of the level in force too (event 40 kind 1 cause 0,
+`Scenario_JRU_Level_Again`).
+
+**Record 20 (B400).** `EVC_Core.Send_Supervision` writes event 21
+whenever the monitoring, the status, the MRDT or any field of record 20
+as displayed changes (`SDM_Shown_T`: V_PERM, V_SBI, V_TARGET and D_TARGET
+where the DMI shows the target (TSM, RSM, or the CSM target flag),
+V_RELEASE while shown, the TTI of MSG_STATUS; 1 km/h, 1 m), at most one a
+cycle: one record a cycle under a curve (165 of 165 cycles in TSM in
+`Scenario_SDM_JRU_Every_Change`), 16 bytes of the 2048 of the outbox. The
+record still carries bytes 2 to 4 only (M_SDMTYPE, M_SDMSUPSTAT, the
+MRDT): the runner can judge the presence of a record 20 at a change, not
+V_PERM and the others (B431). Goldens: one record more in two (as
+intended).
+
+**B430** dropped: SUBSET-027 4.2.3 triggers records 30, 31, 32 and 39 at
+start up and when the input state changes; 4100103_30 repeats the same
+value with no power-up between (Sc4547107, s076).
+
+**B431** left, decision proposed: a continuation record (event 255, its
+bytes 2 to 16 fields of the record before it, in the same cycle) would
+carry record 20's 59 bits and record 24's NID_C and NID_RADIO in one
+record each; every reader of the 16-byte layout (Sim_JRU's cycle and
+time, the runner's capture in S076_Bench, the hosted port, the wasm
+glue) must skip or decode it, so it goes with the runner owner.
