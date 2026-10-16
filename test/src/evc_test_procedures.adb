@@ -403,6 +403,10 @@ package body EVC_Test_Procedures is
    begin
       ST.Put (W, P, Build_OK);
    end Add;
+   procedure Add (P : ST.T65.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
 
    --  The group is complete; Version: the M_VERSION of its telegrams
    --  (48 is 3.0 here, 64 a version 4.0 this on-board does not support)
@@ -875,6 +879,24 @@ package body EVC_Test_Procedures is
       Check (Seen_SS (1, 2),
              "3.14.1.6 fulfilled: the 30 s of Balise read error start "
              & "(entry 1, event 2)");
+
+      --  the linked group read in SR, where the linking is not checked,
+      --  then FS (SUBSET-076 3070300_03: BG10 read in SR level 2)
+      Begin_Scenario (M_SR, L1);
+      Group (1, 0);
+      Add (ST.Linking ((100, 300), (9, 10), Reaction => 0));
+      Close;
+      Run_Front (100, 30);
+      Group (9, 100);
+      Close;
+      Run_Front (300, 30);
+      Line_Group (EOA_M => 1_500, NID => 10, At_M => 300);
+      Close;
+      Run_Front (320, 30);
+      Check (Mode_Byte = Code_FS,
+             "3.4.4.4.6 a), 3.4.4.2.1.1 b): the windows of the groups read "
+             & "in SR no longer supervised, FS entered without a linking "
+             & "trip (3.16.2.3.1 b))");
    end Scenario_Linking;
 
    --  4.6.3 [69] and [65]
@@ -1631,6 +1653,37 @@ package body EVC_Test_Procedures is
       Check (Mode_Byte = Code_FS and then not LX_Shown,
              "5.16: the second level crossing passed at V_LX, its "
              & "indication ended");
+
+      --  the LX information arrives with the train beyond its start
+      --  (SUBSET-076 3130700_07: D_LX 0 from the group just passed)
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 0, 300, Guarded => False, Kmh => 70));
+      Close;
+      Run_Front (500, 60);
+      Check (Mode_Byte = Code_FS and then not EB and then not SB
+             and then V_Perm = 70,
+             "5.16.3.2: the train already beyond the LX start at or below "
+             & "V_LX, the LX speed restriction in the MRSP at once: its "
+             & "start neither passed as EOA (4.6.3 [12]) nor braked to");
+
+      --  the same with a lower speed restriction from the same group
+      --  (SUBSET-076 3130700_04: the LX at D_LX 0 with a PBD and a TSR)
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 0, 300, Guarded => False, Kmh => 70));
+      Add (ST.TSR (1, 0, 2_000, 40));
+      Close;
+      Run_Front (500, 30);
+      Check (Mode_Byte = Code_FS and then not EB and then not SB
+             and then V_Perm = 40 and then Monitoring = 0,
+             "5.16.3.2: the LX start substituted, the lower restriction of "
+             & "the MRSP still supervised: ceiling speed monitoring at the "
+             & "TSR's 40 km/h, no brake");
 
       --  too fast at that location: its start stays the EOA
       Begin_Scenario (M_FS, L1);

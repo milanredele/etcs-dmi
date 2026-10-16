@@ -1125,6 +1125,7 @@ is
    --  direction T, against the linking information: whether it is taken
    --  into account, compliant (the new LRBG) and the new SOLR, the link
    --  that announced it, its location accuracy and its orientation
+   --  @req 3.4.4.4.6 a)
    procedure Decide_Linking (Id         : Identity_T;
                              G          : Geometry_T;
                              T          : Direction_T;
@@ -1145,6 +1146,19 @@ is
          Compliant := Passage.Linked;
          To_SOLR := True;
          if Links.Stored then
+            --  decision (3.4.4.4.6 a), 3.4.4.2.1.1 b): a group read while
+            --  the mode does not check the linking (SR) and announced at
+            --  or after the expected one ends the supervision of the
+            --  windows up to it, without a reaction, so that the check of
+            --  a later mode (FS) supervises only the groups still ahead
+            declare
+               Ahead : constant EVC_Linking.Link_Count_T :=
+                 EVC_Linking.Find (Links, Id, Links.Expected);
+            begin
+               if Ahead /= 0 then
+                  Links.Expected := Ahead + 1;
+               end if;
+            end;
             Link_Index := EVC_Linking.Find (Links, Id, 1);
             if Link_Index /= 0 then
                --  3.6.4.1.3: announced by the linking stored
