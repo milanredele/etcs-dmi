@@ -1309,9 +1309,7 @@ is
    --  none), its SvL in SvL; Temporary_SvL: the SvL of the EOA target is
    --  a temporary one, without release speed (3.12.4.7, 3.12.5.8);
    --  LX_Here (phase E4, 5.16): the EOA of the EOA target is the start of
-   --  the level crossing of S.LX; Ignore_Temporary: the temporary EOA
-   --  and SvL left out (5.16.3.2, the start of the level crossing
-   --  substituted by its speed restriction at this cycle)
+   --  the level crossing of S.LX
    procedure Supervised_Targets (S             : Snapshot_T;
                                  X_Max         : Dist_T;
                                  V_MRSP        : Speed_T;
@@ -1319,8 +1317,7 @@ is
                                  EOA_Index     : in out Target_Count_T;
                                  Temporary_SvL : in out Boolean;
                                  LX_Here       : in out Boolean;
-                                 SvL           : in out Dist_T;
-                                 Ignore_Temporary : Boolean)
+                                 SvL           : in out Dist_T)
      with Pre => Work.Count = 0
    is
    begin
@@ -1356,11 +1353,9 @@ is
               (if Tmp.Has_SvL
                then Max (EVC_Profile.Ahead_Of (S, Tmp.SvL), T_EOA)
                else T_EOA);
-            Tmp_Present : constant Boolean :=
-              Tmp.Present and then not Ignore_Temporary;
             EOA   : Dist_T := T_EOA;
             SvL_X : Dist_T := T_SvL;
-            Has_EOA : Boolean := Tmp_Present;
+            Has_EOA : Boolean := Tmp.Present;
          begin
             if S.MA.Present then
                if S.MA.LOA_Speed > 0 then
@@ -1376,11 +1371,11 @@ is
                         Speed    => Speed_T (S.MA.LOA_Speed),
                         TSR      => False);
                   end;
-                  Temporary_SvL := Tmp_Present;
+                  Temporary_SvL := Tmp.Present;
                else
                   EOA := EVC_Profile.Ahead_Of (S, S.MA.EOA);
                   SvL_X := Max (EVC_Profile.Ahead_Of (S, S.MA.SvL), EOA);
-                  if Tmp_Present then
+                  if Tmp.Present then
                      EOA := Min (EOA, T_EOA);
                      if Tmp.Has_SvL and then T_SvL < SvL_X then
                         SvL_X := T_SvL;
@@ -1391,7 +1386,7 @@ is
                   Has_EOA := True;
                end if;
             else
-               Temporary_SvL := Tmp_Present;
+               Temporary_SvL := Tmp.Present;
             end if;
             if Has_EOA then
                Work.Count := Work.Count + 1;
@@ -1400,7 +1395,7 @@ is
                   Speed => 0, TSR => False);
                EOA_Index := Work.Count;
                SvL := SvL_X;
-               LX_Here := S.LX.Present and then Tmp_Present
+               LX_Here := S.LX.Present and then Tmp.Present
                           and then EOA = T_EOA;
             end if;
          end;
@@ -2450,63 +2445,6 @@ is
 
    --  Step
 
-   --  The virtual SBD curves and the substitution of the level crossing
-   --  (Procedure_Targets); its start no longer supervised from this
-   --  cycle on (5.16.3.2 "immediately"): the targets, the release
-   --  speed and the survey of this cycle again without it (decision: a
-   --  train already beyond the LX start at or below V_LX when the LX
-   --  information arrives passes it with the LX speed, its start neither
-   --  passed as EOA nor as SvL, nor braked to)
-   --  @req 5.16.3.2
-   procedure LX_Substitution (S             : Snapshot_T;
-                                 Inputs        : Inputs_T;
-                                 Work          : in out Work_T;
-                                 State         : State_T;
-                                 C             : in out Ctx_T;
-                                 EOA_Index     : in out Target_Count_T;
-                                 Temporary_SvL : in out Boolean;
-                                 LX_Here       : in out Boolean;
-                                 Signature     : in out Num;
-                                 Start         : in out RSM_Start_T;
-                                 Rel           : in out Speed_T;
-                                 Cond_2        : in out Boolean;
-                                 Sv            : in out Survey_T;
-                                 Virtual       : out Virtual_Limits_T;
-                                 Release       : out Boolean;
-                                 From          : out Dist_T;
-                                 Indication    : in out Boolean;
-                                 Indication_D  : in out Num)
-     with Pre  => C.Stop > -Max_Cm and then Survey_Valid (C, Sv)
-                  and then (if Cond_2 then C.Has_Release),
-          Post => Same_Basis (C, C'Old)
-                  and then (if Cond_2 then C.Has_Release)
-                  and then Survey_Valid (C, Sv)
-   is
-   begin
-      Procedure_Targets
-        (Work, C, S,
-         LX_T    => (if EOA_Index > 0 then Work.Targets (EOA_Index)
-                     else (others => <>)),
-         LX_Here => LX_Here and then EOA_Index > 0 and then not S.LX.Stop,
-         Virtual => Virtual,
-         Release => Release,
-         From    => From);
-      if not Release then
-         return;
-      end if;
-      Work.Count := 0;
-      EOA_Index := 0;
-      Temporary_SvL := False;
-      LX_Here := False;
-      Supervised_Targets (S, C.X_Max, C.V_MRSP, Work, EOA_Index,
-                          Temporary_SvL, LX_Here, C.SvL, True);
-      Signature := Signature_Of (Work);
-      Release_Speed (S, Inputs, Work, EOA_Index, Temporary_SvL, C, Start,
-                     Rel, Cond_2);
-      Survey_Targets (Work, C, Rel, Start, State.MRDT_Valid, State.MRDT,
-                      Sv, Indication, Indication_D);
-   end LX_Substitution;
-
    procedure Step (S       : Snapshot_T;
                    Inputs  : Inputs_T;
                    Work    : in out Work_T;
@@ -2568,7 +2506,7 @@ is
       Result.V_MRSP := C.V_MRSP;
 
       Supervised_Targets (S, C.X_Max, C.V_MRSP, Work, EOA_Index,
-                          Temporary_SvL, LX_Here, C.SvL, False);
+                          Temporary_SvL, LX_Here, C.SvL);
       Signature := Signature_Of (Work);
       Configure (S, Inputs, Work.Model, State, C);
       Release_Speed (S, Inputs, Work, EOA_Index, Temporary_SvL, C, Start,
@@ -2580,10 +2518,14 @@ is
       --  phase E4: the virtual SBD curves of the track conditions
       --  (5.18.4.2, 5.18.8.3), the substitution of a level crossing not
       --  protected (5.16.3.2)
-      LX_Substitution (S, Inputs, Work, State, C, EOA_Index, Temporary_SvL,
-                       LX_Here, Signature, Start, Rel, Cond_2, Sv,
-                       Result.Virtual, Result.LX_Release, Result.LX_From,
-                       Result.Indication, Result.Indication_D);
+      Procedure_Targets
+        (Work, C, S,
+         LX_T    => (if EOA_Index > 0 then Work.Targets (EOA_Index)
+                     else (others => <>)),
+         LX_Here => LX_Here and then EOA_Index > 0 and then not S.LX.Stop,
+         Virtual => Result.Virtual,
+         Release => Result.LX_Release,
+         From    => Result.LX_From);
 
       Monitoring_Type (C, Sv, Cond_2, Signature, Work.Count, State, Mon);
       Set_Commands (S, Inputs, C, Mon, Sv, State.TCO, State.SB, State.EB,
