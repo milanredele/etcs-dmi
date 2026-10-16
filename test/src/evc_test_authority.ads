@@ -28,6 +28,7 @@ package EVC_Test_Authority is
    procedure Scenario_Shortening;
    procedure Scenario_Shortening_Cover;
    procedure Scenario_Emergency_Stops;
+   procedure Scenario_LX_By_Radio;
    --  3.10.2.2 b) 2nd and 4th bullets: a conditional stop between the EOA
    --  and an SvL further (a danger point), and one beyond a LOA
    procedure Scenario_Conditional_Stop_Ends;

@@ -94,8 +94,10 @@ is
       then
          return True;
       end if;
-      --  the sections before the End Section (the last one)
-      for I in 1 .. Current.Count - 1 loop
+      --  every section, the End Section too: the timer excluded by
+      --  3.8.2.2.1 b) is the End Section timer (T_ENDTIMER, End_Timer),
+      --  not the End Section's own Section timer
+      for I in 1 .. Current.Count loop
          pragma Loop_Invariant (True);
          if not Current.Sections (I).Stopped
            and then Near (Current.Sections (I).Timer, Now_Ms, Lead_Ms)

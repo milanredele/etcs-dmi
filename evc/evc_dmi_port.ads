@@ -404,6 +404,7 @@ is
    SS_SR_Distance_Exceeded          : constant := 23;  -- [42]
    SS_SH_Stop_Order                 : constant := 24;  -- [49], [52]
    SS_SR_Stop_Order                 : constant := 25;  -- [54]
+   SS_Emergency_Stop                : constant := 26;  -- [20]
    SS_RV_Distance_Exceeded          : constant := 27;  -- 3.15.4.8
    SS_PT_Distance_Exceeded          : constant := 28;  -- 4.4.14.1.3
    SS_No_Track_Description          : constant := 29;  -- [69]

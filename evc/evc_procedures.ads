@@ -220,7 +220,10 @@ is
       Communication_Lost,    -- [41]
       --  phase E5: a group not in the list of expected balise groups in
       --  SR of the RBC (4.4.11.1.3 c, EVC_Radio_Authority)
-      SR_Balise_Not_Listed); -- [36]
+      SR_Balise_Not_Listed,  -- [36]
+      --  phase E5: an unconditional emergency stop accepted (3.10.2.3,
+      --  EVC_Radio_Authority)
+      Emergency_Stop);       -- [20]
 
    function Trip_Reason return Trip_Reason_T
      with Global => State;

@@ -94,7 +94,9 @@ is
          when SR_Distance_Passed            => SS_SR_Distance_Exceeded,
          when No_MA_Level_Switch            => SS_No_MA_Level_Transition,
          when Communication_Lost            =>
-            EVC_DMI_Port.SS_Communication_Error_Trip);
+            EVC_DMI_Port.SS_Communication_Error_Trip,
+         when Emergency_Stop                =>
+            EVC_DMI_Port.SS_Emergency_Stop);
 
    --  The reason of the trip of a condition of 4.6.3 (No_Trip for one
    --  that is not a trip condition of this unit)
@@ -114,6 +116,7 @@ is
          when 39 | 67  => No_MA_Level_Switch,
          when 41       => Communication_Lost,
          when 36       => SR_Balise_Not_Listed,
+         when 20       => Emergency_Stop,
          when others   => No_Trip);
 
    --  State
@@ -1597,10 +1600,13 @@ is
            and then (Conds (L (I))
                      or else (L (I) = 41
                               and then EVC_Sessions.T_NVCONTACT_Trip)
-                     --  [36] is the authority half's
+                     --  [36] and [20] are the authority half's
                      or else (L (I) = 36
                               and then EVC_Radio_Authority
-                                         .Group_Not_In_SR_List))
+                                         .Group_Not_In_SR_List)
+                     or else (L (I) = 20
+                              and then EVC_Radio_Authority
+                                         .Unconditional_Stop_Accepted))
          then
             R := Reason_Of (L (I));
          end if;
