@@ -1319,6 +1319,19 @@ package body EVC_Test_Language is
                 and then Byte_At (I, 3) = ETCS_Bits.Byte_Length (W),
                 "received: JRU event 3, NID_MESSAGE and L_MESSAGE");
       end;
+      declare
+         D    : constant Byte_Array := ETCS_Bits.Data (W);
+         Same : Boolean := True;
+      begin
+         for K in D'Range loop
+            Same := Same
+              and then JRU_Field (3, 24 + 8 * (K - D'First), 8)
+                       = Natural (D (K));
+         end loop;
+         Check (Same and then JRU_Field (3, 0, 24) = 0,
+                "SUBSET-027 4.2.4.9: the message 9 carries the RBC (none: "
+                & "NID_C 0, NID_RBC 0) and the message as received");
+      end;
       Check_Golden ("received_telegram_message");
 
       --  rejections, counted by reason; the last accepted one stays
