@@ -146,6 +146,10 @@ package body EVC_Test_Support is
            (Port  => Port_T'Val (Out_Buf (Pos + 1)),
             First => Pos + 4,
             Last  => Pos + 3 + Length);
+         if Recs (Rec_Count).Port = JRU then
+            JRU_Views (Rec_Count) :=
+              EVC_JRU_Messages.View (Out_Buf (Pos + 4 .. Pos + 3 + Length));
+         end if;
          Pos := Pos + 3 + Length;
       end loop;
       return True;

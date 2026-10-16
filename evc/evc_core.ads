@@ -101,6 +101,7 @@ with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
 with EVC_Train_Inputs;
+with Interfaces;
 
 use type EVC_Config.Config_T;
 use type EVC_Config.Status_T;
@@ -252,6 +253,14 @@ is
                   and then Cycle = 0
                   and then Level_Status /= Valid
                   and then EVC_Position.Status /= EVC_Position.Valid;
+
+   --  The UTC time at the on-board time 0, seconds since 2000-01-01
+   --  00:00:00 UTC, for the date and time of the juridical messages
+   --  (SUBSET-027 4.1.1.2 a, 4.2.3.3, 4.2.3.4): given by the port from
+   --  its clock (E8: the Hercules port's); until then the date and the
+   --  time are recorded "unknown". Initialise and Power_Up forget it.
+   procedure Set_UTC (Seconds : Interfaces.Unsigned_32)
+     with Global => (In_Out => State);
 
    --  The installation configuration (EVC_Config): data, not code
 

@@ -191,4 +191,33 @@ is
       Last_TC := Now;
    end Track_Conditions;
 
+   procedure RBC_Entry_Fields (RBC    : EVC_Driver_Requests.Bytes_23_T;
+                               Q      : Byte;
+                               Fields : out EVC_JRU_Messages.Fields_T)
+   is
+      Id    : constant Unsigned_32 :=
+        Unsigned_32 (RBC (2))
+        or Shift_Left (Unsigned_32 (RBC (3)), 8)
+        or Shift_Left (Unsigned_32 (RBC (4)), 16)
+        or Shift_Left (Unsigned_32 (RBC (5)), 24);
+      N     : constant Natural := Natural'Min (Natural (RBC (6)), 16);
+      Radio : Unsigned_64 := 0;
+   begin
+      Fields := EVC_JRU_Messages.No_Fields;
+      Fields (1) := (Unsigned_64 (Q and 3), 2);
+      if Q >= 2 then
+         Fields (2) := (Unsigned_64 (Shift_Right (Id, 14) and 16#3FF#), 10);
+         Fields (3) := (Unsigned_64 (Id and 16#3FFF#), 14);
+      end if;
+      if Q = 3 then
+         for I in 1 .. 16 loop
+            pragma Loop_Invariant (True);
+            Radio := Shift_Left (Radio, 4)
+              or (if I <= N and then RBC (6 + I) in 48 .. 57
+                  then Unsigned_64 (RBC (6 + I) - 48) else 16#F#);
+         end loop;
+         Fields (4) := (Radio, 64);
+      end if;
+   end RBC_Entry_Fields;
+
 end EVC_JRU_Records;

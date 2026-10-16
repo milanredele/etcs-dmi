@@ -323,6 +323,11 @@ package body Sim_Onboard_Env is
    begin
       Sim_Trackside.Build (Preset);
       EVC_Core.Initialise;
+      --  the UTC time of the juridical messages: a fixed reference,
+      --  2026-01-01 00:00:00 at the on-board time 0, so that the bench
+      --  is deterministic (the time of day of Sim_JRU is the time since
+      --  the reset)
+      EVC_Core.Set_UTC (820_540_800);
       EVC_Train.Reset;
       EVC_Train.Position_M := Start_Front_M;
       Sim_Vehicle.Reset;

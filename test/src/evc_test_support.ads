@@ -9,6 +9,7 @@
 
 with Ada.Environment_Variables;
 with ETCS_Bits;
+with EVC_JRU_Messages;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P12;
@@ -170,9 +171,23 @@ package EVC_Test_Support is
    function Rec_Length (I : Positive) return Natural is
      (Recs (I).Last - Recs (I).First + 1);
 
-   --  Byte N (1 = first) of the payload of record I
+   --  A JRU record is a message of SUBSET-027 (EVC_JRU_Messages): its
+   --  view, the event of EVC_Ports and its three bytes
+   JRU_Views : array (1 .. 1024) of EVC_JRU_Messages.View_T;
+
+   --  Byte N (1 = first) of the payload of record I; of a JRU record,
+   --  bytes 1 to 4 of its view (the event and its three bytes), else 0
    function Byte_At (I : Positive; N : Positive) return Natural is
-     (Natural (Out_Buf (Recs (I).First + N - 1)));
+     (if Recs (I).Port /= JRU then Natural (Out_Buf (Recs (I).First + N - 1))
+      elsif N = 1 then Natural (JRU_Views (I).Event)
+      elsif N = 2 then Natural (JRU_Views (I).B2)
+      elsif N = 3 then Natural (JRU_Views (I).B3)
+      elsif N = 4 then Natural (JRU_Views (I).B4)
+      else 0);
+
+   --  The NID_MESSAGE of the JRU record I
+   function JRU_NID (I : Positive) return Natural is
+     (Natural (Out_Buf (Recs (I).First)));
 
    --  The DMI record of this message type in the last Take; 0 if none
       function Find_DMI (The_Type : Byte) return Natural;

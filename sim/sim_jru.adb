@@ -1,7 +1,7 @@
 --  ETCS DMI test simulator
 --  The juridical recorder of the bench: implementation.
 
-with EVC_Ports;
+with EVC_JRU_Messages;
 
 package body Sim_JRU is
 
@@ -24,30 +24,31 @@ package body Sim_JRU is
      (if N < Natural'Last then N + 1 else N);
 
    procedure Put (Payload : EVC_Bytes.Byte_Array) is
-      function U (First, Count : Natural) return Unsigned_64 is
-         V : Unsigned_64 := 0;
-      begin
-         for I in reverse 0 .. Count - 1 loop
-            V := V * 256 + Unsigned_64 (Payload (Payload'First + First + I));
-         end loop;
-         return V;
-      end U;
+      V : EVC_JRU_Messages.View_T;
+      H : EVC_JRU_Messages.Header_T;
    begin
-      if Payload'Length /= EVC_Ports.JRU_Record_Length then
+      if Payload'Length > 2**16
+        or else not EVC_JRU_Messages.Is_Message (Payload)
+      then
          Bad := Inc (Bad);
          return;
       end if;
+      V := EVC_JRU_Messages.View (Payload);
+      EVC_JRU_Messages.Get_Header (Payload, H);
       Ring (Next) :=
-        (Event   => Payload (Payload'First),
-         B2      => Payload (Payload'First + 1),
-         B3      => Payload (Payload'First + 2),
-         B4      => Payload (Payload'First + 3),
-         Cycle   => Unsigned_32 (U (4, 4)),
-         Time_Ms => U (8, 8));
+        (Event   => V.Event,
+         B2      => V.B2,
+         B3      => V.B3,
+         B4      => V.B4,
+         NID     => Payload (Payload'First),
+         Time_Ms =>
+           (if H.Hour > 23 or else H.Minutes > 59 or else H.Seconds > 59
+            then 0
+            else Unsigned_64 ((H.Hour * 60 + H.Minutes) * 60 + H.Seconds)
+                 * 1000 + Unsigned_64 (Natural'Min (H.TTS, 19) * 50)));
       Next := (Next + 1) mod Capacity;
       Total := Inc (Total);
-      By_Event (Payload (Payload'First)) :=
-        Inc (By_Event (Payload (Payload'First)));
+      By_Event (V.Event) := Inc (By_Event (V.Event));
    end Put;
 
    function Count return Natural is (Total);
@@ -227,6 +228,10 @@ package body Sim_JRU is
       Add (".");
       Add_Nat ((R.Time_Ms mod 1000) / 100);
       Add (" s  ");
+      if R.NID = EVC_JRU_Messages.NID_General then
+         Add ("general message");
+         return;
+      end if;
       case R.Event is
          when 1 =>
             Add ("mode ");

@@ -1,3 +1,4 @@
+with EVC_JRU_Messages;
 with EVC_Test_Support;  use EVC_Test_Support;
 with Ada.Text_IO;
 with ETCS_Bits;
@@ -1280,7 +1281,7 @@ package body EVC_Test_Language is
       declare
          I : constant Natural := JRU_Event (2);
       begin
-         Check (I /= 0 and then Rec_Length (I) = JRU_Record_Length
+         Check (I /= 0 and then JRU_NID (I) = EVC_JRU_Messages.NID_Telegram
                 and then Byte_At (I, 2) = Natural (Id and 16#FF#)
                 and then Byte_At (I, 3) = Natural (Shift_Right (Id, 8)
                                                     and 16#FF#)

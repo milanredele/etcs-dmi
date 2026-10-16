@@ -7,10 +7,13 @@ with ETCS_Bits;
 with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Telegram;
+with ETCS_Train_Packets.P0;
 with ETCS_Variables;
 with EVC_Acceptance;
 with EVC_DMI_Port; use EVC_DMI_Port;
+with EVC_Balise_Groups;
 with EVC_Fixed;
+with EVC_JRU_Messages;
 with EVC_Limits;
 with EVC_Profiles;
 with EVC_Transition_Conditions;
@@ -22,7 +25,7 @@ package body EVC_Core
                                    Kept_Pending,
                                    Current_Mode,
                                    Cycle_Count,
-                                   Clock_Ms,
+                                   Clock_Ms, UTC_Known, UTC_Seconds,
                                    Reported_Mode,
                                    Latched_Odometer,
                                    Latched_Odometer_Fresh,
@@ -97,6 +100,10 @@ is
    --  (the level and its status are EVC_Levels', phase E4)
    Cycle_Count          : Cycle_T := 0;
    Clock_Ms             : Time_Ms_T := 0;
+   --  The UTC time at the on-board time 0 (Set_UTC), seconds since
+   --  2000-01-01 00:00:00
+   UTC_Known            : Boolean := False;
+   UTC_Seconds          : Unsigned_32 := 0;
    --  The mode last reported to the juridical recording
    Reported_Mode        : Mode_T := M_NP;
 
@@ -292,6 +299,12 @@ is
    function Brake_Commands return EVC_Brake_Commands.Commands_T is
      (Brake_Output);
 
+   procedure Set_UTC (Seconds : Interfaces.Unsigned_32) is
+   begin
+      UTC_Known := True;
+      UTC_Seconds := Seconds;
+   end Set_UTC;
+
    procedure Set_Snapshot_For_Test (S : EVC_Supervision_Input.Snapshot_T) is
    begin
       Snapshot := S;
@@ -344,6 +357,8 @@ is
       --  empty (Power_Up keeps them)
       Cycle_Count := 0;
       Clock_Ms := 0;
+      UTC_Known := False;
+      UTC_Seconds := 0;
       Reported_Mode := M_NP;
       Latched_Odometer := Standstill_Sample;
       Latched_Odometer_Fresh := False;
@@ -569,36 +584,78 @@ is
 
    --  The steps of one cycle (doc/EVC-PLAN.md §2), in their order
 
-   --  A record for the juridical recording (EVC_Ports): Event, three
-   --  bytes that depend on it, the cycle and the on-board time
-   function JRU_Record (Event, B2, B3, B4 : EVC_Bytes.Byte)
-     return EVC_Bytes.Byte_Array
-   is (Event, B2, B3, B4,
-       EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 0),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 1),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 2),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Cycle_Count), 3),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 0),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 1),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 2),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 3),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 4),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 5),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 6),
-       EVC_Bytes.Byte_Of (Unsigned_64 (Clock_Ms), 7))
-     with Global => (Cycle_Count, Clock_Ms),
-          Post => JRU_Record'Result'Length = JRU_Record_Length;
+   No_Data : constant EVC_Bytes.Byte_Array (1 .. 0) := (others => 0);
+
+   --  The juridical message of an event of EVC_Ports and its three bytes
+   --  (EVC_JRU_Messages.Event_Message), kept with the on-board time of
+   --  the event; a mode change is the general message too (SUBSET-027
+   --  4.3.1.1), before the proprietary one with the level status
+   procedure Put_Event (Event, B2, B3, B4 : EVC_Bytes.Byte)
+     with Global => (Input => Clock_Ms, In_Out => EVC_Outbox.Queue)
+   is
+      NID    : EVC_Bytes.Byte;
+      Fields : EVC_JRU_Messages.Fields_T;
+   begin
+      if Event = 1 then
+         EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_General,
+                             Unsigned_64 (Clock_Ms),
+                             EVC_JRU_Messages.No_Fields, No_Data);
+      end if;
+      EVC_JRU_Messages.Event_Message (Event, B2, B3, B4, NID, Fields);
+      EVC_Outbox.Put_JRU (NID, Unsigned_64 (Clock_Ms), Fields, No_Data);
+   end Put_Event;
+
+   --  The message 13 (SUBSET-027 4.2.4.13) with M_ERROR; decision: the
+   --  RBC is the Supervising RBC (EVC_Radio), the error concerns the
+   --  safe radio connection with it (3.16.3.1.1.2, 3.16.3.4)
+   procedure Put_Radio_Error (M_Error : EVC_Bytes.Byte)
+     with Global => (Input  => (Clock_Ms, EVC_Radio.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      R : constant EVC_Radio.RBC_Id_T := EVC_Radio.Supervising_RBC;
+      F : EVC_JRU_Messages.Fields_T := EVC_JRU_Messages.No_Fields;
+   begin
+      F (1) := (Unsigned_64 (R.NID_C), 10);
+      F (2) := (Unsigned_64 (R.NID_RBC), 14);
+      F (3) := (Unsigned_64 (M_Error), 8);
+      EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_Radio_Error,
+                          Unsigned_64 (Clock_Ms), F, No_Data);
+   end Put_Radio_Error;
+
+   --  The message 20 (SUBSET-027 4.2.4.20) of the information as
+   --  displayed (SDM_Shown_T) in the monitoring and status of the cycle:
+   --  V_TARGET and D_TARGET "none" (1023, 32767) where the DMI shows no
+   --  target, V_RELEASE "none" while not shown, the speeds at most 600
+   procedure Put_SDM (Shown : SDM_Shown_T; Release_Shown : Boolean)
+     with Global => (Input  => (Clock_Ms, SDM_Result),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      function V (S : Unsigned_16) return Unsigned_64 is
+        (Unsigned_64 (Unsigned_16'Min (S, 600)));
+      F : EVC_JRU_Messages.Fields_T := EVC_JRU_Messages.No_Fields;
+      No_Target : constant Boolean := Shown.D_Target >= 32_767;
+   begin
+      F (1) := (EVC_SDM.Monitoring_T'Pos (SDM_Result.Monitoring), 2);
+      F (2) := (EVC_SDM.Status_T'Pos (SDM_Result.Status), 3);
+      F (3) := (V (Shown.V_Perm), 10);
+      F (4) := (V (Shown.V_SBI), 10);
+      F (5) := ((if No_Target then 1023 else V (Shown.V_Target)), 10);
+      F (6) := ((if No_Target then 32_767
+                 else Unsigned_64 (Shown.D_Target)), 15);
+      F (7) := ((if Release_Shown then V (Shown.V_Release) else 1023), 10);
+      F (8) := (Unsigned_64 (Unsigned_16'Min (Shown.TTI, 15)), 4);
+      EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_SDM, Unsigned_64 (Clock_Ms),
+                          F, No_Data);
+   end Put_SDM;
 
    JRU_Mode_Change : constant := 1;
-   JRU_Telegram    : constant := 2;
-   JRU_Message     : constant := 3;
    --  the events of the position: 4 .. 10 (EVC_Ports)
    JRU_Position    : constant := 4;
 
    --  0. The installation configuration loaded or refused since the last
    --  cycle (Configure): event 33 (EVC_Ports)
    procedure Report_Configuration
-     with Global => (Input  => (Cycle_Count, Clock_Ms),
+     with Global => (Input  => (Clock_Ms),
                      In_Out => (EVC_Config.State, EVC_Outbox.Queue)),
           Post => EVC_Config.Current = EVC_Config.Current'Old
                   and then EVC_Config.Loaded = EVC_Config.Loaded'Old
@@ -607,13 +664,11 @@ is
         EVC_Config.Last_Status = EVC_Config.Accepted;
    begin
       if EVC_Config.Report_Pending then
-         EVC_Outbox.Put
-           (JRU, JRU_Record
-                   (JRU_Configuration,
+         Put_Event (JRU_Configuration,
                     (if Loaded then 1 else 2),
                     EVC_Config.Status_T'Pos (EVC_Config.Last_Status),
                     EVC_Bytes.Byte
-                      (Natural'Min (EVC_Config.Rejections, 255))));
+                      (Natural'Min (EVC_Config.Rejections, 255)));
          EVC_Config.Report_Taken;
       end if;
    end Report_Configuration;
@@ -628,7 +683,7 @@ is
    --  supported noted for the procedures
    --  @req 3.17.3.5 d)
    procedure Read_Telegrams
-     with Global => (Input  => (Latched_BTM, Cycle_Count, Clock_Ms,
+     with Global => (Input  => (Latched_BTM, Clock_Ms,
                                 EVC_Odometry.State),
                      In_Out => (Latched_BTM_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Position.State,
@@ -669,20 +724,14 @@ is
                EVC_Received.Receive_Telegram
                  (BTM_Telegram (Slot.Data (1 .. Slot.Length)), T_Status);
                if T_Status = ETCS_Telegram.Accepted then
-                  --  the balise group, NID_C and NID_BG (24 bits)
-                  declare
-                     H  : constant ETCS_Telegram.Header_T :=
-                       EVC_Received.Last_Telegram.Header;
-                     Id : constant Unsigned_64 :=
-                       ETCS_Variables.Balise_Group_Identity
-                         (H.NID_C, H.NID_BG);
-                  begin
-                     EVC_Outbox.Put
-                       (JRU, JRU_Record (JRU_Telegram,
-                                         EVC_Bytes.Byte_Of (Id, 0),
-                                         EVC_Bytes.Byte_Of (Id, 1),
-                                         EVC_Bytes.Byte_Of (Id, 2)));
-                  end;
+                  --  SUBSET-027 4.2.4.6: the telegram as received, its
+                  --  bits after their count (EVC_Ports, BTM)
+                  EVC_Outbox.Put_JRU
+                    (EVC_JRU_Messages.NID_Telegram, Unsigned_64 (Clock_Ms),
+                     EVC_JRU_Messages.No_Fields,
+                     Slot.Data (BTM_Stamp_Length + 3 .. Slot.Length),
+                     Natural (Slot.Data (BTM_Stamp_Length + 1))
+                     + 256 * Natural (Slot.Data (BTM_Stamp_Length + 2)));
                   EVC_Position.Receive_Telegram
                     (EVC_Received.Last_Telegram,
                      BTM_Stamp (Slot.Data (1 .. Slot.Length)));
@@ -720,20 +769,33 @@ is
       Latched_Event_Count := 0;
    end Read_Radio_Events;
 
+   --  The message 9 (SUBSET-027 4.2.4.9): the RBC of the session and the
+   --  message as received
+   procedure Put_From_RBC (Slot : RTM_Slot_T)
+     with Global => (Input  => (Clock_Ms, EVC_Radio.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      R : constant EVC_Radio.RBC_Id_T := EVC_Radio.Info (Slot.Session).RBC;
+      F : EVC_JRU_Messages.Fields_T := EVC_JRU_Messages.No_Fields;
+   begin
+      F (1) := (Unsigned_64 (R.NID_C), 10);
+      F (2) := (Unsigned_64 (R.NID_RBC), 14);
+      EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_From_RBC,
+                          Unsigned_64 (Clock_Ms), F,
+                          Slot.Data (1 .. Slot.Length));
+   end Put_From_RBC;
+
    --  JRU record 13 (EVC_JRU_Records) for a radio
    --  message found inconsistent and reported (3.16.3.1.1.2)
    --  @req 3.16.3.1.1.2
    procedure Record_Radio_Error
-     with Global => (Input  => (EVC_Sessions.State, Cycle_Count, Clock_Ms),
+     with Global => (Input  => (EVC_Sessions.State, EVC_Radio.State,
+                                Clock_Ms),
                      In_Out => EVC_Outbox.Queue)
    is
    begin
       if EVC_Sessions.Error_Noted then
-         EVC_Outbox.Put
-           (JRU, JRU_Record (EVC_JRU_Records.JRU_Radio_Error,
-                             EVC_Bytes.Byte
-                               (EVC_Sessions.Error_Noted_Code),
-                             0, 0));
+         Put_Radio_Error (EVC_Bytes.Byte (EVC_Sessions.Error_Noted_Code));
       end if;
    end Record_Radio_Error;
 
@@ -744,7 +806,7 @@ is
    --  messages it passes go on to the authority half (phase E5)
    --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.17.3.11
    procedure Read_Radio_Messages
-     with Global => (Input  => (Latched_RTM, Cycle_Count, Clock_Ms,
+     with Global => (Input  => (Latched_RTM, Clock_Ms,
                                 EVC_Position.State, EVC_Odometry.State),
                      In_Out => (Latched_RTM_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Sessions.State,
@@ -776,11 +838,7 @@ is
                --  with M_ERROR after it; so is a frame whose length
                --  disagrees with L_MESSAGE (below).
                --  NID_MESSAGE, L_MESSAGE (u16)
-               EVC_Outbox.Put
-                 (JRU, JRU_Record (JRU_Message,
-                                   Slot.Data (1),
-                                   EVC_Bytes.Byte (Slot.Length mod 256),
-                                   EVC_Bytes.Byte (Slot.Length / 256)));
+               Put_From_RBC (Slot);
                EVC_Received.Receive_Message
                  (Slot.Data (1 .. Slot.Length), M_Status);
                if M_Status = ETCS_Message.Accepted
@@ -837,11 +895,7 @@ is
                --  from L_MESSAGE. Recorded as received (record 9: its
                --  NID_MESSAGE and the length received, not L_MESSAGE),
                --  not parsed, reported inconsistent (M_ERROR 3)
-               EVC_Outbox.Put
-                 (JRU, JRU_Record (JRU_Message,
-                                   Slot.Data (1),
-                                   EVC_Bytes.Byte (Slot.Length mod 256),
-                                   EVC_Bytes.Byte (Slot.Length / 256)));
+               Put_From_RBC (Slot);
                EVC_Sessions.Take_Inconsistent (Slot.Session);
                Record_Radio_Error;
             end if;
@@ -901,7 +955,7 @@ is
    --  the stamp of their balise, to the position
    procedure Read_Ports
      with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
-                                Cycle_Count, Clock_Ms,
+                                Clock_Ms,
                                 EVC_Odometry.State, Latched_TIU_Value,
                                 Latched_TIU_Known, Latched_Events),
                      Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
@@ -998,7 +1052,7 @@ is
    procedure Update_Position
      with Global => (Input  => (Odometer_Now, Odometer_Fresh, TIU_Now,
                                 EVC_National_Values.State, Current_Mode,
-                                EVC_Levels.State, Cycle_Count, Clock_Ms,
+                                EVC_Levels.State, Clock_Ms,
                                 EVC_Train_Inputs.State, EVC_Mission.State,
                                 EVC_Train_Data.State, Brake_State),
                      Output => (Standstill, Below_Override),
@@ -1060,10 +1114,9 @@ is
          declare
             E : constant EVC_Position.Event_T := EVC_Position.Event (I);
          begin
-            EVC_Outbox.Put
-              (JRU, JRU_Record (JRU_Position
+            Put_Event (JRU_Position
                                   + EVC_Position.Event_Kind_T'Pos (E.Kind),
-                                E.B2, E.B3, E.B4));
+                                E.B2, E.B3, E.B4);
          end;
       end loop;
       Standstill := Odometer_Now.V_Max = 0;
@@ -1122,7 +1175,7 @@ is
                      EVC_Mission.State, EVC_Radio_Authority.State);
 
    procedure Evaluate_Stored_Information
-     with Global => (Input  => (Clock_Ms, Cycle_Count, EVC_Position.State,
+     with Global => (Input  => (Clock_Ms, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,
                                 TIU_Now, EVC_Config.State, Current_Mode,
                                 EVC_Train_Inputs.State, EVC_Mission.State,
@@ -1192,8 +1245,8 @@ is
             E : constant EVC_Stored_Information.Event_T :=
               EVC_Stored_Information.Event (I);
          begin
-            EVC_Outbox.Put (JRU, JRU_Record (JRU_Stored, E.Info, E.Change,
-                                             E.Detail));
+            Put_Event (JRU_Stored, E.Info, E.Change,
+                                             E.Detail);
          end;
       end loop;
       if EVC_Stored_Information.Track_Cond_Due then
@@ -2182,33 +2235,32 @@ is
    --  events of the levels (5.10, event 40) and of the mission (5.4,
    --  5.5, event 41) of the cycle (phase E4)
    procedure Record_Mode_Levels_Mission
-     with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
+     with Global => (Input  => (Current_Mode, Clock_Ms,
                                 EVC_Levels.State, EVC_Mission.State),
                      In_Out => (Reported_Mode, EVC_Outbox.Queue))
    is
    begin
       if Current_Mode /= Reported_Mode then
-         EVC_Outbox.Put
-           (JRU, JRU_Record (JRU_Mode_Change,
+         Put_Event (JRU_Mode_Change,
                              Mode_T'Pos (Current_Mode),
                              Level_Status_T'Pos (EVC_Levels.Status),
-                             Level_T'Pos (EVC_Levels.Level)));
+                             Level_T'Pos (EVC_Levels.Level));
          Reported_Mode := Current_Mode;
       end if;
       for I in 1 .. EVC_Levels.Event_Count loop
          declare
             E : constant EVC_Levels.Event_T := EVC_Levels.Event (I);
          begin
-            EVC_Outbox.Put (JRU, JRU_Record (JRU_Levels, E.Kind, E.B3,
-                                             E.B4));
+            Put_Event (JRU_Levels, E.Kind, E.B3,
+                                             E.B4);
          end;
       end loop;
       for I in 1 .. EVC_Mission.Event_Count loop
          declare
             E : constant EVC_Mission.Event_T := EVC_Mission.Event (I);
          begin
-            EVC_Outbox.Put (JRU, JRU_Record (JRU_Mission, E.Kind, E.B3,
-                                             E.B4));
+            Put_Event (JRU_Mission, E.Kind, E.B3,
+                                             E.B4);
          end;
       end loop;
    end Record_Mode_Levels_Mission;
@@ -2445,7 +2497,7 @@ is
    --  8e. JRU (phase E4): the records of the procedures of chapter 5
    --  (event 23) and of the text messages (3.12.3, event 24)
    procedure Record_Procedures
-     with Global => (Input  => (Cycle_Count, Clock_Ms, EVC_Procedures.State,
+     with Global => (Input  => (Clock_Ms, EVC_Procedures.State,
                                 EVC_Text_Messages.State),
                      In_Out => EVC_Outbox.Queue)
    is
@@ -2454,8 +2506,8 @@ is
          declare
             E : constant EVC_Procedures.Event_T := EVC_Procedures.Event (I);
          begin
-            EVC_Outbox.Put (JRU, JRU_Record (JRU_Procedures, E.Kind, E.B3,
-                                             E.B4));
+            Put_Event (JRU_Procedures, E.Kind, E.B3,
+                                             E.B4);
          end;
       end loop;
       for I in 1 .. EVC_Text_Messages.Event_Count loop
@@ -2463,8 +2515,8 @@ is
             E : constant EVC_Text_Messages.Event_T :=
               EVC_Text_Messages.Event (I);
          begin
-            EVC_Outbox.Put (JRU, JRU_Record (JRU_Text_Messages, E.Kind, E.B3,
-                                             E.B4));
+            Put_Event (JRU_Text_Messages, E.Kind, E.B3,
+                                             E.B4);
          end;
       end loop;
    end Record_Procedures;
@@ -2773,7 +2825,7 @@ is
    procedure Send_Supervision
      (D                : EVC_Procedures.Brake_Demand_T;
       Text_SB, Text_EB : Boolean)
-     with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
+     with Global => (Input  => (Current_Mode, Clock_Ms,
                                 SDM_Result, Brake_Output, Speed_State,
                                 Status_TTI_Sent, EVC_Levels.State),
                      In_Out => (TIU_Sent, TIU_Reasons_Sent,
@@ -2814,25 +2866,19 @@ is
    begin
       EVC_Outbox.Put (DMI, Speed_State_Frame (Speed_State));
       if Commands /= TIU_Sent or else Why /= TIU_Reasons_Sent then
-         EVC_Outbox.Put
-           (JRU, JRU_Record
-                   (JRU_Brake_Commands,
+         Put_Event (JRU_Brake_Commands,
                     Commands
                     or EVC_Bytes.Byte (Shift_Left (Shift_Right (Why, 8),
                                                    3) and 16#F8#),
                     EVC_Bytes.Byte (Why and 16#FF#),
-                    EVC_SDM.Status_T'Pos (SDM_Result.Status)));
+                    EVC_SDM.Status_T'Pos (SDM_Result.Status));
       end if;
       if (Supervision_Now /= Supervision_Reported
           or else Shown_Now /= SDM_Shown_Reported)
         and then SDM_Result.Active
       then
-         EVC_Outbox.Put
-           (JRU, JRU_Record
-                   (JRU_Supervision,
-                    EVC_SDM.Monitoring_T'Pos (SDM_Result.Monitoring),
-                    EVC_SDM.Status_T'Pos (SDM_Result.Status),
-                    EVC_Bytes.Byte (SDM_Result.MRDT_Id)));
+         Put_SDM (Shown_Now,
+                  (Speed_State.Flags and Flag_Release_Shown) /= 0);
       end if;
       Supervision_Reported := Supervision_Now;
       SDM_Shown_Reported := Shown_Now;
@@ -2842,7 +2888,7 @@ is
          if (Overrun and Bit) /= 0
            and then (Overrun_Reported and Bit) = 0
          then
-            EVC_Outbox.Put (JRU, JRU_Record (JRU_Overrun, Bit, 0, 0));
+            Put_Event (JRU_Overrun, Bit, 0, 0);
          end if;
       end loop;
       Overrun_Reported := Overrun;
@@ -2931,7 +2977,7 @@ is
    --  items of the information for the external functions (5.20) that
    --  appeared or changed their phase
    procedure Record_Actions_Cabs_Conditions
-     with Global => (Input  => (Cycle_Count, Clock_Ms, TIU_Now,
+     with Global => (Input  => (Clock_Ms, TIU_Now,
                                 TIU_Known_Now,
                                 EVC_Driver_Requests.State,
                                 EVC_Stored_Information.State),
@@ -2948,8 +2994,7 @@ is
          if Selected (A) then
             Code := Action_Code (A, Argument (A));
             if Code /= EVC_JRU_Records.No_Code then
-               EVC_Outbox.Put
-                 (JRU, JRU_Record (JRU_Driver_Action, Code, 0, 0));
+               Put_Event (JRU_Driver_Action, Code, 0, 0);
             end if;
          end if;
       end loop;
@@ -2958,8 +3003,7 @@ is
          if Acknowledged (K) then
             Code := Ack_Code (K, Ack_Id (K));
             if Code /= EVC_JRU_Records.No_Code then
-               EVC_Outbox.Put
-                 (JRU, JRU_Record (JRU_Driver_Action, Code, 0, 0));
+               Put_Event (JRU_Driver_Action, Code, 0, 0);
             end if;
          end if;
       end loop;
@@ -2968,8 +3012,7 @@ is
          if Entered (K)
            and then Data_Code (K) /= EVC_JRU_Records.No_Code
          then
-            EVC_Outbox.Put
-              (JRU, JRU_Record (JRU_Driver_Action, Data_Code (K), 0, 0));
+            Put_Event (JRU_Driver_Action, Data_Code (K), 0, 0);
          end if;
       end loop;
       Cab_Status (TIU_Now (Cab_A_Active), TIU_Now (Cab_B_Active),
@@ -2977,17 +3020,15 @@ is
                   or else TIU_Known_Now (Cab_B_Active),
                   Changed);
       if Changed then
-         EVC_Outbox.Put
-           (JRU, JRU_Record (JRU_Cab_Status,
+         Put_Event (JRU_Cab_Status,
                              (if TIU_Now (Cab_A_Active) then 1 else 0), 1,
-                             (if TIU_Now (Cab_B_Active) then 1 else 0)));
+                             (if TIU_Now (Cab_B_Active) then 1 else 0));
       end if;
       Track_Conditions (EVC_Stored_Information.External_Info, TC);
       for I in 1 .. TC.Count loop
          pragma Loop_Invariant (True);
-         EVC_Outbox.Put
-           (JRU, JRU_Record (JRU_Track_Conditions, TC.List (I).TI,
-                             TC.List (I).Phase, TC.List (I).Id));
+         Put_Event (JRU_Track_Conditions, TC.List (I).TI,
+                             TC.List (I).Phase, TC.List (I).Id);
       end loop;
    end Record_Actions_Cabs_Conditions;
 
@@ -3000,10 +3041,10 @@ is
    --  when the reaction to the expiry of T_NVCONTACT is triggered
    --  (SUBSET-026 3.16.3.4)
    procedure Record_Inputs_Radio_Data
-     with Global => (Input  => (Cycle_Count, Clock_Ms, Current_Mode,
+     with Global => (Input  => (Clock_Ms, Current_Mode,
                                 TIU_Now, TIU_Known_Now, TIU_Value_Now,
                                 EVC_Driver_Requests.State,
-                                EVC_Sessions.State),
+                                EVC_Sessions.State, EVC_Radio.State),
                      In_Out => (EVC_JRU_Records.State, EVC_Outbox.Queue))
    is
       use EVC_Driver_Requests;
@@ -3026,30 +3067,29 @@ is
       RBC     : constant Bytes_23_T := EVC_Driver_Requests.RBC_Data;
       Q       : constant EVC_Bytes.Byte := RBC_Entry_Code (RBC (1));
       MN      : MN_Bytes_T;
+      F       : EVC_JRU_Messages.Fields_T;
    begin
       Inputs (Now, Changes);
       for I in Input_T loop
          pragma Loop_Invariant (True);
          if Changes (I) then
-            EVC_Outbox.Put
-              (JRU, JRU_Record (Input_Event (I),
-                                EVC_Bytes.Byte (Now (I)), 0, 0));
+            Put_Event (Input_Event (I),
+                                EVC_Bytes.Byte (Now (I)), 0, 0);
          end if;
       end loop;
       if Entered (EVC_Driver_Requests.RBC_Data)
         and then Q /= EVC_JRU_Records.No_Code
       then
-         EVC_Outbox.Put
-           (JRU, JRU_Record (124, Q,
-                             (if Q = 3 then RBC (3) and 16#3F# else 0),
-                             (if Q = 3 then RBC (2) else 0)));
+         RBC_Entry_Fields (RBC, Q, F);
+         EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_RBC_Entry,
+                             Unsigned_64 (Clock_Ms), F, No_Data);
       end if;
       if Entered (GSMR_Network) then
          MN := MN_Code (EVC_Driver_Requests.GSMR_Network);
-         EVC_Outbox.Put (JRU, JRU_Record (48, MN (1), MN (2), MN (3)));
+         Put_Event (48, MN (1), MN (2), MN (3));
       end if;
       if EVC_Sessions.Contact_Error then
-         EVC_Outbox.Put (JRU, JRU_Record (JRU_Radio_Error, 5, 0, 0));
+         Put_Radio_Error (5);
       end if;
    end Record_Inputs_Radio_Data;
 
@@ -3071,11 +3111,97 @@ is
       EVC_Radio.Drain;
    end Send_Radio;
 
+   --  A location reference of the header of SUBSET-027 4.2.3.5 from the
+   --  fields of the position report (EVC_Position.Position_Report)
+   function Reference_Of (P : ETCS_Train_Packets.P0.Packet_T)
+     return EVC_JRU_Messages.Reference_T
+   is (Q_Scale => Natural (P.Q_SCALE),
+       NID     => Natural (P.NID_C) * 2**14 + Natural (P.NID_BG),
+       D       => Natural (P.D_LRBG),
+       Q_Dir   => Natural (P.Q_DIRLRBG),
+       Q_D     => Natural (P.Q_DLRBG),
+       Over    => Natural (P.L_DOUBTOVER),
+       Under   => Natural (P.L_DOUBTUNDER))
+     with Global => null;
+
+   --  The SOLR where it is not the LRBG: its identity, the estimated
+   --  front end and the doubts against it in metres; decision: the
+   --  direction qualifiers "unknown" (2), the position report has them
+   --  against the LRBG only
+   function SOLR_Reference return EVC_JRU_Messages.Reference_T
+     with Global => (EVC_Position.State, EVC_Odometry.State)
+   is
+      S   : constant EVC_Location.Anchor_T := EVC_Position.SOLR;
+      Est : constant EVC_Distances.Dist_T :=
+        EVC_Position.SOLR_Estimated_Front;
+      function M (D : EVC_Distances.Cm_T) return Natural is
+        (Natural (EVC_Distances.Cm_T'Min ((abs D + 99) / 100, 32_767)))
+        with Pre => D in -2 * EVC_Distances.Max_Cm .. 2 * EVC_Distances.Max_Cm;
+   begin
+      return (Q_Scale => 1,
+              NID     => Natural (S.Id.NID_C) * 2**14
+                         + Natural (S.Id.NID_BG),
+              D       => M (Est),
+              Q_Dir   => 2,
+              Q_D     => 2,
+              Over    => M (EVC_Position.SOLR_Max_Safe_Front - Est),
+              Under   => M (Est - EVC_Position.SOLR_Min_Safe_Front));
+   end SOLR_Reference;
+
+   --  8m. The juridical messages of the cycle (EVC_Outbox.Flush_JRU) with
+   --  the header of SUBSET-027 4.2.3 at the end of the cycle (4.1.1.2:
+   --  the position and speed, the operated version, level and mode at
+   --  the event, the cycle of the event): the position as the position
+   --  report gives it, the LRBG the SOLR (Q_LRBG 1) unless the SOLR is
+   --  another group (Q_LRBG 2), V_TRAIN in km/h, the driver ID ("?" x 16
+   --  while unknown), NID_ENGINE, M_VERSION, M_LEVEL, M_MODE
+   procedure Flush_Juridical
+     with Global => (Input  => (Current_Mode, UTC_Known, UTC_Seconds,
+                                EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State, EVC_Mission.State,
+                                EVC_Radio.State, EVC_System_Version.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      use type EVC_Balise_Groups.Identity_T;
+      P : constant ETCS_Train_Packets.P0.Packet_T :=
+        EVC_Position.Position_Report (Current_Mode, EVC_Levels.Level);
+      L : constant EVC_Location.Anchor_T := EVC_Position.LRBG;
+      S : constant EVC_Location.Anchor_T := EVC_Position.SOLR;
+      H : EVC_JRU_Messages.Header_T;
+   begin
+      if L.Valid and then S.Valid and then S.Id /= L.Id then
+         H.Q_LRBG := 2;
+         H.SOLR := SOLR_Reference;
+         H.LRBG := Reference_Of (P);
+      elsif L.Valid then
+         H.Q_LRBG := 1;
+         H.SOLR := Reference_Of (P);
+      elsif S.Valid then
+         H.SOLR := SOLR_Reference;
+      end if;
+      H.V_Train :=
+        (if EVC_Odometry.Standstill then 1023
+         else Natural'Min (Natural (EVC_Odometry.Speed) * 36 / 1000, 600));
+      if EVC_Mission.Driver_ID_Status /= EVC_Mission.Unknown then
+         for I in H.Driver_Id'Range loop
+            pragma Loop_Invariant (True);
+            H.Driver_Id (I) := EVC_Mission.Driver_ID.Chars (I);
+         end loop;
+      end if;
+      H.NID_Engine := Natural (EVC_Radio.Engine_Id);
+      H.M_Version := Natural (EVC_System_Version.Operated_Version);
+      H.M_Level := Natural (P.M_LEVEL);
+      H.M_Mode := Natural (P.M_MODE);
+      EVC_Outbox.Flush_JRU (H, UTC_Known, UTC_Seconds);
+   end Flush_Juridical;
+
    --  8. Produce the outputs of the cycle, port by port in this order
    --  (the goldens are their byte stream)
    --  @req 3.6.6.1, 4.4.2.1, 4.4.5.1.2
    procedure Produce_Outputs
-     with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
+     with Global => (Input  => (Current_Mode, Clock_Ms,
+                                UTC_Known, UTC_Seconds,
+                                EVC_System_Version.State,
                                 Standstill, Below_Override, TIU_Now,
                                 TIU_Known_Now, TIU_Value_Now,
                                 EVC_National_Values.State,
@@ -3132,6 +3258,7 @@ is
       Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
       Record_Inputs_Radio_Data;     -- JRU 30, 31, 39, 48, 51, 124, 132
       Send_Radio;                   -- RTM (phase E5)
+      Flush_Juridical;              -- JRU, the messages of the cycle
    end Produce_Outputs;
 
    --  4.11.1.1, 4.11.1.3: the data kept over No Power, once the cold

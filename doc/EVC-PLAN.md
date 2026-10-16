@@ -23,7 +23,7 @@ subsets, which are interfaces the on-board uses, not behaviour it owns:
 | Euroradio, safety layer, FRMCS | SUBSET-037 | Out. The RTM port delivers chapter 8 radio messages; session set-up of 3.5 is in, the safety layer (SaPDU, keys) is not. |
 | Odometry accuracy | SUBSET-041 | Out. The odometer port delivers distance, speed, their confidence intervals and the direction; `sim/` models the errors. |
 | Train interface (brakes, traction, cab, doors, pantograph, main switch…) | SUBSET-034 | Out. The TIU port carries the signals SUBSET-034 names, as typed Ada values. |
-| Juridical recording | SUBSET-027 | Out. The JRU port receives the events the on-board must record; no file format. |
+| Juridical recording | SUBSET-027 | In: the JRU port emits the messages of SUBSET-027 4.2.2 (the header of 4.2.3, the variables of 4.2.4) as a byte stream; the physical link is E8's. |
 | STM / national systems | SUBSET-035 | Out, as for the DMI (PLAN.md scope decision). Level NTC and mode SN exist as level and mode; no STM interface. |
 | ATO on-board | SUBSET-125, SUBSET-130 | Out of the EVC. The ATO of `sim/evc_ato` becomes a separate module on the ATO port with the ETCS-side conditions of 4.4.16 and 3.15.11. |
 | Safety case | — | The code is structured for it (static memory, cyclic executive, no exception propagation, SPARK kernel with proofs). It is not certified and the README says so. |
@@ -6653,3 +6653,104 @@ brief starts from the regression, not from the fix. Both runner agents
 and the JRU agent met on record 20 without a conflict because the brief
 named the record's fields on both sides. Open items: doc/BACKLOG.csv (41
 open after this round).
+
+### The juridical recording in the SUBSET-027 message format (e5/jru-messages, 2026-10-16)
+
+The decision of 2026-10-16 reverses the scope line of §1: the JRU port
+emits the messages of SUBSET-027 4.2.2, one message a payload, of
+variable length (`EVC_Ports.JRU_Max_Length` 1100 bytes, the old 16-byte
+record is gone).
+
+**Codec route: by hand.** `EVC_JRU_Messages` (evc/, SPARK, no state):
+the generator of evc/language describes radio messages from chapter 7
+variables of at most 64 bits; the JRU header has DRIVER_ID (128 bits),
+DATE and TIME and V_TRAIN that are not chapter 7 variables, a part
+conditional on Q_LRBG and messages that embed a telegram or a radio
+message of up to 1023 bytes, and `ETCS_Bits.Writer` holds 1024 bytes
+and returns its data by value. The unit has `Put_Bits` / `Get_Bits`
+(MSB first, in place), `Put_Header` (fields 1 to 11 with the lengths
+of 4.2.3; the "by analogy" variables with chapter 7's: Q_SCALE 2,
+NID_SOLR / NID_LRBG 24, D 15, Q_DIR 2, Q_D 2, L_DOUBTOVER /
+L_DOUBTUNDER 15, NID_ENGINE 24, M_VERSION 7, M_LEVEL 3, M_MODE 5: 311
+bits, 386 with the LRBG part), `Put_Length`, `Set_Time`, the decoder
+(`Is_Message`, `Get_Header`, `Body_Bit`) and `View`, the event of
+EVC_Ports a message records with its three bytes, through which every
+reader keeps working (no second parser). `Event_Message` maps an event
+to its message.
+
+**The messages.** 1 general (header only) at a mode change, followed
+by the proprietary 255 of event 1 that keeps the level status (4.1.1.5
+allows several messages for one event); 6 the telegram as received
+(its bits after the BTM bit count); 9 NID_C, NID_RBC of the session
+(`EVC_Radio.Info`) and the message as received; 11 M_DRIVERACTIONS;
+13 NID_C, NID_RBC (decision: the Supervising RBC), M_ERROR; 20 all
+eight variables from `SDM_Shown_T` (`EVC_Core.Put_SDM`: V_TARGET and
+D_TARGET "none" 1023 / 32767 without a target shown, V_RELEASE 1023
+while not shown, speeds at most 600, M_TTI at most 15); 24 Q_RBCENTRY,
+NID_C and NID_RBC with Q 2 or 3, NID_RADIO with Q 3
+(`EVC_JRU_Records.RBC_Entry_Fields`, B431 done); 30, 31, 32, 39, 51
+their one variable; 38 with M_CAB_B_STATUS only for Q_CAB_B 1; 48
+NID_MN; every other event of EVC_Ports as 255 (its number u8 and three
+bytes): the ones with a SUBSET-027 message of their own are B550. The
+readers' event numbers stay those of EVC_Ports (`View`: 21 for the
+message 20, 124 for 24, 132 for 32, 2 for 6, 3 for 9), because 20, 24
+and 32 are events of the on-board too; on the wire the numbers are
+SUBSET-027's.
+
+**Header.** Captured at the end of the cycle of the event
+(`EVC_Core.Flush_Juridical`, the last step of `Produce_Outputs`), the
+time of each message its event's (kept with it): the position from
+`EVC_Position.Position_Report` (the computation of the position
+report, not a second one), the LRBG the SOLR (Q_LRBG 1) unless
+`EVC_Position.SOLR` is another group (Q_LRBG 2: the SOLR's identity,
+distance and doubts in metres, its direction qualifiers unknown,
+B552), Q_LRBG 0 and the values "unknown" without an LRBG; V_TRAIN in
+km/h, 1023 at standstill; DRIVER_ID "?" x 16 while unknown; NID_ENGINE
+`EVC_Radio.Engine_Id`; M_VERSION the operated version; M_LEVEL and
+M_MODE as the position report codes them.
+
+**UTC (decision).** `EVC_Core.Set_UTC (seconds since 2000-01-01)` at
+the on-board time 0, forgotten by Initialise and Power_Up; until it is
+given DATE and TIME are "unknown" (4.2.3.3, 4.2.3.4). The bench gives
+2026-01-01 00:00:00 (`Sim_Onboard_Env.Reset`), so it stays
+deterministic and Sim_JRU's time of day is the time since the reset;
+the hosted port, the runner and evc_test give none (B553); E8's port
+gives its clock.
+
+**Outbox (decision).** `EVC_Outbox.Put_JRU` keeps a message (NID, the
+time of its event, its complementary bits) in a queue of 4096 bytes
+inside the outbox's state; `Flush_JRU` builds each message in a static
+buffer of the outbox (no message on the stack) and puts it as a record
+of the port JRU while the outbox (2048 bytes, unchanged) has room; the
+others wait for the next cycle (4.1.1.4: within 5 s). A message the
+queue cannot keep is lost and counted (`EVC_Outbox.JRU_Lost`). The JRU
+messages of a cycle now come after its other outputs.
+
+**Readers.** `EVC_Test_Support` (`JRU_Views` filled at `Parse`,
+`Byte_At` of a JRU record its view, `JRU_NID`), the procedures' own
+parser (`EVC_Test_Procedures.Collect`), `Sim_JRU` (the ring keeps the
+view, NID_MESSAGE and the header's time of day; Describe names the
+general message; the bench page and onboard_smoke read it unchanged),
+`S076_Bench.Observe_JRU` (the view; the general message is not kept,
+so the runner's record lists and counts are what they were),
+`test/tools/golden_review.py` (`jru_view`, the same view in Python).
+`S076_Run.Header_Field` still judges the header expectations from the
+on-board's state: the message carries NID_LRBG, M_VERSION, V_TRAIN,
+D_SOLR and the doubts now (B554).
+
+**Scenarios.** `EVC_Test_JRU.Scenario_JRU_Format` (the header with and
+without the LRBG part read back field by field, DATE and TIME, every
+message of an event round trip to its view), `Scenario_JRU_On_Board`
+(the general message of the power-up: UTC, SB, level 0, standstill,
+the driver ID and the LRBG unknown); the power-up and isolation
+scenarios of `EVC_Test_Core` count the general message.
+
+**Goldens.** 13 on-board goldens re-recorded. Review
+(`golden_review.py --base 846aba0`): 12 on-board groups; the tool pairs
+by cycle groups that start at MSG_MODE_LEVEL, and the JRU records that
+came first in a cycle now come last, so every group shows its records
+moved one group; over all groups the records removed and added are the
+same records (DMI, RTM, TIU payloads and JRU views equal, checked as
+multisets) once the general messages are left out: as intended, the
+side effect the move of the JRU records to the end of the cycle and
+one general message per mode change.

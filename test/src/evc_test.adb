@@ -55,6 +55,9 @@
 --  checks, EVC_Core.Configure, and every field the supervision or the
 --  position reads.
 --
+--  EVC_Test_JRU: the juridical recording in the message format of
+--  SUBSET-027 4.2 (EVC_JRU_Messages), the header the on-board captures.
+--
 --  EVC_Test_Modes: phase E4, modes and levels (e4/modes): the mode
 --  machine of 4.6, the start of mission of 5.4, the level transitions
 --  of 5.10, the acceptance of 4.8, the data of 4.10 and A.3.4.
@@ -87,6 +90,7 @@ with EVC_Test_PBD;       use EVC_Test_PBD;
 with EVC_Test_Bench;     use EVC_Test_Bench;
 with EVC_Test_EMRRLS;    use EVC_Test_EMRRLS;
 with EVC_Test_Config;    use EVC_Test_Config;
+with EVC_Test_JRU;       use EVC_Test_JRU;
 with EVC_Test_Modes;     use EVC_Test_Modes;
 with EVC_Test_LS;
 with EVC_Test_Radio;     use EVC_Test_Radio;
@@ -215,6 +219,8 @@ begin
    Scenario_Config_Image;
    Scenario_Config_Core;
    Scenario_Config_Behaviour;
+   Scenario_JRU_Format;
+   Scenario_JRU_On_Board;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;
