@@ -341,6 +341,21 @@ is
                   and then Loaded = Loaded'Old
                   and then Report_Pending = Report_Pending'Old;
 
+   --  For the tests of the hosts, not for an on-board in service: the
+   --  traction systems the engine accepts (Fixed_Train_T.Voltages, the
+   --  M_VOLTAGE bits; bit 0 an engine able to run on a line not fitted
+   --  with any traction system, 3.12.2.3.1) of the configuration in use
+   --  become V; everything else stays. EVC_Mission takes them into the
+   --  next Train Data.
+   procedure Set_Voltages_For_Test (V : Natural)
+     with Global => (In_Out => State),
+          Pre  => V <= 2**16 - 1,
+          Post => Current.Train.Voltages = V
+                  and then Current.Radio = Current.Radio'Old
+                  and then Current.Supervision = Current.Supervision'Old
+                  and then Loaded = Loaded'Old
+                  and then Report_Pending = Report_Pending'Old;
+
    --  The report was recorded
    procedure Report_Taken
      with Global => (In_Out => State),

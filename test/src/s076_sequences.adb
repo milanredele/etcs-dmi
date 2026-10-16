@@ -241,6 +241,76 @@ package body S076_Sequences is
    --  B280: the NID_C of the header of the telegram read last
    Group_Country : Natural := 0;
 
+   --  B471, B472: a "var" row of a message block: the train of the packet
+   --  11 of a message 129 (Trains)
+   In_P11 : Boolean := False;
+   procedure On_Train_Data (S : in out Sequence_T; Name : String;
+                            V : Unsigned_64)
+   is
+      N : constant Integer := Integer (V mod 2 ** 16);
+   begin
+      if Name = "NID_PACKET" then
+         In_P11 := V = 11 and then S.Messages (S.Message_Count).NID = 129
+           and then S.Train_Count < Max_Trains;
+         if In_P11 then
+            S.Train_Count := S.Train_Count + 1;
+            S.Trains (S.Train_Count) :=
+              (Dist_Cm => S.Messages (S.Message_Count).Dist_Cm, others => -1);
+         end if;
+         return;
+      elsif not In_P11 then
+         return;
+      end if;
+      declare
+         T : Train_T renames S.Trains (S.Train_Count);
+      begin
+         if Name = "M_AXLELOADCAT" then
+            T.Axle_Load := N;
+         elsif Name = "M_LOADINGGAUGE" then
+            T.Gauge := N;
+         elsif Name = "M_VOLTAGE" and then N < 16 then
+            if T.Voltages < 0 then
+               T.Voltages := 0;
+            end if;
+            if (T.Voltages / 2 ** N) mod 2 = 0 then
+               T.Voltages := T.Voltages + 2 ** N;
+            end if;
+         end if;
+      end;
+   end On_Train_Data;
+
+   function Train_At (S : Sequence_T; Dist_Cm : Integer_64) return Train_T
+   is
+   begin
+      for I in 1 .. S.Train_Count loop
+         if S.Trains (I).Dist_Cm >= Dist_Cm then
+            return S.Trains (I);
+         end if;
+      end loop;
+      return (if S.Train_Count > 0 then S.Trains (S.Train_Count)
+              else (others => <>));
+   end Train_At;
+
+   function Engine_Voltages (S : Sequence_T; Default : Natural)
+                             return Natural
+   is
+      V : Natural :=
+        (if S.Train_Count > 0 and then S.Trains (1).Voltages >= 0
+         then S.Trains (1).Voltages else Default);
+   begin
+      for I in 1 .. S.Step_Count loop
+         if Ada.Strings.Fixed.Index
+              (Image (S.Steps (I).Comment),
+               "able to run on a line not fitted with any traction system")
+             > 0
+           and then V mod 2 = 0
+         then
+            V := V + 1;
+         end if;
+      end loop;
+      return V;
+   end Engine_Voltages;
+
    --  B200: a "var" row of a telegram or message: the integrated
    --  correction factors of its packets 3 (7.5.1 resolutions: M_NVKVINT
    --  0.02, M_NVKRINT and M_NVKTINT 0.05, V_NVKVINT 5 km/h, L_NVKRINT
@@ -719,6 +789,9 @@ package body S076_Sequences is
                      M.Packet_Count := M.Packet_Count + 1;
                      M.Packets (M.Packet_Count) := Unsigned_8 (V mod 256);
                   end if;
+                  if OK then
+                     On_Train_Data (S, Name, V);
+                  end if;
                   Var_Bit := Var_Bit + Width;
                end;
             end if;
@@ -980,7 +1053,9 @@ package body S076_Sequences is
       Loaded.P3_Count := 0;
       Loaded.Release_DP_Count := 0;
       Loaded.Release_OB := False;
+      Loaded.Train_Count := 0;
       In_P3 := False;
+      In_P11 := False;
       WB_Target := No_Value;
       WB_Flat := True;
       WB_Grades := (others => <>);

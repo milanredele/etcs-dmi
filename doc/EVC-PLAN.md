@@ -6557,3 +6557,39 @@ carry record 20's 59 bits and record 24's NID_C and NID_RADIO in one
 record each; every reader of the 16-byte layout (Sim_JRU's cycle and
 time, the runner's capture in S076_Bench, the hosted port, the wasm
 glue) must skip or decode it, so it goes with the runner owner.
+### The sequence's train in the bench, the explicit speed, the negative record window, record 20's fields (e5/runner-train, 2026-10-16)
+
+B471: the trains of a sequence's messages 129 (their packets 11) are read
+(`S076_Sequences.Trains`, `Train_At`: the first message 129 at or after
+the entry's location) and `S076_Run.Enter_Train_Data` keys their axle
+load category and loading gauge (A .. D4XL on the keys 1 to 11, E4 and
+E5 after [More]; G1 .. GC on 1 to 4, else "Out of GC" as before).
+9990400_28 enters D2 now and still fails at step 69: no "Route
+unsuitable - axle load category" for the line's A, HS17, B1 (B540, an
+on-board trace for the owner of `EVC_Track_Description`). 4080436_01
+SV30 101 -> 80, understood: its joined case 3120200_01 expects its line
+G1 unsuitable, this sequence's own train is G1 (S40db9a42, the joined
+case's data). B472: the test hook `EVC_Config.Set_Voltages_For_Test`
+(proved), applied at `S076_Bench.Power_On` (`Set_Voltages`, kept over
+Reset) with `S076_Sequences.Engine_Voltages` (the M_VOLTAGE list of the
+first packet 11, else AC 25 kV; bit 0 where a comment says the engine
+runs on a line not fitted, 3.12.2.3.1); 3120200_06 passes in the three
+versions. B490: an explicit speed ends where the chart leaves the speed
+it had where the speed came by more than 5 km/h, either way
+(`S076_Run.Chart_Left`, in `Drive_To`); decision: a fall ends it too
+(+14 sequences: 3130234_08 and _01, 3131040_10, 4100103_16 and _24),
+although 3131020_04 stops at 68 instead of 70 (it reached 70 by holding
+78 km/h over the chart's fall; step 68 now judges the chart's speed
+against our curves, [workbook train]). Record 20 without M_SDMTYPE /
+M_SDMSUPSTAT (`S076_Run.JRU_20_Fields`): passed on an event 21 of the
+window with its numeric fields (V_PERM, V_SBI, V_TARGET, V_RELEASE at
+1 km/h, D_TARGET at 1 m) against the values the DMI shows, symbolic
+ones by the record alone; without a record 20 in the window not judged
+naming the field (555 steps today, 116 more expected absent). On the
+merged tree with record 20 at every change of the displayed
+information these become judged. B480 left: the window of the steps
+of one location includes the waits of an earlier failed step; a
+negative record 44 judged over its own part needs the step loop to mark
+where a failed step's wait began (the loop is not this package's).
+SUBSET-076: 875 / 1220 / 1095 before, 892 / 1212 / 1086 after, steps
+not judged 4689 -> 4665; 4 regressions understood, baseline re-recorded.

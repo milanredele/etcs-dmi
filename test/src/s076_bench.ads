@@ -52,6 +52,11 @@ package S076_Bench is
    --  The radio systems the on-board installs at the next Power_On
    --  (EVC_Config.Radio_Config_T.Systems); kept over Reset
    procedure Set_Radio_Systems (Systems : EVC_Config.Radio_Systems_T);
+
+   --  B472: the traction systems the engine accepts (M_VOLTAGE bits,
+   --  EVC_Config.Fixed_Train_T.Voltages) the on-board takes at the next
+   --  Power_On; kept over Reset
+   procedure Set_Voltages (Voltages : Natural);
    --  Powered down: no cycle of the on-board until Power_On
    procedure Power_Off;
    function Powered return Boolean;

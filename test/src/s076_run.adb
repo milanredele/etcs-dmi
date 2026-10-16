@@ -250,14 +250,33 @@ package body S076_Run is
    --  when the sequence sets it, whatever the brake (the steps that
    --  provoke a brake on purpose); then the braking model acts on it
    Forced_Speed : Integer := -1;
+   --  B490: the chart's speed where the explicit speed came (-1 none)
+   Explicit_Chart : Long_Float := -1.0;
 
    procedure Force_Explicit is
    begin
       if Explicit_Speed >= 0 and then Explicit_Speed /= Forced_Speed then
          B.Force_Speed (Explicit_Speed);
+         Explicit_Chart := Chart_Kmh;
       end if;
       Forced_Speed := Explicit_Speed;
    end Force_Explicit;
+
+   --  B490: an explicit speed ends where the chart leaves the speed it
+   --  had where the speed came by more than Chart_Band km/h, either way
+   --  (3130234_08: 25 km/h held from 1035 m past the chart's rise to 75
+   --  km/h at 1100 m; 4100103_16 and _24: a speed under the permitted
+   --  held past the chart's stop); the train follows the chart again.
+   --  Decision: a fall ends it too, although 3131020_04 reached its step
+   --  70 by holding the 78 km/h of step 55 over the chart's fall to 60.7
+   --  km/h (its step 68 now judges the chart's speed against our curves,
+   --  [workbook train])
+   Chart_Band : constant Long_Float := 5.0;
+
+   function Chart_Left return Boolean is
+     (Explicit_Speed >= 0 and then Explicit_Chart >= 0.0
+      and then Chart_Kmh >= 0.0
+      and then abs (Chart_Kmh - Explicit_Chart) > Chart_Band);
 
    --  B262: the speed asked for is the chart's; the train's is that of
    --  the bench's braking model (lower under a brake command, regaining
@@ -275,7 +294,8 @@ package body S076_Run is
          --  an explicit speed a brake has lowered and released is spent:
          --  the chart's speed again (4120100_01: the EB revoked on the
          --  desk's closure, the chart's stop at 655 m)
-         if B.Forced_Spent and then Explicit_Speed >= 0 then
+         if (B.Forced_Spent and then Explicit_Speed >= 0) or else Chart_Left
+         then
             Explicit_Speed := -1;
             Forced_Speed := -1;
          end if;
@@ -623,7 +643,9 @@ package body S076_Run is
 
    --  11.3.9: the seven items of Table 40 over the two windows, then the
    --  entry ends (167, 440) and the validation window follows
-   procedure Enter_Train_Data is
+   procedure Enter_Train_Data (At_Cm : Integer_64) is
+      T : constant S076_Sequences.Train_T :=
+        S076_Sequences.Train_At (Seq, At_Cm);
       function Digits_Of (N : Natural) return String is
          S : constant String := Natural'Image (N);
       begin
@@ -643,9 +665,19 @@ package body S076_Run is
       Type_Digits (Digits_Of (Brake_Percentage)); Enter_Field (3);
       Type_Digits ("200"); Enter_Field (4);   -- maximum speed, km/h
       Press (539, 440);                       -- [Next]
-      Key (1); Enter_Field (1);               -- axle load category
+      --  B471: the axle load category and the loading gauge of the
+      --  sequence's packet 11 (DMI_Train_Data: the categories A .. D4XL on
+      --  the keys 1 to 11, E4 and E5 after [More]; the gauges G1 .. GC
+      --  on the keys 1 to 4, "Out of GC" on 5), else A and "Out of GC"
+      case T.Axle_Load is
+         when 0 .. 10 => Key (T.Axle_Load + 1);
+         when 11 | 12 => Key (12); Key (T.Axle_Load - 10);
+         when others => Key (1);
+      end case;
+      Enter_Field (1);
       Key (7); Enter_Field (2);               -- airtight
-      Key (5); Enter_Field (3);               -- loading gauge
+      Key (if T.Gauge in 1 .. 4 then T.Gauge else 5);
+      Enter_Field (3);
       Press (457, 440);                       -- [Previous]
       Press (167, 440);                       -- entry complete
    end Enter_Train_Data;
@@ -1062,8 +1094,15 @@ package body S076_Run is
                end if;
             end;
          end if;
-         Enter_Train_Data;
-         return Pass ("DMI Train Data entered");
+         Enter_Train_Data (St.Dist_Cm);
+         declare
+            T : constant S076_Sequences.Train_T :=
+              S076_Sequences.Train_At (Seq, St.Dist_Cm);
+         begin
+            return Pass ("DMI Train Data entered (axle load"
+                         & Integer'Image (T.Axle_Load) & ", gauge"
+                         & Integer'Image (T.Gauge) & ")");
+         end;
       elsif Same (Verb, "validate")
         and then (Same (Item, "Train-Data")
                   or else Same (Item, "Flexible-Train-Data"))
@@ -3342,6 +3381,74 @@ package body S076_Run is
       return J;
    end JRU_Sent;
 
+   --  Record 20 (speed and distance monitoring information, SUBSET-027
+   --  4.2.4.20) expected without M_SDMTYPE / M_SDMSUPSTAT: judged when an
+   --  event 21 of the window records it, a field with a number (V_PERM,
+   --  V_SBI, V_TARGET, V_RELEASE at 1 km/h, D_TARGET at 1 m) against the
+   --  value the DMI shows at the end of the window (the record carries
+   --  the speeds the DMI is given), a symbolic one (<V1>, V_TSR) by the
+   --  record alone; no event 21 in the window: not judged, naming the
+   --  first field
+   function JRU_20_Fields (Positive : Boolean) return Judgement_T is
+      S       : constant B.State_T := B.State;
+      First   : Natural := 0;
+      Numbers : Natural := 0;
+   begin
+      for K in 5 .. Line.Count loop
+         if First = 0
+           and then (Ada.Strings.Fixed.Index (W (K), "V_") = 1
+                     or else Ada.Strings.Fixed.Index (W (K), "D_") = 1)
+         then
+            First := K;
+         end if;
+      end loop;
+      if not Positive or else not Any_Rec (21, -1, -1) then
+         return NJ (R_JRU_Not_Modelled,
+                    "20 " & (if First = 0 then "" else W (First) & " ")
+                    & (if Positive then "without a record 20 in the window"
+                       else "absent, without M_SDMTYPE / M_SDMSUPSTAT"));
+      end if;
+      for K in 5 .. Line.Count loop
+         declare
+            Wd   : constant String := W (K);
+            Eq   : constant Natural := Ada.Strings.Fixed.Index (Wd, "=");
+            Name : constant String :=
+              (if Eq > 0 then Wd (Wd'First .. Eq - 1) else Wd);
+            Txt  : constant String :=
+              (if Eq > 0 then Wd (Eq + 1 .. Wd'Last) else "");
+            Want : Integer := -1;
+            Got  : Integer := -1;
+         begin
+            if Txt'Length in 1 .. 5
+              and then (for all C of Txt => C in '0' .. '9')
+            then
+               Want := Integer'Value (Txt);
+               Got := (if not S.Has_Speed then -1
+                       elsif Name = "V_PERM" then S.V_Perm
+                       elsif Name = "V_SBI" then S.V_SBI
+                       elsif Name = "V_TARGET" then S.V_Target
+                       elsif Name = "V_RELEASE" then S.V_Release
+                       elsif Name = "D_TARGET" then S.D_Target
+                       else -2);
+            end if;
+            if Want >= 0 and then Got = -1 then
+               return NJ (R_JRU_Not_Modelled,
+                          "20 " & Wd & ": no speeds shown");
+            elsif Want >= 0 and then Got >= 0 then
+               if abs (Got - Want) > 1 then
+                  return Check (False, "JRU 20 " & Wd,
+                                Name & "=" & Img (Got) & " shown");
+               end if;
+               Numbers := Numbers + 1;
+            end if;
+         end;
+      end loop;
+      return Pass ("JRU 20 as event 21"
+                   & (if Numbers > 0
+                      then "," & Img (Numbers) & " fields as shown"
+                      else ""));
+   end JRU_20_Fields;
+
    function JRU_Window_Expect (St : Step_T) return Judgement_T is
       Positive : constant Boolean := Same (W (3), "record");
       Id_S     : constant String := W (4);
@@ -3620,15 +3727,7 @@ package body S076_Run is
                      end;
                   end loop;
                   if Mon_N = 0 and then Sup_N = 0 then
-                     --  the message recorded at all: event 21 records a
-                     --  change of the monitoring or of the status, not of
-                     --  the speeds (V_PERM ...), so only its presence is
-                     --  judged
-                     if Positive and then Any_Rec (21, -1, -1) then
-                        return Pass ("JRU 20 as event 21");
-                     end if;
-                     return NJ (R_JRU_Not_Modelled,
-                                "20 without M_SDMTYPE / M_SDMSUPSTAT");
+                     return JRU_20_Fields (Positive);
                   end if;
                   --  event 21 is recorded when the monitoring or the
                   --  status changes: a record of message 20 for another
@@ -5292,6 +5391,8 @@ package body S076_Run is
       else
          B.Set_Radio_Systems (EVC_Config.GSMR_Only);
       end if;
+      B.Set_Voltages (S076_Sequences.Engine_Voltages
+                        (Seq, EVC_Config.Default_Fixed_Train.Voltages));
       Step_Start_Ms := 0;
       Hold_Speed := False;
       Train_Configuration := 1;
