@@ -263,6 +263,17 @@ package S076_Sequences is
    end record;
    type Factor_Sets_T is array (1 .. Max_P3) of Factors_T;
 
+   --  B471, B472: the train of the packet 11 (Validated train data) of a
+   --  message 129: the distance of the message, M_AXLELOADCAT,
+   --  M_LOADINGGAUGE and the M_VOLTAGE list as a bit mask (bit n for
+   --  M_VOLTAGE n, as EVC_Config.Voltages); -1 for a field not given
+   Max_Trains : constant := 4;
+   type Train_T is record
+      Dist_Cm : Integer_64 := 0;
+      Axle_Load, Gauge, Voltages : Integer := -1;
+   end record;
+   type Trains_T is array (1 .. Max_Trains) of Train_T;
+
    type Sequence_T is record
       Name      : Text_T;
       SV        : Natural := 0;     -- 21, 22, 30
@@ -310,6 +321,10 @@ package S076_Sequences is
       --  its brake position (Train (main), "Current brake position:"):
       --  0 not given, 1 passenger in P, 2 freight in P, 3 freight in G
       WB_Brake_Position : Natural := 0;
+      --  B471, B472: the trains of the packets 11 of its messages 129, the
+      --  first Max_Trains
+      Trains      : Trains_T;
+      Train_Count : Natural := 0;
       --  its braking curve results, in the order of the workbooks
       Curves      : Curve_Sets_T;
       Curve_Count : Natural := 0;
@@ -317,6 +332,10 @@ package S076_Sequences is
 
    --  The sequence read last (Read): too big for a stack, one at a time
    Loaded : aliased Sequence_T;
+
+   --  B471: the train of the first message 129 at or after a location,
+   --  else of the last one; all fields -1 when the sequence has none
+   function Train_At (S : Sequence_T; Dist_Cm : Integer_64) return Train_T;
 
    --  Read the sequence file at Path into Loaded; Ok is False when the
    --  file could not be read

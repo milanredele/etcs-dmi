@@ -623,7 +623,9 @@ package body S076_Run is
 
    --  11.3.9: the seven items of Table 40 over the two windows, then the
    --  entry ends (167, 440) and the validation window follows
-   procedure Enter_Train_Data is
+   procedure Enter_Train_Data (At_Cm : Integer_64) is
+      T : constant S076_Sequences.Train_T :=
+        S076_Sequences.Train_At (Seq, At_Cm);
       function Digits_Of (N : Natural) return String is
          S : constant String := Natural'Image (N);
       begin
@@ -643,9 +645,19 @@ package body S076_Run is
       Type_Digits (Digits_Of (Brake_Percentage)); Enter_Field (3);
       Type_Digits ("200"); Enter_Field (4);   -- maximum speed, km/h
       Press (539, 440);                       -- [Next]
-      Key (1); Enter_Field (1);               -- axle load category
+      --  B471: the axle load category and the loading gauge of the
+      --  sequence's packet 11 (DMI_Train_Data: the categories A .. D4XL on
+      --  the keys 1 to 11, E4 and E5 after [More]; the gauges G1 .. GC
+      --  on the keys 1 to 4, "Out of GC" on 5), else A and "Out of GC"
+      case T.Axle_Load is
+         when 0 .. 10 => Key (T.Axle_Load + 1);
+         when 11 | 12 => Key (12); Key (T.Axle_Load - 10);
+         when others => Key (1);
+      end case;
+      Enter_Field (1);
       Key (7); Enter_Field (2);               -- airtight
-      Key (5); Enter_Field (3);               -- loading gauge
+      Key (if T.Gauge in 1 .. 4 then T.Gauge else 5);
+      Enter_Field (3);
       Press (457, 440);                       -- [Previous]
       Press (167, 440);                       -- entry complete
    end Enter_Train_Data;
@@ -1062,8 +1074,15 @@ package body S076_Run is
                end if;
             end;
          end if;
-         Enter_Train_Data;
-         return Pass ("DMI Train Data entered");
+         Enter_Train_Data (St.Dist_Cm);
+         declare
+            T : constant S076_Sequences.Train_T :=
+              S076_Sequences.Train_At (Seq, St.Dist_Cm);
+         begin
+            return Pass ("DMI Train Data entered (axle load"
+                         & Integer'Image (T.Axle_Load) & ", gauge"
+                         & Integer'Image (T.Gauge) & ")");
+         end;
       elsif Same (Verb, "validate")
         and then (Same (Item, "Train-Data")
                   or else Same (Item, "Flexible-Train-Data"))
