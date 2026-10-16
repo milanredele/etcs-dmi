@@ -6653,3 +6653,22 @@ brief starts from the regression, not from the fix. Both runner agents
 and the JRU agent met on record 20 without a conflict because the brief
 named the record's fields on both sides. Open items: doc/BACKLOG.csv (41
 open after this round).
+
+### The level crossing substitution from its regression, the linking trip in SR level 2, the session after message 32, the loading gauge message (e5/level2-left, 2026-10-16)
+
+B513 done: the `EVC_SDM` fix of c83777c re-applied (`LX_Substitution`,
+5.16.3.2), 3130700_07 failed 75 -> blocked 78. The regression of
+3130700_04 step 65 was not caused by it: on master that step passed only
+because the LX start at D_LX 0 behind the train braked it to a stop; with
+the substitution the train runs on at the runner's 12 km/h, the
+sequence's V5 as the ERA tool computes it unrounded, over our V_PBD of 10
+rounded down by 3.11.11.6 (S8727c744, s076). B522 done: BG10 was read in
+SR, where the linking is not checked (4.5.2.2), so its window stayed the
+expected one and the check of FS found it passed; a group read while the
+linking is not checked now ends the windows up to it without a reaction
+(3.4.4.4.6 a), 3.4.4.2.1.1 b), `EVC_Position.Decide_Linking`): nine
+sequences move on. B527 dropped: the same RBC entered does nothing
+(3.5.3.4.1); message 32 comes 17.1 s after our 155, past A.3.1's 15 s,
+and 3.5.3.7.3 has restarted the establishment: the runner's timing
+(B570). B528 not started. SUBSET-076: 904 / 1205 / 1081 before, 901 /
+1205 / 1084 after (3 regressions understood, 12 improvements).
