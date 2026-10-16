@@ -6653,3 +6653,49 @@ brief starts from the regression, not from the fix. Both runner agents
 and the JRU agent met on record 20 without a conflict because the brief
 named the record's fields on both sides. Open items: doc/BACKLOG.csv (41
 open after this round).
+
+### The E5 group's remainder re-traced, the runner's Level confirm and conditional steps (e5/runner-e5-group, 2026-10-16)
+
+Two rules of the runner's driver. "The driver confirms Level" on a Level
+window that proposes no level (the level not valid after a power-up)
+selects the level the steps settle on (`S076_Run.Selected_Level`)
+before Enter, as a select step does (`S076_Run.DMI_Input`; B500 done:
+4100103_09 passes in the three system versions, _15, _26 and 5040500_02
+stop later at a radio block or the runner). A step conditional on the
+initial mode of its test case ("only if initial mode is SB mode",
+"isn't SM"; the initial mode is the mode before of the case's first row,
+the nearest step with row 1) is not taken when the case began in another
+mode (`S076_Run.Initial_Mode_Excludes`, reason optional; B524 done), and
+a failed step of a choice made at the sequence's start ("only if
+USE_FT... has been chosen") is not judged: 3110500_02 moves from step 70
+to step 293 (B591).
+
+The signatures of the E5 and onboard groups left untraced last round
+were traced to their first failure on master 846aba0 (one trace each,
+`VERBOSE=1 obj/evc_s076_run`, the scn's step); their triage texts name
+the step and the backlog line, "(re-traced 2026-10-16, one trace to the
+first failure)": a first look, the clause of each shape is for the owner
+to read. None was the runner's; one was the sequences'.
+
+| cause | signatures (sequences) | backlog |
+|---|---|---|
+| ours, level transitions | S0578fc93, S127a1224, S81c940f5, S41e5392f, S863aab40, S65c13939 (18) | B580 |
+| ours, level symbol | S3f6059ba, S52fbd3cd, Sb12d0fcd (9) | B581 |
+| ours, network and connection | ~registration, ~disconnect, Sce3c7004, Se3765f9b, S7e2edbdf (18) | B582 |
+| ours, messages to the RBC | ~150, ~147, Sa32fcae0, ~138, ~158, Sc18cdb2f, Sf95a7750 (20) | B583 |
+| ours, mode profiles and modes | Sac5a37a6, S5fab4e40, S112c80a6, S5967fccc, S0ebd65fd (12) | B584 |
+| ours, trips | Sd4cbc324, S61d2b0d5 (5) | B585 |
+| ours, track ahead free | S3e2df66d, S1d2c2503 (6) | B586 |
+| ours, Train integrity button | S908191ec (3) | B587 |
+| ours, status messages and symbols | S793ccb34, S56315725, Sfb725745, Se341da87, Sa06b325b (15) | B588 |
+| ours, planning gradients | S4a80e57d (3) | B589 |
+| ours, JRU record calls | S0c7e8942, Scefec287, S0e2fe215, S707f6e73 (15) | B590 |
+| ours, after the conditional step | S256875a4 (3, new) | B591 |
+| s076 | S83896b5d (6): record 21 Bit27 after the FS symbol, 929 steps of sv30 record Bit26 | |
+
+The seven first failures seen last round and not written up are among
+them (4070201_03 B580, 3060800_01 B583, 9990500_02 B586, 5100200_01
+B580, 4080416_01 B589, 3060500_05 B587, 5170200_03 B581). B480 left with
+what was learnt (the negative step judges the JRU capture of the whole
+window; a mark where a failed step's wait began is the fix, after the
+JRU capture's rewrite of `S076_Bench`).
