@@ -374,6 +374,13 @@ is
             Put_Event (Event_Deleted, Level_T'Pos (Order.Target), 0);
             Order := (others => <>);
          end if;
+         --  SUBSET-027 4.2.4.11: the driver's selection is recorded also
+         --  when it is the level in force (Switch records nothing then)
+         if Level_T'Val (Natural (Code) - 2) = Current
+           and then Current_Status = Valid
+         then
+            Put_Event (Event_Switched, Level_T'Pos (Current), 0);
+         end if;
          Switch (Level_T'Val (Natural (Code) - 2), 0, False, C.Now_Ms);
       end if;
 

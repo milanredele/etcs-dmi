@@ -373,6 +373,26 @@ package body EVC_Test_Modes is
              "JRU 48: NID_MN 1234 left adjusted, F filled (4.2.4.48)");
    end Scenario_JRU_Inputs;
 
+   --  SUBSET-027 4.2.4.11 (EVC_Levels.Evaluate): the driver's selection of
+   --  the level in force (SUBSET-026 5.4.3.2 S2, 5.10.3.15.1) is recorded
+   --  like a selection that switches the level, event 40 kind 1 cause 0
+   procedure Scenario_JRU_Level_Again is
+      N : Natural;
+   begin
+      Start_E4;
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (11, 4, 0)));
+      Stand_X (200);
+      N := JRU_Seen (40);
+      Check (N >= 1 and then JRU_Last (40, 2) = 1,
+             "JRU 40: the driver's level 1 recorded as switched");
+      Input (DMI, Frame (EVC_DMI_Port.MSG_DRIVER_ACTION, (11, 4, 0)));
+      Stand_X (200);
+      Check (JRU_Seen (40) = N + 1 and then JRU_Last (40, 2) = 1
+             and then JRU_Last (40, 4) = 0,
+             "JRU 40: level 1 selected again recorded, kind 1, cause 0 "
+             & "(SUBSET-027 4.2.4.11)" & Natural'Image (JRU_Seen (40) - N));
+   end Scenario_JRU_Level_Again;
+
    --  5.4.3.2 in level 1: S0, S1, S2, S12, S13, S20, S24; 4.6.3 [8]; the
    --  mission (5.4.6.1); SR (4.4.11); FS on the first MA (4.6.3 [32]).
    --  The steps in the order of SUBSET-076 5040300_01 (SV30): cab A,
