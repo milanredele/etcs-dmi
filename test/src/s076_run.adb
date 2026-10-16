@@ -250,14 +250,33 @@ package body S076_Run is
    --  when the sequence sets it, whatever the brake (the steps that
    --  provoke a brake on purpose); then the braking model acts on it
    Forced_Speed : Integer := -1;
+   --  B490: the chart's speed where the explicit speed came (-1 none)
+   Explicit_Chart : Long_Float := -1.0;
 
    procedure Force_Explicit is
    begin
       if Explicit_Speed >= 0 and then Explicit_Speed /= Forced_Speed then
          B.Force_Speed (Explicit_Speed);
+         Explicit_Chart := Chart_Kmh;
       end if;
       Forced_Speed := Explicit_Speed;
    end Force_Explicit;
+
+   --  B490: an explicit speed ends where the chart leaves the speed it
+   --  had where the speed came by more than Chart_Band km/h, either way
+   --  (3130234_08: 25 km/h held from 1035 m past the chart's rise to 75
+   --  km/h at 1100 m; 4100103_16 and _24: a speed under the permitted
+   --  held past the chart's stop); the train follows the chart again.
+   --  Decision: a fall ends it too, although 3131020_04 reached its step
+   --  70 by holding the 78 km/h of step 55 over the chart's fall to 60.7
+   --  km/h (its step 68 now judges the chart's speed against our curves,
+   --  [workbook train])
+   Chart_Band : constant Long_Float := 5.0;
+
+   function Chart_Left return Boolean is
+     (Explicit_Speed >= 0 and then Explicit_Chart >= 0.0
+      and then Chart_Kmh >= 0.0
+      and then abs (Chart_Kmh - Explicit_Chart) > Chart_Band);
 
    --  B262: the speed asked for is the chart's; the train's is that of
    --  the bench's braking model (lower under a brake command, regaining
@@ -275,7 +294,8 @@ package body S076_Run is
          --  an explicit speed a brake has lowered and released is spent:
          --  the chart's speed again (4120100_01: the EB revoked on the
          --  desk's closure, the chart's stop at 655 m)
-         if B.Forced_Spent and then Explicit_Speed >= 0 then
+         if (B.Forced_Spent and then Explicit_Speed >= 0) or else Chart_Left
+         then
             Explicit_Speed := -1;
             Forced_Speed := -1;
          end if;
