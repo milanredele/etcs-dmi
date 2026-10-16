@@ -186,7 +186,9 @@ is
 
    --  1 level switched (Level_T'Pos, the cause: 0 the driver, 1 an
    --    immediate order, 2 the transition location of an announcement,
-   --    3 a conditional order, 4 an order kept in SH, PS or SM),
+   --    3 a conditional order, 4 an order kept in SH, PS or SM; with
+   --    cause 0 also the driver's selection of the level in force,
+   --    SUBSET-027 4.2.4.11),
    --  2 order stored (the target, 1 an announcement, 2 kept for later),
    --  3 order deleted (the target, the cause: 0 the driver, 1 a mode
    --    entered, 2 replaced),

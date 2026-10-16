@@ -62,6 +62,7 @@ package body EVC_Core
                                    TIU_Sent,
                                    TIU_Reasons_Sent,
                                    Supervision_Reported,
+                                   SDM_Shown_Reported,
                                    Overrun_Reported,
                                    Entering_Shown,
                                    Runaway_Shown,
@@ -214,6 +215,19 @@ is
    TIU_Reasons_Sent     : TIU_Reasons_T := 0;
    No_Supervision       : constant Unsigned_32 := 16#FFFF_FFFF#;
    Supervision_Reported : Unsigned_32 := No_Supervision;
+
+   --  The speed and distance monitoring information as displayed to the
+   --  driver (MSG_SPEED_STATE, the TTI of MSG_STATUS) at the resolution of
+   --  record 20 of SUBSET-027 4.2.4.20 (1 km/h, 1 m): the target only
+   --  where the DMI shows it, the release speed only while shown
+   type SDM_Shown_T is record
+      V_Perm, V_SBI, V_Target, V_Release, TTI : Unsigned_16 := 0;
+      D_Target : Unsigned_32 := 0;
+   end record;
+   No_SDM_Shown : constant SDM_Shown_T :=
+     (V_Perm | V_SBI | V_Target | V_Release | TTI => 16#FFFF#,
+      D_Target => 16#FFFF_FFFF#);
+   SDM_Shown_Reported : SDM_Shown_T := No_SDM_Shown;
    Overrun_Reported     : EVC_Bytes.Byte := 0;
    --  phase E4: the indication "Entering FS" (4.4.9.1.4) or "Entering
    --  OS" (4.4.12.1.7) shown: its catalogue entry, 0 none
@@ -370,6 +384,7 @@ is
       TIU_Sent := 0;
       TIU_Reasons_Sent := 0;
       Supervision_Reported := No_Supervision;
+      SDM_Shown_Reported := No_SDM_Shown;
       Overrun_Reported := 0;
       Entering_Shown := 0;
       Runaway_Shown := False;
@@ -2749,8 +2764,10 @@ is
 
    --  8h. The speed and distance monitoring and the brake commands
    --  (phase E3, 3.13, 3.14): MSG_SPEED_STATE every cycle; the JRU records
-   --  of what changed (events 20 the brake commands, 21 the supervision,
-   --  22 an overrun of the EOA or the SvL); the commands to the train
+   --  of what changed (events 20 the brake commands, 21 the supervision
+   --  or any of the information displayed to the driver (record 20 of
+   --  SUBSET-027 4.2.3, 4.2.4.20; at most one a cycle), 22 an overrun of
+   --  the EOA or the SvL); the commands to the train
    --  interface (the TIU output) when they change, and every cycle while
    --  a command is given. D, Text_SB, Text_EB: as Send_Status.
    procedure Send_Supervision
@@ -2758,10 +2775,10 @@ is
       Text_SB, Text_EB : Boolean)
      with Global => (Input  => (Current_Mode, Cycle_Count, Clock_Ms,
                                 SDM_Result, Brake_Output, Speed_State,
-                                EVC_Levels.State),
+                                Status_TTI_Sent, EVC_Levels.State),
                      In_Out => (TIU_Sent, TIU_Reasons_Sent,
-                                Supervision_Reported, Overrun_Reported,
-                                EVC_Outbox.Queue))
+                                Supervision_Reported, SDM_Shown_Reported,
+                                Overrun_Reported, EVC_Outbox.Queue))
    is
       Commands : constant EVC_Bytes.Byte :=
         TIU_Commands (D, Text_SB, Text_EB);
@@ -2779,6 +2796,21 @@ is
       Overrun  : constant EVC_Bytes.Byte :=
         (if SDM_Result.EOA_Passed then 1 else 0)
         or (if SDM_Result.SvL_Passed then 2 else 0);
+      Target_Shown : constant Boolean :=
+        Speed_State.Monitoring /= 0
+        or else (Speed_State.Flags and Flag_CSM_Target) /= 0;
+      Shown_Now : constant SDM_Shown_T :=
+        (V_Perm    => Speed_State.V_Perm,
+         V_SBI     => Speed_State.V_SBI,
+         V_Target  => (if Target_Shown then Speed_State.V_Target else 0),
+         V_Release =>
+           (if (Speed_State.Flags and Flag_Release_Shown) /= 0
+            then Speed_State.V_Release else 0),
+         TTI       => Status_TTI_Sent,
+         D_Target  =>
+           (if Target_Shown
+            then Unsigned_32'Min (Speed_State.D_Target, 32_766)
+            else 32_767));
    begin
       EVC_Outbox.Put (DMI, Speed_State_Frame (Speed_State));
       if Commands /= TIU_Sent or else Why /= TIU_Reasons_Sent then
@@ -2791,7 +2823,8 @@ is
                     EVC_Bytes.Byte (Why and 16#FF#),
                     EVC_SDM.Status_T'Pos (SDM_Result.Status)));
       end if;
-      if Supervision_Now /= Supervision_Reported
+      if (Supervision_Now /= Supervision_Reported
+          or else Shown_Now /= SDM_Shown_Reported)
         and then SDM_Result.Active
       then
          EVC_Outbox.Put
@@ -2802,6 +2835,7 @@ is
                     EVC_Bytes.Byte (SDM_Result.MRDT_Id)));
       end if;
       Supervision_Reported := Supervision_Now;
+      SDM_Shown_Reported := Shown_Now;
       for Bit in EVC_Bytes.Byte range 1 .. 2 loop
          --  not unrolled by the proof, nothing needed after the loop
          pragma Loop_Invariant (True);
@@ -3061,7 +3095,8 @@ is
                                 EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
-                                Supervision_Reported, Overrun_Reported,
+                                Supervision_Reported, SDM_Shown_Reported,
+                                Overrun_Reported,
                                 Entering_Shown, Runaway_Shown,
                                 Odometer_Shown, Unsuitable_Shown,
                                 Status_Rev_Sent, Status_Slip_Sent,

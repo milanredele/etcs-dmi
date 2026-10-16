@@ -26,6 +26,7 @@ package EVC_Test_Modes is
       procedure Scenario_E4_Continue_Shunting;
       procedure Scenario_E5P_JRU_Records;
       procedure Scenario_JRU_Inputs;
+      procedure Scenario_JRU_Level_Again;
 
       --  A new on-board in SB at standstill, the cab A active when Cab
       --  (for the level 2 start of mission of EVC_Test_Sessions)

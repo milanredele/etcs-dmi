@@ -10,6 +10,7 @@ package EVC_Test_Supervision is
       procedure Scenario_SDM_Precision;
       procedure Scenario_SDM_Ceiling;
       procedure Scenario_SDM_Approach;
+      procedure Scenario_SDM_JRU_Every_Change;
       procedure Scenario_SDM_Release;
       procedure Scenario_SDM_RSM_Start_Reduced;
       procedure Scenario_SDM_Status_Order;
