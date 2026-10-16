@@ -6593,3 +6593,63 @@ negative record 44 judged over its own part needs the step loop to mark
 where a failed step's wait began (the loop is not this package's).
 SUBSET-076: 875 / 1220 / 1095 before, 892 / 1212 / 1086 after, steps
 not judged 4689 -> 4665; 4 regressions understood, baseline re-recorded.
+
+### E5 integration after the twenty-sixth round (2026-10-16)
+
+Merged: e5/runner-retriage (the stale triage lines of the E5 and onboard
+groups re-traced, 18 signatures rewritten by cause: eight on-board defects
+found behind texts that still said "not written yet" or "phase 2" (B520 to
+B522, B525 to B529), two runner rules (B524, the driver's Radio data press
+fixed in `S076_Run.DMI_Input`), one DMI decision (B523), 6060302's version
+expectation at 100 m (B530); about 85 sequences of the E5 group left
+untraced), e5/authority-left (5100300_07 the sequence's data by 5.10.3.1.4;
+3130700_07 ours: a level crossing not protected whose start the train has
+passed at or below V_LX is a speed restriction, 5.16.3.2, the `EVC_SDM`
+fix reverted for a regression of 3130700_04, B513; the two-balise level 0
+to level 1 case of 3050300_01 with its scenario, B510; B474 tried on every
+message 24 and reverted for 15 regressions, B512; B511; no on-board change
+kept), e5/jru-actions (the driver's selection of the level in force
+recorded, SUBSET-027 4.2.4.11, `EVC_Levels.Evaluate`; JRU record 20 at
+every change of the displayed speed and distance monitoring information,
+SUBSET-027 4.2.3, `EVC_Core.Send_Supervision` with `SDM_Shown_T`, one
+record per cycle under a curve, B400 done; four of the five
+M_DRIVERACTIONS signatures are the sequences' data, the fifth the runner's
+Level confirm, B500; B430 dropped: records 30 to 32 and 39 follow a change
+of the input state; B431 left with a continuation record proposed) and
+e5/runner-train (the sequence's axle load category and loading gauge from
+its packet 11, `S076_Sequences.Trains`, B471; the engine's traction
+systems through `EVC_Config.Set_Voltages_For_Test`, B472, 3120200_06
+passes; an explicit speed ends where the chart moves 5 km/h from its value
+at the input, `S076_Run.Chart_Left`, B490; record 20 steps judged by their
+fields against the DMI values, `S076_Run.JRU_20_Fields`; B480 left; B540).
+
+Merge by hand: the backlog three-way by id, the plan subsections appended,
+one triage line rewritten on two sides (S40db9a42: both texts kept), the
+baselines merged by git without a conflict and confirmed by the union's
+run; no source conflict.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12133
+checks, dmi_test 2168), the full proof 11444 checks, 0 unproved (margin
+47726 steps), cross build and stack (margin 5632 B), wasm and both smokes
+0 failures. SUBSET-076: 875 / 1220 / 1095 before, 904 / 1205 / 1081 after,
+steps not judged 4689 -> 4434 (record 20 steps without a record in the
+window 683 -> 384 once the on-board writes one at every change and the
+runner compares the fields), 0 regressions, 0 untriaged. Matrix: 287
+clauses left, unchanged (no row done this round: the round was analysis,
+recording and the runner).
+
+Measurements (requests by message id, duration, final context, cost):
+jru-actions 136 / 28 min / 164k / 7.8; authority-left 115 / 27 min / 178k
+/ 7.3; runner-retriage 100 / 23 min / 149k / 5.5; runner-train 132 / 34
+min / 192k / 9.0. All within budget, every "Done" list complete.
+
+Lessons: a triage text is a snapshot; the re-trace of the E5 group found
+eight on-board defects and three data cases behind 60 sequences that the
+report had been counting as "radio not written yet" for weeks, so a
+re-trace of stale texts belongs in every few rounds, not once. Two
+on-board fixes that were right by the clause were reverted by their agent
+for regressions it could not explain in budget (B512, B513): the next
+brief starts from the regression, not from the fix. Both runner agents
+and the JRU agent met on record 20 without a conflict because the brief
+named the record's fields on both sides. Open items: doc/BACKLOG.csv (41
+open after this round).
