@@ -403,6 +403,10 @@ package body EVC_Test_Procedures is
    begin
       ST.Put (W, P, Build_OK);
    end Add;
+   procedure Add (P : ST.T65.Packet_T) is
+   begin
+      ST.Put (W, P, Build_OK);
+   end Add;
 
    --  The group is complete; Version: the M_VERSION of its telegrams
    --  (48 is 3.0 here, 64 a version 4.0 this on-board does not support)
@@ -1631,6 +1635,37 @@ package body EVC_Test_Procedures is
       Check (Mode_Byte = Code_FS and then not LX_Shown,
              "5.16: the second level crossing passed at V_LX, its "
              & "indication ended");
+
+      --  the LX information arrives with the train beyond its start
+      --  (SUBSET-076 3130700_07: D_LX 0 from the group just passed)
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 0, 300, Guarded => False, Kmh => 70));
+      Close;
+      Run_Front (500, 60);
+      Check (Mode_Byte = Code_FS and then not EB and then not SB
+             and then V_Perm = 70,
+             "5.16.3.2: the train already beyond the LX start at or below "
+             & "V_LX, the LX speed restriction in the MRSP at once: its "
+             & "start neither passed as EOA (4.6.3 [12]) nor braked to");
+
+      --  the same with a lower speed restriction from the same group
+      --  (SUBSET-076 3130700_04: the LX at D_LX 0 with a PBD and a TSR)
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 5_000, Length_M => 6_000, Kmh => 120);
+      Close;
+      Group (2, 450);
+      Add (ST.Level_Crossing (1, 0, 300, Guarded => False, Kmh => 70));
+      Add (ST.TSR (1, 0, 2_000, 40));
+      Close;
+      Run_Front (500, 30);
+      Check (Mode_Byte = Code_FS and then not EB and then not SB
+             and then V_Perm = 40 and then Monitoring = 0,
+             "5.16.3.2: the LX start substituted, the lower restriction of "
+             & "the MRSP still supervised: ceiling speed monitoring at the "
+             & "TSR's 40 km/h, no brake");
 
       --  too fast at that location: its start stays the EOA
       Begin_Scenario (M_FS, L1);
