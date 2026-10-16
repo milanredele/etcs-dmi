@@ -879,6 +879,24 @@ package body EVC_Test_Procedures is
       Check (Seen_SS (1, 2),
              "3.14.1.6 fulfilled: the 30 s of Balise read error start "
              & "(entry 1, event 2)");
+
+      --  the linked group read in SR, where the linking is not checked,
+      --  then FS (SUBSET-076 3070300_03: BG10 read in SR level 2)
+      Begin_Scenario (M_SR, L1);
+      Group (1, 0);
+      Add (ST.Linking ((100, 300), (9, 10), Reaction => 0));
+      Close;
+      Run_Front (100, 30);
+      Group (9, 100);
+      Close;
+      Run_Front (300, 30);
+      Line_Group (EOA_M => 1_500, NID => 10, At_M => 300);
+      Close;
+      Run_Front (320, 30);
+      Check (Mode_Byte = Code_FS,
+             "3.4.4.4.6 a), 3.4.4.2.1.1 b): the windows of the groups read "
+             & "in SR no longer supervised, FS entered without a linking "
+             & "trip (3.16.2.3.1 b))");
    end Scenario_Linking;
 
    --  4.6.3 [69] and [65]
