@@ -617,4 +617,27 @@ package body EVC_Test_Levels is
              & "2), 4.8.3 A [4])");
    end Scenario_L2_Order_With_L1_MA;
 
+   --  4.8.1.3.1 2): in level 0 (UN) a group carries an immediate order to
+   --  level 1 and a level 1 MA: stored in level 0 (4.8.3 [1]), taken
+   --  again in level 1 at once, the transition makes FS, no trip by
+   --  [39]. SUBSET-076 3050300_01 (BG2d at 450 m)
+   procedure Scenario_L1_Order_With_L1_MA_In_L0 is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_UN, L0);
+      Stand_X (100);
+      Add_Group (Group (1, 50));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, -1));
+      Carry (Track_N, 0, MA_Of ((1 => 500), 80));
+      Carry (Track_N, 0, Grad (((0, 0), (600, End_Mark))));
+      Carry (Track_N, 0, SSP (((0, 80, False), (600, End_Mark, False))));
+      Run_X (10_000);
+      Check (EVC_Levels.Level = L1 and then SI.Current.MA.Present
+             and then EVC_Core.Mode = M_FS,
+             "levels: the level 1 MA of the group of an immediate order "
+             & "from level 0 to level 1 stored in level 0 and taken in "
+             & "level 1 at once (4.8.1.3.1 2), 4.8.3 [1]): FS, no trip "
+             & "by 4.6.3 [39]");
+   end Scenario_L1_Order_With_L1_MA_In_L0;
+
 end EVC_Test_Levels;

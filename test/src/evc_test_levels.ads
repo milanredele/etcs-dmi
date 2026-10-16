@@ -12,6 +12,7 @@ package EVC_Test_Levels is
    --  4.8.1.3.1: the level 1 MA of the group of an immediate order to
    --  level 2
    procedure Scenario_L2_Order_With_L1_MA;
+   procedure Scenario_L1_Order_With_L1_MA_In_L0;
    --  e5/balise-buffer: 4.8.3 [1], 4.8.5 for balise groups
    procedure Scenario_L1_Balise_Buffer;
    procedure Scenario_L1_Balise_Buffer_Deleted;

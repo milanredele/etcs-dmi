@@ -6502,3 +6502,21 @@ S5fab4e40, Scefec287, Sb12d0fcd, Se3765f9b, S793ccb34, S0ebd65fd,
 S56315725, Sa06b325b, S707f6e73, Se341da87 (about 40). SUBSET-076: 875 /
 1220 / 1095 before, 875 / 1207 / 1108 after, 0 regressions, 16
 improvements, no untriaged signature.
+### The level 1 MA in level 2, the stale transition signatures, message 24's packets (e5/authority-left, 2026-10-16)
+
+Sbfa49d0b split in two: 5100300_07 is the sequence's data (the level 1
+MA of BG33d, EOA 450 m, is still supervised in level 2 by 5.10.3.1.4;
+the train is placed at 500 m in FS before the RBC's first MA), triaged
+s076; 3130700_07 is ours: the level crossing not protected of message 3
+at D_LX 0 behind the train trips as a temporary EOA passed (3.12.5.8)
+where 5.16.3.2 substitutes it at once. A fix in `EVC_SDM` (the targets
+of the cycle of `LX_Release` rebuilt without the temporary EOA, proved)
+moved 3130700_07 to blocked at step 78 but failed 3130700_04 at step 65:
+reverted, B513. S2f278aca: 3050300_01 re-traced, a trip by 4.6.3 [39]
+at an immediate order from level 0 to level 1 whose MA is in the
+group's second balise; the one-balise case passes natively
+(`EVC_Test_Levels.Scenario_L1_Order_With_L1_MA_In_L0`, 4.8.1.3.1 2)),
+cause left (B510). S256f4faf not re-traced (B511). B474 tried (every
+message 24 with packets to the stores, 8.7.9): 60 improvements, 15
+regressions in five families, reverted (B512). B440 and B473 not
+started. SUBSET-076 unchanged: 875 / 1220 / 1095.
