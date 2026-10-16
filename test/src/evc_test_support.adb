@@ -154,6 +154,23 @@ package body EVC_Test_Support is
       end loop;
       return True;
    end Parse;
+   function JRU_Field (Event : Natural; Offset : Natural; Bits : Positive)
+     return Natural is
+   begin
+      for I in reverse 1 .. Rec_Count loop
+         if Recs (I).Port = JRU and then Byte_At (I, 1) = Event then
+            declare
+               P : Byte_Array renames Out_Buf (Recs (I).First .. Recs (I).Last);
+            begin
+               return Natural (EVC_JRU_Messages.Get_Bits
+                                 (P, EVC_JRU_Messages.Body_Bit (P) + Offset,
+                                  Bits));
+            end;
+         end if;
+      end loop;
+      return Natural'Last;
+   end JRU_Field;
+
    function Find_DMI (The_Type : Byte) return Natural is
    begin
       for I in 1 .. Rec_Count loop

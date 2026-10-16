@@ -189,6 +189,12 @@ package EVC_Test_Support is
    function JRU_NID (I : Positive) return Natural is
      (Natural (Out_Buf (Recs (I).First)));
 
+   --  The Bits bits Offset bits after the header of the last JRU record
+   --  of the last Take whose view is the event Event (a complementary
+   --  variable of SUBSET-027 4.2.4); Natural'Last when there is none
+   function JRU_Field (Event : Natural; Offset : Natural; Bits : Positive)
+     return Natural;
+
    --  The DMI record of this message type in the last Take; 0 if none
       function Find_DMI (The_Type : Byte) return Natural;
 

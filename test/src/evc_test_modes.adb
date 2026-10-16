@@ -367,6 +367,11 @@ package body EVC_Test_Modes is
              and then JRU_Last (124, 4) = 16#2C#,
              "JRU 24 (event 124): Q_RBCENTRY 3, NID_RBC 300 (4.2.4.24) "
              & Integer'Image (JRU_Last (124, 2)));
+      Check (JRU_Field (124, 2, 10) = 1 and then JRU_Field (124, 12, 14) = 300
+             and then JRU_Field (124, 26, 16) = 16#12FF#
+             and then JRU_Field (124, 42, 16) = 16#FFFF#,
+             "SUBSET-027 4.2.4.24: the message 24 with NID_C 1, NID_RBC 300 "
+             & "and NID_RADIO 12 padded with F");
       Send (Text_Entry (4, "1234"));
       Check (JRU_Last (48, 2) = 16#12# and then JRU_Last (48, 3) = 16#34#
              and then JRU_Last (48, 4) = 16#FF#,
