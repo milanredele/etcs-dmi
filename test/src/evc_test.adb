@@ -313,6 +313,7 @@ begin
    Scenario_Shortening;
    Scenario_Shortening_Cover;
    Scenario_Emergency_Stops;
+   Scenario_LX_By_Radio;
    Scenario_Conditional_Stop_Ends;
    Scenario_SR_Authorisation;
    Scenario_Trip_L2;

@@ -819,7 +819,10 @@ is
                       in ETCS_Catalogue.Track_P70 | ETCS_Catalogue.Track_P73
                          | ETCS_Catalogue.Track_P74
                          | ETCS_Catalogue.Track_P79
-                         | ETCS_Catalogue.Track_P180)
+                         | ETCS_Catalogue.Track_P180
+                    or else (EVC_Received.Last_Packet_Kind (I)
+                               = ETCS_Catalogue.Track_P88
+                             and then not C.Train_Data_Unacked))
       then
          --  3.12.3, 3.6.2.2.2 c): a general message with a text message,
          --  to the stores through EVC_Radio_Info referred to its LRBG (the
@@ -829,6 +832,10 @@ is
          --  a geographical position (packet 79, EVC_Position.Take_Radio_Geo);
          --  or route suitability data (packet 70, 3.12.2.2: location
          --  data from any trackside, the track description's);
+         --  or level crossing information (packet 88, 3.12.5: its start
+         --  a temporary EOA when not protected, 3.12.5.8), rejected while
+         --  the Train Data are not acknowledged (4.8.3 [3]; decision: a
+         --  message 24 that has other packets taken carries it along);
          --  or an LSSMA display toggle order (packet 180,
          --  4.4.19.1.4.2 a, EVC_LS_Display through the stored information;
          --  rejected from the Accepting RBC, 4.8.2.1 c exception 2)

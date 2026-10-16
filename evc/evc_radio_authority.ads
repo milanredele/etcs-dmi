@@ -63,7 +63,7 @@ is
    --  Accepting: the message is the Accepting RBC's, released from the
    --  handover buffer of EVC_Sessions (4.8.2.1 c) exception 2)
    --  @req 3.8.2.3.2 b), 3.8.4.2.1, 3.8.4.2.1 a), 3.8.6.1, 4.8.3.1.1 Table
-   --  @req 4.8.4.2 Table, 4.8.5.6, 4.8.5.6 b)
+   --  @req 4.8.4.2 Table, 4.8.5.6, 4.8.5.6 b), 4.8.3.1.1 Table-footnote [3]
    procedure Take_Message (S         : EVC_Radio.Session_T;
                            Now_Ms    : EVC_Radio.Time_Ms_T;
                            Accepting : Boolean := False)

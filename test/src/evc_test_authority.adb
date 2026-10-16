@@ -23,6 +23,7 @@ with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_SDM;
 with EVC_Stored_Information;
+with EVC_Track_Description;
 with EVC_Movement_Authority;
 with EVC_Sessions;
 with EVC_Test_Support;       use EVC_Test_Support;
@@ -490,6 +491,24 @@ package body EVC_Test_Authority is
              "MA request: the section time-out deleted track description, "
              & "reason 8 at once (3.8.2.5.1, 3.8.2.1.6)");
 
+      --  3.8.2.2.1 b): the End Section's own Section timer counts, the
+      --  timer excluded there is the End Section timer (T_ENDTIMER)
+      Timed := MA_Of ((300, 400), 600);
+      Timed.Q_SECTIONTIMER := 1;
+      Timed.Has_T_SECTIONTIMER := True;
+      Timed.T_SECTIONTIMER := 30;
+      Timed.D_SECTIONTIMERSTOPLOC := 250;
+      Start_L2;
+      Run_X (11_000);
+      Give_Radio_Message
+        (1, MA_Message (10, Timed, Stamp, With_57 => True, P57 => P57));
+      Check (not Wait_Request (19_000),
+             "MA request: none before the time before the End Section's "
+             & "Section timer");
+      Check (Wait_Request (1_500) and then Request_Reason = 4,
+             "MA request: 10 s before the End Section's Section time-out, "
+             & "reason 4 (3.8.2.2.1 b: not the End Section timer)");
+
       --  3.8.2.3.2 c): the reason "Start" ends when the desk is closed
       Start_L2;
       Input (DMI, (16#40#, 3, 0, 0, 0, 5, 0, 0));
@@ -793,6 +812,90 @@ package body EVC_Test_Authority is
              "emergency: in TR the revocation is rejected, the stop kept "
              & "(4.8.4 'Revocation of Emergency Stop', TR: R; 4.10: kept)");
    end Scenario_Emergency_Stops;
+
+   --  Message 24 referring to the group NID_BG with a level crossing not
+   --  protected (packet 88: stop required, V_LX 20 km/h) D_LX m from it
+   function LX_Message (NID_BG : Natural; D_LX : Natural) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      LX : T88.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      LX.Q_DIR := 1;
+      LX.Q_SCALE := 1;
+      LX.NID_LX := 7;
+      LX.D_LX := ETCS_Variables.D_LX_T (D_LX);
+      LX.L_LX := 20;
+      LX.Q_LXSTATUS := 1;
+      LX.Has_V_LX := True;
+      LX.V_LX := 4;
+      LX.Q_STOPLX := 1;
+      LX.Has_L_STOPLX := True;
+      LX.L_STOPLX := 30;
+      T88.Encode (LX, W, OK);
+      Check (OK, "authority: packet 88 encoded");
+      return Message_Bytes (W);
+   end LX_Message;
+
+   function LX_Stored return Boolean is
+     (for some I in 1 .. EVC_Track_Description.Max_LX =>
+        EVC_Track_Description.LX_Item (I).Used);
+
+   --  3.12.5.8 by radio: the level crossing information of message 24 is
+   --  rejected while the RBC has not acknowledged the Train Data (4.8.3
+   --  [3]), taken after; its start (400 m) is the temporary EOA, closer
+   --  than the EOA of the MA (800 m), so the override selected at 200 m
+   --  takes it as the former EOA (5.8.1.9) and the min safe antenna
+   --  passing it in SR, the override ended, trips the train (4.6.3 [43])
+   procedure Scenario_LX_By_Radio is
+      use type EVC_Procedures.Trip_Reason_T;
+   begin
+      Start_X;
+      --  the train running number (5.8.2.1 c)
+      Input (DMI, (16#41#, 6, 0, 0, 0, 1, 4, 49, 50, 51, 52));
+      Stand_X (100);
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Add_Group (Group (10, 100));
+      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Run_X (11_000);
+      Stand_X (1_000);
+      Give_Radio_Message (1, LX_Message (10, 300));
+      Stand_X (200);
+      Check (EVC_Sessions.Train_Data_Awaited and then not LX_Stored,
+             "LX by radio: rejected before the Train Data are acknowledged "
+             & "(4.8.3 [3])");
+      Ack_Train_Data;
+      Give_Radio_Message (1, MA_Message (10, MA_Of ((300, 400), 600),
+                                         Stamp));
+      Run_X (20_000);
+      Stand_X (1_000);
+      Give_Radio_Message (1, LX_Message (10, 300));
+      Stand_X (200);
+      Check (LX_Stored and then EVC_Core.Mode = M_FS,
+             "LX by radio: packet 88 of message 24 taken (3.12.5)");
+      Input (DMI, (16#40#, 3, 0, 0, 0, 6, 0, 0));
+      Stand_X (200);
+      Check (EVC_Core.Mode = M_SR,
+             "LX by radio: override selected at standstill, SR (5.8.3.1)");
+      Stand_X (61_000);
+      Run_X (39_000, 100);
+      Check (EVC_Core.Mode = M_SR,
+             "LX by radio: in SR before the start of the level crossing");
+      Run_X (45_000, 100);
+      Check (EVC_Core.Mode = M_TR
+             and then EVC_Procedures.Trip_Reason
+                        = EVC_Procedures.Former_EOA_Passed,
+             "LX by radio: the former temporary EOA passed without override "
+             & "trips the train (4.6.3 [43], 5.8.1.9, 3.12.5.8)");
+   end Scenario_LX_By_Radio;
 
    --  3.10.2.2 b), with the group at 100 m, the MA to 800 m, the train at
    --  standstill at 200 m: 2nd bullet, a danger point 100 m beyond the EOA
