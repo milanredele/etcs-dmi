@@ -3373,6 +3373,74 @@ package body S076_Run is
       return J;
    end JRU_Sent;
 
+   --  Record 20 (speed and distance monitoring information, SUBSET-027
+   --  4.2.4.20) expected without M_SDMTYPE / M_SDMSUPSTAT: judged when an
+   --  event 21 of the window records it, a field with a number (V_PERM,
+   --  V_SBI, V_TARGET, V_RELEASE at 1 km/h, D_TARGET at 1 m) against the
+   --  value the DMI shows at the end of the window (the record carries
+   --  the speeds the DMI is given), a symbolic one (<V1>, V_TSR) by the
+   --  record alone; no event 21 in the window: not judged, naming the
+   --  first field
+   function JRU_20_Fields (Positive : Boolean) return Judgement_T is
+      S       : constant B.State_T := B.State;
+      First   : Natural := 0;
+      Numbers : Natural := 0;
+   begin
+      for K in 5 .. Line.Count loop
+         if First = 0
+           and then (Ada.Strings.Fixed.Index (W (K), "V_") = 1
+                     or else Ada.Strings.Fixed.Index (W (K), "D_") = 1)
+         then
+            First := K;
+         end if;
+      end loop;
+      if not Positive or else not Any_Rec (21, -1, -1) then
+         return NJ (R_JRU_Not_Modelled,
+                    "20 " & (if First = 0 then "" else W (First) & " ")
+                    & (if Positive then "without a record 20 in the window"
+                       else "absent, without M_SDMTYPE / M_SDMSUPSTAT"));
+      end if;
+      for K in 5 .. Line.Count loop
+         declare
+            Wd   : constant String := W (K);
+            Eq   : constant Natural := Ada.Strings.Fixed.Index (Wd, "=");
+            Name : constant String :=
+              (if Eq > 0 then Wd (Wd'First .. Eq - 1) else Wd);
+            Txt  : constant String :=
+              (if Eq > 0 then Wd (Eq + 1 .. Wd'Last) else "");
+            Want : Integer := -1;
+            Got  : Integer := -1;
+         begin
+            if Txt'Length in 1 .. 5
+              and then (for all C of Txt => C in '0' .. '9')
+            then
+               Want := Integer'Value (Txt);
+               Got := (if not S.Has_Speed then -1
+                       elsif Name = "V_PERM" then S.V_Perm
+                       elsif Name = "V_SBI" then S.V_SBI
+                       elsif Name = "V_TARGET" then S.V_Target
+                       elsif Name = "V_RELEASE" then S.V_Release
+                       elsif Name = "D_TARGET" then S.D_Target
+                       else -2);
+            end if;
+            if Want >= 0 and then Got = -1 then
+               return NJ (R_JRU_Not_Modelled,
+                          "20 " & Wd & ": no speeds shown");
+            elsif Want >= 0 and then Got >= 0 then
+               if abs (Got - Want) > 1 then
+                  return Check (False, "JRU 20 " & Wd,
+                                Name & "=" & Img (Got) & " shown");
+               end if;
+               Numbers := Numbers + 1;
+            end if;
+         end;
+      end loop;
+      return Pass ("JRU 20 as event 21"
+                   & (if Numbers > 0
+                      then "," & Img (Numbers) & " fields as shown"
+                      else ""));
+   end JRU_20_Fields;
+
    function JRU_Window_Expect (St : Step_T) return Judgement_T is
       Positive : constant Boolean := Same (W (3), "record");
       Id_S     : constant String := W (4);
@@ -3651,15 +3719,7 @@ package body S076_Run is
                      end;
                   end loop;
                   if Mon_N = 0 and then Sup_N = 0 then
-                     --  the message recorded at all: event 21 records a
-                     --  change of the monitoring or of the status, not of
-                     --  the speeds (V_PERM ...), so only its presence is
-                     --  judged
-                     if Positive and then Any_Rec (21, -1, -1) then
-                        return Pass ("JRU 20 as event 21");
-                     end if;
-                     return NJ (R_JRU_Not_Modelled,
-                                "20 without M_SDMTYPE / M_SDMSUPSTAT");
+                     return JRU_20_Fields (Positive);
                   end if;
                   --  event 21 is recorded when the monitoring or the
                   --  status changes: a record of message 20 for another
