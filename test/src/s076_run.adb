@@ -1247,6 +1247,14 @@ package body S076_Run is
                   or else Same (Verb, "validate"))
       then
          return RBC_Data_Entry (Verb);
+      elsif Same (Item, "Radio-Data") and then Same (Verb, "press") then
+         --  the driver presses 'Radio data' in the Main window (DMI
+         --  11.2.5, Table 50 S1 -> S5-1), from the default window too;
+         --  the Radio data window already open, there is nothing to press
+         if Top_Is (W_Radio_Data) then
+            return Pass ("DMI Radio data window open");
+         end if;
+         return Press_Menu (W_Main, 10, "Radio data");
       elsif Has (Item, "RBC") or else Has (Item, "Radio")
         or else Has (Item, "GSM-R")
       then

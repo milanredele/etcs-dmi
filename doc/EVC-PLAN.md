@@ -6463,3 +6463,42 @@ to both branches stayed with one); three items of that size are two
 too many for one brief. Open items: doc/BACKLOG.csv (29 open after this
 round).
 
+
+### The stale triage lines re-traced (e5/runner-retriage, 2026-10-16)
+
+The triage lines of the E5 group and the stale lines of the onboard
+group were re-traced on master a25dc92, one sequence or more per
+signature (`VERBOSE=1 DEBUG=1 obj/evc_s076_run`, the scn's step and
+`var` block, the clause). Each line re-traced now says what the
+sequence waits for and why, with "(re-traced 2026-10-16)"; a defect of
+ours names its backlog line. One rule of the runner's driver was fixed:
+"The driver presses Radio Data" is the Main window's button (DMI
+11.2.5), pressed by `S076_Run.DMI_Input`, no longer judged as a window
+the on-board opens.
+
+| cause | signatures (sequences) | backlog |
+|---|---|---|
+| ours | Safa2d197 (12), Saa959bed (9), Saeffd85e (9), Sc4bf79ea (3), Sdecbd2e2 (3), Sc4c3a7a1 (3), ~159 (3 + 3050300_19), S40db9a42 (3), S6b9f37cf (3) | B520, B522, B521, B521, B525, B526, B527, B528, B529 |
+| s076 | S9519b1f5 (9), Seef98e05 (6, presumed), ~156 / S185bee31 (13, two traced) | |
+| model | S65c3faf6 (8), S17ad648d (3), S8902de51 / S65dae40b (18, the version operated before the sequence; the SV30 rest is B530) | B524, B530 |
+| model, fixed | ~DMI radio data dialogue (16): 5040300_17, _18, 3050600_05, 3180400_05, 4080453_01 move to their E5-radio blocks, 3050300_19 to its 159 | |
+| dmi | S322852a4 (4): DMI Table 50 D5 against 5.4.3.2 S2 -> S3 | B523 |
+
+The defects of ours go to the authority and procedures owners: the
+emergency stop's system status message (B520), the MA request before
+the End Section's section timer (B521, 12 sequences), a linking trip
+on a group that was found (B522), the trip at the former temporary EOA
+(B525), the 132 in level 1 (B526), the 159 after the driver's RBC data
+(B527), the route unsuitability message (B528), the LSSMA (B529).
+
+Left untraced by budget (their texts unchanged): in the E5 group
+S0578fc93, S3e2df66d, S0c7e8942, S5967fccc, S4a80e57d, Sa32fcae0,
+S127a1224, the ~registration, ~disconnect, ~150, ~147, ~138, ~158
+lines, S65c13939, S7e2edbdf, Sac5a37a6, Sc18cdb2f, Sd4cbc324,
+Sce3c7004, S81c940f5, S83896b5d, S112c80a6, S863aab40, Sfb725745,
+S41e5392f, S61d2b0d5, S1d2c2503, S52fbd3cd, Sf95a7750 (about 85
+sequences); in the onboard group S3f6059ba, S908191ec, S0e2fe215,
+S5fab4e40, Scefec287, Sb12d0fcd, Se3765f9b, S793ccb34, S0ebd65fd,
+S56315725, Sa06b325b, S707f6e73, Se341da87 (about 40). SUBSET-076: 875 /
+1220 / 1095 before, 875 / 1207 / 1108 after, 0 regressions, 16
+improvements, no untriaged signature.
