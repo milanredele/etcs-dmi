@@ -6842,3 +6842,80 @@ same records (DMI, RTM, TIU payloads and JRU views equal, checked as
 multisets) once the general messages are left out: as intended, the
 side effect the move of the JRU records to the end of the cycle and
 one general message per mode change.
+
+### E5 integration after the twenty-seventh round (2026-10-16)
+
+Decision of the round (the user, 2026-10-16): SUBSET-027's message format
+is in scope; §1's line changed from "Out" to the JRU port emitting the
+messages of 4.2.2.
+
+Merged: e5/runner-e5-group (the runner's Level confirm selects the level
+the steps settle on, B500; a step conditional on the initial mode is
+skipped when the case began in another, `S076_Run.Initial_Mode_Excludes`,
+B524; the whole remainder of the E5 group and the onboard group's stale
+lines traced once each and sorted into twelve on-board lines by shape,
+B580 to B591, one s076 case; B480 left), e5/level2-left (the level
+crossing not protected substituted at once for a train beyond its start
+at or below V_LX, 5.16.3.2, `EVC_SDM.LX_Substitution`, B513: the
+regression of round 26 was a sequence passing only because a wrong brake
+stopped the train, its speed being the tool's unrounded V_PBD, 3.11.11.6;
+a group read while the linking is not checked ends the expectation
+windows up to it without a reaction, 3.4.4.4.6 a),
+`EVC_Position.Decide_Linking`, B522, nine sequences move; B527 dropped,
+the runner answers 155 after the 15 s of A.3.1, B570; B528 not started),
+e5/trips-ma (the unconditional emergency stop trip has its reason and
+shows "Emergency stop", 4.6.3 [20], `EVC_Procedures.Trip_Reason_T`
+`Emergency_Stop`, B520; packet 88 of message 24 passed to the stores and
+rejected until the Train Data are acknowledged, 4.8.3 [3], so the former
+EOA trip of [43] holds, B525, the brief's premise wrong; the End
+Section's own section timer counted, 3.8.2.2.1 b), B521; B526 dropped,
+the runner's window, B561; B560, B562) and e5/jru-messages (the
+juridical recording in the SUBSET-027 message format: `EVC_JRU_Messages`
+written by hand in SPARK, the generator's variables being chapter 7's of
+at most 64 bits while the header has a 128-bit DRIVER_ID, DATE, TIME and
+a part conditional on Q_LRBG; the header of 4.2.3 on every message,
+captured at the end of the event's cycle from the position report, the
+estimated speed, the driver ID, NID_ENGINE, the operated version, level
+and mode; the bodies of 4.2.4 for messages 1, 6, 9, 11, 13, 20, 24, 30,
+31, 32, 38, 39, 48 and 51; the other events carried as an interim message
+255 with their old three bytes, B550; `EVC_Outbox.Put_JRU` with a
+4096-byte queue drained over cycles under 4.1.1.4's five seconds, the
+message built in a static buffer, `EVC_Ports.JRU_Max_Length` 1100;
+`EVC_Core.Set_UTC`, the bench giving 2026-01-01, the other ports none yet,
+B553; every reader through `EVC_JRU_Messages.View`, so the runner's
+counts are unchanged; 13 on-board goldens re-recorded, as intended; B431
+closed by the format; B551, B552, B554).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, two triage hunks resolved by signature id (the branch's version
+of the lines it changed), the baselines merged by git and confirmed by
+each union's run; no source conflict: the three on-board branches did not
+add a JRU record call, so nothing had to be adapted to `Put_Event`.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12189
+checks, dmi_test 2168), the full proof 11828 checks, 0 unproved (margin
+47726 steps), cross build and stack (worst case 27160 B, margin 5608 B:
+the format cost 24 bytes), wasm and both smokes 0 failures. SUBSET-076:
+904 / 1205 / 1081 before, 910 / 1185 / 1095 after, steps not judged 4434
+-> 4467 (the conditional steps), 0 regressions, 0 untriaged. Matrix: 287
+clauses left, unchanged (SUBSET-027 is not in the matrix; the rows touched
+kept their status).
+
+Measurements (requests by message id, duration, final context, cost):
+jru-messages 210 / 52 min / 331k / 24.5 (budget 200, context past the
+usual 200k: the format is one unit, one writer and six readers, and it
+held); trips-ma 156 / 31 min / 198k / 10.8; level2-left 120 / 25 min /
+164k / 7.0; runner-e5-group 86 / 20 min / 159k / 5.0. Every "Done" list
+complete.
+
+Lessons: a regression of a right fix can be a sequence that passed for a
+wrong reason (3130700_04 stood still under a brake it should not have
+had): the re-analysis from the regression found it in one trace where
+the previous agent had reverted. Two of four brief premises wrong again
+(B525's cause was a packet not passed, not the trip logic; the "124 and
+132 disappear" claim: on the wire they do, the readers' view keeps them
+because 20, 24 and 32 are also on-board event numbers). The interim
+message 255 is a debt with a line (B550): every remaining event's body per
+4.2.4 is the next JRU package, with the runner reading the header from
+the message (B554). Open items: doc/BACKLOG.csv (52 open after this
+round).
