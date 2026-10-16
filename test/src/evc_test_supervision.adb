@@ -541,6 +541,7 @@ package body EVC_Test_Supervision is
       V       : constant SIn.Speed_Cms_T := Cms (120.0);
       F, P    : Speed_Fields;
       Changed, Recorded, Wrong, More : Natural := 0;
+      Field_Wrong : Natural := 0;
    begin
       Give_MA (S, 2_000, 200);
       Place (S, X, V);
@@ -557,6 +558,21 @@ package body EVC_Test_Supervision is
                Changed := Changed + 1;
                if JRU_Count (EVC_Ports.JRU_Supervision) = 1 then
                   Recorded := Recorded + 1;
+                  --  SUBSET-027 4.2.4.20: the message 20 carries the
+                  --  values shown (M_SDMTYPE TSM, V_PERM, V_SBI,
+                  --  V_TARGET, D_TARGET)
+                  if JRU_Field (EVC_Ports.JRU_Supervision, 0, 2) /= 1
+                    or else JRU_Field (EVC_Ports.JRU_Supervision, 5, 10)
+                            /= Natural'Min (F.V_Perm, 600)
+                    or else JRU_Field (EVC_Ports.JRU_Supervision, 15, 10)
+                            /= Natural'Min (F.V_SBI, 600)
+                    or else JRU_Field (EVC_Ports.JRU_Supervision, 25, 10)
+                            /= Natural'Min (F.V_Target, 600)
+                    or else JRU_Field (EVC_Ports.JRU_Supervision, 35, 15)
+                            /= Natural'Min (F.D_Target, 32_766)
+                  then
+                     Field_Wrong := Field_Wrong + 1;
+                  end if;
                else
                   Wrong := Wrong + 1;
                end if;
@@ -573,6 +589,9 @@ package body EVC_Test_Supervision is
              & " cycles in TSM whose V_PERM or D_TARGET changed, at most "
              & "one a cycle (SUBSET-027 4.2.3, 4.2.4.20);" & Recorded'Image
              & Wrong'Image & More'Image);
+      Check (Recorded > 0 and then Field_Wrong = 0,
+             "SUBSET-027 4.2.4.20: each message 20 carries the V_PERM, "
+             & "V_SBI, V_TARGET and D_TARGET shown;" & Field_Wrong'Image);
    end Scenario_SDM_JRU_Every_Change;
 
    --  3.13.9.4, 3.13.10.5: release speed monitoring with a release speed

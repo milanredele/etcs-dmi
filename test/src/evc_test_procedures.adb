@@ -7,6 +7,7 @@ with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Modes;     use EVC_Modes;
 with EVC_Outbox;
+with EVC_JRU_Messages;
 with EVC_Ports;     use EVC_Ports;
 with EVC_Procedures;
 with EVC_Text_Messages;
@@ -261,20 +262,32 @@ package body EVC_Test_Procedures is
                   end;
                end loop;
             elsif Port = Port_T'Pos (JRU) and then Len >= 4 then
-               if P (1) = 1 then
-                  JRU_Modes := JRU_Modes + 1;
-               elsif P (1) = 2 then
-                  JRU_Telegrams := JRU_Telegrams + 1;
-               elsif P (1) = JRU_Procedures and then P (2) <= 15 then
-                  J23 (P (2)) := J23 (P (2)) + 1;
-                  J23_B3 (P (2)) := P (3);
-               elsif P (1) = JRU_Text_Messages and then P (2) <= 15 then
-                  J24 (P (2)) := J24 (P (2)) + 1;
-               elsif P (1) = JRU_Levels and then P (2) <= 15 then
-                  J40 (P (2)) := J40 (P (2)) + 1;
-               elsif P (1) = JRU_Mission and then P (2) <= 15 then
-                  J41 (P (2)) := J41 (P (2)) + 1;
-               end if;
+               --  the event of the message (EVC_JRU_Messages.View)
+               declare
+                  V : constant EVC_JRU_Messages.View_T :=
+                    EVC_JRU_Messages.View (Out_Buf (F .. F + Len - 1));
+                  function P (N : Positive) return Natural is
+                    (case N is
+                        when 1 => Natural (V.Event),
+                        when 2 => Natural (V.B2),
+                        when 3 => Natural (V.B3),
+                        when others => Natural (V.B4));
+               begin
+                  if P (1) = 1 then
+                     JRU_Modes := JRU_Modes + 1;
+                  elsif P (1) = 2 then
+                     JRU_Telegrams := JRU_Telegrams + 1;
+                  elsif P (1) = JRU_Procedures and then P (2) <= 15 then
+                     J23 (P (2)) := J23 (P (2)) + 1;
+                     J23_B3 (P (2)) := P (3);
+                  elsif P (1) = JRU_Text_Messages and then P (2) <= 15 then
+                     J24 (P (2)) := J24 (P (2)) + 1;
+                  elsif P (1) = JRU_Levels and then P (2) <= 15 then
+                     J40 (P (2)) := J40 (P (2)) + 1;
+                  elsif P (1) = JRU_Mission and then P (2) <= 15 then
+                     J41 (P (2)) := J41 (P (2)) + 1;
+                  end if;
+               end;
             end if;
             Pos := Pos + 3 + Len;
          end;

@@ -15,6 +15,7 @@ with EVC_Modes;
 with EVC_National_Values;
 with EVC_Supervision_Input;
 with EVC_Fixed;
+with EVC_JRU_Messages;
 with EVC_Outbox;
 with EVC_Ports;       use EVC_Ports;
 with EVC_Position;
@@ -333,11 +334,24 @@ package body S076_Bench is
      (Natural (P (P'First + 1)) * 65536 + Natural (P (P'First + 2)) * 256
       + Natural (P (P'First + 3)));
 
+   --  A JRU output, a message of SUBSET-027, as the event of EVC_Ports it
+   --  records (EVC_JRU_Messages.View): the event and its three bytes
+   procedure Observe_Event (P : Byte_Array);
+
    procedure Observe_JRU (P : Byte_Array) is
+      V : EVC_JRU_Messages.View_T;
    begin
-      if P'Length < 4 then
+      if P'Length > 2**16 or else not EVC_JRU_Messages.Is_Message (P) then
          return;
       end if;
+      V := EVC_JRU_Messages.View (P);
+      if V.Event /= 0 then
+         Observe_Event ((V.Event, V.B2, V.B3, V.B4));
+      end if;
+   end Observe_JRU;
+
+   procedure Observe_Event (P : Byte_Array) is
+   begin
       if JRU_N < Max_JRU then
          JRU_N := JRU_N + 1;
          JRU_List (JRU_N) := (Natural (P (P'First)), Natural (P (P'First + 1)),
@@ -369,7 +383,7 @@ package body S076_Bench is
       elsif P (P'First) = 45 then
          TC_Phase (Natural (P (P'First + 1))) := Natural (P (P'First + 2));
       end if;
-   end Observe_JRU;
+   end Observe_Event;
 
    --  An RTM output (EVC_Ports: RTM_Tag_Message, session, message;
    --  RTM_Tag_Request, session, request, its bytes)

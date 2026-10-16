@@ -1,3 +1,4 @@
+with EVC_JRU_Messages;
 with EVC_Test_Support;  use EVC_Test_Support;
 with Ada.Directories;
 with Ada.Environment_Variables;
@@ -76,23 +77,26 @@ package body EVC_Test_Core is
       Check (Parsed, "power-up: whole records");
       --  e5/registration: and the registration of the two GSM-R mobiles
       --  (3.5.6.1 a)
-      Check (Rec_Count = 6, "power-up: six records, got" & Img (Rec_Count));
-      if Rec_Count = 6 then
-         Check (Recs (1).Port = JRU and then Rec_Length (1) = 16
-                and then Byte_At (1, 1) = 1
-                and then Byte_At (1, 2) = Mode_T'Pos (M_SB)
-                and then Byte_At (1, 5) = 1        -- cycle
-                and then Byte_At (1, 9) = 100,     -- time, ms
-                "power-up: JRU records the change to SB");
-         Check (Recs (2).Port = DMI and then Recs (3).Port = DMI
-                and then Recs (4).Port = DMI,
-                "power-up: then three DMI frames");
-         Check (Recs (5).Port = RTM and then Recs (6).Port = RTM
+      --  the juridical messages of the cycle come last (SUBSET-027 4.3:
+      --  the general message at the mode change, EVC_JRU_Messages)
+      Check (Rec_Count = 7, "power-up: seven records, got" & Img (Rec_Count));
+      if Rec_Count = 7 then
+         Check (Recs (1).Port = DMI and then Recs (2).Port = DMI
+                and then Recs (3).Port = DMI,
+                "power-up: three DMI frames");
+         Check (Recs (4).Port = RTM and then Recs (5).Port = RTM
                 and then Radio_Output (1).Request
                 and then Radio_Output (1).Kind = 3
                 and then Radio_Output (2).Session = 2,
                 "power-up: then the registration of each mobile to the "
                 & "GSM-R network (3.5.6.1 a, 3.5.6.3)");
+         Check (Recs (6).Port = JRU
+                and then JRU_NID (6) = EVC_JRU_Messages.NID_General
+                and then Recs (7).Port = JRU
+                and then JRU_NID (7) = EVC_JRU_Messages.NID_Proprietary
+                and then Byte_At (7, 1) = 1
+                and then Byte_At (7, 2) = Mode_T'Pos (M_SB),
+                "power-up: then the JRU messages of the change to SB");
       end if;
       Check (DMI_Mode_Byte = 1, "power-up: MSG_MODE_LEVEL mode SB (1), got"
              & Img (DMI_Mode_Byte));
@@ -286,7 +290,7 @@ package body EVC_Test_Core is
       EVC_Core.Tick (100);
       Take;
       Check (EVC_Core.Mode = M_IS, "isolation: SB -> IS");
-      Check (Parsed and then Count_Port (JRU) = 1 and then DMI_Mode_Byte = 17,
+      Check (Parsed and then Count_Port (JRU) = 2 and then DMI_Mode_Byte = 17,
              "isolation: JRU event and MSG_MODE_LEVEL mode IS (17)");
       Input (DMI, Isolate);
       for I in 1 .. 3 loop

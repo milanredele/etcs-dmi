@@ -11,7 +11,9 @@
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
-with EVC_Ports; use EVC_Ports;
+with EVC_JRU_Messages;
+with EVC_Ports;  use EVC_Ports;
+with Interfaces; use Interfaces;
 
 package EVC_Outbox
   with SPARK_Mode => On,
@@ -52,5 +54,37 @@ is
                   and then Last - (Buffer'First - 1) <= Buffer'Length
                   and then Used <= Used'Old
                   and then (if Used'Old = 0 then Last = Buffer'First - 1);
+
+   --  The juridical messages (SUBSET-027 4.2, EVC_JRU_Messages): Put_JRU
+   --  keeps one with the on-board time of its event, its complementary
+   --  variables and the message or telegram it embeds (the first
+   --  Data_Bits bits of Data, all by default); Flush_JRU writes
+   --  the kept ones in their order as records of the port JRU, each with
+   --  the header of the end of the cycle and the time of its event, as
+   --  many as the queue above takes; the others wait for the next cycle
+   --  (4.1.1.4 allows 5 s between the event and the message). A message
+   --  that does not fit the JRU_Capacity bytes kept is lost and counted.
+   JRU_Capacity : constant := 4096;
+   Max_Embedded : constant := 1023;
+
+   function JRU_Kept return Natural
+     with Global => Queue;
+   function JRU_Lost return Natural
+     with Global => Queue;
+
+   procedure Put_JRU (NID      : Byte;
+                      Clock_Ms : Unsigned_64;
+                      Fields   : EVC_JRU_Messages.Fields_T;
+                      Data     : Byte_Array;
+                      Data_Bits : Natural := Natural'Last)
+     with Global => (In_Out => Queue),
+          Pre => Data'Length <= Max_Embedded;
+
+   --  The header H with the UTC time of each message's event when
+   --  UTC_Known (UTC_Seconds since 2000-01-01 at the on-board time 0)
+   procedure Flush_JRU (H           : EVC_JRU_Messages.Header_T;
+                        UTC_Known   : Boolean;
+                        UTC_Seconds : Unsigned_32)
+     with Global => (In_Out => Queue);
 
 end EVC_Outbox;

@@ -87,11 +87,18 @@
 --     EVC_DMI_Port for the frames the on-board accepts and sends.
 --  ATO (in and out): no payload is defined in E0; every input is
 --     rejected. The ERTMS/ATO on-board comes to this port later.
---  JRU (out only, JRU_Record_Length bytes): an event for the juridical
---     recording (SUBSET-027 is outside this project): event u8, three
---     bytes of the event, cycle u32, time u64 (on-board time in ms).
---     Events: 1 mode change (mode u8 EVC_Modes.Mode_T'Pos, level status
---     u8 Level_Status_T'Pos, level u8 Level_T'Pos); 2 telegram accepted
+--  JRU (out only, at most JRU_Max_Length bytes): one message of the
+--     juridical recording in the format of SUBSET-027 4.2.2 (its common
+--     header of 4.2.3, the complementary variables of 4.2.4; the
+--     messages and their bit layout: EVC_JRU_Messages). The events of
+--     the on-board below that SUBSET-027 gives no message of its own go
+--     as the proprietary message 255 (4.2.4.255): the event u8 and its
+--     three bytes. The physical link to the recorder is not specified
+--     (SUBSET-027 chapters 5 and 6): the port is a byte stream of
+--     payloads, one message each.
+--     Events (the event u8 and its three bytes): 1 mode change (mode u8
+--     EVC_Modes.Mode_T'Pos, level status u8 Level_Status_T'Pos, level
+--     u8 Level_T'Pos); 2 telegram accepted
 --     (NID_C * 2**14 + NID_BG, u24, the balise group); 3 radio message
 --     accepted (NID_MESSAGE u8, L_MESSAGE u16); the events of the
 --     position (EVC_Position.Event_Kind_T): 4 linking reaction
@@ -145,7 +152,9 @@ is
    --  the longest TIU output: the track conditions of phase E4 (below)
    TIU_Out_Max_Length : constant := 3 + 8 * 12;
    DMI_Max_Length  : constant := EVC_DMI_Port.Max_Frame_Length;
-   JRU_Record_Length : constant := 16;
+   --  EVC_JRU_Messages.Max_Length: the header, NID_C and NID_RBC, a
+   --  radio message of RTM_Max_Length bytes
+   JRU_Max_Length : constant := 1100;
 
    --  Phase E5: a message of a session behind its tag and session
    --  (RTM_Tagged_Header bytes, the end of this package)
@@ -160,7 +169,7 @@ is
       TIU      => TIU_Out_Max_Length,
       DMI      => DMI_Max_Length,
       ATO      => 0,
-      JRU      => JRU_Record_Length);
+      JRU      => JRU_Max_Length);
 
    Largest_Payload : constant := RTM_Input_Max_Length;
 

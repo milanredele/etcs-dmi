@@ -42,6 +42,7 @@
 
 with EVC_Bytes;            use EVC_Bytes;
 with EVC_Driver_Requests;
+with EVC_JRU_Messages;
 with EVC_Track_Conditions;
 with Interfaces;           use Interfaces;
 
@@ -151,6 +152,17 @@ is
    --  is no digit, in three bytes
    type MN_Bytes_T is array (1 .. 3) of Byte;
    function MN_Code (T : EVC_Driver_Requests.Text_T) return MN_Bytes_T
+     with Global => null;
+
+   --  4.2.4.24: the complementary variables of the RBC contact
+   --  information the driver entered (MSG_DRIVER_DATA kind 5,
+   --  dmi_protocol.ads): Q_RBCENTRY Q; with Q 2 or 3 NID_C and NID_RBC
+   --  of the RBC ID (NID_C above the 14 bits of NID_RBC); with Q 3
+   --  NID_RADIO, the phone number as 16 BCD digits padded with F
+   --  (SUBSET-026 7.5.1.95), read as EVC_Sessions.Mission reads it
+   procedure RBC_Entry_Fields (RBC    : EVC_Driver_Requests.Bytes_23_T;
+                               Q      : Byte;
+                               Fields : out EVC_JRU_Messages.Fields_T)
      with Global => null;
 
 end EVC_JRU_Records;

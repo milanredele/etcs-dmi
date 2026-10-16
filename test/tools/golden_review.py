@@ -1002,8 +1002,71 @@ JRU_EVENT_TABLE = {
 }
 
 
+def _jru_bits(p, at, n):
+    v = 0
+    for i in range(n):
+        b = at + i
+        v = 2 * v + ((p[b // 8] >> (7 - b % 8)) & 1 if b < 8 * len(p) else 0)
+    return v
+
+
+def jru_view(p):
+    """A JRU payload, a message of SUBSET-027 (evc/evc_jru_messages.ads),
+    as the event of EVC_Ports it records and its three bytes, the bytes
+    the 16-byte record carried before that format (EVC_JRU_Messages.View);
+    None when p is not such a message. The general message 1 records no
+    event: event 0."""
+    if len(p) * 8 < 311 or _jru_bits(p, 8, 11) != len(p):
+        return None
+    b = 386 if _jru_bits(p, 132, 2) == 2 else 311
+    f = lambda o, n: _jru_bits(p, b + o, n) & 0xFF
+    nid = p[0]
+    if nid == 255:
+        v = [f(0, 8), f(8, 8), f(16, 8), f(24, 8)]
+    elif nid == 11:
+        v = [11, f(0, 8), 0, 0]
+    elif nid == 13:
+        v = [13, f(24, 8), 0, 0]
+    elif nid == 20:
+        v = [21, f(0, 2), f(2, 3), 0]
+    elif nid == 24:
+        q = f(0, 2)
+        i = _jru_bits(p, b + 12, 14) if q >= 2 else 0
+        v = [124, q, i // 256, i % 256]
+    elif nid in (30, 31, 51):
+        v = [nid, f(0, 1), 0, 0]
+    elif nid == 32:
+        v = [132, f(0, 1), 0, 0]
+    elif nid == 39:
+        v = [39, f(0, 2), 0, 0]
+    elif nid == 38:
+        v = [38, f(0, 1), f(1, 1), f(2, 1) if f(1, 1) == 1 else 0]
+    elif nid == 48:
+        v = [48, f(0, 8), f(8, 8), f(16, 8)]
+    elif nid == 6:
+        i = _jru_bits(p, b + 25, 10) * 2 ** 14 + _jru_bits(p, b + 35, 14)
+        v = [2, i % 256, i // 256 % 256, i // 65536 % 256]
+    elif nid == 9:
+        n = (8 * len(p) - b - 24) // 8
+        v = [3, f(24, 8), n % 256, n // 256 % 256]
+    else:
+        v = [0, 0, 0, 0]
+    return bytes(v)
+
+
+def _jru_payload(port, p):
+    if port == 'JRU':
+        v = jru_view(p)
+        if v is not None:
+            return v
+    return p
+
+
 def evc_kind(rec):
     port, p = rec
+    if port == 'JRU' and p and p[0] == 1 and jru_view(p) is not None:
+        return 'JRU:general'
+    p = _jru_payload(port, p)
     if port == 'DMI' and p:
         return 'DMI:' + EVC_DMI_TYPES.get(p[0], '%02X' % p[0])
     if port == 'JRU' and p:
@@ -1020,6 +1083,7 @@ def evc_decode(rec):
     aggregates exactly like a named one, just without names."""
     port, p = rec
     k = evc_kind(rec)
+    p = _jru_payload(port, p)
     if port == 'DMI' and len(p) >= 5:
         spec = DMI_FIELD_TABLES.get(k)
         if spec:
@@ -1051,7 +1115,7 @@ def evc_describe(rec):
     port, p = rec
     kind, fields = evc_decode(rec)
     text = " ".join("%s=%s" % (name, disp) for name, _raw, disp in fields)
-    if port == 'JRU' and len(p) >= 8:
+    if port == 'JRU' and len(p) >= 8 and jru_view(p) is None:
         cyc = p[4] + 256 * (p[5] + 256 * (p[6] + 256 * p[7]))
         return "%s %s (cycle %d)" % (kind, text, cyc)
     return "%s %s" % (kind, text)
