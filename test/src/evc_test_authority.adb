@@ -715,6 +715,7 @@ package body EVC_Test_Authority is
    --  3.10: the emergency messages at standstill at 200 m with an MA to
    --  800 m (no danger point, no overlap: the SvL at the EOA)
    procedure Scenario_Emergency_Stops is
+      use type EVC_Procedures.Trip_Reason_T;
       M      : constant T12.Packet_T := MA_Of ((300, 400), 600);
       NID, Q : Integer;
    begin
@@ -781,6 +782,9 @@ package body EVC_Test_Authority is
              "emergency: an unconditional stop trips the train, "
              & "acknowledged with Q_EMERGENCYSTOP 2 (3.10.2.3, [20]); kept "
              & "in Trip ([45], 4.10)");
+      Check (EVC_Procedures.Trip_Reason = EVC_Procedures.Emergency_Stop,
+             "emergency: the trip of 4.6.3 [20] has the reason 'Emergency "
+             & "stop' (4.4.13.1.3, DMI 15.1.1.5)");
       Give_Radio_Message (1, Emergency_Message (MCat.Track_M18, 7));
       Stand_X (200);
       Check (RA.Unconditional_Stop_Received

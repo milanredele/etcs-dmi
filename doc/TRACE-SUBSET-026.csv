@@ -1243,7 +1243,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.12.1.5,4,x,,,,,E4,deferred,the track ahead free request comes from the RBC: E5 [E5 authority]
 4.4.12.1.7,4,x,,,,,E4,done,EVC_Core: MSG_SYSTEM_STATUS 7 while SSP and gradient do not cover the train in OS (EVC_Stored_Information.Train_Covered); evc_test_procedures Integration_OS_Level
 4.4.13.1.2,4,x,,,,,E4,done,"EVC_Procedures.Brake_Demand: the emergency brake while in TR, TIU reason bit 7 (trip); evc_test_procedures Trip_EOA, Integration_SR_Override_Trip"
-4.4.13.1.3,4,x,,,,,E4,done,"one trip entry: the reason is the first condition of the transition taken (EVC_Procedures.Mode_Changed), MSG_SYSTEM_STATUS 2, 16, 21 to 25, 29; evc_test_procedures Trip_*, Integration_SR_Override_Trip, Integration_Override_Level"
+4.4.13.1.3,4,x,,,,,E4,done,"one trip entry: the reason is the first condition of the transition taken (EVC_Procedures.Mode_Changed), MSG_SYSTEM_STATUS 2, 16, 21 to 25, 29, 26 for [20] (EVC_Procedures.Enter_Trip: Emergency_Stop from EVC_Radio_Authority.Unconditional_Stop_Accepted; evc_test Scenario_Emergency_Stops); evc_test_procedures Trip_*, Integration_SR_Override_Trip, Integration_Override_Level"
 4.4.13.1.4,4,x,,,,,E4,done,EVC_Procedures.Finish_Cycle asks it at standstill (MSG_MODE_LEVEL mode_ack TR); evc_test_procedures Trip_EOA
 4.4.13.1.6,4,x,,,,,E4,partial,missing: the transition out of TR on the desk closure (EVC_Modes.Conditions); the driver's actions are not refused while the desk is closed (the DMI of a closed desk sends none) [B015]
 4.4.14.1.1,4,x,,,,,E4,done,"[7], [62], [63], [68] on the acknowledgement at standstill; evc_test_procedures Trip_EOA, Integration_SR_Override_Trip"
