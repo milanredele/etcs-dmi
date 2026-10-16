@@ -291,6 +291,26 @@ package body S076_Sequences is
               else (others => <>));
    end Train_At;
 
+   function Engine_Voltages (S : Sequence_T; Default : Natural)
+                             return Natural
+   is
+      V : Natural :=
+        (if S.Train_Count > 0 and then S.Trains (1).Voltages >= 0
+         then S.Trains (1).Voltages else Default);
+   begin
+      for I in 1 .. S.Step_Count loop
+         if Ada.Strings.Fixed.Index
+              (Image (S.Steps (I).Comment),
+               "able to run on a line not fitted with any traction system")
+             > 0
+           and then V mod 2 = 0
+         then
+            V := V + 1;
+         end if;
+      end loop;
+      return V;
+   end Engine_Voltages;
+
    --  B200: a "var" row of a telegram or message: the integrated
    --  correction factors of its packets 3 (7.5.1 resolutions: M_NVKVINT
    --  0.02, M_NVKRINT and M_NVKTINT 0.05, V_NVKVINT 5 km/h, L_NVKRINT

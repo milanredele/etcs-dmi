@@ -337,6 +337,13 @@ package S076_Sequences is
    --  else of the last one; all fields -1 when the sequence has none
    function Train_At (S : Sequence_T; Dist_Cm : Integer_64) return Train_T;
 
+   --  B472: the traction systems of the sequence's engine as M_VOLTAGE
+   --  bits: those of its first packet 11, else Default; bit 0 added when
+   --  a step's comment says it "is able to run on a line not fitted with
+   --  any traction system" (3.12.2.3.1)
+   function Engine_Voltages (S : Sequence_T; Default : Natural)
+                             return Natural;
+
    --  Read the sequence file at Path into Loaded; Ok is False when the
    --  file could not be read
    procedure Read (Path : String; Ok : out Boolean);

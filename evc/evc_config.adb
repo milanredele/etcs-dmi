@@ -256,6 +256,11 @@ is
       Cfg.Radio := R;
    end Set_Radio_For_Test;
 
+   procedure Set_Voltages_For_Test (V : Natural) is
+   begin
+      Cfg.Train.Voltages := V;
+   end Set_Voltages_For_Test;
+
    procedure Report_Taken is
    begin
       Pending := False;

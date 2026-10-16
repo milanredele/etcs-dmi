@@ -35,6 +35,7 @@ package body S076_Bench is
    --  that of a new on-board (EVC_Core.Initialise)
    Was_Powered : Boolean := False;
    Radio_Systems : EVC_Config.Radio_Systems_T := EVC_Config.Both_Systems;
+   Voltages : Natural := EVC_Config.Default_Fixed_Train.Voltages;
    Clock      : Unsigned_64 := 0;
 
    X_Cm      : Integer_64 := 0;     -- antenna, track position
@@ -673,6 +674,11 @@ package body S076_Bench is
       Radio_Systems := Systems;
    end Set_Radio_Systems;
 
+   procedure Set_Voltages (Voltages : Natural) is
+   begin
+      S076_Bench.Voltages := Natural'Min (Voltages, 2**16 - 1);
+   end Set_Voltages;
+
    procedure Power_On is
    begin
       --  The ETCS identity of the on-board the sequences were recorded
@@ -680,6 +686,7 @@ package body S076_Bench is
       EVC_Config.Set_Radio_For_Test
         ((Sessions => EVC_Config.Current.Radio.Sessions,
           Engine_Id => 76_000, Systems => Radio_Systems, others => <>));
+      EVC_Config.Set_Voltages_For_Test (Voltages);
       if Was_Powered then
          EVC_Core.Power_Up;
       else

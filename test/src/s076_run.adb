@@ -5303,6 +5303,8 @@ package body S076_Run is
       else
          B.Set_Radio_Systems (EVC_Config.GSMR_Only);
       end if;
+      B.Set_Voltages (S076_Sequences.Engine_Voltages
+                        (Seq, EVC_Config.Default_Fixed_Train.Voltages));
       Step_Start_Ms := 0;
       Hold_Speed := False;
       Train_Configuration := 1;
