@@ -273,6 +273,11 @@ is
          To : constant Level_T := E.Level;
          Now_Order : constant Boolean :=
            P.D_LEVELTR = D_LEVELTR_Now_The_Level_Transition;
+         --  4.8.4 [5], [7]: the immediate order; decision: an order at
+         --  distance 0 from its reference is one too (its location is
+         --  passed when it is received, 5.10.1.4)
+         Immediate_Order : constant Boolean :=
+           Now_Order or else P.D_LEVELTR = 0;
          --  5.10.4.1.3, 5.10.4.1.4: the driver acknowledged an order to
          --  the same level not executed yet
          Same_Acked : constant Boolean :=
@@ -280,10 +285,14 @@ is
       begin
          if C.Mode in M_SH | M_PS | M_SM then
             --  4.8.4 [7]: only the immediate order, kept for later
-            if Now_Order then
+            if Immediate_Order then
                Kept := (Stored => True, Conditional => False, Table => T);
                Put_Event (Event_Stored, Level_T'Pos (To), 2);
             end if;
+            return;
+         end if;
+         if C.Mode = M_PT and then Immediate_Order then
+            --  4.8.4 [5]: in PT only the announcement
             return;
          end if;
          if Order.Stored then
@@ -339,6 +348,10 @@ is
       T : constant Priority_Table_T := Table_Of (P);
    begin
       if not ETCS_Track_Packets.P46.Valid (P) then
+         return;
+      elsif C.Mode = M_PT then
+         --  4.8.4 [5]: in PT only the announcement (a packet 41 of the
+         --  RBC's message 24 after the recognition of the exit from TR)
          return;
       elsif C.Mode in M_SH | M_PS | M_SM then
          Kept := (Stored => True, Conditional => True, Table => T);

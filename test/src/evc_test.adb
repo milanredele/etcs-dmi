@@ -347,6 +347,8 @@ begin
    Scenario_L2_Radio_Data_No_Registration;
    Scenario_L2_Radio_Data_Into_TR;
    Scenario_SR_Order_Single_Group;
+   Scenario_Radio_Level_Orders;
+   Scenario_SH_Order_At_Zero;
 
    Put_Line ("checks:" & Natural'Image (Checks)
              & "  failures:" & Natural'Image (Failures));
