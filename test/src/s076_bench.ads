@@ -29,6 +29,7 @@ pragma Ada_2012;
 with Interfaces; use Interfaces;
 with EVC_Bytes;
 with EVC_Config;
+with EVC_JRU_Messages;
 with S076_Sequences;
 
 package S076_Bench is
@@ -355,6 +356,14 @@ package S076_Bench is
    --  power-up (EVC_JRU_Records: 0 start ahead, 1 inside, 2 end passed),
    --  -1 before any
    function JRU_TC_Phase (TI : Natural) return Integer;
+
+   --  The JRU messages of the window as captured (SUBSET-027 4.2.2, the
+   --  general message too, Max_Messages at most): their count, each
+   --  one's NID_MESSAGE and header (EVC_JRU_Messages.Get_Header)
+   Max_Messages : constant := 2048;
+   function Message_Count return Natural;
+   function Message_NID (I : Positive) return Natural;
+   function Message_Header (I : Positive) return EVC_JRU_Messages.Header_T;
 
    --  Text and system status events of the window
    type Text_Event_T is record

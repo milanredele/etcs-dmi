@@ -15,7 +15,6 @@ with EVC_Modes;
 with EVC_National_Values;
 with EVC_Supervision_Input;
 with EVC_Fixed;
-with EVC_JRU_Messages;
 with EVC_Outbox;
 with EVC_Ports;       use EVC_Ports;
 with EVC_Position;
@@ -83,6 +82,14 @@ package body S076_Bench is
 
    JRU_List  : array (1 .. Max_JRU) of JRU_Record_T;
    JRU_N     : Natural := 0;
+
+   --  The messages of the window, as received on the port JRU
+   type Message_Slot_T is record
+      Length : Natural := 0;
+      Data   : Byte_Array (1 .. EVC_Ports.JRU_Max_Length) := (others => 0);
+   end record;
+   Messages   : array (1 .. Max_Messages) of Message_Slot_T;
+   Messages_N : Natural := 0;
    Last_Mode, Last_Level_Status, Last_Level : Natural := No_Value;
    Last_Commands : Natural := 0;
    Last_Mon, Last_Sup : Natural := 0;
@@ -329,10 +336,11 @@ package body S076_Bench is
       end if;
    end Observe_TIU;
 
-   --  the u24 of bytes 2 to 4 of a JRU event
+   --  the u24 of bytes 2 to 4 of a JRU event, least significant first
+   --  (EVC_Position.Put_Identity_Event, EVC_JRU_Messages.View)
    function Identity (P : Byte_Array) return Natural is
-     (Natural (P (P'First + 1)) * 65536 + Natural (P (P'First + 2)) * 256
-      + Natural (P (P'First + 3)));
+     (Natural (P (P'First + 3)) * 65536 + Natural (P (P'First + 2)) * 256
+      + Natural (P (P'First + 1)));
 
    --  A JRU output, a message of SUBSET-027, as the event of EVC_Ports it
    --  records (EVC_JRU_Messages.View): the event and its three bytes
@@ -343,6 +351,11 @@ package body S076_Bench is
    begin
       if P'Length > 2**16 or else not EVC_JRU_Messages.Is_Message (P) then
          return;
+      end if;
+      if Messages_N < Max_Messages and then P'Length <= JRU_Max_Length then
+         Messages_N := Messages_N + 1;
+         Messages (Messages_N).Length := P'Length;
+         Messages (Messages_N).Data (1 .. P'Length) := P;
       end if;
       V := EVC_JRU_Messages.View (P);
       if V.Event /= 0 then
@@ -571,6 +584,7 @@ package body S076_Bench is
       Win := (others => <>);
       Cycles := 0;
       JRU_N := 0;
+      Messages_N := 0;
       Texts_N := 0;
       SSs_N := 0;
       Sent_N := 0;
@@ -1317,6 +1331,22 @@ package body S076_Bench is
    function JRU_Last_BG_Id return Natural is (Last_BG_Id);
    function JRU_TC_Phase (TI : Natural) return Integer is
      (if TI <= 255 then TC_Phase (TI) else -1);
+   function Message_Count return Natural is (Messages_N);
+   function Message_NID (I : Positive) return Natural is
+     (if I <= Messages_N and then Messages (I).Length > 0
+      then Natural (Messages (I).Data (1)) else 0);
+
+   function Message_Header (I : Positive) return EVC_JRU_Messages.Header_T
+   is
+      H : EVC_JRU_Messages.Header_T;
+   begin
+      if I <= Messages_N then
+         EVC_JRU_Messages.Get_Header
+           (Messages (I).Data (1 .. Messages (I).Length), H);
+      end if;
+      return H;
+   end Message_Header;
+
    function Text_Count return Natural is (Texts_N);
    function Text (I : Positive) return Text_Event_T is (Texts (I));
    function SS_Count return Natural is (SSs_N);
