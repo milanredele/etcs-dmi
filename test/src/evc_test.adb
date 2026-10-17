@@ -221,6 +221,7 @@ begin
    Scenario_Config_Behaviour;
    Scenario_JRU_Format;
    Scenario_JRU_On_Board;
+   Scenario_JRU_To_RBC;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;

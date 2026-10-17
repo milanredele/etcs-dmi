@@ -10,5 +10,6 @@ package EVC_Test_JRU is
 
    procedure Scenario_JRU_Format;
    procedure Scenario_JRU_On_Board;
+   procedure Scenario_JRU_To_RBC;
 
 end EVC_Test_JRU;

@@ -1,5 +1,6 @@
 --  ETCS on-board (EVC)
 
+with EVC_Bytes;
 with EVC_Core;
 with EVC_JRU_Messages;  use EVC_JRU_Messages;
 with EVC_Outbox;
@@ -8,6 +9,8 @@ with EVC_Test_Support;  use EVC_Test_Support;
 with Interfaces;        use Interfaces;
 
 package body EVC_Test_JRU is
+
+   use type EVC_Bytes.Byte_Array;
 
    Buf : Byte_Array (1 .. Max_Length);
 
@@ -132,6 +135,43 @@ package body EVC_Test_JRU is
       Paired_Message (10, 7, 0, 0, NID, F);
       Check (NID = 0, "4.2.4.255: no paired message for a new LRBG");
    end Scenario_JRU_Format;
+
+   --  SUBSET-027 4.2.4.10: a message to the RBC put on the RTM port is
+   --  recorded as the message 10 with the RBC of its session and the
+   --  message as sent (EVC_Outbox.Put_JRU_Sent)
+   procedure Scenario_JRU_To_RBC is
+      Msg  : constant Byte_Array := (129, 0, 9, 1, 2, 3, 4, 5, 6);
+      Out_B : Byte_Array (1 .. 2048);
+      Last : Natural;
+      H    : Header_T;
+      B    : Natural;
+      P    : Natural := 0;
+   begin
+      EVC_Outbox.Clear;
+      EVC_Outbox.Put (TIU, (1, 0, 0));
+      EVC_Outbox.Put (RTM, Byte_Array'(RTM_Tag_Message, 2) & Msg);
+      EVC_Outbox.Put_JRU_Sent (3 + 3, 500, (1 => 0, 2 => 123 * 2**14 + 45));
+      EVC_Outbox.Flush_JRU (H, False, 0);
+      EVC_Outbox.Take (Out_B, Last);
+      --  the records: TIU, RTM, then the JRU message
+      P := 3 + 3 + 3 + 2 + Msg'Length + 3;
+      Check (Last = P + 39 + (24 + 8 * Msg'Length + 7) / 8
+             and then Out_B (P - 2) = Port_T'Pos (JRU)
+             and then Out_B (P + 1) = NID_To_RBC,
+             "4.2.4.10: the message to the RBC recorded once, after it");
+      if Last > P then
+         B := Body_Bit (Out_B (P + 1 .. Last));
+         Check (Get_Bits (Out_B (P + 1 .. Last), B, 10) = 123
+                and then Get_Bits (Out_B (P + 1 .. Last), B + 10, 14) = 45
+                and then Get_Bits (Out_B (P + 1 .. Last), B + 24, 8) = 129
+                and then Get_Bits (Out_B (P + 1 .. Last), B + 24 + 64, 8)
+                         = 6
+                and then View (Out_B (P + 1 .. Last)).Event = 0,
+                "4.2.4.10: NID_C and NID_RBC of the session, the message "
+                & "as sent");
+      end if;
+      EVC_Outbox.Clear;
+   end Scenario_JRU_To_RBC;
 
    --  The JRU record I as a message
    function Payload (I : Positive) return Byte_Array is

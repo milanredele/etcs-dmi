@@ -3175,10 +3175,18 @@ is
                                 EVC_Radio_Authority.State, EVC_Radio.State,
                                 EVC_Radio.Queue, EVC_Outbox.Queue))
    is
+      Mark : constant Natural := EVC_Outbox.Used;
+      RBCs : EVC_Outbox.RBC_Ids_T;
    begin
       EVC_Sessions.Produce (Radio_Context);
       EVC_Radio_Authority.Produce (Radio_Context);
       EVC_Radio.Drain;
+      for S in RBCs'Range loop
+         pragma Loop_Invariant (True);
+         RBCs (S) := Unsigned_32 (EVC_Radio.Info (S).RBC.NID_C) * 2**14
+                     + Unsigned_32 (EVC_Radio.Info (S).RBC.NID_RBC);
+      end loop;
+      EVC_Outbox.Put_JRU_Sent (Mark, Unsigned_64 (Clock_Ms), RBCs);
    end Send_Radio;
 
    --  A location reference of the header of SUBSET-027 4.2.3.5 from the
