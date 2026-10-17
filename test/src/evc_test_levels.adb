@@ -1,6 +1,8 @@
 --  ETCS on-board (EVC)
 --  Phase E5 (e5/levels): see the spec.
 
+with ETCS_Message;
+with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P138;
 with ETCS_Track_Packets.P139;
@@ -639,5 +641,87 @@ package body EVC_Test_Levels is
              & "level 1 at once (4.8.1.3.1 2), 4.8.3 [1]): FS, no trip "
              & "by 4.6.3 [39]");
    end Scenario_L1_Order_With_L1_MA_In_L0;
+
+   --  Message 24 referring to the group NID_BG with the packet 41 P
+   function Level_Message (NID_BG : Natural;
+                           P      : ETCS_Track_Packets.P41.Packet_T)
+     return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64
+        (EVC_Radio.T_Train_At (Unsigned_64 (EVC_Core.Time_Ms)));
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, ETCS_Message_Catalogue.Track_M24, V);
+      ETCS_Track_Packets.P41.Encode (P, W, OK);
+      Check (OK, "levels: packet 41 encoded");
+      return Message_Bytes (W);
+   end Level_Message;
+
+   --  The level transition order of message 24 (8.4.1, 5.10.1.2: the
+   --  announcement by the RBC) is taken in level 1; in PT only the
+   --  announcement is accepted (4.8.4 [5]), an order now or at distance
+   --  0 from the LRBG rejected
+   procedure Scenario_Radio_Level_Orders is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      Add_Group (Group (10, 100));
+      EVC_Test_Authority.Establish_Session;
+      Run_X (15_000);
+      Stand_X (1_000);
+      Give_Radio_Message
+        (1, Level_Message (10, Order (ETCS_Variables.M_LEVELTR_Level_2,
+                                      500)));
+      Stand_X (200);
+      Check (EVC_Levels.Announced and then EVC_Levels.Announced_Level = L2,
+             "levels: the order to level 2 of message 24 announced in "
+             & "level 1 (8.4.1, 5.10.1.2)");
+      EVC_Core.Set_Mode_For_Test (M_PT, L2);
+      Stand_X (200);
+      Give_Radio_Message
+        (1, Level_Message (10, Order (ETCS_Variables.M_LEVELTR_Level_1, 0)));
+      Stand_X (200);
+      Give_Radio_Message
+        (1, Level_Message (10, Order (ETCS_Variables.M_LEVELTR_Level_1,
+                                      -1)));
+      Stand_X (200);
+      Check (EVC_Levels.Level = L2
+             and then not (EVC_Levels.Announced
+                           and then EVC_Levels.Announced_Level = L1),
+             "levels: in PT the immediate orders of message 24 rejected "
+             & "(4.8.4 [5])");
+      Give_Radio_Message
+        (1, Level_Message (10, Order (ETCS_Variables.M_LEVELTR_Level_1,
+                                      900)));
+      Stand_X (200);
+      Check (EVC_Levels.Level = L2 and then EVC_Levels.Announced
+             and then EVC_Levels.Announced_Level = L1,
+             "levels: in PT the announcement accepted (4.8.4 [5])");
+   end Scenario_Radio_Level_Orders;
+
+   --  In SH an order at distance 0 from its group is an immediate order,
+   --  kept for later (4.8.4 [7]); an announcement is rejected
+   procedure Scenario_SH_Order_At_Zero is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SH, L2);
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, 0));
+      Add_Group (Group (11, 200));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_0, 300));
+      Run_X (15_000);
+      Check (EVC_Levels.Level = L2 and then EVC_Levels.Deferred,
+             "levels: in SH the order at D_LEVELTR 0 kept for later "
+             & "(4.8.4 [7])");
+      Run_X (25_000);
+      Check (EVC_Levels.Level = L2 and then EVC_Levels.Deferred
+             and then not EVC_Levels.Order_Pending,
+             "levels: in SH the announcement rejected, the kept order "
+             & "stays (4.8.4 [7])");
+   end Scenario_SH_Order_At_Zero;
 
 end EVC_Test_Levels;

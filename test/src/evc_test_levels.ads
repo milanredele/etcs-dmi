@@ -29,5 +29,8 @@ package EVC_Test_Levels is
    procedure Scenario_L2_Radio_Data_No_Registration;
    procedure Scenario_L2_Radio_Data_Into_TR;
    procedure Scenario_SR_Order_Single_Group;
+   --  4.8.4 [5], [7] and the order of message 24 (8.4.1)
+   procedure Scenario_Radio_Level_Orders;
+   procedure Scenario_SH_Order_At_Zero;
 
 end EVC_Test_Levels;

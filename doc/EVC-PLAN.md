@@ -6940,3 +6940,33 @@ runner's odometer impairment: the same without its error), and message
 answering with 138 a request to shorten the MA that the mode alone
 rejects (4.8.4, SH) had no sequence left to support it once the message 9
 above was found inconsistent. B582 and B586 not started (budget).
+### The level transition shapes, the mode profile in Post Trip, the MA with a shifted reference (e5/levels-shapes, 2026-10-17)
+
+**B580** done, the six shapes decided from one trace each. Ours, three:
+the level transition order of message 24 never reached the stores
+(packets 41 and 46 added to the list of `EVC_Radio_Authority.Take_Message`,
+5.10.1.2: 5100200_01, 5100400_08); with it, 4.8.4 [5] in PT (only the
+announcement: `EVC_Levels.Take_Order`, `Take_Conditional`; without it
+4080413_02 regressed); and an order at D_LEVELTR 0 is an immediate one,
+kept in SH, PS and SM (4.8.4 [7]: 4100103_28). Decision: an order at
+distance 0 from its reference is immediate for the filters of 4.8.4 [5]
+and [7] (its location is passed when it is received; the sequences say
+"D_LEVELTR = 0 or 32767"). The sequences' data, three (s076): 4070201_03
+(BG3d's announcement places the border at 500 m, before the MA of 600 m:
+the trip by 4.6.3 [39] is right), 5100300_08 (the train stopped on the
+border announced in SL, where orders are accepted, 5.10.1.4.1),
+5100200_09 (the second announcement replaces the first, 5.10.1.6).
+Scenarios `EVC_Test_Levels.Scenario_Radio_Level_Orders`,
+`Scenario_SH_Order_At_Zero`. Matrix: 4.8.4.2 footnote [5] done.
+
+**B562** decided: the runner's model. The On Sight area of 3100200_01
+starts 20 m ahead of the train's estimated front end; the step needs a
+confidence interval the bench odometer (1 %) does not give; [31] is
+right for ours (B620, runner). **B591** decided: the sequence's data
+(after the cab change message 33 gives Q_DIR nominal for a train running
+against its LRBG). **B581** first looks only (see its line).
+
+SUBSET-076: 910 / 1185 / 1095 before, 925 / 1170 / 1095 after, 0
+regressions, 21 improvements; baseline re-recorded. Edits outside the
+units: `EVC_Radio_Authority.Take_Message` (two packet kinds and its
+comment).

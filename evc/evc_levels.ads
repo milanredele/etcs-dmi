@@ -242,6 +242,7 @@ is
    --  Packet 41 of the group message M (accepted by 4.8), in the context
    --  C; an immediate order is carried out at once
    --  @req 4.8.1.3, 4.8.1.3.1, 4.8.1.3.1 1), 4.8.1.3.1 2)
+   --  @req 4.8.4.2 Table-footnote [5], 4.8.4.2 Table-footnote [7]
    procedure Take_Order (P : ETCS_Track_Packets.P41.Packet_T;
                          M : Message_T;
                          C : Context_T)
@@ -249,6 +250,7 @@ is
 
    --  Packet 46 (accepted by 4.8)
    --  @req 5.10.3.14.1, 5.10.3.14.2, 5.10.3.14.3, 5.10.3.14.4
+   --  @req 4.8.4.2 Table-footnote [5]
    procedure Take_Conditional (P : ETCS_Track_Packets.P46.Packet_T;
                                C : Context_T)
      with Global => (In_Out => State);

@@ -820,6 +820,8 @@ is
                          | ETCS_Catalogue.Track_P74
                          | ETCS_Catalogue.Track_P79
                          | ETCS_Catalogue.Track_P180
+                         | ETCS_Catalogue.Track_P41
+                         | ETCS_Catalogue.Track_P46
                     or else (EVC_Received.Last_Packet_Kind (I)
                                = ETCS_Catalogue.Track_P88
                              and then not C.Train_Data_Unacked))
@@ -838,7 +840,9 @@ is
          --  message 24 that has other packets taken carries it along);
          --  or an LSSMA display toggle order (packet 180,
          --  4.4.19.1.4.2 a, EVC_LS_Display through the stored information;
-         --  rejected from the Accepting RBC, 4.8.2.1 c exception 2)
+         --  rejected from the Accepting RBC, 4.8.2.1 c exception 2);
+         --  or a level transition order (packets 41 and 46, 5.10.1.2:
+         --  to EVC_Levels through the stored information)
          Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       end if;
    end Take_Message;
