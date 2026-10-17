@@ -6919,3 +6919,62 @@ message 255 is a debt with a line (B550): every remaining event's body per
 4.2.4 is the next JRU package, with the runner reading the header from
 the message (B554). Open items: doc/BACKLOG.csv (52 open after this
 round).
+
+### The header judged from the message, the runner's timing and window rules (e5/runner-header, 2026-10-17)
+
+**Header (B554 done).** `S076_Bench` keeps every JRU message of the
+window as received (the general message too, 2048 of up to
+`JRU_Max_Length` bytes; `Message_Count`, `Message_NID`,
+`Message_Header` through `EVC_JRU_Messages.Get_Header`), next to the
+record list of the views, which is unchanged. `S076_Run.Header_Judge`
+judges the fields of an ALL step that the header carries (the SOLR's
+and the LRBG's, the doubts, Q_LRBG, V_TRAIN, M_VERSION, NID_ENGINE) on
+one message holding them all (`Header_Value`, `Header_Holds`): a
+number exactly (V_TRAIN 0 also the standstill 1023; the unknown NID
+whichever way coded, B610), alternatives, "<>N", M_VERSION's X; a name
+of the sequence ("<BG2>", "<updated>", "<D0>", the doubts' sums) the
+field known, the names not resolved (decision); NID_LRBG / NID_SOLR
+"<IDofthepassedBG>" and its kin against the group of the last telegram.
+A step with no message in its window is not judged ("no message for
+the header"). Decision: M_MODE, M_LEVEL and DRIVER_ID stay judged from
+the on-board's state in the window (`Header_Field`): judged from the
+messages they moved 9 sequences back and 12 on, the message's mode
+being that at the end of its event's cycle and the sequences coding
+some modes otherwise (M_MODE 21); left as is. `S076_Bench.Identity`
+reads the event's bytes least significant first, as
+`EVC_Position.Put_Identity_Event` and `View` write them (the LRBG / last
+group comparison was unaffected, both swapped alike). The ALL. reasons
+not judged: 224 steps before, 3 after, plus 29 without a message.
+
+**Timers (B560 done).** `Timer_Input` runs T_SECTIONTIMER or T_EMA less
+T_TIMEOUTRQST when the comment shows the second after a minus, its
+garbled "'" or an acute accent, and knows T_EMA by name: 3080200_01,
+3080200_07 and 3080400_03 pass, 3080200_03 moves to step 87, 3080200_02
+to step 73 (a named timer run with the train moving). 3080400_14 step
+72 is not a timer difference (Saeffd85e re-noted).
+
+**Window (B561 done).** A negative RTM message expectation after a
+balise group input has its window from the time of that input, after
+`Apply_Input` moved the train there (`Group_Input_Ms`,
+`S076_Bench.Now_Ms`): 4090100_01 moves from step 115 to 131.
+
+**UTC.** `S076_Bench.Power_On` gives the bench page's reference
+(2026-01-01 00:00:00 at the on-board time 0): DATE and TIME known in the
+runner's messages (B553 noted).
+
+**Counts.** 910 / 1185 / 1095 before, 919 / 1185 / 1086 after; steps
+passed 202031 -> 202384, not judged 4467 -> 4388; 6 regressions
+understood and re-recorded (4100103_47 passed because the bench forgot
+the LRBG at its power-on: the header keeps the SOLR in SL, B611;
+3131100_11 judged Q_LRBG 2 as "an LRBG known": the SOLR does not
+separate from the LRBG, B612), 0 untriaged.
+
+**Left.** B570 (the RBC's 32 given after A.3.1's 15 s): the trace
+confirms the line; the fix designed but not built is a held RTM input in
+the bench (`Hold_RTM` until the 155's time plus 14 s, the step of the 32
+passing as given earlier or giving it then), the payload built by
+`Radio_Input` for the later step. B480 (the negative JRU step after a
+failed step): the mark goes before the `Wait_Cycle` loop of the output
+steps in the step loop, and `Rec_Count` must honour it for both scopes
+(the window's and `Location_Scope`'s records); 8 steps, all after a
+first failure.
