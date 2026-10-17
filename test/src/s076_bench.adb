@@ -721,6 +721,10 @@ package body S076_Bench is
       else
          EVC_Core.Initialise;
       end if;
+      --  the bench page's UTC reference, 2026-01-01 00:00:00 at the
+      --  on-board time 0 (Sim_Onboard_Env): the JRU messages' DATE and
+      --  TIME known (SUBSET-027 4.2.3.3, 4.2.3.4)
+      EVC_Core.Set_UTC (820_540_800);
       DMI_Core.Initialise;
       Is_Powered := True;
       Was_Powered := True;
