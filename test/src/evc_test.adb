@@ -223,6 +223,7 @@ begin
    Scenario_JRU_On_Board;
    Scenario_JRU_To_RBC;
    Scenario_JRU_Track_Conditions;
+   Scenario_JRU_General;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;

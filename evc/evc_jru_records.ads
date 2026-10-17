@@ -202,6 +202,15 @@ is
      with Global => null,
           Post => Bits <= 8 * Max_Body;
 
+   --  SUBSET-027 4.2.4.47: the brake and traction interface of the
+   --  installation configuration C (SUBSET-026 3.13.2.2.6 to 3.13.2.2.8).
+   --  Decision: a special brake whose status affects the emergency brake
+   --  only is coded as affecting both where its variable has no such
+   --  value (the electro pneumatic brake)
+   procedure Interface_Fields (C      : EVC_Supervision_Input.Onboard_Config_T;
+                               Fields : out EVC_JRU_Messages.Fields_T)
+     with Global => null;
+
    --  4.2.4.24: the complementary variables of the RBC contact
    --  information the driver entered (MSG_DRIVER_DATA kind 5,
    --  dmi_protocol.ads): Q_RBCENTRY Q; with Q 2 or 3 NID_C and NID_RBC

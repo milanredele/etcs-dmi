@@ -206,6 +206,62 @@ package body EVC_Test_JRU is
              & "Q_PLATFORM 1, the start not relevant)");
    end Scenario_JRU_Track_Conditions;
 
+   --  SUBSET-027 4.3.1.1: at the start-up the information from the cold
+   --  movement detector (4.2.4.15) and the brake and traction interface
+   --  configuration (4.2.4.47) once, the general message with the mode
+   --  change; then, without a change, the general message every 5 s
+   procedure Scenario_JRU_General is
+      N1, N15, N47, At_47 : Natural := 0;
+      Times : array (1 .. 4) of Natural := (others => 0);
+      procedure Count (Now : Natural) is
+      begin
+         for I in 1 .. Rec_Count loop
+            if Recs (I).Port = JRU then
+               case JRU_NID (I) is
+                  when NID_General =>
+                     N1 := N1 + 1;
+                     if N1 <= Times'Last then
+                        Times (N1) := Now;
+                     end if;
+                  when NID_Cold_Movement => N15 := N15 + 1;
+                  when NID_Brake_Config =>
+                     N47 := N47 + 1;
+                     At_47 := I;
+                  when others => null;
+               end case;
+            end if;
+         end loop;
+      end Count;
+      P : Natural;
+   begin
+      EVC_Core.Initialise;
+      Reset_Capture;
+      EVC_Core.Tick (100);
+      Take;
+      Count (100);
+      Check (N15 = 1 and then N47 = 1 and then N1 = 1,
+             "4.3.1.1: at the start-up the messages 15 and 47 once, the "
+             & "general message with the mode change");
+      if At_47 /= 0 then
+         P := Body_Bit (Out_Buf (Recs (At_47).First .. Recs (At_47).Last));
+         Check (Get_Bits (Out_Buf (Recs (At_47).First .. Recs (At_47).Last),
+                          P, 12) = 2#1_1_11_11_01_10_0_1#,
+                "4.2.4.47: the service brake interface with its feedback, "
+                & "regenerative, eddy current brakes for both models, the "
+                & "magnetic shoe brake, the ep brake, the traction cut-off "
+                & "(the default configuration)");
+      end if;
+      for T in 2 .. 120 loop
+         EVC_Core.Tick (100);
+         Take;
+         Count (T * 100);
+      end loop;
+      Check (N1 = 3 and then Times (2) = 5_100 and then Times (3) = 10_100
+             and then N15 = 1 and then N47 = 1,
+             "4.3.1.1: the general message every 5 s at standstill in SB, "
+             & "got" & N1'Image & " at" & Times (2)'Image & Times (3)'Image);
+   end Scenario_JRU_General;
+
    --  The JRU record I as a message
    function Payload (I : Positive) return Byte_Array is
      (Out_Buf (Recs (I).First .. Recs (I).Last));

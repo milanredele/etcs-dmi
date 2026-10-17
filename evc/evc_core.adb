@@ -27,6 +27,8 @@ package body EVC_Core
                                    Cycle_Count,
                                    Clock_Ms, UTC_Known, UTC_Seconds,
                                    Reported_Mode,
+                                   General_Ms, General_Version,
+                                   General_Level, General_Mode, Started_Up,
                                    Latched_Odometer,
                                    Latched_Odometer_Fresh,
                                    Latched_TIU,
@@ -106,6 +108,13 @@ is
    UTC_Seconds          : Unsigned_32 := 0;
    --  The mode last reported to the juridical recording
    Reported_Mode        : Mode_T := M_NP;
+   --  The time, operated version, level and mode of the last general
+   --  message (Record_General), the messages of the start-up written
+   General_Ms           : Time_Ms_T := 0;
+   General_Version      : Natural := 0;
+   General_Level        : Level_T := L0;
+   General_Mode         : Mode_T := M_NP;
+   Started_Up           : Boolean := False;
 
    --  Inputs latched by Handle_Input since the last cycle
    Latched_Odometer  : Odometer_Sample_T := Standstill_Sample;
@@ -360,6 +369,11 @@ is
       UTC_Known := False;
       UTC_Seconds := 0;
       Reported_Mode := M_NP;
+      General_Ms := 0;
+      General_Version := 0;
+      General_Level := L0;
+      General_Mode := M_NP;
+      Started_Up := False;
       Latched_Odometer := Standstill_Sample;
       Latched_Odometer_Fresh := False;
       Latched_TIU := (others => False);
@@ -3041,6 +3055,59 @@ is
       TC_Sent := Info.Count > 0;
    end Send_External_Info;
 
+   --  JRU (SUBSET-027 4.3.1.1): the general message every 5 s, when the
+   --  operated system version changes and when the level changes (a
+   --  mode change writes it with its event, Put_Event); at the start-up,
+   --  the first cycle after Initialise or Power_Up, the information from
+   --  the cold movement detector (4.2.4.15: no cold movement, or no
+   --  information; a cold movement detected is the position's event 9)
+   --  and the brake and traction interface configuration (4.2.4.47).
+   --  Decision: "every 5 s" is 5 s after the last general message, so
+   --  that two general messages are never more than 5 s apart
+   procedure Record_General
+     with Global => (Input  => (Clock_Ms, Current_Mode, EVC_Levels.State,
+                                EVC_System_Version.State, EVC_Config.State,
+                                EVC_Odometry.State),
+                     In_Out => (General_Ms, General_Version, General_Level,
+                                General_Mode, Started_Up, EVC_Outbox.Queue))
+   is
+      use EVC_JRU_Messages;
+      Version : constant Natural :=
+        Natural (EVC_System_Version.Operated_Version);
+      F       : Fields_T;
+      use type EVC_Odometry.Cold_T;
+   begin
+      if not Started_Up then
+         Started_Up := True;
+         if EVC_Odometry.Cold /= EVC_Odometry.Cold_Movement then
+            F := No_Fields;
+            F (1) := (Value => (if EVC_Odometry.Cold
+                                     = EVC_Odometry.No_Cold_Movement
+                                then 0 else 2),
+                      Bits  => 2);
+            EVC_Outbox.Put_JRU (NID_Cold_Movement, Unsigned_64 (Clock_Ms),
+                                F, No_Data);
+         end if;
+         EVC_JRU_Records.Interface_Fields
+           (EVC_Config.Current.Supervision, F);
+         EVC_Outbox.Put_JRU (NID_Brake_Config, Unsigned_64 (Clock_Ms), F,
+                             No_Data);
+      end if;
+      if Current_Mode /= General_Mode then
+         General_Ms := Clock_Ms;
+      elsif Clock_Ms - General_Ms >= 5_000
+        or else Version /= General_Version
+        or else EVC_Levels.Level /= General_Level
+      then
+         EVC_Outbox.Put_JRU (NID_General, Unsigned_64 (Clock_Ms), No_Fields,
+                             No_Data);
+         General_Ms := Clock_Ms;
+      end if;
+      General_Mode := Current_Mode;
+      General_Version := Version;
+      General_Level := EVC_Levels.Level;
+   end Record_General;
+
    --  8j. JRU (SUBSET-027 4.2.4.11, 4.2.4.38, 4.2.4.45, EVC_JRU_Records):
    --  the driver's actions of the cycle no other event records, the cab
    --  status received from the train interface when it changed, the
@@ -3306,6 +3373,8 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Track_Description.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
+                                General_Ms, General_Version, General_Level,
+                                General_Mode, Started_Up,
                                 EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
@@ -3346,6 +3415,7 @@ is
       Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
       Record_Inputs_Radio_Data;     -- JRU 30, 31, 39, 48, 51, 124, 132
       Send_Radio;                   -- RTM (phase E5)
+      Record_General;               -- JRU 1, 15, 47
       Flush_Juridical;              -- JRU, the messages of the cycle
    end Produce_Outputs;
 

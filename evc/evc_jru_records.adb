@@ -307,6 +307,38 @@ is
       Bits := Pos;
    end Track_Conditions_Body;
 
+   procedure Interface_Fields (C      : EVC_Supervision_Input.Onboard_Config_T;
+                               Fields : out EVC_JRU_Messages.Fields_T)
+   is
+      use EVC_Supervision_Input;
+      function Flag (B : Boolean) return EVC_JRU_Messages.Field_T is
+        ((Value => (if B then 1 else 0), Bits => 1));
+      --  00 none, 01 the emergency brake only, 10 the service brake
+      --  only, 11 both (M_REGENERATIVEBRAKE, M_EDDYCURRENTBRAKE): the
+      --  order of Special_Brake_Interface_T
+      function Code (I : Special_Brake_Interface_T)
+        return EVC_JRU_Messages.Field_T
+      is ((Value => Unsigned_64 (Special_Brake_Interface_T'Pos (I)),
+           Bits  => 2));
+      S : constant Special_Brake_Interfaces_T := C.Special_Brakes;
+   begin
+      Fields := EVC_JRU_Messages.No_Fields;
+      Fields (1) := Flag (C.Service_Brake_Command);
+      Fields (2) := Flag (C.Service_Brake_Feedback);
+      Fields (3) := Code (S (Regenerative));
+      Fields (4) := Code (S (Eddy_Current));
+      Fields (5) := (Value => (if S (Magnetic_Shoe) = No_Interface then 0
+                               else 1),
+                     Bits  => 2);
+      Fields (6) := (Value => (case S (Electro_Pneumatic) is
+                                  when No_Interface => 0,
+                                  when Service_Only => 1,
+                                  when others       => 2),
+                     Bits  => 2);
+      Fields (7) := Flag (C.Additional_Brake_Allowed);
+      Fields (8) := Flag (C.Traction_Cut_Off);
+   end Interface_Fields;
+
    function MN_Code (T : EVC_Driver_Requests.Text_T) return MN_Bytes_T is
       Code : MN_Bytes_T := (others => 16#FF#);
       D    : Byte;
