@@ -2,6 +2,8 @@
 
 with EVC_Bytes;
 with EVC_Core;
+with EVC_JRU_Records;
+with EVC_Track_Conditions;
 with EVC_JRU_Messages;  use EVC_JRU_Messages;
 with EVC_Outbox;
 with EVC_Ports;         use EVC_Ports;
@@ -172,6 +174,37 @@ package body EVC_Test_JRU is
       end if;
       EVC_Outbox.Clear;
    end Scenario_JRU_To_RBC;
+
+   --  SUBSET-027 4.2.4.45: the list of the track conditions for the
+   --  external functions, read back (EVC_JRU_Records.Track_Conditions_Body)
+   procedure Scenario_JRU_Track_Conditions is
+      use EVC_Track_Conditions;
+      Info : External_T;
+      B    : EVC_JRU_Records.Body_T;
+      Bits : Natural;
+      function G (At_Bit : Natural; W : Width_T) return Natural is
+        (Natural (Get_Bits (B, At_Bit, W)));
+   begin
+      Info.Count := 2;
+      Info.List (1) := (Kind => Ext_Pantograph, Id => 1, Has_Start => True,
+                        To_Start => 50_000, Has_End => True,
+                        To_End => 70_000, Value => 0);
+      Info.List (2) := (Kind => Ext_Platform, Id => 193, Has_Start => False,
+                        To_Start => 0, Has_End => True, To_End => 12_000,
+                        Value => 3 * 4 + 1);
+      EVC_JRU_Records.Track_Conditions_Body (Info, B, Bits);
+      Check (Bits = 7 + 36 + 42
+             and then G (0, 2) = 1 and then G (2, 5) = 2
+             and then G (7, 4) = 0 and then G (11, 16) = 700
+             and then G (27, 16) = 500
+             and then G (43, 4) = 9 and then G (47, 16) = 120
+             and then G (63, 4) = 3 and then G (67, 2) = 1
+             and then G (69, 16) = 32_768,
+             "4.2.4.45: Q_SCALE 1 m, two conditions: a powerless section "
+             & "(D_MINSFE_TO_END 700 m, D_MAXSFE_TO_START 500 m), a station "
+             & "platform passed (its end at 120 m, M_PLATFORM 3, "
+             & "Q_PLATFORM 1, the start not relevant)");
+   end Scenario_JRU_Track_Conditions;
 
    --  The JRU record I as a message
    function Payload (I : Positive) return Byte_Array is

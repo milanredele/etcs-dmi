@@ -188,6 +188,20 @@ is
      with Global => null,
           Post => Bits <= 8 * Max_Body;
 
+   --  SUBSET-027 4.2.4.45: the track conditions of the information for
+   --  the external functions (SUBSET-026 5.20), written when an item
+   --  appears or changes its phase (Track_Conditions), the whole list.
+   --  Decisions: Q_SCALE 1 m; the distances of the second TIU output
+   --  (EVC_Track_Conditions.External_Item_T) in metres; an end not
+   --  generated is the largest distance, a start not generated (passed)
+   --  D_MAXSFE_TO_START -32768 "not relevant"
+   procedure Track_Conditions_Body
+     (Info : EVC_Track_Conditions.External_T;
+      Buf  : out Body_T;
+      Bits : out Natural)
+     with Global => null,
+          Post => Bits <= 8 * Max_Body;
+
    --  4.2.4.24: the complementary variables of the RBC contact
    --  information the driver entered (MSG_DRIVER_DATA kind 5,
    --  dmi_protocol.ads): Q_RBCENTRY Q; with Q 2 or 3 NID_C and NID_RBC

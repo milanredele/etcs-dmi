@@ -254,6 +254,59 @@ is
       Bits := Pos;
    end Train_Data_Body;
 
+   --  A distance in cm as signed metres on W bits (two's complement),
+   --  clamped to Low .. 2**(W-1) - 1
+   function Metres (D : EVC_Distances.Dist_T; Low : Integer; W : Positive)
+     return Natural
+   is (Natural ((Integer'Max (Low, Integer (EVC_Distances.Dist_T'Min
+                   (EVC_Distances.Dist_T'Max (D / 100, -2**15),
+                    2**(W - 1) - 1))) + 2**W) mod 2**W))
+     with Pre => W in 15 .. 16 and then Low in -2**15 .. 0;
+
+   procedure Track_Conditions_Body
+     (Info : EVC_Track_Conditions.External_T;
+      Buf  : out Body_T;
+      Bits : out Natural)
+   is
+      Pos : Natural := 0;
+      TI  : Natural;
+   begin
+      Buf := (others => 0);
+      Put (Buf, Pos, 1, 2);
+      Put (Buf, Pos, Info.Count, 5);
+      for I in 1 .. Info.Count loop
+         pragma Loop_Invariant (Pos <= 8 * Max_Body);
+         declare
+            E : EVC_Track_Conditions.External_Item_T renames Info.List (I);
+         begin
+            TI := Natural (Trackcond_TI (E.Kind));
+            Put (Buf, Pos, TI, 4);
+            if TI in 0 | 1 | 9 then
+               Put (Buf, Pos, (if E.Has_End then Metres (E.To_End, -2**15, 16)
+                               else 2**15 - 1), 16);
+            elsif TI in 2 .. 6 then
+               Put (Buf, Pos, (if E.Has_End then Metres (E.To_End, 0, 15)
+                               else 2**15 - 1), 15);
+            elsif TI = 7 then
+               Put (Buf, Pos, E.Value / 1024, 4);
+               if E.Value / 1024 /= 0 then
+                  Put (Buf, Pos, E.Value mod 1024, 10);
+               end if;
+            elsif TI = 8 then
+               Put (Buf, Pos, E.Value, 10);
+            end if;
+            if TI = 9 then
+               Put (Buf, Pos, E.Value / 4, 4);
+               Put (Buf, Pos, E.Value mod 4, 2);
+            end if;
+            Put (Buf, Pos, (if E.Has_Start
+                            then Metres (E.To_Start, -2**15 + 1, 16)
+                            else 2**15), 16);
+         end;
+      end loop;
+      Bits := Pos;
+   end Track_Conditions_Body;
+
    function MN_Code (T : EVC_Driver_Requests.Text_T) return MN_Bytes_T is
       Code : MN_Bytes_T := (others => 16#FF#);
       D    : Byte;

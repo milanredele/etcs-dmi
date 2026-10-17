@@ -3058,6 +3058,8 @@ is
       Code    : EVC_Bytes.Byte;
       Changed : Boolean;
       TC      : TC_Changes_T;
+      Body_Buf  : Body_T;
+      Body_Bits : Natural;
    begin
       for A in Action_T loop
          pragma Loop_Invariant (True);
@@ -3095,6 +3097,14 @@ is
                              (if TIU_Now (Cab_B_Active) then 1 else 0));
       end if;
       Track_Conditions (EVC_Stored_Information.External_Info, TC);
+      if TC.Count > 0 then
+         EVC_JRU_Records.Track_Conditions_Body
+           (EVC_Stored_Information.External_Info, Body_Buf, Body_Bits);
+         EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_Track_Conds,
+                             Unsigned_64 (Clock_Ms),
+                             EVC_JRU_Messages.No_Fields,
+                             Body_Buf, Body_Bits);
+      end if;
       for I in 1 .. TC.Count loop
          pragma Loop_Invariant (True);
          Put_Event (JRU_Track_Conditions, TC.List (I).TI,
