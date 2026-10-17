@@ -3356,7 +3356,7 @@ is
    procedure Produce_Outputs
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 UTC_Known, UTC_Seconds,
-                                EVC_System_Version.State,
+                                EVC_System_Version.State, EVC_Config.State,
                                 Standstill, Below_Override, TIU_Now,
                                 TIU_Known_Now, TIU_Value_Now,
                                 EVC_National_Values.State,
