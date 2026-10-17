@@ -6919,3 +6919,24 @@ message 255 is a debt with a line (B550): every remaining event's body per
 4.2.4 is the next JRU package, with the runner reading the header from
 the message (B554). Open items: doc/BACKLOG.csv (52 open after this
 round).
+
+### The messages to the RBC by shape, the radio network and the connection, the track ahead free request (e5/rbc-messages, 2026-10-17)
+
+B583 analysed, no on-board change: each of its seven shapes traced once at
+its step (the scn's step and `var` block, the trace with the session table
+and the LRBG). Two are the sequences': 4080421_02's case at 100 m leaves
+out the 38 its message 32 (M_VERSION 3.0) asks, so the session ends by
+3.5.3.7.4.1 before the entry to SH and no 150 can follow (5.6.2 A100);
+4080421_01's message 9 carries packet 49 twice for one direction, refused
+by 8.4.1.4 (M_ERROR 3), so no 138 is owed. Two are chapter 6 (E7): an RBC
+of system version 1 in 6060303_01 (message 15 without D_REF, the 147's
+translation of 6.6.3.4.5 [5]) and 6060304_01 (the 132 with packet 1 and
+Q_TRACKDEL). One is the runner's: ours sends Q_STATUSLRBG 2, the runner
+reads the step's binary 10 as decimal (B631). Two are ours and left:
+the 147 of 3060800_01 rejects the stop because BG2d, a single group
+linked in level 1, is not taken as LRBG in level 2 (B630; not the
+runner's odometer impairment: the same without its error), and message
+158 is not implemented (3.12.3.5.2, B632). A reading tried and withdrawn:
+answering with 138 a request to shorten the MA that the mode alone
+rejects (4.8.4, SH) had no sequence left to support it once the message 9
+above was found inconsistent. B582 and B586 not started (budget).

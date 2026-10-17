@@ -30,7 +30,7 @@ Sc4c3a7a1,model,"4090100_01 step 115 (re-traced 2026-10-16, B526 dropped): the 1
 Sa9695ede,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
 Sc4bf79ea,onboard,"fixed 2026-10-16 (B521 done): the 132 with the timer reason before the End Section's Section timer expires (3.8.2.2.1 b); 3080200_02 moves to step 71"
 S4e8eafa5,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
-Sa32fcae0,onboard,"3060800_01 step 72: the 147's Q_EMERGENCYSTOP not 0 (3.10.2.2 b), 7.5.1.107; B583) (re-traced 2026-10-16, one trace to the first failure)"
+Sa32fcae0,onboard,"3060800_01 step 72: the 147 has Q_EMERGENCYSTOP 3, rejected for an unknown LRBG: the single balise group BG2d at 1000 m (linked by the packet 5 of BG1d in level 1) is not taken as LRBG in level 2, also without the runner's odometer error (B630) (traced 2026-10-17, B583)"
 S99595702,E5,"authority: a sequence that now passes the Train Data step (e5/session-3) stops at the radio authority's part (messages 2, 3, 6, 9, 15, 27, 34, the MA request reasons, the mode authorisations): phase 2 of EVC_Radio_Authority"
 S442ca1ff,E5,"session: the level transitions into and out of level 2 (5.10, 5.15), reached now that the Train Data are sent (e5/session-3): phase 3"
 S66ffd293,E5,"session: the level transitions into and out of level 2 (5.10, 5.15), reached now that the Train Data are sent (e5/session-3): phase 3"
@@ -78,15 +78,15 @@ Sa8a3ba1a,E7,"expect RTM connect: not requested (e5/session-orders, 147 sequence
 S13f5df67,model,"129 not sent where expected (e5/train-data-129): the on-board sends 129 in the cycle of 159 (3.18.3.4: following the establishment, 3.5.3.7 d), the sequences expect it before the RBC's 38 (436 cases) or after it (69, e.g. 3040200_01 step 58); the runner kept the window across 38 at the same place since, no sequence stops here any more (the steps left are after an earlier failure)"
 S0ebd65fd,onboard,"3040200_03 step 137: ours stays SB where the sequence enters FS (B584) (re-traced 2026-10-16, one trace to the first failure)"
 ~expect RTM message: 157 not sent,E5,session: EVC_Sessions not written yet: message 157 SoM Position Report (5.4)
-~expect RTM message: 150 not sent,onboard,"4080421_02 step 85 (Sd36e871f): no 150 in L2 SH (B583) (re-traced 2026-10-16, one trace to the first failure)"
+~expect RTM message: 150 not sent,s076,"4080421_02 SV30 step 85 (Sd36e871f): the message 32 of step 56 gives M_VERSION 3.0 and the case leaves out the 38 its session awaits, so the on-board terminates the session after the second 159 (3.5.3.7.4.1) and has none at the entry to SH for the 150 of 5.6.2 A100 (traced 2026-10-17, B583)"
 ~expect RTM message: 146 not sent,E5,session: EVC_Sessions not written yet: message 146 Acknowledgement (3.16.3.5)
 ~expect RTM message: 132 not sent,E5,authority: EVC_Radio_Authority not written yet: message 132 MA Request (3.8.2)
-~expect RTM message: 147 not sent,onboard,"6060303_01 step 81 (Sb99f32af): no 147 in L2 LS (B583) (re-traced 2026-10-16, one trace to the first failure)"
+~expect RTM message: 147 not sent,E7,"6060303_01 step 81 (Sb99f32af): the RBC is of system version 1; its message 15 has no D_REF (6.5.1.5), found inconsistent (JRU 13, M_ERROR 3), and the 147 owes the translation of 6.6.3.4.5 [5]: chapter 6 translation not modelled (traced 2026-10-17, B583)"
 ~expect RTM message: 130 not sent,E5,authority: EVC_Radio_Authority not written yet: message 130 Request for Shunting (5.6)
 ~expect RTM message: 137 not sent,E5,authority: EVC_Radio_Authority not written yet: message 137 Request to shorten MA is granted (3.8.6)
-~expect RTM message: 138 not sent,onboard,"4080421_01 step 92 (S0a9d65f5): no 138 in L2 SH (B583) (re-traced 2026-10-16, one trace to the first failure)"
+~expect RTM message: 138 not sent,s076,"4080421_01 step 92 (S0a9d65f5): the message 9 of step 90 carries packet 49 twice for the same direction, inconsistent by 8.4.1.4 (JRU 13, M_ERROR 3), so there is no request to answer (traced 2026-10-17, B583)"
 ~expect RTM message: 149 not sent,E5,authority: EVC_Radio_Authority not written yet: message 149 Track Ahead Free Granted (4.4, 5.6)
-~expect RTM message: 158 not sent,onboard,"4080300_04 step 83 (Sda1594c7): no 158 in L2 SR (B583) (re-traced 2026-10-16, one trace to the first failure)"
+~expect RTM message: 158 not sent,onboard,"4080300_04 step 83 (Sda1594c7): no 158 in L2 SR: the report of the driver's acknowledgement (3.12.3.5.2) is not implemented, EVC_Text_Messages keeps Q_TEXTREPORT but not the RBC of the request (B632) (traced 2026-10-17, B583)"
 ~expect RTM message: 131 not sent,E5,authority: EVC_Radio_Authority not written yet: message 131 Request for Supervised Manoeuvre (5.21)
 ~expect RTM message: 133 not sent,E5,authority: EVC_Radio_Authority not written yet: message 133 Safe consist length information for SM (5.21)
 S322852a4,dmi,"6060304_06, 6060500_11, 6060504_03, 6060505_03 step 94 (re-traced 2026-10-16): level 2 re-entered from the Main window during the start of mission (5.4.3.2 S2: 'If the entered / re-validated level is 2, the process shall go to S3'), the joined case 5040300 38 expects the Radio data window; our DMI follows its Table 50 D5 (contact valid, radio registered) to the Main window: the DMI's window flow against 5.4.3.2 S3 (B523)"
@@ -160,7 +160,7 @@ Scc92cf5f,s076,"curve Indication 188 m further out (e5/curves-sdm): 3131040_38 s
 S39f273d3,model,"curve Warning 54 to 87 m further out by an Intervention (e5/curves-sdm, B195): the runner's last cycle before a location reports the distance left per cycle as the speed (17 km/h at 61 for one cycle); the measured acceleration rebounds and A_est2 0.4 m/s2 over T_berem lifts V_bec by 8 m/s (3.13.9.3.2.9), every limit out by the same (B224); 3131040_26 also a LoA/MRSP workbook (B200)"
 # e5/version (2026-10-06): reached once 2.x / 1.x RBCs are compatible (SV21, SV22)
 Se18f3f0a,E7,"3170200_02/_03/_08, 6060500_09, 6060504_01: 159 to an RBC of X = 1 with packet 3 (the on-board telephone numbers) per the X = 1 translation of 3.6.0 chapter 6 (6.6.3.4.5 [U][6]); 4.0.0 keeps it in the X = 1 layouts of 6.5.1 (chapter 6, E7)"
-Sc18cdb2f,onboard,"6060304_01 step 73: the 132 without packet 1 (B583) (re-traced 2026-10-16, one trace to the first failure)"
+Sc18cdb2f,E7,"6060304_01 step 73: the 132 to an RBC of system version 1 with packet 1 and Q_TRACKDEL of 6.6.3.4.5 [4]: chapter 6 translation not modelled (traced 2026-10-17, B583)"
 Sb6e8acf4,E6,"4080438_01 (SV21, SV22; SV30 stops earlier): the train trips at balise group BG666d in SR level 2 where the sequence stays in SR; balise side, not analysed in e5/version (3.16 consistency / linking, E6)"
 Sd4cbc324,onboard,"4080421_02 SV21 step 101: no trip in L2 SH at the BG at 820 m (B585) (re-traced 2026-10-16, one trace to the first failure)"
 S908191ec,onboard,"3060500_05 step 73: the Train integrity button disabled in L2 FS at standstill (DMI 11.2.3.5; B587) (re-traced 2026-10-16, one trace to the first failure)"
@@ -229,7 +229,7 @@ S8727c744,s076,"3130700_04 step 65 (OS, 12 km/h, V_PERM 10): the sequence's V5 i
 S5d36d452,onboard,"e5/levels: 5100315_01 / _02 now reach step 63: the JRU driver action of a level 2 selection (00100010 / 00100011 / 00100110) not recorded in the window (to analyse with the JRU of E6)"
 S389c6f32,dmi,"e5/levels: 9990400_45 now reaches step 70: the Adhesion button disabled in level 2 (the DMI's settings window: to analyse)"
 S52fbd3cd,onboard,"5040300_03 step 51: the L2 symbol not removed after the driver ID at the start of mission (B581) (re-traced 2026-10-16, one trace to the first failure)"
-Sf95a7750,onboard,"5040300_16 step 83: the 157's Q_STATUSLRBG not 2 (B583) (re-traced 2026-10-16, one trace to the first failure)"
+Sf95a7750,model,"5040300_16 step 83: ours sends Q_STATUSLRBG 2 (unknown, binary 10, 7.5.1.137) and the runner compares the step's 10 as decimal (B631) (traced 2026-10-17, B583)"
 S77bbddb4,s076,"3180400_02 / _03 step 49 (runner level rule of 2026-10-09): after the driver's level selection of step 45 the sequence's own columns say L2 (step 46 on) and the DMI level symbol step passes with L2, but the JRU step expects M_LEVEL=0/1/2 (L0 / NTC / L1, not 3 = L2): the sequence contradicts itself; the runner follows the columns"
 S4a1bcab7,onboard,"3160300_01 SV21 step 87: the 136 goes out with M_ERROR 3, not 4: the message 24 of step 83 carries packet 72, the plain text packet of system version 2 (packet 73 in 4.0.0, 7.4.2.23; 72 is translated by chapter 6, 6.6.5.2.3), so the codec of chapter 7 counts it unknown (no codec defect); chapter 6 is not modelled (as S322852a4). Decision (e5/untraced, EVC_Core.Read_Radio_Messages): the general criteria of 3.16.1.1 before the time stamp check of 3.16.3.1.1 b), one report"
 Se0240012,onboard,"3150100_02 step 90 fixed (e5/connection-indication): the indication per session (3.5.7.6.1), the Handing Over RBC's shown until it is over (3.5.7.6 b), then the Accepting RBC's; no sequence stops here now, the 15 failed steps left come after a first failure, not analysed"
