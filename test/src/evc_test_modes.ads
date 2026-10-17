@@ -25,6 +25,7 @@ package EVC_Test_Modes is
       procedure Scenario_E4_Desk_Closed;
       procedure Scenario_E4_Continue_Shunting;
       procedure Scenario_E5P_JRU_Records;
+      procedure Scenario_E5P_JRU_Bodies;
       procedure Scenario_JRU_Inputs;
       procedure Scenario_JRU_Level_Again;
 

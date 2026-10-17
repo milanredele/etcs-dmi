@@ -27,6 +27,8 @@ package body EVC_Core
                                    Cycle_Count,
                                    Clock_Ms, UTC_Known, UTC_Seconds,
                                    Reported_Mode,
+                                   General_Ms, General_Version,
+                                   General_Level, General_Mode, Started_Up,
                                    Latched_Odometer,
                                    Latched_Odometer_Fresh,
                                    Latched_TIU,
@@ -106,6 +108,13 @@ is
    UTC_Seconds          : Unsigned_32 := 0;
    --  The mode last reported to the juridical recording
    Reported_Mode        : Mode_T := M_NP;
+   --  The time, operated version, level and mode of the last general
+   --  message (Record_General), the messages of the start-up written
+   General_Ms           : Time_Ms_T := 0;
+   General_Version      : Natural := 0;
+   General_Level        : Level_T := L0;
+   General_Mode         : Mode_T := M_NP;
+   Started_Up           : Boolean := False;
 
    --  Inputs latched by Handle_Input since the last cycle
    Latched_Odometer  : Odometer_Sample_T := Standstill_Sample;
@@ -360,6 +369,11 @@ is
       UTC_Known := False;
       UTC_Seconds := 0;
       Reported_Mode := M_NP;
+      General_Ms := 0;
+      General_Version := 0;
+      General_Level := L0;
+      General_Mode := M_NP;
+      Started_Up := False;
       Latched_Odometer := Standstill_Sample;
       Latched_Odometer_Fresh := False;
       Latched_TIU := (others => False);
@@ -586,24 +600,93 @@ is
 
    No_Data : constant EVC_Bytes.Byte_Array (1 .. 0) := (others => 0);
 
+   --  SUBSET-027 4.2.4.3 and 4.2.4.4: M_BRAKE_COMMAND_STATE of the
+   --  emergency and of the service brake command (bits 0 and 1 of the
+   --  TIU commands), each when it differs from Before
+   procedure Put_Brake_States (Commands, Before : EVC_Bytes.Byte)
+     with Global => (Input => Clock_Ms, In_Out => EVC_Outbox.Queue)
+   is
+      use EVC_JRU_Messages;
+   begin
+      for Bit in 0 .. 1 loop
+         pragma Loop_Invariant (True);
+         if (Shift_Right (Commands xor Before, Bit) and 1) /= 0 then
+            EVC_Outbox.Put_JRU
+              ((if Bit = 0 then NID_EB_State else NID_SB_State),
+               Unsigned_64 (Clock_Ms),
+               (1      => (Value => Unsigned_64
+                                      (Shift_Right (Commands, Bit) and 1),
+                           Bits  => 1),
+                others => (Value => 0, Bits => 0)),
+               No_Data);
+         end if;
+      end loop;
+   end Put_Brake_States;
+
    --  The juridical message of an event of EVC_Ports and its three bytes
    --  (EVC_JRU_Messages.Event_Message), kept with the on-board time of
-   --  the event; a mode change is the general message too (SUBSET-027
-   --  4.3.1.1), before the proprietary one with the level status
+   --  the event; the message of EVC_JRU_Messages.Paired_Message before
+   --  it (a mode change is the general message too, SUBSET-027 4.3.1.1,
+   --  before the proprietary one with the level status)
    procedure Put_Event (Event, B2, B3, B4 : EVC_Bytes.Byte)
      with Global => (Input => Clock_Ms, In_Out => EVC_Outbox.Queue)
    is
       NID    : EVC_Bytes.Byte;
       Fields : EVC_JRU_Messages.Fields_T;
    begin
-      if Event = 1 then
-         EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_General,
-                             Unsigned_64 (Clock_Ms),
-                             EVC_JRU_Messages.No_Fields, No_Data);
+      EVC_JRU_Messages.Paired_Message (Event, B2, B3, B4, NID, Fields);
+      if NID /= 0 then
+         EVC_Outbox.Put_JRU (NID, Unsigned_64 (Clock_Ms), Fields, No_Data);
       end if;
       EVC_JRU_Messages.Event_Message (Event, B2, B3, B4, NID, Fields);
       EVC_Outbox.Put_JRU (NID, Unsigned_64 (Clock_Ms), Fields, No_Data);
    end Put_Event;
+
+   --  The juridical message of an event of the mission (EVC_Ports event
+   --  41): the train running number (SUBSET-027 4.2.4.49), the SR speed
+   --  and distance the driver entered (4.2.4.25; decision: the national
+   --  values of an override, 4.4.11.1.3.1 a), are not entered by the
+   --  driver and keep the proprietary message) and the Train Data
+   --  (4.2.4.2) with their bodies, every other kind as Put_Event
+   procedure Put_Mission_Event (E : EVC_Mission.Event_T)
+     with Global => (Input  => (Clock_Ms, EVC_Mission.State,
+                                EVC_Train_Data.State,
+                                EVC_Driver_Requests.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      use EVC_JRU_Messages;
+      SR   : constant EVC_Driver_Requests.SR_Entry_T :=
+        EVC_Driver_Requests.SR_Data;
+      Body_Buf  : EVC_JRU_Records.Body_T;
+      Body_Bits : Natural;
+   begin
+      if E.Kind = EVC_Mission.Event_TRN then
+         EVC_Outbox.Put_JRU (NID_TRN, Unsigned_64 (Clock_Ms),
+                  (1      => (Value => Unsigned_64
+                                (EVC_JRU_Records.TRN_Code (EVC_Mission.TRN)),
+                              Bits  => 32),
+                   others => (Value => 0, Bits => 0)),
+                  No_Data);
+      elsif E.Kind = EVC_Mission.Event_SR_Data
+        and then EVC_Driver_Requests.Entered (EVC_Driver_Requests.SR_Data)
+      then
+         EVC_Outbox.Put_JRU (NID_SR_Data, Unsigned_64 (Clock_Ms),
+                  (1      => (Value => Unsigned_64 (SR.Distance_M),
+                              Bits  => 17),
+                   2      => (Value => Unsigned_64 (SR.Speed_Kmh),
+                              Bits  => 10),
+                   others => (Value => 0, Bits => 0)),
+                  No_Data);
+      elsif E.Kind = EVC_Mission.Event_Train_Data then
+         EVC_JRU_Records.Train_Data_Body
+           (EVC_Train_Data.Data, EVC_Train_Data.Categories,
+            Body_Buf, Body_Bits);
+         EVC_Outbox.Put_JRU (NID_Train_Data, Unsigned_64 (Clock_Ms), No_Fields,
+                  Body_Buf, Body_Bits);
+      else
+         Put_Event (EVC_Ports.JRU_Mission, E.Kind, E.B3, E.B4);
+      end if;
+   end Put_Mission_Event;
 
    --  The message 13 (SUBSET-027 4.2.4.13) with M_ERROR; decision: the
    --  RBC is the Supervising RBC (EVC_Radio), the error concerns the
@@ -2223,9 +2306,8 @@ is
    end Finish_Procedures;
 
    --  JRU events of phase E4 (EVC_Ports): 40 the levels, 41 the mission
-   --  (the modes and levels), 23 the procedures, 24 the text messages
+   --  (Put_Mission_Event), 23 the procedures, 24 the text messages
    JRU_Levels  : constant := EVC_Ports.JRU_Levels;
-   JRU_Mission : constant := EVC_Ports.JRU_Mission;
 
    --  8. The outputs of the cycle (Produce_Outputs), in the order they
    --  are sent: the order of the records within a cycle is part of the
@@ -2236,7 +2318,9 @@ is
    --  5.5, event 41) of the cycle (phase E4)
    procedure Record_Mode_Levels_Mission
      with Global => (Input  => (Current_Mode, Clock_Ms,
-                                EVC_Levels.State, EVC_Mission.State),
+                                EVC_Levels.State, EVC_Mission.State,
+                                EVC_Train_Data.State,
+                                EVC_Driver_Requests.State),
                      In_Out => (Reported_Mode, EVC_Outbox.Queue))
    is
    begin
@@ -2259,8 +2343,7 @@ is
          declare
             E : constant EVC_Mission.Event_T := EVC_Mission.Event (I);
          begin
-            Put_Event (JRU_Mission, E.Kind, E.B3,
-                                             E.B4);
+            Put_Mission_Event (E);
          end;
       end loop;
    end Record_Mode_Levels_Mission;
@@ -2866,6 +2949,7 @@ is
    begin
       EVC_Outbox.Put (DMI, Speed_State_Frame (Speed_State));
       if Commands /= TIU_Sent or else Why /= TIU_Reasons_Sent then
+         Put_Brake_States (Commands, TIU_Sent);
          Put_Event (JRU_Brake_Commands,
                     Commands
                     or EVC_Bytes.Byte (Shift_Left (Shift_Right (Why, 8),
@@ -2971,6 +3055,59 @@ is
       TC_Sent := Info.Count > 0;
    end Send_External_Info;
 
+   --  JRU (SUBSET-027 4.3.1.1): the general message every 5 s, when the
+   --  operated system version changes and when the level changes (a
+   --  mode change writes it with its event, Put_Event); at the start-up,
+   --  the first cycle after Initialise or Power_Up, the information from
+   --  the cold movement detector (4.2.4.15: no cold movement, or no
+   --  information; a cold movement detected is the position's event 9)
+   --  and the brake and traction interface configuration (4.2.4.47).
+   --  Decision: "every 5 s" is 5 s after the last general message, so
+   --  that two general messages are never more than 5 s apart
+   procedure Record_General
+     with Global => (Input  => (Clock_Ms, Current_Mode, EVC_Levels.State,
+                                EVC_System_Version.State, EVC_Config.State,
+                                EVC_Odometry.State),
+                     In_Out => (General_Ms, General_Version, General_Level,
+                                General_Mode, Started_Up, EVC_Outbox.Queue))
+   is
+      use EVC_JRU_Messages;
+      Version : constant Natural :=
+        Natural (EVC_System_Version.Operated_Version);
+      F       : Fields_T;
+      use type EVC_Odometry.Cold_T;
+   begin
+      if not Started_Up then
+         Started_Up := True;
+         if EVC_Odometry.Cold /= EVC_Odometry.Cold_Movement then
+            F := No_Fields;
+            F (1) := (Value => (if EVC_Odometry.Cold
+                                     = EVC_Odometry.No_Cold_Movement
+                                then 0 else 2),
+                      Bits  => 2);
+            EVC_Outbox.Put_JRU (NID_Cold_Movement, Unsigned_64 (Clock_Ms),
+                                F, No_Data);
+         end if;
+         EVC_JRU_Records.Interface_Fields
+           (EVC_Config.Current.Supervision, F);
+         EVC_Outbox.Put_JRU (NID_Brake_Config, Unsigned_64 (Clock_Ms), F,
+                             No_Data);
+      end if;
+      if Current_Mode /= General_Mode then
+         General_Ms := Clock_Ms;
+      elsif Clock_Ms - General_Ms >= 5_000
+        or else Version /= General_Version
+        or else EVC_Levels.Level /= General_Level
+      then
+         EVC_Outbox.Put_JRU (NID_General, Unsigned_64 (Clock_Ms), No_Fields,
+                             No_Data);
+         General_Ms := Clock_Ms;
+      end if;
+      General_Mode := Current_Mode;
+      General_Version := Version;
+      General_Level := EVC_Levels.Level;
+   end Record_General;
+
    --  8j. JRU (SUBSET-027 4.2.4.11, 4.2.4.38, 4.2.4.45, EVC_JRU_Records):
    --  the driver's actions of the cycle no other event records, the cab
    --  status received from the train interface when it changed, the
@@ -2988,6 +3125,8 @@ is
       Code    : EVC_Bytes.Byte;
       Changed : Boolean;
       TC      : TC_Changes_T;
+      Body_Buf  : Body_T;
+      Body_Bits : Natural;
    begin
       for A in Action_T loop
          pragma Loop_Invariant (True);
@@ -3025,6 +3164,14 @@ is
                              (if TIU_Now (Cab_B_Active) then 1 else 0));
       end if;
       Track_Conditions (EVC_Stored_Information.External_Info, TC);
+      if TC.Count > 0 then
+         EVC_JRU_Records.Track_Conditions_Body
+           (EVC_Stored_Information.External_Info, Body_Buf, Body_Bits);
+         EVC_Outbox.Put_JRU (EVC_JRU_Messages.NID_Track_Conds,
+                             Unsigned_64 (Clock_Ms),
+                             EVC_JRU_Messages.No_Fields,
+                             Body_Buf, Body_Bits);
+      end if;
       for I in 1 .. TC.Count loop
          pragma Loop_Invariant (True);
          Put_Event (JRU_Track_Conditions, TC.List (I).TI,
@@ -3105,10 +3252,18 @@ is
                                 EVC_Radio_Authority.State, EVC_Radio.State,
                                 EVC_Radio.Queue, EVC_Outbox.Queue))
    is
+      Mark : constant Natural := EVC_Outbox.Used;
+      RBCs : EVC_Outbox.RBC_Ids_T;
    begin
       EVC_Sessions.Produce (Radio_Context);
       EVC_Radio_Authority.Produce (Radio_Context);
       EVC_Radio.Drain;
+      for S in RBCs'Range loop
+         pragma Loop_Invariant (True);
+         RBCs (S) := Unsigned_32 (EVC_Radio.Info (S).RBC.NID_C) * 2**14
+                     + Unsigned_32 (EVC_Radio.Info (S).RBC.NID_RBC);
+      end loop;
+      EVC_Outbox.Put_JRU_Sent (Mark, Unsigned_64 (Clock_Ms), RBCs);
    end Send_Radio;
 
    --  A location reference of the header of SUBSET-027 4.2.3.5 from the
@@ -3201,7 +3356,7 @@ is
    procedure Produce_Outputs
      with Global => (Input  => (Current_Mode, Clock_Ms,
                                 UTC_Known, UTC_Seconds,
-                                EVC_System_Version.State,
+                                EVC_System_Version.State, EVC_Config.State,
                                 Standstill, Below_Override, TIU_Now,
                                 TIU_Known_Now, TIU_Value_Now,
                                 EVC_National_Values.State,
@@ -3218,6 +3373,8 @@ is
                                 EVC_Track_Conditions.State,
                                 EVC_Track_Description.State),
                      In_Out => (Reported_Mode, Geo_Sent, EVC_Outbox.Queue,
+                                General_Ms, General_Version, General_Level,
+                                General_Mode, Started_Up,
                                 EVC_JRU_Records.State,
                                 Status_Brake_Sent, Status_TTI_Sent,
                                 TIU_Sent, TIU_Reasons_Sent,
@@ -3258,6 +3415,7 @@ is
       Record_Actions_Cabs_Conditions;  -- JRU 11, 38, 45
       Record_Inputs_Radio_Data;     -- JRU 30, 31, 39, 48, 51, 124, 132
       Send_Radio;                   -- RTM (phase E5)
+      Record_General;               -- JRU 1, 15, 47
       Flush_Juridical;              -- JRU, the messages of the cycle
    end Produce_Outputs;
 

@@ -221,6 +221,9 @@ begin
    Scenario_Config_Behaviour;
    Scenario_JRU_Format;
    Scenario_JRU_On_Board;
+   Scenario_JRU_To_RBC;
+   Scenario_JRU_Track_Conditions;
+   Scenario_JRU_General;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;
@@ -240,6 +243,7 @@ begin
    Scenario_E4_Desk_Closed;
    Scenario_E4_Continue_Shunting;
    Scenario_E5P_JRU_Records;
+   Scenario_E5P_JRU_Bodies;
    Scenario_JRU_Inputs;
    Scenario_JRU_Level_Again;
    EVC_Test_LS.Scenario_LS_Display;

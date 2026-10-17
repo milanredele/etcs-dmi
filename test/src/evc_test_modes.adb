@@ -4,6 +4,7 @@ with ETCS_Track_Packets.P46;
 with ETCS_Variables;
 with EVC_Bytes;
 with EVC_Core;
+with EVC_JRU_Messages;
 with EVC_DMI_Port;
 with EVC_Brake_Commands;
 with EVC_Mission;
@@ -315,6 +316,79 @@ package body EVC_Test_Modes is
       Check (JRU_Cabs = 2 and then JRU_Cab_Last = 0,
              "JRU 38: the cab closed recorded (M_CAB_A_STATUS 0)");
    end Scenario_E5P_JRU_Records;
+
+   --  The last JRU record of the last Take that is the message NID, 0
+   --  when none
+   function JRU_Message (NID : Natural) return Natural is
+      Found : Natural := 0;
+   begin
+      for I in 1 .. Rec_Count loop
+         if Recs (I).Port = JRU and then JRU_NID (I) = NID then
+            Found := I;
+         end if;
+      end loop;
+      return Found;
+   end JRU_Message;
+
+   --  Bits bits Offset bits into the complementary variables of the JRU
+   --  record I
+   function Body_Field (I : Positive; Offset : Natural; Bits : Positive)
+     return Natural
+   is
+      P : constant EVC_Bytes.Byte_Array :=
+        Out_Buf (Recs (I).First .. Recs (I).Last);
+   begin
+      return Natural (EVC_JRU_Messages.Get_Bits
+        (P, EVC_JRU_Messages.Body_Bit (P) + Offset, Bits));
+   end Body_Field;
+
+   --  SUBSET-027 4.2.4.2, .49, .25, .3: the Train Data, the train running
+   --  number and the SR speed and distance the driver enters, and the
+   --  emergency brake command of a trip, with their complementary
+   --  variables; their view stays the event 41 of EVC_Ports
+   procedure Scenario_E5P_JRU_Bodies is
+      I  : Natural;
+      EB : Natural := 0;
+   begin
+      Start_E4;
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, L1_Code));
+      Send (Train_Entry (200, 135, 160));
+      I := JRU_Message (2);
+      Check (I /= 0 and then Body_Field (I, 0, 7) = 32
+             and then Body_Field (I, 26, 12) = 200
+             and then Body_Field (I, 57, 1) = 0
+             and then Body_Field (I, 58, 8) = 135
+             and then E4_Seen (41, 3) = 1,
+             "JRU 2: the Train Data, V_MAXTRAIN 160 km/h, L_TRAIN 200 m, "
+             & "lambda with 135 % (SUBSET-027 4.2.4.2)");
+      Send (Text_Entry (1, "5678"));
+      I := JRU_Message (49);
+      Check (I /= 0 and then Body_Field (I, 0, 16) = 16#5678#
+             and then Body_Field (I, 16, 16) = 16#FFFF#
+             and then E4_Seen (41, 2) = 1,
+             "JRU 49: NID_OPERATIONAL 5678 in BCD, F after the digits "
+             & "(SUBSET-027 4.2.4.49)");
+      Send (Action (5));
+      Send (Ack_Of (1));
+      Send (SR_Entry (30, 150));
+      I := JRU_Message (25);
+      Check (I /= 0 and then Body_Field (I, 0, 17) = 150
+             and then Body_Field (I, 17, 10) = 30
+             and then E4_Seen (41, 11) = 1,
+             "JRU 25: D_SR 150 m, V_SR 30 km/h (SUBSET-027 4.2.4.25)");
+      Speed_Cms := 500;
+      while Train_Cm < 30_000 and then ML (1) /= TR_Code loop
+         Step_X (500);
+         I := JRU_Message (3);
+         if I /= 0 and then Body_Field (I, 0, 1) = 1 then
+            EB := EB + 1;
+         end if;
+      end loop;
+      Check (EB = 1,
+             "JRU 3: M_BRAKE_COMMAND_STATE 1 once at the trip "
+             & "(SUBSET-027 4.2.4.3)");
+   end Scenario_E5P_JRU_Bodies;
 
    --  SUBSET-027 4.2.4.30, .31, .32, .39, .51, .24, .48 (EVC_JRU_Records):
    --  the sleeping, passive shunting and non leading inputs and the

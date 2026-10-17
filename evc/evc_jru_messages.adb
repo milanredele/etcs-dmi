@@ -269,6 +269,30 @@ is
                   + Get (P, B + 35, 14, 16383);
             return (2, Byte (Id mod 256), Byte (Id / 256 mod 256),
                     Byte (Id / 65536 mod 256));
+         when NID_Train_Data =>
+            --  event 41 kind 3: L_TRAIN / 100, M_BRAKE_PERCENTAGE / 2
+            --  (0 for a gamma train)
+            return (41, 3, Byte (Get (P, B + 26, 12, 4095) / 100),
+                    (if F (57, 1) = 0 then F (58, 8) / 2 else 0));
+         when NID_SR_Data =>
+            --  event 41 kind 11: V_SR / 5, D_SR / 100 at most 255
+            return (41, 11, Byte (Get (P, B + 17, 10, 1023) / 5),
+                    Byte (Natural'Min (Get (P, B, 17, 131_071) / 100,
+                                       255)));
+         when NID_TRN =>
+            --  event 41 kind 2: the number of digits before an F
+            Id := 0;
+            while Id < 8 and then Get (P, B + 4 * Id, 4, 15) /= 15 loop
+               pragma Loop_Invariant (Id < 8);
+               pragma Loop_Variant (Increases => Id);
+               Id := Id + 1;
+            end loop;
+            return (41, 2, Byte (Id), 0);
+         when NID_Cold_Movement =>
+            return (if F (0, 2) = 1 then (9, 1, 0, 0) else (others => <>));
+         when NID_Odometer =>
+            return (if F (0, 8) in 9 .. 10 then (7, F (0, 8) - 8, 0, 0)
+                    else (others => <>));
          when NID_From_RBC =>
             Id := (if 8 * P'Length >= B + 24
                    then (8 * P'Length - B - 24) / 8 else 0);
@@ -287,6 +311,19 @@ is
         ((Value => Unsigned_64 (V) and (Shift_Left (1, Bits) - 1),
           Bits  => Bits))
         with Pre => Bits in 1 .. 8;
+
+      --  4.2.4.255: the event and its three bytes
+      procedure Proprietary
+        with Global => (Input => (Event, B2, B3, B4),
+                        Output => NID, In_Out => Fields);
+      procedure Proprietary is
+      begin
+         NID := NID_Proprietary;
+         Fields (1) := F (Event, 8);
+         Fields (2) := F (B2, 8);
+         Fields (3) := F (B3, 8);
+         Fields (4) := F (B4, 8);
+      end Proprietary;
    begin
       Fields := No_Fields;
       case Event is
@@ -311,13 +348,48 @@ is
             Fields (1) := F (B2, 8);
             Fields (2) := F (B3, 8);
             Fields (3) := F (B4, 8);
+         when 7 =>
+            --  4.2.4.52: M_ERROR 9 the impairment threshold reached, 10
+            --  the safety threshold (SUBSET-026 7.5.1.64, 3.6.8.5,
+            --  3.6.8.7); back to nominal has no message of its own
+            if B2 in 1 .. 2 then
+               NID := NID_Odometer;
+               Fields (1) := (Value => Unsigned_64 (B2) + 8, Bits => 8);
+            else
+               Proprietary;
+            end if;
+         when 9 =>
+            --  4.2.4.15: M_COLD_MVT (1 cold movement detected)
+            NID := NID_Cold_Movement;
+            Fields (1) := F (B2, 2);
          when others =>
-            NID := NID_Proprietary;
-            Fields (1) := F (Event, 8);
-            Fields (2) := F (B2, 8);
-            Fields (3) := F (B3, 8);
-            Fields (4) := F (B4, 8);
+            Proprietary;
       end case;
    end Event_Message;
+
+   procedure Paired_Message (Event      : Byte;
+                             B2, B3, B4 : Byte;
+                             NID        : out Byte;
+                             Fields     : out Fields_T)
+   is
+      Id : constant Unsigned_64 :=
+        Unsigned_64 (B2) + 256 * Unsigned_64 (B3)
+        + 65_536 * Unsigned_64 (B4);
+   begin
+      Fields := No_Fields;
+      case Event is
+         when 1 =>
+            NID := NID_General;
+         when 5 | 6 =>
+            --  NID_C, NID_ERRORBG, M_ERROR (4.2.4.12)
+            NID := NID_BG_Error;
+            Fields (1) := (Value => Shift_Right (Id, 14) and 1023,
+                           Bits  => 10);
+            Fields (2) := (Value => Id and 16383, Bits => 14);
+            Fields (3) := (Value => 0, Bits => 8);
+         when others =>
+            NID := 0;
+      end case;
+   end Paired_Message;
 
 end EVC_JRU_Messages;

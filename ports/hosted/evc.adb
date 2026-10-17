@@ -23,6 +23,8 @@
 --
 --  Usage: obj/evc_onboard [--config <image>]
 
+with Ada.Calendar;
+with Ada.Calendar.Formatting;
 with Ada.Command_Line;
 with Ada.Directories;
 with Ada.Environment_Variables;
@@ -35,6 +37,7 @@ with EVC_Bytes;
 with EVC_Config;
 with EVC_Core;
 with GNAT.Sockets;  use GNAT.Sockets;
+with Interfaces;
 with Sim_Onboard_Env;
 with Sim_Trackside;
 
@@ -81,6 +84,24 @@ procedure Evc is
    end Send_Sim;
 
    Layout_Countdown : Natural := 0;
+   UTC_Countdown    : Natural := 0;
+
+   --  SUBSET-027 4.1.1.2 a): the UTC of the host's clock for the
+   --  juridical recording, as EVC_Core.Set_UTC takes it (seconds since
+   --  2000-01-01 00:00:00 UTC at the on-board time 0)
+   procedure Give_UTC is
+      Since : constant Duration :=
+        Ada.Calendar."-" (Ada.Calendar.Clock,
+                          Ada.Calendar.Formatting.Time_Of
+                            (2000, 1, 1, 0.0, Time_Zone => 0));
+      At_Zero : constant Long_Long_Integer :=
+        Long_Long_Integer (Since)
+        - Long_Long_Integer (EVC_Core."/" (EVC_Core.Time_Ms, 1000));
+   begin
+      if At_Zero in 0 .. Long_Long_Integer (Interfaces.Unsigned_32'Last) then
+         EVC_Core.Set_UTC (Interfaces.Unsigned_32 (At_Zero));
+      end if;
+   end Give_UTC;
    Sim_Payload      : Stream_Element_Array (1 .. 256);
    Sim_Last         : Stream_Element_Offset;
 
@@ -174,6 +195,14 @@ begin
             Sim_Onboard_Env.Enter_Failure;
       end;
 
+      --  once a minute, so that a late cycle or a reset of the
+      --  environment does not shift the recorded time
+      if UTC_Countdown = 0 then
+         Give_UTC;
+         UTC_Countdown := 60_000 / Period;
+      else
+         UTC_Countdown := UTC_Countdown - 1;
+      end if;
       Sim_Onboard_Env.Take_DMI (Frames, Last);
       if Last >= Frames'First then
          Ada.Streams.Write (Channel.all, Frames (Frames'First .. Last));

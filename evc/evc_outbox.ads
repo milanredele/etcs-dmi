@@ -80,6 +80,18 @@ is
      with Global => (In_Out => Queue),
           Pre => Data'Length <= Max_Embedded;
 
+   --  NID_C * 2**14 + NID_RBC of the RBC of each session (EVC_Radio)
+   type RBC_Ids_T is array (RTM_Session_T) of Unsigned_32;
+
+   --  SUBSET-027 4.2.4.10: for every message to an RBC among the records
+   --  put from the byte Mark of the queue on (port RTM, RTM_Tag_Message),
+   --  the message 10 with NID_C and NID_RBC of its session in RBCs and
+   --  the message as sent
+   procedure Put_JRU_Sent (Mark     : Natural;
+                           Clock_Ms : Unsigned_64;
+                           RBCs     : RBC_Ids_T)
+     with Global => (In_Out => Queue);
+
    --  The header H with the UTC time of each message's event when
    --  UTC_Known (UTC_Seconds since 2000-01-01 at the on-board time 0)
    procedure Flush_JRU (H           : EVC_JRU_Messages.Header_T;

@@ -79,8 +79,9 @@ package body EVC_Test_Core is
       --  (3.5.6.1 a)
       --  the juridical messages of the cycle come last (SUBSET-027 4.3:
       --  the general message at the mode change, EVC_JRU_Messages)
-      Check (Rec_Count = 7, "power-up: seven records, got" & Img (Rec_Count));
-      if Rec_Count = 7 then
+      --  and at the start-up the messages 15 and 47 (SUBSET-027 4.3.1.1)
+      Check (Rec_Count = 9, "power-up: nine records, got" & Img (Rec_Count));
+      if Rec_Count = 9 then
          Check (Recs (1).Port = DMI and then Recs (2).Port = DMI
                 and then Recs (3).Port = DMI,
                 "power-up: three DMI frames");
@@ -95,8 +96,11 @@ package body EVC_Test_Core is
                 and then Recs (7).Port = JRU
                 and then JRU_NID (7) = EVC_JRU_Messages.NID_Proprietary
                 and then Byte_At (7, 1) = 1
-                and then Byte_At (7, 2) = Mode_T'Pos (M_SB),
-                "power-up: then the JRU messages of the change to SB");
+                and then Byte_At (7, 2) = Mode_T'Pos (M_SB)
+                and then JRU_NID (8) = EVC_JRU_Messages.NID_Cold_Movement
+                and then JRU_NID (9) = EVC_JRU_Messages.NID_Brake_Config,
+                "power-up: then the JRU messages of the change to SB and "
+                & "of the start-up");
       end if;
       Check (DMI_Mode_Byte = 1, "power-up: MSG_MODE_LEVEL mode SB (1), got"
              & Img (DMI_Mode_Byte));
@@ -370,12 +374,16 @@ package body EVC_Test_Core is
       EVC_Core.Take_Outputs (Null_Buffer, Last);
       Check (Last = 0, "outbox: a null buffer takes nothing");
       EVC_Core.Take_Outputs (Offset, Last);
-      Check (Last = 97 and then Offset (53) = EVC_DMI_Port.MSG_ONBOARD
-             and then Offset (72) = EVC_DMI_Port.MSG_SPEED_STATE,
+      --  and the juridical messages kept while the outbox was full (the
+      --  general message every 5 s, SUBSET-027 4.3.1.1) as they fit
+      Check (Last >= 97 and then Offset (53) = EVC_DMI_Port.MSG_ONBOARD
+             and then Offset (72) = EVC_DMI_Port.MSG_SPEED_STATE
+             and then (Last = 97 or else Offset (98) = Port_T'Pos (JRU)),
              "outbox: a buffer from index 50 takes the MSG_ONBOARD and the"
              & " MSG_SPEED_STATE records");
       EVC_Core.Take_Outputs (Offset, Last);
-      Check (Last = 49, "outbox: then nothing is left");
+      Check (Last = 49 or else Offset (50) = Port_T'Pos (JRU),
+             "outbox: then only juridical messages are left");
    end Scenario_Outbox;
 
    --  Enter_Failure: silent until Initialise

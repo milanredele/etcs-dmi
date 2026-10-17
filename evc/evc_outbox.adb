@@ -214,4 +214,41 @@ is
       end if;
    end Flush_JRU;
 
+   procedure Put_JRU_Sent (Mark     : Natural;
+                           Clock_Ms : Unsigned_64;
+                           RBCs     : RBC_Ids_T)
+     with Refined_Global => (Input  => (Data, Count),
+                             In_Out => (Kept, Kept_Count, Lost_Count))
+   is
+      Pos    : Natural := Mark;   -- the record at Data (Pos + 1)
+      Length : Natural;           -- its payload
+      F      : EVC_JRU_Messages.Fields_T := EVC_JRU_Messages.No_Fields;
+   begin
+      while Pos < Count and then Count - Pos > Record_Header loop
+         pragma Loop_Invariant (Pos < Count);
+         pragma Loop_Variant (Increases => Pos);
+         Length := Natural (Data (Pos + 2)) + 256 * Natural (Data (Pos + 3));
+         exit when Length > Count - Pos - Record_Header;
+         if Data (Pos + 1) = Port_T'Pos (RTM)
+           and then Length in 3 .. Max_Embedded + 2
+           and then Data (Pos + Record_Header + 1) = RTM_Tag_Message
+           and then Data (Pos + Record_Header + 2) in 1 .. RTM_Max_Sessions
+         then
+            F (1) := (Value => Unsigned_64 (Shift_Right
+                        (RBCs (RTM_Session_T
+                           (Data (Pos + Record_Header + 2))), 14)
+                        and 1023),
+                      Bits  => 10);
+            F (2) := (Value => Unsigned_64
+                        (RBCs (RTM_Session_T
+                           (Data (Pos + Record_Header + 2))) and 16383),
+                      Bits  => 14);
+            Put_JRU (EVC_JRU_Messages.NID_To_RBC, Clock_Ms, F,
+                     Data (Pos + Record_Header + 3
+                           .. Pos + Record_Header + Length));
+         end if;
+         Pos := Pos + Record_Header + Length;
+      end loop;
+   end Put_JRU_Sent;
+
 end EVC_Outbox;

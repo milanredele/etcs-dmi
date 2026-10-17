@@ -14,11 +14,21 @@
 --  Q_LRBG 0) when none is.
 --
 --  The messages the on-board writes (EVC_Core, EVC_Outbox.Put_JRU):
---     1 general message (4.2.4.1), at a mode change, followed by a 255;
+--     1 general message (4.2.4.1), at a mode change followed by a 255,
+--       every 5 s, at a change of the level or of the operated version;
+--     2 train data (EVC_JRU_Records.Train_Data_Body);
+--     3, 4 the emergency and service brake command states;
 --     6 telegram from balise (4.2.4.6): the telegram as received;
 --     9 message from RBC (4.2.4.9): NID_C, NID_RBC, the message;
+--    10 message to RBC: NID_C, NID_RBC, the message as sent;
 --    11 driver's actions: M_DRIVERACTIONS;
+--    12 balise group error: NID_C, NID_ERRORBG, M_ERROR, before a 255;
 --    13 radio error: NID_C, NID_RBC, M_ERROR;
+--    15 cold movement: M_COLD_MVT; 25 SR speed/distance entered by the
+--       driver: D_SR, V_SR; 49 train running number: NID_OPERATIONAL;
+--       52 odometer accuracy: M_ERROR;
+--    45 track conditions: the list, before a 255 per item;
+--    47 brake and traction interface configuration, at the start-up;
 --    20 speed and distance monitoring information: M_SDMTYPE,
 --       M_SDMSUPSTAT, V_PERM, V_SBI, V_TARGET, D_TARGET, V_RELEASE,
 --       M_TTI;
@@ -29,7 +39,8 @@
 --    38 cab status: M_CAB_A_STATUS, Q_CAB_B, M_CAB_B_STATUS (Q_CAB_B 1);
 --    48 GSM-R radio network ID entered by the driver: NID_MN;
 --   255 proprietary juridical data (4.2.4.255): every other event of
---       the on-board (EVC_Ports), its number u8 and its three bytes.
+--       the on-board (EVC_Ports), its number u8 and its three bytes, and
+--       the events whose three bytes carry more than their message.
 --
 --  For the readers (the bench's sink, the tests, the SUBSET-076 runner)
 --  View gives back the event of EVC_Ports a message records, with the
@@ -54,10 +65,25 @@ is
    Max_Header_Bits : constant := 386;
 
    NID_General        : constant := 1;
+   NID_Train_Data     : constant := 2;
+   NID_EB_State       : constant := 3;
+   NID_SB_State       : constant := 4;
    NID_Telegram       : constant := 6;
    NID_From_RBC       : constant := 9;
+   NID_To_RBC         : constant := 10;
    NID_Driver_Actions : constant := 11;
+   NID_BG_Error       : constant := 12;
    NID_Radio_Error    : constant := 13;
+   NID_Cold_Movement  : constant := 15;
+   NID_Fixed_Start    : constant := 16;
+   NID_Fixed_Stop     : constant := 17;
+   NID_Plain_Start    : constant := 18;
+   NID_Plain_Stop     : constant := 19;
+   NID_SR_Data        : constant := 25;
+   NID_Track_Conds    : constant := 45;
+   NID_Brake_Config   : constant := 47;
+   NID_TRN            : constant := 49;
+   NID_Odometer       : constant := 52;
    NID_SDM            : constant := 20;
    NID_RBC_Entry      : constant := 24;
    NID_Sleeping       : constant := 30;
@@ -211,6 +237,18 @@ is
                             B2, B3, B4 : Byte;
                             NID        : out Byte;
                             Fields     : out Fields_T)
+     with Global => null;
+
+   --  The SUBSET-027 message written before the one of Event_Message
+   --  when the event's three bytes carry more than its body (4.1.1.5:
+   --  several messages for one event), NID 0 when none: the general
+   --  message at a mode change (event 1), the balise group error at an
+   --  unexpected or a missed group (events 5 and 6, M_ERROR 0, SUBSET-026
+   --  3.16.2.3)
+   procedure Paired_Message (Event      : Byte;
+                             B2, B3, B4 : Byte;
+                             NID        : out Byte;
+                             Fields     : out Fields_T)
      with Global => null;
 
 end EVC_JRU_Messages;

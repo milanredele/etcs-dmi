@@ -42,6 +42,8 @@
 
 with EVC_Bytes;            use EVC_Bytes;
 with EVC_Driver_Requests;
+with EVC_Supervision_Input;
+with EVC_Train_Data;
 with EVC_JRU_Messages;
 with EVC_Track_Conditions;
 with Interfaces;           use Interfaces;
@@ -152,6 +154,61 @@ is
    --  is no digit, in three bytes
    type MN_Bytes_T is array (1 .. 3) of Byte;
    function MN_Code (T : EVC_Driver_Requests.Text_T) return MN_Bytes_T
+     with Global => null;
+
+   --  NID_OPERATIONAL of the train running number the driver entered
+   --  (SUBSET-027 4.2.4.49, SUBSET-026 7.5.1.92): the first eight
+   --  characters as BCD digits, left adjusted, F where there is no digit
+   --  (the digits F rightmost, as 6.6.3.2.3 [10] gives it)
+   function TRN_Code (T : EVC_Driver_Requests.Text_T) return Unsigned_32
+     with Global => null;
+
+   --  A message body of more variables than EVC_JRU_Messages.Fields_T
+   --  holds, written bit by bit (EVC_Outbox.Put_JRU's Data)
+   Max_Body : constant := 128;
+   subtype Body_T is Byte_Array (1 .. Max_Body);
+
+   --  SUBSET-027 4.2.4.2: the Train Data D with the categories C as the
+   --  on-board uses them. Decisions: V_MAXTRAIN, L_TRAIN, the categories
+   --  and the traction systems as packet 11 gives them to the RBC
+   --  (EVC_Sessions.Mission: NID_CTRACTION 0, N_AXLE 0, no national
+   --  system, M_AIRTIGHT 0); M_NOM_ROT_MASS 16 "unknown" (not part of
+   --  the Train Data of SUBSET-026 3.18.3.4); one brake configuration,
+   --  the special brakes the train has (lambda: regenerative, eddy
+   --  current, ep; gamma: and magnetic shoe); a lambda train's service
+   --  brake times those of the conversion model (A.3.9) for its length
+   --  and brake position; a gamma train's deceleration steps as
+   --  sections, the first seven, each from the speed of the step before;
+   --  the rolling stock correction factors 1.0 (20), this on-board taking
+   --  none from the Train Data
+   procedure Train_Data_Body (D    : EVC_Supervision_Input.Train_Data_T;
+                              C    : EVC_Train_Data.Categories_T;
+                              Buf  : out Body_T;
+                              Bits : out Natural)
+     with Global => null,
+          Post => Bits <= 8 * Max_Body;
+
+   --  SUBSET-027 4.2.4.45: the track conditions of the information for
+   --  the external functions (SUBSET-026 5.20), written when an item
+   --  appears or changes its phase (Track_Conditions), the whole list.
+   --  Decisions: Q_SCALE 1 m; the distances of the second TIU output
+   --  (EVC_Track_Conditions.External_Item_T) in metres; an end not
+   --  generated is the largest distance, a start not generated (passed)
+   --  D_MAXSFE_TO_START -32768 "not relevant"
+   procedure Track_Conditions_Body
+     (Info : EVC_Track_Conditions.External_T;
+      Buf  : out Body_T;
+      Bits : out Natural)
+     with Global => null,
+          Post => Bits <= 8 * Max_Body;
+
+   --  SUBSET-027 4.2.4.47: the brake and traction interface of the
+   --  installation configuration C (SUBSET-026 3.13.2.2.6 to 3.13.2.2.8).
+   --  Decision: a special brake whose status affects the emergency brake
+   --  only is coded as affecting both where its variable has no such
+   --  value (the electro pneumatic brake)
+   procedure Interface_Fields (C      : EVC_Supervision_Input.Onboard_Config_T;
+                               Fields : out EVC_JRU_Messages.Fields_T)
      with Global => null;
 
    --  4.2.4.24: the complementary variables of the RBC contact
