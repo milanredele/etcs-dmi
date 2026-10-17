@@ -240,6 +240,7 @@ begin
    Scenario_E4_Desk_Closed;
    Scenario_E4_Continue_Shunting;
    Scenario_E5P_JRU_Records;
+   Scenario_E5P_JRU_Bodies;
    Scenario_JRU_Inputs;
    Scenario_JRU_Level_Again;
    EVC_Test_LS.Scenario_LS_Display;

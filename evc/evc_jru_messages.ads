@@ -54,10 +54,25 @@ is
    Max_Header_Bits : constant := 386;
 
    NID_General        : constant := 1;
+   NID_Train_Data     : constant := 2;
+   NID_EB_State       : constant := 3;
+   NID_SB_State       : constant := 4;
    NID_Telegram       : constant := 6;
    NID_From_RBC       : constant := 9;
+   NID_To_RBC         : constant := 10;
    NID_Driver_Actions : constant := 11;
+   NID_BG_Error       : constant := 12;
    NID_Radio_Error    : constant := 13;
+   NID_Cold_Movement  : constant := 15;
+   NID_Fixed_Start    : constant := 16;
+   NID_Fixed_Stop     : constant := 17;
+   NID_Plain_Start    : constant := 18;
+   NID_Plain_Stop     : constant := 19;
+   NID_SR_Data        : constant := 25;
+   NID_Track_Conds    : constant := 45;
+   NID_Brake_Config   : constant := 47;
+   NID_TRN            : constant := 49;
+   NID_Odometer       : constant := 52;
    NID_SDM            : constant := 20;
    NID_RBC_Entry      : constant := 24;
    NID_Sleeping       : constant := 30;
@@ -211,6 +226,18 @@ is
                             B2, B3, B4 : Byte;
                             NID        : out Byte;
                             Fields     : out Fields_T)
+     with Global => null;
+
+   --  The SUBSET-027 message written before the one of Event_Message
+   --  when the event's three bytes carry more than its body (4.1.1.5:
+   --  several messages for one event), NID 0 when none: the general
+   --  message at a mode change (event 1), the balise group error at an
+   --  unexpected or a missed group (events 5 and 6, M_ERROR 0, SUBSET-026
+   --  3.16.2.3)
+   procedure Paired_Message (Event      : Byte;
+                             B2, B3, B4 : Byte;
+                             NID        : out Byte;
+                             Fields     : out Fields_T)
      with Global => null;
 
 end EVC_JRU_Messages;

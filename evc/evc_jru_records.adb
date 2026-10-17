@@ -1,7 +1,9 @@
 --  ETCS on-board (EVC)
 --  JRU events that follow SUBSET-027 messages, body.
 
+with EVC_Braking;
 with EVC_Distances; use type EVC_Distances.Cm_T;
+with EVC_Fixed;
 
 package body EVC_JRU_Records
   with SPARK_Mode => On,
@@ -118,6 +120,139 @@ is
          when 1      => 0,
          when 2      => 1,
          when others => No_Code);
+
+   function TRN_Code (T : EVC_Driver_Requests.Text_T) return Unsigned_32 is
+      Code : Unsigned_32 := 0;
+      D    : Byte;
+   begin
+      for I in 1 .. 8 loop
+         pragma Loop_Invariant (Code < 2**(4 * (I - 1)));
+         D := (if I <= T.Length and then T.Chars (I) in 48 .. 57
+               then T.Chars (I) - 48 else 16#F#);
+         Code := Code * 16 + Unsigned_32 (D);
+      end loop;
+      return Code;
+   end TRN_Code;
+
+   --  V on W bits at Pos when it fits, at most the largest value of W
+   procedure Put (Buf : in out Body_T;
+                  Pos : in out Natural;
+                  V   : Natural;
+                  W   : EVC_JRU_Messages.Width_T)
+     with Global => null,
+          Pre  => W <= 32 and then Pos <= 8 * Max_Body,
+          Post => Pos <= 8 * Max_Body
+   is
+      Max : constant Unsigned_64 := Shift_Left (1, W) - 1;
+   begin
+      if Pos <= 8 * Max_Body - W then
+         EVC_JRU_Messages.Put_Bits
+           (Buf, Pos, Unsigned_64'Min (Unsigned_64 (V), Max), W);
+      end if;
+   end Put;
+
+   --  The sections of a deceleration curve (N_BRAKE_SECTIONS, then the
+   --  speed and deceleration of each, with the ten M_KDRY_RST and the
+   --  M_KWET_RST when Factors), the first seven steps
+   procedure Put_Sections (Buf     : in out Body_T;
+                           Pos     : in out Natural;
+                           Curve   : EVC_Supervision_Input.Decel_Curve_T;
+                           Factors : Boolean)
+     with Global => null,
+          Pre  => Pos <= 8 * Max_Body,
+          Post => Pos <= 8 * Max_Body
+   is
+      N : constant Natural := Natural'Min (Curve.Count, 7);
+   begin
+      Put (Buf, Pos, N, 3);
+      for M in 1 .. N loop
+         pragma Loop_Invariant (Pos <= 8 * Max_Body);
+         Put (Buf, Pos,
+              (if M = 1 then 0
+               else Curve.Steps (M - 1).Speed * 36 / 1000), 10);
+         Put (Buf, Pos, Curve.Steps (M).Decel / 10, 8);
+         if Factors then
+            for K in 0 .. 10 loop
+               pragma Loop_Invariant (Pos <= 8 * Max_Body);
+               Put (Buf, Pos, 20, 5);
+            end loop;
+         end if;
+      end loop;
+   end Put_Sections;
+
+   procedure Train_Data_Body (D    : EVC_Supervision_Input.Train_Data_T;
+                              C    : EVC_Train_Data.Categories_T;
+                              Buf  : out Body_T;
+                              Bits : out Natural)
+   is
+      use EVC_Supervision_Input;
+      Pos    : Natural := 0;
+      Length : constant EVC_Fixed.Num :=
+        EVC_Fixed.Num'Min (EVC_Fixed.Num'Max (EVC_Fixed.Num (D.Length), 0),
+                           150_000);
+      N      : Natural := 0;
+   begin
+      Buf := (others => 0);
+      Put (Buf, Pos, Natural'Min ((D.Max_Speed * 36 + 500) / 1000 / 5, 120),
+           7);
+      Put (Buf, Pos, Natural (C.Cant_Deficiency), 4);
+      Put (Buf, Pos, Natural (C.Other), 15);
+      Put (Buf, Pos, Natural'Min (Natural (Length / 100), 4095), 12);
+      Put (Buf, Pos, D.T_Traction_Cut_Off / 10, 12);
+      Put (Buf, Pos, Brake_Position_T'Pos (D.Brake_Position), 2);
+      Put (Buf, Pos, 16, 5);
+      if D.Model = Lambda then
+         declare
+            T0 : constant EVC_Braking.Times_T := EVC_Braking.Conversion_Service
+              (D.Brake_Position, Length, True);
+            T1 : constant EVC_Braking.Times_T := EVC_Braking.Conversion_Service
+              (D.Brake_Position, Length, False);
+         begin
+            Put (Buf, Pos, 0, 1);
+            Put (Buf, Pos, D.Brake_Percentage, 8);
+            Put (Buf, Pos, 1, 4);
+            Put (Buf, Pos, (if D.Has_Regenerative then 1 else 0)
+                           + (if D.Has_Eddy_Current then 2 else 0)
+                           + (if D.Has_Electro_Pneumatic then 4 else 0), 3);
+            Put (Buf, Pos, Natural (T0.React / 50), 12);
+            Put (Buf, Pos, Natural (T0.Build_Up / 50), 12);
+            Put (Buf, Pos, Natural (T1.Build_Up / 50), 12);
+         end;
+      else
+         Put (Buf, Pos, 1, 1);
+         Put (Buf, Pos, 1, 4);
+         Put (Buf, Pos, (if D.Has_Regenerative then 1 else 0)
+                        + (if D.Has_Eddy_Current then 2 else 0)
+                        + (if D.Has_Magnetic_Shoe then 4 else 0)
+                        + (if D.Has_Electro_Pneumatic then 8 else 0), 4);
+         Put (Buf, Pos, 0, 12);
+         Put (Buf, Pos, D.T_Brake_Emergency / 50, 12);
+         Put_Sections (Buf, Pos, D.A_Brake_Emergency, True);
+         Put (Buf, Pos, 0, 12);
+         Put (Buf, Pos, D.T_Brake_Service / 50, 12);
+         Put_Sections (Buf, Pos, D.A_Brake_Service, False);
+      end if;
+      Put (Buf, Pos, Natural (C.Loading_Gauge), 8);
+      Put (Buf, Pos, 0, 10);
+      Put (Buf, Pos, Natural (C.Axle_Load), 7);
+      for V in 1 .. 15 loop
+         pragma Loop_Invariant (N < V);
+         if (C.Voltages / 2**V) mod 2 = 1 then
+            N := N + 1;
+         end if;
+      end loop;
+      Put (Buf, Pos, N, 5);
+      for V in 1 .. 15 loop
+         pragma Loop_Invariant (Pos <= 8 * Max_Body);
+         if (C.Voltages / 2**V) mod 2 = 1 then
+            Put (Buf, Pos, V, 4);
+            Put (Buf, Pos, 0, 10);
+         end if;
+      end loop;
+      Put (Buf, Pos, 0, 5);
+      Put (Buf, Pos, 0, 2);
+      Bits := Pos;
+   end Train_Data_Body;
 
    function MN_Code (T : EVC_Driver_Requests.Text_T) return MN_Bytes_T is
       Code : MN_Bytes_T := (others => 16#FF#);

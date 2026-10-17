@@ -50,12 +50,14 @@ package body EVC_Test_JRU is
          NID               : Byte;
          Bits              : Natural;   -- of the complementary part
       end record;
-      Cases : constant array (1 .. 11) of Case_T :=
+      Cases : constant array (1 .. 15) of Case_T :=
         ((11, 37, 0, 0, 11, 8), (30, 1, 0, 0, 30, 1), (31, 0, 0, 0, 31, 1),
          (39, 2, 0, 0, 39, 2), (51, 1, 0, 0, 51, 1), (132, 1, 0, 0, 32, 1),
          (38, 1, 1, 0, 38, 3), (38, 1, 0, 0, 38, 2),
          (48, 16#26#, 16#20#, 16#1F#, 48, 24),
-         (23, 1, 1, 0, 255, 32), (40, 1, 3, 0, 255, 32));
+         (23, 1, 1, 0, 255, 32), (40, 1, 3, 0, 255, 32),
+         (9, 1, 0, 0, 15, 2), (7, 1, 0, 0, 52, 8), (7, 2, 0, 0, 52, 8),
+         (7, 0, 0, 0, 255, 32));
       V    : View_T;
    begin
       Set_Time (H, Reference, 100);
@@ -116,6 +118,19 @@ package body EVC_Test_JRU is
                 "4.2.4: the message" & C.NID'Image & " of the event"
                 & C.Event'Image & " read back");
       end loop;
+      --  4.2.4.12: an unexpected group (event 5) of NID_C 123, NID_BG 7
+      Paired_Message (5, 16#07#, 16#C0#, 16#1E#, NID, F);
+      Build (NID, H, F, Last);
+      Check (NID = NID_BG_Error
+             and then Get_Bits (Buf (1 .. Last), Min_Header_Bits, 10) = 123
+             and then Get_Bits (Buf (1 .. Last), Min_Header_Bits + 10, 14)
+                      = 7
+             and then Get_Bits (Buf (1 .. Last), Min_Header_Bits + 24, 8) = 0
+             and then View (Buf (1 .. Last)).Event = 0,
+             "4.2.4.12: NID_C, NID_ERRORBG and M_ERROR 0 (linking "
+             & "consistency) before the proprietary message of the event");
+      Paired_Message (10, 7, 0, 0, NID, F);
+      Check (NID = 0, "4.2.4.255: no paired message for a new LRBG");
    end Scenario_JRU_Format;
 
    --  The JRU record I as a message

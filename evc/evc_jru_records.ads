@@ -42,6 +42,8 @@
 
 with EVC_Bytes;            use EVC_Bytes;
 with EVC_Driver_Requests;
+with EVC_Supervision_Input;
+with EVC_Train_Data;
 with EVC_JRU_Messages;
 with EVC_Track_Conditions;
 with Interfaces;           use Interfaces;
@@ -153,6 +155,38 @@ is
    type MN_Bytes_T is array (1 .. 3) of Byte;
    function MN_Code (T : EVC_Driver_Requests.Text_T) return MN_Bytes_T
      with Global => null;
+
+   --  NID_OPERATIONAL of the train running number the driver entered
+   --  (SUBSET-027 4.2.4.49, SUBSET-026 7.5.1.92): the first eight
+   --  characters as BCD digits, left adjusted, F where there is no digit
+   --  (the digits F rightmost, as 6.6.3.2.3 [10] gives it)
+   function TRN_Code (T : EVC_Driver_Requests.Text_T) return Unsigned_32
+     with Global => null;
+
+   --  A message body of more variables than EVC_JRU_Messages.Fields_T
+   --  holds, written bit by bit (EVC_Outbox.Put_JRU's Data)
+   Max_Body : constant := 128;
+   subtype Body_T is Byte_Array (1 .. Max_Body);
+
+   --  SUBSET-027 4.2.4.2: the Train Data D with the categories C as the
+   --  on-board uses them. Decisions: V_MAXTRAIN, L_TRAIN, the categories
+   --  and the traction systems as packet 11 gives them to the RBC
+   --  (EVC_Sessions.Mission: NID_CTRACTION 0, N_AXLE 0, no national
+   --  system, M_AIRTIGHT 0); M_NOM_ROT_MASS 16 "unknown" (not part of
+   --  the Train Data of SUBSET-026 3.18.3.4); one brake configuration,
+   --  the special brakes the train has (lambda: regenerative, eddy
+   --  current, ep; gamma: and magnetic shoe); a lambda train's service
+   --  brake times those of the conversion model (A.3.9) for its length
+   --  and brake position; a gamma train's deceleration steps as
+   --  sections, the first seven, each from the speed of the step before;
+   --  the rolling stock correction factors 1.0 (20), this on-board taking
+   --  none from the Train Data
+   procedure Train_Data_Body (D    : EVC_Supervision_Input.Train_Data_T;
+                              C    : EVC_Train_Data.Categories_T;
+                              Buf  : out Body_T;
+                              Bits : out Natural)
+     with Global => null,
+          Post => Bits <= 8 * Max_Body;
 
    --  4.2.4.24: the complementary variables of the RBC contact
    --  information the driver entered (MSG_DRIVER_DATA kind 5,
