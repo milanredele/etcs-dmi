@@ -2149,6 +2149,12 @@ package body S076_Run is
    Radio_Session : constant := 1;
 
    function Radio_Input (St : Step_T) return Judgement_T is separate;
+   --  The time a balise group input was given, after the move to its
+   --  group (Apply_Input moves the train): the window of a negative radio expectation after it starts
+   --  there, not at the start of the move (4090100_01 step 115: a 132
+   --  sent in level 2 on the way to the transition's group)
+   Group_Input_Ms : Unsigned_64 := 0;
+
    function Radio_Expect (St : Step_T) return Judgement_T is separate;
 
    function Apply_Input (St : Step_T) return Judgement_T is
@@ -5836,6 +5842,9 @@ package body S076_Run is
                      Hold_Speed := W (2) = "ODO"
                        and then Same (W (3), "reach-point");
                      J := Apply_Input (St);
+                     if W (2) = "BTM" then
+                        Group_Input_Ms := B.Now_Ms;
+                     end if;
                      if J.Verdict = Failed
                        and then (Starts (Image (St.Comment), "Optional step")
                                  or else Has (Image (St.Comment),

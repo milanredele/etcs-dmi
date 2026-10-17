@@ -577,6 +577,7 @@ package body S076_Bench is
    Win_Ms : Unsigned_64 := 0;
 
    function Window_Ms return Unsigned_64 is (Win_Ms);
+   function Now_Ms return Unsigned_64 is (Clock);
 
    procedure New_Window (Keep_Radio : Boolean := False) is
    begin

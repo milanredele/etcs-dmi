@@ -236,6 +236,8 @@ package S076_Bench is
    --  B270: the time the window was opened (Keep_Radio keeps the radio
    --  outputs of before it listed, sent before this time)
    function Window_Ms return Unsigned_64;
+   --  the bench's time now (the time of Radio_Out_T.At_Ms)
+   function Now_Ms return Unsigned_64;
    function Window_Cycles return Natural;
 
    No_Value : constant := 16#FF#;

@@ -328,7 +328,9 @@ function Radio_Expect (St : Step_T) return Judgement_T is
            --  B270: a message sent before the window's input (kept listed
            --  for the positive expectations, Keep_Radio) is no answer to
            --  it: 4080428_01 step 134, the 136 of step 129 before the 38
-           and then not (Neg and then B.Radio (I).At_Ms < B.Window_Ms)
+           and then not (Neg and then B.Radio (I).At_Ms
+                                      < Unsigned_64'Max (B.Window_Ms,
+                                                         Group_Input_Ms))
          then
             if Neg then
                return Check (False, "RTM no message " & Nid, "sent");
