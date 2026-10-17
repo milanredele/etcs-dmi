@@ -7072,3 +7072,58 @@ failed step): the mark goes before the `Wait_Cycle` loop of the output
 steps in the step loop, and `Rec_Count` must honour it for both scopes
 (the window's and `Location_Scope`'s records); 8 steps, all after a
 first failure.
+
+### E5 integration after the twenty-eighth round (2026-10-17)
+
+Merged: e5/rbc-messages (B583's seven shapes decided, nothing fixed: two
+the sequences' data, 150 after a session the case ends itself and 138 to
+an inconsistent message 9; two chapter 6 (an RBC of system version 1,
+E7); one the runner's reading of a binary Q_STATUSLRBG, B631; two ours,
+the conditional emergency stop refused for want of an origin when a
+single linked group is not the LRBG in level 2, B630, and message 158 not
+implemented, B632; B582 and B586 not started), e5/levels-shapes (the
+level transition order of message 24, packets 41 and 46, reaches the
+stores, 5.10.1.2; in PT only the announcement is accepted, 4.8.4 [5],
+done; in SH an order at D_LEVELTR 0 counts as immediate and is kept,
+4.8.4 [7], `EVC_Levels.Take_Order`; B580's six shapes decided, three
+fixed, three the sequences' data; B562 the bench's odometer accuracy,
+B620; B591 the sequence's data; B581 first looks), e5/jru-bodies (the
+SUBSET-027 bodies of messages 2, 3, 4, 10, 12, 15, 25, 45, 47, 49 and
+52, `EVC_Outbox.Put_JRU_Sent` for the messages sent to the RBC; the
+general message every 5 s and at a change of the operated version or the
+level, 15 and 47 at start-up, 4.3.1.1, `EVC_Core.Record_General`; the
+hosted port's UTC; B550, B551, B553 done; the text messages 16 to 19
+left as B600, B552 left; B601 the correction factors of message 2
+recorded as 1.0, an integration finding) and e5/runner-header (the
+header expectations judged from the messages, `S076_Run.Header_Judge`
+through `EVC_JRU_Messages.Get_Header`, 224 steps, B554; the timer
+difference of a step naming two timers, B560; the negative RTM window
+after a balise group input, B561; the runner's UTC; the identity byte
+order; two passes for a wrong reason exposed by the header, B611 (the
+SOLR kept in SL after a power-up) and B612 (an unlinked group as SOLR);
+B570 and B480 designed, not built; B610).
+
+Merge by hand: the backlog three-way by id (B553 joined from two sides),
+the plan subsections appended, no triage or source conflict, the
+baselines merged by git and confirmed by each union's run.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12224
+checks, dmi_test 2168), the full proof 12060 checks, 0 unproved (margin
+47726 steps), cross build and stack (worst case 27200 B, margin 5568 B),
+wasm and both smokes 0 failures. SUBSET-076: 910 / 1185 / 1095 before,
+934 / 1170 / 1086 after, steps not judged 4467 -> 4365, 0 regressions, 0
+untriaged. Matrix: 287 clauses left (one deferred row done, 4.8.4.2 [5]).
+
+Measurements (requests by message id, duration, final context, cost):
+jru-bodies 160 / 29 min / 246k / 13.7; runner-header 118 / 30 min / 198k
+/ 8.3; levels-shapes 122 / 19 min / 199k / 8.3; rbc-messages 149 / 19
+min / 181k / 9.2. Every "Done" list complete.
+
+Lessons: the JRU header is a second witness: judging it from the message
+exposed two sequences that passed on the on-board's state alone (B611,
+B612). A shape line of "first looks" (B580, B583) costs a trace per shape
+to decide and most decisions are data or another phase: three of six and
+two of seven were ours; a brief should expect that ratio and size the
+package by the traces, not by the fixes. The brief premise "ours switches
+at about 602 m" was wrong (500 m, from the announcement), the trace found
+it. Open items: doc/BACKLOG.csv (51 open after this round).
