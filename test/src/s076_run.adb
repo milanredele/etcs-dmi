@@ -31,7 +31,6 @@ with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
 with EVC_National_Values;
 with EVC_Supervision_Input;
-with EVC_System_Version;
 with EVC_JRU_Messages;
 with S076_Bench;
 with EVC_Config;
@@ -1414,15 +1413,52 @@ package body S076_Run is
    function Timer_Input (St : Step_T) return Judgement_T is
       Name : constant String := W (4);
       subtype Name_T is String (1 .. 14);
-      Known : constant array (1 .. 8) of Name_T :=
+      Known : constant array (1 .. 9) of Name_T :=
         ("T_SECTIONTIMER", "T_ENDTIMER    ", "T_TEXTDISPLAY ",
          "T_ACK         ", "T_LSSMA       ", "T_NVCONTACT   ",
-         "T_CYCRQST     ", "T_CYCLOC      ");
+         "T_CYCRQST     ", "T_CYCLOC      ", "T_EMA         ");
       function K (I : Positive) return String is
         (Ada.Strings.Fixed.Trim (Known (I), Ada.Strings.Right));
       Found : Boolean;
       Chosen : Natural := 0;
    begin
+      --  "T_SECTIONTIMER - T_TIMEOUTRQST", "T_EMA ' T_TIMEOUTREQUEST" (the
+      --  minus garbled in some comments, 3080200_01 step 69): the timer
+      --  less the time before it at which the on-board asks for a new MA
+      --  (3.8.2.2.1 b), both from the sequence's messages
+      if Name = "" or else Name (Name'First) = '<' then
+         declare
+            C : constant String := Image (St.Comment);
+            P : constant Natural := Ada.Strings.Fixed.Index (C, "T_TIMEOUTR");
+            Before : constant String :=
+              (if P > C'First then C (C'First .. P - 1) else "");
+            First : constant String :=
+              (if Has (Before, "T_EMA") then "T_EMA"
+               elsif Has (Before, "T_SECTION") then "T_SECTIONTIMER"
+               else "");
+            I : Integer := P - 1;
+            F1, F2 : Boolean;
+         begin
+            while I > C'First and then C (I) = ' ' loop
+               I := I - 1;
+            end loop;
+            if First /= "" and then P > C'First and then I >= C'First
+              and then C (I) in '-' | ''' | Character'Val (16#B4#)
+            then
+               declare
+                  S1 : constant Natural := Timer_Seconds (First, F1);
+                  S2 : constant Natural :=
+                    Timer_Seconds ("T_TIMEOUTRQST", F2);
+               begin
+                  if F1 and then F2 and then S1 < 1023 and then S2 < S1 then
+                     Run_Timer (S1 - S2);
+                     return Pass (First & " - T_TIMEOUTRQST"
+                                  & Natural'Image (S1 - S2) & " s elapsed");
+                  end if;
+               end;
+            end if;
+         end;
+      end if;
       --  the named timer, or one the comment names
       for I in Known'Range loop
          if Same (Name, K (I))
