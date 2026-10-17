@@ -31,7 +31,7 @@ with EVC_Stored_Information;
 with EVC_Modes;               use EVC_Modes;
 with EVC_National_Values;
 with EVC_Supervision_Input;
-with EVC_System_Version;
+with EVC_JRU_Messages;
 with S076_Bench;
 with EVC_Config;
 with S076_Tables;             use S076_Tables;
@@ -1413,15 +1413,52 @@ package body S076_Run is
    function Timer_Input (St : Step_T) return Judgement_T is
       Name : constant String := W (4);
       subtype Name_T is String (1 .. 14);
-      Known : constant array (1 .. 8) of Name_T :=
+      Known : constant array (1 .. 9) of Name_T :=
         ("T_SECTIONTIMER", "T_ENDTIMER    ", "T_TEXTDISPLAY ",
          "T_ACK         ", "T_LSSMA       ", "T_NVCONTACT   ",
-         "T_CYCRQST     ", "T_CYCLOC      ");
+         "T_CYCRQST     ", "T_CYCLOC      ", "T_EMA         ");
       function K (I : Positive) return String is
         (Ada.Strings.Fixed.Trim (Known (I), Ada.Strings.Right));
       Found : Boolean;
       Chosen : Natural := 0;
    begin
+      --  "T_SECTIONTIMER - T_TIMEOUTRQST", "T_EMA ' T_TIMEOUTREQUEST" (the
+      --  minus garbled in some comments, 3080200_01 step 69): the timer
+      --  less the time before it at which the on-board asks for a new MA
+      --  (3.8.2.2.1 b), both from the sequence's messages
+      if Name = "" or else Name (Name'First) = '<' then
+         declare
+            C : constant String := Image (St.Comment);
+            P : constant Natural := Ada.Strings.Fixed.Index (C, "T_TIMEOUTR");
+            Before : constant String :=
+              (if P > C'First then C (C'First .. P - 1) else "");
+            First : constant String :=
+              (if Has (Before, "T_EMA") then "T_EMA"
+               elsif Has (Before, "T_SECTION") then "T_SECTIONTIMER"
+               else "");
+            I : Integer := P - 1;
+            F1, F2 : Boolean;
+         begin
+            while I > C'First and then C (I) = ' ' loop
+               I := I - 1;
+            end loop;
+            if First /= "" and then P > C'First and then I >= C'First
+              and then C (I) in '-' | ''' | Character'Val (16#B4#)
+            then
+               declare
+                  S1 : constant Natural := Timer_Seconds (First, F1);
+                  S2 : constant Natural :=
+                    Timer_Seconds ("T_TIMEOUTRQST", F2);
+               begin
+                  if F1 and then F2 and then S1 < 1023 and then S2 < S1 then
+                     Run_Timer (S1 - S2);
+                     return Pass (First & " - T_TIMEOUTRQST"
+                                  & Natural'Image (S1 - S2) & " s elapsed");
+                  end if;
+               end;
+            end if;
+         end;
+      end if;
       --  the named timer, or one the comment names
       for I in Known'Range loop
          if Same (Name, K (I))
@@ -2112,6 +2149,12 @@ package body S076_Run is
    Radio_Session : constant := 1;
 
    function Radio_Input (St : Step_T) return Judgement_T is separate;
+   --  The time a balise group input was given, after the move to its
+   --  group (Apply_Input moves the train): the window of a negative radio expectation after it starts
+   --  there, not at the start of the move (4090100_01 step 115: a 132
+   --  sent in level 2 on the way to the transition's group)
+   Group_Input_Ms : Unsigned_64 := 0;
+
    function Radio_Expect (St : Step_T) return Judgement_T is separate;
 
    function Apply_Input (St : Step_T) return Judgement_T is
@@ -3075,8 +3118,257 @@ package body S076_Run is
                        else ""));
    end Bit_Set;
 
-   --  The header fields every record carries (4.2.2.2): the mode, the
-   --  level, the driver
+   --  A field of the header of a JRU message (SUBSET-027 4.2.3.5 to
+   --  4.2.3.11) by its name, -1 for a field this does not read. The LRBG
+   --  fields with Q_LRBG 1 are the SOLR's (the LRBG is the SOLR)
+   function Header_Value (Name : String; H : EVC_JRU_Messages.Header_T)
+                          return Integer
+   is
+      L : constant EVC_JRU_Messages.Reference_T :=
+        (if H.Q_LRBG = 2 then H.LRBG else H.SOLR);
+      Has_L : constant Boolean := H.Q_LRBG in 1 .. 2;
+   begin
+      if Same (Name, "Q_LRBG") then
+         return H.Q_LRBG;
+      elsif Same (Name, "NID_SOLR") then
+         return H.SOLR.NID;
+      elsif Same (Name, "D_SOLR") then
+         return H.SOLR.D;
+      elsif Same (Name, "Q_DIRSOLR") then
+         return H.SOLR.Q_Dir;
+      elsif Same (Name, "Q_DSOLR") then
+         return H.SOLR.Q_D;
+      elsif Same (Name, "L_DOUBTOVER_SOLR") then
+         return H.SOLR.Over;
+      elsif Same (Name, "L_DOUBTUNDER_SOLR") then
+         return H.SOLR.Under;
+      elsif Same (Name, "NID_LRBG") then
+         return (if Has_L then L.NID else 16777215);
+      elsif Same (Name, "D_LRBG") then
+         return (if Has_L then L.D else 32767);
+      elsif Same (Name, "Q_DIRLRBG") then
+         return (if Has_L then L.Q_Dir else 2);
+      elsif Same (Name, "Q_DLRBG") then
+         return (if Has_L then L.Q_D else 2);
+      elsif Same (Name, "L_DOUBTOVER_LRBG") then
+         return (if Has_L then L.Over else 32767);
+      elsif Same (Name, "L_DOUBTUNDER_LRBG") then
+         return (if Has_L then L.Under else 32767);
+      elsif Same (Name, "V_TRAIN") then
+         return H.V_Train;
+      elsif Same (Name, "NID_ENGINE") then
+         return H.NID_Engine;
+      elsif Same (Name, "M_VERSION") then
+         return H.M_Version;
+      end if;
+      return -1;
+   end Header_Value;
+
+   --  The value "unknown" of a header field (7.5.1.90, 7.5.1.13, 7.5.1.104,
+   --  7.5.1.106, 7.5.1.43, 7.5.1.44 by analogy); NID_C 0 with NID_BG
+   --  16383 (unknown, 7.5.1.86) counts as unknown too
+   function Header_Unknown (Name : String; F : Integer) return Boolean is
+     (if Has (Name, "NID_") then F in 16777215 | 16383
+      elsif Starts (Name, "D_") or else Starts (Name, "L_DOUBT")
+      then F = 32767
+      elsif Starts (Name, "Q_DIR") or else Starts (Name, "Q_D") then F = 2
+      elsif Same (Name, "M_VERSION") then F = 0
+      else False);
+
+   --  A header field against a value of a step: a number ("16777215",
+   --  the unknown NID whichever way coded; "0" for V_TRAIN also its
+   --  standstill 1023, 4.2.3.6), alternatives ("1/2"), "<>N" not that
+   --  number, M_VERSION's seven bits (X judged, see Header_Field),
+   --  the passed group for NID_LRBG / NID_SOLR as in Header_Field; no
+   --  value or a name of the sequence ("<BG2>", "<updated>", "<D0>"):
+   --  the field known (decision: the names are not resolved)
+   function Header_Holds (Name, Value : String; F : Integer)
+                          return Boolean
+   is
+      Not_Equal : constant Boolean :=
+        Value'Length > 2 and then Value (Value'First .. Value'First + 1) = "<>";
+      Num : constant String :=
+        (if Not_Equal then Value (Value'First + 2 .. Value'Last) else Value);
+      Numeric : constant Boolean :=
+        Num'Length in 1 .. 40
+        and then (for all C of Num => C in '0' .. '9' | '/');
+      Result : Boolean := False;
+      First : Natural := Num'First;
+   begin
+      if Same (Name, "M_VERSION") and then Num'Length = 7
+        and then (for all C of Num => C in '0' .. '1')
+      then
+         Result := F / 16 = Natural'Value ("2#" & Num (Num'First .. Num'First + 2) & "#");
+      elsif (Same (Name, "NID_LRBG") or else Same (Name, "NID_SOLR"))
+        and then (Same (Value, "<IDofthepassedBG>")
+                  or else Same (Value, "<equaltotheidentityofthepreviousBG>")
+                  or else Same (Value, "<changed>")
+                  or else Same (Value, "<differentfrombalisemessage>")
+                  or else Same (Value, "<unchanged>"))
+      then
+         Result := (not Header_Unknown (Name, F)
+                    and then F = B.JRU_Last_BG_Id)
+           = not (Same (Value, "<differentfrombalisemessage>")
+                  or else Same (Value, "<unchanged>"));
+      elsif not Numeric then
+         Result := not Header_Unknown (Name, F);
+      else
+         for I in Num'First .. Num'Last + 1 loop
+            if I > Num'Last or else Num (I) = '/' then
+               if I - First in 1 .. 9 then
+                  declare
+                     V : constant Natural := Natural'Value (Num (First .. I - 1));
+                  begin
+                     Result := Result or else F = V
+                       or else (Header_Unknown (Name, V)
+                                and then Header_Unknown (Name, F))
+                       or else (Same (Name, "V_TRAIN") and then V = 0
+                                and then F = 1023);
+                  end;
+               end if;
+               First := I + 1;
+            end if;
+         end loop;
+      end if;
+      return Result /= Not_Equal;
+   end Header_Holds;
+
+   --  The items of a word of a JRU step: "D_SOLR=<D2>;L_DOUBTOVER_SOLR" is
+   --  two, each a name and its value
+   procedure Item (Wd : String; K : Positive; Name, Value : out Unbounded_String;
+                   Found : out Boolean)
+   is
+      N : Natural := 0;
+      F : Natural := Wd'First;
+   begin
+      Name := Null_Unbounded_String;
+      Value := Null_Unbounded_String;
+      Found := False;
+      for I in Wd'First .. Wd'Last + 1 loop
+         if I > Wd'Last or else Wd (I) = ';' then
+            N := N + 1;
+            if N = K then
+               declare
+                  It : constant String := Wd (F .. I - 1);
+                  Eq : constant Natural := Ada.Strings.Fixed.Index (It, "=");
+                  Ne : constant Natural := Ada.Strings.Fixed.Index (It, "<>");
+                  --  "NID_SOLR<>16777215": the value keeps its "<>"
+                  Cut : constant Natural :=
+                    (if Eq > 0 then Eq elsif Ne > It'First then Ne else 0);
+               begin
+                  Found := It'Length > 0;
+                  Name := To_Unbounded_String
+                    (if Cut > 0 then It (It'First .. Cut - 1) else It);
+                  Value := To_Unbounded_String
+                    (if Eq > 0 then It (Eq + 1 .. It'Last)
+                     elsif Cut > 0 then It (Cut .. It'Last) else "");
+               end;
+               return;
+            end if;
+            F := I + 1;
+         end if;
+      end loop;
+   end Item;
+
+   --  The header fields of a JRU step judged on the messages of the
+   --  window (SUBSET-027 4.2.3, S076_Bench.Message_Header): a message
+   --  (NID_MESSAGE Id, any for ALL) whose header holds them all, none for
+   --  a negative step. Judged is False when the step names none of them
+   function Header_Judge (Id : Natural; Positive : Boolean;
+                          Judged : out Boolean) return Judgement_T
+   is
+      Probe : constant EVC_JRU_Messages.Header_T := (others => <>);
+      Names : Unbounded_String;
+      Found : Boolean := False;
+      Last  : Natural := 0;
+
+      --  every header item of the step holds in H (Judged: one exists)
+      function All_Hold (H : EVC_JRU_Messages.Header_T) return Boolean is
+         N, V : Unbounded_String;
+         Ok   : Boolean;
+      begin
+         for K in 5 .. Line.Count loop
+            for J in 1 .. 20 loop
+               Item (W (K), J, N, V, Ok);
+               exit when not Ok;
+               if Header_Value (To_String (N), H) >= 0
+                 and then not Header_Holds
+                   (To_String (N), To_String (V),
+                    Header_Value (To_String (N), H))
+               then
+                  return False;
+               end if;
+            end loop;
+         end loop;
+         return True;
+      end All_Hold;
+
+      --  the values of the step's header items in H
+      function Image (H : EVC_JRU_Messages.Header_T) return String is
+         R : Unbounded_String;
+         N, V : Unbounded_String;
+         Ok : Boolean;
+      begin
+         for K in 5 .. Line.Count loop
+            for J in 1 .. 20 loop
+               Item (W (K), J, N, V, Ok);
+               exit when not Ok;
+               if Header_Value (To_String (N), H) >= 0 then
+                  Append (R, " " & To_String (N) & Img
+                            (Header_Value (To_String (N), H)));
+               end if;
+            end loop;
+         end loop;
+         return To_String (R);
+      end Image;
+   begin
+      Judged := False;
+      for K in 5 .. Line.Count loop
+         for J in 1 .. 20 loop
+            declare
+               N, V : Unbounded_String;
+               Ok   : Boolean;
+            begin
+               Item (W (K), J, N, V, Ok);
+               exit when not Ok;
+               if Header_Value (To_String (N), Probe) >= 0 then
+                  Judged := True;
+                  Append (Names, " " & W (K));
+                  exit;
+               end if;
+            end;
+         end loop;
+      end loop;
+      if not Judged then
+         return Pass ("JRU header");
+      end if;
+      for I in 1 .. B.Message_Count loop
+         if Id = 0 or else B.Message_NID (I) = Id then
+            Last := I;
+            if All_Hold (B.Message_Header (I)) then
+               Found := True;
+               exit;
+            end if;
+         end if;
+      end loop;
+      if Positive and then Last = 0 then
+         --  nothing recorded in the window: what the sequence expects
+         --  recorded here is an event this on-board does not record
+         return NJ (R_JRU_Not_Modelled,
+                    "no message for the header:" & To_String (Names));
+      end if;
+      return Check (Found = Positive,
+                    "JRU header" & To_String (Names)
+                    & (if Positive then "" else " not"),
+                    (if Last = 0 then "no message"
+                     else "last message" & Image (B.Message_Header (Last))));
+   end Header_Judge;
+
+   --  The header fields every record carries (4.2.2.2) judged from the
+   --  on-board's state in the window: the mode, the level, the driver
+   --  (decision: the message's own are those at the end of its event's
+   --  cycle, and the sequences name the mode they enter; the location,
+   --  speed, version and identity fields are Header_Judge's)
    function Header_Field (Name, Value : String; Positive : Boolean;
                           Handled : out Boolean) return Judgement_T is
       V  : Values_T;
@@ -3125,78 +3417,6 @@ package body S076_Run is
       elsif Same (Name, "DRIVER_ID") then
          return Check (Any_Rec (41, 1, -1) = Positive, "JRU driver ID",
                        "no event 41 kind 1");
-      elsif Positive and then Same (Name, "NID_LRBG")
-        and then (Same (Value, "<IDofthepassedBG>")
-                  or else Same (Value, "<equaltotheidentityofthepreviousBG>")
-                  or else Same (Value, "<changed>")
-                  or else Same (Value, "<differentfrombalisemessage>")
-                  or else Same (Value, "<unchanged>"))
-      then
-         --  4.2.3.5: the LRBG of the on-board's last event 10 against
-         --  the balise group of its last accepted telegram (event 2): the
-         --  passed group taken as the LRBG, or not
-         declare
-            Taken : constant Boolean :=
-              B.JRU_LRBG_Known and then B.JRU_LRBG_Id = B.JRU_Last_BG_Id;
-            Want  : constant Boolean :=
-              not (Same (Value, "<differentfrombalisemessage>")
-                   or else Same (Value, "<unchanged>"));
-         begin
-            return Check (Taken = Want, "JRU NID_LRBG=" & Value,
-                          (if not B.JRU_LRBG_Known then "no LRBG"
-                           elsif Taken then "the passed group"
-                           elsif Any_Rec (4, -1, EVC_Position.Cause_Other_Group)
-                           then "another, linking reaction: another group"
-                           elsif Any_Rec (4, -1, -1)
-                           then "another, linking reaction: other cause"
-                           else "another"));
-         end;
-      elsif Positive and then Same (Name, "M_VERSION")
-        and then Value'Length = 7
-        and then (for all C of Value => C in '0' | '1')
-      then
-         --  4.2.3.9: the operated system version (EVC_System_Version,
-         --  read like EVC_Core.Supervision): X in the first three bits
-         --  judged; Y is the highest of X in the envelope (3.17.2.1.1:
-         --  2.3, 6.4.2.2), where the sequences name 2.2
-         declare
-            X : constant Natural := Natural'Value
-              ("2#" & Value (Value'First .. Value'First + 2) & "#");
-            Ours : constant Natural :=
-              Natural (EVC_System_Version.Operated_Version);
-         begin
-            return Check (Ours / 16 = X, "JRU M_VERSION=" & Value,
-                          "version" & Img (Ours / 16) & "."
-                          & Img (Ours mod 16));
-         end;
-      elsif Positive and then Same (Name, "V_TRAIN") and then Value = "0"
-      then
-         --  4.2.3.6: the train speed shown by the on-board
-         return Check (B.State.Has_Speed and then B.State.V_Cur = 0,
-                       "JRU V_TRAIN=0", "speed" & Img (B.State.V_Cur));
-      elsif Positive
-        and then (Same (Name, "NID_SOLR") or else Same (Name, "Q_LRBG"))
-        and then Value'Length > 0
-      then
-         --  4.2.3.5: the train position refers to a location reference
-         --  or not; this on-board's is its LRBG (events 8 and 10).
-         --  NID_SOLR 16777215 and Q_LRBG 0: none; another NID_SOLR (a
-         --  name of the sequence), Q_LRBG 1 or 2: one
-         declare
-            Unknown : constant Boolean :=
-              Value = "16777215" or else (Same (Name, "Q_LRBG")
-                                          and then Value = "0");
-         begin
-            if Same (Name, "Q_LRBG") and then Value not in "0" | "1" | "2"
-            then
-               Handled := False;
-               return NJ (R_JRU_Not_Modelled, "ALL." & Name);
-            end if;
-            return Check (B.JRU_LRBG_Known /= Unknown,
-                          "JRU " & Name & "=" & Value,
-                          (if B.JRU_LRBG_Known then "an LRBG"
-                           else "no LRBG"));
-         end;
       end if;
       Handled := False;
       return NJ (R_JRU_Not_Modelled, "ALL." & Name);
@@ -3893,7 +4113,21 @@ package body S076_Run is
                end;
          end case;
       end if;
-      --  the header fields
+      --  the header fields: the location, speed, identity and version
+      --  from the messages' headers, the others from the on-board's state
+      if Id = 0 then
+         declare
+            Judged : Boolean;
+            J : constant Judgement_T := Header_Judge (Id, Positive, Judged);
+         begin
+            if Judged then
+               Any_Field := True;
+               if J.Verdict /= Passed then
+                  return J;
+               end if;
+            end if;
+         end;
+      end if;
       for K in 5 .. Line.Count loop
          declare
             Wd : constant String := W (K);
@@ -3904,8 +4138,16 @@ package body S076_Run is
               (if Eq > 0 then Wd (Eq + 1 .. Wd'Last) else "");
             Handled : Boolean;
             J : Judgement_T;
+            First_Name, First_Value : Unbounded_String;
+            Ok : Boolean;
          begin
-            if Same (Name, "M_MODE") or else Same (Name, "M_LEVEL")
+            Item (Wd, 1, First_Name, First_Value, Ok);
+            if Id = 0 and then Ok
+              and then Header_Value (To_String (First_Name),
+                                     (others => <>)) >= 0
+            then
+               null;
+            elsif Same (Name, "M_MODE") or else Same (Name, "M_LEVEL")
               or else Same (Name, "DRIVER_ID") or else Id = 0
             then
                J := Header_Field (Name, Value, Positive, Handled);
@@ -5600,6 +5842,9 @@ package body S076_Run is
                      Hold_Speed := W (2) = "ODO"
                        and then Same (W (3), "reach-point");
                      J := Apply_Input (St);
+                     if W (2) = "BTM" then
+                        Group_Input_Ms := B.Now_Ms;
+                     end if;
                      if J.Verdict = Failed
                        and then (Starts (Image (St.Comment), "Optional step")
                                  or else Has (Image (St.Comment),
