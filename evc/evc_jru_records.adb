@@ -258,10 +258,16 @@ is
    --  clamped to Low .. 2**(W-1) - 1
    function Metres (D : EVC_Distances.Dist_T; Low : Integer; W : Positive)
      return Natural
-   is (Natural ((Integer'Max (Low, Integer (EVC_Distances.Dist_T'Min
-                   (EVC_Distances.Dist_T'Max (D / 100, -2**15),
-                    2**(W - 1) - 1))) + 2**W) mod 2**W))
-     with Pre => W in 15 .. 16 and then Low in -2**15 .. 0;
+     with Pre => W in 15 .. 16 and then Low in -2**15 .. 0
+   is
+      M : constant Integer := (if W = 15 then 2**15 else 2**16);
+      V : constant Integer :=
+        Integer'Max (Low, Integer (EVC_Distances.Dist_T'Min
+          (EVC_Distances.Dist_T'Max (D / 100, -2**15),
+           EVC_Distances.Dist_T (M / 2 - 1))));
+   begin
+      return Natural ((V + M) mod M);
+   end Metres;
 
    procedure Track_Conditions_Body
      (Info : EVC_Track_Conditions.External_T;

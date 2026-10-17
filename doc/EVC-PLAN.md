@@ -6919,3 +6919,48 @@ message 255 is a debt with a line (B550): every remaining event's body per
 4.2.4 is the next JRU package, with the runner reading the header from
 the message (B554). Open items: doc/BACKLOG.csv (52 open after this
 round).
+
+### Every juridical message with its SUBSET-027 body, the general message's triggers (e5/jru-bodies, 2026-10-17)
+
+The messages now written with their 4.2.4 body: 2 the Train Data
+(`EVC_JRU_Records.Train_Data_Body`, at their entry; decisions: the
+categories and traction systems as packet 11 gives them, M_NOM_ROT_MASS
+16 unknown, one brake configuration of the special brakes the train has,
+a lambda train's service brake times those of the conversion model, a
+gamma train's steps as at most seven sections, the correction factors
+1.0), 3 and 4 the emergency and service brake command states when each
+changes (`EVC_Core.Put_Brake_States`), 10 every message to an RBC as put
+on the RTM port with the RBC of its session (`EVC_Outbox.Put_JRU_Sent`,
+after `EVC_Radio.Drain`), 12 the balise group error (M_ERROR 0, linking
+consistency) at an unexpected or missed group, 15 the cold movement
+detector, 25 the SR speed and distance the driver entered (the national
+values of an override keep the 255), 45 the whole list of the track
+conditions for the external functions when an item appears or changes
+its phase (`Track_Conditions_Body`: Q_SCALE 1 m, the TIU's distances),
+47 the brake and traction interface of the installation configuration
+(`Interface_Fields`), 49 NID_OPERATIONAL, 52 M_ERROR 9 or 10.
+`EVC_JRU_Messages.Paired_Message` writes a message before the one of
+`Event_Message` (1 at a mode change, 12 at events 5 and 6); `View` gives
+the old events back for 2, 15, 25, 49 and 52 (their body holds the
+three bytes); 3, 4, 10, 12, 45 and 47 have the view 0, like the general
+message: where an event's three bytes carry more than SUBSET-027's
+message (the brake reasons and supervision status of event 20, the
+missed or unexpected kind of 5 and 6, the phase and id of each track
+condition item of 45) the proprietary 255 stays after the message
+(4.1.1.5), so no reader changed.
+
+Triggers (4.3.1.1, `EVC_Core.Record_General`): the general message every
+5 s after the last one (decision: two are never more than 5 s apart), at
+a change of the operated version and of the level; 15 (0, or 2 without
+information; a detected cold movement is the position's event 9) and 47
+at the first cycle after Initialise or Power_Up. The hosted port gives
+the host's UTC (`ports/hosted/evc.adb`, once a minute).
+
+Still the proprietary message 255: the text messages 16 to 19 (B600: the
+Q_TEXT of a fixed text and the text of a plain one are not kept after
+the display), the linking reaction (4), the odometer back to nominal (7
+with 0), new LRBG (10), the position status (8), the supervision (21),
+overrun (22), procedures (23), stored information (32), configuration
+(33), levels (40) and the other mission kinds (41): SUBSET-027 has no
+message of their own (4.2.1). B552 (the SOLR's direction qualifiers)
+not started.
