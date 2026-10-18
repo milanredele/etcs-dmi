@@ -7286,3 +7286,69 @@ B641 (packet 132 in SH level 0 trips where 4080300_04 expects it
 rejected), B642 (4080445_02's track condition symbol bits). SUBSET-076:
 934 / 1170 / 1086 before, 952 / 1152 / 1086 after, 0 regressions, 43
 improvements.
+
+### E5 integration after the twenty-ninth round (2026-10-18)
+
+The first round whose briefs cited doc/ROUNDS.csv: a budget declared a
+bound with a stop at 80 %, and the reading rule (outline.py before grep
+and `sed -n`) spelled out, both in the round brief.
+
+Merged: e5/runner-timing (binary field values compared as bit patterns of
+the variable's width, B631; the RBC's answer to a question with a waiting
+time of A.3.1 held and delivered in time, 32 to 155 and 38 to 159,
+`S076_Run.Hold_Answer`, `S076_Bench.Hold_RTM`, B570; B480 moves no
+sequence, B620 tried at 5 % with 41 improvements and 8 regressions, both
+left), e5/shapes-2 (the list of balise groups for the SH area sent by
+radio with the MA stored and used, 4.4.8.1.1 b),
+`EVC_Stored_Information.Take_Radio_SH_List`; of nine shapes one fixed, one
+ours as B660 (train integrity reporting), seven the sequences' data or
+extraction; B661), e5/jru-left (the text messages 16 to 19 with their
+bodies, `EVC_Core.Record_Text_Display`, B600; message 2's factors as the
+on-board applies them and N_BRAKE_CONF as the count minus one, B601; an
+unknown reference coded 16777215, B610; the SOLR's qualifiers, B552; B612
+the sequence's data; an invalid position deleted on entering SL,
+4.10.1.3 [1], B611: all six done) and e5/rbc-left (message 158 reporting
+the driver's acknowledgement of a text to the RBC of the request,
+3.12.3.5.2, done; message 24's packets passed family by family under the
+Train Data guard, B474 and B512 done, 51 and 52 left for the transition
+buffer as B640; B630 the sequence's data; B586 traced in part; B641,
+B642).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, two triage hunks by signature id, one source conflict (both
+sides appended declarations to `EVC_Text_Messages`: both kept), one
+golden on two sides (received_telegram_message: re-recorded for the union
+and reviewed, as intended, the two stored information records of the TSR
+and the no-origin group), and one signature renamed by the union (the
+unknown coding of B610 changed the text of 5040300_16's failure: a triage
+line pointing at the old one).
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12273
+checks, dmi_test 2168), the full proof 12141 checks, 0 unproved (margin
+47726 steps), cross build and stack (worst case 27200 B, margin 5568 B),
+wasm and both smokes 0 failures. SUBSET-076: 934 / 1170 / 1086 before,
+955 / 1149 / 1086 after, steps not judged 4365 -> 4369, 0 regressions, 0
+untriaged. Matrix: 287 clauses left (3.12.3.5.2 deferred -> done).
+
+Measurements (doc/ROUNDS.csv, measured from the transcripts): rbc-left
+174 calls / 28 min / 243k / 12.3; jru-left 188 / 26 min / 226k / 13.3;
+shapes-2 185 / 25 min / 235k / 13.0; runner-timing 135 / 20 min / 183k /
+7.4; all four over the budget of 130 (the "Done" lists complete all the
+same). The agents' self-counts were 135, 112, 128 and 112: under the
+measured by 25 to 45 %. grep runs 90, 81, 102 and 55 against outline.py
+4 to 15; `sed -n` down to 6 to 13.
+
+Lessons: a rule written in the round brief changed little in one round:
+the budget was exceeded by every agent, and the agents believed they were
+within it because they count only what they notice; the stop at 80 %
+needs a count the agent can see (the harness gives none), so the next
+brief asks the agent to count its own Bash calls in a running tally in
+the response text, or the budget is dropped as a bound and the packages
+are sized instead. `sed -n` on sources fell by half once named; grep did
+not, because the agents grep the scn and csv files, which the rule
+allowed: the count must separate the sources from the data files before
+it can be judged. Of 23 brief premises 10 were wrong this round, 7 of
+them the first-look shapes of B584 to B589: a shape line's "ours" is a
+guess until traced, so a shapes package is an analysis package and should
+be budgeted and named as one. Open items: doc/BACKLOG.csv (40 open after
+this round).
