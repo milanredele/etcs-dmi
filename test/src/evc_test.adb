@@ -154,6 +154,7 @@ begin
    Scenario_Report_Reference;
    Scenario_Unauthorised_Direction_Groups;
    Scenario_SOLR_Unlinked;
+   Scenario_SL_Deletes_Invalid;
    Scenario_Relocation;
    Scenario_Repositioning;
    Scenario_MA_Repositioning;

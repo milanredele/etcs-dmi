@@ -1180,5 +1180,34 @@ package body EVC_Test_Position is
              & Img (JRU_Header.SOLR.D) & Img (JRU_Header.SOLR.Q_Scale));
    end Scenario_SOLR_Unlinked;
 
+   --  4.10.1.3 Table, column SL, note [1]: entering Sleeping deletes the
+   --  train position when it is invalid (here kept over No Power, the
+   --  cold movement information not yet known, 4.11.1.3); the JRU header
+   --  then gives the SOLR unknown (SUBSET-076 4100103_47 step 70)
+   procedure Scenario_SL_Deletes_Invalid is
+      function Sig (S : TIU_Signal_T; On : Boolean) return Byte_Array is
+        ((Byte (TIU_Signal_T'Pos (S) + 1), (if On then 1 else 0)));
+   begin
+      Start_Track;
+      Add_Group (Group (10, 100));
+      Run_To (20_000);
+      Stand;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SB, EVC_Modes.L1);
+      Input (TIU, Sig (Cab_A_Active, False));
+      Cycle;
+      EVC_Core.Power_Up;
+      Cycle;
+      Check (Pos.Status = Pos.Invalid and then Pos.SOLR.Valid,
+             "SL: the position kept, invalid after the power-up");
+      Input (TIU, Sig (Sleeping_Requested, True));
+      Stand;
+      Check (EVC_Core.Mode = EVC_Modes.M_SL
+             and then Pos.Status = Pos.Unknown and then not Pos.SOLR.Valid,
+             "4.10.1.3 [1]: entering SL deletes the invalid position");
+      Check (JRU_Header.SOLR.NID = 16_777_215
+             and then JRU_Header.SOLR.D = 32_767,
+             "SUBSET-027 4.2.3.5: the SOLR unknown in the JRU header");
+   end Scenario_SL_Deletes_Invalid;
+
 
 end EVC_Test_Position;

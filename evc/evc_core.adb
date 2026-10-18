@@ -3512,7 +3512,9 @@ is
    --  and the table of 5.4.3.3: the start of mission leaves Stand By to
    --  SN, UN, SR (also by override), NL or SH: a position still invalid
    --  is deleted (an invalid position is one kept over No Power, always
-   --  referred to an LRBG: EVC_Position.Keep)
+   --  referred to an LRBG: EVC_Position.Keep); so is it on entering
+   --  Sleeping from any mode (4.10.1.3 Table, column SL, note [1])
+   --  @req 4.10.1.3 Table-footnote [1]
    procedure Delete_Invalid_Position (From, To : Mode_T)
      with Global => (In_Out   => EVC_Position.State,
                      Proof_In => EVC_Odometry.State),
@@ -3527,8 +3529,8 @@ is
                             else not EVC_Position.LRBG.Valid)
    is
    begin
-      if From = M_SB
-        and then To in M_SN | M_UN | M_SR | M_NL | M_SH
+      if ((From = M_SB and then To in M_SN | M_UN | M_SR | M_NL | M_SH)
+          or else To = M_SL)
         and then EVC_Position.Status = EVC_Position.Invalid
         and then EVC_Position.LRBG.Valid
       then
