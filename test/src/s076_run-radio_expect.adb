@@ -103,10 +103,14 @@ function Radio_Expect (St : Step_T) return Judgement_T is
    --  Value matches the expected text: decimal, or a pattern of 0, 1, x
    --  (the most significant bit first, as wide as the pattern); Bits: the
    --  field is a set of bits, its 0/1 text always a pattern (the reason
-   --  16 of Q_MARQSTREASON is written 10000, e5/accepting-rbc)
+   --  16 of Q_MARQSTREASON is written 10000); Width: the variable's
+   --  length, a text of 0 and 1 exactly as long is a pattern too
+   --  (Q_STATUSLRBG=10 is 2, unknown, 7.5.1.137: as decimal it would
+   --  exceed the variable)
    function Matches (Value : Unsigned_64; Text : String;
                      Judged : out Boolean;
-                     Bits   : Boolean := False) return Boolean
+                     Bits   : Boolean := False;
+                     Width  : Natural := 0) return Boolean
    is
       T : constant String :=
         (if Text'Length >= 2 and then Text (Text'First) = '<'
@@ -118,6 +122,7 @@ function Radio_Expect (St : Step_T) return Judgement_T is
          return True;
       elsif (for all C of T => C in '0' .. '1' | 'x' | 'X')
         and then (Bits
+                  or else (T'Length > 1 and then T'Length = Width)
                   or else (T'Length > 1 and then (T (T'First) = '0'
                                                   or else Has (T, "x"))))
       then
@@ -294,7 +299,9 @@ function Radio_Expect (St : Step_T) return Judgement_T is
                                  (Got, Wd (Eq + 1 .. Wd'Last), Judged,
                                   Bits => ETCS_Variables."="
                                             (Var,
-                                             ETCS_Variables.Q_MARQSTREASON))
+                                             ETCS_Variables.Q_MARQSTREASON),
+                                  Width => Natural
+                                    (ETCS_Variables.Bits (Var)))
                         then
                            return Fail (Nid & ": "
                                         & Wd (Wd'First .. Eq - 1) & "="
