@@ -118,6 +118,22 @@ is
    Event_Rejected     : constant := 4;
    Event_Brake        : constant := 5;
 
+   --  The text of the I-th record of the cycle as it was when recorded,
+   --  for the start and the stop of its display (SUBSET-027 4.2.4.16 to
+   --  4.2.4.19): Q_TEXT of a fixed text (byte 4 of the record 0), the
+   --  length L_TEXT and the bytes X_TEXT of a plain one (byte 4 1)
+   function Event_Q_Text (I : Positive) return Natural
+     with Global => State,
+          Pre  => I <= Event_Count,
+          Post => Event_Q_Text'Result <= 255;
+   function Event_Length (I : Positive) return Natural
+     with Global => State,
+          Pre  => I <= Event_Count,
+          Post => Event_Length'Result <= Max_Text;
+   procedure Event_Text (I : Positive; Text : out Text_T)
+     with Global => State,
+          Pre => I <= Event_Count;
+
    --  Operations
 
    procedure Clear

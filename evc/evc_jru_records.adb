@@ -151,6 +151,18 @@ is
       end if;
    end Put;
 
+   --  M_KDRY_RST and M_KWET_RST 1.00 (0.05 per unit): the correction
+   --  factors the on-board's braking applies to every train, the default
+   --  of EVC_Supervision_Input.Train_Data_Extra_T, the Train Data of
+   --  SUBSET-026 3.18.3.4 giving none (the variables have no unknown
+   --  value, 0 to 1.55 all valid)
+   No_Correction : constant := 20;
+
+   --  N_BRAKE_CONF of one configuration. Decision: 4 bits for the range
+   --  1 to 16 (SUBSET-027 4.2.4.2) code the number minus one, the only
+   --  reading in which 16 configurations can be written
+   One_Configuration : constant := 0;
+
    --  The sections of a deceleration curve (N_BRAKE_SECTIONS, then the
    --  speed and deceleration of each, with the ten M_KDRY_RST and the
    --  M_KWET_RST when Factors), the first seven steps
@@ -174,7 +186,7 @@ is
          if Factors then
             for K in 0 .. 10 loop
                pragma Loop_Invariant (Pos <= 8 * Max_Body);
-               Put (Buf, Pos, 20, 5);
+               Put (Buf, Pos, No_Correction, 5);
             end loop;
          end if;
       end loop;
@@ -210,7 +222,7 @@ is
          begin
             Put (Buf, Pos, 0, 1);
             Put (Buf, Pos, D.Brake_Percentage, 8);
-            Put (Buf, Pos, 1, 4);
+            Put (Buf, Pos, One_Configuration, 4);
             Put (Buf, Pos, (if D.Has_Regenerative then 1 else 0)
                            + (if D.Has_Eddy_Current then 2 else 0)
                            + (if D.Has_Electro_Pneumatic then 4 else 0), 3);
@@ -220,7 +232,7 @@ is
          end;
       else
          Put (Buf, Pos, 1, 1);
-         Put (Buf, Pos, 1, 4);
+         Put (Buf, Pos, One_Configuration, 4);
          Put (Buf, Pos, (if D.Has_Regenerative then 1 else 0)
                         + (if D.Has_Eddy_Current then 2 else 0)
                         + (if D.Has_Magnetic_Shoe then 4 else 0)

@@ -7232,3 +7232,27 @@ profile of the MA). Scenario `EVC_Test_Shapes.Scenario_Radio_SH_List`
 (a new test package). Matrix: 4.4.8.1.1 b) note extended. Backlog:
 B584, B585, B587, B589 done; B660 (train integrity reporting), B661
 (the runner's mode window) added.
+### The text messages' bodies, the correction factors of message 2, the SOLR's qualifiers and choice, the position deleted in SL (e5/jru-left, 2026-10-18)
+
+Done: the text messages 16 to 19 (SUBSET-027 4.2.4.16 to 4.2.4.19) at
+the start and the stop of a display, Q_TEXT of a fixed text, L_TEXT and
+X_TEXT of a plain one, before the record 255 of event 24
+(`EVC_Core.Record_Text_Display`; `EVC_Text_Messages` keeps the text of
+each record of the cycle, `Event_Q_Text`, `Event_Length`, `Event_Text`,
+since a removed message is gone by the time the recording reads it;
+B600). Message 2: the correction factors 1.00 are what the on-board
+applies (the default of `Train_Data_Extra_T`, never set from the Train
+Data; M_KDRY_RST and M_KWET_RST have no unknown value), named
+`EVC_JRU_Records.No_Correction`; decision: N_BRAKE_CONF (4 bits, 1 to
+16) codes the number minus one, 0 for the one configuration (B601). The
+header's unknown SOLR or LRBG is 16777215 as 7.5.1.90 codes NID_LRBG
+(B610; 13 goldens, the header field only). `EVC_Core.SOLR_Reference`
+gives Q_DIR and Q_D against the SOLR's direction (7.5.1.104, .106),
+unknown where the SOLR has no direction or the orientation is unknown
+(B552). Entering SL deletes an invalid position (4.10.1.3 Table, column
+SL, note [1], `EVC_Core.Delete_Invalid_Position`; 4100103_47 passes;
+B611). B612 is the sequence's data: its BG4d is marked linked and has
+no packet 5 (the text says Q_LINK=0 with packet 5); with the linking
+exhausted ours rightly takes it as LRBG and SOLR; an unlinked group does
+give Q_LRBG 2 (`EVC_Test_Position.Scenario_SOLR_Unlinked`), Sc3e96504
+triaged s076.

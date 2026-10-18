@@ -113,6 +113,13 @@ package body EVC_Test_Procedures is
    --  the events 40 (levels) and 41 (mission) of the modes and levels
    J40       : Kinds_T := (others => 0);
    J41       : Kinds_T := (others => 0);
+   --  the messages 16 to 19 of the text messages (SUBSET-027 4.2.4.16
+   --  to 4.2.4.19): their count, the first variable (Q_TEXT, L_TEXT) and
+   --  the text of the last of each
+   type Text_Counts_T is array (16 .. 19) of Natural;
+   J_Text     : Text_Counts_T := (others => 0);
+   J_Text_Var : Text_Counts_T := (others => 0);
+   J_Text_Str : String (1 .. 32) := (others => ' ');
    Parse_OK  : Boolean := True;
 
    procedure Forget is
@@ -127,6 +134,9 @@ package body EVC_Test_Procedures is
       J24 := (others => 0);
       J40 := (others => 0);
       J41 := (others => 0);
+      J_Text := (others => 0);
+      J_Text_Var := (others => 0);
+      J_Text_Str := (others => ' ');
    end Forget;
 
    function Seen_SS (Entry_N, Event : Natural) return Boolean is
@@ -150,6 +160,27 @@ package body EVC_Test_Procedures is
       end loop;
       return False;
    end Removed_Id;
+
+   --  A JRU message M of the text messages (16 to 19) into J_Text
+   procedure Collect_Text (M : EVC_Bytes.Byte_Array) is
+      use EVC_JRU_Messages;
+      N : constant Natural := Natural (NID_Of (M));
+      B : Natural;
+   begin
+      if N in J_Text'Range then
+         B := Body_Bit (M);
+         J_Text (N) := J_Text (N) + 1;
+         J_Text_Var (N) := Natural (Get_Bits (M, B, 8));
+         if N >= 18 then
+            J_Text_Str := (others => ' ');
+            for K in 1 .. Natural'Min (J_Text_Var (N), J_Text_Str'Length)
+            loop
+               J_Text_Str (K) :=
+                 Character'Val (Get_Bits (M, B + 8 * K, 8));
+            end loop;
+         end if;
+      end if;
+   end Collect_Text;
 
    --  The records of the last Take
    procedure Collect is
@@ -273,6 +304,7 @@ package body EVC_Test_Procedures is
                         when 3 => Natural (V.B3),
                         when others => Natural (V.B4));
                begin
+                  Collect_Text (Out_Buf (F .. F + Len - 1));
                   if P (1) = 1 then
                      JRU_Modes := JRU_Modes + 1;
                   elsif P (1) = 2 then
@@ -1495,6 +1527,15 @@ package body EVC_Test_Procedures is
              and then J24 (5) = 1,
              "3.12.3: JRU event 24 (displayed, removed, acknowledged, "
              & "brake)");
+      Check (J_Text (16) = 1 and then J_Text (17) = 1
+             and then J_Text_Var (16) = 0 and then J_Text_Var (17) = 0,
+             "SUBSET-027 4.2.4.16, 4.2.4.17: the start and the stop of the "
+             & "fixed text, Q_TEXT 0");
+      Check (J_Text (18) = 1 and then J_Text (19) = 1
+             and then J_Text_Var (18) = 5 and then J_Text_Var (19) = 5
+             and then J_Text_Str (1 .. 6) = "Hello ",
+             "SUBSET-027 4.2.4.18, 4.2.4.19: the start and the stop of the "
+             & "plain text, L_TEXT and X_TEXT");
    end Scenario_Text_Messages;
 
    --  More text messages than the on-board keeps (8): 3.12.3 sets no

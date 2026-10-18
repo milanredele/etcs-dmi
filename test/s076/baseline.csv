@@ -2169,9 +2169,9 @@ Subset-076-6-3_4100103_45_v400_SV30,failed,56,S4a8f271f
 Subset-076-6-3_4100103_46_v400_SV21,passed,0,-
 Subset-076-6-3_4100103_46_v400_SV22,passed,0,-
 Subset-076-6-3_4100103_46_v400_SV30,passed,0,-
-Subset-076-6-3_4100103_47_v400_SV21,failed,70,Sde6f3c3d
-Subset-076-6-3_4100103_47_v400_SV22,failed,70,Sde6f3c3d
-Subset-076-6-3_4100103_47_v400_SV30,failed,70,Sde6f3c3d
+Subset-076-6-3_4100103_47_v400_SV21,passed,0,-
+Subset-076-6-3_4100103_47_v400_SV22,passed,0,-
+Subset-076-6-3_4100103_47_v400_SV30,passed,0,-
 Subset-076-6-3_4100103_48_v400_SV30,failed,68,S1f552964
 Subset-076-6-3_4100103_49_v400_SV30,blocked,69,E5-radio
 Subset-076-6-3_4120100_01_v400_SV21,blocked,145,E7-version

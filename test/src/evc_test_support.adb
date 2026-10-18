@@ -343,6 +343,8 @@ package body EVC_Test_Support is
             for B in 2 .. 4 loop
                JRU_Last (Byte_At (I, 1), B) := Byte_At (I, B);
             end loop;
+            EVC_JRU_Messages.Get_Header
+              (Out_Buf (Recs (I).First .. Recs (I).Last), JRU_Header);
          elsif Recs (I).Port = DMI
            and then Byte_At (I, 1) = Natural (EVC_DMI_Port.MSG_SYSTEM_STATUS)
            and then Rec_Length (I) = 7

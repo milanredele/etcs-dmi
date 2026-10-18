@@ -27,5 +27,7 @@ package EVC_Test_Position is
       procedure Scenario_Rear_End;
       procedure Scenario_Report_Reference;
       procedure Scenario_Unauthorised_Direction_Groups;
+      procedure Scenario_SOLR_Unlinked;
+      procedure Scenario_SL_Deletes_Invalid;
 
 end EVC_Test_Position;

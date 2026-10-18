@@ -339,6 +339,8 @@ package EVC_Test_Support is
    JRU_Seen  : JRU_Seen_T := (others => 0);
    type JRU_Bytes_T is array (0 .. 255, 2 .. 4) of Natural;
    JRU_Last  : JRU_Bytes_T := (others => (others => 0));
+   --  the header of the last JRU message seen (SUBSET-027 4.2.3)
+   JRU_Header : EVC_JRU_Messages.Header_T;
    Seen      : Pos.Triggers_T := Pos.No_Triggers;
    Geo_Seen  : Unsigned_32 := EVC_DMI_Port.Geo_Unknown;
    Geo_Count : Natural := 0;

@@ -154,6 +154,8 @@ begin
    Scenario_Rear_End;
    Scenario_Report_Reference;
    Scenario_Unauthorised_Direction_Groups;
+   Scenario_SOLR_Unlinked;
+   Scenario_SL_Deletes_Invalid;
    Scenario_Relocation;
    Scenario_Repositioning;
    Scenario_MA_Repositioning;
@@ -225,6 +227,7 @@ begin
    Scenario_JRU_To_RBC;
    Scenario_JRU_Track_Conditions;
    Scenario_JRU_General;
+   Scenario_JRU_Train_Data;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;

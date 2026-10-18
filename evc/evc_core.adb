@@ -2577,6 +2577,45 @@ is
       end loop;
    end Send_Procedure_Messages;
 
+   --  The SUBSET-027 message of the I-th text message record of the
+   --  cycle when it is the start or the stop of a display: 16 and 17
+   --  with Q_TEXT for a fixed text, 18 and 19 with L_TEXT and X_TEXT for
+   --  a plain one (4.2.4.16 to 4.2.4.19); the record 255 of event 24
+   --  follows it with the message's id and the other kinds (4.1.1.5)
+   procedure Record_Text_Display (I : Positive)
+     with Global => (Input  => (Clock_Ms, EVC_Text_Messages.State),
+                     In_Out => EVC_Outbox.Queue),
+          Pre => I <= EVC_Text_Messages.Event_Count
+   is
+      use EVC_JRU_Messages;
+      E      : constant EVC_Text_Messages.Event_T :=
+        EVC_Text_Messages.Event (I);
+      Start  : constant Boolean :=
+        E.Kind = EVC_Text_Messages.Event_Displayed;
+      Fields : Fields_T := No_Fields;
+      Text   : EVC_Text_Messages.Text_T;
+      Length : Natural;
+   begin
+      if not Start and then E.Kind /= EVC_Text_Messages.Event_Removed then
+         return;
+      end if;
+      if E.B4 = 1 then
+         Length := EVC_Text_Messages.Event_Length (I);
+         EVC_Text_Messages.Event_Text (I, Text);
+         Fields (1) := (Value => Unsigned_64 (Length), Bits => 8);
+         EVC_Outbox.Put_JRU
+           ((if Start then NID_Plain_Start else NID_Plain_Stop),
+            Unsigned_64 (Clock_Ms), Fields, Text, 8 * Length);
+      else
+         Fields (1) :=
+           (Value => Unsigned_64 (EVC_Text_Messages.Event_Q_Text (I)),
+            Bits  => 8);
+         EVC_Outbox.Put_JRU
+           ((if Start then NID_Fixed_Start else NID_Fixed_Stop),
+            Unsigned_64 (Clock_Ms), Fields, No_Data);
+      end if;
+   end Record_Text_Display;
+
    --  8e. JRU (phase E4): the records of the procedures of chapter 5
    --  (event 23) and of the text messages (3.12.3, event 24)
    procedure Record_Procedures
@@ -2598,6 +2637,7 @@ is
             E : constant EVC_Text_Messages.Event_T :=
               EVC_Text_Messages.Event (I);
          begin
+            Record_Text_Display (I);
             Put_Event (JRU_Text_Messages, E.Kind, E.B3,
                                              E.B4);
          end;
@@ -3280,15 +3320,26 @@ is
      with Global => null;
 
    --  The SOLR where it is not the LRBG: its identity, the estimated
-   --  front end and the doubts against it in metres; decision: the
-   --  direction qualifiers "unknown" (2), the position report has them
-   --  against the LRBG only
+   --  front end and the doubts against it in metres, the orientation of
+   --  the train and the side of the front end against the SOLR's
+   --  direction as the position report codes them against the LRBG
+   --  (Q_DIRLRBG, Q_DLRBG, SUBSET-026 7.5.1.104, 7.5.1.106), unknown (2)
+   --  where the SOLR has no direction (a single group, 3.4.2.3) or the
+   --  train's orientation is not known
    function SOLR_Reference return EVC_JRU_Messages.Reference_T
      with Global => (EVC_Position.State, EVC_Odometry.State)
    is
+      use type EVC_Distances.Direction_T;
       S   : constant EVC_Location.Anchor_T := EVC_Position.SOLR;
       Est : constant EVC_Distances.Dist_T :=
         EVC_Position.SOLR_Estimated_Front;
+      Orient : constant EVC_Distances.Sense_T := EVC_Position.Orientation;
+      Known  : constant Boolean := EVC_Position.Orientation_Known
+                                   and then S.Orientation
+                                            /= EVC_Distances.Unknown;
+      --  2 unknown, 1 nominal when D is the SOLR's direction, 0 reverse
+      function Q (D : EVC_Distances.Direction_T) return Natural is
+        (if not Known then 2 elsif D = S.Orientation then 1 else 0);
       function M (D : EVC_Distances.Cm_T) return Natural is
         (Natural (EVC_Distances.Cm_T'Min ((abs D + 99) / 100, 32_767)))
         with Pre => D in -2 * EVC_Distances.Max_Cm .. 2 * EVC_Distances.Max_Cm;
@@ -3297,8 +3348,10 @@ is
               NID     => Natural (S.Id.NID_C) * 2**14
                          + Natural (S.Id.NID_BG),
               D       => M (Est),
-              Q_Dir   => 2,
-              Q_D     => 2,
+              Q_Dir   => Q (EVC_Distances.To_Direction (Orient)),
+              Q_D     => Q (EVC_Distances.To_Direction
+                              (if Est >= 0 then Orient
+                               else EVC_Distances.Opposite (Orient))),
               Over    => M (EVC_Position.SOLR_Max_Safe_Front - Est),
               Under   => M (Est - EVC_Position.SOLR_Min_Safe_Front));
    end SOLR_Reference;
@@ -3459,7 +3512,9 @@ is
    --  and the table of 5.4.3.3: the start of mission leaves Stand By to
    --  SN, UN, SR (also by override), NL or SH: a position still invalid
    --  is deleted (an invalid position is one kept over No Power, always
-   --  referred to an LRBG: EVC_Position.Keep)
+   --  referred to an LRBG: EVC_Position.Keep); so is it on entering
+   --  Sleeping from any mode (4.10.1.3 Table, column SL, note [1])
+   --  @req 4.10.1.3 Table-footnote [1]
    procedure Delete_Invalid_Position (From, To : Mode_T)
      with Global => (In_Out   => EVC_Position.State,
                      Proof_In => EVC_Odometry.State),
@@ -3474,8 +3529,8 @@ is
                             else not EVC_Position.LRBG.Valid)
    is
    begin
-      if From = M_SB
-        and then To in M_SN | M_UN | M_SR | M_NL | M_SH
+      if ((From = M_SB and then To in M_SN | M_UN | M_SR | M_NL | M_SH)
+          or else To = M_SL)
         and then EVC_Position.Status = EVC_Position.Invalid
         and then EVC_Position.LRBG.Valid
       then
