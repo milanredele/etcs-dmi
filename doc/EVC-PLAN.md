@@ -7127,3 +7127,42 @@ two of seven were ours; a brief should expect that ratio and size the
 package by the traces, not by the fixes. The brief premise "ours switches
 at about 602 m" was wrong (500 m, from the announcement), the trace found
 it. Open items: doc/BACKLOG.csv (51 open after this round).
+
+### Round statistics (2026-10-18)
+
+The process of the rounds is measured, not remembered: `doc/ROUNDS.csv`,
+one row per agent, kept by `test/tools/rounds.py`. `rounds.py measure
+<transcripts>` fills the measured columns from the agents' transcripts
+(the session keeps them under its `subagents/` folder): the package and
+round from the launch prompt, the round briefs, the plan's headings and
+the round start stamps; the budget from the prompt or the package brief;
+the requests, duration, final context and cost from the usage records;
+the tool mix from the tool_use blocks, and inside Bash the runs of
+`outline.py`, `clause.py`, grep, `sed -n`, the commits, the proofs, the
+runner and the whole check; the report's premise mentions. The judgement
+columns are the coordinator's at integration: items assigned, done,
+dropped, left; the brief's premises stated and wrong; the sequences
+moved; the regressions explained; the backlog lines added; the edits
+outside the units; the merge conflicts; the "Done" list. `rounds.py
+report` aggregates per kind and per round; `--check` is in the whole
+check. The round brief's lessons paragraph cites the report from round
+29 on.
+
+Backfill: 158 agents of this session measured, 139 of them in the phases
+E0 to E4, the preparation and the E5 rounds 1 to 28 (round 4's three
+transcripts are not in the session's folder); the judgement columns
+filled for rounds 26 to 28 only.
+
+First findings: the budget has been a wish, not a bound: 47 of 64
+on-board agents and 16 of 30 runner agents of the numbered rounds used
+more calls than their brief gave, the mean on-board agent 140 against a
+mean budget of 121, and the overrun did not shrink as the budgets grew
+from 100 to 130. The guidance "outline.py over grep and sed" is not
+followed: an on-board agent runs grep 77 times and `sed -n` 40 times per
+package against 9 `outline.py` runs; a runner agent 64 and 28 against 5.
+Cost runs at 16 to 20 USD per agent-hour whatever the kind. Where the
+judgement columns are filled (three rounds): 9 of 42 on-board brief
+premises were wrong (21 %), 1 of 14 runner ones; on-board items convert
+at 52 % with 82 calls and 5.5 USD per item done, runner items at 54 %
+with 16 calls and 0.9 USD; a sequence moved costs 3.0 USD on the
+on-board side and 1.0 on the runner's.
