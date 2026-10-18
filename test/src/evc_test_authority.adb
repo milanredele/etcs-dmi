@@ -7,6 +7,7 @@ with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
+with ETCS_Track_Packets.P68;
 with ETCS_Track_Packets.P90;
 with ETCS_Train_Packets.P9;
 with ETCS_Bits;
@@ -24,6 +25,7 @@ with EVC_Radio_Authority;
 with EVC_SDM;
 with EVC_Stored_Information;
 with EVC_Track_Description;
+with EVC_Track_Conditions;
 with EVC_Movement_Authority;
 with EVC_Sessions;
 with EVC_Test_Support;       use EVC_Test_Support;
@@ -38,6 +40,7 @@ package body EVC_Test_Authority is
    package T57 renames ETCS_Track_Packets.P57;
    package T63 renames ETCS_Track_Packets.P63;
    package T49 renames ETCS_Track_Packets.P49;
+   package T68 renames ETCS_Track_Packets.P68;
    package RA renames EVC_Radio_Authority;
    use type MCat.Message_Kind_T;
    use type EVC_SDM.Status_T;
@@ -852,6 +855,59 @@ package body EVC_Test_Authority is
    --  than the EOA of the MA (800 m), so the override selected at 200 m
    --  takes it as the former EOA (5.8.1.9) and the min safe antenna
    --  passing it in SR, the override ended, trips the train (4.6.3 [43])
+   --  Message 24 referring to the group NID_BG with a track condition
+   --  (packet 68: powerless section, lower pantograph) D m from it
+   function TC_Message (NID_BG : Natural; D : Natural) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      TC : T68.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      TC.Q_DIR := 1;
+      TC.Q_SCALE := 1;
+      TC.Has_D_TRACKCOND := True;
+      TC.D_TRACKCOND := ETCS_Variables.D_TRACKCOND_T (D);
+      TC.L_TRACKCOND := 50;
+      TC.M_TRACKCOND := 1;
+      T68.Encode (TC, W, OK);
+      Check (OK, "authority: packet 68 encoded");
+      return Message_Bytes (W);
+   end TC_Message;
+
+   --  8.7.9: the track description packets of message 24 (here a track
+   --  condition, packet 68) reach the stored information, rejected
+   --  while the RBC has not acknowledged the Train Data (4.8.3 [3])
+   procedure Scenario_Track_Condition_By_Radio is
+   begin
+      Start_X;
+      Stand_X (100);
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, L2);
+      Add_Group (Group (10, 100));
+      EVC_Radio.Set_Peer (1, (NID_C => 123, NID_RBC => 1), 0);
+      EVC_Radio.Set_State (1, EVC_Radio.Established);
+      EVC_Radio.Set_Version (1, 33);
+      EVC_Radio.Set_Roles (1, EVC_Radio.No_Session);
+      Run_X (11_000);
+      Stand_X (1_000);
+      Give_Radio_Message (1, TC_Message (10, 300));
+      Stand_X (200);
+      Check (EVC_Sessions.Train_Data_Awaited
+             and then EVC_Track_Conditions.Conditions.Count = 0,
+             "track condition by radio: rejected before the Train Data are "
+             & "acknowledged (4.8.3 [3])");
+      Ack_Train_Data;
+      Give_Radio_Message (1, TC_Message (10, 300));
+      Stand_X (200);
+      Check (EVC_Track_Conditions.Conditions.Count = 1,
+             "track condition by radio: packet 68 of message 24 taken "
+             & "(8.7.9, 3.12.1)");
+   end Scenario_Track_Condition_By_Radio;
+
    procedure Scenario_LX_By_Radio is
       use type EVC_Procedures.Trip_Reason_T;
    begin
