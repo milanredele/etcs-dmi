@@ -31,7 +31,7 @@ package body EVC_Core
                                    General_Level, General_Mode, Started_Up,
                                    Latched_Odometer,
                                    Latched_Odometer_Fresh,
-                                   Latched_TIU,
+                                   Latched_TIU, Latched_Integrity,
                                    Latched_BTM,
                                    Latched_BTM_Count,
                                    Latched_RTM,
@@ -121,6 +121,9 @@ is
    --  a sample arrived since the last cycle
    Latched_Odometer_Fresh : Boolean := False;
    Latched_TIU       : TIU_Signals_T := (others => False);
+   --  the last TIU input "train integrity" since the last cycle, its
+   --  value plus one (0: none), for EVC_Sessions (3.6.5.2)
+   Latched_Integrity : EVC_Bytes.Byte := 0;
    --  (the driver's requests are EVC_Driver_Requests', phase E4)
 
    --  Telegrams and radio messages latched since the last cycle, as
@@ -377,6 +380,7 @@ is
       Latched_Odometer := Standstill_Sample;
       Latched_Odometer_Fresh := False;
       Latched_TIU := (others => False);
+      Latched_Integrity := 0;
       Latched_BTM := (others => (Length => 0, Data => (others => 0)));
       Latched_BTM_Count := 0;
       Latched_RTM := (others => (Session => 1, Length => 0,
@@ -568,6 +572,9 @@ is
                Latched_TIU (Input.Signal) := Input.Value;
                Latched_TIU_Value (Input.Signal) := TIU_Value (Payload);
                Latched_TIU_Known (Input.Signal) := True;
+               if Input.Signal = Train_Integrity then
+                  Latched_Integrity := TIU_Value (Payload) + 1;
+               end if;
             end;
          when DMI =>
             --  phase E4: the driver's actions and data, decoded
@@ -1046,7 +1053,7 @@ is
                                 TIU_Known_Now, Brake_Ack_Now,
                                 EVC_Train_Inputs.State),
                      In_Out => (Latched_Odometer_Fresh,
-                                Latched_Brake_Ack,
+                                Latched_Brake_Ack, Latched_Integrity,
                                 Latched_BTM_Count,
                                 Latched_RTM, Latched_RTM_Count,
                                 Latched_Event_Count, EVC_Received.Store,
@@ -1076,6 +1083,12 @@ is
       TIU_Known_Now := Latched_TIU_Known;
       Brake_Ack_Now := Latched_Brake_Ack;
       Latched_Brake_Ack := False;
+      --  3.6.5.2.5 Table 2c [3], [4], [6]: the train integrity of the TIU
+      if Latched_Integrity > 0 then
+         EVC_Sessions.Take_Integrity_Input
+           (Natural (Latched_Integrity) - 1);
+      end if;
+      Latched_Integrity := 0;
       --  phase E4: the driver's requests and the inputs of the train
       --  interface of the cycle; nothing switched the level yet
       EVC_Driver_Requests.Take;
@@ -2778,7 +2791,8 @@ is
                                 EVC_Levels.State, EVC_Position.State,
                                 EVC_Mission.State, EVC_Train_Data.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio.State, EVC_Sessions.State),
+                                EVC_Radio.State, EVC_Sessions.State,
+                                EVC_Odometry.State),
                      In_Out => EVC_Outbox.Queue)
    is
       Onboard : constant Onboard_T :=
@@ -2800,7 +2814,16 @@ is
                          then Data_RBC_Valid else 0),
          Session  => Session_Byte,
          RBC      => (if EVC_Radio.Train_Data_Acknowledged
-                      then RBC_Train_Data_Acked else 0),
+                      then RBC_Train_Data_Acked else 0)
+                     --  3.6.5.2.5 Table 2c [3], DMI 11.2.3.5 #3: the train
+                     --  length and the under-reading amount within
+                     --  L_TRAININT's 32767 m (7.5.1.57)
+                     or (if EVC_Train_Data.Valid
+                           and then EVC_Position.LRBG.Valid
+                           and then EVC_Train_Data.Length <= 32_767 * 100
+                           and then EVC_Position.Doubt_Under
+                                    <= 32_767 * 100 - EVC_Train_Data.Length
+                         then RBC_Length_In_Range else 0),
          --  bits 0-6 the radio networks (3.5.6)
          Radio    => Bits_T (EVC_Sessions.Radio_Bits)
                      or (if EVC_Radio.Contact.Known then Radio_Contact_Known

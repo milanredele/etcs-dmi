@@ -32,8 +32,8 @@
 --  (5) The periods of 3.6.5.1.5 a) and b) run from the parameters'
 --      reception and from their own last report (EVC_Position): a
 --      report for another reason does not restart them.
---  (6) c), d), e), k), l) of 3.6.5.1.4 (integrity, RBC/RBC border,
---      errors of 3.16.4) are not observable yet; f) is the level change.
+--  (6) c), d) of 3.6.5.1.4 (integrity) are EVC_Sessions.Integrity's,
+--      requested through Request; f) is the level change.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -42,6 +42,7 @@ with EVC_Modes;
 with EVC_Odometry;
 with EVC_Position;
 with EVC_Received;
+with EVC_Sessions.Integrity;
 with EVC_Text_Messages;
 with ETCS_Variables;
 
@@ -107,7 +108,8 @@ is
    procedure Produce (Ctx    : EVC_Radio.Context_T;
                       Also   : Targets_T := No_Targets;
                       Forced : Targets_T := No_Targets)
-     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue,
+                                EVC_Sessions.Integrity.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State));
 
@@ -120,7 +122,8 @@ is
    --  an RBC of system version 1 (6.6.3.2 [6]: Q_TEXTREPORT set to 0)
    --  @req 3.12.3.5.2
    procedure Produce_Text_Acks (Ctx : EVC_Radio.Context_T)
-     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue,
+                                EVC_Sessions.Integrity.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State, EVC_Text_Messages.State));
 

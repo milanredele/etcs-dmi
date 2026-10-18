@@ -206,7 +206,8 @@ is
                        Code    : M_ERROR_T;
                        Text    : Boolean := False;
                        Text_Id : Natural := 0)
-     with Global => (In_Out => (R.State, R.Queue, N_Sent),
+     with Global => (In_Out => (R.State, R.Queue, N_Sent,
+                                Integrity.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State))
    is
@@ -225,13 +226,29 @@ is
         (W, (if Text then Train_M158 else Train_M136), V, OK);
       if OK then
          if EVC_Position.Report_Kind = EVC_Position.Report_P1 then
-            ETCS_Train_Packets.P1.Encode
-              (EVC_Position.Position_Report_2 (Ctx.Mode, EVC_Levels.Level),
-               W, OK);
+            declare
+               P : ETCS_Train_Packets.P1.Packet_T :=
+                 EVC_Position.Position_Report_2 (Ctx.Mode, EVC_Levels.Level);
+            begin
+               P.Q_INTEGRITY := Q_INTEGRITY_T (Integrity.Q_Integrity);
+               P.Has_L_TRAININT := P.Q_INTEGRITY in 1 | 2;
+               P.L_TRAININT := (if P.Has_L_TRAININT
+                                then L_TRAININT_T (Integrity.Confirmed_Length)
+                                else 0);
+               ETCS_Train_Packets.P1.Encode (P, W, OK);
+            end;
          else
-            ETCS_Train_Packets.P0.Encode
-              (EVC_Position.Position_Report (Ctx.Mode, EVC_Levels.Level),
-               W, OK);
+            declare
+               P : ETCS_Train_Packets.P0.Packet_T :=
+                 EVC_Position.Position_Report (Ctx.Mode, EVC_Levels.Level);
+            begin
+               P.Q_INTEGRITY := Q_INTEGRITY_T (Integrity.Q_Integrity);
+               P.Has_L_TRAININT := P.Q_INTEGRITY in 1 | 2;
+               P.L_TRAININT := (if P.Has_L_TRAININT
+                                then L_TRAININT_T (Integrity.Confirmed_Length)
+                                else 0);
+               ETCS_Train_Packets.P0.Encode (P, W, OK);
+            end;
          end if;
       end if;
       if OK and then Error then
@@ -250,6 +267,8 @@ is
                if not Text then
                   Bump (N_Sent);
                end if;
+               --  3.6.5.2.5 Table 2c [5]
+               Integrity.Reported;
             end if;
          end;
       end if;

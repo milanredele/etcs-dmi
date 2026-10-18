@@ -55,6 +55,11 @@ package EVC_Test_Sessions is
    --  message with a request to report it, to the RBC of the request
    procedure Scenario_Text_Ack_Report;
 
+   --  3.6.5.2: the train integrity information of the position reports,
+   --  confirmed by the driver and by the TIU, lost, unknown; the RBC bit
+   --  of MSG_ONBOARD that enables the Train integrity button
+   procedure Scenario_Train_Integrity;
+
    --  e5/error-report: 3.16.3.1.1.2, an inconsistent message reported to
    --  the RBC by packet 4 in message 136
    procedure Scenario_Session_Error_Report;
