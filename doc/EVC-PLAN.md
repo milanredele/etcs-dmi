@@ -7166,3 +7166,31 @@ premises were wrong (21 %), 1 of 14 runner ones; on-board items convert
 at 52 % with 82 calls and 5.5 USD per item done, runner items at 54 %
 with 16 calls and 0.9 USD; a sequence moved costs 3.0 USD on the
 on-board side and 1.0 on the runner's.
+
+### The mode profile shapes, the trip shapes, the Train integrity button, the planning gradients (e5/shapes-2, 2026-10-18)
+
+Nine shapes, one trace each, decided with their clause: one ours and
+fixed, one ours and left (another package), seven the sequences' data.
+
+| shape | decision |
+|---|---|
+| 4100103_27 step 44 (B584) | s076: BG7d gives OS from D_MAMODE 0 where the text says SH beyond; OS at once in level 1 (5.9.2.1) |
+| 3130700_06 step 39 (B584) | s076: one group with the MA and OS at D_MAMODE 0 (5.9.2.1); the sequence records OS at step 52, the columns of the rows splitting the group keep SR (B661, runner) |
+| 5190200_03 step 94 (B584) | s076: the LS area left, FS recorded at steps 95-97 under LS columns (B661) |
+| 4100103_42 SV21/22 step 95 (B584) | s076: the MA by radio ends the override (5.8.4.1 f) and gives FS by 4.6.3 [31] |
+| 3040200_03 step 137 (B584) | s076: message 33 with Q_DIR nominal for a train running against its LRBG after the cab change (as B591) |
+| 4080421_02 SV21/22 step 101 (B585) | ours, fixed: packet 49 sent by radio with the MA of an SH mode profile is the list for the SH area (4.4.8.1.1 b), 4.4.8.1.8); to step 174 |
+| 9990400_49 step 162 (B585) | s076: message 153 places the EOA 300 m behind the train; in OS [16] trips in level 2 |
+| 3060500_05 step 73 (B587) | ours, left: the DMI's condition is right; the on-board never sets the RBC bit 3 of MSG_ONBOARD and has no train integrity reporting (3.6.5.2, deferred): B660 |
+| 4080416_01 step 71 (B589) | s076: the step's NOT contradicts its comment (a gradient profile is shown); message 24's packet 21 replaces the gradients (3.7.3.1 b) |
+
+The fix: `EVC_Stored_Information.Take_Radio_SH_List` keeps packet 49 of
+a radio message whose MA was accepted (the country of the LRBG unless an
+item gives another), `EVC_Procedures.Take_MA_SH_List` makes it the
+stored list in the same cycle, as a list read from a balise group
+(`Take_P49`). Decision: the list is taken only with an accepted MA (it
+comes "together with the order", 4.4.8.1.8; the order is the mode
+profile of the MA). Scenario `EVC_Test_Shapes.Scenario_Radio_SH_List`
+(a new test package). Matrix: 4.4.8.1.1 b) note extended. Backlog:
+B584, B585, B587, B589 done; B660 (train integrity reporting), B661
+(the runner's mode window) added.
