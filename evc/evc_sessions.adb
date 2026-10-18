@@ -15,6 +15,7 @@ with ETCS_Train_Packets.P2;
 with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
 with EVC_Sessions.Handover;
+with EVC_Sessions.Integrity;
 with EVC_Sessions.Mission;
 with EVC_Sessions.Network;
 with EVC_Sessions.Reports;
@@ -31,6 +32,7 @@ package body EVC_Sessions
                                    Mode_Capped, Contact_Tripped,
                                    In_Hole, Ref_On, Ref_Ms,
                                    EVC_Sessions.Handover.State,
+                                   EVC_Sessions.Integrity.State,
                                    EVC_Sessions.Mission.State,
                                    EVC_Sessions.Network.State,
                                    EVC_Sessions.Reports.State))
@@ -577,6 +579,7 @@ is
       Mission.Clear;
       Network.Clear;
       Reports.Clear;
+      Integrity.Clear;
       Handover.Clear;
    end Clear;
 
@@ -1375,6 +1378,15 @@ is
       end;
       Apply_Handover (Ctx.Now_Ms, Ctx.Mode);
       Apply_Mission (Ctx);
+      --  3.6.5.2.5, 3.6.5.2.6; 3.6.5.1.4 c), d)
+      declare
+         Report : Boolean;
+      begin
+         Integrity.Evaluate (Report);
+         if Report then
+            Reports.Request;
+         end if;
+      end;
       Reports.Evaluate (SoM => Mission.Reporting, Mode => Ctx.Mode);
       Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill, In_L2);
       --  3.16.3.4.4: the driver informed of the service brake ("Communication
@@ -1633,6 +1645,13 @@ is
      (Reports.Parameters_Taken);
    function Train_Data_Awaited return Boolean is
      (Mission.Train_Data_Awaited);
+
+   procedure Take_Integrity_Input (Value : Natural) is
+   begin
+      Integrity.Take_Input (Value);
+   end Take_Integrity_Input;
+
+   function Integrity_Status return Natural is (Integrity.Q_Integrity);
 
    procedure Request_Position_Report is
    begin

@@ -79,7 +79,8 @@
 --     requested [3] [14], 4 passive shunting permitted [26], 5 non
 --     leading permitted [46]; 6 to 12, of the speed and distance
 --     monitoring, at the end of this package; 13 the train
---     configuration, phase E4, there too), value u8 (0 or 1). The
+--     configuration, phase E4, there too; 14 the train integrity,
+--     phase E5, at its declaration), value u8 (0 or 1). The
 --     active cab gives the train orientation (SUBSET-026 3.6.1.5,
 --     EVC_Position). The TIU output is at the end of this package.
 --  DMI (in and out): one frame of the DMI protocol v2
@@ -262,12 +263,12 @@ is
 
    function Valid_TIU (Payload : Byte_Array) return Boolean is
      (Payload'Length = TIU_Length
-      and then Payload (Payload'First) in 1 .. 13
-      --  the direction controller has three positions, the brake
-      --  pressure and the train configuration (phase E4) are numbers,
-      --  every other signal is 0 or 1
+      and then Payload (Payload'First) in 1 .. 14
+      --  the direction controller and the train integrity have three
+      --  values, the brake pressure and the train configuration (phase
+      --  E4) are numbers, every other signal is 0 or 1
       and then (case Payload (Payload'First) is
-                   when 6      => Payload (Payload'First + 1) <= 2,
+                   when 6 | 14 => Payload (Payload'First + 1) <= 2,
                    when 12 | 13 => True,
                    when others => Payload (Payload'First + 1) <= 1));
 
@@ -410,7 +411,13 @@ is
       Brake_Pressure,
       --  added by the procedures of phase E4 (see the end of this
       --  package)
-      Train_Configuration);
+      Train_Configuration,
+      --  phase E5: the train integrity of an external source (SUBSET-026
+      --  3.6.5.2.1, Table 2c [3], [4], [6]): value 0 "train integrity
+      --  status unknown", 1 "train integrity confirmed", 2 "train
+      --  integrity lost"; each input is one reception of that
+      --  information
+      Train_Integrity);
 
    type TIU_Input_T is record
       Signal : TIU_Signal_T;

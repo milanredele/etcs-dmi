@@ -193,7 +193,7 @@ package body EVC_Test_Core is
       --  TIU
       Bad (TIU, (1 => 1), "one byte");
       Bad (TIU, (0, 1), "signal 0");
-      Bad (TIU, (14, 1), "signal 14");
+      Bad (TIU, (15, 1), "signal 15");
       Bad (TIU, (5, 2), "value 2");
       Bad (TIU, (1, 1, 0), "three bytes");
       --  DMI

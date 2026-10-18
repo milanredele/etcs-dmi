@@ -1513,6 +1513,109 @@ package body EVC_Test_Sessions is
              & "message 158 (3.12.3.5.2, decision)");
    end Scenario_Text_Ack_Report;
 
+   --  Q_INTEGRITY and L_TRAININT of the position report (136) among the
+   --  RTM outputs of the last cycle; Q 9 when there is none
+   procedure Integrity_Of_Report (Q : out Natural; L : out Natural) is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      OK : Boolean;
+   begin
+      Q := 9;
+      L := 0;
+      for N in 1 .. Radio_Outputs loop
+         if Is_Message (N, 136) then
+            Decode_Radio_Message (N, M, St);
+            if St = ETCS_Message.Accepted and then M.Count >= 1 then
+               declare
+                  Rd : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
+                  P0 : R0.Packet_T;
+                  P1 : R1.Packet_T;
+               begin
+                  ETCS_Message.Open_Packet (M, 1, Rd);
+                  if Natural (M.Index (1).NID) = 0 then
+                     R0.Decode (Rd, P0, OK);
+                     if OK then
+                        Q := Natural (P0.Q_INTEGRITY);
+                        L := Natural (P0.L_TRAININT);
+                     end if;
+                  else
+                     R1.Decode (Rd, P1, OK);
+                     if OK then
+                        Q := Natural (P1.Q_INTEGRITY);
+                        L := Natural (P1.L_TRAININT);
+                     end if;
+                  end if;
+               end;
+            end if;
+         end if;
+      end loop;
+   end Integrity_Of_Report;
+
+   procedure Scenario_Train_Integrity is
+      Q, L    : Natural;
+      Length  : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Give_Radio_Event (1, Connection_Set_Up);
+      Stand;
+      Give_Radio_Message (1, Msg (MCat.Track_M32, Now_T, 0, 7, 48));
+      Stand;
+      Check (Onboard_Byte (8) / 8 mod 2 = 1,
+             "integrity: train length and doubt within the range of "
+             & "L_TRAININT, the RBC bit 3 of MSG_ONBOARD (DMI 11.2.3.5 #3)");
+      for N in 1 .. Radio_Outputs loop
+         if Is_Message (N, 129) then
+            Ack_Train_Data (N);
+         end if;
+      end loop;
+      Length := Natural (EVC_Train_Data.Length) / 100;
+      Check (R.Train_Data_Acknowledged and then EVC_Sessions.Integrity_Status = 0,
+             "integrity: no train integrity information after the session's "
+             & "establishment (3.6.5.2.6)");
+
+      --  the driver's confirmation at standstill (3.6.5.2.2, Table 2c [2])
+      Send (Frame (16#40#, (10, 0, 0)));
+      Integrity_Of_Report (Q, L);
+      Check (Q = 2 and then L >= Length and then L <= Length + 20,
+             "integrity: confirmed by the driver, reported at once with the "
+             & "confirmed train length (3.6.5.1.4 c), 3.6.5.2.3, 3.6.5.2.4), "
+             & "got" & Img (Q) & Img (L) & Img (Length));
+      Stand;
+      Check (EVC_Sessions.Integrity_Status = 0,
+             "integrity: reported once, then no information (Table 2c [5])");
+
+      --  the external source (Table 2c [3], [4], [6]; 3.6.5.2.8)
+      EVC_Core.Handle_Input (TIU, (14, 1));
+      Stand;
+      Integrity_Of_Report (Q, L);
+      Check (EVC_Sessions.Integrity_Status = 1 and then Q = 9,
+             "integrity: confirmed by the TIU, no report of its own "
+             & "(3.6.5.2.8)");
+      EVC_Core.Handle_Input (TIU, (14, 2));
+      Stand;
+      Integrity_Of_Report (Q, L);
+      Check (EVC_Sessions.Integrity_Status = 3 and then Q = 3,
+             "integrity: lost, reported at once (3.6.5.1.4 d), Table 2c "
+             & "[4]), got" & Img (Q));
+      Stand;
+      Check (EVC_Sessions.Integrity_Status = 3,
+             "integrity: lost, kept in the reports that follow (3.6.5.2.9)");
+      EVC_Core.Handle_Input (TIU, (14, 0));
+      Stand;
+      Check (EVC_Sessions.Integrity_Status = 0,
+             "integrity: status unknown from the TIU, no information "
+             & "(Table 2c [6])");
+
+      --  a confirmation while moving
+      Input (DMI, Frame (16#40#, (10, 0, 0)));
+      Run_X (Train_Cm + 2_000);
+      Check (EVC_Sessions.Integrity_Status = 0,
+             "integrity: the driver's confirmation only at standstill "
+             & "(3.6.5.2.2)");
+   end Scenario_Train_Integrity;
+
    procedure Scenario_Report_Packet is
       First, Prev : Natural;
    begin

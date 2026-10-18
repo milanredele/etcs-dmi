@@ -162,6 +162,10 @@ is
    --  exists; Waiting 2, an answer from the RBC (5.4.3.2 A31)
    Data_RBC_Valid        : constant Bits_T := 16;
    RBC_Train_Data_Acked  : constant Bits_T := 1;
+   --  RBC bit3: the distance between the current min safe rear end and
+   --  the current estimated front end does not exceed the range of the
+   --  confirmed train length information (SUBSET-026 3.6.5.2, L_TRAININT)
+   RBC_Length_In_Range   : constant Bits_T := 8;
    Radio_Contact_Known   : constant Bits_T := 128;
    Session_Being_Established : constant Byte := 1;
    Session_Exists            : constant Byte := 2;

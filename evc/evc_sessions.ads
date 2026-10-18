@@ -369,4 +369,15 @@ is
           Post => Has_Released = Has_Released'Old
                   and then EVC_Radio.Sessions = EVC_Radio.Sessions'Old;
 
+   --  The TIU input "train integrity" (EVC_Ports signal 14: 0 unknown,
+   --  1 confirmed, 2 lost), the external source of 3.6.5.2 Table 2c,
+   --  evaluated by the next Evaluate
+   procedure Take_Integrity_Input (Value : Natural)
+     with Global => (In_Out => State),
+          Post => Has_Released = Has_Released'Old;
+
+   --  Q_INTEGRITY the next position report carries (3.6.5.2.3 a))
+   function Integrity_Status return Natural
+     with Global => State;
+
 end EVC_Sessions;
