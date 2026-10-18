@@ -11,8 +11,11 @@ judgement columns filled at integration by hand.
       and the plan, the budget from the prompt or the package brief, the
       requests, duration, final context and cost from the usage records,
       the tool mix from the tool_use blocks (and inside Bash the runs of
-      outline.py, clause.py, grep, sed -n, the commits, the proofs, the
-      runner and the whole check), the report's premise mentions. A row's
+      outline.py, clause.py, grep and sed -n, each also counted on the
+      source trees alone, the commits, the proofs, the runner and the
+      whole check), the agent's own running tally (the ordinal at the
+      start of a Bash call's description, since round 30), the report's
+      premise mentions. A row's
       judgement columns are kept as they are; a measured column is always
       rewritten.
   rounds.py report [--last N] [--csv ...]
@@ -54,8 +57,8 @@ MEASURED = ['agent', 'date', 'round', 'package', 'kind', 'model', 'agent_type',
             'first_k', 'budget', 'calls',
             'requests', 'minutes', 'context_k', 'cost_usd',
             'bash', 'edit', 'write', 'read', 'other',
-            'outline', 'outline_decl', 'clause', 'grep', 'sed',
-            'commits', 'proofs', 'runner_runs', 'checks',
+            'outline', 'outline_decl', 'clause', 'grep', 'grep_src', 'sed', 'sed_src',
+            'commits', 'proofs', 'runner_runs', 'checks', 'tally',
             'report_chars', 'premise_mentions', 'premise_flags']
 JUDGED = ['items', 'done', 'dropped', 'left', 'premises', 'premises_wrong',
           'moved', 'regressions', 'backlog_added', 'outside', 'conflicts',
@@ -225,6 +228,11 @@ PROMPT_PACKAGE = [
 ]
 
 
+# a Bash command that reads a source file (not a sequence, a csv or the
+# specification's markdown): the Ada source trees and their extensions
+SOURCE_PATH = re.compile(r'(^|[\s/"\'])(evc|sim|dmi|common|ports|test/src)/|\.ad[sb]\b')
+
+
 def text_of(content):
     if isinstance(content, str):
         return content
@@ -250,6 +258,7 @@ def measure(path, briefs_map, plan_map, starts):
             pass
     tools = {}
     bash_cmds = []
+    bash_descs = []
     handback = None
     last_text = ''
     with open(path) as f:
@@ -289,6 +298,7 @@ def measure(path, briefs_map, plan_map, starts):
                     tools[name] = tools.get(name, 0) + 1
                     if name == 'Bash':
                         bash_cmds.append(str(inp.get('command', '')))
+                        bash_descs.append(str(inp.get('description', '')))
     prompt = prompt or ''
     pkg = ''
     for rx in PROMPT_PACKAGE:
@@ -366,11 +376,14 @@ def measure(path, briefs_map, plan_map, starts):
         'outline_decl': sum(1 for c in bash_cmds if 'outline.py' in c and '--decl' in c),
         'clause': sum(1 for c in bash_cmds if 'clause.py' in c),
         'grep': sum(1 for c in bash_cmds if re.search(r'\bgrep\b', c)),
+        'grep_src': sum(1 for c in bash_cmds if re.search(r'\bgrep\b', c) and SOURCE_PATH.search(c)),
         'sed': sum(1 for c in bash_cmds if re.search(r'\bsed -n\b', c)),
+        'sed_src': sum(1 for c in bash_cmds if re.search(r'\bsed -n\b', c) and SOURCE_PATH.search(c)),
         'commits': sum(1 for c in bash_cmds if 'git commit' in c),
         'proofs': sum(1 for c in bash_cmds if 'prove.sh' in c or 'gnatprove' in c),
         'runner_runs': sum(1 for c in bash_cmds if 'evc_s076_run' in c),
         'checks': sum(1 for c in bash_cmds if 'check.sh' in c),
+        'tally': max([int(m.group(1)) for d in bash_descs for m in [re.match(r'\s*(\d+)\s*[:.)-]', d)] if m] or [0]),
         'report_chars': len(report),
         'premise_mentions': len(re.findall(r'premise', report, re.I)),
         'premise_flags': flags,
@@ -449,8 +462,8 @@ def check(path):
                 errors.append(f'line {i}: kind "{r.get("kind")}"')
             for c in ['first_k', 'budget', 'calls', 'requests', 'minutes', 'context_k',
                       'bash', 'edit', 'write', 'read', 'other', 'outline',
-                      'outline_decl', 'clause', 'grep', 'sed', 'commits',
-                      'proofs', 'runner_runs', 'checks', 'report_chars',
+                      'outline_decl', 'clause', 'grep', 'grep_src', 'sed', 'sed_src', 'commits',
+                      'proofs', 'runner_runs', 'checks', 'tally', 'report_chars',
                       'premise_mentions', 'premise_flags', 'items', 'done',
                       'dropped', 'left', 'premises', 'premises_wrong',
                       'regressions', 'backlog_added', 'outside', 'conflicts']:
@@ -531,12 +544,18 @@ def cmd_report(args):
               f'  calls {mean([num(r["calls"]) for r in rs]):5.1f}  final {mean([num(r["context_k"]) for r in rs]):5.1f}k'
               f'  cost {mean([num(r["cost_usd"]) for r in rs]):5.1f}')
     print()
-    print('Inside Bash (the numbered rounds), per agent: outline, --decl, clause, grep, sed -n, commits, proofs, runner runs, checks')
+    print('Inside Bash (the numbered rounds), per agent: outline, --decl, clause, grep (of them on sources), sed -n (on sources), commits, proofs, runner runs, checks')
     for kind in sorted({r['kind'] for r in numbered}):
         rs = [r for r in numbered if r['kind'] == kind]
         print(f'  {kind:9s} ' + '  '.join(
             f'{c} {mean([num(r[c]) for r in rs]):4.1f}' for c in
-            ['outline', 'outline_decl', 'clause', 'grep', 'sed', 'commits', 'proofs', 'runner_runs', 'checks']))
+            ['outline', 'outline_decl', 'clause', 'grep', 'grep_src', 'sed', 'sed_src', 'commits', 'proofs', 'runner_runs', 'checks']))
+    tallied = [r for r in numbered if num(r.get('tally', 0)) > 0]
+    if tallied:
+        print()
+        print('Self-count (the tally in the Bash descriptions) against the measured calls:')
+        for r in tallied:
+            print(f'  round {r["round"]:>2} {r["package"]:28s} tally {num(r["tally"]):4.0f}  measured {num(r["calls"]):4.0f}')
     print()
     print('Per round: agents, calls/budget, over budget, cost, premises wrong/stated, items done/assigned, moved, regressions explained, conflicts')
     for rnd in sorted({int(r['round']) for r in numbered}):
