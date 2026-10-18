@@ -30,8 +30,9 @@ branch's run), backlog_added, outside (edits outside the agent's units),
 conflicts (merge conflicts the coordinator resolved by hand), done_list
 (y / n / partial), note.
 
-Cost: the public rates of the model the agents run on (input 5, output 25,
-cache write 6.25, cache read 0.5 USD per million tokens), one usage per
+Cost: the public rates of the model named in the transcript (opus 5 / 25 /
+6.25 / 0.5, sonnet 3 / 15 / 3.75 / 0.3, haiku 1 / 5 / 1.25 / 0.1 USD per
+million tokens of input, output, cache write, cache read), one usage per
 message id.
 """
 import argparse
@@ -49,7 +50,8 @@ PLAN = os.path.join(ROOT, 'doc', 'EVC-PLAN.md')
 BRIEFS = os.path.expanduser(
     '~/.claude/projects/-Users-milan-GitHub-etcs-dmi/briefs')
 
-MEASURED = ['agent', 'date', 'round', 'package', 'kind', 'budget', 'calls',
+MEASURED = ['agent', 'date', 'round', 'package', 'kind', 'model', 'agent_type',
+            'first_k', 'budget', 'calls',
             'requests', 'minutes', 'context_k', 'cost_usd',
             'bash', 'edit', 'write', 'read', 'other',
             'outline', 'outline_decl', 'clause', 'grep', 'sed',
@@ -77,9 +79,22 @@ EARLY_ROUNDS = {
     'e5/authority-4': 3, 'e5/session-4': 3,
 }
 PREP_PREFIXES = ('refactor/', 'perf/', 'fix/', 'chore/', 'e5prep/')
-RATES = {'input_tokens': 5.0, 'output_tokens': 25.0,
-         'cache_creation_input_tokens': 6.25,
-         'cache_read_input_tokens': 0.5}
+# USD per million tokens: input, output, cache write, cache read, by the
+# model's name prefix (the opus rates for an unknown model)
+RATES_BY_MODEL = [
+    ('haiku', (1.0, 5.0, 1.25, 0.1)),
+    ('sonnet', (3.0, 15.0, 3.75, 0.3)),
+    ('opus', (5.0, 25.0, 6.25, 0.5)),
+]
+
+
+def rates_for(model):
+    for prefix, r in RATES_BY_MODEL:
+        if model.startswith(prefix):
+            return dict(zip(['input_tokens', 'output_tokens',
+                             'cache_creation_input_tokens',
+                             'cache_read_input_tokens'], r))
+    return rates_for('opus')
 ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth',
             'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth',
             'thirteenth', 'fourteenth', 'fifteenth', 'sixteenth',
@@ -223,6 +238,16 @@ def measure(path, briefs_map, plan_map, starts):
     seen = {}
     first_ts = last_ts = None
     last_ctx = 0
+    first_ctx = None
+    model = ''
+    agent_type = ''
+    meta_path = re.sub(r'\.(jsonl|output)$', '.meta.json', os.path.realpath(path))
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path) as f:
+                agent_type = json.load(f).get('agentType', '')
+        except ValueError:
+            pass
     tools = {}
     bash_cmds = []
     handback = None
@@ -245,6 +270,11 @@ def measure(path, briefs_map, plan_map, starts):
             m = o.get('message') or {}
             if m.get('id') and m.get('usage'):
                 seen[m['id']] = m['usage']
+                model = model or re.sub(r'^claude-', '', str(m.get('model', '')))
+                if first_ctx is None:
+                    u = m['usage']
+                    first_ctx = (u.get('input_tokens', 0) + u.get('cache_creation_input_tokens', 0)
+                                 + u.get('cache_read_input_tokens', 0))
             for c in m.get('content', []) or []:
                 if not isinstance(c, dict):
                     continue
@@ -301,8 +331,9 @@ def measure(path, briefs_map, plan_map, starts):
     elif pkg:
         budget = brief_budget(pkg)
     cost = 0.0
+    rates = rates_for(model)
     for u in seen.values():
-        for k, rate in RATES.items():
+        for k, rate in rates.items():
             cost += u.get(k, 0) * rate / 1e6
         last_ctx = (u.get('input_tokens', 0) + u.get('cache_creation_input_tokens', 0)
                     + u.get('cache_read_input_tokens', 0))
@@ -317,6 +348,9 @@ def measure(path, briefs_map, plan_map, starts):
         'round': rnd,
         'package': pkg or ('other: ' + re.sub(r'\s+', ' ', prompt[:50]).strip()),
         'kind': kind_of(pkg) if pkg else 'other',
+        'model': model,
+        'agent_type': agent_type,
+        'first_k': round((first_ctx or 0) / 1000),
         'budget': budget,
         'calls': sum(tools.values()),
         'requests': len(seen),
@@ -413,7 +447,7 @@ def check(path):
             ids.add(a)
             if r.get('kind') not in KINDS:
                 errors.append(f'line {i}: kind "{r.get("kind")}"')
-            for c in ['budget', 'calls', 'requests', 'minutes', 'context_k',
+            for c in ['first_k', 'budget', 'calls', 'requests', 'minutes', 'context_k',
                       'bash', 'edit', 'write', 'read', 'other', 'outline',
                       'outline_decl', 'clause', 'grep', 'sed', 'commits',
                       'proofs', 'runner_runs', 'checks', 'report_chars',
@@ -489,6 +523,13 @@ def cmd_report(args):
               f'  over {over}/{len(with_budget)}  cost {cost / max(1, len(rs)):5.1f}'
               f'  {cost / max(1e-9, mins / 60):5.1f}/h'
               f'  bash {bash / total:4.0%} edit+write {edits / total:4.0%} read {reads / total:4.0%}')
+    print()
+    print('Per model and agent type (all agents): agents, initial context, mean calls, mean final context, mean cost')
+    for key in sorted({(r.get('model', ''), r.get('agent_type', '')) for r in rows}):
+        rs = [r for r in rows if (r.get('model', ''), r.get('agent_type', '')) == key]
+        print(f'  {key[0] or "?":12s} {key[1] or "?":16s} {len(rs):3d}  first {mean([num(r["first_k"]) for r in rs]):5.1f}k'
+              f'  calls {mean([num(r["calls"]) for r in rs]):5.1f}  final {mean([num(r["context_k"]) for r in rs]):5.1f}k'
+              f'  cost {mean([num(r["cost_usd"]) for r in rs]):5.1f}')
     print()
     print('Inside Bash (the numbered rounds), per agent: outline, --decl, clause, grep, sed -n, commits, proofs, runner runs, checks')
     for kind in sorted({r['kind'] for r in numbered}):

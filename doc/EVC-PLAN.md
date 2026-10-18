@@ -7136,7 +7136,7 @@ one row per agent, kept by `test/tools/rounds.py`. `rounds.py measure
 (the session keeps them under its `subagents/` folder): the package and
 round from the launch prompt, the round briefs, the plan's headings and
 the round start stamps; the budget from the prompt or the package brief;
-the requests, duration, final context and cost from the usage records;
+the model, the agent type (the session's meta file), the initial context (the first request: the prefix of the agent type with its prompt), the requests, duration, final context and cost from the usage records;
 the tool mix from the tool_use blocks, and inside Bash the runs of
 `outline.py`, `clause.py`, grep, `sed -n`, the commits, the proofs, the
 runner and the whole check; the report's premise mentions. The judgement
