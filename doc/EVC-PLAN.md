@@ -7352,3 +7352,35 @@ them the first-look shapes of B584 to B589: a shape line's "ours" is a
 guess until traced, so a shapes package is an analysis package and should
 be budgeted and named as one. Open items: doc/BACKLOG.csv (40 open after
 this round).
+
+### The level symbol, network and connection, status message and JRU call shapes (e5/shapes-3, 2026-10-18)
+
+An analysis package: seventeen shapes of B581, B582, B588 and B590, each
+traced once on master to its step (all still failed there; 4080429_01's
+shape is SV21/SV22 only, SV30 fails later), decided with its clause. No
+code change; triage and backlog only (B700 to B710).
+
+| shape | decision |
+|---|---|
+| 4080429_01 SV21/22 step 52 (B582) | E7: BG22d's packet 45 is of system version 2 (L_PACKET 47, no Q_NETWORKTYPE), read in the 4.0 layout; 6.6.3.2.3 [23] / 6.6.5.2.7 (B703) |
+| 3050300_18 step 60 (B582) | model: the runner puts the min safe rear end at the step's 300 m, the border is at 250 m; ours releases at the rear's passage (3.5.3.8 d)), before the step (B701) |
+| 3050600_03 step 45 (B582) | model: the feature's laboratory has the Radio Network type FRMCS+GSM-R, FRMCS never registered: 3.5.6.7 b) holds the set-up; the runner keeps the default GSM-R (B700) |
+| 5070300_02 SV21 step 77 (B582) | ours: packet 42 of message 24 taken whatever its Q_DIR (3.6.3.1.3, EVC_Sessions.Take_Radio_Order; also 45, 131) (B702) |
+| 3050600_06 step 55 (B582) | model: 5.4.3.2 D7 / S4 waits with the type FRMCS+GSM-R (B700) |
+| 4050200_11 step 88 (B588) | s076 (decision): the step's comment says the error over 5000 m still exceeds 250 m after SB is left; 3.6.8.5 is active in SR by 4.5.2 |
+| 4041800_02 step 71 (B588) | ours, first look: EB before the RV distance of the relocated area ends, the message not shown (3.15.4.8) (B704) |
+| 5040300_25 step 100 (B588) | model: FRMCS not installed by the runner outside feature 3050600 (B700) |
+| 3120300_06 step 55 (B588) | ours, to be read: the end condition by level or mode other than the current (3.12.3.4, 7.5.1.73) (B710) |
+| 5220200_01 step 43 (B588) | ours, to be traced: JRU 23 kind 9 recorded, the symbol not shown (5.22.4.1) (B705) |
+| 3060600_01 step 150 (B590) | ours: no record 11 for Geographical Position (B706) |
+| 3131040_44 step 47 (B590) | ours: no record 25 at the modification of the SR values in SR (B707) |
+| 4080445_01 step 103 (B590) | ours: record 45 written in OS where none is expected (B708) |
+| 5181000_02 step 46 (B590) | ours: record 45 TI 1 not written at the announcement, 6 sequences (B708) |
+| 5170200_03 step 32 (B581) | s076: step 28 shows a valid L0, step 32 assumes it invalid (two cases' initial states) |
+| 5040300_03 step 51 (B581) | ours: the 5.4.3.3 table after D2 sets the level invalid with the position unknown; ours keeps L2 (B709) |
+| 3131050_23 step 50 (B581) | not traced (budget) |
+
+Of the sixteen decided (all triaged onboard before), seven are the
+runner's (4), the sequences' (2) or chapter 6 (1); nine are ours (B702,
+B704 to B710), five of them still first looks to be traced. B582, B588 and B590 done, B581 open for
+3131050_23. The runner's summary does not move (no code change).
