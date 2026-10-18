@@ -394,6 +394,15 @@ package S076_Bench is
    --  An RTM input as the port takes it (a tagged message, an event)
    procedure RTM_Input (Payload : Byte_Array);
 
+   --  An RTM input held until the bench time At_Ms: the RBC's answer
+   --  within a fixed waiting time of A.3.1, given at the first cycle at
+   --  or after At_Ms (one at a time; a new hold replaces the old one)
+   procedure Hold_RTM (Payload : Byte_Array; At_Ms : Unsigned_64);
+   procedure Cancel_RTM_Hold;
+   function RTM_Held return Boolean;        -- held, not given yet
+   function RTM_Hold_Given return Boolean;  -- given since Hold_RTM
+   function RTM_Hold_Given_Ms return Unsigned_64;
+
    --  An RTM output of the window: a train to track message of a
    --  session (Code its NID_MESSAGE, Data the message from its first
    --  byte) or a request to the radio (Code EVC_Ports.RTM_Request_T'Pos

@@ -35,6 +35,11 @@
 --  answer 131, 7 answers 133, 8 answers 129, 27 and 28 answer 130) is
 --  the T_TRAIN of the last such message the on-board sent in the
 --  session; the block's value when it sent none.
+--
+--  Held (Hold_Mode, S076_Run.Hold_Answer): the message is built before
+--  its step, stamped for the time it is to be given, and held by the
+--  bench until then; its step passes as given earlier, or gives it at
+--  once when the hold has not fired yet.
 
 separate (S076_Run)
 function Radio_Input (St : Step_T) return Judgement_T is
@@ -189,6 +194,17 @@ begin
       if Nid = "37" then
          return NJ (R_Radio_Infill, "RTM message 37 from an RIU");
       end if;
+      --  a message the bench holds for this step (Hold_Answer): given
+      --  already within the waiting time, else given now
+      if not Hold_Mode and then Hold_Number = St.Number then
+         Hold_Number := 0;
+         B.Cancel_RTM_Hold;
+         if B.RTM_Hold_Given then
+            return Pass ("RTM message " & Nid & " given earlier, at t="
+                         & Unsigned_64'Image (B.RTM_Hold_Given_Ms)
+                         & " ms, within the waiting time (A.3.1)");
+         end if;
+      end if;
       for I in 1 .. Seq.Message_Count loop
          if Seq.Messages (I).Step = St.Number
            and then Img (Seq.Messages (I).NID) = Nid
@@ -215,7 +231,8 @@ begin
          if M.T_Train_Count >= 1 then
             if Last >= 0 then
                Stamp := Unsigned_64 (Last)
-                 + (B.Time_Ms - B.Last_Sent_Ms (S)) / 10;
+                 + ((if Hold_Mode then Hold_Fire_Ms else B.Time_Ms)
+                    - B.Last_Sent_Ms (S)) / 10;
             else
                Stamp := Get_Bits (Data, M.T_Train_At (1), 32);
             end if;
@@ -240,6 +257,13 @@ begin
          then
             Put_Bits (Data, M.T_Train_At (2), 32,
                       Unsigned_64 (B.T_Train_Of (S, Answered (M.NID))));
+         end if;
+         if Hold_Mode then
+            B.Hold_RTM (B.Byte_Array'(EVC_Ports.RTM_Tag_Message,
+                                      Unsigned_8 (S)) & Data,
+                        Hold_Fire_Ms);
+            Hold_Number := St.Number;
+            return Pass ("RTM message " & Nid & " held");
          end if;
          B.RTM_Input (B.Byte_Array'(EVC_Ports.RTM_Tag_Message,
                                     Unsigned_8 (S)) & Data);

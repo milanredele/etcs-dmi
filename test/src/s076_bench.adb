@@ -38,6 +38,19 @@ package body S076_Bench is
    Voltages : Natural := EVC_Config.Default_Fixed_Train.Voltages;
    Clock      : Unsigned_64 := 0;
 
+   --  the RTM input held by Hold_RTM
+   Hold_Data     : Byte_Array (1 .. 256) := (others => 0);
+   Hold_Length   : Natural := 0;
+   Hold_At       : Unsigned_64 := 0;
+   Hold_Given    : Boolean := False;
+   Hold_Given_At : Unsigned_64 := 0;
+   --  given, its step not reached: what New_Window keeps (the first
+   --  record, JRU message and radio message since it was given)
+   Hold_Keep     : Boolean := False;
+   Hold_JRU      : Positive := 1;
+   Hold_Msg      : Positive := 1;
+   Hold_Radio    : Positive := 1;
+
    X_Cm      : Integer_64 := 0;     -- antenna, track position
    V_Cms     : Natural := 0;
    Dir       : Integer := 1;
@@ -580,6 +593,9 @@ package body S076_Bench is
    function Now_Ms return Unsigned_64 is (Clock);
 
    procedure New_Window (Keep_Radio : Boolean := False) is
+      Old_JRU : constant Natural := JRU_N;
+      Old_Msg : constant Natural := Messages_N;
+      Old_Radio : constant Natural := Radio_N;
    begin
       Win_Ms := Clock;
       Win := (others => <>);
@@ -591,6 +607,28 @@ package body S076_Bench is
       Sent_N := 0;
       if not Keep_Radio or else Radio_N > Max_Radio / 2 then
          Radio_N := 0;
+      end if;
+      --  a held RTM input given and its step not reached yet: the
+      --  records, JRU messages and radio messages since it stay listed
+      --  for the answer's step
+      if Hold_Keep then
+         for K in Hold_JRU .. Old_JRU loop
+            JRU_N := JRU_N + 1;
+            JRU_List (JRU_N) := JRU_List (K);
+         end loop;
+         for K in Hold_Msg .. Old_Msg loop
+            Messages_N := Messages_N + 1;
+            Messages (Messages_N) := Messages (K);
+         end loop;
+         if Radio_N = 0 then
+            for K in Hold_Radio .. Old_Radio loop
+               Radio_N := Radio_N + 1;
+               Radio_List (Radio_N) := Radio_List (K);
+            end loop;
+         end if;
+         Hold_JRU := 1;
+         Hold_Msg := 1;
+         Hold_Radio := 1;
       end if;
    end New_Window;
 
@@ -605,6 +643,8 @@ package body S076_Bench is
       Is_Powered := False;
       Was_Powered := False;
       Clock := 0;
+      Cancel_RTM_Hold;
+      Hold_Given := False;
       X_Cm := 0;
       V_Cms := 0;
       Demand_Cms := 0;
@@ -818,6 +858,16 @@ package body S076_Bench is
    begin
       Settle;
       Clock := Clock + Cycle_Ms;
+      if Hold_Length > 0 and then Clock >= Hold_At then
+         Hold_JRU := JRU_N + 1;
+         Hold_Msg := Messages_N + 1;
+         Hold_Radio := Radio_N + 1;
+         Hold_Keep := True;
+         RTM_Input (Hold_Data (1 .. Hold_Length));
+         Hold_Length := 0;
+         Hold_Given := True;
+         Hold_Given_At := Clock;
+      end if;
       --  the balises placed behind the antenna, in their order
       loop
          declare
@@ -1364,6 +1414,28 @@ package body S076_Bench is
          EVC_Core.Handle_Input (RTM, Payload);
       end if;
    end RTM_Input;
+
+   procedure Hold_RTM (Payload : Byte_Array; At_Ms : Unsigned_64) is
+   begin
+      Hold_Length := 0;
+      Hold_Given := False;
+      Hold_Keep := False;
+      if Payload'Length in 1 .. Hold_Data'Length then
+         Hold_Data (1 .. Payload'Length) := Payload;
+         Hold_Length := Payload'Length;
+         Hold_At := At_Ms;
+      end if;
+   end Hold_RTM;
+
+   procedure Cancel_RTM_Hold is
+   begin
+      Hold_Length := 0;
+      Hold_Keep := False;
+   end Cancel_RTM_Hold;
+
+   function RTM_Held return Boolean is (Hold_Length > 0);
+   function RTM_Hold_Given return Boolean is (Hold_Given);
+   function RTM_Hold_Given_Ms return Unsigned_64 is (Hold_Given_At);
 
    function Radio_Count return Natural is (Radio_N);
    function Radio (I : Positive) return Radio_Out_T is (Radio_List (I));

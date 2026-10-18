@@ -177,6 +177,15 @@ package body S076_Run is
    type Alive_T is array (1 .. 2) of Boolean;
    RBC_Alive   : Alive_T := (others => False);
    RBC_Current : Positive range 1 .. 2 := 1;
+   --  The RBC's answer within a fixed waiting time (Hold_Answer): the
+   --  step whose message the bench holds (its number), the bench time it
+   --  is given at, Radio_Input building the hold, and per question the
+   --  T_TRAIN of the on-board's message a hold was armed for
+   Hold_Number  : Natural := 0;
+   Hold_Fire_Ms : Unsigned_64 := 0;
+   Hold_Mode    : Boolean := False;
+   type Asked_T is array (1 .. 2) of Integer_64;
+   Hold_Asked   : Asked_T := (others => -1);
    Cur            : Natural := 0;       -- the index of the step
    Step_Start_Ms  : Unsigned_64 := 0;   -- the time the last step ended
    Explicit_Speed : Integer := -1;      -- cm/s set by an ODO input
@@ -2149,6 +2158,68 @@ package body S076_Run is
    Radio_Session : constant := 1;
 
    function Radio_Input (St : Step_T) return Judgement_T is separate;
+
+   --  The RBC's answer within a fixed waiting time of A.3.1. A sequence
+   --  gives the RBC's answer at its own step, after the driver's or the
+   --  train's steps between, which can take the bench longer than the
+   --  on-board waits: the system version (32) answers the initiation of
+   --  the session (155) within 15 s, 3.5.3.7.3; the acknowledgement of
+   --  the session establishment (38) answers the session established
+   --  report (159) within 15 s, 3.5.3.7.4. Before step I, when the
+   --  on-board sent such a question not armed for yet and the first
+   --  radio step from I on gives its answer (only driver, odometer,
+   --  balise, train interface inputs and negative radio expectations
+   --  between), the bench holds that answer until 1 s before the waiting
+   --  time ends; the answer's step then passes as given earlier, or gives
+   --  it at once if the hold has not fired. Decision: the other answers
+   --  (8 to 129, 24 to 132) have no waiting time that ends the session.
+   procedure Hold_Answer (I : Positive) is
+      Ask    : constant array (1 .. 2) of Natural := (155, 159);
+      Answer : constant array (1 .. 2) of String (1 .. 2) := ("32", "38");
+      S      : constant Positive := RBC_Current;
+   begin
+      for Q in Ask'Range loop
+         declare
+            T : constant Integer_64 := B.T_Train_Of (S, Ask (Q));
+            Sent_Ms : constant Integer_64 :=
+              Integer_64 (B.Last_Sent_Ms (S))
+              - (B.Last_T_Train (S) - T) * 10;
+            Fire : constant Integer_64 := Sent_Ms + 14_000;
+         begin
+            if Hold_Number = 0 and then T >= 0
+              and then T /= Hold_Asked (Q)
+              and then Integer_64 (B.Time_Ms) < Fire
+            then
+               for K in I .. Seq.Step_Count loop
+                  declare
+                     St : Step_T renames Seq.Steps (K);
+                  begin
+                     exit when St.Line.N = 0;
+                     Load_Line (St.Line);
+                     if St.IO = Input and then W (2) = "RTM" then
+                        if W (3) = "message" and then W (4) = Answer (Q)
+                        then
+                           Hold_Asked (Q) := T;
+                           Hold_Mode := True;
+                           Hold_Fire_Ms := Unsigned_64 (Fire);
+                           if Radio_Input (St).Verdict /= Passed then
+                              Hold_Number := 0;
+                           end if;
+                           Hold_Mode := False;
+                        end if;
+                        exit;
+                     end if;
+                     exit when St.IO = Input
+                       and then W (2) /= "DMI" and then W (2) /= "ODO"
+                       and then W (2) /= "BTM" and then W (2) /= "TIU";
+                     exit when St.IO /= Input and then W (2) = "RTM"
+                       and then not Starts (W (3), "no-");
+                  end;
+               end loop;
+            end if;
+         end;
+      end loop;
+   end Hold_Answer;
    --  The time a balise group input was given, after the move to its
    --  group (Apply_Input moves the train): the window of a negative radio expectation after it starts
    --  there, not at the start of the move (4090100_01 step 115: a 132
@@ -5701,6 +5772,9 @@ package body S076_Run is
       RBC_Stamp_Given := False;
       RBC_Alive := (others => False);
       RBC_Current := 1;
+      Hold_Number := 0;
+      Hold_Mode := False;
+      Hold_Asked := (others => -1);
       Outcome := Seq_Passed;
       Outcome_Step := 0;
       Outcome_Index := 0;
@@ -5781,6 +5855,7 @@ package body S076_Run is
                end if;
             else
                Field_Gap := (others => <>);
+               Hold_Answer (I);
                Load_Line (St.Line);
                --  an input opens a new observation window, before the
                --  move to its distance: what happens on the way is the
