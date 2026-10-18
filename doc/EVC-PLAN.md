@@ -7479,3 +7479,62 @@ is not written (B691).
 Left: S9e1b46dc (3050300_19 step 72, the MA of message 3 refused in SR
 level 2) and S6a1a136d / Se8e0d3d0 (5040300_16 step 89, the SOLR after a
 power cycle) were not traced: the budget went to B660.
+
+### E5 integration after the thirtieth round (2026-10-18)
+
+The round of the tally: every Bash call's description carries the
+agent's own ordinal, so the agent sees its count and the measurer checks
+it; the budget a bound at 80 %; the reading rule with the source-tree
+counts named.
+
+Merged: e5/shapes-3 (an analysis package: sixteen of seventeen shapes
+decided, nine ours as B702 and B704 to B710, four the runner's as B700
+and B701, two the sequences' data, one chapter 6 as B703; 3131050_23
+left), e5/buffer-radio (packets 51 and 52 of message 24 taken in level 2
+under the Train Data guard and kept whole in the transition buffer when
+level 2 is announced, 4.8.3 [2] [3], B640; packet 132 accepted only with
+an immediate order to level 1 or 2, 4.8.3 [13] done, B641; B642 not
+started; B680, B681), e5/runner-odometer (the bench's odometer accuracy
+at 5 permille, SUBSET-041's bound, only for a sequence whose comment says
+the confidence interval already overlaps the area ahead, B620; a step
+whose mode columns contradict the window's own expectation judged on the
+expectation, `S076_Run.Columns`, B661, six sequences move; B586 done, its
+second sequence ours as B720, the position not relocated over a linked
+group; B480 dropped) and e5/integrity (train integrity reporting, 3.6.5.2
+with Table 2b and 2c, `EVC_Sessions.Integrity`, Q_INTEGRITY and
+L_TRAININT in the position report, the TIU signal 14, the RBC bit 3 of
+MSG_ONBOARD; B660 done, 12 rows done and 2 partial; S9e1b46dc and
+S6a1a136d not started; B690, B691).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, two triage hunks by signature id, no source conflict, the
+baselines merged by git and confirmed by each union's run.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12301
+checks, dmi_test 2168), the full proof 12205 checks, 0 unproved (margin
+47726 steps), cross build and stack (worst case 27200 B, margin 5568 B),
+wasm and both smokes 0 failures. SUBSET-076: 955 / 1149 / 1086 before,
+961 / 1143 / 1086 after, steps not judged 4369 -> 4371, 0 regressions, 0
+untriaged. Matrix: 289 clauses left (287 before: 15 deferred rows of
+3.6.5.2 entered the count, 13 done and 2 partial, and the two partial
+ones count as left).
+
+Measurements (doc/ROUNDS.csv): buffer-radio 130 calls / tally 132 / 176k
+/ 7.0 USD; integrity 126 / 122 / 181k / 7.8; runner-odometer 109 / 107 /
+165k / 5.9; shapes-3 96 / 97 / 145k / 4.8 (budget 110). No agent over its
+budget (round 29: four of four), the tallies within four calls of the
+measured, the round at 25.5 USD against 45.9. Reading on the source
+trees: grep 19, 44, 6, 7 and `sed -n` 13, 13, 10, 8 per agent: two
+reading failures by the rule (buffer-radio, integrity).
+
+Lessons: a count the agent can see works where a rule it cannot check
+did not: the tally brought every agent inside the bound in one round and
+halved the round's cost without a visible loss of output (14 items
+assigned, 9 done, 2 of 3 on-board packages complete). The reading rule
+on sources still fails for the agents that build (grep 19 and 44), not
+for the ones that trace: the next brief asks for the `outline.py` run
+before each grep by name in the description, or accepts that a builder
+greps. The analysis package (shapes-3) converted 16 of 17 shapes at 6
+calls each and found 9 defects: a line of first looks is best spent that
+way, not fixed in passing. Brief premises wrong: 10 of 26, 7 of them
+shapes. Open items: doc/BACKLOG.csv (46 open after this round).
