@@ -37,7 +37,7 @@ with EVC_Train_Data;
 --  @req 3.6.5.2.2, 3.6.5.2.3, 3.6.5.2.3 a), 3.6.5.2.3 a) 1st bullet
 --  @req 3.6.5.2.3 a) 2nd bullet, 3.6.5.2.3 a) 3rd bullet
 --  @req 3.6.5.2.3 a) 4th bullet, 3.6.5.2.3 b), 3.6.5.2.4, 3.6.5.2.5
---  @req 3.6.5.2.5 Table 2b, 3.6.5.2.6
+--  @req 3.6.5.2.5 Table 2b, 3.6.5.2.6, 3.6.5.1.4 c), 3.6.5.1.4 d)
 private package EVC_Sessions.Integrity
   with SPARK_Mode => On,
        Abstract_State => (State with Part_Of => EVC_Sessions.State)

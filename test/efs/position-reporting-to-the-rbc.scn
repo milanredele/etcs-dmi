@@ -516,7 +516,7 @@ step 2
 sub Sub-step1
 efs: Testing.InitializeEURORADIO()
 case A loss of train integrity is detected
-clause E2 deferred 3.6.5.1.4 d) ; efs 3.6.5.1.4.d
+clause E2 done 3.6.5.1.4 d) ; efs 3.6.5.1.4.d
 clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 step One BG - Step1: Setup
@@ -677,7 +677,7 @@ efs: Kernel.TrainPosition.Position.DataState <- DataStateEnum.Valid
 efs: BTM.LRBG.PreviousBaliseGroups <- [ BTM.LRBG.PreviousBaliseGroupStruct { IsLRBG => True, BaliseGroup => BTM.LRBG.BaliseGroupStruct { NID_BG=>9614, BGOrientation => OrientationEnum.Nominal, TrainRunningDirection => OrientationEnum.Nominal, Position => BTM.PositionStruct { OverReadingAmountOdo => 1039.0, Position => 1040.0, UnderReadingAmountOdo => 1042.0 } } }, BTM.LRBG.PreviousBaliseGroupStruct{ BaliseGroup => BTM.LRBG.BaliseGroupStruct{ NID_BG=> 9616, BGOrientation=> OrientationEnum.Nominal, TrainRunningDirection => OrientationEnum.Nominal, Position=> BTM.PositionStruct{ OverReadingAmountOdo=> 6.0, Position=> 1080.0, UnderReadingAmountOdo=> 2.0 } }, IsLRBG => True, IsSingle => False } ]
 set odo.position 1080.0
 case The driver confirms train integrity
-clause E2 deferred 3.6.5.1.4 c) ; efs 3.6.5.1.4.c
+clause E2 done 3.6.5.1.4 c) ; efs 3.6.5.1.4.c
 clause E2 done 3.6.5.1.4.1 ; efs 3.6.5.1.4.1
 clause E2 done 3.4.2.3.3.1 ; efs 3.4.2.3.3.1
 step One BG - Step1: Setup

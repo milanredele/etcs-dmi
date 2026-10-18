@@ -32,8 +32,8 @@
 --  (5) The periods of 3.6.5.1.5 a) and b) run from the parameters'
 --      reception and from their own last report (EVC_Position): a
 --      report for another reason does not restart them.
---  (6) c), d), e), k), l) of 3.6.5.1.4 (integrity, RBC/RBC border,
---      errors of 3.16.4) are not observable yet; f) is the level change.
+--  (6) c), d) of 3.6.5.1.4 (integrity) are EVC_Sessions.Integrity's,
+--      requested through Request; f) is the level change.
 
 pragma Unevaluated_Use_Of_Old (Allow);
 

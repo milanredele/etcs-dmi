@@ -7352,3 +7352,35 @@ them the first-look shapes of B584 to B589: a shape line's "ours" is a
 guess until traced, so a shapes package is an analysis package and should
 be budgeted and named as one. Open items: doc/BACKLOG.csv (40 open after
 this round).
+
+### Train integrity reporting, the MA refused in SR level 2, the SOLR over a power cycle (e5/integrity, 2026-10-18)
+
+Done: train integrity reporting (3.6.5.2.2 to 3.6.5.2.6, 3.6.5.1.4 c)
+and d); B660). `EVC_Sessions.Integrity` (a private child, its state part
+of the parent's) keeps the status of Table 2b, moved each cycle by the
+conditions of Table 2c in their priorities, and the confirmed train
+length of Figure 15 (the min safe rear end when the train was last known
+to be integer to the estimated front end now, rounded up to the metre);
+`EVC_Sessions.Reports.Send_136` writes Q_INTEGRITY and L_TRAININT into
+packet 0 or 1 and reports [5]; the driver's confirmation and a loss
+request a report. The external source is the new TIU signal 14
+(`EVC_Ports`: value 0 unknown, 1 confirmed, 2 lost), latched by
+`EVC_Core.Handle_Input` and handed by `Read_Ports` to
+`EVC_Sessions.Take_Integrity_Input`; each input is one reception of
+the information. `EVC_Core.Send_Onboard` sets the RBC bit 3 of
+MSG_ONBOARD (the train length and the under-reading amount within
+L_TRAININT's 32767 m), which the DMI's Train integrity button needs
+(11.2.3.5 #3); bit 4 stays 0. Decisions in the unit's header: the safe
+consist length and SM are not modelled (3.6.5.2.5 and Table 2b partial);
+[2] asks the position valid and referred to an LRBG (3.6.5.2.7); a
+reverse movement is one towards the cab not active. Scenario
+`EVC_Test_Sessions.Scenario_Train_Integrity`.
+
+For the runner's owner: the TIU input "train integrity" is
+`S076_Bench.TIU_Input (14, 1 | 2 | 0)`; `S076_Run.TIU_Input` still
+answers "not modelled" for "TIU train-integrity" (B690). JRU message 50
+is not written (B691).
+
+Left: S9e1b46dc (3050300_19 step 72, the MA of message 3 refused in SR
+level 2) and S6a1a136d / Se8e0d3d0 (5040300_16 step 89, the SOLR after a
+power cycle) were not traced: the budget went to B660.

@@ -159,9 +159,9 @@ Subset-076-6-3_3060500_03_v400_SV30,failed,74,S13c9beb3
 Subset-076-6-3_3060500_04_v400_SV21,passed,0,-
 Subset-076-6-3_3060500_04_v400_SV22,passed,0,-
 Subset-076-6-3_3060500_04_v400_SV30,passed,0,-
-Subset-076-6-3_3060500_05_v400_SV21,failed,73,S908191ec
-Subset-076-6-3_3060500_05_v400_SV22,failed,73,S908191ec
-Subset-076-6-3_3060500_05_v400_SV30,failed,73,S908191ec
+Subset-076-6-3_3060500_05_v400_SV21,failed,80,S13c9beb3
+Subset-076-6-3_3060500_05_v400_SV22,failed,80,S13c9beb3
+Subset-076-6-3_3060500_05_v400_SV30,failed,80,S13c9beb3
 Subset-076-6-3_3060500_06_v400_SV21,blocked,67,not-modelled
 Subset-076-6-3_3060500_06_v400_SV22,blocked,67,not-modelled
 Subset-076-6-3_3060500_06_v400_SV30,blocked,67,not-modelled
