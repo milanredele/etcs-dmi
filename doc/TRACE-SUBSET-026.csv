@@ -498,7 +498,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.3.4.7,3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
 3.12.3.4.7.1,3,x,,,,,E4,done,"EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300); no room for a new message (3.12.3 sets no number; 8 kept): the oldest not displayed gives way, else the oldest displayed not waiting for an acknowledgement, else the new one is refused, so a message waiting stays with its brake (Store; Scenario_Text_Message_Room)"
 3.12.3.4.7.2,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
-3.12.3.5.2,3,x,,,,,E4,deferred,E5 (the acknowledgement report to the RBC) [E5 authority]
+3.12.3.5.2,3,x,,,,,E4,done,"the acknowledgement of a text with a report request (its NID_TEXTMESSAGE, NID_C, NID_RBC kept) reported by message 158 with the position report to the session established with that RBC; none established, not sent (decision) (EVC_Text_Messages.Ack_Report, EVC_Sessions.Reports.Produce_Text_Acks; evc_test_sessions Scenario_Text_Ack_Report) [E5 authority]"
 3.12.3.5.3,3,x,,,,,E4,done,a message with a report request and the identifier of one not acknowledged is rejected (JRU 24 kind 4; EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300))
 3.12.4.2,3,x,,,,,E3,done,EVC_Movement_Authority.Take_Mode_Profile (SH: no length); evc_test Scenario_Other_Profiles
 3.12.4.3,3,x,,,,,E3,done,EVC_Movement_Authority.Accept_MA; evc_test Scenario_Other_Profiles

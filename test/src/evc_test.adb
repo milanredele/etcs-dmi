@@ -290,6 +290,7 @@ begin
    Scenario_Session_EoM;
    Scenario_Session_Reports;
    Scenario_Report_Packet;
+   Scenario_Text_Ack_Report;
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;

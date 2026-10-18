@@ -6,6 +6,7 @@ with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P58;
+with ETCS_Track_Packets.P74;
 with ETCS_Train_Packets.P4;
 with ETCS_Bits;
 with ETCS_Variables;
@@ -1433,6 +1434,85 @@ package body EVC_Test_Sessions is
    --  from the linking, the report is packet 0; 3.4.2.3.3.1, .2: an
    --  unlinked one, the previous LRBG known, packet 1 with that previous
    --  LRBG (the case of SUBSET-076 5150400_02 step 71, BG2d)
+   --  Message 24 referred to the group NID_BG with packet 74, the fixed
+   --  text to acknowledge from the group on, its report of the driver's
+   --  acknowledgement (Report) to the RBC NID_RBC of country 5
+   function M24_Text (NID_BG : Natural; Report : Boolean;
+                      Id, NID_RBC : Natural) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P74.Packet_T;
+   begin
+      V (3) := Now_T;
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      P.Q_DIR := 2;
+      P.Q_SCALE := 1;
+      P.Q_TEXT := 1;
+      P.L_TEXTDISPLAY := 1000;
+      P.T_TEXTDISPLAY := 1023;
+      P.M_MODETEXTDISPLAY := 15;
+      P.M_LEVELTEXTDISPLAY := 4;
+      P.M_MODETEXTDISPLAY_2 := 15;
+      P.M_LEVELTEXTDISPLAY_2 := 4;
+      P.Q_TEXTCONFIRM := 1;
+      P.Has_Q_CONFTEXTDISPLAY := True;
+      if Report then
+         P.Q_TEXTREPORT := 1;
+         P.Has_NID_TEXTMESSAGE := True;
+         P.NID_TEXTMESSAGE := ETCS_Variables.NID_TEXTMESSAGE_T (Id);
+         P.NID_C := 5;
+         P.NID_RBC := ETCS_Variables.NID_RBC_T (NID_RBC);
+      end if;
+      ETCS_Track_Packets.P74.Encode (P, W, OK);
+      Check (OK, "text report: packet 74 encoded");
+      return Message_Bytes (W);
+   end M24_Text;
+
+   --  The driver acknowledges the text of on-board identifier Id (Table
+   --  40, kind 2: a fixed text)
+   procedure Ack_Text (Id : Natural) is
+   begin
+      Send (Frame (16#40#, (2, 2, 0, Byte (Id), 0)));
+   end Ack_Text;
+
+   procedure Scenario_Text_Ack_Report is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      N  : Natural;
+   begin
+      Start_X;
+      Order_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Run_X (15_000);
+      Establish (1);
+      Give_Radio_Message (1, M24_Text (10, True, 7, 300));
+      Stand;
+      Give_Radio_Message (1, M24_Text (10, False, 0, 300));
+      Stand;
+      Give_Radio_Message (1, M24_Text (10, True, 9, 301));
+      Stand;
+      Ack_Text (1);
+      N := Output_Of (158);
+      if N > 0 then
+         Decode_Radio_Message (N, M, St);
+      end if;
+      Check (N > 0 and then St = ETCS_Message.Accepted
+             and then M.Values (5) = 7 and then M.Count = 1,
+             "text report: the acknowledgement reported to the RBC of the "
+             & "request, message 158 with NID_TEXTMESSAGE and packet 0 "
+             & "(3.12.3.5.2, 8.6.16)");
+      Ack_Text (2);
+      Check (Output_Of (158) = 0,
+             "text report: no report requested, no message 158");
+      Ack_Text (3);
+      Check (Output_Of (158) = 0,
+             "text report: no session with the RBC of the request, no "
+             & "message 158 (3.12.3.5.2, decision)");
+   end Scenario_Text_Ack_Report;
+
    procedure Scenario_Report_Packet is
       First, Prev : Natural;
    begin

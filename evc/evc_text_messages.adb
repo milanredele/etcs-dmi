@@ -12,7 +12,8 @@ package body EVC_Text_Messages
   with SPARK_Mode => On,
        Refined_State => (State => (Messages, Next_Id, Outputs, Output_N,
                                    Events, Event_N, Last_Level_Valid,
-                                   Last_Level, Pending, Pending_N))
+                                   Last_Level, Pending, Pending_N,
+                                   Reports, Report_N))
 is
 
    No_Mode  : constant := 15;   -- M_MODETEXTDISPLAY: no sub-condition
@@ -44,6 +45,9 @@ is
       Ack_Ends   : Boolean := True;
       Report     : Boolean := False;
       Report_Id  : Natural := 0;
+      --  the RBC to report to (3.12.3.5.1)
+      Report_C   : Natural range 0 .. 1023 := 0;
+      Report_RBC : Natural range 0 .. 16383 := 0;
       Length     : Natural range 0 .. Max_Text := 0;
       Text       : Text_T := (others => 0);
       --  what happened
@@ -89,8 +93,16 @@ is
    type Pending_Array is array (1 .. Max_Pending) of Message_T;
    Pending   : Pending_Array;
    Pending_N : Natural range 0 .. Max_Pending := 0;
+   type Report_Array is array (1 .. Max_Events) of Ack_Report_T;
+   Reports  : Report_Array := (others => (others => <>));
+   Report_N : Natural range 0 .. Max_Events := 0;
 
    --  Queries
+
+   function Ack_Report_Count return Natural is (Report_N)
+     with Refined_Global => Report_N;
+   function Ack_Report (I : Positive) return Ack_Report_T is (Reports (I))
+     with Refined_Global => (Input => Reports, Proof_In => Report_N);
 
    function Output_Count return Natural is (Output_N)
      with Refined_Global => Output_N;
@@ -376,6 +388,8 @@ is
                   X.M_LEVELTEXTDISPLAY_2, X.Q_TEXTCONFIRM,
                   X.Q_CONFTEXTDISPLAY, X.Q_TEXTREPORT,
                   X.NID_TEXTMESSAGE);
+               M.Report_C := Natural (X.NID_C);
+               M.Report_RBC := Natural (X.NID_RBC);
                M.Plain := True;
                M.Length := Natural (X.L_TEXT);
                for K in 1 .. Natural (X.L_TEXT) loop
@@ -399,6 +413,8 @@ is
                   X.M_LEVELTEXTDISPLAY_2, X.Q_TEXTCONFIRM,
                   X.Q_CONFTEXTDISPLAY, X.Q_TEXTREPORT,
                   X.NID_TEXTMESSAGE);
+               M.Report_C := Natural (X.NID_C);
+               M.Report_RBC := Natural (X.NID_RBC);
                M.Plain := False;
                Put_Text (M, (if X.Q_TEXT = 0 then LX_Text else Ack_Text));
             end if;
@@ -539,6 +555,8 @@ is
       Last_Level := L0;
       Pending := (others => No_Message);
       Pending_N := 0;
+      Reports := (others => (others => <>));
+      Report_N := 0;
    end Clear;
 
    function Flags_Of (M : Message_T) return Byte is
@@ -559,6 +577,7 @@ is
    begin
       Output_N := 0;
       Event_N := 0;
+      Report_N := 0;
       Take_All (Taken);
 
       for I in Messages'Range loop
@@ -574,6 +593,14 @@ is
                   M.Brake_SB := False;
                   M.Brake_EB := False;
                   Record_Event (Event_Acknowledged, M);
+                  --  3.12.3.5.2: the report to the RBC of the request
+                  if M.Report and then Report_N < Max_Events then
+                     Report_N := Report_N + 1;
+                     Reports (Report_N) :=
+                       (Id      => M.Report_Id mod 256,
+                        NID_C   => M.Report_C,
+                        NID_RBC => M.Report_RBC);
+                  end if;
                end if;
 
                --  the start condition (3.12.3.4.2, 3.12.3.4.3.1.1, .3)

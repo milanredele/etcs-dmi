@@ -1610,6 +1610,7 @@ is
          --  136 (3.6.5), after the SoM position report of the cycle;
          --  3.15.1.3.4, 3.15.1.3.9: to the other RBC of a handover too
          Reports.Produce (Ctx, Also, Forced);
+         Reports.Produce_Text_Acks (Ctx);
          Handover.Produced;
       end;
       --  the system status messages of the cycle were sent (EVC_Core)
