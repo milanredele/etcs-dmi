@@ -559,6 +559,21 @@ is
       Report_N := 0;
    end Clear;
 
+   --  3.12.3.5.2: the report of the driver's acknowledgement of M to
+   --  the RBC of its request, when it requests one
+   procedure Add_Report (M : Message_T)
+     with Global => (In_Out => (Reports, Report_N))
+   is
+   begin
+      if M.Report and then Report_N < Max_Events then
+         Report_N := Report_N + 1;
+         Reports (Report_N) :=
+           (Id      => M.Report_Id mod 256,
+            NID_C   => M.Report_C,
+            NID_RBC => M.Report_RBC);
+      end if;
+   end Add_Report;
+
    function Flags_Of (M : Message_T) return Byte is
      ((if M.Confirm /= 0 then 1 else 0)
       or (if M.Important then 2 else 0)
@@ -593,14 +608,7 @@ is
                   M.Brake_SB := False;
                   M.Brake_EB := False;
                   Record_Event (Event_Acknowledged, M);
-                  --  3.12.3.5.2: the report to the RBC of the request
-                  if M.Report and then Report_N < Max_Events then
-                     Report_N := Report_N + 1;
-                     Reports (Report_N) :=
-                       (Id      => M.Report_Id mod 256,
-                        NID_C   => M.Report_C,
-                        NID_RBC => M.Report_RBC);
-                  end if;
+                  Add_Report (M);
                end if;
 
                --  the start condition (3.12.3.4.2, 3.12.3.4.3.1.1, .3)
