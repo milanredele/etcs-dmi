@@ -3320,15 +3320,26 @@ is
      with Global => null;
 
    --  The SOLR where it is not the LRBG: its identity, the estimated
-   --  front end and the doubts against it in metres; decision: the
-   --  direction qualifiers "unknown" (2), the position report has them
-   --  against the LRBG only
+   --  front end and the doubts against it in metres, the orientation of
+   --  the train and the side of the front end against the SOLR's
+   --  direction as the position report codes them against the LRBG
+   --  (Q_DIRLRBG, Q_DLRBG, SUBSET-026 7.5.1.104, 7.5.1.106), unknown (2)
+   --  where the SOLR has no direction (a single group, 3.4.2.3) or the
+   --  train's orientation is not known
    function SOLR_Reference return EVC_JRU_Messages.Reference_T
      with Global => (EVC_Position.State, EVC_Odometry.State)
    is
+      use type EVC_Distances.Direction_T;
       S   : constant EVC_Location.Anchor_T := EVC_Position.SOLR;
       Est : constant EVC_Distances.Dist_T :=
         EVC_Position.SOLR_Estimated_Front;
+      Orient : constant EVC_Distances.Sense_T := EVC_Position.Orientation;
+      Known  : constant Boolean := EVC_Position.Orientation_Known
+                                   and then S.Orientation
+                                            /= EVC_Distances.Unknown;
+      --  2 unknown, 1 nominal when D is the SOLR's direction, 0 reverse
+      function Q (D : EVC_Distances.Direction_T) return Natural is
+        (if not Known then 2 elsif D = S.Orientation then 1 else 0);
       function M (D : EVC_Distances.Cm_T) return Natural is
         (Natural (EVC_Distances.Cm_T'Min ((abs D + 99) / 100, 32_767)))
         with Pre => D in -2 * EVC_Distances.Max_Cm .. 2 * EVC_Distances.Max_Cm;
@@ -3337,8 +3348,10 @@ is
               NID     => Natural (S.Id.NID_C) * 2**14
                          + Natural (S.Id.NID_BG),
               D       => M (Est),
-              Q_Dir   => 2,
-              Q_D     => 2,
+              Q_Dir   => Q (EVC_Distances.To_Direction (Orient)),
+              Q_D     => Q (EVC_Distances.To_Direction
+                              (if Est >= 0 then Orient
+                               else EVC_Distances.Opposite (Orient))),
               Over    => M (EVC_Position.SOLR_Max_Safe_Front - Est),
               Under   => M (Est - EVC_Position.SOLR_Min_Safe_Front));
    end SOLR_Reference;

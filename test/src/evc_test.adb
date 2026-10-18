@@ -153,6 +153,7 @@ begin
    Scenario_Rear_End;
    Scenario_Report_Reference;
    Scenario_Unauthorised_Direction_Groups;
+   Scenario_SOLR_Unlinked;
    Scenario_Relocation;
    Scenario_Repositioning;
    Scenario_MA_Repositioning;

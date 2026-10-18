@@ -325,7 +325,7 @@ package body EVC_Test_JRU is
          Check (H.M_Mode = 6 and then H.M_Level = 0
                 and then H.V_Train = 1023
                 and then H.Driver_Id = (1 .. 16 => Character'Pos ('?'))
-                and then H.Q_LRBG = 0 and then H.SOLR.NID mod 2**14 = 16383,
+                and then H.Q_LRBG = 0 and then H.SOLR.NID = 16_777_215,
                 "4.2.3.5 to 4.2.3.11: SB in level 0 at standstill, the "
                 & "driver ID and the LRBG unknown");
       end if;

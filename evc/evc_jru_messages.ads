@@ -110,10 +110,11 @@ is
    type Driver_Id_T is array (1 .. 16) of Byte;
 
    --  A location reference (4.2.3.5): Q_SCALE, NID_C * 2**14 + NID_BG,
-   --  D, Q_DIR, Q_D, L_DOUBTOVER, L_DOUBTUNDER
+   --  D, Q_DIR, Q_D, L_DOUBTOVER, L_DOUBTUNDER; an unknown group is
+   --  16777215 as NID_LRBG of SUBSET-026 7.5.1.90 codes it
    type Reference_T is record
       Q_Scale : U2 := 1;
-      NID     : U24 := 16383;
+      NID     : U24 := 16_777_215;
       D       : U15 := 32767;
       Q_Dir   : U2 := 2;
       Q_D     : U2 := 2;
