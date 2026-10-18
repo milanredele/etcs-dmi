@@ -1360,7 +1360,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.8.3.1.1 Table-footnote [10],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids) [E5 session]"
 4.8.3.1.1 Table-footnote [11],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"
 4.8.3.1.1 Table-footnote [12],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids) [E5 session]"
-4.8.3.1.1 Table-footnote [13],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids) [E5 session]"
+4.8.3.1.1 Table-footnote [13],4,x,,,,,E4,done,"EVC_Acceptance.Danger_Order_Accepts, the group's immediate order to level 1 or 2 found by EVC_Procedures.Orders_L12_Now (decision: level 1 or 2 anywhere in the order's list; immediate: D_LEVELTR now or 0), applied in EVC_Procedures.Take_Packets; evc_test_procedures Scenario_Shunting_Trips; SUBSET-076 4080300_04 step 171 [E5 buffer-radio]"
 4.8.3.1.1 Table-footnote [14],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids) [E5 session]"
 4.8.3.1.1 Table-footnote [15],4,x,,,,,E4,deferred,"E5 (RBC, sessions, emergency stops, text acknowledgement ids) [E5 session]"
 4.8.3.1.1 Table-footnote [16],4,x,,,,,E4,done,"EVC_Acceptance (first and third filter), EVC_Stored_Information.Take_Packet; evc_test E4_Acceptance"

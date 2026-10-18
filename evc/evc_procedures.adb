@@ -8,6 +8,7 @@ with ETCS_Packet_Index;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P132;
+with ETCS_Track_Packets.P41;
 with ETCS_Track_Packets.P135;
 with ETCS_Track_Packets.P137;
 with ETCS_Track_Packets.P138;
@@ -701,6 +702,47 @@ is
       end if;
    end Take_Released;
 
+   --  4.8.3 [13]: the group Tk gives an immediate level transition order
+   --  to level 1 or 2 (immediate as in EVC_Levels.Take_Order: D_LEVELTR
+   --  "now" or 0). Decision: level 1 or 2 anywhere in the order's list of
+   --  levels, the danger for SH information accepted on the safe side
+   --  @req 4.8.3.1.1 Table-footnote [13]
+   function Orders_L12_Now (Tk : EVC_Position.Taken_T) return Boolean
+     with Global => EVC_Position.State
+   is
+      use type ETCS_Catalogue.Packet_Kind_T;
+      L12 : constant array (ETCS_Variables.M_LEVELTR_T) of Boolean :=
+        (ETCS_Variables.M_LEVELTR_Level_1
+         | ETCS_Variables.M_LEVELTR_Level_2 => True, others => False);
+      R   : Reader_T;
+      X   : ETCS_Track_Packets.P41.Packet_T;
+      OK  : Boolean;
+   begin
+      for J in Tk.First .. Tk.First + Tk.Count - 1 loop
+         for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
+            if EVC_Position.Taken_Entry (J, P).Kind = ETCS_Catalogue.Track_P41
+              and then EVC_Position.Valid_For
+                         (EVC_Position.Taken_Entry (J, P).Q_DIR,
+                          Tk.Group.Orientation, Tk.T)
+            then
+               EVC_Position.Open_Taken_Packet (J, P, R);
+               ETCS_Track_Packets.P41.Decode (R, X, OK);
+               if OK
+                 and then X.D_LEVELTR
+                            in 0 | D_LEVELTR_Now_The_Level_Transition
+                 and then (L12 (X.M_LEVELTR)
+                           or else (for some I in 1 .. Natural (X.N_ITER) =>
+                                      L12 (X.M_LEVELTR_List (I)
+                                                      .M_LEVELTR)))
+               then
+                  return True;
+               end if;
+            end if;
+         end loop;
+      end loop;
+      return False;
+   end Orders_L12_Now;
+
    --  @req 4.8.3.1.1 Table-footnote [1]
    procedure Take_Packets (C : Context_T)
      with Global => (Input  => EVC_Position.State,
@@ -751,6 +793,9 @@ is
                        --  transition (Take_Released)
                        and then not EVC_Acceptance.Stored
                                       (Info_Of (E.Kind), C.Filters)
+                       and then (E.Kind /= ETCS_Catalogue.Track_P132
+                                 or else EVC_Acceptance.Danger_Order_Accepts
+                                           (C.Filters, Orders_L12_Now (Tk)))
                      then
                         Take_Packet (E.Kind, J, P, Tk);
                      end if;
