@@ -173,14 +173,15 @@ is
    --  and the traction systems as packet 11 gives them to the RBC
    --  (EVC_Sessions.Mission: NID_CTRACTION 0, N_AXLE 0, no national
    --  system, M_AIRTIGHT 0); M_NOM_ROT_MASS 16 "unknown" (not part of
-   --  the Train Data of SUBSET-026 3.18.3.4); one brake configuration,
+   --  the Train Data of SUBSET-026 3.18.3.4); one brake configuration
+   --  (N_BRAKE_CONF 0, the number minus one),
    --  the special brakes the train has (lambda: regenerative, eddy
    --  current, ep; gamma: and magnetic shoe); a lambda train's service
    --  brake times those of the conversion model (A.3.9) for its length
    --  and brake position; a gamma train's deceleration steps as
    --  sections, the first seven, each from the speed of the step before;
-   --  the rolling stock correction factors 1.0 (20), this on-board taking
-   --  none from the Train Data
+   --  the rolling stock correction factors 1.00, those the braking
+   --  applies (the Train Data give none)
    procedure Train_Data_Body (D    : EVC_Supervision_Input.Train_Data_T;
                               C    : EVC_Train_Data.Categories_T;
                               Buf  : out Body_T;

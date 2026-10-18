@@ -46,6 +46,8 @@ is
       Report_Id  : Natural := 0;
       Length     : Natural range 0 .. Max_Text := 0;
       Text       : Text_T := (others => 0);
+      --  Q_TEXT of a fixed text
+      Q_Text     : Natural range 0 .. 255 := 0;
       --  what happened
       Started    : Boolean := False;
       Start_Ms   : Unsigned_64 := 0;
@@ -62,13 +64,20 @@ is
 
    type Message_Array is array (1 .. Max_Messages) of Message_T;
    type Output_Array is array (1 .. Max_Outputs) of Output_T;
-   type Event_Array is array (1 .. Max_Events) of Event_T;
+   --  A record of the cycle with the text of its message
+   type Recorded_T is record
+      E      : Event_T;
+      Q_Text : Natural range 0 .. 255 := 0;
+      Length : Natural range 0 .. Max_Text := 0;
+      Text   : Text_T := (others => 0);
+   end record;
+   type Event_Array is array (1 .. Max_Events) of Recorded_T;
 
    --  the elements of the cleared lists: (others => No_X) is built in
    --  place, (others => (others => <>)) in a temporary on the stack
    No_Message : constant Message_T := (others => <>);
    No_Output  : constant Output_T := (others => <>);
-   No_Event   : constant Event_T := (others => <>);
+   No_Event   : constant Recorded_T := (others => <>);
 
    Messages : Message_Array;
    Next_Id  : Unsigned_16 := 1;
@@ -123,8 +132,23 @@ is
 
    function Event_Count return Natural is (Event_N)
      with Refined_Global => Event_N;
-   function Event (I : Positive) return Event_T is (Events (I))
+   function Event (I : Positive) return Event_T is (Events (I).E)
      with Refined_Global => (Input => Events, Proof_In => Event_N);
+
+   function Event_Q_Text (I : Positive) return Natural is
+     (Events (I).Q_Text)
+     with Refined_Global => (Input => Events, Proof_In => Event_N);
+
+   function Event_Length (I : Positive) return Natural is
+     (Events (I).Length)
+     with Refined_Global => (Input => Events, Proof_In => Event_N);
+
+   procedure Event_Text (I : Positive; Text : out Text_T)
+     with Refined_Global => (Input => Events, Proof_In => Event_N)
+   is
+   begin
+      Text := Events (I).Text;
+   end Event_Text;
 
    --  Helpers
 
@@ -135,9 +159,12 @@ is
       if Event_N < Max_Events then
          Event_N := Event_N + 1;
          Events (Event_N) :=
-           (Kind => Unsigned_8 (Kind mod 256),
-            B3   => Unsigned_8 (M.Id mod 256),
-            B4   => (if M.Plain then 1 else 0));
+           (E      => (Kind => Unsigned_8 (Kind mod 256),
+                       B3   => Unsigned_8 (M.Id mod 256),
+                       B4   => (if M.Plain then 1 else 0)),
+            Q_Text => M.Q_Text,
+            Length => (if M.Plain then M.Length else 0),
+            Text   => M.Text);
       end if;
    end Record_Event;
 
@@ -400,6 +427,7 @@ is
                   X.Q_CONFTEXTDISPLAY, X.Q_TEXTREPORT,
                   X.NID_TEXTMESSAGE);
                M.Plain := False;
+               M.Q_Text := Natural (X.Q_TEXT);
                Put_Text (M, (if X.Q_TEXT = 0 then LX_Text else Ack_Text));
             end if;
          end;

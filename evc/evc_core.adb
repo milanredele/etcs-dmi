@@ -2577,6 +2577,45 @@ is
       end loop;
    end Send_Procedure_Messages;
 
+   --  The SUBSET-027 message of the I-th text message record of the
+   --  cycle when it is the start or the stop of a display: 16 and 17
+   --  with Q_TEXT for a fixed text, 18 and 19 with L_TEXT and X_TEXT for
+   --  a plain one (4.2.4.16 to 4.2.4.19); the record 255 of event 24
+   --  follows it with the message's id and the other kinds (4.1.1.5)
+   procedure Record_Text_Display (I : Positive)
+     with Global => (Input  => (Clock_Ms, EVC_Text_Messages.State),
+                     In_Out => EVC_Outbox.Queue),
+          Pre => I <= EVC_Text_Messages.Event_Count
+   is
+      use EVC_JRU_Messages;
+      E      : constant EVC_Text_Messages.Event_T :=
+        EVC_Text_Messages.Event (I);
+      Start  : constant Boolean :=
+        E.Kind = EVC_Text_Messages.Event_Displayed;
+      Fields : Fields_T := No_Fields;
+      Text   : EVC_Text_Messages.Text_T;
+      Length : Natural;
+   begin
+      if not Start and then E.Kind /= EVC_Text_Messages.Event_Removed then
+         return;
+      end if;
+      if E.B4 = 1 then
+         Length := EVC_Text_Messages.Event_Length (I);
+         EVC_Text_Messages.Event_Text (I, Text);
+         Fields (1) := (Value => Unsigned_64 (Length), Bits => 8);
+         EVC_Outbox.Put_JRU
+           ((if Start then NID_Plain_Start else NID_Plain_Stop),
+            Unsigned_64 (Clock_Ms), Fields, Text, 8 * Length);
+      else
+         Fields (1) :=
+           (Value => Unsigned_64 (EVC_Text_Messages.Event_Q_Text (I)),
+            Bits  => 8);
+         EVC_Outbox.Put_JRU
+           ((if Start then NID_Fixed_Start else NID_Fixed_Stop),
+            Unsigned_64 (Clock_Ms), Fields, No_Data);
+      end if;
+   end Record_Text_Display;
+
    --  8e. JRU (phase E4): the records of the procedures of chapter 5
    --  (event 23) and of the text messages (3.12.3, event 24)
    procedure Record_Procedures
@@ -2598,6 +2637,7 @@ is
             E : constant EVC_Text_Messages.Event_T :=
               EVC_Text_Messages.Event (I);
          begin
+            Record_Text_Display (I);
             Put_Event (JRU_Text_Messages, E.Kind, E.B3,
                                              E.B4);
          end;

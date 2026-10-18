@@ -224,6 +224,7 @@ begin
    Scenario_JRU_To_RBC;
    Scenario_JRU_Track_Conditions;
    Scenario_JRU_General;
+   Scenario_JRU_Train_Data;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;

@@ -3,7 +3,9 @@
 with EVC_Bytes;
 with EVC_Core;
 with EVC_JRU_Records;
+with EVC_Supervision_Input;
 with EVC_Track_Conditions;
+with EVC_Train_Data;
 with EVC_JRU_Messages;  use EVC_JRU_Messages;
 with EVC_Outbox;
 with EVC_Ports;         use EVC_Ports;
@@ -174,6 +176,36 @@ package body EVC_Test_JRU is
       end if;
       EVC_Outbox.Clear;
    end Scenario_JRU_To_RBC;
+
+   --  SUBSET-027 4.2.4.2: the Train Data of a lambda and of a gamma train
+   --  read back (EVC_JRU_Records.Train_Data_Body): one configuration is
+   --  N_BRAKE_CONF 0 (the range 1 to 16 in 4 bits), the correction
+   --  factors of a gamma section the 1.00 the braking applies
+   procedure Scenario_JRU_Train_Data is
+      use EVC_Supervision_Input;
+      D    : Train_Data_T;
+      C    : EVC_Train_Data.Categories_T;
+      B    : EVC_JRU_Records.Body_T;
+      Bits : Natural;
+      function G (At_Bit : Natural; W : Width_T) return Natural is
+        (Natural (Get_Bits (B, At_Bit, W)));
+   begin
+      D.Model := Lambda;
+      D.Brake_Percentage := 120;
+      EVC_JRU_Records.Train_Data_Body (D, C, B, Bits);
+      Check (G (57, 1) = 0 and then G (58, 8) = 120 and then G (66, 4) = 0,
+             "SUBSET-027 4.2.4.2: a lambda train, its brake percentage, "
+             & "N_BRAKE_CONF 0 for one configuration");
+      D.Model := Gamma;
+      D.A_Brake_Emergency.Count := 1;
+      D.A_Brake_Emergency.Steps (1).Decel := 900;
+      EVC_JRU_Records.Train_Data_Body (D, C, B, Bits);
+      Check (G (57, 1) = 1 and then G (58, 4) = 0 and then G (90, 3) = 1
+             and then G (103, 8) = 90
+             and then (for all K in 0 .. 10 => G (111 + 5 * K, 5) = 20),
+             "SUBSET-027 4.2.4.2: a gamma train, N_BRAKE_CONF 0, one "
+             & "section, M_KDRY_RST and M_KWET_RST 1.00");
+   end Scenario_JRU_Train_Data;
 
    --  SUBSET-027 4.2.4.45: the list of the track conditions for the
    --  external functions, read back (EVC_JRU_Records.Track_Conditions_Body)
