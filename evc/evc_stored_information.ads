@@ -329,6 +329,20 @@ is
    function Radio_MA_Accepted return Boolean
      with Global => State;
 
+   --  4.4.8.1.8: the list of balise groups for the SH area (packet 49)
+   --  sent by radio together with an MA accepted in the last Evaluate
+   --  (messages 3 and 33, the order to SH by the mode profile); Given
+   --  False: none came with it
+   Max_Radio_SH : constant := 32;
+   function Radio_SH_Given return Boolean
+     with Global => State;
+   function Radio_SH_Count return Natural
+     with Global => State,
+          Post => Radio_SH_Count'Result <= Max_Radio_SH;
+   function Radio_SH_Item (I : Positive) return EVC_Balise_Groups.Identity_T
+     with Global => State,
+          Pre => I <= Radio_SH_Count;
+
    --  3.7.2.3, 3.7.3.1 a) b): the SSP and the
    --  gradients cover the shortened MA proposed in the last Evaluate
    --  (message 9) up to its SvL; False: the proposal was not taken

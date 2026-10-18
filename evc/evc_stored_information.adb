@@ -5,6 +5,7 @@ with ETCS_Packet_Index;
 with ETCS_Track_Packets.P2;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P12;
+with ETCS_Track_Packets.P49;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P16;
 with ETCS_Track_Packets.P41;
@@ -45,7 +46,8 @@ package body EVC_Stored_Information
                                    Driver_Slippery, PBD_Last, PBD_Known,
                                    MA_Board, Profile_Overlap,
                                    Covered_Flag, Ext, Tun,
-                                   Radio_MA, Timer_Deletion,
+                                   Radio_MA, Radio_SH, Radio_SH_N,
+                                   Radio_SH_Ids, Timer_Deletion,
                                    Contact_Braking, Proposal,
                                    Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
@@ -93,6 +95,13 @@ is
    Covered_Flag    : Boolean := False;
    --  phase E5: an MA by radio was accepted in the last Evaluate
    Radio_MA        : Boolean := False;
+   --  4.4.8.1.8: the list of balise groups for the SH area that came
+   --  with it (packet 49)
+   type Radio_SH_Ids_T is
+     array (1 .. Max_Radio_SH) of EVC_Balise_Groups.Identity_T;
+   Radio_SH        : Boolean := False;
+   Radio_SH_N      : Natural range 0 .. Max_Radio_SH := 0;
+   Radio_SH_Ids    : Radio_SH_Ids_T := (others => (others => <>));
    --  phase E5, 3.8.6.1 b): the shortened MA proposed in the cycle
    --  (message 9), as the supervision sees it, not stored; the origin of
    --  its message, kept while the RBC's request is answered
@@ -168,6 +177,10 @@ is
    function Mode_Profile_Overlap return Boolean is (Profile_Overlap)
      with Refined_Global => Profile_Overlap;
    function Radio_MA_Accepted return Boolean is (Radio_MA);
+   function Radio_SH_Given return Boolean is (Radio_SH);
+   function Radio_SH_Count return Natural is (Radio_SH_N);
+   function Radio_SH_Item (I : Positive) return EVC_Balise_Groups.Identity_T
+   is (Radio_SH_Ids (I));
    function Proposal_Covered return Boolean is (Proposal_Cover)
      with Refined_Global => Proposal_Cover;
    function Stop_Outcome (I : EVC_Radio_Info.Index_T) return Stop_Outcome_T
@@ -225,6 +238,9 @@ is
       Profile_Overlap := False;
       Covered_Flag := False;
       Radio_MA := False;
+      Radio_SH := False;
+      Radio_SH_N := 0;
+      Radio_SH_Ids := (others => (others => <>));
       Timer_Deletion := False;
       Contact_Braking := False;
       TAF_L2_New := False;
@@ -1729,6 +1745,54 @@ is
       Stop_Q (I) := (if Updated then 0 else 1);
    end Take_Stop;
 
+   --  Packet 49 of the radio message I whose MA was accepted: the list of
+   --  balise groups for the SH area the order of its mode profile comes
+   --  with (7.4.2.12; the country of the LRBG unless an item gives
+   --  another)
+   --  @req 4.4.8.1.1 b)
+   procedure Take_Radio_SH_List (I : EVC_Radio_Info.Index_T)
+     with Global => (Input  => (EVC_Radio_Info.State, EVC_Position.State),
+                     In_Out => (Radio_SH, Radio_SH_N, Radio_SH_Ids)),
+          Pre => I <= EVC_Radio_Info.Count
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      Sl : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
+      R  : Reader_T;
+      X  : ETCS_Track_Packets.P49.Packet_T;
+      OK : Boolean;
+      C  : NID_C_T;
+   begin
+      for P in 1 .. EVC_Radio_Info.Packet_Count (I) loop
+         pragma Loop_Invariant (True);
+         if EVC_Radio_Info.Packet_Entry (I, P).Kind
+              = ETCS_Catalogue.Track_P49
+           and then EVC_Position.Valid_For
+                      (EVC_Radio_Info.Packet_Entry (I, P).Q_DIR, Sl.G, Sl.T)
+         then
+            EVC_Radio_Info.Open_Packet (I, P, R);
+            ETCS_Track_Packets.P49.Decode (R, X, OK);
+            if OK then
+               C := EVC_Position.LRBG.Id.NID_C;
+               Radio_SH := True;
+               Radio_SH_N := 0;
+               Radio_SH_Ids := (others => (others => <>));
+               for J in 1 .. Natural (X.N_ITER) loop
+                  pragma Loop_Invariant (Radio_SH_N <= J - 1);
+                  if X.Q_NEWCOUNTRY_List (J).Q_NEWCOUNTRY = 1 then
+                     C := X.Q_NEWCOUNTRY_List (J).NID_C;
+                  end if;
+                  Radio_SH_N := Radio_SH_N + 1;
+                  Radio_SH_Ids (Radio_SH_N) :=
+                    (NID_C  => C,
+                     NID_BG => X.Q_NEWCOUNTRY_List (J).NID_BG);
+               end loop;
+            end if;
+         end if;
+      end loop;
+   end Take_Radio_SH_List;
+
    --  @req 3.8.5.1, 3.10.2.4, 4.8.2.1 c)
    procedure Take_Radio (I      : EVC_Radio_Info.Index_T;
                          T      : Origin_Table_T;
@@ -1744,9 +1808,10 @@ is
                                 EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count, Radio_MA,
                                 Proposal, Proposal_Origin, Proposal_Cover,
-                                Stop_Q, TAF_L2_New, TAF_L2_Loc),
+                                Stop_Q, TAF_L2_New, TAF_L2_Loc,
+                                Radio_SH, Radio_SH_N, Radio_SH_Ids),
                      Input  => (EVC_Radio_Info.State, EVC_Train_Data.State,
-                                Group_Country)),
+                                EVC_Position.State, Group_Country)),
           Pre => I <= EVC_Radio_Info.Count
    is
       pragma Warnings
@@ -1816,6 +1881,7 @@ is
       end loop;
       if MA_Accepted then
          Radio_MA := True;
+         Take_Radio_SH_List (I);
       end if;
    end Take_Radio;
 
@@ -2669,6 +2735,8 @@ is
       end loop;
       --  phase E5: then the radio messages of the cycle
       Radio_MA := False;
+      Radio_SH := False;
+      Radio_SH_N := 0;
       Proposal := (others => <>);
       Proposal_Origin := 0;
       Proposal_Cover := True;

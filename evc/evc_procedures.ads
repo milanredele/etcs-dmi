@@ -106,6 +106,7 @@ with EVC_Driver_Requests;
 with EVC_SDM;
 with EVC_Radio_Authority;
 with EVC_Sessions;
+with EVC_Stored_Information;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with EVC_Track_Conditions;
 with EVC_Track_Description;
@@ -401,7 +402,8 @@ is
                      Input  => (EVC_Position.State, EVC_Origins.State,
                                 EVC_Movement_Authority.State,
                                 EVC_Driver_Requests.State,
-                                EVC_Track_Conditions.State));
+                                EVC_Track_Conditions.State,
+                                EVC_Stored_Information.State));
 
    --  The mode machine took the transition From -> To in this cycle
    --  (From /= To), the context of the cycle (EVC_Core.Enter_Mode). The
