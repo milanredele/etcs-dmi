@@ -39,6 +39,7 @@ package EVC_Test_Authority is
    procedure Scenario_Shunting_L2;
    procedure Scenario_Radio_Acceptance;
    procedure Scenario_Transition_Buffer;
+   procedure Scenario_PBD_By_Radio_Buffered;
    procedure Scenario_Start_After_Ack;
 
    --  B081, 3.8.2.4: the MA request on "track ahead free up to the level
