@@ -1195,7 +1195,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 4.4.7.1.6 b),4,x,,,,,E4,partial,the train position runs in SB (EVC_Position); train integrity reports are E5 [E5 session]
 4.4.8.1.1,4,x,,,,,E4,done,"SH: the ceiling V_NVSHUNT (EVC_Procedures.Mode_Speed), the list of balise groups for the SH area (packet 49, 4.6.3 [52]), ""stop if in shunting"" (packet 132, [49]); evc_test_procedures Shunting_Driver, Shunting_Trackside, Shunting_Trips"
 4.4.8.1.1 a),4,x,,,,,E4,done,"V_NVSHUNT or the V_MAMODE of the SH profile (EVC_Procedures.Mode_Speed, 3.11.7.1); evc_test_procedures Shunting_Driver, Integration_Shunting"
-4.4.8.1.1 b),4,x,,,,,E4,done,"packet 49 stored with the MA, a group not in it trips ([52]); evc_test_procedures Shunting_Trackside"
+4.4.8.1.1 b),4,x,,,,,E4,done,"packet 49 stored with the MA, a group not in it trips ([52]); by radio with the MA of messages 3 and 33 (4.4.8.1.8: EVC_Stored_Information.Take_Radio_SH_List, EVC_Procedures.Take_MA_SH_List); evc_test_procedures Shunting_Trackside, evc_test Scenario_Radio_SH_List"
 4.4.8.1.1 c),4,x,,,,,E4,done,"packet 132 accepted in SH (4.8.4), [49]; evc_test_procedures Shunting_Trips"
 4.4.8.1.2,4,x,,,,,E4,done,"[5], [50], [51], [23] read no Train Data; 4.10: the Train Data to be revalidated in SH (EVC_Mission); evc_test_procedures Integration_Shunting"
 4.4.8.1.3,4,x,,,,,E4,partial,"the train position runs in the mode (EVC_Position); the engine's front and rear end: the train length is not given to the position yet (EVC_Position.Set_Train_Length, with the position reports of E5) [E5 session]"

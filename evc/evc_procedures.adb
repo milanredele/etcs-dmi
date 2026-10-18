@@ -552,6 +552,28 @@ is
       end loop;
    end Take_Radio_SH_List;
 
+   --  4.4.8.1.8: the list of balise groups for the SH area that came by
+   --  radio with an MA accepted in the cycle (packet 49 of message 3 or
+   --  33, EVC_Stored_Information) replaces the stored one, as a list
+   --  read from a balise group does (Take_P49)
+   --  @req 4.4.8.1.1 b)
+   procedure Take_MA_SH_List
+     with Global => (Input  => EVC_Stored_Information.State,
+                     In_Out => (SH_List_Known, SH_List_N, SH_List))
+   is
+   begin
+      if EVC_Stored_Information.Radio_SH_Given then
+         SH_List_Known := True;
+         SH_List_N := 0;
+         SH_List := (others => (others => <>));
+         for I in 1 .. EVC_Stored_Information.Radio_SH_Count loop
+            pragma Loop_Invariant (SH_List_N = I - 1);
+            SH_List_N := SH_List_N + 1;
+            SH_List (SH_List_N) := EVC_Stored_Information.Radio_SH_Item (I);
+         end loop;
+      end if;
+   end Take_MA_SH_List;
+
    --  Packet 137, stop if in Staff Responsible (7.4.2.33; 4.6.3 [54],
    --  5.8.3.1.3 a)
    procedure Take_P137 (R : in out Reader_T)
@@ -1520,6 +1542,7 @@ is
 
       --  1.
       Take_Packets (C);
+      Take_MA_SH_List;
       --  3.12.4.4: the SH mode profile deleted for another reason than
       --  entering SH (a new MA, 3.12.4.3; a shortening), the list of
       --  balise groups for the SH area goes with it

@@ -79,6 +79,7 @@ pragma Ada_2012;
 with Ada.Command_Line;
 with Ada.Text_IO;  use Ada.Text_IO;
 with EVC_Test_Handover;
+with EVC_Test_Shapes;
 with EVC_Test_Support;  use EVC_Test_Support;
 with EVC_Test_Core;      use EVC_Test_Core;
 with EVC_Test_Language;  use EVC_Test_Language;
@@ -328,6 +329,7 @@ begin
    Scenario_SR_Authorisation;
    Scenario_Trip_L2;
    Scenario_Shunting_L2;
+   EVC_Test_Shapes.Scenario_Radio_SH_List;
    Scenario_Radio_Acceptance;
    Scenario_Transition_Buffer;
    Scenario_Start_After_Ack;
