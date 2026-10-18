@@ -7166,3 +7166,42 @@ premises were wrong (21 %), 1 of 14 runner ones; on-board items convert
 at 52 % with 82 calls and 5.5 USD per item done, runner items at 54 %
 with 16 calls and 0.9 USD; a sequence moved costs 3.0 USD on the
 on-board side and 1.0 on the runner's.
+
+### The RBC's answer in time, binary field values, the negative record window, the bench's odometer accuracy (e5/runner-timing, 2026-10-18)
+
+**Binary values (B631 done).** `S076_Run.Radio_Expect`'s `Matches`
+reads a field text of 0 and 1 exactly as long as the variable
+(`ETCS_Variables.Bits`) as a bit pattern: as decimal it would exceed the
+variable (Q_STATUSLRBG=10 is 2, unknown, 7.5.1.137). 5040300_16 moves
+from step 83 to 89 in all three versions (S6a1a136d: the JRU header
+codes the SOLR unknown after a power cycle where the sequence keeps the
+stored position; onboard, kin of B612); 5040300_03 stops at step 51
+before its binary field (B581).
+
+**The answer in time (B570 done).** `S076_Run.Hold_Answer`, called
+before each step, arms the answer to a question with a waiting time of
+A.3.1 that ends the session: the system version (32) to the initiation
+(155), 3.5.3.7.3, and the acknowledgement of the session establishment
+(38) to the session established report (159), 3.5.3.7.4, when the
+first radio step ahead gives it (only driver, odometer, balise and train
+interface inputs and negative radio expectations between). `Radio_Input`
+builds the message stamped for its time, the question's time plus 14 s,
+and `S076_Bench.Hold_RTM` gives it at the first cycle then;
+`New_Window` keeps the records, JRU messages and radio messages since
+until the answer's step, which passes as "given earlier" (or gives it at
+once when the hold has not fired). Decision: 8 to 129 and 24 to 132
+have no waiting time that ends the session, not held. 3050300_19 58 ->
+72 (S9e1b46dc: the MA of message 3 refused in SR level 2 at standstill,
+first look, onboard), 3050300_02 57 -> 97 (Sce3c7004, B582), all three
+versions.
+
+**Not built.** B480: the steps it names come after their sequence's
+first failure and the step before them fails on its own (ours keeps the
+LSSMA shown), no sequence would move. B620: neither the sequences nor
+the workbooks give the reference odometer accuracy; 5 % in place of
+1 % gave 41 improvements (3100200_01 passes) and 8 regressions, not
+analysed (listed in B620); kept at 1 %.
+
+**Counts.** 934 / 1170 / 1086 before and after (steps passed 202488
+and failed 14170 after), 9 improvements, 0 regressions, 0
+untriaged.
