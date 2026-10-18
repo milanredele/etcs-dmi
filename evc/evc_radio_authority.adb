@@ -301,8 +301,23 @@ is
 
    use type EVC_Radio_Acceptance.Verdict_T;
 
+   --  The last message is a message 24 with an axle load speed profile
+   --  or a permitted braking distance (packets 51, 52)
+   function Carries_Level_2_Track return Boolean is
+     (EVC_Received.Last_Kind = ETCS_Message_Catalogue.Track_M24
+      and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
+                  EVC_Received.Last_Packet_Kind (I)
+                    in ETCS_Catalogue.Track_P51 | ETCS_Catalogue.Track_P52))
+     with Global => EVC_Received.Store;
+
+   --  decision: a message 24 with packet 51 or 52 kept for level 2
+   --  (4.8.3 [2]) is kept whole; its other packets of the track
+   --  description carry R [2] as well
    function To_Buffer return Boolean is
-     (Buffer.Judge (EVC_Received.Last_Kind) = EVC_Radio_Acceptance.Stored);
+     (Buffer.Judge (EVC_Received.Last_Kind) = EVC_Radio_Acceptance.Stored
+      or else (Carries_Level_2_Track
+               and then EVC_Radio_Acceptance.Level_2_Track_Filter
+                          (Buffer.Context) = EVC_Radio_Acceptance.Stored));
 
    procedure Store_Message (S         : EVC_Radio.Session_T;
                             Data      : EVC_Bytes.Byte_Array;
@@ -836,7 +851,12 @@ is
                                 | ETCS_Catalogue.Track_P70
                                 | ETCS_Catalogue.Track_P88
                                 | ETCS_Catalogue.Track_P180
-                             and then not C.Train_Data_Unacked))
+                             and then not C.Train_Data_Unacked)
+                   or else (EVC_Received.Last_Packet_Kind (I)
+                              in ETCS_Catalogue.Track_P51
+                               | ETCS_Catalogue.Track_P52
+                            and then EVC_Radio_Acceptance.Level_2_Track_Filter
+                                       (C) = EVC_Radio_Acceptance.Accepted))
       then
          --  3.12.3, 3.6.2.2.2 c): a general message with a text message,
          --  to the stores through EVC_Radio_Info referred to its LRBG (the
@@ -859,10 +879,10 @@ is
          --  platforms), rejected like packet 88 while the Train Data are
          --  not acknowledged (4.8.3 [3]; not for the big metal masses, the
          --  adhesion and the inhibition of revocable TSRs, whose rows have
-         --  no [3]). Left: packets 3, 5, 51 and 52 (the axle load and the
-         --  permitted braking distance are applied at once in level 1 with
-         --  level 2 announced, where 4.8.3 [2] keeps them for the
-         --  transition), 57, 138, 139
+         --  no [3]); or the axle load speed profile and the permitted
+         --  braking distance (packets 51, 52) in level 2 (4.8.3: A [3];
+         --  kept for level 2 when announced, To_Buffer).
+         --  Not taken: packets 3, 5, 57, 138, 139
          Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       end if;
    end Take_Message;

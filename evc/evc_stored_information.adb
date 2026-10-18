@@ -1857,6 +1857,15 @@ is
                      --  4.8.2.1 c) exception 2 (the RBC
                      --  transition order)
                      Record_Event (Info_Group, Change_Filtered, NID_Of (K));
+                  elsif K in K51 | K52
+                    and then not (A.Level_Valid
+                                  and then EVC_Modes."=" (A.Level,
+                                                          EVC_Modes.L2))
+                  then
+                     --  4.8.3, From RBC: R [2] outside level 2 (a message
+                     --  24 taken for its other packets; kept whole for
+                     --  level 2 by EVC_Radio_Authority.To_Buffer)
+                     Record_Event (Info_Group, Change_Filtered, NID_Of (K));
                   elsif K = K180
                     and then not (A.Level_Valid
                                   and then EVC_Modes."=" (A.Level,

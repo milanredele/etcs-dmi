@@ -111,6 +111,18 @@ is
        then Stored                                                -- [2]
        else Rejected);
 
+   --  4.8.3, the rows "Axle Load speed profile" and "Permitted Braking
+   --  Distance Information", From RBC: Yes (packets 51 and 52 of a
+   --  message 24): A [3] in level 2; R [2] in the other levels, kept in
+   --  the transition buffer when level 2 is announced. The mode column
+   --  of 4.8.4 is the stores' (EVC_Stored_Information)
+   --  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [2]
+   function Level_2_Track_Filter (C : Context_T) return Verdict_T
+   is (if C.Level_Valid and then C.Level = L2 then
+         (if C.Train_Data_Unacked then Rejected else Accepted)   -- [3]
+       elsif C.L2_Announced then Stored                         -- [2]
+       else Rejected);
+
    --  4.8.4 [1]: level 2 in PT, after message 6
    function In_PT (C : Context_T) return Boolean is
      (C.Trip_Exit_Known);

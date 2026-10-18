@@ -879,6 +879,35 @@ package body EVC_Test_Authority is
       return Message_Bytes (W);
    end TC_Message;
 
+   --  Message 24 referring to the group NID_BG with a permitted braking
+   --  distance (packet 52: 300 m from D m after it, over 500 m)
+   function PBD_Message (NID_BG : Natural; D : Natural) return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      B  : T52.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Unsigned_64 (Stamp);
+      V (5) := 123;
+      V (6) := Unsigned_64 (NID_BG);
+      Start_Message (W, MCat.Track_M24, V);
+      B.Q_DIR := 1;
+      B.Q_SCALE := 1;
+      B.Q_TRACKINIT := 0;
+      B.Has_D_PBD := True;
+      B.D_PBD := 300;
+      B.Q_GDIR := 1;
+      B.G_PBDSR := 0;
+      B.Q_PBDSR := 1;
+      B.D_PBDSR := ETCS_Variables.D_PBDSR_T (D);
+      B.L_PBDSR := 500;
+      B.N_ITER := 0;
+      T52.Encode (B, W, OK);
+      Check (OK, "authority: packet 52 encoded");
+      return Message_Bytes (W);
+   end PBD_Message;
+
    --  8.7.9: the track description packets of message 24 (here a track
    --  condition, packet 68) reach the stored information, rejected
    --  while the RBC has not acknowledged the Train Data (4.8.3 [3])
@@ -1488,6 +1517,35 @@ package body EVC_Test_Authority is
              "buffer: the session that gave the messages terminated, the "
              & "buffer deleted (4.8.5.4 c)");
    end Scenario_Transition_Buffer;
+
+   --  4.8.3, the rows of the axle load speed profile and the permitted
+   --  braking distance from the RBC: R [2] in level 1, the message 24
+   --  kept in the transition buffer when level 2 is announced and taken
+   --  at the transition (A [3] in level 2)
+   procedure Scenario_PBD_By_Radio_Buffered is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_FS, L1);
+      Add_Group (Group (10, 100));
+      Establish;
+      Run_X (15_000);
+      Give_Radio_Message (1, PBD_Message (10, 500));
+      Stand_X (200);
+      Check (RA.Buffered = 0 and then EVC_Track_Description.PBD.Count = 0,
+             "PBD by radio: rejected in level 1 without level 2 announced "
+             & "(4.8.3, R [2])");
+      Start_L2_Announced;
+      Give_Radio_Message (1, PBD_Message (10, 500));
+      Stand_X (200);
+      Check (RA.Buffered = 1 and then EVC_Track_Description.PBD.Count = 0,
+             "PBD by radio: kept in the transition buffer in level 1 with "
+             & "level 2 announced, not used (4.8.3 [2], 4.8.5.1)");
+      Run_X (45_000);
+      Check (EVC_Levels.Level = L2 and then RA.Buffered = 0
+             and then EVC_Track_Description.PBD.Count = 1,
+             "PBD by radio: released at the level 2 transition and taken "
+             & "(4.8.5.5, 4.8.3 A [3])");
+   end Scenario_PBD_By_Radio_Buffered;
 
    --  5.4.3.2 D15, S11, S20, S21: in SB, the driver's Start in level 2
    --  requests the MA once the RBC acknowledged the Train Data (3.18.3.4)

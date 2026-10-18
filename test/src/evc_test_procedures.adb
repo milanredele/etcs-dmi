@@ -1072,12 +1072,23 @@ package body EVC_Test_Procedures is
       Add (ST.Danger_For_Shunting (Stop => True));
       Close;
       Run_Front (80, 15);
+      Check (Mode_Byte = Code_SH,
+             "4.8.3 [13]: the danger for SH information in level 0 without "
+             & "an immediate order to level 1 or 2 is rejected");
+      Group (6, 100);
+      Add (ST.Danger_For_Shunting (Stop => True));
+      Add (ST.Level_Order (2, 0, 0, Now => True));
+      Close;
+      Run_Front (130, 15);
+      Check (Mode_Byte = Code_TR,
+             "4.8.3 [13]: with an immediate order to level 1 it is "
+             & "accepted, 4.6.3 [49]");
       Stand;
       Ack (1);
       Cycle;
-      Check (Mode_Byte = Code_UN and then Seen_SS (24, 1),
-             "5.11.2.2 D085 / A145, 4.6.3 [62]: level 0 with Train Data, "
-             & "UN; the reason ends");
+      Check (Mode_Byte = Code_PT,
+             "4.8.4 [7]: the immediate order kept in SH is executed, the "
+             & "trip acknowledged outside level 0: PT (4.6.3 [7])");
 
       Begin_Scenario (M_SH, L1);
       Group (5, 50);

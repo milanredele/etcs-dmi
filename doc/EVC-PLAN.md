@@ -7384,3 +7384,29 @@ Of the sixteen decided (all triaged onboard before), seven are the
 runner's (4), the sequences' (2) or chapter 6 (1); nine are ours (B702,
 B704 to B710), five of them still first looks to be traced. B582, B588 and B590 done, B581 open for
 3131050_23. The runner's summary does not move (no code change).
+### The transition buffer for radio packets 51 and 52, the danger for shunting packet in SH, the track condition bits of record 21 (e5/buffer-radio, 2026-10-18)
+
+B640 done: the rows "Axle Load speed profile" and "Permitted Braking
+Distance Information", From RBC: Yes, of 4.8.3 (A [3] in level 2, R [2]
+elsewhere) as `EVC_Radio_Acceptance.Level_2_Track_Filter`; a message 24
+with packet 51 or 52 in level 0 or 1 with level 2 announced is kept whole
+in the transition buffer (`EVC_Radio_Authority.To_Buffer`; decision: its
+other track description packets carry R [2] as well) and taken at the
+transition; outside level 2 the packets are rejected
+(`EVC_Radio_Authority.Take_Message`, `EVC_Stored_Information.Take_Radio`
+for a message 24 taken for its other packets). The premise of the brief
+was wrong for 4080300_03 step 82: level 2 is not announced there (BG7d
+orders it immediately), the packet is rejected, as its comment says; its
+step 212 is the stored case (announced by BG10d, applied at BG11d).
+Scenario `EVC_Test_Authority.Scenario_PBD_By_Radio_Buffered`.
+B641 done, ours: 4.8.3 [13] was not applied (a decision of E4, "on the
+safe side"); BG5d carries packet 132 without a level transition order
+(rejected in level 0), BG6d with an immediate order to level 1
+(accepted, the trip). `EVC_Acceptance.Danger_Order_Accepts`,
+`EVC_Procedures.Orders_L12_Now` (decision: level 1 or 2 anywhere in the
+order's list; immediate: D_LEVELTR now or 0, as `EVC_Levels.Take_Order`);
+`EVC_Test_Procedures.Scenario_Shunting_Trips` checks both cases, and lost
+its level 0 check of 4.6.3 [62] (B680). New signature S6f9ed66d behind it
+(B681, triaged onboard). B642 not started (budget). SUBSET-076: 955 /
+1149 / 1086 before and after, 0 regressions, 5 improvements (4080300_04
+171 -> 224 in SV22 and SV30, 4080408_01 103 -> 124 / 134).

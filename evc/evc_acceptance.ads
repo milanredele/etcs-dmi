@@ -42,10 +42,8 @@
 --  filter the information they take with the same tables: the rows
 --  "Danger for SH information", "Stop Shunting on desk opening", "Stop
 --  if in SR mode", "Reversing Area Information", "Reversing Supervision
---  Information", "Plain / Fixed Text Information". 4.8.3 [13] (danger
---  for SH in level 0 or NTC, rejected unless it comes with an immediate
---  transition order to level 1 or 2) is not applied: the order is
---  accepted, on the safe side.
+--  Information", "Plain / Fixed Text Information"; 4.8.3 [13] for the
+--  danger for SH by Danger_Order_Accepts.
 
 with EVC_Modes; use EVC_Modes;
 
@@ -167,6 +165,15 @@ is
              L = L1 or else C.L1_Announced,
           --  4.8.3: A [9] A [9] A [9] R
           when Track_Ahead_Free_L2 => L /= L2 and then C.L2_Announced);
+
+   --  4.8.3 [13]: the danger for SH information in level 0 or NTC is
+   --  rejected unless its group also gives an immediate level transition
+   --  order to level 1 or 2 (L12_Now); with the level unknown, as in
+   --  level 0
+   --  @req 4.8.3.1.1 Table-footnote [13]
+   function Danger_Order_Accepts (C : Context_T; L12_Now : Boolean)
+     return Boolean
+   is (L12_Now or else (C.Level_Valid and then C.Level in L1 | L2));
 
    --  4.8.3 for the on-board: in its level when valid, else in every
    --  level
