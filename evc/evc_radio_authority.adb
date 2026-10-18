@@ -816,14 +816,26 @@ is
       elsif Kind = ETCS_Message_Catalogue.Track_M24
         and then (for some I in 1 .. EVC_Received.Last_Packet_Count =>
                     EVC_Received.Last_Packet_Kind (I)
-                      in ETCS_Catalogue.Track_P70 | ETCS_Catalogue.Track_P73
+                      in ETCS_Catalogue.Track_P73
                          | ETCS_Catalogue.Track_P74
                          | ETCS_Catalogue.Track_P79
-                         | ETCS_Catalogue.Track_P180
                          | ETCS_Catalogue.Track_P41
                          | ETCS_Catalogue.Track_P46
+                         | ETCS_Catalogue.Track_P64
+                         | ETCS_Catalogue.Track_P67
+                         | ETCS_Catalogue.Track_P71
                     or else (EVC_Received.Last_Packet_Kind (I)
-                               = ETCS_Catalogue.Track_P88
+                               in ETCS_Catalogue.Track_P21
+                                | ETCS_Catalogue.Track_P27
+                                | ETCS_Catalogue.Track_P39
+                                | ETCS_Catalogue.Track_P40
+                                | ETCS_Catalogue.Track_P65
+                                | ETCS_Catalogue.Track_P66
+                                | ETCS_Catalogue.Track_P68
+                                | ETCS_Catalogue.Track_P69
+                                | ETCS_Catalogue.Track_P70
+                                | ETCS_Catalogue.Track_P88
+                                | ETCS_Catalogue.Track_P180
                              and then not C.Train_Data_Unacked))
       then
          --  3.12.3, 3.6.2.2.2 c): a general message with a text message,
@@ -842,7 +854,15 @@ is
          --  4.4.19.1.4.2 a, EVC_LS_Display through the stored information;
          --  rejected from the Accepting RBC, 4.8.2.1 c exception 2);
          --  or a level transition order (packets 41 and 46, 5.10.1.2:
-         --  to EVC_Levels through the stored information)
+         --  to EVC_Levels through the stored information); or the track
+         --  description of 8.7.9 (gradient, SSP, track conditions, TSRs,
+         --  platforms), rejected like packet 88 while the Train Data are
+         --  not acknowledged (4.8.3 [3]; not for the big metal masses, the
+         --  adhesion and the inhibition of revocable TSRs, whose rows have
+         --  no [3]). Left: packets 3, 5, 51 and 52 (the axle load and the
+         --  permitted braking distance are applied at once in level 1 with
+         --  level 2 announced, where 4.8.3 [2] keeps them for the
+         --  transition), 57, 138, 139
          Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       end if;
    end Take_Message;

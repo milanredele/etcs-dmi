@@ -42,6 +42,7 @@ with EVC_Modes;
 with EVC_Odometry;
 with EVC_Position;
 with EVC_Received;
+with EVC_Text_Messages;
 with ETCS_Variables;
 
 --  @req 3.4.2.3.3.1, 3.6.5.1.2, 3.6.5.1.4, 3.6.5.1.4 a), 3.6.5.1.4 b)
@@ -111,6 +112,18 @@ is
                                 EVC_Levels.State));
 
    --  For the tests: the reports sent, the parameters applied
+   --  8. Message 158, the driver acknowledgement report of each text
+   --  message acknowledged in the cycle with a request to report it,
+   --  with the position report (8.6.16), to the session established with
+   --  the RBC of the request. Decision: no session established with that
+   --  RBC, the report is not sent (3.12.3.5.2 names no wait); none to
+   --  an RBC of system version 1 (6.6.3.2 [6]: Q_TEXTREPORT set to 0)
+   --  @req 3.12.3.5.2
+   procedure Produce_Text_Acks (Ctx : EVC_Radio.Context_T)
+     with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
+                     Input  => (EVC_Position.State, EVC_Odometry.State,
+                                EVC_Levels.State, EVC_Text_Messages.State));
+
    function Reports_Sent return Natural
      with Global => State;
    function Parameters_Taken return Natural

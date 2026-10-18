@@ -134,6 +134,22 @@ is
      with Global => State,
           Pre => I <= Event_Count;
 
+   --  The driver acknowledgement reports due in the cycle: the text
+   --  message identifier and the RBC of the request, the reports made
+   --  by the Evaluate of the cycle
+   --  @req 3.12.3.5.2
+   type Ack_Report_T is record
+      Id      : Natural range 0 .. 255 := 0;
+      NID_C   : Natural range 0 .. 1023 := 0;
+      NID_RBC : Natural range 0 .. 16383 := 0;
+   end record;
+   function Ack_Report_Count return Natural
+     with Global => State,
+          Post => Ack_Report_Count'Result <= Max_Events;
+   function Ack_Report (I : Positive) return Ack_Report_T
+     with Global => State,
+          Pre => I <= Ack_Report_Count;
+
    --  Operations
 
    procedure Clear

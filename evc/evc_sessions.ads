@@ -51,6 +51,7 @@ with EVC_Ports;
 with EVC_Position;
 with EVC_Radio;
 with EVC_Received;
+with EVC_Text_Messages;
 with EVC_Train_Data;
 use type EVC_Location.Anchor_T;
 use type EVC_Position.Status_T;
@@ -213,7 +214,8 @@ is
    procedure Produce (Ctx : EVC_Radio.Context_T)
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State, EVC_Train_Data.State));
+                                EVC_Levels.State, EVC_Train_Data.State,
+                                EVC_Text_Messages.State));
 
    --  The level 2 start of mission (5.4.3.2, EVC_Sessions.Mission), for
    --  EVC_Core after Evaluate: A35 the RBC confirmed the position

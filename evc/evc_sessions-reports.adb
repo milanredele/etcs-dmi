@@ -197,11 +197,15 @@ is
    --  single group without co-ordinate system (3.6.5.1.2 i, 3.4.2.3.3)
    subtype Writer_T is ETCS_Bits.Writer (64);
 
-   --  with packet 4 (7.4.3.4) when Error, M_ERROR Code
-   procedure Send_136 (S     : R.Session_T;
-                       Ctx   : R.Context_T;
-                       Error : Boolean;
-                       Code  : M_ERROR_T)
+   --  with packet 4 (7.4.3.4) when Error, M_ERROR Code; Text: message
+   --  158 instead (8.6.16), NID_TEXTMESSAGE Text_Id, the same position
+   --  report, not counted as a position report
+   procedure Send_136 (S       : R.Session_T;
+                       Ctx     : R.Context_T;
+                       Error   : Boolean;
+                       Code    : M_ERROR_T;
+                       Text    : Boolean := False;
+                       Text_Id : Natural := 0)
      with Global => (In_Out => (R.State, R.Queue, N_Sent),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State))
@@ -216,7 +220,9 @@ is
       ETCS_Bits.Clear (W);
       V (3) := Unsigned_64 (R.T_Train_At (Ctx.Now_Ms));
       V (4) := Unsigned_64 (R.Engine_Id);
-      ETCS_Message.Write_Fields (W, Train_M136, V, OK);
+      V (5) := Unsigned_64 (Text_Id mod 256);
+      ETCS_Message.Write_Fields
+        (W, (if Text then Train_M158 else Train_M136), V, OK);
       if OK then
          if EVC_Position.Report_Kind = EVC_Position.Report_P1 then
             ETCS_Train_Packets.P1.Encode
@@ -241,7 +247,9 @@ is
          begin
             if EVC_Ports.Valid_RTM (M) then
                R.Send (S, M);
-               Bump (N_Sent);
+               if not Text then
+                  Bump (N_Sent);
+               end if;
             end if;
          end;
       end if;
@@ -272,6 +280,28 @@ is
       end loop;
       Due := False;
    end Produce;
+
+   procedure Produce_Text_Acks (Ctx : EVC_Radio.Context_T) is
+   begin
+      for I in 1 .. EVC_Text_Messages.Ack_Report_Count loop
+         pragma Loop_Invariant (True);
+         declare
+            A : constant EVC_Text_Messages.Ack_Report_T :=
+              EVC_Text_Messages.Ack_Report (I);
+         begin
+            for S in R.Session_T loop
+               pragma Loop_Invariant (True);
+               if R.Info (S).State = R.Established
+                 and then R.Info (S).RBC.NID_C = NID_C_T (A.NID_C)
+                 and then R.Info (S).RBC.NID_RBC = NID_RBC_T (A.NID_RBC)
+                 and then EVC_System_Version.Major (R.Info (S).Version) >= 2
+               then
+                  Send_136 (S, Ctx, False, 0, Text => True, Text_Id => A.Id);
+               end if;
+            end loop;
+         end;
+      end loop;
+   end Produce_Text_Acks;
 
    procedure Request
      with Refined_Global => (Output => Due)

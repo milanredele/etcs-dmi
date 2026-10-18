@@ -7256,3 +7256,33 @@ no packet 5 (the text says Q_LINK=0 with packet 5); with the linking
 exhausted ours rightly takes it as LRBG and SOLR; an unlinked group does
 give Q_LRBG 2 (`EVC_Test_Position.Scenario_SOLR_Unlinked`), Sc3e96504
 triaged s076.
+### Message 158, the origin of an emergency stop, message 24's packets one by one, the track ahead free request (e5/rbc-left, 2026-10-18)
+
+B632 done: `EVC_Text_Messages` keeps NID_C / NID_RBC of a text's report
+request and lists the acknowledgements of the cycle (`Ack_Report`);
+`EVC_Sessions.Reports.Produce_Text_Acks` sends message 158 with the
+position report to the session established with that RBC (3.12.3.5.2,
+8.6.16). Decisions: no session with that RBC, no report (3.12.3.5.2
+names no wait); none to an RBC of system version 1 (6.6.3.2 [6] sets
+Q_TEXTREPORT to 0; 6060304_05 step 79). Scenario
+`EVC_Test_Sessions.Scenario_Text_Ack_Report`. B630 dropped: 3060800_01's
+BG1d (read in SR level 1, its linking accepted there by 4.8.1.3.1)
+announces BG2 at D_LINK 0 with Q_LOCACC 10 m while BG2d lies at 1000 m,
+so BG2d is rejected by 3.4.4.4.3.2 and is not LRBG compliant; the
+sequence's data, Sa32fcae0 triaged s076. B474 / B512 done packet by
+packet (`EVC_Radio_Authority.Take_Message`, one sv30 run per family):
+21, 27, 39, 40, 65, 66, 68, 69 (and 70, 180 moved there) under the
+Train Data guard of 4.8.3 [3] (the 4080445_01 step 85 family was a
+message 24 with packet 68 before message 8), 64, 67, 71 without it (no
+[3] in their rows); scenario `EVC_Test_Authority.Scenario_Track_Condition_By_Radio`;
+golden received_telegram_message: two stored information records added
+(the TSR of its message 24 stored; a group record "no origin" for its
+NID_LRBG 0), as intended. Left (B640): 51 and 52 (applied at once in
+level 1 with level 2 announced, 4080300_03 step 105, where 4.8.3 [2]
+keeps them for the transition), 3, 5, 57, 138, 139. B586 in part:
+9990500_02's message 34 is an all-default extraction (NID_LRBG 0,
+Q_SCALE 0, Q_DIR 0), the sequence's data; 9990500_16 not traced. New:
+B641 (packet 132 in SH level 0 trips where 4080300_04 expects it
+rejected), B642 (4080445_02's track condition symbol bits). SUBSET-076:
+934 / 1170 / 1086 before, 952 / 1152 / 1086 after, 0 regressions, 43
+improvements.
