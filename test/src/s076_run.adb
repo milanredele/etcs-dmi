@@ -421,6 +421,43 @@ package body S076_Run is
    --  not judged.
    type Level_Set_T is array (Level_Kind_T) of Boolean;
 
+   --  A row that continues the balise group of the input before it (a
+   --  packet of a telegram that step gave): part of that input's block,
+   --  not an input of its own (3130700_06 splits one group over the
+   --  rows 39 to 46 and writes the mode it gives at step 52)
+   function Continues_Group (St : Step_T) return Boolean is
+     (St.IO = Input and then St.Well_Formed
+      and then Image (St.Line) = "input BTM balise-group");
+
+   --  The mode a step expects by its own expectation: the DMI mode
+   --  symbol displayed, or the M_MODE of a JRU record; No_Modes else
+   function Expected_Modes (St : Step_T) return Mode_Set_T is
+      L : constant String := Image (St.Line);
+      P : constant String := "expect DMI mode-symbol displayed ";
+      K : constant Natural := Ada.Strings.Fixed.Index (L, "M_MODE=");
+      V : Natural := 0;
+      E : Natural;
+      M : Mode_T;
+   begin
+      if Starts (L, P) then
+         return Mode_Of_Symbol (L (L'First + P'Length .. L'Last));
+      end if;
+      if not Starts (L, "expect JRU record ") or else K = 0 then
+         return No_Modes;
+      end if;
+      E := K + 7;
+      while E <= L'Last and then L (E) in '0' .. '9' and then V < 1000 loop
+         V := V * 10 + (Character'Pos (L (E)) - Character'Pos ('0'));
+         E := E + 1;
+      end loop;
+      if E = K + 7 or else not Mode_Of_M_MODE (V, M) then
+         return No_Modes;
+      end if;
+      return Set : Mode_Set_T := No_Modes do
+         Set (M) := True;
+      end return;
+   end Expected_Modes;
+
    function Columns (I : Positive) return Judgement_T is
       First, Last : Positive := I;
       Modes  : Mode_Set_T := No_Modes;
@@ -448,7 +485,10 @@ package body S076_Run is
          if First > 1 then
             First := First - 1;
          end if;
-         while First > 1 and then Seq.Steps (First).IO /= Input loop
+         while First > 1
+           and then (Seq.Steps (First).IO /= Input
+                     or else Continues_Group (Seq.Steps (First)))
+         loop
             First := First - 1;
          end loop;
       end loop;
@@ -457,7 +497,9 @@ package body S076_Run is
          if Last < Seq.Step_Count then
             Last := Last + 1;
          end if;
-         while Last < Seq.Step_Count and then Seq.Steps (Last + 1).IO /= Input
+         while Last < Seq.Step_Count
+           and then (Seq.Steps (Last + 1).IO /= Input
+                     or else Continues_Group (Seq.Steps (Last + 1)))
          loop
             Last := Last + 1;
          end loop;
@@ -472,6 +514,30 @@ package body S076_Run is
       end loop;
       if Modes /= No_Modes and then not Any_Mode and then not Modes (M)
       then
+         --  B661: the columns contradicted by the sequence's own latest
+         --  expectation of the mode under the same columns (5190200_03
+         --  records FS at steps 95 and 97, its columns keep LS to step
+         --  116): judged on that expectation
+         for K in reverse 1 .. Last loop
+            exit when Trim (Seq.Steps (K).Mode_Before)
+                        /= Trim (Seq.Steps (I).Mode_Before)
+              or else Trim (Seq.Steps (K).Mode_After)
+                        /= Trim (Seq.Steps (I).Mode_After);
+            declare
+               E : constant Mode_Set_T := Expected_Modes (Seq.Steps (K));
+            begin
+               if E /= No_Modes then
+                  if E (M) and then (E and Modes) = No_Modes then
+                     return Pass ("mode " & Mode_Abbrev (M)
+                                  & " (the sequence's expectation at step"
+                                  & Seq.Steps (K).Number'Image
+                                  & ", columns "
+                                  & Trim (Seq.Steps (I).Mode_After) & ")");
+                  end if;
+                  exit;
+               end if;
+            end;
+         end loop;
          return Fail ("mode " & Trim (Seq.Steps (I).Mode_After) & ", got "
                       & Mode_Abbrev (M));
       end if;
@@ -5747,6 +5813,19 @@ package body S076_Run is
       for I in 1 .. Seq.Step_Count loop
          if Has (Image (Seq.Steps (I).Comment), "SB must be disabled") then
             B.Set_Service_Brake (False);
+         end if;
+         --  B620: the odometer states 1 % of the distance since the LRBG
+         --  (S076_Bench.Accuracy_Per_Mille), the interval most sequences
+         --  assume where they place a max safe front end event at its
+         --  estimated location (5090200_01, 5180400_01, 3131040_98 fail
+         --  at 5 %); a sequence whose step states that the confidence
+         --  interval "already overlaps" an area the data place ahead of
+         --  the train (3100200_01 step 116: 20 m ahead at 450 m from the
+         --  LRBG) gets the bound of SUBSET-041
+         if Has (Image (Seq.Steps (I).Comment),
+                 "confidence interval already overlaps")
+         then
+            B.Set_Accuracy (S076_Bench.Accuracy_Bound_Per_Mille);
          end if;
       end loop;
       --  The radio systems installed (3.5.6.7, 5.4.3.2 D7): the sequences
