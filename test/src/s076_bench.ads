@@ -36,6 +36,10 @@ package S076_Bench is
 
    Cycle_Ms : constant := 100;
    Accuracy_Per_Mille : constant := 10;
+   --  The odometer's accuracy at the performance bound of SUBSET-041
+   --  (5 m + 5 % of the distance), for a sequence whose steps need the
+   --  confidence interval that large (S076_Run decides which)
+   Accuracy_Bound_Per_Mille : constant := 50;
 
    subtype Byte_Array is EVC_Bytes.Byte_Array;
 

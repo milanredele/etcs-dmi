@@ -7410,3 +7410,41 @@ its level 0 check of 4.6.3 [62] (B680). New signature S6f9ed66d behind it
 (B681, triaged onboard). B642 not started (budget). SUBSET-076: 955 /
 1149 / 1086 before and after, 0 regressions, 5 improvements (4080300_04
 171 -> 224 in SV22 and SV30, 4080408_01 103 -> 124 / 134).
+### The bench's odometer accuracy from its regressions, the mode window of the columns, two data checks (e5/runner-odometer, 2026-10-18)
+
+**The odometer accuracy (B620 done).** The regressions of the 5 % trial
+traced: 5090200_01 (OS entered earlier, so T_ACK and its service brake
+come before step 58's window), 5180400_01 (the announcement of the
+second non-stopping area expected removed at its start, 1400 m, the
+estimated location) and 3131040_98 (a trip between the case boundary at
+948 m and 1150 m) place max safe front end events at their estimated
+location, i.e. assume a small interval; a sweep at 20, 30, 40 and 50 per
+mille regressed at every value (4080300_16 from 20 to 40), and the
+workbooks' odometer inaccuracy cells (0, for the braking calculation)
+separate nothing. Decision: the bench keeps 1 %; a sequence whose step
+comment says the confidence interval "already overlaps" an area ahead
+gets the bound of SUBSET-041, 5 % (`S076_Run`,
+`S076_Bench.Accuracy_Bound_Per_Mille`). 3100200_01 passes in the three
+versions; 4080300_17 changes its signature at step 88 (S9f5e2e5c,
+onboard, first look: OS expected with the max safe front end in the OS
+area and the min safe front end in the LS area, ours stays LS).
+
+**The mode window (B661 done).** `S076_Run.Columns` takes a row that
+continues a balise group (an input `BTM balise-group` without telegrams,
+`Continues_Group`) as part of its input's block, and judges a mode its
+columns contradict on the sequence's own latest expectation of the mode
+under the same columns (`Expected_Modes`: the DMI mode symbol displayed,
+a JRU record's M_MODE). 3130700_06 39 -> 92, 5190200_03 94 -> 96,
+3131020_02 passes, 5060400_01 40 -> 126, 6060302_05 39 -> 74, 4080417_01
+107 -> 151 (S301ac019, onboard, first look: TR where UN is expected).
+
+**Data checks.** B586: 9990500_16's packet 90 fields are right (800 /
+190 end where the comment's 900 / 90 do, 990 m from BG5d, and the
+display begins at step 84's 1300 m); the request is to go at step 88
+because BG6d, linked at 1500 m and read at 1450 m inside its window, is
+relocated by the linking distance (3.4.4.1.1, 3.6.4.2.5 a)); ours keeps
+the measured position: B720 (onboard). 9990500_02 the data (S3e2df66d
+s076). B480 dropped (moves no sequence).
+
+**Counts.** 955 / 1149 / 1086 before, 961 / 1143 / 1086 after (steps
+not judged 4369 -> 4375), 21 improvements, 0 regressions, 0 untriaged.
