@@ -7660,3 +7660,104 @@ are none of them ours, so no code changed.
   byte 2. The sequences move only with the runner's TIU integrity input
   (B690).
 - B642 not started.
+
+### E5 integration after the thirty-first round (2026-10-19)
+
+Merged: e5/radio-dir (packets 42, 45 and 131 of an RBC message taken
+only when valid for the train's orientation relative to the message's
+LRBG, 3.6.3.1.3, `EVC_Position.Radio_Valid_For`, B702; B720's premise
+wrong: no radio linking is taken at all, `EVC_Radio_Authority` lists
+packet 5 as not taken, B730; B709 is the start of mission's D2 in
+`EVC_Mission`, not the revalidation), e5/runner-net (the TIU train
+integrity input as signal 14, B690; feature 3050600 with both radio
+systems and the FRMCS+GSM-R type, B700; a rear-end reach-point at a level
+border decided by the on-board's passage, `S076_Run.Reach_Border_Rear`,
+B701, which exposed a 136 sent at the border in NL, B763; B760 to B762;
+the three traces not started), e5/status-left (the BMM inhibition sent
+to the DMI, 5.22.4.1, B705; a text's mode or level end condition
+fulfilled only by the transition from it, 3.12.3.4.3, decided against
+3120300_06, B710; the level 0 acknowledgement kept when SH is entered,
+its brake reason revoked for good, 4.12.1.2 a), B681; B704 the runner's
+optional step applied, B750; B680 left) and e5/jru-triggers (B706, B707,
+B708 traced: all three the sequences' data; B691 designed, B642 not
+started).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, no triage or source conflict; one triage line extended by the
+coordinator (Sb83b2c65 now also names B763); the baselines merged by git
+and confirmed by each union's run.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12311
+checks, dmi_test 2168), the full proof 0 unproved (margin 47726 steps),
+cross build and stack (worst case 27200 B, margin 5568 B), wasm and both
+smokes 0 failures. SUBSET-076: 961 / 1143 / 1086 before, 972 / 1136 /
+1082 after, steps not judged 4371 -> 4381, 0 regressions, 0 untriaged.
+Matrix: 289 clauses left, unchanged.
+
+Measurements (doc/ROUNDS.csv): radio-dir 131 calls / tally 125 / 164k /
+7.0 USD; jru-triggers 122 / 121 / 154k / 7.5; status-left 130 / 129 /
+180k / 8.0; runner-net 120 / 116 / 146k / 5.7; one over the budget by a
+call, the tallies within six, the round at 28.2 USD. Reading on the
+source trees (grep plus `sed -n`): 27, 28, 44, 14: three of four over
+the rule's 15 although each grep was said to follow an outline run.
+
+Lessons: the tally holds (two rounds within budget). The reading rule's
+count does not fall for the agents that build, even with the outline run
+named: a builder reads bodies, and `outline.py <unit> <Subprogram>` is
+one call per subprogram where a `sed -n` range shows several; the rule
+should count `outline.py` runs against source reads as a ratio, or the
+limit should be 30 for a building package. Eight of nineteen premises
+wrong, three of them a package whose three traced items were all data
+(jru-triggers): a first-look line with no sequence moved yet is an
+analysis item, and should be given to an analysis package. Open items:
+doc/BACKLOG.csv (41 open after this round).
+
+### Estimate to finish (2026-10-19)
+
+What is left, from the matrix, the backlog and the plan's phases:
+
+- **E5 closure.** The phase's own rows are done (159 done, 2 partial for
+  Supervised Manoeuvre, E6). The earlier phases hold 134 rows whose notes
+  point at E5 (79 partial, 55 deferred, most in E4's 4.4, 5.4, 5.6, 5.8,
+  5.11): a re-read against what E5 built, as e5/bookkeeping did in round
+  13, closes most of them in one round of three agents. The backlog's
+  E5 items (B730 radio linking, B709, B691, B642, B760, B763, B720, the
+  three traces, B680): two rounds of three on-board agents at the measured
+  2.8 items per agent. Estimate: 3 to 4 rounds.
+- **E6.** 186 rows todo or partial plus 55 deferred rows of E1 to E4 that
+  name E6: about 240 rows. The groups: balise group message consistency
+  and linking reactions, 3.16.2, 64 rows and the largest family of
+  SUBSET-076 failures (about 130 sequences triaged E6); Train Data and
+  data view, 3.18.3 and 3.18.4, 53 rows; the version remainder 3.17, 22;
+  national values 3.18.2, 13; VBC 3.15.9, 11; big metal mass, 6; NL, 4;
+  Supervised Manoeuvre, 5.21 and the E4 rows deferred to it; the
+  pre-programmed braking model that unblocks the 108 Gamma sequences. A
+  package that implements a function closes 10 to 15 rows (route
+  suitability 4, the brake table 9, integrity 14); three on-board agents
+  a round give 30 to 40 rows, with a runner agent beside them. Estimate:
+  8 to 11 rounds, the consistency family first because it unblocks the
+  most sequences.
+- **E7.** 154 deferred rows plus 18 of the earlier phases: chapter 6's
+  translations of system versions 1 and 2 (6.6.2 to 6.6.5, 130 rows),
+  table-driven and a candidate for the language generator, 3 to 4
+  rounds; radio infill and Euroloop (3.9, 24 rows, 939 steps and 66
+  sequences of the corpus), 2 rounds, deferrable by the plan's own words.
+  Estimate: 4 to 6 rounds.
+- **E8.** No matrix rows: the TMS570 runtime, the RTI executive, ESM and
+  lockstep reporting, the DMI link over Ethernet, the measurements. The
+  agents build and measure on the host; the board bring-up needs the
+  user with the hardware. Estimate: 3 to 5 rounds of agent work plus the
+  user's bench time.
+
+Total: 18 to 26 rounds at the current shape (four agents, 25 to 30 USD
+and about an hour of wall clock a round, three or four rounds a working
+day), so five to eight working days of sessions and 550 to 800 USD of
+agent cost; 14 to 18 rounds if radio infill and Euroloop stay deferred
+and E8 is counted as its own effort. The SUBSET-076 corpus at the end:
+of 3190 sequences, 136 are out of scope (NTC, ATO, level 3) and a few
+hundred are the sequences' own data defects already triaged; the
+reachable pass count is about 2400 to 2600 against 972 today. The
+uncertainty is in E6's consistency family, which touches the position
+and acceptance units every other function depends on, and in the
+backlog's rate of finding new items (46, 44, 41 over the last three
+rounds: falling, slowly).
