@@ -210,7 +210,8 @@ package S076_Bench is
    --  Other inputs
    ---------------------------------------------------------------------
 
-   --  A TIU input (EVC_Ports: signal 1 .. 13, value)
+   --  A TIU input (EVC_Ports: signal 1 .. 14, value; 14 the train
+   --  integrity: 0 unknown, 1 confirmed, 2 lost)
    procedure TIU_Input (Signal : Natural; Value : Natural);
    --  A frame to the on-board's DMI port (as if from the DMI)
    procedure DMI_Frame (Frame : Byte_Array);

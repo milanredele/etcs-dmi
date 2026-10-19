@@ -1935,6 +1935,13 @@ package body S076_Run is
       elsif Same (Kind, "magnetic-shoe-brake") then
          B.TIU_Input (9, (if Same (Arg, "active") then 1 else 0));
          return Pass ("TIU magnetic shoe brake " & Arg);
+      elsif Same (Kind, "train-integrity") then
+         --  3.6.5.2: the external source of the train integrity, EVC_Ports
+         --  TIU signal 14 (0 unknown, 1 confirmed, 2 lost); each input is
+         --  one reception of the information
+         B.TIU_Input (14, (if Same (Arg, "confirmed") then 1
+                           elsif Same (Arg, "lost") then 2 else 0));
+         return Pass ("TIU train integrity " & Arg);
       end if;
       if Same (Kind, "other-train-data") then
          if Has (Image (St.Comment), "set speed")
