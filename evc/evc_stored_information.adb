@@ -2713,8 +2713,11 @@ is
    --  and the train at standstill since: the location based information
    --  shortened to the current position as for 3.16.3.4.5 b) (A.3.4.1.2 i).
    --  Decision: the brake requested in an earlier cycle and the train at
-   --  standstill now, a request at standstill shortens nothing
-   --  @req 3.16.2.6.2
+   --  standstill now, a request at standstill shortens nothing. The
+   --  service brake of an inconsistent message is such a reaction
+   --  (EVC_Position.React_Inconsistent), shortened here: A.3.4.1.2 g)
+   --  and m) share the column of h) and i) in Table A.3.4
+   --  @req 3.16.2.6.2, 3.16.2.4.4.2, 3.16.2.5.2
    procedure Linking_Shortening (T     : Origin_Table_T;
                                  Train : Train_Frame_T;
                                  Mode  : EVC_Modes.Mode_T)

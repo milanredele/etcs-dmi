@@ -2,7 +2,10 @@
 
 with Interfaces;         use Interfaces;
 with ETCS_Telegram;
+with ETCS_Track_Packets.P254;
+with DMI_Protocol;
 with EVC_Bytes;
+with EVC_DMI_Port;
 with ETCS_Variables;    use ETCS_Variables;
 with EVC_Balise_Groups; use EVC_Balise_Groups;
 with EVC_JRU_Messages;  use EVC_JRU_Messages;
@@ -122,5 +125,41 @@ package body EVC_Test_Consistency is
       Check (NID = NID_BG_Error and then F (3).Value = 2,
              "consistency SUBSET-027 4.2.4.12: record 12, M_ERROR 2");
    end Scenario_Consistency_Record;
+
+   --  Group G's balise K carries packet 254 with Q_DIR
+   procedure Carry_Default (G : Positive; K : Natural; Q_DIR : Natural) is
+      W  : Writer_T;
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P254.Packet_T;
+   begin
+      P.Q_DIR := Q_DIR_T (Q_DIR);
+      ETCS_Track_Packets.P254.Encode (P, W, OK);
+      Check (OK, "default balise: packet 254 encoded");
+      Carry_Writer (G, K, W);
+   end Carry_Default;
+
+   --  3.16.2.4.9, A.3.3.3 (SUBSET-076 3140300_02): the driver informed
+   --  ("Trackside malfunction", catalogue entry 3) by a group whose
+   --  message holds default balise information valid for the train;
+   --  not by one valid in the other direction only
+   procedure Scenario_Default_Balise is
+   begin
+      Start_X;
+      SS_Seen := (others => 0);
+      Add_Group (Group (10, 100));
+      Add_Group (Group (20, 300));
+      Add_Group (Group (30, 500));
+      Carry_Default (2, 0, 2);
+      Carry_Default (3, 1, 0);
+      Run_X (25_000);
+      Check (SS_Seen (EVC_DMI_Port.SS_Trackside_Malfunction) = 0,
+             "default balise: nothing shown before (3.16.2.4.9)");
+      Run_X (40_000);
+      Check (SS_Seen (DMI_Protocol.SS_Trackside_Malfunction) = 1,
+             "default balise: Trackside malfunction shown (3.16.2.4.9)");
+      Run_X (60_000);
+      Check (SS_Seen (EVC_DMI_Port.SS_Trackside_Malfunction) = 1,
+             "default balise: not for the other direction (A.3.3.3)");
+   end Scenario_Default_Balise;
 
 end EVC_Test_Consistency;

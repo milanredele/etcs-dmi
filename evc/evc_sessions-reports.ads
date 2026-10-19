@@ -149,11 +149,14 @@ is
 
    --  3.16.4.1, 3.16.4.2: the balise group errors of the cycle (the linking
    --  reactions of EVC_Position, applied or not: M_ERROR 0, 3.16.2.3; 7 the
-   --  double linking error, 3.16.2.7.1), reported in level 2 to the
+   --  double linking error, 3.16.2.7.1; the inconsistent message of a
+   --  linked group 1, 3.16.2.4, of an unlinked one 2, 3.16.2.5, with or
+   --  without a reaction, 3.16.4.2), reported in level 2 to the
    --  supervising RBC while its session is established. 3.16.4.3: a group
    --  marked linked and not in the linking information is no linking
    --  reaction, so not reported. Decision: one report per cycle, the
-   --  double linking error before the single one; an error without an
+   --  double linking error first, then a linked group's message, an
+   --  unlinked group's, the single linking error; an error without an
    --  established session is not kept for a later one
    --  @req 3.16.4.1, 3.16.4.3
    procedure Request_Balise_Errors (In_L2 : Boolean)

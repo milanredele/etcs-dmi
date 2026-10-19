@@ -2530,6 +2530,56 @@ is
       end loop;
    end Show_Route_Unsuitable;
 
+   --  8b''. DMI: 3.16.2.4.9, the driver informed ("Trackside malfunction",
+   --  the DMI's catalogue entry 3, 30 s from its start) when a balise
+   --  group message taken in the cycle holds "default balise information"
+   --  (packet 254). Decision: A.3.3.3, the message consistent (a group
+   --  taken by EVC_Position is), the packet valid for the train's
+   --  direction (Q_DIR) and accepted by the filters: 4.8.3 in every
+   --  level, 4.8.4 not in NP, SF and IS, in SB only with a cab active
+   --  (footnote [2]); the rest of the message is used as it is
+   --  (3.16.2.4.9 asks only for the driver's information)
+   --  @req 3.16.2.4.9
+   procedure Show_Trackside_Malfunction
+     with Global => (Input  => (Current_Mode, EVC_Position.State),
+                     In_Out => EVC_Outbox.Queue)
+   is
+      use type ETCS_Catalogue.Packet_Kind_T;
+      Found : Boolean := False;
+   begin
+      if Current_Mode in M_NP | M_SF | M_IS
+        or else (Current_Mode = M_SB
+                 and then EVC_Position.Active_Cab = EVC_Position.No_Cab)
+      then
+         return;
+      end if;
+      for G in 1 .. EVC_Position.Taken_Count loop
+         pragma Loop_Invariant (True);
+         declare
+            Tk : constant EVC_Position.Taken_T := EVC_Position.Taken (G);
+         begin
+            for J in Tk.First .. Tk.First + Tk.Count - 1 loop
+               pragma Loop_Invariant (True);
+               for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
+                  pragma Loop_Invariant (True);
+                  if EVC_Position.Taken_Entry (J, P).Kind
+                     = ETCS_Catalogue.Track_P254
+                    and then EVC_Position.Valid_For
+                               (EVC_Position.Taken_Entry (J, P).Q_DIR,
+                                Tk.Group.Orientation, Tk.T)
+                  then
+                     Found := True;
+                  end if;
+               end loop;
+            end loop;
+         end;
+      end loop;
+      if Found then
+         EVC_Outbox.Put (DMI, System_Status_Frame
+                                (SS_Trackside_Malfunction, SS_Event_Start));
+      end if;
+   end Show_Trackside_Malfunction;
+
    --  8c. DMI: the mode and the level (MSG_MODE_LEVEL; 4.4.2.1: a clear
    --  indication of the mode when the desk is open); 4.7.2: the
    --  acknowledgement of a mode proposed (the start of mission, 5.4.3.2
@@ -3535,6 +3585,7 @@ is
       Record_Mode_Levels_Mission;   -- JRU 1, 40, 41
       Show_Mode_Indications;        -- DMI MSG_SYSTEM_STATUS
       Show_Route_Unsuitable;        -- DMI MSG_SYSTEM_STATUS
+      Show_Trackside_Malfunction;   -- DMI MSG_SYSTEM_STATUS
       Send_Mode_Level;              -- DMI MSG_MODE_LEVEL
       Send_Procedure_Messages;      -- DMI MSG_SYSTEM_STATUS, MSG_TEXT
       Record_Procedures;            -- JRU 23, 24

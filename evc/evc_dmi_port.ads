@@ -393,6 +393,7 @@ is
    --  evc_test checks that the numbers are the same)
    SS_Balise_Read_Error_Brake       : constant := 1;   -- 3.16.2.6.1
    SS_Balise_Read_Error_Trip        : constant := 2;   -- [17], [66]
+   SS_Trackside_Malfunction         : constant := 3;   -- 3.16.2.4.9
    SS_Communication_Error_Brake     : constant := 4;   -- 3.16.3.4.4
    SS_Communication_Error_Trip      : constant := 5;   -- [41]
    SS_Entering_FS                   : constant := 6;   -- 4.4.9.1.4

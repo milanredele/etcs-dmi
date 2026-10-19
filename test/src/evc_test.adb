@@ -233,6 +233,7 @@ begin
    Scenario_JRU_Train_Data;
    Scenario_Message_Consistency;
    Scenario_Consistency_Record;
+   Scenario_Default_Balise;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;

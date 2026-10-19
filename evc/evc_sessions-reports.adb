@@ -346,26 +346,41 @@ is
    is
       use type EVC_Position.Event_Kind_T;
       Sv     : constant R.Session_Ref_T := R.Supervising;
-      Found  : Boolean := False;
-      Double : Boolean := False;
+      Found    : Boolean := False;
+      Double   : Boolean := False;
+      Linked   : Boolean := False;
+      Unlinked : Boolean := False;
    begin
       for I in 1 .. EVC_Position.Event_Count loop
          pragma Loop_Invariant (True);
          declare
             E : constant EVC_Position.Event_T := EVC_Position.Event (I);
          begin
-            if E.Kind = EVC_Position.Linking_Reaction then
+            --  the reaction to an inconsistent message is reported by its
+            --  message error (1 or 2), not as a linking error
+            if E.Kind = EVC_Position.Linking_Reaction
+              and then E.B3 /= EVC_Position.Cause_Inconsistent
+            then
                Found := True;
                Double := Double
                  or else E.B3 = EVC_Position.Cause_Double_Missed;
+            elsif E.Kind = EVC_Position.Inconsistent_Linked then
+               Linked := True;
+            elsif E.Kind = EVC_Position.Inconsistent_Unlinked then
+               Unlinked := True;
             end if;
          end;
       end loop;
-      if Found and then In_L2 and then Sv /= R.No_Session
+      if (Found or else Linked or else Unlinked)
+        and then In_L2 and then Sv /= R.No_Session
         and then R.Info (R.Session_T (Sv)).State = R.Established
       then
          Request_Error (R.Session_T (Sv),
                         (if Double then M_ERROR_Double_Linking_Error_3
+                         elsif Linked
+                         then M_ERROR_Linked_Balise_Group_Message
+                         elsif Unlinked
+                         then M_ERROR_Unlinked_Balise_Group_Message
                          else M_ERROR_Balise_Group_Linking_Consistency));
       end if;
    end Request_Balise_Errors;
