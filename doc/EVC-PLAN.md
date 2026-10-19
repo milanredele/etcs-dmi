@@ -8663,3 +8663,9 @@ not plan for (30 of the leftovers' on a scenario, the consistency
 agent's defect of the simulated track): a scenario's shape named in
 the brief, with the helper it extends, saves them. Open items:
 doc/BACKLOG.csv (67 open after this round; 7 added, 10 closed).
+
+### The cross-talk watch, the duplicate as reference, the error report end to end (e6/consistency-watch, 2026-10-19)
+
+- B823 done: the message 3 refused after the inconsistent groups was no defect of the acceptance. The on-board sends its Train Data when the session is established (the SoM position report 157 with packet 11 in this setup) and 4.8.3 [3] rejects every authorisation until message 8 acknowledges them; the premise "no 129 sent" looked at the wrong cycles. `EVC_Test_Support.Establish_Session_Acked` acknowledges them; `Scenario_Consistency_Error_Report` gives, through `EVC_Core` in a level 2 session with the linking of a message 3 (packet 5 after the profiles), M_ERROR 0 for a linked group missed, 0 for the next, 7 for two in a row (3.16.2.7.1), and with the service brake as reaction the MA by radio shortened to the train at standstill (`Linking_Shortening` in level 2).
+- 3.16.2.3.4 done: `EVC_Balise_Groups.Geometry` already took balise 1 with M_DUP 2 as the location reference when balise 0 is missed, and `EVC_Position.Check_Window` judges the window on that reference; the row closed with the tag and a check in `Scenario_Consistency_Reactions`. B822 keeps 3.16.2.3.1.1 for E8.
+- Not reached (bound): B820 (the design of its backlog line stands; next: `Decide_Linking`'s unknown-identity branch, `Supervise_Windows`, `Request_Reaction`, M_ERROR 8 in `Request_Balise_Errors`), the 14 rows tagged `[E6 consistency]`, the six signatures. No logic under `evc/` changed (a tag on `Geometry`); no sequence moved.
