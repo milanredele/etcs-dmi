@@ -57,8 +57,10 @@ package body EVC_Test_JRU is
          NID               : Byte;
          Bits              : Natural;   -- of the complementary part
       end record;
-      Cases : constant array (1 .. 15) of Case_T :=
-        ((11, 37, 0, 0, 11, 8), (30, 1, 0, 0, 30, 1), (31, 0, 0, 0, 31, 1),
+      --  4.2.4.50: M_TRAIN_INTEGRITY_INFO 0 confirmed and 2 unknown
+      Cases : constant array (1 .. 17) of Case_T :=
+        ((50, 0, 0, 0, 50, 2), (50, 2, 0, 0, 50, 2),
+         (11, 37, 0, 0, 11, 8), (30, 1, 0, 0, 30, 1), (31, 0, 0, 0, 31, 1),
          (39, 2, 0, 0, 39, 2), (51, 1, 0, 0, 51, 1), (132, 1, 0, 0, 32, 1),
          (38, 1, 1, 0, 38, 3), (38, 1, 0, 0, 38, 2),
          (48, 16#26#, 16#20#, 16#1F#, 48, 24),
@@ -329,6 +331,29 @@ package body EVC_Test_JRU is
                 "4.2.3.5 to 4.2.3.11: SB in level 0 at standstill, the "
                 & "driver ID and the LRBG unknown");
       end if;
+      --  4.2.4.50: the TIU's train integrity at its first reception and
+      --  at each change (1 confirmed -> 0, 2 lost -> 1)
+      for Value in Byte range 1 .. 2 loop
+         for Repeat in 1 .. 2 loop
+            EVC_Core.Handle_Input (TIU, (14, Value));
+            Reset_Capture;
+            EVC_Core.Tick (100);
+            Take;
+            Found := 0;
+            for I in 1 .. Rec_Count loop
+               if Recs (I).Port = JRU and then JRU_NID (I) = NID_Integrity
+               then
+                  Check (View (Payload (I)).B2 = Value - 1,
+                         "4.2.4.50: M_TRAIN_INTEGRITY_INFO of the input"
+                         & Value'Image);
+                  Found := Found + 1;
+               end if;
+            end loop;
+            Check (Found = (if Repeat = 1 then 1 else 0),
+                   "4.2.4.50: message 50 once at the TIU's integrity"
+                   & Value'Image & ", not again while it holds");
+         end loop;
+      end loop;
       Check (EVC_Outbox.JRU_Lost = 0, "4.1.1.4: no message lost");
    end Scenario_JRU_On_Board;
 

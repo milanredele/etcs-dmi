@@ -479,7 +479,7 @@ package body S076_Tables is
          --  EVC_JRU_Records: the same number
          when 38 => return (Event => 38, Sub => -1, B4 => -1, Known => True);
          when 45 => return (Event => 45, Sub => -1, B4 => -1, Known => True);
-         when 30 | 31 | 39 | 48 | 51 =>
+         when 30 | 31 | 39 | 48 | 50 | 51 =>
             return (Event => NID_Message_JRU, Sub => -1, B4 => -1,
                     Known => True);
          --  EVC_JRU_Records: 100 above where the number is another event
@@ -505,6 +505,10 @@ package body S076_Tables is
          when 39 =>
             if Named ("M_DIRECTION_CONTROLLER") then
                return (Byte => 2, Wide => False, Binary => True);
+            end if;
+         when 50 =>
+            if Named ("M_TRAIN_INTEGRITY_INFO") then
+               return (Byte => 2, others => False);
             end if;
          when 24 =>
             if Named ("Q_RBCENTRY") then

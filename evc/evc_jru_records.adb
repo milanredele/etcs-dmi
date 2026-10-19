@@ -91,6 +91,7 @@ is
          when Passive_Shunting => 31,
          when Non_Leading      => 132,
          when Direction        => 39,
+         when Integrity        => 50,
          when Remote_Shunting  => 51);
 
    function Direction_Code (TIU_Value : Natural) return Input_Value_T is
@@ -98,6 +99,12 @@ is
          when 1      => 2,
          when 2      => 1,
          when others => 0);
+
+   function Integrity_Code (TIU_Value : Natural) return Input_Value_T is
+     (case TIU_Value is
+         when 1      => 0,
+         when 2      => 1,
+         when others => 2);
 
    procedure Inputs (Now : Input_Values_T; Changes : out Input_Changes_T)
    is

@@ -3291,7 +3291,7 @@ is
       end loop;
    end Record_Actions_Cabs_Conditions;
 
-   --  8j. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .48, .51,
+   --  8j. JRU (SUBSET-027 4.2.4.24, .30 to .32, .39, .48, .50, .51,
    --  EVC_JRU_Records): the sleeping, passive shunting and non leading
    --  inputs and the direction controller of the train interface and the
    --  state permitting remote shunting (SH, SUBSET-026 4.4.8.1.4) when
@@ -3320,6 +3320,12 @@ is
            (if TIU_Known_Now (Direction_Controller)
             then Direction_Code (Natural (TIU_Value_Now
                                             (Direction_Controller)))
+            else No_Value),
+         --  SUBSET-027 4.2.4.50: message 50 at the first value received
+         --  and at each change
+         Integrity        =>
+           (if TIU_Known_Now (Train_Integrity)
+            then Integrity_Code (Natural (TIU_Value_Now (Train_Integrity)))
             else No_Value),
          Remote_Shunting  => (if Current_Mode = M_SH then 1 else 0));
       Changes : Input_Changes_T;

@@ -114,9 +114,9 @@ is
      with Global => (In_Out => State);
 
    --  The inputs and states recorded when they change (SUBSET-027
-   --  4.2.4.30, .31, .32, .39, .51)
+   --  4.2.4.30, .31, .32, .39, .50, .51)
    type Input_T is (Sleeping, Passive_Shunting, Non_Leading, Direction,
-                    Remote_Shunting);
+                    Integrity, Remote_Shunting);
    --  Their values in SUBSET-027's coding, No_Value while not known
    No_Value : constant := -1;
    subtype Input_Value_T is Integer range No_Value .. 3;
@@ -133,6 +133,13 @@ is
    function Direction_Code (TIU_Value : Natural) return Input_Value_T
      with Global => null,
           Post => Direction_Code'Result in 0 .. 2;
+
+   --  M_TRAIN_INTEGRITY_INFO (SUBSET-027 4.2.4.50: 0 confirmed, 1 lost, 2
+   --  unknown) of the TIU train integrity input (EVC_Ports: 0 unknown, 1
+   --  confirmed, 2 lost; another value unknown)
+   function Integrity_Code (TIU_Value : Natural) return Input_Value_T
+     with Global => null,
+          Post => Integrity_Code'Result in 0 .. 2;
 
    --  The inputs of the cycle: Changes (I) when Now (I) is known and
    --  differs from the last one recorded (the first one known included;

@@ -288,6 +288,8 @@ is
                Id := Id + 1;
             end loop;
             return (41, 2, Byte (Id), 0);
+         when NID_Integrity =>
+            return (50, F (0, 2), 0, 0);
          when NID_Cold_Movement =>
             return (if F (0, 2) = 1 then (9, 1, 0, 0) else (others => <>));
          when NID_Odometer =>
@@ -358,6 +360,11 @@ is
             else
                Proprietary;
             end if;
+         when 50 =>
+            --  4.2.4.50: M_TRAIN_INTEGRITY_INFO (0 confirmed, 1 lost, 2
+            --  unknown)
+            NID := NID_Integrity;
+            Fields (1) := F (B2, 2);
          when 9 =>
             --  4.2.4.15: M_COLD_MVT (1 cold movement detected)
             NID := NID_Cold_Movement;

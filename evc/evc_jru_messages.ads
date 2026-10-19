@@ -92,6 +92,7 @@ is
    NID_Cab_Status     : constant := 38;
    NID_Direction      : constant := 39;
    NID_Network        : constant := 48;
+   NID_Integrity      : constant := 50;
    NID_Remote_SH      : constant := 51;
    NID_Proprietary    : constant := 255;
 
@@ -232,8 +233,8 @@ is
    No_Fields : constant Fields_T := (others => (Value => 0, Bits => 0));
 
    --  The message of an event of EVC_Ports given by its three bytes:
-   --  11, 30, 31, 39, 51, 132 (as 32), 38 and 48 as the heading gives
-   --  them, every other event as the message 255
+   --  11, 30, 31, 39, 51, 132 (as 32), 38, 48 and 50 as the heading
+   --  gives them, every other event as the message 255
    procedure Event_Message (Event      : Byte;
                             B2, B3, B4 : Byte;
                             NID        : out Byte;
