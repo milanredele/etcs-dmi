@@ -717,7 +717,9 @@ package body EVC_Test_Support is
          Q_MEDIA   => 0,
          N_PIG     => ETCS_Variables.N_PIG_T (K),
          N_TOTAL   => ETCS_Variables.N_TOTAL_T (D.Balises - 1),
-         M_DUP     => 0,
+         M_DUP     => (if D.Dup_1_2 and then K = 0 then 1
+                       elsif D.Dup_1_2 and then K = 1 then 2
+                       else 0),
          M_MCOUNT  => 7,
          NID_C     => Country (G),
          NID_BG    => D.NID_BG,
@@ -833,7 +835,9 @@ package body EVC_Test_Support is
    begin
       for G in 1 .. Track_N loop
          for K in 0 .. Track (G).Balises - 1 loop
-            if Crossed (Balise_At (Track (G), K)) then
+            if Track (G).Skip /= K + 1
+              and then Crossed (Balise_At (Track (G), K))
+            then
                N := N + 1;
                List (N) := (Balise_At (Track (G), K), G, K);
             end if;
