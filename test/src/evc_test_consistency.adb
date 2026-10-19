@@ -6,6 +6,7 @@ with ETCS_Message_Catalogue;
 with ETCS_Telegram;
 with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P145;
+with ETCS_Track_Packets.P16;
 with ETCS_Track_Packets.P254;
 with DMI_Protocol;
 with EVC_Bytes;
@@ -250,6 +251,46 @@ package body EVC_Test_Consistency is
       Carry_Writer (G, K, W);
    end Carry_Inhibition;
 
+   --  Group G's balise 0 carries packet 16, repositioning information
+   --  valid in both directions
+   procedure Carry_Repositioning (G : Positive) is
+      W  : Writer_T;
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P16.Packet_T;
+   begin
+      P.Q_DIR := 2;
+      P.Q_SCALE := 1;
+      P.L_SECTION := 100;
+      ETCS_Track_Packets.P16.Encode (P, W, OK);
+      Check (OK, "cross-talk: packet 16 encoded");
+      Carry_Writer (G, 0, W);
+   end Carry_Repositioning;
+
+   --  3.16.2.7.2: group 10 at 100 m announces a repositioning group 500 m
+   --  on (Locacc 50 m); group 55 at 520 m carries packet 16 and, with
+   --  Link_57, the linking of group 57 20 m on; group Second, with packet
+   --  16, at Second_M
+   procedure Cross_Talk_Track (Second   : Natural;
+                               Second_M : Integer_64;
+                               Link_57  : Boolean := False) is
+      L : T5.Packet_T := Link_To ((1 => 500), (1 => 16383), 50);
+   begin
+      L.D_LINK := 500;
+      Start_X;
+      SS_Seen := (others => 0);
+      Add_Group (With_Links (Group (10, 100), L));
+      if Link_57 then
+         Add_Group (With_Links (Group (55, 520),
+                                Link_To ((1 => 20), (1 => 57), 5, 2)));
+         Add_Group (Group (57, 540));
+      else
+         Add_Group (Group (55, 520));
+      end if;
+      Carry_Repositioning (2);
+      Add_Group (Group (Second, Second_M));
+      Carry_Repositioning (Track_N);
+   end Cross_Talk_Track;
+
    --  A track of group 10 at 100 m announcing (Linking) 20 at 600 m and
    --  30 at 1000 m with Reaction, 20 of Balises balises with its balise
    --  Skip - 1 missed, 30 present; or (not Linking) 20 marked Linked
@@ -356,6 +397,49 @@ package body EVC_Test_Consistency is
       Check (not SB,
              "reactions: an unlinked group with packet 145, no service "
              & "brake (3.16.2.5.1.1 b)");
+      --  4.4.14.1.9, 4.4.18.1.10: in Post Trip and Reversing a message
+      --  consistency error commands no service brake (Passive Shunting,
+      --  4.4.20.1.15, is left for SH by this setup, which has no input
+      --  for it)
+      for M in EVC_Modes.Mode_T loop
+         if EVC_Modes."=" (M, EVC_Modes.M_PT)
+           or else EVC_Modes."=" (M, EVC_Modes.M_RV)
+         then
+            Inconsistent_Track (Linking => False, Linked => False);
+            EVC_Core.Set_Mode_For_Test (M, EVC_Modes.L1);
+            Run_Watch (80_000, SB);
+            Check (Brake_Error = 0
+                   and then JRU_Last (4, 3) = EVC_Position.Cause_Inconsistent
+                   and then EVC_Modes."=" (EVC_Core.Mode, M),
+                   "reactions: a message consistency error in "
+                   & EVC_Modes.Mode_T'Image (M) & ", no service brake "
+                   & "(4.4.14.1.9, 4.4.18.1.10), got"
+                   & Img (Brake_Error) & Img (JRU_Last (4, 3))
+                   & " " & EVC_Modes.Mode_T'Image (EVC_Core.Mode));
+         end if;
+      end loop;
+      --  3.16.2.7.2: cross-talk while expecting repositioning
+      Cross_Talk_Track (56, 580);
+      Run_Watch (55_000, SB);
+      Check (not SB and then EVC_Position.LRBG.Id.NID_BG = 55,
+             "cross-talk: the repositioning group accepted in its window, "
+             & "no reaction (3.4.4.4.2.1)");
+      Run_Watch (80_000, SB);
+      Check (SB and then Brake_Error >= 1
+             and then JRU_Last (4, 3) = EVC_Position.Cause_Double_Repos,
+             "cross-talk: a second group with packet 16 inside the window "
+             & "of the repositioning group, the service brake and Balise "
+             & "read error (3.16.2.7.2.1, 3.16.2.7.2.2)");
+      Cross_Talk_Track (56, 720);
+      Run_Watch (90_000, SB);
+      Check (not SB,
+             "cross-talk: the second group past the window, no reaction "
+             & "(3.16.2.7.2.1 a)");
+      Cross_Talk_Track (56, 580, Link_57 => True);
+      Run_Watch (80_000, SB);
+      Check (not SB,
+             "cross-talk: the watch ended by the linked group 57 of known "
+             & "identity, no reaction (3.16.2.7.2.1 b)");
    end Scenario_Consistency_Reactions;
 
    --  Runs to To_Cm a cycle at a time: the error reports (136 with
@@ -474,6 +558,29 @@ package body EVC_Test_Consistency is
              "error report: in level 2 at standstill the MA by radio "
              & "shortened to the train (3.16.2.3.2, 3.16.2.6.2, "
              & "EVC_Stored_Information.Linking_Shortening)");
+      --  a repositioning group announced by radio, a second one with
+      --  packet 16 inside its window: the double repositioning error
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Session_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (55, 520));
+      Carry_Repositioning (Track_N);
+      Add_Group (Group (56, 580));
+      Carry_Repositioning (Track_N);
+      Run_X (15_000);
+      Establish_Session_Acked (1);
+      Give_Radio_Message
+        (1, Radio_Linked_MA (10, Link_To ((1 => 500), (1 => 16383), 50, 2)));
+      Stand;
+      Run_Errors (55_000, Count, Error);
+      Check (Count = 0,
+             "error report: the repositioning group accepted, none, got"
+             & Img (Count) & Img (Error));
+      Run_Errors (70_000, Count, Error);
+      Check (Count = 1 and then Error = 8,
+             "error report: a second group with the criteria of the "
+             & "repositioning group in its window, M_ERROR 8 (3.16.4.1, "
+             & "3.16.2.7.2, 7.5.1.64), got" & Img (Count) & Img (Error));
    end Scenario_Consistency_Error_Report;
 
 end EVC_Test_Consistency;

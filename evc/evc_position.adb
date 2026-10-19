@@ -35,6 +35,7 @@ package body EVC_Position
                                    Unexpected_Flag,
                                    Missed_Flag,
                                    Missed_Last,
+                                   Repos_Watch,
                                    Odo_Reported,
                                    Cold_Reported,
                                    Geo_Refs,
@@ -204,6 +205,20 @@ is
    --  3.16.2.7.1.1: the window of the last group announced by linking was
    --  passed without its group, and no balise was detected since
    Missed_Last        : Boolean := False;
+   --  3.16.2.7.2.1: the watch for a second group meeting the criteria of
+   --  the repositioning group received: its window's end against the SOLR
+   --  it was announced from (held apart from the linking, which the group
+   --  usually replaces, 3.16.2.7.2.3), the orientation it was expected in
+   type Repos_Watch_T is record
+      Active  : Boolean := False;
+      Ref     : Anchor_T := No_Anchor;
+      Sense   : Sense_T := Plus;
+      Last    : Dist_T := 0;
+      Nominal : Boolean := True;
+      Id      : Identity_T := Unknown_Identity;
+   end record;
+   No_Watch           : constant Repos_Watch_T := (others => <>);
+   Repos_Watch        : Repos_Watch_T := No_Watch;
    Odo_Reported       : Unsigned_8 := 0;
    Cold_Reported      : Boolean := False;
    Geo_Refs           : Geo_Array_T;
@@ -680,6 +695,32 @@ is
           else Window_Last (E)))
      with Pre => E <= Links.Count;
 
+   --  3.16.2.7.2.1 a): the min safe antenna position has left the window
+   --  of the repositioning group watched
+   function Repos_Window_Passed return Boolean
+   is (Min_Safe
+         (Estimated (Repos_Watch.Ref, Repos_Watch.Sense,
+                     EVC_Odometry.Position),
+          EVC_Location.Doubt_Over (Repos_Watch.Ref, Repos_Watch.Sense,
+                                   EVC_Odometry.Low, EVC_Odometry.High))
+       > Repos_Watch.Last);
+
+   --  3.16.2.7.2.1: the repositioning group of link E, Id, received
+   --  inside its window: the watch for a second one starts
+   --  @req 3.16.2.7.2.1
+   procedure Start_Repos_Watch (E : EVC_Linking.Link_Index_T;
+                                Id : Identity_T)
+     with Pre => E <= Links.Count
+   is
+   begin
+      Repos_Watch := (Active  => True,
+                      Ref     => SOLR_A,
+                      Sense   => Links.Sense,
+                      Last    => Window_Last (E),
+                      Nominal => Links.Links (E).Nominal,
+                      Id      => Id);
+   end Start_Repos_Watch;
+
    --  3.4.4.4.6: stop supervising the window of the expected group
    --  @req 3.4.4.4.6, 3.4.4.4.6 a), 3.4.4.4.6 b)
    procedure Next_Window
@@ -695,10 +736,16 @@ is
    --  3.16.2.3.1 b), 3.16.2.3.1.1: the expected groups whose windows
    --  were passed without their location reference; 3.16.2.7.1.1: two in
    --  a row without a balise detected between them, the service brake
+   --  3.16.2.7.2.1 a): the watch of the repositioning group ends
    --  @req 3.16.2.3.1 b), 3.16.2.3.1.1, 3.16.2.3.1.1 a), 3.16.2.7.1.1
+   --  @req 3.16.2.7.2.1 a)
    procedure Supervise_Windows
    is
    begin
+      --  3.16.2.7.2.1 a)
+      if Repos_Watch.Active and then Repos_Window_Passed then
+         Repos_Watch.Active := False;
+      end if;
       for Step in 1 .. EVC_Linking.Max_Links loop
          exit when not Check_Linking or else not EVC_Linking.Checked (Links);
          declare
@@ -1155,6 +1202,33 @@ is
       end case;
    end Against;
 
+   --  3.16.2.7.2.1 b), 3.16.2.7.2.2: a linked group Id read while the
+   --  watch runs: one announced with known identity ends it; another one
+   --  with the criteria of the repositioning group (orientation, packet 16
+   --  valid for it) requests the service brake, the driver informed and
+   --  the information shortened at standstill by the linking reaction's
+   --  path. Decision: the repositioning group's own identity read again is
+   --  not a second group; the watch runs on after a reaction
+   --  @req 3.16.2.7.2.1 b), 3.16.2.7.2.2
+   procedure Watch_Cross_Talk (Id : Identity_T;
+                               G  : Geometry_T;
+                               T  : Direction_T)
+   is
+   begin
+      if not Repos_Watch.Active or else not Passage.Linked then
+         null;
+      elsif EVC_Linking.Find (Links, Id, 1) /= 0 then
+         Repos_Watch.Active := False;
+      elsif Id /= Repos_Watch.Id
+        and then G.Orientation /= Unknown
+        and then Has_Repositioning (G.Orientation, T)
+        and then Same (G.Orientation, Repos_Watch.Sense) = Repos_Watch.Nominal
+      then
+         Request_Reaction (Q_LINKREACTION_Apply_Service_Brake,
+                           Cause_Double_Repos, 0);
+      end if;
+   end Watch_Cross_Talk;
+
    --  3.4.4.4 (the linking), 3.4.4.5.1, 3.6.4.2.2, 3.6.2.2.2 a), 3.6.4.1.3,
    --  3.16.2.3.1 c): the group Id read with the geometry G in the
    --  direction T, against the linking information: whether it is taken
@@ -1172,9 +1246,11 @@ is
                              Orient_G   : in out Direction_T)
      with Global => (Input  => (Check_Linking, Passage, SOLR_A),
                      In_Out => (Links, Events, Event_N, Reaction_Flag,
-                                Reaction_Value, Unexpected_Flag))
+                                Reaction_Value, Unexpected_Flag,
+                                Repos_Watch))
    is
    begin
+      Watch_Cross_Talk (Id, G, T);
       if not Check_Linking or else not EVC_Linking.Checked (Links) then
          --  3.4.4.5.1, 3.6.4.2.2 b), 3.6.2.2.2 a) second bullet
          Taken := True;
@@ -1224,6 +1300,7 @@ is
                then
                   case Check_Window (E, G.Reference) is
                      when Inside =>
+                        Start_Repos_Watch (E, Id);
                         Accept_Link (E, Taken, Compliant, To_SOLR, Link_Index,
                                      Locacc, Orient_G);
                      when Early =>
@@ -1657,6 +1734,7 @@ is
       Unexpected_Flag := False;
       Missed_Flag := False;
       Missed_Last := False;
+      Repos_Watch := No_Watch;
       Odo_Reported := 0;
       Cold_Reported := False;
       Geo_Refs := (others => No_Geo_Ref);
