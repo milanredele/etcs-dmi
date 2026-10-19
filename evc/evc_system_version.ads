@@ -115,7 +115,14 @@ is
    --  when higher than the operated one (3.17.2.3) or at a mismatch
    --  (3.17.2.6); an X outside the envelope leaves it unchanged
    --  (3.17.2.7). While the RBC governs (3.17.2.8) nothing changes.
+   --  3.17.3.3: called for a group message before its packets are taken
+   --  (EVC_Stored_Information.Take_Version). Decision (3.17.3.4): called
+   --  only for a group message taken into account, after the checks of
+   --  Table 17 (EVC_Position, EVC_Balise_Groups), so a message they
+   --  reject never changes the version, nothing to revoke; with the one
+   --  telegram layout of 4.0.0 those checks do not depend on the version.
    --  @req 3.17.2.3, 3.17.2.5, 3.17.2.6, 3.17.2.7
+   --  @req 3.17.3.3, 3.17.3.4
    procedure Take_Balise_Group (Group_X  : Natural;
                                 Ordered  : Boolean;
                                 Order    : M_VERSION_T;
@@ -135,7 +142,10 @@ is
    --  3.17.2.8, once a cycle: Level_2 the level operated, Session a
    --  communication session established with the supervising RBC, whose
    --  version V is known
+   --  3.17.3.7: V is the version the RBC gave at the first contact,
+   --  checked by EVC_Sessions.Take_Version (3.5.3.7 d)
    --  @req 3.17.2.8, 3.17.2.8 a), 3.17.2.8 b), 3.17.2.8 d)
+   --  @req 3.17.3.7
    procedure Follow (Level_2 : Boolean; Session : Boolean; V : M_VERSION_T)
      with Global => (In_Out => State),
           Post => By_RBC = (Level_2 and then Session and then Compatible (V))

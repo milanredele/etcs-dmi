@@ -247,6 +247,17 @@ is
       Has_Waiting := False;
    end Delete_Pending;
 
+   procedure Keep (S : out Set_T) is
+   begin
+      S := In_Use;
+   end Keep;
+
+   procedure Restore (S : Set_T) is
+   begin
+      In_Use := S;
+      Has_Waiting := False;
+   end Restore;
+
    procedure Check_Country (NID_C : NID_C_T; Reverted : out Boolean) is
    begin
       Reverted := False;

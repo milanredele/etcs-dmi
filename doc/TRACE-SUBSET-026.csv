@@ -964,36 +964,36 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.17.2.8.2,3,x,,,,,E6,todo,"looked at: as 3.17.2.8.1, E7 [E5 version]"
 3.17.2.9,3,x,,,,,E6,done,"EVC_System_Version.Restore, EVC_Retained.Operated_X (EVC_Core.Save_Retained / Power_Up); evc_test version_retained [E5 version]"
 3.17.2.9.1,3,x,,,,,E6,done,"EVC_System_Version.Restore: the store empty or invalid, the highest (3); evc_test version_retained [E5 version]"
-3.17.3.3,3,x,,,,,E6,todo,
-3.17.3.4,3,x,,,,,E6,todo,
-3.17.3.5,3,x,,,,,E6,todo,
-3.17.3.5 a),3,x,,,,,E6,todo,
-3.17.3.5 b),3,x,,,,,E6,todo,
-3.17.3.5 c),3,x,,,,,E6,todo,
-3.17.3.5 d),3,x,,,,,E6,partial,EVC_Core.Read_Telegrams compares with EVC_System_Version.Highest_X; the reaction is EVC_Procedures (4.6.3 [65]) [E5 version]
-3.17.3.5 e),3,x,,,,,E6,todo,
-3.17.3.6,3,x,,,,,E6,todo,
-3.17.3.6 a),3,x,,,,,E6,todo,
-3.17.3.6 b),3,x,,,,,E6,todo,
-3.17.3.6 c),3,x,,,,,E6,todo,
-3.17.3.7,3,x,,,,,E6,done,"EVC_Sessions.Take_Version (EVC_System_Version.Compatible) at each message 32, handover included; evc_test version_negotiation [E5 version]"
-3.17.3.11,3,x,,,,,E6,partial,"ETCS_Message passes an unknown packet over (c) and ignores an unknown message (b), for any version; EVC_Core.Read_Radio_Messages does not report it (b); telling a higher Y from a consistency error is 3.16 (E6); a) balise side E6 / E7 [E5 version]"
-3.17.3.11 a),3,x,,,,,E6,todo,
+3.17.3.3,3,x,,,,,E6,done,"the version of every telegram checked first by ETCS_Telegram (Unsupported_Version, EVC_Core.Read_Telegrams); the operated version by EVC_System_Version.Take_Balise_Group from EVC_Stored_Information.Take_Version before the packets of the group are taken; evc_test Track_And_Version"
+3.17.3.4,3,x,,,,,E6,done,"EVC_System_Version.Take_Balise_Group only for a group message taken into account, after the checks of Table 17: a rejected message never changes the version (decision); evc_test Track_And_Version"
+3.17.3.5,3,x,,,,,E6,partial,EVC_Core.Read_Telegrams with the decoder ETCS_Telegram and EVC_Procedures (4.6.3 [65]); c) the translations of chapter 6 left [E7 version]; evc_test Track_And_Version
+3.17.3.5 a),3,x,,,,,E6,done,"EVC_Core.Read_Telegrams: X = 0 refused by ETCS_Telegram, its content left out, no reaction; evc_test Track_And_Version"
+3.17.3.5 b),3,x,,,,,E6,n/a,"EVC_System_Version: the lowest X of the envelope is 1 (6.4.2.1), no X other than 0 below it (decision)"
+3.17.3.5 c),3,x,,,,,E6,partial,"EVC_Core.Read_Telegrams: X = 2 and 3 interpreted with the layout of 4.0.0; X = 1 refused by ETCS_Telegram, its content left out without a reaction until the translations of chapter 6 [E7 version]; evc_test Track_And_Version"
+3.17.3.5 d),3,x,,,,,E6,done,"EVC_Core.Read_Telegrams compares with EVC_System_Version.Highest_X; the content left out, the trip of 4.6.3 [65] in levels 1 and 2 with Trackside not compatible (EVC_Procedures); evc_test Track_And_Version"
+3.17.3.5 e),3,x,,,,,E6,done,"EVC_Core.Read_Telegrams: the trip of 4.6.3 [65] only in levels 1 and 2 (EVC_Procedures), level 0 no reaction; NTC out of scope; evc_test Track_And_Version"
+3.17.3.6,3,x,,,,,E6,deferred,Euroloop is phase E7 [E7 Euroloop]
+3.17.3.6 a),3,x,,,,,E6,deferred,Euroloop is phase E7 [E7 Euroloop]
+3.17.3.6 b),3,x,,,,,E6,deferred,Euroloop is phase E7 [E7 Euroloop]
+3.17.3.6 c),3,x,,,,,E6,deferred,Euroloop is phase E7 [E7 Euroloop]
+3.17.3.7,3,x,,,,,E6,done,"EVC_Sessions.Take_Version checks the X of the RBC at every establishment (3.5.3.7 d), the handover included); EVC_System_Version.Follow operates it; RIU is E7; evc_test session_establish"
+3.17.3.11,3,x,,,,,E6,partial,"ETCS_Message passes an unknown packet over (c) and ignores an unknown message (b), for any version; EVC_Core.Read_Radio_Messages does not report it (b); telling a higher Y from a consistency error is 3.16 (E6); a) done in EVC_Core.Read_Telegrams [E5 version]"
+3.17.3.11 a),3,x,,,,,E6,done,"EVC_Core.Read_Telegrams: ETCS_Telegram passes an unknown packet over by L_PACKET and counts it, for any Y; the consistency error of a spare NID_PACKET for the operated Y is 3.16"
 3.17.3.11 b),3,x,,,,,E6,partial,"ETCS_Message: Unknown_Message, the message ignored; EVC_Core.Read_Radio_Messages records it (JRU 9) and reports nothing, no JRU 13, for an RBC of any version; a spare value of a known message stays an error (3.16.1.1.1); the consistency reaction for the same Y is 3.16 (E6) [E5 version]"
 3.17.3.11 c),3,x,,,,,E6,partial,ETCS_Message: the unknown packet passed over by L_PACKET and counted; the consistency reaction for the same Y is 3.16 (E6) [E5 version]
-3.18.2.2,3,x,,,,,E6,todo,
-3.18.2.3,3,x,,,,,E6,todo,
-3.18.2.4,3,x,,,,,E6,todo,
-3.18.2.5,3,x,,,,,E6,todo,
-3.18.2.5 1st bullet,3,x,,,,,E6,todo,
-3.18.2.5 2nd bullet,3,x,,,,,E6,todo,
-3.18.2.7,3,x,,,,,E6,todo,
-3.18.2.8.1,3,x,,,,,E6,todo,
-3.18.2.9,3,x,,,,,E6,todo,
-3.18.2.9 1st bullet,3,x,,,,,E6,todo,
-3.18.2.9 2nd bullet,3,x,,,,,E6,todo,
-3.18.2.10,3,x,,,,,E6,todo,
-3.18.2.11,3,x,,,,,E6,todo,
+3.18.2.2,3,x,,,,,E6,done,"EVC_National_Values.Current: the set in use, read at every cycle through the snapshot of EVC_Stored_Information; evc_test National_Values"
+3.18.2.3,3,x,,,,,E6,done,"EVC_National_Values.Receive: now (D_VALIDNV 32767) or at the estimated location (EVC_Stored_Information.Take_National_Packet, Apply_Pending); the countries of the set kept; evc_test National_Values"
+3.18.2.4,3,x,,,,,E6,done,EVC_National_Values.Check_Country: the NID_C of every group taken into account against the set in use; evc_test National_Values
+3.18.2.5,3,x,,,,,E6,done,EVC_National_Values.Default_Set (A.3.2) until a set is received and after a mismatch; evc_test National_Values
+3.18.2.5 1st bullet,3,x,,,,,E6,done,"EVC_National_Values.Default_Set: the defaults until a set is received; evc_test National_Values, National_Values_Kept"
+3.18.2.5 2nd bullet,3,x,,,,,E6,done,"EVC_National_Values.Check_Country: a group of another country, the defaults; evc_test National_Values"
+3.18.2.7,3,x,,,,,E6,done,"EVC_National_Values.Keep and Restore with EVC_Retained.Kept_T (EVC_Core.Save_Retained, Power_Up); evc_test National_Values_Kept"
+3.18.2.8.1,3,x,,,,,E6,done,EVC_National_Values.Apply_Pending: the set waiting overwrites the one in use whatever its countries; evc_test National_Values_Kept
+3.18.2.9,3,x,,,,,E6,done,EVC_National_Values.Receive and Restore (Clear at the power-up); evc_test National_Values_Kept
+3.18.2.9 1st bullet,3,x,,,,,E6,done,EVC_National_Values.Receive: a new set replaces the one not yet applicable; evc_test National_Values_Kept
+3.18.2.9 2nd bullet,3,x,,,,,E6,done,"EVC_National_Values.Restore: only the set in use is kept over No Power (EVC_Retained), the one waiting is lost; evc_test National_Values_Kept"
+3.18.2.10,3,x,,,,,E6,done,"EVC_National_Values.Check_Country: the set in use deleted, the defaults; evc_test National_Values"
+3.18.2.11,3,x,,,,,E6,done,"EVC_National_Values.Current read at every cycle: the SR distance from its start (EVC_Mission), the override D_NVOVTRP / T_NVOVTRP and the post trip D_NVPOTRP (EVC_Procedures), T_NVCONTACT (EVC_Sessions), D_NVROLL (EVC_Brake_Commands) keep their start and take the new value; evc_test SR_National_Distance"
 3.18.3.2,3,x,,,,,E6,done,"EVC_Mission.Train_Data_Of and Take_Data: the Train Data entered by the driver before the start of mission (5.4.3.2 S12), the fixed ones from EVC_Config.Fixed_Train_T; evc_test E4_SoM_Level_1"
 3.18.3.2 a),3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: NC_CDTRAIN and NC_TRAIN to EVC_Train_Data.Categories_T; evc_test E4_SoM_Level_1
 3.18.3.2 b),3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: L_TRAIN entered by the driver; the safe consist length is not acquired (1st bullet) [E6 Supervised Manoeuvre]
