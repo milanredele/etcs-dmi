@@ -8477,3 +8477,59 @@ package. The union's two defects were of the kind a branch cannot see
 (a contract of another unit, a runtime the agents do not build for):
 the chain earns its place. Open items: doc/BACKLOG.csv (70 open after
 this round; 9 added, 11 closed).
+
+### Supervised Manoeuvre, the procedure and the authorisation (e6/sm-procedure) (2026-10-19)
+
+The second of three Supervised Manoeuvre packages. B900 and B901 are
+built; B902 (the position shift of A075) was not started within the
+bound of the budget and is B951.
+
+Built: the procedure 5.21 up to the answer in a new private child
+`EVC_Sessions.Manoeuvre` (S0 `Possible`: level 2, a valid position with
+an LRBG, `EVC_Train_Data.Consist_Available`, standstill, FS AD OS LS SR
+PT SB without a stored RBC transition order (`Handover.Order_Stored`)
+or SM; E015 `EVC_Driver_Requests.SM_Selected`, action 17 arg 0 or 1;
+A045 message 131 with packet 0, packet 10 and outside SM packet 12,
+`Send_Request`; S050 with the repetitions of 5.21.4.1, 15 s, 3 times,
+then "SM request failed", DMI entry 11; the answers 4 / 5 matched by
+their second T_TRAIN, `Last_Field (7)`, in `EVC_Sessions.Take_Message`,
+4.8.4 [14], one not matched is not taken and neither is its packet 45,
+[13]; A220 "SM refused", DMI entry 10); MSG_ONBOARD waiting 5 and the
+answer byte (`EVC_Core.Send_Onboard`, `EVC_Sessions.SM_Waiting`,
+`SM_Answer`, `SM_Latest`). Message 4 in `EVC_Radio_Authority.Take_Message`
+(`Take_SM_Authorisation`: its MA, gradient and SSP as message 33's,
+referred to the LRBG shifted by D_REF; V_SM kept in `SM_Auth`; [81] for
+one cycle in `Evaluate`, so the mode machine enters SM, D080 / A050);
+the rows SM Authorisation / SM refused in `EVC_Radio_Acceptance`
+(level 2 A without [3]; SB [2], SM, FS AD LS SR OS, PT [1]).
+
+Decisions (in the header of `EVC_Sessions.Manoeuvre`): (1) without a
+session with the Supervising RBC the request fails at once, as 5.6
+does; (2) the position report of 131 is the on-board's as it is, packet
+12 holds the on-board's Train Data (the installation has no default SM
+set yet); (3) a mode change while waiting ends the request without an
+indication; (4) the answer byte of MSG_ONBOARD is SM's from a request
+for SM until the driver selects Shunting. A message 4 that the
+acceptance rejects after it was matched ends the wait with answer 1
+and no mode change (the session half matches, the authority half
+judges).
+
+Rows: done 5.21.2.2 S0, S050, A220, D080, A050, 5.21.4.1, 4.4.21.1.3,
+4.8.4 [13], [14] (note extended); partial 5.21.2.2 A045 (B950),
+4.8.3 [17] (message 133 never sent). Scenarios
+`EVC_Test_Manoeuvre.Scenario_SM_Request`, `Scenario_SM_Authorisation`.
+5210200_02 passes (it failed at step 71). SUBSET-076: 1009 / 1124 /
+1057 before, 1013 / 1120 / 1057 after, 0 regressions, 29 improvements;
+five new signatures triaged (S8cb118b5 model: the runner answers with
+the right stamp where the sequence means a wrong one; Se3a238ca onboard,
+B952: 'SM refused' shown before the acceptance judges message 5;
+S38d2e6ef, Scfbb86e1, Sb5442a1e reached, not analysed: the SM family's
+next failures for the third package).
+
+Left to the next agent of this package: B951 (A075 / 4.4.21.1.7
+`EVC_Position.Shift_For_Manoeuvre`, `SM_Auth.Opposite` from packet 15's
+Q_DIR against the orientation, 3.7.3.4 b), A095 the position report by
+`EVC_Sessions.Reports`' request), B950, message 133 and [17], then the
+third package's own: the supervision in SM (4.4.21.1.8, 4.4.21.3.1,
+V_SM in `SM_Auth`), 3.18.3.9, 3.18.3.10, 4.4.21.1.4 to .6 ("ENTERING
+SM", the default Train Data), 4.4.21.1.11 to .13, B031.
