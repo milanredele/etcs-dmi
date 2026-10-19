@@ -8008,3 +8008,32 @@ gives a service brake, the brief said a trip) and its counts twice (134
 rows, 171; the btm-alarm steps are big metal masses). Open items:
 doc/BACKLOG.csv (62 open after this round; the two E6 packages and the
 bookkeeping added 21).
+
+### The level after D2, message 50, the record 21 bits, the TAF window, two traces (e5/remainder-2, 2026-10-19)
+
+**B709 done.** Following D2 of the start of mission with the stored
+position invalid or unknown the level valid -> invalid (5.4.3.3 Table,
+PDF page 23): `EVC_Mission.D2_Passed` (the driver ID entered or
+revalidated in SB during the start of mission, set in `Evaluate` after
+`Take_Identity`), `EVC_Levels.Invalidate`, called in `EVC_Core` right
+after `EVC_Mission.Evaluate` (the step that already holds the
+position's validity); the RBC contact part was there
+(`EVC_Sessions.Mission`). `Scenario_E4_Desk_Closed` now re-enters the
+level after the revalidated driver ID. 5040300_03 SV30 passes step 51
+and stops at step 53: the DMI decides D2 itself on the level alone at
+the validation of the Driver ID window, before the on-board's report
+(B890; with the position bit of MSG_ONBOARD five dmi_test checks fail,
+so not changed).
+
+**B691 done.** JRU message 50 (SUBSET-027 4.2.4.50) records the TIU's
+train integrity input, not the status of Table 2b: `Integrity` among
+the inputs of `EVC_JRU_Records` (`Integrity_Code`: TIU 1 confirmed, 2
+lost, 0 unknown -> M_TRAIN_INTEGRITY_INFO 0, 1, 2), written at the first
+value received and at each change by the 8j step of `EVC_Core`
+(`TIU_Value_Now`, so `Read_Ports` keeps its Global);
+`EVC_JRU_Messages.NID_Integrity` in `Event_Message` and `View`;
+`S076_Tables` maps record 50. Scenarios `Scenario_JRU_Format`,
+`Scenario_JRU_On_Board`. 3060500_10 judges its two records 50 now.
+
+**Left (budget):** B642 traced in part (the backlog line), B790, B792,
+B680 not started.
