@@ -5,12 +5,14 @@ with ETCS_Bits;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P2;
+with ETCS_Track_Packets.P3;
 with ETCS_Train_Packets.P2;
 with ETCS_Variables;
 with EVC_Config;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Modes;           use EVC_Modes;
+with EVC_National_Values;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Radio;
 with EVC_System_Version;
@@ -278,5 +280,45 @@ package body EVC_Test_Version is
              "version: out of level 2 the control by the groups applies "
              & "again (3.17.2.8 d)");
    end Scenario_Version_Balise_Groups;
+
+   --  3.17.2.6, 3.17.3.4.1: the country check of the operated version
+   --  judged against a set of national values applicable immediately
+   --  carried by the same group message, in level 1
+   procedure Scenario_Version_Country_Set is
+      use type ETCS_Variables.NID_C_T;
+      P : ETCS_Track_Packets.P3.Packet_T;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (M_SR, L1);
+      Stand_X (100);
+      P.Q_DIR := 2;
+      P.Q_SCALE := 1;
+      P.D_VALIDNV := 32_767;
+      P.NID_C := 123;
+      Add_Version_Group (1, 50, 16#30#);
+      Carry (Track_N, 0, P);
+      Add_Version_Group (2, 150, 16#21#);
+      Country (Track_N) := 77;
+      P.NID_C := 5;
+      P.N_ITER := 1;
+      P.NID_C_List (1) := 77;
+      Carry (Track_N, 0, P);
+      Add_Version_Group (3, 250, 16#21#);
+      Country (Track_N) := 9;
+      Run_X (10_000);
+      Check (SV.Operated = 3
+             and then EVC_National_Values.Current.Countries (1) = 123,
+             "version: the set of 123 applicable now, no mismatch");
+      Run_X (20_000);
+      Check (SV.Operated = 3,
+             "version: a group of country 77 carrying an immediate set "
+             & "that lists 77 is no country mismatch (3.17.2.6, 3.17.3.4.1)");
+      Check (EVC_National_Values.Current.Countries (2) = 77,
+             "version: the set of the group of 77 in use");
+      Run_X (30_000);
+      Check (SV.Operated = 2,
+             "version: a group of country 9 without a set is a mismatch, "
+             & "its X operated (3.17.2.6)");
+   end Scenario_Version_Country_Set;
 
 end EVC_Test_Version;

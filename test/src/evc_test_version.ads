@@ -19,4 +19,8 @@ package EVC_Test_Version is
    --  3.17.2.3, 3.17.2.5, 3.17.2.6, 3.17.2.7, 3.17.2.8 d): the operated
    --  version in relation to the balise groups, their orders (packet 2)
    procedure Scenario_Version_Balise_Groups;
+
+   --  3.17.2.6, 3.17.3.4.1: the country check against an immediate set of
+   --  national values in the same group message
+   procedure Scenario_Version_Country_Set;
 end EVC_Test_Version;

@@ -1455,6 +1455,60 @@ is
       end if;
    end Keep_Unit_Packets;
 
+   --  Listed when the group message Tk carries a set of national values
+   --  applicable immediately (packet 3, D_VALIDNV "now", valid for the
+   --  direction of the train) whose countries or regions include NID_C:
+   --  the country check of 3.17.2.6 is judged against that set, read
+   --  before the other information of the message (3.17.3.4.1). Decision:
+   --  the first such packet counts, as Take_National_Packet takes them in
+   --  order and the last one taken is the set in use. No_Inline: the
+   --  decoded packet, up to 6 KB, stays out of the frame of Take_Group.
+   --  @req 3.17.2.6
+   procedure Immediate_Set_Lists (Tk     : EVC_Position.Taken_T;
+                                  NID_C  : NID_C_T;
+                                  Listed : out Boolean)
+     with No_Inline,
+          Global => (Input => EVC_Position.State)
+   is
+      Found : Boolean := False;
+   begin
+      Listed := False;
+      for J in Tk.First .. Tk.First + Tk.Count - 1 loop
+         pragma Loop_Invariant (True);
+         for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
+            pragma Loop_Invariant (True);
+            declare
+               E  : constant ETCS_Packet_Index.Entry_T :=
+                 EVC_Position.Taken_Entry (J, P);
+               R  : Reader_T;
+               X  : ETCS_Track_Packets.P3.Packet_T;
+               OK : Boolean;
+            begin
+               if not Found
+                 and then E.Kind = ETCS_Catalogue.Track_P3
+                 and then EVC_Position.Valid_For
+                            (E.Q_DIR, Tk.Group.Orientation, Tk.T)
+               then
+                  EVC_Position.Open_Taken_Packet (J, P, R);
+                  ETCS_Track_Packets.P3.Decode (R, X, OK);
+                  if OK and then X.Q_SCALE <= 2
+                    and then X.D_VALIDNV = 32_767
+                  then
+                     Found := True;
+                     Listed := X.NID_C = NID_C;
+                     for I in 1 .. Natural (X.N_ITER) loop
+                        pragma Loop_Invariant (True);
+                        if X.NID_C_List (I) = NID_C then
+                           Listed := True;
+                        end if;
+                     end loop;
+                  end if;
+               end if;
+            end;
+         end loop;
+      end loop;
+   end Immediate_Set_Lists;
+
    --  The operated system version after the balise group message Tk
    --  (3.17.2.3, 3.17.2.5, 3.17.2.6): the highest X of its telegrams and
    --  the first system version order (packet 2) valid for the direction
@@ -1528,6 +1582,7 @@ is
       Tk          : constant EVC_Position.Taken_T := EVC_Position.Taken (G);
       M           : Message_T;
       Reverted    : Boolean;
+      Listed      : Boolean;
       MA_Accepted : Boolean := False;
       --  4.8.5.1: the group's set of the transition buffer is opened
       Set_Open    : Boolean := False;
@@ -1554,12 +1609,15 @@ is
             Msg      => Msg_Count,
             Start_Ms => Tk.Start_Ms);
       Group_Country := Tk.Group.Id.NID_C;
+      --  3.17.3.4.1: an immediate set of the message first
+      Immediate_Set_Lists (Tk, Tk.Group.Id.NID_C, Listed);
       --  3.18.2.4, 3.18.2.10
       EVC_National_Values.Check_Country (Tk.Group.Id.NID_C, Reverted);
       if Reverted then
          Record_Event (Info_National_Values, Change_Defaults, 0);
       end if;
-      Take_Version (Tk, Reverted);
+      --  3.17.2.6: no mismatch when that set lists the group's country
+      Take_Version (Tk, Reverted and then not Listed);
       if Tk.Origin = 0 then
          Record_Event (Info_Group, Change_No_Origin, 0);
       end if;
