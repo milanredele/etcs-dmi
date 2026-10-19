@@ -7538,3 +7538,30 @@ greps. The analysis package (shapes-3) converted 16 of 17 shapes at 6
 calls each and found 9 defects: a line of first looks is best spent that
 way, not fixed in passing. Brief premises wrong: 10 of 26, 7 of them
 shapes. Open items: doc/BACKLOG.csv (46 open after this round).
+
+### The direction of radio orders, the relocation over a linked group, the level after an unknown position (e5/radio-dir, 2026-10-19)
+
+**B702 done.** Packets 42, 45 and 131 of an RBC message are taken only
+when valid for the train orientation relative to the LRBG the message
+names (3.6.3.1.1 a), 3.6.3.1.3): `EVC_Position.Radio_Valid_For` (the
+group's orientation as `Radio_Origin` finds it, without allocating an
+origin) in `EVC_Sessions.Take_Radio_Order`, `Take_Radio_Transition` and
+`EVC_Sessions.Network.Take_Radio_Order`, the LRBG through the new
+`EVC_Sessions.Last_LRBG`. Decision: with the group's orientation or the
+train's not known the order is taken (3.6.3.1.4 read for location based
+data; a first version rejecting it regressed 3131100_08 and 4100103_28
+in three versions, which expect the order taken). Scenario: an order for
+the reverse direction of the LRBG ignored, `Scenario_Session_Reports`.
+5070300_02 SV21 and SV22 pass.
+
+**B720 traced, not started.** The premise was wrong: the relocation by
+the linking distance exists (`Relocate_Item`, 3.6.4.2.5 a)); the linking
+of 9990500_16 comes by radio (message 24, packet 5), and no radio
+linking is taken anywhere (`EVC_Radio_Authority.Take_Message` lists
+packet 5 as not taken). New item B730.
+
+**B709 traced, not started.** 5040300_03 has no power cycle: the second
+start of mission follows a closed desk in SB, so `Revalidate_Kept` is
+not the path; D2 of `EVC_Mission` is (another package's unit this
+round). The table of 5.4.3.3 needs the PDF layout (the markdown columns
+are shifted).

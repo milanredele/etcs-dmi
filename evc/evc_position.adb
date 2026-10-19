@@ -2017,7 +2017,8 @@ is
             G := Recent (Found).A.Orientation;
          end if;
       end if;
-      return Valid_For (Q_DIR, G, To_Direction (Orientation));
+      return G = Unknown or else To_Direction (Orientation) = Unknown
+        or else Valid_For (Q_DIR, G, To_Direction (Orientation));
    end Radio_Valid_For;
 
    procedure Assign_Coordinate_System (Id      : Identity_T;

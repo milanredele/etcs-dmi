@@ -750,9 +750,12 @@ is
    --  the direction Q_DIR of the group Id its header names (NID_LRBG)
    --  is for this train: Valid_For with the orientation of that group
    --  (the LRBG, the SOLR or one of the last LRBGs, as Radio_Origin
-   --  finds it) and the train orientation. A group the on-board does not
-   --  know has no orientation: only "both directions" (3.6.3.1.4).
-   --  @req 3.6.3.1.3, 3.6.3.1.4
+   --  finds it) and the train orientation. Decision: with either not
+   --  known (a group the on-board does not know, no coordinate system)
+   --  the order is taken: 3.6.3.1.4 is read for location based data;
+   --  the orders of the session, the network and the RBC transition
+   --  concern the train (SUBSET-076 3131100_08, 4100103_28 take them).
+   --  @req 3.6.3.1.3
    function Radio_Valid_For (Id : Identity_T; Q_DIR : Q_DIR_T) return Boolean
      with Global => State;
 
