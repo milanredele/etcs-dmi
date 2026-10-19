@@ -249,9 +249,12 @@ is
          when Border_Ahead =>
             if Border_Passed then
                --  3.5.3.8 d): a session being established is aborted;
-               --  the supervising one reports the border
+               --  the supervising one reports the border, from the
+               --  leading engine only (5.10.3.3.3, 5.10.3.6.2,
+               --  5.10.3.10.3: not in NL, where no report awaits the
+               --  order to terminate, 5.10.3.6.5)
                EVC_Sessions.Abort_Establishment;
-               if Supervised then
+               if Supervised and then Mode /= M_NL then
                   Request_Report;
                   Phase := Awaiting_Order;
                   Since := Now_Ms;

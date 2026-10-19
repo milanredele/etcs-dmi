@@ -1544,6 +1544,25 @@ is
    --  the level and mode after the transitions of the cycle (4.8.5.5: a
    --  packet kept for the level 2 transition is used at the transition)
    --  @req 3.6.6.4.1
+   --  4d. Phase E5, 3.4.4.1.1, 4.8.1.6: the linking (packet 5) of the
+   --  radio messages of the cycle to the position, before any other
+   --  location related information (while the origins of their LRBG
+   --  are kept): the RBC's in level 2 (4.8.3), in the modes of the row
+   --  Linking of 4.8.4
+   procedure Take_Radio_Linking
+     with Global => (Input  => (Current_Mode, EVC_Levels.State,
+                                EVC_Train_Inputs.State, EVC_Train_Data.State,
+                                EVC_Mission.State, EVC_Radio_Info.State,
+                                EVC_Origins.State, EVC_Odometry.State),
+                     In_Out => EVC_Position.State)
+   is
+      C : constant EVC_Acceptance.Context_T := Acceptance_Context;
+   begin
+      EVC_Position.Take_Radio_Linking
+        (C.Level_Valid and then C.Level = L2
+         and then EVC_Acceptance.Third_Filter (EVC_Acceptance.Linking, C));
+   end Take_Radio_Linking;
+
    procedure Take_Radio_Geo
      with Global => (Input  => (Current_Mode, EVC_Levels.State,
                                 EVC_Train_Inputs.State, EVC_Train_Data.State,
@@ -3611,6 +3630,7 @@ is
       Read_Ports;
       Update_Position;
       Revalidate_Kept;
+      Take_Radio_Linking;
       Evaluate_Stored_Information;
       Take_Held_Linking;
       Monitor_Speed_And_Distance (Dt_Ms);

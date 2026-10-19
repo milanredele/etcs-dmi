@@ -7761,3 +7761,31 @@ uncertainty is in E6's consistency family, which touches the position
 and acceptance units every other function depends on, and in the
 backlog's rate of finding new items (46, 44, 41 over the last three
 rounds: falling, slowly).
+
+### Radio linking, the position report at a border in NL, the level after D2, message 50 (e5/remainder, 2026-10-19)
+
+**B730 done.** Packet 5 of RBC messages 3, 33 and 24 is taken by
+`EVC_Position.Take_Radio_Linking` (3.4.4.1.1, 4.8.1.6, 4.8.4 row
+Linking), called by the new core step `EVC_Core.Take_Radio_Linking`
+before `Evaluate_Stored_Information`: the origins of the messages' LRBG
+are released by the stored information, and 4.8.1.6 wants the linking
+first. Referred to the message's origin, valid for the train by Q_DIR;
+in level 2 only (4.8.3) and the modes of the row. Decision: taken when
+the LRBG of the message is the SOLR, or the SOLR is one of its linked
+groups; a reference ahead of the SOLR (message 33 shifted forward) is
+not taken. `EVC_Radio_Authority.Take_Message` passes a message 24 with
+packet 5 to `EVC_Radio_Info`. Scenario `Scenario_Radio_Linking`.
+9990500_16 still fails at step 88: the MA is relocated now (611 to 561
+m), the track ahead free window is not (B790, `Take_TAF` keeps it as
+odometer distances).
+
+**B763 done.** The report at the border from the leading engine only
+(5.10.3.6.2): none in NL, no wait for the order
+(`EVC_Level_Sessions.Evaluate`); `Scenario_L2_Exit_In_NL`. 4050200_04
+SV30 passes.
+
+**Left:** B709 traced (the PDF table read: following D2 with the
+position not valid the level and the RBC contact become invalid; the
+contact part exists, the level part needs an invalidation in
+`EVC_Levels` and its call at D2, see the backlog line), B691, B642,
+B680 not started (budget).
