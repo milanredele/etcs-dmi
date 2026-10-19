@@ -35,6 +35,7 @@ package body S076_Bench is
    --  that of a new on-board (EVC_Core.Initialise)
    Was_Powered : Boolean := False;
    Radio_Systems : EVC_Config.Radio_Systems_T := EVC_Config.Both_Systems;
+   Network_Type : EVC_Config.Network_Type_T := EVC_Config.GSMR;
    Voltages : Natural := EVC_Config.Default_Fixed_Train.Voltages;
    Clock      : Unsigned_64 := 0;
 
@@ -743,6 +744,11 @@ package body S076_Bench is
       Radio_Systems := Systems;
    end Set_Radio_Systems;
 
+   procedure Set_Network_Type (Net_Type : EVC_Config.Network_Type_T) is
+   begin
+      Network_Type := Net_Type;
+   end Set_Network_Type;
+
    procedure Set_Voltages (Voltages : Natural) is
    begin
       S076_Bench.Voltages := Natural'Min (Voltages, 2**16 - 1);
@@ -754,7 +760,8 @@ package body S076_Bench is
       --  with (NID_ENGINE 76000 in nearly all of them, e5/session-3)
       EVC_Config.Set_Radio_For_Test
         ((Sessions => EVC_Config.Current.Radio.Sessions,
-          Engine_Id => 76_000, Systems => Radio_Systems, others => <>));
+          Engine_Id => 76_000, Systems => Radio_Systems,
+          Default_Type => Network_Type, others => <>));
       EVC_Config.Set_Voltages_For_Test (Voltages);
       if Was_Powered then
          EVC_Core.Power_Up;

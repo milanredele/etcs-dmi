@@ -7565,3 +7565,34 @@ start of mission follows a closed desk in SB, so `Revalidate_Kept` is
 not the path; D2 of `EVC_Mission` is (another package's unit this
 round). The table of 5.4.3.3 needs the PDF layout (the markdown columns
 are shifted).
+### The runner's integrity input, radio systems and network type, the border reach-point, three traces (e5/runner-net, 2026-10-19)
+
+Runner only, no evc/ edit. B690 done: `S076_Run.TIU_Input` feeds "TIU
+train-integrity confirmed / lost / unknown" as the TIU signal 14 (1 / 2 /
+0); 3060500_06, _10, _14 in three versions and 4050200_05 move, 3060500_14
+now fails at step 74: the re-validation of Train Data from an external
+source is requested (5.17.2.2 D9) but the Train Data window not shown
+(S4ec90124, B760, ours, first look). B700 done: `S076_Bench.Set_Network_Type`
+(the configured default type of 3.5.6.4); feature 3050600 runs with both
+systems and FRMCS+GSM-R: 3050600_03 passes in three versions; 3050600_06
+step 55 is the runner's clock against the A.3.1 registration time (ours
+times out at 40 s from power-up before the sequence's own timer step,
+B761); 5040300_25 needs FRMCS registered before its power cycle and failing
+after it, which the port cannot give (B762; both systems there regress it
+to step 55). B701 done: packet 41 of BG3d puts the border at 300 m, the
+step's own 300 m, and the rear end placed there stops a few decimetres
+short of the on-board's passage (length and under-reading amount from the
+front's passage); `S076_Run.Reach_Border_Rear` runs on until
+`EVC_Level_Sessions.Exit_Phase` leaves Border_Ahead: 3050300_18 passes in
+SV22 and SV30; 4050200_04 (three versions) now fails at step 88, ours: the
+136 at the rear's passage sent in NL, where 5.10.3.6.2, 5.10.3.3.3 and
+5.10.3.10.3 ask it of the leading engine only (B763).
+
+SUBSET-076: 961 / 1143 / 1086 before, 968 / 1143 / 1079 after, steps not
+judged 4371 -> 4381, 16 improvements, 3 regressions understood (B763),
+baseline re-recorded, 0 untriaged.
+
+Left (the budget's bound reached): the three traces, 3131050_23 step 50
+(Sb12d0fcd; first reading: steps 41 to 48 feed a balise group without a
+name, the sequence's BGa, whose packet 41 announcement must not be shown),
+3050300_19 step 72 (S9e1b46dc) and 5040300_16 step 89 (S6a1a136d).

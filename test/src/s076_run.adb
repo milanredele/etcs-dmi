@@ -24,6 +24,7 @@ with EVC_Core;
 with EVC_Distances;
 with EVC_Odometry;
 with EVC_Position;
+with EVC_Level_Sessions;
 with EVC_Ports;
 with EVC_Radio;
 with EVC_SDM;
@@ -1713,6 +1714,30 @@ package body S076_Run is
                    & Img (Integer (B.Position)));
    end Reach_Stored_Location;
 
+   --  A reach-point of the min safe rear end whose comment names the level
+   --  transition border, on a train moving forward while the on-board
+   --  waits for the rear's passage of the border out of level 2
+   --  (EVC_Level_Sessions.Exit_Phase, 3.5.3.8 d), 5.10.3.6.2): the border
+   --  is the on-board's (3050300_18: packet 41 puts it at 300 m, the step
+   --  says 300 m, and the rear end placed there is a few decimetres short
+   --  of the on-board's passage, its length and under-reading amount from
+   --  the front's passage); the train runs on, metre by metre, until the
+   --  passage, at most 20 m
+   procedure Reach_Border_Rear (St : Step_T) is
+      use type EVC_Level_Sessions.Exit_Phase_T;
+   begin
+      if Same (W (4), "min-safe-rear-end")
+        and then Has (Image (St.Comment), "level transition border")
+        and then B.Direction > 0
+      then
+         for Metre in 1 .. 20 loop
+            exit when EVC_Level_Sessions.Exit_Phase
+                        /= EVC_Level_Sessions.Border_Ahead;
+            Move_To (B.Position + 100);
+         end loop;
+      end if;
+   end Reach_Border_Rear;
+
    function ODO_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
    begin
@@ -1748,6 +1773,7 @@ package body S076_Run is
                Off := Point_Offset (W (4), Ok);
                exit when B.Position + Off >= St.Dist_Cm - 50;
             end loop;
+            Reach_Border_Rear (St);
             return Pass ("ODO " & W (4) & " at" & Img (Integer (St.Dist_Cm)));
          end;
       elsif Same (Kind, "reach") then
@@ -1935,6 +1961,13 @@ package body S076_Run is
       elsif Same (Kind, "magnetic-shoe-brake") then
          B.TIU_Input (9, (if Same (Arg, "active") then 1 else 0));
          return Pass ("TIU magnetic shoe brake " & Arg);
+      elsif Same (Kind, "train-integrity") then
+         --  3.6.5.2: the external source of the train integrity, EVC_Ports
+         --  TIU signal 14 (0 unknown, 1 confirmed, 2 lost); each input is
+         --  one reception of the information
+         B.TIU_Input (14, (if Same (Arg, "confirmed") then 1
+                           elsif Same (Arg, "lost") then 2 else 0));
+         return Pass ("TIU train integrity " & Arg);
       end if;
       if Same (Kind, "other-train-data") then
          if Has (Image (St.Comment), "set speed")
@@ -5835,10 +5868,21 @@ package body S076_Run is
       --  that sets up its sessions after a packet 45 of type FRMCS+GSM-R,
       --  which is GSM-R only here, as the port reports no FRMCS
       --  registration (e5/registration decision 2).
+      --  The Radio Network type used while none is memorized (3.5.6.4):
+      --  the laboratory of feature 3050600 has the type FRMCS+GSM-R with
+      --  both systems and the FRMCS on-board never registered (3050600_03
+      --  step 45: 3.5.6.7 b) holds the set-up; 3050600_06 step 55: 5.4.3.2
+      --  S4 waits for both); every other sequence GSM-R alone, as the
+      --  port reports no FRMCS registration (e5/registration decision 2):
+      --  5040300_25 would need FRMCS registered before its power cycle
+      --  (step 55 sets up a session after a packet 45 of type FRMCS+GSM-R,
+      --  3.5.6.7 b) and its registration failing after it (step 100)
       if Image (Seq.Feature) = "3050600" then
          B.Set_Radio_Systems (EVC_Config.Both_Systems);
+         B.Set_Network_Type (EVC_Config.FRMCS_GSMR);
       else
          B.Set_Radio_Systems (EVC_Config.GSMR_Only);
+         B.Set_Network_Type (EVC_Config.GSMR);
       end if;
       B.Set_Voltages (S076_Sequences.Engine_Voltages
                         (Seq, EVC_Config.Default_Fixed_Train.Voltages));
