@@ -7761,3 +7761,47 @@ uncertainty is in E6's consistency family, which touches the position
 and acceptance units every other function depends on, and in the
 backlog's rate of finding new items (46, 44, 41 over the last three
 rounds: falling, slowly).
+
+### Balise group message consistency (e6/consistency-message, 2026-10-19)
+
+The first E6 subsection. The checks, at the end of a passage
+(`EVC_Balise_Groups.Consistent`): every telegram read compliant
+(3.16.1.1: a telegram the codec refuses with its header read enters its
+group through `EVC_Received.Refused_Header` and
+`EVC_Position.Receive_Refused`), every balise up to N_TOTAL read or
+duplicated by a neighbour read (3.16.2.4.1 a), 3.16.2.4.2, `Duplicated`),
+the message counters matching, 255 fitting all, 254 none, the first of a
+duplicated pair left out (3.16.2.4.7, 3.16.2.4.7.1, `Counters_Match`,
+`Superseded`). The reactions (`EVC_Position.React_Inconsistent`, called
+by `Evaluate`, the message rejected, 3.16.1.4): with linking checked, the
+expected group's Q_LINKREACTION (or the one of unknown identity), none for
+another group (3.16.2.4.1, 3.16.2.4.3); with linking not checked, the
+service brake as a linking reaction of Q_LINKREACTION 1 (EVC_Procedures:
+"Balise read error", released at standstill), unless packet 145 inhibits
+it (3.16.2.4.4.1 b), or the last announced group's reaction
+(3.16.2.4.4.4). Record 12 with M_ERROR 1 (linked) and 2 (unlinked):
+events 12 and 13 of `EVC_Position.Event_Code`,
+`EVC_JRU_Messages.Paired_Message`. Record 6 for every telegram received
+(SUBSET-027 4.3.1.1).
+
+For e6/consistency-linking: the unlinked group's consistency, 3.16.2.5.1
+to 3.16.2.5.3 (the service brake, packet 145, M_ERROR 2), is implemented
+by `React_Inconsistent`; its rows can point at it (not tagged here).
+
+Decisions: the BTM port carries decoded telegrams only, so "a balise
+detected, no telegram decoded" (b) arrives as a missed balise (a); the
+`INT btm-alarm` steps are the big metal masses, no port change. A refused
+telegram is not compliant (3.16.1.1), without the duplicate exception. A
+telegram of a version not read counts as a balise read, its content left
+out (5040300_05/06 carry such a second balise). 3.16.2.2.1: a header read
+counts as read for Q_LINK. The content bullets of 3.16.2.4.4.1 a) are not
+told apart; 3.16.2.4.3.1 a) is not told apart from b). 3.16.2.4.8.2.1
+n/a (STM).
+
+Rows: 35 of 3.16.1, 3.16.2.2, 3.16.2.4: 25 done, 9 partial, 1 n/a; left
+3.16.2.4.4.2 (B800), 3.16.2.4.9 (B801), 3.16.2.4.8.1 (B802). Scenarios:
+`EVC_Test_Consistency` (the check of a passage, record 12); the end to
+end reactions are B803. SUBSET-076: 972 / 1136 / 1082 before, 977 / 1145
+/ 1068 after; 15 regressions of the 3131040 family understood and triaged
+s076 (groups with M_MCOUNT 254, a blank second balise of M_VERSION 0);
+three new signatures onboard (B804, B805).
