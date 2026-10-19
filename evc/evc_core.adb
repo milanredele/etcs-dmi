@@ -2260,8 +2260,11 @@ is
           Adhesion    => To in M_NP | M_SB | M_PS | M_SH | M_SL | M_NL
                              | M_SN));
       --  the MA, the mode profile, the signalling related speed
-      --  restriction
-      if To in M_NP | M_SB | M_PS | M_SH | M_SM | M_SR | M_SL | M_NL
+      --  restriction; SM is entered only by [81], with the MA of the
+      --  Supervised Manoeuvre authorisation accepted in the cycle (its
+      --  row: "U" in SM, "D" in the other modes but PT; the MA it
+      --  replaced went with its mode profile, 3.12.4.3)
+      if To in M_NP | M_SB | M_PS | M_SH | M_SR | M_SL | M_NL
              | M_UN | M_TR | M_SN | M_RV
       then
          EVC_Movement_Authority.Delete_MA;
