@@ -492,7 +492,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.12.3.4.3.2,3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
 3.12.3.4.3.2 a),3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
 3.12.3.4.3.2 b),3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
-3.12.3.4.4,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
+3.12.3.4.4,3,x,,,,,E4,done,"EVC_Text_Messages.End_Condition (decision: at the evaluation after the start, an end sub-condition mode or level naming another than the current one is fulfilled at once, as SUBSET-076 3120300_06 reads it); evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)"
 3.12.3.4.5,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
 3.12.3.4.6,3,x,,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
 3.12.3.4.7,3,x,x,,,,E4,done,EVC_Text_Messages; evc_test_procedures Scenario_Text_Messages (after SUBSET-076 3120300)
@@ -1878,7 +1878,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.22.2.2,5,x,,,,,E4,done,"EVC_Driver_Requests.BMM_Inhibition (DMI action 18 arg 0) at standstill in level 1 or 2, SB, SH or SR (EVC_Procedures.BMM_Step); evc_test_procedures Scenario_BMM"
 5.22.3.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented [B015]
 5.22.3.1.1,5,x,,,,,E4,todo,the automatic triggering at the reset of a stored BMM track condition with the antenna in it is not implemented [B015]
-5.22.4.1,5,x,,,,,E4,done,"MSG_ONBOARD train bit 4 (EVC_Procedures.BMM_Inhibited), JRU 23 kind 9; evc_test_procedures Scenario_BMM"
+5.22.4.1,5,x,,,,,E4,done,"MSG_ONBOARD train bit 4 (EVC_Procedures.BMM_Inhibited), the indication MSG_STATUS bmm (EVC_Core.Send_Status, the DMI's ST07), JRU 23 kind 9; evc_test_procedures Scenario_BMM"
 5.22.4.2,5,x,,,,,E4,n/a,"the BTM port carries no transmission alarm (SUBSET-036 is outside the project, EVC-PLAN §1): there is no reaction to inhibit"
 5.22.5.1,5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"
 5.22.5.1 a),5,x,,,,,E4,done,"300 m (A.3.1) in either direction, a mode other than SB, SH, SR, the driver's revocation (action 18 arg 1) (EVC_Procedures.BMM_Step, Mode_Changed); evc_test_procedures Scenario_BMM"

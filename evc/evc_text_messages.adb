@@ -603,9 +603,72 @@ is
    end Add_Report;
 
    function Flags_Of (M : Message_T) return Byte is
+
      ((if M.Confirm /= 0 then 1 else 0)
       or (if M.Important then 2 else 0)
       or (if M.Plain then 4 else 0));
+
+   --  The end condition of a started message in this cycle (3.12.3.4.3,
+   --  3.12.3.4.3.1.2, 3.12.3.4.3.1.4): the sub-conditions fulfilled so
+   --  far and whether one or all of them end the display. Level_Left:
+   --  a transition from the level of the last cycle executed
+   procedure End_Condition (M           : in out Message_T;
+                            Mode        : Mode_T;
+                            Level_Valid : Boolean;
+                            Level       : Level_T;
+                            Est_Front   : Dist_T;
+                            Now_Ms      : Unsigned_64;
+                            Level_Left  : Boolean)
+     with Global => (Input => (Last_Level_Valid, Last_Level))
+   is
+      Used : constant Boolean :=
+        M.Has_End_X or else M.Has_Time
+        or else M.End_Mode /= No_Mode
+        or else M.End_Level /= No_Level;
+   begin
+      if M.Has_End_X
+        and then Along (M.Sense, Est_Front) >= Along (M.Sense, M.End_X)
+      then
+         M.Loc_Done := True;
+      end if;
+      if M.Has_Time and then Now_Ms >= M.Start_Ms
+        and then Now_Ms - M.Start_Ms >= Unsigned_64 (M.Time_Ms)
+      then
+         M.Time_Done := True;
+      end if;
+      if M.End_Level /= No_Level and then Level_Left
+        and then Names_Level (M.End_Level, Last_Level_Valid, Last_Level)
+      then
+         M.Level_Done := True;
+      end if;
+      --  3.12.3.4.4, decision: at the evaluation that follows the start
+      --  (nothing shown yet) an end sub-condition "mode" or "level" that
+      --  names another mode or level than the current one is fulfilled
+      --  at once, as a transition from it executed before (SUBSET-076
+      --  reads it so: no display); afterwards only the transition counts
+      if not M.Shown then
+         if M.End_Mode /= No_Mode and then not Names (M.End_Mode, Mode) then
+            M.Mode_Done := True;
+         end if;
+         if M.End_Level /= No_Level
+           and then not Names_Level (M.End_Level, Level_Valid, Level)
+         then
+            M.Level_Done := True;
+         end if;
+      end if;
+      if Used then
+         if M.All_Of then
+            M.Ended :=
+              (M.Loc_Done or else not M.Has_End_X)
+              and then (M.Time_Done or else not M.Has_Time)
+              and then (M.Mode_Done or else M.End_Mode = No_Mode)
+              and then (M.Level_Done or else M.End_Level = No_Level);
+         else
+            M.Ended := M.Loc_Done or else M.Time_Done
+                       or else M.Mode_Done or else M.Level_Done;
+         end if;
+      end if;
+   end End_Condition;
 
    procedure Evaluate (Mode        : Mode_T;
                        Level_Valid : Boolean;
@@ -676,46 +739,8 @@ is
                --  the end condition (3.12.3.4.3, 3.12.3.4.3.1.2, .4),
                --  evaluated as soon as the start one is fulfilled
                if M.Started and then not M.Ended then
-                  if M.Has_End_X
-                    and then Along (M.Sense, Est_Front)
-                             >= Along (M.Sense, M.End_X)
-                  then
-                     M.Loc_Done := True;
-                  end if;
-                  if M.Has_Time and then Now_Ms >= M.Start_Ms
-                    and then Now_Ms - M.Start_Ms
-                               >= Unsigned_64 (M.Time_Ms)
-                  then
-                     M.Time_Done := True;
-                  end if;
-                  if M.End_Level /= No_Level and then Level_Left
-                    and then Names_Level (M.End_Level, Last_Level_Valid,
-                                          Last_Level)
-                  then
-                     M.Level_Done := True;
-                  end if;
-                  declare
-                     Used : constant Boolean :=
-                       M.Has_End_X or else M.Has_Time
-                       or else M.End_Mode /= No_Mode
-                       or else M.End_Level /= No_Level;
-                  begin
-                     if Used then
-                        if M.All_Of then
-                           M.Ended :=
-                             (M.Loc_Done or else not M.Has_End_X)
-                             and then (M.Time_Done or else not M.Has_Time)
-                             and then (M.Mode_Done
-                                       or else M.End_Mode = No_Mode)
-                             and then (M.Level_Done
-                                       or else M.End_Level = No_Level);
-                        else
-                           M.Ended := M.Loc_Done or else M.Time_Done
-                                      or else M.Mode_Done
-                                      or else M.Level_Done;
-                        end if;
-                     end if;
-                  end;
+                  End_Condition (M, Mode, Level_Valid, Level, Est_Front,
+                                 Now_Ms, Level_Left);
                   --  3.12.3.4.4: no display when ended at once
                   if M.Ended and then not M.Shown then
                      M := (others => <>);
