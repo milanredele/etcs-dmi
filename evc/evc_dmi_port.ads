@@ -153,6 +153,8 @@ is
    --  Bits of Data
    Data_Level_Valid    : constant Bits_T := 4;
    Data_Position_Valid : constant Bits_T := 32;  -- valid, referred to an LRBG
+   Data_Consist_Available  : constant Bits_T := 64;  -- safe consist length
+   Data_Consist_Front_Zero : constant Bits_T := 128; -- none in front
    Data_Driver_ID_Valid  : constant Bits_T := 1;
    Data_Train_Data_Valid : constant Bits_T := 2;
    Data_TRN_Valid        : constant Bits_T := 8;

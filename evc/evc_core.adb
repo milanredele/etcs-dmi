@@ -32,6 +32,7 @@ package body EVC_Core
                                    Latched_Odometer,
                                    Latched_Odometer_Fresh,
                                    Latched_TIU, Latched_Integrity,
+                                   Latched_SCL, Latched_SCL_Fresh,
                                    Latched_BTM,
                                    Latched_BTM_Count,
                                    Latched_RTM,
@@ -125,6 +126,10 @@ is
    --  the last TIU input "train integrity" since the last cycle, its
    --  value plus one (0: none), for EVC_Sessions (3.6.5.2)
    Latched_Integrity : EVC_Bytes.Byte := 0;
+   --  the last TIU input "safe consist length" since the last cycle
+   --  (3.18.3.2 b), its lengths when available, for EVC_Train_Data
+   Latched_SCL       : EVC_Train_Data.Consist_T := (others => 0);
+   Latched_SCL_Fresh : Boolean := False;
    --  (the driver's requests are EVC_Driver_Requests', phase E4)
 
    --  Telegrams and radio messages latched since the last cycle, as
@@ -385,6 +390,8 @@ is
       Latched_Odometer_Fresh := False;
       Latched_TIU := (others => False);
       Latched_Integrity := 0;
+      Latched_SCL := (others => 0);
+      Latched_SCL_Fresh := False;
       Latched_BTM := (others => (Length => 0, Data => (others => 0)));
       Latched_BTM_Count := 0;
       Latched_RTM := (others => (Session => 1, Length => 0,
@@ -558,6 +565,26 @@ is
       end if;
    end Latch_RTM;
 
+   --  A TIU input of the safe consist length, latched for Read_Ports
+   --  (its lengths when available, EVC_Ports.Valid_TIU_SCL)
+   procedure Latch_SCL (Payload : EVC_Bytes.Byte_Array)
+     with Global => (Output => Latched_SCL_Fresh, In_Out => Latched_SCL),
+          Pre => Valid_TIU_SCL (Payload)
+   is
+      subtype L is EVC_Train_Data.Consist_Length_T;
+   begin
+      Latched_SCL_Fresh := True;
+      if Payload (Payload'First + 1) = 1 then
+         Latched_SCL :=
+           (Front_Nom => L (SCL_At (Payload, 2)),
+            Front_Min => L (SCL_At (Payload, 4)),
+            Front_Max => L (SCL_At (Payload, 6)),
+            Rear_Nom  => L (SCL_At (Payload, 8)),
+            Rear_Min  => L (SCL_At (Payload, 10)),
+            Rear_Max  => L (SCL_At (Payload, 12)));
+      end if;
+   end Latch_SCL;
+
    procedure Handle_Input (Port : Port_T; Payload : EVC_Bytes.Byte_Array) is
    begin
       if Failed_Flag then
@@ -582,6 +609,8 @@ is
                Latched_TIU_Known (Input.Signal) := True;
                if Input.Signal = Train_Integrity then
                   Latched_Integrity := TIU_Value (Payload) + 1;
+               elsif Input.Signal = Safe_Consist_Length then
+                  Latch_SCL (Payload);
                end if;
             end;
          when DMI =>
@@ -1070,7 +1099,7 @@ is
    --  the stamp of their balise, to the position
    procedure Read_Ports
      with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
-                                Clock_Ms,
+                                Latched_SCL, Clock_Ms,
                                 EVC_Odometry.State, Latched_TIU_Value,
                                 Latched_TIU_Known, Latched_Events),
                      Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
@@ -1079,6 +1108,7 @@ is
                                 EVC_Train_Inputs.State),
                      In_Out => (Latched_Odometer_Fresh,
                                 Latched_Brake_Ack, Latched_Integrity,
+                                Latched_SCL_Fresh, EVC_Train_Data.State,
                                 Latched_BTM_Count,
                                 Latched_RTM, Latched_RTM_Count,
                                 Latched_Event_Count, EVC_Received.Store,
@@ -1114,6 +1144,12 @@ is
            (Natural (Latched_Integrity) - 1);
       end if;
       Latched_Integrity := 0;
+      --  3.18.3.2 b) 1st bullet: the safe consist length of the TIU
+      if Latched_SCL_Fresh then
+         EVC_Train_Data.Take_Consist
+           (Latched_TIU (Safe_Consist_Length), Latched_SCL);
+      end if;
+      Latched_SCL_Fresh := False;
       --  phase E4: the driver's requests and the inputs of the train
       --  interface of the cycle; nothing switched the level yet
       EVC_Driver_Requests.Take;
@@ -2884,8 +2920,19 @@ is
 
    --  The session byte of MSG_ONBOARD: a session established with the
    --  supervising RBC (2), or one being established (1, 3.5.3.8)
+   --  phase E6: 3 when it is the only one and the RBC's system version
+   --  is above 2.2 (M_VERSION 2#010_0010#; DMI Table 33 #11)
    function Session_Byte return EVC_Bytes.Byte is
      (if EVC_Radio.Supervising /= EVC_Radio.No_Session
+        and then EVC_Radio.Established
+                   (EVC_Radio.Session_T (EVC_Radio.Supervising))
+        and then not EVC_Radio.Handover
+        and then EVC_Radio.Supervising_Version_Known
+        and then Natural (EVC_Radio.Info
+                   (EVC_Radio.Session_T (EVC_Radio.Supervising)).Version)
+                 > 2#010_0010#
+      then Session_Exists + 1
+      elsif EVC_Radio.Supervising /= EVC_Radio.No_Session
         and then EVC_Radio.Established
                    (EVC_Radio.Session_T (EVC_Radio.Supervising))
       then Session_Exists
@@ -2927,7 +2974,13 @@ is
                      --  the RBC contact (5.4.3.3)
                      or (if EVC_Radio.Contact.Known
                            and then EVC_Radio.Contact.Valid
-                         then Data_RBC_Valid else 0),
+                         then Data_RBC_Valid else 0)
+                     --  phase E6: the safe consist length (Table 33 #11)
+                     or (if EVC_Train_Data.Consist_Available
+                         then Data_Consist_Available else 0)
+                     or (if EVC_Train_Data.Consist_Available
+                           and then EVC_Train_Data.Consist.Front_Max = 0
+                         then Data_Consist_Front_Zero else 0),
          Session  => Session_Byte,
          RBC      => (if EVC_Radio.Train_Data_Acknowledged
                       then RBC_Train_Data_Acked else 0)

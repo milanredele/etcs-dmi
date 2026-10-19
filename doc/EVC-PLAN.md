@@ -8283,3 +8283,72 @@ B790 traced, not built (the backlog line holds the trace and the fix:
 the window as offsets from the LRBG of message 34, moved by the linking
 distance when the LRBG changes, which needs a query of `EVC_Position`).
 B792, B642, B680 not started (the bound of 100 calls reached).
+### Supervised Manoeuvre, the data and the entry (e6/sm-mode) (2026-10-19)
+
+The first of two Supervised Manoeuvre packages. Only its first item,
+the safe consist length, was built within the bound of the budget; the
+procedure, the authorisation and the adjustment are left as B900 to
+B902 (below), with the reading of the clauses they need.
+
+The TIU decision (SUBSET-034 is not in this repository): TIU signal 15
+`Safe_Consist_Length` of `EVC_Ports`, a frame of its own length
+(`TIU_SCL_Length`, 14 bytes; `Valid_TIU` stays total, the 2-byte
+frames unchanged): the signal, a value byte (0 not available, 1
+available), then six u16 in metres, the nominal, min and max consist
+length in front of the engine, then in rear of it (0 .. 4095, the range
+of packet 10's L_CONSIST*, min <= nom <= max on each side). "In front
+of the engine" is the side of the active cab (3.18.3.5, 7.5.1.42.3).
+The lengths of an "unavailable" frame are not read: 3.18.3.2.5 keeps
+the last ones (`EVC_Train_Data.Consist_Known`).
+
+Built: `EVC_Train_Data` holds the safe consist length (`Take_Consist`,
+`Consist_Available`, `Consist_Known`, `Consist`, `Consist_In_Front`,
+`Consist_Length` the train length of 3.18.3.2.4 without valid Train
+Data, `Entry_Possible`); `EVC_Core.Handle_Input` latches the frame
+(`Latch_SCL`), `Read_Ports` gives it beside the integrity input;
+3.18.3.5 a) invalidates the Train Data at a length in front of the
+engine, b) is checked in `EVC_Mission.Take_Data` (one condition, the
+only edit there); MSG_ONBOARD gains the data bits 6 and 7 (safe
+consist length available, nothing in front) and the session byte 3
+(the only session, its RBC of a version above 2.2: DMI Table 33 #11),
+so the DMI enables 'Initiate SM' / 'Continue in SM'. The runner: the
+TIU step `safe-consist-length` (`S076_Bench.TIU_Safe_Consist`; the
+sequences give no values: decided, nothing in front, the train length
+in rear, 10 m more at each further input) and the presses
+Initiate-SM / Continue-in-SM (Main button 11, the runner's default
+safe consist length first when the sequence gave none) and Exit-SM
+(button 12). Scenario `EVC_Test_Manoeuvre.Scenario_Safe_Consist`.
+Rows: 5 done (3.18.3.2 b) 1st bullet, 3.18.3.2.5, 3.18.3.5, a), b)),
+3.18.3.2.4 partial. Golden `bench_level2`: the session byte 2 -> 3.
+
+Premises checked: 4.6.3 [81] is evaluated already
+(`EVC_Transition_Conditions` -> `EVC_Radio_Authority.SM_Authorised` =
+`Holds (C_81)`), but nothing sets it; `EVC_Procedures.Train_Data_Step`
+is 5.17 (data from other sources), not the driver's entry, which is
+`EVC_Mission.Take_Data`; the shape of 5.6 in level 2 is in
+`EVC_Radio_Authority` (`Evaluate_SH`, `Take_SH_Answer`, the stamp in
+`Last_Field (7)`), not in `EVC_Procedures`; the DMI's Main window
+conditions (Table 33 #11, #12) are complete and only needed the data
+and session bytes.
+
+Left to the next agent of this package (in this order): B900 the
+procedure 5.21 (S0: level 2, position valid with an LRBG,
+`Consist_Available`, standstill, the modes, no RBC transition order;
+A045 message 131 with packets 0/1 and 10, 12 when default Train Data
+are configured; S050 with the repetitions of 5.21.4.1 and
+`SS_SM_Request_Failed`; MSG_ONBOARD waiting 5 and its answer byte;
+A220 message 5 and `SS_SM_Refused`; message 4 / 5 matched by the
+second T_TRAIN, 4.8.4 [14]): in a new child `EVC_Sessions.Manoeuvre`,
+whose answer check sits in `EVC_Sessions.Take_Message` before the
+message goes to the authority half. B901: message 4 in
+`EVC_Radio_Authority.Take_Message` (its packets 15, 21, 27 through
+`Take_Stored_Information`; `Held (C_81)` for one cycle as C_6 is set),
+its rows added to `EVC_Radio_Acceptance` (4.8.3: A [4] [5] [17] in
+level 2; 4.8.4: SB [2] [14], SM A, FS AD LS SR OS [14], PT [1] [14];
+[17] needs message 133, never sent). B902: A075 / 4.4.21.1.7
+`EVC_Position.Shift_For_Manoeuvre` and 3.7.3.4 b), then A095. The
+second package keeps 4.4.21.1.8, 4.4.21.3.1, 3.18.3.9, 3.18.3.10,
+4.4.21.1.11 to .13, B031. The sequences: 5210200_02 now passes the
+press (step 69) and fails at step 71 (131 not sent), the first of the
+SM family. Also B903 (the fuzzer never sends the 14-byte TIU frame),
+B904 (golden_review.py listed no group for `bench_level2`).

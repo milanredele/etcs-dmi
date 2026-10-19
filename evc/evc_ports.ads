@@ -72,7 +72,8 @@
 --        the engine was moved away from its position when No Power was
 --        entered (saturating at 65 535). The on-board applies the 2 m
 --        of 3.15.8.1.1 itself.
---  TIU (in, TIU_Length bytes): one signal of the train interface, among
+--  TIU (in, TIU_Length bytes, TIU_SCL_Length for signal 15): one
+--     signal of the train interface, among
 --     the inputs the conditions of SUBSET-026 4.6.3 name and the cab
 --     status of SUBSET-034 2.5.1: signal u8 (1 cab A active, 2 cab B
 --     active: one input per cab, "cab active" is "desk open"; 3 sleeping
@@ -80,7 +81,8 @@
 --     leading permitted [46]; 6 to 12, of the speed and distance
 --     monitoring, at the end of this package; 13 the train
 --     configuration, phase E4, there too; 14 the train integrity,
---     phase E5, at its declaration), value u8 (0 or 1). The
+--     phase E5, and 15 the safe consist length, phase E6, at their
+--     declaration), value u8 (0 or 1). The
 --     active cab gives the train orientation (SUBSET-026 3.6.1.5,
 --     EVC_Position). The TIU output is at the end of this package.
 --  DMI (in and out): one frame of the DMI protocol v2
@@ -152,6 +154,8 @@ is
    RTM_Max_Length  : constant := 1023;  -- L_MESSAGE is 10 bits
    Odometer_Length : constant := 22;
    TIU_Length      : constant := 2;
+   --  the TIU input of the safe consist length (TIU signal 15, below)
+   TIU_SCL_Length  : constant := 14;
    --  the longest TIU output: the track conditions of phase E4 (below)
    TIU_Out_Max_Length : constant := 3 + 8 * 12;
    DMI_Max_Length  : constant := EVC_DMI_Port.Max_Frame_Length;
@@ -263,16 +267,40 @@ is
       and then (if Payload (Payload'First + 19) = 0
                 then U16_At (Payload, 20) = 0));
 
+   --  The length in metres at Offset of a TIU frame of the safe consist
+   --  length (the six u16 after the value byte)
+   function SCL_At (Payload : Byte_Array; Offset : Natural)
+     return Unsigned_16
+   is (EVC_Bytes.Get_U16 (Payload, Payload'First + Offset))
+     with Pre => Payload'Length = TIU_SCL_Length and then Offset in 2 .. 12;
+
+   --  A TIU frame of the safe consist length: available with its six
+   --  lengths in range and ordered, or not available
+   function Valid_TIU_SCL (Payload : Byte_Array) return Boolean is
+     (Payload'Length = TIU_SCL_Length
+      and then Payload (Payload'First) = 15
+      and then Payload (Payload'First + 1) <= 1
+      and then (Payload (Payload'First + 1) = 0
+                or else (for all K in 0 .. 1 =>
+                           SCL_At (Payload, 2 + 6 * K + 4) <= 4095
+                           and then SCL_At (Payload, 2 + 6 * K + 2)
+                                      <= SCL_At (Payload, 2 + 6 * K)
+                           and then SCL_At (Payload, 2 + 6 * K)
+                                      <= SCL_At (Payload, 2 + 6 * K + 4))));
+
    function Valid_TIU (Payload : Byte_Array) return Boolean is
-     (Payload'Length = TIU_Length
-      and then Payload (Payload'First) in 1 .. 14
-      --  the direction controller and the train integrity have three
-      --  values, the brake pressure and the train configuration (phase
-      --  E4) are numbers, every other signal is 0 or 1
-      and then (case Payload (Payload'First) is
-                   when 6 | 14 => Payload (Payload'First + 1) <= 2,
-                   when 12 | 13 => True,
-                   when others => Payload (Payload'First + 1) <= 1));
+     (Valid_TIU_SCL (Payload)
+      or else (Payload'Length = TIU_Length
+               and then Payload (Payload'First) in 1 .. 14
+               --  the direction controller and the train integrity have
+               --  three values, the brake pressure and the train
+               --  configuration (phase E4) are numbers, every other
+               --  signal is 0 or 1
+               and then (case Payload (Payload'First) is
+                            when 6 | 14 => Payload (Payload'First + 1) <= 2,
+                            when 12 | 13 => True,
+                            when others =>
+                               Payload (Payload'First + 1) <= 1)));
 
    --  Phase E5: the shapes of the RTM port (see the end of this
    --  package)
@@ -419,7 +447,19 @@ is
       --  status unknown", 1 "train integrity confirmed", 2 "train
       --  integrity lost"; each input is one reception of that
       --  information
-      Train_Integrity);
+      Train_Integrity,
+      --  phase E6: the safe consist length of an external source
+      --  (SUBSET-026 3.18.3.2 b) 1st bullet, 3.18.3.2.4; SUBSET-034 is
+      --  not in this repository, so the frame is ours). Its frame is
+      --  TIU_SCL_Length bytes: signal 15, value u8 (0 the information
+      --  is not available, 1 available), then six u16 (little endian,
+      --  as every u16 of the ports) in metres (0 .. 4095, the range of
+      --  L_CONSIST* of packet 10, 7.5.1.42): the nominal, minimum and
+      --  maximum consist length in front of the engine, then the same
+      --  in rear of it, min <= nom <= max on each side. "In front of
+      --  the engine" is the side of the active cab (3.18.3.5,
+      --  7.5.1.42.3). The lengths of a frame with value 0 are not read.
+      Safe_Consist_Length);
 
    type TIU_Input_T is record
       Signal : TIU_Signal_T;

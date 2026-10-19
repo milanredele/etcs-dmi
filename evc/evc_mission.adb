@@ -434,9 +434,12 @@ is
             E  : constant Train_Entry_T := EVC_Driver_Requests.Train_Data;
          begin
             Train_Data_Of (E, EVC_Config.Current.Train, D, Cs, OK);
+            --  3.18.3.5 b): not with a safe consist length in front of
+            --  the engine
             if OK and then C.Standstill
               and then M in M_SB | M_FS | M_AD | M_LS | M_SR | M_OS | M_UN
                           | M_SN
+              and then EVC_Train_Data.Entry_Possible
             then
                Cat_N := Train_Known
                  and then Categories_Differ (EVC_Train_Data.Categories, Cs);

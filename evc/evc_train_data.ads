@@ -76,6 +76,56 @@ is
    function Categories return Categories_T
      with Global => State;
 
+   --  The safe consist length of an external source (3.18.3.2 b) 1st
+   --  bullet, the TIU input of EVC_Ports): the nominal, minimum and
+   --  maximum consist length in front of the engine (the side of its
+   --  active cab) and in rear of it, metres (the range of packet 10)
+   subtype Consist_Length_T is Natural range 0 .. 4095;
+   type Consist_T is record
+      Front_Nom, Front_Min, Front_Max : Consist_Length_T := 0;
+      Rear_Nom, Rear_Min, Rear_Max    : Consist_Length_T := 0;
+   end record;
+
+   --  The safe consist length information is available now (the last
+   --  input said so)
+   function Consist_Available return Boolean
+     with Global => State;
+
+   --  A safe consist length was received in this mission (kept when the
+   --  information becomes unavailable, 3.18.3.2.5)
+   function Consist_Known return Boolean
+     with Global => State;
+
+   --  The safe consist length last received
+   function Consist return Consist_T
+     with Global => State;
+
+   --  3.18.3.5: available, with a length in front of the engine
+   function Consist_In_Front return Boolean is
+     (Consist_Available and then Consist.Front_Max > 0)
+     with Global => State;
+
+   --  3.18.3.5 b): the driver may enter, modify or revalidate Train Data
+   --  @req 3.18.3.5 b)
+   function Entry_Possible return Boolean is (not Consist_In_Front)
+     with Global => State;
+
+   --  3.18.3.2.4: the train length when no valid Train Data is
+   --  available but the safe consist length is (the max safe consist
+   --  lengths in front of and in rear of the engine), cm
+   function Consist_Length return EVC_Distances.Length_T
+     with Global => State;
+
+   --  A safe consist length input (EVC_Ports TIU signal 15): available
+   --  with its lengths, or not available (the lengths kept, 3.18.3.2.5).
+   --  3.18.3.5 a): with a length in front of the engine, no valid Train
+   --  Data
+   --  @req 3.18.3.2 b) 1st bullet, 3.18.3.2.5, 3.18.3.5, 3.18.3.5 a)
+   procedure Take_Consist (Available : Boolean; C : Consist_T)
+     with Global => (In_Out => State),
+          Post => Consist_Available = Available
+                  and then (if Consist_In_Front then not Valid);
+
    --  Power-up: no valid Train Data (4.10: deleted in No Power; phase
    --  E4: the driver enters them in the start of mission,
    --  EVC_Mission). Data keeps the default train as the values of the
@@ -84,7 +134,9 @@ is
    procedure Clear
      with Global => (Output => State),
           Post => not Valid and then Data = Default
-                  and then Categories = Default_Categories;
+                  and then Categories = Default_Categories
+                  and then not Consist_Available
+                  and then not Consist_Known;
 
    --  New Train Data (phase E4)
    procedure Set (D : Train_Data_T; C : Categories_T)

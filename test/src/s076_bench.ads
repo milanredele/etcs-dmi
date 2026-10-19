@@ -217,6 +217,12 @@ package S076_Bench is
    --  A TIU input (EVC_Ports: signal 1 .. 14, value; 14 the train
    --  integrity: 0 unknown, 1 confirmed, 2 lost)
    procedure TIU_Input (Signal : Natural; Value : Natural);
+
+   --  The TIU input of the safe consist length (EVC_Ports signal 15):
+   --  available with the lengths in metres in front of the engine
+   --  (nominal, min, max) and in rear of it, or not available
+   procedure TIU_Safe_Consist (Available : Boolean;
+                               Front, Rear : Natural := 0);
    --  A frame to the on-board's DMI port (as if from the DMI)
    procedure DMI_Frame (Frame : Byte_Array);
    --  The odometer's stated accuracy per mille from now on
