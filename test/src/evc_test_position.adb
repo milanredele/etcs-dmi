@@ -13,6 +13,7 @@ with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Levels;
 with EVC_Radio;
+with EVC_Radio_Authority;
 with EVC_Test_Authority;
 with EVC_Distances;
 with EVC_Linking;
@@ -714,6 +715,42 @@ package body EVC_Test_Position is
                and then not Pos.Linking_Reaction_Requested,
              "radio linking: group 12 read inside its window, the LRBG");
    end Scenario_Radio_Linking;
+
+   --  3.6.4.2.5 a): the window of message 34 follows the LRBG: group 12,
+   --  linked by radio 600 m from group 10, is read 590 m from it by the
+   --  odometer; the window 600 to 700 m from group 10 is then 0 to 100 m
+   --  from group 12, 10 m behind where the odometer put it
+   procedure Scenario_TAF_Relocated is
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_FS, EVC_Modes.L2);
+      Add_Group (Group (10, 100));
+      EVC_Test_Authority.Establish_Session;
+      Run_X (15_000);
+      Give_Radio_Message (1, M24_With_5 (10, 12, 600));
+      Stand_X (200);
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SR, EVC_Modes.L2);
+      Stand_X (200);
+      Give_Radio_Message (1, EVC_Test_Authority.TAF_Message (600, 100));
+      Stand_X (200);
+      Check (EVC_Radio_Authority.TAF_Stored
+               and then not EVC_Radio_Authority.TAF_Shown
+               and then Pos.Linking.Stored,
+             "TAF relocated: stored with the linking, not shown before "
+             & "its beginning");
+      Add_Group (Group (12, 690));
+      Run_X (75_000);
+      Check (Pos.LRBG.Id.NID_BG = 12 and then EVC_Radio_Authority.TAF_Shown,
+             "TAF relocated: shown inside its window, group 12 the LRBG "
+             & "(3.15.5.2 a), got" & EVC_Radio_Authority.TAF_Stored'Image
+             & EVC_Core.Mode'Image & Pos.Linking.Stored'Image);
+      Run_X (79_300);
+      Check (not EVC_Radio_Authority.TAF_Shown
+               and then not EVC_Radio_Authority.TAF_Stored,
+             "TAF relocated: ended at its end relocated to the linked "
+             & "group, before the odometer's (3.6.4.2.5 a, 3.15.5.2 b), "
+             & "front" & EVC_Distances.Dist_T'Image (Pos.Estimated_Front));
+   end Scenario_TAF_Relocated;
 
    --  3.6.8, A.3.1: odometer accuracy impaired, safety threshold
    procedure Scenario_Odometer_Accuracy is

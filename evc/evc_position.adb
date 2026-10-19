@@ -2486,4 +2486,16 @@ is
       return P;
    end Position_Report_2;
 
+   function Linking_Distance (From, To : Identity_T) return Group_Distance_T
+   is
+      R : Group_Distance_T;
+      K : EVC_Linking.Link_Count_T := 0;
+   begin
+      if Links.Stored and then To /= Links.Ref_Id then
+         K := EVC_Linking.Find (Links, To, 1);
+      end if;
+      Link_Distance (From, K, Orient, R.Known, R.D);
+      return R;
+   end Linking_Distance;
+
 end EVC_Position;

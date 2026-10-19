@@ -46,6 +46,10 @@ package EVC_Test_Authority is
    --  2 transition location" (packet 90) in level 1
    procedure Scenario_TAF_Up_To_L2;
    procedure Scenario_Track_Ahead_Free;
+   --  Message 34 referring to the group 10 of country 123: the display
+   --  from Begin_M to Begin_M + Len_M metres beyond it
+   function TAF_Message (Begin_M, Len_M : Natural)
+     return EVC_Bytes.Byte_Array;
 
    --  For EVC_Test_Levels (e5/levels): the session 1 with the RBC 123/1
    --  established through the writers of EVC_Radio, the Train Data

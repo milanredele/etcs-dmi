@@ -150,6 +150,7 @@ begin
    Scenario_Geo_Rejected_In_SH;
    Scenario_Geo_By_Radio;
    Scenario_Radio_Linking;
+   Scenario_TAF_Relocated;
    Scenario_Odometer_Accuracy;
    Scenario_Odometer_Check_By_Mode;
    Scenario_Cold_Movement;
