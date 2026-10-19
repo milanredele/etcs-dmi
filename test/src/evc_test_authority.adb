@@ -1,3 +1,4 @@
+with ETCS_Track_Packets.P140;
 --  ETCS on-board (EVC)
 --  Phase E5, the authority by radio half (see the specification).
 
@@ -149,7 +150,8 @@ package body EVC_Test_Authority is
                         With_57 : Boolean := False;
                         P57     : T57.Packet_T := (others => <>);
                         Q_DIR   : ETCS_Variables.Q_DIR_T := 1;
-                        Profiles_To : Natural := 0)
+                        Profiles_To : Natural := 0;
+                        TRN     : Unsigned_64 := 0)
      return Byte_Array
    is
       W  : Writer_T;
@@ -190,6 +192,13 @@ package body EVC_Test_Authority is
          T57.Encode (P57, W, OK);
          Check (OK, "authority: packet 57 encoded");
       end if;
+      if TRN /= 0 then
+         ETCS_Track_Packets.P140.Encode
+           ((NID_PACKET => 140, Q_DIR => 2, L_PACKET => 0,
+             NID_OPERATIONAL => ETCS_Variables.NID_OPERATIONAL_T (TRN)),
+            W, OK);
+         Check (OK, "authority: packet 140 encoded");
+      end if;
       return Message_Bytes (W);
    end MA_Message;
 
@@ -210,6 +219,12 @@ package body EVC_Test_Authority is
                       Lengths : EVC_Test_Support.Nat_List)
      return EVC_Bytes.Byte_Array is
      (MA_Message (NID_BG, MA_Of (Lengths), Stamp));
+
+   function Radio_MA_TRN (NID_BG  : Natural;
+                          Lengths : EVC_Test_Support.Nat_List;
+                          TRN     : Unsigned_64)
+     return EVC_Bytes.Byte_Array is
+     (MA_Message (NID_BG, MA_Of (Lengths), Stamp, TRN => TRN));
 
    ---------------------------------------------------------------------
    --  Scenarios

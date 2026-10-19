@@ -12,6 +12,7 @@
 --  EVC_Test_Support.
 
 with EVC_Bytes;
+with Interfaces;
 with EVC_Test_Support;
 
 package EVC_Test_Authority is
@@ -54,6 +55,11 @@ package EVC_Test_Authority is
    procedure Establish_Session;
    function Radio_MA (NID_BG  : Natural;
                       Lengths : EVC_Test_Support.Nat_List)
+     return EVC_Bytes.Byte_Array;
+   --  The same with packet 140 (the train running number TRN)
+   function Radio_MA_TRN (NID_BG  : Natural;
+                          Lengths : EVC_Test_Support.Nat_List;
+                          TRN     : Interfaces.Unsigned_64)
      return EVC_Bytes.Byte_Array;
    --  For EVC_Test_Position (e5/radio-geo-buffer): level 1 in FS, the
    --  session established and the Train Data acknowledged, the group 10

@@ -1061,7 +1061,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.4.4.2,3,x,x,,,,E6,done,"by construction: NID_ENGINE from the installation (EVC_Config, EVC_Radio.Engine_Id); the uniqueness is the installer's"
 3.18.4.5.1,3,x,,,,,E6,partial,"EVC_Mission.Take_Identity: the driver's entry; EVC_Mission.Take_RBC_TRN: packet 140 from the RBC (evc_test RBC_TRN); other external sources (a TIU input) not modelled"
 3.18.4.5.2,3,x,,,,,E6,done,EVC_Mission.Take_Identity: the train running number taken in NL (4.7.2)
-3.18.4.5.3,3,x,,,,,E6,done,"EVC_Mission.Take_Identity: taken whatever the speed in SB, SM, FS, AD, LS, SR, OS, NL, UN, SN; EVC_Mission.Take_RBC_TRN: packet 140 in the same modes, while running too (evc_test RBC_TRN)"
+3.18.4.5.3,3,x,,,,,E6,done,"EVC_Mission.Take_Identity: taken whatever the speed in SB, SM, FS, AD, LS, SR, OS, NL, UN, SN; EVC_Mission.Take_RBC_TRN: packet 140 in the same modes, while running too, also of a message released from a transition buffer (EVC_Core.Read_Released_Messages, EVC_Core.Release_Transition_Buffer) (evc_test RBC_TRN, Released_TRN)"
 3.18.4.5.4,3,x,,,,,E6,done,EVC_Sessions.Reports.Evaluate: packet 5 in the next 136 to the supervising RBC after the driver's entry with the session established or after an establishment outside the start of mission; EVC_Sessions.Mission: in the 157 when valid; evc_test Session_TRN
 3.18.4.5.4.1,3,x,,,,,E6,done,"EVC_Mission.TRN_From_RBC, EVC_Sessions.Reports.Evaluate: the train running number of packet 140 not sent back, until the driver enters one; evc_test RBC_TRN"
 3.18.4.5.5,3,x,,,,,E6,done,"EVC_Mission.Take_Identity, Valid_TRN: 1 to 8 digits (A.3.11, NID_OPERATIONAL)"

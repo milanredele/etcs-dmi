@@ -1533,13 +1533,14 @@ is
    --  transition buffer released at once, its messages judged in level 2
    --  and taken by the stores before the procedures and the mode machine
    --  of the cycle (an MA kept for the transition: no trip by [39])
-   --  @req 4.8.3.1.1 Table-footnote [1], 4.8.5.5
+   --  @req 4.8.3.1.1 Table-footnote [1], 4.8.5.5, 3.18.4.5.3
    procedure Release_Transition_Buffer
      with Global => (Input  => (Clock_Ms, Current_Mode,
                                 EVC_Odometry.State, EVC_Train_Data.State,
-                                EVC_Train_Inputs.State, EVC_Mission.State),
+                                EVC_Train_Inputs.State),
                      In_Out => (Latched_RTM, EVC_Received.Store,
-                                EVC_Position.State, EVC_Procedures.State,
+                                EVC_Mission.State, EVC_Position.State,
+                                EVC_Procedures.State,
                                 EVC_Text_Messages.State,
                                 EVC_LS_Display.State,
                                 EVC_Origins.State,
@@ -1600,6 +1601,8 @@ is
             --  4.8.2.1 c) exception 2: the Accepting RBC's
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
                                               Accepting);
+            --  3.18.4.5.3: packet 140
+            EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
       end loop;
       EVC_Text_Messages.Take_Radio (First);

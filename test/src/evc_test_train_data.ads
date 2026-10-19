@@ -27,4 +27,8 @@ package EVC_Test_Train_Data is
    --  the valid Train Data's length in SB and FS
    procedure Scenario_Engine_Length;
 
+   --  3.18.4.5.3: packet 140 of a message kept in the transition buffer
+   --  (level 2 announced) taken when the buffer is released (4.8.5.5)
+   procedure Scenario_Released_TRN;
+
 end EVC_Test_Train_Data;
