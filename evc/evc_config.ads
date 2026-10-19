@@ -124,6 +124,12 @@ is
       --  the traction systems accepted by the engine (M_VOLTAGE bits,
       --  3.18.3.2 i): bit 1 AC 25 kV 50 Hz
       Voltages              : Natural range 0 .. 2**16 - 1 := 2;
+      --  the length of the engine, cm: its front and rear end are the
+      --  train's in SL, SB without valid Train Data, SH, NL and PS
+      --  (4.4.6.1.4, 4.4.7.1.6, 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4);
+      --  decision: 20 m, a locomotive, until a format version of the
+      --  image carries it
+      Engine_Length         : Length_T range 100 .. 10_000 := 2_000;
    end record;
 
    Default_Fixed_Train : constant Fixed_Train_T := (others => <>);

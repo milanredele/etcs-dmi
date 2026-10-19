@@ -2380,8 +2380,10 @@ is
    --  end, 3.15.1.3.1 c) need it; no valid Train Data, no rear end. Once
    --  per cycle, after everything that sets or invalidates the Train Data
    --  (the driver's entry in EVC_Mission, a mode entered)
+   --  @req 4.4.6.1.4, 4.4.7.1.6, 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4
    procedure Sync_Train_Length
-     with Global => (Input    => EVC_Train_Data.State,
+     with Global => (Input    => (EVC_Train_Data.State, Current_Mode,
+                                  EVC_Config.State),
                      In_Out   => EVC_Position.State,
                      Proof_In => EVC_Odometry.State),
           Post   => EVC_Position.Active_Cab = EVC_Position.Active_Cab'Old
@@ -2393,12 +2395,19 @@ is
                     and then EVC_Position.Doubt_Under
                              = EVC_Position.Doubt_Under'Old
    is
+      --  the front and rear end of the engine are the train's
+      Engine : constant Boolean :=
+        Current_Mode in M_SL | M_SH | M_NL | M_PS
+        or else (Current_Mode = M_SB and then not EVC_Train_Data.Valid);
+      Length : constant EVC_Distances.Length_T :=
+        (if Engine then EVC_Config.Current.Train.Engine_Length
+         else EVC_Train_Data.Length);
    begin
-      if EVC_Train_Data.Valid then
+      if Engine or else EVC_Train_Data.Valid then
          if not EVC_Position.Train_Length_Known
-           or else EVC_Position.Length_Of_Train /= EVC_Train_Data.Length
+           or else EVC_Position.Length_Of_Train /= Length
          then
-            EVC_Position.Set_Train_Length (EVC_Train_Data.Length);
+            EVC_Position.Set_Train_Length (Length);
          end if;
       elsif EVC_Position.Train_Length_Known then
          EVC_Position.Unset_Train_Length;

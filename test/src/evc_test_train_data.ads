@@ -22,4 +22,9 @@ package EVC_Test_Train_Data is
    --  back; the driver's entry after it sent again
    procedure Scenario_RBC_TRN;
 
+   --  4.4.7.1.6, 4.4.8.1.3, 4.4.15.1.3: the engine's front and rear end
+   --  are the train's in SB without valid Train Data, in SH and in NL;
+   --  the valid Train Data's length in SB and FS
+   procedure Scenario_Engine_Length;
+
 end EVC_Test_Train_Data;

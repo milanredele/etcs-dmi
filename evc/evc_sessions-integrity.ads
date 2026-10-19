@@ -62,8 +62,12 @@ is
      with Global => (In_Out => State);
 
    --  The conditions of Table 2c in the cycle, after the session's
-   --  establishment (3.6.5.2.6); Report: 3.6.5.1.4 c) or d) happened
-   procedure Evaluate (Report : out Boolean)
+   --  establishment (3.6.5.2.6); Report: 3.6.5.1.4 c) or d) happened.
+   --  In NL no train integrity information is reported (4.4.15.1.3); in
+   --  SB only with valid Train Data (4.4.7.1.6 a), which every condition
+   --  of Table 2c that leaves "No information" asks)
+   --  @req 4.4.15.1.3, 4.4.7.1.6 a)
+   procedure Evaluate (Mode : EVC_Modes.Mode_T; Report : out Boolean)
      with Global => (In_Out => State,
                      Input  => (EVC_Radio.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Train_Data.State,

@@ -10,11 +10,13 @@ with ETCS_Bits;
 with ETCS_Track_Packets.P42;
 with ETCS_Variables;
 with EVC_Bytes;
+with EVC_Config;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Mission;
 with EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
+with EVC_Position;
 with EVC_Radio;
 with EVC_Radio_Authority;
 with EVC_Test_Modes;
@@ -267,5 +269,36 @@ package body EVC_Test_Train_Data is
              and then TRN_In_136 = 16#777F_FFFF#,
              "train data: the driver's new entry sent (3.18.4.5.4)");
    end Scenario_RBC_TRN;
+
+   procedure Scenario_Engine_Length is
+      Engine : constant Natural :=
+        Natural (EVC_Config.Current.Train.Engine_Length);
+      function Length return Natural is
+        (if EVC_Position.Train_Length_Known
+         then Natural (EVC_Position.Length_Of_Train) else 0);
+   begin
+      EVC_Test_Modes.Start_E4;
+      Stand_X (200);
+      Check (Length = Engine,
+             "engine length: SB without valid Train Data (4.4.7.1.6), got"
+             & Img (Length));
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 4));
+      Send (Train_Entry (300));
+      Stand_X (200);
+      Check (Length = 30_000,
+             "engine length: SB with valid Train Data, their length "
+             & "(4.4.7.1.6 a), got" & Img (Length));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L1);
+      Stand_X (200);
+      Check (Length = Engine,
+             "engine length: SH, the engine's (4.4.8.1.3), got"
+             & Img (Length));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_NL, EVC_Modes.L1);
+      Stand_X (200);
+      Check (Length = Engine,
+             "engine length: NL, the engine's (4.4.15.1.3), got"
+             & Img (Length));
+   end Scenario_Engine_Length;
 
 end EVC_Test_Train_Data;
