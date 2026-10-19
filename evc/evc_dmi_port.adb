@@ -192,7 +192,8 @@ is
                           Tunnel      : Byte := 0;
                           Tunnel_Dist : Unsigned_32 := 0;
                           Radio       : Byte := 0;
-                          Slippery    : Boolean := False)
+                          Slippery    : Boolean := False;
+                          BMM         : Boolean := False)
      return Status_Frame_T
    is
      (MSG_STATUS,
@@ -200,7 +201,7 @@ is
       Brake,                          -- brake
       Radio,                          -- radio (phase E5)
       (if Slippery then 1 else 0),    -- adhesion
-      0,                              -- bmm
+      (if BMM then 1 else 0),         -- bmm
       (if Reversing then 1 else 0),   -- reversing
       0,                              -- sm_direction
       16#FF#, 16#FF#,                 -- set_speed: none
