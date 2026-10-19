@@ -5842,10 +5842,21 @@ package body S076_Run is
       --  that sets up its sessions after a packet 45 of type FRMCS+GSM-R,
       --  which is GSM-R only here, as the port reports no FRMCS
       --  registration (e5/registration decision 2).
+      --  The Radio Network type used while none is memorized (3.5.6.4):
+      --  the laboratory of feature 3050600 has the type FRMCS+GSM-R with
+      --  both systems and the FRMCS on-board never registered (3050600_03
+      --  step 45: 3.5.6.7 b) holds the set-up; 3050600_06 step 55: 5.4.3.2
+      --  S4 waits for both); every other sequence GSM-R alone, as the
+      --  port reports no FRMCS registration (e5/registration decision 2):
+      --  5040300_25 would need FRMCS registered before its power cycle
+      --  (step 55 sets up a session after a packet 45 of type FRMCS+GSM-R,
+      --  3.5.6.7 b) and its registration failing after it (step 100)
       if Image (Seq.Feature) = "3050600" then
          B.Set_Radio_Systems (EVC_Config.Both_Systems);
+         B.Set_Network_Type (EVC_Config.FRMCS_GSMR);
       else
          B.Set_Radio_Systems (EVC_Config.GSMR_Only);
+         B.Set_Network_Type (EVC_Config.GSMR);
       end if;
       B.Set_Voltages (S076_Sequences.Engine_Voltages
                         (Seq, EVC_Config.Default_Fixed_Train.Voltages));

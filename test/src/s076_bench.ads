@@ -57,6 +57,10 @@ package S076_Bench is
    --  The radio systems the on-board installs at the next Power_On
    --  (EVC_Config.Radio_Config_T.Systems); kept over Reset
    procedure Set_Radio_Systems (Systems : EVC_Config.Radio_Systems_T);
+   --  The Radio Network type the on-board uses while none is memorized
+   --  at the next Power_On (3.5.6.4, EVC_Config.Radio_Config_T.
+   --  Default_Type); kept over Reset
+   procedure Set_Network_Type (Net_Type : EVC_Config.Network_Type_T);
 
    --  B472: the traction systems the engine accepts (M_VOLTAGE bits,
    --  EVC_Config.Fixed_Train_T.Voltages) the on-board takes at the next
