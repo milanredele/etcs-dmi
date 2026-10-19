@@ -106,6 +106,7 @@ with EVC_Odometry;
 with EVC_Origins;
 with EVC_Radio_Info;
 with EVC_Ports;         use EVC_Ports;
+with EVC_Train_Data;
 with ETCS_Bits;
 with ETCS_Packet_Index;
 with ETCS_Telegram;
@@ -480,6 +481,50 @@ is
                   and then LRBG = LRBG'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
+
+   --  3.6.1.5.1: from the first Supervised Manoeuvre authorisation
+   --  (Shift_For_Manoeuvre) to the end of the mission or Non Leading
+   --  (End_Manoeuvre) the train orientation is that of the last
+   --  authorisation, not the active cab's
+   function Manoeuvre_Orientation return Boolean
+     with Global => State;
+
+   --  4.4.21.1.7, 5.21.2.2 A075: a Supervised Manoeuvre authorisation
+   --  taken; Opposite: the direction of its MA is opposite to the train
+   --  orientation, which turns, and the train position is that of the
+   --  other end of the consist C (safe consist length, metres): the
+   --  estimated front end and the confidence interval of 3.6.1.3.4 and
+   --  3.6.4.1.5 (gamma 1) in the new orientation. Decision: computed from
+   --  the active cab's end of the engine (the estimated front end before
+   --  the shift does not yet hold the consist length in front of the
+   --  engine, 3.6.1.3.4), it is 4.4.21.1.7 a) to c) for a front end that
+   --  does
+   --  @req 4.4.21.1.7, 4.4.21.1.7 a), 4.4.21.1.7 b) 1st bullet
+   --  @req 4.4.21.1.7 b) 2nd bullet, 4.4.21.1.7 c) 1st bullet
+   --  @req 4.4.21.1.7 c) 2nd bullet
+   procedure Shift_For_Manoeuvre (Opposite : Boolean;
+                                  C        : EVC_Train_Data.Consist_T)
+     with Global => (In_Out => State, Input => EVC_Odometry.State),
+          Post => Manoeuvre_Orientation
+                  and then Orientation
+                           = (if Opposite
+                              then EVC_Distances.Opposite (Orientation'Old)
+                              else Orientation'Old)
+                  and then Active_Cab = Active_Cab'Old
+                  and then LRBG = LRBG'Old
+                  and then (if not Opposite
+                            then Doubt_Over = Doubt_Over'Old
+                                 and then Doubt_Under = Doubt_Under'Old);
+
+   --  The end of the mission, or Non Leading: the orientation follows
+   --  the active cab again and the front end is the engine's
+   procedure End_Manoeuvre
+     with Global => (In_Out => State),
+          Post => not Manoeuvre_Orientation
+                  and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then LRBG = LRBG'Old;
+
    --  No valid Train Data (3.18.3): the min safe rear end is the min safe
    --  front end again and the rear end triggers do not fire
    procedure Unset_Train_Length

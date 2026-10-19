@@ -347,6 +347,14 @@ is
    function SM_Authorised return Boolean is (Holds (C_81))
      with Global => State;
 
+   --  5.21.2.2 A075: a Supervised Manoeuvre authorisation was taken in
+   --  this cycle, before Evaluate (SM_Taken); the direction of its MA
+   --  is opposite to the train orientation (SM_Opposite)
+   function SM_Taken return Boolean
+     with Global => State;
+   function SM_Opposite return Boolean
+     with Global => State;
+
    --  [45] (no unconditional emergency stop message has been received):
    --  an unconditional emergency stop accepted and not revoked (3.10)
    function Unconditional_Stop_Received return Boolean

@@ -438,6 +438,12 @@ is
 
    --  The messages received
 
+   function SM_Taken return Boolean is (SM_Auth.Taken)
+     with Refined_Global => SM_Auth;
+
+   function SM_Opposite return Boolean is (SM_Auth.Opposite)
+     with Refined_Global => SM_Auth;
+
    --  The fields of the header of the last message received (8.4.4.6.1)
    function LRBG_Of_Last return EVC_Balise_Groups.Identity_T is
      ((NID_C  => NID_C_T (EVC_Received.Last_Value (NID_C) mod 1024),
@@ -475,12 +481,15 @@ is
    --  names (an LRBG the on-board does not know leaves no origin, and
    --  the stored information rejects the MA), its timers started at
    --  the time stamp of the message; Action: how the stored information
-   --  takes it (Shortening: message 9, 3.8.6)
+   --  takes it (Shortening: message 9, 3.8.6); Reversed: for the train
+   --  orientation after the shift of a Supervised Manoeuvre
+   --  authorisation in the opposite direction (4.4.21.1.7)
    procedure Take_Stored_Information (Shifted : Boolean;
                                       Now_Ms  : EVC_Radio.Time_Ms_T;
                                       Action  : EVC_Radio_Info.Action_T :=
                                         EVC_Radio_Info.Packets;
-                                      Accepting : Boolean := False)
+                                      Accepting : Boolean := False;
+                                      Reversed  : Boolean := False)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State, Emergency),
                      In_Out => (EVC_Origins.State, EVC_Radio_Info.State))
@@ -495,6 +504,10 @@ is
       if Valid then
          EVC_Position.Radio_Origin
            (LRBG_Of_Last, Shifted, Shift, Sl.Origin, Sl.G, Sl.T, Sl.S);
+         if Reversed then
+            Sl.S := Opposite (Sl.S);
+            Sl.T := To_Direction (Sl.S);
+         end if;
       end if;
       Sl.Start_Ms := EVC_Radio.Time_Of_Stamp (Stamp_Of_Last, Now_Ms);
       Sl.Action := Action;
@@ -800,8 +813,17 @@ is
                      In_Out => (EVC_Origins.State, EVC_Radio_Info.State,
                                 SM_Auth))
    is
+      Q : constant Q_DIR_T :=
+        Q_DIR_T (EVC_Received.Last_Value (Q_DIR) mod 4);
    begin
-      Take_Stored_Information (True, Now_Ms, Accepting => Accepting);
+      --  A075: the direction of the MA (packet 15, the first Q_DIR of
+      --  the message) is for the train only when turned
+      SM_Auth.Opposite :=
+        Q <= 1
+        and then not EVC_Position.Radio_Valid_For (LRBG_Of_Last, Q)
+        and then EVC_Position.Radio_Valid_For (LRBG_Of_Last, 1 - Q);
+      Take_Stored_Information (True, Now_Ms, Accepting => Accepting,
+                               Reversed => SM_Auth.Opposite);
       SM_Auth.Taken := True;
       SM_Auth.V_SM :=
         Natural (EVC_Received.Last_Value (V_SM) mod 128);

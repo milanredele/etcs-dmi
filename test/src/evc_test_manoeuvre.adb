@@ -7,8 +7,11 @@ with ETCS_Track_Packets.P21;
 with ETCS_Track_Packets.P27;
 with ETCS_Variables;
 with EVC_Core;
+with EVC_Distances;       use EVC_Distances;
 with EVC_Modes;           use EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
+with EVC_Mission;
+with EVC_Position;
 with EVC_Radio;
 with EVC_Sessions;
 with EVC_Train_Data;
@@ -211,6 +214,42 @@ package body EVC_Test_Manoeuvre is
              "SM authorisation: message 4 answering the request, SM entered "
              & "(4.6.3 [81], 5.21.2.2 E115, D080, A050; 4.4.21.1.2); mode "
              & Mode_T'Image (EVC_Core.Mode));
+      Check (EVC_Position.Manoeuvre_Orientation and then EVC_Mission.Mission,
+             "SM authorisation: the same direction, the orientation fixed "
+             & "by it (3.6.1.5.1, 3.7.3.4 a)");
+      --  the MA in the direction opposite to the train orientation: the
+      --  front end at the far end of the 400 m in rear of the engine
+      --  (4.4.21.1.7)
+      Start_L2_SM;
+      Select_SM;
+      T := Wait_For (MCat.Train_M131, 1_000);
+      declare
+         E0 : constant Dist_T := EVC_Position.Estimated_Front;
+         O0 : constant Length_T := EVC_Position.Doubt_Over;
+         U0 : constant Length_T := EVC_Position.Doubt_Under;
+         S0 : constant Sense_T := EVC_Position.Orientation;
+      begin
+         Give_Radio_Message (1, SM_Authorisation (T, Q_DIR => 0));
+         Check (Wait_For (MCat.Train_M136, 1_000) /= 0,
+                "SM opposite: the position reported (5.21.2.2 A095)");
+         Check (EVC_Position.Orientation = Opposite (S0)
+                and then EVC_Position.Manoeuvre_Orientation,
+                "SM opposite: the orientation turned (5.21.2.2 A075, "
+                & "3.6.1.5.1)");
+         Check (EVC_Position.Estimated_Front = 40_000 - E0,
+                "SM opposite: the estimated front end 400 m back "
+                & "(4.4.21.1.7 a)):" & Dist_T'Image (E0)
+                & Dist_T'Image (EVC_Position.Estimated_Front));
+         Check (EVC_Position.Doubt_Over = U0 + 200
+                and then EVC_Position.Doubt_Under = O0 + 200,
+                "SM opposite: the min / max safe front ends from the max / "
+                & "min ones and the min / max consist in rear (4.4.21.1.7 "
+                & "b) c)):" & Length_T'Image (EVC_Position.Doubt_Over)
+                & Length_T'Image (EVC_Position.Doubt_Under));
+         Check (not EVC_Position.Linking.Stored,
+                "SM opposite: the location based information deleted "
+                & "(3.7.3.4 b))");
+      end;
    end Scenario_SM_Authorisation;
 
    procedure Scenario_SM_Request is

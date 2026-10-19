@@ -371,7 +371,8 @@ is
                                             then M_IS else M_SB))
                      and then not Isolation_Requested)
                   --  SUBSET-026 3.6.1.5: the orientation changes only
-                  --  with the cab status, to the cab that is active
+                  --  with the cab status, to the cab that is active, or
+                  --  with a Supervised Manoeuvre authorisation (3.6.1.5.1)
                   and then
                   (if EVC_Position.Orientation
                         /= EVC_Position.Orientation'Old
@@ -379,7 +380,8 @@ is
                           = (if EVC_Position.Orientation
                                   = EVC_Distances.Plus
                              then EVC_Position.Cab_A
-                             else EVC_Position.Cab_B))
+                             else EVC_Position.Cab_B)
+                        or else EVC_Position.Manoeuvre_Orientation)
                   --  3.6.4.1.2: against the same LRBG and orientation the
                   --  confidence interval never shrinks
                   and then

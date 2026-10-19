@@ -3705,6 +3705,61 @@ is
       Flush_Juridical;              -- JRU, the messages of the cycle
    end Produce_Outputs;
 
+   --  5.21.2.2 A075, 3.6.1.5.1, 3.7.3.4: a Supervised Manoeuvre
+   --  authorisation taken in this cycle fixes the train orientation;
+   --  when its MA is in the opposite direction, the position is shifted
+   --  to the other end of the consist and the location based information
+   --  stored before is deleted (its own MA, gradient and SSP are taken
+   --  after, by Evaluate_Stored_Information); 3.7.3.4 a), the same
+   --  direction: nothing else (3.7.3.1); A095, the train position reported
+   --  to the RBC. The orientation follows the cab again once the mission
+   --  has ended or continues in Non Leading.
+   --  Decision: the location based information of 3.7.3.4 b) is that of
+   --  4.10's rows (the track description, the MA, the track conditions,
+   --  the linking, the geographical position)
+   --  @req 3.7.3.4, 3.7.3.4 a), 3.7.3.4 b), 5.21.2.2 A075, 5.21.2.2 A095
+   procedure Adjust_For_Manoeuvre
+     with Global => (Input    => (Current_Mode, EVC_Mission.State,
+                                  EVC_Radio_Authority.State,
+                                  EVC_Train_Data.State, EVC_Odometry.State),
+                     In_Out   => (EVC_Track_Description.State,
+                                  EVC_Movement_Authority.State,
+                                  EVC_Track_Conditions.State,
+                                  EVC_Position.State, EVC_Sessions.State)),
+          Post => (if EVC_Position.Orientation
+                        /= EVC_Position.Orientation'Old
+                   then EVC_Position.Manoeuvre_Orientation)
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then
+                  (if EVC_Position.Orientation
+                        = EVC_Position.Orientation'Old
+                   then EVC_Position.Doubt_Over
+                          = EVC_Position.Doubt_Over'Old
+                        and then EVC_Position.Doubt_Under
+                                   = EVC_Position.Doubt_Under'Old)
+   is
+   begin
+      if EVC_Radio_Authority.SM_Taken then
+         EVC_Position.Shift_For_Manoeuvre
+           (EVC_Radio_Authority.SM_Opposite, EVC_Train_Data.Consist);
+         if EVC_Radio_Authority.SM_Opposite then
+            EVC_Track_Description.Delete ((others => True));
+            EVC_Movement_Authority.Delete_MA;
+            EVC_Track_Conditions.Reset
+              (Rest => True, Horn => True, BMM => True);
+            EVC_Position.Delete_Linking;
+            EVC_Position.Delete_Geo;
+         end if;
+         EVC_Sessions.Request_Position_Report;
+      elsif EVC_Position.Manoeuvre_Orientation
+        and then (Current_Mode = M_NL or else not EVC_Mission.Mission)
+      then
+         EVC_Position.End_Manoeuvre;
+      end if;
+   end Adjust_For_Manoeuvre;
+
    --  4.11.1.1, 4.11.1.3: the data kept over No Power, once the cold
    --  movement detection is known after the power-up: no cold movement,
    --  the train position and the level become valid; a cold movement
@@ -3812,6 +3867,7 @@ is
       Report_Configuration;
       Read_Ports;
       Update_Position;
+      Adjust_For_Manoeuvre;
       Revalidate_Kept;
       Take_Radio_Linking;
       Evaluate_Stored_Information;

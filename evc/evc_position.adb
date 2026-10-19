@@ -65,6 +65,7 @@ package body EVC_Position
                                    Passage_Ms,
                                    Previous_Ms,
                                    Antenna_Offset,
+                                   Manoeuvre,
                                    Accept_Linking,
                                    Accept_Geo,
                                    Geo_Kept,
@@ -142,6 +143,21 @@ is
    Antenna_Offset     : Offsets_T :=
      (Plus  => EVC_Config.Default.Antenna_To_Cab_A,
       Minus => EVC_Config.Default.Antenna_To_Cab_B);
+
+   --  3.6.1.5.1, 4.4.21.1.7: Fixed, the orientation is that of the last
+   --  Supervised Manoeuvre authorisation (Take_Cab keeps it); Moved, the
+   --  train position was shifted to the other end of the consist: the
+   --  front end is Reach from the antenna along the orientation (cm, the
+   --  other side of the antenna when negative) and the confidence
+   --  interval is widened by Over and Under (3.6.4.1.5, gamma 1)
+   type Manoeuvre_T is record
+      Fixed : Boolean := False;
+      Moved : Boolean := False;
+      Reach : Dist_T := 0;
+      Over  : Length_T := 0;
+      Under : Length_T := 0;
+   end record;
+   Manoeuvre          : Manoeuvre_T;
 
    --  packet 5 is accepted
    --  (4.8), the linking consistency is checked (3.4.4.2.1.1 b)
@@ -297,69 +313,75 @@ is
      with Refined_Global => Antenna_Offset;
 
    function Front_X return Dist_T is
-     (Advance (EVC_Odometry.Position, Orient, Antenna_Offset (Orient)))
-     with Refined_Global => (Orient, Antenna_Offset, EVC_Odometry.State);
+     (Advance (EVC_Odometry.Position, Orient,
+               (if Manoeuvre.Moved then Manoeuvre.Reach
+                else Antenna_Offset (Orient))))
+     with Refined_Global => (Orient, Antenna_Offset, Manoeuvre,
+                             EVC_Odometry.State);
 
    --  Against an anchor, along the orientation
    function Front_From (A : Anchor_T) return Dist_T is
      (Estimated (A, Orient, Front_X))
-     with Global => (Orient, Antenna_Offset, EVC_Odometry.State);
+     with Global => (Orient, Antenna_Offset, Manoeuvre, EVC_Odometry.State);
 
    function Over_From (A : Anchor_T) return Length_T is
-     (EVC_Location.Doubt_Over
-        (A, Orient, EVC_Odometry.Low, EVC_Odometry.High))
-     with Global => (Orient, EVC_Odometry.State);
+     (Add (EVC_Location.Doubt_Over
+             (A, Orient, EVC_Odometry.Low, EVC_Odometry.High),
+           Manoeuvre.Over))
+     with Global => (Orient, Manoeuvre, EVC_Odometry.State);
 
    function Under_From (A : Anchor_T) return Length_T is
-     (EVC_Location.Doubt_Under
-        (A, Orient, EVC_Odometry.Low, EVC_Odometry.High))
-     with Global => (Orient, EVC_Odometry.State);
+     (Add (EVC_Location.Doubt_Under
+             (A, Orient, EVC_Odometry.Low, EVC_Odometry.High),
+           Manoeuvre.Under))
+     with Global => (Orient, Manoeuvre, EVC_Odometry.State);
 
    function Estimated_Front return Dist_T is
      (if LRBG_A.Valid then Front_From (LRBG_A) else 0)
-     with Refined_Global => (LRBG_A, Orient, Antenna_Offset,
+     with Refined_Global => (LRBG_A, Orient, Antenna_Offset, Manoeuvre,
                              EVC_Odometry.State);
 
    function Doubt_Over return Length_T is
      (if LRBG_A.Valid then Over_From (LRBG_A) else 0)
-     with Refined_Global => (LRBG_A, Orient, EVC_Odometry.State);
+     with Refined_Global => (LRBG_A, Orient, Manoeuvre, EVC_Odometry.State);
 
    function Doubt_Under return Length_T is
      (if LRBG_A.Valid then Under_From (LRBG_A) else 0)
-     with Refined_Global => (LRBG_A, Orient, EVC_Odometry.State);
+     with Refined_Global => (LRBG_A, Orient, Manoeuvre, EVC_Odometry.State);
 
    function Min_Safe_Front return Dist_T is
      (Min_Safe (Estimated_Front, Doubt_Over))
-     with Refined_Global => (LRBG_A, Orient, Antenna_Offset,
+     with Refined_Global => (LRBG_A, Orient, Antenna_Offset, Manoeuvre,
                              EVC_Odometry.State);
 
    function Max_Safe_Front return Dist_T is
      (Max_Safe (Estimated_Front, Doubt_Under))
-     with Refined_Global => (LRBG_A, Orient, Antenna_Offset,
+     with Refined_Global => (LRBG_A, Orient, Antenna_Offset, Manoeuvre,
                              EVC_Odometry.State);
 
    function SOLR_Estimated_Front return Dist_T is
      (if SOLR_A.Valid then Front_From (SOLR_A) else 0)
-     with Refined_Global => (SOLR_A, Orient, Antenna_Offset,
+     with Refined_Global => (SOLR_A, Orient, Antenna_Offset, Manoeuvre,
                              EVC_Odometry.State);
 
    function SOLR_Min_Safe_Front return Dist_T is
      (Min_Safe (SOLR_Estimated_Front,
                 (if SOLR_A.Valid then Over_From (SOLR_A) else 0)))
-     with Refined_Global => (SOLR_A, Orient, Antenna_Offset,
+     with Refined_Global => (SOLR_A, Orient, Antenna_Offset, Manoeuvre,
                              EVC_Odometry.State);
 
    function SOLR_Max_Safe_Front return Dist_T is
      (Max_Safe (SOLR_Estimated_Front,
                 (if SOLR_A.Valid then Under_From (SOLR_A) else 0)))
-     with Refined_Global => (SOLR_A, Orient, Antenna_Offset,
+     with Refined_Global => (SOLR_A, Orient, Antenna_Offset, Manoeuvre,
                              EVC_Odometry.State);
 
    function Min_Safe_Rear return Dist_T is
      (if Length_Known then Diff (Min_Safe_Front, Train_Length)
       else Min_Safe_Front)
      with Refined_Global => (LRBG_A, Orient, Length_Known, Train_Length,
-                             Antenna_Offset, EVC_Odometry.State);
+                             Antenna_Offset, Manoeuvre,
+                             EVC_Odometry.State);
 
    --  3.6.4.1.2: against the same anchor the interval only widens when
    --  the frame deviations grow
@@ -1600,6 +1622,7 @@ is
       EVC_Odometry.Clear;
       Antenna_Offset := (Plus  => EVC_Config.Default.Antenna_To_Cab_A,
                          Minus => EVC_Config.Default.Antenna_To_Cab_B);
+      Manoeuvre := (others => <>);
       Orient := Plus;
       Orient_Known := False;
       Cab_In := No_Cab;
@@ -1834,14 +1857,19 @@ is
    --  defines the orientation; with none or both, the last one stays.
    --  3.6.6.4.3: a change of orientation deletes the announced
    --  geographical references.
+   --  3.6.1.5.1: not while the orientation is a Supervised Manoeuvre's
    procedure Take_Cab (Cab_A_Active, Cab_B_Active : Boolean)
      with Post =>
+            (if Manoeuvre.Fixed then Orient = Orient'Old)
+            and then
             (if Cab_A_Active and then not Cab_B_Active
-             then Orient = Plus and then Orient_Known
+             then (Manoeuvre.Fixed or else Orient = Plus)
+                  and then Orient_Known
                   and then Cab_In = Cab_A)
             and then
             (if Cab_B_Active and then not Cab_A_Active
-             then Orient = Minus and then Orient_Known
+             then (Manoeuvre.Fixed or else Orient = Minus)
+                  and then Orient_Known
                   and then Cab_In = Cab_B)
             and then
             (if Cab_A_Active = Cab_B_Active
@@ -1854,6 +1882,9 @@ is
       if Cab_A_Active /= Cab_B_Active then
          New_Orient := (if Cab_A_Active then Plus else Minus);
          Cab_In := (if Cab_A_Active then Cab_A else Cab_B);
+         if Manoeuvre.Fixed then
+            New_Orient := Orient;
+         end if;
          if Orient_Known and then New_Orient /= Orient then
             --  3.6.6.4.3: the announced references are deleted
             Geo_Refs := (others => No_Geo_Ref);
@@ -1928,6 +1959,52 @@ is
    begin
       Length_Known := False;
    end Unset_Train_Length;
+
+   function Manoeuvre_Orientation return Boolean is (Manoeuvre.Fixed)
+     with Refined_Global => Manoeuvre;
+
+   procedure Shift_For_Manoeuvre (Opposite : Boolean;
+                                  C        : EVC_Train_Data.Consist_T)
+   is
+      Cab_S : constant Sense_T :=
+        (case Cab_In is
+            when Cab_A  => Plus,
+            when Cab_B  => Minus,
+            when No_Cab => Orient);
+      New_O : constant Sense_T := EVC_Distances.Opposite (Orient);
+   begin
+      Manoeuvre.Fixed := True;
+      if not Opposite then
+         return;
+      end if;
+      if New_O = Cab_S then
+         --  the far end of the consist in front of the engine
+         Manoeuvre.Reach := Sum (Antenna_Offset (Cab_S), Metres (C.Front_Nom));
+         Manoeuvre.Over := Clamp_Length
+           (Metres (C.Front_Nom) - Metres (C.Front_Min));
+         Manoeuvre.Under := Clamp_Length
+           (Metres (C.Front_Max) - Metres (C.Front_Nom));
+      else
+         --  the far end of the consist in rear of the engine (which it
+         --  includes, 3.18.3.2.4), from the active cab's end
+         Manoeuvre.Reach := Diff (Metres (C.Rear_Nom), Antenna_Offset (Cab_S));
+         Manoeuvre.Over := Clamp_Length
+           (Metres (C.Rear_Nom) - Metres (C.Rear_Min));
+         Manoeuvre.Under := Clamp_Length
+           (Metres (C.Rear_Max) - Metres (C.Rear_Nom));
+      end if;
+      Manoeuvre.Moved := True;
+      --  3.6.6.4.3: a change of orientation deletes the announced
+      --  geographical references
+      Geo_Refs := (others => No_Geo_Ref);
+      Orient := New_O;
+   end Shift_For_Manoeuvre;
+
+   procedure End_Manoeuvre
+   is
+   begin
+      Manoeuvre := (others => <>);
+   end End_Manoeuvre;
 
    procedure Set_Report_Parameters
      (P   : ETCS_Track_Packets.P58.Packet_T;
