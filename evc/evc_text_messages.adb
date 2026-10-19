@@ -612,13 +612,10 @@ is
    --  3.12.3.4.3.1.2, 3.12.3.4.3.1.4): the sub-conditions fulfilled so
    --  far and whether one or all of them end the display. Level_Left:
    --  a transition from the level of the last cycle executed
-   procedure End_Condition (M           : in out Message_T;
-                            Mode        : Mode_T;
-                            Level_Valid : Boolean;
-                            Level       : Level_T;
-                            Est_Front   : Dist_T;
-                            Now_Ms      : Unsigned_64;
-                            Level_Left  : Boolean)
+   procedure End_Condition (M          : in out Message_T;
+                            Est_Front  : Dist_T;
+                            Now_Ms     : Unsigned_64;
+                            Level_Left : Boolean)
      with Global => (Input => (Last_Level_Valid, Last_Level))
    is
       Used : constant Boolean :=
@@ -641,21 +638,10 @@ is
       then
          M.Level_Done := True;
       end if;
-      --  3.12.3.4.4, decision: at the evaluation that follows the start
-      --  (nothing shown yet) an end sub-condition "mode" or "level" that
-      --  names another mode or level than the current one is fulfilled
-      --  at once, as a transition from it executed before (SUBSET-076
-      --  reads it so: no display); afterwards only the transition counts
-      if not M.Shown then
-         if M.End_Mode /= No_Mode and then not Names (M.End_Mode, Mode) then
-            M.Mode_Done := True;
-         end if;
-         if M.End_Level /= No_Level
-           and then not Names_Level (M.End_Level, Level_Valid, Level)
-         then
-            M.Level_Done := True;
-         end if;
-      end if;
+      --  3.12.3.4.3, decision: "mode" and "level" are fulfilled by the
+      --  transition from them only, also when the on-board is in another
+      --  mode or level at the start (SUBSET-076 3111200_01 step 57 shows
+      --  such a text, 3120300_06 step 55 does not)
       if Used then
          if M.All_Of then
             M.Ended :=
@@ -739,8 +725,7 @@ is
                --  the end condition (3.12.3.4.3, 3.12.3.4.3.1.2, .4),
                --  evaluated as soon as the start one is fulfilled
                if M.Started and then not M.Ended then
-                  End_Condition (M, Mode, Level_Valid, Level, Est_Front,
-                                 Now_Ms, Level_Left);
+                  End_Condition (M, Est_Front, Now_Ms, Level_Left);
                   --  3.12.3.4.4: no display when ended at once
                   if M.Ended and then not M.Shown then
                      M := (others => <>);

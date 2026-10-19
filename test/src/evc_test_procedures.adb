@@ -1551,8 +1551,9 @@ package body EVC_Test_Procedures is
              "SUBSET-027 4.2.4.18, 4.2.4.19: the start and the stop of the "
              & "plain text, L_TEXT and X_TEXT");
 
-      --  3.12.3.4.4 (SUBSET-076 3120300_06 step 55): started at once, the
-      --  end sub-condition "mode" names OS, not the current FS
+      --  3.12.3.4.3 (SUBSET-076 3111200_01 step 57, 3120300_06 step 55):
+      --  started at once, the end sub-condition "mode" names OS, not the
+      --  current FS
       C1 := (others => <>);
       C1.End_Mode := 1;
       C2 := (others => <>);
@@ -1564,10 +1565,12 @@ package body EVC_Test_Procedures is
       Add (ST.Plain_Text ("In FS", C2));
       Close;
       Run_Front (140, 10);
-      Check (Text_N = 3 and then Texts (3).Text (1 .. Texts (3).Len) = "In FS",
-             "3.12.3.4.4: an end mode other than the current one is "
-             & "fulfilled at once, no display; the current one waits for "
-             & "the transition from it");
+      Check (Text_N = 4
+             and then Texts (3).Text (1 .. Texts (3).Len) = "Not OS"
+             and then Texts (4).Text (1 .. Texts (4).Len) = "In FS",
+             "3.12.3.4.3, 3.12.3.4.4: an end mode other than the current "
+             & "one is not fulfilled at once, the text shown; both wait for "
+             & "the transition from their mode");
    end Scenario_Text_Messages;
 
    --  More text messages than the on-board keeps (8): 3.12.3 sets no
