@@ -1554,7 +1554,15 @@ is
                                 EVC_Train_Inputs.State, EVC_Train_Data.State,
                                 EVC_Mission.State, EVC_Radio_Info.State,
                                 EVC_Origins.State, EVC_Odometry.State),
-                     In_Out => EVC_Position.State)
+                     In_Out => EVC_Position.State),
+          Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then EVC_Position.Doubt_Over
+                             = EVC_Position.Doubt_Over'Old
+                  and then EVC_Position.Doubt_Under
+                             = EVC_Position.Doubt_Under'Old
    is
       C : constant EVC_Acceptance.Context_T := Acceptance_Context;
    begin
