@@ -140,7 +140,7 @@ is
 
    --  New Train Data (phase E4)
    procedure Set (D : Train_Data_T; C : Categories_T)
-     with Global => (Output => State),
+     with Global => (In_Out => State),
           Post => Valid and then Data = D and then Categories = C;
 
    --  The Train Data are no longer valid (phase E4)

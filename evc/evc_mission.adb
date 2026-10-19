@@ -338,13 +338,18 @@ is
    --  EVC_JRU_Records.TRN_Code writes it); a digit after an F, a value
    --  10 to 14 or no digit gives the length 0 (not valid, A.3.11)
    function TRN_Of (Code : NID_OPERATIONAL_T) return Text_T is
+      --  the weight of the digit I of 8 (no exponentiation: the light
+      --  runtime of the bench has no 64-bit power)
+      Weight : constant array (1 .. 8) of NID_OPERATIONAL_T :=
+        (16#1000_0000#, 16#100_0000#, 16#10_0000#, 16#1_0000#,
+         16#1000#, 16#100#, 16#10#, 1);
       T    : Text_T;
       D    : NID_OPERATIONAL_T;
       Done : Boolean := False;
    begin
       for I in 1 .. 8 loop
          pragma Loop_Invariant (T.Length <= I - 1);
-         D := (Code / 16 ** (8 - I)) mod 16;
+         D := (Code / Weight (I)) mod 16;
          if D = 16#F# then
             Done := True;
          elsif D > 9 or else Done then
