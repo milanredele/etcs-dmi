@@ -291,7 +291,7 @@ sequence On Sight Mode Profile
 case OS Mode Profile received
 clause E4 done 5.9.2.1 ; efs 5.9.2.1
 clause E4 done 5.9.1.1 ; efs 5.9.1.1
-clause E4 partial 5.9.2.2 ; efs 5.9.2.2
+clause E4 done 5.9.2.2 ; efs 5.9.2.2
 step Setup
 sub Sub-step1 - Initialize test environment
 init 100.0 SR

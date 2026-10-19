@@ -716,7 +716,7 @@ is
    --  D_TAFDISPLAY or L_TAFDISPLAY: 32767 x 10 m)
    TAF_Cap : constant := 100_000_000;
 
-   --  @req 3.15.5.2, 3.15.5.6
+   --  @req 3.15.5.2, 3.15.5.6, 4.4.11.1.9, 4.4.12.1.5
    procedure Take_TAF (S : EVC_Radio.Session_T)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State),

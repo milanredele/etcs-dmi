@@ -32,14 +32,14 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Mode Profile | mode-profile.scn | 14 | 54 | 42 / 30 | 0 / 63 | 0 | absent 5, deferred 1, done 7, other 3 |
 | Movement | movement.scn | 6 | 20 | 17 / 49 | 0 / 45 | 0 | other 12 |
 | National and default data | national-and-default-data.scn | 110 | 131 | 21 / 30 | 7 / 179 | 0 | absent 134, done 6, todo 4 |
-| On Sight | on-sight.scn | 3 | 12 | 12 / 17 | 0 / 20 | 0 | absent 2, done 6, partial 1 |
+| On Sight | on-sight.scn | 3 | 12 | 12 / 17 | 0 / 20 | 0 | absent 2, done 7 |
 | Override | override.scn | 23 | 63 | 118 / 153 | 0 / 155 | 0 | absent 2, deferred 1, done 40, partial 16 |
-| Position Reporting to the RBC | position-reporting-to-the-rbc.scn | 28 | 51 | 66 / 169 | 0 / 121 | 0 | absent 12, deferred 2, done 48, partial 1 |
+| Position Reporting to the RBC | position-reporting-to-the-rbc.scn | 28 | 51 | 66 / 169 | 0 / 121 | 0 | absent 12, deferred 1, done 49, partial 1 |
 | Pre-indication location | pre-indication-location.scn | 2 | 4 | 4 / 3 | 4 / 4 | 0 | absent 2 |
 | Release speed | release-speed.scn | 1 | 2 | 2 / 1 | 0 / 4 | 0 | done 3 |
 | Reversing | reversing.scn | 5 | 13 | 16 / 15 | 0 / 30 | 0 | absent 8, done 8 |
 | Route suitability | route-suitability.scn | 7 | 23 | 36 / 47 | 0 / 50 | 0 | absent 3, done 10 |
-| Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | deferred 6, done 43, n/a 3, partial 12 |
+| Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | done 43, n/a 3, partial 18 |
 | Speed and distance monitoring | speed-and-distance-monitoring.scn | 15 | 22 | 51 / 14 | 49 / 5 | 2 | absent 19, done 7 |
 | Speed restriction to ensure permitted braking distance | speed-restriction-to-ensure-permitted-braking-distance.scn | 5 | 18 | 10 / 7 | 0 / 43 | 0 | absent 4, done 4 |
 | Staff Responsible | staff-responsible.scn | 3 | 6 | 6 / 16 | 0 / 12 | 0 | absent 3, partial 6 |
@@ -52,7 +52,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Targets and brake deceleration curves | targets-and-brake-deceleration-curves.scn | 7 | 14 | 34 / 8 | 15 / 6 | 0 | absent 4 |
 | Text messages | text-messages.scn | 5 | 10 | 11 / 36 | 0 / 44 | 0 | absent 21, done 5 |
 | Track conditions | track-conditions.scn | 1 | 13 | 14 / 3 | 0 / 18 | 0 | absent 3, done 2 |
-| Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, deferred 2, done 25, n/a 1, partial 10 |
+| Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 32, n/a 1, partial 5 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 28, other 6 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 24, done 591, n/a 5, other 52, partial 72, todo 20 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 15, done 600, n/a 5, other 52, partial 72, todo 20 |

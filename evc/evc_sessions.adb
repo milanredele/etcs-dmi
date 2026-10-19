@@ -1010,7 +1010,8 @@ is
    end Mode_Session_Order;
 
    --  @req 3.5.3.8 c), 3.5.3.13, 3.5.3.13.1, 3.5.3.15, 3.5.5.1 a)
-   --  @req 4.8.4.2 Table-footnote [3]
+   --  @req 4.8.4.2 Table-footnote [3], 4.4.6.1.10 a), 4.4.8.1.5.2
+   --  @req 4.4.20.1.12
    procedure Apply_Order (Now : Time_Ms_T; Mode : Mode_T)
      with Global => (In_Out => (Order, Links, Pending, R.State,
                                 Ind, Requesting, Timer_On),

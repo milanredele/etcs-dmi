@@ -255,7 +255,7 @@ sub Sub-step2
 efs: Testing.SetSBMode(False)
 efs: Testing.InitializeEURORADIO()
 case Report mode change to the RBC
-clause E4 deferred 5.11.2.2 A030 ; efs Entry 5.11.2.2.A030
+clause E4 done 5.11.2.2 A030 ; efs Entry 5.11.2.2.A030
 step 1
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A030
@@ -522,7 +522,7 @@ efs: Testing.InitializeTestEnvironment( aTrainPosition => 0.0, aMode => Default.
 sub Sub-step2
 efs: Testing.InitializeEURORADIO()
 case Report mode change to RBC
-clause E4 deferred 5.11.2.2 A115 ; efs Entry 5.11.2.2.A115
+clause E4 done 5.11.2.2 A115 ; efs Entry 5.11.2.2.A115
 step Report mode change to RBC
 sub SubStep1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.A115
@@ -2404,7 +2404,7 @@ end init
 sub SubStep2
 efs: Testing.InitializeEURORADIO()
 case RBC acknowledge received
-clause E4 partial 5.11.2.2 S120 ; efs Entry 5.11.2.2.S120.1
+clause E4 done 5.11.2.2 S120 ; efs Entry 5.11.2.2.S120.1
 step RBC acknowledge received
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S120
@@ -2836,7 +2836,7 @@ efs: Kernel.Level.Value <- Default.LevelDataStruct{ NTC => NID_NTC.NOT_APPLICABL
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Send MA request to the RBC and wait
-clause E4 partial 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.1
+clause E4 done 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.1
 clause - absent 3.8.2.1 ; efs 3.8.2.1
 step Send MA request to the RBC and wait
 sub Sub-step1
@@ -2852,7 +2852,7 @@ expect efs: (LAST message IN EURORADIO.RBCConnection.CurrentRBCConnection().Data
 expect efs: (LAST message IN EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageOut).SystemVersion2.MA_REQUEST != EMPTY @ deadline=1
 expect efs: EURORADIO.RBCConnection.CurrentRBCConnection().Data.MessageOut != [] @ deadline=1
 case SR authorisation received
-clause E4 partial 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.2
+clause E4 done 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.2
 step SR authorisation received
 sub Sub-step1
 efs: Kernel.Modes.StaffResponsible.SRAuthorisation <- Kernel.Modes.StaffResponsible.SRStruct { Location => 1000.0, BGs => [] }
@@ -2864,7 +2864,7 @@ step Clean up
 sub SubStep1
 efs: Kernel.Modes.StaffResponsible.DeleteSRAuthorisation()
 case MA allowing OS/LS/SH received
-clause E4 partial 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.3
+clause E4 done 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.3
 step MA allowing OS received
 sub Sub-step1
 taint ma
@@ -2891,7 +2891,7 @@ efs: Kernel.MA.MA <- Kernel.MA.MAStruct{}
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S150.MARequestSent
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.TrainTrip.S170
 case MA allowing FS received
-clause E4 partial 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.4
+clause E4 done 5.11.2.2 S150 ; efs Entry 5.11.2.2.S150.4
 step MA allowing FS received
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.TrainTrip.S150.MARequestSent

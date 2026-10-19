@@ -267,6 +267,7 @@ is
    --  A message decoded, its common part: Q_SCALE, the location
    --  reference of the group (frame position of its origin T at offset
    --  0) and the sense of its distances
+   --  @req 4.8.3.1.1 Table-footnote [12]
    procedure Store (New_M : Message_T)
      with Global => (In_Out => (Messages, Next_Id, Outputs, Output_N,
                                 Events, Event_N))

@@ -37,6 +37,7 @@ with EVC_Stored_Information;
 --  @req 3.6.7.1 g), 3.10.2.4, 3.13.11.8, 4.4.11.1.3, 4.4.11.1.6.4
 --  @req 4.4.19.1.4.2 a), 4.6.3 Table, 4.8.3.1.1 Table-footnote [5]
 --  @req 5.4.3.2 S21, 5.6.2.2 D020, 5.11.2.2 S140 b), 5.11.2.2 S150
+--  @req 5.11.2.2 S150 c)
 package EVC_Radio_Authority
   with SPARK_Mode => On,
        Abstract_State => State,

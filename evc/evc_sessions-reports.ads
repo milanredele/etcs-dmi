@@ -67,6 +67,7 @@ is
    --  start of mission sends its own report (decision 2)
    --  Mode: the mode of the cycle, for the table of 4.5.2 ("Report
    --  Train Position": which event is reported in which mode)
+   --  @req 4.4.15.1.4, 3.6.5.1.2 g)
    procedure Evaluate (SoM : Boolean; Mode : EVC_Modes.Mode_T)
      with Global => (In_Out => (State, EVC_Position.State),
                      Input  => (EVC_Radio.State, EVC_Levels.State,
@@ -85,6 +86,7 @@ is
    --  6. 3.6.5.1.4 b): the mode changed
    --  4.5.2: not on entering PS (no "X" in its column), nor from PS
    --  to SH (its note {2}), nor in NP, SF, IS
+   --  @req 5.11.2.2 A030, 5.11.2.2 A115
    procedure Mode_Changed (From, To : EVC_Modes.Mode_T)
      with Global => (In_Out => State);
 

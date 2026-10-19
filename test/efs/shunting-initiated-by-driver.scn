@@ -403,8 +403,8 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 expect efs: EURORADIO.Terminal.HasActiveSession()
 case Change the mode and verify it is reported
-clause E4 deferred 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095
-clause E4 deferred 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095.1
+clause E4 partial 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095
+clause E4 partial 5.6.2.2 A095 ; efs Entry 5.6.2.2.A095.1
 step Change the mode and verify it is reported
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.A095
@@ -1820,10 +1820,10 @@ efs: Kernel.Level.Value.Value <- LevelEnum.L2
 efs: Testing.InitializeEURORADIO()
 expect efs: EURORADIO.Terminal.HasActiveSession()
 case Receive order to terminate the communication session
-clause E4 deferred 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100
-clause E4 deferred 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100.1
-clause E4 deferred 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115
-clause E4 deferred 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115.1
+clause E4 partial 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100
+clause E4 partial 5.6.2.2 S100 ; efs Entry 5.6.2.2.S100.1
+clause E4 partial 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115
+clause E4 partial 5.6.2.2 A115 ; efs Entry 5.6.2.2.A115.1
 step Receive order to terminate the communication session
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.ShuntingInitiatedByDriver.S100

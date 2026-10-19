@@ -103,6 +103,7 @@ is
       --  transition location
       Track_Ahead_Free_L2);   -- 90
 
+   --  @req 4.8.3.1.1 Table-footnote [9]
    type Context_T is record
       Mode             : Mode_T := M_SB;
       --  the level of the on-board, when its status is valid

@@ -7761,3 +7761,72 @@ uncertainty is in E6's consistency family, which touches the position
 and acceptance units every other function depends on, and in the
 backlog's rate of finding new items (46, 44, 41 over the last three
 rounds: falling, slowly).
+
+
+### The rows of E1 to E4 that point at E5, re-read (e5/bookkeeping-2, 2026-10-19)
+
+The rows of phases E1 to E4 with status partial or deferred whose note
+names E5 (the selection of the package brief, the `[E5 ...]` tag
+included): 171 rows, 144 of them naming E5 outside the tag. 110 were
+re-read against the code their notes name (`outline.py` on the unit
+and the subprogram, the scenario list of `test/src/evc_test*.ads`) and
+the clause, and their notes rewritten to name the unit, the
+subprogram and the scenario, or what is left and its owner; the
+`[E5 ...]` tag kept. No code changed but the `@req` tags.
+
+| Phase | Rows | Re-read | Done | Still partial | Deferred (owner) | n/a |
+|---|---|---|---|---|---|---|
+| E1 | 4 | 2 | 0 | 0 | 2 (E7 infill) | 0 |
+| E2 | 11 | 1 | 1 | 0 | 0 | 0 |
+| E3 | 14 | 1 | 0 | 1 (E6, B036) | 0 | 0 |
+| E4 | 142 | 106 | 23 | 39 (B780 to B789, B036, B730, E6) | 44 (E6 Supervised Manoeuvre 29, E7 Euroloop / infill 4, E8 faults 1, B730 / B784 / B785 / B788 / B789 10) | 0 |
+
+Done: the SR list replaced by message 2 (4.4.11.1.6.6), the track
+ahead free request in SR and OS (4.4.11.1.9, 4.4.12.1.5), the session
+order in SL and in SH / PS (4.4.6.1.10 a), 4.4.8.1.5.2, 4.4.20.1.12),
+the position reports in NL (4.4.15.1.4), 4.8.3 [9] and [12], the trip
+in level 2 (5.11.2.2 A030, A115, S120, S140 b), S150, S150 c)), the mode
+profiles of the RBC with an area already entered (5.7.4.1, 5.7.4.2,
+5.9.2.2, 5.9.5.1, 5.9.5.2, 5.19.2.2, 5.19.5.1, 5.19.5.2), Q_INTEGRITY of
+the position report (3.6.5.1.2 g)). Tags added: 12 clauses on 8 lines
+(`EVC_Sessions.Apply_Order`, `EVC_Sessions.Reports.Evaluate` and
+`Mode_Changed`, `EVC_Radio_Authority.Take_TAF` and the package,
+`EVC_Text_Messages.Store`, `EVC_Acceptance.Context_T`).
+
+Decisions:
+
+1. Supervised Manoeuvre is E6 (the estimate's E6 list): its 29 rows of
+   E4 (4.4.21.1, 5.21.2.2, 5.21.4.1, 5.4.5.3 k), 5.11.2.2 S140 c),
+   4.8.3 [17], 4.8.4 [12]) are deferred with the tag
+   `[E6 Supervised Manoeuvre]` and B008.
+2. Euroloop and radio infill stay E7: A.3.5.1 5th bullet, 4.4.11.1.6.7,
+   4.8.4 [6], 5.5.3.1.2 (the RIU session), 8.4.4.4.1 and 8.5.3 (the RIU
+   sender rules) deferred with `[E7 Euroloop]` / `[E7 infill]`.
+3. 4.4.6.1.10 c) (a safety critical fault reported from SL) is E8: the
+   on-board detects no fault yet.
+4. A row whose behaviour exists but whose scenario does not name the
+   case stays partial with a backlog id (B783, B784, B787, B789), not
+   done.
+
+Genuine gaps found (backlog B780 to B789): the location based texts
+not deleted by the shortenings (B780); no scenario of a reversal over
+a location action (B781); the train position and the integrity
+information of the Train Data in every mode where chapter 4 asks for
+the engine and no integrity in SB without Train Data and in NL (B782);
+SL and RV with the RBC (B783); four acceptance exceptions (B784); packet
+64 not stored (B785); the MA request parameters kept on entering level 1
+(B786); no scenario of a listed "stop if in SR" group (B787); the mode
+report not repeated (B788); the session terminations of 5.4.1.4 and
+5.6.4.1.2 (B789).
+
+Left unread by budget (61 rows): E1 A.3.11 Table, 8.5.2 Table; E2
+3.4.2.3.3.6, 3.4.2.3.3.7, 3.6.2.2.2 (with c) and .3), 3.6.5.1.4 e) and
+l), 3.6.5.2.5 with Tables 2a and 2b; E3 3.8.4.2.2, 3.11.5.13, 3.11.5.14
+(three rows), 3.11.6.3.1, 3.13.10.2.6 (five rows), 3.14.1.7.6, A.3.1
+Table; E4 4.6.3 Table, 4.8.3.1.1 Table, 4.8.4.2 Table and its [13],
+4.11.1.1, 4.11.1.3, 5.4.3.2 (14 rows), 5.4.3.3 Table, 5.4.5.1, 5.4.5.3
+(seven rows), 5.6.2.2 D020, 5.8.4.1 (three rows), 5.11.4.3, 5.17.2.2 A7
+and D5. Most of 5.4.3.2 and 5.4.5.3 are the start of mission of
+`EVC_Sessions.Mission` and `EVC_Sessions.Network` (their notes already
+name the units and say what is left); 3.13.10.2.6 b) waits for 4.6.3
+[11] in `EVC_Radio_Authority`.
