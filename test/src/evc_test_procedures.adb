@@ -2026,6 +2026,9 @@ package body EVC_Test_Procedures is
       Check (not SB and then J23_B3 (11) = 5,
              "5.17.2.2 E5, A6, S6: released, the re-validation of the "
              & "Train Data requested");
+      Check (Onboard_SoM = 3,
+             "5.17.2.2 S6: the request reaches the DMI, MSG_ONBOARD som 3 "
+             & "(SUBSET-076 3060500_14 step 74), got" & Onboard_SoM'Image);
 
       --  needing the driver's validation in TR: S1, then D4 when the trip
       --  procedure is exited

@@ -2953,7 +2953,7 @@ is
    --  on-board knows: the validity of the level, the position and the
    --  data of the start of mission (5.4), the train and national bits;
    --  the fields of the later phases are 0, "nothing known"
-   --  @req 5.4.3.2 S21
+   --  @req 5.4.3.2 S21, 5.17.2.2 S6
    procedure Send_Onboard
      with Global => (Input  => (Standstill, Below_Override, TIU_Now,
                                 EVC_Procedures.State,
@@ -3011,7 +3011,12 @@ is
          --  desk is open and no session with an RBC exists or is being
          --  established, so the start of mission may begin (phase E4:
          --  the desk is the cab status input, EVC_Mission)
-         SoM      => (if EVC_Mission.SoM_Engaged then SoM_Possible else 0),
+         --  5.17.2.2 S6: the re-entry or re-validation of the Train Data
+         --  requested, outside a start of mission (which asks for them)
+         SoM      => (if EVC_Mission.SoM_Engaged then SoM_Possible
+                      elsif EVC_Procedures.Train_Data_Revalidation
+                      then SoM_Train_Data_Then
+                      else 0),
          --  phase E5: the request for shunting of level 2 (5.6.2.2 S050)
          --  (one value: the two do not overlap, the request for shunting
          --  needs the session established); else 5.4.3.2 A31, the
