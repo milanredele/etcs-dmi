@@ -192,6 +192,10 @@ is
    function Train_Data_Acknowledged return Boolean
      with Global => State;
 
+   --  The one RBC contact information stored at a time (3.18.4.3.1),
+   --  written by the driver's entry, an order to establish a session and
+   --  the RBC/RBC border (EVC_Sessions and its children)
+   --  @req 3.18.4.3.1
    function Contact return RBC_Contact_T
      with Global => State;
 

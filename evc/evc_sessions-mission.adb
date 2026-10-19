@@ -214,6 +214,7 @@ is
    --  used; decision: the RBC identity is unknown, 0). Found: usable;
    --  Entered: choice 0 (5.4.3.3 "Following S3": the contact valid)
    --  @req 3.5.3.11, A.3.11 Table, 5.4.5.3 j) 1st bullet
+   --  @req 3.18.4.3.2, 3.18.4.3.5
    procedure Driver_Contact (Found, Entered : out Boolean;
                              C              : out R.RBC_Contact_T)
      with Global => (Input => (EVC_Driver_Requests.State, R.State))
@@ -292,6 +293,7 @@ is
    --  "Following D31" the contact valid) or failed (A32: no session
    --  with the RBC any more; the driver is informed by the indication
    --  of 3.5.7, EVC_Sessions: S10)
+   --  @req 3.18.4.3.4
    procedure Judge_Opening
      with Global => (In_Out => (Step, R.State),
                      Input  => SoM_RBC,
