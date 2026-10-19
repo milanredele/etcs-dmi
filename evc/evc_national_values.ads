@@ -31,9 +31,11 @@
 --  steps of Kv_int and Kr_int keep the first Max_Kv_Steps (the SRS
 --  allows five, 3.13.2.3.7.11.1 and .12.1).
 --
---  Not in phase E3: keeping the set in use over No Power (3.18.2.7,
---  E4 with the storage of 4.11), the subsets of 3.18.2.6 by system
---  version (E6), Q_NVLOCACC in the position (a constant of E2).
+--  No Power (3.18.2.7, 3.18.2.9): the set in use is kept (Keep, Restore,
+--  EVC_Retained), the one not yet applicable is lost.
+--
+--  Not here: the subsets of 3.18.2.6 by system version (one set of
+--  4.0.0), Q_NVLOCACC in the position (a constant of E2).
 
 pragma Unevaluated_Use_Of_Old (Allow);
 
@@ -111,9 +113,13 @@ is
       A_NVP12            => 0,
       A_NVP23            => 0);
 
+   --  @req 3.18.2.5, 3.18.2.5 1st bullet
    Default_Set : constant Set_T := (Values => Default_Values, others => <>);
 
-   --  The set in use
+   --  The set in use, read by the supervisions at every cycle (the
+   --  snapshot of EVC_Stored_Information): a supervision with a time or
+   --  a distance keeps its start and takes the value of the set in use
+   --  @req 3.18.2.2, 3.18.2.11
    function Current return Set_T
      with Global => State;
 
@@ -142,7 +148,9 @@ is
      with Global => (Output => State),
           Post => Current = Default_Set and then not Pending;
 
-   --  A packet 3 of a group message: applicable now, or at At_Location
+   --  A packet 3 of a group message: applicable now, or at At_Location;
+   --  either way the set not yet applicable is replaced
+   --  @req 3.18.2.3, 3.18.2.9, 3.18.2.9 1st bullet
    procedure Receive (P           : ETCS_Track_Packets.P3.Packet_T;
                       Immediate   : Boolean;
                       At_Location : Location_T)
@@ -151,7 +159,9 @@ is
                    then not Pending and then Current.From_Trackside
                    else Pending and then Pending_At = At_Location);
 
-   --  The set waiting becomes the one in use (3.18.2.8.1)
+   --  The set waiting becomes the one in use, whatever the countries of
+   --  the one it replaces
+   --  @req 3.18.2.8.1
    procedure Apply_Pending
      with Global => (In_Out => State),
           Post => not Pending;
@@ -164,8 +174,23 @@ is
      with Global => (In_Out => State),
           Post => not Pending and then Current = Current'Old;
 
+   --  No Power: the set in use, for the store kept over it (EVC_Retained)
+   --  @req 3.18.2.7
+   procedure Keep (S : out Set_T)
+     with Global => (Input => State),
+          Post => S = Current;
+
+   --  Power-up after No Power: the set kept is the one in use again, the
+   --  one not yet applicable was deleted with the power (3.18.2.9 second
+   --  bullet: Clear before)
+   --  @req 3.18.2.7, 3.18.2.9 2nd bullet
+   procedure Restore (S : Set_T)
+     with Global => (In_Out => State),
+          Post => Current = S and then not Pending;
+
    --  A balise group of the country NID_C was read: Reverted when the set
    --  in use was not for it and the defaults apply again (3.18.2.10)
+   --  @req 3.18.2.4, 3.18.2.5 2nd bullet, 3.18.2.10
    procedure Check_Country (NID_C : NID_C_T; Reverted : out Boolean)
      with Global => (In_Out => State),
           Post => (if Reverted then Current = Default_Set);

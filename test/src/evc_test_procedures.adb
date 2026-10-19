@@ -976,6 +976,22 @@ package body EVC_Test_Procedures is
       Run_Front (40, 20);
       Check (Mode_Byte = Code_UN,
              "4.6.3 [65]: not in level 0");
+
+      Begin_Scenario (M_FS, L1);
+      Group (1, 20);
+      Close (Version => 0);
+      Run_Front (40, 20);
+      Check (Mode_Byte = Code_FS,
+             "3.17.3.5 a): a telegram of version X = 0 ignored, no trip");
+
+      Begin_Scenario (M_FS, L1);
+      Group (1, 20);
+      Close (Version => 16);
+      Run_Front (40, 20);
+      Check (Mode_Byte = Code_FS,
+             "3.17.3.5 c): a telegram of version X = 1, in the envelope, "
+             & "no trip (its content left out until the translations of "
+             & "chapter 6)");
    end Scenario_Track_And_Version;
 
    --  5.6 shunting initiated by the driver, Passive Shunting entry

@@ -8254,3 +8254,32 @@ doc/BACKLOG.csv (69 open after this round; 13 added, 8 closed).
 - B822: 3.16.2.3.1.1 a) and b) (100 ms, Tn) wait for the BTM port's latency of the target (E8); 3.16.2.3.4 to build in `EVC_Balise_Groups.Geometry` (the duplicate of balise 0 as location reference).
 - Left: B803 / B823 (the end-to-end scenarios through EVC_Core of the reactions, packet 145, the last announced group, an unlinked group, the error report in an L2 session with M_ERROR 0, 7, 1, 2, `Linking_Shortening`: the helpers `Order_Group`, `Establish`, `Error_Reports` are local to the body of EVC_Test_Sessions, so a first step is to move them to EVC_Test_Support), B820, B822 (3.16.2.3.4), the 14 rows tagged `[E6 consistency]` not re-read, the signatures S6c605c52, S6eaf2ed7, Saf042fa6, Sd56a8154, S5436c26d, Sb6e8acf4 not re-traced.
 - SUBSET-076: no sequence moved (sv30 349 passed, 387 failed, 408 blocked before and after).
+### National values and the version remainder; the TAF window, two traces, the record 21 bits (e6/national-version, 2026-10-19)
+
+3.18.2: the 13 rows read against `EVC_National_Values` (E1, E3): 12
+existed (reception now or at a location, the country check and the
+defaults, the overwrite whatever the countries, a new set deleting the
+one waiting, the supervisions reading the set in use at every cycle so
+that a time or distance keeps its start and takes the new value,
+3.18.2.11: the SR distance of `EVC_Mission`, override and post trip of
+`EVC_Procedures`, T_NVCONTACT of `EVC_Sessions`, D_NVROLL); built: the
+set applicable kept over No Power, the one waiting lost (3.18.2.7,
+3.18.2.9 2nd bullet: `Keep`, `Restore`, `EVC_Retained.Kept_T.National`,
+`EVC_Core.Save_Retained` and `Power_Up`, about 460 B more in the kept
+record on the stack of those two). 13 done, tagged; evc_test
+National_Values_Kept.
+
+3.17.3: 3.17.3.3, .4 (decision: the version is taken only for a group
+message taken into account, after the checks of Table 17, so a rejected
+message never changes it), .5 a) d) e), .7, .11 a) done; .5 and .5 c)
+partial (X = 1 refused by the decoder until the translations of chapter
+6, `[E7 version]`); .5 b) n/a (the lowest X of the envelope is 1); 3.17.3.6
+deferred `[E7 Euroloop]`; .11 b) c) stay partial (the consistency error
+of a spare value for the operated Y is 3.16). Track_And_Version checks
+X = 0 and X = 1 without a trip. B940: the mismatch of 3.17.2.6 ignores
+the countries of an immediate packet 3 of the same group (3.17.3.4.1).
+
+B790 traced, not built (the backlog line holds the trace and the fix:
+the window as offsets from the LRBG of message 34, moved by the linking
+distance when the LRBG changes, which needs a query of `EVC_Position`).
+B792, B642, B680 not started (the bound of 100 calls reached).

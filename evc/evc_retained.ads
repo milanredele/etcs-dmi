@@ -13,6 +13,8 @@
 --      (EVC_Radio.RBC_Contact_T, written by EVC_Sessions, phase E5);
 --    - 3.17.2.9: the system version operated (EVC_System_Version; lost,
 --      the highest supported one, 3.17.2.9.1);
+--    - 3.18.2.7: the national values applicable (EVC_National_Values;
+--      the set not yet applicable is deleted, 3.18.2.9);
 --  not kept: what 4.10 deletes in NP (Train Data, driver ID, train
 --  running number, the MA and the track description, the RBC/RIU system
 --  version, ...). Not yet kept, with the phase that brings it: EOLM
@@ -31,6 +33,7 @@
 
 with EVC_Levels;
 with EVC_Modes;    use EVC_Modes;
+with EVC_National_Values;
 with EVC_Position;
 with EVC_Radio;
 
@@ -60,6 +63,11 @@ is
       Version_Known : Boolean := False;
       --  @req 3.17.2.9
       Operated_X    : Natural := 0;
+      --  3.18.2.7: the national values applicable (the defaults when
+      --  none was received)
+      --  @req 3.18.2.7
+      National      : EVC_National_Values.Set_T :=
+        EVC_National_Values.Default_Set;
    end record;
 
    --  The empty store

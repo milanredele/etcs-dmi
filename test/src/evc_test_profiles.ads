@@ -20,6 +20,7 @@ package EVC_Test_Profiles is
       procedure Scenario_LOA_Timer;
       procedure Scenario_MA_Shortening;
       procedure Scenario_National_Values;
+      procedure Scenario_National_Values_Kept;
       procedure Scenario_Track_Conditions;
       procedure Scenario_Other_Profiles;
       procedure Scenario_Route_Suitability;

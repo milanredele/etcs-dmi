@@ -360,12 +360,12 @@ step Data state
 sub Sub-step1
 expect efs: Kernel.NationalValues.ApplicableNationalValues.DataState == DataStateEnum.Valid
 case Country
-clause E6 todo 3.18.2.4 ; efs 3.18.2.4
+clause E6 done 3.18.2.4 ; efs 3.18.2.4
 step Country
 sub Sub-step1
 expect efs: Kernel.NationalValues.ApplicableNationalValues.ApplicableCountries == [140]
 case Remaining distance
-clause E6 todo 3.18.2.3 ; efs 3.18.2.3
+clause E6 done 3.18.2.3 ; efs 3.18.2.3
 step Remaining distance
 sub Sub-step1
 expect efs: Kernel.NationalValues.ApplicableNationalValues.ApplicableStartLocation == 0.0
@@ -1190,12 +1190,12 @@ step Data state
 sub Sub-step1
 expect efs: Kernel.NationalValues.NotApplicableNationalValues.DataState == DataStateEnum.Valid
 case Country
-clause E6 todo 3.18.2.4 ; efs 3.18.2.4
+clause E6 done 3.18.2.4 ; efs 3.18.2.4
 step Country
 sub Sub-step1
 expect efs: Kernel.NationalValues.NotApplicableNationalValues.ApplicableCountries == [180]
 case Applicable distance
-clause E6 todo 3.18.2.3 ; efs 3.18.2.3
+clause E6 done 3.18.2.3 ; efs 3.18.2.3
 step Remaining distance
 sub Sub-step1
 expect efs: Kernel.NationalValues.NotApplicableNationalValues.ApplicableStartLocation == 1200.0

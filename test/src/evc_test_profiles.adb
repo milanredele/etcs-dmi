@@ -777,6 +777,55 @@ package body EVC_Test_Profiles is
              & "(3.18.2.5, 3.18.2.10)");
    end Scenario_National_Values;
 
+   --  3.18.2.7: the set applicable kept over No Power; 3.18.2.9: the set
+   --  not yet applicable deleted by a new set and by No Power; 3.18.2.8.1:
+   --  a set becoming applicable overwrites whatever its countries
+   procedure Scenario_National_Values_Kept is
+      use type NVa.Set_T;
+      P : T3.Packet_T;
+   begin
+      EVC_Core.Initialise;
+      EVC_Core.Tick (100);
+      P.Q_SCALE := 1;
+      P.D_VALIDNV := 32_767;
+      P.NID_C := 5;
+      P.V_NVREL := 12;
+      NVa.Receive (P, Immediate => False, At_Location => NVa.Pending_At);
+      P.V_NVREL := 6;
+      NVa.Receive (P, Immediate => True, At_Location => NVa.Pending_At);
+      Check (NVa.Current.Values.V_NVREL = 833 and then not NVa.Pending,
+             "national values: a new set deletes the one not yet "
+             & "applicable (3.18.2.9 first bullet)");
+      P.NID_C := 77;
+      P.V_NVREL := 12;
+      NVa.Receive (P, Immediate => False, At_Location => NVa.Pending_At);
+      NVa.Apply_Pending;
+      Check (NVa.Current.Values.V_NVREL = 1_666
+             and then NVa.Current.Countries (1) = 77,
+             "national values: the set of another country overwrites the "
+             & "one in use when it becomes applicable (3.18.2.8.1)");
+      EVC_Core.Tick (100);
+      P.V_NVREL := 6;
+      NVa.Receive (P, Immediate => False, At_Location => NVa.Pending_At);
+      EVC_Core.Power_Up;
+      Check (NVa.Current.Values.V_NVREL = 1_666
+             and then NVa.Current.Countries (1) = 77
+             and then NVa.Current.From_Trackside,
+             "national values: the set applicable kept over No Power "
+             & "(3.18.2.7)");
+      Check (not NVa.Pending,
+             "national values: the set not yet applicable deleted by No "
+             & "Power (3.18.2.9 second bullet)");
+      EVC_Core.Tick (100);
+      Check (NVa.Current.Values.V_NVREL = 1_666,
+             "national values: still applicable after the first cycle");
+      EVC_Core.Initialise;
+      EVC_Core.Power_Up;
+      Check (NVa.Current = NVa.Default_Set,
+             "national values: a new on-board, nothing kept, the defaults "
+             & "(3.18.2.5)");
+   end Scenario_National_Values_Kept;
+
    --  3.12.1, 5.18: track conditions stored, indicated on the DMI
    --  (MSG_TRACK_COND), in the planning, and the braking areas
    procedure Scenario_Track_Conditions is

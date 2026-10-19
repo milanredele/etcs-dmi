@@ -492,6 +492,9 @@ is
             EVC_Levels.Restore (K.Level, K.Table);
          end if;
          EVC_Position.Restore (K.Position);
+         --  3.18.2.7: the national values applicable before No Power
+         --  (Start deleted the set not yet applicable, 3.18.2.9)
+         EVC_National_Values.Restore (K.National);
          --  phase E5: the RBC contact information, to be revalidated
          EVC_Radio.Restore_Contact (K.RBC);
          --  3.5.6.2: the network memorized, no mobile
@@ -773,8 +776,15 @@ is
    --  the position (EVC_Position, 3.6, which takes them at its next
    --  Update: the reference and the confidence interval do not change
    --  here); 3.17.3.5, 4.6.3 [65]: a telegram of a system version not
-   --  supported noted for the procedures
-   --  @req 3.17.3.5 d)
+   --  supported noted for the procedures. 3.17.3.5: X = 0 (a) and an X of
+   --  the envelope without a layout (c: X = 1, chapter 6) refused by the
+   --  decoder, their content left out, no reaction; X above the highest
+   --  (d, e) the trip of [65] in levels 1 and 2 only (EVC_Procedures).
+   --  3.17.3.11 a): an unknown packet passed over by the decoder.
+   --  Decision (3.17.3.5 b): the lowest X of the envelope is 1, so no X
+   --  other than 0 is below it.
+   --  @req 3.17.3.5, 3.17.3.5 a), 3.17.3.5 c), 3.17.3.5 d), 3.17.3.5 e)
+   --  @req 3.17.3.11 a)
    procedure Read_Telegrams
      with Global => (Input  => (Latched_BTM, Clock_Ms,
                                 EVC_Odometry.State),
@@ -3678,11 +3688,12 @@ is
 
    --  4.10 column NP: what is kept over No Power, as it is at the end of
    --  each cycle (EVC_Retained)
-   --  @req 3.17.2.9
+   --  @req 3.17.2.9, 3.18.2.7
    procedure Save_Retained
      with Global => (Input  => (EVC_Levels.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Radio.State,
-                                EVC_System_Version.State),
+                                EVC_System_Version.State,
+                                EVC_National_Values.State),
                      Output => EVC_Retained.State)
    is
       --  every field is set below (phase E5 the last one, the RBC)
@@ -3700,6 +3711,8 @@ is
       --  3.17.2.9: the system version operated
       K.Version_Known := True;
       K.Operated_X := EVC_System_Version.Operated;
+      --  3.18.2.7: the national values applicable
+      EVC_National_Values.Keep (K.National);
       EVC_Retained.Save (K);
    end Save_Retained;
 
