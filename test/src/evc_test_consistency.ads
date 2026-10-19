@@ -7,6 +7,7 @@ package EVC_Test_Consistency is
 
    procedure Scenario_Message_Consistency;
    procedure Scenario_Consistency_Record;
+   procedure Scenario_Duplicated_Pair;
    --  Through EVC_Core: "Trackside malfunction" for default balise
    --  information (3.16.2.4.9)
    procedure Scenario_Default_Balise;

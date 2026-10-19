@@ -116,8 +116,32 @@ is
                      and then P.Readings (I).Decoded
                      and then P.Readings (I).M_DUP = 1)));
 
-   --  3.16.2.4.8.2: the telegram of slot I is not used to compose the
-   --  message: its duplicate (M_DUP) was read and decoded after it
+   --  The telegram holds packet 254, "default balise information"
+   --  (3.16.2.4.8, 7.4.2.40)
+   function Has_Default (T : ETCS_Telegram.Telegram_T) return Boolean is
+     (for some K in 1 .. T.Count => T.Index (K).NID = 254);
+
+   --  3.4.2.3.2, 7.5.1.63: the balises of slots I and J are a duplicated
+   --  pair: neighbours, the M_DUP of either naming the other
+   function Paired (P : Passage_T; I, J : Slot_T) return Boolean is
+     (I <= P.Count and then J <= P.Count
+      and then
+        ((P.Readings (I).M_DUP = 1
+          and then Natural (P.Readings (J).N_PIG)
+                   = Natural (P.Readings (I).N_PIG) + 1)
+         or else (P.Readings (I).M_DUP = 2
+                  and then Natural (P.Readings (J).N_PIG) + 1
+                           = Natural (P.Readings (I).N_PIG))
+         or else (P.Readings (J).M_DUP = 1
+                  and then Natural (P.Readings (I).N_PIG)
+                           = Natural (P.Readings (J).N_PIG) + 1)
+         or else (P.Readings (J).M_DUP = 2
+                  and then Natural (P.Readings (I).N_PIG) + 1
+                           = Natural (P.Readings (J).N_PIG))));
+
+   --  3.16.2.4.7.1: the counter of the telegram of slot I is left out
+   --  of the comparison: its duplicate (M_DUP) was read and decoded
+   --  after it (its packets are left out by Add, 3.16.2.4.8.2)
    function Superseded (P : Passage_T; I : Slot_T) return Boolean is
      (I <= P.Count
       and then P.Readings (I).M_DUP in 1 .. 2
@@ -195,7 +219,12 @@ is
                   and then P.Count = 1
                   and then P.Id = Identity (T.Header);
 
-   --  One more telegram of the same group, of a balise not yet read
+   --  One more telegram of the same group, of a balise not yet read.
+   --  Of a duplicated pair both decoded, the telegram not used to
+   --  compose the message keeps its header and loses its packets: the
+   --  one with default balise information when only one has it, else
+   --  the first received (3.16.2.4.8.1, 3.16.2.4.8.2)
+   --  @req 3.16.2.4.8.1, 3.16.2.4.8.2
    procedure Add (P : in out Passage_T;
                   T : ETCS_Telegram.Telegram_T;
                   R : Reading_T)

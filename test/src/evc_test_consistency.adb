@@ -47,6 +47,59 @@ package body EVC_Test_Consistency is
       end if;
    end Read;
 
+   --  T with one packet, of NID_PACKET N
+   function With_Packet (T : ETCS_Telegram.Telegram_T; N : Natural)
+     return ETCS_Telegram.Telegram_T
+   is
+      R : ETCS_Telegram.Telegram_T := T;
+   begin
+      R.Count := 1;
+      R.Index (1).NID := NID_PACKET_T (N);
+      return R;
+   end With_Packet;
+
+   --  3.16.2.4.8.1, 3.16.2.4.8.2: the telegram of a duplicated pair
+   --  left out of the message loses its packets, the other keeps them
+   procedure Scenario_Duplicated_Pair is
+      P : Passage_T;
+
+      --  The pair 0 / 1 read in this order with the packets A and B
+      procedure Pair (A, B : Natural; Dup : Natural := 1) is
+      begin
+         P := (others => <>);
+         Read (P, With_Packet (Tel (0, 1, M_DUP => Dup), A));
+         Read (P, With_Packet (Tel (1, 1, M_DUP => 2 * Dup), B));
+      end Pair;
+   begin
+      Pair (5, 5);
+      Check (P.Telegrams (1).Count = 0 and then P.Telegrams (2).Count = 1
+             and then Consistent (P),
+             "duplicated pair 3.16.2.4.8.2: none with default balise"
+             & " information, the last received telegram composes it");
+      Pair (254, 254);
+      Check (P.Telegrams (1).Count = 0 and then P.Telegrams (2).Count = 1,
+             "duplicated pair 3.16.2.4.8.2: both with default balise"
+             & " information, the last received telegram composes it");
+      Pair (5, 254);
+      Check (P.Telegrams (1).Count = 1 and then P.Telegrams (2).Count = 0
+             and then not Has_Default (P.Telegrams (1)),
+             "duplicated pair 3.16.2.4.8.1: the last with default balise"
+             & " information ignored, the first composes it");
+      Pair (254, 5);
+      Check (P.Telegrams (1).Count = 0 and then P.Telegrams (2).Count = 1,
+             "duplicated pair 3.16.2.4.8.1: the first with default balise"
+             & " information ignored");
+      Pair (5, 5, Dup => 0);
+      Check (P.Telegrams (1).Count = 1 and then P.Telegrams (2).Count = 1,
+             "duplicated pair: balises not duplicated both compose it");
+      P := (others => <>);
+      Read (P, With_Packet (Tel (0, 1, M_DUP => 1), 5));
+      Read (P, With_Packet (Tel (1, 1, Decoded => False), 5));
+      Check (P.Telegrams (1).Count = 1,
+             "duplicated pair 3.16.2.4.8.2: the second not decoded, the"
+             & " first keeps its packets");
+   end Scenario_Duplicated_Pair;
+
    --  3.16.1.1, 3.16.2.4.1 a) and d), 3.16.2.4.2, 3.16.2.4.4.1 a),
    --  3.16.2.4.4.1 b), 3.16.2.4.7, 3.16.2.4.7.1, 3.16.2.4.8.2: the
    --  message of a passage consistent or not

@@ -27,6 +27,16 @@ is
       end loop;
    end Start;
 
+   --  The telegram T left out of the message: its header kept, its
+   --  packets dropped
+   procedure Drop_Packets (T : in out ETCS_Telegram.Telegram_T)
+     with Post => T.Count = 0
+   is
+   begin
+      T.Count := 0;
+      T.Unknown := 0;
+   end Drop_Packets;
+
    procedure Add (P : in out Passage_T;
                   T : ETCS_Telegram.Telegram_T;
                   R : Reading_T)
@@ -35,6 +45,23 @@ is
       P.Count := P.Count + 1;
       P.Readings (P.Count) := R;
       P.Telegrams (P.Count) := T;
+      if not R.Decoded then
+         return;
+      end if;
+      for I in 1 .. P.Count - 1 loop
+         pragma Loop_Invariant
+           (P.Open and then P.Count = P.Count'Loop_Entry
+            and then P.Id = P.Id'Loop_Entry);
+         if P.Readings (I).Decoded and then Paired (P, I, P.Count) then
+            if Has_Default (P.Telegrams (P.Count))
+              and then not Has_Default (P.Telegrams (I))
+            then
+               Drop_Packets (P.Telegrams (P.Count));
+            else
+               Drop_Packets (P.Telegrams (I));
+            end if;
+         end if;
+      end loop;
    end Add;
 
    function Geometry (P : Passage_T) return Geometry_T is
