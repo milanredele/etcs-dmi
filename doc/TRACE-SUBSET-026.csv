@@ -900,7 +900,7 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.4.4.1 a) 4th bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
 3.16.2.4.4.1 a) 5th bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
 3.16.2.4.4.1 b),3,x,,,,,E6,done,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Reaction_Inhibited (packet 145)
-3.16.2.4.4.2,3,x,,,,,E6,todo,
+3.16.2.4.4.2,3,x,,,,,E6,done,EVC_Stored_Information.Linking_Shortening (A.3.4.1.2 m) in the column of h) and i))
 3.16.2.4.4.3,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (the service brake reaction: EVC_Procedures shows Balise read error)
 3.16.2.4.4.4,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (the last group announced: its linking reaction)
 3.16.2.4.7,3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match; EVC_Balise_Groups.Counted
@@ -908,22 +908,22 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.4.8.1,3,x,,,,,E6,todo,
 3.16.2.4.8.2,3,x,,,,,E6,partial,EVC_Balise_Groups.Superseded (the counter of the first of a pair not compared; the packets of both still taken)
 3.16.2.4.8.2.1,3,x,,,,,E6,n/a,decision: data for a National System through the STM interface; NTC out of scope
-3.16.2.4.9,3,x,,,,,E6,todo,
-3.16.2.5.1,3,x,,,,,E6,todo,
-3.16.2.5.1 a),3,x,,,,,E6,todo,
-3.16.2.5.1 b),3,x,,,,,E6,todo,
-3.16.2.5.1 d),3,x,,,,,E6,todo,
-3.16.2.5.1.1,3,x,,,,,E6,todo,
-3.16.2.5.1.1 a),3,x,,,,,E6,todo,
-3.16.2.5.1.1 a) 1st bullet,3,x,,,,,E6,todo,
-3.16.2.5.1.1 a) 2nd bullet,3,x,,,,,E6,todo,
-3.16.2.5.1.1 a) 3rd bullet,3,x,,,,,E6,todo,
-3.16.2.5.1.1 a) 4th bullet,3,x,,,,,E6,todo,
-3.16.2.5.1.1 a) 5th bullet,3,x,,,,,E6,todo,
-3.16.2.5.1.1 b),3,x,,,,,E6,todo,
-3.16.2.5.2,3,x,,,,,E6,todo,
-3.16.2.5.3,3,x,,,,,E6,todo,
-3.16.2.6.1,3,x,,,,,E6,todo,"the service brake of the linking reaction already shows ""Balise read error"" (SS 1, EVC_Procedures; the Linking scenario of evc_test_procedures, found by SUBSET-076); the trip case with the consistency of E6"
+3.16.2.4.9,3,x,,,,,E6,done,"EVC_Core.Show_Trackside_Malfunction: Trackside malfunction (catalogue entry 3) for packet 254 in a taken (consistent) group's message, valid for the train's direction and accepted by 4.8.3 / 4.8.4 (A.3.3.3); the rest of the message used; evc_test Scenario_Default_Balise"
+3.16.2.5.1,3,x,,,,,E6,done,"EVC_Position.React_Inconsistent (an unlinked group's inconsistent message: the service brake as a linking reaction of Q_LINKREACTION 1, EVC_Procedures); EVC_Balise_Groups.Consistent"
+3.16.2.5.1 a),3,x,,,,,E6,done,"EVC_Balise_Groups.Consistent; EVC_Balise_Groups.In_Order (decision: a balise read after one numbered beyond it was missed at its place, SUBSET-076 3160200_12)"
+3.16.2.5.1 b),3,x,,,,,E6,partial,EVC_Balise_Groups.Consistent (as 3.16.2.4.1 b: the BTM port carries decoded telegrams only; a balise without one is missed as a)
+3.16.2.5.1 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
+3.16.2.5.1.1,3,x,,,,,E6,partial,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited (as 3.16.2.4.4.1)
+3.16.2.5.1.1 a),3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (decision: the content bullets are not told apart; the exception applies)
+3.16.2.5.1.1 a) 1st bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the orientation left to linking as 3.4.2.3.2.2)
+3.16.2.5.1.1 a) 2nd bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
+3.16.2.5.1.1 a) 3rd bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
+3.16.2.5.1.1 a) 4th bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
+3.16.2.5.1.1 a) 5th bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the content not told apart)
+3.16.2.5.1.1 b),3,x,,,,,E6,done,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Reaction_Inhibited (packet 145)
+3.16.2.5.2,3,x,,,,,E6,done,EVC_Stored_Information.Linking_Shortening (the service brake of an inconsistent message is a linking reaction; A.3.4.1.2 g) in the column of h) and i))
+3.16.2.5.3,3,x,,,,,E6,done,"EVC_Position.React_Inconsistent (the service brake reaction: EVC_Procedures shows Balise read error); SUBSET-076 3160200_08, _12"
+3.16.2.6.1,3,x,,,,,E6,done,"EVC_Procedures.Mode_Changed: Balise read error (SS 1) with the linking reaction's service brake, ended when the brake is revoked on NP and SB (SUBSET-076 4120100_09); the trip case is 4.6.3 [17] (SS 2)"
 3.16.2.6.2,3,x,,,,,E6,partial,"[E6 consistency-linking] EVC_Stored_Information.Linking_Shortening: the service brake of a linking reaction requested while moving in FS, AD, LS, OS, SM, then standstill: shortened to the current position as for 3.16.3.4.5 b) (Shorten_To_Train); SUBSET-076 3160200_05 passes; a scenario of its own left"
 3.16.2.7.1.1,3,x,,,,,E6,done,"[E6 consistency-linking] EVC_Position.Supervise_Windows: two windows passed in a row without a balise detected between them (Missed_Last, reset by any group passage in Evaluate): the service brake requested (Cause_Double_Missed) whatever Q_LINKREACTION, the driver informed and the brake released at standstill by EVC_Procedures, the information shortened by EVC_Stored_Information.Linking_Shortening; evc_test Scenario_Linking_Double_Missed; SUBSET-076 3160200_05 passes"
 3.16.2.7.2.1,3,x,,,,,E6,todo,

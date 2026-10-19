@@ -1879,6 +1879,14 @@ is
       --  The mode left
       Leave_Mode (From, To);
       Train_Data_Mode_Entered (To);
+      --  3.16.2.6.1: the brake of the linking reaction revoked on NP and
+      --  SB (Delete_On_Mode_Entry, 4.12) takes "Balise read error" with
+      --  it (the DMI's entry 1 ended). Decision: the 30 s from standstill
+      --  of 3.14.1.6 are for the brake released, not revoked
+      --  @req 3.16.2.6.1
+      if Link_SB and then To in M_NP | M_SB then
+         Status (SS_Balise_Read_Error_Brake, 1);
+      end if;
       Delete_On_Mode_Entry (To);
 
       if To = M_TR then

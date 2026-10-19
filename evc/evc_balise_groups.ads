@@ -140,6 +140,7 @@ is
 
    --  3.16.2.4.7, 3.16.2.4.7.1: the counters compared are all identical
    --  and none is "never fits" (254, 3.16.2.4.6.1)
+   --  @req 3.16.2.5.1 d)
    function Counters_Match (P : Passage_T) return Boolean is
      (for all I in 1 .. P.Count =>
         (if Counted (P, I)
@@ -148,6 +149,18 @@ is
                           (if Counted (P, J)
                            then P.Telegrams (J).Header.M_MCOUNT
                                 = P.Telegrams (I).Header.M_MCOUNT))));
+
+   --  3.16.2.4.1 a), 3.16.2.5.1 a): the balises were read in the order
+   --  of their numbers, increasing or decreasing (3.4.2.3.2). Decision:
+   --  a balise read after one numbered beyond it in the direction of
+   --  the passage (0, 2, 1) was missed at its place, the message is
+   --  inconsistent
+   --  @req 3.16.2.5.1 a)
+   function In_Order (P : Passage_T) return Boolean is
+     ((for all I in 2 .. P.Count =>
+         P.Readings (I).N_PIG > P.Readings (I - 1).N_PIG)
+      or else (for all I in 2 .. P.Count =>
+                 P.Readings (I).N_PIG < P.Readings (I - 1).N_PIG));
 
    --  3.16.1.1, 3.16.2.4.1 a), b), d), 3.16.2.4.2: the message of the
    --  passage is consistent: every telegram read is compliant, every
@@ -159,6 +172,7 @@ is
    --  the exception for duplicates of a) and b)
    function Consistent (P : Passage_T) return Boolean is
      ((for all I in 1 .. P.Count => P.Readings (I).Decoded)
+      and then In_Order (P)
       and then (for all K in 0 .. Natural (P.N_TOTAL) =>
                   Has (P, N_PIG_T (K)) or else Duplicated (P, N_PIG_T (K)))
       and then Counters_Match (P));
@@ -166,6 +180,7 @@ is
    --  3.16.2.4.4.1 b), 3.16.2.5.1.1 b): a telegram correctly read in the
    --  passage holds packet 145, "Inhibition of balise group message
    --  consistency reaction" (7.4.2.42); its direction is not looked at
+   --  @req 3.16.2.5.1.1 b)
    function Reaction_Inhibited (P : Passage_T) return Boolean is
      (for some I in 1 .. P.Count =>
         P.Readings (I).Decoded
