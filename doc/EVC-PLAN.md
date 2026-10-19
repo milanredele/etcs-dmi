@@ -8590,3 +8590,76 @@ Left: B970 (the DMI opens the Train data window on som 3; 3060500_14
 step 74 waits for it), B940 (the country check of `Take_Group`), the
 3.18.4.3 rows (tags only), the rows tagged `[E6 train data]`.
 SUBSET-076: 1009 / 1124 / 1057 before and after, 0 regressions.
+
+### E5 integration after the thirty-fifth round, the fourth of E6 (2026-10-19)
+
+The round of the Supervised Manoeuvre procedure and of three
+continuation packages.
+
+Merged: e6/consistency-scenarios (the radio helpers of
+`EVC_Test_Sessions` moved to `EVC_Test_Support` under new names, the
+core-level simulated track honouring a skipped or duplicated balise, a
+defect of the harness; the consistency reactions end to end through
+`EVC_Core`, `EVC_Test_Consistency.Scenario_Consistency_Reactions`, B803;
+the error report with M_ERROR 1 and 2 in a level 2 session, B823 partial:
+0 and 7 end to end blocked by a message 3 with packet 5 the acceptance
+refuses after two inconsistent groups, not traced; B820, 3.16.2.3.4, the
+tagged rows and the six signatures not reached), e6/sm-procedure (the
+procedure 5.21: `EVC_Sessions.Manoeuvre` with S0, message 131 carrying
+packets 0, 10 and 12, the wait with the repetitions of 5.21.4.1, "SM
+request failed", "SM refused"; messages 4 and 5 matched by their second
+T_TRAIN in `EVC_Sessions.Take_Message`, 4.8.4 [13] [14]; message 4 taken
+as an SM authorisation, `EVC_Radio_Authority.Take_SM_Authorisation`,
+its MA, gradient and SSP as message 33's, V_SM kept, `Held (C_81)` for
+one cycle so the mode machine enters SM; the acceptance rows of 4.8.3
+and 4.8.4; the MSG_ONBOARD waiting byte 5; 9 rows done, 2 partial;
+B900, B901 done; the shift of A075 not started, B951, with B950 and
+B952; 5210200_02 passes), e5/leftovers (the track ahead free window
+kept as offsets from the LRBG of message 34 and re-based by the linking
+distance when the LRBG changes, 3.6.4.2.5 a), `Rebase_TAF`,
+`EVC_Position.Linking_Distance`, B790; 9990500_16 from step 88 to 92,
+B980; the fuzzer sends the 14-byte TIU frame, B903; B792, B642, B680,
+B904 not reached) and e6/train-data-left (the re-validation request of
+Train Data from an external source told to the DMI as the start of
+mission byte 3, 5.17.2.2 S6, the DMI's window B970; the engine's length
+of 20 m in SL, SH, NL, PS and in SB without valid Train Data,
+`EVC_Config.Engine_Length`, `EVC_Core.Sync_Train_Length`, B782; no
+integrity information reported in NL; packet 140 taken after every
+transition buffer release, a third release found, B930; S424295a6 a
+stale triage; 6 rows done; B940, the 3.18.4.3 rows and the tagged rows
+left; the agent resumed with 40 calls for its "Done" list).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the triage lines of two branches kept; no source conflict
+(the four packages met in `EVC_Core` and `EVC_Radio_Authority` at the
+places their briefs named); no golden changed.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12489
+checks, dmi_test 2168), the full proof 0 unproved (12555 checks, margin
+47726 steps), cross build and stack (worst case 26968 B, margin 5800
+B), wasm and both smokes 0 failures. SUBSET-076: 1009 / 1124 / 1057
+before, 1013 / 1120 / 1057 after, steps not judged 4375 -> 4388, 0
+regressions, 0 untriaged. Matrix: 182 -> 177 clauses left; E6 done 143,
+todo 41, partial 42 unchanged (the procedure's rows are E4's with the
+Supervised Manoeuvre tag; the 4.4 rows of the engine length E4's too).
+
+Measurements (doc/ROUNDS.csv): consistency-scenarios 102 calls (budget
+130) / 177k / 6.8 USD; leftovers 124 (130) / 157k / 6.5; sm-procedure
+154 (160) / 218k / 10.9; train-data-left 162 (130 + 40 granted) / 193k /
+9.2; the round 33.3 USD. Premises wrong 2 of 26 (no 4.4.21.1.2 row;
+S424295a6 reached by no sequence). Source-tree reading: 30, 17, 30, 38
+runs against 18, 25, 26, 27 outline runs.
+
+Lessons: "commit after every finished item" held, every agent had its
+items committed when it reached the bound, so the resumption of the one
+that stopped with its list unrun cost 40 calls instead of a reverted
+branch; but three of four still passed the 75 % bound inside an item,
+and one agent dropped the tally and ran to its budget without noticing.
+Items done per agent stay at two to four whatever the budget (nine of
+21 this round): a brief should carry at most four items for 130 calls
+and three for 160, the rest named as "if calls remain", so that the
+bound falls between items. A test harness costs builders calls they do
+not plan for (30 of the leftovers' on a scenario, the consistency
+agent's defect of the simulated track): a scenario's shape named in
+the brief, with the helper it extends, saves them. Open items:
+doc/BACKLOG.csv (67 open after this round; 7 added, 10 closed).
