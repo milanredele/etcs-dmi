@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 PATH = os.path.join(ROOT, 'doc', 'BACKLOG.csv')
 KINDS = ('onboard', 'dmi', 'protocol', 'runner', 'decision', 'tooling', 'harness')
 STATES = ('open', 'done', 'dropped')
-ID = re.compile(r'^B\d{3}$')
+ID = re.compile(r'^B\d{3,4}$')
 
 
 def load():
