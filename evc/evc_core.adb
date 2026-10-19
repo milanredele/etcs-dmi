@@ -1055,11 +1055,12 @@ is
    --  session half releases, parsed again (in the first slot of the
    --  latch, free now) and given to the authority half as received in
    --  this cycle; at most RTM_Latch_Size in a cycle
-   --  @req 4.8.5.5, 4.8.5.6 a)
+   --  @req 4.8.5.5, 4.8.5.6 a), 3.18.4.5.3
    procedure Read_Released_Messages
      with Global => (Input  => (Clock_Ms, EVC_Position.State,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State, Current_Mode),
                      In_Out => (Latched_RTM, EVC_Received.Store,
+                                EVC_Mission.State,
                                 EVC_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Origins.State, EVC_Radio_Info.State))
@@ -1077,6 +1078,8 @@ is
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
+            --  3.18.4.5.3: packet 140
+            EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
       end loop;
       --  4.8.5.5: the transition buffer of the authority half released
@@ -1092,6 +1095,7 @@ is
             --  4.8.2.1 c) exception 2: the Accepting RBC's
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
                                               Accepting);
+            EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
       end loop;
    end Read_Released_Messages;
