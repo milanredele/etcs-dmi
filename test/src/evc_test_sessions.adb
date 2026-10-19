@@ -7,7 +7,6 @@ with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P42;
 with ETCS_Track_Packets.P58;
 with ETCS_Track_Packets.P74;
-with ETCS_Train_Packets.P4;
 with ETCS_Train_Packets.P5;
 with ETCS_Bits;
 with ETCS_Variables;
@@ -54,55 +53,25 @@ package body EVC_Test_Sessions is
    use type ETCS_Variables.M_VERSION_T;
    use type ETCS_Variables.NID_PACKET_T;
 
-   --  A group NID at At_M metres with a session management order
-   --  (packet 42): Q_RBC 1 establish, 0 terminate, with RBC NID_RBC
-   procedure Order_Group (NID : Natural; At_M : Integer_64;
-                          Q_RBC : Natural; NID_RBC : Natural)
-   is
-      P  : TP42.Packet_T;
-      W  : Writer_T;
-      OK : Boolean;
-   begin
-      Add_Group (Group (NID, At_M));
-      P.Q_DIR := 2;
-      P.Q_RBC := ETCS_Variables.Q_RBC_T (Q_RBC);
-      P.NID_C := 5;
-      P.NID_RBC := ETCS_Variables.NID_RBC_T (NID_RBC);
-      --  7.5.1.95: BCD digits
-      P.NID_RADIO := 16#0077#;
-      TP42.Encode (P, W, OK);
-      Finish_Carry (Track_N, 0, W, OK);
-   end Order_Group;
-
-   --  T_TRAIN of the on-board time now (10 ms, 7.5.1.152), plus D
-   function Now_T (D : Unsigned_64 := 0) return Unsigned_64 is
-     ((Unsigned_64 (EVC_Core.Time_Ms) / 10 + D) mod 2**32);
-
-   --  A track to train message of Kind with T_TRAIN T, M_ACK Ack and the
-   --  variable I (from 5 on) set to V
+   function Now_T (D : Unsigned_64 := 0) return Unsigned_64
+     renames Radio_Now;
    function Msg (Kind : MCat.Known_Message_T;
                  T    : Unsigned_64;
                  Ack  : Unsigned_64 := 0;
                  I    : Positive := 5;
                  V    : Unsigned_64 := 0) return Byte_Array
-   is
-      Values : ETCS_Message.Value_Array := (others => 0);
-   begin
-      Values (3) := T;
-      Values (4) := Ack;
-      if I > 4 then
-         Values (I) := V;
-      end if;
-      return Message_Of (Kind, Values);
-   end Msg;
-
-   --  The N-th RTM output is the message NID on session S
+     renames Radio_Msg;
    function Is_Message (N : Positive; NID : Natural; S : Natural := 1)
-     return Boolean
-   is (N <= Radio_Outputs
-       and then not Radio_Output (N).Request
-       and then Radio_Output (N).Session = S
-       and then Radio_Output (N).Kind = NID);
+     return Boolean renames Is_Radio_Message;
+   procedure Order_Group (NID : Natural; At_M : Integer_64;
+                          Q_RBC : Natural; NID_RBC : Natural)
+     renames Order_Session_Group;
+   procedure Establish (S : Natural; V : Unsigned_64 := 48)
+     renames Establish_Session;
+   procedure Error_Reports (From  : Natural;
+                            Count : out Natural;
+                            Error : out Natural)
+     renames Balise_Error_Reports;
 
    --  The N-th RTM output is the request Code (1 set-up, 2 release)
    function Is_Request (N : Positive; Code : Natural; S : Natural := 1)
@@ -111,20 +80,6 @@ package body EVC_Test_Sessions is
        and then Radio_Output (N).Request
        and then Radio_Output (N).Session = S
        and then Radio_Output (N).Kind = Code);
-
-   --  The safe radio connection of S set up, the system version V of the
-   --  RBC (message 32) and the acknowledgement 38 (3.5.3.7 b to e)
-   procedure Establish (S : Natural; V : Unsigned_64 := 48) is
-   begin
-      Give_Radio_Event (S, Connection_Set_Up);
-      Stand;
-      Give_Radio_Message (S, Msg (MCat.Track_M32, Now_T, 0, 7, V));
-      Stand;
-      if V = 48 then
-         Give_Radio_Message (S, Msg (MCat.Track_M38, Now_T));
-         Stand;
-      end if;
-   end Establish;
 
    --  The RBC acknowledges (message 8, 8.7.4) the Train Data of the
    --  N-th RTM output (129 or 157) on S: its second T_TRAIN is theirs
@@ -1422,41 +1377,6 @@ package body EVC_Test_Sessions is
              "reports: packet 42 Q_RBC 0 by radio, the session terminated "
              & "(3.5.5.1 a): 156");
    end Scenario_Session_Reports;
-
-   --  The RTM outputs after From that are message 136 on session 1 with
-   --  packet 4: their count, the M_ERROR of the last
-   procedure Error_Reports (From  : Natural;
-                            Count : out Natural;
-                            Error : out Natural)
-   is
-      M  : ETCS_Message.Message_T;
-      St : ETCS_Message.Status_T;
-      P  : ETCS_Train_Packets.P4.Packet_T;
-      OK : Boolean;
-   begin
-      Count := 0;
-      Error := 999;
-      for N in From + 1 .. Radio_Outputs loop
-         if Is_Message (N, 136) then
-            Decode_Radio_Message (N, M, St);
-            for I in 1 .. M.Count loop
-               if St = ETCS_Message.Accepted and then M.Index (I).NID = 4
-               then
-                  declare
-                     Rd : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
-                  begin
-                     ETCS_Message.Open_Packet (M, I, Rd);
-                     ETCS_Train_Packets.P4.Decode (Rd, P, OK);
-                     if OK then
-                        Count := Count + 1;
-                        Error := Natural (P.M_ERROR);
-                     end if;
-                  end;
-               end if;
-            end loop;
-         end if;
-      end loop;
-   end Error_Reports;
 
    --  Runs to To_Cm a cycle at a time; of the last 136 sent on the way:
    --  the NID of its first packet (0 or 1; 999 without one) and, for

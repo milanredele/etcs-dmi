@@ -6,6 +6,8 @@ with Ada.Text_IO;
 with ETCS_Catalogue;
 with ETCS_Telegram;
 with ETCS_Track_Packets.P16;
+with ETCS_Track_Packets.P42;
+with ETCS_Train_Packets.P4;
 with EVC_Distances;
 with EVC_Stored_Information;
 with EVC_Track;
@@ -1826,5 +1828,84 @@ package body EVC_Test_Support is
       end if;
       return Byte_At (O.Rec, 3 + K);
    end Request_Byte;
+
+   procedure Order_Session_Group (NID : Natural; At_M : Integer_64;
+                          Q_RBC : Natural; NID_RBC : Natural)
+   is
+      P  : ETCS_Track_Packets.P42.Packet_T;
+      W  : Writer_T;
+      OK : Boolean;
+   begin
+      Add_Group (Group (NID, At_M));
+      P.Q_DIR := 2;
+      P.Q_RBC := ETCS_Variables.Q_RBC_T (Q_RBC);
+      P.NID_C := 5;
+      P.NID_RBC := ETCS_Variables.NID_RBC_T (NID_RBC);
+      --  7.5.1.95: BCD digits
+      P.NID_RADIO := 16#0077#;
+      ETCS_Track_Packets.P42.Encode (P, W, OK);
+      Finish_Carry (Track_N, 0, W, OK);
+   end Order_Session_Group;
+
+   function Radio_Msg (Kind : ETCS_Message_Catalogue.Known_Message_T;
+                 T    : Unsigned_64;
+                 Ack  : Unsigned_64 := 0;
+                 I    : Positive := 5;
+                 V    : Unsigned_64 := 0) return Byte_Array
+   is
+      Values : ETCS_Message.Value_Array := (others => 0);
+   begin
+      Values (3) := T;
+      Values (4) := Ack;
+      if I > 4 then
+         Values (I) := V;
+      end if;
+      return Message_Of (Kind, Values);
+   end Radio_Msg;
+
+   procedure Establish_Session (S : Natural; V : Unsigned_64 := 48) is
+   begin
+      Give_Radio_Event (S, Connection_Set_Up);
+      Stand;
+      Give_Radio_Message (S, Radio_Msg (ETCS_Message_Catalogue.Track_M32, Radio_Now, 0, 7, V));
+      Stand;
+      if V = 48 then
+         Give_Radio_Message (S, Radio_Msg (ETCS_Message_Catalogue.Track_M38, Radio_Now));
+         Stand;
+      end if;
+   end Establish_Session;
+
+   procedure Balise_Error_Reports (From  : Natural;
+                            Count : out Natural;
+                            Error : out Natural)
+   is
+      M  : ETCS_Message.Message_T;
+      St : ETCS_Message.Status_T;
+      P  : ETCS_Train_Packets.P4.Packet_T;
+      OK : Boolean;
+   begin
+      Count := 0;
+      Error := 999;
+      for N in From + 1 .. Radio_Outputs loop
+         if Is_Radio_Message (N, 136) then
+            Decode_Radio_Message (N, M, St);
+            for I in 1 .. M.Count loop
+               if ETCS_Message."=" (St, ETCS_Message.Accepted) and then M.Index (I).NID = 4
+               then
+                  declare
+                     Rd : ETCS_Bits.Reader (ETCS_Message.Max_Bytes);
+                  begin
+                     ETCS_Message.Open_Packet (M, I, Rd);
+                     ETCS_Train_Packets.P4.Decode (Rd, P, OK);
+                     if OK then
+                        Count := Count + 1;
+                        Error := Natural (P.M_ERROR);
+                     end if;
+                  end;
+               end if;
+            end loop;
+         end if;
+      end loop;
+   end Balise_Error_Reports;
 
 end EVC_Test_Support;
