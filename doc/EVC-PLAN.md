@@ -8767,3 +8767,87 @@ Left: B990 (after an opposite authorisation the mode machine trips on
 deletes the MA on entering SM), B991, the supervision with default Train
 Data (3.18.3.9, 4.4.21.1.8, 4.4.21.3.1), 3.18.3.10 (message 7 the RBC's
 acknowledgement), B950, B952, B031, B008, 4.4.21.1.11 to .13, message 133.
+
+### E5 integration after the thirty-sixth round, the fifth of E6 (2026-10-19)
+
+The round of the briefs with at most four items.
+
+Merged: e6/train-data-tags (the country mismatch of 3.17.2.6 judged
+against a set of national values applicable immediately in the same
+group message, 3.17.3.4.1, `EVC_Stored_Information.Immediate_Set_Lists`
+before `Check_Country`, B940, `EVC_Test_Version.Scenario_Version_Country_Set`;
+the 3.18.4.3 rows 11 of 12 done, the RBC identity reported by EURORADIO
+left as B1010; the 19 rows tagged train data re-read, 18 stay partial
+for the consistency and Supervised Manoeuvre columns of A.3.4, the j)
+shortening tag dropped from nine; B1011: the shortenings do not request
+an MA; the consistency tags not started), e6/consistency-watch (the
+balise error report end to end in a level 2 session, M_ERROR 0, 0 and 7
+for missed linked groups and the radio MA shortened to the train by the
+linking reaction: the acceptance was right and the setup wrong, the
+start of mission's 157 was never acknowledged so 4.8.3 [3] refused the
+message 3, `EVC_Test_Support.Establish_Session_Acked`; packet 5 after
+the profile packets; B823 done; 3.16.2.3.4 found built,
+`Duplicate_Reference`, tagged and checked; B820 not started, the tagged
+rows and the six signatures not reached), e5/leftovers-2 (three traces
+closed as the sequences' data: 9990500_16's OS area ends by its own
+packet 80, B980; the LSSMA toggle accepted after a Train Data change per
+4.8.3 [3] of 4.0.0 and a missing trip acknowledgement step, B792;
+4080445_02 lacks its powerless section steps, B642; the level 0 trip of
+4.4.8.1.1 b) added to `Scenario_Shunting_Trips`, the [62] check left
+out: the mode goes back to SH after the trip, the SH mode profile
+surviving the entry and the trip, B1020, B680 open; B904 not reached)
+and e6/sm-supervision (the position adjustment of a Supervised
+Manoeuvre authorisation, 4.4.21.1.7 a) b) c), 3.7.3.4, 5.21.2.2 A095:
+`SM_Auth.Opposite` from packet 15's Q_DIR, the MA slot and origin taken
+reversed; `EVC_Position.Shift_For_Manoeuvre`, `End_Manoeuvre`,
+`Manoeuvre_Orientation`, `Take_Cab` keeping a fixed orientation;
+`EVC_Core.Adjust_For_Manoeuvre`; the Tick post with the manoeuvre
+exception, proved by the orientation kept in every step's post, two loop
+invariants and a ghost assertion; B951 done; two sequences stop earlier
+because an opposite authorisation trips on [16] or leaves SR for FS,
+B990, re-recorded as the package's own open item; B991; the supervision
+with default Train Data and 3.18.3.10 untouched; the agent resumed with
+60 calls for the proof and the "Done" list).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the matrix row by row against the merge base (3.7.3.3 the
+tags branch's, the 3.7.3.4 rows the manoeuvre branch's), the triage
+lines both kept (Sa11ff531 the leftovers' re-triage); no source
+conflict, no golden changed.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12535
+checks, dmi_test 2168), the full proof 0 unproved (12604 checks, margin
+47726 steps; the wide checks 3 of at most 6, two of them the Tick post
+and the Update post of the manoeuvre), cross build and stack (worst
+case 26968 B, margin 5800 B), wasm and both smokes 0 failures.
+SUBSET-076: 1013 / 1120 / 1057 before, 1014 / 1119 / 1057 after, steps
+not judged 4388 -> 4387, 0 regressions against the re-recorded baseline
+(the two of B990 accepted), 0 untriaged. Matrix: 177 -> 176 clauses
+left; E6 done 143 -> 147, todo 41 -> 40, partial 42 -> 39.
+
+Measurements (doc/ROUNDS.csv): train-data-tags 112 calls (budget 130) /
+142k / 5.4 USD; consistency-watch 109 (130) / 140k / 5.1; leftovers-2
+125 (130) / 161k / 6.7; sm-supervision 220 (160 + 60 granted) / 273k /
+15.1; the round 32.2 USD. Premises wrong 2 of 20 (3.16.2.3.4 already
+built; "no 129 sent" where a 157 was). Source-tree reading: 27, 31, 22,
+35 runs against 22, 26, 16, 17 outline runs.
+
+Lessons: the briefs with at most four items worked for the three
+130-call packages, which respected the bound between items (107 to 125
+calls, nine of fifteen items done) and ran their "Done" lists; the SM
+builder's single item took 220 calls, because a shift of the train
+position reaches the front-end and doubt functions, the cab orientation
+and the Tick post of `EVC_Core`, and a change to that post is a package
+of its own: every step's post, two loop invariants and a ghost assertion
+follow. The first attempt left the proof red; the resumption made it
+green at the cost of a weaker doubt statement in the Tick post (the
+doubts hold when the manoeuvre orientation is unchanged). Two
+regressions were accepted into the baseline as the package's own open
+item, B990, once: the alternative was to drop a proved shift; B990 is
+the first item of the next SM package. The cross-talk watch, B820, was
+left twice at the end of a four-item list: next time it is an item of
+its own at the head of a brief. Three of four traces of this round
+ended in the sequences' data, as did most of the earlier ones: a trace
+item is cheap and closes a line, and the triage is the better for it.
+Open items: doc/BACKLOG.csv (66 open after this round; 7 added, 8
+closed).
