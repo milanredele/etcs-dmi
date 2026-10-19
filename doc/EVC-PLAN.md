@@ -8477,3 +8477,35 @@ package. The union's two defects were of the kind a branch cannot see
 (a contract of another unit, a runtime the agents do not build for):
 the chain earns its place. Open items: doc/BACKLOG.csv (70 open after
 this round; 9 added, 11 closed).
+
+### The Train Data left: the external source's window, the engine length, packet 140 released (e6/train-data-left) (2026-10-19)
+
+Built: 5.17.2.2 S6 to the DMI (`EVC_Core.Send_Onboard`: MSG_ONBOARD som
+3 while `EVC_Procedures.Train_Data_Revalidation` holds and no start of
+mission is going on; `EVC_DMI_Port.SoM_Train_Data_Then`,
+dmi_protocol.ads); the engine's front and rear end in SL, SB without
+valid Train Data, SH, NL and PS (`EVC_Config.Fixed_Train_T`
+`Engine_Length`, `EVC_Core.Sync_Train_Length`), no train integrity
+information in NL (`EVC_Sessions.Integrity.Evaluate` takes the mode);
+packet 140 of a released message (`EVC_Core.Read_Released_Messages`
+and `Release_Transition_Buffer`, the level 2 transition). Scenarios:
+`EVC_Test_Train_Data` `Engine_Length`, `Released_TRN`; the 5.17
+scenario of `EVC_Test_Procedures` checks the som byte. Rows: 4.4.6.1.4,
+4.4.7.1.6, 4.4.7.1.6 a), 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4 done;
+4.4.7.1.6 b) partial (the safe consist length, Supervised Manoeuvre);
+the notes of 5.17.2.2 S6 and 3.18.4.5.3. B760, B782, B930 done.
+
+Decisions: the request reaches the DMI as a spare value of the som
+byte, 3, which today's DMI reads as "no start of mission" (no golden
+changed); the engine is 20 m until a format version of the
+configuration image carries its length.
+
+Premise wrong: S424295a6 is reached by no sequence
+(`Take_Driver_Adhesion` takes action 9); its triage line rewritten.
+B930 had a third release path (`Release_Transition_Buffer`, the
+transition to level 2), found by the scenario.
+
+Left: B970 (the DMI opens the Train data window on som 3; 3060500_14
+step 74 waits for it), B940 (the country check of `Take_Group`), the
+3.18.4.3 rows (tags only), the rows tagged `[E6 train data]`.
+SUBSET-076: 1009 / 1124 / 1057 before and after, 0 regressions.
