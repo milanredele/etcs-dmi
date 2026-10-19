@@ -634,6 +634,10 @@ package body S076_Run is
       return Top_Is (Wid);
    end Open_Window;
 
+   --  The sequence gave the safe consist length (a TIU step or the
+   --  runner's default before the first SM selection)
+   SCL_Given : Boolean := False;
+
    --  Press button Index of the menu window Wid
    function Press_Menu (Wid : Window_ID_T; Index : Positive; Name : String)
      return Judgement_T
@@ -1400,6 +1404,22 @@ package body S076_Run is
                          & "open, top is " & Top_Image);
          end if;
          return NJ (R_Radio, "DMI " & Verb & " " & Item);
+      elsif Same (Verb, "press")
+        and then (Same (Item, "Initiate-SM")
+                  or else Same (Item, "Continue-in-SM"))
+      then
+         --  5.21.2.2 S0: the safe consist length must be available; a
+         --  sequence that does not give it has it from the train
+         --  (decision: the runner's default, nothing in front of the
+         --  engine, the train length in rear)
+         if not SCL_Given then
+            B.TIU_Safe_Consist (True, 0, Train_Length_M);
+            SCL_Given := True;
+            B.Cycle;
+         end if;
+         return Press_Menu (W_Main, 11, "SM");
+      elsif Same (Verb, "press") and then Same (Item, "Exit-SM") then
+         return Press_Menu (W_Main, 12, "Exit SM");
       elsif Has (Item, "SM") or else Has (Item, "Track-ahead") then
          return NJ (R_Radio, "DMI " & Verb & " " & Item);
       elsif Has (Item, "ATO") then
@@ -1968,6 +1988,15 @@ package body S076_Run is
          B.TIU_Input (14, (if Same (Arg, "confirmed") then 1
                            elsif Same (Arg, "lost") then 2 else 0));
          return Pass ("TIU train integrity " & Arg);
+      elsif Same (Kind, "safe-consist-length") then
+         --  3.18.3.2 b): the safe consist length of an external source,
+         --  EVC_Ports TIU signal 15; the sequences give no values
+         --  (decision: nothing in front of the engine, the train length
+         --  in rear, longer by 10 m at each further input, a change)
+         B.TIU_Safe_Consist
+           (True, 0, Train_Length_M + (if SCL_Given then 10 else 0));
+         SCL_Given := True;
+         return Pass ("TIU safe consist length");
       end if;
       if Same (Kind, "other-train-data") then
          if Has (Image (St.Comment), "set speed")
@@ -5889,6 +5918,7 @@ package body S076_Run is
       Step_Start_Ms := 0;
       Hold_Speed := False;
       Train_Configuration := 1;
+      SCL_Given := False;
       Explicit_Speed := -1;
       Wait_Used := 0;
       RBC_Stamp := 0;

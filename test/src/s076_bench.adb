@@ -1333,6 +1333,26 @@ package body S076_Bench is
       end if;
    end TIU_Input;
 
+   procedure TIU_Safe_Consist (Available : Boolean;
+                               Front, Rear : Natural := 0)
+   is
+      F : constant Natural := Natural'Min (Front, 4095);
+      R : constant Natural := Natural'Min (Rear, 4095);
+      Frame : Byte_Array (1 .. EVC_Ports.TIU_SCL_Length) := (others => 0);
+   begin
+      Frame (1) := 15;
+      Frame (2) := (if Available then 1 else 0);
+      for K in 0 .. 2 loop
+         Frame (3 + 2 * K) := EVC_Bytes.Byte (F mod 256);
+         Frame (4 + 2 * K) := EVC_Bytes.Byte (F / 256);
+         Frame (9 + 2 * K) := EVC_Bytes.Byte (R mod 256);
+         Frame (10 + 2 * K) := EVC_Bytes.Byte (R / 256);
+      end loop;
+      if Is_Powered then
+         EVC_Core.Handle_Input (TIU, Frame);
+      end if;
+   end TIU_Safe_Consist;
+
    procedure DMI_Frame (Frame : Byte_Array) is
    begin
       if Is_Powered then

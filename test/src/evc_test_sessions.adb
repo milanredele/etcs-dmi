@@ -787,7 +787,9 @@ package body EVC_Test_Sessions is
       Check (N > 0 and then St = ETCS_Message.Accepted
              and then M.Values (5) = 2 and then M.Count = 1
              and then M.Values (4) = 76_000
-             and then Onboard_Byte (12) = 0 and then Onboard_Byte (7) = 2,
+             --  session 3: the only one, its RBC of version 3.0 above 2.2
+             --  (DMI Table 33 #11)
+             and then Onboard_Byte (12) = 0 and then Onboard_Byte (7) = 3,
              "SoM L2: the session open (D31, D32), the SoM position report "
              & "157 'no position referred to an LRBG' (Q_STATUS 2, A34) "
              & "without Train Data, NID_ENGINE of the configuration");
