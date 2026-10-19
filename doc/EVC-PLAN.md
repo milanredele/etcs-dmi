@@ -8663,3 +8663,30 @@ not plan for (30 of the leftovers' on a scenario, the consistency
 agent's defect of the simulated track): a scenario's shape named in
 the brief, with the helper it extends, saves them. Open items:
 doc/BACKLOG.csv (67 open after this round; 7 added, 10 closed).
+
+### The country check before the group's packets, the Train Data and consistency tags (e6/train-data-tags) (2026-10-19)
+
+B940, 3.17.2.6 last sentence with 3.17.3.4.1: `EVC_Stored_Information.Take_Group`
+first looks for a set of national values applicable immediately in the
+group message (packet 3, D_VALIDNV "now", Q_SCALE valid, valid for the
+direction of the train: `Immediate_Set_Lists`, new, No_Inline so the
+decoded packet stays out of Take_Group's frame) and passes
+`Reverted and then not Listed` to `Take_Version`: a group entering a
+new country with an immediate set that lists it is no country mismatch,
+the same group without it is. The deletion of 3.18.2.10 by
+`Check_Country` is unchanged (the new set applies right after it).
+Decision: the first such packet of the message counts. evc_test
+`Version_Country_Set` (in `EVC_Test_Version`, beside the version
+scenarios whose group helper it extends; it fails without the fix).
+3.17.2.6 stays partial (loops, E7). No sequence moved (1013 / 1120 /
+1057 before and after).
+
+| Rows | Re-read | Done | Partial (owner) | n/a |
+|---|---|---|---|---|
+| 3.18.4.3 | 12 | 11 (.1, .2, .5 now; the eight of .6 were done and tagged) | .4: the RBC identity reported by EURORADIO, not carried by the RTM port's connection event (B1010) | 0 |
+| `[E6 train data]` | 19 | 0 | 19: A.3.4.1.2 j) is built (`Train_Data_Shortening`), its tag dropped from 3.7.3.3, 3.8.2.5.1 and the eight A.3.4.1.3 footnotes, which stay partial for g) h) l) m) (consistency) and o) (Supervised Manoeuvre); 3.8.2.5.1 j) without the MA request (B1011, with g h l m); A.3.11 the Train Data ranges done, the driver ID's characters left; 5.4.3.2 A33 packet 5 done, packet 10 left with A34, 4.6.3 [83] and the three 3.6.5.2.5 rows to Supervised Manoeuvre (safe consist length); 5.17.2.2 A7 the PBD left `[E5 authority]`; 3.13.2.2.9.1.2 deferred (one Kdry_rst / Kwet_rst set) | 0 |
+| `[E6 consistency]` | not started (the bound of 100 calls reached) | | | |
+
+Tags added: 5 (`EVC_Radio.Contact` 3.18.4.3.1; `EVC_Sessions.Mission.Driver_Contact`
+3.18.4.3.2, 3.18.4.3.5; `Judge_Opening` 3.18.4.3.4;
+`Immediate_Set_Lists` 3.17.2.6). Backlog: B940 done; B1010, B1011 new.
