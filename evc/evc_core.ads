@@ -452,8 +452,8 @@ is
    --  the ports; those of the procedures (evc_test_procedures) start
    --  from a mode set here when the mode is not their subject.
    procedure Set_Mode_For_Test (Mode : Mode_T; Level : Level_T)
-     with Global => (In_Out => (State, EVC_Levels.State, EVC_Mission.State),
-                     Output => EVC_Train_Data.State,
+     with Global => (In_Out => (State, EVC_Levels.State, EVC_Mission.State,
+                                EVC_Train_Data.State),
                      Input  => (EVC_National_Values.State,
                                 EVC_Position.State, EVC_Odometry.State,
                                 EVC_Radio.State)),
