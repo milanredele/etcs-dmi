@@ -1155,6 +1155,11 @@ package body EVC_Test_Modes is
              "desk: opened again, the start of mission engaged, 'Start' "
              & "needs the data revalidated (5.4.3.2 S1)");
       Send (Text_Entry (0, "1234"));
+      Check (Onboard_Field (1) = 1,
+             "desk: the driver ID revalidated with the position unknown: "
+             & "D2 -> S2, the level valid -> invalid (5.4.3.3 'Following "
+             & "D2')");
+      Send (Action (11, L1_Code));
       Send (Train_Entry (200, 135, 160));
       Send (Action (5));
       Check (ML (3) = SR_Code,

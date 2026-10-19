@@ -1823,6 +1823,11 @@ is
           SR_Authorisations => EVC_Radio_Authority.SR_Authorisations,
           Profile_Ack => EVC_Procedures.Ack_Requested,
           Radio_MAs => EVC_Radio_Authority.Radio_MAs_Accepted));
+      --  5.4.3.3 "Following D2": the stored position invalid or unknown,
+      --  the level valid -> invalid (the D2 of the start of mission)
+      if EVC_Mission.D2_Passed and then not Valid then
+         EVC_Levels.Invalidate;
+      end if;
       --  A.3.4.1.2 k), column k: what entering SB has not deleted
       --  already (the TSRs, the adhesion, the big metal masses, the level
       --  transition orders, the national values not yet applicable); the

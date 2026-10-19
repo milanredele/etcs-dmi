@@ -8,7 +8,8 @@ package body EVC_Mission
        Refined_State => (State => (Driver_S, Driver_V, TRN_S, TRN_V,
                                    Train_Known, Engaged, Mission_On,
                                    Proposal, Proposal_Mode, Acked_Now,
-                                   Acked_M, Desk_Closed_Now, SR_V, SR_D,
+                                   Acked_M, Desk_Closed_Now, D2_Now,
+                                   SR_V, SR_D,
                                    SR_Origin, SR_Driver, SR_Nat_D,
                                    Continue_On, NL_Lost, NL_Input,
                                    TD_Now, TD_Entry, SR_Entry, RBC_Wait,
@@ -32,7 +33,8 @@ is
    Acked_Now       : Boolean := False;
    Acked_M         : Mode_T := M_SR;
    Desk_Closed_Now : Boolean := False;
-   SR_V            : Speed_Cms_T := 0;
+   D2_Now          : Boolean := False;
+   SR_V           : Speed_Cms_T := 0;
    SR_D            : EVC_Odometry.Virtual_T;
    --  where SR was entered or Override activated (4.4.11.1.3.1 a), the
    --  SR values entered by the driver apply (4.4.11.1.6.3, .6.4 a), the
@@ -99,6 +101,9 @@ is
      with Refined_Global => SR_Entry;
    function Desk_Closed_In_SoM return Boolean is (Desk_Closed_Now)
      with Refined_Global => Desk_Closed_Now;
+
+   function D2_Passed return Boolean is (D2_Now)
+     with Refined_Global => D2_Now;
    function SR_Speed return Speed_Cms_T is (SR_V)
      with Refined_Global => SR_V;
    function SR_Distance return EVC_Odometry.Virtual_T is (SR_D)
@@ -141,6 +146,7 @@ is
       Acked_Now := False;
       Acked_M := M_SR;
       Desk_Closed_Now := False;
+      D2_Now := False;
       SR_V := 0;
       SR_D := (others => <>);
       SR_Origin := (others => <>);
@@ -617,6 +623,11 @@ is
 
       Take_Desk (C, M);
       Take_Identity (M);
+      --  5.4.3.2 D2: the driver ID entered or revalidated (E1) in SB
+      --  during the start of mission
+      D2_Now := Engaged and then M = M_SB
+        and then Entered (EVC_Driver_Requests.Driver_ID)
+        and then Driver_S = Valid;
       Take_Data (C, M);
       Take_National_SR (C, M);
       Take_Data_Entry (M);

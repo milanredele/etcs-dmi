@@ -561,6 +561,13 @@ is
       end if;
    end Revalidate;
 
+   procedure Invalidate is
+   begin
+      if Current_Status = Valid then
+         Current_Status := Invalid;
+      end if;
+   end Invalidate;
+
    procedure Delete_Table is
    begin
       Applicable := (others => <>);

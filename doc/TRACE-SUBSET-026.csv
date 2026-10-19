@@ -1472,7 +1472,7 @@ A.3.13.2,3,x,,,,,E3,done,"EVC_SDM.Step (the pawl: in TSM / RSM, a reduced time o
 5.4.3.2.1 1st bullet,5,x,,,,,E4,done,"EVC_Mission: the start of mission ends with another mode or the desk closed; evc_test E4_SoM_Level_1, E4_Desk_Closed"
 5.4.3.2.1 2nd bullet,5,x,,,,,E4,done,"EVC_Mission: the start of mission ends with another mode or the desk closed; evc_test E4_SoM_Level_1, E4_Desk_Closed"
 5.4.3.2.2,5,x,,,,,E4,done,EVC_Sessions.Mission: the desk closed during the start of mission: the session terminated [E5 session]
-5.4.3.3 Table,5,x,,,,,E4,partial,"EVC_Mission (driver ID, train running number, Train Data), EVC_Levels (level): the statuses of the rows without the RBC; the position and the RBC contact rows are E5 [E5 session]"
+5.4.3.3 Table,5,x,,,,,E4,partial,"EVC_Mission (driver ID, train running number, Train Data), EVC_Levels (level): the statuses of the rows without the RBC; following D2 with the stored position invalid or unknown the level valid -> invalid (EVC_Levels.Invalidate at EVC_Mission.D2_Passed, called in EVC_Core; Scenario_E4_Desk_Closed) and the RBC contact valid -> invalid (EVC_Sessions.Mission); the position rows and the DMI's own D2 on the level alone (Level window not opened) left [E5 session]"
 5.4.5.1,5,x,,,,,E4,deferred,E5 (loss of a session) [E5 session]
 5.4.5.3,5,x,,,,,E4,partial,b) c) d) e) f) g) h) done; a) override in SB is level 2's; i) j) k) l) E5/E6 [E5 session]
 5.4.5.3 a),5,x,,,,,E4,partial,"override in SB in level 2 only (5.8.2.1, EVC_Procedures.Override_Allowed): the start of mission of level 2 is E5 [E5 session]"

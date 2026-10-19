@@ -299,6 +299,16 @@ is
                   and then (if Status'Old = Invalid then Status = Valid
                             else Status = Status'Old);
 
+   --  5.4.3.3 "Following D2": the stored position invalid or unknown at
+   --  D2 of the start of mission, the level valid -> invalid (S2 asks
+   --  the driver for it)
+   --  @req 5.4.3.3 Table
+   procedure Invalidate
+     with Global => (In_Out => State),
+          Post => Level = Level'Old
+                  and then (if Status'Old = Valid then Status = Invalid
+                            else Status = Status'Old);
+
    --  4.11.1.1: a cold movement detected, or the information not
    --  available: the kept table of priority is deleted ("unknown")
    procedure Delete_Table

@@ -149,6 +149,11 @@ is
    function Desk_Closed_In_SoM return Boolean
      with Global => State;
 
+   --  5.4.3.2 D2 passed in this cycle: the driver ID entered or
+   --  revalidated (E1) in SB during the start of mission
+   function D2_Passed return Boolean
+     with Global => State;
+
    --  Staff Responsible: the SR mode speed limit, the SR distance
    --  @req 4.4.11.1.3 a)
    function SR_Speed return Speed_Cms_T
