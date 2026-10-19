@@ -8158,3 +8158,90 @@ packet 11). Scenarios: `Train_Data_Categories`, `Driver_Level_Table`
 (EVC_Test_Modes), `Session_TRN` (EVC_Test_Sessions). Left: B870 (3.18.3.7
 b), the transition buffer), B871 (3.18.3.8), B872 (packet 140), B760,
 B782, B031 not started.
+
+### E5 integration after the thirty-third round, the second of E6 (2026-10-19)
+
+The round of the first E6 round's recommendation: the bookkeeping's
+rest, the consistency follow-ups, the next E6 function (Train Data),
+the small E5 items.
+
+Merged: e5/bookkeeping-3 (58 of the 61 rows left re-read, 11 to done,
+the rest naming their owner; three left: 5.4.3.3 Table, 5.4.5.1,
+5.11.4.3; 24 deferred rows of E1 to E5 tagged `[E6 <function>]`, so that
+an E6 brief selects its rows by tag: Supervised Manoeuvre 52, train
+data 23, consistency 14, version 3, VBC 2, big metal 2 under two
+spellings; B840 to B847: message 45 not taken, 4.6.3 [11] declared but
+never set, the session messages' rows of the acceptance tables not
+looked up, FRMCS registration, 5.8.4.1 f), 5.17.2.2 D5),
+e6/consistency-left ("Trackside malfunction" for a group whose packet
+254 is valid for the train's direction, 3.16.2.4.9,
+`EVC_Core.Show_Trackside_Malfunction`; balises read out of the order of
+their numbers count a balise as missed, `EVC_Balise_Groups.In_Order`,
+3.16.2.5; the balise error report with M_ERROR 1 and 2 beside 0 and 7,
+3.16.4.2; the consistency shortening found covered by
+`Linking_Shortening`, A.3.4's g) and m) in the linking column; "Balise
+read error" removed when the linking brake is revoked on NP or SB,
+3.16.2.6.1; 10 rows done, 7 partial; B801, B821, B800, B824 done; B805,
+B802, B803 / B823, B820, B822 left; 3160200_33's CRC step the sequence's
+data, S54f1704c), e6/train-data (the 53 rows of 3.18.3 and 3.18.4 read
+against the code of E4 and E5: 31 done, 15 partial, 1 n/a, 11 todo
+deferred to Supervised Manoeuvre with the safe consist length, B873 with
+B031; built: the shortening at a change of train category, axle load
+category, loading gauge or traction system at standstill, 3.18.3.7 a),
+`EVC_Stored_Information.Train_Data_Shortening`; the train running number
+to the RBC in the next 136 and in the 157, 3.18.4.5.4; the driver ID
+while running only with M_NVDERUN, 3.18.4.1.2; the driver's level choice
+limited to the table of supported levels, 3.18.4.2.5,
+`EVC_Levels.Selectable`; the airtight entry kept and sent, 3.18.3.2 h);
+B870 to B873; B760, B782, B031 not started) and e5/remainder-2 (the level
+valid to invalid after D2 of the start of mission with the position
+invalid or unknown, 5.4.3.3 Table, `EVC_Levels.Invalidate` called from
+`EVC_Core` because D2 is decided in `EVC_Sessions.Mission`, not
+`EVC_Mission`, B709; message 50 TRAIN INTEGRITY INFORMATION from the TIU
+input at its first value and each change, SUBSET-027 4.2.4.50, B691;
+B642 traced in part; B790, B792, B680 not started; B890: the DMI decides
+D2 on the level alone).
+
+All four agents were stopped at once by the monthly API spend limit
+(HTTP 429, reset at 14:30) about twenty minutes into the round; a
+message to each agent after the reset resumed it in its worktree with
+its context, no budget lost; the stop cost about half an hour of wall
+clock.
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the triage lines of two branches both kept, the EFS index
+regenerated, two hunks of the train-data merge joined (the context
+aggregate of `EVC_Core` with `ID_Running` beside the D2 check;
+`Take_Identity`'s new parameter beside the D2 flag in `EVC_Mission`); no
+golden changed, no signature new to the union.
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12372
+checks, dmi_test 2168), the full proof 0 unproved (12366 checks, margin
+47726 steps), cross build and stack (worst case 27216 B, margin 5552 B),
+wasm and both smokes 0 failures. SUBSET-076: 1000 / 1108 / 1082 before,
+1009 / 1090 / 1091 after, steps not judged 4339 -> 4320, 0 regressions,
+0 untriaged (the three regressions of consistency-left the sequence's
+data, S54f1704c). Matrix: 255 -> 216 clauses left; E6 done 78 -> 114,
+todo 132 -> 73, partial 22 -> 44.
+
+Measurements (doc/ROUNDS.csv): bookkeeping-3 130 calls (budget 130) /
+182k / 8.6 USD; remainder-2 119 (130) / 146k / 6.9; consistency-left 150
+(160) / 183k / 9.0; train-data 169 (160; tally 160) / 229k / 13.7; the
+round 38.2 USD. Premises wrong 3 of 27 stated (B709's unit, B821's
+missing part, the plan section number of E4's outcome). Source-tree
+reading: 22 + 9, 12 + 14, 9, 22 + 20 runs against 17, 22, 22, 26
+outline runs: the consistency agent read a third of what the two
+other builders did for the same kind of work.
+
+Lessons: 160 calls let both E6 builders finish their "Done" lists, but
+both passed the 80 % bound to do so, the Done list of an E6 builder
+costing 30 to 40 calls (whole check, unit proofs, runner with its
+triage and baseline, plan, commit): the bound of a 160 package is 120.
+A re-read of rows against existing code is cheap and closes many (31 of
+the 53 Train Data rows were built by E4 and E5 under 5.4 and 5.17; 11 of
+the 58 bookkeeping rows), so an E6 function package should begin with
+the re-read of its rows as train-data did. The tags `[E6 <function>]`
+now carry 52 rows for Supervised Manoeuvre: it is the largest E6 group
+left, before the consistency rest (about 25 rows and five backlog items)
+and the Train Data rest (B870 to B873, B760, B782). Open items:
+doc/BACKLOG.csv (69 open after this round; 13 added, 8 closed).
