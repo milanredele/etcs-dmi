@@ -8037,3 +8037,79 @@ value received and at each change by the 8j step of `EVC_Core`
 
 **Left (budget):** B642 traced in part (the backlog line), B790, B792,
 B680 not started.
+### The 61 rows left and the E6 tags of the deferred rows (e5/bookkeeping-3, 2026-10-19)
+
+Part 1: the 61 rows bookkeeping-2 left unread (the count confirmed: the
+selection now gives 146 rows, of which these 61 by clause; 5.4.5.3 k)
+was already tagged Supervised Manoeuvre). 58 re-read against the code
+(`outline.py`, the scenario list) and the clause; notes rewritten to
+name the unit, the subprogram and the scenario, or what is left and its
+owner; the `[E5 ...]` tags kept. No behaviour changed; `@req` tags added
+on `EVC_Sessions.Integrity` (3.6.5.2.5 Table 2a),
+`EVC_Sessions.Mission` (5.4.3.2 D11; `Driver_Contact`: A.3.11 Table,
+5.4.5.3 j) 1st bullet), `EVC_Sessions.Network.Driver_Entries` (5.4.3.2
+D8, S3, S5, 5.4.5.3 j) 2nd bullet), `EVC_Driver_Requests` (5.4.5.3 l)).
+
+| Phase | Rows | Re-read | Done | Still partial (owner) | Deferred (owner) | n/a |
+|---|---|---|---|---|---|---|
+| E1 | 2 | 2 | 0 | 2 (E6 train data; 8.5.2 to partial: E6 version, SM) | 0 | 0 |
+| E2 | 10 | 10 | 2 (3.6.2.2.2, c)) | 8 (B840, B841, E6 consistency, train data, SM; 3.6.2.2.2.3 and Table 2a to partial) | 0 | 0 |
+| E3 | 13 | 13 | 1 (3.8.4.2.2) | 2 (B842; A.3.1: B788, B844, E6 big metal) | 10 (B785 4, B842 4, B847, E6 SM) | 0 |
+| E4 | 36 | 33 | 8 (5.4.3.2 D11, D15, S3, S11; 5.4.5.3 j), j) 1st, l); 5.6.2.2 D020) | 22 (B841, B842, B843, B844, B845, B846, E6 SM / train data, E7 Euroloop, E8) | 3 (A41: B844; 5.4.5.3 i): E6 VBC; 5.8.4.1 f): B845) | 0 |
+
+Done: the RBC information referred to one of the last eight LRBGs
+(`EVC_Position.Radio_Origin`, `Radio_Valid_For`, 3.6.2.2.2 c)); the
+section timer exception of A.3.4.1.3 [11] (the MA's `Withdrawn`, any
+shortening); D11, D15, S3, S11 of the level 2 start of mission; the
+radio data re-entered at S10 / S20 (5.4.5.3 j)); the BMM inhibition at
+S10 / S20 (5.4.5.3 l)); the level 2 branch A045 of D020.
+
+Decisions:
+
+1. "3.6.5.2.5 Table 2a" is read as Table 2c, the conditions: in 4.0.0
+   the tables of 3.6.5.2.5 are 2b and 2c, Table 2a is 3.6.4.2.4's; the
+   row is kept (the clause list is the matrix key) and says so.
+2. FRMCS is not n/a: the configuration may install it, only the RTM
+   port reports no FRMCS registration yet; its branches of 5.4.3.2
+   (A41, A43, D7, D8, D9, S4, S5) stay partial or deferred on B844.
+3. A row whose decision branch exists for GSM-R only is partial, not
+   done (D7, D8, D9, S4).
+4. 8.5.2 Table goes from deferred to partial: the structure and the
+   receivers are built, only the Invariant column (3.17) and the SM
+   messages 131 / 133 are left.
+
+Genuine gaps found (B840 to B847): message 45 not taken (B840); the
+scenarios missing for 3.6.2.2.2.3, 3.6.5.1.4 e), 5.4.5.3 a) and j) 2nd
+bullet (B841); 4.6.3 [11] declared and never held, so no level 2 trip
+of 3.13.10.2.6 b) (B842); the session messages' rows of Tables 4.8.3
+and 4.8.4 not looked up (B843); the FRMCS registration (B844); the
+override not ended by an MA of the RBC or a group off the SR list of
+packet 63 (5.8.4.1 f), g); B845); 5.17.2.2 D5 not built (B846); V_MAIN
+over a transition from level 1 to level 2 not traced (B847).
+
+Left unread by budget (3 rows): 5.4.3.3 Table (the position and RBC
+contact rows), 5.4.5.1 (loss of a session during the start of
+mission), 5.11.4.3 (a transition to level 0 in PT).
+
+Part 2: the 25 rows of E1 to E5, partial or deferred, naming E6 without
+an `[E6 ...]` tag: 24 tagged, one false match (5.4.3.2 S4: "E6 / E7"
+are the flowchart's events). Tags added: consistency 13, train data
+14, Supervised Manoeuvre 14, version 2, other (reversing area) 1; a
+row of A.3.4.1.3 or 3.7.3.3 carries several. The rows of E1 to E5,
+partial or deferred, by tag after this package (the E6 briefs'
+selection from now on):
+
+| Tag | Rows |
+|---|---|
+| `[E6 Supervised Manoeuvre]` | 52 |
+| `[E6 train data]` | 23 |
+| `[E6 consistency]` | 14 |
+| `[E6 version]` | 3 |
+| `[E6 BTM alarm]` | 2 |
+| `[E6 VBC]` | 2 |
+| `[E6 balise consistency]` | 1 |
+| `[E6 big metal mass]`, `[E6 big metal]` | 1 + 1 |
+| `[E6 other: reversing area]` | 1 |
+
+The two spellings of the consistency and big metal tags predate this
+package on one row each; a selection should match both.
