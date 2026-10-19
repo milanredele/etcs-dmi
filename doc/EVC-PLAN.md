@@ -8851,3 +8851,28 @@ ended in the sequences' data, as did most of the earlier ones: a trace
 item is cheap and closes a line, and the triage is the better for it.
 Open items: doc/BACKLOG.csv (66 open after this round; 7 added, 8
 closed).
+
+### The shunting mode profile after a trip, the hash goldens, two runner items, the RBC identity by EURORADIO (e5/shunting-profile, 2026-10-19)
+
+Two of four items; no change under `evc/`. B1020 dropped, its premise
+wrong: the SH mode profile is deleted with the MA on the entry in SH and
+in TR (`EVC_Core`'s mode entry, 4.10); in the level 0 case of
+`EVC_Test_Procedures.Scenario_Shunting_Trips` the order to level 0 at
+the listed group is kept in SH (4.4.8.1.5, the level stays 1), the
+group not in the list trips in level 1 ([52]), the kept order is
+evaluated on the entry in TR (level 0), and the Train Data are to be
+revalidated since the entry in SH (4.10), so the acknowledgement gives
+SH by 4.6.3 [68] (5.11.2.2 D085, A140), as specified; the scenario
+checks it. B680 done: a new case covers [62] (a trip at the EOA in FS in
+level 1, an immediate order to level 0 accepted in TR, UN on the
+acknowledgement with valid Train Data, D090, A145). B904 done:
+`test/tools/golden_review.py` lists an undumped golden whose .sha256
+changed (the bench goldens) as a hash-only group of its own
+(`group_hash_only`, a REPORT.md section, review.json `hash_groups`, two
+self-test checks; the dry run on 6227202 lists `evc/bench_level2`).
+Not reached (the bound): S8cb118b5 (the runner's message 4 stamp:
+`S076_Run.Radio_Input` writes the answered request's T_TRAIN as the
+second stamp; 18 steps of the corpus ask in their comment for a stamp
+that "does not match the time stamp of the last sent request", the
+place for the mismatch is next to the "smaller than the time stamp"
+branch there), Scfbb86e1 and B1010.
