@@ -1262,8 +1262,10 @@ package body EVC_Test_Sessions is
    end Report_Parameters;
 
    --  Message 24 referred to the group NID_BG of country 123 with packet
-   --  42: Q_RBC 0, terminate the session (3.5.5.1 a)
-   function Terminate_Order (NID_BG : Natural) return Byte_Array is
+   --  42: Q_RBC 0, terminate the session (3.5.5.1 a), valid in the
+   --  direction Q_DIR of that group
+   function Terminate_Order (NID_BG : Natural; Q_DIR : Natural := 2)
+                             return Byte_Array is
       P  : TP42.Packet_T;
       W  : Writer_T;
       V  : ETCS_Message.Value_Array := (others => 0);
@@ -1273,7 +1275,7 @@ package body EVC_Test_Sessions is
       V (5) := 123;
       V (6) := Unsigned_64 (NID_BG);
       Start_Message (W, MCat.Track_M24, V);
-      P.Q_DIR := 2;
+      P.Q_DIR := ETCS_Variables.Q_DIR_T (Q_DIR);
       P.Q_RBC := 0;
       P.NID_C := 5;
       P.NID_RBC := 300;
@@ -1347,6 +1349,15 @@ package body EVC_Test_Sessions is
       Check (EVC_Sessions.Report_Parameters_Taken = N,
              "reports: packet 58 received in Shunting is rejected (4.8.4, "
              & "Position Report parameters: R in SH)");
+
+      --  3.6.3.1.3: an order valid for the reverse direction of the
+      --  LRBG, which the train passed in its nominal one, is ignored
+      --  (SUBSET-076 5070300_02 step 77)
+      Give_Radio_Message (1, Terminate_Order (30, Q_DIR => 0));
+      Stand;
+      Check (Output_Of (156) = 0,
+             "reports: packet 42 Q_RBC 0 by radio for the other direction "
+             & "of the LRBG is ignored (3.6.3.1.3): no 156");
 
       --  3.5.5.1 a): the order to terminate by radio
       Give_Radio_Message (1, Terminate_Order (30));

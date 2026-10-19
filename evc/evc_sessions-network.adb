@@ -215,7 +215,11 @@ is
          then
             EVC_Received.Open_Message_Packet (I, Rd);
             ETCS_Track_Packets.P45.Decode (Rd, P, OK);
-            if OK and then ETCS_Track_Packets.P45.Valid (P) then
+            --  3.6.3.1.3: valid for the train orientation relative to the
+            --  LRBG of the message
+            if OK and then ETCS_Track_Packets.P45.Valid (P)
+              and then EVC_Position.Radio_Valid_For (Last_LRBG, P.Q_DIR)
+            then
                Take_Order (Natural (P.Q_NETWORKTYPE), P.NID_MN);
             end if;
          end if;

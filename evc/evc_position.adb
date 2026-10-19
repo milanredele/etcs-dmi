@@ -2002,6 +2002,24 @@ is
       end if;
    end Radio_Origin;
 
+   function Radio_Valid_For (Id : Identity_T; Q_DIR : Q_DIR_T) return Boolean
+   is
+      G     : Direction_T := Unknown;
+      Found : Natural;
+   begin
+      if LRBG_A.Valid and then LRBG_A.Id = Id then
+         G := LRBG_A.Orientation;
+      elsif SOLR_A.Valid and then SOLR_A.Id = Id then
+         G := SOLR_A.Orientation;
+      else
+         Found := Latest (Id);
+         if Found /= 0 then
+            G := Recent (Found).A.Orientation;
+         end if;
+      end if;
+      return Valid_For (Q_DIR, G, To_Direction (Orientation));
+   end Radio_Valid_For;
+
    procedure Assign_Coordinate_System (Id      : Identity_T;
                                        Nominal : Boolean;
                                        OK      : out Boolean)

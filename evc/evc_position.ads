@@ -746,6 +746,16 @@ is
           when 0 => G /= Unknown and then T /= Unknown and then G /= T,
           when others => False);
 
+   --  3.6.3.1.1 a), 3.6.3.1.3: information of a radio message valid in
+   --  the direction Q_DIR of the group Id its header names (NID_LRBG)
+   --  is for this train: Valid_For with the orientation of that group
+   --  (the LRBG, the SOLR or one of the last LRBGs, as Radio_Origin
+   --  finds it) and the train orientation. A group the on-board does not
+   --  know has no orientation: only "both directions" (3.6.3.1.4).
+   --  @req 3.6.3.1.3, 3.6.3.1.4
+   function Radio_Valid_For (Id : Identity_T; Q_DIR : Q_DIR_T) return Boolean
+     with Global => State;
+
    --  The balise groups taken into account in the last Update, in their
    --  order, with the telegrams of their passage: the stored information
    --  (EVC_Stored_Information, third step of the cycle) takes their

@@ -727,9 +727,12 @@ is
    --  message 24 goes to no store of phase E3; 4.8.4 accepts session
    --  management in the modes in which a session exists). The packet 42
    --  of messages 3 and 33 goes the way of their stored information.
-   --  @req 3.5.5.1 a)
+   --  3.6.3.1.3: only an order valid for the train orientation relative
+   --  to the LRBG of the message is taken (EVC_Position.Radio_Valid_For).
+   --  @req 3.5.5.1 a), 3.6.3.1.3
    procedure Take_Radio_Order
-     with Global => (In_Out => Order, Input => EVC_Received.Store)
+     with Global => (In_Out => Order,
+                     Input  => (EVC_Received.Store, EVC_Position.State))
    is
       pragma Warnings
         (GNATprove, Off, """Rd"" is set by ""Decode"" but not used after*",
@@ -744,7 +747,9 @@ is
          then
             EVC_Received.Open_Message_Packet (I, Rd);
             ETCS_Track_Packets.P42.Decode (Rd, P, OK);
-            if OK and then ETCS_Track_Packets.P42.Valid (P) then
+            if OK and then ETCS_Track_Packets.P42.Valid (P)
+              and then EVC_Position.Radio_Valid_For (Last_LRBG, P.Q_DIR)
+            then
                --  as Take_Order: the last order of a cycle wins
                Order := (Present   => True,
                          Establish => P.Q_RBC = 1,
@@ -759,9 +764,12 @@ is
 
    --  3.15.1.3: packet 131 of a message of the supervising
    --  RBC, the border referred to the LRBG of the message (8.4.2.1);
-   --  4.8.2.1 c) exception 2: not from the Accepting RBC (the caller)
+   --  4.8.2.1 c) exception 2: not from the Accepting RBC (the caller);
+   --  3.6.3.1.3: valid for the train orientation relative to that LRBG
+   --  @req 3.6.3.1.3
    procedure Take_Radio_Transition
-     with Global => (In_Out => Handover.State, Input => EVC_Received.Store)
+     with Global => (In_Out => Handover.State,
+                     Input  => (EVC_Received.Store, EVC_Position.State))
    is
       pragma Warnings
         (GNATprove, Off, """Rd"" is set by ""Decode"" but not used after*",
@@ -778,14 +786,12 @@ is
             ETCS_Track_Packets.P131.Decode (Rd, P, OK);
             if OK and then ETCS_Track_Packets.P131.Valid (P)
               and then P.Q_SCALE <= 2
+              and then EVC_Position.Radio_Valid_For (Last_LRBG, P.Q_DIR)
             then
                Handover.Take_Order
                  (RBC   => (NID_C => P.NID_C, NID_RBC => P.NID_RBC),
                   Radio => P.NID_RADIO,
-                  Ref   => (NID_C  => NID_C_T (EVC_Received.Last_Value
-                                                 (NID_C) mod 1024),
-                            NID_BG => NID_BG_T (EVC_Received.Last_Value
-                                                  (NID_BG) mod 16384)),
+                  Ref   => Last_LRBG,
                   D     => EVC_Distances.Scaled (Natural (P.D_RBCTR),
                                                  Natural (P.Q_SCALE)));
             end if;

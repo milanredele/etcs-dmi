@@ -36,6 +36,7 @@ pragma Unevaluated_Use_Of_Old (Allow);
 
 with ETCS_Variables;
 with EVC_Balise_Groups;
+with Interfaces;
 with EVC_Bytes;
 with EVC_Config;
 with EVC_Distances;
@@ -379,5 +380,17 @@ is
    --  Q_INTEGRITY the next position report carries (3.6.5.2.3 a))
    function Integrity_Status return Natural
      with Global => State;
+
+   --  The group the header of the last message received names (NID_LRBG,
+   --  8.4.2.1): the reference of its packets' directions and distances
+   function Last_LRBG return EVC_Balise_Groups.Identity_T is
+     ((NID_C  => ETCS_Variables.NID_C_T
+                   (Interfaces."mod"
+                      (EVC_Received.Last_Value (ETCS_Variables.NID_C), 1024)),
+       NID_BG => ETCS_Variables.NID_BG_T
+                   (Interfaces."mod"
+                      (EVC_Received.Last_Value (ETCS_Variables.NID_BG),
+                       16384))))
+     with Global => EVC_Received.Store;
 
 end EVC_Sessions;

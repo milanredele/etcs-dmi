@@ -73,7 +73,7 @@ is
      (Kind       : ETCS_Message_Catalogue.Message_Kind_T;
       Cab_Active : Boolean)
      with Global => (In_Out => State,
-                     Input  => EVC_Received.Store);
+                     Input  => (EVC_Received.Store, EVC_Position.State));
 
    --  The mode of the on-board changed to To (the third filter of 4.8)
    procedure Mode_Changed (To : Mode_T)
