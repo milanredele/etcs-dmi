@@ -869,4 +869,19 @@ is
      with Global => State,
           Pre => P <= Taken_Packet_Count (J);
 
+   --  A distance between two balise groups, Known False when the
+   --  on-board does not have it
+   type Group_Distance_T is record
+      Known : Boolean := False;
+      D     : Dist_T := 0;
+   end record;
+
+   --  3.6.4.2.5 a): the linking distance from group From to group To
+   --  along the train orientation, known when both are in the stored
+   --  linking chain, From before To, its sense the orientation and no
+   --  repositioning between them
+   --  @req 3.6.4.2.5 a)
+   function Linking_Distance (From, To : Identity_T) return Group_Distance_T
+     with Global => State;
+
 end EVC_Position;

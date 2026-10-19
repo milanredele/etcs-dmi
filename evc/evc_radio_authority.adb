@@ -183,10 +183,17 @@ is
    --  locations where its display begins and ends (from the reception,
    --  along the orientation), whether it is shown, the answer (149) owed
    --  to the session of the request
+   --  (3.6.4.2.5 a: while On_LRBG, the window as offsets from the LRBG
+   --  Ref along the orientation, moved by the linking distance when the
+   --  LRBG changes; else the odometer's)
    type TAF_T is record
       Stored  : Boolean := False;
       Begin_V : EVC_Odometry.Virtual_T := (others => <>);
       End_V   : EVC_Odometry.Virtual_T := (others => <>);
+      On_LRBG : Boolean := False;
+      Ref     : EVC_Balise_Groups.Identity_T := (others => <>);
+      Begin_D : Dist_T := 0;
+      End_D   : Dist_T := 0;
       Shown   : Boolean := False;
       Due     : Boolean := False;
       Session : EVC_Radio.Session_T := 1;
@@ -733,7 +740,9 @@ is
       Shift : Dist_T;
       Valid : Boolean;
       Front : constant Dist_T := EVC_Position.Estimated_Front;
-      Ahead : Dist_T;
+      Ahead   : Dist_T;
+      Begin_D : Dist_T;
+      Length  : Dist_T;
    begin
       Shift_Of_Last (Shift, Valid);
       if Scale > 2 or else not Valid
@@ -743,20 +752,23 @@ is
       then
          return;
       end if;
-      Ahead := Shift + Cm_T'Min
+      Begin_D := Shift + Cm_T'Min
         (TAF_Cap, Scaled (Natural (EVC_Received.Last_Value (D_TAFDISPLAY)
                                    mod 32768), Scale));
-      Ahead := (if Ahead > Front then Ahead - Front else 0);
+      Length := Cm_T'Min
+        (TAF_Cap, Scaled (Natural (EVC_Received.Last_Value (L_TAFDISPLAY)
+                                   mod 32768), Scale));
+      Ahead := (if Begin_D > Front then Begin_D - Front else 0);
+      Begin_D := Front + Ahead;
       TAF := (Stored  => True,
               Begin_V => EVC_Odometry.Start_Virtual
                            (Ahead, EVC_Position.Orientation),
               End_V   => EVC_Odometry.Start_Virtual
-                           (Ahead + Cm_T'Min
-                              (TAF_Cap,
-                               Scaled (Natural (EVC_Received.Last_Value
-                                                  (L_TAFDISPLAY) mod 32768),
-                                       Scale)),
-                            EVC_Position.Orientation),
+                           (Ahead + Length, EVC_Position.Orientation),
+              On_LRBG => True,
+              Ref     => LRBG,
+              Begin_D => Begin_D,
+              End_D   => Begin_D + Length,
               Shown   => False,
               Due     => False,
               Session => S,
@@ -1149,25 +1161,64 @@ is
       end if;
    end Evaluate_SH;
 
+   --  3.6.4.2.5 a): the window of the request follows a new LRBG by the
+   --  linking distance from the former one. Decision: when that distance
+   --  is not known (the groups not linked, or not in this order), the
+   --  window stays where the odometer put it at the reception
+   --  @req 3.6.4.2.5 a)
+   procedure Rebase_TAF
+     with Global => (Input  => EVC_Position.State,
+                     In_Out => TAF)
+   is
+      D : EVC_Position.Group_Distance_T;
+   begin
+      if not TAF.On_LRBG then
+         return;
+      elsif not EVC_Position.LRBG.Valid then
+         TAF.On_LRBG := False;
+         return;
+      elsif EVC_Position.LRBG.Id = TAF.Ref then
+         return;
+      end if;
+      D := EVC_Position.Linking_Distance (TAF.Ref, EVC_Position.LRBG.Id);
+      if D.Known and then abs D.D <= TAF_Cap
+        and then abs TAF.Begin_D <= 3 * TAF_Cap
+        and then abs TAF.End_D <= 3 * TAF_Cap
+      then
+         TAF.Begin_D := TAF.Begin_D - D.D;
+         TAF.End_D := TAF.End_D - D.D;
+         TAF.Ref := EVC_Position.LRBG.Id;
+      else
+         TAF.On_LRBG := False;
+      end if;
+   end Rebase_TAF;
+
    --  3.15.5.2 to 3.15.5.4: the request shown from its beginning to its
    --  end (the estimated front end), the driver's acknowledgement while
    --  shown ends it with message 149 owed (Produce); passed its end, it
    --  ends unanswered (3.15.5.5); 4.9.1.3: deleted out of level 2
    --  @req 3.15.5.2 a), 3.15.5.2 b), 3.15.5.4, 4.9.1.3
    procedure Evaluate_TAF (Facts : Facts_T)
-     with Global => (Input  => (EVC_Levels.State, EVC_Odometry.State),
+     with Global => (Input  => (EVC_Levels.State, EVC_Odometry.State,
+                                EVC_Position.State),
                      In_Out => TAF)
    is
+      Front  : Dist_T := 0;
+      To_End : Cm_T;
    begin
       if not (EVC_Levels.Valid and then EVC_Levels.Level = L2) then
          TAF.Stored := False;
       end if;
-      TAF.Shown := TAF.Stored
-        and then EVC_Odometry.Remaining_Estimated (TAF.Begin_V) <= 0
-        and then EVC_Odometry.Remaining_Estimated (TAF.End_V) > 0;
-      if TAF.Stored
-        and then EVC_Odometry.Remaining_Estimated (TAF.End_V) <= 0
-      then
+      Rebase_TAF;
+      if TAF.On_LRBG then
+         Front := EVC_Position.Estimated_Front;
+      end if;
+      To_End := (if TAF.On_LRBG then TAF.End_D - Front
+                 else EVC_Odometry.Remaining_Estimated (TAF.End_V));
+      TAF.Shown := TAF.Stored and then To_End > 0
+        and then (if TAF.On_LRBG then TAF.Begin_D - Front <= 0
+                  else EVC_Odometry.Remaining_Estimated (TAF.Begin_V) <= 0);
+      if TAF.Stored and then To_End <= 0 then
          TAF.Stored := False;
       end if;
       if TAF.Shown and then Facts.TAF_Confirmed then
