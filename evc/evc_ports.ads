@@ -109,9 +109,11 @@
 --     nominal, 1 impaired, 2 safety threshold exceeded); 8 status of the
 --     train position (u8 0 unknown, 1 valid, 2 invalid); 9 cold movement
 --     (u8 1: detected at power-up); 10 new LRBG
---     (u24 identity); the events of the supervision, 20 to 22, of the
---     stored information, 32, and of the installation configuration, 33,
---     at the end of this package (11 to 19 and 23 to 31 are free).
+--     (u24 identity); 12 and 13 the inconsistent message of a linked
+--     and of an unlinked balise group (u24 identity); the events of the
+--     supervision, 20 to 22, of the stored information, 32, and of the
+--     installation configuration, 33, at the end of this package (11 is
+--     the driver's actions; 14 to 19 and 25 to 31 are free).
 --     Every input is rejected.
 
 with EVC_Bytes;

@@ -1344,7 +1344,8 @@ package body EVC_Test_Language is
       Take;
       Check (EVC_Received.Telegram_Count (Tel.Unsupported_Version) = 1
              and then EVC_Received.Last_Telegram.Count = 2
-             and then JRU_Event (2) = 0,
+             --  SUBSET-027 4.3.1.1: every telegram received is recorded
+             and then JRU_Event (2) /= 0,
              "received: version 1.0 rejected and counted");
       Input (RTM, RTM_Payload (5, 5));
       EVC_Core.Tick (100);
@@ -1405,9 +1406,9 @@ package body EVC_Test_Language is
              and then EVC_Received.Message_Count (Msg.Invalid_Value) = 1
              and then EVC_Received.Last_Message.Kind = MCat.Track_M24
              and then EVC_Received.Last_Message.Count = 1
-             --  e5/jru-radio: a message is recorded at reception, the
-             --  refused ones too (3.16.3.1.1.2), a telegram is not
-             and then JRU_Event (2) = 0 and then JRU_Event (3) /= 0,
+             --  a message and a telegram are recorded at reception, the
+             --  refused ones too (3.16.3.1.1.2, SUBSET-027 4.3.1.1)
+             and then JRU_Event (2) /= 0 and then JRU_Event (3) /= 0,
              "received: V_TSR spare in a telegram and in a message,"
              & " message 37 from the RBC session: counted, not kept");
 

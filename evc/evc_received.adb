@@ -5,6 +5,7 @@ package body EVC_Received
   with SPARK_Mode => On,
        Refined_State => (Store => (Telegram,
                                    Telegram_Kept,
+                                   Refused,
                                    Message,
                                    Message_Kept,
                                    Telegram_Counts,
@@ -16,6 +17,7 @@ is
 
    Telegram        : ETCS_Telegram.Telegram_T;
    Telegram_Kept   : Boolean := False;
+   Refused         : ETCS_Telegram.Header_T := (others => <>);
    Message         : ETCS_Message.Message_T;
    Message_Kept    : Boolean := False;
    Telegram_Counts : Telegram_Counts_T := (others => 0);
@@ -34,6 +36,9 @@ is
 
    function Has_Message return Boolean is (Message_Kept)
      with Refined_Global => Message_Kept;
+
+   function Refused_Header return ETCS_Telegram.Header_T is (Refused)
+     with Refined_Global => Refused;
 
    function Last_Telegram return ETCS_Telegram.Telegram_T is (Telegram)
      with Refined_Global => Telegram;
@@ -80,7 +85,8 @@ is
    end Count;
 
    procedure Clear
-     with Refined_Global => (Output => (Telegram, Telegram_Kept, Message,
+     with Refined_Global => (Output => (Telegram, Telegram_Kept, Refused,
+                                        Message,
                                         Message_Kept, Telegram_Counts,
                                         Message_Counts))
    is
@@ -89,6 +95,7 @@ is
       --  two types has a default expression)
       Telegram := (others => <>);
       Telegram_Kept := False;
+      Refused := (others => <>);
       Message := (others => <>);
       Message_Kept := False;
       Telegram_Counts := (others => 0);
@@ -111,6 +118,8 @@ is
       if Status = ETCS_Telegram.Accepted then
          Telegram := T;
          Telegram_Kept := True;
+      elsif Header_Read (Status) then
+         Refused := T.Header;
       end if;
    end Receive_Telegram;
 

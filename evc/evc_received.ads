@@ -83,6 +83,17 @@ is
    function Has_Message return Boolean
      with Global => Store;
 
+   --  The codec read the header of a telegram of this status
+   --  (ETCS_Telegram.Parse)
+   function Header_Read (S : ETCS_Telegram.Status_T) return Boolean is
+     (S not in ETCS_Telegram.Too_Long | ETCS_Telegram.Bad_Length
+             | ETCS_Telegram.Truncated);
+
+   --  The header of the last telegram refused whose header was read
+   --  (3.16.1.1: EVC_Position.Receive_Refused)
+   function Refused_Header return ETCS_Telegram.Header_T
+     with Global => Store;
+
    --  The last telegram and message accepted (empty ones before)
    function Last_Telegram return ETCS_Telegram.Telegram_T
      with Global => Store;
