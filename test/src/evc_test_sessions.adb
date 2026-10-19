@@ -1808,8 +1808,11 @@ package body EVC_Test_Sessions is
              "train length: the min safe rear end behind the front by it");
       EVC_Test_Modes.Start_E4;
       Stand;
-      Check (not EVC_Position.Train_Length_Known,
-             "train length: none without valid Train Data");
+      Check (EVC_Position.Train_Length_Known
+             and then EVC_Position.Length_Of_Train
+                      = EVC_Config.Current.Train.Engine_Length,
+             "train length: in SB without valid Train Data the engine's "
+             & "(4.4.7.1.6)");
       EVC_Config.Set_Radio_For_Test (EVC_Config.Default_Radio);
    end Scenario_Train_Length_To_Position;
 

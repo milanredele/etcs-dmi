@@ -1055,11 +1055,12 @@ is
    --  session half releases, parsed again (in the first slot of the
    --  latch, free now) and given to the authority half as received in
    --  this cycle; at most RTM_Latch_Size in a cycle
-   --  @req 4.8.5.5, 4.8.5.6 a)
+   --  @req 4.8.5.5, 4.8.5.6 a), 3.18.4.5.3
    procedure Read_Released_Messages
      with Global => (Input  => (Clock_Ms, EVC_Position.State,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State, Current_Mode),
                      In_Out => (Latched_RTM, EVC_Received.Store,
+                                EVC_Mission.State,
                                 EVC_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Origins.State, EVC_Radio_Info.State))
@@ -1077,6 +1078,8 @@ is
                                        M_Status);
          if M_Status = ETCS_Message.Accepted then
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms));
+            --  3.18.4.5.3: packet 140
+            EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
       end loop;
       --  4.8.5.5: the transition buffer of the authority half released
@@ -1092,6 +1095,7 @@ is
             --  4.8.2.1 c) exception 2: the Accepting RBC's
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
                                               Accepting);
+            EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
       end loop;
    end Read_Released_Messages;
@@ -1529,13 +1533,14 @@ is
    --  transition buffer released at once, its messages judged in level 2
    --  and taken by the stores before the procedures and the mode machine
    --  of the cycle (an MA kept for the transition: no trip by [39])
-   --  @req 4.8.3.1.1 Table-footnote [1], 4.8.5.5
+   --  @req 4.8.3.1.1 Table-footnote [1], 4.8.5.5, 3.18.4.5.3
    procedure Release_Transition_Buffer
      with Global => (Input  => (Clock_Ms, Current_Mode,
                                 EVC_Odometry.State, EVC_Train_Data.State,
-                                EVC_Train_Inputs.State, EVC_Mission.State),
+                                EVC_Train_Inputs.State),
                      In_Out => (Latched_RTM, EVC_Received.Store,
-                                EVC_Position.State, EVC_Procedures.State,
+                                EVC_Mission.State, EVC_Position.State,
+                                EVC_Procedures.State,
                                 EVC_Text_Messages.State,
                                 EVC_LS_Display.State,
                                 EVC_Origins.State,
@@ -1596,6 +1601,8 @@ is
             --  4.8.2.1 c) exception 2: the Accepting RBC's
             EVC_Radio_Authority.Take_Message (S, Unsigned_64 (Clock_Ms),
                                               Accepting);
+            --  3.18.4.5.3: packet 140
+            EVC_Mission.Take_RBC_TRN (Current_Mode);
          end if;
       end loop;
       EVC_Text_Messages.Take_Radio (First);
@@ -2380,8 +2387,10 @@ is
    --  end, 3.15.1.3.1 c) need it; no valid Train Data, no rear end. Once
    --  per cycle, after everything that sets or invalidates the Train Data
    --  (the driver's entry in EVC_Mission, a mode entered)
+   --  @req 4.4.6.1.4, 4.4.7.1.6, 4.4.8.1.3, 4.4.15.1.3, 4.4.20.1.4
    procedure Sync_Train_Length
-     with Global => (Input    => EVC_Train_Data.State,
+     with Global => (Input    => (EVC_Train_Data.State, Current_Mode,
+                                  EVC_Config.State),
                      In_Out   => EVC_Position.State,
                      Proof_In => EVC_Odometry.State),
           Post   => EVC_Position.Active_Cab = EVC_Position.Active_Cab'Old
@@ -2393,12 +2402,19 @@ is
                     and then EVC_Position.Doubt_Under
                              = EVC_Position.Doubt_Under'Old
    is
+      --  the front and rear end of the engine are the train's
+      Engine : constant Boolean :=
+        Current_Mode in M_SL | M_SH | M_NL | M_PS
+        or else (Current_Mode = M_SB and then not EVC_Train_Data.Valid);
+      Length : constant EVC_Distances.Length_T :=
+        (if Engine then EVC_Config.Current.Train.Engine_Length
+         else EVC_Train_Data.Length);
    begin
-      if EVC_Train_Data.Valid then
+      if Engine or else EVC_Train_Data.Valid then
          if not EVC_Position.Train_Length_Known
-           or else EVC_Position.Length_Of_Train /= EVC_Train_Data.Length
+           or else EVC_Position.Length_Of_Train /= Length
          then
-            EVC_Position.Set_Train_Length (EVC_Train_Data.Length);
+            EVC_Position.Set_Train_Length (Length);
          end if;
       elsif EVC_Position.Train_Length_Known then
          EVC_Position.Unset_Train_Length;
@@ -2953,7 +2969,7 @@ is
    --  on-board knows: the validity of the level, the position and the
    --  data of the start of mission (5.4), the train and national bits;
    --  the fields of the later phases are 0, "nothing known"
-   --  @req 5.4.3.2 S21
+   --  @req 5.4.3.2 S21, 5.17.2.2 S6
    procedure Send_Onboard
      with Global => (Input  => (Standstill, Below_Override, TIU_Now,
                                 EVC_Procedures.State,
@@ -3011,7 +3027,12 @@ is
          --  desk is open and no session with an RBC exists or is being
          --  established, so the start of mission may begin (phase E4:
          --  the desk is the cab status input, EVC_Mission)
-         SoM      => (if EVC_Mission.SoM_Engaged then SoM_Possible else 0),
+         --  5.17.2.2 S6: the re-entry or re-validation of the Train Data
+         --  requested, outside a start of mission (which asks for them)
+         SoM      => (if EVC_Mission.SoM_Engaged then SoM_Possible
+                      elsif EVC_Procedures.Train_Data_Revalidation
+                      then SoM_Train_Data_Then
+                      else 0),
          --  phase E5: the request for shunting of level 2 (5.6.2.2 S050)
          --  (one value: the two do not overlap, the request for shunting
          --  needs the session established); else 5.4.3.2 A31, the

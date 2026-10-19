@@ -104,7 +104,7 @@ is
    end Set_T0;
 
    --  Table 2b with the conditions of Table 2c, by priority (p1 first)
-   procedure Evaluate (Report : out Boolean) is
+   procedure Evaluate (Mode : EVC_Modes.Mode_T; Report : out Boolean) is
       Up       : constant Boolean := EVC_Radio.In_Communication;
       Valid_TD : constant Boolean := EVC_Train_Data.Valid;
       Pos_OK   : constant Boolean :=
@@ -176,6 +176,10 @@ is
       end case;
       if Current /= Before and then Current in By_Driver | By_External then
          Set_T0;
+      end if;
+      --  4.4.15.1.3: none in NL, whatever is available on-board
+      if Mode = EVC_Modes.M_NL then
+         Current := No_Information;
       end if;
       Sent := False;
       Input := None;

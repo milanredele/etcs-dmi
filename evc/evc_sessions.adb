@@ -1415,7 +1415,7 @@ is
       declare
          Report : Boolean;
       begin
-         Integrity.Evaluate (Report);
+         Integrity.Evaluate (Ctx.Mode, Report);
          if Report then
             Reports.Request;
          end if;

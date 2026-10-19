@@ -8,15 +8,20 @@ with ETCS_Track_Packets.P140;
 with ETCS_Train_Packets.P5;
 with ETCS_Bits;
 with ETCS_Track_Packets.P42;
+with ETCS_Track_Packets.P41;
 with ETCS_Variables;
 with EVC_Bytes;
+with EVC_Config;
 with EVC_Core;
 with EVC_DMI_Port;
 with EVC_Mission;
 with EVC_Modes;
+with EVC_Levels;
 with EVC_Ports;           use EVC_Ports;
+with EVC_Position;
 with EVC_Radio;
 with EVC_Radio_Authority;
+with EVC_Test_Authority;
 with EVC_Test_Modes;
 with EVC_Test_Support;    use EVC_Test_Support;
 with EVC_Track_Description;
@@ -267,5 +272,71 @@ package body EVC_Test_Train_Data is
              and then TRN_In_136 = 16#777F_FFFF#,
              "train data: the driver's new entry sent (3.18.4.5.4)");
    end Scenario_RBC_TRN;
+
+   procedure Scenario_Engine_Length is
+      Engine : constant Natural :=
+        Natural (EVC_Config.Current.Train.Engine_Length);
+      function Length return Natural is
+        (if EVC_Position.Train_Length_Known
+         then Natural (EVC_Position.Length_Of_Train) else 0);
+   begin
+      EVC_Test_Modes.Start_E4;
+      Stand_X (200);
+      Check (Length = Engine,
+             "engine length: SB without valid Train Data (4.4.7.1.6), got"
+             & Img (Length));
+      Send (Text_Entry (0, "1234"));
+      Send (Action (11, 4));
+      Send (Train_Entry (300));
+      Stand_X (200);
+      Check (Length = 30_000,
+             "engine length: SB with valid Train Data, their length "
+             & "(4.4.7.1.6 a), got" & Img (Length));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_SH, EVC_Modes.L1);
+      Stand_X (200);
+      Check (Length = Engine,
+             "engine length: SH, the engine's (4.4.8.1.3), got"
+             & Img (Length));
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_NL, EVC_Modes.L1);
+      Stand_X (200);
+      Check (Length = Engine,
+             "engine length: NL, the engine's (4.4.15.1.3), got"
+             & Img (Length));
+   end Scenario_Engine_Length;
+
+   procedure Scenario_Released_TRN is
+      P : ETCS_Track_Packets.P41.Packet_T;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (EVC_Modes.M_FS, EVC_Modes.L1);
+      Add_Group (Group (10, 100));
+      P.Q_DIR := 1;
+      P.Q_SCALE := 1;
+      P.D_LEVELTR := 300;
+      P.M_LEVELTR := ETCS_Variables.M_LEVELTR_Level_2;
+      P.Has_NID_NTC := False;
+      P.L_ACKLEVELTR := 0;
+      P.N_ITER := 0;
+      Carry (Track_N, 0, P);
+      EVC_Test_Authority.Establish_Session;
+      Run_X (15_000);
+      Give_Radio_Message
+        (1, EVC_Test_Authority.Radio_MA_TRN (10, (600, 400),
+                                             16#4321_FFFF#));
+      Stand_X (100);
+      Check (EVC_Radio_Authority.Buffered = 1
+             and then not EVC_Mission.TRN_From_RBC,
+             "train data: packet 140 of an MA with level 2 announced kept "
+             & "in the transition buffer (4.8.5.1), not taken yet");
+      for X in 151 .. 460 loop
+         Run_X (Integer_64 (X) * 100, 100);
+      end loop;
+      Check (EVC_Modes."=" (EVC_Levels.Level, EVC_Modes.L2)
+             and then EVC_Mission.TRN_From_RBC
+             and then EVC_Mission.TRN.Length = 4
+             and then EVC_Mission.TRN.Chars (1) = Character'Pos ('4'),
+             "train data: packet 140 of the released message taken "
+             & "(3.18.4.5.3, 4.8.5.5)");
+   end Scenario_Released_TRN;
 
 end EVC_Test_Train_Data;
