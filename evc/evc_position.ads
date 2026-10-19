@@ -106,6 +106,7 @@ with EVC_Odometry;
 with EVC_Origins;
 with EVC_Radio_Info;
 with EVC_Ports;         use EVC_Ports;
+with EVC_Train_Data;
 with ETCS_Bits;
 with ETCS_Packet_Index;
 with ETCS_Telegram;
@@ -389,6 +390,8 @@ is
                   and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Pending_Count = Pending_Count'Old
                   and then Passage_Open = Passage_Open'Old
@@ -403,6 +406,8 @@ is
           Post => LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Status = Status'Old
                   and then Passage_Open = Passage_Open'Old
@@ -425,6 +430,8 @@ is
           Post => LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Status = Status'Old
                   and then Passage_Open = Passage_Open'Old
@@ -444,20 +451,11 @@ is
      with Global => (In_Out => (State, EVC_Odometry.State,
                                 EVC_Origins.State)),
           Post =>
-            --  3.6.1.5: the active cab defines the orientation, with none
-            --  (or both, SUBSET-034 2.5.1.4.7) the last active one stays
-            (if Cab_A_Active and then not Cab_B_Active
-             then Orientation = Plus and then Orientation_Known
-                  and then Active_Cab = Cab_A)
-            and then
-            (if Cab_B_Active and then not Cab_A_Active
-             then Orientation = Minus and then Orientation_Known
-                  and then Active_Cab = Cab_B)
-            and then
-            (if Cab_A_Active = Cab_B_Active
-             then Orientation = Orientation'Old
-                  and then Orientation_Known = Orientation_Known'Old
-                  and then Active_Cab = No_Cab)
+            Kept_By_Manoeuvre (Orientation'Old)
+            and then Cab_One (Cab_A_Active, Cab_B_Active)
+            and then Cab_None (Cab_A_Active, Cab_B_Active, Orientation'Old,
+                               Orientation_Known'Old)
+            and then Manoeuvre_Orientation = Manoeuvre_Orientation'Old
             --  the LRBG changes only at the end of a passage
             and then
             (if Pending_Count'Old = 0 and then not Passage_Open'Old
@@ -466,6 +464,8 @@ is
             --  confidence interval does not shrink
             and then
             (if LRBG = LRBG'Old and then Orientation = Orientation'Old
+                                and then Manoeuvre_Orientation
+                                           = Manoeuvre_Orientation'Old
              then Doubt_Over >= Doubt_Over'Old
                   and then Doubt_Under >= Doubt_Under'Old)
             and then Pending_Count = 0;
@@ -477,9 +477,77 @@ is
           Post => Train_Length_Known and then Length_Of_Train = Length
                   and then Active_Cab = Active_Cab'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then LRBG = LRBG'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
+
+   --  3.6.1.5.1: from the first Supervised Manoeuvre authorisation
+   --  (Shift_For_Manoeuvre) to the end of the mission or Non Leading
+   --  (End_Manoeuvre) the train orientation is that of the last
+   --  authorisation, not the active cab's
+   function Manoeuvre_Orientation return Boolean
+     with Global => State;
+
+   --  3.6.1.5: after Update with the cab inputs A and B, the active cab
+   --  defines the orientation (Cab_One), with none (or both, SUBSET-034
+   --  2.5.1.4.7) the last active one (Old_O, Old_Known) stays (Cab_None);
+   --  3.6.1.5.1: a Supervised Manoeuvre's stays (Kept_By_Manoeuvre)
+   function Kept_By_Manoeuvre (Old_O : Sense_T) return Boolean
+   is (if Manoeuvre_Orientation then Orientation = Old_O)
+     with Global => State;
+   function Cab_One (A, B : Boolean) return Boolean
+   is (if A /= B
+       then (Manoeuvre_Orientation
+             or else Orientation = (if A then Plus else Minus))
+            and then Orientation_Known
+            and then Active_Cab = (if A then Cab_A else Cab_B))
+     with Global => State;
+   function Cab_None (A, B      : Boolean;
+                      Old_O     : Sense_T;
+                      Old_Known : Boolean) return Boolean
+   is (if A = B
+       then Orientation = Old_O and then Orientation_Known = Old_Known
+            and then Active_Cab = No_Cab)
+     with Global => State;
+
+   --  4.4.21.1.7, 5.21.2.2 A075: a Supervised Manoeuvre authorisation
+   --  taken; Opposite: the direction of its MA is opposite to the train
+   --  orientation, which turns, and the train position is that of the
+   --  other end of the consist C (safe consist length, metres): the
+   --  estimated front end and the confidence interval of 3.6.1.3.4 and
+   --  3.6.4.1.5 (gamma 1) in the new orientation. Decision: computed from
+   --  the active cab's end of the engine (the estimated front end before
+   --  the shift does not yet hold the consist length in front of the
+   --  engine, 3.6.1.3.4), it is 4.4.21.1.7 a) to c) for a front end that
+   --  does
+   --  @req 4.4.21.1.7, 4.4.21.1.7 a), 4.4.21.1.7 b) 1st bullet
+   --  @req 4.4.21.1.7 b) 2nd bullet, 4.4.21.1.7 c) 1st bullet
+   --  @req 4.4.21.1.7 c) 2nd bullet
+   procedure Shift_For_Manoeuvre (Opposite : Boolean;
+                                  C        : EVC_Train_Data.Consist_T)
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => Manoeuvre_Orientation
+                  and then Orientation
+                           = (if Opposite
+                              then EVC_Distances.Opposite (Orientation'Old)
+                              else Orientation'Old)
+                  and then Active_Cab = Active_Cab'Old
+                  and then LRBG = LRBG'Old
+                  and then (if not Opposite
+                            then Doubt_Over = Doubt_Over'Old
+                                 and then Doubt_Under = Doubt_Under'Old);
+
+   --  The end of the mission, or Non Leading: the orientation follows
+   --  the active cab again and the front end is the engine's
+   procedure End_Manoeuvre
+     with Global => (In_Out => State),
+          Post => not Manoeuvre_Orientation
+                  and then Orientation = Orientation'Old
+                  and then Active_Cab = Active_Cab'Old
+                  and then LRBG = LRBG'Old;
+
    --  No valid Train Data (3.18.3): the min safe rear end is the min safe
    --  front end again and the rear end triggers do not fire
    procedure Unset_Train_Length
@@ -487,6 +555,8 @@ is
           Post => not Train_Length_Known
                   and then Active_Cab = Active_Cab'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then LRBG = LRBG'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
@@ -501,6 +571,8 @@ is
    procedure Set_Border (Ref : Identity_T; D : Length_T; OK : out Boolean)
      with Global => (In_Out => State, Input => EVC_Odometry.State),
           Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
+                                  and then Manoeuvre_Orientation
+                                             = Manoeuvre_Orientation'Old
                   and then Active_Cab = Active_Cab'Old
                   and then Status = Status'Old
                   and then Doubt_Over = Doubt_Over'Old
@@ -510,6 +582,8 @@ is
    procedure Delete_Border
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
+                                  and then Manoeuvre_Orientation
+                                             = Manoeuvre_Orientation'Old
                   and then Active_Cab = Active_Cab'Old
                   and then Status = Status'Old
                   and then Doubt_Over = Doubt_Over'Old
@@ -526,6 +600,8 @@ is
       OK  : out Boolean)
      with Global => (In_Out => State, Input => EVC_Odometry.State),
           Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
+                                  and then Manoeuvre_Orientation
+                                             = Manoeuvre_Orientation'Old
                   and then Active_Cab = Active_Cab'Old
                   and then Status = Status'Old
                   and then Doubt_Over = Doubt_Over'Old
@@ -535,6 +611,8 @@ is
    procedure Report_Sent (Now_Ms : Unsigned_64)
      with Global => (In_Out => State, Input => EVC_Odometry.State),
           Post => LRBG = LRBG'Old and then Orientation = Orientation'Old
+                                  and then Manoeuvre_Orientation
+                                             = Manoeuvre_Orientation'Old
                   and then Active_Cab = Active_Cab'Old
                   and then Status = Status'Old
                   and then Doubt_Over = Doubt_Over'Old
@@ -547,6 +625,8 @@ is
           Post => not Report_Parameters_Stored
                   and then LRBG = LRBG'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Active_Cab = Active_Cab'Old
                   and then Status = Status'Old
                   and then Doubt_Over = Doubt_Over'Old
@@ -577,14 +657,17 @@ is
    --  is full. G: the orientation of the group, T: the train
    --  orientation, as directions on the axis (the packets valid for the
    --  train are those of Valid_For (Q_DIR, G, T), 3.6.3.1.3); S, the
-   --  sense of the distances: the train orientation.
+   --  sense of the distances: the train orientation (Reversed: the
+   --  opposite one, a Supervised Manoeuvre authorisation that turns
+   --  it, 4.4.21.1.7).
    --  @req 3.6.3.1.3
    procedure Radio_Origin (Id      : Identity_T;
                            Shifted : Boolean;
                            Shift   : Dist_T;
                            Origin  : out EVC_Origins.Count_T;
                            G, T    : out Direction_T;
-                           S       : out Sense_T)
+                           S       : out Sense_T;
+                           Reversed : Boolean := False)
      with Global => (Input  => (State, EVC_Odometry.State),
                      In_Out => EVC_Origins.State),
           Post => T = To_Direction (S)
@@ -631,6 +714,8 @@ is
                    else Status = Status'Old)
                   and then LRBG = LRBG'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Active_Cab = Active_Cab'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old;
@@ -645,6 +730,8 @@ is
      with Global => (In_Out => State),
           Post => Status = Unknown and then not LRBG.Valid
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Active_Cab = Active_Cab'Old;
    --  3.6.6.9 d)
    --  @req 3.6.6.9 d)
@@ -656,6 +743,8 @@ is
                   and then Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old
@@ -686,6 +775,8 @@ is
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old
@@ -702,6 +793,8 @@ is
                      Input  => EVC_Odometry.State),
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Active_Cab = Active_Cab'Old
                   and then Doubt_Over = Doubt_Over'Old
@@ -723,6 +816,8 @@ is
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Active_Cab = Active_Cab'Old
                   and then Doubt_Over = Doubt_Over'Old
@@ -748,6 +843,8 @@ is
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old
@@ -772,6 +869,8 @@ is
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old
@@ -785,6 +884,8 @@ is
           Post => Status = Status'Old and then LRBG = LRBG'Old
                   and then SOLR = SOLR'Old
                   and then Orientation = Orientation'Old
+                  and then Manoeuvre_Orientation
+                             = Manoeuvre_Orientation'Old
                   and then Orientation_Known = Orientation_Known'Old
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old

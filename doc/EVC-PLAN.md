@@ -8718,3 +8718,52 @@ the trip at a group not in the list) checks the trip in level 0; on the
 acknowledgement the mode goes back to SH instead of UN, the SH mode
 profile apparently outliving the entry in SH and the trip in
 `EVC_Procedures` (B1020, not traced: the bound). B904 not reached.
+### Supervised Manoeuvre, the adjustment and the supervision (e6/sm-supervision) (2026-10-19)
+
+The third Supervised Manoeuvre package. Only its first item, B951, was
+built within the budget (160 calls and 60 granted for the proof and the
+"Done" list); the supervision with default Train Data and 3.18.3.10 are
+untouched.
+
+Built: `EVC_Radio_Authority.Take_SM_Authorisation` sets
+`SM_Auth.Opposite` from packet 15's Q_DIR against the train orientation
+(`EVC_Position.Radio_Valid_For`), the MA slot and its origin taken in the
+reversed sense (`Take_Stored_Information` and `EVC_Position.Radio_Origin`
+`Reversed`); queries `SM_Taken`, `SM_Opposite`. `EVC_Position`:
+`Shift_For_Manoeuvre`, `End_Manoeuvre`, `Manoeuvre_Orientation` (state
+`Manoeuvre`: Fixed, Moved, Reach, Over, Under; `Front_X`, `Over_From`,
+`Under_From` use it; `Take_Cab` keeps a fixed orientation, 3.6.1.5.1).
+`EVC_Core.Adjust_For_Manoeuvre` (in Tick after `Update_Position`): for an
+opposite MA deletes the track description, MA, track conditions, linking
+and geographical position (3.7.3.4 b)), requests the position report
+(A095), shifts or fixes the orientation; the fixed orientation ends in NL
+or without a mission. Proof: `Manoeuvre_Orientation = 'Old` in every post
+that keeps the orientation (EVC_Position, EVC_Core's steps, EVC_Sessions,
+-Handover, -Reports); Update's post split (Kept_By_Manoeuvre, Cab_One,
+Cab_None); the Tick posts of 3.6.1.5 and 3.6.4.1.2 with the manoeuvre
+exception, an assertion in Tick after the adjustment.
+
+Decisions: the shift is computed from the active cab's end of the engine
+in the new orientation (3.6.1.3.4, 3.6.4.1.5 gamma 1), which is
+4.4.21.1.7 a) to c) for a front end that holds the consist in front of
+the engine (B950); an authorisation in the same direction only fixes the
+orientation (front end and gamma unchanged, B950, B031); the location
+based information of 3.7.3.4 b) is 4.10's rows, the transition orders
+are kept (B991).
+
+Rows: done 4.4.21.1.7 a), b) and c) bullets, 3.7.3.4, a), 5.21.2.2 A095;
+partial 4.4.21.1.7, 3.7.3.4 b), 5.21.2.2 A075. Scenario
+`EVC_Test_Manoeuvre.Scenario_SM_Authorisation` extended (same direction
+fixed; opposite: 136 sent, orientation turned, front end and interval
+shifted, linking deleted). SUBSET-076: 1013 / 1120 / 1057 before, 1014 /
+1119 / 1057 after; 3 improvements (4070201_05 passes); 2 regressions
+understood and re-recorded, B990: 3170200_11 (step 86 -> 69, S5967fccc,
+FS instead of SR then SM after an opposite authorisation in SR) and
+4120100_17 (step 91 -> 84, Sbfa49d0b, TR when the authorisation comes
+while moving in FS).
+
+Left: B990 (after an opposite authorisation the mode machine trips on
+[16] in the scenario or goes to FS, not SM; `Delete_On_Mode_Entry`
+deletes the MA on entering SM), B991, the supervision with default Train
+Data (3.18.3.9, 4.4.21.1.8, 4.4.21.3.1), 3.18.3.10 (message 7 the RBC's
+acknowledgement), B950, B952, B031, B008, 4.4.21.1.11 to .13, message 133.

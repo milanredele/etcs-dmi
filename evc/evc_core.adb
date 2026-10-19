@@ -823,6 +823,8 @@ is
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Doubt_Over
                              = EVC_Position.Doubt_Over'Old
                   and then EVC_Position.Doubt_Under
@@ -842,11 +844,14 @@ is
       Under_0       : constant EVC_Distances.Length_T :=
         EVC_Position.Doubt_Under
         with Ghost;
+      Fixed_0       : constant Boolean := EVC_Position.Manoeuvre_Orientation
+        with Ghost;
    begin
       for I in 1 .. Latched_BTM_Count loop
          pragma Loop_Invariant
            (EVC_Position.LRBG = LRBG_0
             and then EVC_Position.Orientation = Orientation_0
+            and then EVC_Position.Manoeuvre_Orientation = Fixed_0
             and then EVC_Position.Doubt_Over = Over_0
             and then EVC_Position.Doubt_Under = Under_0);
          declare
@@ -1131,6 +1136,8 @@ is
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Doubt_Over
                              = EVC_Position.Doubt_Over'Old
                   and then EVC_Position.Doubt_Under
@@ -1223,6 +1230,12 @@ is
                      In_Out => (EVC_Position.State, EVC_Odometry.State,
                                 EVC_Origins.State, EVC_Outbox.Queue)),
           Post =>
+            EVC_Position.Manoeuvre_Orientation
+              = EVC_Position.Manoeuvre_Orientation'Old
+            and then
+            (if EVC_Position.Manoeuvre_Orientation
+             then EVC_Position.Orientation = EVC_Position.Orientation'Old)
+            and then
             (if EVC_Position.Orientation /= EVC_Position.Orientation'Old
              then EVC_Position.Active_Cab
                     = (if EVC_Position.Orientation = EVC_Distances.Plus
@@ -1231,6 +1244,8 @@ is
             (if EVC_Position.LRBG = EVC_Position.LRBG'Old
                and then EVC_Position.Orientation
                           = EVC_Position.Orientation'Old
+               and then EVC_Position.Manoeuvre_Orientation
+                          = EVC_Position.Manoeuvre_Orientation'Old
              then EVC_Position.Doubt_Over >= EVC_Position.Doubt_Over'Old
                   and then EVC_Position.Doubt_Under
                              >= EVC_Position.Doubt_Under'Old)
@@ -1445,6 +1460,8 @@ is
                      In_Out => (EVC_Position.State, EVC_Origins.State)),
           Post => EVC_Position.Orientation
                     = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -1474,6 +1491,8 @@ is
                      In_Out => (EVC_Position.State, EVC_Procedures.State)),
           Post => EVC_Position.Orientation
                     = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -1492,11 +1511,13 @@ is
       L0 : constant EVC_Location.Anchor_T := EVC_Position.LRBG;
       DO0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Over;
       DU0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Under;
+      M0 : constant Boolean := EVC_Position.Manoeuvre_Orientation;
       use type ETCS_Catalogue.Packet_Kind_T;
    begin
       for S in 1 .. EVC_Stored_Information.Balise_Buffered loop
          pragma Loop_Invariant
            (EVC_Position.Orientation = O0
+            and then EVC_Position.Manoeuvre_Orientation = M0
             and then EVC_Position.Active_Cab = C0
             and then EVC_Position.LRBG = L0
             and then EVC_Position.Doubt_Over = DO0
@@ -1504,6 +1525,7 @@ is
          for P in 1 .. EVC_Stored_Information.Balise_Set_Packets (S) loop
             pragma Loop_Invariant
               (EVC_Position.Orientation = O0
+               and then EVC_Position.Manoeuvre_Orientation = M0
                and then EVC_Position.Active_Cab = C0
                and then EVC_Position.LRBG = L0
                and then EVC_Position.Doubt_Over = DO0
@@ -1554,6 +1576,8 @@ is
                                 EVC_Levels.State, EVC_Sessions.State)),
           Post => EVC_Position.Orientation
                     = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -1628,6 +1652,8 @@ is
                                 EVC_Origins.State, EVC_Odometry.State),
                      In_Out => EVC_Position.State),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -1651,6 +1677,8 @@ is
                      Proof_In => EVC_Odometry.State,
                      In_Out => EVC_Position.State),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -1843,6 +1871,8 @@ is
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.Doubt_Over
@@ -1944,6 +1974,8 @@ is
                                 EVC_Level_Sessions.State,
                                 EVC_System_Version.State)),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   --  A24, A39 delete the position (its LRBG no longer
@@ -2206,6 +2238,8 @@ is
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.Doubt_Over
@@ -2336,6 +2370,8 @@ is
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.Doubt_Over
@@ -2396,6 +2432,8 @@ is
           Post   => EVC_Position.Active_Cab = EVC_Position.Active_Cab'Old
                     and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
+                    and then EVC_Position.Manoeuvre_Orientation
+                               = EVC_Position.Manoeuvre_Orientation'Old
                     and then EVC_Position.LRBG = EVC_Position.LRBG'Old
                     and then EVC_Position.Doubt_Over
                              = EVC_Position.Doubt_Over'Old
@@ -3705,6 +3743,64 @@ is
       Flush_Juridical;              -- JRU, the messages of the cycle
    end Produce_Outputs;
 
+   --  5.21.2.2 A075, 3.6.1.5.1, 3.7.3.4: a Supervised Manoeuvre
+   --  authorisation taken in this cycle fixes the train orientation;
+   --  when its MA is in the opposite direction, the position is shifted
+   --  to the other end of the consist and the location based information
+   --  stored before is deleted (its own MA, gradient and SSP are taken
+   --  after, by Evaluate_Stored_Information); 3.7.3.4 a), the same
+   --  direction: nothing else (3.7.3.1); A095, the train position reported
+   --  to the RBC. The orientation follows the cab again once the mission
+   --  has ended or continues in Non Leading.
+   --  Decision: the location based information of 3.7.3.4 b) is that of
+   --  4.10's rows (the track description, the MA, the track conditions,
+   --  the linking, the geographical position)
+   --  @req 3.7.3.4, 3.7.3.4 a), 3.7.3.4 b), 5.21.2.2 A075, 5.21.2.2 A095
+   procedure Adjust_For_Manoeuvre
+     with Global => (Input    => (Current_Mode, EVC_Mission.State,
+                                  EVC_Radio_Authority.State,
+                                  EVC_Train_Data.State),
+                     Proof_In => EVC_Odometry.State,
+                     In_Out   => (EVC_Track_Description.State,
+                                  EVC_Movement_Authority.State,
+                                  EVC_Track_Conditions.State,
+                                  EVC_Position.State, EVC_Sessions.State)),
+          Post => (if EVC_Position.Orientation
+                        /= EVC_Position.Orientation'Old
+                   then EVC_Position.Manoeuvre_Orientation)
+                  and then EVC_Position.Active_Cab
+                             = EVC_Position.Active_Cab'Old
+                  and then EVC_Position.LRBG = EVC_Position.LRBG'Old
+                  and then
+                  (if EVC_Position.Orientation
+                        = EVC_Position.Orientation'Old
+                     and then EVC_Position.Manoeuvre_Orientation
+                                = EVC_Position.Manoeuvre_Orientation'Old
+                   then EVC_Position.Doubt_Over
+                          = EVC_Position.Doubt_Over'Old
+                        and then EVC_Position.Doubt_Under
+                                   = EVC_Position.Doubt_Under'Old)
+   is
+   begin
+      if EVC_Radio_Authority.SM_Taken then
+         if EVC_Radio_Authority.SM_Opposite then
+            EVC_Track_Description.Delete ((others => True));
+            EVC_Movement_Authority.Delete_MA;
+            EVC_Track_Conditions.Reset
+              (Rest => True, Horn => True, BMM => True);
+            EVC_Position.Delete_Linking;
+            EVC_Position.Delete_Geo;
+         end if;
+         EVC_Sessions.Request_Position_Report;
+         EVC_Position.Shift_For_Manoeuvre
+           (EVC_Radio_Authority.SM_Opposite, EVC_Train_Data.Consist);
+      elsif EVC_Position.Manoeuvre_Orientation
+        and then (Current_Mode = M_NL or else not EVC_Mission.Mission)
+      then
+         EVC_Position.End_Manoeuvre;
+      end if;
+   end Adjust_For_Manoeuvre;
+
    --  4.11.1.1, 4.11.1.3: the data kept over No Power, once the cold
    --  movement detection is known after the power-up: no cold movement,
    --  the train position and the level become valid; a cold movement
@@ -3717,6 +3813,8 @@ is
                      In_Out => (Kept_Pending, EVC_Levels.State,
                                 EVC_Position.State, EVC_Radio.State)),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -3752,6 +3850,8 @@ is
      with Global => (In_Out   => EVC_Position.State,
                      Proof_In => EVC_Odometry.State),
           Post => EVC_Position.Orientation = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then (if EVC_Position.LRBG = EVC_Position.LRBG'Old
@@ -3802,6 +3902,15 @@ is
    end Save_Retained;
 
    procedure Tick (Dt_Ms : Natural) is
+      L_0 : constant EVC_Location.Anchor_T := EVC_Position.LRBG with Ghost;
+      O_0 : constant EVC_Distances.Sense_T := EVC_Position.Orientation
+        with Ghost;
+      M_0 : constant Boolean := EVC_Position.Manoeuvre_Orientation
+        with Ghost;
+      Over_0  : constant EVC_Distances.Length_T := EVC_Position.Doubt_Over
+        with Ghost;
+      Under_0 : constant EVC_Distances.Length_T := EVC_Position.Doubt_Under
+        with Ghost;
    begin
       if Failed_Flag then
          return;
@@ -3812,6 +3921,15 @@ is
       Report_Configuration;
       Read_Ports;
       Update_Position;
+      Adjust_For_Manoeuvre;
+      --  3.6.4.1.2 up to here: against the same LRBG, orientation and
+      --  Supervised Manoeuvre the confidence interval did not shrink
+      pragma Assert
+        (if EVC_Position.LRBG = L_0
+           and then EVC_Position.Orientation = O_0
+           and then EVC_Position.Manoeuvre_Orientation = M_0
+         then EVC_Position.Doubt_Over >= Over_0
+              and then EVC_Position.Doubt_Under >= Under_0);
       Revalidate_Kept;
       Take_Radio_Linking;
       Evaluate_Stored_Information;
