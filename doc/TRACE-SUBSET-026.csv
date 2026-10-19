@@ -1033,10 +1033,10 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.3.5,3,x,,,,,E6,done,"EVC_Train_Data.Take_Consist, Consist_In_Front (the length in front of the engine: the side of the active cab, decided in EVC_Ports); scenario EVC_Test_Manoeuvre.Scenario_Safe_Consist [E6 Supervised Manoeuvre]"
 3.18.3.5 a),3,x,,,,,E6,done,"EVC_Train_Data.Take_Consist invalidates the Train Data at a length in front of the engine; scenario EVC_Test_Manoeuvre.Scenario_Safe_Consist [E6 Supervised Manoeuvre]"
 3.18.3.5 b),3,x,,,,,E6,done,"EVC_Train_Data.Entry_Possible, checked by EVC_Mission.Take_Data before the driver's entry; scenario EVC_Test_Manoeuvre.Scenario_Safe_Consist [E6 Supervised Manoeuvre]"
-3.18.3.7,3,x,,,,,E6,partial,"EVC_Mission.Categories_Changed, EVC_Stored_Information.Train_Data_Shortening (EVC_Core.Evaluate_Stored_Information); b) left; evc_test Train_Data_Categories"
+3.18.3.7,3,x,,,,,E6,done,"EVC_Mission.Categories_Changed, EVC_Stored_Information.Train_Data_Shortening (EVC_Core.Evaluate_Stored_Information), EVC_Radio_Authority.Delete_Transition_Information; evc_test Train_Data_Categories, Transition_Deleted"
 3.18.3.7 a),3,x,,,,,E6,done,EVC_Stored_Information.Train_Data_Shortening: shortened to the train as for A.3.4.1.2 i) (the same column); evc_test Train_Data_Categories
-3.18.3.7 b),3,x,,,,,E6,partial,EVC_Stored_Information.Train_Data_Shortening deletes no radio information of a pending level 2 or RBC transition: the transition buffer of 4.8.5 (EVC_Radio_Authority) has no deletion entry yet (B870)
-3.18.3.8,3,x,,,,,E6,todo,the track description in rear of the former min safe rear end not yet made unknown at a length increase (B871)
+3.18.3.7 b),3,x,,,,,E6,done,"EVC_Radio_Authority.Delete_Transition_Information (EVC_Core.Evaluate_Stored_Information at standstill): the messages of the transition buffer deleted whole; evc_test Transition_Deleted"
+3.18.3.8,3,x,,,,,E6,partial,"EVC_Stored_Information.Delete_Behind_Former: the train length of valid Train Data increased, what ends in rear of the former min safe rear end deleted (evc_test Longer_Train); the safe consist length without valid Train Data [E6 Supervised Manoeuvre]"
 3.18.3.9,3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
 3.18.3.10,3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
 3.18.3.10.2,3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
@@ -1059,11 +1059,11 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.4.3.6.3 a),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
 3.18.4.3.6.3 b),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
 3.18.4.4.2,3,x,x,,,,E6,done,"by construction: NID_ENGINE from the installation (EVC_Config, EVC_Radio.Engine_Id); the uniqueness is the installer's"
-3.18.4.5.1,3,x,,,,,E6,partial,EVC_Mission.Take_Identity: the driver's entry; from the RBC (packet 140) and other external sources not taken (B872)
+3.18.4.5.1,3,x,,,,,E6,partial,"EVC_Mission.Take_Identity: the driver's entry; EVC_Mission.Take_RBC_TRN: packet 140 from the RBC (evc_test RBC_TRN); other external sources (a TIU input) not modelled"
 3.18.4.5.2,3,x,,,,,E6,done,EVC_Mission.Take_Identity: the train running number taken in NL (4.7.2)
-3.18.4.5.3,3,x,,,,,E6,done,"EVC_Mission.Take_Identity: taken whatever the speed in SB, SM, FS, AD, LS, SR, OS, NL, UN, SN; from the RBC (B872)"
+3.18.4.5.3,3,x,,,,,E6,done,"EVC_Mission.Take_Identity: taken whatever the speed in SB, SM, FS, AD, LS, SR, OS, NL, UN, SN; EVC_Mission.Take_RBC_TRN: packet 140 in the same modes, while running too (evc_test RBC_TRN)"
 3.18.4.5.4,3,x,,,,,E6,done,EVC_Sessions.Reports.Evaluate: packet 5 in the next 136 to the supervising RBC after the driver's entry with the session established or after an establishment outside the start of mission; EVC_Sessions.Mission: in the 157 when valid; evc_test Session_TRN
-3.18.4.5.4.1,3,x,,,,,E6,partial,"EVC_Mission: nothing to suppress yet, packet 140 is not taken (B872)"
+3.18.4.5.4.1,3,x,,,,,E6,done,"EVC_Mission.TRN_From_RBC, EVC_Sessions.Reports.Evaluate: the train running number of packet 140 not sent back, until the driver enters one; evc_test RBC_TRN"
 3.18.4.5.5,3,x,,,,,E6,done,"EVC_Mission.Take_Identity, Valid_TRN: 1 to 8 digits (A.3.11, NID_OPERATIONAL)"
 3.18.4.6.2,3,x,,,,,E6,done,"EVC_Stored_Information.Take_Driver_Adhesion (the driver's choice taken in any cycle, also running; trackside: packet 71); evc_test Driver_Adhesion"
 3.18.4.6.2.1,3,x,x,,,,E6,done,"EVC_Stored_Information.Take_Driver_Adhesion (permitted by Q_NVDRIVER_ADHES, reset to non slippery when the national values in force no longer permit it; the profiles of packet 71 kept); evc_test Driver_Adhesion"

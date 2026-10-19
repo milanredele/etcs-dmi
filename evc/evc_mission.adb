@@ -1,6 +1,9 @@
 --  ETCS on-board (EVC)
 --  The mission data, the start and the end of mission, implementation.
 
+with ETCS_Bits;
+with ETCS_Catalogue;
+with ETCS_Track_Packets.P140;
 with ETCS_Variables; use ETCS_Variables;
 
 package body EVC_Mission
@@ -15,7 +18,8 @@ package body EVC_Mission
                                    TD_Now, TD_Entry, SR_Entry, RBC_Wait,
                                    RBC_Wait_Count,
                                    SR_After_Wait, SR_After_Wait_MAs,
-                                   TRN_N, Cat_N, Events, Event_N))
+                                   TRN_N, TRN_RBC, Cat_N, Events,
+                                   Event_N))
 is
 
    type Event_Array is array (1 .. Max_Events) of Event_T;
@@ -26,6 +30,8 @@ is
    TRN_V           : Text_T;
    --  the driver entered a train running number in this cycle
    TRN_N           : Boolean := False;
+   --  the valid train running number came from the RBC (packet 140)
+   TRN_RBC         : Boolean := False;
    --  the driver's Train Data of this cycle changed the train category,
    --  axle load category, loading gauge or traction system (3.18.3.7)
    Cat_N           : Boolean := False;
@@ -81,6 +87,9 @@ is
 
    function TRN_Entered return Boolean is (TRN_N)
      with Refined_Global => TRN_N;
+
+   function TRN_From_RBC return Boolean is (TRN_RBC and then TRN_S = Valid)
+     with Refined_Global => (TRN_RBC, TRN_S);
 
    function Categories_Changed return Boolean is (Cat_N)
      with Refined_Global => Cat_N;
@@ -151,6 +160,7 @@ is
       TRN_S := Unknown;
       TRN_V := (others => <>);
       TRN_N := False;
+      TRN_RBC := False;
       Cat_N := False;
       Train_Known := False;
       Engaged := False;
@@ -323,9 +333,71 @@ is
    --  (A.3.11) entered in a mode where they may be
    --  @req 3.18.4.1.2, 3.18.4.1.3, 3.18.4.1.4, 3.18.4.5.2, 3.18.4.5.3
    --  @req 3.18.4.5.5
+   --  NID_OPERATIONAL (7.5.1.98) as the digits of the train running
+   --  number: BCD, left adjusted, F where there is no digit (as
+   --  EVC_JRU_Records.TRN_Code writes it); a digit after an F, a value
+   --  10 to 14 or no digit gives the length 0 (not valid, A.3.11)
+   function TRN_Of (Code : NID_OPERATIONAL_T) return Text_T is
+      T    : Text_T;
+      D    : NID_OPERATIONAL_T;
+      Done : Boolean := False;
+   begin
+      for I in 1 .. 8 loop
+         pragma Loop_Invariant (T.Length <= I - 1);
+         D := (Code / 16 ** (8 - I)) mod 16;
+         if D = 16#F# then
+            Done := True;
+         elsif D > 9 or else Done then
+            return (others => <>);
+         else
+            T.Length := T.Length + 1;
+            T.Chars (T.Length) := Unsigned_8 (D) + 48;
+         end if;
+      end loop;
+      return T;
+   end TRN_Of;
+
+   procedure Take_RBC_TRN (M : Mode_T)
+     with Refined_Global => (Input  => EVC_Received.Store,
+                             In_Out => (TRN_S, TRN_V, TRN_RBC, Events,
+                                        Event_N))
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      use type ETCS_Catalogue.Packet_Kind_T;
+      P  : ETCS_Track_Packets.P140.Packet_T;
+      OK : Boolean;
+      T  : Text_T;
+   begin
+      if M not in M_SB | M_SM | M_FS | M_AD | M_LS | M_SR | M_OS | M_NL
+                | M_UN | M_SN
+      then
+         return;
+      end if;
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P140
+         then
+            EVC_Received.Open_Message_Packet (I, R);
+            ETCS_Track_Packets.P140.Decode (R, P, OK);
+            if OK then
+               T := TRN_Of (P.NID_OPERATIONAL);
+               if Valid_TRN (T) then
+                  TRN_V := T;
+                  TRN_S := Valid;
+                  TRN_RBC := True;
+                  Put_Event (Event_TRN, TRN_V.Length, 0);
+               end if;
+            end if;
+         end if;
+      end loop;
+   end Take_RBC_TRN;
+
    procedure Take_Identity (C : Context_T; M : Mode_T)
      with Global => (In_Out => (Driver_S, Driver_V, TRN_S, TRN_V, TRN_N,
-                                Proposal, Events, Event_N),
+                                TRN_RBC, Proposal, Events, Event_N),
                      Input  => EVC_Driver_Requests.State)
    is
    begin
@@ -356,6 +428,7 @@ is
             TRN_V := EVC_Driver_Requests.Train_Running_Number;
             TRN_S := Valid;
             TRN_N := True;
+            TRN_RBC := False;
             Put_Event (Event_TRN, TRN_V.Length, 0);
             Proposal := False;
          else

@@ -950,9 +950,10 @@ is
    --  messages it passes go on to the authority half (phase E5)
    --  @req 3.6.5.1.4 l), 3.16.3.1.1.2, 3.17.3.11
    procedure Read_Radio_Messages
-     with Global => (Input  => (Latched_RTM, Clock_Ms,
+     with Global => (Input  => (Latched_RTM, Clock_Ms, Current_Mode,
                                 EVC_Position.State, EVC_Odometry.State),
                      In_Out => (Latched_RTM_Count, EVC_Received.Store,
+                                EVC_Mission.State,
                                 EVC_Outbox.Queue, EVC_Sessions.State,
                                 EVC_Radio.State,
                                 EVC_Radio_Authority.State,
@@ -1019,6 +1020,8 @@ is
                   else
                      EVC_Radio_Authority.Take_Message
                        (Slot.Session, Unsigned_64 (Clock_Ms));
+                     --  3.18.4.5.3: packet 140
+                     EVC_Mission.Take_RBC_TRN (Current_Mode);
                   end if;
                elsif M_Status = ETCS_Message.Unknown_Message then
                   --  3.17.3.11 b): an unknown NID_MESSAGE is not a message
@@ -1099,7 +1102,7 @@ is
    --  the stamp of their balise, to the position
    procedure Read_Ports
      with Global => (Input  => (Latched_Odometer, Latched_TIU, Latched_BTM,
-                                Latched_SCL, Clock_Ms,
+                                Latched_SCL, Clock_Ms, Current_Mode,
                                 EVC_Odometry.State, Latched_TIU_Value,
                                 Latched_TIU_Known, Latched_Events),
                      Output => (Odometer_Now, Odometer_Fresh, TIU_Now,
@@ -1113,7 +1116,7 @@ is
                                 Latched_RTM, Latched_RTM_Count,
                                 Latched_Event_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Position.State,
-                                EVC_Driver_Requests.State,
+                                EVC_Driver_Requests.State, EVC_Mission.State,
                                 EVC_Levels.State, EVC_Procedures.State,
                                 EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
@@ -1336,9 +1339,9 @@ is
                                 EVC_Train_Inputs.State, EVC_Mission.State,
                                 EVC_Procedures.State, SDM_Result,
                                 EVC_Radio_Info.State,
-                                EVC_Radio_Authority.State,
                                 EVC_Driver_Requests.State),
                      In_Out => (SDM_Work, EVC_Stored_Information.State,
+                                EVC_Radio_Authority.State,
                                 EVC_Origins.State,
                                 EVC_Track_Description.State,
                                 EVC_Movement_Authority.State,
@@ -1398,6 +1401,10 @@ is
       --  3.18.3.7 a): after the Train Data entered in the last cycle
       EVC_Stored_Information.Train_Data_Shortening
         (EVC_Mission.Categories_Changed);
+      --  3.18.3.7 b): the radio information held for a transition
+      if EVC_Mission.Categories_Changed and then EVC_Odometry.Standstill then
+         EVC_Radio_Authority.Delete_Transition_Information;
+      end if;
       for I in 1 .. EVC_Stored_Information.Event_Count loop
          declare
             E : constant EVC_Stored_Information.Event_T :=

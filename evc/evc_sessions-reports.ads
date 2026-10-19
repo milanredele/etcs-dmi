@@ -67,7 +67,7 @@ is
    --  start of mission sends its own report (decision 2)
    --  Mode: the mode of the cycle, for the table of 4.5.2 ("Report
    --  Train Position": which event is reported in which mode)
-   --  @req 4.4.15.1.4, 3.6.5.1.2 g), 3.18.4.5.4
+   --  @req 4.4.15.1.4, 3.6.5.1.2 g), 3.18.4.5.4, 3.18.4.5.4.1
    procedure Evaluate (SoM : Boolean; Mode : EVC_Modes.Mode_T)
      with Global => (In_Out => (State, EVC_Position.State),
                      Input  => (EVC_Radio.State, EVC_Levels.State,

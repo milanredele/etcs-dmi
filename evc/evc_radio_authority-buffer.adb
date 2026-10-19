@@ -49,6 +49,16 @@ is
       Releasing := False;
    end Clear;
 
+   procedure Delete_Held
+     with Refined_Global => (Output   => (Slots, Count, Releasing),
+                             Proof_In => Ctx)
+   is
+   begin
+      Slots := (others => (others => <>));
+      Count := 0;
+      Releasing := False;
+   end Delete_Held;
+
    --  4.8.5.4 c): the messages of a session no longer established go, the
    --  others keep their order; 4.8.5.4 b): also those of a
    --  session that is neither the Supervising nor the Accepting RBC's

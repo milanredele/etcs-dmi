@@ -104,6 +104,7 @@ with EVC_Test_RBC;       use EVC_Test_RBC;
 with EVC_Test_Authority; use EVC_Test_Authority;
 with EVC_Test_Levels;    use EVC_Test_Levels;
 with EVC_Test_Procedures;
+with EVC_Test_Train_Data;
 with Evc_Test_Touch;
 
 procedure EVC_Test is
@@ -248,6 +249,9 @@ begin
    Scenario_SR_National_Distance;
    Scenario_Driver_Adhesion;
    Scenario_Train_Data_Categories;
+   EVC_Test_Train_Data.Scenario_Transition_Deleted;
+   EVC_Test_Train_Data.Scenario_Longer_Train;
+   EVC_Test_Train_Data.Scenario_RBC_TRN;
    Scenario_Driver_Level_Table;
    Scenario_E4_Level_Transition_0;
    Scenario_E4_Level_0_Ack_In_SH;

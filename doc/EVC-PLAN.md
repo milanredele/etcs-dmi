@@ -8352,3 +8352,37 @@ second package keeps 4.4.21.1.8, 4.4.21.3.1, 3.18.3.9, 3.18.3.10,
 press (step 69) and fails at step 71 (131 not sent), the first of the
 SM family. Also B903 (the fuzzer never sends the 14-byte TIU frame),
 B904 (golden_review.py listed no group for `bench_level2`).
+### The Train Data rest: the buffer deletion, the longer train, packet 140, the external source, the engine length (e6/train-data-rest) (2026-10-19)
+
+Built: 3.18.3.7 b) (`EVC_Radio_Authority.Delete_Transition_Information`,
+`Buffer.Delete_Held`, called by `EVC_Core.Evaluate_Stored_Information`
+beside `Train_Data_Shortening` when `EVC_Mission.Categories_Changed` at
+standstill), 3.18.3.8 for valid Train Data
+(`EVC_Stored_Information.Delete_Behind_Former`), packet 140
+(`EVC_Mission.Take_RBC_TRN` from `EVC_Core.Read_Radio_Messages`,
+3.18.4.5.1 and .5.3; `EVC_Mission.TRN_From_RBC` read by
+`EVC_Sessions.Reports.Evaluate`, 3.18.4.5.4.1). Scenarios
+(`EVC_Test_Train_Data`): `Transition_Deleted`, `Longer_Train`,
+`RBC_TRN`. Rows: 3.18.3.7, 3.18.3.7 b), 3.18.4.5.3, 3.18.4.5.4.1 done;
+3.18.3.8, 3.18.4.5.1 partial.
+
+Decisions: the information of 3.18.3.7 b) is the messages the
+transition buffer holds (4.8.5.1 for level 2, 4.8.2.1 c) from the
+Accepting RBC), deleted whole. 3.18.3.8: "unknown in rear" is a deletion
+of what ends in rear of the former min safe rear end, in the profiles of
+`EVC_Track_Description` and the track conditions, as A.3.1 deletes
+without its 300 m (an element across the former rear end stays whole).
+Packet 140 is taken from every message the session half passes to the
+authority half, in the modes of the driver's entry (4.7.2), a value not
+of 1 to 8 BCD digits ignored; a TRN from the RBC is reported to no RBC
+until the driver enters one.
+
+Premise wrong: `Delete_Behind` is not in `EVC_Stored_Information` but
+in `EVC_Track_Description`, `EVC_Movement_Authority` and
+`EVC_Track_Conditions` (called from its `Evaluate`); the new deletion
+is in `EVC_Stored_Information` beside that call.
+
+Left (budget): B760 (the external source's Train Data window), B782
+(the engine length in SL, SB, SH, NL, PS; the integrity report), the
+3.18.4.3 rows (tags only), S424295a6 (the driver's adhesion), the 23
+rows tagged `[E6 train data]`; B930 (packet 140 of a released message).

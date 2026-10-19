@@ -47,6 +47,13 @@ is
      with Global => (Output => State),
           Post => Buffered = 0 and then not Has_Released;
 
+   --  3.18.3.7 b): the messages held for a level 2 transition or from the
+   --  Accepting RBC deleted, the context kept
+   procedure Delete_Held
+     with Global => (In_Out => State),
+          Post => Buffered = 0 and then not Has_Released
+                  and then Context = Context'Old;
+
    --  5. The context of the cycle; 4.8.5.4 a), c): the buffer deleted
    --  when no level 2 transition is announced any more and the level is
    --  not 2, a message of a session no longer established deleted;

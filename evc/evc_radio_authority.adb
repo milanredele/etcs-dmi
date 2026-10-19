@@ -359,6 +359,11 @@ is
       Buffer.Release_At_Transition;
    end Release_At_Transition;
 
+   procedure Delete_Transition_Information is
+   begin
+      Buffer.Delete_Held;
+   end Delete_Transition_Information;
+
    procedure Take_Released (S    : out EVC_Radio.Session_T;
                             Data : in out EVC_Bytes.Byte_Array;
                             Last : out Natural) is
