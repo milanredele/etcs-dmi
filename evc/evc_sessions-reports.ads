@@ -127,7 +127,8 @@ is
      with Global => (In_Out => (State, EVC_Radio.State, EVC_Radio.Queue,
                                 EVC_Sessions.Integrity.State),
                      Input  => (EVC_Position.State, EVC_Odometry.State,
-                                EVC_Levels.State, EVC_Text_Messages.State));
+                                EVC_Levels.State, EVC_Text_Messages.State,
+                                EVC_Mission.State));
 
    function Reports_Sent return Natural
      with Global => State;

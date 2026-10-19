@@ -3362,7 +3362,7 @@ is
                                 EVC_Position.State, EVC_Odometry.State,
                                 EVC_Levels.State, EVC_Train_Data.State,
                                 EVC_Track_Conditions.State,
-                                EVC_Text_Messages.State),
+                                EVC_Text_Messages.State, EVC_Mission.State),
                      In_Out => (EVC_Sessions.State,
                                 EVC_Radio_Authority.State, EVC_Radio.State,
                                 EVC_Radio.Queue, EVC_Outbox.Queue))
