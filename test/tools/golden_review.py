@@ -102,6 +102,13 @@ on-board goldens by which dump each run actually produced (a DUMP=1
 directory, so that golden is reviewed as a display frame like any
 other, picture included.
 
+The bench goldens of evc_test (test/golden/evc/bench_*.sha256, a digest
+of a whole bench run) are dumped by no run: only their .sha256 text can
+be compared, so a changed one is a "hash-only" group of its own (h1,
+h2, ...) whose summary says the scenario's bytes were re-recorded and
+no description is possible; REPORT.md lists them in a section of their
+own, to be judged from the intent and the scenario.
+
 Declared expectation
 ---------------------
 --areas (comma separated DMI area names, e.g. B3,D) and --intent (free
@@ -1497,6 +1504,34 @@ def declared_marking(touched_area_names, declared):
     return "inside declared areas", []
 
 
+HASH_SUMMARY = ("hash changed, the scenario's bytes re-recorded; "
+                "no description possible")
+
+
+def group_hash_only(base_sha, head_sha, dumped):
+    """The goldens no run dumps: the bench goldens of evc_test
+    (test/golden/evc/bench_*.sha256, a digest of the on-board's output
+    over a whole bench run, checked without an EVC_DUMP .bin). Their
+    .sha256 text is all there is to compare, so every changed, added or
+    removed one is a group of its own whose summary says so; the
+    reviewer judges it from the intent and the scenario alone."""
+    groups = []
+    for name in sorted(set(base_sha) | set(head_sha)):
+        if name in dumped:
+            continue
+        b, h = base_sha.get(name), head_sha.get(name)
+        if b == h:
+            continue
+        status = "added" if b is None else "removed" if h is None else "changed"
+        text = (HASH_SUMMARY if status == "changed"
+                else "hash %s; no dump, no description possible" % status)
+        groups.append({"status": status, "members": [name],
+                       "marking": "n/a (hash only)", "outside": [],
+                       "summary_text": text,
+                       "base_sha": b, "head_sha": h})
+    return groups
+
+
 def compare_sides(base, head, areas_decl, out_dir):
     display_names = sorted(set(base.display) | set(head.display))
     onboard_names = sorted(set(base.onboard) | set(head.onboard))
@@ -1579,6 +1614,8 @@ def compare_sides(base, head, areas_decl, out_dir):
         "onboard_details": onb_details,
         "not_rerecorded": sorted(set(not_rerecorded)),
         "sha_only": sorted(set(sha_only)),
+        "hash_groups": group_hash_only(
+            base.sha, head.sha, set(display_names) | set(onboard_names)),
     }
 
 
@@ -1786,6 +1823,11 @@ def write_report(out_dir, result, args, base, head):
     for g in onb:
         gi += 1
         group_ids[id(g)] = "o%d" % gi
+    hsh = result.get("hash_groups", [])
+    gi = 0
+    for g in hsh:
+        gi += 1
+        group_ids[id(g)] = "h%d" % gi
 
     shape_rep_gid = {}
     for g in onb:
@@ -1837,6 +1879,9 @@ def write_report(out_dir, result, args, base, head):
         marking = g["marking"] + (", " + note if note else "")
         lines.append("| %s | on-board | %d | %s | - | %s |"
                       % (gid, len(g["members"]), changed_col, marking))
+    for g in hsh:
+        lines.append("| %s | hash | 1 | %s | - | %s |"
+                      % (group_ids[id(g)], g["status"], g["marking"]))
 
     lines.append("")
     lines.append("## Display groups\n")
@@ -1879,6 +1924,21 @@ def write_report(out_dir, result, args, base, head):
         lines.append("Verdict: ")
         lines.append("")
 
+    if hsh:
+        lines.append("## Hash-only goldens\n")
+        lines.append("No run dumps these goldens (the bench goldens of "
+                      "evc_test): only their .sha256 text is compared, "
+                      "so the tool cannot describe the change; judge it "
+                      "from the intent and the scenario.\n")
+    for g in hsh:
+        lines.append("### %s (%s, 1 member)\n" % (group_ids[id(g)], g["status"]))
+        lines.append("Members: " + g["members"][0] + "\n")
+        lines.append("Change summary: " + g["summary_text"] + "\n")
+        lines.append("Digest: %s -> %s\n" % (g["base_sha"] or "(none)",
+                                              g["head_sha"] or "(none)"))
+        lines.append("Verdict: ")
+        lines.append("")
+
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "REPORT.md").write_text("\n".join(lines) + "\n")
     (out_dir / "BLIND.md").write_text(write_blind(result, group_ids, disp_pics))
@@ -1905,6 +1965,10 @@ def write_report(out_dir, result, args, base, head):
         "sha_only": result["sha_only"],
         "display_groups": [group_json(g, group_ids[id(g)]) for g in disp],
         "onboard_groups": [group_json(g, group_ids[id(g)]) for g in onb],
+        "hash_groups": [{"id": group_ids[id(g)], "status": g["status"],
+                         "members": g["members"], "summary": g["summary_text"],
+                         "base_sha": g["base_sha"], "head_sha": g["head_sha"]}
+                        for g in hsh],
         "blind_file": "BLIND.md",
     }
     (out_dir / "review.json").write_text(json.dumps(review, indent=2))
@@ -1912,9 +1976,11 @@ def write_report(out_dir, result, args, base, head):
     outside = sum(1 for g in disp if g["marking"].startswith("OUTSIDE")) \
         + sum(1 for g in onb if g["marking"].startswith("OUTSIDE"))
     summary = ("golden_review: %d display groups (%d frames), "
-               "%d on-board groups (%d goldens), %d outside declared areas"
+               "%d on-board groups (%d goldens), %d hash-only goldens, "
+               "%d outside declared areas"
                % (len(disp), sum(len(g["members"]) for g in disp),
-                  len(onb), sum(len(g["members"]) for g in onb), outside))
+                  len(onb), sum(len(g["members"]) for g in onb), len(hsh),
+                  outside))
     return summary
 
 
@@ -2200,6 +2266,18 @@ def check_tool():
           "despite different counts/cycle ranges/varying values")
     check(compute_shape(shape_a) != compute_shape(shape_c),
           "a different non-varying field value is a different shape")
+
+    hg = group_hash_only({"evc/bench_a": "1", "evc/bench_b": "2", "evc/x": "3",
+                          "evc/gone": "4"},
+                         {"evc/bench_a": "1", "evc/bench_b": "5", "evc/x": "6",
+                          "evc/new": "7"},
+                         {"evc/x"})
+    check([(g["members"][0], g["status"]) for g in hg]
+          == [("evc/bench_b", "changed"), ("evc/gone", "removed"),
+              ("evc/new", "added")],
+          "an undumped golden whose .sha256 changed is a hash-only group")
+    check(hg[0]["summary_text"] == HASH_SUMMARY,
+          "a changed hash-only golden says no description is possible")
 
     print("golden_review --check-tool: %s" % ("ok" if ok else "FAILED"))
     return 0 if ok else 1
