@@ -100,6 +100,7 @@ with EVC_Test_Sessions;  use EVC_Test_Sessions;
 with EVC_Test_Manoeuvre;
 with EVC_Test_Network;   use EVC_Test_Network;
 with EVC_Test_Version;   use EVC_Test_Version;
+with EVC_Test_VBC;
 with EVC_Test_RBC;       use EVC_Test_RBC;
 with EVC_Test_Authority; use EVC_Test_Authority;
 with EVC_Test_Levels;    use EVC_Test_Levels;
@@ -346,6 +347,9 @@ begin
    Scenario_Version_Retained;
    Scenario_Version_Balise_Groups;
    Scenario_Version_Country_Set;
+   EVC_Test_VBC.Scenario_VBC_Store;
+   EVC_Test_VBC.Scenario_VBC_Driver;
+   EVC_Test_VBC.Scenario_VBC_Cover;
    Scenario_RBC;
    Scenario_Radio_MA;
    Scenario_Radio_MA_Shifted;

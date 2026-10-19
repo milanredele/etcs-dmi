@@ -283,6 +283,28 @@ is
       Last := Pos - 1;
    end Networks_Frame;
 
+   --  MSG_VBC_LIST: the codes of Codes (1 .. Count), little endian
+   procedure VBC_List_Frame (Count : Natural;
+                             Codes : VBC_Codes_T;
+                             Frame : out Frame_Buffer_T;
+                             Last  : out Natural)
+   is
+      Pos : Positive;
+   begin
+      Frame := (others => 0);
+      Frame (Header_Length + 1) := Byte (Count);
+      for I in 1 .. Count loop
+         pragma Loop_Invariant (Frame (1) = 0);
+         Pos := Header_Length + 2 + 4 * (I - 1);
+         Frame (Pos) := Byte (Codes (I) and 16#FF#);
+         Frame (Pos + 1) := Byte (Shift_Right (Codes (I), 8) and 16#FF#);
+         Frame (Pos + 2) := Byte (Shift_Right (Codes (I), 16) and 16#FF#);
+         Frame (Pos + 3) := Byte (Shift_Right (Codes (I), 24));
+      end loop;
+      Put_Header (Frame, MSG_VBC_LIST, 1 + 4 * Count);
+      Last := Header_Length + 1 + 4 * Count;
+   end VBC_List_Frame;
+
    --  DMI 11.7.1.4: the stored RBC contact; nothing stored, every
    --  field 0
    procedure RBC_Contact_Frame (Known  : Boolean;

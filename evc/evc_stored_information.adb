@@ -3,6 +3,7 @@
 
 with ETCS_Packet_Index;
 with ETCS_Track_Packets.P2;
+with ETCS_Track_Packets.P6;
 with ETCS_Track_Packets.P3;
 with ETCS_Track_Packets.P12;
 with ETCS_Track_Packets.P49;
@@ -1556,6 +1557,51 @@ is
         (Group_X, Ordered, Order, Mismatch);
    end Take_Version;
 
+   --  The Virtual Balise Cover orders of the balise group message Tk
+   --  (packet 6, 7.4.2.2.1, valid for the direction of the train): the
+   --  covers of another country deleted first (3.15.9.5 d), the group a
+   --  consistent message), then each order set (3.15.9.4, the period
+   --  from now, 3.15.9.6) or removed (3.15.9.5 a), in the order of the
+   --  message. Decision: packet 6 is in no table of 4.8 (4.8.2.3), so it
+   --  is taken in every mode and level, at the reception of the group,
+   --  also when the transition buffer holds the rest of the message.
+   --  @req 3.15.9.4, 3.15.9.5 a), 3.15.9.5 d), 3.15.9.6
+   procedure Take_VBC_Orders (Tk : EVC_Position.Taken_T)
+     with Global => (In_Out => EVC_VBC.State,
+                     Input  => EVC_Position.State)
+   is
+   begin
+      EVC_VBC.Check_Country (Tk.Group.Id.NID_C);
+      for J in Tk.First .. Tk.First + Tk.Count - 1 loop
+         pragma Loop_Invariant (True);
+         for P in 1 .. EVC_Position.Taken_Packet_Count (J) loop
+            pragma Loop_Invariant (True);
+            declare
+               E  : constant ETCS_Packet_Index.Entry_T :=
+                 EVC_Position.Taken_Entry (J, P);
+               R  : Reader_T;
+               X  : ETCS_Track_Packets.P6.Packet_T;
+               OK : Boolean;
+            begin
+               if E.Kind = ETCS_Catalogue.Track_P6
+                 and then EVC_Position.Valid_For
+                            (E.Q_DIR, Tk.Group.Orientation, Tk.T)
+               then
+                  EVC_Position.Open_Taken_Packet (J, P, R);
+                  ETCS_Track_Packets.P6.Decode (R, X, OK);
+                  if OK and then ETCS_Track_Packets.P6.Valid (X) then
+                     if X.Q_VBCO = 1 then
+                        EVC_VBC.Set (X.NID_C, X.NID_VBCMK, X.T_VBC);
+                     else
+                        EVC_VBC.Remove (X.NID_C, X.NID_VBCMK);
+                     end if;
+                  end if;
+               end if;
+            end;
+         end loop;
+      end loop;
+   end Take_VBC_Orders;
+
    --  Group G of the position's last Update, as message number Msg_Count
    --  (No_Inline: GCC inlines a subprogram called once, and the decoded
    --  packets of the parts below, up to 6 KB, would stay in the frame of
@@ -1574,7 +1620,8 @@ is
                                 EVC_LS_Display.State,
                                 Events, Event_N, Msg_Count,
                                 Balise_Buffer.State, TAF_L2_New,
-                                TAF_L2_Loc, EVC_System_Version.State),
+                                TAF_L2_Loc, EVC_System_Version.State,
+                                EVC_VBC.State),
                      Output => Group_Country,
                      Input  => (EVC_Position.State, EVC_Train_Data.State)),
           Pre => G <= EVC_Position.Taken_Count
@@ -1616,6 +1663,8 @@ is
       if Reverted then
          Record_Event (Info_National_Values, Change_Defaults, 0);
       end if;
+      --  3.15.9.5 d), the Virtual Balise Cover orders
+      Take_VBC_Orders (Tk);
       --  3.17.2.6: no mismatch when that set lists the group's country
       Take_Version (Tk, Reverted and then not Listed);
       if Tk.Origin = 0 then

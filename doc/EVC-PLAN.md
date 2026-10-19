@@ -8883,3 +8883,40 @@ branch there), Scfbb86e1 and B1010.
 - The six signatures: S6eaf2ed7 and S5436c26d the extraction (the balise inputs of 3040200_04 and 3160200_09 missing), S6c605c52 the runner (B1041), Saf042fa6 ours (the message consistency brake is not commanded in SR, B1042, in `EVC_Procedures`), Sd56a8154 and Sb6e8acf4 not finished (B1043).
 - Not reached (bound): B1011 (the MA request after `Linking_Shortening` and `Train_Data_Shortening`: `Timer_Deletion := True` where they apply, as `Contact_Shortening` does, with checks in `Scenario_Consistency_Error_Report` and `Scenario_Train_Data_Categories`).
 - SUBSET-076: 1014 / 1119 / 1057 before, 1017 / 1116 / 1057 after (3160200_22 passes in three versions), 0 regressions.
+### The Virtual Balise Cover (e6/vbc, 2026-10-19)
+
+The store: `EVC_VBC`, 16 covers (the DMI's `VBC_List_Max`), each the
+identity NID_VBCMK with NID_C, T_VBC as given and the time of its
+period left; `Set` replaces a cover of the same identity with its
+period from now (3.15.9.4, 3.15.9.6), `Remove`, `Expire` with the
+clock of the cycle (3.15.9.5 b), `Check_Country` (3.15.9.5 d),
+`Covered` on the raw telegram, `Keep` / `Restore` through
+`EVC_Retained.Kept_T` (3.15.9.5). Set and removed by the driver
+(`EVC_Core.Take_VBC_Requests`, the codes of DMI 11.3.12.5 and
+11.3.13.5, before the telegrams of the cycle) and by packet 6
+(`EVC_Stored_Information.Take_VBC_Orders`, called from `Take_Group`
+next to the national values' country check; packet 6 is balise only,
+7.4.2.2.1). The DMI: the national bits 2 and 3 of MSG_ONBOARD from the
+store, MSG_VBC_LIST when the store changes (`Send_VBC_List`,
+`EVC_DMI_Port.VBC_List_Frame`).
+
+The cover: `EVC_Core.Read_Telegrams` asks `EVC_VBC.Covered` first, so
+before every version check (3.15.9.3.1); a covered telegram is only
+recorded on the JRU (3.20) and is otherwise not received: no parse, no
+position, no consistency reaction (3.15.9.3 a, b). The marker is
+packet 0 right after the header (8.4.2.3) for every X but 0 and 1;
+1.0 has none, 1.1 is walked for packet 200 (8.4.2.4, 6.5.1.5.21).
+The brief named packet 6 the marker and 200 the order: the marker is
+packet 0 (200 in 1.1), the order packet 6.
+
+Decisions: the driver's requests taken in SB (5.4.5.3 i) partial: not
+restricted to S10 / S20); packet 6 in no table of 4.8, taken in every
+mode and level at the reception of the group; the period counted only
+while powered (B1060); a new identity ignored when the store is full
+(B1063); T_VBC 0 deleted at the next cycle.
+
+Rows: 3.15.9.2 to 3.15.9.6, 10 done, 3.15.9.5 b) partial; 5.4.5.3 i)
+deferred -> partial. Scenarios: evc_test vbc_store, vbc_driver,
+vbc_cover. Left: the runner's VBC steps (B1061: presses, the code
+entry, the timer), the JRU records of the driver's VBC (B1062), 3.15.10
+not started.

@@ -490,6 +490,22 @@ is
                              + Networks_Max * (1 + Network_Name_Max)
                   and then Frame (1) = MSG_RADIO_NETWORKS;
 
+   --  MSG_VBC_LIST (common/dmi_protocol.ads): the Virtual Balise Covers
+   --  stored on-board (SUBSET-026 3.15.9) for the DMI's data view: count
+   --  u8, then per VBC its set code u32 (DMI 11.3.12.5: NID_VBCMK in the
+   --  6 least significant bits, NID_C in the next 10, T_VBC above)
+   MSG_VBC_LIST : constant Byte := 16#0F#;
+   VBC_List_Max : constant := 16;
+   type VBC_Codes_T is array (1 .. VBC_List_Max) of Unsigned_32;
+
+   procedure VBC_List_Frame (Count : Natural;
+                             Codes : VBC_Codes_T;
+                             Frame : out Frame_Buffer_T;
+                             Last  : out Natural)
+     with Pre  => Count <= VBC_List_Max,
+          Post => Last = Header_Length + 1 + 4 * Count
+                  and then Frame (1) = MSG_VBC_LIST;
+
    --  MSG_RBC_CONTACT (common/dmi_protocol.ads): the RBC contact
    --  information stored on-board, so that the DMI's RBC data window
    --  proposes it (DMI 11.7.1.4): known u8, rbc_id u32 (NID_C above the
