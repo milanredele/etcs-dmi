@@ -377,6 +377,7 @@ is
       Sv     : constant R.Session_Ref_T := R.Supervising;
       Found    : Boolean := False;
       Double   : Boolean := False;
+      Repos    : Boolean := False;
       Linked   : Boolean := False;
       Unlinked : Boolean := False;
    begin
@@ -393,6 +394,8 @@ is
                Found := True;
                Double := Double
                  or else E.B3 = EVC_Position.Cause_Double_Missed;
+               Repos := Repos
+                 or else E.B3 = EVC_Position.Cause_Double_Repos;
             elsif E.Kind = EVC_Position.Inconsistent_Linked then
                Linked := True;
             elsif E.Kind = EVC_Position.Inconsistent_Unlinked then
@@ -405,7 +408,9 @@ is
         and then R.Info (R.Session_T (Sv)).State = R.Established
       then
          Request_Error (R.Session_T (Sv),
-                        (if Double then M_ERROR_Double_Linking_Error_3
+                        (if Repos
+                         then M_ERROR_Double_Repositioning_Error_3
+                         elsif Double then M_ERROR_Double_Linking_Error_3
                          elsif Linked
                          then M_ERROR_Linked_Balise_Group_Message
                          elsif Unlinked
