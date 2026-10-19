@@ -353,6 +353,20 @@ is
    function Train_Data_Awaited return Boolean
      with Global => State;
 
+   --  5.21.2.2 S050: the answer to the request for Supervised Manoeuvre is
+   --  awaited (MSG_ONBOARD waiting 5); its outcome (1 authorised, 0 not);
+   --  the last request of the driver was this one, not one for shunting
+   --  (the answer byte of MSG_ONBOARD); the requests sent (message 131)
+   function SM_Waiting return Boolean
+     with Global => State;
+   function SM_Answer return Natural
+     with Global => State,
+          Post => SM_Answer'Result <= 1;
+   function SM_Latest return Boolean
+     with Global => State;
+   function SM_Requests_Sent return Natural
+     with Global => State;
+
    --  5.10.3.3.3, 5.10.3.3.5, 5.10.3.15.4: a position report
    --  (136) due to the supervising RBC, sent by the next Produce (with a
    --  session established)

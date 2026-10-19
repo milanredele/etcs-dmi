@@ -401,6 +401,9 @@ is
    SS_Entering_FS                   : constant := 6;   -- 4.4.9.1.4
    SS_Entering_OS                   : constant := 7;   -- 4.4.12.1.7
    SS_Runaway_Movement              : constant := 9;   -- 3.14.2.4, 3.14.3.2
+   --  @req 5.21.2.2 A220
+   SS_SM_Refused                    : constant := 10;  -- 5.21.2.2 A220
+   SS_SM_Request_Failed             : constant := 11;  -- 5.21.4.1
    --  @req 5.6.2.2 A220
    SS_SH_Refused                    : constant := 12;  -- 5.6.2.2 A220
    SS_SH_Request_Failed             : constant := 14;  -- 5.6.4.1.2

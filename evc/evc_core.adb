@@ -3019,6 +3019,8 @@ is
          --  S21 (DMI Table 50 S7), the answer to the MA request of
          --  'Start' (5.11.2.2 S150 too)
          Waiting  => (if EVC_Radio_Authority.SH_Waiting then 4
+                      --  5.21.2.2 S050 (DMI Table 54a S1)
+                      elsif EVC_Sessions.SM_Waiting then 5
                       elsif EVC_Sessions.SoM_Opening
                       then (if EVC_Sessions.Network_Ready then Waiting_RBC
                             --  5.4.3.2 S4 E7 -> A42
@@ -3027,7 +3029,9 @@ is
                             else Waiting_Registration)
                       elsif EVC_Mission.Waiting_For_RBC then Waiting_Start
                       else 0),
-         Answer   => EVC_Bytes.Byte (EVC_Radio_Authority.SH_Answer),
+         Answer   => EVC_Bytes.Byte
+                       (if EVC_Sessions.SM_Latest then EVC_Sessions.SM_Answer
+                        else EVC_Radio_Authority.SH_Answer),
          others   => 0);
    begin
       EVC_Outbox.Put (DMI, Onboard_Frame (Onboard));

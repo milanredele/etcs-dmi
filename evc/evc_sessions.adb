@@ -16,6 +16,7 @@ with ETCS_Variables;         use ETCS_Variables;
 with EVC_DMI_Port;
 with EVC_Sessions.Handover;
 with EVC_Sessions.Integrity;
+with EVC_Sessions.Manoeuvre;
 with EVC_Sessions.Mission;
 with EVC_Sessions.Network;
 with EVC_Sessions.Reports;
@@ -33,6 +34,7 @@ package body EVC_Sessions
                                    In_Hole, Ref_On, Ref_Ms,
                                    EVC_Sessions.Handover.State,
                                    EVC_Sessions.Integrity.State,
+                                   EVC_Sessions.Manoeuvre.State,
                                    EVC_Sessions.Mission.State,
                                    EVC_Sessions.Network.State,
                                    EVC_Sessions.Reports.State))
@@ -577,6 +579,7 @@ is
       Noted := False;
       Noted_Code := 0;
       Mission.Clear;
+      Manoeuvre.Clear;
       Network.Clear;
       Reports.Clear;
       Integrity.Clear;
@@ -887,6 +890,21 @@ is
                end if;
                Verdict := Buffered;
                return;
+            end if;
+            --  4.8.4 [14], 5.21.2.2 S050: message 4 or 5 not answering the
+            --  pending request for Supervised Manoeuvre is not taken; A220
+            if Kind in Track_M4 | Track_M5 then
+               declare
+                  Matched, Refused : Boolean;
+               begin
+                  Manoeuvre.Take_Answer (S, Kind, Matched, Refused);
+                  if not Matched then
+                     return;
+                  elsif Refused then
+                     Show (EVC_DMI_Port.SS_SM_Refused,
+                           Natural (EVC_DMI_Port.SS_Event_Start));
+                  end if;
+               end;
             end if;
             --  3.6.5.1.5: the position report parameters
             Reports.Take_Message;
@@ -1385,6 +1403,14 @@ is
       end;
       Apply_Handover (Ctx.Now_Ms, Ctx.Mode);
       Apply_Mission (Ctx);
+      declare
+         SM_Status : Natural;
+      begin
+         Manoeuvre.Evaluate (Ctx, Handover.Order_Stored, SM_Status);
+         if SM_Status /= 0 then
+            Show (SM_Status, Natural (EVC_DMI_Port.SS_Event_Start));
+         end if;
+      end;
       --  3.6.5.2.5, 3.6.5.2.6; 3.6.5.1.4 c), d)
       declare
          Report : Boolean;
@@ -1412,6 +1438,9 @@ is
    begin
       Count (Mode_Changes);
       Mission.Mode_Changed (From, To);
+      if From /= To then
+         Manoeuvre.Mode_Changed;
+      end if;
       Reports.Mode_Changed (From, To);
       Network.Mode_Changed (To);
       --  3.5.3.4 c): a change reported (4.5.2) that is no End of Mission
@@ -1608,6 +1637,8 @@ is
       end loop;
       --  157, 129, 150 (after 159 of the cycle)
       Mission.Produce (Ctx);
+      --  131 (5.21.2.2 A045)
+      Manoeuvre.Produce (Ctx);
       --  3.15.1.3.3: the Train Data to the Accepting RBC
       declare
          TD     : constant R.Session_Ref_T := Handover.Train_Data_To;
@@ -1653,6 +1684,11 @@ is
      (Reports.Parameters_Taken);
    function Train_Data_Awaited return Boolean is
      (Mission.Train_Data_Awaited);
+
+   function SM_Waiting return Boolean is (Manoeuvre.Waiting);
+   function SM_Answer return Natural is (Manoeuvre.Answer);
+   function SM_Latest return Boolean is (Manoeuvre.Latest);
+   function SM_Requests_Sent return Natural is (Manoeuvre.Sent_Count);
 
    procedure Take_Integrity_Input (Value : Natural) is
    begin

@@ -11,4 +11,13 @@ package EVC_Test_Manoeuvre is
    --  of DMI Table 33 #11
    procedure Scenario_Safe_Consist;
 
+   --  5.21.2.2 S0 to S050, E215 / A220, 5.21.4.1: the request for
+   --  Supervised Manoeuvre (message 131), the answer matched by its time
+   --  stamp (4.8.4 [14]), SM refused, the repetitions without an answer
+   procedure Scenario_SM_Request;
+
+   --  5.21.2.2 E115, D080, A050, 4.6.3 [81], 4.8.3 / 4.8.4: message 4
+   --  answering the request authorises SM
+   procedure Scenario_SM_Authorisation;
+
 end EVC_Test_Manoeuvre;
