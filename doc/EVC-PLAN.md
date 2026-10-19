@@ -7784,14 +7784,16 @@ odometer distances).
 (`EVC_Level_Sessions.Evaluate`); `Scenario_L2_Exit_In_NL`. 4050200_04
 SV30 passes.
 
-**Regressions of the radio linking, triaged, not fixed.** Seven, in
+**Regressions of the radio linking, traced and triaged.** Seven, in
 three families, all from B730 (an experiment without the core step
 passes 9990500_15): 9990500_15 SV21/SV22/SV30 step 73 (S5c9019aa)
-and 4100103_37 SV21/SV22 step 86 (Sc36bdd59) passed before: the
-announcement or acknowledgement of a balise level order (packet 41) is
-not shown once a radio linking is stored and the next group is read in
-its window (relocation 3.6.4.2.5 b, widened by Q_LOCACC 63); not traced
-to the unit, triaged onboard (B791). 9990500_09 SV21/SV22 moves from
+and 4100103_37 SV21/SV22 step 86 (Sc36bdd59) passed before, only
+because no radio linking was used. Traced (B791): the RBC's packet 5
+names a group the track does not hold (9990500_15: NID_BG 5 at 400 m
+from BG2, and message 24 refers to LRBG 5, while BG3 is read there;
+4100103_37: NID_BG 2 announced, BG4 read), so the read group is not
+the expected one and is ignored with its level order (packet 41);
+triaged s076. 9990500_09 SV21/SV22 moves from
 step 95 to 85 (S13c9beb3, model already): BG3 read 100 m before its
 linked location appears outside the window of 3.4.4.4.3 with the
 runner's odometer (not verified). Two signatures reached by improved
