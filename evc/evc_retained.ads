@@ -15,6 +15,8 @@
 --      the highest supported one, 3.17.2.9.1);
 --    - 3.18.2.7: the national values applicable (EVC_National_Values;
 --      the set not yet applicable is deleted, 3.18.2.9);
+--    - 3.15.9.5: the Virtual Balise Covers (EVC_VBC, the time left of
+--      their periods);
 --  not kept: what 4.10 deletes in NP (Train Data, driver ID, train
 --  running number, the MA and the track description, the RBC/RIU system
 --  version, ...). Not yet kept, with the phase that brings it: EOLM
@@ -36,6 +38,7 @@ with EVC_Modes;    use EVC_Modes;
 with EVC_National_Values;
 with EVC_Position;
 with EVC_Radio;
+with EVC_VBC;
 
 --  @req 4.11.1.1, 4.11.1.3
 package EVC_Retained
@@ -68,6 +71,9 @@ is
       --  @req 3.18.2.7
       National      : EVC_National_Values.Set_T :=
         EVC_National_Values.Default_Set;
+      --  3.15.9.5: the Virtual Balise Covers, applicable again
+      --  @req 3.15.9.5
+      VBC           : EVC_VBC.Kept_T;
    end record;
 
    --  The empty store

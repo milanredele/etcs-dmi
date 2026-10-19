@@ -101,6 +101,7 @@ with EVC_Track_Conditions;
 with EVC_Track_Description;
 with EVC_Train_Data;
 with EVC_Train_Inputs;
+with EVC_VBC;
 with Interfaces;
 
 use type EVC_Config.Config_T;
@@ -197,7 +198,8 @@ is
                                 EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State,
-                                EVC_System_Version.State),
+                                EVC_System_Version.State,
+                                EVC_VBC.State),
                      Input  => EVC_Config.State,
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -245,7 +247,8 @@ is
                                 EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State,
-                                EVC_System_Version.State),
+                                EVC_System_Version.State,
+                                EVC_VBC.State),
                      Input  => (EVC_Config.State, EVC_Retained.State),
                      In_Out => EVC_Outbox.Queue),
           Post => Mode = M_NP
@@ -348,7 +351,8 @@ is
                                 EVC_Level_Sessions.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio_Info.State,
-                                EVC_System_Version.State)),
+                                EVC_System_Version.State,
+                                EVC_VBC.State)),
           Post => Failed = Failed'Old
                   and then
                   (if Failed

@@ -472,6 +472,8 @@ is
       EVC_Sessions.Clear;
       EVC_Level_Sessions.Clear;
       EVC_Radio_Authority.Clear;
+      --  3.15.9: no Virtual Balise Cover (Power_Up restores them)
+      EVC_VBC.Clear;
       EVC_Outbox.Clear;
    end Start;
 
@@ -502,6 +504,8 @@ is
          --  3.18.2.7: the national values applicable before No Power
          --  (Start deleted the set not yet applicable, 3.18.2.9)
          EVC_National_Values.Restore (K.National);
+         --  3.15.9.5: the Virtual Balise Covers, applicable again
+         EVC_VBC.Restore (K.VBC);
          --  phase E5: the RBC contact information, to be revalidated
          EVC_Radio.Restore_Contact (K.RBC);
          --  3.5.6.2: the network memorized, no mobile
@@ -816,7 +820,7 @@ is
    --  @req 3.17.3.11 a)
    procedure Read_Telegrams
      with Global => (Input  => (Latched_BTM, Clock_Ms,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State, EVC_VBC.State),
                      In_Out => (Latched_BTM_Count, EVC_Received.Store,
                                 EVC_Outbox.Queue, EVC_Position.State,
                                 EVC_Procedures.State)),
@@ -857,7 +861,21 @@ is
          declare
             Slot : BTM_Slot_T renames Latched_BTM (I);
          begin
-            if Valid_BTM_Input (Slot.Data (1 .. Slot.Length)) then
+            if Valid_BTM_Input (Slot.Data (1 .. Slot.Length))
+              and then EVC_VBC.Covered
+                         (BTM_Telegram (Slot.Data (1 .. Slot.Length)))
+            then
+               --  3.15.9.3 a), b), 3.15.9.3.1, 4.8.2.3: a telegram under a
+               --  Virtual Balise Cover is not received, before any check
+               --  of its version: only the juridical data record it (3.20,
+               --  SUBSET-027 4.2.4.6)
+               EVC_Outbox.Put_JRU
+                 (EVC_JRU_Messages.NID_Telegram, Unsigned_64 (Clock_Ms),
+                  EVC_JRU_Messages.No_Fields,
+                  Slot.Data (BTM_Stamp_Length + 3 .. Slot.Length),
+                  Natural (Slot.Data (BTM_Stamp_Length + 1))
+                  + 256 * Natural (Slot.Data (BTM_Stamp_Length + 2)));
+            elsif Valid_BTM_Input (Slot.Data (1 .. Slot.Length)) then
                EVC_Received.Receive_Telegram
                  (BTM_Telegram (Slot.Data (1 .. Slot.Length)), T_Status);
                --  SUBSET-027 4.2.4.6, 4.3.1.1: every telegram received,
@@ -1105,6 +1123,38 @@ is
       end loop;
    end Read_Released_Messages;
 
+   --  1a. The Virtual Balise Covers of the cycle, before the telegrams:
+   --  the periods elapsed (3.15.9.5 b), from the reception or the entry,
+   --  3.15.9.6), then the driver's Set VBC and Remove VBC (DMI 11.3.12.5,
+   --  11.3.13.5: the codes split as MSG_DRIVER_DATA carries them).
+   --  Decision (3.15.9.2): taken in SB only, the mode of the start of
+   --  mission where the DMI offers them (DMI Table 36 #5, #6).
+   --  @req 3.15.9.2, 3.15.9.5 c)
+   procedure Take_VBC_Requests
+     with Global => (Input  => (Clock_Ms, Current_Mode,
+                                EVC_Driver_Requests.State),
+                     In_Out => EVC_VBC.State)
+   is
+      use EVC_Driver_Requests;
+      use ETCS_Variables;
+      Code : Unsigned_32;
+   begin
+      EVC_VBC.Expire (Unsigned_64 (Clock_Ms));
+      if Current_Mode = M_SB and then Entered (Set_VBC) then
+         Code := VBC_Code (Set_VBC);
+         EVC_VBC.Set
+           (NID_C  => NID_C_T (Shift_Right (Code, 6) and 16#3FF#),
+            Marker => NID_VBCMK_T (Code and 16#3F#),
+            T      => T_VBC_T (Shift_Right (Code, 16) and 16#FF#));
+      end if;
+      if Current_Mode = M_SB and then Entered (Remove_VBC) then
+         Code := VBC_Code (Remove_VBC);
+         EVC_VBC.Remove
+           (NID_C  => NID_C_T (Code and 16#3FF#),
+            Marker => NID_VBCMK_T (Shift_Right (Code, 10) and 16#3F#));
+      end if;
+   end Take_VBC_Requests;
+
    --  1. Read the ports: take the inputs latched since the last cycle,
    --  parse the telegrams and radio messages (EVC_Received) and record
    --  those accepted on the JRU port; hand the telegrams accepted, with
@@ -1129,7 +1179,8 @@ is
                                 EVC_Levels.State, EVC_Procedures.State,
                                 EVC_Sessions.State, EVC_Radio.State,
                                 EVC_Radio_Authority.State,
-                                EVC_Origins.State, EVC_Radio_Info.State)),
+                                EVC_Origins.State, EVC_Radio_Info.State,
+                                EVC_VBC.State)),
           Post => EVC_Driver_Requests.Isolation_Selected
                     = EVC_Driver_Requests.Isolation_Latched'Old
                   and then not EVC_Driver_Requests.Isolation_Latched
@@ -1174,6 +1225,7 @@ is
          Passive_Shunting => TIU_Now (Passive_Shunting_Permitted),
          Non_Leading      => TIU_Now (Non_Leading_Permitted));
       EVC_Levels.Begin_Cycle;
+      Take_VBC_Requests;
       Read_Telegrams;
       Read_Radio_Events;
       Read_Radio_Messages;
@@ -1369,7 +1421,7 @@ is
                                 EVC_Levels.State, EVC_Sessions.State,
                                 EVC_Outbox.Queue, EVC_Text_Messages.State,
                                 EVC_LS_Display.State,
-                                EVC_System_Version.State))
+                                EVC_System_Version.State, EVC_VBC.State))
    is
       Frame : EVC_DMI_Port.Frame_Buffer_T;
       Last  : Natural;
@@ -2968,16 +3020,18 @@ is
      with Global => (Standstill, Below_Override, TIU_Now,
                      EVC_Procedures.State);
 
-   --  The national bits of MSG_ONBOARD: no VBC stored (E0), the driver
+   --  The national bits of MSG_ONBOARD: the room for a VBC and a VBC
+   --  stored (3.15.9, DMI Table 36 #5, #6), the driver
    --  ID changeable while running (M_NVDERUN) and the adhesion by the
    --  driver (Q_NVDRIVER_ADHES), A.3.2
    function National_Bits return Bits_T is
-     (National_VBC_Room
+     ((if EVC_VBC.Full then 0 else National_VBC_Room)
+      or (if EVC_VBC.Count > 0 then National_VBC_Stored else 0)
       or (if EVC_National_Values.M_NVDERUN then National_Driver_ID_Running
           else 0)
       or (if EVC_National_Values.Q_NVDRIVER_ADHES then National_Adhesion
           else 0))
-     with Global => EVC_National_Values.State;
+     with Global => (EVC_National_Values.State, EVC_VBC.State);
 
    --  The session byte of MSG_ONBOARD: a session established with the
    --  supervising RBC (2), or one being established (1, 3.5.3.8)
@@ -3016,7 +3070,7 @@ is
                                 EVC_Mission.State, EVC_Train_Data.State,
                                 EVC_Radio_Authority.State,
                                 EVC_Radio.State, EVC_Sessions.State,
-                                EVC_Odometry.State),
+                                EVC_Odometry.State, EVC_VBC.State),
                      In_Out => EVC_Outbox.Queue)
    is
       Onboard : constant Onboard_T :=
@@ -3116,6 +3170,27 @@ is
          EVC_Outbox.Put (DMI, Frame (1 .. Last));
       end if;
    end Send_Networks;
+
+   --  3.15.9: the Virtual Balise Covers stored, to the DMI's data view
+   --  when the store changed (DMI MSG_VBC_LIST, DMI Table 45)
+   procedure Send_VBC_List
+     with Global => (In_Out => (EVC_VBC.State, EVC_Outbox.Queue))
+   is
+      Frame : Frame_Buffer_T;
+      Last  : Natural;
+      Codes : VBC_Codes_T := (others => 0);
+      N     : constant Natural := EVC_VBC.Count;
+   begin
+      if EVC_VBC.List_Due then
+         for I in 1 .. N loop
+            pragma Loop_Invariant (True);
+            Codes (I) := EVC_VBC.Code (EVC_VBC.Item (I));
+         end loop;
+         VBC_List_Frame (N, Codes, Frame, Last);
+         EVC_Outbox.Put (DMI, Frame (1 .. Last));
+         EVC_VBC.Mark_Sent;
+      end if;
+   end Send_VBC_List;
 
    --  DMI 11.7.1.4: the RBC contact stored on-board (3.18.4.3,
    --  EVC_Radio.Contact), sent to the DMI when it changes (from none
@@ -3710,7 +3785,8 @@ is
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
                                 Contact_Sent,
                                 EVC_Radio_Authority.State,
-                                EVC_Radio.State, EVC_Radio.Queue))
+                                EVC_Radio.State, EVC_Radio.Queue,
+                                EVC_VBC.State))
    is
       --  phase E4: the brake demands of the procedures and of the text
       --  messages (MSG_STATUS and the TIU output)
@@ -3732,6 +3808,7 @@ is
       Send_Status (D, Text_SB, Text_EB);  -- DMI MSG_STATUS
       Send_Onboard;                 -- DMI MSG_ONBOARD
       Send_Networks;                -- DMI MSG_RADIO_NETWORKS
+      Send_VBC_List;                -- DMI MSG_VBC_LIST
       Send_RBC_Contact;             -- DMI MSG_RBC_CONTACT
       --  DMI MSG_SPEED_STATE, JRU 20 to 22, TIU the commands
       Send_Supervision (D, Text_SB, Text_EB);
@@ -3873,12 +3950,13 @@ is
 
    --  4.10 column NP: what is kept over No Power, as it is at the end of
    --  each cycle (EVC_Retained)
-   --  @req 3.17.2.9, 3.18.2.7
+   --  @req 3.17.2.9, 3.18.2.7, 3.15.9.5
    procedure Save_Retained
      with Global => (Input  => (EVC_Levels.State, EVC_Position.State,
                                 EVC_Odometry.State, EVC_Radio.State,
                                 EVC_System_Version.State,
-                                EVC_National_Values.State),
+                                EVC_National_Values.State,
+                                EVC_VBC.State),
                      Output => EVC_Retained.State)
    is
       --  every field is set below (phase E5 the last one, the RBC)
@@ -3898,6 +3976,8 @@ is
       K.Operated_X := EVC_System_Version.Operated;
       --  3.18.2.7: the national values applicable
       EVC_National_Values.Keep (K.National);
+      --  3.15.9.5
+      EVC_VBC.Keep (K.VBC);
       EVC_Retained.Save (K);
    end Save_Retained;
 
