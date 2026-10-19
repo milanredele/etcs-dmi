@@ -994,30 +994,30 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.2.9 2nd bullet,3,x,,,,,E6,todo,
 3.18.2.10,3,x,,,,,E6,todo,
 3.18.2.11,3,x,,,,,E6,todo,
-3.18.3.2,3,x,,,,,E6,todo,
-3.18.3.2 a),3,x,,,,,E6,todo,
-3.18.3.2 b),3,x,,,,,E6,todo,
-3.18.3.2 b) 1st bullet,3,x,,,,,E6,todo,
-3.18.3.2 b) 2nd bullet,3,x,,,,,E6,todo,
-3.18.3.2 c),3,x,,,,,E6,todo,
-3.18.3.2 c) 1st bullet,3,x,,,,,E6,todo,
-3.18.3.2 c) 2nd bullet,3,x,,,,,E6,todo,
-3.18.3.2 c) 3rd bullet,3,x,,,,,E6,todo,
-3.18.3.2 c) 4th bullet,3,x,,,,,E6,todo,
-3.18.3.2 c) 5th bullet,3,x,,,,,E6,todo,
-3.18.3.2 d),3,x,,,,,E6,todo,
-3.18.3.2 e),3,x,,,,,E6,todo,
-3.18.3.2 f),3,x,,,,,E6,todo,
-3.18.3.2 g),3,x,,,,,E6,todo,
-3.18.3.2 h),3,x,,,,,E6,todo,
-3.18.3.2 i),3,x,,,,,E6,todo,
-3.18.3.2 k),3,x,,,,,E6,todo,
-3.18.3.2.2,3,x,,,,,E6,todo,
-3.18.3.2.3,3,x,,,,,E6,todo,
-3.18.3.2.4,3,x,,,,,E6,todo,
-3.18.3.2.5,3,x,,,,,E6,todo,
-3.18.3.2.5.1,3,x,,,,,E6,todo,
-3.18.3.3,3,x,,,,,E6,todo,
+3.18.3.2,3,x,,,,,E6,done,"EVC_Mission.Train_Data_Of and Take_Data: the Train Data entered by the driver before the start of mission (5.4.3.2 S12), the fixed ones from EVC_Config.Fixed_Train_T; evc_test E4_SoM_Level_1"
+3.18.3.2 a),3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: NC_CDTRAIN and NC_TRAIN to EVC_Train_Data.Categories_T; evc_test E4_SoM_Level_1
+3.18.3.2 b),3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: L_TRAIN entered by the driver; the safe consist length is not acquired (1st bullet) [E6 Supervised Manoeuvre]
+3.18.3.2 b) 1st bullet,3,x,,,,,E6,todo,decision: the TIU port has no safe consist length input; with Supervised Manoeuvre [E6 Supervised Manoeuvre]
+3.18.3.2 b) 2nd bullet,3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: the length the driver enters (DMI Table 40); evc_test E4_SoM_Level_1
+3.18.3.2 c),3,x,,,,,E6,partial,"EVC_Mission.Train_Data_Of: brake percentage and brake position by the driver, the lambda model; the gamma model's data are not installation data yet (EVC_Config.Fixed_Train_T)"
+3.18.3.2 c) 1st bullet,3,x,,,,,E6,partial,EVC_Mission.Train_Data_Of: the traction cut-off time of EVC_Config.Fixed_Train_T; the traction model of 3.13.2.2.3 not configurable
+3.18.3.2 c) 2nd bullet,3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: the brake percentage (A.3.11 10 to 250) with the conversion model; evc_test E4_SoM_Level_1
+3.18.3.2 c) 3rd bullet,3,x,,,,,E6,done,"EVC_Mission.Train_Data_Of: the brake position from NC_TRAIN (passenger in P, freight in G or P)"
+3.18.3.2 c) 4th bullet,3,x,,,,,E6,partial,EVC_Mission.Train_Data_Of: the lambda model needs none; the correction factors of the gamma model not in EVC_Config.Fixed_Train_T yet
+3.18.3.2 c) 5th bullet,3,x,,,,,E6,partial,EVC_Mission.Train_Data_Of: the nominal rotating mass not in EVC_Config.Fixed_Train_T yet (the default of 3.13.4 applies)
+3.18.3.2 d),3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: V_MAXTRAIN 5 to 600 km/h; evc_test E4_SoM_Level_1
+3.18.3.2 e),3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: M_LOADINGGAUGE to EVC_Train_Data.Categories_T
+3.18.3.2 f),3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: M_AXLELOADCAT to EVC_Train_Data.Categories_T; evc_test Train_Data_Categories
+3.18.3.2 g),3,x,,,,,E6,done,EVC_Mission.Train_Data_Of: the traction systems from EVC_Config.Fixed_Train_T (Voltages)
+3.18.3.2 h),3,x,,,,,E6,done,"EVC_Mission.Train_Data_Of: M_AIRTIGHT to EVC_Train_Data.Categories_T, sent in packet 11 (EVC_Sessions.Mission); evc_test Train_Data_Categories"
+3.18.3.2 i),3,x,,,,,E6,n/a,"decision: NTC out of scope (PLAN.md); no National System on-board, packet 11 with N_ITER 0 (EVC_Sessions.Mission)"
+3.18.3.2 k),3,x,,,,,E6,partial,"EVC_Sessions.Mission: N_AXLE 0, the axle number not in the installation data yet (decision 6)"
+3.18.3.2.2,3,x,,,,,E6,done,"by construction: EVC_Mission.Train_Data_Of takes from the driver only the items of DMI Table 40; traction systems from EVC_Config, no safe consist length, no National System, no axle number"
+3.18.3.2.3,3,x,,,,,E6,done,"EVC_Mission.Train_Data_Of: the ranges of A.3.11 for the driver's Train Data (L_TRAIN, brake percentage, V_MAXTRAIN, categories); evc_test E4_SoM_Level_1"
+3.18.3.2.4,3,x,,,,,E6,partial,EVC_Mission.Train_Data_Of: the train length is the overall length entered; the meanings with the safe consist length [E6 Supervised Manoeuvre]
+3.18.3.2.5,3,x,,,,,E6,todo,decision: no safe consist length input on the TIU port [E6 Supervised Manoeuvre]
+3.18.3.2.5.1,3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
+3.18.3.3,3,x,,,,,E6,done,"EVC_Mission.Take_Data: the Train Data entered at standstill in SB, FS, AD, LS, SR, OS, UN, SN, refused while moving; evc_test Train_Data_Movement, Train_Data_Categories"
 3.18.3.3.1,3,x,,,,,E6,done,"EVC_Brake_Commands reason Data_Entry_Movement from EVC_Mission.Modifying_Train_Data (B035), ended when the DMI reports the window left without the data (driver action 22, B220, evc_test Scenario_Train_Data_Left); the DMI text Runaway movement (entry 9, started by 3.18.3.3.1 in the DMI specification's system status messages) while it is commanded, EVC_Core.Show_Mode_Indications (evc_test Scenario_Train_Data_Movement) [B035, B223]"
 3.18.3.4,3,x,,,,,E6,done,EVC_Sessions.Mission: message 129 with packets 0 and 11 when the supervising session is established with valid Train Data and when the driver validates them in a session [E5 session]
 3.18.3.4 a),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
@@ -1030,26 +1030,26 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.3.4 h),3,x,,,,,E6,done,"EVC_Sessions.Mission: packet 11 from the Train Data (EVC_Train_Data, Categories) [E5 session]"
 3.18.3.4 i),3,x,,,,,E6,partial,"EVC_Sessions.Mission: N_AXLE 0, not in the installation data yet (decision 6) [E5 session]"
 3.18.3.4.2,3,x,,,,,E6,done,EVC_Sessions.Mission: sent again once the connection is set up again in the session [E5 session]
-3.18.3.5,3,x,,,,,E6,todo,
-3.18.3.5 a),3,x,,,,,E6,todo,
-3.18.3.5 b),3,x,,,,,E6,todo,
-3.18.3.7,3,x,,,,,E6,todo,
-3.18.3.7 a),3,x,,,,,E6,todo,
-3.18.3.7 b),3,x,,,,,E6,todo,
-3.18.3.8,3,x,,,,,E6,todo,
-3.18.3.9,3,x,,,,,E6,todo,
-3.18.3.10,3,x,,,,,E6,todo,
-3.18.3.10.2,3,x,,,,,E6,todo,
-3.18.4.1.2,3,x,,,,,E6,todo,
-3.18.4.1.3,3,x,,,,,E6,todo,
-3.18.4.1.4,3,x,,,,,E6,todo,
-3.18.4.2.1,3,x,,,,,E6,todo,
-3.18.4.2.4,3,x,,,,,E6,todo,
-3.18.4.2.5,3,x,,,,,E6,todo,
-3.18.4.3.1,3,x,,,,,E6,todo,
-3.18.4.3.2,3,x,,,,,E6,todo,
-3.18.4.3.4,3,x,,,,,E6,todo,
-3.18.4.3.5,3,x,,,,,E6,todo,
+3.18.3.5,3,x,,,,,E6,todo,"decision: the TIU port has no safe consist length input, so none is available; with Supervised Manoeuvre [E6 Supervised Manoeuvre]"
+3.18.3.5 a),3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
+3.18.3.5 b),3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
+3.18.3.7,3,x,,,,,E6,partial,"EVC_Mission.Categories_Changed, EVC_Stored_Information.Train_Data_Shortening (EVC_Core.Evaluate_Stored_Information); b) left; evc_test Train_Data_Categories"
+3.18.3.7 a),3,x,,,,,E6,done,EVC_Stored_Information.Train_Data_Shortening: shortened to the train as for A.3.4.1.2 i) (the same column); evc_test Train_Data_Categories
+3.18.3.7 b),3,x,,,,,E6,partial,EVC_Stored_Information.Train_Data_Shortening deletes no radio information of a pending level 2 or RBC transition: the transition buffer of 4.8.5 (EVC_Radio_Authority) has no deletion entry yet (B870)
+3.18.3.8,3,x,,,,,E6,todo,the track description in rear of the former min safe rear end not yet made unknown at a length increase (B871)
+3.18.3.9,3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
+3.18.3.10,3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
+3.18.3.10.2,3,x,,,,,E6,todo,[E6 Supervised Manoeuvre]
+3.18.4.1.2,3,x,,,,,E6,done,EVC_Mission.Take_Identity: while running only with M_NVDERUN (Context_T.ID_Running from EVC_Core); evc_test Train_Data_Categories
+3.18.4.1.3,3,x,,,,,E6,done,EVC_Mission.Take_Identity: the driver ID taken in NL (4.7.2)
+3.18.4.1.4,3,x,,,,,E6,done,"EVC_Mission.Take_Identity, Valid_Driver_ID: 1 to 16 printable characters (A.3.11, DMI 11.3.3)"
+3.18.4.2.1,3,x,,,,,E6,done,EVC_Levels.Evaluate: the driver's level in the start of mission (5.4.3.2 S2); evc_test E4_SoM_Other_Levels
+3.18.4.2.4,3,x,,,,,E6,done,"EVC_Levels.Evaluate: the driver's level at standstill in SB, FS, AD, LS, SR, OS, NL, UN, SN (5.10.3.15.1); evc_test E4_SoM_Other_Levels"
+3.18.4.2.5,3,x,,,,,E6,done,"EVC_Levels.Selectable: limited to the applicable table of priority; without one any of the levels 0, NTC, 1, 2 (the default list); evc_test Driver_Level_Table"
+3.18.4.3.1,3,x,,,,,E6,partial,EVC_Sessions.Mission.Driver_Contact and EVC_Radio's one RBC contact (E5); the orders and the RBC/RBC border not re-read against this clause
+3.18.4.3.2,3,x,,,,,E6,partial,EVC_Sessions.Mission.Driver_Contact: the means of 5.4.3.2 S3 (E5); not re-read against this clause
+3.18.4.3.4,3,x,,,,,E6,partial,"EVC_Sessions.Mission (the short number, evc_test Session_Short_Number, E5); the RBC identity reported by EURORADIO not re-read"
+3.18.4.3.5,3,x,,,,,E6,partial,"EVC_Sessions.Mission.Driver_Contact: NID_C, NID_RBC and NID_RADIO of the DMI entry; the ranges of A.3.11 not re-read"
 3.18.4.3.6,3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries: Radio Network type (kind 6) and GSM-R network (kind 4) taken at any time the DMI offers them; evc_test Session_Registration [E5 session]
 3.18.4.3.6.1,3,x,,,,,E6,done,"EVC_Sessions.Apply_Network: the sessions terminated, Pending cleared; evc_test Session_Registration [E5 session]"
 3.18.4.3.6.1 a),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
@@ -1058,18 +1058,18 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.18.4.3.6.3,3,x,,,,,E6,done,EVC_Sessions.Network.Invalidate_Contact; evc_test Session_Registration [E5 session]
 3.18.4.3.6.3 a),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
 3.18.4.3.6.3 b),3,x,,,,,E6,done,EVC_Sessions.Network.Driver_Entries; evc_test Session_Registration [E5 session]
-3.18.4.4.2,3,x,x,,,,E6,todo,
-3.18.4.5.1,3,x,,,,,E6,todo,
-3.18.4.5.2,3,x,,,,,E6,todo,
-3.18.4.5.3,3,x,,,,,E6,todo,
-3.18.4.5.4,3,x,,,,,E6,todo,
-3.18.4.5.4.1,3,x,,,,,E6,todo,
-3.18.4.5.5,3,x,,,,,E6,todo,
+3.18.4.4.2,3,x,x,,,,E6,done,"by construction: NID_ENGINE from the installation (EVC_Config, EVC_Radio.Engine_Id); the uniqueness is the installer's"
+3.18.4.5.1,3,x,,,,,E6,partial,EVC_Mission.Take_Identity: the driver's entry; from the RBC (packet 140) and other external sources not taken (B872)
+3.18.4.5.2,3,x,,,,,E6,done,EVC_Mission.Take_Identity: the train running number taken in NL (4.7.2)
+3.18.4.5.3,3,x,,,,,E6,done,"EVC_Mission.Take_Identity: taken whatever the speed in SB, SM, FS, AD, LS, SR, OS, NL, UN, SN; from the RBC (B872)"
+3.18.4.5.4,3,x,,,,,E6,done,EVC_Sessions.Reports.Evaluate: packet 5 in the next 136 to the supervising RBC after the driver's entry with the session established or after an establishment outside the start of mission; EVC_Sessions.Mission: in the 157 when valid; evc_test Session_TRN
+3.18.4.5.4.1,3,x,,,,,E6,partial,"EVC_Mission: nothing to suppress yet, packet 140 is not taken (B872)"
+3.18.4.5.5,3,x,,,,,E6,done,"EVC_Mission.Take_Identity, Valid_TRN: 1 to 8 digits (A.3.11, NID_OPERATIONAL)"
 3.18.4.6.2,3,x,,,,,E6,done,"EVC_Stored_Information.Take_Driver_Adhesion (the driver's choice taken in any cycle, also running; trackside: packet 71); evc_test Driver_Adhesion"
 3.18.4.6.2.1,3,x,x,,,,E6,done,"EVC_Stored_Information.Take_Driver_Adhesion (permitted by Q_NVDRIVER_ADHES, reset to non slippery when the national values in force no longer permit it; the profiles of packet 71 kept); evc_test Driver_Adhesion"
 3.18.4.6.2.3,3,x,,,,,E6,done,"EVC_Stored_Information.Driver_Slippery_Rail in MSG_STATUS (EVC_DMI_Port.Status_Frame Slippery, EVC_Core.Send_Status), the DMI's ST02; evc_test Driver_Adhesion"
 3.18.4.6.3,3,x,x,,,,E6,done,"EVC_Stored_Information.Take_Driver_Adhesion: slippery / non slippery (DMI action 9 argument 1 / 0); evc_test Driver_Adhesion"
-3.18.4.6.4,3,x,,,,,E6,todo,
+3.18.4.6.4,3,x,,,,,E6,done,EVC_Stored_Information.Driver_Slippery_Rail: non slippery at power-up and after the reset of 3.18.4.6.2.1; evc_test Driver_Adhesion
 3.18.5.1,3,x,,,,,E6,todo,
 3.18.5.2,3,x,,,,,E6,todo,
 3.18.6.1,3,x,,,,,E6,todo,

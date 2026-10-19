@@ -171,7 +171,7 @@ expect efs: (LAST X IN Kernel.TrackDescription.AdhesionFactors.AdhFactors).Lengt
 expect efs: (LAST X IN Kernel.TrackDescription.AdhesionFactors.AdhFactors).Value == Messages.M_ADHESION.Slippery_rail
 expect efs: (LAST X IN Kernel.TrackDescription.AdhesionFactors.AdhFactors).Location == 3700.0
 case Check selection of slippery rail by the driver
-clause E6 todo 3.18.4.6.4 ; efs 3.18.4.6.4
+clause E6 done 3.18.4.6.4 ; efs 3.18.4.6.4
 clause E6 done 3.18.4.6.2.1 ; efs 3.18.4.6.2.1
 step Default value
 sub Sub-step1

@@ -7,7 +7,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | frame | file | cases | steps | actions tr. / verb. | expectations tr. / verb. | xfail | clauses |
 |---|---|---:|---:|---:|---:|---:|---|
 | Active Functions | active-functions.scn | 1 | 18 | 1 / 17 | 0 / 17 | 0 | done 1 |
-| Adhesion factors | adhesion-factors.scn | 4 | 9 | 14 / 3 | 0 / 17 | 0 | absent 2, done 6, todo 1 |
+| Adhesion factors | adhesion-factors.scn | 4 | 9 | 14 / 3 | 0 / 17 | 0 | absent 2, done 7 |
 | Axle load | axle-load.scn | 7 | 15 | 15 / 5 | 0 / 63 | 0 | absent 5, done 5 |
 | BTM | btm.scn | 15 | 32 | 51 / 12 | 0 / 46 | 0 | absent 12, done 3, partial 1 |
 | Braking models | braking-models.scn | 13 | 42 | 91 / 2 | 111 / 27 | 34 | absent 2, done 16 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 32, n/a 1, partial 5 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 28, other 6 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 15, done 613, n/a 5, other 52, partial 72, todo 7 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 15, done 614, n/a 5, other 52, partial 72, todo 6 |

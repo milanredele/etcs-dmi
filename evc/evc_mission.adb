@@ -199,6 +199,11 @@ is
 
    --  The Train Data of an entry with the fixed ones of the installation
    --  (OK False: an item out of its range)
+   --  @req 3.18.3.2, 3.18.3.2 a), 3.18.3.2 b), 3.18.3.2 b) 2nd bullet
+   --  @req 3.18.3.2 c), 3.18.3.2 c) 1st bullet, 3.18.3.2 c) 2nd bullet
+   --  @req 3.18.3.2 c) 3rd bullet, 3.18.3.2 c) 4th bullet
+   --  @req 3.18.3.2 c) 5th bullet, 3.18.3.2 d), 3.18.3.2 e), 3.18.3.2 f)
+   --  @req 3.18.3.2 g), 3.18.3.2 h), 3.18.3.2.2, 3.18.3.2.3, 3.18.3.2.4
    procedure Train_Data_Of (E  : Train_Entry_T;
                             F  : EVC_Config.Fixed_Train_T;
                             D  : out Train_Data_T;
@@ -403,6 +408,7 @@ is
    --  4.7.2, DMI Table 33 #3: the Train Data entered at standstill;
    --  4.4.11.1.5: the SR speed limit and distance entered at standstill
    --  in SR
+   --  @req 3.18.3.3
    procedure Take_Data (C : Context_T; M : Mode_T)
      with Global => (In_Out => (Train_Known, TD_Now, Cat_N, Proposal,
                                 SR_V, SR_D,
