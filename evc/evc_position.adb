@@ -1309,6 +1309,61 @@ is
    --  @req 3.4.4.5.1, 3.6.1.4, 3.6.2.2.2 a), 3.6.2.2.2 a) 1st bullet
    --  @req 3.6.2.2.2 a) 2nd bullet, 3.6.3.1.3, 3.6.3.1.3.1, 3.6.4.1.3
    --  @req 3.6.4.2.2, 3.6.4.2.2 a), 3.6.4.2.2 b)
+   --  The reaction to the inconsistent message of the group Id of the
+   --  passage, rejected (3.16.1.4): with linking checked, the reaction
+   --  of the expected group when it is this one or its identity is
+   --  unknown, none for another group (3.4.4.4.2); with linking not
+   --  checked, the service brake unless packet 145 inhibits it, or the
+   --  reaction of the last group announced. The service brake is a
+   --  linking reaction of Q_LINKREACTION 1 (EVC_Procedures: "Balise read
+   --  error", released at standstill). Decision (3.16.2.4.3.1 a): the
+   --  case "surely not the expected group" is not told apart from b),
+   --  the reaction applies
+   --  @req 3.16.1.4, 3.16.2.4.1, 3.16.2.4.3, 3.16.2.4.3.1, 3.16.2.4.3.1 b)
+   --  @req 3.16.2.4.4, 3.16.2.4.4.1 b), 3.16.2.4.4.3, 3.16.2.4.4.4
+   procedure React_Inconsistent (Id : Identity_T)
+     with Global => (Input  => (Check_Linking, Passage),
+                     In_Out => (Links, Events, Event_N, Reaction_Flag,
+                                Reaction_Value))
+   is
+      K : EVC_Linking.Link_Count_T := 0;
+   begin
+      if not Passage.Linked then
+         --  3.16.2.5.1, 3.16.2.5.1.1 b)
+         Put_Identity_Event (Inconsistent_Unlinked, Id);
+         if not Reaction_Inhibited (Passage) then
+            Request_Reaction (Q_LINKREACTION_Apply_Service_Brake,
+                              Cause_Inconsistent, 0);
+         end if;
+      elsif Check_Linking and then EVC_Linking.Checked (Links) then
+         declare
+            E : constant EVC_Linking.Link_Index_T := Links.Expected;
+            L : constant EVC_Linking.Link_T := Links.Links (E);
+         begin
+            if not L.Known_Id or else L.Id = Id then
+               Put_Identity_Event (Inconsistent_Linked, Id);
+               Request_Reaction (L.Reaction, Cause_Inconsistent, E);
+               Next_Window;
+            end if;
+         end;
+      else
+         Put_Identity_Event (Inconsistent_Linked, Id);
+         if Check_Linking and then Links.Stored and then Links.Count >= 1
+         then
+            K := EVC_Linking.Find (Links, Id, Links.Count);
+         end if;
+         if K /= 0 then
+            --  3.16.2.4.4.4: the last group announced, its window no
+            --  longer supervised (3.4.4.4.6 a)
+            Request_Reaction (Links.Links (K).Reaction, Cause_Inconsistent,
+                              K);
+         elsif not Reaction_Inhibited (Passage) then
+            Request_Reaction (Q_LINKREACTION_Apply_Service_Brake,
+                              Cause_Inconsistent, 0);
+         end if;
+      end if;
+   end React_Inconsistent;
+
    procedure Evaluate (Mode : Mode_T)
      with Pre => Passage.Open and then Passage.Count >= 1,
           Post => not Passage.Open
@@ -1329,6 +1384,10 @@ is
       Passage.Open := False;
       --  3.16.2.7.1.1: a balise detected
       Missed_Last := False;
+      if not Consistent (Passage) then
+         React_Inconsistent (Id);
+         return;
+      end if;
       if not G.Has_Reference then
          --  the group cannot be located (the consistency of its message
          --  is phase E6); its window, if any, runs on
@@ -1619,6 +1678,22 @@ is
       end if;
    end Receive_Telegram;
 
+   procedure Receive_Refused (H : ETCS_Telegram.Header_T;
+                              Stamp : Unsigned_32;
+                              Compliant : Boolean := False)
+   is
+   begin
+      if Pending_N < Max_Pending then
+         Pending_N := Pending_N + 1;
+         Pending (Pending_N) := ETCS_Telegram.No_Telegram;
+         Pending (Pending_N).Header := H;
+         if Compliant then
+            Pending (Pending_N).Bits := ETCS_Telegram.Short_Bits;
+         end if;
+         Pending_Stamp (Pending_N) := Stamp;
+      end if;
+   end Receive_Refused;
+
    --  3.16.2.2.2 c): the telegrams of the cycle, placed on the
    --  frame as it was when their balises were passed, open, extend or
    --  close the passage of their group; a passage closed is evaluated
@@ -1653,7 +1728,9 @@ is
                X      => EVC_Odometry.To_Frame (Pending_Stamp (I)),
                Low    => EVC_Odometry.Low,
                High   => EVC_Odometry.High,
-               Motion => EVC_Odometry.Last_Direction);
+               Motion => EVC_Odometry.Last_Direction,
+               --  Receive_Refused: the header alone, no bits
+               Decoded => T.Bits /= 0);
          begin
             if Passage.Open and then Passage.Id /= Identity (T.Header) then
                --  3.16.2.2.2 c): a balise of another group

@@ -245,7 +245,9 @@ is
    --  several messages for one event), NID 0 when none: the general
    --  message at a mode change (event 1), the balise group error at an
    --  unexpected or a missed group (events 5 and 6, M_ERROR 0, SUBSET-026
-   --  3.16.2.3)
+   --  3.16.2.3) and at the inconsistent message of a linked or an
+   --  unlinked group (events 12 and 13, M_ERROR 1 and 2, 3.16.2.4,
+   --  3.16.2.5)
    procedure Paired_Message (Event      : Byte;
                              B2, B3, B4 : Byte;
                              NID        : out Byte;

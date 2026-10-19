@@ -380,13 +380,18 @@ is
       case Event is
          when 1 =>
             NID := NID_General;
-         when 5 | 6 =>
-            --  NID_C, NID_ERRORBG, M_ERROR (4.2.4.12)
+         when 5 | 6 | 12 | 13 =>
+            --  NID_C, NID_ERRORBG, M_ERROR (4.2.4.12; SUBSET-026
+            --  7.5.1.64: 0 linking, 1 a linked group's message, 2 an
+            --  unlinked group's message)
             NID := NID_BG_Error;
             Fields (1) := (Value => Shift_Right (Id, 14) and 1023,
                            Bits  => 10);
             Fields (2) := (Value => Id and 16383, Bits => 14);
-            Fields (3) := (Value => 0, Bits => 8);
+            Fields (3) := (Value => (if Event = 12 then 1
+                                     elsif Event = 13 then 2
+                                     else 0),
+                           Bits  => 8);
          when others =>
             NID := 0;
       end case;

@@ -154,7 +154,7 @@ is
 
    --  Events of a cycle
 
-   --  JRU event code: Event_Kind_T'Pos + 4 (EVC_Ports)
+   --  JRU event code: Event_Code (EVC_Ports)
    type Event_Kind_T is
      (Linking_Reaction,   -- Q_LINKREACTION, cause, link index
       Unexpected_Group,   -- identity
@@ -162,7 +162,16 @@ is
       Odometer_Accuracy,  -- 0 nominal, 1 impaired, 2 safety threshold
       Position_Status,    -- Status_T'Pos
       Cold_Movement,      -- 1: a cold movement was detected
-      New_LRBG);          -- identity
+      New_LRBG,           -- identity
+      Inconsistent_Linked,    -- identity (3.16.2.4: M_ERROR 1)
+      Inconsistent_Unlinked); -- identity (3.16.2.5: M_ERROR 2)
+
+   --  The JRU event code of a kind: Event_Kind_T'Pos + 4 up to New_LRBG,
+   --  then 12 and 13 (11 is the driver's actions, EVC_JRU_Messages)
+   function Event_Code (K : Event_Kind_T) return Unsigned_8 is
+     (if K = Inconsistent_Linked then 12
+      elsif K = Inconsistent_Unlinked then 13
+      else Event_Kind_T'Pos (K) + 4);
 
    --  The cause of a linking reaction (byte 3 of the record)
    Cause_Early           : constant := 1;  -- 3.16.2.3.1 a)
@@ -171,6 +180,7 @@ is
    Cause_Wrong_Direction : constant := 4;  -- 3.4.4.4.7
    Cause_Double_Missed   : constant := 5;  -- 3.16.2.7.1.1
    Cause_Double_Repos    : constant := 6;  -- 3.16.2.7.2.2
+   Cause_Inconsistent    : constant := 7;  -- 3.16.2.4.1, 3.16.2.4.4
 
    type Event_T is record
       Kind       : Event_Kind_T := Linking_Reaction;
@@ -389,6 +399,28 @@ is
    --  Update; dropped when Max_Pending are waiting
    procedure Receive_Telegram (T : ETCS_Telegram.Telegram_T;
                                Stamp : Unsigned_32)
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
+          Post => LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Status = Status'Old
+                  and then Passage_Open = Passage_Open'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old;
+
+   --  3.16.1.1: a telegram the codec refused, of which the header H
+   --  could be read, and the stamp of its balise: a balise of its group
+   --  read but not compliant, which makes the group's message
+   --  inconsistent (EVC_Balise_Groups.Consistent); kept as a telegram of
+   --  no bits and no packets
+   --  @req 3.16.1.1, 3.16.1.1.1
+   --  Compliant: a telegram of a system version this on-board does not
+   --  read (3.17), its balise read and its content left out, no
+   --  inconsistency
+   procedure Receive_Refused (H : ETCS_Telegram.Header_T;
+                              Stamp : Unsigned_32;
+                              Compliant : Boolean := False)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => LRBG = LRBG'Old
                   and then SOLR = SOLR'Old

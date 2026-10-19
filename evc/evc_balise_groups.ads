@@ -65,6 +65,9 @@ is
       High   : Length_T := 0;
       --  the last known direction of movement at its detection
       Motion : Direction_T := Unknown;
+      --  its telegram compliant with the specifications (3.16.1.1): the
+      --  codec accepted it; False when only its header could be read
+      Decoded : Boolean := True;
    end record;
 
    subtype Count_T is Natural range 0 .. Max_Balises;
@@ -93,6 +96,81 @@ is
    --  Every balise of the group was read
    function Complete (P : Passage_T) return Boolean is
      (P.Count > Natural (P.N_TOTAL));
+
+   --  3.16.2.4.2, 3.16.2.4.4.1 a): balise N, missed, is duplicated by a
+   --  neighbour read and decoded (M_DUP, 7.5.1.63: 1 the duplicate of
+   --  the next balise, 2 of the previous one). Decision: the content
+   --  bullets of 3.16.2.4.4.1 a) are not told apart; a duplicate left
+   --  alone has no orientation of its own, which linking may assign
+   --  (3.4.2.3.2.2)
+   function Duplicated (P : Passage_T; N : N_PIG_T) return Boolean is
+     ((N < N_PIG_T'Last
+       and then (for some I in 1 .. P.Count =>
+                   P.Readings (I).N_PIG = N + 1
+                   and then P.Readings (I).Decoded
+                   and then P.Readings (I).M_DUP = 2))
+      or else
+        (N > 0
+         and then (for some I in 1 .. P.Count =>
+                     P.Readings (I).N_PIG = N - 1
+                     and then P.Readings (I).Decoded
+                     and then P.Readings (I).M_DUP = 1)));
+
+   --  3.16.2.4.8.2: the telegram of slot I is not used to compose the
+   --  message: its duplicate (M_DUP) was read and decoded after it
+   function Superseded (P : Passage_T; I : Slot_T) return Boolean is
+     (I <= P.Count
+      and then P.Readings (I).M_DUP in 1 .. 2
+      and then (for some J in I + 1 .. P.Count =>
+                  P.Readings (J).Decoded
+                  and then
+                    (if P.Readings (I).M_DUP = 1
+                     then Natural (P.Readings (J).N_PIG)
+                          = Natural (P.Readings (I).N_PIG) + 1
+                     else Natural (P.Readings (J).N_PIG) + 1
+                          = Natural (P.Readings (I).N_PIG))));
+
+   --  3.16.2.4.7: the message counter of slot I takes part in the
+   --  comparison: decoded, used, not "fits all" (255, 3.16.2.4.6)
+   function Counted (P : Passage_T; I : Slot_T) return Boolean is
+     (I <= P.Count
+      and then P.Readings (I).Decoded
+      and then not Superseded (P, I)
+      and then P.Telegrams (I).Header.M_MCOUNT /= 255);
+
+   --  3.16.2.4.7, 3.16.2.4.7.1: the counters compared are all identical
+   --  and none is "never fits" (254, 3.16.2.4.6.1)
+   function Counters_Match (P : Passage_T) return Boolean is
+     (for all I in 1 .. P.Count =>
+        (if Counted (P, I)
+         then P.Telegrams (I).Header.M_MCOUNT /= 254
+              and then (for all J in 1 .. P.Count =>
+                          (if Counted (P, J)
+                           then P.Telegrams (J).Header.M_MCOUNT
+                                = P.Telegrams (I).Header.M_MCOUNT))));
+
+   --  3.16.1.1, 3.16.2.4.1 a), b), d), 3.16.2.4.2: the message of the
+   --  passage is consistent: every telegram read is compliant, every
+   --  balise of the group read or duplicated by one read, the message
+   --  counters matching. Decision: the BTM port carries the telegrams
+   --  the BTM decoded only (EVC_Ports), so a balise detected without a
+   --  decoded telegram (b) reaches the on-board as a missed one (a); a
+   --  telegram the codec refuses is not compliant (3.16.1.1), without
+   --  the exception for duplicates of a) and b)
+   function Consistent (P : Passage_T) return Boolean is
+     ((for all I in 1 .. P.Count => P.Readings (I).Decoded)
+      and then (for all K in 0 .. Natural (P.N_TOTAL) =>
+                  Has (P, N_PIG_T (K)) or else Duplicated (P, N_PIG_T (K)))
+      and then Counters_Match (P));
+
+   --  3.16.2.4.4.1 b), 3.16.2.5.1.1 b): a telegram correctly read in the
+   --  passage holds packet 145, "Inhibition of balise group message
+   --  consistency reaction" (7.4.2.42); its direction is not looked at
+   function Reaction_Inhibited (P : Passage_T) return Boolean is
+     (for some I in 1 .. P.Count =>
+        P.Readings (I).Decoded
+        and then (for some K in 1 .. P.Telegrams (I).Count =>
+                    P.Telegrams (I).Index (K).NID = 145));
 
    --  A new passage, with its first telegram
    procedure Start (P : out Passage_T;

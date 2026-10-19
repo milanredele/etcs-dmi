@@ -92,6 +92,7 @@ with EVC_Test_Bench;     use EVC_Test_Bench;
 with EVC_Test_EMRRLS;    use EVC_Test_EMRRLS;
 with EVC_Test_Config;    use EVC_Test_Config;
 with EVC_Test_JRU;       use EVC_Test_JRU;
+with EVC_Test_Consistency; use EVC_Test_Consistency;
 with EVC_Test_Modes;     use EVC_Test_Modes;
 with EVC_Test_LS;
 with EVC_Test_Radio;     use EVC_Test_Radio;
@@ -229,6 +230,8 @@ begin
    Scenario_JRU_Track_Conditions;
    Scenario_JRU_General;
    Scenario_JRU_Train_Data;
+   Scenario_Message_Consistency;
+   Scenario_Consistency_Record;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;

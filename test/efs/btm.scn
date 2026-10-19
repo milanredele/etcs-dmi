@@ -777,7 +777,7 @@ telegram balise Q_UPDOWN=1 M_VERSION=32 Q_MEDIA=0 N_PIG=1 N_TOTAL=1 M_DUP=0 M_MC
 expect efs: Kernel.Mode == ModeEnum.FS @ deadline=1
 sequence Duplicate balise missed, message accepted
 case Initial configuration
-clause E6 todo 3.16.2.4.2 ; efs 3.16.2.4.2
+clause E6 done 3.16.2.4.2 ; efs 3.16.2.4.2
 step Setup
 sub Sub-step1 - Initialize test environment
 init 100.0 FS

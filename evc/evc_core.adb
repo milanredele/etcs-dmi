@@ -743,8 +743,6 @@ is
    end Put_SDM;
 
    JRU_Mode_Change : constant := 1;
-   --  the events of the position: 4 .. 10 (EVC_Ports)
-   JRU_Position    : constant := 4;
 
    --  0. The installation configuration loaded or refused since the last
    --  cycle (Configure): event 33 (EVC_Ports)
@@ -817,15 +815,27 @@ is
             if Valid_BTM_Input (Slot.Data (1 .. Slot.Length)) then
                EVC_Received.Receive_Telegram
                  (BTM_Telegram (Slot.Data (1 .. Slot.Length)), T_Status);
+               --  SUBSET-027 4.2.4.6, 4.3.1.1: every telegram received,
+               --  accepted or not, as received, its bits after their
+               --  count (EVC_Ports, BTM)
+               EVC_Outbox.Put_JRU
+                 (EVC_JRU_Messages.NID_Telegram, Unsigned_64 (Clock_Ms),
+                  EVC_JRU_Messages.No_Fields,
+                  Slot.Data (BTM_Stamp_Length + 3 .. Slot.Length),
+                  Natural (Slot.Data (BTM_Stamp_Length + 1))
+                  + 256 * Natural (Slot.Data (BTM_Stamp_Length + 2)));
+               if T_Status /= ETCS_Telegram.Accepted
+                 and then EVC_Received.Header_Read (T_Status)
+               then
+                  --  3.16.1.1: a balise of its group read, not compliant;
+                  --  of a version not read, its content left out (3.17)
+                  EVC_Position.Receive_Refused
+                    (EVC_Received.Refused_Header,
+                     BTM_Stamp (Slot.Data (1 .. Slot.Length)),
+                     Compliant =>
+                       T_Status = ETCS_Telegram.Unsupported_Version);
+               end if;
                if T_Status = ETCS_Telegram.Accepted then
-                  --  SUBSET-027 4.2.4.6: the telegram as received, its
-                  --  bits after their count (EVC_Ports, BTM)
-                  EVC_Outbox.Put_JRU
-                    (EVC_JRU_Messages.NID_Telegram, Unsigned_64 (Clock_Ms),
-                     EVC_JRU_Messages.No_Fields,
-                     Slot.Data (BTM_Stamp_Length + 3 .. Slot.Length),
-                     Natural (Slot.Data (BTM_Stamp_Length + 1))
-                     + 256 * Natural (Slot.Data (BTM_Stamp_Length + 2)));
                   EVC_Position.Receive_Telegram
                     (EVC_Received.Last_Telegram,
                      BTM_Stamp (Slot.Data (1 .. Slot.Length)));
@@ -1214,9 +1224,7 @@ is
          declare
             E : constant EVC_Position.Event_T := EVC_Position.Event (I);
          begin
-            Put_Event (JRU_Position
-                                  + EVC_Position.Event_Kind_T'Pos (E.Kind),
-                                E.B2, E.B3, E.B4);
+            Put_Event (EVC_Position.Event_Code (E.Kind), E.B2, E.B3, E.B4);
          end;
       end loop;
       Standstill := Odometer_Now.V_Max = 0;

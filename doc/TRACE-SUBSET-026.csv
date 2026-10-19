@@ -863,14 +863,14 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.15.10.4,3,x,,,,,E6,todo,
 3.15.10.5,3,x,,,,,E6,todo,
 3.15.11.2,3,x,,,,,E6,todo,
-3.16.1.1,3,x,,,,,E6,todo,
-3.16.1.1.1,3,x,,,,,E6,todo,
-3.16.1.4,3,x,,,,,E6,todo,
-3.16.2.2.1,3,x,,,,,E6,todo,
-3.16.2.2.2,3,x,,,,,E6,todo,
-3.16.2.2.2 a),3,x,,,,,E6,todo,
-3.16.2.2.2 b),3,x,,,,,E6,todo,
-3.16.2.2.2 c),3,x,,,,,E6,todo,
+3.16.1.1,3,x,,,,,E6,done,EVC_Position.Receive_Refused (a telegram the codec refuses with its header read is a balise read not compliant); EVC_Balise_Groups.Consistent
+3.16.1.1.1,3,x,,,,,E6,done,EVC_Position.Receive_Refused (a spare value: ETCS_Telegram Invalid_Value)
+3.16.1.4,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (the message rejected: EVC_Position.Evaluate takes nothing of it)
+3.16.2.2.1,3,x,,,,,E6,partial,EVC_Balise_Groups.Start (Q_LINK of the first header read; decision: a telegram whose header was read counts as read; the BTM port carries no undecoded balise)
+3.16.2.2.2,3,x,,,,,E6,done,EVC_Position.Take_Telegrams; EVC_Position.End_Cycle (the passage closed; EVC_Balise_Groups.Consistent)
+3.16.2.2.2 a),3,x,,,,,E6,done,EVC_Position.End_Cycle (beyond Group_End_Cm from the last balise)
+3.16.2.2.2 b),3,x,,,,,E6,done,EVC_Position.Take_Telegrams (a following balise of the group)
+3.16.2.2.2 c),3,x,,,,,E6,done,EVC_Position.Take_Telegrams (a balise of another group closes the passage)
 3.16.2.3.1,3,x,,,,,E6,done,"[E6 consistency-linking] the cases a) to c) in EVC_Position.Decide_Linking (Check_Window early, a group announced later) and Supervise_Windows (not detected), the reaction by Q_LINKREACTION through Request_Reaction; evc_test Scenario_Linking_Errors"
 3.16.2.3.1 a),3,x,,,,,E6,done,"[E6 consistency-linking] EVC_Position.Decide_Linking: Check_Window Early, the reaction of the expected link; evc_test Scenario_Linking_Errors"
 3.16.2.3.1 b),3,x,,,,,E6,done,"[E6 consistency-linking] EVC_Position.Supervise_Windows: the window passed without the location reference, the reaction of the link; evc_test Scenario_Linking_Errors"
@@ -879,35 +879,35 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.3.1.1 a),3,x,,,,,E6,partial,[E6 consistency-linking] EVC_Position.Supervise_Windows: the 1.3 m margin; the 100 ms after it left
 3.16.2.3.1.1 b),3,x,,,,,E6,todo,
 3.16.2.3.4,3,x,,,,,E6,todo,
-3.16.2.4.1,3,x,,,,,E6,todo,
-3.16.2.4.1 a),3,x,,,,,E6,todo,
-3.16.2.4.1 b),3,x,,,,,E6,todo,
-3.16.2.4.1 d),3,x,,,,,E6,todo,
-3.16.2.4.2,3,x,,,,,E6,todo,
-3.16.2.4.3,3,x,,,,,E6,todo,
-3.16.2.4.3.1,3,x,,,,,E6,todo,
-3.16.2.4.3.1 a),3,x,,,,,E6,todo,
-3.16.2.4.3.1 b),3,x,,,,,E6,todo,
-3.16.2.4.4,3,x,,,,,E6,todo,
-3.16.2.4.4 a),3,x,,,,,E6,todo,
-3.16.2.4.4 b),3,x,,,,,E6,todo,
-3.16.2.4.4 d),3,x,,,,,E6,todo,
-3.16.2.4.4.1,3,x,,,,,E6,todo,
-3.16.2.4.4.1 a),3,x,,,,,E6,todo,
-3.16.2.4.4.1 a) 1st bullet,3,x,,,,,E6,todo,
-3.16.2.4.4.1 a) 2nd bullet,3,x,,,,,E6,todo,
-3.16.2.4.4.1 a) 3rd bullet,3,x,,,,,E6,todo,
-3.16.2.4.4.1 a) 4th bullet,3,x,,,,,E6,todo,
-3.16.2.4.4.1 a) 5th bullet,3,x,,,,,E6,todo,
-3.16.2.4.4.1 b),3,x,,,,,E6,todo,
+3.16.2.4.1,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (linking checked: the reaction of the expected group); EVC_Balise_Groups.Consistent
+3.16.2.4.1 a),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent (every N_PIG up to N_TOTAL read or duplicated)
+3.16.2.4.1 b),3,x,,,,,E6,partial,EVC_Balise_Groups.Consistent (decision: the BTM port carries decoded telegrams only; a balise without one is missed as a)
+3.16.2.4.1 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
+3.16.2.4.2,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated (M_DUP of the neighbour read)
+3.16.2.4.3,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (another group than the expected one: no reaction)
+3.16.2.4.3.1,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (the expected group of unknown identity: its reaction)
+3.16.2.4.3.1 a),3,x,,,,,E6,partial,EVC_Position.React_Inconsistent (decision: not told apart from b; the reaction applies)
+3.16.2.4.3.1 b),3,x,,,,,E6,done,EVC_Position.React_Inconsistent
+3.16.2.4.4,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (linking not checked: the service brake as a linking reaction of Q_LINKREACTION 1 in EVC_Procedures)
+3.16.2.4.4 a),3,x,,,,,E6,done,EVC_Balise_Groups.Consistent
+3.16.2.4.4 b),3,x,,,,,E6,partial,EVC_Balise_Groups.Consistent (as 3.16.2.4.1 b)
+3.16.2.4.4 d),3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match
+3.16.2.4.4.1,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated; EVC_Balise_Groups.Reaction_Inhibited
+3.16.2.4.4.1 a),3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (decision: the content bullets are not told apart; the exception applies)
+3.16.2.4.4.1 a) 1st bullet,3,x,,,,,E6,partial,EVC_Balise_Groups.Duplicated (the orientation left to linking as 3.4.2.3.2.2)
+3.16.2.4.4.1 a) 2nd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
+3.16.2.4.4.1 a) 3rd bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
+3.16.2.4.4.1 a) 4th bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
+3.16.2.4.4.1 a) 5th bullet,3,x,,,,,E6,done,EVC_Balise_Groups.Duplicated
+3.16.2.4.4.1 b),3,x,,,,,E6,done,EVC_Position.React_Inconsistent; EVC_Balise_Groups.Reaction_Inhibited (packet 145)
 3.16.2.4.4.2,3,x,,,,,E6,todo,
-3.16.2.4.4.3,3,x,,,,,E6,todo,
-3.16.2.4.4.4,3,x,,,,,E6,todo,
-3.16.2.4.7,3,x,,,,,E6,todo,
-3.16.2.4.7.1,3,x,,,,,E6,todo,
+3.16.2.4.4.3,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (the service brake reaction: EVC_Procedures shows Balise read error)
+3.16.2.4.4.4,3,x,,,,,E6,done,EVC_Position.React_Inconsistent (the last group announced: its linking reaction)
+3.16.2.4.7,3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match; EVC_Balise_Groups.Counted
+3.16.2.4.7.1,3,x,,,,,E6,done,EVC_Balise_Groups.Counters_Match (254)
 3.16.2.4.8.1,3,x,,,,,E6,todo,
-3.16.2.4.8.2,3,x,,,,,E6,todo,
-3.16.2.4.8.2.1,3,x,,,,,E6,todo,
+3.16.2.4.8.2,3,x,,,,,E6,partial,EVC_Balise_Groups.Superseded (the counter of the first of a pair not compared; the packets of both still taken)
+3.16.2.4.8.2.1,3,x,,,,,E6,n/a,decision: data for a National System through the STM interface; NTC out of scope
 3.16.2.4.9,3,x,,,,,E6,todo,
 3.16.2.5.1,3,x,,,,,E6,todo,
 3.16.2.5.1 a),3,x,,,,,E6,todo,
