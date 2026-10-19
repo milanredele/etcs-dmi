@@ -8981,3 +8981,85 @@ Left, read for the next agent. The default Train Data (3.18.3.9,
 
 3.18.3.10 is untouched. Also left: B950, B952, B991, 4.4.21.1.11 to
 .13, B031, B008, message 133.
+
+### E5 integration after the thirty-seventh round, the sixth of E6 (2026-10-19)
+
+The round of the Virtual Balise Cover and of the hard items at the head
+of their lists.
+
+Merged: e5/shunting-profile (B1020 was no defect: the shunting mode
+profile is deleted on entering SH or TR, the order to level 0 is kept in
+SH, the trip comes in level 1 and the acknowledged trip gives SH by 4.6.3
+[68] with the Train Data to be revalidated, as specified; a second case
+of `Scenario_Shunting_Trips` covers [62], a trip at the EOA in level 1
+then an immediate order to level 0 accepted in TR and UN on the
+acknowledgement, B680 done; the hash goldens listed by
+`golden_review.py` as groups of their own, B904 done; the two runner
+signatures of the SM family and B1010 not reached, S8cb118b5 located in
+`S076_Run.Radio_Input`), e6/cross-talk (the cross-talk watch while
+expecting repositioning, 3.16.2.7.2, `EVC_Position.Repos_Watch` started
+in `Decide_Linking`'s repositioning branch and ended by a known linked
+group or by the min safe antenna leaving the window, a second group
+with packet 16 in the same orientation requesting the service brake,
+M_ERROR 8 reported ahead of 7, B820 done with four rows; the 14
+consistency-tagged rows re-read, three done, the A.3.4 footnotes naming
+`Linking_Shortening` for g) h) l) m); the six signatures traced: two
+extraction gaps of the sequences, the runner's record 12 judgement by
+the position events only, B1041, the consistency brake missing in SR,
+B1042, two traces unfinished, B1043, M_ERROR 9 and 10 for the odometer,
+B1040; 3160200_22 passes in three versions; B1011 not reached), e6/vbc
+(the Virtual Balise Cover, 3.15.9: a new `EVC_VBC` store of 16 covers
+with identity and validity period, set and removed by the driver in SB
+or by the orders of packet 6 at a group's reception,
+`EVC_Stored_Information.Take_VBC_Orders`, expired by the clock,
+deleted at a country mismatch, kept over No Power; a telegram carrying a
+covered marker in its packet 0 gets its juridical record and nothing
+else, before any version check, `EVC_Core.Read_Telegrams`; the DMI's
+list and the national bits; 10 rows done; the brief had the packet
+numbers swapped, the marker is packet 0 and the order packet 6, balise
+only; the runner's VBC steps B1061, the records 28 and 29 B1062, the
+period's clock without power and the store's capacity decided, B1060,
+B1063) and e6/sm-entry (the entry into SM after an authorisation, B990,
+three causes: the MA of an SM authorisation was deleted on entering SM
+against 4.10's own row, `EVC_Core.Delete_On_Mode_Entry`; [10] and [31]
+held on that MA and outranked [81], `EVC_Transition_Conditions.Holds`;
+the authorisation's direction was read from the message's fields and
+every authorisation counted as opposite, `EVC_Radio_Authority.MA_Q_DIR`
+reads packet 15; 5.21.2.2 A075 done; 3170200_11 enters SM and fails
+later at a permitted speed of 0, the default Train Data; 4120100_17
+trips by [69] on its own data; the default Train Data and 3.18.3.10 not
+started).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended; no matrix, triage or source conflict; no golden changed.
+
+Verification on the merged master: the whole check failed once on a
+heading line of 100 characters in `EVC_Sessions.Reports` (the on-board's
+style check), wrapped; then `test/check.sh` ok (evc_test 12588 checks,
+dmi_test 2168), the full proof 0 unproved (12760 checks, margin 47726
+steps), cross build and stack (worst case 26968 B, margin 5800 B), wasm
+and both smokes 0 failures. SUBSET-076: 1014 / 1119 / 1057 before, 1017
+/ 1116 / 1057 after, steps not judged 4387 -> 4390, 0 regressions, 0
+untriaged. Matrix: 176 -> 162 clauses left; E6 done 147 -> 161, todo 40
+-> 25, partial 39 -> 40.
+
+Measurements (doc/ROUNDS.csv): shunting-profile 111 calls (budget 130)
+/ 128k / 4.6 USD; cross-talk 125 (130) / 170k / 7.2; sm-entry 152 (160)
+/ 204k / 9.4; vbc 137 (160) / 203k / 9.4; the round 30.5 USD, none over
+budget, no resumption. Premises wrong 4 of 26 (B1020 no defect; the
+VBC packet numbers swapped; `Delete_On_Mode_Entry`'s unit; the
+VBC order by radio). Source-tree reading: 18, 21, 35, 18 runs against
+14, 11, 18, 22 outline runs.
+
+Lessons: the cheapest round of E6 and the first with every "Done" list
+run and nothing resumed: at most four items, a commit per item and the
+hard item at the head of the list did it (the cross-talk watch, twice
+left at the end of a list, was built in 40 calls as its first). Items
+done stay two per builder: a 160-call package is one function item and
+one small one, and a brief that counts on three carries one over. The
+default Train Data of Supervised Manoeuvre has now been pushed twice by
+an overrun of the item before it: next round it is item 1 of its
+package. Two of the four wrong premises were a packet numbering taken
+from memory: a brief names a packet by its clause (`clause.py 7.4.2.x`)
+or not at all. Open items: doc/BACKLOG.csv (69 open after this round;
+11 added, 8 closed).
