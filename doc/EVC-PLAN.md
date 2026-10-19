@@ -8245,3 +8245,33 @@ now carry 52 rows for Supervised Manoeuvre: it is the largest E6 group
 left, before the consistency rest (about 25 rows and five backlog items)
 and the Train Data rest (B870 to B873, B760, B782). Open items:
 doc/BACKLOG.csv (69 open after this round; 13 added, 8 closed).
+
+### National values and the version remainder; the TAF window, two traces, the record 21 bits (e6/national-version, 2026-10-19)
+
+3.18.2: the 13 rows read against `EVC_National_Values` (E1, E3): 12
+existed (reception now or at a location, the country check and the
+defaults, the overwrite whatever the countries, a new set deleting the
+one waiting, the supervisions reading the set in use at every cycle so
+that a time or distance keeps its start and takes the new value,
+3.18.2.11: the SR distance of `EVC_Mission`, override and post trip of
+`EVC_Procedures`, T_NVCONTACT of `EVC_Sessions`, D_NVROLL); built: the
+set applicable kept over No Power, the one waiting lost (3.18.2.7,
+3.18.2.9 2nd bullet: `Keep`, `Restore`, `EVC_Retained.Kept_T.National`,
+`EVC_Core.Save_Retained` and `Power_Up`, about 460 B more in the kept
+record on the stack of those two). 13 done, tagged; evc_test
+National_Values_Kept.
+
+3.17.3: 3.17.3.3, .4 (decision: the version is taken only for a group
+message taken into account, after the checks of Table 17, so a rejected
+message never changes it), .5 a) d) e), .7, .11 a) done; .5 and .5 c)
+partial (X = 1 refused by the decoder until the translations of chapter
+6, `[E7 version]`); .5 b) n/a (the lowest X of the envelope is 1); 3.17.3.6
+deferred `[E7 Euroloop]`; .11 b) c) stay partial (the consistency error
+of a spare value for the operated Y is 3.16). Track_And_Version checks
+X = 0 and X = 1 without a trip. B940: the mismatch of 3.17.2.6 ignores
+the countries of an immediate packet 3 of the same group (3.17.3.4.1).
+
+B790 traced, not built (the backlog line holds the trace and the fix:
+the window as offsets from the LRBG of message 34, moved by the linking
+distance when the LRBG changes, which needs a query of `EVC_Position`).
+B792, B642, B680 not started (the bound of 100 calls reached).
