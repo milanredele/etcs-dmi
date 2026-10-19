@@ -8386,3 +8386,94 @@ Left (budget): B760 (the external source's Train Data window), B782
 (the engine length in SL, SB, SH, NL, PS; the integrity report), the
 3.18.4.3 rows (tags only), S424295a6 (the driver's adhesion), the 23
 rows tagged `[E6 train data]`; B930 (packet 140 of a released message).
+
+### E5 integration after the thirty-fourth round, the third of E6 (2026-10-19)
+
+The round after the tags: Supervised Manoeuvre opened, the consistency
+and Train Data rests, national values and the version remainder.
+
+Merged: e6/consistency-rest (B805's two traces: 4080408_01's BG6d is an
+X = 2 telegram whose packet 45 has the 2.x layout, the codec refuses it
+and the group is inconsistent, E7's translation of 6.6.5.2.7; 4120100_02
+leaves the direction controller in neutral and roll away protection
+brakes again, the sequence's data; of a duplicated pair the telegram not
+composing the message loses its packets, 3.16.2.4.8.1 and .8.2,
+`EVC_Balise_Groups.Add` with `Paired` and `Has_Default`; B820 decided
+to build as a watch of its own in `Decide_Linking`, B822 decided: the
+100 ms waits for E8's BTM, 3.16.2.3.4 in `Geometry`; the scenarios B803 /
+B823, the tagged rows and the six signatures not reached),
+e6/national-version (the 13 rows of 3.18.2 done, twelve met by E1 and E3
+code, the applicable set kept over No Power and the pending set lost,
+3.18.2.7 and 3.18.2.9, `EVC_National_Values.Keep` / `Restore`,
+`EVC_Retained.Kept_T.National`; 3.17.3 read against
+`EVC_System_Version` and `EVC_Core.Read_Telegrams`: 7 done, 2 partial
+for E7's translations, 1 n/a, 4 Euroloop deferred; a rejected message
+never changes the version; B790 traced: the TAF window is kept on the
+odometer and must become offsets from the LRBG of message 34, which needs
+a linking distance query of `EVC_Position`; B940; B792, B642, B680 not
+started), e6/sm-mode (the safe consist length of the train interface,
+TIU signal 15 with its own 14-byte frame, `EVC_Ports.Valid_TIU_SCL`,
+`EVC_Train_Data.Take_Consist` and `Consist_In_Front`; a length in front
+of the engine invalidates the Train Data and bars their entry, 3.18.3.5;
+`EVC_Core.Latch_SCL`, MSG_ONBOARD data bits 6 and 7 and the session byte
+3 for an RBC above 2.2, which is what lets the DMI enable 'Initiate SM';
+the runner's TIU step and the SM presses; 5 rows done; B873 done; the
+procedure 5.21 with message 131, message 4 with C_81 and the position
+shift designed in its subsection and not built, B900 to B902; B903,
+B904; 34 blocked SM sequences fail later, 5210200_02 at step 71 where
+message 131 is due) and e6/train-data-rest (the transition buffer's
+messages deleted at a change of category, axle load, gauge or traction at
+standstill, 3.18.3.7 b), `EVC_Radio_Authority.Delete_Transition_Information`;
+the track description and conditions behind the former min safe rear end
+deleted when the train grows, 3.18.3.8 with valid Train Data,
+`EVC_Stored_Information.Delete_Behind_Former`; the train running number
+from packet 140 taken and not sent back, 3.18.4.5.3 and .5.4.1,
+`EVC_Mission.Take_RBC_TRN`; `EVC_Test_Train_Data` new; B870, B871, B872
+done or partial, B930; B760, B782, the 3.18.4.3 rows and S424295a6 left).
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the matrix rows of 3.18.3.5 the sm-mode branch's and 3.18.3.7
+the train-data-rest branch's, the Global of `EVC_Core.Read_Ports` joined
+(`Latched_SCL` beside `Current_Mode`), the EFS index regenerated; the
+golden `bench_level2` changed on one side only (the session byte 2 -> 3,
+as intended); no signature new to the union.
+
+Verification on the merged master: the first full chain found two
+defects of the union, neither of a single branch: the flow analysis
+failed on the train data's new consist state (`EVC_Train_Data.Set`
+keeps it, so its Global is In_Out, and `EVC_Core.Set_Mode_For_Test`'s
+with it), and the wasm build refused `16 ** k` in the train running
+number's digits (the light runtime has no 64-bit exponentiation; a
+table of weights now). After the fixes: `test/check.sh` ok (evc_test
+12420 checks, dmi_test 2168), the full proof 0 unproved (12473 checks,
+margin 47726 steps), cross build and stack (worst case 26952 B, margin
+5816 B), wasm and both smokes 0 failures. SUBSET-076: 1009 / 1090 / 1091
+before, 1009 / 1124 / 1057 after, steps not judged 4320 -> 4375, 0
+regressions, 0 untriaged. Matrix: 216 -> 182 clauses left; E6 done 114
+-> 143, todo 73 -> 41, partial 44 -> 42 (four E6 rows deferred to E7's
+Euroloop keep the phase E6: the matrix check fixes it).
+
+Measurements (doc/ROUNDS.csv): consistency-rest 111 calls (budget 130)
+/ 161k / 5.9 USD; national-version 106 (130) / 175k / 6.7; sm-mode 155
+(160) / 215k / 11.2; train-data-rest 144 (130) / 178k / 9.3; the round
+33.1 USD. Premises wrong 4 of 35 (`Train_Data_Step` is 5.17, not the
+driver's entry; C_81 evaluated but never set; the 5.6 shape lives in
+`EVC_Radio_Authority`; `Delete_Behind` lives in the track units, not in
+`EVC_Stored_Information`). Source-tree reading: 17, 16, 40, 23 runs
+against 18, 29, 22, 22 outline runs.
+
+Lessons: the 75 % bound worked for the two agents that reached it
+between items (Done lists of 11 and 5 calls) and not for the two that
+reached it inside an item: train-data-rest had committed nothing when
+it passed the bound and its Done list cost 37 calls, a proof contract
+and the subprogram size limit among them; the rule for the next briefs
+is to commit after every finished item, so that the Done list at the
+bound is the checks alone. A function the size of Supervised Manoeuvre
+is two packages at least: sm-mode spent 116 calls on the data input
+alone (a new TIU frame, the state, the runner's step, the DMI's enabling
+condition it uncovered) and designed the procedure instead of building
+it; the design is in its subsection and in B900 to B902 for the next
+package. The union's two defects were of the kind a branch cannot see
+(a contract of another unit, a runtime the agents do not build for):
+the chain earns its place. Open items: doc/BACKLOG.csv (70 open after
+this round; 9 added, 11 closed).
