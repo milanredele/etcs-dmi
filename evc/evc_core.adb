@@ -77,6 +77,7 @@ package body EVC_Core
                                    Proc_Ctx,
                                    Ack_For_Protection,
                                    Status_Rev_Sent, Status_Slip_Sent,
+                                   Status_BMM_Sent,
                                    Status_Tunnel_Sent,
                                    Status_Radio_Sent,
                                    TC_Sent, Contact_Sent,
@@ -273,6 +274,8 @@ is
    Status_Rev_Sent : Boolean := False;
    --  the driver's "slippery rail" sent last (MSG_STATUS, 3.18.4.6.2.3)
    Status_Slip_Sent : Boolean := False;
+   --  the "BTM alarm reaction inhibition" sent last (MSG_STATUS, 5.22.4.1)
+   Status_BMM_Sent : Boolean := False;
    --  the tunnel stopping area sent last (MSG_STATUS, 5.18.8)
    Status_Tunnel_Sent : EVC_Track_Conditions.Tunnel_T;
    --  phase E5: the radio byte sent last (3.5.7.1)
@@ -427,6 +430,7 @@ is
       Ack_For_Protection := False;
       Status_Rev_Sent := False;
       Status_Slip_Sent := False;
+      Status_BMM_Sent := False;
       Status_Tunnel_Sent := (others => <>);
       Status_Radio_Sent := 0;
       TC_Sent := False;
@@ -2664,7 +2668,7 @@ is
    --  change; phase E4: the reversing possible (5.13), the tunnel
    --  stopping area (5.18.8). D, Text_SB, Text_EB: the brake demands of
    --  the procedures and of the text messages (phase E4)
-   --  @req 3.5.7.1
+   --  @req 3.5.7.1, 5.22.4.1
    procedure Send_Status (D                : EVC_Procedures.Brake_Demand_T;
                           Text_SB, Text_EB : Boolean)
      with Global => (Input  => (Current_Mode, Clock_Ms, Brake_Output,
@@ -2674,7 +2678,7 @@ is
                                 EVC_Position.State, EVC_Sessions.State),
                      In_Out => (Geo_Sent, Status_Brake_Sent,
                                 Status_TTI_Sent, Status_Rev_Sent,
-                                Status_Slip_Sent,
+                                Status_Slip_Sent, Status_BMM_Sent,
                                 Status_Tunnel_Sent, Status_Radio_Sent,
                                 EVC_Outbox.Queue))
    is
@@ -2707,10 +2711,14 @@ is
       --  3.18.4.6.2.3: the driver's "slippery rail" (the DMI's ST02)
       Slip  : constant Boolean :=
         EVC_Stored_Information.Driver_Slippery_Rail;
+      --  5.22.4.1: the indication of the BTM alarm reaction inhibition
+      --  until the procedure is ended (the DMI's ST07)
+      BMM   : constant Boolean := EVC_Procedures.BMM_Inhibited;
       Changed : constant Boolean :=
         Brake /= Status_Brake_Sent or else TTI /= Status_TTI_Sent
         or else Radio /= Status_Radio_Sent
         or else Rev /= Status_Rev_Sent or else Slip /= Status_Slip_Sent
+        or else BMM /= Status_BMM_Sent
         or else EVC_Track_Conditions."/=" (Tun, Status_Tunnel_Sent);
    begin
       if EVC_Position.Geo_Known then
@@ -2720,7 +2728,7 @@ is
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
                                Unsigned_32 (Tun.Distance_M), Radio,
-                               Slip));
+                               Slip, BMM));
          Geo_Sent := True;
       elsif Geo_Sent or else Changed then
          EVC_Outbox.Put
@@ -2729,13 +2737,14 @@ is
                                Brake, TTI, Rev,
                                EVC_Bytes.Byte (Tun.State),
                                Unsigned_32 (Tun.Distance_M), Radio,
-                               Slip));
+                               Slip, BMM));
          Geo_Sent := False;
       end if;
       Status_Brake_Sent := Brake;
       Status_TTI_Sent := TTI;
       Status_Rev_Sent := Rev;
       Status_Slip_Sent := Slip;
+      Status_BMM_Sent := BMM;
       Status_Tunnel_Sent := Tun;
       Status_Radio_Sent := Radio;
    end Send_Status;
@@ -3460,6 +3469,7 @@ is
                                 Entering_Shown, Runaway_Shown,
                                 Odometer_Shown, Unsuitable_Shown,
                                 Status_Rev_Sent, Status_Slip_Sent,
+                                Status_BMM_Sent,
                                 Status_Tunnel_Sent,
                                 Status_Radio_Sent, TC_Sent, EVC_Sessions.State,
                                 Contact_Sent,

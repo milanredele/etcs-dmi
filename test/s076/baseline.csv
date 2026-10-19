@@ -1733,8 +1733,8 @@ Subset-076-6-3_4080300_03_v400_SV21,passed,0,-
 Subset-076-6-3_4080300_03_v400_SV22,passed,0,-
 Subset-076-6-3_4080300_03_v400_SV30,passed,0,-
 Subset-076-6-3_4080300_04_v400_SV21,failed,64,Seabc1f7c
-Subset-076-6-3_4080300_04_v400_SV22,failed,224,S6f9ed66d
-Subset-076-6-3_4080300_04_v400_SV30,failed,224,S6f9ed66d
+Subset-076-6-3_4080300_04_v400_SV22,passed,0,-
+Subset-076-6-3_4080300_04_v400_SV30,passed,0,-
 Subset-076-6-3_4080300_05_v400_SV21,passed,0,-
 Subset-076-6-3_4080300_05_v400_SV22,passed,0,-
 Subset-076-6-3_4080300_05_v400_SV30,passed,0,-
@@ -2735,11 +2735,11 @@ Subset-076-6-3_5210200_01_v400_SV30,blocked,40,S076-defect
 Subset-076-6-3_5210200_02_v400_SV30,blocked,69,E5-radio
 Subset-076-6-3_5210200_03_v400_SV30,failed,69,S1f552964
 Subset-076-6-3_5210400_01_v400_SV30,blocked,69,E5-radio
-Subset-076-6-3_5220200_01_v400_SV30,failed,43,Sa06b325b
+Subset-076-6-3_5220200_01_v400_SV30,blocked,45,not-modelled
 Subset-076-6-3_5220200_02_v400_SV30,failed,59,Sa06b325b
 Subset-076-6-3_5220200_03_v400_SV30,failed,43,Sa03cccdc
-Subset-076-6-3_5220200_04_v400_SV30,failed,44,Sa06b325b
-Subset-076-6-3_5220200_05_v400_SV30,failed,43,Sa06b325b
+Subset-076-6-3_5220200_04_v400_SV30,blocked,46,not-modelled
+Subset-076-6-3_5220200_05_v400_SV30,blocked,54,not-modelled
 Subset-076-6-3_5220200_06_v400_SV30,blocked,47,not-modelled
 Subset-076-6-3_6060200_01_v400_SV21,blocked,47,E7-version
 Subset-076-6-3_6060200_01_v400_SV22,blocked,47,E7-version

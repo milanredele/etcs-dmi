@@ -239,6 +239,7 @@ begin
    Scenario_SR_National_Distance;
    Scenario_Driver_Adhesion;
    Scenario_E4_Level_Transition_0;
+   Scenario_E4_Level_0_Ack_In_SH;
    Scenario_E4_Level_Ack_Again;
    Scenario_E4_Level_Orders;
    Scenario_E4_Acceptance;

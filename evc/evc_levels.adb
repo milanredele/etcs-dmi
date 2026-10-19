@@ -9,6 +9,7 @@ package body EVC_Levels
        Refined_State => (State => (Current, Current_Status, Switched_N,
                                    Applicable, Order, Kept, Kept_Due,
                                    Pending, Pending_Level, Pending_Since,
+                                   Pending_Unbraked,
                                    Brake, Events, Event_N))
 is
 
@@ -50,6 +51,9 @@ is
    Pending        : Boolean := False;
    Pending_Level  : Level_T := L0;
    Pending_Since  : Unsigned_64 := 0;
+   --  4.12.1.2 a): the brake reason of the missing acknowledgement revoked
+   --  by the mode entered, the acknowledgement still asked
+   Pending_Unbraked : Boolean := False;
    Brake          : Boolean := False;
    Events         : Event_Array;
    Event_N        : Natural range 0 .. Max_Events := 0;
@@ -126,6 +130,7 @@ is
       Pending := False;
       Pending_Level := L0;
       Pending_Since := 0;
+      Pending_Unbraked := False;
       Brake := False;
       Events := (others => (others => <>));
       Event_N := 0;
@@ -220,6 +225,7 @@ is
                      Now   : Unsigned_64)
      with Global => (In_Out => (Current, Current_Status, Switched_N,
                                 Pending, Pending_Level, Pending_Since,
+                                Pending_Unbraked,
                                 Events, Event_N)),
           Post => Current = To and then Current_Status = Valid
    is
@@ -234,6 +240,7 @@ is
          Pending := True;
          Pending_Level := To;
          Pending_Since := Now;
+         Pending_Unbraked := False;
          Put_Event (Event_Ack_Asked, Level_T'Pos (To), 1);
       end if;
    end Switch;
@@ -247,6 +254,7 @@ is
                         C         : Context_T)
      with Global => (In_Out => (Current, Current_Status, Switched_N,
                                 Pending, Pending_Level, Pending_Since,
+                                Pending_Unbraked,
                                 Events, Event_N),
                      Output => Applicable),
           Pre => T.Count >= 1
@@ -328,6 +336,7 @@ is
                           C : Context_T)
      with Global => (In_Out => (Current, Current_Status, Switched_N,
                                 Pending, Pending_Level, Pending_Since,
+                                Pending_Unbraked,
                                 Events, Event_N),
                      Output => Applicable),
           Pre => T.Count >= 1
@@ -469,7 +478,7 @@ is
       end if;
 
       --  5. 5.10.4.2: not acknowledged within T_ACK after the transition
-      if Pending and then not Brake
+      if Pending and then not Brake and then not Pending_Unbraked
         and then C.Now_Ms >= Pending_Since
         and then C.Now_Ms - Pending_Since >= T_ACK_Ms
       then
@@ -506,7 +515,10 @@ is
          end if;
       end if;
       --  4.12: the brake reasons "Change to level 0 / NTC not
-      --  acknowledged" are revoked
+      --  acknowledged" are revoked; decision (4.12.1.2 a): the reason
+      --  does not apply anymore, the acknowledgement stays asked (the
+      --  level 0 symbol acknowledged by the driver in SH, SUBSET-076
+      --  4080300_04)
       if Pending
         and then ((Pending_Level = L0
                    and then To in M_NP | M_SB | M_SH | M_FS | M_LS | M_SR
@@ -516,7 +528,7 @@ is
                    and then To in M_NP | M_SB | M_SH | M_FS | M_LS | M_SR
                                 | M_OS | M_UN | M_TR | M_PT))
       then
-         Pending := False;
+         Pending_Unbraked := True;
          if Brake then
             Brake := False;
             Put_Event (Event_Brake, 0, 1);

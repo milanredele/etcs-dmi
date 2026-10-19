@@ -50,8 +50,9 @@ package body EVC_Test_Procedures is
    Level_Ann_Ack : Natural := 0;
    --  MSG_SPEED_STATE: the permitted speed, km/h
    V_Perm        : Natural := 0;
-   --  MSG_STATUS: brake, reversing (the last one sent)
+   --  MSG_STATUS: brake, BMM, reversing (the last one sent)
    Status_Brake  : Natural := 0;
+   Status_BMM    : Natural := 0;
    Reversing     : Natural := 0;
    --  MSG_ONBOARD: train; the data statuses, the start of mission
    Onboard_Train : Natural := 0;
@@ -227,6 +228,7 @@ package body EVC_Test_Procedures is
                      end loop;
                   when 16#07# =>
                      Status_Brake := P (6);
+                     Status_BMM := P (9);
                      Reversing := P (10);
                      Tunnel := P (17);
                      Tunnel_M := P (18) + 256 * P (19);
@@ -653,6 +655,7 @@ package body EVC_Test_Procedures is
       TIU_Cmd := 0;
       TIU_Why := 0;
       Status_Brake := 0;
+      Status_BMM := 0;
       Reversing := 0;
       LX_Shown := False;
       NSA_Shown := 0;
@@ -1547,6 +1550,27 @@ package body EVC_Test_Procedures is
              and then J_Text_Str (1 .. 6) = "Hello ",
              "SUBSET-027 4.2.4.18, 4.2.4.19: the start and the stop of the "
              & "plain text, L_TEXT and X_TEXT");
+
+      --  3.12.3.4.3 (SUBSET-076 3111200_01 step 57, 3120300_06 step 55):
+      --  started at once, the end sub-condition "mode" names OS, not the
+      --  current FS
+      C1 := (others => <>);
+      C1.End_Mode := 1;
+      C2 := (others => <>);
+      C2.End_Mode := 0;
+      Group (4, 120);
+      Add (ST.Plain_Text ("Not OS", C1));
+      Close;
+      Group (5, 126);
+      Add (ST.Plain_Text ("In FS", C2));
+      Close;
+      Run_Front (140, 10);
+      Check (Text_N = 4
+             and then Texts (3).Text (1 .. Texts (3).Len) = "Not OS"
+             and then Texts (4).Text (1 .. Texts (4).Len) = "In FS",
+             "3.12.3.4.3, 3.12.3.4.4: an end mode other than the current "
+             & "one is not fulfilled at once, the text shown; both wait for "
+             & "the transition from their mode");
    end Scenario_Text_Messages;
 
    --  More text messages than the on-board keeps (8): 3.12.3 sets no
@@ -1637,10 +1661,14 @@ package body EVC_Test_Procedures is
       Check ((Onboard_Train / 16) mod 2 = 1 and then J23 (9) = 1,
              "5.22.2.1, 5.22.4.1: the inhibition at standstill in SB, "
              & "level 1, indicated");
+      Check (Status_BMM = 1,
+             "5.22.4.1: the indication given to the driver, MSG_STATUS "
+             & "bmm (the DMI's ST07)");
       Driver (18, 1);
       Cycle;
-      Check ((Onboard_Train / 16) mod 2 = 0,
-             "5.22.5.1 c): revoked by the driver");
+      Check ((Onboard_Train / 16) mod 2 = 0 and then Status_BMM = 0,
+             "5.22.4.1, 5.22.5.1 c): revoked by the driver, the "
+             & "indication ended");
 
       Begin_Scenario (M_FS, L1);
       Driver (18, 0);

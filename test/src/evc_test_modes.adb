@@ -873,6 +873,39 @@ package body EVC_Test_Modes is
              & "(4.6.3 [25]), no acknowledgement (5.10.4.1 table)");
    end Scenario_E4_Level_Transition_0;
 
+   --  4.12.1.2 a), 5.10.4.2: SH entered while the acknowledgement of level
+   --  0 is asked and its service brake applied: the brake reason revoked
+   --  for good, the acknowledgement still asked and taken in SH
+   --  (SUBSET-076 4080300_04: level 0 and SH at once, acknowledged in SH)
+   procedure Scenario_E4_Level_0_Ack_In_SH is
+   begin
+      Mission (L1_Code);
+      Group_With_MA (10, 100, (900, 400));
+      Add_Group (Group (20, 300));
+      Carry (2, 0, Order_41 ((1 => Lv_0), 400, Ack_M => 150));
+      Run_X (71_000);
+      Stand_X (100);
+      Stand_X (5_000);
+      Check (ML (2) = L0_Code and then ML (1) = UN_Code
+             and then Last_TIU = 2 + 256 * 32 and then ML (5) = 1,
+             "level ack in SH: level 0 not acknowledged within T_ACK, the "
+             & "service brake in UN (5.10.4.2)");
+      Send (Action (7));
+      Stand_X (500);
+      Check (JRU_Mode = Mode_T'Pos (M_SH) and then Last_TIU = 0
+             and then ML (5) = 1,
+             "level ack in SH: SH revokes the brake reason 'Change to level "
+             & "0 not acknowledged' (4.12.1.2 a), the acknowledgement is "
+             & "still asked");
+      Stand_X (6_000);
+      Check (Last_TIU = 0 and then ML (5) = 1,
+             "level ack in SH: no brake again after T_ACK (4.12.1.2 a)");
+      Send (Ack_Of (0));
+      Stand_X (100);
+      Check (ML (5) = 0 and then Last_TIU = 0,
+             "level ack in SH: the acknowledgement taken in SH (5.10.4.1)");
+   end Scenario_E4_Level_0_Ack_In_SH;
+
    --  5.10.4.1.3: a new announcement to the level of one the driver
    --  acknowledged keeps the acknowledgement only when its area is
    --  entered upon the receipt; an area ahead asks again (found by

@@ -7596,3 +7596,27 @@ Left (the budget's bound reached): the three traces, 3131050_23 step 50
 (Sb12d0fcd; first reading: steps 41 to 48 feed a balise group without a
 name, the sequence's BGa, whose packet 41 announcement must not be shown),
 3050300_19 step 72 (S9e1b46dc) and 5040300_16 step 89 (S6a1a136d).
+### The reversing distance, the BMM inhibition symbol, the text end condition, the acknowledgement of a level order (e5/status-left, 2026-10-19)
+
+B704 the runner's: 4041800_02 step 60 (direction controller forward,
+"Optional step: only if no backward movement occurs after this TC") is
+applied, the train moves forward in RV and the EB comes from that
+movement; with the step left out the train moves back and steps 71 to
+76 pass (RV distance exceeded, the EB, JRU 23 bit 18): ours right
+(3.15.4.8), the runner's item B750, S56315725 triaged model. B705 ours:
+the DMI draws ST07 from MSG_STATUS bmm, which stayed 0 (only the button
+state of MSG_ONBOARD train bit 4 was sent); `EVC_Core.Send_Status`
+sends `EVC_Procedures.BMM_Inhibited` there (`EVC_DMI_Port.Status_Frame`
+BMM; 5.22.4.1, Scenario_BMM); 5220200_01, _04, _05 move to the BTM
+alarm input not modelled. B710 decided against the sequence: the
+reading of 3120300_06 (an end mode other than the current one fulfilled
+at once, no display) made 3111200_01 step 57 fail, which expects such a
+text displayed; decision (3.12.3.4.3): fulfilled by the transition from
+the mode or level only (`EVC_Text_Messages.End_Condition`, taken out of
+`Evaluate`, its size entry 144 -> 105), Se341da87 triaged s076. B681
+ours: `EVC_Levels.Mode_Entered` cleared the acknowledgement of level 0
+where 4.12.1.2 a) revokes only the brake reason; decision: the reason
+revoked for good, the acknowledgement stays asked (`Pending_Unbraked`;
+evc_test_modes Scenario_E4_Level_0_Ack_In_SH); 4080300_04 passes in SV22
+and SV30. B680 not started (budget). Edits outside the units:
+`EVC_DMI_Port.Status_Frame` (one defaulted parameter), the size table.
