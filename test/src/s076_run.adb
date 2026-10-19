@@ -24,6 +24,7 @@ with EVC_Core;
 with EVC_Distances;
 with EVC_Odometry;
 with EVC_Position;
+with EVC_Level_Sessions;
 with EVC_Ports;
 with EVC_Radio;
 with EVC_SDM;
@@ -1713,6 +1714,30 @@ package body S076_Run is
                    & Img (Integer (B.Position)));
    end Reach_Stored_Location;
 
+   --  A reach-point of the min safe rear end whose comment names the level
+   --  transition border, on a train moving forward while the on-board
+   --  waits for the rear's passage of the border out of level 2
+   --  (EVC_Level_Sessions.Exit_Phase, 3.5.3.8 d), 5.10.3.6.2): the border
+   --  is the on-board's (3050300_18: packet 41 puts it at 300 m, the step
+   --  says 300 m, and the rear end placed there is a few decimetres short
+   --  of the on-board's passage, its length and under-reading amount from
+   --  the front's passage); the train runs on, metre by metre, until the
+   --  passage, at most 20 m
+   procedure Reach_Border_Rear (St : Step_T) is
+      use type EVC_Level_Sessions.Exit_Phase_T;
+   begin
+      if Same (W (4), "min-safe-rear-end")
+        and then Has (Image (St.Comment), "level transition border")
+        and then B.Direction > 0
+      then
+         for Metre in 1 .. 20 loop
+            exit when EVC_Level_Sessions.Exit_Phase
+                        /= EVC_Level_Sessions.Border_Ahead;
+            Move_To (B.Position + 100);
+         end loop;
+      end if;
+   end Reach_Border_Rear;
+
    function ODO_Input (St : Step_T) return Judgement_T is
       Kind : constant String := W (3);
    begin
@@ -1748,6 +1773,7 @@ package body S076_Run is
                Off := Point_Offset (W (4), Ok);
                exit when B.Position + Off >= St.Dist_Cm - 50;
             end loop;
+            Reach_Border_Rear (St);
             return Pass ("ODO " & W (4) & " at" & Img (Integer (St.Dist_Cm)));
          end;
       elsif Same (Kind, "reach") then
