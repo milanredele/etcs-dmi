@@ -1381,9 +1381,9 @@ Subset-076-6-3_3160200_20_v400_SV30,failed,50,S5436c26d
 Subset-076-6-3_3160200_21_v400_SV21,blocked,58,E7-version
 Subset-076-6-3_3160200_21_v400_SV22,failed,68,S69f1f87e
 Subset-076-6-3_3160200_21_v400_SV30,failed,68,S69f1f87e
-Subset-076-6-3_3160200_22_v400_SV21,failed,51,Saf042fa6
-Subset-076-6-3_3160200_22_v400_SV22,failed,51,Saf042fa6
-Subset-076-6-3_3160200_22_v400_SV30,failed,51,Saf042fa6
+Subset-076-6-3_3160200_22_v400_SV21,passed,0,-
+Subset-076-6-3_3160200_22_v400_SV22,passed,0,-
+Subset-076-6-3_3160200_22_v400_SV30,passed,0,-
 Subset-076-6-3_3160200_23_v400_SV21,passed,0,-
 Subset-076-6-3_3160200_23_v400_SV22,passed,0,-
 Subset-076-6-3_3160200_23_v400_SV30,passed,0,-
