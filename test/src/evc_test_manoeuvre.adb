@@ -11,8 +11,10 @@ with EVC_Distances;       use EVC_Distances;
 with EVC_Modes;           use EVC_Modes;
 with EVC_Ports;           use EVC_Ports;
 with EVC_Mission;
+with EVC_Movement_Authority;
 with EVC_Position;
 with EVC_Radio;
+with EVC_Radio_Authority;
 with EVC_Sessions;
 with EVC_Train_Data;
 with EVC_Test_Support;    use EVC_Test_Support;
@@ -214,6 +216,10 @@ package body EVC_Test_Manoeuvre is
              "SM authorisation: message 4 answering the request, SM entered "
              & "(4.6.3 [81], 5.21.2.2 E115, D080, A050; 4.4.21.1.2); mode "
              & Mode_T'Image (EVC_Core.Mode));
+      Check (not EVC_Radio_Authority.SM_Opposite
+               and then EVC_Position.Orientation = Plus,
+             "SM authorisation: packet 15 with Q_DIR nominal, the train "
+             & "not turned (5.21.2.2 A075)");
       Check (EVC_Position.Manoeuvre_Orientation and then EVC_Mission.Mission,
              "SM authorisation: the same direction, the orientation fixed "
              & "by it (3.6.1.5.1, 3.7.3.4 a)");
@@ -249,6 +255,12 @@ package body EVC_Test_Manoeuvre is
          Check (not EVC_Position.Linking.Stored,
                 "SM opposite: the location based information deleted "
                 & "(3.7.3.4 b))");
+         Stand_X (300);
+         Check (EVC_Core.Mode = M_SM
+                  and then EVC_Movement_Authority.MA_Present,
+                "SM opposite: SM entered from FS, the MA of the "
+                & "authorisation kept (4.6.3 [81], 4.10, 5.21.2.2 A050); "
+                & "mode " & Mode_T'Image (EVC_Core.Mode));
       end;
    end Scenario_SM_Authorisation;
 

@@ -204,9 +204,12 @@ is
      (case C is
          --  5.4.3.2 S24, 4.4.14.1.6
          when C_8  => EVC_Mission.Acknowledged (M_SR),
-         --  a level 1 MA (no SM authorisation before E5)
+         --  "MA (excluding with Supervised Manoeuvre authorisation)": the
+         --  MA of message 4 is on-board outside SM only in the cycle [81]
+         --  holds
          when C_10 => EVC_Train_Data.Valid
                       and then EVC_Stored_Information.MA_On_Board
+                      and then not EVC_Radio_Authority.SM_Authorised
                       and then not EVC_Stored_Information
                                      .Mode_Profile_Overlap,
          --  5.4.3.2 S22
@@ -216,7 +219,8 @@ is
          --  5.4.3.2 S23
          when C_60 => EVC_Mission.Acknowledged (M_UN))
      with Global => (EVC_Mission.State, EVC_Train_Data.State,
-                     EVC_Stored_Information.State, EVC_Levels.State);
+                     EVC_Stored_Information.State, EVC_Levels.State,
+                     EVC_Radio_Authority.State);
 
    --  The conditions of the two halves of phase E5
 
@@ -230,7 +234,12 @@ is
          when C_6  => EVC_Radio_Authority.Shunting_Granted,
          when C_11 => EVC_Radio_Authority.Group_At_EOA_In_RSM,
          when C_20 => EVC_Radio_Authority.Unconditional_Stop_Accepted,
-         when C_31 => EVC_Radio_Authority.MA_On_Board_Level_2,
+         --  decision: the MA of [31] excludes that of a Supervised
+         --  Manoeuvre authorisation, as [10] says and 4.10 keeps them
+         --  apart; outside SM such an MA is on-board only in the cycle
+         --  [81] holds (4.10 deletes it in every mode but SM and PT)
+         when C_31 => EVC_Radio_Authority.MA_On_Board_Level_2
+                      and then not EVC_Radio_Authority.SM_Authorised,
          when C_36 => EVC_Radio_Authority.Group_Not_In_SR_List,
          when C_81 => EVC_Radio_Authority.SM_Authorised)
      with Global => EVC_Radio_Authority.State;

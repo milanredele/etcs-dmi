@@ -6,6 +6,7 @@ with ETCS_Catalogue;
 with ETCS_Message;
 with ETCS_Message_Catalogue;
 with ETCS_Track_Packets.P49;
+with ETCS_Track_Packets.P15;
 with ETCS_Track_Packets.P57;
 with ETCS_Track_Packets.P63;
 with ETCS_Train_Packets.P0;
@@ -797,6 +798,33 @@ is
               Granted => TAF.Granted);
    end Take_TAF;
 
+   --  5.21.2.2 A075: the direction of the MA of the last message, the
+   --  Q_DIR of its packet 15 (a packet field, which Last_Value does not
+   --  read); 2 ("both") without one
+   function MA_Q_DIR return Q_DIR_T
+     with Global => EVC_Received.Store
+   is
+      pragma Warnings
+        (GNATprove, Off, """R"" is set by ""Decode"" but not used after*",
+         Reason => "the reader of one packet is not used after it");
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P15.Packet_T;
+      OK : Boolean;
+   begin
+      for I in 1 .. EVC_Received.Last_Packet_Count loop
+         pragma Loop_Invariant (True);
+         if EVC_Received.Last_Packet_Kind (I) = ETCS_Catalogue.Track_P15
+         then
+            EVC_Received.Open_Message_Packet (I, R);
+            ETCS_Track_Packets.P15.Decode (R, P, OK);
+            if OK then
+               return Q_DIR_T (P.Q_DIR mod 4);
+            end if;
+         end if;
+      end loop;
+      return 2;
+   end MA_Q_DIR;
+
    --  5.21.2.2 E115, 4.6.3 [81]: message 4 (8.7.2.1), the answer to the
    --  request for Supervised Manoeuvre (matched by EVC_Sessions, 4.8.4
    --  [14]): its MA, gradient and SSP to the stores as those of message 33
@@ -810,8 +838,7 @@ is
                      In_Out => (EVC_Origins.State, EVC_Radio_Info.State),
                      Output => SM_Auth)
    is
-      Q : constant Q_DIR_T :=
-        Q_DIR_T (EVC_Received.Last_Value (Q_DIR) mod 4);
+      Q : constant Q_DIR_T := MA_Q_DIR;
    begin
       --  A075: the direction of the MA (packet 15, the first Q_DIR of
       --  the message) is for the train only when turned
