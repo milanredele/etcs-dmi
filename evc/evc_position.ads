@@ -413,8 +413,12 @@ is
    --  inconsistent (EVC_Balise_Groups.Consistent); kept as a telegram of
    --  no bits and no packets
    --  @req 3.16.1.1, 3.16.1.1.1
+   --  Compliant: a telegram of a system version this on-board does not
+   --  read (3.17), its balise read and its content left out, no
+   --  inconsistency
    procedure Receive_Refused (H : ETCS_Telegram.Header_T;
-                              Stamp : Unsigned_32)
+                              Stamp : Unsigned_32;
+                              Compliant : Boolean := False)
      with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => LRBG = LRBG'Old
                   and then SOLR = SOLR'Old

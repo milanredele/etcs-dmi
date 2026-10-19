@@ -825,13 +825,15 @@ is
                   Natural (Slot.Data (BTM_Stamp_Length + 1))
                   + 256 * Natural (Slot.Data (BTM_Stamp_Length + 2)));
                if T_Status /= ETCS_Telegram.Accepted
-                 and then T_Status /= ETCS_Telegram.Unsupported_Version
                  and then EVC_Received.Header_Read (T_Status)
                then
-                  --  3.16.1.1: a balise of its group read, not compliant
+                  --  3.16.1.1: a balise of its group read, not compliant;
+                  --  of a version not read, its content left out (3.17)
                   EVC_Position.Receive_Refused
                     (EVC_Received.Refused_Header,
-                     BTM_Stamp (Slot.Data (1 .. Slot.Length)));
+                     BTM_Stamp (Slot.Data (1 .. Slot.Length)),
+                     Compliant =>
+                       T_Status = ETCS_Telegram.Unsupported_Version);
                end if;
                if T_Status = ETCS_Telegram.Accepted then
                   EVC_Position.Receive_Telegram

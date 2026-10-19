@@ -105,7 +105,7 @@ is
    procedure Receive_Telegram (Payload : EVC_Bytes.Byte_Array;
                                Status  : out ETCS_Telegram.Status_T)
      with Refined_Global => (In_Out   => (Telegram, Telegram_Kept,
-                                          Telegram_Counts),
+                                          Refused, Telegram_Counts),
                              Proof_In => Message_Kept)
    is
       Bits : constant Natural :=

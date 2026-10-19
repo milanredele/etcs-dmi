@@ -1663,13 +1663,17 @@ is
    end Receive_Telegram;
 
    procedure Receive_Refused (H : ETCS_Telegram.Header_T;
-                              Stamp : Unsigned_32)
+                              Stamp : Unsigned_32;
+                              Compliant : Boolean := False)
    is
    begin
       if Pending_N < Max_Pending then
          Pending_N := Pending_N + 1;
          Pending (Pending_N) := ETCS_Telegram.No_Telegram;
          Pending (Pending_N).Header := H;
+         if Compliant then
+            Pending (Pending_N).Bits := ETCS_Telegram.Short_Bits;
+         end if;
          Pending_Stamp (Pending_N) := Stamp;
       end if;
    end Receive_Refused;
