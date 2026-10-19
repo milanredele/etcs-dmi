@@ -97,6 +97,7 @@ with EVC_Test_Modes;     use EVC_Test_Modes;
 with EVC_Test_LS;
 with EVC_Test_Radio;     use EVC_Test_Radio;
 with EVC_Test_Sessions;  use EVC_Test_Sessions;
+with EVC_Test_Manoeuvre;
 with EVC_Test_Network;   use EVC_Test_Network;
 with EVC_Test_Version;   use EVC_Test_Version;
 with EVC_Test_RBC;       use EVC_Test_RBC;
@@ -306,6 +307,8 @@ begin
    Scenario_Report_Packet;
    Scenario_Text_Ack_Report;
    Scenario_Train_Integrity;
+   --  phase E6: Supervised Manoeuvre, the safe consist length
+   EVC_Test_Manoeuvre.Scenario_Safe_Consist;
    Scenario_Session_Error_Report;
    Scenario_Session_JRU_Received;
    Scenario_Session_Registration;

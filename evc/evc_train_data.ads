@@ -106,6 +106,7 @@ is
      with Global => State;
 
    --  3.18.3.5 b): the driver may enter, modify or revalidate Train Data
+   --  @req 3.18.3.5 b)
    function Entry_Possible return Boolean is (not Consist_In_Front)
      with Global => State;
 
@@ -119,6 +120,7 @@ is
    --  with its lengths, or not available (the lengths kept, 3.18.3.2.5).
    --  3.18.3.5 a): with a length in front of the engine, no valid Train
    --  Data
+   --  @req 3.18.3.2 b) 1st bullet, 3.18.3.2.5, 3.18.3.5, 3.18.3.5 a)
    procedure Take_Consist (Available : Boolean; C : Consist_T)
      with Global => (In_Out => State),
           Post => Consist_Available = Available

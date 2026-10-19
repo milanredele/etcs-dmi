@@ -27,7 +27,6 @@ is
      (EVC_Distances.Length_T (100 * (SCL.Front_Max + SCL.Rear_Max)))
      with Refined_Global => SCL;
 
-   --  @req 3.18.3.2 b) 1st bullet, 3.18.3.2.5, 3.18.3.5, 3.18.3.5 a)
    procedure Take_Consist (Available : Boolean; C : Consist_T) is
    begin
       SCL_Available := Available;
