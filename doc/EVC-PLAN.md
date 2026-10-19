@@ -7925,3 +7925,86 @@ position not valid the level and the RBC contact become invalid; the
 contact part exists, the level part needs an invalidation in
 `EVC_Levels` and its call at D2, see the backlog line), B691, B642,
 B680 not started (budget).
+
+### E5 integration after the thirty-second round, the first of E6 (2026-10-19)
+
+The round of the estimate's recommendation: one bookkeeping agent, one
+E5 remainder, two E6 packages on balise consistency.
+
+Merged: e5/bookkeeping-2 (171 rows of E1 to E4 point at E5, not the 134
+the brief counted; 110 re-read, 24 to done, 39 kept partial with their
+owner, 44 deferred to E6 Supervised Manoeuvre, E7 or E8 by tag; ten gaps
+found, B780 to B789; 61 rows left unread), e6/consistency-linking (the
+service brake after two expectation windows passed without a balise,
+3.16.2.7.1.1, `EVC_Position.Supervise_Windows`; the stored information
+shortened at standstill after a linking service brake, 3.16.2.6.2; the
+balise error report to the RBC with M_ERROR 0 and 7, 3.16.4,
+`EVC_Sessions.Reports.Request_Balise_Errors`; 3.16.2.3.1 tagged done;
+B820 to B824; the brief's "trip" of 3.16.2.7.1.1 wrong, it is the service
+brake), e6/consistency-message (balise group message consistency at the
+passage's end, 3.16.1.1 and 3.16.2.4: a missed balise, a refused telegram
+with its header read, the counters with 254 and 255, the duplicate
+exception, packet 145; `EVC_Balise_Groups.Consistent`,
+`EVC_Position.Receive_Refused` and `React_Inconsistent`; the reaction by
+Q_LINKREACTION when linking is checked, the service brake with "Balise
+read error" when not; record 12 with M_ERROR 1 and 2, record 6 for every
+telegram received; 25 rows done, 9 partial, 1 n/a; B800 to B805; the 15
+regressions of the 3131040 family traced to groups carrying M_MCOUNT 254,
+the sequences' data) and e5/remainder (linking received by radio taken
+from messages 3, 33 and 24, 4.8.1.6, `EVC_Position.Take_Radio_Linking`
+before the stored information, B730; no position report and no wait at a
+level border in NL, 5.10.3.6.2, B763; the two sequences the radio
+linking regressed carry a linking that names another group than the
+track has at that place, the sequences' data; B790 to B792; B709 traced;
+B691, B642, B680 not started).
+
+Two agents stopped at their budget with the "Done" list unfinished
+(consistency-message: the whole check not run, four signatures
+untriaged, one regression re-recorded untraced; remainder: seven
+regressions unanalysed) and were sent back with an extra budget of 35
+and 40 plus 40 calls; both came back complete, the remainder's third
+pass tracing its regressions to the sequences' data where the second had
+only triaged them.
+
+Merge by hand: the backlog three-way by id, the plan subsections
+appended, the matrix row by row against the merge base (one row changed
+on both sides, 4.8.1.6: the remainder's), the triage by signature id,
+the EFS index regenerated for each union, two hunks in the position unit
+(the inconsistency cause renumbered to 7 beside the linking branch's 5
+and 6; the `Missed_Last` reset placed before the consistency check), the
+golden `valid_inputs` re-recorded for the union and reviewed (as
+intended: three refused telegrams recorded, the group's record 12 and its
+reaction with the renumbered cause), one signature new to the union
+triaged by the coordinator (S451bc2d8: the 136 with M_ERROR 1 that the
+radio linking now reaches and the error report does not tell apart,
+B821).
+
+Verification on the merged master: `test/check.sh` ok (evc_test 12341
+checks, dmi_test 2168), the full proof 0 unproved (margin 47726 steps),
+cross build and stack (worst case 27216 B, margin 5552 B), wasm and both
+smokes 0 failures. SUBSET-076: 972 / 1136 / 1082 before, 1000 / 1108 /
+1082 after, steps not judged 4381 -> 4339, 0 regressions, 0 untriaged.
+Matrix: 289 -> 255 clauses left; E6 done 47 -> 78, todo 176 -> 132.
+
+Measurements (doc/ROUNDS.csv): bookkeeping-2 146 calls (budget 150) /
+203k / 8.3 USD; consistency-linking 130 / 183k / 8.1; consistency-message
+160 (130 + 35 granted) / 224k / 11.4; remainder 183 (130 + 80 granted) /
+239k / 13.0; the tallies within four of the measured; the round 40.9
+USD. Reading on the source trees: 25, 47, 55, 91 runs: the two E6
+builders and the remainder far over the building limit of 30.
+
+Lessons: an E6 function package is bigger than an E5 item package: both
+consistency agents filled their budget on the function and left the
+"Done" list to the end, one past it; the first E6 round should have given
+them 160. A second pass costs less than a reverted branch: the two
+resumptions (35 and 80 calls, about 9 USD) kept 1000 passing sequences
+where the alternative was to merge two branches with unexplained
+regressions or to drop the radio linking. The source-tree reading of a
+builder is a function of the function's size, not of the rule: 47 to 91
+runs for the three builders, so the rule's limit says nothing useful for
+a building package and the measurer should report the ratio to outline
+runs instead. The brief's clause reading was wrong once more (3.16.2.7.1.1
+gives a service brake, the brief said a trip) and its counts twice (134
+rows, 171; the btm-alarm steps are big metal masses). Open items:
+doc/BACKLOG.csv (62 open after this round; the two E6 packages and the
+bookkeeping added 21).
