@@ -8851,3 +8851,65 @@ ended in the sequences' data, as did most of the earlier ones: a trace
 item is cheap and closes a line, and the triage is the better for it.
 Open items: doc/BACKLOG.csv (66 open after this round; 7 added, 8
 closed).
+
+### Supervised Manoeuvre, the entry and the default Train Data (e6/sm-entry) (2026-10-19)
+
+The fourth Supervised Manoeuvre package. Only its first item, B990, was
+done within the bound of the budget. The default Train Data and
+3.18.3.10 were read but not started.
+
+B990, the cause: the mode machine, not the shift. 4.10 has two MA rows,
+"Movement Authority (excluding SM Authorisation)" and "(SM
+Authorisation)", and the second is "U" entering SM. Two things were
+wrong. `EVC_Core.Delete_On_Mode_Entry` deleted the MA entering SM, so SM
+ran without its EOA. In SR and SB the authorisation's MA, stored in the
+cycle [81] holds, made 4.6.3 [31] and [10] hold, and SR -> FS (6) and
+SB -> FS (7) outrank SR -> SM (7) and SB -> SM (8). The fix:
+`EVC_Transition_Conditions.Holds` does not count that MA for [10]
+("excluding with Supervised Manoeuvre authorisation") or [31]
+(decision: the same MA as [10], since 4.10 keeps the two apart; outside
+SM such an MA is on-board only in the cycle [81] holds), and
+`Delete_On_Mode_Entry` keeps the MA entering SM (SM is entered only by
+[81]; a new MA takes the mode profile with it, 3.12.4.3). A third
+defect showed once the scenario checked the nominal case:
+`EVC_Radio_Authority.Take_SM_Authorisation` read the MA's direction
+with `EVC_Received.Last_Value (Q_DIR)`, which reads only the message's
+own fields and gave 0, so every authorisation turned the train; it reads
+packet 15's Q_DIR now (`MA_Q_DIR`, an edit outside the package's
+units). The shift and the order of the cycle were right. One premise was wrong:
+`Delete_On_Mode_Entry` is in `EVC_Core`, not in
+`EVC_Stored_Information`.
+
+Rows: 5.21.2.2 A075 done; 4.4.21.1.7 stays partial (B950, B031);
+4.10.1.3 Table note extended. Scenario
+`EVC_Test_Manoeuvre.Scenario_SM_Authorisation`: SM with the MA after an
+opposite authorisation from FS, and no turn after a nominal one.
+SUBSET-076: 1014 / 1119 / 1057 before and after, 0 regressions, 1
+improvement. 3170200_11 now enters SM and fails at step 83 instead of
+69 (Sa8a3ba1a, "RTM connect not requested"). The cause is that the
+train stands at 1250 m and never reaches 1050 m: SM runs with permitted
+speed 0, the next item. 4120100_17 still trips at step 84, by [69] on
+its own data (Sbfa49d0b, triage note extended): message 84's packets
+are opposite (Q_DIR 0 from the LRBG at 200 m), the gradient starts at
+the LRBG and the SSP 1000 m beyond it, both ahead of the turned train.
+
+Left, read for the next agent. The default Train Data (3.18.3.9,
+4.4.21.1.8, 4.4.21.3.1, 3.18.3.2.4):
+- The supervision reads `EVC_Train_Data.Data` directly in
+  `EVC_Stored_Information.Build`.
+- `EVC_Core.Sync_Train_Length` unsets the train length when the Train
+  Data are not valid outside the engine modes. That is the one source
+  choice in `EVC_Core`: in SM with the default set it takes
+  `EVC_Train_Data.Consist_Length`.
+- A plan that avoids new Globals: `EVC_Train_Data` keeps a manoeuvre set
+  given by `EVC_Core` at the first authorisation, from
+  `Adjust_For_Manoeuvre`'s `SM_Taken` branch with the values of
+  `EVC_Config` (new fields of `Fixed_Train_T` with defaults). `Valid` is
+  False while that set is in force, and `Data`, `Length` and
+  `Categories` return it, with the length from the safe consist length.
+  The set ends in NL or without a mission.
+- `EVC_Stored_Information` supervises the TSRs only with valid Train
+  Data (`Supervise := TSR_Mode and Valid`), which is wrong in SM.
+
+3.18.3.10 is untouched. Also left: B950, B952, B991, 4.4.21.1.11 to
+.13, B031, B008, message 133.
