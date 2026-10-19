@@ -296,6 +296,7 @@ is
    --  GSM-R network and mission with only one radio system
    --  @req 3.5.6.1 b), 3.18.4.3.6, 3.18.4.3.6.1 a), 3.18.4.3.6.1 b)
    --  @req 3.18.4.3.6.3 a), 3.18.4.3.6.3 b), 5.4.3.2 A29
+   --  @req 5.4.3.2 D8, 5.4.3.2 S3, 5.4.3.2 S5, 5.4.5.3 j) 2nd bullet
    procedure Driver_Entries (Stop, Failed : in out Boolean)
      with Global => (In_Out => (R.State, Due, One_Radio, Awaiting),
                      Output => List_Now,

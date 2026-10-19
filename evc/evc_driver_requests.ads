@@ -33,7 +33,7 @@
 with EVC_Bytes;  use EVC_Bytes;
 with Interfaces; use Interfaces;
 
---  @req 5.18.8.2, 5.22.2.1, 5.22.2.2
+--  @req 5.18.8.2, 5.22.2.1, 5.22.2.2, 5.4.5.3 l)
 package EVC_Driver_Requests
   with SPARK_Mode => On,
        Abstract_State => State,
