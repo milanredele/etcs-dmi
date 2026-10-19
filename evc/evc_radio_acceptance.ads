@@ -54,6 +54,8 @@ is
       SH_Refused,           -- 27
       SH_Authorised,        -- 28
       TAF_Request,          -- 34
+      SM_Authorisation,     -- 4
+      SM_Refused,           -- 5
       --  packet 45 of a message (not a message kind,
       --  so not in Info_Of: EVC_Sessions.Network filters it)
       Network_Order);
@@ -72,6 +74,8 @@ is
           when ETCS_Message_Catalogue.Track_M27 => SH_Refused,
           when ETCS_Message_Catalogue.Track_M28 => SH_Authorised,
           when ETCS_Message_Catalogue.Track_M34 => TAF_Request,
+          when ETCS_Message_Catalogue.Track_M4  => SM_Authorisation,
+          when ETCS_Message_Catalogue.Track_M5  => SM_Refused,
           when others => Other);
 
    type Context_T is record
@@ -96,6 +100,11 @@ is
    --  authorisations; the other levels reject, or store [2]
    --  @req 4.8.3.1.1 Table, 4.8.3.1.1 Table-footnote [2]
    --  @req 4.8.3.1.1 Table-footnote [3], 5.10.1.8
+   --  The rows "Movement authority (SM Authorisation)" (A [4] [5] [17]:
+   --  [4] the stored information's 3.7.2.3, [5] the emergency stops of
+   --  EVC_Radio_Authority, [17] no message 133 is sent) and "SM refused"
+   --  (A): level 2 accepts, without [3]
+   --  @req 4.8.3.1.1 Table-footnote [17]
    function First_Filter (I : Info_T; C : Context_T) return Verdict_T
    is (if I = Other then Accepted
        --  the row "Radio Network transition order": A in every level
@@ -167,6 +176,15 @@ is
                  when M_SB => C.Cab_Active,                 -- [2]
                  when M_SM | M_FS | M_AD | M_LS | M_SR | M_OS => True,
                  when M_PT => In_PT (C),
+                 when others => False),
+          --  4.8.4, the rows "SM Authorisation" and "SM refused": [2] in
+          --  SB; A in SM; [14] in FS, AD, LS, SR, OS and with [1] in PT
+          --  (the time stamp: EVC_Sessions); R in the other modes
+          when SM_Authorisation | SM_Refused =>
+             (case C.Mode is
+                 when M_SB => C.Cab_Active,                 -- [2]
+                 when M_SM | M_FS | M_AD | M_LS | M_SR | M_OS => True,
+                 when M_PT => In_PT (C),                    -- [1]
                  when others => False),
           when TAF_Request =>
              (case C.Mode is

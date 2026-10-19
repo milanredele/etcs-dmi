@@ -219,6 +219,13 @@ is
      (Selected (Supervised_Manoeuvre)
       and then Argument (Supervised_Manoeuvre) = 2)
      with Global => State;
+   --  action 17 with arg 0 or 1, "Initiate SM" / "Continue in SM" (5.21.2.2
+   --  E015)
+   --  @req 5.21.2.2 S0
+   function SM_Selected return Boolean is
+     (Selected (Supervised_Manoeuvre)
+      and then Argument (Supervised_Manoeuvre) in 0 | 1)
+     with Global => State;
    --  action 18 with arg 0 (5.22.2) and arg 1 (5.22.5.1 c)
    function BMM_Inhibition_Selected return Boolean is
      (Selected (BMM_Inhibition) and then Argument (BMM_Inhibition) = 0)

@@ -29,7 +29,8 @@ package body EVC_Radio_Authority
                                    Deleted_Reason, Shortening, Emergency,
                                    SR_Auth, SR_Taken, Passed_Listed,
                                    Mode_Now,
-                                   Exit_Recognised, SH_Req, Status_Now, TAF,
+                                   Exit_Recognised, SH_Req, SM_Auth,
+                                   Status_Now, TAF,
                                    EVC_Radio_Authority.Buffer.State))
 is
 
@@ -176,6 +177,16 @@ is
    end record;
    SH_Req    : SH_Request_T := (others => <>);
    SH_Repeat_Ms : constant := 15_000;
+   --  5.21.2.2 E115: the SM authorisation (message 4) taken in the cycle,
+   --  [81] in the next Evaluate; V_SM (7.5.1.159, the speed limit of the
+   --  mode, kept for its supervision); Opposite: the direction of its MA
+   --  (Q_DIR of packet 15) is opposite to the train orientation (A075)
+   type SM_Auth_T is record
+      Taken    : Boolean := False;
+      V_SM     : Natural range 0 .. 127 := 0;
+      Opposite : Boolean := False;
+   end record;
+   SM_Auth : SM_Auth_T := (others => <>);
    --  the DMI system status message of the cycle (0: none)
    Status_Now : Natural := 0;
 
@@ -412,6 +423,7 @@ is
       Mode_Now := M_NP;
       Exit_Recognised := False;
       SH_Req := (others => <>);
+      SM_Auth := (others => <>);
       Status_Now := 0;
       TAF := (others => <>);
       EVC_Radio_Info.Clear;
@@ -763,6 +775,26 @@ is
               Granted => TAF.Granted);
    end Take_TAF;
 
+   --  5.21.2.2 E115, 4.6.3 [81]: message 4 (8.7.2.1), the answer to the
+   --  request for Supervised Manoeuvre (matched by EVC_Sessions, 4.8.4
+   --  [14]): its MA, gradient and SSP to the stores as those of message 33
+   --  (referred to the LRBG shifted by D_REF), V_SM kept, [81] for the
+   --  next cycle
+   --  @req 5.21.2.2 D080, 5.21.2.2 A050
+   procedure Take_SM_Authorisation (Now_Ms    : EVC_Radio.Time_Ms_T;
+                                    Accepting : Boolean)
+     with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
+                                EVC_Odometry.State, Emergency),
+                     In_Out => (EVC_Origins.State, EVC_Radio_Info.State,
+                                SM_Auth))
+   is
+   begin
+      Take_Stored_Information (True, Now_Ms, Accepting => Accepting);
+      SM_Auth.Taken := True;
+      SM_Auth.V_SM :=
+        Natural (EVC_Received.Last_Value (V_SM) mod 128);
+   end Take_SM_Authorisation;
+
    procedure Take_Message (S         : EVC_Radio.Session_T;
                            Now_Ms    : EVC_Radio.Time_Ms_T;
                            Accepting : Boolean := False)
@@ -803,6 +835,7 @@ is
                   | ETCS_Message_Catalogue.Track_M3
                   | ETCS_Message_Catalogue.Track_M33
                   | ETCS_Message_Catalogue.Track_M9
+                  | ETCS_Message_Catalogue.Track_M4
         and then not Authorisation_Allowed
       then
          null;
@@ -819,6 +852,8 @@ is
          Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       elsif Kind = ETCS_Message_Catalogue.Track_M33 then
          Take_Stored_Information (True, Now_Ms, Accepting => Accepting);
+      elsif Kind = ETCS_Message_Catalogue.Track_M4 then
+         Take_SM_Authorisation (Now_Ms, Accepting);
       elsif Kind = ETCS_Message_Catalogue.Track_M9 then
          --  3.8.6.1 a): the proposed shortened MA, judged in this cycle
          --  (Evaluate); a second request in the cycle replaces the first
@@ -1246,6 +1281,9 @@ is
          Override_Selected;
       end if;
       Held (C_36) := Group_Not_Listed (Ctx, Facts);
+      --  [81]: the SM authorisation of the last messages, for one cycle
+      Held (C_81) := SM_Auth.Taken;
+      SM_Auth.Taken := False;
       Evaluate_SH (Ctx, Facts,
                    EVC_Levels.Valid and then EVC_Levels.Level = L2);
       Passed_Listed := SR_Auth.List_Known
