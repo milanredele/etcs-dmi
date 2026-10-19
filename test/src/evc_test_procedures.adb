@@ -1069,7 +1069,8 @@ package body EVC_Test_Procedures is
    end Scenario_Shunting_Driver;
 
    --  4.4.8.1.1 b) and c): the trips of Shunting (4.6.3 [49], [52]); 5.11
-   --  in level 0 ([62])
+   --  in level 0, without valid Train Data after SH ([68]) and with them
+   --  ([62])
    procedure Scenario_Shunting_Trips is
    begin
       Begin_Scenario (M_SH, L1);
@@ -1134,12 +1135,39 @@ package body EVC_Test_Procedures is
       Ack (1);
       Cycle;
       Run_Front (350, 20);
-      Check (Mode_Byte = Code_SH,
-             "4.4.8.1.1 b): the listed group 7 passed, level 0 ordered in SH");
+      Check (Mode_Byte = Code_SH and then Level_Byte = 4,
+             "4.4.8.1.1 b), 4.4.8.1.5: the listed group 7 passed, its "
+             & "immediate order to level 0 kept in SH, the level stays 1");
       Run_Front (450, 20);
       Check (Mode_Byte = Code_TR,
-             "4.4.8.1.1 b), 4.6.3 [52]: group 8, not in the list, trips in "
-             & "level 0");
+             "4.4.8.1.1 b), 4.6.3 [52]: group 8, not in the list, trips");
+      Stand;
+      Check (Level_Byte = 2,
+             "4.4.8.1.5: the order kept in SH is evaluated on the entry in "
+             & "TR, level 0");
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_SH,
+             "5.11.2.2 D085, A140, 4.6.3 [68]: the trip acknowledged in "
+             & "level 0 without valid Train Data (to be revalidated since "
+             & "the entry in SH, 4.10) gives SH");
+
+      --  a trip in level 1, level 0 ordered while the train stops in TR
+      Begin_Scenario (M_FS, L1);
+      Line_Group (EOA_M => 100);
+      Close;
+      Group (5, 120);
+      Add (ST.Level_Order (0, 0, 0, Now => True));
+      Close;
+      Run_Front (130, 20);
+      Check (Mode_Byte = Code_TR and then Level_Byte = 2,
+             "4.8.4: the immediate order to level 0 accepted in TR");
+      Stand;
+      Ack (1);
+      Cycle;
+      Check (Mode_Byte = Code_UN,
+             "5.11.2.2 D085, D090, A145, 4.6.3 [62]: the trip acknowledged "
+             & "in level 0 with valid Train Data gives UN");
    end Scenario_Shunting_Trips;
 
    --  5.7 entry in Shunting ordered by the trackside (SUBSET-076 5070300)
