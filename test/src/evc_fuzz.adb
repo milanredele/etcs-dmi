@@ -453,6 +453,31 @@ procedure EVC_Fuzz is
                end if;
             end;
          when TIU =>
+            --  the safe consist length (signal 15, its own 14-byte frame):
+            --  available or not, per side nominal, min and max ordered
+            --  within 4095 m mostly, any u16 now and then
+            if Chance (10) then
+               Add (15);
+               Add (if Chance (90) then Pick (0, 1) else Pick (0, 255));
+               for Side in 1 .. 2 loop
+                  declare
+                     Lo  : constant Natural := Pick (0, 4095);
+                     Nom : constant Natural := Pick (Lo, 4095);
+                     Hi  : constant Natural := Pick (Nom, 4095);
+                  begin
+                     if Chance (90) then
+                        Add_U16 (Nom);
+                        Add_U16 (Lo);
+                        Add_U16 (Hi);
+                     else
+                        Add_U16 (Pick (0, 65535));
+                        Add_U16 (Pick (0, 65535));
+                        Add_U16 (Pick (0, 65535));
+                     end if;
+                  end;
+               end loop;
+               return;
+            end if;
             --  the cab status signals (1, 2) more often than the others;
             --  the train configuration of 5.17 (13, phase E4) now and then
             Add (if Chance (50) then Pick (1, 2)
