@@ -7620,3 +7620,43 @@ revoked for good, the acknowledgement stays asked (`Pending_Unbraked`;
 evc_test_modes Scenario_E4_Level_0_Ack_In_SH); 4080300_04 passes in SV22
 and SV30. B680 not started (budget). Edits outside the units:
 `EVC_DMI_Port.Status_Frame` (one defaulted parameter), the size table.
+### The juridical records' missing triggers, message 50, the track condition bits of record 21 (e5/jru-triggers, 2026-10-19)
+
+An analysis round in the end: the three first looks of e5/shapes-3 traced
+are none of them ours, so no code changed.
+
+- B708 (S0e2fe215, S707f6e73): record 45 stays written when the
+  information to the external function starts (point C, 5.20.x.2) and
+  when an item changes its phase (SUBSET-027 4.2.3 Table 2: "each time
+  information related to track condition(s) is provided"). 4080445_01
+  step 103: the record in the window is the lower pantograph of BG5d
+  (start 675 m), whose point C is 100 m before it in ours
+  (`EVC_Track_Conditions.Announce_Min_Cm`) and 60 m in the sequence (its
+  reach-point at 615 m): point C is the on-board's choice. 5181000_02:
+  packet 39 with M_VOLTAGE 0 is a change of traction system (5.20.6.3),
+  M_TRACKCOND_TI 7 with M_VOLTAGE 0 as 4.2.4.45 allows; the sequence's TI
+  1 with an end distance has no 4.0.0 clause. Both triaged s076.
+- B707 (Scefec287): case 5080300 4 is joined from its step 6; the
+  driver's modification of the SR data (its step 5) is in no step of
+  3131040_44; ours records 25 at the modification in SR
+  (`EVC_Mission.Take_Data`). Triaged s076, like S31584e9f.
+- B706 (S0c7e8942): the press is recorded, as 31 (hide): the toggle was
+  on since step 49 and DMI 8.4.4.5 keeps its last status over the loss
+  of the position; the joined case 4080415 1 assumes it off. Triaged
+  s076.
+- B691 not started (budget): the design found. Message 50 records the
+  TIU's information (SUBSET-027 4.2.4.50, M_TRAIN_INTEGRITY_INFO 0
+  confirmed, 1 lost, 2 unknown, from the TIU input 1, 2, 0), not the
+  status of Table 2b; trigger at its first reception (the start up) and
+  at each change. Shape: `EVC_JRU_Messages.NID_Integrity` 50, a branch
+  of `Event_Message` (event 50, one 2-bit field) and of `View` (event 50,
+  B2 the value: the new event number for the readers); in
+  `EVC_JRU_Records` the last value recorded and a `Cab_Status`-like
+  procedure; in `EVC_Core.Read_Ports` the call where
+  `Take_Integrity_Input` is (`Latched_Integrity` is cleared there, so
+  the 8j step does not see it; Read_Ports' Global gains
+  `EVC_JRU_Records.State`); in `S076_Tables.Message_Event` and
+  `Record_Field` 50 as the same number with M_TRAIN_INTEGRITY_INFO at
+  byte 2. The sequences move only with the runner's TIU integrity input
+  (B690).
+- B642 not started.
