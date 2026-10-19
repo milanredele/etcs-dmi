@@ -72,6 +72,7 @@ with EVC_Driver_Requests;   use EVC_Driver_Requests;
 with EVC_Distances;         use EVC_Distances;
 with EVC_Modes;             use EVC_Modes;
 with EVC_Odometry;
+with EVC_Received;
 with EVC_Supervision_Input; use EVC_Supervision_Input;
 with EVC_Train_Data;
 with Interfaces;            use Interfaces;
@@ -111,6 +112,20 @@ is
    --  the RBC, 3.18.4.5.4)
    function TRN_Entered return Boolean
      with Global => State;
+   --  the valid train running number came from the RBC (3.18.4.5.4.1:
+   --  not sent back to it)
+   function TRN_From_RBC return Boolean
+     with Global => State;
+
+   --  3.18.4.5.1, 3.18.4.5.3: packet 140 of the last radio message
+   --  (EVC_Received) taken as the train running number, while running
+   --  too; a value that is not 1 to 8 digits (A.3.11) is ignored.
+   --  Decision: taken from every message the session half passes to the
+   --  authority half (EVC_Core.Read_Radio_Messages), in the modes of the
+   --  driver's entry (4.7.2)
+   --  @req 3.18.4.5.1, 3.18.4.5.3
+   procedure Take_RBC_TRN (M : Mode_T)
+     with Global => (Input => EVC_Received.Store, In_Out => State);
    --  the Train Data the driver entered in this cycle changed the train
    --  category, axle load category, loading gauge or traction system of
    --  the Train Data entered before (3.18.3.7)

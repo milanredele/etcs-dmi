@@ -119,6 +119,17 @@ is
      with Global => (In_Out => State),
           Post => Buffered = Buffered'Old
                   and then Has_Released = (Buffered > 0);
+
+   --  3.18.3.7 b): the train category, axle load category, loading gauge
+   --  or traction system changed at standstill: the MA, linking and track
+   --  description received from the RBC after a level 2 or RBC transition
+   --  was ordered deleted. Decision: they are the messages the transition
+   --  buffer holds (4.8.5.1 for level 2, 4.8.2.1 c) from the Accepting
+   --  RBC), deleted whole
+   --  @req 3.18.3.7 b)
+   procedure Delete_Transition_Information
+     with Global => (In_Out => State),
+          Post => Buffered = 0 and then not Has_Released;
    procedure Take_Released (S    : out EVC_Radio.Session_T;
                             Data : in out EVC_Bytes.Byte_Array;
                             Last : out Natural)

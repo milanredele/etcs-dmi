@@ -189,8 +189,9 @@ is
       end if;
       --  3.18.4.5.4: the train running number after the driver's entry
       --  with the session established, or after its establishment
-      --  outside the start of mission (whose message 157 carries it)
-      if not Up then
+      --  outside the start of mission (whose message 157 carries it);
+      --  3.18.4.5.4.1: not the one received from the RBC
+      if not Up or else EVC_Mission.TRN_From_RBC then
          TRN_Due := False;
       elsif EVC_Mission.TRN_Status = EVC_Mission.Valid
         and then (EVC_Mission.TRN_Entered

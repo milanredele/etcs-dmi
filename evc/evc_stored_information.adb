@@ -52,6 +52,7 @@ package body EVC_Stored_Information
                                    Proposal,
                                    Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
+                                   Former_Length,
                                    Balise_Buffer.State))
 is
 
@@ -120,6 +121,10 @@ is
    --  or by the contact supervision (A.3.4.1.2 i) in the last Evaluate
    --  (A.3.4.1.2 c, d, e, n; 3.8.2.5.1)
    Timer_Deletion  : Boolean := False;
+
+   --  3.18.3.8: the train length of the last Evaluate with the length
+   --  known (0: none yet)
+   Former_Length : Length_T := 0;
    --  the service brake of T_NVCONTACT (EVC_Sessions.Service_Brake) seen
    --  commanded in an earlier Evaluate, the train not yet at standstill
    Contact_Braking : Boolean := False;
@@ -247,6 +252,7 @@ is
       Radio_SH_N := 0;
       Radio_SH_Ids := (others => (others => <>));
       Timer_Deletion := False;
+      Former_Length := 0;
       Contact_Braking := False;
       Linking_Braking := False;
       TAF_L2_New := False;
@@ -2765,6 +2771,43 @@ is
       Linking_Shortening (T, Train, Mode);
    end Brake_Shortenings;
 
+   --  3.18.3.8: the train length of the valid Train Data increased: the
+   --  track description in rear of the former min safe rear end is
+   --  unknown. Decision: what ends behind it is deleted, the profiles
+   --  (EVC_Track_Description) and the track conditions alike, as A.3.1
+   --  deletes behind the train without its 300 m (the Rear given to
+   --  Delete_Behind is shifted ahead by Keep_In_Rear for that); without
+   --  valid Train Data the length is unknown (no safe consist length).
+   --  Then A.3.1: what ends more than 300 m behind the train deleted
+   --  @req 3.18.3.8
+   procedure Delete_Behind_Former (T : Origin_Table_T; Train : Train_Frame_T)
+     with Global => (In_Out => (Former_Length, EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State))
+   is
+      Keep : constant Length_T := EVC_Track_Description.Keep_In_Rear;
+   begin
+      if Train.Valid and then Train.Length > 0 then
+         if Former_Length > 0 and then Train.Length > Former_Length then
+            declare
+               Rear : constant Dist_T :=
+                 A (Train.Sense,
+                    Sum (A (Train.Sense, Train.Min_Rear),
+                         Clamp (Train.Length - Former_Length + Keep)));
+            begin
+               EVC_Track_Description.Delete_Behind (T, Rear);
+               EVC_Track_Conditions.Delete_Behind (T, Rear, Keep);
+            end;
+         end if;
+         Former_Length := Train.Length;
+      end if;
+      if Train.Valid then
+         EVC_Track_Description.Delete_Behind (T, Train.Min_Rear);
+         EVC_Movement_Authority.Delete_Behind (T, Train.Min_Rear, Keep);
+         EVC_Track_Conditions.Delete_Behind (T, Train.Min_Rear, Keep);
+      end if;
+   end Delete_Behind_Former;
+
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
                        Work           : in out EVC_Profile.Profile_T;
@@ -2845,13 +2888,7 @@ is
       end if;
 
       --  5. A.3.1: behind the train; the origins no longer used
-      if Train.Valid then
-         EVC_Track_Description.Delete_Behind (T, Train.Min_Rear);
-         EVC_Movement_Authority.Delete_Behind
-           (T, Train.Min_Rear, EVC_Track_Description.Keep_In_Rear);
-         EVC_Track_Conditions.Delete_Behind
-           (T, Train.Min_Rear, EVC_Track_Description.Keep_In_Rear);
-      end if;
+      Delete_Behind_Former (T, Train);
       EVC_Track_Description.Mark (Marks);
       EVC_Movement_Authority.Mark (Marks);
       EVC_Track_Conditions.Mark (Marks);
