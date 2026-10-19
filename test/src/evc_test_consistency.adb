@@ -397,6 +397,27 @@ package body EVC_Test_Consistency is
       Check (not SB,
              "reactions: an unlinked group with packet 145, no service "
              & "brake (3.16.2.5.1.1 b)");
+      --  4.4.14.1.9, 4.4.18.1.10: in Post Trip and Reversing a message
+      --  consistency error commands no service brake (Passive Shunting,
+      --  4.4.20.1.15, is left for SH by this setup, which has no input
+      --  for it)
+      for M in EVC_Modes.Mode_T loop
+         if EVC_Modes."=" (M, EVC_Modes.M_PT)
+           or else EVC_Modes."=" (M, EVC_Modes.M_RV)
+         then
+            Inconsistent_Track (Linking => False, Linked => False);
+            EVC_Core.Set_Mode_For_Test (M, EVC_Modes.L1);
+            Run_Watch (80_000, SB);
+            Check (Brake_Error = 0
+                   and then JRU_Last (4, 3) = EVC_Position.Cause_Inconsistent
+                   and then EVC_Modes."=" (EVC_Core.Mode, M),
+                   "reactions: a message consistency error in "
+                   & EVC_Modes.Mode_T'Image (M) & ", no service brake "
+                   & "(4.4.14.1.9, 4.4.18.1.10), got"
+                   & Img (Brake_Error) & Img (JRU_Last (4, 3))
+                   & " " & EVC_Modes.Mode_T'Image (EVC_Core.Mode));
+         end if;
+      end loop;
       --  3.16.2.7.2: cross-talk while expecting repositioning
       Cross_Talk_Track (56, 580);
       Run_Watch (55_000, SB);

@@ -593,8 +593,8 @@ telegram balise Q_UPDOWN=1 M_VERSION=32 Q_MEDIA=0 N_PIG=1 N_TOTAL=1 M_DUP=0 M_MC
 expect efs: (COUNT X IN BTM.Linking.Linkings) == 0
 sequence Single repositioning BG does not trigger RAMS supervision
 case Receive repositioning information
-clause E6 todo 3.16.2.7.2.1 ; efs 3.16.2.7.2.1
-clause E6 todo 3.16.2.7.2.2 ; efs 3.16.2.7.2.2
+clause E6 done 3.16.2.7.2.1 ; efs 3.16.2.7.2.1
+clause E6 done 3.16.2.7.2.2 ; efs 3.16.2.7.2.2
 step Setup
 sub Initialize test environment
 efs: Testing.InitializeTestEnvironment( aTrainPosition => 100.0, aMode => Default.ModeEnum.FS )
