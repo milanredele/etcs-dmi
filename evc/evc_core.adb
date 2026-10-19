@@ -3721,7 +3721,8 @@ is
    procedure Adjust_For_Manoeuvre
      with Global => (Input    => (Current_Mode, EVC_Mission.State,
                                   EVC_Radio_Authority.State,
-                                  EVC_Train_Data.State, EVC_Odometry.State),
+                                  EVC_Train_Data.State),
+                     Proof_In => EVC_Odometry.State,
                      In_Out   => (EVC_Track_Description.State,
                                   EVC_Movement_Authority.State,
                                   EVC_Track_Conditions.State,
@@ -3742,8 +3743,6 @@ is
    is
    begin
       if EVC_Radio_Authority.SM_Taken then
-         EVC_Position.Shift_For_Manoeuvre
-           (EVC_Radio_Authority.SM_Opposite, EVC_Train_Data.Consist);
          if EVC_Radio_Authority.SM_Opposite then
             EVC_Track_Description.Delete ((others => True));
             EVC_Movement_Authority.Delete_MA;
@@ -3753,6 +3752,8 @@ is
             EVC_Position.Delete_Geo;
          end if;
          EVC_Sessions.Request_Position_Report;
+         EVC_Position.Shift_For_Manoeuvre
+           (EVC_Radio_Authority.SM_Opposite, EVC_Train_Data.Consist);
       elsif EVC_Position.Manoeuvre_Orientation
         and then (Current_Mode = M_NL or else not EVC_Mission.Mission)
       then

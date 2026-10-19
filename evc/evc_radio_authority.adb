@@ -810,8 +810,8 @@ is
                                     Accepting : Boolean)
      with Global => (Input  => (EVC_Received.Store, EVC_Position.State,
                                 EVC_Odometry.State, Emergency),
-                     In_Out => (EVC_Origins.State, EVC_Radio_Info.State,
-                                SM_Auth))
+                     In_Out => (EVC_Origins.State, EVC_Radio_Info.State),
+                     Output => SM_Auth)
    is
       Q : constant Q_DIR_T :=
         Q_DIR_T (EVC_Received.Last_Value (Q_DIR) mod 4);

@@ -446,13 +446,18 @@ is
                                 EVC_Origins.State)),
           Post =>
             --  3.6.1.5: the active cab defines the orientation, with none
-            --  (or both, SUBSET-034 2.5.1.4.7) the last active one stays
+            --  (or both, SUBSET-034 2.5.1.4.7) the last active one stays;
+            --  3.6.1.5.1: a Supervised Manoeuvre's stays
+            (if Manoeuvre_Orientation then Orientation = Orientation'Old)
+            and then
             (if Cab_A_Active and then not Cab_B_Active
-             then Orientation = Plus and then Orientation_Known
+             then (Manoeuvre_Orientation or else Orientation = Plus)
+                  and then Orientation_Known
                   and then Active_Cab = Cab_A)
             and then
             (if Cab_B_Active and then not Cab_A_Active
-             then Orientation = Minus and then Orientation_Known
+             then (Manoeuvre_Orientation or else Orientation = Minus)
+                  and then Orientation_Known
                   and then Active_Cab = Cab_B)
             and then
             (if Cab_A_Active = Cab_B_Active
@@ -504,7 +509,7 @@ is
    --  @req 4.4.21.1.7 c) 2nd bullet
    procedure Shift_For_Manoeuvre (Opposite : Boolean;
                                   C        : EVC_Train_Data.Consist_T)
-     with Global => (In_Out => State, Input => EVC_Odometry.State),
+     with Global => (In_Out => State, Proof_In => EVC_Odometry.State),
           Post => Manoeuvre_Orientation
                   and then Orientation
                            = (if Opposite
