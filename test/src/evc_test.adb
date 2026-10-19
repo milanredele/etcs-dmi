@@ -140,6 +140,7 @@ begin
    Scenario_Position_First_Group;
    Scenario_Linking;
    Scenario_Linking_Errors;
+   Scenario_Linking_Double_Missed;
    Scenario_Linking_Replacement;
    Scenario_Single_Balise;
    Scenario_Geo;

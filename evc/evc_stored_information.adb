@@ -48,7 +48,8 @@ package body EVC_Stored_Information
                                    Covered_Flag, Ext, Tun,
                                    Radio_MA, Radio_SH, Radio_SH_N,
                                    Radio_SH_Ids, Timer_Deletion,
-                                   Contact_Braking, Proposal,
+                                   Contact_Braking, Linking_Braking,
+                                   Proposal,
                                    Proposal_Origin, Proposal_Cover, Stop_Q,
                                    Group_Country, TAF_L2_New, TAF_L2_Loc,
                                    Balise_Buffer.State))
@@ -122,6 +123,10 @@ is
    --  the service brake of T_NVCONTACT (EVC_Sessions.Service_Brake) seen
    --  commanded in an earlier Evaluate, the train not yet at standstill
    Contact_Braking : Boolean := False;
+   --  the service brake of a linking reaction (EVC_Position, 3.16.2.6.2,
+   --  3.16.2.7.1.1) commanded in an earlier Evaluate, the train not yet at
+   --  standstill
+   Linking_Braking : Boolean := False;
    --  3.8.2.4: the information "track ahead free up
    --  to the level 2 transition location" accepted in the last Evaluate
    --  and the group it names (3.8.2.4.2); the country of the group
@@ -243,6 +248,7 @@ is
       Radio_SH_Ids := (others => (others => <>));
       Timer_Deletion := False;
       Contact_Braking := False;
+      Linking_Braking := False;
       TAF_L2_New := False;
       TAF_L2_Loc := (others => <>);
       Group_Country := 0;
@@ -2702,6 +2708,60 @@ is
                          and then not EVC_Odometry.Standstill;
    end Contact_Shortening;
 
+   --  3.16.2.6.2, 3.16.2.7.1.1: the service brake of a linking reaction
+   --  (EVC_Position.Reaction 1; commanded in the modes of EVC_Procedures)
+   --  and the train at standstill since: the location based information
+   --  shortened to the current position as for 3.16.3.4.5 b) (A.3.4.1.2 i).
+   --  Decision: the brake requested in an earlier cycle and the train at
+   --  standstill now, a request at standstill shortens nothing
+   --  @req 3.16.2.6.2
+   procedure Linking_Shortening (T     : Origin_Table_T;
+                                 Train : Train_Frame_T;
+                                 Mode  : EVC_Modes.Mode_T)
+     with Global => (Input  => (EVC_Position.State, EVC_Odometry.State),
+                     In_Out => (Linking_Braking,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                Events, Event_N))
+   is
+      use type EVC_Modes.Mode_T;
+      O : EVC_Movement_Authority.Outcome_T;
+   begin
+      if Linking_Braking and then EVC_Odometry.Standstill then
+         EVC_Movement_Authority.Shorten_To_Train (Train, O);
+         Apply (T, O);
+         Linking_Braking := False;
+      end if;
+      if EVC_Position.Linking_Reaction_Requested
+        and then EVC_Position.Reaction = Q_LINKREACTION_Apply_Service_Brake
+        and then Mode in EVC_Modes.M_FS | EVC_Modes.M_AD | EVC_Modes.M_LS
+                       | EVC_Modes.M_OS | EVC_Modes.M_SM
+        and then not EVC_Odometry.Standstill
+      then
+         Linking_Braking := True;
+      end if;
+   end Linking_Shortening;
+
+   --  The shortenings at standstill after a service brake: of the contact
+   --  supervision (3.16.3.4.5 b) and of a linking reaction (3.16.2.6.2)
+   procedure Brake_Shortenings (T     : Origin_Table_T;
+                                Train : Train_Frame_T;
+                                Mode  : EVC_Modes.Mode_T)
+     with Global => (Input  => (EVC_Sessions.State, EVC_Position.State,
+                                EVC_Odometry.State),
+                     In_Out => (Contact_Braking, Linking_Braking,
+                                Timer_Deletion,
+                                EVC_Track_Description.State,
+                                EVC_Movement_Authority.State,
+                                EVC_Track_Conditions.State,
+                                Events, Event_N))
+   is
+   begin
+      Contact_Shortening (T, Train);
+      Linking_Shortening (T, Train, Mode);
+   end Brake_Shortenings;
+
    procedure Evaluate (Now_Ms         : Unsigned_64;
                        Mode_Speed     : Speed_Cms_T;
                        Work           : in out EVC_Profile.Profile_T;
@@ -2762,7 +2822,7 @@ is
                         and then (O.Section_Expired /= 0 or else O.End_Expired
                                   or else O.Overlap_Expired
                                   or else O.LOA_Expired);
-      Contact_Shortening (T, Train);
+      Brake_Shortenings (T, Train, Context.Mode);
 
       --  4. 3.18.2.3: the national values waiting for their location
       if EVC_National_Values.Pending and then Train.Valid then

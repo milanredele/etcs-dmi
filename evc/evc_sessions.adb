@@ -1394,6 +1394,7 @@ is
          end if;
       end;
       Reports.Evaluate (SoM => Mission.Reporting, Mode => Ctx.Mode);
+      Reports.Request_Balise_Errors (In_L2);
       Supervise_Contact (Ctx.Now_Ms, EVC_Odometry.Standstill, In_L2);
       --  3.16.3.4.4: the driver informed of the service brake ("Communication
       --  error", the DMI's entry 4; its end: 3.14.1.7)

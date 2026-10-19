@@ -34,6 +34,7 @@ package body EVC_Position
                                    Reaction_Value,
                                    Unexpected_Flag,
                                    Missed_Flag,
+                                   Missed_Last,
                                    Odo_Reported,
                                    Cold_Reported,
                                    Geo_Refs,
@@ -184,6 +185,9 @@ is
    Reaction_Value     : Q_LINKREACTION_T := 2;
    Unexpected_Flag    : Boolean := False;
    Missed_Flag        : Boolean := False;
+   --  3.16.2.7.1.1: the window of the last group announced by linking was
+   --  passed without its group, and no balise was detected since
+   Missed_Last        : Boolean := False;
    Odo_Reported       : Unsigned_8 := 0;
    Cold_Reported      : Boolean := False;
    Geo_Refs           : Geo_Array_T;
@@ -667,7 +671,9 @@ is
    end Next_Window;
 
    --  3.16.2.3.1 b), 3.16.2.3.1.1: the expected groups whose windows
-   --  were passed without their location reference
+   --  were passed without their location reference; 3.16.2.7.1.1: two in
+   --  a row without a balise detected between them, the service brake
+   --  @req 3.16.2.3.1 b), 3.16.2.3.1.1, 3.16.2.3.1.1 a), 3.16.2.7.1.1
    procedure Supervise_Windows
    is
    begin
@@ -682,6 +688,13 @@ is
             Put_Identity_Event
               (Missed_Group, (if L.Known_Id then L.Id else Unknown_Identity));
             Request_Reaction (L.Reaction, Cause_Not_Detected, E);
+            --  3.16.2.7.1.1: no balise detected from the start of the
+            --  window of the group missed before to the end of this one's
+            if Missed_Last then
+               Request_Reaction (Q_LINKREACTION_Apply_Service_Brake,
+                                 Cause_Double_Missed, E);
+            end if;
+            Missed_Last := True;
             Next_Window;
          end;
       end loop;
@@ -1125,7 +1138,7 @@ is
    --  direction T, against the linking information: whether it is taken
    --  into account, compliant (the new LRBG) and the new SOLR, the link
    --  that announced it, its location accuracy and its orientation
-   --  @req 3.4.4.4.6 a)
+   --  @req 3.4.4.4.6 a), 3.16.2.3.1, 3.16.2.3.1 a), 3.16.2.3.1 c)
    procedure Decide_Linking (Id         : Identity_T;
                              G          : Geometry_T;
                              T          : Direction_T;
@@ -1314,6 +1327,8 @@ is
       S           : Sense_T;
    begin
       Passage.Open := False;
+      --  3.16.2.7.1.1: a balise detected
+      Missed_Last := False;
       if not G.Has_Reference then
          --  the group cannot be located (the consistency of its message
          --  is phase E6); its window, if any, runs on
@@ -1558,6 +1573,7 @@ is
       Reaction_Value := 2;
       Unexpected_Flag := False;
       Missed_Flag := False;
+      Missed_Last := False;
       Odo_Reported := 0;
       Cold_Reported := False;
       Geo_Refs := (others => No_Geo_Ref);

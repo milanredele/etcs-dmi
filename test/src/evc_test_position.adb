@@ -209,6 +209,55 @@ package body EVC_Test_Position is
       Check_Golden ("position_linking");
    end Scenario_Linking;
 
+   --  3.16.2.7.1.1: two groups announced by linking missed in a row, no
+   --  balise detected between the start of the first window and the end
+   --  of the second, give the service brake although their reaction is
+   --  "no reaction" (Q_LINKREACTION 2); a group read between them does not
+   procedure Scenario_Linking_Double_Missed is
+      Brake_At : Integer_64 := 0;
+      Missed   : Natural := 0;
+   begin
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 500, 500),
+                                                       (20, 30, 40), 5, 2)));
+      Run_To (20_000);
+      while Train_Cm < 130_000 and then Brake_At = 0 loop
+         Step (1_000);
+         if Pos.Missed_Group_Found then
+            Missed := Missed + 1;
+         end if;
+         if Pos.Linking_Reaction_Requested and then Pos.Reaction = 1 then
+            Brake_At := Train_Cm;
+         end if;
+      end loop;
+      Check (Missed = 2 and then Brake_At > 110_000
+             and then JRU_Last (4, 2) = 1
+             and then JRU_Last (4, 3) = Pos.Cause_Double_Missed,
+             "double missed: the service brake at the end of the second "
+             & "window (3.16.2.7.1.1), got" & Integer_64'Image (Brake_At)
+             & Natural'Image (Missed));
+
+      --  an unlinked group read between the two windows
+      Start_Track;
+      Add_Group (With_Links (Group (10, 100), Link_To ((500, 500, 500),
+                                                       (20, 30, 40), 5, 2)));
+      Add_Group (Group (80, 800));
+      Track (2).Linked := False;
+      Brake_At := 0;
+      Missed := 0;
+      while Train_Cm < 130_000 loop
+         Step (1_000);
+         if Pos.Missed_Group_Found then
+            Missed := Missed + 1;
+         end if;
+         if Pos.Linking_Reaction_Requested and then Pos.Reaction = 1 then
+            Brake_At := Train_Cm;
+         end if;
+      end loop;
+      Check (Missed = 2 and then Brake_At = 0,
+             "double missed: a balise between the windows, no brake");
+   end Scenario_Linking_Double_Missed;
+
    --  A linked group missed (3.16.2.3.1 b, 3.16.2.3.1.1), one detected
    --  in rear of its window (a), one of a later group (c), a group not
    --  in the linking (3.4.4.4.2), one passed the wrong way (3.4.4.4.7)
