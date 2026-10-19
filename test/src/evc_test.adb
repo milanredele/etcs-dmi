@@ -238,6 +238,8 @@ begin
    Scenario_Consistency_Record;
    Scenario_Duplicated_Pair;
    Scenario_Default_Balise;
+   Scenario_Consistency_Reactions;
+   Scenario_Consistency_Error_Report;
 
    Scenario_E4_Tables;
    Scenario_E4_SoM_Level_1;

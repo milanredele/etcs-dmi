@@ -881,4 +881,39 @@ package EVC_Test_Support is
    --  output, a request (EVC_Ports: the fields of a set-up, ...)
       function Request_Byte (N : Positive; K : Positive) return Natural;
 
+   --  T_TRAIN of the on-board time now (10 ms, 7.5.1.152), plus D
+   function Radio_Now (D : Unsigned_64 := 0) return Unsigned_64 is
+     ((Unsigned_64 (EVC_Core.Time_Ms) / 10 + D) mod 2**32);
+
+   --  The N-th RTM output is the message NID on session S
+   function Is_Radio_Message (N : Positive; NID : Natural; S : Natural := 1)
+     return Boolean
+   is (N <= Radio_Outputs
+       and then not Radio_Output (N).Request
+       and then Radio_Output (N).Session = S
+       and then Radio_Output (N).Kind = NID);
+
+   --  A group NID at At_M metres with a session management order
+   --  (packet 42): Q_RBC 1 establish, 0 terminate, with RBC NID_RBC
+   procedure Order_Session_Group (NID : Natural; At_M : Integer_64;
+                          Q_RBC : Natural; NID_RBC : Natural);
+
+   --  A track to train message of Kind with T_TRAIN T, M_ACK Ack and the
+   --  variable I (from 5 on) set to V
+   function Radio_Msg (Kind : ETCS_Message_Catalogue.Known_Message_T;
+                 T    : Unsigned_64;
+                 Ack  : Unsigned_64 := 0;
+                 I    : Positive := 5;
+                 V    : Unsigned_64 := 0) return Byte_Array;
+
+   --  The safe radio connection of S set up, the system version V of the
+   --  RBC (message 32) and the acknowledgement 38 (3.5.3.7 b to e)
+   procedure Establish_Session (S : Natural; V : Unsigned_64 := 48);
+
+   --  The RTM outputs after From that are message 136 on session 1 with
+   --  packet 4: their count, the M_ERROR of the last
+   procedure Balise_Error_Reports (From  : Natural;
+                            Count : out Natural;
+                            Error : out Natural);
+
 end EVC_Test_Support;

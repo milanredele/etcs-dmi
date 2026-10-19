@@ -2,6 +2,7 @@
 
 with Interfaces;         use Interfaces;
 with ETCS_Telegram;
+with ETCS_Track_Packets.P145;
 with ETCS_Track_Packets.P254;
 with DMI_Protocol;
 with EVC_Bytes;
@@ -9,6 +10,9 @@ with EVC_DMI_Port;
 with ETCS_Variables;    use ETCS_Variables;
 with EVC_Balise_Groups; use EVC_Balise_Groups;
 with EVC_JRU_Messages;  use EVC_JRU_Messages;
+with EVC_Core;
+with EVC_Modes;
+with EVC_Movement_Authority;
 with EVC_Position;
 with EVC_Test_Support;  use EVC_Test_Support;
 
@@ -214,5 +218,175 @@ package body EVC_Test_Consistency is
       Check (SS_Seen (EVC_DMI_Port.SS_Trackside_Malfunction) = 1,
              "default balise: not for the other direction (A.3.3.3)");
    end Scenario_Default_Balise;
+
+   --  The train runs to To_Cm a cycle (10 m) at a time; SB: the service
+   --  brake commanded on the way (the TIU output)
+   procedure Run_Watch (To_Cm : Integer_64; SB : out Boolean) is
+   begin
+      SB := False;
+      while Train_Cm < To_Cm loop
+         Step_X (1_000);
+         if TIU_Out /= 16#FFFF# and then TIU_Out mod 256 / 2 mod 2 = 1 then
+            SB := True;
+         end if;
+      end loop;
+   end Run_Watch;
+
+   --  Group G's balise K carries packet 145, the inhibition of the
+   --  consistency reaction
+   procedure Carry_Inhibition (G : Positive; K : Natural) is
+      W  : Writer_T;
+      OK : Boolean;
+      P  : ETCS_Track_Packets.P145.Packet_T;
+   begin
+      P.Q_DIR := 2;
+      ETCS_Track_Packets.P145.Encode (P, W, OK);
+      Check (OK, "reactions: packet 145 encoded");
+      Carry_Writer (G, K, W);
+   end Carry_Inhibition;
+
+   --  A track of group 10 at 100 m announcing (Linking) 20 at 600 m and
+   --  30 at 1000 m with Reaction, 20 of Balises balises with its balise
+   --  Skip - 1 missed, 30 present; or (not Linking) 20 marked Linked
+   procedure Inconsistent_Track (Linking  : Boolean;
+                                 Reaction : Natural := 1;
+                                 Skip     : Natural := 1;
+                                 Balises  : Positive := 2;
+                                 Linked   : Boolean := True) is
+   begin
+      Start_X;
+      SS_Seen := (others => 0);
+      if Linking then
+         Add_Group (With_Links (Group (10, 100),
+                                Link_To ((500, 400), (20, 30), 5,
+                                         Reaction)));
+      else
+         Add_Group (Group (10, 100));
+      end if;
+      Add_Group (Group (20, 600, Balises));
+      Track (2).Skip := Skip;
+      Track (2).Linked := Linked;
+      Add_Group (Group (30, 1000));
+   end Inconsistent_Track;
+
+   procedure Scenario_Consistency_Reactions is
+      SB : Boolean;
+      Brake_Error : Natural renames
+        SS_Seen (EVC_DMI_Port.SS_Balise_Read_Error_Brake);
+   begin
+      --  linking checked, the expected group's message inconsistent (a
+      --  balise missed): the reaction of its linking, train trip
+      Inconsistent_Track (Linking => True, Reaction => 0);
+      Run_X (80_000);
+      Check (EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_TR),
+             "reactions: the expected group's message inconsistent, its "
+             & "linking reaction train trip (3.16.2.4.1 a)");
+      Inconsistent_Track (Linking => True, Reaction => 1);
+      Run_Watch (80_000, SB);
+      Check (SB and then Brake_Error >= 1
+             and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_FS),
+             "reactions: the expected group's message inconsistent, its "
+             & "linking reaction the service brake, Balise read error "
+             & "(3.16.2.4.1, 3.16.2.6.1)");
+      --  3.16.2.4.2: the missed balise duplicated by one read
+      Inconsistent_Track (Linking => True, Reaction => 0);
+      Track (2).Dup_1_2 := True;
+      Run_Watch (80_000, SB);
+      Check (not SB and then EVC_Modes."=" (EVC_Core.Mode, EVC_Modes.M_FS),
+             "reactions: the missed balise duplicated and its duplicate "
+             & "read, no reaction (3.16.2.4.2)");
+
+      --  linking not checked: the service brake, Balise read error, and
+      --  at standstill the MA shortened to the train (3.16.2.4.4.2)
+      Inconsistent_Track (Linking => False);
+      Carry (1, 0, MA_Of ((1 => 2_000)));
+      Carry (1, 0, Grad ((1 => (0, 0))));
+      Carry (1, 0, SSP ((1 => (0, 100, False))));
+      Run_Watch (80_000, SB);
+      Check (SB and then Brake_Error >= 1
+             and then EVC_Movement_Authority.MA.Present
+             and then not EVC_Movement_Authority.MA.Withdrawn,
+             "reactions: linking not checked, a linked group's message "
+             & "inconsistent, the service brake and Balise read error "
+             & "(3.16.2.4.4 a, 3.16.2.4.4.3)");
+      Stand;
+      Stand;
+      Check (EVC_Movement_Authority.MA.Withdrawn,
+             "reactions: at standstill the MA shortened to the train "
+             & "(3.16.2.4.4.2, A.3.4.1.2 g, EVC_Stored_Information"
+             & ".Linking_Shortening)");
+      Inconsistent_Track (Linking => False);
+      Carry_Inhibition (2, 1);
+      Run_Watch (80_000, SB);
+      Check (not SB and then Brake_Error = 0,
+             "reactions: packet 145 read in the group, no service brake "
+             & "(3.16.2.4.4.1 b)");
+      --  3.16.2.4.4.4: the last group announced, its own reaction (none)
+      --  instead of the service brake
+      Start_X;
+      Add_Group (With_Links (Group (10, 100),
+                             Link_To ((1 => 500), (1 => 20), 5, 2)));
+      Add_Group (Group (20, 600));
+      Track (2).Skip := 1;
+      Run_Watch (80_000, SB);
+      Check (not SB,
+             "reactions: the last group announced inconsistent, its "
+             & "linking reaction (none) applies (3.16.2.4.4.4)");
+      --  an unlinked group's message inconsistent: the service brake,
+      --  none with packet 145 (3.16.2.5.1, 3.16.2.5.3)
+      Inconsistent_Track (Linking => False, Linked => False);
+      Run_Watch (80_000, SB);
+      Check (SB and then Brake_Error >= 1,
+             "reactions: an unlinked group's message inconsistent, the "
+             & "service brake (3.16.2.5.1)");
+      Inconsistent_Track (Linking => False, Linked => False);
+      Carry_Inhibition (2, 1);
+      Run_Watch (80_000, SB);
+      Check (not SB,
+             "reactions: an unlinked group with packet 145, no service "
+             & "brake (3.16.2.5.1.1 b)");
+   end Scenario_Consistency_Reactions;
+
+   --  Runs to To_Cm a cycle at a time: the error reports (136 with
+   --  packet 4) sent on the way, their count and the last M_ERROR
+   procedure Run_Errors (To_Cm : Integer_64; Count, Error : out Natural) is
+      C, E : Natural;
+   begin
+      Count := 0;
+      Error := 999;
+      while Train_Cm < To_Cm loop
+         Step_X (1_000);
+         Balise_Error_Reports (0, C, E);
+         Count := Count + C;
+         if C > 0 then
+            Error := E;
+         end if;
+      end loop;
+   end Run_Errors;
+
+   procedure Scenario_Consistency_Error_Report is
+      Count, Error : Natural;
+   begin
+      Start_X;
+      EVC_Core.Set_Mode_For_Test (Legacy_Mode, EVC_Modes.L2);
+      Order_Session_Group (10, 100, Q_RBC => 1, NID_RBC => 300);
+      Add_Group (Group (20, 300));
+      Track (2).Skip := 1;
+      Add_Group (Group (30, 500));
+      Track (3).Skip := 1;
+      Track (3).Linked := False;
+      Run_X (15_000);
+      Establish_Session (1);
+      Run_Errors (40_000, Count, Error);
+      Check (Count = 1 and then Error = 1,
+             "error report: a linked group's message inconsistent, "
+             & "M_ERROR 1 (3.16.4.1, 3.16.2.4.4, 7.5.1.64), got"
+             & Img (Count) & Img (Error));
+      Run_Errors (60_000, Count, Error);
+      Check (Count = 1 and then Error = 2,
+             "error report: an unlinked group's message inconsistent, "
+             & "M_ERROR 2 (3.16.4.1, 3.16.2.5.1), got"
+             & Img (Count) & Img (Error));
+   end Scenario_Consistency_Error_Report;
 
 end EVC_Test_Consistency;
