@@ -752,6 +752,31 @@ is
                   and then Doubt_Over = Doubt_Over'Old
                   and then Doubt_Under = Doubt_Under'Old
                   and then Active_Cab = Active_Cab'Old;
+
+   --  Phase E5, 3.4.4.1.1, 4.8.1.6, 4.8.4: the linking (packet 5) of the
+   --  radio messages of the cycle (EVC_Radio_Info: messages 3, 33 and
+   --  24), referred to the LRBG the message names (its origin,
+   --  Radio_Origin) and valid for the train (Q_DIR, 3.6.3.1.3), taken
+   --  when Accepted (4.8.3, 4.8.4 row Linking): it replaces the stored
+   --  linking, its windows from the SOLR as Take_Released_Linking does.
+   --  Decision: taken when the message's LRBG is the SOLR, or when the
+   --  SOLR is one of its linked groups (a message referred to an earlier
+   --  LRBG); a location reference ahead of the SOLR (message 33 shifted
+   --  forward) is not taken. The country of a first linked group without
+   --  Q_NEWCOUNTRY is the SOLR's (the relocated origin keeps no other).
+   --  @req 4.8.1.6, 4.8.4.2 Table
+   procedure Take_Radio_Linking (Accepted : Boolean)
+     with Global => (In_Out => State,
+                     Input  => (EVC_Radio_Info.State, EVC_Origins.State,
+                                EVC_Odometry.State)),
+          Post => Status = Status'Old and then LRBG = LRBG'Old
+                  and then SOLR = SOLR'Old
+                  and then Orientation = Orientation'Old
+                  and then Orientation_Known = Orientation_Known'Old
+                  and then Doubt_Over = Doubt_Over'Old
+                  and then Doubt_Under = Doubt_Under'Old
+                  and then Active_Cab = Active_Cab'Old;
+
    --  4.10: entering a mode deletes the linking
    --  @req 4.10.1.3, 4.10.1.3 a), 4.10.1.3 b), 4.10.1.3 c), 4.10.1.3 d)
    --  @req 4.10.1.3 e), 4.10.1.3 Table, 4.10.1.3 Table-footnote [1]

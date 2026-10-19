@@ -147,6 +147,7 @@ begin
    Scenario_Geo;
    Scenario_Geo_Rejected_In_SH;
    Scenario_Geo_By_Radio;
+   Scenario_Radio_Linking;
    Scenario_Odometer_Accuracy;
    Scenario_Odometer_Check_By_Mode;
    Scenario_Cold_Movement;
@@ -358,6 +359,7 @@ begin
    Scenario_L1_Order_Own_Group_Linking;
    Scenario_L2_Driver_Change;
    Scenario_L2_Exit_By_Order;
+   Scenario_L2_Exit_In_NL;
    Scenario_L2_Exit_Aborts_Establishment;
    Scenario_L2_Switch_Contact;
    Scenario_L2_Order_Linked_Group;

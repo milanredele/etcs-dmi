@@ -356,6 +356,29 @@ package body EVC_Test_Levels is
              & "repetition (5.10.3.3.4, 5.10.3.3.5)");
    end Scenario_L2_Exit_By_Order;
 
+   --  5.10.3.3.3, 5.10.3.6.2: the report at the border is the leading
+   --  engine's; a non-leading engine (NL) passing the border of level 2
+   --  with its min safe rear end sends none and awaits no order
+   --  (SUBSET-076 4050200_04 step 88)
+   procedure Scenario_L2_Exit_In_NL is
+   begin
+      Start_X;
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Non_Leading_Permitted) + 1), 1));
+      EVC_Core.Set_Mode_For_Test (M_NL, L2);
+      Add_Group (Group (10, 100));
+      Carry (Track_N, 0, Order (ETCS_Variables.M_LEVELTR_Level_1, -1));
+      EVC_Test_Authority.Establish_Session;
+      Run_X (11_000);
+      Check (EVC_Levels.Level = L1 and then LS.Exit_Phase = LS.Border_Ahead,
+             "levels NL: the order to level 1 executed, the border ahead");
+      Run_X (40_000);
+      Check (EVC_Core.Mode = M_NL and then LS.Reports_Requested = 0
+               and then LS.Exit_Phase = LS.None,
+             "levels NL: the min safe rear end past the border: no position "
+             & "report from a non-leading engine (5.10.3.6.2)");
+      Input (TIU, (Byte (TIU_Signal_T'Pos (Non_Leading_Permitted) + 1), 0));
+   end Scenario_L2_Exit_In_NL;
+
    --  3.5.3.8 d): the order to level 1 executed while a session is being
    --  established; the min safe rear end past the border aborts it and
    --  releases its safe radio connection

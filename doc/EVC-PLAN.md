@@ -7881,3 +7881,47 @@ end reactions are B803. SUBSET-076: 972 / 1136 / 1082 before, 977 / 1145
 / 1068 after; 15 regressions of the 3131040 family understood and triaged
 s076 (groups with M_MCOUNT 254, a blank second balise of M_VERSION 0);
 three new signatures onboard (B804, B805).
+### Radio linking, the position report at a border in NL, the level after D2, message 50 (e5/remainder, 2026-10-19)
+
+**B730 done.** Packet 5 of RBC messages 3, 33 and 24 is taken by
+`EVC_Position.Take_Radio_Linking` (3.4.4.1.1, 4.8.1.6, 4.8.4 row
+Linking), called by the new core step `EVC_Core.Take_Radio_Linking`
+before `Evaluate_Stored_Information`: the origins of the messages' LRBG
+are released by the stored information, and 4.8.1.6 wants the linking
+first. Referred to the message's origin, valid for the train by Q_DIR;
+in level 2 only (4.8.3) and the modes of the row. Decision: taken when
+the LRBG of the message is the SOLR, or the SOLR is one of its linked
+groups; a reference ahead of the SOLR (message 33 shifted forward) is
+not taken. `EVC_Radio_Authority.Take_Message` passes a message 24 with
+packet 5 to `EVC_Radio_Info`. Scenario `Scenario_Radio_Linking`.
+9990500_16 still fails at step 88: the MA is relocated now (611 to 561
+m), the track ahead free window is not (B790, `Take_TAF` keeps it as
+odometer distances).
+
+**B763 done.** The report at the border from the leading engine only
+(5.10.3.6.2): none in NL, no wait for the order
+(`EVC_Level_Sessions.Evaluate`); `Scenario_L2_Exit_In_NL`. 4050200_04
+SV30 passes.
+
+**Regressions of the radio linking, traced and triaged.** Seven, in
+three families, all from B730 (an experiment without the core step
+passes 9990500_15): 9990500_15 SV21/SV22/SV30 step 73 (S5c9019aa)
+and 4100103_37 SV21/SV22 step 86 (Sc36bdd59) passed before, only
+because no radio linking was used. Traced (B791): the RBC's packet 5
+names a group the track does not hold (9990500_15: NID_BG 5 at 400 m
+from BG2, and message 24 refers to LRBG 5, while BG3 is read there;
+4100103_37: NID_BG 2 announced, BG4 read), so the read group is not
+the expected one and is ignored with its level order (packet 41);
+triaged s076. 9990500_09 SV21/SV22 moves from
+step 95 to 85 (S13c9beb3, model already): BG3 read 100 m before its
+linked location appears outside the window of 3.4.4.4.3 with the
+runner's odometer (not verified). Two signatures reached by improved
+sequences triaged onboard untraced (S4eed293c, Sd640223d; B792). After:
+976 passed, 1128 failed, 1086 blocked (master 972/1136/1082), the
+baseline re-recorded.
+
+**Left:** B709 traced (the PDF table read: following D2 with the
+position not valid the level and the RBC contact become invalid; the
+contact part exists, the level part needs an invalidation in
+`EVC_Levels` and its call at D2, see the backlog line), B691, B642,
+B680 not started (budget).

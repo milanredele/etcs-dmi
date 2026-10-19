@@ -650,6 +650,71 @@ package body EVC_Test_Position is
              "radio geo: rejected in SH (4.8.4.2)");
    end Scenario_Geo_By_Radio;
 
+   --  Message 24 referred to the group Ref of country 123, its packet 5
+   --  linking the group Id at D_LINK metres (accuracy 10 m)
+   function M24_With_5 (Ref, Id, D_LINK : Natural;
+                        Q_DIR : ETCS_Variables.Q_DIR_T := 1)
+     return Byte_Array
+   is
+      W  : Writer_T;
+      V  : ETCS_Message.Value_Array := (others => 0);
+      P  : T5.Packet_T;
+      OK : Boolean;
+   begin
+      V (3) := Interfaces.Unsigned_64
+        (EVC_Radio.T_Train_At (Interfaces.Unsigned_64 (EVC_Core.Time_Ms)));
+      V (5) := 123;
+      V (6) := Interfaces.Unsigned_64 (Ref);
+      Start_Message (W, ETCS_Message_Catalogue.Track_M24, V);
+      P.Q_DIR := Q_DIR;
+      P.Q_SCALE := 1;
+      P.D_LINK := ETCS_Variables.D_LINK_T (D_LINK);
+      P.NID_BG := ETCS_Variables.NID_BG_T (Id);
+      P.Q_LINKORIENTATION := 1;
+      P.Q_LINKREACTION := 2;
+      P.Q_LOCACC := 10;
+      T5.Encode (P, W, OK);
+      Check (OK, "radio linking: packet 5 encoded");
+      return Message_Bytes (W);
+   end M24_With_5;
+
+   --  3.4.4.1.1, 4.8.1.6, 4.8.4 (row Linking: A in FS): the linking of
+   --  a message 24 referred to the LRBG (SUBSET-076 9990500_16 step 79)
+   --  is stored, the window of the linked group supervised from the
+   --  SOLR, and the group read inside it ends that supervision; a
+   --  linking for the other direction of the LRBG (Q_DIR 0) is not
+   --  taken (3.6.3.1.3)
+   procedure Scenario_Radio_Linking is
+   begin
+      EVC_Test_Authority.Start_L2_Announced;
+      Run_X (45_000);
+      Check (EVC_Levels.Level = EVC_Modes.L2
+               and then Pos.LRBG.Id.NID_BG = 10
+               and then not Pos.Linking.Stored,
+             "radio linking: level 2, group 10 the LRBG, no linking");
+      Add_Group (Group (12, 690));
+      Give_Radio_Message (1, M24_With_5 (10, 12, 600, Q_DIR => 0));
+      Stand_X (200);
+      Check (not Pos.Linking.Stored,
+             "radio linking: the reverse direction of the LRBG not taken");
+      Give_Radio_Message (1, M24_With_5 (10, 12, 600));
+      Stand_X (200);
+      Check (Pos.Linking.Stored and then Pos.Linking.Count = 1
+               and then Pos.Linking.Links (1).Id.NID_BG = 12
+               and then Pos.Linking.Links (1).D = 60_000
+               and then Pos.Linking.Expected = 1
+               and then EVC_Linking.Checked (Pos.Linking),
+             "radio linking: stored from the LRBG, the window of group 12 "
+             & "supervised (3.4.4.4), got " & Boolean'Image (Pos.Linking.Stored)
+             & Natural'Image (Pos.Linking.Count)
+             & EVC_Distances.Length_T'Image (Pos.Linking.Links (1).D)
+             & Natural'Image (Pos.Linking.Expected));
+      Run_X (75_000);
+      Check (Pos.LRBG.Id.NID_BG = 12 and then Pos.Linking.Expected = 2
+               and then not Pos.Linking_Reaction_Requested,
+             "radio linking: group 12 read inside its window, the LRBG");
+   end Scenario_Radio_Linking;
+
    --  3.6.8, A.3.1: odometer accuracy impaired, safety threshold
    procedure Scenario_Odometer_Accuracy is
       Impaired_At : Integer_64 := 0;

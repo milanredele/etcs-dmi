@@ -21,6 +21,7 @@ package EVC_Test_Levels is
    procedure Scenario_L1_Order_Own_Group_Linking;
    procedure Scenario_L2_Driver_Change;
    procedure Scenario_L2_Exit_By_Order;
+   procedure Scenario_L2_Exit_In_NL;
    procedure Scenario_L2_Exit_Aborts_Establishment;
    procedure Scenario_L2_Switch_Contact;
    procedure Scenario_L2_Order_Linked_Group;

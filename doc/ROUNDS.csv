@@ -169,3 +169,7 @@ a72a369a860d6da03,2026-10-19,31,e5/jru-triggers,onboard,opus-5-5,opus-trim,20,13
 a35004d2da732705d,2026-10-19,31,e5/radio-dir,onboard,opus-5-5,opus-trim,20,130,131,115,24,164,6.96,104,19,8,0,0,25,3,4,44,9,28,18,2,1,4,0,125,5177,2,2,3,1,0,2,3,2,+2,0,1,0,0,y,B720 premise wrong: no radio linking at all (B730); B709 not a power cycle
 a65142d732e39054b,2026-10-19,31,e5/runner-net,runner,opus-5-5,opus-trim,20,130,120,102,24,146,5.66,101,12,0,7,0,21,7,8,55,6,17,8,4,2,12,2,116,4935,1,1,6,3,0,3,6,1,+7,3,4,0,0,y,"B701 half wrong (the passage, not the border); three traces not started"
 adc9701a32b6ea3da,2026-10-19,31,e5/status-left,onboard,opus-5-5,opus-trim,20,130,130,124,26,180,8.01,124,2,2,2,0,20,7,8,69,27,26,17,3,2,13,1,129,5028,1,1,5,4,0,1,5,2,+2,0,1,2,0,y,B704 the runner applied an optional step; B710 decided against the sequence; 18 source reads
+a4f166a0a9402e881,2026-10-19,32,e5/bookkeeping-2,analysis,opus-5-5,opus-trim,20,150,146,127,25,203,8.31,124,9,9,4,0,37,2,18,78,10,20,9,3,0,0,1,145,5649,0,0,,,,,,,,,,,,,
+ad11605f2780a9e4b,2026-10-19,32,e5/remainder,onboard,opus-5-5,opus-trim,20,130,183,164,49,239,13.03,164,8,9,2,0,24,8,8,102,52,39,26,4,1,8,1,179,2849,0,0,,,,,,,,,,,,,
+a2ea842bb6ac8e9fc,2026-10-19,32,e6/consistency-linking,onboard,opus-5-5,opus-trim,20,130,130,125,38,183,8.13,128,1,1,0,0,19,6,4,68,26,25,22,1,3,11,2,129,5926,1,1,,,,,,,,,,,,,
+af8f8a0d86d001455,2026-10-19,32,e6/consistency-message,onboard,opus-5-5,opus-trim,20,130,160,137,44,224,11.43,140,11,9,0,0,17,6,5,86,33,33,22,3,2,11,2,156,6824,1,1,,,,,,,,,,,,,

@@ -2272,6 +2272,68 @@ is
       end loop;
    end Take_Released_Linking;
 
+   --  The windows of a linking taken by radio that the train has already
+   --  passed are not supervised (as for a released linking)
+   procedure Skip_Passed_Windows is
+   begin
+      for Step in 1 .. EVC_Linking.Max_Links loop
+         pragma Loop_Invariant (True);
+         exit when not EVC_Linking.Checked (Links)
+           or else not Window_Passed (Links.Expected, Margin => False);
+         Next_Window;
+      end loop;
+   end Skip_Passed_Windows;
+
+   --  3.4.4.1.1, 4.8.1.6, 4.8.4
+   procedure Take_Radio_Linking (Accepted : Boolean)
+   is
+      R  : ETCS_Bits.Reader (ETCS_Bits.Max_Bytes);
+      P  : ETCS_Track_Packets.P5.Packet_T;
+      L  : EVC_Linking.Linking_T;
+      O  : EVC_Origins.Origin_T;
+      OK : Boolean;
+      K  : EVC_Linking.Link_Count_T;
+   begin
+      if not Accepted or else not SOLR_A.Valid then
+         return;
+      end if;
+      for I in 1 .. EVC_Radio_Info.Count loop
+         pragma Loop_Invariant (True);
+         for J in 1 .. EVC_Radio_Info.Packet_Count (I) loop
+            pragma Loop_Invariant (True);
+            declare
+               Sl : constant EVC_Radio_Info.Slot_T := EVC_Radio_Info.Slot (I);
+               E  : constant ETCS_Packet_Index.Entry_T :=
+                 EVC_Radio_Info.Packet_Entry (I, J);
+            begin
+               if E.Kind = ETCS_Catalogue.Track_P5 and then Sl.Origin /= 0
+                 and then Valid_For (E.Q_DIR, Sl.G, Sl.T)
+               then
+                  O := EVC_Origins.Get (Sl.Origin);
+                  EVC_Radio_Info.Open_Packet (I, J, R);
+                  ETCS_Track_Packets.P5.Decode (R, P, OK);
+                  if OK and then O.Est.Valid
+                    and then O.Est.Ref.Id = SOLR_A.Id
+                  then
+                     EVC_Linking.From_Packet (P, SOLR_A.Id, Sl.S, L, OK);
+                     K := 0;
+                     if OK and then O.Est.D /= 0 then
+                        K := EVC_Linking.Find (L, SOLR_A.Id, 1);
+                        OK := K /= 0;
+                     end if;
+                     if OK then
+                        Links := L;
+                        Links.Solr := K;
+                        Links.Expected := K + 1;
+                        Skip_Passed_Windows;
+                     end if;
+                  end if;
+               end if;
+            end;
+         end loop;
+      end loop;
+   end Take_Radio_Linking;
+
    procedure Delete_Linking is
    begin
       Links := (others => <>);

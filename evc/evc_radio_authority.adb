@@ -839,6 +839,7 @@ is
                          | ETCS_Catalogue.Track_P64
                          | ETCS_Catalogue.Track_P67
                          | ETCS_Catalogue.Track_P71
+                         | ETCS_Catalogue.Track_P5
                     or else (EVC_Received.Last_Packet_Kind (I)
                                in ETCS_Catalogue.Track_P21
                                 | ETCS_Catalogue.Track_P27
@@ -881,8 +882,9 @@ is
          --  adhesion and the inhibition of revocable TSRs, whose rows have
          --  no [3]); or the axle load speed profile and the permitted
          --  braking distance (packets 51, 52) in level 2 (4.8.3: A [3];
-         --  kept for level 2 when announced, To_Buffer).
-         --  Not taken: packets 3, 5, 57, 138, 139
+         --  kept for level 2 when announced, To_Buffer); or linking
+         --  (packet 5, EVC_Position.Take_Radio_Linking).
+         --  Not taken: packets 3, 57, 138, 139
          Take_Stored_Information (False, Now_Ms, Accepting => Accepting);
       end if;
    end Take_Message;
