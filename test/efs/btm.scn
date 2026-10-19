@@ -162,7 +162,7 @@ clause - absent 3.4.2.1.1 ; efs 3.4.2.1.1
 clause - absent 3.4.2.1.2 ; efs 3.4.2.1.2
 clause - absent 3.4.2.2.2 ; efs 3.4.2.2.2
 clause E2 done 3.6.1.4 ; efs 3.6.1.4
-clause E2 partial 3.6.2.2.2 ; efs 3.6.2.2.2
+clause E2 done 3.6.2.2.2 ; efs 3.6.2.2.2
 clause E2 done 3.6.2.2.2 a) ; efs 3.6.2.2.2.a
 step Reception of the first balise of the balise group
 sub Sub-step1

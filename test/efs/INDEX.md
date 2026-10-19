@@ -9,7 +9,7 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Active Functions | active-functions.scn | 1 | 18 | 1 / 17 | 0 / 17 | 0 | done 1 |
 | Adhesion factors | adhesion-factors.scn | 4 | 9 | 14 / 3 | 0 / 17 | 0 | absent 2, done 6, todo 1 |
 | Axle load | axle-load.scn | 7 | 15 | 15 / 5 | 0 / 63 | 0 | absent 5, done 5 |
-| BTM | btm.scn | 15 | 32 | 51 / 12 | 0 / 46 | 0 | absent 12, done 3, partial 1 |
+| BTM | btm.scn | 15 | 32 | 51 / 12 | 0 / 46 | 0 | absent 12, done 4 |
 | Braking models | braking-models.scn | 13 | 42 | 91 / 2 | 111 / 27 | 34 | absent 2, done 16 |
 | Change of train orientation | change-of-train-orientation.scn | 2 | 6 | 0 / 8 | 0 / 10 | 0 | absent 4, done 2 |
 | Computation of the expected deceleration | computation-of-the-expected-deceleration.scn | 5 | 12 | 28 / 1 | 32 / 4 | 10 | absent 3, done 2 |
@@ -39,11 +39,11 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Release speed | release-speed.scn | 1 | 2 | 2 / 1 | 0 / 4 | 0 | done 3 |
 | Reversing | reversing.scn | 5 | 13 | 16 / 15 | 0 / 30 | 0 | absent 8, done 8 |
 | Route suitability | route-suitability.scn | 7 | 23 | 36 / 47 | 0 / 50 | 0 | absent 3, done 10 |
-| Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | done 43, n/a 3, partial 18 |
+| Shunting Initiated by Driver | shunting-initiated-by-driver.scn | 49 | 52 | 22 / 121 | 0 / 71 | 0 | done 48, n/a 3, partial 13 |
 | Speed and distance monitoring | speed-and-distance-monitoring.scn | 15 | 22 | 51 / 14 | 49 / 5 | 2 | absent 19, done 7 |
 | Speed restriction to ensure permitted braking distance | speed-restriction-to-ensure-permitted-braking-distance.scn | 5 | 18 | 10 / 7 | 0 / 43 | 0 | absent 4, done 4 |
 | Staff Responsible | staff-responsible.scn | 3 | 6 | 6 / 16 | 0 / 12 | 0 | absent 3, partial 6 |
-| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, deferred 3, done 108, partial 24 |
+| Start of Mission | start-of-mission.scn | 141 | 257 | 53 / 606 | 0 / 440 | 0 | absent 51, deferred 1, done 121, partial 13 |
 | Static Speed Profile | static-speed-profile.scn | 3 | 9 | 10 / 6 | 15 / 18 | 0 | absent 6, done 9 |
 | Supervision limits | supervision-limits.scn | 22 | 48 | 59 / 12 | 51 / 32 | 8 | absent 19, done 30 |
 | System Version 1 Translations | system-version-1-translations.scn | 30 | 64 | 30 / 34 | 0 / 34 | 0 | absent 41 |
@@ -55,4 +55,4 @@ Actions and expectations: translated into primitives of ours / kept verbatim (`e
 | Train Trip | train-trip.scn | 64 | 78 | 32 / 156 | 0 / 94 | 0 | absent 1, done 32, n/a 1, partial 5 |
 | Train position confidence interval | train-position-confidence-interval.scn | 10 | 19 | 21 / 13 | 0 / 22 | 0 | absent 11, done 1 |
 | Undesirable movements supervision | undesirable-movements-supervision.scn | 8 | 46 | 46 / 55 | 0 / 140 | 0 | absent 8, done 28, other 6 |
-| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 15, done 613, n/a 5, other 52, partial 72, todo 7 |
+| **total** | 49 files | 828 | 2163 | 1576 / 2034 | 657 / 2719 | 94 | absent 597, deferred 13, done 632, n/a 5, other 52, partial 55, todo 7 |

@@ -1770,7 +1770,7 @@ end init
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Session is open
-clause E4 deferred 5.4.3.2 D11 ; efs Entry 5.4.3.2.D11
+clause E4 done 5.4.3.2 D11 ; efs Entry 5.4.3.2.D11
 step Session is open
 sub Sub-step1 - Open the session
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.Established
@@ -1779,7 +1779,7 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.D11
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.S11
 expect efs: EURORADIO.Terminal.HasActiveSession() @ deadline=1
 case Session is not open
-clause E4 deferred 5.4.3.2 D11 ; efs Entry 5.4.3.2.D11
+clause E4 done 5.4.3.2 D11 ; efs Entry 5.4.3.2.D11
 step Session is not open
 sub Sub-step1 - Open the session
 efs: EURORADIO.RBCConnection.CurrentRBCConnection().CommunicationSession <- EURORADIO.RBCConnection.RBCStruct.CommunicationSessionStateSM.NoSession
@@ -5126,8 +5126,8 @@ efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 sub SubStep2
 efs: Testing.InitializeTerminals()
 case Send train data
-clause E4 partial 5.4.3.2 S11 ; efs Entry 5.4.3.2.S11
-clause E4 partial 5.4.3.2 S11 ; efs Entry 5.4.3.2.S11.1
+clause E4 done 5.4.3.2 S11 ; efs Entry 5.4.3.2.S11
+clause E4 done 5.4.3.2 S11 ; efs Entry 5.4.3.2.S11.1
 step Send train data
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S11
@@ -6837,16 +6837,16 @@ end init
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.NoProcedure
 efs: EURORADIO.Terminal.DefaultRadioNetworkId<- ''
 case Offer possibility to ReEnter the Radio Network ID
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1
 step Offer possibility to reenter Radio Network ID
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S3
 expect efs: DMI.MasterDMI().In_RBCContactInformation.ProposedActions == [ DMI.RBCContactActionEnum.ReenterNetworkId ]
 expect efs: DMI.MasterDMI().In_RBCContactInformation.InputInformation.RequestStatus == RequestEnum.Request
 case Driver Elects to Re-Enter Radio Network ID
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1.1
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1.2
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1.1
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.1.2
 clause - absent Entry 5.4.3.3.10 ; efs Entry 5.4.3.3.10
 step Retrieve list of allowed networks
 sub Sub-step1
@@ -6883,10 +6883,10 @@ efs: EURORADIO.RBCConnection.Contact.AvailableNetworks.Networks <- []
 efs: EURORADIO.RBCConnection.Contact.AvailableNetworks.RequestState <- RequestEnum.Response
 expect efs: Kernel.ActiveProcedure in Kernel.ActiveProcedure.StartOfMission.A29
 case One mobile terminal registerd on network
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.1
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.2
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.3
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.1
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.2
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.2.3
 step Status of RBC ID/Phone number is invalid
 sub Sub-step1
 efs: Kernel.ActiveProcedure <- Kernel.ActiveProcedure.StartOfMission.S3
@@ -6920,7 +6920,7 @@ expect efs: DMI.MasterDMI().In_RBCContactInformation.InputInformation.RequestSta
 expect efs: DMI.MasterDMI().In_RBCContactInformation.ProposedActions == [ DMI.RBCContactActionEnum.ReenterNetworkId, DMI.RBCContactActionEnum.EnterContactInfo, DMI.RBCContactActionEnum.UseEireneShortNumber ]
 expect efs: DMI.MasterDMI().In_RBCContactInformation.RBCContactInformation == EMPTY
 case At the end, go to A31
-clause E4 partial 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.3
+clause E4 done 5.4.3.2 S3 ; efs Entry 5.4.3.2.S3.3
 clause - absent Entry 5.4.3.3.11 ; efs Entry 5.4.3.3.11
 clause - absent Entry 5.4.3.3.12 ; efs Entry 5.4.3.3.12
 step After driver responds, go to A31
