@@ -75,6 +75,8 @@ is
           Post => EVC_Position.LRBG = EVC_Position.LRBG'Old
                   and then EVC_Position.Orientation
                              = EVC_Position.Orientation'Old
+                  and then EVC_Position.Manoeuvre_Orientation
+                             = EVC_Position.Manoeuvre_Orientation'Old
                   and then EVC_Position.Active_Cab
                              = EVC_Position.Active_Cab'Old
                   and then EVC_Position.Status = EVC_Position.Status'Old

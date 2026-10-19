@@ -388,6 +388,8 @@ is
                   (if EVC_Position.LRBG = EVC_Position.LRBG'Old
                      and then EVC_Position.Orientation
                                 = EVC_Position.Orientation'Old
+                     and then EVC_Position.Manoeuvre_Orientation
+                                = EVC_Position.Manoeuvre_Orientation'Old
                    then EVC_Position.Doubt_Over
                           >= EVC_Position.Doubt_Over'Old
                         and then EVC_Position.Doubt_Under
