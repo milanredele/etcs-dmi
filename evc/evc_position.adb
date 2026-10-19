@@ -2488,7 +2488,7 @@ is
 
    function Linking_Distance (From, To : Identity_T) return Group_Distance_T
    is
-      R : Group_Distance_T := (others => <>);
+      R : Group_Distance_T;
       K : EVC_Linking.Link_Count_T := 0;
    begin
       if Links.Stored and then To /= Links.Ref_Id then

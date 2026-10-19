@@ -8477,3 +8477,25 @@ package. The union's two defects were of the kind a branch cannot see
 (a contract of another unit, a runtime the agents do not build for):
 the chain earns its place. Open items: doc/BACKLOG.csv (70 open after
 this round; 9 added, 11 closed).
+
+### The leftovers: the TAF window on the LRBG, two traces, the record 21 bits, the [62] scenario, the fuzzer's TIU frame, the hash goldens (e5/leftovers, 2026-10-19)
+
+B790 done: the track ahead free window of message 34 is kept as offsets
+from its LRBG (`EVC_Radio_Authority.Take_TAF`, `TAF_T.On_LRBG`, `Ref`,
+`Begin_D`, `End_D`) and moved by the linking distance from the former to
+the new LRBG (`Rebase_TAF`, 3.6.4.2.5 a), with the new query
+`EVC_Position.Linking_Distance (From, To)` returning a small
+`Group_Distance_T`, at the end of the unit). Decision: when the two
+groups are not linked in that order the window falls back to the
+odometer distances taken at the reception (the former behaviour), and a
+request whose beginning lies behind the front is shown at once with its
+length from the front (as before). evc_test taf_relocated
+(`EVC_Test_Position`; `EVC_Test_Authority.TAF_Message` made public):
+the window ends 10 m before the odometer's; a group added to the track
+before the request makes the test entry's SR fall back to FS at once,
+so the scenario adds group 12 after it. 9990500_16 passes step 88 and
+now fails at step 92 (OS left for FS at 1987 m, the mode profile's end
+relocated with the same 50 m, see the triage). B903 done: the fuzzer
+sends signal 15's 14-byte frame. B792, B642, B680, B904 not started
+(the bound of 100 calls reached inside B790, whose scenario took 30
+calls of harness debugging).
