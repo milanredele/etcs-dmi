@@ -8,8 +8,8 @@ clause - absent 3.4.4.2.3 ; efs 3.4.4.2.3
 clause - absent 3.4.4.2.3 a) ; efs 3.4.4.2.3.a
 clause E2 done 3.4.4.4.6 ; efs 3.4.4.4.6
 clause E2 done 3.4.4.4.6.1 ; efs 3.4.4.4.6.1
-clause E6 todo 3.16.2.3.1 ; efs 3.16.2.3.1
-clause E6 todo 3.16.2.3.1 a) ; efs 3.16.2.3.1.a
+clause E6 done 3.16.2.3.1 ; efs 3.16.2.3.1
+clause E6 done 3.16.2.3.1 a) ; efs 3.16.2.3.1.a
 clause E2 done 3.4.4.4.6 b) ; efs 3.4.4.4.6.b
 step Setup
 sub Initialize
@@ -37,8 +37,8 @@ clause - absent 3.4.4.2.3 ; efs 3.4.4.2.3
 clause - absent 3.4.4.2.3 b) ; efs 3.4.4.2.3.b
 clause E2 done 3.4.4.4.6 ; efs 3.4.4.4.6
 clause E2 done 3.4.4.4.6.1 ; efs 3.4.4.4.6.1
-clause E6 todo 3.16.2.3.1 ; efs 3.16.2.3.1
-clause E6 todo 3.16.2.3.1 a) ; efs 3.16.2.3.1.a
+clause E6 done 3.16.2.3.1 ; efs 3.16.2.3.1
+clause E6 done 3.16.2.3.1 a) ; efs 3.16.2.3.1.a
 clause E2 done 3.4.4.4.6 b) ; efs 3.4.4.4.6.b
 step Setup
 sub Initialize
@@ -67,8 +67,8 @@ clause - absent 3.4.4.2.3 ; efs 3.4.4.2.3
 clause - absent 3.4.4.2.3 c) ; efs 3.4.4.2.3.c
 clause E2 done 3.4.4.4.6 ; efs 3.4.4.4.6
 clause E2 done 3.4.4.4.6.1 ; efs 3.4.4.4.6.1
-clause E6 todo 3.16.2.3.1 ; efs 3.16.2.3.1
-clause E6 todo 3.16.2.3.1 a) ; efs 3.16.2.3.1.a
+clause E6 done 3.16.2.3.1 ; efs 3.16.2.3.1
+clause E6 done 3.16.2.3.1 a) ; efs 3.16.2.3.1.a
 clause E2 done 3.4.4.4.6 b) ; efs 3.4.4.4.6.b
 step Setup
 sub Initialize
@@ -173,8 +173,8 @@ case Linking reaction Train Trip
 clause E2 done 3.4.4.4.6 b) ; efs 3.4.4.4.6.b
 clause - absent 3.4.4.2.3 ; efs 3.4.4.2.3
 clause - absent 3.4.4.2.3 a) ; efs 3.4.4.2.3.a
-clause E6 todo 3.16.2.3.1 ; efs 3.16.2.3.1
-clause E6 todo 3.16.2.3.1 b) ; efs 3.16.2.3.1.b
+clause E6 done 3.16.2.3.1 ; efs 3.16.2.3.1
+clause E6 done 3.16.2.3.1 b) ; efs 3.16.2.3.1.b
 clause E2 done 3.4.4.4.6 ; efs 3.4.4.4.6
 step Setup
 sub Initialize
@@ -212,8 +212,8 @@ case Linking reaction Service Brake
 clause E2 done 3.4.4.4.6 b) ; efs 3.4.4.4.6.b
 clause - absent 3.4.4.2.3 ; efs 3.4.4.2.3
 clause - absent 3.4.4.2.3 b) ; efs 3.4.4.2.3.b
-clause E6 todo 3.16.2.3.1 ; efs 3.16.2.3.1
-clause E6 todo 3.16.2.3.1 b) ; efs 3.16.2.3.1.b
+clause E6 done 3.16.2.3.1 ; efs 3.16.2.3.1
+clause E6 done 3.16.2.3.1 b) ; efs 3.16.2.3.1.b
 clause E2 done 3.4.4.4.6 ; efs 3.4.4.4.6
 step Setup
 sub Initialize
@@ -251,8 +251,8 @@ case Linking reaction No Reaction
 clause E2 done 3.4.4.4.6 b) ; efs 3.4.4.4.6.b
 clause - absent 3.4.4.2.3 ; efs 3.4.4.2.3
 clause - absent 3.4.4.2.3 c) ; efs 3.4.4.2.3.c
-clause E6 todo 3.16.2.3.1 ; efs 3.16.2.3.1
-clause E6 todo 3.16.2.3.1 b) ; efs 3.16.2.3.1.b
+clause E6 done 3.16.2.3.1 ; efs 3.16.2.3.1
+clause E6 done 3.16.2.3.1 b) ; efs 3.16.2.3.1.b
 clause E2 done 3.4.4.4.6 ; efs 3.4.4.4.6
 step Setup
 sub Initialize

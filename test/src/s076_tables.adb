@@ -417,6 +417,9 @@ package body S076_Tables is
    begin
       --  the messages no event of ours records, from the DMI state
       case Bit is
+         --  Balise read error: of a linking reaction's service brake (1,
+         --  3.16.2.6.1) or of the trips [17], [66] (2)
+         when 1  => return Shown (N2 (1, 2));
          when 2  => return Shown (N1 (3));       -- Trackside malfunction
          when 3  => return Shown (N2 (4, 5));    -- Communication error
          when 4  => return Shown (N1 (6));       -- Entering FS
@@ -442,7 +445,6 @@ package body S076_Tables is
       end if;
       --  the trip reasons (EVC_Procedures.Trip_Reason_T'Pos)
       case Bit is
-         when 1  => return Trips (4, 5);        -- Balise read error
          when 9  => return Trips (9);           -- Trackside not compatible
          when 10 => return Event (23, 11);      -- Train data changed
          when 12 => return Trips (1, 2, 3);     -- Unauthorized passing

@@ -871,12 +871,12 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.2.2 a),3,x,,,,,E6,todo,
 3.16.2.2.2 b),3,x,,,,,E6,todo,
 3.16.2.2.2 c),3,x,,,,,E6,todo,
-3.16.2.3.1,3,x,,,,,E6,todo,
-3.16.2.3.1 a),3,x,,,,,E6,todo,
-3.16.2.3.1 b),3,x,,,,,E6,todo,
-3.16.2.3.1 c),3,x,,,,,E6,todo,
-3.16.2.3.1.1,3,x,,,,,E6,todo,
-3.16.2.3.1.1 a),3,x,,,,,E6,todo,
+3.16.2.3.1,3,x,,,,,E6,done,"[E6 consistency-linking] the cases a) to c) in EVC_Position.Decide_Linking (Check_Window early, a group announced later) and Supervise_Windows (not detected), the reaction by Q_LINKREACTION through Request_Reaction; evc_test Scenario_Linking_Errors"
+3.16.2.3.1 a),3,x,,,,,E6,done,"[E6 consistency-linking] EVC_Position.Decide_Linking: Check_Window Early, the reaction of the expected link; evc_test Scenario_Linking_Errors"
+3.16.2.3.1 b),3,x,,,,,E6,done,"[E6 consistency-linking] EVC_Position.Supervise_Windows: the window passed without the location reference, the reaction of the link; evc_test Scenario_Linking_Errors"
+3.16.2.3.1 c),3,x,,,,,E6,done,[E6 consistency-linking] EVC_Position.Decide_Linking: a group announced later read in the window of the expected one; evc_test Scenario_Linking_Errors
+3.16.2.3.1.1,3,x,,,,,E6,partial,"[E6 consistency-linking] EVC_Position.Supervise_Windows: the min safe antenna beyond the last possible location plus 1.3 m (Window_Passed, Missed_Margin_Cm); the time of a) and b) on top of it left"
+3.16.2.3.1.1 a),3,x,,,,,E6,partial,[E6 consistency-linking] EVC_Position.Supervise_Windows: the 1.3 m margin; the 100 ms after it left
 3.16.2.3.1.1 b),3,x,,,,,E6,todo,
 3.16.2.3.4,3,x,,,,,E6,todo,
 3.16.2.4.1,3,x,,,,,E6,todo,
@@ -924,8 +924,8 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.2.5.2,3,x,,,,,E6,todo,
 3.16.2.5.3,3,x,,,,,E6,todo,
 3.16.2.6.1,3,x,,,,,E6,todo,"the service brake of the linking reaction already shows ""Balise read error"" (SS 1, EVC_Procedures; the Linking scenario of evc_test_procedures, found by SUBSET-076); the trip case with the consistency of E6"
-3.16.2.6.2,3,x,,,,,E6,todo,
-3.16.2.7.1.1,3,x,,,,,E6,todo,
+3.16.2.6.2,3,x,,,,,E6,partial,"[E6 consistency-linking] EVC_Stored_Information.Linking_Shortening: the service brake of a linking reaction requested while moving in FS, AD, LS, OS, SM, then standstill: shortened to the current position as for 3.16.3.4.5 b) (Shorten_To_Train); SUBSET-076 3160200_05 passes; a scenario of its own left"
+3.16.2.7.1.1,3,x,,,,,E6,done,"[E6 consistency-linking] EVC_Position.Supervise_Windows: two windows passed in a row without a balise detected between them (Missed_Last, reset by any group passage in Evaluate): the service brake requested (Cause_Double_Missed) whatever Q_LINKREACTION, the driver informed and the brake released at standstill by EVC_Procedures, the information shortened by EVC_Stored_Information.Linking_Shortening; evc_test Scenario_Linking_Double_Missed; SUBSET-076 3160200_05 passes"
 3.16.2.7.2.1,3,x,,,,,E6,todo,
 3.16.2.7.2.1 a),3,x,,,,,E6,todo,
 3.16.2.7.2.1 b),3,x,,,,,E6,todo,
@@ -945,8 +945,8 @@ clause,chapter,onboard,trackside,definition,informative,others,phase,status,note
 3.16.3.4.5 b),3,x,,,,,E5,done,"EVC_Stored_Information.Contact_Shortening, EVC_Movement_Authority.Shorten_To_Train: the service brake of T_NVCONTACT seen commanded, then standstill without a new message: the EOA and SvL at the train, the other stores deleted beyond its max safe front end (A.3.4.1.2 i, [10] [11]); evc_test Scenario_Contact_Shortening [E5 session]"
 3.16.3.5.1,3,x,,,,,E5,done,"EVC_Sessions.Take_Message, Produce (message 146); golden received_telegram_message [E5 session]"
 3.16.3.5.3,3,x,,,,,E5,done,EVC_Sessions.Produce (146 carries the T_TRAIN of the message) [E5 session]
-3.16.4.1,3,x,,,,,E6,partial,"[E5 session] radio message errors: reported once the session is established (EVC_Sessions.Reports.Produce), evc_test Scenario_Session_Error_Report; balise group and odometer errors (E6) left"
-3.16.4.3,3,x,,,,,E6,todo,
+3.16.4.1,3,x,,,,,E6,partial,"[E5 session] radio message errors: reported once the session is established (EVC_Sessions.Reports.Produce), evc_test Scenario_Session_Error_Report; [E6 consistency-linking] balise group errors: the linking reactions of EVC_Position reported in level 2 to the supervising RBC with M_ERROR 0, or 7 for the double linking error (EVC_Sessions.Reports.Request_Balise_Errors); left: a scenario of its own (SUBSET-076 3060100_01 and 3160400_01 judge it once the linking by radio is taken), M_ERROR 1 and 2 of the message consistency, 8 of 3.16.2.7.2, the odometer errors"
+3.16.4.3,3,x,,,,,E6,partial,"[E6 consistency-linking] EVC_Sessions.Reports.Request_Balise_Errors: a group marked linked and not in the linking information is no linking reaction of EVC_Position (Unexpected_Group only), so not reported; scenario left"
 3.17.2.1,3,x,,,,,E6,done,"EVC_System_Version: the envelope X = 1, 2, 3 (6.4.2), Compatible; evc_test version_negotiation [E5 version]"
 3.17.2.1.1,3,x,,,,,E6,done,"EVC_System_Version.Operated_Y / Operated_Version: 1.1, 2.3, 3.0; evc_test version_negotiation [E5 version]"
 3.17.2.2,3,x,,,,,E6,partial,EVC_System_Version.Operated: one X at a time; what depends on it (the layouts of chapter 6) is E7 [E5 version]

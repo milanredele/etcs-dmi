@@ -169,6 +169,8 @@ is
    Cause_Not_Detected    : constant := 2;  -- 3.16.2.3.1 b)
    Cause_Other_Group     : constant := 3;  -- 3.16.2.3.1 c)
    Cause_Wrong_Direction : constant := 4;  -- 3.4.4.4.7
+   Cause_Double_Missed   : constant := 5;  -- 3.16.2.7.1.1
+   Cause_Double_Repos    : constant := 6;  -- 3.16.2.7.2.2
 
    type Event_T is record
       Kind       : Event_Kind_T := Linking_Reaction;
